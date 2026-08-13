@@ -1,0 +1,124 @@
+{
+  "schema": "spaceface.fleetPlayerBody.build.v1",
+  "assetId": "SF_HORNET_PRODUCTION_V1",
+  "defId": "ship_hornet",
+  "shipId": "hornet",
+  "iteration": 1,
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 4700,
+      "hullTriangles": 904,
+      "draws": 7,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Thruster"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "path": "source/wholeships/hornet_production_v1_lod0.glb",
+      "bytes": 260700,
+      "sha256": "CC47E7DC418510D758AC1EDAC8A8824F5893BDF7FC89C50BD0AC33EF29BE8F54"
+    },
+    {
+      "lod": 1,
+      "triangles": 3064,
+      "hullTriangles": 904,
+      "draws": 7,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Thruster"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "path": "source/wholeships/hornet_production_v1_lod1.glb",
+      "bytes": 166836,
+      "sha256": "4D75DCE983802D8CE329B7C382FA3B5CE6BB16D240B704B81B2DA04C1B2A8C9C"
+    },
+    {
+      "lod": 2,
+      "triangles": 3064,
+      "hullTriangles": 904,
+      "draws": 7,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Thruster"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "path": "source/wholeships/hornet_production_v1_lod2.glb",
+      "bytes": 166836,
+      "sha256": "2629EE91EC9C44DDFEE99A9387ACE448ABC28F7F4F284E19139F2FDBE06703C3"
+    }
+  ],
+  "renders": [
+    {
+      "view": "hornet_three_quarter",
+      "path": "evidence/iter01/hornet_three_quarter.png",
+      "bytes": 766439
+    },
+    {
+      "view": "hornet_starboard",
+      "path": "evidence/iter01/hornet_starboard.png",
+      "bytes": 814097
+    },
+    {
+      "view": "hornet_rear",
+      "path": "evidence/iter01/hornet_rear.png",
+      "bytes": 843403
+    },
+    {
+      "view": "hornet_grazing",
+      "path": "evidence/iter01/hornet_grazing.png",
+      "bytes": 792679
+    }
+  ]
+}

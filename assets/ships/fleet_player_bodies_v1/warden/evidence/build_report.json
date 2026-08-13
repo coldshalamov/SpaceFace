@@ -1,0 +1,122 @@
+{
+  "schema": "spaceface.fleetPlayerBody.build.v1",
+  "assetId": "SF_WARDEN_PRODUCTION_V1",
+  "defId": "ship_warden",
+  "shipId": "warden",
+  "iteration": 1,
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 8656,
+      "hullTriangles": 1444,
+      "draws": 7,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Thruster"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "path": "source/wholeships/warden_production_v1_lod0.glb",
+      "bytes": 470404,
+      "sha256": "3A8BDD7CB59D3F1ABAB8D3A297A83C9868147B337BDACDBBCF41F9B4C27509D7"
+    },
+    {
+      "lod": 1,
+      "triangles": 4428,
+      "hullTriangles": 1444,
+      "draws": 6,
+      "materials": [
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Thruster"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "path": "source/wholeships/warden_production_v1_lod1.glb",
+      "bytes": 230716,
+      "sha256": "0859305309EA1B56711A7246EE04E54408AD5D5D01D61C5B6158B9ADF30931A0"
+    },
+    {
+      "lod": 2,
+      "triangles": 4428,
+      "hullTriangles": 1444,
+      "draws": 6,
+      "materials": [
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Thruster"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "path": "source/wholeships/warden_production_v1_lod2.glb",
+      "bytes": 230716,
+      "sha256": "982372B14D7361778C81635B5F3C4AE0795AA17E4359CDAE5406C6C860783D44"
+    }
+  ],
+  "renders": [
+    {
+      "view": "warden_three_quarter",
+      "path": "evidence/iter01/warden_three_quarter.png",
+      "bytes": 798804
+    },
+    {
+      "view": "warden_starboard",
+      "path": "evidence/iter01/warden_starboard.png",
+      "bytes": 820557
+    },
+    {
+      "view": "warden_rear",
+      "path": "evidence/iter01/warden_rear.png",
+      "bytes": 891851
+    },
+    {
+      "view": "warden_grazing",
+      "path": "evidence/iter01/warden_grazing.png",
+      "bytes": 843982
+    }
+  ]
+}

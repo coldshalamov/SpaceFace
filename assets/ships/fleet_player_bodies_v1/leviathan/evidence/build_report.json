@@ -1,0 +1,122 @@
+{
+  "schema": "spaceface.fleetPlayerBody.build.v1",
+  "assetId": "SF_LEVIATHAN_PRODUCTION_V1",
+  "defId": "ship_leviathan",
+  "shipId": "leviathan",
+  "iteration": 1,
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 10708,
+      "hullTriangles": 1444,
+      "draws": 7,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Thruster"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "path": "source/wholeships/leviathan_production_v1_lod0.glb",
+      "bytes": 577840,
+      "sha256": "C7D395DDE9ED3D246C77E0FEBDF491696A0FD5FBF4DEB8BE0A565A55490ED46C"
+    },
+    {
+      "lod": 1,
+      "triangles": 5184,
+      "hullTriangles": 1444,
+      "draws": 6,
+      "materials": [
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Thruster"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "path": "source/wholeships/leviathan_production_v1_lod1.glb",
+      "bytes": 265852,
+      "sha256": "D43AFBC478FD358E2DDCAFF51A863BE553F02D278CA518FA1E631588FAB00F8B"
+    },
+    {
+      "lod": 2,
+      "triangles": 5184,
+      "hullTriangles": 1444,
+      "draws": 6,
+      "materials": [
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Thruster"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "path": "source/wholeships/leviathan_production_v1_lod2.glb",
+      "bytes": 265852,
+      "sha256": "9E5C9B186FFCEA3FF12610C287D2AD9AABFCF5DD143334AAF8F0DB18CB10C694"
+    }
+  ],
+  "renders": [
+    {
+      "view": "leviathan_three_quarter",
+      "path": "evidence/iter01/leviathan_three_quarter.png",
+      "bytes": 840810
+    },
+    {
+      "view": "leviathan_starboard",
+      "path": "evidence/iter01/leviathan_starboard.png",
+      "bytes": 845090
+    },
+    {
+      "view": "leviathan_rear",
+      "path": "evidence/iter01/leviathan_rear.png",
+      "bytes": 914144
+    },
+    {
+      "view": "leviathan_grazing",
+      "path": "evidence/iter01/leviathan_grazing.png",
+      "bytes": 874952
+    }
+  ]
+}

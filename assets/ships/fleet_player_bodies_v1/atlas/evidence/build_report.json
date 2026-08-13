@@ -1,0 +1,123 @@
+{
+  "schema": "spaceface.fleetPlayerBody.build.v1",
+  "assetId": "SF_ATLAS_PRODUCTION_V1",
+  "defId": "ship_atlas",
+  "shipId": "atlas",
+  "iteration": 1,
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 13716,
+      "hullTriangles": 1444,
+      "draws": 8,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "path": "source/wholeships/atlas_production_v1_lod0.glb",
+      "bytes": 745872,
+      "sha256": "14A0C2EEA3530E1425B8B1FB093DF4C7927E72696E3637EC63FA1E319EF9384E"
+    },
+    {
+      "lod": 1,
+      "triangles": 5600,
+      "hullTriangles": 1444,
+      "draws": 6,
+      "materials": [
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Thruster"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "path": "source/wholeships/atlas_production_v1_lod1.glb",
+      "bytes": 288056,
+      "sha256": "0228F95F0400C03CCED7F4539B9A6DC3E04C908E2AF9346349DD6B7B3736AD89"
+    },
+    {
+      "lod": 2,
+      "triangles": 5600,
+      "hullTriangles": 1444,
+      "draws": 6,
+      "materials": [
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Thruster"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "path": "source/wholeships/atlas_production_v1_lod2.glb",
+      "bytes": 288056,
+      "sha256": "ABD22BEC7594EAE60D4A254F936481378E49554D09C97A299897D80D3B59E40A"
+    }
+  ],
+  "renders": [
+    {
+      "view": "atlas_three_quarter",
+      "path": "evidence/iter01/atlas_three_quarter.png",
+      "bytes": 865147
+    },
+    {
+      "view": "atlas_starboard",
+      "path": "evidence/iter01/atlas_starboard.png",
+      "bytes": 889495
+    },
+    {
+      "view": "atlas_rear",
+      "path": "evidence/iter01/atlas_rear.png",
+      "bytes": 959798
+    },
+    {
+      "view": "atlas_grazing",
+      "path": "evidence/iter01/atlas_grazing.png",
+      "bytes": 967265
+    }
+  ]
+}

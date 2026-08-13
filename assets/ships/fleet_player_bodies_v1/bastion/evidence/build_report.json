@@ -1,0 +1,122 @@
+{
+  "schema": "spaceface.fleetPlayerBody.build.v1",
+  "assetId": "SF_BASTION_PRODUCTION_V1",
+  "defId": "ship_bastion",
+  "shipId": "bastion",
+  "iteration": 1,
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 6820,
+      "hullTriangles": 1444,
+      "draws": 7,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Thruster"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "path": "source/wholeships/bastion_production_v1_lod0.glb",
+      "bytes": 375156,
+      "sha256": "C8D089D64A974B4049753B05452149E2C45AD4FA1D6CCC4E15EDC34297FEE5B8"
+    },
+    {
+      "lod": 1,
+      "triangles": 3888,
+      "hullTriangles": 1444,
+      "draws": 6,
+      "materials": [
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Thruster"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "path": "source/wholeships/bastion_production_v1_lod1.glb",
+      "bytes": 207740,
+      "sha256": "45DF54DE660EDE06C6C963AF21A979688FD89AF4B616D906EA313642E37E05DE"
+    },
+    {
+      "lod": 2,
+      "triangles": 3888,
+      "hullTriangles": 1444,
+      "draws": 6,
+      "materials": [
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Thruster"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "path": "source/wholeships/bastion_production_v1_lod2.glb",
+      "bytes": 207740,
+      "sha256": "8920217433E841C501B7CF442E1DFE8ED5828696EE0D9C953C07A520EBF1B255"
+    }
+  ],
+  "renders": [
+    {
+      "view": "bastion_three_quarter",
+      "path": "evidence/iter01/bastion_three_quarter.png",
+      "bytes": 780978
+    },
+    {
+      "view": "bastion_starboard",
+      "path": "evidence/iter01/bastion_starboard.png",
+      "bytes": 808941
+    },
+    {
+      "view": "bastion_rear",
+      "path": "evidence/iter01/bastion_rear.png",
+      "bytes": 866878
+    },
+    {
+      "view": "bastion_grazing",
+      "path": "evidence/iter01/bastion_grazing.png",
+      "bytes": 842894
+    }
+  ]
+}

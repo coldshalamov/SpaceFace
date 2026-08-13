@@ -1,0 +1,310 @@
+{
+  "schema": "spaceface.muleProductionV1.build.v1",
+  "packet": "SF-MULE-PRODUCTION-V1-001",
+  "assetId": "SF_MULE_PRODUCTION_V1",
+  "status": "isolated_candidate",
+  "iteration": 3,
+  "textureSourceHashes": {
+    "hull_basecolor.png": "20898063BB3FF76D68D72A86C8BFDF5A9F24A96684FAD9001816997F0BF8CA43",
+    "hull_normal.png": "C7B2BA2B829E33032C4FFA8239C65533EDA654A3688E82B1936DF51C3267A0ED",
+    "hull_orm.png": "0818D38FC2926D4113ADF607E3DB2CE17B36447CE72A927379E7280D4979F499",
+    "armor_dark_basecolor.png": "E43603145665D77FFF1DA0C0D96112A17D405C000BBC96E16E07A4BBA08DDA4F",
+    "armor_dark_normal.png": "530685F6C6FB885DCA92B866598D5E351F77D882B17A3C087EE682EB7183A218",
+    "armor_dark_orm.png": "BDD576610491BF1C1DB675716E6E0B37BEDD1528A3C481AA6CCED19C9933CD0B",
+    "mechanical_basecolor.png": "2F05EA260EA0063D67A2B2EC1DD41D7A4CF897A6744F6527A1B19C85513394B7",
+    "mechanical_normal.png": "E767DFBF00F7F79C0E012A5C0B29DB66BE74A010583BF864E8AC3BC9EDC1B157",
+    "mechanical_orm.png": "66C5B7FF047B658342AAE754BAFFEDABBED0935D6146F9F729C44AF8E8417715",
+    "frontier_cyan_basecolor.png": "C40E3AD27C9BA821CCD6E5955962081596149F79D41B0407052D317C080213EA",
+    "frontier_cyan_normal.png": "707A3B4B35E04784704F7FAB297A97A5F57BC2171FC208E567BD7D7711F5A54C",
+    "frontier_cyan_orm.png": "B349B43D66D7C20CD554A675D8AE51645ED91F2E5E7E2D46E4F78B1499E245B2",
+    "warning_orange_basecolor.png": "2D416CB20B1C41FF173A4E0D46B447AA5F742217F067CD286626405C2FCA51E0",
+    "warning_orange_normal.png": "3406FB09AA7DD654D21C5F480A18644B5BCBEA1FBA1E7EBD33964D2961F99900",
+    "warning_orange_orm.png": "C6D785BB86C39BACFBA6A6F9C76E017C5747B8CE2A56D49FFA559DABBBC4300B"
+  },
+  "productionBlend": "blender/mule_production_v1.blend",
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 23792,
+      "hullTriangles": 1216,
+      "draws": 8,
+      "materials": [
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "meshNodes": [
+        "LOD0_Armor",
+        "LOD0_Canopy",
+        "LOD0_Ceramic",
+        "LOD0_Hull",
+        "LOD0_Mechanical",
+        "LOD0_Radiator",
+        "LOD0_Thruster",
+        "LOD0_Warning"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "embeddedPlume": false,
+      "path": "source/wholeships/mule_production_v1_lod0.glb",
+      "bytes": 1309136,
+      "sha256": "6207B9DA2747A0B967A84753D164A41DE9C52C935D7A037BFBCBCB529B5C9D60"
+    },
+    {
+      "lod": 1,
+      "triangles": 9520,
+      "hullTriangles": 1216,
+      "draws": 8,
+      "materials": [
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "meshNodes": [
+        "LOD1_Armor",
+        "LOD1_Canopy",
+        "LOD1_Ceramic",
+        "LOD1_Hull",
+        "LOD1_Mechanical",
+        "LOD1_Radiator",
+        "LOD1_Thruster",
+        "LOD1_Warning"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "embeddedPlume": false,
+      "path": "source/wholeships/mule_production_v1_lod1.glb",
+      "bytes": 509680,
+      "sha256": "DBAA72057D2BBA281CBBB10CF6029E4D861B6A54CDB7DB6EA7A25F9C9177CD7F"
+    },
+    {
+      "lod": 2,
+      "triangles": 6388,
+      "hullTriangles": 1216,
+      "draws": 7,
+      "materials": [
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "meshNodes": [
+        "LOD2_Armor",
+        "LOD2_Canopy",
+        "LOD2_Ceramic",
+        "LOD2_Hull",
+        "LOD2_Mechanical",
+        "LOD2_Thruster",
+        "LOD2_Warning"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "embeddedPlume": false,
+      "path": "source/wholeships/mule_production_v1_lod2.glb",
+      "bytes": 333528,
+      "sha256": "834309A038ADE50F577E479A91BAE3F7D1A0FB0B4FB43F3C9C90D19A739D2A7A"
+    }
+  ],
+  "renders": [
+    {
+      "view": "mule_three_quarter",
+      "path": "evidence/iter03/mule_three_quarter.png",
+      "bytes": 965119,
+      "sha256": "ADFDCF6CF637023620EC704866E10CA682876E7BCD21377124B72F26000CEFDD",
+      "camera": [
+        20,
+        -22,
+        11
+      ],
+      "target": [
+        0,
+        0,
+        0.4
+      ],
+      "lensMm": 50
+    },
+    {
+      "view": "mule_starboard",
+      "path": "evidence/iter03/mule_starboard.png",
+      "bytes": 1056213,
+      "sha256": "2BFE67B24BEF52252F0CD6318218539913247B95C486BEAC53830F17F78154AE",
+      "camera": [
+        16,
+        22,
+        10
+      ],
+      "target": [
+        0,
+        0.4,
+        0.3
+      ],
+      "lensMm": 50
+    },
+    {
+      "view": "mule_front",
+      "path": "evidence/iter03/mule_front.png",
+      "bytes": 956358,
+      "sha256": "41C4E6ABE4C47323E01FAB210C214C18C44A5E7131D3A37149D12BD9BC29C61B",
+      "camera": [
+        24,
+        0,
+        5
+      ],
+      "target": [
+        0,
+        0,
+        0.3
+      ],
+      "lensMm": 52
+    },
+    {
+      "view": "mule_rear",
+      "path": "evidence/iter03/mule_rear.png",
+      "bytes": 1011522,
+      "sha256": "C0F0EBC5E9A4B0B3EF1E644C812810D77082C2D1DD5BAF12340BC2AD31DFAB39",
+      "camera": [
+        -22,
+        -8,
+        6
+      ],
+      "target": [
+        -1,
+        0,
+        0.2
+      ],
+      "lensMm": 52
+    },
+    {
+      "view": "mule_top",
+      "path": "evidence/iter03/mule_top.png",
+      "bytes": 1051326,
+      "sha256": "91E8E4D83B6DFB3D58740B29C3473B8A0AF0FF578DFF65B0FC044ABFF3224ADD",
+      "camera": [
+        0,
+        0,
+        32
+      ],
+      "target": [
+        0,
+        0,
+        0
+      ],
+      "lensMm": 58
+    },
+    {
+      "view": "mule_grazing",
+      "path": "evidence/iter03/mule_grazing.png",
+      "bytes": 1005879,
+      "sha256": "EAF20C19D481581F2D99B62D94B3B695CF163D3C6A29F6E7BFC8BFE3D578491D",
+      "camera": [
+        6,
+        -18,
+        1.4
+      ],
+      "target": [
+        0,
+        0,
+        0.3
+      ],
+      "lensMm": 48
+    },
+    {
+      "view": "mule_drive_close",
+      "path": "evidence/iter03/mule_drive_close.png",
+      "bytes": 1033297,
+      "sha256": "868EA9215362DBE2CB7E5AF0F3BAAD9DCDB57AC333002C58D0FF5C6B1F24166F",
+      "camera": [
+        -13,
+        -4,
+        1.6
+      ],
+      "target": [
+        -6.4,
+        1.45,
+        0.1
+      ],
+      "lensMm": 70
+    },
+    {
+      "view": "mule_bridge_close",
+      "path": "evidence/iter03/mule_bridge_close.png",
+      "bytes": 1050715,
+      "sha256": "C94F95D82A0F8B3A2D1D0DD51B4790E0E9F50EB70C0BE34881FF8C2180C8AF2B",
+      "camera": [
+        14,
+        -6,
+        4.2
+      ],
+      "target": [
+        5.2,
+        0,
+        2.2
+      ],
+      "lensMm": 70
+    }
+  ],
+  "contracts": {
+    "forward": "+X",
+    "upAfterExport": "+Y",
+    "embeddedPlume": false,
+    "requiredSockets": [
+      "SOCKET_Camera_Focus",
+      "SOCKET_Cargo_Ventral",
+      "SOCKET_Engine_Main",
+      "SOCKET_Mining_Front",
+      "SOCKET_RCS_Port",
+      "SOCKET_RCS_Starboard",
+      "SOCKET_Trail_Main",
+      "SOCKET_Trail_Port",
+      "SOCKET_Trail_Starboard",
+      "SOCKET_Utility_Dorsal",
+      "SOCKET_Weapon_Front"
+    ]
+  }
+}

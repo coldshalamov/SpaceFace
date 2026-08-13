@@ -1,0 +1,122 @@
+{
+  "schema": "spaceface.fleetPlayerBody.build.v1",
+  "assetId": "SF_DRIFTER_PRODUCTION_V1",
+  "defId": "ship_drifter",
+  "shipId": "drifter",
+  "iteration": 1,
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 6044,
+      "hullTriangles": 904,
+      "draws": 7,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Thruster"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "path": "source/wholeships/drifter_production_v1_lod0.glb",
+      "bytes": 323968,
+      "sha256": "DBEEFB575AD9A0E8B57A092DB2B84ECBFE045154B46DC1D70637884F445EED4C"
+    },
+    {
+      "lod": 1,
+      "triangles": 3112,
+      "hullTriangles": 904,
+      "draws": 6,
+      "materials": [
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Thruster"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "path": "source/wholeships/drifter_production_v1_lod1.glb",
+      "bytes": 156552,
+      "sha256": "E6C9F0E0F68429403257AB65F4E0D0BB14E6B26C7DA5DE6868FE3DCC4F2A05A6"
+    },
+    {
+      "lod": 2,
+      "triangles": 3112,
+      "hullTriangles": 904,
+      "draws": 6,
+      "materials": [
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Thruster"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "path": "source/wholeships/drifter_production_v1_lod2.glb",
+      "bytes": 156552,
+      "sha256": "F6B4FAE89FCACC4D1AE0179DA6E7C3B3043260999969CCAEA5258DC6F604CB55"
+    }
+  ],
+  "renders": [
+    {
+      "view": "drifter_three_quarter",
+      "path": "evidence/iter01/drifter_three_quarter.png",
+      "bytes": 762042
+    },
+    {
+      "view": "drifter_starboard",
+      "path": "evidence/iter01/drifter_starboard.png",
+      "bytes": 782914
+    },
+    {
+      "view": "drifter_rear",
+      "path": "evidence/iter01/drifter_rear.png",
+      "bytes": 836961
+    },
+    {
+      "view": "drifter_grazing",
+      "path": "evidence/iter01/drifter_grazing.png",
+      "bytes": 818739
+    }
+  ]
+}

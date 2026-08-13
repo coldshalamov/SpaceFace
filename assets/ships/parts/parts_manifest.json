@@ -3755,6 +3755,39 @@
       "note": "Fleet remaster production Pelican. Distinct prospector wholeship so Pelican no longer shares the Ironback barge silhouette. Chamfered plate hull, twin axial ion drives, cutter arms, starboard filter drums. Not self-accepted. Provenance: assets/ships/pelican_production_v1/."
     },
     {
+      "id": "wholeship_mule_production_v1",
+      "assetId": "SF_MULE_PRODUCTION_V1",
+      "category": "wholeships",
+      "priority": "P0",
+      "file": "wholeships/mule_production_v1.glb",
+      "lodFamily": {
+        "lod0": "wholeships/mule_production_v1.glb",
+        "lod1": "wholeships/mule_production_v1_lod1.glb",
+        "lod2": "wholeships/mule_production_v1_lod2.glb"
+      },
+      "status": "integration_candidate",
+      "wiringStatus": "live_player_mule",
+      "tris": 23792,
+      "bytes": 1307824,
+      "textureSize": 1024,
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Weapon_Front",
+        "SOCKET_Mining_Front",
+        "SOCKET_Engine_Main",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Camera_Focus",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard"
+      ],
+      "mount": "origin",
+      "note": "Fleet remaster production Mule. Distinct T1 hauler so Mule no longer shares the Atlas silhouette. Grey-green cargo hull, stacked containers, forward bridge, twin industrial drives. Not self-accepted."
+    },
+    {
       "id": "place_dock_interior",
       "category": "places",
       "priority": "P0",

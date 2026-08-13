@@ -873,11 +873,31 @@ const WHOLE_SHIP_FILE_BY_DEF_ID = Object.freeze({
   'ship_kestrel': 'wholeships/kestrel.glb',
   'ship_wasp': 'wholeships/wasp_production_v1.glb',
   'ship_pelican': 'wholeships/pelican_production_v1.glb',
+  'ship_mule': 'wholeships/mule_production_v1.glb',
+  'ship_drifter': 'wholeships/drifter_production_v1.glb',
+  'ship_hornet': 'wholeships/hornet_production_v1.glb',
+  'ship_ironback': 'wholeships/ironback_production_v1.glb',
+  'ship_bastion': 'wholeships/bastion_production_v1.glb',
+  'ship_atlas': 'wholeships/atlas_production_v1.glb',
+  'ship_ranger': 'wholeships/ranger_production_v1.glb',
+  'ship_warden': 'wholeships/warden_production_v1.glb',
+  'ship_colossus': 'wholeships/colossus_production_v1.glb',
+  'ship_leviathan': 'wholeships/leviathan_production_v1.glb',
 });
 const WHOLE_SHIP_ASSET_ID_BY_DEF_ID = Object.freeze({
   'ship_kestrel': 'SF_K0_KESTREL_BORROWED_TIME_V4',
   'ship_wasp': 'SF_WASP_PRODUCTION_V1',
   'ship_pelican': 'SF_PELICAN_PRODUCTION_V1',
+  'ship_mule': 'SF_MULE_PRODUCTION_V1',
+  'ship_drifter': 'SF_DRIFTER_PRODUCTION_V1',
+  'ship_hornet': 'SF_HORNET_PRODUCTION_V1',
+  'ship_ironback': 'SF_IRONBACK_PRODUCTION_V1',
+  'ship_bastion': 'SF_BASTION_PRODUCTION_V1',
+  'ship_atlas': 'SF_ATLAS_PRODUCTION_V1',
+  'ship_ranger': 'SF_RANGER_PRODUCTION_V1',
+  'ship_warden': 'SF_WARDEN_PRODUCTION_V1',
+  'ship_colossus': 'SF_COLOSSUS_PRODUCTION_V1',
+  'ship_leviathan': 'SF_LEVIATHAN_PRODUCTION_V1',
 });
 // V4 is authored as three independent GLBs so the runtime can retain only the selected level.
 // The current whole-ship seam accepts one file, therefore LOD0 is canonical live truth while the
@@ -898,6 +918,56 @@ const WHOLE_SHIP_LOD_FAMILY_BY_DEF_ID = Object.freeze({
     lod0: 'wholeships/pelican_production_v1.glb',
     lod1: 'wholeships/pelican_production_v1_lod1.glb',
     lod2: 'wholeships/pelican_production_v1_lod2.glb',
+  }),
+  ship_mule: Object.freeze({
+    lod0: 'wholeships/mule_production_v1.glb',
+    lod1: 'wholeships/mule_production_v1_lod1.glb',
+    lod2: 'wholeships/mule_production_v1_lod2.glb',
+  }),
+  ship_drifter: Object.freeze({
+    lod0: 'wholeships/drifter_production_v1.glb',
+    lod1: 'wholeships/drifter_production_v1_lod1.glb',
+    lod2: 'wholeships/drifter_production_v1_lod2.glb',
+  }),
+  ship_hornet: Object.freeze({
+    lod0: 'wholeships/hornet_production_v1.glb',
+    lod1: 'wholeships/hornet_production_v1_lod1.glb',
+    lod2: 'wholeships/hornet_production_v1_lod2.glb',
+  }),
+  ship_ironback: Object.freeze({
+    lod0: 'wholeships/ironback_production_v1.glb',
+    lod1: 'wholeships/ironback_production_v1_lod1.glb',
+    lod2: 'wholeships/ironback_production_v1_lod2.glb',
+  }),
+  ship_bastion: Object.freeze({
+    lod0: 'wholeships/bastion_production_v1.glb',
+    lod1: 'wholeships/bastion_production_v1_lod1.glb',
+    lod2: 'wholeships/bastion_production_v1_lod2.glb',
+  }),
+  ship_atlas: Object.freeze({
+    lod0: 'wholeships/atlas_production_v1.glb',
+    lod1: 'wholeships/atlas_production_v1_lod1.glb',
+    lod2: 'wholeships/atlas_production_v1_lod2.glb',
+  }),
+  ship_ranger: Object.freeze({
+    lod0: 'wholeships/ranger_production_v1.glb',
+    lod1: 'wholeships/ranger_production_v1_lod1.glb',
+    lod2: 'wholeships/ranger_production_v1_lod2.glb',
+  }),
+  ship_warden: Object.freeze({
+    lod0: 'wholeships/warden_production_v1.glb',
+    lod1: 'wholeships/warden_production_v1_lod1.glb',
+    lod2: 'wholeships/warden_production_v1_lod2.glb',
+  }),
+  ship_colossus: Object.freeze({
+    lod0: 'wholeships/colossus_production_v1.glb',
+    lod1: 'wholeships/colossus_production_v1_lod1.glb',
+    lod2: 'wholeships/colossus_production_v1_lod2.glb',
+  }),
+  ship_leviathan: Object.freeze({
+    lod0: 'wholeships/leviathan_production_v1.glb',
+    lod1: 'wholeships/leviathan_production_v1_lod1.glb',
+    lod2: 'wholeships/leviathan_production_v1_lod2.glb',
   }),
 });
 // Reach hostiles are selected by their authoritative combat archetype, not by ship def: several

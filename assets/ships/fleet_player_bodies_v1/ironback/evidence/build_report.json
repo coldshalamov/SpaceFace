@@ -1,0 +1,122 @@
+{
+  "schema": "spaceface.fleetPlayerBody.build.v1",
+  "assetId": "SF_IRONBACK_PRODUCTION_V1",
+  "defId": "ship_ironback",
+  "shipId": "ironback",
+  "iteration": 1,
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 10700,
+      "hullTriangles": 1120,
+      "draws": 7,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Thruster"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "path": "source/wholeships/ironback_production_v1_lod0.glb",
+      "bytes": 582140,
+      "sha256": "1D6D55503C532BB1F0CBAFF87975CD903F580DCFB8C1768746973BDED159AF27"
+    },
+    {
+      "lod": 1,
+      "triangles": 4312,
+      "hullTriangles": 1120,
+      "draws": 6,
+      "materials": [
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Thruster"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "path": "source/wholeships/ironback_production_v1_lod1.glb",
+      "bytes": 222532,
+      "sha256": "5A8F64528AAE88809EE9149D31A46D2F33D11D98C8C7AF9C390FE220825E3CC6"
+    },
+    {
+      "lod": 2,
+      "triangles": 4312,
+      "hullTriangles": 1120,
+      "draws": 6,
+      "materials": [
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Thruster"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "path": "source/wholeships/ironback_production_v1_lod2.glb",
+      "bytes": 222532,
+      "sha256": "74035D720E989B1F6AB6193F0750B9E409EB8FDCA836E835630943828A84CBAC"
+    }
+  ],
+  "renders": [
+    {
+      "view": "ironback_three_quarter",
+      "path": "evidence/iter01/ironback_three_quarter.png",
+      "bytes": 801373
+    },
+    {
+      "view": "ironback_starboard",
+      "path": "evidence/iter01/ironback_starboard.png",
+      "bytes": 816850
+    },
+    {
+      "view": "ironback_rear",
+      "path": "evidence/iter01/ironback_rear.png",
+      "bytes": 871943
+    },
+    {
+      "view": "ironback_grazing",
+      "path": "evidence/iter01/ironback_grazing.png",
+      "bytes": 822791
+    }
+  ]
+}
