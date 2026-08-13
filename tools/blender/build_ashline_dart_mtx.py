@@ -17,14 +17,16 @@ ROOT = TOOLS.parents[1]
 if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
 from fleet_construction import (  # noqa: E402
+    add_cockpit_glazing,
+    add_flared_bell,
     add_manufactured_drive,
+    add_panel_seams,
     add_rcs_cluster,
     add_sensor_dish,
-    add_cockpit_glazing,
     add_service_hatch,
-    add_panel_seams,
-    cut_open_bay,
     apply_modifiers,
+    cut_open_bay,
+    station_ring,
 )
 
 FAMILY = ROOT / "assets" / "ships" / "fleet_player_bodies_v1" / "ashline_dart"
@@ -685,15 +687,15 @@ def build_lod(lod, mats):
     }
     # 12 m Reach interceptor: needle, shoulder, waist, single tail drive. Not Wasp.
     hull_obj = loft_from_rings("Pressure_Hull", [
-        dart_ring(6.0, 0, 0.06, 0.20, 0.16, 0.12),
-        dart_ring(3.6, 0, 0.08, 0.95, 0.40, 0.32),
-        dart_ring(1.2, 0, 0.08, 1.48, 0.52, 0.40),
-        dart_ring(-1.2, 0, 0.06, 1.58, 0.50, 0.40),
-        dart_ring(-3.6, 0, 0.05, 1.05, 0.38, 0.32),
-        dart_ring(-5.65, 0, 0.04, 0.46, 0.28, 0.24),
+        station_ring(6.0, 0, 0.06, 0.20, 0.16, flat=0.05, box=0.05, keel=1.00),
+        station_ring(3.6, 0, 0.10, 0.92, 0.48, flat=0.55, box=0.30, keel=0.80),
+        station_ring(1.2, 0, 0.08, 1.48, 0.52, flat=0.25, box=0.70, keel=0.55),
+        station_ring(-1.2, 0, 0.08, 1.58, 0.55, flat=0.22, box=0.85, keel=0.45),
+        station_ring(-3.6, 0, 0.06, 1.05, 0.48, flat=0.20, box=0.90, keel=0.35),
+        station_ring(-5.65, 0, 0.04, 0.50, 0.32, flat=0.18, box=0.90, keel=0.25),
     ], hull, collection, 0.010, cap="both")
     if lod <= 1:
-        cut_open_bay(hull_obj, "Cockpit", (1.85, 0.0, 0.58), 1.15, 0.42, 0.28, (0, 0, 1), mats, collection, kit="cockpit")
+        cut_open_bay(hull_obj, "Cockpit", (1.85, 0.0, 0.68), 1.15, 0.38, 0.30, (0, 0, 1), mats, collection, kit="cockpit", liner=False)
         cut_open_bay(hull_obj, "RadPort", (0.2, -1.48, 0.08), 1.05, 0.28, 0.22, (0, -1, 0), mats, collection, kit="radiator")
         cut_open_bay(hull_obj, "RadStbd", (0.2, 1.48, 0.08), 1.05, 0.28, 0.22, (0, 1, 0), mats, collection, kit="radiator")
         hull_obj.data.materials.clear()
@@ -726,7 +728,7 @@ def build_lod(lod, mats):
         add_rcs_cluster(side, (-1.2, 1.78 * sign, 0.12), mats, collection, sign=sign)
         add_box(f"Warn_{side}", (0.15, 1.62 * sign, 0.18), (0.18, 0.06, 0.016), warning, collection, 0.002)
 
-    add_hollow_bell("Main", -5.85, 0.0, 0.06, 0.92, mats, collection)
+    add_flared_bell("Main", -5.85, 0.0, 0.06, 0.92, mats, collection)
     add_cylinder("DriveCoupling", (-5.62, 0.0, 0.06), 0.32, 0.16, mech, collection, 14, 0.003)
     add_cylinder("DriveCasing", (-5.05, 0.0, 0.06), 0.30, 0.55, mech, collection, 14, 0.004)
     add_manufactured_drive("Main", -5.35, 0.0, lod, mats, collection, scale=0.72, z=0.06)

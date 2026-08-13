@@ -17,14 +17,16 @@ ROOT = TOOLS.parents[1]
 if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
 from fleet_construction import (  # noqa: E402
+    add_cockpit_glazing,
+    add_flared_bell,
     add_manufactured_drive,
+    add_panel_seams,
     add_rcs_cluster,
     add_sensor_dish,
-    add_cockpit_glazing,
     add_service_hatch,
-    add_panel_seams,
-    cut_open_bay,
     apply_modifiers,
+    cut_open_bay,
+    station_ring,
 )
 
 FAMILY = ROOT / "assets" / "ships" / "fleet_player_bodies_v1" / "salvage_cutter"
@@ -684,15 +686,15 @@ def build_lod(lod, mats):
     }
     # 15 m soot-brown salvage cutter: patched barge, scrap cradle, two cutter arms, twin tail drives.
     hull_obj = loft_from_rings("Pressure_Hull", [
-        barge_ring(7.5, 0, 0.04, 0.48, 0.30, 0.24),
-        barge_ring(5.0, 0, 0.10, 1.18, 0.52, 0.38),
-        barge_ring(1.8, 0, 0.14, 1.72, 0.78, 0.54),
-        barge_ring(-1.4, 0, 0.12, 1.80, 0.82, 0.56),
-        barge_ring(-4.2, 0, 0.08, 1.38, 0.58, 0.42),
-        barge_ring(-7.05, 0, 0.02, 0.56, 0.32, 0.24),
+        station_ring(7.5, 0, 0.04, 0.48, 0.30, flat=0.30, box=0.40, keel=0.50),
+        station_ring(5.0, 0, 0.12, 1.18, 0.58, flat=0.65, box=0.50, keel=0.40),
+        station_ring(1.8, 0, 0.14, 1.72, 0.85, flat=0.45, box=0.80, keel=0.30),
+        station_ring(-1.4, 0, 0.12, 1.80, 0.90, flat=0.35, box=0.90, keel=0.25),
+        station_ring(-4.2, 0, 0.10, 1.38, 0.68, flat=0.28, box=0.92, keel=0.22),
+        station_ring(-7.05, 0, 0.02, 0.60, 0.38, flat=0.22, box=0.90, keel=0.18),
     ], hull, collection, 0.012, cap="both")
     if lod <= 1:
-        cut_open_bay(hull_obj, "Cabin", (4.05, 0.0, 0.92), 0.92, 0.36, 0.26, (0, 0, 1), mats, collection, kit="cockpit")
+        cut_open_bay(hull_obj, "Cabin", (4.05, 0.0, 1.02), 0.92, 0.32, 0.26, (0, 0, 1), mats, collection, kit="cockpit", liner=False)
         boolean_cut(hull_obj, "ScrapWell", (0.15, 0.0, 1.05), (1.55, 0.78, 0.42))
         boolean_cut(hull_obj, "SideWellP", (0.15, -1.78, 0.24), (1.00, 0.22, 0.26))
         boolean_cut(hull_obj, "SideWellS", (0.15, 1.78, 0.24), (1.00, 0.22, 0.26))
@@ -778,7 +780,7 @@ def build_lod(lod, mats):
 
     # Twin axial bells at factory drive stations (-6.2, ±1.1).
     for sign, side in ((-1, "Port"), (1, "Starboard")):
-        add_hollow_bell(side, -6.85, 1.10 * sign, 0.08, 0.95, mats, collection)
+        add_flared_bell(side, -6.85, 1.10 * sign, 0.08, 0.95, mats, collection)
         add_cylinder(f"DriveCoupling_{side}", (-6.50, 1.10 * sign, 0.08), 0.30, 0.16, mech, collection, 14, 0.003)
         add_manufactured_drive(side, -6.20, 1.10 * sign, lod, mats, collection, scale=0.78, z=0.08)
         add_box(f"DriveSaddle_{side}", (-6.10, 1.10 * sign, -0.22), (0.36, 0.12, 0.08), mech, collection, 0.003)

@@ -17,14 +17,16 @@ ROOT = TOOLS.parents[1]
 if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
 from fleet_construction import (  # noqa: E402
+    add_cockpit_glazing,
+    add_flared_bell,
     add_manufactured_drive,
+    add_panel_seams,
     add_rcs_cluster,
     add_sensor_dish,
-    add_cockpit_glazing,
     add_service_hatch,
-    add_panel_seams,
-    cut_open_bay,
     apply_modifiers,
+    cut_open_bay,
+    station_ring,
 )
 
 FAMILY = ROOT / "assets" / "ships" / "fleet_player_bodies_v1" / "survey_pin"
@@ -684,15 +686,15 @@ def build_lod(lod, mats):
     }
     # 11 m ash survey pin: slender hull, dorsal mast/spine, two paddles, single tail drive.
     hull_obj = loft_from_rings("Pressure_Hull", [
-        barge_ring(5.5, 0, 0.04, 0.28, 0.20, 0.16),
-        barge_ring(3.6, 0, 0.08, 0.68, 0.32, 0.24),
-        barge_ring(1.2, 0, 0.10, 1.02, 0.46, 0.32),
-        barge_ring(-1.0, 0, 0.08, 1.08, 0.48, 0.34),
-        barge_ring(-3.0, 0, 0.06, 0.78, 0.34, 0.24),
-        barge_ring(-5.15, 0, 0.02, 0.32, 0.20, 0.14),
+        station_ring(5.5, 0, 0.04, 0.28, 0.20, flat=0.15, box=0.20, keel=0.70),
+        station_ring(3.6, 0, 0.10, 0.68, 0.40, flat=0.55, box=0.40, keel=0.55),
+        station_ring(1.2, 0, 0.10, 1.02, 0.52, flat=0.35, box=0.75, keel=0.40),
+        station_ring(-1.0, 0, 0.10, 1.08, 0.55, flat=0.30, box=0.85, keel=0.30),
+        station_ring(-3.0, 0, 0.08, 0.78, 0.42, flat=0.25, box=0.90, keel=0.25),
+        station_ring(-5.15, 0, 0.02, 0.36, 0.24, flat=0.20, box=0.88, keel=0.20),
     ], hull, collection, 0.010, cap="both")
     if lod <= 1:
-        cut_open_bay(hull_obj, "Cabin", (2.85, 0.0, 0.58), 0.72, 0.26, 0.20, (0, 0, 1), mats, collection, kit="cockpit")
+        cut_open_bay(hull_obj, "Cabin", (2.85, 0.0, 0.68), 0.72, 0.24, 0.22, (0, 0, 1), mats, collection, kit="cockpit", liner=False)
         boolean_cut(hull_obj, "SideWellP", (0.05, -1.08, 0.16), (0.70, 0.14, 0.16))
         boolean_cut(hull_obj, "SideWellS", (0.05, 1.08, 0.16), (0.70, 0.14, 0.16))
         boolean_cut(hull_obj, "RadWellP", (-2.45, -0.32, 0.40), (0.38, 0.16, 0.10))
@@ -739,7 +741,7 @@ def build_lod(lod, mats):
         add_cylinder("ColdPin", (5.55, 0.0, 0.08), 0.06, 0.10, armor, collection, 10, 0.002)
 
     # Single factory drive at (-4.6, 0).
-    add_hollow_bell("Main", -5.15, 0.0, 0.08, 0.88, mats, collection)
+    add_flared_bell("Main", -5.15, 0.0, 0.08, 0.88, mats, collection)
     add_cylinder("DriveCoupling", (-4.85, 0.0, 0.08), 0.26, 0.14, mech, collection, 14, 0.003)
     add_manufactured_drive("Main", -4.60, 0.0, lod, mats, collection, scale=0.72, z=0.08)
     add_box("DriveSaddle", (-4.50, 0.0, -0.18), (0.30, 0.12, 0.07), mech, collection, 0.003)

@@ -17,14 +17,16 @@ ROOT = TOOLS.parents[1]
 if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
 from fleet_construction import (  # noqa: E402
+    add_cockpit_glazing,
+    add_flared_bell,
     add_manufactured_drive,
+    add_panel_seams,
     add_rcs_cluster,
     add_sensor_dish,
-    add_cockpit_glazing,
     add_service_hatch,
-    add_panel_seams,
-    cut_open_bay,
     apply_modifiers,
+    cut_open_bay,
+    station_ring,
 )
 
 FAMILY = ROOT / "assets" / "ships" / "fleet_player_bodies_v1" / "helios_lark"
@@ -685,15 +687,15 @@ def build_lod(lod, mats):
     }
     # 13 m pale courier: slim needle, greenhouse, winglets, one tail drive. Not Reach.
     hull_obj = loft_from_rings("Pressure_Hull", [
-        dart_ring(6.5, 0, 0.06, 0.18, 0.16, 0.12),
-        dart_ring(3.8, 0, 0.08, 0.78, 0.38, 0.30),
-        dart_ring(1.2, 0, 0.08, 1.22, 0.56, 0.42),
-        dart_ring(-1.2, 0, 0.06, 1.28, 0.58, 0.44),
-        dart_ring(-3.6, 0, 0.05, 0.88, 0.42, 0.32),
-        dart_ring(-6.05, 0, 0.04, 0.42, 0.28, 0.22),
+        station_ring(6.5, 0, 0.06, 0.18, 0.16, flat=0.05, box=0.05, keel=1.00),
+        station_ring(3.8, 0, 0.10, 0.76, 0.46, flat=0.70, box=0.30, keel=0.75),
+        station_ring(1.2, 0, 0.08, 1.22, 0.56, flat=0.30, box=0.70, keel=0.50),
+        station_ring(-1.2, 0, 0.08, 1.28, 0.60, flat=0.25, box=0.85, keel=0.40),
+        station_ring(-3.6, 0, 0.06, 0.88, 0.48, flat=0.20, box=0.90, keel=0.30),
+        station_ring(-6.05, 0, 0.04, 0.46, 0.32, flat=0.18, box=0.90, keel=0.22),
     ], hull, collection, 0.010, cap="both")
     if lod <= 1:
-        cut_open_bay(hull_obj, "Cockpit", (2.05, 0.0, 0.62), 1.25, 0.40, 0.26, (0, 0, 1), mats, collection, kit="cockpit")
+        cut_open_bay(hull_obj, "Cockpit", (2.05, 0.0, 0.72), 1.25, 0.36, 0.28, (0, 0, 1), mats, collection, kit="cockpit", liner=False)
         hull_obj.data.materials.clear()
         hull_obj.data.materials.append(hull)
     inset_large_faces(hull_obj, thickness=0.020, depth=0.010, min_area=0.45)
@@ -710,7 +712,7 @@ def build_lod(lod, mats):
         add_box(f"Accent_{side}", (0.05, 1.55 * sign, 0.12), (0.55, 0.018, 0.010), accent, collection, 0.002)
         add_rcs_cluster(side, (-1.2, 1.45 * sign, 0.10), mats, collection, sign=sign)
 
-    add_hollow_bell("Main", -6.25, 0.0, 0.06, 0.88, mats, collection)
+    add_flared_bell("Main", -6.25, 0.0, 0.06, 0.88, mats, collection)
     add_cylinder("DriveCoupling", (-6.00, 0.0, 0.06), 0.30, 0.14, mech, collection, 14, 0.003)
     add_manufactured_drive("Main", -5.55, 0.0, lod, mats, collection, scale=0.68, z=0.06)
     loft_from_rings("TailFin", [

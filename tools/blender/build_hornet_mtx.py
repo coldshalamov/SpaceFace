@@ -20,6 +20,7 @@ from fleet_construction import (  # noqa: E402
     add_flared_bell,
     add_manufactured_drive,
     add_overlap_plate,
+    add_radiator_cassette,
     add_rcs_cluster,
     add_sensor_dish,
     apply_modifiers,
@@ -89,7 +90,7 @@ def role_maps(role, rgb, size=TEX, prefix=None):
     elif role == "mechanical":
         pw, ph = 22, 10
     elif role == "ceramic":
-        pw, ph = 64, 64
+        pw, ph = 0, 0
     elif role in {"glass", "thruster"}:
         pw, ph = 0, 0
     else:
@@ -688,6 +689,24 @@ def build_lod(lod, mats):
 
     add_overlap_plate("Armor_Shoulder", (2.45, 0.0, 0.82), (1.05, 0.52, 0.048), armor, collection, 0.008)
     add_overlap_plate("NeedleSpine", (6.15, 0.0, 0.22), (1.05, 0.10, 0.035), armor, collection, 0.005)
+    # Hitch-floor plate language: overlapping armor with thickness and gaps.
+    # Hornet identity (needle interceptor), not Hitch decals or guns.
+    for i, (px, py, pz, sx, sy, sz) in enumerate((
+        (-2.15, 0.10, 0.86, 0.68, 0.40, 0.050),
+        (-3.35, -0.14, 0.90, 0.62, 0.34, 0.046),
+        (-4.55, 0.08, 0.88, 0.58, 0.30, 0.044),
+        (-5.65, -0.10, 0.84, 0.48, 0.26, 0.040),
+        (0.55, 0.18, 0.58, 0.72, 0.36, 0.048),
+        (1.65, -0.22, 0.52, 0.58, 0.28, 0.042),
+        (-0.85, 0.00, 0.62, 0.52, 0.32, 0.038),
+        (5.35, 0.00, 0.18, 0.85, 0.12, 0.032),
+        (-3.85, -0.62, 0.38, 0.95, 0.10, 0.036),
+        (-3.85, 0.62, 0.38, 0.95, 0.10, 0.036),
+    )):
+        add_overlap_plate(f"Plate_{i}", (px, py, pz), (sx, sy, sz), armor if i % 2 == 0 else hull, collection, 0.006)
+    if lod <= 1:
+        add_radiator_cassette("PortFlank", (-3.55, -0.78, 0.28), lod, mats, collection, length=1.35, height=0.28, yaw=0.0)
+        add_radiator_cassette("StbdFlank", (-3.55, 0.78, 0.28), lod, mats, collection, length=1.35, height=0.28, yaw=0.0)
     add_box("Keel_Spine", (0.15, 0.0, -0.70), (3.2, 0.20, 0.05), mech, collection, 0.01)
     add_box("Repair_Patch", (1.05, -0.52, 0.78), (0.32, 0.16, 0.014), warning, collection, 0.002)
     add_box("Accent_Flash", (0.70, -1.38, 0.24), (0.50, 0.018, 0.08), accent, collection, 0.002)
