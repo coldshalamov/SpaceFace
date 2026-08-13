@@ -101,6 +101,53 @@ export function isPriorityCourierItinerary(itinerary) {
     && itinerary.dueAt >= itinerary.departureAt;
 }
 
+// PQ-048.10: a single civic passenger service inhabits the existing Helios express slot. The
+// itinerary is deliberately passenger-only: no cargo manifest, market pressure, or reward surface
+// is implied by a ticket.
+export const PASSENGER_LINER_ITINERARY_KIND = 'passenger_liner_service';
+export const PASSENGER_LINER_SERVICE_SCHEMA = 'spaceface.passenger-liner-service.v1';
+export const PASSENGER_LINER_SERVICE = Object.freeze({
+  id: 'helios-civic-liner',
+  sectorId: 'sector_helios_prime',
+  stops: Object.freeze(['station_helios', 'station_coalition']),
+  dwellS: 14,
+  assist: Object.freeze({
+    minRangeWU: 120,
+    maxRangeWU: 650,
+    holdS: 8,
+  }),
+});
+
+/** Strictly recognize the one durable passenger itinerary; malformed saves fail closed. */
+export function isPassengerLinerItinerary(itinerary) {
+  if (!itinerary || typeof itinerary !== 'object' || Array.isArray(itinerary)) return false;
+  const [firstStop, secondStop] = PASSENGER_LINER_SERVICE.stops;
+  const origin = itinerary.originStationId;
+  const destination = itinerary.destinationStationId;
+  const custody = itinerary.custody;
+  return itinerary.kind === PASSENGER_LINER_ITINERARY_KIND
+    && itinerary.schema === PASSENGER_LINER_SERVICE_SCHEMA
+    && itinerary.serviceId === PASSENGER_LINER_SERVICE.id
+    && itinerary.sectorId === PASSENGER_LINER_SERVICE.sectorId
+    && (origin === firstStop || origin === secondStop)
+    && (destination === firstStop || destination === secondStop)
+    && origin !== destination
+    && typeof itinerary.worldRecordId === 'string' && itinerary.worldRecordId
+    && Number.isSafeInteger(itinerary.legSeq) && itinerary.legSeq >= 0
+    && Number.isFinite(itinerary.departureAt)
+    && Number.isFinite(itinerary.dwellUntil)
+    && itinerary.dwellUntil >= itinerary.departureAt
+    && typeof itinerary.state === 'string'
+    && ['BOARDING', 'EN_ROUTE', 'DELAYED', 'DIVERTING', 'DELIVERED', 'RETURNED', 'LOST'].includes(itinerary.state)
+    && custody && typeof custody === 'object' && !Array.isArray(custody)
+    && typeof custody.ticketId === 'string' && custody.ticketId
+    && typeof custody.passengerId === 'string' && custody.passengerId
+    && typeof custody.receiptId === 'string' && custody.receiptId
+    && custody.originStationId === origin
+    && custody.destinationStationId === destination
+    && ['AT_ORIGIN', 'ONBOARD', 'DELIVERED', 'RETURNED', 'LOST'].includes(custody.state);
+}
+
 /**
  * Deterministic pick of one named lane contact for a sector (or null if none authored).
  * @param {string} sectorId

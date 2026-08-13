@@ -45,8 +45,12 @@ import {
   PRIORITY_COURIER_JOB_SCHEMA,
   PRIORITY_COURIER_SERVICE,
   PRIORITY_COURIER_SERVICE_SCHEMA,
+  PASSENGER_LINER_ITINERARY_KIND,
+  PASSENGER_LINER_SERVICE,
+  PASSENGER_LINER_SERVICE_SCHEMA,
   NAMED_LANE_CONTACTS,
   isPriorityCourierItinerary,
+  isPassengerLinerItinerary,
   pickNamedLaneContact,
 } from '../data/laneContacts.js';
 import { ASTEROIDS } from '../data/mining.js';
@@ -89,6 +93,37 @@ const POCKET_CLUSTER_R = 420;  // first freighters cluster near a pocket station
 
 function priorityCourierServiceForSector(sectorId) {
   return sectorId === PRIORITY_COURIER_SERVICE.sectorId ? PRIORITY_COURIER_SERVICE : null;
+}
+
+function passengerLinerServiceForSector(sectorId) {
+  return sectorId === PASSENGER_LINER_SERVICE.sectorId ? PASSENGER_LINER_SERVICE : null;
+}
+
+const PASSENGER_LINER_RECEIPT_CAP = 24;
+const PASSENGER_LINER_SUSPENSION_CAP = 4;
+const PASSENGER_LINER_INVALIDATED_CAP = 8;
+const PASSENGER_LINER_INCIDENT_MAX_AGE_S = 180;
+const PASSENGER_LINER_ACTIVE_INCIDENT_STATUSES = new Set(['distress', 'responding', 'monitoring']);
+
+function passengerLinerLegIds(worldRecordId, legSeq) {
+  const root = `${String(worldRecordId)}:${legSeq}`;
+  return {
+    passengerId: `passenger:${root}`,
+    ticketId: `ticket:${root}`,
+    receiptId: `passenger-liner-receipt:${root}`,
+  };
+}
+
+function compactStableIds(value, cap) {
+  if (!Array.isArray(value)) return [];
+  const out = [];
+  const seen = new Set();
+  for (const item of value) {
+    if (typeof item !== 'string' || !item || seen.has(item)) continue;
+    seen.add(item);
+    out.push(item);
+  }
+  return out.slice(Math.max(0, out.length - cap));
 }
 
 /** Reserve one normal ambient slot for the authored Tethys service without expanding population. */
@@ -968,6 +1003,9 @@ export const traffic = {
       // adoption pass cannot see them. Re-adopt here before the next traffic tick can refresh a
       // stable salvage point to its new numeric wreck id.
       this._adoptRematerializedTraffic(sectorId, this._sectorStations());
+      // lawSecurity is session-only. A saved predeparture delay cannot remain asserted after its
+      // raw incident map has gone away, while a saved physical diversion remains intact.
+      this._clearStalePassengerLinerDelays();
       this._applyWorldSiteTrafficHooks(sectorId);
       this._applyClaimTravelHooks(sectorId);
       if (sectorId === CERES_ACTIVITY_SECTOR_ID) this._ensureCeresCausalChain('save_loaded');
@@ -1084,9 +1122,10 @@ export const traffic = {
     // Continuous or after adopt: only top-up toward the target count.
     const already = (this.state.traffic.freighters || []).length;
     const need = Math.max(0, count - already);
-    if (need <= 0) {
-      this._ensurePriorityCourierService(sectorId, stations);
-      this._ensureNamedLaneContact(sectorId, sector, stations);
+      if (need <= 0) {
+        this._ensurePriorityCourierService(sectorId, stations);
+        this._ensurePassengerLinerService(sectorId, stations);
+        this._ensureNamedLaneContact(sectorId, sector, stations);
       this._applyWorldSiteTrafficHooks(sectorId);
       this._applyClaimTravelHooks(sectorId);
       return;
@@ -1171,6 +1210,7 @@ export const traffic = {
       if (!priorityCourier) this._maybeAssignJob(ent, role, station, target, stations, sectorId);
     }
     this._ensurePriorityCourierService(sectorId, stations);
+    this._ensurePassengerLinerService(sectorId, stations);
     this._ensureNamedLaneContact(sectorId, sector, stations);
     this._applyWorldSiteTrafficHooks(sectorId);
     this._applyClaimTravelHooks(sectorId);
@@ -2216,6 +2256,456 @@ export const traffic = {
     return true;
   },
 
+  _passengerLinerClaim(entity, sectorId = null) {
+    const data = entity && entity.data || {};
+    const itinerary = data.itinerary;
+    const activeSectorId = sectorId || (this.state.world && this.state.world.currentSectorId);
+    const worldRecordId = data.worldRecordId;
+    if (data.trafficRole !== 'express'
+      || activeSectorId !== PASSENGER_LINER_SERVICE.sectorId
+      || typeof worldRecordId !== 'string' || !worldRecordId
+      || !isPassengerLinerItinerary(itinerary)
+      || itinerary.worldRecordId !== worldRecordId) return null;
+    const custody = itinerary.custody || {};
+    const ids = passengerLinerLegIds(worldRecordId, itinerary.legSeq);
+    if (custody.passengerId !== ids.passengerId || custody.ticketId !== ids.ticketId
+      || custody.receiptId !== ids.receiptId
+      || custody.originStationId !== itinerary.originStationId
+      || custody.destinationStationId !== itinerary.destinationStationId) return null;
+    return itinerary;
+  },
+
+  _passengerLinerItinerary(entity, sectorId = null) {
+    const itinerary = this._passengerLinerClaim(entity, sectorId);
+    if (!itinerary) return null;
+    const custody = itinerary.custody || {};
+    const atOrigin = itinerary.state === 'BOARDING' || itinerary.state === 'DELAYED';
+    const aboard = itinerary.state === 'EN_ROUTE' || itinerary.state === 'DIVERTING';
+    if ((atOrigin && custody.state !== 'AT_ORIGIN') || (aboard && custody.state !== 'ONBOARD')) return null;
+    if (!atOrigin && !aboard) return null;
+    return this._normalizePassengerLinerItinerary(itinerary);
+  },
+
+  _normalizePassengerLinerItinerary(itinerary) {
+    const prior = itinerary.assist && typeof itinerary.assist === 'object' ? itinerary.assist : {};
+    const legSeq = itinerary.legSeq;
+    const usedLegSeq = Number.isSafeInteger(prior.usedLegSeq) && prior.usedLegSeq >= 0
+      ? prior.usedLegSeq
+      : null;
+    const active = prior.active === true && prior.legSeq === legSeq && usedLegSeq !== legSeq
+      && typeof prior.targetWorldRecordId === 'string' && prior.targetWorldRecordId === itinerary.worldRecordId;
+    itinerary.assist = {
+      legSeq,
+      active,
+      requestedAt: active && Number.isFinite(prior.requestedAt) ? prior.requestedAt : null,
+      heldS: active && Number.isFinite(prior.heldS)
+        ? Math.max(0, Math.min(prior.heldS, PASSENGER_LINER_SERVICE.assist.holdS))
+        : 0,
+      targetWorldRecordId: active ? prior.targetWorldRecordId : null,
+      usedLegSeq,
+    };
+    return itinerary;
+  },
+
+  _newPassengerLinerItinerary(entity, originStationId, destinationStationId, legSeq = 0) {
+    const worldRecordId = entity && entity.data && entity.data.worldRecordId;
+    if (typeof worldRecordId !== 'string' || !worldRecordId) return null;
+    const now = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    const departureAt = now + PASSENGER_LINER_SERVICE.dwellS;
+    const ids = passengerLinerLegIds(worldRecordId, legSeq);
+    return {
+      kind: PASSENGER_LINER_ITINERARY_KIND,
+      schema: PASSENGER_LINER_SERVICE_SCHEMA,
+      serviceId: PASSENGER_LINER_SERVICE.id,
+      sectorId: PASSENGER_LINER_SERVICE.sectorId,
+      worldRecordId,
+      originStationId,
+      destinationStationId,
+      legSeq,
+      departureAt,
+      dwellUntil: departureAt,
+      state: 'BOARDING',
+      delayedBy: null,
+      diversion: null,
+      lastOutcome: null,
+      custody: {
+        passengerId: ids.passengerId,
+        ticketId: ids.ticketId,
+        receiptId: ids.receiptId,
+        state: 'AT_ORIGIN',
+        originStationId,
+        destinationStationId,
+      },
+      assist: {
+        legSeq,
+        active: false,
+        requestedAt: null,
+        heldS: 0,
+        targetWorldRecordId: null,
+        usedLegSeq: null,
+      },
+    };
+  },
+
+  _passengerLinerStatusLabel(itinerary) {
+    if (!itinerary) return 'SERVICE';
+    if (itinerary.state === 'BOARDING') return 'BOARDING';
+    if (itinerary.state === 'DELAYED') return 'DELAYED';
+    if (itinerary.state === 'DIVERTING') return 'DIVERTING';
+    if (itinerary.state === 'EN_ROUTE') return 'EN ROUTE';
+    return String(itinerary.state || 'SERVICE').replace(/_/g, ' ');
+  },
+
+  _refreshPassengerLinerPresentation(entity, rec, stations, itinerary) {
+    const origin = this._stationForPriorityCourier(stations, itinerary.originStationId);
+    const destination = this._stationForPriorityCourier(stations, itinerary.destinationStationId);
+    const route = itinerary.state === 'DIVERTING'
+      ? `${stationName(origin, itinerary.originStationId)} RETURN`
+      : `${stationName(origin, itinerary.originStationId)} → ${stationName(destination, itinerary.destinationStationId)}`;
+    const status = this._passengerLinerStatusLabel(itinerary);
+    entity.data.passengerLinerService = PASSENGER_LINER_SERVICE.id;
+    entity.data.passengerLinerState = itinerary.state;
+    entity.data.hitchable = true;
+    entity.data.trafficLabel = `HELIOS CIVIC LINER · ${status} · ${route}`;
+    entity.data.scanLabel = `${entity.data.trafficLabel} · HITCHABLE`;
+    rec.passengerLinerService = PASSENGER_LINER_SERVICE.id;
+    rec.itinerary = itinerary;
+  },
+
+  _syncPassengerLinerWorldRecord(entity) {
+    const world = this._registry && this._registry.get && this._registry.get('world');
+    if (world && typeof world.upsertWorldRecord === 'function') {
+      try { world.upsertWorldRecord(entity); } catch (_) { /* world residency will capture on save/demote */ }
+    }
+  },
+
+  _passengerLinerIdIsSuspended(worldRecordId) {
+    return typeof worldRecordId === 'string'
+      && (this.state.traffic.passengerLinerSuspendedIds || []).includes(worldRecordId);
+  },
+
+  _invalidatePassengerLinerClaim(entity, rec) {
+    const data = entity && entity.data || {};
+    const worldRecordId = data.worldRecordId;
+    if (typeof worldRecordId === 'string' && worldRecordId) {
+      this.state.traffic.passengerLinerInvalidatedIds = compactStableIds([
+        ...(this.state.traffic.passengerLinerInvalidatedIds || []), worldRecordId,
+      ], PASSENGER_LINER_INVALIDATED_CAP);
+    }
+    delete data.passengerLinerService;
+    delete data.passengerLinerState;
+    delete data.itinerary;
+    if (rec) {
+      delete rec.passengerLinerService;
+      delete rec.itinerary;
+      rec.nextTradeT = Number.isFinite(rec.nextTradeT) ? rec.nextTradeT : TRADE_INTERVAL_S;
+    }
+    data.hitchable = true;
+    data.trafficLabel = TRAFFIC_ROLES.express.label;
+    data.scanLabel = 'EXPRESS LINER · HITCHABLE';
+  },
+
+  _isPassengerLinerServiceCandidate(rec, entity) {
+    const data = entity && entity.data;
+    const flags = entity && entity.flags || {};
+    const manifest = rec && rec.manifest || data && data.cargoManifest;
+    const ai = data && data.ai;
+    if (!rec || !entity || !data || rec.role !== 'express' || data.trafficRole !== 'express'
+      || entity.team !== TRAFFIC_ROLES.express.team || data.defId !== FREIGHTER_SHIP
+      || data.hitchable !== true || typeof data.worldRecordId !== 'string' || !data.worldRecordId
+      || this._passengerLinerIdIsSuspended(data.worldRecordId)
+      || (this.state.traffic.passengerLinerInvalidatedIds || []).includes(data.worldRecordId)) return false;
+    if (data.jobId || data.worldSiteTrafficHookId || data.claimTravelTrafficHookId
+      || data.activityActorSlotId || data.ceresActivityCast || data.ceresActivityJobOwned
+      || data.generalSalvor || data.namedLaneContactId || data.missionId || data.missionTag
+      || data.missionPinned || data.missionTargetSlot || data.contractId || data.persistent
+      || data.worldRecordSlotId || data.isBoss || data.encounterBoss || data.missionBoss
+      || data.scenarioActorId || data.scenarioRole || flags.missionPinned || flags.persistent) return false;
+    if (rec.worldSiteRoute || rec.claimTravelRoute || rec.activityActorSlotId
+      || rec.ceresActivityCast || rec.ceresActivityJobOwned || rec.generalSalvor || rec.jobId
+      || rec.control || rec.controlLease) return false;
+    if (ai && (ai.lawful === true || ai.pirate === true || ai.hostile === true
+      || ai.spawnContext === 'patrol' || ai.isBoss === true || ai.missionTarget === true)) return false;
+    const itinerary = data.itinerary;
+    if (itinerary && itinerary.kind !== 'express_hitch_route') return false;
+    if (manifest && (manifest.active === true || manifest.custody || manifest.lotId || manifest.lotSource
+      || manifest.special === true || manifest.protected === true || manifest.reservedBy)) return false;
+    return true;
+  },
+
+  _stampPassengerLinerService(entity, rec, stations) {
+    if (!entity || !entity.data || !rec || rec.role !== 'express'
+      || this._passengerLinerIdIsSuspended(entity.data.worldRecordId)) return false;
+    const current = this._passengerLinerItinerary(entity, PASSENGER_LINER_SERVICE.sectorId);
+    const itinerary = current || this._newPassengerLinerItinerary(
+      entity,
+      PASSENGER_LINER_SERVICE.stops[0],
+      PASSENGER_LINER_SERVICE.stops[1],
+    );
+    if (!itinerary) return false;
+    entity.data.itinerary = itinerary;
+    delete entity.data.cargoManifest;
+    rec.manifest = null;
+    rec.nextTradeT = Number.POSITIVE_INFINITY;
+    const origin = this._stationForPriorityCourier(stations, itinerary.originStationId);
+    rec.targetId = origin ? origin.id : rec.targetId;
+    this._refreshPassengerLinerPresentation(entity, rec, stations, itinerary);
+    this._syncPassengerLinerWorldRecord(entity);
+    return true;
+  },
+
+  _ensurePassengerLinerService(sectorId, stations) {
+    if (!passengerLinerServiceForSector(sectorId)) return false;
+    this._ensureState();
+    // The single civic service is suspended after its exact hull is lost. Do not silently replace
+    // it with another ambient express on a later residency pass.
+    if ((this.state.traffic.passengerLinerSuspendedIds || []).length) return false;
+    const list = this.state.traffic.freighters || [];
+    for (const rec of list) {
+      const entity = rec && liveEntity(this.state, rec.id);
+      const claimed = entity && entity.data && entity.data.itinerary
+        && (entity.data.itinerary.kind === PASSENGER_LINER_ITINERARY_KIND
+          || entity.data.itinerary.serviceId === PASSENGER_LINER_SERVICE.id);
+      if (!claimed) continue;
+      const itinerary = this._passengerLinerItinerary(entity, sectorId);
+      if (itinerary) return this._stampPassengerLinerService(entity, rec, stations);
+      // A corrupt passenger envelope must become an ordinary express, never a fresh service with
+      // an invented passenger claim on the same load.
+      this._invalidatePassengerLinerClaim(entity, rec);
+      return false;
+    }
+    const candidates = list
+      .map((rec) => ({ rec, entity: rec && liveEntity(this.state, rec.id) }))
+      .filter(({ rec, entity }) => this._isPassengerLinerServiceCandidate(rec, entity))
+      .sort((a, b) => stableTrafficKey(a.entity).localeCompare(stableTrafficKey(b.entity)));
+    const candidate = candidates[0];
+    return candidate ? this._stampPassengerLinerService(candidate.entity, candidate.rec, stations) : false;
+  },
+
+  _activePassengerLinerCoalitionIncident() {
+    const incidents = this.state && this.state.lawSecurity && this.state.lawSecurity.incidents;
+    const now = Number.isFinite(this.state && this.state.simTime) ? this.state.simTime : 0;
+    if (!incidents || typeof incidents !== 'object' || Array.isArray(incidents)) return null;
+    const eligible = [];
+    for (const key of Object.keys(incidents).sort()) {
+      const incident = incidents[key];
+      if (!incident || typeof incident !== 'object' || Array.isArray(incident)
+        || incident.stationId !== 'station_coalition'
+        || typeof incident.id !== 'string' || !incident.id
+        || !PASSENGER_LINER_ACTIVE_INCIDENT_STATUSES.has(incident.status)
+        || !Number.isFinite(incident.startedAt) || incident.startedAt < 0
+        || incident.startedAt > now || now - incident.startedAt > PASSENGER_LINER_INCIDENT_MAX_AGE_S
+        || incident.resolvedAt != null) continue;
+      eligible.push(incident);
+    }
+    return eligible[0] || null;
+  },
+
+  _beginPassengerLinerAssist(response) {
+    const target = this.state.entities && this.state.entities.get
+      ? this.state.entities.get(response && response.targetId)
+      : null;
+    const rec = target && (this.state.traffic.freighters || []).find((row) => row && row.id === target.id);
+    const itinerary = target && this._passengerLinerItinerary(target);
+    if (!target || !rec || rec.passengerLinerService !== PASSENGER_LINER_SERVICE.id || !itinerary
+      || itinerary.state !== 'BOARDING' || itinerary.custody.state !== 'AT_ORIGIN'
+      || this.state.player && this.state.player.targetId !== target.id) return false;
+    const assist = itinerary.assist || {};
+    if (assist.active === true || assist.usedLegSeq === itinerary.legSeq) return false;
+    itinerary.assist = {
+      legSeq: itinerary.legSeq,
+      active: true,
+      requestedAt: Number.isFinite(this.state.simTime) ? this.state.simTime : 0,
+      heldS: 0,
+      targetWorldRecordId: itinerary.worldRecordId,
+      usedLegSeq: Number.isSafeInteger(assist.usedLegSeq) ? assist.usedLegSeq : null,
+    };
+    this._refreshPassengerLinerPresentation(target, rec, this._sectorStations(), itinerary);
+    this._syncPassengerLinerWorldRecord(target);
+    return true;
+  },
+
+  _advancePassengerLinerAssist(entity, rec, itinerary, dt) {
+    const assist = itinerary.assist;
+    if (!assist || assist.active !== true || assist.legSeq !== itinerary.legSeq
+      || assist.usedLegSeq === itinerary.legSeq || assist.targetWorldRecordId !== itinerary.worldRecordId
+      || itinerary.state !== 'BOARDING' || itinerary.custody.state !== 'AT_ORIGIN') return false;
+    const player = this.state.entities && this.state.entities.get && this.state.entities.get(this.state.playerId);
+    const stableTarget = this.state.player && this.state.player.targetId === entity.id;
+    const liveSector = this.state.world && this.state.world.currentSectorId === PASSENGER_LINER_SERVICE.sectorId;
+    if (!player || player.alive === false || !player.pos || !entity.pos || !stableTarget || !liveSector) {
+      assist.heldS = 0;
+      return false;
+    }
+    const distance = Math.hypot(player.pos.x - entity.pos.x, player.pos.z - entity.pos.z);
+    const inFormation = distance >= PASSENGER_LINER_SERVICE.assist.minRangeWU
+      && distance <= PASSENGER_LINER_SERVICE.assist.maxRangeWU;
+    assist.heldS = inFormation
+      ? Math.min(PASSENGER_LINER_SERVICE.assist.holdS, assist.heldS + Math.max(0, Number(dt) || 0))
+      : 0;
+    if (assist.heldS < PASSENGER_LINER_SERVICE.assist.holdS) return false;
+    const now = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    assist.active = false;
+    assist.usedLegSeq = itinerary.legSeq;
+    itinerary.dwellUntil = now;
+    itinerary.departureAt = Math.min(itinerary.departureAt, now);
+    this._refreshPassengerLinerPresentation(entity, rec, this._sectorStations(), itinerary);
+    this._syncPassengerLinerWorldRecord(entity);
+    return true;
+  },
+
+  _passengerLinerReceiptText(outcome) {
+    if (outcome === 'RETURNED') return 'HELIOS CIVIC LINER RETURNED TO HELIOS — COALITION SERVICE DIVERTED.';
+    if (outcome === 'LOST') return 'HELIOS CIVIC LINER LOST — SERVICE SUSPENDED.';
+    return 'HELIOS CIVIC LINER ARRIVED AT COALITION — PASSENGER SERVICE COMPLETE.';
+  },
+
+  _settlePassengerLinerLeg(entity, rec, itinerary, outcome, stationId) {
+    const receiptId = itinerary.custody && itinerary.custody.receiptId;
+    if (typeof receiptId !== 'string' || !receiptId) return false;
+    const trafficState = this.state.traffic;
+    const applied = trafficState.passengerReceiptIds || [];
+    const fresh = !applied.includes(receiptId);
+    if (fresh) {
+      trafficState.passengerReceiptIds = compactStableIds([...applied, receiptId], PASSENGER_LINER_RECEIPT_CAP);
+    }
+    itinerary.state = outcome;
+    itinerary.lastOutcome = {
+      outcome,
+      receiptId,
+      stationId: stationId || null,
+      settledAt: Number.isFinite(this.state.simTime) ? this.state.simTime : 0,
+    };
+    itinerary.custody.state = outcome;
+    if (fresh && this.bus && typeof this.bus.emit === 'function') {
+      const receipt = {
+        receiptId,
+        serviceId: PASSENGER_LINER_SERVICE.id,
+        worldRecordId: itinerary.worldRecordId,
+        legSeq: itinerary.legSeq,
+        passengerId: itinerary.custody.passengerId,
+        ticketId: itinerary.custody.ticketId,
+        outcome,
+        stationId: stationId || null,
+        sectorId: PASSENGER_LINER_SERVICE.sectorId,
+      };
+      this.bus.emit('traffic:passengerLinerReceipt', receipt);
+      this.bus.emit('news:publish', {
+        ...receipt,
+        text: this._passengerLinerReceiptText(outcome),
+        kind: 'passenger_liner_service',
+        sourceRef: 'traffic:helios-civic-liner',
+        channelId: 'news',
+      });
+    }
+    this._syncPassengerLinerWorldRecord(entity);
+    return fresh;
+  },
+
+  _advancePassengerLinerLeg(entity, rec, stations, itinerary, outcome) {
+    const nextOrigin = outcome === 'RETURNED'
+      ? itinerary.originStationId
+      : itinerary.destinationStationId;
+    const nextDestination = outcome === 'RETURNED'
+      ? itinerary.destinationStationId
+      : itinerary.originStationId;
+    const next = this._newPassengerLinerItinerary(entity, nextOrigin, nextDestination, itinerary.legSeq + 1);
+    if (!next) return false;
+    entity.data.itinerary = next;
+    const origin = this._stationForPriorityCourier(stations, nextOrigin);
+    rec.targetId = origin ? origin.id : rec.targetId;
+    this._refreshPassengerLinerPresentation(entity, rec, stations, next);
+    this._syncPassengerLinerWorldRecord(entity);
+    return true;
+  },
+
+  _stepPassengerLinerService(entity, rec, stations, dt) {
+    const itinerary = this._passengerLinerItinerary(entity);
+    if (!itinerary || rec.passengerLinerService !== PASSENGER_LINER_SERVICE.id) return false;
+    const now = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    const incident = this._activePassengerLinerCoalitionIncident();
+    if (itinerary.state === 'BOARDING' || itinerary.state === 'DELAYED') {
+      if (incident) {
+        itinerary.state = 'DELAYED';
+        itinerary.delayedBy = { incidentId: incident.id, startedAt: incident.startedAt };
+      } else if (itinerary.state === 'DELAYED') {
+        itinerary.state = 'BOARDING';
+        itinerary.delayedBy = null;
+      }
+      this._advancePassengerLinerAssist(entity, rec, itinerary, dt);
+      if (itinerary.state === 'BOARDING' && now >= itinerary.departureAt) {
+        itinerary.state = 'EN_ROUTE';
+        itinerary.custody.state = 'ONBOARD';
+        itinerary.departedAt = now;
+      }
+      if (itinerary.state !== 'EN_ROUTE') {
+        const origin = this._stationForPriorityCourier(stations, itinerary.originStationId);
+        rec.targetId = origin ? origin.id : rec.targetId;
+        setIntent(entity, 0, 0, false, false, null, entity.rot || 0);
+        this._refreshPassengerLinerPresentation(entity, rec, stations, itinerary);
+        return true;
+      }
+    }
+    if (itinerary.state === 'EN_ROUTE' && incident
+      && itinerary.originStationId === 'station_helios'
+      && itinerary.destinationStationId === 'station_coalition') {
+      itinerary.state = 'DIVERTING';
+      itinerary.diversion = {
+        incidentId: incident.id,
+        startedAt: incident.startedAt,
+        returnStationId: 'station_helios',
+      };
+    }
+    const travelStationId = itinerary.state === 'DIVERTING'
+      ? itinerary.diversion && itinerary.diversion.returnStationId
+      : itinerary.destinationStationId;
+    const target = this._stationForPriorityCourier(stations, travelStationId);
+    if (!target || !target.pos) {
+      setIntent(entity, 0, 0, false, false, null, entity.rot || 0);
+      this._refreshPassengerLinerPresentation(entity, rec, stations, itinerary);
+      return true;
+    }
+    rec.targetId = target.id;
+    const dx = target.pos.x - entity.pos.x;
+    const dz = target.pos.z - entity.pos.z;
+    const distance = Math.hypot(dx, dz);
+    const aimAngle = Math.atan2(dz, dx);
+    if (distance < DOCK_RANGE) {
+      const outcome = itinerary.state === 'DIVERTING' ? 'RETURNED' : 'DELIVERED';
+      this._settlePassengerLinerLeg(entity, rec, itinerary, outcome, travelStationId);
+      this._advancePassengerLinerLeg(entity, rec, stations, itinerary, outcome);
+      setIntent(entity, 0, 0, false, false, null, aimAngle);
+      return true;
+    }
+    setIntent(entity, 0, 1, massline2Flag(
+      'hitchhiking', this.state.runtime && this.state.runtime.features,
+    ), false, null, aimAngle);
+    this._refreshPassengerLinerPresentation(entity, rec, stations, itinerary);
+    return true;
+  },
+
+  _clearStalePassengerLinerDelays() {
+    for (const rec of this.state.traffic && this.state.traffic.freighters || []) {
+      const entity = rec && liveEntity(this.state, rec.id);
+      const itinerary = entity && this._passengerLinerItinerary(entity);
+      if (!itinerary || itinerary.state !== 'DELAYED') continue;
+      itinerary.state = 'BOARDING';
+      itinerary.delayedBy = null;
+      itinerary.assist = {
+        legSeq: itinerary.legSeq,
+        active: false,
+        requestedAt: null,
+        heldS: 0,
+        targetWorldRecordId: null,
+        usedLegSeq: itinerary.assist && Number.isSafeInteger(itinerary.assist.usedLegSeq)
+          ? itinerary.assist.usedLegSeq
+          : null,
+      };
+      this._refreshPassengerLinerPresentation(entity, rec, this._sectorStations(), itinerary);
+      this._syncPassengerLinerWorldRecord(entity);
+    }
+  },
+
   /**
    * Prefer Helios Station (or first station) as the pocket density anchor so ≥3 freighters
    * sit inside default radar/sensor range of the first-hour play space.
@@ -2425,9 +2915,18 @@ export const traffic = {
       this._active.push(e.id);
       const role = d.trafficRole || 'hauler';
       const priorityItinerary = role === 'courier' ? this._priorityCourierItinerary(e, sectorId) : null;
+      const passengerClaim = role === 'express' ? this._passengerLinerClaim(e, sectorId) : null;
+      const passengerItinerary = passengerClaim ? this._passengerLinerItinerary(e, sectorId) : null;
       const target = (stations && stations.length)
         ? (priorityItinerary
           ? (this._stationForPriorityCourier(stations, priorityItinerary.destinationStationId) || this._pickStation(stations))
+          : passengerItinerary
+            ? (this._stationForPriorityCourier(stations,
+              passengerItinerary.state === 'DIVERTING'
+                ? passengerItinerary.diversion && passengerItinerary.diversion.returnStationId
+                : (passengerItinerary.state === 'BOARDING' || passengerItinerary.state === 'DELAYED')
+                  ? passengerItinerary.originStationId
+                  : passengerItinerary.destinationStationId) || this._pickStation(stations))
           : role === 'express'
             ? (this._expressDestinationFromItinerary(stations, d.itinerary) || this._pickStation(stations))
             : this._pickStation(stations))
@@ -2451,7 +2950,16 @@ export const traffic = {
       };
       if (role === 'express') {
         this._stampTrafficDurableIdentity(e, sectorId, role, TRAFFIC_ROLES.express, adoptIdx);
-        this._stampExpressRoute(e, rec, null, target, sectorId, adoptIdx, true);
+        if (passengerItinerary) this._stampPassengerLinerService(e, rec, stations);
+        else {
+          // A claimed-but-invalid passenger save is deliberately demoted to an ordinary express;
+          // do this before the generic route creates its normal itinerary.
+          if (passengerClaim || (d.itinerary && (d.itinerary.kind === PASSENGER_LINER_ITINERARY_KIND
+            || d.itinerary.serviceId === PASSENGER_LINER_SERVICE.id))) {
+            this._invalidatePassengerLinerClaim(e, rec);
+          }
+          this._stampExpressRoute(e, rec, null, target, sectorId, adoptIdx, true);
+        }
       }
       if (priorityItinerary) this._stampPriorityCourierService(e, rec, stations);
       this.state.traffic.freighters.push(rec);
@@ -2607,6 +3115,9 @@ export const traffic = {
         if (!e.data.jobId) this._assignCeresActivityJob(e, activityEntry);
         continue;
       }
+      // One authored recurring passenger liner owns the existing express hull and V3 boost route.
+      // Its passenger itinerary must consume the tick before the generic express/freight branch.
+      if (this._stepPassengerLinerService(e, rec, stations, dt)) continue;
       // One authored recurring courier owns a saved berth/departure timetable. It still delegates
       // actual transit to npcJobsRuntime, but traffic keeps its service state readable while that
       // job is live (or interrupted) instead of falling through to ambient random routing.
@@ -5423,6 +5934,7 @@ export const traffic = {
   _onContactHailResponse(response) {
     if (!response) return false;
     const choice = String(response.choice || '').toLowerCase();
+    if (choice === 'assist') return this._beginPassengerLinerAssist(response);
     if (choice === 'escort') return this._requestPriorityCourierEscort(response);
     if (choice === 'recover' || choice === 'steal' || choice === 'abandon') {
       const incident = this._activeCeresDisabledHaulerIncident();
@@ -6610,6 +7122,29 @@ export const traffic = {
       }
     }
     if (!rec && !(ent && ent.data && ent.data.trafficRole)) return;
+    // The civic liner is passenger custody, never freight. Its loss stops the one durable
+    // service and publishes its own exactly-once receipt before any freight/economy loss branch.
+    const passengerItinerary = ent && this._passengerLinerClaim(ent);
+    if (passengerItinerary && (rec && rec.passengerLinerService === PASSENGER_LINER_SERVICE.id
+      || this._passengerLinerIdIsSuspended(passengerItinerary.worldRecordId))) {
+      if (rec) {
+        this._settlePassengerLinerLeg(ent, rec, passengerItinerary, 'LOST', null);
+        this.state.traffic.passengerLinerSuspendedIds = compactStableIds([
+          ...(this.state.traffic.passengerLinerSuspendedIds || []), passengerItinerary.worldRecordId,
+        ], PASSENGER_LINER_SUSPENSION_CAP);
+        if (this.bus && typeof this.bus.emit === 'function') {
+          this.bus.emit('traffic:passengerLinerSuspended', {
+            serviceId: PASSENGER_LINER_SERVICE.id,
+            worldRecordId: passengerItinerary.worldRecordId,
+            receiptId: passengerItinerary.custody && passengerItinerary.custody.receiptId,
+          });
+        }
+        if (idx >= 0) list.splice(idx, 1);
+        const activeIdx = this._active.indexOf(p.id);
+        if (activeIdx >= 0) this._active.splice(activeIdx, 1);
+      }
+      return;
+    }
     const ceresOreCarrier = role === 'ore_carrier'
       && ((ent && ent.data && ent.data.activityActorSlotId === CERES_SEAM_MINER_SLOT_ID)
         || (rec && rec.activityActorSlotId === CERES_SEAM_MINER_SLOT_ID));
@@ -6764,6 +7299,18 @@ export const traffic = {
     if (!Array.isArray(this.state.traffic.appliedMinerWorkIds)) this.state.traffic.appliedMinerWorkIds = [];
     if (!Array.isArray(this.state.traffic.appliedJobActionIds)) this.state.traffic.appliedJobActionIds = [];
     if (!Array.isArray(this.state.traffic.appliedSalvorWorkIds)) this.state.traffic.appliedSalvorWorkIds = [];
+    this.state.traffic.passengerReceiptIds = compactStableIds(
+      this.state.traffic.passengerReceiptIds,
+      PASSENGER_LINER_RECEIPT_CAP,
+    );
+    this.state.traffic.passengerLinerSuspendedIds = compactStableIds(
+      this.state.traffic.passengerLinerSuspendedIds,
+      PASSENGER_LINER_SUSPENSION_CAP,
+    );
+    this.state.traffic.passengerLinerInvalidatedIds = compactStableIds(
+      this.state.traffic.passengerLinerInvalidatedIds,
+      PASSENGER_LINER_INVALIDATED_CAP,
+    );
     const handoff = this.state.traffic.ceresMinerHaulerHandoff;
     const normalizedHandoff = normalizeCeresMinerHaulerHandoff(handoff, false);
     if (!normalizedHandoff) {
@@ -6879,6 +7426,9 @@ export const traffic = {
       ceresDisabledHaulerIncident: normalizeCeresDisabledHaulerIncident(
         this.state.traffic.ceresDisabledHaulerIncident,
       ),
+      passengerReceiptIds: this.state.traffic.passengerReceiptIds.slice(),
+      passengerLinerSuspendedIds: this.state.traffic.passengerLinerSuspendedIds.slice(),
+      passengerLinerInvalidatedIds: this.state.traffic.passengerLinerInvalidatedIds.slice(),
     };
   },
 
@@ -6913,6 +7463,19 @@ export const traffic = {
       && data.schema === CERES_MINER_HAULER_SAVE_SCHEMA
       ? normalizeCeresDisabledHaulerIncident(data.ceresDisabledHaulerIncident)
       : null;
+    const validTrafficSave = !!(data && !Array.isArray(data) && data.schema === CERES_MINER_HAULER_SAVE_SCHEMA);
+    this.state.traffic.passengerReceiptIds = compactStableIds(
+      validTrafficSave ? data.passengerReceiptIds : [],
+      PASSENGER_LINER_RECEIPT_CAP,
+    );
+    this.state.traffic.passengerLinerSuspendedIds = compactStableIds(
+      validTrafficSave ? data.passengerLinerSuspendedIds : [],
+      PASSENGER_LINER_SUSPENSION_CAP,
+    );
+    this.state.traffic.passengerLinerInvalidatedIds = compactStableIds(
+      validTrafficSave ? data.passengerLinerInvalidatedIds : [],
+      PASSENGER_LINER_INVALIDATED_CAP,
+    );
   },
 
   newGame() {
@@ -6952,6 +7515,9 @@ export const traffic = {
       ceresTenderServiceIncident: null,
       ceresTenderServiceSequence: 0,
       ceresDisabledHaulerIncident: null,
+      passengerReceiptIds: [],
+      passengerLinerSuspendedIds: [],
+      passengerLinerInvalidatedIds: [],
       rngSeed: hash32(this.state.meta && this.state.meta.seed, 'traffic', 'boot'),
     };
   },

@@ -3,7 +3,11 @@
 // This module is deliberately read-only. Scanner owns request validation and transient lifetime;
 // pirateParley remains the sole authority for toll choices/payment/escalation.
 import { COMMODITIES } from './commodities.js';
-import { isPriorityCourierItinerary } from './laneContacts.js';
+import {
+  isPassengerLinerItinerary,
+  isPriorityCourierItinerary,
+  PASSENGER_LINER_SERVICE,
+} from './laneContacts.js';
 import { richSeamOpportunityForEntity } from '../systems/fieldDepletion.js';
 
 export const CONTACT_HAIL_RANGE = 5200;
@@ -15,6 +19,7 @@ export const CONTACT_HAIL_ACTION_ESCORT = 'escort';
 export const CONTACT_HAIL_ACTION_RECOVER = 'recover';
 export const CONTACT_HAIL_ACTION_STEAL = 'steal';
 export const CONTACT_HAIL_ACTION_ABANDON = 'abandon';
+export const CONTACT_HAIL_ACTION_ASSIST = 'assist';
 const CERES_ACTIVITY_SECTOR_ID = 'sector_ceres_belt';
 const CERES_TENDER_SLOT_ID = 'ceres_refinery_tender';
 const CERES_SEAM_MINER_SLOT_ID = 'ceres_seam_miner';
@@ -343,6 +348,45 @@ function priorityCourierEscortAvailable(state, entity, itinerary = priorityCouri
   return status === 'LATE' || status === 'INTERRUPTED';
 }
 
+// Traffic remains the authority that starts and completes assistance. This mirrors its compact
+// identity checks so Hail never advertises a stale rematerialized hull as the civic liner.
+function passengerLinerItinerary(state, entity) {
+  const data = entity && entity.data || {};
+  const itinerary = data.itinerary;
+  if (!isPassengerLinerItinerary(itinerary)
+    || data.trafficRole !== 'express'
+    || data.passengerLinerService !== PASSENGER_LINER_SERVICE.id
+    || typeof data.worldRecordId !== 'string' || !data.worldRecordId
+    || itinerary.worldRecordId !== data.worldRecordId
+    || state && state.world && state.world.currentSectorId !== PASSENGER_LINER_SERVICE.sectorId) return null;
+  const record = state ? traderRecord(state, entity.id) : null;
+  if (state && (!record || record.role !== 'express' || record.passengerLinerService !== PASSENGER_LINER_SERVICE.id)) {
+    return null;
+  }
+  const custody = itinerary.custody || {};
+  const root = `${data.worldRecordId}:${itinerary.legSeq}`;
+  if (custody.passengerId !== `passenger:${root}` || custody.ticketId !== `ticket:${root}`
+    || custody.receiptId !== `passenger-liner-receipt:${root}`
+    || custody.originStationId !== itinerary.originStationId
+    || custody.destinationStationId !== itinerary.destinationStationId) return null;
+  const atOrigin = itinerary.state === 'BOARDING' || itinerary.state === 'DELAYED';
+  const aboard = itinerary.state === 'EN_ROUTE' || itinerary.state === 'DIVERTING';
+  if ((atOrigin && custody.state !== 'AT_ORIGIN') || (aboard && custody.state !== 'ONBOARD')) return null;
+  return atOrigin || aboard ? itinerary : null;
+}
+
+function passengerLinerAssistAvailable(state, entity, itinerary = passengerLinerItinerary(state, entity)) {
+  if (!itinerary || itinerary.state !== 'BOARDING' || itinerary.custody.state !== 'AT_ORIGIN') return false;
+  const assist = itinerary.assist && typeof itinerary.assist === 'object' ? itinerary.assist : {};
+  return assist.active !== true && assist.usedLegSeq !== itinerary.legSeq;
+}
+
+function passengerLinerStatusText(state, entity, itinerary = passengerLinerItinerary(state, entity)) {
+  if (!itinerary) return null;
+  const stateLabel = String(itinerary.state || 'SERVICE').replace(/_/g, ' ');
+  return `STATUS · HELIOS CIVIC LINER · ${stateLabel}`;
+}
+
 export function contactHailAvailability(state) {
   const targetId = state && state.player && state.player.targetId;
   const target = entityById(state, targetId);
@@ -371,6 +415,8 @@ export function contactHailAvailability(state) {
     richSeamHelpAvailable: richSeamHelpAvailable(state, target, classification.kind),
     priorityCourierItinerary: priorityCourierItinerary(state, target),
     priorityCourierEscortAvailable: priorityCourierEscortAvailable(state, target),
+    passengerLinerItinerary: passengerLinerItinerary(state, target),
+    passengerLinerAssistAvailable: passengerLinerAssistAvailable(state, target),
     disabledHauler: ceresDisabledHaulerTruth(state, target),
   };
 }
@@ -415,6 +461,18 @@ export function createContactHailOffer(state, availability, requestId, expiresAt
     };
   }
   const priorityItinerary = availability.priorityCourierItinerary;
+  const passengerItinerary = availability.passengerLinerItinerary;
+  if (passengerItinerary) {
+    const actions = [{ id: 'status', label: 'STATUS' }, { id: 'route', label: 'ROUTE' }];
+    if (availability.passengerLinerAssistAvailable) {
+      actions.push({ id: CONTACT_HAIL_ACTION_ASSIST, label: 'ASSIST BOARDING' });
+    }
+    return {
+      requestId, targetId: availability.targetId, kind: 'trader', expiresAt,
+      lines: [`${name} · HELIOS CIVIC LINER`, 'PASSENGER SERVICE · CHANNEL OPEN.'],
+      actions,
+    };
+  }
   if (priorityItinerary) {
     // Scanner/UI deliberately ships three compact choices. Keep manifest inspection in the normal
     // state, then replace it with the time-sensitive recovery action instead of adding an unseen
@@ -597,6 +655,8 @@ function tenderServiceHailStatus(truth) {
 export function livingWorkStatusText(entity, opts = {}) {
   if (!entity) return null;
   const data = entity.data || {};
+  const passengerStatus = passengerLinerStatusText(opts.state || null, entity);
+  if (passengerStatus) return passengerStatus.replace(/^STATUS · /, 'SERVICE · ');
   const salvorSource = salvorSourceTruth(opts.state || null, entity);
   if (salvorSource && salvorSource.state === 'aboard') return 'WORK · SALVAGE ABOARD · FORGE';
   if (salvorSource && salvorSource.state === 'disputed') return 'WORK · SALVAGE DISPUTED';
@@ -749,6 +809,18 @@ function workerIdentifyText(target) {
 
 function routeText(state, target) {
   const record = traderRecord(state, target.id);
+  const passengerItinerary = passengerLinerItinerary(state, target);
+  if (passengerItinerary) {
+    if (passengerItinerary.state === 'DIVERTING') {
+      const returnStationId = typeof passengerItinerary.diversion?.returnStationId === 'string'
+        && passengerItinerary.diversion.returnStationId.trim()
+        ? passengerItinerary.diversion.returnStationId
+        : (record && record.targetId) || passengerItinerary.originStationId;
+      return `ROUTE · RETURNING TO ${stationLabel(state, returnStationId)}`;
+    }
+    const destinationId = passengerItinerary.destinationStationId || record && record.targetId;
+    return `ROUTE · ${stationLabel(state, destinationId)}`;
+  }
   const itinerary = target.data && target.data.itinerary;
   const destinationId = itinerary && itinerary.destinationStationId || record && record.targetId;
   return `ROUTE · ${stationLabel(state, destinationId)}`;
@@ -807,7 +879,11 @@ export function createContactHailResponse(state, offer, choice, authority = {}) 
     else if (id === CONTACT_HAIL_ACTION_STEAL) line = 'STEAL · MANIFEST JETTISON REQUESTED.';
     else line = 'ABANDON · DISTRESS RELAY CLOSED.';
   } else if (offer.kind === 'trader' && id === 'status') {
-    line = priorityCourierStatusText(state, target);
+    line = passengerLinerStatusText(state, target) || priorityCourierStatusText(state, target);
+  } else if (offer.kind === 'trader' && id === CONTACT_HAIL_ACTION_ASSIST) {
+    line = passengerLinerAssistAvailable(state, target)
+      ? 'ASSIST BOARDING · FORM UP AND HOLD THE CIVIC LINER.'
+      : 'ASSIST BOARDING · WINDOW CLOSED.';
   } else if (offer.kind === 'trader' && id === CONTACT_HAIL_ACTION_ESCORT) {
     line = priorityCourierEscortAvailable(state, target)
       ? 'ESCORT · FORM UP AND HOLD THE PRIORITY BURN.'
