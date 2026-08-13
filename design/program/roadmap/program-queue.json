@@ -5944,6 +5944,30 @@
       "brief": "A physical Pallas wreck clue opens an approximate no-course ring; manual scan and physical cache investigation gate exactly RECOVER, REPORT, or CRIMINAL USE. World owns the durable map/ledger/outcome record, REPORT is station_drift-gated, finite pickups delegate cargo and criminal consequences to existing owners, and malformed save state fails closed."
     },
     {
+      "id": "PQ-048.14",
+      "parentId": "PQ-048",
+      "priority": 293,
+      "title": "Complete Resonance Obelisk survey",
+      "kind": "implementation",
+      "state": "done",
+      "dependsOn": [],
+      "mutexes": [],
+      "paths": [
+        "src/data/landmarkMissions.js",
+        "src/systems/missions.js",
+        "test/pq048-resonance-obelisk-survey.test.mjs"
+      ],
+      "checks": [
+        "node --test test/pq048-resonance-obelisk-survey.test.mjs",
+        "npm run check:player-facing-labels",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-048-14-resonance-obelisk-survey-REPORT.md"
+      ],
+      "brief": "After the pre-existing physical station_veil poi_anomaly record passes strict raw investigation validation, one zero-credit 300-WU anomaly survey reuses the live Obelisk. Its durable artifact and fingerprint block reoffer across board refresh/Continue; Doss retains its independent generic physical-discovery source, and extra pulses use only the existing bounded Vael behavior."
+    },
+    {
       "id": "PQ-048.15",
       "parentId": "PQ-048",
       "priority": 294,
