@@ -3,12 +3,12 @@
   "assetId": "SF_ASHLINE_LODE_V1",
   "defId": "bruiser_brawler",
   "shipId": "ashline_lode",
-  "iteration": 6,
+  "iteration": 9,
   "lods": [
     {
       "lod": 0,
-      "triangles": 37436,
-      "hullTriangles": 1648,
+      "triangles": 39052,
+      "hullTriangles": 1728,
       "draws": 9,
       "materials": [
         "Material_Accent",
@@ -35,13 +35,13 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/ashline_lode_production_v1_lod0.glb",
-      "bytes": 1952816,
-      "sha256": "EFB5B4D891708C19995218161206BEFC3819C72BCB3D8D8FB05392939D410D23"
+      "bytes": 2066428,
+      "sha256": "DF56C732D8ED0B70545CD27C8C3C70478533C22566038C3E5A257FF122DAA00F"
     },
     {
       "lod": 1,
-      "triangles": 10332,
-      "hullTriangles": 1648,
+      "triangles": 16084,
+      "hullTriangles": 1728,
       "draws": 9,
       "materials": [
         "Material_Accent",
@@ -68,12 +68,12 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/ashline_lode_production_v1_lod1.glb",
-      "bytes": 539600,
-      "sha256": "5BBF848D14FCC806F0A05B7EC66C6E7DF8AE7D68C5C870EFBB13F6C587783670"
+      "bytes": 867668,
+      "sha256": "329190D694E30CE08A282467E7F2DF6A42280F7227A9BBB26C5DBA6E0E91D44D"
     },
     {
       "lod": 2,
-      "triangles": 6120,
+      "triangles": 6716,
       "hullTriangles": 1540,
       "draws": 7,
       "materials": [
@@ -99,30 +99,9 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/ashline_lode_production_v1_lod2.glb",
-      "bytes": 299564,
-      "sha256": "6E1DF8D836EEBE172570034A4B2848BAECC22323A32E100FA9BD53EC718CF8D6"
+      "bytes": 335748,
+      "sha256": "642C02F837775CF33AF4537F86EB3D7B08FD662327DF83A2FF59A9939AF185CB"
     }
   ],
-  "renders": [
-    {
-      "view": "ashline_lode_three_quarter",
-      "path": "evidence/iter06/ashline_lode_three_quarter.png",
-      "bytes": 913887
-    },
-    {
-      "view": "ashline_lode_starboard",
-      "path": "evidence/iter06/ashline_lode_starboard.png",
-      "bytes": 934518
-    },
-    {
-      "view": "ashline_lode_rear",
-      "path": "evidence/iter06/ashline_lode_rear.png",
-      "bytes": 1037161
-    },
-    {
-      "view": "ashline_lode_grazing",
-      "path": "evidence/iter06/ashline_lode_grazing.png",
-      "bytes": 984341
-    }
-  ]
+  "renders": []
 }
