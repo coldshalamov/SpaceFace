@@ -52,6 +52,9 @@ TEXTURE_SETS = {
     "Material_Accent": "frontier_cyan",
     "Material_Warning": "warning_orange",
 }
+WING_ARMOR_BEVEL = 0.01
+HORNET_WING_ARMOR_TERMINAL_HZ = 0.065
+HORNET_WING_ARMOR_TERMINAL_CHAMFER = 0.018
 
 # Distinct live bodies. Hitch is excluded. Pelican/Wasp already have dedicated packages.
 SPECS = {
@@ -414,9 +417,22 @@ def span_ring(x, y, z, hx, hz, chamfer):
     ]
 
 
+def wing_armor_terminal_has_bevel_clearance(half_thickness, chamfer, bevel):
+    """Keep a terminal chamfer wide enough for the two adjacent bevel edges."""
+    minimum_half_thickness = chamfer + bevel
+    return (
+        half_thickness > minimum_half_thickness
+        and math.hypot(chamfer, chamfer) > bevel * 2
+    )
+
+
 def wing_armor_stations(ship_id, hw, sign):
-    terminal_hz = 0.055 if ship_id == "hornet" else 0.022
-    terminal_chamfer = 0.012 if ship_id == "hornet" else 0.01
+    terminal_hz = HORNET_WING_ARMOR_TERMINAL_HZ if ship_id == "hornet" else 0.022
+    terminal_chamfer = HORNET_WING_ARMOR_TERMINAL_CHAMFER if ship_id == "hornet" else 0.01
+    if ship_id == "hornet" and not wing_armor_terminal_has_bevel_clearance(
+        terminal_hz, terminal_chamfer, WING_ARMOR_BEVEL,
+    ):
+        raise ValueError("Hornet WingArmor terminal section is too thin for its chamfer and bevel")
     return [
         (-0.05, (hw + 0.40) * sign, 0.14, 1.05, 0.05, 0.02),
         (-0.40, (hw + 1.20) * sign, 0.10, 0.82, 0.035, 0.015),
@@ -568,7 +584,7 @@ def build_ship(ship_id, spec, lod, mats):
             add_box(f"WingRootFairing_{side}", (-0.15, hw * 0.78 * sign, -0.02), (0.55, 0.16, 0.12), mech, collection, 0.012)
             add_span_loft(
                 f"WingArmor_{side}", wing_armor_stations(ship_id, hw, sign),
-                armor, collection, 0.01,
+                armor, collection, WING_ARMOR_BEVEL,
             )
             add_box(f"WingFlap_{side}", (-1.55, (hw + 1.35) * sign, -0.04), (0.22, 0.62, 0.035), mech, collection, 0.006)
             add_box(f"WingFlapGap_{side}", (-1.28, (hw + 1.35) * sign, -0.02), (0.03, 0.58, 0.05), mech, collection, 0.002)
