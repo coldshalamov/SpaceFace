@@ -282,9 +282,18 @@ export const tetherGameplay = {
       const effectiveLineLengthCommand = Number.isFinite(approachReelDelta)
         ? approachReelDelta
         : lineLengthCommand;
+      const lineCommandIsAxis = !Number.isFinite(approachReelDelta);
       const reelResult = effectiveLineLengthCommand === 0
         ? NO_REEL_RESULT
-        : this._reelActive(attachments, effectiveLineLengthCommand, dt, state, player, target);
+        : this._reelActive(
+          attachments,
+          effectiveLineLengthCommand,
+          dt,
+          state,
+          player,
+          target,
+          { normalizedAxis: lineCommandIsAxis },
+        );
       const approachSpooling = !!approach && effectiveLineLengthCommand !== 0;
       this._updateReelStrength(approachSpooling || reelHeld, reelResult.changed, dt);
       if (approach && approachSpooling && !reelResult.changed) {
@@ -1144,7 +1153,7 @@ export const tetherGameplay = {
     return true;
   },
 
-  _reelActive(attachments, reelDelta, dt, state, player, target) {
+  _reelActive(attachments, reelDelta, dt, state, player, target, options = null) {
     if (!this._active || !Number.isFinite(reelDelta) || reelDelta === 0) return { changed: false, reason: null, attachment: null };
     const attachment = attachments.get(this._active.attachmentId);
     if (!attachment || attachment.state !== 'active') return { changed: false, reason: 'attachment_missing', attachment };
@@ -1156,7 +1165,9 @@ export const tetherGameplay = {
     const reelRate = policy && Number.isFinite(policy.reelRate) ? policy.reelRate : def.reelRate;
     const maxStep = positive(reelRate, 0) * Math.max(0, Number(dt) || 0);
     if (!(maxStep > 0)) return { changed: false, reason: 'reel_unavailable', attachment };
-    const requested = clamp(reelDelta, -maxStep, maxStep);
+    const requested = options && options.normalizedAxis === true
+      ? clamp(reelDelta, -1, 1) * maxStep
+      : clamp(reelDelta, -maxStep, maxStep);
     const minLength = positive(def.minLength, 0);
     const maxLength = positive(policy && policy.maxLength, positive(def.maxLength, Infinity));
     const before = attachment.restLength || 0;

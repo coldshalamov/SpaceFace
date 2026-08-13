@@ -1034,6 +1034,79 @@ test('Massline Spool payout policy survives Continue and legacy or corrupt saves
   }
 });
 
+test('Heavy-Duty Winch scales normalized line input by its snapshotted reel rate', () => {
+  const reelFor = ({ mult, axis, dt, ticks = 1 }) => {
+    const derived = mult == null ? {} : { tetherReelRateMult: mult };
+    const h = buildHarness([asteroid(722, { pos: { x: 120, z: 0 } })], {
+      player: player({ data: { derived } }),
+      aimWorld: { x: 120, z: 0 },
+    });
+    fireLatch(h);
+    const attachment = h.attachments.get(h.system._active.attachmentId);
+    const before = attachment.restLength;
+    h.state.input.actions = {
+      tetherFire: false, tetherCut: false, reelDelta: 0,
+      massline: {
+        lineControl: true,
+        lineLength: axis,
+        payOut: Math.max(0, axis),
+        reelIn: Math.max(0, -axis),
+        orbitDirection: 0,
+        pump: false,
+      },
+    };
+    for (let tick = 0; tick < ticks; tick += 1) {
+      h.system.update(dt, h.state);
+      h.state.tick += 1;
+      h.state.simTime += Number.isFinite(dt) ? Math.max(0, dt) : 0;
+    }
+    return {
+      delta: attachment.restLength - before,
+      rate: h.attachments.reelPolicy(attachment.id).reelRate,
+      attachment,
+      h,
+    };
+  };
+
+  const base = reelFor({ mult: undefined, axis: 0.5, dt: 0.25 });
+  assert.ok(Math.abs(base.delta - TETHER_DEF.reelRate * 0.5 * 0.25) < 1e-9,
+    'a partial positive axis pays out at base rate × axis × dt');
+
+  const winch = reelFor({ mult: 1.8, axis: 0.5, dt: 0.25 });
+  assert.ok(Math.abs(winch.rate - TETHER_DEF.reelRate * 1.8) < 1e-9);
+  assert.ok(Math.abs(winch.delta - winch.rate * 0.5 * 0.25) < 1e-9,
+    'the fitted winch applies its authored 1.8x speed to payout');
+
+  const reelIn = reelFor({ mult: 1.8, axis: -0.25, dt: 0.2 });
+  assert.ok(Math.abs(reelIn.delta - reelIn.rate * -0.25 * 0.2) < 1e-9,
+    'negative axis uses the same rate and dt scaling for reel-in');
+
+  const sixtyHz = reelFor({ mult: undefined, axis: 1, dt: 1 / 60, ticks: 60 });
+  const thirtyHz = reelFor({ mult: undefined, axis: 1, dt: 1 / 30, ticks: 30 });
+  assert.ok(Math.abs(sixtyHz.delta - TETHER_DEF.reelRate) < 1e-9);
+  assert.ok(Math.abs(thirtyHz.delta - sixtyHz.delta) < 1e-9,
+    'the same one-second command pays out equally at 30 Hz and 60 Hz');
+
+  assert.equal(reelFor({ mult: 1.8, axis: 1, dt: 0 }).delta, 0,
+    'zero dt cannot move the line');
+  assert.equal(reelFor({ mult: 1.8, axis: 1, dt: Number.NaN }).delta, 0,
+    'non-finite dt cannot move the line');
+
+  const snapshot = reelFor({ mult: 1.8, axis: 0.5, dt: 0.1 });
+  snapshot.h.p.data.derived.tetherReelRateMult = 9;
+  assert.equal(snapshot.h.attachments.reelPolicy(snapshot.attachment.id).reelRate, TETHER_DEF.reelRate * 1.8,
+    'a refit cannot rewrite the deployed line rate');
+
+  for (const malformed of ['1.8', true, Number.NaN, Number.POSITIVE_INFINITY, -1]) {
+    const policy = effectiveTetherPolicy(
+      createCombatCatalog().attachments.get('tether_standard'),
+      { data: { derived: { tetherReelRateMult: malformed } } },
+    );
+    assert.equal(policy.reelRate, TETHER_DEF.reelRate,
+      `malformed reel multiplier ${String(malformed)} fails closed`);
+  }
+});
+
 test('PQ-003 ordinary high-load reel-in remains available without a fictitious load-limit denial', () => {
   const h = buildHarness([asteroid(702, { pos: { x: 120, z: 0 } })], { aimWorld: { x: 120, z: 0 } });
   fireLatch(h);

@@ -101,8 +101,10 @@ export function effectiveTetherPolicy(def, owner, features = null) {
       ...(maxLength == null ? {} : { maxLength }),
     };
   }
-  const rawReel = Number(owner && owner.data && owner.data.derived && owner.data.derived.tetherReelRateMult);
-  const reelMult = Number.isFinite(rawReel) ? Math.max(1, rawReel) : 1;
+  const rawReel = owner && owner.data && owner.data.derived && owner.data.derived.tetherReelRateMult;
+  const reelMult = typeof rawReel === 'number' && Number.isFinite(rawReel) && rawReel > 0
+    ? Math.max(1, rawReel)
+    : 1;
   const policy = {
     break: effectiveTetherBreak(def, owner),
     reelRate: baseReelRate * reelMult,
