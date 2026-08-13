@@ -216,6 +216,113 @@
   },
   {
     "schema": "spaceface.fleetPlayerBody.build.v1",
+    "assetId": "SF_IRONBACK_PRODUCTION_V1",
+    "defId": "ship_ironback",
+    "shipId": "ironback",
+    "iteration": 9,
+    "lods": [
+      {
+        "lod": 0,
+        "triangles": 44136,
+        "hullTriangles": 2160,
+        "draws": 9,
+        "materials": [
+          "Material_Accent",
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster",
+          "Material_Warning"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/ironback_production_v1_lod0.glb",
+        "bytes": 2344228,
+        "sha256": "5DA34B20629EC7262559D6353B8F17BD9B3ABAC7EF73F04500A6C95599F14FBE"
+      },
+      {
+        "lod": 1,
+        "triangles": 17712,
+        "hullTriangles": 2160,
+        "draws": 9,
+        "materials": [
+          "Material_Accent",
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster",
+          "Material_Warning"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/ironback_production_v1_lod1.glb",
+        "bytes": 954720,
+        "sha256": "0FDA1F5C0561B40BFB8750D4DA5E02A9BC828FBDFE6B7FC838E4773EE3581AFE"
+      },
+      {
+        "lod": 2,
+        "triangles": 8344,
+        "hullTriangles": 1972,
+        "draws": 7,
+        "materials": [
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/ironback_production_v1_lod2.glb",
+        "bytes": 419352,
+        "sha256": "8241EE826C954BDEAD6940C27F5C82CBAF3F5DFCCE064D326708DDFD41EF1A71"
+      }
+    ],
+    "renders": []
+  },
+  {
+    "schema": "spaceface.fleetPlayerBody.build.v1",
     "assetId": "SF_RANGER_PRODUCTION_V1",
     "defId": "ship_ranger",
     "shipId": "ranger",
