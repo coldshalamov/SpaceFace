@@ -1,0 +1,23 @@
+{
+  "schema": "spaceface.advancedModelTechniqueLedger.v1",
+  "assetId": "SF_WARDEN_PRODUCTION_V1",
+  "shipId": "warden",
+  "candidateHash": "FCFB591347C466B07FE5C72E5789B2AA544C87468C342FDCF0C961EFE741887A",
+  "exportGlb": "assets/ships/fleet_player_bodies_v1/warden/source/wholeships/warden_production_v1_lod0.glb",
+  "class": "player_flyable",
+  "clayStillReadsAsPrimitives": true,
+  "independentReview": "revise",
+  "promoted": false,
+  "reasonNotClosed": "Five counted cycles (01, 02, 03, 05, 06). Cycle 04 was camera-only and was not counted. Gunship identity holds. Clay still loft plus kit. Not Hitch-plus. Live files not replaced.",
+  "rows": [
+    {"id": "MTX-02", "state": "blocked", "still": "evidence/warden/cycles/cycle_06/clay_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Hull is still a plank with a tower."},
+    {"id": "MTX-07", "state": "blocked", "still": "evidence/warden/cycles/cycle_06/three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Tower still a brick stack."},
+    {"id": "MTX-08", "state": "blocked", "still": "evidence/warden/cycles/cycle_06/drive_rear.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Three hollow bells, still cone family."},
+    {"id": "MTX-13", "state": "implemented", "still": "evidence/warden/cycles/cycle_06/grazing_close.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Scale applied before bevel."},
+    {"id": "MTX-16", "state": "implemented", "still": "evidence/warden/cycles/cycle_06/material_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Unique UV after join."},
+    {"id": "MTX-32", "state": "implemented", "still": "evidence/warden/cycles/cycle_06/three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Unique Warden maps."},
+    {"id": "MTX-46", "state": "blocked", "still": "evidence/warden/cycles/cycle_06/clay_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Clay still primitives."},
+    {"id": "MTX-50", "state": "implemented", "still": "source/wholeships/warden_production_v1_lod0.glb", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Sockets and packed maps."},
+    {"id": "MTX-65", "state": "implemented", "still": "evidence/warden/cycles/cycle_06/three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Gunship massing: tower, broadsides, three-drive transom. Not a barge or needle."}
+  ]
+}
