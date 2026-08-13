@@ -3,12 +3,12 @@
   "assetId": "SF_LEVIATHAN_PRODUCTION_V1",
   "defId": "ship_leviathan",
   "shipId": "leviathan",
-  "iteration": 6,
+  "iteration": 9,
   "lods": [
     {
       "lod": 0,
-      "triangles": 56900,
-      "hullTriangles": 1648,
+      "triangles": 58516,
+      "hullTriangles": 1728,
       "draws": 9,
       "materials": [
         "Material_Accent",
@@ -35,13 +35,13 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/leviathan_production_v1_lod0.glb",
-      "bytes": 2958048,
-      "sha256": "6FD5CF0C176BC5AF1C42C4ABCBCAC911A16441734DE0D844B94322BA1FA95065"
+      "bytes": 3075008,
+      "sha256": "DE1875211C6CBF24AF2899CA4FC640930734E1643151B51AE71E63107C99D915"
     },
     {
       "lod": 1,
-      "triangles": 15876,
-      "hullTriangles": 1648,
+      "triangles": 21628,
+      "hullTriangles": 1728,
       "draws": 9,
       "materials": [
         "Material_Accent",
@@ -68,12 +68,12 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/leviathan_production_v1_lod1.glb",
-      "bytes": 811548,
-      "sha256": "942D4B49CBB4F6D002C5C5328C0E77AA37B0EB4A1C356D9148B4D20243B57071"
+      "bytes": 1138572,
+      "sha256": "0AA2710617ADF1CB468742B1A86922352DA694AD5B02FB2B34482307BE70DF04"
     },
     {
       "lod": 2,
-      "triangles": 9936,
+      "triangles": 10532,
       "hullTriangles": 1540,
       "draws": 7,
       "materials": [
@@ -99,30 +99,9 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/leviathan_production_v1_lod2.glb",
-      "bytes": 470708,
-      "sha256": "6FF83A49CC94C79FB769C4A40924BC90EE31B12D738D4EE10189F602A49F6913"
+      "bytes": 508092,
+      "sha256": "67C39D6401840F23A6D4C8826107BBDC075EE3D36F2D40499769EA25D011199F"
     }
   ],
-  "renders": [
-    {
-      "view": "leviathan_three_quarter",
-      "path": "evidence/iter06/leviathan_three_quarter.png",
-      "bytes": 941116
-    },
-    {
-      "view": "leviathan_starboard",
-      "path": "evidence/iter06/leviathan_starboard.png",
-      "bytes": 926934
-    },
-    {
-      "view": "leviathan_rear",
-      "path": "evidence/iter06/leviathan_rear.png",
-      "bytes": 984557
-    },
-    {
-      "view": "leviathan_grazing",
-      "path": "evidence/iter06/leviathan_grazing.png",
-      "bytes": 996819
-    }
-  ]
+  "renders": []
 }
