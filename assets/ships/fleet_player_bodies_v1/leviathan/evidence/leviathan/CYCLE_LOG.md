@@ -1,0 +1,11 @@
+# Leviathan cycle log
+
+| Cycle | lod0 hash | Verdicts | Counted |
+|---|---|---|---|
+| 01 | F69F5772B45EE6CCB3BBC842323981382E825B56679FB54A28D7F398897BFA99 | revise / revise / revise | yes |
+| 02 | 56430B4E710C75913D2B2C3AB5F5BB1700A6BA18ECCB7F91BADFE29C325E1784 | revise / revise / revise | yes |
+| 03 | 3AA978A9932A02173A21A0C380C9CCE72C72EF1272279B1A676C80E59F847D63 | revise / revise / revise | yes |
+| 04 | 864739FFA49CE23F33C3121E5A99A2D0ECD106479620EEEB812879C7EBBA456E | revise / revise / revise | yes |
+| 05 | 5DE3E2A2414B9BE9D647A702B4824112452BC332ED117D58D62DEF7C08873153 | revise / revise / revise | yes |
+
+Not promoted. Clay still loft plus kit.
