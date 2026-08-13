@@ -61,6 +61,27 @@ function startDriveJump(h) {
   return { charge: h.state.jump.chargeNeeded, fuel: h.state.jump._fuelCost };
 }
 
+function completeJump(h, via) {
+  h.bus.emit('world:requestJump', {
+    targetSectorId: 'sector_ceres_belt',
+    via,
+  });
+  assert.equal(h.state.jump.state, 'CHARGING');
+  h.world._tickCharging(h.state.jump.chargeNeeded, h.state);
+  assert.equal(h.state.jump.state, 'JUMPING');
+  h.world._tickJumping(1.2, h.state);
+  return h.state.jump.cooldownT;
+}
+
+function completeGateJump(h) {
+  h.state.jump.state = 'JUMPING';
+  h.state.jump.targetSectorId = 'sector_ceres_belt';
+  h.state.jump.via = 'gate';
+  h.state.jump._jumpT = 0;
+  h.world._tickJumping(1.2, h.state);
+  return h.state.jump.cooldownT;
+}
+
 test('Jump Drive T2 M publishes a compatible derived tier and changes normal drive preflight', () => {
   const bare = buildHarness();
   assert.equal(bare.player.data.derived.jumpDriveTier, 'jump_t1');
@@ -97,4 +118,25 @@ test('Jump Drive resolution resets to T1 on unfit or malformed/incompatible data
     'non-catalog manual fitting values fail closed');
   assert.equal(JSON.stringify(catalogDrive), catalogSnapshot,
     'derived resolution never mutates the module catalog');
+});
+
+test('Advanced Navigation reduces only valid drive-jump cooldowns', () => {
+  const baseline = buildHarness();
+  assert.equal(completeJump(baseline, 'drive'), 6.0);
+
+  const researched = buildHarness();
+  researched.state.player.efficiencyMods.jumpCooldownMult = 0.85;
+  assert.equal(completeJump(researched, 'drive'), 5.1);
+
+  const gate = buildHarness();
+  gate.state.player.efficiencyMods.jumpCooldownMult = 0.85;
+  assert.equal(completeGateJump(gate), 0, 'gate cooldown remains unchanged');
+  assert.equal(gate.state.jump.state, 'IDLE');
+
+  for (const multiplier of [null, '0.85', NaN, 0, -0.15, 1.01, Infinity]) {
+    const malformed = buildHarness();
+    malformed.state.player.efficiencyMods.jumpCooldownMult = multiplier;
+    assert.equal(completeJump(malformed, 'drive'), 6.0,
+      `invalid multiplier ${String(multiplier)} fails closed`);
+  }
 });

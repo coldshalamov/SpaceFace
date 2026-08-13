@@ -161,6 +161,12 @@ for (const sector of SECTORS) {
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 
+function driveCooldownMultiplier(player) {
+  const mods = player && player.efficiencyMods;
+  const multiplier = mods && mods.jumpCooldownMult;
+  return Number.isFinite(multiplier) && multiplier > 0 && multiplier <= 1 ? multiplier : 1;
+}
+
 // Per-sector enemy archetype pools (real ids from src/data/enemies.js), picked by lawfulness/tier.
 const LAWFUL_ENEMIES = ['patrol_lawman'];
 const PIRATE_ENEMIES = ['reaver_pirate', 'wasp_swarmer', 'corsair_raider'];
@@ -2633,7 +2639,9 @@ export const world = {
     this.bus.emit('jump:arrive', arrivePayload);
 
     jump.state = via === 'gate' ? (GATE_COOLDOWN > 0 ? 'COOLDOWN' : 'IDLE') : 'COOLDOWN';
-    jump.cooldownT = via === 'gate' ? GATE_COOLDOWN : DRIVE_COOLDOWN;
+    jump.cooldownT = via === 'gate'
+      ? GATE_COOLDOWN
+      : DRIVE_COOLDOWN * driveCooldownMultiplier(state.player);
     jump.targetSectorId = null;
     jump.via = null;
     jump.chargeNeeded = 0;
@@ -3832,7 +3840,7 @@ export const world = {
     const savedJump = unfiledCommitted
       ? {
         state: 'COOLDOWN', targetSectorId: null, via: null,
-        chargeT: 0, chargeNeeded: 0, cooldownT: DRIVE_COOLDOWN,
+        chargeT: 0, chargeNeeded: 0, cooldownT: DRIVE_COOLDOWN * driveCooldownMultiplier(state.player),
       }
       : {
         state: state.jump.state, targetSectorId: state.jump.targetSectorId, via: state.jump.via,
