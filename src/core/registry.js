@@ -145,6 +145,7 @@ import { audio } from '../audio/audioSystem.js';
 import { ui } from '../ui/uiRoot.js';
 import { save } from '../save/saveSystem.js';
 import { ensurePerfRuntime, perfNow } from './perfRuntime.js';
+import { runRenderUpdatePhase } from './renderUpdatePhase.js';
 import { resolveRuntimeManifest } from '../runtime/resolveRuntimeManifest.js';
 import { DEFAULT_RUNTIME_PROFILE_ID } from '../runtime/runtimeProfiles.js';
 import { applyFeatureConfigToMaps } from '../data/featureFlags.js';
@@ -610,64 +611,18 @@ export function createRegistry(ctx) {
       const state = ctx.state;
       const perf = ensurePerfRuntime(state);
       try {
-        if (state.ui && state.ui.docked === true) {
-          perf.recordPhase('render', 0);
-          perf.recordPhase('vfx', 0);
-          perf.recordPhase('feel', 0);
-          if (ui.frame) {
-            const t = perfNow();
-            try { ui.frame(frameDt, state); }
-            finally { perf.recordPhase('ui', perfNow() - t); }
-          }
-          return false;
-        }
-        let t = perfNow();
-        let renderMs = 0;
-        let renderedPreparedScene = false;
-        const splitRender = typeof render.prepareFrame === 'function' && typeof render.drawPreparedFrame === 'function';
-        let renderError = null;
-        try {
-          if (splitRender) renderedPreparedScene = render.prepareFrame(alpha, frameDt, presentationFrame) !== false;
-          else render.renderFrame(alpha, frameDt, presentationFrame);
-        }
-        catch (err) { renderError = err; }
-        finally { renderMs += perfNow() - t; }
-        if (renderError) {
-          perf.recordPhase('render', renderMs);
-          throw renderError;
-        }
-
-        let vfxError = null;
-        if (vfx.update) {
-          t = perfNow();
-          try { vfx.update(frameDt, state); }
-          catch (err) { vfxError = err; }
-          finally { perf.recordPhase('vfx', perfNow() - t); }
-        }
-
-        if (splitRender) {
-          t = perfNow();
-          try { if (renderedPreparedScene) render.drawPreparedFrame(); }
-          finally {
-            renderMs += perfNow() - t;
-            perf.recordPhase('render', renderMs);
-          }
-        } else {
-          perf.recordPhase('render', renderMs);
-        }
-        if (vfxError) throw vfxError;
-
-        if (feel.frame) {
-          t = perfNow();
-          try { feel.frame(frameDt, state); }
-          finally { perf.recordPhase('feel', perfNow() - t); }
-        }
-        if (ui.frame) {
-          t = perfNow();
-          try { ui.frame(frameDt, state); }
-          finally { perf.recordPhase('ui', perfNow() - t); }
-        }
-        return true;
+        return runRenderUpdatePhase({
+          state,
+          render,
+          vfx,
+          feel,
+          ui,
+          alpha,
+          frameDt,
+          presentationFrame,
+          recordPhase: (name, ms) => perf.recordPhase(name, ms),
+          now: perfNow,
+        });
       } finally {
         const diag = state.render && state.render.diagnostics;
         if (diag && typeof diag.update === 'function') diag.update(frameDt);

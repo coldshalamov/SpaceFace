@@ -6638,12 +6638,23 @@ export const vfx = {
     if (p && p.reason === 'tether_cut') return false;
     const cable = this._tetherCable;
     if (!cable || !this._scene || !this._tetherBreakMatchesCable(p, cable)) return false;
+    // Hold the ribbon even when the anchor was already swept (mined-out rock, killed payload).
+    // The burst below needs live endpoints; the fade does not. Returning early used to skip this
+    // state and left the next VFX frame to hide a still-active cable against a missing target.
+    // Fade state is committed before any later cosmetic call so a throw in reset/burst cannot
+    // skip it.
+    cable.snapAge = 0;
+    cable.latchAge = 999;
+    cable.fadeRate = TETHER_SNAP_FADE_RATE;
+    cable.wasActive = false;
+    if (cable.fade < 1) cable.fade = 1;
     this._resetMasslineReleaseArc();
+
     const source = this._ent(cable.lastSourceId);
     const target = this._ent(cable.lastTargetId);
-    if (!source || !target) return false;
     const endpoints = cable.endpointScratch || (cable.endpointScratch = {});
-    const hasEndpoints = writeTetherVisualEndpoints(source, target, cable.lastRemote, endpoints);
+    const hasEndpoints = !!(source && target
+      && writeTetherVisualEndpoints(source, target, cable.lastRemote, endpoints));
 
     this._emitJuiceCue('presentation.tether.break', p, 1.5);
     // Do NOT hide the cable. A break is the most violent thing the massline ever does and it used
@@ -6653,22 +6664,30 @@ export const vfx = {
     // This is presentation only. The line is deliberately near-unbreakable and a break is an
     // ENGINEERED event (bomb-web hub, cutting charge), never an ambient one — nothing here changes
     // when a break happens, only what it looks like when one does.
-    cable.snapAge = 0;
-    cable.latchAge = 999;
-    cable.fadeRate = TETHER_SNAP_FADE_RATE;
-    cable.wasActive = false;
-    if (cable.fade < 1) cable.fade = 1;
     // A valid receipt can still describe overlapping endpoints (for example, a source embedded in
     // a despawning target). Keep the retained line's fade state, but do not stack two identical
     // bursts or divide a zero-length recoil chord.
     if (!hasEndpoints) return true;
 
+    try {
+      this._spawnTetherSnapBurst(cable, source, target, endpoints);
+    } catch (_) {
+      // Burst is cosmetic. Fade state above must survive a particle/light spawn failure so the
+      // next frames can hide the ribbon instead of throwing from vfx.update.
+    }
+    return true;
+  },
+
+  _spawnTetherSnapBurst(cable, source, target, endpoints) {
+    void cable;
+    void source;
     // Trailing streak: the recoiling line reads as light dragged through space. Anisotropic sprites
     // stretched ALONG the broken chord (the instanced pool already carries aspect + roll), laid down
     // from each end toward the middle so both halves visibly snap back.
     const dx = endpoints.bx - endpoints.ax;
     const dz = endpoints.bz - endpoints.az;
     const chord = endpoints.chord;
+    if (!(chord > 1e-6) || !Number.isFinite(chord)) return;
     const ux = dx / chord, uz = dz / chord;
     const roll = Math.atan2(uz, ux);
     const px = -uz, pz = ux;
@@ -6731,7 +6750,6 @@ export const vfx = {
       this._spawnSprite(SPR_RING, endX, 0.9, endZ, 0.26, 1.4, 8.5, 0.55, 0.0, '#ffc9a0', 0, 0);
       this._flashLight({ x: endX, z: endZ }, '#ffb0a0', 5.4, 12, 200);
     }
-    return true;
   },
 
   // A normal cut is a transfer of visual ownership: the rope recoils for one short beat at both
@@ -11021,6 +11039,10 @@ export const vfx = {
 
   _integrateParticles(dt) {
     const dynamicOwner = this._particleDynamicBufferOwner;
+    if (dynamicOwner && dynamicOwner.invalid) {
+      if (this._pGeo) this._pGeo.setDrawRange(0, 0);
+      return;
+    }
     assertDynamicBufferOwnerWritable(dynamicOwner);
     if (this._liveCount <= 0) {
       this._pGeo.setDrawRange(0, 0);

@@ -4037,7 +4037,9 @@ export function createHud(ctx, alerts) {
 
     // --- speed (numerics @10Hz) — THR/STOP live in the SPD hover tip now (HUD 2.0) ---
     if (slow && p) {
-      const sp = Math.hypot(p.vel.x, p.vel.z);
+      const vx = p.vel && Number.isFinite(p.vel.x) ? p.vel.x : 0;
+      const vz = p.vel && Number.isFinite(p.vel.z) ? p.vel.z : 0;
+      const sp = Math.hypot(vx, vz);
       setText(elSpeed, Math.round(sp) + '');
       // Tether readout: status + target while latched. Control chips paint separately so the
       // instrument value never becomes a rebind encyclopedia that overflows the deck.

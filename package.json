@@ -133,7 +133,7 @@
     "check:massline:snapcatch": "node scripts/check-massline-snapcatch.mjs",
     "check:massline:reelpump": "node scripts/check-massline-reelpump.mjs",
     "check:massline:target-scoring": "node scripts/check-massline-target-scoring.mjs",
-    "check:massline:acquisition-contract": "node --test test/tether-latch-eligibility.test.mjs test/massline-acquisition-preview.test.mjs test/massline-controlled-attachments.test.mjs",
+    "check:massline:acquisition-contract": "node --test test/tether-latch-eligibility.test.mjs test/massline-acquisition-preview.test.mjs test/massline-controlled-attachments.test.mjs test/massline-break-recovery.test.mjs test/render-update-isolation.test.mjs",
     "check:massline:auto-target": "node scripts/check-massline-auto-target.mjs",
     "check:massline:threats": "node scripts/check-massline-threats.mjs",
     "check:massline:threat-feedback": "node scripts/check-massline-threat-feedback.mjs",
