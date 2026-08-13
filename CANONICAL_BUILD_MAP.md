@@ -56,6 +56,15 @@ before touching those GLBs. That handoff owns live residuals, bans, KEEP/RESTORE
 meaning (dock = shipyard UI backdrop; hulk/debris = freeflight landmarks). For ordinary admitted
 roadmap work, still use `program-dispatch` above—do not substitute this handoff for a PQ packet.
 
+**Graphics / non-Hitch flyable fleet remaster:** remaining work to make every player and NPC flyable
+ship except Hitch/Kestrel honestly better than live Hitch is admitted as `PQ-050`
+(`GFX-FLEET-REMASTER-HITCHPLUS`). Start at
+[`design/program/roadmap/active/PQ-050.md`](./design/program/roadmap/active/PQ-050.md), then
+`node scripts/program-dispatch.mjs --id PQ-050` or `--next` for the first ready leaf. Ordered
+leaves: promote newest factory bodies; rebuild Pelican and Mule; carefully upgrade Wasp; player
+then NPC Hitch-plus loops; independent review with no self-acceptance. Do not touch Hitch. Do not
+treat current factory bodies as accepted.
+
 **Graphics / expansion research (A-list parity):** when planning work that spans graphics,
 animation, VFX, variety, or world density — as opposed to one admitted asset packet — the durable
 research brief is

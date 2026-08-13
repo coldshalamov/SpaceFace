@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-12",
+  "updatedAt": "2026-08-13",
   "purpose": "Canonical cross-plan priority and dispatch queue. Product completion remains authoritative in design/program/03_LIVE_ACCEPTANCE_MATRIX.md.",
   "stateContract": {
     "allowed": [
@@ -78,7 +78,8 @@
         "PQ-043",
         "PQ-044",
         "PQ-045",
-        "PQ-046"
+        "PQ-046",
+        "PQ-050"
       ]
     },
     {
@@ -2334,6 +2335,39 @@
         "independent-g7"
       ],
       "brief": "Admit the tracked stopped-Lark donor only as reference for a separate Tier-B civic pressure-drum express liner. Five ordered leaves create a fresh DCC candidate, source/release/manifests, render package, express-only presentation mapping, then natural Browser/Electron tether/save/performance and independent whole-asset acceptance. The existing passenger-only traffic service remains authoritative; the accepted courier Lark remains untouched."
+    },
+    {
+      "id": "PQ-050",
+      "priority": 50,
+      "title": "Non-Hitch flyable fleet remaster to Hitch-plus",
+      "state": "ready",
+      "canonical": [
+        "GFX-FLEET-REMASTER-HITCHPLUS"
+      ],
+      "aliases": [
+        "FLEET-REMASTER-HITCHPLUS",
+        "NON-HITCH-FLEET-GRAPHICS"
+      ],
+      "dependsOn": [],
+      "mutexes": [],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/program/06_RETAINED_FUTURE_BACKLOG.md",
+        "assets/ships/fleet_remaster_v1/HITCH_QUALITY_FLOOR.md",
+        "design/program/roadmap/active/PQ-050.md"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "node scripts/check-program-docs.mjs"
+      ],
+      "evidence": [
+        "hitch-untouched",
+        "live-non-hitch-bodies",
+        "open-bay-not-stacked-box",
+        "matched-hitch-stills",
+        "independent-visual-review"
+      ],
+      "brief": "Bring every live flyable player and NPC ship except Hitch/Kestrel to honest Hitch-plus / A-list construction. Six ordered leaves: promote the newest factory bodies; rebuild Pelican and Mule; carefully upgrade Wasp without dropping hull below 800 tris; per-player then per-NPC quality loops against Hitch stills; independent review with no self-acceptance. Hitch freeze set stays untouched."
     }
   ],
   "dispatchUnits": [
@@ -6353,6 +6387,166 @@
       ],
       "receiptRefs": [],
       "brief": "Capture the natural Browser and Electron express spawn, label, route, dock/service context, passenger itinerary with no invented freight manifest, boost, tether latch/reel/release, and save/Continue itinerary. Compare dense-pocket and tether-close performance at equal quality, then obtain independent exact-hash G7 and whole-asset G1/G2/G4 decisions. This is acceptance support; missing evidence leaves the parent unproven."
+    },
+    {
+      "id": "PQ-050.01",
+      "parentId": "PQ-050",
+      "priority": 305,
+      "title": "Promote newest non-Hitch factory bodies into live parts and release",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "asset-manifest",
+        "blender"
+      ],
+      "paths": [
+        "tools/art/promote_fleet_production_bodies.mjs",
+        "assets/ships/fleet_player_bodies_v1/",
+        "assets/ships/parts/wholeships/",
+        "assets/ships/release/parts/wholeships/",
+        "src/render/partsLibrary.js",
+        "test/fleet-player-wholeship-routing.test.mjs",
+        "test/fleet-npc-wholeship-routing.test.mjs"
+      ],
+      "checks": [
+        "node --test test/fleet-player-wholeship-routing.test.mjs test/fleet-npc-wholeship-routing.test.mjs",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "Copy the newest factory source LOD0/1/2 bodies into live parts and release. Skip Hitch entirely. Skip live Wasp until PQ-050.03. Do not change sockets, roles, or stats. Leave status at integration_candidate."
+    },
+    {
+      "id": "PQ-050.02",
+      "parentId": "PQ-050",
+      "priority": 306,
+      "title": "Rebuild Pelican and Mule with open bays and Hitch-floor construction",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-050.01"
+      ],
+      "mutexes": [
+        "blender",
+        "asset-manifest"
+      ],
+      "paths": [
+        "tools/blender/fleet_construction.py",
+        "assets/ships/pelican_production_v1/",
+        "assets/ships/mule_production_v1/",
+        "test/pelican-production-routing.test.mjs"
+      ],
+      "checks": [
+        "node --test test/pelican-production-routing.test.mjs test/fleet-player-wholeship-routing.test.mjs",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "Rebuild the dedicated Pelican and Mule packages so side and dorsal bays are cut holes with interiors, not stacked boxes. Raise framed dark-glass cockpits. Promote only those two families. Compare stills to Hitch before calling either done."
+    },
+    {
+      "id": "PQ-050.03",
+      "parentId": "PQ-050",
+      "priority": 307,
+      "title": "Upgrade live Wasp without dropping hull below 800 triangles",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-050.02"
+      ],
+      "mutexes": [
+        "blender",
+        "asset-manifest"
+      ],
+      "paths": [
+        "assets/ships/wasp_production_v1/",
+        "tools/blender/fleet_construction.py"
+      ],
+      "checks": [
+        "node --test test/fleet-player-wholeship-routing.test.mjs",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "Add open bays and hull-named plates to the existing Wasp builder. Keep Fuselage_Core on Material_Hull. Abort if any LOD hull triangle count falls below 800. Replace the live Wasp only when stills beat the current live body."
+    },
+    {
+      "id": "PQ-050.04",
+      "parentId": "PQ-050",
+      "priority": 308,
+      "title": "Player-ship Hitch-plus quality loops",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-050.03"
+      ],
+      "mutexes": [
+        "blender",
+        "evidence-review"
+      ],
+      "paths": [
+        "tools/blender/fleet_construction.py",
+        "tools/blender/build_fleet_player_body.py",
+        "assets/ships/fleet_player_bodies_v1/",
+        "assets/ships/pelican_production_v1/",
+        "assets/ships/mule_production_v1/",
+        "assets/ships/wasp_production_v1/"
+      ],
+      "checks": [
+        "node --test test/fleet-player-wholeship-routing.test.mjs test/pelican-production-routing.test.mjs",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "Run the required per-ship loop on Hornet, Drifter, Ironback, Bastion, Atlas, Ranger, Warden, Colossus, Leviathan, and any of Pelican/Mule/Wasp still short of Hitch. Brainstorm 3x, implement, compare stills to Hitch, repeat at least 5x per ship. Commit one finished ship at a time. Do not copy Hitch identity."
+    },
+    {
+      "id": "PQ-050.05",
+      "parentId": "PQ-050",
+      "priority": 309,
+      "title": "NPC and traffic Hitch-plus quality loops",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-050.04"
+      ],
+      "mutexes": [
+        "blender",
+        "evidence-review"
+      ],
+      "paths": [
+        "tools/blender/build_fleet_player_body.py",
+        "assets/ships/fleet_player_bodies_v1/"
+      ],
+      "checks": [
+        "node --test test/fleet-npc-wholeship-routing.test.mjs",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "Same Hitch-plus loop for Ashline dart/lode/rig, Helios lark/cradle/span, ore barge, repair tender, salvage cutter, and survey pin. Keep each role silhouette. Reaver and Corsair share the rig body."
+    },
+    {
+      "id": "PQ-050.06",
+      "parentId": "PQ-050",
+      "priority": 310,
+      "title": "Independent Hitch-plus visual review; do not self-accept",
+      "kind": "acceptance_capture",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-050.05"
+      ],
+      "mutexes": [
+        "evidence-review",
+        "browser-gpu",
+        "electron-shell"
+      ],
+      "paths": [
+        "assets/ships/fleet_remaster_v1/",
+        "design/program/roadmap/receipts/PQ-050-06-fleet-hitchplus-REVIEW.md"
+      ],
+      "checks": [
+        "node --test test/fleet-player-wholeship-routing.test.mjs test/fleet-npc-wholeship-routing.test.mjs test/pelican-production-routing.test.mjs",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "Record matched Hitch-vs-remaster stills for every shipped non-Hitch flyable body and obtain independent whole-asset keep/revise/revert. The implementing agent cannot close G1/G2/G4/G7. Missing review leaves the parent unproven."
     }
   ]
 }

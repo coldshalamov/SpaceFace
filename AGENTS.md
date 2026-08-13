@@ -21,6 +21,7 @@ workflow; it does not replace original plans.
 | Ship, station, place, prop, or other Blender/GLB form or surfacing work | `assets/ships/AGENTS.md` **and** `.grok/skills/spaceface-blender-material-truth/SKILL.md`; Tier C/D may group a repeated manufactured family, but no changed visible zone may inherit a DCC default |
 | Resolve the current starter/player ship before graphics work | `src/data/newGameDefaults.js` -> exact ship/root maps in `src/render/partsLibrary.js`; do not infer identity from a screenshot or legacy filename |
 | Resume dock/hulk/debris place remaster (Blender/EEVEE) | **`assets/ships/parts/places/REMASTER_HANDOFF_dock_hulk_debris.md`** (also linked from `CANONICAL_BUILD_MAP.md` §1) |
+| Resume non-Hitch flyable ship remaster (not Hitch) | **`CANONICAL_BUILD_MAP.md`** → `PQ-050` / [`design/program/roadmap/active/PQ-050.md`](./design/program/roadmap/active/PQ-050.md) |
 | Add a map-visible place (planet, station, route, region) | `src/data/PLACE_REGISTRATION.md` — **a new place is not done until `npm run check:atlas-integrity` is green** |
 | UI/HUD | `src/ui/AGENTS.md` and `styles/AGENTS.md` |
 | Render/performance | `src/render/AGENTS.md` and `design/PERF_BUDGET.md` |
@@ -181,6 +182,8 @@ instruction layer.
 - Skeptical of agent-labeled “bugs”; verify against live code and git history before changing behavior, and prefer obvious/safe honesty fixes first—misattributed fixes have made things worse.
 - When handed a large agent review, wants what is safe to do now; leaves safe-vs-risky judgment to the agent once that bar is clear.
 - Does not want stale agent ledgers left in the repo, and does not want valuable unverified findings deleted blind—distill durable disposition (done / rejected / verified-open / leads) then remove the pile.
+- Treat hitching as structural: reject quality cuts, triangle-count trims, and ~2% easy-road opts as the performance plan; major refactors are discussable. Prefer cheap Node count gates over repeated headed browser soaks.
+- When a plan is authorized, drive it through without stop-and-go “continue?” pauses.
 
 ## Learned Workspace Facts
 
@@ -188,3 +191,4 @@ instruction layer.
 - When code and docs disagree, check `git log` which side moved before changing either; agents often update code and leave prose behind, and “fixing to the doc” has regressed real fixes.
 - Many `.test.mjs` files are unwired from `check:*`; do not blindly glob-enable them into CI—audit and wire high-value clusters only.
 - Tractor module `magnetRange` is still unwired in mining (UI no longer advertises inert numbers); drill-fade still mutates ship physics from UI—both are verified deferred work, not free cleanups.
+- Playable-flight `buildComposedShip` is gated off the combat thread; mid-fight authored upgrades settle to the visible procedural ship unless a prewarmed/prepared boundary exists. Do not reintroduce sync composition on the playable path.
