@@ -379,6 +379,64 @@ function mtMarkerLine(state, wp, suffix = '') {
   return suffix ? `${route} · ${suffix}` : route;
 }
 
+/** One painted destination line for the live flight tracker. Titles and GOAL restatements stay off. */
+export function flightDestinationSurface(state, command) {
+  if (!command) return { show: false, line: '', urgent: false };
+  if (command.owner === 'tracked-mission') {
+    const tracked = command.mission;
+    const waypoint = command.waypoint;
+    const action = mtObjectiveAction(waypoint && waypoint.reason || mtObjectiveText(tracked), waypoint);
+    const travel = objectiveTravelReadout(state, waypoint);
+    let line = formatDestinationLine({
+      action,
+      distanceText: travel.distanceText,
+      etaText: travel.etaText,
+      bearing: objectiveBearingGlyph(state, waypoint),
+    });
+    let urgent = false;
+    if (tracked && tracked.deadline_s != null && Number.isFinite(tracked.deadline_s)) {
+      const remaining = Math.max(0, tracked.deadline_s - (state.simTime || 0));
+      line = formatDestinationLine({ action: line, distanceText: mtFmtTime(remaining) });
+      urgent = remaining < 120;
+    }
+    return { show: true, line, urgent };
+  }
+  if (command.owner === 'navigation') {
+    const wp = command.waypoint;
+    const travel = objectiveTravelReadout(state, wp);
+    const routeGuide = mtRouteGuidance(state, wp);
+    return {
+      show: true,
+      line: formatDestinationLine({
+        action: mtObjectiveAction((wp && (wp.reason || wp.label)) || 'Follow the marked route', wp),
+        distanceText: travel.distanceText,
+        etaText: travel.etaText,
+        bearing: objectiveBearingGlyph(state, wp),
+      }) + (routeGuide && routeGuide.summary ? ` · ${routeGuide.summary}` : ''),
+      urgent: false,
+    };
+  }
+  if (command.owner === 'untracked-mission') {
+    const candidate = command.mission;
+    return {
+      show: true,
+      line: coreText('trackContract', {
+        key: BINDINGS.missionLog.label,
+        contract: candidate.title || candidate.name || 'one contract',
+      }),
+      urgent: false,
+    };
+  }
+  if (command.owner === 'story') {
+    return {
+      show: true,
+      line: coreText('chooseStoryAction', { key: BINDINGS.missionLog.label }),
+      urgent: false,
+    };
+  }
+  return { show: false, line: '', urgent: false };
+}
+
 /**
  * Geometry contract for the persistent flight anchors. Values mirror the authored desktop CSS and
  * intentionally reserve a clear center/lower-middle playfield. Used by the objective hierarchy
@@ -4077,64 +4135,15 @@ export function createHud(ctx, alerts) {
       const wp = navWaypoint || buildCorridorOpeningWaypoint(state);
       const onboardingVerb = navWaypoint && navWaypoint.reason;
       const command = resolveFlightObjectiveCommand(state, wp);
-      if (command && command.owner === 'tracked-mission') {
-        const tracked = command.mission;
-        const waypoint = command.waypoint;
-        const action = mtObjectiveAction(waypoint && waypoint.reason || mtObjectiveText(tracked), waypoint);
-        const travel = objectiveTravelReadout(state, waypoint);
-        setText(mtTitle, coreText('currentObjective'));
-        setText(mtObj, formatDestinationLine({
-          action,
-          distanceText: travel.distanceText,
-          etaText: travel.etaText,
-          bearing: objectiveBearingGlyph(state, waypoint),
-        }));
-        if (tracked.deadline_s != null && Number.isFinite(tracked.deadline_s)) {
-          const remaining = Math.max(0, tracked.deadline_s - (state.simTime || 0));
-          setText(mtTime, mtMarkerLine(state, waypoint, mtFmtTime(remaining)));
-          setClass(mtTime, 'sf-mt-urgent', remaining < 120);
-          setDisplay(mtTime, true);
-        } else {
-          setText(mtTime, mtMarkerLine(state, waypoint));
-          setClass(mtTime, 'sf-mt-urgent', false);
-          setDisplay(mtTime, true);
-        }
-        setDisplay(missionTracker, true);
-      } else if (command && command.owner === 'navigation') {
-        const wp = command.waypoint;
-        const routeGuide = mtRouteGuidance(state, wp);
-        const travel = objectiveTravelReadout(state, wp);
-        setText(mtTitle, coreText(navWaypoint && navWaypoint.onboarding ? 'tutorialObjective' : 'currentObjective'));
-        setText(mtObj, formatDestinationLine({
-          action: mtObjectiveAction(onboardingVerb || wp.reason || wp.label || 'Follow the marked route', wp),
-          distanceText: travel.distanceText,
-          etaText: travel.etaText,
-          bearing: objectiveBearingGlyph(state, wp),
-        }));
-        setText(mtTime, mtMarkerLine(state, wp, routeGuide && routeGuide.summary || ''));
-        setClass(mtTime, 'sf-mt-urgent', false);
-        setDisplay(mtTime, true);
-        setDisplay(missionTracker, true);
-      } else if (command && command.owner === 'untracked-mission') {
-        const candidate = command.mission;
-        setText(mtTitle, coreText('nextAction'));
-        setText(mtObj, coreText('trackContract', {
-          key: BINDINGS.missionLog.label,
-          contract: candidate.title || candidate.name || 'one contract',
-        }));
-        setText(mtTime, coreText('noGoalTrack'));
-        setClass(mtTime, 'sf-mt-urgent', false);
-        setDisplay(mtTime, true);
-        setDisplay(missionTracker, true);
-      } else if (command && command.owner === 'story') {
-        setText(mtTitle, coreText('nextAction'));
-        setText(mtObj, coreText('chooseStoryAction', { key: BINDINGS.missionLog.label }));
-        setText(mtTime, coreText('noGoalSet'));
-        setClass(mtTime, 'sf-mt-urgent', false);
-        setDisplay(mtTime, true);
-        setDisplay(missionTracker, true);
-      } else {
+      const dest = flightDestinationSurface(state, command);
+      setDisplay(mtTitle, false);
+      setDisplay(mtTime, false);
+      if (!dest.show) {
         setDisplay(missionTracker, false);
+      } else {
+        setText(mtObj, dest.line);
+        setClass(mtTime, 'sf-mt-urgent', dest.urgent);
+        setDisplay(missionTracker, true);
       }
     }
 
@@ -4362,15 +4371,17 @@ export function createHud(ctx, alerts) {
       pos = state.nav.waypoint.pos;
     }
     if (!pos || !helpers.worldToScreen) {
-      setHudScreenTransform(firstUse, 24, 120);
+      firstUse.hidden = firstUseHint.kind !== 'player';
       return;
     }
     const proj = helpers.worldToScreen({ x: pos.x, y: 0, z: pos.z });
-    if (!proj || !proj.onScreen) {
-      setHudScreenTransform(firstUse, 24, 120);
+    if (!proj) {
+      firstUse.hidden = firstUseHint.kind !== 'player';
       return;
     }
-    setHudScreenTransform(firstUse, proj.x, proj.y - 28);
+    const x = proj.onScreen ? proj.x : Math.max(24, Math.min((typeof window !== 'undefined' ? window.innerWidth : 1280) - 24, proj.x));
+    const y = proj.onScreen ? proj.y - 28 : Math.max(24, Math.min((typeof window !== 'undefined' ? window.innerHeight : 720) - 24, proj.y));
+    setHudScreenTransform(firstUse, x, y);
   }
 
   function setVisible(v) {

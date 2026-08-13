@@ -299,8 +299,8 @@ if (!hudSrc.includes("import { BINDINGS } from './bindings.js'")
   ok++;
 }
 const stationKbmPrompt = controlPrompt('station', 'kbm');
-if (!onboardingSrc.includes("import { controlPrompt, currentPromptModality } from '../ui/controlPrompts.js'")
-  || !onboardingSrc.includes("controlPrompt('firstStation'")
+if (!onboardingSrc.includes("import { firstUseLine, resolveFirstUseEntityId } from '../ui/hudAttention.js'")
+  || !onboardingSrc.includes("firstUseLine('firstStation'")
   || !onboardingSrc.includes('_dockControlInRange')
   || onboardingSrc.includes('el.textContent = controlPrompt(mode, modality)')
   || !stationKbmPrompt.includes(`${BINDINGS.dock.label} dock`)

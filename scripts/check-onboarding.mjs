@@ -39,7 +39,7 @@ for (const { system, event, hintKey } of REQUIRED_HINTS) {
 }
 
 // The _showHint mechanism itself must exist + respect the tutorialHints setting + dedupe via hints.
-assert.match(src, /_showHint\(key, text\)/, '_showHint(key, text) must exist (the hint display mechanism)');
+assert.match(src, /_showHint\(key, text, payload\)/, '_showHint(key, text, payload) must exist (object-attached first-use)');
 assert.match(src, /tutorialHints === false/, '_showHint must respect settings.gameplay.tutorialHints === false');
 assert.match(src, /st\.player\.hints\[key\]/, '_showHint must dedupe via state.player.hints[key] (fire-once-per-save)');
 
@@ -77,8 +77,7 @@ assert.doesNotMatch(src, /const STEPS = \[/, 'the old 5-step STEPS chain must be
 // The default dock binding is E, with Enter accepted only as a secondary convenience in input.js.
 // New-player copy must use the live binding label so the first dock objective, first-station hint,
 // control bar, alert prompt, help screen, and key handler do not contradict each other.
-assert.match(src, /controlPrompt/, 'onboarding.js should source control copy from src/ui/controlPrompts.js');
-assert.match(src, /currentPromptModality/, 'onboarding.js should resolve keyboard/gamepad/touch prompt modality live');
+assert.match(src, /firstUseLine/, 'onboarding first-use copy is one verb from hudAttention, not a windshield key sheet');
 assert.match(promptSrc, /export const CONTROL_PROMPTS/, 'controlPrompts.js must export the shared prompt catalog');
 assert.match(promptSrc, /export function controlPrompt/, 'controlPrompts.js must export the prompt resolver');
 assert.match(promptSrc, /export function currentPromptModality/, 'controlPrompts.js must export the modality resolver');

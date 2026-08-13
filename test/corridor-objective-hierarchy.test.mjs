@@ -187,12 +187,14 @@ test('tracker priority source pins include corridor idle before untracked/story 
   assert.doesNotMatch(block, /hasCorridorFirstDock/,
     'HUD no longer dual-gates corridor with hasCorridorFirstDock');
   const corridorIdx = block.indexOf('buildCorridorOpeningWaypoint');
-  const trackContractIdx = block.indexOf("coreText('trackContract'");
-  const storyIdx = block.indexOf("coreText('chooseStoryAction'");
   assert.ok(corridorIdx > 0, 'corridor idle is in the tracker tick');
-  assert.ok(trackContractIdx > corridorIdx, 'untracked-contract recovery follows corridor');
-  assert.ok(storyIdx > corridorIdx, 'story recovery follows corridor');
-  assert.match(block, /mtMarkerLine\(state, wp/, 'corridor reuses marker/distance/ETA line');
+  assert.match(block, /flightDestinationSurface\(state, command\)/, 'corridor paints one destination line');
+  const destFn = hud.slice(hud.indexOf('export function flightDestinationSurface'), hud.indexOf('export function resolveObjectiveHudLayout'));
+  const navOwner = destFn.indexOf("command.owner === 'navigation'");
+  const untrackedOwner = destFn.indexOf("command.owner === 'untracked-mission'");
+  const storyOwner = destFn.indexOf("command.owner === 'story'");
+  assert.ok(navOwner >= 0 && untrackedOwner > navOwner, 'untracked-contract recovery follows corridor/navigation');
+  assert.ok(storyOwner > navOwner, 'story recovery follows corridor/navigation');
   // Threat slot remains owned by target panel, not the tracker hierarchy.
   assert.doesNotMatch(block, /current-threat|createTargetPanel/);
 });

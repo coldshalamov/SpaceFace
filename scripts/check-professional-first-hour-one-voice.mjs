@@ -333,8 +333,8 @@ check('first dock keeps the attention channel quiet: one firstHub path, arbiter-
   assert.ok(dockedBlocks.length >= 1, 'onboarding must listen for dock:docked');
   assert.match(onboardingSrc, /_showHint\('firstHub'/,
     'first hub orientation must be a one-shot hint key (firstHub)');
-  assert.match(onboardingSrc, /id:\s*'tutorial:hint:' \+ key/,
-    'contextual hints must use stable per-key arbiter ids (coalesce, not stack)');
+  assert.match(onboardingSrc, /hud:firstUse/,
+    'contextual first-use is one HUD line, not a stacked arbiter/toast pair');
   // firstHub must go through _showHint (player.hints gate) — never a raw multi-emit wall.
   const firstHubIdx = onboardingSrc.indexOf("_showHint('firstHub'");
   assert.ok(firstHubIdx >= 0);
@@ -445,8 +445,8 @@ check('player-facing control prompts bind from BINDINGS / promptLabel (no hard d
     'dock status pill must use promptLabel so rebinds stay truthful');
   assert.doesNotMatch(onboardingSrc, /controlPrompt\('firstFlight'/,
     'firstFlight laundry must not remount from the modality table');
-  assert.match(onboardingSrc, /controlPrompt\('firstStation'/,
-    'firstStation hint must pull from controlPrompt modality table');
+  assert.match(onboardingSrc, /firstUseLine\('firstStation'/,
+    'firstStation is one object-stuck verb, not a windshield key sheet');
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -478,8 +478,8 @@ check('each semantic combat/status event maps to one announce key (no parallel p
 check('tutorial semantic events coalesce under stable ids (beat + hint keys)', 'SOURCE', () => {
   assert.match(onboardingSrc, /id:\s*'tutorial:beat'/,
     'beat entry/followup share tutorial:beat id → one attention line per beat window');
-  assert.match(onboardingSrc, /id:\s*'tutorial:hint:' \+ key/,
-    'each hint key is one semantic announcement id');
+  assert.match(onboardingSrc, /st\.player\.hints\[key\] = true/,
+    'each hint key is one teach-once HUD announcement');
 });
 
 check('SYNTH: repeated same-id announce coalesces to one floor holder', 'SYNTH', () => {

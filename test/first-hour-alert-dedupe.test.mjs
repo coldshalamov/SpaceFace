@@ -229,8 +229,8 @@ check('onboarding first-cargo / first-shield are terse tutorial hints gated behi
   assert.match(ONBOARDING_SRC, /firstCargoFull/);
   assert.match(ONBOARDING_SRC, /firstShieldDrop/);
   assert.match(ONBOARDING_SRC, /channel:\s*'tutorial'/);
-  assert.match(ONBOARDING_SRC, /Dock and sell cargo to free hold space\./);
-  assert.match(ONBOARDING_SRC, /Break contact\. Shields recharge when fire stops\./);
+  assert.match(ONBOARDING_SRC, /firstUseLine\('firstCargoFull'\)/);
+  assert.match(ONBOARDING_SRC, /firstUseLine\('firstShieldDrop'\)/);
   assert.match(ONBOARDING_SRC, /_tutorialRailOwnsVoice\(\)/);
 });
 

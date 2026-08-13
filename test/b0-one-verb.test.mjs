@@ -229,8 +229,8 @@ check('HUD mission tracker is the persistent Tutorial Objective surface for onbo
   assert.match(HUD_SRC, /sf-mt-obj/, 'HUD mounts .sf-mt-obj objective line');
   assert.match(
     HUD_SRC,
-    /coreText\(navWaypoint && navWaypoint\.onboarding \? 'tutorialObjective' : 'currentObjective'\)/,
-    'onboarding waypoint path selects the localized Tutorial Objective label',
+    /flightDestinationSurface\(state, command\)/,
+    'onboarding waypoint path paints one destination line',
   );
   assert.match(CORE_COPY_SRC, /tutorialObjective:\s*\{\s*label:\s*'TUTORIAL OBJECTIVE'\s*\}/,
     'localized core copy keeps the player-facing Tutorial Objective label');

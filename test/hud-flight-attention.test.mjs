@@ -8,6 +8,7 @@ import {
   admitReceipt,
   contactRosterExpanded,
   firstUseAttachKind,
+  firstUseLine,
   formatDestinationLine,
   formatRosterCount,
   hudJobFromState,
@@ -17,12 +18,13 @@ import {
   RECEIPT_MAX,
   receiptLaneRect,
   receiptOverlapsReserved,
+  resolveFirstUseEntityId,
   shouldShowFirstUseHint,
   shipGlyphBox,
   SHIP_GLYPH_BOX,
   vitalNumericVisible,
 } from '../src/ui/hudAttention.js';
-import { resolveObjectiveHudLayout } from '../src/ui/hud.js';
+import { flightDestinationSurface, resolveFlightObjectiveCommand, resolveObjectiveHudLayout } from '../src/ui/hud.js';
 import { createToasts } from '../src/ui/toasts.js';
 import { createBus } from '../src/core/eventBus.js';
 
@@ -124,8 +126,32 @@ test('one destination line already carries distance and ETA', () => {
     }),
     'Follow the marked route · 420 WU · ETA 12s · ↗',
   );
-  assert.match(HUD_SRC, /formatDestinationLine/);
+  const paint = HUD_SRC.slice(
+    HUD_SRC.indexOf('// --- mission tracker @10Hz ---'),
+    HUD_SRC.indexOf('// --- credits / cargo / objectives'),
+  );
+  assert.match(paint, /flightDestinationSurface\(state, command\)/);
+  assert.match(paint, /setDisplay\(mtTitle,\s*false\)/);
+  assert.match(paint, /setDisplay\(mtTime,\s*false\)/);
+  assert.doesNotMatch(paint, /setText\(mtTitle/);
+  assert.doesNotMatch(paint, /mtMarkerLine\(/);
+  assert.doesNotMatch(paint, /coreText\('currentObjective'\)/);
+  assert.doesNotMatch(paint, /coreText\('tutorialObjective'\)/);
   assert.match(HUD_SRC, /setDisplay\(elNavReadout,\s*false\)/);
+  const state = {
+    simTime: 10,
+    entities: new Map([[1, { pos: { x: 0, z: 0 }, vel: { x: 20, z: 0 } }]]),
+    playerId: 1,
+    nav: { waypoint: { reason: 'Follow the marked route', pos: { x: 400, z: 0 }, label: 'Helios' } },
+    missions: { active: [] },
+    ui: {},
+  };
+  const command = resolveFlightObjectiveCommand(state, state.nav.waypoint);
+  const dest = flightDestinationSurface(state, command);
+  assert.equal(dest.show, true);
+  assert.match(dest.line, /Follow the marked route/);
+  assert.match(dest.line, /WU|ETA/);
+  assert.doesNotMatch(dest.line, /CURRENT OBJECTIVE|TUTORIAL OBJECTIVE|AMBER DIAMOND|GOAL ·/);
 });
 
 test('receipt taxonomy rejects Target and danger, admits pay and errors', () => {
@@ -208,7 +234,18 @@ test('first-use is teach-once and object-attached', () => {
   assert.equal(firstUseAttachKind('firstStation'), 'station');
   assert.equal(firstUseAttachKind('firstDrill'), 'rock');
   assert.equal(firstUseAttachKind('masslineThrow'), 'latch');
+  assert.equal(firstUseLine('firstCombat'), 'Return fire.');
+  assert.doesNotMatch(firstUseLine('firstCombat'), /LMB|Space\/F|auto-target/i);
+  assert.equal(resolveFirstUseEntityId({}, { attackerId: 77 }), 77);
+  assert.equal(resolveFirstUseEntityId({}, { asteroidId: 12 }), 12);
+  assert.equal(resolveFirstUseEntityId({
+    entityList: [{ id: 9, data: { stationId: 'station_helios' } }],
+  }, { stationId: 'station_helios' }), 9);
   assert.match(ONBOARDING_SRC, /hud:firstUse/);
+  assert.match(ONBOARDING_SRC, /entityId/);
+  assert.match(ONBOARDING_SRC, /resolveFirstUseEntityId/);
+  assert.doesNotMatch(ONBOARDING_SRC, /controlPrompt\('firstCombat'/);
+  assert.doesNotMatch(ONBOARDING_SRC, /voice\.say\(\{ channel: 'tutorial', text, kind: 'info', ttl: 7/);
   assert.doesNotMatch(ONBOARDING_SRC, /_sfShowHints/);
   assert.doesNotMatch(ONBOARDING_SRC, /_updateControlBar/);
 });

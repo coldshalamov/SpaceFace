@@ -127,12 +127,61 @@ export function markFirstUseHint(hints, verbId) {
   return next;
 }
 
+export const FIRST_USE_LINE = Object.freeze({
+  firstCombat: 'Return fire.',
+  firstShieldDrop: 'Break contact.',
+  firstStation: 'Dock.',
+  firstGate: 'Plot a jump.',
+  firstCargoFull: 'Sell cargo.',
+  firstHub: 'Use the left rail. Departure Check owns undock.',
+  firstDrill: 'Mine the veins.',
+  firstOutfit: 'Fit the module.',
+  firstTech: 'Research unlocked gear.',
+  firstAutomation: 'Drones work the field.',
+  firstClaim: 'Build on the claim.',
+  firstCraft: 'Queue the job.',
+  masslineThrow: 'Latch, then cut.',
+  masslineHitchhiking: 'Ride, then cut.',
+  masslineSelfSling: 'Cut to sling.',
+  masslineJettisonImpulse: 'Dump aft to push.',
+  masslineBulletTime: 'Hold to stretch time.',
+  masslineCloak: 'Coast to stay hidden.',
+  bombPropulsion: 'Drop aft, then detonate.',
+});
+
+export function firstUseLine(verbId) {
+  return FIRST_USE_LINE[verbId] || '';
+}
+
 export function firstUseAttachKind(verbId) {
   const key = String(verbId || '');
   if (key === 'firstStation' || key === 'firstHub' || key === 'firstGate') return 'station';
   if (key === 'firstDrill') return 'rock';
   if (key.startsWith('massline') || key === 'firstCombat') return 'latch';
   return 'player';
+}
+
+export function resolveFirstUseEntityId(state, payload = {}) {
+  if (!payload || typeof payload !== 'object') return null;
+  if (payload.entityId != null) return payload.entityId;
+  if (payload.targetId != null) return payload.targetId;
+  if (payload.attackerId != null) return payload.attackerId;
+  if (payload.sourceId != null) return payload.sourceId;
+  if (payload.asteroidId != null) return payload.asteroidId;
+  if (payload.gateId != null) return payload.gateId;
+  const stationId = payload.stationId;
+  if (!stationId || !state) return null;
+  const index = state.entityIndex;
+  if (index && index.__spacefaceEntityIndexV1) {
+    const indexed = index.byStationId && index.byStationId.get(stationId);
+    if (indexed && indexed.alive !== false) return indexed.id;
+  }
+  for (const entity of state.entityList || []) {
+    if (entity && entity.alive !== false && entity.data && entity.data.stationId === stationId) {
+      return entity.id;
+    }
+  }
+  return null;
 }
 
 export function receiptLaneRect(layout) {

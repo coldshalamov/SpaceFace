@@ -23,7 +23,7 @@
 import { drawSeeded, hash32 } from '../core/rng.js';
 import { successfulPickupAmount } from '../core/pickupAcceptance.js';
 import { Masks } from '../core/entity.js';
-import { controlPrompt, currentPromptModality } from '../ui/controlPrompts.js';
+import { firstUseLine, resolveFirstUseEntityId } from '../ui/hudAttention.js';
 import { makeEnemySpawnSpec } from './combat.js';
 import { ONBOARDING_CHOICE_SOURCE } from './missions.js';
 import { massline2Flag } from '../data/featureFlags.js';
@@ -211,38 +211,35 @@ export const onboarding = {
 
     // First enemy encounter: triggered when the player first takes damage from a hostile.
     bus.on('combat:damage', (p) => {
-      if (!p || !p.isPlayer) return;
-      this._showHint('firstCombat',
-        controlPrompt('firstCombat', this._promptModality()));
+      if (!p) return;
+      const hitPlayer = !!(p.isPlayer || (this.state && p.targetId === this.state.playerId));
+      if (!hitPlayer) return;
+      this._showHint('firstCombat', firstUseLine('firstCombat'), p);
     });
 
     // First shield break: triggered when shields drop to zero.
     bus.on('combat:damage', (p) => {
       if (!p || !p.isPlayer || !p.brokeShield) return;
-      this._showHint('firstShieldDrop',
-        'Break contact. Shields recharge when fire stops.');
+      this._showHint('firstShieldDrop', firstUseLine('firstShieldDrop'), p);
     });
 
     // First station approach: enriches the existing dock prompt with what stations offer.
-    bus.on('dock:range', ({ inRange }) => {
-      this._dockControlInRange = !!inRange;
-      if (!inRange) return;
-      this._showHint('firstStation',
-        controlPrompt('firstStation', this._promptModality()));
+    bus.on('dock:range', (payload) => {
+      this._dockControlInRange = !!(payload && payload.inRange);
+      if (!payload || !payload.inRange) return;
+      this._showHint('firstStation', firstUseLine('firstStation'), payload);
     });
 
     // First jump gate approach: teach the player how gates work.
-    bus.on('gate:range', ({ inRange }) => {
-      this._gateControlInRange = !!inRange;
-      if (!inRange) return;
-      this._showHint('firstGate',
-        controlPrompt('firstGate', this._promptModality()));
+    bus.on('gate:range', (payload) => {
+      this._gateControlInRange = !!(payload && payload.inRange);
+      if (!payload || !payload.inRange) return;
+      this._showHint('firstGate', firstUseLine('firstGate'), payload);
     });
 
     // First cargo full: teach the player to sell.
-    bus.on('cargo:full', () => {
-      this._showHint('firstCargoFull',
-        'Dock and sell cargo to free hold space.');
+    bus.on('cargo:full', (p) => {
+      this._showHint('firstCargoFull', firstUseLine('firstCargoFull'), p);
     });
 
     // ── Mid/late-game system onboarding (P1-10) ─────────────────────────────────────────────
@@ -257,50 +254,42 @@ export const onboarding = {
     // moment — a new player docking for the first time sees Market/Shipyard/Outfitting/Manufacture/
     // Missions/Services/Factions/Bar with no explanation. This fires on every first dock (not just
     // the tutorial's dock step) so returning players who skipped the tutorial still get oriented.
-    bus.on('dock:docked', () => {
-      this._showHint('firstHub',
-        'Use the left rail. Departure Check owns undock.');
+    bus.on('dock:docked', (p) => {
+      this._showHint('firstHub', firstUseLine('firstHub'), p);
     });
 
     // Deep-drill (ant-farm mining): the first time the player activates a drill on an asteroid.
-    bus.on('drill:start', () => {
-      this._showHint('firstDrill',
-        'Deep-drill active! You are now inside the asteroid. Mine the colored ore veins and avoid gas pockets. Press B again or fly out to exit.');
+    bus.on('drill:start', (p) => {
+      this._showHint('firstDrill', firstUseLine('firstDrill'), p);
     });
 
     // Outfitting: the first time the player equips OR buys a module at a station.
-    bus.on('ui:fitModule', () => {
-      this._showHint('firstOutfit',
-        'Module equipped! Visit Outfitting at any station to swap shields, engines, weapons, and utility modules (like the Chaff Dispenser). Bigger ships have more slots.');
+    bus.on('ui:fitModule', (p) => {
+      this._showHint('firstOutfit', firstUseLine('firstOutfit'), p);
     });
-    bus.on('ui:buyModule', () => {
-      this._showHint('firstOutfit',
-        'Module purchased! Equip it in Outfitting. Modules fill ship slots — shields, engines, weapons, utility. Sell the old one back if you need credits.');
+    bus.on('ui:buyModule', (p) => {
+      this._showHint('firstOutfit', firstUseLine('firstOutfit'), p);
     });
 
     // Tech tree: the first time the player researches a node.
-    bus.on('tech:researched', () => {
-      this._showHint('firstTech',
-        'Research complete! The Tech Tree (T) unlocks new ships, modules, and capabilities. Some gear requires research before you can buy or build it.');
+    bus.on('tech:researched', (p) => {
+      this._showHint('firstTech', firstUseLine('firstTech'), p);
     });
 
     // Automation: the first time the player deploys a drone.
     bus.on('asset:deployed', (p) => {
       if (!p || p.kind !== 'drone') return;
-      this._showHint('firstAutomation',
-        'Drone deployed! Drones auto-mine ore and haul it to your ship or a depot. Manage them in the Automation panel — more drones unlock with tech.');
+      this._showHint('firstAutomation', firstUseLine('firstAutomation'), p);
     });
 
     // Claims/bases: the first time the player claims a body.
-    bus.on('claim:claimed', () => {
-      this._showHint('firstClaim',
-        'Body claimed! Build modules on it (Cargo Depot, On-Site Refinery, Defense Battery) to automate ore flow. Claimed bases persist across the sector.');
+    bus.on('claim:claimed', (p) => {
+      this._showHint('firstClaim', firstUseLine('firstClaim'), p);
     });
 
     // Crafting: the first time the player queues a craft job (refine/assemble/augment).
-    bus.on('craft:queueChanged', () => {
-      this._showHint('firstCraft',
-        'Craft job queued! The Manufacture tab refines raw ore into materials, assembles components, and augments modules. Some recipes need research first.');
+    bus.on('craft:queueChanged', (p) => {
+      this._showHint('firstCraft', firstUseLine('firstCraft'), p);
     });
 
     // Massline Physics Identity (Wave M2, massline2Flag-gated so headless contract runs and
@@ -314,40 +303,33 @@ export const onboarding = {
       // The express-specific lesson owns this first latch. Leave the general throw lesson unspent
       // for the next ordinary target so one event never queues two tutorial voices.
       if (massline2Flag('hitchhiking') && isExpressHitchTarget(target)) return;
-      this._showHint('masslineThrow',
-        masslineThrowHint(this.state));
+      this._showHint('masslineThrow', firstUseLine('masslineThrow'), payload);
     });
     bus.on('tether:latched', (payload) => {
       if (!massline2Flag('hitchhiking') || !payload || payload.targetId == null) return;
       const target = this.state.entities && this.state.entities.get(payload.targetId);
       if (!isExpressHitchTarget(target)) return;
-      this._showHint('masslineHitchhiking',
-        'Express liners stay on boost. Latch, ride, then cut to keep speed.');
+      this._showHint('masslineHitchhiking', firstUseLine('masslineHitchhiking'), payload);
     });
-    bus.on('massline:selfSling', () => {
+    bus.on('massline:selfSling', (p) => {
       if (!massline2Flag('throw')) return;
-      this._showHint('masslineSelfSling',
-        'Cut from a heavy anchor to bank its momentum as a slingshot.');
+      this._showHint('masslineSelfSling', firstUseLine('masslineSelfSling'), p);
     });
-    bus.on('cargo:jettisoned', () => {
+    bus.on('cargo:jettisoned', (p) => {
       if (!massline2Flag('jettisonImpulse')) return;
-      this._showHint('masslineJettisonImpulse',
-        'Jettisoned cargo is reaction mass: dump aft for an emergency push.');
+      this._showHint('masslineJettisonImpulse', firstUseLine('masslineJettisonImpulse'), p);
     });
-    bus.on('bulletTime:start', () => {
+    bus.on('bulletTime:start', (p) => {
       if (!massline2Flag('bulletTime')) return;
-      this._showHint('masslineBulletTime',
-        'Hold CAPS LOCK to stretch time. Release it to recharge.');
+      this._showHint('masslineBulletTime', firstUseLine('masslineBulletTime'), p);
     });
-    bus.on('cloak:engaged', () => {
+    bus.on('cloak:engaged', (p) => {
       if (!massline2Flag('cloak')) return;
-      this._showHint('masslineCloak',
-        'Coast inside the ring to stay hidden. Firing drops cloak.');
+      this._showHint('masslineCloak', firstUseLine('masslineCloak'), p);
     });
-    bus.on('charge:aftDropped', () => {
+    bus.on('charge:aftDropped', (p) => {
       if (!massline2Flag('bombPropulsion')) return;
-      this._showHint('bombPropulsion',
-        'Brake and throw to drop aft. Press R to detonate.');
+      this._showHint('bombPropulsion', firstUseLine('bombPropulsion'), p);
     });
 
     this._lastControlMode = null;
@@ -356,7 +338,7 @@ export const onboarding = {
   // Show a one-time contextual hint via the toast system. The hint key corresponds to a flag in
   // state.player.hints. If the flag is already true (hint was shown before, even in a prior save),
   // this is a no-op. Respects the tutorialHints setting.
-  _showHint(key, text) {
+  _showHint(key, text, payload) {
     const st = this.state;
     if (st.settings && st.settings.gameplay && st.settings.gameplay.tutorialHints === false) return;
     // The staged rail is already the tutorial. Contextual walls wait until it finishes so a
@@ -365,11 +347,8 @@ export const onboarding = {
     if (!st.player.hints) st.player.hints = {};
     if (st.player.hints[key]) return;
     st.player.hints[key] = true;
-    const voice = this.helpers && this.helpers.voice;
-    if (voice && typeof voice.say === 'function') {
-      voice.say({ channel: 'tutorial', text, kind: 'info', ttl: 7, id: 'tutorial:hint:' + key });
-    }
-    this.bus.emit('hud:firstUse', { verbId: key, text });
+    const entityId = resolveFirstUseEntityId(st, payload || {});
+    this.bus.emit('hud:firstUse', { verbId: key, text, entityId });
   },
 
   _tutorialRailOwnsVoice() {
@@ -779,10 +758,6 @@ export const onboarding = {
       this._resolveProximityDone();
       this._setObjectiveWaypoint(false);
     } catch (_) { /* never let onboarding break the loop */ }
-  },
-
-  _promptModality() {
-    return currentPromptModality({ gamepad: this.gamepad, touch: this.touch });
   },
 
   // Resolve drill conditions from canonical sim state. No key assumptions and no wall clock.
