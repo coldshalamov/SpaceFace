@@ -30,6 +30,12 @@ import {
   dossArchiveEvidence,
   dossArchiveMapOffer,
 } from '../../data/dossArchive.js';
+import {
+  VONN_FREIGHT_CONTACT_ID,
+  vonnFreightLossDisposition,
+  vonnFreightLossFor,
+  vonnFreightLossMapOffer,
+} from '../../data/vonnFreightLoss.js';
 import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
 
 /* ── lookup tables ──────────────────────────────────────────────────── */
@@ -696,6 +702,10 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
   }
   const state = ctx.state || {};
   if (contact && contact.id === DOSS_ARCHIVE_CONTACT_ID) return buildDossArchiveReply(choiceId, state);
+  if (contact && contact.id === VONN_FREIGHT_CONTACT_ID && choiceId === 'wrecks') {
+    const reply = buildVonnFreightLossReply(state);
+    if (reply) return reply;
+  }
   if (contact && contact.depthProgram) return buildDepthContactReply(contact, choiceId, ctx);
   // At Sker the canonical barkeep is also the authored Nestbreaker source. Let an unseen physical
   // wreck lead answer the explicit Rumors choice first; once its bearing exists this fails closed
@@ -986,6 +996,40 @@ export function openDossArchiveMap(ctx) {
   });
 }
 
+function buildVonnFreightLossReply(state) {
+  const caseFile = vonnFreightLossFor(state);
+  if (!caseFile) return null;
+  const custody = vonnFreightLossDisposition(caseFile);
+  if (caseFile.wreckStatus === 'completed') {
+    return {
+      text: `The Sker-Run freight loss is closed. ${custody} The wreck record is gone, so I will not point you at a ghost.`,
+    };
+  }
+  const mapOffer = vonnFreightLossMapOffer(state);
+  if (!mapOffer) {
+    return {
+      text: `I can corroborate the Sker-Run freight loss, but not a live wreck marker. ${custody}`,
+    };
+  }
+  return {
+    text: `The Sker-Run freight wreck is still where the aftermath record says it is. ${custody} I can show you the marker; it opens the map only and does not set a course.`,
+    vonnFreightLossMapOffer: mapOffer,
+  };
+}
+
+/** Optional, map-only Vonn handoff. The click rechecks the actual durable aftermath marker. */
+export function openVonnFreightLossMap(ctx) {
+  const offer = vonnFreightLossMapOffer(ctx && ctx.state);
+  if (!offer) return false;
+  return openGalaxyMap(ctx, {
+    focus: MAP_FOCUS.SYSTEM,
+    sectorId: offer.sectorId,
+    pos: offer.pos,
+    label: offer.label,
+    source: 'station-bar:vonn-freight-loss',
+  });
+}
+
 function buildDepthContactReply(contact, choiceId, ctx) {
   const choice = (contact.choices || []).find((entry) => entry.id === choiceId);
   if (!choice) return { text: contact.line || 'No answer.' };
@@ -1105,6 +1149,10 @@ export function createBarPanel(ctx) {
 
   /* ── click handler (dialog choices + mission accept) ──────────── */
   list.addEventListener('click', (ev) => {
+    if (ev.target.closest('[data-open-vonn-freight-loss-map]')) {
+      if (openVonnFreightLossMap(ctx)) ctx.bus.emit('audio:cue', { id: 'ui_open' });
+      return;
+    }
     if (ev.target.closest('[data-open-doss-archive-map]')) {
       if (openDossArchiveMap(ctx)) ctx.bus.emit('audio:cue', { id: 'ui_open' });
       return;
@@ -1272,7 +1320,7 @@ export function createBarPanel(ctx) {
 
     // Clear only the transient reply offer. Doss's all-sources map handoff is a durable, optional
     // archive reference and stays reachable after a different question is asked.
-    const oldOffer = reply.parentNode.querySelector('.st-bar-offer:not([data-doss-archive-map-offer])');
+    const oldOffer = reply.parentNode.querySelector('.st-bar-offer:not([data-doss-archive-map-offer]):not([data-vonn-freight-loss-map-offer])');
     if (oldOffer) oldOffer.remove();
 
     reply.textContent = result.text;
@@ -1368,6 +1416,26 @@ export function createBarPanel(ctx) {
         offerWrap.appendChild(mapButton);
         reply.after(offerWrap);
       }
+    } else if (result.vonnFreightLossMapOffer) {
+      if (!reply.parentNode.querySelector('[data-vonn-freight-loss-map-offer]')) {
+        const offerWrap = document.createElement('section');
+        offerWrap.className = 'st-bar-offer';
+        offerWrap.setAttribute('data-vonn-freight-loss-map-offer', '');
+        offerWrap.setAttribute('aria-label', 'Sker-Run freight wreck');
+        const note = document.createElement('div');
+        note.className = 'st-mission-preflight-warn st-bar-offer-warn';
+        note.textContent = 'Evidence marker only — opens the system map and does not set a course or create a mission.';
+        offerWrap.appendChild(note);
+        const mapButton = document.createElement('button');
+        mapButton.type = 'button';
+        mapButton.className = 'st-bar-accept-btn';
+        mapButton.setAttribute('data-open-vonn-freight-loss-map', '');
+        mapButton.textContent = 'OPEN SKER-RUN WRECK MAP';
+        mapButton.title = 'Open the system map at the verified Sker-Run freight wreck.';
+        mapButton.setAttribute('aria-label', mapButton.title);
+        offerWrap.appendChild(mapButton);
+        reply.after(offerWrap);
+      }
     } else if (result.surveyOffer) {
       const offer = result.surveyOffer;
       const offerWrap = document.createElement('div');
@@ -1414,6 +1482,9 @@ export function createBarPanel(ctx) {
       const dossMapOffer = c.id === DOSS_ARCHIVE_CONTACT_ID
         ? dossArchiveMapOffer(ctx.state || {})
         : null;
+      const vonnMapOffer = c.id === VONN_FREIGHT_CONTACT_ID
+        ? vonnFreightLossMapOffer(ctx.state || {})
+        : null;
       body.innerHTML =
         '<div class="st-bar-name">' + escapeHtml(c.name) +
           ' <span class="st-bar-role mono">' + escapeHtml(roleLabel) +
@@ -1434,6 +1505,26 @@ export function createBarPanel(ctx) {
           ? '<div class="st-bar-offer" data-doss-archive-map-offer><div class="st-mission-preflight-warn st-bar-offer-warn">Archive cross-reference only — opens the system map and does not set a course.</div><button type="button" class="st-bar-accept-btn" data-open-doss-archive-map aria-label="Open the system map at The Candle Fleet archive cross-reference.">OPEN CANDLE FLEET MAP</button></div>'
           : '') +
         '<div class="st-bar-reply mono" role="status" aria-live="polite" aria-atomic="true"></div>';
+
+      if (vonnMapOffer) {
+        const reply = body.querySelector('.st-bar-reply');
+        const offerWrap = document.createElement('section');
+        offerWrap.className = 'st-bar-offer';
+        offerWrap.setAttribute('data-vonn-freight-loss-map-offer', '');
+        offerWrap.setAttribute('aria-label', 'Sker-Run freight wreck');
+        const note = document.createElement('div');
+        note.className = 'st-mission-preflight-warn st-bar-offer-warn';
+        note.textContent = 'Evidence marker only — opens the system map and does not set a course or create a mission.';
+        const mapButton = document.createElement('button');
+        mapButton.type = 'button';
+        mapButton.className = 'st-bar-accept-btn';
+        mapButton.setAttribute('data-open-vonn-freight-loss-map', '');
+        mapButton.textContent = 'OPEN SKER-RUN WRECK MAP';
+        mapButton.title = 'Open the system map at the verified Sker-Run freight wreck.';
+        mapButton.setAttribute('aria-label', mapButton.title);
+        offerWrap.append(note, mapButton);
+        if (reply) body.insertBefore(offerWrap, reply);
+      }
 
       mountContactPortrait(avatarHost, c, { className: 'st-bar-avatar', size: 64, factionColor: fac && fac.color });
       card.appendChild(avatarHost);

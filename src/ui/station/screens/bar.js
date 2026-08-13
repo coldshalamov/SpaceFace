@@ -8,6 +8,7 @@ import {
   getChoices,
   buildReply,
   openDossArchiveMap,
+  openVonnFreightLossMap,
   availableSurveyOffer,
   surveyOfferLabel,
   missionBoardSlots,
@@ -25,6 +26,7 @@ import {
   TETHYS_BLACK_MARKET_DISCOVERY,
 } from '../../../data/frontierRumors.js';
 import { DOSS_ARCHIVE_CONTACT_ID, dossArchiveMapOffer } from '../../../data/dossArchive.js';
+import { VONN_FREIGHT_CONTACT_ID, vonnFreightLossMapOffer } from '../../../data/vonnFreightLoss.js';
 import { MAP_FOCUS, openGalaxyMap } from '../../mapAuthority.js';
 
 const fmt = (n) => Math.round(Number(n) || 0).toLocaleString('en-US');
@@ -158,6 +160,33 @@ export function createBarScreen(ctx) {
     `</section>`;
   }
 
+  // Unlike the legacy Doss string template above, this new case surface is composed from semantic
+  // nodes so all copy stays text and the map-only control has an explicit accessible name.
+  function appendVonnFreightLossMapOffer(state, contact) {
+    if (!contact || contact.id !== VONN_FREIGHT_CONTACT_ID || !vonnFreightLossMapOffer(state)) return;
+    const mount = stageEl.querySelector('.sx-talk');
+    if (!mount || mount.querySelector('[data-vonn-freight-loss-map-offer]')) return;
+    const offer = document.createElement('section');
+    offer.className = 'sx-bar-offer';
+    offer.setAttribute('data-vonn-freight-loss-map-offer', '');
+    offer.setAttribute('aria-label', 'Sker-Run freight wreck');
+    const stateLine = document.createElement('div');
+    stateLine.className = 'sx-bar-offer__state';
+    const heading = document.createElement('b');
+    heading.textContent = 'VERIFIED WRECK MARKER';
+    const copy = document.createElement('span');
+    copy.textContent = 'Evidence marker only — opens the system map and does not set a course or create a mission.';
+    stateLine.append(heading, copy);
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'sx-btn-primary';
+    button.setAttribute('data-open-vonn-freight-loss-map', '');
+    button.textContent = 'OPEN SKER-RUN WRECK MAP';
+    button.setAttribute('aria-label', 'Open the system map at the verified Sker-Run freight wreck.');
+    offer.append(stateLine, button);
+    mount.appendChild(offer);
+  }
+
   // ---------- rail ----------
   function renderRail(state) {
     const list = contacts(state);
@@ -211,6 +240,8 @@ export function createBarScreen(ctx) {
             : `<p class="sx-muted">They have nothing to say.</p>`) +
         `</div>` + missionOfferHtml(state) + frontierRumorOfferHtml() + tethysRumorGuidanceHtml(state) + dossArchiveMapOfferHtml(state, c) +
       `</div>`;
+
+    appendVonnFreightLossMapOffer(state, c);
 
     const big = stageEl.querySelector('[data-bigpic]');
     if (big) { try { mountContactPortrait(big, c, { className: 'sx-portrait sx-portrait--lg', size: 160 }); } catch (_) {} }
@@ -269,6 +300,10 @@ export function createBarScreen(ctx) {
   });
 
   stageEl.addEventListener('click', (ev) => {
+    if (ev.target.closest('[data-open-vonn-freight-loss-map]')) {
+      if (openVonnFreightLossMap(ctx) && ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_open' });
+      return;
+    }
     if (ev.target.closest('[data-open-doss-archive-map]')) {
       if (openDossArchiveMap(ctx) && ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_open' });
       return;

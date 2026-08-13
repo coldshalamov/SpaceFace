@@ -1,6 +1,8 @@
 // Pure station-contact memory helpers. The stationContacts system owns mutation; UI and checks use
 // these functions as read-only presenters so contact continuity survives without a second writer.
 
+import { normalizeVonnFreightLoss } from './vonnFreightLoss.js';
+
 export const STATION_CONTACT_MEMORY_VERSION = 1;
 export const STATION_CONTACT_COUNTER_VERSION = 1;
 
@@ -71,7 +73,8 @@ export function normalizeStationContactRecord(raw = {}) {
     }
   }
   const talkCount = boundedInt(source.talkCount, 0, 9999);
-  return {
+  const vonnFreightLoss = normalizeVonnFreightLoss(source.vonnFreightLoss);
+  const record = {
     schemaVersion: STATION_CONTACT_MEMORY_VERSION,
     met: source.met === true || talkCount > 0,
     talkCount,
@@ -88,6 +91,10 @@ export function normalizeStationContactRecord(raw = {}) {
       : 0,
     flags,
   };
+  // This is intentionally a single named subrecord rather than another general-purpose flag bag.
+  // It is valid only for the exact independent freight/aftermath identity accepted by its reader.
+  if (vonnFreightLoss) record.vonnFreightLoss = vonnFreightLoss;
+  return record;
 }
 
 export function stationContactMemoryFor(state, contactId) {
