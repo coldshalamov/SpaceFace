@@ -769,9 +769,17 @@ export const mining = {
   _releaseOre(ast, def, units, miner, richLotSource = null, asteroidData = null) {
     const beam = miner ? this._beamRuntime(miner) : null;
     const direct = !!(beam && beam.directToCargo) && miner && miner.id === this.state.playerId;
+    const rareOreChance = validRareOreChance(beam && beam.rareOreChance) && beam.rareOreChance > 0
+      ? beam.rareOreChance
+      : null;
+    const rareOreTier = asteroidOreTier(ast, def);
     const buckets = new Map(); // collapse a burst of N units into a few pickups / yields
     for (let i = 0; i < units; i++) {
-      const id = this._rollOre(def, ast);
+      // The Pulverizer's chance draw is part of the deterministic sim stream. A hit replaces this
+      // one ordinary unit's weighted result; it never manufactures a bonus unit or reroutes cargo.
+      const id = rareOreChance !== null && this.state.rng() < rareOreChance
+        ? richOreForTier(rareOreTier)
+        : this._rollOre(def, ast);
       if (!id) continue;
       buckets.set(id, (buckets.get(id) || 0) + 1);
     }
@@ -1677,6 +1685,16 @@ function richOreForTier(tier) {
   const rare = sorted.find((ore) => ore.tier >= target && ore.tags && ore.tags.includes('rare'));
   const tiered = sorted.find((ore) => ore.tier >= target);
   return (rare || tiered || sorted[sorted.length - 1] || { id: 'cmdty_ore_iron' }).id;
+}
+
+function validRareOreChance(value) {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1;
+}
+
+function asteroidOreTier(ast, def) {
+  const tier = ast && ast.data && ast.data.tier;
+  if (Number.isFinite(tier)) return tier;
+  return Number.isFinite(def && def.tierCap) ? def.tierCap : 0;
 }
 
 export function richCorePlan(seed, asteroid, def = null) {

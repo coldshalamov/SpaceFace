@@ -20,6 +20,7 @@ import {
 } from '../src/systems/mining.js';
 import { ASTEROIDS, ORES } from '../src/data/mining.js';
 import { COMMODITIES } from '../src/data/commodities.js';
+import { fittingsFromDefaultModules, makeShipEntitySpec, ships } from '../src/systems/ships.js';
 import { world } from '../src/systems/world.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -85,6 +86,82 @@ function resetAsteroid(ast, hp = 100) {
   ast.data.oreHPMax = hp;
   ast.data.pctEjected = 0;
   ast.data._oreCarry = 0;
+}
+
+function cargoUnitCount(cargoState) {
+  return Object.values(cargoState.items).reduce((total, qty) => total + qty, 0);
+}
+
+function checkPulverizerRareOreChance() {
+  const pulverizerId = 'mod_mining_pulverizer_l';
+  const fitted = fittingsFromDefaultModules('ship_ironback', [pulverizerId]);
+  assert(fitted.includes(pulverizerId), 'the L Pulverizer must occupy an Ironback L mining slot');
+
+  // The public ship owner projection is what the live player entity receives on a refit.
+  const shipSim = createSimulation({ seed: 9211, systems: [ships], updateOrder: [] });
+  const { state: shipState } = shipSim;
+  shipState.player.ownedShips = [{ defId: 'ship_ironback', fittings: fitted.slice() }];
+  const fittedPlayer = shipSim.spawn(makeShipEntitySpec('ship_ironback', { fittings: fitted, isPlayer: true }));
+  shipState.playerId = fittedPlayer.id;
+  const shipsSys = shipSim.registry.get('ships');
+  shipsSys.recomputeEntity(fittedPlayer.id);
+  assert.equal(fittedPlayer.data.miningBeam.rareOreChance, 0.10,
+    'a compatible fitted Pulverizer must project its advertised 10% chance onto data.miningBeam');
+
+  shipState.player.ownedShips[0].fittings = fitted.map(() => null);
+  shipsSys.recomputeEntity(fittedPlayer.id);
+  assert.equal(Object.prototype.hasOwnProperty.call(fittedPlayer.data.miningBeam, 'rareOreChance'), false,
+    'unfitting and recomputing must clear the stale Pulverizer chance from the active beam');
+
+  const incompatible = fittingsFromDefaultModules('ship_kestrel', ['mod_mining_laser_s']);
+  incompatible[incompatible.indexOf('mod_mining_laser_s')] = pulverizerId;
+  const incompatibleSpec = makeShipEntitySpec('ship_kestrel', { fittings: incompatible, isPlayer: true });
+  assert.equal(Object.prototype.hasOwnProperty.call(incompatibleSpec.data.miningBeam, 'rareOreChance'), false,
+    'an L Pulverizer placed in an incompatible S mining slot must fail closed');
+
+  const release = (rareOreChance, rolls) => {
+    const { sim, state, player, miningSys } = boot(9212);
+    state.player.cargo.capVolume = 100000;
+    player.data.miningBeam = {
+      tierId: 'beam_mk3', dps: 48, range: 360, directToCargo: true, rareOreChance,
+    };
+    const ast = spawnAsteroid(sim, { yieldU: 3 });
+    ast.data.tier = 3;
+    const draws = [];
+    state.rng = () => {
+      assert(draws.length < rolls.length, 'rare-ore check consumed an unexpected RNG draw');
+      const roll = rolls[draws.length];
+      draws.push(roll);
+      return roll;
+    };
+    miningSys._releaseOre(ast, {
+      tierCap: 0,
+      oreTable: { cmdty_silicate: 0.7, cmdty_ore_iron: 0.3 },
+    }, 3, player);
+    return { cargo: state.player.cargo, draws };
+  };
+
+  const hit = release(0.10, [0.05, 0.05, 0.05]);
+  assert.equal(hit.cargo.items.cmdty_exotic_amazonite, 3,
+    'a forced 10% chance hit must substitute the tier-aware richOreForTier result');
+  assert.equal(cargoUnitCount(hit.cargo), 3, 'rare substitutions must not change released quantity');
+  assert.equal(hit.draws.length, 3, 'each forced hit consumes one deterministic chance draw per unit');
+
+  const miss = release(0.10, [0.90, 0.95, 0.90, 0.95, 0.90, 0.95]);
+  assert.equal(miss.cargo.items.cmdty_ore_iron, 3,
+    'a forced chance miss must retain the ordinary weighted ore result');
+  assert.equal(cargoUnitCount(miss.cargo), 3, 'forced misses must preserve released quantity');
+  assert.equal(miss.draws.length, 6,
+    'each forced miss consumes its chance draw plus the deterministic weighted-roll draw');
+
+  const malformed = release('0.10', [0.95, 0.95, 0.95]);
+  assert.equal(malformed.cargo.items.cmdty_ore_iron, 3,
+    'non-primitive rareOreChance values must fail closed to ordinary weighted ore');
+  assert.equal(malformed.draws.length, 3, 'a malformed chance must not consume chance-roll draws');
+
+  const zero = release(0, [0.95, 0.95, 0.95]);
+  assert.equal(zero.cargo.items.cmdty_ore_iron, 3, 'a zero chance keeps the ordinary weighted result');
+  assert.equal(zero.draws.length, 3, 'a zero chance must not perturb the ordinary RNG stream');
 }
 
 function setPlayerForContact(state, player, ast, angle, distance = 180) {
@@ -505,6 +582,7 @@ function checkYieldFloatingTextNamesCommodity() {
 }
 
 checkWorldSpawnSeams();
+checkPulverizerRareOreChance();
 checkSeamYield();
 checkBeamHeatLocksOutAndRecovers();
 checkVentBonusPaysRealOre();

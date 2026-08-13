@@ -689,11 +689,18 @@ export function fittingsFromDefaultModules(defId, moduleIds) {
   return fittings;
 }
 
+function validRareOreChance(value) {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1;
+}
+
 /** Resolve the equipped mining laser into data.miningBeam, defaulting the player Kestrel to mk1. */
 function buildMiningBeam(shipDef, fittings, isPlayer) {
-  const { equipped } = resolveFittings(shipDef, fittings);
+  const { slots, equipped } = resolveFittings(shipDef, fittings);
   let mod = null;
-  for (const d of equipped) if (d && d.slotType === 'mining') { mod = d; break; }
+  for (let i = 0; i < equipped.length; i++) {
+    const d = equipped[i];
+    if (d && d.slotType === 'mining' && fits(slots[i], d)) { mod = d; break; }
+  }
   let beam = null;
   if (mod) {
     // map the mining module's dps onto the canonical beam tier table (§0.11)
@@ -701,6 +708,7 @@ function buildMiningBeam(shipDef, fittings, isPlayer) {
     return {
       tierId: beam ? beam.id : DEFAULT_MINING_BEAM_TIER,
       dps: mod.dps, range: mod.range, directToCargo: !!mod.directToCargo,
+      ...(validRareOreChance(mod.rareOreChance) ? { rareOreChance: mod.rareOreChance } : {}),
     };
   }
   if (isPlayer) {
