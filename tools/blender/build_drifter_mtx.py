@@ -17,13 +17,15 @@ ROOT = TOOLS.parents[1]
 if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
 from fleet_construction import (  # noqa: E402
-    add_flared_bell,
     add_manufactured_drive,
     add_overlap_plate,
     add_rcs_cluster,
     add_sensor_dish,
     apply_modifiers,
+    boolean_cut_cylinder,
     cut_open_bay,
+    cut_slot_bank,
+    densify_ring,
     station_ring,
 )
 
@@ -314,6 +316,17 @@ def loft_from_rings(name, rings, material, collection, bevel, cap=True):
     return finish_mesh(obj, material, bevel)
 
 
+def subdivide_once(obj):
+    apply_modifiers(obj)
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    bmesh.ops.subdivide_edges(bm, edges=list(bm.edges), cuts=1)
+    bm.to_mesh(obj.data)
+    bm.free()
+    obj.data.update()
+    return obj
+
+
 def ellipse_ring(x, y, z, rx, rz, sides=16):
     return [
         (x, y + math.cos(math.tau * i / sides) * rx, z + math.sin(math.tau * i / sides) * rz)
@@ -595,6 +608,7 @@ def build_lod(lod, mats):
         cut_open_bay(hull_obj, "Cargo", (-0.20, 0.0, -0.72), 1.65, 0.72, 0.42, (0, 0, -1), mats, collection, kit="rack")
         hull_obj.data.materials.clear()
         hull_obj.data.materials.append(hull)
+    add_box("HullKeel", (0.10, 0.0, -0.58), (3.8, 0.28, 0.10), hull, collection, 0.012)
     inset_large_faces(hull_obj, thickness=0.05, depth=0.02, min_area=0.16)
 
     add_thin_canopy("Canopy", 3.55, 0.0, 0.92, 1.25, 0.48, 0.32, mats, collection)
@@ -606,7 +620,7 @@ def build_lod(lod, mats):
             diamond_ring(-6.0, 1.55 * sign, 0.08, 0.46, 0.36),
             diamond_ring(-6.85, 1.55 * sign, 0.08, 0.36, 0.28),
         ], armor, collection, 0.012)
-        add_flared_bell(side, -7.15, 1.55 * sign, 0.08, 1.05, mats, collection)
+        add_manufactured_drive(side, -7.05, 1.55 * sign, lod, mats, collection, scale=0.88, z=0.08)
         add_cylinder(f"NacelleCollar_{side}", (-6.55, 1.55 * sign, 0.08), 0.34, 0.12, ceramic, collection, vertices=14, bevel=0.006)
         add_box(f"NacelleSaddlePad_{side}", (-6.20, 1.55 * sign, -0.18), (0.38, 0.14, 0.08), mech, collection, 0.003)
         loft_from_rings(f"NacelleSaddle_{side}", [
@@ -618,7 +632,7 @@ def build_lod(lod, mats):
             airfoil_ring(-0.85, 1.28 * sign, 0.12, 1.45, 0.28),
             airfoil_ring(-1.25, 1.85 * sign, 0.28, 1.15, 0.18),
             airfoil_ring(-1.65, 2.45 * sign, 0.42, 0.82, 0.10),
-            airfoil_ring(-2.05, 3.05 * sign, 0.55, 0.48, 0.05),
+            airfoil_ring(-2.05, 3.05 * sign, 0.55, 0.48, 0.10),
         ], hull, collection, 0.008)
         loft_from_rings(f"WingRoot_{side}", [
             airfoil_ring(-0.70, 1.05 * sign, 0.10, 1.35, 0.32),

@@ -17,13 +17,14 @@ ROOT = TOOLS.parents[1]
 if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
 from fleet_construction import (  # noqa: E402
-    add_flared_bell,
     add_manufactured_drive,
     add_overlap_plate,
     add_rcs_cluster,
     add_sensor_dish,
     apply_modifiers,
     cut_open_bay,
+    cut_slot_bank,
+    densify_ring,
     station_ring,
 )
 
@@ -599,15 +600,15 @@ def build_lod(lod, mats):
     # C7 explorer hull: needle → cabin shoulder → survey deck → waist → transom.
     # Mid station must not equal bow. Not a sausage taper.
     hull_obj = loft_from_rings("Pressure_Hull", [
-        station_ring(half, 0, 0.06, 0.18, 0.14, flat=0.05, box=0.05, keel=1.00),
-        station_ring(7.20, 0, 0.10, 0.36, 0.30, flat=0.20, box=0.15, keel=0.90),
-        station_ring(5.35, 0, 0.16, 0.58, 0.52, flat=0.45, box=0.30, keel=0.80),
-        station_ring(3.35, 0, 0.30, 0.72, 1.00, flat=0.95, box=0.42, keel=0.62),
-        station_ring(1.15, 0, 0.14, 1.18, 0.70, flat=0.40, box=0.70, keel=0.60),
-        station_ring(-1.05, 0, 0.10, 1.32, 0.56, flat=0.22, box=0.88, keel=0.48),
-        station_ring(-3.45, 0, 0.12, 1.00, 0.68, flat=0.28, box=0.90, keel=0.35),
-        station_ring(-5.85, 0, 0.12, 0.86, 0.72, flat=0.32, box=0.96, keel=0.28),
-        station_ring(-8.15, 0, 0.08, 0.58, 0.48, flat=0.30, box=0.92, keel=0.22),
+        densify_ring(station_ring(half, 0, 0.06, 0.18, 0.14, flat=0.05, box=0.05, keel=1.00)),
+        densify_ring(station_ring(7.20, 0, 0.10, 0.36, 0.30, flat=0.20, box=0.15, keel=0.90)),
+        densify_ring(station_ring(5.35, 0, 0.16, 0.58, 0.52, flat=0.45, box=0.30, keel=0.80)),
+        densify_ring(station_ring(3.35, 0, 0.30, 0.72, 1.00, flat=0.95, box=0.42, keel=0.62)),
+        densify_ring(station_ring(1.15, 0, 0.14, 1.18, 0.70, flat=0.40, box=0.70, keel=0.60)),
+        densify_ring(station_ring(-1.05, 0, 0.10, 1.32, 0.56, flat=0.22, box=0.88, keel=0.48)),
+        densify_ring(station_ring(-3.45, 0, 0.12, 1.00, 0.68, flat=0.28, box=0.90, keel=0.35)),
+        densify_ring(station_ring(-5.85, 0, 0.12, 0.86, 0.72, flat=0.32, box=0.96, keel=0.28)),
+        densify_ring(station_ring(-8.15, 0, 0.08, 0.58, 0.48, flat=0.30, box=0.92, keel=0.22)),
     ], hull, collection, 0.016)
     if lod <= 1:
         cut_open_bay(hull_obj, "Cockpit", (3.35, 0.0, 1.18), 1.45, 0.56, 0.55, (0, 0, 1), mats, collection, kit="cockpit", liner=False)
@@ -616,6 +617,8 @@ def build_lod(lod, mats):
         cut_open_bay(hull_obj, "Cargo", (-0.20, 0.0, -0.72), 1.65, 0.72, 0.42, (0, 0, -1), mats, collection, kit="rack")
         boolean_cut(hull_obj, "TransomRecess", (-8.05, 0.0, 0.08), (0.18, 0.28, 0.20))
         boolean_cut(hull_obj, "KeelChannel", (-2.40, 0.0, -0.78), (2.20, 0.10, 0.10))
+        cut_slot_bank(hull_obj, "PortRad", (-2.40, -1.05, 0.22), 6, (0.050, 0.16, 0.11), 0.32)
+        cut_slot_bank(hull_obj, "StbdRad", (-2.40, 1.05, 0.22), 6, (0.050, 0.16, 0.11), 0.32)
         hull_obj.data.materials.clear()
         hull_obj.data.materials.append(hull)
     inset_large_faces(hull_obj, thickness=0.05, depth=0.02, min_area=0.16)
@@ -629,7 +632,7 @@ def build_lod(lod, mats):
             diamond_ring(-6.95, 1.20 * sign, 0.08, 0.32, 0.26),
             diamond_ring(-7.62, 1.20 * sign, 0.08, 0.24, 0.20),
         ], armor, collection, 0.010)
-        add_flared_bell(side, -7.85, 1.20 * sign, 0.08, 0.95, mats, collection)
+        add_manufactured_drive(side, -7.75, 1.20 * sign, lod, mats, collection, scale=0.82, z=0.08)
         add_cylinder(f"DriveCollar_{side}", (-7.40, 1.20 * sign, 0.08), 0.28, 0.10, ceramic, collection, vertices=14, bevel=0.006)
         add_box(f"DriveHouseBand_{side}", (-6.25, 1.20 * sign, 0.08), (0.06, 0.30, 0.22), armor, collection, 0.003)
         loft_from_rings(f"DriveSaddle_{side}", [
