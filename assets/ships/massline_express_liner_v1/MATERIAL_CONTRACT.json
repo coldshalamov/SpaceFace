@@ -1,0 +1,133 @@
+{
+  "schemaVersion": "1.0",
+  "assetId": "SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1",
+  "candidateState": "blockout",
+  "scope": "PQ-049.01 G0 pre-authoring material/shape contract only; no source candidate, authored output, or review evidence exists yet",
+  "componentReferenceDecision": "not_needed",
+  "allSupportedViewZonesClassified": false,
+  "supportedViews": [
+    "neutral_front3q",
+    "neutral_rear3q",
+    "starboard_side",
+    "top",
+    "underside",
+    "grazing_starboard",
+    "clay_front3q",
+    "material_id_front3q",
+    "dark_space_rear3q",
+    "probe_32px",
+    "probe_52px",
+    "probe_120px"
+  ],
+  "textureStrategy": {
+    "format": "planned portable embedded PNG in source GLB plus editable PNGs in textures/ after source implementation",
+    "roles": ["baseColor_sRGB", "orm_noncolor", "normal_noncolor"],
+    "uvStrategy": "The future builder must give each render mesh a deterministic, per-object UVMap projection. It is a planned way to bind portable role maps, not a G3 pass; checker/stretch review remains pending.",
+    "materialModel": "planned glTF metallic-roughness with per-role response rather than a recolored common shader",
+    "wearRule": "Wear is restricted to dock contact, tether contact, cassette latch, heat-throat, and service-handling regions; there is no global dirt layer."
+  },
+  "visibleZoneRegister": [
+    {
+      "zone": "central_pressure_drum",
+      "disposition": "billed",
+      "supportedViews": ["neutral_front3q", "neutral_rear3q", "starboard_side", "top", "grazing_starboard", "clay_front3q", "material_id_front3q", "dark_space_rear3q", "probe_32px", "probe_120px"],
+      "dominatesSupportedView": true,
+      "materials": ["MAT_SF_Massline_CeramicPaint_WarmIvory"],
+      "functionOriginAndServiceContext": "ART EXTRAPOLATION: formed passenger pressure shell maintained between dock calls.",
+      "substrateManufactureAndFinish": "formed alloy pressure vessel beneath a warm off-white ceramic-paint system with local repairable seam bands",
+      "interfacesLoadAccessAndHeatPaths": "bulkhead stations carry the wedge, docking jambs, dorsal spine roots, and keel brackets; ceramic remains continuous across quiet plate",
+      "expectedOpticalResponse": "non-metallic low-sheen coating; warm broad highlights with sparse local scuffing rather than plastic gloss",
+      "forbiddenReads": ["generic white plastic", "luxury yacht gelcoat", "uniform grime", "blank cylinder"]
+    },
+    {
+      "zone": "forward_operations_wedge_and_frame",
+      "disposition": "billed",
+      "supportedViews": ["neutral_front3q", "starboard_side", "top", "clay_front3q", "material_id_front3q", "probe_32px", "probe_120px"],
+      "dominatesSupportedView": true,
+      "materials": ["MAT_SF_Massline_Frame_DarkAnodized", "MAT_SF_Massline_Glazing_SmokedSafety"],
+      "functionOriginAndServiceContext": "framed boarding/operations enclosure ahead of the passenger pressure bulkhead",
+      "substrateManufactureAndFinish": "forged/anodized structural rails around laminated smoked safety glazing",
+      "interfacesLoadAccessAndHeatPaths": "rails bridge the pressure shoulder; panes are seated inside a frame rather than laid on a hull",
+      "expectedOpticalResponse": "dark satin frame with restrained directional highlights; translucent blue-grey glass distinct from painted or metallic surfaces",
+      "forbiddenReads": ["black painted nose", "futuristic neon canopy", "fighter cockpit", "floating glass cards"]
+    },
+    {
+      "zone": "low_service_cassette",
+      "disposition": "billed",
+      "supportedViews": ["neutral_front3q", "neutral_rear3q", "starboard_side", "underside", "grazing_starboard", "material_id_front3q", "probe_32px", "probe_120px"],
+      "dominatesSupportedView": false,
+      "materials": ["MAT_SF_Massline_ServicePrimer_Galvanized"],
+      "functionOriginAndServiceContext": "ART EXTRAPOLATION: sealed luggage and maintenance access envelope, not freight capacity",
+      "substrateManufactureAndFinish": "folded galvanized sheet with dull repair primer at removable latch panels",
+      "interfacesLoadAccessAndHeatPaths": "hangs from the keel/double-bulkhead structure; latches and drains identify service access",
+      "expectedOpticalResponse": "dull galvanised/primer panel response with small hand-contact variation, never polished or cargo-container saturated",
+      "forbiddenReads": ["freight pod", "container stack", "cargo manifest", "full-hull rust"]
+    },
+    {
+      "zone": "dark_keel_and_tether_saddle",
+      "disposition": "billed",
+      "supportedViews": ["neutral_front3q", "neutral_rear3q", "underside", "grazing_starboard", "clay_front3q", "material_id_front3q", "probe_32px", "probe_52px", "probe_120px"],
+      "dominatesSupportedView": true,
+      "materials": ["MAT_SF_Massline_Keel_ForgedDark", "MAT_SF_Massline_Frame_DarkAnodized"],
+      "functionOriginAndServiceContext": "reinforced non-passenger-facing Massline latch/load transfer assembly",
+      "substrateManufactureAndFinish": "forged dark alloy saddle cheeks, machined bridge pad, anodized structural frame",
+      "interfacesLoadAccessAndHeatPaths": "saddle brackets key into keel and pressure bulkhead stations with visible gussets; contact pad is isolated from boarding faces",
+      "expectedOpticalResponse": "dense dark metal with more directional roughness than the painted hull and restrained contact-polish only at the tether pad",
+      "forbiddenReads": ["decorative ring", "floating tether point", "rubber hose", "black plastic"]
+    },
+    {
+      "zone": "port_starboard_docking_and_service_interfaces",
+      "disposition": "billed",
+      "supportedViews": ["neutral_front3q", "neutral_rear3q", "starboard_side", "top", "grazing_starboard", "material_id_front3q", "probe_120px"],
+      "dominatesSupportedView": false,
+      "materials": ["MAT_SF_Massline_Frame_DarkAnodized", "MAT_SF_Massline_CeramicPaint_WarmIvory", "MAT_SF_Massline_WayfindingCyan", "MAT_SF_Massline_WayfindingAmber"],
+      "functionOriginAndServiceContext": "separate station docking and service contacts on both sides of a passenger vessel",
+      "substrateManufactureAndFinish": "ceramic jambs around a dark recessed socket floor, replaceable bolt frame and protected indicator fixture",
+      "interfacesLoadAccessAndHeatPaths": "rooted in a bulkhead seam, fed by the dorsal service spine, deliberately clear of the passenger glazing",
+      "expectedOpticalResponse": "recessed dark depth, tactile ceramic frame, low-luminance cyan/amber only inside small fixtures",
+      "forbiddenReads": ["painted rectangle", "cargo hatch", "neon stripe", "symmetrical fake port"]
+    },
+    {
+      "zone": "dorsal_cooling_service_spine",
+      "disposition": "billed",
+      "supportedViews": ["neutral_rear3q", "top", "grazing_starboard", "clay_front3q", "material_id_front3q", "probe_120px"],
+      "dominatesSupportedView": false,
+      "materials": ["MAT_SF_Massline_Frame_DarkAnodized", "MAT_SF_Massline_ServicePrimer_Galvanized"],
+      "functionOriginAndServiceContext": "formed cooling and service route from passenger systems to aft drive roots",
+      "substrateManufactureAndFinish": "folded hat-section covers with dark anodized roots and dull removable service plates",
+      "interfacesLoadAccessAndHeatPaths": "three broad covers bridge bulkhead stations and terminate inside drive-root housings",
+      "expectedOpticalResponse": "dry satiny dark frame and dull service plates; slot depth must read before any emission",
+      "forbiddenReads": ["fin forest", "floating greebles", "generic antenna spine", "toy ribs"]
+    },
+    {
+      "zone": "aft_drive_booms_and_recessed_throats",
+      "disposition": "billed",
+      "supportedViews": ["neutral_rear3q", "starboard_side", "top", "underside", "grazing_starboard", "clay_front3q", "material_id_front3q", "dark_space_rear3q", "probe_32px", "probe_52px", "probe_120px"],
+      "dominatesSupportedView": true,
+      "materials": ["MAT_SF_Massline_Frame_DarkAnodized", "MAT_SF_Massline_RefractoryHeatAlloy", "MAT_SF_Massline_WayfindingCyan"],
+      "functionOriginAndServiceContext": "paired aft propulsion assemblies with protected heat-throat liners",
+      "substrateManufactureAndFinish": "tapered dark alloy boom housing around dry refractory liner and low-luminance engine core",
+      "interfacesLoadAccessAndHeatPaths": "booms root at the keel and dorsal spine; interior liners sit behind visible rims with vent/service connection",
+      "expectedOpticalResponse": "dark satin boom, dry rough refractory, faint recessed cyan core; heat concentration is local to throat interiors",
+      "forbiddenReads": ["glowing disk", "neon thruster", "smooth tube", "plastic nozzle"]
+    },
+    {
+      "zone": "wayfinding_fixtures_and_sparse_markings",
+      "disposition": "billed",
+      "supportedViews": ["neutral_front3q", "starboard_side", "top", "material_id_front3q", "dark_space_rear3q", "probe_120px"],
+      "dominatesSupportedView": false,
+      "materials": ["MAT_SF_Massline_WayfindingCyan", "MAT_SF_Massline_WayfindingAmber"],
+      "functionOriginAndServiceContext": "boarding and service orientation aids only; no corporate luxury skin",
+      "substrateManufactureAndFinish": "recessed colored indicator inserts behind dark frames",
+      "interfacesLoadAccessAndHeatPaths": "mounted at actual hatches, spine access panels, and engine-state fixture recesses",
+      "expectedOpticalResponse": "small, low-power color accents visible against dark space without bloom dominance",
+      "forbiddenReads": ["neon skin", "unmotivated stripes", "full-hull glow"]
+    }
+  ],
+  "knownOpenItems": [
+    "No authored Blender source, source GLB, LOD, texture, capture, candidate hash, or hash-bound visual evidence exists yet; all are pending implementation.",
+    "Whole-asset G1/G2/G4 have no result. Independent visual review remains pending after an exact candidate and matched evidence exist.",
+    "G3 needs an independent checker/stretch and authored-density review; planned UV generation is not a self-pass.",
+    "G5/G6/G7 and real Browser/Electron route proof belong to later PQ-049 leaves."
+  ]
+}
