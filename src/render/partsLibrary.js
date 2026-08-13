@@ -872,10 +872,12 @@ const HULL_FILE_BY_DEF_ID = Object.freeze({
 const WHOLE_SHIP_FILE_BY_DEF_ID = Object.freeze({
   'ship_kestrel': 'wholeships/kestrel.glb',
   'ship_wasp': 'wholeships/wasp_production_v1.glb',
+  'ship_pelican': 'wholeships/pelican_production_v1.glb',
 });
 const WHOLE_SHIP_ASSET_ID_BY_DEF_ID = Object.freeze({
   'ship_kestrel': 'SF_K0_KESTREL_BORROWED_TIME_V4',
   'ship_wasp': 'SF_WASP_PRODUCTION_V1',
+  'ship_pelican': 'SF_PELICAN_PRODUCTION_V1',
 });
 // V4 is authored as three independent GLBs so the runtime can retain only the selected level.
 // The current whole-ship seam accepts one file, therefore LOD0 is canonical live truth while the
@@ -891,6 +893,11 @@ const WHOLE_SHIP_LOD_FAMILY_BY_DEF_ID = Object.freeze({
     lod0: 'wholeships/wasp_production_v1.glb',
     lod1: 'wholeships/wasp_production_v1_lod1.glb',
     lod2: 'wholeships/wasp_production_v1_lod2.glb',
+  }),
+  ship_pelican: Object.freeze({
+    lod0: 'wholeships/pelican_production_v1.glb',
+    lod1: 'wholeships/pelican_production_v1_lod1.glb',
+    lod2: 'wholeships/pelican_production_v1_lod2.glb',
   }),
 });
 // Reach hostiles are selected by their authoritative combat archetype, not by ship def: several

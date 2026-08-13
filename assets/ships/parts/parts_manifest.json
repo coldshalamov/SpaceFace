@@ -3713,6 +3713,48 @@
       "note": "Accepted production Wasp. New SpaceFace-authored fighter body with seven semantic material draws, authored 11.5k/7.7k/5.4k LODs, compact dark canopy, bounded tone-mapped twin drive apertures, no embedded plume, and exact first-party provenance at assets/ships/wasp_production_v1/PROVENANCE.json. Canonical public Shipyard -> Undock -> save -> Continue visual acceptance passed 2026-07-14; receipt: .devshots/alpha/m5-role-public-route-v2/evidence.json."
     },
     {
+      "id": "wholeship_pelican_production_v1",
+      "assetId": "SF_PELICAN_PRODUCTION_V1",
+      "category": "wholeships",
+      "priority": "P0",
+      "file": "wholeships/pelican_production_v1.glb",
+      "lodFamily": {
+        "lod0": "wholeships/pelican_production_v1.glb",
+        "lod1": "wholeships/pelican_production_v1_lod1.glb",
+        "lod2": "wholeships/pelican_production_v1_lod2.glb"
+      },
+      "status": "integration_candidate",
+      "wiringStatus": "live_player_pelican",
+      "tris": 21020,
+      "bytes": 1006656,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "warning": "Material_Warning",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Weapon_Front",
+        "SOCKET_Mining_Front",
+        "SOCKET_Engine_Main",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Camera_Focus",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard"
+      ],
+      "mount": "origin",
+      "note": "Fleet remaster production Pelican. Distinct prospector wholeship so Pelican no longer shares the Ironback barge silhouette. Chamfered plate hull, twin axial ion drives, cutter arms, starboard filter drums. Not self-accepted. Provenance: assets/ships/pelican_production_v1/."
+    },
+    {
       "id": "place_dock_interior",
       "category": "places",
       "priority": "P0",

@@ -1,0 +1,316 @@
+{
+  "schema": "spaceface.pelicanProductionV1.build.v1",
+  "packet": "SF-PELICAN-PRODUCTION-V1-001",
+  "assetId": "SF_PELICAN_PRODUCTION_V1",
+  "status": "isolated_candidate",
+  "iteration": 3,
+  "textureSourceHashes": {
+    "hull_basecolor.png": "20898063BB3FF76D68D72A86C8BFDF5A9F24A96684FAD9001816997F0BF8CA43",
+    "hull_normal.png": "C7B2BA2B829E33032C4FFA8239C65533EDA654A3688E82B1936DF51C3267A0ED",
+    "hull_orm.png": "0818D38FC2926D4113ADF607E3DB2CE17B36447CE72A927379E7280D4979F499",
+    "armor_dark_basecolor.png": "E43603145665D77FFF1DA0C0D96112A17D405C000BBC96E16E07A4BBA08DDA4F",
+    "armor_dark_normal.png": "530685F6C6FB885DCA92B866598D5E351F77D882B17A3C087EE682EB7183A218",
+    "armor_dark_orm.png": "BDD576610491BF1C1DB675716E6E0B37BEDD1528A3C481AA6CCED19C9933CD0B",
+    "mechanical_basecolor.png": "2F05EA260EA0063D67A2B2EC1DD41D7A4CF897A6744F6527A1B19C85513394B7",
+    "mechanical_normal.png": "E767DFBF00F7F79C0E012A5C0B29DB66BE74A010583BF864E8AC3BC9EDC1B157",
+    "mechanical_orm.png": "66C5B7FF047B658342AAE754BAFFEDABBED0935D6146F9F729C44AF8E8417715",
+    "frontier_cyan_basecolor.png": "C40E3AD27C9BA821CCD6E5955962081596149F79D41B0407052D317C080213EA",
+    "frontier_cyan_normal.png": "707A3B4B35E04784704F7FAB297A97A5F57BC2171FC208E567BD7D7711F5A54C",
+    "frontier_cyan_orm.png": "B349B43D66D7C20CD554A675D8AE51645ED91F2E5E7E2D46E4F78B1499E245B2",
+    "warning_orange_basecolor.png": "2D416CB20B1C41FF173A4E0D46B447AA5F742217F067CD286626405C2FCA51E0",
+    "warning_orange_normal.png": "3406FB09AA7DD654D21C5F480A18644B5BCBEA1FBA1E7EBD33964D2961F99900",
+    "warning_orange_orm.png": "C6D785BB86C39BACFBA6A6F9C76E017C5747B8CE2A56D49FFA559DABBBC4300B"
+  },
+  "productionBlend": "blender/pelican_production_v1.blend",
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 21020,
+      "hullTriangles": 2148,
+      "draws": 9,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "meshNodes": [
+        "LOD0_Accent",
+        "LOD0_Armor",
+        "LOD0_Canopy",
+        "LOD0_Ceramic",
+        "LOD0_Hull",
+        "LOD0_Mechanical",
+        "LOD0_Radiator",
+        "LOD0_Thruster",
+        "LOD0_Warning"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "embeddedPlume": false,
+      "path": "source/wholeships/pelican_production_v1_lod0.glb",
+      "bytes": 1008100,
+      "sha256": "871C6C1854F32829A0980567532AE955AB6F956354B702A7661316A0BF282368"
+    },
+    {
+      "lod": 1,
+      "triangles": 11824,
+      "hullTriangles": 2148,
+      "draws": 9,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "meshNodes": [
+        "LOD1_Accent",
+        "LOD1_Armor",
+        "LOD1_Canopy",
+        "LOD1_Ceramic",
+        "LOD1_Hull",
+        "LOD1_Mechanical",
+        "LOD1_Radiator",
+        "LOD1_Thruster",
+        "LOD1_Warning"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "embeddedPlume": false,
+      "path": "source/wholeships/pelican_production_v1_lod1.glb",
+      "bytes": 558924,
+      "sha256": "58C7AC6AC0F8038794AAE485CC503B4D4D5E94FF65460A5F23C0A180F4A2DC5D"
+    },
+    {
+      "lod": 2,
+      "triangles": 9664,
+      "hullTriangles": 2148,
+      "draws": 8,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "meshNodes": [
+        "LOD2_Accent",
+        "LOD2_Armor",
+        "LOD2_Canopy",
+        "LOD2_Ceramic",
+        "LOD2_Hull",
+        "LOD2_Mechanical",
+        "LOD2_Thruster",
+        "LOD2_Warning"
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Engine_Main",
+        "SOCKET_Mining_Front",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Weapon_Front"
+      ],
+      "embeddedPlume": false,
+      "path": "source/wholeships/pelican_production_v1_lod2.glb",
+      "bytes": 452360,
+      "sha256": "75162BD5CDB2845017661D56EB826EC4E35A1FB8291E753E739A4E6BDEECA2B5"
+    }
+  ],
+  "renders": [
+    {
+      "view": "pelican_three_quarter",
+      "path": "evidence/iter03/pelican_three_quarter.png",
+      "bytes": 989387,
+      "sha256": "67D7D20CE9FBD1D98FE18B1E330D370655FA129F4BDA7773A0F112C167D19056",
+      "camera": [
+        18,
+        -20,
+        10
+      ],
+      "target": [
+        0,
+        0,
+        0.2
+      ],
+      "lensMm": 52
+    },
+    {
+      "view": "pelican_starboard",
+      "path": "evidence/iter03/pelican_starboard.png",
+      "bytes": 1068398,
+      "sha256": "69AE9B59B748744218205AD63C41A722BE88ED4E2F52DF143FB8238E57D56DCE",
+      "camera": [
+        16,
+        20,
+        9
+      ],
+      "target": [
+        0,
+        0.4,
+        0.1
+      ],
+      "lensMm": 52
+    },
+    {
+      "view": "pelican_front",
+      "path": "evidence/iter03/pelican_front.png",
+      "bytes": 968748,
+      "sha256": "1F2949095EF177211E5544E6743056284A346352BCDFBA90A38B01A9C678D6EB",
+      "camera": [
+        22,
+        0,
+        4
+      ],
+      "target": [
+        0,
+        0,
+        0.1
+      ],
+      "lensMm": 55
+    },
+    {
+      "view": "pelican_rear",
+      "path": "evidence/iter03/pelican_rear.png",
+      "bytes": 1037451,
+      "sha256": "4556BA6DD50AE48820FADA86EE1230133493ABED77579F3E8995F4A284415C09",
+      "camera": [
+        -20,
+        -8,
+        6
+      ],
+      "target": [
+        -1,
+        0,
+        0.1
+      ],
+      "lensMm": 55
+    },
+    {
+      "view": "pelican_top",
+      "path": "evidence/iter03/pelican_top.png",
+      "bytes": 1084543,
+      "sha256": "0F8393C1FC3BFEE8D73D066F16924A5264501C630CA8C2322974243244B1C73C",
+      "camera": [
+        0,
+        0,
+        28
+      ],
+      "target": [
+        0,
+        0,
+        0
+      ],
+      "lensMm": 60
+    },
+    {
+      "view": "pelican_grazing",
+      "path": "evidence/iter03/pelican_grazing.png",
+      "bytes": 995409,
+      "sha256": "6CB9468CED647CCDEC72CE6A5752FB181678B590124E8A871C3656EE83821397",
+      "camera": [
+        6,
+        -16,
+        1.2
+      ],
+      "target": [
+        0,
+        0,
+        0.2
+      ],
+      "lensMm": 50
+    },
+    {
+      "view": "pelican_drive_close",
+      "path": "evidence/iter03/pelican_drive_close.png",
+      "bytes": 1047558,
+      "sha256": "9A58242A1B6332A001CD6A8E99831FC5B2EAD4FF0A70D9A2E0A07D34EFB4A6D2",
+      "camera": [
+        -12,
+        -4,
+        1.5
+      ],
+      "target": [
+        -6.2,
+        1.35,
+        0.1
+      ],
+      "lensMm": 70
+    },
+    {
+      "view": "pelican_arm_close",
+      "path": "evidence/iter03/pelican_arm_close.png",
+      "bytes": 991642,
+      "sha256": "84093E09F2725D03BBEE22B272EFF05DED6841B9306ADB5658364D47B3A65744",
+      "camera": [
+        14,
+        -6,
+        1.2
+      ],
+      "target": [
+        7.2,
+        1.5,
+        -0.3
+      ],
+      "lensMm": 70
+    }
+  ],
+  "contracts": {
+    "forward": "+X",
+    "upAfterExport": "+Y",
+    "embeddedPlume": false,
+    "requiredSockets": [
+      "SOCKET_Camera_Focus",
+      "SOCKET_Cargo_Ventral",
+      "SOCKET_Engine_Main",
+      "SOCKET_Mining_Front",
+      "SOCKET_RCS_Port",
+      "SOCKET_RCS_Starboard",
+      "SOCKET_Trail_Main",
+      "SOCKET_Trail_Port",
+      "SOCKET_Trail_Starboard",
+      "SOCKET_Utility_Dorsal",
+      "SOCKET_Weapon_Front"
+    ]
+  }
+}
