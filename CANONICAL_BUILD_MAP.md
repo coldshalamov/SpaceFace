@@ -66,10 +66,9 @@ kit-on-loaf cycles did not close quality. That close is reverted. Live files are
 still the old factory wholeships. Hitch is untouched and still wins. Stay off
 INFERENCE, the dock/hulk remaster, and the expansion-research brief.
 
-- **Hornet is on cycles 16–19.** C16 crate aft was rejected. C17 shrunk the
-  house. C18 opened a real drive well (wall thickness, seated vanes). C19
-  lofts the tail instead of a box. Clay still reads as loft + cards. Hitch
-  still wins. Not wired.
+- **Hornet is on cycles 16–21.** Gold bowl and crate tail are gone. Drive
+  sits in a real well. Tail tapers. Wings are thick folded plate (C20/21).
+  Clay still shows an origami mid-body. Hitch still wins. Not wired.
 - **Every player ship and every NPC/traffic ship has a form-rebuild cycle
   (11+).** None beat Hitch. None wired. Live maps still load the old
   factory wholeships.

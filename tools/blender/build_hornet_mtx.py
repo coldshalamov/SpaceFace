@@ -429,6 +429,35 @@ def diamond_ring(x, yc, zc, hw, hh):
     ]
 
 
+def add_delta_wing(name, sign, material, collection):
+    """Solid folded-plate delta. Visible root thickness, not a lofted card."""
+    s = sign
+    verts = [
+        (1.45, 1.28 * s, 0.16),
+        (-1.55, 1.28 * s, 0.12),
+        (-2.15, 4.38 * s, -0.06),
+        (-0.15, 4.38 * s, -0.02),
+        (1.45, 1.28 * s, -0.10),
+        (-1.55, 1.28 * s, -0.14),
+        (-2.15, 4.38 * s, -0.18),
+        (-0.15, 4.38 * s, -0.14),
+    ]
+    faces = [
+        (0, 1, 2, 3),
+        (4, 7, 6, 5),
+        (0, 3, 7, 4),
+        (1, 5, 6, 2),
+        (0, 4, 5, 1),
+        (3, 2, 6, 7),
+    ]
+    mesh = bpy.data.meshes.new(f"{name}_Mesh")
+    mesh.from_pydata(verts, [], faces)
+    mesh.update()
+    obj = bpy.data.objects.new(name, mesh)
+    collection.objects.link(obj)
+    return finish_mesh(obj, material, 0.018)
+
+
 def airfoil_ring(x, y, z, chord, thick):
     le, te = chord * 0.42, chord * 0.58
     return [
@@ -644,7 +673,9 @@ def build_lod(lod, mats):
         densify_ring(station_ring(5.85, 0, 0.10, 0.36, 0.30, flat=0.28, box=0.18, keel=0.90)),
         densify_ring(station_ring(4.70, 0, 0.16, 0.46, 0.48, flat=0.72, box=0.28, keel=0.78)),
         densify_ring(station_ring(3.70, 0, 0.16, 0.58, 0.58, flat=0.82, box=0.42, keel=0.70)),
+        densify_ring(station_ring(3.10, 0, 0.13, 0.72, 0.54, flat=0.60, box=0.55, keel=0.67)),
         densify_ring(station_ring(2.50, 0, 0.10, 0.88, 0.50, flat=0.40, box=0.68, keel=0.64)),
+        densify_ring(station_ring(1.85, 0, 0.09, 1.00, 0.50, flat=0.30, box=0.78, keel=0.58)),
         densify_ring(station_ring(1.20, 0, 0.08, 1.12, 0.50, flat=0.22, box=0.88, keel=0.52)),
         densify_ring(station_ring(-0.20, 0, 0.10, 1.08, 0.54, flat=0.20, box=0.94, keel=0.40)),
         densify_ring(station_ring(-1.70, 0, 0.12, 1.00, 0.58, flat=0.22, box=0.96, keel=0.32)),
@@ -689,22 +720,13 @@ def build_lod(lod, mats):
     add_corner_fasteners("DeckB", (-4.35, -0.10, 0.80), (0.70, 0.40, 0.044), mech, collection)
 
     for sign, side in ((-1, "Port"), (1, "Starboard")):
-        add_box(f"WingGlove_{side}", (0.05, 1.32 * sign, 0.04), (1.35, 0.36, 0.26), armor, collection, 0.022)
-        loft_from_rings(f"WingRoot_{side}", [
-            airfoil_ring(0.12, 1.22 * sign, 0.04, 3.20, 0.30),
-            airfoil_ring(0.00, 1.68 * sign, 0.00, 3.05, 0.26),
-        ], hull, collection, 0.014)
-        loft_from_rings(f"Wing_{side}", [
-            airfoil_ring(0.00, 1.72 * sign, 0.00, 3.00, 0.26),
-            airfoil_ring(-0.28, 2.40 * sign, -0.04, 2.55, 0.20),
-            airfoil_ring(-0.78, 3.12 * sign, -0.08, 1.95, 0.15),
-            airfoil_ring(-1.38, 3.82 * sign, -0.12, 1.28, 0.11),
-            airfoil_ring(-1.95, 4.38 * sign, -0.16, 0.68, 0.08),
-        ], hull, collection, 0.010)
-        add_box(f"Flap_{side}", (-1.95, 3.00 * sign, -0.10), (0.26, 0.78, 0.048), mech, collection, 0.003)
-        add_box(f"FlapSlot_{side}", (-1.62, 3.00 * sign, -0.07), (0.038, 0.72, 0.060), mech, collection, 0.002)
-        add_box(f"UnderRib_{side}", (-0.40, 2.70 * sign, -0.18), (0.88, 0.048, 0.032), mech, collection, 0.003)
-        add_cylinder(f"LeadSpar_{side}", (-0.15, 2.55 * sign, 0.06), 0.045, 1.55, mech, collection, vertices=10, bevel=0.004, rot=(math.pi / 2, 0, 0.18 * sign))
+        add_box(f"WingGlove_{side}", (0.05, 1.28 * sign, 0.04), (1.25, 0.32, 0.22), armor, collection, 0.020)
+        add_delta_wing(f"Wing_{side}", sign, armor, collection)
+        add_overlap_plate(f"WingSkin_{side}", (-0.35, 2.70 * sign, 0.14), (0.95, 0.85, 0.028), hull, collection, 0.008)
+        add_box(f"Flap_{side}", (-1.85, 3.05 * sign, -0.12), (0.22, 0.70, 0.040), mech, collection, 0.003)
+        add_box(f"FlapSlot_{side}", (-1.55, 3.05 * sign, -0.08), (0.032, 0.64, 0.050), mech, collection, 0.002)
+        add_box(f"UnderRib_{side}", (-0.35, 2.65 * sign, -0.16), (0.80, 0.042, 0.028), mech, collection, 0.003)
+        add_cylinder(f"LeadSpar_{side}", (0.35, 2.55 * sign, 0.04), 0.040, 1.45, mech, collection, vertices=10, bevel=0.004, rot=(math.pi / 2, 0, 0.12 * sign))
         loft_from_rings(f"Canard_{side}", [
             airfoil_ring(4.55, 0.62 * sign, 0.10, 1.05, 0.10),
             airfoil_ring(4.12, 1.12 * sign, 0.06, 0.62, 0.055),
