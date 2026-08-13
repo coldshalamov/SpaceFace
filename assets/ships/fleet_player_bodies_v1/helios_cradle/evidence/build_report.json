@@ -3,12 +3,12 @@
   "assetId": "SF_HELIOS_CRADLE_V1",
   "defId": "miner",
   "shipId": "helios_cradle",
-  "iteration": 6,
+  "iteration": 9,
   "lods": [
     {
       "lod": 0,
-      "triangles": 39816,
-      "hullTriangles": 1864,
+      "triangles": 41432,
+      "hullTriangles": 1944,
       "draws": 9,
       "materials": [
         "Material_Accent",
@@ -35,13 +35,13 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/helios_cradle_production_v1_lod0.glb",
-      "bytes": 2087756,
-      "sha256": "75FC1FB66C59788CE0CE73AB18D9038158EEB8708F3AA41EBC46FBDB49A10826"
+      "bytes": 2204096,
+      "sha256": "38007A93C77ACC065C106FE4E0006FE7DFFAEDFC9FD770EA64DFBF52642D1811"
     },
     {
       "lod": 1,
-      "triangles": 10984,
-      "hullTriangles": 1864,
+      "triangles": 16736,
+      "hullTriangles": 1944,
       "draws": 9,
       "materials": [
         "Material_Accent",
@@ -68,12 +68,12 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/helios_cradle_production_v1_lod1.glb",
-      "bytes": 574768,
-      "sha256": "9B8A18A4E682B25D2465AC3B711A959E2FEE2D09F03DC8ED8C4DFFD8016E3FE7"
+      "bytes": 902780,
+      "sha256": "30F2893F5025D8E2C1BED637DCF8FB03CFEB7B45C16DB21DEDB24F9000A43C58"
     },
     {
       "lod": 2,
-      "triangles": 6772,
+      "triangles": 7368,
       "hullTriangles": 1756,
       "draws": 7,
       "materials": [
@@ -99,30 +99,9 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/helios_cradle_production_v1_lod2.glb",
-      "bytes": 332616,
-      "sha256": "D7253D68FDE34204A7EB11A5E32B62E82CCC052B4B006875425912656389DE02"
+      "bytes": 368368,
+      "sha256": "314DBE50325C0B940EBBDC222D730D2126979B24F34DFBD7F3762711A1EC5279"
     }
   ],
-  "renders": [
-    {
-      "view": "helios_cradle_three_quarter",
-      "path": "evidence/iter06/helios_cradle_three_quarter.png",
-      "bytes": 886918
-    },
-    {
-      "view": "helios_cradle_starboard",
-      "path": "evidence/iter06/helios_cradle_starboard.png",
-      "bytes": 919061
-    },
-    {
-      "view": "helios_cradle_rear",
-      "path": "evidence/iter06/helios_cradle_rear.png",
-      "bytes": 1012447
-    },
-    {
-      "view": "helios_cradle_grazing",
-      "path": "evidence/iter06/helios_cradle_grazing.png",
-      "bytes": 955799
-    }
-  ]
+  "renders": []
 }
