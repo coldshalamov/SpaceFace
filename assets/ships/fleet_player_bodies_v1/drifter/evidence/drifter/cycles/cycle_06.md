@@ -5,3 +5,4 @@
 - Stills valid. I can see bow, stern, span, and whole height.
 - Hollow bells at factory drive stations. Nacelles pulled inboard.
 - Clay still loft plus kit. Not Hitch-plus.
+- Review 019ffbaf-5307 REVISE (open well kept; sausage + cans + brick canopy).
