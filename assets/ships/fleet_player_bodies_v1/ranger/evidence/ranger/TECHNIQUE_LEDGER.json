@@ -2,20 +2,20 @@
   "schema": "spaceface.advancedModelTechniqueLedger.v1",
   "assetId": "SF_RANGER_PRODUCTION_V1",
   "shipId": "ranger",
-  "candidateHash": "C6D4F52D3AA8D3C961BE5E3584B503624E0744BCCD91E503F62A7650E48F44B7",
+  "candidateHash": "1FAEEE1CB286118ABA935B53BED1E3CAA9492B73F7FA94F9834BC88B9F140960",
   "exportGlb": "assets/ships/fleet_player_bodies_v1/ranger/source/wholeships/ranger_production_v1_lod0.glb",
   "class": "player_flyable",
   "clayStillReadsAsPrimitives": true,
   "independentReview": "revise",
   "promoted": false,
-  "reasonNotClosed": "Five counted cycles. Slim explorer with a survey mast. Clay still loft plus kit. Not Hitch-plus. Live files not replaced.",
+  "reasonNotClosed": "Ten counted cycles. Slim explorer with survey mast and twin factory drives. Clay still loft plus kit. Not Hitch-plus. Live files not replaced.",
   "rows": [
-    {"id": "MTX-13", "state": "implemented", "still": "evidence/ranger/cycles/cycle_05/grazing_close.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Scale applied before bevel."},
-    {"id": "MTX-16", "state": "implemented", "still": "evidence/ranger/cycles/cycle_05/material_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Unique UV after join."},
-    {"id": "MTX-23", "state": "implemented", "still": "evidence/ranger/cycles/cycle_05/orm_isolation.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "LOD0 AO bake."},
-    {"id": "MTX-32", "state": "implemented", "still": "evidence/ranger/cycles/cycle_05/three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Unique Ranger maps."},
-    {"id": "MTX-46", "state": "blocked", "still": "evidence/ranger/cycles/cycle_05/clay_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Clay still primitives."},
+    {"id": "MTX-13", "state": "implemented", "still": "evidence/ranger/cycles/cycle_10/grazing_close.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Scale applied before bevel."},
+    {"id": "MTX-16", "state": "implemented", "still": "evidence/ranger/cycles/cycle_10/material_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Unique UV after join."},
+    {"id": "MTX-23", "state": "implemented", "still": "evidence/ranger/cycles/cycle_10/orm_isolation.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "LOD0 AO bake."},
+    {"id": "MTX-32", "state": "implemented", "still": "evidence/ranger/cycles/cycle_10/three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Unique Ranger maps."},
+    {"id": "MTX-46", "state": "blocked", "still": "evidence/ranger/cycles/cycle_10/clay_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Clay still primitives."},
     {"id": "MTX-50", "state": "implemented", "still": "source/wholeships/ranger_production_v1_lod0.glb", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Sockets and packed maps."},
-    {"id": "MTX-65", "state": "implemented", "still": "evidence/ranger/cycles/cycle_05/three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Slim explorer with mast, not Hornet or Drifter."}
+    {"id": "MTX-65", "state": "implemented", "still": "evidence/ranger/cycles/cycle_10/three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Slim explorer with mast, not Hornet or Drifter."}
   ]
 }
