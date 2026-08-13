@@ -79,6 +79,12 @@ function baseState(target) {
       targetId: target && target.id,
       credits: 4321,
       heat: 0,
+      activeShipIndex: 0,
+      ownedShips: [{
+        defId: 'ship_kestrel',
+        fittings: [null, null, null, null, null, 'mod_cargo_scanner_s'],
+      }],
+      moduleInventory: [],
       cargo: { items: { cmdty_ore_common: 3 } },
     },
     entities,
@@ -239,6 +245,61 @@ test('a passive neutral trader answers from its real route and durable manifest'
   const text = emitted(bus, 'contactHail:response').at(-1).lines.join(' ');
   assert.match(text, /12 .*ORE COMMON/i);
   assert.match(text, /6 .*PROVISIONS/i);
+});
+
+test('civilian manifests require a compatible fitted Cargo Scanner or Truesight Scanner', () => {
+  const target = trader();
+  const state = baseState(target);
+  state.traffic.freighters.push({ id: target.id, role: 'hauler', manifest: target.data.cargoManifest });
+  const { bus } = mount(state);
+
+  state.player.ownedShips[0].fittings[5] = null;
+  state.player.moduleInventory.push('mod_cargo_scanner_s');
+  bus.emit('contactHail:request', { targetId: target.id });
+  let offer = emitted(bus, 'contactHail:offer').at(-1);
+  assert.deepEqual(offer.actions.map((row) => row.id), ['route', 'heave_to'],
+    'owning but not fitting the scanner does not reveal cargo');
+
+  state.player.ownedShips[0].fittings[0] = 'mod_cargo_scanner_s';
+  bus.emit('contactHail:request', { targetId: target.id });
+  offer = emitted(bus, 'contactHail:offer').at(-1);
+  assert.deepEqual(offer.actions.map((row) => row.id), ['route', 'heave_to'],
+    'a scanner in an incompatible slot fails closed');
+
+  state.player.ownedShips[0].fittings[0] = null;
+  state.player.ownedShips[0].fittings[5] = 'unique_truesight_scanner';
+  bus.emit('contactHail:request', { targetId: target.id });
+  offer = emitted(bus, 'contactHail:offer').at(-1);
+  assert.deepEqual(offer.actions.map((row) => row.id), ['route', 'manifest', 'heave_to']);
+});
+
+test('manifest choices revalidate the fitted scanner and live declared cargo', () => {
+  const target = trader();
+  const state = baseState(target);
+  const record = { id: target.id, role: 'hauler', manifest: target.data.cargoManifest };
+  state.traffic.freighters.push(record);
+  const { bus } = mount(state);
+
+  bus.emit('contactHail:request', { targetId: target.id });
+  let offer = emitted(bus, 'contactHail:offer').at(-1);
+  assert.ok(offer.actions.some((row) => row.id === 'manifest'));
+  state.player.ownedShips[0].fittings[5] = null;
+  bus.emit('contactHail:choice', { requestId: offer.requestId, targetId: target.id, choice: 'manifest' });
+  assert.equal(emitted(bus, 'contactHail:response').length, 0, 'unfitting before choice reveals nothing');
+
+  state.player.ownedShips[0].fittings[5] = 'mod_cargo_scanner_s';
+  state.simTime += 0.1;
+  bus.emit('contactHail:request', { targetId: target.id });
+  offer = emitted(bus, 'contactHail:offer').at(-1);
+  delete target.data.cargoManifest;
+  record.manifest = null;
+  bus.emit('contactHail:choice', { requestId: offer.requestId, targetId: target.id, choice: 'manifest' });
+  assert.equal(emitted(bus, 'contactHail:response').length, 0, 'removed cargo cannot be disclosed from a stale offer');
+
+  state.simTime += 0.1;
+  bus.emit('contactHail:request', { targetId: target.id });
+  offer = emitted(bus, 'contactHail:offer').at(-1);
+  assert.deepEqual(offer.actions.map((row) => row.id), ['route', 'heave_to']);
 });
 
 test('the late Kess priority run exposes a saved status and one escort request without mutating authority', () => {

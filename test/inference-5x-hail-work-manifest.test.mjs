@@ -45,6 +45,11 @@ function baseState(target) {
       targetId: target && target.id,
       credits: 1000,
       heat: 0,
+      activeShipIndex: 0,
+      ownedShips: [{
+        defId: 'ship_kestrel',
+        fittings: [null, null, null, null, null, 'mod_cargo_scanner_s'],
+      }],
       cargo: { items: {} },
     },
     entities,
@@ -169,7 +174,7 @@ test('U4: trader MANIFEST hail includes ~CR value', () => {
   assert.match(response.lines[0], /IRON ORE/);
 });
 
-test('U4: empty manifest stays honest', () => {
+test('U4: empty manifest stays undisclosed', () => {
   assert.equal(estimateManifestBaseValue({ lines: [] }), null);
   const hauler = entity('hauler-2', {
     data: {
@@ -182,6 +187,7 @@ test('U4: empty manifest stays honest', () => {
   const state = baseState(hauler);
   const avail = contactHailAvailability(state);
   const offer = createContactHailOffer(state, avail, 'req4', 20);
+  assert.ok(!offer.actions.some((action) => action.id === 'manifest'));
   const response = createContactHailResponse(state, offer, 'manifest');
-  assert.equal(response.lines[0], 'MANIFEST · NO DECLARED CARGO');
+  assert.equal(response, null);
 });

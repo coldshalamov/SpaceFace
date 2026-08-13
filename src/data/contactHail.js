@@ -3,12 +3,15 @@
 // This module is deliberately read-only. Scanner owns request validation and transient lifetime;
 // pirateParley remains the sole authority for toll choices/payment/escalation.
 import { COMMODITIES } from './commodities.js';
+import { MODULES } from './modules.js';
+import { SHIPS } from './ships.js';
 import {
   isPassengerLinerItinerary,
   isPriorityCourierItinerary,
   PASSENGER_LINER_SERVICE,
 } from './laneContacts.js';
 import { richSeamOpportunityForEntity } from '../systems/fieldDepletion.js';
+import { buildSlotList, fits } from '../systems/ships.js';
 
 export const CONTACT_HAIL_RANGE = 5200;
 export const CONTACT_HAIL_REQUEST_TTL_S = 8;
@@ -52,6 +55,8 @@ const HEAVE_TO_ROLES = new Set([
 ]);
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((row) => [row.id, row]));
 const COMMODITY_LABEL = new Map(COMMODITIES.map((row) => [row.id, row.name]));
+const MODULE_BY_ID = new Map(MODULES.map((row) => [row.id, row]));
+const SHIP_BY_ID = new Map(SHIPS.map((row) => [row.id, row]));
 
 // Player-language labels for Ceres causal-chain phases and cues (traffic stamps only).
 const CAUSAL_PHASE_LABEL = Object.freeze({
@@ -387,6 +392,20 @@ function passengerLinerStatusText(state, entity, itinerary = passengerLinerItine
   return `STATUS · HELIOS CIVIC LINER · ${stateLabel}`;
 }
 
+function playerHasFittedCargoScanner(state) {
+  const player = state && state.player;
+  if (!player || !Array.isArray(player.ownedShips)) return false;
+  const activeShipIndex = Number.isInteger(player.activeShipIndex) ? player.activeShipIndex : 0;
+  const owned = player.ownedShips[activeShipIndex];
+  const shipDef = owned && SHIP_BY_ID.get(owned.defId);
+  if (!shipDef || !Array.isArray(owned.fittings)) return false;
+  const slots = buildSlotList(shipDef);
+  return slots.some((slot, index) => {
+    const moduleDef = MODULE_BY_ID.get(owned.fittings[index]);
+    return moduleDef && moduleDef.mods && moduleDef.mods.revealCargo === true && fits(slot, moduleDef);
+  });
+}
+
 export function contactHailAvailability(state) {
   const targetId = state && state.player && state.player.targetId;
   const target = entityById(state, targetId);
@@ -417,6 +436,9 @@ export function contactHailAvailability(state) {
     priorityCourierEscortAvailable: priorityCourierEscortAvailable(state, target),
     passengerLinerItinerary: passengerLinerItinerary(state, target),
     passengerLinerAssistAvailable: passengerLinerAssistAvailable(state, target),
+    manifestAvailable: classification.kind === 'trader'
+      && playerHasFittedCargoScanner(state)
+      && !!traderManifestForTarget(state, target),
     disabledHauler: ceresDisabledHaulerTruth(state, target),
   };
 }
@@ -474,20 +496,22 @@ export function createContactHailOffer(state, availability, requestId, expiresAt
     };
   }
   if (priorityItinerary) {
-    // Scanner/UI deliberately ships three compact choices. Keep manifest inspection in the normal
-    // state, then replace it with the time-sensitive recovery action instead of adding an unseen
-    // fourth/fifth choice below the presenter cap.
+    // Scanner/UI deliberately ships three compact choices. A fitted cargo scanner may add manifest
+    // inspection in the normal state; the time-sensitive recovery action takes that third slot.
     const actions = [{ id: 'status', label: 'STATUS' }, { id: 'route', label: 'ROUTE' }];
-    actions.push(availability.priorityCourierEscortAvailable
-      ? { id: CONTACT_HAIL_ACTION_ESCORT, label: 'ESCORT' }
-      : { id: 'manifest', label: 'MANIFEST' });
+    if (availability.priorityCourierEscortAvailable) {
+      actions.push({ id: CONTACT_HAIL_ACTION_ESCORT, label: 'ESCORT' });
+    } else if (availability.manifestAvailable) {
+      actions.push({ id: 'manifest', label: 'MANIFEST' });
+    }
     return {
       requestId, targetId: availability.targetId, kind: 'trader', expiresAt,
       lines: [`${name} · PRIORITY COURIER`, 'CHANNEL OPEN.'],
       actions,
     };
   }
-  const actions = [{ id: 'route', label: 'ROUTE' }, { id: 'manifest', label: 'MANIFEST' }];
+  const actions = [{ id: 'route', label: 'ROUTE' }];
+  if (availability.manifestAvailable) actions.push({ id: 'manifest', label: 'MANIFEST' });
   if (availability.heaveToAvailable) actions.push({ id: CONTACT_HAIL_ACTION_HEAVE_TO, label: 'HEAVE TO' });
   return {
     requestId, targetId: availability.targetId, kind: 'trader', expiresAt,
@@ -499,6 +523,31 @@ export function createContactHailOffer(state, availability, requestId, expiresAt
 function traderRecord(state, targetId) {
   return (state && state.traffic && state.traffic.freighters || [])
     .find((row) => row && row.id === targetId) || null;
+}
+
+function validDeclaredManifest(manifest) {
+  if (!manifest || typeof manifest !== 'object' || !Array.isArray(manifest.lines) || !manifest.lines.length) {
+    return null;
+  }
+  let totalQty = 0;
+  for (const row of manifest.lines) {
+    const commodityId = row && (row.commodityId || row.id);
+    if (typeof commodityId !== 'string' || !commodityId
+      || typeof row.qty !== 'number' || !Number.isSafeInteger(row.qty) || row.qty <= 0) return null;
+    totalQty += row.qty;
+    if (!Number.isSafeInteger(totalQty)) return null;
+  }
+  if (Object.hasOwn(manifest, 'totalQty')
+    && (typeof manifest.totalQty !== 'number'
+      || !Number.isSafeInteger(manifest.totalQty)
+      || manifest.totalQty !== totalQty)) return null;
+  return manifest;
+}
+
+function traderManifestForTarget(state, target) {
+  const entityManifest = validDeclaredManifest(target && target.data && target.data.cargoManifest);
+  if (entityManifest) return entityManifest;
+  return validDeclaredManifest(traderRecord(state, target && target.id)?.manifest);
 }
 
 function stationLabel(state, id) {
@@ -542,9 +591,11 @@ export function estimateManifestBaseValue(manifest) {
   });
 }
 
-function manifestText(state, target) {
+function manifestText(state, target, manifestOverride = undefined) {
   const record = traderRecord(state, target.id);
-  const manifest = target.data && target.data.cargoManifest || record && record.manifest;
+  const manifest = manifestOverride === undefined
+    ? target.data && target.data.cargoManifest || record && record.manifest
+    : manifestOverride;
   const lines = (manifest && Array.isArray(manifest.lines) ? manifest.lines : [])
     .filter((row) => row && Math.floor(Number(row.qty) || 0) > 0);
   if (!lines.length) return 'MANIFEST · NO DECLARED CARGO';
@@ -890,7 +941,13 @@ export function createContactHailResponse(state, offer, choice, authority = {}) 
       : 'ESCORT · NO RECOVERY WINDOW OPEN.';
   } else if (offer.kind === 'trader' && id === 'route') {
     line = routeText(state, target);
-  } else if ((offer.kind === 'trader' || offer.kind === 'worker') && id === 'manifest') {
+  } else if (offer.kind === 'trader' && id === 'manifest') {
+    const offered = Array.isArray(offer.actions) && offer.actions.some((action) => action && action.id === 'manifest');
+    const manifest = traderManifestForTarget(state, target);
+    if (offered && playerHasFittedCargoScanner(state) && manifest) {
+      line = manifestText(state, target, manifest);
+    }
+  } else if (offer.kind === 'worker' && id === 'manifest') {
     line = manifestText(state, target);
   } else if (id === CONTACT_HAIL_ACTION_HEAVE_TO) {
     const result = authority.heaveTo || {};
