@@ -21,7 +21,7 @@ workflow; it does not replace original plans.
 | Ship, station, place, prop, or other Blender/GLB form or surfacing work | `assets/ships/AGENTS.md` **and** `.grok/skills/spaceface-blender-material-truth/SKILL.md`; Tier C/D may group a repeated manufactured family, but no changed visible zone may inherit a DCC default |
 | Resolve the current starter/player ship before graphics work | `src/data/newGameDefaults.js` -> exact ship/root maps in `src/render/partsLibrary.js`; do not infer identity from a screenshot or legacy filename |
 | Resume dock/hulk/debris place remaster (Blender/EEVEE) | **`assets/ships/parts/places/REMASTER_HANDOFF_dock_hulk_debris.md`** (also linked from `CANONICAL_BUILD_MAP.md` §1) |
-| Resume non-Hitch flyable ship remaster (not Hitch) | **`CANONICAL_BUILD_MAP.md`** → `PQ-050` / [`design/program/roadmap/active/PQ-050.md`](./design/program/roadmap/active/PQ-050.md) |
+| Resume non-Hitch flyable ship remaster (not Hitch) | **`CANONICAL_BUILD_MAP.md`** campaign door → `PQ-050` / [`design/program/roadmap/active/PQ-050.md`](./design/program/roadmap/active/PQ-050.md). Overnight or “non-INFERENCE work in the map” keeps going through every remaining ship. |
 | Add a map-visible place (planet, station, route, region) | `src/data/PLACE_REGISTRATION.md` — **a new place is not done until `npm run check:atlas-integrity` is green** |
 | UI/HUD | `src/ui/AGENTS.md` and `styles/AGENTS.md` |
 | Render/performance | `src/render/AGENTS.md` and `design/PERF_BUDGET.md` |

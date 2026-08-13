@@ -28,9 +28,10 @@ Before changing anything:
 8. Follow [`design/program/roadmap/00_EXECUTION_PROTOCOL.md`](./design/program/roadmap/00_EXECUTION_PROTOCOL.md) through a terminal receipt.
 9. Add one short `NOW.md` row only when mutation begins. Reading, research, testing, and review hold
    no file. Release the row as soon as mutation stops; task-long path reservations are forbidden.
-10. Finish one unit, commit and push its exact result, update its receipt/status, and return
-    `RESULT: DONE` or `RESULT: NOT DONE` using the template in `02_REMAINING_WORK.md`. Do not begin a
-    second unit in the same task.
+10. **Single chat / “next task”:** finish one unit, commit and push, return
+    `RESULT: DONE` or `RESULT: NOT DONE`, and stop. **Overnight, “do all of it”, “the work in
+    this map”, or “non-INFERENCE work”:** this is a campaign — see the campaign door below.
+    Do not stop after one leaf.
 
 Several threads may follow these steps at once in the same checkout. The first thread that actually
 edits records its exact files in `NOW.md`; the others take the next returned task or continue on
@@ -39,14 +40,20 @@ disjoint files. No coordinator, task-long reservation, or worktree is required.
 **Two doors for "what to work on"** — the `SPACEFACE COMMANDS` block at the top of
 [`design/program/INFERENCE_LANES.md`](./design/program/INFERENCE_LANES.md):
 
-- `NEXT` → continue the existing admitted program. Use the normal queue/dispatcher above
-  (`program-dispatch --next/--ready/--id`), unchanged and authoritative for finishing admitted work.
-- `INFERENCE <Nx> [optional scope]` (e.g. `INFERENCE 3x NPCS`, `INFERENCE 5x WORLD`,
-  `INFERENCE 3x GRAPHICS`, `INFERENCE 5x POLISH`, `WF-01 3x`) → spend creative/production inference
-  making the game richer, better, more polished, and closer to the intended SpaceFace. `INFERENCE_LANES.md`
-  indexes the reusable workflows (`WF-01`–`WF-19`) and the `1x`/`3x`/`5x` scale shorthand, and routes
-  every concrete result back through the normal ownership/packet/acceptance system. Use the lanes to
-  spend inference; do not use them to bypass the queue.
+- `NEXT` → one admitted queue unit, then stop. Use `program-dispatch --next/--ready/--id`.
+- `INFERENCE <Nx> [optional scope]` → [`design/vision/INFERENCE_CONVERGENCE_METHOD.md`](./design/vision/INFERENCE_CONVERGENCE_METHOD.md)
+  plus [`INFERENCE_LANES.md`](./design/program/INFERENCE_LANES.md). That door does **not** run the
+  flyable-ship remaster.
+- **Campaign / overnight / “non-INFERENCE work in this map” / “do all of it”** → stay on admitted
+  program work and **keep going**. Do not open the INFERENCE method. Do not take a single `--next`
+  and quit. Default unfinished campaign is **`PQ-050`** (every remaining non-Hitch flyable ship
+  under [`ADVANCED_MODEL_TECHNIQUE_CONTRACT.md`](./docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md)).
+  Loop `node scripts/program-dispatch.mjs --id PQ-050`, finish the first claimable ship leaf
+  (technique ledger + wire that ship only), commit, then the next ship, until every PQ-050 leaf is
+  done or honestly blocked. Hitch stays frozen. A factory loft with boxes does not close a ship.
+  Only after PQ-050 is exhausted, take other `--ready` implementation units. Acceptance-capture
+  leaves that need a human or a headed machine you do not have may be recorded `unproven` and
+  skipped; do not stall the campaign on them.
 
 **Graphics / place-asset remaster (resume):** if the task is continuing the interrupted remaster of
 `place_dock_interior`, `place_dead_hulk`, and/or `place_debris_chunk` (Blender/EEVEE form work, not a

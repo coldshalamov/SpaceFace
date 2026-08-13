@@ -29,6 +29,19 @@ thread reads the same `NOW.md` and `--ready` list. If two threads initially insp
 first one that actually begins mutation records the short exact-path row; the other chooses the next
 task and keeps working. No coordinator, permanent lane, or worktree is required.
 
+## Prompt A0 — overnight / “the work in the build map” / non-INFERENCE
+
+```text
+This is a campaign, not one task. Start at CANONICAL_BUILD_MAP.md. Do not use
+INFERENCE_CONVERGENCE_METHOD.md or INFERENCE_LANES.md unless the user said INFERENCE.
+
+Default unfinished campaign is PQ-050. Run
+`node scripts/program-dispatch.mjs --id PQ-050`, take the first claimable ship, follow
+ADVANCED_MODEL_TECHNIQUE_CONTRACT.md, fill that ship's ledger, wire only that ship,
+commit, then immediately take the next PQ-050 ship. Keep going until every PQ-050 leaf
+is done or honestly blocked. Do not stop after one ship. Do not touch Hitch.
+```
+
 ## Prompt A — find and finish the next task
 
 ```text
