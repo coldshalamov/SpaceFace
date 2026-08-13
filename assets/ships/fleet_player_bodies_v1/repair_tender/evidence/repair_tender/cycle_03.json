@@ -1,0 +1,68 @@
+{
+  "schema": "spaceface.repairTenderMtx.cycle.v1",
+  "shipId": "repair_tender",
+  "cycle": 3,
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 41348,
+      "hullTriangles": 4372,
+      "draws": 9,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/repair_tender_production_v1_lod0.glb",
+      "bytes": 9543760,
+      "sha256": "A4E92645C438112EA1F0373D3A5C46684BA44DAD059B4E9535D4B8B4F0B97A78"
+    },
+    {
+      "lod": 1,
+      "triangles": 24932,
+      "hullTriangles": 4372,
+      "draws": 9,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/repair_tender_production_v1_lod1.glb",
+      "bytes": 7106252,
+      "sha256": "D4D6ABAE2FCCD479AC14BF75A934EB8BA63D2C2E12FCEA693FFFE56C22C220E4"
+    },
+    {
+      "lod": 2,
+      "triangles": 18612,
+      "hullTriangles": 2912,
+      "draws": 9,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/repair_tender_production_v1_lod2.glb",
+      "bytes": 6129584,
+      "sha256": "2AD2F62661A5EE1F7A65A8B8651FA288944809AF474B4152678204C2ACA185A7"
+    }
+  ],
+  "stills": "evidence/repair_tender/cycles/cycle_03"
+}
