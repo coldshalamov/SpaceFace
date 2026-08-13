@@ -1,0 +1,21 @@
+{
+  "schema": "spaceface.advancedModelTechniqueLedger.v1",
+  "assetId": "SF_BASTION_PRODUCTION_V1",
+  "shipId": "bastion",
+  "candidateHash": "E652CC4277E589B1C1EE48587999AE3150D2F64F1998629401F622CA598F3321",
+  "exportGlb": "assets/ships/fleet_player_bodies_v1/bastion/source/wholeships/bastion_production_v1_lod0.glb",
+  "class": "player_flyable",
+  "clayStillReadsAsPrimitives": true,
+  "independentReview": "revise",
+  "promoted": false,
+  "reasonNotClosed": "Five counted cycles. Navy corvette with tower and broadsides. Clay still loft plus kit. Not Hitch-plus. Live files not replaced.",
+  "rows": [
+    {"id": "MTX-13", "state": "implemented", "still": "evidence/bastion/cycles/cycle_05/grazing_close.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Scale applied before bevel."},
+    {"id": "MTX-16", "state": "implemented", "still": "evidence/bastion/cycles/cycle_05/material_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Unique UV after join."},
+    {"id": "MTX-23", "state": "implemented", "still": "evidence/bastion/cycles/cycle_05/orm_isolation.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "LOD0 AO bake."},
+    {"id": "MTX-32", "state": "implemented", "still": "evidence/bastion/cycles/cycle_05/three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Unique Bastion maps."},
+    {"id": "MTX-46", "state": "blocked", "still": "evidence/bastion/cycles/cycle_05/clay_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Clay still primitives."},
+    {"id": "MTX-50", "state": "implemented", "still": "source/wholeships/bastion_production_v1_lod0.glb", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Sockets and packed maps."},
+    {"id": "MTX-65", "state": "implemented", "still": "evidence/bastion/cycles/cycle_05/clay_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Corvette tower and broadsides, not a barge or needle."}
+  ]
+}
