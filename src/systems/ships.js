@@ -369,6 +369,9 @@ export function getDerivedStats(defId, fittings = [], player = null) {
   let shieldFlat = 0, shieldRegenFlat = 0, hullFlat = 0, cargoFlat = 0, cargoCapPct = 0;
   let weaponRangePct = 0;
   let weaponDmgPct = 0;
+  // Every hull has its authored T1 drive. Fitted drive modules can only advance that capability;
+  // the world owner resolves the canonical jump_tN key against its supported drive table.
+  let jumpDriveTier = 1;
   let moduleMass = 0, continuousDrain = 0;
   let tetherSpoolMult = 1, tetherReelRateMult = 1;
   let ramDamageDealtMult = 0;
@@ -394,6 +397,15 @@ export function getDerivedStats(defId, fittings = [], player = null) {
     if (occupiesCompatibleSlot) {
       weaponRangePct = addFinitePositivePct(weaponRangePct, mods.weaponRangePct);
       weaponDmgPct = addFinitePositivePct(weaponDmgPct, mods.weaponDmgPct);
+      // Drive tier is a capability rating: strongest compatible fitted module wins. Keep the
+      // source primitive-only so hand-authored/malformed module records cannot leak NaN, strings,
+      // or objects into the world jump state machine.
+      if (typeof mods.jumpDriveTier === 'number'
+        && Number.isFinite(mods.jumpDriveTier)
+        && Number.isInteger(mods.jumpDriveTier)
+        && mods.jumpDriveTier > 0) {
+        jumpDriveTier = Math.max(jumpDriveTier, mods.jumpDriveTier);
+      }
     }
     if (Number.isFinite(mods.tetherSpoolMult) && mods.tetherSpoolMult > 0) {
       tetherSpoolMult = Math.max(tetherSpoolMult, mods.tetherSpoolMult);
@@ -519,6 +531,7 @@ export function getDerivedStats(defId, fittings = [], player = null) {
     weaponDmgPct,
     weaponRangeMult,
     weaponDmgMult,
+    jumpDriveTier: `jump_t${jumpDriveTier}`,
     cargoCap,
     boost: {
       max: bdef.max || 0,

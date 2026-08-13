@@ -3144,17 +3144,21 @@ export const world = {
   // --- jump-drive / scanner / fuel-tank module resolution -----------------------------------
   _resolveShipModules() {
     // Best-effort: read the active ship entity's derived stats (ships writes data.derived).
-    // If ships exposes fuelMax / jumpDriveTier / scannerTier, honor them; else keep defaults.
+    // If ships exposes fuelMax / jumpDriveTier / scannerTier, honor them. Resolve the drive on
+    // every call so unfit/load/malformed derived data cannot leave a stale higher tier behind.
     const state = this.state;
     const player = state.entities.get(state.playerId);
     const derived = player && player.data && player.data.derived;
+    this._driveTierId = 'jump_t1';
     if (!derived) return;
     if (derived.fuelMax != null && derived.fuelMax > 0) {
       const wasFull = state.fuel.current >= state.fuel.max;
       state.fuel.max = derived.fuelMax;
       if (wasFull || state.fuel.current > state.fuel.max) state.fuel.current = Math.min(state.fuel.current, state.fuel.max);
     }
-    if (derived.jumpDriveTier && DRIVE_TIERS[derived.jumpDriveTier]) this._driveTierId = derived.jumpDriveTier;
+    if (typeof derived.jumpDriveTier === 'string' && DRIVE_TIERS[derived.jumpDriveTier]) {
+      this._driveTierId = derived.jumpDriveTier;
+    }
   },
 
   _activeDrive() {
