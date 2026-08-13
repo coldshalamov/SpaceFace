@@ -1,0 +1,68 @@
+{
+  "schema": "spaceface.oreBargeMtx.cycle.v1",
+  "shipId": "ore_barge",
+  "cycle": 2,
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 51084,
+      "hullTriangles": 6164,
+      "draws": 9,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/ore_barge_production_v1_lod0.glb",
+      "bytes": 11158368,
+      "sha256": "1ABD6ECD15FDF3135A7AB9302750746E39DDF5A51A89F327E0113351D5381897"
+    },
+    {
+      "lod": 1,
+      "triangles": 34236,
+      "hullTriangles": 6164,
+      "draws": 9,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/ore_barge_production_v1_lod1.glb",
+      "bytes": 8462568,
+      "sha256": "CC63BC18A13A99609C090B748B311C11B01B9E855ACC966608DD44BC9C113D9F"
+    },
+    {
+      "lod": 2,
+      "triangles": 26090,
+      "hullTriangles": 4174,
+      "draws": 9,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/ore_barge_production_v1_lod2.glb",
+      "bytes": 7208932,
+      "sha256": "8D6DC3A348352A32B8103E1DA88FA5DFB46C3FBB85F7194000EF329B42187879"
+    }
+  ],
+  "stills": "evidence/ore_barge/cycles/cycle_02"
+}

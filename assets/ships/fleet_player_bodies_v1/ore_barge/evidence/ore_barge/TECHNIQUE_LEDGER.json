@@ -1,0 +1,23 @@
+{
+  "schema": "spaceface.advancedModelTechniqueLedger.v1",
+  "assetId": "SF_ORE_BARGE_V1",
+  "shipId": "ore_barge",
+  "candidateHash": "F1E0D154A176D0FC9F7B9CDC7CFBE69763DD49975147D1E8BD93CD4F93330684",
+  "exportGlb": "assets/ships/fleet_player_bodies_v1/ore_barge/source/wholeships/ore_barge_production_v1_lod0.glb",
+  "class": "npc_civilian",
+  "clayStillReadsAsPrimitives": true,
+  "independentReview": "revise",
+  "promoted": false,
+  "reasonNotClosed": "Five counted cycles. Ore-barge identity holds: rust wedge, twin drives, dump well, hoppers, one pod. Clay still loft plus kit. Not Hitch-plus. Live files not replaced.",
+  "rows": [
+    {"id": "MTX-02", "state": "blocked", "still": "evidence/ore_barge/cycles/cycle_05/clay_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Hull is still a lofted rust dart."},
+    {"id": "MTX-03", "state": "blocked", "still": "evidence/ore_barge/cycles/cycle_05/three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Hopper well still a yellow-lipped hole."},
+    {"id": "MTX-08", "state": "blocked", "still": "evidence/ore_barge/cycles/cycle_05/drive_rear.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Twin bells still bottle family."},
+    {"id": "MTX-13", "state": "implemented", "still": "evidence/ore_barge/cycles/cycle_05/grazing_close.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Scale applied before bevel."},
+    {"id": "MTX-16", "state": "implemented", "still": "evidence/ore_barge/cycles/cycle_05/material_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Unique UV after join."},
+    {"id": "MTX-32", "state": "implemented", "still": "evidence/ore_barge/cycles/cycle_05/three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Unique rust workboat maps, not Helios pale."},
+    {"id": "MTX-46", "state": "blocked", "still": "evidence/ore_barge/cycles/cycle_05/clay_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Clay still primitives."},
+    {"id": "MTX-50", "state": "implemented", "still": "source/wholeships/ore_barge_production_v1_lod0.glb", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Sockets and packed maps."},
+    {"id": "MTX-65", "state": "implemented", "still": "evidence/ore_barge/cycles/cycle_05/three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Ore-barge massing: rust, dump well, hoppers, one pod, twin drives. Not Helios, not Hitch."}
+  ]
+}
