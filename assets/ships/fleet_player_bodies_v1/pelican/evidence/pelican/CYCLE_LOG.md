@@ -1,0 +1,11 @@
+# Pelican cycle log
+
+| Cycle | lod0 hash | Verdicts | Counted |
+|---|---|---|---|
+| 01 | 345B0AAF45D4735033A9AD54A264F677DC461C950D3B0FAB71C359505178C08F | revise / revise / revise | yes |
+| 02 | 065EED9B40F6AA4662B59DDE4F4121448490F72E45897F98C3B2100BDCAF5EEF | revise / revise / revise | yes |
+| 03 | 0285C40EAB2C46650CFC1F09D680A86D29B636362955885365275C791BDDEDDA | revise / revise / revise | yes |
+| 04 | A7333F4D12D2F13961914BA9F0FC801900EBED33E1017D6BA37CDC443ABC9CE2 | revise / revise / revise | yes |
+| 05 | 96913EBFE09FB6E4ACE09EDA23A13C6B0A1637D9375AEB34684FAEB0493FE032 | revise / revise / revise | yes |
+
+Not promoted. Clay still loft plus kit.

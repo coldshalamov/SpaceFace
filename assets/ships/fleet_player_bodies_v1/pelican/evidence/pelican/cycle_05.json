@@ -1,0 +1,68 @@
+{
+  "schema": "spaceface.pelicanMtx.cycle.v1",
+  "shipId": "pelican",
+  "cycle": 5,
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 26554,
+      "hullTriangles": 2774,
+      "draws": 9,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/pelican_production_v1_lod0.glb",
+      "bytes": 7339092,
+      "sha256": "96913EBFE09FB6E4ACE09EDA23A13C6B0A1637D9375AEB34684FAEB0493FE032"
+    },
+    {
+      "lod": 1,
+      "triangles": 21466,
+      "hullTriangles": 2774,
+      "draws": 9,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/pelican_production_v1_lod1.glb",
+      "bytes": 6803280,
+      "sha256": "7D90C2263404D052FE7E68A2F8D7C76C5E1E52A5E2888C840C5061EB063D74F3"
+    },
+    {
+      "lod": 2,
+      "triangles": 18154,
+      "hullTriangles": 2594,
+      "draws": 9,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/pelican_production_v1_lod2.glb",
+      "bytes": 6341356,
+      "sha256": "A383D47D4697D7BD41DBE576706AECE0AB9330B3F37406B1DAA191F748CCECEE"
+    }
+  ],
+  "stills": "evidence/pelican/cycles/cycle_05"
+}
