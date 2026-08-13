@@ -309,6 +309,52 @@ def loft_from_rings(name, rings, material, collection, bevel, cap=True):
     return finish_mesh(obj, material, bevel)
 
 
+def ellipse_ring(x, y, z, rx, rz, sides=16):
+    return [
+        (x, y + math.cos(math.tau * i / sides) * rx, z + math.sin(math.tau * i / sides) * rz)
+        for i in range(sides)
+    ]
+
+
+def add_hollow_bell(tag, x, y, z, scale, mats, collection):
+    s = scale
+    ceramic, mech, armor = mats["Material_Ceramic"], mats["Material_Mechanical"], mats["Material_Armor"]
+    rings = []
+    for t, r in ((0.00, 0.52), (0.22, 0.44), (0.48, 0.30), (0.75, 0.22), (1.00, 0.18)):
+        rings.append(ellipse_ring(x - 0.08 * s - t * 0.95 * s, y, z, r * s, r * s, 24))
+    outer = loft_from_rings(f"Bell_{tag}", rings, mech, collection, 0.005, cap=False)
+    apply_modifiers(outer)
+    bpy.ops.mesh.primitive_cone_add(
+        vertices=22, radius1=0.42 * s, radius2=0.08 * s, depth=1.10 * s,
+        location=(x - 0.55 * s, y, z), rotation=(0, math.pi / 2, 0),
+    )
+    inner = bpy.context.object
+    bpy.context.view_layer.objects.active = outer
+    outer.select_set(True)
+    mod = outer.modifiers.new("BellCut", "BOOLEAN")
+    mod.operation = "DIFFERENCE"
+    mod.object = inner
+    try:
+        mod.solver = "EXACT"
+    except Exception:
+        pass
+    bpy.ops.object.modifier_apply(modifier=mod.name)
+    outer.select_set(False)
+    bpy.data.objects.remove(inner, do_unlink=True)
+    add_cylinder(f"BellCollar_{tag}", (x - 0.10 * s, y, z), 0.26 * s, 0.12 * s, ceramic, collection, 20, 0.004)
+    add_cylinder(f"BellFlange_{tag}", (x + 0.10 * s, y, z), 0.32 * s, 0.05 * s, armor, collection, 20, 0.003)
+    add_cylinder(f"BellHub_{tag}", (x - 0.28 * s, y, z), 0.05 * s, 0.20 * s, mech, collection, 10, 0.002)
+    for index in range(8):
+        ang = math.tau * index / 8
+        add_box(
+            f"BellVane_{tag}_{index}",
+            (x - 0.42 * s, y + math.cos(ang) * 0.18 * s, z + math.sin(ang) * 0.18 * s),
+            (0.18 * s, 0.014 * s, 0.050 * s),
+            mech, collection, 0.002, (ang, 0, 0),
+        )
+    return outer
+
+
 def diamond_ring(x, yc, zc, hw, hh):
     """Hard-chine diamond. Crown, shoulder, chine, keel — not a scaled box."""
     return [
@@ -548,13 +594,14 @@ def build_lod(lod, mats):
     add_thin_canopy("Canopy", 3.55, 0.0, 0.98, 1.25, 0.52, 0.38, mats, collection)
     for sign, side in ((-1, "Port"), (1, "Starboard")):
         loft_from_rings(f"Nacelle_{side}", [
-            diamond_ring(-3.0, 2.05 * sign, 0.06, 0.36, 0.30),
-            diamond_ring(-4.8, 2.15 * sign, 0.06, 0.48, 0.38),
-            diamond_ring(-6.4, 2.15 * sign, 0.06, 0.44, 0.34),
-            diamond_ring(-7.5, 2.10 * sign, 0.06, 0.34, 0.26),
+            diamond_ring(-3.0, 1.45 * sign, 0.08, 0.38, 0.32),
+            diamond_ring(-4.6, 1.55 * sign, 0.08, 0.50, 0.40),
+            diamond_ring(-6.0, 1.55 * sign, 0.08, 0.46, 0.36),
+            diamond_ring(-6.85, 1.55 * sign, 0.08, 0.36, 0.28),
         ], armor, collection, 0.012)
-        add_manufactured_drive(side, -7.65, 2.10 * sign, lod, mats, collection, scale=1.18, z=0.06)
-        add_cylinder(f"NacelleCollar_{side}", (-7.10, 2.10 * sign, 0.06), 0.40, 0.10, ceramic, collection, vertices=14, bevel=0.006)
+        add_hollow_bell(side, -7.15, 1.55 * sign, 0.08, 1.05, mats, collection)
+        add_cylinder(f"NacelleCollar_{side}", (-6.55, 1.55 * sign, 0.08), 0.34, 0.12, ceramic, collection, vertices=14, bevel=0.006)
+        add_box(f"NacelleSaddlePad_{side}", (-6.20, 1.55 * sign, -0.18), (0.38, 0.14, 0.08), mech, collection, 0.003)
         loft_from_rings(f"NacelleSaddle_{side}", [
             diamond_ring(-4.6, 1.15 * sign, 0.06, 0.28, 0.18),
             diamond_ring(-5.2, 1.65 * sign, 0.06, 0.22, 0.16),
