@@ -548,13 +548,18 @@ def build_lod(lod, mats):
     add_thin_canopy("Canopy", 3.40, 0.0, 0.92, 1.40, 0.62, 0.42, mats, collection)
     for sign, side in ((-1, "Port"), (1, "Starboard")):
         loft_from_rings(f"Nacelle_{side}", [
-            diamond_ring(-3.6, 1.22 * sign, 0.08, 0.34, 0.28),
-            diamond_ring(-5.6, 1.22 * sign, 0.08, 0.42, 0.32),
-            diamond_ring(-7.0, 1.22 * sign, 0.08, 0.38, 0.30),
-            diamond_ring(-8.0, 1.22 * sign, 0.08, 0.32, 0.24),
+            diamond_ring(-3.6, 1.55 * sign, 0.08, 0.32, 0.26),
+            diamond_ring(-5.6, 1.62 * sign, 0.08, 0.40, 0.30),
+            diamond_ring(-7.2, 1.62 * sign, 0.08, 0.36, 0.28),
+            diamond_ring(-8.2, 1.58 * sign, 0.08, 0.30, 0.22),
         ], armor, collection, 0.012)
-        add_manufactured_drive(side, -8.15, 1.22 * sign, lod, mats, collection, scale=1.05, z=0.08)
-        add_cylinder(f"NacelleCollar_{side}", (-7.65, 1.22 * sign, 0.08), 0.36, 0.09, ceramic, collection, vertices=14, bevel=0.006)
+        add_manufactured_drive(side, -8.35, 1.58 * sign, lod, mats, collection, scale=1.02, z=0.08)
+        add_cylinder(f"NacelleCollar_{side}", (-7.80, 1.58 * sign, 0.08), 0.34, 0.09, ceramic, collection, vertices=14, bevel=0.006)
+        loft_from_rings(f"NacelleSaddle_{side}", [
+            diamond_ring(-5.4, 0.85 * sign, 0.08, 0.22, 0.14),
+            diamond_ring(-6.0, 1.25 * sign, 0.08, 0.16, 0.12),
+            diamond_ring(-6.5, 1.50 * sign, 0.08, 0.14, 0.10),
+        ], mech, collection, 0.006)
         loft_from_rings(f"Winglet_{side}", [
             airfoil_ring(-1.10, 1.70 * sign, 0.22, 1.15, 0.14),
             airfoil_ring(-1.55, 2.55 * sign, 0.42, 0.72, 0.06),
@@ -569,10 +574,19 @@ def build_lod(lod, mats):
     add_box("Repair_Patch", (1.15, -0.55, 0.78), (0.32, 0.16, 0.012), warning, collection, 0.002)
     add_box("Accent_Flash", (0.55, -1.42, 0.28), (0.50, 0.016, 0.08), accent, collection, 0.002)
     add_sensor_dish("Dorsal", (1.35, 0.28, 1.05), mats, collection)
-    add_cylinder("Survey_Mast", (0.85, 0.0, 1.55), 0.045, 1.15, mech, collection, vertices=10, bevel=0.004, rot=(0, 0, 0))
-    add_box("Survey_Yoke", (0.85, 0.0, 2.18), (0.06, 0.22, 0.05), mech, collection, 0.003)
-    add_cylinder("Survey_Head", (0.92, 0.0, 2.22), 0.12, 0.05, armor, collection, vertices=14, bevel=0.003, rot=(0, math.pi / 2.4, 0))
-    add_box("Survey_DishBack", (0.78, 0.0, 2.22), (0.03, 0.14, 0.14), armor, collection, 0.002)
+    add_cylinder("Survey_Mast", (0.85, 0.0, 1.65), 0.05, 1.35, mech, collection, vertices=10, bevel=0.004, rot=(0, 0, 0))
+    add_box("Survey_Yoke", (0.85, 0.0, 2.38), (0.07, 0.28, 0.06), mech, collection, 0.003)
+    add_cylinder("Survey_Head", (0.98, 0.0, 2.42), 0.16, 0.06, armor, collection, vertices=14, bevel=0.003, rot=(0, math.pi / 2.4, 0))
+    add_box("Survey_DishBack", (0.74, 0.0, 2.42), (0.03, 0.16, 0.16), armor, collection, 0.002)
+    add_box("Survey_Stay_P", (0.55, -0.12, 1.55), (0.22, 0.02, 0.02), mech, collection, 0.002)
+    add_box("Survey_Stay_S", (0.55, 0.12, 1.55), (0.22, 0.02, 0.02), mech, collection, 0.002)
+    add_box("DeckPlate_A", (-1.6, 0.16, 0.58), (0.85, 0.32, 0.016), armor, collection, 0.004)
+    add_box("DeckPlate_B", (-2.8, -0.18, 0.52), (0.70, 0.28, 0.014), hull, collection, 0.004)
+    add_box("DeckPlate_C", (-3.8, 0.12, 0.48), (0.55, 0.22, 0.012), armor, collection, 0.003)
+    add_cylinder("Aux_Mast", (-0.15, 0.22, 1.05), 0.028, 0.55, mech, collection, vertices=8, bevel=0.002, rot=(0, 0, 0))
+    add_cylinder("Aux_Head", (-0.08, 0.22, 1.34), 0.07, 0.04, armor, collection, vertices=10, bevel=0.002, rot=(0, math.pi / 2.5, 0))
+    add_box("Survey_Pod", (2.05, -0.55, 0.55), (0.28, 0.16, 0.12), mech, collection, 0.004)
+    add_cylinder("Survey_Lens", (2.32, -0.55, 0.55), 0.05, 0.08, accent, collection, vertices=8, bevel=0.002)
     add_box("Hatch_Lid", (-1.10, 0.32, 0.72), (0.32, 0.20, 0.016), armor, collection, 0.004)
     add_box("Hatch_Hinge", (-1.36, 0.32, 0.73), (0.03, 0.15, 0.018), mech, collection, 0.002)
     add_box("Keel_Spine", (0.20, 0.0, -0.82), (2.8, 0.24, 0.045), mech, collection, 0.01)
