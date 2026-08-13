@@ -234,7 +234,7 @@ def create_materials():
         "Material_Ceramic": ((0.54, 0.46, 0.34), 0.0, 0.64, "ceramic", 0.0, None),
         "Material_Radiator": ((0.16, 0.12, 0.09), 0.7, 0.56, "mechanical", 0.0, None),
         "Material_Canopy": ((0.06, 0.10, 0.12), 0.02, 0.05, "glass", 1.0, None),
-        "Material_Thruster": ((0.02, 0.08, 0.12), 0.15, 0.22, "thruster", 0.0, ((0.16, 0.48, 0.64), 1.0)),
+        "Material_Thruster": ((0.02, 0.08, 0.12), 0.15, 0.22, "thruster", 0.0, None),
     }
     mats = {}
     for name, (rgb, metal, rough, role, coat, emit) in specs.items():
@@ -307,6 +307,86 @@ def loft_from_rings(name, rings, material, collection, bevel, cap=True):
     obj = bpy.data.objects.new(name, mesh)
     collection.objects.link(obj)
     return finish_mesh(obj, material, bevel)
+
+
+def ellipse_ring(x, y, z, rx, rz, sides=16):
+    return [
+        (x, y + math.cos(math.tau * i / sides) * rx, z + math.sin(math.tau * i / sides) * rz)
+        for i in range(sides)
+    ]
+
+
+def boolean_cut(host, cutter_name, loc, scale, rot=(0, 0, 0)):
+    bpy.ops.mesh.primitive_cube_add(location=loc, rotation=rot)
+    cutter = bpy.context.object
+    cutter.name = cutter_name
+    cutter.scale = scale
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    apply_modifiers(host)
+    bpy.context.view_layer.objects.active = host
+    host.select_set(True)
+    mod = host.modifiers.new(cutter_name, "BOOLEAN")
+    mod.operation = "DIFFERENCE"
+    mod.object = cutter
+    try:
+        mod.solver = "EXACT"
+    except Exception:
+        pass
+    bpy.ops.object.modifier_apply(modifier=mod.name)
+    host.select_set(False)
+    bpy.data.objects.remove(cutter, do_unlink=True)
+
+
+def add_hollow_bell(tag, x, y, z, scale, mats, collection):
+    """Spun bottle: lofted outer, boolean throat, ceramic collar, vanes to a hub."""
+    s = scale
+    ceramic, thruster, mech, armor = (
+        mats["Material_Ceramic"], mats["Material_Thruster"],
+        mats["Material_Mechanical"], mats["Material_Armor"],
+    )
+    rings = []
+    for t, r, rz in (
+        (0.00, 0.58, 0.58),
+        (0.18, 0.50, 0.50),
+        (0.42, 0.34, 0.34),
+        (0.68, 0.24, 0.24),
+        (1.00, 0.20, 0.20),
+    ):
+        xi = x - 0.10 * s - t * 1.05 * s
+        rings.append(ellipse_ring(xi, y, z, r * s, rz * s, 28))
+    outer = loft_from_rings(f"Bell_{tag}", rings, mech, collection, 0.005, cap=False)
+    apply_modifiers(outer)
+    bpy.ops.mesh.primitive_cone_add(
+        vertices=24, radius1=0.48 * s, radius2=0.08 * s, depth=1.22 * s,
+        location=(x - 0.62 * s, y, z), rotation=(0, math.pi / 2, 0),
+    )
+    inner = bpy.context.object
+    inner.name = f"BellCutter_{tag}"
+    bpy.context.view_layer.objects.active = outer
+    outer.select_set(True)
+    mod = outer.modifiers.new("BellCut", "BOOLEAN")
+    mod.operation = "DIFFERENCE"
+    mod.object = inner
+    try:
+        mod.solver = "EXACT"
+    except Exception:
+        pass
+    bpy.ops.object.modifier_apply(modifier=mod.name)
+    outer.select_set(False)
+    bpy.data.objects.remove(inner, do_unlink=True)
+    add_cylinder(f"BellCollar_{tag}", (x - 0.12 * s, y, z), 0.30 * s, 0.14 * s, ceramic, collection, 22, 0.004)
+    add_cylinder(f"BellClamp_{tag}", (x + 0.04 * s, y, z), 0.34 * s, 0.05 * s, armor, collection, 22, 0.003)
+    add_cylinder(f"BellFlange_{tag}", (x + 0.16 * s, y, z), 0.36 * s, 0.06 * s, mech, collection, 22, 0.003)
+    add_cylinder(f"BellHub_{tag}", (x - 0.32 * s, y, z), 0.06 * s, 0.24 * s, mech, collection, 12, 0.002)
+    for index in range(10):
+        ang = math.tau * index / 10
+        add_box(
+            f"BellVane_{tag}_{index}",
+            (x - 0.48 * s, y + math.cos(ang) * 0.20 * s, z + math.sin(ang) * 0.20 * s),
+            (0.22 * s, 0.016 * s, 0.060 * s),
+            mech, collection, 0.002, (ang, 0, 0),
+        )
+    return outer
 
 
 def diamond_ring(x, yc, zc, hw, hh):
@@ -525,58 +605,70 @@ def build_lod(lod, mats):
         "lod": f"lod{lod}", "slot": "hull", "category": "wholeships",
         "forward": "+X", "embeddedPlume": False,
     }
-    # Needle → tall canopy shoulder → wide wing glove → waist → slim boom.
+    # C8: needle → tall canopy shoulder → wide wing glove → waist → DRIVE HOUSE.
+    # No stick boom. Mid station must not equal bow.
     hull_obj = loft_from_rings("Pressure_Hull", [
         diamond_ring(half, 0, 0.04, 0.10, 0.08),
-        diamond_ring(half * 0.84, 0, 0.07, 0.30, 0.24),
-        diamond_ring(half * 0.60, 0, 0.20, 0.56, 0.70),
-        diamond_ring(half * 0.30, 0, 0.10, 1.08, 0.58),
-        diamond_ring(0.10, 0, 0.04, 1.38, 0.50),
-        diamond_ring(-half * 0.28, 0, 0.06, 0.84, 0.48),
-        diamond_ring(-half * 0.62, 0, 0.10, 0.62, 0.46),
-        diamond_ring(-half + 0.55, 0, 0.12, 0.40, 0.32),
-    ], hull, collection, 0.018)
+        diamond_ring(6.55, 0, 0.08, 0.28, 0.22),
+        diamond_ring(4.85, 0, 0.22, 0.52, 0.82),
+        diamond_ring(2.35, 0, 0.12, 1.05, 0.62),
+        diamond_ring(0.15, 0, 0.06, 1.58, 0.54),
+        diamond_ring(-1.85, 0, 0.08, 1.05, 0.52),
+        diamond_ring(-4.15, 0, 0.10, 0.82, 0.50),
+        diamond_ring(-6.35, 0, 0.10, 0.74, 0.48),
+        diamond_ring(-7.75, 0, 0.08, 0.58, 0.40),
+    ], hull, collection, 0.016)
     if lod <= 1:
-        cut_open_bay(hull_obj, "Cockpit", (3.15, 0.0, 0.78), 1.55, 0.62, 0.58, (0, 0, 1), mats, collection, kit="cockpit")
-        cut_open_bay(hull_obj, "Port", (0.20, -1.28, 0.08), 1.45, 0.42, 0.52, (0, -1, 0), mats, collection, kit="radiator")
-        cut_open_bay(hull_obj, "Starboard", (0.20, 1.28, 0.08), 1.45, 0.42, 0.52, (0, 1, 0), mats, collection, kit="rack")
-        cut_open_bay(hull_obj, "DorsalAft", (-2.20, 0.0, 0.58), 1.15, 0.46, 0.38, (0, 0, 1), mats, collection, kit="radiator")
+        cut_open_bay(hull_obj, "Cockpit", (3.15, 0.0, 0.88), 1.55, 0.58, 0.62, (0, 0, 1), mats, collection, kit="cockpit")
+        cut_open_bay(hull_obj, "Port", (0.20, -1.48, 0.10), 1.45, 0.48, 0.52, (0, -1, 0), mats, collection, kit="radiator")
+        cut_open_bay(hull_obj, "Starboard", (0.20, 1.48, 0.10), 1.45, 0.48, 0.52, (0, 1, 0), mats, collection, kit="rack")
+        cut_open_bay(hull_obj, "DorsalAft", (-2.05, 0.0, 0.62), 1.20, 0.48, 0.40, (0, 0, 1), mats, collection, kit="radiator")
+        boolean_cut(hull_obj, "TransomRecess", (-7.78, 0.0, 0.08), (0.22, 0.38, 0.28))
         hull_obj.data.materials.clear()
         hull_obj.data.materials.append(hull)
-    inset_large_faces(hull_obj, thickness=0.045, depth=0.022, min_area=0.14)
+    inset_large_faces(hull_obj, thickness=0.040, depth=0.020, min_area=0.12)
 
-    add_thin_canopy("Canopy", 3.15, 0.0, 0.86, 1.55, 0.58, 0.46, mats, collection)
-    add_manufactured_drive("Main", -half - 0.85, 0.0, lod, mats, collection, scale=1.85, z=0.12)
-    loft_from_rings("Drive_Fairing", [
-        diamond_ring(-half + 1.15, 0, 0.12, 0.50, 0.36),
-        diamond_ring(-half + 0.55, 0, 0.12, 0.44, 0.32),
-        diamond_ring(-half + 0.05, 0, 0.12, 0.48, 0.34),
-    ], armor, collection, 0.012)
-    add_cylinder("Drive_HeatRing", (-half - 0.15, 0.0, 0.12), 0.58, 0.08, ceramic, collection, vertices=16, bevel=0.006)
+    add_thin_canopy("Canopy", 3.15, 0.0, 0.82, 1.55, 0.52, 0.40, mats, collection)
+    add_box("TransomPlate", (-7.68, 0.0, 0.08), (0.04, 0.48, 0.28), armor, collection, 0.003)
+    add_hollow_bell("Main", -7.55, 0.0, 0.08, 1.15, mats, collection)
+    add_cylinder("DriveCoupling", (-7.05, 0.0, 0.08), 0.38, 0.18, mech, collection, 16, 0.004)
+    add_box("DriveSaddle", (-6.85, 0.0, -0.22), (0.42, 0.18, 0.10), mech, collection, 0.004)
+    add_box("DriveHouseBand", (-6.35, 0.0, 0.10), (0.08, 0.62, 0.36), armor, collection, 0.004)
+    if CYCLE >= 9:
+        add_box("DriveHouseBandF", (-5.15, 0.0, 0.10), (0.06, 0.68, 0.34), armor, collection, 0.003)
+        add_box("DriveHouseStrakeP", (-5.85, -0.58, 0.22), (1.15, 0.03, 0.04), armor, collection, 0.002)
+        add_box("DriveHouseStrakeS", (-5.85, 0.58, 0.22), (1.15, 0.03, 0.04), armor, collection, 0.002)
+        add_box("CanopyMullion2", (2.85, 0.0, 1.08), (0.016, 0.42, 0.14), armor, collection, 0.002)
+        add_box("WellLipAft", (-1.45, 0.0, 0.78), (0.04, 0.52, 0.05), armor, collection, 0.002)
+    if CYCLE >= 10:
+        add_box("PatchTile2", (0.55, 0.52, 0.62), (0.22, 0.12, 0.008), armor, collection, 0.002)
+        add_box("ChineCapP", (1.85, -1.35, 0.06), (1.15, 0.03, 0.05), armor, collection, 0.003)
+        add_box("ChineCapS", (1.85, 1.35, 0.06), (1.15, 0.03, 0.05), armor, collection, 0.003)
 
     for sign, side in ((-1, "Port"), (1, "Starboard")):
-        loft_from_rings(f"Wing_{side}", [
-            airfoil_ring(0.15, 1.18 * sign, 0.02, 2.70, 0.40),
-            airfoil_ring(-0.20, 2.20 * sign, -0.04, 2.20, 0.22),
-            airfoil_ring(-0.95, 3.20 * sign, -0.10, 1.55, 0.11),
-            airfoil_ring(-1.70, 4.10 * sign, -0.16, 1.00, 0.05),
+        loft_from_rings(f"Glove_{side}", [
+            diamond_ring(0.55, 1.05 * sign, 0.04, 0.42, 0.28),
+            diamond_ring(0.10, 1.55 * sign, 0.00, 0.55, 0.22),
+            diamond_ring(-0.55, 1.95 * sign, -0.06, 0.48, 0.16),
         ], hull, collection, 0.010)
-        loft_from_rings(f"RootFillet_{side}", [
-            airfoil_ring(0.40, 0.98 * sign, 0.06, 2.50, 0.48),
-            airfoil_ring(0.18, 1.36 * sign, 0.02, 2.60, 0.36),
-        ], hull, collection, 0.012)
-        add_box(f"Flap_{side}", (-1.72, 2.55 * sign, -0.08), (0.18, 0.72, 0.028), mech, collection, 0.003)
-        add_box(f"FlapSlot_{side}", (-1.48, 2.55 * sign, -0.06), (0.025, 0.68, 0.04), mech, collection, 0.002)
-        add_box(f"WingTile_{side}A", (-0.15, 2.35 * sign, 0.12), (0.55, 0.42, 0.016), armor, collection, 0.004)
-        add_box(f"WingTile_{side}B", (-0.85, 3.05 * sign, 0.06), (0.38, 0.28, 0.014), armor, collection, 0.003)
-        add_box(f"UnderRib_{side}", (-0.35, 2.45 * sign, -0.16), (0.70, 0.04, 0.03), mech, collection, 0.003)
+        loft_from_rings(f"Wing_{side}", [
+            airfoil_ring(0.10, 1.70 * sign, 0.00, 2.85, 0.48),
+            airfoil_ring(-0.35, 2.55 * sign, -0.08, 2.25, 0.28),
+            airfoil_ring(-1.15, 3.45 * sign, -0.16, 1.55, 0.14),
+            airfoil_ring(-1.95, 4.25 * sign, -0.24, 0.95, 0.06),
+        ], hull, collection, 0.010)
+        add_box(f"Flap_{side}", (-1.88, 2.75 * sign, -0.14), (0.18, 0.78, 0.030), mech, collection, 0.003)
+        add_box(f"FlapSlot_{side}", (-1.62, 2.75 * sign, -0.12), (0.025, 0.72, 0.04), mech, collection, 0.002)
+        add_box(f"WingTile_{side}A", (-0.20, 2.55 * sign, 0.10), (0.58, 0.44, 0.016), armor, collection, 0.004)
+        add_box(f"WingTile_{side}B", (-0.95, 3.25 * sign, 0.02), (0.40, 0.30, 0.014), armor, collection, 0.003)
+        add_box(f"UnderRib_{side}", (-0.45, 2.65 * sign, -0.22), (0.74, 0.04, 0.03), mech, collection, 0.003)
         loft_from_rings(f"Canard_{side}", [
-            airfoil_ring(4.55, 0.72 * sign, 0.10, 0.95, 0.055),
-            airfoil_ring(4.25, 1.15 * sign, 0.08, 0.62, 0.028),
+            airfoil_ring(4.55, 0.72 * sign, 0.10, 0.95, 0.070),
+            airfoil_ring(4.20, 1.22 * sign, 0.06, 0.58, 0.032),
         ], armor, collection, 0.006)
         add_cylinder(f"GunHouse_{side}", (4.85, 0.38 * sign, -0.08), 0.09, 1.15, mech, collection, vertices=10, bevel=0.006)
         add_cylinder(f"GunBarrel_{side}", (5.85, 0.38 * sign, -0.08), 0.035, 0.85, armor, collection, vertices=8, bevel=0.003)
-        add_rcs_cluster(side, (-1.4, 1.55 * sign, 0.12), mats, collection, sign=sign)
+        add_rcs_cluster(side, (-1.4, 1.85 * sign, 0.12), mats, collection, sign=sign)
 
     add_box("Armor_Shoulder", (2.55, 0.0, 0.78), (0.95, 0.48, 0.04), armor, collection, 0.008)
     add_box("Armor_Cheek_P", (1.55, -1.05, 0.08), (0.85, 0.045, 0.22), armor, collection, 0.008)
@@ -633,9 +725,10 @@ def build_lod(lod, mats):
         add_empty(name, loc, collection, root)
     bm = bmesh.new()
     for point in [
-        (7.6, 0, 0.1), (0, -4.2, 0.4), (0, 4.2, 0.4),
-        (-7.2, -1.2, 0.2), (-7.2, 1.2, 0.2),
+        (7.6, 0, 0.1), (0, -4.5, 0.4), (0, 4.5, 0.4),
+        (-8.2, -1.2, 0.2), (-8.2, 1.2, 0.2),
         (2.0, -1.0, -0.8), (2.0, 1.0, -0.8),
+        (4.8, 0, 1.4),
     ]:
         bm.verts.new(point)
     bm.verts.ensure_lookup_table()
