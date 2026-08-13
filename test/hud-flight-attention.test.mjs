@@ -236,6 +236,16 @@ test('first-use is teach-once and object-attached', () => {
   assert.equal(firstUseAttachKind('masslineThrow'), 'latch');
   assert.equal(firstUseLine('firstCombat'), 'Return fire.');
   assert.doesNotMatch(firstUseLine('firstCombat'), /LMB|Space\/F|auto-target/i);
+  assert.equal(resolveFirstUseEntityId({ playerId: 1 }, {
+    targetId: 1,
+    attackerId: 42,
+    amount: 12,
+    applied: 12,
+    isPlayer: true,
+    brokeShield: true,
+    shieldHit: true,
+    hullHit: false,
+  }), 42, 'live combat:damage must attach to the attacker, not the player target');
   assert.equal(resolveFirstUseEntityId({}, { attackerId: 77 }), 77);
   assert.equal(resolveFirstUseEntityId({}, { asteroidId: 12 }), 12);
   assert.equal(resolveFirstUseEntityId({
@@ -244,6 +254,7 @@ test('first-use is teach-once and object-attached', () => {
   assert.match(ONBOARDING_SRC, /hud:firstUse/);
   assert.match(ONBOARDING_SRC, /entityId/);
   assert.match(ONBOARDING_SRC, /resolveFirstUseEntityId/);
+  assert.match(ONBOARDING_SRC, /entityId: p\.attackerId/);
   assert.doesNotMatch(ONBOARDING_SRC, /controlPrompt\('firstCombat'/);
   assert.doesNotMatch(ONBOARDING_SRC, /voice\.say\(\{ channel: 'tutorial', text, kind: 'info', ttl: 7/);
   assert.doesNotMatch(ONBOARDING_SRC, /_sfShowHints/);

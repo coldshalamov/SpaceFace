@@ -164,9 +164,10 @@ export function firstUseAttachKind(verbId) {
 export function resolveFirstUseEntityId(state, payload = {}) {
   if (!payload || typeof payload !== 'object') return null;
   if (payload.entityId != null) return payload.entityId;
-  if (payload.targetId != null) return payload.targetId;
+  // Live combat:damage is { targetId: player, attackerId: foe }. Prefer the foe.
   if (payload.attackerId != null) return payload.attackerId;
   if (payload.sourceId != null) return payload.sourceId;
+  if (payload.targetId != null) return payload.targetId;
   if (payload.asteroidId != null) return payload.asteroidId;
   if (payload.gateId != null) return payload.gateId;
   const stationId = payload.stationId;

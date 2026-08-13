@@ -214,13 +214,19 @@ export const onboarding = {
       if (!p) return;
       const hitPlayer = !!(p.isPlayer || (this.state && p.targetId === this.state.playerId));
       if (!hitPlayer) return;
-      this._showHint('firstCombat', firstUseLine('firstCombat'), p);
+      this._showHint('firstCombat', firstUseLine('firstCombat'), {
+        ...p,
+        entityId: p.attackerId != null ? p.attackerId : p.sourceId,
+      });
     });
 
     // First shield break: triggered when shields drop to zero.
     bus.on('combat:damage', (p) => {
       if (!p || !p.isPlayer || !p.brokeShield) return;
-      this._showHint('firstShieldDrop', firstUseLine('firstShieldDrop'), p);
+      this._showHint('firstShieldDrop', firstUseLine('firstShieldDrop'), {
+        ...p,
+        entityId: p.attackerId != null ? p.attackerId : p.sourceId,
+      });
     });
 
     // First station approach: enriches the existing dock prompt with what stations offer.
