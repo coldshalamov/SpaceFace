@@ -647,40 +647,44 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
 
       // A lifecycle event may synchronously fire from a system step. Do not submit a frame after it
       // has transferred ownership to a non-presenting state or a newly scheduled restore callback.
-      if (destroyed || suspended || (!restoring && lifecycleState === LOOP_LIFECYCLE_STATES.RESTORING)) return;
+      // Do not `return` here: that used to skip the trailing schedule() and leave the 3D canvas
+      // frozen on the last picture while the HTML HUD still accepted input.
+      const skipPresentation = destroyed || suspended
+        || (!restoring && lifecycleState === LOOP_LIFECYCLE_STATES.RESTORING);
+      if (!skipPresentation) {
+        const completedTickCount = simulationRunner.consumeLatestCompletedTick(latestCompletedTick);
+        if (completedTickCount > 0) hasCompletedTick = true;
+        diagnostics.completedTicksConsumed += completedTickCount;
+        if (completedTickCount > 1) diagnostics.skippedPresentationTicks += completedTickCount - 1;
 
-      const completedTickCount = simulationRunner.consumeLatestCompletedTick(latestCompletedTick);
-      if (completedTickCount > 0) hasCompletedTick = true;
-      diagnostics.completedTicksConsumed += completedTickCount;
-      if (completedTickCount > 1) diagnostics.skippedPresentationTicks += completedTickCount - 1;
+        const rebuiltJournal = rebuildJournalIfNeeded();
+        if (!rebuiltJournal && presentationJournal?.needsRebuild?.() !== true
+          && completedTickCount > 0) {
+          mergeJournalRange(latestCompletedTick.journalStart, latestCompletedTick.journalEnd);
+        }
 
-      const rebuiltJournal = rebuildJournalIfNeeded();
-      if (!rebuiltJournal && presentationJournal?.needsRebuild?.() !== true
-        && completedTickCount > 0) {
-        mergeJournalRange(latestCompletedTick.journalStart, latestCompletedTick.journalEnd);
+        const alpha = simulationRunner.interpolationAlpha();
+        presentationFrame.sequence++;
+        presentationFrame.frameDt = frameDt;
+        presentationFrame.alpha = alpha;
+        presentationFrame.lifecycleState = lifecycleState;
+        presentationFrame.lifecycleGeneration = lifecycleGeneration;
+        presentationFrame.completedTickCount = completedTickCount;
+        presentationFrame.completedTick = hasCompletedTick ? latestCompletedTick : null;
+        populateJournalFrame();
+        const presentationStart = measureNow();
+        let presentationAccepted = false;
+        try {
+          presentationAccepted = registry.renderUpdate(alpha, frameDt, presentationFrame) !== false;
+        } finally {
+          perf.recordPresentationFrame?.(measureNow() - presentationStart);
+        }
+        diagnostics.renderUpdates++;
+        renderedSnapshot = true;
+        if (presentationJournal?.isClosed?.() === true) resetPendingJournal();
+        else if (presentationAccepted) acknowledgePresentedJournal();
+        else if (hasPendingJournal) diagnostics.journalRetainedFrameCount++;
       }
-
-      const alpha = simulationRunner.interpolationAlpha();
-      presentationFrame.sequence++;
-      presentationFrame.frameDt = frameDt;
-      presentationFrame.alpha = alpha;
-      presentationFrame.lifecycleState = lifecycleState;
-      presentationFrame.lifecycleGeneration = lifecycleGeneration;
-      presentationFrame.completedTickCount = completedTickCount;
-      presentationFrame.completedTick = hasCompletedTick ? latestCompletedTick : null;
-      populateJournalFrame();
-      const presentationStart = measureNow();
-      let presentationAccepted = false;
-      try {
-        presentationAccepted = registry.renderUpdate(alpha, frameDt, presentationFrame) !== false;
-      } finally {
-        perf.recordPresentationFrame?.(measureNow() - presentationStart);
-      }
-      diagnostics.renderUpdates++;
-      renderedSnapshot = true;
-      if (presentationJournal?.isClosed?.() === true) resetPendingJournal();
-      else if (presentationAccepted) acknowledgePresentedJournal();
-      else if (hasPendingJournal) diagnostics.journalRetainedFrameCount++;
     } catch (err) {
       if (hasPendingJournal) diagnostics.journalRetainedFrameCount++;
       // One bad frame must never kill the whole loop; log a bounded number and keep running.

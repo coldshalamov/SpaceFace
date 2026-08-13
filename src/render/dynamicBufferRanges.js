@@ -21,15 +21,38 @@ function resetBindingPending(binding) {
   binding.pending.logicalComponents = 0;
 }
 
+function detachOwnerUploadCallbacks(owner) {
+  if (!owner || !Array.isArray(owner.bindings)) return;
+  for (let index = 0; index < owner.bindings.length; index++) {
+    const binding = owner.bindings[index];
+    const attribute = binding.attribute;
+    if (binding.snapshot.active) {
+      if (attribute) removeRangeByIdentity(attribute, binding.snapshot.record);
+      binding.snapshot.active = false;
+      binding.snapshot.attribute = null;
+      binding.snapshot.record = null;
+    }
+    if (attribute && attribute.onUploadCallback === binding.callback) {
+      delete attribute.onUploadCallback;
+    }
+  }
+}
+
 function markOwnerInvalid(owner, message, counter = null) {
-  owner.invalid = true;
-  owner.diagnostics.invalid = true;
-  owner.diagnostics.lastError = message;
-  const coordinator = owner.coordinator;
-  if (coordinator) {
-    coordinator.diagnostics.invalid = true;
-    coordinator.diagnostics.lastError = message;
-    if (counter) coordinator.diagnostics[counter]++;
+  // Retire this owner only. The coordinator must remain armable: a single tracked buffer
+  // trap used to latch diagnostics.invalid and freeze every later 3D frame while the HUD
+  // kept running on the overlay path.
+  if (!owner.invalid) {
+    owner.invalid = true;
+    owner.diagnostics.invalid = true;
+    owner.diagnostics.lastError = message;
+    detachOwnerUploadCallbacks(owner);
+    const coordinator = owner.coordinator;
+    if (coordinator) {
+      coordinator.diagnostics.lastError = message;
+      coordinator.diagnostics.retiredOwners++;
+      if (counter) coordinator.diagnostics[counter]++;
+    }
   }
   throw new Error(message);
 }
@@ -279,33 +302,45 @@ function ownerEligibility(owner, scene, camera) {
 
 function publishOwner(owner, scene, camera, epoch) {
   if (owner.invalid || owner.publishedEpoch === epoch) return;
-  const work = ownerWork(owner);
-  if (work === 0) return;
-  const eligibility = ownerEligibility(owner, scene, camera);
-  if (eligibility === 0) {
-    owner.diagnostics.processingEligibilitySkips++;
-    owner.coordinator.diagnostics.processingEligibilitySkips++;
-    return;
-  }
-  if (work === 1 && eligibility < 2) {
-    owner.diagnostics.drawEligibilitySkips++;
-    owner.coordinator.diagnostics.drawEligibilitySkips++;
-    return;
-  }
-
-  let published = false;
-  const probeForceFull = owner.coordinator.diagnostics.probeForceFullUploads === true;
-  for (let index = 0; index < owner.bindings.length; index++) {
-    const binding = owner.bindings[index];
-    if (binding.forceFull) {
-      published = publishBinding(binding, epoch, true) || published;
-    } else if (eligibility >= 2 && binding.pending.end > binding.pending.start) {
-      published = publishBinding(binding, epoch, probeForceFull, probeForceFull) || published;
+  try {
+    const work = ownerWork(owner);
+    if (work === 0) return;
+    const eligibility = ownerEligibility(owner, scene, camera);
+    if (eligibility === 0) {
+      owner.diagnostics.processingEligibilitySkips++;
+      owner.coordinator.diagnostics.processingEligibilitySkips++;
+      return;
     }
-  }
-  if (published) {
-    owner.publishedEpoch = epoch;
-    owner.coordinator.diagnostics.publishedOwners++;
+    if (work === 1 && eligibility < 2) {
+      owner.diagnostics.drawEligibilitySkips++;
+      owner.coordinator.diagnostics.drawEligibilitySkips++;
+      return;
+    }
+
+    let published = false;
+    const probeForceFull = owner.coordinator.diagnostics.probeForceFullUploads === true;
+    for (let index = 0; index < owner.bindings.length; index++) {
+      const binding = owner.bindings[index];
+      if (binding.forceFull) {
+        published = publishBinding(binding, epoch, true) || published;
+      } else if (eligibility >= 2 && binding.pending.end > binding.pending.start) {
+        published = publishBinding(binding, epoch, probeForceFull, probeForceFull) || published;
+      }
+    }
+    if (published) {
+      owner.publishedEpoch = epoch;
+      owner.coordinator.diagnostics.publishedOwners++;
+    }
+  } catch (error) {
+    if (!owner.invalid) {
+      try {
+        markOwnerInvalid(
+          owner,
+          error && error.message ? error.message : String(error),
+          'callbackViolations',
+        );
+      } catch (_) { /* owner retired; remaining owners must still publish */ }
+    }
   }
 }
 
@@ -374,6 +409,7 @@ export function createDynamicBufferCoordinator(scene) {
     callbackViolations: 0,
     writeViolations: 0,
     eligibilityViolations: 0,
+    retiredOwners: 0,
     contextLosses: 0,
     contextRestores: 0,
     contextRestoreAcknowledgements: 0,
@@ -397,15 +433,13 @@ export function createDynamicBufferCoordinator(scene) {
   const wrapper = function dynamicBufferSceneBeforeRender(renderer, renderedScene, camera, renderTarget) {
     if (!coordinator.active || renderedScene !== scene) {
       diagnostics.hookViolations++;
-      diagnostics.invalid = true;
       diagnostics.lastError = 'dynamic buffer scene hook invoked outside its renderer epoch';
-      throw new Error(diagnostics.lastError);
+      return;
     }
     if (coordinator.inSceneHook) {
       diagnostics.hookViolations++;
-      diagnostics.invalid = true;
       diagnostics.lastError = 'dynamic buffer scene hook re-entered';
-      throw new Error(diagnostics.lastError);
+      return;
     }
     coordinator.inSceneHook = true;
     diagnostics.sceneInvocations++;
@@ -415,9 +449,7 @@ export function createDynamicBufferCoordinator(scene) {
       }
       if (scene.onBeforeRender !== wrapper) {
         diagnostics.hookViolations++;
-        diagnostics.invalid = true;
         diagnostics.lastError = 'scene onBeforeRender ownership changed during publication';
-        throw new Error(diagnostics.lastError);
       }
       publishSceneOwners(coordinator, camera);
     } finally {
@@ -441,10 +473,8 @@ export function createDynamicBufferCoordinator(scene) {
   });
 
   coordinator.arm = () => {
-    if (diagnostics.invalid) throw new Error(diagnostics.lastError || 'dynamic buffer coordinator is invalid');
     if (coordinator.active) {
       diagnostics.hookViolations++;
-      diagnostics.invalid = true;
       diagnostics.lastError = 'dynamic buffer renderer epoch re-entered';
       throw new Error(diagnostics.lastError);
     }
@@ -458,22 +488,20 @@ export function createDynamicBufferCoordinator(scene) {
   };
 
   coordinator.disarm = (epoch) => {
-    if (!coordinator.active || epoch !== coordinator.epoch) {
+    if (!coordinator.active) return;
+    if (epoch !== coordinator.epoch) {
       diagnostics.hookViolations++;
-      diagnostics.invalid = true;
       diagnostics.lastError = 'dynamic buffer renderer epoch disarmed out of order';
-      throw new Error(diagnostics.lastError);
     }
     try {
-      supersedeIncompleteEpoch(coordinator, epoch, 'interrupted-render');
-      if (scene.onBeforeRender !== wrapper) {
+      supersedeIncompleteEpoch(coordinator, coordinator.epoch, 'interrupted-render');
+      if (scene.onBeforeRender === wrapper) {
+        if (coordinator.priorHookHadOwnProperty) scene.onBeforeRender = coordinator.priorHook;
+        else delete scene.onBeforeRender;
+      } else {
         diagnostics.hookViolations++;
-        diagnostics.invalid = true;
         diagnostics.lastError = 'scene onBeforeRender ownership was lost before disarm';
-        throw new Error(diagnostics.lastError);
       }
-      if (coordinator.priorHookHadOwnProperty) scene.onBeforeRender = coordinator.priorHook;
-      else delete scene.onBeforeRender;
     } finally {
       coordinator.active = false;
       coordinator.priorHook = null;
@@ -645,7 +673,9 @@ export function unregisterDynamicBufferOwner(owner) {
 }
 
 function assertDynamicBufferOwnerLifecycleSafe(owner) {
+  if (!owner || owner.invalid) return;
   const coordinator = owner.coordinator;
+  if (!coordinator) return;
   if (uploadCallbackBinding) {
     coordinator.diagnostics.writeViolations++;
     throw new Error(`${owner.id} cannot write during an upload callback`);
@@ -657,13 +687,12 @@ function assertDynamicBufferOwnerLifecycleSafe(owner) {
 }
 
 export function assertDynamicBufferOwnerWritable(owner) {
-  if (!owner) return;
-  if (owner.invalid) throw new Error(owner.diagnostics.lastError || `${owner.id} is invalid`);
+  if (!owner || owner.invalid) return;
   assertDynamicBufferOwnerLifecycleSafe(owner);
 }
 
 export function markDynamicBufferItems(owner, bindingIndex, itemStart, itemCount = 1) {
-  if (!owner) return;
+  if (!owner || owner.invalid) return;
   const binding = owner.bindings[bindingIndex];
   if (!binding) throw new RangeError(`${owner.id} has no tracked attribute ${bindingIndex}`);
   if (integer(itemStart) < 0 || integer(itemCount) < 0 || itemStart + itemCount > binding.itemCapacity) {
@@ -680,6 +709,14 @@ export function markDynamicBufferItems(owner, bindingIndex, itemStart, itemCount
 
 export function commitDynamicBufferOwner(owner, activeCount) {
   if (!owner) return false;
+  if (owner.invalid) {
+    if (integer(activeCount) >= 0 && owner.mesh) owner.mesh.count = activeCount;
+    for (let index = 0; index < owner.bindings.length; index++) {
+      const attribute = owner.bindings[index].attribute;
+      if (attribute) attribute.needsUpdate = true;
+    }
+    return false;
+  }
   assertDynamicBufferOwnerWritable(owner);
   if (integer(activeCount) < 0 || activeCount > owner.capacity) {
     throw new RangeError(`${owner.id} active count ${activeCount} exceeds capacity ${owner.capacity}`);
@@ -710,6 +747,7 @@ export function commitDynamicBufferOwner(owner, activeCount) {
 }
 
 export function replaceDynamicBufferAttribute(owner, bindingIndex, attribute, reason = 'replacement') {
+  if (!owner || owner.invalid) return;
   assertDynamicBufferOwnerWritable(owner);
   const binding = owner && owner.bindings[bindingIndex];
   if (!binding) throw new RangeError(`${owner && owner.id || 'owner'} has no tracked attribute ${bindingIndex}`);

@@ -450,6 +450,73 @@ test('an invalid owner can still release its callback and coordinator ownership'
   assert.equal(unregisterDynamicBufferOwner(fixture.owner), false);
 });
 
+test('one owner trap cannot latch the coordinator dead for later frames', () => {
+  const scene = new THREE.Scene();
+  const coordinator = createDynamicBufferCoordinator(scene);
+  const camera = new THREE.PerspectiveCamera();
+
+  function addOwner(id) {
+    const geometry = new THREE.PlaneGeometry(1, 1);
+    const attribute = new THREE.InstancedBufferAttribute(new Float32Array(12), 3);
+    attribute.setUsage(THREE.DynamicDrawUsage);
+    geometry.setAttribute('aFixture', attribute);
+    const material = new THREE.MeshBasicMaterial();
+    const mesh = new THREE.InstancedMesh(geometry, material, 4);
+    mesh.count = 0;
+    mesh.frustumCulled = false;
+    scene.add(mesh);
+    const owner = registerDynamicBufferOwner(scene, {
+      id,
+      mesh,
+      attributes: [{ name: 'fixture', attribute }],
+    });
+    return { geometry, attribute, material, mesh, owner };
+  }
+
+  const trapped = addOwner('trapped');
+  const healthy = addOwner('healthy');
+
+  assert.throws(
+    () => trapped.attribute.onUploadCallback(),
+    /received an unsolicited upload callback/,
+  );
+  assert.equal(trapped.owner.invalid, true);
+  assert.equal(coordinator.getDiagnostics().retiredOwners, 1);
+  assert.doesNotThrow(
+    () => assertDynamicBufferOwnerWritable(trapped.owner),
+    'a retired owner must not keep throwing on the prepare path',
+  );
+
+  const epoch = coordinator.arm();
+  scene.onBeforeRender({}, scene, camera, null);
+  assert.equal(trapped.attribute.updateRanges.length, 0, 'retired owner is skipped');
+  assert.deepEqual(healthy.attribute.updateRanges, [{ start: 0, count: 12 }]);
+  acknowledgeInitial(healthy.attribute);
+  coordinator.disarm(epoch);
+
+  const next = coordinator.arm();
+  scene.onBeforeRender({}, scene, camera, null);
+  coordinator.disarm(next);
+  assert.equal(coordinator.getDiagnostics().epochs, 2);
+});
+
+test('a nested scene render during publication does not freeze later frames', () => {
+  const fixture = makeOwnerFixture();
+  let nested = 0;
+  fixture.scene.onBeforeRender = function reenter(renderer, scene, camera, target) {
+    nested += 1;
+    if (nested === 1) scene.onBeforeRender(renderer, scene, camera, target);
+  };
+  const epoch = beginSceneRender(fixture);
+  assert.equal(nested, 1);
+  acknowledgeInitial(fixture.attribute);
+  fixture.coordinator.disarm(epoch);
+
+  const next = beginSceneRender(fixture);
+  fixture.coordinator.disarm(next);
+  assert.equal(fixture.coordinator.getDiagnostics().invalid, false);
+});
+
 test('live sprite and trail owners publish only their packed prefixes after initial residency', () => {
   const scene = new THREE.Scene();
   const coordinator = createDynamicBufferCoordinator(scene);

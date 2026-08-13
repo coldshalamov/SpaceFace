@@ -166,6 +166,50 @@ test('PresentationRunner retains an unacknowledged journal range across render f
   controller.destroy();
 });
 
+test('consecutive render throws still schedule the next 3D frame', () => {
+  const raf = createRaf();
+  const state = {
+    accumulator: 0,
+    timeScale: 1,
+    tick: 0,
+    simTime: 0,
+    input: { actions: {} },
+  };
+  let renderCalls = 0;
+  const registry = {
+    step(dt, tickBoundary) {
+      state.tick++;
+      state.simTime += dt;
+      tickBoundary.publishInputCommand(state.input, state.tick);
+    },
+    renderUpdate() {
+      renderCalls++;
+      throw new Error('persistent draw failure');
+    },
+    get() { return null; },
+  };
+  const controller = startLoop(state, registry, {
+    requestFrame: raf.requestFrame,
+    cancelFrame: raf.cancelFrame,
+    nowMs: () => 1000,
+    visibilityTarget: null,
+    lifecyclePort: null,
+  });
+  const originalError = console.error;
+  console.error = () => {};
+  try {
+    for (let i = 0; i < 5; i++) {
+      assert.equal(raf.count(), 1, `frame ${i} must still have a scheduled rAF`);
+      raf.flushOne(1000 + i * 16);
+    }
+  } finally {
+    console.error = originalError;
+  }
+  assert.equal(renderCalls, 5);
+  assert.equal(raf.count(), 1, 'the loop must still be alive after repeated draw failures');
+  controller.destroy();
+});
+
 test('PresentationRunner replaces invalid ranges with an explicit full rebuild boundary', () => {
   const raf = createRaf();
   const first = {
