@@ -37,9 +37,11 @@ INFERENCE_CONVERGENCE_METHOD.md or INFERENCE_LANES.md unless the user said INFER
 
 Default unfinished campaign is PQ-050. Run
 `node scripts/program-dispatch.mjs --id PQ-050`, take the first claimable ship, follow
-ADVANCED_MODEL_TECHNIQUE_CONTRACT.md, fill that ship's ledger, wire only that ship,
-commit, then immediately take the next PQ-050 ship. Keep going until every PQ-050 leaf
-is done or honestly blocked. Do not stop after one ship. Do not touch Hitch.
+ADVANCED_MODEL_TECHNIQUE_CONTRACT.md and MODEL_ADVERSARIAL_REVIEW_WORKFLOW.md.
+Each ship: at least five full-job cycles; three valid full-model stills per cycle;
+three subagent reviews that list every obvious defect; implement all revises; then
+do the whole ship again. Zoomed gray plates do not count. Clean up old stills before
+commit. Wire only that ship, then the next. Do not stop after one ship. Do not touch Hitch.
 ```
 
 ## Prompt A — find and finish the next task

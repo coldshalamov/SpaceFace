@@ -26,6 +26,10 @@ These do **not** implement any technique on this page:
 - Unconditional bevel on every cube
 - Triangle count, draw count, object count, or modifier count
 - “Five iterations” or “three brainstorms” with the same stills defect
+- Spreading MTX work across cycles (form this time, textures next time)
+- A zoomed gray plate offered as a “review”
+- Self-review in place of the three subagent reports in
+  `MODEL_ADVERSARIAL_REVIEW_WORKFLOW.md`
 - Generated concept images projected as textures or used as normal/AO
 - A factory/Python builder succeeding
 - Promoting an unfinished body so the leaf can move on
@@ -65,8 +69,8 @@ working .blend:
 
 | Class | Mandatory |
 |---|---|
-| Player flyable (Hornet through Wasp, Hitch is out of scope) | MTX-01–MTX-18, MTX-20–MTX-28, MTX-30–MTX-50 |
-| NPC / traffic flyable | MTX-01–MTX-12, MTX-16, MTX-20–MTX-25, MTX-30–MTX-33, MTX-39, MTX-40, MTX-45–MTX-50 |
+| Player flyable (Hornet through Wasp, Hitch is out of scope) | MTX-01–MTX-18, MTX-20–MTX-28, MTX-30–MTX-50, MTX-55–MTX-67 |
+| NPC / traffic flyable | MTX-01–MTX-12, MTX-16, MTX-20–MTX-25, MTX-30–MTX-33, MTX-39, MTX-40, MTX-45–MTX-50, MTX-55–MTX-57, MTX-64, MTX-65 |
 | Place / rock / station module | MTX-01, MTX-03, MTX-16, MTX-20–MTX-25, MTX-30–MTX-33, MTX-39, MTX-46, MTX-50, MTX-52–MTX-54 |
 
 Hitch/Kestrel is never a target of this contract.
@@ -626,6 +630,98 @@ one loses, keep the old file.
 
 ---
 
+## 8b. Raised bar (25–50% above Hitch-plus loft-and-bake)
+
+These are mandatory on player ships. They exist because a correct
+mid-poly bake can still look like a 2014 asset-flip.
+
+### MTX-55 — Role silhouette at 40 px and 120 px
+
+**What it is.** At stamp size the ship is still an interceptor,
+barge, or hauler. Negative space (wing cutouts, twin booms, tower)
+carries identity, not decals.
+
+**Must show.** Downscale the three-quarter to 40 px wide. A stranger
+can name the role. If it becomes a gray capsule, fail.
+
+### MTX-56 — Value hierarchy
+
+**What it is.** At least three distinct values: dark mechanical
+wells, mid paint, light or saturated accent. Readable at 120 px.
+
+**Forbidden fake.** Whole ship one taupe.
+
+### MTX-57 — Visible shell thickness
+
+**What it is.** Every opening shows a wall 4–12 cm, not a paper
+hole or a solid plug.
+
+**Must show.** `bay_interior.png` includes the rim thickness.
+
+### MTX-58 — High that is actually higher
+
+**What it is.** The bake high has smaller bevels and extra
+hardware versus the game mesh — not a duplicate with a
+Bevel 0.01 instead of 0.04.
+
+**Proof.** Note high vs low bevel widths. If they match, fail.
+
+### MTX-59 — Reads at play distance
+
+**What it is.** Materials and big openings still identify the
+ship when it is ~80–150 px in a play-like frame. Studio-only
+beauty is not enough.
+
+**Proof.** One extra still `play_size.png` with the whole ship
+at ~120 px on the long axis. Role and 2+ materials still read.
+
+### MTX-60 — Designed asymmetry
+
+**What it is.** One authored repair, stencil, or replaced tile
+off-center. Not random cubes.
+
+### MTX-61 — Joint language
+
+**What it is.** Where plates meet: a gasket, weld bead, or
+countersink — modeled or in the unique normal — not a noise
+texture.
+
+### MTX-62 — Separated moving parts
+
+**What it is.** Flaps, hatches, turrets, or canopy are separate
+bodies with a visible gap even if they never animate.
+
+**Forbidden fake.** A painted hinge.
+
+### MTX-63 — Two-scale surfaces
+
+**What it is.** Unique bake carries meso (panels, AO). UV1
+micro does not replace missing panel geo.
+
+### MTX-64 — Rest areas
+
+**What it is.** Large quiet plates exist. Detail is clustered
+at access, heat, and joints. A ship covered in equal greeble
+fails.
+
+### MTX-65 — Role-specific massing
+
+**What it is.** An interceptor is not a barge with wings glued
+on. Clay masses differ by role. Sharing one factory hull
+envelope across Hornet and Atlas fails this row for both.
+
+### MTX-66 — Specular by manufacture
+
+**What it is.** In grazing light, paint, brushed metal, and
+ceramic do not share one highlight.
+
+### MTX-67 — Designed accent, not cyan brick
+
+**What it is.** One controlled color beat (warning, faction,
+canopy) that is not a leftover teal wedge or a 2 cm rail.
+
+---
+
 ## 9. Blender session order (do this, in this order)
 
 1. Freeze identity (sockets, collision, silhouette, role).
@@ -636,10 +732,14 @@ one loses, keep the old file.
 6. MTX-16–19 UVs.
 7. MTX-20–30 bakes.
 8. MTX-31–46 surfaces in Material Preview on the **whole** ship.
-9. MTX-47–51 LOD and export.
-10. Fill the ledger. Any row you cannot prove stays `blocked`.
+9. MTX-47–51 LOD and export. MTX-55–67 raised bar.
+10. Run `MODEL_ADVERSARIAL_REVIEW_WORKFLOW.md` for a full cycle (three
+    valid stills + three subagent reviews + implement all revises).
+11. Repeat that full-job cycle at least five times. Then fill the ledger.
 
 Do not start at step 8. A textured sausage is still a sausage.
+Do not split steps 2–9 across the five cycles. Each cycle is a full
+attempt.
 
 ## 10. Ledger location
 
@@ -651,4 +751,8 @@ The implementing agent fills it. The implementing agent **cannot**
 mark the leaf done. A second pass (human or a later agent that did
 not author the mesh) must set `independentReview: keep|revise|revert`
 on the whole asset. `keep` is illegal if any mandatory row is not
-`implemented` or if clay still reads as primitives.
+`implemented`, if clay still reads as primitives, if fewer than five
+valid review cycles exist, or if old cycle stills were not cleaned up.
+
+Review cycles follow
+[`MODEL_ADVERSARIAL_REVIEW_WORKFLOW.md`](./MODEL_ADVERSARIAL_REVIEW_WORKFLOW.md).

@@ -49,8 +49,12 @@ disjoint files. No coordinator, task-long reservation, or worktree is required.
   and quit. Default unfinished campaign is **`PQ-050`** (every remaining non-Hitch flyable ship
   under [`ADVANCED_MODEL_TECHNIQUE_CONTRACT.md`](./docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md)).
   Loop `node scripts/program-dispatch.mjs --id PQ-050`, finish the first claimable ship leaf
-  (technique ledger + wire that ship only), commit, then the next ship, until every PQ-050 leaf is
-  done or honestly blocked. Hitch stays frozen. A factory loft with boxes does not close a ship.
+  under the technique contract **and**
+  [`MODEL_ADVERSARIAL_REVIEW_WORKFLOW.md`](./docs/visual-assets/MODEL_ADVERSARIAL_REVIEW_WORKFLOW.md)
+  (five-plus full-job cycles, three valid full-model stills, three subagent reviews that list
+  obvious defects, then cleanup), commit, then the next ship, until every PQ-050 leaf is
+  done or honestly blocked. Hitch stays frozen. A factory loft with boxes or a zoomed gray
+  crop does not close a ship.
   Only after PQ-050 is exhausted, take other `--ready` implementation units. Acceptance-capture
   leaves that need a human or a headed machine you do not have may be recorded `unproven` and
   skipped; do not stall the campaign on them.

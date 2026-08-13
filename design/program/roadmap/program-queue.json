@@ -2355,6 +2355,7 @@
         "design/program/06_RETAINED_FUTURE_BACKLOG.md",
         "assets/ships/fleet_remaster_v1/HITCH_QUALITY_FLOOR.md",
         "docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md",
+        "docs/visual-assets/MODEL_ADVERSARIAL_REVIEW_WORKFLOW.md",
         "design/program/roadmap/active/PQ-050.md"
       ],
       "checks": [
@@ -2368,7 +2369,7 @@
         "matched-hitch-stills",
         "independent-visual-review"
       ],
-      "brief": "Bring every live flyable player and NPC ship except Hitch/Kestrel to honest Hitch-plus / A-list construction. One leaf is one ship. That ship must implement docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md (mid-poly weighted normals, skin-breaking booleans, unique UV0 bake, mesh AO/curvature, authored ORM, no shared-sheet tint) and file a TECHNIQUE_LEDGER.json before wiring. A factory loft with boxes cannot close a leaf. Hitch stays untouched."
+      "brief": "Bring every live flyable player and NPC ship except Hitch/Kestrel to 2026 A-list construction. One leaf is one ship under ADVANCED_MODEL_TECHNIQUE_CONTRACT.md and MODEL_ADVERSARIAL_REVIEW_WORKFLOW.md: five-plus full-job cycles, three valid full-model stills, three subagent reviews that list obvious defects, implement all revises, cleanup old stills, then wire only that ship. A factory loft, tinted shared sheet, or zoomed gray crop cannot close a leaf. Hitch stays untouched."
     }
   ],
   "dispatchUnits": [
@@ -6413,7 +6414,7 @@
         "npm run check:baseline"
       ],
       "receiptRefs": [],
-      "brief": "Finish Hornet only under ADVANCED_MODEL_TECHNIQUE_CONTRACT.md. Clay must not read as a tube with boxes. Mandatory MTX rows need exported stills in a TECHNIQUE_LEDGER.json. Then copy only Hornet's three LODs. A factory loft or tinted shared sheet does not close this leaf. Hitch stays untouched."
+      "brief": "Finish Hornet only. Full MTX contract including raised-bar MTX-55–67. At least five full-job cycles with three valid full-model stills and three subagent reviews each (MODEL_ADVERSARIAL_REVIEW_WORKFLOW.md). Implement every revise each cycle. Delete leftover iter stills. Then copy only Hornet's three LODs. Zoomed gray crops and factory lofts do not close this leaf. Hitch stays untouched."
     },
     {
       "id": "PQ-050.02",
