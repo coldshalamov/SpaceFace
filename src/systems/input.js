@@ -117,9 +117,21 @@ function travelDisrupted(state) {
   return false;
 }
 
+function travelDisruptionReason(state) {
+  const p = state && state.player;
+  const drive = p && p.travelDrive;
+  if (!drive) return null;
+  if (drive.disruptRequest === true) return drive.disruptReason || 'disrupted';
+  if (drive.disrupted === true) return 'disrupted';
+  return null;
+}
+
 function clearTravelDisruptRequest(state) {
   const drive = state && state.player && state.player.travelDrive;
-  if (drive && drive.disruptRequest === true) drive.disruptRequest = false;
+  if (drive && drive.disruptRequest === true) {
+    drive.disruptRequest = false;
+    drive.disruptReason = null;
+  }
 }
 
 function finiteOr(v, fallback) { return Number.isFinite(v) ? v : fallback; }
@@ -149,6 +161,7 @@ function stepTravelLatch(host, state, inp, dt) {
   const step = Math.max(0, finiteOr(dt, 0));
   const pressed = host._travelEdge;
   const disrupted = travelDisrupted(state);
+  const disruptionReason = travelDisruptionReason(state);
   const braking = travelBrakeBreaks(inp);
 
   // Feed the kernel's published ramp back in. Reading the frame the kernel actually wrote (rather
@@ -168,14 +181,14 @@ function stepTravelLatch(host, state, inp, dt) {
 
   switch (drive.state) {
     case 'off':
-      if (disrupted) { toCooldown('disrupted'); break; }
+      if (disrupted) { toCooldown(disruptionReason || 'disrupted'); break; }
       if (pressed) { drive.state = 'spooling'; drive.spoolT = 0; drive.breakReason = null; }
       break;
 
     case 'spooling':
       // Disruption and braking both kill a spool. A second press is a CANCEL, not a disengage:
       // nothing was earned yet, so it costs no cooldown — the punishment is for breaking a burn.
-      if (disrupted) { toCooldown('disrupted'); break; }
+      if (disrupted) { toCooldown(disruptionReason || 'disrupted'); break; }
       if (braking) { toCooldown('brake'); break; }
       if (pressed) { drive.state = 'off'; drive.spoolT = 0; drive.breakReason = 'cancelled'; break; }
       drive.spoolT += step;
@@ -188,7 +201,7 @@ function stepTravelLatch(host, state, inp, dt) {
       break;
 
     case 'engaged':
-      if (disrupted) { toCooldown('disrupted'); break; }
+      if (disrupted) { toCooldown(disruptionReason || 'disrupted'); break; }
       if (braking) { toCooldown('brake'); break; }
       if (pressed) { toCooldown('pilot'); break; }
       drive.engagedT += step;

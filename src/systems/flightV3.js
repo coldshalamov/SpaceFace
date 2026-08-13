@@ -69,12 +69,17 @@ const TRAVEL_DASH_TAG_S = 1.0;
 const MASSLINE_SLING_DECAY_TAU_S = 6.0;
 const MASSLINE_EARNED_ASSIST_SCALE = 0.24;
 const CLOAK_COAST_ASSIST_SCALE = 0.28;
+// Travel Burn deliberately reuses the fitted boost drain rate. The pool is authored on the ship's
+// boost block, so this keeps engine/booster upgrades and the DRIVE gauge on one source of truth
+// without inventing a second resource or changing the generic propulsion resource ledger.
+const TRAVEL_BURN_DRAIN_MULT = 1;
 export const MASSLINE_FLIGHT_TUNING = Object.freeze({
   MASSLINE_SLING_TAG_S,
   MASSLINE_SLING_DECAY_TAU_S,
   MASSLINE_EARNED_ASSIST_SCALE,
   CLOAK_COAST_ASSIST_SCALE,
 });
+export const FLIGHT_V3_TRAVEL_TUNING = Object.freeze({ TRAVEL_BURN_DRAIN_MULT });
 
 // Boost/dash tuning — mirrors src/systems/flight.js so player feel is identical under V3.
 const DASH_TAP_WINDOW = 0.32;  // Shift taps up to this duration become dash; longer holds boost.
@@ -224,9 +229,38 @@ export const flightV3 = {
     let boosting = input.boost;
     if (isPlayer) {
       const autoBoost = !!(autopilot && autopilot.active);
-      boosting = this._stepPlayerBoost(entity, input.boost, dt, state, { suppressDash: autoBoost });
+      // Input owns the latch. Read its published state before stepping boost so an engaged burn
+      // does not also regenerate the same capacitor in this tick; the burn debit below is the
+      // only new consumer and remains player-only.
+      const requestedTravelBurn = travelFlag('travelBurn')
+        && state && state.input && state.input.travelDrive
+        && state.input.travelDrive.state === 'engaged';
+      boosting = this._stepPlayerBoost(entity, input.boost, dt, state, {
+        suppressDash: autoBoost,
+        suppressRegen: requestedTravelBurn,
+      });
       input.boost = boosting;
       applyMasslineFlightModifiers(input, state, this._masslineSlingUntil, this._dashEarnedUntil);
+      if (travelFlag('travelBurn') && input.travelDrive && input.travelDrive.state === 'engaged') {
+        const energyBefore = finiteNonNeg(entity.boost && entity.boost.energy, 0);
+        if (!(energyBefore > 0)) {
+          // The input system consumes this one-shot request next tick and owns the actual
+          // Engaged -> Cooldown transition. Suppress the local kernel input now so depletion
+          // cannot buy one free burn tick while the latch catches up.
+          requestTravelBurnDepletion(state);
+          input.travelDrive = travelDriveCooldownInput(input.travelDrive);
+        } else {
+          const spent = Math.min(energyBefore, travelBurnCost(entity.boost, dt));
+          entity.boost.energy = Math.max(0, energyBefore - spent);
+          if (!(entity.boost.energy > 0)) {
+            // A partial final payment is still honored, but the exhausted tick must not
+            // contribute an engaged kernel cap. Input consumes the request next tick; this local
+            // copy keeps the current simulation honest until then.
+            requestTravelBurnDepletion(state);
+            input.travelDrive = travelDriveCooldownInput(input.travelDrive);
+          }
+        }
+      }
     }
 
     const body = bodySnapshot(entity, profile);
@@ -332,7 +366,7 @@ export const flightV3 = {
     } else if (boost.energy > boost.max * 0.35) {
       boost._boostArmed = true;
     }
-    if (!boosting) boost.energy = Math.min(boost.max, boost.energy + boost.regenRate * dt);
+    if (!boosting && !opts.suppressRegen) boost.energy = Math.min(boost.max, boost.energy + boost.regenRate * dt);
     return boosting;
   },
 
@@ -545,6 +579,25 @@ function normalizeBoostResource(e) {
 
 function finiteNonNeg(value, fallback) {
   return Number.isFinite(value) ? Math.max(0, value) : fallback;
+}
+
+/** Cost for one engaged Travel Burn tick. The fitted boost drain is the sole authored rate. */
+export function travelBurnCost(boost, dt) {
+  const rate = finiteNonNeg(boost && boost.drainRate, 0);
+  return rate * TRAVEL_BURN_DRAIN_MULT * Math.max(0, finite(dt, 0));
+}
+
+function requestTravelBurnDepletion(state) {
+  const player = state && state.player;
+  if (!player) return;
+  const drive = player.travelDrive || (player.travelDrive = {});
+  drive.disruptRequest = true;
+  drive.disruptReason = 'energy';
+}
+
+function travelDriveCooldownInput(drive) {
+  if (!drive || typeof drive !== 'object') return drive;
+  return { ...drive, state: 'cooldown', breakReason: 'energy' };
 }
 
 function normalizeCraftInput(entity, raw = {}, runtime, state, isPlayer, dt = SG02_INPUT_DT) {

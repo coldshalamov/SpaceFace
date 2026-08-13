@@ -431,7 +431,7 @@
     "check:propulsion:authority": "node --test test/propulsion-spawned-ship-authority.test.mjs",
     "check:propulsion:extreme": "node scripts/check-propulsion-extreme-speed.mjs",
     "check:propulsion": "npm run check:propulsion:authority && npm run check:propulsion:extreme && npm run check:rcs-sign-truth",
-    "check:travel-drive": "node --test test/travel-drive.test.mjs",
+    "check:travel-drive": "node --test test/travel-drive.test.mjs test/travel-drive-energy.test.mjs",
     "check:travel-latch": "node --test test/travel-latch.test.mjs",
     "check:travel-lanes": "node --test test/travel-lanes.test.mjs && node scripts/check-travel-lanes.mjs",
     "check:route-engage": "node --test test/route-engage-action.test.mjs",
