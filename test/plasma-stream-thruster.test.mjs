@@ -144,3 +144,50 @@ test('plasma stream trail extends along ContinuousPlume -ax exhaust and keeps hi
   );
   stream.dispose();
 });
+
+test('plasma stream remains inspection-active while its released snake still draws', () => {
+  const scene = new THREE.Scene();
+  const stream = new PlasmaStreamSystem(THREE, PLAYER_PLASMA_STREAM_RECIPE);
+  stream.attach(scene);
+  const sockets = [{ x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0 }];
+  const owner = { id: 'snake-cutoff' };
+  const thrust = { drive: 1, throttle: 1, boost: 0, speed: 120 };
+  for (let i = 0; i < 40; i++) {
+    sockets[0].x = i * 1.5;
+    stream.update(1 / 60, sockets, thrust, { reducedMotion: false }, owner);
+  }
+
+  const cutoff = { drive: 0, throttle: 0, boost: 0, speed: 0 };
+  for (let i = 0; i < 50; i++) {
+    stream.update(1 / 60, sockets, cutoff, { reducedMotion: false }, owner);
+  }
+
+  const info = stream.inspect();
+  assert.equal(info.wakeParcels, 0, 'wake has aged out before the slower history filament');
+  assert.ok(info.snakePoints >= 2, 'released history filament remains drawable');
+  assert.equal(info.active, true, 'inspection remains active while the released snake is visible');
+  stream.dispose();
+});
+
+test('plasma stream reuses one fallback identity without sockets or an owner', () => {
+  const scene = new THREE.Scene();
+  const stream = new PlasmaStreamSystem(THREE, PLAYER_PLASMA_STREAM_RECIPE);
+  stream.attach(scene);
+  const fallback = stream._fallbackNozzle;
+  const thrust = { drive: 1, throttle: 1, boost: 0, speed: 0 };
+
+  for (let i = 0; i < 20; i++) {
+    fallback.x = i * 0.75;
+    stream.update(1 / 60, null, thrust, { reducedMotion: false });
+  }
+
+  const info = stream.inspect();
+  assert.ok(fallback, 'fallback nozzle is allocated once on the stream instance');
+  assert.strictEqual(stream._fallbackNozzle, fallback, 'fallback nozzle identity stays stable');
+  assert.strictEqual(stream._owner, fallback, 'omitted owner resolves to the same fallback identity');
+  assert.ok(info.wakeParcels > 8,
+    `fallback identity must retain wake parcels across frames, got ${info.wakeParcels}`);
+  assert.ok(info.path.historyCount > 8,
+    `fallback identity must retain path history across frames, got ${info.path.historyCount}`);
+  stream.dispose();
+});

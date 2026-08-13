@@ -481,6 +481,8 @@ export class PlasmaStreamSystem {
     this._prevNy = 0;
     this._prevNz = 0;
     this._owner = null;
+    // Stable default pose and owner token for socketless callers; never allocate this in update().
+    this._fallbackNozzle = { x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0 };
   }
 
   setCamera(camera) {
@@ -1054,7 +1056,7 @@ export class PlasmaStreamSystem {
     const list = sockets && sockets.length ? sockets : null;
     // Production sockets (ContinuousPlume convention): ax points opposite exhaust;
     // jet extends along -ax. Default ax=+1 (ship +X) ⇒ exhaust -X.
-    const primary = list ? list[0] : { x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0 };
+    const primary = list ? list[0] : this._fallbackNozzle;
     let dirX = Number.isFinite(primary.ax) ? primary.ax : 1;
     let dirY = Number.isFinite(primary.ay) ? primary.ay : 0;
     let dirZ = Number.isFinite(primary.az) ? primary.az : 0;
