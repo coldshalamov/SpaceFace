@@ -326,6 +326,7 @@ asset's audit, contract, provenance, and visual review.
 Required references:
 
 - `docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md`
+- `docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md` — fail-closed MTX list; a loft-plus-boxes factory pass implements none of it
 - `docs/visual-assets/TEMPLATES.md`
 - `docs/visual-assets/AGENT_PROMPTS.md`
 - `design/graphics-sprints/VISUAL_ITERATION_PROTOCOL.md`

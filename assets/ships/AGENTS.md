@@ -15,7 +15,10 @@ manifests that bridge them to runtime. Exact machine records outrank prose inven
   and execution protocol as the canonical definition of done.
 - For every Blender/GLB form or surfacing change, also load
   `.grok/skills/spaceface-blender-material-truth/SKILL.md` and complete its preflight before
-  modeling. Tier C/D may group one repeated manufactured family, but no changed visible zone may
+  modeling. Follow
+  `docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md`: fill a `TECHNIQUE_LEDGER.json`
+  for the exact candidate. A factory loft with boxes, a tinted shared sheet, or a script
+  success does not implement any MTX row. Tier C/D may group one repeated manufactured family, but no changed visible zone may
   inherit a DCC default. This prevents plastic/clay, LEGO-like primitive stacks, glowing
   disks/toruses, generic greebles, and fiction/material contradictions instead of diagnosing them
   after export. The skill may add techniques but never weaken G0-G7.

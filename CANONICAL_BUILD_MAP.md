@@ -61,8 +61,10 @@ ship except Hitch/Kestrel honestly better than live Hitch is admitted as `PQ-050
 (`GFX-FLEET-REMASTER-HITCHPLUS`). Start at
 [`design/program/roadmap/active/PQ-050.md`](./design/program/roadmap/active/PQ-050.md), then
 `node scripts/program-dispatch.mjs --id PQ-050` or `--next` for the first ready ship. One leaf is
-one ship: polish it until Hitch no longer wins, wire only that ship, stop. First ready ship is
-Hornet. Do not touch Hitch. Do not promote a ship that still loses to Hitch.
+one ship: apply [`docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md`](./docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md)
+(form, unique UVs, mesh bakes, authored surfaces, LOD), fill that ship’s technique ledger, then
+wire only that ship. A factory loft with boxes or a tinted shared sheet does not close a leaf.
+First ready ship is Hornet. Do not touch Hitch.
 
 **Graphics / expansion research (A-list parity):** when planning work that spans graphics,
 animation, VFX, variety, or world density — as opposed to one admitted asset packet — the durable

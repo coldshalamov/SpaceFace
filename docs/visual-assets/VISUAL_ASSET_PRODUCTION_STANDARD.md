@@ -121,6 +121,11 @@ gusset, saddle, clevis, flange, service line, aperture, access cover, or pressur
 primitive is being transformed into. Then model its interfaces, wall thickness, negative space, load
 or service path, and transition into the neighboring structure.
 
+The fail-closed technique list, Blender session order, and per-candidate ledger are
+[`ADVANCED_MODEL_TECHNIQUE_CONTRACT.md`](./ADVANCED_MODEL_TECHNIQUE_CONTRACT.md). A remaster that
+skips that ledger, or that ships a lofted primitive stack with a tinted shared sheet, has not
+done the form or surfacing work this standard requires.
+
 Use a deliberate size hierarchy:
 
 - macro forms preserve the existing asset identity and role;

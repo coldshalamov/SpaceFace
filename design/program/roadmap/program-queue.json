@@ -2354,6 +2354,7 @@
         "CANONICAL_BUILD_MAP.md",
         "design/program/06_RETAINED_FUTURE_BACKLOG.md",
         "assets/ships/fleet_remaster_v1/HITCH_QUALITY_FLOOR.md",
+        "docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md",
         "design/program/roadmap/active/PQ-050.md"
       ],
       "checks": [
@@ -2367,7 +2368,7 @@
         "matched-hitch-stills",
         "independent-visual-review"
       ],
-      "brief": "Bring every live flyable player and NPC ship except Hitch/Kestrel to honest Hitch-plus / A-list construction. One leaf is one ship: polish that ship until Hitch no longer wins, wire only that ship, stop. Twenty-two ordered ships starting at Hornet. Hitch freeze set stays untouched. Do not run a stage across the whole fleet."
+      "brief": "Bring every live flyable player and NPC ship except Hitch/Kestrel to honest Hitch-plus / A-list construction. One leaf is one ship. That ship must implement docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md (mid-poly weighted normals, skin-breaking booleans, unique UV0 bake, mesh AO/curvature, authored ORM, no shared-sheet tint) and file a TECHNIQUE_LEDGER.json before wiring. A factory loft with boxes cannot close a leaf. Hitch stays untouched."
     }
   ],
   "dispatchUnits": [
@@ -6412,7 +6413,7 @@
         "npm run check:baseline"
       ],
       "receiptRefs": [],
-      "brief": "Polish Hornet only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
+      "brief": "Finish Hornet only under ADVANCED_MODEL_TECHNIQUE_CONTRACT.md. Clay must not read as a tube with boxes. Mandatory MTX rows need exported stills in a TECHNIQUE_LEDGER.json. Then copy only Hornet's three LODs. A factory loft or tinted shared sheet does not close this leaf. Hitch stays untouched."
     },
     {
       "id": "PQ-050.02",

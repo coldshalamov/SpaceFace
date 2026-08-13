@@ -93,7 +93,7 @@ evidence triggers are proved.
 | [`PQ-046.md`](../retired/PQ-046.md) | land five coherent high-leverage vision unlocks through inference expansion, cold review, and ordinary-route proof | integrated and retired through five leaf receipts at focused-green scope; parent ordinary-route visual acceptance remains unclaimed |
 | [`PQ-048.md`](../retired/PQ-048.md) | deliver twenty new inference-to-convergence player outcome packages in four composed tranches | integrated and retired through 20 exact leaf receipts and four composed tranches at focused-green scope; ordinary headed portfolio route remains unproven |
 | [`PQ-049.md`](./PQ-049.md) | build and accept a distinct civic Massline express-liner through DCC, release, render-package, runtime-map, and natural-route leaves | new express-only identity; first DCC candidate leaf is ready, later leaves are dependency-gated; parent remains unproven |
-| [`PQ-050.md`](./PQ-050.md) | remaster every live flyable ship except Hitch, one ship per leaf, polish then wire | Hitch frozen; first ready leaf is Hornet; do not run a stage across the whole fleet |
+| [`PQ-050.md`](./PQ-050.md) | remaster every live flyable ship except Hitch, one ship per leaf, under the MTX technique contract | Hitch frozen; ledger required; factory loft+boxes cannot close a leaf; first ready is Hornet |
 
 PQ-043 and PQ-044 are admitted queue identities but remain deferred and packet-less until their
 conditional triggers are proved.

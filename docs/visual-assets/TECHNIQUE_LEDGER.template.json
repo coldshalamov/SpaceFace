@@ -1,0 +1,31 @@
+{
+  "schema": "spaceface.advancedModelTechniqueLedger.v1",
+  "assetId": "REPLACE_ME",
+  "shipId": "REPLACE_ME",
+  "candidateHash": null,
+  "exportGlb": null,
+  "class": "player_flyable",
+  "contract": "docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md",
+  "clayStillReadsAsPrimitives": true,
+  "independentReview": "blocked",
+  "independentReviewer": null,
+  "forbidden": {
+    "factoryLoftPlusBoxes": null,
+    "sharedSheetTint": null,
+    "shadeSmoothWholeObject": null,
+    "internalVoidCalledBay": null,
+    "imagenUsedAsBake": null
+  },
+  "rows": [
+    {
+      "id": "MTX-01",
+      "state": "blocked",
+      "still": null,
+      "clayConfirm": "fail",
+      "forbiddenFakeAbsent": false,
+      "bevelWidthM": null,
+      "shadeAngleDeg": null,
+      "notes": ""
+    }
+  ]
+}
