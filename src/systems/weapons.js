@@ -27,6 +27,7 @@ import { presentationAllowsPlayerFacingAction } from '../core/presentationAdmiss
 
 const RAD = Math.PI / 180;
 const TWO_PI = Math.PI * 2;
+const NPC_FIRE_PLAYER_RADAR_RANGE = 4000;
 
 // SF-10 RCS disruptor. A hit leaves the PQ-009 provenance tag 'rcs_disruptor_spike'; weapons latches
 // a suppression window off it only while that tag is fresh (RCS_TRIGGER_MAXAGE_TICKS), so a later hit
@@ -1144,7 +1145,8 @@ function npcFireTargetVisibleOnPlayerRadar(e, state) {
   if (!state || !combat || combat.targetId !== state.playerId) return true;
   const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
   if (!player || !player.pos || !e.pos) return true;
-  const range = (state.ui && Number.isFinite(state.ui.radarRange)) ? state.ui.radarRange : 4000;
+  // Player sensor fittings extend observation, not the early-flight hostile engagement ring.
+  const range = NPC_FIRE_PLAYER_RADAR_RANGE;
   const pad = (player.radius || 0) + (e.radius || 0);
   const dx = e.pos.x - player.pos.x;
   const dz = e.pos.z - player.pos.z;

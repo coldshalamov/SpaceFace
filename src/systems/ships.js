@@ -118,6 +118,7 @@ function weaponSlotSpec(entry) {
 const BASE_TURN = 4.4;     // rad/s reference (before handling/mass/turnMult)
 const SPEED_SCALE = 2.6;   // engine.topSpeed -> maxSpeed clamp scale
 const THRUST_SCALE = 0.99; // engine.topSpeed -> thrust accel scale
+const BASE_RADAR_RANGE = 4000;
 const PLAYER_TURN_RATE_MULT = 0.78;
 const PLAYER_TURN_RATE_CAP = 3.8;
 
@@ -369,6 +370,7 @@ export function getDerivedStats(defId, fittings = [], player = null) {
   let shieldFlat = 0, shieldRegenFlat = 0, hullFlat = 0, cargoFlat = 0, cargoCapPct = 0;
   let weaponRangePct = 0;
   let weaponDmgPct = 0;
+  let radarRangePct = 0;
   let hullRepairOOC = 0;
   // Every hull has its authored T1 drive. Fitted drive modules can only advance that capability;
   // the world owner resolves the canonical jump_tN key against its supported drive table.
@@ -398,6 +400,17 @@ export function getDerivedStats(defId, fittings = [], player = null) {
     if (occupiesCompatibleSlot) {
       weaponRangePct = addFinitePositivePct(weaponRangePct, mods.weaponRangePct);
       weaponDmgPct = addFinitePositivePct(weaponDmgPct, mods.weaponDmgPct);
+      // Radar is a sensory capability: valid compatible modules select the strongest authored
+      // coverage rather than stacking duplicate arrays. Reject a finite-but-unrepresentable value
+      // here so it cannot discard an earlier usable range during final scaling.
+      if (typeof mods.radarRangePct === 'number'
+        && Number.isFinite(mods.radarRangePct)
+        && mods.radarRangePct > radarRangePct) {
+        const candidateRadarRange = BASE_RADAR_RANGE * (1 + mods.radarRangePct);
+        if (Number.isFinite(candidateRadarRange) && candidateRadarRange > 0) {
+          radarRangePct = mods.radarRangePct;
+        }
+      }
       // Drive tier is a capability rating: strongest compatible fitted module wins. Keep the
       // source primitive-only so hand-authored/malformed module records cannot leak NaN, strings,
       // or objects into the world jump state machine.
@@ -487,6 +500,11 @@ export function getDerivedStats(defId, fittings = [], player = null) {
   const cargoCap = Math.floor((shipDef.cargo + cargoFlat) * (1 + cargoCapPct) * cargoCapMult);
   const weaponRangeMult = weaponRangePct + 1;
   const weaponDmgMult = weaponDmgPct + 1;
+  const radarRangeMult = radarRangePct + 1;
+  const rawRadarRange = BASE_RADAR_RANGE * radarRangeMult;
+  const radarRange = Number.isFinite(rawRadarRange) && rawRadarRange > 0
+    ? rawRadarRange
+    : BASE_RADAR_RANGE;
 
   // (5) boost/dash config (Phase 3). regenRate rides the energy efficiency multiplier so better
   // power systems help boost recharge. A ship with no boost block gets a near-zero pool (can't boost).
@@ -537,8 +555,11 @@ export function getDerivedStats(defId, fittings = [], player = null) {
     tetherSpoolMult, tetherReelRateMult, masslineHeadId, magnetRange,
     weaponRangePct,
     weaponDmgPct,
+    radarRangePct,
     weaponRangeMult,
     weaponDmgMult,
+    radarRangeMult,
+    radarRange,
     jumpDriveTier: `jump_t${jumpDriveTier}`,
     hullRepairOOC,
     cargoCap,
@@ -920,6 +941,7 @@ export const ships = {
       + shipAppearanceSignature(e.data.appearance, defId);
 
     e.data.derived = derived;
+    if (isPlayer && this.state.ui) this.state.ui.radarRange = derived.radarRange;
     e.data.weapons = newWeapons;
     e.data.miningBeam = buildMiningBeam(shipDef, fit, isPlayer);
     e.data.fittings = newViewFittings;
