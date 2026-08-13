@@ -3,13 +3,13 @@
   "assetId": "SF_BASTION_PRODUCTION_V1",
   "defId": "ship_bastion",
   "shipId": "bastion",
-  "iteration": 4,
+  "iteration": 5,
   "lods": [
     {
       "lod": 0,
-      "triangles": 34520,
-      "hullTriangles": 1540,
-      "draws": 8,
+      "triangles": 36588,
+      "hullTriangles": 1648,
+      "draws": 9,
       "materials": [
         "Material_Accent",
         "Material_Armor",
@@ -18,7 +18,8 @@
         "Material_Hull",
         "Material_Mechanical",
         "Material_Radiator",
-        "Material_Thruster"
+        "Material_Thruster",
+        "Material_Warning"
       ],
       "sockets": [
         "SOCKET_Camera_Focus",
@@ -34,22 +35,24 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/bastion_production_v1_lod0.glb",
-      "bytes": 1792680,
-      "sha256": "F16702392BDF81EA3E5E69D7DC3F3A148DDD18E241F9992AC1D2657C2EC61547"
+      "bytes": 1908540,
+      "sha256": "7805CD0CE4369EB81BAA9896D29CEDD967B03D7721E92AB24AA83175DAA3DE07"
     },
     {
       "lod": 1,
-      "triangles": 8296,
-      "hullTriangles": 1540,
-      "draws": 7,
+      "triangles": 9484,
+      "hullTriangles": 1648,
+      "draws": 9,
       "materials": [
+        "Material_Accent",
         "Material_Armor",
         "Material_Canopy",
         "Material_Ceramic",
         "Material_Hull",
         "Material_Mechanical",
         "Material_Radiator",
-        "Material_Thruster"
+        "Material_Thruster",
+        "Material_Warning"
       ],
       "sockets": [
         "SOCKET_Camera_Focus",
@@ -65,8 +68,8 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/bastion_production_v1_lod1.glb",
-      "bytes": 423104,
-      "sha256": "BBCE7097DEA1A6953FBB9393BD43B2A3EC94789C9A889FC85283E0F0675136FC"
+      "bytes": 492064,
+      "sha256": "704973C649625D92E60AB3E5E945156CE73783C9E576186E7E5808C074B14C83"
     },
     {
       "lod": 2,
@@ -97,29 +100,29 @@
       ],
       "path": "source/wholeships/bastion_production_v1_lod2.glb",
       "bytes": 325948,
-      "sha256": "F28C7EA03B191E177D236D30874053363A6B55117582D3EAC70266E8675C8E33"
+      "sha256": "46FD394740DA8FA07A72645472F3AFBACCDF488BE06969F0278973F08ACE5E8D"
     }
   ],
   "renders": [
     {
       "view": "bastion_three_quarter",
-      "path": "evidence/iter04/bastion_three_quarter.png",
-      "bytes": 899495
+      "path": "evidence/iter05/bastion_three_quarter.png",
+      "bytes": 904081
     },
     {
       "view": "bastion_starboard",
-      "path": "evidence/iter04/bastion_starboard.png",
-      "bytes": 918050
+      "path": "evidence/iter05/bastion_starboard.png",
+      "bytes": 920663
     },
     {
       "view": "bastion_rear",
-      "path": "evidence/iter04/bastion_rear.png",
-      "bytes": 979241
+      "path": "evidence/iter05/bastion_rear.png",
+      "bytes": 989981
     },
     {
       "view": "bastion_grazing",
-      "path": "evidence/iter04/bastion_grazing.png",
-      "bytes": 965669
+      "path": "evidence/iter05/bastion_grazing.png",
+      "bytes": 970448
     }
   ]
 }

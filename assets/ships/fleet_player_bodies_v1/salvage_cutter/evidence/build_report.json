@@ -3,13 +3,13 @@
   "assetId": "SF_SALVAGE_CUTTER_V1",
   "defId": "salvor",
   "shipId": "salvage_cutter",
-  "iteration": 4,
+  "iteration": 5,
   "lods": [
     {
       "lod": 0,
-      "triangles": 36344,
-      "hullTriangles": 1756,
-      "draws": 8,
+      "triangles": 38412,
+      "hullTriangles": 1864,
+      "draws": 9,
       "materials": [
         "Material_Accent",
         "Material_Armor",
@@ -18,7 +18,8 @@
         "Material_Hull",
         "Material_Mechanical",
         "Material_Radiator",
-        "Material_Thruster"
+        "Material_Thruster",
+        "Material_Warning"
       ],
       "sockets": [
         "SOCKET_Camera_Focus",
@@ -34,22 +35,24 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/salvage_cutter_production_v1_lod0.glb",
-      "bytes": 1894328,
-      "sha256": "F6C3A20CB58EEF021A3B46E9D040B5B0EE8715FE83554E8AFB696B524D1B810C"
+      "bytes": 2005212,
+      "sha256": "FB0FA80BCF1945BB0111FB8BE5CC0292EA289BEE42E5BE0E5CE093F2FB3159E3"
     },
     {
       "lod": 1,
-      "triangles": 8392,
-      "hullTriangles": 1756,
-      "draws": 7,
+      "triangles": 9580,
+      "hullTriangles": 1864,
+      "draws": 9,
       "materials": [
+        "Material_Accent",
         "Material_Armor",
         "Material_Canopy",
         "Material_Ceramic",
         "Material_Hull",
         "Material_Mechanical",
         "Material_Radiator",
-        "Material_Thruster"
+        "Material_Thruster",
+        "Material_Warning"
       ],
       "sockets": [
         "SOCKET_Camera_Focus",
@@ -65,8 +68,8 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/salvage_cutter_production_v1_lod1.glb",
-      "bytes": 426716,
-      "sha256": "B494C70C51FBDB3F26F32213822E55430560E9D174940D4C4DDA32700CE2EC20"
+      "bytes": 492656,
+      "sha256": "638FF7D9AD3992ECDA7565EA7E051B0F97C10A11507E298A6DDB143B6FD818C3"
     },
     {
       "lod": 2,
@@ -97,29 +100,29 @@
       ],
       "path": "source/wholeships/salvage_cutter_production_v1_lod2.glb",
       "bytes": 327500,
-      "sha256": "B81932DFADF53D12BEF51B0DC02F19F8AE099AD9E1612C394D2B3E83CA2B4C49"
+      "sha256": "DA951A7931C423DF664B16F3D80CB7D791AA25ABDFC2C8AA1C111B393AE08A1E"
     }
   ],
   "renders": [
     {
       "view": "salvage_cutter_three_quarter",
-      "path": "evidence/iter04/salvage_cutter_three_quarter.png",
-      "bytes": 878187
+      "path": "evidence/iter05/salvage_cutter_three_quarter.png",
+      "bytes": 882036
     },
     {
       "view": "salvage_cutter_starboard",
-      "path": "evidence/iter04/salvage_cutter_starboard.png",
-      "bytes": 906317
+      "path": "evidence/iter05/salvage_cutter_starboard.png",
+      "bytes": 912532
     },
     {
       "view": "salvage_cutter_rear",
-      "path": "evidence/iter04/salvage_cutter_rear.png",
-      "bytes": 1001659
+      "path": "evidence/iter05/salvage_cutter_rear.png",
+      "bytes": 1011653
     },
     {
       "view": "salvage_cutter_grazing",
-      "path": "evidence/iter04/salvage_cutter_grazing.png",
-      "bytes": 924991
+      "path": "evidence/iter05/salvage_cutter_grazing.png",
+      "bytes": 939474
     }
   ]
 }

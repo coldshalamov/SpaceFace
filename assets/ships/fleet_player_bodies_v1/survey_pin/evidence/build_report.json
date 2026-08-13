@@ -3,13 +3,13 @@
   "assetId": "SF_SURVEY_PIN_V1",
   "defId": "surveyor",
   "shipId": "survey_pin",
-  "iteration": 4,
+  "iteration": 5,
   "lods": [
     {
       "lod": 0,
-      "triangles": 24464,
-      "hullTriangles": 1540,
-      "draws": 8,
+      "triangles": 26532,
+      "hullTriangles": 1648,
+      "draws": 9,
       "materials": [
         "Material_Accent",
         "Material_Armor",
@@ -18,7 +18,8 @@
         "Material_Hull",
         "Material_Mechanical",
         "Material_Radiator",
-        "Material_Thruster"
+        "Material_Thruster",
+        "Material_Warning"
       ],
       "sockets": [
         "SOCKET_Camera_Focus",
@@ -34,22 +35,24 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/survey_pin_production_v1_lod0.glb",
-      "bytes": 1271520,
-      "sha256": "65BE5AB8D29B5E906A54C3843C3D66B06E5C6A6E4C288184D3FD4921CA4EF0D4"
+      "bytes": 1384460,
+      "sha256": "3A57F4F4650FFD306595238C0072FA8B41E5D3309BCF8543653A4F02241B2BB2"
     },
     {
       "lod": 1,
-      "triangles": 5200,
-      "hullTriangles": 1540,
-      "draws": 7,
+      "triangles": 6388,
+      "hullTriangles": 1648,
+      "draws": 9,
       "materials": [
+        "Material_Accent",
         "Material_Armor",
         "Material_Canopy",
         "Material_Ceramic",
         "Material_Hull",
         "Material_Mechanical",
         "Material_Radiator",
-        "Material_Thruster"
+        "Material_Thruster",
+        "Material_Warning"
       ],
       "sockets": [
         "SOCKET_Camera_Focus",
@@ -65,8 +68,8 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/survey_pin_production_v1_lod1.glb",
-      "bytes": 272108,
-      "sha256": "9CCBC526805664EBDD558746712F32914BC199E51D1BC5E6F419F0E2AF890BA7"
+      "bytes": 341276,
+      "sha256": "EB4A6974D6B794CB03D8521551675E3D213C9E2CF2CB8F1D7A86BF6D761E3507"
     },
     {
       "lod": 2,
@@ -97,29 +100,29 @@
       ],
       "path": "source/wholeships/survey_pin_production_v1_lod2.glb",
       "bytes": 222468,
-      "sha256": "519E2AA971D8CDDE3A412842D5A5286EE7A5330357CF22025C866A4DA41A54A3"
+      "sha256": "F4904B8065214DD1439BDB2DE8F7EEB9D4580CED95FAC339E36E55FF1EB377A1"
     }
   ],
   "renders": [
     {
       "view": "survey_pin_three_quarter",
-      "path": "evidence/iter04/survey_pin_three_quarter.png",
-      "bytes": 822644
+      "path": "evidence/iter05/survey_pin_three_quarter.png",
+      "bytes": 824829
     },
     {
       "view": "survey_pin_starboard",
-      "path": "evidence/iter04/survey_pin_starboard.png",
-      "bytes": 876481
+      "path": "evidence/iter05/survey_pin_starboard.png",
+      "bytes": 878708
     },
     {
       "view": "survey_pin_rear",
-      "path": "evidence/iter04/survey_pin_rear.png",
-      "bytes": 966428
+      "path": "evidence/iter05/survey_pin_rear.png",
+      "bytes": 970820
     },
     {
       "view": "survey_pin_grazing",
-      "path": "evidence/iter04/survey_pin_grazing.png",
-      "bytes": 933257
+      "path": "evidence/iter05/survey_pin_grazing.png",
+      "bytes": 940700
     }
   ]
 }

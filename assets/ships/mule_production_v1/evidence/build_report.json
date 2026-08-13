@@ -25,10 +25,11 @@
   "lods": [
     {
       "lod": 0,
-      "triangles": 26368,
-      "hullTriangles": 1216,
-      "draws": 8,
+      "triangles": 28868,
+      "hullTriangles": 1324,
+      "draws": 9,
       "materials": [
+        "Material_Accent",
         "Material_Armor",
         "Material_Canopy",
         "Material_Ceramic",
@@ -39,6 +40,7 @@
         "Material_Warning"
       ],
       "meshNodes": [
+        "LOD0_Accent",
         "LOD0_Armor",
         "LOD0_Canopy",
         "LOD0_Ceramic",
@@ -63,15 +65,16 @@
       ],
       "embeddedPlume": false,
       "path": "source/wholeships/mule_production_v1_lod0.glb",
-      "bytes": 1462020,
-      "sha256": "62CAA9D562A919D1783E182412CD6D2160B3C8B343BA44AAEC722EC389F900CE"
+      "bytes": 1597600,
+      "sha256": "2CB24BF7CA4360AD9449741D7F29DA8B73D5AFE006DF1AEAFC22B53786065336"
     },
     {
       "lod": 1,
-      "triangles": 11496,
-      "hullTriangles": 1216,
-      "draws": 8,
+      "triangles": 12684,
+      "hullTriangles": 1324,
+      "draws": 9,
       "materials": [
+        "Material_Accent",
         "Material_Armor",
         "Material_Canopy",
         "Material_Ceramic",
@@ -82,6 +85,7 @@
         "Material_Warning"
       ],
       "meshNodes": [
+        "LOD1_Accent",
         "LOD1_Armor",
         "LOD1_Canopy",
         "LOD1_Ceramic",
@@ -106,8 +110,8 @@
       ],
       "embeddedPlume": false,
       "path": "source/wholeships/mule_production_v1_lod1.glb",
-      "bytes": 602560,
-      "sha256": "E05DB5D874724D334F183BA161C5BCA5186FC8954026659C69D3F74797428866"
+      "bytes": 670648,
+      "sha256": "B15B4B6CE9CC1CA115EF7CF8B26A0914E39E3E0163CC761B053902FE8C4F67E8"
     },
     {
       "lod": 2,
@@ -148,15 +152,15 @@
       "embeddedPlume": false,
       "path": "source/wholeships/mule_production_v1_lod2.glb",
       "bytes": 333528,
-      "sha256": "17E71C5E82069CDB6BAD900BC19454D42786DE3EFA2F4E948809D21980BA38CD"
+      "sha256": "4AF3ABF1CA3093B4F01DACBFFE097015BD1906FF2EA4111D518C806FF29B6748"
     }
   ],
   "renders": [
     {
       "view": "mule_three_quarter",
       "path": "evidence/iter03/mule_three_quarter.png",
-      "bytes": 965341,
-      "sha256": "FD493A63FFCCDE0BF01F8FDF2F0591810BBA839989375BE41FDA3D2D0982EE84",
+      "bytes": 966818,
+      "sha256": "7A96213D45595B777997EAC92273E2EAF273963A99B3D109054E29C02EDD1E48",
       "camera": [
         20,
         -22,
@@ -172,8 +176,8 @@
     {
       "view": "mule_starboard",
       "path": "evidence/iter03/mule_starboard.png",
-      "bytes": 1056281,
-      "sha256": "6AE3C3E03F5B7F833169868E4F00A410B735DD60D146004F105735828F9B94B7",
+      "bytes": 1056497,
+      "sha256": "A6D08C20D71C987AC748C5361027CF22DCEF2E5B171280F19D54ACB768C4C99B",
       "camera": [
         16,
         22,
@@ -189,8 +193,8 @@
     {
       "view": "mule_front",
       "path": "evidence/iter03/mule_front.png",
-      "bytes": 956479,
-      "sha256": "26E8788A45B6F9C796DF47E1564A367FB67EDE84D890A4A23736AFDD242D55E3",
+      "bytes": 957323,
+      "sha256": "A4F2AB76FE852DD3CC6F0978C61AF1B91D6C6CA13EBF6330C0E1C65D0B2F09BD",
       "camera": [
         24,
         0,
@@ -206,8 +210,8 @@
     {
       "view": "mule_rear",
       "path": "evidence/iter03/mule_rear.png",
-      "bytes": 1011357,
-      "sha256": "83BE430BED1126101609F15703E77E568C5E4CDF00AB2435405AA17079226296",
+      "bytes": 1017514,
+      "sha256": "351351E775F99AAE8FAE08E4331BA9596EE0BE1016CA5D8199E193AF11197F14",
       "camera": [
         -22,
         -8,
@@ -223,8 +227,8 @@
     {
       "view": "mule_top",
       "path": "evidence/iter03/mule_top.png",
-      "bytes": 1051873,
-      "sha256": "EBE6485E5F76CF9A2B3A02D63C93CED60FABB508DD6ED602F114608CD9E93A95",
+      "bytes": 1056380,
+      "sha256": "0B04F685A168CAD93B205CF8501E577EDB1C49829C74A889682B926F39CA231E",
       "camera": [
         0,
         0,
@@ -240,8 +244,8 @@
     {
       "view": "mule_grazing",
       "path": "evidence/iter03/mule_grazing.png",
-      "bytes": 1005729,
-      "sha256": "F52F943E1863943E7B315B3BFF6D1CDB24397E372D6093B05F99822C548496A1",
+      "bytes": 1005323,
+      "sha256": "8A7EF35DC4845CC1C79E805830F1FEC70FE13AE1A8BC79DCC7E1CBE4202065F1",
       "camera": [
         6,
         -18,
@@ -257,8 +261,8 @@
     {
       "view": "mule_drive_close",
       "path": "evidence/iter03/mule_drive_close.png",
-      "bytes": 1033267,
-      "sha256": "6B83EF9AA7DD38FCA2D56622C12BF4882D7E2F8FAA88687E6CE9C014FE3AA303",
+      "bytes": 1033485,
+      "sha256": "7377DFBD5D4AA01166A9CE43ECCCA0A889BF4CC79F4F663BE933F032EE60FBFA",
       "camera": [
         -13,
         -4,
@@ -274,8 +278,8 @@
     {
       "view": "mule_bridge_close",
       "path": "evidence/iter03/mule_bridge_close.png",
-      "bytes": 1050375,
-      "sha256": "8BC71E22BE54DEFE5DDF3D4FEF851EBA0FA7EADC2CAD28C988557427575A0B56",
+      "bytes": 1062517,
+      "sha256": "51548131B30C6992F4DE346AB7C1D3A5EA27A4D96F4E323EAD12C75F2C88936B",
       "camera": [
         14,
         -6,

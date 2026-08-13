@@ -3,13 +3,13 @@
   "assetId": "SF_RANGER_PRODUCTION_V1",
   "defId": "ship_ranger",
   "shipId": "ranger",
-  "iteration": 4,
+  "iteration": 5,
   "lods": [
     {
       "lod": 0,
-      "triangles": 34296,
-      "hullTriangles": 1756,
-      "draws": 8,
+      "triangles": 36364,
+      "hullTriangles": 1864,
+      "draws": 9,
       "materials": [
         "Material_Accent",
         "Material_Armor",
@@ -18,7 +18,8 @@
         "Material_Hull",
         "Material_Mechanical",
         "Material_Radiator",
-        "Material_Thruster"
+        "Material_Thruster",
+        "Material_Warning"
       ],
       "sockets": [
         "SOCKET_Camera_Focus",
@@ -34,22 +35,24 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/ranger_production_v1_lod0.glb",
-      "bytes": 1782380,
-      "sha256": "5CAE5660304550832BA00BAE7BC2E556835C127A9826ECF074EDA1AB222F145C"
+      "bytes": 1895284,
+      "sha256": "EEE47C124A1E00B567C998842DBB127A55142D8C64FC371D2361308A73A418A8"
     },
     {
       "lod": 1,
-      "triangles": 8072,
-      "hullTriangles": 1756,
-      "draws": 7,
+      "triangles": 9260,
+      "hullTriangles": 1864,
+      "draws": 9,
       "materials": [
+        "Material_Accent",
         "Material_Armor",
         "Material_Canopy",
         "Material_Ceramic",
         "Material_Hull",
         "Material_Mechanical",
         "Material_Radiator",
-        "Material_Thruster"
+        "Material_Thruster",
+        "Material_Warning"
       ],
       "sockets": [
         "SOCKET_Camera_Focus",
@@ -65,8 +68,8 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/ranger_production_v1_lod1.glb",
-      "bytes": 410084,
-      "sha256": "416DE1370220A37922760CFA912AFF3D2F699D1CB97B32609BC5980824F651D6"
+      "bytes": 479260,
+      "sha256": "491F27BE1A9193C087335F7E0B5513702B4C40E2081BA55E13F9D4780C240E86"
     },
     {
       "lod": 2,
@@ -97,29 +100,29 @@
       ],
       "path": "source/wholeships/ranger_production_v1_lod2.glb",
       "bytes": 312932,
-      "sha256": "DC73C15D331BB61EEE40F54E3CB4BFA34E447EA294F7F6C993AB1B61F4165CAF"
+      "sha256": "A0F5267DACB817B6D02A3EAE2E0899D5F5E59685E055E3279C25146FBCCE2E9A"
     }
   ],
   "renders": [
     {
       "view": "ranger_three_quarter",
-      "path": "evidence/iter04/ranger_three_quarter.png",
-      "bytes": 871226
+      "path": "evidence/iter05/ranger_three_quarter.png",
+      "bytes": 875082
     },
     {
       "view": "ranger_starboard",
-      "path": "evidence/iter04/ranger_starboard.png",
-      "bytes": 889839
+      "path": "evidence/iter05/ranger_starboard.png",
+      "bytes": 893752
     },
     {
       "view": "ranger_rear",
-      "path": "evidence/iter04/ranger_rear.png",
-      "bytes": 971776
+      "path": "evidence/iter05/ranger_rear.png",
+      "bytes": 980754
     },
     {
       "view": "ranger_grazing",
-      "path": "evidence/iter04/ranger_grazing.png",
-      "bytes": 930363
+      "path": "evidence/iter05/ranger_grazing.png",
+      "bytes": 940348
     }
   ]
 }

@@ -3,13 +3,13 @@
   "assetId": "SF_REPAIR_TENDER_V1",
   "defId": "tender",
   "shipId": "repair_tender",
-  "iteration": 4,
+  "iteration": 5,
   "lods": [
     {
       "lod": 0,
-      "triangles": 33464,
-      "hullTriangles": 1540,
-      "draws": 8,
+      "triangles": 35532,
+      "hullTriangles": 1648,
+      "draws": 9,
       "materials": [
         "Material_Accent",
         "Material_Armor",
@@ -18,7 +18,8 @@
         "Material_Hull",
         "Material_Mechanical",
         "Material_Radiator",
-        "Material_Thruster"
+        "Material_Thruster",
+        "Material_Warning"
       ],
       "sockets": [
         "SOCKET_Camera_Focus",
@@ -34,22 +35,24 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/repair_tender_production_v1_lod0.glb",
-      "bytes": 1730784,
-      "sha256": "1DC94156801EAEB724D85A1ABC97DAD3919719FB7E957885273167E60437E0E3"
+      "bytes": 1844252,
+      "sha256": "FE34C0EE2A83BFD801C1B20D265551EE722659BB2B785C9CA3E5A78311305636"
     },
     {
       "lod": 1,
-      "triangles": 7240,
-      "hullTriangles": 1540,
-      "draws": 7,
+      "triangles": 8428,
+      "hullTriangles": 1648,
+      "draws": 9,
       "materials": [
+        "Material_Accent",
         "Material_Armor",
         "Material_Canopy",
         "Material_Ceramic",
         "Material_Hull",
         "Material_Mechanical",
         "Material_Radiator",
-        "Material_Thruster"
+        "Material_Thruster",
+        "Material_Warning"
       ],
       "sockets": [
         "SOCKET_Camera_Focus",
@@ -65,8 +68,8 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/repair_tender_production_v1_lod1.glb",
-      "bytes": 363312,
-      "sha256": "D16EC14EA5561F14BBD77F0B1C1C0C48887A7D01AFE9CE6739DE25E827F933E7"
+      "bytes": 432768,
+      "sha256": "D947B41671F2A2EEB6E4EEB4D2D841D45C41CC4EF96D9826A276A6654D1A51D3"
     },
     {
       "lod": 2,
@@ -97,29 +100,29 @@
       ],
       "path": "source/wholeships/repair_tender_production_v1_lod2.glb",
       "bytes": 265384,
-      "sha256": "868786B767CF36AA3501D981B9FE6E7A0745C746414E0EB26EF7AD5A5D22184B"
+      "sha256": "6A8EDFB96C6A17BCAA591D2CA7E89D2243C1844C2A82C54E99162F23485890FE"
     }
   ],
   "renders": [
     {
       "view": "repair_tender_three_quarter",
-      "path": "evidence/iter04/repair_tender_three_quarter.png",
-      "bytes": 876020
+      "path": "evidence/iter05/repair_tender_three_quarter.png",
+      "bytes": 884337
     },
     {
       "view": "repair_tender_starboard",
-      "path": "evidence/iter04/repair_tender_starboard.png",
-      "bytes": 903934
+      "path": "evidence/iter05/repair_tender_starboard.png",
+      "bytes": 912764
     },
     {
       "view": "repair_tender_rear",
-      "path": "evidence/iter04/repair_tender_rear.png",
-      "bytes": 1002186
+      "path": "evidence/iter05/repair_tender_rear.png",
+      "bytes": 1013775
     },
     {
       "view": "repair_tender_grazing",
-      "path": "evidence/iter04/repair_tender_grazing.png",
-      "bytes": 919463
+      "path": "evidence/iter05/repair_tender_grazing.png",
+      "bytes": 933456
     }
   ]
 }

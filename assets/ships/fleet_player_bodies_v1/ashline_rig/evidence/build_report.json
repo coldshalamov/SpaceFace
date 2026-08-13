@@ -3,13 +3,13 @@
   "assetId": "SF_ASHLINE_RIG_V1",
   "defId": "reaver_pirate",
   "shipId": "ashline_rig",
-  "iteration": 4,
+  "iteration": 5,
   "lods": [
     {
       "lod": 0,
-      "triangles": 33964,
-      "hullTriangles": 1756,
-      "draws": 8,
+      "triangles": 36032,
+      "hullTriangles": 1864,
+      "draws": 9,
       "materials": [
         "Material_Accent",
         "Material_Armor",
@@ -18,7 +18,8 @@
         "Material_Hull",
         "Material_Mechanical",
         "Material_Radiator",
-        "Material_Thruster"
+        "Material_Thruster",
+        "Material_Warning"
       ],
       "sockets": [
         "SOCKET_Camera_Focus",
@@ -34,22 +35,24 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/ashline_rig_production_v1_lod0.glb",
-      "bytes": 1765440,
-      "sha256": "17037913C6233119AFA742A068BAA7C3D23B7E423422AAC23FCB99000101111E"
+      "bytes": 1876360,
+      "sha256": "6627C97B0040032250EDA00B4F8307A97E3EFB69A692710BDCEE08F541DA55FB"
     },
     {
       "lod": 1,
-      "triangles": 7740,
-      "hullTriangles": 1756,
-      "draws": 7,
+      "triangles": 8928,
+      "hullTriangles": 1864,
+      "draws": 9,
       "materials": [
+        "Material_Accent",
         "Material_Armor",
         "Material_Canopy",
         "Material_Ceramic",
         "Material_Hull",
         "Material_Mechanical",
         "Material_Radiator",
-        "Material_Thruster"
+        "Material_Thruster",
+        "Material_Warning"
       ],
       "sockets": [
         "SOCKET_Camera_Focus",
@@ -65,8 +68,8 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/ashline_rig_production_v1_lod1.glb",
-      "bytes": 391028,
-      "sha256": "4F5DA6EE0B0A5B70C4B18E9242F5734C0A0FE773F92AAD8B8F6A64C662683663"
+      "bytes": 459996,
+      "sha256": "BFDE7E3EE142228762032E12E37614E6AA9C7B7D4112C8F0DDB32F72A64996AF"
     },
     {
       "lod": 2,
@@ -97,29 +100,29 @@
       ],
       "path": "source/wholeships/ashline_rig_production_v1_lod2.glb",
       "bytes": 293868,
-      "sha256": "64D5FB2F7A8554CA7F69FC620489A9F7EC12304060F679584B3F7154F91A179C"
+      "sha256": "C972C606F4114EDF8D74E57AC57715D0AD7F4DC4F862282F413818F55D0E8A65"
     }
   ],
   "renders": [
     {
       "view": "ashline_rig_three_quarter",
-      "path": "evidence/iter04/ashline_rig_three_quarter.png",
-      "bytes": 893182
+      "path": "evidence/iter05/ashline_rig_three_quarter.png",
+      "bytes": 895168
     },
     {
       "view": "ashline_rig_starboard",
-      "path": "evidence/iter04/ashline_rig_starboard.png",
-      "bytes": 919508
+      "path": "evidence/iter05/ashline_rig_starboard.png",
+      "bytes": 924789
     },
     {
       "view": "ashline_rig_rear",
-      "path": "evidence/iter04/ashline_rig_rear.png",
-      "bytes": 1027391
+      "path": "evidence/iter05/ashline_rig_rear.png",
+      "bytes": 1037574
     },
     {
       "view": "ashline_rig_grazing",
-      "path": "evidence/iter04/ashline_rig_grazing.png",
-      "bytes": 939718
+      "path": "evidence/iter05/ashline_rig_grazing.png",
+      "bytes": 947723
     }
   ]
 }

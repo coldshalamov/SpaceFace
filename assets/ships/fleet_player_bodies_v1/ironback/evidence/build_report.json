@@ -3,13 +3,13 @@
   "assetId": "SF_IRONBACK_PRODUCTION_V1",
   "defId": "ship_ironback",
   "shipId": "ironback",
-  "iteration": 4,
+  "iteration": 5,
   "lods": [
     {
       "lod": 0,
-      "triangles": 39156,
-      "hullTriangles": 1972,
-      "draws": 8,
+      "triangles": 41224,
+      "hullTriangles": 2080,
+      "draws": 9,
       "materials": [
         "Material_Accent",
         "Material_Armor",
@@ -18,7 +18,8 @@
         "Material_Hull",
         "Material_Mechanical",
         "Material_Radiator",
-        "Material_Thruster"
+        "Material_Thruster",
+        "Material_Warning"
       ],
       "sockets": [
         "SOCKET_Camera_Focus",
@@ -34,22 +35,24 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/ironback_production_v1_lod0.glb",
-      "bytes": 2042524,
-      "sha256": "9C985719A90A9A08068AFCD9F3A1680EF060A0BFC5E0BE0DB63FB1416C0245BF"
+      "bytes": 2154736,
+      "sha256": "E00CE4BB07286999DB93635C49AD17D379BB65836F6AADDC746B396E0934E7DB"
     },
     {
       "lod": 1,
-      "triangles": 9476,
-      "hullTriangles": 1972,
-      "draws": 7,
+      "triangles": 10664,
+      "hullTriangles": 2080,
+      "draws": 9,
       "materials": [
+        "Material_Accent",
         "Material_Armor",
         "Material_Canopy",
         "Material_Ceramic",
         "Material_Hull",
         "Material_Mechanical",
         "Material_Radiator",
-        "Material_Thruster"
+        "Material_Thruster",
+        "Material_Warning"
       ],
       "sockets": [
         "SOCKET_Camera_Focus",
@@ -65,8 +68,8 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/ironback_production_v1_lod1.glb",
-      "bytes": 482720,
-      "sha256": "B537122BC4BFEE5F88378A9AD0B3120DC97207D9CD5FEEAB68C9E77F45FB7179"
+      "bytes": 550672,
+      "sha256": "D9144071ED19E656C87EAB1B5060C42F101A181F5F7154ED2C2E95B4CCF0102B"
     },
     {
       "lod": 2,
@@ -97,29 +100,29 @@
       ],
       "path": "source/wholeships/ironback_production_v1_lod2.glb",
       "bytes": 383408,
-      "sha256": "AC40D0B94222D045362C750C5F5671D6359E6473608A8F64622009BE182FC342"
+      "sha256": "DC4FCBD99B59C20FE18AEC963ED7E3D2A887E2E2B9DC7859A9B2FDAA754D42B2"
     }
   ],
   "renders": [
     {
       "view": "ironback_three_quarter",
-      "path": "evidence/iter04/ironback_three_quarter.png",
-      "bytes": 942315
+      "path": "evidence/iter05/ironback_three_quarter.png",
+      "bytes": 951762
     },
     {
       "view": "ironback_starboard",
-      "path": "evidence/iter04/ironback_starboard.png",
-      "bytes": 958937
+      "path": "evidence/iter05/ironback_starboard.png",
+      "bytes": 966356
     },
     {
       "view": "ironback_rear",
-      "path": "evidence/iter04/ironback_rear.png",
-      "bytes": 1043006
+      "path": "evidence/iter05/ironback_rear.png",
+      "bytes": 1058457
     },
     {
       "view": "ironback_grazing",
-      "path": "evidence/iter04/ironback_grazing.png",
-      "bytes": 983926
+      "path": "evidence/iter05/ironback_grazing.png",
+      "bytes": 1023221
     }
   ]
 }

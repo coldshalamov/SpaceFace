@@ -29,7 +29,7 @@ ROOT = FAMILY.parents[2]
 TOOLS = ROOT / "tools" / "blender"
 if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
-from fleet_construction import add_radiator_cassette, add_tapered_vane  # noqa: E402
+from fleet_construction import add_midship_kit, add_radiator_cassette, add_tapered_vane  # noqa: E402
 DEFAULT_ZIP = Path(r"C:\Users\93rob\Downloads\SpaceFace_SF-K0_Borrowed-Time_Revamp.zip")
 EXPECTED_ZIP_SHA256 = "5457DACD44B63CF170ECF65DB253BB607D7615B8DDBD3CF97666D155BA355000"
 ZIP_PREFIX = "SpaceFace_SF-K0_Borrowed-Time_Revamp/textures/"
@@ -397,6 +397,7 @@ def build_ship(lod: int, mats: dict[str, bpy.types.Material]) -> tuple[bpy.types
                              0.58, 0.82, mech, collection, 0.05)
 
     if lod <= 1:
+        add_midship_kit(10.0, 3.2, 1.25, lod, mats, collection)
         # Meso layer: armor break-up, rear shoulders, vents, and service channels.
         for sign, side in [(-1, "Port"), (1, "Starboard")]:
             add_extruded_polygon(f"Shoulder_Plate_{side}", mirror([

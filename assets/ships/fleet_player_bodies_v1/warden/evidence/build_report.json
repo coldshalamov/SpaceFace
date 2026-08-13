@@ -3,13 +3,13 @@
   "assetId": "SF_WARDEN_PRODUCTION_V1",
   "defId": "ship_warden",
   "shipId": "warden",
-  "iteration": 4,
+  "iteration": 5,
   "lods": [
     {
       "lod": 0,
-      "triangles": 43920,
-      "hullTriangles": 1540,
-      "draws": 8,
+      "triangles": 45988,
+      "hullTriangles": 1648,
+      "draws": 9,
       "materials": [
         "Material_Accent",
         "Material_Armor",
@@ -18,7 +18,8 @@
         "Material_Hull",
         "Material_Mechanical",
         "Material_Radiator",
-        "Material_Thruster"
+        "Material_Thruster",
+        "Material_Warning"
       ],
       "sockets": [
         "SOCKET_Camera_Focus",
@@ -34,22 +35,24 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/warden_production_v1_lod0.glb",
-      "bytes": 2277888,
-      "sha256": "DBAE4BFEC0CC79B025680674BF6536E714605DFC6F080439A1EC924A7BBE8F54"
+      "bytes": 2393176,
+      "sha256": "D4925E6431BDF2015F21D59D966AEBA095DF089C3370EB99086694CF3F0BB991"
     },
     {
       "lod": 1,
-      "triangles": 10736,
-      "hullTriangles": 1540,
-      "draws": 7,
+      "triangles": 11924,
+      "hullTriangles": 1648,
+      "draws": 9,
       "materials": [
+        "Material_Accent",
         "Material_Armor",
         "Material_Canopy",
         "Material_Ceramic",
         "Material_Hull",
         "Material_Mechanical",
         "Material_Radiator",
-        "Material_Thruster"
+        "Material_Thruster",
+        "Material_Warning"
       ],
       "sockets": [
         "SOCKET_Camera_Focus",
@@ -65,8 +68,8 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/warden_production_v1_lod1.glb",
-      "bytes": 537924,
-      "sha256": "0BCF66FD78FCD235E74AC9F139B61ADD64B524255B96A8CC76178A2C43861B3B"
+      "bytes": 606888,
+      "sha256": "7E9F986F65EEAF01FF9F87EC9E78A81C7FA02F8D6CD56F33EFCFD4E5E0A4CD17"
     },
     {
       "lod": 2,
@@ -97,29 +100,29 @@
       ],
       "path": "source/wholeships/warden_production_v1_lod2.glb",
       "bytes": 392196,
-      "sha256": "AF77667B536C03A0C99706F8010E65A00E834F5D5F51742447434E3959EEF677"
+      "sha256": "F09868007B2D9FCDAEC7212901C6148EB1637A611A8D35C712179E83EB7FA0CB"
     }
   ],
   "renders": [
     {
       "view": "warden_three_quarter",
-      "path": "evidence/iter04/warden_three_quarter.png",
-      "bytes": 916939
+      "path": "evidence/iter05/warden_three_quarter.png",
+      "bytes": 920661
     },
     {
       "view": "warden_starboard",
-      "path": "evidence/iter04/warden_starboard.png",
-      "bytes": 930155
+      "path": "evidence/iter05/warden_starboard.png",
+      "bytes": 932620
     },
     {
       "view": "warden_rear",
-      "path": "evidence/iter04/warden_rear.png",
-      "bytes": 1005362
+      "path": "evidence/iter05/warden_rear.png",
+      "bytes": 1019041
     },
     {
       "view": "warden_grazing",
-      "path": "evidence/iter04/warden_grazing.png",
-      "bytes": 968835
+      "path": "evidence/iter05/warden_grazing.png",
+      "bytes": 975622
     }
   ]
 }

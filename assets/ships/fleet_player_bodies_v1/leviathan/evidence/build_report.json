@@ -3,13 +3,13 @@
   "assetId": "SF_LEVIATHAN_PRODUCTION_V1",
   "defId": "ship_leviathan",
   "shipId": "leviathan",
-  "iteration": 4,
+  "iteration": 5,
   "lods": [
     {
       "lod": 0,
-      "triangles": 53536,
-      "hullTriangles": 1540,
-      "draws": 8,
+      "triangles": 55604,
+      "hullTriangles": 1648,
+      "draws": 9,
       "materials": [
         "Material_Accent",
         "Material_Armor",
@@ -18,7 +18,8 @@
         "Material_Hull",
         "Material_Mechanical",
         "Material_Radiator",
-        "Material_Thruster"
+        "Material_Thruster",
+        "Material_Warning"
       ],
       "sockets": [
         "SOCKET_Camera_Focus",
@@ -34,22 +35,24 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/leviathan_production_v1_lod0.glb",
-      "bytes": 2773832,
-      "sha256": "6BD202F50F2D40876708CF442CB75C0F142102E0E2A7625767A9E469BCF6FD7A"
+      "bytes": 2884992,
+      "sha256": "EB7181D3E4C130F2AF585FFCFEDA9A9C88AC132AA34DC32E20B62406946FA98B"
     },
     {
       "lod": 1,
-      "triangles": 13392,
-      "hullTriangles": 1540,
-      "draws": 7,
+      "triangles": 14580,
+      "hullTriangles": 1648,
+      "draws": 9,
       "materials": [
+        "Material_Accent",
         "Material_Armor",
         "Material_Canopy",
         "Material_Ceramic",
         "Material_Hull",
         "Material_Mechanical",
         "Material_Radiator",
-        "Material_Thruster"
+        "Material_Thruster",
+        "Material_Warning"
       ],
       "sockets": [
         "SOCKET_Camera_Focus",
@@ -65,8 +68,8 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/leviathan_production_v1_lod1.glb",
-      "bytes": 665016,
-      "sha256": "687201E98CFE5511D5E0C5B2A49DA3800E70B7BB87C94A7AA78C21FAC46F791D"
+      "bytes": 734072,
+      "sha256": "C4180F2BA6FA5875BE1B44D4388980F4E627D1823F605B11B8280A7E0F66DE45"
     },
     {
       "lod": 2,
@@ -97,29 +100,29 @@
       ],
       "path": "source/wholeships/leviathan_production_v1_lod2.glb",
       "bytes": 470708,
-      "sha256": "57D905289D17D208127B366E968553F85C5DEACF8DFC9268F656BF53B5A079A8"
+      "sha256": "751A440EAFE8F5143EA4B294C87E7524D08A7F0A79DBB8B2C9606DB894C2B54A"
     }
   ],
   "renders": [
     {
       "view": "leviathan_three_quarter",
-      "path": "evidence/iter04/leviathan_three_quarter.png",
-      "bytes": 933232
+      "path": "evidence/iter05/leviathan_three_quarter.png",
+      "bytes": 940900
     },
     {
       "view": "leviathan_starboard",
-      "path": "evidence/iter04/leviathan_starboard.png",
-      "bytes": 925025
+      "path": "evidence/iter05/leviathan_starboard.png",
+      "bytes": 926643
     },
     {
       "view": "leviathan_rear",
-      "path": "evidence/iter04/leviathan_rear.png",
-      "bytes": 969938
+      "path": "evidence/iter05/leviathan_rear.png",
+      "bytes": 983892
     },
     {
       "view": "leviathan_grazing",
-      "path": "evidence/iter04/leviathan_grazing.png",
-      "bytes": 976955
+      "path": "evidence/iter05/leviathan_grazing.png",
+      "bytes": 996726
     }
   ]
 }

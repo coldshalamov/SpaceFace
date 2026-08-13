@@ -3,13 +3,13 @@
   "assetId": "SF_DRIFTER_PRODUCTION_V1",
   "defId": "ship_drifter",
   "shipId": "drifter",
-  "iteration": 4,
+  "iteration": 5,
   "lods": [
     {
       "lod": 0,
-      "triangles": 34500,
-      "hullTriangles": 1756,
-      "draws": 8,
+      "triangles": 36568,
+      "hullTriangles": 1864,
+      "draws": 9,
       "materials": [
         "Material_Accent",
         "Material_Armor",
@@ -18,7 +18,8 @@
         "Material_Hull",
         "Material_Mechanical",
         "Material_Radiator",
-        "Material_Thruster"
+        "Material_Thruster",
+        "Material_Warning"
       ],
       "sockets": [
         "SOCKET_Camera_Focus",
@@ -34,22 +35,24 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/drifter_production_v1_lod0.glb",
-      "bytes": 1783608,
-      "sha256": "C898ED1131B50EA1F3C91D44D078BE1484227D1556BE457F093270D2636B41B2"
+      "bytes": 1897120,
+      "sha256": "58F56515943799450334450E796D682ECC70D477DAF952E4B52E94B8ADF1978F"
     },
     {
       "lod": 1,
-      "triangles": 8276,
-      "hullTriangles": 1756,
-      "draws": 7,
+      "triangles": 9464,
+      "hullTriangles": 1864,
+      "draws": 9,
       "materials": [
+        "Material_Accent",
         "Material_Armor",
         "Material_Canopy",
         "Material_Ceramic",
         "Material_Hull",
         "Material_Mechanical",
         "Material_Radiator",
-        "Material_Thruster"
+        "Material_Thruster",
+        "Material_Warning"
       ],
       "sockets": [
         "SOCKET_Camera_Focus",
@@ -65,8 +68,8 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/drifter_production_v1_lod1.glb",
-      "bytes": 414004,
-      "sha256": "280A0D0D266369813659D9D0F2BB909D3116E36147B792D313D22C8BC1BB033F"
+      "bytes": 483064,
+      "sha256": "6C1DF6B2C20C46C8E90109E1264E0AAFDAD938D56557B0BC7A0E445F27705433"
     },
     {
       "lod": 2,
@@ -97,29 +100,29 @@
       ],
       "path": "source/wholeships/drifter_production_v1_lod2.glb",
       "bytes": 316848,
-      "sha256": "9BA72207830A5F7E86E678721551532EAE0695456885EA5AB5EB58435382A2D8"
+      "sha256": "F7469709384604FE99AEC7852E63559823764AB2730CA7F3187CDA913CB118BC"
     }
   ],
   "renders": [
     {
       "view": "drifter_three_quarter",
-      "path": "evidence/iter04/drifter_three_quarter.png",
-      "bytes": 883552
+      "path": "evidence/iter05/drifter_three_quarter.png",
+      "bytes": 886539
     },
     {
       "view": "drifter_starboard",
-      "path": "evidence/iter04/drifter_starboard.png",
-      "bytes": 918260
+      "path": "evidence/iter05/drifter_starboard.png",
+      "bytes": 920446
     },
     {
       "view": "drifter_rear",
-      "path": "evidence/iter04/drifter_rear.png",
-      "bytes": 990483
+      "path": "evidence/iter05/drifter_rear.png",
+      "bytes": 998061
     },
     {
       "view": "drifter_grazing",
-      "path": "evidence/iter04/drifter_grazing.png",
-      "bytes": 948987
+      "path": "evidence/iter05/drifter_grazing.png",
+      "bytes": 958194
     }
   ]
 }

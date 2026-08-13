@@ -3,13 +3,13 @@
   "assetId": "SF_COLOSSUS_PRODUCTION_V1",
   "defId": "ship_colossus",
   "shipId": "colossus",
-  "iteration": 4,
+  "iteration": 5,
   "lods": [
     {
       "lod": 0,
-      "triangles": 53536,
-      "hullTriangles": 1540,
-      "draws": 8,
+      "triangles": 55604,
+      "hullTriangles": 1648,
+      "draws": 9,
       "materials": [
         "Material_Accent",
         "Material_Armor",
@@ -18,7 +18,8 @@
         "Material_Hull",
         "Material_Mechanical",
         "Material_Radiator",
-        "Material_Thruster"
+        "Material_Thruster",
+        "Material_Warning"
       ],
       "sockets": [
         "SOCKET_Camera_Focus",
@@ -34,22 +35,24 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/colossus_production_v1_lod0.glb",
-      "bytes": 2774252,
-      "sha256": "04856BD9FDE9DE5457E5BF459C8D087BEDABA43881DAAFAF934BBB92ACB03518"
+      "bytes": 2887088,
+      "sha256": "EB3C322B02768D7E28CFB12ACD917890A62405A5EEA7BDD0834D30ACB9E0E862"
     },
     {
       "lod": 1,
-      "triangles": 13392,
-      "hullTriangles": 1540,
-      "draws": 7,
+      "triangles": 14580,
+      "hullTriangles": 1648,
+      "draws": 9,
       "materials": [
+        "Material_Accent",
         "Material_Armor",
         "Material_Canopy",
         "Material_Ceramic",
         "Material_Hull",
         "Material_Mechanical",
         "Material_Radiator",
-        "Material_Thruster"
+        "Material_Thruster",
+        "Material_Warning"
       ],
       "sockets": [
         "SOCKET_Camera_Focus",
@@ -65,8 +68,8 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/colossus_production_v1_lod1.glb",
-      "bytes": 665628,
-      "sha256": "DEC13B0AE48FC017E3376FB980A246F8FD0A4FCD957C507D6E9479E9284C3D51"
+      "bytes": 734784,
+      "sha256": "204F4493F27B94BB9D78C09E8B2BF648546D8A1BF1A2B352EA5B2B6B2B761F72"
     },
     {
       "lod": 2,
@@ -97,29 +100,29 @@
       ],
       "path": "source/wholeships/colossus_production_v1_lod2.glb",
       "bytes": 471324,
-      "sha256": "88DE175F1D9046CBC3DD3C3D203F7F96844E5979B36460A597DDBA9818C11530"
+      "sha256": "8779E7BF361AC7A397B38A80A658EA0B84913872942974458BD208D83DE22C25"
     }
   ],
   "renders": [
     {
       "view": "colossus_three_quarter",
-      "path": "evidence/iter04/colossus_three_quarter.png",
-      "bytes": 928439
+      "path": "evidence/iter05/colossus_three_quarter.png",
+      "bytes": 932455
     },
     {
       "view": "colossus_starboard",
-      "path": "evidence/iter04/colossus_starboard.png",
-      "bytes": 933211
+      "path": "evidence/iter05/colossus_starboard.png",
+      "bytes": 935245
     },
     {
       "view": "colossus_rear",
-      "path": "evidence/iter04/colossus_rear.png",
-      "bytes": 985864
+      "path": "evidence/iter05/colossus_rear.png",
+      "bytes": 998455
     },
     {
       "view": "colossus_grazing",
-      "path": "evidence/iter04/colossus_grazing.png",
-      "bytes": 977320
+      "path": "evidence/iter05/colossus_grazing.png",
+      "bytes": 993416
     }
   ]
 }

@@ -219,3 +219,32 @@ def add_armor_tile(tag, loc, scale, material, collection, bevel=0.012):
 def add_panel_seams(prefix, xs, y_span, z, material, collection):
     for index, x in enumerate(xs):
         add_box(f"{prefix}_Seam_{index}", (x, 0, z), (0.018, y_span, 0.018), material, collection, 0.004)
+
+
+def add_midship_kit(half, hw, hh, lod, mats, collection):
+    """Overlapping plates, rails, clamps, and a repair patch — Hitch midship logic, not Hitch identity."""
+    hull = mats["Material_Hull"]
+    armor = mats["Material_Armor"]
+    mech = mats["Material_Mechanical"]
+    accent = mats.get("Material_Accent") or armor
+    warning = mats.get("Material_Warning") or armor
+    add_box("Spine_Rail_Port", (0.15, -hw * 0.22, hh + 0.08), (half * 0.42, 0.03, 0.035), mech, collection, 0.006)
+    add_box("Spine_Rail_Starboard", (0.15, hw * 0.22, hh + 0.08), (half * 0.42, 0.03, 0.035), mech, collection, 0.006)
+    add_box("Plate_Dorsal_Fore", (half * 0.22, 0.0, hh + 0.05), (half * 0.18, hw * 0.48, 0.028), armor, collection, 0.01)
+    add_box("Plate_Dorsal_Mid", (-half * 0.02, hw * 0.08, hh + 0.07), (half * 0.16, hw * 0.36, 0.024), hull, collection, 0.01)
+    add_box("Plate_Dorsal_Aft", (-half * 0.28, -hw * 0.06, hh + 0.06), (half * 0.14, hw * 0.32, 0.022), armor, collection, 0.01)
+    add_box("Plate_Repair_Patch", (half * 0.06, -hw * 0.18, hh + 0.09), (0.28, 0.18, 0.012), warning, collection, 0.004)
+    add_box("Plate_Accent_Inset", (-half * 0.08, hw * 0.16, hh + 0.09), (0.22, 0.12, 0.01), accent, collection, 0.003)
+    add_box("Cheek_Port", (half * 0.08, -hw * 1.02, hh * 0.18), (half * 0.22, 0.045, hh * 0.38), armor, collection, 0.012)
+    add_box("Cheek_Starboard", (half * 0.08, hw * 1.02, hh * 0.18), (half * 0.22, 0.045, hh * 0.38), armor, collection, 0.012)
+    add_box("Shoulder_Port", (-half * 0.12, -hw * 0.96, hh * 0.55), (half * 0.18, 0.05, hh * 0.22), armor, collection, 0.01)
+    add_box("Shoulder_Starboard", (-half * 0.12, hw * 0.96, hh * 0.55), (half * 0.18, 0.05, hh * 0.22), armor, collection, 0.01)
+    if lod == 0:
+        for i, x in enumerate((half * 0.28, 0.0, -half * 0.24)):
+            add_box(f"Clamp_{i}", (x, 0.0, hh + 0.11), (0.045, hw * 0.30, 0.02), mech, collection, 0.003)
+        for i, (x, y) in enumerate((
+            (half * 0.30, -hw * 0.30), (half * 0.30, hw * 0.30),
+            (-half * 0.18, -hw * 0.22), (-half * 0.18, hw * 0.22),
+        )):
+            add_cylinder(f"Bolt_{i}", (x, y, hh + 0.10), 0.014, 0.03, mech, collection, vertices=8, bevel=0.002, rot=(0, 0, 0))
+        add_box("Cable_Tray", (half * 0.04, -hw * 0.38, hh + 0.04), (half * 0.30, 0.025, 0.02), mech, collection, 0.003)

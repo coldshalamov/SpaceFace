@@ -31,6 +31,7 @@ from fleet_construction import (  # noqa: E402
     add_sensor_dish,
     add_service_pipe,
     add_tapered_vane,
+    add_midship_kit,
 )
 TEXTURE_SRC = ROOT / "assets" / "ships" / "wasp_production_v1" / "textures"
 PACKET = "SF-PELICAN-PRODUCTION-V1-001"
@@ -479,6 +480,7 @@ def build_ship(lod: int, mats: dict[str, bpy.types.Material]):
     add_box("Cyan_Scuff_Plate", (0.35, -2.08, 0.42), (0.42, 0.018, 0.12), accent, collection, 0.006)
 
     if lod <= 1:
+        add_midship_kit(6.2, 2.1, 1.22, lod, mats, collection)
         add_box("Hatch_Rim", (-0.35, -0.05, 1.46), (0.72, 0.62, 0.06), mech, collection, 0.02)
         add_box("Hatch_Lid", (-0.35, -0.05, 1.52), (0.58, 0.48, 0.04), armor, collection, 0.015)
         for sign, side in ((-1, "Port"), (1, "Starboard")):

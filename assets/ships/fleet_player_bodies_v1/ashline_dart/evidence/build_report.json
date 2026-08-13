@@ -3,13 +3,13 @@
   "assetId": "SF_ASHLINE_DART_V1",
   "defId": "wasp_swarmer",
   "shipId": "ashline_dart",
-  "iteration": 4,
+  "iteration": 5,
   "lods": [
     {
       "lod": 0,
-      "triangles": 26592,
-      "hullTriangles": 2052,
-      "draws": 8,
+      "triangles": 28660,
+      "hullTriangles": 2160,
+      "draws": 9,
       "materials": [
         "Material_Accent",
         "Material_Armor",
@@ -18,7 +18,8 @@
         "Material_Hull",
         "Material_Mechanical",
         "Material_Radiator",
-        "Material_Thruster"
+        "Material_Thruster",
+        "Material_Warning"
       ],
       "sockets": [
         "SOCKET_Camera_Focus",
@@ -34,14 +35,14 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/ashline_dart_production_v1_lod0.glb",
-      "bytes": 1375672,
-      "sha256": "A036641C7930B47087FD8131F632A1A1EEF711F6E263A1258953785FA7CED256"
+      "bytes": 1490052,
+      "sha256": "9102611CBFFAA922F04555B7EA97567A2B68E7E9900ADC47A2291BA8D5FC2E40"
     },
     {
       "lod": 1,
-      "triangles": 7328,
-      "hullTriangles": 2052,
-      "draws": 8,
+      "triangles": 8516,
+      "hullTriangles": 2160,
+      "draws": 9,
       "materials": [
         "Material_Accent",
         "Material_Armor",
@@ -50,7 +51,8 @@
         "Material_Hull",
         "Material_Mechanical",
         "Material_Radiator",
-        "Material_Thruster"
+        "Material_Thruster",
+        "Material_Warning"
       ],
       "sockets": [
         "SOCKET_Camera_Focus",
@@ -66,8 +68,8 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/ashline_dart_production_v1_lod1.glb",
-      "bytes": 376724,
-      "sha256": "25244FE4BF7A241C8E55C2781CDF956F5D559E7C51F26C702C9A89F04E79D7F6"
+      "bytes": 444872,
+      "sha256": "0066CBFF08B626BF7A849E0DF555164AFF776010621F31A65791C7BD9DBDA876"
     },
     {
       "lod": 2,
@@ -99,29 +101,29 @@
       ],
       "path": "source/wholeships/ashline_dart_production_v1_lod2.glb",
       "bytes": 328148,
-      "sha256": "66F5518C823AAA9A1FBB7AEA8013F9A29DBE01FF72F12BDEACD48FEC63A46D54"
+      "sha256": "A387F984F397D739A6D9EF2FFAB04D6531529F4EFCFD2482CADF2493DA42D1C7"
     }
   ],
   "renders": [
     {
       "view": "ashline_dart_three_quarter",
-      "path": "evidence/iter04/ashline_dart_three_quarter.png",
-      "bytes": 846554
+      "path": "evidence/iter05/ashline_dart_three_quarter.png",
+      "bytes": 849178
     },
     {
       "view": "ashline_dart_starboard",
-      "path": "evidence/iter04/ashline_dart_starboard.png",
-      "bytes": 901964
+      "path": "evidence/iter05/ashline_dart_starboard.png",
+      "bytes": 905056
     },
     {
       "view": "ashline_dart_rear",
-      "path": "evidence/iter04/ashline_dart_rear.png",
-      "bytes": 1027576
+      "path": "evidence/iter05/ashline_dart_rear.png",
+      "bytes": 1034624
     },
     {
       "view": "ashline_dart_grazing",
-      "path": "evidence/iter04/ashline_dart_grazing.png",
-      "bytes": 902520
+      "path": "evidence/iter05/ashline_dart_grazing.png",
+      "bytes": 902120
     }
   ]
 }
