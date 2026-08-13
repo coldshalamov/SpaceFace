@@ -6050,6 +6050,31 @@
       "brief": "Doss derives three source-specific archive entries from the Vesta terminal cache receipt, the existing physical Resonance Obelisk investigation, and the Lung's terminal case artifact including abandonment; save reconciliation rebuilds the flags/count from raw owner state, and all three unlock only a revalidated Candle Fleet map focus with no course, navigation, mission, or reward."
     },
     {
+      "id": "PQ-048.17",
+      "parentId": "PQ-048",
+      "priority": 296,
+      "title": "Complete Vonn freight-loss investigation",
+      "kind": "implementation",
+      "state": "done",
+      "dependsOn": [],
+      "mutexes": [],
+      "paths": [
+        "src/data/stationContacts.js",
+        "src/data/vonnFreightLoss.js",
+        "src/systems/stationContacts.js",
+        "src/ui/screens/bar.js",
+        "src/ui/station/screens/bar.js",
+        "test/pq048-vonn-freight-loss-investigation.test.mjs"
+      ],
+      "checks": [
+        "node --test test/pq048-vonn-freight-loss-investigation.test.mjs"
+      ],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-048-17-vonn-freight-loss-investigation-REPORT.md"
+      ],
+      "brief": "A real Pallas/Sker-Run curtain_convoy loss produces physical freight pods and exact aftermath identity; Vonn observes the already-owned loss, preserves one bounded conserved case across Continue, and offers only a revalidated wreck-map handoff whose native completion closes dialogue."
+    },
+    {
       "id": "PQ-048.19",
       "parentId": "PQ-048",
       "priority": 298,
