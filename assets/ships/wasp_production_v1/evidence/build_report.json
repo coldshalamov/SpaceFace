@@ -2,10 +2,10 @@
   "schema": "spaceface.waspProductionV1.build.v1",
   "packet": "SF-WASP-PRODUCTION-V1-001",
   "assetId": "SF_WASP_PRODUCTION_V1",
-  "status": "isolated_candidate_no_promote",
-  "sourceZip": "C:\\Users\\93rob\\Downloads\\SpaceFace_SF-K0_Borrowed-Time_Revamp.zip",
-  "sourceZipSha256": "5457DACD44B63CF170ECF65DB253BB607D7615B8DDBD3CF97666D155BA355000",
-  "sourceUse": "first-party PBR material treatment only; no geometry copied",
+  "status": "technical_candidate_no_promote",
+  "promoted": false,
+  "reportScope": "Current-file technical binding only. No Blender rebuild or source regeneration was run, and this report grants no visual, runtime, release, or acceptance status.",
+  "sourceUse": "Current untracked source GLBs were finalized through scripts/finalize_wasp_v1.mjs into isolated release_candidates outputs; no geometry was regenerated.",
   "textureSourceHashes": {
     "hull_basecolor.png": "20898063BB3FF76D68D72A86C8BFDF5A9F24A96684FAD9001816997F0BF8CA43",
     "hull_normal.png": "C7B2BA2B829E33032C4FFA8239C65533EDA654A3688E82B1936DF51C3267A0ED",
@@ -23,13 +23,16 @@
     "warning_orange_normal.png": "3406FB09AA7DD654D21C5F480A18644B5BCBEA1FBA1E7EBD33964D2961F99900",
     "warning_orange_orm.png": "C6D785BB86C39BACFBA6A6F9C76E017C5747B8CE2A56D49FFA559DABBBC4300B"
   },
-  "productionBlend": "blender/wasp_production_v1.blend",
-  "productionBlendBytes": 12751842,
-  "productionBlendSha256": "D2A4D2BBDB03D1461198B23225BF5928E95AE99FCBD6383633504F2CCBD54D41",
+  "productionBlendReference": {
+    "path": "blender/wasp_production_v1.blend",
+    "bytes": 12751842,
+    "sha256": "D2A4D2BBDB03D1461198B23225BF5928E95AE99FCBD6383633504F2CCBD54D41",
+    "relationToCurrentSource": "not re-established; no Blender run was authorized"
+  },
   "lods": [
     {
       "lod": 0,
-      "triangles": 11504,
+      "triangles": 19070,
       "draws": 7,
       "materials": [
         "Material_Accent",
@@ -64,12 +67,12 @@
       ],
       "embeddedPlume": false,
       "path": "source/wholeships/wasp_production_v1_lod0.glb",
-      "bytes": 534884,
-      "sha256": "B0EB547D0FA0453578C2565EE0D0DC7D2CA2384A44678A672E679D3CC1AC4979"
+      "bytes": 1560196,
+      "sha256": "A5B2D75EF61462B74C02E4DB095E320C6E4C666BEE0ED8D5FD54C73FF7744DA7"
     },
     {
       "lod": 1,
-      "triangles": 7656,
+      "triangles": 9870,
       "draws": 7,
       "materials": [
         "Material_Accent",
@@ -104,12 +107,12 @@
       ],
       "embeddedPlume": false,
       "path": "source/wholeships/wasp_production_v1_lod1.glb",
-      "bytes": 353084,
-      "sha256": "09EF14E6BCDA99BFE53A55EC1AD7E8D64FB07EBA95D519BAA10643FA0162B930"
+      "bytes": 648764,
+      "sha256": "F316039F9E50C712D0089C54CF1449C4F354D5C4C49C6423B35033F63EF7549C"
     },
     {
       "lod": 2,
-      "triangles": 5372,
+      "triangles": 5394,
       "draws": 7,
       "materials": [
         "Material_Accent",
@@ -145,87 +148,81 @@
       "embeddedPlume": false,
       "path": "source/wholeships/wasp_production_v1_lod2.glb",
       "bytes": 242792,
-      "sha256": "70F68C0E772500A5637D04E5039BD199803CF053089F910D570408DEBB8A156A"
+      "sha256": "150CB359ACF08CAA6B29064B79A8DB5BC603D20A2EE364DDFD0578DFC6D69946"
     }
   ],
-  "renders": [
-    {
-      "view": "wasp_v1_front_34",
-      "path": "evidence/blender/wasp_v1_front_34.png",
-      "bytes": 1068419,
-      "sha256": "C941BF5049334EA768A5ABA8668C7A65C774B11D54AD8DB7F0B5FC63789053EF",
-      "camera": [
-        30,
-        -31,
-        24
-      ],
-      "target": [
-        0,
-        0,
-        0.1
-      ],
-      "lensMm": 58,
-      "resolution": 1024,
-      "exposure": 1.15
+  "candidateFinalization": {
+    "tool": "scripts/finalize_wasp_v1.mjs",
+    "report": "evidence/finalize_report.json",
+    "reportSha256": "A1248E8383E3BBAD24AF5F77F643206DC845467F0B945C31BFE169E06DD40E94",
+    "status": "technical_candidate_no_promote",
+    "promoted": false,
+    "lods": [
+      {
+        "lod": 0,
+        "sourceSha256": "A5B2D75EF61462B74C02E4DB095E320C6E4C666BEE0ED8D5FD54C73FF7744DA7",
+        "path": "release_candidates/wholeships/wasp_production_v1_lod0.glb",
+        "bytes": 13822904,
+        "sha256": "22FCB6C6EC360FFC45F3C07B262E3337D18248C7E19D38F3C022F32F61584860"
+      },
+      {
+        "lod": 1,
+        "sourceSha256": "F316039F9E50C712D0089C54CF1449C4F354D5C4C49C6423B35033F63EF7549C",
+        "path": "release_candidates/wholeships/wasp_production_v1_lod1.glb",
+        "bytes": 12911444,
+        "sha256": "D81CE2F26E8B7239A4E2527B8E4DA3585C81F888E803FDE38D35EE7E3538C14E"
+      },
+      {
+        "lod": 2,
+        "sourceSha256": "150CB359ACF08CAA6B29064B79A8DB5BC603D20A2EE364DDFD0578DFC6D69946",
+        "path": "release_candidates/wholeships/wasp_production_v1_lod2.glb",
+        "bytes": 12505480,
+        "sha256": "21DDAFED52E8DA568F07B3DC72BEB8C95FC64058485B1C0AE9B16D7323C2660D"
+      }
+    ]
+  },
+  "technicalValidation": {
+    "khronos": {
+      "validator": "Khronos glTF Validator 2.0.0-dev.3.10",
+      "sourceLods": {
+        "errors": 0,
+        "warnings": 0,
+        "infosPerLod": 14
+      },
+      "candidateLods": {
+        "errors": 0,
+        "warnings": 0,
+        "infosPerLod": 4
+      }
     },
-    {
-      "view": "wasp_v1_rear_34",
-      "path": "evidence/blender/wasp_v1_rear_34.png",
-      "bytes": 1127201,
-      "sha256": "673FF4F4E29E330C0C8B985013E70FDAD67A2E176DAA602E7803D941C08CC029",
-      "camera": [
-        -30,
-        -30,
-        21
-      ],
-      "target": [
-        -0.5,
-        0,
-        0.1
-      ],
-      "lensMm": 58,
-      "resolution": 1024,
-      "exposure": 1.15
-    },
-    {
-      "view": "wasp_v1_top",
-      "path": "evidence/blender/wasp_v1_top.png",
-      "bytes": 1140977,
-      "sha256": "1D11720337AC6171BF660EC0D285C3A02DEE537ED6A10A30DEE16436826B9EFA",
-      "camera": [
-        0,
-        0,
-        52
-      ],
-      "target": [
-        0,
-        0,
-        0
-      ],
-      "lensMm": 62,
-      "resolution": 1024,
-      "exposure": 1.15
-    },
-    {
-      "view": "wasp_v1_gameplay_scale",
-      "path": "evidence/blender/wasp_v1_gameplay_scale.png",
-      "bytes": 297446,
-      "sha256": "1A829BB32A53C66DDAE262BFBF7A9953C0F517507A51ABF3F5FB9C1378F7D2A6",
-      "camera": [
-        0,
-        -3,
-        66
-      ],
-      "target": [
-        0,
-        0,
-        0
-      ],
-      "lensMm": 72,
-      "resolution": 512,
-      "exposure": 1.15
+    "textureChannelAudit": {
+      "sourceLods": {
+        "embeddedImagesPerLod": 0,
+        "boundImagesPerLod": 0,
+        "errors": 0,
+        "warnings": 0
+      },
+      "candidateLods": {
+        "embeddedImagesPerLod": 15,
+        "boundImagesPerLod": 15,
+        "errors": 0,
+        "warnings": 0
+      }
     }
-  ],
+  },
+  "renders": [],
+  "visualAcceptance": {
+    "status": "not_assessed",
+    "openGates": [
+      "G1 design and silhouette",
+      "G2 production geometry",
+      "G4 materials and surface story",
+      "G5 measured representative-scene cost",
+      "G6 runtime integration",
+      "G7 independent acceptance"
+    ],
+    "reason": "Historic images are intentionally excluded because they are not bound to the current source hashes. No visual, normal-route, runtime, release, or promotion claim is made."
+  },
   "contracts": {
     "forward": "+X",
     "upAfterExport": "+Y",
