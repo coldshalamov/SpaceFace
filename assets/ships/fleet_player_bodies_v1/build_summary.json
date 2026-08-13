@@ -1611,12 +1611,12 @@
     "assetId": "SF_ORE_BARGE_V1",
     "defId": "ore_carrier",
     "shipId": "ore_barge",
-    "iteration": 6,
+    "iteration": 9,
     "lods": [
       {
         "lod": 0,
-        "triangles": 38408,
-        "hullTriangles": 1648,
+        "triangles": 40024,
+        "hullTriangles": 1728,
         "draws": 9,
         "materials": [
           "Material_Accent",
@@ -1643,13 +1643,13 @@
           "SOCKET_Weapon_Front"
         ],
         "path": "source/wholeships/ore_barge_production_v1_lod0.glb",
-        "bytes": 2010700,
-        "sha256": "5B2A13B276F8EB38D81390FE617AD98DEA4D117AB570C2641938A44829C0835D"
+        "bytes": 2124332,
+        "sha256": "E5B7DDA8CD7E9172ACDCBEB6A2B712DA32C6FA00582150ED66B92B85B84989A1"
       },
       {
         "lod": 1,
-        "triangles": 10440,
-        "hullTriangles": 1648,
+        "triangles": 16192,
+        "hullTriangles": 1728,
         "draws": 9,
         "materials": [
           "Material_Accent",
@@ -1676,12 +1676,12 @@
           "SOCKET_Weapon_Front"
         ],
         "path": "source/wholeships/ore_barge_production_v1_lod1.glb",
-        "bytes": 547540,
-        "sha256": "7A3A83CBE855BCD3B78C67FA0B20790428AFF944071F52BD9C2BCF2096B06FFD"
+        "bytes": 872692,
+        "sha256": "33781297FCF6EB7B92BBCAB0D6991DFB7B63F474E2C4F1E7F062A68AEB5E284B"
       },
       {
         "lod": 2,
-        "triangles": 6228,
+        "triangles": 6824,
         "hullTriangles": 1540,
         "draws": 7,
         "materials": [
@@ -1707,32 +1707,11 @@
           "SOCKET_Weapon_Front"
         ],
         "path": "source/wholeships/ore_barge_production_v1_lod2.glb",
-        "bytes": 305288,
-        "sha256": "8892C9748235715D215F97B1945F6D6F12321DF0284FCCF0FA74FB6600B55AA2"
+        "bytes": 341540,
+        "sha256": "30C1B86FB31462CAE6B092E1FEB3E0FC6BCFE8D5F8A0A8FA1F52652870B85D09"
       }
     ],
-    "renders": [
-      {
-        "view": "ore_barge_three_quarter",
-        "path": "evidence/iter06/ore_barge_three_quarter.png",
-        "bytes": 908540
-      },
-      {
-        "view": "ore_barge_starboard",
-        "path": "evidence/iter06/ore_barge_starboard.png",
-        "bytes": 936033
-      },
-      {
-        "view": "ore_barge_rear",
-        "path": "evidence/iter06/ore_barge_rear.png",
-        "bytes": 1023462
-      },
-      {
-        "view": "ore_barge_grazing",
-        "path": "evidence/iter06/ore_barge_grazing.png",
-        "bytes": 972674
-      }
-    ]
+    "renders": []
   },
   {
     "schema": "spaceface.fleetPlayerBody.build.v1",
