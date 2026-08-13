@@ -2610,23 +2610,24 @@ function buildProjectile(e) {
       tuneBoltMaterial(haze.material, { intensity: 1.6, core: 0.16, opacity: 0.3, fresnelPower: 1.8, noiseScale: 1.8 });
       haze.renderOrder = 20; core.renderOrder = 21; g.add(haze);
     } else {
-      // PULSE LASER (default) — one tapered directional packet. Rounded capsule ends caused the
-      // translucent sheath to resolve as a detached blue bead beside a white bar at the live camera.
-      // A narrow conical cylinder keeps a coherent leading point and a dissipating tail.
-      const core = boltMesh('proj:pulse:core',
-        () => new THREE.CylinderGeometry(0.075, 0.020, 3.4, 8, 1, false).rotateZ(Math.PI / 2),
+      // PULSE LASER (default) — one tapered directional packet sized for the chase camera.
+      // Rounded capsule ends caused the translucent sheath to resolve as a detached blue bead
+      // beside a white bar. A conical cylinder keeps a coherent leading point and a dissipating
+      // tail. The previous needle (~0.05 wu across after scale) collapsed to a one-pixel tube at
+      // ~144 wu; width does the readability work so intensity can stay below the white-dash bloom.
+      const core = boltMesh('proj:pulse:core-v2',
+        () => new THREE.CylinderGeometry(0.36, 0.09, 6.6, 8, 1, false).rotateZ(Math.PI / 2),
         '#34cfff', color, 'pulse-core', R);
       core.name = 'ProjectilePulseCore';
-      // Keep the starter weapon visibly cyan at the live camera. A pure-white HDR core above ~5
-      // collapsed through the selective bloom pass into the same anonymous white dash as every
-      // other bright effect, erasing the packet's internal flow and family identity.
-      tuneBoltMaterial(core.material, { intensity: 0.95, core: 0.56, opacity: 0.90, flowSpeed: 11.0 });
+      // Saturated cyan, not a hot-white HDR core. Intensity above ~5 collapsed through selective
+      // bloom into the same anonymous white dash as every other bright effect.
+      tuneBoltMaterial(core.material, { intensity: 1.35, core: 0.62, opacity: 0.94, flowSpeed: 11.0 });
       g.add(core);
-      const halo = boltMesh('proj:pulse:halo',
-        () => new THREE.CylinderGeometry(0.16, 0.040, 3.9, 10, 1, true).rotateZ(Math.PI / 2),
+      const halo = boltMesh('proj:pulse:halo-v2',
+        () => new THREE.CylinderGeometry(0.82, 0.16, 7.6, 10, 1, true).rotateZ(Math.PI / 2),
         color, fringe, 'pulse-halo', R);
       halo.name = 'ProjectilePulseSheath';
-      tuneBoltMaterial(halo.material, { intensity: 0.58, core: 0.10, opacity: 0.34, fresnelPower: 1.8, noiseScale: 2.3 });
+      tuneBoltMaterial(halo.material, { intensity: 0.78, core: 0.12, opacity: 0.38, fresnelPower: 1.8, noiseScale: 2.3 });
       halo.renderOrder = 20; core.renderOrder = 21; g.add(halo);
     }
   }

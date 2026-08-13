@@ -2295,6 +2295,7 @@ export const vfx = {
     const mx = origin.x + Math.cos(base) * 1.6, mz = origin.z + Math.sin(base) * 1.6;
     const emp = profile.family === 'emp';
     const thermal = profile.variant === 'thermal-bolt';
+    const pulse = profile.variant === 'pulse-bolt';
     if (emp) {
       for (const offset of [-0.42, 0, 0.42]) {
         const a = base + offset;
@@ -2311,12 +2312,22 @@ export const vfx = {
           (2.1 + (offset === 0 ? 1.4 : 0)) * sm, 0.62, col,
           Math.cos(a) * 16, Math.sin(a) * 16);
       }
+    } else if (pulse) {
+      // Directional cyan ignition on the barrel: SPR_FLASH with aspect+roll is a slit along the
+      // shot axis, not the circular flash card. Do not reuse the orange combustion sprite.
+      const pulseCore = profile.coreColor || '#34cfff';
+      this._spawnSprite(SPR_FLASH, mx, 0.22, mz, 0.09,
+        1.15 * sm, 2.8 * sm, 0.95, 0, pulseCore,
+        Math.cos(base) * 8, Math.sin(base) * 8, 3.4, base);
+      this._spawnProjectileTrailStreak(mx, 0.22, mz, 0.10 * sm,
+        0.32 * sm, 5.2 * sm, 0.88, pulseCore,
+        Math.cos(base) * 22, Math.sin(base) * 22);
     } else {
       this._spawnProjectileTrailStreak(mx, 0.20, mz, 0.095, 0.24 * sm, 4.8 * sm,
         0.78, profile.coreColor || '#e8f8ff', Math.cos(base) * 25, Math.sin(base) * 25);
     }
     this._flashLight({ x: origin.x, z: origin.z }, profile.lightColor || col,
-      (emp ? 3.8 : thermal ? 3.2 : 2.1) * sm, 11, emp ? 145 : 105);
+      (emp ? 3.8 : thermal ? 3.2 : pulse ? 2.8 : 2.1) * sm, 11, emp ? 145 : pulse ? 125 : 105);
   },
 
   _spawnMuzzleExplosive(origin, base, profile, burst) {
@@ -2549,6 +2560,29 @@ export const vfx = {
         this._impactParticleCone(surfaceX, surfaceZ, normalAngle, 0.52, 16, 28,
           Math.max(1, Math.round(profile.fragmentCount * burst * 0.5)), profile.life * 1.8,
           0.65, profile.coreColor, materialColor, 3.4);
+        break;
+      }
+      case 'ion-sting': {
+        // Pulse contact: a cyan slit along the inbound path plus a short surface sting.
+        // Identity is the ion scar, not plasma's orange thermal splash and not a circular flash.
+        this._spawnSprite(SPR_FLASH, surfaceX, 0.24, surfaceZ, 0.08,
+          0.9 * scale, 2.2 * scale, 0.88, 0, profile.coreColor,
+          0, 0, 3.0, Math.atan2(az, ax));
+        this._spawnProjectileTrailStreak(surfaceX, 0.26, surfaceZ,
+          profile.life * 1.35, 0.36 * scale, 5.8 * scale, 0.94, profile.coreColor, 0, 0, ax, az);
+        this._spawnProjectileTrailStreak(surfaceX, 0.22, surfaceZ,
+          profile.life * 1.05, 0.18 * scale, 3.4 * scale, 0.72, materialColor,
+          nx * 4, nz * 4, nx, nz);
+        const stingTangentX = -nz;
+        const stingTangentZ = nx;
+        this._spawnProjectileTrailStreak(
+          surfaceX + stingTangentX * 0.12 * scale, 0.20,
+          surfaceZ + stingTangentZ * 0.12 * scale,
+          profile.life * 0.85, 0.12 * scale, 2.4 * scale, 0.58, profile.accentColor,
+          stingTangentX * 8, stingTangentZ * 8, stingTangentX, stingTangentZ);
+        this._impactParticleCone(surfaceX, surfaceZ, normalAngle, 0.72, 18, 42,
+          Math.max(2, Math.round(profile.fragmentCount * burst * 0.8)), profile.life * 1.15,
+          0.85, profile.coreColor, '#1a4a78', 2.6);
         break;
       }
       case 'concussive-slam': {

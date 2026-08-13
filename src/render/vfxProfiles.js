@@ -431,6 +431,13 @@ const IMPACT_PRESENTATION_BY_VARIANT = Object.freeze({
     mode: 'proximity-burst', primaryShape: 'fragment-cloud', life: 0.22, fragmentCount: 24,
     coreColor: '#fff0cc', accentColor: '#ff8a3c', lightPeak: 1.6,
   }),
+  // Pulse stays in the plasma *family* for taxonomy (energy packet, not a slug), but its contact
+  // must not inherit thermal-splash orange. The ion sting is a short cyan scar along the inbound
+  // path — distinct mode, life:fragmentCount, and palette from plasma, rail, beam, and kinetic.
+  'pulse-bolt': Object.freeze({
+    mode: 'ion-sting', primaryShape: 'contact-slit', life: 0.16, fragmentCount: 5,
+    coreColor: '#34cfff', accentColor: '#5f80ff', lightPeak: 1.8,
+  }),
 });
 
 export function resolveImpactPresentationProfile(weaponId, weaponData = null) {
@@ -472,7 +479,9 @@ export function resolveMuzzleProfile(weaponId, weaponPartId) {
   const partBase = weaponPartId && MUZZLE_PART_PROFILES[weaponPartId] ? MUZZLE_PART_PROFILES[weaponPartId] : null;
   const presentation = resolveWeaponPresentationFamily(weaponId);
   const lane = weaponId ? muzzleLaneForFamily(presentation.family) : ((partBase && partBase.lane) || 'ballistic');
-  const colors = muzzleColorsForLane(lane);
+  const colors = presentation.variant === 'pulse-bolt'
+    ? { coreColor: '#34cfff', accentColor: '#5ff0ff', lightColor: '#39d0ff' }
+    : muzzleColorsForLane(lane);
   return {
     ...DEFAULT_MUZZLE,
     ...partBase,

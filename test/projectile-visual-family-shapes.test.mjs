@@ -52,10 +52,18 @@ test('pulse laser is one tapered directional packet without a capsule bead', () 
     'rounded capsule ends merge with the sheath as a detached glowing bead at the game camera');
   const bounds = new THREE.Box3().setFromObject(pulse);
   const size = bounds.getSize(new THREE.Vector3());
-  assert(size.x > size.z * 10,
-    `pulse silhouette must stay tracer-like instead of resolving as a bar-and-ball pair: ${size.x}/${size.z}`);
-  assert(size.x < 3.2,
-    `starter pulse must remain a compact packet at the game camera instead of a screen-scale white bar: ${size.x}`);
+  assert(size.x > size.z * 4,
+    `pulse silhouette must stay a pointed packet, not a ball: ${size.x}/${size.z}`);
+  assert(size.z > 0.7,
+    `starter pulse must read as a bolt at chase-camera distance, not a one-pixel tube: ${size.z}`);
+  assert(size.x > 4.5 && size.x < 7.2,
+    `starter pulse stays a compact packet shorter than a rail needle: ${size.x}`);
+  // R1 chase camera: 144 WU, 50° FOV, 1600×1000. The old needle was ~1.7 px across and read as a
+  // tube/dot. A readable energy packet needs several pixels of width without becoming a ball.
+  const viewHeight = 2 * 144 * Math.tan((50 * Math.PI / 180) / 2);
+  const widthPx = size.z / viewHeight * 1000;
+  assert(widthPx > 6 && widthPx < 40,
+    `pulse packet width at chase camera must read as a bolt, got ${widthPx.toFixed(1)} px`);
   const core = pulse.getObjectByName('ProjectilePulseCore');
   const sheath = pulse.getObjectByName('ProjectilePulseSheath');
   assert.ok(core?.material?.uniforms?.uColorA?.value,
@@ -66,9 +74,10 @@ test('pulse laser is one tapered directional packet without a capsule bead', () 
   core.material.uniforms.uColorA.value.getHSL(pulseHsl);
   assert.ok(pulseHsl.l < 0.72,
     `starter pulse core must be a saturated cyan energy color, not near-white: lightness ${pulseHsl.l}`);
-  assert.ok(core.material.uniforms.uIntensity.value <= 1.1,
-    `starter pulse core intensity must preserve cyan structure under bloom: ${core.material.uniforms.uIntensity.value}`);
-  assert.ok(sheath?.material?.uniforms?.uIntensity?.value <= 0.7,
+  assert.ok(core.material.uniforms.uIntensity.value > 1.0
+    && core.material.uniforms.uIntensity.value < 2.5,
+    `starter pulse core intensity must read at camera without blooming to white: ${core.material.uniforms.uIntensity.value}`);
+  assert.ok(sheath?.material?.uniforms?.uIntensity?.value < 1.0,
     `starter pulse sheath must remain subordinate to the packet silhouette: ${sheath?.material?.uniforms?.uIntensity?.value}`);
 });
 

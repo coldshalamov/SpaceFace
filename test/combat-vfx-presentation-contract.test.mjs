@@ -101,6 +101,7 @@ test('impact families differ by structure and timing rather than tint alone', ()
     'wpn_autocannon_m',
     'wpn_railgun_m',
     'wpn_plasma_cannon_m',
+    'wpn_pulse_laser_s',
     'wpn_beam_laser_m',
     'wpn_missile_rack_m',
     'wpn_emp_disruptor_m',
@@ -108,6 +109,29 @@ test('impact families differ by structure and timing rather than tint alone', ()
   assert.equal(new Set(profiles.map((profile) => profile.mode)).size, profiles.length);
   assert.equal(new Set(profiles.map((profile) => `${profile.life}:${profile.fragmentCount}`)).size, profiles.length);
   assert.ok(profiles.every((profile) => profile.primaryShape !== 'ring'));
+});
+
+test('pulse-bolt impact is a cyan ion sting, not plasma thermal splash', () => {
+  const pulse = resolveImpactPresentationProfile('wpn_pulse_laser_s');
+  const plasma = resolveImpactPresentationProfile('wpn_plasma_cannon_m');
+  assert.equal(pulse.variant, 'pulse-bolt');
+  assert.equal(pulse.mode, 'ion-sting');
+  assert.equal(pulse.primaryShape, 'contact-slit');
+  assert.notEqual(pulse.mode, plasma.mode);
+  assert.notEqual(pulse.primaryShape, plasma.primaryShape);
+  const pulseCore = Number.parseInt(pulse.coreColor.slice(1), 16);
+  const pulseRed = (pulseCore >> 16) & 0xff;
+  const pulseGreen = (pulseCore >> 8) & 0xff;
+  assert.ok(pulseGreen > pulseRed * 2.5,
+    `pulse impact must stay saturated cyan rather than inherit plasma orange: ${pulse.coreColor}`);
+  const muzzle = resolveMuzzleProfile('wpn_pulse_laser_s', null);
+  assert.equal(muzzle.variant, 'pulse-bolt');
+  assert.equal(muzzle.lane, 'energy');
+  const muzzleCore = Number.parseInt(muzzle.coreColor.slice(1), 16);
+  const muzzleRed = (muzzleCore >> 16) & 0xff;
+  const muzzleGreen = (muzzleCore >> 8) & 0xff;
+  assert.ok(muzzleGreen > muzzleRed * 2.5,
+    `pulse muzzle must ignite cyan, not near-white energy-lane default: ${muzzle.coreColor}`);
 });
 
 test('projectile hit payload carries normalized approach and contact normal', () => {

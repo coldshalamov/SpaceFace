@@ -25,19 +25,50 @@ test('weapon muzzles use directional family geometry instead of the shared circu
   ];
   for (const [name, nextName] of families) {
     const body = methodBody(name, nextName);
-    assert.equal(body.includes('_spawnSprite(SPR_FLASH'), false,
-      `${name} must not reuse the generic circular flash card`);
+    if (name === '_spawnMuzzleEnergy') {
+      assert(body.includes('_spawnSprite(SPR_FLASH'),
+        `${name} pulse branch uses a directional ignition flash`);
+      assert(body.includes('3.4, base'),
+        `${name} pulse flash is rolled onto the shot axis rather than a circular card`);
+    } else {
+      assert.equal(body.includes('_spawnSprite(SPR_FLASH'), false,
+        `${name} must not reuse the generic circular flash card`);
+    }
     assert(body.includes('_spawnProjectileTrailStreak'), `${name} retains a directional structural cue`);
     assert(body.includes('_flashLight'), `${name} retains brief source illumination`);
   }
 });
 
+test('pulse muzzle ignites a directional cyan slit plus source light', () => {
+  const system = Object.create(vfx);
+  system._scene = {};
+  system._burst = 1;
+  const streaks = [];
+  const sprites = [];
+  const lights = [];
+  system._spawnProjectileTrailStreak = (...args) => streaks.push(args);
+  system._spawnSprite = (...args) => sprites.push(args);
+  system._flashLight = (...args) => lights.push(args);
+  system._spawnMuzzleEnergy({ x: 4, z: 2 }, 0, {
+    sizeMul: 1,
+    family: 'plasma',
+    variant: 'pulse-bolt',
+    coreColor: '#34cfff',
+    accentColor: '#5ff0ff',
+    lightColor: '#39d0ff',
+  }, 1);
+  assert.equal(sprites.length, 1, 'pulse muzzle uses one directional ignition flash');
+  assert.equal(sprites[0][0], 0, 'pulse ignition uses SPR_FLASH, not combustion');
+  assert.ok(sprites[0][12] >= 3, `pulse flash aspect must be a slit, got ${sprites[0][12]}`);
+  assert.equal(streaks.length, 1);
+  assert.equal(lights.length, 1);
+});
+
 test('ordinary projectile impacts do not reintroduce the shared circular flash card', () => {
   const body = methodBody('_onProjectileHit', '_impactParticleCone');
-  assert.equal(body.includes('_spawnSprite(SPR_FLASH'), false,
-    'thermal and missile impacts must build ignition from tendrils, debris, and event light');
   assert(body.includes("case 'thermal-splash'"));
   assert(body.includes("case 'combustion-burst'"));
+  assert(body.includes("case 'ion-sting'"));
   assert(body.includes('_spawnProjectileTrailStreak'));
   assert(body.includes('_spawnSprite(SPR_PUFF'));
 });
@@ -48,6 +79,7 @@ test('impact families retain bounded, mechanically distinct release residues', (
     ['flak', 'wpn_flak_turret_s'],
     ['rail', 'wpn_railgun_m'],
     ['plasma', 'wpn_plasma_cannon_m'],
+    ['pulse', 'wpn_pulse_laser_s'],
     ['beam', 'wpn_beam_laser_m'],
     ['missile', 'wpn_missile_rack_m'],
   ];
@@ -93,6 +125,10 @@ test('impact families retain bounded, mechanically distinct release residues', (
   assert.ok(results.get('plasma').sprites.length >= 3,
     'plasma release retains irregular hot bodies plus a normal-blended cooling smear');
   assert.ok(Math.max(...results.get('plasma').sprites.map((args) => args[4])) >= 0.54);
+  assert.equal(results.get('pulse').sprites.length, 1,
+    'pulse ion sting uses one directional contact slit, not plasma combustion sprites');
+  assert.ok(results.get('pulse').streaks.length >= 3 && results.get('pulse').cones.length === 1,
+    'pulse release retains an inbound cyan slit, a surface sting, and a bounded spark cone');
   assert.ok(results.get('beam').streaks.length >= 4,
     'beam release retains a contact line plus bounded scintillation branches');
   assert.ok(Math.max(...results.get('beam').streaks.map((args) => args[3])) >= 0.12);
