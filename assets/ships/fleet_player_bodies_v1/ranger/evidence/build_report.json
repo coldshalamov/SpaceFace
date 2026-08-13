@@ -3,12 +3,12 @@
   "assetId": "SF_RANGER_PRODUCTION_V1",
   "defId": "ship_ranger",
   "shipId": "ranger",
-  "iteration": 6,
+  "iteration": 9,
   "lods": [
     {
       "lod": 0,
-      "triangles": 37660,
-      "hullTriangles": 1864,
+      "triangles": 39276,
+      "hullTriangles": 1944,
       "draws": 9,
       "materials": [
         "Material_Accent",
@@ -35,13 +35,13 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/ranger_production_v1_lod0.glb",
-      "bytes": 1968724,
-      "sha256": "8E9101D8B8E6E37D6E801E7F40009D3DFFFEE5AAF88D34F1AFEA8CF634E4B7CF"
+      "bytes": 2084492,
+      "sha256": "9201F2B8791651FAF63EBCFCCDA19B74D9D6199574BDB1734158099FB9E6DD3E"
     },
     {
       "lod": 1,
-      "triangles": 10556,
-      "hullTriangles": 1864,
+      "triangles": 16308,
+      "hullTriangles": 1944,
       "draws": 9,
       "materials": [
         "Material_Accent",
@@ -68,12 +68,12 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/ranger_production_v1_lod1.glb",
-      "bytes": 552796,
-      "sha256": "E19B4D4300D533B33C12D4DCC386C6EDDE4D9B6A0FED0DC3D3C34D00D94D883B"
+      "bytes": 883884,
+      "sha256": "76A152993AE1900CCD04C90D32B950DA9143343CFCB9DDD9532B7A8DB660D769"
     },
     {
       "lod": 2,
-      "triangles": 6344,
+      "triangles": 6940,
       "hullTriangles": 1756,
       "draws": 7,
       "materials": [
@@ -99,30 +99,9 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/ranger_production_v1_lod2.glb",
-      "bytes": 312932,
-      "sha256": "4A1BBD30086C30A5DE2E8790F6AFCF86577BDE666EE0C33F40808AEBCE75E9FD"
+      "bytes": 348880,
+      "sha256": "369E9714828C31518B8E2986BE03699E17C348F7FBEF96B4430013330DD3C188"
     }
   ],
-  "renders": [
-    {
-      "view": "ranger_three_quarter",
-      "path": "evidence/iter06/ranger_three_quarter.png",
-      "bytes": 875088
-    },
-    {
-      "view": "ranger_starboard",
-      "path": "evidence/iter06/ranger_starboard.png",
-      "bytes": 893517
-    },
-    {
-      "view": "ranger_rear",
-      "path": "evidence/iter06/ranger_rear.png",
-      "bytes": 982038
-    },
-    {
-      "view": "ranger_grazing",
-      "path": "evidence/iter06/ranger_grazing.png",
-      "bytes": 941052
-    }
-  ]
+  "renders": []
 }

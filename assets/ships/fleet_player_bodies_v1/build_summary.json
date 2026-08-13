@@ -108,6 +108,113 @@
   },
   {
     "schema": "spaceface.fleetPlayerBody.build.v1",
+    "assetId": "SF_RANGER_PRODUCTION_V1",
+    "defId": "ship_ranger",
+    "shipId": "ranger",
+    "iteration": 9,
+    "lods": [
+      {
+        "lod": 0,
+        "triangles": 39276,
+        "hullTriangles": 1944,
+        "draws": 9,
+        "materials": [
+          "Material_Accent",
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster",
+          "Material_Warning"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/ranger_production_v1_lod0.glb",
+        "bytes": 2084492,
+        "sha256": "9201F2B8791651FAF63EBCFCCDA19B74D9D6199574BDB1734158099FB9E6DD3E"
+      },
+      {
+        "lod": 1,
+        "triangles": 16308,
+        "hullTriangles": 1944,
+        "draws": 9,
+        "materials": [
+          "Material_Accent",
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster",
+          "Material_Warning"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/ranger_production_v1_lod1.glb",
+        "bytes": 883884,
+        "sha256": "76A152993AE1900CCD04C90D32B950DA9143343CFCB9DDD9532B7A8DB660D769"
+      },
+      {
+        "lod": 2,
+        "triangles": 6940,
+        "hullTriangles": 1756,
+        "draws": 7,
+        "materials": [
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/ranger_production_v1_lod2.glb",
+        "bytes": 348880,
+        "sha256": "369E9714828C31518B8E2986BE03699E17C348F7FBEF96B4430013330DD3C188"
+      }
+    ],
+    "renders": []
+  },
+  {
+    "schema": "spaceface.fleetPlayerBody.build.v1",
     "assetId": "SF_COLOSSUS_PRODUCTION_V1",
     "defId": "ship_colossus",
     "shipId": "colossus",
