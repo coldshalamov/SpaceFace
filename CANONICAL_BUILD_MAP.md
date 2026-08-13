@@ -61,6 +61,17 @@ disjoint files. No coordinator, task-long reservation, or worktree is required.
   leaves that need a human or a headed machine you do not have may be recorded `unproven` and
   skipped; do not stall the campaign on them.
 
+**PQ-050 campaign checkpoint (pause 2026-08-13):** this is resume state, not a close.
+
+- **Done through ten counted cycles, none shipped.** Clay still reads as loft plus kit.
+  Hitch still wins. Live factory files not replaced. Player ships Hornet through Wasp, then
+  Ashline dart, lode, rig, Helios lark, cradle, and span.
+- **Resume here:** ore barge, then repair tender, salvage cutter, survey pin. Same loop:
+  cycles 6–10, three valid full-model stills, three reviews, honest ledger, do not promote.
+- **Stay off:** INFERENCE, the dock/hulk remaster, the expansion-research brief.
+- **Do not touch Hitch.** Do not mark the campaign complete. A factory loft with boxes is
+  not Hitch-plus after ten cycles.
+
 **Graphics / place-asset remaster (resume):** if the task is continuing the interrupted remaster of
 `place_dock_interior`, `place_dead_hulk`, and/or `place_debris_chunk` (Blender/EEVEE form work, not a
 queue packet), start at
