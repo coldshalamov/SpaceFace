@@ -13,6 +13,7 @@ import { MODULES } from '../data/modules.js';
 import { TECH_NODES, techDisplayName } from '../data/tech.js';
 import { BEAMS } from '../data/mining.js';
 import { NEW_GAME } from '../data/newGameDefaults.js';
+import { SECTORS } from '../data/sectors.js';
 import {
   describeHullRole,
   flightClassForHull,
@@ -44,8 +45,52 @@ const WEAPON_BY_ID = new Map(WEAPONS.map((w) => [w.id, w]));
 const MODULE_BY_ID = new Map(MODULES.map((m) => [m.id, m]));
 const TECH_BY_ID = new Map(TECH_NODES.map((t) => [t.id, t]));
 const BEAM_BY_ID = new Map(BEAMS.map((b) => [b.id, b]));
+const SHIPWORKS_STATION_BY_ID = new Map();
+for (const sector of SECTORS) {
+  for (const station of sector.stations || []) SHIPWORKS_STATION_BY_ID.set(station.id, station);
+}
 // any fittable def (weapon OR module) by id
 function defById(id) { return MODULE_BY_ID.get(id) || WEAPON_BY_ID.get(id) || null; }
+
+/** Resolve the two distinct station capabilities exposed by Shipworks. Hull acquisition/switching
+ * requires a shipyard; module purchase/fitting also works at a module fabricator. */
+export function shipworksAccessForServices(services) {
+  const offered = Array.isArray(services) ? services : [];
+  const hull = offered.includes('shipyard');
+  const outfit = hull || offered.includes('module_craft');
+  return {
+    hull,
+    outfit,
+    hullReason: hull ? null : 'No shipyard service at this station',
+    outfitReason: outfit ? null : 'No outfitting bay at this station',
+  };
+}
+
+/** Fail-closed UI-intent authority for the exact berth currently occupied by the player. Direct
+ * ships-system methods intentionally remain available to crafting, rewards, and sandbox callers. */
+export function shipworksStationAccess(state) {
+  const ui = state && state.ui;
+  if (!ui || ui.docked !== true || typeof ui.dockedStationId !== 'string' || !ui.dockedStationId) {
+    return {
+      hull: false,
+      outfit: false,
+      stationId: null,
+      hullReason: 'Dock at a shipyard to buy or switch ships',
+      outfitReason: 'Dock at a shipyard or fabricator to fit modules',
+    };
+  }
+  const station = SHIPWORKS_STATION_BY_ID.get(ui.dockedStationId);
+  if (!station || !Array.isArray(station.services)) {
+    return {
+      hull: false,
+      outfit: false,
+      stationId: ui.dockedStationId,
+      hullReason: 'Shipworks services unavailable at this berth',
+      outfitReason: 'Shipworks services unavailable at this berth',
+    };
+  }
+  return { ...shipworksAccessForServices(station.services), stationId: station.id };
+}
 
 // Heads share the existing Massline input grammar and are mutually exclusive fittings. This fixed
 // priority is only a defensive read for manually-authored/old data; live fitting rejects multiples,
@@ -743,12 +788,26 @@ export const ships = {
       this.publishActiveRoleContext({ source: 'save_loaded', announce: true });
     });
 
-    // UI intent events (§4.4): the UI emits these; ships owns the mutation + credit emits.
-    bus.on('ui:buyShip', (p) => this.buyShip(p || {}));
-    bus.on('ui:setActiveShip', (p) => this.setActiveShip(p && p.index));
-    bus.on('ui:buyModule', (p) => this.buyModule(p || {}));
-    bus.on('ui:fitModule', (p) => this.fitModule(p || {}));
-    bus.on('ui:unfitModule', (p) => this.unfitModule(p || {}));
+    // UI intent events (§4.4): the UI emits these; ships owns the mutation + credit emits. The
+    // adapter validates the physical berth, while direct methods remain available to internal
+    // crafting/reward/sandbox owners that do not originate at a station screen.
+    const withShipworksAccess = (capability, action) => (payload) => {
+      const access = shipworksStationAccess(this.state);
+      if (!access[capability]) {
+        this.bus.emit('toast', {
+          text: access[capability + 'Reason'],
+          kind: 'error',
+          ttl: 3,
+        });
+        return false;
+      }
+      return action(payload || {});
+    };
+    bus.on('ui:buyShip', withShipworksAccess('hull', (p) => this.buyShip(p)));
+    bus.on('ui:setActiveShip', withShipworksAccess('hull', (p) => this.setActiveShip(p && p.index)));
+    bus.on('ui:buyModule', withShipworksAccess('outfit', (p) => this.buyModule(p)));
+    bus.on('ui:fitModule', withShipworksAccess('outfit', (p) => this.fitModule(p)));
+    bus.on('ui:unfitModule', withShipworksAccess('outfit', (p) => this.unfitModule(p)));
     bus.on('ui:unlockTech', (p) => this.unlockTech((p && p.nodeId) || null));
     bus.on('ui:setShipAppearance', (p) => this.setShipAppearance(p || {}));
     // Canonical gameplay receipts feed a small per-owned-ship history record. Presentation gets a

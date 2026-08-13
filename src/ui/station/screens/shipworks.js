@@ -6,7 +6,12 @@
 //
 // Engineering numbers come only from presenters/engineeringPreview.js → ships.getDerivedStats.
 // Never invent simplified fittings/geometry or raw module.mods key diffs as flight stats.
-import { buildSlotList, findMasslineHeadConflict, fits } from '../../../systems/ships.js';
+import {
+  buildSlotList,
+  findMasslineHeadConflict,
+  fits,
+  shipworksStationAccess,
+} from '../../../systems/ships.js';
 import { SHIPS } from '../../../data/ships.js';
 import { SECTORS } from '../../../data/sectors.js';
 import { MODULES } from '../../../data/modules.js';
@@ -54,6 +59,18 @@ export function syncShipworksDockForState(mount, state) {
   const dockId = shipworksDockIdForState(state);
   if (mount && typeof mount.setDockId === 'function') mount.setDockId(dockId);
   return dockId;
+}
+
+/** Pure action projection used by the screen and focused authority tests. The bay remains
+ * inspectable at limited berths; only unsupported physical operations are disabled. */
+export function shipworksActionAvailability(state) {
+  const access = shipworksStationAccess(state);
+  return {
+    hullEnabled: access.hull,
+    outfitEnabled: access.outfit,
+    hullLabel: access.hull ? 'Shipyard service available' : access.hullReason,
+    outfitLabel: access.outfit ? 'Outfitting service available' : access.outfitReason,
+  };
 }
 const titleCaseWords = (value) => String(value || '').replace(/[_-]+/g, ' ')
   .replace(/\b\w/g, (letter) => letter.toUpperCase());
@@ -679,6 +696,7 @@ export function createShipworksScreen(ctx) {
       const credits = (ctx.state.player && ctx.state.player.credits) || 0;
       const afford = def.price <= credits;
       const isOwned = owned().some((s) => s.defId === def.id);
+      const availability = shipworksActionAvailability(ctx.state);
       sideEl.innerHTML =
         `<div class="sx-panel"><div class="sx-panel__head">${icon('shipworks', 15)}<span>Ship Spec</span></div>` +
           `<div class="sx-spec">` +
@@ -692,7 +710,7 @@ export function createShipworksScreen(ctx) {
           `<div class="sx-buybar__price"><span>Price</span><b>${def.price > 0 ? fmt(def.price) + ' cr' : 'Starter'}</b></div>` +
           (isOwned
             ? `<button type="button" class="sx-btn-ghost" disabled>In your fleet</button>`
-            : `<button type="button" class="sx-btn-primary" data-buyship="${escapeHtml(def.id)}" ${afford ? '' : 'disabled'}>${afford ? 'Buy Ship' : 'Not enough credits'}</button>`) +
+            : `<button type="button" class="sx-btn-primary" data-buyship="${escapeHtml(def.id)}" ${afford && availability.hullEnabled ? '' : 'disabled'} aria-label="${escapeHtml(availability.hullEnabled ? (afford ? 'Buy Ship' : 'Not enough credits') : availability.hullLabel)}">${availability.hullEnabled ? (afford ? 'Buy Ship' : 'Not enough credits') : escapeHtml(availability.hullLabel)}</button>`) +
         `</div>`;
       return;
     }
@@ -715,8 +733,9 @@ export function createShipworksScreen(ctx) {
     const flows = [...systemDraw.entries()].filter(([type]) => slots.some((slot) => slot.type === type));
     const activeIndex = Number(ctx.state.player && ctx.state.player.activeShipIndex) || 0;
     const inspectedIndex = owned().indexOf(s);
+    const availability = shipworksActionAvailability(ctx.state);
     const activeControl = inspectedIndex !== activeIndex
-      ? `<button type="button" class="sx-sw-circuit__activate" data-activate-ship="${inspectedIndex}">MAKE ACTIVE</button>`
+      ? `<button type="button" class="sx-sw-circuit__activate" data-activate-ship="${inspectedIndex}" ${availability.hullEnabled ? '' : 'disabled'} aria-label="${escapeHtml(availability.hullEnabled ? 'Make active ship' : availability.hullLabel)}">${availability.hullEnabled ? 'MAKE ACTIVE' : escapeHtml(availability.hullLabel.toUpperCase())}</button>`
       : `<span class="sx-sw-circuit__active">ACTIVE FLIGHT HULL</span>`;
     sideEl.innerHTML =
       `<div class="sx-sw-circuit">` +
@@ -877,6 +896,7 @@ export function createShipworksScreen(ctx) {
     const fittings = s.fittings || [];
     const fittedId = fittings[slotIndex];
     const credits = (ctx.state.player && ctx.state.player.credits) || 0;
+    const availability = shipworksActionAvailability(ctx.state);
     const compat = FITTABLE.filter((d) => d.slotType === slot.type && fits(slot, d) && d.purchasable !== false)
       .sort((a, b) => (a.tier - b.tier) || (a.price - b.price));
 
@@ -901,7 +921,7 @@ export function createShipworksScreen(ctx) {
           ? `<span class="sx-modrow__lock">${icon('info', 13)} Unfit ${escapeHtml(headConflict.name)} first</span>`
         : locked
           ? `<span class="sx-modrow__lock">${icon('info', 13)} Tech locked</span>`
-          : `<button type="button" class="sx-modrow__buy" data-buyfit="${escapeHtml(d.id)}" data-slot="${slotIndex}" ${afford ? '' : `disabled aria-label="${fmt(d.price)} credits, ${fmt(Math.max(0, (d.price || 0) - credits))} credits short"`}>${d.price > 0 ? (afford ? 'Buy · ' + fmt(d.price) : `<span>${fmt(d.price)} cr</span><small>${fmt(Math.max(0, d.price - credits))} short</small>`) : 'Fit'}</button>`;
+          : `<button type="button" class="sx-modrow__buy" data-buyfit="${escapeHtml(d.id)}" data-slot="${slotIndex}" ${afford && availability.outfitEnabled ? '' : `disabled aria-label="${escapeHtml(availability.outfitEnabled ? `${fmt(d.price)} credits, ${fmt(Math.max(0, (d.price || 0) - credits))} credits short` : availability.outfitLabel)}"`}>${availability.outfitEnabled ? (d.price > 0 ? (afford ? 'Buy · ' + fmt(d.price) : `<span>${fmt(d.price)} cr</span><small>${fmt(Math.max(0, d.price - credits))} short</small>`) : 'Fit') : escapeHtml(availability.outfitLabel)}</button>`;
       return (
         `<div class="sx-modrow${equipped ? ' is-eq' : ''}${locked || headConflict ? ' is-locked' : ''}" ${headConflict ? '' : `data-preview-module="${escapeHtml(d.id)}" data-preview-slot="${slotIndex}"`} tabindex="0">` +
           `<span class="sx-modrow__ic">${icon(SLOT_ICON[slot.type] || 'spark', 18)}</span>` +
@@ -931,7 +951,8 @@ export function createShipworksScreen(ctx) {
           `<h3>Compatible Modules</h3></div>` +
           `<button type="button" class="sx-chooser__x" data-close aria-label="Close">${icon('close', 18)}</button>` +
         `</header>` +
-        (fittedId ? `<button type="button" class="sx-chooser__unfit" data-unfit="${slotIndex}">Unfit ${escapeHtml((FITTABLE_BY_ID.get(fittedId) || {}).name || 'module')}</button>` : '') +
+        (availability.outfitEnabled ? '' : `<p class="sx-muted">${escapeHtml(availability.outfitLabel)}</p>`) +
+        (fittedId ? `<button type="button" class="sx-chooser__unfit" data-unfit="${slotIndex}" ${availability.outfitEnabled ? '' : `disabled aria-label="${escapeHtml(availability.outfitLabel)}"`}>${availability.outfitEnabled ? `Unfit ${escapeHtml((FITTABLE_BY_ID.get(fittedId) || {}).name || 'module')}` : escapeHtml(availability.outfitLabel)}</button>` : '') +
         `<div class="sx-chooser__list">${list || '<p class="sx-muted" style="padding:14px">No compatible modules.</p>'}</div>` +
       `</div>`;
     chooserEl.hidden = false;
@@ -1059,9 +1080,9 @@ export function createShipworksScreen(ctx) {
     const slot = ev.target.closest('[data-slot]');
     if (slot) { openChooser(Number(slot.getAttribute('data-slot'))); if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_click' }); return; }
     const buy = ev.target.closest('[data-buyship]');
-    if (buy && !buy.disabled) { if (ctx.bus) { ctx.bus.emit('ui:buyShip', { defId: buy.getAttribute('data-buyship') }); ctx.bus.emit('audio:cue', { id: 'ui_accept' }); } setTimeout(refresh, 60); }
+    if (buy && !buy.disabled && shipworksActionAvailability(ctx.state).hullEnabled) { if (ctx.bus) { ctx.bus.emit('ui:buyShip', { defId: buy.getAttribute('data-buyship') }); ctx.bus.emit('audio:cue', { id: 'ui_accept' }); } setTimeout(refresh, 60); }
     const activate = ev.target.closest('[data-activate-ship]');
-    if (activate && ctx.bus) {
+    if (activate && !activate.disabled && ctx.bus && shipworksActionAvailability(ctx.state).hullEnabled) {
       ctx.bus.emit('ui:setActiveShip', { index: Number(activate.getAttribute('data-activate-ship')) });
       ctx.bus.emit('audio:cue', { id: 'ui_accept' });
       setTimeout(refresh, 60);
@@ -1142,7 +1163,7 @@ export function createShipworksScreen(ctx) {
   chooserEl.addEventListener('click', async (ev) => {
     if (ev.target.closest('[data-close]')) { closeChooser(); return; }
     const bf = ev.target.closest('[data-buyfit]');
-    if (bf && !bf.disabled) {
+    if (bf && !bf.disabled && shipworksActionAvailability(ctx.state).outfitEnabled) {
       if (buyConfirmBusy || isConfirmOpen()) return;
       const defId = bf.getAttribute('data-buyfit');
       const slotIndex = Number(bf.getAttribute('data-slot'));
@@ -1170,7 +1191,7 @@ export function createShipworksScreen(ctx) {
       closeChooser(); setTimeout(refresh, 70); return;
     }
     const uf = ev.target.closest('[data-unfit]');
-    if (uf) { if (ctx.bus) { ctx.bus.emit('ui:unfitModule', { slotIndex: Number(uf.getAttribute('data-unfit')) }); ctx.bus.emit('audio:cue', { id: 'ui_click' }); } closeChooser(); setTimeout(refresh, 70); }
+    if (uf && !uf.disabled && shipworksActionAvailability(ctx.state).outfitEnabled) { if (ctx.bus) { ctx.bus.emit('ui:unfitModule', { slotIndex: Number(uf.getAttribute('data-unfit')) }); ctx.bus.emit('audio:cue', { id: 'ui_click' }); } closeChooser(); setTimeout(refresh, 70); }
   });
 
   // Hover/focus: ghost afterFittings geometry + derived stats; leave restores current loadout.
