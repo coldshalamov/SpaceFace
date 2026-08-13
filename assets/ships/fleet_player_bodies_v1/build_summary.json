@@ -430,6 +430,113 @@
   },
   {
     "schema": "spaceface.fleetPlayerBody.build.v1",
+    "assetId": "SF_ATLAS_PRODUCTION_V1",
+    "defId": "ship_atlas",
+    "shipId": "atlas",
+    "iteration": 9,
+    "lods": [
+      {
+        "lod": 0,
+        "triangles": 61612,
+        "hullTriangles": 1708,
+        "draws": 9,
+        "materials": [
+          "Material_Accent",
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster",
+          "Material_Warning"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/atlas_production_v1_lod0.glb",
+        "bytes": 3249336,
+        "sha256": "58ED8F57050A8CDC6DDABC1F03CA5F89CC7C446A289FB5B0F570D32A9847F540"
+      },
+      {
+        "lod": 1,
+        "triangles": 22132,
+        "hullTriangles": 1708,
+        "draws": 9,
+        "materials": [
+          "Material_Accent",
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster",
+          "Material_Warning"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/atlas_production_v1_lod1.glb",
+        "bytes": 1162896,
+        "sha256": "99D8C0B5D7FF594A028F2360D695CFFFDC8B40C0592ED1A4A8B1339605310392"
+      },
+      {
+        "lod": 2,
+        "triangles": 11056,
+        "hullTriangles": 1540,
+        "draws": 7,
+        "materials": [
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/atlas_production_v1_lod2.glb",
+        "bytes": 534700,
+        "sha256": "5924FD0921E37903A1993EEA0B59564200432C1F1FD91D5AC4DFC94D038ECF7C"
+      }
+    ],
+    "renders": []
+  },
+  {
+    "schema": "spaceface.fleetPlayerBody.build.v1",
     "assetId": "SF_RANGER_PRODUCTION_V1",
     "defId": "ship_ranger",
     "shipId": "ranger",
