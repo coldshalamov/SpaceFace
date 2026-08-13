@@ -3,12 +3,12 @@
   "assetId": "SF_BASTION_PRODUCTION_V1",
   "defId": "ship_bastion",
   "shipId": "bastion",
-  "iteration": 6,
+  "iteration": 9,
   "lods": [
     {
       "lod": 0,
-      "triangles": 37884,
-      "hullTriangles": 1648,
+      "triangles": 39500,
+      "hullTriangles": 1728,
       "draws": 9,
       "materials": [
         "Material_Accent",
@@ -35,13 +35,13 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/bastion_production_v1_lod0.glb",
-      "bytes": 1982364,
-      "sha256": "E1438F3492D5C7E55AF031B062C51975EF4F885EADAFAAB4D2F367821CC0FC65"
+      "bytes": 2095668,
+      "sha256": "4F1CEAA114D5F091125F679958B17314633936784EF7C59F392674E5B3506FDD"
     },
     {
       "lod": 1,
-      "triangles": 10780,
-      "hullTriangles": 1648,
+      "triangles": 16532,
+      "hullTriangles": 1728,
       "draws": 9,
       "materials": [
         "Material_Accent",
@@ -68,12 +68,12 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/bastion_production_v1_lod1.glb",
-      "bytes": 565792,
-      "sha256": "6F1B82BF903D37FDCE1EC1873BAA2E1BE14DB0C7DF7F5E262D1F59B8A7BB917C"
+      "bytes": 894748,
+      "sha256": "8B5F1E3961934D1CF6D78B2B8EBE2D11CF7B3E4DDDAE96DA8E5AF6FBD651B71F"
     },
     {
       "lod": 2,
-      "triangles": 6568,
+      "triangles": 7164,
       "hullTriangles": 1540,
       "draws": 7,
       "materials": [
@@ -99,30 +99,9 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/bastion_production_v1_lod2.glb",
-      "bytes": 325948,
-      "sha256": "19984CEF9556339F0795DE1F4C922E39F7392CA2EE2CF1AF935FC54246A1F5D1"
+      "bytes": 362120,
+      "sha256": "D2D2093907386C49884D59E3127B2D8C2A1C3C7EE210B564301C61D4AEF899E7"
     }
   ],
-  "renders": [
-    {
-      "view": "bastion_three_quarter",
-      "path": "evidence/iter06/bastion_three_quarter.png",
-      "bytes": 904198
-    },
-    {
-      "view": "bastion_starboard",
-      "path": "evidence/iter06/bastion_starboard.png",
-      "bytes": 920737
-    },
-    {
-      "view": "bastion_rear",
-      "path": "evidence/iter06/bastion_rear.png",
-      "bytes": 991013
-    },
-    {
-      "view": "bastion_grazing",
-      "path": "evidence/iter06/bastion_grazing.png",
-      "bytes": 971060
-    }
-  ]
+  "renders": []
 }

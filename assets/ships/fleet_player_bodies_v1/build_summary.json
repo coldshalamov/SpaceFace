@@ -323,6 +323,113 @@
   },
   {
     "schema": "spaceface.fleetPlayerBody.build.v1",
+    "assetId": "SF_BASTION_PRODUCTION_V1",
+    "defId": "ship_bastion",
+    "shipId": "bastion",
+    "iteration": 9,
+    "lods": [
+      {
+        "lod": 0,
+        "triangles": 39500,
+        "hullTriangles": 1728,
+        "draws": 9,
+        "materials": [
+          "Material_Accent",
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster",
+          "Material_Warning"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/bastion_production_v1_lod0.glb",
+        "bytes": 2095668,
+        "sha256": "4F1CEAA114D5F091125F679958B17314633936784EF7C59F392674E5B3506FDD"
+      },
+      {
+        "lod": 1,
+        "triangles": 16532,
+        "hullTriangles": 1728,
+        "draws": 9,
+        "materials": [
+          "Material_Accent",
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster",
+          "Material_Warning"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/bastion_production_v1_lod1.glb",
+        "bytes": 894748,
+        "sha256": "8B5F1E3961934D1CF6D78B2B8EBE2D11CF7B3E4DDDAE96DA8E5AF6FBD651B71F"
+      },
+      {
+        "lod": 2,
+        "triangles": 7164,
+        "hullTriangles": 1540,
+        "draws": 7,
+        "materials": [
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/bastion_production_v1_lod2.glb",
+        "bytes": 362120,
+        "sha256": "D2D2093907386C49884D59E3127B2D8C2A1C3C7EE210B564301C61D4AEF899E7"
+      }
+    ],
+    "renders": []
+  },
+  {
+    "schema": "spaceface.fleetPlayerBody.build.v1",
     "assetId": "SF_RANGER_PRODUCTION_V1",
     "defId": "ship_ranger",
     "shipId": "ranger",
