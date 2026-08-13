@@ -690,12 +690,18 @@ def build_lod(lod, mats):
         add_box(f"BowCheek_{side}", (7.85, 1.05 * sign, 0.22), (1.25, 0.08, 0.24), armor, collection, 0.006)
         add_box(f"DorsalTile_{side}", (1.35, 0.78 * sign, 1.12), (1.05, 0.36, 0.020), armor, collection, 0.004)
         add_rcs_cluster(side, (-1.6, 2.78 * sign, 0.22), mats, collection, sign=sign)
-        # Lofted fin: thick root, thinner tip.
-        loft_from_rings(f"Fin_{side}", [
+        # Lofted fin: thick root, thinner tip. C6+ adds a root fillet station.
+        fin_rings = [
             [( -6.4, 1.55 * sign, 0.55), (-6.0, 1.55 * sign, 0.72), (-5.6, 1.55 * sign, 0.55), (-6.0, 1.55 * sign, 0.38)],
             [( -7.2, 2.15 * sign, 0.72), (-6.7, 2.15 * sign, 0.98), (-6.2, 2.15 * sign, 0.72), (-6.7, 2.15 * sign, 0.50)],
             [( -8.0, 2.65 * sign, 0.88), (-7.5, 2.65 * sign, 1.08), (-7.1, 2.65 * sign, 0.88), (-7.5, 2.65 * sign, 0.72)],
-        ], armor, collection, 0.008, cap=True)
+        ]
+        if CYCLE >= 6:
+            fin_rings.insert(0, [
+                (-5.85, 1.18 * sign, 0.42), (-5.35, 1.18 * sign, 0.68),
+                (-4.95, 1.18 * sign, 0.42), (-5.35, 1.18 * sign, 0.22),
+            ])
+        loft_from_rings(f"Fin_{side}", fin_rings, armor, collection, 0.008, cap=True)
 
     add_cylinder("GunHouse_C", (6.85, 0.0, 0.18), 0.13, 1.25, mech, collection, vertices=10, bevel=0.005)
     add_cylinder("GunBarrel_C", (7.95, 0.0, 0.18), 0.042, 0.95, armor, collection, vertices=8, bevel=0.003)
@@ -718,6 +724,28 @@ def build_lod(lod, mats):
         add_box("HoseFit_P1", (-9.15, -2.00, 0.16), (0.03, 0.03, 0.03), mech, collection, 0.002)
         add_box("HoseFit_S0", (0.15, 2.35, 0.14), (0.03, 0.03, 0.03), mech, collection, 0.002)
         add_box("HoseFit_S1", (-9.15, 2.00, 0.16), (0.03, 0.03, 0.03), mech, collection, 0.002)
+    if CYCLE >= 6 and lod <= 1:
+        boolean_cut(hull_obj, "TransomRecess", (-10.95, 0.0, 0.16), (0.20, 0.85, 0.32))
+    if CYCLE >= 7:
+        add_box("IslandMullion", (-1.45, 0.0, 2.78), (0.03, 0.42, 0.12), armor, collection, 0.002)
+        if lod <= 1:
+            for sign, side in ((-1, "Port"), (1, "Starboard")):
+                for i in range(5):
+                    add_box(
+                        f"RadFin_{side}_{i}",
+                        (-0.30 + i * 0.22, 2.48 * sign, 0.22),
+                        (0.014, 0.18, 0.20),
+                        mech, collection, 0.001,
+                    )
+    if CYCLE >= 8:
+        add_box("DriveBankBand", (-9.35, 0.0, 0.14), (0.07, 2.45, 0.26), armor, collection, 0.003)
+    if CYCLE >= 9:
+        add_box("ChineCapP", (3.60, -2.15, 0.18), (1.65, 0.045, 0.055), armor, collection, 0.003)
+        add_box("ChineCapS", (3.60, 2.15, 0.18), (1.65, 0.045, 0.055), armor, collection, 0.003)
+    if CYCLE >= 10:
+        add_box("PatchTile2", (2.15, 0.68, 1.12), (0.26, 0.12, 0.010), armor, collection, 0.002)
+        add_box("IslandStayP", (-2.15, -0.22, 2.15), (0.24, 0.02, 0.02), mech, collection, 0.002)
+        add_box("IslandStayS", (-2.15, 0.22, 2.15), (0.24, 0.02, 0.02), mech, collection, 0.002)
 
     mesh_objects = [obj for obj in collection.objects if obj.type == "MESH"]
     for obj in mesh_objects:
