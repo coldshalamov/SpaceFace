@@ -112,7 +112,6 @@ export const tetherGameplay = {
       // land later in the same tick (target gone, physics cut) must drop the HUD mirror immediately
       // so a freeze after MASSLINE BROKEN cannot keep painting TETHER LOCKED.
       if (this._insideTetherUpdate) return;
-      if (payload && payload.reason === 'tether_cut') return;
       const state = this.state;
       const kernel = combatKernel(this);
       const attachments = kernel && kernel.attachments;

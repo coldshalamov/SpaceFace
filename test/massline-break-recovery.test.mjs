@@ -224,6 +224,18 @@ test('a player cut does not emit MASSLINE BROKEN and clears LOCKED immediately',
   assert.equal(h.state.player.tether.active, false);
 });
 
+test('an out-of-band player cut clears LOCKED immediately without a break toast', () => {
+  const h = buildLatchHarness();
+  fireLatch(h);
+  assert.equal(h.state.player.tether.active, true);
+  h.events.broke.length = 0;
+
+  h.attachments.cut(activeAttachmentId(h), h.p.id, 'tether_cut');
+
+  assert.equal(h.events.broke.length, 0, 'external player cut must remain a release, not a break');
+  assert.equal(h.state.player.tether.active, false, 'authority cut must clear the HUD before another tick');
+});
+
 test('HUD overlay still paints the broken Massline after a VFX throw', (t) => {
   t.mock.method(console, 'error', () => {});
   const h = buildLatchHarness();
