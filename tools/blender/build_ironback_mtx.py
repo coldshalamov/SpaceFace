@@ -17,11 +17,14 @@ ROOT = TOOLS.parents[1]
 if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
 from fleet_construction import (  # noqa: E402
+    add_flared_bell,
     add_manufactured_drive,
+    add_overlap_plate,
     add_rcs_cluster,
     add_sensor_dish,
-    cut_open_bay,
     apply_modifiers,
+    cut_open_bay,
+    station_ring,
 )
 
 FAMILY = ROOT / "assets" / "ships" / "fleet_player_bodies_v1" / "ironback"
@@ -596,17 +599,17 @@ def build_lod(lod, mats):
     # C6 barge hull: blunt bow → cabin → hopper shoulder → hold → transom.
     # Not a needle. Mid station must not equal bow.
     hull_obj = loft_from_rings("Pressure_Hull", [
-        diamond_ring(half, 0, 0.18, 1.05, 0.72),
-        diamond_ring(6.20, 0, 0.28, 1.55, 1.05),
-        diamond_ring(3.90, 0, 0.32, 2.05, 1.28),
-        diamond_ring(1.10, 0, 0.22, 2.75 if CYCLE >= 9 else 2.42, 1.42 if CYCLE >= 9 else 1.35),
-        diamond_ring(-1.40, 0, 0.18, 2.85 if CYCLE >= 9 else 2.48, 1.28 if CYCLE >= 9 else 1.22),
-        diamond_ring(-3.80, 0, 0.16, 2.35 if CYCLE >= 9 else 2.15, 1.10 if CYCLE >= 9 else 1.05),
-        diamond_ring(-6.10, 0, 0.14, 1.65, 0.88),
-        diamond_ring(-7.70, 0, 0.12, 1.22, 0.68),
+        station_ring(half, 0, 0.18, 1.08, 0.68, flat=0.70, box=0.55, keel=0.40),
+        station_ring(6.20, 0, 0.28, 1.58, 1.02, flat=0.80, box=0.62, keel=0.35),
+        station_ring(3.90, 0, 0.38, 2.05, 1.35, flat=0.95, box=0.70, keel=0.30),
+        station_ring(1.10, 0, 0.18, 2.72, 1.18, flat=0.35, box=0.92, keel=0.28),
+        station_ring(-1.40, 0, 0.14, 2.82, 1.05, flat=0.22, box=0.95, keel=0.25),
+        station_ring(-3.80, 0, 0.16, 2.28, 1.12, flat=0.30, box=0.90, keel=0.22),
+        station_ring(-6.10, 0, 0.16, 1.68, 1.00, flat=0.35, box=0.96, keel=0.20),
+        station_ring(-7.70, 0, 0.12, 1.28, 0.78, flat=0.32, box=0.95, keel=0.18),
     ], hull, collection, 0.022)
     if lod <= 1:
-        cut_open_bay(hull_obj, "Cockpit", (3.80, 0.0, 1.35), 1.35, 0.80, 0.55, (0, 0, 1), mats, collection, kit="cockpit")
+        cut_open_bay(hull_obj, "Cockpit", (3.80, 0.0, 1.55), 1.35, 0.70, 0.55, (0, 0, 1), mats, collection, kit="cockpit", liner=False)
         cut_open_bay(hull_obj, "Port", (0.10, -2.28, 0.20), 1.85, 0.55, 0.58, (0, -1, 0), mats, collection, kit="radiator")
         cut_open_bay(hull_obj, "Starboard", (0.10, 2.28, 0.20), 1.85, 0.55, 0.58, (0, 1, 0), mats, collection, kit="rack")
         cut_open_bay(hull_obj, "Hopper", (-0.10, 0.0, 1.32), 2.20, 1.15, 0.58, (0, 0, 1), mats, collection, kit="rack")
@@ -632,7 +635,7 @@ def build_lod(lod, mats):
             diamond_ring(-7.20, 1.70 * sign, 0.10, 0.48, 0.38),
             diamond_ring(-7.70, 1.70 * sign, 0.10, 0.36, 0.28),
         ], armor, collection, 0.012)
-        add_hollow_bell(side, -7.85, 1.70 * sign, 0.10, 1.25, mats, collection)
+        add_flared_bell(side, -7.85, 1.70 * sign, 0.10, 1.25, mats, collection)
         add_cylinder(f"DriveCollar_{side}", (-7.40, 1.70 * sign, 0.10), 0.42, 0.12, ceramic, collection, vertices=16, bevel=0.008)
         loft_from_rings(f"ArmBoom_Fore_{side}", [
             diamond_ring(1.60, 2.35 * sign, -0.08, 0.18, 0.14),

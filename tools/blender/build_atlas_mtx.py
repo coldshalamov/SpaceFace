@@ -17,12 +17,15 @@ ROOT = TOOLS.parents[1]
 if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
 from fleet_construction import (  # noqa: E402
+    add_cockpit_glazing,
+    add_flared_bell,
     add_manufactured_drive,
+    add_overlap_plate,
     add_rcs_cluster,
     add_sensor_dish,
-    add_cockpit_glazing,
-    cut_open_bay,
     apply_modifiers,
+    cut_open_bay,
+    station_ring,
 )
 
 FAMILY = ROOT / "assets" / "ships" / "fleet_player_bodies_v1" / "atlas"
@@ -628,17 +631,17 @@ def build_lod(lod, mats):
     }
     # Bulk hauler: high house, dropped cargo deck, raised transom. Stations must change.
     hull_obj = loft_from_rings("Pressure_Hull", [
-        barge_ring(half, 0, 0.32, 0.46, 0.72, 0.36),
-        barge_ring(half * 0.78, 0, 0.24, 1.10, 0.88, 0.52),
-        barge_ring(half * 0.54, 0, 0.04, 2.08, 0.40, 1.02),
-        barge_ring(half * 0.12, 0, -0.04, 2.42, 0.28, 1.20),
-        barge_ring(-half * 0.22, 0, -0.02, 2.40, 0.30, 1.18),
-        barge_ring(-half * 0.50, 0, 0.08, 2.02, 0.46, 0.96),
-        barge_ring(-half * 0.76, 0, 0.20, 1.52, 0.74, 0.60),
-        barge_ring(-half + 0.58, 0, 0.18, 1.38, 0.62, 0.48),
+        station_ring(half, 0, 0.32, 0.50, 0.70, flat=0.75, box=0.50, keel=0.35),
+        station_ring(half * 0.78, 0, 0.36, 1.05, 0.95, flat=0.90, box=0.55, keel=0.30),
+        station_ring(half * 0.54, 0, 0.02, 2.10, 0.48, flat=0.20, box=0.88, keel=0.25),
+        station_ring(half * 0.12, 0, -0.06, 2.45, 0.32, flat=0.12, box=0.95, keel=0.22),
+        station_ring(-half * 0.22, 0, -0.04, 2.42, 0.34, flat=0.12, box=0.95, keel=0.22),
+        station_ring(-half * 0.50, 0, 0.10, 2.00, 0.58, flat=0.25, box=0.90, keel=0.22),
+        station_ring(-half * 0.76, 0, 0.22, 1.55, 0.88, flat=0.40, box=0.95, keel=0.20),
+        station_ring(-half + 0.58, 0, 0.18, 1.40, 0.72, flat=0.35, box=0.95, keel=0.18),
     ], hull, collection, 0.014)
     if lod <= 1:
-        cut_open_bay(hull_obj, "Bridge", (6.70, 0.0, 1.10), 1.85, 0.88, 0.42, (0, 0, 1), mats, collection, kit="cockpit")
+        cut_open_bay(hull_obj, "Bridge", (6.70, 0.0, 1.22), 1.85, 0.78, 0.45, (0, 0, 1), mats, collection, kit="cockpit", liner=False)
         cut_open_bay(hull_obj, "CargoWell", (0.20, 0.0, 0.38), 6.40, 1.28, 0.42, (0, 0, 1), mats, collection, kit="empty")
         cut_open_bay(hull_obj, "Port", (0.20, -2.28, 0.10), 2.10, 0.42, 0.48, (0, -1, 0), mats, collection, kit="radiator")
         cut_open_bay(hull_obj, "Starboard", (0.20, 2.28, 0.10), 2.10, 0.42, 0.48, (0, 1, 0), mats, collection, kit="radiator")
@@ -678,7 +681,7 @@ def build_lod(lod, mats):
     # Four-drive transom bank.
     drive_ys = ((-1.70, "PortOut"), (1.70, "StbdOut"), (-0.70, "PortIn"), (0.70, "StbdIn"))
     for y, side in drive_ys:
-        add_hollow_bell(side, -9.95, y, 0.14, 1.00, mats, collection)
+        add_flared_bell(side, -9.95, y, 0.14, 1.00, mats, collection)
         add_cylinder(f"DriveCasing_{side}", (-8.85, y, 0.14), 0.32, 0.85, mech, collection, vertices=16, bevel=0.008)
         add_cylinder(f"DriveFairing_{side}", (-8.35, y, 0.14), 0.38, 0.42, armor, collection, vertices=16, bevel=0.008)
         add_box(f"DriveSaddle_{side}", (-8.75, y, -0.18), (0.40, 0.14, 0.09), mech, collection, 0.005)

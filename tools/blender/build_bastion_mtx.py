@@ -17,11 +17,14 @@ ROOT = TOOLS.parents[1]
 if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
 from fleet_construction import (  # noqa: E402
+    add_flared_bell,
     add_manufactured_drive,
+    add_overlap_plate,
     add_rcs_cluster,
     add_sensor_dish,
-    cut_open_bay,
     apply_modifiers,
+    cut_open_bay,
+    station_ring,
 )
 
 FAMILY = ROOT / "assets" / "ships" / "fleet_player_bodies_v1" / "bastion"
@@ -595,17 +598,17 @@ def build_lod(lod, mats):
     }
     # C6 corvette hull: knife → canopy shoulder → casemate waist → tower → transom.
     hull_obj = loft_from_rings("Pressure_Hull", [
-        diamond_ring(half, 0, 0.08, 0.28, 0.22),
-        diamond_ring(7.20, 0, 0.14, 0.68, 0.48),
-        diamond_ring(4.80, 0, 0.22, 1.15, 0.82),
-        diamond_ring(1.80, 0, 0.14, 1.62, 0.78),
-        diamond_ring(-0.80, 0, 0.16, 1.92, 0.98),
-        diamond_ring(-3.20, 0, 0.18, 1.72, 1.08),
-        diamond_ring(-5.80, 0, 0.14, 1.28, 0.72),
-        diamond_ring(-8.40, 0, 0.10, 0.82, 0.48),
+        station_ring(half, 0, 0.08, 0.26, 0.20, flat=0.08, box=0.10, keel=0.95),
+        station_ring(7.20, 0, 0.14, 0.66, 0.46, flat=0.25, box=0.22, keel=0.85),
+        station_ring(4.80, 0, 0.24, 1.12, 0.92, flat=0.85, box=0.40, keel=0.70),
+        station_ring(1.80, 0, 0.14, 1.65, 0.72, flat=0.30, box=0.78, keel=0.55),
+        station_ring(-0.80, 0, 0.18, 1.95, 1.05, flat=0.35, box=0.88, keel=0.40),
+        station_ring(-3.20, 0, 0.22, 1.75, 1.18, flat=0.40, box=0.95, keel=0.32),
+        station_ring(-5.80, 0, 0.16, 1.32, 0.88, flat=0.32, box=0.96, keel=0.25),
+        station_ring(-8.40, 0, 0.12, 0.88, 0.62, flat=0.30, box=0.95, keel=0.20),
     ], hull, collection, 0.018)
     if lod <= 1:
-        cut_open_bay(hull_obj, "Cockpit", (4.10, 0.0, 0.98), 1.25, 0.58, 0.48, (0, 0, 1), mats, collection, kit="cockpit")
+        cut_open_bay(hull_obj, "Cockpit", (4.10, 0.0, 1.12), 1.25, 0.52, 0.50, (0, 0, 1), mats, collection, kit="cockpit", liner=False)
         cut_open_bay(hull_obj, "Port", (0.20, -1.72, 0.18), 1.75, 0.42, 0.50, (0, -1, 0), mats, collection, kit="radiator")
         cut_open_bay(hull_obj, "Starboard", (0.20, 1.72, 0.18), 1.75, 0.42, 0.50, (0, 1, 0), mats, collection, kit="rack")
         cut_open_bay(hull_obj, "TowerWell", (-2.40, 0.0, 1.18), 1.05, 0.62, 0.38, (0, 0, 1), mats, collection, kit="radiator")
@@ -631,7 +634,7 @@ def build_lod(lod, mats):
             diamond_ring(-7.95, 1.50 * sign, 0.10, 0.36, 0.30),
             diamond_ring(-8.45, 1.50 * sign, 0.10, 0.26, 0.22),
         ], armor, collection, 0.010)
-        add_hollow_bell(side, -8.55, 1.50 * sign, 0.10, 1.15, mats, collection)
+        add_flared_bell(side, -8.55, 1.50 * sign, 0.10, 1.15, mats, collection)
         add_cylinder(f"DriveCollar_{side}", (-8.15, 1.50 * sign, 0.10), 0.34, 0.10, ceramic, collection, vertices=16, bevel=0.006)
         add_box(f"Casemate_{side}", (0.15, 1.88 * sign, 0.18), (1.45, 0.22, 0.26), armor, collection, 0.010)
         add_box(f"CaseLip_{side}", (0.15, 2.08 * sign, 0.18), (1.50, 0.04, 0.30), mech, collection, 0.004)

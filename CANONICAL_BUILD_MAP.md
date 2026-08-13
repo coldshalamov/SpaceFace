@@ -66,12 +66,13 @@ kit-on-loaf cycles did not close quality. That close is reverted. Live files are
 still the old factory wholeships. Hitch is untouched and still wins. Stay off
 INFERENCE, the dock/hulk remaster, and the expansion-research brief.
 
-- **Hornet form rebuild is cycles 11–14.** Station families, flared bell, crate
-  canopy removed. Independent review is still REJECT. Not wired.
-- **Drifter and Ranger** have a first form-rebuild cycle (11). Same honest
-  result: better stations than C10, still lose to Hitch, not wired.
-- **Next:** remaining player ships through the same station / well / flared-bell
-  pass. Do not promote a ship that still loses to Hitch.
+- **Hornet form rebuild is cycles 11–14.** Independent review still REJECT.
+  Not wired.
+- **Every remaining player ship now has a first form-rebuild cycle (11):**
+  Drifter, Ranger, Ironback, Bastion, Atlas, Warden, Colossus, Leviathan,
+  Pelican, Mule, Wasp. Ironback reviews REJECT. Hitch still wins. None wired.
+- **Next:** keep form work until a ship beats Hitch, then wire only that
+  ship. NPC/traffic ships still need the same pass. Do not promote a loser.
 - **Do not** mark the campaign exhausted while clay still reads as primitives.
 
 **Graphics / place-asset remaster (resume):** if the task is continuing the interrupted remaster of

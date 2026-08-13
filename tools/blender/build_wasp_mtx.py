@@ -17,12 +17,15 @@ ROOT = TOOLS.parents[1]
 if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
 from fleet_construction import (  # noqa: E402
+    add_cockpit_glazing,
+    add_flared_bell,
     add_manufactured_drive,
+    add_overlap_plate,
     add_rcs_cluster,
     add_sensor_dish,
-    add_cockpit_glazing,
-    cut_open_bay,
     apply_modifiers,
+    cut_open_bay,
+    station_ring,
 )
 
 FAMILY = ROOT / "assets" / "ships" / "fleet_player_bodies_v1" / "wasp"
@@ -684,15 +687,15 @@ def build_lod(lod, mats):
     }
     # Arrowhead fighter: hard-chine dart, open transom, not a capped sausage.
     hull_obj = loft_from_rings("Pressure_Hull", [
-        dart_ring(11.2, 0, 0.02, 0.16, 0.12, 0.10),
-        dart_ring(8.0, 0, 0.05, 0.92, 0.38, 0.32),
-        dart_ring(4.0, 0, 0.08, 2.05, 0.68, 0.58),
-        dart_ring(-0.6, 0, 0.04, 2.48, 0.82, 0.70),
-        dart_ring(-5.4, 0, 0.00, 1.58, 0.58, 0.50),
-        dart_ring(-9.35, 0, -0.02, 0.68, 0.38, 0.34),
+        station_ring(11.2, 0, 0.02, 0.16, 0.12, flat=0.00, box=0.00, keel=1.00),
+        station_ring(8.0, 0, 0.05, 0.90, 0.38, flat=0.15, box=0.15, keel=0.90),
+        station_ring(4.0, 0, 0.12, 2.02, 0.78, flat=0.75, box=0.40, keel=0.70),
+        station_ring(-0.6, 0, 0.04, 2.48, 0.82, flat=0.25, box=0.85, keel=0.50),
+        station_ring(-5.4, 0, 0.02, 1.58, 0.68, flat=0.22, box=0.90, keel=0.40),
+        station_ring(-9.35, 0, -0.02, 0.70, 0.42, flat=0.20, box=0.92, keel=0.30),
     ], hull, collection, 0.012, cap="both")
     if lod <= 1:
-        cut_open_bay(hull_obj, "Cockpit", (4.55, 0.0, 0.88), 1.85, 0.70, 0.40, (0, 0, 1), mats, collection, kit="cockpit")
+        cut_open_bay(hull_obj, "Cockpit", (4.55, 0.0, 0.98), 1.85, 0.58, 0.42, (0, 0, 1), mats, collection, kit="cockpit", liner=False)
         cut_open_bay(hull_obj, "DorsalAft", (-2.45, 0.0, 0.78), 1.25, 0.50, 0.30, (0, 0, 1), mats, collection, kit="radiator")
         hull_obj.data.materials.clear()
         hull_obj.data.materials.append(hull)
@@ -733,7 +736,7 @@ def build_lod(lod, mats):
         add_cylinder(f"IntakeLip_{side}", (2.92, y, 0.04), 0.50, 0.08, mech, collection, 16, 0.003)
         add_cylinder(f"IntakeThroat_{side}", (2.35, y, 0.04), 0.18, 0.55, mats["Material_Thruster"], collection, 12, 0.002)
         add_cylinder(f"IntakeSplitter_{side}", (2.40, y, 0.04), 0.035, 0.42, mech, collection, 8, 0.002)
-        add_hollow_bell(side, -9.42, y, 0.00, 1.00, mats, collection)
+        add_flared_bell(side, -9.42, y, 0.00, 1.00, mats, collection)
         add_cylinder(f"DriveCoupling_{side}", (-9.28, y, 0.00), 0.38, 0.22, mech, collection, 16, 0.003)
         add_cylinder(f"DriveCasing_{side}", (-8.55, y, 0.00), 0.34, 0.72, mech, collection, 16, 0.005)
         add_cylinder(f"NacelleBand_{side}", (-4.15, y, 0.00), 0.62, 0.06, mech, collection, 12, 0.003)
