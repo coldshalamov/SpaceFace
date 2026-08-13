@@ -25,7 +25,7 @@ ROOT = FAMILY.parents[2]
 TOOLS = ROOT / "tools" / "blender"
 if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
-from fleet_construction import add_midship_kit, add_radiator_cassette, add_tapered_vane  # noqa: E402
+from fleet_construction import add_midship_kit, add_radiator_cassette, add_tapered_vane, cut_open_bay  # noqa: E402
 TEXTURE_SRC = ROOT / "assets" / "ships" / "wasp_production_v1" / "textures"
 PACKET = "SF-MULE-PRODUCTION-V1-001"
 ASSET_ID = "SF_MULE_PRODUCTION_V1"
@@ -434,7 +434,7 @@ def build_ship(lod: int, mats: dict[str, bpy.types.Material]):
         "embeddedPlume": False, "wiringStatus": "isolated_candidate",
     }
 
-    add_chamfer_loft("Pressure_Hull", [
+    hull_obj = add_chamfer_loft("Pressure_Hull", [
         (6.40, 0, 0.10, 0.85, 0.55, 0.10),
         (4.80, 0, 0.12, 1.55, 0.95, 0.18),
         (2.20, 0, 0.10, 1.85, 1.10, 0.20),
@@ -480,6 +480,8 @@ def build_ship(lod: int, mats: dict[str, bpy.types.Material]):
 
     if lod <= 1:
         add_midship_kit(7.5, 2.0, 1.15, lod, mats, collection)
+        cut_open_bay(hull_obj, "Port", (-0.6, -1.95, 0.35), 1.05, 0.32, 0.40, (0.0, -1.0, 0.0), mats, collection, kit="radiator")
+        cut_open_bay(hull_obj, "Starboard", (-0.6, 1.95, 0.35), 1.05, 0.32, 0.40, (0.0, 1.0, 0.0), mats, collection, kit="rack")
         add_box("Hatch_Rim", (2.4, 0.0, 1.18), (0.70, 0.55, 0.06), mech, collection, 0.02)
         add_box("Hatch_Lid", (2.4, 0.0, 1.24), (0.56, 0.42, 0.04), armor, collection, 0.015)
         for sign, side in ((-1, "Port"), (1, "Starboard")):
