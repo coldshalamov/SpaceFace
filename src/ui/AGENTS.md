@@ -25,6 +25,7 @@
 - `uiRoot.js` — mounts `#ui-root`, screen lifecycle.
 - `screenManager.js` — modal screen caching/switching (one visible).
 - `hud.js` — always-mounted flight HUD; its header documents layout/update ownership.
+  Activated flight-HUD pass: `design/HUD_FLIGHT_ATTENTION.md`.
 - `radar.js` — radar glyph/IFF pass.
 - `targetPanel.js` — segmented bars + in-world target arcs.
 - `comms.js` — comms barks (one-voice arbiter).
@@ -42,6 +43,9 @@
 canvas (z0) < vignette (z5) < hud (z10) < modal-backdrop (z90) < screens (z100) < toasts (z1000) < alerts (z1100)
 ```
 `#ui-root` is `pointer-events:none`; interactive children opt back in with `pointer-events:auto`.
+The activated HUD pass (`design/HUD_FLIGHT_ATTENTION.md`) moves receipts into the HUD layer and
+retires website toast cards + the always-on `#control-hints` laundry. Update this comment when that
+lands. The active-objective panel still omits generic map-key copy; Help/Settings own the bind sheet.
 
 ## Verification
 
@@ -49,5 +53,6 @@ canvas (z0) < vignette (z5) < hud (z10) < modal-backdrop (z90) < screens (z100) 
 
 `check-ui-screen-imports` validates the current screen registry plus binding, reachability, and
 one-voice contracts; do not hard-code its assertion count here. The active-objective panel
-intentionally omits generic map-key copy; the always-mounted `controlPrompts.js` flight route owns
-those binding-backed hints so objective guidance stays one-voice.
+intentionally omits generic map-key copy. After `design/HUD_FLIGHT_ATTENTION.md`, first-use hints
+are world-attached and the bind sheet lives in Help/Settings — do not revive a windshield key list
+to satisfy one-voice.

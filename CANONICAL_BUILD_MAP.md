@@ -69,6 +69,13 @@ before touching those GLBs. That handoff owns live residuals, bans, KEEP/RESTORE
 meaning (dock = shipyard UI backdrop; hulk/debris = freeflight landmarks). For ordinary admitted
 roadmap work, still use `program-dispatch` above—do not substitute this handoff for a PQ packet.
 
+**Flight HUD attention pass:** if the task is the windshield-keys / toast-over-HUD / ship-instrument
+work the owner authorized, start at
+[`design/HUD_FLIGHT_ATTENTION.md`](./design/HUD_FLIGHT_ATTENTION.md)
+(operator: [`design/HUD_FLIGHT_ATTENTION_GOAL.txt`](./design/HUD_FLIGHT_ATTENTION_GOAL.txt)).
+That plan owns success criteria, flight order, bans, and process-artifact cleanup. It does not
+replace VISION/GDD. Do not revive `HUD_THREE_ANCHOR` or `GEMINI_HUD_BRIEF` as layout law.
+
 **Graphics / non-Hitch flyable fleet remaster:** remaining work to make every player and NPC flyable
 ship except Hitch/Kestrel honestly better than live Hitch is admitted as `PQ-050`
 (`GFX-FLEET-REMASTER-HITCHPLUS`). Start at

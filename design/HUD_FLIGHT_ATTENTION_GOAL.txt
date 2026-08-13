@@ -1,0 +1,29 @@
+Implement design/HUD_FLIGHT_ATTENTION.md front to back on the current branch. Do not stop after one flight.
+
+You are building SpaceFace. Authority: user direction → ARCHITECTURE.md → design/VISION.md → design/GDD_2_0.md §8–§9.4 → that plan. HUD_THREE_ANCHOR, GEMINI_HUD_BRIEF, and spec2/06 visual recipes are dated references only.
+
+ONE IDEA: The flight HUD has jobs, not a skin. Cruise is almost empty (ship, speed, radar, one destination). Massline takes bottom-center while latched. Fight surfaces target, contacts, and hit direction. Hurt makes only the ship instrument loud. Silence means healthy. Still no visor, helmet, or cockpit framing.
+
+SUCCESS (all required, on the live default flight route):
+1. Still frame: a stranger can point to hull, shields, speed, where to go, and the selected target without reading a title like SHIP CONDITION.
+2. Combat: no toast/receipt covers radar, target, or contacts; no on-screen key laundry; one top-center voice.
+3. Teaching: at most one verb hint, stuck to the object, gone forever after first success. Full binds live in Help/Settings only.
+4. Ship: ring = shields, silhouette fill = hull, one image size, centered. No NOMINAL / SHIP CONDITION. Numbers only when hurt. The current right-offset fill is a bug.
+5. One destination line (includes distance/ETA). World diamond + radar mark stay. Duplicate nav/objective blocks die.
+6. Receipts replace website toasts: 1–2 thin HUD-typed lines in a reserved lane that cannot enter radar, ship, or objective. No card, stripe, or z-index above the HUD. No "Target: …" receipts. Danger stays top-center.
+7. Look: ink on vacuum. No glass plate around two numbers. No decorative cyan rails. Keep radar, contact roster, and story HUD lies (STABLE LOAD and kin).
+8. Do not re-record goldens. Do not edit sim or legacy flight/AI. Do not redesign station screens.
+
+WORKFLOW:
+- Read the plan and live owners (hud.js, uiRoot.js, toasts.js, controlPrompts.js, alerts.js, onboarding control bar, hudMeta.js, ui.css toast/hint rules, check-ui-identity) before editing.
+- Flight 1 Silence, then 2 Instruments, then 3 Verb HUD. Flight 4 only if a real current-hull silhouette exists; do not fake another scout.
+- Commit each finished flight. Push this branch by explicit name. Scope commits to HUD files you own.
+- After each flight: check:baseline plus ui-a11y, wcag-contrast, player-facing-labels, ui-identity, ui:perf as they apply. Capture cruise, fight, latch, low-hull. A green check is not the still-frame test.
+- Update checks if they encoded retired chrome. Do not keep chrome to satisfy a string.
+
+CLEANUP (required before you stop):
+Remove NOW.md rows you added, scratch notes, temp captures, unused CSS, dead #control-hints / _sfShowHints if retired, and any process ledger this pass created. Leave the plan, live HUD, Help/Settings binds, story HUD, and durable evidence stills. Do not leave agent status files.
+
+BANS: more panels, HUD editor, new fonts/palette, backdrop-filter as polish, HP halos on every enemy, flavor chrome (SYS/NOMINAL/TACTICAL), raising z-index to win overlap, deleting radar/roster to look minimal, "fixing" story lies.
+
+RESULT: DONE only if Flights 1–3 are on the live flight route and the success list is true in play, not in a mock.
