@@ -229,6 +229,23 @@ function resolveFittings(shipDef, fittings) {
   return { slots, equipped: out };
 }
 
+/** Add a positive finite fitted percentage without contaminating derived state. */
+function addFinitePositivePct(current, value) {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return current;
+  const next = current + value;
+  return Number.isFinite(next) ? next : current;
+}
+
+/** Scale a runtime damage/range value from its immutable catalog base without overflow. */
+function scaleWeaponRuntimeStat(baseValue, multiplier) {
+  const base = Number(baseValue);
+  const factor = Number(multiplier);
+  if (!Number.isFinite(base) || base < 0) return 0;
+  if (!Number.isFinite(factor) || factor <= 0) return base;
+  const result = base * factor;
+  return Number.isFinite(result) ? result : base;
+}
+
 /** Build a render-facing fittings array (defId | null, parallel to buildSlotList order).
  *  NPC fittings pass through unchanged; their weapons[] are already real fittings. The only
  *  backfill path is the legacy pre-explicit starter-gun fallback for old player saves. */
@@ -346,10 +363,12 @@ export function getDerivedStats(defId, fittings = [], player = null) {
   const energyRegenMult = eff.energyRegenMult || 1;
   const cargoCapMult = eff.cargoCapMult || 1;
 
-  const { equipped } = resolveFittings(shipDef, fittings);
+  const { equipped, slots } = resolveFittings(shipDef, fittings);
 
   // (1) additive flats + mass + cargo pct + utility aggregates
   let shieldFlat = 0, shieldRegenFlat = 0, hullFlat = 0, cargoFlat = 0, cargoCapPct = 0;
+  let weaponRangePct = 0;
+  let weaponDmgPct = 0;
   let moduleMass = 0, continuousDrain = 0;
   let tetherSpoolMult = 1, tetherReelRateMult = 1;
   let ramDamageDealtMult = 0;
@@ -358,7 +377,8 @@ export function getDerivedStats(defId, fittings = [], player = null) {
   let hiddenCargoPct = Math.max(0, Math.min(1, Number(eff.hiddenCargoPct) || 0));
   let scannerCloak = Math.max(0, Math.min(1, Number(eff.scannerCloak) || 0));
   let damageReductionMult = 1; // multiplicative stacking of hardeners (§ formulas)
-  for (const d of equipped) {
+  for (let index = 0, length = equipped.length; index < length; index += 1) {
+    const d = equipped[index] || null;
     if (!d) continue;
     moduleMass += d.mass || 0;
     continuousDrain += d.energyDraw || 0;
@@ -368,6 +388,13 @@ export function getDerivedStats(defId, fittings = [], player = null) {
     hullFlat += mods.hullFlat || 0;
     cargoFlat += mods.cargoFlat || 0;
     cargoCapPct += mods.cargoCapPct || 0;
+    // Fire-control is an ordinary additive stat modifier, not a capability rating. Only a
+    // compatible fitted slot may contribute, so malformed hand-authored arrays cannot grant it.
+    const occupiesCompatibleSlot = fits(slots[index], d);
+    if (occupiesCompatibleSlot) {
+      weaponRangePct = addFinitePositivePct(weaponRangePct, mods.weaponRangePct);
+      weaponDmgPct = addFinitePositivePct(weaponDmgPct, mods.weaponDmgPct);
+    }
     if (Number.isFinite(mods.tetherSpoolMult) && mods.tetherSpoolMult > 0) {
       tetherSpoolMult = Math.max(tetherSpoolMult, mods.tetherSpoolMult);
     }
@@ -438,6 +465,8 @@ export function getDerivedStats(defId, fittings = [], player = null) {
   const capMax = shipDef.energyCap;
   const capRegen = shipDef.energyRegen * energyRegenMult;
   const cargoCap = Math.floor((shipDef.cargo + cargoFlat) * (1 + cargoCapPct) * cargoCapMult);
+  const weaponRangeMult = weaponRangePct + 1;
+  const weaponDmgMult = weaponDmgPct + 1;
 
   // (5) boost/dash config (Phase 3). regenRate rides the energy efficiency multiplier so better
   // power systems help boost recharge. A ship with no boost block gets a near-zero pool (can't boost).
@@ -486,6 +515,10 @@ export function getDerivedStats(defId, fittings = [], player = null) {
     operationalFeelMass: feelMass,
     mass: totalMass, radius: shipDef.collisionRadius || 14,
     tetherSpoolMult, tetherReelRateMult, masslineHeadId, magnetRange,
+    weaponRangePct,
+    weaponDmgPct,
+    weaponRangeMult,
+    weaponDmgMult,
     cargoCap,
     boost: {
       max: bdef.max || 0,
@@ -508,13 +541,13 @@ export function getShipRoleIdentity(defId) {
 }
 
 /** Resolve equipped weapon modules into the data.weapons[] runtime list (§ shared shape). */
-function buildWeaponList(shipDef, fittings, isPlayer) {
+function buildWeaponList(shipDef, fittings, isPlayer, derivedStats = null) {
   const { slots, equipped } = resolveFittings(shipDef, fittings);
   const weapons = [];
   for (let i = 0; i < equipped.length; i++) {
     const d = equipped[i];
     if (!d || d.slotType !== 'weapon') continue;
-    weapons.push(makeWeaponRuntime(d, slots[i], i, isPlayer));
+    weapons.push(makeWeaponRuntime(d, slots[i], i, isPlayer, derivedStats));
   }
   // Legacy player saves before the explicit NEW_GAME weapon may still have no weapon fitted. Prefer
   // a front-facing slot so the fallback starter gun never fires backward or as an unturreted mount.
@@ -522,12 +555,12 @@ function buildWeaponList(shipDef, fittings, isPlayer) {
     const wslot = slots.find((s) => s.type === 'weapon' && (s.facing === 'front' || !s.facing))
                || slots.find((s) => s.type === 'weapon');
     const w = WEAPON_BY_ID.get(STARTER_WEAPON_ID);
-    if (wslot && w) weapons.push(makeWeaponRuntime(w, wslot, wslot.index, isPlayer));
+    if (wslot && w) weapons.push(makeWeaponRuntime(w, wslot, wslot.index, isPlayer, derivedStats));
   }
   return weapons;
 }
 
-function makeWeaponRuntime(def, slot, slotIndex, isPlayer = false) {
+function makeWeaponRuntime(def, slot, slotIndex, isPlayer = false, derivedStats = null) {
   // Hardpoint facing (Phase 2): turret/gimbal tracking determines how a gun acquires its aim.
   const tracking = def.tracking || 'fixed';
   const facing = (slot && slot.facing) || 'front';
@@ -542,9 +575,12 @@ function makeWeaponRuntime(def, slot, slotIndex, isPlayer = false) {
   const muzzleOffset = FACING_OFFSET[facing] || FACING_OFFSET.front;
   return {
     slotIndex, defId: def.id, name: def.name, facing, facingAngle, gimbalArc, muzzleOffset,
-    dmg: def.dmg, rof: def.rof, energyCost: def.energyCost,
+    dmg: scaleWeaponRuntimeStat(def.dmg, derivedStats && derivedStats.weaponDmgMult), rof: def.rof, energyCost: def.energyCost,
+    ...(def.splashDmg != null ? {
+      splashDmg: scaleWeaponRuntimeStat(def.splashDmg, derivedStats && derivedStats.weaponDmgMult),
+    } : {}),
     heat: def.heatPerShot || def.heatPerSec || 0, heatMax: def.heatMax || 100,
-    projSpeed: def.projSpeed, range: def.range, spread: def.spreadDeg || 0,
+    projSpeed: def.projSpeed, range: scaleWeaponRuntimeStat(def.range, derivedStats && derivedStats.weaponRangeMult), spread: def.spreadDeg || 0,
     tracking, lockTimeS: def.lockTimeS || 0,
     damageType: def.damageType, arc: turretArc ? { turret: turretArc } : (gimbalArc ? { gimbal: gimbalArc } : 'fixed'),
     _cooldown: 0, _heat: 0,
@@ -596,7 +632,7 @@ function buildMiningBeam(shipDef, fittings, isPlayer) {
 export function makeShipEntitySpec(defId, { team = 0, factionId = null, fittings = [], appearance = null, livingHull = null, isPlayer = false, player = null, pos = null, rot = 0, ai = null } = {}) {
   const shipDef = SHIP_BY_ID.get(defId) || SHIP_BY_ID.get('ship_kestrel');
   const derived = getDerivedStats(shipDef.id, fittings, player);
-  const weapons = buildWeaponList(shipDef, fittings, isPlayer);
+  const weapons = buildWeaponList(shipDef, fittings, isPlayer, derived || null);
   const miningBeam = buildMiningBeam(shipDef, fittings, isPlayer);
 
   return {
@@ -856,7 +892,7 @@ export const ships = {
     // visible change (hull def or loadout) and ask the render track to rebuild the mesh.
     const shipDef = SHIP_BY_ID.get(defId) || SHIP_BY_ID.get('ship_kestrel');
     const prevAppearance = e.data._appearance || '';
-    const newWeapons = buildWeaponList(shipDef, fit, isPlayer);
+    const newWeapons = buildWeaponList(shipDef, fit, isPlayer, derived || null);
     const newViewFittings = fittingsForView(shipDef, fit, newWeapons);
     const newAppearance = defId + '|' + newViewFittings.join(',') + '|'
       + shipAppearanceSignature(e.data.appearance, defId);

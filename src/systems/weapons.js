@@ -754,7 +754,8 @@ export const weapons = {
       data.projAccel = projSpeedMin != null ? Math.max(40, (projSpeed - projSpeedMin)) : 0;
       data.armed = true;
       if (def.splashRadius != null) data.splashRadius = def.splashRadius;
-      if (def.splashDmg != null) data.splashDmg = def.splashDmg;
+      const splashDmg = Number.isFinite(w.splashDmg) ? w.splashDmg : def.splashDmg;
+      if (splashDmg != null) data.splashDmg = splashDmg;
     }
 
     this.helpers.spawnEntity({
