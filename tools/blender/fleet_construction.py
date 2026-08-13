@@ -593,3 +593,131 @@ def add_framed_canopy(prefix, half, hh, mats, collection, bridge=False):
     add_box(f"{prefix}_Mullion_B", (half * 0.14, 0.0, hh + 0.48), (0.025, 0.36, 0.13), armor, collection, 0.004)
     add_box(f"{prefix}_Sill", (half * 0.24, 0.0, hh + 0.28), (0.42, 0.40, 0.03), armor, collection, 0.005)
     add_box(f"{prefix}_Brow", (half * 0.30, 0.0, hh + 0.66), (0.38, 0.34, 0.03), armor, collection, 0.005)
+
+
+def densify_ring(points, mul=2):
+    """Insert midpoints on each station edge. Keeps vertex correspondence across rings."""
+    if mul <= 1:
+        return [tuple(p) for p in points]
+    out = []
+    count = len(points)
+    for i in range(count):
+        ax, ay, az = points[i]
+        bx, by, bz = points[(i + 1) % count]
+        out.append((ax, ay, az))
+        for k in range(1, mul):
+            t = k / float(mul)
+            out.append((ax + (bx - ax) * t, ay + (by - ay) * t, az + (bz - az) * t))
+    return out
+
+
+def boolean_union(host, donor):
+    """Merge donor into host and delete donor. Host stays the cut target."""
+    apply_modifiers(host)
+    apply_modifiers(donor)
+    bpy.context.view_layer.objects.active = host
+    host.select_set(True)
+    mod = host.modifiers.new("Union", "BOOLEAN")
+    mod.operation = "UNION"
+    mod.object = donor
+    try:
+        mod.solver = "EXACT"
+    except Exception:
+        pass
+    try:
+        result = bpy.ops.object.modifier_apply(modifier=mod.name)
+        if result != {"FINISHED"} or host.modifiers.get(mod.name) is not None:
+            raise RuntimeError("union apply did not finish")
+    except Exception as exc:
+        print(f"boolean_union keep-separate {host.name}+{donor.name}: {exc}")
+        remaining = host.modifiers.get(mod.name)
+        if remaining is not None:
+            host.modifiers.remove(remaining)
+        host.select_set(False)
+        return host
+    host.select_set(False)
+    bpy.data.objects.remove(donor, do_unlink=True)
+    return host
+
+
+def boolean_cut_box(host, name, loc, scale, rot=(0, 0, 0)):
+    """Difference a box from host. Skip rather than crash if the cut fails."""
+    apply_modifiers(host)
+    bpy.ops.mesh.primitive_cube_add(location=loc, rotation=rot)
+    cutter = bpy.context.object
+    cutter.name = name
+    cutter.scale = scale
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    bpy.context.view_layer.objects.active = host
+    host.select_set(True)
+    mod = host.modifiers.new(name, "BOOLEAN")
+    mod.operation = "DIFFERENCE"
+    mod.object = cutter
+    try:
+        mod.solver = "EXACT"
+    except Exception:
+        pass
+    try:
+        result = bpy.ops.object.modifier_apply(modifier=mod.name)
+        if result != {"FINISHED"} or host.modifiers.get(mod.name) is not None:
+            raise RuntimeError("cut apply did not finish")
+    except Exception as exc:
+        print(f"boolean_cut_box skip {name}: {exc}")
+        remaining = host.modifiers.get(mod.name)
+        if remaining is not None:
+            host.modifiers.remove(remaining)
+    host.select_set(False)
+    bpy.data.objects.remove(cutter, do_unlink=True)
+    return host
+
+
+def boolean_cut_cylinder(host, name, loc, radius, depth, rot=(0, math.pi / 2, 0), vertices=18):
+    apply_modifiers(host)
+    bpy.ops.mesh.primitive_cylinder_add(
+        vertices=vertices, radius=radius, depth=depth, location=loc, rotation=rot,
+    )
+    cutter = bpy.context.object
+    cutter.name = name
+    bpy.context.view_layer.objects.active = host
+    host.select_set(True)
+    mod = host.modifiers.new(name, "BOOLEAN")
+    mod.operation = "DIFFERENCE"
+    mod.object = cutter
+    try:
+        mod.solver = "EXACT"
+    except Exception:
+        pass
+    try:
+        result = bpy.ops.object.modifier_apply(modifier=mod.name)
+        if result != {"FINISHED"} or host.modifiers.get(mod.name) is not None:
+            raise RuntimeError("cut apply did not finish")
+    except Exception as exc:
+        print(f"boolean_cut_cylinder skip {name}: {exc}")
+        remaining = host.modifiers.get(mod.name)
+        if remaining is not None:
+            host.modifiers.remove(remaining)
+    host.select_set(False)
+    bpy.data.objects.remove(cutter, do_unlink=True)
+    return host
+
+
+def cut_slot_bank(host, tag, origin, count, slot, spacing, axis=(-1.0, 0.0, 0.0)):
+    """Hitch-floor radiator language: a row of rectangular holes that break the skin."""
+    ox, oy, oz = origin
+    dx, dy, dz = axis
+    for index in range(count):
+        loc = (ox + dx * spacing * index, oy + dy * spacing * index, oz + dz * spacing * index)
+        boolean_cut_box(host, f"Slot_{tag}_{index}", loc, slot)
+    return host
+
+
+def add_corner_fasteners(tag, loc, scale, material, collection):
+    """Four bolts at plate corners. Hitch-floor fastener scale, not studs-as-texture."""
+    x, y, z = loc
+    sx, sy, sz = scale
+    for index, (ox, oy) in enumerate(((-1, -1), (-1, 1), (1, -1), (1, 1))):
+        add_cylinder(
+            f"{tag}_Bolt_{index}",
+            (x + ox * sx * 0.78, y + oy * sy * 0.78, z + sz + 0.010),
+            0.011, 0.016, material, collection, vertices=6, bevel=0.001, rot=(0, 0, 0),
+        )

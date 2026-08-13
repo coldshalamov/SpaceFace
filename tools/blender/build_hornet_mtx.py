@@ -17,14 +17,20 @@ ROOT = TOOLS.parents[1]
 if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
 from fleet_construction import (  # noqa: E402
-    add_flared_bell,
+    add_cockpit_glazing,
+    add_corner_fasteners,
     add_manufactured_drive,
     add_overlap_plate,
     add_radiator_cassette,
     add_rcs_cluster,
     add_sensor_dish,
     apply_modifiers,
+    boolean_cut_box,
+    boolean_cut_cylinder,
+    boolean_union,
     cut_open_bay,
+    cut_slot_bank,
+    densify_ring,
     station_ring,
 )
 
@@ -237,8 +243,8 @@ def create_materials():
         "Material_Mechanical": ((0.42, 0.44, 0.46), 0.88, 0.22, "mechanical", 0.0, None),
         "Material_Accent": ((0.04, 0.40, 0.50), 0.10, 0.34, "accent", 0.2, None),
         "Material_Warning": ((0.70, 0.34, 0.05), 0.05, 0.46, "warning", 0.1, None),
-        "Material_Ceramic": ((0.22, 0.16, 0.12), 0.0, 0.70, "ceramic", 0.0, None),
-        "Material_Radiator": ((0.16, 0.12, 0.09), 0.7, 0.56, "mechanical", 0.0, None),
+        "Material_Ceramic": ((0.08, 0.07, 0.06), 0.0, 0.74, "ceramic", 0.0, None),
+        "Material_Radiator": ((0.07, 0.06, 0.05), 0.62, 0.62, "mechanical", 0.0, None),
         "Material_Canopy": ((0.04, 0.07, 0.09), 0.02, 0.04, "glass", 0.35, None),
         "Material_Thruster": ((0.02, 0.08, 0.12), 0.15, 0.22, "thruster", 0.0, None),
     }
@@ -424,14 +430,18 @@ def diamond_ring(x, yc, zc, hw, hh):
 
 
 def airfoil_ring(x, y, z, chord, thick):
-    le, te = chord * 0.46, chord * 0.54
+    le, te = chord * 0.42, chord * 0.58
     return [
         (x + le, y, z),
-        (x + le * 0.18, y, z + thick),
-        (x - te * 0.22, y, z + thick * 0.42),
+        (x + le * 0.62, y, z + thick * 0.48),
+        (x + le * 0.12, y, z + thick),
+        (x - te * 0.18, y, z + thick * 0.78),
+        (x - te * 0.55, y, z + thick * 0.34),
         (x - te, y, z),
-        (x - te * 0.22, y, z - thick * 0.36),
-        (x + le * 0.18, y, z - thick * 0.92),
+        (x - te * 0.55, y, z - thick * 0.26),
+        (x - te * 0.18, y, z - thick * 0.58),
+        (x + le * 0.12, y, z - thick * 0.88),
+        (x + le * 0.62, y, z - thick * 0.40),
     ]
 
 
@@ -625,88 +635,108 @@ def build_lod(lod, mats):
         "lod": f"lod{lod}", "slot": "hull", "category": "wholeships",
         "forward": "+X", "embeddedPlume": False,
     }
-    # Form rebuild: station FAMILY changes along X, not a scaled diamond.
-    # needle (point) → greenhouse deck (flat) → boxy glove → pinched waist →
-    # boxy drive house of nearly constant beam. No stick boom.
-    hull_obj = loft_from_rings("Pressure_Hull", [
-        station_ring(half, 0, 0.02, 0.08, 0.06, flat=0.00, box=0.00, keel=1.00),
-        station_ring(6.90, 0, 0.04, 0.18, 0.14, flat=0.04, box=0.04, keel=1.00),
-        station_ring(5.55, 0, 0.10, 0.42, 0.38, flat=0.35, box=0.22, keel=0.90),
-        station_ring(4.05, 0, 0.28, 0.58, 1.05, flat=0.98, box=0.38, keel=0.68),
-        station_ring(2.35, 0, 0.08, 1.05, 0.50, flat=0.28, box=0.70, keel=0.70),
-        station_ring(0.25, 0, 0.02, 1.62, 0.46, flat=0.12, box=0.95, keel=0.52),
-        station_ring(-1.15, 0, 0.04, 0.88, 0.50, flat=0.12, box=0.80, keel=0.48),
-        station_ring(-2.45, 0, 0.18, 1.08, 0.92, flat=0.40, box=1.00, keel=0.30),
-        station_ring(-4.35, 0, 0.20, 1.14, 1.00, flat=0.42, box=1.00, keel=0.24),
-        station_ring(-6.05, 0, 0.16, 1.02, 0.90, flat=0.38, box=1.00, keel=0.22),
-        station_ring(-7.35, 0, 0.12, 0.86, 0.78, flat=0.40, box=1.00, keel=0.18),
-    ], hull, collection, 0.014)
+    # C17: interceptor again. Loft runs needle → greenhouse → glove → mid
+    # trunk. Compact chamfered engine bay only at the tail — not a 6 m brick.
+    # Transom face is inset so the drive sits in a well with wall thickness.
+    fwd_rings = [
+        densify_ring(station_ring(half, 0, 0.02, 0.07, 0.05, flat=0.00, box=0.00, keel=1.00)),
+        densify_ring(station_ring(7.05, 0, 0.04, 0.16, 0.12, flat=0.04, box=0.04, keel=1.00)),
+        densify_ring(station_ring(5.85, 0, 0.10, 0.36, 0.30, flat=0.28, box=0.18, keel=0.90)),
+        densify_ring(station_ring(4.70, 0, 0.16, 0.46, 0.48, flat=0.72, box=0.28, keel=0.78)),
+        densify_ring(station_ring(3.70, 0, 0.16, 0.58, 0.58, flat=0.82, box=0.42, keel=0.70)),
+        densify_ring(station_ring(2.50, 0, 0.10, 0.88, 0.50, flat=0.40, box=0.68, keel=0.64)),
+        densify_ring(station_ring(1.20, 0, 0.08, 1.12, 0.50, flat=0.22, box=0.88, keel=0.52)),
+        densify_ring(station_ring(-0.20, 0, 0.10, 1.08, 0.54, flat=0.20, box=0.94, keel=0.40)),
+        densify_ring(station_ring(-1.70, 0, 0.12, 1.00, 0.58, flat=0.22, box=0.96, keel=0.32)),
+        densify_ring(station_ring(-3.20, 0, 0.14, 0.96, 0.64, flat=0.24, box=0.98, keel=0.26)),
+        densify_ring(station_ring(-4.80, 0, 0.14, 0.90, 0.66, flat=0.26, box=1.00, keel=0.20)),
+    ]
+    hull_obj = loft_from_rings("Pressure_Hull", fwd_rings, hull, collection, 0.016)
+    house = loft_from_rings("DriveHouse", [
+        densify_ring(station_ring(-4.95, 0, 0.14, 0.90, 0.66, flat=0.26, box=1.00, keel=0.20)),
+        densify_ring(station_ring(-5.70, 0, 0.14, 0.82, 0.58, flat=0.24, box=1.00, keel=0.18)),
+        densify_ring(station_ring(-6.50, 0, 0.12, 0.70, 0.50, flat=0.22, box=0.96, keel=0.16)),
+        densify_ring(station_ring(-7.32, 0, 0.10, 0.54, 0.40, flat=0.18, box=0.88, keel=0.14)),
+    ], hull, collection, 0.020)
+    boolean_union(hull_obj, house)
     if lod <= 1:
-        cut_open_bay(hull_obj, "Cockpit", (4.00, 0.0, 1.18), 1.65, 0.48, 0.62, (0, 0, 1), mats, collection, kit="cockpit", liner=False)
-        cut_open_bay(hull_obj, "Port", (0.25, -1.58, 0.04), 1.85, 0.48, 0.62, (0, -1, 0), mats, collection, kit="radiator")
-        cut_open_bay(hull_obj, "Starboard", (0.25, 1.58, 0.04), 1.85, 0.48, 0.62, (0, 1, 0), mats, collection, kit="rack")
-        cut_open_bay(hull_obj, "DorsalAft", (-4.20, 0.0, 1.12), 1.45, 0.52, 0.42, (0, 0, 1), mats, collection, kit="radiator")
-        cut_open_bay(hull_obj, "Keel", (0.15, 0.0, -0.50), 2.05, 0.36, 0.34, (0, 0, -1), mats, collection, kit="empty")
-        boolean_cut(hull_obj, "TransomRecess", (-7.58, 0.0, 0.12), (0.42, 0.52, 0.48))
+        cut_open_bay(hull_obj, "Cockpit", (3.85, 0.0, 0.76), 1.45, 0.40, 0.48, (0, 0, 1), mats, collection, kit="cockpit", liner=False)
+        cut_open_bay(hull_obj, "Port", (0.35, -1.10, 0.10), 1.55, 0.42, 0.52, (0, -1, 0), mats, collection, kit="radiator")
+        cut_open_bay(hull_obj, "Starboard", (0.35, 1.10, 0.10), 1.55, 0.42, 0.52, (0, 1, 0), mats, collection, kit="rack")
+        cut_open_bay(hull_obj, "DorsalAft", (-3.40, 0.0, 0.78), 1.15, 0.40, 0.32, (0, 0, 1), mats, collection, kit="radiator")
+        cut_open_bay(hull_obj, "Keel", (0.20, 0.0, -0.42), 1.85, 0.32, 0.30, (0, 0, -1), mats, collection, kit="empty")
+        boolean_cut_cylinder(hull_obj, "TransomSocket", (-7.10, 0.0, 0.10), 0.38, 0.80)
+        cut_slot_bank(hull_obj, "PortRad", (-1.85, -0.98, 0.22), 7, (0.050, 0.16, 0.11), 0.32)
+        cut_slot_bank(hull_obj, "StbdRad", (-1.85, 0.98, 0.22), 7, (0.050, 0.16, 0.11), 0.32)
+        cut_slot_bank(hull_obj, "KeelRad", (-2.10, 0.0, -0.52), 5, (0.050, 0.14, 0.09), 0.34)
         hull_obj.data.materials.clear()
         hull_obj.data.materials.append(hull)
-    inset_large_faces(hull_obj, thickness=0.048, depth=0.024, min_area=0.10)
+    inset_large_faces(hull_obj, thickness=0.036, depth=0.016, min_area=0.10)
 
-    add_thin_canopy("Canopy", 4.00, 0.0, 1.12, 1.70, 0.46, 0.26, mats, collection)
-    add_overlap_plate("TransomFrame", (-7.22, 0.0, 0.12), (0.06, 0.72, 0.58), armor, collection, 0.004)
-    add_flared_bell("Main", -7.15, 0.0, 0.12, 1.55, mats, collection)
-    add_overlap_plate("DriveHouseBandA", (-2.65, 0.0, 0.20), (0.08, 0.98, 0.70), armor, collection, 0.006)
-    add_overlap_plate("DriveHouseBandB", (-5.15, 0.0, 0.18), (0.08, 0.96, 0.68), armor, collection, 0.006)
-    add_overlap_plate("DriveHouseDeckA", (-2.85, 0.10, 1.08), (0.85, 0.48, 0.055), armor, collection, 0.008)
-    add_overlap_plate("DriveHouseDeckB", (-4.55, -0.12, 1.12), (0.72, 0.40, 0.048), armor, collection, 0.008)
-    add_overlap_plate("DriveHouseDeckC", (-5.85, 0.08, 1.00), (0.50, 0.32, 0.042), hull, collection, 0.007)
+    add_cockpit_glazing("Canopy", (3.85, 0.0, 0.72), 0.85, 0.42, 0.26, mats, collection, raised=0.02)
+    add_thin_canopy("CanopyShell", 3.85, 0.0, 0.74, 1.45, 0.38, 0.28, mats, collection)
+    add_box("HouseRoofStep", (-5.85, 0.0, 0.72), (0.72, 0.42, 0.08), armor, collection, 0.014)
+    add_box("HouseKeelStep", (-5.95, 0.0, -0.42), (0.65, 0.32, 0.07), mech, collection, 0.010)
+    add_cylinder("TransomRing", (-7.30, 0.0, 0.10), 0.44, 0.10, armor, collection, 22, 0.006)
+    add_cylinder("TransomWellWall", (-7.12, 0.0, 0.10), 0.36, 0.24, mech, collection, 20, 0.004)
+    add_manufactured_drive("Main", -7.18, 0.0, lod, mats, collection, scale=0.92, z=0.10)
+    add_overlap_plate("DriveHouseBandA", (-5.15, 0.0, 0.14), (0.06, 0.90, 0.58), armor, collection, 0.006)
+    add_overlap_plate("DriveHouseBandB", (-6.85, 0.0, 0.14), (0.06, 0.86, 0.54), armor, collection, 0.006)
+    add_overlap_plate("DriveHouseDeckA", (-2.85, 0.08, 0.76), (0.85, 0.48, 0.048), armor, collection, 0.008)
+    add_overlap_plate("DriveHouseDeckB", (-4.35, -0.10, 0.80), (0.70, 0.40, 0.044), armor, collection, 0.008)
+    add_overlap_plate("DriveHouseDeckC", (-6.15, 0.06, 0.94), (0.72, 0.42, 0.040), hull, collection, 0.007)
+    add_corner_fasteners("DeckA", (-2.85, 0.08, 0.76), (0.85, 0.48, 0.048), mech, collection)
+    add_corner_fasteners("DeckB", (-4.35, -0.10, 0.80), (0.70, 0.40, 0.044), mech, collection)
 
     for sign, side in ((-1, "Port"), (1, "Starboard")):
+        add_box(f"WingGlove_{side}", (0.05, 1.32 * sign, 0.04), (1.35, 0.36, 0.26), armor, collection, 0.022)
         loft_from_rings(f"WingRoot_{side}", [
-            airfoil_ring(0.18, 1.15 * sign, 0.06, 3.15, 0.88),
-            airfoil_ring(0.02, 1.55 * sign, 0.00, 3.25, 0.72),
-        ], hull, collection, 0.012)
+            airfoil_ring(0.12, 1.22 * sign, 0.04, 3.20, 0.30),
+            airfoil_ring(0.00, 1.68 * sign, 0.00, 3.05, 0.26),
+        ], hull, collection, 0.014)
         loft_from_rings(f"Wing_{side}", [
-            airfoil_ring(0.00, 1.62 * sign, 0.00, 3.20, 0.70),
-            airfoil_ring(-0.35, 2.35 * sign, -0.06, 2.55, 0.46),
-            airfoil_ring(-0.95, 3.15 * sign, -0.14, 1.85, 0.26),
-            airfoil_ring(-1.65, 3.95 * sign, -0.22, 1.12, 0.12),
-            airfoil_ring(-2.15, 4.48 * sign, -0.28, 0.48, 0.05),
+            airfoil_ring(0.00, 1.72 * sign, 0.00, 3.00, 0.26),
+            airfoil_ring(-0.28, 2.40 * sign, -0.04, 2.55, 0.20),
+            airfoil_ring(-0.78, 3.12 * sign, -0.08, 1.95, 0.15),
+            airfoil_ring(-1.38, 3.82 * sign, -0.12, 1.28, 0.11),
+            airfoil_ring(-1.95, 4.38 * sign, -0.16, 0.68, 0.08),
         ], hull, collection, 0.010)
-        add_box(f"Flap_{side}", (-2.05, 2.90 * sign, -0.14), (0.22, 0.78, 0.055), mech, collection, 0.003)
-        add_box(f"FlapSlot_{side}", (-1.72, 2.90 * sign, -0.10), (0.035, 0.72, 0.070), mech, collection, 0.002)
-        add_overlap_plate(f"WingTile_{side}A", (-0.22, 2.40 * sign, 0.28), (0.48, 0.36, 0.042), armor, collection, 0.006)
-        add_box(f"UnderRib_{side}", (-0.45, 2.70 * sign, -0.28), (0.80, 0.045, 0.034), mech, collection, 0.003)
+        add_box(f"Flap_{side}", (-1.95, 3.00 * sign, -0.10), (0.26, 0.78, 0.048), mech, collection, 0.003)
+        add_box(f"FlapSlot_{side}", (-1.62, 3.00 * sign, -0.07), (0.038, 0.72, 0.060), mech, collection, 0.002)
+        add_box(f"UnderRib_{side}", (-0.40, 2.70 * sign, -0.18), (0.88, 0.048, 0.032), mech, collection, 0.003)
+        add_cylinder(f"LeadSpar_{side}", (-0.15, 2.55 * sign, 0.06), 0.045, 1.55, mech, collection, vertices=10, bevel=0.004, rot=(math.pi / 2, 0, 0.18 * sign))
         loft_from_rings(f"Canard_{side}", [
-            airfoil_ring(4.55, 0.68 * sign, 0.12, 1.05, 0.090),
-            airfoil_ring(4.15, 1.18 * sign, 0.07, 0.62, 0.040),
+            airfoil_ring(4.55, 0.62 * sign, 0.10, 1.05, 0.10),
+            airfoil_ring(4.12, 1.12 * sign, 0.06, 0.62, 0.055),
         ], armor, collection, 0.006)
-        add_cylinder(f"GunHouse_{side}", (4.85, 0.38 * sign, -0.08), 0.09, 1.15, mech, collection, vertices=10, bevel=0.006)
-        add_cylinder(f"GunBarrel_{side}", (5.85, 0.38 * sign, -0.08), 0.035, 0.85, armor, collection, vertices=8, bevel=0.003)
-        add_rcs_cluster(side, (-1.35, 1.78 * sign, 0.14), mats, collection, sign=sign)
-        add_overlap_plate(f"ChineCap_{side}", (1.85, 1.42 * sign, 0.08), (1.25, 0.045, 0.07), armor, collection, 0.004)
-        add_overlap_plate(f"GloveCheek_{side}", (1.15, 1.08 * sign, 0.10), (0.95, 0.055, 0.24), armor, collection, 0.008)
+        add_cylinder(f"GunHouse_{side}", (4.85, 0.36 * sign, -0.08), 0.09, 1.15, mech, collection, vertices=10, bevel=0.006)
+        add_cylinder(f"GunBarrel_{side}", (5.85, 0.36 * sign, -0.08), 0.035, 0.85, armor, collection, vertices=8, bevel=0.003)
+        add_rcs_cluster(side, (-1.25, 1.55 * sign, 0.16), mats, collection, sign=sign)
+        add_overlap_plate(f"ChineCap_{side}", (1.75, 1.18 * sign, 0.10), (1.15, 0.048, 0.07), armor, collection, 0.004)
+        add_overlap_plate(f"GloveCheek_{side}", (1.05, 1.02 * sign, 0.12), (0.95, 0.055, 0.22), armor, collection, 0.008)
 
-    add_overlap_plate("Armor_Shoulder", (2.45, 0.0, 0.82), (1.05, 0.52, 0.048), armor, collection, 0.008)
-    add_overlap_plate("NeedleSpine", (6.15, 0.0, 0.22), (1.05, 0.10, 0.035), armor, collection, 0.005)
-    # Hitch-floor plate language: overlapping armor with thickness and gaps.
-    # Hornet identity (needle interceptor), not Hitch decals or guns.
+    add_overlap_plate("Armor_Shoulder", (2.55, 0.0, 0.68), (1.00, 0.50, 0.048), armor, collection, 0.008)
+    add_overlap_plate("NeedleSpine", (6.15, 0.0, 0.20), (1.05, 0.10, 0.032), armor, collection, 0.005)
     for i, (px, py, pz, sx, sy, sz) in enumerate((
-        (-2.15, 0.10, 0.86, 0.68, 0.40, 0.050),
-        (-3.35, -0.14, 0.90, 0.62, 0.34, 0.046),
-        (-4.55, 0.08, 0.88, 0.58, 0.30, 0.044),
-        (-5.65, -0.10, 0.84, 0.48, 0.26, 0.040),
-        (0.55, 0.18, 0.58, 0.72, 0.36, 0.048),
-        (1.65, -0.22, 0.52, 0.58, 0.28, 0.042),
-        (-0.85, 0.00, 0.62, 0.52, 0.32, 0.038),
-        (5.35, 0.00, 0.18, 0.85, 0.12, 0.032),
-        (-3.85, -0.62, 0.38, 0.95, 0.10, 0.036),
-        (-3.85, 0.62, 0.38, 0.95, 0.10, 0.036),
+        (-2.15, 0.10, 1.08, 0.78, 0.52, 0.052),
+        (-3.45, -0.16, 1.10, 0.70, 0.44, 0.048),
+        (-4.75, 0.10, 1.08, 0.64, 0.38, 0.046),
+        (-6.00, -0.08, 1.00, 0.52, 0.32, 0.042),
+        (0.65, 0.16, 0.58, 0.78, 0.40, 0.048),
+        (1.75, -0.20, 0.52, 0.62, 0.30, 0.042),
+        (-0.75, 0.00, 0.64, 0.56, 0.34, 0.040),
+        (5.35, 0.00, 0.16, 0.85, 0.12, 0.030),
+        (-3.85, -0.72, 0.42, 1.05, 0.10, 0.038),
+        (-3.85, 0.72, 0.42, 1.05, 0.10, 0.038),
+        (-5.15, -0.88, 0.16, 0.72, 0.08, 0.34),
+        (-5.15, 0.88, 0.16, 0.72, 0.08, 0.34),
     )):
         add_overlap_plate(f"Plate_{i}", (px, py, pz), (sx, sy, sz), armor if i % 2 == 0 else hull, collection, 0.006)
+        if lod == 0 and i < 8:
+            add_corner_fasteners(f"Plate_{i}", (px, py, pz), (sx, sy, sz), mech, collection)
     if lod <= 1:
-        add_radiator_cassette("PortFlank", (-3.55, -0.78, 0.28), lod, mats, collection, length=1.35, height=0.28, yaw=0.0)
-        add_radiator_cassette("StbdFlank", (-3.55, 0.78, 0.28), lod, mats, collection, length=1.35, height=0.28, yaw=0.0)
+        add_radiator_cassette("PortFlank", (-3.15, -0.82, 0.28), lod, mats, collection, length=1.15, height=0.24, yaw=0.0)
+        add_radiator_cassette("StbdFlank", (-3.15, 0.82, 0.28), lod, mats, collection, length=1.15, height=0.24, yaw=0.0)
     add_box("Keel_Spine", (0.15, 0.0, -0.70), (3.2, 0.20, 0.05), mech, collection, 0.01)
     add_box("Repair_Patch", (1.05, -0.52, 0.78), (0.32, 0.16, 0.014), warning, collection, 0.002)
     add_box("Accent_Flash", (0.70, -1.38, 0.24), (0.50, 0.018, 0.08), accent, collection, 0.002)
@@ -909,8 +939,8 @@ def render_cycle(collection):
         "rear": ((-16.5, -5.5, 4.2), (-0.3, 0, 0.08), 38),
         "clay_three_quarter": ((14.5, -13.0, 6.4), (0, 0, 0.12), 38),
         "grazing_close": ((9.5, -7.5, 2.2), (0.4, 0, 0.15), 50),
-        "bay_interior": ((0.25, -3.35, 0.28), (0.25, -1.58, 0.04), 40),
-        "drive_rear": ((-11.5, -3.2, 1.6), (-7.6, 0, 0.12), 50),
+        "bay_interior": ((0.35, -2.85, 0.22), (0.35, -1.10, 0.10), 40),
+        "drive_rear": ((-10.8, -2.8, 1.4), (-7.2, 0, 0.14), 50),
         "play_size": ((48, -42, 22), (0, 0, 0.1), 50),
         "orm_isolation": ((14.5, -13.0, 6.4), (0, 0, 0.12), 38),
         "normal_isolation": ((14.5, -13.0, 6.4), (0, 0, 0.12), 38),

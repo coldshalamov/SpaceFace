@@ -66,13 +66,15 @@ kit-on-loaf cycles did not close quality. That close is reverted. Live files are
 still the old factory wholeships. Hitch is untouched and still wins. Stay off
 INFERENCE, the dock/hulk remaster, and the expansion-research brief.
 
-- **Hornet form rebuild is cycles 11–15.** Plate pass added. Reviews still
-  REVISE/REJECT. Hitch still wins. Not wired.
-- **Every player ship and every NPC/traffic ship now has a form-rebuild
-  cycle (11+).** None beat Hitch. None wired. Live maps still load the old
+- **Hornet is on cycles 16–19.** C16 crate aft was rejected. C17 shrunk the
+  house. C18 opened a real drive well (wall thickness, seated vanes). C19
+  lofts the tail instead of a box. Clay still reads as loft + cards. Hitch
+  still wins. Not wired.
+- **Every player ship and every NPC/traffic ship has a form-rebuild cycle
+  (11+).** None beat Hitch. None wired. Live maps still load the old
   factory wholeships.
-- **Next:** keep form work until a ship beats Hitch, then wire only that
-  ship. Do not promote a loser. Do not mark the campaign exhausted.
+- **Next:** keep Hornet form work until Hitch no longer wins, then wire only
+  that ship. Do not promote a loser. Do not mark the campaign exhausted.
 - **Do not** mark the campaign exhausted while clay still reads as primitives.
 
 **Graphics / place-asset remaster (resume):** if the task is continuing the interrupted remaster of
