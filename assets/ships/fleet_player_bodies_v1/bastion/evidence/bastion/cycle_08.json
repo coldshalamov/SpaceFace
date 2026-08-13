@@ -1,0 +1,67 @@
+{
+  "schema": "spaceface.bastionMtx.cycle.v1",
+  "shipId": "bastion",
+  "cycle": 8,
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 29302,
+      "hullTriangles": 3202,
+      "draws": 9,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/bastion_production_v1_lod0.glb",
+      "bytes": 7737068,
+      "sha256": "1DBEDD79CEBA4C1FCAA7C06E18F4DA44D666AB8E5D7B97A710F8F6383318DED7"
+    },
+    {
+      "lod": 1,
+      "triangles": 25222,
+      "hullTriangles": 3202,
+      "draws": 9,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/bastion_production_v1_lod1.glb",
+      "bytes": 7495532,
+      "sha256": "EAE0C063936580971CA61046D20A32664AE7572D55486405022459CA0224DED0"
+    },
+    {
+      "lod": 2,
+      "triangles": 16000,
+      "hullTriangles": 1324,
+      "draws": 8,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/bastion_production_v1_lod2.glb",
+      "bytes": 5497296,
+      "sha256": "32FEAF324468DBBB75BD8EE956E5E1C8686AF1DC62310F8D48CC93CF5432ED04"
+    }
+  ],
+  "stills": "evidence/bastion/cycles/cycle_08"
+}
