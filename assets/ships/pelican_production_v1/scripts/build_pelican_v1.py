@@ -32,7 +32,7 @@ from fleet_construction import (  # noqa: E402
     add_service_pipe,
     add_tapered_vane,
     add_midship_kit,
-    add_recess_bay,
+    cut_open_bay,
 )
 TEXTURE_SRC = ROOT / "assets" / "ships" / "wasp_production_v1" / "textures"
 PACKET = "SF-PELICAN-PRODUCTION-V1-001"
@@ -429,7 +429,7 @@ def build_ship(lod: int, mats: dict[str, bpy.types.Material]):
         "embeddedPlume": False, "wiringStatus": "isolated_candidate",
     }
 
-    add_chamfer_loft("Pressure_Hull", [
+    hull_obj = add_chamfer_loft("Pressure_Hull", [
         (6.15, 0, 0.06, 0.38, 0.34, 0.08),
         (5.10, 0, 0.08, 0.95, 0.72, 0.16),
         (3.60, 0, 0.10, 1.45, 1.00, 0.22),
@@ -482,8 +482,8 @@ def build_ship(lod: int, mats: dict[str, bpy.types.Material]):
 
     if lod <= 1:
         add_midship_kit(6.2, 2.1, 1.22, lod, mats, collection)
-        add_recess_bay("Port", (-0.8, -1.55, 0.55), 0.85, 0.16, 0.20, mats, collection)
-        add_recess_bay("Starboard", (-0.8, 1.55, 0.55), 0.85, 0.16, 0.20, mats, collection)
+        cut_open_bay(hull_obj, "Port", (-0.8, -2.08, 0.55), 0.85, 0.28, 0.42, (0.0, -1.0, 0.0), mats, collection, kit="radiator")
+        cut_open_bay(hull_obj, "Starboard", (-0.8, 2.08, 0.55), 0.85, 0.28, 0.42, (0.0, 1.0, 0.0), mats, collection, kit="rack")
         add_box("Hatch_Rim", (-0.35, -0.05, 1.46), (0.72, 0.62, 0.06), mech, collection, 0.02)
         add_box("Hatch_Lid", (-0.35, -0.05, 1.52), (0.58, 0.48, 0.04), armor, collection, 0.015)
         for sign, side in ((-1, "Port"), (1, "Starboard")):
@@ -732,7 +732,7 @@ def main() -> int:
         "packet": PACKET,
         "assetId": ASSET_ID,
         "status": "isolated_candidate",
-        "iteration": 4,
+        "iteration": 5,
         "textureSourceHashes": texture_hashes,
         "productionBlend": str(production_blend.relative_to(FAMILY)).replace("\\", "/"),
         "lods": reports,
