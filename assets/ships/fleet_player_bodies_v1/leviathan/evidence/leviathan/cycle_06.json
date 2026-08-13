@@ -1,0 +1,68 @@
+{
+  "schema": "spaceface.leviathanMtx.cycle.v1",
+  "shipId": "leviathan",
+  "cycle": 6,
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 36820,
+      "hullTriangles": 2300,
+      "draws": 9,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/leviathan_production_v1_lod0.glb",
+      "bytes": 8853804,
+      "sha256": "E0A9195BD6574D251234314811F52184BDA98550E42BBCC46AC3C3410FB0EF94"
+    },
+    {
+      "lod": 1,
+      "triangles": 32740,
+      "hullTriangles": 2300,
+      "draws": 9,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/leviathan_production_v1_lod1.glb",
+      "bytes": 8576936,
+      "sha256": "465CD3D8C257A66898D3B57DEB02BA6750D1A8C034BECC389EECE488823BA6B8"
+    },
+    {
+      "lod": 2,
+      "triangles": 28154,
+      "hullTriangles": 1926,
+      "draws": 9,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/leviathan_production_v1_lod2.glb",
+      "bytes": 7892240,
+      "sha256": "6A2787AA68A6F941FBF0F7C8A8607655041FC9A9BD2738FE33FDF1FE79EFDAC7"
+    }
+  ],
+  "stills": "evidence/leviathan/cycles/cycle_06"
+}

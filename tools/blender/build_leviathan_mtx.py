@@ -718,13 +718,19 @@ def build_lod(lod, mats):
         add_box(f"DorsalTile_{side}", (1.45, 0.88 * sign, 1.26), (1.05, 0.34, 0.022), armor, collection, 0.004)
         add_rcs_cluster(side, (-1.55, 2.95 * sign, 0.24), mats, collection, sign=sign)
         add_box(f"RcsBay_{side}", (-1.55, 2.95 * sign, 0.24), (0.28, 0.10, 0.16), armor, collection, 0.004)
-        # Outboard lofted fin: thick root into the beam, thin tip, 4 stations.
-        loft_from_rings(f"Fin_{side}", [
+        # Outboard lofted fin: thick root into the beam, thin tip. C6+ adds a root fillet station.
+        fin_rings = [
             [(-5.85, 2.35 * sign, 0.08), (-5.15, 2.35 * sign, 0.55), (-4.55, 2.35 * sign, 0.08), (-5.15, 2.35 * sign, -0.22)],
             [(-6.55, 2.95 * sign, 0.28), (-5.75, 2.95 * sign, 0.95), (-5.05, 2.95 * sign, 0.28), (-5.75, 2.95 * sign, -0.08)],
             [(-7.45, 3.55 * sign, 0.55), (-6.65, 3.55 * sign, 1.22), (-5.95, 3.55 * sign, 0.55), (-6.65, 3.55 * sign, 0.12)],
             [(-8.35, 4.05 * sign, 0.82), (-7.65, 4.05 * sign, 1.28), (-7.05, 4.05 * sign, 0.82), (-7.65, 4.05 * sign, 0.42)],
-        ], armor, collection, 0.007, cap=True)
+        ]
+        if CYCLE >= 6:
+            fin_rings.insert(0, [
+                (-5.15, 2.05 * sign, 0.02), (-4.55, 2.05 * sign, 0.38),
+                (-4.05, 2.05 * sign, 0.02), (-4.55, 2.05 * sign, -0.18),
+            ])
+        loft_from_rings(f"Fin_{side}", fin_rings, armor, collection, 0.007, cap=True)
         add_box(f"FinRoot_{side}", (-5.95, 2.28 * sign, 0.18), (0.55, 0.14, 0.16), mech, collection, 0.004)
 
     # Triple-front on the dorsal bow deck (above the loft, not inside it).
@@ -759,6 +765,28 @@ def build_lod(lod, mats):
         add_box("HoseFit_P1", (-9.15, -2.00, 0.16), (0.03, 0.03, 0.03), mech, collection, 0.002)
         add_box("HoseFit_S0", (0.15, 2.35, 0.14), (0.03, 0.03, 0.03), mech, collection, 0.002)
         add_box("HoseFit_S1", (-9.15, 2.00, 0.16), (0.03, 0.03, 0.03), mech, collection, 0.002)
+    if CYCLE >= 6 and lod <= 1:
+        boolean_cut(hull_obj, "TransomRecess", (-13.15, 0.0, 0.12), (0.22, 0.95, 0.34))
+    if CYCLE >= 7:
+        add_box("IslandMullion", (-1.45, 0.0, 2.90), (0.03, 0.48, 0.14), armor, collection, 0.002)
+        if lod <= 1:
+            for sign, side in ((-1, "Port"), (1, "Starboard")):
+                for i in range(5):
+                    add_box(
+                        f"FlankRad_{side}_{i}",
+                        (-5.55 + i * 0.24, 3.12 * sign, 0.22),
+                        (0.014, 0.20, 0.22),
+                        mech, collection, 0.001,
+                    )
+    if CYCLE >= 8:
+        add_box("DriveBankBand", (-11.15, 0.0, 0.12), (0.08, 2.85, 0.28), armor, collection, 0.003)
+    if CYCLE >= 9:
+        add_box("ChineCapP", (3.80, -3.05, 0.22), (1.85, 0.050, 0.060), armor, collection, 0.003)
+        add_box("ChineCapS", (3.80, 3.05, 0.22), (1.85, 0.050, 0.060), armor, collection, 0.003)
+    if CYCLE >= 10:
+        add_box("PatchTile2", (2.35, 0.78, 1.24), (0.30, 0.14, 0.012), armor, collection, 0.002)
+        add_box("IslandStayP", (-2.35, -0.28, 2.35), (0.28, 0.022, 0.022), mech, collection, 0.002)
+        add_box("IslandStayS", (-2.35, 0.28, 2.35), (0.28, 0.022, 0.022), mech, collection, 0.002)
 
     mesh_objects = [obj for obj in collection.objects if obj.type == "MESH"]
     for obj in mesh_objects:
