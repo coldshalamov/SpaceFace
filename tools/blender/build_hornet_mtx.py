@@ -737,6 +737,22 @@ def build_lod(lod, mats):
         add_overlap_plate(f"ChineCap_{side}", (1.75, 1.18 * sign, 0.10), (1.15, 0.048, 0.07), armor, collection, 0.004)
         add_overlap_plate(f"GloveCheek_{side}", (1.05, 1.02 * sign, 0.12), (0.95, 0.055, 0.22), armor, collection, 0.008)
 
+    # Cover the origami loft so clay reads plates, not facets.
+    for i, (px, py, pz, sx, sy, sz) in enumerate((
+        (3.20, 0.00, 0.62, 0.72, 0.28, 0.036),
+        (2.20, 0.10, 0.58, 0.68, 0.32, 0.038),
+        (1.20, -0.08, 0.56, 0.70, 0.34, 0.038),
+        (0.20, 0.06, 0.58, 0.66, 0.32, 0.040),
+        (-0.80, -0.06, 0.62, 0.64, 0.30, 0.038),
+        (-1.80, 0.08, 0.66, 0.62, 0.28, 0.036),
+        (2.40, -0.62, 0.22, 0.85, 0.08, 0.16),
+        (2.40, 0.62, 0.22, 0.85, 0.08, 0.16),
+        (0.80, -0.78, 0.18, 0.90, 0.08, 0.18),
+        (0.80, 0.78, 0.18, 0.90, 0.08, 0.18),
+    )):
+        add_overlap_plate(f"Sheath_{i}", (px, py, pz), (sx, sy, sz), armor if i % 2 == 0 else hull, collection, 0.006)
+        if lod == 0:
+            add_corner_fasteners(f"Sheath_{i}", (px, py, pz), (sx, sy, sz), mech, collection)
     add_overlap_plate("Armor_Shoulder", (2.55, 0.0, 0.68), (1.00, 0.50, 0.048), armor, collection, 0.008)
     add_overlap_plate("NeedleSpine", (6.15, 0.0, 0.20), (1.05, 0.10, 0.032), armor, collection, 0.005)
     for i, (px, py, pz, sx, sy, sz) in enumerate((
