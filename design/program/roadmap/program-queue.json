@@ -5743,6 +5743,33 @@
       "brief": "The real PQ-048.03 transferred-manifest hauler becomes a readable disabled recovery incident: RECOVER uses existing civilian tether/tow settlement, STEAL releases conserved physical pickups to cargo/law/heat/freight owners, ABANDON/death/exit create one loss aftermath, tender response repairs after the player window, and Continue rebinds identity without duplicate settlement."
     },
     {
+      "id": "PQ-048.06",
+      "parentId": "PQ-048",
+      "priority": 285,
+      "title": "Complete lawful cargo inspection",
+      "kind": "implementation",
+      "state": "done",
+      "dependsOn": [],
+      "mutexes": [],
+      "paths": [
+        "src/systems/economy.js",
+        "src/systems/lawSecurity.js",
+        "src/ui/customsPrompt.js",
+        "src/ui/lawfulInspectionPrompt.js",
+        "src/ui/targetPanel.js",
+        "src/ui/uiRoot.js",
+        "test/pq048-lawful-cargo-inspection.test.mjs"
+      ],
+      "checks": [
+        "node --test test/pq048-lawful-cargo-inspection.test.mjs",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-048-06-lawful-cargo-inspection-REPORT.md"
+      ],
+      "brief": "A materially suspicious player in the station_helios lawful ring receives one durable traffic-patrol inspection. COMPLY uses patrol:proximity and existing economy/cargo/faction/heat owners; escape is actual range separation; collateral and lifecycle outcomes settle once; prompt and target readout stay accessible across Continue."
+    },
+    {
       "id": "PQ-048.08",
       "parentId": "PQ-048",
       "priority": 287,
