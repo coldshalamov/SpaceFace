@@ -492,6 +492,12 @@ function neutralAutoTargetVector() {
   return { active: false, screenX: 0, screenY: 0, worldX: 0, worldZ: 0, magnitude: 0 };
 }
 
+export function shouldNeutralizeFlightInput(state, modalActive = false) {
+  const stack = state && state.ui && state.ui.screenStack;
+  return !state || state.mode !== 'flight' || !!(stack && stack.length)
+    || modalActive === true || !!(state.input && state.input.blocked);
+}
+
 function writeAutoTargetVector(inp, worldX = 0, worldZ = 0, active = false) {
   const vector = inp.autoTargetVector && typeof inp.autoTargetVector === 'object'
     ? inp.autoTargetVector
@@ -942,7 +948,7 @@ export const input = {
       siteBeam: false, aimedMine: false,
     });
     const masslineGrammar = this._masslineGrammar || (this._masslineGrammar = createMasslineInputGrammar());
-    if (state.mode !== 'flight' || state.ui.screenStack.length > 0 || modalInputActive()) {
+    if (shouldNeutralizeFlightInput(state, modalInputActive())) {
       this._screen.active = false;
       if (inp.pointerScreen) inp.pointerScreen.active = false;
       // No flight input while docked/modal: zero thrust/turn/fire but keep aim so the reticle rests.

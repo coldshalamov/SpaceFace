@@ -1,6 +1,6 @@
 // Asteroid Ops console — the drill lens grown into a machine-design surface
 // (design/ASTEROID_SITES_BRIEF.md for the sim, design/ASTEROID_OPS_UI_BRIEF.md for this shell).
-// Registered under screen id 'drill': same entry (massline tether → ui:drillFadeStart), same
+// Registered under screen id 'drill': same entry (massline tether → drill:approachRequested → completion), same
 // pause semantics, superseding src/ui/screens/drill.js as the live module (that file stays for
 // its exported input controller / particle / shake helpers and its checks).
 //

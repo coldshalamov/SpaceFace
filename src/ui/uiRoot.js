@@ -859,77 +859,37 @@ export const ui = {
       }, 400);
     });
 
-    this.bus.on('ui:drillFadeStart', ({ asteroidId, attachmentId }) => {
-      const player = this.state.entities.get(this.state.playerId);
-      const ast = this.state.entities.get(asteroidId);
-      if (!player || !ast) return;
+    let activeDrillApproach = null;
+    const sameDrillApproach = (payload) => !!(activeDrillApproach && payload
+      && payload.asteroidId === activeDrillApproach.asteroidId
+      && payload.attachmentId === activeDrillApproach.attachmentId);
 
-      // Phase 1: Block input, halt ship velocity, and fade to dark
+    this.bus.on('drill:approachStarted', ({ asteroidId, attachmentId }) => {
+      if (asteroidId == null || attachmentId == null) return;
+      activeDrillApproach = { asteroidId, attachmentId };
       this.state.input.blocked = true;
-      player.vel.x = 0;
-      player.vel.z = 0;
       showDockFade('drill');
 
-      // Scripted close zoom-in push
       const camCtrl = this.state.render && this.state.render.cameraCtrl;
-      if (camCtrl && typeof camCtrl.pushZoom === 'function') {
-        camCtrl.pushZoom(-0.45, 1.2); // zoom in tight
-      }
-
+      if (camCtrl && typeof camCtrl.pushZoom === 'function') camCtrl.pushZoom(-0.45, 1.2);
       this.bus.emit('audio:cue', { id: 'ui_confirm' });
+    });
 
-      // Smoothly pull ship closer to the asteroid surface
-      const startPos = { x: player.pos.x, z: player.pos.z };
-      const dx = player.pos.x - ast.pos.x;
-      const dz = player.pos.z - ast.pos.z;
-      const angle = Math.atan2(dz, dx);
-      const targetDist = ast.radius + (player.radius || 6) + 12;
-      const targetPos = {
-        x: ast.pos.x + Math.cos(angle) * targetDist,
-        z: ast.pos.z + Math.sin(angle) * targetDist
-      };
+    this.bus.on('drill:approachCompleted', (payload) => {
+      if (!sameDrillApproach(payload)) return;
+      activeDrillApproach = null;
+      this.state.input.blocked = false;
+      if (!this.state.ui) this.state.ui = {};
+      this.state.ui.pendingDrillAsteroidId = payload.asteroidId;
+      this.screenManager.pushScreen('drill');
+      setTimeout(() => hideDockFade('drill'), 50);
+    });
 
-      // Set the massline rest length and winching parameter to targetDist, so that
-      // the tether cable physically contracts as we slide and locks tightly in place.
-      if (attachmentId) {
-        const att = this.state.combat?.attachments?.byId?.[attachmentId];
-        if (att) {
-          att.restLength = targetDist;
-          if (att.masslineRuntime) {
-            att.masslineRuntime.restLength = targetDist;
-            att.masslineRuntime.targetLength = targetDist;
-            att.masslineRuntime.reelVelocity = 0;
-          }
-        }
-      }
-
-      const startTime = performance.now();
-      const duration = 400; // ms
-      const step = (now) => {
-        const elapsed = now - startTime;
-        const t = Math.min(1, elapsed / duration);
-        const ease = 1 - Math.pow(1 - t, 3);
-        player.pos.x = startPos.x + (targetPos.x - startPos.x) * ease;
-        player.pos.z = startPos.z + (targetPos.z - startPos.z) * ease;
-        player.rot = angle + Math.PI; // face the rock
-
-        if (t < 1) {
-          requestAnimationFrame(step);
-        }
-      };
-      requestAnimationFrame(step);
-
-      setTimeout(() => {
-        // Phase 2: Open drill minigame
-        this.state.input.blocked = false;
-        if (!this.state.ui) this.state.ui = {};
-        this.state.ui.pendingDrillAsteroidId = asteroidId;
-        this.screenManager.pushScreen('drill');
-
-        setTimeout(() => {
-          hideDockFade('drill');
-        }, 50);
-      }, 400);
+    this.bus.on('drill:approachCancelled', (payload) => {
+      if (!sameDrillApproach(payload)) return;
+      activeDrillApproach = null;
+      this.state.input.blocked = false;
+      hideDockFade('drill');
     });
 
     // mode → boot screen: show Main Menu only if state.mode==='menu' (it's 'flight' now → just HUD).

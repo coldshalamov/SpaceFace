@@ -414,9 +414,18 @@ export function createUiInput(ctx, screenManager) {
       bus.emit('toast', { text: `No massline link! ${latchHint}`, kind: 'warn', ttl: 3.5 });
       return;
     }
+    if (activeTether.defId !== 'tether_standard') {
+      bus.emit('toast', {
+        text: 'This legacy Massline has no drill winch. Relatch with the standard Massline to drill.',
+        kind: 'warn',
+        ttl: 4,
+      });
+      return;
+    }
 
-    // Trigger transition event which pulls ship in, zooms camera, fades to black
-    bus.emit('ui:drillFadeStart', { asteroidId: astId, attachmentId: activeTether.id });
+    // Request the fixed-tick tether owner to reel and settle the approach. UI observes the owner's
+    // started/completed events for fade and screen presentation; it never moves the ship or line.
+    bus.emit('drill:approachRequested', { asteroidId: astId, attachmentId: activeTether.id });
   }
 
   function drillGuidanceWreck() {

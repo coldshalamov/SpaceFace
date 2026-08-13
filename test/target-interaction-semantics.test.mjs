@@ -58,7 +58,12 @@ function press(listeners, key, code) {
   return event;
 }
 
-function inputHarness({ selectedTarget = null, earlierTetherTarget = null, tetherTarget = null } = {}) {
+function inputHarness({
+  selectedTarget = null,
+  earlierTetherTarget = null,
+  tetherTarget = null,
+  tetherDefId = 'tether_standard',
+} = {}) {
   const listeners = installDomHarness();
   const player = entity('player', 'ship');
   const entities = new Map([[player.id, player]]);
@@ -81,7 +86,7 @@ function inputHarness({ selectedTarget = null, earlierTetherTarget = null, tethe
       state: 'active',
       ownerId: player.id,
       targetId: tetherTarget.id,
-      defId: 'tether_standard',
+      defId: tetherDefId,
     };
   }
   const state = {
@@ -164,10 +169,22 @@ test('an active asteroid massline keeps drill authority when a wreck is selected
   press(h.listeners, BINDINGS.drill.key, BINDINGS.drill.code);
 
   assert.deepEqual(
-    h.events.filter((event) => event.name === 'ui:drillFadeStart').map((event) => event.payload),
+    h.events.filter((event) => event.name === 'drill:approachRequested').map((event) => event.payload),
     [{ asteroidId: asteroid.id, attachmentId: 'tether' }],
   );
   assert.equal(h.events.some((event) => event.name === 'toast'), false);
+  h.input.dispose();
+});
+
+test('legacy asteroid Massline keeps accurate drill guidance but does not request an unavailable winch', () => {
+  const asteroid = entity('legacy-rock', 'asteroid', { typeId: 'ast_metallic' });
+  const h = inputHarness({ tetherTarget: asteroid, tetherDefId: 'attachment_massline' });
+
+  press(h.listeners, BINDINGS.drill.key, BINDINGS.drill.code);
+
+  assert.equal(h.events.some((event) => event.name === 'drill:approachRequested'), false);
+  assert.match(latestToast(h.events), /legacy Massline has no drill winch/i);
+  assert.match(latestToast(h.events), /relatch with the standard Massline/i);
   h.input.dispose();
 });
 

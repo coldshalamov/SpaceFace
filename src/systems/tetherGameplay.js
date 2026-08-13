@@ -13,7 +13,9 @@ import {
   stabilizeMasslineSelection,
 } from '../combat/masslineTargetScoring.js';
 import { automaticMasslineBreakAllowed } from '../combat/attachments.js';
+import { entityLocalPointToWorld } from '../combat/geometry.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
+import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import { isHostileToPlayer } from './scanner.js';
 import { massline2Flag } from '../data/featureFlags.js';
 import { isMassSeedTetherEligible } from './massSeed.js';
@@ -39,6 +41,15 @@ const INTENT_HISTORY_S = 0.28;
 const STRONG_TURN_THRESHOLD = 0.42;
 const SLINGSHOT_STATE_S = 1.0;
 const SLINGSHOT_SPEED_MULT = 1.4;
+const DRILL_APPROACH_CLEARANCE_WU = 12;
+const DRILL_APPROACH_DISTANCE_EPSILON_WU = 3;
+const DRILL_APPROACH_SPEED_EPSILON_WU_S = 5;
+const DRILL_APPROACH_REST_LENGTH_EPSILON_WU = 0.25;
+const DRILL_APPROACH_MAX_ACCEL_WU_S2 = 90;
+const DRILL_APPROACH_POSITION_GAIN = 3.5;
+const DRILL_APPROACH_VELOCITY_GAIN = 2.6;
+const DRILL_APPROACH_MAX_SURFACE_WU = 220;
+const DRILL_APPROACH_TIMEOUT_S = 8;
 // Presentation load (massline rung 04): phase floors so the cable reads "working" the moment the
 // phase says so, even while the physical rating ratio (strain) is still low. strain*2.5 lets real
 // tension overtake the floor. tether.load is presentation-only — tether.strain stays the untouched
@@ -85,6 +96,8 @@ export const tetherGameplay = {
     this._bridleSetup = null;
     this._bridleActive = null;
     this._bridleAdoptionPending = true;
+    this._pendingDrillApproach = null;
+    this._drillApproach = null;
     this._resetAcquisitionRuntime(this.state);
     this._resetTwinBridleRuntime(this.state, null, true);
     const resetAfterLoad = () => {
@@ -95,14 +108,17 @@ export const tetherGameplay = {
       this._pendingCut = null;
       this._ignoreReleaseCutUntilReelIdle = false;
       this._lastStrainT = -Infinity;
+      this._cancelDrillApproach('save_loaded');
       this._resetAcquisitionRuntime(this.state);
       this._resetTwinBridleRuntime(this.state, 'save_loaded', true);
     };
     const resetForNewGame = () => {
+      this._cancelDrillApproach('new_game');
       this._resetAcquisitionRuntime(this.state);
       this._resetTwinBridleRuntime(this.state, 'new_game', false);
     };
     const endForSectorBoundary = (reason) => {
+      this._cancelDrillApproach(reason);
       this._resetAcquisitionRuntime(this.state);
       this._endTwinBridleForBoundary(this.state, reason);
     };
@@ -129,6 +145,7 @@ export const tetherGameplay = {
           this.bus.on('sector:exit', () => endForSectorBoundary('sector_exit')),
           this.bus.on('sector:enter', () => endForSectorBoundary('sector_enter')),
           this.bus.on('tether:broken', onAuthorityBroken),
+          this.bus.on('drill:approachRequested', (payload) => this._requestDrillApproach(payload)),
         ]
       : [];
     this._resetPhaseMirror();
@@ -142,13 +159,30 @@ export const tetherGameplay = {
 
   _updateTetherGameplay(dt, state) {
     this._tickSlingshotState(state, dt);
-    if (state.mode !== 'flight') { this._endTwinBridleForBoundary(state, 'flight_exit'); this._resetGestureState(); this._resetPhaseMirror(); this._mirror(state, null, 0); this._clearAcquisitionPreview(state); return; }
+    if (state.mode !== 'flight') {
+      this._cancelDrillApproach('flight_exit');
+      this._endTwinBridleForBoundary(state, 'flight_exit');
+      this._resetGestureState();
+      this._resetPhaseMirror();
+      this._mirror(state, null, 0);
+      this._clearAcquisitionPreview(state);
+      return;
+    }
     const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
-    if (!player || !player.alive || (player.flags && player.flags.docked)) { this._endTwinBridleForBoundary(state, 'controller_unavailable'); this._resetGestureState(); this._resetPhaseMirror(); this._mirror(state, null, 0); this._clearAcquisitionPreview(state); return; }
+    if (!player || !player.alive || (player.flags && player.flags.docked)) {
+      this._cancelDrillApproach('controller_unavailable');
+      this._endTwinBridleForBoundary(state, 'controller_unavailable');
+      this._resetGestureState();
+      this._resetPhaseMirror();
+      this._mirror(state, null, 0);
+      this._clearAcquisitionPreview(state);
+      return;
+    }
 
     const kernel = combatKernel(this);
     const attachments = kernel && kernel.attachments;
     if (!attachments) {
+      this._cancelDrillApproach('attachment_authority_unavailable');
       // Readable failure: missing attachment authority must not swallow a latch press silently.
       if (state.input?.actions?.tetherFire) {
         this.bus.emit('tether:latchDenied', { reason: 'attachment_authority_unavailable' });
@@ -161,6 +195,7 @@ export const tetherGameplay = {
     const now = Number.isFinite(state.simTime) ? state.simTime : state.tick / 60;
     this._reconcileActive(attachments, state);
     this._adoptExisting(attachments, state);
+    this._startPendingDrillApproach(attachments, state, player);
     this._reconcileTwinBridle(attachments, state, player, now);
     this._adoptTwinBridle(attachments, state, player);
     const masslineCommand = actions && actions.massline;
@@ -171,7 +206,7 @@ export const tetherGameplay = {
 
     // The normalized input grammar has already resolved tap vs hold. Execute its cut in this same
     // tether tick; the legacy pending-cut path below remains for old tapes/direct harnesses.
-    if (this._active && masslineCommand && masslineCommand.cut) {
+    if (this._active && !this._drillApproach && masslineCommand && masslineCommand.cut) {
       this._cutActive(attachments, state, player, now);
       return;
     }
@@ -183,7 +218,7 @@ export const tetherGameplay = {
       else if (this._latchGraceUntil > 0 && now >= this._latchGraceUntil) this._ignoreReleaseCutUntilReelIdle = false;
     }
 
-    if (this._active && !this._pendingCut && !this._ignoreReleaseCutUntilReelIdle && actions?.tetherCut) {
+    if (this._active && !this._drillApproach && !this._pendingCut && !this._ignoreReleaseCutUntilReelIdle && actions?.tetherCut) {
       this._pendingCut = {
         attachmentId: this._active.attachmentId,
         targetId: this._active.targetId,
@@ -227,6 +262,7 @@ export const tetherGameplay = {
       // service sweep hasn't caught it yet, force the cut ourselves rather than orbit a ghost.
       const target = state.entities.get(this._active.targetId);
       if (!target || target.alive === false) {
+        this._cancelDrillApproach('target_lost');
         attachments.cut(this._active.attachmentId, player.id, 'target_lost');
         this.bus.emit('tether:broke', { targetId: this._active.targetId });
         this.bus.emit('tether:releaseRated', rateRelease(state, this._active.targetId));
@@ -238,14 +274,30 @@ export const tetherGameplay = {
         this._mirror(state, null, 0);
         return;
       }
-      const reelResult = lineLengthCommand === 0
+      const requestedApproach = this._drillApproach;
+      const approachReelDelta = requestedApproach
+        ? this._drillApproachReelDelta(attachments, state, player, target)
+        : null;
+      const approach = this._drillApproach;
+      const effectiveLineLengthCommand = Number.isFinite(approachReelDelta)
+        ? approachReelDelta
+        : lineLengthCommand;
+      const reelResult = effectiveLineLengthCommand === 0
         ? NO_REEL_RESULT
-        : this._reelActive(attachments, lineLengthCommand, dt, state, player, target);
-      this._updateReelStrength(reelHeld, reelResult.changed, dt);
-      if (lineLengthCommand !== 0 && !reelResult.changed && reelResult.reason) {
-        this._emitLineControlDenied(state, reelResult.reason, lineLengthCommand, reelResult.attachment);
-      } else if (lineLengthCommand === 0 || reelResult.changed) {
+        : this._reelActive(attachments, effectiveLineLengthCommand, dt, state, player, target);
+      const approachSpooling = !!approach && effectiveLineLengthCommand !== 0;
+      this._updateReelStrength(approachSpooling || reelHeld, reelResult.changed, dt);
+      if (approach && approachSpooling && !reelResult.changed) {
+        this._cancelDrillApproach(reelResult.reason || 'reel_rejected');
+      }
+      if (!approach && effectiveLineLengthCommand !== 0 && !reelResult.changed && reelResult.reason) {
+        this._emitLineControlDenied(state, reelResult.reason, effectiveLineLengthCommand, reelResult.attachment);
+      } else if (effectiveLineLengthCommand === 0 || reelResult.changed) {
         this._lastLineControlDenial = null;
+      }
+      if (approach && this._drillApproach) {
+        if (this._drillApproachSettled(attachments, player, target)) this._completeDrillApproach(state);
+        else this._queueDrillApproachAssist(attachments, player, target, dt);
       }
       this._emitStrain(attachments, state);
       const att = attachments.get(this._active.attachmentId);
@@ -259,8 +311,8 @@ export const tetherGameplay = {
         this._lastStrainRatio || 0,
         att ? att.restLength : 0,
         phase,
-        masslineCommand,
-        lineLengthCommand,
+        approach ? { lineControl: true, lineLength: effectiveLineLengthCommand, orbitDirection: 0, pump: false } : masslineCommand,
+        effectiveLineLengthCommand,
         automaticBreakAllowed,
         att && att.tetherPolicy && att.tetherPolicy.headId,
       );
@@ -890,6 +942,7 @@ export const tetherGameplay = {
     if (attachment && attachment.state === 'active') return;
     const targetId = this._active.targetId;
     const reason = attachment && attachment.breakReason;
+    this._cancelDrillApproach(reason || 'attachment_missing');
     this._active = null;
     this._pendingCut = null;
     const now = Number.isFinite(state.simTime) ? state.simTime : state.tick / 60;
@@ -905,6 +958,190 @@ export const tetherGameplay = {
     this._resetPhaseMirror();
     this._mirror(state, null, 0);
     this._clearAcquisitionPreview(state);
+  },
+
+  _requestDrillApproach(payload = {}) {
+    const asteroidId = payload && payload.asteroidId;
+    const attachmentId = payload && payload.attachmentId;
+    if (asteroidId == null || attachmentId == null) return false;
+    if (this._drillApproach
+        && this._drillApproach.asteroidId === asteroidId
+        && this._drillApproach.attachmentId === attachmentId) return false;
+    if (this._pendingDrillApproach
+        && this._pendingDrillApproach.asteroidId === asteroidId
+        && this._pendingDrillApproach.attachmentId === attachmentId) return false;
+    this._cancelDrillApproach('superseded');
+    this._pendingDrillApproach = { asteroidId, attachmentId };
+    return true;
+  },
+
+  _startPendingDrillApproach(attachments, state, player) {
+    const pending = this._pendingDrillApproach;
+    if (!pending) return false;
+    const asteroid = state.entities && state.entities.get ? state.entities.get(pending.asteroidId) : null;
+    const attachment = attachments && typeof attachments.get === 'function'
+      ? attachments.get(pending.attachmentId)
+      : null;
+    const valid = asteroid && asteroid.alive !== false && asteroid.type === 'asteroid'
+      && attachment && attachment.state === 'active'
+      && attachment.ownerId === player.id && attachment.targetId === asteroid.id
+      && this._active && this._active.attachmentId === attachment.id && this._active.targetId === asteroid.id;
+    if (!valid) {
+      this._cancelDrillApproach('invalid_authority');
+      return false;
+    }
+    const kernel = combatKernel(this);
+    const def = attachmentDef(kernel, attachment.defId);
+    const geometry = drillApproachGeometry(def, attachment, player, asteroid);
+    if (!geometry) {
+      this._cancelDrillApproach('invalid_geometry');
+      return false;
+    }
+    const surfaceDistance = Math.max(0, geometry.currentCenterDistance
+      - positive(player.radius, 0) - positive(asteroid.radius, 0));
+    if (surfaceDistance > DRILL_APPROACH_MAX_SURFACE_WU) {
+      this._cancelDrillApproach('out_of_range');
+      return false;
+    }
+    const now = Number.isFinite(state.simTime) ? state.simTime : finite(state.tick) / 60;
+    this._pendingDrillApproach = null;
+    this._pendingCut = null;
+    this._ignoreReleaseCutUntilReelIdle = true;
+    this._drillApproach = {
+      asteroidId: asteroid.id,
+      attachmentId: attachment.id,
+      startedAt: now,
+      startedTick: Math.max(0, Math.trunc(finite(state.tick))),
+    };
+    this.bus.emit('drill:approachStarted', {
+      asteroidId: asteroid.id,
+      attachmentId: attachment.id,
+      startedTick: this._drillApproach.startedTick,
+    });
+    return true;
+  },
+
+  _drillApproachReelDelta(attachments, state, player, asteroid) {
+    const approach = this._drillApproach;
+    if (!approach) return null;
+    const attachment = attachments && typeof attachments.get === 'function'
+      ? attachments.get(approach.attachmentId)
+      : null;
+    const valid = asteroid && asteroid.alive !== false && asteroid.type === 'asteroid'
+      && asteroid.id === approach.asteroidId
+      && attachment && attachment.state === 'active'
+      && attachment.ownerId === player.id && attachment.targetId === asteroid.id
+      && this._active && this._active.attachmentId === attachment.id;
+    if (!valid) {
+      this._cancelDrillApproach('invalid_authority');
+      return null;
+    }
+    const now = Number.isFinite(state.simTime) ? state.simTime : finite(state.tick) / 60;
+    if (now - approach.startedAt > DRILL_APPROACH_TIMEOUT_S) {
+      this._cancelDrillApproach('timeout');
+      return null;
+    }
+    const policy = typeof attachments.reelPolicy === 'function' ? attachments.reelPolicy(attachment.id) : null;
+    if (!(positive(policy && policy.reelRate, 0) > 0)) {
+      this._cancelDrillApproach('reel_unavailable');
+      return null;
+    }
+    const kernel = combatKernel(this);
+    const def = attachmentDef(kernel, attachment.defId);
+    const geometry = drillApproachGeometry(def, attachment, player, asteroid);
+    if (!geometry) {
+      this._cancelDrillApproach('invalid_geometry');
+      return null;
+    }
+    const before = positive(attachment.restLength, geometry.desiredRestLength);
+    return Math.abs(before - geometry.desiredRestLength) > DRILL_APPROACH_REST_LENGTH_EPSILON_WU
+      ? geometry.desiredRestLength - before
+      : 0;
+  },
+
+  _queueDrillApproachAssist(attachments, player, asteroid, dt) {
+    if (!this._drillApproach || !(dt > 0)) return false;
+    const attachment = attachments && typeof attachments.get === 'function'
+      ? attachments.get(this._drillApproach.attachmentId)
+      : null;
+    const kernel = combatKernel(this);
+    const def = attachment && attachmentDef(kernel, attachment.defId);
+    const geometry = drillApproachGeometry(def, attachment, player, asteroid);
+    if (!geometry) {
+      this._cancelDrillApproach('invalid_geometry');
+      return false;
+    }
+    const targetVx = finite(asteroid.vel && asteroid.vel.x);
+    const targetVz = finite(asteroid.vel && asteroid.vel.z);
+    let ax = (geometry.desiredPlayerCenter.x - finite(player.pos && player.pos.x)) * DRILL_APPROACH_POSITION_GAIN
+      - (finite(player.vel && player.vel.x) - targetVx) * DRILL_APPROACH_VELOCITY_GAIN;
+    let az = (geometry.desiredPlayerCenter.z - finite(player.pos && player.pos.z)) * DRILL_APPROACH_POSITION_GAIN
+      - (finite(player.vel && player.vel.z) - targetVz) * DRILL_APPROACH_VELOCITY_GAIN;
+    const accel = Math.hypot(ax, az);
+    if (accel > DRILL_APPROACH_MAX_ACCEL_WU_S2) {
+      const scale = DRILL_APPROACH_MAX_ACCEL_WU_S2 / accel;
+      ax *= scale;
+      az *= scale;
+    }
+    const mass = positive(player.physicsBody && player.physicsBody.mass, positive(player.mass, 1));
+    return queuePhysicsImpulse(player, {
+      x: ax * mass * dt,
+      y: 0,
+      z: az * mass * dt,
+    });
+  },
+
+  _drillApproachSettled(attachments, player, asteroid) {
+    const approach = this._drillApproach;
+    const attachment = approach && attachments && typeof attachments.get === 'function'
+      ? attachments.get(approach.attachmentId)
+      : null;
+    const kernel = combatKernel(this);
+    const def = attachment && attachmentDef(kernel, attachment.defId);
+    const geometry = drillApproachGeometry(def, attachment, player, asteroid);
+    if (!geometry) return false;
+    const distance = distance2d(player && player.pos, asteroid && asteroid.pos);
+    const relativeSpeed = Math.hypot(
+      finite(player && player.vel && player.vel.x) - finite(asteroid && asteroid.vel && asteroid.vel.x),
+      finite(player && player.vel && player.vel.z) - finite(asteroid && asteroid.vel && asteroid.vel.z),
+    );
+    return !!(attachment && attachment.state === 'active')
+      && Math.abs(finite(attachment.restLength, geometry.desiredRestLength) - geometry.desiredRestLength)
+        <= DRILL_APPROACH_REST_LENGTH_EPSILON_WU
+      && Math.abs(geometry.currentEndpointDistance - attachment.restLength)
+        <= DRILL_APPROACH_REST_LENGTH_EPSILON_WU
+      && Number.isFinite(distance)
+      && Math.abs(distance - geometry.desiredCenterDistance) <= DRILL_APPROACH_DISTANCE_EPSILON_WU
+      && relativeSpeed <= DRILL_APPROACH_SPEED_EPSILON_WU_S;
+  },
+
+  _completeDrillApproach(state) {
+    const approach = this._drillApproach;
+    if (!approach) return false;
+    this._drillApproach = null;
+    this._pendingDrillApproach = null;
+    this._ignoreReleaseCutUntilReelIdle = false;
+    this.bus.emit('drill:approachCompleted', {
+      asteroidId: approach.asteroidId,
+      attachmentId: approach.attachmentId,
+      startedTick: approach.startedTick,
+      completedTick: Math.max(0, Math.trunc(finite(state && state.tick))),
+    });
+    return true;
+  },
+
+  _cancelDrillApproach(reason = 'cancelled') {
+    const approach = this._drillApproach || this._pendingDrillApproach;
+    this._drillApproach = null;
+    this._pendingDrillApproach = null;
+    this._ignoreReleaseCutUntilReelIdle = false;
+    if (!approach || !this.bus || typeof this.bus.emit !== 'function') return false;
+    this.bus.emit('drill:approachCancelled', {
+      asteroidId: approach.asteroidId,
+      attachmentId: approach.attachmentId,
+      reason,
+    });
+    return true;
   },
 
   _reelActive(attachments, reelDelta, dt, state, player, target) {
@@ -1926,6 +2163,57 @@ function surfacePointToward(entity, worldPoint) {
     y: 0,
     z: entity.pos.z + dz / d * contactRadius,
   };
+}
+
+function distance2d(a, b) {
+  if (!a || !b) return Number.NaN;
+  return Math.hypot(finite(a.x) - finite(b.x), finite(a.z) - finite(b.z));
+}
+
+function drillApproachGeometry(def, attachment, player, asteroid) {
+  const playerCenter = finitePoint(player && player.pos);
+  const asteroidCenter = finitePoint(asteroid && asteroid.pos);
+  const sourceAnchorLocal = finitePoint(attachment && attachment.sourceAnchorLocal);
+  const targetAnchorLocal = finitePoint(attachment && attachment.targetAnchorLocal);
+  if (!playerCenter || !asteroidCenter || !sourceAnchorLocal || !targetAnchorLocal
+      || !Number.isFinite(player && player.rot) || !Number.isFinite(asteroid && asteroid.rot)) return null;
+  const dx = playerCenter.x - asteroidCenter.x;
+  const dz = playerCenter.z - asteroidCenter.z;
+  const currentCenterDistance = Math.hypot(dx, dz);
+  if (!(currentCenterDistance > 1e-6)) return null;
+  const desiredCenterDistance = positive(asteroid && asteroid.radius, 0)
+    + positive(player && player.radius, 0)
+    + DRILL_APPROACH_CLEARANCE_WU;
+  const desiredPlayerCenter = {
+    x: asteroidCenter.x + dx / currentCenterDistance * desiredCenterDistance,
+    z: asteroidCenter.z + dz / currentCenterDistance * desiredCenterDistance,
+  };
+  const sourceWorld = entityLocalPointToWorld(player, sourceAnchorLocal);
+  const targetWorld = entityLocalPointToWorld(asteroid, targetAnchorLocal);
+  if (!finitePoint(sourceWorld) || !finitePoint(targetWorld)) return null;
+  const desiredSourceWorld = {
+    x: sourceWorld.x + desiredPlayerCenter.x - playerCenter.x,
+    z: sourceWorld.z + desiredPlayerCenter.z - playerCenter.z,
+  };
+  const desiredEndpointDistance = distance2d(desiredSourceWorld, targetWorld);
+  const currentEndpointDistance = distance2d(sourceWorld, targetWorld);
+  if (!Number.isFinite(desiredEndpointDistance) || !Number.isFinite(currentEndpointDistance)) return null;
+  const minLength = positive(def && def.minLength, 0);
+  const maxLength = positive(def && def.maxLength, Infinity);
+  if (maxLength < minLength) return null;
+  return {
+    desiredCenterDistance,
+    desiredPlayerCenter,
+    desiredRestLength: clamp(desiredEndpointDistance, minLength, maxLength),
+    currentCenterDistance,
+    currentEndpointDistance,
+  };
+}
+
+function finitePoint(point) {
+  return point && Number.isFinite(point.x) && Number.isFinite(point.z)
+    ? { x: point.x, z: point.z }
+    : null;
 }
 
 function clamp(value, lo, hi) {

@@ -498,8 +498,12 @@ function startDrill(ctx) {
   });
   if (!asteroid) return;
   drillSys.begin(asteroid.id);
-  // The drill screen-open path is owned by uiRoot via this event (cinematic fade + push).
-  bus.emit('ui:drillFadeStart', { asteroidId: asteroid.id });
+  // Sandbox-only shortcut: production requests a live player tether from ui/input and lets the
+  // fixed-tick tether owner settle it. This fixture has no tether, so it only drives uiRoot's
+  // presentation handoff after drill.begin() has prepared the sandbox session.
+  const attachmentId = `sandbox:drill:${asteroid.id}`;
+  bus.emit('drill:approachStarted', { asteroidId: asteroid.id, attachmentId, sandbox: true });
+  bus.emit('drill:approachCompleted', { asteroidId: asteroid.id, attachmentId, sandbox: true });
 }
 
 // --------------------------------------------------------------------------------------------

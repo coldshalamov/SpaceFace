@@ -1,8 +1,20 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { input } from '../src/systems/input.js';
+import { input, shouldNeutralizeFlightInput } from '../src/systems/input.js';
 import { createMasslineInputGrammar } from '../src/systems/masslineInputGrammar.js';
+
+test('flight input fence neutralizes controls while a drill approach owns the handoff', () => {
+  const state = { mode: 'flight', ui: { screenStack: [] }, input: { blocked: false } };
+  assert.equal(shouldNeutralizeFlightInput(state, false), false);
+
+  state.input.blocked = true;
+  assert.equal(shouldNeutralizeFlightInput(state, false), true);
+
+  state.input.blocked = false;
+  assert.equal(shouldNeutralizeFlightInput(state, true), true);
+  assert.equal(shouldNeutralizeFlightInput({ ...state, ui: { screenStack: ['drill'] } }, false), true);
+});
 
 test('input lifecycle owner releases keyboard, pointer, gamepad, and touch holds', () => {
   const host = Object.create(input);
