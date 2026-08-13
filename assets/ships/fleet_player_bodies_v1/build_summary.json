@@ -1183,12 +1183,12 @@
     "assetId": "SF_ASHLINE_RIG_V1",
     "defId": "reaver_pirate",
     "shipId": "ashline_rig",
-    "iteration": 6,
+    "iteration": 9,
     "lods": [
       {
         "lod": 0,
-        "triangles": 37328,
-        "hullTriangles": 1864,
+        "triangles": 38944,
+        "hullTriangles": 1944,
         "draws": 9,
         "materials": [
           "Material_Accent",
@@ -1215,13 +1215,13 @@
           "SOCKET_Weapon_Front"
         ],
         "path": "source/wholeships/ashline_rig_production_v1_lod0.glb",
-        "bytes": 1949032,
-        "sha256": "7DA23138082D5B7CC196851F1DD5CDEEBA71AF82FBDDB17B8500A7E0F7179B58"
+        "bytes": 2062724,
+        "sha256": "FBE3BD67E7E766F0C4C93B71797A43352CAB5416C8688B82732A7D471526CD6F"
       },
       {
         "lod": 1,
-        "triangles": 10224,
-        "hullTriangles": 1864,
+        "triangles": 15976,
+        "hullTriangles": 1944,
         "draws": 9,
         "materials": [
           "Material_Accent",
@@ -1248,12 +1248,12 @@
           "SOCKET_Weapon_Front"
         ],
         "path": "source/wholeships/ashline_rig_production_v1_lod1.glb",
-        "bytes": 534012,
-        "sha256": "F82F43EA48C1ED61120CF1568B9B0E594E379C1998118DF03D407603BC935742"
+        "bytes": 862016,
+        "sha256": "5CC6C6634BD18802AC24046BE9C0BC41258D4FF5A521575556BAB8F5922066A8"
       },
       {
         "lod": 2,
-        "triangles": 6012,
+        "triangles": 6608,
         "hullTriangles": 1756,
         "draws": 7,
         "materials": [
@@ -1279,32 +1279,11 @@
           "SOCKET_Weapon_Front"
         ],
         "path": "source/wholeships/ashline_rig_production_v1_lod2.glb",
-        "bytes": 293868,
-        "sha256": "C4A0839EEF38B66DAE968102B3566644A94E8BDBD59451E1CB5933A349040FC3"
+        "bytes": 329516,
+        "sha256": "CE48EC4237213EC28F270246BC0BBD39C5F34CAACE7CB2592CD4BEC4B8E21878"
       }
     ],
-    "renders": [
-      {
-        "view": "ashline_rig_three_quarter",
-        "path": "evidence/iter06/ashline_rig_three_quarter.png",
-        "bytes": 895283
-      },
-      {
-        "view": "ashline_rig_starboard",
-        "path": "evidence/iter06/ashline_rig_starboard.png",
-        "bytes": 925316
-      },
-      {
-        "view": "ashline_rig_rear",
-        "path": "evidence/iter06/ashline_rig_rear.png",
-        "bytes": 1038119
-      },
-      {
-        "view": "ashline_rig_grazing",
-        "path": "evidence/iter06/ashline_rig_grazing.png",
-        "bytes": 948291
-      }
-    ]
+    "renders": []
   },
   {
     "schema": "spaceface.fleetPlayerBody.build.v1",
