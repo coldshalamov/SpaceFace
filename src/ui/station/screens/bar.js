@@ -7,6 +7,7 @@ import {
   generateContacts,
   getChoices,
   buildReply,
+  emitBarContactChoice,
   openDossArchiveMap,
   openVonnFreightLossMap,
   availableSurveyOffer,
@@ -371,7 +372,7 @@ export function createBarScreen(ctx) {
     const c = selected(st); if (!c) return;
     const choiceId = b.getAttribute('data-choice');
     if (ctx.bus) {
-      ctx.bus.emit('ui:talkContact', {
+      emitBarContactChoice(ctx.bus, {
         contactId: c.id, choiceId, stationId: sid(),
         canonicalKey: c.canonicalKey || null, trackerId: c.trackerId || null, name: c.name,
       });

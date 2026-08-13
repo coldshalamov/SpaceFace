@@ -40,6 +40,7 @@ import { frontierRumorMapReadouts, frontierRumorMapTarget } from './frontierRumo
 import { vestaOreCacheMapReadouts, vestaOreCacheMapTarget } from './vestaOreCacheMapLayer.js';
 import { pallasHiddenCacheMapReadouts, pallasHiddenCacheMapTarget } from './pallasHiddenCacheMapLayer.js';
 import { worldSiteMapMarkers } from './worldSiteMapLayer.js';
+import { orrinWitnessMapTarget } from '../data/orrinWitnessCase.js';
 import { sectorExplorationProgress } from '../world/explorationJournal.js';
 import { mapFactionPresenceNodes } from '../data/factionPresence.js';
 import { sectorSignalFor, forecastTransitFor } from '../systems/sectorSim.js';
@@ -1583,6 +1584,22 @@ export function buildSystemModel(state, sectorId, options = {}) {
     // World Site projection. Keep one point, but merge the live stage/ledger/history contract into
     // it; suppressing the dynamic duplicate must never suppress its authoritative activity.
     points[staticIndex] = Object.freeze({ ...points[staticIndex], ...marker });
+  }
+  // Orrin's accepted original resolves through the ordinary station target/click/course path.
+  // The case reader deliberately supplies no nav state; this only gives the existing Customs
+  // Gate point a persistent reason to be selected after the one-shot referral intent is gone.
+  const orrinReferral = orrinWitnessMapTarget(state);
+  if (orrinReferral && orrinReferral.sectorId === sid) {
+    const targetIndex = points.findIndex((point) => point.kind === 'station'
+      && point.stationId === orrinReferral.stationId);
+    if (targetIndex >= 0) {
+      points[targetIndex] = Object.freeze({
+        ...points[targetIndex],
+        statusLine: orrinReferral.statusLine,
+        courseLabel: orrinReferral.courseLabel,
+        courseArrivalRadius: orrinReferral.courseArrivalRadius,
+      });
+    }
   }
 
   // "You are here" at system scale. The SYSTEM model shipped without a player field at all, so the

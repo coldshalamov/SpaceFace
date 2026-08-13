@@ -3,6 +3,10 @@
 // owner intents for credits/rep/cargo and durable story flags for narrative state.
 import { hash32 } from '../core/rng.js';
 import { FLAVOR_PACKS } from '../data/flavor/index.generated.js';
+import {
+  ORRIN_WITNESS_SOURCE_SHAPE_ID,
+  orrinWitnessSourceIdForRecord,
+} from '../data/orrinWitnessCase.js';
 import { ensureMoralMemory, nextMoralDebt, revealMoralDebt } from './moralMemory.js';
 import { makeShipEntitySpec } from './ships.js';
 
@@ -59,6 +63,14 @@ function finish(d, live, state, outcome, flags = {}) {
     sectorId: live.sectorId,
     seed: state.meta && state.meta.seed,
   };
+  // The corridor-original case keys from this completed transition, never from its convenience
+  // story flag or a later history row. Persist the physical source position while it is still live;
+  // old saves receive the deterministic data-reader fallback instead.
+  if (live.shapeId === ORRIN_WITNESS_SOURCE_SHAPE_ID && outcome === 'published'
+    && live.anchor && Number.isFinite(live.anchor.x) && Number.isFinite(live.anchor.z)) {
+    rec.sourceAnchor = { x: Number(live.anchor.x), z: Number(live.anchor.z) };
+    rec.orrinWitnessSourceId = orrinWitnessSourceIdForRecord(rec, state);
+  }
   memory.completed[live.shapeId] = rec;
   memory.history.push({ shapeId: live.shapeId, ...rec });
   if (memory.history.length > 64) memory.history.splice(0, memory.history.length - 64);

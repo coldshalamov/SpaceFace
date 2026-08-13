@@ -273,7 +273,16 @@ test('H5 exposes exactly three alignment branches and no neutral escape hatch', 
     assert.equal(completion(t, 'depth_h5_corridor_massacre'), null, 'unknown fourth choice must do nothing');
     assert.ok(t.state.encounterDirector.live[id], 'the forced choice remains unresolved');
     choose(t, id, choiceId);
-    assert.equal(completion(t, 'depth_h5_corridor_massacre')?.outcome, outcome);
+    const completed = completion(t, 'depth_h5_corridor_massacre');
+    assert.equal(completed?.outcome, outcome);
+    if (choiceId === 'publish') {
+      assert.deepEqual(completed.sourceAnchor, { x: 0, z: 0 },
+        'the published H5 transition retains its finite physical source anchor');
+      assert.match(completed.orrinWitnessSourceId, /^orrin-witness:depth_h5_corridor_massacre:published:/);
+    } else {
+      assert.equal(completed.orrinWitnessSourceId, undefined,
+        'other H5 outcomes cannot mint Orrin evidence authority');
+    }
     for (const flag of flags) assert.equal(t.state.story.flags[flag], true);
     assert.ok(events.length >= 1);
     if (choiceId === 'engage') assert.ok(events.some((row) => row.name === 'faction:repDelta'

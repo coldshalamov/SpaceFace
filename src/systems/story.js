@@ -36,6 +36,15 @@ import {
   COMMS, GRAFFITI, BEAT_CONTENT, POST_SPINE_BEAT_CONTENT, KURTZ,
   COLD_START, ENDING_AIRLOCK_GRAFFITI, HELIOS_BAY7, THREAD_B_FRAGMENT_ID,
 } from '../data/narrative.js';
+import {
+  ORRIN_WITNESS_CONTACT_ID,
+  ORRIN_WITNESS_SECTOR_ID,
+  ORRIN_WITNESS_SOURCE_SHAPE_ID,
+  ORRIN_WITNESS_STATION_ID,
+  ORRIN_WITNESS_SUBMISSION_EVENT,
+  isOrrinWitnessRecorder,
+  orrinWitnessSource,
+} from '../data/orrinWitnessCase.js';
 import { addCargo } from './cargo.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
 import {
@@ -108,6 +117,8 @@ export const story = {
     // ── Ambient + trap comms timer (driven from update()). ───────────────────────────────────
     bus.on('game:started', (p) => this._onNewGame(p || {}));
     bus.on('save:loaded', () => this._onLoaded());
+    bus.on('encounter:resolved', (p) => this._onOrrinWitnessTransition(p || {}));
+    bus.on('signal:investigated', (p) => this._onOrrinWitnessEvidence(p || {}));
     // When the first-hour tutorial finishes (spec2/03), release the cold-start voice it deferred.
     bus.on('tutorial:finished', () => {
       this._releaseDeferredColdStart();
@@ -160,6 +171,7 @@ export const story = {
     bus.on('ui:kurtzInteract', (p) => this._onKurtzInteract(p || {}));
     bus.on('ui:heliosBay7Scan', () => this._onHeliosBay7Scan());
     bus.on('ui:talkContact', (p) => this._onVergeKellEvidence(p || {}));
+    bus.on(ORRIN_WITNESS_SUBMISSION_EVENT, (p) => this._onOrrinWitnessSubmission(p || {}));
     bus.on('factionPresence:archiveEvidenceRead', (p) => this._onVergeArchiveEvidence(p || {}));
 
     // ── B8 — Wren artifact thread: salvaged communicator carries a coordinate file that never resolves.
@@ -930,6 +942,124 @@ export const story = {
     return this._markVergeEvidence('kellPaperTrail', 'contact_wraith_kell:burn');
   },
 
+  // PQ-048.18 — Orrin's case only exists when the exact published H5 completion survives.
+  // This observes the encounter transition; it never treats convenience flags, history rows, or
+  // look-alike wrecks as authority.
+  _onOrrinWitnessTransition(payload) {
+    if (payload.shape !== ORRIN_WITNESS_SOURCE_SHAPE_ID || payload.outcome !== 'published') return false;
+    return !!this._reconcileOrrinWitnessCase();
+  },
+
+  _reconcileOrrinWitnessCase() {
+    this._ensureState();
+    const source = orrinWitnessSource(this.state);
+    const s = this.state.story;
+    if (!source) {
+      if (Object.hasOwn(s, 'orrinWitnessCase')) delete s.orrinWitnessCase;
+      return null;
+    }
+
+    const current = s.orrinWitnessCase;
+    const sameSource = current && current.sourceId === source.id;
+    const recovered = sameSource && current.evidence === 'recovered';
+    const recoveredAt = recovered && Number.isFinite(current.recoveredAt) ? current.recoveredAt : null;
+    const submittedAt = recovered && Number.isFinite(current.submittedAt) ? current.submittedAt : null;
+    const routeReferredAt = submittedAt != null && Number.isFinite(current.routeReferredAt)
+      ? current.routeReferredAt
+      : null;
+    const phase = routeReferredAt != null
+      ? 'referral'
+      : submittedAt != null
+        ? 'submitted'
+        : recovered
+          ? 'recovered'
+          : 'unrecovered';
+    const record = {
+      sourceId: source.id,
+      phase,
+      evidence: recovered ? 'recovered' : 'unrecovered',
+      recoveredAt,
+      submittedAt,
+      routeReferredAt,
+    };
+    s.orrinWitnessCase = record;
+    this.bus.emit('orrinWitness:ensureEvidence', {
+      sourceId: source.id,
+      sectorId: source.sectorId,
+      anchor: { ...source.anchor },
+    });
+    return { source, record };
+  },
+
+  _onOrrinWitnessEvidence(payload) {
+    if (payload.outcome !== 'investigated' || payload.sectorId !== ORRIN_WITNESS_SECTOR_ID) return false;
+    const caseState = this._reconcileOrrinWitnessCase();
+    if (!caseState || caseState.record.evidence === 'recovered') return false;
+    const entity = payload.entityId != null && this.state.entities && this.state.entities.get
+      ? this.state.entities.get(payload.entityId)
+      : null;
+    if (!isOrrinWitnessRecorder(entity, caseState.source.id)) return false;
+    const worldRecord = this.state.world && this.state.world.records && this.state.world.records.byId
+      && this.state.world.records.byId[entity.data.worldRecordId];
+    if (!worldRecord || worldRecord.markerId !== entity.data.markerId
+      || worldRecord.identityKey !== `${entity.data.markerId}:${caseState.source.id}`) return false;
+
+    const now = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    caseState.record.evidence = 'recovered';
+    caseState.record.recoveredAt = now;
+    caseState.record.phase = 'recovered';
+    this.bus.emit('orrinWitness:evidenceRecovered', {
+      sourceId: caseState.source.id,
+      recordId: entity.data.worldRecordId,
+      sectorId: caseState.source.sectorId,
+    });
+    this.bus.emit('comms:popup', {
+      id: 'orrin_witness_corridor_original',
+      sender: 'WARRANT ORRIN',
+      text: 'That recorder carries an unbroken original. Bring it to Coalition and do not let anyone rewrite the chain.',
+      category: 'story',
+      ttl: 8,
+      persist: true,
+    });
+    return true;
+  },
+
+  _onOrrinWitnessSubmission(payload) {
+    if (payload.contactId !== ORRIN_WITNESS_CONTACT_ID
+      || payload.stationId !== ORRIN_WITNESS_STATION_ID
+      || payload.choiceId !== 'evidence') return false;
+    const caseState = this._reconcileOrrinWitnessCase();
+    if (!caseState || caseState.record.evidence !== 'recovered'
+      || Number.isFinite(caseState.record.submittedAt)) return false;
+
+    const now = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    caseState.record.submittedAt = now;
+    caseState.record.routeReferredAt = now;
+    caseState.record.phase = 'referral';
+    this.bus.emit('orrinWitness:submitted', {
+      sourceId: caseState.source.id,
+      contactId: ORRIN_WITNESS_CONTACT_ID,
+      stationId: ORRIN_WITNESS_STATION_ID,
+    });
+    this.bus.emit('comms:popup', {
+      id: 'orrin_witness_chain_referral',
+      sender: 'WARRANT ORRIN',
+      text: 'The original is logged. Customs Gate can trace the missing handoff without turning this into another rumor.',
+      category: 'story',
+      ttl: 8,
+      persist: true,
+    });
+    // Normal map authority owns the transient open intent and any player-selected course.
+    this.bus.emit('ui:pushScreen', {
+      id: 'galaxyMap',
+      focus: 'galaxy',
+      sectorId: 'sector_tethys_junction',
+      stationId: 'station_customs',
+      source: 'orrinWitness:referral',
+    });
+    return true;
+  },
+
   _onVergeArchiveEvidence(payload) {
     if (payload.evidenceId !== 'vale_gate_revocation_file') return false;
     return this._markVergeEvidence('archiveFile', `archive:${payload.stationId || 'reading_room'}`);
@@ -1451,6 +1581,7 @@ export const story = {
 
   _onLoaded() {
     this._ensureState();
+    this._reconcileOrrinWitnessCase();
     if (!(this.state.story.ambientTimerS > 0)) this._rescheduleAmbient();
     this._recoverValeMilestones();
     this._publishPostEndingContinuity('loaded');
@@ -1479,6 +1610,9 @@ export const story = {
       s.valeMilestones = { conflictFlip: null };
       s.conflictReaction = normalizeConflictReactionState();
       s.verge = createVergeStoryState();
+      // Reused state must not retain a prior case, while a fresh/default save keeps its canonical
+      // shape. Valid published H5 reconciliation below is the sole creator of this property.
+      delete s.orrinWitnessCase;
     } else {
       if (s.phase == null) s.phase = 1;
       if (!s.seenComms) s.seenComms = {};

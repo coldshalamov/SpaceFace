@@ -36,6 +36,11 @@ import {
   vonnFreightLossFor,
   vonnFreightLossMapOffer,
 } from '../../data/vonnFreightLoss.js';
+import {
+  ORRIN_WITNESS_CONTACT_ID,
+  ORRIN_WITNESS_STATION_ID,
+  ORRIN_WITNESS_SUBMISSION_EVENT,
+} from '../../data/orrinWitnessCase.js';
 import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
 
 /* ── lookup tables ──────────────────────────────────────────────────── */
@@ -43,6 +48,18 @@ import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
 const FACTION_BY_ID   = new Map(FACTION_META.map(f => [f.id, f]));
 const SECTOR_BY_ID    = new Map(SECTORS.map(s => [s.id, s]));
 const COMMODITY_BY_ID = new Map(COMMODITIES.map(c => [c.id, c]));
+
+/** Route Orrin's physical-evidence control outside generic station-contact memory. */
+export function emitBarContactChoice(bus, payload = {}) {
+  if (!bus || typeof bus.emit !== 'function') return null;
+  const event = payload.contactId === ORRIN_WITNESS_CONTACT_ID
+    && payload.stationId === ORRIN_WITNESS_STATION_ID
+    && payload.choiceId === 'evidence'
+    ? ORRIN_WITNESS_SUBMISSION_EVENT
+    : 'ui:talkContact';
+  bus.emit(event, payload);
+  return event;
+}
 
 // Flatten every station into a quick-lookup map: stationId -> { station, sector }
 const STATION_INDEX = new Map();
@@ -1287,7 +1304,7 @@ export function createBarPanel(ctx) {
     const contact = currentContacts.find(c => c.id === contactId);
     const reply   = card.querySelector('.st-bar-reply');
     if (!reply || !contact) return;
-    ctx.bus.emit('ui:talkContact', {
+    emitBarContactChoice(ctx.bus, {
       contactId,
       choiceId,
       stationId: currentStationId,

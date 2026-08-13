@@ -45,6 +45,13 @@ import {
   pallasHiddenCacheChoice,
   pallasHiddenCacheLot,
 } from '../data/pallasHiddenCache.js';
+import {
+  ORRIN_WITNESS_MARKER_ID,
+  ORRIN_WITNESS_PERSISTENCE_OWNER,
+  isOrrinWitnessRecorder,
+  orrinWitnessRecordId,
+  orrinWitnessSource,
+} from '../data/orrinWitnessCase.js';
 import { collisionProxyIdForStation } from '../data/collisionProxyManifests.js';
 import { effectiveSectorFor } from './sectorSim.js';   // V2 §33 — live (drifted) hazard for spawn sizing
 import { regionalEcologyReadout, regionalResourceYieldMultiplier } from './regionalEcology.js';
@@ -313,6 +320,7 @@ export const world = {
     bus.on('field:depletedChanged', (p) => this._onFieldDepleted(p || {}));
     bus.on('anomaly:triangulated', (p) => this._onAnomalyTriangulated(p || {}));
     bus.on('signal:investigated', (p) => this._onSignalInvestigated(p || {}));
+    bus.on('orrinWitness:ensureEvidence', (p) => this._ensureOrrinWitnessEvidence(p || {}));
     bus.on('vestaOreCache:choose', (p) => this._onVestaOreCacheChoice(p || {}));
     bus.on('pallasHiddenCache:choose', (p) => this._onPallasHiddenCacheChoice(p || {}));
     bus.on('pickup:collected', (p) => this._onVestaOreCachePickupCollected(p || {}));
@@ -1073,6 +1081,7 @@ export const world = {
     if (budgeted && typeof budget.bindEntity === 'function') budget.bindEntity(ent.id, requester);
     applyRecordVitals(ent, rec);
     bindEntityToRecord(ent, rec);
+    this._decorateOrrinWitnessRecorder(ent, rec);
     this._stampHomeSector(ent, rec.homeSectorId || sectorId);
     // Restore pose after stamp (global — never re-add sector origin).
     if (ent.pos) {
@@ -1102,6 +1111,90 @@ export const world = {
       return captured ? upsertRecord(bag, captured) : null;
     }
     return null;
+  },
+
+  /**
+   * Materialize the one physical original that survives the published Corridor Massacre. Story
+   * owns case progress; world owns the body and the durable record that makes Continue/re-entry
+   * conservative. This deliberately grants neither cargo nor any economic/law outcome.
+   */
+  _ensureOrrinWitnessEvidence(payload) {
+    const source = orrinWitnessSource(this.state);
+    if (!source || payload.sourceId !== source.id) return null;
+
+    const sourceId = source.id;
+    const { sectorId, anchor } = source;
+    const recordId = orrinWitnessRecordId(sourceId);
+    if (!recordId) return null;
+    const identityKey = `${ORRIN_WITNESS_MARKER_ID}:${sourceId}`;
+    const bag = ensureWorldRecords(this.state.world);
+    let record = bag.byId[recordId] || null;
+    if (record) {
+      if (record.kind !== RECORD_KIND.AFTERMATH
+        || record.sectorId !== sectorId
+        || record.markerId !== ORRIN_WITNESS_MARKER_ID
+        || record.identityKey !== identityKey) return null;
+      if (record.alive === false || record.outcome === 'destroyed' || record.outcome === 'defeated') {
+        const staleLive = findLiveEntityForRecord(this.state.entityList, recordId);
+        if (staleLive) staleLive.alive = false;
+        return record;
+      }
+    } else {
+      record = this.upsertWorldRecord({
+        recordId,
+        kind: RECORD_KIND.AFTERMATH,
+        sectorId,
+        homeSectorId: sectorId,
+        pos: { x: Number(anchor.x), z: Number(anchor.z) },
+        vel: { x: 0, z: 0 },
+        rot: 0,
+        type: 'wreck',
+        team: 2,
+        alive: true,
+        outcome: 'active',
+        wreckClass: 'evidence_recorder',
+        markerId: ORRIN_WITNESS_MARKER_ID,
+        victimClass: 'corridor-original',
+        durableReason: 'orrin_witness_corridor_original',
+        identityKey,
+      });
+    }
+    if (!record) return null;
+
+    // worldRecords only retains schema-owned fields. Stamp the live shell after rematerialization
+    // too, so the scanner receipt can prove the exact source instead of accepting a look-alike.
+    const candidate = findLiveEntityForRecord(this.state.entityList, record.recordId);
+    const existing = isOrrinWitnessRecorder(candidate, sourceId) ? candidate : null;
+    const entity = existing || (this.state.world.currentSectorId === sectorId
+      ? this._spawnFromDurableRecord(record, sectorId) : null);
+    this._decorateOrrinWitnessRecorder(entity, record);
+    if (entity) this._stampHomeSector(entity, sectorId);
+    this.bus.emit('orrinWitness:evidenceEnsured', {
+      sourceId,
+      recordId: record.recordId,
+      sectorId,
+      entityId: entity && entity.id || null,
+    });
+    return record;
+  },
+
+  _decorateOrrinWitnessRecorder(entity, record) {
+    const prefix = `${ORRIN_WITNESS_MARKER_ID}:`;
+    const sourceId = record && record.markerId === ORRIN_WITNESS_MARKER_ID
+      && typeof record.identityKey === 'string'
+      && record.identityKey.startsWith(prefix)
+      ? record.identityKey.slice(prefix.length)
+      : null;
+    if (!entity || !sourceId) return false;
+    if (!entity.data) entity.data = {};
+    entity.data.markerId = ORRIN_WITNESS_MARKER_ID;
+    entity.data.orrinWitnessSourceId = sourceId;
+    entity.data.persistenceOwner = ORRIN_WITNESS_PERSISTENCE_OWNER;
+    entity.data.scannerSignalKind = 'archive';
+    entity.data.scanLabel = 'Corridor original recorder';
+    entity.data.name = 'Corridor Original Recorder';
+    entity.data.durable = true;
+    return true;
   },
 
   /** Mark durable record destroyed (player kill / outcome). Keeps identity for no-reroll. */
