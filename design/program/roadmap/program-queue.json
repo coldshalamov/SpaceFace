@@ -5853,6 +5853,34 @@
       "brief": "One stable saved courier runs a scheduled Tethys-to-Customs freight leg with readable sprint and recovery, normal/late/interrupted outcomes, one bounded escort opportunity, and an idempotent arrival or loss consequence without expanding the legacy roster."
     },
     {
+      "id": "PQ-048.10",
+      "parentId": "PQ-048",
+      "priority": 289,
+      "title": "Complete Helios passenger-liner service",
+      "kind": "implementation",
+      "state": "done",
+      "dependsOn": [
+        "PQ-048.09"
+      ],
+      "mutexes": [],
+      "paths": [
+        "src/data/contactHail.js",
+        "src/data/laneContacts.js",
+        "src/systems/traffic.js",
+        "test/pq048-passenger-liner-service.test.mjs"
+      ],
+      "checks": [
+        "node --test test/pq048-passenger-liner-service.test.mjs",
+        "node --test test/pq048-priority-courier-lane.test.mjs test/contact-hail-contract.test.mjs",
+        "node --test test/market-news-literal-publish.test.mjs",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-048-10-passenger-liner-service-REPORT.md"
+      ],
+      "brief": "One existing Helios express/ship_mule becomes an in-place civic liner with durable passenger custody and a scheduled boarding, route, delay, diversion, return, delivery, or loss leg. Authority and Hail use the same truthful live record; save/rebind deduplicates it without a freight, cargo, or economy consequence on passenger loss."
+    },
+    {
       "id": "PQ-048.11",
       "parentId": "PQ-048",
       "priority": 290,
