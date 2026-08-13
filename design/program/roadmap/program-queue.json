@@ -2301,6 +2301,39 @@
       "integratedCommit": "1ba6ce221900ecb5075765f900157c199d1fcfad",
       "acceptanceRef": "design/program/roadmap/receipts/PQ-048-composition-REPORT.md#portfolio-closeout",
       "receipt": "design/program/roadmap/receipts/PQ-048-composition-REPORT.md"
+    },
+    {
+      "id": "PQ-049",
+      "priority": 49,
+      "title": "Massline express-liner — distinct civic pressure-drum identity",
+      "state": "ready",
+      "canonical": [
+        "GFX-MASSLINE-EXPRESS-LINER"
+      ],
+      "aliases": [
+        "MASSLINE-EXPRESS-LINER"
+      ],
+      "dependsOn": [],
+      "mutexes": [],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/program/06_RETAINED_FUTURE_BACKLOG.md",
+        "assets/ships/massline_express_liner_v1/reference/stopped_lark_iter19/REFERENCE_PROVENANCE.md",
+        "design/program/roadmap/active/PQ-049.md"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "node scripts/check-program-docs.mjs"
+      ],
+      "evidence": [
+        "distinct-express-identity",
+        "source-release-package",
+        "normal-browser-electron-route",
+        "tether-save-continue",
+        "whole-asset-gates",
+        "independent-g7"
+      ],
+      "brief": "Admit the tracked stopped-Lark donor only as reference for a separate Tier-B civic pressure-drum express liner. Five ordered leaves create a fresh DCC candidate, source/release/manifests, render package, express-only presentation mapping, then natural Browser/Electron tether/save/performance and independent whole-asset acceptance. The existing passenger-only traffic service remains authoritative; the accepted courier Lark remains untouched."
     }
   ],
   "dispatchUnits": [
@@ -6171,6 +6204,155 @@
         "design/program/roadmap/receipts/PQ-048-20-discovery-to-codex-return-REPORT.md"
       ],
       "brief": "A landed Tethys discovery exposes one nonpersisted UI request to focus its exact durable Codex plate, then offers a normal map-only return to the live hub without creating a navigation route, course, or offer."
+    },
+    {
+      "id": "PQ-049.01",
+      "parentId": "PQ-049",
+      "priority": 300,
+      "title": "Reauthor the Massline express-liner DCC candidate and authored LOD evidence",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "blender",
+        "evidence-review"
+      ],
+      "paths": [
+        "assets/ships/massline_express_liner_v1/G0_DOSSIER.md",
+        "assets/ships/massline_express_liner_v1/MATERIAL_CONTRACT.json",
+        "assets/ships/massline_express_liner_v1/MATERIAL_AND_SHAPE_AUDIT.md",
+        "assets/ships/massline_express_liner_v1/scripts/build_massline_express_liner_v1.py",
+        "assets/ships/massline_express_liner_v1/blender/massline_express_liner_v1.blend",
+        "assets/ships/massline_express_liner_v1/source/wholeships/",
+        "assets/ships/massline_express_liner_v1/textures/",
+        "assets/ships/massline_express_liner_v1/evidence/",
+        "assets/ships/massline_express_liner_v1/evidence/g0/IDENTITY_AND_GATE_MATRIX.json"
+      ],
+      "checks": [
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "Create a fresh Tier-B stepped civic pressure-drum liner from the stopped donor as reference only. Complete G0, a reproducible asset-local builder, supported views, passenger/drive/dock/service/tether material truth, then editable source and authored LOD0/1/2 with hash-bound whole-asset G1/G2/G4 evidence. This is source/candidate production only: no manifests, render package, runtime map, or accepted claim."
+    },
+    {
+      "id": "PQ-049.02",
+      "parentId": "PQ-049",
+      "priority": 301,
+      "title": "Promote the Massline express-liner source, candidate, release, and manifest records",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-049.01"
+      ],
+      "mutexes": [
+        "asset-manifest",
+        "blender"
+      ],
+      "paths": [
+        "assets/ships/massline_express_liner_v1/scripts/finalize_massline_express_liner_v1.mjs",
+        "assets/ships/massline_express_liner_v1/release_candidates/",
+        "assets/ships/parts/wholeships/massline_express_liner_v1.glb",
+        "assets/ships/release/parts/wholeships/massline_express_liner_v1.glb",
+        "assets/ships/parts/parts_manifest.json",
+        "assets/ships/release/release_manifest.json"
+      ],
+      "checks": [
+        "npm run check:asset-status",
+        "npm run check:asset-reachability",
+        "npm run check:assets:live",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "Run the current sanctioned family source-to-candidate-to-release transaction for `SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1` / `wholeship_massline_express_liner_v1`, with exact hashes, provenance, transforms, sockets/collision, and source/release manifest records. Do not hand-edit generated metadata, alter the accepted Lark, or wire the new asset yet."
+    },
+    {
+      "id": "PQ-049.03",
+      "parentId": "PQ-049",
+      "priority": 302,
+      "title": "Build the Massline express-liner render package",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-049.02"
+      ],
+      "mutexes": [
+        "asset-manifest",
+        "renderer"
+      ],
+      "paths": [
+        "assets/ships/render-packages/pilots.json",
+        "assets/ships/release/render-packages/massline-express-liner-v1/",
+        "src/render/renderPackageManifest.js"
+      ],
+      "checks": [
+        "node scripts/generate-render-package-pilots.mjs",
+        "npm run build:render-package-pilots",
+        "npm run check:render-package-coverage",
+        "npm run check:render-package-pilots",
+        "npm run check:render-package-plan",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "Add the exact new release source to the pilot input and generate its shipping `massline-express-liner-v1` render package and generated runtime manifest through the sanctioned builder. Prove pilot, package, instance-plan, and no-fallback binding before any `express` selection changes."
+    },
+    {
+      "id": "PQ-049.04",
+      "parentId": "PQ-049",
+      "priority": 303,
+      "title": "Map only existing express traffic to the Massline express-liner",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-049.03"
+      ],
+      "mutexes": [
+        "renderer"
+      ],
+      "paths": [
+        "src/render/partsLibrary.js",
+        "test/massline-express-liner-runtime.test.mjs"
+      ],
+      "checks": [
+        "node --test test/pq048-passenger-liner-service.test.mjs test/massline-express-liner-runtime.test.mjs",
+        "npm run check:traffic",
+        "npm run check:asset-status",
+        "npm run check:asset-reachability",
+        "npm run check:assets:live",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "After current writers release `partsLibrary.js`, add only the `express` entries to its traffic-role whole-ship file and asset-ID maps, then prove an existing passenger-only express record resolves the new release body. Do not touch `ship_mule`, traffic, itinerary, passenger custody, cargo/economy, or any other role mapping."
+    },
+    {
+      "id": "PQ-049.05",
+      "parentId": "PQ-049",
+      "priority": 304,
+      "title": "Accept the Massline express-liner on its natural route",
+      "kind": "acceptance_capture",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-049.04"
+      ],
+      "mutexes": [
+        "browser-gpu",
+        "electron-shell",
+        "validation-broker",
+        "performance-evidence",
+        "evidence-review"
+      ],
+      "paths": [
+        "assets/ships/massline_express_liner_v1/evidence/acceptance/",
+        "design/program/roadmap/evidence/h1/pq049-massline-express-liner/",
+        "design/program/roadmap/receipts/PQ-049-05-massline-express-liner-REPORT.md"
+      ],
+      "checks": [
+        "npm run check:traffic",
+        "npm run check:massline2:live",
+        "node --test test/pq048-passenger-liner-service.test.mjs test/massline-express-liner-runtime.test.mjs",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "Capture the natural Browser and Electron express spawn, label, route, dock/service context, passenger itinerary with no invented freight manifest, boost, tether latch/reel/release, and save/Continue itinerary. Compare dense-pocket and tether-close performance at equal quality, then obtain independent exact-hash G7 and whole-asset G1/G2/G4 decisions. This is acceptance support; missing evidence leaves the parent unproven."
     }
   ]
 }

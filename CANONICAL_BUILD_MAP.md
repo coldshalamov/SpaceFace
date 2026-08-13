@@ -167,37 +167,41 @@ one exact path has a live writer.
 Recovery effort uses `XS` (up to 30 minutes), `S` (0.5-2 hours), `M` (2-4 hours), `L` (4-8 hours),
 and `XL` (multi-day) only as scheduling metadata. Finish `XS` through `L` in the active recovery
 campaign; preserve inputs and defer only a genuinely `XL` authored/cross-owner outcome with an
-executable route:
+executable route. `GFX-MASSLINE-EXPRESS-LINER` is now admitted as `PQ-049`; its parent remains
+`ready` / `unproven` until its ordered route-acceptance leaf closes:
 
 | Stable route | Size | Required outcome |
 |---|---:|---|
-| `GFX-MASSLINE-EXPRESS-LINER` | `XL`, about 4-8 focused artist-engineer days plus independent review | Adapt the tracked stopped-Lark donor into a **separate** express-only ship: new fiction/construction/material zones, DCC source, LOD/release/manifests/render package, express runtime maps, Browser/Electron route/tether/save proof, performance, and exact-hash G7. Never replace accepted courier Lark or fold it into the Massline presentation showcase. |
+| `PQ-049` / `GFX-MASSLINE-EXPRESS-LINER` | `XL`, about 4-8 focused artist-engineer days plus independent review | Adapt the tracked stopped-Lark donor into a **separate** express-only ship through five ordered leaves: fresh DCC/LOD candidate; source/candidate/release/manifests; render package; express-only runtime maps; then Browser/Electron route/tether/save/performance and exact-hash G7. Never replace accepted courier Lark or fold it into the Massline presentation showcase. |
 | `PQ-018.cathedral-reauthor` | existing multi-day active packet | Use the current packet for Cathedral DCC/release and exact route/art acceptance. Recovered Cathedral GLBs are rebuild variants, not alternative art, and no standalone PQ-018 broker harness should return. |
 
-`GFX-MASSLINE-EXPRESS-LINER` executes in this order:
+`PQ-049` is the admitted execution of `GFX-MASSLINE-EXPRESS-LINER` and executes in this order:
 
-1. **Freeze identity and preflight.** Keep accepted `wholeship_helios_lark` and its hashes/runtime maps
-   unchanged. Admit `SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1` /
-   `wholeship_massline_express_liner_v1` with a passenger/freight/drive fiction, supported views,
-   component/material bill, and explicit tether/dock/service load paths. The two files under
-   `assets/ships/massline_express_liner_v1/reference/stopped_lark_iter19/` remain reference-only.
-2. **Reauthor, do not rename.** Own
+1. **`PQ-049.01` — Freeze identity, preflight, and reauthor; do not rename.** Keep accepted
+   `wholeship_helios_lark` and its hashes/runtime maps unchanged. Admit
+   `SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1` / `wholeship_massline_express_liner_v1` with a
+   passenger/drive/service fiction, supported views, component/material bill, and explicit
+   tether/dock/service load paths. The two files under
+   `assets/ships/massline_express_liner_v1/reference/stopped_lark_iter19/` remain reference-only. Own
    `assets/ships/massline_express_liner_v1/blender/massline_express_liner_v1.blend`, its source GLB,
    bakes, matched-view evidence, and authored LOD0/1/2. Repair macro/meso construction, material
    zones, floating parts, and plastic/clay response before integration work.
-3. **Build and publish.** Produce `wholeships/massline_express_liner_v1.glb` through the normal source,
+2. **`PQ-049.02` — Build and promote.** Produce `wholeships/massline_express_liner_v1.glb` through the normal source,
    candidate, optimized release, source-manifest, generated release-manifest, and conditional
-   `assets/ships/release/render-packages/massline-express-liner-v1/` transaction. Do not hand-edit
-   generated metadata or borrow the accepted Lark release slot.
-4. **Wire sequentially after current writers release.** Add only the `express` entries in
+   release transaction. Do not hand-edit generated metadata or borrow the accepted Lark release slot.
+3. **`PQ-049.03` — Generate the render package.** Build the conditional
+   `assets/ships/release/render-packages/massline-express-liner-v1/` transaction and regenerate its
+   runtime table through the sanctioned package pipeline.
+4. **`PQ-049.04` — Wire sequentially after current writers release.** Add only the `express` entries in
    `WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE` and `WHOLE_SHIP_ASSET_ID_BY_TRAFFIC_ROLE` in
-   `src/render/partsLibrary.js`, then coordinate render-package runtime-table regeneration. Existing
+   `src/render/partsLibrary.js`, consuming the already-generated render-package runtime table. Existing
    `src/systems/traffic.js` express behavior remains authoritative; this is presentation identity, not
    an AI/route rewrite.
-5. **Accept.** Prove Browser and Electron natural express spawn, label, route, trade/dock, cargo
-   manifest, boost, tether latch/reel/release, and save/Continue itinerary; run a matched dense-pocket
+5. **`PQ-049.05` — Accept.** Prove Browser and Electron natural express spawn, label, route,
+   dock/service context, passenger-only custody with no invented freight manifest, boost, tether
+   latch/reel/release, and save/Continue itinerary; run a matched dense-pocket
    and tether-close performance comparison; finish with independent exact-hash G7 and whole-asset
-   G1/G2/G4. Any missing gate leaves the asset non-runtime.
+   G1/G2/G4. Any missing gate leaves the mapped asset unproven and non-accepted.
 
 Do not begin from an old handoff, screenshot directory, review transcript, archived plan, raw whole-queue dump, or broad repository grep—**except** the place remaster handoff linked above when that is the explicit task, the massline presentation UVP packet when that is the explicit task, or the tracked worktree-recovery playbook when leftover agent work is the explicit task.
 

@@ -25,6 +25,7 @@ implementation from route, visual, performance, and human acceptance.
 | PQ-024 Asteroid Ops corridor | Integrated + focused/route evidence | Production, original H1/H2/H3, committed-transition repair/H1/review; stale queue blocker reconciled | Relay receipt promotion, then parent promotion |
 | PQ-034–041 performance modernization | Mixed exact boundaries | PQ-034–037 and PQ-039 terminal at their receipts; PQ-038/040/041 implementations are focused-green | Three remaining native acceptances; then PQ-042 selection |
 | PQ-045 R5 Ceres | Integrated substrate + focused-green leaves | R6 action spine, punctuation, law response, escort, and exact-five target motion | Tender client; topology; causal/NPC/art/VFX leaves; five-minute Browser/Electron evidence; human verdict; independent two-hypothesis audit |
+| PQ-049 Massline express-liner | Ready / unproven | Existing Helios passenger-only `express` service remains real on `ship_mule`; no new asset candidate, release, package, map, or art claim yet | Ordered DCC, release/manifest, render-package, express-only mapping, then natural Browser/Electron tether/save/perf and independent exact-hash whole-asset G7 acceptance |
 
 The two late target-motion hypotheses are **unconfirmed review findings**, not a retroactive failure
 claim: (1) terminal cleanup under numeric-ID replacement and (2) overly broad same-type destruction
