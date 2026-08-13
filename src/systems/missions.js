@@ -379,6 +379,13 @@ function isFingerprintBoardSource(source) {
     || source === LANDMARK_QUEST_SOURCE;
 }
 
+function isZeroPayLandmarkMission(mission, rewardCr) {
+  return !!(mission
+    && mission.source === LANDMARK_QUEST_SOURCE
+    && mission.params && mission.params.landmarkProbe
+    && rewardCr === 0);
+}
+
 function setPieceEventFields(value, transition = null) {
   const cause = setPieceCauseOf(value);
   if (!cause) return {};
@@ -903,6 +910,11 @@ export const missions = {
     const retainedPoiOffers = previousSlots.filter((offer) => offer && offer.source === 'poiBehavior'
       && (!Number.isFinite(offer.expiresAtEpoch) || offer.expiresAtEpoch > epoch))
       .slice(0, POI_CAUSAL_BOARD_CAP);
+    // Landmark surveys are player-earned authored work, not an epoch reroll. Keep only the current
+    // validated shape so a stale/corrupt saved offer cannot survive a board refresh.
+    const retainedLandmarkOffers = previousSlots.filter((offer) => (
+      offer && offer.source === LANDMARK_QUEST_SOURCE && validateLandmarkQuestOffer(offer)
+    ));
     // An in-flight set-piece chain is authored progress, not an expiring procedural roll. Preserve
     // every sibling/recovery row through board refresh; its cause is the save-safe chain cursor.
     const retainedSetPieceOffers = previousSlots.filter((offer) => (
@@ -934,6 +946,7 @@ export const missions = {
         ...retainedFirstTradeOffers,
         ...retainedSetPieceOffers,
         ...retainedPoiOffers,
+        ...retainedLandmarkOffers,
         ...this._generateOffers(info, epoch),
         // Retained at the very END, after generation, for the same reason `_syncHeistOffer` appends.
         // `_generateOffers` puts the B4 branch-intro contract at the head of what it returns, and
@@ -2931,10 +2944,12 @@ export const missions = {
       const player = this.state.entities && this.state.entities.get(this.state.playerId);
       if (!target || !player || !target.pos || !player.pos) continue;
       const maxRangeWu = Math.max(1, Math.min(300, Number(probe.maxRangeWu) || 300));
+      const signalKind = typeof probe.signalKind === 'string' && probe.signalKind
+        ? probe.signalKind : 'archive';
       if (distSq(target.pos, player.pos) > maxRangeWu * maxRangeWu) continue;
       const signal = payload.signals.find((row) => row
         && String(row.entityId) === String(target.id)
-        && row.sourceKind === 'archive'
+        && row.sourceKind === signalKind
         && Number(row.stage) >= 3
         && Number(row.distance) <= maxRangeWu);
       if (!signal) continue;
@@ -3641,13 +3656,17 @@ export const missions = {
     if (setPieceCauseOf(m)) return; // SP1 uses the authored house receipt below.
     const success = outcome === 'completed';
     const text = success ? this._missionSuccessDebriefText(m) : this._missionLossDebriefText(m, reason);
+    const rewardCr = Math.max(0, Math.round(Number(settlement.rewardCr != null
+      ? settlement.rewardCr : (m.reward_cr || 0)) || 0));
+    const zeroPayLandmark = isZeroPayLandmarkMission(m, rewardCr);
     this.bus.emit('comms:popup', {
       sender: this._missionClientName(m),
       text,
       category: success ? 'personal' : 'trap',
       ttl: success ? 8 : 7,
-      note: success ? ('Paid ' + (settlement.rewardCr != null
-        ? settlement.rewardCr : (m.reward_cr || 0)).toLocaleString('en-US') + ' cr.') : null,
+      note: success ? (zeroPayLandmark
+        ? 'Field record filed; no credits issued.'
+        : `Paid ${rewardCr.toLocaleString('en-US')} cr.`) : null,
     });
   },
 
@@ -3789,7 +3808,10 @@ export const missions = {
     });
 
     this._emitMissionDebrief(m, 'completed', null, { rewardCr: displayRewardCr });
-    this.bus.emit('toast', { text: `Mission complete: ${m.title} +${displayRewardCr}cr`, kind: 'success', ttl: 4 });
+    const completionText = isZeroPayLandmarkMission(m, displayRewardCr)
+      ? `Mission complete: ${m.title} — field record filed; no credits issued.`
+      : `Mission complete: ${m.title} +${displayRewardCr}cr`;
+    this.bus.emit('toast', { text: completionText, kind: 'success', ttl: 4 });
     this._cleanupTargets(m);
     // Keep the settled chain visible while ensureBoard refreshes the destination board. Otherwise
     // a completion that crosses a board epoch can seed a second opening before its next stage lands.

@@ -15,6 +15,7 @@ export const CAVED_SHAFT_PROBE = Object.freeze({
   factionId: 'faction_dmc',
   targetLocalPos: Object.freeze({ x: 240, z: -1180 }),
   maxRangeWu: 300,
+  poiLabel: 'The Caved Shaft',
   rewardCr: 640,
   minRep: -1000,
   riskTier: 1,
@@ -41,6 +42,7 @@ export const SHARD_SPHERE_SONG = Object.freeze({
   factionId: 'faction_vael',
   targetLocalPos: Object.freeze({ x: 280, z: -960 }),
   maxRangeWu: 300,
+  poiLabel: 'The Shard Sphere',
   requiredSignalScans: 4,
   rewardCr: 1800,
   minRep: 150,
@@ -59,7 +61,42 @@ export const SHARD_SPHERE_SONG = Object.freeze({
   }),
 });
 
-const LANDMARK_QUESTS = Object.freeze([CAVED_SHAFT_PROBE, SHARD_SPHERE_SONG]);
+// PQ-048.14: this is deliberately a return survey, not another way to reveal the Obelisk. The
+// ordinary physical investigation remains the sole writer of the discovery Doss later reads.
+export const RESONANCE_OBELISK_SURVEY = Object.freeze({
+  id: 'landmark_c2_resonance_survey',
+  sectorId: 'sector_veil_nebula',
+  poiId: 'poi_anomaly',
+  targetRef: 'landmark_c2_resonance_obelisk',
+  stationId: 'station_veil',
+  factionId: null,
+  targetLocalPos: Object.freeze({ x: 0, z: 0 }),
+  maxRangeWu: 300,
+  poiLabel: 'The Resonance Obelisk',
+  signalKind: 'anomaly',
+  requiresPhysicalInvestigation: true,
+  rewardCr: 0,
+  minRep: -1000,
+  riskTier: 2,
+  title: 'The Resonance Obelisk: Quiet Survey',
+  brief: 'Return to the Obelisk and take one close reading. Every extra pulse brings the Vael watch forward.',
+  summary: 'Research Station Veil will file one clean field record, not a salvage claim. Take the required close reading, or stay for extra pulses that bring the Vael watch forward.',
+  causeTag: 'landmark:resonance_obelisk_survey',
+  causeFingerprint: 'landmark:c2:resonance-survey:v1',
+  causeLine: 'The Obelisk has already answered three bearings. One close reading can preserve the pattern without claiming to own it.',
+  successText: 'Survey filed. The pattern remains at Veil as a field record, not a claim.',
+  artifact: Object.freeze({
+    id: 'artifact_c2_resonance_obelisk_survey_log',
+    title: 'C2-5 · Obelisk Survey Log',
+    body: 'A close reading resolves the Obelisk into intervals rather than a message. The next pulse is shorter than the last; the gaps are the only part that remains still.',
+  }),
+});
+
+const LANDMARK_QUESTS = Object.freeze([
+  CAVED_SHAFT_PROBE,
+  SHARD_SPHERE_SONG,
+  RESONANCE_OBELISK_SURVEY,
+]);
 const LANDMARK_QUEST_BY_ID = new Map(LANDMARK_QUESTS.map((definition) => [definition.id, definition]));
 
 function discoveryRecord(state, definition) {
@@ -73,6 +110,18 @@ function isFound(record) {
   return !!(record && (record.investigated || record.identified || record.defeated));
 }
 
+function hasPhysicalInvestigation(record) {
+  return !!(record
+    && record.discovered === true
+    && record.identified === true
+    && record.investigated === true
+    // This is raw durable state, not a display value: zero is a valid legacy sim timestamp,
+    // while coercible strings and negative/non-finite values must fail closed.
+    && typeof record.investigatedAt === 'number'
+    && Number.isFinite(record.investigatedAt)
+    && record.investigatedAt >= 0);
+}
+
 function signalScanCount(state, definition) {
   const stableId = `signal:poi:${definition.poiId}`;
   const record = state && state.signalInvestigation && state.signalInvestigation.records
@@ -81,10 +130,14 @@ function signalScanCount(state, definition) {
 }
 
 function questReady(state, definition) {
+  const record = discoveryRecord(state, definition);
+  if (definition.requiresPhysicalInvestigation) {
+    return hasPhysicalInvestigation(record);
+  }
   if (definition.requiredSignalScans) {
     return signalScanCount(state, definition) >= definition.requiredSignalScans;
   }
-  return isFound(discoveryRecord(state, definition));
+  return isFound(record);
 }
 
 function questComplete(state, definition) {
@@ -115,7 +168,8 @@ function buildOffer(definition) {
         questId: definition.id,
         sectorId: definition.sectorId,
         poiId: definition.poiId,
-        poiLabel: definition.poiId === CAVED_SHAFT_PROBE.poiId ? 'The Caved Shaft' : 'The Shard Sphere',
+        poiLabel: definition.poiLabel,
+        signalKind: definition.signalKind || 'archive',
         targetRef: definition.targetRef,
         targetLocalPos: { ...definition.targetLocalPos },
         maxRangeWu: definition.maxRangeWu,
@@ -154,6 +208,7 @@ export function validateLandmarkQuestOffer(offer) {
   if (!offer.cause || offer.cause.fingerprint !== definition.causeFingerprint) return false;
   if (!probe || probe.questId !== offer.id || probe.sectorId !== offer.destSectorId) return false;
   if (probe.poiId !== definition.poiId || probe.targetRef !== definition.targetRef) return false;
+  if (probe.poiLabel !== definition.poiLabel || probe.signalKind !== (definition.signalKind || 'archive')) return false;
   if (!probe.targetLocalPos || !Number.isFinite(probe.targetLocalPos.x) || !Number.isFinite(probe.targetLocalPos.z)) return false;
   if (!(Number(probe.maxRangeWu) > 0 && Number(probe.maxRangeWu) <= 300)) return false;
   if (!artifact || artifact.id !== definition.artifact.id || !artifact.title || !artifact.body) return false;
