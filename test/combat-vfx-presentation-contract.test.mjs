@@ -12,6 +12,12 @@ import {
 import { projectileHitPayload } from '../src/core/physics.js';
 import { weapons } from '../src/systems/weapons.js';
 import { normalizeDamagePacket } from '../src/combat/damage.js';
+import {
+  FLIGHT_MODE,
+  listWeaponRecipes,
+  recipeUsesRibbonWake,
+  resolveWeaponRecipe,
+} from '../src/render/weapons/index.js';
 
 test('weapon presentation family is structural rather than a damage-color alias', () => {
   const cases = [
@@ -61,17 +67,16 @@ test('muzzle and projectile trail resolve from the same family contract', () => 
   });
   assert.notEqual(friendlyPlasmaPlan.tailColor, enemyPlasmaPlan.tailColor,
     'plasma wake must stay palette-coherent with its allegiance-aware projectile body');
-  const pulse = resolveProjectileTrailProfile('wpn_pulse_laser_m');
-  assert.equal(pulse.class, 'pulse');
-  assert.equal(pulse.mode, 'streak', 'pulse trail must remain a connected directional wake, not heat beads');
-  assert.ok(pulse.streakLen > 1 && pulse.streakLen < 4, 'pulse wake stays shorter than a rail trace');
-  const pulseCore = Number.parseInt(pulse.coreColor.slice(1), 16);
+  const pulseRecipe = resolveWeaponRecipe('wpn_pulse_laser_m');
+  assert.equal(pulseRecipe.variant, 'pulse-bolt');
+  assert.equal(pulseRecipe.flight.mode, FLIGHT_MODE.ENERGY_CARD);
+  assert.equal(recipeUsesRibbonWake(pulseRecipe), true, 'pulse wake is a ribbon, not TRAIL_STREAK beads');
+  const pulseCore = Number.parseInt(pulseRecipe.flight.coreColor.slice(1), 16);
   const pulseRed = (pulseCore >> 16) & 0xff;
   const pulseGreen = (pulseCore >> 8) & 0xff;
   assert.ok(pulseGreen > pulseRed * 2.5,
-    `pulse wake must remain saturated cyan rather than a near-white bloom streak: ${pulse.coreColor}`);
-  assert.ok(pulse.streakOpacity <= 0.22,
-    `pulse wake must remain subordinate to its projectile body: ${pulse.streakOpacity}`);
+    `pulse dash must remain saturated cyan rather than a near-white bloom streak: ${pulseRecipe.flight.coreColor}`);
+  assert.ok(pulseRecipe.flight.intensity < 3.2, 'pulse must not use a white-hot core add');
   assert.equal(resolveProjectileTrailProfile('wpn_emp_disruptor_m').class, 'emp');
 });
 
@@ -109,6 +114,22 @@ test('impact families differ by structure and timing rather than tint alone', ()
   assert.equal(new Set(profiles.map((profile) => profile.mode)).size, profiles.length);
   assert.equal(new Set(profiles.map((profile) => `${profile.life}:${profile.fragmentCount}`)).size, profiles.length);
   assert.ok(profiles.every((profile) => profile.primaryShape !== 'ring'));
+
+  const recipes = Object.entries(listWeaponRecipes());
+  const signatures = recipes.map(([, recipe]) => [
+    recipe.flight.mode,
+    recipe.flight.boltVariant,
+    recipe.flight.dashLength,
+    recipe.flight.width,
+    recipe.flight.ribbonWidth,
+    recipe.muzzle.atlasRow,
+    recipe.muzzle.width,
+    recipe.muzzle.height,
+    recipe.shield.contact,
+    recipe.hull.scorch,
+    recipe.hull.scorchLife,
+  ].join(':'));
+  assert.equal(new Set(signatures).size, recipes.length, 'each gun is a dialect, not a Pulse recolour');
 });
 
 test('pulse-bolt impact is a cyan ion sting, not plasma thermal splash', () => {

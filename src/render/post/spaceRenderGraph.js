@@ -164,6 +164,8 @@ const COMPOSITE_FRAG = /* glsl */`
   uniform sampler2D tBloom1;
   uniform sampler2D tBloom2;
   uniform sampler2D tBloom3;
+  uniform sampler2D tDistortion;
+  uniform float uDistortion;
   uniform float uBloomStrength;
   uniform float uBloomNorm;
   uniform float uAoStrength;
@@ -177,7 +179,13 @@ const COMPOSITE_FRAG = /* glsl */`
 
   ${SPACE_POST_PRESENTATION_GLSL}
   void main() {
-    vec3 scene = texture2D(tScene, vUv).rgb;
+    vec4 distortion = texture2D(tDistortion, vUv);
+    // DistortionField stores signed offsets in LDR RG around a 0.5 neutral
+    // midpoint. The blue envelope masks the black (inactive) clear pixels.
+    vec2 warp = (distortion.xy * 2.0 - 1.0)
+      * step(1e-5, distortion.z) * uDistortion;
+    vec2 uv = clamp(vUv + warp, vec2(0.0), vec2(1.0));
+    vec3 scene = texture2D(tScene, uv).rgb;
     float ao = texture2D(tAo, vUv).r;
     vec3 bloom = texture2D(tBloom0,vUv).rgb * 0.50 +
                  texture2D(tBloom1,vUv).rgb * 0.28 +
@@ -245,11 +253,17 @@ export class SpaceRenderGraph {
     });
     this.compositeMaterial = shaderMaterial(COMPOSITE_FRAG, {
       tScene:null, tAo:null, tBloom0:null, tBloom1:null, tBloom2:null, tBloom3:null,
+      tDistortion: this.blackBloomTexture, uDistortion: 0,
       uBloomStrength:this.options.bloomStrength, uBloomNorm:1.5, uAoStrength:this.options.aoStrength,
       uExposure:this.options.exposure, uAces:this.options.acesToneMapping === false ? 0 : 1,
       uGrade:this.options.grade, uToe:this.options.toe,
       uVignette:this.options.vignette, uGrain:this.options.grain, uGrainFrame:0,
     });
+    this.distortionField = null;
+    this.distortionTarget = null;
+    this._distortionLive = false;
+    this._rendererClearColorScratch = new THREE.Color();
+    this._distortionNeutralClear = new THREE.Color(0.5, 0.5, 0);
     this.setOptions({});
     this._allocate();
   }
@@ -320,6 +334,7 @@ export class SpaceRenderGraph {
         this._renderAo(camera);
       }
       if (this._bloomActive()) this._renderBloom();
+      this._renderDistortion(camera);
       this._renderComposite(frame.outputTarget || null);
     } finally {
       scene.overrideMaterial = previousOverride;
@@ -330,6 +345,11 @@ export class SpaceRenderGraph {
 
   get sceneColorTexture() { return this.sceneTarget.texture; }
   get depthTexture() { return this.sceneTarget.depthTexture; }
+  get distortionTexture() { return this.distortionTarget ? this.distortionTarget.texture : null; }
+
+  attachDistortionField(field) {
+    this.distortionField = field || null;
+  }
   get normalTexture() { return this.normalTarget ? this.normalTarget.texture : null; }
 
   diagnostics() {
@@ -360,7 +380,7 @@ export class SpaceRenderGraph {
       bloomLevels: this.bloomTargets.length,
       fullFramePasses: 2 + (this.options.ao ? 1 : 0),
       bloomPasses: this._bloomActive() ? this.bloomTargets.length : 0,
-      renderTargetCount: 1 + (this.options.ao ? 3 : 0) + this.bloomTargets.length,
+      renderTargetCount: 1 + (this.options.ao ? 3 : 0) + this.bloomTargets.length + 1,
       presentationComposite: true,
       presentationParity: 'canonical-base-ao-off-bloom-neutral',
       bloomKernelParity: false,
@@ -369,6 +389,7 @@ export class SpaceRenderGraph {
         normal: this.options.ao ? 1 : 0,
         ao: this.options.ao ? 3 : 0,
         bloom: this._bloomActive() ? this.bloomTargets.length : 0,
+        distortion: this._distortionLive ? 1 : 0,
         composite: 1,
       },
       temporal: false,
@@ -382,6 +403,7 @@ export class SpaceRenderGraph {
       this.normalTarget,
       this.aoTarget,
       this.aoBlurTarget,
+      this.distortionTarget,
       ...(this.bloomTargets || []),
     ].filter(Boolean);
   }
@@ -448,6 +470,10 @@ export class SpaceRenderGraph {
     u.tBloom1.value = bloomActive ? this.bloomTargets[1].texture : this.blackBloomTexture;
     u.tBloom2.value = bloomActive ? this.bloomTargets[2].texture : this.blackBloomTexture;
     u.tBloom3.value = bloomActive ? this.bloomTargets[3].texture : this.blackBloomTexture;
+    u.tDistortion.value = this._distortionLive && this.distortionTarget
+      ? this.distortionTarget.texture
+      : this.blackBloomTexture;
+    u.uDistortion.value = this._distortionLive ? 1 : 0;
     u.uBloomStrength.value = this._effectiveBloomStrength();
     u.uGrainFrame.value = Math.floor(this.time * POST_GRAIN_FPS);
     this.quad.render(this.renderer, this.compositeMaterial, outputTarget);
@@ -484,13 +510,35 @@ export class SpaceRenderGraph {
       this.bloomTargets.push(hdrTarget(bw,bh,false,0));
       bw = Math.max(1,bw>>1); bh = Math.max(1,bh>>1);
     }
+    const dw = Math.max(1, rw >> 1);
+    const dh = Math.max(1, rh >> 1);
+    this.distortionTarget = ldrTarget(dw, dh, false);
+    this.distortionTarget.texture.name = 'SpaceRenderGraph:Distortion';
+  }
+
+  _renderDistortion(camera) {
+    this._distortionLive = false;
+    const field = this.distortionField;
+    if (!field || !field.hasLive || !this.distortionTarget || !camera) return;
+    const renderer = this.renderer;
+    const priorClearAlpha = renderer.getClearAlpha();
+    renderer.getClearColor(this._rendererClearColorScratch);
+    renderer.setClearColor(this._distortionNeutralClear, 0);
+    try {
+      renderer.setRenderTarget(this.distortionTarget);
+      renderer.clear(true, true, false);
+      renderer.render(field.scene, camera);
+    } finally {
+      renderer.setClearColor(this._rendererClearColorScratch, priorClearAlpha);
+    }
+    this._distortionLive = true;
   }
 
   _disposeTargets() {
-    for (const target of [this.sceneTarget,this.normalTarget,this.aoTarget,this.aoBlurTarget,...(this.bloomTargets||[])]) {
+    for (const target of [this.sceneTarget,this.normalTarget,this.aoTarget,this.aoBlurTarget,this.distortionTarget,...(this.bloomTargets||[])]) {
       if (target) target.dispose();
     }
-    this.sceneTarget = this.normalTarget = this.aoTarget = this.aoBlurTarget = null;
+    this.sceneTarget = this.normalTarget = this.aoTarget = this.aoBlurTarget = this.distortionTarget = null;
     this.bloomTargets = [];
   }
 }

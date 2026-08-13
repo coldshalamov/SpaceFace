@@ -185,10 +185,11 @@ for (const property of [
 ]) assert.equal(precompileSeams.material[property], liveSeams.material[property], property);
 
 const railDiagnostic = runProjectileTrailEmissionSelfCheck().rail;
-assert(railDiagnostic.width < 0.2,
-  `rail diagnostics must report the active instance width, got ${railDiagnostic.width}`);
-assert(railDiagnostic.length > 3,
-  `rail diagnostics must report the active instance length, got ${railDiagnostic.length}`);
+assert.equal(railDiagnostic.mode, 'energy-card');
+assert(railDiagnostic.width < 1.2,
+  `rail diagnostics must report the energy-card width, got ${railDiagnostic.width}`);
+assert(railDiagnostic.length > 12,
+  `rail diagnostics must report the energy-card length, got ${railDiagnostic.length}`);
 
 const scene = new THREE.Scene();
 const pool = surfaces.initTrailStreakPool(scene, 96);

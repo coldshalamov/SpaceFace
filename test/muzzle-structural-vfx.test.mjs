@@ -1,142 +1,126 @@
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import test from 'node:test';
 import * as THREE from 'three';
 
 import { createBus } from '../src/core/eventBus.js';
 import { EXPLOSION_SCHEDULES } from '../src/render/combat/phasedExplosions.js';
 import { vfx } from '../src/render/vfx.js';
+import {
+  FLIGHT_MODE,
+  FLIPBOOK_ROLE,
+  WEAPON_SOCKET_NAME,
+  WeaponVfxPresenter,
+  recipeUsesMuzzleFlipbook,
+  resolveWeaponRecipe,
+} from '../src/render/weapons/index.js';
 
-const source = fs.readFileSync(new URL('../src/render/vfx.js', import.meta.url), 'utf8');
+test('pulse muzzle is a socket-tracked flipbook, not a detached flash sprite', () => {
+  const recipe = resolveWeaponRecipe('wpn_pulse_laser_s');
+  assert.equal(recipe.variant, 'pulse-bolt');
+  assert.equal(recipeUsesMuzzleFlipbook(recipe), true);
+  assert.equal(recipe.muzzle.bore, true);
+  assert.equal(recipe.flight.mode, FLIGHT_MODE.ENERGY_CARD);
 
-function methodBody(name, nextName) {
-  const start = source.indexOf(`  ${name}(`);
-  const end = source.indexOf(`  ${nextName}(`, start + 1);
-  assert(start >= 0 && end > start, `missing VFX method boundary ${name} -> ${nextName}`);
-  return source.slice(start, end);
-}
+  const scene = new THREE.Scene();
+  const socket = { x: 12, y: 0.82, z: 0, forwardX: 1, forwardY: 0, forwardZ: 0 };
+  const presenter = new WeaponVfxPresenter({
+    scene,
+    helpers: {
+      socketWorldPose: (ownerId, name) => {
+        assert.equal(name, WEAPON_SOCKET_NAME);
+        return ownerId === 'ship' ? socket : null;
+      },
+    },
+    toLocalXZ: (x, z, out) => {
+      const target = out || { x: 0, z: 0 };
+      target.x = x;
+      target.z = z;
+      return target;
+    },
+  });
+  presenter.handleFire({
+    weaponId: 'wpn_pulse_laser_s',
+    ownerId: 'ship',
+    origin: { x: 0, z: 0 },
+  }, { x: 0, z: 0 }, 0, recipe.muzzle);
+  presenter.flipbooks.update(0, (slot) => presenter._resolveFlipbookPose(slot));
 
-test('weapon muzzles use directional family geometry instead of the shared circular flash sprite', () => {
-  const families = [
-    ['_spawnMuzzleBallistic', '_spawnMuzzleEnergy'],
-    ['_spawnMuzzleEnergy', '_spawnMuzzleExplosive'],
-    ['_spawnMuzzleExplosive', '_spawnMuzzleBeam'],
-    ['_spawnMuzzleBeam', '_dirAngle'],
-  ];
-  for (const [name, nextName] of families) {
-    const body = methodBody(name, nextName);
-    if (name === '_spawnMuzzleEnergy') {
-      assert(body.includes('_spawnSprite(SPR_FLASH'),
-        `${name} pulse branch uses a directional ignition flash`);
-      assert(body.includes('3.4, base'),
-        `${name} pulse flash is rolled onto the shot axis rather than a circular card`);
-    } else {
-      assert.equal(body.includes('_spawnSprite(SPR_FLASH'), false,
-        `${name} must not reuse the generic circular flash card`);
-    }
-    assert(body.includes('_spawnProjectileTrailStreak'), `${name} retains a directional structural cue`);
-    assert(body.includes('_flashLight'), `${name} retains brief source illumination`);
-  }
+  const muzzle = presenter.flipbooks.slots.filter((slot) => slot.alive && slot.role === FLIPBOOK_ROLE.MUZZLE);
+  const bore = presenter.flipbooks.slots.filter((slot) => slot.alive && slot.role === FLIPBOOK_ROLE.BORE);
+  assert.equal(muzzle.length, 1, 'pulse ignition is a barrel flipbook');
+  assert.equal(bore.length, 1, 'pulse keeps a bore afterglow card on the socket');
+  assert.equal(muzzle[0].followSocket, 1);
+  assert.equal(muzzle[0].ownerId, 'ship');
+  assert.ok(Math.abs(presenter.flipbooks.pos.getX(0) - 12) < 1e-6,
+    'muzzle reads SOCKET_Weapon_Front, not ship center');
 });
 
-test('pulse muzzle ignites a directional cyan slit plus source light', () => {
+test('live pulse fire skips the legacy SPR_FLASH muzzle path', () => {
   const system = Object.create(vfx);
   system._scene = {};
   system._burst = 1;
-  const streaks = [];
+  system._ent = () => ({ id: 'ship', rot: 0 });
+  system._posFrom = () => ({ x: 4, z: 2 });
+  system._dirAngle = () => 0;
+  system._muzzleProfile = () => ({
+    family: 'plasma', variant: 'pulse-bolt', lane: 'energy', sizeMul: 1,
+  });
   const sprites = [];
-  const lights = [];
-  system._spawnProjectileTrailStreak = (...args) => streaks.push(args);
+  const streaks = [];
   system._spawnSprite = (...args) => sprites.push(args);
-  system._flashLight = (...args) => lights.push(args);
-  system._spawnMuzzleEnergy({ x: 4, z: 2 }, 0, {
-    sizeMul: 1,
-    family: 'plasma',
-    variant: 'pulse-bolt',
-    coreColor: '#34cfff',
-    accentColor: '#5ff0ff',
-    lightColor: '#39d0ff',
-  }, 1);
-  assert.equal(sprites.length, 1, 'pulse muzzle uses one directional ignition flash');
-  assert.equal(sprites[0][0], 0, 'pulse ignition uses SPR_FLASH, not combustion');
-  assert.ok(sprites[0][12] >= 3, `pulse flash aspect must be a slit, got ${sprites[0][12]}`);
-  assert.equal(streaks.length, 1);
-  assert.equal(lights.length, 1);
+  system._spawnProjectileTrailStreak = (...args) => streaks.push(args);
+  system._flashLight = () => {};
+  system._weaponPresenter = {
+    handleFire() { return true; },
+  };
+  system._onFire({
+    weaponId: 'wpn_pulse_laser_s',
+    ownerId: 'ship',
+    origin: { x: 4, z: 2 },
+    dir: { x: 1, z: 0 },
+  });
+  assert.equal(sprites.length, 0, 'pulse must not ignite a detached SPR_FLASH beside the nose');
+  assert.equal(streaks.length, 0, 'pulse must not fall back to a trail-streak muzzle');
 });
 
-test('ordinary projectile impacts do not reintroduce the shared circular flash card', () => {
-  const body = methodBody('_onProjectileHit', '_impactParticleCone');
-  assert(body.includes("case 'thermal-splash'"));
-  assert(body.includes("case 'combustion-burst'"));
-  assert(body.includes("case 'ion-sting'"));
-  assert(body.includes('_spawnProjectileTrailStreak'));
-  assert(body.includes('_spawnSprite(SPR_PUFF'));
-});
+test('pulse hull hits keep a cyan spark cone; shield hits write bubble contact instead', () => {
+  const system = Object.create(vfx);
+  system._scene = {};
+  system._burst = 1;
+  system._posFrom = (payload) => payload.pos;
+  system._ent = () => ({ shield: 0 });
+  system._flashLight = () => {};
+  const cones = [];
+  const sprites = [];
+  system._impactParticleCone = (...args) => cones.push(args);
+  system._spawnSprite = (...args) => sprites.push(args);
+  system._spawnProjectileTrailStreak = () => {};
+  system._weaponPresenter = {
+    handleHit(_payload, hitShield) { return { sparks: !hitShield }; },
+  };
+  system._onProjectileHit({
+    weaponId: 'wpn_pulse_laser_s',
+    pos: { x: 10, z: 20 },
+    approach: { x: 1, z: 0 },
+    normal: { x: -1, z: 0 },
+    targetId: 'tgt',
+  });
+  assert.equal(cones.length, 1, 'pulse hull sting keeps a bounded spark cone as secondary');
+  assert.equal(sprites.length, 0, 'pulse hull must not resolve plasma thermal-splash sprites');
 
-test('impact families retain bounded, mechanically distinct release residues', () => {
-  const receipts = [
-    ['kinetic', 'wpn_autocannon_m'],
-    ['flak', 'wpn_flak_turret_s'],
-    ['rail', 'wpn_railgun_m'],
-    ['plasma', 'wpn_plasma_cannon_m'],
-    ['pulse', 'wpn_pulse_laser_s'],
-    ['beam', 'wpn_beam_laser_m'],
-    ['missile', 'wpn_missile_rack_m'],
-  ];
-  const results = new Map();
-  for (const [family, weaponId] of receipts) {
-    const system = Object.create(vfx);
-    system._scene = {};
-    system._burst = 1;
-    system._posFrom = (payload) => payload.pos;
-    system._ent = () => null;
-    system._shieldColor = () => '#55ccff';
-    system._flashLight = () => {};
-    const streaks = [];
-    const sprites = [];
-    const cones = [];
-    system._spawnProjectileTrailStreak = (...args) => streaks.push(args);
-    system._spawnSprite = (...args) => sprites.push(args);
-    system._impactParticleCone = (...args) => cones.push(args);
-    system._onProjectileHit({
-      weaponId,
-      pos: { x: 10, z: 20 },
-      approach: { x: 1, z: 0 },
-      normal: { x: -1, z: 0 },
-    });
-    results.set(family, {
-      streaks,
-      sprites,
-      cones,
-      signature: `${streaks.length}:${sprites.length}:${cones.length}`,
-    });
-  }
-
-  assert.ok(results.get('kinetic').streaks.length >= 5,
-    'kinetic release retains a gouge plus a cool-metal fragment fan');
-  assert.ok(Math.max(...results.get('kinetic').streaks.map((args) => args[3])) >= 0.22);
-  assert.ok(results.get('flak').streaks.length >= 8 && results.get('flak').cones.length === 1,
-    'flak release retains crossed ignition structure plus its bounded full-volume fragment cloud');
-  assert.equal(results.get('flak').sprites.length, 0,
-    'flak proximity ignition must not fall back to any shared sprite card');
-  assert.ok(results.get('rail').streaks.length >= 3,
-    'rail release retains its axial ionized scar and narrow exit cue');
-  assert.ok(Math.max(...results.get('rail').streaks.map((args) => args[3])) >= 0.23);
-  assert.ok(results.get('plasma').sprites.length >= 3,
-    'plasma release retains irregular hot bodies plus a normal-blended cooling smear');
-  assert.ok(Math.max(...results.get('plasma').sprites.map((args) => args[4])) >= 0.54);
-  assert.equal(results.get('pulse').sprites.length, 1,
-    'pulse ion sting uses one directional contact slit, not plasma combustion sprites');
-  assert.ok(results.get('pulse').streaks.length >= 3 && results.get('pulse').cones.length === 1,
-    'pulse release retains an inbound cyan slit, a surface sting, and a bounded spark cone');
-  assert.ok(results.get('beam').streaks.length >= 4,
-    'beam release retains a contact line plus bounded scintillation branches');
-  assert.ok(Math.max(...results.get('beam').streaks.map((args) => args[3])) >= 0.12);
-  assert.ok(results.get('missile').sprites.length >= 5 && results.get('missile').streaks.length >= 4,
-    'missile release retains clustered combustion, two vapor bodies, and casing debris');
-  assert.ok(Math.max(...results.get('missile').sprites.map((args) => args[4])) >= 0.8);
-  assert.equal(new Set([...results.values()].map((result) => result.signature)).size, receipts.length,
-    'family identity remains structural after the white contact flash has faded');
+  cones.length = 0;
+  system._ent = () => ({ shield: 40 });
+  system._weaponPresenter = {
+    handleHit(_payload, hitShield) { return { sparks: !hitShield }; },
+  };
+  system._onProjectileHit({
+    weaponId: 'wpn_pulse_laser_s',
+    pos: { x: 10, z: 20 },
+    approach: { x: 1, z: 0 },
+    normal: { x: -1, z: 0 },
+    targetId: 'tgt',
+  });
+  assert.equal(cones.length, 0, 'shield contact is the bubble, not a spark cone in empty space');
 });
 
 test('reduced destruction prunes cost without replacing or disabling phased identity', () => {
@@ -209,7 +193,11 @@ test('continuous beam muzzle ignition follows the pool start transition instead 
     helpers: {},
   });
   let ignitions = 0;
-  system._spawnMuzzleBeam = () => { ignitions++; };
+  const originalHandleFire = system._weaponPresenter.handleFire.bind(system._weaponPresenter);
+  system._weaponPresenter.handleFire = (...args) => {
+    ignitions++;
+    return originalHandleFire(...args);
+  };
   const receipt = {
     beamKey: 'ship:0', ownerId: owner.id, weaponId: 'wpn_beam_laser_m', hardpointIdx: 0,
     continuous: true, origin: { x: 0, z: 0 }, to: { x: 100, z: 0 }, dir: { x: 1, z: 0 },

@@ -12,7 +12,7 @@ import {
 import { applyRealtimeCanopyPolicy } from './canopyMaterialPolicy.js';
 import { build47aScenarioProp } from './scenarioProps47a.js';
 import { createWormholePipelineMesh } from './spaceBackground.js';
-import { createVfxPrecompileSalvo, eventLightPoolSizeFor } from './vfx.js';
+import { createVfxPrecompileSalvo, visiblePointLightBudget } from './vfx.js';
 import { waitForRockSurfaceLibraryReady } from './rockSurfaceLibrary.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
@@ -90,7 +90,7 @@ async function precompileNow(
     // the first time a weapon flash fires (measured as multi-second freezes on Intel/ANGLE).
     // The vfx event-light pool keeps its lights permanently visible (intensity-only flashes);
     // if it hasn't attached yet, stage stand-ins so the compiled count still matches runtime.
-    const targetPointLights = eventLightPoolSizeFor(options.video);
+    const targetPointLights = visiblePointLightBudget(options.video);
     let visiblePointLights = 0;
     scene.traverseVisible((object) => { if (object.isPointLight) visiblePointLights++; });
     if (visiblePointLights < targetPointLights) {
@@ -794,6 +794,10 @@ function addShipAuxPipelineWarmup(scene, retainedRoot) {
   const base = mesh.geometry.getAttribute('instanceBase');
   if (flash) flash.setX(0, 1);
   if (base) base.setX(0, 0.15);
+  for (let i = 0; i < 4; i++) {
+    const hit = mesh.geometry.getAttribute(`instanceHit${i}`);
+    if (hit && typeof hit.setXYZW === 'function') hit.setXYZW(0, 0, 1, 0, i === 0 ? 1 : 0);
+  }
   retainedRoot.add(mesh);
 }
 

@@ -193,6 +193,18 @@ export function visiblePointLightBudget(_video) {
   return weaponVisiblePointLightBudget(EVENT_LIGHT_POOL_SIZE);
 }
 
+export function activeWeaponRenderGraph(state) {
+  const graph = state && state.render && state.render.renderGraph;
+  return graph && state?.settings?.video?.renderGraph === true ? graph : null;
+}
+
+export function weaponPresenterDepthTexture(_activeGraph) {
+  // SpaceRenderGraph currently exposes only sceneTarget.depthTexture. That texture is attached to
+  // the framebuffer while presenter bolts draw, so sampling it would be undefined feedback. Keep
+  // soft-depth fade disabled until the graph exposes a separate resolved depth texture.
+  return null;
+}
+
 export function richEngineTrailsEnabled(video) {
   if (!video || video.engineTrails === false) return false;
   if (video.particleQuality === 'low' || video.motionReduce) return false;
@@ -721,6 +733,18 @@ export const vfx = {
     this._frameMembrane = createRenderFrameMembrane().reset(ctx.state);
     this._spawnLocalXZ = { x: 0, z: 0 };
     this._combatBeamLocalizer = (x, z, out) => this._toLocalXZ(x, z, out);
+    this._weaponPresenterLocalizer = (x, z, out) => this._toLocalXZ(x, z, out);
+    this._weaponPresenterContext = {
+      state: ctx.state,
+      helpers: ctx.helpers,
+      toLocalXZ: this._weaponPresenterLocalizer,
+      camera: null,
+      interpolationAlpha: 1,
+      viewportHeight: 0,
+      depthTexture: null,
+      depthWidth: 0,
+      depthHeight: 0,
+    };
     this._beamDamageCueNext = new Map();
     this._explosions = new PhasedExplosionLifecycle({ capacity: 24 });
     this._collisionContactTicks = new Map();
@@ -741,8 +765,9 @@ export const vfx = {
     this._entityLocalXZ = { x: 0, z: 0 };
     // Renderer prepareFrame calls this on frameOriginSeq change. Local one-shot effects reproject;
     // camera-prominent ribbon history clears and reseeds to avoid bridging coordinate spaces.
+    this._vfxReprojectFramePort = (dx, dz) => this.reprojectFrame(dx, dz);
     if (ctx.state && ctx.state.render) {
-      ctx.state.render.vfxReprojectFrame = (dx, dz) => this.reprojectFrame(dx, dz);
+      ctx.state.render.vfxReprojectFrame = this._vfxReprojectFramePort;
     }
     this._liveSpriteCount = 0;
     this._activeLightCount = 0;
@@ -885,25 +910,51 @@ export const vfx = {
     // shell instead of on the first ambient impact during exposed flight. The getter stays live
     // because particle-quality changes can replace the point-cloud geometry without changing the
     // renderer/VFX ownership boundary.
+    this._collectVfxGpuResidencyRoots = () => this._vfxOwnerRoots();
     if (ctx.state && ctx.state.render) {
-      ctx.state.render.collectVfxGpuResidencyRoots = () => this._vfxOwnerRoots();
+      ctx.state.render.collectVfxGpuResidencyRoots = this._collectVfxGpuResidencyRoots;
     }
     // Measurement-only VFX owner seam. It snapshots only roots this system owns;
     // event lights remain visible/intensity-driven to avoid shader recompiles.
     this._perfVfxIsolationRestore = null;
+    this._perfVfxIsolationPort = {
+      hideAll: () => this._hidePerfVfxRoots(),
+      restore: () => this._restorePerfVfxRoots(),
+      reassert: () => this._reassertPerfVfxRoots(),
+      inspect: () => ({
+        active: !!this._perfVfxIsolationRestore,
+        hidden: this._perfVfxIsolationRestore ? this._perfVfxIsolationRestore.length : 0,
+        scope: this._perfVfxIsolationRestore ? 'vfx_owner_roots' : null,
+      }),
+    };
     if (ctx.state && ctx.state.render) {
-      ctx.state.render.perfVfxIsolation = {
-        hideAll: () => this._hidePerfVfxRoots(),
-        restore: () => this._restorePerfVfxRoots(),
-        reassert: () => this._reassertPerfVfxRoots(),
-        inspect: () => ({
-          active: !!this._perfVfxIsolationRestore,
-          hidden: this._perfVfxIsolationRestore ? this._perfVfxIsolationRestore.length : 0,
-          scope: this._perfVfxIsolationRestore ? 'vfx_owner_roots' : null,
-        }),
-      };
+      ctx.state.render.perfVfxIsolation = this._perfVfxIsolationPort;
     }
     this._subscribe();
+  },
+
+  destroy() {
+    this._restorePerfVfxRoots();
+    for (const unsubscribe of this._subs || []) {
+      if (typeof unsubscribe === 'function') unsubscribe();
+    }
+    this._subs = [];
+
+    const render = this.state && this.state.render;
+    if (render) {
+      if (render.collectVfxGpuResidencyRoots === this._collectVfxGpuResidencyRoots) {
+        delete render.collectVfxGpuResidencyRoots;
+      }
+      if (render.perfVfxIsolation === this._perfVfxIsolationPort) delete render.perfVfxIsolation;
+      if (render.vfxReprojectFrame === this._vfxReprojectFramePort) delete render.vfxReprojectFrame;
+    }
+
+    if (this._weaponPresenter && typeof this._weaponPresenter.dispose === 'function') {
+      this._weaponPresenter.dispose();
+    }
+    this._weaponPresenter = null;
+    if (this._combatBeams && typeof this._combatBeams.dispose === 'function') this._combatBeams.dispose();
+    this._combatBeams = null;
   },
 
   _vfxOwnerRoots() {
@@ -928,6 +979,10 @@ export const vfx = {
     add(this._masslineReleaseArc && this._masslineReleaseArc.mesh);
     add(this._seamMarkers && this._seamMarkers.mesh);
     add(this._combatBeams && this._combatBeams.group);
+    const presenterRoots = this._weaponPresenter && (
+      this._weaponPresenter.getOwnerRoots?.() || this._weaponPresenter.getMeshes?.()
+    );
+    for (const root of presenterRoots || []) add(root);
     if (this._energy) {
       add(this._energy.ribbon);
       add(this._energy.plumeSystem && this._energy.plumeSystem.group);
@@ -2237,7 +2292,7 @@ export const vfx = {
     this._weaponPresenter = createWeaponVfxPresenter({
       scene: this._scene,
       helpers: this.helpers,
-      toLocalXZ: (x, z, out) => this._toLocalXZ(x, z, out),
+      toLocalXZ: this._weaponPresenterLocalizer,
     });
     const graph = this.state && this.state.render && this.state.render.renderGraph;
     if (graph) this._weaponPresenter.attachGraph(graph);
@@ -8652,19 +8707,21 @@ export const vfx = {
     this._t += dt;
     if (this._weaponPresenter) {
       const render = this.state && this.state.render;
-      const graph = render && render.renderGraph;
-      if (graph) this._weaponPresenter.attachGraph(graph);
-      this._weaponPresenter.update(dt, {
-        state: this.state,
-        helpers: this.helpers,
-        toLocalXZ: (x, z, out) => this._toLocalXZ(x, z, out),
-        camera: render && render.camera,
-        interpolationAlpha: render && render.interpolationAlpha,
-        viewportHeight: render && render.viewport && render.viewport.height,
-        depthTexture: graph && graph.depthTexture,
-        depthWidth: graph && graph.sceneTarget && graph.sceneTarget.width,
-        depthHeight: graph && graph.sceneTarget && graph.sceneTarget.height,
-      });
+      const activeGraph = activeWeaponRenderGraph(this.state);
+      this._weaponPresenter.attachGraph(activeGraph);
+      const context = this._weaponPresenterContext;
+      context.state = this.state;
+      context.helpers = this.helpers;
+      context.camera = render && render.camera;
+      context.interpolationAlpha = render && render.interpolationAlpha;
+      context.viewportHeight = render && render.viewport && render.viewport.height;
+      // The graph's depth texture is attached to the same sceneTarget that draws these bolts.
+      // Sampling it during that draw is framebuffer feedback, so keep ordinary depth testing and
+      // disable the optional soft-depth fade until a separately resolved depth source exists.
+      context.depthTexture = weaponPresenterDepthTexture(activeGraph);
+      context.depthWidth = 0;
+      context.depthHeight = 0;
+      this._weaponPresenter.update(dt, context);
     }
     const trailScroll = (this._t * 0.35) % 1;
     if (this._particleMat) {

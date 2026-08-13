@@ -4,6 +4,7 @@ import test from 'node:test';
 import * as THREE from 'three';
 
 import { vfx } from '../src/render/vfx.js';
+import { createDynamicBufferCoordinator } from '../src/render/dynamicBufferRanges.js';
 import {
   collectStartupTextures,
   prepareStartupGpuResidency,
@@ -65,6 +66,14 @@ test('live VFX roots join the loading-stage texture upload instead of waiting fo
   const textures = collectStartupTextures(roots);
   assert.ok(roots.length > 0, 'the live pooled VFX owner must publish its startup roots');
   assert.ok(textures.length > 0, 'the live VFX roots must expose first-use textures');
+  assert.ok(
+    roots.some((root) => root.name === 'SF_WeaponFlipbooks'),
+    'the live weapon presenter must publish its atlas-bearing flipbook pool',
+  );
+  assert.ok(
+    textures.some((texture) => texture.name === 'SF_WeaponFlipbookAtlas'),
+    'the weapon flipbook atlas must be uploaded during the loading-stage residency pass',
+  );
 
   const uploaded = [];
   const result = await prepareStartupGpuResidency({
@@ -75,6 +84,56 @@ test('live VFX roots join the loading-stage texture upload instead of waiting fo
   assert.match(RENDERER_SOURCE,
     /collectVfxGpuResidencyRoots[\s\S]{0,420}prepareStartupGpuResidency\(renderer, \[\.\.\.roots, \.\.\.vfxRoots\]/,
     'the loading-stage renderer must include the published live VFX roots in its upload batch');
+  system.destroy();
+  assert.equal(state.render.collectVfxGpuResidencyRoots, undefined);
+});
+
+test('VFX teardown unsubscribes and disposes the weapon presenter roots', () => {
+  const state = {
+    playerId: 1,
+    entities: new Map(),
+    entityList: [],
+    settings: { video: { particleQuality: 'high', engineTrails: true, bloom: true } },
+    render: { scene: new THREE.Scene() },
+    content: {},
+  };
+  let subscriptions = 0;
+  let unsubscriptions = 0;
+  const bus = {
+    on() {
+      subscriptions += 1;
+      return () => { unsubscriptions += 1; };
+    },
+  };
+  const dynamicBuffers = createDynamicBufferCoordinator(state.render.scene);
+  const system = Object.create(vfx);
+  system.init({ state, bus, helpers: {} });
+  const presenter = system._weaponPresenter;
+  assert.ok(presenter, 'the live renderer route must construct the weapon presenter');
+  assert.equal(typeof presenter.dispose, 'function');
+  assert.equal(typeof presenter.getOwnerRoots, 'function');
+  const presenterRoots = presenter.getOwnerRoots();
+  const sceneAttachedRoots = presenterRoots.filter((root) => root !== presenter.distortion.scene);
+  const presenterOwnerIds = ['weapon-energy-bolts', 'weapon-flipbooks', 'weapon-hull-scorch'];
+  assert.ok(presenterRoots.length > 0);
+  assert.ok(sceneAttachedRoots.every((root) => root.parent), 'presenter scene roots start attached');
+  for (const id of presenterOwnerIds) {
+    assert.ok(dynamicBuffers.getDiagnostics().owners.some((owner) => owner.id === id),
+      `live VFX must register ${id}`);
+  }
+
+  system.destroy();
+
+  assert.equal(unsubscriptions, subscriptions, 'every VFX event subscription must be released');
+  for (const id of presenterOwnerIds) {
+    assert.ok(!dynamicBuffers.getDiagnostics().owners.some((owner) => owner.id === id),
+      `teardown must unregister ${id}`);
+  }
+  assert.ok(sceneAttachedRoots.every((root) => !root.parent), 'presenter scene roots must detach on teardown');
+  assert.equal(system._weaponPresenter, null);
+  assert.equal(state.render.collectVfxGpuResidencyRoots, undefined);
+  assert.equal(state.render.perfVfxIsolation, undefined);
+  assert.equal(state.render.vfxReprojectFrame, undefined);
 });
 
 test('startup GPU residency reports one blocking slice per attempted upload with preserved order and yields', async () => {

@@ -219,7 +219,7 @@ export class PersistentCombatBeamPool {
     return true;
   }
 
-  update(timeS, toLocal, accessibility = null) {
+  update(timeS, toLocal, accessibility = null, cameraFloor = 0) {
     const localize = typeof toLocal === 'function' ? toLocal : identityLocal;
     const now = finite(timeS, 0);
     const reducedFlash = !!(accessibility && (
@@ -246,7 +246,10 @@ export class PersistentCombatBeamPool {
       // Preserve a stable core through the normal route's video downscale as well as fixed stills.
       // The beam remains a restrained two-layer line, but the prior 0.48 width visually vanished
       // in consecutive 720p evidence frames despite the pool staying live.
-      const width = (reducedFlash ? 0.36 : 0.52) * entry.widthMul;
+      const width = Math.max(
+        (reducedFlash ? 0.36 : 0.52) * entry.widthMul,
+        cameraFloor || 0,
+      );
       this._writeSlotQuad(this._coreBatch, entry.slot, ax, az, bx, bz, entry.y, width, length);
       this._writeSlotQuad(this._haloBatch, entry.slot, ax, az, bx, bz, entry.y - 0.01, width * 2.8, length);
       matricesChanged = true;

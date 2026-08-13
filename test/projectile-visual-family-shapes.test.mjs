@@ -1,8 +1,18 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import * as THREE from 'three';
 
 import { createVisualFactory, invalidateVisualFactoryCaches } from '../src/render/visualFactory.js';
+import {
+  CHASE_CAMERA_DISTANCE,
+  CHASE_CAMERA_FOV_DEG,
+  CHASE_CAMERA_VIEWPORT_HEIGHT,
+  DEFAULT_BOLT_MIN_PIXELS,
+  FLIGHT_MODE,
+  projectileSkipsVisualFactoryMesh,
+  resolveFloorWidth,
+  resolveWeaponRecipe,
+  worldSizeForPixels,
+} from '../src/render/weapons/index.js';
 
 function buildProjectile(weaponId, damageType = 'kinetic', kind = 'bullet') {
   return createVisualFactory().build({
@@ -22,63 +32,60 @@ function geometryTypes(root) {
   return types;
 }
 
-test('plasma and flak bodies are directional shapes, not glowing balls', () => {
+test('energy families skip tube meshes and use the energy-card presenter', () => {
+  const pulse = buildProjectile('wpn_pulse_laser_s', 'energy');
   const plasma = buildProjectile('wpn_plasma_cannon_m', 'thermal');
   const flak = buildProjectile('wpn_flak_turret_s', 'kinetic');
-  assert.ok(!geometryTypes(plasma).includes('SphereGeometry'));
-  assert.ok(!geometryTypes(flak).includes('SphereGeometry'));
-  assert.ok(geometryTypes(plasma).includes('CapsuleGeometry'));
-  assert.ok(geometryTypes(flak).includes('CapsuleGeometry'));
+  const emp = buildProjectile('wpn_emp_disruptor_m', 'emp');
+  for (const mesh of [pulse, plasma, flak, emp]) {
+    assert.equal(mesh.userData.weaponPresenter, 'energy-card');
+    assert.equal(geometryTypes(mesh).includes('CylinderGeometry'), false);
+    assert.equal(geometryTypes(mesh).includes('CapsuleGeometry'), false);
+    assert.equal(geometryTypes(mesh).includes('SphereGeometry'), false);
+  }
+  assert.equal(projectileSkipsVisualFactoryMesh({
+    type: 'projectile',
+    data: { weaponId: 'wpn_pulse_laser_s', damageType: 'energy' },
+  }), true);
+  assert.equal(resolveWeaponRecipe('wpn_pulse_laser_s').flight.mode, FLIGHT_MODE.ENERGY_CARD);
 });
 
-test('missile exhaust is attached directional geometry rather than halo beads', () => {
+test('missile exhaust remains attached directional geometry rather than an energy card', () => {
   const missile = buildProjectile('wpn_missile_rack_m', 'explosive', 'missile');
   let sprites = 0;
   missile.traverse((object) => { if (object.isSprite) sprites++; });
   assert.equal(sprites, 0);
   assert.ok(missile.getObjectByName('ProjectileMissileExhaust'));
+  assert.equal(resolveWeaponRecipe('wpn_missile_rack_m').flight.mode, FLIGHT_MODE.MESH);
 });
 
-test('EMP has a distinct forked disruption body', () => {
-  const emp = buildProjectile('wpn_emp_disruptor_m', 'emp');
-  assert.ok(emp.getObjectByName('ProjectileEmpSpine'));
-  assert.ok(emp.getObjectByName('ProjectileEmpFork'));
-});
-
-test('pulse laser is one tapered directional packet without a capsule bead', () => {
-  const pulse = buildProjectile('wpn_pulse_laser_s', 'energy');
-  assert.equal(geometryTypes(pulse).includes('SphereGeometry'), false);
-  assert.equal(geometryTypes(pulse).includes('CapsuleGeometry'), false,
-    'rounded capsule ends merge with the sheath as a detached glowing bead at the game camera');
-  const bounds = new THREE.Box3().setFromObject(pulse);
-  const size = bounds.getSize(new THREE.Vector3());
-  assert(size.x > size.z * 4,
-    `pulse silhouette must stay a pointed packet, not a ball: ${size.x}/${size.z}`);
-  assert(size.z > 0.7,
-    `starter pulse must read as a bolt at chase-camera distance, not a one-pixel tube: ${size.z}`);
-  assert(size.x > 4.5 && size.x < 7.2,
-    `starter pulse stays a compact packet shorter than a rail needle: ${size.x}`);
-  // R1 chase camera: 144 WU, 50° FOV, 1600×1000. The old needle was ~1.7 px across and read as a
-  // tube/dot. A readable energy packet needs several pixels of width without becoming a ball.
-  const viewHeight = 2 * 144 * Math.tan((50 * Math.PI / 180) / 2);
-  const widthPx = size.z / viewHeight * 1000;
-  assert(widthPx > 6 && widthPx < 40,
-    `pulse packet width at chase camera must read as a bolt, got ${widthPx.toFixed(1)} px`);
-  const core = pulse.getObjectByName('ProjectilePulseCore');
-  const sheath = pulse.getObjectByName('ProjectilePulseSheath');
-  assert.ok(core?.material?.uniforms?.uColorA?.value,
-    'pulse core must expose its authored energy color for acceptance checks');
-  assert.notEqual(core.material.uniforms.uColorA.value.getHexString(), 'ffffff',
-    'a pure-white HDR core collapses the starter pulse into a generic bloom dash at the game camera');
-  const pulseHsl = { h: 0, s: 0, l: 0 };
-  core.material.uniforms.uColorA.value.getHSL(pulseHsl);
-  assert.ok(pulseHsl.l < 0.72,
-    `starter pulse core must be a saturated cyan energy color, not near-white: lightness ${pulseHsl.l}`);
-  assert.ok(core.material.uniforms.uIntensity.value > 1.0
-    && core.material.uniforms.uIntensity.value < 2.5,
-    `starter pulse core intensity must read at camera without blooming to white: ${core.material.uniforms.uIntensity.value}`);
-  assert.ok(sheath?.material?.uniforms?.uIntensity?.value < 1.0,
-    `starter pulse sheath must remain subordinate to the packet silhouette: ${sheath?.material?.uniforms?.uIntensity?.value}`);
+test('pulse energy card has a chase-camera pixel floor and a saturated cyan recipe', () => {
+  const recipe = resolveWeaponRecipe('wpn_pulse_laser_s');
+  assert.equal(recipe.variant, 'pulse-bolt');
+  assert.equal(recipe.flight.coreColor, '#34cfff');
+  assert.notEqual(recipe.flight.coreColor.toLowerCase(), '#ffffff');
+  assert.ok(recipe.flight.intensity > 1 && recipe.flight.intensity < 3.2);
+  assert.equal(recipe.muzzle.flipbook, true);
+  assert.equal(recipe.shield.contact, true);
+  assert.equal(recipe.hull.scorch, true);
+  const floor = worldSizeForPixels(
+    CHASE_CAMERA_DISTANCE,
+    DEFAULT_BOLT_MIN_PIXELS,
+    CHASE_CAMERA_FOV_DEG,
+    CHASE_CAMERA_VIEWPORT_HEIGHT,
+  );
+  assert.ok(floor > 1.4 && floor < 2.0, `12px at chase camera is a readable bolt width, got ${floor}`);
+  const width = resolveFloorWidth(
+    recipe.flight.width,
+    CHASE_CAMERA_DISTANCE,
+    recipe.flight.pixelFloor,
+    CHASE_CAMERA_FOV_DEG,
+    CHASE_CAMERA_VIEWPORT_HEIGHT,
+  );
+  const viewHeight = 2 * CHASE_CAMERA_DISTANCE * Math.tan((CHASE_CAMERA_FOV_DEG * Math.PI / 180) / 2);
+  const widthPx = width / viewHeight * CHASE_CAMERA_VIEWPORT_HEIGHT;
+  assert.ok(widthPx >= 12 && widthPx < 40, `pulse card width at chase camera, got ${widthPx.toFixed(1)} px`);
+  assert.ok(recipe.flight.dashLength > 6 && recipe.flight.dashLength < 14);
 });
 
 test.after(() => invalidateVisualFactoryCaches());

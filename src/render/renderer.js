@@ -95,6 +95,8 @@ import { updateShipPitchPresentation } from './shipPitchPresentation.js';
 import { createLivingHullPresentation } from './livingHullPresentation.js';
 import { configurePlanarAdditiveMaterial } from './planarAdditivePolicy.js';
 import { createRenderFrameMembrane } from './frameCoordinates.js';
+import { projectileSkipsVisualFactoryMesh } from './weapons/recipes.js';
+import { readShieldContacts, SHIELD_HIT_SLOTS } from './weapons/shieldContacts.js';
 import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
 import { resolveSectorVisualProfile } from '../data/sectorVisualProfiles.js';
 import { SHIPS } from '../data/ships.js';
@@ -175,6 +177,8 @@ const SHIP_AUX_SHIELD_MATRIX = 0;
 const SHIP_AUX_SHIELD_COLOR = 1;
 const SHIP_AUX_SHIELD_FLASH = 2;
 const SHIP_AUX_SHIELD_BASE = 3;
+const SHIP_AUX_SHIELD_HIT0 = 4;
+const SHIELD_HIT_SCRATCH = new Float32Array(SHIELD_HIT_SLOTS * 4);
 const SHIP_AUX_NAV_MATRIX = 0;
 const SHIP_AUX_NAV_COLOR = 1;
 const SHIP_AUX_NAV_GEOMETRY = new THREE.SphereGeometry(0.025, 8, 6);
@@ -209,6 +213,7 @@ export function entityVisualCullRadius(entity, mesh = null) {
 
 function enqueueMeshBuildCandidate(entity, meshes, queuedIds, queue) {
   if (!entity || entity._noMesh || meshes.has(entity.id) || queuedIds.has(entity.id)) return;
+  if (entity.type === 'projectile' && projectileSkipsVisualFactoryMesh(entity)) return;
   queue.push(entity.id);
   queuedIds.add(entity.id);
 }
@@ -465,11 +470,19 @@ export function syncContactShadowPool(pool, frameOrRecords, meshes) {
 const SHIELD_POOL_VERT = /* glsl */`
   attribute float instanceFlash;
   attribute float instanceBase;
+  attribute vec4 instanceHit0;
+  attribute vec4 instanceHit1;
+  attribute vec4 instanceHit2;
+  attribute vec4 instanceHit3;
   varying vec3 vNormal;
   varying vec3 vWorldPos;
   varying vec3 vInstanceColor;
   varying float vFlash;
   varying float vBase;
+  varying vec4 vHit0;
+  varying vec4 vHit1;
+  varying vec4 vHit2;
+  varying vec4 vHit3;
   void main() {
     mat4 instanceModel = modelMatrix * instanceMatrix;
     vec4 wp = instanceModel * vec4(position, 1.0);
@@ -478,6 +491,10 @@ const SHIELD_POOL_VERT = /* glsl */`
     vInstanceColor = instanceColor;
     vFlash = instanceFlash;
     vBase = instanceBase;
+    vHit0 = instanceHit0;
+    vHit1 = instanceHit1;
+    vHit2 = instanceHit2;
+    vHit3 = instanceHit3;
     gl_Position = projectionMatrix * viewMatrix * wp;
   }
 `;
@@ -488,12 +505,27 @@ const SHIELD_POOL_FRAG = /* glsl */`
   varying vec3 vInstanceColor;
   varying float vFlash;
   varying float vBase;
+  varying vec4 vHit0;
+  varying vec4 vHit1;
+  varying vec4 vHit2;
+  varying vec4 vHit3;
+  float contactFlare(vec3 N, vec4 hit) {
+    if (hit.w <= 0.001) return 0.0;
+    vec3 dir = hit.xyz;
+    float len = length(dir);
+    if (len < 1e-4) return 0.0;
+    dir /= len;
+    float lobe = pow(max(0.0, dot(N, dir)), 8.0);
+    return lobe * hit.w;
+  }
   void main() {
     vec3 N = normalize(vNormal);
     vec3 V = normalize(cameraPosition - vWorldPos);
     float fres = pow(1.0 - max(0.0, dot(N, V)), 2.5);
-    float alpha = clamp(vBase * fres + vFlash, 0.0, 1.0);
-    vec3 col = mix(vInstanceColor, vec3(1.0), vFlash * 0.7);
+    float contact = contactFlare(N, vHit0) + contactFlare(N, vHit1)
+      + contactFlare(N, vHit2) + contactFlare(N, vHit3);
+    float alpha = clamp(vBase * fres + vFlash + contact * 0.85, 0.0, 1.0);
+    vec3 col = mix(vInstanceColor, vec3(1.0), min(1.0, vFlash * 0.7 + contact * 0.55));
     gl_FragColor = vec4(col, alpha * (0.45 + 0.55 * fres));
   }
 `;
@@ -539,15 +571,22 @@ function createNavLightAuxMaterial() {
 }
 
 function registerShieldAuxDynamicOwner(scene, mesh) {
+  const attributes = [
+    { name: 'matrix', attribute: mesh.instanceMatrix },
+    { name: 'color', attribute: mesh.instanceColor },
+    { name: 'flash', attribute: mesh.geometry.getAttribute('instanceFlash') },
+    { name: 'base', attribute: mesh.geometry.getAttribute('instanceBase') },
+  ];
+  for (let i = 0; i < SHIELD_HIT_SLOTS; i++) {
+    attributes.push({
+      name: `hit${i}`,
+      attribute: mesh.geometry.getAttribute(`instanceHit${i}`),
+    });
+  }
   return registerDynamicBufferOwner(scene, {
     id: `ship-aux-shield-${mesh.id}`,
     mesh,
-    attributes: [
-      { name: 'matrix', attribute: mesh.instanceMatrix },
-      { name: 'color', attribute: mesh.instanceColor },
-      { name: 'flash', attribute: mesh.geometry.getAttribute('instanceFlash') },
-      { name: 'base', attribute: mesh.geometry.getAttribute('instanceBase') },
-    ],
+    attributes,
   });
 }
 
@@ -569,6 +608,12 @@ function ensureShieldAuxCapacity(pool, desired, scene, preserveCount = 0) {
   const geometry = shieldBubbleGeometry().clone();
   geometry.setAttribute('instanceFlash', new THREE.InstancedBufferAttribute(new Float32Array(nextCapacity), 1).setUsage(THREE.DynamicDrawUsage));
   geometry.setAttribute('instanceBase', new THREE.InstancedBufferAttribute(new Float32Array(nextCapacity), 1).setUsage(THREE.DynamicDrawUsage));
+  for (let i = 0; i < SHIELD_HIT_SLOTS; i++) {
+    geometry.setAttribute(
+      `instanceHit${i}`,
+      new THREE.InstancedBufferAttribute(new Float32Array(nextCapacity * 4), 4).setUsage(THREE.DynamicDrawUsage),
+    );
+  }
   const mesh = new THREE.InstancedMesh(geometry, pool.material, nextCapacity);
   mesh.name = 'ShipShieldBubble_Pool';
   mesh.count = 0;
@@ -590,6 +635,14 @@ function ensureShieldAuxCapacity(pool, desired, scene, preserveCount = 0) {
     const previousBase = previous.geometry.getAttribute('instanceBase');
     if (previousFlash) geometry.getAttribute('instanceFlash').array.set(previousFlash.array.subarray(0, preserveCount));
     if (previousBase) geometry.getAttribute('instanceBase').array.set(previousBase.array.subarray(0, preserveCount));
+    for (let i = 0; i < SHIELD_HIT_SLOTS; i++) {
+      const previousHit = previous.geometry.getAttribute(`instanceHit${i}`);
+      if (previousHit) {
+        geometry.getAttribute(`instanceHit${i}`).array.set(
+          previousHit.array.subarray(0, preserveCount * 4),
+        );
+      }
+    }
   }
   let dynamicBufferOwner = null;
   try {
@@ -704,6 +757,17 @@ export function syncShipAuxPools(pool, frameOrEntities, meshes) {
           baseAttr, shieldCount, uniforms && uniforms.uBase ? uniforms.uBase.value || 0.22 : 0.22,
           pool.shield.dynamicBufferOwner, SHIP_AUX_SHIELD_BASE,
         )) shieldBaseDirty = true;
+        const hits = readShieldContacts(entity.id, SHIELD_HIT_SCRATCH) || SHIELD_HIT_SCRATCH;
+        if (!hits) SHIELD_HIT_SCRATCH.fill(0);
+        for (let hit = 0; hit < SHIELD_HIT_SLOTS; hit++) {
+          const hitAttr = shieldMesh.geometry.getAttribute(`instanceHit${hit}`);
+          const o = hit * 4;
+          if (writeVec4AttributeIfChanged(
+            hitAttr, shieldCount,
+            hits[o], hits[o + 1], hits[o + 2], hits[o + 3],
+            pool.shield.dynamicBufferOwner, SHIP_AUX_SHIELD_HIT0 + hit,
+          )) shieldBaseDirty = true;
+        }
         shieldCount++;
       }
     }
@@ -800,6 +864,20 @@ function writeScalarAttributeIfChanged(attribute, index, value, dynamicBufferOwn
   assertDynamicBufferOwnerWritable(dynamicBufferOwner);
   markDynamicBufferItems(dynamicBufferOwner, bindingIndex, index);
   attribute.setX(index, value);
+  return true;
+}
+
+function writeVec4AttributeIfChanged(attribute, index, x, y, z, w, dynamicBufferOwner = null, bindingIndex = 0, epsilon = 1e-5) {
+  if (!attribute || !attribute.array) return false;
+  const offset = index * 4;
+  const arr = attribute.array;
+  if (Math.abs(arr[offset] - x) <= epsilon
+      && Math.abs(arr[offset + 1] - y) <= epsilon
+      && Math.abs(arr[offset + 2] - z) <= epsilon
+      && Math.abs(arr[offset + 3] - w) <= epsilon) return false;
+  assertDynamicBufferOwnerWritable(dynamicBufferOwner);
+  markDynamicBufferItems(dynamicBufferOwner, bindingIndex, index);
+  attribute.setXYZW(index, x, y, z, w);
   return true;
 }
 
@@ -2387,6 +2465,7 @@ export const render = {
     state.render.scene = scene;
     state.render.renderer = renderer;
     state.render.camera = cam.obj;
+    state.render.meshes = this._meshes;
     state.render.cameraCtrl = cam;   // controller (addTrauma/pushZoom) — exposed for feel.js / ui
     state.render.vf = vf;   // exposed for the dev-only ship turntable preview (shipPreview.js)
     state.render.warmPostProcess = () => {
@@ -4181,6 +4260,7 @@ export const render = {
     serviceRenderMeshResidency(this, frameDt);
     updateShipPitchPresentation(this.state, frameDt);
     this.syncEntityViews(alpha);
+    if (this.state && this.state.render) this.state.render.interpolationAlpha = alpha;
     this.cam.follow(frameDt);
     syncContactShadowPool(this._contactShadowPool, this._entityFrame);
     syncShipAuxPools(this._shipAuxPool, this._entityFrame);
@@ -4702,6 +4782,7 @@ export const render = {
     // the projected-width thresholds in spec §12.4). Drawing-buffer size carries devicePixelRatio.
     const dpr = this.renderer.getPixelRatio() || 1;
     this.viewport = { width: drawSize.x / dpr, height: drawSize.y / dpr };
+    if (this.state && this.state.render) this.state.render.viewport = this.viewport;
     return drawSize;
   },
 

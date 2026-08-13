@@ -23,7 +23,7 @@ try {
     const {
       createSeamMarkerPipelineMesh,
       createVfxPrecompileSalvo,
-      eventLightPoolSizeFor,
+      visiblePointLightBudget,
     } = await import('/src/render/vfx.js');
     const {
       getPrecompileKeepAliveDiagnostics,
@@ -63,7 +63,7 @@ try {
     });
     const programsAfterPrecompile = renderer.info.programs.length;
     const retainedPipelines = getPrecompileKeepAliveDiagnostics(renderer).retainedPipelines;
-    for (let i = 0; i < eventLightPoolSizeFor({ particleQuality: 'high' }); i++) {
+    for (let i = 0; i < visiblePointLightBudget({ particleQuality: 'high' }); i++) {
       const light = new THREE.PointLight(0xffffff, 0, 400, 2);
       light.name = `SF_Test_Live_EventLight_${i}`;
       scene.add(light);
