@@ -1,0 +1,23 @@
+{
+  "schema": "spaceface.advancedModelTechniqueLedger.v1",
+  "assetId": "SF_ASHLINE_RIG_V1",
+  "shipId": "ashline_rig",
+  "candidateHash": "A71DED9EFBF0C36C7C7EE7E0F257F41529AF1A93D6A3BBDD06690FC1DC41A98A",
+  "exportGlb": "assets/ships/fleet_player_bodies_v1/ashline_rig/source/wholeships/ashline_rig_production_v1_lod0.glb",
+  "class": "npc_hostile",
+  "clayStillReadsAsPrimitives": true,
+  "independentReview": "revise",
+  "promoted": false,
+  "reasonNotClosed": "Five counted cycles. Pirate identity holds: patched hull, winglets, twin drives, front and rear guns. Clay still loft plus kit. Not Hitch-plus. Live files not replaced.",
+  "rows": [
+    {"id": "MTX-02", "state": "blocked", "still": "evidence/ashline_rig/cycles/cycle_05/clay_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Hull is still a lofted bar."},
+    {"id": "MTX-06", "state": "blocked", "still": "evidence/ashline_rig/cycles/cycle_05/starboard.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Winglets still cards."},
+    {"id": "MTX-08", "state": "blocked", "still": "evidence/ashline_rig/cycles/cycle_05/drive_rear.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Twin bells still bottle family."},
+    {"id": "MTX-13", "state": "implemented", "still": "evidence/ashline_rig/cycles/cycle_05/grazing_close.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Scale applied before bevel."},
+    {"id": "MTX-16", "state": "implemented", "still": "evidence/ashline_rig/cycles/cycle_05/material_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Unique UV after join."},
+    {"id": "MTX-32", "state": "implemented", "still": "evidence/ashline_rig/cycles/cycle_05/three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Unique patched-rig maps."},
+    {"id": "MTX-46", "state": "blocked", "still": "evidence/ashline_rig/cycles/cycle_05/clay_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Clay still primitives."},
+    {"id": "MTX-50", "state": "implemented", "still": "source/wholeships/ashline_rig_production_v1_lod0.glb", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Sockets and packed maps."},
+    {"id": "MTX-65", "state": "implemented", "still": "evidence/ashline_rig/cycles/cycle_05/three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Pirate massing: winglets, twin drives, front/rear guns. Not lode, not Hitch."}
+  ]
+}
