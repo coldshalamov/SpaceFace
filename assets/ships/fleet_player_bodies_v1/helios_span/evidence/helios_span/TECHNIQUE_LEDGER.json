@@ -2,22 +2,22 @@
   "schema": "spaceface.advancedModelTechniqueLedger.v1",
   "assetId": "SF_HELIOS_SPAN_V1",
   "shipId": "helios_span",
-  "candidateHash": "D788E8AC51CF7506CBD6434F9E7F41754C4D17DEDDDA9213FB25C040FAB31A81",
+  "candidateHash": "5A10FC2DBACFF09F741C4C3300C42E28D4B43E3242DC72F138BB9AD40CF3E63F",
   "exportGlb": "assets/ships/fleet_player_bodies_v1/helios_span/source/wholeships/helios_span_production_v1_lod0.glb",
   "class": "npc_civilian",
   "clayStillReadsAsPrimitives": true,
   "independentReview": "revise",
   "promoted": false,
-  "reasonNotClosed": "Five counted cycles. Hauler identity holds: pale barge, twin drives, raised bridge, two pods. Clay still loft plus kit. Not Hitch-plus. Live files not replaced.",
+  "reasonNotClosed": "Ten counted cycles. Hauler with pale barge, twin drives, raised bridge, two pods. Clay still loft plus kit. Not Hitch-plus. Live files not replaced.",
   "rows": [
-    {"id": "MTX-02", "state": "blocked", "still": "evidence/helios_span/cycles/cycle_05/clay_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Hull is still a lofted cream barge."},
-    {"id": "MTX-07", "state": "blocked", "still": "evidence/helios_span/cycles/cycle_05/three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Bridge still a framed brick."},
-    {"id": "MTX-08", "state": "blocked", "still": "evidence/helios_span/cycles/cycle_05/rear.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Twin bells still bottle family."},
-    {"id": "MTX-13", "state": "implemented", "still": "evidence/helios_span/cycles/cycle_05/grazing_close.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Scale applied before bevel."},
-    {"id": "MTX-16", "state": "implemented", "still": "evidence/helios_span/cycles/cycle_05/material_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Unique UV after join."},
-    {"id": "MTX-32", "state": "implemented", "still": "evidence/helios_span/cycles/cycle_05/three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Unique pale hauler maps."},
-    {"id": "MTX-46", "state": "blocked", "still": "evidence/helios_span/cycles/cycle_05/clay_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Clay still primitives."},
+    {"id": "MTX-02", "state": "blocked", "still": "evidence/helios_span/cycles/cycle_10/clay_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Hull is still a lofted cream barge."},
+    {"id": "MTX-07", "state": "blocked", "still": "evidence/helios_span/cycles/cycle_10/three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Bridge still a framed brick."},
+    {"id": "MTX-08", "state": "blocked", "still": "evidence/helios_span/cycles/cycle_10/rear.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Twin bells still bottle family."},
+    {"id": "MTX-13", "state": "implemented", "still": "evidence/helios_span/cycles/cycle_10/grazing_close.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Scale applied before bevel."},
+    {"id": "MTX-16", "state": "implemented", "still": "evidence/helios_span/cycles/cycle_10/material_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Unique UV after join."},
+    {"id": "MTX-32", "state": "implemented", "still": "evidence/helios_span/cycles/cycle_10/three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Unique pale hauler maps."},
+    {"id": "MTX-46", "state": "blocked", "still": "evidence/helios_span/cycles/cycle_10/clay_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Clay still primitives."},
     {"id": "MTX-50", "state": "implemented", "still": "source/wholeships/helios_span_production_v1_lod0.glb", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Sockets and packed maps."},
-    {"id": "MTX-65", "state": "implemented", "still": "evidence/helios_span/cycles/cycle_05/three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Hauler massing: pale, twin drives, raised bridge, two pods. Not Cradle, not Hitch."}
+    {"id": "MTX-65", "state": "implemented", "still": "evidence/helios_span/cycles/cycle_10/three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Hauler massing: pale, twin drives, raised bridge, two pods. Not Cradle, not Hitch."}
   ]
 }
