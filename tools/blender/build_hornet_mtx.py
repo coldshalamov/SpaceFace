@@ -664,25 +664,28 @@ def build_lod(lod, mats):
         "lod": f"lod{lod}", "slot": "hull", "category": "wholeships",
         "forward": "+X", "embeddedPlume": False,
     }
-    # C17: interceptor again. Loft runs needle → greenhouse → glove → mid
-    # trunk. Compact chamfered engine bay only at the tail — not a 6 m brick.
-    # Transom face is inset so the drive sits in a well with wall thickness.
+    # C25: needle is a HARD-CHINE folded plate (8-point diamond), not a
+    # 24-sided loft sausage. Body is a separate densified loft, then union.
+    needle = loft_from_rings("Needle", [
+        diamond_ring(half, 0, 0.02, 0.07, 0.05),
+        diamond_ring(7.15, 0, 0.04, 0.14, 0.10),
+        diamond_ring(6.05, 0, 0.08, 0.28, 0.22),
+        diamond_ring(5.05, 0, 0.12, 0.40, 0.36),
+        diamond_ring(4.20, 0, 0.16, 0.50, 0.48),
+    ], armor, collection, 0.018)
     fwd_rings = [
-        densify_ring(station_ring(half, 0, 0.02, 0.07, 0.05, flat=0.00, box=0.00, keel=1.00)),
-        densify_ring(station_ring(7.05, 0, 0.04, 0.16, 0.12, flat=0.04, box=0.04, keel=1.00)),
-        densify_ring(station_ring(5.85, 0, 0.10, 0.36, 0.30, flat=0.28, box=0.18, keel=0.90)),
-        densify_ring(station_ring(4.70, 0, 0.16, 0.46, 0.48, flat=0.72, box=0.28, keel=0.78)),
-        densify_ring(station_ring(3.70, 0, 0.16, 0.58, 0.58, flat=0.82, box=0.42, keel=0.70)),
-        densify_ring(station_ring(3.10, 0, 0.13, 0.72, 0.54, flat=0.60, box=0.55, keel=0.67)),
-        densify_ring(station_ring(2.50, 0, 0.10, 0.88, 0.50, flat=0.40, box=0.68, keel=0.64)),
-        densify_ring(station_ring(1.85, 0, 0.09, 1.00, 0.50, flat=0.30, box=0.78, keel=0.58)),
-        densify_ring(station_ring(1.20, 0, 0.08, 1.12, 0.50, flat=0.22, box=0.88, keel=0.52)),
-        densify_ring(station_ring(-0.20, 0, 0.10, 1.08, 0.54, flat=0.20, box=0.94, keel=0.40)),
-        densify_ring(station_ring(-1.70, 0, 0.12, 1.00, 0.58, flat=0.22, box=0.96, keel=0.32)),
-        densify_ring(station_ring(-3.20, 0, 0.14, 0.96, 0.64, flat=0.24, box=0.98, keel=0.26)),
+        densify_ring(station_ring(4.20, 0, 0.16, 0.50, 0.50, flat=0.78, box=0.32, keel=0.72)),
+        densify_ring(station_ring(3.50, 0, 0.16, 0.62, 0.56, flat=0.80, box=0.42, keel=0.68)),
+        densify_ring(station_ring(2.70, 0, 0.12, 0.84, 0.50, flat=0.45, box=0.65, keel=0.62)),
+        densify_ring(station_ring(1.80, 0, 0.09, 1.00, 0.50, flat=0.28, box=0.80, keel=0.56)),
+        densify_ring(station_ring(0.80, 0, 0.08, 1.10, 0.50, flat=0.22, box=0.90, keel=0.48)),
+        densify_ring(station_ring(-0.30, 0, 0.10, 1.08, 0.54, flat=0.20, box=0.94, keel=0.38)),
+        densify_ring(station_ring(-1.70, 0, 0.12, 1.00, 0.58, flat=0.22, box=0.96, keel=0.30)),
+        densify_ring(station_ring(-3.20, 0, 0.14, 0.96, 0.64, flat=0.24, box=0.98, keel=0.24)),
         densify_ring(station_ring(-4.80, 0, 0.14, 0.90, 0.66, flat=0.26, box=1.00, keel=0.20)),
     ]
     hull_obj = loft_from_rings("Pressure_Hull", fwd_rings, hull, collection, 0.016)
+    boolean_union(hull_obj, needle)
     house = loft_from_rings("DriveHouse", [
         densify_ring(station_ring(-4.95, 0, 0.14, 0.90, 0.66, flat=0.26, box=1.00, keel=0.20)),
         densify_ring(station_ring(-5.70, 0, 0.14, 0.82, 0.58, flat=0.24, box=1.00, keel=0.18)),
@@ -755,6 +758,9 @@ def build_lod(lod, mats):
             add_corner_fasteners(f"Sheath_{i}", (px, py, pz), (sx, sy, sz), mech, collection)
     add_overlap_plate("Armor_Shoulder", (2.55, 0.0, 0.68), (1.00, 0.50, 0.048), armor, collection, 0.008)
     add_overlap_plate("NeedleSpine", (6.15, 0.0, 0.20), (1.05, 0.10, 0.032), armor, collection, 0.005)
+    add_overlap_plate("NeedleCheekP", (6.20, -0.12, 0.08), (0.95, 0.04, 0.10), armor, collection, 0.004)
+    add_overlap_plate("NeedleCheekS", (6.20, 0.12, 0.08), (0.95, 0.04, 0.10), armor, collection, 0.004)
+    add_overlap_plate("NeedleKeel", (6.10, 0.0, -0.08), (1.00, 0.08, 0.03), mech, collection, 0.003)
     for i, (px, py, pz, sx, sy, sz) in enumerate((
         (-2.15, 0.10, 1.08, 0.78, 0.52, 0.052),
         (-3.45, -0.16, 1.10, 0.70, 0.44, 0.048),
