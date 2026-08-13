@@ -1,0 +1,65 @@
+{
+  "schema": "spaceface.surveyPinMtx.cycle.v1",
+  "shipId": "survey_pin",
+  "cycle": 4,
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 28410,
+      "hullTriangles": 4728,
+      "draws": 8,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster"
+      ],
+      "path": "source/wholeships/survey_pin_production_v1_lod0.glb",
+      "bytes": 7345752,
+      "sha256": "032374428D61FA428665C88B16142857F32232314C7E2FB2CAEDF8DEE7148905"
+    },
+    {
+      "lod": 1,
+      "triangles": 20106,
+      "hullTriangles": 4728,
+      "draws": 8,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster"
+      ],
+      "path": "source/wholeships/survey_pin_production_v1_lod1.glb",
+      "bytes": 6111912,
+      "sha256": "FAA1F5690CC61B98BC61FC09D2EBA272C85FF46C0E101FE4CADC9B668FCD5A5A"
+    },
+    {
+      "lod": 2,
+      "triangles": 14970,
+      "hullTriangles": 3156,
+      "draws": 8,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster"
+      ],
+      "path": "source/wholeships/survey_pin_production_v1_lod2.glb",
+      "bytes": 5323672,
+      "sha256": "F5EAFEAFBBCFED9A0D5691C8E3689BE0546A64F039339CEE9BD64D58A4645C18"
+    }
+  ],
+  "stills": "evidence/survey_pin/cycles/cycle_04"
+}
