@@ -1,0 +1,68 @@
+{
+  "schema": "spaceface.salvageCutterMtx.cycle.v1",
+  "shipId": "salvage_cutter",
+  "cycle": 8,
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 51356,
+      "hullTriangles": 5016,
+      "draws": 9,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/salvage_cutter_production_v1_lod0.glb",
+      "bytes": 11208748,
+      "sha256": "EFEFF7BEEE4CCFE8301EF16E1A5307A200BCC2548F22A037B1E0355A579C547A"
+    },
+    {
+      "lod": 1,
+      "triangles": 31580,
+      "hullTriangles": 5016,
+      "draws": 9,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/salvage_cutter_production_v1_lod1.glb",
+      "bytes": 8082176,
+      "sha256": "4008C5250933517260F5791DCA30B18B331801D80F87F0FB4981CA51ADBA9FFF"
+    },
+    {
+      "lod": 2,
+      "triangles": 25116,
+      "hullTriangles": 3844,
+      "draws": 9,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/salvage_cutter_production_v1_lod2.glb",
+      "bytes": 7092608,
+      "sha256": "5FBFDBC8EDFAEB0AF720D8484C961F2831843904FBBAC386BE83DE4ADDDA05A9"
+    }
+  ],
+  "stills": "evidence/salvage_cutter/cycles/cycle_08"
+}
