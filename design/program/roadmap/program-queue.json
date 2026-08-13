@@ -5770,6 +5770,37 @@
       "brief": "A materially suspicious player in the station_helios lawful ring receives one durable traffic-patrol inspection. COMPLY uses patrol:proximity and existing economy/cargo/faction/heat owners; escape is actual range separation; collateral and lifecycle outcomes settle once; prompt and target readout stay accessible across Continue."
     },
     {
+      "id": "PQ-048.07",
+      "parentId": "PQ-048",
+      "priority": 286,
+      "title": "Complete salvage-cutter work loop",
+      "kind": "implementation",
+      "state": "done",
+      "dependsOn": [
+        "PQ-048.08"
+      ],
+      "mutexes": [],
+      "paths": [
+        "SAVE_SCHEMA.md",
+        "src/data/contactHail.js",
+        "src/data/sectorZones.js",
+        "src/save/saveSystem.js",
+        "src/systems/mining.js",
+        "src/systems/salvage.js",
+        "src/systems/traffic.js",
+        "test/pq048-salvage-cutter-loop.test.mjs"
+      ],
+      "checks": [
+        "node --test test/pq048-salvage-cutter-loop.test.mjs",
+        "npm run check:save-schema",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-048-07-salvage-cutter-loop-REPORT.md"
+      ],
+      "brief": "The finite Vesta sal0 source binds one general cutter to a durable wreck; WORK moves conserved salvage into its manifest, player beam dispute drains the same pool, and the real station_forge intake from PQ-048.08 admits the exact manifest once. Loss, Continue, hard exit, and Hail/status retain truthful source, job, claim, cargo, and waypoint state without a second cargo or economy writer."
+    },
+    {
       "id": "PQ-048.08",
       "parentId": "PQ-048",
       "priority": 287,
