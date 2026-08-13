@@ -17,11 +17,14 @@ ROOT = TOOLS.parents[1]
 if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
 from fleet_construction import (  # noqa: E402
+    add_flared_bell,
     add_manufactured_drive,
+    add_overlap_plate,
     add_rcs_cluster,
     add_sensor_dish,
-    cut_open_bay,
     apply_modifiers,
+    cut_open_bay,
+    station_ring,
 )
 
 FAMILY = ROOT / "assets" / "ships" / "fleet_player_bodies_v1" / "drifter"
@@ -87,6 +90,8 @@ def role_maps(role, rgb, size=TEX, prefix=None):
         pw, ph = 22, 10
     elif role == "ceramic":
         pw, ph = 64, 64
+    elif role == "glass":
+        pw, ph = 0, 0
     else:
         pw, ph = 80, 80
     for y in range(size):
@@ -320,13 +325,13 @@ def add_hollow_bell(tag, x, y, z, scale, mats, collection):
     s = scale
     ceramic, mech, armor = mats["Material_Ceramic"], mats["Material_Mechanical"], mats["Material_Armor"]
     rings = []
-    for t, r in ((0.00, 0.52), (0.22, 0.44), (0.48, 0.30), (0.75, 0.22), (1.00, 0.18)):
-        rings.append(ellipse_ring(x - 0.08 * s - t * 0.95 * s, y, z, r * s, r * s, 24))
+    for t, r in ((0.00, 0.20), (0.22, 0.26), (0.48, 0.40), (0.75, 0.56), (1.00, 0.68)):
+        rings.append(ellipse_ring(x - 0.06 * s - t * 1.10 * s, y, z, r * s, r * s, 32))
     outer = loft_from_rings(f"Bell_{tag}", rings, mech, collection, 0.005, cap=False)
     apply_modifiers(outer)
     bpy.ops.mesh.primitive_cone_add(
-        vertices=22, radius1=0.42 * s, radius2=0.08 * s, depth=1.10 * s,
-        location=(x - 0.55 * s, y, z), rotation=(0, math.pi / 2, 0),
+        vertices=24, radius1=0.12 * s, radius2=0.58 * s, depth=1.18 * s,
+        location=(x - 0.62 * s, y, z), rotation=(0, math.pi / 2, 0),
     )
     inner = bpy.context.object
     bpy.context.view_layer.objects.active = outer
@@ -572,19 +577,19 @@ def build_lod(lod, mats):
         "lod": f"lod{lod}", "slot": "hull", "category": "wholeships",
         "forward": "+X", "embeddedPlume": False,
     }
-    # C7: blunt bow, TALL cabin shoulder, WIDE mid, pinched waist, nacelle carry, transom.
+    # Form rebuild: blunt bow / tall cabin deck / wide utility mid / nacelle carry. Not a diamond sausage.
     hull_obj = loft_from_rings("Pressure_Hull", [
-        diamond_ring(half, 0, 0.08, 0.42, 0.32),
-        diamond_ring(6.10, 0, 0.16, 0.72, 0.58),
-        diamond_ring(3.85, 0, 0.28, 0.98, 0.92),
-        diamond_ring(1.40, 0, 0.14, 1.22, 0.78),
-        diamond_ring(-0.40, 0, 0.10, 1.32, 0.64),
-        diamond_ring(-2.55, 0, 0.08, 1.05, 0.52),
-        diamond_ring(-4.85, 0, 0.08, 0.78, 0.46),
-        diamond_ring(-7.25, 0, 0.08, 0.52, 0.36),
+        station_ring(half, 0, 0.10, 0.50, 0.38, flat=0.60, box=0.40, keel=0.70),
+        station_ring(6.20, 0, 0.18, 0.78, 0.64, flat=0.70, box=0.45, keel=0.62),
+        station_ring(3.90, 0, 0.32, 0.95, 1.08, flat=0.98, box=0.48, keel=0.52),
+        station_ring(1.35, 0, 0.14, 1.28, 0.72, flat=0.42, box=0.72, keel=0.55),
+        station_ring(-0.45, 0, 0.10, 1.38, 0.60, flat=0.22, box=0.88, keel=0.48),
+        station_ring(-2.55, 0, 0.12, 1.02, 0.70, flat=0.26, box=0.82, keel=0.38),
+        station_ring(-4.95, 0, 0.14, 0.92, 0.80, flat=0.32, box=0.96, keel=0.28),
+        station_ring(-7.15, 0, 0.10, 0.72, 0.58, flat=0.30, box=0.92, keel=0.22),
     ], hull, collection, 0.016)
     if lod <= 1:
-        cut_open_bay(hull_obj, "Cockpit", (3.40, 0.0, 0.88), 1.45, 0.70, 0.52, (0, 0, 1), mats, collection, kit="cockpit")
+        cut_open_bay(hull_obj, "Cockpit", (3.40, 0.0, 1.15), 1.45, 0.62, 0.55, (0, 0, 1), mats, collection, kit="cockpit", liner=False)
         cut_open_bay(hull_obj, "Port", (0.10, -1.48, 0.10), 1.55, 0.46, 0.50, (0, -1, 0), mats, collection, kit="radiator")
         cut_open_bay(hull_obj, "Starboard", (0.10, 1.48, 0.10), 1.55, 0.46, 0.50, (0, 1, 0), mats, collection, kit="rack")
         cut_open_bay(hull_obj, "Cargo", (-0.20, 0.0, -0.72), 1.65, 0.72, 0.42, (0, 0, -1), mats, collection, kit="rack")
@@ -601,7 +606,7 @@ def build_lod(lod, mats):
             diamond_ring(-6.0, 1.55 * sign, 0.08, 0.46, 0.36),
             diamond_ring(-6.85, 1.55 * sign, 0.08, 0.36, 0.28),
         ], armor, collection, 0.012)
-        add_hollow_bell(side, -7.15, 1.55 * sign, 0.08, 1.05, mats, collection)
+        add_flared_bell(side, -7.15, 1.55 * sign, 0.08, 1.05, mats, collection)
         add_cylinder(f"NacelleCollar_{side}", (-6.55, 1.55 * sign, 0.08), 0.34, 0.12, ceramic, collection, vertices=14, bevel=0.006)
         add_box(f"NacelleSaddlePad_{side}", (-6.20, 1.55 * sign, -0.18), (0.38, 0.14, 0.08), mech, collection, 0.003)
         loft_from_rings(f"NacelleSaddle_{side}", [

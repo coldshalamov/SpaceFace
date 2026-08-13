@@ -68,10 +68,10 @@ INFERENCE, the dock/hulk remaster, and the expansion-research brief.
 
 - **Hornet form rebuild is cycles 11–14.** Station families, flared bell, crate
   canopy removed. Independent review is still REJECT. Not wired.
-- **Next:** keep the same form method on Hornet if a later cycle beats Hitch;
-  otherwise take Drifter and the remaining player ships through the same
-  station / well / flared-bell pass. Do not promote a ship that still loses
-  to Hitch.
+- **Drifter and Ranger** have a first form-rebuild cycle (11). Same honest
+  result: better stations than C10, still lose to Hitch, not wired.
+- **Next:** remaining player ships through the same station / well / flared-bell
+  pass. Do not promote a ship that still loses to Hitch.
 - **Do not** mark the campaign exhausted while clay still reads as primitives.
 
 **Graphics / place-asset remaster (resume):** if the task is continuing the interrupted remaster of
