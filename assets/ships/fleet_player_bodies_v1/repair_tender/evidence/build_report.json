@@ -3,12 +3,12 @@
   "assetId": "SF_REPAIR_TENDER_V1",
   "defId": "tender",
   "shipId": "repair_tender",
-  "iteration": 6,
+  "iteration": 9,
   "lods": [
     {
       "lod": 0,
-      "triangles": 36828,
-      "hullTriangles": 1648,
+      "triangles": 38816,
+      "hullTriangles": 1708,
       "draws": 9,
       "materials": [
         "Material_Accent",
@@ -35,13 +35,13 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/repair_tender_production_v1_lod0.glb",
-      "bytes": 1917884,
-      "sha256": "FA45E83D7C99F7BEEFE52E5E8314ED379FD4112474DF355E2BC148BA0683AC67"
+      "bytes": 2052480,
+      "sha256": "DDEC51A53571630E442805CA87EF8A9D12E7ED4146E51909615D5828B913B2AF"
     },
     {
       "lod": 1,
-      "triangles": 9724,
-      "hullTriangles": 1648,
+      "triangles": 15848,
+      "hullTriangles": 1708,
       "draws": 9,
       "materials": [
         "Material_Accent",
@@ -68,12 +68,12 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/repair_tender_production_v1_lod1.glb",
-      "bytes": 506208,
-      "sha256": "903ECCB7BF234FB8EFAB3CB7AB52F6DAF81361300239476ABFFB19D736A2F6AD"
+      "bytes": 853916,
+      "sha256": "D1A348FA09C7C486F410E05B82B9706B4CDDC5FAA143C04A347B4C3EB766E9DE"
     },
     {
       "lod": 2,
-      "triangles": 5512,
+      "triangles": 6500,
       "hullTriangles": 1540,
       "draws": 7,
       "materials": [
@@ -99,30 +99,9 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/repair_tender_production_v1_lod2.glb",
-      "bytes": 265384,
-      "sha256": "3DDD55669D6CF586C89AF8D20335538BFA0E14EFCAEE295D721F4152D8B47ED9"
+      "bytes": 324528,
+      "sha256": "F868F7A0B9C3B45D967CE23D4D86882AEADF229A924061BC45ECE84CBD46D1C1"
     }
   ],
-  "renders": [
-    {
-      "view": "repair_tender_three_quarter",
-      "path": "evidence/iter06/repair_tender_three_quarter.png",
-      "bytes": 884402
-    },
-    {
-      "view": "repair_tender_starboard",
-      "path": "evidence/iter06/repair_tender_starboard.png",
-      "bytes": 912737
-    },
-    {
-      "view": "repair_tender_rear",
-      "path": "evidence/iter06/repair_tender_rear.png",
-      "bytes": 1014596
-    },
-    {
-      "view": "repair_tender_grazing",
-      "path": "evidence/iter06/repair_tender_grazing.png",
-      "bytes": 933878
-    }
-  ]
+  "renders": []
 }
