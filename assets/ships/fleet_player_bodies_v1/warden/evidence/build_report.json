@@ -3,12 +3,12 @@
   "assetId": "SF_WARDEN_PRODUCTION_V1",
   "defId": "ship_warden",
   "shipId": "warden",
-  "iteration": 6,
+  "iteration": 9,
   "lods": [
     {
       "lod": 0,
-      "triangles": 47340,
-      "hullTriangles": 1648,
+      "triangles": 48900,
+      "hullTriangles": 1728,
       "draws": 9,
       "materials": [
         "Material_Accent",
@@ -35,13 +35,13 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/warden_production_v1_lod0.glb",
-      "bytes": 2473244,
-      "sha256": "66D5BBC0EE6EB14E8C5B47595AEDDA9D24C50B974D9EAF7A20A433F89E76B7CA"
+      "bytes": 2579696,
+      "sha256": "002CC9B93D191F1F6C254DF65FFA26512CEF90815B3B3B2990F5FF22EE4A80B9"
     },
     {
       "lod": 1,
-      "triangles": 13276,
-      "hullTriangles": 1648,
+      "triangles": 18972,
+      "hullTriangles": 1728,
       "draws": 9,
       "materials": [
         "Material_Accent",
@@ -68,12 +68,12 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/warden_production_v1_lod1.glb",
-      "bytes": 687240,
-      "sha256": "9F6D1FDE735E4D85E74A12E76FF965D0F16C228C6B5D3A2BC572C4935C200150"
+      "bytes": 1008860,
+      "sha256": "8DE0D2DBA5F3BAF2AD22AAD0E28A9BE694860D5A46CD29C1F67204CA2F670615"
     },
     {
       "lod": 2,
-      "triangles": 8200,
+      "triangles": 8740,
       "hullTriangles": 1540,
       "draws": 7,
       "materials": [
@@ -99,30 +99,9 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/warden_production_v1_lod2.glb",
-      "bytes": 398628,
-      "sha256": "22E9D0E2E216C4F398949BBED183D1FAD86FFBB29D7A78A092E2A001A77EC6D0"
+      "bytes": 428412,
+      "sha256": "AE4FBF5087E8ECC942E6E7A4EBE8D1ADD012CD1BE737A3926912C26FFB6C589A"
     }
   ],
-  "renders": [
-    {
-      "view": "warden_three_quarter",
-      "path": "evidence/iter06/warden_three_quarter.png",
-      "bytes": 910709
-    },
-    {
-      "view": "warden_starboard",
-      "path": "evidence/iter06/warden_starboard.png",
-      "bytes": 922669
-    },
-    {
-      "view": "warden_rear",
-      "path": "evidence/iter06/warden_rear.png",
-      "bytes": 1016017
-    },
-    {
-      "view": "warden_grazing",
-      "path": "evidence/iter06/warden_grazing.png",
-      "bytes": 952884
-    }
-  ]
+  "renders": []
 }

@@ -644,6 +644,113 @@
   },
   {
     "schema": "spaceface.fleetPlayerBody.build.v1",
+    "assetId": "SF_WARDEN_PRODUCTION_V1",
+    "defId": "ship_warden",
+    "shipId": "warden",
+    "iteration": 9,
+    "lods": [
+      {
+        "lod": 0,
+        "triangles": 48900,
+        "hullTriangles": 1728,
+        "draws": 9,
+        "materials": [
+          "Material_Accent",
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster",
+          "Material_Warning"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/warden_production_v1_lod0.glb",
+        "bytes": 2579696,
+        "sha256": "002CC9B93D191F1F6C254DF65FFA26512CEF90815B3B3B2990F5FF22EE4A80B9"
+      },
+      {
+        "lod": 1,
+        "triangles": 18972,
+        "hullTriangles": 1728,
+        "draws": 9,
+        "materials": [
+          "Material_Accent",
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster",
+          "Material_Warning"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/warden_production_v1_lod1.glb",
+        "bytes": 1008860,
+        "sha256": "8DE0D2DBA5F3BAF2AD22AAD0E28A9BE694860D5A46CD29C1F67204CA2F670615"
+      },
+      {
+        "lod": 2,
+        "triangles": 8740,
+        "hullTriangles": 1540,
+        "draws": 7,
+        "materials": [
+          "Material_Armor",
+          "Material_Canopy",
+          "Material_Ceramic",
+          "Material_Hull",
+          "Material_Mechanical",
+          "Material_Radiator",
+          "Material_Thruster"
+        ],
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Mining_Front",
+          "SOCKET_RCS_Port",
+          "SOCKET_RCS_Starboard",
+          "SOCKET_Trail_Main",
+          "SOCKET_Trail_Port",
+          "SOCKET_Trail_Starboard",
+          "SOCKET_Utility_Dorsal",
+          "SOCKET_Weapon_Front"
+        ],
+        "path": "source/wholeships/warden_production_v1_lod2.glb",
+        "bytes": 428412,
+        "sha256": "AE4FBF5087E8ECC942E6E7A4EBE8D1ADD012CD1BE737A3926912C26FFB6C589A"
+      }
+    ],
+    "renders": []
+  },
+  {
+    "schema": "spaceface.fleetPlayerBody.build.v1",
     "assetId": "SF_COLOSSUS_PRODUCTION_V1",
     "defId": "ship_colossus",
     "shipId": "colossus",
