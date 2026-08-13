@@ -5,8 +5,8 @@
   "lods": [
     {
       "lod": 0,
-      "triangles": 30806,
-      "hullTriangles": 3384,
+      "triangles": 30786,
+      "hullTriangles": 3364,
       "draws": 9,
       "materials": [
         "Material_Accent",
@@ -20,13 +20,13 @@
         "Material_Warning"
       ],
       "path": "source/wholeships/warden_production_v1_lod0.glb",
-      "bytes": 7938704,
-      "sha256": "FCFB591347C466B07FE5C72E5789B2AA544C87468C342FDCF0C961EFE741887A"
+      "bytes": 7931540,
+      "sha256": "081E91A898C90C4E3A972C791A65991562F67F03B07EEA2B960781A2D5EC4FA3"
     },
     {
       "lod": 1,
-      "triangles": 26726,
-      "hullTriangles": 3384,
+      "triangles": 26706,
+      "hullTriangles": 3364,
       "draws": 9,
       "materials": [
         "Material_Accent",
@@ -40,8 +40,8 @@
         "Material_Warning"
       ],
       "path": "source/wholeships/warden_production_v1_lod1.glb",
-      "bytes": 7683000,
-      "sha256": "0BA905724DAA6C30D819604FA8B7F9F161DB3231E14631F1DEE3529D81A6053A"
+      "bytes": 7675836,
+      "sha256": "001B36E2F2FB5056C52940AF2AABBE8F4493A056C8F62EC453FD54D4AB472EE2"
     },
     {
       "lod": 2,
@@ -59,8 +59,8 @@
         "Material_Warning"
       ],
       "path": "source/wholeships/warden_production_v1_lod2.glb",
-      "bytes": 6040496,
-      "sha256": "8686BD669025F3D04AA9987E83EEAE75F78BF374FF196F04C6721BEC2D121617"
+      "bytes": 6039108,
+      "sha256": "DDCE159674B85E2C773866EE0AF7E5836E99C91B75F6AC77B91F49D76495273D"
     }
   ],
   "stills": "evidence/warden/cycles/cycle_06"
