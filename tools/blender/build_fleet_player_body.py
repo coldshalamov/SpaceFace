@@ -9,11 +9,16 @@ Run:
 """
 from __future__ import annotations
 
+from contextlib import contextmanager
 import hashlib
 import json
 import math
+import os
 import shutil
+import struct
 import sys
+import tempfile
+import time
 from pathlib import Path
 
 import bpy
@@ -33,8 +38,8 @@ from fleet_construction import (  # noqa: E402
     add_service_hatch,
     add_service_pipe,
     add_midship_kit,
-    add_recess_bay,
-    add_framed_canopy,
+    add_cockpit_glazing,
+    cut_open_bay,
 )
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -193,15 +198,41 @@ def sha256(path: Path) -> str:
     return digest.hexdigest().upper()
 
 
-def parse_only() -> list[str]:
+def parse_only(argv=None) -> list[str]:
+    tokens = list(argv) if argv is not None else (
+        sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
+    )
+    positions = [index for index, token in enumerate(tokens) if token == "--only"]
+    if not positions:
+        raise ValueError("--only is required; name one or more comma-separated fleet IDs")
+    if len(positions) != 1:
+        raise ValueError("--only may be specified only once")
+
+    option_index = positions[0]
+    if option_index + 1 >= len(tokens) or tokens[option_index + 1].startswith("--"):
+        raise ValueError("--only requires a comma-separated value")
+    ship_ids = [part.strip() for part in tokens[option_index + 1].split(",")]
+    if not ship_ids or any(not ship_id for ship_id in ship_ids):
+        raise ValueError("--only contains an empty fleet ID")
+
+    seen = set()
+    duplicates = []
+    for ship_id in ship_ids:
+        if ship_id in seen and ship_id not in duplicates:
+            duplicates.append(ship_id)
+        seen.add(ship_id)
+    if duplicates:
+        raise ValueError(f"--only contains duplicate fleet IDs: {', '.join(duplicates)}")
+
+    unknown = [ship_id for ship_id in ship_ids if ship_id not in SPECS]
+    if unknown:
+        raise ValueError(f"--only contains unknown fleet IDs: {', '.join(unknown)}")
+    return ship_ids
+
+
+def parse_skip_renders() -> bool:
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
-    only = None
-    for i, token in enumerate(argv):
-        if token == "--only" and i + 1 < len(argv):
-            only = argv[i + 1]
-    if not only:
-        return [key for key in SPECS if key != "mule"]
-    return [key.strip() for key in only.split(",") if key.strip() in SPECS]
+    return "--skip-renders" in argv
 
 
 def reset_scene() -> None:
@@ -275,13 +306,12 @@ def create_materials(texture_dir, hull_tint):
     }
     canopy = bpy.data.materials.new("Material_Canopy")
     bsdf = principled(canopy)
-    bsdf.inputs["Base Color"].default_value = (0.02, 0.07, 0.10, 1)
-    bsdf.inputs["Metallic"].default_value = 0.05
-    bsdf.inputs["Roughness"].default_value = 0.08
+    bsdf.inputs["Base Color"].default_value = (0.015, 0.04, 0.055, 1)
+    bsdf.inputs["Metallic"].default_value = 0.08
+    bsdf.inputs["Roughness"].default_value = 0.06
     bsdf.inputs["Coat Weight"].default_value = 1.0
-    bsdf.inputs["Coat Roughness"].default_value = 0.04
-    if "Transmission Weight" in bsdf.inputs:
-        bsdf.inputs["Transmission Weight"].default_value = 0.35
+    bsdf.inputs["Coat Roughness"].default_value = 0.03
+    # Opaque dark glass. Volume transmission turned the loft into a teal leather brick.
     canopy["spacefaceRole"] = "glass"
     mats[canopy.name] = canopy
     thruster = bpy.data.materials.new("Material_Thruster")
@@ -384,6 +414,16 @@ def span_ring(x, y, z, hx, hz, chamfer):
     ]
 
 
+def wing_armor_stations(ship_id, hw, sign):
+    terminal_hz = 0.055 if ship_id == "hornet" else 0.022
+    terminal_chamfer = 0.012 if ship_id == "hornet" else 0.01
+    return [
+        (-0.05, (hw + 0.40) * sign, 0.14, 1.05, 0.05, 0.02),
+        (-0.40, (hw + 1.20) * sign, 0.10, 0.82, 0.035, 0.015),
+        (-0.80, (hw + 1.90) * sign, 0.05, 0.48, terminal_hz, terminal_chamfer),
+    ]
+
+
 def add_span_loft(name, stations, material, collection, bevel=0.02):
     """Loft along +Y so wings have a real root-to-tip section, not a flat card."""
     rings = [span_ring(*station) for station in stations]
@@ -467,7 +507,7 @@ def build_ship(ship_id, spec, lod, mats):
         "lod": f"lod{lod}", "slot": "hull", "category": "wholeships",
         "forward": "+X", "embeddedPlume": False,
     }
-    add_chamfer_loft("Pressure_Hull", [
+    hull_obj = add_chamfer_loft("Pressure_Hull", [
         (half, 0, 0.08, hw * 0.28, hh * 0.38, 0.08),
         (half * 0.72, 0, 0.10, hw * 0.62, hh * 0.68, 0.14),
         (half * 0.40, 0, 0.11, hw * 0.88, hh * 0.90, 0.18),
@@ -479,30 +519,32 @@ def build_ship(ship_id, spec, lod, mats):
     course_xs = [half * t for t in (0.72, 0.48, 0.24, 0.0, -0.24, -0.48, -0.68)]
     for i, x in enumerate(course_xs):
         add_box(f"Hull_Course_{i}", (x, 0, 0.08), (0.045, hw * 0.88, hh * 0.78), hull, collection, 0.01)
-    add_box("Hull_Chine_Port", (0, -hw * 0.92, 0.05), (half * 0.7, 0.05, hh * 0.45), hull, collection, 0.012)
-    add_box("Hull_Chine_Starboard", (0, hw * 0.92, 0.05), (half * 0.7, 0.05, hh * 0.45), hull, collection, 0.012)
+    add_box("Hull_Chine_Port", (half * 0.38, -hw * 0.92, 0.05), (half * 0.26, 0.05, hh * 0.45), hull, collection, 0.012)
+    add_box("Hull_Chine_Starboard", (half * 0.38, hw * 0.92, 0.05), (half * 0.26, 0.05, hh * 0.45), hull, collection, 0.012)
     add_box("Hull_Belly_Plate", (0, 0, -hh * 0.85), (half * 0.6, hw * 0.55, 0.05), hull, collection, 0.012)
     add_box("Ventral_Keel", (0, 0, -hh - 0.08), (half * 0.75, hw * 0.28, 0.07), mech, collection, 0.025)
     add_cylinder("Tail_Fairing", (-half + 0.15, 0, 0.10), max(0.28, hw * 0.28), 0.42, armor, collection, vertices=16, bevel=0.015)
 
     if spec.get("bridge"):
-        add_box("Bridge_Pedestal", (half * 0.55, 0, hh + 0.15), (0.85, 0.65, 0.45), armor, collection, 0.025)
-        add_chamfer_loft("Bridge_Glass", [
-            (half * 0.62, 0, hh + 0.75, 0.38, 0.16, 0.04),
-            (half * 0.50, 0, hh + 1.05, 0.55, 0.28, 0.05),
-            (half * 0.38, 0, hh + 0.85, 0.40, 0.18, 0.04),
-        ], canopy, collection, 0.012)
-        add_box("Bridge_Brow", (half * 0.54, 0, hh + 1.22), (0.45, 0.40, 0.05), armor, collection, 0.01)
+        bridge_pedestal = add_box("Bridge_Pedestal", (half * 0.55, 0, hh + 0.15), (0.85, 0.65, 0.45), armor, collection, 0.025)
+        if lod <= 1:
+            cut_open_bay(
+                bridge_pedestal, "Cockpit",
+                (half * 0.52, 0.0, hh + 0.55),
+                0.55, 0.42, 0.38, (0.0, 0.0, 1.0),
+                mats, collection, kit="cockpit",
+            )
+        add_cockpit_glazing("Bridge", (half * 0.52, 0.0, hh + 0.55), 0.55, 0.42, hh, mats, collection, raised=0.12)
+        add_box("Bridge_Brow", (half * 0.54, 0, hh + 1.05), (0.45, 0.40, 0.05), armor, collection, 0.01)
     else:
-        add_chamfer_loft("Canopy_Glass", [
-            (half * 0.48, 0, hh + 0.18, 0.28, 0.10, 0.04),
-            (half * 0.28, 0, hh + 0.52, 0.72, 0.28, 0.06),
-            (half * 0.08, 0, hh + 0.38, 0.48, 0.16, 0.04),
-        ], canopy, collection, 0.012)
-        add_box("Canopy_Frame_Fore", (half * 0.46, 0, hh + 0.28), (0.04, 0.42, 0.10), armor, collection, 0.006)
-        add_box("Canopy_Frame_Aft", (half * 0.10, 0, hh + 0.42), (0.04, 0.50, 0.10), armor, collection, 0.006)
-        add_box("Canopy_Frame_Center", (half * 0.28, 0, hh + 0.62), (0.85, 0.03, 0.03), armor, collection, 0.004)
-        add_box("Canopy_Brow", (half * 0.32, 0, hh + 0.68), (0.48, 0.36, 0.05), armor, collection, 0.01)
+        if lod <= 1:
+            cut_open_bay(
+                hull_obj, "Cockpit",
+                (half * 0.30, 0.0, hh),
+                half * 0.16, hw * 0.28, 0.34, (0.0, 0.0, 1.0),
+                mats, collection, kit="cockpit",
+            )
+        add_cockpit_glazing("Canopy", (half * 0.30, 0.0, hh), half * 0.16, hw * 0.28, hh, mats, collection)
 
     for index, (x, y) in enumerate(spec["drives"]):
         drive_x = min(x, -half - 0.35)
@@ -511,20 +553,31 @@ def build_ship(ship_id, spec, lod, mats):
     if spec.get("wings"):
         for sign, side in ((-1, "Port"), (1, "Starboard")):
             add_span_loft(f"Wing_{side}", [
-                (-0.10, hw * 0.92 * sign, 0.06, 1.65, 0.22, 0.06),
-                (-0.45, (hw + 1.05) * sign, 0.04, 1.35, 0.14, 0.05),
-                (-1.05, (hw + 2.05) * sign, 0.01, 0.85, 0.07, 0.03),
-            ], hull, collection, 0.02)
-            add_box(f"WingRoot_{side}", (0.05, hw * 0.88 * sign, 0.08), (0.85, 0.22, 0.16), hull, collection, 0.02)
-            add_span_loft(f"WingArmor_{side}", [
-                (-0.10, (hw + 0.35) * sign, 0.10, 1.05, 0.04, 0.02),
-                (-0.40, (hw + 1.15) * sign, 0.08, 0.88, 0.03, 0.015),
-                (-0.75, (hw + 1.85) * sign, 0.05, 0.55, 0.02, 0.01),
-            ], armor, collection, 0.012)
-            add_box(f"WingFlap_{side}", (-1.45, (hw + 1.25) * sign, 0.0), (0.28, 0.55, 0.022), mech, collection, 0.006)
-            add_box(f"WingFence_{side}", (-0.35, (hw + 0.85) * sign, 0.14), (0.7, 0.018, 0.09), armor, collection, 0.005)
-            add_box(f"Hardpoint_{side}", (-0.2, (hw + 1.05) * sign, -0.14), (0.42, 0.07, 0.055), mech, collection, 0.007)
-            add_box(f"Accent_Rail_{side}", (-0.3, (hw + 1.10) * sign, 0.12), (0.7, 0.025, 0.016), accent, collection, 0.003)
+                (0.05, hw * 0.90 * sign, 0.06, 1.55, 0.28, 0.08),
+                (-0.35, (hw + 1.00) * sign, 0.03, 1.25, 0.18, 0.06),
+                (-0.85, (hw + 1.85) * sign, -0.02, 0.88, 0.11, 0.04),
+                (-1.25, (hw + 2.35) * sign, -0.06, 0.55, 0.06, 0.025),
+            ], hull, collection, 0.018)
+            add_cylinder(
+                f"WingLeading_{side}",
+                (-0.15, (hw + 1.05) * sign, 0.10),
+                0.055, 1.55, armor, collection, vertices=12, bevel=0.008,
+                rot=(math.pi / 2, 0.12 * sign, 0),
+            )
+            add_box(f"WingRoot_{side}", (0.10, hw * 0.86 * sign, 0.08), (0.95, 0.28, 0.20), hull, collection, 0.02)
+            add_box(f"WingRootFairing_{side}", (-0.15, hw * 0.78 * sign, -0.02), (0.55, 0.16, 0.12), mech, collection, 0.012)
+            add_span_loft(
+                f"WingArmor_{side}", wing_armor_stations(ship_id, hw, sign),
+                armor, collection, 0.01,
+            )
+            add_box(f"WingFlap_{side}", (-1.55, (hw + 1.35) * sign, -0.04), (0.22, 0.62, 0.035), mech, collection, 0.006)
+            add_box(f"WingFlapGap_{side}", (-1.28, (hw + 1.35) * sign, -0.02), (0.03, 0.58, 0.05), mech, collection, 0.002)
+            add_box(f"WingFence_{side}", (-0.35, (hw + 0.85) * sign, 0.18), (0.7, 0.018, 0.11), armor, collection, 0.005)
+            add_box(f"Hardpoint_{side}", (-0.15, (hw + 1.10) * sign, -0.18), (0.48, 0.08, 0.07), mech, collection, 0.007)
+            add_box(f"Pylon_{side}", (-0.15, (hw + 1.10) * sign, -0.28), (0.18, 0.05, 0.10), mech, collection, 0.006)
+            add_box(f"Accent_Rail_{side}", (-0.25, (hw + 1.15) * sign, 0.16), (0.7, 0.025, 0.016), accent, collection, 0.003)
+            add_box(f"WingSeamA_{side}", (-0.55, (hw + 1.25) * sign, 0.12), (0.018, 0.55, 0.02), mech, collection, 0.003)
+            add_box(f"WingSeamB_{side}", (-0.95, (hw + 1.65) * sign, 0.08), (0.018, 0.40, 0.016), mech, collection, 0.003)
     if spec.get("canards"):
         for sign, side in ((-1, "Port"), (1, "Starboard")):
             add_box(f"Canard_{side}", (half * 0.35, (hw * 0.7) * sign, 0.12), (0.85, 0.35, 0.05), armor, collection, 0.015)
@@ -580,9 +633,30 @@ def build_ship(ship_id, spec, lod, mats):
 
     if lod <= 1:
         add_midship_kit(half, hw, hh, lod, mats, collection)
-        add_recess_bay("Port", (-half * 0.08, -hw * 0.72, hh * 0.20), half * 0.18, 0.16, 0.18, mats, collection)
-        add_recess_bay("Starboard", (-half * 0.08, hw * 0.72, hh * 0.20), half * 0.18, 0.16, 0.18, mats, collection)
-        add_recess_bay("DorsalAft", (-half * 0.32, 0.0, hh + 0.02), half * 0.14, hw * 0.28, 0.12, mats, collection)
+        cut_open_bay(
+            hull_obj, "Port",
+            (half * 0.08, -hw, hh * 0.08),
+            half * 0.18, max(0.22, hh * 0.48), 0.46, (0.0, -1.0, 0.0),
+            mats, collection, kit="radiator",
+        )
+        cut_open_bay(
+            hull_obj, "Starboard",
+            (half * 0.08, hw, hh * 0.08),
+            half * 0.18, max(0.22, hh * 0.48), 0.46, (0.0, 1.0, 0.0),
+            mats, collection, kit="rack",
+        )
+        cut_open_bay(
+            hull_obj, "DorsalAft",
+            (-half * 0.32, 0.0, hh),
+            half * 0.16, hw * 0.28, 0.30, (0.0, 0.0, 1.0),
+            mats, collection, kit="rack",
+        )
+        hull_obj.data.materials.clear()
+        hull_obj.data.materials.append(hull)
+        add_box("Armor_Belt_Port", (half * 0.36, -hw * 0.98, -hh * 0.15), (half * 0.22, 0.04, hh * 0.28), armor, collection, 0.01)
+        add_box("Armor_Belt_Starboard", (half * 0.36, hw * 0.98, -hh * 0.15), (half * 0.22, 0.04, hh * 0.28), armor, collection, 0.01)
+        add_box("Armor_Cheek_Port", (-half * 0.42, -hw * 0.90, hh * 0.05), (half * 0.16, 0.05, hh * 0.32), armor, collection, 0.01)
+        add_box("Armor_Cheek_Starboard", (-half * 0.42, hw * 0.90, hh * 0.05), (half * 0.16, 0.05, hh * 0.32), armor, collection, 0.01)
 
     if lod == 0:
         add_box("Accent_Plate", (half * 0.05, -hw + 0.08, 0.35), (0.45, 0.02, 0.12), accent, collection, 0.006)
@@ -591,9 +665,7 @@ def build_ship(ship_id, spec, lod, mats):
         add_sensor_dish("Dorsal", (half * 0.18, 0.0, hh + 0.72), mats, collection)
         add_service_hatch("Dorsal", (-half * 0.12, 0.0, hh + 0.12), mats, collection, sx=0.38, sy=0.28)
         add_service_hatch("PortShoulder", (half * 0.08, -hw * 0.82, hh * 0.35), mats, collection, sx=0.28, sy=0.18)
-        add_radiator_cassette("Port", (-half * 0.18, -hw * 0.55, hh + 0.10), lod, mats, collection, length=min(2.4, half * 0.75), height=0.38)
-        add_radiator_cassette("Starboard", (-half * 0.18, hw * 0.55, hh + 0.10), lod, mats, collection, length=min(2.4, half * 0.75), height=0.38)
-        add_radiator_cassette("Dorsal", (-half * 0.38, 0.0, hh + 0.16), lod, mats, collection, length=min(2.0, half * 0.55), height=0.28)
+        add_radiator_cassette("DorsalWell", (-half * 0.38, 0.0, hh - 0.02), lod, mats, collection, length=min(1.6, half * 0.40), height=0.22)
         add_panel_seams("Hull", [half * t for t in (0.62, 0.28, -0.08, -0.42)], hw * 0.78, hh * 0.92, mech, collection)
         add_service_pipe("Pipe_Port_A", (half * 0.35, -hw * 0.88, -hh * 0.15), (-half * 0.35, -hw * 0.88, -hh * 0.05), mech, collection)
         add_service_pipe("Pipe_Stbd_A", (half * 0.35, hw * 0.88, -hh * 0.15), (-half * 0.35, hw * 0.88, -hh * 0.05), mech, collection)
@@ -671,6 +743,185 @@ def build_ship(ship_id, spec, lod, mats):
     }
 
 
+class TangentValidationError(RuntimeError):
+    pass
+
+
+def _read_glb_layout(stream, path: Path):
+    header = stream.read(12)
+    if len(header) != 12:
+        raise TangentValidationError(f"{path} has a truncated GLB header")
+    magic, version, declared_length = struct.unpack("<4sII", header)
+    if magic != b"glTF" or version != 2:
+        raise TangentValidationError(f"{path} is not GLB 2.0")
+    if declared_length != path.stat().st_size:
+        raise TangentValidationError(f"{path} GLB length does not match the file size")
+
+    gltf = None
+    binary_offset = None
+    binary_length = None
+    cursor = 12
+    while cursor < declared_length:
+        stream.seek(cursor)
+        chunk_header = stream.read(8)
+        if len(chunk_header) != 8:
+            raise TangentValidationError(f"{path} has a truncated GLB chunk header")
+        chunk_length, chunk_type = struct.unpack("<II", chunk_header)
+        chunk_start = cursor + 8
+        chunk_end = chunk_start + chunk_length
+        if chunk_length % 4 or chunk_end > declared_length:
+            raise TangentValidationError(f"{path} has an invalid GLB chunk range")
+        if chunk_type == 0x4E4F534A:
+            if gltf is not None:
+                raise TangentValidationError(f"{path} contains multiple JSON chunks")
+            payload = stream.read(chunk_length).rstrip(b" \t\r\n\x00")
+            try:
+                gltf = json.loads(payload.decode("utf-8"))
+            except (UnicodeDecodeError, json.JSONDecodeError) as error:
+                raise TangentValidationError(f"{path} contains invalid glTF JSON") from error
+        elif chunk_type == 0x004E4942:
+            if binary_offset is not None:
+                raise TangentValidationError(f"{path} contains multiple BIN chunks")
+            binary_offset = chunk_start
+            binary_length = chunk_length
+        cursor = chunk_end
+
+    if gltf is None or binary_offset is None or binary_length is None:
+        raise TangentValidationError(f"{path} must contain one JSON chunk and one BIN chunk")
+    if not isinstance(gltf, dict):
+        raise TangentValidationError(f"{path} glTF JSON root must be an object")
+    return gltf, binary_offset, binary_length
+
+
+def _nonnegative_int(value, default=None):
+    if value is None:
+        value = default
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        return None
+    return value
+
+
+def validate_glb_tangents(path: Path) -> int:
+    """Reject malformed, zero-length, or non-unit exported tangent vectors."""
+    try:
+        stream = path.open("rb")
+    except OSError as error:
+        raise TangentValidationError(f"cannot read exported GLB {path}") from error
+
+    with stream:
+        gltf, binary_offset, binary_length = _read_glb_layout(stream, path)
+        accessors = gltf.get("accessors")
+        views = gltf.get("bufferViews")
+        buffers = gltf.get("buffers")
+        meshes = gltf.get("meshes")
+        if not all(isinstance(rows, list) for rows in (accessors, views, buffers, meshes)):
+            raise TangentValidationError(f"{path} is missing glTF mesh/accessor storage")
+        if not buffers or not isinstance(buffers[0], dict) or "uri" in buffers[0]:
+            raise TangentValidationError(f"{path} must use embedded GLB buffer 0")
+        buffer_length = _nonnegative_int(buffers[0].get("byteLength"))
+        if buffer_length is None or buffer_length > binary_length or binary_length - buffer_length > 3:
+            raise TangentValidationError(f"{path} embedded buffer length does not match its BIN chunk")
+
+        tangent_accessors = set()
+        for mesh_index, mesh in enumerate(meshes):
+            if not isinstance(mesh, dict) or not isinstance(mesh.get("primitives"), list):
+                raise TangentValidationError(f"{path} mesh {mesh_index} is malformed")
+            for primitive_index, primitive in enumerate(mesh["primitives"]):
+                attributes = primitive.get("attributes") if isinstance(primitive, dict) else None
+                if not isinstance(attributes, dict):
+                    raise TangentValidationError(
+                        f"{path} mesh {mesh_index} primitive {primitive_index} has malformed attributes"
+                    )
+                tangent_index = attributes.get("TANGENT")
+                if "TEXCOORD_0" in attributes and "NORMAL" in attributes and primitive.get("material") is not None:
+                    if _nonnegative_int(tangent_index) is None:
+                        raise TangentValidationError(
+                            f"{path} mesh {mesh_index} primitive {primitive_index} is missing TANGENT"
+                        )
+                if tangent_index is not None:
+                    if _nonnegative_int(tangent_index) is None:
+                        raise TangentValidationError(
+                            f"{path} mesh {mesh_index} primitive {primitive_index} has invalid TANGENT"
+                        )
+                    tangent_accessors.add(tangent_index)
+        if not tangent_accessors:
+            raise TangentValidationError(f"{path} contains no TANGENT accessors")
+
+        tangent_count = 0
+        for accessor_index in sorted(tangent_accessors):
+            if accessor_index >= len(accessors) or not isinstance(accessors[accessor_index], dict):
+                raise TangentValidationError(f"{path} TANGENT accessor {accessor_index} is missing")
+            accessor = accessors[accessor_index]
+            if "sparse" in accessor:
+                raise TangentValidationError(
+                    f"{path} TANGENT accessor {accessor_index} contains unsupported sparse storage"
+                )
+            normalized = accessor.get("normalized", False)
+            if (
+                accessor.get("componentType") != 5126
+                or accessor.get("type") != "VEC4"
+                or not isinstance(normalized, bool)
+                or normalized
+            ):
+                raise TangentValidationError(
+                    f"{path} TANGENT accessor {accessor_index} must be unnormalized dense float32 VEC4"
+                )
+            count = _nonnegative_int(accessor.get("count"))
+            view_index = _nonnegative_int(accessor.get("bufferView"))
+            if not count or view_index is None or view_index >= len(views):
+                raise TangentValidationError(f"{path} TANGENT accessor {accessor_index} has invalid storage")
+            view = views[view_index]
+            if not isinstance(view, dict) or view.get("buffer") != 0:
+                raise TangentValidationError(
+                    f"{path} TANGENT accessor {accessor_index} must use embedded buffer 0"
+                )
+            view_offset = _nonnegative_int(view.get("byteOffset"), 0)
+            accessor_offset = _nonnegative_int(accessor.get("byteOffset"), 0)
+            view_length = _nonnegative_int(view.get("byteLength"))
+            stride = _nonnegative_int(view.get("byteStride"), 16)
+            if (
+                view_offset is None
+                or accessor_offset is None
+                or not view_length
+                or stride is None
+                or stride < 16
+                or stride > 252
+                or stride % 4
+                or view_offset % 4
+                or accessor_offset % 4
+            ):
+                raise TangentValidationError(f"{path} TANGENT accessor {accessor_index} has invalid layout")
+            required = accessor_offset + stride * (count - 1) + 16
+            view_end = view_offset + view_length
+            if required > view_length or view_end > buffer_length or view_end > binary_length:
+                raise TangentValidationError(f"{path} TANGENT accessor {accessor_index} is out of range")
+
+            element_start = binary_offset + view_offset + accessor_offset
+            for element_index in range(count):
+                stream.seek(element_start + element_index * stride)
+                packed = stream.read(16)
+                if len(packed) != 16:
+                    raise TangentValidationError(
+                        f"{path} TANGENT accessor {accessor_index} is truncated"
+                    )
+                x, y, z, handedness = struct.unpack("<4f", packed)
+                length = math.sqrt(x * x + y * y + z * z)
+                if not math.isfinite(length) or length < 1e-6:
+                    raise TangentValidationError(
+                        f"{path} TANGENT accessor {accessor_index} element {element_index} is zero or non-finite"
+                    )
+                if abs(length - 1.0) > 1e-4:
+                    raise TangentValidationError(
+                        f"{path} TANGENT accessor {accessor_index} element {element_index} is non-unit ({length:.8g})"
+                    )
+                if not math.isfinite(handedness) or abs(abs(handedness) - 1.0) > 1e-4:
+                    raise TangentValidationError(
+                        f"{path} TANGENT accessor {accessor_index} element {element_index} has invalid handedness"
+                    )
+                tangent_count += 1
+    return tangent_count
+
+
 def export_lod(collection, out_dir: Path, ship_id: str, lod: int) -> Path:
     out = out_dir / "source" / "wholeships" / f"{ship_id}_production_v1_lod{lod}.glb"
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -679,13 +930,31 @@ def export_lod(collection, out_dir: Path, ship_id: str, lod: int) -> Path:
         obj.hide_viewport = False
         obj.hide_set(False)
         obj.select_set(True)
-    bpy.ops.export_scene.gltf(
-        filepath=str(out), export_format="GLB", use_selection=True, export_apply=True,
-        export_yup=True, export_extras=True, export_animations=False,
-        export_materials="EXPORT", export_texcoords=True, export_normals=True,
-        export_tangents=True, export_image_format="NONE",
-    )
-    return out
+    tmp = out.with_suffix(".tmp.glb")
+    last_error = None
+    for attempt in range(6):
+        try:
+            tmp.unlink(missing_ok=True)
+            bpy.ops.export_scene.gltf(
+                filepath=str(tmp), export_format="GLB", use_selection=True, export_apply=True,
+                export_yup=True, export_extras=True, export_animations=False,
+                export_materials="EXPORT", export_texcoords=True, export_normals=True,
+                export_tangents=True, export_image_format="NONE",
+            )
+            if not tmp.is_file():
+                raise RuntimeError(f"exporter did not create {tmp}")
+            validate_glb_tangents(tmp)
+            tmp.replace(out)
+            return out
+        except TangentValidationError:
+            tmp.unlink(missing_ok=True)
+            raise
+        except Exception as error:
+            last_error = error
+            if attempt < 5:
+                time.sleep(0.4 * (attempt + 1))
+    tmp.unlink(missing_ok=True)
+    raise RuntimeError(f"failed to export {out} after 6 attempts") from last_error
 
 
 def look_at(obj, target=(0, 0, 0)):
@@ -724,7 +993,7 @@ def render_evidence(collection, out_dir: Path, ship_id: str, spec):
         scene.collection.objects.link(obj)
         obj.location = loc
         look_at(obj)
-    evidence = out_dir / "evidence" / "iter06"
+    evidence = out_dir / "evidence" / "iter09"
     evidence.mkdir(parents=True, exist_ok=True)
     half = spec["length"] * 0.45
     views = [
@@ -756,13 +1025,13 @@ def build_one(ship_id: str, spec: dict, texture_dir: Path) -> dict:
         report.update({"path": str(output.relative_to(out_dir)).replace("\\", "/"), "bytes": output.stat().st_size, "sha256": sha256(output)})
         collections.append(collection)
         reports.append(report)
-    renders = render_evidence(collections[0], out_dir, ship_id, spec)
+    renders = [] if parse_skip_renders() else render_evidence(collections[0], out_dir, ship_id, spec)
     report = {
         "schema": "spaceface.fleetPlayerBody.build.v1",
         "assetId": spec["assetId"],
         "defId": spec["defId"],
         "shipId": ship_id,
-        "iteration": 6,
+        "iteration": 9,
         "lods": reports,
         "renders": renders,
     }
@@ -773,7 +1042,117 @@ def build_one(ship_id: str, spec: dict, texture_dir: Path) -> dict:
     return report
 
 
+def load_summary_records(path: Path) -> dict[str, dict]:
+    """Load only identity-coherent records so partial builds cannot erase the family."""
+    if not path.exists():
+        return {}
+    try:
+        rows = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise RuntimeError(f"cannot preserve existing fleet summary at {path}") from error
+    if not isinstance(rows, list):
+        raise RuntimeError(f"fleet summary at {path} must contain a list")
+
+    records = {}
+    for index, row in enumerate(rows):
+        if not isinstance(row, dict):
+            raise RuntimeError(f"fleet summary record {index} is not an object")
+        ship_id = row.get("shipId")
+        if not isinstance(ship_id, str) or ship_id not in SPECS:
+            raise RuntimeError(f"fleet summary record {index} has an unknown shipId {ship_id!r}")
+        spec = SPECS[ship_id]
+        if (
+            row.get("schema") != "spaceface.fleetPlayerBody.build.v1"
+            or row.get("assetId") != spec["assetId"]
+            or row.get("defId") != spec["defId"]
+        ):
+            raise RuntimeError(f"fleet summary record {index} does not match {ship_id!r}")
+        if ship_id in records:
+            raise RuntimeError(f"fleet summary contains duplicate record for {ship_id!r}")
+        records[ship_id] = row
+    return records
+
+
+def merge_summary_records(existing: dict[str, dict], refreshed: dict[str, dict]) -> list[dict]:
+    merged = dict(existing)
+    merged.update(refreshed)
+    return [merged[ship_id] for ship_id in SPECS if ship_id in merged]
+
+
+@contextmanager
+def summary_publication_lock(summary_path: Path, timeout_seconds=30.0):
+    lock_root = Path(tempfile.gettempdir()) / "spaceface-fleet-summary-locks"
+    lock_root.mkdir(parents=True, exist_ok=True)
+    lock_key = hashlib.sha256(str(summary_path.resolve()).casefold().encode("utf-8")).hexdigest()
+    lock_path = lock_root / f"{lock_key}.lock"
+    stream = lock_path.open("a+b")
+    acquired = False
+    try:
+        stream.seek(0, os.SEEK_END)
+        if stream.tell() == 0:
+            stream.write(b"\0")
+            stream.flush()
+        deadline = time.monotonic() + timeout_seconds
+        while True:
+            try:
+                stream.seek(0)
+                if os.name == "nt":
+                    import msvcrt
+
+                    msvcrt.locking(stream.fileno(), msvcrt.LK_NBLCK, 1)
+                else:
+                    import fcntl
+
+                    fcntl.flock(stream.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                acquired = True
+                break
+            except OSError as error:
+                if time.monotonic() >= deadline:
+                    raise TimeoutError(f"timed out locking fleet summary {summary_path}") from error
+                time.sleep(0.05)
+        yield
+    finally:
+        if acquired:
+            stream.seek(0)
+            if os.name == "nt":
+                import msvcrt
+
+                msvcrt.locking(stream.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                import fcntl
+
+                fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
+        stream.close()
+
+
+def atomic_write_summary(path: Path, rows: list[dict]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    handle, temp_name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
+    temp_path = Path(temp_name)
+    try:
+        with os.fdopen(handle, "w", encoding="utf-8", newline="\n") as stream:
+            json.dump(rows, stream, indent=2)
+            stream.write("\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+        temp_path.replace(path)
+    finally:
+        temp_path.unlink(missing_ok=True)
+
+
+def publish_summary_records(path: Path, refreshed: dict[str, dict]) -> list[dict]:
+    with summary_publication_lock(path):
+        existing = load_summary_records(path)
+        rows = merge_summary_records(existing, refreshed)
+        atomic_write_summary(path, rows)
+    return rows
+
+
 def main() -> int:
+    try:
+        wanted = parse_only()
+    except ValueError as error:
+        raise SystemExit(f"[fleet] {error}") from error
     FAMILY.mkdir(parents=True, exist_ok=True)
     texture_dir = FAMILY / "textures"
     texture_dir.mkdir(parents=True, exist_ok=True)
@@ -783,12 +1162,11 @@ def main() -> int:
             dest = texture_dir / f"{prefix}_{suffix}"
             if src.exists() and not dest.exists():
                 shutil.copy2(src, dest)
-    wanted = parse_only()
-    summaries = []
+    refreshed = {}
     for ship_id in wanted:
         print(f"[fleet] building {ship_id}")
-        summaries.append(build_one(ship_id, SPECS[ship_id], texture_dir))
-    (FAMILY / "build_summary.json").write_text(json.dumps(summaries, indent=2) + "\n", encoding="utf-8")
+        refreshed[ship_id] = build_one(ship_id, SPECS[ship_id], texture_dir)
+    summaries = publish_summary_records(FAMILY / "build_summary.json", refreshed)
     print(json.dumps({"ok": True, "ships": [row["shipId"] for row in summaries]}, indent=2))
     return 0
 

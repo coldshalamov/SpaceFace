@@ -10,7 +10,7 @@ from __future__ import annotations
 import math
 
 import bpy
-from mathutils import Vector
+from mathutils import Matrix, Vector
 
 
 def finish_mesh(obj, material, bevel=0.04, angle=28.0):
@@ -228,17 +228,17 @@ def add_midship_kit(half, hw, hh, lod, mats, collection):
     mech = mats["Material_Mechanical"]
     accent = mats.get("Material_Accent") or armor
     warning = mats.get("Material_Warning") or armor
-    add_box("Spine_Rail_Port", (0.15, -hw * 0.22, hh + 0.08), (half * 0.42, 0.03, 0.035), mech, collection, 0.006)
-    add_box("Spine_Rail_Starboard", (0.15, hw * 0.22, hh + 0.08), (half * 0.42, 0.03, 0.035), mech, collection, 0.006)
-    add_box("Plate_Dorsal_Fore", (half * 0.22, 0.0, hh + 0.05), (half * 0.18, hw * 0.48, 0.028), armor, collection, 0.01)
-    add_box("Plate_Dorsal_Mid", (-half * 0.02, hw * 0.08, hh + 0.07), (half * 0.16, hw * 0.36, 0.024), hull, collection, 0.01)
-    add_box("Plate_Dorsal_Aft", (-half * 0.28, -hw * 0.06, hh + 0.06), (half * 0.14, hw * 0.32, 0.022), armor, collection, 0.01)
-    add_box("Plate_Repair_Patch", (half * 0.06, -hw * 0.18, hh + 0.09), (0.28, 0.18, 0.012), warning, collection, 0.004)
-    add_box("Plate_Accent_Inset", (-half * 0.08, hw * 0.16, hh + 0.09), (0.22, 0.12, 0.01), accent, collection, 0.003)
-    add_box("Cheek_Port", (half * 0.08, -hw * 1.02, hh * 0.18), (half * 0.22, 0.045, hh * 0.38), armor, collection, 0.012)
-    add_box("Cheek_Starboard", (half * 0.08, hw * 1.02, hh * 0.18), (half * 0.22, 0.045, hh * 0.38), armor, collection, 0.012)
-    add_box("Shoulder_Port", (-half * 0.12, -hw * 0.96, hh * 0.55), (half * 0.18, 0.05, hh * 0.22), armor, collection, 0.01)
-    add_box("Shoulder_Starboard", (-half * 0.12, hw * 0.96, hh * 0.55), (half * 0.18, 0.05, hh * 0.22), armor, collection, 0.01)
+    add_box("Spine_Rail_Port", (0.15, -hw * 0.22, hh + 0.12), (half * 0.42, 0.03, 0.035), mech, collection, 0.006)
+    add_box("Spine_Rail_Starboard", (0.15, hw * 0.22, hh + 0.12), (half * 0.42, 0.03, 0.035), mech, collection, 0.006)
+    add_box("Plate_Dorsal_Fore", (half * 0.22, 0.0, hh + 0.10), (half * 0.18, hw * 0.48, 0.045), armor, collection, 0.01)
+    add_box("Plate_Dorsal_Mid", (-half * 0.02, hw * 0.08, hh + 0.16), (half * 0.16, hw * 0.36, 0.038), hull, collection, 0.01)
+    add_box("Plate_Dorsal_Aft", (-half * 0.28, -hw * 0.06, hh + 0.13), (half * 0.14, hw * 0.32, 0.034), armor, collection, 0.01)
+    add_box("Plate_Repair_Patch", (half * 0.06, -hw * 0.18, hh + 0.20), (0.28, 0.18, 0.016), warning, collection, 0.004)
+    add_box("Plate_Accent_Inset", (-half * 0.08, hw * 0.16, hh + 0.20), (0.22, 0.12, 0.014), accent, collection, 0.003)
+    add_box("Cheek_Port", (half * 0.28, -hw * 1.02, hh * 0.18), (half * 0.14, 0.045, hh * 0.38), armor, collection, 0.012)
+    add_box("Cheek_Starboard", (half * 0.28, hw * 1.02, hh * 0.18), (half * 0.14, 0.045, hh * 0.38), armor, collection, 0.012)
+    add_box("Shoulder_Port", (half * 0.22, -hw * 0.96, hh * 0.55), (half * 0.14, 0.05, hh * 0.22), armor, collection, 0.01)
+    add_box("Shoulder_Starboard", (half * 0.22, hw * 0.96, hh * 0.55), (half * 0.14, 0.05, hh * 0.22), armor, collection, 0.01)
     if lod == 0:
         for i, x in enumerate((half * 0.28, 0.0, -half * 0.24)):
             add_box(f"Clamp_{i}", (x, 0.0, hh + 0.11), (0.045, hw * 0.30, 0.02), mech, collection, 0.003)
@@ -250,8 +250,214 @@ def add_midship_kit(half, hw, hh, lod, mats, collection):
         add_box("Cable_Tray", (half * 0.04, -hw * 0.38, hh + 0.04), (half * 0.30, 0.025, 0.02), mech, collection, 0.003)
 
 
+def apply_modifiers(obj):
+    bpy.context.view_layer.objects.active = obj
+    obj.select_set(True)
+    try:
+        for mod in list(obj.modifiers):
+            mod_name = mod.name
+            try:
+                result = bpy.ops.object.modifier_apply(modifier=mod_name)
+            except Exception as error:
+                raise RuntimeError(f"failed to apply {mod_name!r} on {obj.name!r} before cutting a bay") from error
+            if result != {"FINISHED"} or obj.modifiers.get(mod_name) is not None:
+                raise RuntimeError(
+                    f"modifier {mod_name!r} did not finish cleanly on {obj.name!r} before cutting a bay"
+                )
+    finally:
+        obj.select_set(False)
+
+
+def _bay_basis(outward):
+    n = Vector(outward)
+    if n.length < 1e-6:
+        n = Vector((0.0, 0.0, 1.0))
+    n.normalize()
+    long_axis = Vector((1.0, 0.0, 0.0))
+    if abs(n.dot(long_axis)) > 0.72:
+        long_axis = Vector((0.0, 0.0, 1.0))
+    wide_axis = n.cross(long_axis)
+    if wide_axis.length < 1e-6:
+        wide_axis = Vector((0.0, 1.0, 0.0))
+    wide_axis.normalize()
+    long_axis = wide_axis.cross(n).normalized()
+    return n, long_axis, wide_axis
+
+
+def _basis_matrix(origin, long_axis, wide_axis, normal):
+    return Matrix((
+        (long_axis.x, wide_axis.x, normal.x, origin.x),
+        (long_axis.y, wide_axis.y, normal.y, origin.y),
+        (long_axis.z, wide_axis.z, normal.z, origin.z),
+        (0.0, 0.0, 0.0, 1.0),
+    ))
+
+
+def _oriented_box(name, center, length, width, thick, long_axis, wide_axis, normal, material, collection, bevel=0.004):
+    bpy.ops.mesh.primitive_cube_add(location=(0.0, 0.0, 0.0))
+    obj = link_object(bpy.context.object, collection)
+    obj.name = name
+    obj.scale = (length, width, thick)
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    obj.matrix_world = _basis_matrix(Vector(center), long_axis, wide_axis, normal)
+    bpy.context.view_layer.objects.active = obj
+    obj.select_set(True)
+    bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+    obj.select_set(False)
+    return finish_mesh(obj, material, bevel)
+
+
+def cut_open_bay(hull_obj, tag, surface, length, width, depth, outward, mats, collection, kit="rack"):
+    """Cut a hole that actually breaks the skin, then line it. Mouth stays empty."""
+    if (
+        not isinstance(hull_obj, bpy.types.Object)
+        or hull_obj.type != "MESH"
+        or not isinstance(hull_obj.data, bpy.types.Mesh)
+    ):
+        raise TypeError(f"bay {tag!r} requires a Blender mesh hull target")
+    n, long_axis, wide_axis = _bay_basis(outward)
+    surface = Vector(surface)
+    apply_modifiers(hull_obj)
+    protrusion = 0.18
+    center = surface + n * ((protrusion - depth) * 0.5)
+    half_through = (protrusion + depth) * 0.5
+    cutter = None
+    mod_name = None
+    try:
+        bpy.ops.mesh.primitive_cube_add(location=(0.0, 0.0, 0.0))
+        cutter = bpy.context.object
+        cutter = link_object(cutter, collection)
+        cutter.name = f"Cutter_{tag}"
+        cutter.scale = (length, width, half_through)
+        bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+        cutter.matrix_world = _basis_matrix(center, long_axis, wide_axis, n)
+        bpy.context.view_layer.objects.active = cutter
+        cutter.select_set(True)
+        bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+        cutter.select_set(False)
+        bpy.context.view_layer.objects.active = hull_obj
+        hull_obj.select_set(True)
+        mod = hull_obj.modifiers.new(f"Cut_{tag}", "BOOLEAN")
+        mod_name = mod.name
+        mod.operation = "DIFFERENCE"
+        mod.object = cutter
+        try:
+            mod.solver = "EXACT"
+        except Exception as error:
+            raise RuntimeError(f"EXACT Boolean solver is unavailable for bay {tag!r}") from error
+        if mod.solver != "EXACT":
+            raise RuntimeError(f"EXACT Boolean solver was not retained for bay {tag!r}")
+        try:
+            result = bpy.ops.object.modifier_apply(modifier=mod_name)
+        except Exception as error:
+            raise RuntimeError(f"failed to cut bay {tag!r} into {hull_obj.name!r}") from error
+        if result != {"FINISHED"} or hull_obj.modifiers.get(mod_name) is not None:
+            raise RuntimeError(f"bay {tag!r} Boolean did not finish cleanly on {hull_obj.name!r}")
+    except Exception:
+        if mod_name is not None:
+            remaining = hull_obj.modifiers.get(mod_name)
+            if remaining is not None:
+                hull_obj.modifiers.remove(remaining)
+        raise
+    finally:
+        hull_obj.select_set(False)
+        if cutter is not None:
+            bpy.data.objects.remove(cutter, do_unlink=True)
+
+    mech = mats["Material_Mechanical"]
+    armor = mats["Material_Armor"]
+    warning = mats.get("Material_Warning") or armor
+    accent = mats.get("Material_Accent") or armor
+    floor = surface - n * (depth - 0.03)
+    _oriented_box(f"Bay_Floor_{tag}", floor, length * 0.92, width * 0.92, 0.025, long_axis, wide_axis, n, mech, collection)
+    _oriented_box(
+        f"Bay_Back_{tag}", surface - n * (depth - 0.04),
+        length * 0.88, width * 0.88, 0.02, long_axis, wide_axis, n, armor, collection,
+    )
+    _oriented_box(
+        f"Bay_WallFore_{tag}", surface - n * (depth * 0.48) + long_axis * (length - 0.03),
+        0.03, width * 0.88, depth * 0.46, long_axis, wide_axis, n, mech, collection,
+    )
+    _oriented_box(
+        f"Bay_WallAft_{tag}", surface - n * (depth * 0.48) - long_axis * (length - 0.03),
+        0.03, width * 0.88, depth * 0.46, long_axis, wide_axis, n, mech, collection,
+    )
+    _oriented_box(
+        f"Bay_WallPos_{tag}", surface - n * (depth * 0.48) + wide_axis * (width - 0.03),
+        length * 0.86, 0.03, depth * 0.46, long_axis, wide_axis, n, mech, collection,
+    )
+    _oriented_box(
+        f"Bay_WallNeg_{tag}", surface - n * (depth * 0.48) - wide_axis * (width - 0.03),
+        length * 0.86, 0.03, depth * 0.46, long_axis, wide_axis, n, mech, collection,
+    )
+    for i, offset in enumerate((
+        long_axis * length, -long_axis * length, wide_axis * width, -wide_axis * width,
+    )):
+        rim_length, rim_width = (0.035, width * 1.08) if i < 2 else (length * 1.08, 0.035)
+        _oriented_box(
+            f"Bay_Rim_{tag}_{i}", surface + n * 0.012 + offset,
+            rim_length, rim_width, 0.016,
+            long_axis, wide_axis, n, armor, collection, 0.003,
+        )
+    gear = surface - n * (depth * 0.62)
+    if kit == "radiator":
+        _oriented_box(f"Bay_RadCore_{tag}", gear, length * 0.55, width * 0.22, 0.05, long_axis, wide_axis, n, mats.get("Material_Radiator") or armor, collection)
+        for i in range(5):
+            fx = -length * 0.4 + (length * 0.8 * i / 4)
+            _oriented_box(
+                f"Bay_RadFin_{tag}_{i}", gear + long_axis * fx + n * 0.04,
+                0.012, width * 0.28, 0.07, long_axis, wide_axis, n, mats.get("Material_Radiator") or armor, collection, 0.002,
+            )
+    elif kit == "cockpit":
+        _oriented_box(f"Bay_Seat_{tag}", gear - long_axis * (length * 0.15), 0.16, 0.14, 0.08, long_axis, wide_axis, n, armor, collection)
+        _oriented_box(f"Bay_Console_{tag}", gear + long_axis * (length * 0.35), 0.12, 0.20, 0.06, long_axis, wide_axis, n, mech, collection)
+        _oriented_box(f"Bay_Screen_{tag}", gear + long_axis * (length * 0.38) + n * 0.08, 0.04, 0.12, 0.05, long_axis, wide_axis, n, accent, collection, 0.002)
+    else:
+        _oriented_box(f"Bay_Rack_{tag}", gear, length * 0.42, width * 0.18, 0.08, long_axis, wide_axis, n, armor, collection)
+        _oriented_box(f"Bay_Crate_{tag}", gear + long_axis * (length * 0.28) + wide_axis * (width * 0.18), 0.10, 0.08, 0.07, long_axis, wide_axis, n, warning, collection, 0.003)
+        _oriented_box(f"Bay_Bottle_{tag}", gear - long_axis * (length * 0.22), 0.04, 0.04, 0.10, long_axis, wide_axis, n, mech, collection, 0.002)
+    return True
+
+
+def cut_hull_recess(hull_obj, tag, loc, sx, sy, sz, mats, collection, outward=None, kit="rack"):
+    """Compat wrapper: treat loc as a surface point and break the skin."""
+    if outward is None:
+        if abs(loc[1]) > abs(loc[2]) * 1.15:
+            outward = (0.0, 1.0 if loc[1] > 0 else -1.0, 0.0)
+            length, width, depth = sx, sz, max(sy * 2.4, 0.38)
+            surface = (loc[0], loc[1], loc[2])
+        else:
+            outward = (0.0, 0.0, 1.0)
+            length, width, depth = sx, sy, max(sz * 2.2, 0.30)
+            surface = loc
+    else:
+        length, width, depth = sx, sy, max(sz * 2.0, 0.30)
+        surface = loc
+    return cut_open_bay(hull_obj, tag, surface, length, width, depth, outward, mats, collection, kit=kit)
+
+
+def add_cockpit_glazing(tag, surface, length, width, hh, mats, collection, raised=0.0):
+    """Raised greenhouse: sloped brow, mullions, thin dark panes over the tub."""
+    canopy = mats["Material_Canopy"]
+    armor = mats["Material_Armor"]
+    x, y, z = surface
+    z0 = z + 0.02 + raised
+    add_box(f"{tag}_Sill", (x, y, z0), (length * 1.08, width * 1.12, 0.03), armor, collection, 0.006)
+    add_box(f"{tag}_Brow", (x + length * 0.55, y, z0 + 0.22), (length * 0.38, width * 0.72, 0.04), armor, collection, 0.006)
+    add_box(f"{tag}_AftBulk", (x - length * 0.85, y, z0 + 0.16), (0.05, width * 0.90, 0.16), armor, collection, 0.005)
+    add_box(f"{tag}_RailPort", (x, y - width * 0.95, z0 + 0.16), (length * 0.95, 0.03, 0.14), armor, collection, 0.004)
+    add_box(f"{tag}_RailStbd", (x, y + width * 0.95, z0 + 0.16), (length * 0.95, 0.03, 0.14), armor, collection, 0.004)
+    add_box(f"{tag}_Mullion", (x + length * 0.05, y, z0 + 0.20), (0.025, width * 0.88, 0.16), armor, collection, 0.003)
+    add_box(f"{tag}_Spine", (x, y, z0 + 0.28), (length * 0.72, 0.025, 0.03), armor, collection, 0.003)
+    add_box(f"{tag}_Pane_Port", (x, y - width * 0.78, z0 + 0.18), (length * 0.78, 0.016, 0.12), canopy, collection, 0.003)
+    add_box(f"{tag}_Pane_Stbd", (x, y + width * 0.78, z0 + 0.18), (length * 0.78, 0.016, 0.12), canopy, collection, 0.003)
+    add_box(f"{tag}_Pane_Fore", (x + length * 0.72, y, z0 + 0.16), (0.016, width * 0.62, 0.11), canopy, collection, 0.003)
+    add_box(f"{tag}_Pane_TopA", (x + length * 0.22, y, z0 + 0.30), (length * 0.32, width * 0.58, 0.014), canopy, collection, 0.003)
+    add_box(f"{tag}_Pane_TopB", (x - length * 0.22, y, z0 + 0.30), (length * 0.32, width * 0.58, 0.014), canopy, collection, 0.003)
+
+
 def add_recess_bay(tag, loc, sx, sy, sz, mats, collection):
-    """Inset well with rim and interior so the hull reads cut, not stacked."""
+    """Fallback stacked well when no hull object is available to cut."""
     mech = mats["Material_Mechanical"]
     armor = mats["Material_Armor"]
     x, y, z = loc
