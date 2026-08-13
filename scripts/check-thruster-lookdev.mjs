@@ -7,6 +7,10 @@
  *   1) trail tip is aft of the nozzle (not nose-forward / backwards)
  *   2) history path has enough samples for a real wake (not a nozzle stub)
  *   3) drawn strip span is long enough to read as a trail
+ *   4) the exhaust volume itself is live, aft-facing, and marching a real budget
+ *
+ * (4) exists because 1-3 only ever measured the history filament, which is the thin stylistic
+ * thread — not the exhaust. Every one of them would stay green with the plume entirely missing.
  *
  * Exit 0 = shippable on structure gates. Exit 1 = do not claim thruster done.
  *
@@ -40,6 +44,8 @@ const MIN_HISTORY = 24;
 const MIN_POINT_COUNT = 32;
 const MIN_AFT_SPAN_WU = 8; // tip must be at least this far aft of nozzle
 const MIN_TIP_BEHIND_ROOT_WU = 3;
+const MIN_VOLUME_STEPS = 16; // a march this coarse cannot resolve filaments at close framing
+const MIN_PLUME_LEN_WU = 6; // proxy must actually span a plume, not sit as a nub on the bell
 
 function run(cmd, cmdArgs) {
   return new Promise((resolve, reject) => {
@@ -65,6 +71,44 @@ function measureStreamGeometry() {
   const info = stream.inspect();
   const liveX = sockets[0].x;
 
+  // The exhaust: a visible raymarch proxy, oriented aft and spanning the plume. Measured from the
+  // proxy's own world transform rather than from inspect(), so a system reporting numbers it does
+  // not actually draw still fails here.
+  const volumeFails = [];
+  let plumeTipX = null;
+  let plumeLen = null;
+  const proxies = [];
+  stream.group.traverse((o) => {
+    if (o.isMesh && o.visible && o.geometry && !o.geometry.attributes.uv) proxies.push(o);
+  });
+  if (!proxies.length) {
+    volumeFails.push('no visible exhaust volume proxy — the plume is not being drawn at all');
+  } else {
+    const proxy = proxies[0];
+    proxy.updateMatrixWorld(true);
+    const root = new THREE.Vector3(0, 0, 0).applyMatrix4(proxy.matrixWorld);
+    const tip = new THREE.Vector3(1, 0, 0).applyMatrix4(proxy.matrixWorld);
+    plumeTipX = tip.x;
+    plumeLen = root.distanceTo(tip);
+    if (!(tip.x < root.x - MIN_PLUME_LEN_WU)) {
+      volumeFails.push(
+        `plume points forward or is a nub: tip x=${tip.x.toFixed(2)} vs bell x=${root.x.toFixed(2)}`,
+      );
+    }
+    if (!(plumeLen >= MIN_PLUME_LEN_WU)) {
+      volumeFails.push(`plume length ${plumeLen.toFixed(2)} WU < ${MIN_PLUME_LEN_WU}`);
+    }
+  }
+  const vol = info.volume;
+  if (!vol || vol.construction !== 'raymarched-volume') {
+    volumeFails.push('exhaust is not the raymarched volume construction');
+  } else {
+    if (!(vol.live >= 1)) volumeFails.push('volume reports no live nozzle under full thrust');
+    if (!(vol.steps >= MIN_VOLUME_STEPS)) {
+      volumeFails.push(`march budget ${vol.steps} < ${MIN_VOLUME_STEPS} at close framing`);
+    }
+  }
+
   let mesh = null;
   stream.group.traverse((o) => {
     if (o.isMesh && o.visible && o.geometry?.attributes?.position && o.geometry?.attributes?.uv) {
@@ -73,7 +117,7 @@ function measureStreamGeometry() {
   });
   if (!mesh) {
     stream.dispose();
-    return { ok: false, fails: ['no visible strip mesh'], info, liveX };
+    return { ok: false, fails: ['no visible strip mesh', ...volumeFails], info, liveX };
   }
 
   const pos = mesh.geometry.attributes.position.array;
@@ -102,7 +146,7 @@ function measureStreamGeometry() {
   }
   stream.dispose();
 
-  const fails = [];
+  const fails = [...volumeFails];
   if (!(info.active)) fails.push('stream not active under thrust');
   if (!(info.path && info.path.historyCount >= MIN_HISTORY)) {
     fails.push(`historyCount ${info.path?.historyCount ?? 0} < ${MIN_HISTORY} (no real wake)`);
@@ -140,6 +184,10 @@ function measureStreamGeometry() {
     rootX: rootN ? rootX : null,
     tipX: tipN ? tipX : null,
     span,
+    plumeTipX,
+    plumeLen,
+    volumeSteps: info.volume?.steps ?? 0,
+    volumeLive: info.volume?.live ?? 0,
     recipeId: PLAYER_PLASMA_STREAM_RECIPE.id,
   };
 }
@@ -177,6 +225,10 @@ const report = {
     rootX: measure.rootX,
     tipX: measure.tipX,
     span: measure.span,
+    plumeTipX: measure.plumeTipX,
+    plumeLen: measure.plumeLen,
+    volumeSteps: measure.volumeSteps,
+    volumeLive: measure.volumeLive,
     historyCount: measure.info?.path?.historyCount,
     pointCount: measure.info?.pointCount,
     active: measure.info?.active,
@@ -194,6 +246,8 @@ const report = {
     MIN_POINT_COUNT,
     MIN_AFT_SPAN_WU,
     MIN_TIP_BEHIND_ROOT_WU,
+    MIN_VOLUME_STEPS,
+    MIN_PLUME_LEN_WU,
   },
 };
 
@@ -228,6 +282,9 @@ await writeFile(
     `- rootX=${report.measure.rootX}`,
     `- tipX=${report.measure.tipX}`,
     `- span=${report.measure.span}`,
+    `- plumeTipX=${report.measure.plumeTipX}`,
+    `- plumeLen=${report.measure.plumeLen}`,
+    `- volumeSteps=${report.measure.volumeSteps} (live nozzles: ${report.measure.volumeLive})`,
     `- historyCount=${report.measure.historyCount}`,
     `- pointCount=${report.measure.pointCount}`,
     ``,
@@ -249,4 +306,5 @@ console.log('THRUSTER LOOKDEV GATE PASS');
 console.log(`shots: ${GATE_DIR}`);
 console.log(`tip aft of nozzle: tipX=${report.measure.tipX?.toFixed?.(2)} liveX=${report.measure.liveX}`);
 console.log(`historyCount=${report.measure.historyCount} pointCount=${report.measure.pointCount}`);
+console.log(`plume: ${report.measure.plumeLen?.toFixed?.(2)} WU aft, ${report.measure.volumeSteps} march steps`);
 process.exit(0);

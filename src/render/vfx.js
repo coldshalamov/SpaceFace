@@ -97,7 +97,11 @@ import {
   FLEET_SOCKETS_PER_SHIP,
 } from './thruster/systems/familyFleet.js';
 import { PlasmaStreamSystem } from './thruster/systems/plasmaStream.js';
-import { PLAYER_PLASMA_STREAM_RECIPE } from './thruster/recipes/plasmaStreamRecipe.js';
+import { VolumetricPlumeSystem } from './thruster/systems/volumetricPlume.js';
+import {
+  PLAYER_PLASMA_STREAM_RECIPE,
+  PLAYER_RETRO_VOLUME_RECIPE,
+} from './thruster/recipes/plasmaStreamRecipe.js';
 import {
   KESTREL_MAIN_PLUME_RECIPE,
   KESTREL_RCS_RECIPE,
@@ -108,6 +112,20 @@ import {
   listThrusterRecipePacks,
 } from './thruster/recipes/registry.js';
 import { PersistentCombatBeamPool } from './combat/persistentBeams.js';
+import {
+  createWeaponVfxPresenter,
+  createEnergyBoltPrecompileMesh,
+  FlipbookPool,
+  WeaponRibbonPool,
+  DistortionField,
+  HullScorchPool,
+  recipeUsesMuzzleFlipbook,
+  recipeUsesRibbonWake,
+  resolveWeaponRecipe,
+  visiblePointLightBudget as weaponVisiblePointLightBudget,
+  WEAPON_LIGHT_POOL_SIZE,
+  worldSizeForPixels,
+} from './weapons/index.js';
 import {
   explosionPattern01,
   explosionPatternSigned,
@@ -165,10 +183,14 @@ const PROJECTILE_TRAIL_DIAG_CLASSES = Object.freeze([
 // accessibility scales intensity at the event choke point instead of adding/removing lights and
 // forcing a whole-scene shader recompile.
 export const EVENT_LIGHT_POOL_SIZE = 6;
+export { WEAPON_LIGHT_POOL_SIZE };
 const PLAYER_PLUME_EVENT_LIGHT_KEY = 'player-plume';
 const PLAYER_PLUME_EVENT_LIGHT_PRIORITY = 0.72;
 export function eventLightPoolSizeFor(_video) {
   return EVENT_LIGHT_POOL_SIZE;
+}
+export function visiblePointLightBudget(_video) {
+  return weaponVisiblePointLightBudget(EVENT_LIGHT_POOL_SIZE);
 }
 
 export function richEngineTrailsEnabled(video) {
@@ -1033,6 +1055,7 @@ export const vfx = {
     this._initSeamMarkers();
     this._initCombatBeams();
     this._initFieldGeometry();
+    this._initWeaponPresenter();
     // ---- GPU point cloud ----
     const geo = new THREE.BufferGeometry();
     const positions = new Float32Array(cap * 3);
@@ -1556,6 +1579,9 @@ export const vfx = {
           if (!trail) continue;
           if (typeof trail.clear === 'function') trail.clear();
         }
+      }
+      if (this._weaponPresenter && typeof this._weaponPresenter.reproject === 'function') {
+        this._weaponPresenter.reproject(ox, oz);
       }
     }
     // Prevent double-reproject when both renderer prepareFrame and vfx.update observe the same seq.
@@ -2206,6 +2232,17 @@ export const vfx = {
     this._scene.add(this._combatBeams.group);
   },
 
+  _initWeaponPresenter() {
+    if (!this._scene || this._weaponPresenter) return;
+    this._weaponPresenter = createWeaponVfxPresenter({
+      scene: this._scene,
+      helpers: this.helpers,
+      toLocalXZ: (x, z, out) => this._toLocalXZ(x, z, out),
+    });
+    const graph = this.state && this.state.render && this.state.render.renderGraph;
+    if (graph) this._weaponPresenter.attachGraph(graph);
+  },
+
   _onFire(p) {
     if (!this._scene) return;
     let origin = (p.from && typeof p.from.x === 'number')
@@ -2235,6 +2272,13 @@ export const vfx = {
       if (this._combatBeams.startCount === startsBefore) return;
     }
     const burst = this._burst || 1;
+    if (this._weaponPresenter && recipeUsesMuzzleFlipbook(resolveWeaponRecipe(p && p.weaponId, p))) {
+      this._weaponPresenter.handleFire(p, origin, base, profile);
+      if (profile.family === 'kinetic' && profile.variant !== 'flak') {
+        this._spawnMuzzleCasings(origin, base, profile, burst);
+      }
+      return;
+    }
     switch (profile.lane) {
       case 'beam': this._spawnMuzzleBeam(origin, base, profile, burst); break;
       case 'energy': this._spawnMuzzleEnergy(origin, base, profile, burst); break;
@@ -2274,18 +2318,18 @@ export const vfx = {
         0.72, profile.coreColor || '#ffffff', Math.cos(base) * 20, Math.sin(base) * 20);
     }
     this._flashLight({ x: origin.x, z: origin.z }, profile.coreColor || '#ffffff', (rail ? 4.2 : 2.4) * sm, 12, rail ? 150 : 78);
-    // Mechanical muzzles eject only a few lateral casing glints. The previous forward orange fan
-    // made every ordinary shot look like the same detached impact explosion.
-    if (!rail) {
-      this._c0.set('#fff0c8'); this._c1.set('#50463b');
-      const side = base + Math.PI * 0.5;
-      const casingCount = Math.max(1, Math.round(2 * burst * (profile.rapid ? 0.6 : 1)));
-      for (let k = 0; k < casingCount; k++) {
-        const a = side + (Math.random() - 0.5) * 0.34;
-        const sp = 12 + Math.random() * 16;
-        this._spawnParticle(origin.x, origin.z, Math.cos(a) * sp, Math.sin(a) * sp,
-          0.18, 0.85, 0.08, this._c0, this._c1, 2.8, 0, 0);
-      }
+    if (!rail) this._spawnMuzzleCasings(origin, base, profile, burst);
+  },
+
+  _spawnMuzzleCasings(origin, base, profile, burst) {
+    this._c0.set('#fff0c8'); this._c1.set('#50463b');
+    const side = base + Math.PI * 0.5;
+    const casingCount = Math.max(1, Math.round(2 * burst * (profile.rapid ? 0.6 : 1)));
+    for (let k = 0; k < casingCount; k++) {
+      const a = side + (Math.random() - 0.5) * 0.34;
+      const sp = 12 + Math.random() * 16;
+      this._spawnParticle(origin.x, origin.z, Math.cos(a) * sp, Math.sin(a) * sp,
+        0.18, 0.85, 0.08, this._c0, this._c1, 2.8, 0, 0);
     }
   },
 
@@ -2376,6 +2420,42 @@ export const vfx = {
     const hitShield = tgt && tgt.shield > 0;
     const profile = resolveImpactPresentationProfile(p && p.weaponId, p);
     const scale = profile.scale || 1;
+    const recipe = resolveWeaponRecipe(p && p.weaponId, p);
+    let presenterHit = null;
+    if (this._weaponPresenter) {
+      presenterHit = this._weaponPresenter.handleHit(p, hitShield);
+    }
+    const keepLegacyHit = recipe.variant === 'flak'
+      || recipe.family === 'missile'
+      || recipe.family === 'concussion'
+      || recipe.family === 'mine'
+      || recipe.family === 'beam';
+    if (presenterHit && !keepLegacyHit) {
+      if (presenterHit.sparks) {
+        const approach = p && (p.approach || p.dir) || null;
+        let ax = approach && Number(approach.x) || 0;
+        let az = approach && Number(approach.z) || 0;
+        const approachLen = Math.hypot(ax, az) || 1;
+        ax /= approachLen;
+        az /= approachLen;
+        let nx = p && p.normal && Number(p.normal.x);
+        let nz = p && p.normal && Number(p.normal.z);
+        if (!Number.isFinite(nx) || !Number.isFinite(nz) || Math.hypot(nx, nz) < 1e-6) {
+          nx = -ax || 1;
+          nz = -az;
+        }
+        const normalAngle = Math.atan2(nz, nx);
+        this._impactParticleCone(
+          pos.x + nx * 0.42 * scale, pos.z + nz * 0.42 * scale,
+          normalAngle, 0.72, 18, 42,
+          Math.max(2, Math.round((profile.fragmentCount || 4) * (this._burst || 1) * 0.8)),
+          (profile.life || 0.16) * 1.15,
+          recipe.hull.sparkScale || 0.85,
+          profile.coreColor, profile.accentColor, 2.6,
+        );
+      }
+      return;
+    }
     const approach = p && (p.approach || p.dir) || null;
     let ax = approach && Number(approach.x) || 0;
     let az = approach && Number(approach.z) || 0;
@@ -8570,6 +8650,22 @@ export const vfx = {
     if (!(dt > 0)) return;
     if (dt > 0.1) dt = 0.1; // clamp pauses/tab-switches so particles don't teleport
     this._t += dt;
+    if (this._weaponPresenter) {
+      const render = this.state && this.state.render;
+      const graph = render && render.renderGraph;
+      if (graph) this._weaponPresenter.attachGraph(graph);
+      this._weaponPresenter.update(dt, {
+        state: this.state,
+        helpers: this.helpers,
+        toLocalXZ: (x, z, out) => this._toLocalXZ(x, z, out),
+        camera: render && render.camera,
+        interpolationAlpha: render && render.interpolationAlpha,
+        viewportHeight: render && render.viewport && render.viewport.height,
+        depthTexture: graph && graph.depthTexture,
+        depthWidth: graph && graph.sceneTarget && graph.sceneTarget.width,
+        depthHeight: graph && graph.sceneTarget && graph.sceneTarget.height,
+      });
+    }
     const trailScroll = (this._t * 0.35) % 1;
     if (this._particleMat) {
       if (this._particleMat.uniforms.uTrailScroll) this._particleMat.uniforms.uTrailScroll.value = trailScroll;
@@ -8700,10 +8796,17 @@ export const vfx = {
     }
     sub.explosions = this._explosions.update(dt, this._explosionEmitter) > 0 ? 1 : 0;
     if (this._combatBeams) {
+      const cam = this.state && this.state.render && this.state.render.camera;
+      const viewportH = this.state && this.state.render && this.state.render.viewport
+        && this.state.render.viewport.height || 1000;
+      const camDist = cam && cam.position
+        ? Math.hypot(cam.position.x, cam.position.y, cam.position.z)
+        : 144;
       sub.combatBeams = this._combatBeams.update(
         this._t,
         this._combatBeamLocalizer,
         resolveVfxAccessibilityProfile(this.state && this.state.settings),
+        worldSizeForPixels(camDist, 8, cam && cam.fov, viewportH),
       ) > 0 ? 1 : 0;
     } else {
       sub.combatBeams = 0;
@@ -9406,6 +9509,20 @@ export const vfx = {
     const plasmaStream = new PlasmaStreamSystem(THREE, PLAYER_PLASMA_STREAM_RECIPE);
     plasmaStream.attach(this._scene);
 
+    // Bow retro jets: the same volumetric exhaust as the main drive, driven continuously from
+    // signed reverse demand. See PLAYER_RETRO_VOLUME_RECIPE for why this is no longer an impulse.
+    const retroVolume = new VolumetricPlumeSystem(THREE, {
+      name: 'sf-retro-volume',
+      maxNozzles: 2,
+      minSteps: PLAYER_RETRO_VOLUME_RECIPE.minSteps,
+      maxSteps: PLAYER_RETRO_VOLUME_RECIPE.maxSteps,
+      renderOrder: 14,
+      coreColor: PLAYER_RETRO_VOLUME_RECIPE.coreColor,
+      midColor: PLAYER_RETRO_VOLUME_RECIPE.midColor,
+      edgeColor: PLAYER_RETRO_VOLUME_RECIPE.edgeColor,
+    });
+    retroVolume.attach(this._scene);
+
     // Massline ribbon: a thin tube energy volume drawn between the player and a tethered target.
     // Reuses the energy shader (turbulent core + halo) rather than the dedicated ribbon shader so it
     // needs no per-vertex aAlong/aSide attributes (the tube geometry already provides them implicitly).
@@ -9428,6 +9545,7 @@ export const vfx = {
       plumeSystem: playerPlume,
       rcsSystem: playerRcs,
       plasmaStream,
+      retroVolume,
       thrusterTextures: textures,
       engineProfileId: pack.profileId,
       recipePack: pack,
@@ -9445,6 +9563,15 @@ export const vfx = {
       };
     }
     if (!this._plasmaEmptySockets) this._plasmaEmptySockets = [];
+    if (!this._retroSockets) {
+      // Exactly the bow retro pair. Preallocated and mutated so the render path never allocates.
+      this._retroSockets = [
+        { x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0 },
+        { x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0 },
+      ];
+      this._retroSocketView = [];
+      this._retroParams = { ...PLAYER_RETRO_VOLUME_RECIPE, drive: 0, boost: 0, turbulence: 0 };
+    }
   },
 
   /**
@@ -9768,6 +9895,7 @@ export const vfx = {
     energy.rcsSystem = rcsSystem;
     energy.rcsCooldown = Math.max(0, energy.rcsCooldown - dt);
     const actuators = this._actuatorsFor(player);
+    this._updateRetroVolume(player, actuators, dt, a11y);
     if (actuators && energy.rcsCooldown <= 0) {
       const pose = this._rcsPoseScratch;
       pose.x = player.pos && Number.isFinite(player.pos.x) ? player.pos.x : 0;
@@ -9785,6 +9913,10 @@ export const vfx = {
       for (let i = 0; i < firings.length && fired < this._rcsOrigins.length; i++) {
         const jet = firings[i];
         if (!(jet.intensity > 0.001)) continue;
+        // Retro is a sustained jet and is drawn by the volume above. Leaving it on the impulse
+        // path as well is what produced the dotted line: a continuous input rendered as ~9
+        // discrete pops a second. Genuinely impulsive lateral/yaw pops stay here, correctly.
+        if (jet.role === 'reverse-left' || jet.role === 'reverse-right') continue;
         const origin = this._rcsOrigins[fired];
         const axis = this._rcsAxes[fired];
         const authoredSocket = jet.role === 'rcs-port'
@@ -9822,11 +9954,77 @@ export const vfx = {
     energy.rcsSystem.update(dt, a11y);
   },
 
+  /**
+   * Continuous bow retro exhaust, driven straight off signed reverse demand.
+   *
+   * Runs every frame rather than on the impulse cooldown, so holding the brake holds a lit jet and
+   * releasing it lets the jet die, which is what the input actually is.
+   */
+  _updateRetroVolume(player, actuators, dt, a11y) {
+    const energy = this._energy;
+    const volume = energy && energy.retroVolume;
+    if (!volume) return;
+    if (!player || !player.pos) { volume.reset(); return; }
+
+    const pose = this._rcsPoseScratch;
+    pose.x = player.pos && Number.isFinite(player.pos.x) ? player.pos.x : 0;
+    pose.z = player.pos && Number.isFinite(player.pos.z) ? player.pos.z : 0;
+    pose.rot = player.rot || 0;
+    pose.radius = player.radius || 6;
+
+    const firings = actuators
+      ? resolveRcsFirings(
+        actuators, pose, this._rcsScaleFor(player._flightFrame), this._productionRcsFirings,
+      )
+      : null;
+
+    const view = this._retroSocketView;
+    view.length = 0;
+    let peak = 0;
+    if (firings) {
+      for (let i = 0; i < firings.length && view.length < this._retroSockets.length; i++) {
+        const jet = firings[i];
+        if (jet.role !== 'reverse-left' && jet.role !== 'reverse-right') continue;
+        if (!(jet.intensity > 0.001)) continue;
+        const sock = this._retroSockets[view.length];
+        const local = this._toLocalXZ(jet.x, jet.z, this._spawnLocalXZ);
+        sock.x = local.x;
+        sock.y = 0;
+        sock.z = local.z;
+        // Socket convention: `a` points opposite the exhaust, and the plume grows along -a.
+        sock.ax = -jet.dirX;
+        sock.ay = 0;
+        sock.az = -jet.dirZ;
+        view.push(sock);
+        if (jet.intensity > peak) peak = jet.intensity;
+      }
+    }
+
+    if (!view.length) { volume.reset(); return; }
+
+    const cam = this.state.render && this.state.render.camera;
+    if (cam) volume.setCamera(cam);
+
+    const p = this._retroParams;
+    const flashScale = a11y && a11y.reducedFlash ? 0.72 : 1;
+    p.drive = peak;
+    p.timeScale = a11y && a11y.reducedMotion ? 0.12 : 1;
+    // A braking jet is short and hard: it grows a little with demand but never becomes a cruise
+    // plume, so length tracks demand only weakly.
+    p.lengthWU = PLAYER_RETRO_VOLUME_RECIPE.lengthWU * (0.55 + peak * 0.5);
+    p.exitRadiusWU = PLAYER_RETRO_VOLUME_RECIPE.exitRadiusWU;
+    p.tailRadiusWU = PLAYER_RETRO_VOLUME_RECIPE.exitRadiusWU
+      * PLAYER_RETRO_VOLUME_RECIPE.tailFlare;
+    p.radiance = PLAYER_RETRO_VOLUME_RECIPE.radiance * flashScale * (0.6 + peak * 0.55);
+    volume.update(dt, view, p);
+  },
+
   _hideEnergyPlumes() {
     this._releasePlayerPlumeEventLight();
     const energy = this._energy;
     if (!energy) return;
     if (energy.plasmaStream) energy.plasmaStream.reset();
+    if (energy.retroVolume) energy.retroVolume.reset();
     if (energy.fleet) energy.fleet.reset();
     else {
       if (energy.plumeSystem) energy.plumeSystem.reset();
@@ -9908,6 +10106,10 @@ export const vfx = {
     if (this._energy.plasmaStream) {
       this._energy.plasmaStream.dispose();
       this._energy.plasmaStream = null;
+    }
+    if (this._energy.retroVolume) {
+      this._energy.retroVolume.dispose();
+      this._energy.retroVolume = null;
     }
     if (this._energy.fleet) {
       this._energy.fleet.dispose();
@@ -10747,6 +10949,8 @@ export const vfx = {
       const e = list[i];
       if (!e || !e.alive || e.type !== 'projectile') continue;
       const data = e.data || EMPTY_PROJECTILE_DATA;
+      const recipe = resolveWeaponRecipe(data.weaponId, data);
+      if (recipeUsesRibbonWake(recipe)) continue;
       const prof = resolveProjectileTrailProfile(data.weaponId, data);
       const plan = buildProjectileTrailSpawnPlan(prof, e, burst, this._projectileTrailPlanScratch);
       if (plan.skip) continue;
@@ -11314,55 +11518,51 @@ export function runProjectileTrailEmissionSelfCheck() {
   for (let f = 0; f < 8; f++) system.update(1 / 60);
 
   const pt = system.inspect().projectileTrails;
+  const presenter = system._weaponPresenter;
+  if (!presenter) fail('weapon presenter must own energy-card and ribbon flight');
   if (pt.candidates < 5) fail(`expected 5 projectile candidates, got ${pt.candidates}`);
-  if (pt.streaksSpawned <= 0) fail('projectile trails should spawn directional streak geometry');
-  if (!pt.byClass.kinetic || pt.byClass.kinetic.streaks <= 0 || pt.byClass.kinetic.particles > 0) {
-    fail('kinetic class should emit a brief directional tracer without a glowing particle body');
+  if (pt.byClass.kinetic && pt.byClass.kinetic.particles > 0) {
+    fail('kinetic class must not emit a glowing particle body');
   }
-  if (!pt.byClass.missile || pt.byClass.missile.streaks <= 0) {
-    fail('missile class should emit attached exhaust; bounded vapor remains intentionally cadence-sampled');
+  if (pt.byClass.plasma && pt.byClass.plasma.particles > 0) {
+    fail('plasma class must not emit detached heat particles');
   }
-  if (!pt.byClass.plasma || pt.byClass.plasma.streaks <= 0 || pt.byClass.plasma.particles > 0) {
-    fail('plasma class should emit a connected thermal wake without detached particles');
+  if (pt.byClass.pulse && pt.byClass.pulse.particles > 0) {
+    fail('pulse class must not emit heat particles');
   }
-  if (!pt.byClass.pulse || pt.byClass.pulse.streaks <= 0 || pt.byClass.pulse.particles > 0) {
-    fail('pulse class should emit a connected streak without heat particles');
+  const ribbons = presenter.ribbons && presenter.ribbons.byEntity;
+  const bolts = presenter.bolts;
+  if (!bolts || bolts.live < 4) {
+    fail(`energy families must write stretched cards, got ${bolts && bolts.live} live bolts`);
   }
-  if (!pt.byClass.rail || pt.byClass.rail.streaks <= 0) fail('rail class should emit thin streaks');
+  for (const id of [10, 12, 13, 14]) {
+    if (!ribbons || !ribbons.has(id)) fail(`projectile ${id} must keep a ribbon wake, not TRAIL_STREAK beads`);
+  }
+  if (!ribbons || !ribbons.has(11)) fail('missile exhaust must be a ribbon wake on the mesh body');
+  if (bolts.byEntity && bolts.byEntity.has(11)) fail('missile must keep its mesh body rather than an energy card');
 
-  // Inspect rail geometry in an isolated harness. The mixed-family pool deliberately interleaves
-  // missile, plasma, rail, and pulse instances, so selecting its first live slot does not prove a
-  // rail dimension and became invalid as soon as plasma gained a wider connected sheath.
   const railSystem = _makeProjectileTrailSelfCheckHarness([
     _selfCheckProjectile(20, 'wpn_railgun_m', { damageType: 'kinetic' }),
   ]);
   railSystem._markProjectileCacheDirty();
   for (let f = 0; f < 3; f++) railSystem.update(1 / 60);
-  const live = railSystem._trailStreakPool && railSystem._trailStreakPool.mesh.count > 0
-    ? railSystem._trailStreakPool.mesh
-    : null;
-  const liveIndex = railSystem._ts ? railSystem._ts.findIndex((s) => s.alive) : -1;
-  const st = liveIndex >= 0 ? railSystem._ts[liveIndex] : null;
+  const railBolts = railSystem._weaponPresenter && railSystem._weaponPresenter.bolts;
   let railScale = null;
-  if (!live) fail('rail streak mesh should be visible');
+  if (!railBolts || railBolts.live < 1) fail('rail energy card should be live');
   else {
-    const packedIndex = railSystem._activeTrailStreakPos[liveIndex];
-    const matrix = new THREE.Matrix4();
-    const scale = new THREE.Vector3();
-    live.getMatrixAt(packedIndex, matrix);
-    scale.setFromMatrixScale(matrix);
-    railScale = scale;
-    if (scale.x >= 0.2) fail(`rail streak width must stay thin, got ${scale.x}`);
-    if (scale.z <= 3) fail(`rail streak length must stay long, got ${scale.z}`);
+    const width = railBolts.size.getY(0);
+    const length = railBolts.size.getX(0);
+    railScale = { x: width, z: length };
+    if (width >= 1.2) fail(`rail needle width must stay thin, got ${width}`);
+    if (length <= 12) fail(`rail needle length must stay long, got ${length}`);
   }
-  if (!st || st.size0 !== st.size1) fail('projectile rail streak must use constant width (size0 === size1)');
 
   if (errors.length) throw new Error(`projectile trail emission self-check failed:\n${errors.join('\n')}`);
   return {
     ok: true,
     projectileTrails: pt,
-    rail: live && railScale
-      ? { width: railScale.x, length: railScale.z, size0: st && st.size0, size1: st && st.size1 }
+    rail: railScale
+      ? { width: railScale.x, length: railScale.z, mode: 'energy-card' }
       : null,
     subsystem: system.inspect().subsystems.lastFrame.projectileTrails,
   };
@@ -11388,16 +11588,16 @@ export function assertProjectileTrailSleepContracts() {
   if (wakeFrame.projectileTrails !== 1) {
     fail(`alive projectile should wake projectile trail subsystem, got ${wakeFrame.projectileTrails}`);
   }
-  const wakeDiag = wake.inspect().projectileTrails;
-  if (wakeDiag.streaksSpawned <= 0 && wakeDiag.particlesSpawned <= 0) {
-    fail('woken projectile trail subsystem should spawn pooled wisps');
+  const wakePresenter = wake._weaponPresenter;
+  if (!wakePresenter || wakePresenter.bolts.live <= 0) {
+    fail('woken rail projectile should write an energy-card dash');
   }
 
   if (errors.length) throw new Error(`projectile trail sleep contracts failed:\n${errors.join('\n')}`);
   return {
     ok: true,
     idle: { projectileTrails: idleFrame.projectileTrails },
-    wakeup: { projectileTrails: wakeFrame.projectileTrails, streaksSpawned: wakeDiag.streaksSpawned },
+    wakeup: { projectileTrails: wakeFrame.projectileTrails, bolts: wakePresenter && wakePresenter.bolts.live },
   };
 }
 
@@ -11520,6 +11720,33 @@ export function createVfxPrecompileSalvo() {
   });
   commitInstancedSpriteBuckets(spriteBatches);
 
+  const weaponBolts = createEnergyBoltPrecompileMesh();
+  weaponBolts.name = 'SF_Precompile_WeaponEnergyBolts';
+  weaponBolts.position.set(0, 2, -8);
+  group.add(weaponBolts);
+  const weaponFlip = new FlipbookPool(group, { capacity: 2 });
+  weaponFlip.spawn({
+    x: 2, y: 1.2, z: -8, ax: 1, ay: 0, az: 0,
+    width: 2, height: 2.4, intensity: 1, life: 1, row: 0, r: 0.2, g: 0.8, b: 1,
+  });
+  weaponFlip.update(0);
+  const weaponRibbons = new WeaponRibbonPool(group, { capacity: 1, segments: 8 });
+  weaponRibbons.spawn({
+    entityId: 1, x: -2, y: 1.2, z: -8, width: 0.5,
+    colorHead: '#34cfff', colorTail: '#5f80ff', linger: 0.1,
+  });
+  weaponRibbons.pushHead(1, 0, 1.2, -8);
+  weaponRibbons.update(0);
+  const weaponDistortion = new DistortionField({ capacity: 1 });
+  weaponDistortion.spawn({ x: 4, y: 1.2, z: -8, radius: 4, strength: 1, life: 1 });
+  weaponDistortion.update(0);
+  group.add(weaponDistortion.mesh);
+  const weaponScorch = new HullScorchPool(group, { capacity: 1 });
+  weaponScorch.spawn({
+    localX: -4, localY: 0.2, localZ: -8, nx: 0, ny: 1, nz: 0, life: 1,
+  });
+  weaponScorch.update(0);
+
   // Warm the exact production thruster shader/material path during startup for every live
   // engine family (VP-220). Without this staging draw the player ship suppresses its legacy
   // trail immediately, then compiles plume layers on the first real burn — and a late compile
@@ -11545,6 +11772,28 @@ export function createVfxPrecompileSalvo() {
     plume.group.userData.engineProfileId = pack.profileId;
     group.add(plume.group);
   }
+
+  // Warm the raymarch program too. It is by far the most expensive shader in the thruster path, it
+  // is what draws the player's own exhaust, and it would otherwise compile on the first tap of the
+  // throttle. The main drive and the retro jets share one program, so a single staging draw covers
+  // both; only uniform values differ between them.
+  const stagingVolume = new VolumetricPlumeSystem(THREE, {
+    name: 'SF_Precompile_Plasma_Volume',
+    maxNozzles: 1,
+    ...PLAYER_PLASMA_STREAM_RECIPE.volume,
+  });
+  stagingVolume.attach(group);
+  stagingVolume.setCameraPosition(0, 6, 12);
+  stagingVolume.update(1 / 60, [{ x: -22, y: 1, z: -12, ax: 1, ay: 0, az: 0 }], {
+    ...PLAYER_PLASMA_STREAM_RECIPE.volume,
+    drive: 1,
+    boost: 0.5,
+    lengthWU: PLAYER_PLASMA_STREAM_RECIPE.jet.lengthWU,
+    exitRadiusWU: PLAYER_PLASMA_STREAM_RECIPE.jet.exitRadiusWU,
+    tailRadiusWU: PLAYER_PLASMA_STREAM_RECIPE.jet.exitRadiusWU
+      * PLAYER_PLASMA_STREAM_RECIPE.volume.tailFlare,
+  });
+  stagingVolume.group.userData.precompileStaging = true;
 
   // Deliberately NO light here: precompile.js tops the scene up to the exact runtime event-light
   // pool count. An extra salvo light would warm shaders against count+1 — every warmed program

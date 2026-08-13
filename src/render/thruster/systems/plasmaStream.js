@@ -1,35 +1,23 @@
 /**
- * Player thruster — three elements, three physical timescales.
+ * Player thruster — a raymarched exhaust volume plus a stylistic history thread.
  *
- *   jet    Rigid nozzle-locked plume. Straight out of the bell, physical length in WU, free-expansion
- *          cone, standing shock train. Does NOT follow path history: a plume's size and shape come
- *          from the engine, not from where the hull has been or how fast it is going.
- *   wake   Gas that has already left the nozzle. World-space parcels carrying their own aft momentum
- *          that expand and cool in place. This is what bends on a turn and detaches on throttle cut.
- *   snake  Thin stylistic history filament through a world-space meander field.
+ *   volume  The exhaust itself. A raymarched 3D density field inside an oriented proxy box at each
+ *           nozzle: curl-warped ridged noise, integrated front-to-back, so filaments genuinely
+ *           overlap and occlude and the silhouette is where density runs out rather than where a
+ *           proxy's edge is. See `../materials/volumetricPlumeMaterial.js` for why this replaced
+ *           the previous camera-facing sheets, which could only ever produce stripes on a cone.
+ *   throat  Small billboarded discs at each bell, for the searing over-range hot spot the volume
+ *           integral alone cannot reach.
+ *   snake   Thin history filament through a world-space meander field, tracing where the ship has
+ *           been. This one is a deliberate stylistic choice, not a physical claim.
  *
- * Filament noise advects in world units at exhaust speed, so features are BORN at the throat and
- * stream out of it. Parcel noise is frozen at emission, so a puff carries its own texture through
- * the world. Neither is a texture sliding along a static mesh.
+ * Volume noise advects in world units at exhaust speed, so structure is BORN at the throat and
+ * streams out of it. Nothing here is a texture sliding along a static mesh.
  */
 import * as THREE from 'three';
 import { createPathSampler } from './pathSampler.js';
-import {
-  PLAYER_PLASMA_STREAM_RECIPE,
-  samplePlasmaEnvelope,
-  sampleJetHalfWidth,
-  shockPhase,
-} from '../recipes/plasmaStreamRecipe.js';
-
-const ROLE_CORE = 0;
-const ROLE_BODY = 1;
-const ROLE_SHEATH = 2;
-const ROLE_WAKE = 3;
-const ROLE_SNAKE = 4;
-
-// Material-coordinate advance per ejected parcel. Small against the wake's axial noise frequency so
-// neighbouring parcels stay correlated instead of banding.
-const WAKE_SEED_STEP = 0.55;
+import { VolumetricPlumeSystem } from './volumetricPlume.js';
+import { PLAYER_PLASMA_STREAM_RECIPE } from '../recipes/plasmaStreamRecipe.js';
 
 const LIQUID_VERT = /* glsl */`
   attribute float aFlow;
@@ -67,14 +55,7 @@ const LIQUID_FRAG = /* glsl */`
   uniform vec3 uColor;
   uniform float uOpacity;
   uniform float uRadiance;
-  uniform float uLayerRole;
-  uniform float uDrive;
-  uniform float uBoost;
   uniform vec2 uFreq;
-  uniform float uAxialLen;
-  uniform float uShock;
-  uniform float uShockPitch;
-  uniform float uShockDecay;
 
   float hash21(vec2 p) {
     p = fract(p * vec2(127.1, 311.7));
@@ -121,15 +102,13 @@ const LIQUID_FRAG = /* glsl */`
 
   void main() {
     float side = vPathUv.y * 2.0 - 1.0;
-    bool isJet = uLayerRole < 2.5;
 
     // Advected material coordinate. Filaments travel aft with the gas instead of scrolling.
     float f = vFlow - uTime * uFlowSpeed;
 
-    // How far downstream this station is, 0 at the throat. Drives eddy growth.
-    float axGrow = isJet
-      ? clamp(max(vFlow, 0.0) / max(uAxialLen, 0.5), 0.0, 1.0)
-      : clamp(1.0 - vFade, 0.0, 1.0);
+    // Age of this station, 0 at the nozzle. Drives eddy growth. The CPU owns the length fade for
+    // the thread, so age is simply the inverse of it.
+    float axGrow = clamp(1.0 - vFade, 0.0, 1.0);
 
     // Slow coherent domain warp — the whole web meanders like liquid, not twinkling noise.
     float wx = fbm(vec2(f * uFreq.x * 0.34 + 3.1, side * 0.75)) - 0.5;
@@ -143,47 +122,14 @@ const LIQUID_FRAG = /* glsl */`
 
     float web = ridged(dom);
     float web2 = ridged(dom * vec2(2.3, 1.85) + vec2(7.7, 2.9));
-    float fil;
-    if (uLayerRole < 0.5) {
-      fil = web;
-    } else if (uLayerRole < 1.5) {
-      fil = web * 0.62 + web2 * 0.55;
-    } else if (uLayerRole < 2.5) {
-      float web3 = ridged(dom * vec2(1.7, 3.2) + vec2(3.3, 9.1));
-      fil = web2 * 0.35 + web3 * 0.85;
-    } else {
-      fil = web * 0.7 + web2 * 0.4;
-    }
+    float fil = web * 0.7 + web2 * 0.4;
 
     // Noise-carved limb: torn, organic silhouette rather than a crisp quad rim.
     float edgeN = fbm(vec2(f * uFreq.x * 1.3 + 9.0, side * 2.3));
     float softEdge = 1.0 - smoothstep(0.30 + edgeN * 0.35, 0.95 + edgeN * 0.20, abs(side));
 
-    // Longitudinal light output. For the jet this is physical distance from the throat, so plume
-    // luminance collapses within a couple of exit diameters no matter how long the jet is. For
-    // ejected parcels and the history thread the CPU owns the fade (age / erosion) in aFade.
-    float lit;
-    float exitGlow = 0.0;
-    float shockNode = 0.0;
-    if (isJet) {
-      float axial = max(vFlow, 0.0);
-      float axN = clamp(axial / max(uAxialLen, 0.5), 0.0, 1.0);
-      exitGlow = exp(-axN * axN * 11.0);
-      float bodyGlow = exp(-axN * 2.6);
-      float tailCut = 1.0 - smoothstep(0.70, 1.0, axN);
-      // aFade carries samplePlasmaEnvelope's longitudinal opacity so that curve lives in one
-      // testable place on the CPU instead of being restated here. Normalized to peak at 1: an
-      // unnormalized product saturated every additive layer into one white slab at the throat.
-      lit = (exitGlow * 0.62 + bodyGlow * 0.38) * tailCut * clamp(vFade, 0.0, 1.0);
-      // Standing shock train — a pressure structure fixed in the nozzle frame, so it must NOT
-      // advect with the filaments. Node spacing shrinks downstream as the train damps out. Held
-      // tight to the axis: spread across the full width it reads as a rung ladder, not diamonds.
-      float ph = pow(axial / max(uShockPitch, 0.05), 1.4286);
-      float node = pow(0.5 + 0.5 * cos(ph * 6.2831853), 8.0);
-      shockNode = node * uShock * exp(-axial / max(uShockDecay, 0.5)) * exp(-side * side * 9.0);
-    } else {
-      lit = clamp(vFade, 0.0, 1.0);
-    }
+    // Length fade is owned by the CPU (age and post-cutoff erosion) and arrives in aFade.
+    float lit = clamp(vFade, 0.0, 1.0);
 
     // Downstream fray: erode filaments INDIVIDUALLY by raising the web threshold. Multiplying
     // aggregate density by a noise term printed full-width dark arcs chained along the wake. Boost
@@ -198,44 +144,20 @@ const LIQUID_FRAG = /* glsl */`
 
     // Density comes mostly from the filament web so the gaps between strands stay black. A large
     // constant term multiplied by lit is what turns any of these layers into a solid fog wedge.
-    float xsec;
-    float dens;
-    if (uLayerRole < 0.5) {
-      // Core: tight collimated filament bundle, searing throat.
-      xsec = exp(-side * side * 3.1);
-      dens = softEdge * xsec * (lit * (0.12 + 0.34 * web) + webFil * 1.05 * lit + shockNode * 0.9);
-    } else if (uLayerRole < 1.5) {
-      // Body: the main filament sheet.
-      xsec = exp(-side * side * 1.75);
-      dens = softEdge * xsec * (lit * (0.07 + 0.20 * web) + webFil * 1.25 * lit + shockNode * 0.35);
-    } else if (uLayerRole < 2.5) {
-      // Sheath: broad fine haze of the mixed shear layer — no solid fill.
-      xsec = exp(-side * side * 0.60);
-      dens = softEdge * xsec * lit * (0.06 + webFil * 1.35);
-    } else if (uLayerRole < 3.5) {
-      // Ejected parcel cloud: cool, broad, structurally soft.
-      xsec = exp(-side * side * 0.85);
-      dens = softEdge * xsec * lit * (0.22 + webFil * 1.25);
-    } else {
-      // History filament: thin thread, gentle filament modulation, CPU owns the length fade.
-      xsec = exp(-side * side * 3.4);
-      dens = softEdge * xsec * lit * (0.55 + webFil * 0.62);
-    }
+    float xsec = exp(-side * side * 3.4);
+    float dens = softEdge * xsec * lit * (0.55 + webFil * 0.62);
 
     float alpha = clamp(uOpacity * dens, 0.0, 1.0);
     if (alpha < 0.012) discard;
 
-    // Temperature ramp: white-hot throat → electric cyan filaments → deep blue dissipation.
-    float hot = isJet
-      ? clamp(exitGlow * (0.55 + 0.5 * web) + shockNode * 1.3 + uBoost * 0.22 * exitGlow, 0.0, 1.0)
-      : 0.0;
+    // Temperature ramp: electric cyan filaments through deep blue dissipation. The thread is gas
+    // the ship already left behind, so it never carries the white-hot throat tone.
     vec3 cyan = mix(uColor, vec3(0.38, 0.88, 1.0), 0.62);
     vec3 deep = mix(uColor, vec3(0.07, 0.18, 0.68), 0.5);
     vec3 col = mix(deep, cyan, clamp(webFil * 0.95 + lit * 0.3, 0.0, 1.0));
-    col = mix(col, vec3(1.0, 0.99, 0.97), hot);
 
-    // Radiance: filaments and shock nodes bloom, background stays dark.
-    float rad = uRadiance * (0.36 + webFil * 1.2 + shockNode * 1.8 + lit * 0.45);
+    // Radiance: filaments bloom, background stays dark.
+    float rad = uRadiance * (0.36 + webFil * 1.2 + lit * 0.45);
     col *= min(rad, 1.9);
 
     gl_FragColor = vec4(col, alpha);
@@ -326,14 +248,7 @@ function createLayerMaterial(T, spec) {
       uColor: { value: new T.Color(c[0], c[1], c[2]) },
       uOpacity: { value: spec.opacity != null ? spec.opacity : 0.7 },
       uRadiance: { value: spec.radiance != null ? spec.radiance : 1.6 },
-      uLayerRole: { value: spec.roleId },
-      uDrive: { value: 0 },
-      uBoost: { value: 0 },
       uFreq: { value: new T.Vector2(freq[0], freq[1]) },
-      uAxialLen: { value: 12 },
-      uShock: { value: 0 },
-      uShockPitch: { value: 2 },
-      uShockDecay: { value: 8 },
     },
     vertexShader: LIQUID_VERT,
     fragmentShader: LIQUID_FRAG,
@@ -401,19 +316,33 @@ function worldNoise(x, y) {
   return (a * (1 - u) + b * u) * (1 - v) + (c * (1 - u) + d * u) * v;
 }
 
+/**
+ * Volume parameters, rebuilt in place every frame.
+ *
+ * update() runs on the render hot path, so this object is allocated once and mutated rather than
+ * rebuilt as a literal per frame.
+ */
+function createVolumeParams() {
+  return {
+    drive: 0, boost: 0, turbulence: 0, quality: 1, timeScale: 1,
+    lengthWU: 12, tailRadiusWU: 3, exitRadiusWU: 0.9,
+    spread: 0.62, fadeStart: 0.52, noiseScale: 0.34, stretch: 3.4,
+    warpAmp: 1.15, warpScale: 0.26, warpGrowth: 1.9, flowSpeed: 9,
+    threshold: 0.36, sigma: 0.55, radiance: 1, veil: 0.28,
+    coherence: 0.17, coreDensity: 0.62, radialTight: 2.1,
+    shockAmp: 0.5, shockPitch: 2.4, shockDecay: 9,
+  };
+}
+
 export class PlasmaStreamSystem {
   constructor(THREE_NS, recipe = PLAYER_PLASMA_STREAM_RECIPE) {
     this.THREE = THREE_NS || THREE;
     this.recipe = recipe || PLAYER_PLASMA_STREAM_RECIPE;
     const pathCfg = this.recipe.path || {};
-    const jetCfg = this.recipe.jet || {};
-    const wakeCfg = this.recipe.wake || {};
 
-    this.jetSeg = Math.max(16, jetCfg.segments || 64);
     this.snakeCap = Math.max(16, pathCfg.capacity || 240);
-    this.wakeCap = Math.max(12, wakeCfg.capacity || 96);
-    // Shared scratch: only one element is built at a time.
-    this.nSeg = Math.max(this.jetSeg, this.snakeCap, this.wakeCap + 2);
+    // The history filament is the only strip element; the exhaust itself is the raymarched volume.
+    this.nSeg = this.snakeCap;
 
     this.sampler = createPathSampler(this.snakeCap);
     this._pathX = new Float32Array(this.snakeCap);
@@ -430,7 +359,6 @@ export class PlasmaStreamSystem {
     this._flow = new Float32Array(this.nSeg);
     this._fade = new Float32Array(this.nSeg);
     this._half = new Float32Array(this.nSeg);
-    this._pinch = new Float32Array(this.nSeg);
     this._latX = new Float32Array(this.nSeg);
     this._latY = new Float32Array(this.nSeg);
     this._latZ = new Float32Array(this.nSeg);
@@ -438,29 +366,14 @@ export class PlasmaStreamSystem {
     this._latSY = new Float32Array(this.nSeg);
     this._latSZ = new Float32Array(this.nSeg);
 
-    // Ejected parcels: world position, birth exhaust direction, age, birth radius, birth odometer.
-    this._px = new Float32Array(this.wakeCap);
-    this._py = new Float32Array(this.wakeCap);
-    this._pz = new Float32Array(this.wakeCap);
-    this._pdx = new Float32Array(this.wakeCap);
-    this._pdz = new Float32Array(this.wakeCap);
-    this._pAge = new Float32Array(this.wakeCap);
-    this._pRad = new Float32Array(this.wakeCap);
-    this._pSeed = new Float32Array(this.wakeCap);
-    this._pHead = -1;
-    this._pCount = 0;
-    this._emitAccum = 0;
-    this._emitSeq = 0;
     // Scratch for the billboard frame — _lateralFor must not allocate per vertex per layer.
     this._lo = { x: 0, y: 0, z: 0 };
 
-    this._env = {
-      s: 0, width: 1, heat: 1, opacity: 1, density: 1,
-      filament: 0, root: 0, jet: 0, wake: 0, rootWindow: 0, jetWindow: 0, wakeWindow: 0,
-    };
     this._cam = { x: 0, y: 8, z: 12 };
     this._camObj = null;
     this.group = null;
+    this.volume = null;
+    this._volumeParams = createVolumeParams();
     this._layers = [];
     this._throats = [];
     this._time = 0;
@@ -471,8 +384,6 @@ export class PlasmaStreamSystem {
     this._boostBlend = 0;
     this._ignition = 0;
     this._pointCount = 0;
-    this._jetCount = 0;
-    this._wakeCount = 0;
     this._snakeCount = 0;
     this._odometer = 0;
     this._snakeErase = 0;
@@ -483,6 +394,7 @@ export class PlasmaStreamSystem {
     this._owner = null;
     // Stable default pose and owner token for socketless callers; never allocate this in update().
     this._fallbackNozzle = { x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0 };
+    this._volumeSockets = [this._fallbackNozzle];
   }
 
   setCamera(camera) {
@@ -491,6 +403,7 @@ export class PlasmaStreamSystem {
     this._cam.y = camera.position.y;
     this._cam.z = camera.position.z;
     this._camObj = camera;
+    if (this.volume) this.volume.setCamera(camera);
   }
 
   setCameraPosition(x, y, z) {
@@ -498,6 +411,7 @@ export class PlasmaStreamSystem {
     this._cam.y = y;
     this._cam.z = z;
     this._camObj = null;
+    if (this.volume) this.volume.setCameraPosition(x, y, z);
   }
 
   attach(scene) {
@@ -505,11 +419,28 @@ export class PlasmaStreamSystem {
     const T = this.THREE;
     this.group = new T.Group();
     this.group.name = 'sf-liquid-plasma-root';
-    // Nozzle throat glows FIRST so group traversals that take the last strip mesh (unit tests,
+
+    // The exhaust volume attaches FIRST, ahead of the throat quads and every strip, so traversals
+    // that take the last matching mesh keep landing on the history filament.
+    const volCfg = this.recipe.volume || {};
+    this.volume = new VolumetricPlumeSystem(T, {
+      name: 'sf-plasma-volume',
+      maxNozzles: volCfg.maxNozzles || 4,
+      maxSteps: volCfg.maxSteps,
+      minSteps: volCfg.minSteps,
+      renderOrder: 14,
+      coreColor: volCfg.coreColor,
+      midColor: volCfg.midColor,
+      edgeColor: volCfg.edgeColor,
+    });
+    this.volume.attach(this.group);
+    if (this._camObj) this.volume.setCamera(this._camObj);
+    else this.volume.setCameraPosition(this._cam.x, this._cam.y, this._cam.z);
+
+    // Nozzle throat glows next so group traversals that take the last strip mesh (unit tests,
     // look-dev gates) keep measuring the wake strips, not these quads.
     const throatCfg = this.recipe.throat || {};
-    const throatColor = throatCfg.color || (this.recipe.layers && this.recipe.layers[0]
-      && this.recipe.layers[0].color) || [0.5, 0.9, 1];
+    const throatColor = throatCfg.color || [0.5, 0.9, 1];
     for (let ti = 0; ti < 4; ti++) {
       const throat = createThroatMesh(T, throatColor);
       throat.name = `sf-plasma-throat-${ti}`;
@@ -517,58 +448,12 @@ export class PlasmaStreamSystem {
       this._throats.push(throat);
     }
 
-    const roleIds = { core: ROLE_CORE, body: ROLE_BODY, sheath: ROLE_SHEATH };
-    const layers = this.recipe.layers || [];
-    for (let li = 0; li < layers.length; li++) {
-      const layer = layers[li];
-      const role = layer.role || 'body';
-      const roleId = roleIds[role] != null ? roleIds[role] : ROLE_BODY;
-      const base = {
-        role,
-        roleId,
-        color: layer.color,
-        freq: layer.freq,
-        opacity: layer.opacity,
-        radiance: layer.radiance,
-        renderOrder: 12 + (role === 'sheath' ? 0 : role === 'body' ? 1 : 2),
-      };
-      this._addLayer('jet', this.jetSeg, base, layer, '');
-      if (layer.cross) {
-        this._addLayer('jet', this.jetSeg, {
-          ...base,
-          opacity: (layer.opacity != null ? layer.opacity : 0.7) * 0.3,
-          radiance: (layer.radiance != null ? layer.radiance : 1.6) * 0.62,
-          renderOrder: base.renderOrder - 1,
-        }, layer, '-cross', 'cross');
-      }
-    }
-
-    // Ejected parcel cloud sits under the jet: it is the cooled gas the jet is punching through.
-    const wakeCfg = this.recipe.wake || {};
-    const wakeBase = {
-      role: 'wake',
-      roleId: ROLE_WAKE,
-      color: wakeCfg.color,
-      freq: wakeCfg.freq,
-      opacity: wakeCfg.opacity,
-      radiance: wakeCfg.radiance,
-      renderOrder: 10,
-    };
-    this._addLayer('wake', this.wakeCap + 2, wakeBase, wakeCfg, '');
-    if (wakeCfg.cross) {
-      this._addLayer('wake', this.wakeCap + 2, {
-        ...wakeBase,
-        opacity: (wakeCfg.opacity != null ? wakeCfg.opacity : 0.3) * 0.34,
-        radiance: (wakeCfg.radiance != null ? wakeCfg.radiance : 0.7) * 0.62,
-        renderOrder: 9,
-      }, wakeCfg, '-cross', 'cross');
-    }
-
-    // History filament LAST: traversal-based gates measure the longest element.
+    // History filament is the only strip element left. The jet core/body/sheath sheets and the
+    // ejected-parcel cloud that used to live here were the tiger stripes and the 45-degree specks;
+    // the raymarched volume above renders all of that exhaust now.
     const snakeCfg = this.recipe.snake || {};
     this._addLayer('snake', this.snakeCap, {
       role: 'snake',
-      roleId: ROLE_SNAKE,
       color: snakeCfg.color,
       freq: snakeCfg.freq,
       opacity: snakeCfg.opacity,
@@ -586,7 +471,6 @@ export class PlasmaStreamSystem {
     this._layers.push({
       element,
       role: spec.role,
-      roleId: spec.roleId,
       plane,
       widthScale: cfg.widthScale != null ? cfg.widthScale : 1,
       spread: cfg.spread != null ? cfg.spread : 1,
@@ -603,12 +487,7 @@ export class PlasmaStreamSystem {
     this.sampler.clear();
     this._active = false;
     this._pointCount = 0;
-    this._jetCount = 0;
-    this._wakeCount = 0;
     this._snakeCount = 0;
-    this._pHead = -1;
-    this._pCount = 0;
-    this._emitAccum = 0;
     this._snakeErase = 0;
     this._ignition = 0;
     this._hasNozzle = false;
@@ -617,6 +496,7 @@ export class PlasmaStreamSystem {
       this._layers[i].geo.setDrawRange(0, 0);
     }
     for (let i = 0; i < this._throats.length; i++) this._throats[i].visible = false;
+    if (this.volume) this.volume.reset();
     if (this.group) this.group.visible = false;
   }
 
@@ -624,6 +504,7 @@ export class PlasmaStreamSystem {
     if (this._disposed) return;
     this._disposed = true;
     this.reset();
+    if (this.volume) { this.volume.dispose(); this.volume = null; }
     if (this.group && this.group.parent) this.group.parent.remove(this.group);
     for (let i = 0; i < this._layers.length; i++) {
       this._layers[i].geo.dispose();
@@ -636,133 +517,6 @@ export class PlasmaStreamSystem {
     this._throats.length = 0;
     this._layers.length = 0;
     this.group = null;
-  }
-
-  /**
-   * Rigid nozzle-locked plume centerline: straight along the exhaust axis, physical length in WU.
-   *
-   * Axis convention matches ContinuousPlume / production sockets: jet extends along **-ax**
-   * (vfx writes ax = -exhaustForward, so -ax is the exhaust direction).
-   */
-  _buildJet(nx, ny, nz, ex, ey, ez, jetLen, shockCfg, shockAmp, drive, boost) {
-    const count = this.jetSeg;
-    const pitch = shockCfg.pitchWU != null ? shockCfg.pitchWU : 2;
-    const decay = shockCfg.decayWU != null ? shockCfg.decayWU : 8;
-    const pinchAmt = (shockCfg.pinch != null ? shockCfg.pinch : 0) * shockAmp;
-    for (let i = 0; i < count; i++) {
-      const u = count <= 1 ? 0 : i / (count - 1);
-      const axial = u * jetLen;
-      this._cx[i] = nx + ex * axial;
-      this._cy[i] = ny + ey * axial;
-      this._cz[i] = nz + ez * axial;
-      this._ax[i] = ex;
-      this._ay[i] = ey;
-      this._az[i] = ez;
-      this._u[i] = u;
-      this._flow[i] = axial;
-      samplePlasmaEnvelope(u, drive, boost, this._env);
-      this._fade[i] = this._env.opacity;
-      // Barrel-shock pinch: the limb is pulled in at each node and bulges between them. Done on
-      // the CPU so the silhouette actually necks instead of only the shading implying it.
-      const node = Math.pow(0.5 + 0.5 * Math.cos(shockPhase(axial, pitch) * Math.PI * 2), 8)
-        * Math.exp(-axial / Math.max(0.5, decay));
-      this._pinch[i] = 1 - pinchAmt * node + pinchAmt * 0.45 * (1 - node);
-    }
-    this._jetCount = count;
-    return count;
-  }
-
-  /**
-   * Ejected parcels. Each puff is emitted once at the nozzle and then owns its own motion: it
-   * coasts aft along the exhaust direction it was BORN with, expands as it cools, and fades out.
-   * Nothing re-anchors it to the ship, which is what produces a real kink on a hard turn and a
-   * detached puff when the throttle is cut.
-   */
-  _emitWake(nx, ny, nz, ex, ey, ez, dt, rate, birthRadius, drive) {
-    if (!(rate > 0) || !(dt > 0)) return;
-    this._emitAccum += dt * rate;
-    let budget = 8;
-    const px = this._prevNx;
-    const py = this._prevNy;
-    const pz = this._prevNz;
-    const hadPrev = this._hasNozzle;
-    while (this._emitAccum >= 1 && budget-- > 0) {
-      this._emitAccum -= 1;
-      // Sub-frame placement: spread this frame's parcels along the nozzle's actual travel so the
-      // root never chunks into visible steps at speed.
-      const f = Math.max(0, Math.min(1, 1 - this._emitAccum / Math.max(1e-3, dt * rate)));
-      const ox = hadPrev ? px + (nx - px) * f : nx;
-      const oy = hadPrev ? py + (ny - py) * f : ny;
-      const oz = hadPrev ? pz + (nz - pz) * f : nz;
-      // Write cursor always advances, so walking back from the head is strict newest→oldest even
-      // after the tail has been aged off.
-      const slot = (this._pHead + 1) % this.wakeCap;
-      this._emitSeq += 1;
-      this._px[slot] = ox;
-      this._py[slot] = oy;
-      this._pz[slot] = oz;
-      this._pdx[slot] = ex;
-      this._pdz[slot] = ez;
-      this._pAge[slot] = dt * (1 - f);
-      this._pRad[slot] = birthRadius * (0.82 + 0.3 * drive) * (0.88 + 0.24 * hash2(slot, 5));
-      // Texture seed frozen at ejection: the filaments ride the parcel through the world instead
-      // of sliding over a rebuilt mesh. Sequence-based so hovering parcels still differ. The step
-      // must be small against the wake's axial frequency or neighbouring parcels decorrelate and
-      // print a rung ladder of full-width bands across the cloud.
-      this._pSeed[slot] = this._emitSeq * WAKE_SEED_STEP;
-      this._pHead = slot;
-      if (this._pCount < this.wakeCap) this._pCount++;
-    }
-  }
-
-  _advanceWake(dt, drift, life) {
-    if (this._pCount <= 0) return;
-    const step = drift * dt;
-    const cap = this.wakeCap;
-    for (let i = 0; i < this._pCount; i++) {
-      const slot = ((this._pHead - i) % cap + cap) % cap;
-      this._px[slot] += this._pdx[slot] * step;
-      this._pz[slot] += this._pdz[slot] * step;
-      this._pAge[slot] += dt;
-    }
-    // Ring order is newest→oldest walking back from head; drop the tail once it ages out.
-    while (this._pCount > 0) {
-      const tail = ((this._pHead - (this._pCount - 1)) % cap + cap) % cap;
-      if (this._pAge[tail] < life) break;
-      this._pCount--;
-    }
-  }
-
-  _buildWake(nx, ny, nz, life, expandPerS, emitting) {
-    let count = 0;
-    if (emitting) {
-      // Only pin to the bell while gas is actually being produced.
-      this._cx[0] = nx;
-      this._cy[0] = ny;
-      this._cz[0] = nz;
-      this._u[0] = 0;
-      this._flow[0] = (this._emitSeq + 1) * WAKE_SEED_STEP;
-      this._fade[0] = 0.25;
-      this._half[0] = 0.35;
-      count = 1;
-    }
-    for (let i = 0; i < this._pCount && count < this.wakeCap + 2; i++) {
-      const slot = ((this._pHead - i) % this.wakeCap + this.wakeCap) % this.wakeCap;
-      const age = this._pAge[slot];
-      const ageN = Math.max(0, Math.min(1, age / life));
-      this._cx[count] = this._px[slot];
-      this._cy[count] = this._py[slot];
-      this._cz[count] = this._pz[slot];
-      this._u[count] = ageN;
-      this._flow[count] = this._pSeed[slot];
-      // Cooling: emission falls off faster than the cloud expands, so it dissolves rather than
-      // ballooning into a visible bag.
-      this._fade[count] = Math.pow(1 - ageN, 1.6);
-      this._half[count] = this._pRad[slot] * (1 + age * expandPerS) * 0.5;
-      count++;
-    }
-    this._wakeCount = count;
-    return count;
   }
 
   /**
@@ -811,7 +565,11 @@ export class PlasmaStreamSystem {
       // Head erosion after thrust stops — the thread drains from the nozzle end instead of
       // blinking out all at once.
       const drain = erase > 0 ? Math.min(1, Math.max(0, (s - erase) / 0.12)) : 1;
-      this._fade[i] = drain * (1 - Math.pow(s, 2.4));
+      // Front-loaded decay. A curve that holds most of its opacity until the very end draws a hard
+      // line all the way to wherever the buffer happens to stop, and the eye reads a ruled line to
+      // the horizon rather than something dissipating. Most of the brightness has to be spent in
+      // the first third so the thread is visibly gone before it runs out of samples.
+      this._fade[i] = drain * Math.pow(1 - s, 1.8);
       this._half[i] = (headW + (tailW - headW) * s) * 0.5;
     }
     // Tangents for the billboard frame, taken from the meandered centerline.
@@ -828,27 +586,6 @@ export class PlasmaStreamSystem {
     }
     this._snakeCount = count;
     return count;
-  }
-
-  /** Tangents for an arbitrary built centerline (jet writes its own; wake needs this). */
-  _buildTangents(count, ex, ey, ez) {
-    for (let i = 0; i < count; i++) {
-      const i0 = Math.max(0, i - 1);
-      const i1 = Math.min(count - 1, i + 1);
-      let tx = this._cx[i1] - this._cx[i0];
-      let ty = this._cy[i1] - this._cy[i0];
-      let tz = this._cz[i1] - this._cz[i0];
-      const tl = Math.hypot(tx, ty, tz);
-      if (tl < 1e-6) {
-        this._ax[i] = ex;
-        this._ay[i] = ey;
-        this._az[i] = ez;
-      } else {
-        this._ax[i] = tx / tl;
-        this._ay[i] = ty / tl;
-        this._az[i] = tz / tl;
-      }
-    }
   }
 
   /** Writes the camera-facing side vector into this._lo. Allocation-free: called per vertex. */
@@ -1076,15 +813,12 @@ export class PlasmaStreamSystem {
       Math.max(pathCfg.discontinuityFloorWU || 160, speed * 0.08 + 80),
     );
 
-    // Owner change or a teleport-scale jump invalidates every parcel we are holding.
+    // Owner change or a teleport-scale jump invalidates the pose we are extrapolating from.
     const ownerId = owner != null ? owner : primary;
     const jumped = this._hasNozzle
       && Math.hypot(nx - this._prevNx, nz - this._prevNz) > disc;
     if (this._owner !== ownerId || jumped) {
       this._owner = ownerId;
-      this._pHead = -1;
-      this._pCount = 0;
-      this._emitAccum = 0;
       this._hasNozzle = false;
     }
 
@@ -1092,7 +826,7 @@ export class PlasmaStreamSystem {
     this._odometer += frameTravel;
 
     // Nothing left to draw and nothing being produced: go fully cold.
-    if (!emitting && this._pCount === 0 && !this.sampler.hasLive) {
+    if (!emitting && !this.sampler.hasLive) {
       this.reset();
       return { live: 0, pathPoints: 0, continuous: true };
     }
@@ -1136,22 +870,6 @@ export class PlasmaStreamSystem {
       + (ignCfg.shockGain != null ? ignCfg.shockGain : 0.8) * ignition)
       * Math.min(1, activeDrive / 0.35);
 
-    // Ejected parcels: produce while thrusting, then let physics finish the job.
-    const wakeCfg = this.recipe.wake || {};
-    const wakeLife = wakeCfg.lifeS != null ? wakeCfg.lifeS : 1.15;
-    const wakeDrift = wakeCfg.driftWU != null ? wakeCfg.driftWU : 44;
-    const wakeExpand = wakeCfg.expandPerS != null ? wakeCfg.expandPerS : 3.4;
-    this._advanceWake(frameDt, wakeDrift, wakeLife);
-    if (emitting) {
-      const emitRate = (wakeCfg.emitHz != null ? wakeCfg.emitHz : 52)
-        * (1 + ((wakeCfg.boostEmitMul != null ? wakeCfg.boostEmitMul : 1.45) - 1) * boostSm);
-      this._emitWake(
-        nx, ny, nz, ex, ey, ez, frameDt, emitRate,
-        (wakeCfg.birthRadiusWU != null ? wakeCfg.birthRadiusWU : 1.55) * rootMul,
-        Math.min(1, activeDrive),
-      );
-    }
-
     // History filament erosion: while thrusting the head is pinned at the nozzle; after cutoff it
     // drains forward and the sampler is released once the whole thread is gone.
     const snakeCfg = this.recipe.snake || {};
@@ -1175,16 +893,9 @@ export class PlasmaStreamSystem {
     this.group.visible = true;
 
     // ---- Element builds ----------------------------------------------------------------------
-    let jetCount = 0;
-    if (emitting) {
-      jetCount = this._buildJet(
-        nx, ny, nz, ex, ey, ez, jetLen, shockCfg, shockAmp, activeDrive, boostSm,
-      );
-    } else {
-      this._jetCount = 0;
-      this._hideElement('jet');
-    }
-
+    // The exhaust is a raymarched volume. The old jet and wake sheet elements are gone: a stack of
+    // camera-facing quads cannot self-occlude, and 2D noise across a sheet cannot swirl, so that
+    // construction could only ever render stripes on a cone and a spray of thresholded specks.
     const exhaustFlow = (jetCfg.exhaustSpeedWU != null ? jetCfg.exhaustSpeedWU : 30)
       * (1 + ((jetCfg.boostSpeedMul != null ? jetCfg.boostSpeedMul : 1.6) - 1) * boostSm)
       * motionScroll;
@@ -1192,52 +903,50 @@ export class PlasmaStreamSystem {
     const shockPitch = shockCfg.pitchWU != null ? shockCfg.pitchWU : 2;
     const shockDecay = shockCfg.decayWU != null ? shockCfg.decayWU : 8;
 
-    if (jetCount >= 2) {
-      for (let li = 0; li < this._layers.length; li++) {
-        const L = this._layers[li];
-        if (L.element !== 'jet') continue;
-        const layerExit = exitR * L.widthScale;
-        for (let i = 0; i < jetCount; i++) {
-          this._half[i] = sampleJetHalfWidth(this._u[i], layerExit, L.spread, boostSm, collimate)
-            * (1 + (this._pinch[i] - 1) * L.shockScale);
-        }
-        this._writeStrip(L, jetCount);
-        const u = L.mat.uniforms;
-        u.uTime.value = this._time;
-        u.uFlowSpeed.value = exhaustFlow;
-        u.uTurbulence.value = turbulence;
-        u.uDrive.value = activeDrive;
-        u.uBoost.value = boostSm;
-        u.uAxialLen.value = jetLen * L.lengthScale;
-        u.uShock.value = shockAmp * L.shockScale;
-        u.uShockPitch.value = shockPitch;
-        u.uShockDecay.value = shockDecay;
-        u.uOpacity.value = Math.min(1.05,
-          L.baseOpacity * flashScale * (0.62 + activeDrive * 0.5) * distOpa);
-        u.uRadiance.value = L.baseRadiance * boostR * flashScale
-          * (0.9 + activeDrive * 0.3 + ignition * (ignCfg.radianceOvershoot ?? 0.7)) * distRad;
-      }
-    }
+    let volumeInfo = null;
+    if (emitting && this.volume) {
+      const volCfg = this.recipe.volume || {};
+      const vp = this._volumeParams;
+      // Boost collimates rather than inflates: raising the pressure ratio makes the jet spear out
+      // and go white, it does not blow the cone up in place.
+      const flare = (volCfg.tailFlare != null ? volCfg.tailFlare : 4.6)
+        * (1 - collimate * boostSm * 0.42);
+      vp.drive = activeDrive;
+      vp.boost = boostSm;
+      vp.turbulence = turbulence;
+      vp.timeScale = motionScroll;
+      vp.quality = volCfg.quality != null ? volCfg.quality : 1;
+      vp.lengthWU = jetLen;
+      vp.exitRadiusWU = exitR;
+      vp.tailRadiusWU = Math.max(exitR * 1.2, exitR * flare);
+      vp.spread = volCfg.spread != null ? volCfg.spread : 0.62;
+      vp.fadeStart = volCfg.fadeStart != null ? volCfg.fadeStart : 0.52;
+      vp.noiseScale = volCfg.noiseScale != null ? volCfg.noiseScale : 0.34;
+      vp.stretch = volCfg.stretch != null ? volCfg.stretch : 3.4;
+      vp.warpAmp = (volCfg.warpAmp != null ? volCfg.warpAmp : 1.15)
+        * (1 + boostSm * (volCfg.warpBoostGain != null ? volCfg.warpBoostGain : 0.3));
+      vp.warpScale = volCfg.warpScale != null ? volCfg.warpScale : 0.26;
+      vp.warpGrowth = volCfg.warpGrowth != null ? volCfg.warpGrowth : 1.9;
+      vp.flowSpeed = exhaustFlow * (volCfg.flowScale != null ? volCfg.flowScale : 0.22);
+      vp.threshold = volCfg.threshold != null ? volCfg.threshold : 0.36;
+      vp.sigma = volCfg.sigma != null ? volCfg.sigma : 0.55;
+      vp.veil = volCfg.veil != null ? volCfg.veil : 0.28;
+      vp.coherence = (volCfg.coherence != null ? volCfg.coherence : 0.17)
+        * (1 + boostSm * 0.45);
+      vp.coreDensity = volCfg.coreDensity != null ? volCfg.coreDensity : 0.62;
+      vp.radialTight = volCfg.radialTight != null ? volCfg.radialTight : 2.1;
+      vp.shockAmp = shockAmp * (volCfg.shockScale != null ? volCfg.shockScale : 1);
+      vp.shockPitch = shockPitch;
+      vp.shockDecay = shockDecay;
+      vp.radiance = (volCfg.radiance != null ? volCfg.radiance : 1.35)
+        * boostR * flashScale
+        * (0.82 + activeDrive * 0.34 + ignition * (ignCfg.radianceOvershoot ?? 0.7))
+        * distRad;
 
-    const wakeCount = this._buildWake(nx, ny, nz, wakeLife, wakeExpand, emitting);
-    if (wakeCount >= 2) {
-      this._buildTangents(wakeCount, ex, ey, ez);
-      for (let li = 0; li < this._layers.length; li++) {
-        const L = this._layers[li];
-        if (L.element !== 'wake') continue;
-        this._writeStrip(L, wakeCount, L.widthScale);
-        const u = L.mat.uniforms;
-        u.uTime.value = this._time;
-        u.uFlowSpeed.value = 0;
-        u.uTurbulence.value = turbulence;
-        u.uDrive.value = activeDrive;
-        u.uBoost.value = boostSm;
-        u.uOpacity.value = Math.min(1.0, L.baseOpacity * flashScale * distOpa);
-        u.uRadiance.value = L.baseRadiance * flashScale * (0.9 + boostSm * 0.3) * distRad;
-      }
-    } else {
-      this._wakeCount = 0;
-      this._hideElement('wake');
+      this._volumeSockets[0] = primary;
+      volumeInfo = this.volume.update(frameDt, list || this._volumeSockets, vp);
+    } else if (this.volume) {
+      this.volume.reset();
     }
 
     const snakeCount = this._buildSnake(pathN, snakeCfg, ny, this._snakeErase);
@@ -1250,8 +959,6 @@ export class PlasmaStreamSystem {
         u.uTime.value = this._time;
         u.uFlowSpeed.value = 0;
         u.uTurbulence.value = turbulence * 0.4;
-        u.uDrive.value = activeDrive;
-        u.uBoost.value = boostSm;
         u.uOpacity.value = Math.min(1.0, L.baseOpacity * flashScale * distOpa);
         u.uRadiance.value = L.baseRadiance * flashScale * (0.85 + boostSm * 0.35) * distRad;
       }
@@ -1259,10 +966,9 @@ export class PlasmaStreamSystem {
       this._snakeCount = 0;
       this._hideElement('snake');
     }
-    // A released history filament remains a live visual after its jet and wake have ended.
-    // Keep inspection truth aligned with the strip that is still being drawn; this does not
-    // participate in rendering or lifetime decisions.
-    this._active = emitting || this._pCount > 0 || snakeCount >= 2;
+    // A released history filament remains a live visual after the drive has cut. Keep inspection
+    // truth aligned with the strip that is still being drawn.
+    this._active = emitting || snakeCount >= 2;
 
     // Nozzle throat glows — one per live socket, camera-billboarded, depth-tested against hull.
     const throatCfg = this.recipe.throat || {};
@@ -1292,17 +998,17 @@ export class PlasmaStreamSystem {
       tu.uRadiance.value = throatRadiance;
     }
 
-    this._pointCount = Math.max(jetCount, wakeCount, snakeCount);
+    this._pointCount = snakeCount;
     return {
       live: this._pointCount,
       pathPoints: pathN,
       continuous: true,
-      medium: 'liquid-billboard-layers',
+      medium: 'raymarched-volume',
       pointCount: this._pointCount,
-      construction: 'soft-camera-facing-strips',
+      construction: 'raymarched-volume+history-filament',
       jetLengthWU: jetLen,
-      jetPoints: jetCount,
-      wakeParcels: this._pCount,
+      volumeNozzles: volumeInfo ? volumeInfo.live : 0,
+      volumeSteps: volumeInfo ? volumeInfo.steps : 0,
       snakePoints: snakeCount,
       ignition,
     };
@@ -1312,7 +1018,7 @@ export class PlasmaStreamSystem {
     return {
       live: this._active ? this._pointCount : 0,
       continuous: true,
-      medium: 'liquid-billboard-layers',
+      medium: 'raymarched-volume',
       capacity: this.nSeg,
       active: this._active,
       path: this.sampler.inspect(),
@@ -1322,10 +1028,9 @@ export class PlasmaStreamSystem {
       boost: this._lastBoost,
       ignition: this._ignition,
       pointCount: this._pointCount,
-      jetPoints: this._jetCount,
-      wakeParcels: this._pCount,
       snakePoints: this._snakeCount,
-      construction: 'soft-camera-facing-strips',
+      volume: this.volume ? this.volume.inspect() : null,
+      construction: 'raymarched-volume+history-filament',
     };
   }
 }

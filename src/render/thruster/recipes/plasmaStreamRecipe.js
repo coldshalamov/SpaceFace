@@ -1,13 +1,15 @@
 /**
- * Player thruster recipe — three elements with three different physical timescales.
+ * Player thruster recipe — a raymarched exhaust volume plus a stylistic history thread.
  *
- *  1. `jet`   Nozzle-locked steady plume. Rigid, straight out of the bell, physical length in WU.
- *             Never follows path history and never scales with ship speed: a real plume's size is
- *             set by the engine, not by how fast the hull happens to be moving.
- *  2. `wake`  Gas that has LEFT the nozzle. World-space parcels with their own aft momentum that
- *             expand and cool where they were emitted. This is the element that bends on a turn
- *             and detaches when throttle is cut.
- *  3. `snake` Stylistic history filament. Thin, long, meanders through a world-space noise field.
+ *  1. `jet`    Physical envelope of the exhaust: length, exit radius, exhaust speed, shock train.
+ *              These are engine properties, so the plume never scales with hull speed. The volume
+ *              block below says what the gas inside this envelope looks like.
+ *  2. `throat` The over-range pinpoint inside the bell that an emission integral cannot reach.
+ *  3. `snake`  Stylistic history filament. Thin, long, meanders through a world-space noise field.
+ *
+ * There is no layer stack and no wake-parcel cloud here any more. Those described camera-facing
+ * sheets, which are physically incapable of self-occlusion and could only ever render banding on a
+ * cone; `../materials/volumetricPlumeMaterial.js` explains what replaced them.
  *
  * Scale reference: lab ship ~8 WU long, nozzle bell radius ~1.35 WU.
  */
@@ -24,86 +26,17 @@ export function smoothstep(edge0, edge1, x) {
   return t * t * (3 - 2 * t);
 }
 
-/**
- * Longitudinal heat / opacity structure of a plume: searing throat, burning body, dissipating tail.
- * `s` is normalized distance downstream. Width is NOT taken from here — a plume expands downstream
- * (see sampleJetHalfWidth); this curve owns how fast it stops emitting light.
- */
-export function samplePlasmaEnvelope(s, drive = 1, boost = 0, out = null) {
-  const u = Math.max(0, Math.min(1, Number.isFinite(s) ? s : 1));
-  const d = Math.max(0, Math.min(1.35, Number.isFinite(drive) ? drive : 0));
-  const b = Math.max(0, Math.min(1, Number.isFinite(boost) ? boost : 0));
-  const root = 1 - smoothstep(0.0, 0.2, u);
-  const jet = (1 - smoothstep(0.05, 0.55, u));
-  const wake = smoothstep(0.2, 0.45, u) * (1 - smoothstep(0.72, 1.0, u));
-  const belly = Math.exp(-((u - 0.14) * (u - 0.14)) / (2 * 0.11 * 0.11));
-  const midBulge = Math.exp(-((u - 0.3) * (u - 0.3)) / (2 * 0.18 * 0.18)) * 0.4;
-  const taper = Math.pow(Math.max(0.1, 1.0 - u * 0.8), 0.9);
-  const width = (0.58 + root * 0.7 + jet * 0.48 + belly * 0.55 + midBulge + b * 0.28)
-    * (0.82 + d * 0.35)
-    * taper;
-  const heat = Math.min(1.35, root * 1.15 + jet * 0.55 + b * 0.3 + d * 0.15 + belly * 0.2);
-  const opacity = (0.7 + root * 0.35 + jet * 0.3 + d * 0.15)
-    * (1.0 - smoothstep(0.55, 1.0, u) * 0.55);
-  const target = out || {};
-  target.s = u;
-  target.width = Math.max(0.14, width);
-  target.heat = Math.max(0, heat);
-  target.opacity = Math.max(0.04, opacity);
-  target.root = root;
-  target.jet = jet;
-  target.wake = wake;
-  target.density = target.opacity;
-  target.filament = jet * 0.75 + wake * 0.55;
-  target.rootWindow = root;
-  target.jetWindow = jet;
-  target.wakeWindow = wake;
-  return target;
-}
-
-/**
- * Free-expansion half width of one plume layer, in WU.
- *
- * Exhaust leaves the throat at roughly the exit radius and then opens into a cone, so the plume is
- * NARROWEST where it is brightest and widest where it is nearly gone. `spread` is how much cone each
- * layer contributes: the core is an almost collimated supersonic column, the sheath is the broad
- * mixed shear layer around it. Boost collimates rather than inflates — higher exit momentum makes a
- * longer, harder spear, not a fatter triangle.
- *
- * @param {number} u normalized distance downstream (0 = nozzle exit)
- */
-export function sampleJetHalfWidth(u, exitRadiusWU, spread, boost = 0, collimate = 0) {
-  const t = Math.max(0, Math.min(1, Number.isFinite(u) ? u : 0));
-  const b = Math.max(0, Math.min(1, Number.isFinite(boost) ? boost : 0));
-  const cone = Math.max(0, spread) * (1 - Math.max(0, Math.min(1, collimate)) * b);
-  // Slight throat neck before the cone opens (the first barrel shock pulls the limb in).
-  const neck = 1 - 0.12 * Math.exp(-((t - 0.06) * (t - 0.06)) / (2 * 0.05 * 0.05));
-  return Math.max(0.05, exitRadiusWU * neck * (1 + t * cone));
-}
-
-/**
- * Standing shock train phase. Nodes sit at integer phase with spacing that SHRINKS downstream, the
- * way a real shock train damps out. Stationary in the nozzle frame — a pressure structure, not
- * material, so it must not advect with the filaments.
- */
-export function shockPhase(axialWU, pitchWU) {
-  const a = Math.max(0, Number.isFinite(axialWU) ? axialWU : 0);
-  const p = Math.max(0.05, Number.isFinite(pitchWU) ? pitchWU : 2);
-  return Math.pow(a / p, 1 / 0.7);
-}
-
 export const PLAYER_PLASMA_STREAM_RECIPE = freezeDeep({
-  id: 'player_liquid_plasma_v26.0',
-  kind: 'unified_liquid_plasma',
+  id: 'player_liquid_plasma_v27.0',
+  kind: 'raymarched_plasma_volume',
   displayName: 'Player continuous liquid plasma thruster',
-  notes: 'v26: nozzle-locked rigid jet (physical WU length, free-expansion cone, standing shock '
-    + 'train) + Lagrangian world-space wake parcels (bend on turns, detach on throttle cut) + thin '
-    + 'meandering history filament. Filament noise advects in world units instead of scrolling '
-    + 'across a path-normalized mesh. Boost lengthens and collimates instead of widening.',
+  notes: 'v27: the exhaust is a raymarched density volume (curl-warped ridged noise integrated '
+    + 'front-to-back inside an oriented proxy at each nozzle), so filaments braid and occlude each '
+    + 'other and the silhouette is where density runs out. Replaces the v26 stack of camera-facing '
+    + 'jet sheets and ejected wake parcels. Boost lengthens and collimates instead of widening.',
 
-  // ---- Element 1: rigid nozzle-locked plume -------------------------------------------------
+  // ---- Physical envelope of the plume -------------------------------------------------------
   jet: {
-    segments: 72,
     lengthWU: 17,
     exitRadiusWU: 1.32,
     // Length at zero throttle as a fraction of lengthWU (a lit engine is never zero-length).
@@ -127,78 +60,80 @@ export const PLAYER_PLASMA_STREAM_RECIPE = freezeDeep({
     ignition: { decayPerS: 3.6, lengthOvershoot: 0.24, radianceOvershoot: 0.7, shockGain: 0.8 },
   },
 
-  // `freq` is [cycles per world unit along the flow, cycles across the half width]. Axial frequency
-  // stays low so filaments are long streamlines rather than a fine sizzle, and so advection at
-  // exhaustSpeedWU lands near 3 cycles/s instead of strobing.
-  layers: [
-    {
-      role: 'core',
-      widthScale: 0.60,
-      spread: 0.42,
-      lengthScale: 0.62,
-      opacity: 0.72,
-      radiance: 1.95,
-      color: [0.62, 0.93, 1.0],
-      freq: [0.100, 2.0],
-      shock: 1.0,
-      cross: false,
-    },
-    {
-      role: 'body',
-      widthScale: 1.00,
-      spread: 1.45,
-      lengthScale: 1.00,
-      opacity: 0.56,
-      radiance: 1.28,
-      color: [0.24, 0.76, 1.0],
-      freq: [0.085, 3.0],
-      shock: 0.18,
-      // Soft cross REQUIRED — a single plane goes edge-on invisible from rear-three-quarter.
-      cross: true,
-    },
-    {
-      role: 'sheath',
-      widthScale: 1.52,
-      spread: 2.35,
-      lengthScale: 0.84,
-      opacity: 0.28,
-      radiance: 0.72,
-      color: [0.10, 0.34, 0.90],
-      freq: [0.070, 4.0],
-      shock: 0.0,
-      cross: false,
-    },
-  ],
+  // ---- Exhaust volume (the raymarched plume) ------------------------------------------------
+  // Every number here is a property of the density field the shader integrates, not of a mesh.
+  // `jet.lengthWU` and `jet.exitRadiusWU` still set the plume's physical size; this block sets
+  // what the gas inside that envelope looks like.
+  volume: {
+    maxNozzles: 4,
+    // Marching budget. Close framing gets the ceiling; the system scales down by apparent size.
+    minSteps: 12,
+    maxSteps: 56,
+    quality: 1,
 
-  // ---- Element 2: ejected gas with its own momentum ----------------------------------------
-  // Short-lived on purpose: this is the cool cloud hugging the plume, not the long thread. Its job
-  // is to lag and kink when the ship turns and to stay behind when the throttle is cut.
-  wake: {
-    capacity: 96,
-    emitHz: 90,
-    boostEmitMul: 1.45,
-    lifeS: 0.5,
-    // Aft drift of a parcel once it leaves the bell, WU/s.
-    driftWU: 44,
-    birthRadiusWU: 1.55,
-    expandPerS: 3.4,
-    opacity: 0.20,
-    radiance: 0.55,
-    color: [0.16, 0.52, 0.95],
-    freq: [0.17, 2.2],
-    cross: true,
+    // Envelope. Roughly a 1:3 width-to-length plume: wide enough that the tail is clearly a
+    // dissipating cloud, narrow enough that it still reads as a directed jet rather than a bloom.
+    tailFlare: 2.0,
+    spread: 0.62,
+    fadeStart: 0.42,
+
+    // Structure. `stretch` elongates noise features along the flow: without it the field resolves
+    // as blobs of smoke instead of strands. `threshold` opens the dark veins between filaments,
+    // and is the single strongest control over whether the plume reads as gas or as fog.
+    // Low on purpose: this sets how many strands span the plume, and the target is roughly eight
+    // thick ropes, not a fine fuzz. Fine fuzz is also the frequency the march cannot resolve, so
+    // raising this trades visible structure for speckle that the mip filter then has to erase.
+    noiseScale: 0.18,
+    stretch: 2.8,
+    threshold: 0.50,
+    // Extinction is set so a centre ray accumulates roughly 0.8 opacity over the plume's length.
+    // Higher saturates the whole cone to white and erases every filament inside it.
+    sigma: 0.58,
+    // Small. The veil is a smooth term added everywhere, so it fills the dark veins between
+    // strands and is the fastest way to turn a plasma jet back into fog.
+    veil: 0.05,
+    // Length of the unbroken supersonic core, as a fraction of plume length, before the shear
+    // layer breaks down into filaments. Wispiness right at the lip is the classic fake-jet tell.
+    coherence: 0.15,
+    coreDensity: 0.5,
+    radialTight: 2.0,
+
+    // Curl warp — the reason filaments braid instead of running parallel. Amplitude grows with the
+    // square of axial distance so eddies visibly widen from the lip to the tail.
+    warpAmp: 1.2,
+    warpScale: 0.24,
+    warpGrowth: 2.0,
+    warpBoostGain: 0.3,
+
+    // Downstream advection of the density field, as a fraction of `jet.exhaustSpeedWU`.
+    flowScale: 0.22,
+    shockScale: 0.12,
+    radiance: 2.3,
+
+    // Temperature ramp: searing white at the throat through electric cyan to a deep blue fringe.
+    // Red is kept very low in the mid and edge tones on purpose. These are additive HDR values and
+    // radiance pushes green and blue past 1.0, so the tone mapper compresses those channels while
+    // red stays where it is — the surviving red is what decides how saturated the plume looks. Set
+    // red anywhere near green and the whole cloud desaturates to grey smoke on the way through ACES.
+    coreColor: [1.0, 0.99, 0.97],
+    midColor: [0.14, 0.62, 1.0],
+    edgeColor: [0.02, 0.10, 0.72],
   },
 
-  // ---- Element 3: stylistic history filament (the Snake thread) -----------------------------
+  // ---- Stylistic history filament (the Snake thread) ----------------------------------------
+  // `freq` is [cycles per world unit along the flow, cycles across the half width].
   snake: {
     widthHeadWU: 0.66,
-    widthTailWU: 0.17,
+    // Wider at the tail, not thinner. Exhaust left in space keeps spreading, so a thread that
+    // narrows with age converges on a one-pixel line and reads as a ruled line drawn to the edge of
+    // the screen. Spreading while the opacity collapses is what makes it read as dispersal.
+    widthTailWU: 2.6,
     // World-space meander so the thread is never a ruled line behind a ship flying straight.
-    meanderWU: 2.8,
+    meanderWU: 5.5,
     meanderScaleWU: 0.021,
     meanderOnsetS: 0.05,
-    opacity: 0.36,
-    radiance: 1.0,
+    opacity: 0.09,
+    radiance: 0.32,
     color: [0.34, 0.82, 1.0],
     freq: [0.13, 1.3],
     // Seconds for the head to erode away after thrust stops (the thread drains, not blinks out).
@@ -224,9 +159,63 @@ export const PLAYER_PLASMA_STREAM_RECIPE = freezeDeep({
   },
 
   // Nozzle-interior glow discs (one per socket): the lit engine core inside the bell.
+  // (retro jets are configured separately — see PLAYER_RETRO_VOLUME_RECIPE below)
+  // Small and restrained now that the volume renders its own hot core — the disc only supplies the
+  // over-range pinpoint at the bell that an emission integral cannot reach on its own. Oversized,
+  // it stops reading as a throat and becomes a white ball stuck on the back of the ship.
   throat: {
-    radiusWU: 1.45,
-    opacity: 0.55,
-    radiance: 1.6,
+    radiusWU: 0.9,
+    opacity: 0.35,
+    radiance: 1.4,
+    color: [0.62, 0.93, 1.0],
   },
+});
+
+/**
+ * Bow retro jets — the exhaust that fires FORWARD when braking or backing up.
+ *
+ * These used to be drawn by the attitude-control impulse system, which can only produce short
+ * discrete pops. It fired one roughly every 0.11 s, so holding the brake — a sustained action —
+ * rendered as about nine separate puffs a second in a line. That mismatch between a continuous
+ * input and a burst-only renderer is what read as a dotted line, and no amount of tuning inside
+ * the burst system could have fixed it.
+ *
+ * So retro is the same volumetric exhaust as the main drive, only small: stubby and hard, because
+ * a braking thruster is a short high-pressure jet rather than a long cruising plume. Genuinely
+ * impulsive attitude pops (strafe, yaw) stay on the burst system, where that model is correct.
+ */
+export const PLAYER_RETRO_VOLUME_RECIPE = freezeDeep({
+  id: 'player_retro_volume_v1',
+  lengthWU: 5.2,
+  exitRadiusWU: 0.44,
+  tailFlare: 2.6,
+  spread: 0.5,
+  fadeStart: 0.34,
+
+  // Shorter and stubbier than the main drive, so the structure has to be correspondingly finer or
+  // a single eddy fills the whole jet.
+  noiseScale: 0.45,
+  stretch: 2.2,
+  threshold: 0.46,
+  sigma: 0.62,
+  veil: 0.05,
+  coherence: 0.2,
+  coreDensity: 0.55,
+  radialTight: 2.1,
+
+  warpAmp: 0.9,
+  warpScale: 0.5,
+  warpGrowth: 2.2,
+  flowSpeed: 7.5,
+
+  shockAmp: 0.0,
+  radiance: 2.0,
+  // A cooler, whiter cast than the main drive: cold gas thrusters, not the fusion core.
+  coreColor: [0.96, 0.99, 1.0],
+  midColor: [0.30, 0.72, 1.0],
+  edgeColor: [0.05, 0.18, 0.78],
+
+  // Retro jets are small on screen, so they never need the main drive's marching budget.
+  minSteps: 8,
+  maxSteps: 26,
 });
