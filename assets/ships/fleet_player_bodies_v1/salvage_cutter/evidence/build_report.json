@@ -3,11 +3,11 @@
   "assetId": "SF_SALVAGE_CUTTER_V1",
   "defId": "salvor",
   "shipId": "salvage_cutter",
-  "iteration": 5,
+  "iteration": 6,
   "lods": [
     {
       "lod": 0,
-      "triangles": 38412,
+      "triangles": 39708,
       "hullTriangles": 1864,
       "draws": 9,
       "materials": [
@@ -35,12 +35,12 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/salvage_cutter_production_v1_lod0.glb",
-      "bytes": 2005212,
-      "sha256": "FB0FA80BCF1945BB0111FB8BE5CC0292EA289BEE42E5BE0E5CE093F2FB3159E3"
+      "bytes": 2077884,
+      "sha256": "6A8E45666C7FB80C2024BA1899AC511CABDB330EF61F68448D21AE8631A721E8"
     },
     {
       "lod": 1,
-      "triangles": 9580,
+      "triangles": 10876,
       "hullTriangles": 1864,
       "draws": 9,
       "materials": [
@@ -68,8 +68,8 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/salvage_cutter_production_v1_lod1.glb",
-      "bytes": 492656,
-      "sha256": "638FF7D9AD3992ECDA7565EA7E051B0F97C10A11507E298A6DDB143B6FD818C3"
+      "bytes": 567680,
+      "sha256": "E91BD3AB263F6323E1D1A782FE38864E41B4336FDFF30196B59450ED5715220E"
     },
     {
       "lod": 2,
@@ -100,29 +100,29 @@
       ],
       "path": "source/wholeships/salvage_cutter_production_v1_lod2.glb",
       "bytes": 327500,
-      "sha256": "DA951A7931C423DF664B16F3D80CB7D791AA25ABDFC2C8AA1C111B393AE08A1E"
+      "sha256": "BCE6D73B591FC11884BD83DA46BF535E50FC251AA43AE5CC791CFEFC9E047085"
     }
   ],
   "renders": [
     {
       "view": "salvage_cutter_three_quarter",
-      "path": "evidence/iter05/salvage_cutter_three_quarter.png",
-      "bytes": 882036
+      "path": "evidence/iter06/salvage_cutter_three_quarter.png",
+      "bytes": 882151
     },
     {
       "view": "salvage_cutter_starboard",
-      "path": "evidence/iter05/salvage_cutter_starboard.png",
-      "bytes": 912532
+      "path": "evidence/iter06/salvage_cutter_starboard.png",
+      "bytes": 912718
     },
     {
       "view": "salvage_cutter_rear",
-      "path": "evidence/iter05/salvage_cutter_rear.png",
-      "bytes": 1011653
+      "path": "evidence/iter06/salvage_cutter_rear.png",
+      "bytes": 1012781
     },
     {
       "view": "salvage_cutter_grazing",
-      "path": "evidence/iter05/salvage_cutter_grazing.png",
-      "bytes": 939474
+      "path": "evidence/iter06/salvage_cutter_grazing.png",
+      "bytes": 940209
     }
   ]
 }

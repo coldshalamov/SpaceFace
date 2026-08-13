@@ -3,11 +3,11 @@
   "assetId": "SF_SURVEY_PIN_V1",
   "defId": "surveyor",
   "shipId": "survey_pin",
-  "iteration": 5,
+  "iteration": 6,
   "lods": [
     {
       "lod": 0,
-      "triangles": 26532,
+      "triangles": 27828,
       "hullTriangles": 1648,
       "draws": 9,
       "materials": [
@@ -35,12 +35,12 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/survey_pin_production_v1_lod0.glb",
-      "bytes": 1384460,
-      "sha256": "3A57F4F4650FFD306595238C0072FA8B41E5D3309BCF8543653A4F02241B2BB2"
+      "bytes": 1458284,
+      "sha256": "669ACFFE20E746E934158B4AFF152E4E630B17DDFAD263C7547C2AE49FF32921"
     },
     {
       "lod": 1,
-      "triangles": 6388,
+      "triangles": 7684,
       "hullTriangles": 1648,
       "draws": 9,
       "materials": [
@@ -68,8 +68,8 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/survey_pin_production_v1_lod1.glb",
-      "bytes": 341276,
-      "sha256": "EB4A6974D6B794CB03D8521551675E3D213C9E2CF2CB8F1D7A86BF6D761E3507"
+      "bytes": 414044,
+      "sha256": "D0053648B80D640182CE1BD997BE5B988DFF0111982401714E1D0A49E7B058B5"
     },
     {
       "lod": 2,
@@ -100,29 +100,29 @@
       ],
       "path": "source/wholeships/survey_pin_production_v1_lod2.glb",
       "bytes": 222468,
-      "sha256": "F4904B8065214DD1439BDB2DE8F7EEB9D4580CED95FAC339E36E55FF1EB377A1"
+      "sha256": "F1286546BC716522355861ECD9E677729F939D12ACA26EFCAD3885B5F627D32B"
     }
   ],
   "renders": [
     {
       "view": "survey_pin_three_quarter",
-      "path": "evidence/iter05/survey_pin_three_quarter.png",
-      "bytes": 824829
+      "path": "evidence/iter06/survey_pin_three_quarter.png",
+      "bytes": 824911
     },
     {
       "view": "survey_pin_starboard",
-      "path": "evidence/iter05/survey_pin_starboard.png",
-      "bytes": 878708
+      "path": "evidence/iter06/survey_pin_starboard.png",
+      "bytes": 878636
     },
     {
       "view": "survey_pin_rear",
-      "path": "evidence/iter05/survey_pin_rear.png",
-      "bytes": 970820
+      "path": "evidence/iter06/survey_pin_rear.png",
+      "bytes": 971141
     },
     {
       "view": "survey_pin_grazing",
-      "path": "evidence/iter05/survey_pin_grazing.png",
-      "bytes": 940700
+      "path": "evidence/iter06/survey_pin_grazing.png",
+      "bytes": 940640
     }
   ]
 }

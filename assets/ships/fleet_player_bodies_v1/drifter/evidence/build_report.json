@@ -3,11 +3,11 @@
   "assetId": "SF_DRIFTER_PRODUCTION_V1",
   "defId": "ship_drifter",
   "shipId": "drifter",
-  "iteration": 5,
+  "iteration": 6,
   "lods": [
     {
       "lod": 0,
-      "triangles": 36568,
+      "triangles": 37864,
       "hullTriangles": 1864,
       "draws": 9,
       "materials": [
@@ -35,12 +35,12 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/drifter_production_v1_lod0.glb",
-      "bytes": 1897120,
-      "sha256": "58F56515943799450334450E796D682ECC70D477DAF952E4B52E94B8ADF1978F"
+      "bytes": 1970180,
+      "sha256": "B6D50E152F5010ACF53BCF4356A636747A68C258D5131395B46273B9017236B5"
     },
     {
       "lod": 1,
-      "triangles": 9464,
+      "triangles": 10760,
       "hullTriangles": 1864,
       "draws": 9,
       "materials": [
@@ -68,8 +68,8 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/drifter_production_v1_lod1.glb",
-      "bytes": 483064,
-      "sha256": "6C1DF6B2C20C46C8E90109E1264E0AAFDAD938D56557B0BC7A0E445F27705433"
+      "bytes": 556984,
+      "sha256": "C1B0A9BEDB51CD8A27A639668B5903A8303EF2D8482C554752C9D5FF48DDC62C"
     },
     {
       "lod": 2,
@@ -100,29 +100,29 @@
       ],
       "path": "source/wholeships/drifter_production_v1_lod2.glb",
       "bytes": 316848,
-      "sha256": "F7469709384604FE99AEC7852E63559823764AB2730CA7F3187CDA913CB118BC"
+      "sha256": "6622E7FA2796BC6AA6E1E8CC1C652C81517D52197AC8F14E9DE650EC2BABF7A1"
     }
   ],
   "renders": [
     {
       "view": "drifter_three_quarter",
-      "path": "evidence/iter05/drifter_three_quarter.png",
-      "bytes": 886539
+      "path": "evidence/iter06/drifter_three_quarter.png",
+      "bytes": 886658
     },
     {
       "view": "drifter_starboard",
-      "path": "evidence/iter05/drifter_starboard.png",
-      "bytes": 920446
+      "path": "evidence/iter06/drifter_starboard.png",
+      "bytes": 920725
     },
     {
       "view": "drifter_rear",
-      "path": "evidence/iter05/drifter_rear.png",
-      "bytes": 998061
+      "path": "evidence/iter06/drifter_rear.png",
+      "bytes": 999285
     },
     {
       "view": "drifter_grazing",
-      "path": "evidence/iter05/drifter_grazing.png",
-      "bytes": 958194
+      "path": "evidence/iter06/drifter_grazing.png",
+      "bytes": 958813
     }
   ]
 }

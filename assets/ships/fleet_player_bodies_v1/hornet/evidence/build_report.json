@@ -3,12 +3,12 @@
   "assetId": "SF_HORNET_PRODUCTION_V1",
   "defId": "ship_hornet",
   "shipId": "hornet",
-  "iteration": 5,
+  "iteration": 6,
   "lods": [
     {
       "lod": 0,
-      "triangles": 28900,
-      "hullTriangles": 2160,
+      "triangles": 30412,
+      "hullTriangles": 2376,
       "draws": 9,
       "materials": [
         "Material_Accent",
@@ -35,13 +35,13 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/hornet_production_v1_lod0.glb",
-      "bytes": 1500080,
-      "sha256": "ED63DD446D69C506CFEBD6B87047ECF69D744EC84B5D26579B49C5630430F041"
+      "bytes": 1585856,
+      "sha256": "BBB879F6CFE2CB46778D72BBF3B55D2BC1F0A4B7567D327A1E8E65322604AD40"
     },
     {
       "lod": 1,
-      "triangles": 8756,
-      "hullTriangles": 2160,
+      "triangles": 10268,
+      "hullTriangles": 2376,
       "draws": 9,
       "materials": [
         "Material_Accent",
@@ -68,13 +68,13 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/hornet_production_v1_lod1.glb",
-      "bytes": 455912,
-      "sha256": "542ECE0C0B7B8C4B2CE7BA7DD219694BF8CA845E5461A92266B6F15FD2F66CA3"
+      "bytes": 543272,
+      "sha256": "3803339E08B08697D1B6E7AE9981CE172056F3EB40844C463671325B40433297"
     },
     {
       "lod": 2,
-      "triangles": 6704,
-      "hullTriangles": 2052,
+      "triangles": 6920,
+      "hullTriangles": 2268,
       "draws": 8,
       "materials": [
         "Material_Accent",
@@ -100,30 +100,30 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/hornet_production_v1_lod2.glb",
-      "bytes": 339428,
-      "sha256": "B469DB329C9643707FCADCAADB192B3FA96821F21B53E707FAA8DD4C1658EDE3"
+      "bytes": 351476,
+      "sha256": "517EEC7E5D267613C20088A3769AC10C93FB5F4698D383DDC04B3DCE3C4CCA88"
     }
   ],
   "renders": [
     {
       "view": "hornet_three_quarter",
-      "path": "evidence/iter05/hornet_three_quarter.png",
-      "bytes": 859135
+      "path": "evidence/iter06/hornet_three_quarter.png",
+      "bytes": 858065
     },
     {
       "view": "hornet_starboard",
-      "path": "evidence/iter05/hornet_starboard.png",
-      "bytes": 897641
+      "path": "evidence/iter06/hornet_starboard.png",
+      "bytes": 895743
     },
     {
       "view": "hornet_rear",
-      "path": "evidence/iter05/hornet_rear.png",
-      "bytes": 1020956
+      "path": "evidence/iter06/hornet_rear.png",
+      "bytes": 1019867
     },
     {
       "view": "hornet_grazing",
-      "path": "evidence/iter05/hornet_grazing.png",
-      "bytes": 898844
+      "path": "evidence/iter06/hornet_grazing.png",
+      "bytes": 898235
     }
   ]
 }

@@ -3,11 +3,11 @@
   "assetId": "SF_IRONBACK_PRODUCTION_V1",
   "defId": "ship_ironback",
   "shipId": "ironback",
-  "iteration": 5,
+  "iteration": 6,
   "lods": [
     {
       "lod": 0,
-      "triangles": 41224,
+      "triangles": 42520,
       "hullTriangles": 2080,
       "draws": 9,
       "materials": [
@@ -35,12 +35,12 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/ironback_production_v1_lod0.glb",
-      "bytes": 2154736,
-      "sha256": "E00CE4BB07286999DB93635C49AD17D379BB65836F6AADDC746B396E0934E7DB"
+      "bytes": 2228368,
+      "sha256": "1F9E5ADC6ECBECEAFA8D09E54F8D20264B41C00495D787FBA6B82AC12F48DFC5"
     },
     {
       "lod": 1,
-      "triangles": 10664,
+      "triangles": 11960,
       "hullTriangles": 2080,
       "draws": 9,
       "materials": [
@@ -68,8 +68,8 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/ironback_production_v1_lod1.glb",
-      "bytes": 550672,
-      "sha256": "D9144071ED19E656C87EAB1B5060C42F101A181F5F7154ED2C2E95B4CCF0102B"
+      "bytes": 622672,
+      "sha256": "2FA640CAFEB09BBD8CE4E88358149BC825C6DD8B95B614B2FA546A58D6404ECE"
     },
     {
       "lod": 2,
@@ -100,29 +100,29 @@
       ],
       "path": "source/wholeships/ironback_production_v1_lod2.glb",
       "bytes": 383408,
-      "sha256": "DC4FCBD99B59C20FE18AEC963ED7E3D2A887E2E2B9DC7859A9B2FDAA754D42B2"
+      "sha256": "2141751292997CCCC66941F84769A511B2A714EA5C363C21A4F2A0F84BE74FCB"
     }
   ],
   "renders": [
     {
       "view": "ironback_three_quarter",
-      "path": "evidence/iter05/ironback_three_quarter.png",
-      "bytes": 951762
+      "path": "evidence/iter06/ironback_three_quarter.png",
+      "bytes": 952138
     },
     {
       "view": "ironback_starboard",
-      "path": "evidence/iter05/ironback_starboard.png",
-      "bytes": 966356
+      "path": "evidence/iter06/ironback_starboard.png",
+      "bytes": 966057
     },
     {
       "view": "ironback_rear",
-      "path": "evidence/iter05/ironback_rear.png",
-      "bytes": 1058457
+      "path": "evidence/iter06/ironback_rear.png",
+      "bytes": 1058367
     },
     {
       "view": "ironback_grazing",
-      "path": "evidence/iter05/ironback_grazing.png",
-      "bytes": 1023221
+      "path": "evidence/iter06/ironback_grazing.png",
+      "bytes": 1023347
     }
   ]
 }

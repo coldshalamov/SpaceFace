@@ -3,11 +3,11 @@
   "assetId": "SF_HELIOS_LARK_V1",
   "defId": "courier",
   "shipId": "helios_lark",
-  "iteration": 5,
+  "iteration": 6,
   "lods": [
     {
       "lod": 0,
-      "triangles": 26556,
+      "triangles": 27852,
       "hullTriangles": 1864,
       "draws": 9,
       "materials": [
@@ -35,12 +35,12 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/helios_lark_production_v1_lod0.glb",
-      "bytes": 1382040,
-      "sha256": "EA1D91E377A95974A9FAB24F02D3A5499B7033EFC162910A7C5983224AB3AB07"
+      "bytes": 1455672,
+      "sha256": "C5F10764CAC2470B4D473CF6BEED1934290F2369C47DF734ED367E5E36F15343"
     },
     {
       "lod": 1,
-      "triangles": 6412,
+      "triangles": 7708,
       "hullTriangles": 1864,
       "draws": 9,
       "materials": [
@@ -68,8 +68,8 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/helios_lark_production_v1_lod1.glb",
-      "bytes": 339448,
-      "sha256": "F278C4B79DA3AA3CAA2DC6112BFD0ADEE5A7725AD4F6D7DB08151986E2F3226C"
+      "bytes": 413468,
+      "sha256": "7855609670262BD572BE8D1FFB30D97E2663E05C7750AD06C1C49D64117EEBDE"
     },
     {
       "lod": 2,
@@ -100,29 +100,29 @@
       ],
       "path": "source/wholeships/helios_lark_production_v1_lod2.glb",
       "bytes": 221792,
-      "sha256": "0FA60CE29106D90EB28C7313C69519BEE046BCBCB9211D3D965E682EF5F5015D"
+      "sha256": "79F1500081D5A60C117F2D19D977EF965397C3E1747D30018A004ADFC2F8EC34"
     }
   ],
   "renders": [
     {
       "view": "helios_lark_three_quarter",
-      "path": "evidence/iter05/helios_lark_three_quarter.png",
-      "bytes": 821270
+      "path": "evidence/iter06/helios_lark_three_quarter.png",
+      "bytes": 821405
     },
     {
       "view": "helios_lark_starboard",
-      "path": "evidence/iter05/helios_lark_starboard.png",
-      "bytes": 863512
+      "path": "evidence/iter06/helios_lark_starboard.png",
+      "bytes": 863587
     },
     {
       "view": "helios_lark_rear",
-      "path": "evidence/iter05/helios_lark_rear.png",
-      "bytes": 952484
+      "path": "evidence/iter06/helios_lark_rear.png",
+      "bytes": 953270
     },
     {
       "view": "helios_lark_grazing",
-      "path": "evidence/iter05/helios_lark_grazing.png",
-      "bytes": 915374
+      "path": "evidence/iter06/helios_lark_grazing.png",
+      "bytes": 915423
     }
   ]
 }

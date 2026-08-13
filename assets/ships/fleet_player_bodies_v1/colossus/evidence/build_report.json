@@ -3,11 +3,11 @@
   "assetId": "SF_COLOSSUS_PRODUCTION_V1",
   "defId": "ship_colossus",
   "shipId": "colossus",
-  "iteration": 5,
+  "iteration": 6,
   "lods": [
     {
       "lod": 0,
-      "triangles": 55604,
+      "triangles": 56900,
       "hullTriangles": 1648,
       "draws": 9,
       "materials": [
@@ -35,12 +35,12 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/colossus_production_v1_lod0.glb",
-      "bytes": 2887088,
-      "sha256": "EB3C322B02768D7E28CFB12ACD917890A62405A5EEA7BDD0834D30ACB9E0E862"
+      "bytes": 2960144,
+      "sha256": "32B4011D84FB334E88697C5BF3CD8DCC44A3DCCE68D059273E27D349E01DB677"
     },
     {
       "lod": 1,
-      "triangles": 14580,
+      "triangles": 15876,
       "hullTriangles": 1648,
       "draws": 9,
       "materials": [
@@ -68,8 +68,8 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/colossus_production_v1_lod1.glb",
-      "bytes": 734784,
-      "sha256": "204F4493F27B94BB9D78C09E8B2BF648546D8A1BF1A2B352EA5B2B6B2B761F72"
+      "bytes": 808224,
+      "sha256": "58E04D18A76B1473E418B847B9E4958964B2A3CAE948BF7D981ECA08358B7F39"
     },
     {
       "lod": 2,
@@ -100,29 +100,29 @@
       ],
       "path": "source/wholeships/colossus_production_v1_lod2.glb",
       "bytes": 471324,
-      "sha256": "8779E7BF361AC7A397B38A80A658EA0B84913872942974458BD208D83DE22C25"
+      "sha256": "C0E60D72D2C0E45E4126D0586C58FEAD86339FB01C14E2041D75B70CCB1E926B"
     }
   ],
   "renders": [
     {
       "view": "colossus_three_quarter",
-      "path": "evidence/iter05/colossus_three_quarter.png",
-      "bytes": 932455
+      "path": "evidence/iter06/colossus_three_quarter.png",
+      "bytes": 932656
     },
     {
       "view": "colossus_starboard",
-      "path": "evidence/iter05/colossus_starboard.png",
-      "bytes": 935245
+      "path": "evidence/iter06/colossus_starboard.png",
+      "bytes": 935712
     },
     {
       "view": "colossus_rear",
-      "path": "evidence/iter05/colossus_rear.png",
-      "bytes": 998455
+      "path": "evidence/iter06/colossus_rear.png",
+      "bytes": 998591
     },
     {
       "view": "colossus_grazing",
-      "path": "evidence/iter05/colossus_grazing.png",
-      "bytes": 993416
+      "path": "evidence/iter06/colossus_grazing.png",
+      "bytes": 993642
     }
   ]
 }

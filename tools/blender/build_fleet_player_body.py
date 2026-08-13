@@ -33,6 +33,8 @@ from fleet_construction import (  # noqa: E402
     add_service_hatch,
     add_service_pipe,
     add_midship_kit,
+    add_recess_bay,
+    add_framed_canopy,
 )
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -509,10 +511,11 @@ def build_ship(ship_id, spec, lod, mats):
     if spec.get("wings"):
         for sign, side in ((-1, "Port"), (1, "Starboard")):
             add_span_loft(f"Wing_{side}", [
-                (-0.20, hw * 0.95 * sign, 0.05, 1.55, 0.16, 0.05),
-                (-0.55, (hw + 1.15) * sign, 0.03, 1.25, 0.10, 0.04),
-                (-1.15, (hw + 2.25) * sign, 0.00, 0.78, 0.045, 0.02),
-            ], hull, collection, 0.018)
+                (-0.10, hw * 0.92 * sign, 0.06, 1.65, 0.22, 0.06),
+                (-0.45, (hw + 1.05) * sign, 0.04, 1.35, 0.14, 0.05),
+                (-1.05, (hw + 2.05) * sign, 0.01, 0.85, 0.07, 0.03),
+            ], hull, collection, 0.02)
+            add_box(f"WingRoot_{side}", (0.05, hw * 0.88 * sign, 0.08), (0.85, 0.22, 0.16), hull, collection, 0.02)
             add_span_loft(f"WingArmor_{side}", [
                 (-0.10, (hw + 0.35) * sign, 0.10, 1.05, 0.04, 0.02),
                 (-0.40, (hw + 1.15) * sign, 0.08, 0.88, 0.03, 0.015),
@@ -577,6 +580,9 @@ def build_ship(ship_id, spec, lod, mats):
 
     if lod <= 1:
         add_midship_kit(half, hw, hh, lod, mats, collection)
+        add_recess_bay("Port", (-half * 0.08, -hw * 0.72, hh * 0.20), half * 0.18, 0.16, 0.18, mats, collection)
+        add_recess_bay("Starboard", (-half * 0.08, hw * 0.72, hh * 0.20), half * 0.18, 0.16, 0.18, mats, collection)
+        add_recess_bay("DorsalAft", (-half * 0.32, 0.0, hh + 0.02), half * 0.14, hw * 0.28, 0.12, mats, collection)
 
     if lod == 0:
         add_box("Accent_Plate", (half * 0.05, -hw + 0.08, 0.35), (0.45, 0.02, 0.12), accent, collection, 0.006)
@@ -718,7 +724,7 @@ def render_evidence(collection, out_dir: Path, ship_id: str, spec):
         scene.collection.objects.link(obj)
         obj.location = loc
         look_at(obj)
-    evidence = out_dir / "evidence" / "iter05"
+    evidence = out_dir / "evidence" / "iter06"
     evidence.mkdir(parents=True, exist_ok=True)
     half = spec["length"] * 0.45
     views = [
@@ -756,7 +762,7 @@ def build_one(ship_id: str, spec: dict, texture_dir: Path) -> dict:
         "assetId": spec["assetId"],
         "defId": spec["defId"],
         "shipId": ship_id,
-        "iteration": 5,
+        "iteration": 6,
         "lods": reports,
         "renders": renders,
     }

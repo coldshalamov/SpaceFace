@@ -248,3 +248,27 @@ def add_midship_kit(half, hw, hh, lod, mats, collection):
         )):
             add_cylinder(f"Bolt_{i}", (x, y, hh + 0.10), 0.014, 0.03, mech, collection, vertices=8, bevel=0.002, rot=(0, 0, 0))
         add_box("Cable_Tray", (half * 0.04, -hw * 0.38, hh + 0.04), (half * 0.30, 0.025, 0.02), mech, collection, 0.003)
+
+
+def add_recess_bay(tag, loc, sx, sy, sz, mats, collection):
+    """Inset well with rim and interior so the hull reads cut, not stacked."""
+    mech = mats["Material_Mechanical"]
+    armor = mats["Material_Armor"]
+    x, y, z = loc
+    add_box(f"Recess_Interior_{tag}", (x, y, z - sz * 0.35), (sx * 0.82, sy * 0.82, sz * 0.55), mech, collection, 0.008)
+    add_box(f"Recess_Rim_{tag}", loc, (sx, sy, sz * 0.18), armor, collection, 0.006)
+    add_box(f"Recess_LipFore_{tag}", (x + sx * 0.92, y, z), (0.03, sy * 0.9, sz * 0.28), mech, collection, 0.004)
+    add_box(f"Recess_LipAft_{tag}", (x - sx * 0.92, y, z), (0.03, sy * 0.9, sz * 0.28), mech, collection, 0.004)
+
+
+def add_framed_canopy(prefix, half, hh, mats, collection, bridge=False):
+    canopy = mats["Material_Canopy"]
+    armor = mats["Material_Armor"]
+    # Three framed panes instead of one plastic wedge.
+    add_box(f"{prefix}_Pane_Fore", (half * 0.38, 0.0, hh + 0.42), (0.22, 0.28, 0.10), canopy, collection, 0.008)
+    add_box(f"{prefix}_Pane_Mid", (half * 0.22, 0.0, hh + 0.52), (0.28, 0.36, 0.12), canopy, collection, 0.008)
+    add_box(f"{prefix}_Pane_Aft", (half * 0.08, 0.0, hh + 0.40), (0.18, 0.30, 0.10), canopy, collection, 0.008)
+    add_box(f"{prefix}_Mullion_A", (half * 0.30, 0.0, hh + 0.50), (0.025, 0.38, 0.14), armor, collection, 0.004)
+    add_box(f"{prefix}_Mullion_B", (half * 0.14, 0.0, hh + 0.48), (0.025, 0.36, 0.13), armor, collection, 0.004)
+    add_box(f"{prefix}_Sill", (half * 0.24, 0.0, hh + 0.28), (0.42, 0.40, 0.03), armor, collection, 0.005)
+    add_box(f"{prefix}_Brow", (half * 0.30, 0.0, hh + 0.66), (0.38, 0.34, 0.03), armor, collection, 0.005)

@@ -3,11 +3,11 @@
   "assetId": "SF_ATLAS_PRODUCTION_V1",
   "defId": "ship_atlas",
   "shipId": "atlas",
-  "iteration": 5,
+  "iteration": 6,
   "lods": [
     {
       "lod": 0,
-      "triangles": 58288,
+      "triangles": 59584,
       "hullTriangles": 1648,
       "draws": 9,
       "materials": [
@@ -35,12 +35,12 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/atlas_production_v1_lod0.glb",
-      "bytes": 3039460,
-      "sha256": "2D1415B5BCD151C39FA21C036DCA82B10B1450B49C0F92D4B15E7C7A248933DB"
+      "bytes": 3112996,
+      "sha256": "5EEC36D4D94355D954AFBFABDFB1E0F40A616F59F8E0B34565DF7CFC81DA3899"
     },
     {
       "lod": 1,
-      "triangles": 14672,
+      "triangles": 15968,
       "hullTriangles": 1648,
       "draws": 9,
       "materials": [
@@ -68,8 +68,8 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/atlas_production_v1_lod1.glb",
-      "bytes": 737920,
-      "sha256": "3CD7422C215754C169BD29FD548E86D16FD57072AC214F2B9ABFA45E90CE2A52"
+      "bytes": 815968,
+      "sha256": "4A5E5B18DABB7082F03253EAC1D9D4709E7481868F418D76B2C9A6773192769A"
     },
     {
       "lod": 2,
@@ -100,29 +100,29 @@
       ],
       "path": "source/wholeships/atlas_production_v1_lod2.glb",
       "bytes": 474652,
-      "sha256": "72F197E3ECC190BB6DD98B13EB93D2FC0AD9F9A237ED34771FFD89BC7A6E318E"
+      "sha256": "E3EFE6BB2FCAB10A9D52DF493415EB2C61D219D0807A9C9D0E1A0F66DC15DB73"
     }
   ],
   "renders": [
     {
       "view": "atlas_three_quarter",
-      "path": "evidence/iter05/atlas_three_quarter.png",
-      "bytes": 975404
+      "path": "evidence/iter06/atlas_three_quarter.png",
+      "bytes": 975434
     },
     {
       "view": "atlas_starboard",
-      "path": "evidence/iter05/atlas_starboard.png",
-      "bytes": 1000724
+      "path": "evidence/iter06/atlas_starboard.png",
+      "bytes": 1000767
     },
     {
       "view": "atlas_rear",
-      "path": "evidence/iter05/atlas_rear.png",
-      "bytes": 1097049
+      "path": "evidence/iter06/atlas_rear.png",
+      "bytes": 1097161
     },
     {
       "view": "atlas_grazing",
-      "path": "evidence/iter05/atlas_grazing.png",
-      "bytes": 1075880
+      "path": "evidence/iter06/atlas_grazing.png",
+      "bytes": 1076235
     }
   ]
 }

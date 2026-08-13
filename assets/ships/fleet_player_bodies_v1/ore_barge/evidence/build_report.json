@@ -3,11 +3,11 @@
   "assetId": "SF_ORE_BARGE_V1",
   "defId": "ore_carrier",
   "shipId": "ore_barge",
-  "iteration": 5,
+  "iteration": 6,
   "lods": [
     {
       "lod": 0,
-      "triangles": 37112,
+      "triangles": 38408,
       "hullTriangles": 1648,
       "draws": 9,
       "materials": [
@@ -35,12 +35,12 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/ore_barge_production_v1_lod0.glb",
-      "bytes": 1936968,
-      "sha256": "4AE4F469DE987453F9F857AD7D261D5E4077C0C68110C57C74B6259F2DCB3649"
+      "bytes": 2010700,
+      "sha256": "5B2A13B276F8EB38D81390FE617AD98DEA4D117AB570C2641938A44829C0835D"
     },
     {
       "lod": 1,
-      "triangles": 9144,
+      "triangles": 10440,
       "hullTriangles": 1648,
       "draws": 9,
       "materials": [
@@ -68,8 +68,8 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/ore_barge_production_v1_lod1.glb",
-      "bytes": 471408,
-      "sha256": "8C7BBDEA855DB76ADD5338677D6341302F12007A27662F90AB7D98A2E09C14EF"
+      "bytes": 547540,
+      "sha256": "7A3A83CBE855BCD3B78C67FA0B20790428AFF944071F52BD9C2BCF2096B06FFD"
     },
     {
       "lod": 2,
@@ -100,29 +100,29 @@
       ],
       "path": "source/wholeships/ore_barge_production_v1_lod2.glb",
       "bytes": 305288,
-      "sha256": "0654BB2E8EC1E093ACB57E5B9D8F0C61BCDB543F313213F800B0E440386D77D2"
+      "sha256": "8892C9748235715D215F97B1945F6D6F12321DF0284FCCF0FA74FB6600B55AA2"
     }
   ],
   "renders": [
     {
       "view": "ore_barge_three_quarter",
-      "path": "evidence/iter05/ore_barge_three_quarter.png",
-      "bytes": 908427
+      "path": "evidence/iter06/ore_barge_three_quarter.png",
+      "bytes": 908540
     },
     {
       "view": "ore_barge_starboard",
-      "path": "evidence/iter05/ore_barge_starboard.png",
-      "bytes": 935633
+      "path": "evidence/iter06/ore_barge_starboard.png",
+      "bytes": 936033
     },
     {
       "view": "ore_barge_rear",
-      "path": "evidence/iter05/ore_barge_rear.png",
-      "bytes": 1022695
+      "path": "evidence/iter06/ore_barge_rear.png",
+      "bytes": 1023462
     },
     {
       "view": "ore_barge_grazing",
-      "path": "evidence/iter05/ore_barge_grazing.png",
-      "bytes": 972578
+      "path": "evidence/iter06/ore_barge_grazing.png",
+      "bytes": 972674
     }
   ]
 }

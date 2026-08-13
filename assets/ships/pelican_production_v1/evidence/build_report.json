@@ -25,7 +25,7 @@
   "lods": [
     {
       "lod": 0,
-      "triangles": 30088,
+      "triangles": 30952,
       "hullTriangles": 2256,
       "draws": 9,
       "materials": [
@@ -65,12 +65,12 @@
       ],
       "embeddedPlume": false,
       "path": "source/wholeships/pelican_production_v1_lod0.glb",
-      "bytes": 1595404,
-      "sha256": "8216E91C504CC00533ED3F7CDFEC3521F64217BA75E54240F1E6D67172505066"
+      "bytes": 1644940,
+      "sha256": "D06F276D3CF9DD75D6960ED210224E2B4D3B0E688EF0AD1E2B6E8BFCD01A84D7"
     },
     {
       "lod": 1,
-      "triangles": 15076,
+      "triangles": 15940,
       "hullTriangles": 2256,
       "draws": 9,
       "materials": [
@@ -110,8 +110,8 @@
       ],
       "embeddedPlume": false,
       "path": "source/wholeships/pelican_production_v1_lod1.glb",
-      "bytes": 754188,
-      "sha256": "2F8D863A770C919586DA6051BD84FF53A2FFE5DC24CEE9E44A180FC3DB3780E8"
+      "bytes": 802764,
+      "sha256": "6AEFC4871D7189040E524D810B7D1713E625A1B7CBBE2599424BA7139451E2CD"
     },
     {
       "lod": 2,
@@ -154,7 +154,7 @@
       "embeddedPlume": false,
       "path": "source/wholeships/pelican_production_v1_lod2.glb",
       "bytes": 484676,
-      "sha256": "721E9E4D93F88BD535943E66E424BE92E2B23480551AC122AB93C7A01526E0F9"
+      "sha256": "92AC41AFE7F3C8748D459EC0E25CCC0B527CCD54E47C064D0DEFFDF2CCAF4EC0"
     }
   ],
   "renders": [
@@ -162,7 +162,7 @@
       "view": "pelican_three_quarter",
       "path": "evidence/iter04/pelican_three_quarter.png",
       "bytes": 993545,
-      "sha256": "46912CE80649ADE2C93EEA9BE23A561543B219707A2D389023E1B6BD2E4FA300",
+      "sha256": "45D20214EF03A1AF2EB2ECB1166C6417C1CBCB0C75EB8FF98A0C0F449AFDAA4C",
       "camera": [
         18,
         -20,
@@ -179,7 +179,7 @@
       "view": "pelican_starboard",
       "path": "evidence/iter04/pelican_starboard.png",
       "bytes": 1065548,
-      "sha256": "F0B5FFEF40EAC0AFCFB4A5601CC2479D47F3DE7DC17629DD06AB9E34964F2B45",
+      "sha256": "6CD36F5C515A8CA1DF12E0134E8AB8907F7E702D3941FF36DD87406F63862B4A",
       "camera": [
         16,
         20,
@@ -195,8 +195,8 @@
     {
       "view": "pelican_front",
       "path": "evidence/iter04/pelican_front.png",
-      "bytes": 969845,
-      "sha256": "12D8DBCE6CB31D3B9C68877A0D09B9729F5CD363EEA00BC595A1867C685F67BF",
+      "bytes": 969846,
+      "sha256": "E1759BA8FB0E7B8C073282AB4D443CCEE86DF795D763D82082B72610A8F3D50F",
       "camera": [
         22,
         0,
@@ -212,8 +212,8 @@
     {
       "view": "pelican_rear",
       "path": "evidence/iter04/pelican_rear.png",
-      "bytes": 1044463,
-      "sha256": "BBCFB5F026ED6359A4E1D9E8702A02331213C416FF3CF41D230066D31DC47A40",
+      "bytes": 1044547,
+      "sha256": "F5B3F2C78818771C655900FDE99DCAC340115AFD1E03C624A32C121B00C07F95",
       "camera": [
         -20,
         -8,
@@ -229,8 +229,8 @@
     {
       "view": "pelican_top",
       "path": "evidence/iter04/pelican_top.png",
-      "bytes": 1073134,
-      "sha256": "51F5F97B4D0E92F8E29D133CD9585A4A76CBAFA752523F8564696F1109736D65",
+      "bytes": 1073023,
+      "sha256": "1902E3D62F774E8BA26FE981B82307826B61AE3F23D87C2ADB203C646A0B6423",
       "camera": [
         0,
         0,
@@ -247,7 +247,7 @@
       "view": "pelican_grazing",
       "path": "evidence/iter04/pelican_grazing.png",
       "bytes": 999232,
-      "sha256": "7F5EC25A89FA38C971106287992FE711970EAC8809C9ACEB9D4417BE710CFDD3",
+      "sha256": "E60A315627E1925D14F3F83F41C6B1E6BB4D29080ED9B325169962822F45FEBA",
       "camera": [
         6,
         -16,
@@ -263,8 +263,8 @@
     {
       "view": "pelican_drive_close",
       "path": "evidence/iter04/pelican_drive_close.png",
-      "bytes": 1045601,
-      "sha256": "95190B61DC081B0F630E6D8CCCE611D4875FA2BCAC4A8555A40F92BDEBCA2687",
+      "bytes": 1045646,
+      "sha256": "5FE937EA60EB84CB19CD34B4288B9F7B797148FDAD59901CA905CF236F5B710A",
       "camera": [
         -12,
         -4,
@@ -281,7 +281,7 @@
       "view": "pelican_arm_close",
       "path": "evidence/iter04/pelican_arm_close.png",
       "bytes": 986628,
-      "sha256": "99C730448719A6F4FDCD568836C3ED2D56261EB711E5872399018A78C4A99BAC",
+      "sha256": "B7B735A1230E1C7D0517DA4781136BFFEE07D273606F9ECD5BCDBC94A85FC08B",
       "camera": [
         14,
         -6,
