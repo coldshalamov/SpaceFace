@@ -2272,7 +2272,7 @@
       "id": "PQ-048",
       "priority": 48,
       "title": "Twenty inference-to-convergence player outcomes",
-      "state": "ready",
+      "state": "integrated",
       "canonical": [
         "INFERENCE-20X-2026-08-11"
       ],
@@ -2284,7 +2284,7 @@
       "sources": [
         "design/vision/INFERENCE_CONVERGENCE_METHOD.md",
         "design/vision/GAME_DIRECTION_EXPANSION.md",
-        "design/program/roadmap/active/PQ-048.md"
+        "design/program/roadmap/retired/PQ-048.md"
       ],
       "checks": [
         "npm run check:baseline",
@@ -2297,7 +2297,10 @@
         "cold-review",
         "tranche-composition"
       ],
-      "brief": "User-authorized 20x campaign: twenty new, independently reviewable player outcome packages delivered serially in four composed tranches. Pre-existing work, files, catalog rows, cues, tests, and receipts do not count as units."
+      "brief": "User-authorized 20x campaign integrated at focused-green scope through twenty exact leaf receipts and four tranche-composition verdicts. The final shared baseline passed 11/11 in 59.724 seconds with 30.276 seconds headroom. No ordinary headed Browser/Electron portfolio route was run, so route_accepted and milestone_accepted remain unclaimed.",
+      "integratedCommit": "1ba6ce221900ecb5075765f900157c199d1fcfad",
+      "acceptanceRef": "design/program/roadmap/receipts/PQ-048-composition-REPORT.md#portfolio-closeout",
+      "receipt": "design/program/roadmap/receipts/PQ-048-composition-REPORT.md"
     }
   ],
   "dispatchUnits": [

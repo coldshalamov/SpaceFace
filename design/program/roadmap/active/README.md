@@ -91,7 +91,7 @@ evidence triggers are proved.
 | [`PQ-042.md`](./PQ-042.md) | select one GPU correction—or no GPU change—from valid pass evidence | PQ-034–041 accepted; clean trace selects A/B/C/D |
 | [`PQ-045.md`](./PQ-045.md) | finish the R5 Ceres lived-world slice through exact dependency leaves | target motion integrated; tender client, topology, causal/NPC/art/VFX work, five-minute evidence, and human verdict; bounded late audit is independent |
 | [`PQ-046.md`](../retired/PQ-046.md) | land five coherent high-leverage vision unlocks through inference expansion, cold review, and ordinary-route proof | integrated and retired through five leaf receipts at focused-green scope; parent ordinary-route visual acceptance remains unclaimed |
-| [`PQ-048.md`](./PQ-048.md) | deliver twenty new inference-to-convergence player outcome packages in four composed tranches | user-authorized 20x campaign; first exact leaf is the Ceres ore cycle |
+| [`PQ-048.md`](../retired/PQ-048.md) | deliver twenty new inference-to-convergence player outcome packages in four composed tranches | integrated and retired through 20 exact leaf receipts and four composed tranches at focused-green scope; ordinary headed portfolio route remains unproven |
 
 PQ-043 and PQ-044 are admitted queue identities but remain deferred and packet-less until their
 conditional triggers are proved.
@@ -99,6 +99,10 @@ conditional triggers are proved.
 PQ-046 retired through five exact leaf receipts at four production commits. The parent remains
 `focused_green`; no Browser/Electron `route_accepted` claim was inferred from deterministic render
 evidence or a foreign-dirty ordinary route.
+
+PQ-048 retired through twenty exact leaf receipts and a final composition receipt. Its parent is
+`integrated` / `focused_green`; no ordinary headed Browser/Electron portfolio route was run, so
+`route_accepted` and `milestone_accepted` remain unclaimed.
 
 PQ-032 (five endings/continuing universe) and PQ-033 (release closeout) are also deferred and
 unfinished. They are stored under `../retired/` only to keep them out of current execution; that
