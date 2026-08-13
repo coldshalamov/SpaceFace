@@ -2367,7 +2367,7 @@
         "matched-hitch-stills",
         "independent-visual-review"
       ],
-      "brief": "Bring every live flyable player and NPC ship except Hitch/Kestrel to honest Hitch-plus / A-list construction. Six ordered leaves: promote the newest factory bodies; rebuild Pelican and Mule; carefully upgrade Wasp without dropping hull below 800 tris; per-player then per-NPC quality loops against Hitch stills; independent review with no self-acceptance. Hitch freeze set stays untouched."
+      "brief": "Bring every live flyable player and NPC ship except Hitch/Kestrel to honest Hitch-plus / A-list construction. One leaf is one ship: polish that ship until Hitch no longer wins, wire only that ship, stop. Twenty-two ordered ships starting at Hornet. Hitch freeze set stays untouched. Do not run a stage across the whole fleet."
     }
   ],
   "dispatchUnits": [
@@ -6392,35 +6392,33 @@
       "id": "PQ-050.01",
       "parentId": "PQ-050",
       "priority": 305,
-      "title": "Promote newest non-Hitch factory bodies into live parts and release",
+      "title": "Finish and wire Hornet (player interceptor)",
       "kind": "implementation",
       "state": "ready",
       "dependsOn": [],
       "mutexes": [
-        "asset-manifest",
-        "blender"
+        "blender",
+        "asset-manifest"
       ],
       "paths": [
-        "tools/art/promote_fleet_production_bodies.mjs",
-        "assets/ships/fleet_player_bodies_v1/",
-        "assets/ships/parts/wholeships/",
-        "assets/ships/release/parts/wholeships/",
-        "src/render/partsLibrary.js",
-        "test/fleet-player-wholeship-routing.test.mjs",
-        "test/fleet-npc-wholeship-routing.test.mjs"
+        "tools/blender/fleet_construction.py",
+        "tools/blender/build_fleet_player_body.py",
+        "assets/ships/fleet_player_bodies_v1/hornet/",
+        "assets/ships/parts/wholeships/hornet_production_v1.glb",
+        "assets/ships/release/parts/wholeships/hornet_production_v1.glb"
       ],
       "checks": [
-        "node --test test/fleet-player-wholeship-routing.test.mjs test/fleet-npc-wholeship-routing.test.mjs",
+        "node --test test/fleet-player-wholeship-routing.test.mjs",
         "npm run check:baseline"
       ],
       "receiptRefs": [],
-      "brief": "Copy the newest factory source LOD0/1/2 bodies into live parts and release. Skip Hitch entirely. Skip live Wasp until PQ-050.03. Do not change sockets, roles, or stats. Leave status at integration_candidate."
+      "brief": "Polish Hornet only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
     },
     {
       "id": "PQ-050.02",
       "parentId": "PQ-050",
       "priority": 306,
-      "title": "Rebuild Pelican and Mule with open bays and Hitch-floor construction",
+      "title": "Finish and wire Drifter (player multirole)",
       "kind": "implementation",
       "state": "ready",
       "dependsOn": [
@@ -6432,22 +6430,23 @@
       ],
       "paths": [
         "tools/blender/fleet_construction.py",
-        "assets/ships/pelican_production_v1/",
-        "assets/ships/mule_production_v1/",
-        "test/pelican-production-routing.test.mjs"
+        "tools/blender/build_fleet_player_body.py",
+        "assets/ships/fleet_player_bodies_v1/drifter/",
+        "assets/ships/parts/wholeships/drifter_production_v1.glb",
+        "assets/ships/release/parts/wholeships/drifter_production_v1.glb"
       ],
       "checks": [
-        "node --test test/pelican-production-routing.test.mjs test/fleet-player-wholeship-routing.test.mjs",
+        "node --test test/fleet-player-wholeship-routing.test.mjs",
         "npm run check:baseline"
       ],
       "receiptRefs": [],
-      "brief": "Rebuild the dedicated Pelican and Mule packages so side and dorsal bays are cut holes with interiors, not stacked boxes. Raise framed dark-glass cockpits. Promote only those two families. Compare stills to Hitch before calling either done."
+      "brief": "Polish Drifter only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
     },
     {
       "id": "PQ-050.03",
       "parentId": "PQ-050",
       "priority": 307,
-      "title": "Upgrade live Wasp without dropping hull below 800 triangles",
+      "title": "Finish and wire Ranger (player explorer)",
       "kind": "implementation",
       "state": "ready",
       "dependsOn": [
@@ -6458,21 +6457,24 @@
         "asset-manifest"
       ],
       "paths": [
-        "assets/ships/wasp_production_v1/",
-        "tools/blender/fleet_construction.py"
+        "tools/blender/fleet_construction.py",
+        "tools/blender/build_fleet_player_body.py",
+        "assets/ships/fleet_player_bodies_v1/ranger/",
+        "assets/ships/parts/wholeships/ranger_production_v1.glb",
+        "assets/ships/release/parts/wholeships/ranger_production_v1.glb"
       ],
       "checks": [
         "node --test test/fleet-player-wholeship-routing.test.mjs",
         "npm run check:baseline"
       ],
       "receiptRefs": [],
-      "brief": "Add open bays and hull-named plates to the existing Wasp builder. Keep Fuselage_Core on Material_Hull. Abort if any LOD hull triangle count falls below 800. Replace the live Wasp only when stills beat the current live body."
+      "brief": "Polish Ranger only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
     },
     {
       "id": "PQ-050.04",
       "parentId": "PQ-050",
       "priority": 308,
-      "title": "Player-ship Hitch-plus quality loops",
+      "title": "Finish and wire Ironback (player barge)",
       "kind": "implementation",
       "state": "ready",
       "dependsOn": [
@@ -6480,28 +6482,27 @@
       ],
       "mutexes": [
         "blender",
-        "evidence-review"
+        "asset-manifest"
       ],
       "paths": [
         "tools/blender/fleet_construction.py",
         "tools/blender/build_fleet_player_body.py",
-        "assets/ships/fleet_player_bodies_v1/",
-        "assets/ships/pelican_production_v1/",
-        "assets/ships/mule_production_v1/",
-        "assets/ships/wasp_production_v1/"
+        "assets/ships/fleet_player_bodies_v1/ironback/",
+        "assets/ships/parts/wholeships/ironback_production_v1.glb",
+        "assets/ships/release/parts/wholeships/ironback_production_v1.glb"
       ],
       "checks": [
-        "node --test test/fleet-player-wholeship-routing.test.mjs test/pelican-production-routing.test.mjs",
+        "node --test test/fleet-player-wholeship-routing.test.mjs",
         "npm run check:baseline"
       ],
       "receiptRefs": [],
-      "brief": "Run the required per-ship loop on Hornet, Drifter, Ironback, Bastion, Atlas, Ranger, Warden, Colossus, Leviathan, and any of Pelican/Mule/Wasp still short of Hitch. Brainstorm 3x, implement, compare stills to Hitch, repeat at least 5x per ship. Commit one finished ship at a time. Do not copy Hitch identity."
+      "brief": "Polish Ironback only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
     },
     {
       "id": "PQ-050.05",
       "parentId": "PQ-050",
       "priority": 309,
-      "title": "NPC and traffic Hitch-plus quality loops",
+      "title": "Finish and wire Bastion (player corvette)",
       "kind": "implementation",
       "state": "ready",
       "dependsOn": [
@@ -6509,44 +6510,494 @@
       ],
       "mutexes": [
         "blender",
-        "evidence-review"
+        "asset-manifest"
       ],
       "paths": [
+        "tools/blender/fleet_construction.py",
         "tools/blender/build_fleet_player_body.py",
-        "assets/ships/fleet_player_bodies_v1/"
+        "assets/ships/fleet_player_bodies_v1/bastion/",
+        "assets/ships/parts/wholeships/bastion_production_v1.glb",
+        "assets/ships/release/parts/wholeships/bastion_production_v1.glb"
+      ],
+      "checks": [
+        "node --test test/fleet-player-wholeship-routing.test.mjs",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "Polish Bastion only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
+    },
+    {
+      "id": "PQ-050.06",
+      "parentId": "PQ-050",
+      "priority": 310,
+      "title": "Finish and wire Atlas (player bulk hauler)",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-050.05"
+      ],
+      "mutexes": [
+        "blender",
+        "asset-manifest"
+      ],
+      "paths": [
+        "tools/blender/fleet_construction.py",
+        "tools/blender/build_fleet_player_body.py",
+        "assets/ships/fleet_player_bodies_v1/atlas/",
+        "assets/ships/parts/wholeships/atlas_production_v1.glb",
+        "assets/ships/release/parts/wholeships/atlas_production_v1.glb"
+      ],
+      "checks": [
+        "node --test test/fleet-player-wholeship-routing.test.mjs",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "Polish Atlas only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
+    },
+    {
+      "id": "PQ-050.07",
+      "parentId": "PQ-050",
+      "priority": 311,
+      "title": "Finish and wire Warden (player gunship)",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-050.06"
+      ],
+      "mutexes": [
+        "blender",
+        "asset-manifest"
+      ],
+      "paths": [
+        "tools/blender/fleet_construction.py",
+        "tools/blender/build_fleet_player_body.py",
+        "assets/ships/fleet_player_bodies_v1/warden/",
+        "assets/ships/parts/wholeships/warden_production_v1.glb",
+        "assets/ships/release/parts/wholeships/warden_production_v1.glb"
+      ],
+      "checks": [
+        "node --test test/fleet-player-wholeship-routing.test.mjs",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "Polish Warden only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
+    },
+    {
+      "id": "PQ-050.08",
+      "parentId": "PQ-050",
+      "priority": 312,
+      "title": "Finish and wire Colossus (player capital)",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-050.07"
+      ],
+      "mutexes": [
+        "blender",
+        "asset-manifest"
+      ],
+      "paths": [
+        "tools/blender/fleet_construction.py",
+        "tools/blender/build_fleet_player_body.py",
+        "assets/ships/fleet_player_bodies_v1/colossus/",
+        "assets/ships/parts/wholeships/colossus_production_v1.glb",
+        "assets/ships/release/parts/wholeships/colossus_production_v1.glb"
+      ],
+      "checks": [
+        "node --test test/fleet-player-wholeship-routing.test.mjs",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "Polish Colossus only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
+    },
+    {
+      "id": "PQ-050.09",
+      "parentId": "PQ-050",
+      "priority": 313,
+      "title": "Finish and wire Leviathan (player flagship)",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-050.08"
+      ],
+      "mutexes": [
+        "blender",
+        "asset-manifest"
+      ],
+      "paths": [
+        "tools/blender/fleet_construction.py",
+        "tools/blender/build_fleet_player_body.py",
+        "assets/ships/fleet_player_bodies_v1/leviathan/",
+        "assets/ships/parts/wholeships/leviathan_production_v1.glb",
+        "assets/ships/release/parts/wholeships/leviathan_production_v1.glb"
+      ],
+      "checks": [
+        "node --test test/fleet-player-wholeship-routing.test.mjs",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "Polish Leviathan only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
+    },
+    {
+      "id": "PQ-050.10",
+      "parentId": "PQ-050",
+      "priority": 314,
+      "title": "Finish and wire Pelican (player miner)",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-050.09"
+      ],
+      "mutexes": [
+        "blender",
+        "asset-manifest"
+      ],
+      "paths": [
+        "tools/blender/fleet_construction.py",
+        "assets/ships/pelican_production_v1/",
+        "assets/ships/parts/wholeships/pelican_production_v1.glb",
+        "assets/ships/release/parts/wholeships/pelican_production_v1.glb"
+      ],
+      "checks": [
+        "node --test test/pelican-production-routing.test.mjs test/fleet-player-wholeship-routing.test.mjs",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "Polish Pelican only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
+    },
+    {
+      "id": "PQ-050.11",
+      "parentId": "PQ-050",
+      "priority": 315,
+      "title": "Finish and wire Mule (player hauler)",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-050.10"
+      ],
+      "mutexes": [
+        "blender",
+        "asset-manifest"
+      ],
+      "paths": [
+        "tools/blender/fleet_construction.py",
+        "assets/ships/mule_production_v1/",
+        "assets/ships/parts/wholeships/mule_production_v1.glb",
+        "assets/ships/release/parts/wholeships/mule_production_v1.glb"
+      ],
+      "checks": [
+        "node --test test/fleet-player-wholeship-routing.test.mjs",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "Polish Mule only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
+    },
+    {
+      "id": "PQ-050.12",
+      "parentId": "PQ-050",
+      "priority": 316,
+      "title": "Finish and wire Wasp (player fighter)",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-050.11"
+      ],
+      "mutexes": [
+        "blender",
+        "asset-manifest"
+      ],
+      "paths": [
+        "tools/blender/fleet_construction.py",
+        "assets/ships/wasp_production_v1/",
+        "assets/ships/parts/wholeships/wasp_production_v1.glb",
+        "assets/ships/release/parts/wholeships/wasp_production_v1.glb"
+      ],
+      "checks": [
+        "node --test test/fleet-player-wholeship-routing.test.mjs",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "Polish Wasp only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Abort if hull triangles drop below 800. Keep the live file if stills get worse. Hitch stays untouched."
+    },
+    {
+      "id": "PQ-050.13",
+      "parentId": "PQ-050",
+      "priority": 317,
+      "title": "Finish and wire Ashline dart (hostile swarmer)",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-050.12"
+      ],
+      "mutexes": [
+        "blender",
+        "asset-manifest"
+      ],
+      "paths": [
+        "tools/blender/fleet_construction.py",
+        "tools/blender/build_fleet_player_body.py",
+        "assets/ships/fleet_player_bodies_v1/ashline_dart/",
+        "assets/ships/parts/wholeships/ashline_dart_production_v1.glb",
+        "assets/ships/release/parts/wholeships/ashline_dart_production_v1.glb"
       ],
       "checks": [
         "node --test test/fleet-npc-wholeship-routing.test.mjs",
         "npm run check:baseline"
       ],
       "receiptRefs": [],
-      "brief": "Same Hitch-plus loop for Ashline dart/lode/rig, Helios lark/cradle/span, ore barge, repair tender, salvage cutter, and survey pin. Keep each role silhouette. Reaver and Corsair share the rig body."
+      "brief": "Polish Ashline dart only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
     },
     {
-      "id": "PQ-050.06",
+      "id": "PQ-050.14",
       "parentId": "PQ-050",
-      "priority": 310,
-      "title": "Independent Hitch-plus visual review; do not self-accept",
-      "kind": "acceptance_capture",
+      "priority": 318,
+      "title": "Finish and wire Ashline lode (hostile bruiser)",
+      "kind": "implementation",
       "state": "ready",
       "dependsOn": [
-        "PQ-050.05"
+        "PQ-050.13"
       ],
       "mutexes": [
-        "evidence-review",
-        "browser-gpu",
-        "electron-shell"
+        "blender",
+        "asset-manifest"
       ],
       "paths": [
-        "assets/ships/fleet_remaster_v1/",
-        "design/program/roadmap/receipts/PQ-050-06-fleet-hitchplus-REVIEW.md"
+        "tools/blender/fleet_construction.py",
+        "tools/blender/build_fleet_player_body.py",
+        "assets/ships/fleet_player_bodies_v1/ashline_lode/",
+        "assets/ships/parts/wholeships/ashline_lode_production_v1.glb",
+        "assets/ships/release/parts/wholeships/ashline_lode_production_v1.glb"
       ],
       "checks": [
-        "node --test test/fleet-player-wholeship-routing.test.mjs test/fleet-npc-wholeship-routing.test.mjs test/pelican-production-routing.test.mjs",
+        "node --test test/fleet-npc-wholeship-routing.test.mjs",
         "npm run check:baseline"
       ],
       "receiptRefs": [],
-      "brief": "Record matched Hitch-vs-remaster stills for every shipped non-Hitch flyable body and obtain independent whole-asset keep/revise/revert. The implementing agent cannot close G1/G2/G4/G7. Missing review leaves the parent unproven."
+      "brief": "Polish Ashline lode only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
+    },
+    {
+      "id": "PQ-050.15",
+      "parentId": "PQ-050",
+      "priority": 319,
+      "title": "Finish and wire Ashline rig (hostile reaver/corsair body)",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-050.14"
+      ],
+      "mutexes": [
+        "blender",
+        "asset-manifest"
+      ],
+      "paths": [
+        "tools/blender/fleet_construction.py",
+        "tools/blender/build_fleet_player_body.py",
+        "assets/ships/fleet_player_bodies_v1/ashline_rig/",
+        "assets/ships/parts/wholeships/ashline_rig_production_v1.glb",
+        "assets/ships/release/parts/wholeships/ashline_rig_production_v1.glb"
+      ],
+      "checks": [
+        "node --test test/fleet-npc-wholeship-routing.test.mjs",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "Polish Ashline rig only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
+    },
+    {
+      "id": "PQ-050.16",
+      "parentId": "PQ-050",
+      "priority": 320,
+      "title": "Finish and wire Helios lark (traffic courier)",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-050.15"
+      ],
+      "mutexes": [
+        "blender",
+        "asset-manifest"
+      ],
+      "paths": [
+        "tools/blender/fleet_construction.py",
+        "tools/blender/build_fleet_player_body.py",
+        "assets/ships/fleet_player_bodies_v1/helios_lark/",
+        "assets/ships/parts/wholeships/helios_lark_production_v1.glb",
+        "assets/ships/release/parts/wholeships/helios_lark_production_v1.glb"
+      ],
+      "checks": [
+        "node --test test/fleet-npc-wholeship-routing.test.mjs",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "Polish Helios lark only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
+    },
+    {
+      "id": "PQ-050.17",
+      "parentId": "PQ-050",
+      "priority": 321,
+      "title": "Finish and wire Helios cradle (traffic miner)",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-050.16"
+      ],
+      "mutexes": [
+        "blender",
+        "asset-manifest"
+      ],
+      "paths": [
+        "tools/blender/fleet_construction.py",
+        "tools/blender/build_fleet_player_body.py",
+        "assets/ships/fleet_player_bodies_v1/helios_cradle/",
+        "assets/ships/parts/wholeships/helios_cradle_production_v1.glb",
+        "assets/ships/release/parts/wholeships/helios_cradle_production_v1.glb"
+      ],
+      "checks": [
+        "node --test test/fleet-npc-wholeship-routing.test.mjs",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "Polish Helios cradle only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
+    },
+    {
+      "id": "PQ-050.18",
+      "parentId": "PQ-050",
+      "priority": 322,
+      "title": "Finish and wire Helios span (traffic hauler)",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-050.17"
+      ],
+      "mutexes": [
+        "blender",
+        "asset-manifest"
+      ],
+      "paths": [
+        "tools/blender/fleet_construction.py",
+        "tools/blender/build_fleet_player_body.py",
+        "assets/ships/fleet_player_bodies_v1/helios_span/",
+        "assets/ships/parts/wholeships/helios_span_production_v1.glb",
+        "assets/ships/release/parts/wholeships/helios_span_production_v1.glb"
+      ],
+      "checks": [
+        "node --test test/fleet-npc-wholeship-routing.test.mjs",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "Polish Helios span only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
+    },
+    {
+      "id": "PQ-050.19",
+      "parentId": "PQ-050",
+      "priority": 323,
+      "title": "Finish and wire Ore barge (traffic ore carrier)",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-050.18"
+      ],
+      "mutexes": [
+        "blender",
+        "asset-manifest"
+      ],
+      "paths": [
+        "tools/blender/fleet_construction.py",
+        "tools/blender/build_fleet_player_body.py",
+        "assets/ships/fleet_player_bodies_v1/ore_barge/",
+        "assets/ships/parts/wholeships/ore_barge_production_v1.glb",
+        "assets/ships/release/parts/wholeships/ore_barge_production_v1.glb"
+      ],
+      "checks": [
+        "node --test test/fleet-npc-wholeship-routing.test.mjs",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "Polish Ore barge only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
+    },
+    {
+      "id": "PQ-050.20",
+      "parentId": "PQ-050",
+      "priority": 324,
+      "title": "Finish and wire Repair tender (traffic tender)",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-050.19"
+      ],
+      "mutexes": [
+        "blender",
+        "asset-manifest"
+      ],
+      "paths": [
+        "tools/blender/fleet_construction.py",
+        "tools/blender/build_fleet_player_body.py",
+        "assets/ships/fleet_player_bodies_v1/repair_tender/",
+        "assets/ships/parts/wholeships/repair_tender_production_v1.glb",
+        "assets/ships/release/parts/wholeships/repair_tender_production_v1.glb"
+      ],
+      "checks": [
+        "node --test test/fleet-npc-wholeship-routing.test.mjs",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "Polish Repair tender only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
+    },
+    {
+      "id": "PQ-050.21",
+      "parentId": "PQ-050",
+      "priority": 325,
+      "title": "Finish and wire Salvage cutter (traffic salvor)",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-050.20"
+      ],
+      "mutexes": [
+        "blender",
+        "asset-manifest"
+      ],
+      "paths": [
+        "tools/blender/fleet_construction.py",
+        "tools/blender/build_fleet_player_body.py",
+        "assets/ships/fleet_player_bodies_v1/salvage_cutter/",
+        "assets/ships/parts/wholeships/salvage_cutter_production_v1.glb",
+        "assets/ships/release/parts/wholeships/salvage_cutter_production_v1.glb"
+      ],
+      "checks": [
+        "node --test test/fleet-npc-wholeship-routing.test.mjs",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "Polish Salvage cutter only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
+    },
+    {
+      "id": "PQ-050.22",
+      "parentId": "PQ-050",
+      "priority": 326,
+      "title": "Finish and wire Survey pin (traffic surveyor)",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-050.21"
+      ],
+      "mutexes": [
+        "blender",
+        "asset-manifest"
+      ],
+      "paths": [
+        "tools/blender/fleet_construction.py",
+        "tools/blender/build_fleet_player_body.py",
+        "assets/ships/fleet_player_bodies_v1/survey_pin/",
+        "assets/ships/parts/wholeships/survey_pin_production_v1.glb",
+        "assets/ships/release/parts/wholeships/survey_pin_production_v1.glb"
+      ],
+      "checks": [
+        "node --test test/fleet-npc-wholeship-routing.test.mjs",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "Polish Survey pin only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
     }
   ]
 }

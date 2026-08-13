@@ -93,7 +93,7 @@ evidence triggers are proved.
 | [`PQ-046.md`](../retired/PQ-046.md) | land five coherent high-leverage vision unlocks through inference expansion, cold review, and ordinary-route proof | integrated and retired through five leaf receipts at focused-green scope; parent ordinary-route visual acceptance remains unclaimed |
 | [`PQ-048.md`](../retired/PQ-048.md) | deliver twenty new inference-to-convergence player outcome packages in four composed tranches | integrated and retired through 20 exact leaf receipts and four composed tranches at focused-green scope; ordinary headed portfolio route remains unproven |
 | [`PQ-049.md`](./PQ-049.md) | build and accept a distinct civic Massline express-liner through DCC, release, render-package, runtime-map, and natural-route leaves | new express-only identity; first DCC candidate leaf is ready, later leaves are dependency-gated; parent remains unproven |
-| [`PQ-050.md`](./PQ-050.md) | remaster every live flyable ship except Hitch to honest Hitch-plus / A-list construction | Hitch frozen; first leaf promotes newest factory bodies; later leaves rebuild Pelican/Mule, carefully upgrade Wasp, then per-ship quality loops and independent review |
+| [`PQ-050.md`](./PQ-050.md) | remaster every live flyable ship except Hitch, one ship per leaf, polish then wire | Hitch frozen; first ready leaf is Hornet; do not run a stage across the whole fleet |
 
 PQ-043 and PQ-044 are admitted queue identities but remain deferred and packet-less until their
 conditional triggers are proved.
@@ -111,8 +111,8 @@ PQ-049 is active for the formerly retained `GFX-MASSLINE-EXPRESS-LINER` outcome.
 express-mapping, and route/G7 leaves dependency-gated behind it.
 
 PQ-050 is active for `GFX-FLEET-REMASTER-HITCHPLUS`. Its parent is `ready` / `unproven`; only
-`PQ-050.01` is dispatchable, with Pelican/Mule rebuild, careful Wasp upgrade, player then NPC
-quality loops, and independent review dependency-gated behind it. Hitch stays frozen.
+`PQ-050.01` (Hornet) is dispatchable. Each later leaf is the next single ship, gated on the
+previous ship being finished and wired. Hitch stays frozen.
 
 PQ-032 (five endings/continuing universe) and PQ-033 (release closeout) are also deferred and
 unfinished. They are stored under `../retired/` only to keep them out of current execution; that
