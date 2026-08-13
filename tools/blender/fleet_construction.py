@@ -412,6 +412,8 @@ def cut_open_bay(hull_obj, tag, surface, length, width, depth, outward, mats, co
         _oriented_box(f"Bay_Seat_{tag}", gear - long_axis * (length * 0.15), 0.16, 0.14, 0.08, long_axis, wide_axis, n, armor, collection)
         _oriented_box(f"Bay_Console_{tag}", gear + long_axis * (length * 0.35), 0.12, 0.20, 0.06, long_axis, wide_axis, n, mech, collection)
         _oriented_box(f"Bay_Screen_{tag}", gear + long_axis * (length * 0.38) + n * 0.08, 0.04, 0.12, 0.05, long_axis, wide_axis, n, accent, collection, 0.002)
+    elif kit == "empty":
+        pass
     else:
         _oriented_box(f"Bay_Rack_{tag}", gear, length * 0.42, width * 0.18, 0.08, long_axis, wide_axis, n, armor, collection)
         _oriented_box(f"Bay_Crate_{tag}", gear + long_axis * (length * 0.28) + wide_axis * (width * 0.18), 0.10, 0.08, 0.07, long_axis, wide_axis, n, warning, collection, 0.003)

@@ -1,0 +1,68 @@
+{
+  "schema": "spaceface.atlasMtx.cycle.v1",
+  "shipId": "atlas",
+  "cycle": 3,
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 81940,
+      "hullTriangles": 6652,
+      "draws": 9,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/atlas_production_v1_lod0.glb",
+      "bytes": 16526156,
+      "sha256": "64FE8E4EBCE2FF4D610538368708033348905E542683A08F516A2DDD3358D9EB"
+    },
+    {
+      "lod": 1,
+      "triangles": 49372,
+      "hullTriangles": 6652,
+      "draws": 9,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/atlas_production_v1_lod1.glb",
+      "bytes": 11143760,
+      "sha256": "C14246B5425699E370C97D4B1E8F9D677F80A5CA586D2FC4FDE362747231BEFB"
+    },
+    {
+      "lod": 2,
+      "triangles": 38478,
+      "hullTriangles": 5154,
+      "draws": 9,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/atlas_production_v1_lod2.glb",
+      "bytes": 9334420,
+      "sha256": "BE8DAEDE911C6DB80D16576C5BB0FF92FE5D2B809DFDAFD56F49B817CB95FC04"
+    }
+  ],
+  "stills": "evidence/atlas/cycles/cycle_03"
+}
