@@ -3,12 +3,12 @@
   "assetId": "SF_ASHLINE_DART_V1",
   "defId": "wasp_swarmer",
   "shipId": "ashline_dart",
-  "iteration": 6,
+  "iteration": 9,
   "lods": [
     {
       "lod": 0,
-      "triangles": 30172,
-      "hullTriangles": 2376,
+      "triangles": 33128,
+      "hullTriangles": 2524,
       "draws": 9,
       "materials": [
         "Material_Accent",
@@ -35,13 +35,13 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/ashline_dart_production_v1_lod0.glb",
-      "bytes": 1576116,
-      "sha256": "5C2BB212E470F13C7E92DE6A7C0F30DEEBCF7FF2B627FAFE01DC7794858C3A83"
+      "bytes": 1764144,
+      "sha256": "BEA1EA6E5E8A3270E34BE569422E3181E6F8E018F7B05D9DE24734DC7F906006"
     },
     {
       "lod": 1,
-      "triangles": 10028,
-      "hullTriangles": 2376,
+      "triangles": 17120,
+      "hullTriangles": 2524,
       "draws": 9,
       "materials": [
         "Material_Accent",
@@ -68,13 +68,13 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/ashline_dart_production_v1_lod1.glb",
-      "bytes": 531464,
-      "sha256": "E4E95AC14BB49B5E90CE1F50DB5D6AC20AE2D34E24B3F7E57334D8559DE278D4"
+      "bytes": 935008,
+      "sha256": "67A21EBD7DACE493FE22A488301CCD892D422AB5D07D767E37BE29E277A2CF66"
     },
     {
       "lod": 2,
-      "triangles": 6680,
-      "hullTriangles": 2268,
+      "triangles": 8600,
+      "hullTriangles": 2320,
       "draws": 8,
       "materials": [
         "Material_Accent",
@@ -100,30 +100,9 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/ashline_dart_production_v1_lod2.glb",
-      "bytes": 340004,
-      "sha256": "69E937BF450C81739B8169428DD165A4003DB61C669B5AAB9DB9A8B3F1FEA2F2"
+      "bytes": 449580,
+      "sha256": "219176A07C9CDF4AA1CB546AAE7225DA307546C0AA3416CBC35E7CE6C4B40724"
     }
   ],
-  "renders": [
-    {
-      "view": "ashline_dart_three_quarter",
-      "path": "evidence/iter06/ashline_dart_three_quarter.png",
-      "bytes": 847503
-    },
-    {
-      "view": "ashline_dart_starboard",
-      "path": "evidence/iter06/ashline_dart_starboard.png",
-      "bytes": 902233
-    },
-    {
-      "view": "ashline_dart_rear",
-      "path": "evidence/iter06/ashline_dart_rear.png",
-      "bytes": 1033632
-    },
-    {
-      "view": "ashline_dart_grazing",
-      "path": "evidence/iter06/ashline_dart_grazing.png",
-      "bytes": 900677
-    }
-  ]
+  "renders": []
 }
