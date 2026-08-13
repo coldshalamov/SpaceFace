@@ -1,0 +1,24 @@
+{
+  "schema": "spaceface.advancedModelTechniqueLedger.v1",
+  "assetId": "SF_MULE_PRODUCTION_V1",
+  "shipId": "mule",
+  "candidateHash": "DB9BF47DD60EECB16B606CCA5C3D50B8D33A7169BAEC94912DF377E384AE3508",
+  "exportGlb": "assets/ships/fleet_player_bodies_v1/mule/source/wholeships/mule_production_v1_lod0.glb",
+  "class": "player_flyable",
+  "clayStillReadsAsPrimitives": true,
+  "independentReview": "revise",
+  "promoted": false,
+  "reasonNotClosed": "Five counted cycles. Hauler identity holds: twin drives, two cargo pods, short bridge. Clay still loft plus kit. Not Hitch-plus. Live files not replaced.",
+  "rows": [
+    {"id": "MTX-02", "state": "blocked", "still": "evidence/mule/cycles/cycle_05/clay_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Hull is still a lofted hauler bar."},
+    {"id": "MTX-06", "state": "not_applicable", "still": "evidence/mule/cycles/cycle_05/starboard.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Mule has cargo pods, not lofted wings."},
+    {"id": "MTX-07", "state": "blocked", "still": "evidence/mule/cycles/cycle_05/three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Bridge still a brick house."},
+    {"id": "MTX-08", "state": "blocked", "still": "evidence/mule/cycles/cycle_05/drive_rear.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Twin bells still cone family."},
+    {"id": "MTX-13", "state": "implemented", "still": "evidence/mule/cycles/cycle_05/grazing_close.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Scale applied before bevel."},
+    {"id": "MTX-16", "state": "implemented", "still": "evidence/mule/cycles/cycle_05/material_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Unique UV after join."},
+    {"id": "MTX-32", "state": "implemented", "still": "evidence/mule/cycles/cycle_05/three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Unique Mule maps, not a Wasp MixRGB tint."},
+    {"id": "MTX-46", "state": "blocked", "still": "evidence/mule/cycles/cycle_05/clay_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Clay still primitives."},
+    {"id": "MTX-50", "state": "implemented", "still": "source/wholeships/mule_production_v1_lod0.glb", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Sockets and packed maps."},
+    {"id": "MTX-65", "state": "implemented", "still": "evidence/mule/cycles/cycle_05/three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Hauler massing: twin drives, two pods, short bridge. Not Atlas, not Pelican."}
+  ]
+}

@@ -1,0 +1,68 @@
+{
+  "schema": "spaceface.muleMtx.cycle.v1",
+  "shipId": "mule",
+  "cycle": 2,
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 23894,
+      "hullTriangles": 2822,
+      "draws": 9,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/mule_production_v1_lod0.glb",
+      "bytes": 6917944,
+      "sha256": "7F7FA2B22B47342B776755EE74CB4DCD009C35990048E59A99546A70ABDFC124"
+    },
+    {
+      "lod": 1,
+      "triangles": 20966,
+      "hullTriangles": 2822,
+      "draws": 9,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/mule_production_v1_lod1.glb",
+      "bytes": 6711824,
+      "sha256": "3DDBE42F27BCCD360D47EBE98295DCDD097A975A29F8F517BE77CBB5A05D1A32"
+    },
+    {
+      "lod": 2,
+      "triangles": 17468,
+      "hullTriangles": 2456,
+      "draws": 9,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/mule_production_v1_lod2.glb",
+      "bytes": 6222716,
+      "sha256": "C95C78AED363A5F42624EFD6247195F340D3C56035515145A1D17494979F2E1C"
+    }
+  ],
+  "stills": "evidence/mule/cycles/cycle_02"
+}
