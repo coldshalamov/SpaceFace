@@ -1825,12 +1825,12 @@
     "assetId": "SF_SALVAGE_CUTTER_V1",
     "defId": "salvor",
     "shipId": "salvage_cutter",
-    "iteration": 6,
+    "iteration": 9,
     "lods": [
       {
         "lod": 0,
-        "triangles": 39708,
-        "hullTriangles": 1864,
+        "triangles": 41324,
+        "hullTriangles": 1944,
         "draws": 9,
         "materials": [
           "Material_Accent",
@@ -1857,13 +1857,13 @@
           "SOCKET_Weapon_Front"
         ],
         "path": "source/wholeships/salvage_cutter_production_v1_lod0.glb",
-        "bytes": 2077884,
-        "sha256": "6A8E45666C7FB80C2024BA1899AC511CABDB330EF61F68448D21AE8631A721E8"
+        "bytes": 2191432,
+        "sha256": "4BE7B43654147F6965FE08D00F5301D55BE9CACBAE0EBAA84DDBA70D3CB166DB"
       },
       {
         "lod": 1,
-        "triangles": 10876,
-        "hullTriangles": 1864,
+        "triangles": 16628,
+        "hullTriangles": 1944,
         "draws": 9,
         "materials": [
           "Material_Accent",
@@ -1890,12 +1890,12 @@
           "SOCKET_Weapon_Front"
         ],
         "path": "source/wholeships/salvage_cutter_production_v1_lod1.glb",
-        "bytes": 567680,
-        "sha256": "E91BD3AB263F6323E1D1A782FE38864E41B4336FDFF30196B59450ED5715220E"
+        "bytes": 894484,
+        "sha256": "F30331B76F439D9ABF4C2F7CA17F9AF3CED835D377A9E963AD9F86320A64F811"
       },
       {
         "lod": 2,
-        "triangles": 6664,
+        "triangles": 7260,
         "hullTriangles": 1756,
         "draws": 7,
         "materials": [
@@ -1921,32 +1921,11 @@
           "SOCKET_Weapon_Front"
         ],
         "path": "source/wholeships/salvage_cutter_production_v1_lod2.glb",
-        "bytes": 327500,
-        "sha256": "BCE6D73B591FC11884BD83DA46BF535E50FC251AA43AE5CC791CFEFC9E047085"
+        "bytes": 363140,
+        "sha256": "6B196706294CB92017EFC9F60919F88A0B8C1788DF4103677CC652D21E8C212D"
       }
     ],
-    "renders": [
-      {
-        "view": "salvage_cutter_three_quarter",
-        "path": "evidence/iter06/salvage_cutter_three_quarter.png",
-        "bytes": 882151
-      },
-      {
-        "view": "salvage_cutter_starboard",
-        "path": "evidence/iter06/salvage_cutter_starboard.png",
-        "bytes": 912718
-      },
-      {
-        "view": "salvage_cutter_rear",
-        "path": "evidence/iter06/salvage_cutter_rear.png",
-        "bytes": 1012781
-      },
-      {
-        "view": "salvage_cutter_grazing",
-        "path": "evidence/iter06/salvage_cutter_grazing.png",
-        "bytes": 940209
-      }
-    ]
+    "renders": []
   },
   {
     "schema": "spaceface.fleetPlayerBody.build.v1",
