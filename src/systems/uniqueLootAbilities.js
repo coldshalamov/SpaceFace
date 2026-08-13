@@ -4,7 +4,8 @@
 // expressed as an ordinary derived stat: encounter-limited reactions, real split projectiles,
 // whole-wreck tractor commands, out-of-combat repair, and each unique variant's positive power
 // premium over its base family. Ownership in inventory is intentionally irrelevant; every gate
-// reads the current live player entity's data.fittings through core/fittedModules.js.
+// reads the current live player entity: unique verbs use core/fittedModules.js, while ordinary
+// capability stats are resolved by ships into data.derived.
 
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { fittedModuleDefs, hasFittedModule } from '../core/fittedModules.js';
@@ -28,7 +29,6 @@ const PALE_COIL_ID = 'unique_pale_coil_warp_drive';
 const CHOIR_BELL_ID = 'unique_choir_bell_aegis';
 const NESTBREAKER_ID = 'unique_nestbreaker_rack';
 const TIDELINE_ID = 'unique_tideline_tractor';
-const KNITBOTS_ID = 'unique_knitbots';
 const BASE_PICKUP_MAGNET_RANGE = 420;
 const NESTBREAKER_SEPARATION = 1.4;
 const MAX_ENCOUNTER_RECORDS = 64;
@@ -335,11 +335,12 @@ export const uniqueLootAbilities = {
   },
 
   _updateKnitbots(dt, state, player) {
-    if (!hasFittedModule(state, KNITBOTS_ID)) return;
+    const repairRate = player.data?.derived?.hullRepairOOC;
+    if (typeof repairRate !== 'number' || !Number.isFinite(repairRate) || repairRate <= 0) return;
     if (!(Number.isFinite(player.hull) && Number.isFinite(player.hullMax) && player.hull < player.hullMax)) return;
     const sinceDamage = finite(state.simTime) - finite(player.lastDamageT, -1e9);
     if (sinceDamage < KNITBOTS_OOC_DELAY_S) return;
-    player.hull = Math.min(player.hullMax, player.hull + KNITBOTS_REPAIR_RATE * dt);
+    player.hull = Math.min(player.hullMax, player.hull + repairRate * dt);
     // No docked-drone mutation lives here. Automation groups are deployed records, and recall
     // removes them; inventing a repairable docked hull would create false persistence semantics.
   },

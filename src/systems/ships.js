@@ -369,6 +369,7 @@ export function getDerivedStats(defId, fittings = [], player = null) {
   let shieldFlat = 0, shieldRegenFlat = 0, hullFlat = 0, cargoFlat = 0, cargoCapPct = 0;
   let weaponRangePct = 0;
   let weaponDmgPct = 0;
+  let hullRepairOOC = 0;
   // Every hull has its authored T1 drive. Fitted drive modules can only advance that capability;
   // the world owner resolves the canonical jump_tN key against its supported drive table.
   let jumpDriveTier = 1;
@@ -405,6 +406,13 @@ export function getDerivedStats(defId, fittings = [], player = null) {
         && Number.isInteger(mods.jumpDriveTier)
         && mods.jumpDriveTier > 0) {
         jumpDriveTier = Math.max(jumpDriveTier, mods.jumpDriveTier);
+      }
+      // Autonomous hull repair is a capability rating. It must come from a valid fitted utility
+      // module, and the strongest fitted variant wins instead of stacking repair per slot.
+      if (typeof mods.hullRepairOOC === 'number'
+        && Number.isFinite(mods.hullRepairOOC)
+        && mods.hullRepairOOC > 0) {
+        hullRepairOOC = Math.max(hullRepairOOC, mods.hullRepairOOC);
       }
     }
     if (Number.isFinite(mods.tetherSpoolMult) && mods.tetherSpoolMult > 0) {
@@ -532,6 +540,7 @@ export function getDerivedStats(defId, fittings = [], player = null) {
     weaponRangeMult,
     weaponDmgMult,
     jumpDriveTier: `jump_t${jumpDriveTier}`,
+    hullRepairOOC,
     cargoCap,
     boost: {
       max: bdef.max || 0,

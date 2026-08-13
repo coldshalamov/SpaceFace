@@ -11,6 +11,8 @@ import {
   maxFittedModuleMod,
   sumFittedModuleMod,
 } from '../src/core/fittedModules.js';
+import { MODULES } from '../src/data/modules.js';
+import { fittingsFromDefaultModules, getDerivedStats } from '../src/systems/ships.js';
 import {
   CHOIR_BELL_KNOCKBACK_SPEED,
   KNITBOTS_OOC_DELAY_S,
@@ -75,7 +77,7 @@ test('fitted module selectors fail closed for missing or stale player entities',
   assert.equal(sumFittedModuleMod(missing, 'hullRepairOOC'), 0);
 });
 
-function bootAbilities(fittings = [], inventory = []) {
+function bootAbilities(fittings = [], inventory = [], shipDefId = 'ship_kestrel') {
   const sim = createSimulation({ seed: 47022, systems: [uniqueLootAbilities] });
   const { state, bus } = sim;
   state.mode = 'flight';
@@ -94,7 +96,11 @@ function bootAbilities(fittings = [], inventory = []) {
     hullMax: 100,
     cap: 100,
     capMax: 100,
-    data: { fittings: fittings.slice(), defId: 'ship_kestrel' },
+    data: {
+      fittings: fittings.slice(),
+      defId: shipDefId,
+      derived: getDerivedStats(shipDefId, fittings),
+    },
   });
   state.playerId = player.id;
   return {
@@ -105,6 +111,16 @@ function bootAbilities(fittings = [], inventory = []) {
     system: sim.registry.get('uniqueLootAbilities'),
     dispose: () => sim.dispose(),
   };
+}
+
+const REPAIR_TEST_SHIP_ID = 'ship_bastion';
+
+function bootRepairAbilities(moduleIds = [], inventory = []) {
+  return bootAbilities(
+    fittingsFromDefaultModules(REPAIR_TEST_SHIP_ID, moduleIds),
+    inventory,
+    REPAIR_TEST_SHIP_ID,
+  );
 }
 
 function closeTo(actual, expected, message, epsilon = 1e-9) {
@@ -409,8 +425,8 @@ test('Tideline inventory ownership does not queue tractor impulses', () => {
   }
 });
 
-test('Knitbots repair the player hull at exactly 4.4 per second only after the OOC delay', () => {
-  const t = bootAbilities(['unique_knitbots']);
+test('fitted Repair Nanobots restore their authored hull rate only after the OOC delay', () => {
+  const t = bootRepairAbilities(['mod_repair_nanobots_m']);
   try {
     t.player.hull = 50;
     t.player.lastDamageT = 0;
@@ -418,7 +434,7 @@ test('Knitbots repair the player hull at exactly 4.4 per second only after the O
     t.state.automation = { groups: [{ id: 'not-a-docked-drone-model', hull: 2, hullMax: 10 }] };
     const automationBefore = structuredClone(t.state.automation);
     t.sim.step(0.5);
-    closeTo(t.player.hull, 50 + KNITBOTS_REPAIR_RATE * 0.5, 'Knitbots hull repair');
+    closeTo(t.player.hull, 52, 'Repair Nanobots hull repair');
     assert.deepEqual(t.state.automation, automationBefore,
       'the ability does not fabricate repair semantics for automation records');
 
@@ -436,15 +452,83 @@ test('Knitbots repair the player hull at exactly 4.4 per second only after the O
   }
 });
 
-test('Knitbots inventory ownership does not repair the live player entity', () => {
-  const t = bootAbilities([], ['unique_knitbots']);
+test('Knitbots retain the stronger 4.4/s rate and max-win over base Nanobots', () => {
+  const knitbots = bootRepairAbilities(['unique_knitbots']);
   try {
-    t.player.hull = 50;
-    t.player.lastDamageT = -1e9;
-    t.sim.step(1);
-    assert.equal(t.player.hull, 50);
+    knitbots.player.hull = 50;
+    knitbots.player.lastDamageT = -1e9;
+    knitbots.sim.step(0.5);
+    closeTo(knitbots.player.hull, 50 + KNITBOTS_REPAIR_RATE * 0.5, 'Knitbots hull repair');
   } finally {
-    t.dispose();
+    knitbots.dispose();
+  }
+
+  const combined = bootRepairAbilities(['mod_repair_nanobots_m', 'unique_knitbots']);
+  try {
+    combined.player.hull = 50;
+    combined.player.lastDamageT = -1e9;
+    combined.sim.step(0.5);
+    closeTo(combined.player.hull, 50 + KNITBOTS_REPAIR_RATE * 0.5,
+      'base and unique variants do not stack beyond Knitbots');
+  } finally {
+    combined.dispose();
+  }
+});
+
+test('Repair Nanobots inventory ownership or incompatible fittings do not repair the live player', () => {
+  const inventoryOnly = bootRepairAbilities([], ['mod_repair_nanobots_m']);
+  try {
+    inventoryOnly.player.hull = 50;
+    inventoryOnly.player.lastDamageT = -1e9;
+    inventoryOnly.sim.step(1);
+    assert.equal(inventoryOnly.player.hull, 50);
+  } finally {
+    inventoryOnly.dispose();
+  }
+
+  const incompatible = bootAbilities(['mod_repair_nanobots_m'], [], REPAIR_TEST_SHIP_ID);
+  try {
+    incompatible.player.hull = 50;
+    incompatible.player.lastDamageT = -1e9;
+    incompatible.sim.step(1);
+    assert.equal(incompatible.player.hull, 50,
+      'a utility module in the first weapon slot cannot activate repair');
+  } finally {
+    incompatible.dispose();
+  }
+
+  const stale = bootRepairAbilities(['mod_repair_nanobots_m']);
+  try {
+    stale.player.data.derived = {};
+    stale.player.hull = 50;
+    stale.player.lastDamageT = -1e9;
+    stale.sim.step(1);
+    assert.equal(stale.player.hull, 50,
+      'a stale entity without the derived capability gets no raw-fittings fallback');
+  } finally {
+    stale.dispose();
+  }
+});
+
+test('Repair Nanobots fail closed for malformed authored repair values', () => {
+  const repairNanobots = MODULES.find((definition) => definition.id === 'mod_repair_nanobots_m');
+  assert.ok(repairNanobots, 'the authored Repair Nanobots definition exists');
+  const originalMods = repairNanobots.mods;
+  try {
+    for (const malformedValue of [Number.NaN, Infinity, 0, -1, '4']) {
+      repairNanobots.mods = { ...originalMods, hullRepairOOC: malformedValue };
+      const t = bootRepairAbilities(['mod_repair_nanobots_m']);
+      try {
+        t.player.hull = 50;
+        t.player.lastDamageT = -1e9;
+        t.sim.step(1);
+        assert.equal(t.player.hull, 50, `invalid repair value ${String(malformedValue)} stays inactive`);
+      } finally {
+        t.dispose();
+      }
+    }
+  } finally {
+    repairNanobots.mods = originalMods;
   }
 });
 
