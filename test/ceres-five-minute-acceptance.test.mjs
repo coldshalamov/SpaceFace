@@ -3355,6 +3355,7 @@ test('anchor collision ignores stale impacts and owns fixed-tick public input', 
     id: PLAYER_ENTITY_ID,
     alive: true,
     type: 'ship',
+    radius: 16,
     pos: { x: 0, z: 0 },
     vel: { x: 0, z: 0 },
     rot: 0,
@@ -3364,6 +3365,7 @@ test('anchor collision ignores stale impacts and owns fixed-tick public input', 
     id: 9,
     alive: true,
     type: 'asteroid',
+    radius: 15,
     pos: { x: 100, z: 0 },
     mass: 1,
     collides: true,
@@ -3487,18 +3489,130 @@ test('anchor collision ignores stale impacts and owns fixed-tick public input', 
   assert.equal(heldKeys.size, 0);
 });
 
-test('anchor collision preflights every fixed pulse and rejects deadline-edge impacts', async () => {
-  const makeHarness = ({
-    tick,
+test('anchor collision brakes the captured close opening orbit before exact impact', async () => {
+  const player = {
+    id: PLAYER_ENTITY_ID,
+    alive: true,
+    type: 'ship',
+    radius: 16,
+    pos: { x: -9_206.530029296875, z: 7_373.1741943359375 },
+    vel: { x: 6.451892852783203, z: 6.401384353637695 },
+    rot: -1.6396184937561484,
+    angVel: -0.3419203758239746,
+    data: {},
+  };
+  const anchor = {
+    id: 101,
+    alive: true,
+    type: 'asteroid',
+    radius: 15.773138405007874,
+    pos: { x: -9_200, z: 7_336 },
+    mass: 1,
+    collides: true,
+    data: { activityCollisionAnchorSlotId: 'ceres_throughline_collision_anchor' },
+  };
+  const state = {
+    tick: 6_210,
+    playerId: player.id,
+    entities: new Map([[player.id, player], [anchor.id, anchor]]),
+    entityList: [player, anchor],
+  };
+  const trace = { nextEventSeq: 401, events: [] };
+  const heldKeys = new Set();
+  const fixedTickSamples = [];
+  let brakeSampled = false;
+  const runInPage = (callback, argument) => {
+    const hadWindow = Object.hasOwn(globalThis, 'window');
+    const previousWindow = globalThis.window;
+    globalThis.window = {
+      SF: { state },
+      __SF_CERES_FIVE_MINUTE_TRACE__: trace,
+    };
+    try {
+      return callback(argument);
+    } finally {
+      if (hadWindow) globalThis.window = previousWindow;
+      else delete globalThis.window;
+    }
+  };
+  const page = {
+    isClosed() { return false; },
+    locator() { return { async waitFor() {}, async focus() {} }; },
+    keyboard: {
+      async down(key) { heldKeys.add(key); },
+      async up(key) { heldKeys.delete(key); },
+    },
+    mouse: { async up() {} },
+    async evaluate(callback, argument) {
+      return runInPage(callback, argument);
+    },
+    async waitForFunction(callback, argument) {
+      state.tick = argument.tick + argument.deltaTicks;
+      fixedTickSamples.push({ tick: state.tick, held: [...heldKeys].sort() });
+      if (heldKeys.has('Digit0')) {
+        player.vel.x = 0;
+        player.vel.z = 0;
+        brakeSampled = true;
+      } else if (brakeSampled && (heldKeys.has('KeyA') || heldKeys.has('KeyD'))) {
+        player.rot = Math.atan2(anchor.pos.z - player.pos.z, anchor.pos.x - player.pos.x);
+      } else if (brakeSampled && heldKeys.has('KeyW') && trace.events.length === 0) {
+        trace.events.push({
+          seq: trace.nextEventSeq++,
+          event: 'physics:impact',
+          tick: state.tick,
+          aId: player.id,
+          bId: anchor.id,
+          aType: 'ship',
+          aAnchorSlotId: null,
+          bType: 'asteroid',
+          bWorldRecordId: null,
+          bAnchorSlotId: 'ceres_throughline_collision_anchor',
+        });
+      }
+      assert.equal(runInPage(callback, argument), true);
+    },
+  };
+
+  const dx = anchor.pos.x - player.pos.x;
+  const dz = anchor.pos.z - player.pos.z;
+  const distanceWU = Math.hypot(dx, dz);
+  const hullGapWU = distanceWU - player.radius - anchor.radius;
+  const radialClosingSpeedWUPerS = (player.vel.x * dx + player.vel.z * dz) / distanceWU;
+  assert.ok(Math.abs(hullGapWU - 5.970231968398021) < 1e-9,
+    'the regression must retain the captured near-contact hull gap');
+  assert.ok(Math.abs(radialClosingSpeedWUPerS - (-5.188600135460367)) < 1e-9,
+    'the regression must retain the captured opening radial speed');
+
+  const receipt = await drivePublicAnchorCollision(page, 18_024, {
+    minRemainingTicks: 7_200,
+  });
+  assert.equal(receipt.selectedImpactSeq, 401);
+  assert.equal(receipt.pulses, 3);
+  assert.equal(receipt.boostPulses, 0);
+  assert.equal(receipt.brakePulses, 1);
+  assert.equal(receipt.lastAction.kind, 'thrust');
+  assert.ok(receipt.lastStatus.recoveryMarginWU > hullGapWU,
+    'the recovery shell must derive from the two live collider radii and cover the capture');
+  assert.deepEqual(fixedTickSamples.map((sample) => sample.held), [
+    ['Digit0'],
+    ['KeyD'],
+    ['KeyW'],
+  ], 'the close opening orbit must brake, realign, then resume exact impact pursuit');
+  assert.equal(brakeSampled, true);
+  assert.equal(heldKeys.size, 0);
+});
+
+test('anchor collision diagnostics count only accepted public keydown edges', async () => {
+  const makeRejectedKeydownHarness = ({
     anchorPos,
-    playerVel = { x: 0, z: 0 },
-    lateStatusTick = null,
-    lateImpactTick = null,
+    playerVel,
+    rejectKey,
   }) => {
     const player = {
       id: PLAYER_ENTITY_ID,
       alive: true,
       type: 'ship',
+      radius: 16,
       pos: { x: 0, z: 0 },
       vel: { ...playerVel },
       rot: 0,
@@ -3508,6 +3622,161 @@ test('anchor collision preflights every fixed pulse and rejects deadline-edge im
       id: 9,
       alive: true,
       type: 'asteroid',
+      radius: 15,
+      pos: { ...anchorPos },
+      mass: 1,
+      collides: true,
+      data: { activityCollisionAnchorSlotId: 'ceres_throughline_collision_anchor' },
+    };
+    const state = {
+      tick: 1_000,
+      playerId: player.id,
+      entities: new Map([[player.id, player], [anchor.id, anchor]]),
+      entityList: [player, anchor],
+    };
+    const trace = { nextEventSeq: 10, events: [] };
+    const acceptedKeys = new Set();
+    const downAttempts = [];
+    const upAttempts = [];
+    let fixedWaits = 0;
+    const runInPage = (callback, argument) => {
+      const hadWindow = Object.hasOwn(globalThis, 'window');
+      const previousWindow = globalThis.window;
+      globalThis.window = {
+        SF: { state },
+        __SF_CERES_FIVE_MINUTE_TRACE__: trace,
+      };
+      try {
+        return callback(argument);
+      } finally {
+        if (hadWindow) globalThis.window = previousWindow;
+        else delete globalThis.window;
+      }
+    };
+    return {
+      page: {
+        isClosed() { return false; },
+        locator() { return { async waitFor() {}, async focus() {} }; },
+        keyboard: {
+          async down(key) {
+            downAttempts.push(key);
+            if (key === rejectKey) throw new Error(`rejected keydown: ${key}`);
+            acceptedKeys.add(key);
+          },
+          async up(key) {
+            upAttempts.push(key);
+            acceptedKeys.delete(key);
+          },
+        },
+        mouse: { async up() {} },
+        async evaluate(callback, argument) {
+          return runInPage(callback, argument);
+        },
+        async waitForFunction(callback, argument) {
+          fixedWaits += 1;
+          state.tick = argument.tick + argument.deltaTicks;
+          assert.equal(runInPage(callback, argument), true);
+        },
+      },
+      acceptedKeys,
+      downAttempts,
+      upAttempts,
+      get fixedWaits() { return fixedWaits; },
+    };
+  };
+
+  for (const [label, options, rejectedKey] of [
+    ['brake', {
+      anchorPos: { x: 30, z: 0 },
+      playerVel: { x: -2, z: 0 },
+      rejectKey: 'Digit0',
+    }, 'Digit0'],
+    ['turn', {
+      anchorPos: { x: 0, z: 100 },
+      playerVel: { x: 0, z: 0 },
+      rejectKey: 'KeyD',
+    }, 'KeyD'],
+    ['thrust', {
+      anchorPos: { x: 20, z: 0 },
+      playerVel: { x: 100, z: 0 },
+      rejectKey: 'KeyW',
+    }, 'KeyW'],
+  ]) {
+    const harness = makeRejectedKeydownHarness(options);
+    await assert.rejects(
+      drivePublicAnchorCollision(harness.page, 10_000, { minRemainingTicks: 120 }),
+      (error) => {
+        assert.match(error.message, new RegExp(`rejected keydown: ${rejectedKey}`));
+        assert.equal(error.ceresAnchorCollisionDiagnostic?.pulses, 0,
+          `${label} rejection cannot claim an unsent pulse`);
+        assert.equal(error.ceresAnchorCollisionDiagnostic?.brakePulses, 0);
+        assert.equal(error.ceresAnchorCollisionDiagnostic?.boostPulses, 0);
+        assert.equal(error.ceresAnchorCollisionDiagnostic?.lastAction, null);
+        return true;
+      },
+      `${label} rejected-keydown diagnostic`,
+    );
+    assert.deepEqual(harness.downAttempts, [rejectedKey]);
+    assert.equal(harness.fixedWaits, 0);
+    assert.equal(harness.acceptedKeys.size, 0);
+  }
+
+  const partialBoost = makeRejectedKeydownHarness({
+    anchorPos: { x: 100, z: 0 },
+    playerVel: { x: 0, z: 0 },
+    rejectKey: 'Shift',
+  });
+  await assert.rejects(
+    drivePublicAnchorCollision(partialBoost.page, 10_000, { minRemainingTicks: 120 }),
+    (error) => {
+      assert.match(error.message, /rejected keydown: Shift/);
+      const diagnostic = error.ceresAnchorCollisionDiagnostic;
+      assert.equal(diagnostic?.pulses, 1,
+        'accepted KeyW remains one truthful thrust pulse when Shift rejects');
+      assert.equal(diagnostic?.boostPulses, 0,
+        'rejected Shift cannot claim a boost pulse');
+      assert.equal(diagnostic?.brakePulses, 0);
+      assert.deepEqual(diagnostic?.lastAction, {
+        kind: 'thrust',
+        key: 'KeyW',
+        ticks: 11,
+        boost: false,
+      });
+      return true;
+    },
+    'partial boost rejected-keydown diagnostic',
+  );
+  assert.deepEqual(partialBoost.downAttempts, ['KeyW', 'Shift']);
+  assert.deepEqual(partialBoost.upAttempts.slice(0, 2), ['Shift', 'KeyW'],
+    'a rejected Shift still releases both sides of the partially accepted boost chord');
+  assert.equal(partialBoost.fixedWaits, 0);
+  assert.equal(partialBoost.acceptedKeys.size, 0);
+});
+
+test('anchor collision preflights every fixed pulse and rejects deadline-edge impacts', async () => {
+  const makeHarness = ({
+    tick,
+    anchorPos,
+    playerVel = { x: 0, z: 0 },
+    lateStatusTick = null,
+    lateImpactTick = null,
+    dropAnchorAtStatus = false,
+  }) => {
+    const player = {
+      id: PLAYER_ENTITY_ID,
+      alive: true,
+      type: 'ship',
+      radius: 16,
+      pos: { x: 0, z: 0 },
+      vel: { ...playerVel },
+      rot: 0,
+      data: {},
+    };
+    const anchor = {
+      id: 9,
+      alive: true,
+      type: 'asteroid',
+      radius: 15,
       pos: { ...anchorPos },
       mass: 1,
       collides: true,
@@ -3548,6 +3817,10 @@ test('anchor collision preflights every fixed pulse and rejects deadline-edge im
         mouse: { async up() {} },
         async evaluate(callback, argument) {
           evaluateCalls += 1;
+          if (evaluateCalls === 2 && dropAnchorAtStatus) {
+            state.entities.delete(anchor.id);
+            state.entityList = state.entityList.filter((entity) => entity.id !== anchor.id);
+          }
           if (evaluateCalls === 2 && Number.isSafeInteger(lateStatusTick)) {
             state.tick = lateStatusTick;
             trace.events.push({
@@ -3576,8 +3849,32 @@ test('anchor collision preflights every fixed pulse and rejects deadline-edge im
     };
   };
 
+  const turnPulseDiagnostic = makeHarness({ tick: 1_075, anchorPos: { x: 0, z: 100 } });
+  await assert.rejects(
+    drivePublicAnchorCollision(turnPulseDiagnostic.page, 1_200, { minRemainingTicks: 120 }),
+    (error) => {
+      assert.match(error.message, /exhausted the five-minute horizon/);
+      assert.equal(error.ceresAnchorCollisionDiagnostic?.schema,
+        'spaceface.ceresAnchorCollisionDiagnostic.v1');
+      assert.equal(error.ceresAnchorCollisionDiagnostic?.collisionDeadlineTick, 1_080);
+      assert.equal(error.ceresAnchorCollisionDiagnostic?.pulses, 0,
+        'a preflight failure must not claim that it sent an input pulse');
+      assert.equal(error.ceresAnchorCollisionDiagnostic?.lastAction, null);
+      assert.equal(error.ceresAnchorCollisionDiagnostic?.lastStatus?.tick, 1_075);
+      assert.equal(error.ceresAnchorCollisionDiagnostic?.lastStatus?.anchorEntityId, 9);
+      assert.equal(error.ceresAnchorCollisionDiagnostic?.lastStatus?.anchorSlotId,
+        'ceres_throughline_collision_anchor');
+      assert.equal(error.ceresAnchorCollisionDiagnostic?.lastStatus?.missing, false);
+      assert.equal(error.ceresAnchorCollisionDiagnostic?.lastStatus?.invalidTelemetry, false);
+      return true;
+    },
+    'turn pulse diagnostic',
+  );
+  assert.equal(turnPulseDiagnostic.keydowns, 0,
+    'turn preflight failure must not send public input before recording its diagnostic');
+  assert.equal(turnPulseDiagnostic.fixedWaits, 0);
+
   for (const [label, harness] of [
-    ['turn pulse', makeHarness({ tick: 1_075, anchorPos: { x: 0, z: 100 } })],
     ['thrust pulse', makeHarness({
       tick: 1_075,
       anchorPos: { x: 20, z: 0 },
@@ -3594,13 +3891,44 @@ test('anchor collision preflights every fixed pulse and rejects deadline-edge im
     assert.equal(harness.fixedWaits, 0, `${label} must fail before advancing a fixed tick`);
   }
 
+  const firstObservedDeadline = makeHarness({
+    tick: 1_070,
+    anchorPos: { x: 20, z: 0 },
+    lateStatusTick: 1_080,
+    lateImpactTick: 1_080,
+  });
+  await assert.rejects(
+    drivePublicAnchorCollision(firstObservedDeadline.page, 1_200, { minRemainingTicks: 120 }),
+    (error) => {
+      assert.match(error.message, /exhausted the five-minute horizon/);
+      const diagnostic = error.ceresAnchorCollisionDiagnostic;
+      assert.equal(diagnostic?.pulses, 0);
+      assert.equal(diagnostic?.lastAction, null);
+      assert.deepEqual({
+        tick: diagnostic?.lastStatus?.tick,
+        playerEntityId: diagnostic?.lastStatus?.playerEntityId,
+        anchorEntityId: diagnostic?.lastStatus?.anchorEntityId,
+        anchorSlotId: diagnostic?.lastStatus?.anchorSlotId,
+        missing: diagnostic?.lastStatus?.missing,
+        invalidTelemetry: diagnostic?.lastStatus?.invalidTelemetry,
+        distanceWU: diagnostic?.lastStatus?.distanceWU,
+      }, {
+        tick: 1_080,
+        playerEntityId: PLAYER_ENTITY_ID,
+        anchorEntityId: 9,
+        anchorSlotId: 'ceres_throughline_collision_anchor',
+        missing: false,
+        invalidTelemetry: false,
+        distanceWU: 20,
+      }, 'the first deadline-edge observation must survive the deadline gate');
+      return true;
+    },
+    'first-observed deadline diagnostic',
+  );
+  assert.equal(firstObservedDeadline.keydowns, 0);
+  assert.equal(firstObservedDeadline.fixedWaits, 0);
+
   for (const [label, harness] of [
-    ['late selected impact', makeHarness({
-      tick: 1_070,
-      anchorPos: { x: 20, z: 0 },
-      lateStatusTick: 1_080,
-      lateImpactTick: 1_080,
-    })],
     ['late completion', makeHarness({
       tick: 1_070,
       anchorPos: { x: 20, z: 0 },
@@ -3623,11 +3951,78 @@ test('anchor collision preflights every fixed pulse and rejects deadline-edge im
   });
   await assert.rejects(
     drivePublicAnchorCollision(nonfinite.page, 1_200, { minRemainingTicks: 120 }),
-    /nonfinite motion telemetry/,
+    (error) => {
+      assert.match(error.message, /nonfinite motion telemetry/);
+      const diagnostic = error.ceresAnchorCollisionDiagnostic;
+      assert.equal(diagnostic?.pulses, 0);
+      assert.equal(diagnostic?.lastStatus?.tick, 1_000);
+      assert.equal(diagnostic?.lastStatus?.anchorEntityId, 9);
+      assert.equal(diagnostic?.lastStatus?.anchorSlotId,
+        'ceres_throughline_collision_anchor');
+      assert.equal(diagnostic?.lastStatus?.missing, false);
+      assert.equal(diagnostic?.lastStatus?.invalidTelemetry, true);
+      assert.equal(diagnostic?.lastStatus?.playerX, 0);
+      assert.equal(diagnostic?.lastStatus?.anchorX, null,
+        'nonfinite telemetry must be retained in a JSON-safe bounded projection');
+      return true;
+    },
+    'nonfinite telemetry diagnostic',
   );
   assert.equal(nonfinite.keydowns, 0,
     'nonfinite collision telemetry must fail before public keydown');
   assert.equal(nonfinite.fixedWaits, 0);
+
+  const targetLoss = makeHarness({
+    tick: 1_000,
+    anchorPos: { x: 20, z: 0 },
+    dropAnchorAtStatus: true,
+  });
+  await assert.rejects(
+    drivePublicAnchorCollision(targetLoss.page, 1_200, { minRemainingTicks: 120 }),
+    (error) => {
+      assert.match(error.message, /target disappeared before impact/);
+      const diagnostic = error.ceresAnchorCollisionDiagnostic;
+      assert.equal(diagnostic?.pulses, 0);
+      assert.equal(diagnostic?.lastStatus?.tick, 1_000);
+      assert.equal(diagnostic?.lastStatus?.anchorEntityId, 9);
+      assert.equal(diagnostic?.lastStatus?.anchorSlotId,
+        'ceres_throughline_collision_anchor');
+      assert.equal(diagnostic?.lastStatus?.missing, true);
+      assert.equal(diagnostic?.lastStatus?.invalidTelemetry, false);
+      assert.equal(diagnostic?.lastStatus?.playerX, 0);
+      assert.equal(diagnostic?.lastStatus?.anchorX, null);
+      return true;
+    },
+    'target-loss diagnostic',
+  );
+  assert.equal(targetLoss.keydowns, 0);
+  assert.equal(targetLoss.fixedWaits, 0);
+
+  const attemptExhaustion = makeHarness({
+    tick: 1_000,
+    anchorPos: { x: 20, z: 0 },
+    playerVel: { x: 100, z: 0 },
+  });
+  await assert.rejects(
+    drivePublicAnchorCollision(attemptExhaustion.page, 10_000, { minRemainingTicks: 120 }),
+    (error) => {
+      assert.match(error.message, /did not produce an exact Throughline-anchor impact/);
+      const diagnostic = error.ceresAnchorCollisionDiagnostic;
+      assert.equal(diagnostic?.attemptLimit, 220);
+      assert.equal(diagnostic?.pulses, 220);
+      assert.equal(diagnostic?.boostPulses, 0);
+      assert.equal(diagnostic?.brakePulses, 0);
+      assert.equal(diagnostic?.lastAction?.kind, 'thrust');
+      assert.equal(diagnostic?.lastStatus?.tick, 2_095);
+      assert.equal(diagnostic?.lastStatus?.missing, false);
+      assert.equal(diagnostic?.lastStatus?.invalidTelemetry, false);
+      assert.equal(diagnostic?.lastStatus?.distanceWU, 20);
+      return true;
+    },
+    'attempt-exhaustion diagnostic',
+  );
+  assert.equal(attemptExhaustion.keydowns, 220);
+  assert.equal(attemptExhaustion.fixedWaits, 220);
 });
 
 test('pre-Continue route reserves preserve toolkit, Cathedral, and save horizons', () => {
@@ -4486,6 +4881,10 @@ test('public entry timeout preserves clause-level state and a screenshot before 
 test('route failures retain bounded transit and approach diagnostics in both failure artifacts', () => {
   const rows = Array.from({ length: 100 }, (_, seq) => ({ seq, detail: `row-${seq}` }));
   const projected = projectCeresRouteFailureDiagnostics({
+    ceresAnchorCollisionDiagnostic: {
+      lastAction: { kind: 'brake', key: 'Digit0', ticks: 6 },
+      lastStatus: { hullGapWU: 5.97, radialClosingSpeedWUPerS: -5.18 },
+    },
     ceresToolkitTransitDiagnostic: {
       events: rows,
       invalidDistanceWU: NaN,
@@ -4504,10 +4903,13 @@ test('route failures retain bounded transit and approach diagnostics in both fai
     },
   });
   assert.deepEqual(Object.keys(projected), [
+    'ceresAnchorCollisionDiagnostic',
     'ceresToolkitTransitDiagnostic',
     'ceresPocketApproachDiagnostic',
     'ceresToolkitCombatDiagnostic',
   ]);
+  assert.deepEqual(projected.ceresAnchorCollisionDiagnostic.lastAction,
+    { kind: 'brake', key: 'Digit0', ticks: 6 });
   assert.equal(projected.ceresToolkitTransitDiagnostic.events.length, 24);
   assert.equal(projected.ceresToolkitTransitDiagnostic.events[0].seq, 76,
     'bounded failure telemetry retains the most recent causal tail');

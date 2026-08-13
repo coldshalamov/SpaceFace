@@ -257,6 +257,9 @@ function boundCeresRouteFailureDiagnosticValue(value, depth = 0, seen = new Weak
 
 export function projectCeresRouteFailureDiagnostics(error = {}) {
   return Object.freeze({
+    ceresAnchorCollisionDiagnostic: boundCeresRouteFailureDiagnosticValue(
+      error?.ceresAnchorCollisionDiagnostic,
+    ),
     ceresToolkitTransitDiagnostic: boundCeresRouteFailureDiagnosticValue(
       error?.ceresToolkitTransitDiagnostic,
     ),
@@ -4711,6 +4714,9 @@ export async function drivePublicAnchorCollision(page, endTick, {
 
   let pulses = 0;
   let boostPulses = 0;
+  let brakePulses = 0;
+  let lastStatus = null;
+  let lastAction = null;
   const fixedPulseTicks = (durationMs) => Math.max(1, Math.round(
     Number(durationMs) * CERES_FIVE_MINUTE_TICK_RATE_HZ / 1_000,
   ));
@@ -4729,6 +4735,41 @@ export async function drivePublicAnchorCollision(page, endTick, {
     }
     return completedTick;
   };
+  const collisionDiagnostic = () => ({
+    schema: 'spaceface.ceresAnchorCollisionDiagnostic.v1',
+    collisionDeadlineTick,
+    attemptLimit: 220,
+    pulses,
+    boostPulses,
+    brakePulses,
+    lastStatus,
+    lastAction,
+  });
+  const projectCollisionStatus = (status) => boundCeresRouteFailureDiagnosticValue({
+    tick: status?.tick,
+    playerEntityId: status?.playerEntityId ?? setup.playerId,
+    anchorEntityId: status?.anchorEntityId ?? setup.anchorEntityId,
+    anchorSlotId: status?.anchorSlotId ?? slotId,
+    missing: status?.missing === true,
+    invalidTelemetry: status?.invalidTelemetry === true,
+    playerX: status?.playerX,
+    playerZ: status?.playerZ,
+    velocityX: status?.velocityX,
+    velocityZ: status?.velocityZ,
+    playerRot: status?.playerRot,
+    playerRadiusWU: status?.playerRadiusWU,
+    anchorX: status?.anchorX,
+    anchorZ: status?.anchorZ,
+    anchorRadiusWU: status?.anchorRadiusWU,
+    distanceWU: status?.distanceWU,
+    contactDistanceWU: status?.contactDistanceWU,
+    hullGapWU: status?.hullGapWU,
+    recoveryMarginWU: status?.recoveryMarginWU,
+    radialClosingSpeedWUPerS: status?.radialClosingSpeedWUPerS,
+    tangentialSpeedWUPerS: status?.tangentialSpeedWUPerS,
+    headingError: status?.headingError,
+    speed: status?.speed,
+  });
 
   try {
     for (let attempt = 0; attempt < 220; attempt += 1) {
@@ -4760,35 +4801,75 @@ export async function drivePublicAnchorCollision(page, endTick, {
             && event[`${anchorSide}WorldRecordId`] == null
             && event[`${anchorSide}AnchorSlotId`] === targetSlotId;
         });
-        if (!player || !anchor) return { missing: true, tick: Number(state?.tick) };
-        const telemetry = [
-          Number(player.pos?.x),
-          Number(player.pos?.z),
-          Number(player.vel?.x),
-          Number(player.vel?.z),
-          Number(player.rot),
-          Number(anchor.pos?.x),
-          Number(anchor.pos?.z),
-        ];
-        if (telemetry.some((value) => !Number.isFinite(value))) {
-          return { invalidTelemetry: true, tick: Number(state?.tick), impact };
+        const telemetry = {
+          playerX: Number(player?.pos?.x),
+          playerZ: Number(player?.pos?.z),
+          velocityX: Number(player?.vel?.x),
+          velocityZ: Number(player?.vel?.z),
+          playerRot: Number(player?.rot),
+          playerRadiusWU: Number(player?.radius),
+          anchorX: Number(anchor?.pos?.x),
+          anchorZ: Number(anchor?.pos?.z),
+          anchorRadiusWU: Number(anchor?.radius),
+        };
+        const statusIdentity = {
+          tick: Number(state?.tick),
+          impact,
+          playerEntityId: player?.id ?? playerId,
+          anchorEntityId: anchor?.id ?? anchorEntityId,
+          anchorSlotId: anchor?.data?.activityCollisionAnchorSlotId ?? targetSlotId,
+          ...telemetry,
+        };
+        if (!player || !anchor) {
+          return { ...statusIdentity, missing: true, invalidTelemetry: false };
         }
-        const [playerX, playerZ, velocityX, velocityZ, playerRot, anchorX, anchorZ] = telemetry;
+        if (Object.values(telemetry).some((value) => !Number.isFinite(value))) {
+          return { ...statusIdentity, missing: false, invalidTelemetry: true };
+        }
+        const {
+          playerX,
+          playerZ,
+          velocityX,
+          velocityZ,
+          playerRot,
+          playerRadiusWU,
+          anchorX,
+          anchorZ,
+          anchorRadiusWU,
+        } = telemetry;
+        if (!(playerRadiusWU > 0) || !(anchorRadiusWU > 0)) {
+          return { ...statusIdentity, missing: false, invalidTelemetry: true };
+        }
         const dx = anchorX - playerX;
         const dz = anchorZ - playerZ;
+        const distanceWU = Math.hypot(dx, dz);
+        const radialClosingSpeedWUPerS = distanceWU > 0
+          ? (velocityX * dx + velocityZ * dz) / distanceWU
+          : 0;
+        const tangentialSpeedWUPerS = distanceWU > 0
+          ? Math.abs((-velocityX * dz + velocityZ * dx) / distanceWU)
+          : 0;
+        const recoveryMarginWU = Math.min(playerRadiusWU, anchorRadiusWU) * 0.5;
         const desired = Math.atan2(dz, dx);
         let headingError = desired - playerRot;
         while (headingError > Math.PI) headingError -= Math.PI * 2;
         while (headingError < -Math.PI) headingError += Math.PI * 2;
         return {
-          tick: Number(state.tick),
-          impact,
-          distanceWU: Math.hypot(dx, dz),
+          ...statusIdentity,
+          missing: false,
+          invalidTelemetry: false,
+          distanceWU,
+          contactDistanceWU: playerRadiusWU + anchorRadiusWU,
+          hullGapWU: distanceWU - playerRadiusWU - anchorRadiusWU,
+          recoveryMarginWU,
+          radialClosingSpeedWUPerS,
+          tangentialSpeedWUPerS,
           headingError,
           speed: Math.hypot(velocityX, velocityZ),
         };
       }, { targetSlotId: slotId, ...setup });
-      if (!Number.isSafeInteger(status.tick) || status.tick >= collisionDeadlineTick) {
+      lastStatus = projectCollisionStatus(status);
+      if (!Number.isSafeInteger(status?.tick) || status.tick >= collisionDeadlineTick) {
         throw new Error('Throughline collision attempt exhausted the five-minute horizon');
       }
       if (status.invalidTelemetry) {
@@ -4819,18 +4900,37 @@ export async function drivePublicAnchorCollision(page, endTick, {
           completionTick: status.tick,
           pulses,
           boostPulses,
+          brakePulses,
+          lastStatus,
+          lastAction,
           selectedImpactSeq,
           selectedImpactTick,
           impact: status.impact,
         };
       }
       if (status.missing) throw new Error('Throughline collision target disappeared before impact');
-      if (Math.abs(status.headingError) > 0.09) {
+      const nearContact = status.hullGapWU <= status.recoveryMarginWU;
+      const openingOrOrbiting = status.radialClosingSpeedWUPerS <= 0
+        || status.tangentialSpeedWUPerS >= Math.max(1, status.radialClosingSpeedWUPerS);
+      if (nearContact && openingOrOrbiting && status.speed > 1) {
+        const ticks = fixedPulseTicks(100);
+        await preflightFixedPulse(ticks);
+        await page.keyboard.down('Digit0');
+        pulses += 1;
+        brakePulses += 1;
+        lastAction = { kind: 'brake', key: 'Digit0', ticks };
+        try {
+          await holdFixedPulse(ticks);
+        } finally {
+          await page.keyboard.up('Digit0').catch(() => {});
+        }
+      } else if (Math.abs(status.headingError) > 0.09) {
         const key = status.headingError > 0 ? 'KeyD' : 'KeyA';
         const ticks = fixedPulseTicks(90);
         await preflightFixedPulse(ticks);
-        pulses += 1;
         await page.keyboard.down(key);
+        pulses += 1;
+        lastAction = { kind: 'turn', key, ticks };
         try {
           await holdFixedPulse(ticks);
         } finally {
@@ -4840,11 +4940,15 @@ export async function drivePublicAnchorCollision(page, endTick, {
         const boost = status.distanceWU > 45 && status.speed < 90;
         const ticks = fixedPulseTicks(status.distanceWU > 30 ? 180 : 80);
         await preflightFixedPulse(ticks, boost ? 1 : 0);
-        pulses += 1;
-        if (boost) boostPulses += 1;
         await page.keyboard.down('KeyW');
+        pulses += 1;
+        lastAction = { kind: 'thrust', key: 'KeyW', ticks, boost: false };
         try {
-          if (boost) await page.keyboard.down('Shift');
+          if (boost) {
+            await page.keyboard.down('Shift');
+            boostPulses += 1;
+            lastAction = { kind: 'thrust', key: 'KeyW', ticks, boost: true };
+          }
           await holdFixedPulse(ticks);
         } finally {
           await page.keyboard.up('Shift').catch(() => {});
@@ -4858,10 +4962,16 @@ export async function drivePublicAnchorCollision(page, endTick, {
         }
       }
     }
+    throw new Error('public flight controls did not produce an exact Throughline-anchor impact');
+  } catch (error) {
+    if (error && (typeof error === 'object' || typeof error === 'function')
+        && error.ceresAnchorCollisionDiagnostic == null) {
+      error.ceresAnchorCollisionDiagnostic = collisionDiagnostic();
+    }
+    throw error;
   } finally {
     await releasePublicInput(page).catch(() => {});
   }
-  throw new Error('public flight controls did not produce an exact Throughline-anchor impact');
 }
 
 export function evaluateCeresToolkitCombatCompletion(receipt, {
