@@ -44,9 +44,11 @@ disjoint files. No coordinator, task-long reservation, or worktree is required.
 - `INFERENCE <Nx> [optional scope]` → [`design/vision/INFERENCE_CONVERGENCE_METHOD.md`](./design/vision/INFERENCE_CONVERGENCE_METHOD.md)
   plus [`INFERENCE_LANES.md`](./design/program/INFERENCE_LANES.md). That door does **not** run the
   flyable-ship remaster.
-- **Campaign / overnight / “non-INFERENCE work in this map” / “do all of it”** → stay on admitted
+- **Campaign / overnight / “non-INFERENCE work in this map” / “non-inference graphics work” /
+  “do all of it”** → stay on admitted
   program work and **keep going**. Do not open the INFERENCE method. Do not take a single `--next`
-  and quit. Default unfinished campaign is **`PQ-050`** (every remaining non-Hitch flyable ship
+  and quit. That phrase means **`PQ-050`**, not the dock/hulk handoff and not the expansion-research
+  brief. Default unfinished campaign is **`PQ-050`** (every remaining non-Hitch flyable ship
   under [`ADVANCED_MODEL_TECHNIQUE_CONTRACT.md`](./docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md)).
   Loop `node scripts/program-dispatch.mjs --id PQ-050`, finish the first claimable ship leaf
   under the technique contract **and**
