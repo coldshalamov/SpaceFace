@@ -2,23 +2,20 @@
   "schema": "spaceface.advancedModelTechniqueLedger.v1",
   "assetId": "SF_WASP_PRODUCTION_V1",
   "shipId": "wasp",
-  "candidateHash": "C3F818819B6F199569AD50486892A4416942676613A1D5F35D84C5B64910470A",
+  "candidateHash": "AEF089D8AC481C1967F6F82884A73651AC65D9FF44F75121F866826B74F4F4A9",
   "exportGlb": "assets/ships/fleet_player_bodies_v1/wasp/source/wholeships/wasp_production_v1_lod0.glb",
   "class": "player_flyable",
   "clayStillReadsAsPrimitives": true,
   "independentReview": "revise",
   "promoted": false,
-  "reasonNotClosed": "Five counted cycles. Fighter identity holds: arrowhead, twin nacelles, swept wings, compact canopy. Clay still loft plus kit. Not Hitch-plus. Live files not replaced.",
+  "reasonNotClosed": "Ten counted cycles. Arrowhead fighter with chines, twin nacelles, canopy. Clay still loft plus kit. Not Hitch-plus. Live files not replaced. Hull stayed above 800.",
   "rows": [
-    {"id": "MTX-02", "state": "blocked", "still": "evidence/wasp/cycles/cycle_05/clay_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Hull is still a lofted dart."},
-    {"id": "MTX-06", "state": "blocked", "still": "evidence/wasp/cycles/cycle_05/starboard.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Wings still read as lofted plates in profile."},
-    {"id": "MTX-07", "state": "blocked", "still": "evidence/wasp/cycles/cycle_05/three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Canopy still a framed box over a loft."},
-    {"id": "MTX-08", "state": "blocked", "still": "evidence/wasp/cycles/cycle_05/drive_rear.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Bells attached but still bottle family on sausages."},
-    {"id": "MTX-13", "state": "implemented", "still": "evidence/wasp/cycles/cycle_05/grazing_close.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Scale applied before bevel."},
-    {"id": "MTX-16", "state": "implemented", "still": "evidence/wasp/cycles/cycle_05/material_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Unique UV after join."},
-    {"id": "MTX-32", "state": "implemented", "still": "evidence/wasp/cycles/cycle_05/three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Unique Wasp maps, not a Hitch MixRGB tint."},
-    {"id": "MTX-46", "state": "blocked", "still": "evidence/wasp/cycles/cycle_05/clay_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Clay still primitives."},
-    {"id": "MTX-50", "state": "implemented", "still": "source/wholeships/wasp_production_v1_lod0.glb", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Sockets and packed maps."},
-    {"id": "MTX-65", "state": "implemented", "still": "evidence/wasp/cycles/cycle_05/three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Fighter massing: arrowhead, twin nacelles, swept wings. Not Hornet, not Hitch."}
+    {"id": "MTX-13", "state": "implemented", "still": "evidence/wasp/cycles/cycle_10/grazing_close.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Scale applied before bevel."},
+    {"id": "MTX-16", "state": "implemented", "still": "evidence/wasp/cycles/cycle_10/material_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Unique UV after join."},
+    {"id": "MTX-23", "state": "implemented", "still": "evidence/wasp/cycles/cycle_10/orm_isolation.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "LOD0 AO bake."},
+    {"id": "MTX-32", "state": "implemented", "still": "evidence/wasp/cycles/cycle_10/three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Unique Wasp maps."},
+    {"id": "MTX-46", "state": "blocked", "still": "evidence/wasp/cycles/cycle_10/clay_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Clay still primitives."},
+    {"id": "MTX-50", "state": "implemented", "still": "source/wholeships/wasp_production_v1_lod0.glb", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Sockets and packed maps. Hull above 800."},
+    {"id": "MTX-65", "state": "implemented", "still": "evidence/wasp/cycles/cycle_10/three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Dart, chines, twin nacelles, canopy."}
   ]
 }

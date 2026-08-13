@@ -760,6 +760,28 @@ def build_lod(lod, mats):
     if lod == 0:
         add_curve_hose("Hose_Port", [(0.4, -2.05, 0.12), (-3.6, -3.85, 0.14), (-8.2, -5.25, 0.08)], mech, collection, 0.016)
         add_curve_hose("Hose_Stbd", [(0.4, 2.05, 0.12), (-3.6, 3.85, 0.14), (-8.2, 5.25, 0.08)], mech, collection, 0.016)
+    if CYCLE >= 6 and lod <= 1:
+        boolean_cut(hull_obj, "TransomRecess", (-9.55, 0.0, -0.02), (0.14, 0.38, 0.22))
+    if CYCLE >= 7:
+        add_box("CanopyMullion", (4.55, 0.0, 1.12), (0.022, 0.28, 0.08), armor, collection, 0.002)
+        if lod <= 1:
+            for sign, side in ((-1, "Port"), (1, "Starboard")):
+                for i in range(4):
+                    add_box(
+                        f"WingRad_{side}_{i}",
+                        (-2.45 + i * 0.18, 2.35 * sign, 0.16),
+                        (0.010, 0.14, 0.12),
+                        mech, collection, 0.001,
+                    )
+    if CYCLE >= 8:
+        add_box("NacelleBandX", (-4.15, 0.0, 0.02), (0.06, 0.42, 0.16), armor, collection, 0.003)
+    if CYCLE >= 9:
+        add_box("ChineCapP", (0.40, -2.18, -0.10), (1.35, 0.032, 0.040), armor, collection, 0.003)
+        add_box("ChineCapS", (0.40, 2.18, -0.10), (1.35, 0.032, 0.040), armor, collection, 0.003)
+    if CYCLE >= 10:
+        add_box("PatchTile2", (1.55, 0.32, 0.94), (0.20, 0.10, 0.008), armor, collection, 0.002)
+        add_box("CanopyStayP", (3.85, -0.18, 0.88), (0.16, 0.014, 0.014), mech, collection, 0.002)
+        add_box("CanopyStayS", (3.85, 0.18, 0.88), (0.16, 0.014, 0.014), mech, collection, 0.002)
 
     mesh_objects = [obj for obj in collection.objects if obj.type == "MESH"]
     for obj in mesh_objects:
