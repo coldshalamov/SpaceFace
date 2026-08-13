@@ -17,11 +17,14 @@ ROOT = TOOLS.parents[1]
 if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
 from fleet_construction import (  # noqa: E402
+    add_flared_bell,
     add_manufactured_drive,
+    add_overlap_plate,
     add_rcs_cluster,
     add_sensor_dish,
-    cut_open_bay,
     apply_modifiers,
+    cut_open_bay,
+    station_ring,
 )
 
 FAMILY = ROOT / "assets" / "ships" / "fleet_player_bodies_v1" / "hornet"
@@ -87,6 +90,8 @@ def role_maps(role, rgb, size=TEX, prefix=None):
         pw, ph = 22, 10
     elif role == "ceramic":
         pw, ph = 64, 64
+    elif role in {"glass", "thruster"}:
+        pw, ph = 0, 0
     else:
         pw, ph = 80, 80
     for y in range(size):
@@ -226,14 +231,14 @@ def wire_maps(material, bsdf, maps, coat=0.0, emission=None):
 
 def create_materials():
     specs = {
-        "Material_Hull": ((0.22, 0.235, 0.25), 0.08, 0.42, "hull", 0.55, None),
-        "Material_Armor": ((0.055, 0.09, 0.10), 0.42, 0.34, "armor", 0.15, None),
-        "Material_Mechanical": ((0.30, 0.31, 0.32), 0.84, 0.26, "mechanical", 0.0, None),
+        "Material_Hull": ((0.18, 0.20, 0.22), 0.08, 0.40, "hull", 0.55, None),
+        "Material_Armor": ((0.04, 0.055, 0.06), 0.48, 0.32, "armor", 0.12, None),
+        "Material_Mechanical": ((0.42, 0.44, 0.46), 0.88, 0.22, "mechanical", 0.0, None),
         "Material_Accent": ((0.04, 0.40, 0.50), 0.10, 0.34, "accent", 0.2, None),
         "Material_Warning": ((0.70, 0.34, 0.05), 0.05, 0.46, "warning", 0.1, None),
-        "Material_Ceramic": ((0.54, 0.46, 0.34), 0.0, 0.64, "ceramic", 0.0, None),
+        "Material_Ceramic": ((0.22, 0.16, 0.12), 0.0, 0.70, "ceramic", 0.0, None),
         "Material_Radiator": ((0.16, 0.12, 0.09), 0.7, 0.56, "mechanical", 0.0, None),
-        "Material_Canopy": ((0.06, 0.10, 0.12), 0.02, 0.05, "glass", 1.0, None),
+        "Material_Canopy": ((0.04, 0.07, 0.09), 0.02, 0.04, "glass", 0.35, None),
         "Material_Thruster": ((0.02, 0.08, 0.12), 0.15, 0.22, "thruster", 0.0, None),
     }
     mats = {}
@@ -245,6 +250,19 @@ def create_materials():
         bsdf.inputs["Roughness"].default_value = rough
         maps = role_maps(role, rgb, prefix=name.replace("Material_", "").lower())
         wire_maps(material, bsdf, maps, coat=coat, emission=emit)
+        if name == "Material_Canopy":
+            if "Transmission Weight" in bsdf.inputs:
+                bsdf.inputs["Transmission Weight"].default_value = 0.78
+            elif "Transmission" in bsdf.inputs:
+                bsdf.inputs["Transmission"].default_value = 0.78
+            if "IOR" in bsdf.inputs:
+                bsdf.inputs["IOR"].default_value = 1.48
+            bsdf.inputs["Alpha"].default_value = 0.42
+            if hasattr(material, "blend_method"):
+                try:
+                    material.blend_method = "BLEND"
+                except TypeError:
+                    pass
         material["spacefaceRole"] = role
         mats[name] = material
     return mats
@@ -344,21 +362,22 @@ def add_hollow_bell(tag, x, y, z, scale, mats, collection):
         mats["Material_Ceramic"], mats["Material_Thruster"],
         mats["Material_Mechanical"], mats["Material_Armor"],
     )
+    # Rocket bell: narrow throat at the transom, flare OPEN toward aft (-X).
     rings = []
     for t, r, rz in (
-        (0.00, 0.58, 0.58),
-        (0.18, 0.50, 0.50),
-        (0.42, 0.34, 0.34),
-        (0.68, 0.24, 0.24),
-        (1.00, 0.20, 0.20),
+        (0.00, 0.22, 0.22),
+        (0.18, 0.26, 0.26),
+        (0.42, 0.38, 0.38),
+        (0.70, 0.56, 0.56),
+        (1.00, 0.72, 0.72),
     ):
-        xi = x - 0.10 * s - t * 1.05 * s
-        rings.append(ellipse_ring(xi, y, z, r * s, rz * s, 28))
+        xi = x - 0.06 * s - t * 1.18 * s
+        rings.append(ellipse_ring(xi, y, z, r * s, rz * s, 40))
     outer = loft_from_rings(f"Bell_{tag}", rings, mech, collection, 0.005, cap=False)
     apply_modifiers(outer)
     bpy.ops.mesh.primitive_cone_add(
-        vertices=24, radius1=0.48 * s, radius2=0.08 * s, depth=1.22 * s,
-        location=(x - 0.62 * s, y, z), rotation=(0, math.pi / 2, 0),
+        vertices=24, radius1=0.12 * s, radius2=0.62 * s, depth=1.28 * s,
+        location=(x - 0.68 * s, y, z), rotation=(0, math.pi / 2, 0),
     )
     inner = bpy.context.object
     inner.name = f"BellCutter_{tag}"
@@ -374,16 +393,16 @@ def add_hollow_bell(tag, x, y, z, scale, mats, collection):
     bpy.ops.object.modifier_apply(modifier=mod.name)
     outer.select_set(False)
     bpy.data.objects.remove(inner, do_unlink=True)
-    add_cylinder(f"BellCollar_{tag}", (x - 0.12 * s, y, z), 0.30 * s, 0.14 * s, ceramic, collection, 22, 0.004)
-    add_cylinder(f"BellClamp_{tag}", (x + 0.04 * s, y, z), 0.34 * s, 0.05 * s, armor, collection, 22, 0.003)
-    add_cylinder(f"BellFlange_{tag}", (x + 0.16 * s, y, z), 0.36 * s, 0.06 * s, mech, collection, 22, 0.003)
-    add_cylinder(f"BellHub_{tag}", (x - 0.32 * s, y, z), 0.06 * s, 0.24 * s, mech, collection, 12, 0.002)
+    add_cylinder(f"BellCollar_{tag}", (x - 0.08 * s, y, z), 0.26 * s, 0.12 * s, ceramic, collection, 22, 0.004)
+    add_cylinder(f"BellClamp_{tag}", (x + 0.08 * s, y, z), 0.34 * s, 0.06 * s, armor, collection, 22, 0.003)
+    add_cylinder(f"BellFlange_{tag}", (x + 0.18 * s, y, z), 0.38 * s, 0.07 * s, mech, collection, 22, 0.003)
+    add_cylinder(f"BellHub_{tag}", (x - 0.55 * s, y, z), 0.07 * s, 0.28 * s, mech, collection, 12, 0.002)
     for index in range(10):
         ang = math.tau * index / 10
         add_box(
             f"BellVane_{tag}_{index}",
-            (x - 0.48 * s, y + math.cos(ang) * 0.20 * s, z + math.sin(ang) * 0.20 * s),
-            (0.22 * s, 0.016 * s, 0.060 * s),
+            (x - 0.72 * s, y + math.cos(ang) * 0.28 * s, z + math.sin(ang) * 0.28 * s),
+            (0.28 * s, 0.016 * s, 0.070 * s),
             mech, collection, 0.002, (ang, 0, 0),
         )
     return outer
@@ -461,22 +480,22 @@ def add_thin_canopy(tag, x, y, z, length, width, height, mats, collection):
     canopy, armor, mech = mats["Material_Canopy"], mats["Material_Armor"], mats["Material_Mechanical"]
     # Open arch rings: no floor, so solidify makes a shell.
     rings = []
-    # Sloped fighter greenhouse: low brow, tall mid, tucked aft. Not a brick.
+    # Low fighter bubble: flush brow, low peak, tucked aft. Not a shoebox.
     for t, scale_h, scale_w, z_off in (
-        (0.0, 0.38, 0.62, 0.02),
-        (0.22, 0.92, 0.92, 0.00),
-        (0.58, 1.00, 1.00, 0.00),
-        (1.0, 0.48, 0.70, 0.04),
+        (0.0, 0.22, 0.48, 0.00),
+        (0.28, 0.78, 0.88, 0.00),
+        (0.62, 1.00, 1.00, 0.00),
+        (1.0, 0.30, 0.55, 0.02),
     ):
         xi = x + length * 0.5 - t * length
         h = height * scale_h
         w = width * scale_w
         rings.append([
             (xi, y - w, z + z_off),
-            (xi, y - w * 0.88, z + z_off + h * 0.48),
-            (xi, y - w * 0.22, z + z_off + h),
-            (xi, y + w * 0.22, z + z_off + h),
-            (xi, y + w * 0.88, z + z_off + h * 0.48),
+            (xi, y - w * 0.72, z + z_off + h * 0.55),
+            (xi, y - w * 0.18, z + z_off + h),
+            (xi, y + w * 0.18, z + z_off + h),
+            (xi, y + w * 0.72, z + z_off + h * 0.55),
             (xi, y + w, z + z_off),
         ])
     shell = loft_from_rings(f"{tag}_Shell", rings, canopy, collection, bevel=0.004, cap=False)
@@ -605,82 +624,78 @@ def build_lod(lod, mats):
         "lod": f"lod{lod}", "slot": "hull", "category": "wholeships",
         "forward": "+X", "embeddedPlume": False,
     }
-    # C8: needle → tall canopy shoulder → wide wing glove → waist → DRIVE HOUSE.
-    # No stick boom. Mid station must not equal bow.
+    # Form rebuild: station FAMILY changes along X, not a scaled diamond.
+    # needle (point) → greenhouse deck (flat) → boxy glove → pinched waist →
+    # boxy drive house of nearly constant beam. No stick boom.
     hull_obj = loft_from_rings("Pressure_Hull", [
-        diamond_ring(half, 0, 0.04, 0.10, 0.08),
-        diamond_ring(6.55, 0, 0.08, 0.28, 0.22),
-        diamond_ring(4.85, 0, 0.22, 0.52, 0.82),
-        diamond_ring(2.35, 0, 0.12, 1.05, 0.62),
-        diamond_ring(0.15, 0, 0.06, 1.58, 0.54),
-        diamond_ring(-1.85, 0, 0.08, 1.05, 0.52),
-        diamond_ring(-4.15, 0, 0.10, 0.82, 0.50),
-        diamond_ring(-6.35, 0, 0.10, 0.74, 0.48),
-        diamond_ring(-7.75, 0, 0.08, 0.58, 0.40),
-    ], hull, collection, 0.016)
+        station_ring(half, 0, 0.02, 0.08, 0.06, flat=0.00, box=0.00, keel=1.00),
+        station_ring(6.90, 0, 0.04, 0.18, 0.14, flat=0.04, box=0.04, keel=1.00),
+        station_ring(5.55, 0, 0.10, 0.42, 0.38, flat=0.35, box=0.22, keel=0.90),
+        station_ring(4.05, 0, 0.28, 0.58, 1.05, flat=0.98, box=0.38, keel=0.68),
+        station_ring(2.35, 0, 0.08, 1.05, 0.50, flat=0.28, box=0.70, keel=0.70),
+        station_ring(0.25, 0, 0.02, 1.62, 0.46, flat=0.12, box=0.95, keel=0.52),
+        station_ring(-1.15, 0, 0.04, 0.88, 0.50, flat=0.12, box=0.80, keel=0.48),
+        station_ring(-2.45, 0, 0.18, 1.08, 0.92, flat=0.40, box=1.00, keel=0.30),
+        station_ring(-4.35, 0, 0.20, 1.14, 1.00, flat=0.42, box=1.00, keel=0.24),
+        station_ring(-6.05, 0, 0.16, 1.02, 0.90, flat=0.38, box=1.00, keel=0.22),
+        station_ring(-7.35, 0, 0.12, 0.86, 0.78, flat=0.40, box=1.00, keel=0.18),
+    ], hull, collection, 0.014)
     if lod <= 1:
-        cut_open_bay(hull_obj, "Cockpit", (3.15, 0.0, 0.88), 1.55, 0.58, 0.62, (0, 0, 1), mats, collection, kit="cockpit")
-        cut_open_bay(hull_obj, "Port", (0.20, -1.48, 0.10), 1.45, 0.48, 0.52, (0, -1, 0), mats, collection, kit="radiator")
-        cut_open_bay(hull_obj, "Starboard", (0.20, 1.48, 0.10), 1.45, 0.48, 0.52, (0, 1, 0), mats, collection, kit="rack")
-        cut_open_bay(hull_obj, "DorsalAft", (-2.05, 0.0, 0.62), 1.20, 0.48, 0.40, (0, 0, 1), mats, collection, kit="radiator")
-        boolean_cut(hull_obj, "TransomRecess", (-7.78, 0.0, 0.08), (0.22, 0.38, 0.28))
+        cut_open_bay(hull_obj, "Cockpit", (4.00, 0.0, 1.18), 1.65, 0.48, 0.62, (0, 0, 1), mats, collection, kit="cockpit", liner=False)
+        cut_open_bay(hull_obj, "Port", (0.25, -1.58, 0.04), 1.85, 0.48, 0.62, (0, -1, 0), mats, collection, kit="radiator")
+        cut_open_bay(hull_obj, "Starboard", (0.25, 1.58, 0.04), 1.85, 0.48, 0.62, (0, 1, 0), mats, collection, kit="rack")
+        cut_open_bay(hull_obj, "DorsalAft", (-4.20, 0.0, 1.12), 1.45, 0.52, 0.42, (0, 0, 1), mats, collection, kit="radiator")
+        cut_open_bay(hull_obj, "Keel", (0.15, 0.0, -0.50), 2.05, 0.36, 0.34, (0, 0, -1), mats, collection, kit="empty")
+        boolean_cut(hull_obj, "TransomRecess", (-7.58, 0.0, 0.12), (0.42, 0.52, 0.48))
         hull_obj.data.materials.clear()
         hull_obj.data.materials.append(hull)
-    inset_large_faces(hull_obj, thickness=0.040, depth=0.020, min_area=0.12)
+    inset_large_faces(hull_obj, thickness=0.048, depth=0.024, min_area=0.10)
 
-    add_thin_canopy("Canopy", 3.15, 0.0, 0.82, 1.55, 0.52, 0.40, mats, collection)
-    add_box("TransomPlate", (-7.68, 0.0, 0.08), (0.04, 0.48, 0.28), armor, collection, 0.003)
-    add_hollow_bell("Main", -7.55, 0.0, 0.08, 1.15, mats, collection)
-    add_cylinder("DriveCoupling", (-7.05, 0.0, 0.08), 0.38, 0.18, mech, collection, 16, 0.004)
-    add_box("DriveSaddle", (-6.85, 0.0, -0.22), (0.42, 0.18, 0.10), mech, collection, 0.004)
-    add_box("DriveHouseBand", (-6.35, 0.0, 0.10), (0.08, 0.62, 0.36), armor, collection, 0.004)
-    if CYCLE >= 9:
-        add_box("DriveHouseBandF", (-5.15, 0.0, 0.10), (0.06, 0.68, 0.34), armor, collection, 0.003)
-        add_box("DriveHouseStrakeP", (-5.85, -0.58, 0.22), (1.15, 0.03, 0.04), armor, collection, 0.002)
-        add_box("DriveHouseStrakeS", (-5.85, 0.58, 0.22), (1.15, 0.03, 0.04), armor, collection, 0.002)
-        add_box("CanopyMullion2", (2.85, 0.0, 1.08), (0.016, 0.42, 0.14), armor, collection, 0.002)
-        add_box("WellLipAft", (-1.45, 0.0, 0.78), (0.04, 0.52, 0.05), armor, collection, 0.002)
-    if CYCLE >= 10:
-        add_box("PatchTile2", (0.55, 0.52, 0.62), (0.22, 0.12, 0.008), armor, collection, 0.002)
-        add_box("ChineCapP", (1.85, -1.35, 0.06), (1.15, 0.03, 0.05), armor, collection, 0.003)
-        add_box("ChineCapS", (1.85, 1.35, 0.06), (1.15, 0.03, 0.05), armor, collection, 0.003)
+    add_thin_canopy("Canopy", 4.00, 0.0, 1.12, 1.70, 0.46, 0.26, mats, collection)
+    add_overlap_plate("TransomFrame", (-7.22, 0.0, 0.12), (0.06, 0.72, 0.58), armor, collection, 0.004)
+    add_flared_bell("Main", -7.15, 0.0, 0.12, 1.55, mats, collection)
+    add_overlap_plate("DriveHouseBandA", (-2.65, 0.0, 0.20), (0.08, 0.98, 0.70), armor, collection, 0.006)
+    add_overlap_plate("DriveHouseBandB", (-5.15, 0.0, 0.18), (0.08, 0.96, 0.68), armor, collection, 0.006)
+    add_overlap_plate("DriveHouseDeckA", (-2.85, 0.10, 1.08), (0.85, 0.48, 0.055), armor, collection, 0.008)
+    add_overlap_plate("DriveHouseDeckB", (-4.55, -0.12, 1.12), (0.72, 0.40, 0.048), armor, collection, 0.008)
+    add_overlap_plate("DriveHouseDeckC", (-5.85, 0.08, 1.00), (0.50, 0.32, 0.042), hull, collection, 0.007)
 
     for sign, side in ((-1, "Port"), (1, "Starboard")):
-        loft_from_rings(f"Glove_{side}", [
-            diamond_ring(0.55, 1.05 * sign, 0.04, 0.42, 0.28),
-            diamond_ring(0.10, 1.55 * sign, 0.00, 0.55, 0.22),
-            diamond_ring(-0.55, 1.95 * sign, -0.06, 0.48, 0.16),
-        ], hull, collection, 0.010)
+        loft_from_rings(f"WingRoot_{side}", [
+            airfoil_ring(0.18, 1.15 * sign, 0.06, 3.15, 0.88),
+            airfoil_ring(0.02, 1.55 * sign, 0.00, 3.25, 0.72),
+        ], hull, collection, 0.012)
         loft_from_rings(f"Wing_{side}", [
-            airfoil_ring(0.10, 1.70 * sign, 0.00, 2.85, 0.48),
-            airfoil_ring(-0.35, 2.55 * sign, -0.08, 2.25, 0.28),
-            airfoil_ring(-1.15, 3.45 * sign, -0.16, 1.55, 0.14),
-            airfoil_ring(-1.95, 4.25 * sign, -0.24, 0.95, 0.06),
+            airfoil_ring(0.00, 1.62 * sign, 0.00, 3.20, 0.70),
+            airfoil_ring(-0.35, 2.35 * sign, -0.06, 2.55, 0.46),
+            airfoil_ring(-0.95, 3.15 * sign, -0.14, 1.85, 0.26),
+            airfoil_ring(-1.65, 3.95 * sign, -0.22, 1.12, 0.12),
+            airfoil_ring(-2.15, 4.48 * sign, -0.28, 0.48, 0.05),
         ], hull, collection, 0.010)
-        add_box(f"Flap_{side}", (-1.88, 2.75 * sign, -0.14), (0.18, 0.78, 0.030), mech, collection, 0.003)
-        add_box(f"FlapSlot_{side}", (-1.62, 2.75 * sign, -0.12), (0.025, 0.72, 0.04), mech, collection, 0.002)
-        add_box(f"WingTile_{side}A", (-0.20, 2.55 * sign, 0.10), (0.58, 0.44, 0.016), armor, collection, 0.004)
-        add_box(f"WingTile_{side}B", (-0.95, 3.25 * sign, 0.02), (0.40, 0.30, 0.014), armor, collection, 0.003)
-        add_box(f"UnderRib_{side}", (-0.45, 2.65 * sign, -0.22), (0.74, 0.04, 0.03), mech, collection, 0.003)
+        add_box(f"Flap_{side}", (-2.05, 2.90 * sign, -0.14), (0.22, 0.78, 0.055), mech, collection, 0.003)
+        add_box(f"FlapSlot_{side}", (-1.72, 2.90 * sign, -0.10), (0.035, 0.72, 0.070), mech, collection, 0.002)
+        add_overlap_plate(f"WingTile_{side}A", (-0.22, 2.40 * sign, 0.28), (0.48, 0.36, 0.042), armor, collection, 0.006)
+        add_box(f"UnderRib_{side}", (-0.45, 2.70 * sign, -0.28), (0.80, 0.045, 0.034), mech, collection, 0.003)
         loft_from_rings(f"Canard_{side}", [
-            airfoil_ring(4.55, 0.72 * sign, 0.10, 0.95, 0.070),
-            airfoil_ring(4.20, 1.22 * sign, 0.06, 0.58, 0.032),
+            airfoil_ring(4.55, 0.68 * sign, 0.12, 1.05, 0.090),
+            airfoil_ring(4.15, 1.18 * sign, 0.07, 0.62, 0.040),
         ], armor, collection, 0.006)
         add_cylinder(f"GunHouse_{side}", (4.85, 0.38 * sign, -0.08), 0.09, 1.15, mech, collection, vertices=10, bevel=0.006)
         add_cylinder(f"GunBarrel_{side}", (5.85, 0.38 * sign, -0.08), 0.035, 0.85, armor, collection, vertices=8, bevel=0.003)
-        add_rcs_cluster(side, (-1.4, 1.85 * sign, 0.12), mats, collection, sign=sign)
+        add_rcs_cluster(side, (-1.35, 1.78 * sign, 0.14), mats, collection, sign=sign)
+        add_overlap_plate(f"ChineCap_{side}", (1.85, 1.42 * sign, 0.08), (1.25, 0.045, 0.07), armor, collection, 0.004)
+        add_overlap_plate(f"GloveCheek_{side}", (1.15, 1.08 * sign, 0.10), (0.95, 0.055, 0.24), armor, collection, 0.008)
 
-    add_box("Armor_Shoulder", (2.55, 0.0, 0.78), (0.95, 0.48, 0.04), armor, collection, 0.008)
-    add_box("Armor_Cheek_P", (1.55, -1.05, 0.08), (0.85, 0.045, 0.22), armor, collection, 0.008)
-    add_box("Armor_Cheek_S", (1.55, 1.05, 0.08), (0.85, 0.045, 0.22), armor, collection, 0.008)
-    add_box("Keel_Spine", (0.15, 0.0, -0.62), (3.1, 0.22, 0.04), mech, collection, 0.01)
-    add_box("Repair_Patch", (1.05, -0.48, 0.72), (0.30, 0.15, 0.01), warning, collection, 0.002)
-    add_box("Accent_Flash", (0.70, -1.22, 0.22), (0.48, 0.016, 0.08), accent, collection, 0.002)
-    add_cylinder("Turret_Ring", (-0.35, 0.0, 0.78), 0.30, 0.08, mech, collection, vertices=14, bevel=0.006, rot=(0, 0, 0))
-    add_box("Turret_Head", (-0.15, 0.0, 0.92), (0.26, 0.15, 0.08), armor, collection, 0.006)
-    add_sensor_dish("Dorsal", (1.20, 0.22, 0.95), mats, collection)
-    add_box("Hatch_Lid", (-0.85, 0.28, 0.62), (0.28, 0.18, 0.016), armor, collection, 0.004)
-    add_box("Hatch_Hinge", (-1.08, 0.28, 0.63), (0.03, 0.14, 0.018), mech, collection, 0.002)
+    add_overlap_plate("Armor_Shoulder", (2.45, 0.0, 0.82), (1.05, 0.52, 0.048), armor, collection, 0.008)
+    add_overlap_plate("NeedleSpine", (6.15, 0.0, 0.22), (1.05, 0.10, 0.035), armor, collection, 0.005)
+    add_box("Keel_Spine", (0.15, 0.0, -0.70), (3.2, 0.20, 0.05), mech, collection, 0.01)
+    add_box("Repair_Patch", (1.05, -0.52, 0.78), (0.32, 0.16, 0.014), warning, collection, 0.002)
+    add_box("Accent_Flash", (0.70, -1.38, 0.24), (0.50, 0.018, 0.08), accent, collection, 0.002)
+    add_cylinder("Turret_Ring", (-0.55, 0.0, 0.68), 0.28, 0.08, mech, collection, vertices=14, bevel=0.006, rot=(0, 0, 0))
+    add_box("Turret_Head", (-0.35, 0.0, 0.82), (0.24, 0.14, 0.08), armor, collection, 0.006)
+    add_sensor_dish("Dorsal", (1.35, 0.22, 1.08), mats, collection)
+    add_box("Hatch_Lid", (-0.95, 0.30, 0.64), (0.30, 0.18, 0.018), armor, collection, 0.004)
+    add_box("Hatch_Hinge", (-1.20, 0.30, 0.65), (0.03, 0.14, 0.020), mech, collection, 0.002)
     if lod == 0:
         add_curve_hose("Hose_Port", [(-0.4, -1.20, 0.05), (-2.4, -0.85, -0.05), (-5.4, -0.55, 0.18), (-7.2, -0.42, 0.22)], mech, collection, 0.016)
         add_curve_hose("Hose_Stbd", [(-0.4, 1.20, 0.05), (-2.4, 0.85, -0.05), (-5.4, 0.55, 0.18), (-7.2, 0.42, 0.22)], mech, collection, 0.016)
@@ -875,7 +890,7 @@ def render_cycle(collection):
         "rear": ((-16.5, -5.5, 4.2), (-0.3, 0, 0.08), 38),
         "clay_three_quarter": ((14.5, -13.0, 6.4), (0, 0, 0.12), 38),
         "grazing_close": ((9.5, -7.5, 2.2), (0.4, 0, 0.15), 50),
-        "bay_interior": ((0.6, -3.6, 0.9), (0.2, -1.25, 0.08), 48),
+        "bay_interior": ((0.25, -3.35, 0.28), (0.25, -1.58, 0.04), 40),
         "drive_rear": ((-11.5, -3.2, 1.6), (-7.6, 0, 0.12), 50),
         "play_size": ((48, -42, 22), (0, 0, 0.1), 50),
         "orm_isolation": ((14.5, -13.0, 6.4), (0, 0, 0.12), 38),

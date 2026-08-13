@@ -60,6 +60,113 @@ def add_mesh(name, verts, faces, material, collection, bevel=0.012):
     return finish_mesh(obj, material, bevel)
 
 
+def station_ring(x, yc, zc, hw, hh, flat=0.0, box=0.0, keel=1.0):
+    """12-point manufactured station. Same vertex count so rings can loft.
+
+    flat: 0 = pointed crown, 1 = wide flat deck (greenhouse / walkway)
+    box:  0 = diamond sides, 1 = vertical walls (glove / drive house)
+    keel: 1 = sharp V, 0 = flat keel
+    Mid station must not be a scaled copy of the bow — change these three,
+    not just hw/hh.
+    """
+    flat = max(0.0, min(1.0, float(flat)))
+    box = max(0.0, min(1.0, float(box)))
+    keel = max(0.0, min(1.0, float(keel)))
+    deck_half = hw * (0.06 + 0.70 * flat)
+    crown_z = zc + hh * (1.0 - 0.22 * flat)
+    shoulder_y = hw * (0.42 + 0.38 * box)
+    shoulder_z = zc + hh * (0.55 - 0.20 * box)
+    beam_y = hw
+    beam_z = zc + hh * (0.08 - 0.28 * box)
+    lower_y = hw * (0.78 - 0.08 * box)
+    lower_z = zc - hh * (0.38 + 0.08 * box)
+    keel_half = hw * (0.08 + 0.42 * (1.0 - keel))
+    keel_z = zc - hh * (0.92 + 0.08 * keel)
+    keel_c_z = zc - hh
+    return [
+        (x, yc + 0.0, crown_z),
+        (x, yc + deck_half, crown_z),
+        (x, yc + shoulder_y, shoulder_z),
+        (x, yc + beam_y, beam_z),
+        (x, yc + lower_y, lower_z),
+        (x, yc + keel_half, keel_z),
+        (x, yc + 0.0, keel_c_z),
+        (x, yc - keel_half, keel_z),
+        (x, yc - lower_y, lower_z),
+        (x, yc - beam_y, beam_z),
+        (x, yc - shoulder_y, shoulder_z),
+        (x, yc - deck_half, crown_z),
+    ]
+
+
+def add_overlap_plate(name, loc, scale, material, collection, bevel=0.008):
+    """Thick overlapping armor with a real gap, not a decal-thick slab."""
+    return add_box(name, loc, scale, material, collection, bevel)
+
+
+def add_flared_bell(tag, x, y, z, scale, mats, collection, sides=36):
+    """Rocket bell: narrow throat at the transom, flare OPEN toward aft (-X)."""
+    s = float(scale)
+    ceramic = mats.get("Material_Ceramic") or mats["Material_Mechanical"]
+    thruster = mats.get("Material_Thruster") or mats["Material_Mechanical"]
+    mech = mats["Material_Mechanical"]
+    armor = mats["Material_Armor"]
+    verts = []
+    rings = (
+        (0.00, 0.20),
+        (0.18, 0.26),
+        (0.42, 0.40),
+        (0.70, 0.58),
+        (1.00, 0.74),
+    )
+    for t, r in rings:
+        xi = x - 0.06 * s - t * 1.20 * s
+        for i in range(sides):
+            ang = math.tau * i / sides
+            verts.append((xi, y + math.cos(ang) * r * s, z + math.sin(ang) * r * s))
+    faces = []
+    for station in range(len(rings) - 1):
+        a = station * sides
+        b = (station + 1) * sides
+        for i in range(sides):
+            j = (i + 1) % sides
+            faces.append((a + i, a + j, b + j, b + i))
+    mesh = bpy.data.meshes.new(f"Bell_{tag}_Mesh")
+    mesh.from_pydata(verts, [], faces)
+    mesh.update()
+    outer = bpy.data.objects.new(f"Bell_{tag}", mesh)
+    collection.objects.link(outer)
+    finish_mesh(outer, mech, 0.004)
+    apply_modifiers(outer)
+    bpy.ops.mesh.primitive_cone_add(
+        vertices=24, radius1=0.10 * s, radius2=0.64 * s, depth=1.28 * s,
+        location=(x - 0.70 * s, y, z), rotation=(0, math.pi / 2, 0),
+    )
+    inner = bpy.context.object
+    inner.name = f"BellCutter_{tag}"
+    bpy.context.view_layer.objects.active = outer
+    outer.select_set(True)
+    mod = outer.modifiers.new("BellCut", "BOOLEAN")
+    mod.operation = "DIFFERENCE"
+    mod.object = inner
+    try:
+        mod.solver = "EXACT"
+    except Exception:
+        pass
+    bpy.ops.object.modifier_apply(modifier=mod.name)
+    outer.select_set(False)
+    bpy.data.objects.remove(inner, do_unlink=True)
+    add_cylinder(f"BellCollar_{tag}", (x - 0.06 * s, y, z), 0.24 * s, 0.10 * s, ceramic, collection, 20, 0.003)
+    add_cylinder(f"BellFlange_{tag}", (x + 0.12 * s, y, z), 0.36 * s, 0.07 * s, armor, collection, 20, 0.003)
+    add_cylinder(f"BellClamp_{tag}", (x + 0.22 * s, y, z), 0.40 * s, 0.05 * s, mech, collection, 18, 0.003)
+    add_cylinder(f"BellHub_{tag}", (x - 0.58 * s, y, z), 0.055 * s, 0.26 * s, mech, collection, 10, 0.002)
+    add_cylinder(f"BellThroat_{tag}", (x - 0.22 * s, y, z), 0.10 * s, 0.06 * s, thruster, collection, 14, 0.002)
+    for index in range(10):
+        ang = math.tau * index / 10
+        add_tapered_vane(f"BellVane_{tag}_{index}", (x - 0.62 * s, y, z), armor, collection, ang, scale=s * 0.85)
+    return outer
+
+
 def add_tapered_vane(name, origin, material, collection, angle, scale=1.0):
     """Folded refractory vane with a root and a thinner hot tip, Hitch-floor logic."""
     cx, cy, cz = origin
@@ -307,7 +414,7 @@ def _oriented_box(name, center, length, width, thick, long_axis, wide_axis, norm
     return finish_mesh(obj, material, bevel)
 
 
-def cut_open_bay(hull_obj, tag, surface, length, width, depth, outward, mats, collection, kit="rack"):
+def cut_open_bay(hull_obj, tag, surface, length, width, depth, outward, mats, collection, kit="rack", liner=True):
     """Cut a hole that actually breaks the skin, then line it. Mouth stays empty."""
     if (
         not isinstance(hull_obj, bpy.types.Object)
@@ -368,6 +475,12 @@ def cut_open_bay(hull_obj, tag, surface, length, width, depth, outward, mats, co
     armor = mats["Material_Armor"]
     warning = mats.get("Material_Warning") or armor
     accent = mats.get("Material_Accent") or armor
+    if not liner:
+        if kit == "cockpit":
+            gear = surface - n * (depth * 0.62)
+            _oriented_box(f"Bay_Seat_{tag}", gear - long_axis * (length * 0.15), 0.16, 0.14, 0.08, long_axis, wide_axis, n, armor, collection)
+            _oriented_box(f"Bay_Console_{tag}", gear + long_axis * (length * 0.35), 0.12, 0.20, 0.06, long_axis, wide_axis, n, mech, collection)
+        return True
     floor = surface - n * (depth - 0.03)
     _oriented_box(f"Bay_Floor_{tag}", floor, length * 0.92, width * 0.92, 0.025, long_axis, wide_axis, n, mech, collection)
     _oriented_box(

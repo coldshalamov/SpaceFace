@@ -61,18 +61,18 @@ disjoint files. No coordinator, task-long reservation, or worktree is required.
   leaves that need a human or a headed machine you do not have may be recorded `unproven` and
   skipped; do not stall the campaign on them.
 
-**PQ-050 campaign checkpoint (2026-08-13, last traffic leaf closed):** workflow loop
-exhausted, quality not closed.
+**PQ-050 campaign checkpoint (2026-08-13, form rebuild in progress):** the ten
+kit-on-loaf cycles did not close quality. That close is reverted. Live files are
+still the old factory wholeships. Hitch is untouched and still wins. Stay off
+INFERENCE, the dock/hulk remaster, and the expansion-research brief.
 
-- **All 22 flyable remaster leaves have ten counted cycles.** None shipped. Clay still
-  reads as loft plus kit. Hitch still wins. Live factory files not replaced.
-- **Last four traffic ships closed this stretch:** ore barge, repair tender, salvage
-  cutter, survey pin. Same honest result as the rest of the fleet.
-- **Do not promote any of them.** A factory loft with boxes is not Hitch-plus after
-  ten cycles. Stay off INFERENCE, the dock/hulk remaster, and the expansion-research
-  brief. Do not touch Hitch.
-- **Next if the owner wants better ships:** a real form rebuild (station loft, boolean
-  wells, manufactured drives), not another kit-on-a-sausage cycle.
+- **Hornet form rebuild is cycles 11–14.** Station families, flared bell, crate
+  canopy removed. Independent review is still REJECT. Not wired.
+- **Next:** keep the same form method on Hornet if a later cycle beats Hitch;
+  otherwise take Drifter and the remaining player ships through the same
+  station / well / flared-bell pass. Do not promote a ship that still loses
+  to Hitch.
+- **Do not** mark the campaign exhausted while clay still reads as primitives.
 
 **Graphics / place-asset remaster (resume):** if the task is continuing the interrupted remaster of
 `place_dock_interior`, `place_dead_hulk`, and/or `place_debris_chunk` (Blender/EEVEE form work, not a
