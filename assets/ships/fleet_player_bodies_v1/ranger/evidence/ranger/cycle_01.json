@@ -1,0 +1,68 @@
+{
+  "schema": "spaceface.rangerMtx.cycle.v1",
+  "shipId": "ranger",
+  "cycle": 1,
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 37785,
+      "hullTriangles": 2033,
+      "draws": 9,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/ranger_production_v1_lod0.glb",
+      "bytes": 9225808,
+      "sha256": "426F4F7B678D7F7E754208A8EA58C0AF10A3B99FE89F9255AEBD46A1A1944621"
+    },
+    {
+      "lod": 1,
+      "triangles": 19785,
+      "hullTriangles": 2033,
+      "draws": 9,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/ranger_production_v1_lod1.glb",
+      "bytes": 6696928,
+      "sha256": "964E68C0091B0B92CCD71F657FFBDCB9B95602BC6E31430F07225827E1F5CF15"
+    },
+    {
+      "lod": 2,
+      "triangles": 11296,
+      "hullTriangles": 1212,
+      "draws": 9,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/ranger_production_v1_lod2.glb",
+      "bytes": 5360388,
+      "sha256": "984B4B7F91344F49C91811D38F47BA80CC6DABC6EE298DCAB0035E2B30836674"
+    }
+  ],
+  "stills": "evidence/ranger/cycles/cycle_01"
+}
