@@ -2,25 +2,20 @@
   "schema": "spaceface.advancedModelTechniqueLedger.v1",
   "assetId": "SF_ATLAS_PRODUCTION_V1",
   "shipId": "atlas",
-  "candidateHash": "B411D47B2EE2F8A7670D949BBC22FEA3BFDF71425D7F098D43847F103624A409",
+  "candidateHash": "E265978FB64C00F4B43E3DE60803CE5122029F0553B8916D39671245305602C6",
   "exportGlb": "assets/ships/fleet_player_bodies_v1/atlas/source/wholeships/atlas_production_v1_lod0.glb",
   "class": "player_flyable",
   "clayStillReadsAsPrimitives": true,
   "independentReview": "revise",
   "promoted": false,
-  "reasonNotClosed": "Five counted cycles. Bulk hauler with three tanks, high house, four-drive transom. Clay still loft plus kit. Not Hitch-plus. Live files not replaced.",
+  "reasonNotClosed": "Ten counted cycles. Bulk hauler with three tanks, high house, four-drive transom. Clay still loft plus kit. Not Hitch-plus. Live files not replaced.",
   "rows": [
-    {"id": "MTX-01", "state": "blocked", "still": "evidence/atlas/cycles/cycle_05/grazing_close.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Hull still pillows or cards; no plate-flat plus thin bevel highlight."},
-    {"id": "MTX-02", "state": "blocked", "still": "evidence/atlas/cycles/cycle_05/clay_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Hard-chine loft exists but still reads as a plank with stuff on it."},
-    {"id": "MTX-03", "state": "blocked", "still": "evidence/atlas/cycles/cycle_05/bay_interior.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Cargo well is cut; rim and wall thickness do not yet read as a shell."},
-    {"id": "MTX-07", "state": "blocked", "still": "evidence/atlas/cycles/cycle_05/three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "House still a dark box with framed panes, not a greenhouse over a tub."},
-    {"id": "MTX-08", "state": "blocked", "still": "evidence/atlas/cycles/cycle_05/drive_rear.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Four hollow bells, still cone family. No unboltable casings."},
-    {"id": "MTX-13", "state": "implemented", "still": "evidence/atlas/cycles/cycle_05/grazing_close.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Scale applied before bevel."},
-    {"id": "MTX-16", "state": "implemented", "still": "evidence/atlas/cycles/cycle_05/material_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Unique UV after join."},
-    {"id": "MTX-23", "state": "implemented", "still": "evidence/atlas/cycles/cycle_05/orm_isolation.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "LOD0 AO bake."},
-    {"id": "MTX-32", "state": "implemented", "still": "evidence/atlas/cycles/cycle_05/three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Unique Atlas maps, not a MixRGB tint of the shared sheet."},
-    {"id": "MTX-46", "state": "blocked", "still": "evidence/atlas/cycles/cycle_05/clay_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Clay still primitives."},
+    {"id": "MTX-13", "state": "implemented", "still": "evidence/atlas/cycles/cycle_10/grazing_close.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Scale applied before bevel."},
+    {"id": "MTX-16", "state": "implemented", "still": "evidence/atlas/cycles/cycle_10/material_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Unique UV after join."},
+    {"id": "MTX-23", "state": "implemented", "still": "evidence/atlas/cycles/cycle_10/orm_isolation.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "LOD0 AO bake."},
+    {"id": "MTX-32", "state": "implemented", "still": "evidence/atlas/cycles/cycle_10/three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Unique Atlas maps."},
+    {"id": "MTX-46", "state": "blocked", "still": "evidence/atlas/cycles/cycle_10/clay_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Clay still primitives."},
     {"id": "MTX-50", "state": "implemented", "still": "source/wholeships/atlas_production_v1_lod0.glb", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Sockets and packed maps."},
-    {"id": "MTX-65", "state": "implemented", "still": "evidence/atlas/cycles/cycle_05/starboard.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Hauler massing: three tanks, high house, four-drive transom. Not a corvette or needle."}
+    {"id": "MTX-65", "state": "implemented", "still": "evidence/atlas/cycles/cycle_10/starboard.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Hauler massing: three tanks, high house, four-drive transom."}
   ]
 }
