@@ -1,0 +1,68 @@
+{
+  "schema": "spaceface.ironbackMtx.cycle.v1",
+  "shipId": "ironback",
+  "cycle": 3,
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 41252,
+      "hullTriangles": 2732,
+      "draws": 9,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/ironback_production_v1_lod0.glb",
+      "bytes": 9638520,
+      "sha256": "408C07D66310DCC71AD19FD451C399CEB8B900581AF7E8905F1C361ADB1D53D0"
+    },
+    {
+      "lod": 1,
+      "triangles": 23252,
+      "hullTriangles": 2732,
+      "draws": 9,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/ironback_production_v1_lod1.glb",
+      "bytes": 7121792,
+      "sha256": "4E984EA5D2F673F24A58F32138DB6D2E2AAB7DD8B825F7A1AFEF68725AE5EA19"
+    },
+    {
+      "lod": 2,
+      "triangles": 14212,
+      "hullTriangles": 1360,
+      "draws": 9,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/ironback_production_v1_lod2.glb",
+      "bytes": 5709592,
+      "sha256": "D9F51DC47BB41B777D012D2C9F16213E460BA47446110E9279E8A4D59B33F5F1"
+    }
+  ],
+  "stills": "evidence/ironback/cycles/cycle_03"
+}
