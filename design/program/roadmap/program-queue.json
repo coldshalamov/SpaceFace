@@ -6075,6 +6075,38 @@
       "brief": "A real Pallas/Sker-Run curtain_convoy loss produces physical freight pods and exact aftermath identity; Vonn observes the already-owned loss, preserves one bounded conserved case across Continue, and offers only a revalidated wreck-map handoff whose native completion closes dialogue."
     },
     {
+      "id": "PQ-048.18",
+      "parentId": "PQ-048",
+      "priority": 297,
+      "title": "Complete Orrin witness case",
+      "kind": "implementation",
+      "state": "done",
+      "dependsOn": [],
+      "mutexes": [],
+      "paths": [
+        "src/data/orrinWitnessCase.js",
+        "src/systems/e1EncounterRuntime.js",
+        "src/systems/story.js",
+        "src/systems/world.js",
+        "src/ui/galaxyMap.js",
+        "src/ui/screens/bar.js",
+        "src/ui/station/screens/bar.js",
+        "test/depth-program-e1-runtime.test.mjs",
+        "test/pq048-orrin-witness-case.test.mjs"
+      ],
+      "checks": [
+        "node --test test/pq048-orrin-witness-case.test.mjs",
+        "node --test test/depth-program-e1-runtime.test.mjs",
+        "node --test test/station-contact-memory-controller.test.mjs test/pq048-vonn-freight-loss-investigation.test.mjs",
+        "node scripts/sim-golden-diff.mjs --ref HEAD",
+        "node scripts/sim-golden-diff.mjs --flight-system v3 --ref HEAD"
+      ],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-048-18-orrin-witness-case-REPORT.md"
+      ],
+      "brief": "Only the existing published H5 completion in Io Reach can mint Orrin's stable source identity and one world-owned physical original; exact investigation, a dedicated Coalition evidence event, save/replay, terminal destruction, and a map-only Customs referral stay fail-closed without station-contact memory, course, cargo, economy, or law writes."
+    },
+    {
       "id": "PQ-048.19",
       "parentId": "PQ-048",
       "priority": 298,
