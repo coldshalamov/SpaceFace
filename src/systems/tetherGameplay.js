@@ -1158,7 +1158,7 @@ export const tetherGameplay = {
     if (!(maxStep > 0)) return { changed: false, reason: 'reel_unavailable', attachment };
     const requested = clamp(reelDelta, -maxStep, maxStep);
     const minLength = positive(def.minLength, 0);
-    const maxLength = positive(def.maxLength, Infinity);
+    const maxLength = positive(policy && policy.maxLength, positive(def.maxLength, Infinity));
     const before = attachment.restLength || 0;
 
     // An explicitly breakable extreme-load operation protects its line by denying further reel-in

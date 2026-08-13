@@ -9,6 +9,7 @@ import { massline2Flag } from '../data/featureFlags.js';
 // contract; only 47-A's explicitly marked false-mass spindle uses this legacy break envelope.
 const LEGACY_47A_MASSLINE_BREAK = Object.freeze({ maxTension: 175, maxImpulse: 112.5, graceTicks: 1 });
 const STANDARD_TETHER_STRENGTH_REVISION = 2;
+const STANDARD_TETHER_PAYOUT_REVISION = 1;
 const PREVIOUS_STANDARD_TETHER_BREAK = Object.freeze({
   maxTension: 1_050_000,
   maxImpulse: 19_000,
@@ -54,14 +55,31 @@ const SPECIALIZED_TETHER_HEADS = Object.freeze({
   twin_bridle: Object.freeze({ flag: 'masslineHeadTwinBridle', spring: Object.freeze({}) }),
 });
 
+function standardTetherSpoolMultiplier(owner) {
+  const raw = owner && owner.data && owner.data.derived && owner.data.derived.tetherSpoolMult;
+  return typeof raw === 'number' && Number.isFinite(raw) && raw > 0
+    ? Math.max(1, Math.min(6, raw))
+    : 1;
+}
+
+function baseTetherMaxLength(def) {
+  return Number.isFinite(def && def.maxLength) && def.maxLength > 0 ? def.maxLength : null;
+}
+
+function effectiveTetherMaxLength(def, owner) {
+  const base = baseTetherMaxLength(def);
+  if (!(base > 0) || !def || def.id !== 'tether_standard') return base;
+  const scaled = base * standardTetherSpoolMultiplier(owner);
+  return Number.isFinite(scaled) && scaled >= base ? scaled : base;
+}
+
 /** Resolve player spool strength from immutable attachment data. Ratings are max-folded by ships;
  *  this layer scales only the standard tether's break policy and never mutates the catalog. */
 export function effectiveTetherBreak(def, owner) {
   const base = def && def.break ? def.break : null;
   if (!base) return null;
   if (!def || def.id !== 'tether_standard') return { ...base };
-  const raw = Number(owner && owner.data && owner.data.derived && owner.data.derived.tetherSpoolMult);
-  const mult = Number.isFinite(raw) ? Math.max(1, Math.min(6, raw)) : 1;
+  const mult = standardTetherSpoolMultiplier(owner);
   return {
     ...base,
     maxTension: Number.isFinite(base.maxTension) ? base.maxTension * mult : base.maxTension,
@@ -70,20 +88,27 @@ export function effectiveTetherBreak(def, owner) {
   };
 }
 
-/** Resolve every player-facing tether capability from immutable catalog data. Strength and reel
- * rate are independent max-folded ratings; active attachments snapshot this policy at creation so
- * a refit cannot silently rewrite an already-deployed line. */
+/** Resolve every player-facing tether capability from immutable catalog data. Strength, payout,
+ * and reel rate are independent max-folded ratings; active attachments snapshot this policy at
+ * creation so a refit cannot silently rewrite an already-deployed line. */
 export function effectiveTetherPolicy(def, owner, features = null) {
   const baseReelRate = Number.isFinite(def && def.reelRate) ? def.reelRate : 0;
   if (!def || def.id !== 'tether_standard') {
-    return { break: effectiveTetherBreak(def, owner), reelRate: baseReelRate };
+    const maxLength = baseTetherMaxLength(def);
+    return {
+      break: effectiveTetherBreak(def, owner),
+      reelRate: baseReelRate,
+      ...(maxLength == null ? {} : { maxLength }),
+    };
   }
   const rawReel = Number(owner && owner.data && owner.data.derived && owner.data.derived.tetherReelRateMult);
   const reelMult = Number.isFinite(rawReel) ? Math.max(1, rawReel) : 1;
   const policy = {
     break: effectiveTetherBreak(def, owner),
     reelRate: baseReelRate * reelMult,
+    maxLength: effectiveTetherMaxLength(def, owner),
     strengthRevision: STANDARD_TETHER_STRENGTH_REVISION,
+    payoutRevision: STANDARD_TETHER_PAYOUT_REVISION,
   };
   const headId = owner && owner.data && owner.data.derived && owner.data.derived.masslineHeadId;
   const head = SPECIALIZED_TETHER_HEADS[headId];
@@ -103,25 +128,47 @@ export function effectiveTetherPolicy(def, owner, features = null) {
  * a save as misleading strain telemetry, without letting a mid-deployment refit change its rating. */
 export function rebasePersistedTetherPolicy(def, policy) {
   if (!def || def.id !== 'tether_standard' || !policy || typeof policy !== 'object') return policy;
-  if (Number(policy.strengthRevision) >= STANDARD_TETHER_STRENGTH_REVISION) return policy;
-  const savedBreak = policy.break && typeof policy.break === 'object' ? policy.break : {};
-  const ratios = [
-    Number(savedBreak.maxTension) / PREVIOUS_STANDARD_TETHER_BREAK.maxTension,
-    Number(savedBreak.maxImpulse) / PREVIOUS_STANDARD_TETHER_BREAK.maxImpulse,
-    Number(savedBreak.maxYank) / PREVIOUS_STANDARD_TETHER_BREAK.maxYank,
-  ].filter((value) => Number.isFinite(value) && value > 0);
-  const savedRating = Math.max(1, Math.min(6, ratios.length ? Math.max(...ratios) : 1));
-  return {
-    ...policy,
-    break: {
-      ...(def.break || {}),
-      ...savedBreak,
-      maxTension: Number(def.break && def.break.maxTension) * savedRating,
-      maxImpulse: Number(def.break && def.break.maxImpulse) * savedRating,
-      maxYank: Number(def.break && def.break.maxYank) * savedRating,
-    },
-    strengthRevision: STANDARD_TETHER_STRENGTH_REVISION,
-  };
+  let rebased = policy;
+  if (!(Number(policy.strengthRevision) >= STANDARD_TETHER_STRENGTH_REVISION)) {
+    const savedBreak = policy.break && typeof policy.break === 'object' ? policy.break : {};
+    const ratios = [
+      Number(savedBreak.maxTension) / PREVIOUS_STANDARD_TETHER_BREAK.maxTension,
+      Number(savedBreak.maxImpulse) / PREVIOUS_STANDARD_TETHER_BREAK.maxImpulse,
+      Number(savedBreak.maxYank) / PREVIOUS_STANDARD_TETHER_BREAK.maxYank,
+    ].filter((value) => Number.isFinite(value) && value > 0);
+    const savedRating = Math.max(1, Math.min(6, ratios.length ? Math.max(...ratios) : 1));
+    rebased = {
+      ...rebased,
+      break: {
+        ...(def.break || {}),
+        ...savedBreak,
+        maxTension: Number(def.break && def.break.maxTension) * savedRating,
+        maxImpulse: Number(def.break && def.break.maxImpulse) * savedRating,
+        maxYank: Number(def.break && def.break.maxYank) * savedRating,
+      },
+      strengthRevision: STANDARD_TETHER_STRENGTH_REVISION,
+    };
+  }
+
+  const baseMaxLength = baseTetherMaxLength(def);
+  if (baseMaxLength > 0) {
+    const savedMaxLength = rebased.maxLength;
+    const maximumSupportedLength = baseMaxLength * 6;
+    const validSavedLength = typeof savedMaxLength === 'number'
+      && Number.isFinite(savedMaxLength)
+      && savedMaxLength >= baseMaxLength
+      && savedMaxLength <= maximumSupportedLength;
+    const normalizedMaxLength = validSavedLength ? savedMaxLength : baseMaxLength;
+    if (savedMaxLength !== normalizedMaxLength
+        || rebased.payoutRevision !== STANDARD_TETHER_PAYOUT_REVISION) {
+      rebased = {
+        ...rebased,
+        maxLength: normalizedMaxLength,
+        payoutRevision: STANDARD_TETHER_PAYOUT_REVISION,
+      };
+    }
+  }
+  return rebased;
 }
 
 /** Automatic load breakage is fail-closed for every controller-backed Massline. Ordinary ships,
@@ -151,6 +198,9 @@ function masslineDefFor(def, tetherPolicy = null, automaticBreak = true) {
   const reelRate = Number.isFinite(tetherPolicy && tetherPolicy.reelRate)
     ? tetherPolicy.reelRate
     : (Number.isFinite(def && def.reelRate) ? def.reelRate : null);
+  const maxLength = Number.isFinite(tetherPolicy && tetherPolicy.maxLength)
+    ? tetherPolicy.maxLength
+    : (Number.isFinite(def && def.maxLength) ? def.maxLength : null);
   // Authored massline.overloadGraceS controls failure-capable extreme operations. Ordinary standard
   // lines pass automaticBreak=false and keep the controller's load/heat telemetry without cutting.
   const authoredGrace = def && def.massline && Number(def.massline.overloadGraceS);
@@ -159,7 +209,7 @@ function masslineDefFor(def, tetherPolicy = null, automaticBreak = true) {
   const catastrophicRatio = Number.isFinite(authoredCat) && authoredCat > 1 ? authoredCat : 1.75;
   return {
     minLength: Number.isFinite(def && def.minLength) ? def.minLength : undefined,
-    maxLength: Number.isFinite(def && def.maxLength) ? def.maxLength : undefined,
+    maxLength: maxLength == null ? undefined : maxLength,
     reelInSpeed: reelRate == null ? undefined : reelRate,
     reelOutSpeed: reelRate == null ? undefined : reelRate,
     maxTension: Number.isFinite(brk.maxTension) ? brk.maxTension : 140,
@@ -869,9 +919,17 @@ export function createAttachmentService(context) {
     const sourceWorld = entityLocalPointToWorld(owner, sourceAnchorLocal);
     const targetWorld = entityLocalPointToWorld(target, targetAnchorLocal);
     const fallbackRestLength = Math.hypot(targetWorld.x - sourceWorld.x, targetWorld.z - sourceWorld.z);
-    const restLength = Number.isFinite(attachment.restLength) && attachment.restLength > 0
+    const requestedRestLength = Number.isFinite(attachment.restLength) && attachment.restLength > 0
       ? attachment.restLength
       : fallbackRestLength;
+    const tetherPolicy = policyForAttachment(def, owner, attachment);
+    const minLength = Number.isFinite(def && def.minLength) && def.minLength > 0 ? def.minLength : 0;
+    const policyMaxLength = tetherPolicy && typeof tetherPolicy.maxLength === 'number'
+      && Number.isFinite(tetherPolicy.maxLength) && tetherPolicy.maxLength > 0
+      ? tetherPolicy.maxLength
+      : baseTetherMaxLength(def);
+    const maxLength = policyMaxLength == null ? Infinity : Math.max(minLength, policyMaxLength);
+    const restLength = Math.min(maxLength, Math.max(minLength, requestedRestLength));
     try {
       const physicsHandle = physics.createAttachment({
         attachmentId: attachment.id,

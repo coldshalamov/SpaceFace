@@ -6,7 +6,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { createBus } from '../src/core/eventBus.js';
-import { createAttachmentService } from '../src/combat/attachments.js';
+import {
+  createAttachmentService,
+  effectiveTetherPolicy,
+  rebasePersistedTetherPolicy,
+} from '../src/combat/attachments.js';
 import { createCombatCatalog, ensureCombatState } from '../src/combat/runtime.js';
 import { serializeCombatState, restoreCombatState } from '../src/combat/persistence.js';
 import { rankMasslineTargets } from '../src/combat/masslineTargetScoring.js';
@@ -897,6 +901,137 @@ test('PQ-003 normalized pay-out reaches attachment authority, respects max lengt
   h.system.update(DT, h.state);
   assert.equal(attachment.restLength, TETHER_DEF.maxLength, 'pay-out cannot exceed authored max length');
   assert.equal(h.events.lineControlDenied.at(-1)?.reason, 'maximum_length');
+});
+
+test('Massline Spools snapshot their authored payout ceiling without changing latch range', () => {
+  const catalog = createCombatCatalog();
+  const standard = catalog.attachments.get('tether_standard');
+  const cases = [
+    { label: 'bare line', mult: undefined, maxLength: 390 },
+    { label: 'heavy-duty winch', mult: 1.5, maxLength: 585 },
+    { label: 'industrial spool', mult: 3, maxLength: 1170 },
+    { label: 'capital spool', mult: 6, maxLength: 2340 },
+  ];
+
+  for (const entry of cases) {
+    const derived = entry.mult == null ? {} : { tetherSpoolMult: entry.mult };
+    const p = player({ data: { derived } });
+    const rock = asteroid(710 + cases.indexOf(entry), { pos: { x: 120, z: 0 } });
+    const h = buildHarness([rock], { player: p, aimWorld: { x: 120, z: 0 } });
+    fireLatch(h);
+    const attachment = h.attachments.get(h.system._active.attachmentId);
+    assert.equal(h.attachments.reelPolicy(attachment.id).maxLength, entry.maxLength, entry.label);
+
+    p.data.derived.tetherSpoolMult = 6;
+    assert.equal(h.attachments.reelPolicy(attachment.id).maxLength, entry.maxLength,
+      `${entry.label} remains the deployed line's snapshot after refit`);
+  }
+
+  for (const malformed of ['3', true, Number.NaN, Number.POSITIVE_INFINITY, -1]) {
+    assert.equal(
+      effectiveTetherPolicy(standard, { data: { derived: { tetherSpoolMult: malformed } } }).maxLength,
+      TETHER_DEF.maxLength,
+      `malformed multiplier ${String(malformed)} fails closed`,
+    );
+  }
+
+  const tooFar = asteroid(719, { pos: { x: 420, z: 0 }, radius: 14 });
+  const longSpool = buildHarness([tooFar], {
+    player: player({ data: { derived: { tetherSpoolMult: 6 } } }),
+    aimWorld: { x: 420, z: 0 },
+  });
+  fireLatch(longSpool);
+  assert.equal(longSpool.events.latched.length, 0, 'a long spool does not extend acquisition range');
+  assert.equal(longSpool.events.denied.at(-1)?.reason, 'out-of-range');
+});
+
+test('Massline Spool payout and controller share the saved policy ceiling', () => {
+  const p = player({ data: { derived: { tetherSpoolMult: 3 } } });
+  const h = buildHarness([asteroid(720, { pos: { x: 120, z: 0 } })], {
+    player: p,
+    aimWorld: { x: 120, z: 0 },
+  });
+  fireLatch(h);
+  const attachment = h.attachments.get(h.system._active.attachmentId);
+  const policy = h.attachments.reelPolicy(attachment.id);
+  assert.equal(policy.maxLength, 1170);
+
+  h.state.input.actions = {
+    tetherFire: false, tetherCut: false, reelDelta: 0,
+    massline: { lineControl: true, lineLength: 1, payOut: 1, reelIn: 0, orbitDirection: 0, pump: false },
+  };
+  attachment.restLength = TETHER_DEF.maxLength;
+  h.system.update(DT, h.state);
+  assert.ok(attachment.restLength > TETHER_DEF.maxLength, 'the fitted spool pays beyond the base line');
+
+  attachment.restLength = policy.maxLength;
+  h.system.update(DT, h.state);
+  assert.equal(attachment.restLength, policy.maxLength, 'manual payout stops at the snapshotted ceiling');
+  assert.equal(h.events.lineControlDenied.at(-1)?.reason, 'maximum_length');
+
+  attachment.restLength = 500;
+  h.state.tick += 10;
+  h.helpers.combatPhysics.getAttachmentTelemetry = () => ({
+    restLength: 500,
+    distance: 500,
+    stretch: 0,
+    relativeSpeed: 0,
+    yank: 0,
+    tension: 0,
+    impulse: 0,
+  });
+  h.attachments.updateTelemetryAndBreak();
+  assert.equal(attachment.restLength, 500,
+    'the Massline controller does not normalize an extended payout back to the catalog base');
+});
+
+test('Massline Spool payout policy survives Continue and legacy or corrupt saves fail closed', () => {
+  const rock = asteroid(721, { pos: { x: 130, z: 0 }, flags: { persistent: true } });
+  const h = buildHarness([rock], {
+    player: player({ data: { derived: { tetherSpoolMult: 3 } } }),
+    aimWorld: { x: 130, z: 0 },
+  });
+  fireLatch(h);
+  const attachmentId = h.system._active.attachmentId;
+  const payload = serializeCombatState(h.state);
+  assert.equal(payload.attachments.byId[attachmentId].tetherPolicy.maxLength, 1170);
+  payload.attachments.byId[attachmentId].restLength = 2341;
+
+  h.state.combat = null;
+  ensureCombatState(h.state);
+  const summary = restoreCombatState(h.state, payload, (ref) => {
+    if (!ref) return null;
+    if (ref.kind === 'player') return h.state.playerId;
+    if (ref.kind === 'persistent' && Number(ref.saveId) === rock.id) return rock.id;
+    return null;
+  });
+  assert.equal(summary.restoredAttachments, 1);
+  const restoredService = createAttachmentService({
+    state: h.state,
+    catalog: h.catalog,
+    helpers: h.helpers,
+    bus: h.bus,
+  });
+  assert.equal(restoredService.reelPolicy(attachmentId).maxLength, 1170,
+    'an explicit bounded payout snapshot survives Continue');
+  assert.deepEqual(restoredService.reconcilePhysics(), { recreated: 1, pending: 0 });
+  assert.equal(restoredService.get(attachmentId).restLength, 1170,
+    'Continue clamps a corrupt saved rest length before recreating the physics joint');
+
+  const standard = h.catalog.attachments.get('tether_standard');
+  const current = payload.attachments.byId[attachmentId].tetherPolicy;
+  const legacy = { ...current };
+  delete legacy.maxLength;
+  delete legacy.payoutRevision;
+  assert.equal(rebasePersistedTetherPolicy(standard, legacy).maxLength, TETHER_DEF.maxLength,
+    'a legacy policy without a payout snapshot keeps the base line');
+  for (const corrupt of ['1170', Number.NaN, Number.POSITIVE_INFINITY, 389, 2341]) {
+    assert.equal(
+      rebasePersistedTetherPolicy(standard, { ...current, maxLength: corrupt }).maxLength,
+      TETHER_DEF.maxLength,
+      `corrupt saved ceiling ${String(corrupt)} fails closed`,
+    );
+  }
 });
 
 test('PQ-003 ordinary high-load reel-in remains available without a fictitious load-limit denial', () => {
