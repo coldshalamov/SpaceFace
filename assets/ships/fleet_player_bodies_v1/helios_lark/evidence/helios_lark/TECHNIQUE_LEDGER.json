@@ -2,22 +2,22 @@
   "schema": "spaceface.advancedModelTechniqueLedger.v1",
   "assetId": "SF_HELIOS_LARK_V1",
   "shipId": "helios_lark",
-  "candidateHash": "72954CC026E0F4F06B227C5A6E2F4B987BEF7443C353B2BEA2AB154BDEBCD900",
+  "candidateHash": "4DA184028898DA0BD4B9ED4410A950722D83AB4FFCA1C614984735BF4910A3E5",
   "exportGlb": "assets/ships/fleet_player_bodies_v1/helios_lark/source/wholeships/helios_lark_production_v1_lod0.glb",
   "class": "npc_civilian",
   "clayStillReadsAsPrimitives": true,
   "independentReview": "revise",
   "promoted": false,
-  "reasonNotClosed": "Five counted cycles. Courier identity holds: pale slim hull, greenhouse, winglets, one drive. Clay still loft plus kit. Not Hitch-plus. Live files not replaced.",
+  "reasonNotClosed": "Ten counted cycles. Courier with pale slim hull, greenhouse, winglets, one drive. Clay still loft plus kit. Not Hitch-plus. Live files not replaced.",
   "rows": [
-    {"id": "MTX-02", "state": "blocked", "still": "evidence/helios_lark/cycles/cycle_05/clay_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Hull is still a lofted needle."},
-    {"id": "MTX-07", "state": "blocked", "still": "evidence/helios_lark/cycles/cycle_05/three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Canopy still a framed box."},
-    {"id": "MTX-08", "state": "blocked", "still": "evidence/helios_lark/cycles/cycle_05/drive_rear.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Single bell still bottle family."},
-    {"id": "MTX-13", "state": "implemented", "still": "evidence/helios_lark/cycles/cycle_05/grazing_close.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Scale applied before bevel."},
-    {"id": "MTX-16", "state": "implemented", "still": "evidence/helios_lark/cycles/cycle_05/material_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Unique UV after join."},
-    {"id": "MTX-32", "state": "implemented", "still": "evidence/helios_lark/cycles/cycle_05/three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Unique pale courier maps."},
-    {"id": "MTX-46", "state": "blocked", "still": "evidence/helios_lark/cycles/cycle_05/clay_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Clay still primitives."},
+    {"id": "MTX-02", "state": "blocked", "still": "evidence/helios_lark/cycles/cycle_10/clay_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Hull is still a lofted needle."},
+    {"id": "MTX-07", "state": "blocked", "still": "evidence/helios_lark/cycles/cycle_10/three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Canopy still a framed box."},
+    {"id": "MTX-08", "state": "blocked", "still": "evidence/helios_lark/cycles/cycle_10/drive_rear.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Single bell still bottle family."},
+    {"id": "MTX-13", "state": "implemented", "still": "evidence/helios_lark/cycles/cycle_10/grazing_close.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Scale applied before bevel."},
+    {"id": "MTX-16", "state": "implemented", "still": "evidence/helios_lark/cycles/cycle_10/material_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Unique UV after join."},
+    {"id": "MTX-32", "state": "implemented", "still": "evidence/helios_lark/cycles/cycle_10/three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Unique pale courier maps."},
+    {"id": "MTX-46", "state": "blocked", "still": "evidence/helios_lark/cycles/cycle_10/clay_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Clay still primitives."},
     {"id": "MTX-50", "state": "implemented", "still": "source/wholeships/helios_lark_production_v1_lod0.glb", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Sockets and packed maps."},
-    {"id": "MTX-65", "state": "implemented", "still": "evidence/helios_lark/cycles/cycle_05/three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Courier massing: pale, slim, one drive, winglets. Not Reach, not Hitch."}
+    {"id": "MTX-65", "state": "implemented", "still": "evidence/helios_lark/cycles/cycle_10/three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Courier massing: pale, slim, one drive, winglets. Not Reach, not Hitch."}
   ]
 }

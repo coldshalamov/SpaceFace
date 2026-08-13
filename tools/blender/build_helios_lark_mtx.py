@@ -744,6 +744,22 @@ def build_lod(lod, mats):
 
     if lod == 0:
         add_curve_hose("Hose_Main", [(0.4, 0.35, 0.08), (-2.6, 0.22, 0.10), (-5.4, 0.12, 0.08)], mech, collection, 0.010)
+    if CYCLE >= 6 and lod <= 1:
+        boolean_cut(hull_obj, "TransomRecess", (-5.85, 0.0, 0.08), (0.12, 0.26, 0.16))
+    if CYCLE >= 7:
+        add_box("CanopyMullion", (1.55, 0.0, 0.68), (0.016, 0.20, 0.06), armor, collection, 0.002)
+        if lod <= 1:
+            for i in range(4):
+                add_box(f"SpineRad_{i}", (-1.55 + i * 0.16, 0.0, 0.42), (0.010, 0.12, 0.10), mech, collection, 0.001)
+    if CYCLE >= 8:
+        add_box("DriveBankBand", (-5.15, 0.0, 0.08), (0.045, 0.28, 0.12), armor, collection, 0.003)
+    if CYCLE >= 9:
+        add_box("ChineCapP", (0.95, -0.72, 0.06), (0.85, 0.024, 0.028), armor, collection, 0.003)
+        add_box("ChineCapS", (0.95, 0.72, 0.06), (0.85, 0.024, 0.028), armor, collection, 0.003)
+    if CYCLE >= 10:
+        add_box("PatchTile2", (0.75, 0.22, 0.58), (0.14, 0.07, 0.006), armor, collection, 0.002)
+        add_box("CanopyStayP", (1.25, -0.10, 0.52), (0.12, 0.010, 0.010), mech, collection, 0.002)
+        add_box("CanopyStayS", (1.25, 0.10, 0.52), (0.12, 0.010, 0.010), mech, collection, 0.002)
 
     mesh_objects = [obj for obj in collection.objects if obj.type == "MESH"]
     for obj in mesh_objects:

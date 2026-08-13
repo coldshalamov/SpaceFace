@@ -1,0 +1,68 @@
+{
+  "schema": "spaceface.heliosLarkMtx.cycle.v1",
+  "shipId": "helios_lark",
+  "cycle": 9,
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 25848,
+      "hullTriangles": 2742,
+      "draws": 9,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/helios_lark_production_v1_lod0.glb",
+      "bytes": 7572300,
+      "sha256": "95B3742AAC8E360E77729CA3A5126CEEE3AD3E161D02DAB902CF5E7FB4089A78"
+    },
+    {
+      "lod": 1,
+      "triangles": 17544,
+      "hullTriangles": 2742,
+      "draws": 9,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/helios_lark_production_v1_lod1.glb",
+      "bytes": 6334436,
+      "sha256": "9CEFB7525C12D403AE74B47A4E4DEB7923C6AC878C3A0243ED8C5D6277158524"
+    },
+    {
+      "lod": 2,
+      "triangles": 14858,
+      "hullTriangles": 2756,
+      "draws": 9,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/helios_lark_production_v1_lod2.glb",
+      "bytes": 5951172,
+      "sha256": "FEF652889D792ED0BB3D449D4198528FD1FD38F1651C1DE993D814E1463581FB"
+    }
+  ],
+  "stills": "evidence/helios_lark/cycles/cycle_09"
+}
