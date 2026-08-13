@@ -275,6 +275,31 @@ function resolveFittings(shipDef, fittings) {
   return { slots, equipped: out };
 }
 
+/** Count capacity-bearing Drone Bays in compatible slots on one exact hull loadout. */
+export function droneBayCountForFittings(defId, fittings = []) {
+  const shipDef = SHIP_BY_ID.get(defId);
+  if (!shipDef) return 0;
+  const { slots, equipped } = resolveFittings(shipDef, fittings);
+  let count = 0;
+  for (let index = 0; index < equipped.length; index += 1) {
+    const def = equipped[index];
+    if (!def || !fits(slots[index], def)) continue;
+    const value = def.mods && def.mods.droneBay;
+    if (typeof value !== 'number' || !Number.isSafeInteger(value) || value <= 0) continue;
+    const next = count + value;
+    if (Number.isSafeInteger(next)) count = next;
+  }
+  return count;
+}
+
+/** Number of slots on a hull that can physically accept the canonical Drone Bay L. */
+export function droneBayCompatibleSlotCount(defId) {
+  const shipDef = SHIP_BY_ID.get(defId);
+  const bayDef = MODULE_BY_ID.get('mod_drone_bay_l');
+  if (!shipDef || !bayDef) return 0;
+  return buildSlotList(shipDef).filter((slot) => fits(slot, bayDef)).length;
+}
+
 /** Add a positive finite fitted percentage without contaminating derived state. */
 function addFinitePositivePct(current, value) {
   if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return current;
@@ -410,6 +435,7 @@ export function getDerivedStats(defId, fittings = [], player = null) {
   const cargoCapMult = eff.cargoCapMult || 1;
 
   const { equipped, slots } = resolveFittings(shipDef, fittings);
+  const droneBayCount = droneBayCountForFittings(defId, fittings);
 
   // (1) additive flats + mass + cargo pct + utility aggregates
   let shieldFlat = 0, shieldRegenFlat = 0, hullFlat = 0, cargoFlat = 0, cargoCapPct = 0;
@@ -607,6 +633,7 @@ export function getDerivedStats(defId, fittings = [], player = null) {
     radarRange,
     jumpDriveTier: `jump_t${jumpDriveTier}`,
     hullRepairOOC,
+    droneBayCount,
     cargoCap,
     boost: {
       max: bdef.max || 0,

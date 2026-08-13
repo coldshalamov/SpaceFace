@@ -24,6 +24,7 @@
 // Pure-data deps only (no 'three'). Reads economy via the registry (priceOf/quote/getMarket),
 // danger from the SECTORS catalog (dangerIndex), the player tier from player.droneTierCap.
 import { DRONES, TRADERS, OUTPOSTS, AUTO_BALANCE } from '../data/automation.js';
+import { TECH_NODES } from '../data/tech.js';
 import { SECTORS, dangerIndex } from '../data/sectors.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
@@ -40,6 +41,7 @@ import {
   normalizePersistedWingOrder,
 } from '../data/wingOrders.js';
 import { isHostileForAI } from '../ai/engagementAuthority.js';
+import { droneBayCompatibleSlotCount, droneBayCountForFittings } from './ships.js';
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 const compareStableId = (left, right) => {
@@ -52,6 +54,7 @@ const compareStableId = (left, right) => {
 const DRONE_BY_ID = new Map(DRONES.map((d) => [d.id, d]));
 const TRADER_BY_ID = new Map(TRADERS.map((t) => [t.id, t]));
 const OUTPOST_BY_ID = new Map(OUTPOSTS.map((o) => [o.id, o]));
+const TECH_BY_ID = new Map(TECH_NODES.map((node) => [node.id, node]));
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 const ASTEROID_BY_ID = new Map(ASTEROIDS.map((a) => [a.id, a]));
 const COMMON_ORES = ['cmdty_ore_iron', 'cmdty_ore_copper', 'cmdty_ore_titanium', 'cmdty_ore_platinoid'];
@@ -74,6 +77,63 @@ const OUTPOST_VISUAL_BY_DEF = Object.freeze({
     claimSpecId: 'spec_relay',
   }),
 });
+
+/**
+ * Resolve the active hull's durable drone capacity.
+ *
+ * Existing drone groups are never removed when a refit or ship swap lowers capacity; callers use
+ * `available` only to authorize a new purchase. Research ids are deduplicated and resolved through
+ * the canonical tech catalog so malformed save entries cannot inflate the multiplier.
+ */
+export function droneBayCapacityForState(state = {}) {
+  const player = state && state.player;
+  const ownedShips = player && Array.isArray(player.ownedShips) ? player.ownedShips : [];
+  const activeShipIndex = player && player.activeShipIndex;
+  const activeShip = Number.isInteger(activeShipIndex)
+    && activeShipIndex >= 0
+    && activeShipIndex < ownedShips.length
+    ? ownedShips[activeShipIndex]
+    : null;
+  const bayCount = activeShip && typeof activeShip.defId === 'string'
+    ? droneBayCountForFittings(activeShip.defId, activeShip.fittings)
+    : 0;
+  const compatibleSlotCount = activeShip && typeof activeShip.defId === 'string'
+    ? droneBayCompatibleSlotCount(activeShip.defId)
+    : 0;
+
+  let extraPerBay = 0;
+  const researched = new Set(player && Array.isArray(player.researchedNodes)
+    ? player.researchedNodes.filter((id) => typeof id === 'string')
+    : []);
+  const droneControlResearched = researched.has('tech_drone_control');
+  if (droneControlResearched) {
+    for (const id of researched) {
+      const node = TECH_BY_ID.get(id);
+      const value = node && node.unlocks && node.unlocks.extraDronePerBay;
+      if (typeof value !== 'number' || !Number.isSafeInteger(value) || value <= 0) continue;
+      const next = extraPerBay + value;
+      if (Number.isSafeInteger(next)) extraPerBay = next;
+    }
+  }
+
+  const perBay = 1 + extraPerBay;
+  const rawCapacity = bayCount * perBay;
+  const capacity = Number.isSafeInteger(rawCapacity) && rawCapacity >= 0 ? rawCapacity : 0;
+  const groups = state && state.automation && Array.isArray(state.automation.drones)
+    ? state.automation.drones
+    : [];
+  const used = groups.length;
+  return Object.freeze({
+    bayCount,
+    compatibleSlotCount,
+    droneControlResearched,
+    extraPerBay,
+    perBay,
+    capacity,
+    used,
+    available: Math.max(0, capacity - used),
+  });
+}
 
 // stationId -> { sectorId, factionId, type, position } from the SECTORS graph (same resolve
 // pattern economy uses — dock/UI hands us station ids, sectors own the geometry).
@@ -1623,6 +1683,25 @@ export const automation = {
     const def = DRONE_BY_ID.get(defId);
     if (!def) return false;
     if (def.tier > this.playerTier()) { this.toast('Drone tier locked', 'error'); return false; }
+    const bay = droneBayCapacityForState(this.state);
+    if (bay.compatibleSlotCount <= 0) {
+      this.toast(bay.droneControlResearched
+        ? 'Switch to a hull with an L utility slot for Drone Bay L'
+        : 'Research Drone Control, then switch to an L-utility hull', 'error');
+      return false;
+    }
+    if (!bay.droneControlResearched) {
+      this.toast('Research Drone Control before fitting Drone Bay L', 'error');
+      return false;
+    }
+    if (bay.capacity <= 0) {
+      this.toast('Fit a Drone Bay L on the active ship first', 'error');
+      return false;
+    }
+    if (bay.used >= bay.capacity) {
+      this.toast(`Drone Bay at capacity (${bay.used}/${bay.capacity})`, 'error');
+      return false;
+    }
     if (!this._charge(def.cost, 'buy:' + defId)) return false;
     const ppos = this._playerPos();
     const g = {

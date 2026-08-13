@@ -9,7 +9,10 @@
 import { DRONES, TRADERS, OUTPOSTS, AUTO_BALANCE } from '../../data/automation.js';
 import { COMMODITIES } from '../../data/commodities.js';
 import { TECH_NODES } from '../../data/tech.js';
+import { droneBayCapacityForState } from '../../systems/automation.js';
+import { shipworksStationAccess } from '../../systems/ships.js';
 import { escapeHtml } from '../comms.js';
+import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
 
 const DRONE_DISPLAY_ORE_ID = 'cmdty_ore_iron';
 const DRONE_DISPLAY_ORE_VALUE = (COMMODITIES.find((c) => c.id === DRONE_DISPLAY_ORE_ID) || {}).basePrice || 28;
@@ -54,6 +57,41 @@ export function describeAutomationPurchase(kind, def, state = {}) {
         disabled: true,
         label: 'Research ' + req,
         title: assetName + ' requires drone tier ' + def.tier + ', unlocked by ' + req + '.',
+      };
+    }
+    const bay = droneBayCapacityForState(state);
+    if (bay.compatibleSlotCount <= 0) {
+      return {
+        state: 'drone_hull',
+        disabled: true,
+        label: bay.droneControlResearched ? 'Need L-utility hull' : 'Research + L-utility hull',
+        title: bay.droneControlResearched
+          ? 'Acquire or switch to a hull with an L utility slot, then fit Drone Bay L before deploying ' + assetName + '.'
+          : 'Research Drone Control, then acquire or switch to a hull with an L utility slot and fit Drone Bay L before deploying ' + assetName + '.',
+      };
+    }
+    if (!bay.droneControlResearched) {
+      return {
+        state: 'drone_tech',
+        disabled: true,
+        label: 'Research Drone Control',
+        title: 'Research Drone Control before fitting Drone Bay L and deploying ' + assetName + '.',
+      };
+    }
+    if (bay.capacity <= 0) {
+      return {
+        state: 'drone_bay',
+        disabled: true,
+        label: 'Fit Drone Bay L',
+        title: 'Fit a Drone Bay L on the active ship before deploying ' + assetName + '.',
+      };
+    }
+    if (bay.used >= bay.capacity) {
+      return {
+        state: 'drone_capacity',
+        disabled: true,
+        label: `Bay full ${bay.used}/${bay.capacity}`,
+        title: `Active-ship Drone Bay capacity is full (${bay.used}/${bay.capacity}). Recall a drone or fit more capacity.`,
       };
     }
   } else if (kind === 'trader' && !researched.has('tech_autonomous_fleets')) {
@@ -503,6 +541,7 @@ export const automationScreen = {
     const player = st.player || {};
     const summary = summarizeAutomationOperations(st);
     const next = automationNextAction(st);
+    const droneBay = droneBayCapacityForState(st);
     const parts = [
       this._tab,
       this._playerTier(),
@@ -517,6 +556,11 @@ export const automationScreen = {
       next && next.title,
       next && next.action,
       next && next.targetRef,
+      droneBay.bayCount,
+      droneBay.compatibleSlotCount,
+      droneBay.droneControlResearched,
+      droneBay.capacity,
+      droneBay.used,
     ];
     if (this._tab === 'drones') {
       for (const d of a.drones || []) {
@@ -626,8 +670,9 @@ export const automationScreen = {
     const a = this._auto();
     const owned = a.drones || [];
     const tier = this._playerTier();
+    const droneBay = droneBayCapacityForState(this._ctx.state);
 
-    frag.appendChild(this._section(`Deployed Drones (${owned.length})`));
+    frag.appendChild(this._section(`Deployed Drones (${owned.length}/${droneBay.capacity})`));
     if (!owned.length) {
       frag.appendChild(emptyEl('No drones deployed. Buy a Mk1 near an asteroid field, then recall it before fuel runs dry to bank ore.'));
     } else {
@@ -669,7 +714,6 @@ export const automationScreen = {
     }
 
     frag.appendChild(this._section('Drone Bay — Purchase'));
-    const cap = this._balance().fleetCapByTier ? null : null; // drones gated by tier, not fleetCap
     for (const def of DRONES) {
       const locked = def.tier > tier;
       const purchase = describeAutomationPurchase('drone', def, this._ctx.state);
@@ -904,6 +948,23 @@ export const automationScreen = {
   // ---- intent dispatch ----------------------------------------------------
   // `extra` carries the selected value for <select>-driven actions (e.g. assignProgram templateId).
   _onAction(act, ref, kind, extra) {
+    if (act === 'openShipworksRoute') {
+      const ctx = this._ctx;
+      const access = shipworksStationAccess(ctx && ctx.state);
+      if (access.hull) {
+        this._close();
+        if (ctx && ctx.bus) ctx.bus.emit('station:navigate', { destination: 'shipworks' });
+      } else {
+        openGalaxyMap(ctx, {
+          focus: MAP_FOCUS.GALAXY,
+          sectorId: 'sector_helios_prime',
+          stationId: 'station_helios',
+          label: 'Helios Station · Shipworks',
+          source: 'automation:drone-bay-hull',
+        });
+      }
+      return;
+    }
     if (act === 'switchTab') {
       if (TABS.some((t) => t.id === ref)) {
         this._tab = ref;
@@ -1118,18 +1179,37 @@ export function automationNextAction(state) {
   }
   if (!(a.drones || []).length) {
     const purchase = describeAutomationPurchase('drone', droneMk1, state);
-    return nextAction('drones', 'Deploy a mining drone',
-      credits >= (droneMk1.cost || 0)
-        ? 'Start the passive layer with a Mk1 drone. It is cheap, visible in the field, and recallable if the route goes bad.'
-        : 'Earn enough credits for a Mk1 mining drone, then start automation with a reversible low-upkeep asset.',
-      `${fmtCr(droneMk1.cost || 0)} cr starter`,
-      purchase.state === 'available' ? 'Deploy Mk1' : 'Open Drone Bay',
-      purchase.state === 'available' ? {
+    const prerequisite = purchase.state === 'drone_hull'
+      || purchase.state === 'drone_tech'
+      || purchase.state === 'drone_bay';
+    const starterBody = prerequisite
+      ? purchase.title
+      : purchase.state === 'drone_capacity'
+        ? 'The active ship has no free drone slot. Recall a deployed drone or fit more Drone Bay capacity.'
+        : credits >= (droneMk1.cost || 0)
+          ? 'Start the passive layer with a Mk1 drone. It is cheap, visible in the field, and recallable if the route goes bad.'
+          : 'Earn enough credits for a Mk1 mining drone, then start automation with a reversible low-upkeep asset.';
+    const shipworksReady = purchase.state === 'drone_hull' && shipworksStationAccess(state).hull;
+    const cta = purchase.state === 'available'
+      ? 'Deploy Mk1'
+      : purchase.state === 'drone_hull'
+        ? (shipworksReady ? 'Open Shipworks' : 'Plot Helios Shipworks')
+        : 'Open Drone Bay';
+    const options = purchase.state === 'available'
+      ? {
         action: 'buyDrone',
         targetRef: droneMk1.id,
         kind: 'drone',
         actionTitle: purchase.title,
-      } : { actionTitle: purchase.title });
+      }
+      : purchase.state === 'drone_hull'
+        ? { action: 'openShipworksRoute', targetRef: 'shipworks', actionTitle: purchase.title }
+        : { actionTitle: purchase.title };
+    return nextAction('drones', 'Deploy a mining drone',
+      starterBody,
+      `${fmtCr(droneMk1.cost || 0)} cr starter`,
+      cta,
+      options);
   }
   if (summary.capUsedPct >= 90) {
     const capLoad = describeAutomationCapLoad(summary);

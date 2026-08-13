@@ -409,7 +409,7 @@
     "check:mission-log-contract-terms": "node scripts/check-mission-log-contract-terms.mjs",
     "check:mission-receipts": "node scripts/check-mission-receipt-ledger.mjs",
     "check:mission-conditions": "node scripts/check-mission-conditions.mjs",
-    "check:automation-board": "node scripts/check-automation-ops-board.mjs",
+    "check:automation-board": "node --test test/automation-drone-bay-capacity.test.mjs && node scripts/check-automation-ops-board.mjs",
     "check:automation-board:runtime": "node scripts/check-automation-board-runtime.mjs",
     "check:recommended-next": "node scripts/check-recommended-next-action.mjs",
     "check:tech-tree-guidance": "node scripts/check-tech-tree-guidance.mjs",

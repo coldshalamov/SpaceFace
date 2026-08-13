@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { DRONES, OUTPOSTS, TRADERS } from '../src/data/automation.js';
+import { SHIPS } from '../src/data/ships.js';
+import { buildSlotList } from '../src/systems/ships.js';
 import {
   automationNextAction,
   automationScreen,
@@ -9,6 +11,15 @@ import {
   describeWingmanDeployment,
   summarizeAutomationOperations,
 } from '../src/ui/screens/automationPanel.js';
+
+function activeDroneBayShip() {
+  const hull = SHIPS.find((entry) => entry.id === 'ship_ranger');
+  const slots = buildSlotList(hull);
+  const fittings = new Array(slots.length).fill(null);
+  const bayIndex = slots.findIndex((slot) => slot.type === 'utility' && slot.size === 'L');
+  fittings[bayIndex] = 'mod_drone_bay_l';
+  return { defId: hull.id, fittings };
+}
 
 assert.equal(automationScreen.id, 'automation', 'automation screen must keep the registered id');
 
@@ -24,13 +35,35 @@ assert.equal(Math.round(summary.capPerMin), 113, 'tier-1 passive cap should be v
 let next = automationNextAction(baseState);
 assert.equal(next.tab, 'drones', 'first automation recommendation should send players to drones');
 assert.match(next.title, /Deploy a mining drone/, 'first recommendation should name the concrete starter asset');
-assert.match(next.body, /Mk1 drone/, 'first recommendation should explain why the starter asset matters');
-assert.equal(next.action, 'buyDrone', 'funded starter drone recommendation should be directly actionable');
-assert.equal(next.targetRef, 'drone_mk1', 'starter drone recommendation should target the Mk1 catalog id');
-assert.equal(next.kind, 'drone', 'starter drone recommendation should carry the automation kind');
+assert.match(next.body, /L utility slot/, 'first recommendation should name the compatible-hull prerequisite');
+assert.match(next.body, /Research Drone Control/, 'unresearched starter route should retain its tech prerequisite');
+assert.equal(next.action, 'openShipworksRoute', 'a starter hull without a compatible slot should route to Shipworks');
+assert.equal(next.targetRef, 'shipworks');
+assert.equal(next.cta, 'Plot Helios Shipworks');
+
+const fundedBayState = {
+  player: {
+    credits: 5000,
+    droneTierCap: 1,
+    researchedNodes: ['tech_drone_control'],
+    activeShipIndex: 0,
+    ownedShips: [activeDroneBayShip()],
+  },
+  automation: { drones: [], traders: [], outposts: [], fleet: [], meta: { totalPassiveEarnedLifetime: 0 } },
+};
+next = automationNextAction(fundedBayState);
+assert.equal(next.action, 'buyDrone', 'funded fitted-bay recommendation should be directly actionable');
+assert.equal(next.targetRef, 'drone_mk1', 'fitted-bay recommendation should target the Mk1 catalog id');
+assert.equal(next.kind, 'drone', 'fitted-bay recommendation should carry the automation kind');
 
 next = automationNextAction({
-  player: { credits: 1000, droneTierCap: 1, researchedNodes: [], ownedShips: [{ defId: 'ship_kestrel' }] },
+  player: {
+    credits: 1000,
+    droneTierCap: 1,
+    researchedNodes: ['tech_drone_control'],
+    activeShipIndex: 0,
+    ownedShips: [activeDroneBayShip()],
+  },
   automation: { drones: [], traders: [], outposts: [], fleet: [], meta: {} },
 });
 assert.equal(next.action, 'switchTab', 'unfunded starter drone recommendation should review the bay instead of firing a buy intent');
@@ -43,7 +76,14 @@ assert.equal(guidance.label, 'Research Drone Swarm');
 assert.match(guidance.title, /drone tier 2/);
 
 guidance = describeAutomationPurchase('drone', DRONES.find((entry) => entry.id === 'drone_mk1'), {
-  player: { credits: 1000, droneTierCap: 1, researchedNodes: [] },
+  player: {
+    credits: 1000,
+    droneTierCap: 1,
+    researchedNodes: ['tech_drone_control'],
+    activeShipIndex: 0,
+    ownedShips: [activeDroneBayShip()],
+  },
+  automation: { drones: [] },
 });
 assert.equal(guidance.state, 'funding', 'affordable-tier drones should expose missing credits');
 assert.equal(guidance.label, 'Need 3,000 cr');
