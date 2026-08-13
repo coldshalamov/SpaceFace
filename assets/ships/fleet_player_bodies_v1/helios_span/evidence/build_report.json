@@ -3,12 +3,12 @@
   "assetId": "SF_HELIOS_SPAN_V1",
   "defId": "hauler",
   "shipId": "helios_span",
-  "iteration": 6,
+  "iteration": 9,
   "lods": [
     {
       "lod": 0,
-      "triangles": 39380,
-      "hullTriangles": 1648,
+      "triangles": 41408,
+      "hullTriangles": 1708,
       "draws": 9,
       "materials": [
         "Material_Accent",
@@ -35,13 +35,13 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/helios_span_production_v1_lod0.glb",
-      "bytes": 2063084,
-      "sha256": "C94A124CEC4DD313CAE3DDBFFD56D7C67F6876FB530CE2BC2290B29725F45042"
+      "bytes": 2198184,
+      "sha256": "B22B630022E606312CB7DC61E520462BAC6D17B2ECC15310DDE8FAF1B44EF6D1"
     },
     {
       "lod": 1,
-      "triangles": 10548,
-      "hullTriangles": 1648,
+      "triangles": 16712,
+      "hullTriangles": 1708,
       "draws": 9,
       "materials": [
         "Material_Accent",
@@ -68,12 +68,12 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/helios_span_production_v1_lod1.glb",
-      "bytes": 552060,
-      "sha256": "46E8D61EBA4AEE2041FECAAFEA16DE07AAF6AD2217F99AA91DDA41A034449474"
+      "bytes": 901692,
+      "sha256": "AC789D2692116042761623858B0476BB56F616AF9DB6661E282957EECC33CDCD"
     },
     {
       "lod": 2,
-      "triangles": 6336,
+      "triangles": 7364,
       "hullTriangles": 1540,
       "draws": 7,
       "materials": [
@@ -99,30 +99,9 @@
         "SOCKET_Weapon_Front"
       ],
       "path": "source/wholeships/helios_span_production_v1_lod2.glb",
-      "bytes": 311440,
-      "sha256": "A1C9F6A6EC465CE8843BE254029E09710E673A80AD77976EF834F67E5E8F71CC"
+      "bytes": 371392,
+      "sha256": "E8C0A44341D997A9F55CEE56B52E5BE4FFD4BE94EFAB786244FBE39DE4B4802D"
     }
   ],
-  "renders": [
-    {
-      "view": "helios_span_three_quarter",
-      "path": "evidence/iter06/helios_span_three_quarter.png",
-      "bytes": 909684
-    },
-    {
-      "view": "helios_span_starboard",
-      "path": "evidence/iter06/helios_span_starboard.png",
-      "bytes": 939766
-    },
-    {
-      "view": "helios_span_rear",
-      "path": "evidence/iter06/helios_span_rear.png",
-      "bytes": 1052537
-    },
-    {
-      "view": "helios_span_grazing",
-      "path": "evidence/iter06/helios_span_grazing.png",
-      "bytes": 1018880
-    }
-  ]
+  "renders": []
 }
