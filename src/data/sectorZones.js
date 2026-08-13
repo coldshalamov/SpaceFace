@@ -67,6 +67,19 @@ const P = {
   }),
 };
 
+// PQ-048.07 — one authored, finite Vesta work source. The source key is save identity, not a
+// generated entity id: the physical wreck can rematerialize after Continue without becoming a new
+// lot. Keep this data-only so salvage owns its ledger and traffic only consumes the public identity.
+export const VESTA_DERELICT_SALVAGE_SOURCE = Object.freeze({
+  sourceKey: 'salvage-point:sector_vesta_forge:zone_vesta_derelict:sal0',
+  salvagePointId: 'zone_vesta_derelict:sal0',
+  sectorId: 'sector_vesta_forge',
+  zoneId: 'zone_vesta_derelict',
+  pool: Object.freeze({ cmdty_scrap_metal: 8 }),
+  pos: Object.freeze({ x: 930, z: -1290 }),
+  homeStationId: 'station_forge',
+});
+
 // Zone entries: { id, name, type, factionId, reason, center:{x,z}, radius, threat?, presence? }.
 // Centers/radii align to src/data/sectorAnchors.js so a label sits on real content, not empty space.
 const CORE_SECTOR_ZONES = {
@@ -143,7 +156,8 @@ const CORE_SECTOR_ZONES = {
       center: { x: 680, z: 320 }, radius: 520 },
     { id: 'zone_vesta_derelict', name: 'Dead Freighter Drift', type: 'derelict_field', factionId: 'faction_reach',
       reason: 'A freighter died at the sector edge; its manifest was never recovered.',
-      center: { x: 860, z: -1240 }, radius: 420, presence: P.scavengers([1, 2]) },
+      center: { x: 860, z: -1240 }, radius: 420, presence: P.scavengers([1, 2]),
+      salvageCutterSource: VESTA_DERELICT_SALVAGE_SOURCE },
   ],
 
   // ── S4–S5 Pallas Drift — Hollow Station smuggler market, Reach raider staging ──

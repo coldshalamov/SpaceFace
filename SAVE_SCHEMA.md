@@ -9,6 +9,7 @@ Current save version: `12`
 - `meta`
 - `player`
 - `cargo`
+- `salvage`
 - `economy`
 - `economyContracts`
 - `factions`
@@ -285,6 +286,7 @@ Current save version: `12`
 | `$.player.targetId` | null | null |
 | `$.recoveryEncounters` | object | {} |
 | `$.regionalEcology` | object | {} |
+| `$.salvage` | object | {} |
 | `$.scenario` | object | {} |
 | `$.scenario.active` | null | null |
 | `$.scenario.actorBindings` | object | {} |

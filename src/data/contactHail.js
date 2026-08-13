@@ -399,9 +399,15 @@ export function createContactHailOffer(state, availability, requestId, expiresAt
         ],
       };
     }
-    const actions = [{ id: 'status', label: 'STATUS' }, { id: 'identify', label: 'IDENTIFY' }];
+    const salvorSource = salvorSourceTruth(state, availability.entity);
+    const actions = [{ id: 'status', label: 'STATUS' }];
+    // A source-backed cutter uses the existing, read-only manifest response rather than a new
+    // action type. The compact scanner presenter still receives at most three choices.
+    actions.push(salvorSource ? { id: 'manifest', label: 'MANIFEST' } : { id: 'identify', label: 'IDENTIFY' });
     if (availability.richSeamHelpAvailable) actions.push({ id: CONTACT_HAIL_ACTION_HELP, label: 'HELP' });
-    if (availability.heaveToAvailable) actions.push({ id: CONTACT_HAIL_ACTION_HEAVE_TO, label: 'HEAVE TO' });
+    if (availability.heaveToAvailable && actions.length < 3) {
+      actions.push({ id: CONTACT_HAIL_ACTION_HEAVE_TO, label: 'HEAVE TO' });
+    }
     return {
       requestId, targetId: availability.targetId, kind: 'worker', expiresAt,
       lines: [`${name} · WORKING TRAFFIC`, 'CHANNEL OPEN.'],
@@ -591,6 +597,10 @@ function tenderServiceHailStatus(truth) {
 export function livingWorkStatusText(entity, opts = {}) {
   if (!entity) return null;
   const data = entity.data || {};
+  const salvorSource = salvorSourceTruth(opts.state || null, entity);
+  if (salvorSource && salvorSource.state === 'aboard') return 'WORK · SALVAGE ABOARD · FORGE';
+  if (salvorSource && salvorSource.state === 'disputed') return 'WORK · SALVAGE DISPUTED';
+  if (salvorSource && salvorSource.state === 'cutting') return 'WORK · CUTTING';
   const serviceStatus = tenderServiceWorkStatus(
     ceresTenderServiceTruth(opts.state || null, entity),
     opts.depth || 'full',
@@ -650,6 +660,10 @@ const CAUSAL_MEANS = Object.freeze({
 
 function workerStatusText(target, state = null) {
   const data = target && target.data || {};
+  const salvorSource = salvorSourceTruth(state, target);
+  if (salvorSource && salvorSource.state === 'aboard') return 'STATUS · SALVAGE ABOARD · FORGE INBOUND';
+  if (salvorSource && salvorSource.state === 'disputed') return 'STATUS · SALVAGE DISPUTED · WRECK STRIPPED';
+  if (salvorSource && salvorSource.state === 'cutting') return 'STATUS · CUTTING · DEAD FREIGHTER DRIFT';
   const serviceStatus = tenderServiceHailStatus(ceresTenderServiceTruth(state, target));
   if (serviceStatus) return serviceStatus;
   const disabledHauler = ceresDisabledHaulerTruth(state, target);
@@ -690,6 +704,37 @@ function workerStatusText(target, state = null) {
   if (phaseLabel) return `STATUS · ${phaseLabel}`;
   const role = String(data.trafficRole || data.role || 'WORKER').replace(/_/g, ' ').toUpperCase();
   return `STATUS · ${role} ON TASK`;
+}
+
+// This intentionally reads only traffic stamps plus the salvage-owned ledger.  A generic salvor
+// never receives the Vesta callout merely because it happens to have jobPhase='work'.
+function salvorSourceTruth(state, target) {
+  const data = target && target.data || {};
+  const role = String(data.trafficRole || data.role || '').toLowerCase();
+  if (role !== 'salvor') return null;
+  const manifest = data.cargoManifest && typeof data.cargoManifest === 'object' ? data.cargoManifest : null;
+  const manifestSource = manifest && typeof manifest.salvageSource === 'string' ? manifest.salvageSource : null;
+  const sourceKey = manifestSource || (typeof data.salvageSource === 'string' ? data.salvageSource : null);
+  if (!sourceKey) return null;
+  const totalQty = manifest && Number.isSafeInteger(manifest.totalQty) ? manifest.totalQty : 0;
+  if (manifestSource && totalQty > 0) return { state: 'aboard', sourceKey };
+  const sources = state && state.salvage && state.salvage.sources;
+  const record = sources && typeof sources === 'object' && !Array.isArray(sources) ? sources[sourceKey] : null;
+  const worldRecordId = typeof data.worldRecordId === 'string' ? data.worldRecordId : null;
+  if (record && record.disputedBy && (!worldRecordId || String(record.disputedBy) !== worldRecordId)) {
+    return { state: 'disputed', sourceKey };
+  }
+  const cuttingStamp = data.jobPhase === 'work' && typeof data.salvageSource === 'string';
+  if (!cuttingStamp) return null;
+  // targetPanel calls this without state; its live job/source stamps are still direct evidence of
+  // a cutter at work. Hail has state and additionally requires a live matching ledger claim.
+  if (!state) return { state: 'cutting', sourceKey };
+  const remaining = record && Object.values(record.remainingPool || {})
+    .reduce((sum, qty) => sum + Math.max(0, Math.floor(Number(qty) || 0)), 0);
+  if (record && record.extracted !== true && remaining > 0 && record.claimId === worldRecordId) {
+    return { state: 'cutting', sourceKey };
+  }
+  return null;
 }
 
 function workerIdentifyText(target) {
@@ -769,7 +814,7 @@ export function createContactHailResponse(state, offer, choice, authority = {}) 
       : 'ESCORT · NO RECOVERY WINDOW OPEN.';
   } else if (offer.kind === 'trader' && id === 'route') {
     line = routeText(state, target);
-  } else if (offer.kind === 'trader' && id === 'manifest') {
+  } else if ((offer.kind === 'trader' || offer.kind === 'worker') && id === 'manifest') {
     line = manifestText(state, target);
   } else if (id === CONTACT_HAIL_ACTION_HEAVE_TO) {
     const result = authority.heaveTo || {};

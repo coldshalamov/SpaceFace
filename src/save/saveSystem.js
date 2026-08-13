@@ -188,6 +188,9 @@ export const save = {
       ['meta', () => this._serializeMeta()],
       ['player', () => this._serializePlayer()],
       ['cargo', () => this._serializeCargo()],
+      // Salvage must restore before world enterSector rematerializes an authored wreck. Its own
+      // serializer owns the bounded source ledger; save only preserves the dependency order.
+      ['salvage', () => this._callSerialize('salvage') || {}],
       ['economy', () => this._callSerialize('economy') || {}],
       ['economyContracts', () => this._callSerialize('economyContracts') || {}],
       ['factions', () => this._callSerialize('factions') || {}],
@@ -231,6 +234,7 @@ export const save = {
     data.meta = this._serializeMeta();
     data.player = this._serializePlayer();
     data.cargo = this._serializeCargo();
+    data.salvage = this._callSerialize('salvage') || {};
     data.economy = this._callSerialize('economy') || {};
     data.economyContracts = this._callSerialize('economyContracts') || {};
     data.factions = this._callSerialize('factions') || {};
@@ -2109,6 +2113,7 @@ export const save = {
       // 4. restore non-spatial subtrees (deps first).
       this._restorePlayer(data.player);
       this._restoreCargo(data.cargo);
+      this._callDeserialize('salvage', data.salvage);
       this._callDeserialize('economy', data.economy);
       this._callDeserialize('economyContracts', data.economyContracts);
       this._callDeserialize('factions', data.factions);
@@ -2704,6 +2709,9 @@ function normalizeRestorableData(data) {
 
   data.player = normalizePlayerSaveRecord(data.player, savedPlayer);
   data.cargo = normalizeCargoSaveRecord(data.cargo);
+  data.salvage = data.salvage && typeof data.salvage === 'object' && !Array.isArray(data.salvage)
+    ? data.salvage
+    : {};
   data.world = normalizeWorldSaveRecord(data.world);
   data.entities.player = normalizePlayerEntitySave(savedPlayer, data.player);
   return { ok: true };

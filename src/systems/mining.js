@@ -251,7 +251,14 @@ export const mining = {
         break;
 
       case 'cut':
-        this._applyCut(player, target, resolved, dps, dt);
+        // The authored Vesta freighter still presents the familiar CUT interaction, but its
+        // value lives in salvage's finite source ledger. Never route that gesture through the
+        // generic cut-panel payload generator, which would create a second pool beside the wreck.
+        if (target.type === 'wreck' && target.data && target.data.salvageSourceKey) {
+          this._drainWreck(player, target, dps, dt);
+        } else {
+          this._applyCut(player, target, resolved, dps, dt);
+        }
         break;
 
       case 'repair':
@@ -999,7 +1006,23 @@ export const mining = {
 
   _drainWreck(player, wreck, dps, dt) {
     const d = wreck.data || (wreck.data = {});
-    const pool = d.salvagePool || (d.salvagePool = {});
+    const sourceKey = typeof d.salvageSourceKey === 'string' ? d.salvageSourceKey : null;
+    const salvageApi = sourceKey && this.helpers && this.helpers.salvage;
+    const source = salvageApi && typeof salvageApi.source === 'function' ? salvageApi.source(sourceKey) : null;
+    // An authored source is a mirrored physical wreck, never an independent loot pool. Refresh
+    // from salvage's ledger before calculating the beam release so a cutter/player race cannot
+    // create value from a stale entity copy.
+    if (sourceKey) {
+      if (!source || source.extracted || source.remainingQty <= 0) {
+        d.salvagePool = {};
+        d._salvaged = true;
+        wreck.alive = false;
+        this._stopBeam();
+        return;
+      }
+      d.salvagePool = { ...source.remainingPool };
+    }
+    let pool = d.salvagePool || (d.salvagePool = {});
     if (d.salvageTimeLeft == null) d.salvageTimeLeft = SALVAGE_TIME_DEFAULT;
     if (d._total == null) d._total = Object.values(pool).reduce((a, b) => a + b, 0);
     if (d._carry == null) d._carry = 0;
@@ -1014,19 +1037,41 @@ export const mining = {
     if (d.salvageTimeLeft <= 0) release = remaining; // flush the rest at the end
     if (release > remaining) release = remaining;
 
-    const got = {};
+    let got = {};
     let n = release;
-    for (const id in pool) {
-      if (n <= 0) break;
-      const take = Math.min(pool[id], n);
-      if (take > 0) { pool[id] -= take; got[id] = (got[id] || 0) + take; n -= take; d._carry -= take; }
+    if (sourceKey) {
+      const requested = {};
+      for (const id of Object.keys(pool).sort((a, b) => a.localeCompare(b))) {
+        if (n <= 0) break;
+        const take = Math.min(pool[id], n);
+        if (take > 0) { requested[id] = take; n -= take; }
+      }
+      const drained = salvageApi && typeof salvageApi.drainSource === 'function'
+        ? salvageApi.drainSource({ sourceKey, minerId: player && player.id, requested })
+        : null;
+      got = drained && drained.ok && drained.taken ? drained.taken : {};
+      const takenTotal = Object.values(got).reduce((sum, qty) => sum + (Number(qty) || 0), 0);
+      d._carry = Math.max(0, d._carry - takenTotal);
+      pool = drained && drained.source && drained.source.remainingPool
+        ? { ...drained.source.remainingPool }
+        : {};
+      d.salvagePool = pool;
+      remaining = drained && drained.source && Number.isFinite(drained.source.remainingQty)
+        ? drained.source.remainingQty
+        : 0;
+    } else {
+      for (const id in pool) {
+        if (n <= 0) break;
+        const take = Math.min(pool[id], n);
+        if (take > 0) { pool[id] -= take; got[id] = (got[id] || 0) + take; n -= take; d._carry -= take; }
+      }
+      remaining = Object.values(pool).reduce((a, b) => a + b, 0);
     }
     for (const id in got) {
       this.bus.emit('mining:yield', { commodityId: id, qty: got[id], pos: { x: wreck.pos.x, z: wreck.pos.z }, minerId: player ? player.id : null });
       this._spawnPickup(wreck, id, got[id]);
     }
 
-    remaining = Object.values(pool).reduce((a, b) => a + b, 0);
     if (d.salvageTimeLeft <= 0 || remaining <= 0) {
       this.bus.emit('salvage:completed', {
         wreckId: wreck.id,

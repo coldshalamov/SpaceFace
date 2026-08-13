@@ -964,6 +964,10 @@ export const traffic = {
       this._resetCeresCausalChain('save_loaded');
       this._adoptLegacyCeresActivityTargetRefs();
       const sectorId = this.state.world && this.state.world.currentSectorId;
+      // Persistent general cutters materialize after world.enterSector, so the sector-enter
+      // adoption pass cannot see them. Re-adopt here before the next traffic tick can refresh a
+      // stable salvage point to its new numeric wreck id.
+      this._adoptRematerializedTraffic(sectorId, this._sectorStations());
       this._applyWorldSiteTrafficHooks(sectorId);
       this._applyClaimTravelHooks(sectorId);
       if (sectorId === CERES_ACTIVITY_SECTOR_ID) this._ensureCeresCausalChain('save_loaded');
@@ -1029,6 +1033,7 @@ export const traffic = {
     const sectorId = (p && p.sectorId)
       || (this.state.world && this.state.world.currentSectorId);
     if (sectorId === CERES_ACTIVITY_SECTOR_ID) this._captureCeresActivityCast();
+    this._captureSourceBoundGeneralSalvors();
     this._cleanup();
   },
 
@@ -1561,6 +1566,30 @@ export const traffic = {
     for (const record of this.state.traffic && this.state.traffic.freighters || []) {
       const entity = record && liveEntity(this.state, record.id);
       if (!entity || !entity.data || entity.data.ceresActivityCast !== true) continue;
+      if (worldOwner.upsertWorldRecord(entity)) captured += 1;
+    }
+    return captured;
+  },
+
+  _captureSourceBoundGeneralSalvors() {
+    const worldOwner = this._registry && this._registry.get && this._registry.get('world');
+    if (!worldOwner || typeof worldOwner.upsertWorldRecord !== 'function') return 0;
+    const getJob = this.helpers && this.helpers.npcJobs && this.helpers.npcJobs.get;
+    let captured = 0;
+    for (const record of this.state.traffic && this.state.traffic.freighters || []) {
+      const entity = record && liveEntity(this.state, record.id);
+      if (!this._isGeneralSalvorEntity(entity)) continue;
+      const data = entity.data || {};
+      const worldRecordId = data.worldRecordId;
+      const jobId = data.jobId || (worldRecordId ? `job:${worldRecordId}` : null);
+      const entry = jobId && typeof getJob === 'function' ? getJob(jobId) : null;
+      const manifest = data.cargoManifest;
+      const sourceKey = typeof data.salvageSource === 'string' && data.salvageSource
+        || (manifest && typeof manifest.salvageSource === 'string' && manifest.salvageSource)
+        || (entry && entry.job && entry.job.payload
+          && typeof entry.job.payload.salvageSource === 'string' && entry.job.payload.salvageSource)
+        || null;
+      if (!sourceKey) continue;
       if (worldOwner.upsertWorldRecord(entity)) captured += 1;
     }
     return captured;
@@ -2540,6 +2569,10 @@ export const traffic = {
       if (stations.length > 0) {
         this._dispatchGeneralSalvors(state.world && state.world.currentSectorId);
       }
+      // A Continue can restore a durable cutter before a station residency record has
+      // rematerialized. It still needs to rebind its stable salvage point to the live wreck; only
+      // fresh dispatch depends on a station being present.
+      this._maintainGeneralSalvorJobs();
       return;
     }
 
@@ -2941,9 +2974,53 @@ export const traffic = {
     return total;
   },
 
+  _salvageSourceBinding(entity) {
+    const data = entity && entity.data;
+    const sourceKey = data && typeof data.salvageSourceKey === 'string' ? data.salvageSourceKey : null;
+    if (!sourceKey) return null;
+    const salvageApi = this.helpers && this.helpers.salvage;
+    const source = salvageApi && typeof salvageApi.source === 'function' ? salvageApi.source(sourceKey) : null;
+    return {
+      sourceKey,
+      salvagePointId: typeof data.salvagePointId === 'string' ? data.salvagePointId : (source && source.salvagePointId) || null,
+      source,
+    };
+  },
+
+  _salvageSourceBindingFromPayload(payload) {
+    const sourceKey = payload && typeof payload.salvageSource === 'string' ? payload.salvageSource : null;
+    if (!sourceKey) return null;
+    const salvageApi = this.helpers && this.helpers.salvage;
+    const source = salvageApi && typeof salvageApi.source === 'function' ? salvageApi.source(sourceKey) : null;
+    return {
+      sourceKey,
+      salvagePointId: typeof payload.salvagePointId === 'string'
+        ? payload.salvagePointId
+        : (source && source.salvagePointId) || null,
+      source,
+    };
+  },
+
+  _releaseSalvageSourceClaim(binding, worldRecordId) {
+    const salvageApi = this.helpers && this.helpers.salvage;
+    if (!binding || !binding.sourceKey || !worldRecordId
+      || !salvageApi || typeof salvageApi.releaseSourceClaim !== 'function') return false;
+    return !!salvageApi.releaseSourceClaim({ sourceKey: binding.sourceKey, claimantId: worldRecordId }).ok;
+  },
+
+  _salvorHomeForTarget(stations, sectorId, target) {
+    const binding = this._salvageSourceBinding(target);
+    if (binding && binding.source && binding.source.homeStationId) {
+      return (stations || []).find((station) => stationIdentity(station) === binding.source.homeStationId) || null;
+    }
+    return this._pocketStation(stations, sectorId) || (stations && stations[0]) || null;
+  },
+
   _isSalvageableBody(entity) {
     if (!entity || entity.alive === false || !entity.pos) return false;
     const data = entity.data || {};
+    const source = this._salvageSourceBinding(entity);
+    if (source) return !!(source.source && !source.source.extracted && source.source.remainingQty > 0);
     if (entity.type === 'wreck') {
       return this._salvagePoolTotal(data.salvagePool) > 0;
     }
@@ -2955,18 +3032,31 @@ export const traffic = {
   },
 
   _salvorClaimantOf(entity) {
+    const source = this._salvageSourceBinding(entity);
+    if (source) return source.source && source.source.claimId || null;
     const claim = entity && entity.data && entity.data.salvorClaimedBy;
     return typeof claim === 'string' && claim ? claim : null;
   },
 
   _clearSalvorClaim(entity, worldRecordId) {
     if (!entity || !entity.data) return;
+    const source = this._salvageSourceBinding(entity);
+    if (source) {
+      this._releaseSalvageSourceClaim(source, worldRecordId);
+      return;
+    }
     if (worldRecordId && entity.data.salvorClaimedBy !== worldRecordId) return;
     delete entity.data.salvorClaimedBy;
   },
 
   _stampSalvorClaim(entity, worldRecordId) {
     if (!entity || !entity.data || !worldRecordId) return false;
+    const source = this._salvageSourceBinding(entity);
+    if (source) {
+      const salvageApi = this.helpers && this.helpers.salvage;
+      return !!(salvageApi && typeof salvageApi.claimSource === 'function'
+        && salvageApi.claimSource({ sourceKey: source.sourceKey, claimantId: worldRecordId }).ok);
+    }
     const existing = this._salvorClaimantOf(entity);
     if (existing && existing !== worldRecordId) return false;
     entity.data.salvorClaimedBy = worldRecordId;
@@ -3033,6 +3123,7 @@ export const traffic = {
   _buildSalvorJobSpec(home, target, sectorId) {
     if (!home || !home.pos || !target || !target.pos) return null;
     const targetKind = target.type === 'payload' ? 'payload' : 'hulk';
+    const source = this._salvageSourceBinding(target);
     return {
       kind: 'salvor',
       sectorId,
@@ -3048,12 +3139,23 @@ export const traffic = {
       payload: {
         targetId: target.id,
         targetType: target.type,
+        ...(source ? {
+          salvageSource: source.sourceKey,
+          salvagePointId: source.salvagePointId,
+        } : {}),
         extracted: false,
       },
     };
   },
 
-  _resolveSalvorTargetFromWaypoint(waypointId) {
+  _resolveSalvorTargetFromWaypoint(waypointId, payload = null) {
+    const source = this._salvageSourceBindingFromPayload(payload);
+    if (source) {
+      const salvageApi = this.helpers && this.helpers.salvage;
+      return salvageApi && typeof salvageApi.entityForPoint === 'function'
+        ? salvageApi.entityForPoint(source.salvagePointId, source.sourceKey)
+        : null;
+    }
     if (typeof waypointId !== 'string' || !waypointId) return null;
     let raw = null;
     if (waypointId.startsWith('hulk:')) raw = waypointId.slice(5);
@@ -3067,7 +3169,7 @@ export const traffic = {
       : null;
   },
 
-  _buildSalvorManifest(entity, seq, pool) {
+  _buildSalvorManifest(entity, seq, pool, source = null) {
     const lines = [];
     let totalQty = 0;
     for (const commodityId of Object.keys(pool || {}).sort((a, b) => a.localeCompare(b))) {
@@ -3100,6 +3202,10 @@ export const traffic = {
     // can circle and retry without becoming a second market receipt.
     manifest.lotId = manifest.manifestId;
     manifest.salvageSeq = Math.max(0, seq | 0);
+    if (source && source.sourceKey) {
+      manifest.salvageSource = source.sourceKey;
+      manifest.salvagePointId = source.salvagePointId || null;
+    }
     return manifest;
   },
 
@@ -3129,24 +3235,37 @@ export const traffic = {
 
   _takeSalvageValueOntoSalvor(context, intent, target) {
     if (!context || !context.entity || !target) return false;
-    const pool = target.data && target.data.salvagePool
-      ? { ...target.data.salvagePool }
-      : {};
-    const total = this._salvagePoolTotal(pool);
     const seq = Number.isSafeInteger(intent && intent.seq) && intent.seq >= 0 ? intent.seq : 0;
     const workId = `npc-salvor-work:${context.worldRecordId}:${seq}`;
+    const source = this._salvageSourceBinding(target);
     this._ensureState();
     if (!Array.isArray(this.state.traffic.appliedSalvorWorkIds)) {
       this.state.traffic.appliedSalvorWorkIds = [];
     }
     if (this.state.traffic.appliedSalvorWorkIds.includes(workId)) return false;
 
+    let pool = target.data && target.data.salvagePool
+      ? { ...target.data.salvagePool }
+      : {};
+    if (source) {
+      const salvageApi = this.helpers && this.helpers.salvage;
+      if (!this._stampSalvorClaim(target, context.worldRecordId)
+        || !salvageApi || typeof salvageApi.takeSource !== 'function') return false;
+      const taken = salvageApi.takeSource({
+        sourceKey: source.sourceKey,
+        claimantId: context.worldRecordId,
+        workId,
+      });
+      pool = taken && taken.ok ? taken.pool : {};
+    }
+    const total = this._salvagePoolTotal(pool);
+
     if (total > 0) {
-      if (!this._stampSalvorClaim(target, context.worldRecordId)) return false;
-      const manifest = this._buildSalvorManifest(context.entity, seq, pool);
+      if (!source && !this._stampSalvorClaim(target, context.worldRecordId)) return false;
+      const manifest = this._buildSalvorManifest(context.entity, seq, pool, source);
       this._setTrafficManifest(context.entity, context.rec, manifest);
       // Drain the body so the player cannot double-take what the cutter already loaded.
-      if (target.data) {
+      if (!source && target.data) {
         target.data.salvagePool = {};
         if (target.type === 'wreck') {
           target.data.salvageTimeLeft = 0;
@@ -3166,6 +3285,10 @@ export const traffic = {
       entry.job.payload = {
         targetId: target.id,
         targetType: target.type,
+        ...(source ? {
+          salvageSource: source.sourceKey,
+          salvagePointId: source.salvagePointId,
+        } : {}),
         extracted: total > 0,
         totalQty: total,
       };
@@ -3185,6 +3308,7 @@ export const traffic = {
         salvorId: context.entity.id,
         targetId: target.id,
         targetType: target.type,
+        salvageSource: source && source.sourceKey || null,
         sectorId: (this.state.world && this.state.world.currentSectorId) || null,
         totalQty: total,
         seq,
@@ -3254,8 +3378,6 @@ export const traffic = {
     this._ensureState();
     const stations = this._sectorStations();
     if (!stations.length) return 0;
-    const home = this._pocketStation(stations, sectorId) || stations[0];
-    if (!home || !home.pos) return 0;
 
     let active = this._countGeneralSalvors();
     if (active >= MAX_GENERAL_SALVORS_PER_SECTOR) return 0;
@@ -3266,6 +3388,11 @@ export const traffic = {
       if (active >= MAX_GENERAL_SALVORS_PER_SECTOR) break;
       if (this._salvorClaimantOf(target)) continue;
       if (!this._salvorNoticeReady(target, this.state.simTime || 0)) continue;
+      // The authored Vesta cutter must return to Forge, not whichever pocket station happens to
+      // be first in the current entity ordering. Missing Forge means no Vesta dispatch, never a
+      // fallback trip to another sector's service route.
+      const home = this._salvorHomeForTarget(stations, sectorId, target);
+      if (!home || !home.pos) continue;
 
       // Prefer an existing idle salvor hull; otherwise spawn one near the yard.
       let pair = null;
@@ -3294,6 +3421,13 @@ export const traffic = {
       }
       pair.entity.data.jobKind = 'salvor';
       pair.entity.data.generalSalvor = true;
+      if (spec.payload && spec.payload.salvageSource) {
+        pair.entity.data.salvageSource = spec.payload.salvageSource;
+        pair.entity.data.salvagePointId = spec.payload.salvagePointId || null;
+      } else {
+        delete pair.entity.data.salvageSource;
+        delete pair.entity.data.salvagePointId;
+      }
       pair.rec.generalSalvor = true;
       pair.rec.role = 'salvor';
       active += 1;
@@ -3318,7 +3452,15 @@ export const traffic = {
       if (!job || job.kind !== 'salvor' || job.corrupt) continue;
 
       const site = job.route && job.route[1];
-      const target = site ? this._resolveSalvorTargetFromWaypoint(site.id) : null;
+      const source = this._salvageSourceBindingFromPayload(job.payload);
+      rec.generalSalvor = true;
+      ent.data.generalSalvor = true;
+      ent.data.jobKind = 'salvor';
+      if (source) {
+        ent.data.salvageSource = source.sourceKey;
+        ent.data.salvagePointId = source.salvagePointId || null;
+      }
+      const target = site ? this._resolveSalvorTargetFromWaypoint(site.id, job.payload) : null;
       const hasCargo = !!(ent.data.cargoManifest
         && Array.isArray(ent.data.cargoManifest.lines)
         && ent.data.cargoManifest.totalQty > 0);
@@ -3330,7 +3472,9 @@ export const traffic = {
           || job.phase === NPC_JOB_PHASE.WORK);
       if (!beforeClaim) continue;
       if (target && this._isSalvageableBody(target)) {
-        // Keep route pos fresh if the body drifted.
+        // Continue rematerializes the durable source with a new numeric entity id. Keep the job's
+        // save-stable key, then refresh only the volatile waypoint/id/position from the live wreck.
+        if (source && site) site.id = `hulk:${target.id}`;
         if (site.pos && target.pos) {
           site.pos.x = target.pos.x;
           site.pos.z = target.pos.z;
@@ -3340,6 +3484,7 @@ export const traffic = {
 
       // Release claim on the missing body and try another.
       if (target) this._clearSalvorClaim(target, ent.data.worldRecordId);
+      if (source) this._releaseSalvageSourceClaim(source, ent.data.worldRecordId);
       if (job.payload && job.payload.targetId != null) {
         const prior = this.state.entities && this.state.entities.get
           ? this.state.entities.get(job.payload.targetId)
@@ -3349,10 +3494,26 @@ export const traffic = {
       const next = this._pickUnclaimedSalvageTarget(ent);
       if (next && site) {
         const kind = next.type === 'payload' ? 'payload' : 'hulk';
+        const nextSource = this._salvageSourceBinding(next);
         site.id = `${kind}:${next.id}`;
         site.pos = { x: next.pos.x, z: next.pos.z };
         site.label = kind === 'payload' ? 'Loose Cargo' : 'Hulk';
-        job.payload = { targetId: next.id, targetType: next.type, extracted: false };
+        job.payload = {
+          targetId: next.id,
+          targetType: next.type,
+          ...(nextSource ? {
+            salvageSource: nextSource.sourceKey,
+            salvagePointId: nextSource.salvagePointId,
+          } : {}),
+          extracted: false,
+        };
+        if (nextSource) {
+          ent.data.salvageSource = nextSource.sourceKey;
+          ent.data.salvagePointId = nextSource.salvagePointId || null;
+        } else {
+          delete ent.data.salvageSource;
+          delete ent.data.salvagePointId;
+        }
         this._stampSalvorClaim(next, ent.data.worldRecordId);
         continue;
       }
@@ -5216,13 +5377,15 @@ export const traffic = {
       if (carried && Array.isArray(carried.lines) && carried.totalQty > 0) return true;
       const waypointId = typeof intent.field === 'string' ? intent.field
         : (typeof intent.waypointId === 'string' ? intent.waypointId : '');
-      const target = this._resolveSalvorTargetFromWaypoint(waypointId)
+      const target = this._resolveSalvorTargetFromWaypoint(waypointId, intent.payload)
         || (intent.payload && intent.payload.targetId != null
           && this.state.entities && this.state.entities.get
           ? this.state.entities.get(intent.payload.targetId)
           : null);
       if (!target || target.alive === false) {
         // Player beat the cutter (or the body despawned) — depart empty, no mint.
+        const source = this._salvageSourceBindingFromPayload(intent.payload);
+        if (source) this._releaseSalvageSourceClaim(source, context.worldRecordId);
         this._setTrafficManifest(
           context.entity,
           context.rec,
@@ -5338,7 +5501,7 @@ export const traffic = {
       && context.entity.data.cargoManifest.totalQty > 0;
     if (hasCargo) return true;
     const origin = typeof intent.origin === 'string' ? intent.origin : '';
-    const target = this._resolveSalvorTargetFromWaypoint(origin);
+    const target = this._resolveSalvorTargetFromWaypoint(origin, intent.payload);
     if (!target || target.alive === false || !this._isSalvageableBody(target)) return false;
     return this._takeSalvageValueOntoSalvor(context, intent, target);
   },
@@ -6401,6 +6564,14 @@ export const traffic = {
     const killedWorldRecordId = (ent && ent.data && ent.data.worldRecordId)
       || (rec && rec.worldRecordId)
       || null;
+    // The source ledger, not this traffic system, owns the durable claim. Releasing through its
+    // helper happens before any future cutter can consider the exact Vesta wreck again.
+    const killedSalvageSource = ent && ent.data && typeof ent.data.salvageSource === 'string'
+      ? ent.data.salvageSource
+      : null;
+    if (killedSalvageSource && killedWorldRecordId) {
+      this._releaseSalvageSourceClaim({ sourceKey: killedSalvageSource }, killedWorldRecordId);
+    }
     const disabledHaulerIncident = this._activeCeresDisabledHaulerIncident();
     if (disabledHaulerIncident
       && disabledHaulerIncident.haulerWorldRecordId === killedWorldRecordId) {
