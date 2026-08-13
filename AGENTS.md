@@ -184,7 +184,10 @@ instruction layer.
 - Does not want stale agent ledgers left in the repo, and does not want valuable unverified findings deleted blind—distill durable disposition (done / rejected / verified-open / leads) then remove the pile.
 - Treat hitching as structural: reject quality cuts, triangle-count trims, and ~2% easy-road opts as the performance plan; major refactors are discussable. Prefer cheap Node count gates over repeated headed browser soaks.
 - When a plan is authorized, drive it through without stop-and-go “continue?” pauses.
-- For graphics and VFX, do not hype work as A-list; place each technique honestly against modern games (name it, when it was current, what it would take to go further). Do not treat the existing implementation primitive as the design and silently fatten or tweak it—present the real option space before implementing.
+- For graphics and VFX, do not hype work as A-list; place each technique honestly against modern
+  games (name it, when it was current, what it would take to go further). Do not treat the existing
+  implementation primitive as the design and silently fatten or tweak it—present the real option
+  space before implementing.
 
 ## Learned Workspace Facts
 
