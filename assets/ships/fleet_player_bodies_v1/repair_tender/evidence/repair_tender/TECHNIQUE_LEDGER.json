@@ -2,22 +2,22 @@
   "schema": "spaceface.advancedModelTechniqueLedger.v1",
   "assetId": "SF_REPAIR_TENDER_V1",
   "shipId": "repair_tender",
-  "candidateHash": "43C56A3C391534142ADE6D9F5529824BDF9EFD8D71E84523FAC55CD27C78E61E",
+  "candidateHash": "50C43F30F1FB37E5DB1534E38F37CB7E92780B8EEB7C6DDEFDAE40A611753596",
   "exportGlb": "assets/ships/fleet_player_bodies_v1/repair_tender/source/wholeships/repair_tender_production_v1_lod0.glb",
   "class": "npc_civilian",
   "clayStillReadsAsPrimitives": true,
   "independentReview": "revise",
   "promoted": false,
-  "reasonNotClosed": "Five counted cycles. Tender identity holds: sage barge, raised bridge, crane, twin drives. Clay still loft plus kit. Not Hitch-plus. Live files not replaced.",
+  "reasonNotClosed": "Ten counted cycles. Tender with sage barge, raised bridge, crane, twin drives. Clay still loft plus kit. Not Hitch-plus. Live files not replaced.",
   "rows": [
-    {"id": "MTX-02", "state": "blocked", "still": "evidence/repair_tender/cycles/cycle_05/clay_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Hull is still a lofted sage dart."},
-    {"id": "MTX-03", "state": "blocked", "still": "evidence/repair_tender/cycles/cycle_05/three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Bridge and wells still kit on a loaf."},
-    {"id": "MTX-08", "state": "blocked", "still": "evidence/repair_tender/cycles/cycle_05/drive_rear.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Twin bells still bottle family."},
-    {"id": "MTX-13", "state": "implemented", "still": "evidence/repair_tender/cycles/cycle_05/grazing_close.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Scale applied before bevel."},
-    {"id": "MTX-16", "state": "implemented", "still": "evidence/repair_tender/cycles/cycle_05/material_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Unique UV after join."},
-    {"id": "MTX-32", "state": "implemented", "still": "evidence/repair_tender/cycles/cycle_05/three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Unique sage workboat maps, not rust barge."},
-    {"id": "MTX-46", "state": "blocked", "still": "evidence/repair_tender/cycles/cycle_05/clay_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Clay still primitives."},
+    {"id": "MTX-02", "state": "blocked", "still": "evidence/repair_tender/cycles/cycle_10/clay_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Hull is still a lofted sage dart."},
+    {"id": "MTX-03", "state": "blocked", "still": "evidence/repair_tender/cycles/cycle_10/three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Bridge and wells still kit on a loaf."},
+    {"id": "MTX-08", "state": "blocked", "still": "evidence/repair_tender/cycles/cycle_10/drive_rear.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Twin bells still bottle family."},
+    {"id": "MTX-13", "state": "implemented", "still": "evidence/repair_tender/cycles/cycle_10/grazing_close.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Scale applied before bevel."},
+    {"id": "MTX-16", "state": "implemented", "still": "evidence/repair_tender/cycles/cycle_10/material_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Unique UV after join."},
+    {"id": "MTX-32", "state": "implemented", "still": "evidence/repair_tender/cycles/cycle_10/three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Unique sage workboat maps, not rust barge."},
+    {"id": "MTX-46", "state": "blocked", "still": "evidence/repair_tender/cycles/cycle_10/clay_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Clay still primitives."},
     {"id": "MTX-50", "state": "implemented", "still": "source/wholeships/repair_tender_production_v1_lod0.glb", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Sockets and packed maps."},
-    {"id": "MTX-65", "state": "implemented", "still": "evidence/repair_tender/cycles/cycle_05/three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Tender massing: sage, bridge, crane, twin drives. Not barge, not Hitch."}
+    {"id": "MTX-65", "state": "implemented", "still": "evidence/repair_tender/cycles/cycle_10/three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Tender massing: sage, bridge, crane, twin drives. Not barge, not Hitch."}
   ]
 }
