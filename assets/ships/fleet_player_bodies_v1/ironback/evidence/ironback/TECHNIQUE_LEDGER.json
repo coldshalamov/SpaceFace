@@ -2,20 +2,20 @@
   "schema": "spaceface.advancedModelTechniqueLedger.v1",
   "assetId": "SF_IRONBACK_PRODUCTION_V1",
   "shipId": "ironback",
-  "candidateHash": "25B2C833A851C5D88B6D030E9A8B153383B4892816021AB950DAA9A2D3E0C97E",
+  "candidateHash": "75F93420AE7E60163A96B630A3785FCD52EE3286505FFE82A744DBD80FD8CD24",
   "exportGlb": "assets/ships/fleet_player_bodies_v1/ironback/source/wholeships/ironback_production_v1_lod0.glb",
   "class": "player_flyable",
   "clayStillReadsAsPrimitives": true,
   "independentReview": "revise",
   "promoted": false,
-  "reasonNotClosed": "Five counted cycles. Wide barge with hopper and four cutter arms. Clay still loft plus kit. Not Hitch-plus. Live files not replaced.",
+  "reasonNotClosed": "Ten counted cycles. Wide barge with hopper and four cutter arms. Clay still loft plus kit. Not Hitch-plus. Live files not replaced.",
   "rows": [
-    {"id": "MTX-13", "state": "implemented", "still": "evidence/ironback/cycles/cycle_05/grazing_close.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Scale applied before bevel."},
-    {"id": "MTX-16", "state": "implemented", "still": "evidence/ironback/cycles/cycle_05/material_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Unique UV after join."},
-    {"id": "MTX-23", "state": "implemented", "still": "evidence/ironback/cycles/cycle_05/orm_isolation.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "LOD0 AO bake."},
-    {"id": "MTX-32", "state": "implemented", "still": "evidence/ironback/cycles/cycle_05/three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Unique Ironback maps."},
-    {"id": "MTX-46", "state": "blocked", "still": "evidence/ironback/cycles/cycle_05/clay_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Clay still primitives."},
+    {"id": "MTX-13", "state": "implemented", "still": "evidence/ironback/cycles/cycle_10/grazing_close.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Scale applied before bevel."},
+    {"id": "MTX-16", "state": "implemented", "still": "evidence/ironback/cycles/cycle_10/material_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Unique UV after join."},
+    {"id": "MTX-23", "state": "implemented", "still": "evidence/ironback/cycles/cycle_10/orm_isolation.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "LOD0 AO bake."},
+    {"id": "MTX-32", "state": "implemented", "still": "evidence/ironback/cycles/cycle_10/three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Unique Ironback maps."},
+    {"id": "MTX-46", "state": "blocked", "still": "evidence/ironback/cycles/cycle_10/clay_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": false, "notes": "Clay still primitives."},
     {"id": "MTX-50", "state": "implemented", "still": "source/wholeships/ironback_production_v1_lod0.glb", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Sockets and packed maps."},
-    {"id": "MTX-65", "state": "implemented", "still": "evidence/ironback/cycles/cycle_05/clay_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Wide barge with hopper and arms, not a needle."}
+    {"id": "MTX-65", "state": "implemented", "still": "evidence/ironback/cycles/cycle_10/clay_three_quarter.png", "clayConfirm": "fail", "forbiddenFakeAbsent": true, "notes": "Wide barge with hopper and arms, not a needle."}
   ]
 }

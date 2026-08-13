@@ -309,6 +309,73 @@ def loft_from_rings(name, rings, material, collection, bevel, cap=True):
     return finish_mesh(obj, material, bevel)
 
 
+def boolean_cut(host, cutter_name, loc, scale, rot=(0, 0, 0)):
+    bpy.ops.mesh.primitive_cube_add(location=loc, rotation=rot)
+    cutter = bpy.context.object
+    cutter.name = cutter_name
+    cutter.scale = scale
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    apply_modifiers(host)
+    bpy.context.view_layer.objects.active = host
+    host.select_set(True)
+    mod = host.modifiers.new(cutter_name, "BOOLEAN")
+    mod.operation = "DIFFERENCE"
+    mod.object = cutter
+    try:
+        mod.solver = "EXACT"
+    except Exception:
+        pass
+    bpy.ops.object.modifier_apply(modifier=mod.name)
+    host.select_set(False)
+    bpy.data.objects.remove(cutter, do_unlink=True)
+
+
+def ellipse_ring(x, y, z, rx, rz, sides=16):
+    return [
+        (x, y + math.cos(math.tau * i / sides) * rx, z + math.sin(math.tau * i / sides) * rz)
+        for i in range(sides)
+    ]
+
+
+def add_hollow_bell(tag, x, y, z, scale, mats, collection):
+    s = scale
+    ceramic, mech, armor = mats["Material_Ceramic"], mats["Material_Mechanical"], mats["Material_Armor"]
+    rings = []
+    for t, r in ((0.00, 0.48), (0.22, 0.40), (0.48, 0.28), (0.75, 0.20), (1.00, 0.16)):
+        rings.append(ellipse_ring(x - 0.08 * s - t * 0.90 * s, y, z, r * s, r * s, 22))
+    outer = loft_from_rings(f"Bell_{tag}", rings, mech, collection, 0.005, cap=False)
+    apply_modifiers(outer)
+    bpy.ops.mesh.primitive_cone_add(
+        vertices=20, radius1=0.38 * s, radius2=0.07 * s, depth=1.00 * s,
+        location=(x - 0.50 * s, y, z), rotation=(0, math.pi / 2, 0),
+    )
+    inner = bpy.context.object
+    bpy.context.view_layer.objects.active = outer
+    outer.select_set(True)
+    mod = outer.modifiers.new("BellCut", "BOOLEAN")
+    mod.operation = "DIFFERENCE"
+    mod.object = inner
+    try:
+        mod.solver = "EXACT"
+    except Exception:
+        pass
+    bpy.ops.object.modifier_apply(modifier=mod.name)
+    outer.select_set(False)
+    bpy.data.objects.remove(inner, do_unlink=True)
+    add_cylinder(f"BellCollar_{tag}", (x - 0.10 * s, y, z), 0.24 * s, 0.11 * s, ceramic, collection, 18, 0.004)
+    add_cylinder(f"BellFlange_{tag}", (x + 0.10 * s, y, z), 0.30 * s, 0.05 * s, armor, collection, 18, 0.003)
+    add_cylinder(f"BellHub_{tag}", (x - 0.26 * s, y, z), 0.045 * s, 0.18 * s, mech, collection, 10, 0.002)
+    for index in range(8):
+        ang = math.tau * index / 8
+        add_box(
+            f"BellVane_{tag}_{index}",
+            (x - 0.38 * s, y + math.cos(ang) * 0.16 * s, z + math.sin(ang) * 0.16 * s),
+            (0.16 * s, 0.012 * s, 0.045 * s),
+            mech, collection, 0.002, (ang, 0, 0),
+        )
+    return outer
+
+
 def diamond_ring(x, yc, zc, hw, hh):
     """Hard-chine diamond. Crown, shoulder, chine, keel — not a scaled box."""
     return [
@@ -526,41 +593,60 @@ def build_lod(lod, mats):
         "lod": f"lod{lod}", "slot": "hull", "category": "wholeships",
         "forward": "+X", "embeddedPlume": False,
     }
-    # Wide barge: blunt bow, tall hold, hopper shoulders, twin industrial drives. Not a needle or utility dart.
+    # C6 barge hull: blunt bow → cabin → hopper shoulder → hold → transom.
+    # Not a needle. Mid station must not equal bow.
     hull_obj = loft_from_rings("Pressure_Hull", [
-        diamond_ring(half, 0, 0.12, 0.85, 0.55),
-        diamond_ring(half * 0.70, 0, 0.22, 1.55, 0.95),
-        diamond_ring(half * 0.35, 0, 0.18, 2.15, 1.15),
-        diamond_ring(0.10, 0, 0.14, 2.45, 1.20),
-        diamond_ring(-half * 0.28, 0, 0.14, 2.35, 1.10),
-        diamond_ring(-half * 0.60, 0, 0.12, 1.85, 0.90),
-        diamond_ring(-half + 0.80, 0, 0.12, 1.35, 0.70),
+        diamond_ring(half, 0, 0.18, 1.05, 0.72),
+        diamond_ring(6.20, 0, 0.28, 1.55, 1.05),
+        diamond_ring(3.90, 0, 0.32, 2.05, 1.28),
+        diamond_ring(1.10, 0, 0.22, 2.75 if CYCLE >= 9 else 2.42, 1.42 if CYCLE >= 9 else 1.35),
+        diamond_ring(-1.40, 0, 0.18, 2.85 if CYCLE >= 9 else 2.48, 1.28 if CYCLE >= 9 else 1.22),
+        diamond_ring(-3.80, 0, 0.16, 2.35 if CYCLE >= 9 else 2.15, 1.10 if CYCLE >= 9 else 1.05),
+        diamond_ring(-6.10, 0, 0.14, 1.65, 0.88),
+        diamond_ring(-7.70, 0, 0.12, 1.22, 0.68),
     ], hull, collection, 0.022)
     if lod <= 1:
-        cut_open_bay(hull_obj, "Cockpit", (3.80, 0.0, 1.25), 1.35, 0.80, 0.55, (0, 0, 1), mats, collection, kit="cockpit")
-        cut_open_bay(hull_obj, "Port", (0.10, -2.20, 0.20), 1.85, 0.55, 0.58, (0, -1, 0), mats, collection, kit="radiator")
-        cut_open_bay(hull_obj, "Starboard", (0.10, 2.20, 0.20), 1.85, 0.55, 0.58, (0, 1, 0), mats, collection, kit="rack")
-        cut_open_bay(hull_obj, "Hopper", (-0.10, 0.0, 1.25), 2.20, 1.15, 0.55, (0, 0, 1), mats, collection, kit="rack")
+        cut_open_bay(hull_obj, "Cockpit", (3.80, 0.0, 1.35), 1.35, 0.80, 0.55, (0, 0, 1), mats, collection, kit="cockpit")
+        cut_open_bay(hull_obj, "Port", (0.10, -2.28, 0.20), 1.85, 0.55, 0.58, (0, -1, 0), mats, collection, kit="radiator")
+        cut_open_bay(hull_obj, "Starboard", (0.10, 2.28, 0.20), 1.85, 0.55, 0.58, (0, 1, 0), mats, collection, kit="rack")
+        cut_open_bay(hull_obj, "Hopper", (-0.10, 0.0, 1.32), 2.20, 1.15, 0.58, (0, 0, 1), mats, collection, kit="rack")
+        boolean_cut(hull_obj, "TransomRecess", (-7.55, 0.0, 0.10), (0.22, 0.55, 0.32))
+        boolean_cut(hull_obj, "KeelChannel", (-1.80, 0.0, -1.05), (2.60, 0.16, 0.12))
         hull_obj.data.materials.clear()
         hull_obj.data.materials.append(hull)
     inset_large_faces(hull_obj, thickness=0.05, depth=0.02, min_area=0.16)
 
-    add_thin_canopy("Canopy", 3.80, 0.0, 1.32, 1.20, 0.62, 0.36, mats, collection)
-    add_box("Hopper_Rim", (-0.10, 0.0, 1.38), (2.35, 1.28, 0.06), armor, collection, 0.01)
-    add_box("Hopper_LipP", (-0.10, -1.18, 1.28), (2.10, 0.06, 0.10), mech, collection, 0.006)
-    add_box("Hopper_LipS", (-0.10, 1.18, 1.28), (2.10, 0.06, 0.10), mech, collection, 0.006)
+    add_thin_canopy("Canopy", 3.80, 0.0, 1.40, 1.20, 0.62, 0.36, mats, collection)
+    add_box("Hopper_Rim", (-0.10, 0.0, 1.48), (2.35, 1.28, 0.06), armor, collection, 0.01)
+    add_box("Hopper_LipP", (-0.10, -1.18, 1.38), (2.10, 0.06, 0.10), mech, collection, 0.006)
+    add_box("Hopper_LipS", (-0.10, 1.18, 1.38), (2.10, 0.06, 0.10), mech, collection, 0.006)
     add_box("HoldPlate_A", (-1.8, 0.35, 1.18), (0.85, 0.40, 0.02), armor, collection, 0.005)
     add_box("HoldPlate_B", (0.85, -0.30, 1.18), (0.70, 0.32, 0.018), hull, collection, 0.005)
     add_box("OreCrate_A", (-0.55, 0.45, 1.05), (0.22, 0.18, 0.14), warning, collection, 0.004)
     add_box("OreCrate_B", (0.35, -0.50, 1.05), (0.18, 0.16, 0.12), mech, collection, 0.004)
+    add_box("TransomPlate", (-7.42, 0.0, 0.10), (0.05, 0.62, 0.34), armor, collection, 0.004)
     for sign, side in ((-1, "Port"), (1, "Starboard")):
-        add_manufactured_drive(side, -7.55, 1.70 * sign, lod, mats, collection, scale=1.35, z=0.10)
-        add_cylinder(f"DriveFairing_{side}", (-6.70, 1.70 * sign, 0.10), 0.55, 0.70, armor, collection, vertices=16, bevel=0.012)
-        add_box(f"ArmBoom_Fore_{side}", (2.4, 2.65 * sign, -0.18), (1.20, 0.16, 0.16), mech, collection, 0.012)
+        loft_from_rings(f"DriveHouse_{side}", [
+            diamond_ring(-5.40, 1.70 * sign, 0.10, 0.42, 0.34),
+            diamond_ring(-6.50, 1.70 * sign, 0.10, 0.52, 0.42),
+            diamond_ring(-7.20, 1.70 * sign, 0.10, 0.48, 0.38),
+            diamond_ring(-7.70, 1.70 * sign, 0.10, 0.36, 0.28),
+        ], armor, collection, 0.012)
+        add_hollow_bell(side, -7.85, 1.70 * sign, 0.10, 1.25, mats, collection)
+        add_cylinder(f"DriveCollar_{side}", (-7.40, 1.70 * sign, 0.10), 0.42, 0.12, ceramic, collection, vertices=16, bevel=0.008)
+        loft_from_rings(f"ArmBoom_Fore_{side}", [
+            diamond_ring(1.60, 2.35 * sign, -0.08, 0.18, 0.14),
+            diamond_ring(2.60, 2.65 * sign, -0.18, 0.16, 0.12),
+            diamond_ring(3.50, 2.80 * sign, -0.26, 0.14, 0.12),
+        ], mech, collection, 0.008)
         add_box(f"ArmSaddle_Fore_{side}", (1.35, 2.35 * sign, -0.05), (0.28, 0.22, 0.18), armor, collection, 0.01)
         add_box(f"ArmHead_Fore_{side}", (3.60, 2.80 * sign, -0.28), (0.28, 0.22, 0.22), armor, collection, 0.008)
         add_cylinder(f"Cutter_Fore_{side}", (4.20, 2.80 * sign, -0.28), 0.11, 0.62, ceramic, collection, vertices=10, bevel=0.005)
-        add_box(f"ArmBoom_Aft_{side}", (-2.2, 2.65 * sign, -0.18), (1.20, 0.16, 0.16), mech, collection, 0.012)
+        loft_from_rings(f"ArmBoom_Aft_{side}", [
+            diamond_ring(-1.40, 2.35 * sign, -0.08, 0.18, 0.14),
+            diamond_ring(-2.40, 2.65 * sign, -0.18, 0.16, 0.12),
+            diamond_ring(-3.30, 2.80 * sign, -0.26, 0.14, 0.12),
+        ], mech, collection, 0.008)
         add_box(f"ArmSaddle_Aft_{side}", (-1.15, 2.35 * sign, -0.05), (0.28, 0.22, 0.18), armor, collection, 0.01)
         add_box(f"ArmHead_Aft_{side}", (-3.40, 2.80 * sign, -0.28), (0.28, 0.22, 0.22), armor, collection, 0.008)
         add_cylinder(f"Cutter_Aft_{side}", (-4.00, 2.80 * sign, -0.28), 0.11, 0.62, ceramic, collection, vertices=10, bevel=0.005)
@@ -590,6 +676,27 @@ def build_lod(lod, mats):
     add_box("Hatch_Hinge", (-1.36, 0.32, 0.73), (0.03, 0.15, 0.018), mech, collection, 0.002)
     add_box("ServiceHatch", (2.15, 0.85, 1.08), (0.30, 0.22, 0.02), armor, collection, 0.004)
     add_box("Keel_Spine", (0.20, 0.0, -0.82), (2.8, 0.24, 0.045), mech, collection, 0.01)
+    if CYCLE >= 7:
+        add_box("HopperMullion", (-0.10, 0.0, 1.55), (0.04, 1.05, 0.08), armor, collection, 0.003)
+        if lod <= 1:
+            for sign, side in ((-1, "Port"), (1, "Starboard")):
+                for i in range(5):
+                    add_box(
+                        f"RadFin_{side}_{i}",
+                        (-0.35 + i * 0.18, 2.12 * sign, 0.22),
+                        (0.014, 0.16, 0.18),
+                        mech, collection, 0.001,
+                    )
+    if CYCLE >= 8:
+        add_box("DriveHouseBandP", (-6.35, -1.70, 0.10), (0.07, 0.48, 0.30), armor, collection, 0.003)
+        add_box("DriveHouseBandS", (-6.35, 1.70, 0.10), (0.07, 0.48, 0.30), armor, collection, 0.003)
+    if CYCLE >= 9:
+        add_box("ChineCapP", (3.10, -1.85, 0.18), (1.45, 0.045, 0.055), armor, collection, 0.003)
+        add_box("ChineCapS", (3.10, 1.85, 0.18), (1.45, 0.045, 0.055), armor, collection, 0.003)
+    if CYCLE >= 10:
+        add_box("PatchTile2", (1.55, 0.62, 1.12), (0.24, 0.12, 0.010), armor, collection, 0.002)
+        add_box("HopperStayP", (-1.05, -0.85, 1.42), (0.18, 0.04, 0.04), mech, collection, 0.002)
+        add_box("HopperStayS", (-1.05, 0.85, 1.42), (0.18, 0.04, 0.04), mech, collection, 0.002)
     if lod == 0:
         add_curve_hose("Hose_Port", [(0.1, -1.40, 0.08), (-2.4, -1.65, 0.08), (-5.2, -1.95, 0.10), (-7.1, -2.10, 0.14)], mech, collection, 0.016)
         add_curve_hose("Hose_Stbd", [(0.1, 1.40, 0.08), (-2.4, 1.65, 0.08), (-5.2, 1.95, 0.10), (-7.1, 2.10, 0.14)], mech, collection, 0.016)
