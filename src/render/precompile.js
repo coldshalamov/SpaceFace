@@ -175,11 +175,6 @@ async function precompileNow(
 
     const stillCurrent = precompileGenerationFor(renderer) === generation;
     keepWarmupPrograms = !!canopyPipelineWarmup && stillCurrent;
-    if (stillCurrent && includeGlobalPipelines && canopyPipelineWarmup) {
-      await renderIsolatedShadowKeepAlive(
-        renderer, scene, camera, canopyPipelineWarmup, yieldToMain,
-      );
-    }
 
     if (!incremental && stillCurrent) {
       for (const spec of shipSpecs) compiledShipKeys.add(spec.key);
@@ -509,44 +504,25 @@ function rememberGlobalPrecompile(renderer, run) {
   return tracked;
 }
 
-async function renderIsolatedShadowKeepAlive(
-  renderer, scene, camera, retainedRoot, yieldToMain = yieldToBrowser,
-) {
-  const shadowRoot = retainedRoot?.getObjectByName('SF_Precompile_ShadowDepth_KeepAlive') || null;
-  if (!shadowRoot || !renderer || typeof renderer.render !== 'function' || !scene) {
-    return { skipped: true, reason: 'isolated shadow keep-alive unavailable' };
-  }
-  const previousParent = shadowRoot.parent;
-  let keyLight = null;
-  scene.traverse((object) => {
-    if (!keyLight && object.isDirectionalLight) keyLight = object;
-  });
-  const hidden = [];
-  for (const child of scene.children.slice()) {
-    hidden.push({ child, visible: child.visible });
-    if (child !== keyLight) child.visible = false;
-  }
-  shadowRoot.removeFromParent();
-  scene.add(shadowRoot);
-  shadowRoot.visible = true;
-  if (keyLight) keyLight.visible = true;
-  const restoreShadowState = beginDirectionalShadowWarm(renderer, scene);
-  try {
-    if (typeof yieldToMain === 'function') await yieldToMain();
-    renderer.render(scene, camera);
-    return { skipped: false };
-  } finally {
-    restoreShadowState();
-    shadowRoot.removeFromParent();
-    if (previousParent) previousParent.add(shadowRoot);
-    for (const item of hidden) item.child.visible = item.visible;
-  }
-}
-
 async function warmResidentSceneWithShadowPipelines(
   renderer, scene, camera, retainedRoot, options = {}, yieldToMain = yieldToBrowser,
 ) {
-  return renderIsolatedShadowKeepAlive(renderer, scene, camera, retainedRoot, yieldToMain);
+  const shadowRoot = retainedRoot?.getObjectByName('SF_Precompile_ShadowDepth_KeepAlive') || null;
+  const retainedParent = shadowRoot?.parent || null;
+  const restoreShadowState = beginDirectionalShadowWarm(renderer, scene);
+  if (shadowRoot) {
+    shadowRoot.removeFromParent();
+    scene.add(shadowRoot);
+  }
+  try {
+    return await warmResidentSceneGpuBuffers(renderer, scene, camera, options, yieldToMain);
+  } finally {
+    restoreShadowState();
+    if (shadowRoot) {
+      shadowRoot.removeFromParent();
+      if (retainedParent) retainedParent.add(shadowRoot);
+    }
+  }
 }
 
 function beginDirectionalShadowWarm(renderer, scene) {
@@ -791,24 +767,7 @@ function addCommonRockShadowDepthWarmups(root, commonRockWarmup) {
     }
     shadowRoot.add(mesh);
   }
-  addBatchedMeshShadowDepthWarmup(shadowRoot);
   return true;
-}
-
-function addBatchedMeshShadowDepthWarmup(shadowRoot) {
-  if (!shadowRoot || shadowRoot.getObjectByName('SF_Precompile_shadow-depth-batched')) return;
-  const geometry = new THREE.BoxGeometry(1, 1, 1);
-  const material = new THREE.MeshDepthMaterial({ side: THREE.BackSide });
-  material.name = 'SF_Precompile_shadow-depth-batched';
-  const mesh = new THREE.BatchedMesh(1, 32, 48, material);
-  mesh.name = 'SF_Precompile_shadow-depth-batched';
-  mesh.frustumCulled = false;
-  mesh.castShadow = true;
-  mesh.userData.precompileRetainedPipeline = 'shadow-depth-batched';
-  const geometryId = mesh.addGeometry(geometry);
-  const instanceId = mesh.addInstance(geometryId);
-  mesh.setMatrixAt(instanceId, new THREE.Matrix4());
-  shadowRoot.add(mesh);
 }
 
 function getCommonRockShadowDepthRoot(root) {
