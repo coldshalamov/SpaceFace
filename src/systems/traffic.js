@@ -20,7 +20,7 @@
 //   - Single-writer: traffic owns only its own spawned entities (tracked in state.traffic); it
 //     never touches player state. Economy impact is via the event bus.
 
-import { shouldRunOnTick } from '../core/activityScheduler.js';
+import { shouldAmbientHaulerPlan, shouldRunOnTick } from '../core/activityScheduler.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec } from './ships.js';
 import { CombatDoctrineId } from '../ai/combatDoctrine.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
@@ -3142,6 +3142,14 @@ export const traffic = {
       if (role.flees) { this._stepFlee(e, rec, stations, state); continue; }       // pirate/raider
       if (role.seeks === 'asteroid') { this._stepMiner(e, rec, stations, state); continue; } // miner
       if (role.escorts) { this._stepEscort(e, rec, list, state); continue; }       // convoy escort
+
+      const player = state.playerId != null ? state.entities.get(state.playerId) : null;
+      if (!shouldAmbientHaulerPlan(state.tick, e, {
+        playerId: state.playerId,
+        playerTeam: player && player.team,
+        authorityRadius: 1400,
+        origin: player && player.pos,
+      })) continue;
 
       // resolve current target (it may have despawned)
       let target = state.entities.get(rec.targetId);

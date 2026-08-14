@@ -63,6 +63,19 @@ export function isActiveOwner(owner, options = {}) {
   return (dx * dx + dz * dz) <= radius * radius;
 }
 
+export function shouldAmbientHaulerPlan(tick, owner, options = {}) {
+  const combat = owner && owner.ai && owner.ai.combatant === true;
+  const hostile = !!(owner && owner.team != null && options.playerTeam != null
+    && owner.team !== options.playerTeam
+    && owner.ai && owner.ai.passive !== true);
+  if (combat || hostile) return true;
+  return shouldOwnerThink(tick, owner, {
+    activePeriodTicks: 2,
+    sleepPeriodTicks: 4,
+    ...options,
+  });
+}
+
 export function shouldOwnerThink(tick, owner, options = {}) {
   if (!isActiveOwner(owner, options)) {
     const period = Math.max(1, Math.floor(Number(options.sleepPeriodTicks) || 8));

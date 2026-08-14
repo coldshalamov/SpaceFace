@@ -6,6 +6,7 @@ import {
   isActiveOwner,
   nextRunTick,
   ownerPhase,
+  shouldAmbientHaulerPlan,
   shouldOwnerThink,
   shouldRunOnTick,
 } from '../src/core/activityScheduler.js';
@@ -47,4 +48,29 @@ test('combatants and the player stay awake; far passive traffic may sleep', () =
     if (shouldOwnerThink(tick, hauler, { ...opts, sleepPeriodTicks: 8 })) sleepHits.push(tick);
   }
   assert.ok(sleepHits.length >= 1 && sleepHits.length <= 3);
+});
+
+test('ambient haulers plan slower when far; hostiles still think every tick', () => {
+  const far = { id: 9, pos: { x: 8000, z: 0 }, ai: { passive: true } };
+  const hostile = { id: 10, pos: { x: 8000, z: 0 }, team: 3, ai: { passive: false } };
+  const opts = {
+    playerId: 1,
+    playerTeam: 1,
+    authorityRadius: 1400,
+    origin: { x: 0, z: 0 },
+  };
+  let farHits = 0;
+  let hostileHits = 0;
+  for (let tick = 0; tick < 8; tick++) {
+    if (shouldAmbientHaulerPlan(tick, far, opts)) farHits++;
+    if (shouldAmbientHaulerPlan(tick, hostile, opts)) hostileHits++;
+  }
+  assert.ok(farHits < 8, 'far passive haulers must not plan every tick');
+  assert.equal(hostileHits, 8);
+});
+
+test('live traffic consults the ambient hauler planner', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const source = await readFile(new URL('../src/systems/traffic.js', import.meta.url), 'utf8');
+  assert.match(source, /shouldAmbientHaulerPlan\(/);
 });
