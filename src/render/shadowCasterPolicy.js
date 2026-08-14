@@ -3,12 +3,12 @@ import { configureRealtimeCanopyMaterials } from './canopyMaterialPolicy.js';
 
 const POLICY_STATE = '__spacefaceShadowCasterPolicyV1';
 
-// Key-light shadow ortho is ±700 around the player (renderer._ensureKeyLightShadows). Casters
-// outside that box cannot affect the local shadow map, but Three still walks every castShadow
-// mesh into the shadow pass. Gate membership to the box (+margin) so far traffic keeps lighting
-// and contact shadows without paying realtime depth-map cost.
-export const SHADOW_CAST_RADIUS = 800;
+// Key-light shadow ortho is ±300 around the player (renderer._ensureKeyLightShadows). That is
+// the on-screen neighborhood plus a short runway. Casters farther away cannot throw a readable
+// directional shadow into the picture; they keep lighting and contact shadows.
+export const SHADOW_CAST_RADIUS = 280;
 export const SHADOW_CAST_RADIUS_SQ = SHADOW_CAST_RADIUS * SHADOW_CAST_RADIUS;
+export const SHADOW_ORTHO_EXTENT = 300;
 
 function normalizeLodLevel(level) {
   return level === 'lod0' || level === 'lod1' || level === 'lod2' ? level : null;

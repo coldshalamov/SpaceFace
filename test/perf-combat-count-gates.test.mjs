@@ -1,11 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFile } from 'node:fs/promises';
 
 import * as THREE from 'three';
 import {
   allowRealtimeShadowCast,
   SHADOW_CAST_RADIUS,
   SHADOW_CAST_RADIUS_SQ,
+  SHADOW_ORTHO_EXTENT,
   syncShadowCasterPolicy,
 } from '../src/render/shadowCasterPolicy.js';
 import { collectPerformanceSceneStructure } from '../scripts/lib/performanceSceneMetrics.mjs';
@@ -47,7 +49,15 @@ test('allowRealtimeShadowCast keeps player + nearby LOD0; drops far and low LOD'
   }), false);
   assert.equal(allowRealtimeShadowCast({ lodLevel: 'lod1', distanceSq: 0 }), false);
   assert.equal(allowRealtimeShadowCast({ lodLevel: 'lod2', distanceSq: 0 }), false);
-  assert.ok(SHADOW_CAST_RADIUS >= 700, 'cast radius covers the local shadow ortho');
+  assert.ok(SHADOW_CAST_RADIUS >= 250, 'cast radius covers the on-screen neighborhood');
+  assert.ok(SHADOW_CAST_RADIUS <= 320, 'cast radius does not pull the whole hub into the depth pass');
+  assert.ok(SHADOW_ORTHO_EXTENT >= SHADOW_CAST_RADIUS, 'ortho contains the cast band');
+});
+
+test('live key-light shadow camera uses the neighborhood ortho, not the old 1400 box', async () => {
+  const source = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+  assert.match(source, /SHADOW_ORTHO_EXTENT/);
+  assert.doesNotMatch(source, /camera\.left = -700/);
 });
 
 test('distance cast band clears far ship casters while nearby opaque hulls still cast', () => {

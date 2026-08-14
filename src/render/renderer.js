@@ -94,6 +94,7 @@ import { installDomInstrumentation } from '../ui/domInstrumentation.js';
 import {
   allowRealtimeShadowCast,
   invalidateShadowCasterPolicy,
+  SHADOW_ORTHO_EXTENT,
   shadowCastDistanceSq,
   syncShadowCasterPolicy,
 } from './shadowCasterPolicy.js';
@@ -4762,7 +4763,8 @@ export const render = {
       key.shadow.mapSize.set(1024, 1024);
       const camera = key.shadow.camera;
       camera.near = 10; camera.far = 600;
-      camera.left = -700; camera.right = 700; camera.top = 700; camera.bottom = -700;
+      camera.left = -SHADOW_ORTHO_EXTENT; camera.right = SHADOW_ORTHO_EXTENT;
+      camera.top = SHADOW_ORTHO_EXTENT; camera.bottom = -SHADOW_ORTHO_EXTENT;
       camera.updateProjectionMatrix();
       key.shadow.bias = -0.0008;
       key.shadow.normalBias = 0.04;
