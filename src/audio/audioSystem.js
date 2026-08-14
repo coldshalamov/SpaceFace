@@ -28,11 +28,12 @@ import {
   isPriorityCue,
   PRIORITY_DUCK_THRESHOLD,
 } from './cuePriorityBus.js';
+import { TABLE_HEARING_FAR_WU, TABLE_HEARING_PAN_WU } from '../render/tabletopPolicy.js';
 
 // --- positional model (ARCHITECTURE / spec) ---
 const D_NEAR = 40;     // wu — full volume within this
-const D_FAR = 900;     // wu — silent / culled beyond this
-const PAN_SPAN = 600;  // wu — half-pan distance
+const D_FAR = TABLE_HEARING_FAR_WU;     // wu — silent / culled beyond the table
+const PAN_SPAN = TABLE_HEARING_PAN_WU;  // wu — half-pan distance
 
 // --- music ---
 const XFADE_S = 2.5;

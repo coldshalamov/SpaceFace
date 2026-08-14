@@ -6,6 +6,7 @@ import {
 } from '../src/render/entityMeshVisibility.js';
 import {
   TABLE_BAND,
+  TABLE_HEARING_FAR_WU,
   TABLE_REFERENCE_SPEED_WU,
   authoredImmediateRadius,
   authoredPrefetchRadius,
@@ -168,6 +169,11 @@ test('census splits glass, runway, and beyond without collapsing the table', () 
   assert.equal(census.submitted, 3);
   assert.equal(census.resident, 3);
   assert.equal(census.landmarks, 1);
+});
+
+test('audio hearing follows the table, not a 900 WU horizon', () => {
+  assert.ok(TABLE_HEARING_FAR_WU < 400);
+  assert.ok(TABLE_HEARING_FAR_WU > submitRunwayWu());
 });
 
 test('shadow radius follows the table plus a short skirt', () => {

@@ -507,6 +507,7 @@ finds a pole this table does not name.
 | **`PQ-116` / `PERF-76-HDR-BUFFER-FORMAT`** | Mid INV→IMPL | Cheapest HDR target that keeps the default halo. |
 | **`PQ-117` / `PERF-77-HIDDEN-SYSTEM-SKIP`** | Near INV→IMPL | Registry systems do not full-tick when 3D is hidden. |
 | **`PQ-118` / `PERF-78-REPLAY-PERF-BISECT`** | Mid INV | A hitch is reproducible from input+seed. |
+| **`PQ-119` / `PERF-79-TABLE-MAP-SPEC`** | Near IMPL | Off-table contacts stay map/radar facts, never live 3D. |
 
 Every leaf uses the investigate → invalidate → implement loop in
 `PERF_OPTION_SPACE.md` §3. Default order when no campaign is named: `PQ-061` → `PQ-062` → `PQ-063`
@@ -533,7 +534,7 @@ saves → else implement the smallest leaf → tests of real functions → match
 - Do not run damage/drive/site closures off-glass (`PQ-070`)
 - Do not instance-pool or BatchedMesh plates that will not submit (`PQ-070`)
 - Mesh prefetch/evict = top-speed × fraction of a second, not 5200/6400-as-horizon (`PQ-069`)
-- Whole-sector stations/planets/fx are map facts until approach (`PQ-071`)
+- Whole-sector stations/planets/fx are map facts until approach (`PQ-071`, `PQ-119`)
 - Neighbor-sector meshes never constructed (`PQ-069`)
 - Authored-upgrade prefetch follows approach, not sector (`PQ-075`)
 - VFX/trails/lights/flipbooks only on-glass + runway (`PQ-115`)

@@ -31,6 +31,10 @@ export const TABLE_AUTHORED_IMMEDIATE_SECONDS = 1.25;
 /** Extra world units around the glass that can still throw a readable key-light shadow. */
 export const TABLE_SHADOW_SKIRT_WU = 80;
 
+/** Voices farther than this cannot be heard on the table. Replaces the old 900 WU horizon. */
+export const TABLE_HEARING_FAR_WU = 280;
+export const TABLE_HEARING_PAN_WU = 180;
+
 export const TABLE_BAND = Object.freeze({
   GLASS: 'glass',
   RUNWAY: 'runway',
@@ -96,6 +100,10 @@ export function submitCullHalfExtents(zoom, fovDeg, aspect, speed = TABLE_REFERE
     halfX: glass.halfX + runway,
     halfZ: glass.halfZ + runway,
   };
+}
+
+export function tableHearingFarWu() {
+  return TABLE_HEARING_FAR_WU;
 }
 
 export function tableShadowCastRadius(zoom, fovDeg, aspect) {
