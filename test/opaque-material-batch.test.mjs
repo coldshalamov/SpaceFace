@@ -3,7 +3,6 @@ import test from 'node:test';
 import * as THREE from 'three';
 
 import {
-  createOpaqueBatchPipelineWarmupMeshes,
   createOpaqueMaterialBatchState,
   OPAQUE_BATCH_MAX_VERTS,
   materialBatchAttrKey,
@@ -110,34 +109,7 @@ test('batch world bounds follow instance matrices after a large origin shift', (
   assert.equal(refreshBatchWorldBounds(batch.mesh), true);
 });
 
-test('loading warmup meshes match live batch program flags', () => {
-  const probes = createOpaqueBatchPipelineWarmupMeshes();
-  assert.equal(probes.length, 2);
-  const lanes = probes.map((mesh) => mesh.userData.spacefaceOpaqueBatchLane).sort();
-  assert.deepEqual(lanes, ['cast', 'nocast']);
-  for (const mesh of probes) {
-    assert.equal(mesh.isBatchedMesh, true);
-    assert.equal(mesh.receiveShadow, true);
-    assert.equal(mesh.frustumCulled, false);
-    assert.equal(mesh.perObjectFrustumCulled, true);
-    assert.equal(mesh.sortObjects, false);
-    assert.equal(mesh.userData.spacefaceOpaqueMaterialBatch, true);
-    assert.equal(mesh.userData.precompileRetainedPipeline, `opaque-batch-${mesh.userData.spacefaceOpaqueBatchLane}`);
-    assert.equal(mesh.castShadow, mesh.userData.spacefaceOpaqueBatchLane === 'cast');
-    assert.ok(mesh.material && mesh.material.isMeshStandardMaterial);
-    assert.equal(mesh.material.color.r, 1);
-    assert.equal(mesh.material.color.g, 1);
-    assert.equal(mesh.material.color.b, 1);
-    assert.ok(mesh._colorsTexture,
-      'instance color must be armed so USE_BATCHING_COLOR matches live consolidator');
-  }
-});
-
-test('loading warmup meshes stay tiny while live batches keep the full ceiling', () => {
-  const probes = createOpaqueBatchPipelineWarmupMeshes();
-  for (const mesh of probes) {
-    assert.ok(mesh._maxVertexCount <= 32);
-  }
+test('live batches allocate the full vertex ceiling once', () => {
   const material = new THREE.MeshStandardMaterial({ color: 0x778899 });
   const chunk = makeChunk(0, 0, { material, key: 'ceiling' });
   const scene = new THREE.Scene();

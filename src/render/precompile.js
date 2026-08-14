@@ -15,7 +15,6 @@ import { createWormholePipelineMesh } from './spaceBackground.js';
 import { createVfxPrecompileSalvo, visiblePointLightBudget } from './vfx.js';
 import { waitForRockSurfaceLibraryReady } from './rockSurfaceLibrary.js';
 import { createDynamicBufferCoordinator } from './dynamicBufferRanges.js';
-import { createOpaqueBatchPipelineWarmupMeshes } from './opaqueMaterialBatch.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
 const WEAPON_BY_ID = new Map(WEAPONS.map((weapon) => [weapon.id, weapon]));
@@ -134,7 +133,6 @@ async function precompileNow(
       addBeamWarmup(globalWarmup);
       canopyPipelineWarmup = addAuthoredCanopyPipelineWarmup(globalWarmup);
       addAuthoredOpaquePipelineWarmup(canopyPipelineWarmup);
-      addOpaqueBatchPipelineWarmup(canopyPipelineWarmup);
       addLateWorldPipelineWarmup(canopyPipelineWarmup);
       const commonRockWarmup = addCommonRockPipelineWarmup(canopyPipelineWarmup, vf);
       const vfxWarmup = createVfxPrecompileSalvo();
@@ -620,13 +618,6 @@ function addAuthoredCanopyPipelineWarmup(staging) {
   }
   staging.add(root);
   return root;
-}
-
-function addOpaqueBatchPipelineWarmup(root) {
-  if (!root) return [];
-  const meshes = createOpaqueBatchPipelineWarmupMeshes();
-  for (const mesh of meshes) root.add(mesh);
-  return meshes;
 }
 
 function addAuthoredOpaquePipelineWarmup(root) {
