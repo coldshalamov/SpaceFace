@@ -10,6 +10,7 @@ import {
   hitchHistogramReport,
   isHitchFrame,
 } from '../src/render/hitchClassifier.js';
+import { ensurePerfRuntime } from '../src/core/perfRuntime.js';
 
 test('frames inside two vsyncs are not hitches', () => {
   assert.equal(isHitchFrame(16.6), false);
@@ -60,4 +61,21 @@ test('histogram coverage is the share of named hitch owners', () => {
   assert.equal(report.counts.compile, 1);
   assert.equal(report.counts.upload, 1);
   assert.ok(HITCH_THRESHOLD_MS > 16);
+});
+
+test('live hitch attribution is off by default and reset clears the ring', () => {
+  const state = { entityList: [], settings: { video: {} } };
+  const perf = ensurePerfRuntime(state);
+  assert.equal(perf.hitchAttributionEnabled, false);
+  perf.setHitchAttributionEnabled(true);
+  perf.recordLoop(1, false, 0, 0);
+  state.accumulator = 0;
+  perf.beginFrame?.(0.05, 0, 0, 16.7);
+  if (typeof perf.recordFrameDt === 'function') perf.recordFrameDt(40);
+  // Interval comes from lastFrameDtMs when the loop has one.
+  perf.recordFrameCallback(5);
+  perf.reset();
+  const report = perf.getHitchHistogram();
+  assert.equal(report.frames, 0);
+  assert.equal(report.hitches, 0);
 });

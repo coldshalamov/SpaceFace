@@ -37,7 +37,10 @@ export function willEntityEnterAuthoredUpgradeRunway(entity, state, {
   if (!player?.pos || !entity.pos) return false;
 
   const travel = tableTravelSpeed(state);
-  const prefetch = Number.isFinite(Number(radius)) ? Number(radius) : authoredPrefetchRadius(travel);
+  const numericRadius = Number(radius);
+  const prefetch = radius == null || !Number.isFinite(numericRadius)
+    ? authoredPrefetchRadius(travel)
+    : numericRadius;
   const immediate = authoredImmediateRadius(travel);
   const lookahead = authoredLookaheadSeconds();
 

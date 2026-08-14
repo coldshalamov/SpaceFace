@@ -320,7 +320,7 @@ export function isEntityRenderRelevant(entity, state, radius = null) {
 }
 
 /** Pure authored-admission policy: spatial runway, explicit focus, never whole-sector eagerness. */
-export function isEntityAuthoredUpgradeRelevant(entity, state, radius = AUTHORED_ASSET_PREFETCH_RADIUS) {
+export function isEntityAuthoredUpgradeRelevant(entity, state, radius = null) {
   if (!entity || entity.alive === false) return false;
   if (state && state.mode === 'loading') return isInitialAuthoredCompositionEntity(entity, state);
   return willEntityEnterAuthoredUpgradeRunway(entity, state, { radius });
@@ -4085,9 +4085,16 @@ export const render = {
     const cameraState = this.state && this.state.camera || {};
     // Camera focus is frame-local after the M2 chase camera membrane.
     const focus = cameraState.focus || (camObj && camObj.position) || { x: 0, z: 0 };
-    const zoom = Number.isFinite(cameraState.zoom)
-      ? cameraState.zoom
-      : Math.max(80, camObj && Number.isFinite(camObj.position && camObj.position.y) ? Math.abs(camObj.position.y) : 88);
+    const composition = this.cam && typeof this.cam.composition === 'function'
+      ? this.cam.composition()
+      : null;
+    const liveZoom = composition && Number.isFinite(composition.zoom) ? composition.zoom : NaN;
+    const zoom = Number.isFinite(liveZoom)
+      ? liveZoom
+      : (Number.isFinite(cameraState.zoom)
+        ? cameraState.zoom
+        : Math.max(80, camObj && Number.isFinite(camObj.position && camObj.position.y) ? Math.abs(camObj.position.y) : 88));
+    const tilt = Number.isFinite(cameraState.tilt) ? cameraState.tilt : 60;
     const fov = camObj && Number.isFinite(camObj.fov)
       ? camObj.fov
       : (this.state.settings && this.state.settings.video && this.state.settings.video.fov) || 50;
@@ -4095,7 +4102,7 @@ export const render = {
       ? camObj.aspect
       : (this.viewport && this.viewport.height ? this.viewport.width / this.viewport.height : 16 / 9));
     const speed = tableTravelSpeed(this.state);
-    const extents = submitCullHalfExtents(zoom, fov, aspect, speed);
+    const extents = submitCullHalfExtents(zoom, fov, aspect, speed, tilt);
     const bounds = this._entityViewBounds;
     bounds.x = Number.isFinite(focus.x) ? focus.x : 0;
     bounds.z = Number.isFinite(focus.z) ? focus.z : 0;
@@ -4394,24 +4401,29 @@ export const render = {
     diagnostics.runwayWu = Math.round(bounds.runway || 0);
     diagnostics.prefetchRadius = Math.round(renderResidencyRadius(this.state, 'prefetch'));
     diagnostics.evictRadius = Math.round(renderResidencyRadius(this.state, 'evict'));
-    const tableCensus = censusTableBands(this.state.entityList, {
-      glassHalfX: bounds.glassHalfX,
-      glassHalfZ: bounds.glassHalfZ,
-      runwayWu: bounds.runway,
-      originX: this._frameMembrane && this._frameMembrane.origin
-        ? this._frameMembrane.origin.x + bounds.x
-        : bounds.x,
-      originZ: this._frameMembrane && this._frameMembrane.origin
-        ? this._frameMembrane.origin.z + bounds.z
-        : bounds.z,
-      playerId: this.state.playerId,
-      residentIds: this._meshes,
-    });
-    diagnostics.tableGlass = tableCensus.glass;
-    diagnostics.tableRunway = tableCensus.runway;
-    diagnostics.tableBeyond = tableCensus.beyond;
-    diagnostics.tableSubmitted = tableCensus.submitted;
-    diagnostics.tableResident = tableCensus.resident;
+    const probeOn = !!(this.state.perfRuntime
+      && (this.state.perfRuntime.hitchAttributionEnabled
+        || this.state.perfRuntime.renderWorkEnabled));
+    if (probeOn) {
+      const tableCensus = censusTableBands(this.state.entityList, {
+        glassHalfX: bounds.glassHalfX,
+        glassHalfZ: bounds.glassHalfZ,
+        runwayWu: bounds.runway,
+        originX: this._frameMembrane && this._frameMembrane.origin
+          ? this._frameMembrane.origin.x + bounds.x
+          : bounds.x,
+        originZ: this._frameMembrane && this._frameMembrane.origin
+          ? this._frameMembrane.origin.z + bounds.z
+          : bounds.z,
+        playerId: this.state.playerId,
+        residentIds: this._meshes,
+      });
+      diagnostics.tableGlass = tableCensus.glass;
+      diagnostics.tableRunway = tableCensus.runway;
+      diagnostics.tableBeyond = tableCensus.beyond;
+      diagnostics.tableSubmitted = tableCensus.submitted;
+      diagnostics.tableResident = tableCensus.resident;
+    }
     this.state.render.entityViewSync = diagnostics;
 
     const hlodDiagnostics = this._hlodDiagnostics;

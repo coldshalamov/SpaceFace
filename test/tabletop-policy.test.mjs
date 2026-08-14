@@ -10,6 +10,7 @@ import {
   TABLE_REFERENCE_SPEED_WU,
   authoredImmediateRadius,
   authoredPrefetchRadius,
+  glassCornerWu,
   censusTableBands,
   classifyTableBand,
   glassHalfExtents,
@@ -28,21 +29,22 @@ import {
 } from '../src/render/renderer.js';
 
 test('default glass is a table, not a thousand-unit fake-visible box', () => {
-  const glass = glassHalfExtents(144, 50, 16 / 9);
-  assert.ok(glass.halfX < 120, `default halfX ${glass.halfX} should stay table-sized`);
-  assert.ok(glass.halfZ < 70, `default halfZ ${glass.halfZ} should stay table-sized`);
+  const glass = glassHalfExtents(144, 50, 16 / 9, 60);
+  assert.ok(glass.halfX < 280, `default halfX ${glass.halfX} should stay table-sized`);
+  assert.ok(glass.halfZ < 220, `default halfZ ${glass.halfZ} should stay table-sized`);
   const submit = submitCullHalfExtents(144, 50, 16 / 9);
   assert.ok(submit.runway <= TABLE_REFERENCE_SPEED_WU,
     'submit runway is one second of travel or less');
-  assert.ok(submit.halfX < 280, `submit halfX ${submit.halfX} must beat the old 900 WU margin`);
-  assert.ok(submit.halfZ < 220, `submit halfZ ${submit.halfZ} must beat the old 900 WU margin`);
-  assert.ok(residencyPrefetchRadius() < 500);
-  assert.ok(residencyEvictRadius() < 600);
+  assert.ok(submit.halfX < 420, `submit halfX ${submit.halfX} must beat the old 900 WU margin`);
+  assert.ok(submit.halfZ < 360, `submit halfZ ${submit.halfZ} must beat the old 900 WU margin`);
+  assert.ok(residencyPrefetchRadius() < 700);
+  assert.ok(residencyEvictRadius() < 800);
   assert.ok(residencyEvictRadius() > residencyPrefetchRadius());
+  assert.ok(residencyPrefetchRadius() > glassCornerWu(144, 50, 16 / 9, 60));
   assert.ok(authoredPrefetchRadius() < 800);
   assert.ok(authoredImmediateRadius() < 300);
   const maxZoom = submitCullHalfExtents(330, 50, 16 / 9);
-  assert.ok(maxZoom.halfX < 400, `max-zoom submit ${maxZoom.halfX} is still a table`);
+  assert.ok(maxZoom.halfX < 700, `max-zoom submit ${maxZoom.halfX} is still a table`);
 });
 
 test('table bands keep on-glass ships submitted and drop true off-table roots', () => {
@@ -172,17 +174,17 @@ test('census splits glass, runway, and beyond without collapsing the table', () 
 });
 
 test('audio hearing follows the table, not a 900 WU horizon', () => {
-  const maxSubmit = submitCullHalfExtents(330, 50, 16 / 9);
+  const maxSubmit = submitCullHalfExtents(330, 50, 16 / 9, 160, 60);
   const onGlassCorner = Math.hypot(maxSubmit.halfX, maxSubmit.halfZ);
-  assert.ok(TABLE_HEARING_FAR_WU < 500, 'hearing is still a table, not the old 900 WU horizon');
-  assert.ok(TABLE_HEARING_FAR_WU >= onGlassCorner,
+  assert.ok(TABLE_HEARING_FAR_WU < 800, 'hearing is still a table, not the old 900 WU horizon');
+  assert.ok(TABLE_HEARING_FAR_WU >= onGlassCorner - 1e-6,
     'max-zoom on-glass ships must still be audible');
 });
 
 test('shadow radius follows the table plus a short skirt', () => {
   const atDefault = tableShadowCastRadius(144, 50, 16 / 9);
   const atMax = tableShadowCastRadius(330, 50, 16 / 9);
-  assert.ok(atDefault < 220);
-  assert.ok(atMax < 320);
+  assert.ok(atDefault < 400);
+  assert.ok(atMax < 700);
   assert.ok(atMax > atDefault);
 });

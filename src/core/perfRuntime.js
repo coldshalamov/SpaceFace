@@ -721,12 +721,14 @@ export function ensurePerfRuntime(state) {
         previousCallbackEndMs = currentCallbackStartMs + ms;
       }
       callbackOpen = false;
-      if (hitchAttributionEnabled && isHitchFrame(ms)) {
+      const intervalMs = Number.isFinite(loop.lastFrameDtMs) && loop.lastFrameDtMs > 0
+        ? loop.lastFrameDtMs
+        : ms;
+      if (hitchAttributionEnabled && isHitchFrame(intervalMs)) {
         accumulateHitch(hitchHistogram, classifyHitchFrame({
-          frameMs: ms,
+          frameMs: intervalMs,
           simMs: framePhaseMs.sim,
           presentMs: framePhaseMs.render,
-          presentationMs: framePhaseMs.presentation,
           uiMs: framePhaseMs.ui,
           vfxMs: framePhaseMs.vfx,
           admissionMs: loop.admissionMs,
@@ -849,6 +851,11 @@ export function ensurePerfRuntime(state) {
       if (autosave) saveStats.autosaveLast = plain;
     },
     reset() {
+      hitchHistogram.frames = 0;
+      hitchHistogram.hitches = 0;
+      hitchHistogram.named = 0;
+      hitchHistogram.unknown = 0;
+      for (const owner of Object.keys(hitchHistogram.counts)) hitchHistogram.counts[owner] = 0;
       resetBackgroundJobRecords();
       resetStat(frameStats);
       resetStat(frameCallbackStats);

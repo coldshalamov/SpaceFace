@@ -31,10 +31,21 @@ export const TABLE_AUTHORED_IMMEDIATE_SECONDS = 1.25;
 /** Extra world units around the glass that can still throw a readable key-light shadow. */
 export const TABLE_SHADOW_SKIRT_WU = 80;
 
-/** Voices farther than this cannot be heard on the table. Replaces the old 900 WU horizon.
- *  Must cover the max-zoom submit box so an on-glass ship never goes silent. */
-export const TABLE_HEARING_FAR_WU = 400;
 export const TABLE_HEARING_PAN_WU = 200;
+
+/** Hearing follows the max-zoom table box, not a 900 WU horizon. */
+export function tableHearingFarWu(
+  zoom = 330,
+  fovDeg = 50,
+  aspect = 16 / 9,
+  tiltDeg = 60,
+  speed = TABLE_REFERENCE_SPEED_WU,
+) {
+  const extents = submitCullHalfExtents(zoom, fovDeg, aspect, speed, tiltDeg);
+  return Math.hypot(extents.halfX, extents.halfZ);
+}
+
+export const TABLE_HEARING_FAR_WU = tableHearingFarWu();
 
 export const TABLE_BAND = Object.freeze({
   GLASS: 'glass',
@@ -60,20 +71,78 @@ export function tableTravelSpeed(state) {
   return Math.max(TABLE_REFERENCE_SPEED_WU, live, maxSpeed);
 }
 
-export function glassHalfExtents(zoom, fovDeg, aspect) {
-  return viewHalfExtents(zoom, fovDeg, aspect, 1);
+/**
+ * Ground-plane half extents of the tilted chase camera. The old 0.72 sync-band
+ * helper under-counted the far corners of a 60° look-down frustum.
+ */
+export function glassHalfExtents(zoom, fovDeg, aspect, tiltDeg = 60) {
+  const distance = Number.isFinite(zoom) ? zoom : 88;
+  const fov = Number.isFinite(fovDeg) ? fovDeg : 50;
+  const aspectValue = Number.isFinite(aspect) && aspect > 0 ? aspect : 16 / 9;
+  const tilt = (Number.isFinite(tiltDeg) ? tiltDeg : 60) * Math.PI / 180;
+  const camY = distance * Math.sin(tilt);
+  const camZ = -distance * Math.cos(tilt);
+  const flen = Math.hypot(camY, -camZ) || 1;
+  const fwx = 0;
+  const fwy = -camY / flen;
+  const fwz = -camZ / flen;
+  let rx = fwz;
+  let ry = 0;
+  let rz = -fwx;
+  const rlen = Math.hypot(rx, ry, rz) || 1;
+  rx /= rlen;
+  ry /= rlen;
+  rz /= rlen;
+  const ux = ry * fwz - rz * fwy;
+  const uy = rz * fwx - rx * fwz;
+  const uz = rx * fwy - ry * fwx;
+  const tanHalf = Math.tan((fov * Math.PI / 180) * 0.5);
+  let maxX = 0;
+  let maxZ = 0;
+  const corners = [[-1, -1], [1, -1], [-1, 1], [1, 1]];
+  for (const [ndcX, ndcY] of corners) {
+    const dx = fwx + rx * ndcX * tanHalf * aspectValue + ux * ndcY * tanHalf;
+    const dy = fwy + ry * ndcX * tanHalf * aspectValue + uy * ndcY * tanHalf;
+    const dz = fwz + rz * ndcX * tanHalf * aspectValue + uz * ndcY * tanHalf;
+    if (!(dy < -1e-6)) continue;
+    const hit = -camY / dy;
+    if (!(hit > 0)) continue;
+    maxX = Math.max(maxX, Math.abs(dx * hit));
+    maxZ = Math.max(maxZ, Math.abs(camZ + dz * hit));
+  }
+  if (!(maxX > 0 && maxZ > 0)) return viewHalfExtents(distance, fov, aspectValue, 1);
+  return { halfX: maxX, halfZ: maxZ };
 }
 
 export function submitRunwayWu(speed = TABLE_REFERENCE_SPEED_WU) {
   return approachDistanceWu(TABLE_SUBMIT_APPROACH_SECONDS, speed);
 }
 
-export function residencyPrefetchRadius(speed = TABLE_REFERENCE_SPEED_WU) {
-  return approachDistanceWu(TABLE_RESIDENCY_PREFETCH_SECONDS, speed);
+export function glassCornerWu(zoom, fovDeg, aspect, tiltDeg = 60) {
+  const glass = glassHalfExtents(zoom, fovDeg, aspect, tiltDeg);
+  return Math.hypot(glass.halfX, glass.halfZ);
 }
 
-export function residencyEvictRadius(speed = TABLE_REFERENCE_SPEED_WU) {
-  return approachDistanceWu(TABLE_RESIDENCY_EVICT_SECONDS, speed);
+export function residencyPrefetchRadius(
+  speed = TABLE_REFERENCE_SPEED_WU,
+  zoom = 144,
+  fovDeg = 50,
+  aspect = 16 / 9,
+  tiltDeg = 60,
+) {
+  return glassCornerWu(zoom, fovDeg, aspect, tiltDeg)
+    + approachDistanceWu(TABLE_RESIDENCY_PREFETCH_SECONDS, speed);
+}
+
+export function residencyEvictRadius(
+  speed = TABLE_REFERENCE_SPEED_WU,
+  zoom = 144,
+  fovDeg = 50,
+  aspect = 16 / 9,
+  tiltDeg = 60,
+) {
+  return glassCornerWu(zoom, fovDeg, aspect, tiltDeg)
+    + approachDistanceWu(TABLE_RESIDENCY_EVICT_SECONDS, speed);
 }
 
 export function authoredPrefetchRadius(speed = TABLE_REFERENCE_SPEED_WU) {
@@ -92,8 +161,14 @@ export function authoredLookaheadSeconds() {
  * Hidden/submit box: the readable glass plus a short approach runway.
  * Replaces the old max(900, zoom*8) fake-visible margin.
  */
-export function submitCullHalfExtents(zoom, fovDeg, aspect, speed = TABLE_REFERENCE_SPEED_WU) {
-  const glass = glassHalfExtents(zoom, fovDeg, aspect);
+export function submitCullHalfExtents(
+  zoom,
+  fovDeg,
+  aspect,
+  speed = TABLE_REFERENCE_SPEED_WU,
+  tiltDeg = 60,
+) {
+  const glass = glassHalfExtents(zoom, fovDeg, aspect, tiltDeg);
   const runway = submitRunwayWu(speed);
   return {
     glass,
@@ -101,10 +176,6 @@ export function submitCullHalfExtents(zoom, fovDeg, aspect, speed = TABLE_REFERE
     halfX: glass.halfX + runway,
     halfZ: glass.halfZ + runway,
   };
-}
-
-export function tableHearingFarWu() {
-  return TABLE_HEARING_FAR_WU;
 }
 
 export function tableShadowCastRadius(zoom, fovDeg, aspect) {
