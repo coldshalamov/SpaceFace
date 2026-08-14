@@ -1,0 +1,32 @@
+{
+  "schema": "spaceface.hitchPolishV8.livePromotion.v1",
+  "status": "complete",
+  "packet": "SF-K0-HITCH-POLISH-V8-001",
+  "generationFingerprint": "44D10687ED86D0597C594D0860EA707235351AC7C065E78153B26A1F5A3FD0C5",
+  "members": [
+    {
+      "lod": 0,
+      "source": "source_candidates/hitch_polish_v8/wholeships/kestrel_borrowed_time_v4_lod0.glb",
+      "live": "assets/ships/parts/wholeships/kestrel.glb",
+      "sha256": "5633C556E08FB63AB1CC16D409E72F4CF4E4424158053993921005DDFBF5022B",
+      "bytes": 53006072,
+      "triangles": 37526
+    },
+    {
+      "lod": 1,
+      "source": "source_candidates/hitch_polish_v8/wholeships/kestrel_borrowed_time_v4_lod1.glb",
+      "live": "assets/ships/parts/wholeships/kestrel_lod1.glb",
+      "sha256": "A69946B82BD528F3BC508E3613AB41913AAC16EB4047B21656D7FF5AF26F17C9",
+      "bytes": 38577588,
+      "triangles": 16100
+    },
+    {
+      "lod": 2,
+      "source": "source_candidates/hitch_polish_v8/wholeships/kestrel_borrowed_time_v4_lod2.glb",
+      "live": "assets/ships/parts/wholeships/kestrel_lod2.glb",
+      "sha256": "CECE760274BFD92780F57F87ACB72B599489EE924B1DCAD570950B97DA326F2A",
+      "bytes": 32971740,
+      "triangles": 9856
+    }
+  ]
+}

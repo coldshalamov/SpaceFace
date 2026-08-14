@@ -66,20 +66,12 @@ kit-on-loaf cycles did not close quality. That close is reverted. Live files are
 still the old factory wholeships. Hitch is untouched and still wins. Stay off
 INFERENCE, the dock/hulk remaster, and the expansion-research brief.
 
-- **Hornet is on cycle 47.** Hitch still wins. Not wired. Extra loops
-  stay paused.
-- **Drifter is on cycle 16.** Overlapping cabin/nacelle shells, empty
-  wells, seated twin drives. Clay is still folded paper. Hitch still
-  wins. Not wired.
-- **Ranger is on cycle 15.** Explorer needle + survey mast. Clay is
-  still folded paper. Hitch still wins. Not wired.
-- **Bastion through Wasp have a C15 form pass in source** (overlapping
-  shells, empty wells, cool rim, pane glass). Rebuilds in progress.
-  None wired.
-- **NPC/traffic ships have a C13 form pass in source** (same shell
-  language). Not yet all rebuilt. None wired.
-- **Next:** rebuild Ranger through Wasp, then NPC, one Blender at a
-  time. Wire only a ship that beats Hitch. Hitch extra polish waits.
+- **Every remaining player and NPC remaster is rebuilt in source.**
+  Clay is still loft plus boxes. Hitch still wins. None wired.
+- **Hitch extra polish V8 is in progress** (starter must sit 20% above
+  the remastered fleet). Live Hitch is still the previous body until
+  V8 is inspected and copied.
+- **Do not** wire a remaster that still loses to Hitch.
 - **Do not** mark the campaign exhausted while clay still reads as primitives.
 
 **Graphics / place-asset remaster (resume):** if the task is continuing the interrupted remaster of
