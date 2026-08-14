@@ -14,6 +14,7 @@ import { build47aScenarioProp } from './scenarioProps47a.js';
 import { createWormholePipelineMesh } from './spaceBackground.js';
 import { createVfxPrecompileSalvo, visiblePointLightBudget } from './vfx.js';
 import { waitForRockSurfaceLibraryReady } from './rockSurfaceLibrary.js';
+import { createDynamicBufferCoordinator } from './dynamicBufferRanges.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
 const WEAPON_BY_ID = new Map(WEAPONS.map((weapon) => [weapon.id, weapon]));
@@ -74,7 +75,6 @@ async function precompileNow(
   let canopyPipelineWarmup = null;
   let keepWarmupPrograms = false;
   let stagingAttached = true;
-  let residentBufferWarm = null;
 
   try {
     const vf = installVisualOverrides(createVisualFactory(), { releaseMode: true });
@@ -162,12 +162,10 @@ async function precompileNow(
       }
     }
 
-    // Detach synthetic probes BEFORE any resident-scene warm. Three.compile only links programs;
-    // the first real draw still pays gl.bufferData for every BufferAttribute. If staging is still
-    // in the graph during that warm draw, its throwaway attributes inflate the boot upload spike
-    // and disposeObject() immediately frees those GPU buffers — forcing the live scene to upload
-    // again on the first flight frame. Keep probes out of the warm graph; only resident content
-    // should receive bufferData under the loading shell.
+    // Synthetic probes never survive into opening composition residency. Startup used to follow
+    // this detach with a full live-scene render, making driver cost proportional to every root in a
+    // restored campaign. The deliberately scoped prepareOpeningGpuResources pass owns real opening
+    // uploads and the covered first frame; this phase retains only the finite synthetic programs.
     scene.remove(staging);
     stagingAttached = false;
     if (lightStaging) lightStaging.removeFromParent();
@@ -175,15 +173,6 @@ async function precompileNow(
 
     const stillCurrent = precompileGenerationFor(renderer) === generation;
     keepWarmupPrograms = !!canopyPipelineWarmup && stillCurrent;
-
-    // Warm GPU buffers for the LIVE scene (player ship, background, aux pools, …) while the
-    // loading shell still covers the canvas. Prefer the host warmPostProcess hook (bloom /
-    // render-graph / dynamic-buffer arming); fall back to one straight render.
-    if (stillCurrent && includeGlobalPipelines) {
-      residentBufferWarm = await warmResidentSceneWithShadowPipelines(
-        renderer, scene, camera, canopyPipelineWarmup, options, yieldToMain,
-      );
-    }
 
     if (!incremental && stillCurrent) {
       for (const spec of shipSpecs) compiledShipKeys.add(spec.key);
@@ -196,7 +185,6 @@ async function precompileNow(
       retainedCanopyVariants: countCanopyVariants(canopyPipelineWarmup),
       retainedPipelines: retainedPipelineIds(canopyPipelineWarmup),
       authoredUpgradeQueue: authoredQueue,
-      residentBufferWarm,
       programs: renderer.info && renderer.info.programs ? renderer.info.programs.length : 0,
     };
   } finally {
@@ -244,11 +232,21 @@ async function warmResidentSceneGpuBuffers(renderer, scene, camera, options = {}
   const previousTarget = typeof renderer.getRenderTarget === 'function'
     ? renderer.getRenderTarget()
     : null;
+  const coordinator = scene && scene.isScene === true
+    ? createDynamicBufferCoordinator(scene)
+    : null;
+  let epoch = null;
   try {
     if (typeof renderer.setRenderTarget === 'function') renderer.setRenderTarget(null);
+    // Continue/New Game warmup used to render without a coordinator epoch. THREE's first
+    // InstancedMesh bufferData then looked like an unsolicited upload and retired the owner.
+    if (coordinator && typeof coordinator.arm === 'function') epoch = coordinator.arm();
     renderer.render(scene, camera);
     return { warmed: true, mode: 'renderer.render' };
   } finally {
+    if (epoch != null && coordinator && typeof coordinator.disarm === 'function') {
+      coordinator.disarm(epoch);
+    }
     if (typeof renderer.setRenderTarget === 'function') {
       renderer.setRenderTarget(previousTarget || null);
     }

@@ -91,6 +91,8 @@ test('canonical game shell and transition wire the shared staged loading present
   const newGame = readFileSync(new URL('../src/ui/screens/newGame.js', import.meta.url), 'utf8');
   const mainMenu = readFileSync(new URL('../src/ui/screens/mainMenu.js', import.meta.url), 'utf8');
   const probe = readFileSync(new URL('../scripts/probe-startup-transition.mjs', import.meta.url), 'utf8');
+  const precompile = readFileSync(new URL('../src/render/precompile.js', import.meta.url), 'utf8');
+  const readiness = readFileSync(new URL('../src/render/pipelineReadiness.js', import.meta.url), 'utf8');
   const renderer = readFileSync(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
 
   assert.match(html, /data-loading-label/);
@@ -110,11 +112,18 @@ test('canonical game shell and transition wire the shared staged loading present
     'Continue proof must capture the visible loader without waiting for an impossible veil gap');
   assert.doesNotMatch(renderer, /loadingAdmission[\s\S]{0,300}?warmScenePipelines/,
     'startup pipeline admission must not force-render the authored batch on the main thread');
+  assert.doesNotMatch(precompile,
+    /residentBufferWarm\s*=\s*await\s+warmResidentSceneWithShadowPipelines/,
+    'startup precompile must not render the complete live scene under the loading shell');
+  assert.match(renderer, /captureOpeningPipelinePlan[\s\S]{0,160}?capturePending/,
+    'startup must freeze a finite authored-root pipeline watermark');
+  assert.doesNotMatch(readiness, /compileCurrentPipelines|waitForAuthoredGpuResidency/,
+    'startup must never invoke the diagnostic installed-scene compiler or a moving residency wait');
   assert.match(renderer, /this\.state\.mode === 'loading'\) return false/,
     'the covered world must not render behind the loading shell');
   assert.match(renderer, /_deferNoncriticalMeshStreaming[\s\S]{0,1500}?_meshReconcileDirty = true/,
     'noncritical sector roots must resume only after the first completed flight draw');
-  assert.match(renderer, /openingFrameStarted[\s\S]{0,900}?renderer\.render\(scene, cam\.obj\)/,
+  assert.match(renderer, /openingFrameStarted[\s\S]{0,900}?this\._renderOpeningPostFrame\(scene, cam\.obj\)/,
     'the exact scoped opening frame must render under the loading shell before handoff');
   assert.match(renderer,
     /state\.mode === 'loading'[\s\S]{0,900}?precompilePipelines\(renderer, scene, cam\.obj, \{[\s\S]{0,240}?sector,[\s\S]{0,240}?includeGlobalPipelines:\s*true/,

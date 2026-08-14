@@ -2154,6 +2154,16 @@ export const save = {
       // recipe epoch; a later ordinary promotion may reconcile that cache normally.
       const worldSys = this.registry.get('world');
       const sectorId = state.world.currentSectorId;
+      // Continue used to call enterSector while the main menu was still the live mode. The renderer
+      // then took the in-flight sector-prewarm path instead of the loading compile path, and the
+      // prewarm finally-hook could stampede authored upgrades after flight had already started.
+      if (finalizeLoadedGame && state.mode !== 'loading') {
+        const previousMode = state.mode;
+        state.mode = 'loading';
+        if (previousMode !== state.mode) {
+          this.bus.emit('mode:changed', { mode: state.mode, previousMode });
+        }
+      }
       if (worldSys && typeof worldSys.enterSector === 'function' && sectorId) {
         try {
           worldSys.enterSector(sectorId, { restoreDurableRecords: true });

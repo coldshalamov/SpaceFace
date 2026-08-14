@@ -428,20 +428,38 @@ test('context restoration accepts Three driver re-upload without weakening unsol
   fixture.coordinator.disarm(epoch);
 
   assert.equal(fixture.coordinator.getDiagnostics().contextRestoreAcknowledgements, 1);
-  assert.throws(
+  assert.doesNotThrow(
     () => fixture.attribute.onUploadCallback(),
-    /received an unsolicited upload callback/,
-    'only the one explicitly armed restored-context upload is accepted',
+    'a later unsolicited callback must not throw out of Three\'s upload path',
   );
+  assert.equal(fixture.owner.invalid, true);
+  assert.match(fixture.owner.diagnostics.lastError, /received an unsolicited upload callback/);
+});
+
+test('Three first bufferData does not retire the owner or abort later frames', () => {
+  const fixture = makeOwnerFixture();
+  assert.doesNotThrow(() => fixture.attribute.onUploadCallback());
+  assert.equal(fixture.owner.invalid, false);
+  assert.equal(fixture.owner.diagnostics.initialDriverAcknowledgements, 1);
+
+  const epoch = beginSceneRender(fixture);
+  assert.equal(fixture.attribute.updateRanges.length, 1);
+  acknowledgeInitial(fixture.attribute);
+  fixture.coordinator.disarm(epoch);
+
+  const next = beginSceneRender(fixture);
+  fixture.coordinator.disarm(next);
+  assert.equal(fixture.coordinator.getDiagnostics().epochs, 2);
+  assert.equal(fixture.coordinator.getDiagnostics().invalid, false);
 });
 
 test('an invalid owner can still release its callback and coordinator ownership', () => {
   const fixture = makeOwnerFixture();
-  assert.throws(
-    () => fixture.attribute.onUploadCallback(),
-    /received an unsolicited upload callback/,
-  );
+  assert.doesNotThrow(() => fixture.attribute.onUploadCallback());
+  assert.equal(fixture.owner.invalid, false, 'Three\'s first bufferData is expected, not a trap');
+  assert.doesNotThrow(() => fixture.attribute.onUploadCallback());
   assert.equal(fixture.owner.invalid, true);
+  assert.match(fixture.owner.diagnostics.lastError, /received an unsolicited upload callback/);
 
   assert.equal(unregisterDynamicBufferOwner(fixture.owner), true);
   assert.equal(Object.hasOwn(fixture.attribute, 'onUploadCallback'), false);
@@ -476,10 +494,8 @@ test('one owner trap cannot latch the coordinator dead for later frames', () => 
   const trapped = addOwner('trapped');
   const healthy = addOwner('healthy');
 
-  assert.throws(
-    () => trapped.attribute.onUploadCallback(),
-    /received an unsolicited upload callback/,
-  );
+  assert.doesNotThrow(() => trapped.attribute.onUploadCallback());
+  assert.doesNotThrow(() => trapped.attribute.onUploadCallback());
   assert.equal(trapped.owner.invalid, true);
   assert.equal(coordinator.getDiagnostics().retiredOwners, 1);
   assert.doesNotThrow(

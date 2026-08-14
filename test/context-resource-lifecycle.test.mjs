@@ -9,6 +9,7 @@ import {
   detachStaleWebGlDisposeListeners,
   isWebGlContextUnavailable,
 } from '../src/render/contextResourceLifecycle.js';
+import { runWebGlContextRestoreRebuild } from '../src/render/renderer.js';
 
 test('context loss detaches only exact opaque renderer-generation callbacks by resource kind', () => {
   const provenance = createWebGlDisposeListenerProvenance();
@@ -127,6 +128,55 @@ test('context restore rebuild stays paused until every listener in the restore e
   queued();
   assert.deepEqual(order, ['three-context-cache-reset', 'spaceface-rebuild']);
   assert.equal(receipt.pending, false);
+});
+
+test('context restore stays draw-gated through rebuild and remains gated after a rebuild failure', async () => {
+  const owner = { _contextLost: true };
+  const recovery = { restores: 2, generation: 7, pending: true, lastError: null };
+  const success = await runWebGlContextRestoreRebuild(owner, recovery, async () => {
+    assert.equal(owner._contextLost, true, 'draw remains gated during every rebuild step');
+    assert.equal(recovery.pending, true, 'readiness remains pending during every rebuild step');
+    await Promise.resolve();
+    assert.equal(owner._contextLost, true, 'async pipeline rebuild also remains draw-gated');
+    assert.equal(recovery.pending, true);
+  });
+
+  assert.equal(success.ok, true);
+  assert.equal(owner._contextLost, false);
+  assert.equal(recovery.pending, false);
+  assert.equal(recovery.restores, 3);
+  assert.equal(recovery.generation, 8);
+
+  owner._contextLost = true;
+  recovery.pending = true;
+  const failure = await runWebGlContextRestoreRebuild(owner, recovery, async () => {
+    assert.equal(owner._contextLost, true);
+    assert.equal(recovery.pending, true);
+    await Promise.resolve();
+    throw new Error('rebuild exploded');
+  });
+
+  assert.equal(failure.ok, false);
+  assert.match(String(failure.error?.message), /rebuild exploded/);
+  assert.equal(owner._contextLost, true,
+    'a failed rebuild must not reopen rendering onto half-restored resources');
+  assert.equal(recovery.pending, true,
+    'a failed rebuild remains unavailable to startup/readiness gates');
+  assert.equal(recovery.lastError, 'rebuild exploded');
+  assert.equal(recovery.restores, 3, 'failed rebuilds do not advance restore receipts');
+  assert.equal(recovery.generation, 8, 'failed rebuilds do not publish a fresh generation');
+
+  const contextLostReceipt = await runWebGlContextRestoreRebuild(owner, recovery, async () => ({
+    contextLost: true,
+    reason: 'driver reset during restored pipeline compile',
+  }));
+  assert.equal(contextLostReceipt.ok, false);
+  assert.equal(owner._contextLost, true,
+    'a fulfilled context-lost compile receipt must not reopen rendering');
+  assert.equal(recovery.pending, true);
+  assert.match(recovery.lastError, /driver reset during restored pipeline compile/);
+  assert.equal(recovery.restores, 3);
+  assert.equal(recovery.generation, 8);
 });
 
 test('draw boundary observes a lost GL context before its asynchronous event arrives', () => {

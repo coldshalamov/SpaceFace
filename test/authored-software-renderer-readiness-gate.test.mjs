@@ -110,3 +110,23 @@ test('hardware gate clears once the full opening set stages, proving the relaxat
   assert.equal(readiness.pipelineReady, true, 'all opening actors staged must clear the hardware gate');
   assert.equal(readiness.ready, false, 'a compiling-pipelines actor is not yet committed authored');
 });
+
+test('hardware gate does not wait forever on nearby ships that already failed admission', () => {
+  const state = buildState({
+    tier: 'integrated',
+    npcStatuses: ['unavailable', 'unavailable', 'compiling-pipelines'],
+  });
+  const readiness = partsLibrary.authoredCriticalVisualReadiness(state);
+
+  assert.equal(readiness.softwareRenderer, false);
+  assert.equal(readiness.pipelineReady, true,
+    'failed nearby traffic must not keep New Game/Continue in loading after the player has staged');
+  assert.equal(readiness.ready, false,
+    'a still-compiling neighbour still holds the committed authored gate');
+
+  state.entityList.find((entity) => entity.id === 'npc-2').mesh.userData.authoredAssetState = 'authored';
+  const committed = partsLibrary.authoredCriticalVisualReadiness(state);
+  assert.equal(committed.pipelineReady, true);
+  assert.equal(committed.ready, true,
+    'unavailable neighbours must not refuse flight once the rest of the opening set is authored');
+});

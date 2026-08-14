@@ -3347,8 +3347,14 @@ export function authoredCriticalVisualReadiness(state) {
   const openingAssets = entityList
     .filter((entity) => isInitialAuthoredCompositionEntity(entity, state))
     .map((entity) => ({ id: entity.id, type: entity.type, status: authoredAssetState(entity) }));
-  const openingPending = openingAssets.filter((entry) => entry.status !== 'authored');
-  const openingPipelinePending = openingAssets.filter((entry) => !authoredPipelineStaged(entry.status));
+  const openingPending = openingAssets.filter((entry) => (
+    entry.status !== 'authored'
+    && entry.status !== 'authored-with-cleanup-error'
+    && !authoredOpeningFailedClosed(entry.status)
+  ));
+  const openingPipelinePending = openingAssets.filter((entry) => (
+    !authoredPipelineStaged(entry.status) && !authoredOpeningFailedClosed(entry.status)
+  ));
   const playerPipelineStaged = authoredPipelineStaged(playerStatus);
   const hubPipelineStaged = !needsStartingHub || authoredPipelineStaged(hubStatus);
   // Software renderers (SwiftShader/llvmpipe) push the full opening composition through a serial
@@ -3388,6 +3394,18 @@ function authoredPipelineStaged(status) {
   return status === 'compiling-pipelines'
     || status === 'authored'
     || status === 'authored-with-cleanup-error';
+}
+
+// Nearby traffic that already failed admission will never become authored. Holding the whole
+// opening set for those ships used to refuse New Game/Continue forever on real hardware while the
+// player ship was already compiling.
+function authoredOpeningFailedClosed(status) {
+  return status === 'unavailable'
+    || status === 'procedural-settled'
+    || status === 'fallback-after-error'
+    || status === 'cancelled-before-load'
+    || status === 'orphaned-before-swap'
+    || status === 'orphaned-after-pipeline-compile';
 }
 
 function authoredAssetState(entity) {

@@ -1,3 +1,17 @@
+function gpuContextIsLost(state) {
+  const render = state && state.render;
+  if (!render) return false;
+  if (render.contextLost === true) return true;
+  if (render.contextRecovery && render.contextRecovery.pending === true) return true;
+  const renderer = render.renderer;
+  try {
+    const gl = renderer && typeof renderer.getContext === 'function' ? renderer.getContext() : null;
+    return !!(gl && typeof gl.isContextLost === 'function' && gl.isContextLost());
+  } catch {
+    return true;
+  }
+}
+
 function timeout(ms) {
   return new Promise((resolve) => setTimeout(() => resolve({ ok: false, timeout: true }), ms));
 }
@@ -22,6 +36,13 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
   if (typeof compileBatch !== 'function') throw new TypeError('pipeline tracker requires compileBatch()');
   const quietMs = Math.max(0, Number(options.quietMs) || 40);
   const maxWaitMs = Math.max(quietMs, Number(options.maxWaitMs) || 200);
+  const resumeBatchSize = Math.max(1, Math.floor(Number(options.resumeBatchSize) || 2));
+  const scheduleResume = typeof options.scheduleResume === 'function'
+    ? options.scheduleResume
+    : (callback) => {
+        if (typeof requestAnimationFrame === 'function') return requestAnimationFrame(callback);
+        return setTimeout(callback, 16);
+      };
   const deferAutoFlush = typeof options.deferAutoFlush === 'function'
     ? options.deferAutoFlush
     : () => false;
@@ -34,10 +55,14 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
       ? performance.now()
       : Date.now());
   const pending = new Set();
+  const capturedPlans = new WeakMap();
   let queued = [];
   let quietTimer = null;
   let maxTimer = null;
   let compileTail = Promise.resolve();
+  let nextAdmissionId = 0;
+  let boundedResume = false;
+  let resumeScheduled = false;
 
   function clearTimers() {
     if (quietTimer != null) clearTimeout(quietTimer);
@@ -48,6 +73,10 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
 
   function scheduleFlush() {
     if (deferAutoFlush()) return;
+    if (boundedResume) {
+      scheduleResumedBatch();
+      return;
+    }
     if (quietTimer != null) clearTimeout(quietTimer);
     quietTimer = setTimeout(() => { void flushQueued(); }, quietMs);
     if (maxTimer == null) maxTimer = setTimeout(() => { void flushQueued(); }, maxWaitMs);
@@ -82,13 +111,23 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
     }
   }
 
-  function flushQueued() {
-    if (queued.length === 0) return compileTail;
+  function flushQueuedThrough(
+    watermark = Number.POSITIVE_INFINITY,
+    path = 'queued',
+    batchLimit = Number.POSITIVE_INFINITY,
+    scheduleRemaining = true,
+  ) {
+    const batch = [];
+    const remaining = [];
+    for (const entry of queued) {
+      if (entry.id <= watermark && batch.length < batchLimit) batch.push(entry);
+      else remaining.push(entry);
+    }
+    if (batch.length === 0) return compileTail;
     clearTimers();
-    const batch = queued;
-    queued = [];
+    queued = remaining;
     const subjects = batch.map((entry) => entry.subject);
-    const run = compileTail.then(() => invokeCompileBatch(subjects, 'queued'));
+    const run = compileTail.then(() => invokeCompileBatch(subjects, path));
     // Render-target selection is global renderer state. Keep batches serialized even if a second
     // runway fills while the first one is still waiting on the graphics driver.
     compileTail = run.catch(() => null);
@@ -96,13 +135,72 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
       (result) => { for (const entry of batch) entry.resolve(result); },
       (error) => { for (const entry of batch) entry.reject(error); },
     );
+    if (scheduleRemaining && queued.length > 0) scheduleFlush();
     return run;
+  }
+
+  function flushQueued() {
+    return flushQueuedThrough(Number.POSITIVE_INFINITY, 'queued');
+  }
+
+  function scheduleResumedBatch() {
+    if (!boundedResume || resumeScheduled || deferAutoFlush() || queued.length === 0) return;
+    resumeScheduled = true;
+    scheduleResume(() => {
+      resumeScheduled = false;
+      void flushResumedBatch();
+    });
+  }
+
+  function flushResumedBatch() {
+    if (deferAutoFlush() || queued.length === 0) return compileTail;
+    const run = flushQueuedThrough(
+      Number.POSITIVE_INFINITY,
+      'resumed',
+      resumeBatchSize,
+      false,
+    );
+    Promise.resolve(run).then(scheduleResumedBatch, scheduleResumedBatch);
+    return run;
+  }
+
+  function capturePending() {
+    const watermark = nextAdmissionId;
+    const entries = [...pending].filter((entry) => entry.id <= watermark);
+    const plan = Object.freeze({
+      watermark,
+      pendingCount: entries.length,
+    });
+    capturedPlans.set(plan, entries);
+    return plan;
+  }
+
+  function subjectsForCaptured(plan) {
+    const entries = capturedPlans.get(plan);
+    if (!entries) throw new TypeError('pipeline tracker requires a captured admission plan');
+    return Object.freeze([...new Set(entries.map((entry) => entry.subject))]);
+  }
+
+  async function waitForCaptured(plan) {
+    const entries = capturedPlans.get(plan);
+    if (!entries) throw new TypeError('pipeline tracker requires a captured admission plan');
+    flushQueuedThrough(plan.watermark, 'captured');
+    await Promise.all(entries.map((entry) => entry.completion));
+    // Exact-root callers advance to residency/publication in their await continuations. Give those
+    // already-registered consumers deterministic turns without joining any admission after watermark.
+    await Promise.resolve();
+    await Promise.resolve();
+    return {
+      watermark: plan.watermark,
+      capturedCount: entries.length,
+      remainingCount: pending.size,
+    };
   }
 
   async function waitForPending() {
     while (pending.size > 0) {
       flushQueued();
-      await Promise.all([...pending]);
+      await Promise.all([...pending].map((entry) => entry.completion));
     }
     // Admission consumers commit their already-built roots in promise continuations. Yield through
     // those continuations before the startup guard is allowed to publish the first flight frame.
@@ -116,20 +214,35 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
       let resolve;
       let reject;
       const compilation = new Promise((res, rej) => { resolve = res; reject = rej; });
-      const tracked = compilation.finally(() => pending.delete(tracked));
-      pending.add(tracked);
-      queued.push({ subject, resolve, reject });
+      const entry = {
+        id: ++nextAdmissionId,
+        subject,
+        resolve,
+        reject,
+        completion: null,
+      };
+      entry.completion = compilation.finally(() => pending.delete(entry));
+      pending.add(entry);
+      queued.push(entry);
       scheduleFlush();
-      return tracked;
+      return entry.completion;
     },
-    compileCurrent(subject) {
-      // A render-target transition needs the complete installed scene compiled after all currently
-      // queued authored roots. Put that pass directly on the same serial driver runway; any roots
-      // admitted while it runs append behind it, and the returned promise waits for those too.
+    capturePending,
+    subjectsForCaptured,
+    waitForCaptured,
+    compileExplicit(subject) {
+      // Diagnostics may deliberately compile a complete installed scene after a render-target
+      // switch. Keep that opt-in pass serialized, but never attach the startup moving-fixpoint wait.
       flushQueued();
-      const run = compileTail.then(() => invokeCompileBatch([subject], 'current'));
+      const run = compileTail.then(() => invokeCompileBatch([subject], 'explicit'));
       compileTail = run.catch(() => null);
-      return run.finally(() => waitForPending());
+      return run;
+    },
+    resumeAutoFlush() {
+      boundedResume = true;
+      clearTimers();
+      if (deferAutoFlush()) return compileTail;
+      return flushResumedBatch();
     },
     waitForPending,
     get pendingCount() { return pending.size; },
@@ -143,9 +256,51 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
 export function createGpuResidencyAdmissionTracker(prepare) {
   if (typeof prepare !== 'function') throw new TypeError('GPU residency tracker requires prepare()');
   const pending = new Set();
+  const pendingBySubject = new Map();
+  const capturedPlans = new WeakMap();
+  let nextAdmissionId = 0;
+
+  function captureEntries(entries, pendingCount, extra = {}) {
+    const plan = Object.freeze({
+      watermark: nextAdmissionId,
+      pendingCount,
+      ...extra,
+    });
+    capturedPlans.set(plan, entries);
+    return plan;
+  }
+
+  function capturePending() {
+    const watermark = nextAdmissionId;
+    const entries = [...pending].filter((entry) => entry.id <= watermark);
+    return captureEntries(entries, entries.length);
+  }
+
+  function captureSubjects(subjects) {
+    const uniqueSubjects = [...new Set(Array.isArray(subjects) ? subjects : [])];
+    const entries = uniqueSubjects.flatMap((subject) => [...(pendingBySubject.get(subject) || [])]);
+    return captureEntries(entries, entries.length, {
+      boundSubjectCount: uniqueSubjects.length,
+    });
+  }
+
+  async function waitForCaptured(plan) {
+    const entries = capturedPlans.get(plan);
+    if (!entries) throw new TypeError('GPU residency tracker requires a captured admission plan');
+    await Promise.all(entries.map((entry) => entry.completion));
+    await Promise.resolve();
+    await Promise.resolve();
+    return {
+      watermark: plan.watermark,
+      capturedCount: entries.length,
+      remainingCount: pending.size,
+    };
+  }
 
   async function waitForPending() {
-    while (pending.size > 0) await Promise.all([...pending]);
+    while (pending.size > 0) {
+      await Promise.all([...pending].map((entry) => entry.completion));
+    }
     // Boundary admission commits in the await continuation registered before this aggregate wait.
     // Give that continuation a deterministic turn before startup checks committed visual readiness.
     await Promise.resolve();
@@ -154,12 +309,33 @@ export function createGpuResidencyAdmissionTracker(prepare) {
   }
 
   return {
-    prepare(subject) {
-      const preparation = Promise.resolve().then(() => prepare(subject));
-      const tracked = preparation.finally(() => pending.delete(tracked));
-      pending.add(tracked);
-      return tracked;
+    prepare(subject, options = {}) {
+      const preparation = Promise.resolve().then(() => prepare(subject, options));
+      const entry = {
+        id: ++nextAdmissionId,
+        subject,
+        completion: null,
+      };
+      entry.completion = preparation.finally(() => {
+        pending.delete(entry);
+        const entries = pendingBySubject.get(subject);
+        if (entries) {
+          entries.delete(entry);
+          if (entries.size === 0) pendingBySubject.delete(subject);
+        }
+      });
+      pending.add(entry);
+      let entries = pendingBySubject.get(subject);
+      if (!entries) {
+        entries = new Set();
+        pendingBySubject.set(subject, entries);
+      }
+      entries.add(entry);
+      return entry.completion;
     },
+    capturePending,
+    captureSubjects,
+    waitForCaptured,
     waitForPending,
     get pendingCount() { return pending.size; },
   };
@@ -179,19 +355,43 @@ export async function waitForCurrentRenderPipelines(state, timeoutMs = 20000) {
     const result = await settleWithin(procedural, timeoutMs);
     if (!result.ok) return false;
   }
+  if (gpuContextIsLost(state)) return false;
 
-  if (typeof render.compileCurrentPipelines !== 'function') return true;
-  const exact = Promise.resolve().then(() => render.compileCurrentPipelines());
-  render.exactPipelineWarmupReady = exact;
-  const result = await settleWithin(exact, timeoutMs);
-  if (!result.ok) return false;
+  const capturePipelines = render.captureOpeningPipelinePlan;
+  const drainPipelines = render.drainOpeningPipelinePlan;
+  const captureResidency = render.captureOpeningGpuResidencyPlan;
+  const drainResidency = render.drainOpeningGpuResidencyPlan;
+  if ((typeof capturePipelines === 'function') !== (typeof drainPipelines === 'function')) return false;
+  if ((typeof captureResidency === 'function') !== (typeof drainResidency === 'function')) return false;
+  let pipelinePlan = null;
+  try {
+    // This is the startup cohort boundary. Root identities are frozen here; their residency work is
+    // selected only after the captured pipeline continuations have had deterministic turns to start.
+    if (typeof capturePipelines === 'function') pipelinePlan = capturePipelines();
+  } catch {
+    return false;
+  }
+  if (typeof capturePipelines === 'function') {
+    const exact = Promise.resolve().then(() => drainPipelines(pipelinePlan));
+    render.exactPipelineWarmupReady = exact;
+    const result = await settleWithin(exact, timeoutMs);
+    if (!result.ok) return false;
+    if (gpuContextIsLost(state)) return false;
+  }
 
-  const waitForResidency = render.waitForAuthoredGpuResidency;
-  if (typeof waitForResidency !== 'function') return true;
-  const residency = Promise.resolve().then(() => waitForResidency());
-  render.authoredGpuAdmissionReady = residency;
-  const residencyResult = await settleWithin(residency, timeoutMs);
-  return residencyResult.ok;
+  if (typeof captureResidency === 'function') {
+    let residencyPlan = null;
+    try {
+      residencyPlan = captureResidency(pipelinePlan);
+    } catch {
+      return false;
+    }
+    const residency = Promise.resolve().then(() => drainResidency(residencyPlan));
+    render.authoredGpuAdmissionReady = residency;
+    const residencyResult = await settleWithin(residency, timeoutMs);
+    if (!residencyResult.ok) return false;
+  }
+  return gpuContextIsLost(state) !== true;
 }
 
 export async function waitForOpeningGpuResources(state, timeoutMs = 20000) {
@@ -201,5 +401,5 @@ export async function waitForOpeningGpuResources(state, timeoutMs = 20000) {
   const readiness = Promise.resolve().then(() => prepare());
   render.openingGpuResidencyReady = readiness;
   const result = await settleWithin(readiness, timeoutMs);
-  return result.ok;
+  return result.ok && gpuContextIsLost(state) !== true;
 }

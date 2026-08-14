@@ -377,71 +377,185 @@ test('AO and zero/off bloom skip their pass families without skipping presentati
   graph.dispose();
 });
 
-test('startup waits for procedural warm-up, then compiles the installed authored scene', async () => {
+test('startup waits for procedural warm-up, then drains captured authored opening plans', async () => {
   const timeline = [];
+  const pipelinePlan = { watermark: 4, pendingCount: 2 };
+  const residencyPlan = { watermark: 9, pendingCount: 2 };
   const state = {
     render: {
       pipelinePrecompileReady: Promise.resolve().then(() => { timeline.push('procedural'); }),
-      compileCurrentPipelines: async () => { timeline.push('authored-hdr'); },
+      captureOpeningPipelinePlan: () => {
+        timeline.push('pipelines:capture');
+        return pipelinePlan;
+      },
+      drainOpeningPipelinePlan: async (plan) => {
+        assert.strictEqual(plan, pipelinePlan);
+        timeline.push('pipelines:ready');
+      },
+      captureOpeningGpuResidencyPlan: (capturedPipelinePlan) => {
+        assert.strictEqual(capturedPipelinePlan, pipelinePlan);
+        timeline.push('residency:capture');
+        return residencyPlan;
+      },
+      drainOpeningGpuResidencyPlan: async (plan) => {
+        assert.strictEqual(plan, residencyPlan);
+        timeline.push('residency:ready');
+      },
     },
   };
 
   const ready = await waitForCurrentRenderPipelines(state, 1000);
 
   assert.equal(ready, true);
-  assert.deepEqual(timeline, ['procedural', 'authored-hdr']);
+  assert.deepEqual(timeline, [
+    'procedural',
+    'pipelines:capture',
+    'pipelines:ready',
+    'residency:capture',
+    'residency:ready',
+  ]);
   assert.equal(typeof state.render.exactPipelineWarmupReady?.then, 'function');
+  assert.equal(typeof state.render.authoredGpuAdmissionReady?.then, 'function');
 });
 
-test('startup cannot outrun authored GPU residency after the deferred shader flush', async () => {
+test('startup selects residency started by captured pipeline continuations and excludes unrelated roots', async () => {
   const timeline = [];
-  const upload = deferred();
-  const tracker = createGpuResidencyAdmissionTracker(async () => {
-    timeline.push('gpu:start');
-    await upload.promise;
-    timeline.push('gpu:ready');
-    return { skipped: false, textures: 21 };
+  const openingUpload = deferred();
+  const lateUpload = deferred();
+  const residencyCaptured = deferred();
+  const gpuStarted = new Set();
+  const residencyTracker = createGpuResidencyAdmissionTracker(async (subject) => {
+    gpuStarted.add(subject);
+    timeline.push(`gpu:start:${subject}`);
+    await (subject === 'opening-root' ? openingUpload.promise : lateUpload.promise);
+    timeline.push(`gpu:ready:${subject}`);
+    return { skipped: false, subject };
   });
-  let publication = null;
+  const shaderDrain = deferred();
+  const pipelineTracker = createPipelineAdmissionTracker(async () => {
+    timeline.push('pipelines:ready');
+    await shaderDrain.promise;
+    return { skipped: false };
+  }, { deferAutoFlush: () => true });
+  let openingPublished = false;
+  let latePublished = false;
+  const pipeline = pipelineTracker.compile('opening-root').then(() => {
+    timeline.push('pipeline:continued:opening');
+    return residencyTracker.prepare('opening-root').then(() => {
+      openingPublished = true;
+    });
+  });
   const state = {
     render: {
-      compileCurrentPipelines() {
-        timeline.push('pipelines:ready');
-        publication = tracker.prepare({ name: 'detached-authored-root' }).then(() => {
-          timeline.push('authored:published');
-        });
+      captureOpeningPipelinePlan: () => {
+        timeline.push('pipelines:capture');
+        return pipelineTracker.capturePending();
       },
-      waitForAuthoredGpuResidency: () => tracker.waitForPending(),
+      drainOpeningPipelinePlan: (plan) => pipelineTracker.waitForCaptured(plan),
+      captureOpeningGpuResidencyPlan: (pipelinePlan) => {
+        timeline.push('residency:capture');
+        residencyCaptured.resolve();
+        return residencyTracker.captureSubjects(pipelineTracker.subjectsForCaptured(pipelinePlan));
+      },
+      drainOpeningGpuResidencyPlan: (plan) => residencyTracker.waitForCaptured(plan),
     },
   };
 
-  let settled = false;
-  const readiness = waitForCurrentRenderPipelines(state, 1_000).then((value) => {
-    settled = true;
-    return value;
+  let readinessSettled = false;
+  const readiness = waitForCurrentRenderPipelines(state, 1_000).then((result) => {
+    readinessSettled = true;
+    return result;
+  });
+  const lateResidency = residencyTracker.prepare('late-root').then(() => {
+    latePublished = true;
   });
   await Promise.resolve();
   await Promise.resolve();
-  assert.equal(settled, false, 'a fast shader compile cannot publish flight while textures are pending');
-  assert.deepEqual(timeline, ['pipelines:ready', 'gpu:start']);
+  assert.equal(timeline.includes('residency:capture'), false,
+    'residency selection waits until captured pipeline continuations can start production work');
+  assert.equal(gpuStarted.has('opening-root'), false);
 
-  upload.resolve();
-  assert.equal(await readiness, true);
-  await publication;
-  assert.deepEqual(timeline, [
-    'pipelines:ready',
-    'gpu:start',
-    'gpu:ready',
-    'authored:published',
+  shaderDrain.resolve();
+  await Promise.race([
+    residencyCaptured.promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error('residency cohort was not captured')), 100)),
   ]);
+  assert.equal(gpuStarted.has('opening-root'), true,
+    'the captured root starts residency from its pipeline continuation');
+  assert.ok(timeline.indexOf('pipeline:continued:opening') < timeline.indexOf('residency:capture'));
+  assert.ok(timeline.indexOf('gpu:start:opening-root') < timeline.indexOf('residency:capture'));
+  lateUpload.resolve();
+  await lateResidency;
+  assert.equal(readinessSettled, false,
+    'unrelated residency admitted after the cohort boundary cannot satisfy startup');
+  assert.equal(latePublished, true);
+  assert.equal(openingPublished, false);
+
+  openingUpload.resolve();
+  assert.equal(await readiness, true,
+    'startup waits the captured root through its own future residency receipt');
+  assert.equal(latePublished, true,
+    'the unrelated root remains independently published by only its own residency receipt');
+  await pipeline;
+  assert.equal(openingPublished, true);
   assert.equal(typeof state.render.authoredGpuAdmissionReady?.then, 'function');
+});
+
+test('inactive captured root without residency does not reserve or delay startup', async () => {
+  const residencyTracker = createGpuResidencyAdmissionTracker(async () => {
+    throw new Error('inactive root must not begin residency');
+  });
+  const pipelineTracker = createPipelineAdmissionTracker(async () => ({ skipped: false }), {
+    deferAutoFlush: () => true,
+  });
+  let rootActive = true;
+  let residencyPlan = null;
+  const pipeline = pipelineTracker.compile('inactive-root').then(() => {
+    rootActive = false;
+    if (!rootActive) return { skipped: true, reason: 'inactive' };
+    return residencyTracker.prepare('inactive-root');
+  });
+  const state = {
+    render: {
+      captureOpeningPipelinePlan: () => pipelineTracker.capturePending(),
+      drainOpeningPipelinePlan: (plan) => pipelineTracker.waitForCaptured(plan),
+      captureOpeningGpuResidencyPlan: (pipelinePlan) => {
+        residencyPlan = residencyTracker.captureSubjects(
+          pipelineTracker.subjectsForCaptured(pipelinePlan),
+        );
+        return residencyPlan;
+      },
+      drainOpeningGpuResidencyPlan: (plan) => residencyTracker.waitForCaptured(plan),
+    },
+  };
+
+  assert.equal(await waitForCurrentRenderPipelines(state, 50), true,
+    'an inactive root that starts no residency cannot hold the loading gate');
+  assert.deepEqual(await pipeline, { skipped: true, reason: 'inactive' });
+  assert.equal(residencyPlan?.pendingCount, 0,
+    'the captured identity creates no future residency reservation');
+  assert.equal(residencyTracker.pendingCount, 0);
 });
 
 test('startup fails closed when exact authored pipeline compilation rejects', async () => {
   const state = {
     render: {
       pipelinePrecompileReady: Promise.resolve(),
-      compileCurrentPipelines: async () => { throw new Error('authored compile failed'); },
+      captureOpeningPipelinePlan: () => ({ watermark: 1, pendingCount: 1 }),
+      drainOpeningPipelinePlan: async () => { throw new Error('authored compile failed'); },
+    },
+  };
+
+  assert.equal(await waitForCurrentRenderPipelines(state, 1000), false);
+});
+
+test('startup fails closed when the GPU context is lost', async () => {
+  const state = {
+    render: {
+      contextLost: true,
+      pipelinePrecompileReady: Promise.resolve(),
+      captureOpeningPipelinePlan: () => ({ watermark: 1, pendingCount: 1 }),
+      drainOpeningPipelinePlan: async () => ({ skipped: false }),
     },
   };
 
@@ -494,40 +608,95 @@ test('loading admission can defer all automatic compiles until the explicit star
   assert.deepEqual(await Promise.all([first, second]), [{ ok: true }, { ok: true }]);
 });
 
-test('current-scene compilation is serialized behind admissions and waits for later arrivals', async () => {
+test('nonopening admissions stay outside startup and resume after paint in bounded batches', async () => {
   const started = [];
-  const lateGate = deferred();
+  const scheduledCadence = [];
+  const gpuGates = new Map();
+  const published = [];
+  let loading = true;
   const tracker = createPipelineAdmissionTracker(async (subjects) => {
-    started.push(subjects);
-    if (subjects[0] === 'late-ship') return lateGate.promise;
+    started.push(subjects.slice());
     return { subjects };
   }, {
-    deferAutoFlush: () => true,
+    deferAutoFlush: () => loading,
+    resumeBatchSize: 2,
+    scheduleResume: (callback) => { scheduledCadence.push(callback); },
+  });
+  const residency = createGpuResidencyAdmissionTracker(async (subject) => {
+    const gate = deferred();
+    gpuGates.set(subject, gate);
+    await gate.promise;
+    return { subject };
   });
 
-  const first = tracker.compile('opening-ship');
-  let currentSettled = false;
-  const current = tracker.compileCurrent('installed-scene').then((result) => {
-    currentSettled = true;
-    return result;
-  });
-  const late = tracker.compile('late-ship');
-  for (let turn = 0; turn < 10 && started.length < 3; turn++) await Promise.resolve();
+  const opening = tracker.compile('opening-ship');
+  const plan = tracker.capturePending();
+  const startup = tracker.waitForCaptured(plan);
+  const nonopeningRoots = Array.from({ length: 7 }, (_, index) => `nonopening-${index}`);
+  const publications = nonopeningRoots.map((root) => (
+    tracker.compile(root)
+      .then(() => residency.prepare(root))
+      .then(() => { published.push(root); })
+  ));
+  await startup;
 
-  assert.deepEqual(started, [['opening-ship'], ['installed-scene'], ['late-ship']]);
-  assert.equal(currentSettled, false, 'the current-scene gate must include admissions queued during its compile');
-  lateGate.resolve({ ok: true });
-  await Promise.all([first, current, late]);
-  assert.equal(currentSettled, true);
+  assert.equal(plan.pendingCount, 1);
+  assert.equal(plan.watermark, 1);
+  assert.deepEqual(started, [['opening-ship']],
+    'startup compiles only the authored root captured at the opening watermark');
+  assert.deepEqual(published, [], 'nonopening roots cannot publish before their own GPU residency');
+  assert.deepEqual(await opening, { subjects: ['opening-ship'] });
+
+  loading = false;
+  tracker.resumeAutoFlush();
+  for (let turn = 0; turn < 10 && started.length < 2; turn++) await Promise.resolve();
+  assert.deepEqual(started[1], ['nonopening-0', 'nonopening-1']);
+  assert.deepEqual(published, [], 'pipeline completion alone never publishes a nonopening root');
+
+  while (started.length < 5) {
+    for (let turn = 0; turn < 10 && scheduledCadence.length === 0; turn++) await Promise.resolve();
+    const resume = scheduledCadence.shift();
+    assert.equal(typeof resume, 'function', 'each remaining batch waits for an explicit cadence turn');
+    resume();
+    await Promise.resolve();
+    await Promise.resolve();
+  }
+  assert.ok(started.slice(1).every((batch) => batch.length <= 2),
+    `resumed compile batches exceeded the limit: ${JSON.stringify(started.slice(1))}`);
+  assert.deepEqual(started.slice(1).flat(), nonopeningRoots);
+  assert.deepEqual(published, []);
+  for (let turn = 0; turn < 20 && gpuGates.size < nonopeningRoots.length; turn++) {
+    await Promise.resolve();
+  }
+
+  for (const root of nonopeningRoots) {
+    assert.ok(gpuGates.has(root), `${root} must own an independent residency promise`);
+    gpuGates.get(root).resolve();
+  }
+  await Promise.all(publications);
+  assert.deepEqual(published.sort(), nonopeningRoots.slice().sort());
   assert.equal(tracker.pendingCount, 0);
 });
 
-test('renderer wires current-scene compilation to the installed scene, not a wait-only gate', async () => {
+test('renderer wires startup to captured authored admissions, never the installed scene or moving fixpoint', async () => {
   const source = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+  const readiness = await readFile(new URL('../src/render/pipelineReadiness.js', import.meta.url), 'utf8');
   assert.match(source,
-    /compileCurrentPipelines\s*=\s*\(\)\s*=>\s*pipelineAdmissions\.compileCurrent\(scene\)/);
-  assert.doesNotMatch(source,
-    /compileCurrentPipelines\s*=\s*\(\)\s*=>\s*pipelineAdmissions\.waitForPending\(\)/);
+    /captureOpeningPipelinePlan\s*=\s*\(\)\s*=>\s*pipelineAdmissions\.capturePending\(\)/);
+  assert.match(source,
+    /drainOpeningPipelinePlan\s*=\s*\(plan\)\s*=>\s*pipelineAdmissions\.waitForCaptured\(plan\)/);
+  assert.match(source,
+    /captureOpeningGpuResidencyPlan\s*=\s*\(pipelinePlan\)\s*=>\s*gpuResidencyAdmissions\.captureSubjects\(\s*pipelineAdmissions\.subjectsForCaptured\(pipelinePlan\)\s*\)/);
+  assert.match(source,
+    /drainOpeningGpuResidencyPlan\s*=\s*\(plan\)\s*=>\s*gpuResidencyAdmissions\.waitForCaptured\(plan\)/);
+  assert.doesNotMatch(readiness, /compileCurrentPipelines|waitForAuthoredGpuResidency/,
+    'startup readiness no longer invokes the diagnostic full-scene compiler or moving residency wait');
+  assert.match(source,
+    /compileCurrentPipelines\s*=\s*\(\)\s*=>\s*pipelineAdmissions\.compileExplicit\(scene\)/,
+    'the retained full-scene compiler is explicit diagnostic compatibility only');
+  assert.match(source,
+    /afterBrowserPaint\([\s\S]{0,500}?resumeDeferredPipelineAdmissions/,
+    'late authored roots resume only after the first playable paint');
 });
 
 test('renderer entry points delegate route selection instead of branching on bloom controls', async () => {
@@ -548,7 +717,10 @@ test('renderer entry points delegate route selection instead of branching on blo
   const drawWire = source.slice(drawStart, renderFrameStart);
   assert.match(warmWire, /this\._warmPostProcess\(scene, cam\.obj\)/);
   assert.match(compileWire,
-    /this\._compilePostRoute\(\s*this\._selectPostRoute\(\), subject, cam\.obj, scene/);
+    /this\._compilePostRoute\(\s*route, batch\[0\], cam\.obj, scene/);
+  assert.match(compileWire,
+    /this\._compilePostRoute\(\s*route, staging, cam\.obj, scene/);
+  assert.match(compileWire, /restoreObjectHome\(home\)/);
   assert.match(openingWire, /this\._renderOpeningPostFrame\(scene, cam\.obj\)/);
   assert.match(drawWire,
     /const postRoute = this\._selectPostRoute\(\)[\s\S]*?this\._renderPostRoute\(postRoute,/);
@@ -557,7 +729,7 @@ test('renderer entry points delegate route selection instead of branching on blo
     'bloom controls stay inside the selected post processor and never choose the route');
 });
 
-test('pipeline admission tracker reports only synchronous compileBatch duration for queued and current paths', async () => {
+test('pipeline admission tracker reports only synchronous compileBatch duration for queued and captured paths', async () => {
   const slices = [];
   let clock = 1000;
   const tracker = createPipelineAdmissionTracker((subjects) => {
@@ -588,12 +760,14 @@ test('pipeline admission tracker reports only synchronous compileBatch duration 
   assert.equal(slices[0].subjectCount, 2);
 
   clock = 5000;
-  const current = await tracker.compileCurrent('installed-scene');
-  assert.deepEqual(current, { subjects: ['installed-scene'] });
-  assert.equal(slices.length, 2, 'compileCurrent notifies once for its serial compileBatch invocation');
+  const opening = tracker.compile('opening-root');
+  const plan = tracker.capturePending();
+  await tracker.waitForCaptured(plan);
+  assert.deepEqual(await opening, { subjects: ['opening-root'] });
+  assert.equal(slices.length, 2, 'captured plan notifies once for its serial compileBatch invocation');
   assert.equal(slices[1].kind, 'pipelineAdmissionSync');
   assert.equal(slices[1].durationMs, 7);
-  assert.equal(slices[1].path, 'current');
+  assert.equal(slices[1].path, 'captured');
   assert.equal(slices[1].subjectCount, 1);
 });
 

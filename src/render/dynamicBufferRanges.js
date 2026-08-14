@@ -39,22 +39,22 @@ function detachOwnerUploadCallbacks(owner) {
 }
 
 function markOwnerInvalid(owner, message, counter = null) {
-  // Retire this owner only. The coordinator must remain armable: a single tracked buffer
-  // trap used to latch diagnostics.invalid and freeze every later 3D frame while the HUD
-  // kept running on the overlay path.
-  if (!owner.invalid) {
-    owner.invalid = true;
-    owner.diagnostics.invalid = true;
-    owner.diagnostics.lastError = message;
-    detachOwnerUploadCallbacks(owner);
-    const coordinator = owner.coordinator;
-    if (coordinator) {
-      coordinator.diagnostics.lastError = message;
-      coordinator.diagnostics.retiredOwners++;
-      if (counter) coordinator.diagnostics[counter]++;
-    }
+  // Retire this owner only. Never throw: onUploadCallback runs inside WebGLRenderer.render.
+  // A throw there aborts the rest of the frame, so the canvas keeps the last picture while the
+  // HTML HUD and pause menu keep running. A single tracked buffer trap also used to latch
+  // diagnostics.invalid and refuse every later 3D frame.
+  if (!owner || owner.invalid) return false;
+  owner.invalid = true;
+  owner.diagnostics.invalid = true;
+  owner.diagnostics.lastError = message;
+  detachOwnerUploadCallbacks(owner);
+  const coordinator = owner.coordinator;
+  if (coordinator) {
+    coordinator.diagnostics.lastError = message;
+    coordinator.diagnostics.retiredOwners++;
+    if (counter) coordinator.diagnostics[counter]++;
   }
-  throw new Error(message);
+  return false;
 }
 
 function isTrackableBuffer(attribute) {
@@ -92,29 +92,72 @@ function installUploadCallback(binding) {
   attribute.onUploadCallback = binding.callback;
 }
 
+function acceptSnapshotlessDriverUpload(binding, kind) {
+  const owner = binding.owner;
+  binding.contextRestoreUploadPending = false;
+  if (kind === 'restore') {
+    binding.forceFull = false;
+    binding.forceReason = null;
+    resetBindingPending(binding);
+  }
+  binding.publishedGeneration = Math.max(binding.publishedGeneration, 1);
+  binding.acknowledgedGeneration = binding.publishedGeneration;
+  owner.diagnostics.acknowledgements++;
+  owner.diagnostics.acknowledgedGeneration = Math.max(
+    owner.diagnostics.acknowledgedGeneration,
+    binding.acknowledgedGeneration,
+  );
+  owner.coordinator.diagnostics.acknowledgedUploads++;
+  if (kind === 'restore') {
+    owner.diagnostics.contextRestoreAcknowledgements++;
+    owner.coordinator.diagnostics.contextRestoreAcknowledgements++;
+    return;
+  }
+  owner.diagnostics.initialDriverAcknowledgements++;
+  owner.coordinator.diagnostics.initialDriverAcknowledgements++;
+}
+
 function acknowledgeUpload(binding, callbackAttribute) {
   const owner = binding.owner;
   const snapshot = binding.snapshot;
   if (uploadCallbackBinding) {
     markOwnerInvalid(owner, `${owner.id}:${binding.name} upload callback re-entered`, 'callbackViolations');
+    return;
   }
   uploadCallbackBinding = binding;
   try {
+    if (owner.invalid) return;
     if (!snapshot.active) {
+      // THREE's first bufferData (and the one post-restore bufferData) has no publication
+      // snapshot. That is driver residency, not a cheat. A later callback without a snapshot
+      // still retires the owner — without throwing, so the rest of the frame can draw.
+      if (binding.publishedGeneration === 0 && !binding.contextRestoreUploadPending) {
+        acceptSnapshotlessDriverUpload(binding, 'initial');
+        return;
+      }
       if (!binding.contextRestoreUploadPending) {
+        if (owner.coordinator && owner.coordinator.active === true) {
+          // Shadow-map then color can bufferData twice in one armed epoch after first residency.
+          return;
+        }
         markOwnerInvalid(owner, `${owner.id}:${binding.name} received an unsolicited upload callback`, 'callbackViolations');
+        return;
       }
       if (callbackAttribute !== binding.attribute) {
         markOwnerInvalid(owner, `${owner.id}:${binding.name} restored-context callback used a stale attribute`, 'callbackViolations');
+        return;
       }
       if (binding.attribute.onUploadCallback !== binding.callback) {
         markOwnerInvalid(owner, `${owner.id}:${binding.name} restored-context callback identity changed`, 'callbackViolations');
+        return;
       }
       if (binding.attribute.version !== binding.knownVersion) {
         markOwnerInvalid(owner, `${owner.id}:${binding.name} restored-context upload version changed outside its owner`, 'callbackViolations');
+        return;
       }
       if (binding.attribute.updateRanges.length !== 0) {
         markOwnerInvalid(owner, `${owner.id}:${binding.name} restored-context upload retained foreign update ranges`, 'callbackViolations');
+        return;
       }
 
       // THREE discards its WebGLAttributes cache when a context is restored and
@@ -122,24 +165,20 @@ function acknowledgeUpload(binding, callbackAttribute) {
       // upload preserves BufferAttribute.version and therefore has no owned
       // publication snapshot. Accept exactly the one callback armed by the
       // restore event; the full driver upload also consumes every dirty span.
-      binding.contextRestoreUploadPending = false;
-      binding.forceFull = false;
-      binding.forceReason = null;
-      resetBindingPending(binding);
-      owner.diagnostics.acknowledgements++;
-      owner.diagnostics.contextRestoreAcknowledgements++;
-      owner.coordinator.diagnostics.acknowledgedUploads++;
-      owner.coordinator.diagnostics.contextRestoreAcknowledgements++;
+      acceptSnapshotlessDriverUpload(binding, 'restore');
       return;
     }
     if (callbackAttribute !== binding.attribute || snapshot.attribute !== binding.attribute) {
       markOwnerInvalid(owner, `${owner.id}:${binding.name} upload callback used a stale attribute`, 'callbackViolations');
+      return;
     }
     if (binding.attribute.onUploadCallback !== binding.callback) {
       markOwnerInvalid(owner, `${owner.id}:${binding.name} upload callback identity changed`, 'callbackViolations');
+      return;
     }
     if (binding.attribute.version !== snapshot.version) {
       markOwnerInvalid(owner, `${owner.id}:${binding.name} upload version changed before acknowledgement`, 'callbackViolations');
+      return;
     }
 
     // Ordinary bufferSubData clears the public list before this callback. Initial bufferData does not,
@@ -147,6 +186,7 @@ function acknowledgeUpload(binding, callbackAttribute) {
     removeRangeByIdentity(binding.attribute, snapshot.record);
     if (binding.attribute.updateRanges.length !== 0) {
       markOwnerInvalid(owner, `${owner.id}:${binding.name} retained foreign update ranges`, 'callbackViolations');
+      return;
     }
 
     snapshot.active = false;
@@ -190,21 +230,22 @@ function validateBindingForPublication(binding) {
   const owner = binding.owner;
   const attribute = binding.attribute;
   if (attribute.onUploadCallback !== binding.callback) {
-    markOwnerInvalid(owner, `${owner.id}:${binding.name} upload callback identity changed`, 'callbackViolations');
+    return markOwnerInvalid(owner, `${owner.id}:${binding.name} upload callback identity changed`, 'callbackViolations');
   }
   if (attribute.version !== binding.knownVersion) {
-    markOwnerInvalid(owner, `${owner.id}:${binding.name} attribute version changed outside its owner`, 'callbackViolations');
+    return markOwnerInvalid(owner, `${owner.id}:${binding.name} attribute version changed outside its owner`, 'callbackViolations');
   }
   if (binding.snapshot.active) {
-    markOwnerInvalid(owner, `${owner.id}:${binding.name} still has an unacknowledged publication`, 'callbackViolations');
+    return markOwnerInvalid(owner, `${owner.id}:${binding.name} still has an unacknowledged publication`, 'callbackViolations');
   }
   if (attribute.updateRanges.length !== 0) {
-    markOwnerInvalid(owner, `${owner.id}:${binding.name} public update ranges changed outside its owner`, 'callbackViolations');
+    return markOwnerInvalid(owner, `${owner.id}:${binding.name} public update ranges changed outside its owner`, 'callbackViolations');
   }
+  return true;
 }
 
 function publishBinding(binding, epoch, forceFull, probeForced = false) {
-  validateBindingForPublication(binding);
+  if (validateBindingForPublication(binding) !== true || binding.owner.invalid) return false;
   const attribute = binding.attribute;
   const start = forceFull ? 0 : binding.pending.start;
   const count = forceFull
@@ -281,9 +322,11 @@ function ownerEligibility(owner, scene, camera) {
   const mesh = owner.mesh;
   if (mesh.frustumCulled !== false) {
     markOwnerInvalid(owner, `${owner.id} became frustum-cullable`, 'eligibilityViolations');
+    return 0;
   }
   if (Array.isArray(mesh.material)) {
     markOwnerInvalid(owner, `${owner.id} acquired a material array`, 'eligibilityViolations');
+    return 0;
   }
 
   let node = mesh;
@@ -291,6 +334,7 @@ function ownerEligibility(owner, scene, camera) {
     if (node.visible === false) return 0;
     if (node.isLOD && node.autoUpdate === true) {
       markOwnerInvalid(owner, `${owner.id} moved below an auto-updating LOD`, 'eligibilityViolations');
+      return 0;
     }
     if (node === scene) break;
     node = node.parent;
@@ -320,6 +364,7 @@ function publishOwner(owner, scene, camera, epoch) {
     let published = false;
     const probeForceFull = owner.coordinator.diagnostics.probeForceFullUploads === true;
     for (let index = 0; index < owner.bindings.length; index++) {
+      if (owner.invalid) return;
       const binding = owner.bindings[index];
       if (binding.forceFull) {
         published = publishBinding(binding, epoch, true) || published;
@@ -410,6 +455,7 @@ export function createDynamicBufferCoordinator(scene) {
     writeViolations: 0,
     eligibilityViolations: 0,
     retiredOwners: 0,
+    initialDriverAcknowledgements: 0,
     contextLosses: 0,
     contextRestores: 0,
     contextRestoreAcknowledgements: 0,
@@ -569,6 +615,7 @@ export function registerDynamicBufferOwner(scene, spec) {
       partialUploads: 0,
       probeFullUploads: 0,
       acknowledgements: 0,
+      initialDriverAcknowledgements: 0,
       contextRestoreAcknowledgements: 0,
       pendingGeneration: 0,
       publishedGeneration: 0,

@@ -325,6 +325,59 @@ function clearEntityMeshReference(entity, mesh) {
   if (entity.view && entity.view.root === mesh) entity.view = null;
 }
 
+function captureObjectHome(object) {
+  const parent = object && object.parent ? object.parent : null;
+  return {
+    object,
+    parent,
+    index: parent && Array.isArray(parent.children) ? parent.children.indexOf(object) : -1,
+  };
+}
+
+function restoreObjectHome(home) {
+  const object = home && home.object;
+  if (!object) return;
+  const parent = home.parent;
+  if (!parent) {
+    if (object.parent) object.parent.remove(object);
+    return;
+  }
+  if (object.parent !== parent) parent.add(object);
+  const children = parent.children;
+  if (!Array.isArray(children)) return;
+  const current = children.indexOf(object);
+  const index = home.index;
+  if (current < 0 || index < 0 || current === index) return;
+  children.splice(current, 1);
+  children.splice(Math.min(index, children.length), 0, object);
+}
+
+/** Keep every draw/readiness boundary closed until a restored context finishes rebuilding. */
+export async function runWebGlContextRestoreRebuild(owner, recovery, rebuild) {
+  if (!owner || !recovery || typeof rebuild !== 'function') {
+    throw new TypeError('context restore rebuild requires owner, recovery state, and rebuild callback');
+  }
+  owner._contextLost = true;
+  recovery.pending = true;
+  try {
+    const receipt = await rebuild();
+    if (receipt && receipt.contextLost === true) {
+      throw new Error(receipt.reason || 'context lost during restored GPU rebuild');
+    }
+  } catch (error) {
+    owner._contextLost = true;
+    recovery.pending = true;
+    recovery.lastError = String(error && error.message ? error.message : error);
+    return { ok: false, error };
+  }
+  recovery.restores = (Number(recovery.restores) || 0) + 1;
+  recovery.generation = (Number(recovery.generation) || 0) + 1;
+  recovery.pending = false;
+  recovery.lastError = null;
+  owner._contextLost = false;
+  return { ok: true };
+}
+
 function getContactShadowTex() {
   if (_shadowTex) return _shadowTex;
   const c = document.createElement('canvas'); c.width = c.height = 64;
@@ -1984,9 +2037,8 @@ export const render = {
         // application-owned resources against the settled renderer context.
         this._contextRestoreReceipt = deferWebGlContextRestore(() => {
           if (typeof console !== 'undefined') console.warn('[render] WebGL context restored — rebuilding GPU resources');
-          this._contextLost = false;
-          dynamicBuffers.handleContextRestored();
-          try {
+          void runWebGlContextRestoreRebuild(this, this._contextRecovery, async () => {
+            dynamicBuffers.handleContextRestored();
             // Re-apply renderer config that the new context defaults lose.
             this.renderer.setClearColor(0x060912, 1);
             if (this._shadowSettingOn && this._keyLight) this.renderer.shadowMap.enabled = false; // re-gated by _syncShadowMapEnabled on next frame
@@ -2016,25 +2068,32 @@ export const render = {
             // the full-quality background graph and let THREE re-upload it like every other root.
             this._invalidatePostOptionsCache();
             this._syncPostOptions(true);
-            this._contextRecovery.restores++;
-            this._contextRecovery.generation++;
-            this._contextRecovery.pending = false;
             if (this._assetResidency) this._assetResidency.handleContextRestored();
-            state.render.pipelinePrecompileReady = precompileGlobalPipelines(renderer, scene, cam.obj, {
+            const restoredPostRoute = this._selectPostRoute({ allowContextRecovery: true });
+            const restoredPipelines = precompileGlobalPipelines(renderer, scene, cam.obj, {
               incremental: true,
-              preparePipelines: compileForCurrentTarget,
+              preparePipelines: async (subjects) => {
+                const receipt = await compileForCurrentTarget(subjects, restoredPostRoute);
+                if (receipt && receipt.contextLost === true) {
+                  throw new Error(receipt.reason || 'context lost during restored pipeline compile');
+                }
+                return receipt;
+              },
               video: state.settings && state.settings.video,
               yieldToMain: yieldToBrowser,
-            }).catch((error) => {
-              console.warn('[render] restored-context pipeline precompile failed', error);
-              return null;
             });
+            state.render.pipelinePrecompileReady = restoredPipelines;
+            return await restoredPipelines;
+          }).then((restored) => {
+            if (!restored.ok) {
+              if (typeof console !== 'undefined') {
+                console.error('[render] context-restore rebuild failed', restored.error);
+              }
+              return;
+            }
             this._publishAssetResidencyDiagnostics();
             bus.emit('toast', { text: 'Graphics recovered.', kind: 'good', ttl: 3 });
-          } catch (err) {
-            this._contextRecovery.lastError = String(err && err.message ? err.message : err);
-            if (typeof console !== 'undefined') console.error('[render] context-restore rebuild failed', err);
-          }
+          });
         });
       }, false);
     }
@@ -2479,19 +2538,27 @@ export const render = {
         dynamicBuffers.disarm(dynamicBufferEpoch);
       }
     };
-    const compileForCurrentTarget = (subjects) => {
+    const compileForCurrentTarget = (subjects, requestedRoute = null) => {
       const batch = Array.isArray(subjects) ? subjects.filter(Boolean) : [subjects].filter(Boolean);
       if (batch.length === 0) return Promise.resolve({ skipped: true, reason: 'empty pipeline batch' });
-      const subject = batch.length === 1 ? batch[0] : new THREE.Group();
-      if (batch.length > 1) {
-        subject.name = 'SF_AuthoredPipelineAdmissionBatch';
-        for (const root of batch) subject.add(root);
+      const route = requestedRoute || this._selectPostRoute();
+      if (batch.length === 1) {
+        return Promise.resolve(this._compilePostRoute(
+          route, batch[0], cam.obj, scene,
+        ));
       }
-      const preparation = this._compilePostRoute(
-        this._selectPostRoute(), subject, cam.obj, scene,
-      );
-      return Promise.resolve(preparation).finally(() => {
-        if (batch.length > 1) subject.clear();
+      // Compile together so Three can dedupe programs, but put every live root back on its
+      // original parent. Group.add() steals children; a later clear() used to leave ships
+      // parentless, so the 3D world went empty while the HUD kept running.
+      const staging = new THREE.Group();
+      staging.name = 'SF_AuthoredPipelineAdmissionBatch';
+      const homes = batch.map((root) => captureObjectHome(root));
+      for (const root of batch) staging.add(root);
+      return Promise.resolve(this._compilePostRoute(
+        route, staging, cam.obj, scene,
+      )).finally(() => {
+        for (const home of homes) restoreObjectHome(home);
+        staging.clear();
       });
     };
     const recordAuthoredAdmissionBlockingSlice = (slice) => {
@@ -2510,11 +2577,11 @@ export const render = {
       deferAutoFlush: () => state.mode === 'loading',
       onBlockingSlice: recordAuthoredAdmissionBlockingSlice,
     });
-    const gpuResidencyAdmissions = createGpuResidencyAdmissionTracker((entry) => (
-      prepareStartupGpuResidency(renderer, entry.subject, {
+    const gpuResidencyAdmissions = createGpuResidencyAdmissionTracker((subject, admissionOptions = {}) => (
+      prepareStartupGpuResidency(renderer, subject, {
         yieldToMain: async () => {
           await yieldToBrowser();
-          if (typeof entry.isActive === 'function' && entry.isActive() !== true) {
+          if (typeof admissionOptions.isActive === 'function' && admissionOptions.isActive() !== true) {
             throw new Error('Authored GPU residency owner became inactive before texture upload');
           }
         },
@@ -2522,13 +2589,18 @@ export const render = {
       })
     ));
     state.render.compileObjectPipelines = (subject) => pipelineAdmissions.compile(subject);
-    state.render.prepareAuthoredGpuResidency = (subject, options = {}) => gpuResidencyAdmissions.prepare({
-      subject,
+    state.render.prepareAuthoredGpuResidency = (subject, options = {}) => gpuResidencyAdmissions.prepare(subject, {
       isActive: options.isActive,
     });
-    state.render.waitForAuthoredGpuResidency = () => gpuResidencyAdmissions.waitForPending();
     state.render.pendingAuthoredGpuResidency = () => gpuResidencyAdmissions.pendingCount;
-    state.render.compileCurrentPipelines = () => pipelineAdmissions.compileCurrent(scene);
+    state.render.captureOpeningPipelinePlan = () => pipelineAdmissions.capturePending();
+    state.render.drainOpeningPipelinePlan = (plan) => pipelineAdmissions.waitForCaptured(plan);
+    state.render.captureOpeningGpuResidencyPlan = (pipelinePlan) => gpuResidencyAdmissions.captureSubjects(
+      pipelineAdmissions.subjectsForCaptured(pipelinePlan)
+    );
+    state.render.drainOpeningGpuResidencyPlan = (plan) => gpuResidencyAdmissions.waitForCaptured(plan);
+    state.render.resumeDeferredPipelineAdmissions = () => pipelineAdmissions.resumeAutoFlush();
+    state.render.compileCurrentPipelines = () => pipelineAdmissions.compileExplicit(scene);
     state.render.pendingPipelineAdmissions = () => pipelineAdmissions.pendingCount;
     state.render.prepareOpeningGpuResources = async () => {
       // Flight admission waits behind the loading presenter, so every subsequently streamed common
@@ -4367,6 +4439,9 @@ export const render = {
           : Date.now();
         this._deferNoncriticalMeshStreaming = false;
         this._meshReconcileDirty = true;
+        if (typeof this.state.render.resumeDeferredPipelineAdmissions === 'function') {
+          void this.state.render.resumeDeferredPipelineAdmissions();
+        }
       });
     }
     return true;
@@ -4711,8 +4786,10 @@ export const render = {
   // One route authority for ordinary draw, hidden warm-up, opening-frame submission, and exact-target
   // compilation. Selective bloom controls never select a presentation route: off/zero only suppress
   // bloom pyramid passes inside the wrapper/graph composite.
-  _selectPostRoute() {
-    if (this._contextLost === true) return POST_PROCESS_ROUTE.NATIVE;
+  _selectPostRoute(options = null) {
+    if (this._contextLost === true && options?.allowContextRecovery !== true) {
+      return POST_PROCESS_ROUTE.NATIVE;
+    }
     const video = this.state?.settings?.video || {};
     if (video.renderGraph === true && this._ensureRenderGraph() && this._renderGraph) {
       return POST_PROCESS_ROUTE.GRAPH;
