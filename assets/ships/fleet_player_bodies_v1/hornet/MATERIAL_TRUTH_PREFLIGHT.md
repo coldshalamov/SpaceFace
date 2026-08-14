@@ -22,3 +22,13 @@ Class: player flyable interceptor. Hitch untouched.
 `componentReferenceDecision`: `native_imagegen` for canopy, wing root, radiator well.
 
 Working scene: headless `tools/blender/build_hornet_mtx.py`. Supported cameras in that script.
+
+## C49 construction (form rebuild)
+
+Shape-grammar failure being repaired: tip-to-transom `Pressure_Hull` loft still read as a foam dart after C41–C48 garnish.
+
+Assembly sequence now:
+- three short gloves (`Cabin_Glove`, `Waist_Glove`, `Drive_House`) host bay booleans only
+- visible skin is telescoping `add_stepped_wrap` plate bands + overlapping armor tiles
+- framed greenhouse panes, plated delta wings, hoop-framed drive house, weapon spine
+- identity freeze: 16.5 m needle, single aft drive, twin canards, twin guns, sockets unchanged

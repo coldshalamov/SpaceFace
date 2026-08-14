@@ -20,6 +20,7 @@ from fleet_construction import (  # noqa: E402
     add_cockpit_glazing,
     add_flared_bell,
     add_folded_sheet,
+    cover_loft_with_plates,
     add_radiator_cassette,
     add_manufactured_drive,
     center_loft,
@@ -655,8 +656,8 @@ def build_lod(lod, mats):
         station_ring(-half + 0.50, 0, 0.08, 1.22, 0.72, flat=0.32, box=0.92, keel=0.18),
     ], hull, collection, 0.012)
     if lod <= 1:
-        cut_open_bay(hull_obj, "Bridge", (3.15, 0.0, 1.28), 1.55, 0.62, 0.42, (0, 0, 1), mats, collection, kit="cockpit", liner=False)
-        cut_open_bay(hull_obj, "RadWell", (-2.85, 0.0, 1.02), 1.25, 0.58, 0.28, (0, 0, 1), mats, collection, kit="empty", liner=False)
+        cut_open_bay(hull_obj, "Bridge", (3.15, 0.0, 1.28), 1.55, 0.62, 0.42, (0, 0, 1), mats, collection, kit="cockpit", liner=True)
+        cut_open_bay(hull_obj, "RadWell", (-2.85, 0.0, 1.02), 1.25, 0.58, 0.28, (0, 0, 1), mats, collection, kit="empty", liner=True)
         hull_obj.data.materials.clear()
         hull_obj.data.materials.append(hull)
     inset_large_faces(hull_obj, thickness=0.038, depth=0.014, min_area=1.60)
@@ -689,6 +690,15 @@ def build_lod(lod, mats):
         (-1.80, 1.52, 0.26), (-1.80, 1.64, 0.12),
         0.024, armor, collection, 0.004,
     )
+    cover_loft_with_plates("MuleSkin", [
+        (8.80, 0.78, 0.52, 0.10),
+        (7.20, 1.22, 0.80, 0.10),
+        (4.30, 1.76, 1.10, 0.10),
+        (1.10, 2.05, 1.05, 0.10),
+        (-2.20, 1.72, 0.88, 0.10),
+        (-5.40, 1.22, 0.68, 0.08),
+        (-8.60, 0.68, 0.42, 0.06),
+    ], hull, armor, collection)
 
     add_thin_canopy("Bridge", 3.05, 0.0, 1.08, 1.35, 0.46, 0.40, mats, collection)
     add_box("Bridge_House", (2.45, 0.0, 1.52), (0.82, 0.58, 0.28), armor, collection, 0.006)

@@ -18,6 +18,7 @@ if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
 from fleet_construction import (  # noqa: E402
     add_folded_sheet,
+    cover_loft_with_plates,
     add_manufactured_drive,
     add_overlap_plate,
     add_radiator_cassette,
@@ -652,6 +653,15 @@ def build_lod(lod, mats):
         (-1.80, 0.92, 0.26), (-1.80, 1.04, 0.12),
         0.024, armor, collection, 0.004,
     )
+    cover_loft_with_plates("RangerSkin", [
+        (8.80, 0.72, 0.42, 0.10),
+        (6.20, 1.05, 0.62, 0.14),
+        (3.40, 1.28, 0.78, 0.16),
+        (0.20, 1.48, 0.62, 0.10),
+        (-2.80, 1.18, 0.58, 0.10),
+        (-6.40, 0.82, 0.46, 0.08),
+        (-8.70, 0.52, 0.34, 0.06),
+    ], hull, armor, collection)
 
     add_thin_canopy("Canopy", 3.35, 0.0, 0.98, 1.38, 0.56, 0.38, mats, collection)
     add_box("Cockpit_Seat", (3.20, 0.0, 0.88), (0.18, 0.13, 0.06), mech, collection, 0.004)

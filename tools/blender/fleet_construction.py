@@ -171,6 +171,143 @@ def add_overlap_plate(name, loc, scale, material, collection, bevel=0.008):
     return add_box(name, loc, scale, material, collection, bevel)
 
 
+def add_stepped_wrap(tag, stations, material, collection, thick=0.030, zc=0.08):
+    """Telescoping armor bands. Each station is (x, hw, hh). No smooth loft.
+
+    A constant-width plate run lives at this station's section and overlaps the
+    next station. A shoulder lip steps to the next width. Clay should read as
+    manufactured courses, not a lofted dart.
+    """
+    objects = []
+    for i in range(len(stations) - 1):
+        x0, hw0, hh0 = stations[i]
+        x1, hw1, hh1 = stations[i + 1]
+        lift = 0.012 if i % 2 else 0.0
+        going_aft = x0 > x1
+        overlap = 0.16 if going_aft else -0.16
+        xo = x1 - overlap
+        objects.append(add_folded_sheet(
+            f"{tag}_Dorsal_{i}",
+            (x0, -hw0 * 0.42, zc + hh0 + lift),
+            (xo, -hw0 * 0.42, zc + hh0 + lift),
+            (xo, hw0 * 0.42, zc + hh0 + lift),
+            (x0, hw0 * 0.42, zc + hh0 + lift),
+            thick, material, collection, 0.003,
+        ))
+        objects.append(add_folded_sheet(
+            f"{tag}_Port_{i}",
+            (x0, -hw0, zc - hh0 * 0.20),
+            (xo, -hw0, zc - hh0 * 0.20),
+            (xo, -hw0 * 0.58, zc + hh0 * 0.92 + lift),
+            (x0, -hw0 * 0.58, zc + hh0 * 0.92 + lift),
+            thick, material, collection, 0.003,
+        ))
+        objects.append(add_folded_sheet(
+            f"{tag}_Starboard_{i}",
+            (x0, hw0, zc - hh0 * 0.20),
+            (x0, hw0 * 0.58, zc + hh0 * 0.92 + lift),
+            (xo, hw0 * 0.58, zc + hh0 * 0.92 + lift),
+            (xo, hw0, zc - hh0 * 0.20),
+            thick, material, collection, 0.003,
+        ))
+        objects.append(add_folded_sheet(
+            f"{tag}_Ventral_{i}",
+            (x0, -hw0 * 0.38, zc - hh0 - lift * 0.5),
+            (x0, hw0 * 0.38, zc - hh0 - lift * 0.5),
+            (xo, hw0 * 0.38, zc - hh0 - lift * 0.5),
+            (xo, -hw0 * 0.38, zc - hh0 - lift * 0.5),
+            thick, material, collection, 0.003,
+        ))
+        if abs(hw1 - hw0) > 0.035 or abs(hh1 - hh0) > 0.03:
+            objects.append(add_folded_sheet(
+                f"{tag}_Shoulder_{i}",
+                (x1 + (0.05 if going_aft else -0.05), -hw0 * 0.50, zc + hh0),
+                (x1 - (0.02 if going_aft else -0.02), -hw1 * 0.50, zc + hh1),
+                (x1 - (0.02 if going_aft else -0.02), hw1 * 0.50, zc + hh1),
+                (x1 + (0.05 if going_aft else -0.05), hw0 * 0.50, zc + hh0),
+                thick * 0.85, material, collection, 0.003,
+            ))
+    return objects
+
+
+def cover_loft_with_plates(tag, stations, hull, armor, collection, thick=0.034):
+    """Visible telescoping plate skin over a pressure loft.
+
+    Each station is (x, hw, hh, zc). The loft may stay as a closed core;
+    these bands, hoops, and tiles are what clay should read.
+    """
+    if len(stations) < 2:
+        return []
+    zc = sum(item[3] for item in stations) / len(stations)
+    wrap = [(item[0], item[1], item[2]) for item in stations]
+    objects = list(add_stepped_wrap(tag, wrap, hull, collection, thick=thick, zc=zc))
+    if len(stations) >= 3:
+        xa, hwa, hha, zca = stations[-3]
+        xb, hwb, hhb, zcb = stations[-2]
+        objects.extend(add_hoop_frame(f"{tag}_HoopFore", xa, hwa * 0.96, hha * 0.96, zca, armor, collection))
+        objects.extend(add_hoop_frame(f"{tag}_HoopAft", xb, hwb * 0.96, hhb * 0.96, zcb, armor, collection))
+    mid = stations[len(stations) // 2]
+    objects.append(add_overlap_plate(
+        f"{tag}_ArmorDorsal",
+        (mid[0], 0.0, mid[3] + mid[2] + 0.05),
+        (max(0.42, mid[1] * 0.38), max(0.18, mid[1] * 0.28), 0.032),
+        armor, collection, 0.007,
+    ))
+    fore = stations[1] if len(stations) > 1 else stations[0]
+    objects.append(add_overlap_plate(
+        f"{tag}_ArmorCheekP",
+        (fore[0], -fore[1] * 0.92, fore[3] + 0.08),
+        (0.55, 0.034, max(0.12, fore[2] * 0.28)),
+        armor, collection, 0.006,
+    ))
+    objects.append(add_overlap_plate(
+        f"{tag}_ArmorCheekS",
+        (fore[0], fore[1] * 0.92, fore[3] + 0.08),
+        (0.55, 0.034, max(0.12, fore[2] * 0.28)),
+        armor, collection, 0.006,
+    ))
+    return objects
+
+
+def add_hoop_frame(tag, x, hw, hh, zc, material, collection, thick=0.036, half_w=0.055):
+    """Rectangular hoop rib standing off a house. Not a torus primitive."""
+    objects = [
+        add_folded_sheet(
+            f"{tag}_Top",
+            (x - half_w, -hw, zc + hh),
+            (x + half_w, -hw, zc + hh),
+            (x + half_w, hw, zc + hh),
+            (x - half_w, hw, zc + hh),
+            thick, material, collection, 0.003,
+        ),
+        add_folded_sheet(
+            f"{tag}_Bot",
+            (x - half_w, -hw, zc - hh),
+            (x - half_w, hw, zc - hh),
+            (x + half_w, hw, zc - hh),
+            (x + half_w, -hw, zc - hh),
+            thick, material, collection, 0.003,
+        ),
+        add_folded_sheet(
+            f"{tag}_Port",
+            (x - half_w, -hw, zc - hh),
+            (x + half_w, -hw, zc - hh),
+            (x + half_w, -hw, zc + hh),
+            (x - half_w, -hw, zc + hh),
+            thick, material, collection, 0.003,
+        ),
+        add_folded_sheet(
+            f"{tag}_Starboard",
+            (x - half_w, hw, zc - hh),
+            (x - half_w, hw, zc + hh),
+            (x + half_w, hw, zc + hh),
+            (x + half_w, hw, zc - hh),
+            thick, material, collection, 0.003,
+        ),
+    ]
+    return objects
+
+
 def add_flared_bell(tag, x, y, z, scale, mats, collection, sides=36):
     """Rocket bell: narrow throat at the transom, flare OPEN toward aft (-X)."""
     s = float(scale)

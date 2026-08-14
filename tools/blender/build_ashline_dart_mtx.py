@@ -20,6 +20,7 @@ from fleet_construction import (  # noqa: E402
     add_cockpit_glazing,
     add_flared_bell,
     add_folded_sheet,
+    cover_loft_with_plates,
     add_manufactured_drive,
     center_loft,
     loft_shell,
@@ -698,12 +699,20 @@ def build_lod(lod, mats):
         station_ring(-5.65, 0, 0.04, 0.50, 0.32, flat=0.18, box=0.90, keel=0.25),
     ], hull, collection, 0.010, cap="both")
     if lod <= 1:
-        cut_open_bay(hull_obj, "Cockpit", (1.85, 0.0, 0.68), 1.15, 0.38, 0.30, (0, 0, 1), mats, collection, kit="cockpit", liner=False)
-        cut_open_bay(hull_obj, "RadPort", (0.2, -1.48, 0.08), 1.05, 0.28, 0.22, (0, -1, 0), mats, collection, kit="empty", liner=False)
-        cut_open_bay(hull_obj, "RadStbd", (0.2, 1.48, 0.08), 1.05, 0.28, 0.22, (0, 1, 0), mats, collection, kit="empty", liner=False)
+        cut_open_bay(hull_obj, "Cockpit", (1.85, 0.0, 0.68), 1.15, 0.38, 0.30, (0, 0, 1), mats, collection, kit="cockpit", liner=True)
+        cut_open_bay(hull_obj, "RadPort", (0.2, -1.48, 0.08), 1.05, 0.28, 0.22, (0, -1, 0), mats, collection, kit="empty", liner=True)
+        cut_open_bay(hull_obj, "RadStbd", (0.2, 1.48, 0.08), 1.05, 0.28, 0.22, (0, 1, 0), mats, collection, kit="empty", liner=True)
         hull_obj.data.materials.clear()
         hull_obj.data.materials.append(hull)
     inset_large_faces(hull_obj, thickness=0.022, depth=0.010, min_area=0.55)
+    cover_loft_with_plates("DartSkin", [
+        (5.90, 0.26, 0.20, 0.06),
+        (3.60, 0.96, 0.50, 0.10),
+        (1.20, 1.52, 0.54, 0.08),
+        (-1.20, 1.62, 0.56, 0.08),
+        (-3.60, 1.10, 0.50, 0.06),
+        (-5.50, 0.54, 0.34, 0.04),
+    ], hull, armor, collection)
 
     loft_shell("Cheek_P", [
         (3.40, -0.22, -0.78, -0.06, 0.28),

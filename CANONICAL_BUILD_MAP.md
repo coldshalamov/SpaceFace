@@ -61,26 +61,21 @@ disjoint files. No coordinator, task-long reservation, or worktree is required.
   leaves that need a human or a headed machine you do not have may be recorded `unproven` and
   skipped; do not stall the campaign on them.
 
-**PQ-050 campaign checkpoint (2026-08-14, form rebuild in progress):** the ten
-kit-on-loaf cycles did not close quality. That close is reverted. Live files are
-still the old factory wholeships. Hitch is untouched and still wins. Stay off
-INFERENCE, the dock/hulk remaster, and the expansion-research brief.
+**PQ-050 campaign checkpoint (2026-08-14, plate-skin rebuild):** loft-as-hull
+is dead as the visible Hornet silhouette. Live factory wholeships are still
+unwired. Stay off INFERENCE, the dock/hulk remaster, and the expansion-research
+brief.
 
-- **Hornet is on cycle 47.** Hitch still wins. Not wired. Extra loops
-  stay paused.
-- **Drifter is on cycle 16.** Overlapping cabin/nacelle shells, empty
-  wells, seated twin drives. Clay is still folded paper. Hitch still
-  wins. Not wired.
-- **Ranger is on cycle 15.** Explorer needle + survey mast. Clay is
-  still folded paper. Hitch still wins. Not wired.
-- **Bastion through Wasp have a C15 form pass in source** (overlapping
-  shells, empty wells, cool rim, pane glass). Rebuilds in progress.
-  None wired.
-- **NPC/traffic ships have a C13 form pass in source** (same shell
-  language). Not yet all rebuilt. None wired.
-- **Next:** rebuild Ranger through Wasp, then NPC, one Blender at a
-  time. Wire only a ship that beats Hitch. Hitch extra polish waits.
-- **Do not** mark the campaign exhausted while clay still reads as primitives.
+- **Hornet is on cycle 51.** Tip-to-transom loft replaced by short gloves plus
+  telescoping plate bands, plated slab wings, hoop-framed drive house. Clay is
+  no longer a foam dart. Hitch still wins. Not wired.
+- **Remaining remasters** are getting the same plate-skin cover
+  (`cover_loft_with_plates`). Candidates only. None wired.
+- **Hitch V8 is live.** V9 extra polish (antenna farm, cable trays, airlock,
+  heat skirts) is staged so Hitch stays ~20% above the plate-skinned fleet.
+  Do not overwrite KTX2 release files with uncompressed source.
+- **Do not** wire a remaster that still loses to Hitch.
+- **Do not** mark the campaign exhausted while Hitch still wins.
 
 **Graphics / place-asset remaster (resume):** if the task is continuing the interrupted remaster of
 `place_dock_interior`, `place_dead_hulk`, and/or `place_debris_chunk` (Blender/EEVEE form work, not a

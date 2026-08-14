@@ -20,6 +20,7 @@ from fleet_construction import (  # noqa: E402
     add_cockpit_glazing,
     add_flared_bell,
     add_folded_sheet,
+    cover_loft_with_plates,
     add_radiator_cassette,
     add_manufactured_drive,
     center_loft,
@@ -655,8 +656,8 @@ def build_lod(lod, mats):
         station_ring(-half + 0.40, 0, 0.08, 1.15, 0.72, flat=0.35, box=0.92, keel=0.18),
     ], hull, collection, 0.012)
     if lod <= 1:
-        cut_open_bay(hull_obj, "Bridge", (2.35, 0.0, 1.28), 1.45, 0.68, 0.44, (0, 0, 1), mats, collection, kit="cockpit", liner=False)
-        cut_open_bay(hull_obj, "RadWell", (-2.15, 0.0, 1.05), 1.35, 0.62, 0.30, (0, 0, 1), mats, collection, kit="empty", liner=False)
+        cut_open_bay(hull_obj, "Bridge", (2.35, 0.0, 1.28), 1.45, 0.68, 0.44, (0, 0, 1), mats, collection, kit="cockpit", liner=True)
+        cut_open_bay(hull_obj, "RadWell", (-2.15, 0.0, 1.05), 1.35, 0.62, 0.30, (0, 0, 1), mats, collection, kit="empty", liner=True)
         boolean_cut(hull_obj, "HoldWell", (-0.40, 0.0, -1.15), (1.85, 0.72, 0.22))
         hull_obj.data.materials.clear()
         hull_obj.data.materials.append(hull)
@@ -690,6 +691,14 @@ def build_lod(lod, mats):
         (-1.80, 1.82, 0.26), (-1.80, 1.94, 0.12),
         0.024, armor, collection, 0.004,
     )
+    cover_loft_with_plates("PelicanSkin", [
+        (7.00, 0.78, 0.48, 0.10),
+        (4.80, 1.28, 0.82, 0.16),
+        (2.20, 1.72, 1.02, 0.18),
+        (-0.40, 1.88, 0.92, 0.14),
+        (-3.20, 1.42, 0.72, 0.10),
+        (-6.80, 0.72, 0.42, 0.06),
+    ], hull, armor, collection)
 
     add_thin_canopy("Bridge", 2.25, 0.0, 1.12, 1.45, 0.50, 0.46, mats, collection)
     add_box("Canopy_Brow", (2.95, 0.0, 1.38), (0.10, 0.44, 0.10), armor, collection, 0.004)
