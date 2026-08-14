@@ -700,8 +700,8 @@ def build_lod(lod, mats):
         station_ring(-9.35, 0, -0.02, 0.70, 0.42, flat=0.20, box=0.92, keel=0.30),
     ], hull, collection, 0.012, cap="both")
     if lod <= 1:
-        cut_open_bay(hull_obj, "Cockpit", (4.55, 0.0, 0.98), 1.85, 0.58, 0.42, (0, 0, 1), mats, collection, kit="cockpit", liner=False)
-        cut_open_bay(hull_obj, "DorsalAft", (-2.45, 0.0, 0.78), 1.25, 0.50, 0.30, (0, 0, 1), mats, collection, kit="empty", liner=False)
+        cut_open_bay(hull_obj, "Cockpit", (4.55, 0.0, 0.98), 1.85, 0.58, 0.42, (0, 0, 1), mats, collection, kit="cockpit", liner=True)
+        cut_open_bay(hull_obj, "DorsalAft", (-2.45, 0.0, 0.78), 1.25, 0.50, 0.30, (0, 0, 1), mats, collection, kit="empty", liner=True)
         hull_obj.data.materials.clear()
         hull_obj.data.materials.append(hull)
     inset_large_faces(hull_obj, thickness=0.030, depth=0.012, min_area=1.00)
@@ -734,6 +734,14 @@ def build_lod(lod, mats):
         (-1.80, 1.72, 0.26), (-1.80, 1.84, 0.12),
         0.024, armor, collection, 0.004,
     )
+    for i, x0 in enumerate((6.20, 3.80, 1.20, -1.40)):
+        x1 = x0 - 2.10
+        add_folded_sheet(
+            f"Course_Dorsal_{i}",
+            (x0, -0.28, 0.72), (x1, -0.30, 0.62),
+            (x1, 0.30, 0.62), (x0, 0.28, 0.72),
+            0.022, hull, collection, 0.003,
+        )
     add_box("TransomPlate", (-9.38, 0.0, -0.02), (0.038, 0.62, 0.34), armor, collection, 0.004)
     add_box("TransomLip", (-9.28, 0.0, 0.22), (0.045, 0.42, 0.028), mech, collection, 0.003)
     add_box("ChineP", (0.4, -2.18, -0.18), (4.2, 0.035, 0.05), armor, collection, 0.003)

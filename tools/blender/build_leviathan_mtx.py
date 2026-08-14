@@ -665,9 +665,9 @@ def build_lod(lod, mats):
         station_ring(-half + 0.35, 0, 0.10, 0.98, 0.58, flat=0.30, box=0.92, keel=0.18),
     ], hull, collection, 0.012)
     if lod <= 1:
-        cut_open_bay(hull_obj, "Bridge", (5.05, 0.0, 1.55), 2.15, 0.90, 0.52, (0, 0, 1), mats, collection, kit="cockpit", liner=False)
-        cut_open_bay(hull_obj, "TowerWell", (-1.75, 0.0, 1.48), 1.65, 0.98, 0.48, (0, 0, 1), mats, collection, kit="empty", liner=False)
-        cut_open_bay(hull_obj, "RadWell", (-5.35, 0.0, 1.18), 1.85, 0.82, 0.36, (0, 0, 1), mats, collection, kit="empty", liner=False)
+        cut_open_bay(hull_obj, "Bridge", (5.05, 0.0, 1.55), 2.15, 0.90, 0.52, (0, 0, 1), mats, collection, kit="cockpit", liner=True)
+        cut_open_bay(hull_obj, "TowerWell", (-1.75, 0.0, 1.48), 1.65, 0.98, 0.48, (0, 0, 1), mats, collection, kit="empty", liner=True)
+        cut_open_bay(hull_obj, "RadWell", (-5.35, 0.0, 1.18), 1.85, 0.82, 0.36, (0, 0, 1), mats, collection, kit="empty", liner=True)
         boolean_cut(hull_obj, "PortWell", (0.20, -3.18, 0.16), (1.65, 0.22, 0.32))
         boolean_cut(hull_obj, "StbdWell", (0.20, 3.18, 0.16), (1.65, 0.22, 0.32))
         boolean_cut(hull_obj, "DeckTrench", (1.10, 0.0, 1.58), (7.8, 0.16, 0.18))

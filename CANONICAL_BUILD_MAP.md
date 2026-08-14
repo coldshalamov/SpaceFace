@@ -66,11 +66,12 @@ kit-on-loaf cycles did not close quality. That close is reverted. Live files are
 still the old factory wholeships. Hitch is untouched and still wins. Stay off
 INFERENCE, the dock/hulk remaster, and the expansion-research brief.
 
-- **Every remaining player and NPC remaster is rebuilt in source.**
-  Clay is still loft plus boxes. Hitch still wins. None wired.
-- **Hitch extra polish V8 is in progress** (starter must sit 20% above
-  the remastered fleet). Live Hitch is still the previous body until
-  V8 is inspected and copied.
+- **Hornet is on cycle 48.** Framed wells. Clay is still a foam dart.
+  Hitch still wins. Not wired.
+- **Remaining remasters are still paper.** Framed-well pass is in
+  progress on Wasp, Pelican, Mule, Leviathan, Dart. None wired.
+- **Hitch V8 is live** and still the quality floor. It stays 20% above
+  finished remasters only after those remasters stop reading as paper.
 - **Do not** wire a remaster that still loses to Hitch.
 - **Do not** mark the campaign exhausted while clay still reads as primitives.
 

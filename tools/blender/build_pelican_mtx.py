@@ -655,8 +655,8 @@ def build_lod(lod, mats):
         station_ring(-half + 0.40, 0, 0.08, 1.15, 0.72, flat=0.35, box=0.92, keel=0.18),
     ], hull, collection, 0.012)
     if lod <= 1:
-        cut_open_bay(hull_obj, "Bridge", (2.35, 0.0, 1.28), 1.45, 0.68, 0.44, (0, 0, 1), mats, collection, kit="cockpit", liner=False)
-        cut_open_bay(hull_obj, "RadWell", (-2.15, 0.0, 1.05), 1.35, 0.62, 0.30, (0, 0, 1), mats, collection, kit="empty", liner=False)
+        cut_open_bay(hull_obj, "Bridge", (2.35, 0.0, 1.28), 1.45, 0.68, 0.44, (0, 0, 1), mats, collection, kit="cockpit", liner=True)
+        cut_open_bay(hull_obj, "RadWell", (-2.15, 0.0, 1.05), 1.35, 0.62, 0.30, (0, 0, 1), mats, collection, kit="empty", liner=True)
         boolean_cut(hull_obj, "HoldWell", (-0.40, 0.0, -1.15), (1.85, 0.72, 0.22))
         hull_obj.data.materials.clear()
         hull_obj.data.materials.append(hull)

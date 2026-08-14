@@ -462,10 +462,10 @@ def add_manufactured_delta(name, sign, material, collection):
     """Thick-root airfoil with dihedral so 3/4 sees the section, not a card."""
     s = sign
     rings = [
-        airfoil_ring(0.30, 0.62 * s, -0.04, 2.40, 0.88),
-        airfoil_ring(0.05, 1.55 * s, 0.18, 2.10, 0.50),
-        airfoil_ring(-0.28, 2.55 * s, 0.28, 1.35, 0.26),
-        airfoil_ring(-0.62, 3.45 * s, 0.18, 0.62, 0.12),
+        airfoil_ring(0.40, 0.48 * s, -0.02, 2.55, 1.05),
+        airfoil_ring(0.10, 1.35 * s, 0.16, 2.20, 0.62),
+        airfoil_ring(-0.22, 2.40 * s, 0.26, 1.40, 0.32),
+        airfoil_ring(-0.58, 3.35 * s, 0.16, 0.68, 0.14),
     ]
     wing = loft_from_rings(name, rings, material, collection, 0.012)
     add_folded_sheet(
@@ -789,12 +789,13 @@ def build_lod(lod, mats):
         (3.80, 0.22, 0.28, 0.50),
     ], hull, collection, 0.008)
     if lod <= 1:
-        cut_open_bay(hull_obj, "Cockpit", (4.10, 0.0, 0.62), 1.55, 0.42, 0.48, (0, 0, 1), mats, collection, kit="cockpit", liner=False)
-        cut_open_bay(hull_obj, "NeedlePort", (6.40, 0.0, -0.08), 0.70, 0.14, 0.20, (0, 0, -1), mats, collection, kit="empty", liner=False)
-        cut_open_bay(hull_obj, "Port", (0.20, -1.05, 0.10), 1.70, 0.46, 0.58, (0, -1, 0), mats, collection, kit="empty", liner=False)
-        cut_open_bay(hull_obj, "Starboard", (0.20, 1.05, 0.10), 1.70, 0.46, 0.58, (0, 1, 0), mats, collection, kit="empty", liner=False)
-        cut_open_bay(hull_obj, "DorsalAft", (-3.20, 0.0, 0.66), 1.05, 0.36, 0.28, (0, 0, 1), mats, collection, kit="radiator", liner=False)
-        cut_open_bay(hull_obj, "Keel", (0.10, 0.0, -0.38), 1.70, 0.28, 0.26, (0, 0, -1), mats, collection, kit="empty")
+        # C48: framed wells (walls + rims). Empty kit keeps the mouth open.
+        cut_open_bay(hull_obj, "Cockpit", (4.10, 0.0, 0.62), 1.55, 0.42, 0.48, (0, 0, 1), mats, collection, kit="cockpit", liner=True)
+        cut_open_bay(hull_obj, "NeedlePort", (6.40, 0.0, -0.08), 0.70, 0.14, 0.20, (0, 0, -1), mats, collection, kit="empty", liner=True)
+        cut_open_bay(hull_obj, "Port", (0.20, -1.05, 0.10), 1.70, 0.46, 0.58, (0, -1, 0), mats, collection, kit="empty", liner=True)
+        cut_open_bay(hull_obj, "Starboard", (0.20, 1.05, 0.10), 1.70, 0.46, 0.58, (0, 1, 0), mats, collection, kit="empty", liner=True)
+        cut_open_bay(hull_obj, "DorsalAft", (-3.20, 0.0, 0.66), 1.05, 0.36, 0.28, (0, 0, 1), mats, collection, kit="radiator", liner=True)
+        cut_open_bay(hull_obj, "Keel", (0.10, 0.0, -0.38), 1.70, 0.28, 0.26, (0, 0, -1), mats, collection, kit="empty", liner=True)
         boolean_cut_cylinder(hull_obj, "TransomSocket", (-7.00, 0.0, 0.10), 0.36, 0.85)
         cut_slot_bank(hull_obj, "PortRad", (-1.70, -0.96, 0.20), 6, (0.048, 0.14, 0.10), 0.30)
         cut_slot_bank(hull_obj, "StbdRad", (-1.70, 0.96, 0.20), 6, (0.048, 0.14, 0.10), 0.30)
@@ -873,11 +874,22 @@ def build_lod(lod, mats):
         add_cylinder(f"GunHouse_{side}", (4.85, 0.34 * sign, -0.06), 0.085, 1.10, mech, collection, vertices=10, bevel=0.006)
         add_cylinder(f"GunBarrel_{side}", (5.80, 0.34 * sign, -0.06), 0.032, 0.80, armor, collection, vertices=8, bevel=0.003)
         add_rcs_cluster(side, (-1.20, 1.48 * sign, 0.14), mats, collection, sign=sign)
+        loft_shell(f"WingGlove_{side}", [
+            (1.40, 0.55 * sign, 0.92 * sign, -0.18, 0.32),
+            (0.40, 0.72 * sign, 1.28 * sign, -0.22, 0.38),
+            (-0.40, 0.95 * sign, 1.55 * sign, -0.16, 0.28),
+        ], hull, collection, 0.008)
         add_folded_sheet(
             f"GloveCheek_{side}",
-            (1.20, 0.95 * sign, -0.04), (0.10, 1.22 * sign, -0.06),
-            (0.10, 1.22 * sign, 0.16), (1.20, 0.95 * sign, 0.18),
-            0.028, hull, collection, 0.005,
+            (1.40, 0.88 * sign, -0.06), (0.05, 1.28 * sign, -0.08),
+            (0.05, 1.28 * sign, 0.22), (1.40, 0.88 * sign, 0.24),
+            0.036, hull, collection, 0.005,
+        )
+        add_folded_sheet(
+            f"GunCheek_{side}",
+            (5.40, 0.18 * sign, -0.14), (4.20, 0.42 * sign, -0.16),
+            (4.20, 0.42 * sign, 0.10), (5.40, 0.18 * sign, 0.12),
+            0.032, armor, collection, 0.004,
         )
     if lod <= 1:
         add_radiator_cassette("PortFlank", (-3.20, -0.78, 0.42), lod, mats, collection, length=0.95, height=0.20, yaw=0.0)
@@ -895,6 +907,27 @@ def build_lod(lod, mats):
         (-1.20, 0.42, 0.56), (-0.70, 0.42, 0.58),
         0.016, hull, collection, 0.003,
     )
+    # C48: stepped plate courses so clay is not one lofted dart.
+    for i, x0 in enumerate((5.80, 4.20, 2.40, 0.40, -1.40)):
+        x1 = x0 - 1.45
+        add_folded_sheet(
+            f"Course_Dorsal_{i}",
+            (x0, -0.22, 0.48), (x1, -0.24, 0.44),
+            (x1, 0.24, 0.44), (x0, 0.22, 0.48),
+            0.020, hull, collection, 0.003,
+        )
+        add_folded_sheet(
+            f"Course_FlankP_{i}",
+            (x0, -0.72, 0.06), (x1, -0.78, 0.04),
+            (x1, -0.68, 0.28), (x0, -0.62, 0.30),
+            0.018, hull, collection, 0.003,
+        )
+        add_folded_sheet(
+            f"Course_FlankS_{i}",
+            (x0, 0.72, 0.06), (x0, 0.62, 0.30),
+            (x1, 0.68, 0.28), (x1, 0.78, 0.04),
+            0.018, hull, collection, 0.003,
+        )
     if lod == 0:
         add_folded_sheet(
             "ServicePad_P",
