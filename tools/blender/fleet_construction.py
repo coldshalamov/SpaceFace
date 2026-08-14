@@ -60,6 +60,31 @@ def add_mesh(name, verts, faces, material, collection, bevel=0.012):
     return finish_mesh(obj, material, bevel)
 
 
+def add_folded_sheet(name, a, b, c, d, thickness, material, collection, bevel=0.006):
+    """Manufactured plate from four corners. Thickness along the face normal."""
+    va, vb, vc, vd = Vector(a), Vector(b), Vector(c), Vector(d)
+    normal = (vb - va).cross(vd - va)
+    if normal.length < 1e-8:
+        normal = (vc - vb).cross(va - vb)
+    if normal.length < 1e-8:
+        normal = Vector((0.0, 0.0, 1.0))
+    else:
+        normal.normalize()
+    half = normal * (float(thickness) * 0.5)
+    outer = (va + half, vb + half, vc + half, vd + half)
+    inner = (va - half, vb - half, vc - half, vd - half)
+    verts = [tuple(point) for point in (*outer, *inner)]
+    faces = [
+        (0, 1, 2, 3),
+        (4, 7, 6, 5),
+        (0, 3, 7, 4),
+        (1, 0, 4, 5),
+        (2, 1, 5, 6),
+        (3, 2, 6, 7),
+    ]
+    return add_mesh(name, verts, faces, material, collection, bevel)
+
+
 def station_ring(x, yc, zc, hw, hh, flat=0.0, box=0.0, keel=1.0):
     """12-point manufactured station. Same vertex count so rings can loft.
 
