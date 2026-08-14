@@ -6,6 +6,10 @@ import {
   render,
   serviceRenderMeshResidency,
 } from '../src/render/renderer.js';
+import {
+  residencyEvictRadius,
+  residencyPrefetchRadius,
+} from '../src/render/tabletopPolicy.js';
 
 function entity(id, {
   type = 'asteroid',
@@ -33,14 +37,16 @@ function mesh(name) {
 }
 
 test('ordinary residency poll keeps exact runway semantics in two retained collection passes', () => {
+  const prefetch = residencyPrefetchRadius();
+  const evict = residencyEvictRadius();
   const player = entity(1, { type: 'ship', sectorId: 'sector_current' });
   player.isPlayer = true;
   const currentFar = entity(2, { sectorId: 'sector_current', x: 9000 });
-  const nearShip = entity(3, { type: 'ship', x: 5100 });
-  const nearWorld = entity(4, { x: 5000 });
-  const outsideAdmission = entity(5, { x: 5300 });
-  const retainedHysteresis = entity(6, { x: 6300 });
-  const evictedBeyondHysteresis = entity(7, { x: 6500 });
+  const nearShip = entity(3, { type: 'ship', x: prefetch - 20 });
+  const nearWorld = entity(4, { x: prefetch - 40 });
+  const outsideAdmission = entity(5, { x: prefetch + 20 });
+  const retainedHysteresis = entity(6, { x: evict - 20 });
+  const evictedBeyondHysteresis = entity(7, { x: evict + 20 });
   const authoredNear = entity(8, { x: 100 });
   const entities = [
     player,
@@ -103,14 +109,14 @@ test('ordinary residency poll keeps exact runway semantics in two retained colle
 
   assert.deepEqual(removed.sort(), ['evicted-beyond-hysteresis', 'orphan']);
   assert.deepEqual(unbound.sort((a, b) => a - b), [7, 999]);
-  assert.equal(roots.has(6), true, 'existing neighbour mesh keeps the 6,400-unit eviction runway');
+  assert.equal(roots.has(6), true, 'existing neighbour mesh keeps the approach eviction runway');
   assert.equal(roots.has(7), false, 'existing neighbour mesh evicts beyond the same hysteresis');
   assert.equal(roots.has(999), false, 'ownership pass keeps missed destroy-event self healing');
   assert.equal(authoredRequests, 1, 'near authored boundary keeps the existing prefetch request');
   assert.deepEqual(
     context._meshBuildQueue,
     [3, 4],
-    'ship-first order is retained, far current-sector rocks stay dormant, and 5,200-unit admission is exact',
+    'ship-first order is retained, far current-sector rocks stay dormant, and table-runway admission is exact',
   );
   assert.equal(context._meshBuildQueue.includes(2), false, '9000-unit current-sector asteroid is outside the runway');
   assert.equal(context._meshBuildQueue.includes(5), false);
@@ -166,7 +172,7 @@ test('stable 400-entity poll halves collection visits and removes all redundant 
   for (let id = 1; id <= 400; id++) {
     const value = id === 1
       ? player
-      : entity(id, { sectorId: 'sector_current', x: id * 2 });
+      : entity(id, { sectorId: 'sector_current', x: (id % 40) * 5 });
     if (id !== 1) entities.push(value);
     roots.set(id, mesh(`root-${id}`));
   }

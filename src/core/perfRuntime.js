@@ -1,4 +1,11 @@
 import { createPerfCounters } from './perfCounters.js';
+import {
+  accumulateHitch,
+  classifyHitchFrame,
+  createHitchHistogram,
+  hitchHistogramReport,
+  isHitchFrame,
+} from '../render/hitchClassifier.js';
 
 const RING_N = 180;
 const BACKGROUND_JOB_RING_N = 128;
@@ -275,6 +282,9 @@ export function ensurePerfRuntime(state) {
   // Opt-in CPU render-work attribution. Default OFF so production frames never pay
   // performance.now() + ring sample cost. Measurement probes enable for a window only.
   let renderWorkEnabled = false;
+  // Opt-in hitch owner ring. Default off so ordinary frames pay no classifier work.
+  let hitchAttributionEnabled = false;
+  const hitchHistogram = createHitchHistogram();
   // Background-job evidence is opt-in. The live queue pays one branch at job boundaries while
   // ordinary frames pay nothing; enabled captures use a fixed-capacity record ring.
   let backgroundJobTrackingEnabled = false;
@@ -441,6 +451,14 @@ export function ensurePerfRuntime(state) {
     setRenderWorkEnabled(on) {
       renderWorkEnabled = !!on;
       return renderWorkEnabled;
+    },
+    get hitchAttributionEnabled() { return hitchAttributionEnabled; },
+    setHitchAttributionEnabled(on) {
+      hitchAttributionEnabled = !!on;
+      return hitchAttributionEnabled;
+    },
+    getHitchHistogram() {
+      return hitchHistogramReport(hitchHistogram);
     },
     get backgroundJobTrackingEnabled() { return backgroundJobTrackingEnabled; },
     isBackgroundJobTrackingEnabled() { return backgroundJobTrackingEnabled === true; },
@@ -703,6 +721,19 @@ export function ensurePerfRuntime(state) {
         previousCallbackEndMs = currentCallbackStartMs + ms;
       }
       callbackOpen = false;
+      if (hitchAttributionEnabled && isHitchFrame(ms)) {
+        accumulateHitch(hitchHistogram, classifyHitchFrame({
+          frameMs: ms,
+          simMs: framePhaseMs.sim,
+          presentMs: framePhaseMs.render,
+          presentationMs: framePhaseMs.presentation,
+          uiMs: framePhaseMs.ui,
+          vfxMs: framePhaseMs.vfx,
+          admissionMs: loop.admissionMs,
+        }));
+      } else if (hitchAttributionEnabled) {
+        accumulateHitch(hitchHistogram, null);
+      }
     },
     /**
      * Copy the current frame's scalar timing state into a caller-owned object.
@@ -924,6 +955,7 @@ export function ensurePerfRuntime(state) {
       const renderWork = {};
       for (const name of Object.keys(renderWorkStats)) renderWork[name] = reportStat(renderWorkStats[name]);
       return {
+        hitchAttribution: hitchHistogramReport(hitchHistogram),
         systemTimingEnabled,
         systemTimingSampling: {
           schema: 'spaceface.systemTimingSampling.v1',

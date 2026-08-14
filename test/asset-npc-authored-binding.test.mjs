@@ -92,25 +92,30 @@ test('render residency keeps the active sector and a seam runway without buildin
   };
 
   assert.equal(isEntityRenderRelevant(player, state), true, 'player is always resident');
-  assert.equal(isEntityRenderRelevant(currentFar, state), true, 'the active-sector station landmark stays resident');
+  assert.equal(isEntityRenderRelevant(currentFar, state), false,
+    'a station across the belt is a map fact, not a live 3D resident');
   const currentFarShip = {
     id: 5, type: 'ship', homeSectorId: 'sector_helios_prime', pos: { x: 9000, z: 0 },
   };
   assert.equal(isEntityRenderRelevant(currentFarShip, state), false,
     'a far current-sector ship stays off the mesh list until the travel runway');
-  assert.equal(isEntityRenderRelevant(neighborNear, state), true, 'nearby corridor content gets a streaming runway');
+  assert.equal(isEntityRenderRelevant(neighborNear, state), false,
+    'thirty seconds of travel is not an approach runway');
   assert.equal(isEntityRenderRelevant(neighborFar, state), false, 'a distant reduced sector does not own live meshes');
   assert.equal(isEntityRenderRelevant(targetedFar, state), true, 'an explicit target remains renderable');
 
+  const nearbyStation = {
+    id: 11, type: 'station', homeSectorId: 'sector_helios_prime', pos: { x: 200, z: 0 },
+  };
   const queue = [];
   enqueueMissingMeshBuilds(
-    [player, currentFar, neighborNear, neighborFar, targetedFar],
+    [player, currentFar, neighborNear, neighborFar, targetedFar, nearbyStation],
     new Map(),
     new Set(),
     queue,
     (entity) => isEntityRenderRelevant(entity, state),
   );
-  assert.deepEqual(queue, [player.id, targetedFar.id, currentFar.id, neighborNear.id]);
+  assert.deepEqual(queue, [player.id, targetedFar.id, nearbyStation.id]);
 });
 
 test('loading residency admits only the authored opening composition before flight', () => {
@@ -139,15 +144,15 @@ test('authored assets preload ahead of visibility without decoding the whole act
     entities: new Map([[1, { id: 1, pos: { x: 0, z: 0 }, vel: { x: 160, z: 0 } }]]),
     world: { currentSectorId: 'sector_helios_prime' },
   };
-  const immediate = { id: 2, type: 'station', homeSectorId: 'sector_helios_prime', pos: { x: 900, z: 0 } };
-  const approaching = { id: 3, type: 'station', homeSectorId: 'sector_helios_prime', pos: { x: 2100, z: 0 } };
-  const offAxis = { id: 4, type: 'station', homeSectorId: 'sector_helios_prime', pos: { x: 0, z: 2100 } };
-  const far = { id: 5, type: 'station', homeSectorId: 'sector_helios_prime', pos: { x: 2900, z: 0 } };
+  const immediate = { id: 2, type: 'station', homeSectorId: 'sector_helios_prime', pos: { x: 150, z: 0 } };
+  const approaching = { id: 3, type: 'station', homeSectorId: 'sector_helios_prime', pos: { x: 500, z: 0 } };
+  const offAxis = { id: 4, type: 'station', homeSectorId: 'sector_helios_prime', pos: { x: 0, z: 500 } };
+  const far = { id: 5, type: 'station', homeSectorId: 'sector_helios_prime', pos: { x: 2100, z: 0 } };
   const inboundTraffic = {
     id: 6,
     type: 'ship',
     homeSectorId: 'sector_helios_prime',
-    pos: { x: 2100, z: 0 },
+    pos: { x: 500, z: 0 },
     vel: { x: -160, z: 0 },
   };
   assert.equal(isEntityAuthoredUpgradeRelevant(immediate, state), true, 'near content gets an immediate quality runway');

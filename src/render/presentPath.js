@@ -42,6 +42,7 @@ export function resolveWebGlRendererFlags(options = {}) {
       presentRoute,
       nativeFallback: options.nativeFallback === true,
     }),
+    alpha: false,
     powerPreference: options.powerPreference || 'high-performance',
     preserveDrawingBuffer: options.preserveDrawingBuffer === true,
     presentRoute,

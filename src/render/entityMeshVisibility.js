@@ -1,9 +1,10 @@
 // Submit-side visibility for presentation roots.
 //
-// The query "hidden" set is already outside the on-screen box plus a ~900 WU
-// travel runway. Those roots cannot change a readable pixel. Anything still in
-// the query — including the middle sync band and small-but-authored ships —
-// stays submitted. The inner/middle split only changes how often closures run.
+// The query "hidden" set is already outside the glass plus a short approach
+// runway (fast-ship travel, not a 900 WU fake-visible box). Those roots cannot
+// change a readable pixel. Anything still in the query — including the middle
+// sync band and small-but-authored ships — stays submitted. The inner/middle
+// split only changes how often closures run.
 
 export function shouldSubmitEntityMesh(options = {}) {
   if (options.isPlayer === true) return true;

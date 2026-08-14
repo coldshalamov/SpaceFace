@@ -1,9 +1,8 @@
 // Presentation sync banding.
 //
-// The live cull box is viewport + a ~900 WU travel runway so trails, shadows, and fast crossers
-// do not pop. Closures (runtime/damage/drive/world-site) cannot change a readable pixel on a
-// ship that is still hundreds of world units off-screen. Inner band keeps today's full path;
-// middle band poses every frame and refreshes closures on a deterministic cadence.
+// The live cull box is the glass plus a short approach runway so trails, shadows,
+// and fast crossers do not pop. Closures cannot change a readable pixel on a ship
+// that is still off the table. Inner band is the glass; middle band is the runway.
 
 export const ENTITY_VIEW_BAND = Object.freeze({
   INNER: 'inner',

@@ -23,6 +23,7 @@ test('default bloom/graph present path does not request canvas MSAA', () => {
   assert.equal(shouldEnableCanvasAntialias({ presentRoute: PRESENT_ROUTE.GRAPH }), false);
   const flags = resolveWebGlRendererFlags({ video: createGameState(1).settings.video });
   assert.equal(flags.antialias, false);
+  assert.equal(flags.alpha, false);
   assert.equal(flags.preserveDrawingBuffer, false);
   assert.equal(flags.presentRoute, PRESENT_ROUTE.BLOOM);
 });

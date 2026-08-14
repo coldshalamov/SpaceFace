@@ -160,6 +160,13 @@ import {
   AUTHORED_ASSET_PREFETCH_RADIUS,
   willEntityEnterAuthoredUpgradeRunway,
 } from './authoredAdmissionPolicy.js';
+import {
+  censusTableBands,
+  residencyEvictRadius,
+  residencyPrefetchRadius,
+  submitCullHalfExtents,
+  tableTravelSpeed,
+} from './tabletopPolicy.js';
 
 // M2 floating-origin scratch for mesh pose projection (no per-entity allocation).
 const _meshLocalXZ = { x: 0, z: 0 };
@@ -173,15 +180,11 @@ const _worldSiteA11y = { reducedMotion: false, reducedFlash: false };
 const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
 const SECTOR_PALETTE_LERP_SECONDS = 1.5;
 const SECTOR_LIGHT_INTENSITIES = { ambient: 0.85, key: 1.7, rim: 0.7, fill: 0.35 };
-const ENTITY_VIEW_CULL_MIN_MARGIN = 900;
-const ENTITY_VIEW_CULL_ZOOM_MARGIN = 8;
-// World simulation deliberately keeps the current corridor sector plus reduced neighbours alive.
-// Render residency is narrower: keep current-sector landmarks, and only admit other meshes once
-// they enter a generous travel runway. This keeps seamless approach quality without constructing,
-// traversing, or decoding another sector — or the far side of this one — while it is still
-// thousands of world units away.
-const RENDER_STREAM_PREFETCH_RADIUS = 5200;
-const RENDER_STREAM_EVICT_RADIUS = 6400;
+// World simulation keeps the corridor sector plus reduced neighbours alive.
+// Render residency is the table plus a measured approach runway (fast-ship
+// travel in a couple of seconds), not a multi-thousand-unit fake-visible box.
+const RENDER_STREAM_PREFETCH_RADIUS = residencyPrefetchRadius();
+const RENDER_STREAM_EVICT_RADIUS = residencyEvictRadius();
 // Start authored decode well before the normal camera can see the boundary. At the fastest early
 // ship speeds this provides several seconds of runway, while current-sector objects farther away
 // remain dormant instead of replacing procedural placeholders during unrelated play.
@@ -299,25 +302,21 @@ function entityWithinPlayerRadius(entity, state, radius) {
   return dx * dx + dz * dz <= radius * radius;
 }
 
-/** Pure render-streaming policy used by reconciliation and focused tests. */
-function isPersistentSectorLandmark(entity) {
-  const type = entity && entity.type;
-  return type === 'station' || type === 'planet' || type === 'fx';
+function renderResidencyRadius(state, kind = 'prefetch') {
+  const speed = tableTravelSpeed(state);
+  return kind === 'evict' ? residencyEvictRadius(speed) : residencyPrefetchRadius(speed);
 }
 
-export function isEntityRenderRelevant(entity, state, radius = RENDER_STREAM_PREFETCH_RADIUS) {
+/** Pure render-streaming policy used by reconciliation and focused tests. */
+export function isEntityRenderRelevant(entity, state, radius = null) {
   if (!entity || entity.alive === false || entity._noMesh) return false;
   if (state && state.mode === 'loading') return isInitialAuthoredCompositionEntity(entity, state);
   if (entityIsExplicitRenderFocus(entity, state)) return true;
-  const sectorId = entitySectorId(entity);
-  const currentSectorId = state && state.world && state.world.currentSectorId;
-  // Landmarks stay resident so distant stations remain visible specks. Ships, rocks, and debris
-  // use the travel runway so the current sector cannot keep hundreds of off-screen meshes live.
-  if (sectorId && currentSectorId && sectorId === currentSectorId
-    && isPersistentSectorLandmark(entity)) {
-    return true;
-  }
-  return entityWithinPlayerRadius(entity, state, radius);
+  const numericRadius = Number(radius);
+  const limit = radius == null || !Number.isFinite(numericRadius)
+    ? renderResidencyRadius(state, 'prefetch')
+    : numericRadius;
+  return entityWithinPlayerRadius(entity, state, limit);
 }
 
 /** Pure authored-admission policy: spatial runway, explicit focus, never whole-sector eagerness. */
@@ -1935,6 +1934,7 @@ export const render = {
     const renderer = new THREE.WebGLRenderer({
       canvas,
       antialias: glFlags.antialias,
+      alpha: glFlags.alpha === true,
       powerPreference: glFlags.powerPreference,
       preserveDrawingBuffer: glFlags.preserveDrawingBuffer,
     });
@@ -3854,7 +3854,7 @@ export const render = {
     // untouched; only the render-owned Object3D boundary and its authored residency are released.
     for (const [id, m] of this._meshes) {
       const e = state.entities.get(id);
-      if (!e || e.alive === false || !isEntityRenderRelevant(e, state, RENDER_STREAM_EVICT_RADIUS)) {
+      if (!e || e.alive === false || !isEntityRenderRelevant(e, state, renderResidencyRadius(state, 'evict'))) {
         this._unbindPresentationMesh(id, m);
         releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
         this.scene.remove(m); disposeObject(m); this._meshes.delete(id); noteShadowMeshRemoved(this, m);
@@ -3914,7 +3914,7 @@ export const render = {
       stats.meshVisits++;
       const entity = state.entities.get(id);
       if (!entity || entity.alive === false
-          || !isEntityRenderRelevant(entity, state, RENDER_STREAM_EVICT_RADIUS)) {
+          || !isEntityRenderRelevant(entity, state, renderResidencyRadius(state, 'evict'))) {
         this._unbindPresentationMesh(id, mesh);
         releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
         this.scene.remove(mesh);
@@ -4094,15 +4094,17 @@ export const render = {
     const aspect = Math.max(0.45, camObj && Number.isFinite(camObj.aspect)
       ? camObj.aspect
       : (this.viewport && this.viewport.height ? this.viewport.width / this.viewport.height : 16 / 9));
-    const halfV = Math.tan((fov * Math.PI / 180) * 0.5) * zoom * 0.72;
-    const halfH = halfV * aspect;
-    const margin = Math.max(ENTITY_VIEW_CULL_MIN_MARGIN, zoom * ENTITY_VIEW_CULL_ZOOM_MARGIN);
+    const speed = tableTravelSpeed(this.state);
+    const extents = submitCullHalfExtents(zoom, fov, aspect, speed);
     const bounds = this._entityViewBounds;
     bounds.x = Number.isFinite(focus.x) ? focus.x : 0;
     bounds.z = Number.isFinite(focus.z) ? focus.z : 0;
-    bounds.halfX = halfH + margin;
-    bounds.halfZ = halfV + margin;
-    bounds.margin = margin;
+    bounds.halfX = extents.halfX;
+    bounds.halfZ = extents.halfZ;
+    bounds.margin = extents.runway;
+    bounds.glassHalfX = extents.glass.halfX;
+    bounds.glassHalfZ = extents.glass.halfZ;
+    bounds.runway = extents.runway;
     return bounds;
   },
 
@@ -4387,6 +4389,29 @@ export const render = {
     diagnostics.lodChecked = lodChecked;
     diagnostics.cullHalfX = Math.round(bounds.halfX);
     diagnostics.cullHalfZ = Math.round(bounds.halfZ);
+    diagnostics.glassHalfX = Math.round(bounds.glassHalfX || 0);
+    diagnostics.glassHalfZ = Math.round(bounds.glassHalfZ || 0);
+    diagnostics.runwayWu = Math.round(bounds.runway || 0);
+    diagnostics.prefetchRadius = Math.round(renderResidencyRadius(this.state, 'prefetch'));
+    diagnostics.evictRadius = Math.round(renderResidencyRadius(this.state, 'evict'));
+    const tableCensus = censusTableBands(this.state.entityList, {
+      glassHalfX: bounds.glassHalfX,
+      glassHalfZ: bounds.glassHalfZ,
+      runwayWu: bounds.runway,
+      originX: this._frameMembrane && this._frameMembrane.origin
+        ? this._frameMembrane.origin.x + bounds.x
+        : bounds.x,
+      originZ: this._frameMembrane && this._frameMembrane.origin
+        ? this._frameMembrane.origin.z + bounds.z
+        : bounds.z,
+      playerId: this.state.playerId,
+      residentIds: this._meshes,
+    });
+    diagnostics.tableGlass = tableCensus.glass;
+    diagnostics.tableRunway = tableCensus.runway;
+    diagnostics.tableBeyond = tableCensus.beyond;
+    diagnostics.tableSubmitted = tableCensus.submitted;
+    diagnostics.tableResident = tableCensus.resident;
     this.state.render.entityViewSync = diagnostics;
 
     const hlodDiagnostics = this._hlodDiagnostics;

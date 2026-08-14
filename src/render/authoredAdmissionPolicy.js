@@ -2,9 +2,18 @@
 // Keep this module free of Three.js and browser globals so focused contract tests can exercise the
 // same prediction used by the live renderer.
 
-export const AUTHORED_ASSET_PREFETCH_RADIUS = 2400;
-export const AUTHORED_ASSET_IMMEDIATE_RADIUS = 1000;
-export const AUTHORED_ASSET_LOOKAHEAD_SECONDS = 10;
+import {
+  authoredImmediateRadius,
+  authoredLookaheadSeconds,
+  authoredPrefetchRadius,
+  isCriticalStartingHub,
+  tableTravelSpeed,
+} from './tabletopPolicy.js';
+
+export const AUTHORED_ASSET_PREFETCH_RADIUS = authoredPrefetchRadius();
+export const AUTHORED_ASSET_IMMEDIATE_RADIUS = authoredImmediateRadius();
+export const AUTHORED_ASSET_LOOKAHEAD_SECONDS = authoredLookaheadSeconds();
+export { isCriticalStartingHub };
 
 /**
  * True when an entity is already eligible for authored admission, or will become eligible inside
@@ -12,7 +21,7 @@ export const AUTHORED_ASSET_LOOKAHEAD_SECONDS = 10;
  * its upcoming sample duration so an inbound boundary cannot begin decoding inside measurement.
  */
 export function willEntityEnterAuthoredUpgradeRunway(entity, state, {
-  radius = AUTHORED_ASSET_PREFETCH_RADIUS,
+  radius = null,
   horizonSeconds = 0,
 } = {}) {
   if (!entity || entity.alive === false) return false;
@@ -27,11 +36,16 @@ export function willEntityEnterAuthoredUpgradeRunway(entity, state, {
   if (isCriticalStartingHub(entity)) return true;
   if (!player?.pos || !entity.pos) return false;
 
+  const travel = tableTravelSpeed(state);
+  const prefetch = Number.isFinite(Number(radius)) ? Number(radius) : authoredPrefetchRadius(travel);
+  const immediate = authoredImmediateRadius(travel);
+  const lookahead = authoredLookaheadSeconds();
+
   const dx = Number(entity.pos.x) - Number(player.pos.x);
   const dz = Number(entity.pos.z) - Number(player.pos.z);
   const distance = Math.hypot(dx, dz);
   if (!Number.isFinite(distance)) return false;
-  if (distance <= AUTHORED_ASSET_IMMEDIATE_RADIUS) return true;
+  if (distance <= immediate) return true;
   if (distance <= 0) return false;
 
   const relativeX = (Number(player.vel?.x) || 0) - (Number(entity.vel?.x) || 0);
@@ -41,9 +55,8 @@ export function willEntityEnterAuthoredUpgradeRunway(entity, state, {
 
   const horizon = Math.max(0, Number(horizonSeconds) || 0);
   const futureDistance = Math.max(0, distance - closingSpeed * horizon);
-  return futureDistance <= radius
-    && futureDistance - closingSpeed * AUTHORED_ASSET_LOOKAHEAD_SECONDS
-      <= AUTHORED_ASSET_IMMEDIATE_RADIUS;
+  return futureDistance <= prefetch
+    && futureDistance - closingSpeed * lookahead <= immediate;
 }
 
 function playerEntity(state) {
@@ -54,12 +67,4 @@ function playerEntity(state) {
   return (state?.entityList || []).find((candidate) => candidate?.id === state?.playerId) || null;
 }
 
-function isCriticalStartingHub(entity) {
-  if (!entity || entity.type !== 'station') return false;
-  const data = entity.data || {};
-  if (entity.id === 'station_helios' || data.stationId === 'station_helios') return true;
-  const token = String(data.archetypeGlb || data.placeId || '')
-    .replace(/^places\//, '')
-    .replace(/\.glb$/, '');
-  return token === 'place_station_trade_hub' && data.sectorId === 'sector_helios_prime';
-}
+
