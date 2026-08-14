@@ -7,7 +7,7 @@ import { createServer as createNetServer } from 'node:net';
 import { spawn } from 'node:child_process';
 import { loadPlaywright } from './lib/load-playwright.mjs';
 
-const ROOT = fileURLToPath(new URL('../', import.meta.url));
+const ROOT = process.env.SF_PROBE_ROOT || fileURLToPath(new URL('../', import.meta.url));
 const argv = Object.fromEntries(process.argv.slice(2).flatMap((arg, i, all) => {
   if (!arg.startsWith('--')) return [];
   const key = arg.slice(2);
