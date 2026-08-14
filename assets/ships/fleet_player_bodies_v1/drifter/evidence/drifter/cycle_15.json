@@ -1,0 +1,65 @@
+{
+  "schema": "spaceface.drifterMtx.cycle.v1",
+  "shipId": "drifter",
+  "cycle": 15,
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 40072,
+      "hullTriangles": 5192,
+      "draws": 8,
+      "materials": [
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/drifter_production_v1_lod0.glb",
+      "bytes": 9524244,
+      "sha256": "017F4345D4F62A99AC1B8B5B22E522022292452C830EEBC883D4B8AD67AF2A43"
+    },
+    {
+      "lod": 1,
+      "triangles": 22072,
+      "hullTriangles": 5192,
+      "draws": 8,
+      "materials": [
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/drifter_production_v1_lod1.glb",
+      "bytes": 7007460,
+      "sha256": "14441CF08BAE9673B6E67F79F95D4FBD00CC53F8FA2FF1D64193C63BF82DFC81"
+    },
+    {
+      "lod": 2,
+      "triangles": 14334,
+      "hullTriangles": 3934,
+      "draws": 8,
+      "materials": [
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/drifter_production_v1_lod2.glb",
+      "bytes": 5781608,
+      "sha256": "D19BBC276B2EF3915597AED9A74D3FDCD9423A02DC7D0000A09B15F8393E7C1A"
+    }
+  ],
+  "stills": "evidence/drifter/cycles/cycle_15"
+}

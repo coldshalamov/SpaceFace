@@ -19,6 +19,8 @@
 | 26–31 | yes | see json | REVISE | form rewrite: folded needle, airfoil wings, drive well |
 | 32 | yes | see json | REJECT | brighter glass. Needle still black. Hitch still wins |
 | 33 | yes | see json | REJECT | gray needle, visible glass. Cards/plank remain |
-| 34 | yes | see json | pending | overlapping shells + bubble canopy. Wings still cards |
+| 34 | yes | see json | REJECT | overlapping shells + bubble canopy. Wings still cards |
+| 35 | yes | see json | pending | plank and crate gone |
+| 36 | yes | see json | REJECT | steep dihedral. Wing fold reads at 3/4. Hitch still wins |
 
 Hitch-plus / A-list: not met. Do not promote. Do not self-accept.
