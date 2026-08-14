@@ -24,6 +24,13 @@ test('visibility helper only writes when the flag changes', () => {
   assert.equal(mesh.visible, true);
 });
 
+test('authored station and place commits merge static plates before freeze', async () => {
+  const source = await readFile(new URL('../src/render/partsLibrary.js', import.meta.url), 'utf8');
+  assert.match(source, /optimizeStaticBatchesForRoot\(stationed\)/);
+  assert.match(source, /optimizeStaticBatchesForRoot\(placed\)/);
+  assert.match(source, /optimizeStaticBatchesForRoot\(authored\.root\)/);
+});
+
 test('live entity view sync hides off-runway roots through the helper', async () => {
   const source = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
   assert.match(source, /applyEntityMeshVisibility\(mesh,\s*shouldSubmitEntityMesh\(/);

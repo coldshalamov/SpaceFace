@@ -265,8 +265,12 @@ const _batchNormal = new THREE.Matrix3();
 const _batchPos = new THREE.Vector3();
 const _batchNrm = new THREE.Vector3();
 
+export function optimizeStaticBatchesForRoot(root) {
+  return optimizeStaticBatches(root);
+}
+
 function freezeStaticPresentation(root) {
-  freezeStaticChildMatrices(root);
+  freezeStaticChildMatrices(optimizeStaticBatches(root));
   return root;
 }
 

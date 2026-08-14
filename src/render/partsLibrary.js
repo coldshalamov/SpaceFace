@@ -18,6 +18,7 @@ import { isReleaseAssetMode } from './releaseMode.js';
 import * as kit from './ships/shipKit.js';
 import { attachPlaceHlod, attachStationHlod } from './hlod.js';
 import { freezeStaticChildMatrices } from './staticChildMatrices.js';
+import { optimizeStaticBatchesForRoot } from './visualFactory.js';
 import { attachLodState } from './lod.js';
 import { canInstallWholeShipLodFamily, selectSpawnLodLevel } from './wholeShipLodPolicy.js';
 import { packageBatchPoolKeyFromMaterial } from './materialBatchKey.js';
@@ -1791,6 +1792,7 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
   }
 
   const stationed = attachStationHlod(boundary, entity);
+  optimizeStaticBatchesForRoot(stationed);
   freezeStaticChildMatrices(stationed);
   return stationed;
 }
@@ -1887,6 +1889,7 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
   }
 
   const placed = attachPlaceHlod(boundary, entity);
+  optimizeStaticBatchesForRoot(placed);
   freezeStaticChildMatrices(placed);
   return placed;
 }
@@ -2074,6 +2077,7 @@ function commitAuthoredPlaceBoundary(
   // in play, so there is no placeholder frame or blue-clay-to-authored identity swap.
   boundary.remove(fallbackRoot);
   boundary.add(authored.root);
+  optimizeStaticBatchesForRoot(authored.root);
   freezeStaticChildMatrices(authored.root);
   unregisterPreparedAuthoredAdmission(authored);
   setActive(authored.root);
