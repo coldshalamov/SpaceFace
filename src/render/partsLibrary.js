@@ -20,7 +20,11 @@ import { attachPlaceHlod, attachStationHlod } from './hlod.js';
 import { attachLodState } from './lod.js';
 import { canInstallWholeShipLodFamily, selectSpawnLodLevel } from './wholeShipLodPolicy.js';
 import { packageBatchPoolKeyFromMaterial } from './materialBatchKey.js';
-import { isRigidOpaqueBatchableSurface } from './rigidOpaqueBatchPolicy.js';
+import {
+  canBatchRenderPackageOwner,
+  isRigidOpaqueBatchableSurface,
+} from './rigidOpaqueBatchPolicy.js';
+import { authoredUpgradeConcurrencyLimit as resolveAuthoredUpgradeConcurrency } from './authoredUpgradePolicy.js';
 import { configureTransparentSinglePassSurfaces } from './transparentSinglePassPolicy.js';
 import { installWorldSitePresentation } from './worldSitePresentation.js';
 import {
@@ -3158,7 +3162,18 @@ function admitNextUpgradeJob(state) {
 }
 
 function authoredUpgradeConcurrencyLimit() {
-  return 1;
+  const live = authoredRuntimeState() || {};
+  const render = live.render || {};
+  const nowMs = typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now()
+    : Date.now();
+  return resolveAuthoredUpgradeConcurrency({
+    mode: live.mode,
+    opening: render.deferNoncriticalMeshStreaming === true,
+    deferNoncriticalMeshStreaming: render.deferNoncriticalMeshStreaming === true,
+    firstPlayableFrameAt: render.firstPlayableFrameAt,
+    nowMs,
+  });
 }
 
 function primeNextAuthoredAssetPlan(state) {
@@ -5484,7 +5499,7 @@ function instantiateRenderPackagePart(record, parent, placement, palette, scene,
     ...(record.primitives || []).map((primitive) => [primitive.name, primitive.tags]),
     ...(record.markers || []).map((marker) => [marker.name, marker.tags]),
   ]);
-  const createNode = owner?.userData?.kind === 'ship' && scene?.isScene
+  const createNode = canBatchRenderPackageOwner(owner?.userData?.kind) && scene?.isScene
     ? createRenderPackageShipNodeFactory({
         scene,
       owner,

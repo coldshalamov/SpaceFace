@@ -20,6 +20,7 @@
 //   - Single-writer: traffic owns only its own spawned entities (tracked in state.traffic); it
 //     never touches player state. Economy impact is via the event bus.
 
+import { shouldRunOnTick } from '../core/activityScheduler.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec } from './ships.js';
 import { CombatDoctrineId } from '../ai/combatDoctrine.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
@@ -3588,6 +3589,13 @@ export const traffic = {
   },
 
   _listSalvageTargets() {
+    const tick = this.state && Number.isInteger(this.state.tick) ? this.state.tick : 0;
+    if (this._salvageTargetCache
+        && this._salvageTargetCacheTick != null
+        && tick - this._salvageTargetCacheTick < 4
+        && !shouldRunOnTick(tick, 'traffic:salvageList', 4)) {
+      return this._salvageTargetCache;
+    }
     const out = [];
     for (const e of this.state.entityList || []) {
       if (this._isSalvageableBody(e)) out.push(e);
@@ -3599,6 +3607,8 @@ export const traffic = {
       if (ta !== tb) return ta - tb;
       return String(a.id).localeCompare(String(b.id), 'en');
     });
+    this._salvageTargetCache = out;
+    this._salvageTargetCacheTick = tick;
     return out;
   },
 

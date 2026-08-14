@@ -148,6 +148,7 @@ import {
 import { resolveRcsFirings, resolveActuatorScale, mainDriveDemand } from './rcsJets.js';
 import { PROPULSION_PROFILES } from '../core/flight/propulsionCatalog.js';
 import { resolveForceNeonScale, resolveTumbleContinuousVfxPlan } from './masslinePresentation.js';
+import { INACTIVE_TUMBLE_VFX_PLAN, tumbleVfxLooksActive } from './inactiveVfxPlan.js';
 import {
   MASSLINE_RELEASE_ARC_SEGMENT_CAPACITY,
   createMasslineReleaseArcScratch,
@@ -10349,7 +10350,12 @@ export const vfx = {
       }
       const tumble = e.presentation && e.presentation.tumble;
       const thrownTrail = e.presentation && e.presentation.thrownTrail;
-      const plan = resolveTumbleContinuousVfxPlan(tumble || {});
+      if (!tumbleVfxLooksActive(tumble, thrownTrail)) {
+        if (e.id != null) cd.delete(e.id);
+        cd.delete(e);
+        continue;
+      }
+      const plan = resolveTumbleContinuousVfxPlan(tumble || INACTIVE_TUMBLE_VFX_PLAN);
       const thrownActive = !!(thrownTrail && thrownTrail.active);
       const recovering = !!(tumble && tumble.recovering);
       const angularActive = !!(plan.active

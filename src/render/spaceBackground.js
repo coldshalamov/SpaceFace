@@ -87,6 +87,16 @@ const PALETTES = {
   },
 };
 const PALETTE_NAMES = ['EMBER', 'ION', 'VERDIGRIS', 'AZURE', 'CRIMSON'];
+const PALETTE_EMISSION_COLORS = new Map();
+
+function paletteEmissionColor(name) {
+  let color = PALETTE_EMISSION_COLORS.get(name);
+  if (!color) {
+    color = new THREE.Color(PALETTES[name].emission);
+    PALETTE_EMISSION_COLORS.set(name, color);
+  }
+  return color;
+}
 
 // Sector palette class → sky palette. Every sector class reads as a different sky:
 // safe core space is cool blue, the belt is warm ember, the fringe runs hot red,
@@ -2604,8 +2614,8 @@ export class SpaceBackground {
     const idx = Math.floor(t) % names.length;
     const next = (idx + 1) % names.length;
     const localT = t - Math.floor(t);
-    this._c0.set(PALETTES[names[idx]].emission);
-    this._c1.set(PALETTES[names[next]].emission);
+    this._c0.copy(paletteEmissionColor(names[idx]));
+    this._c1.copy(paletteEmissionColor(names[next]));
     this._c0.lerp(this._c1, localT);
 
     const locked = this.bgTime < this.regionLockUntil;

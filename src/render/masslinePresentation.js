@@ -3,6 +3,8 @@
 // Consumers: shipPitchPresentation (pose), vfx (continuous thrash / neon force cues), feel (punches).
 // Simulation authority for tumble scheduling and player immunity remains in tumbleStates / combat.
 
+import { INACTIVE_TUMBLE_VFX_PLAN } from './inactiveVfxPlan.js';
+
 export const TUMBLE_STATUS_ID = 'status_tumbling';
 const EMPTY_THROWN_TRAIL_INPUT = Object.freeze({});
 
@@ -241,14 +243,15 @@ export function resolveTumbleContinuousVfxPlan(tumble = {}) {
   const recovering = !!tumble.recovering;
   const mode = tumble.mode || 'idle';
   const active = mode === 'tumbling' || mode === 'drifting' || recovering;
+  if (!active) return INACTIVE_TUMBLE_VFX_PLAN;
   return {
     active,
     thrash,
     ribbon,
     hullBlur,
-    spawnThrash: active && thrash > 0.08,
-    spawnRibbon: active && ribbon > 0.15,
-    spawnHullBlur: active && hullBlur > 0.12,
+    spawnThrash: thrash > 0.08,
+    spawnRibbon: ribbon > 0.15,
+    spawnHullBlur: hullBlur > 0.12,
     thrashCadenceHz: Math.max(0, finite(tumble.thrashCadenceHz, thrash > 0.08 ? 8 : 0)),
   };
 }

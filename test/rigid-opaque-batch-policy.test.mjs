@@ -3,6 +3,7 @@ import test from 'node:test';
 import * as THREE from 'three';
 
 import {
+  canBatchRenderPackageOwner,
   countBatchableOpaqueSurfaces,
   isRigidOpaqueBatchableSurface,
 } from '../src/render/rigidOpaqueBatchPolicy.js';
@@ -15,6 +16,14 @@ function mesh(overrides = {}, tags = {}) {
   Object.assign(object, overrides);
   return object;
 }
+
+test('ships stations and places may enter the rigid opaque package pool', () => {
+  assert.equal(canBatchRenderPackageOwner('ship'), true);
+  assert.equal(canBatchRenderPackageOwner('station'), true);
+  assert.equal(canBatchRenderPackageOwner('place'), true);
+  assert.equal(canBatchRenderPackageOwner('asteroid'), false);
+  assert.equal(canBatchRenderPackageOwner('fx'), false);
+});
 
 test('rigid opaque hulls batch; canopies plumes and damage stay out', () => {
   const hull = mesh();

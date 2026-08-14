@@ -4,6 +4,7 @@
 // loss-ledger state are read-only.
 
 import { hash32 } from '../core/rng.js';
+import { shouldRunOnTick } from '../core/activityScheduler.js';
 import { normalizeFactionBehaviorProfile } from '../ai/factionBehavior.js';
 import { buildSlotList, makeShipEntitySpec } from './ships.js';
 import { isPersistentCargo, removeCargo } from './cargo.js';
@@ -419,7 +420,9 @@ export const factionPresence = {
     // Reconcile against the live entity set rather than consuming combat-death events here. This
     // keeps the Understory strictly downstream of lossLedger:recorded while still promoting a
     // surviving Concord patrol for Pitborn on the next deterministic simulation tick.
-    this._bindPitbornConcordTargets();
+    if (shouldRunOnTick(this.state.tick, 'factionPresence:pitbornBind', 8)) {
+      this._bindPitbornConcordTargets();
+    }
     this._updateFulfillmentRoutes();
     this._updateBoarding();
   },

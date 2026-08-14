@@ -4,6 +4,10 @@
 // heterogeneous batch. Canopies, plumes, fans, nav lights, decals, morphs, and damage roles stay
 // on their own draws so appearance, sort, and animation stay identical.
 
+export function canBatchRenderPackageOwner(kind) {
+  return kind === 'ship' || kind === 'station' || kind === 'place';
+}
+
 export function isRigidOpaqueBatchableSurface(source, tags = {}, options = {}) {
   if (!source || source.isMesh !== true) return false;
   if (source.isInstancedMesh || source.isSkinnedMesh || source.isBatchedMesh) return false;

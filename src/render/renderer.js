@@ -107,6 +107,15 @@ import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
 import { resolveSectorVisualProfile } from '../data/sectorVisualProfiles.js';
 import { SHIPS } from '../data/ships.js';
 import { applySectorExitResidency, getAssetResidency } from './assetResidency.js';
+import {
+  shouldContinueAdmissionSlice,
+} from './admissionSliceBudget.js';
+import {
+  classifyEntityViewBand,
+  shouldRunEntityClosures,
+  viewHalfExtents,
+} from './entityViewSyncBand.js';
+import { createShadowReceiverTally } from './shadowReceiverTally.js';
 import { preloadRockSurfaceLibrary } from './rockSurfaceLibrary.js';
 import {
   createGpuResidencyAdmissionTracker,
@@ -1818,6 +1827,22 @@ export async function disposePreparedSectorBoundary(record, options = {}) {
   return true;
 }
 
+function noteShadowMeshAdded(owner, root) {
+  if (owner && typeof owner._noteShadowMeshAdded === 'function') {
+    owner._noteShadowMeshAdded(root);
+    return;
+  }
+  if (owner) owner._shadowReceiversDirty = true;
+}
+
+function noteShadowMeshRemoved(owner, root) {
+  if (owner && typeof owner._noteShadowMeshRemoved === 'function') {
+    owner._noteShadowMeshRemoved(root);
+    return;
+  }
+  if (owner) owner._shadowReceiversDirty = true;
+}
+
 function requestAuthoredUpgrade(mesh, renderer, scene, options = {}) {
   const request = mesh && mesh.userData && mesh.userData.requestAuthoredUpgrade;
   if (typeof request !== 'function') return Promise.resolve({ status: 'no-authored-upgrade' });
@@ -2199,6 +2224,7 @@ export const render = {
     this._shadowSettingOn = shadowsOn;
     this._shadowReceiversDirty = true;
     this._shadowReceiverCount = 0;
+    this._shadowReceiverTally = createShadowReceiverTally();
     this._w2sCamCache = null; // see _syncProjectionCamera(): decomposed chase-camera transform
     this._ensureKeyLightShadows();
     this._contactShadowPool = createContactShadowPool(scene);
@@ -2370,6 +2396,7 @@ export const render = {
       built: 0,
     };
     this._deferNoncriticalMeshStreaming = false;
+    state.render.deferNoncriticalMeshStreaming = false;
     this._incomingSectorPrewarm = null;
     this._currentSectorPrewarm = null;
     this._authoredSectorPrewarmPendingId = null;
@@ -2444,7 +2471,7 @@ export const render = {
             registerAsteroidBaseLeaf(this._asteroidInstancePool, entity, boundary)
           ),
           releaseAsteroid: (id) => releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id),
-          markShadowReceiversDirty: () => { this._shadowReceiversDirty = true; },
+          markShadowReceiversDirty: () => { this._markShadowReceiversDirty(); },
         });
       },
       disposeBoundary: (record) => disposePreparedSectorBoundary(record, {
@@ -2454,7 +2481,7 @@ export const render = {
         removeBoundary: (boundary) => { if (boundary.parent === scene) scene.remove(boundary); },
         disposePreparedBoundary: disposePreparedAuthoredBoundary,
         disposeBoundaryObject: disposeObject,
-        markShadowReceiversDirty: () => { this._shadowReceiversDirty = true; },
+        markShadowReceiversDirty: () => { this._markShadowReceiversDirty(); },
       }),
       restoreEntity: (record) => {
         const entity = record.entity;
@@ -2778,7 +2805,7 @@ export const render = {
       if (m) {
         this._unbindPresentationMesh(id, m);
         scene.remove(m); disposeObject(m); this._meshes.delete(id);
-        this._shadowReceiversDirty = true;
+        this._noteShadowMeshRemoved(m);
         this._publishAssetResidencyDiagnostics();
       }
     });
@@ -2844,7 +2871,7 @@ export const render = {
       this._syncPostOptions();
       if (p.key === 'shadows' || p.key == null) {
         this._shadowSettingOn = vd.shadows !== false;
-        this._shadowReceiversDirty = true;
+        this._markShadowReceiversDirty();
         this._ensureKeyLightShadows();
         this._syncShadowMapEnabled();
       }
@@ -3464,12 +3491,14 @@ export const render = {
       if (mode === 'loading') {
         state.render.firstPlayableFrameAt = null;
         this._deferNoncriticalMeshStreaming = false;
+        state.render.deferNoncriticalMeshStreaming = false;
         this._firstPlayablePaintScheduled = false;
       }
       if (mode !== 'flight') return;
       // The first visible flight draw contains only the already-resident opening composition.
       // Bulk sector roots resume at the normal two-per-frame budget after that draw completes.
       this._deferNoncriticalMeshStreaming = true;
+      state.render.deferNoncriticalMeshStreaming = true;
     });
     bus.on('jump:arrive', ({ sectorId } = {}) => {
       const sector = sectorId && state.world && state.world.sectors ? state.world.sectors[sectorId] : null;
@@ -3670,6 +3699,7 @@ export const render = {
       this.scene.remove(m); disposeObject(m); this._meshes.delete(id);
     }
     this._presentationQueries?.reset?.();
+    this._markShadowReceiversDirty();
     this._meshBuildQueue.length = 0;
     this._meshBuildQueueHead = 0;
     this._meshBuildQueuedIds.clear();
@@ -3737,7 +3767,7 @@ export const render = {
       if (!e || e.alive === false || !isEntityRenderRelevant(e, state, RENDER_STREAM_EVICT_RADIUS)) {
         this._unbindPresentationMesh(id, m);
         releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
-        this.scene.remove(m); disposeObject(m); this._meshes.delete(id); this._shadowReceiversDirty = true;
+        this.scene.remove(m); disposeObject(m); this._meshes.delete(id); noteShadowMeshRemoved(this, m);
         clearEntityMeshReference(e, m);
       }
     }
@@ -3800,7 +3830,7 @@ export const render = {
         this.scene.remove(mesh);
         disposeObject(mesh);
         this._meshes.delete(id);
-        this._shadowReceiversDirty = true;
+        noteShadowMeshRemoved(this, mesh);
         clearEntityMeshReference(entity, mesh);
         stats.evicted++;
         continue;
@@ -3856,7 +3886,19 @@ export const render = {
 
   _drainMeshBuildQueue(buildBudget) {
     let built = 0;
+    const startedAtMs = typeof performance !== 'undefined' && typeof performance.now === 'function'
+      ? performance.now()
+      : Date.now();
+    const now = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
+      ? performance.now()
+      : Date.now());
     while (this._meshBuildQueueHead < this._meshBuildQueue.length && built < buildBudget) {
+      if (!shouldContinueAdmissionSlice({
+        buildBudget,
+        startedAtMs,
+        nowMs: now(),
+        itemsDone: built,
+      })) break;
       const id = this._meshBuildQueue[this._meshBuildQueueHead++];
       this._meshBuildQueuedIds.delete(id);
       const e = this.state.entities.get(id);
@@ -3881,7 +3923,7 @@ export const render = {
       if (canRequestAuthoredUpgrade(e, this.state, this._authoredSectorPrewarmPendingId)) {
         requestAuthoredUpgrade(m, this.renderer, this.scene);
       }
-      this._shadowReceiversDirty = true;
+      noteShadowMeshAdded(this, m);
       built++;
     }
     if (this._meshBuildQueueHead >= this._meshBuildQueue.length) {
@@ -3913,7 +3955,7 @@ export const render = {
       this.scene.remove(old);
       disposeObject(old);
       this._meshes.delete(id);
-      this._shadowReceiversDirty = true;
+      noteShadowMeshRemoved(this, old);
     }
     const m = this.vf.build(e);
     if (!m) return;
@@ -3936,7 +3978,7 @@ export const render = {
     if (canRequestAuthoredUpgrade(e, this.state, this._authoredSectorPrewarmPendingId)) {
       requestAuthoredUpgrade(m, this.renderer, this.scene);
     }
-    this._shadowReceiversDirty = true;
+    noteShadowMeshAdded(this, m);
   },
 
 
@@ -4112,6 +4154,20 @@ export const render = {
 
       // Projected-screen-size LOD (spec §12.4): visible roots resolve detail from projected pixel
       // width with hysteresis. Newly visible roots are fully posed above before this decision.
+      const inner = viewHalfExtents(
+        this.state.camera && this.state.camera.zoom,
+        this.cam && this.cam.obj && this.cam.obj.fov,
+        this.cam && this.cam.obj && this.cam.obj.aspect,
+      );
+      const viewBand = classifyEntityViewBand({
+        isPlayer: entity.id === this.state.playerId,
+        dx: mesh.position.x - bounds.x,
+        dz: mesh.position.z - bounds.z,
+        innerHalfX: inner.halfX,
+        innerHalfZ: inner.halfZ,
+        forceInner: !!(entity.flags && (entity.flags.forceRender || entity.flags.neverCull)),
+      });
+      const runClosures = shouldRunEntityClosures(viewBand, this.state.tick, slot);
       let lodLevel = userData.lod ? userData.lod.level : null;
       if (userData.lod && userData.updateLod) {
         lodChecked++;
@@ -4136,8 +4192,9 @@ export const render = {
 
       // Visible interactive and hero roots retain their authored per-frame presentation closures.
       // Distant LOD2 traffic is a speck: runtime/damage closures cannot change a readable pixel.
+      // Off-screen runway (middle band) keeps poses every frame but refreshes closures on cadence.
       const farSpeck = lodLevel === 'lod2' && entity.id !== this.state.playerId;
-      if (!farSpeck && userData.updateRuntimeState) userData.updateRuntimeState(entity, now);
+      if (runClosures && !farSpeck && userData.updateRuntimeState) userData.updateRuntimeState(entity, now);
       if (entity.id === this.state.playerId && this._livingHullPresentation) {
         this._livingHullPresentation.sync(
           entity.data && entity.data.livingHull,
@@ -4145,17 +4202,17 @@ export const render = {
           entity,
         );
       }
-      if (!farSpeck && userData.updateWorldSitePresentation) {
+      if (runClosures && !farSpeck && userData.updateWorldSitePresentation) {
         userData.updateWorldSitePresentation(entity, this.state.simTime, _worldSiteA11y);
       }
-      if (userData.updateDamageState) {
+      if (runClosures && userData.updateDamageState) {
         const stamp = `${entity.hull}|${entity.shield}|${entity.alive}`;
         if (stamp !== userData._damageVisualStamp) {
           userData._damageVisualStamp = stamp;
           userData.updateDamageState(entity, now);
         }
       }
-      if (userData.updateDriveState) userData.updateDriveState(entity, now);
+      if (runClosures && userData.updateDriveState) userData.updateDriveState(entity, now);
 
       // Shield geometry is an impact response, not a permanent bubble. The flash decays each visible
       // frame and is punched up whenever the entity's shield value drops.
@@ -4618,6 +4675,21 @@ export const render = {
     };
   },
 
+  _noteShadowMeshAdded(root) {
+    if (this._shadowReceiverTally) this._shadowReceiverTally.noteAdded(root);
+    else this._shadowReceiversDirty = true;
+  },
+
+  _noteShadowMeshRemoved(root) {
+    if (this._shadowReceiverTally) this._shadowReceiverTally.noteRemoved(root);
+    else this._shadowReceiversDirty = true;
+  },
+
+  _markShadowReceiversDirty() {
+    this._shadowReceiversDirty = true;
+    if (this._shadowReceiverTally) this._shadowReceiverTally.markDirty();
+  },
+
   _syncShadowMapEnabled() {
     if (!this._keyLight || !this.renderer.shadowMap) return;
     if (!this._shadowSettingOn) {
@@ -4625,7 +4697,14 @@ export const render = {
       this._keyLight.castShadow = false;
       return;
     }
-    if (this._shadowReceiversDirty) {
+    if (this._shadowReceiverTally) {
+      if (this._shadowReceiversDirty || this._shadowReceiverTally.dirty) {
+        this._shadowReceiverCount = this._shadowReceiverTally.resolve(this.scene);
+        this._shadowReceiversDirty = false;
+      } else {
+        this._shadowReceiverCount = this._shadowReceiverTally.count;
+      }
+    } else if (this._shadowReceiversDirty) {
       let receivers = 0;
       this.scene.traverse((o) => { if (o && o.receiveShadow) receivers++; });
       this._shadowReceiverCount = receivers;
@@ -5047,6 +5126,7 @@ export const render = {
 export function releaseOpeningMeshDefer(owner, mode) {
   if (!owner) return owner;
   owner._deferNoncriticalMeshStreaming = false;
+  if (owner.state && owner.state.render) owner.state.render.deferNoncriticalMeshStreaming = false;
   owner._meshReconcileDirty = true;
   owner._firstPlayablePaintScheduled = mode === 'flight';
   return owner;

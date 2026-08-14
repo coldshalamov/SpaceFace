@@ -15,6 +15,7 @@ export const core = {
     this.bus = ctx.bus;
     this.presentationJournal = ctx.presentationJournal || null;
     this._lastDay = 0;
+    this._presentationPausedForDock = false;
     this._presentationJournalErrorCount = 0;
     if (Array.isArray(this._presentationJournalUnsubscribes)) {
       for (const unsubscribe of this._presentationJournalUnsubscribes) unsubscribe();
@@ -175,6 +176,17 @@ export const core = {
 
   // End-of-step: TTL/despawn, sweep dead entities, recycle ids, flush deferred events.
   lifetimeSweep(dt, state) {
+    const docked = !!(state.ui && state.ui.docked);
+    if (docked !== this._presentationPausedForDock) {
+      this._presentationPausedForDock = docked;
+      if (!docked) {
+        const journal = this.presentationJournal;
+        if (journal && typeof journal.requestRebuild === 'function') {
+          try { journal.requestRebuild('undock-resume'); }
+          catch (_) { this._presentationJournalErrorCount++; }
+        }
+      }
+    }
     const list = state.entityList;
     // Tier-1 causal count: the sweep visits every entity once per tick. One hoisted boolean per
     // tick; the visit count itself is a length read, not a per-entity call.
@@ -185,7 +197,9 @@ export const core = {
       if (e.alive && e.ttl !== Infinity) { e.ttl -= dt; if (e.ttl <= 0) e.alive = false; }
       if (e.alive && e.data && e.data.despawnAt != null && state.simTime >= e.data.despawnAt) e.alive = false;
       if (e.alive) {
-        if (isMovableEntity(e)) this._publishPresentation?.('recordTransformIfChanged', e);
+        if (!this._presentationPausedForDock && isMovableEntity(e)) {
+          this._publishPresentation?.('recordTransformIfChanged', e);
+        }
         continue;
       }
       if (!e.alive) {
