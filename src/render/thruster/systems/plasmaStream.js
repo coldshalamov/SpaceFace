@@ -16,7 +16,14 @@
  */
 import * as THREE from 'three';
 import { createPathSampler } from './pathSampler.js';
-import { VolumetricPlumeSystem } from './volumetricPlume.js';
+import { PlasmaRibbonPlume } from '../ribbon/plasmaRibbons.js';
+import { ContrailTrail } from '../ribbon/contrailTrail.js';
+import {
+  EMIT_FLOOR,
+  createDriveEnvelope,
+  integrateDriveEnvelope,
+  resolvePlumeShape,
+} from '../ribbon/driveEnvelope.js';
 import { PLAYER_PLASMA_STREAM_RECIPE } from '../recipes/plasmaStreamRecipe.js';
 
 const LIQUID_VERT = /* glsl */`
@@ -316,24 +323,6 @@ function worldNoise(x, y) {
   return (a * (1 - u) + b * u) * (1 - v) + (c * (1 - u) + d * u) * v;
 }
 
-/**
- * Volume parameters, rebuilt in place every frame.
- *
- * update() runs on the render hot path, so this object is allocated once and mutated rather than
- * rebuilt as a literal per frame.
- */
-function createVolumeParams() {
-  return {
-    drive: 0, boost: 0, turbulence: 0, quality: 1, timeScale: 1,
-    lengthWU: 12, tailRadiusWU: 3, exitRadiusWU: 0.9,
-    spread: 0.62, fadeStart: 0.52, noiseScale: 0.34, stretch: 3.4,
-    warpAmp: 1.15, warpScale: 0.26, warpGrowth: 1.9, flowSpeed: 9,
-    threshold: 0.36, sigma: 0.55, radiance: 1, veil: 0.28,
-    coherence: 0.17, coreDensity: 0.62, radialTight: 2.1,
-    shockAmp: 0.5, shockPitch: 2.4, shockDecay: 9,
-  };
-}
-
 export class PlasmaStreamSystem {
   constructor(THREE_NS, recipe = PLAYER_PLASMA_STREAM_RECIPE) {
     this.THREE = THREE_NS || THREE;
@@ -372,8 +361,6 @@ export class PlasmaStreamSystem {
     this._cam = { x: 0, y: 8, z: 12 };
     this._camObj = null;
     this.group = null;
-    this.volume = null;
-    this._volumeParams = createVolumeParams();
     this._layers = [];
     this._throats = [];
     this._time = 0;
@@ -394,7 +381,28 @@ export class PlasmaStreamSystem {
     this._owner = null;
     // Stable default pose and owner token for socketless callers; never allocate this in update().
     this._fallbackNozzle = { x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0 };
-    this._volumeSockets = [this._fallbackNozzle];
+
+    // Two independent elements, because a jet and a flight history are not the same object.
+    //
+    //   _ribbons  the PLUME: nozzle-local, ~2 hull lengths, hot, gas flowing through it
+    //   _contrail the SNAKE TRAIL: the positions the nozzle actually occupied, no aft advection
+    //
+    // They were previously one thing, which forced the plume to be two seconds long — hundreds of
+    // world units at cruise — so it read as a tail welded to the hull and dragged around.
+    this._ribbons = new PlasmaRibbonPlume(this.THREE, {});
+    this._contrail = new ContrailTrail(this.THREE, {});
+    this._env = createDriveEnvelope();
+    this._ribbonShape = {};
+    this._ribbonNozzle = { x: 0, y: 0, z: 0, aftX: -1, aftZ: 0 };
+    const rib = this.recipe.ribbon || {};
+    const jet = this.recipe.jet || {};
+    this._ribbonBase = {
+      jetLength: rib.jetLength != null ? rib.jetLength : (jet.lengthWU != null ? jet.lengthWU : 17),
+      throatRadius: rib.throatRadius != null ? rib.throatRadius : 1.32,
+      spread: rib.spread != null ? rib.spread : 2.6,
+      radiance: rib.radiance != null ? rib.radiance : 0.85,
+      opacity: rib.opacity != null ? rib.opacity : 0.055,
+    };
   }
 
   setCamera(camera) {
@@ -403,7 +411,8 @@ export class PlasmaStreamSystem {
     this._cam.y = camera.position.y;
     this._cam.z = camera.position.z;
     this._camObj = camera;
-    if (this.volume) this.volume.setCamera(camera);
+    if (this._ribbons) this._ribbons.setCamera(camera);
+    if (this._contrail) this._contrail.setCamera(camera);
   }
 
   setCameraPosition(x, y, z) {
@@ -411,7 +420,8 @@ export class PlasmaStreamSystem {
     this._cam.y = y;
     this._cam.z = z;
     this._camObj = null;
-    if (this.volume) this.volume.setCameraPosition(x, y, z);
+    if (this._ribbons) this._ribbons.material.uniforms.uCamPos.value.set(x, y, z);
+    if (this._contrail) this._contrail.material.uniforms.uCamPos.value.set(x, y, z);
   }
 
   attach(scene) {
@@ -420,22 +430,14 @@ export class PlasmaStreamSystem {
     this.group = new T.Group();
     this.group.name = 'sf-liquid-plasma-root';
 
-    // The exhaust volume attaches FIRST, ahead of the throat quads and every strip, so traversals
-    // that take the last matching mesh keep landing on the history filament.
-    const volCfg = this.recipe.volume || {};
-    this.volume = new VolumetricPlumeSystem(T, {
-      name: 'sf-plasma-volume',
-      maxNozzles: volCfg.maxNozzles || 4,
-      maxSteps: volCfg.maxSteps,
-      minSteps: volCfg.minSteps,
-      renderOrder: 14,
-      coreColor: volCfg.coreColor,
-      midColor: volCfg.midColor,
-      edgeColor: volCfg.edgeColor,
-    });
-    this.volume.attach(this.group);
-    if (this._camObj) this.volume.setCamera(this._camObj);
-    else this.volume.setCameraPosition(this._cam.x, this._cam.y, this._cam.z);
+    // Contrail first, then the plume over it, then the throat quads. Traversals that take the last
+    // matching mesh therefore keep landing where they used to.
+    this._contrail.attach(this.group);
+    this._ribbons.attach(this.group);
+    if (this._camObj) {
+      this._contrail.setCamera(this._camObj);
+      this._ribbons.setCamera(this._camObj);
+    }
 
     // Nozzle throat glows next so group traversals that take the last strip mesh (unit tests,
     // look-dev gates) keep measuring the wake strips, not these quads.
@@ -496,7 +498,11 @@ export class PlasmaStreamSystem {
       this._layers[i].geo.setDrawRange(0, 0);
     }
     for (let i = 0; i < this._throats.length; i++) this._throats[i].visible = false;
-    if (this.volume) this.volume.reset();
+    if (this._ribbons) this._ribbons.reset();
+    if (this._contrail) this._contrail.reset();
+    if (this._env) {
+      this._env.spool = 0; this._env.boost = 0; this._env.dash = 0; this._env.dashAge = -1;
+    }
     if (this.group) this.group.visible = false;
   }
 
@@ -504,7 +510,8 @@ export class PlasmaStreamSystem {
     if (this._disposed) return;
     this._disposed = true;
     this.reset();
-    if (this.volume) { this.volume.dispose(); this.volume = null; }
+    if (this._ribbons) { this._ribbons.dispose(); this._ribbons = null; }
+    if (this._contrail) { this._contrail.dispose(); this._contrail = null; }
     if (this.group && this.group.parent) this.group.parent.remove(this.group);
     for (let i = 0; i < this._layers.length; i++) {
       this._layers[i].geo.dispose();
@@ -763,7 +770,17 @@ export class PlasmaStreamSystem {
     const throttle = Math.max(0, driveInfo && driveInfo.throttle || 0);
     const boost = Math.max(0, driveInfo && driveInfo.boost || 0);
     const speed = Math.max(0, driveInfo && driveInfo.speed || 0);
-    const activeDrive = Math.max(drive, throttle, boost > 0 ? 0.55 : 0);
+    // Everything the plume shows is driven off the smoothed envelope, including the throat glow. The
+    // previous raw `Math.max` of live inputs is what made pressing forward a one-frame jump from
+    // idle to full — the "clips from small to big instantly" this construction exists to fix.
+    integrateDriveEnvelope(this._env, {
+      throttle: Math.max(throttle, drive),
+      speedNorm: Math.max(0, Math.min(1, driveInfo && driveInfo.speedDrive || 0)),
+      boosting: boost > 0.5,
+      dashFired: !!(driveInfo && driveInfo.dashFired),
+      alive: true,
+    }, frameDt);
+    const activeDrive = this._env.spool;
     this._time += frameDt;
     this._lastDrive = activeDrive;
 
@@ -787,8 +804,9 @@ export class PlasmaStreamSystem {
       - frameDt * (ignCfg.decayPerS != null ? ignCfg.decayPerS : 3.6));
     const ignition = this._ignition;
 
-    const idleFloor = this.recipe.drive?.idleFloor ?? 0.04;
-    const emitting = activeDrive >= idleFloor;
+    // One authority for "is the drive actually firing". The recipe used to carry its own idleFloor of
+    // 0.04, below the envelope's idle glow of 0.06, so a parked ship read as emitting forever.
+    const emitting = activeDrive >= EMIT_FLOOR;
 
     const list = sockets && sockets.length ? sockets : null;
     // Production sockets (ContinuousPlume convention): ax points opposite exhaust;
@@ -825,8 +843,11 @@ export class PlasmaStreamSystem {
     const frameTravel = this._hasNozzle ? Math.hypot(nx - this._prevNx, nz - this._prevNz) : 0;
     this._odometer += frameTravel;
 
-    // Nothing left to draw and nothing being produced: go fully cold.
-    if (!emitting && !this.sampler.hasLive) {
+    // Nothing commanded, nothing left over: go fully cold. This tests the raw COMMAND, not the smoothed
+    // envelope, because `reset()` zeroes the envelope — gating on the envelope meant a drive spooling up
+    // from cold got reset every frame before it could cross the firing threshold, and never lit at all.
+    const commanded = Math.max(throttle, drive, boost) > 0.001;
+    if (!commanded && !emitting && !this.sampler.hasLive && !this._contrail.inspect().liveSamples) {
       this.reset();
       return { live: 0, pathPoints: 0, continuous: true };
     }
@@ -893,82 +914,28 @@ export class PlasmaStreamSystem {
     this.group.visible = true;
 
     // ---- Element builds ----------------------------------------------------------------------
-    // The exhaust is a raymarched volume. The old jet and wake sheet elements are gone: a stack of
-    // camera-facing quads cannot self-occlude, and 2D noise across a sheet cannot swirl, so that
-    // construction could only ever render stripes on a cone and a spray of thresholded specks.
-    const exhaustFlow = (jetCfg.exhaustSpeedWU != null ? jetCfg.exhaustSpeedWU : 30)
-      * (1 + ((jetCfg.boostSpeedMul != null ? jetCfg.boostSpeedMul : 1.6) - 1) * boostSm)
-      * motionScroll;
-    const turbulence = boostSm;
-    const shockPitch = shockCfg.pitchWU != null ? shockCfg.pitchWU : 2;
-    const shockDecay = shockCfg.decayWU != null ? shockCfg.decayWU : 8;
+    // The exhaust is swept ribbon sheets. Two earlier constructions were rejected here — camera-facing
+    // sheets, which cannot self-occlude, and an isotropic raymarched volume, which can only ever
+    // produce soft shoulders and so always read as smoke (VFX standard, bans B3 and B12).
+    const nz2 = this._ribbonNozzle;
+    nz2.x = nx; nz2.y = ny; nz2.z = nz;
+    nz2.aftX = ex; nz2.aftZ = ez;
+    resolvePlumeShape(this._env, this._ribbonBase, this._ribbonShape);
 
-    let volumeInfo = null;
-    if (emitting && this.volume) {
-      const volCfg = this.recipe.volume || {};
-      const vp = this._volumeParams;
-      // Boost collimates rather than inflates: raising the pressure ratio makes the jet spear out
-      // and go white, it does not blow the cone up in place.
-      const flare = (volCfg.tailFlare != null ? volCfg.tailFlare : 4.6)
-        * (1 - collimate * boostSm * 0.42);
-      vp.drive = activeDrive;
-      vp.boost = boostSm;
-      vp.turbulence = turbulence;
-      vp.timeScale = motionScroll;
-      vp.quality = volCfg.quality != null ? volCfg.quality : 1;
-      vp.lengthWU = jetLen;
-      vp.exitRadiusWU = exitR;
-      vp.tailRadiusWU = Math.max(exitR * 1.2, exitR * flare);
-      vp.spread = volCfg.spread != null ? volCfg.spread : 0.62;
-      vp.fadeStart = volCfg.fadeStart != null ? volCfg.fadeStart : 0.52;
-      vp.noiseScale = volCfg.noiseScale != null ? volCfg.noiseScale : 0.34;
-      vp.stretch = volCfg.stretch != null ? volCfg.stretch : 3.4;
-      vp.warpAmp = (volCfg.warpAmp != null ? volCfg.warpAmp : 1.15)
-        * (1 + boostSm * (volCfg.warpBoostGain != null ? volCfg.warpBoostGain : 0.3));
-      vp.warpScale = volCfg.warpScale != null ? volCfg.warpScale : 0.26;
-      vp.warpGrowth = volCfg.warpGrowth != null ? volCfg.warpGrowth : 1.9;
-      vp.flowSpeed = exhaustFlow * (volCfg.flowScale != null ? volCfg.flowScale : 0.22);
-      vp.threshold = volCfg.threshold != null ? volCfg.threshold : 0.36;
-      vp.sigma = volCfg.sigma != null ? volCfg.sigma : 0.55;
-      vp.veil = volCfg.veil != null ? volCfg.veil : 0.28;
-      vp.coherence = (volCfg.coherence != null ? volCfg.coherence : 0.17)
-        * (1 + boostSm * 0.45);
-      vp.coreDensity = volCfg.coreDensity != null ? volCfg.coreDensity : 0.62;
-      vp.radialTight = volCfg.radialTight != null ? volCfg.radialTight : 2.1;
-      vp.shockAmp = shockAmp * (volCfg.shockScale != null ? volCfg.shockScale : 1);
-      vp.shockPitch = shockPitch;
-      vp.shockDecay = shockDecay;
-      vp.radiance = (volCfg.radiance != null ? volCfg.radiance : 1.35)
-        * boostR * flashScale
-        * (0.82 + activeDrive * 0.34 + ignition * (ignCfg.radianceOvershoot ?? 0.7))
-        * distRad;
+    // The jet, standing off the bell. Short by construction.
+    this._ribbons.setCamera(this._camObj);
+    this._ribbons.update(frameDt, nz2, this._ribbonShape);
 
-      this._volumeSockets[0] = primary;
-      volumeInfo = this.volume.update(frameDt, list || this._volumeSockets, vp);
-    } else if (this.volume) {
-      this.volume.reset();
-    }
+    // The flight history, on the flown line only. Fed the same nozzle pose but it never advects along
+    // the exhaust axis, so it cannot put a vertex anywhere the nozzle has not been. The old single
+    // thin `snake` strip it replaces is retired.
+    this._contrail.setCamera(this._camObj);
+    this._contrail.update(frameDt, nz2, this._ribbonShape);
+    this._snakeCount = 0;
+    this._hideElement('snake');
 
-    const snakeCount = this._buildSnake(pathN, snakeCfg, ny, this._snakeErase);
-    if (snakeCount >= 2) {
-      for (let li = 0; li < this._layers.length; li++) {
-        const L = this._layers[li];
-        if (L.element !== 'snake') continue;
-        this._writeStrip(L, snakeCount, L.widthScale);
-        const u = L.mat.uniforms;
-        u.uTime.value = this._time;
-        u.uFlowSpeed.value = 0;
-        u.uTurbulence.value = turbulence * 0.4;
-        u.uOpacity.value = Math.min(1.0, L.baseOpacity * flashScale * distOpa);
-        u.uRadiance.value = L.baseRadiance * flashScale * (0.85 + boostSm * 0.35) * distRad;
-      }
-    } else {
-      this._snakeCount = 0;
-      this._hideElement('snake');
-    }
-    // A released history filament remains a live visual after the drive has cut. Keep inspection
-    // truth aligned with the strip that is still being drawn.
-    this._active = emitting || snakeCount >= 2;
+    const trailInfo = this._contrail.inspect();
+    this._active = emitting || trailInfo.liveSamples >= 2;
 
     // Nozzle throat glows — one per live socket, camera-billboarded, depth-tested against hull.
     const throatCfg = this.recipe.throat || {};
@@ -998,18 +965,21 @@ export class PlasmaStreamSystem {
       tu.uRadiance.value = throatRadiance;
     }
 
-    this._pointCount = snakeCount;
+    const ribbonInfo = this._ribbons.inspect();
+    this._pointCount = trailInfo.liveSamples;
     return {
       live: this._pointCount,
       pathPoints: pathN,
       continuous: true,
-      medium: 'raymarched-volume',
+      medium: 'ribbon-sheets',
       pointCount: this._pointCount,
-      construction: 'raymarched-volume+history-filament',
+      construction: 'swept-ribbon-sheets',
       jetLengthWU: jetLen,
-      volumeNozzles: volumeInfo ? volumeInfo.live : 0,
-      volumeSteps: volumeInfo ? volumeInfo.steps : 0,
-      snakePoints: snakeCount,
+      ribbons: ribbonInfo.ribbons,
+      ribbonStations: ribbonInfo.stations,
+      plumeSeconds: ribbonInfo.plumeSeconds,
+      spool: this._env.spool,
+      dash: this._env.dash,
       ignition,
     };
   }
@@ -1018,7 +988,7 @@ export class PlasmaStreamSystem {
     return {
       live: this._active ? this._pointCount : 0,
       continuous: true,
-      medium: 'raymarched-volume',
+      medium: 'ribbon-sheets',
       capacity: this.nSeg,
       active: this._active,
       path: this.sampler.inspect(),
@@ -1029,8 +999,10 @@ export class PlasmaStreamSystem {
       ignition: this._ignition,
       pointCount: this._pointCount,
       snakePoints: this._snakeCount,
-      volume: this.volume ? this.volume.inspect() : null,
-      construction: 'raymarched-volume+history-filament',
+      ribbon: this._ribbons.inspect(),
+      contrail: this._contrail.inspect(),
+      envelope: { spool: this._env.spool, boost: this._env.boost, dash: this._env.dash },
+      construction: 'swept-ribbon-sheets',
     };
   }
 }

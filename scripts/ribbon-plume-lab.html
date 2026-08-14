@@ -1,0 +1,217 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Plasma ribbon plume look-dev</title>
+  <style>
+    html, body { margin: 0; background: #010308; overflow: hidden; }
+    canvas { display: block; }
+  </style>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "/vendor/three.module.js",
+      "three/addons/": "/vendor/addons/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <script type="module">
+    import * as THREE from 'three';
+    import { PlasmaRibbonPlume } from '/src/render/thruster/ribbon/plasmaRibbons.js';
+    import { ContrailTrail } from '/src/render/thruster/ribbon/contrailTrail.js';
+    import {
+      createDriveEnvelope,
+      integrateDriveEnvelope,
+      resolvePlumeShape,
+    } from '/src/render/thruster/ribbon/driveEnvelope.js';
+    import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+    import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+    import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+    const q = new URLSearchParams(location.search);
+    const VIEW = q.get('view') || 'game';
+    const MANEUVER = q.get('maneuver') || 'straight';
+    const PHASE = q.get('phase') || 'full';
+    const FRAMES = Number(q.get('frames') || '150');
+    const BLOOM = q.get('bloom') !== '0';
+    const SPEED = Number(q.get('speed') || '150');
+
+    const W = 1440, H = 900;
+    const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+    renderer.setPixelRatio(1);
+    renderer.setSize(W, H, false);
+    renderer.setClearColor(0x01030a, 1);
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.0;
+    document.body.appendChild(renderer.domElement);
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(50, W / H, 0.5, 8000);
+
+    // Stand-in hull. Deliberately dark and simple: this lab is judging the plume, and a bright hull
+    // would bias the exposure read.
+    const hull = new THREE.Mesh(
+      new THREE.BoxGeometry(16, 3.4, 6),
+      new THREE.MeshBasicMaterial({ color: 0x0a1018 }),
+    );
+    scene.add(hull);
+
+    // Star field so translucency and dissipation are judgeable against something.
+    const starGeo = new THREE.BufferGeometry();
+    const starN = 1200;
+    const sp = new Float32Array(starN * 3);
+    let seed = 7;
+    const rnd = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+    for (let i = 0; i < starN; i++) {
+      sp[i * 3] = (rnd() - 0.5) * 2000;
+      sp[i * 3 + 1] = (rnd() - 0.5) * 900;
+      sp[i * 3 + 2] = (rnd() - 0.5) * 2000;
+    }
+    starGeo.setAttribute('position', new THREE.BufferAttribute(sp, 3));
+    scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0x9fb6d8, size: 2.2, sizeAttenuation: false })));
+
+    // Two independent elements, exactly as the runtime wires them: a short jet at the bell, and a
+    // separate history braid on the flown line.
+    const plume = new PlasmaRibbonPlume(THREE, {});
+    plume.attach(scene);
+    const contrail = new ContrailTrail(THREE, {});
+    contrail.attach(scene);
+
+    const BASE = {
+      jetLength: 17,
+      throatRadius: 1.32,
+      spread: 2.6,
+      radiance: 0.85,
+      opacity: 0.055,
+    };
+
+    const env = createDriveEnvelope();
+    const shape = {};
+    const input = { throttle: 0, speedNorm: 0, boosting: false, dashFired: false, alive: true };
+
+    let composer = null;
+    if (BLOOM) {
+      composer = new EffectComposer(renderer);
+      composer.addPass(new RenderPass(scene, camera));
+      composer.addPass(new UnrealBloomPass(new THREE.Vector2(W, H), 0.42, 0.55, 0.80));
+    }
+
+    // Ship state. Flies along +X, or arcs when maneuver=turn.
+    const ship = { x: 0, z: 0, rot: 0 };
+    const dt = 1 / 60;
+    let t = 0;
+
+    function throttleAt(time) {
+      if (PHASE === 'spool') {
+        // Drive lights at t=0.4s so the capture shows the ramp mid-flight, not a settled plume.
+        return time < 0.4 ? 0 : 1;
+      }
+      if (PHASE === 'idle') return 0;
+      return 1;
+    }
+
+    function step() {
+      t += dt;
+      input.throttle = throttleAt(t);
+      input.speedNorm = Math.min(1, (SPEED / 260) * Math.min(1, t / 1.2));
+      input.boosting = PHASE === 'boost' && t > 1.2;
+      input.dashFired = PHASE === 'dash' && Math.abs(t - 1.6) < dt * 0.6;
+      integrateDriveEnvelope(env, input, dt);
+      resolvePlumeShape(env, BASE, shape);
+
+      // Fly. `hold` is a static firing: the ship does not move, so nothing in the image can change
+      // except gas moving through the jet. It is the only way to tell a flowing plume from a still form
+      // being translated, and it also proves a parked ship lays down no contrail.
+      const speed = MANEUVER === 'hold' ? 0 : SPEED * Math.max(0.15, (env.spool - 0.06) / 0.94);
+      if (MANEUVER === 'turn') ship.rot += dt * 0.9;
+      ship.x += Math.cos(ship.rot) * speed * dt;
+      ship.z += Math.sin(ship.rot) * speed * dt;
+
+      hull.position.set(ship.x, 0, ship.z);
+      hull.rotation.y = -ship.rot;
+
+      // Nozzle at the stern; exhaust leaves along -forward.
+      const fx = Math.cos(ship.rot), fz = Math.sin(ship.rot);
+      const nozzle = {
+        x: ship.x - fx * 8.4, y: 0, z: ship.z - fz * 8.4,
+        aftX: -fx, aftZ: -fz,
+      };
+      plume.update(dt, nozzle, shape);
+      contrail.update(dt, nozzle, shape);
+
+      // Camera. 'game' is the shipped chase geometry: 144 world units at a 60 degree tilt.
+      if (VIEW === 'game') {
+        const d = 144, tilt = 60 * Math.PI / 180;
+        camera.position.set(ship.x, d * Math.sin(tilt), ship.z - d * Math.cos(tilt));
+        camera.lookAt(ship.x, 0, ship.z);
+      } else if (VIEW === 'beauty') {
+        // Rear three-quarter matching the reference image's framing: off to one side, slightly
+        // above, far enough back that the whole near field fits.
+        const cx = ship.x - fx * 30, cz = ship.z - fz * 30;
+        camera.position.set(cx - fz * 52, 16, cz + fx * 52);
+        camera.lookAt(cx, 0, cz);
+      } else {
+        camera.position.set(ship.x - fx * 46, 8, ship.z - fz * 46 + 4);
+        camera.lookAt(ship.x - fx * 10, 0, ship.z - fz * 10);
+      }
+      plume.setCamera(camera);
+      contrail.setCamera(camera);
+
+      if (composer) composer.render();
+      else renderer.render(scene, camera);
+    }
+
+    for (let i = 0; i < FRAMES; i++) step();
+
+    /**
+     * Mean absolute luminance change per lit pixel over a few more frames.
+     *
+     * With maneuver=hold the ship does not move and the drive is steady, so the ONLY thing that can
+     * change the image is gas moving through the jet. That makes this the objective test for ban B16:
+     * a still form being translated scores ~0 here no matter how convincing it looks in one frame.
+     */
+    function measureFlow(extraFrames) {
+      const grab = () => {
+        const c = document.createElement('canvas');
+        c.width = W; c.height = H;
+        c.getContext('2d').drawImage(renderer.domElement, 0, 0);
+        return c.getContext('2d').getImageData(0, 0, W, H).data;
+      };
+      const before = grab();
+      for (let i = 0; i < extraFrames; i++) step();
+      const after = grab();
+      // Threshold has to clear the tone-mapped background and the star field, or 98% of the frame counts
+      // as "lit" and any real change in the plume is averaged away to nothing.
+      const LIT = 150;
+      let sum = 0;
+      let lit = 0;
+      let peak = 0;
+      for (let i = 0; i < before.length; i += 4) {
+        const a = before[i] + before[i + 1] + before[i + 2];
+        const b = after[i] + after[i + 1] + after[i + 2];
+        if (a < LIT && b < LIT) continue;
+        const delta = Math.abs(a - b) / 3;
+        lit++;
+        sum += delta;
+        if (delta > peak) peak = delta;
+      }
+      return {
+        meanDelta: lit ? sum / lit : 0, peakDelta: peak, litPixels: lit, frames: extraFrames,
+      };
+    }
+
+    const flow = measureFlow(6);
+
+    window.__ribbonCapture = {
+      dataUrl: renderer.domElement.toDataURL('image/png'),
+      inspect: plume.inspect(),
+      contrail: contrail.inspect(),
+      flow,
+      env: { spool: env.spool, boost: env.boost, dash: env.dash },
+      shape: { ...shape },
+    };
+  </script>
+</body>
+</html>

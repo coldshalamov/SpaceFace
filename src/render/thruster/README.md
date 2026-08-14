@@ -33,35 +33,44 @@ Production sockets match ContinuousPlume: **jet extends along −ax**.
 
 ## Live system
 
-`systems/plasmaStream.js` builds **three elements on three different timescales**. They are not
-interchangeable, and collapsing them back into one path-history strip is what produced the original
-"lazily animated" plume — a scrolling texture on a wedge that snaked along the ship's path.
+`systems/plasmaStream.js` builds **two independent ribbon elements plus the throat glow**. They are
+not interchangeable, and merging them is the mistake to guard against — see `ribbon/plasmaRibbons.js`
+for the four rejected constructions that led here.
 
-| Element | Anchoring | Owns |
-|---|---|---|
-| `jet` | Rigid, nozzle-locked, straight along −ax, physical length in WU | Free-expansion cone, standing shock train, throat heat |
-| `wake` | World-space Lagrangian parcels with their own aft momentum | Kink on a hard turn, detached puff on throttle cut |
-| `snake` | Ship-path history through a world-space meander field | The long thin trailing thread |
+| Element | Module | Anchoring | Length is set by | Owns |
+|---|---|---|---|---|
+| plume | `ribbon/plasmaRibbons.js` | Nozzle-local, straight along −ax | The **throttle**, ~17 WU at full | The jet: throat heat, collimated core, breakup into ribbons |
+| contrail | `ribbon/contrailTrail.js` | World-space record of nozzle positions | The **distance flown** | The Snake history braid, cold condensate dispersing |
+| throat | inline quads | Nozzle-locked billboards | n/a | Bell glow, including at idle |
 
 Invariants worth keeping:
 
-- **The jet never follows path history and never scales with ship speed.** A plume's size comes from
-  the engine. Deriving its length from retained path samples made it breathe with velocity.
-- **Filament noise is keyed to world units, not a normalized path UV.** `aFlow` is axial WU for the
-  jet (advected aft at `exhaustSpeedWU`), and a value frozen at emission for parcels and the thread.
-  UV-keyed noise stretches when the plume lengthens and slides when the mesh is rebuilt.
-- **Boost is length, heat, collimation, and a one-shot ignition transient — not width.**
-  `boostWidthMul` is deliberately ~1.08. A uniform width multiply is what read as a triangle
-  inflating in place.
-- **Longitudinal opacity comes from `samplePlasmaEnvelope` on the CPU** via `aFade`, so that curve
-  stays testable in one place instead of being restated in GLSL.
-- **Normalize before adding.** Every strip is additive; an unnormalized `lit` term saturated all
-  layers into one white slab at the throat.
-- `_writeStrip` collapses the unused tail of each buffer onto the last live station. Leaving it
-  untouched parks stale vertices at the world origin and poisons anything reading the whole
-  attribute (bounds, this gate, tooling) even though `drawRange` hides them on screen.
+- **A jet is short and a history is long, and they are different objects.** A steady jet genuinely
+  stands still relative to its bell, so nozzle-local is correct for it; two seconds of history is
+  hundreds of WU at cruise, which is a tail, not a plume.
+- **The contrail may only occupy positions the nozzle actually occupied.** It records poses and
+  advects nothing. Anything pushed aft would be somewhere the ship has never been — that is what put
+  a full-length ribbon behind a stationary ship.
+- **Plume structure rides a travelling wave** (`axialFraction * uAxialFreq - uTime * uFlowRate`), so
+  gas visibly flows through it. Deformation keyed only to state frozen at emission gives a form that
+  is constant in the ship's frame: a still image being stretched.
+- **Transparency is material, never an animation channel.** Alpha comes from dilution as the column
+  billows, the sheet running out at its rim, and real dispersal. Visibility is carried by
+  *temperature* instead — additive material at zero radiance is already invisible.
+- **The throttle moves length, heat and reach.** Not opacity, and not a uniform width multiply, which
+  is what read as a triangle inflating in place.
+- **Sheets must be wide enough to overlap.** Narrow sheets read as bright wires with gaps between
+  them — pen-and-ink rather than exhaust. Overlap builds a volume; the creases are then what the eye
+  picks out, via the grazing term.
+- **One authority for "is the drive firing"**: `EMIT_FLOOR` in `ribbon/driveEnvelope.js`. A second
+  hand-picked threshold below the idle glow left the drive reading as emitting while parked.
 - `recipes/plasmaStreamRecipe.js` - live recipe id `player_liquid_plasma_v26.*`
 - Wired from `src/render/vfx.js` (player plasmaStream, not NPC card plume)
+
+Look-dev: `scripts/ribbon-plume-lab.html` via `node scripts/capture-ribbon-plume.mjs`.
+`--maneuver hold` is the important one: the ship does not move and the drive is steady, so the
+reported `flow` delta measures gas moving through the jet and nothing else, and the contrail must be
+absent entirely.
 
 Ribbon facing math: strip side vector is `axis × toCam` so the strip PLANE faces the camera.
 Pointing the WIDTH AXIS at the camera leaves the strip edge-on (a bright line) — that caused the
