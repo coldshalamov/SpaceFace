@@ -116,6 +116,10 @@ import {
   viewHalfExtents,
 } from './entityViewSyncBand.js';
 import { createShadowReceiverTally } from './shadowReceiverTally.js';
+import {
+  applyEntityMeshVisibility,
+  shouldSubmitEntityMesh,
+} from './entityMeshVisibility.js';
 import { preloadRockSurfaceLibrary } from './rockSurfaceLibrary.js';
 import {
   createGpuResidencyAdmissionTracker,
@@ -4130,6 +4134,12 @@ export const render = {
         world.refreshVisibleEntity(slot, entity, entityVisualCullRadius(entity, mesh));
       }
       this._applyPresentationPose(slot, mesh, alpha, true);
+      applyEntityMeshVisibility(mesh, shouldSubmitEntityMesh({
+        isPlayer: entity && entity.id === this.state.playerId,
+        forceRender: !!(entity && entity.flags && entity.flags.forceRender),
+        neverCull: !!(entity && entity.flags && entity.flags.neverCull),
+        hidden: true,
+      }));
       if (mesh.userData && mesh.userData.asteroidInstanceBody) {
         mesh.userData.asteroidInstanceViewCulled = true;
       }
@@ -4161,6 +4171,12 @@ export const render = {
         this._applyPresentationPose(slot, mesh, alpha);
         transformed++;
       }
+      applyEntityMeshVisibility(mesh, shouldSubmitEntityMesh({
+        isPlayer: entity.id === this.state.playerId,
+        forceRender: !!(entity.flags && entity.flags.forceRender),
+        neverCull: !!(entity.flags && entity.flags.neverCull),
+        hidden: false,
+      }));
       if (userData.asteroidInstanceBody) userData.asteroidInstanceViewCulled = false;
 
       // Projected-screen-size LOD (spec §12.4): visible roots resolve detail from projected pixel

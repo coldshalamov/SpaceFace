@@ -101,6 +101,8 @@ try {
         simTime: s.simTime,
         tick: s.tick,
         rendererFrame: gl && gl.frame,
+        drawCalls: gl && gl.calls || 0,
+        triangles: gl && gl.triangles || 0,
         renderUpdates: d.renderUpdates || 0,
         contextLost: s.render.contextLost === true,
         lastFrameError: d.lastFrameError || null,
@@ -153,6 +155,8 @@ try {
     rendererAdvanced: Number(report.last.rendererFrame) > Number(report.first.rendererFrame),
     movement: report.last.posX !== report.first.posX || report.last.posZ !== report.first.posZ
       || report.last.simTime > report.first.simTime,
+    drawCalls: report.last.drawCalls || 0,
+    triangles: report.last.triangles || 0,
     canvasChanged: report.last.canvasHash !== report.first.canvasHash,
     firstCanvasHash: report.first.canvasHash,
     lastCanvasHash: report.last.canvasHash,
