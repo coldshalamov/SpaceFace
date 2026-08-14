@@ -66,9 +66,9 @@ kit-on-loaf cycles did not close quality. That close is reverted. Live files are
 still the old factory wholeships. Hitch is untouched and still wins. Stay off
 INFERENCE, the dock/hulk remaster, and the expansion-research brief.
 
-- **Hornet is on cycle 44.** C42 reviews REJECT (leather boom). C44
-  cooled the studio rim so the hull is gray steel. Best look so far.
-  Hitch still wins. Not wired.
+- **Hornet is on cycle 45.** C44 reviews REJECT (foam dart, card
+  wings). C45 puts the thick airfoil wings back on the hull-is-needle
+  body. Hitch still wins. Not wired.
 - **Drifter is on cycle 15** (cabin shells, brighter glass, kit boxes
   swapped for plates). Still a lofted sausage. Hitch still wins. Not
   wired.

@@ -462,10 +462,10 @@ def add_manufactured_delta(name, sign, material, collection):
     """Thick-root airfoil with dihedral so 3/4 sees the section, not a card."""
     s = sign
     rings = [
-        airfoil_ring(0.20, 1.10 * s, -0.08, 2.50, 0.78),
-        airfoil_ring(-0.04, 2.05 * s, 0.42, 1.80, 0.44),
-        airfoil_ring(-0.38, 3.00 * s, 0.68, 1.05, 0.20),
-        airfoil_ring(-0.78, 3.82 * s, 0.46, 0.50, 0.085),
+        airfoil_ring(0.25, 1.05 * s, -0.10, 2.65, 0.92),
+        airfoil_ring(-0.02, 2.00 * s, 0.38, 1.95, 0.52),
+        airfoil_ring(-0.36, 2.95 * s, 0.62, 1.15, 0.24),
+        airfoil_ring(-0.74, 3.78 * s, 0.42, 0.52, 0.10),
     ]
     wing = loft_from_rings(name, rings, material, collection, 0.012)
     add_folded_sheet(
@@ -866,21 +866,7 @@ def build_lod(lod, mats):
     )
 
     for sign, side in ((-1, "Port"), (1, "Starboard")):
-        # Hitch-language wing: continuous overlapping shoulder, not a card.
-        if sign < 0:
-            loft_shell(f"Wing_{side}", [
-                (1.15, -0.70, -1.40, -0.18, 0.20),
-                (0.15, -1.80, -2.90, 0.08, 0.58),
-                (-0.75, -2.90, -3.90, 0.38, 0.72),
-                (-1.40, -3.50, -4.20, 0.22, 0.42),
-            ], hull, collection, 0.010)
-        else:
-            loft_shell(f"Wing_{side}", [
-                (1.15, 0.70, 1.40, -0.18, 0.20),
-                (0.15, 1.80, 2.90, 0.08, 0.58),
-                (-0.75, 2.90, 3.90, 0.38, 0.72),
-                (-1.40, 3.50, 4.20, 0.22, 0.42),
-            ], hull, collection, 0.010)
+        add_manufactured_delta(f"Wing_{side}", sign, hull, collection)
         loft_from_rings(f"Canard_{side}", [
             airfoil_ring(5.10, 0.42 * sign, 0.06, 0.72, 0.12),
             airfoil_ring(4.70, 0.88 * sign, 0.04, 0.42, 0.055),

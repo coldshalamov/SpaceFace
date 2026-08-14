@@ -26,6 +26,9 @@
 | 38 | yes | see json | pending | wider needle cheeks. Step reads at 3/4. Hitch still wins |
 | 39 | yes | see json | REJECT | stacked wing plates worse than C36. Reverted |
 | 40 | yes | see json | REJECT | C38 needle + C36 wings. Still a dart. Not wired |
-| 41 | yes | see json | pending | hull-is-needle. Overlapping wing shoulders |
+| 41 | yes | see json | REJECT | hull-is-needle. Overlapping wing shoulders |
+| 42 | yes | see json | REJECT | waist and house. Leather boom |
+| 43 | yes | see json | pending | easier AO. Tan remained (warm rim) |
+| 44 | yes | see json | REJECT/REVISE | gray steel. Foam dart, card wings |
 
 Hitch-plus / A-list: not met. Do not promote. Do not self-accept.
