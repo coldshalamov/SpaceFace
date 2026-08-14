@@ -125,6 +125,7 @@ import {
   collectStartupTextures,
   prepareStartupGpuResidency,
   yieldToBrowser,
+  yieldToNextPresent,
 } from './startupGpuResidency.js';
 import {
   collectContextLossRoots,
@@ -2670,7 +2671,11 @@ export const render = {
     const gpuResidencyAdmissions = createGpuResidencyAdmissionTracker((subject, admissionOptions = {}) => (
       prepareStartupGpuResidency(renderer, subject, {
         yieldToMain: async () => {
-          await yieldToBrowser();
+          if (state.mode === 'flight' && Number.isFinite(state.render && state.render.firstPlayableFrameAt)) {
+            await yieldToNextPresent();
+          } else {
+            await yieldToBrowser();
+          }
           if (typeof admissionOptions.isActive === 'function' && admissionOptions.isActive() !== true) {
             throw new Error('Authored GPU residency owner became inactive before texture upload');
           }
