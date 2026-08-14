@@ -9,13 +9,14 @@
 import * as THREE from 'three';
 import { SHADOW_CAST_RADIUS_SQ } from './shadowCasterPolicy.js';
 import { isOpaqueInstancePoolMaterial } from './instanceChunkSubmitPolicy.js';
-import { materialBatchFingerprint } from './materialBatchKey.js';
+import { materialBatchProgramKey } from './materialBatchKey.js';
 
 export const OPAQUE_BATCH_MAX_INSTANCES = 512;
 export const OPAQUE_BATCH_MAX_VERTS = 200000;
 export const OPAQUE_BATCH_MAX_INDICES = 400000;
 
 const _matrix = new THREE.Matrix4();
+const _color = new THREE.Color();
 
 export function supportsOpaqueMaterialBatch(gl) {
   if (!gl || typeof gl.getExtension !== 'function') return false;
@@ -139,6 +140,11 @@ function consolidateChunk(state, chunk, options) {
     _matrix.fromArray(array, item.offset);
     reservation.batch.mesh.setMatrixAt(reservation.instanceId, _matrix);
     reservation.batch.mesh.setVisibleAt(reservation.instanceId, true);
+    const sourceColor = chunk.pool.material && chunk.pool.material.color;
+    if (sourceColor && typeof reservation.batch.mesh.setColorAt === 'function') {
+      _color.copy(sourceColor);
+      reservation.batch.mesh.setColorAt(reservation.instanceId, _color);
+    }
   }
   chunk.consolidated = true;
   chunk.mesh.visible = false;
@@ -150,7 +156,7 @@ function reserveBatchInstance(state, chunk, lane, scene) {
   const material = chunk.pool.material;
   const geometry = chunk.pool.geometry;
   const attrKey = materialBatchAttrKey(geometry);
-  const key = `${materialBatchFingerprint(material)}|${attrKey}|${lane}`;
+  const key = `${materialBatchProgramKey(material)}|${attrKey}|${lane}`;
   let batch = state.batches.get(key);
   if (!batch) {
     batch = createBatch(material, lane, scene);
@@ -198,12 +204,16 @@ function reserveBatchInstance(state, chunk, lane, scene) {
 
 function createBatch(material, lane, scene) {
   let mesh;
+  const batchMaterial = material && typeof material.clone === 'function' ? material.clone() : material;
+  if (batchMaterial && batchMaterial.color && typeof batchMaterial.color.setRGB === 'function') {
+    batchMaterial.color.setRGB(1, 1, 1);
+  }
   try {
     mesh = new THREE.BatchedMesh(
       OPAQUE_BATCH_MAX_INSTANCES,
       OPAQUE_BATCH_MAX_VERTS,
       OPAQUE_BATCH_MAX_INDICES,
-      material,
+      batchMaterial,
     );
   } catch (_) {
     return null;

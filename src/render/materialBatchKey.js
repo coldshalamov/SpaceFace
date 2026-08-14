@@ -4,16 +4,8 @@
 // entering one BatchedMesh. A role/map/uniform fingerprint keeps appearance identical while
 // allowing heterogeneous geometry behind one program.
 
-export function materialBatchFingerprint(material) {
-  if (!material) return 'missing-material';
-  const authored = material.userData && (
-    material.userData.spacefaceBatchKey
-    || material.userData.spacefaceMaterialRole
-    || material.userData.spacefaceSharedRole
-  );
-  if (authored) return String(authored);
-
-  const maps = [
+function materialMapFingerprint(material) {
+  return [
     'map', 'normalMap', 'roughnessMap', 'metalnessMap', 'emissiveMap',
     'aoMap', 'alphaMap', 'bumpMap',
   ].map((key) => {
@@ -23,7 +15,17 @@ export function materialBatchFingerprint(material) {
     const src = tex.userData && (tex.userData.src || tex.userData.url);
     const id = src || tex.uuid || (image && (image.src || image.uuid)) || 'tex';
     return `${key}:${id}`;
-  });
+  }).join(',');
+}
+
+export function materialBatchFingerprint(material) {
+  if (!material) return 'missing-material';
+  const authored = material.userData && (
+    material.userData.spacefaceBatchKey
+    || material.userData.spacefaceMaterialRole
+    || material.userData.spacefaceSharedRole
+  );
+  if (authored) return String(authored);
 
   const color = material.color && typeof material.color.getHexString === 'function'
     ? material.color.getHexString()
@@ -43,7 +45,35 @@ export function materialBatchFingerprint(material) {
     material.side || 0,
     material.blending || 0,
     material.depthWrite === false ? 0 : 1,
-    ...maps,
+    materialMapFingerprint(material),
+  ].join('|');
+}
+
+/**
+ * Same shader/maps/finish, ignoring albedo. Faction paint rides instance color
+ * so two red/blue hulls can share one BatchedMesh.
+ */
+export function materialBatchProgramKey(material) {
+  if (!material) return 'missing-material';
+  const family = material.userData && (
+    material.userData.spacefaceProgramFamily
+    || material.userData.spacefaceMaterialRole
+    || material.userData.spacefaceSharedRole
+  );
+  const emissive = material.emissive && typeof material.emissive.getHexString === 'function'
+    ? material.emissive.getHexString()
+    : '------';
+  return [
+    family || material.type || 'Material',
+    emissive,
+    Number(material.roughness) || 0,
+    Number(material.metalness) || 0,
+    Number(material.opacity) || 1,
+    material.transparent === true ? 1 : 0,
+    material.side || 0,
+    material.blending || 0,
+    material.depthWrite === false ? 0 : 1,
+    materialMapFingerprint(material),
   ].join('|');
 }
 

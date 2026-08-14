@@ -7,6 +7,7 @@ import {
   geometryBatchIdentity,
   instancePoolIdentity,
   materialBatchFingerprint,
+  materialBatchProgramKey,
   packageBatchPoolKeyFromMaterial,
   stampGeometryBatchKey,
 } from '../src/render/materialBatchKey.js';
@@ -34,6 +35,11 @@ test('authored role keys win, and a different albedo does not collapse', () => {
   const c = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 });
   const d = new THREE.MeshStandardMaterial({ color: 0xeeeeee, roughness: 0.1 });
   assert.notEqual(materialBatchFingerprint(c), materialBatchFingerprint(d));
+  assert.equal(materialBatchProgramKey(c), materialBatchProgramKey(c.clone()));
+  const red = new THREE.MeshStandardMaterial({ color: 0xff0000, roughness: 0.45, metalness: 0.2 });
+  const blue = new THREE.MeshStandardMaterial({ color: 0x2244ff, roughness: 0.45, metalness: 0.2 });
+  assert.equal(materialBatchProgramKey(red), materialBatchProgramKey(blue));
+  assert.notEqual(materialBatchFingerprint(red), materialBatchFingerprint(blue));
 });
 
 test('cloned hull geometries share a pool key after they are stamped', () => {

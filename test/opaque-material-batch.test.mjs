@@ -52,8 +52,8 @@ test('lane and eligibility keep far plates out of the shadow batch', () => {
 });
 
 test('two unique plates that share a material become one hidden-source batch', () => {
-  const materialA = new THREE.MeshStandardMaterial({ color: 0x445566 });
-  const materialB = materialA.clone();
+  const materialA = new THREE.MeshStandardMaterial({ color: 0x445566, roughness: 0.4, metalness: 0.2 });
+  const materialB = new THREE.MeshStandardMaterial({ color: 0xaa5533, roughness: 0.4, metalness: 0.2 });
   const a = makeChunk(4, 0, { material: materialA, key: 'plateA', geometry: new THREE.BoxGeometry(1, 1, 1) });
   const b = makeChunk(0, 900, { material: materialB, key: 'plateB', geometry: new THREE.BoxGeometry(1.2, 0.4, 0.8) });
   const scene = new THREE.Scene();

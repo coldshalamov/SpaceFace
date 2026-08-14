@@ -103,7 +103,11 @@ try {
       const ev = s.render && s.render.entityViewSync;
       const video = (s.settings && s.settings.video) || {};
       const renderer = s.render && s.render.renderer;
-      const bloom = s.render && s.render.bloom;
+      const renderSys = window.SF.registry && typeof window.SF.registry.get === 'function'
+        ? window.SF.registry.get('render')
+        : null;
+      const bloom = renderSys && renderSys.bloom;
+      const post = report && report.post;
       const quality = {
         renderScale: video.renderScale,
         bloom: video.bloom,
@@ -114,6 +118,8 @@ try {
         dynamicResolution: video.dynamicResolution === true,
         shadowMapEnabled: !!(renderer && renderer.shadowMap && renderer.shadowMap.enabled),
         bloomObjectPresent: !!bloom,
+        bloomSelected: !!(post && post.bloomSelected),
+        activePath: post && post.activePath || null,
       };
       return {
         quality,
