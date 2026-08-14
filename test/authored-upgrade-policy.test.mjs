@@ -8,7 +8,7 @@ import {
   authoredUpgradeConcurrencyLimit,
 } from '../src/render/authoredUpgradePolicy.js';
 
-test('steady flight stays serial; opening and settle may overlap two jobs', () => {
+test('steady flight stays serial; only loading and opening may overlap two jobs', () => {
   assert.equal(authoredUpgradeConcurrencyLimit({ mode: 'flight' }), AUTHORED_UPGRADE_STEADY_LIMIT);
   assert.equal(authoredUpgradeConcurrencyLimit({ mode: 'loading' }), AUTHORED_UPGRADE_OPENING_LIMIT);
   assert.equal(authoredUpgradeConcurrencyLimit({
@@ -18,11 +18,7 @@ test('steady flight stays serial; opening and settle may overlap two jobs', () =
   assert.equal(authoredUpgradeConcurrencyLimit({
     mode: 'flight',
     firstPlayableFrameAt: 1000,
-    nowMs: 1000 + AUTHORED_UPGRADE_SETTLE_MS - 1,
-  }), AUTHORED_UPGRADE_OPENING_LIMIT);
-  assert.equal(authoredUpgradeConcurrencyLimit({
-    mode: 'flight',
-    firstPlayableFrameAt: 1000,
-    nowMs: 1000 + AUTHORED_UPGRADE_SETTLE_MS,
+    nowMs: 1400,
   }), AUTHORED_UPGRADE_STEADY_LIMIT);
+  assert.equal(AUTHORED_UPGRADE_SETTLE_MS, 0);
 });

@@ -3071,15 +3071,8 @@ function settleUpgradeJob(job, status, result = null, error = null) {
 }
 
 function scheduleUpgradeFrame(callback) {
-  // Compose/decode must not share the present rAF. Idle or a 0-timeout puts the job after
-  // the current draw so a 40–150 ms merge cannot turn a vsync-locked frame into a hitch.
-  const ric = globalThis && typeof globalThis.requestIdleCallback === 'function'
-    ? globalThis.requestIdleCallback.bind(globalThis)
-    : null;
-  if (ric) {
-    ric(() => { callback(); }, { timeout: 32 });
-    return;
-  }
+  // Compose/decode must not share the present rAF. A 0-timeout runs after the current draw
+  // without a 32 ms idle deadline that would force a merge onto an already-late frame.
   setTimeout(callback, 0);
 }
 
