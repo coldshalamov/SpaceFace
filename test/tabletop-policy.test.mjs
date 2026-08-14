@@ -172,8 +172,11 @@ test('census splits glass, runway, and beyond without collapsing the table', () 
 });
 
 test('audio hearing follows the table, not a 900 WU horizon', () => {
-  assert.ok(TABLE_HEARING_FAR_WU < 400);
-  assert.ok(TABLE_HEARING_FAR_WU > submitRunwayWu());
+  const maxSubmit = submitCullHalfExtents(330, 50, 16 / 9);
+  const onGlassCorner = Math.hypot(maxSubmit.halfX, maxSubmit.halfZ);
+  assert.ok(TABLE_HEARING_FAR_WU < 500, 'hearing is still a table, not the old 900 WU horizon');
+  assert.ok(TABLE_HEARING_FAR_WU >= onGlassCorner,
+    'max-zoom on-glass ships must still be audible');
 });
 
 test('shadow radius follows the table plus a short skirt', () => {

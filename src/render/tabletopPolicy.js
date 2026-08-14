@@ -31,9 +31,10 @@ export const TABLE_AUTHORED_IMMEDIATE_SECONDS = 1.25;
 /** Extra world units around the glass that can still throw a readable key-light shadow. */
 export const TABLE_SHADOW_SKIRT_WU = 80;
 
-/** Voices farther than this cannot be heard on the table. Replaces the old 900 WU horizon. */
-export const TABLE_HEARING_FAR_WU = 280;
-export const TABLE_HEARING_PAN_WU = 180;
+/** Voices farther than this cannot be heard on the table. Replaces the old 900 WU horizon.
+ *  Must cover the max-zoom submit box so an on-glass ship never goes silent. */
+export const TABLE_HEARING_FAR_WU = 400;
+export const TABLE_HEARING_PAN_WU = 200;
 
 export const TABLE_BAND = Object.freeze({
   GLASS: 'glass',
