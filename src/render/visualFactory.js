@@ -44,7 +44,7 @@ import { FACTION_META } from '../data/factions.js';
 import { configureMaterialLibrary } from './materialLibrary.js';
 import { createEnergyMaterial } from './energy/energyMaterials.js';
 import * as kit from './ships/shipKit.js';
-import { attachStationHlod } from './hlod.js';
+import { attachStationHlod, isFarDetailSurface } from './hlod.js';
 import { attachLodState } from './lod.js';
 import { interactionProfileForEntity } from '../data/entityInteractionProfiles.js';
 import { resolveWeaponPresentationFamily } from './vfxProfiles.js';
@@ -266,11 +266,74 @@ const _batchPos = new THREE.Vector3();
 const _batchNrm = new THREE.Vector3();
 
 export function optimizeStaticBatchesForRoot(root) {
-  return optimizeStaticBatches(root);
+  optimizeStaticBatches(root);
+  mergeRigidOpaqueAcrossRoot(root);
+  return root;
+}
+
+/**
+ * Merge rigid opaque leaves across the whole root by material, not just siblings.
+ * A unique station like Helios has ~12 materials and 100+ plates under many parents;
+ * per-parent merge cannot collapse that. Far-detail (greeble/decal) stays in its own
+ * bucket so projected HLOD can still hide it.
+ */
+export function mergeRigidOpaqueAcrossRoot(root) {
+  if (!root) return { groups: 0, mergedMeshes: 0, sourceMeshes: 0 };
+  root.updateMatrixWorld(true);
+  const groups = new Map();
+  root.traverse((obj) => {
+    if (!isBatchCandidate(obj)) return;
+    if (obj.userData && obj.userData.spacefaceSocket) return;
+    const far = isFarDetailSurface(obj) ? 'far' : 'body';
+    const key = `${far}|${batchKey(obj, root)}`;
+    let rec = groups.get(key);
+    if (!rec) {
+      rec = {
+        parent: root,
+        material: obj.material,
+        renderOrder: obj.renderOrder || 0,
+        far,
+        meshes: [],
+        vertexCount: 0,
+      };
+      groups.set(key, rec);
+    }
+    rec.meshes.push(obj);
+    const pos = obj.geometry.getAttribute('position');
+    rec.vertexCount += obj.geometry.index ? obj.geometry.index.count : (pos ? pos.count : 0);
+  });
+
+  let mergedMeshes = 0;
+  let sourceMeshes = 0;
+  for (const rec of groups.values()) {
+    if (rec.meshes.length < BATCH_MIN_MESHES || rec.vertexCount <= 0) continue;
+    let mergedMesh;
+    try {
+      const geometry = mergeMeshGeometries(rec);
+      if (!geometry) continue;
+      mergedMesh = new THREE.Mesh(geometry, rec.material);
+      mergedMesh.name = rec.far === 'far' ? 'sf-static-merge-far' : 'sf-static-merge-body';
+      mergedMesh.renderOrder = rec.renderOrder;
+      mergedMesh.userData.staticMerge = true;
+      mergedMesh.userData.spacefaceTags = rec.far === 'far' ? { greeble: true } : {};
+      if (rec.meshes.some((m) => m.castShadow)) mergedMesh.castShadow = true;
+      if (rec.meshes.some((m) => m.receiveShadow)) mergedMesh.receiveShadow = true;
+      rec.parent.add(mergedMesh);
+      for (const mesh of rec.meshes) {
+        if (mesh.parent) mesh.parent.remove(mesh);
+      }
+      mergedMeshes += 1;
+      sourceMeshes += rec.meshes.length;
+    } catch (_) {
+      if (mergedMesh && mergedMesh.parent) mergedMesh.parent.remove(mergedMesh);
+      if (mergedMesh && mergedMesh.geometry) mergedMesh.geometry.dispose();
+    }
+  }
+  return { groups: groups.size, mergedMeshes, sourceMeshes };
 }
 
 function freezeStaticPresentation(root) {
-  freezeStaticChildMatrices(optimizeStaticBatches(root));
+  freezeStaticChildMatrices(optimizeStaticBatchesForRoot(root));
   return root;
 }
 
@@ -3288,7 +3351,7 @@ export function createVisualFactory() {
         switch (e.type) {
           case 'ship': return optimizeStaticBatches(buildShipMesh(e, resolvePalette(e)));
           case 'asteroid': return freezeStaticPresentation(buildAsteroid(e));
-          case 'station': return freezeStaticPresentation(attachStationHlod(optimizeStaticBatches(buildStation(e)), e));
+          case 'station': return freezeStaticPresentation(attachStationHlod(buildStation(e), e));
           case 'pickup': return buildPickup(e);
           case 'projectile': return buildProjectile(e);
           case 'drone': return buildDrone(e);

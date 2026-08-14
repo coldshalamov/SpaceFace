@@ -96,13 +96,19 @@ try {
       const s = window.SF.state;
       const d = window.SF.loop && window.SF.loop.getDiagnostics ? window.SF.loop.getDiagnostics() : {};
       const gl = s.render && s.render.renderer && s.render.renderer.info && s.render.renderer.info.render;
+      const report = s.render && s.render.diagnostics && typeof s.render.diagnostics.getReport === 'function'
+        ? s.render.diagnostics.getReport()
+        : null;
       const gpu = s.render && s.render.gpu;
+      const ev = s.render && s.render.entityViewSync;
       return {
         simTime: s.simTime,
         tick: s.tick,
         rendererFrame: gl && gl.frame,
-        drawCalls: gl && gl.calls || 0,
-        triangles: gl && gl.triangles || 0,
+        drawCalls: report && report.render && report.render.calls || gl && gl.calls || 0,
+        triangles: report && report.render && report.render.triangles || gl && gl.triangles || 0,
+        fullSynced: ev && ev.fullSynced || 0,
+        culled: ev && ev.culled || 0,
         renderUpdates: d.renderUpdates || 0,
         contextLost: s.render.contextLost === true,
         lastFrameError: d.lastFrameError || null,
@@ -157,6 +163,8 @@ try {
       || report.last.simTime > report.first.simTime,
     drawCalls: report.last.drawCalls || 0,
     triangles: report.last.triangles || 0,
+    fullSynced: report.last.fullSynced || 0,
+    culled: report.last.culled || 0,
     canvasChanged: report.last.canvasHash !== report.first.canvasHash,
     firstCanvasHash: report.first.canvasHash,
     lastCanvasHash: report.last.canvasHash,
