@@ -436,7 +436,7 @@ exists as implementation; and `PQ-060` remains the final conditional boundary. U
 player-route comparison per candidate and pivot on a repeated failure fingerprint instead of turning
 the sequence into an audit or capture campaign.
 
-### 8.2 Full same-picture option space (`PQ-061`–`PQ-118`)
+### 8.2 Full same-picture option space (`PQ-061`–`PQ-120`)
 
 SpaceFace is a tilted top-down table. Later work must optimize **the glass plus a short approach
 runway**, not a horizon. Huge jobs stay listed. A plan is legal only if the player-facing game is
@@ -508,6 +508,7 @@ finds a pole this table does not name.
 | **`PQ-117` / `PERF-77-HIDDEN-SYSTEM-SKIP`** | Near INV→IMPL | Registry systems do not full-tick when 3D is hidden. |
 | **`PQ-118` / `PERF-78-REPLAY-PERF-BISECT`** | Mid INV | A hitch is reproducible from input+seed. |
 | **`PQ-119` / `PERF-79-TABLE-MAP-SPEC`** | Near IMPL | Off-table contacts stay map/radar facts, never live 3D. |
+| **`PQ-120` / `PERF-80-TABLE-READABLE-REMASTER`** | Near INV→IMPL | Remaster budget goes to mid-scale openings that read at default zoom, not micro-greeble stacks. |
 
 Every leaf uses the investigate → invalidate → implement loop in
 `PERF_OPTION_SPACE.md` §3. Default order when no campaign is named: `PQ-061` → `PQ-062` → `PQ-063`

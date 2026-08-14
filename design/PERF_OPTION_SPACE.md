@@ -11,7 +11,7 @@ and [`CANONICAL_BUILD_MAP.md`](../CANONICAL_BUILD_MAP.md) §8 / §8.1 / §8.2 / 
 (exhaustive technique inventory)**.
 
 Existing identities `PQ-034`–`PQ-044` and `PQ-051`–`PQ-060` stay authoritative for their
-scopes. Identities `PQ-061`–`PQ-119` below are reserved so later campaigns can admit
+scopes. Identities `PQ-061`–`PQ-120` below are reserved so later campaigns can admit
 leaves without inventing overlapping outcomes.
 
 ## 1. Picture and behavior contract
@@ -229,6 +229,7 @@ Each still starts as INV unless a prior census already named that owner.
 | **`PQ-117` / `PERF-77-HIDDEN-SYSTEM-SKIP`** | Near INV→IMPL | Registry systems do not full-tick when the 3D world is not on screen. | Pause, map, station shell, loading. Input/save stay alive. | Hidden-screen CPU/GPU drop; resume hashes hold. |
 | **`PQ-118` / `PERF-78-REPLAY-PERF-BISECT`** | Mid INV | A hitch can be bisected with a deterministic replay instead of folklore. | Record input+seed; replay; classify (`PQ-062`). | A named hitch is reproducible offline. |
 | **`PQ-119` / `PERF-79-TABLE-MAP-SPEC`** | Near IMPL | Off-table contacts stay map/radar facts. | After `PQ-061`/`PQ-071`. No live mesh for stations or traffic that cannot enter the glass this second. | Census shows beyond-band roots are not resident; map still names them. |
+| **`PQ-120` / `PERF-80-TABLE-READABLE-REMASTER`** | Near INV→IMPL | Starter and other camera-prominent ships spend remaster budget on mid-scale openings that read at default zoom 144 (drive barrels you can look down, hat-section wells, framed canopy), not stacked micro-greebles. | Learned from Hitch cycles 01–06: adding primitives raised clay toy-read and did not beat live V9 at tabletop size. Cut/hide donor slabs and iris shutters; boolean or replace sealed housings. | Clay is manufactured form; rear camera sees into the drive; sponson is not a sealed board. |
 
 ## 6. Investigation protocols (scaffolds this catalog may build)
 
