@@ -60,6 +60,48 @@ def add_mesh(name, verts, faces, material, collection, bevel=0.012):
     return finish_mesh(obj, material, bevel)
 
 
+def loft_shell(name, stations, material, collection, bevel=0.008):
+    """Continuous overlapping shell. Each station is (x, inner_y, outer_y, z0, z1).
+
+    The inner edge overlaps a pressure hull; the outer edge is the shoulder.
+    This is manufactured plate language, not a stack of triangles.
+    """
+    verts = []
+    for x, inner, outer, z0, z1 in stations:
+        verts.extend(((x, inner, z0), (x, outer, z0), (x, outer, z1), (x, inner, z1)))
+    faces = [(0, 3, 2, 1)]
+    last = (len(stations) - 1) * 4
+    faces.append((last, last + 1, last + 2, last + 3))
+    for i in range(len(stations) - 1):
+        a, b = i * 4, (i + 1) * 4
+        faces.extend((
+            (a, b, b + 1, a + 1),
+            (a + 1, b + 1, b + 2, a + 2),
+            (a + 2, b + 2, b + 3, a + 3),
+            (a + 3, b + 3, b, a),
+        ))
+    return add_mesh(name, verts, faces, material, collection, bevel)
+
+
+def center_loft(name, stations, material, collection, bevel=0.008):
+    """Symmetric carapace. Each station is (x, half_y, z0, z1)."""
+    verts = []
+    for x, half_y, z0, z1 in stations:
+        verts.extend(((x, -half_y, z0), (x, half_y, z0), (x, half_y, z1), (x, -half_y, z1)))
+    faces = [(0, 3, 2, 1)]
+    last = (len(stations) - 1) * 4
+    faces.append((last, last + 1, last + 2, last + 3))
+    for i in range(len(stations) - 1):
+        a, b = i * 4, (i + 1) * 4
+        faces.extend((
+            (a, b, b + 1, a + 1),
+            (a + 1, b + 1, b + 2, a + 2),
+            (a + 2, b + 2, b + 3, a + 3),
+            (a + 3, b + 3, b, a),
+        ))
+    return add_mesh(name, verts, faces, material, collection, bevel)
+
+
 def add_folded_sheet(name, a, b, c, d, thickness, material, collection, bevel=0.006):
     """Manufactured plate from four corners. Thickness along the face normal."""
     va, vb, vc, vd = Vector(a), Vector(b), Vector(c), Vector(d)
