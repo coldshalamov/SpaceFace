@@ -12,4 +12,10 @@ Authoring look:
 - Starboard shows four dark rectangles. They still look painted, not open.
 - Drive still shows the teal liner as a disk and the orange core as a button.
 
+Independent reviews:
+
+- three-quarter: **revise** — cassettes are still sealed boxes; cannot look down into wells
+- starboard: **revise** — dark rectangles look painted, not open
+- rear / drive: **revise** — teal disk + orange button unchanged
+
 Do not wire. Cycle 09 hides the teal liner, the orange button, and the cassette lids so the holes are actually empty.
