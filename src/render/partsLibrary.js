@@ -3071,9 +3071,14 @@ function settleUpgradeJob(job, status, result = null, error = null) {
 }
 
 function scheduleUpgradeFrame(callback) {
-  // Compose/decode must not share the present rAF. A 0-timeout runs after the current draw
-  // without a 32 ms idle deadline that would force a merge onto an already-late frame.
-  setTimeout(callback, 0);
+  // Stay on the display callback. Parking a 40–150 ms compose on setTimeout(0) between
+  // frames made every rAF late while the queue was full. The merge cache is what makes
+  // the job cheaper; the scheduler must not turn some hitches into a 30 fps floor.
+  const raf = globalThis && typeof globalThis.requestAnimationFrame === 'function'
+    ? globalThis.requestAnimationFrame.bind(globalThis)
+    : null;
+  if (raf) raf(callback);
+  else setTimeout(callback, 16);
 }
 
 function processUpgradeQueue(state) {
