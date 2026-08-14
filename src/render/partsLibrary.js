@@ -2994,6 +2994,11 @@ function residencyOptionsForBoundary(entity, boundary, renderer) {
         })
       : null,
     overlapAuthoredPipelineCompile: !!(liveState && liveState.mode !== 'flight'),
+    yieldBetweenGpuStages: !!(liveState && liveState.mode === 'flight'),
+    yieldToNextPresent: liveState && liveState.render
+      && typeof liveState.render.yieldToNextPresent === 'function'
+      ? () => liveState.render.yieldToNextPresent()
+      : null,
   };
 }
 
@@ -3524,6 +3529,10 @@ export async function prepareAuthoredVisualPipelines(root, options = {}) {
     ? await preparePipelines(root)
     : { skipped: true, reason: 'pipeline compiler unavailable' };
   assertAuthoredVisualPreparationActive(options, 'after-pipeline-compile');
+  if (options.yieldBetweenGpuStages === true && typeof options.yieldToNextPresent === 'function') {
+    await options.yieldToNextPresent();
+    assertAuthoredVisualPreparationActive(options, 'after-present-yield');
+  }
   const gpuResidency = typeof prepareResidency === 'function'
     ? await prepareResidency(root, {
         isResidencyOwnerActive: options.isResidencyOwnerActive,

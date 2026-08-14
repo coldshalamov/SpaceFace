@@ -22,6 +22,7 @@ const DURATION_MS = Number(argv.duration || 8000);
 const WARMUP_MS = Number(argv.warmup || 3000);
 const OUT = argv.out || '.devshots/perf/smoothness-window.json';
 const SEED = Number(argv.seed || 47) >>> 0;
+const STIMULUS = argv.stimulus !== '0' && argv.stimulus !== false;
 
 const { chromium } = await loadPlaywright();
 
@@ -88,10 +89,17 @@ try {
     return Number.isFinite(s && s.render && s.render.firstPlayableFrameAt);
   }, null, { timeout: 90000 }).catch(() => {});
 
-  const report = await page.evaluate(async ({ warmupMs, durationMs }) => {
+  const report = await page.evaluate(async ({ warmupMs, durationMs, stimulus }) => {
     const frames = [];
     let last = performance.now();
     let start = last;
+    const drive = () => {
+      if (!stimulus) return;
+      const input = window.SF && window.SF.state && window.SF.state.input;
+      if (!input) return;
+      input.moveZ = 1;
+      input.moveX = 0.15;
+    };
     const info = () => {
       const s = window.SF.state;
       const d = window.SF.loop && window.SF.loop.getDiagnostics ? window.SF.loop.getDiagnostics() : {};
@@ -158,6 +166,7 @@ try {
     const first = { ...info(), canvasHash: canvasHash() };
     await new Promise((resolve) => {
       function step(now) {
+        drive();
         const dt = now - last;
         last = now;
         if (now - start >= warmupMs) frames.push(dt);
@@ -171,14 +180,14 @@ try {
     });
     const lastSnap = { ...info(), canvasHash: canvasHash() };
     return { first, last: lastSnap, frames };
-  }, { warmupMs: WARMUP_MS, durationMs: DURATION_MS });
+  }, { warmupMs: WARMUP_MS, durationMs: DURATION_MS, stimulus: STIMULUS });
 
   const sorted = [...report.frames].sort((a, b) => a - b);
   const hitchCount = report.frames.filter((ms) => ms > 32).length;
   const out = {
     schema: 'spaceface.smoothnessWindow.v1',
     generatedAt: new Date().toISOString(),
-    runner: { width: WIDTH, height: HEIGHT, warmupMs: WARMUP_MS, durationMs: DURATION_MS, seed: SEED },
+    runner: { width: WIDTH, height: HEIGHT, warmupMs: WARMUP_MS, durationMs: DURATION_MS, seed: SEED, stimulus: STIMULUS },
     gpu: report.last.gpu,
     software: report.last.software === true,
     contextLost: report.last.contextLost === true,

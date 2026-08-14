@@ -396,7 +396,7 @@ use it instead of inventing another retry loop.
 
 Every packet that can add per-frame work, entities, colliders, DOM, particles, materials, textures, asset admission, save payload, or queries must declare a cost model before implementation and report matched before/after evidence at acceptance.
 
-Use [`design/PERF_BUDGET.md`](./design/PERF_BUDGET.md). Preserve the target and floor profiles. Optimize invisible work first. Do not pass by lowering default render scale, effects, shadows, particles, asset detail, or content density.
+Use [`design/PERF_BUDGET.md`](./design/PERF_BUDGET.md). Preserve the target and floor profiles. Optimize invisible work first. Do not pass by lowering default render scale, effects, shadows, particles, asset detail, or content density. The durable multi-approach tradeoff board and stop conditions for a same-picture smoothness campaign live in [`design/PERF_SYSTEMATIC_PROGRAM.md`](./design/PERF_SYSTEMATIC_PROGRAM.md).
 
 Feature code should be naturally bounded:
 

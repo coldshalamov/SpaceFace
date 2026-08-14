@@ -125,6 +125,7 @@ import {
   shouldSubmitEntityMesh,
 } from './entityMeshVisibility.js';
 import { supportsOpaqueMaterialBatch } from './opaqueMaterialBatch.js';
+import { shouldRefreshRealtimeShadowMap } from './shadowPresentCadence.js';
 import { preloadRockSurfaceLibrary } from './rockSurfaceLibrary.js';
 import {
   createGpuResidencyAdmissionTracker,
@@ -2725,6 +2726,7 @@ export const render = {
       });
     };
     state.render.pendingAuthoredGpuResidency = () => gpuResidencyAdmissions.pendingCount;
+    state.render.yieldToNextPresent = yieldToNextPresent;
     state.render.openingAdmission = openingCohort;
     state.render.captureOpeningPipelinePlan = () => {
       const plan = pipelineAdmissions.capturePending();
@@ -4578,6 +4580,15 @@ export const render = {
     if (this.spaceBg && this.spaceBg.update) this.spaceBg.update(frameDt, this._bgTime, this.cam.obj.position);
     parallaxLayers.update(frameDt);
     this._syncShadowMapEnabled();
+    if (this._keyLight && this._keyLight.shadow && this.renderer && this.renderer.shadowMap) {
+      const refreshShadow = shouldRefreshRealtimeShadowMap({
+        lastPresentDtMs: this.state && this.state.render && this.state.render.lastPresentDtMs,
+        skippedLast: this._shadowPresentSkipped === true,
+      });
+      this._keyLight.shadow.autoUpdate = refreshShadow;
+      this._keyLight.shadow.needsUpdate = refreshShadow;
+      this._shadowPresentSkipped = !refreshShadow;
+    }
     // Shadow follow (graphics spec G): keep the key light's shadow frustum centered on the player
     // so the tight 1400-unit ortho box always covers the local action. DirectionalLight position is
     // an offset from its target; we move both together. No-op unless the shadow map will render.
