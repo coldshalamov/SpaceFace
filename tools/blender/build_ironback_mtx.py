@@ -18,6 +18,7 @@ if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
 from fleet_construction import (  # noqa: E402
     add_flared_bell,
+    add_folded_sheet,
     add_manufactured_drive,
     add_overlap_plate,
     add_rcs_cluster,
@@ -618,13 +619,24 @@ def build_lod(lod, mats):
         hull_obj.data.materials.clear()
         hull_obj.data.materials.append(hull)
     inset_large_faces(hull_obj, thickness=0.05, depth=0.02, min_area=0.16)
+    # C13: hull-following chine plates, not floating deck boxes.
+    add_folded_sheet(
+        "Chine_P",
+        (2.20, -1.55, 0.10), (-1.80, -1.59, 0.12),
+        (-1.80, -1.47, 0.26), (2.20, -1.43, 0.24),
+        0.024, armor, collection, 0.004,
+    )
+    add_folded_sheet(
+        "Chine_S",
+        (2.20, 1.55, 0.10), (2.20, 1.43, 0.24),
+        (-1.80, 1.47, 0.26), (-1.80, 1.59, 0.12),
+        0.024, armor, collection, 0.004,
+    )
 
     add_thin_canopy("Canopy", 3.80, 0.0, 1.40, 1.20, 0.62, 0.36, mats, collection)
     add_box("Hopper_Rim", (-0.10, 0.0, 1.48), (2.35, 1.28, 0.06), armor, collection, 0.01)
     add_box("Hopper_LipP", (-0.10, -1.18, 1.38), (2.10, 0.06, 0.10), mech, collection, 0.006)
     add_box("Hopper_LipS", (-0.10, 1.18, 1.38), (2.10, 0.06, 0.10), mech, collection, 0.006)
-    add_box("HoldPlate_A", (-1.8, 0.35, 1.18), (0.85, 0.40, 0.02), armor, collection, 0.005)
-    add_box("HoldPlate_B", (0.85, -0.30, 1.18), (0.70, 0.32, 0.018), hull, collection, 0.005)
     add_box("OreCrate_A", (-0.55, 0.45, 1.05), (0.22, 0.18, 0.14), warning, collection, 0.004)
     add_box("OreCrate_B", (0.35, -0.50, 1.05), (0.18, 0.16, 0.12), mech, collection, 0.004)
     add_box("TransomPlate", (-7.42, 0.0, 0.10), (0.05, 0.62, 0.34), armor, collection, 0.004)
@@ -661,14 +673,10 @@ def build_lod(lod, mats):
         add_rcs_cluster(side, (-1.6, 1.72 * sign, 0.18), mats, collection, sign=sign)
 
     add_box("Cabin_Shoulder", (3.2, 0.0, 0.92), (0.85, 0.55, 0.05), armor, collection, 0.008)
-    add_box("DeckPlate_A", (-1.4, 0.18, 0.64), (0.95, 0.42, 0.02), armor, collection, 0.005)
-    add_box("DeckPlate_B", (-2.8, -0.22, 0.58), (0.80, 0.36, 0.018), hull, collection, 0.005)
-    add_box("DeckPlate_C", (-4.2, 0.12, 0.52), (0.70, 0.30, 0.016), armor, collection, 0.004)
     add_box("AftWalk", (-3.4, 0.0, 0.50), (1.6, 0.16, 0.014), mech, collection, 0.003)
     add_box("CargoLip_Fore", (0.55, 0.0, -0.78), (0.08, 0.70, 0.05), mech, collection, 0.004)
     add_box("CargoLip_Aft", (-0.95, 0.0, -0.78), (0.08, 0.70, 0.05), mech, collection, 0.004)
     add_box("Repair_Patch", (1.15, -0.55, 0.78), (0.32, 0.16, 0.012), warning, collection, 0.002)
-    add_box("Accent_Flash", (0.55, -1.42, 0.28), (0.50, 0.016, 0.08), accent, collection, 0.002)
     add_sensor_dish("Dorsal", (2.55, 0.55, 1.45), mats, collection)
     add_cylinder("Turret_Ring", (1.55, 0.0, 1.48), 0.38, 0.10, mech, collection, vertices=14, bevel=0.006, rot=(0, 0, 0))
     add_box("Turret_Head", (1.70, 0.0, 1.64), (0.32, 0.20, 0.10), armor, collection, 0.006)

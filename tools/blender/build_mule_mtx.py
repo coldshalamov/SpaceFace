@@ -19,6 +19,7 @@ if str(TOOLS) not in sys.path:
 from fleet_construction import (  # noqa: E402
     add_cockpit_glazing,
     add_flared_bell,
+    add_folded_sheet,
     add_manufactured_drive,
     add_overlap_plate,
     add_rcs_cluster,
@@ -643,6 +644,19 @@ def build_lod(lod, mats):
         hull_obj.data.materials.clear()
         hull_obj.data.materials.append(hull)
     inset_large_faces(hull_obj, thickness=0.038, depth=0.014, min_area=1.60)
+    # C13: hull-following chine plates, not floating deck boxes.
+    add_folded_sheet(
+        "Chine_P",
+        (2.20, -1.60, 0.10), (-1.80, -1.64, 0.12),
+        (-1.80, -1.52, 0.26), (2.20, -1.48, 0.24),
+        0.024, armor, collection, 0.004,
+    )
+    add_folded_sheet(
+        "Chine_S",
+        (2.20, 1.60, 0.10), (2.20, 1.48, 0.24),
+        (-1.80, 1.52, 0.26), (-1.80, 1.64, 0.12),
+        0.024, armor, collection, 0.004,
+    )
 
     add_thin_canopy("Bridge", 3.05, 0.0, 1.08, 1.35, 0.46, 0.40, mats, collection)
     add_box("Bridge_House", (2.45, 0.0, 1.52), (0.82, 0.58, 0.28), armor, collection, 0.006)
@@ -663,12 +677,6 @@ def build_lod(lod, mats):
     add_box("Hatch_Hinge", (-0.88, 0.38, 1.12), (0.03, 0.14, 0.014), mech, collection, 0.002)
     add_box("Hatch_LidB", (0.85, -0.32, 1.10), (0.28, 0.18, 0.016), armor, collection, 0.003)
     add_box("Repair_Patch", (2.15, -0.72, 1.02), (0.32, 0.16, 0.012), warning, collection, 0.002)
-    add_box("Accent_Flash", (0.35, -1.55, 0.32), (0.48, 0.016, 0.07), accent, collection, 0.002)
-    add_box("DeckPlate_A", (1.15, 0.0, 1.14), (0.95, 0.52, 0.024), armor, collection, 0.003)
-    add_box("DeckPlate_B", (-3.15, 0.0, 1.04), (0.78, 0.42, 0.022), armor, collection, 0.003)
-    add_box("DeckPlate_C", (3.55, -0.28, 1.02), (0.62, 0.30, 0.018), armor, collection, 0.003)
-    add_box("SidePlate_P", (0.25, -1.72, 0.38), (1.25, 0.04, 0.28), armor, collection, 0.003)
-    add_box("SidePlate_S", (0.25, 1.72, 0.38), (1.25, 0.04, 0.28), armor, collection, 0.003)
     for i in range(6):
         add_box(f"RadFin_{i}", (-2.85 - 0.40 + i * 0.16, 0.0, 1.08), (0.012, 0.24, 0.08), mats["Material_Radiator"], collection, 0.002)
 

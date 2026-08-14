@@ -19,6 +19,7 @@ if str(TOOLS) not in sys.path:
 from fleet_construction import (  # noqa: E402
     add_cockpit_glazing,
     add_flared_bell,
+    add_folded_sheet,
     add_manufactured_drive,
     add_overlap_plate,
     add_rcs_cluster,
@@ -647,6 +648,19 @@ def build_lod(lod, mats):
         hull_obj.data.materials.clear()
         hull_obj.data.materials.append(hull)
     inset_large_faces(hull_obj, thickness=0.035, depth=0.014, min_area=1.60)
+    # C13: hull-following chine plates, not floating deck boxes.
+    add_folded_sheet(
+        "Chine_P",
+        (2.20, -1.10, 0.10), (-1.80, -1.14, 0.12),
+        (-1.80, -1.02, 0.26), (2.20, -0.98, 0.24),
+        0.024, armor, collection, 0.004,
+    )
+    add_folded_sheet(
+        "Chine_S",
+        (2.20, 1.10, 0.10), (2.20, 0.98, 0.24),
+        (-1.80, 1.02, 0.26), (-1.80, 1.14, 0.12),
+        0.024, armor, collection, 0.004,
+    )
 
     add_cockpit_glazing("Bridge", (3.85, 0.0, 1.08), 0.78, 0.40, 0.28, mats, collection, raised=0.03)
     add_box("Tower_Base", (-1.85, 0.0, 1.12), (0.95, 0.62, 0.18), armor, collection, 0.010)
@@ -656,9 +670,6 @@ def build_lod(lod, mats):
     add_box("Tower_GlassF", (-1.18, 0.0, 2.36), (0.04, 0.44, 0.11), mats["Material_Canopy"], collection, 0.002)
     add_box("Tower_GlassP", (-1.55, -0.52, 2.36), (0.28, 0.016, 0.10), mats["Material_Canopy"], collection, 0.002)
     add_box("Tower_GlassS", (-1.55, 0.52, 2.36), (0.28, 0.016, 0.10), mats["Material_Canopy"], collection, 0.002)
-    add_box("DeckPlate_A", (1.15, 0.0, 0.98), (1.05, 0.72, 0.018), armor, collection, 0.004)
-    add_box("DeckPlate_B", (-3.55, 0.0, 0.92), (0.85, 0.58, 0.016), armor, collection, 0.004)
-    add_box("DeckPlate_C", (4.55, -0.28, 0.78), (0.55, 0.32, 0.014), armor, collection, 0.003)
     add_box("Tower_Mast", (-2.00, 0.0, 2.62), (0.05, 0.05, 0.30), mech, collection, 0.002)
     add_box("Tower_Yard", (-2.00, 0.0, 2.78), (0.04, 0.22, 0.03), mech, collection, 0.002)
     add_cylinder("Tower_Radar", (-1.55, 0.22, 2.42), 0.12, 0.04, armor, collection, vertices=12, bevel=0.002, rot=(0, math.pi / 2.6, 0))
@@ -696,7 +707,6 @@ def build_lod(lod, mats):
     add_box("CaseGun_P", (0.55, -2.18, 0.18), (0.55, 0.06, 0.06), mech, collection, 0.003)
     add_box("CaseGun_S", (0.55, 2.18, 0.18), (0.55, 0.06, 0.06), mech, collection, 0.003)
     add_box("Warn_Chevron", (-3.55, -0.85, 0.78), (0.20, 0.08, 0.010), warning, collection, 0.002)
-    add_box("Accent_Flash", (0.55, -1.85, 0.28), (0.45, 0.014, 0.07), accent, collection, 0.002)
     add_sensor_dish("Dorsal", (1.65, 0.42, 1.12), mats, collection)
     add_cylinder("Turret_Ring", (0.45, 0.0, 1.02), 0.30, 0.07, mech, collection, vertices=14, bevel=0.005, rot=(0, 0, 0))
     add_box("Turret_Head", (0.58, 0.0, 1.16), (0.26, 0.15, 0.07), armor, collection, 0.005)

@@ -19,6 +19,7 @@ if str(TOOLS) not in sys.path:
 from fleet_construction import (  # noqa: E402
     add_cockpit_glazing,
     add_flared_bell,
+    add_folded_sheet,
     add_manufactured_drive,
     add_overlap_plate,
     add_rcs_cluster,
@@ -648,6 +649,19 @@ def build_lod(lod, mats):
         hull_obj.data.materials.clear()
         hull_obj.data.materials.append(hull)
     inset_large_faces(hull_obj, thickness=0.040, depth=0.016, min_area=1.80)
+    # C13: hull-following chine plates, not floating deck boxes.
+    add_folded_sheet(
+        "Chine_P",
+        (2.20, -1.40, 0.10), (-1.80, -1.44, 0.12),
+        (-1.80, -1.32, 0.26), (2.20, -1.28, 0.24),
+        0.024, armor, collection, 0.004,
+    )
+    add_folded_sheet(
+        "Chine_S",
+        (2.20, 1.40, 0.10), (2.20, 1.28, 0.24),
+        (-1.80, 1.32, 0.26), (-1.80, 1.44, 0.12),
+        0.024, armor, collection, 0.004,
+    )
 
     add_cockpit_glazing("Bridge", (6.70, 0.0, 1.28), 0.92, 0.46, 0.32, mats, collection, raised=0.04)
     add_box("House_Trunk", (6.45, 0.0, 1.05), (0.88, 0.62, 0.32), armor, collection, 0.010)
@@ -697,9 +711,6 @@ def build_lod(lod, mats):
     add_box("Transom_DeckP", (-8.55, -0.62, 0.74), (1.05, 0.46, 0.032), armor, collection, 0.005)
     add_box("Transom_DeckS", (-8.55, 0.62, 0.74), (1.05, 0.46, 0.032), armor, collection, 0.005)
     add_box("Transom_DeckC", (-8.85, 0.0, 0.72), (0.72, 0.42, 0.028), hull, collection, 0.004)
-    add_box("BowPlate_P", (8.55, -0.42, 0.72), (1.05, 0.38, 0.028), armor, collection, 0.005)
-    add_box("BowPlate_S", (8.55, 0.42, 0.72), (1.05, 0.38, 0.028), armor, collection, 0.005)
-    add_box("BowPlate_C", (9.15, 0.0, 0.74), (0.65, 0.36, 0.026), hull, collection, 0.004)
 
     for sign, side in ((-1, "Port"), (1, "Starboard")):
         add_box(f"ChineStrake_{side}", (0.20, 2.28 * sign, 0.02), (6.4, 0.05, 0.10), armor, collection, 0.006)
@@ -719,14 +730,11 @@ def build_lod(lod, mats):
     add_box("Repair_Hinge", (4.62, -0.95, 0.44), (0.03, 0.14, 0.016), mech, collection, 0.002)
     add_box("Repair_Patch", (5.15, -1.15, 0.36), (0.16, 0.08, 0.010), warning, collection, 0.002)
     add_box("Warn_Chevron", (-5.15, -1.55, 0.32), (0.20, 0.08, 0.010), warning, collection, 0.002)
-    add_box("Accent_Flash", (1.15, -1.85, 0.22), (0.40, 0.014, 0.06), accent, collection, 0.002)
     add_sensor_dish("Dorsal", (4.85, 0.55, 1.15), mats, collection)
     add_cylinder("Comm_Mast", (5.15, 0.0, 1.22), 0.035, 0.85, mech, collection, vertices=8, bevel=0.003, rot=(0, 0, 0))
     add_box("Comm_Head", (5.22, 0.0, 1.66), (0.10, 0.16, 0.06), armor, collection, 0.003)
     add_box("Hatch_Lid", (4.55, 0.85, 0.42), (0.34, 0.22, 0.016), armor, collection, 0.004)
     add_box("Hatch_Hinge", (4.28, 0.85, 0.43), (0.03, 0.16, 0.018), mech, collection, 0.002)
-    add_box("DeckPlate_A", (4.80, 0.0, 0.46), (0.85, 0.72, 0.018), armor, collection, 0.004)
-    add_box("DeckPlate_B", (-4.80, 0.0, 0.42), (0.70, 0.62, 0.016), armor, collection, 0.004)
 
     # Knuckle crane — cargo handling, not a mining cutter.
     add_box("Crane_Base", (1.85, 1.42, 0.36), (0.24, 0.24, 0.10), mech, collection, 0.006)

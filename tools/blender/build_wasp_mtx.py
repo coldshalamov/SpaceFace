@@ -19,6 +19,7 @@ if str(TOOLS) not in sys.path:
 from fleet_construction import (  # noqa: E402
     add_cockpit_glazing,
     add_flared_bell,
+    add_folded_sheet,
     add_manufactured_drive,
     add_overlap_plate,
     add_rcs_cluster,
@@ -700,6 +701,19 @@ def build_lod(lod, mats):
         hull_obj.data.materials.clear()
         hull_obj.data.materials.append(hull)
     inset_large_faces(hull_obj, thickness=0.030, depth=0.012, min_area=1.00)
+    # C13: hull-following chine plates, not floating deck boxes.
+    add_folded_sheet(
+        "Chine_P",
+        (2.20, -1.80, 0.10), (-1.80, -1.84, 0.12),
+        (-1.80, -1.72, 0.26), (2.20, -1.68, 0.24),
+        0.024, armor, collection, 0.004,
+    )
+    add_folded_sheet(
+        "Chine_S",
+        (2.20, 1.80, 0.10), (2.20, 1.68, 0.24),
+        (-1.80, 1.72, 0.26), (-1.80, 1.84, 0.12),
+        0.024, armor, collection, 0.004,
+    )
     add_box("TransomPlate", (-9.38, 0.0, -0.02), (0.038, 0.62, 0.34), armor, collection, 0.004)
     add_box("TransomLip", (-9.28, 0.0, 0.22), (0.045, 0.42, 0.028), mech, collection, 0.003)
     add_box("ChineP", (0.4, -2.18, -0.18), (4.2, 0.035, 0.05), armor, collection, 0.003)
@@ -755,8 +769,6 @@ def build_lod(lod, mats):
 
     add_box("Hatch_Lid", (-0.85, 0.35, 0.92), (0.30, 0.18, 0.016), armor, collection, 0.003)
     add_box("Repair_Patch", (1.85, -0.55, 0.88), (0.28, 0.12, 0.010), warning, collection, 0.002)
-    add_box("DeckPlate_A", (1.25, 0.0, 0.96), (0.85, 0.42, 0.020), armor, collection, 0.003)
-    add_box("DeckPlate_B", (-3.45, 0.0, 0.86), (0.72, 0.36, 0.018), armor, collection, 0.003)
     for i in range(6):
         add_box(f"RadFin_{i}", (-2.45 - 0.40 + i * 0.16, 0.0, 0.92), (0.012, 0.22, 0.07), mats["Material_Radiator"], collection, 0.002)
 

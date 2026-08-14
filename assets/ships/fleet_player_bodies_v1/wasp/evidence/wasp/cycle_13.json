@@ -1,0 +1,68 @@
+{
+  "schema": "spaceface.waspMtx.cycle.v1",
+  "shipId": "wasp",
+  "cycle": 13,
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 39170,
+      "hullTriangles": 2702,
+      "draws": 9,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/wasp_production_v1_lod0.glb",
+      "bytes": 9413880,
+      "sha256": "3610CE3985F8801D6BD08F9A4B2B2DC5586C01111CC74B0706CB3DB0CFE60FD7"
+    },
+    {
+      "lod": 1,
+      "triangles": 22754,
+      "hullTriangles": 2702,
+      "draws": 9,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/wasp_production_v1_lod1.glb",
+      "bytes": 6961652,
+      "sha256": "C103E127CB59B1930429A3C342C73CC5FACEBCBB8A834A5BA65C290A9BF14E34"
+    },
+    {
+      "lod": 2,
+      "triangles": 18222,
+      "hullTriangles": 2706,
+      "draws": 9,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/wasp_production_v1_lod2.glb",
+      "bytes": 6262376,
+      "sha256": "6B719E8AA4367011EDF228C53D10F7423E2574A8FEE3426DF1C34F349EE26D67"
+    }
+  ],
+  "stills": "evidence/wasp/cycles/cycle_13"
+}
