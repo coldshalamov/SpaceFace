@@ -20,6 +20,7 @@ from fleet_construction import (  # noqa: E402
     add_cockpit_glazing,
     add_flared_bell,
     add_folded_sheet,
+    cover_loft_with_plates,
     add_manufactured_drive,
     center_loft,
     loft_shell,
@@ -704,6 +705,14 @@ def build_lod(lod, mats):
         hull_obj.data.materials.clear()
         hull_obj.data.materials.append(hull)
     inset_large_faces(hull_obj, thickness=0.026, depth=0.012, min_area=0.70)
+    cover_loft_with_plates("RigSkin", [
+        (7.30, 0.54, 0.36, 0.08),
+        (4.60, 1.40, 0.72, 0.12),
+        (1.40, 2.00, 0.92, 0.12),
+        (-1.20, 2.04, 0.94, 0.10),
+        (-4.20, 1.50, 0.74, 0.10),
+        (-6.90, 0.80, 0.46, 0.06),
+    ], hull, armor, collection)
 
     loft_shell("Casemate_P", [
         (2.80, -0.92, -1.72, -0.08, 0.36),

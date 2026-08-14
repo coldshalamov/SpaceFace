@@ -20,8 +20,10 @@ from fleet_construction import (  # noqa: E402
     add_cockpit_glazing,
     add_flared_bell,
     add_folded_sheet,
+    add_hoop_frame,
     add_radiator_cassette,
     add_manufactured_drive,
+    add_stepped_wrap,
     center_loft,
     loft_shell,
     add_overlap_plate,
@@ -746,6 +748,20 @@ def build_lod(lod, mats):
     add_box("TransomLip", (-9.28, 0.0, 0.22), (0.045, 0.42, 0.028), mech, collection, 0.003)
     add_box("ChineP", (0.4, -2.18, -0.18), (4.2, 0.035, 0.05), armor, collection, 0.003)
     add_box("ChineS", (0.4, 2.18, -0.18), (4.2, 0.035, 0.05), armor, collection, 0.003)
+    # C17: telescoping plate bands over the loft so clay is not a foam dart.
+    add_stepped_wrap("Fuselage", [
+        (10.80, 0.28, 0.18),
+        (8.10, 0.98, 0.42),
+        (4.10, 2.08, 0.80),
+        (-0.50, 2.52, 0.84),
+        (-5.20, 1.62, 0.70),
+        (-9.10, 0.76, 0.44),
+    ], hull, collection, thick=0.036, zc=0.04)
+    add_hoop_frame("WaspHouse_Fore", -5.40, 1.55, 0.66, 0.04, armor, collection, thick=0.030, half_w=0.050)
+    add_hoop_frame("WaspHouse_Aft", -8.20, 0.88, 0.48, 0.00, armor, collection, thick=0.028, half_w=0.045)
+    add_overlap_plate("WaspArmor_Dorsal", (1.20, 0.00, 0.92), (1.10, 0.55, 0.038), armor, collection, 0.008)
+    add_overlap_plate("WaspArmor_CheekP", (2.40, -2.10, 0.18), (0.85, 0.040, 0.22), armor, collection, 0.006)
+    add_overlap_plate("WaspArmor_CheekS", (2.40, 2.10, 0.18), (0.85, 0.040, 0.22), armor, collection, 0.006)
 
     add_thin_canopy("Canopy", 4.55, 0.0, 0.98, 1.85, 0.50, 0.42, mats, collection)
     add_box("Accent_Spear", (1.2, 0.0, 1.02), (4.4, 0.028, 0.016), accent, collection, 0.002)

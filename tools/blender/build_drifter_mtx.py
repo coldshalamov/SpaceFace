@@ -18,11 +18,13 @@ if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
 from fleet_construction import (  # noqa: E402
     add_folded_sheet,
+    add_hoop_frame,
     add_manufactured_drive,
     add_overlap_plate,
     add_radiator_cassette,
     add_rcs_cluster,
     add_sensor_dish,
+    add_stepped_wrap,
     apply_modifiers,
     boolean_cut_cylinder,
     center_loft,
@@ -646,6 +648,20 @@ def build_lod(lod, mats):
         (-1.80, 1.12, 0.26), (-1.80, 1.24, 0.12),
         0.024, armor, collection, 0.004,
     )
+    add_stepped_wrap("DrifterSkin", [
+        (7.90, 0.70, 0.36),
+        (6.30, 0.98, 0.60),
+        (3.90, 1.10, 1.10),
+        (1.50, 1.46, 0.70),
+        (-0.40, 1.52, 0.54),
+        (-2.20, 0.94, 0.40),
+        (-4.40, 1.10, 0.78),
+        (-7.00, 0.74, 0.50),
+    ], hull, collection, thick=0.034, zc=0.10)
+    add_hoop_frame("DrifterHouse_Fore", -4.40, 1.08, 0.76, 0.18, armor, collection, thick=0.030, half_w=0.050)
+    add_hoop_frame("DrifterHouse_Aft", -6.60, 0.74, 0.50, 0.10, armor, collection, thick=0.028, half_w=0.045)
+    add_overlap_plate("DrifterArmor_Dorsal", (1.40, 0.00, 0.72), (0.85, 0.42, 0.036), armor, collection, 0.008)
+    add_overlap_plate("DrifterArmor_Cabin", (4.10, 0.00, 1.28), (0.70, 0.38, 0.032), armor, collection, 0.007)
 
     add_thin_canopy("Canopy", 3.85, 0.0, 0.88, 1.28, 0.40, 0.26, mats, collection)
     add_box("Cockpit_Seat", (3.70, 0.0, 0.82), (0.20, 0.14, 0.07), mech, collection, 0.004)

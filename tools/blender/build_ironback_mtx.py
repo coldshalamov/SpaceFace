@@ -19,6 +19,7 @@ if str(TOOLS) not in sys.path:
 from fleet_construction import (  # noqa: E402
     add_flared_bell,
     add_folded_sheet,
+    cover_loft_with_plates,
     add_radiator_cassette,
     add_manufactured_drive,
     center_loft,
@@ -664,6 +665,16 @@ def build_lod(lod, mats):
         (-1.80, 1.47, 0.26), (-1.80, 1.59, 0.12),
         0.024, armor, collection, 0.004,
     )
+    cover_loft_with_plates("IronbackSkin", [
+        (8.30, 1.12, 0.70, 0.18),
+        (6.20, 1.62, 1.04, 0.28),
+        (3.90, 2.08, 1.36, 0.38),
+        (1.10, 2.74, 1.20, 0.18),
+        (-1.40, 2.84, 1.08, 0.14),
+        (-3.80, 2.30, 1.14, 0.16),
+        (-6.10, 1.72, 1.02, 0.16),
+        (-7.60, 1.32, 0.80, 0.12),
+    ], hull, armor, collection)
 
     add_thin_canopy("Canopy", 3.80, 0.0, 1.40, 1.20, 0.62, 0.36, mats, collection)
     add_box("Hopper_Rim", (-0.10, 0.0, 1.48), (2.35, 1.28, 0.06), armor, collection, 0.01)

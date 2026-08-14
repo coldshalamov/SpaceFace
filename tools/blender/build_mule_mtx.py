@@ -20,6 +20,7 @@ from fleet_construction import (  # noqa: E402
     add_cockpit_glazing,
     add_flared_bell,
     add_folded_sheet,
+    cover_loft_with_plates,
     add_radiator_cassette,
     add_manufactured_drive,
     center_loft,
@@ -689,6 +690,15 @@ def build_lod(lod, mats):
         (-1.80, 1.52, 0.26), (-1.80, 1.64, 0.12),
         0.024, armor, collection, 0.004,
     )
+    cover_loft_with_plates("MuleSkin", [
+        (8.80, 0.78, 0.52, 0.10),
+        (7.20, 1.22, 0.80, 0.10),
+        (4.30, 1.76, 1.10, 0.10),
+        (1.10, 2.05, 1.05, 0.10),
+        (-2.20, 1.72, 0.88, 0.10),
+        (-5.40, 1.22, 0.68, 0.08),
+        (-8.60, 0.68, 0.42, 0.06),
+    ], hull, armor, collection)
 
     add_thin_canopy("Bridge", 3.05, 0.0, 1.08, 1.35, 0.46, 0.40, mats, collection)
     add_box("Bridge_House", (2.45, 0.0, 1.52), (0.82, 0.58, 0.28), armor, collection, 0.006)

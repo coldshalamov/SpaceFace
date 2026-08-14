@@ -20,6 +20,7 @@ from fleet_construction import (  # noqa: E402
     add_cockpit_glazing,
     add_flared_bell,
     add_folded_sheet,
+    cover_loft_with_plates,
     add_radiator_cassette,
     add_manufactured_drive,
     center_loft,
@@ -704,6 +705,17 @@ def build_lod(lod, mats):
         (-1.80, 1.72, 0.26), (-1.80, 1.84, 0.12),
         0.024, armor, collection, 0.004,
     )
+    cover_loft_with_plates("LeviathanSkin", [
+        (13.20, 0.62, 0.42, 0.16),
+        (11.30, 1.22, 0.66, 0.14),
+        (8.40, 2.12, 1.04, 0.16),
+        (3.80, 3.04, 1.48, 0.14),
+        (-0.20, 3.26, 1.64, 0.14),
+        (-3.50, 2.92, 1.50, 0.18),
+        (-7.00, 2.46, 1.18, 0.16),
+        (-10.50, 2.18, 0.90, 0.14),
+        (-13.10, 1.04, 0.60, 0.10),
+    ], hull, armor, collection)
 
     add_thin_canopy("Bridge", 5.05, 0.0, 1.38, 2.05, 0.58, 0.52, mats, collection)
     # Folded plate island: setbacks, not a cube stack.

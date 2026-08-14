@@ -20,6 +20,7 @@ from fleet_construction import (  # noqa: E402
     add_cockpit_glazing,
     add_flared_bell,
     add_folded_sheet,
+    cover_loft_with_plates,
     add_radiator_cassette,
     add_manufactured_drive,
     center_loft,
@@ -693,6 +694,15 @@ def build_lod(lod, mats):
         (-1.80, 1.02, 0.26), (-1.80, 1.14, 0.12),
         0.024, armor, collection, 0.004,
     )
+    cover_loft_with_plates("WardenSkin", [
+        (9.80, 0.55, 0.40, 0.10),
+        (7.20, 1.15, 0.68, 0.14),
+        (4.00, 1.72, 0.88, 0.14),
+        (0.80, 1.95, 0.82, 0.12),
+        (-2.40, 1.68, 0.78, 0.12),
+        (-5.60, 1.22, 0.62, 0.10),
+        (-9.40, 0.62, 0.40, 0.08),
+    ], hull, armor, collection)
 
     add_cockpit_glazing("Bridge", (3.85, 0.0, 1.08), 0.78, 0.40, 0.28, mats, collection, raised=0.03)
     add_box("Tower_Base", (-1.85, 0.0, 1.12), (0.95, 0.62, 0.18), armor, collection, 0.010)

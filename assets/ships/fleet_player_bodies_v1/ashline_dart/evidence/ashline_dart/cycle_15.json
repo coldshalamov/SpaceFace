@@ -1,0 +1,67 @@
+{
+  "schema": "spaceface.ashlineDartMtx.cycle.v1",
+  "shipId": "ashline_dart",
+  "cycle": 15,
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 31946,
+      "hullTriangles": 3738,
+      "draws": 9,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/ashline_dart_production_v1_lod0.glb",
+      "bytes": 8266080,
+      "sha256": "8DC8A5B8BECA6786A1AD501AA88EA17B216DBE88813097BAFF8611C09F8D261B"
+    },
+    {
+      "lod": 1,
+      "triangles": 22490,
+      "hullTriangles": 3738,
+      "draws": 9,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/ashline_dart_production_v1_lod1.glb",
+      "bytes": 6980652,
+      "sha256": "A107210DBE52A874E2A181B82DB6BAB8726FC1E0D94A251B954F061953B76D3D"
+    },
+    {
+      "lod": 2,
+      "triangles": 16728,
+      "hullTriangles": 3268,
+      "draws": 8,
+      "materials": [
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/ashline_dart_production_v1_lod2.glb",
+      "bytes": 5842004,
+      "sha256": "89F19282F5A04C81123C32CC390556836E5E7AF6E59A4F4BDA2E84FA4D3626BC"
+    }
+  ],
+  "stills": "evidence/ashline_dart/cycles/cycle_15"
+}

@@ -20,6 +20,7 @@ from fleet_construction import (  # noqa: E402
     add_cockpit_glazing,
     add_flared_bell,
     add_folded_sheet,
+    cover_loft_with_plates,
     add_manufactured_drive,
     center_loft,
     loft_shell,
@@ -708,6 +709,15 @@ def build_lod(lod, mats):
         hull_obj.data.materials.clear()
         hull_obj.data.materials.append(hull)
     inset_large_faces(hull_obj, thickness=0.030, depth=0.014, min_area=0.80)
+    cover_loft_with_plates("BargeSkin", [
+        (9.30, 0.68, 0.36, 0.08),
+        (6.40, 1.60, 0.72, 0.16),
+        (2.40, 2.32, 1.14, 0.22),
+        (-0.80, 2.44, 1.24, 0.22),
+        (-4.40, 1.98, 0.94, 0.16),
+        (-7.20, 1.38, 0.64, 0.10),
+        (-8.90, 0.70, 0.40, 0.04),
+    ], hull, armor, collection)
 
     loft_shell("Hopper_P", [
         (3.80, -1.20, -2.05, 0.18, 1.05),
