@@ -765,9 +765,9 @@ def build_lod(lod, mats):
         densify_ring(station_ring(4.10, 0, 0.18, 0.70, 0.52, flat=0.70, box=0.30, keel=0.62)),
         densify_ring(station_ring(2.55, 0, 0.12, 0.92, 0.48, flat=0.36, box=0.46, keel=0.52)),
         densify_ring(station_ring(0.55, 0, 0.06, 1.22, 0.44, flat=0.14, box=0.82, keel=0.38)),
-        densify_ring(station_ring(-1.55, 0, 0.06, 0.88, 0.46, flat=0.10, box=0.72, keel=0.28)),
-        densify_ring(station_ring(-3.45, 0, 0.10, 0.80, 0.52, flat=0.16, box=0.84, keel=0.20)),
-        densify_ring(station_ring(-5.25, 0, 0.10, 0.58, 0.44, flat=0.12, box=0.86, keel=0.12)),
+        densify_ring(station_ring(-1.40, 0, 0.02, 0.72, 0.34, flat=0.08, box=0.55, keel=0.42)),
+        densify_ring(station_ring(-3.20, 0, 0.16, 0.86, 0.68, flat=0.22, box=0.90, keel=0.18)),
+        densify_ring(station_ring(-5.15, 0, 0.12, 0.58, 0.50, flat=0.14, box=0.88, keel=0.12)),
         densify_ring(station_ring(-7.15, 0, 0.08, 0.40, 0.30, flat=0.08, box=0.78, keel=0.08)),
     ]
     hull_obj = loft_from_rings("Pressure_Hull", hull_rings, hull, collection, 0.014)
@@ -791,8 +791,8 @@ def build_lod(lod, mats):
     if lod <= 1:
         cut_open_bay(hull_obj, "Cockpit", (4.10, 0.0, 0.62), 1.35, 0.36, 0.42, (0, 0, 1), mats, collection, kit="cockpit", liner=False)
         cut_open_bay(hull_obj, "NeedlePort", (6.40, 0.0, -0.08), 0.55, 0.10, 0.16, (0, 0, -1), mats, collection, kit="empty", liner=False)
-        cut_open_bay(hull_obj, "Port", (0.20, -1.10, 0.08), 1.45, 0.38, 0.48, (0, -1, 0), mats, collection, kit="radiator")
-        cut_open_bay(hull_obj, "Starboard", (0.20, 1.10, 0.08), 1.45, 0.38, 0.48, (0, 1, 0), mats, collection, kit="rack")
+        cut_open_bay(hull_obj, "Port", (0.20, -1.10, 0.08), 1.45, 0.38, 0.48, (0, -1, 0), mats, collection, kit="empty", liner=False)
+        cut_open_bay(hull_obj, "Starboard", (0.20, 1.10, 0.08), 1.45, 0.38, 0.48, (0, 1, 0), mats, collection, kit="empty", liner=False)
         cut_open_bay(hull_obj, "DorsalAft", (-3.20, 0.0, 0.66), 1.05, 0.36, 0.28, (0, 0, 1), mats, collection, kit="radiator", liner=False)
         cut_open_bay(hull_obj, "Keel", (0.10, 0.0, -0.38), 1.70, 0.28, 0.26, (0, 0, -1), mats, collection, kit="empty")
         boolean_cut_cylinder(hull_obj, "TransomSocket", (-7.00, 0.0, 0.10), 0.36, 0.85)
@@ -869,17 +869,17 @@ def build_lod(lod, mats):
         # Hitch-language wing: continuous overlapping shoulder, not a card.
         if sign < 0:
             loft_shell(f"Wing_{side}", [
-                (1.15, -0.70, -1.35, -0.16, 0.18),
-                (0.20, -1.85, -2.85, -0.04, 0.42),
-                (-0.70, -2.95, -3.85, 0.12, 0.36),
-                (-1.35, -3.55, -4.15, 0.06, 0.20),
+                (1.15, -0.70, -1.40, -0.18, 0.20),
+                (0.15, -1.80, -2.90, 0.08, 0.58),
+                (-0.75, -2.90, -3.90, 0.38, 0.72),
+                (-1.40, -3.50, -4.20, 0.22, 0.42),
             ], hull, collection, 0.010)
         else:
             loft_shell(f"Wing_{side}", [
-                (1.15, 0.70, 1.35, -0.16, 0.18),
-                (0.20, 1.85, 2.85, -0.04, 0.42),
-                (-0.70, 2.95, 3.85, 0.12, 0.36),
-                (-1.35, 3.55, 4.15, 0.06, 0.20),
+                (1.15, 0.70, 1.40, -0.18, 0.20),
+                (0.15, 1.80, 2.90, 0.08, 0.58),
+                (-0.75, 2.90, 3.90, 0.38, 0.72),
+                (-1.40, 3.50, 4.20, 0.22, 0.42),
             ], hull, collection, 0.010)
         loft_from_rings(f"Canard_{side}", [
             airfoil_ring(5.10, 0.42 * sign, 0.06, 0.72, 0.12),
@@ -895,8 +895,8 @@ def build_lod(lod, mats):
             0.028, hull, collection, 0.005,
         )
     if lod <= 1:
-        add_radiator_cassette("PortFlank", (-3.15, -0.82, 0.28), lod, mats, collection, length=1.15, height=0.24, yaw=0.0)
-        add_radiator_cassette("StbdFlank", (-3.15, 0.82, 0.28), lod, mats, collection, length=1.15, height=0.24, yaw=0.0)
+        add_radiator_cassette("PortFlank", (-3.20, -0.78, 0.42), lod, mats, collection, length=0.95, height=0.20, yaw=0.0)
+        add_radiator_cassette("StbdFlank", (-3.20, 0.78, 0.42), lod, mats, collection, length=0.95, height=0.20, yaw=0.0)
     add_folded_sheet(
         "Keel_Spine",
         (1.60, -0.10, -0.62), (-1.40, -0.10, -0.58),
