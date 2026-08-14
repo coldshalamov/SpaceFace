@@ -5,8 +5,9 @@ Durable route for making SpaceFace hold vsync on the target Intel iGPU without
 changing the default picture. This file is plan-route and outcome law. It does
 not hold a queue snapshot, branch name, or cycle ledger.
 
-Companion to [`PERF_BUDGET.md`](./PERF_BUDGET.md) and
-[`CANONICAL_BUILD_MAP.md`](../CANONICAL_BUILD_MAP.md) §8.1.
+Companion to [`PERF_BUDGET.md`](./PERF_BUDGET.md),
+[`CANONICAL_BUILD_MAP.md`](../CANONICAL_BUILD_MAP.md) §8.1 / §8.2, and the
+exhaustive reserved catalog [`PERF_OPTION_SPACE.md`](./PERF_OPTION_SPACE.md).
 
 ## Stop conditions
 
