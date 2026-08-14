@@ -513,6 +513,201 @@ Every leaf uses the investigate → invalidate → implement loop in
 → then §7 of that file. Long platform leaves wait until that table points at them, unless the owner
 starts that campaign.
 
+### 8.3 Exhaustive same-picture technique inventory
+
+This is the full list of performance optimizations that may later be investigated or implemented.
+Each line is a legal leaf under the parent in parentheses. Admit via `PQ-094` minting if it has no
+row yet. Size of the job is not a reason to omit it. **Illegal** as a win: default quality cuts,
+emptying the glass, camera-facing soft cards for fly-past objects, or editing sim goldens.
+
+**Loop for every line:** measure the live pole → census glass / runway / beyond → **invalidate**
+if it is not the pole, A/B worsens, pixels change, the stall moves, or copy costs more than it
+saves → else implement the smallest leaf → tests of real functions → matched A/B → keep or revert.
+
+#### Glass vs off-stage (this camera)
+
+- Shrink query/cull margin from multi-screen to glass + measured approach seconds (`PQ-061`, `PQ-068`)
+- Do not submit roots outside glass + runway (`PQ-068`)
+- Do not LOD-resolve off-glass roots (`PQ-070`)
+- Do not run shadow policy off-glass (`PQ-070`, `PQ-077`)
+- Do not run damage/drive/site closures off-glass (`PQ-070`)
+- Do not instance-pool or BatchedMesh plates that will not submit (`PQ-070`)
+- Mesh prefetch/evict = top-speed × fraction of a second, not 5200/6400-as-horizon (`PQ-069`)
+- Whole-sector stations/planets/fx are map facts until approach (`PQ-071`)
+- Neighbor-sector meshes never constructed (`PQ-069`)
+- Authored-upgrade prefetch follows approach, not sector (`PQ-075`)
+- VFX/trails/lights/flipbooks only on-glass + runway (`PQ-115`)
+- Audio voices follow table hearing, not 900 WU (`PQ-105`)
+- Layers / bitmasks so off-glass graphs are not in the walk (`PQ-099`)
+- Scissor / viewport to the glass if a leftover pass still covers unused pixels (`PQ-078`)
+- On-glass tiny-contact LOD (30 px fighter cheap; 120 px full) (`PQ-108`)
+- Pixel-floor remaining VFX under N px (`PQ-115`)
+- Skip decals / greebles / nav-light meshes under N projected px (`PQ-108`, `PQ-053`)
+- Freeze animation/morph/skin off-glass (`PQ-070`)
+- Sleep Rapier bodies off-table (`PQ-084`)
+- Sleep AI/perception/path off-table; hostiles on-table stay 60 Hz (`PQ-080`)
+
+#### Submit / GPU state (on-glass)
+
+- Material-keyed instancing and BatchedMesh for rigid opaque (`PQ-052`)
+- Separate legal lanes: canopy, plume, decal, ribbon, sprite, beam (`PQ-076`)
+- Multi-draw / `WEBGL_multi_draw` (`PQ-052`)
+- Indirect / multi-draw-indirect / count buffers (`PQ-059`, `PQ-089`)
+- GPU compaction of instance lists (`PQ-059`)
+- Texture arrays / atlas for same-role maps (`PQ-089`)
+- Bindless / bindless-like grouping when WebGPU (`PQ-089`)
+- Program-bind sort; optional front-to-back opaque (`PQ-107`)
+- Reduce Three.js light/program churn; exact light cardinality (`PQ-096`)
+- VAO reuse; avoid per-draw attribute setup (`PQ-076`)
+- UBO / uniform packing vs many setUniform calls (`PQ-089`)
+- Avoid geometry shaders / tessellation on this path (`PQ-064` census)
+- 16-bit indices; quantized positions/normals; oct normals; half-float verts (`PQ-037`, `PQ-079`)
+- Quantized instance matrices / quaternion+scale (`PQ-079`)
+- Persistent / orphan / unsynchronized buffer maps (`PQ-040`, `PQ-079`)
+- Ring buffers for dynamic ranges (`PQ-040`)
+- Don’t grow BatchedMesh on the present beat (`PQ-079`)
+- Shadow set = glass + skirt; cheaper PCF/ESM/VSM only if stills match (`PQ-077`)
+- Cached static shadow for unmoving casters; atlas packing; one cascade (`PQ-077`)
+- Contact/blob shadows only where directional cannot matter (`PQ-077`)
+- Skip receiveShadow on transparents (`PQ-077`)
+- Overdraw / fill-rate census; limit transparent layers (`PQ-063`, `PQ-076`)
+- OIT / weighted blend / dithered alpha / A2C only if picture holds (`PQ-076`)
+- Force single-pass canopy (already a policy) (`PQ-076`)
+- Visibility buffer / deferred / forward+ / clustered lights — INV only (`PQ-067`, `PQ-089`)
+- Depth prepass — INV only; close with no-mutation if not a net win (`PQ-078`)
+- Occlusion / Hi-Z / small-primitive cull — INV; likely weak on a table (`PQ-061`)
+- Meshlets / cluster LOD / virtual geometry — Long, same picture (`PQ-089`, `PQ-090`)
+- Virtual / sparse / streamed textures (`PQ-086`)
+- Format pick: BC7 / ASTC / ETC2 / UASTC / ETC1S per GPU (`PQ-055`, `PQ-086`)
+- Anisotropy / mip bias only off-glass or if stills match (`PQ-086`)
+- Skip mipgen when mip chain exists (`PQ-074`)
+
+#### Present / post / HDR
+
+- One bloom/HDR path; canvas MSAA dead behind it (`PQ-056`, `PQ-078`)
+- Bloom resolve: fewer mips, dual-Kawase, half/quarter res, Karis — stills must match (`PQ-097`)
+- HDR target: HalfFloat vs R11G11B10 vs RGBM (`PQ-116`)
+- Memoryless / transient / aliased / pooled render targets (`PQ-078`)
+- Don’t store unused attachments; correct load/store (`PQ-078`)
+- Compute bloom / async compute when WebGPU (`PQ-089`, `PQ-097`)
+- Grain/vignette/grade/LUT cost; skip identity ops (`PQ-078`)
+- Optional SMAA/FXAA/TAA only if present is the pole and stills keep (`PQ-078`)
+- FSR/XeSS/dynamic res are **illegal** as a default quality cut; INV only if same internal res (`PQ-078`)
+- AO/SSGI/SSR/volumetrics/DoF/motion-blur/godrays — INV; do not add passes to “optimize”
+- Speed-lines: stroke cache, OffscreenCanvas worker, GPU polyline (`PQ-098`)
+- Canvas flags: `alpha:false`, `preserveDrawingBuffer:false`, `desynchronized`, `powerPreference` (`PQ-109`)
+- ANGLE backend D3D11/D3D12/Vulkan (`PQ-110`)
+- Mailbox vs FIFO vs low-latency swap (`PQ-092`)
+- Exclusive fullscreen / compositor copies in Electron (`PQ-092`)
+
+#### Admission / first use / hitch
+
+- Exact-key dummy prewarm (lights, HDR, batching, shadow depth) (`PQ-072`)
+- One new program per present after present; never whole-root on rAF (`PQ-054`, `PQ-072`)
+- `KHR_parallel_shader_compile` / own readiness timer (`PQ-054`)
+- Binary program cache / WebGPU pipeline cache (`PQ-104`)
+- Idle/`scheduler.yield` admission **after** present; never `setTimeout(0)` on the next rAF (`PQ-114`)
+- Next-contact warm from traffic intent (`PQ-075`)
+- Compose yield between parts; merge cache; no sync compose on combat thread (`PQ-073`)
+- Upload after present; one tex/buffer per beat (`PQ-074`)
+- Decode GLB/KTX2/Basis/meshopt/Draco on a worker (`PQ-103`)
+- `createImageBitmap` / ImageBitmap (`PQ-103`)
+- Autosave slice / after-present / worker serialize (`PQ-087`)
+- Floating-origin rebase dirty-only (`PQ-100`)
+- Catch-up cap so one hitch does not force extra sim steps (`PQ-101`)
+- Context restore retries, force-new-context, named terminal park (`PQ-051`)
+- Opening cohort watermark; late roots cannot extend it (`PQ-054`)
+
+#### Scene graph / CPU prep
+
+- `matrixAutoUpdate` off for static children (`PQ-099`)
+- Flatten merged station/place graphs (`PQ-099`)
+- Don’t `updateMatrixWorld` the off-glass tree (`PQ-070`, `PQ-099`)
+- Presentation snapshot / SoA columns; no entity-object walk on present (`PQ-081`)
+- Dirty journals / bitsets / monomorphic hot functions (`PQ-106`)
+- Pool events, avoid per-frame `{}` / strings (`PQ-106`)
+- Event-bus coalesce; no unbounded journals (`PQ-106`)
+- Skip registry systems when 3D is hidden (`PQ-117`)
+- Unload or freeze flight world in station/map/pause (`PQ-102`)
+- Production default: probes/timers/debug traversals off (`PQ-113`)
+
+#### Simulation / AI / physics
+
+- Tick-quantize inactive owners (`PQ-057`, `PQ-080`)
+- Spatial hash / dirty broadphase; don’t rebuild every tick if unchanged (`PQ-039`, `PQ-080`)
+- Query/candidate work scales with the table (`PQ-039`)
+- Rapier island sleep; solver iterations scale with the table (`PQ-084`)
+- Time-sliced path / steering / perception (`PQ-080`)
+- Sim Worker after snapshot fence (`PQ-082`, `PQ-043`)
+- WASM/Rust island for queries, scheduler, snapshot pack, traffic — not Three.js (`PQ-083`, `PQ-091`)
+- SharedArrayBuffer snapshot; measure copy vs gain (`PQ-093`, `PQ-067`)
+- SIMD / bulk-memory / threads in WASM (`PQ-083`)
+- Determinism lab before any cadence change (`PQ-066`)
+
+#### Assets / I/O / boot / long session
+
+- Immutable / ETag / content-hash cache (`PQ-055`)
+- Brotli for code/text; don’t recompress GLB (`PQ-055`)
+- HTTP range / packaged-file transport if a boot trace asks (`PQ-055`)
+- Place/ship opening shell + later detail (`PQ-085`)
+- Texture residency / evict off-glass without thrash (`PQ-086`, `PQ-058`)
+- GPU/CPU byte budgets; previous-sector warmth (`PQ-058`)
+- Code-split menus vs flight; V8/Electron bytecode cache (`PQ-055`, `PQ-092`)
+- Service worker only if it helps warm launch (`PQ-055`)
+- COOP/COEP if SAB is chosen (`PQ-093`)
+
+#### Audio / HUD
+
+- Voice cull to the table (`PQ-105`)
+- HRTF/convolution/reverb only if cheap or off-glass silent (`PQ-105`)
+- Decode/resample off the present thread (`PQ-103`, `PQ-088`)
+- HUD: one rAF-aligned write; virtualize lists; contain/layout isolation (`PQ-088`)
+- MSDF/atlas vs DOM for hot numbers if DOM is the pole (`PQ-088`)
+- Don’t run full HUD/audio when overlays are hidden (`PQ-088`, `PQ-117`)
+
+#### Platform / language / engine (large jobs stay listed)
+
+- WebGPU backend + rollback (`PQ-044`, `PQ-089`)
+- Render bundles, GPU cull, meshlets (`PQ-059`)
+- Native present slice, same snapshot/input/save (`PQ-060`, `PQ-090`)
+- Further Rust islands; full engine (Bevy/Fyrox/custom) only as `PQ-090` successor (`PQ-091`)
+- Electron GPU process, vsync, swap, hardware accel, process priority (`PQ-092`)
+- OffscreenCanvas / WebGL-in-worker for overlays only (`PQ-098`)
+- Dual-queue / copy-engine / timestamp queries on WebGPU (`PQ-089`)
+
+#### Sky / background (tabletop-priced)
+
+- Starfield / parallax / deep-field / sky planets cost what a table uses (`PQ-095`)
+- Don’t update sky animation off-glass or when paused (`PQ-095`, `PQ-117`)
+- Background stars remain the only camera-facing exception (`PQ-095`)
+
+#### Lighting / variants
+
+- Event-light pool cardinality matches compile (`PQ-096`)
+- Intensity-only flashes; don’t add/remove visible lights mid-fight (`PQ-096`)
+- IBL/PMREM size; rebuild off the present beat (`PQ-072`, `PQ-054`)
+- Env / SH / probes only if they don’t add first-use keys (`PQ-064`)
+
+#### Measurement / scaffolding (not outcomes)
+
+- Glass-band census (`PQ-061`)
+- Hitch owner ring (`PQ-062`)
+- Phase + GPU timers on the real bloom path (`PQ-063`)
+- Shader-key dump (`PQ-064`)
+- Alloc/GC/VRAM soak (`PQ-065`)
+- Hash pair lab (`PQ-066`)
+- Platform spike matrix + interop bench (`PQ-067`)
+- Glass still-diff parity gate (`PQ-111`)
+- Thermal/clock pair discard (`PQ-112`)
+- Replay + seed hitch bisect (`PQ-118`)
+- Shell pair Browser vs Electron (`PQ-092`)
+- Restore/TDR drill (`PQ-051`)
+- Spector / RenderDoc / PIX / Intel GPA / Chrome trace / GC (`PQ-063`, `PQ-065`)
+- Pole sweep that mints missing leaves (`PQ-094`)
+
+A line with no parent yet is minted under `PQ-094` rather than invented ad hoc. Investigation-first
+is the default. Implementation is only what a census selected and an A/B kept.
+
 ## 9. Documentation and instruction hygiene
 
 Documentation has a declared lifetime:

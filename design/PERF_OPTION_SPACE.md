@@ -7,7 +7,8 @@ It does **not** admit work, claim completion, or hold a queue snapshot.
 Companion to [`PERF_BUDGET.md`](./PERF_BUDGET.md),
 [`PERF_SYSTEMATIC_PROGRAM.md`](./PERF_SYSTEMATIC_PROGRAM.md) when that file is present,
 [`PERFORMANCE_OPTIMIZATION_CONSTELLATION.md`](./PERFORMANCE_OPTIMIZATION_CONSTELLATION.md),
-and [`CANONICAL_BUILD_MAP.md`](../CANONICAL_BUILD_MAP.md) §8 / §8.1 / §8.2.
+and [`CANONICAL_BUILD_MAP.md`](../CANONICAL_BUILD_MAP.md) §8 / §8.1 / §8.2 / **§8.3
+(exhaustive technique inventory)**.
 
 Existing identities `PQ-034`–`PQ-044` and `PQ-051`–`PQ-060` stay authoritative for their
 scopes. Identities `PQ-061`–`PQ-118` below are reserved so later campaigns can admit
