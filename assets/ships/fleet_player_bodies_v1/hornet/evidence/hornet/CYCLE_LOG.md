@@ -23,5 +23,6 @@
 | 35 | yes | see json | pending | plank and crate gone |
 | 36 | yes | see json | REJECT | steep dihedral. Wing fold reads at 3/4. Hitch still wins |
 | 37 | yes | see json | pending | hoses/turret/sticker gone. Needle still a pyramid |
+| 38 | yes | see json | pending | wider needle cheeks. Step reads at 3/4. Hitch still wins |
 
 Hitch-plus / A-list: not met. Do not promote. Do not self-accept.

@@ -66,9 +66,10 @@ kit-on-loaf cycles did not close quality. That close is reverted. Live files are
 still the old factory wholeships. Hitch is untouched and still wins. Stay off
 INFERENCE, the dock/hulk remaster, and the expansion-research brief.
 
-- **Hornet is on cycle 37.** Needle is a gray overlapping shell. Canopy
-  is a framed bubble. Plank, crate, chrome wires, and turret kit are
-  gone. C36 reviews still REJECT. Hitch still wins. Not wired.
+- **Hornet is on cycle 38.** Needle is a gray overlapping shell with a
+  visible cheek step. Canopy is a framed bubble. Plank, crate, chrome
+  wires, and turret kit are gone. C36 reviews still REJECT. Hitch still
+  wins. Not wired.
 - **Drifter is on cycle 15** (cabin shells, brighter glass, kit boxes
   swapped for plates). Still a lofted sausage. Hitch still wins. Not
   wired.
