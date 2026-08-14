@@ -515,6 +515,9 @@ export function createUiInput(ctx, screenManager) {
 
   // mouse-wheel zoom passthrough (only in flight, not over a modal)
   function onWheel(ev) {
+    // Chrome reports a trackpad pinch as a Ctrl/Cmd-modified wheel. Cancel the browser's page-zoom
+    // default before the mode gates so the DOM HUD stays at its fixed viewport scale.
+    if ((ev.ctrlKey || ev.metaKey) && typeof ev.preventDefault === 'function') ev.preventDefault();
     if (isUiInteractionFenced(state) || screenManager.isOpen() || state.ui.docked || state.mode !== 'flight') return;
     bus.emit('camera:zoom', { delta: Math.sign(ev.deltaY) * 8 });
   }
@@ -529,7 +532,7 @@ export function createUiInput(ctx, screenManager) {
     document.addEventListener(type, onBlackoutPointerEvent, { capture: true, passive: false });
   }
   document.addEventListener('keydown', onKeyDown);
-  window.addEventListener('wheel', onWheel, { passive: true });
+  window.addEventListener('wheel', onWheel, { passive: false });
   const clearGamepadFocus = () => document.documentElement.classList.remove('sf-gamepad-focus');
   document.addEventListener('pointerdown', clearGamepadFocus, true);
 

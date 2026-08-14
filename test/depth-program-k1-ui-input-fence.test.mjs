@@ -11,6 +11,7 @@ class FakeEventTarget {
     this.listeners.get(type).push({
       fn,
       capture: options === true || Boolean(options && options.capture),
+      passive: options && typeof options === 'object' ? options.passive : undefined,
     });
   }
   removeEventListener(type, fn, options = false) {
@@ -104,6 +105,11 @@ test('K1 Fulfillment blackout fences keyboard, touch, and gamepad UI intents wit
   let input;
   try {
     input = createUiInput({ state, bus, gamepad }, screenManager);
+    assert.equal(
+      windowTarget.listeners.get('wheel').some((row) => row.passive === false),
+      true,
+      'the global wheel bridge must be non-passive so browser pinch zoom can be cancelled',
+    );
     bus.emit('dock:range', { stationId: 'fulfillment-route-office', inRange: true });
     assert.equal(isUiInteractionFenced(state), true);
 
@@ -154,13 +160,15 @@ test('K1 Fulfillment blackout fences keyboard, touch, and gamepad UI intents wit
     documentTarget.dispatch('contextmenu', pointerEvent());
     const resumedWheel = pointerEvent();
     resumedWheel.deltaY = 100;
+    resumedWheel.ctrlKey = true;
     documentTarget.dispatch('wheel', resumedWheel);
-    windowTarget.dispatch('wheel', { deltaY: 100, preventDefault() {} });
+    windowTarget.dispatch('wheel', resumedWheel);
     bus.emit('touch:uiAction', { action: 'dock' });
     assert.equal(underlyingPointerEvents, 2, 'pointer/click handlers resume when the fence clears');
     assert.equal(underlyingContextMenus, 1, 'context-menu handlers resume when the fence clears');
     assert.equal(underlyingWheels, 1, 'global wheel handlers resume when the fence clears');
     assert.equal(cameraZooms, 1, 'camera zoom resumes when the wake phase releases the fence');
+    assert.equal(resumedWheel.prevented, true, 'trackpad pinch must not fall through to browser page zoom');
     assert.equal(dockIntents, 1, 'docking resumes when the wake phase releases the fence');
     bus.emit('touch:uiAction', { action: 'pause' });
     assert.deepEqual(opened, ['pause'], 'touch UI resumes when the wake phase releases the fence');
