@@ -126,6 +126,11 @@ import {
 } from './entityMeshVisibility.js';
 import { supportsOpaqueMaterialBatch } from './opaqueMaterialBatch.js';
 import { shouldRefreshRealtimeShadowMap } from './shadowPresentCadence.js';
+import {
+  collectCompileSubjects,
+  compileSubjectsAcrossPresents,
+  shouldSliceCompileAcrossPresents,
+} from './compilePresentSlice.js';
 import { preloadRockSurfaceLibrary } from './rockSurfaceLibrary.js';
 import {
   createGpuResidencyAdmissionTracker,
@@ -2655,6 +2660,17 @@ export const render = {
       const batch = Array.isArray(subjects) ? subjects.filter(Boolean) : [subjects].filter(Boolean);
       if (batch.length === 0) return Promise.resolve({ skipped: true, reason: 'empty pipeline batch' });
       const route = requestedRoute || this._selectPostRoute();
+      if (shouldSliceCompileAcrossPresents({
+        mode: state.mode,
+        firstPlayable: Number.isFinite(state.render && state.render.firstPlayableFrameAt),
+      })) {
+        const sliced = batch.flatMap((root) => collectCompileSubjects(root));
+        return compileSubjectsAcrossPresents(
+          sliced,
+          (subject) => this._compilePostRoute(route, subject, cam.obj, scene),
+          yieldToNextPresent,
+        );
+      }
       if (batch.length === 1) {
         return Promise.resolve(this._compilePostRoute(
           route, batch[0], cam.obj, scene,
