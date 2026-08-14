@@ -81,11 +81,13 @@ function createHarness({
   visibilityState = 'visible',
   initialShellCommand = null,
   accumulator = 0,
+  useShell = true,
 } = {}) {
   const clock = createClock();
   const raf = createRaf();
   const visibility = createVisibility(visibilityState);
-  const lifecyclePort = createLifecyclePort(initialShellCommand);
+  const lifecyclePort = useShell ? createLifecyclePort(initialShellCommand) : null;
+  const inputResumeTarget = new EventTarget();
   const calls = [];
   const releases = [];
   const audioTransitions = [];
@@ -129,12 +131,14 @@ function createHarness({
     nowMs: clock.nowMs,
     visibilityTarget: visibility,
     lifecyclePort,
+    inputResumeTarget,
   });
   return {
     clock,
     raf,
     visibility,
     lifecyclePort,
+    inputResumeTarget,
     calls,
     releases,
     audioTransitions,
@@ -292,14 +296,43 @@ test('shell minimize and system suspend stop work with monotonic command handlin
   h.controller.destroy();
 });
 
-test('document visibility remains authoritative over a foreground shell command', () => {
+test('a visible Electron window keeps playing if Chromium reports the document hidden', () => {
   const h = createHarness();
+  h.raf.flushOne(h.clock.advance(16.667));
+  h.lifecyclePort.send({ state: 'foreground-visible', sequence: 1, reason: 'did-finish-load' });
   h.visibility.set('hidden');
-  h.lifecyclePort.send({ state: 'foreground-visible', sequence: 1, reason: 'focus' });
+
+  assert.equal(h.controller.isSuspended(), false);
+  assert.equal(h.controller.getLifecycleState(), LOOP_LIFECYCLE_STATES.FOREGROUND_VISIBLE);
+  assert.equal(h.raf.count(), 1);
+
+  h.raf.flushOne(h.clock.advance(16.667));
+  assert.equal(countCalls(h, 'render'), 2);
+  h.controller.destroy();
+});
+
+test('browser tabs still stop when the document is hidden', () => {
+  const h = createHarness({ useShell: false });
+  h.raf.flushOne(h.clock.advance(16.667));
+  h.visibility.set('hidden');
 
   assert.equal(h.controller.isSuspended(), true);
-  assert.equal(h.controller.getLifecycleState(), LOOP_LIFECYCLE_STATES.HIDDEN_OR_MINIMIZED);
   assert.equal(h.raf.count(), 0);
+  h.controller.destroy();
+});
+
+test('clicking the frozen HUD restarts frames when the Electron window is still on screen', () => {
+  const h = createHarness({ useShell: false });
+  h.raf.flushOne(h.clock.advance(16.667));
+  h.visibility.set('hidden');
+  assert.equal(h.controller.isSuspended(), true);
+  assert.equal(h.raf.count(), 0);
+
+  h.inputResumeTarget.dispatchEvent(new Event('pointerdown'));
+  assert.equal(h.controller.isSuspended(), false);
+  assert.equal(h.raf.count(), 1);
+  h.raf.flushOne(h.clock.advance(16.667));
+  assert.ok(countCalls(h, 'render') >= 2);
   h.controller.destroy();
 });
 
@@ -318,6 +351,24 @@ test('a hide fired during simulation aborts presentation and rescheduling', () =
   assert.deepEqual(h.calls.map((call) => call.type), ['step']);
   assert.equal(h.controller.isSuspended(), true);
   assert.equal(h.raf.count(), 0);
+  h.controller.destroy();
+});
+
+test('a hidden document during a sim step cannot kill an on-screen Electron window', () => {
+  const h = createHarness();
+  h.lifecyclePort.send({ state: 'foreground-visible', sequence: 1, reason: 'did-finish-load' });
+  h.registry.step = (dt, tickBoundary) => {
+    h.state.tick++;
+    h.state.simTime += dt;
+    tickBoundary.publishInputCommand(h.state.input, h.state.tick);
+    h.calls.push({ type: 'step', dt });
+    h.visibility.set('hidden');
+  };
+
+  h.raf.flushOne(h.clock.advance(16.667));
+
+  assert.equal(h.controller.isSuspended(), false);
+  assert.equal(h.raf.count(), 1);
   h.controller.destroy();
 });
 

@@ -152,6 +152,9 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
   const lifecyclePort = Object.prototype.hasOwnProperty.call(deps, 'lifecyclePort')
     ? deps.lifecyclePort
     : globalThis.window?.spacefaceLifecycle;
+  const inputResumeTarget = Object.prototype.hasOwnProperty.call(deps, 'inputResumeTarget')
+    ? deps.inputResumeTarget
+    : globalThis.window;
   const nowMs = deps.nowMs
     || (() => (typeof performance !== 'undefined' && typeof performance.now === 'function'
       ? performance.now()
@@ -172,6 +175,17 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
   function requestedState() {
     if (shellState === LOOP_LIFECYCLE_STATES.SYSTEM_SUSPENDED) {
       return LOOP_LIFECYCLE_STATES.SYSTEM_SUSPENDED;
+    }
+    // Electron publishes real window state. Chromium `document.hidden` can stick true on Windows
+    // while that window is still on screen (occlusion, show:false→show, alt-tab return). Trusting
+    // the stuck flag used to cancel rAF forever: 3D and movement died, HTML HUD/pause stayed live.
+    if (shellSequence > 0) {
+      if (shellState === LOOP_LIFECYCLE_STATES.HIDDEN_OR_MINIMIZED) {
+        return LOOP_LIFECYCLE_STATES.HIDDEN_OR_MINIMIZED;
+      }
+      return shellState === LOOP_LIFECYCLE_STATES.FOREGROUND_OCCLUDED
+        ? LOOP_LIFECYCLE_STATES.FOREGROUND_OCCLUDED
+        : LOOP_LIFECYCLE_STATES.FOREGROUND_VISIBLE;
     }
     if (documentHidden || shellState === LOOP_LIFECYCLE_STATES.HIDDEN_OR_MINIMIZED) {
       return LOOP_LIFECYCLE_STATES.HIDDEN_OR_MINIMIZED;
@@ -312,6 +326,14 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
         visibilityTarget.removeEventListener('visibilitychange', onVisibilityChange);
       } catch (error) {
         recordTeardownError('removeVisibilityListener', error, errors);
+      }
+    }
+    if (inputResumeTarget && typeof inputResumeTarget.removeEventListener === 'function') {
+      try {
+        inputResumeTarget.removeEventListener('pointerdown', onInputResume, true);
+        inputResumeTarget.removeEventListener('keydown', onInputResume, true);
+      } catch (error) {
+        recordTeardownError('removeInputResumeListener', error, errors);
       }
     }
     const unsubscribe = unsubscribeLifecycle;
@@ -461,6 +483,14 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     diagnostics.visibilityState = visibilityTarget?.visibilityState || 'unavailable';
     documentHidden = diagnostics.visibilityState === 'hidden';
     synchronizeLifecycle('document-visibility');
+  }
+
+  function onInputResume() {
+    if (destroyed || !suspended) return;
+    if (shellState === LOOP_LIFECYCLE_STATES.SYSTEM_SUSPENDED) return;
+    documentHidden = false;
+    diagnostics.visibilityState = 'visible';
+    synchronizeLifecycle('input-resume');
   }
 
   function onShellLifecycle(command) {
@@ -726,6 +756,10 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
 
   if (visibilityTarget && typeof visibilityTarget.addEventListener === 'function') {
     visibilityTarget.addEventListener('visibilitychange', onVisibilityChange);
+  }
+  if (inputResumeTarget && typeof inputResumeTarget.addEventListener === 'function') {
+    inputResumeTarget.addEventListener('pointerdown', onInputResume, true);
+    inputResumeTarget.addEventListener('keydown', onInputResume, true);
   }
   if (lifecyclePort && typeof lifecyclePort.subscribe === 'function') {
     const unsubscribe = lifecyclePort.subscribe(onShellLifecycle);
