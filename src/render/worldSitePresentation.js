@@ -41,6 +41,7 @@ export function installWorldSitePresentation(root, entity, { THREE_NS = THREE } 
     const mount = new THREE_NS.Group();
     mount.name = `WorldSitePresentation_${spec.id}`;
     mount.userData.worldSitePresentationOwned = true;
+    mount.userData.animated = true;
     const mesh = new THREE_NS.Mesh(geometry, material);
     mesh.name = `WorldSiteFixture_${spec.id}`;
     mesh.userData.worldSitePresentationFixtureId = spec.id;

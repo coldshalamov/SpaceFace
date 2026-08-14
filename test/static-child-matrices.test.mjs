@@ -25,13 +25,22 @@ test('static children freeze; sockets lights and animated nodes stay live', () =
   const plate = node();
   const socket = node({ spacefaceSocket: true });
   const light = node({}, { isLight: true });
-  const root = node({}, { children: [plate, socket, light] });
+  const pulse = node({ animated: true, worldSitePresentationOwned: true });
+  const root = node({}, { children: [plate, socket, light, pulse] });
   assert.equal(shouldFreezeStaticChild(plate, root), true);
   assert.equal(shouldFreezeStaticChild(socket, root), false);
   assert.equal(shouldFreezeStaticChild(light, root), false);
+  assert.equal(shouldFreezeStaticChild(pulse, root), false);
   assert.equal(freezeStaticChildMatrices(root), 1);
   assert.equal(plate.matrixAutoUpdate, false);
   assert.equal(plate.updated, true);
   assert.equal(socket.matrixAutoUpdate, true);
+  assert.equal(pulse.matrixAutoUpdate, true);
   assert.equal(root.matrixAutoUpdate, true);
+});
+
+test('world-site fixture mounts are tagged so place freeze cannot stop their pulse', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const source = await readFile(new URL('../src/render/worldSitePresentation.js', import.meta.url), 'utf8');
+  assert.match(source, /userData\.animated = true/);
 });
