@@ -246,6 +246,48 @@ export function refreshBatchWorldBounds(mesh) {
   return !!(mesh.boundingSphere);
 }
 
+/**
+ * Tiny retained BatchedMesh probes that use the same program flags as
+ * createBatch(): cloned white MeshStandardMaterial, instance color, receive
+ * shadow, and both cast/nocast lanes. Loading must compile USE_BATCHING so the
+ * first live consolidator cannot link those programs on a playable frame.
+ */
+export function createOpaqueBatchPipelineWarmupMeshes() {
+  const geometry = new THREE.BoxGeometry(1, 1, 1);
+  const source = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    metalness: 0.2,
+    roughness: 0.4,
+  });
+  const meshes = [];
+  for (const lane of ['cast', 'nocast']) {
+    const material = source.clone();
+    if (material.color && typeof material.color.setRGB === 'function') {
+      material.color.setRGB(1, 1, 1);
+    }
+    const mesh = new THREE.BatchedMesh(2, 32, 48, material);
+    mesh.name = `SF_Precompile_OpaqueBatch_${lane}`;
+    mesh.castShadow = lane === 'cast';
+    mesh.receiveShadow = true;
+    mesh.frustumCulled = false;
+    mesh.perObjectFrustumCulled = true;
+    mesh.sortObjects = false;
+    mesh.userData.spacefaceOpaqueMaterialBatch = true;
+    mesh.userData.spacefaceOpaqueBatchLane = lane;
+    mesh.userData.precompileRetainedPipeline = `opaque-batch-${lane}`;
+    const geometryId = mesh.addGeometry(geometry);
+    const instanceId = mesh.addInstance(geometryId);
+    mesh.setMatrixAt(instanceId, new THREE.Matrix4());
+    mesh.setVisibleAt(instanceId, true);
+    if (typeof mesh.setColorAt === 'function') {
+      mesh.setColorAt(instanceId, new THREE.Color(1, 1, 1));
+    }
+    meshes.push(mesh);
+  }
+  source.dispose();
+  return meshes;
+}
+
 function hideUnusedInstances(batch) {
   for (let i = batch.used; i < batch.allocated; i++) {
     try {

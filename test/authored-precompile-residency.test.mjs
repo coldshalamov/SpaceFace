@@ -158,6 +158,7 @@ test('synthetic shader precompile creates zero authored asset residency demand',
   assert.deepEqual(retainedPipelineOwners.sort(), [
     'authored-opaque-clearcoat', 'authored-opaque-clearcoat-transmission',
     'authored-opaque-standard', 'common-rock-instanced-pbr', 'hitch-main-plume',
+    'opaque-batch-cast', 'opaque-batch-nocast',
     'ship-shield-bubble', 'vfx-salvo',
   ]);
   assert.deepEqual(retainedAuthoredOpaquePipelines.sort((a, b) => a.id.localeCompare(b.id)), [
@@ -190,6 +191,7 @@ test('synthetic shader precompile creates zero authored asset residency demand',
     [
       'authored-opaque-clearcoat', 'authored-opaque-clearcoat-transmission',
       'authored-opaque-standard', 'common-rock-instanced-pbr', 'hitch-main-plume',
+      'opaque-batch-cast', 'opaque-batch-nocast',
       'ship-shield-bubble', 'vfx-salvo',
     ],
   );

@@ -3,6 +3,7 @@ import test from 'node:test';
 import * as THREE from 'three';
 
 import {
+  createOpaqueBatchPipelineWarmupMeshes,
   createOpaqueMaterialBatchState,
   materialBatchAttrKey,
   opaqueBatchLane,
@@ -105,4 +106,27 @@ test('batch world bounds follow instance matrices after a large origin shift', (
   const after = batch.mesh.boundingSphere.center;
   assert.ok(after.distanceTo(before) > 1000, 'stale origin sphere would hide the batch after rebase');
   assert.equal(refreshBatchWorldBounds(batch.mesh), true);
+});
+
+test('loading warmup meshes match live batch program flags', () => {
+  const probes = createOpaqueBatchPipelineWarmupMeshes();
+  assert.equal(probes.length, 2);
+  const lanes = probes.map((mesh) => mesh.userData.spacefaceOpaqueBatchLane).sort();
+  assert.deepEqual(lanes, ['cast', 'nocast']);
+  for (const mesh of probes) {
+    assert.equal(mesh.isBatchedMesh, true);
+    assert.equal(mesh.receiveShadow, true);
+    assert.equal(mesh.frustumCulled, false);
+    assert.equal(mesh.perObjectFrustumCulled, true);
+    assert.equal(mesh.sortObjects, false);
+    assert.equal(mesh.userData.spacefaceOpaqueMaterialBatch, true);
+    assert.equal(mesh.userData.precompileRetainedPipeline, `opaque-batch-${mesh.userData.spacefaceOpaqueBatchLane}`);
+    assert.equal(mesh.castShadow, mesh.userData.spacefaceOpaqueBatchLane === 'cast');
+    assert.ok(mesh.material && mesh.material.isMeshStandardMaterial);
+    assert.equal(mesh.material.color.r, 1);
+    assert.equal(mesh.material.color.g, 1);
+    assert.equal(mesh.material.color.b, 1);
+    assert.ok(mesh._colorsTexture,
+      'instance color must be armed so USE_BATCHING_COLOR matches live consolidator');
+  }
 });
