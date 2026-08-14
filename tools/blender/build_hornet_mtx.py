@@ -531,13 +531,10 @@ def add_greenhouse(tag, x, y, z, length, width, height, mats, collection):
         (xf - 0.18, ys * 0.18, z1 * 0.64),
         0.012, canopy, collection, 0.002,
     )
-    add_box(f"{tag}_Sill", (x, y, z0 + 0.008), (length * 0.48, width * 1.02, 0.012), armor, collection, 0.002)
-    add_box(f"{tag}_Brow", (xf - 0.08, y, z0 + height * 0.30), (0.028, width * 0.48, height * 0.16), armor, collection, 0.002)
-    add_box(f"{tag}_AftBulk", (xa + 0.06, y, z0 + height * 0.28), (0.024, width * 0.62, height * 0.20), armor, collection, 0.002)
-    add_box(f"{tag}_RailP", (x, yp * 0.98, z0 + height * 0.22), (length * 0.38, 0.012, height * 0.16), armor, collection, 0.002)
-    add_box(f"{tag}_RailS", (x, ys * 0.98, z0 + height * 0.22), (length * 0.38, 0.012, height * 0.16), armor, collection, 0.002)
-    add_box(f"{tag}_Mullion", (x + 0.02, y, z0 + height * 0.34), (0.012, width * 0.52, height * 0.12), armor, collection, 0.002)
-    add_box(f"{tag}_Spine", (x - 0.04, y, z1 * 0.96), (length * 0.28, 0.010, 0.010), armor, collection, 0.002)
+    add_box(f"{tag}_Sill", (x, y, z0 + 0.006), (length * 0.46, width * 0.96, 0.010), armor, collection, 0.002)
+    add_box(f"{tag}_Brow", (xf - 0.10, y, z0 + height * 0.22), (0.018, width * 0.36, height * 0.10), armor, collection, 0.002)
+    add_box(f"{tag}_AftBulk", (xa + 0.08, y, z0 + height * 0.20), (0.016, width * 0.48, height * 0.14), armor, collection, 0.002)
+    add_box(f"{tag}_Spine", (x - 0.04, y, z1 * 0.98), (length * 0.24, 0.008, 0.008), armor, collection, 0.002)
     for i, ox in enumerate((-0.42, -0.12, 0.16, 0.38)):
         add_cylinder(
             f"{tag}_Rivet_{i}", (x + ox, yp * 0.92, z0 + 0.02),
@@ -758,8 +755,8 @@ def build_lod(lod, mats):
         densify_ring(station_ring(4.35, 0, 0.08, 0.40, 0.34, flat=0.08, box=0.18, keel=0.92)),
         densify_ring(station_ring(3.25, 0, 0.18, 0.72, 0.58, flat=0.62, box=0.28, keel=0.70)),
         densify_ring(station_ring(1.95, 0, 0.10, 0.96, 0.50, flat=0.28, box=0.48, keel=0.56)),
-        densify_ring(station_ring(0.35, 0, 0.06, 1.22, 0.46, flat=0.14, box=0.82, keel=0.42)),
-        densify_ring(station_ring(-1.55, 0, 0.08, 1.00, 0.50, flat=0.12, box=0.78, keel=0.32)),
+        densify_ring(station_ring(0.35, 0, 0.06, 1.28, 0.44, flat=0.12, box=0.86, keel=0.40)),
+        densify_ring(station_ring(-1.55, 0, 0.06, 0.88, 0.46, flat=0.10, box=0.72, keel=0.30)),
         densify_ring(station_ring(-3.35, 0, 0.10, 0.84, 0.54, flat=0.16, box=0.86, keel=0.22)),
         densify_ring(station_ring(-5.15, 0, 0.10, 0.62, 0.46, flat=0.12, box=0.88, keel=0.14)),
         densify_ring(station_ring(-7.15, 0, 0.08, 0.42, 0.32, flat=0.08, box=0.78, keel=0.08)),
@@ -833,7 +830,7 @@ def build_lod(lod, mats):
 
     for sign, side in ((-1, "Port"), (1, "Starboard")):
         add_box(f"WingGlove_{side}", (0.10, 1.18 * sign, 0.04), (1.05, 0.26, 0.22), armor, collection, 0.016)
-        add_manufactured_delta(f"Wing_{side}", sign, armor, collection)
+        add_manufactured_delta(f"Wing_{side}", sign, hull, collection)
         loft_from_rings(f"WingSkin_{side}", [
             airfoil_ring(0.22, 1.32 * sign, 0.09, 2.20, 0.06),
             airfoil_ring(-0.08, 2.40 * sign, 0.06, 1.70, 0.04),
