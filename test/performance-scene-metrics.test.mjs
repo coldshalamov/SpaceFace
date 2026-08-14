@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 
 import {
@@ -11,6 +12,18 @@ import {
   performanceAdmissionHorizonMs,
   performancePipelineFingerprint,
 } from '../scripts/lib/performanceSceneMetrics.mjs';
+
+test('performance warmup settles terminal fallbacks but the strict fallback budget remains', () => {
+  const source = readFileSync(new URL('../scripts/probe-performance-profile.mjs', import.meta.url), 'utf8');
+  const warmup = source.slice(
+    source.indexOf('async function waitForAuthoredAssetsSteady'),
+    source.indexOf('async function waitForFramePacingSteady'),
+  );
+  assert.doesNotMatch(warmup, /ready:[\s\S]{0,300}?nonAuthored\s*===\s*0/,
+    'terminal unavailable assets are quiescent and must not turn warmup into a timeout');
+  assert.match(source, /budget\('content\.authoredShipFallbacks\.max',[\s\S]{0,100}?<=',\s*0/,
+    'the strict profile must still fail any authored fallback');
+});
 
 test('program inventories name exact boundary admissions without entering warmup fingerprints', () => {
   const first = { id: 4, name: 'physical', cacheKey: 'physical,lights:4', usedTimes: 2 };

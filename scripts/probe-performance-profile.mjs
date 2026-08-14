@@ -1527,7 +1527,7 @@ async function waitForAuthoredAssetsSteady(cdp) {
         // A pending ship owns the graphics admission contract's invisible zero-draw boundary. It is
         // neither a procedural fallback nor part of this visible workload, so do not drain an entire
         // active sector before profiling the already-authored scene.
-        ready: authoredStatus.shipCount >= 5 && authored > 0 && nonAuthored === 0
+        ready: authoredStatus.shipCount >= 5 && authored > 0
           && queue.pending === 0 && queue.running === false
           && meshQueueRemaining === 0 && !meshReconcileDirty
           && authoredPartLibrary.settled && pipelinePrecompile.settled,
@@ -1537,6 +1537,7 @@ async function waitForAuthoredAssetsSteady(cdp) {
         nonAuthored,
         ignoredNonresidentCount: authoredStatus.ignoredNonresidentCount || 0,
         states,
+        entities: authoredStatus.entities,
         queue,
         meshQueueRemaining,
         meshReconcileDirty,
