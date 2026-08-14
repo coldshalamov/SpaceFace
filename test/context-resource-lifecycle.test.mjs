@@ -9,7 +9,10 @@ import {
   detachStaleWebGlDisposeListeners,
   isWebGlContextUnavailable,
 } from '../src/render/contextResourceLifecycle.js';
-import { runWebGlContextRestoreRebuild } from '../src/render/renderer.js';
+import {
+  receiptReportsContextLost,
+  runWebGlContextRestoreRebuild,
+} from '../src/render/renderer.js';
 
 test('context loss detaches only exact opaque renderer-generation callbacks by resource kind', () => {
   const provenance = createWebGlDisposeListenerProvenance();
@@ -166,10 +169,10 @@ test('context restore stays draw-gated through rebuild and remains gated after a
   assert.equal(recovery.restores, 3, 'failed rebuilds do not advance restore receipts');
   assert.equal(recovery.generation, 8, 'failed rebuilds do not publish a fresh generation');
 
-  const contextLostReceipt = await runWebGlContextRestoreRebuild(owner, recovery, async () => ({
-    contextLost: true,
-    reason: 'driver reset during restored pipeline compile',
-  }));
+  const contextLostReceipt = await runWebGlContextRestoreRebuild(owner, recovery, async () => ([
+    { skipped: false },
+    { contextLost: true, reason: 'driver reset during restored pipeline compile' },
+  ]));
   assert.equal(contextLostReceipt.ok, false);
   assert.equal(owner._contextLost, true,
     'a fulfilled context-lost compile receipt must not reopen rendering');
@@ -198,6 +201,31 @@ test('a failed restore with scheduleRetry does not stay pending without another 
   assert.equal(retries, 1);
   assert.equal(recovery.pending, true);
   assert.equal(recovery.retryCount, 1);
+});
+
+test('sliced compile receipts still count as context-lost', () => {
+  assert.equal(receiptReportsContextLost(null), false);
+  assert.equal(receiptReportsContextLost({ skipped: false }), false);
+  assert.equal(receiptReportsContextLost({ contextLost: true, reason: 'driver' }), true);
+  assert.equal(receiptReportsContextLost([
+    { skipped: false },
+    { contextLost: true, reason: 'lost mid-slice' },
+  ]), true);
+});
+
+test('successful restore clears the force-new-context latch for a later loss', async () => {
+  const owner = { _contextLost: true };
+  const recovery = {
+    restores: 0,
+    generation: 0,
+    pending: true,
+    lastError: null,
+    retryCount: 0,
+    forcedNewContext: true,
+  };
+  const success = await runWebGlContextRestoreRebuild(owner, recovery, async () => ({ ok: true }));
+  assert.equal(success.ok, true);
+  assert.equal(recovery.forcedNewContext, false);
 });
 
 test('exhausted restore retries force a new context instead of staying dead', async () => {

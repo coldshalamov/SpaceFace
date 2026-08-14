@@ -397,6 +397,15 @@ function restoreObjectHome(home) {
 /** Keep every draw/readiness boundary closed until a restored context finishes rebuilding. */
 export const CONTEXT_RESTORE_MAX_RETRIES = 8;
 
+export function receiptReportsContextLost(receipt) {
+  if (!receipt) return false;
+  if (receipt.contextLost === true) return true;
+  if (Array.isArray(receipt)) {
+    return receipt.some((item) => item && item.contextLost === true);
+  }
+  return false;
+}
+
 export async function runWebGlContextRestoreRebuild(owner, recovery, rebuild) {
   if (!owner || !recovery || typeof rebuild !== 'function') {
     throw new TypeError('context restore rebuild requires owner, recovery state, and rebuild callback');
@@ -405,8 +414,11 @@ export async function runWebGlContextRestoreRebuild(owner, recovery, rebuild) {
   recovery.pending = true;
   try {
     const receipt = await rebuild();
-    if (receipt && receipt.contextLost === true) {
-      throw new Error(receipt.reason || 'context lost during restored GPU rebuild');
+    if (receiptReportsContextLost(receipt)) {
+      const lost = Array.isArray(receipt)
+        ? receipt.find((item) => item && item.contextLost === true)
+        : receipt;
+      throw new Error((lost && lost.reason) || 'context lost during restored GPU rebuild');
     }
   } catch (error) {
     owner._contextLost = true;
@@ -437,6 +449,7 @@ export async function runWebGlContextRestoreRebuild(owner, recovery, rebuild) {
   recovery.pending = false;
   recovery.lastError = null;
   recovery.retryCount = 0;
+  recovery.forcedNewContext = false;
   owner._contextLost = false;
   return { ok: true };
 }
@@ -2215,8 +2228,11 @@ export const render = {
               incremental: true,
               preparePipelines: async (subjects) => {
                 const receipt = await compileForCurrentTarget(subjects, restoredPostRoute);
-                if (receipt && receipt.contextLost === true) {
-                  throw new Error(receipt.reason || 'context lost during restored pipeline compile');
+                if (receiptReportsContextLost(receipt)) {
+                  const lost = Array.isArray(receipt)
+                    ? receipt.find((item) => item && item.contextLost === true)
+                    : receipt;
+                  throw new Error((lost && lost.reason) || 'context lost during restored pipeline compile');
                 }
                 return receipt;
               },
