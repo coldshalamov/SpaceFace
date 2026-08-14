@@ -13,6 +13,8 @@ test('player and forced roots stay submitted; off-runway roots do not', () => {
   assert.equal(shouldSubmitEntityMesh({ neverCull: true, hidden: true }), true);
   assert.equal(shouldSubmitEntityMesh({ hidden: true }), false);
   assert.equal(shouldSubmitEntityMesh({ hidden: false }), true);
+  assert.equal(shouldSubmitEntityMesh({ middleBand: true }), false);
+  assert.equal(shouldSubmitEntityMesh({ middleBand: true, allowShadowCast: true }), true);
 });
 
 test('visibility helper only writes when the flag changes', () => {
@@ -36,4 +38,5 @@ test('live entity view sync hides off-runway roots through the helper', async ()
   assert.match(source, /applyEntityMeshVisibility\(mesh,\s*shouldSubmitEntityMesh\(/);
   assert.match(source, /hidden:\s*true/);
   assert.match(source, /hidden:\s*false/);
+  assert.match(source, /middleBand:\s*viewBand === 'middle'/);
 });

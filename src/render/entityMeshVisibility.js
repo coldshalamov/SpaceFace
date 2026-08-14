@@ -9,6 +9,9 @@ export function shouldSubmitEntityMesh(options = {}) {
   if (options.isPlayer === true) return true;
   if (options.forceRender === true || options.neverCull === true) return true;
   if (options.hidden === true) return false;
+  // Middle band is the off-screen 900 WU runway. Pose it so crossers enter cleanly, but do
+  // not submit unless it still casts a realtime shadow into the picture.
+  if (options.middleBand === true && options.allowShadowCast !== true) return false;
   return true;
 }
 

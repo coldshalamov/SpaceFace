@@ -4171,12 +4171,6 @@ export const render = {
         this._applyPresentationPose(slot, mesh, alpha);
         transformed++;
       }
-      applyEntityMeshVisibility(mesh, shouldSubmitEntityMesh({
-        isPlayer: entity.id === this.state.playerId,
-        forceRender: !!(entity.flags && entity.flags.forceRender),
-        neverCull: !!(entity.flags && entity.flags.neverCull),
-        hidden: false,
-      }));
       if (userData.asteroidInstanceBody) userData.asteroidInstanceViewCulled = false;
 
       // Projected-screen-size LOD (spec §12.4): visible roots resolve detail from projected pixel
@@ -4208,6 +4202,21 @@ export const render = {
           shadowPolicyRefreshes++;
         }
       }
+
+      applyEntityMeshVisibility(mesh, shouldSubmitEntityMesh({
+        isPlayer: entity.id === this.state.playerId,
+        forceRender: !!(entity.flags && entity.flags.forceRender),
+        neverCull: !!(entity.flags && entity.flags.neverCull),
+        hidden: false,
+        middleBand: viewBand === 'middle',
+        allowShadowCast: entity.type === 'ship' || entity.type === 'station'
+          ? allowRealtimeShadowCast({
+            isPlayer: entity.id === this.state.playerId,
+            lodLevel,
+            distanceSq: shadowCastDistanceSq(mesh.position, bounds.x, bounds.z),
+          })
+          : false,
+      }));
 
       classifyRenderEntity(this._entityFrame, entity, mesh, false);
       fullSynced++;
