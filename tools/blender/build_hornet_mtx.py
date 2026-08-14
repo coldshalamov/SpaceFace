@@ -468,7 +468,6 @@ def add_manufactured_delta(name, sign, material, collection):
         airfoil_ring(-0.78, 3.82 * s, 0.46, 0.50, 0.085),
     ]
     wing = loft_from_rings(name, rings, material, collection, 0.012)
-    # Overlapping upper skin so the top is a plate, not a blank card.
     add_folded_sheet(
         f"{name}_Skin",
         (0.85, 1.28 * s, 0.28),
