@@ -1,6 +1,6 @@
 // Core system: owns the entity store + lifecycle, the per-step prelude (tick/time/snapshot),
 // the end-of-step lifetime sweep, and the cross-cutting helpers exposed via ctx.helpers (§4.3).
-import { makeEntity } from './entity.js';
+import { allocateEntityId, makeEntity } from './entity.js';
 import { isDynamicPhysicsBodyEntity, shouldSyncPhysicsBodyEntity } from './physicsAuthority.js';
 import { mulberry32, hash32, wrapAngle } from './rng.js';
 import { hasActiveSpatialHash } from './spatialQuery.js';
@@ -49,7 +49,7 @@ export const core = {
       reconcileEntityIndexSource(index, state.entityList);
       const e = makeEntity(spec);
       initializePresentationAdmission(e);
-      const id = state.freeIds.length ? state.freeIds.pop() : state.nextEntityId++;
+      const id = allocateEntityId(state);
       e.id = id;
       state.entities.set(id, e);
       state.entityList.push(e);

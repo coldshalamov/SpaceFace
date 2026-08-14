@@ -3,6 +3,7 @@
 
 import assert from 'node:assert/strict';
 import { resolveBeamVerb, spawnPayloadEntity, handlePayloadSectorTransition, BEAM_CUE_IDS } from '../src/combat/industrialBeam.js';
+import { allocateEntityId } from '../src/core/entity.js';
 import { describeEntity } from '../src/systems/interactionDescriptors.js';
 import { addCargo, removeCargo } from '../src/systems/cargo.js';
 import { salvageActions } from '../src/systems/salvageActions.js';
@@ -166,7 +167,7 @@ console.log('Running PQ-016 check:beam-verbs assertions...');
 
 // --- Section 2: Payload Spawn & Ownership Lifecycle ---
 {
-  const mockState = { entities: new Map(), playerId: 1, nextEntityId: 500 };
+  const mockState = { entities: new Map(), entityList: [], freeIds: [], playerId: 1, nextEntityId: 500 };
   const payload = spawnPayloadEntity(mockState, {
     pos: { x: 100, z: 200 },
     radius: 10,
@@ -178,6 +179,14 @@ console.log('Running PQ-016 check:beam-verbs assertions...');
   });
 
   assert.equal(payload.type, 'payload');
+  assert.equal(payload.id, 500, 'payload allocation must consume the current nextEntityId');
+  assert.equal(mockState.nextEntityId, 501, 'payload allocation must advance past the consumed id');
+  const nextOrdinaryId = allocateEntityId(mockState);
+  assert.notEqual(
+    nextOrdinaryId,
+    payload.id,
+    'the next ordinary spawn must not reuse the active payload id',
+  );
   assert.equal(payload.collides, true);
   assert.equal(payload.data.ownerId, 1);
   assert.equal(payload.data.ownership.ownerId, 1);

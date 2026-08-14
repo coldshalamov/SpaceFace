@@ -121,6 +121,22 @@ export function clearEntityRuntime(entity) {
   if (entity && typeof entity === 'object') RENDER_ATTACHMENTS.delete(entity);
 }
 
+/** Consume one id from the authoritative simulation allocator. */
+export function allocateEntityId(state) {
+  if (!state || typeof state !== 'object') {
+    throw new TypeError('allocateEntityId requires simulation state');
+  }
+  if (Array.isArray(state.freeIds) && state.freeIds.length > 0) {
+    return state.freeIds.pop();
+  }
+  if (!Number.isSafeInteger(state.nextEntityId) || state.nextEntityId < 1) {
+    throw new TypeError('allocateEntityId requires a positive integer nextEntityId');
+  }
+  const id = state.nextEntityId;
+  state.nextEntityId = id + 1;
+  return id;
+}
+
 function v3(src) {
   return new SimVector3(src && src.x || 0, 0, src && src.z || 0);
 }

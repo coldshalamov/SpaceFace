@@ -2,7 +2,7 @@
 // Pure module & single-writer helper for industrial beam verbs (cut, extract, repair, transfer) and payload lifecycle.
 
 import { removeCargo, addCargo } from '../systems/cargo.js';
-import { makeEntity } from '../core/entity.js';
+import { allocateEntityId, makeEntity } from '../core/entity.js';
 
 export function resolveBeamVerb(descriptor, toolState = {}) {
   const mode = toolState.mode || 'auto';
@@ -149,7 +149,7 @@ function checkIsDamaged(descriptor) {
 // Physical entity class 'payload' with stamped ownership & contents metadata.
 // -----------------------------------------------------------------------------
 export function spawnPayloadEntity(state, spec = {}) {
-  const nextId = (state.nextEntityId = (state.nextEntityId || 1000) + 1);
+  const nextId = allocateEntityId(state);
   const radius = Math.max(3, Math.min(25, Number(spec.radius) || 8)); // host-relative radius
   const mass = Math.max(20, Number(spec.mass) || radius * 12);
   const ownerId = spec.ownerId != null ? spec.ownerId : (state.playerId || null);
