@@ -1,0 +1,65 @@
+{
+  "schema": "spaceface.ashlineLodeMtx.cycle.v1",
+  "shipId": "ashline_lode",
+  "cycle": 13,
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 36600,
+      "hullTriangles": 4000,
+      "draws": 8,
+      "materials": [
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/ashline_lode_production_v1_lod0.glb",
+      "bytes": 8783572,
+      "sha256": "D61725EED8500EA5E2FBEFB5A6C99446B8F435B4A948927A3D7DE783E4A47400"
+    },
+    {
+      "lod": 1,
+      "triangles": 20184,
+      "hullTriangles": 4000,
+      "draws": 8,
+      "materials": [
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/ashline_lode_production_v1_lod1.glb",
+      "bytes": 6366452,
+      "sha256": "EB25D02492AB34745264499A249C8AFF841394742456661BBD79B2F7E38A1729"
+    },
+    {
+      "lod": 2,
+      "triangles": 16860,
+      "hullTriangles": 3484,
+      "draws": 8,
+      "materials": [
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/ashline_lode_production_v1_lod2.glb",
+      "bytes": 5854464,
+      "sha256": "0A6DE31C3A5938F98E78C712ACB3F3E5A27CA99A2E50B9F379AAB8F3563519DE"
+    }
+  ],
+  "stills": "evidence/ashline_lode/cycles/cycle_13"
+}
