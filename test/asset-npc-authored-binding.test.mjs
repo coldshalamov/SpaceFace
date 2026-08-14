@@ -92,7 +92,12 @@ test('render residency keeps the active sector and a seam runway without buildin
   };
 
   assert.equal(isEntityRenderRelevant(player, state), true, 'player is always resident');
-  assert.equal(isEntityRenderRelevant(currentFar, state), true, 'the active sector stays complete');
+  assert.equal(isEntityRenderRelevant(currentFar, state), true, 'the active-sector station landmark stays resident');
+  const currentFarShip = {
+    id: 5, type: 'ship', homeSectorId: 'sector_helios_prime', pos: { x: 9000, z: 0 },
+  };
+  assert.equal(isEntityRenderRelevant(currentFarShip, state), false,
+    'a far current-sector ship stays off the mesh list until the travel runway');
   assert.equal(isEntityRenderRelevant(neighborNear, state), true, 'nearby corridor content gets a streaming runway');
   assert.equal(isEntityRenderRelevant(neighborFar, state), false, 'a distant reduced sector does not own live meshes');
   assert.equal(isEntityRenderRelevant(targetedFar, state), true, 'an explicit target remains renderable');

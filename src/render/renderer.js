@@ -151,9 +151,10 @@ const SECTOR_LIGHT_INTENSITIES = { ambient: 0.85, key: 1.7, rim: 0.7, fill: 0.35
 const ENTITY_VIEW_CULL_MIN_MARGIN = 900;
 const ENTITY_VIEW_CULL_ZOOM_MARGIN = 8;
 // World simulation deliberately keeps the current corridor sector plus reduced neighbours alive.
-// Render residency is narrower: build the whole active sector, and only admit neighbour-sector
-// meshes once they enter a generous travel runway. This keeps seamless approach quality without
-// constructing, traversing, or decoding another sector while it is still ~15k world units away.
+// Render residency is narrower: keep current-sector landmarks, and only admit other meshes once
+// they enter a generous travel runway. This keeps seamless approach quality without constructing,
+// traversing, or decoding another sector — or the far side of this one — while it is still
+// thousands of world units away.
 const RENDER_STREAM_PREFETCH_RADIUS = 5200;
 const RENDER_STREAM_EVICT_RADIUS = 6400;
 // Start authored decode well before the normal camera can see the boundary. At the fastest early
@@ -274,13 +275,23 @@ function entityWithinPlayerRadius(entity, state, radius) {
 }
 
 /** Pure render-streaming policy used by reconciliation and focused tests. */
+function isPersistentSectorLandmark(entity) {
+  const type = entity && entity.type;
+  return type === 'station' || type === 'planet' || type === 'fx';
+}
+
 export function isEntityRenderRelevant(entity, state, radius = RENDER_STREAM_PREFETCH_RADIUS) {
   if (!entity || entity.alive === false || entity._noMesh) return false;
   if (state && state.mode === 'loading') return isInitialAuthoredCompositionEntity(entity, state);
   if (entityIsExplicitRenderFocus(entity, state)) return true;
   const sectorId = entitySectorId(entity);
   const currentSectorId = state && state.world && state.world.currentSectorId;
-  if (sectorId && currentSectorId && sectorId === currentSectorId) return true;
+  // Landmarks stay resident so distant stations remain visible specks. Ships, rocks, and debris
+  // use the travel runway so the current sector cannot keep hundreds of off-screen meshes live.
+  if (sectorId && currentSectorId && sectorId === currentSectorId
+    && isPersistentSectorLandmark(entity)) {
+    return true;
+  }
   return entityWithinPlayerRadius(entity, state, radius);
 }
 

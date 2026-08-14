@@ -109,15 +109,16 @@ test('ordinary residency poll keeps exact runway semantics in two retained colle
   assert.equal(authoredRequests, 1, 'near authored boundary keeps the existing prefetch request');
   assert.deepEqual(
     context._meshBuildQueue,
-    [3, 2, 4],
-    'ship-first order is retained, current-sector content stays relevant, and 5,200-unit admission is exact',
+    [3, 4],
+    'ship-first order is retained, far current-sector rocks stay dormant, and 5,200-unit admission is exact',
   );
+  assert.equal(context._meshBuildQueue.includes(2), false, '9000-unit current-sector asteroid is outside the runway');
   assert.equal(context._meshBuildQueue.includes(5), false);
   assert.equal(drainBudget, 2, 'runtime admission still builds at most two boundaries per frame');
   assert.equal(result.meshVisits, 5);
   assert.equal(result.entityVisits, entities.length);
   assert.equal(result.queuedShips, 1);
-  assert.equal(result.queuedOther, 2);
+  assert.equal(result.queuedOther, 1);
   assert.equal(result.evicted, 2);
   assert.equal(published, 1);
   assert.deepEqual(context._meshResidencyShipCandidates, []);
