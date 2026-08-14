@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as THREE from 'three';
 
+import { readFile } from 'node:fs/promises';
 import {
   applyInstanceChunkSubmitPolicy,
   isOpaqueInstancePoolMaterial,
@@ -90,4 +91,9 @@ test('apply policy hides empty chunks, enables frustum bounds, and turns off far
   applyInstanceChunkSubmitPolicy(empty, { count: 0, playerX: 0, playerZ: 0 });
   assert.equal(empty.mesh.visible, false);
   assert.equal(empty.mesh.castShadow, false);
+});
+
+test('live instance finalize refreshes bounds when the camera/origin moved', async () => {
+  const source = await readFile(new URL('../src/render/partsLibrary.js', import.meta.url), 'utf8');
+  assert.match(source, /refreshBounds:\s*dirty\s*\|\|\s*!!\(context\s*&&\s*context\.cameraDirty\)/);
 });

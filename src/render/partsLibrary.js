@@ -6554,7 +6554,7 @@ function finalizeInstanceChunk(chunk, dirty, stats, context = null) {
     count: nextCount,
     playerX: context && context.playerX,
     playerZ: context && context.playerZ,
-    refreshBounds: dirty,
+    refreshBounds: dirty || !!(context && context.cameraDirty),
   });
 }
 
