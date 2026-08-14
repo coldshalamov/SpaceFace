@@ -31,7 +31,7 @@ import {
   isRigidOpaqueBatchableSurface,
 } from './rigidOpaqueBatchPolicy.js';
 import { authoredUpgradeConcurrencyLimit as resolveAuthoredUpgradeConcurrency } from './authoredUpgradePolicy.js';
-import { shouldStartHeavyAdmission } from './admissionSliceBudget.js';
+import { shouldStartHeavyAdmissionEventually } from './admissionSliceBudget.js';
 import { applyInstanceChunkSubmitPolicy } from './instanceChunkSubmitPolicy.js';
 import {
   createOpaqueMaterialBatchState,
@@ -2845,6 +2845,7 @@ function upgradeQueueState(scene) {
       running: false,
       inFlight: 0,
       frameScheduled: false,
+      lateSkips: 0,
       byBoundary: new Map(),
       byKey: new Map(),
       nextSequence: 0,
@@ -3124,10 +3125,16 @@ function scheduleNextUpgradeFrame(state) {
 function admitNextUpgradeJob(state) {
   state.frameScheduled = false;
   const live = authoredRuntimeState();
-  if (live && live.mode === 'flight'
-      && !shouldStartHeavyAdmission(live.render && live.render.lastPresentDtMs)) {
-    scheduleNextUpgradeFrame(state);
-    return;
+  if (live && live.mode === 'flight') {
+    const gate = shouldStartHeavyAdmissionEventually(
+      live.render && live.render.lastPresentDtMs,
+      state.lateSkips,
+    );
+    state.lateSkips = gate.skippedCount;
+    if (!gate.start) {
+      scheduleNextUpgradeFrame(state);
+      return;
+    }
   }
   state.jobs.sort((a, b) => {
     const priorityDelta = authoredUpgradePriority(a) - authoredUpgradePriority(b);

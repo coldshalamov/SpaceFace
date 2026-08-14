@@ -8,6 +8,7 @@ import {
   shouldContinueAdmissionSlice,
   shouldRedrawAfterLatePresent,
   shouldStartHeavyAdmission,
+  shouldStartHeavyAdmissionEventually,
   shouldStartWorkAfterLatePresent,
 } from '../src/render/admissionSliceBudget.js';
 
@@ -61,12 +62,29 @@ test('overlay recovery may force the next frame; heavy mesh builds must not', ()
   assert.equal(shouldStartHeavyAdmission(33.3), false);
 });
 
+test('sustained late presents still start one heavy item after several skips', () => {
+  let skipped = 0;
+  for (let i = 0; i < 7; i++) {
+    const gate = shouldStartHeavyAdmissionEventually(33.3, skipped);
+    assert.equal(gate.start, false);
+    skipped = gate.skippedCount;
+  }
+  const released = shouldStartHeavyAdmissionEventually(33.3, skipped);
+  assert.equal(released.start, true);
+  assert.equal(released.skippedCount, 0);
+  const recovered = shouldStartHeavyAdmissionEventually(16.7, 7);
+  assert.equal(recovered.start, true);
+  assert.equal(recovered.skippedCount, 0);
+});
+
 test('live drain and upgrade consult the late-present gate', async () => {
   const { readFile } = await import('node:fs/promises');
   const renderer = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
   const parts = await readFile(new URL('../src/render/partsLibrary.js', import.meta.url), 'utf8');
-  assert.match(renderer, /shouldStartHeavyAdmission\(this\.state && this\.state\.render && this\.state\.render\.lastPresentDtMs\)/);
-  assert.match(parts, /shouldStartHeavyAdmission\(live\.render && live\.render\.lastPresentDtMs\)/);
+  assert.match(renderer, /shouldStartHeavyAdmissionEventually\(/);
+  assert.match(renderer, /_meshBuildLateSkips/);
+  assert.match(parts, /shouldStartHeavyAdmissionEventually\(/);
+  assert.match(parts, /lateSkips/);
 });
 
 test('hard-limit helper flags slices that already blew the hitch ceiling', () => {

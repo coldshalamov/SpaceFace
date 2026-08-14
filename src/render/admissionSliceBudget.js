@@ -36,10 +36,33 @@ export function shouldContinueAdmissionSlice(options = {}) {
   return (nowMs - startedAtMs) < targetMs;
 }
 
+export const HEAVY_ADMISSION_EVENTUAL_SKIP = 8;
+
 export function shouldStartHeavyAdmission(lastPresentDtMs, lateMs = 22) {
   const last = Number(lastPresentDtMs);
   if (!Number.isFinite(last)) return true;
   return last <= lateMs;
+}
+
+/**
+ * Keep late presents from starting another 100ms+ compose. After several
+ * skipped beats, start exactly one item so 30 Hz cannot leave ships meshless.
+ * Overlays still use the one-frame skip-then-force helper below.
+ */
+export function shouldStartHeavyAdmissionEventually(
+  lastPresentDtMs,
+  skippedCount,
+  options = {},
+) {
+  if (shouldStartHeavyAdmission(lastPresentDtMs, options.lateMs)) {
+    return { start: true, skippedCount: 0 };
+  }
+  const maxSkip = Number.isFinite(Number(options.maxSkip))
+    ? Math.max(1, Math.floor(Number(options.maxSkip)))
+    : HEAVY_ADMISSION_EVENTUAL_SKIP;
+  const skipped = Math.max(0, Math.floor(Number(skippedCount) || 0));
+  if (skipped + 1 >= maxSkip) return { start: true, skippedCount: 0 };
+  return { start: false, skippedCount: skipped + 1 };
 }
 
 /** Skip one late frame, then force the next so 30 Hz cannot park work forever. */

@@ -111,7 +111,7 @@ import { SHIPS } from '../data/ships.js';
 import { applySectorExitResidency, getAssetResidency } from './assetResidency.js';
 import {
   shouldContinueAdmissionSlice,
-  shouldStartHeavyAdmission,
+  shouldStartHeavyAdmissionEventually,
 } from './admissionSliceBudget.js';
 import {
   INNER_VIEW_BAND_SCALE,
@@ -3974,10 +3974,13 @@ export const render = {
 
   _drainMeshBuildQueue(buildBudget) {
     let built = 0;
-    if (buildBudget !== Infinity
-        && this._initialMeshReconcileComplete
-        && !shouldStartHeavyAdmission(this.state && this.state.render && this.state.render.lastPresentDtMs)) {
-      return 0;
+    if (buildBudget !== Infinity && this._initialMeshReconcileComplete) {
+      const gate = shouldStartHeavyAdmissionEventually(
+        this.state && this.state.render && this.state.render.lastPresentDtMs,
+        this._meshBuildLateSkips,
+      );
+      this._meshBuildLateSkips = gate.skippedCount;
+      if (!gate.start) return 0;
     }
     const startedAtMs = typeof performance !== 'undefined' && typeof performance.now === 'function'
       ? performance.now()
