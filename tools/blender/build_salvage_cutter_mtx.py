@@ -19,7 +19,10 @@ if str(TOOLS) not in sys.path:
 from fleet_construction import (  # noqa: E402
     add_cockpit_glazing,
     add_flared_bell,
+    add_folded_sheet,
     add_manufactured_drive,
+    center_loft,
+    loft_shell,
     add_panel_seams,
     add_rcs_cluster,
     add_sensor_dish,
@@ -245,7 +248,7 @@ def create_materials():
         maps = role_maps(role, rgb, prefix=name.replace("Material_", "").lower())
         wire_maps(material, bsdf, maps, coat=coat, emission=emit)
         if role == "glass" and "Transmission Weight" in bsdf.inputs:
-            bsdf.inputs["Transmission Weight"].default_value = 0.62
+            bsdf.inputs["Transmission Weight"].default_value = 0.16
             if "IOR" in bsdf.inputs:
                 bsdf.inputs["IOR"].default_value = 1.48
         material["spacefaceRole"] = role
@@ -665,7 +668,7 @@ def bake_ao_into_albedo(obj, samples=12, size=TEX):
     op = list(ao.pixels)
     n = min(len(ap) // 4, len(op) // 4)
     for i in range(n):
-        factor = 0.55 + 0.45 * op[i * 4]
+        factor = 0.84 + 0.16 * op[i * 4]
         ap[i * 4] *= factor
         ap[i * 4 + 1] *= factor
         ap[i * 4 + 2] *= factor
@@ -704,6 +707,22 @@ def build_lod(lod, mats):
         hull_obj.data.materials.clear()
         hull_obj.data.materials.append(hull)
     inset_large_faces(hull_obj, thickness=0.026, depth=0.013, min_area=0.55)
+
+    loft_shell("Jaw_P", [
+        (3.80, -0.72, -1.38, -0.12, 0.36),
+        (1.40, -0.95, -1.62, -0.16, 0.40),
+        (-1.20, -0.72, -1.32, -0.10, 0.32),
+    ], hull, collection, 0.010)
+    loft_shell("Jaw_S", [
+        (3.80, 0.72, 1.38, -0.12, 0.36),
+        (1.40, 0.95, 1.62, -0.16, 0.40),
+        (-1.20, 0.72, 1.32, -0.10, 0.32),
+    ], hull, collection, 0.010)
+    center_loft("Cabin_Carapace", [
+        (4.20, 0.22, 0.62, 0.98),
+        (2.80, 0.32, 0.78, 1.12),
+        (1.20, 0.22, 0.58, 0.88),
+    ], hull, collection, 0.008)
     add_box("TransomPlate", (-6.98, 0.0, 0.04), (0.04, 0.50, 0.24), armor, collection, 0.003)
     add_thin_canopy("Cabin", 4.05, 0.0, 0.90, 0.95, 0.30, 0.22, mats, collection)
     add_box("CabinBrow", (4.48, 0.0, 1.04), (0.07, 0.22, 0.05), armor, collection, 0.003)

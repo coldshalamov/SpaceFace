@@ -20,7 +20,10 @@ from fleet_construction import (  # noqa: E402
     add_cockpit_glazing,
     add_flared_bell,
     add_folded_sheet,
+    add_radiator_cassette,
     add_manufactured_drive,
+    center_loft,
+    loft_shell,
     add_overlap_plate,
     add_rcs_cluster,
     add_sensor_dish,
@@ -235,7 +238,7 @@ def create_materials():
         "Material_Warning": ((0.80, 0.40, 0.06), 0.04, 0.46, "warning", 0.06, None),
         "Material_Ceramic": ((0.32, 0.26, 0.18), 0.0, 0.76, "ceramic", 0.0, None),
         "Material_Radiator": ((0.10, 0.08, 0.07), 0.76, 0.58, "mechanical", 0.0, None),
-        "Material_Canopy": ((0.42, 0.55, 0.62), 0.02, 0.10, "glass", 0.35, None),
+        "Material_Canopy": ((0.10, 0.28, 0.32), 0.00, 0.10, "glass", 0.18, ((0.05, 0.16, 0.20), 0.18)),
         "Material_Thruster": ((0.02, 0.03, 0.04), 0.08, 0.58, "thruster", 0.0, None),
     }
     mats = {}
@@ -248,9 +251,10 @@ def create_materials():
         maps = role_maps(role, rgb, prefix=name.replace("Material_", "").lower())
         wire_maps(material, bsdf, maps, coat=coat, emission=emit)
         if role == "glass" and "Transmission Weight" in bsdf.inputs:
-            bsdf.inputs["Transmission Weight"].default_value = 0.62
+            bsdf.inputs["Transmission Weight"].default_value = 0.16
             if "IOR" in bsdf.inputs:
-                bsdf.inputs["IOR"].default_value = 1.48
+                bsdf.inputs["IOR"].default_value = 1.45
+            bsdf.inputs["Alpha"].default_value = 0.72
         material["spacefaceRole"] = role
         mats[name] = material
     return mats
@@ -667,7 +671,7 @@ def bake_ao_into_albedo(obj, samples=12, size=TEX):
     op = list(ao.pixels)
     n = min(len(ap) // 4, len(op) // 4)
     for i in range(n):
-        factor = 0.55 + 0.45 * op[i * 4]
+        factor = 0.84 + 0.16 * op[i * 4]
         ap[i * 4] *= factor
         ap[i * 4 + 1] *= factor
         ap[i * 4 + 2] *= factor
@@ -697,11 +701,27 @@ def build_lod(lod, mats):
     ], hull, collection, 0.012, cap="both")
     if lod <= 1:
         cut_open_bay(hull_obj, "Cockpit", (4.55, 0.0, 0.98), 1.85, 0.58, 0.42, (0, 0, 1), mats, collection, kit="cockpit", liner=False)
-        cut_open_bay(hull_obj, "DorsalAft", (-2.45, 0.0, 0.78), 1.25, 0.50, 0.30, (0, 0, 1), mats, collection, kit="radiator")
+        cut_open_bay(hull_obj, "DorsalAft", (-2.45, 0.0, 0.78), 1.25, 0.50, 0.30, (0, 0, 1), mats, collection, kit="empty", liner=False)
         hull_obj.data.materials.clear()
         hull_obj.data.materials.append(hull)
     inset_large_faces(hull_obj, thickness=0.030, depth=0.012, min_area=1.00)
     # C13: hull-following chine plates, not floating deck boxes.
+
+    loft_shell("Cheek_P", [
+        (6.40, -0.18, -0.72, -0.08, 0.38),
+        (4.40, -0.28, -1.05, -0.04, 0.62),
+        (2.20, -0.42, -1.55, -0.08, 0.42),
+    ], hull, collection, 0.010)
+    loft_shell("Cheek_S", [
+        (6.40, 0.18, 0.72, -0.08, 0.38),
+        (4.40, 0.28, 1.05, -0.04, 0.62),
+        (2.20, 0.42, 1.55, -0.08, 0.42),
+    ], hull, collection, 0.010)
+    center_loft("Spine_Carapace", [
+        (4.80, 0.22, 0.48, 0.88),
+        (1.20, 0.32, 0.38, 0.78),
+        (-2.20, 0.22, 0.28, 0.62),
+    ], hull, collection, 0.008)
     add_folded_sheet(
         "Chine_P",
         (2.20, -1.80, 0.10), (-1.80, -1.84, 0.12),

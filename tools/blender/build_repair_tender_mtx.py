@@ -19,7 +19,10 @@ if str(TOOLS) not in sys.path:
 from fleet_construction import (  # noqa: E402
     add_cockpit_glazing,
     add_flared_bell,
+    add_folded_sheet,
     add_manufactured_drive,
+    center_loft,
+    loft_shell,
     add_panel_seams,
     add_rcs_cluster,
     add_sensor_dish,
@@ -245,7 +248,7 @@ def create_materials():
         maps = role_maps(role, rgb, prefix=name.replace("Material_", "").lower())
         wire_maps(material, bsdf, maps, coat=coat, emission=emit)
         if role == "glass" and "Transmission Weight" in bsdf.inputs:
-            bsdf.inputs["Transmission Weight"].default_value = 0.62
+            bsdf.inputs["Transmission Weight"].default_value = 0.16
             if "IOR" in bsdf.inputs:
                 bsdf.inputs["IOR"].default_value = 1.48
         material["spacefaceRole"] = role
@@ -665,7 +668,7 @@ def bake_ao_into_albedo(obj, samples=12, size=TEX):
     op = list(ao.pixels)
     n = min(len(ap) // 4, len(op) // 4)
     for i in range(n):
-        factor = 0.55 + 0.45 * op[i * 4]
+        factor = 0.84 + 0.16 * op[i * 4]
         ap[i * 4] *= factor
         ap[i * 4 + 1] *= factor
         ap[i * 4 + 2] *= factor
@@ -703,6 +706,22 @@ def build_lod(lod, mats):
         hull_obj.data.materials.clear()
         hull_obj.data.materials.append(hull)
     inset_large_faces(hull_obj, thickness=0.024, depth=0.012, min_area=0.55)
+
+    loft_shell("Shop_P", [
+        (3.20, -0.82, -1.48, -0.10, 0.38),
+        (0.20, -1.05, -1.68, -0.12, 0.42),
+        (-2.80, -0.82, -1.42, -0.08, 0.32),
+    ], hull, collection, 0.010)
+    loft_shell("Shop_S", [
+        (3.20, 0.82, 1.48, -0.10, 0.38),
+        (0.20, 1.05, 1.68, -0.12, 0.42),
+        (-2.80, 0.82, 1.42, -0.08, 0.32),
+    ], hull, collection, 0.010)
+    center_loft("Bridge_Carapace", [
+        (3.60, 0.22, 0.62, 0.98),
+        (2.20, 0.32, 0.78, 1.18),
+        (0.80, 0.22, 0.58, 0.88),
+    ], hull, collection, 0.008)
     add_box("TransomPlate", (-6.48, 0.0, 0.04), (0.04, 0.48, 0.24), armor, collection, 0.003)
     add_box("BridgePedestal", (3.85, 0.0, 1.02), (0.68, 0.38, 0.42), armor, collection, 0.005)
     add_thin_canopy("Bridge", 3.85, 0.0, 1.18, 0.95, 0.32, 0.24, mats, collection)

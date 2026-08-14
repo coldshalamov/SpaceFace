@@ -19,7 +19,10 @@ if str(TOOLS) not in sys.path:
 from fleet_construction import (  # noqa: E402
     add_flared_bell,
     add_folded_sheet,
+    add_radiator_cassette,
     add_manufactured_drive,
+    center_loft,
+    loft_shell,
     add_overlap_plate,
     add_rcs_cluster,
     add_sensor_dish,
@@ -237,7 +240,7 @@ def create_materials():
         "Material_Warning": ((0.70, 0.34, 0.05), 0.05, 0.46, "warning", 0.1, None),
         "Material_Ceramic": ((0.54, 0.46, 0.34), 0.0, 0.64, "ceramic", 0.0, None),
         "Material_Radiator": ((0.16, 0.12, 0.09), 0.7, 0.56, "mechanical", 0.0, None),
-        "Material_Canopy": ((0.42, 0.55, 0.62), 0.02, 0.05, "glass", 1.0, None),
+        "Material_Canopy": ((0.10, 0.28, 0.32), 0.00, 0.10, "glass", 0.18, ((0.05, 0.16, 0.20), 0.18)),
         "Material_Thruster": ((0.02, 0.08, 0.12), 0.15, 0.22, "thruster", 0.0, ((0.16, 0.48, 0.64), 1.0)),
     }
     mats = {}
@@ -249,6 +252,19 @@ def create_materials():
         bsdf.inputs["Roughness"].default_value = rough
         maps = role_maps(role, rgb, prefix=name.replace("Material_", "").lower())
         wire_maps(material, bsdf, maps, coat=coat, emission=emit)
+        if name == "Material_Canopy":
+            if "Transmission Weight" in bsdf.inputs:
+                bsdf.inputs["Transmission Weight"].default_value = 0.16
+            elif "Transmission" in bsdf.inputs:
+                bsdf.inputs["Transmission"].default_value = 0.16
+            if "IOR" in bsdf.inputs:
+                bsdf.inputs["IOR"].default_value = 1.45
+            bsdf.inputs["Alpha"].default_value = 0.72
+            if hasattr(material, "blend_method"):
+                try:
+                    material.blend_method = "BLEND"
+                except TypeError:
+                    pass
         material["spacefaceRole"] = role
         mats[name] = material
     return mats
@@ -577,7 +593,7 @@ def bake_ao_into_albedo(obj, samples=12, size=TEX):
     op = list(ao.pixels)
     n = min(len(ap) // 4, len(op) // 4)
     for i in range(n):
-        factor = 0.55 + 0.45 * op[i * 4]
+        factor = 0.84 + 0.16 * op[i * 4]
         ap[i * 4] *= factor
         ap[i * 4 + 1] *= factor
         ap[i * 4 + 2] *= factor
@@ -611,14 +627,30 @@ def build_lod(lod, mats):
     ], hull, collection, 0.022)
     if lod <= 1:
         cut_open_bay(hull_obj, "Cockpit", (3.80, 0.0, 1.55), 1.35, 0.70, 0.55, (0, 0, 1), mats, collection, kit="cockpit", liner=False)
-        cut_open_bay(hull_obj, "Port", (0.10, -2.28, 0.20), 1.85, 0.55, 0.58, (0, -1, 0), mats, collection, kit="radiator")
-        cut_open_bay(hull_obj, "Starboard", (0.10, 2.28, 0.20), 1.85, 0.55, 0.58, (0, 1, 0), mats, collection, kit="rack")
-        cut_open_bay(hull_obj, "Hopper", (-0.10, 0.0, 1.32), 2.20, 1.15, 0.58, (0, 0, 1), mats, collection, kit="rack")
+        cut_open_bay(hull_obj, "Port", (0.10, -2.28, 0.20), 1.85, 0.55, 0.58, (0, -1, 0), mats, collection, kit="empty", liner=False)
+        cut_open_bay(hull_obj, "Starboard", (0.10, 2.28, 0.20), 1.85, 0.55, 0.58, (0, 1, 0), mats, collection, kit="empty", liner=False)
+        cut_open_bay(hull_obj, "Hopper", (-0.10, 0.0, 1.32), 2.20, 1.15, 0.58, (0, 0, 1), mats, collection, kit="empty", liner=False)
         boolean_cut(hull_obj, "TransomRecess", (-7.55, 0.0, 0.10), (0.22, 0.55, 0.32))
         boolean_cut(hull_obj, "KeelChannel", (-1.80, 0.0, -1.05), (2.60, 0.16, 0.12))
         hull_obj.data.materials.clear()
         hull_obj.data.materials.append(hull)
     inset_large_faces(hull_obj, thickness=0.05, depth=0.02, min_area=0.16)
+
+    loft_shell("Hopper_ShellP", [
+        (3.20, -1.20, -2.05, 0.40, 1.35),
+        (0.20, -1.60, -2.55, 0.20, 1.18),
+        (-2.80, -1.20, -2.10, 0.16, 1.02),
+    ], hull, collection, 0.012)
+    loft_shell("Hopper_ShellS", [
+        (3.20, 1.20, 2.05, 0.40, 1.35),
+        (0.20, 1.60, 2.55, 0.20, 1.18),
+        (-2.80, 1.20, 2.10, 0.16, 1.02),
+    ], hull, collection, 0.012)
+    center_loft("Hopper_Carapace", [
+        (3.40, 0.70, 1.05, 1.48),
+        (0.10, 1.05, 0.88, 1.42),
+        (-2.60, 0.72, 0.72, 1.12),
+    ], hull, collection, 0.010)
     # C13: hull-following chine plates, not floating deck boxes.
     add_folded_sheet(
         "Chine_P",
@@ -833,7 +865,7 @@ def setup_studio():
     for name, loc, energy, color, size in (
         ("Key", (16, -18, 12), 7800, (0.88, 0.92, 1), 10),
         ("Fill", (4, 16, 8), 3200, (0.55, 0.62, 0.72), 8),
-        ("Rim", (-14, -5, 7), 4000, (1.0, 0.62, 0.28), 7),
+        ("Rim", (-14, -5, 7), 4000, (0.72, 0.80, 0.92), 7),
         ("Kick", (-6, 10, -4), 1800, (0.7, 0.75, 0.85), 6),
     ):
         data = bpy.data.lights.new(name, "AREA")

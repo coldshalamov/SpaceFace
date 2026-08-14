@@ -20,7 +20,10 @@ from fleet_construction import (  # noqa: E402
     add_cockpit_glazing,
     add_flared_bell,
     add_folded_sheet,
+    add_radiator_cassette,
     add_manufactured_drive,
+    center_loft,
+    loft_shell,
     add_overlap_plate,
     add_rcs_cluster,
     add_sensor_dish,
@@ -241,7 +244,7 @@ def create_materials():
         "Material_Warning": ((0.72, 0.42, 0.06), 0.04, 0.48, "warning", 0.08, None),
         "Material_Ceramic": ((0.42, 0.36, 0.26), 0.0, 0.70, "ceramic", 0.0, None),
         "Material_Radiator": ((0.12, 0.09, 0.07), 0.72, 0.60, "mechanical", 0.0, None),
-        "Material_Canopy": ((0.42, 0.55, 0.62), 0.02, 0.06, "glass", 0.9, None),
+        "Material_Canopy": ((0.10, 0.28, 0.32), 0.00, 0.10, "glass", 0.18, ((0.05, 0.16, 0.20), 0.18)),
         "Material_Thruster": ((0.03, 0.04, 0.05), 0.10, 0.55, "thruster", 0.0, None),
     }
     mats = {}
@@ -253,6 +256,19 @@ def create_materials():
         bsdf.inputs["Roughness"].default_value = rough
         maps = role_maps(role, rgb, prefix=name.replace("Material_", "").lower())
         wire_maps(material, bsdf, maps, coat=coat, emission=emit)
+        if name == "Material_Canopy":
+            if "Transmission Weight" in bsdf.inputs:
+                bsdf.inputs["Transmission Weight"].default_value = 0.16
+            elif "Transmission" in bsdf.inputs:
+                bsdf.inputs["Transmission"].default_value = 0.16
+            if "IOR" in bsdf.inputs:
+                bsdf.inputs["IOR"].default_value = 1.45
+            bsdf.inputs["Alpha"].default_value = 0.72
+            if hasattr(material, "blend_method"):
+                try:
+                    material.blend_method = "BLEND"
+                except TypeError:
+                    pass
         material["spacefaceRole"] = role
         mats[name] = material
     return mats
@@ -610,7 +626,7 @@ def bake_ao_into_albedo(obj, samples=12, size=TEX):
     op = list(ao.pixels)
     n = min(len(ap) // 4, len(op) // 4)
     for i in range(n):
-        factor = 0.55 + 0.45 * op[i * 4]
+        factor = 0.84 + 0.16 * op[i * 4]
         ap[i * 4] *= factor
         ap[i * 4 + 1] *= factor
         ap[i * 4 + 2] *= factor
@@ -642,13 +658,29 @@ def build_lod(lod, mats):
     ], hull, collection, 0.016)
     if lod <= 1:
         cut_open_bay(hull_obj, "Bridge", (4.55, 0.0, 1.42), 1.85, 0.78, 0.46, (0, 0, 1), mats, collection, kit="cockpit", liner=False)
-        cut_open_bay(hull_obj, "TowerWell", (-1.65, 0.0, 1.32), 1.35, 0.82, 0.40, (0, 0, 1), mats, collection, kit="radiator")
-        cut_open_bay(hull_obj, "Port", (0.20, -2.62, 0.18), 2.45, 0.52, 0.55, (0, -1, 0), mats, collection, kit="radiator")
-        cut_open_bay(hull_obj, "Starboard", (0.20, 2.62, 0.18), 2.45, 0.52, 0.55, (0, 1, 0), mats, collection, kit="rack")
+        cut_open_bay(hull_obj, "TowerWell", (-1.65, 0.0, 1.32), 1.35, 0.82, 0.40, (0, 0, 1), mats, collection, kit="empty", liner=False)
+        cut_open_bay(hull_obj, "Port", (0.20, -2.62, 0.18), 2.45, 0.52, 0.55, (0, -1, 0), mats, collection, kit="empty", liner=False)
+        cut_open_bay(hull_obj, "Starboard", (0.20, 2.62, 0.18), 2.45, 0.52, 0.55, (0, 1, 0), mats, collection, kit="empty", liner=False)
         hull_obj.data.materials.clear()
         hull_obj.data.materials.append(hull)
     inset_large_faces(hull_obj, thickness=0.040, depth=0.016, min_area=1.80)
     # C13: hull-following chine plates, not floating deck boxes.
+
+    loft_shell("Belt_P", [
+        (4.20, -1.80, -2.62, -0.10, 0.48),
+        (0.20, -2.10, -2.82, -0.14, 0.52),
+        (-3.80, -1.80, -2.48, -0.10, 0.42),
+    ], hull, collection, 0.012)
+    loft_shell("Belt_S", [
+        (4.20, 1.80, 2.62, -0.10, 0.48),
+        (0.20, 2.10, 2.82, -0.14, 0.52),
+        (-3.80, 1.80, 2.48, -0.10, 0.42),
+    ], hull, collection, 0.012)
+    center_loft("Island_Carapace", [
+        (-0.80, 0.42, 1.18, 1.68),
+        (-1.70, 0.58, 1.42, 2.05),
+        (-2.60, 0.42, 1.18, 1.62),
+    ], hull, collection, 0.010)
     add_folded_sheet(
         "Chine_P",
         (2.20, -1.60, 0.10), (-1.80, -1.64, 0.12),
@@ -876,7 +908,7 @@ def setup_studio():
     for name, loc, energy, color, size in (
         ("Key", (18, -20, 13), 8600, (0.90, 0.88, 0.82), 11),
         ("Fill", (5, 18, 9), 3400, (0.52, 0.60, 0.70), 9),
-        ("Rim", (-16, -6, 8), 4200, (1.0, 0.58, 0.26), 8),
+        ("Rim", (-16, -6, 8), 4200, (0.72, 0.80, 0.92), 8),
         ("Kick", (-7, 12, -4), 1900, (0.68, 0.74, 0.82), 6),
     ):
         data = bpy.data.lights.new(name, "AREA")

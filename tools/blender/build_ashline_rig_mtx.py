@@ -19,7 +19,10 @@ if str(TOOLS) not in sys.path:
 from fleet_construction import (  # noqa: E402
     add_cockpit_glazing,
     add_flared_bell,
+    add_folded_sheet,
     add_manufactured_drive,
+    center_loft,
+    loft_shell,
     add_panel_seams,
     add_rcs_cluster,
     add_sensor_dish,
@@ -246,7 +249,7 @@ def create_materials():
         maps = role_maps(role, rgb, prefix=name.replace("Material_", "").lower())
         wire_maps(material, bsdf, maps, coat=coat, emission=emit)
         if role == "glass" and "Transmission Weight" in bsdf.inputs:
-            bsdf.inputs["Transmission Weight"].default_value = 0.62
+            bsdf.inputs["Transmission Weight"].default_value = 0.16
             if "IOR" in bsdf.inputs:
                 bsdf.inputs["IOR"].default_value = 1.48
         material["spacefaceRole"] = role
@@ -666,7 +669,7 @@ def bake_ao_into_albedo(obj, samples=12, size=TEX):
     op = list(ao.pixels)
     n = min(len(ap) // 4, len(op) // 4)
     for i in range(n):
-        factor = 0.55 + 0.45 * op[i * 4]
+        factor = 0.84 + 0.16 * op[i * 4]
         ap[i * 4] *= factor
         ap[i * 4 + 1] *= factor
         ap[i * 4 + 2] *= factor
@@ -696,11 +699,27 @@ def build_lod(lod, mats):
     ], hull, collection, 0.012, cap="both")
     if lod <= 1:
         cut_open_bay(hull_obj, "Cockpit", (2.2, 0.0, 1.00), 1.15, 0.42, 0.30, (0, 0, 1), mats, collection, kit="cockpit", liner=False)
-        cut_open_bay(hull_obj, "RadPort", (0.1, -1.92, 0.16), 1.15, 0.32, 0.24, (0, -1, 0), mats, collection, kit="radiator")
-        cut_open_bay(hull_obj, "RadStbd", (0.1, 1.92, 0.16), 1.15, 0.32, 0.24, (0, 1, 0), mats, collection, kit="radiator")
+        cut_open_bay(hull_obj, "RadPort", (0.1, -1.92, 0.16), 1.15, 0.32, 0.24, (0, -1, 0), mats, collection, kit="empty", liner=False)
+        cut_open_bay(hull_obj, "RadStbd", (0.1, 1.92, 0.16), 1.15, 0.32, 0.24, (0, 1, 0), mats, collection, kit="empty", liner=False)
         hull_obj.data.materials.clear()
         hull_obj.data.materials.append(hull)
     inset_large_faces(hull_obj, thickness=0.026, depth=0.012, min_area=0.70)
+
+    loft_shell("Casemate_P", [
+        (2.80, -0.92, -1.72, -0.08, 0.36),
+        (0.20, -1.18, -1.92, -0.10, 0.40),
+        (-2.40, -0.92, -1.62, -0.08, 0.32),
+    ], hull, collection, 0.010)
+    loft_shell("Casemate_S", [
+        (2.80, 0.92, 1.72, -0.08, 0.36),
+        (0.20, 1.18, 1.92, -0.10, 0.40),
+        (-2.40, 0.92, 1.62, -0.08, 0.32),
+    ], hull, collection, 0.010)
+    center_loft("Spine", [
+        (1.80, 0.22, 0.48, 0.88),
+        (0.10, 0.32, 0.42, 0.82),
+        (-2.00, 0.22, 0.36, 0.68),
+    ], hull, collection, 0.008)
     add_box("TransomPlate", (-6.98, 0.0, 0.06), (0.05, 0.62, 0.32), armor, collection, 0.004)
     add_thin_canopy("Canopy", 2.2, 0.0, 0.94, 1.15, 0.38, 0.24, mats, collection)
     add_box("TurretBase", (0.2, 0.0, 1.08), (0.42, 0.42, 0.10), mech, collection, 0.004)

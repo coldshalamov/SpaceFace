@@ -19,7 +19,10 @@ if str(TOOLS) not in sys.path:
 from fleet_construction import (  # noqa: E402
     add_cockpit_glazing,
     add_flared_bell,
+    add_folded_sheet,
     add_manufactured_drive,
+    center_loft,
+    loft_shell,
     add_panel_seams,
     add_rcs_cluster,
     add_sensor_dish,
@@ -246,7 +249,7 @@ def create_materials():
         maps = role_maps(role, rgb, prefix=name.replace("Material_", "").lower())
         wire_maps(material, bsdf, maps, coat=coat, emission=emit)
         if role == "glass" and "Transmission Weight" in bsdf.inputs:
-            bsdf.inputs["Transmission Weight"].default_value = 0.62
+            bsdf.inputs["Transmission Weight"].default_value = 0.16
             if "IOR" in bsdf.inputs:
                 bsdf.inputs["IOR"].default_value = 1.48
         material["spacefaceRole"] = role
@@ -666,7 +669,7 @@ def bake_ao_into_albedo(obj, samples=12, size=TEX):
     op = list(ao.pixels)
     n = min(len(ap) // 4, len(op) // 4)
     for i in range(n):
-        factor = 0.55 + 0.45 * op[i * 4]
+        factor = 0.84 + 0.16 * op[i * 4]
         ap[i * 4] *= factor
         ap[i * 4 + 1] *= factor
         ap[i * 4 + 2] *= factor
@@ -696,11 +699,27 @@ def build_lod(lod, mats):
     ], hull, collection, 0.012, cap="both")
     if lod <= 1:
         cut_open_bay(hull_obj, "Cockpit", (2.6, 0.0, 1.10), 1.25, 0.48, 0.34, (0, 0, 1), mats, collection, kit="cockpit", liner=False)
-        cut_open_bay(hull_obj, "RadPort", (0.2, -2.00, 0.18), 1.25, 0.36, 0.28, (0, -1, 0), mats, collection, kit="radiator")
-        cut_open_bay(hull_obj, "RadStbd", (0.2, 2.00, 0.18), 1.25, 0.36, 0.28, (0, 1, 0), mats, collection, kit="radiator")
+        cut_open_bay(hull_obj, "RadPort", (0.2, -2.00, 0.18), 1.25, 0.36, 0.28, (0, -1, 0), mats, collection, kit="empty", liner=False)
+        cut_open_bay(hull_obj, "RadStbd", (0.2, 2.00, 0.18), 1.25, 0.36, 0.28, (0, 1, 0), mats, collection, kit="empty", liner=False)
         hull_obj.data.materials.clear()
         hull_obj.data.materials.append(hull)
     inset_large_faces(hull_obj, thickness=0.028, depth=0.012, min_area=0.80)
+
+    loft_shell("Belt_P", [
+        (3.20, -1.05, -1.85, -0.10, 0.42),
+        (0.20, -1.35, -2.05, -0.14, 0.48),
+        (-2.80, -1.05, -1.75, -0.10, 0.36),
+    ], hull, collection, 0.010)
+    loft_shell("Belt_S", [
+        (3.20, 1.05, 1.85, -0.10, 0.42),
+        (0.20, 1.35, 2.05, -0.14, 0.48),
+        (-2.80, 1.05, 1.75, -0.10, 0.36),
+    ], hull, collection, 0.010)
+    center_loft("Tower_Carapace", [
+        (1.60, 0.28, 0.72, 1.18),
+        (0.20, 0.42, 0.88, 1.42),
+        (-1.20, 0.28, 0.72, 1.12),
+    ], hull, collection, 0.008)
     add_box("TransomPlate", (-7.48, 0.0, 0.06), (0.05, 0.68, 0.36), armor, collection, 0.004)
     add_thin_canopy("Canopy", 2.6, 0.0, 1.05, 1.25, 0.42, 0.28, mats, collection)
     add_box("Tower", (0.8, 0.0, 1.35), (1.05, 0.48, 0.42), armor, collection, 0.008)
