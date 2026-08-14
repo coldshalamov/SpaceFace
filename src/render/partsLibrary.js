@@ -6578,6 +6578,7 @@ function consolidateOpaqueInstanceChunks(state, context) {
     scene: state.scene,
     playerX: context && context.playerX,
     playerZ: context && context.playerZ,
+    refreshBounds: !!(context && context.cameraDirty),
   });
   if (state.stats) {
     state.stats.opaqueBatches = batchStats.batches;

@@ -5,6 +5,8 @@ import * as THREE from 'three';
 import {
   createOpaqueBatchPipelineWarmupMeshes,
   createOpaqueMaterialBatchState,
+  OPAQUE_BATCH_INITIAL_VERTS,
+  OPAQUE_BATCH_MAX_VERTS,
   materialBatchAttrKey,
   opaqueBatchLane,
   refreshBatchWorldBounds,
@@ -102,6 +104,7 @@ test('batch world bounds follow instance matrices after a large origin shift', (
     scene,
     playerX: 9000,
     playerZ: 9000,
+    refreshBounds: true,
   });
   const after = batch.mesh.boundingSphere.center;
   assert.ok(after.distanceTo(before) > 1000, 'stale origin sphere would hide the batch after rebase');
@@ -129,4 +132,30 @@ test('loading warmup meshes match live batch program flags', () => {
     assert.ok(mesh._colorsTexture,
       'instance color must be armed so USE_BATCHING_COLOR matches live consolidator');
   }
+});
+
+test('live batches start small and grow instead of allocating the hard ceiling', () => {
+  const material = new THREE.MeshStandardMaterial({ color: 0x778899 });
+  const big = new THREE.BoxGeometry(2, 2, 2);
+  const positions = [];
+  for (let i = 0; i < OPAQUE_BATCH_INITIAL_VERTS + 8; i++) positions.push(i, 0, 0);
+  const oversized = new THREE.BufferGeometry();
+  oversized.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  oversized.setIndex(null);
+  const chunk = makeChunk(0, 0, { material, key: 'oversized', geometry: oversized });
+  const scene = new THREE.Scene();
+  const state = createOpaqueMaterialBatchState();
+  const stats = syncOpaqueMaterialBatches(state, new Map([['grow', { chunks: [chunk] }]]), {
+    enabled: true,
+    scene,
+    playerX: 0,
+    playerZ: 0,
+  });
+  assert.equal(stats.hiddenChunks, 1);
+  const batch = [...state.batches.values()].find((item) => item.used > 0);
+  assert.ok(batch);
+  assert.ok(batch.mesh._maxVertexCount > OPAQUE_BATCH_INITIAL_VERTS);
+  assert.ok(batch.mesh._maxVertexCount < OPAQUE_BATCH_MAX_VERTS);
+  assert.equal(chunk.mesh.visible, false);
+  big.dispose();
 });

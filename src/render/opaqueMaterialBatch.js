@@ -14,6 +14,8 @@ import { materialBatchProgramKey } from './materialBatchKey.js';
 export const OPAQUE_BATCH_MAX_INSTANCES = 512;
 export const OPAQUE_BATCH_MAX_VERTS = 200000;
 export const OPAQUE_BATCH_MAX_INDICES = 400000;
+export const OPAQUE_BATCH_INITIAL_VERTS = 4096;
+export const OPAQUE_BATCH_INITIAL_INDICES = 8192;
 
 const _matrix = new THREE.Matrix4();
 const _color = new THREE.Color();
@@ -95,11 +97,15 @@ export function syncOpaqueMaterialBatches(state, pools, options = {}) {
     }
   }
 
+  const refreshBounds = options.refreshBounds === true;
   for (const batch of state.batches.values()) {
     hideUnusedInstances(batch);
     batch.mesh.visible = batch.used > 0;
     if (batch.used > 0) {
-      refreshBatchWorldBounds(batch.mesh);
+      if (refreshBounds || batch.boundsDirty === true) {
+        refreshBatchWorldBounds(batch.mesh);
+        batch.boundsDirty = false;
+      }
       stats.batches++;
       stats.instances += batch.used;
     }
@@ -167,16 +173,14 @@ function reserveBatchInstance(state, chunk, lane, scene) {
   if (geometryId == null) {
     const verts = geometry.getAttribute('position') ? geometry.getAttribute('position').count : 0;
     const indices = geometry.index ? geometry.index.count : verts;
-    if (batch.mesh.unusedVertexCount < verts) return null;
-    if (typeof batch.mesh.unusedIndexCount === 'number' && batch.mesh.unusedIndexCount < indices) {
-      return null;
-    }
+    if (!ensureBatchGeometryCapacity(batch.mesh, verts, indices)) return null;
     try {
       geometryId = batch.mesh.addGeometry(geometry);
     } catch (_) {
       return null;
     }
     batch.geometryIds.set(chunk.pool.key, geometryId);
+    batch.boundsDirty = true;
   }
   if (batch.used >= OPAQUE_BATCH_MAX_INSTANCES) return null;
   let instanceId;
@@ -197,6 +201,7 @@ function reserveBatchInstance(state, chunk, lane, scene) {
     }
     batch.instanceIds.push(instanceId);
     batch.allocated++;
+    batch.boundsDirty = true;
   }
   batch.used++;
   return { batch, instanceId };
@@ -211,8 +216,8 @@ function createBatch(material, lane, scene) {
   try {
     mesh = new THREE.BatchedMesh(
       OPAQUE_BATCH_MAX_INSTANCES,
-      OPAQUE_BATCH_MAX_VERTS,
-      OPAQUE_BATCH_MAX_INDICES,
+      OPAQUE_BATCH_INITIAL_VERTS,
+      OPAQUE_BATCH_INITIAL_INDICES,
       batchMaterial,
     );
   } catch (_) {
@@ -237,7 +242,40 @@ function createBatch(material, lane, scene) {
     instanceIds: [],
     allocated: 0,
     used: 0,
+    boundsDirty: true,
   };
+}
+
+function ensureBatchGeometryCapacity(mesh, verts, indices) {
+  if (!mesh) return false;
+  const needVerts = Math.max(0, Number(verts) || 0);
+  const needIndices = Math.max(0, Number(indices) || 0);
+  let nextVerts = mesh._maxVertexCount;
+  let nextIndices = mesh._maxIndexCount;
+  if (mesh.unusedVertexCount < needVerts) {
+    nextVerts = Math.min(
+      OPAQUE_BATCH_MAX_VERTS,
+      Math.max(nextVerts * 2, nextVerts + needVerts),
+    );
+  }
+  if (typeof mesh.unusedIndexCount === 'number' && mesh.unusedIndexCount < needIndices) {
+    nextIndices = Math.min(
+      OPAQUE_BATCH_MAX_INDICES,
+      Math.max(nextIndices * 2, nextIndices + needIndices),
+    );
+  }
+  if (nextVerts > OPAQUE_BATCH_MAX_VERTS || nextIndices > OPAQUE_BATCH_MAX_INDICES) return false;
+  if ((nextVerts > mesh._maxVertexCount || nextIndices > mesh._maxIndexCount)
+      && typeof mesh.setGeometrySize === 'function') {
+    try {
+      mesh.setGeometrySize(nextVerts, nextIndices);
+    } catch (_) {
+      return false;
+    }
+  }
+  if (mesh.unusedVertexCount < needVerts) return false;
+  if (typeof mesh.unusedIndexCount === 'number' && mesh.unusedIndexCount < needIndices) return false;
+  return true;
 }
 
 export function refreshBatchWorldBounds(mesh) {
