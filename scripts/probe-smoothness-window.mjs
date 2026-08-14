@@ -106,9 +106,22 @@ try {
         lastFrameError: d.lastFrameError || null,
         gpu: gpu && (gpu.renderer || gpu.unmaskedRenderer || gpu.vendor) || null,
         software: gpu && gpu.software === true,
+        posX: (window.SF.state.entities.get(window.SF.state.playerId) || {}).pos?.x || 0,
+        posZ: (window.SF.state.entities.get(window.SF.state.playerId) || {}).pos?.z || 0,
       };
     };
-    const first = info();
+    const canvasHash = () => {
+      const canvas = document.getElementById('gl-canvas');
+      if (!canvas || typeof canvas.toDataURL !== 'function') return 0;
+      const text = canvas.toDataURL('image/png').slice(0, 8000);
+      let hash = 2166136261;
+      for (let i = 0; i < text.length; i++) {
+        hash ^= text.charCodeAt(i);
+        hash = Math.imul(hash, 16777619);
+      }
+      return hash >>> 0;
+    };
+    const first = { ...info(), canvasHash: canvasHash() };
     await new Promise((resolve) => {
       function step(now) {
         const dt = now - last;
@@ -122,7 +135,7 @@ try {
       }
       requestAnimationFrame(step);
     });
-    const lastSnap = info();
+    const lastSnap = { ...info(), canvasHash: canvasHash() };
     return { first, last: lastSnap, frames };
   }, { warmupMs: WARMUP_MS, durationMs: DURATION_MS });
 
@@ -138,6 +151,11 @@ try {
     lastFrameError: report.last.lastFrameError,
     simAdvanced: report.last.simTime > report.first.simTime,
     rendererAdvanced: Number(report.last.rendererFrame) > Number(report.first.rendererFrame),
+    movement: report.last.posX !== report.first.posX || report.last.posZ !== report.first.posZ
+      || report.last.simTime > report.first.simTime,
+    canvasChanged: report.last.canvasHash !== report.first.canvasHash,
+    firstCanvasHash: report.first.canvasHash,
+    lastCanvasHash: report.last.canvasHash,
     frameMs: {
       samples: sorted.length,
       avg: sorted.length ? sorted.reduce((a, b) => a + b, 0) / sorted.length : 0,
