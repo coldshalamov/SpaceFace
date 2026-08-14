@@ -34,6 +34,10 @@ import { authoredUpgradeConcurrencyLimit as resolveAuthoredUpgradeConcurrency } 
 import { shouldStartHeavyAdmission } from './admissionSliceBudget.js';
 import { applyInstanceChunkSubmitPolicy } from './instanceChunkSubmitPolicy.js';
 import {
+  createOpaqueMaterialBatchState,
+  syncOpaqueMaterialBatches,
+} from './opaqueMaterialBatch.js';
+import {
   rememberStaticBatchGeometry,
   staticBatchGeometryCacheKey,
   takeCachedStaticBatchGeometry,
@@ -510,6 +514,9 @@ export function getAuthoredInstancePoolDiagnostics(scene) {
     avgPoolOccupancy: 0,
     tinyPools: 0,
     shadowCastingInstanceChunks: 0,
+    opaqueBatches: 0,
+    opaqueBatchInstances: 0,
+    opaqueBatchHiddenChunks: 0,
     matrixUploads: 0,
     matrixReuses: 0,
     frameBounded: false,
@@ -6464,6 +6471,7 @@ function syncSceneStateFromFrame(state, context, stats) {
   state.nextFrameOwners = previousOwners;
   state.nextFrameOwners.clear();
   applyInstanceChunkPolicies(state, context);
+  consolidateOpaqueInstanceChunks(state, context);
 }
 
 function syncSceneStateFallback(state, context, stats) {
@@ -6471,6 +6479,7 @@ function syncSceneStateFallback(state, context, stats) {
     for (const chunk of pool.chunks) syncInstanceChunk(chunk, context, stats);
   }
   state.activeFrameOwners.clear();
+  consolidateOpaqueInstanceChunks(state, context);
 }
 
 function syncInstanceChunk(chunk, context, stats) {
@@ -6550,6 +6559,21 @@ function applyInstanceChunkPolicies(state, context) {
         refreshBounds: false,
       });
     }
+  }
+}
+
+function consolidateOpaqueInstanceChunks(state, context) {
+  if (!state.opaqueBatch) state.opaqueBatch = createOpaqueMaterialBatchState();
+  const batchStats = syncOpaqueMaterialBatches(state.opaqueBatch, state.pools, {
+    enabled: !!(context && context.consolidateOpaqueBatches),
+    scene: state.scene,
+    playerX: context && context.playerX,
+    playerZ: context && context.playerZ,
+  });
+  if (state.stats) {
+    state.stats.opaqueBatches = batchStats.batches;
+    state.stats.opaqueBatchInstances = batchStats.instances;
+    state.stats.opaqueBatchHiddenChunks = batchStats.hiddenChunks;
   }
 }
 
@@ -6633,6 +6657,8 @@ function sceneState(scene) {
       cullContext: createInstanceCullContext(),
       cameraState: { initialized: false, present: false, values: new Float64Array(32) },
       syncFrame: 0,
+      opaqueBatch: createOpaqueMaterialBatchState(),
+      scene,
     };
     sceneStates.set(scene, state);
   }
@@ -6731,6 +6757,9 @@ function resetPoolStats(state) {
   stats.avgPoolOccupancy = 0;
   stats.tinyPools = 0;
   stats.shadowCastingInstanceChunks = 0;
+  stats.opaqueBatches = 0;
+  stats.opaqueBatchInstances = 0;
+  stats.opaqueBatchHiddenChunks = 0;
   stats.dirtyChunks = 0;
   stats.matrixUploads = 0;
   stats.matrixReuses = 0;
@@ -6788,6 +6817,7 @@ function buildInstanceCullContext(state, opts) {
   context.recordsByOwner = recordsByOwner;
   context.playerX = Number.isFinite(Number(opts && opts.playerX)) ? Number(opts.playerX) : 0;
   context.playerZ = Number.isFinite(Number(opts && opts.playerZ)) ? Number(opts.playerZ) : 0;
+  context.consolidateOpaqueBatches = opts && opts.consolidateOpaqueBatches === true;
   if (!camera || !camera.projectionMatrix || !camera.matrixWorldInverse) {
     state.stats.frameBounded = frameBounded;
     context.cameraDirty = captureCullCameraState(null, state.cameraState);
@@ -6821,6 +6851,7 @@ function createInstanceCullContext() {
     cameraPosition: null,
     playerX: 0,
     playerZ: 0,
+    consolidateOpaqueBatches: false,
   };
 }
 

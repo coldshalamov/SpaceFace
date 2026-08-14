@@ -124,6 +124,7 @@ import {
   applyEntityMeshVisibility,
   shouldSubmitEntityMesh,
 } from './entityMeshVisibility.js';
+import { supportsOpaqueMaterialBatch } from './opaqueMaterialBatch.js';
 import { preloadRockSurfaceLibrary } from './rockSurfaceLibrary.js';
 import {
   createGpuResidencyAdmissionTracker,
@@ -1913,6 +1914,13 @@ export const render = {
     // full scene comparison on the iGPU thread; transparent objects still sort.
     if (typeof renderer.setOpaqueSort === 'function') {
       renderer.setOpaqueSort(() => 0);
+    }
+    this._opaqueBatchEnabled = false;
+    try {
+      const gl = renderer.getContext && renderer.getContext();
+      this._opaqueBatchEnabled = supportsOpaqueMaterialBatch(gl);
+    } catch (_) {
+      this._opaqueBatchEnabled = false;
     }
     // ACES on the renderer covers the DIRECT-to-canvas draws; bloom.js's composite covers the bloom
     // path. Both are needed and they do not overlap, which is the fix for a real divergence:
@@ -4551,6 +4559,7 @@ export const render = {
     authoredSyncOptions.authoredRecords = this._entityFrame.authored;
     authoredSyncOptions.playerX = 0;
     authoredSyncOptions.playerZ = 0;
+    authoredSyncOptions.consolidateOpaqueBatches = this._opaqueBatchEnabled === true;
     const player = this.state.playerId
       ? (this.state.entities && this.state.entities.get(this.state.playerId))
       : null;
