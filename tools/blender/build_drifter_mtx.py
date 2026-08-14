@@ -20,6 +20,7 @@ from fleet_construction import (  # noqa: E402
     add_folded_sheet,
     add_manufactured_drive,
     add_overlap_plate,
+    add_radiator_cassette,
     add_rcs_cluster,
     add_sensor_dish,
     apply_modifiers,
@@ -243,7 +244,7 @@ def create_materials():
         "Material_Warning": ((0.70, 0.34, 0.05), 0.05, 0.46, "warning", 0.1, None),
         "Material_Ceramic": ((0.54, 0.46, 0.34), 0.0, 0.64, "ceramic", 0.0, None),
         "Material_Radiator": ((0.16, 0.12, 0.09), 0.7, 0.56, "mechanical", 0.0, None),
-        "Material_Canopy": ((0.22, 0.78, 0.88), 0.00, 0.08, "glass", 0.28, ((0.10, 0.42, 0.52), 0.45)),
+        "Material_Canopy": ((0.10, 0.38, 0.44), 0.00, 0.10, "glass", 0.18, ((0.06, 0.22, 0.26), 0.20)),
         "Material_Thruster": ((0.02, 0.08, 0.12), 0.15, 0.22, "thruster", 0.0, ((0.16, 0.48, 0.64), 1.0)),
     }
     mats = {}
@@ -586,7 +587,7 @@ def bake_ao_into_albedo(obj, samples=12, size=TEX):
     op = list(ao.pixels)
     n = min(len(ap) // 4, len(op) // 4)
     for i in range(n):
-        factor = 0.55 + 0.45 * op[i * 4]
+        factor = 0.84 + 0.16 * op[i * 4]
         ap[i * 4] *= factor
         ap[i * 4 + 1] *= factor
         ap[i * 4 + 2] *= factor
@@ -606,25 +607,31 @@ def build_lod(lod, mats):
         "lod": f"lod{lod}", "slot": "hull", "category": "wholeships",
         "forward": "+X", "embeddedPlume": False,
     }
-    # Form rebuild: blunt bow / tall cabin deck / wide utility mid / nacelle carry. Not a diamond sausage.
+    # C16: plow bow / greenhouse / wide utility / pinched waist / nacelle house.
+    # Station families change — not a scaled sausage.
     hull_obj = loft_from_rings("Pressure_Hull", [
-        station_ring(half, 0, 0.10, 0.50, 0.38, flat=0.60, box=0.40, keel=0.70),
-        station_ring(6.20, 0, 0.18, 0.78, 0.64, flat=0.70, box=0.45, keel=0.62),
-        station_ring(3.90, 0, 0.32, 0.95, 1.08, flat=0.98, box=0.48, keel=0.52),
-        station_ring(1.35, 0, 0.14, 1.28, 0.72, flat=0.42, box=0.72, keel=0.55),
-        station_ring(-0.45, 0, 0.10, 1.38, 0.60, flat=0.22, box=0.88, keel=0.48),
-        station_ring(-2.55, 0, 0.12, 1.02, 0.70, flat=0.26, box=0.82, keel=0.38),
-        station_ring(-4.95, 0, 0.14, 0.92, 0.80, flat=0.32, box=0.96, keel=0.28),
-        station_ring(-7.15, 0, 0.10, 0.72, 0.58, flat=0.30, box=0.92, keel=0.22),
+        station_ring(half, 0, 0.08, 0.62, 0.32, flat=0.55, box=0.50, keel=0.55),
+        station_ring(6.40, 0, 0.16, 0.92, 0.58, flat=0.72, box=0.48, keel=0.50),
+        station_ring(4.00, 0, 0.34, 1.02, 1.12, flat=0.98, box=0.52, keel=0.42),
+        station_ring(1.60, 0, 0.12, 1.42, 0.68, flat=0.28, box=0.82, keel=0.48),
+        station_ring(-0.40, 0, 0.06, 1.48, 0.52, flat=0.12, box=0.92, keel=0.40),
+        station_ring(-2.20, 0, 0.02, 0.88, 0.38, flat=0.08, box=0.55, keel=0.45),
+        station_ring(-4.40, 0, 0.18, 1.05, 0.78, flat=0.22, box=0.90, keel=0.22),
+        station_ring(-7.10, 0, 0.10, 0.68, 0.48, flat=0.18, box=0.88, keel=0.16),
     ], hull, collection, 0.016)
     if lod <= 1:
-        cut_open_bay(hull_obj, "Cockpit", (3.40, 0.0, 1.15), 1.45, 0.62, 0.55, (0, 0, 1), mats, collection, kit="cockpit", liner=False)
-        cut_open_bay(hull_obj, "Port", (0.10, -1.48, 0.10), 1.55, 0.46, 0.50, (0, -1, 0), mats, collection, kit="radiator")
-        cut_open_bay(hull_obj, "Starboard", (0.10, 1.48, 0.10), 1.55, 0.46, 0.50, (0, 1, 0), mats, collection, kit="rack")
-        cut_open_bay(hull_obj, "Cargo", (-0.20, 0.0, -0.72), 1.65, 0.72, 0.42, (0, 0, -1), mats, collection, kit="rack")
+        cut_open_bay(hull_obj, "Cockpit", (3.90, 0.0, 1.22), 1.50, 0.58, 0.52, (0, 0, 1), mats, collection, kit="cockpit", liner=False)
+        cut_open_bay(hull_obj, "Port", (0.20, -1.52, 0.12), 1.70, 0.48, 0.56, (0, -1, 0), mats, collection, kit="empty", liner=False)
+        cut_open_bay(hull_obj, "Starboard", (0.20, 1.52, 0.12), 1.70, 0.48, 0.56, (0, 1, 0), mats, collection, kit="empty", liner=False)
+        cut_open_bay(hull_obj, "Cargo", (-0.20, 0.0, -0.62), 1.70, 0.62, 0.38, (0, 0, -1), mats, collection, kit="empty", liner=False)
         hull_obj.data.materials.clear()
         hull_obj.data.materials.append(hull)
-    add_box("HullKeel", (0.10, 0.0, -0.58), (3.8, 0.28, 0.10), hull, collection, 0.012)
+    add_folded_sheet(
+        "HullKeel",
+        (2.40, -0.14, -0.62), (-2.20, -0.14, -0.56),
+        (-2.20, 0.14, -0.56), (2.40, 0.14, -0.62),
+        0.040, hull, collection, 0.006,
+    )
     inset_large_faces(hull_obj, thickness=0.05, depth=0.02, min_area=0.16)
     # C13: hull-following chine plates, not floating deck boxes.
     add_folded_sheet(
@@ -640,97 +647,133 @@ def build_lod(lod, mats):
         0.024, armor, collection, 0.004,
     )
 
-    add_thin_canopy("Canopy", 3.50, 0.0, 0.78, 1.35, 0.42, 0.28, mats, collection)
-    # Overlapping cabin/shoulder shells so clay is not a lofted sausage.
+    add_thin_canopy("Canopy", 3.85, 0.0, 0.88, 1.28, 0.40, 0.26, mats, collection)
+    add_box("Cockpit_Seat", (3.70, 0.0, 0.82), (0.20, 0.14, 0.07), mech, collection, 0.004)
+    add_box("Cockpit_Back", (3.52, 0.0, 0.94), (0.04, 0.13, 0.11), armor, collection, 0.003)
+    add_box("Cockpit_Console", (4.18, 0.0, 0.90), (0.14, 0.18, 0.030), armor, collection, 0.003)
+    # Overlapping cabin / utility / nacelle shells so clay is not a lofted sausage.
     loft_shell("Cabin_ShellP", [
-        (5.80, -0.18, -0.62, 0.10, 0.55),
-        (3.90, -0.22, -0.88, 0.18, 1.05),
-        (2.10, -0.28, -1.05, 0.08, 0.72),
-        (0.20, -0.32, -1.22, 0.04, 0.48),
+        (6.20, -0.22, -0.78, 0.08, 0.62),
+        (4.00, -0.28, -0.98, 0.22, 1.18),
+        (2.20, -0.36, -1.18, 0.06, 0.68),
+        (0.40, -0.42, -1.38, 0.00, 0.42),
     ], hull, collection, 0.010)
     loft_shell("Cabin_ShellS", [
-        (5.80, 0.18, 0.62, 0.10, 0.55),
-        (3.90, 0.22, 0.88, 0.18, 1.05),
-        (2.10, 0.28, 1.05, 0.08, 0.72),
-        (0.20, 0.32, 1.22, 0.04, 0.48),
+        (6.20, 0.22, 0.78, 0.08, 0.62),
+        (4.00, 0.28, 0.98, 0.22, 1.18),
+        (2.20, 0.36, 1.18, 0.06, 0.68),
+        (0.40, 0.42, 1.38, 0.00, 0.42),
     ], hull, collection, 0.010)
     center_loft("Cabin_Carapace", [
-        (5.60, 0.22, 0.42, 0.62),
-        (3.80, 0.38, 0.88, 1.12),
-        (2.20, 0.28, 0.55, 0.78),
+        (6.00, 0.28, 0.48, 0.68),
+        (3.90, 0.42, 0.92, 1.22),
+        (2.10, 0.30, 0.48, 0.82),
     ], hull, collection, 0.010)
+    loft_shell("Utility_FlankP", [
+        (1.80, -0.88, -1.42, -0.18, 0.38),
+        (0.20, -1.02, -1.52, -0.22, 0.34),
+        (-1.40, -0.72, -1.18, -0.16, 0.28),
+    ], hull, collection, 0.008)
+    loft_shell("Utility_FlankS", [
+        (1.80, 0.88, 1.42, -0.18, 0.38),
+        (0.20, 1.02, 1.52, -0.22, 0.34),
+        (-1.40, 0.72, 1.18, -0.16, 0.28),
+    ], hull, collection, 0.008)
+    center_loft("Aft_House", [
+        (-2.40, 0.42, 0.08, 0.46),
+        (-4.40, 0.58, 0.12, 0.72),
+        (-6.40, 0.38, 0.08, 0.48),
+    ], hull, collection, 0.008)
     for sign, side in ((-1, "Port"), (1, "Starboard")):
-        loft_from_rings(f"Nacelle_{side}", [
-            diamond_ring(-3.0, 1.45 * sign, 0.08, 0.38, 0.32),
-            diamond_ring(-4.6, 1.55 * sign, 0.08, 0.50, 0.40),
-            diamond_ring(-6.0, 1.55 * sign, 0.08, 0.46, 0.36),
-            diamond_ring(-6.85, 1.55 * sign, 0.08, 0.36, 0.28),
-        ], armor, collection, 0.012)
-        add_manufactured_drive(side, -7.05, 1.55 * sign, lod, mats, collection, scale=0.88, z=0.08)
-        add_cylinder(f"NacelleCollar_{side}", (-6.55, 1.55 * sign, 0.08), 0.34, 0.12, ceramic, collection, vertices=14, bevel=0.006)
-        add_box(f"NacelleSaddlePad_{side}", (-6.20, 1.55 * sign, -0.18), (0.38, 0.14, 0.08), mech, collection, 0.003)
-        loft_from_rings(f"NacelleSaddle_{side}", [
-            diamond_ring(-4.6, 1.15 * sign, 0.06, 0.28, 0.18),
-            diamond_ring(-5.2, 1.65 * sign, 0.06, 0.22, 0.16),
-            diamond_ring(-5.6, 2.00 * sign, 0.06, 0.18, 0.14),
-        ], mech, collection, 0.008)
-        loft_from_rings(f"Winglet_{side}", [
-            airfoil_ring(-0.85, 1.28 * sign, 0.12, 1.45, 0.28),
-            airfoil_ring(-1.25, 1.85 * sign, 0.28, 1.15, 0.18),
-            airfoil_ring(-1.65, 2.45 * sign, 0.42, 0.82, 0.10),
-            airfoil_ring(-2.05, 3.05 * sign, 0.55, 0.48, 0.10),
-        ], hull, collection, 0.008)
-        loft_from_rings(f"WingRoot_{side}", [
-            airfoil_ring(-0.70, 1.05 * sign, 0.10, 1.35, 0.32),
-            airfoil_ring(-0.95, 1.38 * sign, 0.14, 1.40, 0.24),
+        loft_shell(f"Nacelle_{side}", [
+            (-3.20, 1.05 * sign, 1.72 * sign, -0.18, 0.42),
+            (-4.80, 1.12 * sign, 1.88 * sign, -0.22, 0.52),
+            (-6.20, 1.18 * sign, 1.82 * sign, -0.20, 0.46),
+            (-7.00, 1.28 * sign, 1.62 * sign, -0.14, 0.32),
         ], hull, collection, 0.010)
+        loft_shell(f"NacelleSaddle_{side}", [
+            (-3.80, 0.62 * sign, 1.18 * sign, -0.08, 0.22),
+            (-5.10, 0.92 * sign, 1.42 * sign, -0.10, 0.24),
+            (-6.20, 1.18 * sign, 1.52 * sign, -0.08, 0.20),
+        ], mech, collection, 0.006)
+        add_manufactured_drive(side, -7.08, 1.55 * sign, lod, mats, collection, scale=0.88, z=0.08)
+        add_cylinder(f"NacelleCollar_{side}", (-6.58, 1.55 * sign, 0.08), 0.34, 0.12, ceramic, collection, vertices=14, bevel=0.006)
+        loft_from_rings(f"Winglet_{side}", [
+            airfoil_ring(-0.70, 1.08 * sign, 0.10, 1.55, 0.36),
+            airfoil_ring(-1.10, 1.72 * sign, 0.22, 1.22, 0.22),
+            airfoil_ring(-1.50, 2.35 * sign, 0.36, 0.88, 0.12),
+            airfoil_ring(-1.90, 2.95 * sign, 0.48, 0.50, 0.08),
+        ], hull, collection, 0.008)
         add_folded_sheet(
             f"Pylon_{side}",
-            (-0.70, 1.18 * sign, -0.04), (-1.55, 1.48 * sign, -0.06),
-            (-1.55, 1.48 * sign, 0.14), (-0.70, 1.18 * sign, 0.16),
-            0.040, hull, collection, 0.004,
+            (-0.70, 1.10 * sign, -0.04), (-1.55, 1.48 * sign, -0.06),
+            (-1.55, 1.48 * sign, 0.16), (-0.70, 1.10 * sign, 0.18),
+            0.044, hull, collection, 0.004,
         )
         add_folded_sheet(
             f"BowCheek_{side}",
-            (6.10, 0.22 * sign, 0.02), (4.70, 0.72 * sign, 0.04),
-            (4.70, 0.72 * sign, 0.28), (6.10, 0.22 * sign, 0.22),
+            (6.40, 0.28 * sign, 0.00), (4.80, 0.82 * sign, 0.04),
+            (4.80, 0.82 * sign, 0.30), (6.40, 0.28 * sign, 0.24),
             0.028, hull, collection, 0.004,
         )
         add_cylinder(f"GunHouse_{side}", (5.55, 0.42 * sign, -0.06), 0.08, 0.95, mech, collection, vertices=10, bevel=0.005)
         add_cylinder(f"GunBarrel_{side}", (6.40, 0.42 * sign, -0.06), 0.032, 0.70, armor, collection, vertices=8, bevel=0.003)
         add_cylinder(f"RearGun_{side}", (-6.10, 0.55 * sign, 0.42), 0.04, 0.55, mech, collection, vertices=8, bevel=0.003)
         add_rcs_cluster(side, (-1.6, 1.72 * sign, 0.18), mats, collection, sign=sign)
+        if lod <= 1:
+            add_radiator_cassette(f"{side}House", (-4.40, 1.28 * sign, 0.46), lod, mats, collection, length=0.95, height=0.18, yaw=0.0)
 
     add_folded_sheet(
         "Cabin_Shoulder",
-        (4.00, -0.48, 0.88), (2.40, -0.48, 0.72),
-        (2.40, 0.48, 0.72), (4.00, 0.48, 0.88),
+        (4.20, -0.52, 1.02), (2.40, -0.52, 0.78),
+        (2.40, 0.52, 0.78), (4.20, 0.52, 1.02),
         0.028, hull, collection, 0.004,
     )
     add_folded_sheet(
+        "HullPlate_DorsalP",
+        (1.60, -0.10, 0.56), (-0.80, -0.12, 0.50),
+        (-0.80, -0.48, 0.36), (1.60, -0.42, 0.40),
+        0.022, hull, collection, 0.004,
+    )
+    add_folded_sheet(
+        "HullPlate_DorsalS",
+        (1.60, 0.10, 0.56), (1.60, 0.42, 0.40),
+        (-0.80, 0.48, 0.36), (-0.80, 0.12, 0.50),
+        0.022, hull, collection, 0.004,
+    )
+    add_folded_sheet(
         "AftWalk",
-        (-2.40, -0.14, 0.48), (-4.40, -0.14, 0.44),
-        (-4.40, 0.14, 0.44), (-2.40, 0.14, 0.48),
+        (-2.60, -0.16, 0.52), (-4.60, -0.16, 0.46),
+        (-4.60, 0.16, 0.46), (-2.60, 0.16, 0.52),
         0.018, mech, collection, 0.003,
     )
     add_box("Repair_Patch", (1.15, -0.55, 0.78), (0.32, 0.16, 0.012), warning, collection, 0.002)
     add_sensor_dish("Dorsal", (1.35, 0.28, 1.05), mats, collection)
     add_cylinder("Comm_Mast", (-0.35, 0.0, 1.15), 0.035, 0.72, mech, collection, vertices=8, bevel=0.003, rot=(0, 0, 0))
-    add_box("Comm_Head", (-0.28, 0.0, 1.52), (0.10, 0.14, 0.06), armor, collection, 0.003)
-    add_box("Hatch_Lid", (-1.10, 0.32, 0.72), (0.32, 0.20, 0.016), armor, collection, 0.004)
-    if False:  # C14 drop kit-on-loaf extras (was CYCLE >= 8)
-        add_box("NacelleBandP", (-5.35, -1.55, 0.08), (0.06, 0.42, 0.28), armor, collection, 0.003)
-        add_box("NacelleBandS", (-5.35, 1.55, 0.08), (0.06, 0.42, 0.28), armor, collection, 0.003)
-        add_box("WellLipP", (0.10, -1.28, 0.28), (1.20, 0.04, 0.04), armor, collection, 0.002)
-        add_box("WellLipS", (0.10, 1.28, 0.28), (1.20, 0.04, 0.04), armor, collection, 0.002)
-    if False:  # C14 drop kit-on-loaf extras (was CYCLE >= 9)
-        add_box("ChineCapP", (2.15, -1.05, 0.08), (1.35, 0.04, 0.05), armor, collection, 0.003)
-        add_box("ChineCapS", (2.15, 1.05, 0.08), (1.35, 0.04, 0.05), armor, collection, 0.003)
-    if False:  # C14 drop kit-on-loaf extras (was CYCLE >= 10)
-        add_box("PatchTile2", (0.85, 0.48, 0.68), (0.22, 0.12, 0.008), armor, collection, 0.002)
-        add_cylinder("MastYard", (-0.35, 0.0, 1.48), 0.012, 0.28, mech, collection, 8, 0.001, rot=(0, 0, math.pi / 2))
-    add_box("Hatch_Hinge", (-1.36, 0.32, 0.73), (0.03, 0.15, 0.018), mech, collection, 0.002)
-    add_box("Keel_Spine", (0.20, 0.0, -0.82), (2.8, 0.24, 0.045), mech, collection, 0.01)
+    add_folded_sheet(
+        "Comm_Head",
+        (-0.42, -0.08, 1.48), (-0.18, -0.08, 1.48),
+        (-0.18, 0.08, 1.48), (-0.42, 0.08, 1.48),
+        0.040, armor, collection, 0.003,
+    )
+    add_folded_sheet(
+        "Hatch_Lid",
+        (-0.95, 0.18, 0.70), (-1.28, 0.18, 0.70),
+        (-1.28, 0.46, 0.70), (-0.95, 0.46, 0.70),
+        0.018, armor, collection, 0.003,
+    )
+    add_folded_sheet(
+        "Hatch_Hinge",
+        (-1.32, 0.22, 0.71), (-1.38, 0.22, 0.71),
+        (-1.38, 0.42, 0.71), (-1.32, 0.42, 0.71),
+        0.016, mech, collection, 0.002,
+    )
+    add_folded_sheet(
+        "Keel_Spine",
+        (1.40, -0.12, -0.78), (-1.60, -0.12, -0.72),
+        (-1.60, 0.12, -0.72), (1.40, 0.12, -0.78),
+        0.028, mech, collection, 0.004,
+    )
     if lod == 0:
         add_curve_hose("Hose_Port", [(0.1, -1.35, 0.08), (-2.4, -1.45, 0.08), (-5.2, -1.52, 0.10), (-6.9, -1.55, 0.12)], mech, collection, 0.014)
         add_curve_hose("Hose_Stbd", [(0.1, 1.35, 0.08), (-2.4, 1.45, 0.08), (-5.2, 1.52, 0.10), (-6.9, 1.55, 0.12)], mech, collection, 0.014)
@@ -857,7 +900,7 @@ def setup_studio():
     for name, loc, energy, color, size in (
         ("Key", (16, -18, 12), 7800, (0.88, 0.92, 1), 10),
         ("Fill", (4, 16, 8), 3200, (0.55, 0.62, 0.72), 8),
-        ("Rim", (-14, -5, 7), 4000, (1.0, 0.62, 0.28), 7),
+        ("Rim", (-14, -5, 7), 4000, (0.72, 0.80, 0.92), 7),
         ("Kick", (-6, 10, -4), 1800, (0.7, 0.75, 0.85), 6),
     ):
         data = bpy.data.lights.new(name, "AREA")
