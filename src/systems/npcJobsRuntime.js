@@ -75,6 +75,8 @@ import {
 // the job resumes. Civilian traffic today flees the player at 500wu (traffic.js _stepFlee) — matched.
 const FLEE_RADIUS = 520;
 const RESUME_RADIUS = 760; // hysteresis so a job does not chatter flee/resume on the boundary
+const THREAT_QUERY_INTERVAL_TICKS = 4; // 15 Hz on the fixed 60 Hz simulation clock
+const EMPTY_THREAT_REQUESTS = Object.freeze([]);
 export const NPC_JOB_HEAVE_TO_DURATION_S = 5;
 export const NPC_JOB_HEAVE_TO_COOLDOWN_S = 12;
 // On re-entry a virtual job advances by the elapsed away-time, clamped to a bounded recent window.
@@ -368,6 +370,9 @@ export const npcJobsRuntime = {
       fallbackIndex: 'ships',
       eligible: eligibleActiveHostile,
     });
+    this._threatQueryState = this.state;
+    this._lastThreatQueryTick = null;
+    this._threatQueryDirty = true;
 
     // Runtime bridge for intents: every kernel intent is surfaced on the bus under its own event
     // name (npcjobs:transit / :work / :cycle / :hold / :complete / …). Cargo/economy owners MAY
@@ -407,18 +412,21 @@ export const npcJobsRuntime = {
       this.bus.on('entity:spawned', (p) => {
         const payload = p || {};
         this._threatQueries.recordSpawn(payload);
+        this._threatQueryDirty = true;
         this._onCeresRealTargetSpawn(payload);
       });
       // A job whose hull is destroyed (never demoted) ends with the entity (ruling 5).
       this.bus.on('entity:killed', (p) => {
         const payload = p || {};
         this._threatQueries.recordDestroy(payload);
+        this._threatQueryDirty = true;
         this._onCeresRealTargetGone(payload);
         this._onEntityGone(payload);
       });
       this.bus.on('entity:destroyed', (p) => {
         const payload = p || {};
         this._threatQueries.recordDestroy(payload);
+        this._threatQueryDirty = true;
         this._onCeresRealTargetGone(payload);
         this._onEntityGone(payload);
       });
@@ -1264,6 +1272,8 @@ export const npcJobsRuntime = {
     this._resetCeresEscortAuthority();
     this._resetCeresRealTargetAuthority();
     this._threatQueries?.reset();
+    this._lastThreatQueryTick = null;
+    this._threatQueryDirty = true;
   },
 
   // ── producer seam: create + link a job for a freshly spawned civilian hull ───────────────────
@@ -1389,6 +1399,7 @@ export const npcJobsRuntime = {
       || !this._isCanonicalCeresRealTargetRoute(realTargetActor, job.route, job.speed))) return null;
     byId[jobId] = entry;
     entity.data.jobId = jobId;
+    this._threatQueryDirty = true;
     if (formationSlot) this._bindCeresFormationSlot(formationSlot, entry, entity);
     this._refreshCeresRealTargetsForEntry(entry, entity);
     return jobId;
@@ -1807,9 +1818,16 @@ export const npcJobsRuntime = {
         fallbackIndex: 'ships',
         eligible: eligibleActiveHostile,
       }));
+    if (this._threatQueryState !== this.state) {
+      this._threatQueryState = this.state;
+      this._lastThreatQueryTick = null;
+      this._threatQueryDirty = true;
+    }
     threatQueries.setState(this.state).begin();
     if (this.state.mode !== 'flight') {
       threatQueries.execute();
+      this._lastThreatQueryTick = null;
+      this._threatQueryDirty = true;
       return; // scenery only matters in flight (mirrors traffic)
     }
     const byId = this._byId();
@@ -1819,30 +1837,58 @@ export const npcJobsRuntime = {
     this._expireHeaveToLease(simT);
     if (ids.length === 0) {
       threatQueries.execute();
+      this._lastThreatQueryTick = null;
+      this._threatQueryDirty = true;
       return; // strict no-op when no jobs exist
     }
 
     const currentSector = (this.state.world && this.state.world.currentSectorId) || null;
     this._processMinerFieldDepletionRetargets(step, simT);
 
-    // Build every eligible threat request before advancing any job, then execute one owner-facing
-    // broadphase batch. Requests retain only stable ids and scalar origins; GameState remains authority.
-    for (let index = 0; index < ids.length; index++) {
-      const jobId = ids[index];
-      const entry = byId[jobId];
-      if (!entry || !entry.job || entry.entityId == null) continue;
-      const entity = this.state.entities && this.state.entities.get(entry.entityId);
-      if (!entity || !entity.alive || !entity.pos) continue;
-      if (entry.control || entry.job.corrupt || entry.job.phase === NPC_JOB_PHASE.COMPLETE) continue;
-      threatQueries.request(
-        jobId,
-        entity.id,
-        entity.pos.x,
-        entity.pos.z,
-        entry.job.phase === NPC_JOB_PHASE.FLEE ? RESUME_RADIUS : FLEE_RADIUS,
-      );
+    // Event receipts normally dirty the sensor immediately. This bounded validity read also keeps
+    // recovery exact when a caller removes the remembered threat directly from the entity map.
+    if (this._threatQueryDirty === false) {
+      for (let index = 0; index < ids.length; index++) {
+        const entry = byId[ids[index]];
+        if (!entry || entry.job?.phase !== NPC_JOB_PHASE.FLEE || entry.threatId == null) continue;
+        const remembered = this.state.entities && this.state.entities.get(entry.threatId);
+        if (!this._isJobThreat(remembered)) {
+          this._threatQueryDirty = true;
+          break;
+        }
+      }
     }
-    const threatRequests = threatQueries.execute();
+
+    const tick = Number(this.state.tick);
+    const lastThreatQueryTick = this._lastThreatQueryTick;
+    const shouldQueryThreats = this._threatQueryDirty !== false
+      || !Number.isFinite(tick)
+      || !Number.isFinite(lastThreatQueryTick)
+      || tick < lastThreatQueryTick
+      || tick - lastThreatQueryTick >= THREAT_QUERY_INTERVAL_TICKS;
+    let threatRequests = EMPTY_THREAT_REQUESTS;
+    if (shouldQueryThreats) {
+      // Civilian flight remains a 60 Hz writer. Only its coarse threat sensor is sampled at 15 Hz,
+      // on the deterministic fixed-step clock; entity churn bypasses the cadence above.
+      for (let index = 0; index < ids.length; index++) {
+        const jobId = ids[index];
+        const entry = byId[jobId];
+        if (!entry || !entry.job || entry.entityId == null) continue;
+        const entity = this.state.entities && this.state.entities.get(entry.entityId);
+        if (!entity || !entity.alive || !entity.pos) continue;
+        if (entry.control || entry.job.corrupt || entry.job.phase === NPC_JOB_PHASE.COMPLETE) continue;
+        threatQueries.request(
+          jobId,
+          entity.id,
+          entity.pos.x,
+          entity.pos.z,
+          entry.job.phase === NPC_JOB_PHASE.FLEE ? RESUME_RADIUS : FLEE_RADIUS,
+        );
+      }
+      threatRequests = threatQueries.execute();
+      this._lastThreatQueryTick = Number.isFinite(tick) ? tick : null;
+      this._threatQueryDirty = false;
+    }
     let threatRequestIndex = 0;
 
     for (let index = 0; index < ids.length; index++) {
@@ -2645,6 +2691,8 @@ export const npcJobsRuntime = {
     }
     this.state.npcJobs = { byId };
     this._threatQueries?.reset();
+    this._lastThreatQueryTick = null;
+    this._threatQueryDirty = true;
   },
 };
 

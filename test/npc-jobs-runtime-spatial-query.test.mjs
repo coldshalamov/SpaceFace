@@ -6,7 +6,7 @@ import {
   createNearestEntityQueryService,
   findNearestEntityIdFullScan,
 } from '../src/core/spatialQuery.js';
-import { NPC_JOB_PHASE } from '../src/systems/npcJobs.js';
+import { createJob, NPC_JOB_KIND, NPC_JOB_PHASE } from '../src/systems/npcJobs.js';
 import npcJobsRuntime from '../src/systems/npcJobsRuntime.js';
 
 function entity(id, x, z, {
@@ -58,6 +58,20 @@ function createHostileService(state, options = {}) {
     fallbackIndex: 'ships',
     ...options,
   });
+}
+
+function transitJob(id) {
+  const job = createJob({
+    id,
+    kind: NPC_JOB_KIND.PATROL,
+    route: [
+      { id: 'a', pos: { x: 0, z: 0 } },
+      { id: 'b', pos: { x: 100, z: 0 } },
+    ],
+    commissionS: 10,
+  }, 47);
+  job.phase = NPC_JOB_PHASE.TRANSIT;
+  return job;
 }
 
 function activeHostile(entity) {
@@ -434,4 +448,118 @@ test('npcJobsRuntime ignores nearer passive and hold-fire team-1 hulls for flee'
   assert.equal(state.npcJobs.byId['job:owner'].job.phase, NPC_JOB_PHASE.FLEE);
   assert.equal(state.npcJobs.byId['job:owner'].threatId, activeFar.id,
     'the farther active hostile remains visible behind nearer ineligible hulls');
+});
+
+test('npcJobsRuntime senses threats at deterministic 15 Hz while advancing and driving every fixed tick', () => {
+  const owner = entity(100, 0, 0);
+  const hostile = entity(1, 900, 0, { team: 1 });
+  owner.data.jobId = 'job:owner';
+  const state = stateFor([owner, hostile]);
+  state.tick = 100;
+  const job = transitJob('job:owner');
+  state.npcJobs.byId = {
+    'job:owner': {
+      job,
+      entityId: owner.id,
+      lastAdvanceSimT: 0,
+      threatId: null,
+    },
+  };
+
+  let batchCalls = 0;
+  const queryRadiusBatch = state.spatialHash.queryRadiusBatch.bind(state.spatialHash);
+  state.spatialHash.queryRadiusBatch = (requests, options) => {
+    batchCalls++;
+    return queryRadiusBatch(requests, options);
+  };
+  let driveCalls = 0;
+  const runtime = Object.create(npcJobsRuntime);
+  runtime.state = state;
+  runtime._sink = () => {};
+  runtime._drive = () => { driveCalls++; };
+  runtime._threatQueries = createHostileService(state);
+
+  runtime.update(1 / 60, state);
+  assert.equal(batchCalls, 1, 'the first fixed tick senses immediately');
+  const afterFirstAdvance = job.simTime;
+
+  hostile.pos.x = 10;
+  for (const tick of [101, 102, 103]) {
+    state.tick = tick;
+    state.simTime += 1 / 60;
+    runtime.update(1 / 60, state);
+  }
+  assert.equal(batchCalls, 1, 'three intervening fixed ticks reuse the last threat decision');
+  assert.equal(job.phase, NPC_JOB_PHASE.TRANSIT, 'threat reconciliation waits for the next sensor tick');
+  assert.equal(driveCalls, 4, 'civilian drive still runs on every fixed tick');
+  assert.ok(job.simTime > afterFirstAdvance, 'the durable job clock still advances on skipped sensor ticks');
+
+  state.spatialHash.rebuildLayers([], [owner, hostile], 2);
+  state.tick = 104;
+  state.simTime += 1 / 60;
+  runtime.update(1 / 60, state);
+  assert.equal(batchCalls, 2, 'the fourth fixed tick performs the next deterministic sensor batch');
+  assert.equal(job.phase, NPC_JOB_PHASE.FLEE);
+  assert.equal(state.npcJobs.byId['job:owner'].threatId, hostile.id);
+  assert.equal(driveCalls, 5);
+});
+
+test('npcJobsRuntime entity spawn and destroy events force immediate threat refresh', () => {
+  const owner = entity(100, 0, 0);
+  owner.data.jobId = 'job:owner';
+  const state = stateFor([owner]);
+  state.tick = 200;
+  state.npcJobs.byId = {
+    'job:owner': {
+      job: transitJob('job:owner'),
+      entityId: owner.id,
+      lastAdvanceSimT: 0,
+      threatId: null,
+    },
+  };
+  const listeners = new Map();
+  const bus = {
+    on(name, listener) {
+      let list = listeners.get(name);
+      if (!list) listeners.set(name, (list = []));
+      list.push(listener);
+    },
+    off() {},
+    emit(name, payload) {
+      for (const listener of listeners.get(name) || []) listener(payload);
+    },
+  };
+  let batchCalls = 0;
+  const queryRadiusBatch = state.spatialHash.queryRadiusBatch.bind(state.spatialHash);
+  state.spatialHash.queryRadiusBatch = (requests, options) => {
+    batchCalls++;
+    return queryRadiusBatch(requests, options);
+  };
+  const runtime = Object.create(npcJobsRuntime);
+  runtime.init({ state, bus, helpers: {}, registry: {} });
+  runtime._sink = () => {};
+  runtime._drive = () => {};
+
+  runtime.update(0, state);
+  assert.equal(batchCalls, 1);
+
+  const hostile = entity(1, 10, 0, { team: 1, collides: false });
+  state.entityList.push(hostile);
+  state.entities.set(hostile.id, hostile);
+  state.entityIndex.ships.push(hostile);
+  state.tick = 201;
+  bus.emit('entity:spawned', { id: hostile.id, entity: hostile });
+  runtime.update(0, state);
+  assert.equal(batchCalls, 2, 'a same-tick spawn bypasses the ordinary four-tick cadence');
+  assert.equal(state.npcJobs.byId['job:owner'].job.phase, NPC_JOB_PHASE.FLEE);
+  assert.equal(state.npcJobs.byId['job:owner'].threatId, hostile.id);
+
+  hostile.alive = false;
+  state.entities.delete(hostile.id);
+  state.tick = 202;
+  bus.emit('entity:destroyed', { id: hostile.id, entityId: hostile.id });
+  runtime.update(0, state);
+  assert.equal(batchCalls, 3, 'a same-tick destroy also bypasses the ordinary cadence');
+  assert.equal(state.npcJobs.byId['job:owner'].job.phase, NPC_JOB_PHASE.TRANSIT);
+  assert.equal(state.npcJobs.byId['job:owner'].threatId, null);
 });
