@@ -10,7 +10,7 @@ Companion to [`PERF_BUDGET.md`](./PERF_BUDGET.md),
 and [`CANONICAL_BUILD_MAP.md`](../CANONICAL_BUILD_MAP.md) §8 / §8.1 / §8.2.
 
 Existing identities `PQ-034`–`PQ-044` and `PQ-051`–`PQ-060` stay authoritative for their
-scopes. Identities `PQ-061`–`PQ-094` below are reserved so later campaigns can admit
+scopes. Identities `PQ-061`–`PQ-118` below are reserved so later campaigns can admit
 leaves without inventing overlapping outcomes.
 
 ## 1. Picture and behavior contract
@@ -50,27 +50,52 @@ Three different distances exist and must not be collapsed:
 
 Most leftover cost is paying glass prices for (2) and (3).
 
-## 3. How every plan runs
+## 3. Universal investigate → invalidate → implement workflow
 
-No leaf implements a platform or algorithm because it is fashionable.
+No leaf implements a platform or algorithm because it is fashionable. Every
+reserved identity, including later ones minted by `PQ-094`, uses this loop.
+
+### 3.1 Investigate
+
+1. Name the **player symptom** (steady 30 Hz, one 100 ms hitch, Continue stall, long-session decay).
+2. Build or reuse a **detector** from §6 that reads the live player route, not a stand-in.
+3. Run a **fixed-seed glass fly** (and Continue if the symptom is boot). Write raw JSON.
+4. Split cost into **glass / runway / beyond** and into **owner buckets** (compile, upload,
+   compose, submit, present, sim, HUD, audio, save, GC, unknown).
+5. Write a one-page census: owner, when it fires, whether it can change the picture,
+   and the smallest legal IMPL leaf.
+
+Done for INV: a named owner plus `implement` / `reject` / `needs-deeper-inv`. Not a green check.
+
+### 3.2 Invalidate (reject without implementing)
+
+Reject the candidate when **any** of these hold:
+
+- The census says that owner is not on the pole (another bill is larger).
+- A same-route A/B with the candidate **worsens** p95, hitch, or worst-frame.
+- On-glass submit counts collapse, bloom/shadows drop, or pixels change.
+- Sim hashes move and `PQ-066` did not pre-clear that change.
+- The stall merely **moved** (into Continue, first shot, or sector entry).
+- JS↔WASM / Worker **copy** costs more than the island saves (`PQ-067` bench).
+- The idea needs a quality knob or an empty sky to “win.”
+
+Write `reject` plus the fingerprint. Keep the detector. Do not retry the same
+candidate against the same harness without a relevant change.
+
+### 3.3 Implement
+
+1. Admit the **smallest** IMPL leaf the census selected. One pole per cycle.
+2. Ship tests that drive the **real** functions (no re-implemented oracle).
+3. Matched interleaved A/B; on-glass submit and default picture stay honest.
+4. **Keep** only if hitch and/or p95 improve (or already vsync) and the picture holds.
+5. **Revert** otherwise. Feed any new legal outcome into this catalog as a new leaf.
 
 ```
-measure the live pole
-  → pick one family from this catalog
-  → if the leaf is INV: build the detector/scaffold, write the census, name the owner
-  → if the leaf is IMPL: implement only what the census selected
-  → shipped tests of the real functions
-  → matched same-route A/B that keeps on-glass submit counts honest
-  → keep or revert
-  → feed any new legal outcome back into this catalog as a new reserved leaf
+symptom → detector → census (INV)
+       → invalidate?  reject + keep evidence
+       → else one IMPL leaf → tests → A/B → keep|revert
+       → PQ-094 sweep → new leaf if a pole has no name
 ```
-
-Investigation packets are first-class. Their done condition is a named owner plus
-a keep/reject/implement decision, not a green check. The paired implementation
-packet is how that decision becomes production.
-
-Standing workflow `PQ-094` is the loop that discovers poles this file does not
-yet name.
 
 ## 4. Horizon
 
@@ -171,6 +196,38 @@ as tabletop cheapness, not a skyline) · `PQ-054` bounded GPU admission ·
 |---|---|---|---|---|
 | **`PQ-094` / `PERF-54-POLE-SWEEP`** | Standing | New poles become new reserved leaves instead of folklore. | Recurring: run `PQ-061`–`PQ-063` on the current default route; if a pole has no leaf, add one here; if a leaf is disproved, mark reject and keep the evidence. | Each sweep produces a keep/reject/new-leaf note. Never “done forever.” |
 
+### 5.10 Additional reserved leaves (gaps after §5.2–§5.8)
+
+These are legal same-picture routes that the first catalog pass did not name.
+Each still starts as INV unless a prior census already named that owner.
+
+| Plan | Horizon | Player outcome | Scope | Done when |
+|---|---|---|---|---|
+| **`PQ-095` / `PERF-55-SKY-ON-A-TABLE`** | Near INV→IMPL | Starfield, parallax, deep-field, and planet cards cost what a tabletop can use, not a horizon sim. | Census `spaceBackground` / parallax / deep-field / sky planets vs glass. Invalidate if they are already cheaper than submit. Else cadence, residency, or cheaper sky depth that still reads as sky. | Sky phase falls or reject; glass picture including sky unchanged. |
+| **`PQ-096` / `PERF-56-EVENT-LIGHT-CARDINALITY`** | Mid INV→IMPL | Always-visible event lights stop baking unused light-count variants into every program. | Census live point-light count vs flashes. Three bakes visible light count into the program key. Options: intensity-only pool already matching compile; fewer reserved slots if the picture matches; exact-count prewarm (`PQ-072`). | First-flash hitch gone; combat lighting looks the same. |
+| **`PQ-097` / `PERF-57-BLOOM-RESOLVE`** | Mid INV→IMPL | Bloom/HDR present costs less at the same look. | After `PQ-063` says present is the pole. Half-res or R11G11B10 bloom, fewer pyramid levels, same default strength. Pixel-diff the glass. Invalidate if the halo changes. | Present time down; matched stills keep. |
+| **`PQ-098` / `PERF-58-SPEEDLINE-OFFTHREAD`** | Mid INV→IMPL | Boost speed-lines cannot hitch the 3D present. | Census Canvas2D overlay. Options: cache strokes (partially shipped), OffscreenCanvas worker, GPU polyline, skip one frame after late present (shipped). | Speed-line bucket leaves `PQ-062`; boost still reads. |
+| **`PQ-099` / `PERF-59-SCENE-GRAPH-FLATTEN`** | Mid INV→IMPL | `updateMatrixWorld` / child walks do not scale with off-glass graphs. | Census Object3D count and matrix updates on glass vs beyond. Flatten or freeze static station/place graphs; layers bitmask for glass. | Prep CPU falls; sockets/animation that must move still move. |
+| **`PQ-100` / `PERF-60-ORIGIN-REBASE-HITCH`** | Mid INV→IMPL | Floating-origin rebase is not a 30–100 ms hitch. | Census rebase frequency and cost (batch bounds, instance buffers). Invalidate if rare and cheap. Else dirty-only refresh (partially shipped). | Rebase disappears from `PQ-062`. |
+| **`PQ-101` / `PERF-61-CATCHUP-SPIRAL`** | Near INV→IMPL | A late render does not cascade extra sim steps into the next miss. | Census `MAX_CATCHUP_STEPS` / accumulator after hitches. Cap or shed without teleporting the ship. | One hitch does not become three; determinism/`PQ-066` holds. |
+| **`PQ-102` / `PERF-62-MENU-WORLD-UNLOAD`** | Mid INV→IMPL | Station UI, map, and pause do not keep a full flight world submitting. | Census hidden-screen 3D. Unload or freeze the flight scene when the player cannot see it; restore on exit without a seconds-scale hitch. | Hidden screens drop GPU; return-to-flight picture matches. |
+| **`PQ-103` / `PERF-63-DECODE-WORKER`** | Mid INV→IMPL | GLB / KTX2 / Basis / meshopt decode is not on the present thread. | Worker or WASM decode; ImageBitmap / createImageBitmap. Main thread only installs GPU objects (`PQ-074`). | Decode bucket leaves `PQ-062`; assets look the same. |
+| **`PQ-104` / `PERF-64-BINARY-SHADER-CACHE`** | Mid INV→IMPL | Repeat boots reuse driver program binaries. | Chromium/Electron program binary cache, WebGPU pipeline cache. Invalidate if first-run fly is unchanged and only boot changes. | Warm launch first-use compile histogram shrinks. |
+| **`PQ-105` / `PERF-65-AUDIO-TABLE-CULL`** | Near INV→IMPL | Audio sources follow the table, not a 900 WU horizon. | Census voice count vs glass. Cull/mix only what the player can hear next to the ship. | Audio CPU falls; combat and UI sound unchanged. |
+| **`PQ-106` / `PERF-66-HOT-ALLOC-SHAPES`** | Mid INV→IMPL | Per-frame object/event/string allocation is not the hitch owner. | After `PQ-065`. Pool events, SoA traffic, monomorphic hot functions, no megamorphic adds. | GC hitch bucket falls or reject. |
+| **`PQ-107` / `PERF-67-STATE-CHANGE-SORT`** | Mid INV→IMPL | On-glass draws are ordered to minimize program binds, not random scene order. | After `PQ-063` says submit is still the pole on-glass. Sort opaque by program; optional front-to-back. Pixel-diff. | Draw time down; pixels match. |
+| **`PQ-108` / `PERF-68-TINY-ONGLASS-LOD`** | Mid INV→IMPL | A 30-pixel on-glass fighter is cheap; a 120-pixel fighter is full. | This is **on-glass** LOD for this camera, not a far-world impostor. After `PQ-061` projected-px histogram. | Tiny contacts cheaper; close ships unchanged. |
+| **`PQ-109` / `PERF-69-GL-CONTEXT-FLAGS`** | Near INV→IMPL | Canvas/GL flags do not add a hidden copy (alpha, preserveDrawingBuffer, desynchronized, powerPreference). | A/B each flag. Invalidate if picture or input latency worsens. | Present time down or reject per flag. |
+| **`PQ-110` / `PERF-70-ANGLE-BACKEND`** | Mid INV→IMPL | Electron/Chromium uses the fastest legal ANGLE backend on this GPU (D3D11/D3D12/Vulkan). | Same game, different plumber. Invalidate if artifacts or worse hitch. | Quiet fly p95/hitch improve or reject. |
+| **`PQ-111` / `PERF-71-PIXEL-PARITY-GATE`** | Near INV | Same-picture claims have a glass still-diff, not hope. | Scaffold: paired stills, ignore grain if needed, fail on emptied sky or missing bloom/shadows. Used by every IMPL A/B. | Later leaves can be invalidated automatically when the table changes. |
+| **`PQ-112` / `PERF-72-THERMAL-NOISE`** | Standing | A/B pairs that are GPU-clock or thermal noise are discarded, not averaged. | Detect clocks/thermals; require interleaved pairs. | Saturated pairs cannot pass a leaf. |
+| **`PQ-113` / `PERF-73-PROD-PROBES-OFF`** | Near INV→IMPL | Production default does not leave hitch rings, GPU timers, or debug traversals on. | Census default-on probes. Keep them opt-in. | Default fly does not pay debug tax. |
+| **`PQ-114` / `PERF-74-IDLE-ADMISSION`** | Mid INV→IMPL | Compile/upload of the *next* contact happens in true idle, not on rAF. | `scheduler.yield` / idle callback **after** present, never `setTimeout(0)` stacked on the next rAF (already shown to floor 30 Hz). | Next-contact warm without stealing vsync. |
+| **`PQ-115` / `PERF-75-VFX-ONGLASS`** | Mid INV→IMPL | Trails, sparks, lights, and flipbooks exist only for on-glass + short runway. | After `PQ-061`. Pixel-floor already exists for some FX; extend to pools. | VFX draw/CPU scale with the table. |
+| **`PQ-116` / `PERF-76-HDR-BUFFER-FORMAT`** | Mid INV→IMPL | Scene/bloom targets use the cheapest format that keeps the default halo. | HalfFloat vs R11G11B10 vs RGBM; Intel-specific. Feeds `PQ-097`. | Present/fill down; stills keep. |
+| **`PQ-117` / `PERF-77-HIDDEN-SYSTEM-SKIP`** | Near INV→IMPL | Registry systems do not full-tick when the 3D world is not on screen. | Pause, map, station shell, loading. Input/save stay alive. | Hidden-screen CPU/GPU drop; resume hashes hold. |
+| **`PQ-118` / `PERF-78-REPLAY-PERF-BISECT`** | Mid INV | A hitch can be bisected with a deterministic replay instead of folklore. | Record input+seed; replay; classify (`PQ-062`). | A named hitch is reproducible offline. |
+
 ## 6. Investigation protocols (scaffolds this catalog may build)
 
 These are tools, not outcomes. A campaign may build any of them when a leaf needs them.
@@ -187,6 +244,12 @@ These are tools, not outcomes. A campaign may build any of them when a leaf need
 - **Restore/TDR drill** — lose context, count hitch and recovery.
 - **Spector / RenderDoc / PIX / Intel GPA** — draw-family census when submit is the pole.
 - **Chrome trace / GC** — when `PQ-065` is the next question.
+- **Glass still-diff** — `PQ-111` paired stills for same-picture invalidate.
+- **Thermal/clock guard** — `PQ-112` so noisy pairs cannot pass.
+- **Light-count / program-key pair** — `PQ-096` with `PQ-064`.
+- **Hidden-screen probe** — `PQ-102` / `PQ-117` (map, station, pause).
+- **Decode-thread probe** — `PQ-103` main vs worker.
+- **Replay tape** — `PQ-118` input+seed for hitch bisect.
 
 Detectors must read the live player route, not a convenient stand-in.
 
@@ -203,6 +266,17 @@ Detectors must read the live player route, not a convenient stand-in.
 | Autosave or HUD/audio is the hitch owner | `PQ-087`, `PQ-088` |
 | Web structural families exhausted, p99 still high | `PQ-089`, then `PQ-090`/`PQ-091` |
 | Electron worse than browser | `PQ-092` |
+| Sky/parallax/deep-field dominate on a table | `PQ-095` |
+| First flash / new light-count compile | `PQ-096`, `PQ-072` |
+| Bloom/HDR present is the remaining pole | `PQ-097`, `PQ-116`, `PQ-078` |
+| Speed-lines hitch | `PQ-098` |
+| Matrix/graph walks dominate prep | `PQ-099` |
+| Origin rebase hitch | `PQ-100` |
+| One hitch becomes several | `PQ-101` |
+| Menus still draw the world | `PQ-102`, `PQ-117` |
+| Decode/transcode on rAF | `PQ-103`, `PQ-104` |
+| Audio CPU vs 900 WU cull | `PQ-105` |
+| Tiny on-glass ships still full lod0 | `PQ-108` |
 | Unknown | `PQ-094` plus a new reserved leaf |
 
 ## 8. Explicitly not discarded
