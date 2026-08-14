@@ -16,16 +16,29 @@ export function collectCompileSubjects(root) {
   return subjects.length ? subjects : [root];
 }
 
-export async function compileSubjectsAcrossPresents(subjects, compileOne, yieldFn) {
+export const COMPILE_PRESENT_SLICE_MS = 4;
+
+export async function compileSubjectsAcrossPresents(subjects, compileOne, yieldFn, options = {}) {
   if (typeof compileOne !== 'function') {
     throw new TypeError('compileSubjectsAcrossPresents requires compileOne()');
   }
   const list = Array.isArray(subjects) ? subjects.filter(Boolean) : [];
+  const budgetMs = Number.isFinite(Number(options.budgetMs))
+    ? Math.max(0, Number(options.budgetMs))
+    : COMPILE_PRESENT_SLICE_MS;
+  const now = typeof options.now === 'function'
+    ? options.now
+    : () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
+      ? performance.now()
+      : Date.now());
   const results = [];
+  let sliceStarted = now();
   for (let i = 0; i < list.length; i++) {
     results.push(await compileOne(list[i]));
-    if (i < list.length - 1 && typeof yieldFn === 'function') {
+    const spent = now() - sliceStarted;
+    if (i < list.length - 1 && typeof yieldFn === 'function' && spent >= budgetMs) {
       await yieldFn();
+      sliceStarted = now();
     }
   }
   return results;
