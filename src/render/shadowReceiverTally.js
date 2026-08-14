@@ -48,8 +48,8 @@ export function createShadowReceiverTally() {
       dirty = false;
       return count;
     },
-    resolve(scene) {
-      if (dirty) return this.recount(scene);
+    resolve(scene, options = {}) {
+      if (dirty || options.force === true) return this.recount(scene);
       return count;
     },
   };

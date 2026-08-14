@@ -4840,7 +4840,9 @@ export const render = {
     }
     if (this._shadowReceiverTally) {
       if (this._shadowReceiversDirty || this._shadowReceiverTally.dirty) {
-        this._shadowReceiverCount = this._shadowReceiverTally.resolve(this.scene);
+        this._shadowReceiverCount = this._shadowReceiverTally.resolve(this.scene, {
+          force: this._shadowReceiversDirty === true,
+        });
         this._shadowReceiversDirty = false;
       } else {
         this._shadowReceiverCount = this._shadowReceiverTally.count;
