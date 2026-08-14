@@ -5672,6 +5672,8 @@ function admitRenderPackageShipPoolCandidate(
   // direct until another stable ship boundary proves that this resource identity really repeats.
   if (!hasPackageSlots && first?.owner === owner) return object;
 
+  const live = authoredRuntimeState();
+  const deferNewChunkPublication = !live || live.mode === 'loading';
   const allocations = [];
   try {
     if (!hasPackageSlots && first) {
@@ -5683,17 +5685,17 @@ function admitRenderPackageShipPoolCandidate(
         first.object.material || first.material,
         first.label,
         {
-          deferNewChunkPublication: true,
+          deferNewChunkPublication,
           initializeVisibleMatrix: true,
-          deferProxyActivation: true,
+          deferProxyActivation: deferNewChunkPublication,
           activateProxy: () => promoteRenderPackageMeshToPoolProxy(first.object, key),
           packageCandidate: first,
         },
       ));
     }
     allocations.push(allocateInstance(scene, owner, object, geometry, material, label, {
-      deferNewChunkPublication: true,
-      deferProxyActivation: true,
+      deferNewChunkPublication,
+      deferProxyActivation: deferNewChunkPublication,
       activateProxy: () => promoteRenderPackageMeshToPoolProxy(object, key),
       packageCandidate: nextCandidate,
     }));

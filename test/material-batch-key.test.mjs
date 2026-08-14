@@ -53,4 +53,5 @@ test('live instance pools use stamped geometry identity, not clone uuid', async 
   const source = await readFile(new URL('../src/render/partsLibrary.js', import.meta.url), 'utf8');
   assert.match(source, /instancePoolIdentity\(geometry,\s*material\)/);
   assert.match(source, /stampGeometryBatchKey\(object\.geometry/);
+  assert.match(source, /deferNewChunkPublication = !live \|\| live\.mode === 'loading'/);
 });
