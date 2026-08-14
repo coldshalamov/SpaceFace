@@ -71,8 +71,10 @@ INFERENCE, the dock/hulk remaster, and the expansion-research brief.
 - **Drifter is on cycle 16.** Overlapping cabin/nacelle shells, empty
   wells, seated twin drives. Clay is still folded paper. Hitch still
   wins. Not wired.
-- **Ranger through Wasp have a C15 form pass in source** (overlapping
-  shells, empty wells, cool rim, pane glass). Not yet all rebuilt.
+- **Ranger is on cycle 15.** Explorer needle + survey mast. Clay is
+  still folded paper. Hitch still wins. Not wired.
+- **Bastion through Wasp have a C15 form pass in source** (overlapping
+  shells, empty wells, cool rim, pane glass). Rebuilds in progress.
   None wired.
 - **NPC/traffic ships have a C13 form pass in source** (same shell
   language). Not yet all rebuilt. None wired.
