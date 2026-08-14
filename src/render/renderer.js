@@ -4132,6 +4132,12 @@ export const render = {
       transformed++;
     }
 
+    const innerView = viewHalfExtents(
+      this.state.camera && this.state.camera.zoom,
+      this.cam && this.cam.obj && this.cam.obj.fov,
+      this.cam && this.cam.obj && this.cam.obj.aspect,
+    );
+
     for (let index = 0; index < query.visibleCount; index++) {
       const slot = query.visibleSlots[index];
       const generation = query.visibleGenerations[index];
@@ -4154,17 +4160,12 @@ export const render = {
 
       // Projected-screen-size LOD (spec §12.4): visible roots resolve detail from projected pixel
       // width with hysteresis. Newly visible roots are fully posed above before this decision.
-      const inner = viewHalfExtents(
-        this.state.camera && this.state.camera.zoom,
-        this.cam && this.cam.obj && this.cam.obj.fov,
-        this.cam && this.cam.obj && this.cam.obj.aspect,
-      );
       const viewBand = classifyEntityViewBand({
         isPlayer: entity.id === this.state.playerId,
         dx: mesh.position.x - bounds.x,
         dz: mesh.position.z - bounds.z,
-        innerHalfX: inner.halfX,
-        innerHalfZ: inner.halfZ,
+        innerHalfX: innerView.halfX,
+        innerHalfZ: innerView.halfZ,
         forceInner: !!(entity.flags && (entity.flags.forceRender || entity.flags.neverCull)),
       });
       const runClosures = shouldRunEntityClosures(viewBand, this.state.tick, slot);

@@ -17,6 +17,7 @@ import { AUTHORED_ASSET_IMMEDIATE_RADIUS } from './authoredAdmissionPolicy.js';
 import { isReleaseAssetMode } from './releaseMode.js';
 import * as kit from './ships/shipKit.js';
 import { attachPlaceHlod, attachStationHlod } from './hlod.js';
+import { freezeStaticChildMatrices } from './staticChildMatrices.js';
 import { attachLodState } from './lod.js';
 import { canInstallWholeShipLodFamily, selectSpawnLodLevel } from './wholeShipLodPolicy.js';
 import { packageBatchPoolKeyFromMaterial } from './materialBatchKey.js';
@@ -1784,7 +1785,9 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
     };
   }
 
-  return attachStationHlod(boundary, entity);
+  const stationed = attachStationHlod(boundary, entity);
+  freezeStaticChildMatrices(stationed);
+  return stationed;
 }
 
 function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options = {}) {
@@ -1878,7 +1881,9 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
     };
   }
 
-  return attachPlaceHlod(boundary, entity);
+  const placed = attachPlaceHlod(boundary, entity);
+  freezeStaticChildMatrices(placed);
+  return placed;
 }
 
 function authoredAdmissionStarted(state) {
@@ -2064,6 +2069,7 @@ function commitAuthoredPlaceBoundary(
   // in play, so there is no placeholder frame or blue-clay-to-authored identity swap.
   boundary.remove(fallbackRoot);
   boundary.add(authored.root);
+  freezeStaticChildMatrices(authored.root);
   unregisterPreparedAuthoredAdmission(authored);
   setActive(authored.root);
   boundary.userData.authoredReadableFallbackRetained = false;
@@ -3060,11 +3066,16 @@ function settleUpgradeJob(job, status, result = null, error = null) {
 }
 
 function scheduleUpgradeFrame(callback) {
-  const raf = globalThis && typeof globalThis.requestAnimationFrame === 'function'
-    ? globalThis.requestAnimationFrame.bind(globalThis)
+  // Compose/decode must not share the present rAF. Idle or a 0-timeout puts the job after
+  // the current draw so a 40–150 ms merge cannot turn a vsync-locked frame into a hitch.
+  const ric = globalThis && typeof globalThis.requestIdleCallback === 'function'
+    ? globalThis.requestIdleCallback.bind(globalThis)
     : null;
-  if (raf) raf(callback);
-  else setTimeout(callback, 16);
+  if (ric) {
+    ric(() => { callback(); }, { timeout: 32 });
+    return;
+  }
+  setTimeout(callback, 0);
 }
 
 function processUpgradeQueue(state) {

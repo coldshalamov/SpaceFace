@@ -36,7 +36,7 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
   if (typeof compileBatch !== 'function') throw new TypeError('pipeline tracker requires compileBatch()');
   const quietMs = Math.max(0, Number(options.quietMs) || 40);
   const maxWaitMs = Math.max(quietMs, Number(options.maxWaitMs) || 200);
-  const resumeBatchSize = Math.max(1, Math.floor(Number(options.resumeBatchSize) || 2));
+  const resumeBatchSize = Math.max(1, Math.floor(Number(options.resumeBatchSize) || 1));
   const scheduleResume = typeof options.scheduleResume === 'function'
     ? options.scheduleResume
     : (callback) => {

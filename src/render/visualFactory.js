@@ -28,6 +28,7 @@ import {
 } from './objectSpaceGeology.js';
 import { configurePlanarAdditiveMaterial } from './planarAdditivePolicy.js';
 import { buildPlanetSiteVisual } from './planetSiteVisual.js'; // PQ-013 colossal planet-site body
+import { freezeStaticChildMatrices } from './staticChildMatrices.js';
 import {
   makeNoiseTexture, makeGreebleTexture, makeGradientTexture, makeHullPanelTexture, makeStarTexture,
   makeHullNormalMap, makeGreebleDetailTexture, makeDecalSheet,
@@ -263,6 +264,11 @@ const _batchLocal = new THREE.Matrix4();
 const _batchNormal = new THREE.Matrix3();
 const _batchPos = new THREE.Vector3();
 const _batchNrm = new THREE.Vector3();
+
+function freezeStaticPresentation(root) {
+  freezeStaticChildMatrices(root);
+  return root;
+}
 
 function optimizeStaticBatches(root) {
   if (!root) return root;
@@ -3277,8 +3283,8 @@ export function createVisualFactory() {
         if (!e) return null;
         switch (e.type) {
           case 'ship': return optimizeStaticBatches(buildShipMesh(e, resolvePalette(e)));
-          case 'asteroid': return buildAsteroid(e);
-          case 'station': return attachStationHlod(optimizeStaticBatches(buildStation(e)), e);
+          case 'asteroid': return freezeStaticPresentation(buildAsteroid(e));
+          case 'station': return freezeStaticPresentation(attachStationHlod(optimizeStaticBatches(buildStation(e)), e));
           case 'pickup': return buildPickup(e);
           case 'projectile': return buildProjectile(e);
           case 'drone': return buildDrone(e);
@@ -3288,9 +3294,9 @@ export function createVisualFactory() {
           case 'charge': return buildImpulseCharge(e);
           case 'massSeed': return buildMassSeed(e);
           case 'masslineSnareAnchor': return buildMasslineSnareAnchor(e);
-          case 'wreck': return buildWreck(e);
+          case 'wreck': return freezeStaticPresentation(buildWreck(e));
           // PQ-013: the colossal planet-site body (Q18 identity transaction spawns exactly one).
-          case 'planet': return buildPlanetSiteVisual(e);
+          case 'planet': return freezeStaticPresentation(buildPlanetSiteVisual(e));
           case 'fx': return null; // fx entities are handled by the vfx particle system, not meshed
           default: return buildFallback(e);
         }
