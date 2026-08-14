@@ -26,6 +26,11 @@ import {
   isRigidOpaqueBatchableSurface,
 } from './rigidOpaqueBatchPolicy.js';
 import { authoredUpgradeConcurrencyLimit as resolveAuthoredUpgradeConcurrency } from './authoredUpgradePolicy.js';
+import {
+  rememberStaticBatchGeometry,
+  staticBatchGeometryCacheKey,
+  takeCachedStaticBatchGeometry,
+} from './staticBatchGeometryCache.js';
 import { configureTransparentSinglePassSurfaces } from './transparentSinglePassPolicy.js';
 import { installWorldSitePresentation } from './worldSitePresentation.js';
 import {
@@ -5163,6 +5168,9 @@ function flushStaticBatchGroup(parent, bindings, buckets, options = {}) {
 }
 
 function buildStaticBatchGeometry(bucket, options = {}) {
+  const cacheKey = staticBatchGeometryCacheKey(bucket);
+  const cached = takeCachedStaticBatchGeometry(cacheKey);
+  if (cached) return cached;
   const tier1Geometry = tier1CausalCounters();
   const geometries = normalizeStaticBatchGeometries(bucket.entries.map((entry) => {
     const geometry = entry.primitive.geometry.clone();
@@ -5184,7 +5192,11 @@ function buildStaticBatchGeometry(bucket, options = {}) {
       geometry.dispose();
     }
   }
-  return merged || null;
+  if (merged) {
+    rememberStaticBatchGeometry(cacheKey, merged);
+    return typeof merged.clone === 'function' ? merged.clone() : merged;
+  }
+  return null;
 }
 
 // KHR_mesh_quantization commonly stores POSITION as normalized Int16. BufferGeometry.applyMatrix4()
