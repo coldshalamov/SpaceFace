@@ -40,6 +40,15 @@ test('authored role keys win, and a different albedo does not collapse', () => {
   const blue = new THREE.MeshStandardMaterial({ color: 0x2244ff, roughness: 0.45, metalness: 0.2 });
   assert.equal(materialBatchProgramKey(red), materialBatchProgramKey(blue));
   assert.notEqual(materialBatchFingerprint(red), materialBatchFingerprint(blue));
+
+  const image = { width: 64, height: 64, uuid: 'shared-ktx2' };
+  const texA = new THREE.Texture(image);
+  const texB = new THREE.Texture(image);
+  const mappedA = new THREE.MeshStandardMaterial({ map: texA, color: 0xff0000 });
+  const mappedB = new THREE.MeshStandardMaterial({ map: texB, color: 0x00ff00 });
+  assert.notEqual(texA.uuid, texB.uuid);
+  assert.equal(materialBatchProgramKey(mappedA), materialBatchProgramKey(mappedB));
+  assert.equal(materialBatchProgramKey(mappedA).includes(texA.uuid), false);
 });
 
 test('cloned hull geometries share a pool key after they are stamped', () => {

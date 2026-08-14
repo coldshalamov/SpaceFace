@@ -13,7 +13,8 @@ function materialMapFingerprint(material) {
     if (!tex) return `${key}:0`;
     const image = tex.image;
     const src = tex.userData && (tex.userData.src || tex.userData.url);
-    const id = src || tex.uuid || (image && (image.src || image.uuid)) || 'tex';
+    const imageId = image && (image.src || image.uuid || (image.width && `${image.width}x${image.height}`));
+    const id = src || imageId || 'tex';
     return `${key}:${id}`;
   }).join(',');
 }
