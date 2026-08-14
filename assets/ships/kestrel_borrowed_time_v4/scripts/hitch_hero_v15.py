@@ -1,24 +1,19 @@
-"""Hitch hero V14: remove leftover toy gear poles. Keep the open throat."""
+"""Hitch hero V15 / cycle 06: hide the remaining original landing poles."""
 from __future__ import annotations
 
-from hitch_hero_v13 import apply_hitch_hero_v13
+from hitch_hero_v14 import apply_hitch_hero_v14
 from material_truth_v6 import _root
 
-PASS_ID = "kestrel-hitch-hero-v14"
+PASS_ID = "kestrel-hitch-hero-v15"
 HIDE_PREFIXES = (
-    "V11_MainOleo",
-    "V11_MainPad",
-    "V11_MainScissor",
-    "V11_GearHouse",
-    "V10_Gear",
     "Landing_Strut",
     "Landing_Damper",
     "Landing_Skid",
 )
 
 
-def apply_hitch_hero_v14() -> dict:
-    prior = apply_hitch_hero_v13()
+def apply_hitch_hero_v15() -> dict:
+    prior = apply_hitch_hero_v14()
     hidden = []
     import bpy
     for obj in bpy.data.objects:
@@ -28,11 +23,11 @@ def apply_hitch_hero_v14() -> dict:
             obj.hide_set(True)
             hidden.append(name)
     report = {
-        "schema": "spaceface.hitchHero.v14",
+        "schema": "spaceface.hitchHero.v15",
         "passId": PASS_ID,
         "prior": prior,
         "hidden": hidden,
         "objectsAdded": 0,
     }
-    _root()["hitchHeroPassV14"] = report
+    _root()["hitchHeroPassV15"] = report
     return report
