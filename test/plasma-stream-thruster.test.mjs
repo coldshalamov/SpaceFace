@@ -15,6 +15,7 @@ import {
 } from '../src/render/thruster/ribbon/plasmaRibbons.js';
 import {
   ContrailTrail,
+  STRAND_COUNT,
   TRAIL_SECONDS,
   MIN_STEP_WU,
 } from '../src/render/thruster/ribbon/contrailTrail.js';
@@ -205,6 +206,13 @@ test('the contrail exists only where the nozzle has actually been', () => {
 test('the contrail is a tight bright bundle, not an invisible wisp or a wide net', () => {
   const trail = new ContrailTrail(THREE, {});
   const u = trail.material.uniforms;
+
+  assert.equal(TRAIL_SECONDS, 1.0, 'history trail retains half the prior flight history');
+  assert.equal(trail.strands, 21, 'history trail carries 50% more ribbons');
+  assert.equal(trail.strands, STRAND_COUNT, 'geometry and material use the same ribbon count');
+  assert.equal(u.uRadiance.value, 0.682, 'history trail is 10% brighter');
+  assert.equal(u.uWidthHead.value, 0.9, 'fresh history ribbons are 50% thicker');
+  assert.equal(u.uWidthTail.value, 3.3, 'aged history ribbons are 50% thicker');
 
   // It shipped invisible once: tuned so faint that half the effect was technically present on the play
   // route and could not be seen. These are floors, not taste.

@@ -30,11 +30,11 @@
 import * as THREE from 'three';
 
 /** Seconds of flight history retained. */
-export const TRAIL_SECONDS = 2.0;
+export const TRAIL_SECONDS = 1.0;
 /** Path samples retained. TRAIL_SECONDS * sample rate, with headroom. */
 export const SAMPLE_COUNT = 128;
 /** Strands braided along the path. More strands make a thicker rope, not a wider one. */
-export const STRAND_COUNT = 14;
+export const STRAND_COUNT = 21;
 /** Vertices across each strand, so each strand is a curved sheet rather than a flat wire. */
 export const STRAND_ACROSS = 3;
 /**
@@ -299,8 +299,8 @@ export function createContrailMaterial(T, opts = {}) {
       // the strands overlap into one dense rope of exhaust with ribbon structure legible inside it.
       uHeadRadius: { value: 0.8 },
       uTailRadius: { value: 3.0 },
-      uWidthHead: { value: 0.6 },
-      uWidthTail: { value: 2.2 },
+      uWidthHead: { value: 0.9 },
+      uWidthTail: { value: 3.3 },
       // Low. A fast azimuthal drift winds the strands around each other and the braid reads as a tangle
       // of wire, which is worse than the thin line it replaced.
       uDrift: { value: 0.3 },
@@ -313,7 +313,7 @@ export function createContrailMaterial(T, opts = {}) {
       // precisely because the bundle is tight: concentrated material is bright without covering area.
       // Tuned so faint it vanished on the real play route once, which meant half the effect was
       // technically shipping and visually absent.
-      uRadiance: { value: 0.62 },
+      uRadiance: { value: 0.682 },
       uOpacity: { value: 0.055 },
       uGrazeGain: { value: 3.6 },
       uGrazeFloor: { value: 0.2 },
