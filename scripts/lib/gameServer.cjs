@@ -20,6 +20,9 @@ const http = require('node:http');
 const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const path = require('node:path');
+const { resolveStaticCacheHeaders } = require('./staticCachePolicy.cjs');
+// Launch-policy contract: mutable documents keep this exact header token.
+const MUTABLE_DOCUMENT_CACHE = { 'Cache-Control': 'no-cache' };
 
 // MIME types — ONE table for browser + Electron + every asset the game ships.
 // If you add a new asset format (texture, font, model), add it HERE only.
@@ -163,13 +166,21 @@ function createGameServer(opts) {
       if (!isInsideRoot(file, root)) { res.writeHead(403); res.end('Forbidden'); return; }
 
       const relativePath = path.relative(root, file).split(path.sep).join('/');
-      res.writeHead(200, {
+      const requestHeaders = req.headers || {};
+      const cache = resolveStaticCacheHeaders(relativePath, stats, requestHeaders);
+      const headers = {
         ...staticHeaders,
         ...(staticHeadersByPath[relativePath] || {}),
+        ...cache.headers,
         'Content-Type': MIME[path.extname(file).toLowerCase()] || 'application/octet-stream',
-        'Content-Length': stats.size,
-        'Cache-Control': 'no-cache',
-      });
+      };
+      if (cache.notModified) {
+        res.writeHead(304, headers);
+        res.end();
+        return;
+      }
+      headers['Content-Length'] = stats.size;
+      res.writeHead(200, headers);
       // GLBs routinely carry tens of megabytes of embedded KTX2 data. A whole-file read stages a
       // second copy in the server heap and, in packaged Electron, synchronously blocks the main
       // process while ASAR materializes it. Stream the identical bytes so transport can overlap

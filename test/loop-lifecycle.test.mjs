@@ -385,3 +385,16 @@ test('destroy cancels the pending frame and removes both lifecycle listeners', (
   assert.equal(h.lifecyclePort.listenerCount(), 0);
   assert.equal(h.raf.count(), 0);
 });
+
+test('a thrown render frame records lastFrameError and still reschedules presentation', () => {
+  const h = createHarness();
+  h.registry.renderUpdate = () => {
+    throw new Error('draw boom');
+  };
+  h.raf.flushOne(h.clock.advance(16.667));
+  const diagnostics = h.controller.getDiagnostics();
+  assert.equal(diagnostics.lastFrameError, 'draw boom');
+  assert.ok(diagnostics.frameErrorCount >= 1);
+  assert.equal(h.raf.count(), 1);
+  h.controller.destroy();
+});

@@ -18,6 +18,9 @@ import { isReleaseAssetMode } from './releaseMode.js';
 import * as kit from './ships/shipKit.js';
 import { attachStationHlod } from './hlod.js';
 import { attachLodState } from './lod.js';
+import { canInstallWholeShipLodFamily, selectSpawnLodLevel } from './wholeShipLodPolicy.js';
+import { packageBatchPoolKeyFromMaterial } from './materialBatchKey.js';
+import { isRigidOpaqueBatchableSurface } from './rigidOpaqueBatchPolicy.js';
 import { configureTransparentSinglePassSurfaces } from './transparentSinglePassPolicy.js';
 import { installWorldSitePresentation } from './worldSitePresentation.js';
 import {
@@ -635,7 +638,13 @@ export function isInitialAuthoredCompositionEntity(entity, state) {
 export function authoredPreloadPlanForEntity(entity, options = {}) {
   if (!entity || entity.type !== 'ship') return {};
   const whole = wholeShipVisualForEntity(entity, options);
-  if (whole && whole.file) return { hull: [whole.file] };
+  if (whole && whole.file) {
+    const file = options.forceWholeShipFile
+      || (options.lodLevel
+        ? wholeShipLodFileForEntity(entity, options.lodLevel, options)
+        : whole.file);
+    return { hull: [file] };
+  }
 
   const defId = entity.data && entity.data.defId;
   const seed = hashString(`${entity.id}|${defId}|${entity.factionId || ''}`);
@@ -768,8 +777,18 @@ export function authoredPrewarmRequestsForEntities(entities, options = {}) {
 
     let plan = {};
     if (entity.type === 'ship') {
+      let lodLevel = options.lodLevel;
+      if (!lodLevel && options.playerPos && entity.pos && entity.isPlayer !== true) {
+        const dx = Number(entity.pos.x) - Number(options.playerPos.x);
+        const dz = Number(entity.pos.z) - Number(options.playerPos.z);
+        const dist = Math.hypot(dx, dz);
+        const radius = Number(entity.radius) || 8;
+        const px = (radius / Math.max(dist, 0.001)) * (Number(options.viewportHeight) || 800);
+        lodLevel = selectSpawnLodLevel(px);
+      }
       plan = authoredPreloadPlanForEntity(entity, {
         ...options,
+        lodLevel,
         requiredWholeShip: options.requiredWholeShip === true
           || requiresProductionWholeShipForEntity(entity),
       });
@@ -3730,7 +3749,7 @@ function installWholeShipLodFamilyController(boundary, entity, setActive, option
   if (!boundary || !entity || entity.isPlayer === true) return false;
   const selection = wholeShipVisualForEntity(entity, { ...options, requiredWholeShip: true });
   const family = selection && selection.lodFamily;
-  if (!family || selection.roleId !== 'ship_wasp') return false;
+  if (!canInstallWholeShipLodFamily(entity, selection)) return false;
   if (boundary.userData.wholeShipLodFamilyInstalled) return false;
 
   const roots = Object.create(null);
@@ -5581,16 +5600,9 @@ function createRenderPackageShipNodeFactory({
 }
 
 function canPoolRenderPackageShipMesh(source, tags = {}) {
-  if (!source?.isMesh || source.isInstancedMesh || source.isSkinnedMesh) return false;
-  if (source.visible === false || !source.geometry || !source.material || Array.isArray(source.material)) return false;
-  if (tags.damageRole) return false;
-  if (source.material.visible === false || requiresPerShipMesh({ material: source.material, tags })) return false;
-  if (source.layers?.mask !== 1 || Number(source.renderOrder) !== 0) return false;
-  if (source.customDepthMaterial || source.customDistanceMaterial) return false;
+  if (!isRigidOpaqueBatchableSurface(source, tags, { requiresPerShipMesh })) return false;
   if (source.onBeforeRender !== THREE.Object3D.prototype.onBeforeRender
     || source.onAfterRender !== THREE.Object3D.prototype.onAfterRender) return false;
-  if (source.morphTargetInfluences != null || source.morphTargetDictionary != null) return false;
-  if (Object.keys(source.geometry.morphAttributes || {}).length > 0) return false;
   return true;
 }
 
@@ -6551,7 +6563,8 @@ function sceneState(scene) {
 
 function instancePoolKey(geometry, material) {
   const geometryKey = geometry.userData && geometry.userData.spacefaceBatchKey || geometry.uuid;
-  const materialKey = material.userData && material.userData.spacefaceBatchKey || material.uuid;
+  const materialKey = material.userData && material.userData.spacefaceBatchKey
+    || packageBatchPoolKeyFromMaterial(material);
   return `${geometryKey}|${materialKey}`;
 }
 

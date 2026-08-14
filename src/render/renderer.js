@@ -66,6 +66,8 @@ import { createPresentationPublisher } from './presentationPublisher.js';
 import { createPresentationQueries } from './presentationQueries.js';
 import { shieldBubbleGeometry } from './ships/shipKit.js';
 import { projectedWidthPx } from './lod.js';
+import { resolveWebGlRendererFlags } from './presentPath.js';
+import { createOpeningAdmissionCohort } from './openingAdmission.js';
 import { createCollisionDebug } from './collisionDebug.js';
 import { installDiagnostics } from './diagnostics.js';
 import {
@@ -1834,7 +1836,16 @@ export const render = {
     // during normal dev and perf probes avoids a readback-friendly WebGL path that players never use.
     const query = typeof location !== 'undefined' ? new URLSearchParams(location.search) : null;
     const devShot = !!(query && query.get('dev') === 'shipshot');
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: devShot });
+    const glFlags = resolveWebGlRendererFlags({
+      video: state.settings && state.settings.video,
+      preserveDrawingBuffer: devShot,
+    });
+    const renderer = new THREE.WebGLRenderer({
+      canvas,
+      antialias: glFlags.antialias,
+      powerPreference: glFlags.powerPreference,
+      preserveDrawingBuffer: glFlags.preserveDrawingBuffer,
+    });
     // ACES on the renderer covers the DIRECT-to-canvas draws; bloom.js's composite covers the bloom
     // path. Both are needed and they do not overlap, which is the fix for a real divergence:
     //
@@ -2593,7 +2604,16 @@ export const render = {
       isActive: options.isActive,
     });
     state.render.pendingAuthoredGpuResidency = () => gpuResidencyAdmissions.pendingCount;
-    state.render.captureOpeningPipelinePlan = () => pipelineAdmissions.capturePending();
+    const openingCohort = createOpeningAdmissionCohort();
+    state.render.captureOpeningPipelinePlan = () => {
+      const plan = pipelineAdmissions.capturePending();
+      const identities = [];
+      if (plan && Number.isInteger(plan.watermark)) identities.push(`pipeline:${plan.watermark}`);
+      if (state.playerId != null) identities.push(`player:${state.playerId}`);
+      openingCohort.capture(identities);
+      state.render.openingAdmissionCohort = openingCohort.snapshot();
+      return plan;
+    };
     state.render.drainOpeningPipelinePlan = (plan) => pipelineAdmissions.waitForCaptured(plan);
     state.render.captureOpeningGpuResidencyPlan = (pipelinePlan) => gpuResidencyAdmissions.captureSubjects(
       pipelineAdmissions.subjectsForCaptured(pipelinePlan)
@@ -2791,10 +2811,15 @@ export const render = {
       }
       this._publishAssetResidencyDiagnostics();
     });
-    const sectorPrewarmRequests = (sectorId) => authoredPrewarmRequestsForEntities(state.entityList, {
-      sectorId,
-      playerId: state.playerId,
-    });
+    const sectorPrewarmRequests = (sectorId) => {
+      const player = state.entities && state.entities.get(state.playerId);
+      return authoredPrewarmRequestsForEntities(state.entityList, {
+        sectorId,
+        playerId: state.playerId,
+        playerPos: player && player.pos,
+        viewportHeight: this.viewport && this.viewport.height,
+      });
+    };
     const reviseSectorPrewarmPopulation = (record, count = 1) => {
       if (!record || count <= 0) return;
       record.boundaryRevision = (Number(record.boundaryRevision) || 0) + count;
@@ -4039,7 +4064,9 @@ export const render = {
       fullSynced++;
 
       // Visible interactive and hero roots retain their authored per-frame presentation closures.
-      if (userData.updateRuntimeState) userData.updateRuntimeState(entity, now);
+      // Distant LOD2 traffic is a speck: runtime/damage closures cannot change a readable pixel.
+      const farSpeck = lodLevel === 'lod2' && entity.id !== this.state.playerId;
+      if (!farSpeck && userData.updateRuntimeState) userData.updateRuntimeState(entity, now);
       if (entity.id === this.state.playerId && this._livingHullPresentation) {
         this._livingHullPresentation.sync(
           entity.data && entity.data.livingHull,
@@ -4047,10 +4074,16 @@ export const render = {
           entity,
         );
       }
-      if (userData.updateWorldSitePresentation) {
+      if (!farSpeck && userData.updateWorldSitePresentation) {
         userData.updateWorldSitePresentation(entity, this.state.simTime, _worldSiteA11y);
       }
-      if (userData.updateDamageState) userData.updateDamageState(entity, now);
+      if (userData.updateDamageState) {
+        const stamp = `${entity.hull}|${entity.shield}|${entity.alive}`;
+        if (stamp !== userData._damageVisualStamp) {
+          userData._damageVisualStamp = stamp;
+          userData.updateDamageState(entity, now);
+        }
+      }
       if (userData.updateDriveState) userData.updateDriveState(entity, now);
 
       // Shield geometry is an impact response, not a permanent bubble. The flash decays each visible
@@ -4470,11 +4503,13 @@ export const render = {
     // so shadow-follow preserves the landmark-derived light direction instead of forcing the old
     // literal back every frame. Falls back to the original constant when nothing is authored.
     const off = this._keyLightOffset;
-    this._keyLight.position.set(
-      px + (off ? off.x : 60),
-      off ? off.y : 140,
-      pz + (off ? off.z : 40),
-    );
+    const ox = off ? off.x : 60;
+    const oy = off ? off.y : 140;
+    const oz = off ? off.z : 40;
+    const followKey = `${px.toFixed(2)}|${pz.toFixed(2)}|${ox}|${oy}|${oz}`;
+    if (this._shadowFollowKey === followKey) return;
+    this._shadowFollowKey = followKey;
+    this._keyLight.position.set(px + ox, oy, pz + oz);
     this._keyLight.target.position.set(px, 0, pz);
   },
 

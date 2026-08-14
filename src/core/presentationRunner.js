@@ -2,6 +2,7 @@
 // Simulation remains on the main thread, but presentation no longer owns fixed-step advancement.
 import { ensurePerfRuntime, perfNow } from './perfRuntime.js';
 import { LOOP_FIXED_DT } from './simulationRunner.js';
+import { mustRescheduleAfterFrame } from './frameLiveness.js';
 
 export const LOOP_LIFECYCLE_STATES = Object.freeze({
   FOREGROUND_VISIBLE: 'foreground-visible',
@@ -282,6 +283,8 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     teardownErrorCount: 0,
     lastTeardownErrorStage: null,
     lastTeardownErrorMessage: null,
+    lastFrameError: null,
+    frameErrorCount: 0,
   };
 
   simulationRunner.setLifecycleGeneration?.(lifecycleGeneration);
@@ -719,6 +722,10 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       if (hasPendingJournal) diagnostics.journalRetainedFrameCount++;
       // One bad frame must never kill the whole loop; log a bounded number and keep running.
       frame._errs = (frame._errs || 0) + 1;
+      diagnostics.frameErrorCount = (diagnostics.frameErrorCount || 0) + 1;
+      diagnostics.lastFrameError = err && typeof err.message === 'string' && err.message
+        ? err.message.slice(0, 240)
+        : String(err).slice(0, 240);
       if (frame._errs <= 20) console.error('[loop] frame error:', err);
       else if (frame._errs === 21) console.error('[loop] further frame errors suppressed');
     } finally {
@@ -739,6 +746,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
 
     // renderUpdate may synchronously trigger the full terminal closer. Never complete a restore
     // transition after its audio/listener/transport owners have already been destroyed.
+    if (!mustRescheduleAfterFrame({ destroyed })) return;
     if (destroyed) return;
     if (restoring && renderedSnapshot && lifecycleState === LOOP_LIFECYCLE_STATES.RESTORING) {
       diagnostics.restoreFrameCount++;
