@@ -7,6 +7,7 @@ import {
   allowRealtimeShadowCast,
   SHADOW_CAST_RADIUS,
   SHADOW_CAST_RADIUS_SQ,
+  SHADOW_MAP_SIZE,
   SHADOW_ORTHO_EXTENT,
   syncShadowCasterPolicy,
 } from '../src/render/shadowCasterPolicy.js';
@@ -57,7 +58,12 @@ test('allowRealtimeShadowCast keeps player + nearby LOD0; drops far and low LOD'
 test('live key-light shadow camera uses the neighborhood ortho, not the old 1400 box', async () => {
   const source = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
   assert.match(source, /SHADOW_ORTHO_EXTENT/);
+  assert.match(source, /SHADOW_MAP_SIZE/);
   assert.doesNotMatch(source, /camera\.left = -700/);
+  assert.doesNotMatch(source, /mapSize\.set\(1024,\s*1024\)/);
+  const oldPxPerWu = 1024 / 1400;
+  const newPxPerWu = SHADOW_MAP_SIZE / (SHADOW_ORTHO_EXTENT * 2);
+  assert.ok(newPxPerWu >= oldPxPerWu, 'nearby shadow texels stay at least as dense as the old 1024/1400 map');
 });
 
 test('distance cast band clears far ship casters while nearby opaque hulls still cast', () => {

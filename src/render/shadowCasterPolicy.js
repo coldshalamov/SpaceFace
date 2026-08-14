@@ -9,6 +9,9 @@ const POLICY_STATE = '__spacefaceShadowCasterPolicyV1';
 export const SHADOW_CAST_RADIUS = 280;
 export const SHADOW_CAST_RADIUS_SQ = SHADOW_CAST_RADIUS * SHADOW_CAST_RADIUS;
 export const SHADOW_ORTHO_EXTENT = 300;
+// Old map was 1024 over ±700 (0.73 px/WU). 512 over ±300 is 0.85 px/WU — same or better
+// nearby density, a quarter of the depth-pass fill on the iGPU.
+export const SHADOW_MAP_SIZE = 512;
 
 function normalizeLodLevel(level) {
   return level === 'lod0' || level === 'lod1' || level === 'lod2' ? level : null;

@@ -94,6 +94,7 @@ import { installDomInstrumentation } from '../ui/domInstrumentation.js';
 import {
   allowRealtimeShadowCast,
   invalidateShadowCasterPolicy,
+  SHADOW_MAP_SIZE,
   SHADOW_ORTHO_EXTENT,
   shadowCastDistanceSq,
   syncShadowCasterPolicy,
@@ -4760,7 +4761,7 @@ export const render = {
     renderer.shadowMap.type = THREE.PCFShadowMap;
     if (!key.userData.spacefaceShadowConfigured) {
       key.castShadow = false;
-      key.shadow.mapSize.set(1024, 1024);
+      key.shadow.mapSize.set(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
       const camera = key.shadow.camera;
       camera.near = 10; camera.far = 600;
       camera.left = -SHADOW_ORTHO_EXTENT; camera.right = SHADOW_ORTHO_EXTENT;
