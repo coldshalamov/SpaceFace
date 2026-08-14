@@ -9,6 +9,7 @@
 import * as THREE from 'three';
 import { SHADOW_CAST_RADIUS_SQ } from './shadowCasterPolicy.js';
 import { isOpaqueInstancePoolMaterial } from './instanceChunkSubmitPolicy.js';
+import { materialBatchFingerprint } from './materialBatchKey.js';
 
 export const OPAQUE_BATCH_MAX_INSTANCES = 512;
 export const OPAQUE_BATCH_MAX_VERTS = 200000;
@@ -148,7 +149,7 @@ function reserveBatchInstance(state, chunk, lane, scene) {
   const material = chunk.pool.material;
   const geometry = chunk.pool.geometry;
   const attrKey = materialBatchAttrKey(geometry);
-  const key = `${material.uuid}|${attrKey}|${lane}`;
+  const key = `${materialBatchFingerprint(material)}|${attrKey}|${lane}`;
   let batch = state.batches.get(key);
   if (!batch) {
     batch = createBatch(material, lane, scene);

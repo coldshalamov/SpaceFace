@@ -51,9 +51,10 @@ test('lane and eligibility keep far plates out of the shadow batch', () => {
 });
 
 test('two unique plates that share a material become one hidden-source batch', () => {
-  const material = new THREE.MeshStandardMaterial({ color: 0x445566 });
-  const a = makeChunk(4, 0, { material, key: 'plateA', geometry: new THREE.BoxGeometry(1, 1, 1) });
-  const b = makeChunk(0, 900, { material, key: 'plateB', geometry: new THREE.BoxGeometry(1.2, 0.4, 0.8) });
+  const materialA = new THREE.MeshStandardMaterial({ color: 0x445566 });
+  const materialB = materialA.clone();
+  const a = makeChunk(4, 0, { material: materialA, key: 'plateA', geometry: new THREE.BoxGeometry(1, 1, 1) });
+  const b = makeChunk(0, 900, { material: materialB, key: 'plateB', geometry: new THREE.BoxGeometry(1.2, 0.4, 0.8) });
   const scene = new THREE.Scene();
   const pools = new Map([['shared', { chunks: [a, b] }]]);
   const state = createOpaqueMaterialBatchState();
@@ -65,7 +66,7 @@ test('two unique plates that share a material become one hidden-source batch', (
   });
   assert.equal(stats.hiddenChunks, 2);
   assert.equal(stats.instances, 2);
-  assert.ok(stats.batches >= 1);
+  assert.equal(stats.batches, 2, 'cloned same-look materials collapse to one cast lane and one far lane');
   assert.equal(a.mesh.visible, false);
   assert.equal(b.mesh.visible, false);
   assert.equal(a.mesh.castShadow, false);
