@@ -251,6 +251,28 @@ test('exhausted restore retries force a new context instead of staying dead', as
   assert.equal(owner._contextLost, true);
 });
 
+test('a second exhausted restore after a forced context is a named terminal park', async () => {
+  const owner = { _contextLost: true };
+  const recovery = {
+    restores: 0,
+    generation: 0,
+    pending: true,
+    lastError: null,
+    retryCount: 8,
+    forcedNewContext: true,
+    scheduleRetry() {},
+    forceNewContext() { throw new Error('must not force twice'); },
+  };
+  const failure = await runWebGlContextRestoreRebuild(owner, recovery, async () => {
+    throw new Error('forced context also dead');
+  });
+  assert.equal(failure.ok, false);
+  assert.equal(failure.retryScheduled, false);
+  assert.equal(failure.terminal, true);
+  assert.equal(recovery.terminal, true);
+  assert.equal(recovery.pending, true);
+});
+
 test('draw boundary observes a lost GL context before its asynchronous event arrives', () => {
   assert.equal(isWebGlContextUnavailable(true, null), true);
   assert.equal(isWebGlContextUnavailable(false, {

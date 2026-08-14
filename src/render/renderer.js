@@ -119,7 +119,7 @@ import {
   shouldRunEntityClosures,
   viewHalfExtents,
 } from './entityViewSyncBand.js';
-import { createShadowReceiverTally } from './shadowReceiverTally.js';
+import { createShadowReceiverTally, noteShadowPolicyChanged } from './shadowReceiverTally.js';
 import {
   applyEntityMeshVisibility,
   shouldSubmitEntityMesh,
@@ -442,7 +442,8 @@ export async function runWebGlContextRestoreRebuild(owner, recovery, rebuild) {
     // No retry hook and no force-new-context hook: stay draw-gated so tests can prove
     // half-restored resources stay closed. The live renderer supplies both hooks.
     recovery.pending = true;
-    return { ok: false, error, retryScheduled: false };
+    recovery.terminal = true;
+    return { ok: false, error, retryScheduled: false, terminal: true };
   }
   recovery.restores = (Number(recovery.restores) || 0) + 1;
   recovery.generation = (Number(recovery.generation) || 0) + 1;
@@ -450,6 +451,7 @@ export async function runWebGlContextRestoreRebuild(owner, recovery, rebuild) {
   recovery.lastError = null;
   recovery.retryCount = 0;
   recovery.forcedNewContext = false;
+  recovery.terminal = false;
   owner._contextLost = false;
   return { ok: true };
 }
@@ -4288,6 +4290,8 @@ export const render = {
       if (entity.type === 'ship' || entity.type === 'station') {
         if (syncShadowCasterPolicy(mesh, lodLevel, this._shadowPolicyOptions(entity, mesh))) {
           shadowPolicyRefreshes++;
+          noteShadowPolicyChanged(this._shadowReceiverTally, true);
+          this._markShadowReceiversDirty();
         }
       }
 

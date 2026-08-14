@@ -54,3 +54,10 @@ export function createShadowReceiverTally() {
     },
   };
 }
+
+/** LOD/policy flag rewrites must dirty the tally so add/remove cannot drain it to zero. */
+export function noteShadowPolicyChanged(tally, changed) {
+  if (changed !== true || !tally || typeof tally.markDirty !== 'function') return false;
+  tally.markDirty();
+  return true;
+}
