@@ -545,6 +545,7 @@ function resetAutoTargetPath(host, state = host && host.state) {
     lastSampleX: 0,
     lastSampleY: 0,
     lastMs: -Infinity,
+    lastSimMs: -Infinity,
   };
   if (state && state.input) state.input.autoTargetPath = neutralAutoTargetPath();
 }
@@ -591,11 +592,13 @@ function recordAutoTargetPath(host, movementX, movementY, now) {
     lastMs: -Infinity,
     lastSimMs: -Infinity,
   });
-  // N2: gesture idle uses sim clock when available so path drawing is deterministic.
+  // N2: sim-clock stamps keep path drawing deterministic (updateAutoTargetPathDrawing reads them
+  // for the cosmetic is-drawing pulse). A pause is NOT a gesture boundary: the trail is one
+  // continuous line for as long as the mode is on, and the virtual pen stays exactly where the
+  // hand left it. The old idle rule teleported the pen back to the trail's endpoint after 110 ms
+  // of stillness, silently gluing every stroke into one growing scribble with jump segments the
+  // player never drew — the "drawing all over the screen while the ship flies elsewhere" failure.
   const simMs = simClockMs(state);
-  const elapsed = Number.isFinite(gesture.lastSimMs)
-    ? simMs - gesture.lastSimMs
-    : (Number.isFinite(gesture.lastMs) ? now - gesture.lastMs : Infinity);
   let route = inp.autoTargetPath;
   if (!route || !route.active) {
     const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
@@ -612,13 +615,6 @@ function recordAutoTargetPath(host, movementX, movementY, now) {
     gesture.cursorY = origin.y;
     gesture.lastSampleX = origin.x;
     gesture.lastSampleY = origin.y;
-  } else if (elapsed > AUTO_TARGET_GESTURE_IDLE_MS) {
-    const endpoint = route.points.length ? route.points[route.points.length - 1] : null;
-    const origin = worldScreenPoint(host, endpoint) || { x: route.cursorX, y: route.cursorY };
-    gesture.cursorX = Number.isFinite(origin.x) ? origin.x : width * 0.5;
-    gesture.cursorY = Number.isFinite(origin.y) ? origin.y : height * 0.5;
-    gesture.lastSampleX = gesture.cursorX;
-    gesture.lastSampleY = gesture.cursorY;
   }
 
   const marginX = Math.min(AUTO_TARGET_PATH_EDGE_MARGIN, width * 0.2);
@@ -752,10 +748,12 @@ export const input = {
     const handlePointerMove = (e) => {
       if (!Number.isFinite(e.clientX) || !Number.isFinite(e.clientY)) return;
       const geometry = centeredPointer();
-      const pointerLocked = typeof document !== 'undefined'
-        && this._canvas && document.pointerLockElement === this._canvas;
       if (this.state && this.state.input && this.state.input.autoFire) {
-        if (pointerLocked && e.type === 'pointermove') return;
+        // Draw-to-fly records from the mousemove stream ONLY. Browsers dispatch a compatibility
+        // mousemove for every pointermove, so accepting both counted each hand movement twice
+        // whenever pointer lock was absent — the drawn trail ran at 2x the hand and landed where
+        // the player never aimed. mousemove carries movementX/Y both locked and unlocked.
+        if (e.type === 'pointermove') return;
         const movementX = Number.isFinite(e.movementX) ? e.movementX : 0;
         const movementY = Number.isFinite(e.movementY) ? e.movementY : 0;
         if (movementX === 0 && movementY === 0) return;

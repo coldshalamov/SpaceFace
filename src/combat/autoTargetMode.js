@@ -205,10 +205,19 @@ function followAutoTargetPath(inp, player) {
   let dz = finite(target && target.z) - finite(player.pos && player.pos.z);
   let distance = Math.hypot(dx, dz);
 
-  while (index < lastIndex && (
-    distance <= AUTO_TARGET_PATH_POINT_RADIUS
-    || hasPassedRoutePoint(player.pos, route.points[index - 1], target)
-  )) {
+  // Proximity advances may chain (points genuinely under the hull are consumed together), but the
+  // passed-projection test advances at most ONE point per tick. Any segment of a drawn loop that
+  // bends back toward the hull reads as "already passed", so letting projections chain skipped the
+  // whole loop — and the player draws a loop to FLY it. One projection step per tick still clears
+  // 60 overshot points a second, far faster than the hull can outrun the trail.
+  let projectionAdvances = 1;
+  while (index < lastIndex) {
+    const near = distance <= AUTO_TARGET_PATH_POINT_RADIUS;
+    if (!near) {
+      if (projectionAdvances <= 0
+        || !hasPassedRoutePoint(player.pos, route.points[index - 1], target)) break;
+      projectionAdvances -= 1;
+    }
     index += 1;
     target = route.points[index];
     dx = finite(target && target.x) - finite(player.pos && player.pos.x);
@@ -220,8 +229,11 @@ function followAutoTargetPath(inp, player) {
   const speed = Math.hypot(finite(player.vel && player.vel.x), finite(player.vel && player.vel.z));
   const finalPoint = index >= lastIndex;
   if (finalPoint && distance <= AUTO_TARGET_PATH_ARRIVAL_RADIUS && speed < AUTO_TARGET_PATH_SETTLE_SPEED) {
-    route.active = false;
-    route.drawing = false;
+    // Arrival is a HOLD, never a kill. The trail begins at the hull, so its endpoint is within
+    // arrival radius the instant drawing starts — deactivating here destroyed every route at
+    // birth (hundreds of stillborn 2-point stubs per stroke, pen snapping back to the ship each
+    // time, hull never following anything). While the mode is on the route stays active and the
+    // hull waits at the trail's end for more line; only the G toggle / mode reset clears it.
     inp.moveX = 0;
     inp.moveZ = 0;
     inp.turnIntent = 0;

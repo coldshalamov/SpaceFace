@@ -73,15 +73,21 @@ export const autoTargetAssist = {
     this._onPointerLockChange = () => {
       if (typeof document === 'undefined') return;
       const canvas = document.getElementById && document.getElementById('gl-canvas');
-      if (canvas && document.pointerLockElement === canvas) {
-        this._pointerLockAcquired = true;
-        return;
-      }
-      if (this._pointerLockAcquired && this.state?.input?.autoFire) this.reset({ toast: true });
-      this._pointerLockAcquired = false;
+      // Losing pointer lock is NOT an off switch: the player's contract is "G toggles the mode,
+      // G turns it off". Drawing keeps working unlocked (mousemove still reports deltas); the
+      // next canvas click below re-acquires the lock. The old reset here silently killed the
+      // mode whenever the browser dropped the lock, leaving the player drawing into nothing.
+      this._pointerLockAcquired = !!(canvas && document.pointerLockElement === canvas);
+    };
+    // Re-arm pointer lock from the click's user activation while the mode is on. mousedown
+    // (capture) runs before the fire handler and does not consume the event.
+    this._onPointerDown = () => {
+      if (!this.state?.input?.autoFire || this._pointerLockAcquired) return;
+      setPointerLock(true);
     };
     if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
       document.addEventListener('pointerlockchange', this._onPointerLockChange);
+      document.addEventListener('mousedown', this._onPointerDown, { capture: true });
     }
     this._unsubMode = this.bus && this.bus.on
       ? this.bus.on('mode:changed', ({ mode } = {}) => {
@@ -135,9 +141,13 @@ export const autoTargetAssist = {
 
   destroy() {
     this.reset();
-    if (typeof document !== 'undefined' && typeof document.removeEventListener === 'function'
-      && this._onPointerLockChange) {
-      document.removeEventListener('pointerlockchange', this._onPointerLockChange);
+    if (typeof document !== 'undefined' && typeof document.removeEventListener === 'function') {
+      if (this._onPointerLockChange) {
+        document.removeEventListener('pointerlockchange', this._onPointerLockChange);
+      }
+      if (this._onPointerDown) {
+        document.removeEventListener('mousedown', this._onPointerDown, { capture: true });
+      }
     }
     if (this._unsubMode) this._unsubMode();
     if (this._unsubDock) this._unsubDock();
@@ -148,6 +158,7 @@ export const autoTargetAssist = {
     this._onKeyDown = null;
     this._onKeyUp = null;
     this._onPointerLockChange = null;
+    this._onPointerDown = null;
     this._unsubMode = null;
     this._unsubDock = null;
     this._gHeld = false;
