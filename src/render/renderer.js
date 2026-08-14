@@ -114,6 +114,7 @@ import {
   shouldStartHeavyAdmission,
 } from './admissionSliceBudget.js';
 import {
+  INNER_VIEW_BAND_SCALE,
   classifyEntityViewBand,
   shouldRunEntityClosures,
   viewHalfExtents,
@@ -1908,6 +1909,11 @@ export const render = {
       powerPreference: glFlags.powerPreference,
       preserveDrawingBuffer: glFlags.preserveDrawingBuffer,
     });
+    // Opaque order is depth-tested. Skipping the default painter sort saves a
+    // full scene comparison on the iGPU thread; transparent objects still sort.
+    if (typeof renderer.setOpaqueSort === 'function') {
+      renderer.setOpaqueSort(() => 0);
+    }
     // ACES on the renderer covers the DIRECT-to-canvas draws; bloom.js's composite covers the bloom
     // path. Both are needed and they do not overlap, which is the fix for a real divergence:
     //
@@ -4159,6 +4165,7 @@ export const render = {
       this.state.camera && this.state.camera.zoom,
       this.cam && this.cam.obj && this.cam.obj.fov,
       this.cam && this.cam.obj && this.cam.obj.aspect,
+      INNER_VIEW_BAND_SCALE,
     );
 
     for (let index = 0; index < query.visibleCount; index++) {
@@ -4193,14 +4200,14 @@ export const render = {
       });
       const runClosures = shouldRunEntityClosures(viewBand, this.state.tick, slot);
       let lodLevel = userData.lod ? userData.lod.level : null;
+      const hlodVisualRadius = userData.hlod && Number(userData.hlod.visualRadius);
+      const lodRadius = Number.isFinite(hlodVisualRadius) && hlodVisualRadius > 0
+        ? hlodVisualRadius
+        : entity.radius;
+      const projectedPx = projectedWidthPx(mesh.position, lodRadius, this.cam.obj, this.viewport);
       if (userData.lod && userData.updateLod) {
         lodChecked++;
-        const hlodVisualRadius = userData.hlod && Number(userData.hlod.visualRadius);
-        const lodRadius = Number.isFinite(hlodVisualRadius) && hlodVisualRadius > 0
-          ? hlodVisualRadius
-          : entity.radius;
-        const px = projectedWidthPx(mesh.position, lodRadius, this.cam.obj, this.viewport);
-        lodLevel = entity.id === this.state.playerId ? 'lod0' : userData.lod.resolve(px);
+        lodLevel = entity.id === this.state.playerId ? 'lod0' : userData.lod.resolve(projectedPx);
         userData.updateLod(lodLevel);
       }
       // Local shadow-map caster membership: only nearby LOD0 (and the player) enter the
@@ -4217,6 +4224,8 @@ export const render = {
         neverCull: !!(entity.flags && entity.flags.neverCull),
         hidden: false,
         middleBand: viewBand === 'middle',
+        type: entity.type,
+        projectedPx,
         allowShadowCast: entity.type === 'ship' || entity.type === 'station'
           ? allowRealtimeShadowCast({
             isPlayer: entity.id === this.state.playerId,
@@ -4540,6 +4549,16 @@ export const render = {
     authoredSyncOptions.camera = this.cam.obj;
     authoredSyncOptions.entityFrame = this._entityFrame;
     authoredSyncOptions.authoredRecords = this._entityFrame.authored;
+    authoredSyncOptions.playerX = 0;
+    authoredSyncOptions.playerZ = 0;
+    const player = this.state.playerId
+      ? (this.state.entities && this.state.entities.get(this.state.playerId))
+      : null;
+    if (player && player.pos && this._frameMembrane) {
+      const local = this._frameMembrane.toLocal(player.pos, _shadowLocalXZ);
+      authoredSyncOptions.playerX = local.x;
+      authoredSyncOptions.playerZ = local.z;
+    }
     syncAuthoredInstancePools(this.scene, authoredSyncOptions);
     // Background-clock for distant animation (planet cloud drift, hero-star twinkle). Integrates real
     // frame dt scaled by state.timeScale so the cosmos respects hit-stop/pause — a death freeze

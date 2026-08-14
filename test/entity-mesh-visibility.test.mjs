@@ -15,6 +15,9 @@ test('player and forced roots stay submitted; off-runway roots do not', () => {
   assert.equal(shouldSubmitEntityMesh({ hidden: false }), true);
   assert.equal(shouldSubmitEntityMesh({ middleBand: true }), false);
   assert.equal(shouldSubmitEntityMesh({ middleBand: true, allowShadowCast: true }), true);
+  assert.equal(shouldSubmitEntityMesh({ projectedPx: 4, type: 'ship' }), false);
+  assert.equal(shouldSubmitEntityMesh({ projectedPx: 4, type: 'station' }), true);
+  assert.equal(shouldSubmitEntityMesh({ projectedPx: 20, type: 'ship' }), true);
 });
 
 test('visibility helper only writes when the flag changes', () => {

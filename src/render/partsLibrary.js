@@ -32,6 +32,7 @@ import {
 } from './rigidOpaqueBatchPolicy.js';
 import { authoredUpgradeConcurrencyLimit as resolveAuthoredUpgradeConcurrency } from './authoredUpgradePolicy.js';
 import { shouldStartHeavyAdmission } from './admissionSliceBudget.js';
+import { applyInstanceChunkSubmitPolicy } from './instanceChunkSubmitPolicy.js';
 import {
   rememberStaticBatchGeometry,
   staticBatchGeometryCacheKey,
@@ -508,6 +509,7 @@ export function getAuthoredInstancePoolDiagnostics(scene) {
     hiddenInstanceSlots: 0,
     avgPoolOccupancy: 0,
     tinyPools: 0,
+    shadowCastingInstanceChunks: 0,
     matrixUploads: 0,
     matrixReuses: 0,
     frameBounded: false,
@@ -6456,11 +6458,12 @@ function syncSceneStateFromFrame(state, context, stats) {
     if (ownerState) syncOwnerSlots(ownerState, context, stats, affectedChunks, true);
   }
 
-  for (const chunk of affectedChunks) finalizeInstanceChunk(chunk, true, stats);
+  for (const chunk of affectedChunks) finalizeInstanceChunk(chunk, true, stats, context);
   const previousOwners = state.activeFrameOwners;
   state.activeFrameOwners = nextOwners;
   state.nextFrameOwners = previousOwners;
   state.nextFrameOwners.clear();
+  applyInstanceChunkPolicies(state, context);
 }
 
 function syncSceneStateFallback(state, context, stats) {
@@ -6477,7 +6480,7 @@ function syncInstanceChunk(chunk, context, stats) {
     stats.slotsVisited++;
     if (syncInstanceSlot(slot, context, stats, false)) dirty = true;
   }
-  finalizeInstanceChunk(chunk, dirty, stats);
+  finalizeInstanceChunk(chunk, dirty, stats, context);
 }
 
 function syncOwnerSlots(ownerState, context, stats, affectedChunks, forceHidden) {
@@ -6518,7 +6521,7 @@ function syncInstanceSlot(slot, context, stats, forceHidden) {
   return dirty;
 }
 
-function finalizeInstanceChunk(chunk, dirty, stats) {
+function finalizeInstanceChunk(chunk, dirty, stats, context = null) {
   const nextCount = highestSubmittedIndex(chunk) + 1;
   if (chunk.mesh.count !== nextCount) {
     chunk.mesh.count = nextCount;
@@ -6528,6 +6531,25 @@ function finalizeInstanceChunk(chunk, dirty, stats) {
   if (dirty) {
     stats.dirtyChunks++;
     commitInstanceChunkMatrix(chunk);
+  }
+  applyInstanceChunkSubmitPolicy(chunk, {
+    count: nextCount,
+    playerX: context && context.playerX,
+    playerZ: context && context.playerZ,
+    refreshBounds: dirty,
+  });
+}
+
+function applyInstanceChunkPolicies(state, context) {
+  for (const pool of state.pools.values()) {
+    for (const chunk of pool.chunks) {
+      applyInstanceChunkSubmitPolicy(chunk, {
+        count: chunk.mesh ? chunk.mesh.count : 0,
+        playerX: context && context.playerX,
+        playerZ: context && context.playerZ,
+        refreshBounds: false,
+      });
+    }
   }
 }
 
@@ -6708,6 +6730,7 @@ function resetPoolStats(state) {
   stats.hiddenInstanceSlots = 0;
   stats.avgPoolOccupancy = 0;
   stats.tinyPools = 0;
+  stats.shadowCastingInstanceChunks = 0;
   stats.dirtyChunks = 0;
   stats.matrixUploads = 0;
   stats.matrixReuses = 0;
@@ -6740,6 +6763,9 @@ function finalizePoolStats(state, stats) {
     stats.submittedInstanceSlots += submitted;
     if (submitted > 0) stats.visibleInstancePools++;
     else if (poolSlots > 0) stats.offscreenInstancePools++;
+    for (const chunk of pool.chunks) {
+      if (chunk.mesh && chunk.mesh.visible && chunk.mesh.castShadow) stats.shadowCastingInstanceChunks++;
+    }
   }
   stats.avgPoolOccupancy = stats.pools > 0 ? stats.pooledInstanceSlots / stats.pools : 0;
 }
@@ -6760,6 +6786,8 @@ function buildInstanceCullContext(state, opts) {
   context.frameBounded = frameBounded;
   context.authoredRecords = authoredRecords || EMPTY_ARRAY;
   context.recordsByOwner = recordsByOwner;
+  context.playerX = Number.isFinite(Number(opts && opts.playerX)) ? Number(opts.playerX) : 0;
+  context.playerZ = Number.isFinite(Number(opts && opts.playerZ)) ? Number(opts.playerZ) : 0;
   if (!camera || !camera.projectionMatrix || !camera.matrixWorldInverse) {
     state.stats.frameBounded = frameBounded;
     context.cameraDirty = captureCullCameraState(null, state.cameraState);
@@ -6791,6 +6819,8 @@ function createInstanceCullContext() {
     camera: null,
     frustum: null,
     cameraPosition: null,
+    playerX: 0,
+    playerZ: 0,
   };
 }
 

@@ -10,7 +10,9 @@ export const ENTITY_VIEW_BAND = Object.freeze({
   MIDDLE: 'middle',
 });
 
-export const INNER_VIEW_BAND_SCALE = 2.4;
+// 1.0 is the live on-screen box. Larger values widen the expensive inner band
+// into the off-screen runway and re-submit ships the player cannot see.
+export const INNER_VIEW_BAND_SCALE = 1;
 export const MIDDLE_SYNC_PERIOD_TICKS = 4;
 
 export function viewHalfExtents(zoom, fovDeg, aspect, scale = 1) {

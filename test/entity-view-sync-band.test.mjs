@@ -10,7 +10,7 @@ import {
 } from '../src/render/entityViewSyncBand.js';
 
 test('player and on-screen ships stay on the inner band; 900 WU runway is middle', () => {
-  const view = viewHalfExtents(144, 50, 16 / 9, 2.4);
+  const view = viewHalfExtents(144, 50, 16 / 9, 1);
   assert.equal(classifyEntityViewBand({
     isPlayer: true,
     dx: 2000,
