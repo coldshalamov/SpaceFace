@@ -241,7 +241,7 @@ def create_materials():
         "Material_Warning": ((0.70, 0.34, 0.05), 0.05, 0.46, "warning", 0.1, None),
         "Material_Ceramic": ((0.08, 0.07, 0.06), 0.0, 0.74, "ceramic", 0.0, None),
         "Material_Radiator": ((0.07, 0.06, 0.05), 0.62, 0.62, "mechanical", 0.0, None),
-        "Material_Canopy": ((0.04, 0.07, 0.09), 0.02, 0.04, "glass", 0.35, None),
+        "Material_Canopy": ((0.12, 0.18, 0.22), 0.02, 0.04, "glass", 0.55, None),
         "Material_Thruster": ((0.02, 0.08, 0.12), 0.15, 0.22, "thruster", 0.0, None),
     }
     mats = {}
@@ -255,12 +255,12 @@ def create_materials():
         wire_maps(material, bsdf, maps, coat=coat, emission=emit)
         if name == "Material_Canopy":
             if "Transmission Weight" in bsdf.inputs:
-                bsdf.inputs["Transmission Weight"].default_value = 0.78
+                bsdf.inputs["Transmission Weight"].default_value = 0.92
             elif "Transmission" in bsdf.inputs:
-                bsdf.inputs["Transmission"].default_value = 0.78
+                bsdf.inputs["Transmission"].default_value = 0.92
             if "IOR" in bsdf.inputs:
                 bsdf.inputs["IOR"].default_value = 1.48
-            bsdf.inputs["Alpha"].default_value = 0.42
+            bsdf.inputs["Alpha"].default_value = 0.22
             if hasattr(material, "blend_method"):
                 try:
                     material.blend_method = "BLEND"
@@ -458,10 +458,10 @@ def add_manufactured_delta(name, sign, material, collection):
     """Thick-root airfoil delta that thins to a manufactured tip. Not a card."""
     s = sign
     rings = [
-        airfoil_ring(0.22, 1.26 * s, 0.05, 2.42, 0.28),
-        airfoil_ring(-0.08, 2.38 * s, 0.01, 1.90, 0.16),
-        airfoil_ring(-0.48, 3.38 * s, -0.04, 1.22, 0.088),
-        airfoil_ring(-0.92, 4.26 * s, -0.08, 0.64, 0.048),
+        airfoil_ring(0.22, 1.26 * s, 0.05, 2.42, 0.36),
+        airfoil_ring(-0.08, 2.38 * s, 0.01, 1.90, 0.20),
+        airfoil_ring(-0.48, 3.38 * s, -0.04, 1.22, 0.10),
+        airfoil_ring(-0.92, 4.26 * s, -0.08, 0.64, 0.052),
     ]
     wing = loft_from_rings(name, rings, material, collection, 0.010)
     loft_from_rings(f"{name}_Flap", [
@@ -779,15 +779,15 @@ def build_lod(lod, mats):
     )
     add_folded_sheet(
         "Needle_LowerP",
-        (8.16, -0.070, 0.000), (8.20, -0.010, -0.052),
-        (4.46, -0.04, -0.30), (4.40, -0.46, 0.14),
-        0.026, hull, collection, 0.005,
+        (8.10, -0.085, -0.008), (8.16, -0.016, -0.062),
+        (4.38, -0.08, -0.34), (4.32, -0.52, 0.10),
+        0.028, hull, collection, 0.005,
     )
     add_folded_sheet(
         "Needle_LowerS",
-        (8.16, 0.070, 0.000), (4.40, 0.46, 0.14),
-        (4.46, 0.04, -0.30), (8.20, 0.010, -0.052),
-        0.026, hull, collection, 0.005,
+        (8.10, 0.085, -0.008), (4.32, 0.52, 0.10),
+        (4.38, 0.08, -0.34), (8.16, 0.016, -0.062),
+        0.028, hull, collection, 0.005,
     )
     add_folded_sheet(
         "Needle_Spine",
@@ -857,9 +857,9 @@ def build_lod(lod, mats):
         add_radiator_cassette("StbdFlank", (-3.15, 0.82, 0.28), lod, mats, collection, length=1.15, height=0.24, yaw=0.0)
     add_box("Keel_Spine", (0.15, 0.0, -0.70), (3.2, 0.20, 0.05), mech, collection, 0.01)
     add_box("Repair_Patch", (1.05, -0.52, 0.62), (0.18, 0.08, 0.006), warning, collection, 0.001)
-    add_box("Accent_Flash", (0.70, -1.38, 0.24), (0.50, 0.018, 0.08), accent, collection, 0.002)
-    add_cylinder("Turret_Ring", (-0.55, 0.0, 0.68), 0.28, 0.08, mech, collection, vertices=14, bevel=0.006, rot=(0, 0, 0))
-    add_box("Turret_Head", (-0.35, 0.0, 0.82), (0.24, 0.14, 0.08), armor, collection, 0.006)
+    add_cylinder("Turret_Ring", (-0.55, 0.0, 0.58), 0.22, 0.06, mech, collection, vertices=14, bevel=0.006, rot=(0, 0, 0))
+    add_cylinder("Turret_Yoke", (-0.55, 0.0, 0.68), 0.06, 0.10, mech, collection, vertices=8, bevel=0.003, rot=(0, 0, 0))
+    add_cylinder("Turret_Head", (-0.42, 0.0, 0.76), 0.08, 0.18, armor, collection, vertices=10, bevel=0.004)
     add_sensor_dish("Dorsal", (1.35, 0.22, 1.08), mats, collection)
     add_box("Hatch_Lid", (-0.95, 0.30, 0.64), (0.30, 0.18, 0.018), armor, collection, 0.004)
     add_box("Hatch_Hinge", (-1.20, 0.30, 0.65), (0.03, 0.14, 0.020), mech, collection, 0.002)
