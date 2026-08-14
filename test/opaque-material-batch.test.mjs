@@ -5,7 +5,6 @@ import * as THREE from 'three';
 import {
   createOpaqueBatchPipelineWarmupMeshes,
   createOpaqueMaterialBatchState,
-  OPAQUE_BATCH_INITIAL_VERTS,
   OPAQUE_BATCH_MAX_VERTS,
   materialBatchAttrKey,
   opaqueBatchLane,
@@ -134,28 +133,22 @@ test('loading warmup meshes match live batch program flags', () => {
   }
 });
 
-test('live batches start small and grow instead of allocating the hard ceiling', () => {
+test('loading warmup meshes stay tiny while live batches keep the full ceiling', () => {
+  const probes = createOpaqueBatchPipelineWarmupMeshes();
+  for (const mesh of probes) {
+    assert.ok(mesh._maxVertexCount <= 32);
+  }
   const material = new THREE.MeshStandardMaterial({ color: 0x778899 });
-  const big = new THREE.BoxGeometry(2, 2, 2);
-  const positions = [];
-  for (let i = 0; i < OPAQUE_BATCH_INITIAL_VERTS + 8; i++) positions.push(i, 0, 0);
-  const oversized = new THREE.BufferGeometry();
-  oversized.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  oversized.setIndex(null);
-  const chunk = makeChunk(0, 0, { material, key: 'oversized', geometry: oversized });
+  const chunk = makeChunk(0, 0, { material, key: 'ceiling' });
   const scene = new THREE.Scene();
   const state = createOpaqueMaterialBatchState();
-  const stats = syncOpaqueMaterialBatches(state, new Map([['grow', { chunks: [chunk] }]]), {
+  syncOpaqueMaterialBatches(state, new Map([['ceiling', { chunks: [chunk] }]]), {
     enabled: true,
     scene,
     playerX: 0,
     playerZ: 0,
   });
-  assert.equal(stats.hiddenChunks, 1);
   const batch = [...state.batches.values()].find((item) => item.used > 0);
   assert.ok(batch);
-  assert.ok(batch.mesh._maxVertexCount > OPAQUE_BATCH_INITIAL_VERTS);
-  assert.ok(batch.mesh._maxVertexCount < OPAQUE_BATCH_MAX_VERTS);
-  assert.equal(chunk.mesh.visible, false);
-  big.dispose();
+  assert.equal(batch.mesh._maxVertexCount, OPAQUE_BATCH_MAX_VERTS);
 });

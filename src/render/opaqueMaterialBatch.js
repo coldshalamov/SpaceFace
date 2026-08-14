@@ -216,8 +216,8 @@ function createBatch(material, lane, scene) {
   try {
     mesh = new THREE.BatchedMesh(
       OPAQUE_BATCH_MAX_INSTANCES,
-      OPAQUE_BATCH_INITIAL_VERTS,
-      OPAQUE_BATCH_INITIAL_INDICES,
+      OPAQUE_BATCH_MAX_VERTS,
+      OPAQUE_BATCH_MAX_INDICES,
       batchMaterial,
     );
   } catch (_) {
