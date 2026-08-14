@@ -545,6 +545,17 @@ export function createAssetResidencyRegistry(options = {}) {
   });
 }
 
+export function applySectorExitResidency(residency, sectorId, options = {}) {
+  if (!residency) return null;
+  if (typeof residency.prepareSectorExit === 'function') {
+    residency.prepareSectorExit(sectorId, options);
+  }
+  if (typeof residency.enforceBudget === 'function') {
+    return residency.enforceBudget(options.kind || 'gpu');
+  }
+  return null;
+}
+
 export function getAssetResidency(renderer, options = {}) {
   if (!renderer || (typeof renderer !== 'object' && typeof renderer !== 'function')) return null;
   let registry = registriesByRenderer.get(renderer);

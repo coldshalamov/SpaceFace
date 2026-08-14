@@ -4,6 +4,8 @@ import test from 'node:test';
 import {
   createOpeningAdmissionCohort,
   openingSliceWithinBudget,
+  openingSubjectIdentity,
+  shouldAdmitOpeningSubject,
 } from '../src/render/openingAdmission.js';
 import { createPipelineAdmissionTracker } from '../src/render/pipelineReadiness.js';
 
@@ -32,6 +34,16 @@ test('live pipeline tracker watermark ignores later pending roots', async () => 
   await early;
   assert.deepEqual(completions[0], ['player']);
   assert.ok(plan.watermark >= 1);
+});
+
+test('frozen cohort gates late compile subjects through admits()', () => {
+  const cohort = createOpeningAdmissionCohort();
+  const player = { uuid: 'player-root', userData: { entityId: 1 } };
+  const late = { uuid: 'late-root', userData: { entityId: 99 } };
+  cohort.capture([openingSubjectIdentity(player)]);
+  assert.equal(shouldAdmitOpeningSubject(cohort, player), true);
+  assert.equal(shouldAdmitOpeningSubject(cohort, late), false);
+  assert.equal(cohort.admits(openingSubjectIdentity(late)), false);
 });
 
 test('opening slice budget uses the live helper, not a hardcoded pass', () => {

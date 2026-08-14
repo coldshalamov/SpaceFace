@@ -67,7 +67,11 @@ import { createPresentationQueries } from './presentationQueries.js';
 import { shieldBubbleGeometry } from './ships/shipKit.js';
 import { projectedWidthPx } from './lod.js';
 import { resolveWebGlRendererFlags } from './presentPath.js';
-import { createOpeningAdmissionCohort } from './openingAdmission.js';
+import {
+  createOpeningAdmissionCohort,
+  openingSubjectIdentity,
+  shouldAdmitOpeningSubject,
+} from './openingAdmission.js';
 import { createCollisionDebug } from './collisionDebug.js';
 import { installDiagnostics } from './diagnostics.js';
 import {
@@ -102,7 +106,7 @@ import { readShieldContacts, SHIELD_HIT_SLOTS } from './weapons/shieldContacts.j
 import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
 import { resolveSectorVisualProfile } from '../data/sectorVisualProfiles.js';
 import { SHIPS } from '../data/ships.js';
-import { getAssetResidency } from './assetResidency.js';
+import { applySectorExitResidency, getAssetResidency } from './assetResidency.js';
 import { preloadRockSurfaceLibrary } from './rockSurfaceLibrary.js';
 import {
   createGpuResidencyAdmissionTracker,
@@ -355,6 +359,8 @@ function restoreObjectHome(home) {
 }
 
 /** Keep every draw/readiness boundary closed until a restored context finishes rebuilding. */
+export const CONTEXT_RESTORE_MAX_RETRIES = 8;
+
 export async function runWebGlContextRestoreRebuild(owner, recovery, rebuild) {
   if (!owner || !recovery || typeof rebuild !== 'function') {
     throw new TypeError('context restore rebuild requires owner, recovery state, and rebuild callback');
@@ -368,14 +374,26 @@ export async function runWebGlContextRestoreRebuild(owner, recovery, rebuild) {
     }
   } catch (error) {
     owner._contextLost = true;
-    recovery.pending = true;
     recovery.lastError = String(error && error.message ? error.message : error);
-    return { ok: false, error };
+    const retries = Number(recovery.retryCount) || 0;
+    const canRetry = retries < CONTEXT_RESTORE_MAX_RETRIES
+      && typeof recovery.scheduleRetry === 'function';
+    if (canRetry) {
+      recovery.retryCount = retries + 1;
+      recovery.pending = true;
+      recovery.scheduleRetry();
+      return { ok: false, error, retryScheduled: true };
+    }
+    // No retry hook: stay draw-gated so tests can prove half-restored resources stay closed.
+    // Live renderer always supplies scheduleRetry so this is not a permanent freeze.
+    recovery.pending = true;
+    return { ok: false, error, retryScheduled: false };
   }
   recovery.restores = (Number(recovery.restores) || 0) + 1;
   recovery.generation = (Number(recovery.generation) || 0) + 1;
   recovery.pending = false;
   recovery.lastError = null;
+  recovery.retryCount = 0;
   owner._contextLost = false;
   return { ok: true };
 }
@@ -2048,7 +2066,28 @@ export const render = {
         // application-owned resources against the settled renderer context.
         this._contextRestoreReceipt = deferWebGlContextRestore(() => {
           if (typeof console !== 'undefined') console.warn('[render] WebGL context restored — rebuilding GPU resources');
-          void runWebGlContextRestoreRebuild(this, this._contextRecovery, async () => {
+          this._contextRecovery.retryCount = 0;
+          this._contextRecovery.scheduleRetry = () => {
+            const retry = () => {
+              if (this.renderer && typeof this.renderer.getContext === 'function') {
+                try {
+                  const gl = this.renderer.getContext();
+                  if (gl && typeof gl.isContextLost === 'function' && gl.isContextLost()) return;
+                } catch { /* retry against the current context anyway */ }
+              }
+              this._contextRestoreReceipt = deferWebGlContextRestore(() => {
+                void runWebGlContextRestoreRebuild(this, this._contextRecovery, this._rebuildRestoredGpuResources)
+                  .then((restored) => {
+                    if (!restored.ok) return;
+                    this._publishAssetResidencyDiagnostics();
+                    bus.emit('toast', { text: 'Graphics recovered.', kind: 'good', ttl: 3 });
+                  });
+              });
+            };
+            if (typeof requestAnimationFrame === 'function') requestAnimationFrame(retry);
+            else setTimeout(retry, 16);
+          };
+          this._rebuildRestoredGpuResources = async () => {
             dynamicBuffers.handleContextRestored();
             // Re-apply renderer config that the new context defaults lose.
             this.renderer.setClearColor(0x060912, 1);
@@ -2095,16 +2134,18 @@ export const render = {
             });
             state.render.pipelinePrecompileReady = restoredPipelines;
             return await restoredPipelines;
-          }).then((restored) => {
-            if (!restored.ok) {
-              if (typeof console !== 'undefined') {
-                console.error('[render] context-restore rebuild failed', restored.error);
+          };
+          void runWebGlContextRestoreRebuild(this, this._contextRecovery, this._rebuildRestoredGpuResources)
+            .then((restored) => {
+              if (!restored.ok) {
+                if (typeof console !== 'undefined') {
+                  console.error('[render] context-restore rebuild failed', restored.error);
+                }
+                return;
               }
-              return;
-            }
-            this._publishAssetResidencyDiagnostics();
-            bus.emit('toast', { text: 'Graphics recovered.', kind: 'good', ttl: 3 });
-          });
+              this._publishAssetResidencyDiagnostics();
+              bus.emit('toast', { text: 'Graphics recovered.', kind: 'good', ttl: 3 });
+            });
         });
       }, false);
     }
@@ -2599,17 +2640,34 @@ export const render = {
         onBlockingSlice: recordAuthoredAdmissionBlockingSlice,
       })
     ));
-    state.render.compileObjectPipelines = (subject) => pipelineAdmissions.compile(subject);
-    state.render.prepareAuthoredGpuResidency = (subject, options = {}) => gpuResidencyAdmissions.prepare(subject, {
-      isActive: options.isActive,
-    });
-    state.render.pendingAuthoredGpuResidency = () => gpuResidencyAdmissions.pendingCount;
     const openingCohort = createOpeningAdmissionCohort();
+    const openingStillBlocking = () => (
+      state.mode === 'loading' || !Number.isFinite(state.render && state.render.firstPlayableFrameAt)
+    );
+    state.render.compileObjectPipelines = (subject) => {
+      if (openingCohort.frozen && openingStillBlocking() && !shouldAdmitOpeningSubject(openingCohort, subject)) {
+        return Promise.resolve({ skipped: true, reason: 'late-opening-root' });
+      }
+      if (!openingCohort.frozen) openingCohort.extendBlocked(openingSubjectIdentity(subject));
+      return pipelineAdmissions.compile(subject);
+    };
+    state.render.prepareAuthoredGpuResidency = (subject, options = {}) => {
+      if (openingCohort.frozen && openingStillBlocking() && !shouldAdmitOpeningSubject(openingCohort, subject)) {
+        return Promise.resolve({ skipped: true, reason: 'late-opening-root' });
+      }
+      if (!openingCohort.frozen) openingCohort.extendBlocked(openingSubjectIdentity(subject));
+      return gpuResidencyAdmissions.prepare(subject, {
+        isActive: options.isActive,
+      });
+    };
+    state.render.pendingAuthoredGpuResidency = () => gpuResidencyAdmissions.pendingCount;
+    state.render.openingAdmission = openingCohort;
     state.render.captureOpeningPipelinePlan = () => {
       const plan = pipelineAdmissions.capturePending();
-      const identities = [];
-      if (plan && Number.isInteger(plan.watermark)) identities.push(`pipeline:${plan.watermark}`);
-      if (state.playerId != null) identities.push(`player:${state.playerId}`);
+      let subjects = [];
+      try { subjects = pipelineAdmissions.subjectsForCaptured(plan) || []; } catch { subjects = []; }
+      const identities = subjects.map((subject) => openingSubjectIdentity(subject)).filter(Boolean);
+      if (state.playerId != null) identities.push(`entity:${state.playerId}`);
       openingCohort.capture(identities);
       state.render.openingAdmissionCohort = openingCohort.snapshot();
       return plan;
@@ -3183,7 +3241,9 @@ export const render = {
       stageSectorPrewarmBoundaries(pending);
     });
     bus.on('sector:exit', ({ sectorId } = {}) => {
-      if (this._assetResidency) this._assetResidency.prepareSectorExit(sectorId);
+      if (this._assetResidency) {
+        applySectorExitResidency(this._assetResidency, sectorId);
+      }
       const exactSectorId = sectorId == null ? null : String(sectorId);
       if (this._currentSectorPrewarm && this._currentSectorPrewarm.sectorId === exactSectorId) {
         releaseSectorPrewarm(this._currentSectorPrewarm, 'sector-prewarm-exited');
@@ -4466,14 +4526,17 @@ export const render = {
         && !this._firstPlayablePaintScheduled) {
       this._firstPlayablePaintScheduled = true;
       afterBrowserPaint(() => {
-        if (this.state.mode !== 'flight') return;
-        this.state.render.firstPlayableFrameAt = typeof performance !== 'undefined'
-          ? performance.now()
-          : Date.now();
-        this._deferNoncriticalMeshStreaming = false;
-        this._meshReconcileDirty = true;
-        if (typeof this.state.render.resumeDeferredPipelineAdmissions === 'function') {
-          void this.state.render.resumeDeferredPipelineAdmissions();
+        try {
+          if (this.state.mode === 'flight') {
+            this.state.render.firstPlayableFrameAt = typeof performance !== 'undefined'
+              ? performance.now()
+              : Date.now();
+          }
+        } finally {
+          releaseOpeningMeshDefer(this, this.state.mode);
+          if (typeof this.state.render.resumeDeferredPipelineAdmissions === 'function') {
+            void this.state.render.resumeDeferredPipelineAdmissions();
+          }
         }
       });
     }
@@ -4968,6 +5031,15 @@ export const render = {
     }
   },
 };
+
+/** Opening defer must clear even if the first painted frame is no longer flight. */
+export function releaseOpeningMeshDefer(owner, mode) {
+  if (!owner) return owner;
+  owner._deferNoncriticalMeshStreaming = false;
+  owner._meshReconcileDirty = true;
+  owner._firstPlayablePaintScheduled = mode === 'flight';
+  return owner;
+}
 
 function afterBrowserPaint(callback) {
   if (typeof requestAnimationFrame !== 'function') {

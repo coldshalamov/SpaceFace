@@ -9,6 +9,27 @@ export function normalizeAdmissionIdentity(value) {
   return String(value);
 }
 
+/** Stable identity for a compile/upload subject on the opening cohort. */
+export function openingSubjectIdentity(subject) {
+  if (subject == null) return '';
+  if (typeof subject === 'string' || typeof subject === 'number') return normalizeAdmissionIdentity(subject);
+  const userData = subject.userData || {};
+  const entityId = userData.entityId ?? userData.sfEntityId ?? userData.id;
+  if (entityId != null && entityId !== '') return `entity:${entityId}`;
+  if (subject.uuid) return `uuid:${subject.uuid}`;
+  if (subject.id != null && subject.id !== '') return `id:${subject.id}`;
+  if (subject.name) return `name:${subject.name}`;
+  return '';
+}
+
+export function shouldAdmitOpeningSubject(cohort, subject) {
+  if (!cohort) return true;
+  if (cohort.frozen !== true) return true;
+  const id = openingSubjectIdentity(subject);
+  if (!id) return false;
+  return cohort.admits(id);
+}
+
 export function createOpeningAdmissionCohort(options = {}) {
   const identities = new Set();
   let frozen = options.frozen === true;

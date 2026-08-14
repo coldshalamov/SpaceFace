@@ -83,6 +83,10 @@ try {
     const s = window.SF && window.SF.state;
     return !!(s && s.mode === 'flight' && s.render && s.render.renderer);
   }, null, { timeout: 120000 });
+  await page.waitForFunction(() => {
+    const s = window.SF && window.SF.state;
+    return Number.isFinite(s && s.render && s.render.firstPlayableFrameAt);
+  }, null, { timeout: 90000 }).catch(() => {});
 
   const report = await page.evaluate(async ({ warmupMs, durationMs }) => {
     const frames = [];

@@ -16,7 +16,7 @@ import { configureRealtimeCanopyMaterials } from './canopyMaterialPolicy.js';
 import { AUTHORED_ASSET_IMMEDIATE_RADIUS } from './authoredAdmissionPolicy.js';
 import { isReleaseAssetMode } from './releaseMode.js';
 import * as kit from './ships/shipKit.js';
-import { attachStationHlod } from './hlod.js';
+import { attachPlaceHlod, attachStationHlod } from './hlod.js';
 import { attachLodState } from './lod.js';
 import { canInstallWholeShipLodFamily, selectSpawnLodLevel } from './wholeShipLodPolicy.js';
 import { packageBatchPoolKeyFromMaterial } from './materialBatchKey.js';
@@ -1874,7 +1874,7 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
     };
   }
 
-  return boundary;
+  return attachPlaceHlod(boundary, entity);
 }
 
 function authoredAdmissionStarted(state) {

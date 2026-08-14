@@ -179,6 +179,27 @@ test('context restore stays draw-gated through rebuild and remains gated after a
   assert.equal(recovery.generation, 8);
 });
 
+test('a failed restore with scheduleRetry does not stay pending without another attempt', async () => {
+  const owner = { _contextLost: true };
+  let retries = 0;
+  const recovery = {
+    restores: 0,
+    generation: 0,
+    pending: true,
+    lastError: null,
+    retryCount: 0,
+    scheduleRetry() { retries += 1; },
+  };
+  const failure = await runWebGlContextRestoreRebuild(owner, recovery, async () => {
+    throw new Error('transient rebuild');
+  });
+  assert.equal(failure.ok, false);
+  assert.equal(failure.retryScheduled, true);
+  assert.equal(retries, 1);
+  assert.equal(recovery.pending, true);
+  assert.equal(recovery.retryCount, 1);
+});
+
 test('draw boundary observes a lost GL context before its asynchronous event arrives', () => {
   assert.equal(isWebGlContextUnavailable(true, null), true);
   assert.equal(isWebGlContextUnavailable(false, {

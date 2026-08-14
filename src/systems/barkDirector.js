@@ -7,6 +7,7 @@ import { BARK_SITUATIONS, barkFor } from '../data/barks.js';
 import { contactGrammarFor } from '../data/factionContactGrammar.js';
 import { hash32 } from '../core/rng.js';
 import { isHostileToPlayer } from './scanner.js';
+import { shouldOwnerThink } from '../core/activityScheduler.js';
 
 const BARK_SET = new Set(BARK_SITUATIONS);
 const VOICE_TTL_S = 1.2;
@@ -47,7 +48,17 @@ export const barkDirector = {
   update(_dt, state) {
     if (state.mode && state.mode !== 'flight') return;
     ensureState(state);
+    const player = state.entities && state.entities.get && state.entities.get(state.playerId);
+    const thinkOpts = {
+      playerId: state.playerId,
+      playerTeam: PLAYER_TEAM,
+      origin: player && player.pos,
+      authorityRadius: 900,
+      sleepPeriodTicks: 8,
+      activePeriodTicks: 1,
+    };
     for (const entity of state.entityList || []) {
+      if (!shouldOwnerThink(state.tick, entity, thinkOpts)) continue;
       const situation = classifyBarkSituation(entity, state);
       if (!situation) continue;
       this._speak(entity, situation, 'state');
