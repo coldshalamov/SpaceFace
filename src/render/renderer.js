@@ -109,6 +109,7 @@ import { SHIPS } from '../data/ships.js';
 import { applySectorExitResidency, getAssetResidency } from './assetResidency.js';
 import {
   shouldContinueAdmissionSlice,
+  shouldStartHeavyAdmission,
 } from './admissionSliceBudget.js';
 import {
   classifyEntityViewBand,
@@ -3895,6 +3896,11 @@ export const render = {
 
   _drainMeshBuildQueue(buildBudget) {
     let built = 0;
+    if (buildBudget !== Infinity
+        && this._initialMeshReconcileComplete
+        && !shouldStartHeavyAdmission(this.state && this.state.render && this.state.render.lastPresentDtMs)) {
+      return 0;
+    }
     const startedAtMs = typeof performance !== 'undefined' && typeof performance.now === 'function'
       ? performance.now()
       : Date.now();

@@ -31,6 +31,7 @@ import {
   isRigidOpaqueBatchableSurface,
 } from './rigidOpaqueBatchPolicy.js';
 import { authoredUpgradeConcurrencyLimit as resolveAuthoredUpgradeConcurrency } from './authoredUpgradePolicy.js';
+import { shouldStartHeavyAdmission } from './admissionSliceBudget.js';
 import {
   rememberStaticBatchGeometry,
   staticBatchGeometryCacheKey,
@@ -3108,6 +3109,12 @@ function scheduleNextUpgradeFrame(state) {
 
 function admitNextUpgradeJob(state) {
   state.frameScheduled = false;
+  const live = authoredRuntimeState();
+  if (live && live.mode === 'flight'
+      && !shouldStartHeavyAdmission(live.render && live.render.lastPresentDtMs)) {
+    scheduleNextUpgradeFrame(state);
+    return;
+  }
   state.jobs.sort((a, b) => {
     const priorityDelta = authoredUpgradePriority(a) - authoredUpgradePriority(b);
     return priorityDelta || a.sequence - b.sequence;

@@ -36,6 +36,12 @@ export function shouldContinueAdmissionSlice(options = {}) {
   return (nowMs - startedAtMs) < targetMs;
 }
 
+export function shouldStartHeavyAdmission(lastPresentDtMs, lateMs = 22) {
+  const last = Number(lastPresentDtMs);
+  if (!Number.isFinite(last)) return true;
+  return last <= lateMs;
+}
+
 export function admissionSliceOverHardLimit(options = {}) {
   const { hardMs } = normalizeAdmissionSliceOptions(options);
   const startedAtMs = Number(options.startedAtMs);

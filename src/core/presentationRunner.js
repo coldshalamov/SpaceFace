@@ -699,6 +699,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
         const alpha = simulationRunner.interpolationAlpha();
         presentationFrame.sequence++;
         presentationFrame.frameDt = frameDt;
+        if (state && state.render) state.render.lastPresentDtMs = frameDt * 1000;
         presentationFrame.alpha = alpha;
         presentationFrame.lifecycleState = lifecycleState;
         presentationFrame.lifecycleGeneration = lifecycleGeneration;
