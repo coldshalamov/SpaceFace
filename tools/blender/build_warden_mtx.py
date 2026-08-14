@@ -241,7 +241,7 @@ def create_materials():
         "Material_Warning": ((0.72, 0.42, 0.06), 0.04, 0.48, "warning", 0.08, None),
         "Material_Ceramic": ((0.42, 0.36, 0.26), 0.0, 0.70, "ceramic", 0.0, None),
         "Material_Radiator": ((0.12, 0.09, 0.07), 0.72, 0.60, "mechanical", 0.0, None),
-        "Material_Canopy": ((0.04, 0.07, 0.06), 0.02, 0.06, "glass", 0.9, None),
+        "Material_Canopy": ((0.42, 0.55, 0.62), 0.02, 0.06, "glass", 0.9, None),
         "Material_Thruster": ((0.03, 0.04, 0.05), 0.10, 0.55, "thruster", 0.0, None),
     }
     mats = {}
@@ -697,7 +697,6 @@ def build_lod(lod, mats):
         add_cylinder(f"GunBarrel_{side}", (6.45, 0.55 * sign, 0.06), 0.038, 0.82, armor, collection, vertices=8, bevel=0.003)
         add_box(f"GunMantlet_{side}", (5.05, 0.55 * sign, 0.06), (0.12, 0.10, 0.10), armor, collection, 0.004)
         add_box(f"BowCheek_{side}", (6.55, 0.85 * sign, 0.18), (1.05, 0.07, 0.20), armor, collection, 0.006)
-        add_box(f"DorsalTile_{side}", (1.15, 0.62 * sign, 0.92), (0.85, 0.30, 0.018), armor, collection, 0.004)
         add_rcs_cluster(side, (-1.4, 2.32 * sign, 0.20), mats, collection, sign=sign)
 
     add_box("Cabin_Shoulder", (2.85, 0.0, 0.95), (0.80, 0.52, 0.05), armor, collection, 0.006)
@@ -733,12 +732,12 @@ def build_lod(lod, mats):
                         (0.014, 0.16, 0.18),
                         mech, collection, 0.001,
                     )
-    if CYCLE >= 8:
+    if False:  # C14 drop kit-on-loaf extras (was CYCLE >= 8)
         add_box("DriveBankBand", (-7.85, 0.0, 0.12), (0.06, 2.05, 0.24), armor, collection, 0.003)
-    if CYCLE >= 9:
+    if False:  # C14 drop kit-on-loaf extras (was CYCLE >= 9)
         add_box("ChineCapP", (3.10, -1.85, 0.16), (1.45, 0.040, 0.050), armor, collection, 0.003)
         add_box("ChineCapS", (3.10, 1.85, 0.16), (1.45, 0.040, 0.050), armor, collection, 0.003)
-    if CYCLE >= 10:
+    if False:  # C14 drop kit-on-loaf extras (was CYCLE >= 10)
         add_box("PatchTile2", (1.85, 0.58, 0.92), (0.24, 0.12, 0.010), armor, collection, 0.002)
         add_box("TowerStayP", (-2.25, -0.18, 1.95), (0.22, 0.02, 0.02), mech, collection, 0.002)
         add_box("TowerStayS", (-2.25, 0.18, 1.95), (0.22, 0.02, 0.02), mech, collection, 0.002)

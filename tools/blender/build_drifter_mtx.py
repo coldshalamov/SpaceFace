@@ -241,7 +241,7 @@ def create_materials():
         "Material_Warning": ((0.70, 0.34, 0.05), 0.05, 0.46, "warning", 0.1, None),
         "Material_Ceramic": ((0.54, 0.46, 0.34), 0.0, 0.64, "ceramic", 0.0, None),
         "Material_Radiator": ((0.16, 0.12, 0.09), 0.7, 0.56, "mechanical", 0.0, None),
-        "Material_Canopy": ((0.06, 0.10, 0.12), 0.02, 0.05, "glass", 1.0, None),
+        "Material_Canopy": ((0.42, 0.55, 0.62), 0.02, 0.05, "glass", 1.0, None),
         "Material_Thruster": ((0.02, 0.08, 0.12), 0.15, 0.22, "thruster", 0.0, ((0.16, 0.48, 0.64), 1.0)),
     }
     mats = {}
@@ -661,7 +661,6 @@ def build_lod(lod, mats):
                     (0.012, 0.16, 0.18),
                     mech, collection, 0.001,
                 )
-        add_box(f"DorsalTile_{side}", (0.55, 0.42 * sign, 0.72), (0.70, 0.28, 0.018), armor, collection, 0.004)
         add_box(f"BowCheek_{side}", (5.4, 0.55 * sign, 0.12), (0.85, 0.06, 0.18), armor, collection, 0.006)
         add_cylinder(f"GunHouse_{side}", (5.55, 0.42 * sign, -0.06), 0.08, 0.95, mech, collection, vertices=10, bevel=0.005)
         add_cylinder(f"GunBarrel_{side}", (6.40, 0.42 * sign, -0.06), 0.032, 0.70, armor, collection, vertices=8, bevel=0.003)
@@ -677,15 +676,15 @@ def build_lod(lod, mats):
     add_cylinder("Comm_Mast", (-0.35, 0.0, 1.15), 0.035, 0.72, mech, collection, vertices=8, bevel=0.003, rot=(0, 0, 0))
     add_box("Comm_Head", (-0.28, 0.0, 1.52), (0.10, 0.14, 0.06), armor, collection, 0.003)
     add_box("Hatch_Lid", (-1.10, 0.32, 0.72), (0.32, 0.20, 0.016), armor, collection, 0.004)
-    if CYCLE >= 8:
+    if False:  # C14 drop kit-on-loaf extras (was CYCLE >= 8)
         add_box("NacelleBandP", (-5.35, -1.55, 0.08), (0.06, 0.42, 0.28), armor, collection, 0.003)
         add_box("NacelleBandS", (-5.35, 1.55, 0.08), (0.06, 0.42, 0.28), armor, collection, 0.003)
         add_box("WellLipP", (0.10, -1.28, 0.28), (1.20, 0.04, 0.04), armor, collection, 0.002)
         add_box("WellLipS", (0.10, 1.28, 0.28), (1.20, 0.04, 0.04), armor, collection, 0.002)
-    if CYCLE >= 9:
+    if False:  # C14 drop kit-on-loaf extras (was CYCLE >= 9)
         add_box("ChineCapP", (2.15, -1.05, 0.08), (1.35, 0.04, 0.05), armor, collection, 0.003)
         add_box("ChineCapS", (2.15, 1.05, 0.08), (1.35, 0.04, 0.05), armor, collection, 0.003)
-    if CYCLE >= 10:
+    if False:  # C14 drop kit-on-loaf extras (was CYCLE >= 10)
         add_box("PatchTile2", (0.85, 0.48, 0.68), (0.22, 0.12, 0.008), armor, collection, 0.002)
         add_cylinder("MastYard", (-0.35, 0.0, 1.48), 0.012, 0.28, mech, collection, 8, 0.001, rot=(0, 0, math.pi / 2))
     add_box("Hatch_Hinge", (-1.36, 0.32, 0.73), (0.03, 0.15, 0.018), mech, collection, 0.002)

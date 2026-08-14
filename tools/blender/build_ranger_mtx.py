@@ -238,7 +238,7 @@ def create_materials():
         "Material_Warning": ((0.70, 0.34, 0.05), 0.05, 0.46, "warning", 0.1, None),
         "Material_Ceramic": ((0.54, 0.46, 0.34), 0.0, 0.64, "ceramic", 0.0, None),
         "Material_Radiator": ((0.16, 0.12, 0.09), 0.7, 0.56, "mechanical", 0.0, None),
-        "Material_Canopy": ((0.06, 0.10, 0.12), 0.02, 0.05, "glass", 1.0, None),
+        "Material_Canopy": ((0.42, 0.55, 0.62), 0.02, 0.05, "glass", 1.0, None),
         "Material_Thruster": ((0.02, 0.08, 0.12), 0.15, 0.22, "thruster", 0.0, ((0.16, 0.48, 0.64), 1.0)),
     }
     mats = {}
@@ -690,7 +690,7 @@ def build_lod(lod, mats):
                         (0.012, 0.14, 0.16),
                         mech, collection, 0.001,
                     )
-    if CYCLE >= 8:
+    if False:  # C14 drop kit-on-loaf extras (was CYCLE >= 8)
         add_box("NacelleBandP", (-6.15, -1.20, 0.08), (0.05, 0.34, 0.22), armor, collection, 0.003)
         add_box("NacelleBandS", (-6.15, 1.20, 0.08), (0.05, 0.34, 0.22), armor, collection, 0.003)
         loft_from_rings("SurveyDish", [
@@ -699,7 +699,7 @@ def build_lod(lod, mats):
             ellipse_ring(1.06, 0.0, 2.50, 0.18, 0.18, 16),
             ellipse_ring(1.10, 0.0, 2.54, 0.16, 0.16, 16),
         ], armor, collection, 0.003, cap=False)
-    if CYCLE >= 9:
+    if False:  # C14 drop kit-on-loaf extras (was CYCLE >= 9)
         add_box("ChineCapP", (2.35, -0.98, 0.08), (1.25, 0.035, 0.045), armor, collection, 0.003)
         add_box("ChineCapS", (2.35, 0.98, 0.08), (1.25, 0.035, 0.045), armor, collection, 0.003)
         loft_from_rings("BowCheekP", [
@@ -712,7 +712,7 @@ def build_lod(lod, mats):
             diamond_ring(5.40, 0.42, 0.06, 0.12, 0.10),
             diamond_ring(4.40, 0.52, 0.08, 0.10, 0.08),
         ], armor, collection, 0.006)
-    if CYCLE >= 10:
+    if False:  # C14 drop kit-on-loaf extras (was CYCLE >= 10)
         add_box("PatchTile2", (0.75, 0.42, 0.62), (0.20, 0.10, 0.008), armor, collection, 0.002)
         add_cylinder("MastYard", (0.85, 0.0, 2.28), 0.012, 0.32, mech, collection, 8, 0.001, rot=(0, 0, math.pi / 2))
         boolean_cut(hull_obj, "BowSensorWell", (6.85, 0.0, 0.18), (0.22, 0.10, 0.08))

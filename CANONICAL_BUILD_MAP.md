@@ -66,12 +66,13 @@ kit-on-loaf cycles did not close quality. That close is reverted. Live files are
 still the old factory wholeships. Hitch is untouched and still wins. Stay off
 INFERENCE, the dock/hulk remaster, and the expansion-research brief.
 
-- **Hornet is on cycle 31.** C26–31 rebuilt form: discrete folded needle
-  plates plus collar, formed hull, airfoil wings, lighter glass, drive
+- **Hornet is on cycle 32.** C26–32 rebuilt form: discrete folded needle
+  plates plus collar, formed hull, airfoil wings, brighter glass, drive
   in a well, black deck farm deleted. Reviews still REVISE. Hitch still
   wins. Not wired.
-- **Remaining player ships are on a C13 form pass** (deck-plate farms
-  removed, hull-following chine plates). None beat Hitch. None wired.
+- **Remaining player ships are on a C14 form pass** (deck-plate farms
+  and leftover kit extras removed, hull-following chine plates, lighter
+  glass). None beat Hitch. None wired.
 - **Every NPC/traffic ship now has a C12 seated-drive pass** (gold bowl
   removed). None beat Hitch. None wired. Live maps still load the old
   factory wholeships.

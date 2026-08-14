@@ -16,5 +16,7 @@
 | 12 | yes | see json | REVISE/REVISE/REJECT | fat house + thicker wing. Crate canopy remains |
 | 13 | yes | 0BEC01D7 | REJECT/REJECT/REJECT | crate gone. Still below Hitch. Not wired |
 | 14 | yes | see json | REJECT/REJECT/REJECT | flared bell + vanes. Waffle throat. Hitch wins |
+| 26–31 | yes | see json | REVISE | form rewrite: folded needle, airfoil wings, drive well |
+| 32 | yes | see json | pending | brighter glass. Needle still black. Hitch still wins |
 
 Hitch-plus / A-list: not met. Do not promote. Do not self-accept.

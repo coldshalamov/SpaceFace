@@ -241,7 +241,7 @@ def create_materials():
         "Material_Warning": ((0.82, 0.38, 0.05), 0.04, 0.46, "warning", 0.06, None),
         "Material_Ceramic": ((0.28, 0.24, 0.18), 0.0, 0.78, "ceramic", 0.0, None),
         "Material_Radiator": ((0.10, 0.07, 0.06), 0.78, 0.58, "mechanical", 0.0, None),
-        "Material_Canopy": ((0.03, 0.06, 0.05), 0.02, 0.05, "glass", 0.92, None),
+        "Material_Canopy": ((0.42, 0.55, 0.62), 0.02, 0.05, "glass", 0.92, None),
         "Material_Thruster": ((0.02, 0.03, 0.04), 0.08, 0.58, "thruster", 0.0, None),
     }
     mats = {}
@@ -732,7 +732,6 @@ def build_lod(lod, mats):
         add_cylinder(f"Broad_Aft_{side}", (-0.45, 3.05 * sign, 0.16), 0.050, 0.42, mech, collection, vertices=10, bevel=0.003)
         add_box(f"BroadMount_{side}", (0.15, 2.92 * sign, 0.06), (1.35, 0.07, 0.05), armor, collection, 0.003)
         add_box(f"BowCheek_{side}", (8.15, 1.05 * sign, 0.22), (1.15, 0.08, 0.22), armor, collection, 0.006)
-        add_box(f"DorsalTile_{side}", (1.45, 0.88 * sign, 1.26), (1.05, 0.34, 0.022), armor, collection, 0.004)
         add_rcs_cluster(side, (-1.55, 2.95 * sign, 0.24), mats, collection, sign=sign)
         add_box(f"RcsBay_{side}", (-1.55, 2.95 * sign, 0.24), (0.28, 0.10, 0.16), armor, collection, 0.004)
         # Outboard lofted fin: thick root into the beam, thin tip. C6+ adds a root fillet station.
@@ -793,12 +792,12 @@ def build_lod(lod, mats):
                         (0.014, 0.20, 0.22),
                         mech, collection, 0.001,
                     )
-    if CYCLE >= 8:
+    if False:  # C14 drop kit-on-loaf extras (was CYCLE >= 8)
         add_box("DriveBankBand", (-11.15, 0.0, 0.12), (0.08, 2.85, 0.28), armor, collection, 0.003)
-    if CYCLE >= 9:
+    if False:  # C14 drop kit-on-loaf extras (was CYCLE >= 9)
         add_box("ChineCapP", (3.80, -3.05, 0.22), (1.85, 0.050, 0.060), armor, collection, 0.003)
         add_box("ChineCapS", (3.80, 3.05, 0.22), (1.85, 0.050, 0.060), armor, collection, 0.003)
-    if CYCLE >= 10:
+    if False:  # C14 drop kit-on-loaf extras (was CYCLE >= 10)
         add_box("PatchTile2", (2.35, 0.78, 1.24), (0.30, 0.14, 0.012), armor, collection, 0.002)
         add_box("IslandStayP", (-2.35, -0.28, 2.35), (0.28, 0.022, 0.022), mech, collection, 0.002)
         add_box("IslandStayS", (-2.35, 0.28, 2.35), (0.28, 0.022, 0.022), mech, collection, 0.002)

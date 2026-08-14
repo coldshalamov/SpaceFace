@@ -241,7 +241,7 @@ def create_materials():
         "Material_Warning": ((0.70, 0.34, 0.05), 0.05, 0.46, "warning", 0.1, None),
         "Material_Ceramic": ((0.08, 0.07, 0.06), 0.0, 0.74, "ceramic", 0.0, None),
         "Material_Radiator": ((0.07, 0.06, 0.05), 0.62, 0.62, "mechanical", 0.0, None),
-        "Material_Canopy": ((0.38, 0.48, 0.55), 0.02, 0.08, "glass", 0.62, None),
+        "Material_Canopy": ((0.55, 0.70, 0.76), 0.00, 0.10, "glass", 0.72, None),
         "Material_Thruster": ((0.02, 0.08, 0.12), 0.15, 0.22, "thruster", 0.0, None),
     }
     mats = {}
@@ -812,7 +812,7 @@ def build_lod(lod, mats):
         hull_obj.data.materials.append(hull)
     inset_large_faces(hull_obj, thickness=0.030, depth=0.012, min_area=0.12)
 
-    add_greenhouse("Canopy", 3.25, 0.0, 0.68, 1.70, 0.44, 0.36, mats, collection)
+    add_greenhouse("Canopy", 3.20, 0.0, 0.74, 1.80, 0.48, 0.42, mats, collection)
     add_cylinder("TransomRing", (-7.22, 0.0, 0.08), 0.38, 0.07, armor, collection, 22, 0.005)
     add_manufactured_drive("Main", -7.18, 0.0, lod, mats, collection, scale=1.00, z=0.08)
     add_folded_sheet(

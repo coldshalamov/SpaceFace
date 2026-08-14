@@ -235,7 +235,7 @@ def create_materials():
         "Material_Warning": ((0.80, 0.40, 0.06), 0.04, 0.46, "warning", 0.06, None),
         "Material_Ceramic": ((0.32, 0.26, 0.18), 0.0, 0.76, "ceramic", 0.0, None),
         "Material_Radiator": ((0.10, 0.08, 0.07), 0.76, 0.58, "mechanical", 0.0, None),
-        "Material_Canopy": ((0.03, 0.05, 0.06), 0.02, 0.06, "glass", 0.90, None),
+        "Material_Canopy": ((0.42, 0.55, 0.62), 0.02, 0.06, "glass", 0.90, None),
         "Material_Thruster": ((0.02, 0.03, 0.04), 0.08, 0.58, "thruster", 0.0, None),
     }
     mats = {}
@@ -741,12 +741,12 @@ def build_lod(lod, mats):
                         (0.012, 0.16, 0.16),
                         mech, collection, 0.001,
                     )
-    if CYCLE >= 8:
+    if False:  # C14 drop kit-on-loaf extras (was CYCLE >= 8)
         add_box("DriveBankBand", (-5.55, 0.0, 0.08), (0.06, 1.55, 0.22), armor, collection, 0.003)
-    if CYCLE >= 9:
+    if False:  # C14 drop kit-on-loaf extras (was CYCLE >= 9)
         add_box("ChineCapP", (1.85, -2.05, 0.18), (1.15, 0.040, 0.048), armor, collection, 0.003)
         add_box("ChineCapS", (1.85, 2.05, 0.18), (1.15, 0.040, 0.048), armor, collection, 0.003)
-    if CYCLE >= 10:
+    if False:  # C14 drop kit-on-loaf extras (was CYCLE >= 10)
         add_box("PatchTile2", (1.15, 0.55, 1.14), (0.22, 0.10, 0.010), armor, collection, 0.002)
         add_box("WandStayP", (0.62, -0.08, 1.55), (0.18, 0.016, 0.016), mech, collection, 0.002)
         add_box("WandStayS", (0.62, 0.08, 1.55), (0.18, 0.016, 0.016), mech, collection, 0.002)
