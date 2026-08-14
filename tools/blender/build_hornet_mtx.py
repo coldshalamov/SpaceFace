@@ -462,10 +462,10 @@ def add_manufactured_delta(name, sign, material, collection):
     """Thick-root airfoil with dihedral so 3/4 sees the section, not a card."""
     s = sign
     rings = [
-        airfoil_ring(0.25, 1.05 * s, -0.10, 2.65, 0.92),
-        airfoil_ring(-0.02, 2.00 * s, 0.38, 1.95, 0.52),
-        airfoil_ring(-0.36, 2.95 * s, 0.62, 1.15, 0.24),
-        airfoil_ring(-0.74, 3.78 * s, 0.42, 0.52, 0.10),
+        airfoil_ring(0.30, 0.62 * s, -0.04, 2.40, 0.88),
+        airfoil_ring(0.05, 1.55 * s, 0.18, 2.10, 0.50),
+        airfoil_ring(-0.28, 2.55 * s, 0.28, 1.35, 0.26),
+        airfoil_ring(-0.62, 3.45 * s, 0.18, 0.62, 0.12),
     ]
     wing = loft_from_rings(name, rings, material, collection, 0.012)
     add_folded_sheet(
@@ -789,10 +789,10 @@ def build_lod(lod, mats):
         (3.80, 0.22, 0.28, 0.50),
     ], hull, collection, 0.008)
     if lod <= 1:
-        cut_open_bay(hull_obj, "Cockpit", (4.10, 0.0, 0.62), 1.35, 0.36, 0.42, (0, 0, 1), mats, collection, kit="cockpit", liner=False)
-        cut_open_bay(hull_obj, "NeedlePort", (6.40, 0.0, -0.08), 0.55, 0.10, 0.16, (0, 0, -1), mats, collection, kit="empty", liner=False)
-        cut_open_bay(hull_obj, "Port", (0.20, -1.10, 0.08), 1.45, 0.38, 0.48, (0, -1, 0), mats, collection, kit="empty", liner=False)
-        cut_open_bay(hull_obj, "Starboard", (0.20, 1.10, 0.08), 1.45, 0.38, 0.48, (0, 1, 0), mats, collection, kit="empty", liner=False)
+        cut_open_bay(hull_obj, "Cockpit", (4.10, 0.0, 0.62), 1.55, 0.42, 0.48, (0, 0, 1), mats, collection, kit="cockpit", liner=False)
+        cut_open_bay(hull_obj, "NeedlePort", (6.40, 0.0, -0.08), 0.70, 0.14, 0.20, (0, 0, -1), mats, collection, kit="empty", liner=False)
+        cut_open_bay(hull_obj, "Port", (0.20, -1.05, 0.10), 1.70, 0.46, 0.58, (0, -1, 0), mats, collection, kit="empty", liner=False)
+        cut_open_bay(hull_obj, "Starboard", (0.20, 1.05, 0.10), 1.70, 0.46, 0.58, (0, 1, 0), mats, collection, kit="empty", liner=False)
         cut_open_bay(hull_obj, "DorsalAft", (-3.20, 0.0, 0.66), 1.05, 0.36, 0.28, (0, 0, 1), mats, collection, kit="radiator", liner=False)
         cut_open_bay(hull_obj, "Keel", (0.10, 0.0, -0.38), 1.70, 0.28, 0.26, (0, 0, -1), mats, collection, kit="empty")
         boolean_cut_cylinder(hull_obj, "TransomSocket", (-7.00, 0.0, 0.10), 0.36, 0.85)
@@ -807,7 +807,6 @@ def build_lod(lod, mats):
     add_box("Cockpit_Seat", (3.85, 0.0, 0.30), (0.20, 0.13, 0.07), mech, collection, 0.004)
     add_box("Cockpit_Back", (3.66, 0.0, 0.40), (0.04, 0.12, 0.10), armor, collection, 0.003)
     add_box("Cockpit_Console", (4.28, 0.0, 0.36), (0.14, 0.16, 0.030), armor, collection, 0.003)
-    add_box("Cockpit_HUD", (4.36, 0.0, 0.48), (0.010, 0.12, 0.040), accent, collection, 0.001)
     add_cylinder("TransomRing", (-7.22, 0.0, 0.08), 0.38, 0.07, armor, collection, 22, 0.005)
     add_manufactured_drive("Main", -7.18, 0.0, lod, mats, collection, scale=1.00, z=0.08)
     loft_shell("Boom_ShellP", [

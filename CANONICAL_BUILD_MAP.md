@@ -66,15 +66,14 @@ kit-on-loaf cycles did not close quality. That close is reverted. Live files are
 still the old factory wholeships. Hitch is untouched and still wins. Stay off
 INFERENCE, the dock/hulk remaster, and the expansion-research brief.
 
-- **Hornet is on cycle 45.** C44 reviews REJECT (foam dart, card
-  wings). C45 puts the thick airfoil wings back on the hull-is-needle
-  body. Hitch still wins. Not wired.
-- **Drifter is on cycle 15** (cabin shells, brighter glass, kit boxes
-  swapped for plates). Still a lofted sausage. Hitch still wins. Not
-  wired.
-- **Remaining player ships are on a C14 form pass** (deck-plate farms
-  and leftover kit extras removed, hull-following chine plates, lighter
-  glass). None beat Hitch. None wired.
+- **Hornet is on cycle 47.** C45 reviews REJECT. C46 lampshade bell
+  reverted. C47 is rooted wings + seated drive + gray steel. Hitch
+  still wins. Not wired. Hornet loops pause so the rest of the fleet
+  gets the same form pass.
+- **Drifter is on cycle 15.** Next remaining-player form pass starts
+  here, then Ranger through Wasp, then NPC. None beat Hitch. None wired.
+- **Remaining player ships are on a C14 form pass** unless named
+  above. None beat Hitch. None wired.
 - **Every NPC/traffic ship now has a C12 seated-drive pass** (gold bowl
   removed). None beat Hitch. None wired. Live maps still load the old
   factory wholeships.
