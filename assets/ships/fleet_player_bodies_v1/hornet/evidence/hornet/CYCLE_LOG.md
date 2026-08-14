@@ -25,5 +25,6 @@
 | 37 | yes | see json | pending | hoses/turret/sticker gone. Needle still a pyramid |
 | 38 | yes | see json | pending | wider needle cheeks. Step reads at 3/4. Hitch still wins |
 | 39 | yes | see json | REJECT | stacked wing plates worse than C36. Reverted |
+| 40 | yes | see json | pending | C38 needle + C36 wings restored. Best so far. Not wired |
 
 Hitch-plus / A-list: not met. Do not promote. Do not self-accept.

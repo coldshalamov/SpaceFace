@@ -66,9 +66,9 @@ kit-on-loaf cycles did not close quality. That close is reverted. Live files are
 still the old factory wholeships. Hitch is untouched and still wins. Stay off
 INFERENCE, the dock/hulk remaster, and the expansion-research brief.
 
-- **Hornet is on cycle 39.** C39 stacked wing plates were worse than
-  C36 and are reverted. Best Hornet so far is C38 needle + C36 wings.
-  Reviews still REJECT. Hitch still wins. Not wired.
+- **Hornet is on cycle 40.** C39 stacked wing plates were worse than
+  C36 and were reverted. C40 is the C38 needle plus C36 wings on a
+  kit-stripped hull. Reviews still REJECT. Hitch still wins. Not wired.
 - **Drifter is on cycle 15** (cabin shells, brighter glass, kit boxes
   swapped for plates). Still a lofted sausage. Hitch still wins. Not
   wired.
