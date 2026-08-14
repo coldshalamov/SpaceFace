@@ -718,7 +718,6 @@ def build_lod(lod, mats):
         add_box(f"GunReceiver_{side}", (5.35, 0.50 * sign, 0.22), (0.24, 0.09, 0.08), mech, collection, 0.003)
         add_cylinder(f"GunJacket_{side}", (5.95, 0.50 * sign, 0.22), 0.042, 0.62, armor, collection, 10, 0.002)
         add_cylinder(f"GunBarrel_{side}", (6.50, 0.50 * sign, 0.22), 0.022, 0.38, mech, collection, 8, 0.001)
-        add_flared_bell(side, -7.25, 1.10 * sign, 0.08, 0.95, mats, collection)
         add_cylinder(f"DriveCoupling_{side}", (-6.95, 1.10 * sign, 0.08), 0.32, 0.16, mech, collection, 14, 0.003)
         add_manufactured_drive(side, -6.55, 1.10 * sign, lod, mats, collection, scale=0.78, z=0.08)
         add_rcs_cluster(side, (-1.2, 2.15 * sign, 0.16), mats, collection, sign=sign)

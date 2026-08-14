@@ -741,7 +741,6 @@ def build_lod(lod, mats):
         add_cylinder("ColdPin", (5.55, 0.0, 0.08), 0.06, 0.10, armor, collection, 10, 0.002)
 
     # Single factory drive at (-4.6, 0).
-    add_flared_bell("Main", -5.15, 0.0, 0.08, 0.88, mats, collection)
     add_cylinder("DriveCoupling", (-4.85, 0.0, 0.08), 0.26, 0.14, mech, collection, 14, 0.003)
     add_manufactured_drive("Main", -4.60, 0.0, lod, mats, collection, scale=0.72, z=0.08)
     add_box("DriveSaddle", (-4.50, 0.0, -0.18), (0.30, 0.12, 0.07), mech, collection, 0.003)

@@ -712,7 +712,6 @@ def build_lod(lod, mats):
         add_box(f"Accent_{side}", (0.05, 1.55 * sign, 0.12), (0.55, 0.018, 0.010), accent, collection, 0.002)
         add_rcs_cluster(side, (-1.2, 1.45 * sign, 0.10), mats, collection, sign=sign)
 
-    add_flared_bell("Main", -6.25, 0.0, 0.06, 0.88, mats, collection)
     add_cylinder("DriveCoupling", (-6.00, 0.0, 0.06), 0.30, 0.14, mech, collection, 14, 0.003)
     add_manufactured_drive("Main", -5.55, 0.0, lod, mats, collection, scale=0.68, z=0.06)
     loft_from_rings("TailFin", [

@@ -736,7 +736,6 @@ def build_lod(lod, mats):
 
     # Twin axial bells at factory drive stations (-7.6, ±1.3). Hollow, no glow disk.
     for sign, side in ((-1, "Port"), (1, "Starboard")):
-        add_flared_bell(side, -8.35, 1.30 * sign, 0.08, 1.08, mats, collection)
         add_cylinder(f"DriveCoupling_{side}", (-7.90, 1.30 * sign, 0.08), 0.36, 0.18, mech, collection, 16, 0.003)
         add_manufactured_drive(side, -7.60, 1.30 * sign, lod, mats, collection, scale=0.88, z=0.08)
         add_box(f"DriveSaddle_{side}", (-7.50, 1.30 * sign, -0.24), (0.44, 0.14, 0.09), mech, collection, 0.003)

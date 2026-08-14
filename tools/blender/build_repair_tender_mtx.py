@@ -720,7 +720,6 @@ def build_lod(lod, mats):
 
     # Twin axial bells at factory drive stations (-5.8, ±1.0).
     for sign, side in ((-1, "Port"), (1, "Starboard")):
-        add_flared_bell(side, -6.45, 1.00 * sign, 0.08, 0.88, mats, collection)
         add_cylinder(f"DriveCoupling_{side}", (-6.10, 1.00 * sign, 0.08), 0.28, 0.14, mech, collection, 14, 0.003)
         add_manufactured_drive(side, -5.80, 1.00 * sign, lod, mats, collection, scale=0.72, z=0.08)
         add_box(f"DriveSaddle_{side}", (-5.70, 1.00 * sign, -0.20), (0.34, 0.12, 0.08), mech, collection, 0.003)

@@ -61,24 +61,23 @@ disjoint files. No coordinator, task-long reservation, or worktree is required.
   leaves that need a human or a headed machine you do not have may be recorded `unproven` and
   skipped; do not stall the campaign on them.
 
-**PQ-050 campaign checkpoint (2026-08-13, form rebuild in progress):** the ten
+**PQ-050 campaign checkpoint (2026-08-14, form rebuild in progress):** the ten
 kit-on-loaf cycles did not close quality. That close is reverted. Live files are
 still the old factory wholeships. Hitch is untouched and still wins. Stay off
 INFERENCE, the dock/hulk remaster, and the expansion-research brief.
 
-- **Hornet is on cycles 16–25.** Gold bowl and crate tail are gone. Drive
-  sits in a real well. Needle is a hard-chine plate. Wings have thickness.
-  Mid-body still kit. Reviews still REVISE. Hitch still wins. Not wired.
-- **Every player ship and every NPC/traffic ship has a form-rebuild cycle
-  (11+).** None beat Hitch. None wired. Live maps still load the old
+- **Hornet is on cycle 26.** Cycles 16–25 still lost to Hitch (origami
+  needle, kit mid, slab wings). C26 rebuilds form: discrete folded needle
+  plates, formed hull without house-union, airfoil wings, thin greenhouse
+  panes, drive in a well. Not wired until Hitch loses.
+- **Every player ship has a C12 seated-drive pass.** None beat Hitch.
+  None wired.
+- **Every NPC/traffic ship now has a C12 seated-drive pass** (gold bowl
+  removed). None beat Hitch. None wired. Live maps still load the old
   factory wholeships.
-- **Every remaining player ship now has a C12 form pass** (seated
-  manufactured drives, no gold bowl). Ironback, Bastion, Atlas, Warden,
-  Colossus, Leviathan, Pelican, Mule, Wasp included. All still lose to
-  Hitch. None wired.
-- **Next:** keep form work until a ship beats Hitch, then wire only that
-  ship. Traffic ships still need the same seated-drive pass. Do not
-  promote a loser. Do not mark the campaign exhausted.
+- **Next:** finish Hornet form until clay is not loft+kit and Hitch no
+  longer wins, then wire only that ship. Repeat one ship at a time. Do
+  not promote a loser. Do not mark the campaign exhausted.
 - **Do not** mark the campaign exhausted while clay still reads as primitives.
 
 **Graphics / place-asset remaster (resume):** if the task is continuing the interrupted remaster of

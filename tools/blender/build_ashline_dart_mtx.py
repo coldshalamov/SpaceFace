@@ -728,7 +728,6 @@ def build_lod(lod, mats):
         add_rcs_cluster(side, (-1.2, 1.78 * sign, 0.12), mats, collection, sign=sign)
         add_box(f"Warn_{side}", (0.15, 1.62 * sign, 0.18), (0.18, 0.06, 0.016), warning, collection, 0.002)
 
-    add_flared_bell("Main", -5.85, 0.0, 0.06, 0.92, mats, collection)
     add_cylinder("DriveCoupling", (-5.62, 0.0, 0.06), 0.32, 0.16, mech, collection, 14, 0.003)
     add_cylinder("DriveCasing", (-5.05, 0.0, 0.06), 0.30, 0.55, mech, collection, 14, 0.004)
     add_manufactured_drive("Main", -5.35, 0.0, lod, mats, collection, scale=0.72, z=0.06)
