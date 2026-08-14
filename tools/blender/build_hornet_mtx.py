@@ -735,7 +735,7 @@ def bake_ao_into_albedo(obj, samples=12, size=TEX):
     op = list(ao.pixels)
     n = min(len(ap) // 4, len(op) // 4)
     for i in range(n):
-        factor = 0.55 + 0.45 * op[i * 4]
+        factor = 0.84 + 0.16 * op[i * 4]
         ap[i * 4] *= factor
         ap[i * 4 + 1] *= factor
         ap[i * 4 + 2] *= factor
