@@ -33,8 +33,8 @@ import * as THREE from 'three';
 export const TRAIL_SECONDS = 2.0;
 /** Path samples retained. TRAIL_SECONDS * sample rate, with headroom. */
 export const SAMPLE_COUNT = 128;
-/** Strands braided along the path. */
-export const STRAND_COUNT = 7;
+/** Strands braided along the path. More strands make a thicker rope, not a wider one. */
+export const STRAND_COUNT = 14;
 /** Vertices across each strand, so each strand is a curved sheet rather than a flat wire. */
 export const STRAND_ACROSS = 3;
 /**
@@ -72,6 +72,7 @@ const TRAIL_VERT = /* glsl */`
   uniform float uCurve;
 
   varying float vAge;           // 0 at the newest sample, 1 at retirement
+  varying float vLife;          // 0 at the head, 1 at THIS strand's own end
   varying float vSide;
   varying float vDrive;
   varying float vRadiusRatio;
@@ -98,7 +99,10 @@ const TRAIL_VERT = /* glsl */`
    * The path position is READ and never displaced along the exhaust axis. Lateral dispersal is the
    * only offset applied, and it is symmetric about the path, so the strand stays on the flown line.
    */
-  vec3 strandPoint(float slot, float strand, out float ageOut, out float driveOut, out float rrOut) {
+  vec3 strandPoint(
+    float slot, float strand,
+    out float ageOut, out float driveOut, out float rrOut, out float lifeOut
+  ) {
     float idx = min(slot, max(uLive - 1.0, 0.0));
     float u = (idx + 0.5) / uSampleCount;
     vec4 path = texture2D(uPathTex, vec2(u, 0.5));
@@ -123,22 +127,25 @@ const TRAIL_VERT = /* glsl */`
     // than narrowing is what makes it read as dispersal: a strand that narrows with age converges on a
     // one-pixel line and reads as a ruled line drawn across the screen.
     float radius = mix(uHeadRadius, uTailRadius, pow(ageN, 0.7)) * (0.35 + seed * 1.3);
+    // Strands do not all last the same time. Without this the whole braid vanishes at one age, which is
+    // the same flat-ended failure the jet had, just in time instead of in space.
+    lifeOut = ageN / max(0.30 + hash11(strand * 3.17 + 5.1) * 0.70, 1e-3);
     // Meander in the plane normal to the path, seeded per strand and drifting slowly in time so the
     // braid keeps moving after the ship has left it.
     float theta = (strand / max(uStrandCount, 1.0)) * 6.2831853
       + seed * 6.2831853
       + uDrift * (uTime * 0.35 + ageN * 2.0)
-      + (vnoise(state.g * 0.35 + seed * 29.0) - 0.5) * 2.4;
+      + (vnoise(state.g * 0.35 + seed * 29.0) - 0.5) * 0.7;
 
     rrOut = radius / max(uHeadRadius, 1e-3);
     return path.rgb + side * (cos(theta) * radius) + up * (sin(theta) * radius);
   }
 
   void main() {
-    float age0, drive0, rr0, a1, d1, r1, a2, d2, r2;
-    vec3 p = strandPoint(aSample, aStrand, age0, drive0, rr0);
-    vec3 pPrev = strandPoint(max(aSample - 1.0, 0.0), aStrand, a1, d1, r1);
-    vec3 pNext = strandPoint(min(aSample + 1.0, uSampleCount - 1.0), aStrand, a2, d2, r2);
+    float age0, drive0, rr0, life0, a1, d1, r1, l1, a2, d2, r2, l2;
+    vec3 p = strandPoint(aSample, aStrand, age0, drive0, rr0, life0);
+    vec3 pPrev = strandPoint(max(aSample - 1.0, 0.0), aStrand, a1, d1, r1, l1);
+    vec3 pNext = strandPoint(min(aSample + 1.0, uSampleCount - 1.0), aStrand, a2, d2, r2, l2);
 
     vec3 tangent = normalize(pNext - pPrev + vec3(1e-5));
 
@@ -147,7 +154,9 @@ const TRAIL_VERT = /* glsl */`
     float twist = age0 * 5.3 + aStrand * 2.399 + uTime * 0.4;
     vec3 wide = normalize(ref * cos(twist) + ref2 * sin(twist));
 
-    float halfWidth = mix(uWidthHead, uWidthTail, pow(age0, 0.8)) * 0.5;
+    // Strands are not the same size to begin with, and they spread as the condensate disperses.
+    float halfWidth = mix(uWidthHead, uWidthTail, pow(age0, 0.8)) * 0.5
+      * (0.45 + hash11(aStrand * 6.29 + 3.3) * 1.15);
 
     vec3 sheetN = normalize(cross(tangent, wide));
     float curveAmt = uCurve * (0.4 + 0.9 * vnoise(age0 * 9.0 + aStrand * 13.0));
@@ -159,6 +168,7 @@ const TRAIL_VERT = /* glsl */`
     vec3 world = p + offset;
 
     vAge = age0;
+    vLife = life0;
     vSide = aSide;
     vDrive = drive0;
     vRadiusRatio = max(rr0, 1.0);
@@ -181,11 +191,18 @@ const TRAIL_FRAG = /* glsl */`
   uniform vec3  uCamPos;
 
   varying float vAge;
+  varying float vLife;
   varying float vSide;
   varying float vDrive;
   varying float vRadiusRatio;
   varying vec3  vWorldPos;
   varying vec3  vNormal;
+
+  float hash11f(float p) {
+    p = fract(p * 0.1031);
+    p *= p + 33.33;
+    return fract(p * (p + p));
+  }
 
   void main() {
     vec3 V = normalize(uCamPos - vWorldPos);
@@ -199,12 +216,14 @@ const TRAIL_FRAG = /* glsl */`
     // narrow band of ages along a path IS a line — which is how this ended up reading as bright wire
     // instead of as spreading exhaust.
     float dilute = 1.0 / sqrt(max(vRadiusRatio, 1.0));
-    float disperse = pow(max(1.0 - vAge, 0.0), 1.1);
+    // Per-strand run-out, so strands thin out and vanish at different ages and the far end of the trail
+    // dissolves raggedly instead of every strand ending together.
+    float disperse = pow(max(1.0 - min(vLife, 1.0), 0.0), 1.6);
     float across = 1.0 - pow(abs(vSide), 4.0);
-    // The freshest samples sit inside the jet, which is drawing that same gas far brighter. Holding the
-    // trail off until the gas is behind the jet is what keeps the two from reading as one continuous
-    // object running out of the hull.
-    float onset = smoothstep(0.0, 0.06, vAge);
+    // The freshest samples sit inside the jet, which is drawing that same gas far brighter. Held off
+    // just long enough that the jet owns the near field — but not so long that a gap opens between the
+    // two, because the trail is supposed to run out from behind the ship, not start somewhere else.
+    float onset = smoothstep(0.0, 0.04, vAge);
     float alpha = clamp(uOpacity * dilute * disperse * across * onset * graze * (0.45 + vDrive * 0.75), 0.0, 1.0);
     if (alpha < 0.002) discard;
 
@@ -274,21 +293,28 @@ export function createContrailMaterial(T, opts = {}) {
       uStrandCount: { value: STRAND_COUNT },
       uLive: { value: 0 },
       uTime: { value: 0 },
-      // Starts near the flown line and opens out as the condensate spreads.
-      uHeadRadius: { value: 0.9 },
-      uTailRadius: { value: 9.0 },
-      // Strands must be wide enough to overlap. Narrow strands read as bright wires — pen-and-ink
-      // rather than dispersing exhaust — which is the single thing that made the last pass look cheap.
-      uWidthHead: { value: 0.9 },
-      uWidthTail: { value: 7.0 },
-      uDrift: { value: 0.9 },
+      // A TIGHT BUNDLE that stays a bundle. Opening the braid out into a wide veil is what turned this
+      // into a wireframe net across half the screen: spread the same material over ten times the area
+      // and every strand becomes an individually visible wire with gaps around it. Kept close together,
+      // the strands overlap into one dense rope of exhaust with ribbon structure legible inside it.
+      uHeadRadius: { value: 0.8 },
+      uTailRadius: { value: 3.0 },
+      uWidthHead: { value: 0.6 },
+      uWidthTail: { value: 2.2 },
+      // Low. A fast azimuthal drift winds the strands around each other and the braid reads as a tangle
+      // of wire, which is worse than the thin line it replaced.
+      uDrift: { value: 0.3 },
       uCurve: { value: 1.2 },
       uColor: { value: new T.Color(cold[0], cold[1], cold[2]) },
       uWarmColor: { value: new T.Color(warm[0], warm[1], warm[2]) },
       // Far below the jet. This is cold condensate catching starlight; if it competes with the jet for
       // brightness then the jet stops being the thing the eye goes to and the pair read as one tail.
-      uRadiance: { value: 0.20 },
-      uOpacity: { value: 0.008 },
+      // Bright enough to read as a deliberate feature at the gameplay camera. This is affordable
+      // precisely because the bundle is tight: concentrated material is bright without covering area.
+      // Tuned so faint it vanished on the real play route once, which meant half the effect was
+      // technically shipping and visually absent.
+      uRadiance: { value: 0.62 },
+      uOpacity: { value: 0.055 },
       uGrazeGain: { value: 3.6 },
       uGrazeFloor: { value: 0.2 },
       uCamPos: { value: new T.Vector3() },

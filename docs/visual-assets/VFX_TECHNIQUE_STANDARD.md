@@ -65,6 +65,8 @@ the jargon.
 | B15 | A history trail advected along the emitter's axis instead of recording where the emitter was | a full-length ribbon snapping into place behind a ship that has not moved |
 | B16 | Deformation keyed only to state frozen at emission, so the form is constant in the emitter's frame | a still image being stretched and translated; nothing flows through it |
 | B17 | Opacity used as an animation channel — fading an effect in and out with the input that drives it | a decal switching on; "shady glass"; cheap website translucency |
+| B18 | Uniform extent across all elements of an effect, so they all end at the same place | a flat chopped-off back edge; a haircut cut straight across |
+| B19 | Spreading a fixed amount of material over a large area to make it "soft" | a wireframe net; a tangle of individually visible wires with gaps between them |
 
 A banned technique may still appear as a *minor supporting term* — for example a soft radial falloff
 modulating a ribbon's own opacity — but never as the thing that carries the effect's silhouette,
@@ -99,15 +101,21 @@ hazards, not thrusters, not explosions.
    from material running out at an edge, and from genuine dispersal over time. Visibility of a hot
    effect comes from its *temperature* instead: additive material at zero radiance is already
    invisible, so nothing needs fading out (B17).
-7. **HDR with deliberate bloom headroom.** Cores exceed 1.0 on purpose, with a stated intent about
+7. **Every element runs out of material before it runs out of geometry, at its own distance.** Reach,
+   size, and lifetime all vary per element. An effect's end should be where many elements happen to
+   expire, which is ragged and dissolving — not a plane where the mesh stops (B18).
+8. **Density comes from concentration, not from area.** Overlapping elements read as one volume with
+   legible internal structure; the same material spread thin reads as separate wires with gaps (B19).
+   If an effect looks like a net, tighten it rather than fading it.
+9. **HDR with deliberate bloom headroom.** Cores exceed 1.0 on purpose, with a stated intent about
    what the bloom threshold will catch.
-8. **Asymmetric attack/release on every state transition.** Spool-up, cool-down, and one-shot events
-   each get an explicit envelope. Cooling is always slower than lighting up. What the envelope moves is
-   the effect's *reach and heat*, not its opacity.
-9. **Depth-aware soft intersection** where an effect can meet geometry.
-10. **Detail from simulation or authored art.** Fine detail comes from a real source — a fluid
+10. **Asymmetric attack/release on every state transition.** Spool-up, cool-down, and one-shot events
+    each get an explicit envelope. Cooling is always slower than lighting up. What the envelope moves
+    is the effect's *reach and heat*, not its opacity.
+11. **Depth-aware soft intersection** where an effect can meet geometry.
+12. **Detail from simulation or authored art.** Fine detail comes from a real source — a fluid
     simulation bake, or authored art — never from hash noise. See §3.
-11. **Motion-vector interpolation** if a flipbook is used at all, so playback is not a slideshow.
+13. **Motion-vector interpolation** if a flipbook is used at all, so playback is not a slideshow.
 
 Matter in the world (rocks, ice, debris, wreckage, cargo) is opaque, lit, and has a silhouette.
 Glow is a property of a hot surface or a volume, not a substitute for the object.

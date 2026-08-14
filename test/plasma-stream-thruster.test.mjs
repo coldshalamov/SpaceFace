@@ -202,6 +202,23 @@ test('the contrail exists only where the nozzle has actually been', () => {
   trail.dispose();
 });
 
+test('the contrail is a tight bright bundle, not an invisible wisp or a wide net', () => {
+  const trail = new ContrailTrail(THREE, {});
+  const u = trail.material.uniforms;
+
+  // It shipped invisible once: tuned so faint that half the effect was technically present on the play
+  // route and could not be seen. These are floors, not taste.
+  assert.ok(u.uOpacity.value >= 0.02, `contrail must be readable, opacity ${u.uOpacity.value}`);
+  assert.ok(u.uRadiance.value >= 0.3, `contrail must be readable, radiance ${u.uRadiance.value}`);
+
+  // And it must stay a bundle. Opening the braid wide spreads the same material over many times the
+  // area, so every strand becomes an individually visible wire and it reads as a wireframe net.
+  assert.ok(u.uTailRadius.value <= 4, `the braid must stay tight, tail radius ${u.uTailRadius.value}`);
+  assert.ok(u.uTailRadius.value > u.uHeadRadius.value, 'condensate still spreads with age');
+  assert.ok(trail.strands >= 10, `a thick rope needs strands, got ${trail.strands}`);
+  trail.dispose();
+});
+
 test('a parked ship thrusting lays down no contrail', () => {
   const trail = new ContrailTrail(THREE, {});
   const env = { drive: 1, emitFloor: 0.08 };

@@ -102,6 +102,26 @@ function assertPlayerPlumeConstruction() {
   );
   assert.match(trail, /MIN_STEP_WU/, 'B14: contrail samples must be gated on real nozzle movement');
 
+  // B9 — an effect that stops where its mesh stops has a flat chopped-off back edge. Every sheet needs
+  // its own reach and its material has to reach zero before its geometry does, so the tail is where
+  // many sheets independently run out rather than a plane where the mesh ends.
+  assert.match(ribbons, /sheetReach/, 'B9: sheets must reach different distances, or the tail is a flat cut');
+  assert.match(ribbons, /runout/, 'B9: sheet material must run out before its geometry does');
+  assert.match(trail, /lifeOut/, 'B9: contrail strands must expire at different ages, not all at once');
+
+  // The contrail is half of this effect, and it has shipped invisible once — tuned so faint that it was
+  // technically present on the play route and could not be seen. Floors here, not taste.
+  const trailOpacity = Number((trail.match(/uOpacity:\s*\{\s*value:\s*([\d.]+)/) || [])[1]);
+  const trailRadiance = Number((trail.match(/uRadiance:\s*\{\s*value:\s*([\d.]+)/) || [])[1]);
+  assert.ok(
+    trailOpacity >= 0.02,
+    `the contrail must be visible at the gameplay camera, opacity ${trailOpacity}`,
+  );
+  assert.ok(
+    trailRadiance >= 0.3,
+    `the contrail must be visible at the gameplay camera, radiance ${trailRadiance}`,
+  );
+
   // B15 — deformation keyed only to state frozen at emission is a still form being translated. The
   // plume's structure has to be a function of time at a fixed pose, or gas never flows through it.
   assert.match(

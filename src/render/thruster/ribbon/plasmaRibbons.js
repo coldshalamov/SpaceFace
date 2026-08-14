@@ -137,7 +137,8 @@ const RIBBON_VERT = /* glsl */`
   uniform float uBoost;
   uniform float uDash;
 
-  varying float vAxial;         // 0 at the lip, 1 at the designed tip
+  varying float vAxial;         // 0 at the lip, 1 at the designed tip — absolute, for temperature
+  varying float vLife;          // 0 at the lip, 1 at THIS sheet's own end — for its run-out
   varying float vRadiusRatio;   // local column radius / throat radius; >= 1
   varying float vTongue;        // 0..1 which structures are currently alight
   varying float vSide;
@@ -147,14 +148,34 @@ const RIBBON_VERT = /* glsl */`
   ${NOISE_GLSL}
 
   /**
-   * Centreline of one streamer at an axial fraction. Called three times per vertex so the sheet's own
-   * tangent — and therefore its normal, and therefore the grazing term — is exact rather than
-   * approximated from the jet axis.
+   * How far down the jet one sheet gets before it is gone, as a fraction of the jet length.
+   *
+   * Real shear layers do not all break down at the same station: some strands punch a long way
+   * downstream and others are shredded early. Giving every sheet the same reach is what gave the plume
+   * a flat back edge — a plane where all the geometry stopped at once, like a chopped haircut. It also
+   * wanders slowly in time, so the tail is never at a fixed distance from one frame to the next.
+   *
+   * Capped at 1.0 so no sheet can extend past the designed jet length.
    */
-  vec3 streamerPoint(float s, float ribbon, out float radiusRatio, out float tongue) {
+  float sheetReach(float ribbon) {
+    float seed = hash11(ribbon * 2.71 + 0.37);
+    float wander = 0.86 + 0.14 * vnoise2(vec2(uTime * 0.5, seed * 61.0));
+    return (0.34 + seed * 0.66) * wander;
+  }
+
+  /**
+   * Centreline of one streamer at a fraction of ITS OWN length. Called three times per vertex so the
+   * sheet's own tangent — and therefore its normal, and therefore the grazing term — is exact rather
+   * than approximated from the jet axis.
+   */
+  vec3 streamerPoint(float life, float ribbon, float reach, out float radiusRatio, out float tongue) {
     float seedA = hash11(ribbon * 7.13 + 1.7);
     float seedB = hash11(ribbon * 3.71 + 9.4);
     float seedC = hash11(ribbon * 11.9 + 4.3);
+
+    // Absolute distance along the jet, so shape and heat stay keyed to real distance from the throat.
+    // A short sheet is a short sheet; it does not become a squashed copy of a long one.
+    float s = life * reach;
 
     // THE TRAVELLING WAVE. Structures are a function of axial position MINUS time, so they are born at
     // the lip and run aft. Per-streamer rate spread means neighbours shear past one another instead of
@@ -164,10 +185,10 @@ const RIBBON_VERT = /* glsl */`
     float evo = uTime * 0.65 + seedC * 47.0;
 
     // A nozzle throws ONE collimated column; it only shreds once the shear layer at its boundary has
-    // had distance to break down. Every sheet therefore leaves the lip at the same tight radius and
-    // they overlap into a single dense stream, and per-sheet fan-out is gated behind uCoherence.
+    // had distance to break down. Every sheet therefore leaves the lip at nearly the same tight radius
+    // and they overlap into a single dense stream, and per-sheet fan-out is gated behind uCoherence.
     // Fanning them at the lip makes the bell read as a ring of loose wires with a hole up the middle.
-    float coreR = uThroatRadius * 0.62;
+    float coreR = uThroatRadius * 0.62 * (0.86 + seedB * 0.28);
     float breakup = smoothstep(uCoherence, min(uCoherence * 3.5 + 0.22, 1.0), s);
     float fan = mix(1.0, 0.30 + seedA * 1.7, breakup);
     float radius = coreR + uSpread * pow(s, 0.7) * fan;
@@ -192,7 +213,7 @@ const RIBBON_VERT = /* glsl */`
     // made boost read as a triangle inflating in place.
     radius *= 1.0 - uBoost * 0.14 + uDash * 0.35;
 
-    radiusRatio = radius / max(coreR, 1e-3);
+    radiusRatio = radius / max(uThroatRadius * 0.62, 1e-3);
 
     vec3 up = cross(uSideRef, uAft);
     return uNozzlePos
@@ -203,12 +224,13 @@ const RIBBON_VERT = /* glsl */`
 
   void main() {
     float ds = 1.0 / max(uStationCount - 1.0, 1.0);
-    float s = aStation * ds;
+    float life = aStation * ds;
+    float reach = sheetReach(aRibbon);
 
     float rr, tongue, ra, rb, ta, tb;
-    vec3 p = streamerPoint(s, aRibbon, rr, tongue);
-    vec3 pPrev = streamerPoint(max(s - ds, 0.0), aRibbon, ra, ta);
-    vec3 pNext = streamerPoint(min(s + ds, 1.0), aRibbon, rb, tb);
+    vec3 p = streamerPoint(life, aRibbon, reach, rr, tongue);
+    vec3 pPrev = streamerPoint(max(life - ds, 0.0), aRibbon, reach, ra, ta);
+    vec3 pNext = streamerPoint(min(life + ds, 1.0), aRibbon, reach, rb, tb);
 
     vec3 tangent = normalize(pNext - pPrev + vec3(1e-5));
 
@@ -216,6 +238,7 @@ const RIBBON_VERT = /* glsl */`
     // bright where it turns edge-on and fade where it turns face-on, instead of holding one constant
     // brightness like a strip of tape (ban B7). Twist rides the flow so the flashes travel too.
     float seedT = hash11(aRibbon * 5.37 + 4.1);
+    float s = life * reach;
     vec3 ref = normalize(cross(tangent, vec3(0.0, 1.0, 0.0)) + vec3(0.0, 1e-4, 0.0));
     vec3 ref2 = cross(ref, tangent);
     float twist = (s * uAxialFreq * 0.5 - uTime * uFlowRate * 0.5) * 1.7 + aRibbon * 2.399;
@@ -224,6 +247,9 @@ const RIBBON_VERT = /* glsl */`
     // Sheets widen as the column billows, and the flow term keeps that width breathing.
     float halfWidth = mix(uWidthNear, uWidthFar, pow(s, 0.8)) * 0.5;
     halfWidth *= 0.75 + tongue * 0.5;
+    // Sheets are not all the same size to begin with. Identical sheets read as a manufactured fan;
+    // a spread of widths is most of what makes a plume look like it has depth in it.
+    halfWidth *= 0.55 + hash11(aRibbon * 4.11 + 2.9) * 1.05;
     halfWidth *= 1.0 + uDash * 1.6;
 
     vec3 sheetN = normalize(cross(tangent, wide));
@@ -241,6 +267,7 @@ const RIBBON_VERT = /* glsl */`
     vec3 world = p + offset;
 
     vAxial = s;
+    vLife = life;
     vRadiusRatio = max(rr, 1.0);
     vTongue = tongue;
     vSide = aSide;
@@ -283,6 +310,7 @@ const RIBBON_FRAG = /* glsl */`
   uniform float uFlicker;
 
   varying float vAxial;
+  varying float vLife;
   varying float vRadiusRatio;
   varying float vTongue;
   varying float vSide;
@@ -308,7 +336,19 @@ const RIBBON_FRAG = /* glsl */`
     // is a firing engine, and the throttle is meant to show up as a longer, wider, hotter jet rather
     // than as the same jet at a different opacity.
     float mflow = 0.72 + uDrive * 0.28;
-    float density = dilute * mflow * (0.55 + vTongue * 0.75);
+
+    // EVERY SHEET RUNS OUT OF MATERIAL BEFORE IT RUNS OUT OF GEOMETRY.
+    //
+    // This is the fix for the flat chopped-off back edge. Each sheet reaches a different distance, and
+    // over the last part of its own length its material thins to literally zero, so it ends on nothing.
+    // The plume's tail is then just where a lot of sheets independently happen to run out — a ragged,
+    // dissolving front — rather than a plane where the mesh stops (ban B9).
+    float runout = 1.0 - smoothstep(0.42, 1.0, vLife);
+    // And the far end fragments: the tongue term takes over from the smooth body, so the tail breaks
+    // into separate wisps that come and go instead of fading as one solid shape.
+    float shred = mix(1.0, vTongue * 1.8, smoothstep(0.2, 0.95, vLife));
+
+    float density = dilute * mflow * (0.55 + vTongue * 0.75) * runout * shred;
 
     float alpha = clamp(uOpacity * density * across * graze, 0.0, 1.0);
     if (alpha < 0.003) discard;
@@ -433,7 +473,7 @@ export function createPlasmaRibbonMaterial(T, opts = {}) {
       // twentieth of what a single-layer effect would use. Set it at single-layer values and the jet
       // saturates to a white sausage before any structure can be seen.
       uRadiance: { value: 0.85 },
-      uOpacity: { value: 0.022 },
+      uOpacity: { value: 0.028 },
       uGrazeGain: { value: 4.5 },
       uGrazeFloor: { value: 0.16 },
       uCamPos: { value: new T.Vector3() },

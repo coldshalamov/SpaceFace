@@ -29,6 +29,9 @@ const PHASE = arg('phase', 'full');
 const MANEUVER = arg('maneuver', 'straight');
 const FRAMES = arg('frames', '150');
 const BLOOM = arg('bloom', '1');
+// Cruise speed sets how much history fits on screen: the trail's length is distance flown, so a slow
+// pass is the only way to frame its far end and confirm it dissipates rather than being cut off.
+const SPEED = arg('speed', '150');
 const TAG = arg('tag', '');
 
 const MIME = {
@@ -89,7 +92,7 @@ const report = { phase: PHASE, maneuver: MANEUVER, views: {}, issues };
 try {
   for (const view of VIEWS) {
     const q = new URLSearchParams({
-      view, phase: PHASE, maneuver: MANEUVER, frames: FRAMES, bloom: BLOOM,
+      view, phase: PHASE, maneuver: MANEUVER, frames: FRAMES, bloom: BLOOM, speed: SPEED,
     });
     await page.goto(`${baseUrl}/scripts/ribbon-plume-lab.html?${q}`, {
       waitUntil: 'domcontentloaded', timeout: 60_000,
