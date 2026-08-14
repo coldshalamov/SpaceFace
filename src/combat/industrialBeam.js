@@ -2,6 +2,7 @@
 // Pure module & single-writer helper for industrial beam verbs (cut, extract, repair, transfer) and payload lifecycle.
 
 import { removeCargo, addCargo } from '../systems/cargo.js';
+import { makeEntity } from '../core/entity.js';
 
 export function resolveBeamVerb(descriptor, toolState = {}) {
   const mode = toolState.mode || 'auto';
@@ -154,7 +155,7 @@ export function spawnPayloadEntity(state, spec = {}) {
   const ownerId = spec.ownerId != null ? spec.ownerId : (state.playerId || null);
   const factionId = spec.factionId || 'player';
 
-  const payloadEntity = {
+  const payloadEntity = makeEntity({
     id: nextId,
     type: 'payload',
     alive: true,
@@ -174,8 +175,8 @@ export function spawnPayloadEntity(state, spec = {}) {
       ownership: { ownerId, factionId },
       worldRecordId: spec.worldRecordId || null,
       transientSector: spec.transientSector !== false, // despawns on sector transition if transient
-    }
-  };
+    },
+  });
 
   if (state.entities && typeof state.entities.set === 'function') {
     state.entities.set(payloadEntity.id, payloadEntity);

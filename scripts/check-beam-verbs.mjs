@@ -182,6 +182,13 @@ console.log('Running PQ-016 check:beam-verbs assertions...');
   assert.equal(payload.data.ownerId, 1);
   assert.equal(payload.data.ownership.ownerId, 1);
   assert.equal(payload.data.salvagePool.cmdty_scrap_metal, 4);
+  assert.equal(typeof payload.prevPos?.copy, 'function',
+    'late payloads must satisfy the fixed-step interpolation entity contract');
+  assert.deepEqual(
+    { x: payload.prevPos.x, z: payload.prevPos.z },
+    { x: payload.pos.x, z: payload.pos.z },
+    'the canonical entity factory snapshots the payload spawn pose',
+  );
 
   // Sector transition cleanup test
   const transientPayload = spawnPayloadEntity(mockState, { pos: { x: 0, z: 0 }, transientSector: true });
