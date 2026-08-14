@@ -1,23 +1,14 @@
 // Submit-side visibility for presentation roots.
 //
-// The query "hidden" set is already outside the on-screen box plus a ~900 WU runway.
-// Those roots cannot change a readable pixel, but Three still submitted them whenever
-// they sat in the chase-camera frustum. Hide the Object3D; keep posing once on exit
-// so a fast crosser re-enters at the right place.
-
-export const SUBMIT_MIN_PROJECTED_PX = 10;
+// The query "hidden" set is already outside the on-screen box plus a ~900 WU
+// travel runway. Those roots cannot change a readable pixel. Anything still in
+// the query — including the middle sync band and small-but-authored ships —
+// stays submitted. The inner/middle split only changes how often closures run.
 
 export function shouldSubmitEntityMesh(options = {}) {
   if (options.isPlayer === true) return true;
   if (options.forceRender === true || options.neverCull === true) return true;
   if (options.hidden === true) return false;
-  // Middle band is the off-screen 900 WU runway. Pose it so crossers enter cleanly, but do
-  // not submit unless it still casts a realtime shadow into the picture.
-  if (options.middleBand === true && options.allowShadowCast !== true) return false;
-  const type = options.type;
-  if (type === 'station' || type === 'planet' || type === 'fx') return true;
-  const px = Number(options.projectedPx);
-  if (Number.isFinite(px) && px < SUBMIT_MIN_PROJECTED_PX) return false;
   return true;
 }
 

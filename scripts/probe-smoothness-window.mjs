@@ -101,7 +101,22 @@ try {
         : null;
       const gpu = s.render && s.render.gpu;
       const ev = s.render && s.render.entityViewSync;
+      const video = (s.settings && s.settings.video) || {};
+      const renderer = s.render && s.render.renderer;
+      const bloom = s.render && s.render.bloom;
+      const quality = {
+        renderScale: video.renderScale,
+        bloom: video.bloom,
+        bloomStrength: video.bloomStrength,
+        shadows: video.shadows,
+        pixelRatioCap: video.pixelRatioCap,
+        particleQuality: video.particleQuality,
+        dynamicResolution: video.dynamicResolution === true,
+        shadowMapEnabled: !!(renderer && renderer.shadowMap && renderer.shadowMap.enabled),
+        bloomObjectPresent: !!bloom,
+      };
       return {
+        quality,
         simTime: s.simTime,
         tick: s.tick,
         rendererFrame: gl && gl.frame,
@@ -175,6 +190,7 @@ try {
     opaqueBatches: report.last.opaqueBatches || 0,
     opaqueBatchInstances: report.last.opaqueBatchInstances || 0,
     shadowCastingInstanceChunks: report.last.shadowCastingInstanceChunks || 0,
+    quality: report.last.quality || null,
     canvasChanged: report.last.canvasHash !== report.first.canvasHash,
     firstCanvasHash: report.first.canvasHash,
     lastCanvasHash: report.last.canvasHash,
@@ -190,6 +206,15 @@ try {
   };
   mkdirSync(dirname(OUT), { recursive: true });
   writeFileSync(OUT, JSON.stringify(out, null, 2));
+  if (argv['quality-out']) {
+    mkdirSync(dirname(String(argv['quality-out'])), { recursive: true });
+    writeFileSync(String(argv['quality-out']), JSON.stringify({
+      schema: 'spaceface.qualityDefaults.v1',
+      generatedAt: out.generatedAt,
+      source: 'live-probe',
+      quality: out.quality,
+    }, null, 2));
+  }
   console.log(JSON.stringify(out.frameMs, null, 2));
   console.log('gpu', out.gpu, 'software', out.software, 'sim', out.simAdvanced, 'render', out.rendererAdvanced);
   console.log('report', OUT);

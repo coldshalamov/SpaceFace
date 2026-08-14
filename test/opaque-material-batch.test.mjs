@@ -6,6 +6,7 @@ import {
   createOpaqueMaterialBatchState,
   materialBatchAttrKey,
   opaqueBatchLane,
+  refreshBatchWorldBounds,
   shouldConsolidateInstanceChunk,
   supportsOpaqueMaterialBatch,
   syncOpaqueMaterialBatches,
@@ -74,4 +75,34 @@ test('two unique plates that share a material become one hidden-source batch', (
   assert.ok(live.some((batch) => batch.lane === 'cast' && batch.mesh.castShadow === true));
   assert.ok(live.some((batch) => batch.lane === 'nocast' && batch.mesh.castShadow === false));
   assert.equal(live.every((batch) => batch.mesh.parent === scene), true);
+  assert.equal(live.every((batch) => batch.mesh.frustumCulled === false), true);
+  assert.equal(live.every((batch) => batch.mesh.perObjectFrustumCulled === true), true);
+  assert.equal(live.every((batch) => !!(batch.mesh.boundingSphere)), true);
+});
+
+test('batch world bounds follow instance matrices after a large origin shift', () => {
+  const material = new THREE.MeshStandardMaterial({ color: 0x334455 });
+  const near = makeChunk(4, 0, { material, key: 'nearPlate' });
+  const scene = new THREE.Scene();
+  const pools = new Map([['shift', { chunks: [near] }]]);
+  const state = createOpaqueMaterialBatchState();
+  syncOpaqueMaterialBatches(state, pools, {
+    enabled: true,
+    scene,
+    playerX: 0,
+    playerZ: 0,
+  });
+  const batch = [...state.batches.values()].find((item) => item.used > 0);
+  assert.ok(batch);
+  const before = batch.mesh.boundingSphere.center.clone();
+  near.mesh.setMatrixAt(0, new THREE.Matrix4().setPosition(9000, 0, 9000));
+  syncOpaqueMaterialBatches(state, pools, {
+    enabled: true,
+    scene,
+    playerX: 9000,
+    playerZ: 9000,
+  });
+  const after = batch.mesh.boundingSphere.center;
+  assert.ok(after.distanceTo(before) > 1000, 'stale origin sphere would hide the batch after rebase');
+  assert.equal(refreshBatchWorldBounds(batch.mesh), true);
 });

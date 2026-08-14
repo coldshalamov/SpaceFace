@@ -98,6 +98,7 @@ export function syncOpaqueMaterialBatches(state, pools, options = {}) {
     hideUnusedInstances(batch);
     batch.mesh.visible = batch.used > 0;
     if (batch.used > 0) {
+      refreshBatchWorldBounds(batch.mesh);
       stats.batches++;
       stats.instances += batch.used;
     }
@@ -210,7 +211,9 @@ function createBatch(material, lane, scene) {
   mesh.name = `SF_OpaqueBatch_${lane}`;
   mesh.castShadow = lane === 'cast';
   mesh.receiveShadow = true;
-  mesh.frustumCulled = true;
+  // Parent sphere goes stale after a floating-origin rebase. Per-object
+  // culling still skips plates the camera cannot see.
+  mesh.frustumCulled = false;
   mesh.perObjectFrustumCulled = true;
   mesh.sortObjects = false;
   mesh.userData.spacefaceOpaqueMaterialBatch = true;
@@ -225,6 +228,12 @@ function createBatch(material, lane, scene) {
     allocated: 0,
     used: 0,
   };
+}
+
+export function refreshBatchWorldBounds(mesh) {
+  if (!mesh || typeof mesh.computeBoundingSphere !== 'function') return false;
+  mesh.computeBoundingSphere();
+  return !!(mesh.boundingSphere);
 }
 
 function hideUnusedInstances(batch) {
