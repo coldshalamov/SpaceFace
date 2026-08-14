@@ -46,6 +46,32 @@ test('frozen cohort gates late compile subjects through admits()', () => {
   assert.equal(cohort.admits(openingSubjectIdentity(late)), false);
 });
 
+test('resumed compile waits when the last present was late', async () => {
+  const compiles = [];
+  const resumes = [];
+  let last = 33.3;
+  const tracker = createPipelineAdmissionTracker((subjects) => {
+    compiles.push(subjects.map((subject) => subject.id));
+    return Promise.resolve();
+  }, {
+    quietMs: 0,
+    maxWaitMs: 0,
+    scheduleResume: (callback) => { resumes.push(callback); },
+    getLastPresentDtMs: () => last,
+  });
+  tracker.resumeAutoFlush();
+  const done = tracker.compile({ id: 'traffic' });
+  assert.equal(compiles.length, 0);
+  assert.equal(resumes.length, 1);
+  resumes.shift()();
+  assert.equal(compiles.length, 0, 'a late present must not start a compile');
+  last = 16.7;
+  assert.ok(resumes.length >= 1);
+  resumes.shift()();
+  await done;
+  assert.deepEqual(compiles[0], ['traffic']);
+});
+
 test('opening slice budget uses the live helper, not a hardcoded pass', () => {
   assert.equal(openingSliceWithinBudget(7, { targetMs: 8, hardMs: 12 }).targetMet, true);
   assert.equal(openingSliceWithinBudget(10, { targetMs: 8, hardMs: 12 }).targetMet, false);

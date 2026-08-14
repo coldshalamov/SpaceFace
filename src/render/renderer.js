@@ -2689,6 +2689,7 @@ export const render = {
     const pipelineAdmissions = createPipelineAdmissionTracker(compileForCurrentTarget, {
       deferAutoFlush: () => state.mode === 'loading',
       onBlockingSlice: recordAuthoredAdmissionBlockingSlice,
+      getLastPresentDtMs: () => state.render && state.render.lastPresentDtMs,
     });
     const gpuResidencyAdmissions = createGpuResidencyAdmissionTracker((subject, admissionOptions = {}) => (
       prepareStartupGpuResidency(renderer, subject, {

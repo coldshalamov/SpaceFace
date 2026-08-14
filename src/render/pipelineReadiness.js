@@ -1,3 +1,5 @@
+import { shouldStartHeavyAdmission } from './admissionSliceBudget.js';
+
 function gpuContextIsLost(state) {
   const render = state && state.render;
   if (!render) return false;
@@ -148,6 +150,13 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
     resumeScheduled = true;
     scheduleResume(() => {
       resumeScheduled = false;
+      const lastPresentDtMs = typeof options.getLastPresentDtMs === 'function'
+        ? options.getLastPresentDtMs()
+        : NaN;
+      if (!shouldStartHeavyAdmission(lastPresentDtMs)) {
+        scheduleResumedBatch();
+        return;
+      }
       void flushResumedBatch();
     });
   }
