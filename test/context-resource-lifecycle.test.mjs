@@ -200,6 +200,29 @@ test('a failed restore with scheduleRetry does not stay pending without another 
   assert.equal(recovery.retryCount, 1);
 });
 
+test('exhausted restore retries force a new context instead of staying dead', async () => {
+  let forced = 0;
+  const owner = { _contextLost: true };
+  const recovery = {
+    restores: 0,
+    generation: 0,
+    pending: true,
+    lastError: null,
+    retryCount: 8,
+    scheduleRetry() {},
+    forceNewContext() { forced += 1; },
+  };
+  const failure = await runWebGlContextRestoreRebuild(owner, recovery, async () => {
+    throw new Error('still broken after retries');
+  });
+  assert.equal(failure.ok, false);
+  assert.equal(failure.forcedNewContext, true);
+  assert.equal(forced, 1);
+  assert.equal(recovery.retryCount, 0);
+  assert.equal(recovery.pending, true);
+  assert.equal(owner._contextLost, true);
+});
+
 test('draw boundary observes a lost GL context before its asynchronous event arrives', () => {
   assert.equal(isWebGlContextUnavailable(true, null), true);
   assert.equal(isWebGlContextUnavailable(false, {

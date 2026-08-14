@@ -420,8 +420,15 @@ export async function runWebGlContextRestoreRebuild(owner, recovery, rebuild) {
       recovery.scheduleRetry();
       return { ok: false, error, retryScheduled: true };
     }
-    // No retry hook: stay draw-gated so tests can prove half-restored resources stay closed.
-    // Live renderer always supplies scheduleRetry so this is not a permanent freeze.
+    if (typeof recovery.forceNewContext === 'function' && recovery.forcedNewContext !== true) {
+      recovery.forcedNewContext = true;
+      recovery.retryCount = 0;
+      recovery.pending = true;
+      recovery.forceNewContext();
+      return { ok: false, error, retryScheduled: true, forcedNewContext: true };
+    }
+    // No retry hook and no force-new-context hook: stay draw-gated so tests can prove
+    // half-restored resources stay closed. The live renderer supplies both hooks.
     recovery.pending = true;
     return { ok: false, error, retryScheduled: false };
   }
@@ -2131,6 +2138,26 @@ export const render = {
         this._contextRestoreReceipt = deferWebGlContextRestore(() => {
           if (typeof console !== 'undefined') console.warn('[render] WebGL context restored — rebuilding GPU resources');
           this._contextRecovery.retryCount = 0;
+          this._contextRecovery.forceNewContext = () => {
+            try {
+              const gl = this.renderer && typeof this.renderer.getContext === 'function'
+                ? this.renderer.getContext()
+                : null;
+              const ext = gl && typeof gl.getExtension === 'function'
+                ? gl.getExtension('WEBGL_lose_context')
+                : null;
+              if (ext && typeof ext.loseContext === 'function') {
+                ext.loseContext();
+                const restore = () => {
+                  try { if (typeof ext.restoreContext === 'function') ext.restoreContext(); } catch { /* next event */ }
+                };
+                if (typeof setTimeout === 'function') setTimeout(restore, 50);
+                else restore();
+                return;
+              }
+            } catch { /* fall through to a scheduled retry */ }
+            if (typeof this._contextRecovery.scheduleRetry === 'function') this._contextRecovery.scheduleRetry();
+          };
           this._contextRecovery.scheduleRetry = () => {
             const retry = () => {
               if (this.renderer && typeof this.renderer.getContext === 'function') {
