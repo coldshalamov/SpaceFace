@@ -22,5 +22,6 @@
 | 34 | yes | see json | REJECT | overlapping shells + bubble canopy. Wings still cards |
 | 35 | yes | see json | pending | plank and crate gone |
 | 36 | yes | see json | REJECT | steep dihedral. Wing fold reads at 3/4. Hitch still wins |
+| 37 | yes | see json | pending | hoses/turret/sticker gone. Needle still a pyramid |
 
 Hitch-plus / A-list: not met. Do not promote. Do not self-accept.

@@ -773,11 +773,11 @@ def build_lod(lod, mats):
     # C34: continuous overlapping needle shells (Hitch plate language),
     # not a stack of origami triangles.
     needle_st = [
-        (8.28, 0.006, 0.085, -0.040, 0.062),
-        (7.15, 0.022, 0.22, -0.12, 0.18),
-        (6.00, 0.040, 0.40, -0.20, 0.34),
-        (5.00, 0.070, 0.58, -0.28, 0.48),
-        (4.32, 0.10, 0.72, -0.32, 0.56),
+        (8.28, 0.008, 0.12, -0.045, 0.070),
+        (7.10, 0.030, 0.38, -0.14, 0.22),
+        (5.90, 0.055, 0.68, -0.22, 0.40),
+        (4.90, 0.090, 0.92, -0.30, 0.54),
+        (4.28, 0.12, 1.05, -0.34, 0.60),
     ]
     loft_shell("Needle_ShellP", [(x, -iy, -oy, z0, z1) for x, iy, oy, z0, z1 in needle_st], hull, collection, 0.010)
     loft_shell("Needle_ShellS", [(x, iy, oy, z0, z1) for x, iy, oy, z0, z1 in needle_st], hull, collection, 0.010)
@@ -901,20 +901,20 @@ def build_lod(lod, mats):
         (-1.40, 0.10, -0.58), (1.60, 0.10, -0.62),
         0.040, mech, collection, 0.004,
     )
-    add_box("Repair_Patch", (1.05, -0.52, 0.62), (0.18, 0.08, 0.006), warning, collection, 0.001)
-    add_cylinder("Turret_Ring", (-0.55, 0.0, 0.58), 0.22, 0.06, mech, collection, vertices=14, bevel=0.006, rot=(0, 0, 0))
-    add_cylinder("Turret_Yoke", (-0.55, 0.0, 0.68), 0.06, 0.10, mech, collection, vertices=8, bevel=0.003, rot=(0, 0, 0))
-    add_cylinder("Turret_Head", (-0.42, 0.0, 0.76), 0.08, 0.18, armor, collection, vertices=10, bevel=0.004)
     add_sensor_dish("Dorsal", (1.35, 0.22, 1.08), mats, collection)
-    add_box("Hatch_Lid", (-0.95, 0.30, 0.64), (0.30, 0.18, 0.018), armor, collection, 0.004)
-    add_box("Hatch_Hinge", (-1.20, 0.30, 0.65), (0.03, 0.14, 0.020), mech, collection, 0.002)
+    add_folded_sheet(
+        "Hatch_Lid",
+        (-0.70, 0.12, 0.58), (-1.20, 0.12, 0.56),
+        (-1.20, 0.42, 0.56), (-0.70, 0.42, 0.58),
+        0.016, hull, collection, 0.003,
+    )
     if lod == 0:
-        add_curve_hose("Hose_Port", [(-0.4, -1.20, 0.05), (-2.4, -0.85, -0.05), (-5.4, -0.55, 0.18), (-7.2, -0.42, 0.22)], mech, collection, 0.016)
-        add_curve_hose("Hose_Stbd", [(-0.4, 1.20, 0.05), (-2.4, 0.85, -0.05), (-5.4, 0.55, 0.18), (-7.2, 0.42, 0.22)], mech, collection, 0.016)
-        add_box("HoseFit_P0", (-0.45, -1.20, 0.05), (0.03, 0.03, 0.03), mech, collection, 0.002)
-        add_box("HoseFit_P1", (-7.15, -0.42, 0.22), (0.03, 0.03, 0.03), mech, collection, 0.002)
-        add_box("HoseFit_S0", (-0.45, 1.20, 0.05), (0.03, 0.03, 0.03), mech, collection, 0.002)
-        add_box("HoseFit_S1", (-7.15, 0.42, 0.22), (0.03, 0.03, 0.03), mech, collection, 0.002)
+        add_folded_sheet(
+            "ServicePad_P",
+            (-0.55, -1.28, 0.02), (-0.35, -1.28, 0.02),
+            (-0.35, -1.12, 0.08), (-0.55, -1.12, 0.08),
+            0.012, mech, collection, 0.002,
+        )
 
     mesh_objects = [obj for obj in collection.objects if obj.type == "MESH"]
     for obj in mesh_objects:
