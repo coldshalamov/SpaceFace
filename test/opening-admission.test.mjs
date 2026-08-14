@@ -65,11 +65,10 @@ test('resumed compile waits when the last present was late', async () => {
   assert.equal(resumes.length, 1);
   resumes.shift()();
   assert.equal(compiles.length, 0, 'a late present must not start a compile');
-  last = 16.7;
   assert.ok(resumes.length >= 1);
   resumes.shift()();
   await done;
-  assert.deepEqual(compiles[0], ['traffic']);
+  assert.deepEqual(compiles[0], ['traffic'], 'the next callback must compile even if still late');
 });
 
 test('opening slice budget uses the live helper, not a hardcoded pass', () => {

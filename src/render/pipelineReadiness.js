@@ -65,6 +65,7 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
   let nextAdmissionId = 0;
   let boundedResume = false;
   let resumeScheduled = false;
+  let skippedResumeForLatePresent = false;
 
   function clearTimers() {
     if (quietTimer != null) clearTimeout(quietTimer);
@@ -153,10 +154,12 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
       const lastPresentDtMs = typeof options.getLastPresentDtMs === 'function'
         ? options.getLastPresentDtMs()
         : NaN;
-      if (!shouldStartHeavyAdmission(lastPresentDtMs)) {
+      if (!shouldStartHeavyAdmission(lastPresentDtMs) && skippedResumeForLatePresent !== true) {
+        skippedResumeForLatePresent = true;
         scheduleResumedBatch();
         return;
       }
+      skippedResumeForLatePresent = false;
       void flushResumedBatch();
     });
   }
