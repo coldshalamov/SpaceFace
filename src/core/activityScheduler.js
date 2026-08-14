@@ -45,13 +45,30 @@ export function nextRunTick(tick, ownerKey, periodTicks) {
  * Sleep far, inactive, non-combat owners. Combatants, the player, and anything inside the
  * authority radius stay awake every tick so 47a/combat authority is unchanged.
  */
+export function ownerAiRecord(owner) {
+  if (!owner) return null;
+  if (owner.ai && typeof owner.ai === 'object') return owner.ai;
+  const data = owner.data;
+  if (data && data.ai && typeof data.ai === 'object') return data.ai;
+  return null;
+}
+
+export function ownerTeamId(owner) {
+  if (!owner) return null;
+  if (owner.team != null) return owner.team;
+  if (owner.data && owner.data.team != null) return owner.data.team;
+  return null;
+}
+
 export function isActiveOwner(owner, options = {}) {
   if (!owner) return false;
   if (owner.isPlayer === true || owner.id === options.playerId) return true;
   if (owner.alive === false) return false;
-  const combat = owner.ai && owner.ai.combatant === true;
-  const hostile = owner.team != null && options.playerTeam != null && owner.team !== options.playerTeam
-    && owner.ai && owner.ai.passive !== true;
+  const ai = ownerAiRecord(owner);
+  const team = ownerTeamId(owner);
+  const combat = ai && ai.combatant === true;
+  const hostile = team != null && options.playerTeam != null && team !== options.playerTeam
+    && ai && ai.passive !== true;
   if (combat || hostile) return true;
   const radius = Number(options.authorityRadius);
   if (!Number.isFinite(radius) || radius <= 0) return true;
@@ -64,10 +81,12 @@ export function isActiveOwner(owner, options = {}) {
 }
 
 export function shouldAmbientHaulerPlan(tick, owner, options = {}) {
-  const combat = owner && owner.ai && owner.ai.combatant === true;
-  const hostile = !!(owner && owner.team != null && options.playerTeam != null
-    && owner.team !== options.playerTeam
-    && owner.ai && owner.ai.passive !== true);
+  const ai = ownerAiRecord(owner);
+  const team = ownerTeamId(owner);
+  const combat = ai && ai.combatant === true;
+  const hostile = !!(team != null && options.playerTeam != null
+    && team !== options.playerTeam
+    && ai && ai.passive !== true);
   if (combat || hostile) return true;
   return shouldOwnerThink(tick, owner, {
     activePeriodTicks: 2,

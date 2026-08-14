@@ -67,6 +67,17 @@ test('ambient haulers plan slower when far; hostiles still think every tick', ()
   }
   assert.ok(farHits < 8, 'far passive haulers must not plan every tick');
   assert.equal(hostileHits, 8);
+
+  const liveHostile = {
+    id: 11,
+    pos: { x: 8000, z: 0 },
+    data: { team: 3, ai: { passive: false, combatant: true } },
+  };
+  let liveHits = 0;
+  for (let tick = 0; tick < 8; tick++) {
+    if (shouldAmbientHaulerPlan(tick, liveHostile, opts)) liveHits++;
+  }
+  assert.equal(liveHits, 8, 'live ships store AI on data.ai, not owner.ai');
 });
 
 test('live traffic consults the ambient hauler planner', async () => {
