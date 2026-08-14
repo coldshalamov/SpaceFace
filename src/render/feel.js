@@ -28,6 +28,7 @@ import {
   velocityLanguageFlag,
 } from './velocityLanguage.js';
 import { resolveMasslineFeelPunch } from './masslinePresentation.js';
+import { shouldRedrawAfterLatePresent } from './admissionSliceBudget.js';
 import { fillSpeedLineStreak, speedLineRgba } from './speedLineStrokeCache.js';
 
 // Weapon recoil weight lookup (built once). The player's own gun firing produces zero camera
@@ -430,8 +431,16 @@ export const feel = {
     if (this._slOpacity <= 0.01 && this._slGrain <= 0.002) {
       if (this._streaks) this._streaks.length = 0;   // reset so streaks re-seed on next burst
       if (cvs.style.opacity !== '0') cvs.style.opacity = '0';
+      this._slSkippedLast = false;
       return;
     }
+
+    const lastPresent = this.state && this.state.render && this.state.render.lastPresentDtMs;
+    if (!shouldRedrawAfterLatePresent(lastPresent, this._slSkippedLast === true)) {
+      this._slSkippedLast = true;
+      return;
+    }
+    this._slSkippedLast = false;
 
     // Sync canvas size to window (only on change to avoid clearing needlessly)
     const w = window.innerWidth;

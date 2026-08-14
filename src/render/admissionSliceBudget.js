@@ -42,6 +42,12 @@ export function shouldStartHeavyAdmission(lastPresentDtMs, lateMs = 22) {
   return last <= lateMs;
 }
 
+/** After a missed vsync, keep last overlay pixels one frame so present can recover. */
+export function shouldRedrawAfterLatePresent(lastPresentDtMs, skippedLast, lateMs = 22) {
+  if (skippedLast === true) return true;
+  return shouldStartHeavyAdmission(lastPresentDtMs, lateMs);
+}
+
 export function admissionSliceOverHardLimit(options = {}) {
   const { hardMs } = normalizeAdmissionSliceOptions(options);
   const startedAtMs = Number(options.startedAtMs);

@@ -6,6 +6,7 @@ import {
   ADMISSION_SLICE_TARGET_MS,
   admissionSliceOverHardLimit,
   shouldContinueAdmissionSlice,
+  shouldRedrawAfterLatePresent,
   shouldStartHeavyAdmission,
 } from '../src/render/admissionSliceBudget.js';
 
@@ -72,4 +73,16 @@ test('hard-limit helper flags slices that already blew the hitch ceiling', () =>
     nowMs: 9,
     hardMs: 8,
   }), true);
+});
+
+test('a late present keeps last overlay pixels one frame, then must redraw', () => {
+  assert.equal(shouldRedrawAfterLatePresent(16.7, false), true);
+  assert.equal(shouldRedrawAfterLatePresent(33.3, false), false);
+  assert.equal(shouldRedrawAfterLatePresent(33.3, true), true);
+});
+
+test('live speed-line overlay consults the late-present redraw gate', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const source = await readFile(new URL('../src/render/feel.js', import.meta.url), 'utf8');
+  assert.match(source, /shouldRedrawAfterLatePresent/);
 });
