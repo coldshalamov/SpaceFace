@@ -243,7 +243,7 @@ def create_materials():
         "Material_Warning": ((0.70, 0.34, 0.05), 0.05, 0.46, "warning", 0.1, None),
         "Material_Ceramic": ((0.16, 0.13, 0.10), 0.0, 0.74, "ceramic", 0.0, None),
         "Material_Radiator": ((0.12, 0.10, 0.08), 0.62, 0.62, "mechanical", 0.0, None),
-        "Material_Canopy": ((0.22, 0.78, 0.88), 0.00, 0.08, "glass", 0.28, ((0.10, 0.42, 0.52), 0.45)),
+        "Material_Canopy": ((0.08, 0.22, 0.26), 0.00, 0.10, "glass", 0.18, ((0.04, 0.14, 0.16), 0.18)),
         "Material_Thruster": ((0.02, 0.08, 0.12), 0.15, 0.22, "thruster", 0.0, None),
     }
     mats = {}
@@ -755,46 +755,42 @@ def build_lod(lod, mats):
         "lod": f"lod{lod}", "slot": "hull", "category": "wholeships",
         "forward": "+X", "embeddedPlume": False,
     }
-    # C33: laminated hull-colored needle (no black origami). Three staggered
-    # plate stations so edges step. Hull is a formed shell. Wings are thick
-    # airfoils without a card skin. Glass is a tinted pane you can see into.
+    # C41: the needle IS the hull. Stations run tip-to-transom so clay is
+    # not a pyramid glued on a tube. Cheeks are overlapping plates on that
+    # shell, not a second dart.
     hull_rings = [
-        densify_ring(station_ring(4.35, 0, 0.08, 0.40, 0.34, flat=0.08, box=0.18, keel=0.92)),
-        densify_ring(station_ring(3.25, 0, 0.18, 0.72, 0.58, flat=0.62, box=0.28, keel=0.70)),
-        densify_ring(station_ring(1.95, 0, 0.10, 0.96, 0.50, flat=0.28, box=0.48, keel=0.56)),
-        densify_ring(station_ring(0.35, 0, 0.06, 1.28, 0.44, flat=0.12, box=0.86, keel=0.40)),
-        densify_ring(station_ring(-1.55, 0, 0.06, 0.88, 0.46, flat=0.10, box=0.72, keel=0.30)),
-        densify_ring(station_ring(-3.35, 0, 0.10, 0.84, 0.54, flat=0.16, box=0.86, keel=0.22)),
-        densify_ring(station_ring(-5.15, 0, 0.10, 0.62, 0.46, flat=0.12, box=0.88, keel=0.14)),
-        densify_ring(station_ring(-7.15, 0, 0.08, 0.42, 0.32, flat=0.08, box=0.78, keel=0.08)),
+        densify_ring(station_ring(8.20, 0, 0.04, 0.10, 0.08, flat=0.04, box=0.08, keel=0.95)),
+        densify_ring(station_ring(6.85, 0, 0.08, 0.28, 0.22, flat=0.10, box=0.16, keel=0.88)),
+        densify_ring(station_ring(5.40, 0, 0.14, 0.52, 0.38, flat=0.28, box=0.22, keel=0.78)),
+        densify_ring(station_ring(4.10, 0, 0.18, 0.70, 0.52, flat=0.70, box=0.30, keel=0.62)),
+        densify_ring(station_ring(2.55, 0, 0.12, 0.92, 0.48, flat=0.36, box=0.46, keel=0.52)),
+        densify_ring(station_ring(0.55, 0, 0.06, 1.22, 0.44, flat=0.14, box=0.82, keel=0.38)),
+        densify_ring(station_ring(-1.55, 0, 0.06, 0.88, 0.46, flat=0.10, box=0.72, keel=0.28)),
+        densify_ring(station_ring(-3.45, 0, 0.10, 0.80, 0.52, flat=0.16, box=0.84, keel=0.20)),
+        densify_ring(station_ring(-5.25, 0, 0.10, 0.58, 0.44, flat=0.12, box=0.86, keel=0.12)),
+        densify_ring(station_ring(-7.15, 0, 0.08, 0.40, 0.30, flat=0.08, box=0.78, keel=0.08)),
     ]
     hull_obj = loft_from_rings("Pressure_Hull", hull_rings, hull, collection, 0.014)
-    # C34: continuous overlapping needle shells (Hitch plate language),
-    # not a stack of origami triangles.
-    needle_st = [
-        (8.28, 0.008, 0.12, -0.045, 0.070),
-        (7.10, 0.030, 0.38, -0.14, 0.22),
-        (5.90, 0.055, 0.68, -0.22, 0.40),
-        (4.90, 0.090, 0.92, -0.30, 0.54),
-        (4.28, 0.12, 1.05, -0.34, 0.60),
-    ]
-    loft_shell("Needle_ShellP", [(x, -iy, -oy, z0, z1) for x, iy, oy, z0, z1 in needle_st], hull, collection, 0.010)
-    loft_shell("Needle_ShellS", [(x, iy, oy, z0, z1) for x, iy, oy, z0, z1 in needle_st], hull, collection, 0.010)
-    center_loft("Needle_Carapace", [
-        (8.18, 0.018, 0.02, 0.072),
-        (6.90, 0.055, 0.08, 0.22),
-        (5.40, 0.10, 0.16, 0.42),
-        (4.42, 0.16, 0.22, 0.56),
+    loft_shell("Needle_CheekP", [
+        (7.40, -0.04, -0.22, -0.06, 0.12),
+        (6.10, -0.10, -0.42, -0.14, 0.24),
+        (4.80, -0.16, -0.58, -0.20, 0.36),
+        (4.00, -0.18, -0.68, -0.22, 0.42),
     ], hull, collection, 0.010)
-    center_loft("Needle_Keel", [
-        (8.10, 0.016, -0.055, -0.018),
-        (6.70, 0.040, -0.18, -0.06),
-        (5.20, 0.070, -0.28, -0.12),
-        (4.36, 0.10, -0.32, -0.14),
-    ], mech, collection, 0.006)
-    add_cylinder("NeedleCollar_Ring", (4.40, 0.0, 0.10), 0.46, 0.07, mech, collection, 16, 0.004)
+    loft_shell("Needle_CheekS", [
+        (7.40, 0.04, 0.22, -0.06, 0.12),
+        (6.10, 0.10, 0.42, -0.14, 0.24),
+        (4.80, 0.16, 0.58, -0.20, 0.36),
+        (4.00, 0.18, 0.68, -0.22, 0.42),
+    ], hull, collection, 0.010)
+    center_loft("Needle_Brow", [
+        (5.80, 0.18, 0.22, 0.40),
+        (4.60, 0.28, 0.32, 0.56),
+        (3.80, 0.22, 0.28, 0.50),
+    ], hull, collection, 0.008)
     if lod <= 1:
-        cut_open_bay(hull_obj, "Cockpit", (3.25, 0.0, 0.72), 1.55, 0.42, 0.50, (0, 0, 1), mats, collection, kit="cockpit", liner=False)
+        cut_open_bay(hull_obj, "Cockpit", (4.10, 0.0, 0.62), 1.35, 0.36, 0.42, (0, 0, 1), mats, collection, kit="cockpit", liner=False)
+        cut_open_bay(hull_obj, "NeedlePort", (6.40, 0.0, -0.08), 0.55, 0.10, 0.16, (0, 0, -1), mats, collection, kit="empty", liner=False)
         cut_open_bay(hull_obj, "Port", (0.20, -1.10, 0.08), 1.45, 0.38, 0.48, (0, -1, 0), mats, collection, kit="radiator")
         cut_open_bay(hull_obj, "Starboard", (0.20, 1.10, 0.08), 1.45, 0.38, 0.48, (0, 1, 0), mats, collection, kit="rack")
         cut_open_bay(hull_obj, "DorsalAft", (-3.20, 0.0, 0.66), 1.05, 0.36, 0.28, (0, 0, 1), mats, collection, kit="radiator", liner=False)
@@ -807,12 +803,11 @@ def build_lod(lod, mats):
     inset_large_faces(hull_obj, thickness=0.030, depth=0.012, min_area=0.12)
 
     # Low fighter bubble sitting IN the cut tub. Not a cyan lid on the deck.
-    add_thin_canopy("Canopy", 3.22, 0.0, 0.50, 1.48, 0.34, 0.24, mats, collection)
-    add_box("Cockpit_Seat", (3.02, 0.0, 0.36), (0.22, 0.15, 0.08), mech, collection, 0.004)
-    add_box("Cockpit_Back", (2.82, 0.0, 0.48), (0.04, 0.14, 0.12), armor, collection, 0.003)
-    add_box("Cockpit_Console", (3.48, 0.0, 0.42), (0.16, 0.18, 0.035), armor, collection, 0.003)
-    add_box("Cockpit_HUD", (3.56, 0.0, 0.56), (0.012, 0.14, 0.045), accent, collection, 0.001)
-    add_cylinder("Cockpit_Stick", (3.26, 0.0, 0.42), 0.012, 0.10, mech, collection, 8, 0.001, rot=(0, 0, 0))
+    add_thin_canopy("Canopy", 4.05, 0.0, 0.42, 1.28, 0.30, 0.22, mats, collection)
+    add_box("Cockpit_Seat", (3.85, 0.0, 0.30), (0.20, 0.13, 0.07), mech, collection, 0.004)
+    add_box("Cockpit_Back", (3.66, 0.0, 0.40), (0.04, 0.12, 0.10), armor, collection, 0.003)
+    add_box("Cockpit_Console", (4.28, 0.0, 0.36), (0.14, 0.16, 0.030), armor, collection, 0.003)
+    add_box("Cockpit_HUD", (4.36, 0.0, 0.48), (0.010, 0.12, 0.040), accent, collection, 0.001)
     add_cylinder("TransomRing", (-7.22, 0.0, 0.08), 0.38, 0.07, armor, collection, 22, 0.005)
     add_manufactured_drive("Main", -7.18, 0.0, lod, mats, collection, scale=1.00, z=0.08)
     loft_shell("Boom_ShellP", [
@@ -871,16 +866,24 @@ def build_lod(lod, mats):
     )
 
     for sign, side in ((-1, "Port"), (1, "Starboard")):
-        add_folded_sheet(
-            f"WingGlove_{side}",
-            (1.05, 0.92 * sign, -0.10), (-0.85, 1.18 * sign, -0.12),
-            (-0.85, 1.18 * sign, 0.22), (1.05, 0.92 * sign, 0.24),
-            0.055, hull, collection, 0.006,
-        )
-        add_manufactured_delta(f"Wing_{side}", sign, hull, collection)
+        # Hitch-language wing: continuous overlapping shoulder, not a card.
+        if sign < 0:
+            loft_shell(f"Wing_{side}", [
+                (1.15, -0.70, -1.35, -0.16, 0.18),
+                (0.20, -1.85, -2.85, -0.04, 0.42),
+                (-0.70, -2.95, -3.85, 0.12, 0.36),
+                (-1.35, -3.55, -4.15, 0.06, 0.20),
+            ], hull, collection, 0.010)
+        else:
+            loft_shell(f"Wing_{side}", [
+                (1.15, 0.70, 1.35, -0.16, 0.18),
+                (0.20, 1.85, 2.85, -0.04, 0.42),
+                (-0.70, 2.95, 3.85, 0.12, 0.36),
+                (-1.35, 3.55, 4.15, 0.06, 0.20),
+            ], hull, collection, 0.010)
         loft_from_rings(f"Canard_{side}", [
-            airfoil_ring(4.55, 0.58 * sign, 0.08, 0.95, 0.14),
-            airfoil_ring(4.18, 1.05 * sign, 0.05, 0.55, 0.070),
+            airfoil_ring(5.10, 0.42 * sign, 0.06, 0.72, 0.12),
+            airfoil_ring(4.70, 0.88 * sign, 0.04, 0.42, 0.055),
         ], hull, collection, 0.006)
         add_cylinder(f"GunHouse_{side}", (4.85, 0.34 * sign, -0.06), 0.085, 1.10, mech, collection, vertices=10, bevel=0.006)
         add_cylinder(f"GunBarrel_{side}", (5.80, 0.34 * sign, -0.06), 0.032, 0.80, armor, collection, vertices=8, bevel=0.003)
@@ -1101,7 +1104,7 @@ def render_cycle(collection):
         "rear": ((-16.5, -5.5, 4.2), (-0.3, 0, 0.08), 38),
         "clay_three_quarter": ((14.5, -13.0, 6.4), (0, 0, 0.12), 38),
         "grazing_close": ((9.5, -7.5, 2.2), (0.4, 0, 0.15), 50),
-        "bay_interior": ((3.20, -2.05, 1.15), (3.20, 0.0, 0.52), 34),
+        "bay_interior": ((4.05, -2.05, 1.10), (4.05, 0.0, 0.46), 34),
         "drive_rear": ((-10.8, -2.8, 1.4), (-7.2, 0, 0.14), 50),
         "play_size": ((48, -42, 22), (0, 0, 0.1), 50),
         "orm_isolation": ((14.5, -13.0, 6.4), (0, 0, 0.12), 38),
