@@ -72,10 +72,13 @@ INFERENCE, the dock/hulk remaster, and the expansion-research brief.
 - **Every player ship and every NPC/traffic ship has a form-rebuild cycle
   (11+).** None beat Hitch. None wired. Live maps still load the old
   factory wholeships.
-- **Drifter and Ranger have a C12 form pass** (seated drives, no gold
-  bowl). Both still lose to Hitch. Not wired.
+- **Every remaining player ship now has a C12 form pass** (seated
+  manufactured drives, no gold bowl). Ironback, Bastion, Atlas, Warden,
+  Colossus, Leviathan, Pelican, Mule, Wasp included. All still lose to
+  Hitch. None wired.
 - **Next:** keep form work until a ship beats Hitch, then wire only that
-  ship. Do not promote a loser. Do not mark the campaign exhausted.
+  ship. Traffic ships still need the same seated-drive pass. Do not
+  promote a loser. Do not mark the campaign exhausted.
 - **Do not** mark the campaign exhausted while clay still reads as primitives.
 
 **Graphics / place-asset remaster (resume):** if the task is continuing the interrupted remaster of

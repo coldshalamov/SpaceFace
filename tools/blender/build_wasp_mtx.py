@@ -736,7 +736,7 @@ def build_lod(lod, mats):
         add_cylinder(f"IntakeLip_{side}", (2.92, y, 0.04), 0.50, 0.08, mech, collection, 16, 0.003)
         add_cylinder(f"IntakeThroat_{side}", (2.35, y, 0.04), 0.18, 0.55, mats["Material_Thruster"], collection, 12, 0.002)
         add_cylinder(f"IntakeSplitter_{side}", (2.40, y, 0.04), 0.035, 0.42, mech, collection, 8, 0.002)
-        add_flared_bell(side, -9.42, y, 0.00, 1.00, mats, collection)
+        add_manufactured_drive(side, -9.32, y, lod, mats, collection, scale=0.82, z=0.00)
         add_cylinder(f"DriveCoupling_{side}", (-9.28, y, 0.00), 0.38, 0.22, mech, collection, 16, 0.003)
         add_cylinder(f"DriveCasing_{side}", (-8.55, y, 0.00), 0.34, 0.72, mech, collection, 16, 0.005)
         add_cylinder(f"NacelleBand_{side}", (-4.15, y, 0.00), 0.62, 0.06, mech, collection, 12, 0.003)

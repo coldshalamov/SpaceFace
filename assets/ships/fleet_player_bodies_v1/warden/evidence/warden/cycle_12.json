@@ -1,0 +1,68 @@
+{
+  "schema": "spaceface.wardenMtx.cycle.v1",
+  "shipId": "warden",
+  "cycle": 12,
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 53236,
+      "hullTriangles": 3164,
+      "draws": 9,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/warden_production_v1_lod0.glb",
+      "bytes": 11811400,
+      "sha256": "507FF9F780A613E4681D7D51079AC63754D679601E541EC2AA7FFB6E978DFA76"
+    },
+    {
+      "lod": 1,
+      "triangles": 28276,
+      "hullTriangles": 3164,
+      "draws": 9,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/warden_production_v1_lod1.glb",
+      "bytes": 7888144,
+      "sha256": "C41AF093EB8DF1AED0A80091FBFF717694DF52C5C30E09EE7165269D18B70189"
+    },
+    {
+      "lod": 2,
+      "triangles": 19048,
+      "hullTriangles": 2684,
+      "draws": 9,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Thruster",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/warden_production_v1_lod2.glb",
+      "bytes": 6446588,
+      "sha256": "09713E9B138DF68884CA4D6DC6AF06C476769A8BA13B94548BC402933C212ADA"
+    }
+  ],
+  "stills": "evidence/warden/cycles/cycle_12"
+}

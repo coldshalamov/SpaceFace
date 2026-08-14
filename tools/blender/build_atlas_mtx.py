@@ -681,7 +681,7 @@ def build_lod(lod, mats):
     # Four-drive transom bank.
     drive_ys = ((-1.70, "PortOut"), (1.70, "StbdOut"), (-0.70, "PortIn"), (0.70, "StbdIn"))
     for y, side in drive_ys:
-        add_flared_bell(side, -9.95, y, 0.14, 1.00, mats, collection)
+        add_manufactured_drive(side, -9.85, y, lod, mats, collection, scale=0.85, z=0.14)
         add_cylinder(f"DriveCasing_{side}", (-8.85, y, 0.14), 0.32, 0.85, mech, collection, vertices=16, bevel=0.008)
         add_cylinder(f"DriveFairing_{side}", (-8.35, y, 0.14), 0.38, 0.42, armor, collection, vertices=16, bevel=0.008)
         add_box(f"DriveSaddle_{side}", (-8.75, y, -0.18), (0.40, 0.14, 0.09), mech, collection, 0.005)

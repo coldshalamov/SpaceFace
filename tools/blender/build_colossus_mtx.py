@@ -670,7 +670,7 @@ def build_lod(lod, mats):
 
     drive_ys = ((-2.00, "PortOut"), (2.00, "StbdOut"), (-0.75, "PortIn"), (0.75, "StbdIn"))
     for y, side in drive_ys:
-        add_flared_bell(side, -10.55, y, 0.14, 1.12, mats, collection)
+        add_manufactured_drive(side, -10.45, y, lod, mats, collection, scale=0.92, z=0.14)
         add_cylinder(f"DriveCasing_{side}", (-9.35, y, 0.14), 0.36, 0.88, mech, collection, vertices=16, bevel=0.008)
         add_cylinder(f"DriveFairing_{side}", (-8.75, y, 0.14), 0.42, 0.46, armor, collection, vertices=16, bevel=0.008)
         add_box(f"DriveSaddle_{side}", (-9.15, y, -0.22), (0.42, 0.15, 0.09), mech, collection, 0.005)

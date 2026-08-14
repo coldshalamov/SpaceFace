@@ -651,7 +651,7 @@ def build_lod(lod, mats):
     add_cargo_pod("Port", 0.15, -2.05, -0.08, 3.8, 0.62, mats, collection, lod)
     add_cargo_pod("Stbd", 0.15, 2.05, -0.08, 3.8, 0.62, mats, collection, lod)
     for y, side in ((-1.45, "Port"), (1.45, "Starboard")):
-        add_flared_bell(side, -7.85, y, 0.08, 1.12, mats, collection)
+        add_manufactured_drive(side, -7.75, y, lod, mats, collection, scale=0.92, z=0.08)
         add_cylinder(f"DriveCasing_{side}", (-6.75, y, 0.08), 0.40, 0.92, mech, collection, vertices=20, bevel=0.006)
         add_cylinder(f"DriveFairing_{side}", (-6.05, y, 0.08), 0.46, 0.45, armor, collection, vertices=20, bevel=0.006)
         add_box(f"DriveSaddle_{side}", (-6.55, y, -0.28), (0.44, 0.14, 0.10), mech, collection, 0.004)

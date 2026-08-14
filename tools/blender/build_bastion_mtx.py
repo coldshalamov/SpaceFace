@@ -634,7 +634,7 @@ def build_lod(lod, mats):
             diamond_ring(-7.95, 1.50 * sign, 0.10, 0.36, 0.30),
             diamond_ring(-8.45, 1.50 * sign, 0.10, 0.26, 0.22),
         ], armor, collection, 0.010)
-        add_flared_bell(side, -8.55, 1.50 * sign, 0.10, 1.15, mats, collection)
+        add_manufactured_drive(side, -8.45, 1.50 * sign, lod, mats, collection, scale=0.95, z=0.10)
         add_cylinder(f"DriveCollar_{side}", (-8.15, 1.50 * sign, 0.10), 0.34, 0.10, ceramic, collection, vertices=16, bevel=0.006)
         add_box(f"Casemate_{side}", (0.15, 1.88 * sign, 0.18), (1.45, 0.22, 0.26), armor, collection, 0.010)
         add_box(f"CaseLip_{side}", (0.15, 2.08 * sign, 0.18), (1.50, 0.04, 0.30), mech, collection, 0.004)

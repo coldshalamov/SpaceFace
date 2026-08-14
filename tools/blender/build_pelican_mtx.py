@@ -690,7 +690,7 @@ def build_lod(lod, mats):
 
     # Twin axial bells.
     for y, side in ((-1.35, "Port"), (1.35, "Starboard")):
-        add_flared_bell(side, -6.55, y, 0.08, 1.05, mats, collection)
+        add_manufactured_drive(side, -6.45, y, lod, mats, collection, scale=0.88, z=0.08)
         add_cylinder(f"DriveCasing_{side}", (-5.55, y, 0.08), 0.38, 0.85, mech, collection, vertices=20, bevel=0.006)
         add_cylinder(f"DriveFairing_{side}", (-4.85, y, 0.08), 0.44, 0.42, armor, collection, vertices=20, bevel=0.006)
         add_box(f"DriveSaddle_{side}", (-5.35, y, -0.28), (0.42, 0.14, 0.10), mech, collection, 0.004)
