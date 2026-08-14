@@ -15,6 +15,8 @@ import {
   proxyScaleFor,
   resolveCollisionProxyManifest,
 } from '../data/collisionProxyManifests.js';
+import { SHIPS } from '../data/ships.js';
+import { ENEMY_TYPES } from '../data/enemies.js';
 import { frameToGlobal, globalToFrame } from './coordinates.js';
 import { loadRapierCompatRuntime } from './rapierCompatRuntime.js';
 
@@ -679,12 +681,15 @@ export class Sg02DynamicBodyOwner {
       body.setEnabled(true);
     } else {
       body = this.world.createRigidBody(desc);
-      // Compound planar collision proxies (PQ-008): entities declaring a collisionProxyManifest get
-      // a bounded static collider SET registered once at body creation — never per-frame rebuilds.
-      proxyManifest = spec.dynamic ? null : resolveCollisionProxyManifest(entity);
-      const colliderDescs = proxyManifest
-        ? buildCompoundProxyColliderDescs(this.RAPIER, entity, proxyManifest, material, spec, this.captureContactImpacts)
-        : [buildBallColliderDesc(this.RAPIER, spec, material, this.captureContactImpacts)];
+      proxyManifest = resolveCollisionProxyManifest(entity);
+      let colliderDescs;
+      if (proxyManifest) {
+        colliderDescs = buildCompoundProxyColliderDescs(this.RAPIER, entity, proxyManifest, material, spec, this.captureContactImpacts);
+      } else if (spec.shape === 'capsule' || entity.type === 'ship' || entity.type === 'drone') {
+        colliderDescs = [buildCraftCapsuleColliderDesc(this.RAPIER, entity, spec, material, this.captureContactImpacts)];
+      } else {
+        colliderDescs = [buildBallColliderDesc(this.RAPIER, spec, material, this.captureContactImpacts)];
+      }
       colliders = colliderDescs.map((colliderDesc) => this.world.createCollider(colliderDesc, body));
     }
     const collider = colliders[0];
@@ -769,7 +774,7 @@ export class Sg02DynamicBodyOwner {
     const rec = this.records.get(entity.id);
     // Compound-proxy membership is part of the collider identity: a station gaining/losing its
     // manifest (or switching manifests) rebuilds the static body, same as any other spec change.
-    const proxyId = spec.dynamic ? null : proxyIdForEntity(entity);
+    const proxyId = proxyIdForEntity(entity);
     if (!recordMatchesSpec(rec, spec) || (rec && rec.proxyId !== proxyId)) {
       if (rec && rec.proxyId === proxyId && massPropertiesOnlyChanged(rec, spec) && this._updateMassPropertiesInPlace(rec, spec)) {
         rec.entity = entity;
@@ -1702,6 +1707,7 @@ function recordMatchesSpec(rec, spec) {
     rec.spec.dynamic === spec.dynamic &&
     rec.spec.ccd === spec.ccd &&
     rec.spec.radius === spec.radius &&
+    rec.spec.shape === spec.shape &&
     rec.spec.mass === spec.mass &&
     rec.spec.inertiaY === spec.inertiaY &&
     rec.spec.material === spec.material;   // material drives collider friction/restitution/groups
@@ -1714,7 +1720,80 @@ function proxyIdForEntity(entity) {
 
 function ghostProjectilePoolKey(spec) {
   const com = spec.centerOfMass || {};
-  return [spec.radius, spec.mass, spec.inertiaY, spec.ccd ? 1 : 0, finite(com.x), finite(com.z)].join('|');
+  return [spec.shape || 'ball', spec.radius, spec.mass, spec.inertiaY, spec.ccd ? 1 : 0, finite(com.x), finite(com.z)].join('|');
+}
+
+const ENEMY_SILHOUETTE_PROPORTIONS = Object.freeze({
+  drone_swarm: Object.freeze({ length: 1.0, halfWidth: 0.40, height: 0.30 }),
+  sniper_lance: Object.freeze({ length: 1.6, halfWidth: 0.35, height: 0.25 }),
+  bruiser_armor: Object.freeze({ length: 1.2, halfWidth: 0.75, height: 0.45 }),
+  trader_haul: Object.freeze({ length: 1.3, halfWidth: 0.50, height: 0.40 }),
+  pirate_swoop: Object.freeze({ length: 1.45, halfWidth: 0.65, height: 0.30 }),
+  corsair_blade: Object.freeze({ length: 1.50, halfWidth: 0.55, height: 0.30 }),
+  patrol_interdict: Object.freeze({ length: 1.55, halfWidth: 0.62, height: 0.38 }),
+  dreadnought_enemy: Object.freeze({ length: 2.00, halfWidth: 0.85, height: 0.70 }),
+});
+
+const CRAFT_PROPORTIONS_CACHE = new Map();
+for (const [sil, prop] of Object.entries(ENEMY_SILHOUETTE_PROPORTIONS)) {
+  CRAFT_PROPORTIONS_CACHE.set(sil, prop);
+}
+for (const ship of SHIPS || []) {
+  if (ship && ship.id && ship.visuals && ship.visuals.proportions) {
+    CRAFT_PROPORTIONS_CACHE.set(ship.id, ship.visuals.proportions);
+  }
+}
+for (const enemy of ENEMY_TYPES || []) {
+  if (enemy && enemy.id) {
+    const silProp = enemy.silhouette && ENEMY_SILHOUETTE_PROPORTIONS[enemy.silhouette];
+    const shipProp = enemy.shipId && CRAFT_PROPORTIONS_CACHE.get(enemy.shipId);
+    const prop = silProp || shipProp;
+    if (prop) CRAFT_PROPORTIONS_CACHE.set(enemy.id, prop);
+  }
+}
+
+export function resolveCraftProportions(entity, spec = null) {
+  const data = (entity && entity.data) || {};
+  if (data.proportions && Number.isFinite(data.proportions.length) && Number.isFinite(data.proportions.halfWidth)) {
+    return data.proportions;
+  }
+  if (data.silhouette && ENEMY_SILHOUETTE_PROPORTIONS[data.silhouette]) {
+    return ENEMY_SILHOUETTE_PROPORTIONS[data.silhouette];
+  }
+  for (const key of [data.defId, data.shipId, data.typeId, data.chassisId, entity && entity.id]) {
+    if (typeof key === 'string' && CRAFT_PROPORTIONS_CACHE.has(key)) {
+      return CRAFT_PROPORTIONS_CACHE.get(key);
+    }
+  }
+  if (entity && entity.type === 'drone') {
+    return { length: 1.0, halfWidth: 0.45, height: 0.30 };
+  }
+  return { length: 1.35, halfWidth: 0.42, height: 0.30 };
+}
+
+function buildCraftCapsuleColliderDesc(R, entity, spec, material, captureContactImpacts = true) {
+  const proportions = resolveCraftProportions(entity, spec);
+  const R_ref = positive(spec && spec.radius, positive(entity && entity.radius, 14));
+  const length = Math.max(0.1, positive(proportions && proportions.length, 1.35) * R_ref);
+  const halfWidth = Math.max(0.1, positive(proportions && proportions.halfWidth, 0.42) * R_ref);
+  const capRadius = halfWidth;
+  const halfHeight = Math.max(0, (length * 0.5) - capRadius);
+  const com = (spec && spec.centerOfMass) || {};
+  const comX = finite(com.x, 0);
+  const comZ = finite(com.z, 0);
+
+  const colliderDesc = R.ColliderDesc.capsule(halfHeight, capRadius)
+    .setTranslation(comX, 0, comZ)
+    .setRotation(capsulePlanarQuat(1, 0))
+    .setDensity(0)
+    .setFriction(material.friction)
+    .setRestitution(material.restitution);
+
+  if (material.ghost && typeof colliderDesc.setCollisionGroups === 'function') {
+    colliderDesc.setCollisionGroups(0);
+  }
+  if (captureContactImpacts) configureContactEvents(R, colliderDesc, material);
+  return colliderDesc;
 }
 
 function buildBallColliderDesc(R, spec, material, captureContactImpacts = true) {
@@ -1807,6 +1886,7 @@ function massPropertiesOnlyChanged(rec, spec) {
     current.dynamic === spec.dynamic &&
     current.ccd === spec.ccd &&
     current.radius === spec.radius &&
+    current.shape === spec.shape &&
     current.material === spec.material;
 }
 
