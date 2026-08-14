@@ -11,7 +11,7 @@ and [`CANONICAL_BUILD_MAP.md`](../CANONICAL_BUILD_MAP.md) §8 / §8.1 / §8.2 / 
 (exhaustive technique inventory)**.
 
 Existing identities `PQ-034`–`PQ-044` and `PQ-051`–`PQ-060` stay authoritative for their
-scopes. Identities `PQ-061`–`PQ-118` below are reserved so later campaigns can admit
+scopes. Identities `PQ-061`–`PQ-119` below are reserved so later campaigns can admit
 leaves without inventing overlapping outcomes.
 
 ## 1. Picture and behavior contract
@@ -228,6 +228,7 @@ Each still starts as INV unless a prior census already named that owner.
 | **`PQ-116` / `PERF-76-HDR-BUFFER-FORMAT`** | Mid INV→IMPL | Scene/bloom targets use the cheapest format that keeps the default halo. | HalfFloat vs R11G11B10 vs RGBM; Intel-specific. Feeds `PQ-097`. | Present/fill down; stills keep. |
 | **`PQ-117` / `PERF-77-HIDDEN-SYSTEM-SKIP`** | Near INV→IMPL | Registry systems do not full-tick when the 3D world is not on screen. | Pause, map, station shell, loading. Input/save stay alive. | Hidden-screen CPU/GPU drop; resume hashes hold. |
 | **`PQ-118` / `PERF-78-REPLAY-PERF-BISECT`** | Mid INV | A hitch can be bisected with a deterministic replay instead of folklore. | Record input+seed; replay; classify (`PQ-062`). | A named hitch is reproducible offline. |
+| **`PQ-119` / `PERF-79-TABLE-MAP-SPEC`** | Near IMPL | Off-table contacts stay map/radar facts. | After `PQ-061`/`PQ-071`. No live mesh for stations or traffic that cannot enter the glass this second. | Census shows beyond-band roots are not resident; map still names them. |
 
 ## 6. Investigation protocols (scaffolds this catalog may build)
 
