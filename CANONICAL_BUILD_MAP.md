@@ -66,10 +66,9 @@ kit-on-loaf cycles did not close quality. That close is reverted. Live files are
 still the old factory wholeships. Hitch is untouched and still wins. Stay off
 INFERENCE, the dock/hulk remaster, and the expansion-research brief.
 
-- **Hornet is on cycle 34.** C33 grayed the needle and made glass visible.
-  C33 rear review still REJECT (card wings, plank, chrome tube). C34
-  replaces origami plates with continuous overlapping shells, a low
-  bubble in the cockpit cut, and dihedral wings. Not wired.
+- **Hornet is on cycle 35, C36 building.** Needle is a gray overlapping
+  shell. Canopy is a framed bubble. Plank and crate are gone. Wings
+  still read as cards. Hitch still wins. Not wired.
 - **Remaining player ships are on a C14 form pass** (deck-plate farms
   and leftover kit extras removed, hull-following chine plates, lighter
   glass). None beat Hitch. None wired.

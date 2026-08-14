@@ -462,10 +462,10 @@ def add_manufactured_delta(name, sign, material, collection):
     """Thick-root airfoil with dihedral so 3/4 sees the section, not a card."""
     s = sign
     rings = [
-        airfoil_ring(0.18, 1.16 * s, 0.00, 2.60, 0.68),
-        airfoil_ring(-0.08, 2.18 * s, 0.22, 1.95, 0.42),
-        airfoil_ring(-0.46, 3.18 * s, 0.12, 1.18, 0.20),
-        airfoil_ring(-0.90, 4.05 * s, -0.02, 0.56, 0.090),
+        airfoil_ring(0.20, 1.10 * s, -0.08, 2.50, 0.78),
+        airfoil_ring(-0.04, 2.05 * s, 0.42, 1.80, 0.44),
+        airfoil_ring(-0.38, 3.00 * s, 0.68, 1.05, 0.20),
+        airfoil_ring(-0.78, 3.82 * s, 0.46, 0.50, 0.085),
     ]
     wing = loft_from_rings(name, rings, material, collection, 0.012)
     # Overlapping upper skin so the top is a plate, not a blank card.
