@@ -8,6 +8,7 @@ import {
   shouldContinueAdmissionSlice,
   shouldRedrawAfterLatePresent,
   shouldStartHeavyAdmission,
+  shouldStartWorkAfterLatePresent,
 } from '../src/render/admissionSliceBudget.js';
 
 test('always admits the first item, then stops once the target milliseconds are spent', () => {
@@ -54,12 +55,20 @@ test('late presents do not start another heavy admission', () => {
   assert.equal(shouldStartHeavyAdmission(undefined), true);
 });
 
+test('a late present parks one heavy item then must start the next', () => {
+  assert.equal(shouldStartWorkAfterLatePresent(33.3, false), false);
+  assert.equal(shouldStartWorkAfterLatePresent(33.3, true), true);
+  assert.equal(shouldStartWorkAfterLatePresent(16.7, false), true);
+});
+
 test('live drain and upgrade consult the late-present gate', async () => {
   const { readFile } = await import('node:fs/promises');
   const renderer = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
   const parts = await readFile(new URL('../src/render/partsLibrary.js', import.meta.url), 'utf8');
-  assert.match(renderer, /shouldStartHeavyAdmission\(this\.state && this\.state\.render && this\.state\.render\.lastPresentDtMs\)/);
-  assert.match(parts, /shouldStartHeavyAdmission\(live\.render && live\.render\.lastPresentDtMs\)/);
+  assert.match(renderer, /shouldStartWorkAfterLatePresent\(/);
+  assert.match(renderer, /_meshBuildSkippedLast/);
+  assert.match(parts, /shouldStartWorkAfterLatePresent\(/);
+  assert.match(parts, /skippedLastForLatePresent/);
 });
 
 test('hard-limit helper flags slices that already blew the hitch ceiling', () => {

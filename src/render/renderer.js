@@ -111,7 +111,7 @@ import { SHIPS } from '../data/ships.js';
 import { applySectorExitResidency, getAssetResidency } from './assetResidency.js';
 import {
   shouldContinueAdmissionSlice,
-  shouldStartHeavyAdmission,
+  shouldStartWorkAfterLatePresent,
 } from './admissionSliceBudget.js';
 import {
   INNER_VIEW_BAND_SCALE,
@@ -3976,9 +3976,14 @@ export const render = {
     let built = 0;
     if (buildBudget !== Infinity
         && this._initialMeshReconcileComplete
-        && !shouldStartHeavyAdmission(this.state && this.state.render && this.state.render.lastPresentDtMs)) {
+        && !shouldStartWorkAfterLatePresent(
+          this.state && this.state.render && this.state.render.lastPresentDtMs,
+          this._meshBuildSkippedLast === true,
+        )) {
+      this._meshBuildSkippedLast = true;
       return 0;
     }
+    this._meshBuildSkippedLast = false;
     const startedAtMs = typeof performance !== 'undefined' && typeof performance.now === 'function'
       ? performance.now()
       : Date.now();
