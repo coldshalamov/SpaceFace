@@ -21,7 +21,11 @@ import { freezeStaticChildMatrices } from './staticChildMatrices.js';
 import { optimizeStaticBatchesForRoot } from './visualFactory.js';
 import { attachLodState } from './lod.js';
 import { canInstallWholeShipLodFamily, selectSpawnLodLevel } from './wholeShipLodPolicy.js';
-import { packageBatchPoolKeyFromMaterial } from './materialBatchKey.js';
+import {
+  instancePoolIdentity,
+  packageBatchPoolKeyFromMaterial,
+  stampGeometryBatchKey,
+} from './materialBatchKey.js';
 import {
   canBatchRenderPackageOwner,
   isRigidOpaqueBatchableSurface,
@@ -5457,6 +5461,7 @@ function instantiatePart(record, parent, placement, palette, scene, owner, bindi
         `${record.url}|${placement.label}|${primitive.key}`
       );
       object = new THREE.Mesh(primitive.geometry, material);
+      stampGeometryBatchKey(object.geometry, `${record.url}|${primitive.name || primitive.key}`);
       if (primitive.tags && primitive.tags.driveAnchorMatrix) {
         BATCH_INVERSE.copy(anchorMatrix).invert();
         BATCH_LOCAL.multiplyMatrices(BATCH_INVERSE, primitive.matrix);
@@ -5578,6 +5583,7 @@ function instantiateRenderPackagePart(record, parent, placement, palette, scene,
     // meant "skip this node". In the flat loop the same word would abandon the whole instance.
     if (object.isMesh) {
       if (object.visible === false) continue;
+      stampGeometryBatchKey(object.geometry, `${record.assetId || record.url}|${object.name}`);
       const primitive = { material: object.material, tags };
       if (object.userData?.spacefacePackageMaterialPrepared !== true) {
         object.material = requiresPerShipMesh(primitive)
@@ -5622,6 +5628,7 @@ function createRenderPackageShipNodeFactory({
 
     const material = sharedMaterialFor(source.material, tags, palette);
     const object = source.clone(false);
+    stampGeometryBatchKey(object.geometry, `${record.assetId || 'PackageShip'}|${source.name || 'Mesh'}`);
     object.material = material;
     object.userData = {
       ...(object.userData || {}),
@@ -6602,10 +6609,7 @@ function sceneState(scene) {
 }
 
 function instancePoolKey(geometry, material) {
-  const geometryKey = geometry.userData && geometry.userData.spacefaceBatchKey || geometry.uuid;
-  const materialKey = material.userData && material.userData.spacefaceBatchKey
-    || packageBatchPoolKeyFromMaterial(material);
-  return `${geometryKey}|${materialKey}`;
+  return instancePoolIdentity(geometry, material);
 }
 
 function createPoolStats() {

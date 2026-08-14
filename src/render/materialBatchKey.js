@@ -50,3 +50,24 @@ export function materialBatchFingerprint(material) {
 export function packageBatchPoolKeyFromMaterial(material) {
   return `package-batched|${materialBatchFingerprint(material)}`;
 }
+
+export function stampGeometryBatchKey(geometry, key) {
+  if (!geometry) return '';
+  const userData = geometry.userData || (geometry.userData = {});
+  if (!userData.spacefaceBatchKey) userData.spacefaceBatchKey = String(key);
+  return userData.spacefaceBatchKey;
+}
+
+export function geometryBatchIdentity(geometry, hint = '') {
+  if (!geometry) return 'nogeo';
+  const stamped = geometry.userData && geometry.userData.spacefaceBatchKey;
+  if (stamped) return String(stamped);
+  if (hint) return String(hint);
+  return geometry.uuid || 'nogeo';
+}
+
+export function instancePoolIdentity(geometry, material, hint = '') {
+  const materialKey = material && material.userData && material.userData.spacefaceBatchKey
+    || packageBatchPoolKeyFromMaterial(material);
+  return `${geometryBatchIdentity(geometry, hint)}|${materialKey}`;
+}

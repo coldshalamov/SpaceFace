@@ -1,10 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 
 import {
+  geometryBatchIdentity,
+  instancePoolIdentity,
   materialBatchFingerprint,
   packageBatchPoolKeyFromMaterial,
+  stampGeometryBatchKey,
 } from '../src/render/materialBatchKey.js';
 
 test('two cloned standard hull materials share a fingerprint without using uuid', () => {
@@ -30,4 +34,23 @@ test('authored role keys win, and a different albedo does not collapse', () => {
   const c = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 });
   const d = new THREE.MeshStandardMaterial({ color: 0xeeeeee, roughness: 0.1 });
   assert.notEqual(materialBatchFingerprint(c), materialBatchFingerprint(d));
+});
+
+test('cloned hull geometries share a pool key after they are stamped', () => {
+  const geoA = new THREE.BoxGeometry(1, 1, 1);
+  const geoB = geoA.clone();
+  const mat = new THREE.MeshStandardMaterial({ color: 0x808080 });
+  mat.userData.spacefaceBatchKey = 'hull-shared';
+  assert.notEqual(geoA.uuid, geoB.uuid);
+  assert.notEqual(instancePoolIdentity(geoA, mat), instancePoolIdentity(geoB, mat));
+  stampGeometryBatchKey(geoA, 'wasp.glb|hull');
+  stampGeometryBatchKey(geoB, 'wasp.glb|hull');
+  assert.equal(geometryBatchIdentity(geoA), 'wasp.glb|hull');
+  assert.equal(instancePoolIdentity(geoA, mat), instancePoolIdentity(geoB, mat));
+});
+
+test('live instance pools use stamped geometry identity, not clone uuid', async () => {
+  const source = await readFile(new URL('../src/render/partsLibrary.js', import.meta.url), 'utf8');
+  assert.match(source, /instancePoolIdentity\(geometry,\s*material\)/);
+  assert.match(source, /stampGeometryBatchKey\(object\.geometry/);
 });
