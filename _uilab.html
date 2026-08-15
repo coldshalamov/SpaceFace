@@ -116,19 +116,32 @@ body[data-accent="furnace"]{ --hot:#ff8a1e; --hot-2:#ffd27a; --foe:#ff2e88; --ob
 .pro .spdrow .unit{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.16em;
   color:var(--steel);text-transform:uppercase}
 
-/* centre — reticle + Massline load ring (§5.4) */
-.pro .centre{left:50%;top:50%;transform:translate(-50%,-50%);width:290px;height:290px}
+/* centre — reticle only; the world is the show */
+.pro .centre{left:50%;top:50%;transform:translate(-50%,-50%);width:46px;height:46px}
 .pro .centre::before{display:none}
-.pro .ring{position:absolute;inset:0;transform:rotate(-90deg)}
-.pro .ring circle{fill:none;stroke-linecap:round}
-.pro .mlcap{position:absolute;left:50%;top:calc(50% + 84px);transform:translateX(-50%);
-  display:flex;align-items:baseline;gap:10px;white-space:nowrap}
-.pro .mlcap .t{font-family:var(--display);font-weight:700;font-size:20px;letter-spacing:.15em;
-  text-transform:uppercase;color:var(--paper);
-  text-shadow:0 0 22px var(--hot),0 2px 5px #000,0 0 14px #000}
-.pro .mlcap .n{font-family:var(--data);font-weight:500;font-size:14px;color:var(--hot-2);
-  text-shadow:0 2px 5px #000,0 0 12px #000}
 .pro .cross{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)}
+
+/* bottom-centre — the Massline instrument owns this lane while latched (HUD_FLIGHT_ATTENTION §2.8):
+   analog tension, line length, release. Loud because tension is the whole feel of a tether. */
+.pro .mlbay{left:50%;bottom:38px;transform:translateX(-50%);--vx:50%;width:520px;text-align:center}
+.pro .mlhead{display:flex;align-items:baseline;justify-content:center;gap:14px;margin-bottom:9px}
+.pro .mlname{font-family:var(--display);font-weight:700;font-size:26px;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--paper);text-shadow:0 0 20px var(--hot),0 2px 6px #000}
+.pro .mlstate{font-family:var(--display);font-weight:600;font-size:12px;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--hot-2);text-shadow:0 2px 5px #000}
+.pro .mltension{position:relative;height:12px;border-radius:1px;overflow:hidden;
+  background:rgba(255,255,255,.10)}
+.pro .mltension i{display:block;height:100%;background:var(--hot);
+  box-shadow:0 0 16px var(--hot);border-radius:1px}
+/* the snap threshold — the one thing the player is actually watching */
+.pro .mlredline{position:absolute;top:-3px;bottom:-3px;left:88%;width:2px;background:var(--foe);
+  box-shadow:0 0 10px var(--foe)}
+.pro .mlfoot{display:flex;align-items:baseline;justify-content:center;gap:9px;margin-top:9px}
+.pro .mlnum{font-family:var(--data);font-weight:500;font-size:15px;color:var(--paper);
+  font-variant-numeric:tabular-nums;text-shadow:0 2px 5px #000;margin-right:8px}
+.pro .mlrel{font-family:var(--display);font-weight:600;font-size:12px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--steel);text-shadow:0 2px 5px #000;margin-left:6px}
+.pro .mlrel b{color:var(--paper)}
 
 /* right — threat shape, not a list (§5.4) */
 .pro .threat{right:44px;top:46px;--vx:80%;text-align:right;width:250px}
@@ -143,10 +156,13 @@ body[data-accent="furnace"]{ --hot:#ff8a1e; --hot-2:#ffd27a; --foe:#ff2e88; --ob
 .pro .tmore{margin-top:9px;font-family:var(--display);font-weight:600;font-size:12px;letter-spacing:.16em;
   text-transform:uppercase;color:var(--steel)}
 
-/* bottom-centre — objective, one line, no plate */
-.pro .obj{left:50%;bottom:38px;transform:translateX(-50%);--vx:50%;text-align:center;white-space:nowrap}
-.pro .obj .o{font-family:var(--display);font-weight:600;font-size:19px;letter-spacing:.05em;color:var(--paper);
+/* destination — ONE line, in the left stack above the vitals (bottom-centre is the Massline's
+   while latched). World diamond + radar mark carry the rest. */
+.pro .obj{left:44px;bottom:176px;--vx:14%;white-space:nowrap}
+.pro .obj .o{font-family:var(--display);font-weight:600;font-size:18px;letter-spacing:.04em;color:var(--paper);
   text-shadow:0 2px 8px #000}
+.pro .obj .dist{font-family:var(--data);font-weight:500;font-size:13px;color:var(--steel);
+  margin-left:10px;text-shadow:0 2px 5px #000}
 .pro .obj .o em{font-style:normal;color:var(--obj)}
 
 /* ═══ PROGRESSION FRAMES ═══════════════════════════════════════════════════════════════════ */
@@ -332,24 +348,30 @@ body[data-focus="tt"] section:nth-of-type(1){display:none}
         </div>
       </div>
 
-      <!-- centre: reticle + Massline load ring — the signature mechanic, loudest thing on screen -->
+      <!-- centre: reticle only. The world is the show. -->
       <div class="anchor centre">
-        <svg class="ring" viewBox="0 0 200 200" aria-hidden="true">
-          <circle cx="100" cy="100" r="76" stroke="rgba(255,255,255,.13)" stroke-width="4"></circle>
-          <!-- 2πr ≈ 477.5 · 78% load -->
-          <circle cx="100" cy="100" r="76" stroke="var(--hot)" stroke-width="5"
-                  stroke-dasharray="477.5" stroke-dashoffset="105"
-                  style="filter:drop-shadow(0 0 9px var(--hot))"></circle>
-          <circle cx="100" cy="100" r="76" stroke="#ffffff" stroke-width="2.5"
-                  stroke-dasharray="30 447.5" stroke-dashoffset="105"
-                  style="filter:drop-shadow(0 0 12px #fff)"></circle>
-        </svg>
         <svg class="cross" width="46" height="46" viewBox="0 0 46 46" aria-hidden="true">
           <g stroke="var(--paper)" stroke-width="1.6" stroke-linecap="round" opacity=".92">
             <path d="M23 4v9M23 33v9M4 23h9M33 23h9"/></g>
           <circle cx="23" cy="23" r="2.1" fill="var(--hot)"/>
         </svg>
-        <div class="mlcap"><span class="t">Massline</span><span class="n">78% load</span></div>
+      </div>
+
+      <!-- bottom-centre: while latched, the Massline OWNS this lane — analog tension, length,
+           release. Placement per design/HUD_FLIGHT_ATTENTION.md; loudness is the point. -->
+      <div class="anchor mlbay">
+        <div class="mlhead"><span class="mlname">Massline</span><span class="mlstate">Latched · Hauler</span></div>
+        <div class="mltension">
+          <i style="width:78%"></i>
+          <span class="mlredline"></span>
+        </div>
+        <div class="mlfoot">
+          <span class="lbl">Tension</span>
+          <span class="mlnum">78%</span>
+          <span class="lbl">Line</span>
+          <span class="mlnum">240 m</span>
+          <span class="mlrel">Release <b>RMB</b></span>
+        </div>
       </div>
 
       <!-- right: the swarm is a shape and a count, not a table -->
@@ -363,16 +385,15 @@ body[data-focus="tt"] section:nth-of-type(1){display:none}
         <div class="tmore">+14 on radar</div>
       </div>
 
-      <!-- bottom-centre: one objective line, one voice -->
+      <!-- destination: one line, left stack -->
       <div class="anchor obj">
-        <div class="o">Swing the hauler wide of <em>Ceres Belt</em></div>
+        <div class="o">Swing the hauler wide of <em>Ceres Belt</em><span class="dist">345 WU</span></div>
       </div>
     </div>
   </div>
 
   <p class="caption"><b>Current</b><span>Thirteen bordered plates, ragged widths, 7–11px tracked Consolas, saturated cyan with an 8px glow. The ship and the spectacle get whatever is left in the middle.</span></p>
   <p class="caption"><b>Proposed</b><span>Four anchors, no plates — soft vignettes and hard text-shadow carry legibility. Speed is 64px and readable at a glance. A swarm of seventeen becomes one number, three names and a count.</span></p>
-  <p class="caption"><b>Correction</b><span>The Massline ring is drawn at screen centre here to show how <em>loud</em> the tether should be while latched. Its <em>placement</em> is already settled elsewhere — <b>design/HUD_FLIGHT_ATTENTION.md</b> (active, authorized 2026-08-13) gives the latched Massline bottom-centre. That ruling wins; this frame is illustrating volume, not position.</span></p>
 </section>
 
 <!-- ══════════════════════════ PROGRESSION ══════════════════════════ -->

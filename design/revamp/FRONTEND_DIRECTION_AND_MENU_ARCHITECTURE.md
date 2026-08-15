@@ -405,12 +405,12 @@ instructions.**
 
 **Massline placement is already ruled.** `HUD_FLIGHT_ATTENTION.md` §2.8 and §3 Flight 3 give the
 latched Massline **bottom-centre** ("analog tension/length/release", agreeing with the existing
-world-space release diamond in `masslineHud.js`). *That ruling stands.* An earlier draft of this
-review proposed a load ring at screen centre; the companion prototype still shows it that way, and
-**the prototype is wrong on this point** — it is kept as an illustration of *loudness*, not of
-*placement*. The transferable finding is only this: the signature mechanic currently reads as a 3px
-bar with an 11px label, and whatever form it takes, **tension should be the loudest thing on the
-glass while latched.**
+world-space release diamond in `masslineHud.js`). *That ruling stands* — an earlier draft of this
+review proposed a load ring at screen centre; it was withdrawn and the companion prototype was
+re-laid-out to match (bottom-centre tension bar with a visible snap threshold; screen centre is a
+bare reticle). The transferable finding is only this: the signature mechanic currently reads as a
+3px bar with an 11px label, and whatever form it takes, **tension should be the loudest thing on
+the glass while latched.**
 
 Two further findings, both compatible with that plan:
 
