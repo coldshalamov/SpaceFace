@@ -76,6 +76,26 @@ function injectStyle() {
   document.head.appendChild(el);
 }
 
+// Canvas 2D parses `font` with the CSS font shorthand parser, which does NOT resolve custom
+// properties: `g.font = '12px var(--mono)'` is invalid, silently ignored, and leaves the previous
+// value (initially 10px sans-serif) — the whole tree rendered in browser-default sans at the wrong
+// size with nothing reporting it. Resolve the tokens through getComputedStyle first; the resolved
+// strings are full font-family lists and drop straight into the shorthand.
+let _fontCache = null;
+function resolveCanvasFonts() {
+  if (_fontCache) return _fontCache;
+  const cs = getComputedStyle(document.documentElement);
+  const mono = (cs.getPropertyValue('--mono') || '').trim() || 'monospace';
+  const sans = (cs.getPropertyValue('--font') || '').trim() || 'sans-serif';
+  _fontCache = { mono, sans };
+  return _fontCache;
+}
+function invalidateCanvasFonts() { _fontCache = null; }
+if (typeof document !== 'undefined' && document.fonts && document.fonts.addEventListener) {
+  // Web fonts land after first paint; drop the cache and let the next refresh redraw with them.
+  document.fonts.addEventListener('loadingdone', invalidateCanvasFonts);
+}
+
 function setText(el, text) { if (el && el.textContent !== text) el.textContent = text; }
 
 function nodeName(id, nodes = TECH_NODES) {
@@ -308,6 +328,7 @@ export const techTreeScreen = {
 
   onShow(ctx) {
     if (ctx) this._ctx = ctx;
+    invalidateCanvasFonts();
     this._sizeCanvas();
     this.refresh(this._ctx);
   },
@@ -379,6 +400,7 @@ export const techTreeScreen = {
 
     const nodes = this._nodes();
     const pos = this._layout.positions;
+    const fonts = resolveCanvasFonts();
 
     // branch column headers
     g.textAlign = 'left'; g.textBaseline = 'top';
@@ -388,7 +410,7 @@ export const techTreeScreen = {
       const x = PAD_X + baseCol * (NODE_W + COL_GAP);
       g.fillStyle = b.color;
       g.globalAlpha = 0.85;
-      g.font = '700 12px var(--mono, monospace)';
+      g.font = '700 12px ' + fonts.mono;
       g.fillText(b.label.toUpperCase(), x, 14);
       g.globalAlpha = 1;
     }
@@ -453,12 +475,12 @@ export const techTreeScreen = {
 
       // name
       g.fillStyle = stt === 'locked' ? 'rgba(150,168,196,0.55)' : '#dce8f5';
-      g.font = '600 12px var(--font, sans-serif)';
+      g.font = '600 12px ' + fonts.sans;
       g.textAlign = 'left'; g.textBaseline = 'top';
       wrapText(g, n.name, p.x + 9, p.y + 8, NODE_W - 18, 14, 2);
 
       // cost or check
-      g.font = '600 10px var(--mono, monospace)';
+      g.font = '500 12px ' + fonts.mono;
       if (stt === 'researched') {
         g.fillStyle = '#62e08a';
         g.textAlign = 'right'; g.textBaseline = 'bottom';
@@ -473,13 +495,7 @@ export const techTreeScreen = {
         g.fillText((cost.rp || 0) + ' RP', p.x + NODE_W - 8, p.y + NODE_H - 7);
       }
 
-      // lock glyph
-      if (stt === 'locked') {
-        g.fillStyle = 'rgba(150,168,196,0.6)';
-        g.font = '11px var(--mono, monospace)';
-        g.textAlign = 'right'; g.textBaseline = 'top';
-        g.fillText('🔒', p.x + NODE_W - 8, p.y + 7);
-      }
+      // locked nodes read as locked through fill, border and name colour; no glyph needed.
     }
   },
 
@@ -516,7 +532,10 @@ export const techTreeScreen = {
     const st = this._ctx.state;
     setText(this._els && this._els.cr, fmtCr((st.player && st.player.credits) || 0));
     setText(this._els && this._els.rp, ((st.player && st.player.researchPoints) || 0).toLocaleString());
-    setText(this._els && this._els.count, `${this._researched().length}/${this._nodes().length}`);
+    // Count only ids the live node table still knows: saves can carry ids of folded nodes.
+    const known = new Set(this._nodes().map((n) => n.id));
+    const researchedCount = this._researched().filter((id) => known.has(id)).length;
+    setText(this._els && this._els.count, `${researchedCount}/${this._nodes().length}`);
   },
 
   _syncSidebar() {
@@ -587,7 +606,8 @@ export const techTreeScreen = {
   },
 
   _drawSignature() {
-    return [this._researchSignature(), this._selectedId || '', this._hoverId || '', this._dpr, this._nodes().length].join('|');
+    const f = resolveCanvasFonts();
+    return [this._researchSignature(), this._selectedId || '', this._hoverId || '', this._dpr, this._nodes().length, f.mono, f.sans].join('|');
   },
 
   _sidebarSignature() {
