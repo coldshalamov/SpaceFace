@@ -6561,6 +6561,7 @@ function finalizeInstanceChunk(chunk, dirty, stats, context = null) {
     count: nextCount,
     playerX: context && context.playerX,
     playerZ: context && context.playerZ,
+    castRadiusSq: context && context.castRadiusSq,
     refreshBounds: dirty || !!(context && context.cameraDirty),
   });
 }
@@ -6572,6 +6573,7 @@ function applyInstanceChunkPolicies(state, context) {
         count: chunk.mesh ? chunk.mesh.count : 0,
         playerX: context && context.playerX,
         playerZ: context && context.playerZ,
+        castRadiusSq: context && context.castRadiusSq,
         refreshBounds: false,
       });
     }
@@ -6585,6 +6587,7 @@ function consolidateOpaqueInstanceChunks(state, context) {
     scene: state.scene,
     playerX: context && context.playerX,
     playerZ: context && context.playerZ,
+    castRadiusSq: context && context.castRadiusSq,
     refreshBounds: !!(context && context.cameraDirty),
   });
   if (state.stats) {
@@ -6834,6 +6837,9 @@ function buildInstanceCullContext(state, opts) {
   context.recordsByOwner = recordsByOwner;
   context.playerX = Number.isFinite(Number(opts && opts.playerX)) ? Number(opts.playerX) : 0;
   context.playerZ = Number.isFinite(Number(opts && opts.playerZ)) ? Number(opts.playerZ) : 0;
+  context.castRadiusSq = Number.isFinite(Number(opts && opts.castRadiusSq))
+    ? Number(opts.castRadiusSq)
+    : null;
   context.consolidateOpaqueBatches = opts && opts.consolidateOpaqueBatches === true;
   if (!camera || !camera.projectionMatrix || !camera.matrixWorldInverse) {
     state.stats.frameBounded = frameBounded;
@@ -6868,6 +6874,7 @@ function createInstanceCullContext() {
     cameraPosition: null,
     playerX: 0,
     playerZ: 0,
+    castRadiusSq: null,
     consolidateOpaqueBatches: false,
   };
 }

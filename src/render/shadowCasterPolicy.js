@@ -36,11 +36,14 @@ export function allowRealtimeShadowCast({
   isPlayer = false,
   lodLevel = 'lod0',
   distanceSq = 0,
+  castRadius = SHADOW_CAST_RADIUS,
 } = {}) {
   if (isPlayer) return true;
   const level = normalizeLodLevel(lodLevel) || 'lod0';
   if (level === 'lod1' || level === 'lod2') return false;
-  return Number.isFinite(distanceSq) && distanceSq <= SHADOW_CAST_RADIUS_SQ;
+  const radius = Number(castRadius);
+  const limit = Number.isFinite(radius) && radius > 0 ? radius : SHADOW_CAST_RADIUS;
+  return Number.isFinite(distanceSq) && distanceSq <= limit * limit;
 }
 
 /** Squared XZ distance between a mesh local pose and the player local pose. */

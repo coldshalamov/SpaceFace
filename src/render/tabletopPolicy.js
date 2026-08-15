@@ -178,8 +178,8 @@ export function submitCullHalfExtents(
   };
 }
 
-export function tableShadowCastRadius(zoom, fovDeg, aspect) {
-  const glass = glassHalfExtents(zoom, fovDeg, aspect);
+export function tableShadowCastRadius(zoom, fovDeg, aspect, tiltDeg = 60) {
+  const glass = glassHalfExtents(zoom, fovDeg, aspect, tiltDeg);
   return Math.max(glass.halfX, glass.halfZ) + TABLE_SHADOW_SKIRT_WU;
 }
 

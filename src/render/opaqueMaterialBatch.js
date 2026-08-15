@@ -41,9 +41,11 @@ export function materialBatchAttrKey(geometry) {
   return `${geometry.index ? 'idx' : 'arr'}|${parts.join(',')}`;
 }
 
-export function opaqueBatchLane(nearestDistanceSq) {
+export function opaqueBatchLane(nearestDistanceSq, castRadiusSq = SHADOW_CAST_RADIUS_SQ) {
   const dist = Number(nearestDistanceSq);
-  if (Number.isFinite(dist) && dist <= SHADOW_CAST_RADIUS_SQ) return 'cast';
+  const radiusSq = Number(castRadiusSq);
+  const limit = Number.isFinite(radiusSq) && radiusSq > 0 ? radiusSq : SHADOW_CAST_RADIUS_SQ;
+  if (Number.isFinite(dist) && dist <= limit) return 'cast';
   return 'nocast';
 }
 
@@ -125,7 +127,7 @@ function consolidateChunk(state, chunk, options) {
     const dz = (array[offset + 14] || 0) - playerZ;
     planned.push({
       index,
-      lane: opaqueBatchLane((dx * dx) + (dz * dz)),
+      lane: opaqueBatchLane((dx * dx) + (dz * dz), options.castRadiusSq),
       offset,
     });
   }

@@ -165,6 +165,7 @@ import {
   residencyEvictRadius,
   residencyPrefetchRadius,
   submitCullHalfExtents,
+  tableShadowCastRadius,
   tableTravelSpeed,
 } from './tabletopPolicy.js';
 
@@ -319,6 +320,11 @@ function liveTableCamera(state) {
   const tilt = Number.isFinite(camera.tilt) ? camera.tilt : 60;
   const aspect = Number.isFinite(camera.aspect) && camera.aspect > 0 ? camera.aspect : 16 / 9;
   return { zoom, prefetchZoom, fov, tilt, aspect };
+}
+
+function liveShadowCastRadius(state) {
+  const cam = liveTableCamera(state);
+  return tableShadowCastRadius(cam.zoom, cam.fov, cam.aspect, cam.tilt);
 }
 
 function renderResidencyRadius(state, kind = 'prefetch') {
@@ -4344,6 +4350,7 @@ export const render = {
             isPlayer: entity.id === this.state.playerId,
             lodLevel,
             distanceSq: shadowCastDistanceSq(mesh.position, bounds.x, bounds.z),
+            castRadius: liveShadowCastRadius(this.state),
           })
           : false,
       }));
@@ -4692,6 +4699,8 @@ export const render = {
     authoredSyncOptions.authoredRecords = this._entityFrame.authored;
     authoredSyncOptions.playerX = 0;
     authoredSyncOptions.playerZ = 0;
+    const shadowRadius = liveShadowCastRadius(this.state);
+    authoredSyncOptions.castRadiusSq = shadowRadius * shadowRadius;
     authoredSyncOptions.consolidateOpaqueBatches = this._opaqueBatchEnabled === true;
     const player = this.state.playerId
       ? (this.state.entities && this.state.entities.get(this.state.playerId))
@@ -4711,6 +4720,7 @@ export const render = {
     if (this.spaceBg && this.spaceBg.update) this.spaceBg.update(frameDt, this._bgTime, this.cam.obj.position);
     parallaxLayers.update(frameDt);
     this._syncShadowMapEnabled();
+    this._syncKeyLightShadowFrustum(shadowRadius);
     if (this._keyLight && this._keyLight.shadow && this.renderer && this.renderer.shadowMap) {
       const refreshShadow = shouldRefreshRealtimeShadowMap({
         lastPresentDtMs: this.state && this.state.render && this.state.render.lastPresentDtMs,
@@ -4880,7 +4890,12 @@ export const render = {
       playerLocalZ,
     );
     return {
-      allowCast: allowRealtimeShadowCast({ isPlayer, lodLevel, distanceSq }),
+      allowCast: allowRealtimeShadowCast({
+        isPlayer,
+        lodLevel,
+        distanceSq,
+        castRadius: liveShadowCastRadius(this.state),
+      }),
     };
   },
 
@@ -4926,6 +4941,25 @@ export const render = {
     this._keyLight.castShadow = enabled;
   },
 
+  _syncKeyLightShadowFrustum(radius) {
+    const key = this._keyLight;
+    if (!key || !key.shadow || !key.shadow.camera) return false;
+    const numeric = Number(radius);
+    const extent = Math.max(
+      80,
+      Math.min(SHADOW_ORTHO_EXTENT, Math.round(Number.isFinite(numeric) ? numeric : SHADOW_ORTHO_EXTENT)),
+    );
+    if (this._shadowOrthoExtent === extent) return false;
+    const camera = key.shadow.camera;
+    camera.left = -extent;
+    camera.right = extent;
+    camera.top = extent;
+    camera.bottom = -extent;
+    camera.updateProjectionMatrix();
+    this._shadowOrthoExtent = extent;
+    return true;
+  },
+
   _ensureKeyLightShadows() {
     const key = this._keyLight;
     const renderer = this.renderer;
@@ -4943,6 +4977,7 @@ export const render = {
       key.shadow.normalBias = 0.04;
       if (key.target && !key.target.parent && this.scene) this.scene.add(key.target);
       key.userData.spacefaceShadowConfigured = true;
+      this._shadowOrthoExtent = SHADOW_ORTHO_EXTENT;
     }
     if (!this._shadowSettingOn) {
       renderer.shadowMap.enabled = false;

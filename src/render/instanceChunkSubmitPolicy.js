@@ -39,7 +39,9 @@ export function shouldInstanceChunkCastShadow(options = {}) {
   if (submitted <= 0) return false;
   const dist = Number(options.nearestDistanceSq);
   if (!Number.isFinite(dist)) return false;
-  return dist <= SHADOW_CAST_RADIUS_SQ;
+  const radiusSq = Number(options.castRadiusSq);
+  const limit = Number.isFinite(radiusSq) && radiusSq > 0 ? radiusSq : SHADOW_CAST_RADIUS_SQ;
+  return dist <= limit;
 }
 
 /**
@@ -70,6 +72,7 @@ export function applyInstanceChunkSubmitPolicy(chunk, options = {}) {
       options.playerX,
       options.playerZ,
     ),
+    castRadiusSq: options.castRadiusSq,
   });
   if (mesh.castShadow !== nextCast) {
     mesh.castShadow = nextCast;

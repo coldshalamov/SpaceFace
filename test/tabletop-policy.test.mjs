@@ -5,6 +5,15 @@ import {
   shouldSubmitEntityMesh,
 } from '../src/render/entityMeshVisibility.js';
 import {
+  shouldInstanceChunkCastShadow,
+} from '../src/render/instanceChunkSubmitPolicy.js';
+import {
+  opaqueBatchLane,
+} from '../src/render/opaqueMaterialBatch.js';
+import {
+  allowRealtimeShadowCast,
+} from '../src/render/shadowCasterPolicy.js';
+import {
   TABLE_BAND,
   TABLE_HEARING_FAR_WU,
   TABLE_REFERENCE_SPEED_WU,
@@ -283,7 +292,32 @@ test('audio hearing follows the table, not a 900 WU horizon', () => {
 test('shadow radius follows the table plus a short skirt', () => {
   const atDefault = tableShadowCastRadius(144, 50, 16 / 9);
   const atMax = tableShadowCastRadius(330, 50, 16 / 9);
-  assert.ok(atDefault < 400);
+  assert.ok(atDefault < 280, `default shadow ${atDefault} must beat the old 280 WU box`);
   assert.ok(atMax < 700);
   assert.ok(atMax > atDefault);
+  const leftover = (atDefault + 280) * 0.5;
+  const leftoverSq = leftover * leftover;
+  const nearSq = (atDefault * 0.5) * (atDefault * 0.5);
+  assert.equal(allowRealtimeShadowCast({
+    lodLevel: 'lod0',
+    distanceSq: leftoverSq,
+    castRadius: atDefault,
+  }), false);
+  assert.equal(allowRealtimeShadowCast({
+    lodLevel: 'lod0',
+    distanceSq: leftoverSq,
+  }), true);
+  assert.equal(allowRealtimeShadowCast({
+    lodLevel: 'lod0',
+    distanceSq: nearSq,
+    castRadius: atDefault,
+  }), true);
+  assert.equal(shouldInstanceChunkCastShadow({
+    opaque: true,
+    submittedCount: 1,
+    nearestDistanceSq: leftoverSq,
+    castRadiusSq: atDefault * atDefault,
+  }), false);
+  assert.equal(opaqueBatchLane(leftoverSq, atDefault * atDefault), 'nocast');
+  assert.equal(opaqueBatchLane(nearSq, atDefault * atDefault), 'cast');
 });
