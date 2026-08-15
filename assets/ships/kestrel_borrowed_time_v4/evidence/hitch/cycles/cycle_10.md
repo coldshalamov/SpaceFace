@@ -12,4 +12,10 @@ Authoring look:
 - Sponson: more broken up; still not a clean look-down into wells from three-quarter.
 - Clay: still a primitive stack on the original V4 hull.
 
-Do not wire over live V9 until three reviews return keep and the 50% bar holds.
+Independent reviews:
+
+- rear / drive_rear: **keep** — dark barrel, no teal disk, no orange button
+- three-quarter: **revise** — cannot look down into sponson wells; DIE LAUGHING deck still a lid
+- starboard: **revise** — side still a closed rail
+
+Do not wire. Cycle 11 hides the remaining V6 shoulder lids.
