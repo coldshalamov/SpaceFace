@@ -36,6 +36,7 @@ import {
   TABLE_LOOT_MAGNET_CAP_WU,
   tableShadowCastRadius,
   tableShadowCasterRadius,
+  isOpeningStoryActor,
   tableOpeningCompositionWu,
   tableSimAuthorityWuFromState,
   tableTravelSpeed,
@@ -200,6 +201,8 @@ test('opening compose follows the table, not a 2400 WU leftover horizon', () => 
   });
   assert.ok(opening < 800, `opening compose ${opening} stays on the table`);
   assert.ok(opening < 2400, 'opening compose is not the leftover 2400 WU ship horizon');
+  assert.equal(isOpeningStoryActor({ data: { ai: { liveColdStartSafe: true } } }), true);
+  assert.equal(isOpeningStoryActor({ data: { ai: {} } }), false);
 });
 
 test('authored decode follows the table, not a 2400-unit horizon', () => {

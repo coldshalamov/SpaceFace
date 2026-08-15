@@ -13,7 +13,11 @@ import { WEAPONS } from '../data/weapons.js';
 import { invalidateFailedAuthoredAssets, loadAuthoredPart } from './assetLoader.js';
 import { getAssetResidency } from './assetResidency.js';
 import { configureRealtimeCanopyMaterials } from './canopyMaterialPolicy.js';
-import { isCriticalStartingHub as isTableCriticalStartingHub, tableOpeningCompositionWu } from './tabletopPolicy.js';
+import {
+  isCriticalStartingHub as isTableCriticalStartingHub,
+  isOpeningStoryActor,
+  tableOpeningCompositionWu,
+} from './tabletopPolicy.js';
 import { isReleaseAssetMode } from './releaseMode.js';
 import * as kit from './ships/shipKit.js';
 import { attachPlaceHlod, attachStationHlod } from './hlod.js';
@@ -641,6 +645,7 @@ export function isInitialAuthoredCompositionEntity(entity, state) {
   if (!entity || entity.alive === false || !state) return false;
   if (entity.id === state.playerId || entity.isPlayer === true) return true;
   if (isTableCriticalStartingHub(entity) || isCriticalStartingHub(entity)) return true;
+  if (isOpeningStoryActor(entity)) return true;
   const player = state.entities && typeof state.entities.get === 'function'
     ? state.entities.get(state.playerId)
     : (state.entityList || []).find((candidate) => candidate && candidate.id === state.playerId);

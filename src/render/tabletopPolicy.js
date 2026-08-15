@@ -277,6 +277,8 @@ export function authoredImmediateRadius(speed = TABLE_REFERENCE_SPEED_WU) {
  * Replaces the leftover 2400 WU ship horizon. Critical starting hubs are
  * a separate exception in the caller, not a reason to grow this number.
  */
+const _openingComposeScratch = { key: '', radius: 0 };
+
 export function tableOpeningCompositionWu(state) {
   const camera = state && state.camera || {};
   const video = state && state.settings && state.settings.video || {};
@@ -290,7 +292,19 @@ export function tableOpeningCompositionWu(state) {
     : (Number.isFinite(video.fov) ? video.fov : 50);
   const aspect = Number.isFinite(camera.aspect) && camera.aspect > 0 ? camera.aspect : 16 / 9;
   const tilt = Number.isFinite(camera.tilt) ? camera.tilt : 60;
-  return glassCornerWu(zoom, fov, aspect, tilt) + authoredImmediateRadius(tableTravelSpeed(state));
+  const travel = tableTravelSpeed(state);
+  const key = `${zoom}|${fov}|${aspect}|${tilt}|${travel}`;
+  if (key === _openingComposeScratch.key) return _openingComposeScratch.radius;
+  const radius = glassCornerWu(zoom, fov, aspect, tilt) + authoredImmediateRadius(travel);
+  _openingComposeScratch.key = key;
+  _openingComposeScratch.radius = radius;
+  return radius;
+}
+
+/** 47-A cold-start holding ships sit 1.7–2.3 km out and must still compose at load. */
+export function isOpeningStoryActor(entity) {
+  const ai = entity && entity.data && entity.data.ai;
+  return !!(ai && ai.liveColdStartSafe === true);
 }
 
 export function authoredLookaheadSeconds() {

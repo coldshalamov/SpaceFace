@@ -982,4 +982,23 @@ test('the default Helios relay settles inside the loading-time authored runway',
     'loading must not widen beyond the table opening runway');
   assert.equal(isInitialAuthoredCompositionEntity(leftoverHorizon, state), false,
     'loading must not keep the leftover 2400 WU ship horizon');
+
+  const interceptor = {
+    id: 7,
+    alive: true,
+    type: 'ship',
+    pos: { x: 1760, z: 260 },
+    data: { ai: { liveColdStartSafe: true } },
+  };
+  const stray = {
+    id: 8,
+    alive: true,
+    type: 'ship',
+    pos: { x: 1760, z: 260 },
+    data: { ai: {} },
+  };
+  assert.equal(isInitialAuthoredCompositionEntity(interceptor, state), true,
+    '47-A cold-start holding ships still compose at load');
+  assert.equal(isInitialAuthoredCompositionEntity(stray, state), false,
+    'an ordinary ship at that hold is not an opening actor');
 });
