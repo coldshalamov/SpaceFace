@@ -173,7 +173,7 @@ export const MODULES = [
   },
   {
     id: 'mod_massline_spool_l', name: 'Capital Massline Spool', slotType: 'utility', size: 'L', tier: 5,
-    mass: 20, price: 220000, requiresTech: 'tech_flagship_command',
+    mass: 20, price: 220000, requiresTech: 'tech_fire_control',
     energyDraw: 8, mods: { tetherSpoolMult: 6 },
   },
   // Massline Physics Identity (Wave M2 §4.2): activated stealth. cloakBaseRadius is the DETECTION
