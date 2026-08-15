@@ -584,6 +584,22 @@ export function ensurePerfRuntime(state) {
       }
       displayFrameId++;
       const ms = Number.isFinite(frameDt) ? frameDt * 1000 : 0;
+      // lastFrameDtMs is the interval that just ended. framePhaseMs still holds that
+      // interval's work until we reset it below.
+      if (hitchAttributionEnabled) {
+        if (isHitchFrame(ms)) {
+          accumulateHitch(hitchHistogram, classifyHitchFrame({
+            frameMs: ms,
+            simMs: framePhaseMs.sim,
+            presentMs: framePhaseMs.render,
+            uiMs: framePhaseMs.ui,
+            vfxMs: framePhaseMs.vfx,
+            admissionMs: loop.admissionMs,
+          }));
+        } else {
+          accumulateHitch(hitchHistogram, null);
+        }
+      }
       previousCallbackMs = frameCallbackStats.last;
       previousSimFrameMs = framePhaseMs.simFrame;
       previousPresentationMs = framePhaseMs.presentation;
@@ -721,21 +737,6 @@ export function ensurePerfRuntime(state) {
         previousCallbackEndMs = currentCallbackStartMs + ms;
       }
       callbackOpen = false;
-      const intervalMs = Number.isFinite(loop.lastFrameDtMs) && loop.lastFrameDtMs > 0
-        ? loop.lastFrameDtMs
-        : ms;
-      if (hitchAttributionEnabled && isHitchFrame(intervalMs)) {
-        accumulateHitch(hitchHistogram, classifyHitchFrame({
-          frameMs: intervalMs,
-          simMs: framePhaseMs.sim,
-          presentMs: framePhaseMs.render,
-          uiMs: framePhaseMs.ui,
-          vfxMs: framePhaseMs.vfx,
-          admissionMs: loop.admissionMs,
-        }));
-      } else if (hitchAttributionEnabled) {
-        accumulateHitch(hitchHistogram, null);
-      }
     },
     /**
      * Copy the current frame's scalar timing state into a caller-owned object.

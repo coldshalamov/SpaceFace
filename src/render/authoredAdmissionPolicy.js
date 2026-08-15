@@ -6,6 +6,7 @@ import {
   authoredImmediateRadius,
   authoredLookaheadSeconds,
   authoredPrefetchRadius,
+  glassCornerWu,
   isCriticalStartingHub,
   tableTravelSpeed,
 } from './tabletopPolicy.js';
@@ -48,7 +49,18 @@ export function willEntityEnterAuthoredUpgradeRunway(entity, state, {
   const dz = Number(entity.pos.z) - Number(player.pos.z);
   const distance = Math.hypot(dx, dz);
   if (!Number.isFinite(distance)) return false;
-  if (distance <= immediate) return true;
+  const visual = Math.max(0, Number(entity.radius) || 0);
+  const surface = Math.max(0, distance - visual);
+  if (surface <= immediate) return true;
+  const zoom = Number(state && state.camera && state.camera.zoom);
+  const tilt = Number(state && state.camera && state.camera.tilt);
+  const glass = glassCornerWu(
+    Number.isFinite(zoom) ? zoom : 144,
+    50,
+    16 / 9,
+    Number.isFinite(tilt) ? tilt : 60,
+  );
+  if (surface <= glass) return true;
   if (distance <= 0) return false;
 
   const relativeX = (Number(player.vel?.x) || 0) - (Number(entity.vel?.x) || 0);

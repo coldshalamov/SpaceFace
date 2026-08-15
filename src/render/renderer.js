@@ -299,12 +299,28 @@ function entityWithinPlayerRadius(entity, state, radius) {
   if (!player || !player.pos || !Number.isFinite(player.pos.x) || !Number.isFinite(player.pos.z)) return false;
   const dx = entity.pos.x - player.pos.x;
   const dz = entity.pos.z - player.pos.z;
-  return dx * dx + dz * dz <= radius * radius;
+  const visual = entityVisualCullRadius(entity);
+  const reach = Math.max(0, Number(radius) || 0) + visual;
+  return dx * dx + dz * dz <= reach * reach;
+}
+
+function liveTableCamera(state) {
+  const camera = state && state.camera || {};
+  const video = state && state.settings && state.settings.video || {};
+  const zoom = Number.isFinite(camera.zoom) ? camera.zoom : 144;
+  const fov = Number.isFinite(camera.fov) ? camera.fov
+    : (Number.isFinite(video.fov) ? video.fov : 50);
+  const tilt = Number.isFinite(camera.tilt) ? camera.tilt : 60;
+  const aspect = Number.isFinite(camera.aspect) && camera.aspect > 0 ? camera.aspect : 16 / 9;
+  return { zoom, fov, tilt, aspect };
 }
 
 function renderResidencyRadius(state, kind = 'prefetch') {
   const speed = tableTravelSpeed(state);
-  return kind === 'evict' ? residencyEvictRadius(speed) : residencyPrefetchRadius(speed);
+  const cam = liveTableCamera(state);
+  return kind === 'evict'
+    ? residencyEvictRadius(speed, cam.zoom, cam.fov, cam.aspect, cam.tilt)
+    : residencyPrefetchRadius(speed, cam.zoom, cam.fov, cam.aspect, cam.tilt);
 }
 
 /** Pure render-streaming policy used by reconciliation and focused tests. */

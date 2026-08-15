@@ -63,6 +63,31 @@ test('histogram coverage is the share of named hitch owners', () => {
   assert.ok(HITCH_THRESHOLD_MS > 16);
 });
 
+test('vfx-owned hitches are named vfx', () => {
+  const classified = classifyHitchFrame({ frameMs: 50, vfxMs: 30, simMs: 2 });
+  assert.equal(classified.owner, 'vfx');
+  assert.equal(classified.attributed, true);
+});
+
+test('a one-vsync hitch is unknown unless one phase owns the frame', () => {
+  const classified = classifyHitchFrame({ frameMs: 36, presentMs: 6, simMs: 5 });
+  assert.equal(classified.owner, 'unknown');
+  assert.equal(classified.attributed, false);
+});
+
+test('live hitch attribution pairs the interval with the previous frame phases', () => {
+  const state = { entityList: [], settings: { video: {} } };
+  const perf = ensurePerfRuntime(state);
+  perf.setHitchAttributionEnabled(true);
+  perf.beginFrame(0.016);
+  perf.recordPhase('sim', 60);
+  perf.recordFrameCallback(60);
+  perf.beginFrame(0.062);
+  const report = perf.getHitchHistogram();
+  assert.equal(report.hitches, 1);
+  assert.equal(report.counts.sim, 1);
+});
+
 test('live hitch attribution is off by default and reset clears the ring', () => {
   const state = { entityList: [], settings: { video: {} } };
   const perf = ensurePerfRuntime(state);

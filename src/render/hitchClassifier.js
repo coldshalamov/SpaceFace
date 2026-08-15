@@ -21,6 +21,7 @@ export const HITCH_OWNERS = Object.freeze([
   'sim',
   'ui',
   'admission',
+  'vfx',
   'unknown',
 ]);
 
@@ -39,6 +40,7 @@ const PHASE_TO_OWNER = Object.freeze({
   simMs: 'sim',
   uiMs: 'ui',
   admissionMs: 'admission',
+  vfxMs: 'vfx',
   renderMs: 'present',
   presentationMs: 'present',
 });
@@ -74,7 +76,10 @@ export function classifyHitchFrame(sample = {}, options = {}) {
     }
   }
 
-  const attributed = bestMs >= excess * share && bestOwner !== 'unknown';
+  // Blame a phase only if it owns a real share of the *frame*, not a sliver of
+  // the 1–4 ms excess on a one-dropped-vsync hitch.
+  const attributed = bestMs >= Math.max(excess * share, frameMs * 0.2)
+    && bestOwner !== 'unknown';
   return {
     owner: attributed ? bestOwner : 'unknown',
     frameMs,

@@ -76,6 +76,54 @@ test('table bands keep on-glass ships submitted and drop true off-table roots', 
   assert.equal(shouldSubmitEntityMesh({ isPlayer: true, hidden: true }), true);
 });
 
+test('a planet filling the glass stays meshed at the skim band', () => {
+  const state = {
+    playerId: 1,
+    camera: { zoom: 144, tilt: 60 },
+    entities: new Map([[1, { id: 1, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, maxSpeed: 160 }]]),
+  };
+  const planet = {
+    id: 'planet_tethys_anvil',
+    type: 'planet',
+    alive: true,
+    pos: { x: 960, z: 0 },
+    radius: 700,
+  };
+  assert.equal(
+    isEntityRenderRelevant(planet, state),
+    true,
+    'The Anvil at the 960 WU skim band must keep its mesh — the limb is already on the glass',
+  );
+  const farSpeck = {
+    id: 'planet_far',
+    type: 'planet',
+    alive: true,
+    pos: { x: 9000, z: 0 },
+    radius: 700,
+  };
+  assert.equal(isEntityRenderRelevant(farSpeck, state), false,
+    'a planet across the belt is still a map fact');
+});
+
+test('residency grows with live camera zoom so director-zoom objects stay meshed', () => {
+  const player = { id: 1, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, maxSpeed: 160 };
+  const ship = { id: 2, type: 'ship', alive: true, pos: { x: 700, z: 0 }, radius: 8 };
+  const tight = {
+    playerId: 1,
+    camera: { zoom: 144, tilt: 60 },
+    entities: new Map([[1, player]]),
+  };
+  const wide = {
+    playerId: 1,
+    camera: { zoom: 330, tilt: 60 },
+    entities: new Map([[1, player]]),
+  };
+  assert.equal(isEntityRenderRelevant(ship, tight), false,
+    'at default zoom a ship 700 WU out is off the table');
+  assert.equal(isEntityRenderRelevant(ship, wide), true,
+    'at max legal zoom that same ship is on the glass and must stay meshed');
+});
+
 test('far current-sector landmarks are map facts until they can enter the table', () => {
   const state = {
     playerId: 1,
@@ -145,6 +193,17 @@ test('authored decode follows the table, not a 2400-unit horizon', () => {
   assert.equal(isEntityAuthoredUpgradeRelevant(far, state), false);
   state.entities.get(1).vel.x = 0;
   assert.equal(isEntityAuthoredUpgradeRelevant(inboundTraffic, state), true);
+  state.camera = { zoom: 330, tilt: 60 };
+  const visibleStationary = {
+    id: 7,
+    type: 'station',
+    alive: true,
+    pos: { x: 300, z: 0 },
+    radius: 40,
+    vel: { x: 0, z: 0 },
+  };
+  assert.equal(isEntityAuthoredUpgradeRelevant(visibleStationary, state), true,
+    'a stationary station already on the max-zoom glass must start authored decode');
 });
 
 test('census splits glass, runway, and beyond without collapsing the table', () => {
