@@ -54,7 +54,9 @@ export function willEntityEnterAuthoredUpgradeRunway(entity, state, {
   if (surface <= immediate) return true;
   const camera = state && state.camera || {};
   const video = state && state.settings && state.settings.video || {};
-  const zoom = Number.isFinite(Number(camera.zoom)) ? Number(camera.zoom) : 144;
+  const zoom = Number.isFinite(Number(camera.liveZoom))
+    ? Number(camera.liveZoom)
+    : (Number.isFinite(Number(camera.zoom)) ? Number(camera.zoom) : 144);
   const tilt = Number.isFinite(Number(camera.tilt)) ? Number(camera.tilt) : 60;
   const fov = Number.isFinite(Number(camera.fov))
     ? Number(camera.fov)

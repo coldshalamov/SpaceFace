@@ -122,6 +122,13 @@ test('residency grows with live camera zoom so director-zoom objects stay meshed
     'at default zoom a ship 700 WU out is off the table');
   assert.equal(isEntityRenderRelevant(ship, wide), true,
     'at max legal zoom that same ship is on the glass and must stay meshed');
+  const director = {
+    playerId: 1,
+    camera: { zoom: 45, liveZoom: 330, tilt: 60 },
+    entities: new Map([[1, player]]),
+  };
+  assert.equal(isEntityRenderRelevant(ship, director), true,
+    'director-owned live zoom, not the manual target, sizes residency');
 });
 
 test('far current-sector landmarks are map facts until they can enter the table', () => {
@@ -215,6 +222,17 @@ test('authored decode follows the table, not a 2400-unit horizon', () => {
   };
   assert.equal(isEntityAuthoredUpgradeRelevant(wideFovStation, state), true,
     'authored glass must honor the live FOV the player actually set');
+  state.camera = { zoom: 144, tilt: 60, fov: 50, aspect: 32 / 9 };
+  const ultrawideStation = {
+    id: 9,
+    type: 'station',
+    alive: true,
+    pos: { x: 300, z: 0 },
+    radius: 40,
+    vel: { x: 0, z: 0 },
+  };
+  assert.equal(isEntityAuthoredUpgradeRelevant(ultrawideStation, state), true,
+    'authored glass must honor the live viewport aspect');
 });
 
 test('census splits glass, runway, and beyond without collapsing the table', () => {

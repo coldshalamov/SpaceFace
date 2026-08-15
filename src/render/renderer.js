@@ -307,7 +307,8 @@ function entityWithinPlayerRadius(entity, state, radius) {
 function liveTableCamera(state) {
   const camera = state && state.camera || {};
   const video = state && state.settings && state.settings.video || {};
-  const zoom = Number.isFinite(camera.zoom) ? camera.zoom : 144;
+  const zoom = Number.isFinite(camera.liveZoom) ? camera.liveZoom
+    : (Number.isFinite(camera.zoom) ? camera.zoom : 144);
   const fov = Number.isFinite(camera.fov) ? camera.fov
     : (Number.isFinite(video.fov) ? video.fov : 50);
   const tilt = Number.isFinite(camera.tilt) ? camera.tilt : 60;
@@ -4117,6 +4118,11 @@ export const render = {
     const aspect = Math.max(0.45, camObj && Number.isFinite(camObj.aspect)
       ? camObj.aspect
       : (this.viewport && this.viewport.height ? this.viewport.width / this.viewport.height : 16 / 9));
+    if (this.state && this.state.camera) {
+      this.state.camera.liveZoom = zoom;
+      this.state.camera.fov = fov;
+      this.state.camera.aspect = aspect;
+    }
     const speed = tableTravelSpeed(this.state);
     const extents = submitCullHalfExtents(zoom, fov, aspect, speed, tilt);
     const bounds = this._entityViewBounds;
