@@ -5577,8 +5577,15 @@ export const galaxyMapScreen = {
       activeTab: this._activeTab,
       selectedCommodity: this._selectedCommodity,
       layers: { ...this._layers },
-      // An explicit player artifact — the player MADE these. Pure scalars, no entity ids.
-      bookmarks: Array.isArray(this._bookmarks) ? this._bookmarks.slice(-8).map((b) => b && b.label).filter(Boolean) : [],
+      // An explicit player artifact — the player MADE these, and today they die on page reload.
+      // FLATTENED to {label,x,z,span}: a bookmark's live shape nests focusGlobal one level deeper
+      // than a bag value may go, and storing only the label would persist a bookmark that cannot
+      // navigate — an inert save key, the exact defect zoom was refused for.
+      bookmarks: Array.isArray(this._bookmarks)
+        ? this._bookmarks.slice(-8)
+          .filter((b) => b && b.focusGlobal && Number.isFinite(b.focusGlobal.x) && Number.isFinite(b.focusGlobal.z))
+          .map((b) => ({ label: String(b.label || ''), x: b.focusGlobal.x, z: b.focusGlobal.z, span: Number(b.spanWU) || 0 }))
+        : [],
     });
   },
 
@@ -5611,7 +5618,16 @@ export const galaxyMapScreen = {
         if (typeof bag.layers[k] === 'boolean') this._layers[k] = bag.layers[k];
       }
     }
-    // Deliberately no zoom/camera restore — see _rememberScreenState.
+    // Bookmarks are rehydrated to their live nested shape. A bookmark that cannot be clicked back
+    // to is not a bookmark, so the coordinates are restored, not just the name.
+    if (Array.isArray(bag.bookmarks) && bag.bookmarks.length) {
+      this._bookmarks = bag.bookmarks
+        .filter((b) => b && Number.isFinite(b.x) && Number.isFinite(b.z))
+        .map((b) => ({ label: String(b.label || 'Chart'), focusGlobal: { x: b.x, z: b.z }, spanWU: Number(b.span) || 0 }))
+        .slice(-8);
+    }
+    // Deliberately no zoom/camera restore — see _rememberScreenState. Restoring a bookmark's
+    // coordinates is not the same thing: the player must still choose to jump to one.
   },
 
   /** Push the restored fields into the built DOM. Separate from _restoreScreenState because the

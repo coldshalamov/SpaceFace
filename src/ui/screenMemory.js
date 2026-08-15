@@ -80,7 +80,15 @@ export function sanitizeValue(v, depth = 0) {
     const out = [];
     for (const item of v.slice(0, MAX_ARRAY)) {
       const c = cleanPrimitive(item);
-      if (c !== undefined || item === null) out.push(c);
+      if (c !== undefined || item === null) { out.push(c); continue; }
+      // A list of FLAT records is the one composite a bag legitimately holds — the Chart's
+      // bookmarks are {label,x,z,span}. Without this an array of objects sanitized to `[]`, so a
+      // bookmark could be written and never restored: an inert save key, which is the exact defect
+      // this module refuses zoom for. Still one level only — an object here may not itself nest.
+      if (isPlainObject(item)) {
+        const rec = sanitizeValue(item, 1 - 1);       // screen the record's own flat fields
+        if (rec !== undefined && Object.keys(rec).length) out.push(rec);
+      }
     }
     return out;
   }

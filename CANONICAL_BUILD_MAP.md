@@ -997,6 +997,9 @@ stating once, globally:
   of one screen; LOADING, ERROR and DENIED had zero production consumers. J5 shipped with three
   tagged nouns. A `tagged > 0` check passes both and proves nothing. **Every job below states a
   named minimum adoption set, and its check asserts that set — not a non-zero count.**
+  **`check:data-states` and `check:entity-links` do NOT yet do this** — they still fail only on a
+  zero/near-zero count. Encoding the named sets is part of finishing each job's adoption pass, not a
+  separate task; until then the rule binds J1 onward and those two are explicitly grandfathered.
 - **Tier 2 does not exist yet.** `[data-why]` has one match in `src/ui/` and it is a *comment*. The
   disclosure ladder runs 1 → 3 across every surface built so far, and §7 calls tier 2 "the mechanism
   that lets this game be deep without being a spreadsheet." It is cheap — `causeLedger`'s enumerated
@@ -1142,7 +1145,7 @@ fourteen rules written this session passed their own mutation.
 
 ---
 
-#### J3 · The four data states, as a shared primitive — *short* — **LANDED `09111881`**
+#### J3 · The four data states, as a shared primitive — *short* — **PRIMITIVE LANDED `09111881`, ADOPTION OWED**
 
 **Pattern:** the skeleton/empty-state discipline of every shipped consumer app.
 **Player outcome:** never a blank screen that is technically correct.
@@ -1451,12 +1454,17 @@ permanently true.**
 ### 11.13 Ordering
 
 ```
-J3 ─┐                        properties first: every screen after inherits them free,
-J4 ─┼─► J1 ──► J2 ──► J9     every screen before must be revisited
-J5 ─┘        └─► J6 ──► J8
-             └─► J7
-                             J10 runs alongside everything from J1 onward
+J3 ~─┐                       properties first: every screen after inherits them free,
+J4 ✔─┼─► J1 ──► J2 ──► J9    every screen before must be revisited
+J5 ~─┘        └─► J6 ──► J8
+              └─► J7
+                             J10 runs alongside everything from J1 onward  (harness ~started)
 ```
+
+**J3 ~ · J4 ✔ · J5 ~** — J3's and J5's *mechanisms* are complete; their **adoption passes are not**,
+and in both cases adoption is what delivers the outcome. J3 has three EMPTY sites in one tab of one
+screen and zero LOADING/ERROR/DENIED consumers; J5 has three tagged nouns. Finish both *while*
+building J1/J2 rather than after, for the reason §11.9 gives about retrofitting.
 
 Two rules decide this shape:
 

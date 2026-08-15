@@ -103,7 +103,17 @@ const read = (rel) => readFileSync(join(ROOT, rel), 'utf8');
   if (!layers || layers.route !== true || layers.market !== false) {
     fail('B/shape', 'a flat boolean map (galaxyMap._layers) did not survive — the primary payload');
   }
-  notes.push(`${Object.keys(denied).length} denied keys and ${Object.keys(unstorable).length} unstorable shapes rejected`);
+  // A list of FLAT records must survive: the Chart's bookmarks are the one composite a bag holds,
+  // and without this they were written and could never be restored — an inert save key, which is
+  // the precise defect this module refuses to persist camera zoom for.
+  const marks = sanitizeValue([{ label: 'SYSTEM · Helios', x: 12, z: -4, span: 900 }]);
+  if (!Array.isArray(marks) || !marks[0] || marks[0].x !== 12 || marks[0].label !== 'SYSTEM · Helios') {
+    fail('B/shape', 'a flat record inside an array did not survive — bookmarks would be write-only');
+  }
+  if (JSON.stringify(sanitizeValue([[1, 2]])) !== '[]') {
+    fail('B/shape', 'a nested ARRAY survived — the depth guard is gone');
+  }
+  notes.push(`${Object.keys(denied).length} denied keys and ${Object.keys(unstorable).length} unstorable shapes rejected; flat records survive`);
 }
 
 // ── C. recency survives the round trip ─────────────────────────────────────────────────────────
