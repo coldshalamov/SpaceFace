@@ -48,6 +48,20 @@ export function tableHearingFarWu(
 export const TABLE_HEARING_FAR_WU = tableHearingFarWu();
 
 /**
+ * Last-resort instance far cull. Submit already drops off-table roots.
+ * This only stops a leaked chunk from paying a leftover 9000 WU horizon.
+ * Uses the max-zoom table so a zoom-out cannot under-cull on-glass slots.
+ */
+export function tableInstanceFarCullWu(
+  zoom = 330,
+  fovDeg = 50,
+  aspect = 16 / 9,
+  tiltDeg = 60,
+) {
+  return tableHearingFarWu(zoom, fovDeg, aspect, tiltDeg);
+}
+
+/**
  * Passive AI/traffic may sleep beyond the largest table a player can open.
  * Hostiles and the player stay awake regardless of this number.
  */

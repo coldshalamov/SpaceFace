@@ -511,7 +511,7 @@ finds a pole this table does not name.
 | **`PQ-120` / `PERF-80-TABLE-READABLE-REMASTER`** | Near INV→IMPL | Remaster budget goes to mid-scale openings that read at default zoom, not micro-greeble stacks. |
 | **`PQ-121` / `PERF-81-VFX-FOCUS-ORIGIN`** | Near IMPL | Cosmetic VFX cull from the live look-at, not only the player pin, so a combat/tether camera shove does not drop on-glass lights. Seams, station lamps, NPC signatures, and loot-magnet glass checks share `tableLookAtDelta`. Tractor cap stays player-centered. Sim traffic/bark still use requested zoom. |
 | **`PQ-122` / `PERF-82-TABLE-ASPECT-CLAMP`** | Near INV | If a live window is wider than three 16:9 panes, either letterbox the camera to that bound or accept that far side-edge civilians sleep. Do not grow sim authority back into a horizon. |
-| **`PQ-123` / `PERF-83-INSTANCE-FAR-CULL`** | Near INV | Instance slots still keep a leftover 9000 WU far cull and a 420 WU pad. If submit already drops off-table roots, shrink this safety net to the live glass so a leaked chunk cannot pay horizon prices. Do not empty on-glass batches. |
+| **`PQ-123` / `PERF-83-INSTANCE-FAR-CULL`** | Near IMPL | Instance far cull follows the max-zoom table (`TABLE_HEARING_FAR_WU`), not a leftover 9000 WU horizon. The 420 WU owner-sphere pad stays so a large on-glass station cannot vanish. Submit still drops off-table roots first. |
 
 Every leaf uses the investigate → invalidate → implement loop in
 `PERF_OPTION_SPACE.md` §3. Default order when no campaign is named: `PQ-061` → `PQ-062` → `PQ-063`

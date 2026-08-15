@@ -16,6 +16,7 @@ import { configureRealtimeCanopyMaterials } from './canopyMaterialPolicy.js';
 import {
   isCriticalStartingHub as isTableCriticalStartingHub,
   isOpeningStoryActor,
+  TABLE_HEARING_FAR_WU,
   tableOpeningCompositionWu,
 } from './tabletopPolicy.js';
 import { isReleaseAssetMode } from './releaseMode.js';
@@ -85,7 +86,7 @@ const WRECK_CATHEDRAL_CLOSED_MATERIAL_ROLES = new Set([
 const KESTREL_HERO_ASSET_ID = 'SF_K0_KESTREL_BORROWED_TIME';
 const INSTANCE_CHUNK_SIZE = 64;
 const AUTHORED_INSTANCE_MATRIX = 0;
-const INSTANCE_FAR_CULL_RADIUS = 9000;
+const INSTANCE_FAR_CULL_RADIUS = TABLE_HEARING_FAR_WU;
 const INSTANCE_FRUSTUM_PAD = 420;
 const ZERO_MATRIX = new THREE.Matrix4().makeScale(0, 0, 0);
 const EMPTY_ARRAY = Object.freeze([]);

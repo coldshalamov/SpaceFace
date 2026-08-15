@@ -34,6 +34,7 @@ import {
   shouldDrawLootMagnetTrail,
   shouldDrawTableVfx,
   tableLookAtDelta,
+  tableInstanceFarCullWu,
   TABLE_LOOT_MAGNET_CAP_WU,
   tableShadowCastRadius,
   tableShadowCasterRadius,
@@ -452,6 +453,17 @@ test('VFX station-side and seam ranges use the table helper', async () => {
   assert.doesNotMatch(source, /LOOT_MAGNET_DRAW_RANGE \* LOOT_MAGNET_DRAW_RANGE/);
   assert.doesNotMatch(source, /Math\.min\(\s*this\._tableVfxDrawWu/);
   assert.doesNotMatch(source, /VFX_STATION_SIDE_EVENT_DRAW_RANGE = 1500/);
+});
+
+test('instance far cull follows the table, not a 9000 WU horizon', async () => {
+  const far = tableInstanceFarCullWu();
+  assert.ok(far < 2000, `instance far cull ${far} must stay table-sized`);
+  assert.ok(far > 400, `instance far cull ${far} must still cover the max-zoom table`);
+  assert.equal(far, TABLE_HEARING_FAR_WU);
+  const { readFile } = await import('node:fs/promises');
+  const source = await readFile(new URL('../src/render/partsLibrary.js', import.meta.url), 'utf8');
+  assert.match(source, /TABLE_HEARING_FAR_WU/);
+  assert.doesNotMatch(source, /INSTANCE_FAR_CULL_RADIUS = 9000/);
 });
 
 test('opening compose no longer hard-codes a 2400 WU ship horizon', async () => {
