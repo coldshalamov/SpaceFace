@@ -361,4 +361,11 @@ A screen is not finished until all of these are true:
 5. Every animation on it maps to a row of §5's table.
 6. It is legible and complete under reduced-motion **and** `forced-colors`.
 7. Tier 2 "why" is wired for every value a player could reasonably question.
-8. It has been **looked at** in a captured frame at 1440×900 and 1280×720 — not merely checked.
+8. It has been **looked at** in a captured frame — not merely checked — across the capture matrix:
+   default / reduced-motion / `forced-colors` / **pseudo-localized**, at 2560×1080 / 1920×1080 / 1280×720.
+9. It defines all four data states — **EMPTY, LOADING, ERROR, DENIED** — and each names what would fill
+   it and carries a verb. A correct-but-blank screen reads as broken.
+10. It **remembers** the player's last tab, filter, sort, layer set, zoom and selection, per save.
+11. No text container has a fixed width, no sentence is built by concatenation, and every label still
+    reads at **+40 % string length**. `nowrap` is allowed only on numerals and key caps.
+12. On ultrawide it clamps to a centred safe box rather than stretching to unreadable corners.
