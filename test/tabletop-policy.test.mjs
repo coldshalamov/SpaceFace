@@ -30,6 +30,7 @@ import {
   shouldKeepPersistentLandmarkResident,
   submitCullHalfExtents,
   submitRunwayWu,
+  lootMagnetFocusDelta,
   shouldDrawLootMagnetTrail,
   shouldDrawTableVfx,
   TABLE_LOOT_MAGNET_CAP_WU,
@@ -417,7 +418,7 @@ test('VFX station-side and seam ranges use the table helper', async () => {
   assert.match(source, /_lootMagnetRelevant/);
   assert.match(source, /_updateLootMagnet/);
   assert.match(source, /shouldDrawLootMagnetTrail/);
-  assert.match(source, /lootMagnetFocusOffset/);
+  assert.match(source, /lootMagnetFocusDelta/);
   assert.doesNotMatch(source, /NPC_JOB_SIGNATURE_DRAW_RANGE \* NPC_JOB_SIGNATURE_DRAW_RANGE/);
   assert.doesNotMatch(source, /LOOT_MAGNET_DRAW_RANGE \* LOOT_MAGNET_DRAW_RANGE/);
   assert.doesNotMatch(source, /Math\.min\(\s*this\._tableVfxDrawWu/);
@@ -434,6 +435,29 @@ test('loot-magnet trails keep the tractor cap on the player and the glass on the
   assert.equal(shouldDrawLootMagnetTrail(600, 0, 100, 0, 2000), false);
   // Off the live glass stays dim even if the tractor can still pull.
   assert.equal(shouldDrawLootMagnetTrail(200, 0, 900, 0, tableWu), false);
+});
+
+test('loot-magnet look-at converts frame-local focus across a floating origin', () => {
+  const scratch = { x: 0, z: 0 };
+  const state = {
+    camera: { focus: { x: 50, z: 10 } },
+    world: { frameOrigin: { x: 10000, z: 4000 } },
+  };
+  const onGlass = lootMagnetFocusDelta(
+    state, { x: 10000, z: 4000 }, { x: 10050, z: 4010 }, scratch,
+  );
+  assert.equal(onGlass.x, 0);
+  assert.equal(onGlass.z, 0);
+  const shoved = lootMagnetFocusDelta(
+    state, { x: 10000, z: 4000 }, { x: 10230, z: 4010 }, scratch,
+  );
+  assert.equal(shoved.x, 180);
+  assert.equal(shoved.z, 0);
+  const noFocus = lootMagnetFocusDelta(
+    { camera: {}, world: { frameOrigin: { x: 10000, z: 0 } } },
+    { x: 10000, z: 0 }, { x: 10180, z: 0 }, scratch,
+  );
+  assert.equal(noFocus.x, 180);
 });
 
 test('station side-events anchor on the sim table, not a 1400 WU horizon', async () => {

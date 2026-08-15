@@ -143,6 +143,29 @@ export function shouldDrawLootMagnetTrail(playerDx, playerDz, focusDx, focusDz, 
   return shouldDrawTableVfx(focusDx, focusDz, tableWu);
 }
 
+/**
+ * Focus is frame-local. Pickups stay galactic-global. Convert focus to global
+ * with world.frameOrigin before subtracting, or a rebase culls every trail.
+ */
+export function lootMagnetFocusDelta(state, playerPos, entityPos, out) {
+  const target = out || { x: 0, z: 0 };
+  const focus = state && state.camera && state.camera.focus;
+  const hasFocus = Number.isFinite(focus && focus.x) && Number.isFinite(focus && focus.z);
+  let originX;
+  let originZ;
+  if (hasFocus) {
+    const frame = state && state.world && state.world.frameOrigin;
+    originX = focus.x + (Number.isFinite(frame && frame.x) ? frame.x : 0);
+    originZ = focus.z + (Number.isFinite(frame && frame.z) ? frame.z : 0);
+  } else {
+    originX = Number.isFinite(playerPos && playerPos.x) ? playerPos.x : 0;
+    originZ = Number.isFinite(playerPos && playerPos.z) ? playerPos.z : 0;
+  }
+  target.x = (Number.isFinite(entityPos && entityPos.x) ? entityPos.x : 0) - originX;
+  target.z = (Number.isFinite(entityPos && entityPos.z) ? entityPos.z : 0) - originZ;
+  return target;
+}
+
 export const TABLE_BAND = Object.freeze({
   GLASS: 'glass',
   RUNWAY: 'runway',
