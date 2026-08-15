@@ -604,12 +604,21 @@ test('NPC engine trails follow the table, not a 2200/3600 leftover horizon', () 
   const stillOnGlass = { id: 5, alive: true, pos: { x: 8280, z: 1990 } };
   assert.equal(tableNpcTrailTier(shoved, stillOnGlass, 1, 7, fallback), TABLE_TRAIL_TIER.NORMAL,
     'a combat shove must not drop an on-glass NPC trail');
+  const first = tableVfxDrawWuFromState(state);
+  const again = tableVfxDrawWuFromState(state);
+  assert.equal(again, first, 'same lens must reuse the cached VFX envelope');
+  assert.equal(
+    tableNpcTrailTier(state, offTable, 1, 7, fallback, null, 80),
+    TABLE_TRAIL_TIER.SKIP,
+    'a caller-supplied table radius must not recompute the envelope',
+  );
 });
 
 test('NPC trail helper is the live VFX path', async () => {
   const { readFile } = await import('node:fs/promises');
   const source = await readFile(new URL('../src/render/vfx.js', import.meta.url), 'utf8');
   assert.match(source, /tableNpcTrailTier/);
+  assert.match(source, /ctx\.tableWu/);
   assert.doesNotMatch(source, /TRAIL_SKIP_PLAYER_DIST = 3600/);
   assert.doesNotMatch(source, /TRAIL_NORMAL_PLAYER_DIST = 2200/);
 });

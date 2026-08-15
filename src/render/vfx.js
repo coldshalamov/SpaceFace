@@ -697,6 +697,7 @@ export const vfx = {
       cameraZ: 0,
       camera: null,
       state: null,
+      tableWu: 0,
     };
     this._trailScreenCheckScratch = { remaining: TRAIL_SCREEN_CHECK_MAX };
     this._cFaction = new THREE.Color('#88aaff');
@@ -10743,6 +10744,7 @@ export const vfx = {
     ctx.cameraZ = camPos && Number.isFinite(camPos.z) ? camPos.z : playerPos.z || 0;
     ctx.camera = camera;
     ctx.state = state;
+    ctx.tableWu = this._tableVfxDrawWu || tableVfxDrawWuFromState(state);
     return ctx;
   },
 
@@ -10799,6 +10801,7 @@ export const vfx = {
       ctx.targetId,
       _trailFallbackPos,
       _tableLookAtScratch,
+      ctx.tableWu,
     );
   },
 

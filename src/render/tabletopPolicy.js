@@ -138,6 +138,8 @@ export function tableSimAuthorityWuFromState(state) {
  * Cosmetic VFX follow the same live table as hearing/AI. Off-table trails and
  * station-side lights stay map facts; on-glass VFX is unchanged.
  */
+const _vfxDrawCache = { key: '', value: 0 };
+
 export function tableVfxDrawWuFromState(state) {
   const camera = state && state.camera || {};
   const video = state && state.settings && state.settings.video || {};
@@ -148,7 +150,12 @@ export function tableVfxDrawWuFromState(state) {
     : (Number.isFinite(video.fov) ? video.fov : 50);
   const aspect = Number.isFinite(camera.aspect) && camera.aspect > 0 ? camera.aspect : 16 / 9;
   const tilt = Number.isFinite(camera.tilt) ? camera.tilt : 60;
-  return tableHearingFarWu(zoom, fov, aspect, tilt);
+  const key = `${zoom}|${fov}|${aspect}|${tilt}`;
+  if (_vfxDrawCache.key === key) return _vfxDrawCache.value;
+  const value = tableHearingFarWu(zoom, fov, aspect, tilt);
+  _vfxDrawCache.key = key;
+  _vfxDrawCache.value = value;
+  return value;
 }
 
 export function shouldDrawTableVfx(dx, dz, drawWu) {
@@ -211,13 +218,13 @@ export const TABLE_TRAIL_TIER = Object.freeze({
   SKIP: 'skip',
 });
 
-export function tableNpcTrailTier(state, entity, playerId, targetId, fallbackPos, out) {
+export function tableNpcTrailTier(state, entity, playerId, targetId, fallbackPos, out, tableWu) {
   if (!entity || entity.alive === false) return TABLE_TRAIL_TIER.SKIP;
   if (entity.id === playerId) return TABLE_TRAIL_TIER.FULL;
   if (targetId != null && entity.id === targetId) return TABLE_TRAIL_TIER.FULL;
-  const tableWu = tableVfxDrawWuFromState(state);
+  const drawWu = Number.isFinite(tableWu) && tableWu > 0 ? tableWu : tableVfxDrawWuFromState(state);
   const delta = tableLookAtDelta(state, fallbackPos, entity.pos, out);
-  if (shouldDrawTableVfx(delta.x, delta.z, tableWu)) return TABLE_TRAIL_TIER.NORMAL;
+  if (shouldDrawTableVfx(delta.x, delta.z, drawWu)) return TABLE_TRAIL_TIER.NORMAL;
   return TABLE_TRAIL_TIER.SKIP;
 }
 
