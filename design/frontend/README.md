@@ -71,6 +71,26 @@ Program routing and sequencing live in [`../../CANONICAL_BUILD_MAP.md`](../../CA
 
 ---
 
+## Live-code delta — read before implementing
+
+These specs were authored against the tree at `41b78339`. A concurrent lane has since landed work
+from the earlier direction document, so **two items described in the specs as open defects are
+already fixed.** Verify against live code before acting on either:
+
+| Spec says | Live code now |
+|---|---|
+| Opening a non-pausing screen drives `#hud` to `opacity: 0` over a running sim — the "blindfold" | **Fixed.** `styles/ui.css` now has `body.ui-live-screen #hud { opacity: .5 }` with a lightened backdrop, alongside the original `ui-modal-open` rule which correctly still applies to genuinely modal/pausing screens. |
+| Native `<select>` controls must be replaced | **Primitive built.** `sf-select` exists in `src/ui/uiPrimitives.js` and is styled in `styles/ui.css`. **Adoption is incomplete** — native selects remain in `galaxyMap.js`, `screens/automationPanel.js`, `screens/starmap.js` and the dev sandbox. Adopt the existing primitive; do not design another. |
+
+Note that the owner has since ruled that **the four instruments pause the world** (Skyrim-style), so
+the `ui-live-screen` treatment now governs the *quick, non-pausing tier* rather than the main
+instruments. Both mechanisms are wanted; they serve different tiers.
+
+**General rule for these documents:** they are design authority, not a status report. Where a spec
+describes current code, re-verify — this repo moves under you.
+
+---
+
 ## The three rules that prevent cheap work
 
 1. **Screens differ by centerpiece and manipulation verb, never by styling.** The Ship is a *stage
