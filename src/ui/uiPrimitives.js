@@ -381,12 +381,22 @@ export function enhanceSelects(root) {
 // background-image, box-shadow and filter) still reads correctly.
 // ---------------------------------------------------------------------------------------------------
 
-/** The four states. `word` is the second, non-colour channel; `role` names the grammar §4 token. */
+/** The four states. `word` is the second, non-colour channel; `role` names the grammar §4 token.
+ *
+ *  `aria` is the ARIA role, not a guess: `alert` carries implicit assertive+atomic and is what
+ *  browsers handle most reliably for a node inserted WITH its content already present, which is
+ *  exactly how these mount. `status` + an explicit `aria-live="assertive"` is the non-idiomatic
+ *  pairing and was the first version. No explicit aria-live is set on either — both roles carry an
+ *  implicit politeness, and restating it is how the two end up disagreeing.
+ *
+ *  `aria-busy` is NOT here on purpose. It belongs on the HOST being mutated, not on the live region
+ *  doing the announcing; on the region itself it can suppress the very announcement the region
+ *  exists to make. mountDataState sets and clears it on the host. */
 const DATA_STATES = {
-  empty:   { word: 'NOTHING HERE', role: 'calm', busy: null,     live: 'polite' },
-  loading: { word: 'WORKING',      role: 'calm', busy: 'true',   live: 'polite' },
-  error:   { word: 'FAULT',        role: 'foe',  busy: null,     live: 'assertive' },
-  denied:  { word: 'BLOCKED',      role: 'foe',  busy: null,     live: 'assertive' },
+  empty:   { word: 'NOTHING HERE', role: 'calm', aria: 'status' },
+  loading: { word: 'WORKING',      role: 'calm', aria: 'status' },
+  error:   { word: 'FAULT',        role: 'foe',  aria: 'alert' },
+  denied:  { word: 'BLOCKED',      role: 'foe',  aria: 'alert' },
 };
 
 // 24×24, stroke=currentColor, distinguishable by SILHOUETTE alone (the mirror-pair test): an open
@@ -465,14 +475,9 @@ export function dataState(kind, opts = {}) {
     kids.unshift(skel);
   }
 
-  const attrs = {
-    'data-sf-state': kind,
-    role: 'status',
-    'aria-live': spec.live,
-  };
-  if (spec.busy) attrs['aria-busy'] = spec.busy;
   const node = el('div', 'sf-state sf-state--' + kind + (opts.compact ? ' sf-state--compact' : ''), {
-    children: kids, attrs,
+    children: kids,
+    attrs: { 'data-sf-state': kind, role: spec.aria },
   });
   node.sfStateVerb = verbBtn;
   return node;
@@ -490,6 +495,10 @@ export function mountDataState(host, kind, opts) {
   const node = dataState(kind, opts);
   host.textContent = '';
   host.appendChild(node);
+  // aria-busy belongs on the HOST being mutated, not on the live region inside it. settleDataState
+  // clears it, which is the other half of the contract.
+  if (kind === 'loading') host.setAttribute('aria-busy', 'true');
+  else host.removeAttribute('aria-busy');
   return node;
 }
 
@@ -526,6 +535,7 @@ export function settleDataState(host) {
   const nodes = Array.from(host.querySelectorAll('.sf-state'));
   if (host.classList && host.classList.contains('sf-state')) nodes.push(host);
   for (const n of nodes) if (n.parentNode) n.parentNode.removeChild(n);
+  if (host.removeAttribute) host.removeAttribute('aria-busy');
   return nodes.length;
 }
 

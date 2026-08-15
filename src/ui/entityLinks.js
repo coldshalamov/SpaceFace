@@ -37,6 +37,14 @@ const MAX_BACK = 12;   // capped: the trail is a convenience, not a history feat
 // the exact "correct-but-does-nothing" failure J3 exists to remove.
 const ROUTE_SCREENS = { chart: 'galaxyMap', ship: 'ship' };
 const ROUTE_VERBS = { chart: 'Open on the Chart', ship: 'Open in the Ship' };
+const ROUTE_FOCUS_VERBS = { chart: 'Focus on the Chart', ship: 'Focus in the Ship' };
+
+// Group headings for the link stage. Naming the KIND of thing is what turns a run of underlined
+// words into navigation — the player knows what door they are opening before they open it.
+const GROUP_LABELS = {
+  faction: 'Powers', sector: 'Places', station: 'Docks', commodity: 'Goods',
+  hull: 'Hulls', module: 'Modules', captain: 'People', contract: 'Contracts',
+};
 
 function el(tag, className, opts = {}) {
   const node = document.createElement(tag);
@@ -100,14 +108,24 @@ export function createEntityLinks(ctx) {
         el('h2', 'sf-drawer__title', { text: d.label, attrs: { id: headId, 'data-sf-text': '' } }),
       ],
     });
-    if (d.accent) crest.style.setProperty('--sf-entity-accent', d.accent);
+    // NOTE: a dossier's `accent` is deliberately NOT painted onto the crest rail. The 14 faction
+    // hexes are lore colours, not roles, and several collide with the grammar's meaning-only
+    // palette — faction_free #4ECBE0 is the banned cyan, faction_vael #2FCFA0 reads as `--sf-you`
+    // ("a gain") for a hostile power, faction_reach #D8334A reads as `--sf-foe` even when you are
+    // allied, faction_archive #3A2A5A vanishes on `--sf-surface`, and faction_fulfillment #F0F0E8
+    // out-luminates the title. The structural rail must mean ONE thing on every dossier or it
+    // cannot be learned (grammar §1, §4).
     kids.push(crest);
 
     // Tier 1 — the facts you need to decide.
     if (d.facts.length) {
       const deck = el('div', 'sf-drawer__facts');
       for (const f of d.facts) {
-        deck.appendChild(el('div', 'sf-tile sf-tile--' + (f.tone || 'calm'), {
+        // `num` renders a figure in the DATA face with tabular numerals. The Chart directly behind
+        // this drawer already sets its numbers in mono; matching it is most of what stops the
+        // drawer reading as a web panel bolted onto a game. Per-fact rather than on .sf-tile__v
+        // wholesale, because that selector also carries prose values (Patrolled, lawful, Concord).
+        deck.appendChild(el('div', 'sf-tile sf-tile--' + (f.tone || 'calm') + (f.num ? ' sf-tile--data' : ''), {
           children: [
             el('span', 'sf-tile__k', { text: f.k }),
             el('span', 'sf-tile__v', { text: String(f.v), attrs: { 'data-sf-text': '' } }),
@@ -129,22 +147,36 @@ export function createEntityLinks(ctx) {
       }));
     }
 
-    // The graph. Every dossier links onward — this is the mechanism that makes twelve menus one
-    // system, and it is why the drawer replaces rather than stacks.
+    // The graph — and the drawer's STAGE. A CREST and an APRON with nothing between them is why
+    // this failed the silhouette test and read as a void; the graph is the centerpiece, so it is
+    // built as one: GROUPED BY TYPE, one full-width row each, hairline separated. Ungrouped it was
+    // a wrapped paragraph of underlined words mixing factions, stations and sectors, where the
+    // player could not tell what kind of thing they were about to open.
     if (d.links.length) {
       const seen = new Set();
-      const wrap = el('div', 'sf-drawer__links');
+      const byType = new Map();
       for (const l of d.links) {
         if (seen.has(l.ref) || l.ref === d.ref) continue;
         seen.add(l.ref);
-        wrap.appendChild(el('button', 'sf-entity-link', {
-          text: l.label, attrs: { type: 'button', 'data-entity': l.ref },
-        }));
+        const type = String(l.ref).slice(0, String(l.ref).indexOf(':')) || 'other';
+        if (!byType.has(type)) byType.set(type, []);
+        byType.get(type).push(l);
       }
-      if (wrap.childNodes.length) {
-        kids.push(el('div', 'sf-deck', {
-          children: [el('div', 'sf-deck__label', { text: 'Leads to' }), wrap],
-        }));
+      if (byType.size) {
+        const stage = el('div', 'sf-drawer__stage');
+        for (const [type, list] of byType) {
+          const rows = el('div', 'sf-drawer__links');
+          for (const l of list) {
+            rows.appendChild(el('button', 'sf-entity-link sf-entity-link--row', {
+              text: l.label,
+              attrs: { type: 'button', role: 'link', 'data-entity': l.ref, 'data-sf-text': '' },
+            }));
+          }
+          stage.appendChild(el('div', 'sf-deck', {
+            children: [el('div', 'sf-deck__label', { text: GROUP_LABELS[type] || type }), rows],
+          }));
+        }
+        kids.push(stage);
       }
     }
 
@@ -153,19 +185,36 @@ export function createEntityLinks(ctx) {
     const verbs = [];
     const routeScreen = d.route && ROUTE_SCREENS[d.route.screen];
     if (routeScreen && screenManager && screenManager.hasScreen && screenManager.hasScreen(routeScreen)) {
-      const btn = el('button', 'sf-drawer__verb', {
-        text: ROUTE_VERBS[d.route.screen] || 'Open', attrs: { type: 'button' },
-      });
+      // Label honestly: "Open on the Chart" while already on the Chart is a lie about what will
+      // happen. Standing on the target screen, the verb FOCUSES rather than opens.
+      const onTarget = screenManager.top && screenManager.top() === routeScreen;
+      const label = onTarget
+        ? (ROUTE_FOCUS_VERBS[d.route.screen] || 'Focus')
+        : (ROUTE_VERBS[d.route.screen] || 'Open');
+      const btn = el('button', 'sf-drawer__verb', { text: label, attrs: { type: 'button' } });
       btn.addEventListener('click', () => {
         if (bus && bus.emit) bus.emit('ui:entityRoute', { ref: d.ref, route: d.route });
         close();
+        // Do NOT push a screen that already owns the stack. screenManager.pushScreen has no
+        // duplicate guard — it runs onHide, then pushes unconditionally — so opening the Chart
+        // FROM the Chart would tear it down, replay its enter transition, and leave it on the
+        // stack twice, costing the player two Escapes to get back to flight. When we are already
+        // there, the emitted route event is the whole action.
+        const already = screenManager.top && screenManager.top() === routeScreen;
+        if (already) return;
         try { screenManager.pushScreen(routeScreen); } catch (_) { /* screen refused the push */ }
       });
       verbs.push(btn);
     }
     if (back.length > 1) {
       const btn = el('button', 'sf-drawer__verb sf-drawer__verb--quiet', { text: 'Back', attrs: { type: 'button' } });
-      btn.addEventListener('click', () => { back.pop(); show(back[back.length - 1], { push: false }); });
+      btn.addEventListener('click', () => {
+        // Pop only if the previous dossier still resolves. Contracts are LIVE records, so a step in
+        // the trail can stop existing while the drawer is open; popping first would lose the step
+        // AND leave stale content on screen.
+        const prevRef = back[back.length - 2];
+        if (show(prevRef, { push: false })) back.pop();
+      });
       verbs.push(btn);
     }
     const closeBtn = el('button', 'sf-drawer__verb sf-drawer__verb--quiet', { text: 'Close', attrs: { type: 'button' } });

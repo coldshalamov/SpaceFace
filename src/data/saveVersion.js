@@ -9,4 +9,6 @@
 // v10: first-dock Hauler/Hunter/Prospector origin progress persists under data.careerOrigins.
 // v11: durable world-entity records (convoys/NPCs/mission targets/wrecks) under world.records.
 // v12: PQ-014/SF-15/W06 live NPC job runtime persists under data.npcJobs (miner/hauler/patrol jobs).
-export const CURRENT_VERSION = 12;
+// v13: J4 screen state memory — per-screen UI bags (tab/filter/layer/zoom/selection/scroll) under
+//      data.uiScreenMemory, so the map, ship and station open where the player left them.
+export const CURRENT_VERSION = 13;

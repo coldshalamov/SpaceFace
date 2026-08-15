@@ -39,7 +39,9 @@ import { entityExists } from './entityResolver.js';
  *  runtime-only id renders as plain text instead of a door into an empty room. Returns the class
  *  too, because an entity link must read as one by underline — never by colour alone. */
 function entityAttr(ref) {
-  return ref && entityExists(ref) ? ` class="sf-entity-link" tabindex="0" data-entity="${ref}"` : '';
+  // `role="link"` is not decoration: a focusable element with no role has no name/role/value to
+  // expose, so a screen-reader user tabs onto something announced as plain text (WCAG 4.1.2).
+  return ref && entityExists(ref) ? ` class="sf-entity-link" role="link" tabindex="0" data-entity="${ref}"` : '';
 }
 import { resolveWaypointPresentationPosition } from './navigationWaypoint.js';
 import { sectorLawProfile } from './securityReadout.js';
@@ -5424,6 +5426,11 @@ export const galaxyMapScreen = {
     this._syncReduceMotion();
     this._subscribeKills();
 
+    // J4: restore what the player last chose BEFORE the commodity re-validation and BEFORE the
+    // open-intent view is applied. Order matters both ways — the restored commodity is what gets
+    // validated, and a caller that asked to open focused on a sector still wins on framing.
+    this._restoreScreenState();
+
     // Consume map-authority open intent (LOCAL vs STAR/GALAXY focus + optional target fix).
     const state = this._ctx && this._ctx.state;
     this._selectedCommodity = selectedMarketCommodityOnOpen(state, this._selectedCommodity, COMMODITIES);
@@ -5477,6 +5484,11 @@ export const galaxyMapScreen = {
     }
     this._lastTime = (typeof performance !== 'undefined' ? performance.now() : Date.now());
     this._lastDrawTime = 0;
+
+    // J4: the restored tab and layer set exist as fields by now; push them into the DOM. Done here,
+    // after the root and controls are built, because _setTab renders — calling it during restore
+    // would run against controls that do not exist yet.
+    this._syncRestoredControls(state);
 
     if (typeof requestAnimationFrame === 'undefined') return;
 
@@ -5536,6 +5548,83 @@ export const galaxyMapScreen = {
     }
     this._animFrame = null;
     this._unsubscribeKills();
+    this._rememberScreenState();
+  },
+
+  // ── J4 screen state memory (build map §11.12) ───────────────────────────────────────────────
+  // Inhibitor #7 names this screen: "persists no layer toggle, commodity, zoom or tab — every open
+  // is a fresh open." Three of those four are remembered here. The fourth is deliberately not.
+  //
+  // ZOOM IS NOT PERSISTED, against the build map's own wording, because this file already carries a
+  // ruling that forbids it (see onShow): "The camera is rebuilt from the intent on every open
+  // rather than persisted across opens… mapAuthority is the single authority for where the map
+  // opens (pinned by check:map-authority), and a camera that survived the close would silently
+  // outrank it." onShow always applies an intent — `takeMapOpenIntent(state) || {focus: SYSTEM}` —
+  // and the SYSTEM default sets a camera, so a persisted zoom would be overwritten on every open:
+  // a save key with no observable effect. Inert first, and harmful the moment someone "fixes" the
+  // restore by making it outrank the intent. The rule this obeys: the camera owns continuity
+  // WITHIN a chart session; the intent owns where that session starts.
+  //
+  // ALSO NOT remembered: `_selectedTarget`/`_hoverTarget` (entity ids are re-minted when the sector
+  // regenerates on load — that is why saveSystem clears stale targets at all), the search query (a
+  // forgotten filter is the fastest way to make a working screen look broken), `_searchResultsList`
+  // (derived), and `_scanRings`/`_iris`/`_animT` (animation clocks; a restored mid-wipe iris would
+  // leave the chart permanently occluded).
+  _rememberScreenState() {
+    const mem = this._ctx && this._ctx.screenMemory;
+    if (!mem) return;
+    mem.set('galaxyMap', {
+      activeTab: this._activeTab,
+      selectedCommodity: this._selectedCommodity,
+      layers: { ...this._layers },
+      // An explicit player artifact — the player MADE these. Pure scalars, no entity ids.
+      bookmarks: Array.isArray(this._bookmarks) ? this._bookmarks.slice(-8).map((b) => b && b.label).filter(Boolean) : [],
+    });
+  },
+
+  _restoreScreenState() {
+    const mem = this._ctx && this._ctx.screenMemory;
+    if (!mem) return;
+    // Screen modules are SINGLETONS: `_layers` and `_activeTab` live on this object literal, so
+    // loading save A then save B in one page session would leave A's choices sitting here. Restore
+    // therefore starts from the AUTHORED DEFAULTS every time and applies the bag over them — never
+    // a merge over whatever the previous save left behind.
+    if (!this._authoredDefaults) {
+      this._authoredDefaults = { activeTab: this._activeTab, selectedCommodity: this._selectedCommodity, layers: { ...this._layers } };
+    }
+    const def = this._authoredDefaults;
+    this._activeTab = def.activeTab;
+    this._selectedCommodity = def.selectedCommodity;
+    for (const k of Object.keys(def.layers)) this._layers[k] = def.layers[k];
+
+    const bag = mem.get('galaxyMap');
+    if (bag.activeTab && MAP_INSPECTOR_TAB_IDS.includes(bag.activeTab)) this._activeTab = bag.activeTab;
+    // A remembered commodity that no longer exists in the catalogue must not become a lens on
+    // nothing; onShow re-validates through selectedMarketCommodityOnOpen either way.
+    if (bag.selectedCommodity && COMMODITIES.some((c) => c.id === bag.selectedCommodity)) {
+      this._selectedCommodity = bag.selectedCommodity;
+    }
+    if (bag.layers && typeof bag.layers === 'object') {
+      // Merge, never replace: a layer added since the save was written keeps its authored default
+      // instead of arriving undefined and rendering as off.
+      for (const k of Object.keys(this._layers)) {
+        if (typeof bag.layers[k] === 'boolean') this._layers[k] = bag.layers[k];
+      }
+    }
+    // Deliberately no zoom/camera restore — see _rememberScreenState.
+  },
+
+  /** Push the restored fields into the built DOM. Separate from _restoreScreenState because the
+   *  controls do not exist when that runs. */
+  _syncRestoredControls(state) {
+    if (!HAS_DOC || !this._root) return;
+    for (const btn of Array.from(this._root.querySelectorAll('.gm-layer-btn'))) {
+      const id = btn.getAttribute('data-layer');
+      if (!id || !(id in this._layers)) continue;
+      btn.classList.toggle('active', !!this._layers[id]);
+      btn.setAttribute('aria-pressed', this._layers[id] ? 'true' : 'false');
+    }
+    if (this._activeTab) this._setTab(this._activeTab);
   },
 
   /**

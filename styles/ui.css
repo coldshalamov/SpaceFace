@@ -38,6 +38,19 @@
   --sf-t-latch: 90ms;   /* discrete state change seats with a short travel and a hard stop */
   --sf-t-settle: 180ms; /* a value arriving; instruments overshoot, text never does */
   --sf-ease: cubic-bezier(.2, .9, .3, 1);
+  /* No --sf-t-spool. SPOOL must be bound to real progress (§5), and nothing supplies one yet;
+     declaring the token would invite an unbound loop to claim it. Add it WITH its first honest
+     consumer, not before. */
+
+  /* ===== Instrument grammar SHAPE tokens =====
+     Introduced because sections 11/13/14 had already drifted apart on the same three decisions —
+     a 2px rail against a 3px one, `var(--r-sm,5px)` against two hardcoded 3px radii, and the same
+     color-mix literal written twice. This repo has a documented history of an append-only
+     stylesheet becoming an override pile (styles/station.css: 202 selectors redefined at
+     brace-depth 0). Three drifts in the first two consumers is where that starts. */
+  --sf-rail-w: 2px;                                                    /* the meaning rail on any instrument block */
+  --sf-goal-edge: color-mix(in srgb, var(--sf-goal) 45%, transparent); /* the resting edge of a verb */
+  --sf-track-micro: .18em;                                             /* MICRO tracking, one value */
 
   /* extra from visual bible for pro polish */
   --nebula-purple: #3a1c6e;
@@ -1052,11 +1065,14 @@ button:active { translate: 0 1px; }
 .sf-stage { position: relative; min-height: 0; }
 .sf-apron { display: flex; flex-direction: column; gap: 8px; padding: 10px 22px 14px; min-height: 0; }
 .sf-deck { display: flex; flex-direction: column; gap: 6px; min-height: 0; }
-.sf-deck__label { font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px; letter-spacing: .18em; text-transform: uppercase; color: var(--sf-calm); }
+.sf-deck__label { font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px; letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-calm); }
 .sf-tile { display: flex; align-items: baseline; gap: 8px; padding: 6px 10px; }
 .sf-housing { display: flex; flex-direction: column; gap: 6px; }
 .sf-anchor { position: absolute; transform: translate(-50%, -50%); }
-.sf-drawer { position: fixed; top: 0; bottom: 0; width: min(520px, 42vw); right: 0; z-index: 40;
+/* absolute, NOT fixed: a drawer always lives inside a .screen, which carries a transform for its
+   enter/exit transition and is therefore the containing block for fixed descendants. Shipping
+   `fixed` here and patching it with a descendant selector in §14 is how an override pile starts. */
+.sf-drawer { position: absolute; top: 0; bottom: 0; width: min(520px, 42vw); right: 0; z-index: 40;
   background: var(--sf-surface); border-left: 1px solid var(--sf-edge);
   box-shadow: -18px 0 48px rgba(0,0,0,.5); transform: translateX(100%);
   transition: transform var(--sf-t-settle) var(--sf-ease); }
@@ -1067,7 +1083,7 @@ button:active { translate: 0 1px; }
 /* Text-expansion base (A_LIST_GAPS #1, binding from Phase 0): no fixed-width text container;
    design against +40%; nowrap only on numerals and keycaps; sentences get a two-line budget. */
 .sf-instrument .sf-crest__line, .sf-instrument .sf-tile, .sf-instrument .sf-deck__label { min-width: 0; }
-.sf-instrument .sf-tile span[data-sf-text] { overflow-wrap: anywhere; }
+.sf-instrument .sf-tile span[data-sf-text] { overflow-wrap: break-word; }
 
 /* 12 ─ THE SHIP screen host (src/ui/ship/shipScreen.js; SCREENS_B §1.2/§1.3) ---------------------
    The shared shipworks stage re-parented into a pausing flight screen (F2). Full-bleed with its
@@ -1093,13 +1109,18 @@ button:active { translate: 0 1px; }
    from those) and no `pulse|blink|flash` (sf-reduce-flash blanket-kills [class*=…] animation). */
 .sf-state {
   display: flex; align-items: flex-start; gap: 14px;
-  flex-wrap: wrap; align-content: center;
+  flex-wrap: wrap;
   padding: clamp(16px, 3.4vh, 30px) clamp(16px, 2.6vw, 30px);
-  min-width: 0; max-width: 62ch; margin-inline: auto;
+  min-width: 0; width: 100%; max-width: min(62ch, 640px); margin-inline: auto; margin-block: auto;
+  font-size: 14px;                 /* anchors the ch measure; it otherwise resolves against whatever
+                                      the host inherits (12px inside the Chart's inspector) */
+  container-type: inline-size;     /* so type sizes to the PANE, not the monitor */
   color: var(--sf-paper);
-  border-inline-start: 2px solid var(--sf-calm);
+  border-inline-start: var(--sf-rail-w) solid var(--sf-calm);
 }
 .sf-state--error, .sf-state--denied { border-inline-start-color: var(--sf-foe); }
+.sf-state--empty { border-inline-start-style: dashed; }
+.sf-state--denied { border-inline-start-width: calc(var(--sf-rail-w) * 2); }
 .sf-state--compact { padding: 12px 14px; gap: 10px; }
 
 .sf-state__glyph { flex: none; width: 30px; height: 30px; color: var(--sf-calm); }
@@ -1111,68 +1132,68 @@ button:active { translate: 0 1px; }
 /* The state word is the non-colour channel. 12px floor, per the ship polish pass. */
 .sf-state__word {
   font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
-  letter-spacing: .18em; text-transform: uppercase; color: var(--sf-calm);
+  letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-calm);
 }
 .sf-state--error .sf-state__word, .sf-state--denied .sf-state__word { color: var(--sf-foe); }
 
 /* Headline is the pane's DISPLAY element while the state is up. No fixed width, +40% safe. */
 .sf-state__head {
   margin: 0; font-family: var(--sf-display-face); font-weight: 700;
-  font-size: clamp(19px, 2.2vw, 28px); line-height: 1.12; color: var(--sf-paper);
-  overflow-wrap: anywhere; text-wrap: balance;
+  font-size: clamp(19px, 7cqi, 28px); line-height: 1.12; color: var(--sf-paper);
+  overflow-wrap: break-word; text-wrap: balance;
 }
 .sf-state--compact .sf-state__head { font-size: clamp(15px, 1.5vw, 19px); }
 .sf-state__fills, .sf-state__detail {
-  margin: 0; font-size: 14px; line-height: 1.45; color: var(--sf-calm); overflow-wrap: anywhere;
+  margin: 0; font-size: 14px; line-height: 1.45; color: var(--sf-calm); overflow-wrap: break-word;
 }
 .sf-state__detail { font-size: 13px; opacity: .85; }
 
 /* The verb carries --sf-goal: it is the way out, which is exactly "what you're heading for". */
 .sf-state__verb {
   margin-top: 4px; display: inline-flex; align-items: center; gap: 8px;
-  font: inherit; font-size: 14px; font-weight: 600; letter-spacing: .01em; text-transform: none;
+  font: 600 15px/1.2 var(--sf-subhead-face); letter-spacing: .01em; text-transform: none;
   color: var(--sf-goal); background: transparent;
-  border: 1px solid color-mix(in srgb, var(--sf-goal) 45%, transparent);
+  border: 1px solid color-mix(in srgb, var(--sf-goal) 70%, transparent);
   border-radius: var(--r-sm, 5px); padding: 7px 14px; cursor: pointer; box-shadow: none;
   transition: border-color var(--sf-t-latch) var(--sf-ease), color var(--sf-t-latch) var(--sf-ease);
 }
 .sf-state__verb:hover { border-color: var(--sf-goal); }
 .sf-state__verb:focus-visible { outline: 2px solid var(--sf-goal); outline-offset: 2px; }
 .sf-state__verb:active { transform: none; }   /* ui.css `button:active{transform}` clobbers centering */
+/* Keycap. 12px floor applies here too — this was 11px in a `font:` shorthand, which the check's
+   `font-size:` scan could not see. nowrap is allowed on a keycap (grammar §12 item 11). */
 .sf-state__key {
-  font: 600 11px/1 var(--sf-subhead-face); letter-spacing: .06em; white-space: nowrap;
-  padding: 3px 5px; border: 1px solid var(--sf-edge); border-radius: 3px; color: var(--sf-calm);
+  font: 600 12px/1 var(--sf-data-face); letter-spacing: .06em; white-space: nowrap;
+  padding: 3px 5px; border: 1px solid var(--sf-edge); border-radius: var(--r-sm, 5px); color: var(--sf-calm);
 }
 
 /* LOADING skeleton — echoes the REAL layout so the pane's shape reads before its content does.
-   The sweep is INFINITE while mounted and is removed, never hidden: mountDataState() clears its
-   host and settleDataState() detaches the node. A display:none/visibility:hidden loading shimmer
-   keeps running on the compositor where check:ui-frame-sleep (which inspects rAF) cannot see it —
-   that is the live defect in .sx-sw__acquiring, and a shared primitive would multiply it. */
+
+   IT DOES NOT SHIMMER, and that is the design, not an omission. Grammar §5: "no motion ships
+   without a named state variable behind it," and a spinner that outlives its work is a lie.
+   dataState's callers supply no progress signal, so a perpetual sweep would encode nothing — it
+   would be decoration, and it is exactly the compositor-side `infinite` keyframe that
+   check:ui-frame-sleep cannot see because it inspects rAF. The state is carried honestly by the
+   WORKING word, the arc glyph, `aria-busy`, and the skeleton's shape.
+
+   If a caller ever supplies real progress, the bar's WIDTH becomes the encoding and earns a
+   `--sf-t-spool` motion token. Until then the correct implementation is the subtraction. */
 .sf-state__skel { flex: 1 0 100%; display: flex; flex-direction: column; gap: 8px; margin-bottom: 6px; }
 .sf-state__bar {
-  position: relative; overflow: hidden; width: 72%; height: 12px; border-radius: 3px;
+  width: 72%; height: 12px; border-radius: var(--r-sm, 5px);
   background: color-mix(in srgb, var(--sf-calm) 14%, transparent);
 }
 .sf-state__bar:nth-child(2) { width: 92%; }
 .sf-state__bar:nth-child(3) { width: 54%; }
-.sf-state__bar::after {
-  content: ""; position: absolute; inset: 0; transform: translateX(-100%);
-  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--sf-calm) 34%, transparent), transparent);
-  animation: sfStateSweep 1150ms var(--sf-ease) infinite;
-}
-@keyframes sfStateSweep { to { transform: translateX(100%); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .sf-state__bar::after { animation: none; transform: none; background: none; }
   .sf-state__verb { transition: none; }
 }
 /* forced-colors: gradients/shadows are stripped, so the sweep and the tinted bars vanish. Give the
    skeleton a real border so LOADING stays legible rather than blank (grammar §11). */
 @media (forced-colors: active) {
-  .sf-state { border-inline-start: 2px solid CanvasText; }
+  .sf-state { border-inline-start-color: CanvasText; }   /* colour only — keep the per-state style/width */
   .sf-state__bar { border: 1px solid CanvasText; background: none; }
-  .sf-state__bar::after { animation: none; background: none; }
   .sf-state__verb { border: 1px solid ButtonText; color: ButtonText; }
 }
 
@@ -1189,7 +1210,7 @@ button:active { translate: 0 1px; }
    close, so no screen is left relaid-out. */
 .screen.sf-drawerhost { position: absolute; inset: 0; width: 100%; height: 100%; }
 .sf-drawerlayer { position: absolute; inset: 0; z-index: 40; pointer-events: none; }
-.sf-drawerlayer > .sf-drawer { position: absolute; top: 0; bottom: 0; right: 0; pointer-events: auto; }
+.sf-drawerlayer > .sf-drawer { pointer-events: auto; }   /* position now correct at source (§11) */
 
 /* An entity link reads as a link by UNDERLINE, not by colour alone — forced-colors and colour-blind
    modes both need the second channel (grammar §4). */
@@ -1197,15 +1218,25 @@ button:active { translate: 0 1px; }
   font: inherit; color: var(--sf-paper); background: none; border: 0; padding: 0;
   text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--sf-you) 55%, transparent);
   text-underline-offset: 3px; cursor: pointer; text-transform: none; letter-spacing: normal;
-  box-shadow: none; text-align: left; min-width: 0; overflow-wrap: anywhere;
+  box-shadow: none; text-align: left; min-width: 0; overflow-wrap: break-word;
 }
 .sf-entity-link:hover { color: var(--sf-you); text-decoration-color: var(--sf-you); }
 .sf-entity-link:focus-visible { outline: 2px solid var(--sf-you); outline-offset: 2px; }
 .sf-entity-link:active { transform: none; }
-.sf-drawer__links { display: flex; flex-wrap: wrap; gap: 6px 16px; min-width: 0; }
+.sf-drawer__links { display: flex; flex-direction: column; min-width: 0; }
+.sf-entity-link--row {
+  padding: 7px 2px; border-bottom: 1px solid var(--sf-edge); width: 100%;
+  text-decoration-color: transparent;   /* the row IS the affordance; underline returns on hover/focus */
+}
+.sf-entity-link--row:last-child { border-bottom: 0; }
+.sf-entity-link--row:hover, .sf-entity-link--row:focus-visible { text-decoration-color: var(--sf-you); }
 
 .sf-drawer--entity { --sf-entity-accent: var(--sf-calm); }
+.sf-drawerlayer > .sf-drawer--entity { top: auto; bottom: 0; height: fit-content; max-height: 100%; }
 .sf-drawer--entity .sf-drawer__deck { gap: 16px; padding: 18px 20px 20px; }
+/* The graph is the drawer's STAGE. A CREST and an APRON with nothing between them is what read as
+   an unfinished sidebar; grouped, full-width link rows are the centerpiece (grammar §6). */
+.sf-drawer__stage { display: flex; flex-direction: column; gap: 14px; min-height: 0; }
 .sf-drawer__x {
   position: absolute; top: 10px; right: 12px; z-index: 1;
   width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center;
@@ -1218,15 +1249,15 @@ button:active { translate: 0 1px; }
 .sf-drawer__x svg { width: 15px; height: 15px; }
 
 .sf-drawer__crest { display: flex; flex-direction: column; gap: 3px; padding-right: 38px;
-  border-inline-start: 3px solid var(--sf-entity-accent); padding-inline-start: 12px; }
+  border-inline-start: var(--sf-rail-w) solid var(--sf-calm); padding-inline-start: 12px; }
 .sf-drawer__kicker {
   font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
-  letter-spacing: .18em; text-transform: uppercase; color: var(--sf-calm);
+  letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-calm);
 }
 .sf-drawer__title {
   margin: 0; font-family: var(--sf-display-face); font-weight: 700;
   font-size: clamp(24px, 2.4vw, 34px); line-height: 1.06; color: var(--sf-paper);
-  overflow-wrap: anywhere; text-wrap: balance;
+  overflow-wrap: break-word; text-wrap: balance;
 }
 
 .sf-drawer__facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 13ch), 1fr)); gap: 8px; }
@@ -1235,20 +1266,24 @@ button:active { translate: 0 1px; }
   border: 1px solid var(--sf-edge); border-radius: var(--r-sm, 5px); padding: 8px 10px; min-width: 0;
 }
 .sf-tile__k { font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
-  letter-spacing: .1em; text-transform: uppercase; color: var(--sf-calm); }
-.sf-tile__v { font-size: 15px; line-height: 1.25; color: var(--sf-paper); overflow-wrap: anywhere; }
+  letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-calm); }
+.sf-tile__v { font-size: 15px; line-height: 1.25; color: var(--sf-paper); overflow-wrap: break-word; }
+.sf-tile--data .sf-tile__v {
+  font-family: var(--sf-data-face); font-weight: 500; font-variant-numeric: tabular-nums;
+  letter-spacing: -.01em;
+}
 .sf-tile--you .sf-tile__v { color: var(--sf-you); }
 .sf-tile--foe .sf-tile__v { color: var(--sf-foe); }
 .sf-tile--goal .sf-tile__v { color: var(--sf-goal); }
 
-.sf-drawer__prose { margin: 0; font-size: 14px; line-height: 1.5; color: var(--sf-paper); overflow-wrap: anywhere; }
+.sf-drawer__prose { margin: 0; font-size: 14px; line-height: 1.5; color: var(--sf-paper); overflow-wrap: break-word; }
 .sf-drawer__prose--foe { color: var(--sf-foe); }
 
-.sf-drawer__apron { display: flex; flex-wrap: wrap; gap: 8px; margin-top: auto; padding-top: 8px; }
+.sf-drawer__apron { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 12px; border-top: 1px solid var(--sf-edge); }
 .sf-drawer__verb {
   font: inherit; font-size: 14px; font-weight: 600; text-transform: none; letter-spacing: .01em;
   color: var(--sf-goal); background: transparent;
-  border: 1px solid color-mix(in srgb, var(--sf-goal) 45%, transparent);
+  border: 1px solid var(--sf-goal-edge);
   border-radius: var(--r-sm, 5px); padding: 7px 14px; cursor: pointer; box-shadow: none;
   transition: border-color var(--sf-t-latch) var(--sf-ease);
 }

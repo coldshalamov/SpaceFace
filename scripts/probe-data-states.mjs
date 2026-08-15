@@ -68,7 +68,7 @@ const FIXTURES = [
     headline: 'The market feed did not answer.',
     fills: 'Prices here are from your last visit and may have moved. Retrying re-reads the station ledger.',
     detail: 'Last good read: 14 minutes ago.',
-    verb: { label: 'Retry the read', action: 'probe:retry' },
+    verb: { label: 'Retry the read', key: 'R', action: 'probe:retry' },
   }],
   ['denied', {
     headline: 'You cannot dock at Vesta Yard.',
@@ -83,6 +83,12 @@ const PAGE = (fixtures) => `<!doctype html><html lang="en"><head><meta charset="
   html,body{margin:0;background:var(--sf-surface,#0b1220);}
   #grid{display:grid;grid-template-columns:1fr 1fr;gap:2px;background:var(--sf-edge,#1d3350);min-height:100vh}
   .cell{background:var(--sf-surface,#0b1220);display:flex;align-items:center;justify-content:center;padding:8px;min-width:0}
+  /* THE SHIPPING COLUMN. The live adoption sites render inside .gm-right-inspector — 320px minus
+     16px padding and a 1px rule = 287px — not the ~535px every earlier frame captured. The narrow
+     column is the COMMON case, and it was the one nobody had looked at. */
+  #narrow{position:fixed;top:0;right:0;width:287px;height:100vh;overflow:auto;
+          background:var(--sf-surface,#0b1220);border-left:1px solid var(--sf-edge,#1d3350);
+          display:flex;flex-direction:column;justify-content:center}
 </style></head><body><div id="grid"></div>
 <script type="module">
   import { dataState } from '/src/ui/uiPrimitives.js';
@@ -94,12 +100,24 @@ const PAGE = (fixtures) => `<!doctype html><html lang="en"><head><meta charset="
     cell.appendChild(dataState(kind, opts));
     grid.appendChild(cell);
   }
+  // Same four states again, in the real shipping width — two non-compact (as 2 of the 3 live sites
+  // are) and the offers state compact, mirroring production.
+  const narrow = document.createElement('div');
+  narrow.id = 'narrow';
+  document.body.appendChild(narrow);
+  for (const [kind, opts] of ${JSON.stringify(fixtures)}) {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    cell.dataset.cell = 'narrow-' + kind;
+    cell.appendChild(dataState(kind, kind === 'error' ? { ...opts, compact: true } : opts));
+    narrow.appendChild(cell);
+  }
   window.__ready = true;
 <\/script></body></html>`;
 
 /** Everything measured inside the page. */
 const MEASURE = () => {
-  const out = { states: [], belowFloor: [], clipped: [], missingParts: [], running: [] };
+  const out = { states: [], belowFloor: [], clipped: [], missingParts: [], running: [], wrapping: [] };
   for (const cell of document.querySelectorAll('[data-cell]')) {
     const kind = cell.dataset.cell;
     const node = cell.querySelector('.sf-state');
@@ -125,6 +143,22 @@ const MEASURE = () => {
     if (nr.bottom > cr.bottom + 1 || nr.right > cr.right + 1) {
       out.clipped.push(`${kind}: overflows by ${Math.max(0, nr.bottom - cr.bottom).toFixed(0)}px vertical / ${Math.max(0, nr.right - cr.right).toFixed(0)}px horizontal`);
     }
+    // M8 — PATHOLOGICAL WRAPPING. A narrow flex context plus overflow-wrap:anywhere can render
+    // prose one character per line. That breaks none of the other measures — type floor, clipping
+    // and focus are all satisfied by a 1-char column — so the probe reported OK over a frame that
+    // was unreadable. Compare rendered height against the single-line height to get line count.
+    const head = node.querySelector('.sf-state__head');
+    const fillsEl = node.querySelector('.sf-state__fills');
+    for (const [name, elx] of [['head', head], ['fills', fillsEl]]) {
+      if (!elx) continue;
+      const lh = parseFloat(getComputedStyle(elx).lineHeight) || parseFloat(getComputedStyle(elx).fontSize) * 1.2;
+      const lines = Math.round(elx.getBoundingClientRect().height / lh);
+      const chars = elx.textContent.trim().length;
+      if (lines > 1 && chars / lines < 8) {
+        out.wrapping.push(`${kind}: .sf-state__${name} wraps to ${lines} lines for ${chars} chars (~${(chars / lines).toFixed(1)} chars/line)`);
+      }
+    }
+
     // M4 — verb focusable.
     const verb = node.querySelector('.sf-state__verb');
     let focusable = false;
@@ -142,7 +176,7 @@ const MEASURE = () => {
     }
     if (sweeping) out.running.push(kind);
 
-    out.states.push({ kind, parts, focusable, rail, sweeping, w: Math.round(nr.width), h: Math.round(nr.height) });
+    out.states.push({ kind, parts, focusable, rail, sweeping, bars: node.querySelectorAll('.sf-state__bar').length, w: Math.round(nr.width), h: Math.round(nr.height) });
   }
   return out;
 };
@@ -192,16 +226,22 @@ const run = async () => {
       if (m.missingParts.length) problems.push(...m.missingParts.map((p) => `[${tag}] ${p}`));
       if (m.belowFloor.length) problems.push(...m.belowFloor.map((p) => `[${tag}] below 12px floor — ${p}`));
       if (m.clipped.length) problems.push(...m.clipped.map((p) => `[${tag}] clipped — ${p}`));
+      if (m.wrapping.length) problems.push(...m.wrapping.map((p) => `[${tag}] unreadable wrapping — ${p}`));
       for (const s of m.states) {
         if (!s.focusable) problems.push(`[${tag}] ${s.kind}: verb is not keyboard-focusable`);
         if (!(s.rail > 0)) problems.push(`[${tag}] ${s.kind}: state rail has no computed width — block may read as unstyled`);
       }
-      // M6: the sweep must run in default and STOP under reduced-motion.
-      if (mode === 'default' && !m.running.includes('loading')) {
-        problems.push(`[${tag}] LOADING sweep is not animating — the state reads as frozen`);
+      // M6 INVERTED, deliberately. The LOADING skeleton must be PRESENT and must NOT animate:
+      // grammar §5 admits no motion without a named state variable behind it, and dataState's
+      // callers supply no progress signal, so a perpetual sweep would encode nothing. It would also
+      // be the exact compositor-side keyframe check:ui-frame-sleep cannot see. The state is carried
+      // by the WORKING word, the arc glyph, aria-busy on the host, and the skeleton's shape.
+      if (m.running.length) {
+        problems.push(`[${tag}] unbound animation running: ${m.running.join(', ')} — motion needs a state variable behind it (§5)`);
       }
-      if (mode === 'reduced-motion' && m.running.length) {
-        problems.push(`[${tag}] animation still running under reduced-motion: ${m.running.join(', ')}`);
+      const loadingHasSkeleton = m.states.some((x) => x.kind.endsWith('loading') && x.bars > 0);
+      if (!loadingHasSkeleton) {
+        problems.push(`[${tag}] LOADING renders no skeleton — nothing conveys the shape of what is coming`);
       }
 
       await page.screenshot({ path: `${OUT}${w}x${h}-${mode}.png` });

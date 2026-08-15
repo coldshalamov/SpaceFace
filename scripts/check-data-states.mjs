@@ -170,18 +170,39 @@ if (blockStart < 0) {
   if (!/@media\s*\(\s*forced-colors:\s*active\s*\)/.test(rules)) {
     fail('D/a11y', `${CSS} sf-state block has no @media (forced-colors: active) rule (gradients strip to blank)`);
   }
-  // The reduced-motion branch must actually STOP the sweep, not merely exist. Read its
-  // brace-balanced body — a fixed-size window spills into the adjacent forced-colors block, whose
+  // If the block animates AT ALL, reduced-motion must stop it. Stated conditionally on purpose: the
+  // LOADING sweep was deleted rather than tuned (grammar §5 — motion needs a state variable behind
+  // it, and nothing supplies progress), so an unconditional "must contain animation:none" would
+  // demand the disabling of an animation that no longer exists. The rule that matters is the
+  // implication, not the presence of a magic string.
+  //
+  // Read the brace-balanced at-rule body: a fixed-size window spills into the adjacent block, whose
   // own `animation: none` then satisfies the rule for it. (Caught by negative test, not by reading.)
-  if (!/animation:\s*none/.test(atRuleBody(rules, /@media\s*\(\s*prefers-reduced-motion:\s*reduce\s*\)/))) {
-    fail('D/a11y', `${CSS} sf-state reduced-motion branch does not set animation:none on the sweep`);
+  const outsideMedia = rules.replace(/@media[^{]*\{(?:[^{}]|\{[^{}]*\})*\}/g, '');
+  if (/animation:/.test(outsideMedia)) {
+    if (!/animation:\s*none/.test(atRuleBody(rules, /@media\s*\(\s*prefers-reduced-motion:\s*reduce\s*\)/))) {
+      fail('D/a11y', `${CSS} sf-state block animates but its reduced-motion branch does not set animation:none`);
+    }
+    if (!/animation:\s*none/.test(atRuleBody(rules, /@media\s*\(\s*forced-colors:\s*active\s*\)/))) {
+      fail('D/a11y', `${CSS} sf-state block animates but its forced-colors branch does not set animation:none`);
+    }
   }
-  if (!/animation:\s*none/.test(atRuleBody(rules, /@media\s*\(\s*forced-colors:\s*active\s*\)/))) {
-    fail('D/a11y', `${CSS} sf-state forced-colors branch does not set animation:none on the sweep`);
-  }
-  // 12px type floor, per the THE SHIP polish pass.
-  for (const m of block.matchAll(/font-size:\s*(\d+)px/g)) {
+  // 12px type floor, per the THE SHIP polish pass. BOTH spellings: the longhand `font-size:` AND
+  // the `font:` shorthand. Scanning only the longhand shipped an 11px keycap inside the very block
+  // whose comment claims a 12px floor — the check inspected a convenient stand-in for "the type
+  // sizes in this block" and the shorthand walked straight past it.
+  for (const m of rules.matchAll(/font-size:\s*(\d+(?:\.\d+)?)px/g)) {
     if (Number(m[1]) < 12) fail('D/type', `${CSS} sf-state block sets font-size:${m[1]}px — below the 12px floor`);
+  }
+  for (const m of rules.matchAll(/(?:^|[;{]\s*)font:\s*[^;}]*?\b(\d+(?:\.\d+)?)px/gm)) {
+    if (Number(m[1]) < 12) fail('D/type', `${CSS} sf-state block sets ${m[1]}px in a \`font:\` shorthand — below the 12px floor`);
+  }
+  // The LOADING skeleton must not run an INFINITE animation. Grammar §5: no motion without a named
+  // state variable behind it, and "a spinner that outlives its work is a lie" — dataState's callers
+  // supply no progress signal, so a perpetual sweep encodes nothing. It is also the exact
+  // compositor-side keyframe check:ui-frame-sleep cannot see, since that inspects rAF.
+  if (/animation:[^;}]*\binfinite\b/.test(rules)) {
+    fail('D/motion', `${CSS} sf-state block runs an infinite animation — unbound to real work (grammar §5) and invisible to check:ui-frame-sleep`);
   }
 }
 

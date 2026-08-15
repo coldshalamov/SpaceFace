@@ -1,6 +1,7 @@
 // save system (ARCHITECTURE §4.5 + design/specs/11). Owns serialization: assembles a versioned
 // envelope from a fixed deps-first registry of systems, writes autosave + manual slots to
-// localStorage and to an exportable/importable JSON file, runs ordered migrations on load, and
+// localStorage and to the shared loopback player store both shells use, plus an exportable
+// JSON file, runs ordered migrations on load, and
 // drives autosave. It does NOT own newGame() — main.js owns bootstrap (boot calls newGame only if
 // present, and adding it here would override the skeleton boot), so this module deliberately omits
 // it and implements serialize/save/load/autosave only.
@@ -11,6 +12,7 @@
 // restore, so a bad save aborts with save:error and leaves live state untouched.
 import { fnv1a } from './checksum.js';
 import { MIGRATIONS, CURRENT_VERSION } from './migrations.js';
+import { createScreenMemory } from '../ui/screenMemory.js';
 import { AI_CONTRACT_VERSION } from '../ai/contracts.js';
 import { mulberry32, mulberry32FromContinuation } from '../core/rng.js';
 import { NEW_GAME } from '../data/newGameDefaults.js';
@@ -34,6 +36,14 @@ import {
   readProfileSettings,
 } from '../core/graphicsProfileBootstrap.js';
 import { encodeSavePayload, SAVE_WORKER_SOURCE } from './saveWorker.js';
+import {
+  applySharedStoreKeys,
+  collectLocalSharedStoreKeys,
+  fetchSharedPlayerStore,
+  mergeSharedStoreKeys,
+  pushSharedPlayerStore,
+  sharedPlayerStoreAvailable,
+} from './sharedPlayerStore.js';
 
 const LS_PREFIX = 'sf.save.';
 const INDEX_KEY = LS_PREFIX + 'index';
@@ -103,6 +113,9 @@ export const save = {
     this._activeSaveWorkers = new Set();
     this._saveWorkerRequestId = 0;
     this._restoreSequence = 0;         // unique transient freeze owner for overlapping visual gates
+    this._sharedStoreReady = !sharedPlayerStoreAvailable();
+    this._sharedStorePatch = null;
+    this._sharedStoreFlushTimer = null;
 
     const bus = this.bus;
     this._loadProfileSettings();
@@ -154,6 +167,51 @@ export const save = {
     // latest Ctrl-dragged layout durable even if they do not make another progression change.
     bus.on('hud:layoutChanged', () => this.requestAutosave('hud_layout'));
     bus.on('player:respawn', () => this.requestAutosave('respawn', { force: true }));
+    this._syncSharedPlayerStore();
+  },
+
+  isSharedStoreSyncPending() {
+    return this._sharedStoreReady === false;
+  },
+
+  async _syncSharedPlayerStore() {
+    if (this._sharedStoreReady) return;
+    try {
+      const remote = await fetchSharedPlayerStore();
+      const local = collectLocalSharedStoreKeys();
+      const merged = mergeSharedStoreKeys(local, remote || {});
+      applySharedStoreKeys(merged);
+      if (remote != null || Object.keys(local).length > 0) {
+        await pushSharedPlayerStore(merged);
+      }
+    } catch {
+      // Store absence or a failed merge must not block the title screen.
+    } finally {
+      this._sharedStoreReady = true;
+      if (this.bus && typeof this.bus.emit === 'function') {
+        this.bus.emit('save:store-synced', { ok: true });
+      }
+    }
+  },
+
+  _queueSharedStoreMirror(patch = null) {
+    if (!sharedPlayerStoreAvailable()) return;
+    this._sharedStorePatch = this._sharedStorePatch || {};
+    if (patch && typeof patch === 'object') {
+      Object.assign(this._sharedStorePatch, patch);
+    } else {
+      Object.assign(this._sharedStorePatch, collectLocalSharedStoreKeys());
+    }
+    if (this._sharedStoreFlushTimer != null) return;
+    const flush = () => {
+      this._sharedStoreFlushTimer = null;
+      const keys = this._sharedStorePatch;
+      this._sharedStorePatch = null;
+      if (!keys) return;
+      pushSharedPlayerStore(keys, { keepalive: true }).catch(() => {});
+    };
+    if (typeof setTimeout === 'function') this._sharedStoreFlushTimer = setTimeout(flush, 0);
+    else flush();
   },
 
   // Interval autosave is the only periodic job; playtime accrual is core's (§ core.preStep).
@@ -224,6 +282,9 @@ export const save = {
       ['flight', () => this._serializeFlight()],
       ['nav', () => this._serializeNav()],
       ['settings', () => this._serializeSettings()],
+      // J4 screen state memory (build map §11.12). UI-only: state.ui is NOT in
+      // core/simSnapshot.js's allow-list, so this cannot drift the 47a replay hashes.
+      ['uiScreenMemory', () => this._serializeScreenMemory()],
     ];
   },
 
@@ -268,6 +329,7 @@ export const save = {
     data.flight = this._serializeFlight();
     data.nav = this._serializeNav();
     data.settings = this._serializeSettings();
+    data.uiScreenMemory = this._serializeScreenMemory();
     // H9: authoritative RNG continuation (seed + draw position). Restore must not reseed to zero.
     data.entropy = this._serializeEntropy();
     return data;
@@ -413,6 +475,25 @@ export const save = {
     return clonePlain(this.state.crafting || { queues: {} });
   },
 
+  // ── J4 screen state memory (build map §11.12) ──────────────────────────────────────────────
+  //
+  // Per-screen UI bags (active tab, filters, layer set, zoom, selection, scroll) so the map, ship
+  // and station open where the player left them. Lives on state.ui, which core/simSnapshot.js's
+  // ALLOW-LIST does not include — so it cannot drift the 47a replay hashes.
+  //
+  // The cap and eviction policy §11.12's trap demands are declared in src/ui/screenMemory.js and
+  // enforced on the WRITE path, so this serializer cannot be handed an unbounded bag. It re-screens
+  // anyway: the save file is the wrong place to discover something slipped through.
+  _serializeScreenMemory() {
+    return createScreenMemory(this.state).serialize();
+  },
+
+  /** Restore the bags. Must run AFTER the transient state.ui reset (docked / dockedStationId /
+   *  trackedMissionId are nulled on load), or that pass would run against a half-built ui object. */
+  _restoreScreenMemory(raw) {
+    createScreenMemory(this.state).deserialize(raw);
+  },
+
   _serializeNav() {
     return sanitizeNavState(navWithStableEntityIdentity(this.state));
   },
@@ -472,6 +553,7 @@ export const save = {
         settings: profileSettingsSnapshot(this.state.settings),
       };
       localStorage.setItem(PROFILE_SETTINGS_KEY, JSON.stringify(payload));
+      this._queueSharedStoreMirror({ [PROFILE_SETTINGS_KEY]: JSON.stringify(payload) });
       return true;
     } catch (err) {
       this.bus && this.bus.emit && this.bus.emit('save:error', { slot: 'settings', reason: 'settings_write_failed' });
@@ -738,6 +820,7 @@ export const save = {
         });
       }
       this.bus.emit('save:completed', timing);
+      this._queueSharedStoreMirror();
       return true;
     }
     this.bus.emit('save:error', timing);
@@ -924,6 +1007,11 @@ export const save = {
       const idx = this._slotIndexWithFallback();
       delete idx[slot];
       if (typeof localStorage !== 'undefined') localStorage.setItem(INDEX_KEY, JSON.stringify(idx));
+      this._queueSharedStoreMirror({
+        [LS_PREFIX + slot]: null,
+        [RECOVERY_PREFIX + slot]: null,
+        [INDEX_KEY]: JSON.stringify(idx),
+      });
     } catch (err) { /* ignore */ }
   },
 
@@ -1974,6 +2062,7 @@ export const save = {
           localStorage.setItem(LS_PREFIX + slot, backupRaw);
           promoted = localStorage.getItem(LS_PREFIX + slot) === backupRaw;
           if (promoted) this._updateIndex(slot, backup.env);
+          if (promoted) this._queueSharedStoreMirror();
         } catch (err) { /* recovery remains playable even if self-heal cannot persist */ }
         this.bus.emit('save:recovered', {
           slot,
@@ -2235,6 +2324,7 @@ export const save = {
       this._restoreFlight(data.flight);
       this._restoreNav(data.nav);
       this._restoreSettings(data.settings);
+      this._restoreScreenMemory(data.uiScreenMemory);
       this._reconcileFlightReadyAfterLoad();
 
       // 14. restore sim clock + rebuild master RNG from serialized CONTINUATION (H9), not seed alone.

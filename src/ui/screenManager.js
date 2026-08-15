@@ -15,6 +15,7 @@
 // own timeScale.
 
 import { createTimeEffects } from '../core/timeEffects.js';
+import { createScreenMemory } from './screenMemory.js';
 
 const PAUSING_SCREENS = new Set(['pause', 'mainMenu', 'newGame', 'gameOver', 'settings', 'saveLoad', 'help', 'codex', 'drill', 'base', 'station', 'sandbox',
   // Owner ruling 2026-08-15 (build map §11.3): menus pause the world, Skyrim-style. The four
@@ -37,6 +38,42 @@ export function createScreenManager(ctx) {
 
   let pauseEmitted = false;
   let destroyed = false;
+
+  // J4 screen state memory (build map §11.12). A per-screen bag persisted per save, so the map, the
+  // ship and the station open where the player left them. Published on ctx so screens read/write it
+  // in their own onShow/onHide — the manager cannot know what a screen considers state.
+  //
+  // The manager DOES own scroll position generically: it is the one piece of per-screen state that
+  // is uniform across every screen, invisible until missing, and costs each screen zero code. Tabs,
+  // filters and layer sets are screen-specific and stay opt-in.
+  const screenMemory = ctx.screenMemory || createScreenMemory(state);
+  ctx.screenMemory = screenMemory;
+
+  const SCROLL_KEY = '__scroll';
+  function scrollables(root) {
+    if (!root || !root.querySelectorAll) return [];
+    return Array.from(root.querySelectorAll('[data-sf-scroll]'));
+  }
+  /** Capture scroll offsets for any element the screen opted in with `data-sf-scroll="<name>"`. */
+  function captureScroll(id, rec) {
+    if (!rec || !rec.el) return;
+    const map = {};
+    for (const el of scrollables(rec.el)) {
+      const name = el.getAttribute('data-sf-scroll');
+      if (name && el.scrollTop > 0) map[name] = Math.round(el.scrollTop);
+    }
+    if (Object.keys(map).length) screenMemory.set(id, { [SCROLL_KEY]: map });
+  }
+  /** Restore them after onShow, so the screen has rendered the content being scrolled. */
+  function restoreScroll(id, rec) {
+    if (!rec || !rec.el) return;
+    const map = screenMemory.read(id, SCROLL_KEY, null);
+    if (!map) return;
+    for (const el of scrollables(rec.el)) {
+      const name = el.getAttribute('data-sf-scroll');
+      if (name && map[name] != null) el.scrollTop = Number(map[name]) || 0;
+    }
+  }
 
   // UX-6: focus management. On each push we snapshot the currently-focused element so popScreen can
   // restore it — keyboard + screen-reader users return to the button that opened the modal instead
@@ -278,13 +315,18 @@ export function createScreenManager(ctx) {
     const active = document.activeElement;
     focusStack.push(active && active !== document.body ? active : null);
     // hide currently-visible top
+    const prevId = top();
     const prev = activeDef();
     if (prev && prev.onHide) { try { prev.onHide(); } catch (e) { console.error(e); } }
+    if (prevId) captureScroll(prevId, registry.get(prevId));
     const rec = build(id);
     stack.push(id);
     syncVisibility();
     if (rec && rec.def.onShow) { try { rec.def.onShow(ctx); } catch (e) { console.error(e); } }
     if (rec && rec.def.refresh) { try { rec.def.refresh(ctx); } catch (e) { console.error(e); } }
+    // After onShow AND refresh: the content being scrolled has to exist before an offset means
+    // anything. Restoring earlier silently clamps to 0 on an empty container.
+    restoreScroll(id, rec);
     _ensureFocusIn(rec);
   }
 
@@ -294,6 +336,8 @@ export function createScreenManager(ctx) {
     const closingRec = closingId && registry.get(closingId);
     const closing = activeDef();
     if (closing && closing.onHide) { try { closing.onHide(); } catch (e) { console.error(e); } }
+    // Capture AFTER onHide so a screen's own onHide write lands first and this cannot clobber it.
+    if (closingId) captureScroll(closingId, closingRec);
 
     // Fade out the closing screen before removing it
     if (closingRec && closingRec.el) {
@@ -318,6 +362,7 @@ export function createScreenManager(ctx) {
     if (stack.length) {
       const nextId = stack[stack.length - 1];
       const nextRec = nextId && registry.get(nextId);
+      restoreScroll(nextId, nextRec);
       // Prefer the captured opener when still connected, visible, and inside the top screen.
       // Invalid openers → deterministic first focusable in the exposed screen (locked root menu too).
       if (!_restoreFocus(restoreTarget, nextRec && nextRec.el)) _ensureFocusIn(nextRec);
@@ -403,6 +448,31 @@ export function createScreenManager(ctx) {
   const runtimeUnsubscribers = [
     bus.on('mode:changed', syncPause),
     bus.on('save:error', syncPause),
+
+    // J4, two hooks that are not optional:
+    //
+    // FLUSH BEFORE A SAVE. The chart is a non-pausing live overlay, so the interval autosave keeps
+    // firing while it is open. Without this, every autosave taken with a screen up records the
+    // PREVIOUS session's bag — "it remembers, but one session late", which is maddening to debug.
+    bus.on('save:started', () => {
+      const id = top();
+      const rec = id && registry.get(id);
+      if (!rec || !rec.def) return;
+      if (typeof rec.def._rememberScreenState === 'function') {
+        try { rec.def._rememberScreenState(); } catch (_) {}
+      }
+      captureScroll(id, rec);
+    }),
+
+    // NOTE — there is deliberately NO `save:loaded` handler clearing the bag here. saveSystem emits
+    // save:loaded AFTER it calls _restoreScreenMemory, so clearing on that event would wipe the bag
+    // it had just restored. (Written that way first; caught by reading the emit order, not by a
+    // test, because an empty bag silently degrades to authored defaults and looks like "the screen
+    // just didn't remember.")
+    //
+    // Cross-save bleed is handled where it actually lives instead: screenMemory.deserialize()
+    // REPLACES the bag wholesale, and each screen's restore starts from its authored defaults
+    // rather than merging over whatever the singleton happens to be holding from the last save.
   ];
 
   function destroy() {
@@ -460,5 +530,6 @@ export function createScreenManager(ctx) {
     register, pushScreen, popScreen, replaceScreen, closeAll,
     isOpen, hasScreen, top, getActiveScreenDef, refreshTop, syncVisibility, syncHudAccessibility,
     isLiveOverlay, locked, destroy,
+    screenMemory,
   };
 }

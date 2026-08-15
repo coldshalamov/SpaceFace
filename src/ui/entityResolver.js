@@ -125,7 +125,7 @@ function factionDossier(state, id) {
   else if (rec && Number(rec.rep) < -30) facts.push({ k: 'Docking', v: 'Restricted', tone: 'foe' });
   if (rec && Number(rec.rep) <= -30 && Number(rec.rep) > -400) {
     const cost = Math.round((Math.abs(Number(rec.rep)) - 29) * 8 * (1 + 0.5 * (rec.bribesPaid > 0 ? 1 : 0)));
-    facts.push({ k: 'Bribe to clear', v: creditText(cost), tone: 'goal' });
+    facts.push({ k: 'Bribe to clear', v: creditText(cost), tone: 'goal', num: true });
   }
   facts.push({ k: 'Temperament', v: String(f.personality || 'unstated'), tone: 'calm' });
 
@@ -135,23 +135,31 @@ function factionDossier(state, id) {
   if (doctrine && doctrine.id) lines.push({ label: 'Doctrine', text: String(doctrine.id).replace(/_/g, ' ') });
 
   // Relations are the reason a rep hit spreads to somebody you have never met (J6's spillover).
+  // Carrying contraband THIS faction outlaws is the single most actionable fact about them, and it
+  // was absent. Surfaced as a fact, not prose — it changes what you load into the hold.
+  const illegal = Array.isArray(f.illegalCommodities) ? f.illegalCommodities : [];
+  if (illegal.length) {
+    const names = illegal.map((id) => (COMMODITY_BY_ID.get(id) || {}).name).filter(Boolean);
+    if (names.length) lines.push({ label: 'Will stop you for', text: names.join(' · '), tone: 'foe' });
+  }
+
+  // Relations. Rendered ONLY as links below, never also as prose: the first version printed the
+  // same rivals twice in one dossier, once as short names and once as full ones (grammar §8).
   const rel = f.relations || {};
-  const allies = Object.keys(rel).filter((k) => rel[k] >= 0.3).map(factionLabel).filter(Boolean);
-  const rivals = Object.keys(rel).filter((k) => rel[k] <= -0.3).map(factionLabel).filter(Boolean);
-  if (allies.length) lines.push({ label: 'Stands with', text: allies.join(' · ') });
-  if (rivals.length) lines.push({ label: 'Stands against', text: rivals.join(' · '), tone: 'foe' });
+  const allies = Object.keys(rel).filter((k) => rel[k] >= 0.3 && FACTION_BY_ID.has(k));
+  const rivals = Object.keys(rel).filter((k) => rel[k] <= -0.3 && FACTION_BY_ID.has(k));
 
   const links = [];
   for (const secId of (f.homeSectors || [])) {
     const label = entityLabel('sector:' + secId);
     if (label) links.push({ ref: 'sector:' + secId, label });
   }
-  for (const k of Object.keys(rel)) {
-    if (rel[k] <= -0.3 && FACTION_BY_ID.has(k)) links.push({ ref: 'faction:' + k, label: FACTION_BY_ID.get(k).name });
+  for (const k of [...allies, ...rivals]) {
+    links.push({ ref: 'faction:' + k, label: FACTION_BY_ID.get(k).name });
   }
   return {
     kicker: 'Faction' + (f.fleetClass ? ' · ' + String(f.fleetClass).replace(/_/g, ' ') : ''),
-    accent: f.color || null, facts, lines, links,
+    facts, lines, links,
     route: (f.homeSectors && f.homeSectors[0]) ? { screen: 'chart', focus: 'sector:' + f.homeSectors[0] } : null,
   };
 }
@@ -160,9 +168,9 @@ function commodityDossier(state, id) {
   const c = COMMODITY_BY_ID.get(id);
   if (!c) return null;
   const facts = [
-    { k: 'Base price', v: creditText(c.basePrice), tone: 'calm' },
+    { k: 'Base price', v: creditText(c.basePrice), tone: 'calm', num: true },
     { k: 'Legality', v: String(c.legality || 'legal'), tone: c.legality === 'contraband' ? 'foe' : c.legality === 'restricted' ? 'goal' : 'calm' },
-    { k: 'Hold cost', v: `${c.volPerU} vol · ${c.massPerU} mass per unit`, tone: 'calm' },
+    { k: 'Hold cost', v: `${c.volPerU} vol · ${c.massPerU} mass per unit`, tone: 'calm', num: true },
   ];
   const lines = [];
   const flavor = COMMODITY_FLAVOR && COMMODITY_FLAVOR[id];
@@ -224,8 +232,11 @@ function sectorDossier(state, id) {
   if (Array.isArray(sec.hazards) && sec.hazards.length) {
     lines.push({ label: 'Hazards', text: sec.hazards.map((h) => String(h.type || h).replace(/_/g, ' ')).join(' · '), tone: 'foe' });
   }
-  if (Array.isArray(sec.stations) && sec.stations.length) {
-    lines.push({ label: 'Docks', text: sec.stations.map((s) => s.name).join(' · ') });
+  // NOT a 'Docks' prose line: these same stations already appear as links below, and printing a
+  // noun as inert text 40px above the same noun as a door teaches the player that links are
+  // arbitrary (grammar §8 — one vocabulary, learned once).
+  if (sec.charted === false) {
+    lines.push({ label: 'Survey', text: 'Uncharted — you have no survey of this sector.', tone: 'foe' });
   }
   const links = [];
   if (sec.factionId && FACTION_BY_ID.has(sec.factionId)) links.push({ ref: 'faction:' + sec.factionId, label: FACTION_BY_ID.get(sec.factionId).name });
@@ -239,9 +250,9 @@ function hullDossier(state, id) {
   if (!s) return null;
   const facts = [
     { k: 'Role', v: String(s.role || '').replace(/_/g, ' '), tone: 'calm' },
-    { k: 'Hull', v: String(s.hull), tone: 'calm' },
-    { k: 'Cargo', v: String(s.cargo) + ' u', tone: 'calm' },
-    { k: 'Price', v: creditText(s.price), tone: 'goal' },
+    { k: 'Hull', v: String(s.hull), tone: 'calm', num: true },
+    { k: 'Cargo', v: String(s.cargo) + ' u', tone: 'calm', num: true },
+    { k: 'Price', v: creditText(s.price), tone: 'goal', num: true },
   ];
   const lines = [];
   // Mass and handling are why it flies the way it does — J2's band. Stated as the fact, not a verb;
@@ -256,12 +267,12 @@ function moduleDossier(state, id) {
   if (!m) return null;
   const facts = [
     { k: 'Slot', v: `${String(m.slotType || '').replace(/_/g, ' ')} · ${m.size || ''}`.trim(), tone: 'calm' },
-    { k: 'Mass', v: String(m.mass), tone: 'calm' },
-    { k: 'Price', v: creditText(m.price), tone: 'goal' },
+    { k: 'Mass', v: String(m.mass), tone: 'calm', num: true },
+    { k: 'Price', v: creditText(m.price), tone: 'goal', num: true },
   ];
   // Every module advertises a power DRAW against a capacity the UI has never shown (§11.11 #2).
   // Naming it here is the cheapest place that gap becomes visible before J2 lands.
-  if (m.energyDraw != null) facts.push({ k: 'Power draw', v: String(m.energyDraw), tone: m.energyDraw > 0 ? 'foe' : 'calm' });
+  if (m.energyDraw != null) facts.push({ k: 'Power draw', v: String(m.energyDraw), tone: m.energyDraw > 0 ? 'foe' : 'calm', num: true });
   const lines = [];
   const mods = m.mods && Object.keys(m.mods);
   if (mods && mods.length) {
@@ -285,9 +296,10 @@ function captainDossier(state, id) {
   // What the world remembers about YOUR fights with them, if aceMemory has a record.
   const mem = state && state.aceMemory && state.aceMemory[id];
   if (mem) {
-    if (mem.defeats != null || mem.kills != null) {
-      lines.push({ label: 'Between you', text: `you have put them down ${Number(mem.defeats || 0)} time(s); they have put you down ${Number(mem.kills || 0)}` });
-    }
+    // Two facts, not a built sentence. The original concatenated a `time(s)` plural into prose,
+    // which grammar §12 item 11 forbids and which reads as a placeholder.
+    if (mem.defeats != null) facts.push({ k: 'You have downed them', v: String(Number(mem.defeats) || 0), tone: 'you', num: true });
+    if (mem.kills != null) facts.push({ k: 'They have downed you', v: String(Number(mem.kills) || 0), tone: 'foe', num: true });
     if (mem.status) lines.push({ label: 'Status', text: String(mem.status).replace(/_/g, ' ') });
   }
   const links = [];
@@ -312,7 +324,7 @@ function contractDossier(state, id) {
   }
   if (!rec) return null;
   const facts = [];
-  if (rec.reward != null) facts.push({ k: 'Pays', v: creditText(rec.reward), tone: 'goal' });
+  if (rec.reward != null) facts.push({ k: 'Pays', v: creditText(rec.reward), tone: 'goal', num: true });
   const owner = factionLabel(rec.factionId);
   if (owner) facts.push({ k: 'Posted by', v: owner, tone: 'calm' });
   if (rec.status) facts.push({ k: 'Status', v: String(rec.status).replace(/_/g, ' '), tone: 'calm' });

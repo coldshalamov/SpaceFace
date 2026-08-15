@@ -66,7 +66,7 @@
     "audio:cue": 4
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "94f18fccf9554d2e9fe879d4e661bb2a9ff93947bd14a844953efb28421039a0",
+    "authoritativeHash": "5e8f34fb3784dfb12835feeb20e64b4d439ae35c2324be5a1e381a89658d0d25",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -108,6 +108,11 @@
     "Moved (3/3): 3 added story fields - conflictReaction.latestFlip, conflictReaction.sequence, newGamePlus.",
     "scripts/sim-golden-diff.mjs was run independently and returned VERDICT: CONTENT_ONLY, agreeing with the manual diff. MOTION_CHANGED would have blocked this re-record.",
     "The uncommitted concurrent Ceres lane does NOT move this hash: a clean git-archive HEAD tree and the dirty primary checkout produce the same authoritative hash.",
-    "check:baseline was RED ON MASTER for this reason before this re-record, so every lane was inheriting a red it did not cause."
+    "check:baseline was RED ON MASTER for this reason before this re-record, so every lane was inheriting a red it did not cause.",
+    "2026-08-15 mechanical re-record for save schema v12->v13 (J4 screen state memory adds data.uiScreenMemory).",
+    "The prior authoritativeHash was 94f18fccf9554d2e9fe879d4e661bb2a9ff93947bd14a844953efb28421039a0.",
+    "Cause: simSnapshot.snapshotMeta hashes state.meta.version, and _restore sets it to CURRENT_VERSION, so any save-version bump drifts this hash by construction.",
+    "Evidence: pinning CURRENT_VERSION back to 12 with every other J4 change left in place made check:sim pass, so the version field alone moved and no simulated behaviour did.",
+    "reload-at 600 baselineSha256 equals the run sha256, so the new save key round-trips without divergence."
   ]
 }
