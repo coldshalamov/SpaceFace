@@ -457,12 +457,16 @@ test('VFX station-side and seam ranges use the table helper', async () => {
 
 test('instance far cull follows the table, not a 9000 WU horizon', async () => {
   const far = tableInstanceFarCullWu();
-  assert.ok(far < 2000, `instance far cull ${far} must stay table-sized`);
-  assert.ok(far > 400, `instance far cull ${far} must still cover the max-zoom table`);
-  assert.equal(far, TABLE_HEARING_FAR_WU);
+  assert.ok(far < 4000, `instance far cull ${far} must stay table-sized`);
+  assert.ok(far > 1500, `default instance far cull ${far} must cover a 90° max-zoom 16:9 table`);
+  const close = tableInstanceFarCullWu(144, 50, 16 / 9);
+  assert.ok(close < far, 'a close table culls leaked chunks sooner than the wide default');
+  const wide = tableInstanceFarCullWu(330, 90, 48 / 9);
+  assert.ok(wide > far, 'a live ultrawide 90° table must not use the 16:9 default');
   const { readFile } = await import('node:fs/promises');
   const source = await readFile(new URL('../src/render/partsLibrary.js', import.meta.url), 'utf8');
-  assert.match(source, /TABLE_HEARING_FAR_WU/);
+  assert.match(source, /tableInstanceFarCullWu/);
+  assert.match(source, /instanceFarCullWuFromOpts/);
   assert.doesNotMatch(source, /INSTANCE_FAR_CULL_RADIUS = 9000/);
 });
 

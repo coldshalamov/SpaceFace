@@ -16,7 +16,7 @@ import { configureRealtimeCanopyMaterials } from './canopyMaterialPolicy.js';
 import {
   isCriticalStartingHub as isTableCriticalStartingHub,
   isOpeningStoryActor,
-  TABLE_HEARING_FAR_WU,
+  tableInstanceFarCullWu,
   tableOpeningCompositionWu,
 } from './tabletopPolicy.js';
 import { isReleaseAssetMode } from './releaseMode.js';
@@ -86,7 +86,7 @@ const WRECK_CATHEDRAL_CLOSED_MATERIAL_ROLES = new Set([
 const KESTREL_HERO_ASSET_ID = 'SF_K0_KESTREL_BORROWED_TIME';
 const INSTANCE_CHUNK_SIZE = 64;
 const AUTHORED_INSTANCE_MATRIX = 0;
-const INSTANCE_FAR_CULL_RADIUS = TABLE_HEARING_FAR_WU;
+const INSTANCE_FAR_CULL_RADIUS = tableInstanceFarCullWu();
 const INSTANCE_FRUSTUM_PAD = 420;
 const ZERO_MATRIX = new THREE.Matrix4().makeScale(0, 0, 0);
 const EMPTY_ARRAY = Object.freeze([]);
@@ -6824,6 +6824,34 @@ function finalizePoolStats(state, stats) {
   stats.avgPoolOccupancy = stats.pools > 0 ? stats.pooledInstanceSlots / stats.pools : 0;
 }
 
+function instanceFarCullWuFromOpts(opts, camera) {
+  const zoomOpt = Number(opts && (opts.liveZoom ?? opts.zoom));
+  let zoom = Number.isFinite(zoomOpt) ? zoomOpt : NaN;
+  let fov = Number(opts && opts.fov);
+  let aspect = Number(opts && opts.aspect);
+  let tilt = Number(opts && opts.tilt);
+  if (camera && camera.position) {
+    const pos = camera.position;
+    if (!Number.isFinite(zoom)) {
+      const live = Math.hypot(Number(pos.x) || 0, Number(pos.y) || 0, Number(pos.z) || 0);
+      if (live > 1) zoom = live;
+    }
+    if (!Number.isFinite(fov) && Number.isFinite(camera.fov)) fov = camera.fov;
+    if (!(Number.isFinite(aspect) && aspect > 0) && Number.isFinite(camera.aspect) && camera.aspect > 0) {
+      aspect = camera.aspect;
+    }
+    if (!Number.isFinite(tilt) && Number.isFinite(zoom) && zoom > 1e-6) {
+      tilt = Math.abs(Math.asin(Math.min(1, Math.max(-1, (Number(pos.y) || 0) / zoom))) * 180 / Math.PI);
+    }
+  }
+  return tableInstanceFarCullWu(
+    Number.isFinite(zoom) ? zoom : 330,
+    Number.isFinite(fov) ? fov : 90,
+    Number.isFinite(aspect) && aspect > 0 ? aspect : 16 / 9,
+    Number.isFinite(tilt) && tilt > 5 ? tilt : 60,
+  );
+}
+
 function buildInstanceCullContext(state, opts) {
   state.syncFrame = (state.syncFrame || 0) + 1;
   const entityFrame = opts && opts.entityFrame;
@@ -6849,6 +6877,7 @@ function buildInstanceCullContext(state, opts) {
     ? Number(opts.castRadius)
     : null;
   context.consolidateOpaqueBatches = opts && opts.consolidateOpaqueBatches === true;
+  context.farCullWu = instanceFarCullWuFromOpts(opts, camera);
   if (!camera || !camera.projectionMatrix || !camera.matrixWorldInverse) {
     state.stats.frameBounded = frameBounded;
     context.cameraDirty = captureCullCameraState(null, state.cameraState);
@@ -6885,6 +6914,7 @@ function createInstanceCullContext() {
     castRadiusSq: null,
     castRadius: null,
     consolidateOpaqueBatches: false,
+    farCullWu: INSTANCE_FAR_CULL_RADIUS,
   };
 }
 
@@ -6916,7 +6946,8 @@ function isOwnerInCullContext(owner, context, stats) {
   const dx = CULL_SPHERE.center.x - context.cameraPosition.x;
   const dy = CULL_SPHERE.center.y - context.cameraPosition.y;
   const dz = CULL_SPHERE.center.z - context.cameraPosition.z;
-  const far = INSTANCE_FAR_CULL_RADIUS + CULL_SPHERE.radius;
+  const far = (Number.isFinite(context.farCullWu) ? context.farCullWu : INSTANCE_FAR_CULL_RADIUS)
+    + CULL_SPHERE.radius;
   const visible = (dx * dx + dy * dy + dz * dz <= far * far) && context.frustum.intersectsSphere(CULL_SPHERE);
   if (!visible && stats) stats.culledInstanceSlots++;
   return visible;

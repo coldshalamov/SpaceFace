@@ -48,17 +48,22 @@ export function tableHearingFarWu(
 export const TABLE_HEARING_FAR_WU = tableHearingFarWu();
 
 /**
- * Last-resort instance far cull. Submit already drops off-table roots.
- * This only stops a leaked chunk from paying a leftover 9000 WU horizon.
- * Uses the max-zoom table so a zoom-out cannot under-cull on-glass slots.
+ * Last-resort instance far cull, as a 3D camera distance. Submit already
+ * drops off-table roots. This only stops a leaked chunk from paying a
+ * leftover 9000 WU horizon. Defaults cover the supported 90° / 330 WU
+ * 16:9 table; live callers must pass the actual camera envelope.
  */
 export function tableInstanceFarCullWu(
   zoom = 330,
-  fovDeg = 50,
+  fovDeg = 90,
   aspect = 16 / 9,
   tiltDeg = 60,
 ) {
-  return tableHearingFarWu(zoom, fovDeg, aspect, tiltDeg);
+  const xz = tableHearingFarWu(zoom, fovDeg, aspect, tiltDeg);
+  const distance = Number.isFinite(zoom) ? zoom : 330;
+  const tilt = (Number.isFinite(tiltDeg) ? tiltDeg : 60) * Math.PI / 180;
+  const camY = distance * Math.sin(tilt);
+  return Math.hypot(xz, camY);
 }
 
 /**
