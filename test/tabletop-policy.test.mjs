@@ -373,8 +373,5 @@ test('a hull inside the square light box still casts on the diagonal', () => {
     nearestAxisDistance: 250,
     castRadius: extent,
   }), true);
-  assert.equal(opaqueBatchLane(hypot * hypot, extent * extent, {
-    axisDistance: 250,
-    castRadius: extent,
-  }), 'cast');
+  assert.equal(opaqueBatchLane(hypot * hypot, extent * extent, 250, extent), 'cast');
 });
