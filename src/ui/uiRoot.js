@@ -11,6 +11,7 @@
 // is missing or throws on import/register does NOT break the HUD or the other screens.
 
 import { createScreenManager } from './screenManager.js';
+import { createEntityLinks } from './entityLinks.js';
 import { createUiInput } from './input.js';
 import { initPriceHistory } from './priceHistory.js';
 import { isConfirmOpen } from './confirm.js';
@@ -336,6 +337,8 @@ export const ui = {
     this._fulfillmentBlackoutTeardown = null;
     if (typeof this._cinematicTeardown === 'function') this._cinematicTeardown();
     this._cinematicTeardown = null;
+    if (this.entityLinks && typeof this.entityLinks.destroy === 'function') this.entityLinks.destroy();
+    this.entityLinks = null;
     if (this.screenManager && typeof this.screenManager.destroy === 'function') this.screenManager.destroy();
     this.screenManager = null;
     this.manager = null;
@@ -356,6 +359,11 @@ export const ui = {
     replaceMarketNewsOwner(this, ctx); // REVAMP 2.1 — economy headlines/ticker (read-only)
     this.alerts = createAlerts(ctx);
     wireSaveFeedback(this.bus);
+    this.bus.on('save:store-synced', () => {
+      if (this.screenManager && typeof this.screenManager.refreshTop === 'function') {
+        try { this.screenManager.refreshTop(); } catch (e) { console.error(e); }
+      }
+    });
 
     // screen manager — expose on ctx + on this system so screens can reach it (§ screens
     // resolve ctx.screenManager / registry.get('ui').screenManager / .manager).
@@ -364,6 +372,14 @@ export const ui = {
     ctx.screenManager = this.screenManager;
     ctx.screens = this.screenManager;
     this._screenRegistrationCycle = beginScreenRegistrationCycle(this, this.screenManager);
+
+    // J5 "everything is a link": ONE delegated handler on #screens turns every [data-entity] into a
+    // door onto that entity's dossier. Mounted after the screen manager because it reads which
+    // screen owns the stack, and because its listener must sit on the same node as the manager's
+    // pointer shield — a document-level delegate never fires (that shield stopPropagations).
+    if (this.entityLinks && typeof this.entityLinks.destroy === 'function') this.entityLinks.destroy();
+    this.entityLinks = createEntityLinks(ctx);
+    ctx.entityLinks = this.entityLinks;
 
     // Grammar §9.10: sound on every state change — one delegated pointerover on #screens,
     // rate-limited ~40ms, makes every surface feel responsive without per-widget listeners.
@@ -1095,6 +1111,8 @@ export const ui = {
     this._fulfillmentBlackoutTeardown = null;
     if (typeof this._cinematicTeardown === 'function') this._cinematicTeardown();
     this._cinematicTeardown = null;
+    if (this.entityLinks && typeof this.entityLinks.destroy === 'function') this.entityLinks.destroy();
+    this.entityLinks = null;
     if (this.screenManager && typeof this.screenManager.destroy === 'function') this.screenManager.destroy();
     this.screenManager = null;
     this.manager = null;

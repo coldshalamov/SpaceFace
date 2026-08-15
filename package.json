@@ -359,6 +359,7 @@
     "check:hitch-budget": "node scripts/check-hitch-budget.mjs",
     "check:radar:perf": "node scripts/check-radar-perf.mjs",
     "check:data-states": "node scripts/check-data-states.mjs",
+    "check:entity-links": "node scripts/check-entity-links.mjs",
     "check:ui-a11y": "node scripts/check-ui-a11y.mjs",
     "check:ui-effects": "node scripts/check-ui-effects.mjs",
     "check:command-deck-ui": "node scripts/check-command-deck-ui.mjs",

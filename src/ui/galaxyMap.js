@@ -33,6 +33,14 @@ import {
 import { zonesForSector, zoneTypeMeta, zoneThreat } from '../data/sectorZones.js';
 import { MAP_FOCUS, takeMapOpenIntent, normalizeMapFocus } from './mapAuthority.js';
 import { enhanceSelects, dataStateHtml } from './uiPrimitives.js';
+import { entityExists } from './entityResolver.js';
+
+/** J5 tagging helper: emit `data-entity` ONLY for a ref that actually resolves, so a stale or
+ *  runtime-only id renders as plain text instead of a door into an empty room. Returns the class
+ *  too, because an entity link must read as one by underline — never by colour alone. */
+function entityAttr(ref) {
+  return ref && entityExists(ref) ? ` class="sf-entity-link" tabindex="0" data-entity="${ref}"` : '';
+}
 import { resolveWaypointPresentationPosition } from './navigationWaypoint.js';
 import { sectorLawProfile } from './securityReadout.js';
 import { causeFor } from './causeLedger.js';
@@ -6416,7 +6424,7 @@ export const galaxyMapScreen = {
         ${lanesHtml}
       </div>
       <div class="gm-ins-section">
-        <div class="gm-ins-title">Best known sell · ${escapeMapHtml(commodityLabel)}</div>
+        <div class="gm-ins-title">Best known sell · <span${entityAttr('commodity:' + this._selectedCommodity)}>${escapeMapHtml(commodityLabel)}</span></div>
         ${offersHtml}
       </div>`;
   },
@@ -6437,7 +6445,7 @@ export const galaxyMapScreen = {
     return `
       <div class="gm-ins-section">
         <div class="gm-ins-kind">Threat assessment</div>
-        <div class="gm-ins-target-name">${escapeMapHtml(sectorNameOf(state, sectorId))}</div>
+        <div class="gm-ins-target-name"><span${entityAttr('sector:' + sectorId)}>${escapeMapHtml(sectorNameOf(state, sectorId))}</span></div>
         <div class="gm-ins-row"><span>Security</span><span class="gm-ins-row-val">${law.level} · ${securityPips(sec)}</span></div>
         <div class="gm-ins-row"><span>Jurisdiction</span><span class="gm-ins-row-val">${law.authority}</span></div>
         <div class="gm-ins-row"><span>Hazards</span><span class="gm-ins-row-val">${hazards}</span></div>
@@ -6454,12 +6462,12 @@ export const galaxyMapScreen = {
     const t = this._selectedTarget;
     const stations = [];
     if (t && t.kind === 'station') {
-      stations.push({ name: t.name, services: t.services || [] });
+      stations.push({ id: t.id, name: t.name, services: t.services || [] });
     } else {
       const sectorId = (t && (t.sectorId || t.id)) || currentSectorId(state);
       const record = sectorRecordById(state, sectorId);
       for (const s of (record && record.stations) || []) {
-        stations.push({ name: s.name || s.id, services: s.services || [] });
+        stations.push({ id: s.id, name: s.name || s.id, services: s.services || [] });
       }
     }
     if (!stations.length) {
@@ -6467,7 +6475,7 @@ export const galaxyMapScreen = {
     }
     return stations.map((s) => `
       <div class="gm-ins-section">
-        <div class="gm-ins-title">${escapeMapHtml(s.name)}</div>
+        <div class="gm-ins-title"><span${entityAttr('station:' + s.id)}>${escapeMapHtml(s.name)}</span></div>
         ${s.services.length
           ? `<div class="gm-svc-row">${s.services.map((svc) => `<span class="gm-svc-chip"><span aria-hidden="true">${serviceIconSvg(svc)}</span>${escapeMapHtml(svc === 'ore_buy' ? 'Ore buy' : svc)}</span>`).join('')}</div>`
           : '<div class="gm-ins-note">No services listed.</div>'}
