@@ -36,6 +36,7 @@ export function allowRealtimeShadowCast({
   isPlayer = false,
   lodLevel = 'lod0',
   distanceSq = 0,
+  axisDistance = null,
   castRadius = SHADOW_CAST_RADIUS,
 } = {}) {
   if (isPlayer) return true;
@@ -43,6 +44,8 @@ export function allowRealtimeShadowCast({
   if (level === 'lod1' || level === 'lod2') return false;
   const radius = Number(castRadius);
   const limit = Number.isFinite(radius) && radius > 0 ? radius : SHADOW_CAST_RADIUS;
+  const axis = Number(axisDistance);
+  if (axisDistance != null && Number.isFinite(axis)) return axis <= limit;
   return Number.isFinite(distanceSq) && distanceSq <= limit * limit;
 }
 
@@ -52,6 +55,15 @@ export function shadowCastDistanceSq(meshPos, playerLocalX, playerLocalZ) {
   const dx = meshPos.x - playerLocalX;
   const dz = meshPos.z - playerLocalZ;
   return dx * dx + dz * dz;
+}
+
+/** Chebyshev XZ distance — matches the square key-light ortho, not a circle. */
+export function shadowCastAxisDistance(meshPos, playerLocalX, playerLocalZ) {
+  if (!meshPos) return Infinity;
+  return Math.max(
+    Math.abs(meshPos.x - playerLocalX),
+    Math.abs(meshPos.z - playerLocalZ),
+  );
 }
 
 /** Mark a changed hierarchy/material set for one shadow-policy refresh at its current LOD. */

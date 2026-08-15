@@ -17,6 +17,7 @@ import {
   submitCullHalfExtents,
   submitRunwayWu,
   tableShadowCastRadius,
+  tableShadowCasterRadius,
 } from '../src/render/tabletopPolicy.js';
 
 const outPath = process.argv[2]
@@ -74,7 +75,8 @@ for (const zoom of zooms) {
   report.zooms[zoom] = {
     glass,
     submit,
-    shadowRadius: tableShadowCastRadius(zoom, fov, aspect),
+    shadowRadius: tableShadowCasterRadius(zoom, fov, aspect),
+    shadowRadiusUncapped: tableShadowCastRadius(zoom, fov, aspect),
     oldFakeVisibleHalf: Math.max(900, zoom * 8) + glass.halfX,
     census,
   };

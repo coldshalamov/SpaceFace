@@ -96,7 +96,7 @@ import {
   invalidateShadowCasterPolicy,
   SHADOW_MAP_SIZE,
   SHADOW_ORTHO_EXTENT,
-  shadowCastDistanceSq,
+  shadowCastAxisDistance,
   syncShadowCasterPolicy,
 } from './shadowCasterPolicy.js';
 import { updateShipPitchPresentation } from './shipPitchPresentation.js';
@@ -4236,6 +4236,7 @@ export const render = {
 
     const world = this._presentationWorld;
     const bounds = this._entityViewCullBounds();
+    this._frameShadowCastRadius = liveShadowCastRadius(this.state);
     const queryOptions = this._presentationQueryOptions;
     queryOptions.bounds = bounds;
     queryOptions.origin = this._frameMembrane.origin;
@@ -4345,14 +4346,7 @@ export const render = {
         middleBand: viewBand === 'middle',
         type: entity.type,
         projectedPx,
-        allowShadowCast: entity.type === 'ship' || entity.type === 'station'
-          ? allowRealtimeShadowCast({
-            isPlayer: entity.id === this.state.playerId,
-            lodLevel,
-            distanceSq: shadowCastDistanceSq(mesh.position, bounds.x, bounds.z),
-            castRadius: liveShadowCastRadius(this.state),
-          })
-          : false,
+        allowShadowCast: false,
       }));
 
       classifyRenderEntity(this._entityFrame, entity, mesh, false);
@@ -4699,7 +4693,10 @@ export const render = {
     authoredSyncOptions.authoredRecords = this._entityFrame.authored;
     authoredSyncOptions.playerX = 0;
     authoredSyncOptions.playerZ = 0;
-    const shadowRadius = liveShadowCastRadius(this.state);
+    const shadowRadius = Number.isFinite(this._frameShadowCastRadius)
+      ? this._frameShadowCastRadius
+      : liveShadowCastRadius(this.state);
+    this._frameShadowCastRadius = shadowRadius;
     authoredSyncOptions.castRadiusSq = shadowRadius * shadowRadius;
     authoredSyncOptions.consolidateOpaqueBatches = this._opaqueBatchEnabled === true;
     const player = this.state.playerId
@@ -4884,17 +4881,20 @@ export const render = {
       playerLocalX = local.x;
       playerLocalZ = local.z;
     }
-    const distanceSq = shadowCastDistanceSq(
+    const axisDistance = shadowCastAxisDistance(
       mesh && mesh.position,
       playerLocalX,
       playerLocalZ,
     );
+    const castRadius = Number.isFinite(this._frameShadowCastRadius)
+      ? this._frameShadowCastRadius
+      : liveShadowCastRadius(this.state);
     return {
       allowCast: allowRealtimeShadowCast({
         isPlayer,
         lodLevel,
-        distanceSq,
-        castRadius: liveShadowCastRadius(this.state),
+        axisDistance,
+        castRadius,
       }),
     };
   },

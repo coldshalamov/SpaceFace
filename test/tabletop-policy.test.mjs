@@ -12,6 +12,7 @@ import {
 } from '../src/render/opaqueMaterialBatch.js';
 import {
   allowRealtimeShadowCast,
+  shadowCastAxisDistance,
 } from '../src/render/shadowCasterPolicy.js';
 import {
   TABLE_BAND,
@@ -347,4 +348,23 @@ test('max-zoom casters cannot sit outside the key-light box', () => {
     castRadiusSq: capped * capped,
   }), false);
   assert.equal(opaqueBatchLane(outsideBox, capped * capped), 'nocast');
+});
+
+test('a hull inside the square light box still casts on the diagonal', () => {
+  const extent = 300;
+  const corner = { x: 250, y: 0, z: 250 };
+  const hypot = Math.hypot(250, 250);
+  assert.ok(hypot > extent, 'the old circle would drop this on-box hull');
+  assert.equal(shadowCastAxisDistance(corner, 0, 0), 250);
+  assert.equal(allowRealtimeShadowCast({
+    lodLevel: 'lod0',
+    axisDistance: shadowCastAxisDistance(corner, 0, 0),
+    castRadius: extent,
+  }), true);
+  assert.equal(allowRealtimeShadowCast({
+    lodLevel: 'lod0',
+    axisDistance: 320,
+    castRadius: extent,
+  }), false);
+  assert.equal(tableShadowCasterRadius(330, 50, 16 / 9, 60, 300), 300);
 });
