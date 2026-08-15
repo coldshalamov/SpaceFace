@@ -135,7 +135,9 @@ test('sim AI authority follows requested zoom and settings FOV, not the render c
     camera: { zoom: 330 },
     settings: { video: { fov: 50 } },
   });
-  assert.ok(ultrawide > 700, `sim authority ${ultrawide} covers a 32:9 max-zoom glass`);
+  const tripleWideGlass = tableAiAuthorityWu(330, 50, 48 / 9);
+  assert.ok(ultrawide + 1e-6 >= tripleWideGlass,
+    `sim authority ${ultrawide} must cover a 48:9 max-zoom glass ${tripleWideGlass}`);
   const liveRender = tableAiAuthorityWuFromState({
     camera: { zoom: 330, liveZoom: 144, fov: 90, aspect: 16 / 9 },
   });

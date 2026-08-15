@@ -399,8 +399,8 @@ test('cosmetic VFX follow the live table, not a 1500 WU horizon', () => {
     camera: { zoom: 144, liveZoom: 330, fov: 90, aspect: 16 / 9 },
     settings: { video: { fov: 50 } },
   });
-  assert.ok(sim > 400 && sim < 900,
-    'sim cadence uses a conservative 32:9 table, not the render camera');
+  assert.ok(sim > 400 && sim < 1100,
+    'sim cadence uses a conservative 48:9 table, not the render camera');
 });
 
 test('VFX station-side and seam ranges use the table helper', async () => {

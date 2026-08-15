@@ -63,8 +63,12 @@ export function tableAiAuthorityWu(
 
 export const TABLE_AI_AUTHORITY_WU = tableAiAuthorityWu();
 
-/** Worst-case supported gameplay aspect so sim cadence stays deterministic. */
-export const TABLE_SIM_ASPECT = 32 / 9;
+/**
+ * Worst-case deterministic aspect for sim cadence. The live camera uses the
+ * raw window ratio with no clamp, so 32:9 under-covers a triple-wide desktop.
+ * 48:9 is three 16:9 panes. Still a table at default zoom. Not a live viewport.
+ */
+export const TABLE_SIM_ASPECT = 48 / 9;
 
 /** Live table envelope. Prefetch uses the wider of live and requested zoom. */
 export function tableCameraEnvelope(state) {
