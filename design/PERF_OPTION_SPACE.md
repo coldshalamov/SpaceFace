@@ -11,7 +11,7 @@ and [`CANONICAL_BUILD_MAP.md`](../CANONICAL_BUILD_MAP.md) §8 / §8.1 / §8.2 / 
 (exhaustive technique inventory)**.
 
 Existing identities `PQ-034`–`PQ-044` and `PQ-051`–`PQ-060` stay authoritative for their
-scopes. Identities `PQ-061`–`PQ-124` below are reserved so later campaigns can admit
+scopes. Identities `PQ-061`–`PQ-125` below are reserved so later campaigns can admit
 leaves without inventing overlapping outcomes.
 
 ## 1. Picture and behavior contract
@@ -234,6 +234,7 @@ Each still starts as INV unless a prior census already named that owner.
 | **`PQ-122` / `PERF-82-TABLE-ASPECT-CLAMP`** | Near INV | Ultrawide windows do not grow sim authority back into a horizon. | Letterbox to three 16:9 panes or accept sleeping side-edge civilians. | Far side-edge traffic stays a map fact. |
 | **`PQ-123` / `PERF-83-INSTANCE-FAR-CULL`** | Near IMPL | Instance far cull follows the live camera table, not a leftover 9000 WU horizon. | Submit already drops off-table roots. Keep the 420 WU owner-sphere pad. Default covers 90° / 330 WU 16:9 as 3D camera distance. | No horizon instance tax; on-glass batches stay. |
 | **`PQ-124` / `PERF-84-HAIL-HUD-HORIZON`** | Near INV | Hail and the HUD overview still name a leftover 5200 WU range. | Census first. Hail/scan range is gameplay. Overview at 5 Hz is radar/map awareness (`PQ-119`), not a 3D submit box. Do not shrink who the player can hail. Admit only if the list is a named hitch; then keep hail and drop only 3D/VFX work. | Hail still works at authored range; 3D cost stays on the table. |
+| **`PQ-125` / `PERF-85-REGION-CROSSFADE`** | Near INV | Region sky/ambient still fades across a 1500 WU sector boundary. | That number is the authored entry for the next region, not a 3D submit box. Do not shrink the fade. Admit only if the fade math is a named hitch. | Region volumes still read; 3D cost stays on the table. |
 
 ## 6. Investigation protocols (scaffolds this catalog may build)
 

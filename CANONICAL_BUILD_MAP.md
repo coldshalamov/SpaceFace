@@ -436,7 +436,7 @@ exists as implementation; and `PQ-060` remains the final conditional boundary. U
 player-route comparison per candidate and pivot on a repeated failure fingerprint instead of turning
 the sequence into an audit or capture campaign.
 
-### 8.2 Full same-picture option space (`PQ-061`–`PQ-124`)
+### 8.2 Full same-picture option space (`PQ-061`–`PQ-125`)
 
 SpaceFace is a tilted top-down table. Later work must optimize **the glass plus a short approach
 runway**, not a horizon. Huge jobs stay listed. A plan is legal only if the player-facing game is
@@ -513,6 +513,7 @@ finds a pole this table does not name.
 | **`PQ-122` / `PERF-82-TABLE-ASPECT-CLAMP`** | Near INV | If a live window is wider than three 16:9 panes, either letterbox the camera to that bound or accept that far side-edge civilians sleep. Do not grow sim authority back into a horizon. |
 | **`PQ-123` / `PERF-83-INSTANCE-FAR-CULL`** | Near IMPL | Instance far cull follows the live camera table (`tableInstanceFarCullWu`), not a leftover 9000 WU horizon. Default covers the supported 90° / 330 WU 16:9 table as 3D camera distance. The 420 WU owner-sphere pad stays so a large on-glass station cannot vanish. Submit still drops off-table roots first. |
 | **`PQ-124` / `PERF-84-HAIL-HUD-HORIZON`** | Near INV | Leftover `CONTACT_HAIL_RANGE` / scanner / HUD-overview `5200` is hail and radar range, not a 3D submit box. Do not shrink who the player can hail. The 5 Hz overview hypot is cheap. Only admit a leaf if a census names that list as a hitch; then keep hail gameplay and cull only 3D/VFX work. |
+| **`PQ-125` / `PERF-85-REGION-CROSSFADE`** | Near INV | `REGION_CROSSFADE_WU = 1500` is the authored sector-boundary sky/ambient fade, not leftover mesh tax. Shrinking it would change when the next region reads. Do not touch unless a census names the fade math as a hitch. |
 
 Every leaf uses the investigate → invalidate → implement loop in
 `PERF_OPTION_SPACE.md` §3. Default order when no campaign is named: `PQ-061` → `PQ-062` → `PQ-063`
