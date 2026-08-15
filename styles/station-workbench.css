@@ -1788,7 +1788,14 @@ button.sx-fab-in { cursor:pointer; }
 /* LIVE SHIPWORKS CONTROL REPAIRS -------------------------------------------
    These controls are game instruments: no native desktop scrollbar, no repeated generic rocket,
    and no whole-node transform that can move a projected hardpoint off its ship-space anchor. */
-.sx-sw { grid-template-rows:90px minmax(260px,1fr) 92px; }
+/* The third row holds .sx-sw__side (the build-identity / energy-core / draw circuit). It was
+   pinned to 92px while its content needs ~148px, so the circuit hung 56px past the screen's own
+   bottom edge — measured, not eyeballed (scripts/probe-ship-polish-audit.mjs). That clipped the
+   energy budget, the build identity and the "select on hull" instruction on the surface F2 now
+   opens. `auto` lets the row take exactly what it needs and the stage absorbs the difference.
+   Repaired at the WINNING declaration (this selector is redefined three times at brace-depth 0 in
+   this file); appending a fourth would be the append-only disease this file already has. */
+.sx-sw { grid-template-rows:90px minmax(0,1fr) auto; }
 .sx-sw__rail {
   min-height:88px;
   padding:4px 8px 8px 190px;
@@ -1884,7 +1891,11 @@ button.sx-fab-in { cursor:pointer; }
 .sx-sw-row.is-active .sx-sw-row__ic { color:#a5f5fa; }
 .sx-sw-row__body { min-width:0; }
 .sx-sw-row__name { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13px; }
-.sx-sw-row__sub { max-width:92px; margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:9px; }
+/* 12px floor (INSTRUMENT_GRAMMAR §3, was 9px) and text-expansion safety (A_LIST_GAPS #1):
+   a 92px hard cap with nowrap+ellipsis truncates this subtitle in any longer locale. Cap becomes
+   a min, and the label wraps to two lines instead of being cut. Repaired at the winning
+   declaration — .sx-sw-row__sub is also defined at line 277. */
+.sx-sw-row__sub { min-width:0; margin-top:3px; overflow-wrap:anywhere; font-size:12px; line-height:1.2; }
 .sx-sw-row__price { position:absolute; right:10px; bottom:10px; max-width:76px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:9px; }
 
 .sx-hardpoint,

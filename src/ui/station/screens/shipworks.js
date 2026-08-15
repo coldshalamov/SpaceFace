@@ -326,7 +326,11 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       settlePreviewReveal(defId, state, generation);
       return;
     }
-    if (performance.now() - startedAt >= 8000) {
+    // Budget raised 8s -> 20s: a cold flight-first open (no prior dock to warm the mesh cache)
+    // measured 12s+ to resolve the authored hull, so the old budget expired BEFORE the asset
+    // arrived and revealed an empty bay. The terminal degraded state below is the honest floor,
+    // not the common path — it must not be reached by an asset that was merely slow.
+    if (performance.now() - startedAt >= 20000) {
       // Never leave the bay blank forever. This is an explicit degraded terminal state, not a
       // silent placeholder-to-final swap, and remains visible to the probe through the dataset.
       settlePreviewReveal(defId, state === 'loading' ? 'fallback-timeout' : state, generation);
@@ -383,7 +387,13 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     writeCanvasPreviewMeta(defId, fittings, meta);
     expectedPreviewDefId = defId || null;
     const sameHull = mount.getDefId && mount.getDefId() === defId;
-    const gated = !sameHull && !(meta && meta.mode === 'module');
+    // Gate on ASSET READINESS, not hull identity alone. The stage is a shared singleton built for
+    // the dock host, so a flight-first F2 open can match the hull id while that hull's GLB is
+    // still seconds away on a cold cache. An identity-only gate dismissed the acquiring state
+    // immediately and left the player staring at an empty bay with floating slot callouts —
+    // measured at 12s+ before the hull arrived (scripts/probe-ship-polish-audit.mjs).
+    const assetStableNow = stablePreviewState(mount.getAssetState ? mount.getAssetState() : 'rendered');
+    const gated = (!sameHull && !(meta && meta.mode === 'module')) || !assetStableNow;
     stageEl.dataset.revealWasGated = gated ? 'true' : 'false';
     const revealGeneration = beginPreviewReveal(defId, gated);
     const key = defId + '|' + (fittings || []).join(',') + '|' + (isPlayer ? 'p' : 's') + '|' + ((meta && meta.mode) || 'base');
