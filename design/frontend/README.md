@@ -93,8 +93,25 @@ describes current code, re-verify — this repo moves under you.
 ## Review pass — what the audit found and fixed
 
 The four per-screen specs were written by parallel authors and then audited against each other and
-against the grammar. Four real defects were found and corrected; they are recorded because each is a
-class of error that will recur.
+against the grammar. Four real defects were found and corrected.
+
+**Three of the four were defects in this grammar, not in the specs.** The missing token block, the
+missing key table, and `--accent`'s unstated status were all omissions in the shared spine — the
+specs diverged *because the thing they were supposed to agree with was incomplete*, and one spec
+caught the token omission and patched around it locally. That is the more useful lesson than "agents
+produced inconsistent work," and it is the honest one.
+
+**Quality was also checked, not just consistency.** The two highest-stakes sections were read in
+full against §12's definition of done: the Power Rail in `SCREENS_A_FLIGHT.md` §2 and the CONDITION
+/ symbolic-encoding band in `SCREENS_B_SHIP_RANGE.md` §1.6. Both hold. The Power Rail additionally
+surfaced a live defect nothing else had found — **four in-flight prompt surfaces already claim digit
+keys on `document` in the capture phase and call `stopPropagation()`, so they silently beat any
+flight binding today**, and `encounterChoicePrompt.js` claims `Digit1`–`Digit9`, the entire rank.
+Verified directly at `encounterChoicePrompt.js:149` (capture-phase listener) and `:212` (the
+`/^(?:Digit|Numpad)([1-9])$/` match), and at `lawfulInspectionPrompt.js:147`, whose own comment
+states it owns `Digit1` "so a flight binding cannot fire through it." The spec's response — the
+`hud:slotClaim` / `hud:slotRelease` contract, where the Rail *renders* a claim it cannot revoke — is
+the correct one and is retained.
 
 | Defect | Fix |
 |---|---|
