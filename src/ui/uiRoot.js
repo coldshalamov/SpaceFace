@@ -432,7 +432,7 @@ export const ui = {
         && this.state.settings.gameplay.controlScheme);
     });
 
-    const syncFlightCursor = (visible) => {
+    const syncFlightCursor = (visible, reticleAlive = visible) => {
       const st = this.state;
       const pointer = st && st.input && st.input.pointerScreen;
       const active = !!(visible && pointer && pointer.active);
@@ -442,7 +442,9 @@ export const ui = {
         && Array.isArray(flightPath.points) && flightPath.points.length >= 2);
       document.body.classList.toggle('sf-flight-cursor', active);
       const reticleEl = document.getElementById('aim-reticle') || reticle;
-      const nextReticleDisplay = visible && !autoTarget ? 'block' : 'none';
+      // reticleAlive keeps the aim marker readable under live (non-pausing) overlays while the
+      // cursor-hiding flight mode stays off (FRONTEND_DIRECTION §3.5: reticle + alerts survive).
+      const nextReticleDisplay = reticleAlive && !autoTarget ? 'block' : 'none';
       if (lastReticleDisplay !== nextReticleDisplay) {
         lastReticleDisplay = nextReticleDisplay;
         reticleEl.style.display = nextReticleDisplay;
@@ -758,7 +760,11 @@ export const ui = {
       const screenOpen = !!(this.screenManager && this.screenManager.isOpen && this.screenManager.isOpen());
       const externalOpen = active || isConfirmOpen()
         || !!(this.comms && this.comms.isModalOpen && this.comms.isModalOpen());
-      syncModalChrome(screenOpen, externalOpen);
+      // During a blackout isLiveOverlay() is false by definition, so live screens collapse into the
+      // full modal treatment here.
+      const liveOverlay = !!(this.screenManager && this.screenManager.isLiveOverlay
+        && this.screenManager.isLiveOverlay());
+      syncModalChrome(screenOpen, externalOpen, liveOverlay);
       const docked = !!(this.state.ui && this.state.ui.docked === true);
       if (this.screenManager && typeof this.screenManager.syncHudAccessibility === 'function') {
         this.screenManager.syncHudAccessibility(screenOpen || externalOpen || docked || this.state.mode !== 'flight');
@@ -992,13 +998,19 @@ export const ui = {
       const modalOpen = !!(this.screenManager && this.screenManager.isOpen && this.screenManager.isOpen());
       const externalModalOpen = !!this._fulfillmentBlackoutActive || isConfirmOpen()
         || !!(this.comms && this.comms.isModalOpen && this.comms.isModalOpen());
-      const modalChromeOpen = syncModalChrome(modalOpen, externalModalOpen);
+      // Live (non-pausing) overlays keep the HUD ticking visibly under a light dim instead of the
+      // full modal blackout (FRONTEND_DIRECTION §3.5): no ui-modal-open, hud stays live.
+      const liveOverlay = !!(this.screenManager && this.screenManager.isLiveOverlay
+        && this.screenManager.isLiveOverlay());
+      const modalChromeOpen = syncModalChrome(modalOpen, externalModalOpen, liveOverlay);
       const docked = !!(st && st.ui && st.ui.docked === true);
       if (this.screenManager && typeof this.screenManager.syncHudAccessibility === 'function') {
-        this.screenManager.syncHudAccessibility(modalChromeOpen || docked || !st || st.mode !== 'flight');
+        this.screenManager.syncHudAccessibility(modalChromeOpen || liveOverlay || docked || !st || st.mode !== 'flight');
       }
       const hudVisible = !!(st && st.mode === 'flight' && !modalChromeOpen && !docked);
-      if (this._syncFlightCursor) this._syncFlightCursor(hudVisible);
+      // Flight cursor (cursor:none) only in pure flight — over any open screen the pointer is a UI
+      // cursor. The reticle itself stays alive under live overlays (second arg).
+      if (this._syncFlightCursor) this._syncFlightCursor(hudVisible && !modalOpen, hudVisible);
       if (this.hud) {
         if (hudVisible) {
           if (!this._hudVisibleLast && this.hud.forceRefresh) this.hud.forceRefresh();
@@ -2102,8 +2114,10 @@ function injectHudCss() {
   document.head.appendChild(s);
 }
 
-function syncModalChrome(screenOpen, externalModalOpen = false) {
-  const modalOpen = !!(screenOpen || externalModalOpen);
+function syncModalChrome(screenOpen, externalModalOpen = false, liveOverlay = false) {
+  // liveOverlay: screens are open but non-pausing over a running sim — no modal chrome, the body
+  // class is `ui-live-screen` (owned by screenManager); only the shared backdrop still shows.
+  const modalOpen = !!((screenOpen && !liveOverlay) || externalModalOpen);
   if (_lastModalOpen !== modalOpen || document.body.classList.contains('ui-modal-open') !== modalOpen) {
     document.body.classList.toggle('ui-modal-open', modalOpen);
     _lastModalOpen = modalOpen;

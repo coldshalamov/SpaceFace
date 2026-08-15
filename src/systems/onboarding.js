@@ -733,7 +733,9 @@ export const onboarding = {
   // traverse the hidden content; removing the class restores it accurately.
   _syncModalAccessibility() {
     if (!this._panel) return;
-    const modalOpen = !!(document.body && document.body.classList.contains('ui-modal-open'));
+    // Both pausing modals and live overlays hide the onboarding panel (CSS), so both count here.
+    const modalOpen = !!(document.body && (document.body.classList.contains('ui-modal-open')
+      || document.body.classList.contains('ui-live-screen')));
     if (modalOpen) {
       if (this._panel.getAttribute('aria-hidden') !== 'true') {
         this._panel.setAttribute('aria-hidden', 'true');

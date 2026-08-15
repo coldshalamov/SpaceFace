@@ -38,8 +38,8 @@ function isUiCommandTarget(target) {
 
 function modalInputActive() {
   const body = typeof document !== 'undefined' ? document.body : null;
-  return !!(body && body.classList && typeof body.classList.contains === 'function'
-    && body.classList.contains('ui-modal-open'));
+  if (!body || !body.classList || typeof body.classList.contains !== 'function') return false;
+  return body.classList.contains('ui-modal-open') || body.classList.contains('ui-live-screen');
 }
 
 function isAutoFireCode(state, code) {

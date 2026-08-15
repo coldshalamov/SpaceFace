@@ -84,6 +84,20 @@ body.ui-modal-open #modal-backdrop { display: block; opacity: 1; visibility: vis
 body.ui-modal-open #sf-onboarding,
 body.ui-modal-open .sf-ob-intro { display: none; }
 
+/* --- Live overlays (FRONTEND_DIRECTION §3.5/§6.1) -------------------------------------
+   Non-pausing screens (galaxy/starmap/localmap, techTree, missionLog, automation) open over a
+   RUNNING sim. The old blanket ui-modal-open zeroed the HUD, reticle and alerts while enemies
+   kept shooting — a blindfold, not a trade-off. Live keeps the world and the player's instruments
+   readable: light ~25% dim, HUD at half opacity (reticle, alerts and toasts are not targeted, so
+   they survive at full strength), pointer input still owned by the screen. */
+body.ui-live-screen #hud { opacity: .5; pointer-events: none; }
+body.ui-live-screen #modal-backdrop {
+  display: block; opacity: 1; visibility: visible; pointer-events: auto;
+  background: radial-gradient(circle at 50% 40%, rgba(2,5,12,.16), rgba(2,5,12,.28));
+}
+body.ui-live-screen #sf-onboarding,
+body.ui-live-screen .sf-ob-intro { display: none; }
+
 .panel { background: linear-gradient(180deg, var(--panel-2), var(--panel)); border: 1px solid var(--panel-edge); border-radius: 8px; box-shadow: 0 6px 30px rgba(0, 0, 0, .5); }
 button { font-family: inherit; font-size: inherit; color: var(--ink); background: var(--panel-2); border: 1px solid var(--panel-edge); border-radius: 5px; padding: 6px 12px; cursor: pointer; pointer-events: auto; transition: border-color .1s, color .1s; }
 button:hover { border-color: var(--accent); color: #fff; }

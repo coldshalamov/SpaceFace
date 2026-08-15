@@ -4,8 +4,11 @@
 //
 // Every modal screen is built ONCE and cached in #screens; only the top of the stack is
 // display:flex, all others display:none (DOM retained so scroll/tab state persists).
-// Pushing any screen adds `.ui-modal-open` to <body> (CSS hides #hud + shows the backdrop).
-// Popping back to an empty stack removes it → the flight HUD returns.
+// Pushing a PAUSING screen adds `.ui-modal-open` to <body> (CSS hides #hud + shows the backdrop);
+// pushing a non-pausing "live" screen (maps, tech tree, mission log, automation) adds
+// `.ui-live-screen` instead — the sim keeps running, so the HUD, reticle and alerts stay
+// readable at reduced opacity under a light dim (FRONTEND_DIRECTION §3.5).
+// Popping back to an empty stack removes both → the flight HUD returns.
 //
 // Screens that "pause the sim" (pause / menus) request a freeze while at least one such screen is
 // open and emit sim:pause/sim:resume exactly once at the aggregate boundary. Screen modules do not
@@ -201,13 +204,16 @@ export function createScreenManager(ctx) {
       if (open) screensRoot.removeAttribute('aria-hidden');
       else screensRoot.setAttribute('aria-hidden', 'true');
     }
-    // Fulfillment boarding is an external modal owned by uiRoot. Keep it in the same semantic
-    // reconciliation as screens/docking so a late syncVisibility() during init/re-init cannot
-    // expose the HUD or clear body modal chrome for even one input frame.
-    const modalOpen = open || state.ui.docked === true
-      || state.ui.fulfillmentBlackoutActive === true;
+    // Live overlays: non-pausing screens (maps, tech tree, mission log, automation) sit over a
+    // RUNNING sim. They must not blind the player — the old blanket `.ui-modal-open` zeroed the
+    // HUD, reticle and alerts while enemies kept shooting (FRONTEND_DIRECTION §3.5). Only a
+    // pausing screen, docking, or a fulfillment blackout keeps the full modal treatment.
+    const externalModal = state.ui.docked === true || state.ui.fulfillmentBlackoutActive === true;
+    const liveOverlay = open && !externalModal && stack.every((id) => !PAUSING_SCREENS.has(id));
+    const modalOpen = open && !liveOverlay || externalModal;
     document.body.classList.toggle('ui-modal-open', modalOpen);
-    syncHudAccessibility(modalOpen || state.mode !== 'flight');
+    document.body.classList.toggle('ui-live-screen', liveOverlay);
+    syncHudAccessibility(open || externalModal || state.mode !== 'flight');
     if (backdrop) {
       backdrop.hidden = !open;
       // The dimmer is visual chrome; the active screen owns the dialog semantics.
@@ -436,12 +442,19 @@ export function createScreenManager(ctx) {
     const externalModal = state.ui.docked === true
       || state.ui.fulfillmentBlackoutActive === true;
     document.body.classList.toggle('ui-modal-open', externalModal);
+    document.body.classList.remove('ui-live-screen');
     syncHudAccessibility(externalModal || state.mode !== 'flight');
+  }
+
+  function isLiveOverlay() {
+    if (!stack.length) return false;
+    if (state.ui.docked === true || state.ui.fulfillmentBlackoutActive === true) return false;
+    return stack.every((id) => !PAUSING_SCREENS.has(id));
   }
 
   return {
     register, pushScreen, popScreen, replaceScreen, closeAll,
     isOpen, hasScreen, top, getActiveScreenDef, refreshTop, syncVisibility, syncHudAccessibility,
-    locked, destroy,
+    isLiveOverlay, locked, destroy,
   };
 }
