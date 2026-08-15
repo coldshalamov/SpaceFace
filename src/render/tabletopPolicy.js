@@ -272,6 +272,27 @@ export function authoredImmediateRadius(speed = TABLE_REFERENCE_SPEED_WU) {
   return approachDistanceWu(TABLE_AUTHORED_IMMEDIATE_SECONDS, speed);
 }
 
+/**
+ * Loading-time compose radius. Glass plus the immediate authored runway.
+ * Replaces the leftover 2400 WU ship horizon. Critical starting hubs are
+ * a separate exception in the caller, not a reason to grow this number.
+ */
+export function tableOpeningCompositionWu(state) {
+  const camera = state && state.camera || {};
+  const video = state && state.settings && state.settings.video || {};
+  const live = Number.isFinite(camera.liveZoom) ? camera.liveZoom : NaN;
+  const requested = Number.isFinite(camera.zoom) ? camera.zoom : NaN;
+  const zoom = Math.max(
+    Number.isFinite(live) ? live : 0,
+    Number.isFinite(requested) ? requested : 0,
+  ) || 144;
+  const fov = Number.isFinite(camera.fov) ? camera.fov
+    : (Number.isFinite(video.fov) ? video.fov : 50);
+  const aspect = Number.isFinite(camera.aspect) && camera.aspect > 0 ? camera.aspect : 16 / 9;
+  const tilt = Number.isFinite(camera.tilt) ? camera.tilt : 60;
+  return glassCornerWu(zoom, fov, aspect, tilt) + authoredImmediateRadius(tableTravelSpeed(state));
+}
+
 export function authoredLookaheadSeconds() {
   return TABLE_AUTHORED_DECODE_SECONDS;
 }

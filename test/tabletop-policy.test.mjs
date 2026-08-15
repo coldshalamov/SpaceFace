@@ -36,6 +36,7 @@ import {
   TABLE_LOOT_MAGNET_CAP_WU,
   tableShadowCastRadius,
   tableShadowCasterRadius,
+  tableOpeningCompositionWu,
   tableSimAuthorityWuFromState,
   tableTravelSpeed,
   tableVfxDrawWuFromState,
@@ -191,6 +192,14 @@ test('far current-sector landmarks are map facts until they can enter the table'
   assert.equal(isCriticalStartingHub(helios), true);
   assert.equal(shouldKeepPersistentLandmarkResident(helios, { mode: 'flight' }), false);
   assert.equal(shouldKeepPersistentLandmarkResident(helios, { mode: 'loading' }), true);
+});
+
+test('opening compose follows the table, not a 2400 WU leftover horizon', () => {
+  const opening = tableOpeningCompositionWu({
+    camera: { zoom: 144, fov: 50, aspect: 16 / 9 },
+  });
+  assert.ok(opening < 800, `opening compose ${opening} stays on the table`);
+  assert.ok(opening < 2400, 'opening compose is not the leftover 2400 WU ship horizon');
 });
 
 test('authored decode follows the table, not a 2400-unit horizon', () => {
@@ -423,6 +432,13 @@ test('VFX station-side and seam ranges use the table helper', async () => {
   assert.doesNotMatch(source, /LOOT_MAGNET_DRAW_RANGE \* LOOT_MAGNET_DRAW_RANGE/);
   assert.doesNotMatch(source, /Math\.min\(\s*this\._tableVfxDrawWu/);
   assert.doesNotMatch(source, /VFX_STATION_SIDE_EVENT_DRAW_RANGE = 1500/);
+});
+
+test('opening compose no longer hard-codes a 2400 WU ship horizon', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const source = await readFile(new URL('../src/render/partsLibrary.js', import.meta.url), 'utf8');
+  assert.match(source, /tableOpeningCompositionWu/);
+  assert.doesNotMatch(source, /INITIAL_SHIP_COMPOSITION_RADIUS = 2400/);
 });
 
 test('loot-magnet trails keep the tractor cap on the player and the glass on the look-at', () => {

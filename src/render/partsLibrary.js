@@ -13,7 +13,7 @@ import { WEAPONS } from '../data/weapons.js';
 import { invalidateFailedAuthoredAssets, loadAuthoredPart } from './assetLoader.js';
 import { getAssetResidency } from './assetResidency.js';
 import { configureRealtimeCanopyMaterials } from './canopyMaterialPolicy.js';
-import { AUTHORED_ASSET_IMMEDIATE_RADIUS } from './authoredAdmissionPolicy.js';
+import { isCriticalStartingHub as isTableCriticalStartingHub, tableOpeningCompositionWu } from './tabletopPolicy.js';
 import { isReleaseAssetMode } from './releaseMode.js';
 import * as kit from './ships/shipKit.js';
 import { attachPlaceHlod, attachStationHlod } from './hlod.js';
@@ -628,8 +628,6 @@ const AUTHORED_BOOTSTRAP_PLAN = Object.freeze({
 // Gate the same spatial runway used by live authored prefetch so its initial decode/composition and
 // associated garbage collection finish behind loading. Distant authored-only boundaries remain
 // hidden and continue to stream on demand.
-const INITIAL_SHIP_COMPOSITION_RADIUS = 2400;
-const INITIAL_PLACE_COMPOSITION_RADIUS = AUTHORED_ASSET_IMMEDIATE_RADIUS;
 const REGULAR_HULL_FILES = Object.freeze(
   PART_LIBRARY_CONTRACT.slots.hull.filter((file) => !String(file).startsWith('wholeships/')),
 );
@@ -642,19 +640,17 @@ export function authoredBootstrapPreloadPlan() {
 export function isInitialAuthoredCompositionEntity(entity, state) {
   if (!entity || entity.alive === false || !state) return false;
   if (entity.id === state.playerId || entity.isPlayer === true) return true;
-  const criticalHub = isCriticalStartingHub(entity);
+  if (isTableCriticalStartingHub(entity) || isCriticalStartingHub(entity)) return true;
   const player = state.entities && typeof state.entities.get === 'function'
     ? state.entities.get(state.playerId)
     : (state.entityList || []).find((candidate) => candidate && candidate.id === state.playerId);
-  if (!player || !player.pos || !entity.pos) return criticalHub;
+  if (!player || !player.pos || !entity.pos) return false;
   const dx = Number(entity.pos.x) - Number(player.pos.x);
   const dz = Number(entity.pos.z) - Number(player.pos.z);
   if (!Number.isFinite(dx) || !Number.isFinite(dz)) return false;
-  const radius = entity.type === 'ship'
-    ? INITIAL_SHIP_COMPOSITION_RADIUS
-    : ((entity.type === 'station' || entity.type === 'fx') && placeFileForEntity(entity)
-      ? INITIAL_PLACE_COMPOSITION_RADIUS
-      : 0);
+  const isPlace = (entity.type === 'station' || entity.type === 'fx') && placeFileForEntity(entity);
+  if (entity.type !== 'ship' && !isPlace) return false;
+  const radius = tableOpeningCompositionWu(state);
   return radius > 0 && dx * dx + dz * dz <= radius * radius;
 }
 
