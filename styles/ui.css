@@ -265,18 +265,23 @@ button:active { translate: 0 1px; }
   image-rendering: pixelated;
 }
 
-/* Better toasts / feedback for fun factor (mining hits, kills, yields feel satisfying) */
+/* Receipts / telemetry feedback (clean HUD type, restrained lines, no heavy cards) */
 .toast {
-  background: var(--panel);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: .04em;
+  color: var(--ink);
+  background: rgba(10, 16, 26, 0.88);
   border: 1px solid var(--panel-edge);
-  border-left: 4px solid var(--accent);
-  padding: 8px 14px;
-  border-radius: 6px;
-  box-shadow: 0 4px 20px rgba(0,0,0,.5);
-  font-size: 13px;
+  border-left: 3px solid var(--accent);
+  padding: 5px 12px;
+  border-radius: 4px;
+  box-shadow: 0 4px 14px rgba(0,0,0,.45);
 }
-.toast.good { border-left-color: var(--good); }
-.toast.warn { border-left-color: var(--warn); }
+.toast.good, .toast[data-kind="good"], .toast[data-kind="credits"], .toast[data-kind="success"] { border-left-color: var(--good); color: #d4f7e2; }
+.toast.warn, .toast[data-kind="warn"] { border-left-color: var(--warn); color: #fce8cc; }
+.toast.danger, .toast.error, .toast[data-kind="danger"], .toast[data-kind="error"] { border-left-color: var(--danger); color: #ffd6dc; }
+
 
 /* Icons atlas usage hint (the generated B-006 + expansion can be used as decorative or future sliced icons) */
 .icon-ref {
@@ -408,7 +413,8 @@ button:active { translate: 0 1px; }
 .sf-divider { height: 1px; background: linear-gradient(90deg, transparent, var(--panel-edge), transparent);
   border: none; margin: var(--sp-3) 0; }
 
-/* Empty state */
+/* Empty state — LEGACY, superseded by .sf-state (section 13). Zero consumers; kept only so any
+   out-of-tree screen still renders. New panes use uiPrimitives.mountDataState(). */
 .sf-empty { color: var(--ink-mute); font-style: italic; font-size: var(--t-sm); padding: var(--sp-3); text-align: center; }
 
 /* Fade-in for screens/panels so they feel responsive, not pop-in. */
@@ -1073,3 +1079,99 @@ button:active { translate: 0 1px; }
 .sf-ship .sx-sw { width: 100%; }
 .sf-ship .sx-sw--flight .sx-seg { display: none; }
 .sf-ship .sx-sw--flight .sx-sw__railstep { display: none; }
+
+/* 13 ─ sf-state : the four required data states (J3; uiPrimitives.dataState) --------------------
+   EMPTY / LOADING / ERROR / DENIED. Each names what would fill it and carries a verb — a
+   correct-but-blank pane reads as broken (grammar §12 item 9). Supersedes .sf-empty.
+
+   Colour: grammar §4 roles only; `--accent` is roleless and banned here. At rest the block is
+   calm+paper (the 80% rule) and spends exactly ONE hot colour on the rail + glyph. Meaning never
+   lives in colour alone — the state word and the glyph silhouette are the second and third
+   channels, both of which survive forced-colors.
+
+   Naming: no `panel|card|menu|modal` substring (forced-colors strips background-image/box-shadow
+   from those) and no `pulse|blink|flash` (sf-reduce-flash blanket-kills [class*=…] animation). */
+.sf-state {
+  display: flex; align-items: flex-start; gap: 14px;
+  flex-wrap: wrap; align-content: center;
+  padding: clamp(16px, 3.4vh, 30px) clamp(16px, 2.6vw, 30px);
+  min-width: 0; max-width: 62ch; margin-inline: auto;
+  color: var(--sf-paper);
+  border-inline-start: 2px solid var(--sf-calm);
+}
+.sf-state--error, .sf-state--denied { border-inline-start-color: var(--sf-foe); }
+.sf-state--compact { padding: 12px 14px; gap: 10px; }
+
+.sf-state__glyph { flex: none; width: 30px; height: 30px; color: var(--sf-calm); }
+.sf-state--error .sf-state__glyph, .sf-state--denied .sf-state__glyph { color: var(--sf-foe); }
+.sf-state__glyph svg { width: 100%; height: 100%; display: block; }
+
+.sf-state__body { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; flex: 1 1 22ch; }
+
+/* The state word is the non-colour channel. 12px floor, per the ship polish pass. */
+.sf-state__word {
+  font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
+  letter-spacing: .18em; text-transform: uppercase; color: var(--sf-calm);
+}
+.sf-state--error .sf-state__word, .sf-state--denied .sf-state__word { color: var(--sf-foe); }
+
+/* Headline is the pane's DISPLAY element while the state is up. No fixed width, +40% safe. */
+.sf-state__head {
+  margin: 0; font-family: var(--sf-display-face); font-weight: 700;
+  font-size: clamp(19px, 2.2vw, 28px); line-height: 1.12; color: var(--sf-paper);
+  overflow-wrap: anywhere; text-wrap: balance;
+}
+.sf-state--compact .sf-state__head { font-size: clamp(15px, 1.5vw, 19px); }
+.sf-state__fills, .sf-state__detail {
+  margin: 0; font-size: 14px; line-height: 1.45; color: var(--sf-calm); overflow-wrap: anywhere;
+}
+.sf-state__detail { font-size: 13px; opacity: .85; }
+
+/* The verb carries --sf-goal: it is the way out, which is exactly "what you're heading for". */
+.sf-state__verb {
+  margin-top: 4px; display: inline-flex; align-items: center; gap: 8px;
+  font: inherit; font-size: 14px; font-weight: 600; letter-spacing: .01em; text-transform: none;
+  color: var(--sf-goal); background: transparent;
+  border: 1px solid color-mix(in srgb, var(--sf-goal) 45%, transparent);
+  border-radius: var(--r-sm, 5px); padding: 7px 14px; cursor: pointer; box-shadow: none;
+  transition: border-color var(--sf-t-latch) var(--sf-ease), color var(--sf-t-latch) var(--sf-ease);
+}
+.sf-state__verb:hover { border-color: var(--sf-goal); }
+.sf-state__verb:focus-visible { outline: 2px solid var(--sf-goal); outline-offset: 2px; }
+.sf-state__verb:active { transform: none; }   /* ui.css `button:active{transform}` clobbers centering */
+.sf-state__key {
+  font: 600 11px/1 var(--sf-subhead-face); letter-spacing: .06em; white-space: nowrap;
+  padding: 3px 5px; border: 1px solid var(--sf-edge); border-radius: 3px; color: var(--sf-calm);
+}
+
+/* LOADING skeleton — echoes the REAL layout so the pane's shape reads before its content does.
+   The sweep is INFINITE while mounted and is removed, never hidden: mountDataState() clears its
+   host and settleDataState() detaches the node. A display:none/visibility:hidden loading shimmer
+   keeps running on the compositor where check:ui-frame-sleep (which inspects rAF) cannot see it —
+   that is the live defect in .sx-sw__acquiring, and a shared primitive would multiply it. */
+.sf-state__skel { flex: 1 0 100%; display: flex; flex-direction: column; gap: 8px; margin-bottom: 6px; }
+.sf-state__bar {
+  position: relative; overflow: hidden; width: 72%; height: 12px; border-radius: 3px;
+  background: color-mix(in srgb, var(--sf-calm) 14%, transparent);
+}
+.sf-state__bar:nth-child(2) { width: 92%; }
+.sf-state__bar:nth-child(3) { width: 54%; }
+.sf-state__bar::after {
+  content: ""; position: absolute; inset: 0; transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--sf-calm) 34%, transparent), transparent);
+  animation: sfStateSweep 1150ms var(--sf-ease) infinite;
+}
+@keyframes sfStateSweep { to { transform: translateX(100%); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .sf-state__bar::after { animation: none; transform: none; background: none; }
+  .sf-state__verb { transition: none; }
+}
+/* forced-colors: gradients/shadows are stripped, so the sweep and the tinted bars vanish. Give the
+   skeleton a real border so LOADING stays legible rather than blank (grammar §11). */
+@media (forced-colors: active) {
+  .sf-state { border-inline-start: 2px solid CanvasText; }
+  .sf-state__bar { border: 1px solid CanvasText; background: none; }
+  .sf-state__bar::after { animation: none; background: none; }
+  .sf-state__verb { border: 1px solid ButtonText; color: ButtonText; }
+}

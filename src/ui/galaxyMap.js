@@ -32,7 +32,7 @@ import {
 } from '../data/sectorCoordinates.js';
 import { zonesForSector, zoneTypeMeta, zoneThreat } from '../data/sectorZones.js';
 import { MAP_FOCUS, takeMapOpenIntent, normalizeMapFocus } from './mapAuthority.js';
-import { enhanceSelects } from './uiPrimitives.js';
+import { enhanceSelects, dataStateHtml } from './uiPrimitives.js';
 import { resolveWaypointPresentationPosition } from './navigationWaypoint.js';
 import { sectorLawProfile } from './securityReadout.js';
 import { causeFor } from './causeLedger.js';
@@ -5073,6 +5073,21 @@ export const galaxyMapScreen = {
     if (this._inspectorDetails && typeof this._inspectorDetails.addEventListener === 'function') {
       this._inspectorDetails.addEventListener('click', (ev) => {
         const target = ev && ev.target;
+        // J3 data-state verbs. Every EMPTY/LOADING/ERROR/DENIED block this pane renders carries a
+        // way out; this is where those land. An unrecognised action does NOTHING rather than
+        // guessing — the same discipline causeLedger applies to unknown driver tags.
+        const stateVerb = target && typeof target.closest === 'function'
+          ? target.closest('[data-sf-verb]') : null;
+        if (stateVerb) {
+          const action = stateVerb.getAttribute('data-sf-verb');
+          if (action === 'economy:services') galaxyMapScreen._setTab('services', { focus: true });
+          else if (action === 'economy:commodity') {
+            const sel = galaxyMapScreen._root && galaxyMapScreen._root.querySelector('#gm-commodity-select');
+            const focusable = sel && (sel.sfSelectField || sel);
+            if (focusable && focusable.focus) { try { focusable.focus({ preventScroll: true }); } catch (_) { focusable.focus(); } }
+          }
+          return;
+        }
         const siteRow = target && typeof target.closest === 'function'
           ? target.closest('[data-world-site-id]') : null;
         if (siteRow) {
@@ -6357,9 +6372,20 @@ export const galaxyMapScreen = {
           <span class="gm-tl-sub">${escapeMapHtml(lane.originName)} → ${escapeMapHtml(lane.destinationName)} · ${Math.max(0, Math.floor(lane.units))}u · ${perMin}/min</span>
         </button>`;
       }).join('')
-      : `<div class="gm-ins-note">${(state && state.economy && state.economy.marketIntel && Object.keys(state.economy.marketIntel).length)
-        ? 'No profitable lanes in current intel. Fresh quotes at two or more stations will rank routes here.'
-        : 'Dock at stations to record market intel. Ranked lanes will appear here.'}</div>`;
+      // The build map's named live symptom (§11.11 #8): this pane was correct-but-blank until two
+      // stations had been priced, and said so without offering a way to get there. Both branches now
+      // name what would fill them AND carry a verb (J3).
+      : (state && state.economy && state.economy.marketIntel && Object.keys(state.economy.marketIntel).length)
+        ? dataStateHtml('empty', {
+          headline: 'No lane in your intel turns a profit yet.',
+          fills: 'Ranked lanes appear once you hold fresh quotes at two or more stations trading the same goods.',
+          verb: { label: 'Find somewhere to dock', action: 'economy:services' },
+        })
+        : dataStateHtml('empty', {
+          headline: 'You have not priced a market yet.',
+          fills: 'Dock anywhere and open its market — the first quote you record starts the ledger this ranks from.',
+          verb: { label: 'Find somewhere to dock', action: 'economy:services' },
+        });
 
     const offers = bestKnownSellOffers(state, this._selectedCommodity, 3);
     const commodityLabel = String(this._selectedCommodity || '').replace('cmdty_', '').replace(/_/g, ' ').toUpperCase();
@@ -6368,7 +6394,12 @@ export const galaxyMapScreen = {
         const tint = memoryTint(offer.ageS);
         return `<div class="gm-bk-row"><span class="gm-bk-station">${escapeMapHtml(offer.stationName)}</span><span class="gm-bk-val ${tint.key}">${offer.sell} cr · ${ageText(offer.ageS)}</span></div>`;
       }).join('')
-      : `<div class="gm-ins-note">No remembered quotes for ${escapeMapHtml(commodityLabel)}. Prices appear after you dock and trade.</div>`;
+      : dataStateHtml('empty', {
+        headline: 'Nobody has quoted you a price for ' + commodityLabel + '.',
+        fills: 'Dock at a station that buys it and the price you are shown is remembered here, with its age.',
+        verb: { label: 'Lens another commodity', action: 'economy:commodity' },
+        compact: true,
+      });
 
     const credits = state.player && state.player.credits ? Math.round(state.player.credits).toLocaleString() : '0';
     const cargo = state.player && state.player.cargo ? (state.player.cargo.volume || 0) : 0;

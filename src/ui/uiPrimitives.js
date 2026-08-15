@@ -356,6 +356,180 @@ export function enhanceSelects(root) {
 }
 
 // ---------------------------------------------------------------------------------------------------
+// dataState — the FOUR REQUIRED DATA STATES (J3; CANONICAL_BUILD_MAP §11.12, grammar §12 item 9).
+//
+// "A correct-but-blank screen reads as broken." Every pane must be able to render EMPTY / LOADING /
+// ERROR / DENIED, and each state must name WHAT WOULD FILL IT and carry a VERB. Supersedes the dead
+// `.sf-empty` class (a centred italic string that named nothing and did nothing).
+//
+// TWO CONTRACTS THIS MODULE ENFORCES IN CODE, because a doc cannot:
+//
+//  1. `fills` and `verb` are REQUIRED and throw when absent. If they were options every caller would
+//     omit them and this decays back into `.sf-empty` with more ceremony. Authoring-time failure is
+//     the point — scripts/check-data-states.mjs asserts the same rule statically.
+//
+//  2. LOADING's sweep is REMOVED, never hidden. The repo's existing "good" loading state
+//     (`.sx-sw__acquiring`) runs `animation: … infinite` and only sets visibility:hidden when done —
+//     a compositor-side animation that `check:ui-frame-sleep` cannot see because it inspects rAF.
+//     Mounting through `mountDataState()` clears the host, so resolving a load necessarily detaches
+//     the animating nodes. `settleDataState()` is the explicit form.
+//
+// Colour follows grammar §4 roles only — never `--accent`, which is deliberately roleless. At rest a
+// state is calm+paper; exactly one hot accent is spent on the rail/glyph, and the verb carries
+// `--sf-goal` because it is the way out. Meaning never lives in colour alone: every state prints its
+// own state word and carries a distinct glyph silhouette, so `forced-colors` (which strips
+// background-image, box-shadow and filter) still reads correctly.
+// ---------------------------------------------------------------------------------------------------
+
+/** The four states. `word` is the second, non-colour channel; `role` names the grammar §4 token. */
+const DATA_STATES = {
+  empty:   { word: 'NOTHING HERE', role: 'calm', busy: null,     live: 'polite' },
+  loading: { word: 'WORKING',      role: 'calm', busy: 'true',   live: 'polite' },
+  error:   { word: 'FAULT',        role: 'foe',  busy: null,     live: 'assertive' },
+  denied:  { word: 'BLOCKED',      role: 'foe',  busy: null,     live: 'assertive' },
+};
+
+// 24×24, stroke=currentColor, distinguishable by SILHOUETTE alone (the mirror-pair test): an open
+// socket, a broken arc, a struck triangle, a barred ring.
+const STATE_GLYPHS = {
+  empty:   '<circle cx="12" cy="12" r="8.2" stroke-dasharray="3 3.4"/>',
+  loading: '<path d="M12 3.8a8.2 8.2 0 0 1 8.2 8.2"/><path d="M12 20.2a8.2 8.2 0 0 1-8.2-8.2" opacity=".45"/>',
+  error:   '<path d="M12 4.2 21 19.4H3z"/><path d="M12 10v4.1M12 16.8v.1"/>',
+  denied:  '<circle cx="12" cy="12" r="8.2"/><path d="M6.2 17.8 17.8 6.2"/>',
+};
+
+function stateGlyph(kind) {
+  return '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" '
+    + 'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' + STATE_GLYPHS[kind] + '</svg>';
+}
+
+/**
+ * dataState(kind, opts) -> HTMLElement (detached).
+ *
+ * kind: 'empty' | 'loading' | 'error' | 'denied'
+ * opts.headline  REQUIRED — what is (or is not) here, in the player's words. Not a status code.
+ * opts.fills     REQUIRED — what WOULD fill this pane. For LOADING, the real work being awaited
+ *                (never a timer). For DENIED, the rule that blocks it.
+ * opts.verb      REQUIRED — { label, onActivate? , action? , key? }. The way out. A pane the player
+ *                can only stare at is the failure this primitive exists to prevent. `onActivate` is
+ *                a direct listener; `action` emits `data-sf-verb="<action>"` for a host screen's
+ *                existing delegated click handler (the only form that survives dataStateHtml).
+ * opts.detail    optional second line.
+ * opts.skeleton  LOADING only — [{ w, h }] rows echoing the REAL layout, or a row count.
+ * opts.compact   dense inline variant (drawer decks, apron tiles).
+ *
+ * Throws on a missing kind / headline / fills / verb.label — see contract 1 above.
+ */
+export function dataState(kind, opts = {}) {
+  const spec = DATA_STATES[kind];
+  if (!spec) throw new TypeError('dataState: unknown kind "' + kind + '" (empty|loading|error|denied)');
+  if (!opts.headline) throw new TypeError('dataState(' + kind + '): `headline` is required');
+  if (!opts.fills) throw new TypeError('dataState(' + kind + '): `fills` is required — name what would fill this pane');
+  const verb = opts.verb;
+  if (!verb || !verb.label) {
+    throw new TypeError('dataState(' + kind + '): `verb` is required — every data state carries a way out');
+  }
+
+  const body = [];
+  body.push(el('span', 'sf-state__word', { text: spec.word }));
+  body.push(el('p', 'sf-state__head', { text: String(opts.headline), attrs: { 'data-sf-text': '' } }));
+  body.push(el('p', 'sf-state__fills', { text: String(opts.fills), attrs: { 'data-sf-text': '' } }));
+  if (opts.detail) body.push(el('p', 'sf-state__detail', { text: String(opts.detail), attrs: { 'data-sf-text': '' } }));
+
+  const verbKids = [el('span', null, { text: String(verb.label) })];
+  if (verb.key) verbKids.push(el('kbd', 'sf-state__key', { text: String(verb.key) }));
+  const verbAttrs = { type: 'button' };
+  if (verb.action) verbAttrs['data-sf-verb'] = String(verb.action);
+  const verbBtn = el('button', 'sf-state__verb', { children: verbKids, attrs: verbAttrs });
+  if (typeof verb.onActivate === 'function') verbBtn.addEventListener('click', verb.onActivate);
+  body.push(verbBtn);
+
+  const kids = [
+    el('span', 'sf-state__glyph', { html: stateGlyph(kind), attrs: { 'aria-hidden': 'true' } }),
+    el('div', 'sf-state__body', { children: body }),
+  ];
+
+  // LOADING renders a skeleton OF THE REAL LAYOUT above the copy, so the pane's shape is legible
+  // before its content is. Rows are authored by the caller; a bare count gets an even default.
+  if (kind === 'loading' && opts.skeleton) {
+    const rows = Array.isArray(opts.skeleton)
+      ? opts.skeleton
+      : Array.from({ length: Math.max(1, Math.min(8, Number(opts.skeleton) || 3)) }, () => ({}));
+    const skel = el('div', 'sf-state__skel', { attrs: { 'aria-hidden': 'true' } });
+    for (const r of rows.slice(0, 8)) {
+      const bar = el('div', 'sf-state__bar');
+      if (r && r.w) bar.style.width = String(r.w);
+      if (r && r.h) bar.style.height = (Number(r.h) || 12) + 'px';
+      skel.appendChild(bar);
+    }
+    kids.unshift(skel);
+  }
+
+  const attrs = {
+    'data-sf-state': kind,
+    role: 'status',
+    'aria-live': spec.live,
+  };
+  if (spec.busy) attrs['aria-busy'] = spec.busy;
+  const node = el('div', 'sf-state sf-state--' + kind + (opts.compact ? ' sf-state--compact' : ''), {
+    children: kids, attrs,
+  });
+  node.sfStateVerb = verbBtn;
+  return node;
+}
+
+/**
+ * mountDataState(host, kind, opts) -> the mounted node.
+ *
+ * CLEARS `host` first. This is the sanctioned mount path precisely because clearing is what makes
+ * contract 2 hold: replacing a LOADING state with real content detaches its animating nodes rather
+ * than hiding them. Returns null (and leaves the host alone) when `host` is missing.
+ */
+export function mountDataState(host, kind, opts) {
+  if (!host) return null;
+  const node = dataState(kind, opts);
+  host.textContent = '';
+  host.appendChild(node);
+  return node;
+}
+
+/**
+ * dataStateHtml(kind, opts) -> markup string.
+ *
+ * Most screens in this repo assemble innerHTML strings (galaxyMap, the station screens), so a
+ * DOM-only primitive could not be adopted where the defect actually lives. Built from the SAME
+ * dataState() node so the two forms cannot drift apart.
+ *
+ * The verb must be `verb.action` here: a listener cannot survive serialization, and silently
+ * dropping one would ship a dead button — the exact "correct-but-inert" failure this job exists to
+ * remove. Host screens route `[data-sf-verb]` through the delegated click handler they already own.
+ */
+export function dataStateHtml(kind, opts = {}) {
+  const verb = opts && opts.verb;
+  if (verb && typeof verb.onActivate === 'function' && !verb.action) {
+    throw new TypeError('dataStateHtml(' + kind + '): `verb.onActivate` cannot be serialized — use `verb.action`');
+  }
+  if (verb && !verb.action) {
+    throw new TypeError('dataStateHtml(' + kind + '): `verb.action` is required so the verb survives innerHTML');
+  }
+  return dataState(kind, opts).outerHTML;
+}
+
+/**
+ * settleDataState(host) — remove every data state under `host`, animation and all.
+ *
+ * Call this before writing real content by any path other than mountDataState(). A hidden LOADING
+ * sweep keeps running on the compositor where no check in this repo can see it.
+ */
+export function settleDataState(host) {
+  if (!host || !host.querySelectorAll) return 0;
+  const nodes = Array.from(host.querySelectorAll('.sf-state'));
+  if (host.classList && host.classList.contains('sf-state')) nodes.push(host);
+  for (const n of nodes) if (n.parentNode) n.parentNode.removeChild(n);
+  return nodes.length;
+}
+
+// ---------------------------------------------------------------------------------------------------
 function clamp01(n) {
   n = Number(n);
   if (!Number.isFinite(n)) return 0;
