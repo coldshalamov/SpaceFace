@@ -30,9 +30,12 @@ import {
   shouldKeepPersistentLandmarkResident,
   submitCullHalfExtents,
   submitRunwayWu,
+  shouldDrawTableVfx,
   tableShadowCastRadius,
   tableShadowCasterRadius,
+  tableSimAuthorityWuFromState,
   tableTravelSpeed,
+  tableVfxDrawWuFromState,
 } from '../src/render/tabletopPolicy.js';
 import {
   isEntityAuthoredUpgradeRelevant,
@@ -374,4 +377,32 @@ test('a hull inside the square light box still casts on the diagonal', () => {
     castRadius: extent,
   }), true);
   assert.equal(opaqueBatchLane(hypot * hypot, extent * extent, 250, extent), 'cast');
+});
+
+test('cosmetic VFX follow the live table, not a 1500 WU horizon', () => {
+  const defaultDraw = tableVfxDrawWuFromState({
+    camera: { zoom: 144, fov: 50, aspect: 16 / 9 },
+  });
+  assert.ok(defaultDraw < 800, `default VFX ${defaultDraw} stays on the table`);
+  assert.equal(shouldDrawTableVfx(200, 0, defaultDraw), true);
+  assert.equal(shouldDrawTableVfx(1500, 0, defaultDraw), false);
+  const wide = tableVfxDrawWuFromState({
+    camera: { zoom: 330, fov: 90, aspect: 16 / 9 },
+  });
+  assert.ok(wide > 1500, `wide-lens VFX ${wide} still covers the live glass`);
+  assert.equal(shouldDrawTableVfx(800, 0, wide), true);
+  const sim = tableSimAuthorityWuFromState({
+    camera: { zoom: 144, liveZoom: 330, fov: 90, aspect: 32 / 9 },
+    settings: { video: { fov: 50 } },
+  });
+  assert.ok(Math.abs(sim - defaultDraw) < 1e-6,
+    'sim cadence ignores the render camera that VFX may still read');
+});
+
+test('VFX station-side and seam ranges use the table helper', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const source = await readFile(new URL('../src/render/vfx.js', import.meta.url), 'utf8');
+  assert.match(source, /tableVfxDrawWuFromState/);
+  assert.match(source, /shouldDrawTableVfx/);
+  assert.doesNotMatch(source, /VFX_STATION_SIDE_EVENT_DRAW_RANGE = 1500/);
 });

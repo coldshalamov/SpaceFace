@@ -57,6 +57,7 @@ import {
 import { createRenderFrameMembrane } from './frameCoordinates.js';
 import { readOwnedExceptionalSpeed } from './velocityLanguage.js';
 import { fieldFalloff } from '../core/fields/fieldKernel.js'; // PQ-012: VFX density mirrors the kernel falloff (gauges must not lie)
+import { shouldDrawTableVfx, tableVfxDrawWuFromState } from './tabletopPolicy.js';
 import { applyFlashAccessibility, resolveVfxAccessibilityProfile } from './vfxAccessibility.js';
 import {
   createStationSideEventVfxFrameScratch,
@@ -479,11 +480,10 @@ const RIBBON_DISCONTINUITY_FLOOR_WU = 160;
 export const RIBBON_DISCONTINUITY_MAX_WU = 640;
 export const RIBBON_NPC_OWNER_CAP = 8;
 const VFX_PROJECTILE_TRAILS_HZ = 45;
-const VFX_SEAM_DRAW_RANGE = 640;
+// Seam and station-side draw range follow the live table (tableVfxDrawWuFromState).
 // Ambient station movers are event-driven, pooled VFX. Twelve pose writes per second is enough for
 // their slow docking/orbit paths and leaves the ordinary frame asleep when no side-event is active.
 const VFX_STATION_SIDE_EVENTS_HZ = 12;
-const VFX_STATION_SIDE_EVENT_DRAW_RANGE = 1500;
 // NPC work signatures ("The Working Light"). Same 12 Hz as the station movers: the underlying job
 // phases change on the order of seconds, so a faster pose write would buy nothing, and the shared
 // cadence keeps the two ambient layers from beating against each other. Slept entirely when no live
@@ -4453,7 +4453,8 @@ export const vfx = {
     const player = this.helpers && this.helpers.player
       ? this.helpers.player()
       : this._ent(this.state.playerId);
-    const drawRange2 = VFX_STATION_SIDE_EVENT_DRAW_RANGE * VFX_STATION_SIDE_EVENT_DRAW_RANGE;
+    const drawWu = tableVfxDrawWuFromState(this.state);
+    const drawRange2 = drawWu * drawWu;
     let emitted = 0;
 
     for (let i = 0; i < slots.length; i++) {
@@ -6705,6 +6706,7 @@ export const vfx = {
     assertDynamicBufferOwnerWritable(sm.dynamicBufferOwner);
     const simTime = state.simTime || 0;
     const pulse = 0.82 + 0.18 * Math.sin(this._t * 4.2);
+    const drawWu = tableVfxDrawWuFromState(state);
     let n = 0;
     const list = state.entityList || [];
     for (let i = 0; i < list.length && n < sm.CAP; i++) {
@@ -6714,7 +6716,7 @@ export const vfx = {
       if (!seams || !seams.length) continue;
       // Range cull stays galactic-global (origin-invariant); instance matrices are frame-local.
       const dx = e.pos.x - player.pos.x, dz = e.pos.z - player.pos.z;
-      if (dx * dx + dz * dz > 640 * 640) continue;      // draw range
+      if (!shouldDrawTableVfx(dx, dz, drawWu)) continue;
       const scanned = (e.data.scanHighlightUntil || 0) > simTime;
       const seamLocked = e.id === this._miningSeamPulseId && simTime <= this._miningSeamPulseUntil;
       const cr = Math.cos(e.rot || 0), sr = Math.sin(e.rot || 0);
@@ -9247,7 +9249,7 @@ export const vfx = {
     if (!player || !player.pos) return false;
     const px = player.pos.x || 0;
     const pz = player.pos.z || 0;
-    const range2 = VFX_SEAM_DRAW_RANGE * VFX_SEAM_DRAW_RANGE;
+    const range2 = tableVfxDrawWuFromState(state) ** 2;
     const list = state.entityList || [];
     for (let i = 0; i < list.length; i++) {
       const e = list[i];

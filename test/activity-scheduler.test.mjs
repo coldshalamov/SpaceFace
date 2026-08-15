@@ -15,6 +15,7 @@ import {
   submitCullHalfExtents,
   tableAiAuthorityWu,
   tableAiAuthorityWuFromState,
+  tableSimAuthorityWuFromState,
 } from '../src/render/tabletopPolicy.js';
 
 test('period 1 always runs and phases are deterministic', () => {
@@ -103,24 +104,35 @@ test('live traffic consults the ambient hauler planner', async () => {
   const { readFile } = await import('node:fs/promises');
   const source = await readFile(new URL('../src/systems/traffic.js', import.meta.url), 'utf8');
   assert.match(source, /shouldAmbientHaulerPlan\(/);
-  assert.match(source, /tableAiAuthorityWuFromState/);
+  assert.match(source, /tableSimAuthorityWuFromState/);
   const ai = await readFile(new URL('../src/ai/stack.js', import.meta.url), 'utf8');
   assert.match(ai, /TABLE_AI_AUTHORITY_WU/);
   const bark = await readFile(new URL('../src/systems/barkDirector.js', import.meta.url), 'utf8');
-  assert.match(bark, /tableAiAuthorityWuFromState/);
+  assert.match(bark, /tableSimAuthorityWuFromState/);
 });
 
-test('AI authority follows the live camera including a 90 degree FOV', () => {
-  const tight = tableAiAuthorityWuFromState({
-    camera: { zoom: 144, fov: 50, aspect: 16 / 9 },
+test('sim AI authority follows requested zoom and settings FOV, not the render camera', () => {
+  const tight = tableSimAuthorityWuFromState({
+    camera: { zoom: 144 },
+    settings: { video: { fov: 50 } },
   });
-  const wide = tableAiAuthorityWuFromState({
+  const wide = tableSimAuthorityWuFromState({
+    camera: { zoom: 330 },
     settings: { video: { fov: 90 } },
-    camera: { zoom: 330, aspect: 16 / 9 },
   });
   assert.ok(tight < 800, `default play AI ${tight} stays table-sized`);
-  assert.ok(wide > 1500, `90-degree max-zoom AI ${wide} covers the live glass`);
+  assert.ok(wide > 1500, `90-degree max-zoom AI ${wide} covers the settings glass`);
   const hauler = { id: 'h', ai: { passive: true }, pos: { x: 800, z: 0 } };
   assert.equal(isActiveOwner(hauler, { origin: { x: 0, z: 0 }, authorityRadius: tight }), false);
   assert.equal(isActiveOwner(hauler, { origin: { x: 0, z: 0 }, authorityRadius: wide }), true);
+
+  const fromSettings = tableSimAuthorityWuFromState({
+    camera: { zoom: 330, liveZoom: 144, fov: 50, aspect: 32 / 9 },
+    settings: { video: { fov: 90 } },
+  });
+  assert.equal(fromSettings, wide, 'render-frame liveZoom/fov/aspect must not change sim authority');
+  const liveRender = tableAiAuthorityWuFromState({
+    camera: { zoom: 330, liveZoom: 144, fov: 90, aspect: 16 / 9 },
+  });
+  assert.ok(liveRender > 1500, 'render/VFX path may still read the live glass');
 });

@@ -64,7 +64,7 @@ export function tableAiAuthorityWu(
 export const TABLE_AI_AUTHORITY_WU = tableAiAuthorityWu();
 
 /** Live table envelope. Prefetch uses the wider of live and requested zoom. */
-export function tableAiAuthorityWuFromState(state) {
+export function tableCameraEnvelope(state) {
   const camera = state && state.camera || {};
   const video = state && state.settings && state.settings.video || {};
   const live = Number.isFinite(camera.liveZoom) ? camera.liveZoom : NaN;
@@ -77,7 +77,42 @@ export function tableAiAuthorityWuFromState(state) {
     : (Number.isFinite(video.fov) ? video.fov : 50);
   const aspect = Number.isFinite(camera.aspect) && camera.aspect > 0 ? camera.aspect : 16 / 9;
   const tilt = Number.isFinite(camera.tilt) ? camera.tilt : 60;
-  return tableAiAuthorityWu(zoom, fov, aspect, tilt);
+  return { zoom, fov, aspect, tilt };
+}
+
+export function tableAiAuthorityWuFromState(state) {
+  const cam = tableCameraEnvelope(state);
+  return tableAiAuthorityWu(cam.zoom, cam.fov, cam.aspect, cam.tilt);
+}
+
+/**
+ * Sim-side table envelope. Traffic and bark may not read liveZoom / renderer
+ * fov / viewport aspect — those are presentation and would make seeded runs
+ * depend on refresh rate and window size.
+ */
+export function tableSimAuthorityWuFromState(state) {
+  const camera = state && state.camera || {};
+  const video = state && state.settings && state.settings.video || {};
+  const zoom = Number.isFinite(camera.zoom) ? camera.zoom : 144;
+  const fov = Number.isFinite(video.fov) ? video.fov : 50;
+  const tilt = Number.isFinite(camera.tilt) ? camera.tilt : 60;
+  return tableAiAuthorityWu(zoom, fov, 16 / 9, tilt);
+}
+
+/**
+ * Cosmetic VFX follow the same live table as hearing/AI. Off-table trails and
+ * station-side lights stay map facts; on-glass VFX is unchanged.
+ */
+export function tableVfxDrawWuFromState(state) {
+  const cam = tableCameraEnvelope(state);
+  return tableHearingFarWu(cam.zoom, cam.fov, cam.aspect, cam.tilt);
+}
+
+export function shouldDrawTableVfx(dx, dz, drawWu) {
+  const limit = Number.isFinite(drawWu) && drawWu > 0 ? drawWu : TABLE_HEARING_FAR_WU;
+  const x = Number(dx) || 0;
+  const z = Number(dz) || 0;
+  return (x * x + z * z) <= limit * limit;
 }
 
 export const TABLE_BAND = Object.freeze({
