@@ -47,6 +47,22 @@ export function tableHearingFarWu(
 
 export const TABLE_HEARING_FAR_WU = tableHearingFarWu();
 
+/**
+ * Passive AI/traffic may sleep beyond the largest table a player can open.
+ * Hostiles and the player stay awake regardless of this number.
+ */
+export function tableAiAuthorityWu(
+  zoom = 330,
+  fovDeg = 50,
+  aspect = 16 / 9,
+  tiltDeg = 60,
+  speed = TABLE_REFERENCE_SPEED_WU,
+) {
+  return tableHearingFarWu(zoom, fovDeg, aspect, tiltDeg, speed);
+}
+
+export const TABLE_AI_AUTHORITY_WU = tableAiAuthorityWu();
+
 export const TABLE_BAND = Object.freeze({
   GLASS: 'glass',
   RUNWAY: 'runway',

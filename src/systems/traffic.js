@@ -21,6 +21,7 @@
 //     never touches player state. Economy impact is via the event bus.
 
 import { shouldAmbientHaulerPlan, shouldRunOnTick } from '../core/activityScheduler.js';
+import { TABLE_AI_AUTHORITY_WU } from '../render/tabletopPolicy.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec } from './ships.js';
 import { CombatDoctrineId } from '../ai/combatDoctrine.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
@@ -3147,7 +3148,7 @@ export const traffic = {
       if (!shouldAmbientHaulerPlan(state.tick, e, {
         playerId: state.playerId,
         playerTeam: player && player.team,
-        authorityRadius: 1400,
+        authorityRadius: TABLE_AI_AUTHORITY_WU,
         origin: player && player.pos,
       })) continue;
 

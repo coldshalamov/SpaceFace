@@ -16,6 +16,7 @@ import { CombatDoctrineRuntime, normalizeCombatDoctrineId, overrideDirectiveForC
 import { overrideDirectiveForWingOrder, perceptionForWingOrderCombatDoctrine } from './doctrine.js';
 import { normalizeFactionBehaviorProfile } from './factionBehavior.js';
 import { shouldOwnerThink } from '../core/activityScheduler.js';
+import { TABLE_AI_AUTHORITY_WU } from '../render/tabletopPolicy.js';
 
 const NORMALIZED_ROSTER_FLAG = '__spacefaceNormalizedAIRoster';
 const ROSTER_SIGNATURE_FLAG = '__spacefaceRosterSignature';
@@ -294,7 +295,7 @@ export class TacticalAIStack {
         playerId,
         playerTeam,
         origin,
-        authorityRadius: 1400,
+        authorityRadius: TABLE_AI_AUTHORITY_WU,
         sleepPeriodTicks: 8,
         activePeriodTicks: 1,
       })) {

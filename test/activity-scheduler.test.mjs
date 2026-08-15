@@ -10,6 +10,11 @@ import {
   shouldOwnerThink,
   shouldRunOnTick,
 } from '../src/core/activityScheduler.js';
+import {
+  TABLE_AI_AUTHORITY_WU,
+  submitCullHalfExtents,
+  tableAiAuthorityWu,
+} from '../src/render/tabletopPolicy.js';
 
 test('period 1 always runs and phases are deterministic', () => {
   for (let tick = 0; tick < 24; tick++) {
@@ -56,7 +61,7 @@ test('ambient haulers plan slower when far; hostiles still think every tick', ()
   const opts = {
     playerId: 1,
     playerTeam: 1,
-    authorityRadius: 1400,
+    authorityRadius: TABLE_AI_AUTHORITY_WU,
     origin: { x: 0, z: 0 },
   };
   let farHits = 0;
@@ -80,8 +85,26 @@ test('ambient haulers plan slower when far; hostiles still think every tick', ()
   assert.equal(liveHits, 8, 'live ships store AI on data.ai, not owner.ai');
 });
 
+test('passive AI sleeps beyond the largest table, not a 1400 WU horizon', () => {
+  const submit = submitCullHalfExtents(330, 50, 16 / 9);
+  const tableCorner = Math.hypot(submit.halfX, submit.halfZ);
+  assert.equal(tableAiAuthorityWu(), tableCorner);
+  assert.ok(TABLE_AI_AUTHORITY_WU < 1400, `table AI ${TABLE_AI_AUTHORITY_WU} must beat the old 1400 horizon`);
+  assert.ok(TABLE_AI_AUTHORITY_WU >= tableCorner - 1e-6);
+  const near = { id: 'n', ai: { passive: true }, pos: { x: 200, z: 0 } };
+  const far = { id: 'f', ai: { passive: true }, pos: { x: 1400, z: 0 } };
+  const opts = { origin: { x: 0, z: 0 }, authorityRadius: TABLE_AI_AUTHORITY_WU };
+  assert.equal(isActiveOwner(near, opts), true);
+  assert.equal(isActiveOwner(far, opts), false);
+});
+
 test('live traffic consults the ambient hauler planner', async () => {
   const { readFile } = await import('node:fs/promises');
   const source = await readFile(new URL('../src/systems/traffic.js', import.meta.url), 'utf8');
   assert.match(source, /shouldAmbientHaulerPlan\(/);
+  assert.match(source, /TABLE_AI_AUTHORITY_WU/);
+  const ai = await readFile(new URL('../src/ai/stack.js', import.meta.url), 'utf8');
+  assert.match(ai, /TABLE_AI_AUTHORITY_WU/);
+  const bark = await readFile(new URL('../src/systems/barkDirector.js', import.meta.url), 'utf8');
+  assert.match(bark, /TABLE_AI_AUTHORITY_WU/);
 });
