@@ -141,7 +141,13 @@ try {
   if (!geo) problems.push('R2: no drawer to measure');
   else {
     if (!geo.inScreen) problems.push('R2: drawer is NOT inside the screen root — screenManager\'s focus trap will eject it');
-    if (Math.abs(geo.height - geo.vh) > 2) problems.push(`R2: drawer height ${geo.height} != viewport ${geo.vh} — it anchored to a content-sized box, not the frame`);
+    // The drawer sizes to its CONTENT and sits on the bottom edge — a full-height column holding
+    // ~300px of copy with the verbs pinned to the floor read as an unfinished sidebar. What must
+    // hold is that it never exceeds the frame and stays flush to the bottom-right corner, i.e. it
+    // is still resolving against the viewport rather than a content-sized .screen box.
+    if (geo.height > geo.vh + 2) problems.push(`R2: drawer height ${geo.height} exceeds viewport ${geo.vh} — it would overflow the frame`);
+    if (geo.height < 120) problems.push(`R2: drawer height ${geo.height} is implausibly small — it likely collapsed to min-content`);
+    if (Math.abs(geo.bottom - geo.vh) > 2) problems.push(`R2: drawer bottom ${geo.bottom} != viewport ${geo.vh} — it is not anchored to the frame's bottom edge, so it resolved against a content-sized box`);
     if (Math.abs(geo.right - geo.vw) > 2) problems.push(`R2: drawer right edge ${geo.right} != viewport width ${geo.vw} — it is not flush to the frame edge`);
     if (!geo.hostStretched) problems.push('R2: host screen did not receive .sf-drawerhost');
     if (!geo.verbs) problems.push('R2: drawer APRON has no verb (grammar §6)');

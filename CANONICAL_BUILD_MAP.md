@@ -49,10 +49,6 @@ disjoint files. No coordinator, task-long reservation, or worktree is required.
 - `INFERENCE <Nx> [optional scope]` → [`design/vision/INFERENCE_CONVERGENCE_METHOD.md`](./design/vision/INFERENCE_CONVERGENCE_METHOD.md)
   plus [`INFERENCE_LANES.md`](./design/program/INFERENCE_LANES.md). That door does **not** run the
   flyable-ship remaster.
-
-- `INFERENCE <Nx> [optional scope]` → [`design/vision/INFERENCE_CONVERGENCE_METHOD.md`](./design/vision/INFERENCE_CONVERGENCE_METHOD.md)
-  plus [`INFERENCE_LANES.md`](./design/program/INFERENCE_LANES.md). That door does **not** run the
-  flyable-ship remaster.
 - **Campaign / overnight / “non-INFERENCE work in this map” / “non-inference graphics work” /
   “do all of it”** → stay on admitted
   program work and **keep going**. Do not open the INFERENCE method. Do not take a single `--next`
@@ -400,7 +396,7 @@ use it instead of inventing another retry loop.
 
 Every packet that can add per-frame work, entities, colliders, DOM, particles, materials, textures, asset admission, save payload, or queries must declare a cost model before implementation and report matched before/after evidence at acceptance.
 
-Use [`design/PERF_BUDGET.md`](./design/PERF_BUDGET.md). Preserve the target and floor profiles. Optimize invisible work first. Do not pass by lowering default render scale, effects, shadows, particles, asset detail, or content density.
+Use [`design/PERF_BUDGET.md`](./design/PERF_BUDGET.md). Preserve the target and floor profiles. Optimize invisible work first. Do not pass by lowering default render scale, effects, shadows, particles, asset detail, or content density. The durable multi-approach tradeoff board lives in [`design/PERF_SYSTEMATIC_PROGRAM.md`](./design/PERF_SYSTEMATIC_PROGRAM.md). The exhaustive same-picture option space — including investigations, scaffolding, tabletop-correct cuts, and large Worker/WASM/WebGPU/native/Rust jobs — lives in [`design/PERF_OPTION_SPACE.md`](./design/PERF_OPTION_SPACE.md) and is reserved as §8.2.
 
 Feature code should be naturally bounded:
 
@@ -444,6 +440,278 @@ Execution order is outcome-driven, not merely numeric: `PQ-051` first; then `PQ-
 exists as implementation; and `PQ-060` remains the final conditional boundary. Use one clean matched
 player-route comparison per candidate and pivot on a repeated failure fingerprint instead of turning
 the sequence into an audit or capture campaign.
+
+### 8.2 Full same-picture option space (`PQ-061`–`PQ-118`)
+
+SpaceFace is a tilted top-down table. Later work must optimize **the glass plus a short approach
+runway**, not a horizon. Huge jobs stay listed. A plan is legal only if the player-facing game is
+unchanged. Full protocols, investigation scaffolds, and implement-after-census rules:
+[`design/PERF_OPTION_SPACE.md`](./design/PERF_OPTION_SPACE.md).
+
+These identities are reserved, not admitted. Admit a parent and its smallest leaves into
+`program-queue.json` before implementation. `PQ-094` may mint new reserved leaves when a sweep
+finds a pole this table does not name.
+
+| Plan | Horizon | Player outcome |
+|---|---|---|
+| **`PQ-061` / `PERF-21-TABLETOP-CENSUS`** | Near INV | Glass vs fake-visible vs resident vs sim counts on a fixed-seed fly. |
+| **`PQ-062` / `PERF-22-HITCH-CLASSIFIER`** | Near INV | Every >32 ms frame named (compile, upload, compose, shadow, GC, save, …). |
+| **`PQ-063` / `PERF-23-PHASE-TIMERS`** | Near INV | Honest sim / prep / submit / present / UI / VFX clocks on the bloom path. |
+| **`PQ-064` / `PERF-24-SHADER-VARIANT-CENSUS`** | Near INV | Live program keys vs precompile keep-alives. |
+| **`PQ-065` / `PERF-25-ALLOC-GC-SOAK`** | Near INV | Long-session heap/GPU retainers named or declared flat. |
+| **`PQ-066` / `PERF-26-DETERMINISM-LAB`** | Near INV | Cadence/Worker/WASM candidates rejected if hashes move. |
+| **`PQ-067` / `PERF-27-PLATFORM-SPIKE-MATRIX`** | Mid INV | Worker, WASM, WebGPU, native spikes; keep/reject each with picture parity. |
+| **`PQ-068` / `PERF-28-GLASS-BOX-SUBMIT`** | Near IMPL | Off-glass ships not drawn; on-glass picture identical. |
+| **`PQ-069` / `PERF-29-APPROACH-RESIDENCY`** | Near IMPL | Meshes exist just before they can enter the glass. |
+| **`PQ-070` / `PERF-30-OFFSTAGE-WORK-FREEZE`** | Near IMPL | LOD, shadows, closures, pools do not run for unsubmitted roots. |
+| **`PQ-071` / `PERF-31-OFFGLASS-LANDMARKS`** | Mid IMPL | Far stations are map facts until approach, not live 3D residents. |
+| **`PQ-072` / `PERF-32-EXACT-KEY-PREWARM`** | Mid IMPL | First sight of a live shader key is not one display callback. |
+| **`PQ-073` / `PERF-33-COMPOSE-PART-SLICE`** | Mid IMPL | Building a ship cannot drop a 40–250 ms present brick. |
+| **`PQ-074` / `PERF-34-UPLOAD-AFTER-PRESENT`** | Mid IMPL | First texture/buffer upload does not share the present beat. |
+| **`PQ-075` / `PERF-35-NEXT-CONTACT-WARM`** | Mid IMPL | Only hulls about to enter the glass are warmed. |
+| **`PQ-076` / `PERF-36-ONGLASS-LANES`** | Mid IMPL | Shared-program canopy/plume/transparent lanes collapse on-glass. |
+| **`PQ-077` / `PERF-37-SHADOW-GLASS-SET`** | Near IMPL | Only casters that can fall on the visible table pay a depth pass. |
+| **`PQ-078` / `PERF-38-PRESENT-FUSION`** | Mid IMPL | One bloom/HDR present; extra AA only if present is the pole. |
+| **`PQ-079` / `PERF-39-BUFFER-POLICY`** | Mid IMPL | Instance/batch buffers do not hitch-grow or leak VRAM. |
+| **`PQ-080` / `PERF-40-TABLE-CADENCE`** | Mid IMPL | 60 Hz is the table and the fight; off-table owners sleep. |
+| **`PQ-081` / `PERF-41-SNAPSHOT-FENCE`** | Mid IMPL | Present reads a dense snapshot, not live entity objects. |
+| **`PQ-082` / `PERF-42-SIM-WORKER`** | Long IMPL | Sim tick on another core; implements `PQ-043` when sim is the pole. |
+| **`PQ-083` / `PERF-43-WASM-SIM-ISLAND`** | Long IMPL | One hot CPU island in Rust/WASM; snapshot in/out; not Three.js. |
+| **`PQ-084` / `PERF-44-PHYSICS-SLEEP`** | Mid IMPL | Far Rapier bodies sleep; table collisions stay authoritative. |
+| **`PQ-085` / `PERF-45-PLACE-SHELL`** | Mid IMPL | Large places decode a table-visible shell first. |
+| **`PQ-086` / `PERF-46-TEXTURE-RESIDENCY`** | Mid IMPL | Off-glass maps evict; on-glass maps never thrash. |
+| **`PQ-087` / `PERF-47-AUTOSAVE-HITCH`** | Mid IMPL | Autosave cannot occupy a display callback. |
+| **`PQ-088` / `PERF-48-HUD-AUDIO-CADENCE`** | Mid IMPL | HUD/audio do not full-tick hidden or off-glass work. |
+| **`PQ-089` / `PERF-49-WEBGPU-BACKEND`** | Long IMPL | Same game on WebGPU with WebGL rollback. |
+| **`PQ-090` / `PERF-50-NATIVE-PRESENT`** | Long IMPL | Native present slice on the same snapshot/input/save. |
+| **`PQ-091` / `PERF-51-RUST-ISLANDS`** | Long IMPL | Further Rust/WASM islands; full engine rewrite only as a `PQ-090` successor. |
+| **`PQ-092` / `PERF-52-ELECTRON-PRESENT`** | Mid IMPL | Electron hitch/p95 matches the browser on the same save. |
+| **`PQ-093` / `PERF-53-SHARED-ARRAY-SNAPSHOT`** | Long IMPL | Worker/WASM publish through SharedArrayBuffer. |
+| **`PQ-094` / `PERF-54-POLE-SWEEP`** | Standing | Recurring census; mint new reserved leaves when a pole has no plan. |
+| **`PQ-095` / `PERF-55-SKY-ON-A-TABLE`** | Near INV→IMPL | Sky/parallax/deep-field cost what a tabletop uses. |
+| **`PQ-096` / `PERF-56-EVENT-LIGHT-CARDINALITY`** | Mid INV→IMPL | Event lights do not bake extra program variants. |
+| **`PQ-097` / `PERF-57-BLOOM-RESOLVE`** | Mid INV→IMPL | Cheaper bloom/HDR at the same halo. |
+| **`PQ-098` / `PERF-58-SPEEDLINE-OFFTHREAD`** | Mid INV→IMPL | Boost lines do not hitch the 3D present. |
+| **`PQ-099` / `PERF-59-SCENE-GRAPH-FLATTEN`** | Mid INV→IMPL | Matrix/child walks do not scale with off-glass graphs. |
+| **`PQ-100` / `PERF-60-ORIGIN-REBASE-HITCH`** | Mid INV→IMPL | Floating-origin rebase is not a hitch. |
+| **`PQ-101` / `PERF-61-CATCHUP-SPIRAL`** | Near INV→IMPL | One late frame does not cascade extra sim steps. |
+| **`PQ-102` / `PERF-62-MENU-WORLD-UNLOAD`** | Mid INV→IMPL | Station/map/pause do not keep submitting the flight world. |
+| **`PQ-103` / `PERF-63-DECODE-WORKER`** | Mid INV→IMPL | GLB/KTX2/Basis decode is off the present thread. |
+| **`PQ-104` / `PERF-64-BINARY-SHADER-CACHE`** | Mid INV→IMPL | Repeat boots reuse driver program binaries. |
+| **`PQ-105` / `PERF-65-AUDIO-TABLE-CULL`** | Near INV→IMPL | Audio follows the table, not a 900 WU horizon. |
+| **`PQ-106` / `PERF-66-HOT-ALLOC-SHAPES`** | Mid INV→IMPL | Per-frame allocation is not the hitch owner. |
+| **`PQ-107` / `PERF-67-STATE-CHANGE-SORT`** | Mid INV→IMPL | On-glass draws minimize program binds. |
+| **`PQ-108` / `PERF-68-TINY-ONGLASS-LOD`** | Mid INV→IMPL | 30-pixel on-glass fighters are cheap; close ships stay full. |
+| **`PQ-109` / `PERF-69-GL-CONTEXT-FLAGS`** | Near INV→IMPL | Canvas/GL flags add no hidden copy. |
+| **`PQ-110` / `PERF-70-ANGLE-BACKEND`** | Mid INV→IMPL | Fastest legal ANGLE backend on this GPU. |
+| **`PQ-111` / `PERF-71-PIXEL-PARITY-GATE`** | Near INV | Glass still-diff for every same-picture A/B. |
+| **`PQ-112` / `PERF-72-THERMAL-NOISE`** | Standing | Noisy A/B pairs cannot pass a leaf. |
+| **`PQ-113` / `PERF-73-PROD-PROBES-OFF`** | Near INV→IMPL | Production default pays no debug-probe tax. |
+| **`PQ-114` / `PERF-74-IDLE-ADMISSION`** | Mid INV→IMPL | Next-contact compile in true idle, never stacked on rAF. |
+| **`PQ-115` / `PERF-75-VFX-ONGLASS`** | Mid INV→IMPL | Trails/lights/flipbooks follow the table. |
+| **`PQ-116` / `PERF-76-HDR-BUFFER-FORMAT`** | Mid INV→IMPL | Cheapest HDR target that keeps the default halo. |
+| **`PQ-117` / `PERF-77-HIDDEN-SYSTEM-SKIP`** | Near INV→IMPL | Registry systems do not full-tick when 3D is hidden. |
+| **`PQ-118` / `PERF-78-REPLAY-PERF-BISECT`** | Mid INV | A hitch is reproducible from input+seed. |
+
+Every leaf uses the investigate → invalidate → implement loop in
+`PERF_OPTION_SPACE.md` §3. Default order when no campaign is named: `PQ-061` → `PQ-062` → `PQ-063`
+→ then §7 of that file. Long platform leaves wait until that table points at them, unless the owner
+starts that campaign.
+
+### 8.3 Exhaustive same-picture technique inventory
+
+This is the full list of performance optimizations that may later be investigated or implemented.
+Each line is a legal leaf under the parent in parentheses. Admit via `PQ-094` minting if it has no
+row yet. Size of the job is not a reason to omit it. **Illegal** as a win: default quality cuts,
+emptying the glass, camera-facing soft cards for fly-past objects, or editing sim goldens.
+
+**Loop for every line:** measure the live pole → census glass / runway / beyond → **invalidate**
+if it is not the pole, A/B worsens, pixels change, the stall moves, or copy costs more than it
+saves → else implement the smallest leaf → tests of real functions → matched A/B → keep or revert.
+
+#### Glass vs off-stage (this camera)
+
+- Shrink query/cull margin from multi-screen to glass + measured approach seconds (`PQ-061`, `PQ-068`)
+- Do not submit roots outside glass + runway (`PQ-068`)
+- Do not LOD-resolve off-glass roots (`PQ-070`)
+- Do not run shadow policy off-glass (`PQ-070`, `PQ-077`)
+- Do not run damage/drive/site closures off-glass (`PQ-070`)
+- Do not instance-pool or BatchedMesh plates that will not submit (`PQ-070`)
+- Mesh prefetch/evict = top-speed × fraction of a second, not 5200/6400-as-horizon (`PQ-069`)
+- Whole-sector stations/planets/fx are map facts until approach (`PQ-071`)
+- Neighbor-sector meshes never constructed (`PQ-069`)
+- Authored-upgrade prefetch follows approach, not sector (`PQ-075`)
+- VFX/trails/lights/flipbooks only on-glass + runway (`PQ-115`)
+- Audio voices follow table hearing, not 900 WU (`PQ-105`)
+- Layers / bitmasks so off-glass graphs are not in the walk (`PQ-099`)
+- Scissor / viewport to the glass if a leftover pass still covers unused pixels (`PQ-078`)
+- On-glass tiny-contact LOD (30 px fighter cheap; 120 px full) (`PQ-108`)
+- Pixel-floor remaining VFX under N px (`PQ-115`)
+- Skip decals / greebles / nav-light meshes under N projected px (`PQ-108`, `PQ-053`)
+- Freeze animation/morph/skin off-glass (`PQ-070`)
+- Sleep Rapier bodies off-table (`PQ-084`)
+- Sleep AI/perception/path off-table; hostiles on-table stay 60 Hz (`PQ-080`)
+
+#### Submit / GPU state (on-glass)
+
+- Material-keyed instancing and BatchedMesh for rigid opaque (`PQ-052`)
+- Separate legal lanes: canopy, plume, decal, ribbon, sprite, beam (`PQ-076`)
+- Multi-draw / `WEBGL_multi_draw` (`PQ-052`)
+- Indirect / multi-draw-indirect / count buffers (`PQ-059`, `PQ-089`)
+- GPU compaction of instance lists (`PQ-059`)
+- Texture arrays / atlas for same-role maps (`PQ-089`)
+- Bindless / bindless-like grouping when WebGPU (`PQ-089`)
+- Program-bind sort; optional front-to-back opaque (`PQ-107`)
+- Reduce Three.js light/program churn; exact light cardinality (`PQ-096`)
+- VAO reuse; avoid per-draw attribute setup (`PQ-076`)
+- UBO / uniform packing vs many setUniform calls (`PQ-089`)
+- Avoid geometry shaders / tessellation on this path (`PQ-064` census)
+- 16-bit indices; quantized positions/normals; oct normals; half-float verts (`PQ-037`, `PQ-079`)
+- Quantized instance matrices / quaternion+scale (`PQ-079`)
+- Persistent / orphan / unsynchronized buffer maps (`PQ-040`, `PQ-079`)
+- Ring buffers for dynamic ranges (`PQ-040`)
+- Don’t grow BatchedMesh on the present beat (`PQ-079`)
+- Shadow set = glass + skirt; cheaper PCF/ESM/VSM only if stills match (`PQ-077`)
+- Cached static shadow for unmoving casters; atlas packing; one cascade (`PQ-077`)
+- Contact/blob shadows only where directional cannot matter (`PQ-077`)
+- Skip receiveShadow on transparents (`PQ-077`)
+- Overdraw / fill-rate census; limit transparent layers (`PQ-063`, `PQ-076`)
+- OIT / weighted blend / dithered alpha / A2C only if picture holds (`PQ-076`)
+- Force single-pass canopy (already a policy) (`PQ-076`)
+- Visibility buffer / deferred / forward+ / clustered lights — INV only (`PQ-067`, `PQ-089`)
+- Depth prepass — INV only; close with no-mutation if not a net win (`PQ-078`)
+- Occlusion / Hi-Z / small-primitive cull — INV; likely weak on a table (`PQ-061`)
+- Meshlets / cluster LOD / virtual geometry — Long, same picture (`PQ-089`, `PQ-090`)
+- Virtual / sparse / streamed textures (`PQ-086`)
+- Format pick: BC7 / ASTC / ETC2 / UASTC / ETC1S per GPU (`PQ-055`, `PQ-086`)
+- Anisotropy / mip bias only off-glass or if stills match (`PQ-086`)
+- Skip mipgen when mip chain exists (`PQ-074`)
+
+#### Present / post / HDR
+
+- One bloom/HDR path; canvas MSAA dead behind it (`PQ-056`, `PQ-078`)
+- Bloom resolve: fewer mips, dual-Kawase, half/quarter res, Karis — stills must match (`PQ-097`)
+- HDR target: HalfFloat vs R11G11B10 vs RGBM (`PQ-116`)
+- Memoryless / transient / aliased / pooled render targets (`PQ-078`)
+- Don’t store unused attachments; correct load/store (`PQ-078`)
+- Compute bloom / async compute when WebGPU (`PQ-089`, `PQ-097`)
+- Grain/vignette/grade/LUT cost; skip identity ops (`PQ-078`)
+- Optional SMAA/FXAA/TAA only if present is the pole and stills keep (`PQ-078`)
+- FSR/XeSS/dynamic res are **illegal** as a default quality cut; INV only if same internal res (`PQ-078`)
+- AO/SSGI/SSR/volumetrics/DoF/motion-blur/godrays — INV; do not add passes to “optimize”
+- Speed-lines: stroke cache, OffscreenCanvas worker, GPU polyline (`PQ-098`)
+- Canvas flags: `alpha:false`, `preserveDrawingBuffer:false`, `desynchronized`, `powerPreference` (`PQ-109`)
+- ANGLE backend D3D11/D3D12/Vulkan (`PQ-110`)
+- Mailbox vs FIFO vs low-latency swap (`PQ-092`)
+- Exclusive fullscreen / compositor copies in Electron (`PQ-092`)
+
+#### Admission / first use / hitch
+
+- Exact-key dummy prewarm (lights, HDR, batching, shadow depth) (`PQ-072`)
+- One new program per present after present; never whole-root on rAF (`PQ-054`, `PQ-072`)
+- `KHR_parallel_shader_compile` / own readiness timer (`PQ-054`)
+- Binary program cache / WebGPU pipeline cache (`PQ-104`)
+- Idle/`scheduler.yield` admission **after** present; never `setTimeout(0)` on the next rAF (`PQ-114`)
+- Next-contact warm from traffic intent (`PQ-075`)
+- Compose yield between parts; merge cache; no sync compose on combat thread (`PQ-073`)
+- Upload after present; one tex/buffer per beat (`PQ-074`)
+- Decode GLB/KTX2/Basis/meshopt/Draco on a worker (`PQ-103`)
+- `createImageBitmap` / ImageBitmap (`PQ-103`)
+- Autosave slice / after-present / worker serialize (`PQ-087`)
+- Floating-origin rebase dirty-only (`PQ-100`)
+- Catch-up cap so one hitch does not force extra sim steps (`PQ-101`)
+- Context restore retries, force-new-context, named terminal park (`PQ-051`)
+- Opening cohort watermark; late roots cannot extend it (`PQ-054`)
+
+#### Scene graph / CPU prep
+
+- `matrixAutoUpdate` off for static children (`PQ-099`)
+- Flatten merged station/place graphs (`PQ-099`)
+- Don’t `updateMatrixWorld` the off-glass tree (`PQ-070`, `PQ-099`)
+- Presentation snapshot / SoA columns; no entity-object walk on present (`PQ-081`)
+- Dirty journals / bitsets / monomorphic hot functions (`PQ-106`)
+- Pool events, avoid per-frame `{}` / strings (`PQ-106`)
+- Event-bus coalesce; no unbounded journals (`PQ-106`)
+- Skip registry systems when 3D is hidden (`PQ-117`)
+- Unload or freeze flight world in station/map/pause (`PQ-102`)
+- Production default: probes/timers/debug traversals off (`PQ-113`)
+
+#### Simulation / AI / physics
+
+- Tick-quantize inactive owners (`PQ-057`, `PQ-080`)
+- Spatial hash / dirty broadphase; don’t rebuild every tick if unchanged (`PQ-039`, `PQ-080`)
+- Query/candidate work scales with the table (`PQ-039`)
+- Rapier island sleep; solver iterations scale with the table (`PQ-084`)
+- Time-sliced path / steering / perception (`PQ-080`)
+- Sim Worker after snapshot fence (`PQ-082`, `PQ-043`)
+- WASM/Rust island for queries, scheduler, snapshot pack, traffic — not Three.js (`PQ-083`, `PQ-091`)
+- SharedArrayBuffer snapshot; measure copy vs gain (`PQ-093`, `PQ-067`)
+- SIMD / bulk-memory / threads in WASM (`PQ-083`)
+- Determinism lab before any cadence change (`PQ-066`)
+
+#### Assets / I/O / boot / long session
+
+- Immutable / ETag / content-hash cache (`PQ-055`)
+- Brotli for code/text; don’t recompress GLB (`PQ-055`)
+- HTTP range / packaged-file transport if a boot trace asks (`PQ-055`)
+- Place/ship opening shell + later detail (`PQ-085`)
+- Texture residency / evict off-glass without thrash (`PQ-086`, `PQ-058`)
+- GPU/CPU byte budgets; previous-sector warmth (`PQ-058`)
+- Code-split menus vs flight; V8/Electron bytecode cache (`PQ-055`, `PQ-092`)
+- Service worker only if it helps warm launch (`PQ-055`)
+- COOP/COEP if SAB is chosen (`PQ-093`)
+
+#### Audio / HUD
+
+- Voice cull to the table (`PQ-105`)
+- HRTF/convolution/reverb only if cheap or off-glass silent (`PQ-105`)
+- Decode/resample off the present thread (`PQ-103`, `PQ-088`)
+- HUD: one rAF-aligned write; virtualize lists; contain/layout isolation (`PQ-088`)
+- MSDF/atlas vs DOM for hot numbers if DOM is the pole (`PQ-088`)
+- Don’t run full HUD/audio when overlays are hidden (`PQ-088`, `PQ-117`)
+
+#### Platform / language / engine (large jobs stay listed)
+
+- WebGPU backend + rollback (`PQ-044`, `PQ-089`)
+- Render bundles, GPU cull, meshlets (`PQ-059`)
+- Native present slice, same snapshot/input/save (`PQ-060`, `PQ-090`)
+- Further Rust islands; full engine (Bevy/Fyrox/custom) only as `PQ-090` successor (`PQ-091`)
+- Electron GPU process, vsync, swap, hardware accel, process priority (`PQ-092`)
+- OffscreenCanvas / WebGL-in-worker for overlays only (`PQ-098`)
+- Dual-queue / copy-engine / timestamp queries on WebGPU (`PQ-089`)
+
+#### Sky / background (tabletop-priced)
+
+- Starfield / parallax / deep-field / sky planets cost what a table uses (`PQ-095`)
+- Don’t update sky animation off-glass or when paused (`PQ-095`, `PQ-117`)
+- Background stars remain the only camera-facing exception (`PQ-095`)
+
+#### Lighting / variants
+
+- Event-light pool cardinality matches compile (`PQ-096`)
+- Intensity-only flashes; don’t add/remove visible lights mid-fight (`PQ-096`)
+- IBL/PMREM size; rebuild off the present beat (`PQ-072`, `PQ-054`)
+- Env / SH / probes only if they don’t add first-use keys (`PQ-064`)
+
+#### Measurement / scaffolding (not outcomes)
+
+- Glass-band census (`PQ-061`)
+- Hitch owner ring (`PQ-062`)
+- Phase + GPU timers on the real bloom path (`PQ-063`)
+- Shader-key dump (`PQ-064`)
+- Alloc/GC/VRAM soak (`PQ-065`)
+- Hash pair lab (`PQ-066`)
+- Platform spike matrix + interop bench (`PQ-067`)
+- Glass still-diff parity gate (`PQ-111`)
+- Thermal/clock pair discard (`PQ-112`)
+- Replay + seed hitch bisect (`PQ-118`)
+- Shell pair Browser vs Electron (`PQ-092`)
+- Restore/TDR drill (`PQ-051`)
+- Spector / RenderDoc / PIX / Intel GPA / Chrome trace / GC (`PQ-063`, `PQ-065`)
+- Pole sweep that mints missing leaves (`PQ-094`)
+
+A line with no parent yet is minted under `PQ-094` rather than invented ad hoc. Investigation-first
+is the default. Implementation is only what a census selected and an A/B kept.
 
 ## 9. Documentation and instruction hygiene
 
@@ -674,9 +942,65 @@ That is what Phase 0 is for, and it is why Phase 0 is not optional.
 
 | Phase | State | Evidence |
 |---|---|---|
-| **0 · Foundation** | **PARTIAL** — role tokens, type tokens, motion tokens, the CREST/STAGE/APRON/DRAWER skeleton, text-expansion base rules and delegated hover audio landed (`8adcd339`, `65b81ee8`). **Still owed: the entity resolver, screen state memory, the four data states, and the responsive/ultrawide strategy.** | `styles/ui.css` `:root`; `.sf-instrument` block |
+| **0 · Foundation** | **NEARLY DONE.** Role/type/motion tokens, the CREST/STAGE/APRON/DRAWER skeleton, text-expansion base rules and delegated hover audio landed (`8adcd339`, `65b81ee8`). **J3 the four data states, J5 the entity resolver + drawer, and J4 screen state memory have now landed** (`09111881`, `61497eab`, `16067c5e`). **Still owed: the responsive / ultrawide strategy — and nothing in J1–J10 covers it.** | `styles/ui.css` §11/§13/§14; `src/ui/entityResolver.js`; `src/ui/screenMemory.js` |
 | **1 · THE SHIP** | **step 1 of 3 done.** Promoted to a pausing in-flight screen (`F2`), one shared WebGL mount serving both hosts, flight host = instrument minus commerce. Polish pass fixed the loading gate, 22 clipped nodes and 11 sub-floor type nodes (`c01e55c4`). **Steps 2–3 (handling, power, condition, capability) are J2 below.** | `src/ui/ship/shipScreen.js`; `scripts/probe-ship-polish-audit.mjs` |
 | **2–7** | not started | — |
+
+**Phase-0 addendum — three rulings the build produced, binding on every job below.**
+
+1. **`--sf-data-face` is not optional.** It was declared "numerals only, tabular-nums" and used **zero
+   times**, while the Chart's own inspector — directly behind the first drawer built on it — already
+   sets its numbers in mono. Every figure on every new surface binds it. This one change did more
+   for "reads as an instrument, not a web component" than any other in the pass.
+2. **No motion without a state variable — enforce by subtraction.** J3's LOADING sweep shipped as
+   `animation: … infinite`, which §5 forbids (nothing supplied progress) and which
+   `check:ui-frame-sleep` structurally cannot see, because it inspects rAF and this is a compositor
+   keyframe. It was **deleted**, not tuned. The state is carried by the word, the glyph, `aria-busy`
+   on the host, and the skeleton's shape. `check:data-states` now fails any `infinite` in the block.
+3. **Shape tokens exist now — use them, don't re-declare.** `--sf-rail-w`, `--sf-goal-edge`,
+   `--sf-track-micro`. Sections 13 and 14 had already drifted apart on rail width, radius and micro
+   tracking before a second screen adopted anything; three overrides in the first two consumers is
+   how `station.css` became a 202-selector override pile.
+
+### 11.10a What the reviews changed, and what they cost
+
+Four independent design reviews ran against the shipped J3/J5 code and captured frames. They are
+recorded here because several findings **generalise to every job below**, and two of them were
+defects in the *verification*, not the feature.
+
+**The checks were wrong in the same way the repo has been bitten before — twice, in one session.**
+
+- `check-data-states` asserted a `forced-colors` branch existed by substring, and **matched the
+  words in a comment** while the `@media` rule was gone. Its reduced-motion assertion read a
+  fixed-size window that **spilled into the next block** and was satisfied by *that* block's rule.
+  Both now parse the brace-balanced at-rule with comments stripped.
+- It scanned `font-size:` only, so an **11px keycap shipped inside the block whose own comment
+  claims a 12px floor**. It reads the `font:` shorthand now too.
+- `probe-data-states` captured every frame at ~535px while the live sites render in a **~287px
+  inspector column**, and no fixture passed `verb.key`, so the offending keycap was never
+  instantiated in any of 12 frames. **The worst case was the common case, and nobody had looked at
+  it.** Adding the real column immediately exposed prose wrapping **one character per line** — which
+  violated none of the type-floor, clipping or focus measures and reported green.
+- `check-screen-memory` had two rules that **passed their own mutation**: an LRU test that a frozen
+  clock satisfied by accident, and deny-list keys compound enough that three rules matched each, so
+  removing one changed nothing. Both rewritten.
+
+> **The generalised rule, now the standard for every job below: negative-test every rule you write.
+> A check that has never been seen to fail is a check you have not written yet.** Four of the
+> fourteen rules added this session were too weak to catch the defect they existed to catch, and all
+> four were found by mutation, not by reading.
+
+**Findings that change the plans below** are folded into J1, J2, J6–J10 directly. The two worth
+stating once, globally:
+
+- **Adoption is the deliverable, not the primitive.** J3 shipped with three EMPTY sites in one tab
+  of one screen; LOADING, ERROR and DENIED had zero production consumers. J5 shipped with three
+  tagged nouns. A `tagged > 0` check passes both and proves nothing. **Every job below states a
+  named minimum adoption set, and its check asserts that set — not a non-zero count.**
+- **Tier 2 does not exist yet.** `[data-why]` has one match in `src/ui/` and it is a *comment*. The
+  disclosure ladder runs 1 → 3 across every surface built so far, and §7 calls tier 2 "the mechanism
+  that lets this game be deep without being a spreadsheet." It is cheap — `causeLedger`'s enumerated
+  phrase bank is the pattern — and it is now a line item in J2, J6 and J8.
 
 **Also landed from the earlier direction document:** the live-overlay fix (`body.ui-live-screen #hud { opacity: .5 }`) so a non-pausing screen no longer blinds the player, and an `sf-select` primitive (adoption incomplete — native `<select>` remains in `galaxyMap.js`, `screens/automationPanel.js`, `screens/starmap.js`).
 
@@ -750,6 +1074,15 @@ put `panel|card|menu|modal` on a tile carrying meaning in a gradient (`forced-co
 eating a keystroke in either direction; reduced-motion and `forced-colors` legible; capture at hour-1
 / hour-10 / hour-50 densities (prototype exists in `_uilab.html?focus=pb`).
 
+**Now free from Phase 0 (use them, do not re-invent):** the four data states for an empty/locked
+socket (`mountDataState`), `[data-entity]` on any power that names a thing, `--sf-data-face` for the
+slot digits and cooldown figures, and the `--sf-rail-w` / `--sf-goal-edge` / `--sf-track-micro`
+shape tokens. **Slot digits are numerals — they bind the DATA face.**
+
+**Motion budget, per §11.10a ruling 2:** the cooling radial is legitimate (it encodes a real
+remaining-time variable). Nothing else on the rail animates at rest, and no `infinite` keyframe
+ships — `check:ui-frame-sleep` inspects rAF and cannot see one.
+
 **Depends on:** nothing. Spec complete in `design/frontend/SCREENS_A_FLIGHT.md` §2.
 
 ---
@@ -791,66 +1124,181 @@ to draw against, visible damage, and progression stated as capability.
 **Seams:** `src/ui/station/screens/shipworks.js` (the live host — extend, do not fork),
 `src/ui/shipPreviewMount.js` (`projectLocalPoint`), the four dead panels above.
 
+**Now free from Phase 0:** `--sf-data-face` for every figure in all four bands (this is the band
+most made of numbers, so it gains the most); `mountDataState` for the hull-resolve gate, replacing
+`sx-sw__acquiring` and its unbounded `infinite` sweep; `[data-entity]` on every module and hull name
+so a fitted part is a door to its dossier; `[data-why]` on each derived stat.
+
+**`describeTechNodeReadiness()` pairs with the DENIED state** — "you're short 2 parts" is exactly
+DENIED's contract (why, and what would make it allowed), so render it through the primitive rather
+than as a bespoke greyed row.
+
 **Verify:** extend `scripts/probe-ship-polish-audit.mjs` — assert the four bands render, the beam
-reverses when `continuousDrain > capRegen`, and `belowFloor` stays 0.
+reverses when `continuousDrain > capRegen`, and `belowFloor` stays 0. **Capture at the real pane
+width, not a comfortable one** (§11.10a), and **negative-test every assertion you add**: four of the
+fourteen rules written this session passed their own mutation.
 
 **Depends on:** Phase 1 step 1 (done). **Do before J9.**
 
 ---
 
-#### J3 · The four data states, as a shared primitive — *short*
+#### J3 · The four data states, as a shared primitive — *short* — **LANDED `09111881`**
 
 **Pattern:** the skeleton/empty-state discipline of every shipped consumer app.
 **Player outcome:** never a blank screen that is technically correct.
 
-**Build steps.** One primitive in `src/ui/uiPrimitives.js` + `styles/ui.css` exposing **EMPTY /
-LOADING / ERROR / DENIED**, each required to name *what would fill it* and carry a verb:
-- EMPTY — *"No contracts here. Nearest board: Ceres — plot route."*
-- LOADING — bound to real work, never a fixed timer; show a skeleton of the real layout.
-- ERROR — what failed, whether recoverable, one action.
-- DENIED — why, and what would make it allowed: *"Cannot dock: outstanding bounty ≥ 5,000. Pay it here."*
+**Shipped:** `dataState` / `dataStateHtml` / `mountDataState` / `settleDataState` in
+`src/ui/uiPrimitives.js` + `styles/ui.css` §13. `headline`, `fills` and `verb` are **required and
+throw** — optional arguments get omitted, and this decays back into the dead `.sf-empty` with more
+ceremony. A **string form** exists because most screens here assemble `innerHTML`; a DOM-only
+primitive could not be adopted where the defect lives.
 
-Then audit every pane. Reference implementations that already do this well: the Chart's 8-tab
-inspector states its unavailability reasons; `sx-sw__acquiring` is now a correct LOADING state.
+**Corrections to the plan as written:**
 
-**Verify:** each pane forced into all four states in a probe; add to the §12 definition of done.
+- ~~"`sx-sw__acquiring` is now a correct LOADING state"~~ — **it is not a model to copy.** It runs
+  `animation: … infinite` and only sets `visibility:hidden` when done. A compositor animation does
+  not reliably stop on `visibility:hidden`, and `check:ui-frame-sleep` inspects rAF so it cannot see
+  it. In a shared primitive that defect multiplies across every pane. `mountDataState` **clears its
+  host** and `settleDataState` **detaches**; hiding is not stopping.
+- **"LOADING bound to real work" is stronger than it reads: with no progress signal, ship NO
+  motion.** See §11.10a ruling 2.
+- **`aria-busy` goes on the host being mutated, not on the live region** — on the region it can
+  suppress the announcement the region exists to make. ERROR/DENIED use `role="alert"` (implicit
+  assertive + atomic), not `role="status"` + an explicit `aria-live`.
+- **Give each state a rail silhouette** (dashed EMPTY, doubled DENIED). Under `forced-colors` every
+  rail collapses to one `CanvasText` colour and three of four states were otherwise
+  pixel-identical — and use the **longhand** `border-inline-start-color` there, since the shorthand
+  resets style and width and erases the silhouettes.
+
+**"Then audit every pane" is the job, and it is NOT done.** Three EMPTY sites in one tab of one
+screen shipped; LOADING, ERROR and DENIED have **zero** production consumers. §12 item 9 is a
+per-*screen* requirement, so what exists today is a component, not a property. **Named minimum
+adoption set, and `check:data-states` should assert it rather than `count > 0`:** the Chart's
+market-feed path (ERROR), THE SHIP's hull-resolve gate (LOADING, replacing `sx-sw__acquiring`), and
+the station dock-refusal path (DENIED — `dockDeny.js` already enumerates the reasons).
+
+**Verify:** `check:data-states` (contract, statically) + `probe-data-states` (the capture matrix).
+**The probe must render the pane's REAL width** — capturing at ~535px when the live column is ~287px
+hid a one-character-per-line wrap that broke none of the other measures.
 
 **Depends on:** nothing. **Do before J6/J7/J8** or the fix is repeated per screen.
 
 ---
 
-#### J4 · Screen state memory — *short*
+#### J4 · Screen state memory — *short* — **LANDED `16067c5e`**
 
 **Pattern:** universal. Invisible when present, infuriating when absent.
 **Player outcome:** the map, ship and station open where they were left.
 
-**Build steps.** A per-screen state bag persisted per save — active tab, filters, sort order, layer
-set, zoom/focus, scroll position, selected entity — restored in `onShow`. **Exclude anything unsafe
-to restore** (a pending destructive confirmation resets).
+**Shipped:** `src/ui/screenMemory.js`, a bag on `state.ui.screenMemory` persisted per save under
+`data.uiScreenMemory` (schema **v13** + migration). Adopted by the Chart for tab, commodity, layer
+set and bookmarks; `screenManager` owns scroll generically via `[data-sf-scroll]`.
+`check:screen-memory` is a real behavioural test of the store.
 
-**Seams:** `src/ui/screenManager.js` (a generic bag keyed by screen id), `src/save/saveSystem.js`,
-`scripts/generate-save-schema.mjs` (schema is at v12 — regenerate `SAVE_SCHEMA.md`).
+**The plan as written was wrong in one place — corrected, and the correction is the lesson.**
 
-**Trap:** declare a cap and an eviction policy with the new save key, or it grows unbounded.
+> ~~"active tab, filters, sort order, layer set, **zoom/focus**, scroll position, **selected
+> entity**"~~
+
+- **Zoom/focus must NOT persist.** `galaxyMap.js` `onShow` carries an explicit ruling: *the camera is
+  rebuilt from the intent on every open rather than persisted; `mapAuthority` is the single authority
+  for where the map opens (pinned by `check:map-authority`), and a camera that survived the close
+  would silently outrank it.* `onShow` always applies an intent, and its `SYSTEM` default sets a
+  camera — so a persisted zoom is overwritten on every open. **Inert first, harmful second:** the
+  next engineer sees "the zoom restore doesn't work" and fixes it by making the restore outrank the
+  intent, which is exactly what that comment exists to prevent.
+- **Selected entity must NOT persist.** Entity ids are re-minted when the sector regenerates on load
+  — which is why `saveSystem` clears stale targets at all. A restored selection points at a different
+  ship.
+- **Nor the search query.** A forgotten filter is the fastest way to make a working screen look
+  broken, and it lands squarely on §12 item 9.
+
+**Two hazards the plan did not name, both found by testing:**
+
+1. **Recency cannot be `simTime`.** Menus **pause the world**, so `simTime` is frozen for exactly as
+   long as the player is using screens: every bag carries an identical timestamp and eviction order
+   is undefined. Use a monotonic write counter, and carry it through the save.
+2. **Screens are module singletons.** `galaxyMapScreen._layers` lives on the object literal, so save
+   A's choices sit there when save B opens. **Restore must start from authored defaults every time**,
+   never merge over whatever is present. Note the ordering trap: `save:loaded` is emitted *after*
+   `_restoreScreenMemory`, so a reset on that event wipes the bag it just restored.
+
+**Also:** flush on `save:started` — the Chart is a non-pausing live overlay, so the interval autosave
+fires while it is open and would otherwise record the previous session.
+
+**Trap (as written, and it held):** declare a cap and an eviction policy with the new save key.
+Shipped as 16 screens / 24 keys / 160-char strings / 32-entry arrays, bounded on the **write** path.
+
+**Trap the plan missed — the save plan is duplicated and has ALREADY diverged.** `saveSystem.js`
+lists its keys twice (an ordered `[key, fn]` array *and* `serializeData()`). `entropy` is in the
+second and **not the first**, so **autosaves ship without RNG continuation while manual saves do
+not** — and `check:sim` cannot see it, because it reloads via the manual path.
+`check:screen-memory` reports this as a standing warning. **Not fixed here; it is a real behaviour
+change and belongs to whoever owns save.**
+
+**Trap for any future save-version bump:** `simSnapshot.snapshotMeta` hashes `state.meta.version`,
+so **every** version bump drifts the 47-A authoritative hash by construction. Re-record the golden
+with the isolation evidence (pin the version back, confirm the check passes, then bump).
 
 ---
 
-#### J5 · Everything is a link — *medium*
+#### J5 · Everything is a link — *medium* — **MECHANISM LANDED `61497eab`, TAGGING PASS OWED**
 
 **Pattern:** EVE Online "Show Info", Destiny inspect — every noun is a door.
 **Player outcome:** twelve menus stop being twelve menus. Read a contract naming a company → click →
 standing, doctrine, territory, your history → click a sector → the Chart opens focused there.
 
-**Build steps.**
-1. One **entity resolver**: `id → { label, dossier, route }` covering faction, commodity, station,
-   hull, module, captain, sector, contract.
-2. One delegated click handler on `#screens` for `[data-entity="<type>:<id>"]`, opening a **DRAWER**
-   (tier 3), never a modal-over-modal.
-3. A tagging pass — emit `data-entity` as screens are built.
+**Shipped:** `src/ui/entityResolver.js` (all eight nouns, `null` for anything unknown) and
+`src/ui/entityLinks.js` (delegated handler + tier-3 drawer). `check:entity-links` exercises the
+resolver for real; `probe-entity-drawer` drives it in the running game.
+
+**Three placement facts, each a live trap — bake them into any future drawer:**
+
+1. **The delegate goes on `#screens`, never `document`.** `screenManager` binds
+   `shieldModalPointerEvent` to that node in the **bubble** phase and `stopPropagation()`s whenever a
+   modal is open, so a document-level delegate is silently dead. Same node is fine — it is not
+   `stopImmediatePropagation`.
+2. **The drawer mounts INSIDE the active screen root.** The Tab trap cycles within `rec.el` and tests
+   `rec.el.contains(active)`; a body-parented drawer is yanked back into the screen behind it on
+   every Tab, and `screensRoot.inert` does not cover it either.
+3. **It is `position: absolute`, not `fixed`.** `.screen` carries `transform: translateY(0)` for its
+   transition, and **any** transform makes that element the containing block for fixed descendants —
+   while `#screens` flex-centres its children, so a screen root can be content-sized. `.sf-drawer`'s
+   default in §11 is now `absolute` at source rather than patched by a descendant selector.
+
+**Defects worth not repeating:**
+
+- **Do not tint a structural rail with an entity's lore colour.** The 14 faction hexes are not roles:
+  `faction_free #4ECBE0` **is** the banned cyan, `faction_vael #2FCFA0` reads as `--sf-you` ("a
+  gain") for a hostile power, `faction_archive #3A2A5A` sits at ~1.5:1 on `--sf-surface`. A mark that
+  means "structure" on one dossier and "identity" on another cannot be learned.
+- **A route verb must not push a screen that already owns the stack.** `pushScreen` has **no
+  duplicate guard** — it runs `onHide`, then pushes unconditionally — so "Open on the Chart" from the
+  Chart stacked it twice and cost the player two Escapes. Guard it, and relabel to *Focus* when
+  already there.
+- **A focusable element needs a role.** Tagged `<span>`s carried `tabindex="0"` with no `role`, so a
+  screen reader announced plain text (WCAG 4.1.2).
+- **Never print a noun twice in one dossier**, once as inert prose and once as a link. It teaches the
+  player that links are arbitrary.
+- **Group the link list by entity type.** Ungrouped it is a wrapped paragraph of underlined proper
+  nouns — a "See also" footer, the most generic pattern on the internet — and the player cannot tell
+  what kind of thing they are about to open. Grouped, full-width rows are the drawer's **STAGE**; a
+  CREST and an APRON with nothing between them is what read as an unfinished sidebar.
+
+**The tagging pass is the actual deliverable and it is NOT done — three nouns in one screen.** A
+`tagged > 0` check passes that and proves nothing. **Named minimum set:** the Chart inspector's
+Jurisdiction value, mission-log rows, station market and contract rows, and the codex. Promote
+`entityAttr` out of `galaxyMap.js` into the resolver as a shared export first.
+
+**Still owed on the mechanism:** `ui:entityRoute` is emitted with **zero consumers**, so "the Chart
+opens focused there" — J5's own headline — does not happen yet. Consume it in `galaxyMap.onShow`.
 
 **Extends the existing tier-2 mechanism.** `src/ui/causeLedger.js` already hovers an explanation over
 market rows from an **enumerated phrase bank** with the rule *"unknown tag renders NOTHING"*.
 `[data-why]` is tier 2; `[data-entity]` is its tier-3 sibling. Keep the no-invented-text discipline.
+**Tier 2 is still entirely absent** — the drawer computes reasons (`aggro → "Refused — attacks on
+sight"`, the raw security scalar) and flattens them into value strings. Emit `[data-why]` from the
+same enumerated source.
 
 **Why early:** the resolver is shared with the watch list and global find (`ADDITIONS.md` §3, §7).
 Retrofitting tags into finished screens costs several times more than emitting them while building.
@@ -969,10 +1417,24 @@ compute everything needed for the comparison.
 **Pattern:** standard practice at every A-list studio — reference frames diffed automatically.
 **Player outcome:** nothing silently regresses.
 
-**Build steps.** Extend the two existing probes — `scripts/probe-ship-screen-capture.mjs` and
-`scripts/probe-ship-polish-audit.mjs` — into a **capture matrix**: default · reduced-motion ·
+**Build steps.** Extend the existing probes into a **capture matrix**: default · reduced-motion ·
 `forced-colors` · **pseudo-localized**, at **2560 × 1080 · 1920 × 1080 · 1280 × 720**. Commit
 reference frames; diff on change; fail on a threshold.
+
+**Partly started.** `scripts/probe-data-states.mjs` already runs the full 4 × 3 matrix (including a
+working pseudo-localizer) and `scripts/probe-entity-drawer.mjs` drives the real game. Both are
+**assertion probes, not frame diffs** — generalise their harness rather than writing a third.
+
+**Two rules the first two probes paid for:**
+
+1. **Capture the pane at its SHIPPING width.** Every J3 frame rendered at ~535px while the live
+   column is ~287px. The narrow case exposed prose wrapping one character per line — which violated
+   none of the type-floor, clipping or focus measures and reported green. A matrix that photographs
+   a comfortable case is a matrix that certifies the wrong thing.
+2. **Instantiate every optional part.** No J3 fixture passed `verb.key`, so an 11px keycap was never
+   rendered in any of 12 frames — inside the block whose own comment claims a 12px floor. **A
+   component's capture set must exercise its optional slots, or the matrix has holes shaped exactly
+   like the code nobody looked at.**
 
 **Why this is not optional here.** Three demonstrated cases where a green check coexisted with a
 visibly broken screen: the clipped Mission Log card passes every check in the suite;
