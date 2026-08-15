@@ -418,5 +418,34 @@ test('station side-events anchor on the sim table, not a 1400 WU horizon', async
   const { readFile } = await import('node:fs/promises');
   const source = await readFile(new URL('../src/systems/stationSideEventDirector.js', import.meta.url), 'utf8');
   assert.match(source, /tableSimAuthorityWuFromState/);
+  assert.match(source, /stationSideEventReachWu/);
   assert.doesNotMatch(source, /ANCHOR_RANGE = 1400/);
+
+  const { stationSideEventDirector, stationSideEventReachWu } = await import(
+    '../src/systems/stationSideEventDirector.js'
+  );
+  const mid = {
+    type: 'station',
+    alive: true,
+    pos: { x: 700, z: 0 },
+    data: { dockRadius: 72, size: 'M' },
+  };
+  const far = {
+    type: 'station',
+    alive: true,
+    pos: { x: 2200, z: 0 },
+    data: { dockRadius: 72, size: 'M' },
+  };
+  const state = {
+    playerId: 1,
+    entities: { get: () => ({ pos: { x: 0, z: 0 } }) },
+    entityList: [mid, far],
+    camera: { zoom: 144 },
+    settings: { video: { fov: 50 } },
+  };
+  assert.ok(stationSideEventReachWu(mid) > 400, 'outbound path is hundreds of units past the pin');
+  assert.equal(stationSideEventDirector._resolveAnchor(state), mid,
+    'an M station 700 WU away still anchors because its path can enter the table');
+  assert.equal(stationSideEventDirector._resolveAnchor({ ...state, entityList: [far] }), null,
+    'a station whose path cannot reach the table stays a map fact');
 });

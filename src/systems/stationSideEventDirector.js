@@ -30,7 +30,6 @@
 
 import { planStationSideEvents, SIDE_EVENTS } from '../data/stationSideEvents.js';
 import { bubblesFor } from '../data/stationBubbles.js';
-import { nearestVisibleStation } from './stationBroadcast.js';
 import { tableSimAuthorityWuFromState } from '../render/tabletopPolicy.js';
 import { makeShipEntitySpec } from './ships.js';
 
@@ -39,6 +38,13 @@ const MIN_SPACING_S = 25;       // min gap between fired side-events at a statio
 const DEFER_S = 15;             // re-check period for a due-but-blocked item
 const MAX_BUDGETED = 1;         // concurrent BUDGETED side-events per sector (spawn-budget-war guard)
 const PATROL_SHIP = 'ship_wasp';
+
+/** How far a side-event mover can sit from the station pin (`outbound-past-traffic`). */
+export function stationSideEventReachWu(station) {
+  const bubbles = bubblesFor(station);
+  const traffic = bubbles && bubbles.traffic && Number(bubbles.traffic.radius);
+  return Number.isFinite(traffic) && traffic > 0 ? traffic * 1.2 : 0;
+}
 
 export const stationSideEventDirector = {
   name: 'stationSideEventDirector',
@@ -80,9 +86,30 @@ export const stationSideEventDirector = {
 
   // Nearest VISIBLE station (the packet's off-screen guard). Reuses the shipped A5 helper.
   _resolveAnchor(state) {
-    // Cosmetic movers only need to exist when the station can enter the table.
-    // 1400 was the leftover horizon; sim authority is requested zoom + settings FOV + 48:9.
-    return nearestVisibleStation(state, tableSimAuthorityWuFromState(state));
+    // Plan when the station pin OR its farthest mover path can enter the table.
+    // Center-only table authority dropped an M-station path that still crossed the glass.
+    if (!state) return null;
+    const player = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId)
+      : null;
+    if (!player || !player.pos) return null;
+    const table = tableSimAuthorityWuFromState(state);
+    const list = (state.entityIndex && state.entityIndex.stations) || state.entityList || [];
+    let best = null;
+    let bestD2 = Infinity;
+    for (const entity of list) {
+      if (!entity || entity.alive === false || entity.type !== 'station' || !entity.pos) continue;
+      const dx = entity.pos.x - player.pos.x;
+      const dz = entity.pos.z - player.pos.z;
+      const d2 = dx * dx + dz * dz;
+      const reach = table + stationSideEventReachWu(entity);
+      if (d2 > reach * reach) continue;
+      if (d2 <= bestD2) {
+        bestD2 = d2;
+        best = entity;
+      }
+    }
+    return best;
   },
 
   // Plan a station-day's schedule ONCE, keyed on (sector, day, station). Cumulative delays →
