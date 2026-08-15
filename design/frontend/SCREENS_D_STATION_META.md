@@ -60,6 +60,18 @@ check was never moved with it. Reconciliation rules:
 
 ## 1. The diagnosis
 
+> **GRAMMAR CONFORMANCE (added in review).** This document was authored before the canonical
+> colour block existed and references no role tokens. Every colour decision in it resolves to the
+> §4 table below; where it names a raw hex or a station `--sx-*` token for a NEW element, substitute
+> the matching role.
+
+> **GRAMMAR CONFORMANCE (added in review).** Colour on this surface uses the canonical role tokens
+> defined in `INSTRUMENT_GRAMMAR.md` §4 — `--sf-you` `#7af7d0`, `--sf-foe` `#ff5470`, `--sf-goal`
+> `#ffb347`, `--sf-calm` `#84a0c8`, `--sf-paper` `#d3e6ff`, surface `#0b1220`, edge `#1d3350`.
+> **`--accent` `#39d0ff` is roleless and may not be used.** Entry keys come from the canonical table
+> in §10.5, which outranks this file.
+
+
 ### 1a. Five station screens have one silhouette
 
 | Screen | Left | Centre | Right |

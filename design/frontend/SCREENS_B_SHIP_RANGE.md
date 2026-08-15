@@ -28,7 +28,7 @@ to lead with a delta on a damage number.
 
 The grammar assigns colour by role and defers hex to "the token block." That token block does not
 exist in `styles/` today (`--sf-you` / `--sf-foe` / `--sf-goal` / `--sf-calm` / `--sf-paper` return
-zero matches). The mapping below is therefore **published here and binding for these two screens**
+zero matches). The mapping below is therefore **promoted into `INSTRUMENT_GRAMMAR.md` §4 and now binding on ALL surfaces** (this local scoping is void)
 until a shared token block lands; when it lands, these two screens adopt it by find/replace and this
 sub-section is deleted.
 
@@ -108,7 +108,7 @@ correctly; do not regress it.)
 |---|---|---|
 | 1 | `src/ui/uiRoot.js` — `SCREEN_MODULES` (line ~54) | add `{ path:'./ship/shipScreen.js', load:()=>import('./ship/shipScreen.js'), name:'shipScreen' }` and the same for `./range/rangeScreen.js` |
 | 2 | `src/ui/screenManager.js` — `PAUSING_SCREENS` (line 16, a literal `Set`) | add `'ship'`, `'range'` |
-| 3 | `src/ui/input.js` — the keydown `switch` | add `case 'F2':` → `screenManager.pushScreen('ship')`; `case 'F3':` → `pushScreen('range')`. Both `ev.preventDefault()` then `bus.emit('audio:cue', { id: 'ui_open' })`. F1 (help) and F7 (debug) are already literal-string cases; F2/F3 follow that precedent and are unbound today. |
+| 3 | `src/ui/input.js` — the keydown `switch` | add `case 'F2':` → `screenManager.pushScreen('ship')`; `case 'F4':` → `pushScreen('range')`. Both `ev.preventDefault()` then `bus.emit('audio:cue', { id: 'ui_open' })`. F1 (help) and F7 (debug) are already literal-string cases; F2/F4 follow that precedent and are unbound today. **`F3` is THE FOOTPRINT — see the canonical key table in `INSTRUMENT_GRAMMAR.md` §10.5, which outranks this file.** |
 
 **Do not touch the dock rail.** `scripts/check-station-tab-navigation-runtime.mjs` pins seven
 destinations — `['market','shipworks','industry','contracts','factions','bar','ledger']` — on

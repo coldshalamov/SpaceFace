@@ -92,16 +92,30 @@ and already loaded at boot by `styles/fonts.css`.
 
 ## 4. Colour — roles, not a palette
 
-Colour is assigned by **meaning**, so a screen cannot be "restyled" into incoherence. Exact hex
-values live in the token block; these are the roles that govern their use.
+Colour is assigned by **meaning**, so a screen cannot be "restyled" into incoherence.
 
-| Role | Means | Where it is allowed |
-|---|---|---|
-| `--sf-you` | you, your agency, your capability, what you can do now | your ship, your unlocked powers, your route |
-| `--sf-foe` | hostile, danger, cost, what it will take from you | enemies, threat, bounty, over-budget |
-| `--sf-goal` | objective, opportunity, gain | destinations, contracts, surplus, unlock-next |
-| `--sf-calm` | steel — everything at rest, structure, chrome | borders, labels, inactive state |
-| `--sf-paper` | text on dark | all body copy |
+**The token block — canonical, binding on every surface.** These five custom properties **do not
+exist in `styles/` yet** (verified: zero matches). **Phase 0 adds them to the `:root` block in
+`styles/ui.css`** as aliases of existing tokens, so nothing re-themes and contrast stays proven.
+Until they land, use the equivalent column.
+
+| Role | Hex | Equals existing token | Contrast on `--panel` `#0b1220` | Means / where it is allowed |
+|---|---|---|---|---|
+| `--sf-you` | `#7af7d0` | `--accent-2` | 14.3 : 1 | **you** — your hull, your unlocked capability, your route, a gain |
+| `--sf-foe` | `#ff5470` | `--danger` | 6.0 : 1 | **against you** — threat, cost, over-budget, damage, a loss, bounty |
+| `--sf-goal` | `#ffb347` | `--warn` | 10.5 : 1 | **what you're heading for** — destination, next unlock, opportunity, surplus |
+| `--sf-calm` | `#84a0c8` | `--ink-dim` | 6.9 : 1 | **steel** — labels, chrome, structure, everything at rest |
+| `--sf-paper` | `#d3e6ff` | `--ink` | ~14 : 1 | all body copy |
+| *(surface)* | `#0b1220` | `--panel` | — | screen backdrop base |
+| *(edge)* | `#1d3350` | `--panel-edge` | — | 1 px separators, socket rings |
+
+**`--accent` (`#39d0ff`, cyan) is assigned NO role and may not be used on any new surface.** It is
+the colour behind the flight HUD's 99 saturated-cyan usages and the "flat blue wash" the owner
+rejected. Leaving it roleless is deliberate: a colour with no meaning cannot be spent to look
+sci-fi.
+
+*(Sourced from `SCREENS_B_SHIP_RANGE.md` §0.1, which caught that this grammar specified roles without
+defining tokens. Promoted here so all surfaces share one source; that file's local scoping is void.)*
 
 **The 80% rule: at rest, a screen is at least 80 % `calm` + `paper`.** Hot colour is *spent*, not
 worn. A screen that is uniformly saturated has no hierarchy, which is the failure mode of the
@@ -287,6 +301,36 @@ dead code, so the sanctioned design system ships in zero live screens. Do **not*
 private style injectors; let them die with their screens.
 
 ---
+
+## 10.5 Entry keys — canonical, single source
+
+**Every letter A–Z is already bound** (`src/systems/input.js` says so in its own comments). New
+surfaces therefore use function keys, punctuation, or modifiers — never a letter.
+
+| Key | Surface | Status |
+|---|---|---|
+| `F2` | **THE SHIP** | free today |
+| `F3` | **THE FOOTPRINT** | free today |
+| `F4` | **THE RANGE** | free today |
+| `M` / `N` | **THE CHART** — local focus / galaxy focus | existing, unchanged |
+| `Alt` (held) | **The quick fan** — non-pausing radial | free as a modifier; `altKey` is read nowhere today |
+| `1`–`9` | **The Power Rail** | `4`–`8` already bound to real verbs; `9` free; `1`–`3` see below |
+| `0` | brake | existing, **keep** — not a Rail slot |
+| `[` `]` | Chart commodity cycle | free |
+| `F1` | Help | existing |
+
+**Ordered by frequency of use**, so the most-opened instrument is closest to hand: Ship > Footprint >
+Range. `F1` (help) and `F7` (debug) are already literal-string cases in the `src/ui/input.js` keydown
+switch, so `F2`/`F3`/`F4` follow an established precedent.
+
+**`Digit1`–`Digit3` are contested.** They currently answer modal prompts (`contactHailPrompt.js`,
+`lawfulInspectionPrompt.js`) and flight verbs are suppressed under modals, so they *are* usable in
+flight — but the input source deliberately avoided them. A spec that claims slots 1–3 must state how
+it prevents a prompt keystroke being eaten by the Rail, and vice versa.
+
+> **This table outranks any per-screen document.** Two specs previously assigned `F3` to different
+> screens and the Footprint had no key at all; that is exactly the failure this section exists to
+> prevent. Add a row here before binding anything.
 
 ## 11. Hard constraints
 

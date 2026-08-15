@@ -65,6 +65,7 @@ already bigger than the HUD admits.
 | [`SCREENS_C_CHART_FOOTPRINT.md`](./SCREENS_C_CHART_FOOTPRINT.md) | **THE CHART** (the world outside your view) and **THE FOOTPRINT** (what you did and what it cost). |
 | [`SCREENS_D_STATION_META.md`](./SCREENS_D_STATION_META.md) | The docked station destinations and the meta layer — title, pause, settings, save, codex, mission log, game over. |
 | [`ICON_PIPELINE.md`](./ICON_PIPELINE.md) | The AI icon-generation pipeline: one fixed style anchor, one parameterised template, the conversion target, and the acceptance tests. |
+| [`ADDITIONS.md`](./ADDITIONS.md) | Candidate additions **beyond** the specced surfaces — entity links, loadout presets, the watch list, the re-entry digest, recallable events, chart notes, global find. Each checked against the codebase as genuinely absent. Includes a deliberately-rejected list. |
 | [`icon-prompts/`](./icon-prompts/) | 16 ready-to-run prompt files, one per power. Committed so the set can be regenerated or extended later in the same style. |
 
 Program routing and sequencing live in [`../../CANONICAL_BUILD_MAP.md`](../../CANONICAL_BUILD_MAP.md).
@@ -88,6 +89,23 @@ instruments. Both mechanisms are wanted; they serve different tiers.
 
 **General rule for these documents:** they are design authority, not a status report. Where a spec
 describes current code, re-verify — this repo moves under you.
+
+## Review pass — what the audit found and fixed
+
+The four per-screen specs were written by parallel authors and then audited against each other and
+against the grammar. Four real defects were found and corrected; they are recorded because each is a
+class of error that will recur.
+
+| Defect | Fix |
+|---|---|
+| **`F3` was assigned to two different screens, and THE FOOTPRINT had no entry key at all.** Parallel authors each picked plausibly and nothing reconciled them. | Added **§10.5 Entry keys — canonical** to the grammar as the single source (`F2` Ship · `F3` Footprint · `F4` Range, ordered by frequency of use). Spec B corrected to `F4`; spec C given `F3`. **The table outranks any per-screen document.** |
+| **The grammar specified colour roles but never defined the tokens — and they do not exist in `styles/`.** Verified: `--sf-you` and siblings return zero matches. One spec caught this and published a local mapping; the other three diverged, and one used no role tokens at all. | Promoted that mapping into the grammar as the canonical block, with hex, the existing token each equals, and measured contrast on `--panel`. Local scoping voided; conformance headers added to the two specs that had drifted. Adding the tokens to `styles/ui.css` is now **Phase 0 work**. |
+| **`--accent` `#39d0ff` had no stated status**, so any author could reach for it — it is the colour behind the flight HUD's 99 saturated-cyan usages. | Explicitly assigned **no role** and banned on new surfaces. A colour with no meaning cannot be spent to look sci-fi. |
+| **Three separate additions (entity links, watch list, global find) share one resolver**, and building the screens first would force an expensive retrofit. | Recorded in `ADDITIONS.md` and promoted into **Phase 0** of the build-map sequence. |
+
+**The general lesson, for future parallel authoring:** things that must agree across documents —
+keys, tokens, shared primitives — have to be *pre-decided in the shared grammar*, not left for each
+author to choose. Every defect above is an instance of that one mistake.
 
 ---
 

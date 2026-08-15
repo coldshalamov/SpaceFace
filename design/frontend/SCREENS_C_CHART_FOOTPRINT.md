@@ -684,6 +684,16 @@ literal source substrings.
 
 ## 2.1 Concept, archetype, verb, silhouette
 
+> **Entry key: `F3`** (pausing). Canonical per `INSTRUMENT_GRAMMAR.md` §10.5 — the Footprint
+> had no key assigned when this document was written. THE CHART keeps `M`/`N`.
+
+> **GRAMMAR CONFORMANCE (added in review).** Colour on this surface uses the canonical role tokens
+> defined in `INSTRUMENT_GRAMMAR.md` §4 — `--sf-you` `#7af7d0`, `--sf-foe` `#ff5470`, `--sf-goal`
+> `#ffb347`, `--sf-calm` `#84a0c8`, `--sf-paper` `#d3e6ff`, surface `#0b1220`, edge `#1d3350`.
+> **`--accent` `#39d0ff` is roleless and may not be used.** Entry keys come from the canonical table
+> in §10.5, which outranks this file.
+
+
 **Archetype:** a board you trace. **Primary manipulation:** TRACE — grab a node and walk an edge from
 cause to consequence.
 
