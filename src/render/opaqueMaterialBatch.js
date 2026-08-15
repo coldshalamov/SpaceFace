@@ -41,7 +41,13 @@ export function materialBatchAttrKey(geometry) {
   return `${geometry.index ? 'idx' : 'arr'}|${parts.join(',')}`;
 }
 
-export function opaqueBatchLane(nearestDistanceSq, castRadiusSq = SHADOW_CAST_RADIUS_SQ) {
+export function opaqueBatchLane(nearestDistanceSq, castRadiusSq = SHADOW_CAST_RADIUS_SQ, options = null) {
+  const axis = Number(options && options.axisDistance);
+  const axisRadius = Number(options && options.castRadius);
+  if (options && options.axisDistance != null && Number.isFinite(axis)
+    && Number.isFinite(axisRadius) && axisRadius > 0) {
+    return axis <= axisRadius ? 'cast' : 'nocast';
+  }
   const dist = Number(nearestDistanceSq);
   const radiusSq = Number(castRadiusSq);
   const limit = Number.isFinite(radiusSq) && radiusSq > 0 ? radiusSq : SHADOW_CAST_RADIUS_SQ;
@@ -127,7 +133,10 @@ function consolidateChunk(state, chunk, options) {
     const dz = (array[offset + 14] || 0) - playerZ;
     planned.push({
       index,
-      lane: opaqueBatchLane((dx * dx) + (dz * dz), options.castRadiusSq),
+      lane: opaqueBatchLane((dx * dx) + (dz * dz), options.castRadiusSq, {
+        axisDistance: Math.max(Math.abs(dx), Math.abs(dz)),
+        castRadius: options.castRadius,
+      }),
       offset,
     });
   }

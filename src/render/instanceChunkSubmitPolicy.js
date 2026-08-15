@@ -8,6 +8,23 @@
 
 import { SHADOW_CAST_RADIUS_SQ } from './shadowCasterPolicy.js';
 
+export function nearestSubmittedInstanceAxisDistance(chunk, playerX = 0, playerZ = 0) {
+  if (!chunk || !chunk.visibleIndices || chunk.visibleIndices.size === 0) return Infinity;
+  const array = chunk.mesh && chunk.mesh.instanceMatrix && chunk.mesh.instanceMatrix.array;
+  if (!array) return Infinity;
+  const originX = Number(playerX) || 0;
+  const originZ = Number(playerZ) || 0;
+  let nearest = Infinity;
+  for (const index of chunk.visibleIndices) {
+    const offset = (index * 16) + 12;
+    const dx = Math.abs((array[offset] || 0) - originX);
+    const dz = Math.abs((array[offset + 2] || 0) - originZ);
+    const dist = Math.max(dx, dz);
+    if (dist < nearest) nearest = dist;
+  }
+  return nearest;
+}
+
 export function nearestSubmittedInstanceDistanceSq(chunk, playerX = 0, playerZ = 0) {
   if (!chunk || !chunk.visibleIndices || chunk.visibleIndices.size === 0) return Infinity;
   const array = chunk.mesh && chunk.mesh.instanceMatrix && chunk.mesh.instanceMatrix.array;
@@ -37,6 +54,12 @@ export function shouldInstanceChunkCastShadow(options = {}) {
   if (options.opaque !== true) return false;
   const submitted = Math.max(0, Math.floor(Number(options.submittedCount) || 0));
   if (submitted <= 0) return false;
+  const axis = Number(options.nearestAxisDistance);
+  const axisRadius = Number(options.castRadius);
+  if (options.nearestAxisDistance != null && Number.isFinite(axis)
+    && Number.isFinite(axisRadius) && axisRadius > 0) {
+    return axis <= axisRadius;
+  }
   const dist = Number(options.nearestDistanceSq);
   if (!Number.isFinite(dist)) return false;
   const radiusSq = Number(options.castRadiusSq);
@@ -72,7 +95,13 @@ export function applyInstanceChunkSubmitPolicy(chunk, options = {}) {
       options.playerX,
       options.playerZ,
     ),
+    nearestAxisDistance: nearestSubmittedInstanceAxisDistance(
+      chunk,
+      options.playerX,
+      options.playerZ,
+    ),
     castRadiusSq: options.castRadiusSq,
+    castRadius: options.castRadius,
   });
   if (mesh.castShadow !== nextCast) {
     mesh.castShadow = nextCast;

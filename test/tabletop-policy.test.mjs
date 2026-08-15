@@ -367,4 +367,14 @@ test('a hull inside the square light box still casts on the diagonal', () => {
     castRadius: extent,
   }), false);
   assert.equal(tableShadowCasterRadius(330, 50, 16 / 9, 60, 300), 300);
+  assert.equal(shouldInstanceChunkCastShadow({
+    opaque: true,
+    submittedCount: 1,
+    nearestAxisDistance: 250,
+    castRadius: extent,
+  }), true);
+  assert.equal(opaqueBatchLane(hypot * hypot, extent * extent, {
+    axisDistance: 250,
+    castRadius: extent,
+  }), 'cast');
 });

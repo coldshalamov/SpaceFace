@@ -6562,6 +6562,7 @@ function finalizeInstanceChunk(chunk, dirty, stats, context = null) {
     playerX: context && context.playerX,
     playerZ: context && context.playerZ,
     castRadiusSq: context && context.castRadiusSq,
+    castRadius: context && context.castRadius,
     refreshBounds: dirty || !!(context && context.cameraDirty),
   });
 }
@@ -6574,6 +6575,7 @@ function applyInstanceChunkPolicies(state, context) {
         playerX: context && context.playerX,
         playerZ: context && context.playerZ,
         castRadiusSq: context && context.castRadiusSq,
+        castRadius: context && context.castRadius,
         refreshBounds: false,
       });
     }
@@ -6588,6 +6590,7 @@ function consolidateOpaqueInstanceChunks(state, context) {
     playerX: context && context.playerX,
     playerZ: context && context.playerZ,
     castRadiusSq: context && context.castRadiusSq,
+    castRadius: context && context.castRadius,
     refreshBounds: !!(context && context.cameraDirty),
   });
   if (state.stats) {
@@ -6840,6 +6843,9 @@ function buildInstanceCullContext(state, opts) {
   context.castRadiusSq = Number.isFinite(Number(opts && opts.castRadiusSq))
     ? Number(opts.castRadiusSq)
     : null;
+  context.castRadius = Number.isFinite(Number(opts && opts.castRadius))
+    ? Number(opts.castRadius)
+    : null;
   context.consolidateOpaqueBatches = opts && opts.consolidateOpaqueBatches === true;
   if (!camera || !camera.projectionMatrix || !camera.matrixWorldInverse) {
     state.stats.frameBounded = frameBounded;
@@ -6875,6 +6881,7 @@ function createInstanceCullContext() {
     playerX: 0,
     playerZ: 0,
     castRadiusSq: null,
+    castRadius: null,
     consolidateOpaqueBatches: false,
   };
 }

@@ -4698,6 +4698,7 @@ export const render = {
       : liveShadowCastRadius(this.state);
     this._frameShadowCastRadius = shadowRadius;
     authoredSyncOptions.castRadiusSq = shadowRadius * shadowRadius;
+    authoredSyncOptions.castRadius = shadowRadius;
     authoredSyncOptions.consolidateOpaqueBatches = this._opaqueBatchEnabled === true;
     const player = this.state.playerId
       ? (this.state.entities && this.state.entities.get(this.state.playerId))
