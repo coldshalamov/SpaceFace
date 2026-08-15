@@ -57,7 +57,12 @@ import {
 import { createRenderFrameMembrane } from './frameCoordinates.js';
 import { readOwnedExceptionalSpeed } from './velocityLanguage.js';
 import { fieldFalloff } from '../core/fields/fieldKernel.js'; // PQ-012: VFX density mirrors the kernel falloff (gauges must not lie)
-import { shouldDrawTableVfx, tableVfxDrawWuFromState } from './tabletopPolicy.js';
+import {
+  shouldDrawLootMagnetTrail,
+  shouldDrawTableVfx,
+  TABLE_LOOT_MAGNET_CAP_WU,
+  tableVfxDrawWuFromState,
+} from './tabletopPolicy.js';
 import { applyFlashAccessibility, resolveVfxAccessibilityProfile } from './vfxAccessibility.js';
 import {
   createStationSideEventVfxFrameScratch,
@@ -465,9 +470,19 @@ const VFX_SEAM_MARKERS_HZ = 20;
 // draws it as light. Cadence-gated and fully asleep when nothing is homing.
 const VFX_LOOT_MAGNET_HZ = 24;
 // Tractor physics still reaches 420–780 WU. Trails only paint on the live table, and never
-// farther than this inner-band cap even on a zoomed-out wide lens. Off-table pull stays real
-// and dim — do not keep a 580 WU horizon at default zoom.
-const LOOT_MAGNET_DRAW_RANGE = 580;
+// farther than TABLE_LOOT_MAGNET_CAP_WU even on a zoomed-out wide lens. Off-table pull stays
+// real and dim. The tractor cap is player-centered; the glass cull uses the live look-at.
+const LOOT_MAGNET_DRAW_RANGE = TABLE_LOOT_MAGNET_CAP_WU;
+const _lootMagnetFocusScratch = { x: 0, z: 0 };
+
+function lootMagnetFocusOffset(state, player, entity, out) {
+  const focus = state && state.camera && state.camera.focus;
+  const ox = Number.isFinite(focus && focus.x) ? focus.x : player.pos.x;
+  const oz = Number.isFinite(focus && focus.z) ? focus.z : player.pos.z;
+  out.x = (entity.pos.x || 0) - ox;
+  out.z = (entity.pos.z || 0) - oz;
+  return out;
+}
 const LOOT_MAGNET_MIN_SPEED = 26;        // wu/s; below this a drop is drifting, not being pulled
 const LOOT_MAGNET_MAX_TRAILED = 24;      // hard cap on simultaneously trailed drops
 const VFX_RIBBON_TRAILS_HZ = 30;
@@ -8927,15 +8942,13 @@ export const vfx = {
     if (!player || !player.alive || !player.pos) return false;
     const list = state.entityList;
     if (!list || !list.length) return false;
-    const drawWu = Math.min(
-      this._tableVfxDrawWu || tableVfxDrawWuFromState(state),
-      LOOT_MAGNET_DRAW_RANGE,
-    );
+    const tableWu = this._tableVfxDrawWu || tableVfxDrawWuFromState(state);
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
       if (!e || !e.alive || e.type !== 'pickup' || !e.pos) continue;
-      const dx = e.pos.x - player.pos.x, dz = e.pos.z - player.pos.z;
-      if (!shouldDrawTableVfx(dx, dz, drawWu)) continue;
+      const pdx = e.pos.x - player.pos.x, pdz = e.pos.z - player.pos.z;
+      const focus = lootMagnetFocusOffset(state, player, e, _lootMagnetFocusScratch);
+      if (!shouldDrawLootMagnetTrail(pdx, pdz, focus.x, focus.z, tableWu)) continue;
       const vx = (e.vel && e.vel.x) || 0, vz = (e.vel && e.vel.z) || 0;
       if (vx * vx + vz * vz >= LOOT_MAGNET_MIN_SPEED * LOOT_MAGNET_MIN_SPEED) return true;
     }
@@ -8947,17 +8960,15 @@ export const vfx = {
     const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(state.playerId);
     if (!player || !player.pos) { this._lootMagnetLive = 0; return 0; }
     const list = state.entityList || [];
-    const drawWu = Math.min(
-      this._tableVfxDrawWu || tableVfxDrawWuFromState(state),
-      LOOT_MAGNET_DRAW_RANGE,
-    );
+    const tableWu = this._tableVfxDrawWu || tableVfxDrawWuFromState(state);
     const burst = this._burst || 1;
     let drawn = 0;
     for (let i = 0; i < list.length && drawn < LOOT_MAGNET_MAX_TRAILED; i++) {
       const e = list[i];
       if (!e || !e.alive || e.type !== 'pickup' || !e.pos) continue;
-      const dx = e.pos.x - player.pos.x, dz = e.pos.z - player.pos.z;
-      if (!shouldDrawTableVfx(dx, dz, drawWu)) continue;
+      const pdx = e.pos.x - player.pos.x, pdz = e.pos.z - player.pos.z;
+      const focus = lootMagnetFocusOffset(state, player, e, _lootMagnetFocusScratch);
+      if (!shouldDrawLootMagnetTrail(pdx, pdz, focus.x, focus.z, tableWu)) continue;
       const vx = (e.vel && e.vel.x) || 0, vz = (e.vel && e.vel.z) || 0;
       const speed = Math.hypot(vx, vz);
       if (speed < LOOT_MAGNET_MIN_SPEED) continue;

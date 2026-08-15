@@ -30,7 +30,9 @@ import {
   shouldKeepPersistentLandmarkResident,
   submitCullHalfExtents,
   submitRunwayWu,
+  shouldDrawLootMagnetTrail,
   shouldDrawTableVfx,
+  TABLE_LOOT_MAGNET_CAP_WU,
   tableShadowCastRadius,
   tableShadowCasterRadius,
   tableSimAuthorityWuFromState,
@@ -384,7 +386,8 @@ test('cosmetic VFX follow the live table, not a 1500 WU horizon', () => {
     camera: { zoom: 144, fov: 50, aspect: 16 / 9 },
   });
   assert.ok(defaultDraw < 800, `default VFX ${defaultDraw} stays on the table`);
-  assert.ok(defaultDraw < 580, `default table ${defaultDraw} is tighter than the leftover 580 WU magnet horizon`);
+  assert.ok(defaultDraw < TABLE_LOOT_MAGNET_CAP_WU,
+    `default table ${defaultDraw} is tighter than the leftover ${TABLE_LOOT_MAGNET_CAP_WU} WU magnet horizon`);
   assert.equal(shouldDrawTableVfx(200, 0, defaultDraw), true);
   assert.equal(shouldDrawTableVfx(1500, 0, defaultDraw), false);
   const wide = tableVfxDrawWuFromState({
@@ -413,9 +416,24 @@ test('VFX station-side and seam ranges use the table helper', async () => {
   assert.match(source, /_updateNpcJobSignatures/);
   assert.match(source, /_lootMagnetRelevant/);
   assert.match(source, /_updateLootMagnet/);
+  assert.match(source, /shouldDrawLootMagnetTrail/);
+  assert.match(source, /lootMagnetFocusOffset/);
   assert.doesNotMatch(source, /NPC_JOB_SIGNATURE_DRAW_RANGE \* NPC_JOB_SIGNATURE_DRAW_RANGE/);
   assert.doesNotMatch(source, /LOOT_MAGNET_DRAW_RANGE \* LOOT_MAGNET_DRAW_RANGE/);
+  assert.doesNotMatch(source, /Math\.min\(\s*this\._tableVfxDrawWu/);
   assert.doesNotMatch(source, /VFX_STATION_SIDE_EVENT_DRAW_RANGE = 1500/);
+});
+
+test('loot-magnet trails keep the tractor cap on the player and the glass on the look-at', () => {
+  const tableWu = 360;
+  // Pickup sits on the shoved glass, 365 WU from the player — still inside the 580 tractor band.
+  assert.equal(shouldDrawLootMagnetTrail(365, 0, 180, 0, tableWu), true);
+  // Same pickup with the two radii min()'d against the player would have dropped.
+  assert.equal(shouldDrawTableVfx(365, 0, Math.min(tableWu, TABLE_LOOT_MAGNET_CAP_WU)), false);
+  // Beyond the tractor inner band stays dim even if the glass is huge.
+  assert.equal(shouldDrawLootMagnetTrail(600, 0, 100, 0, 2000), false);
+  // Off the live glass stays dim even if the tractor can still pull.
+  assert.equal(shouldDrawLootMagnetTrail(200, 0, 900, 0, tableWu), false);
 });
 
 test('station side-events anchor on the sim table, not a 1400 WU horizon', async () => {

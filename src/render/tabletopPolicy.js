@@ -130,6 +130,19 @@ export function shouldDrawTableVfx(dx, dz, drawWu) {
   return (x * x + z * z) <= limit * limit;
 }
 
+/** Fitted-tractor inner band. Player-centered; never mixed into the glass radius. */
+export const TABLE_LOOT_MAGNET_CAP_WU = 580;
+
+/**
+ * Loot-magnet trails need two origins. The tractor cap is the player; the
+ * glass cull is the live look-at. Mixing them into one min() drops on-glass
+ * trails when combat/tether shoves the camera.
+ */
+export function shouldDrawLootMagnetTrail(playerDx, playerDz, focusDx, focusDz, tableWu) {
+  if (!shouldDrawTableVfx(playerDx, playerDz, TABLE_LOOT_MAGNET_CAP_WU)) return false;
+  return shouldDrawTableVfx(focusDx, focusDz, tableWu);
+}
+
 export const TABLE_BAND = Object.freeze({
   GLASS: 'glass',
   RUNWAY: 'runway',
