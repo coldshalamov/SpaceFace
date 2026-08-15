@@ -16,7 +16,11 @@
 
 import { createTimeEffects } from '../core/timeEffects.js';
 
-const PAUSING_SCREENS = new Set(['pause', 'mainMenu', 'newGame', 'gameOver', 'settings', 'saveLoad', 'help', 'codex', 'drill', 'base', 'station', 'sandbox']);
+const PAUSING_SCREENS = new Set(['pause', 'mainMenu', 'newGame', 'gameOver', 'settings', 'saveLoad', 'help', 'codex', 'drill', 'base', 'station', 'sandbox',
+  // Owner ruling 2026-08-15 (build map §11.3): menus pause the world, Skyrim-style. The four
+  // instruments are full-depth strategic screens; 'ship' and 'range' land now, the rest join as
+  // they are built. Quick mid-combat verbs stay on the non-pausing tier instead.
+  'ship', 'range']);
 const PAUSE_REQUEST = Object.freeze({ scale: 0 });
 
 export function createScreenManager(ctx) {

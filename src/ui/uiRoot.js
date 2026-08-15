@@ -57,6 +57,9 @@ const SCREEN_MODULES = [
   { path: './station/stationScreen.js', load: () => import('./station/stationScreen.js'), name: 'stationScreen' },
   // REVAMP 2.1 — one zoomable galaxy map (supersedes starmap+localmap once BP-03 parity passes). Lives in src/ui/, not screens/.
   { path: './galaxyMap.js', load: () => import('./galaxyMap.js'), name: 'galaxyMapScreen' },
+  // THE SHIP (frontend program §11.3 / SCREENS_B): the promoted shipworks stage, one shared
+  // instance with the dock's shipworks destination (§0.5 — one WebGL mount, two hosts).
+  { path: './ship/shipScreen.js', load: () => import('./ship/shipScreen.js'), name: 'shipScreen' },
   { path: './screens/starmap.js', load: () => import('./screens/starmap.js'), name: 'starmapScreen' },
   { path: './screens/localmap.js', load: () => import('./screens/localmap.js'), name: 'localmapScreen' },
   { path: './screens/techTree.js', load: () => import('./screens/techTree.js'), name: 'techTreeScreen' },

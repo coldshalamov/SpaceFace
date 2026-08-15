@@ -418,6 +418,17 @@
 .sx-chooser__x { width:31px; height:31px; border-radius:1px; background:#0d0f10; }
 .sx-chooser__unfit { margin:10px 14px 0; border-radius:1px; }
 .sx-chooser__list { max-height:min(52vh,520px); padding:10px 12px 14px; }
+/* A height-capped flex column shrinks its children below content height BEFORE overflow is
+   evaluated, so overflow-y:auto never fires and rows crush onto each other (found by vision
+   review). Zero shrink on the rows is what turns the cap into a scrollbar. */
+.sx-chooser__list .sx-modrow { flex-shrink:0; }
+/* Five rows at natural height overrun the 52vh list cap — raise it so the fifth row peeks and the
+   thin scrollbar is the affordance for the rest (vision-review round 2). The panel's real ceiling
+   is the size middleware's inline max-height in shipworks.js, not a stylesheet rule. */
+.sx-chooser__list { max-height:min(62vh,580px); gap:6px; scrollbar-width:thin; }
+/* A disabled verb must still read as a button, not vanish into the row (global button:disabled
+   opacity .4 + the station surface left 'Dock to fit' near-invisible). */
+.sx-modrow__buy:disabled, .sx-chooser__unfit:disabled { opacity:.85; background:transparent; border:1px solid currentColor; color:var(--ink-mute, #84a0c8); box-shadow:none; }
 .sx-modrow { border-radius:1px; background:#101315; }
 .sx-modrow:focus-within,
 .sx-modrow:hover { border-color:#6d5b41; background:#1b1916; }
@@ -2354,7 +2365,7 @@ button.sx-fab-in { cursor:pointer; }
    separated from derived ship deltas so a weapon's benefit cannot disappear behind handling cost. */
 .sx-chooser__panel { width:min(540px,calc(100vw - 36px)); border-radius:6px; }
 .sx-chooser__head { background:linear-gradient(90deg,#102029,#0a141a); border-bottom-color:rgba(104,195,205,.18); }
-.sx-chooser__list { gap:8px; }
+.sx-chooser__list { gap:6px; }
 .sx-modrow {
   min-height:92px; grid-template-columns:34px minmax(0,1fr) auto; gap:11px; padding:10px 11px;
   border:0; border-left:2px solid rgba(100,195,205,.13); border-radius:0;

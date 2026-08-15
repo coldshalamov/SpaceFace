@@ -1033,3 +1033,43 @@ button:active { translate: 0 1px; }
 @media (prefers-reduced-motion: reduce) {
   .sf-select__field, .sf-select__field svg { transition: none; }
 }
+
+/* 11 ─ instrument skeleton : CREST / STAGE / APRON / DRAWER (grammar §6, Phase 0) ---------------
+   Every instrument uses the same three zones so muscle memory transfers between screens even
+   though the centerpieces differ completely. Proportions per screen spec (12/58/30 etc. via
+   grid-template-rows on .sf-instrument). The APRON always holds ≥1 verb; the STAGE is the
+   manipulable centerpiece. Class vocabulary follows grammar §8 (no banned substrings). */
+.sf-instrument { display: grid; grid-template-rows: 12fr 58fr 30fr; width: 100%; height: 100%; min-height: 0; }
+.sf-crest { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 14px 22px 10px; }
+.sf-crest__title { font-family: var(--sf-display-face); font-weight: 700; font-size: 40px; line-height: 1.04; color: var(--sf-paper); }
+.sf-crest__line { font-family: var(--sf-subhead-face); font-weight: 600; font-size: 22px; line-height: 1.25; color: var(--sf-calm); }
+.sf-stage { position: relative; min-height: 0; }
+.sf-apron { display: flex; flex-direction: column; gap: 8px; padding: 10px 22px 14px; min-height: 0; }
+.sf-deck { display: flex; flex-direction: column; gap: 6px; min-height: 0; }
+.sf-deck__label { font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px; letter-spacing: .18em; text-transform: uppercase; color: var(--sf-calm); }
+.sf-tile { display: flex; align-items: baseline; gap: 8px; padding: 6px 10px; }
+.sf-housing { display: flex; flex-direction: column; gap: 6px; }
+.sf-anchor { position: absolute; transform: translate(-50%, -50%); }
+.sf-drawer { position: fixed; top: 0; bottom: 0; width: min(520px, 42vw); right: 0; z-index: 40;
+  background: var(--sf-surface); border-left: 1px solid var(--sf-edge);
+  box-shadow: -18px 0 48px rgba(0,0,0,.5); transform: translateX(100%);
+  transition: transform var(--sf-t-settle) var(--sf-ease); }
+.sf-drawer.is-open { transform: translateX(0); }
+.sf-drawer__deck { display: flex; flex-direction: column; gap: 10px; padding: 16px; overflow-y: auto; height: 100%; }
+@media (prefers-reduced-motion: reduce) { .sf-drawer { transition: none; } }
+
+/* Text-expansion base (A_LIST_GAPS #1, binding from Phase 0): no fixed-width text container;
+   design against +40%; nowrap only on numerals and keycaps; sentences get a two-line budget. */
+.sf-instrument .sf-crest__line, .sf-instrument .sf-tile, .sf-instrument .sf-deck__label { min-width: 0; }
+.sf-instrument .sf-tile span[data-sf-text] { overflow-wrap: anywhere; }
+
+/* 12 ─ THE SHIP screen host (src/ui/ship/shipScreen.js; SCREENS_B §1.2/§1.3) ---------------------
+   The shared shipworks stage re-parented into a pausing flight screen (F2). Full-bleed with its
+   own opaque bay backdrop so it never reads as the same room as the menu plate. Absolute inset
+   full-bleed (not flex-child sizing): #screens flex-centers its children, so a plain width:100%
+   child can still end up content-sized and clipped (vision-review blocker, frame 04). The flight
+   host hides commerce: no Fleet/Buy segment (fleet rail stays, inspect-only). */
+.sf-ship { position: absolute; inset: 0; width: 100%; height: 100%; background: linear-gradient(160deg, #070c16 0%, #0b1220 100%); }
+.sf-ship .sx-sw { width: 100%; }
+.sf-ship .sx-sw--flight .sx-seg { display: none; }
+.sf-ship .sx-sw--flight .sx-sw__railstep { display: none; }
