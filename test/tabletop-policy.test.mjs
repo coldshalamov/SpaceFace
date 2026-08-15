@@ -409,5 +409,14 @@ test('VFX station-side and seam ranges use the table helper', async () => {
   assert.match(source, /tableVfxDrawWuFromState/);
   assert.match(source, /shouldDrawTableVfx/);
   assert.match(source, /frame\.x - player\.pos\.x/);
+  assert.match(source, /_updateNpcJobSignatures/);
+  assert.doesNotMatch(source, /NPC_JOB_SIGNATURE_DRAW_RANGE \* NPC_JOB_SIGNATURE_DRAW_RANGE/);
   assert.doesNotMatch(source, /VFX_STATION_SIDE_EVENT_DRAW_RANGE = 1500/);
+});
+
+test('station side-events anchor on the sim table, not a 1400 WU horizon', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const source = await readFile(new URL('../src/systems/stationSideEventDirector.js', import.meta.url), 'utf8');
+  assert.match(source, /tableSimAuthorityWuFromState/);
+  assert.doesNotMatch(source, /ANCHOR_RANGE = 1400/);
 });

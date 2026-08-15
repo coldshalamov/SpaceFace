@@ -31,10 +31,10 @@
 import { planStationSideEvents, SIDE_EVENTS } from '../data/stationSideEvents.js';
 import { bubblesFor } from '../data/stationBubbles.js';
 import { nearestVisibleStation } from './stationBroadcast.js';
+import { tableSimAuthorityWuFromState } from '../render/tabletopPolicy.js';
 import { makeShipEntitySpec } from './ships.js';
 
 const DAY_SECONDS = 600;        // sector-day contract (mirrors encounterDirector)
-const ANCHOR_RANGE = 1400;      // a station within this range of the player is "visible" for side-events
 const MIN_SPACING_S = 25;       // min gap between fired side-events at a station
 const DEFER_S = 15;             // re-check period for a due-but-blocked item
 const MAX_BUDGETED = 1;         // concurrent BUDGETED side-events per sector (spawn-budget-war guard)
@@ -80,7 +80,9 @@ export const stationSideEventDirector = {
 
   // Nearest VISIBLE station (the packet's off-screen guard). Reuses the shipped A5 helper.
   _resolveAnchor(state) {
-    return nearestVisibleStation(state, ANCHOR_RANGE);
+    // Cosmetic movers only need to exist when the station can enter the table.
+    // 1400 was the leftover horizon; sim authority is requested zoom + settings FOV + 48:9.
+    return nearestVisibleStation(state, tableSimAuthorityWuFromState(state));
   },
 
   // Plan a station-day's schedule ONCE, keyed on (sector, day, station). Cumulative delays →

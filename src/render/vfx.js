@@ -70,7 +70,6 @@ import {
   resolveNpcJobSignaturePreferCue,
   writeNpcJobSignatureFrame,
   NPC_JOB_SIGNATURE_CAPACITY,
-  NPC_JOB_SIGNATURE_DRAW_RANGE,
   deployFraction,
   resolveNpcJobReaction,
   NPC_JOB_REACTION,
@@ -5107,7 +5106,7 @@ export const vfx = {
     const player = this.helpers && this.helpers.player
       ? this.helpers.player()
       : this._ent(this.state.playerId);
-    const drawRange2 = NPC_JOB_SIGNATURE_DRAW_RANGE * NPC_JOB_SIGNATURE_DRAW_RANGE;
+    const drawWu = this._tableVfxDrawWu || tableVfxDrawWuFromState(this.state);
 
     // Generation stamp: slots claimed this tick are off-limits for reuse, so two jobs can never
     // fight over one slot within a single pass and produce a strobing half-drawn code.
@@ -5132,7 +5131,7 @@ export const vfx = {
       if (player && player.pos) {
         const dx = ent.pos.x - player.pos.x;
         const dz = ent.pos.z - player.pos.z;
-        if (dx * dx + dz * dz > drawRange2) continue;
+        if (!shouldDrawTableVfx(dx, dz, drawWu)) continue;
       }
 
       // D3: prefer entity.data.ceresCausalCue when present; fall back to job phase.
