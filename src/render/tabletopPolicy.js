@@ -200,6 +200,27 @@ export function lootMagnetFocusDelta(state, playerPos, entityPos, out) {
   return tableLookAtDelta(state, playerPos, entityPos, out);
 }
 
+/**
+ * NPC engine trails used leftover 2200/3600 player-camera horizons.
+ * Player and current target stay full. Everyone else follows the live
+ * look-at table. Off-glass trails are map facts, not 3D ribbons.
+ */
+export const TABLE_TRAIL_TIER = Object.freeze({
+  FULL: 'full',
+  NORMAL: 'normal',
+  SKIP: 'skip',
+});
+
+export function tableNpcTrailTier(state, entity, playerId, targetId, fallbackPos, out) {
+  if (!entity || entity.alive === false) return TABLE_TRAIL_TIER.SKIP;
+  if (entity.id === playerId) return TABLE_TRAIL_TIER.FULL;
+  if (targetId != null && entity.id === targetId) return TABLE_TRAIL_TIER.FULL;
+  const tableWu = tableVfxDrawWuFromState(state);
+  const delta = tableLookAtDelta(state, fallbackPos, entity.pos, out);
+  if (shouldDrawTableVfx(delta.x, delta.z, tableWu)) return TABLE_TRAIL_TIER.NORMAL;
+  return TABLE_TRAIL_TIER.SKIP;
+}
+
 export const TABLE_BAND = Object.freeze({
   GLASS: 'glass',
   RUNWAY: 'runway',

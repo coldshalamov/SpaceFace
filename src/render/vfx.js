@@ -63,6 +63,7 @@ import {
   shouldDrawTableVfx,
   TABLE_LOOT_MAGNET_CAP_WU,
   tableLookAtDelta,
+  tableNpcTrailTier,
   tableVfxDrawWuFromState,
 } from './tabletopPolicy.js';
 import { applyFlashAccessibility, resolveVfxAccessibilityProfile } from './vfxAccessibility.js';
@@ -435,12 +436,10 @@ const TETHER_SPARK_LOAD = 0.72;
 // how far PAST it the line is, so a merely-captured line is quiet and a worked one is not.
 const TETHER_CAPTURE_FLOOR = 0.35;
 
-// Engine-trail relevance gating (quality-preserving: far/offscreen NPCs emit less; player/target stay full).
+// Engine-trail relevance gating. Player/target stay full. NPC ribbons follow
+// the live table (tableNpcTrailTier). Leftover 2200/3600/2800 horizons retired.
 const TRAIL_TIER = Object.freeze({ FULL: 'full', NORMAL: 'normal', REDUCED: 'reduced', SKIP: 'skip' });
-const TRAIL_NORMAL_PLAYER_DIST = 2200;
-const TRAIL_CAMERA_NORMAL_DIST = 1300;
-const TRAIL_SKIP_PLAYER_DIST = 3600;
-const TRAIL_CAMERA_SKIP_DIST = 2800;
+const _trailFallbackPos = { x: 0, z: 0 };
 const TRAIL_SCREEN_CHECK_MAX = 8;
 const TRAIL_REDUCED_CADENCE = 3;
 const TRAIL_REDUCED_EMIT_CAP = 18;
@@ -10791,43 +10790,16 @@ export const vfx = {
   },
 
   _trailTierFor(e, ctx) {
-    if (!e || !e.alive) return TRAIL_TIER.SKIP;
-    if (e.id === ctx.playerId) return TRAIL_TIER.FULL;
-    if (ctx.targetId != null && e.id === ctx.targetId) return TRAIL_TIER.FULL;
-
-    const px = e.pos && Number.isFinite(e.pos.x) ? e.pos.x : 0;
-    const pz = e.pos && Number.isFinite(e.pos.z) ? e.pos.z : 0;
-    // playerX/Z are galactic-global; cameraX/Z are frame-local (Three camera).
-    const distPlayer = Math.hypot(px - ctx.playerX, pz - ctx.playerZ);
-    const local = this._toLocalXZ(px, pz, this._entityLocalXZ);
-    const distCamera = Math.hypot(local.x - ctx.cameraX, local.z - ctx.cameraZ);
-    const data = e.data || {};
-
-    if (data.wingmanOf || data.isWingman) return TRAIL_TIER.NORMAL;
-    if (ctx.playerTeam != null && e.team === ctx.playerTeam) return TRAIL_TIER.NORMAL;
-    if (isHostileToPlayer(e, ctx.playerTeam, ctx.state) && distPlayer <= TRAIL_NORMAL_PLAYER_DIST) {
-      return TRAIL_TIER.NORMAL;
-    }
-    if (distPlayer <= TRAIL_NORMAL_PLAYER_DIST && distCamera <= TRAIL_CAMERA_NORMAL_DIST) {
-      return TRAIL_TIER.NORMAL;
-    }
-    if (
-      isHostileToPlayer(e, ctx.playerTeam, ctx.state)
-      && distPlayer <= ctx.radarRange
-      && distCamera <= TRAIL_CAMERA_NORMAL_DIST * 1.35
-    ) {
-      return TRAIL_TIER.NORMAL;
-    }
-    if (distPlayer > ctx.radarRange) return TRAIL_TIER.SKIP;
-    if (distCamera > TRAIL_CAMERA_SKIP_DIST && distPlayer > TRAIL_SKIP_PLAYER_DIST) return TRAIL_TIER.SKIP;
-    if (
-      distCamera > TRAIL_CAMERA_NORMAL_DIST * 1.15
-      && distPlayer > TRAIL_NORMAL_PLAYER_DIST
-      && ctx.camera
-    ) {
-      return 'screen-check';
-    }
-    return TRAIL_TIER.REDUCED;
+    _trailFallbackPos.x = ctx.playerX;
+    _trailFallbackPos.z = ctx.playerZ;
+    return tableNpcTrailTier(
+      ctx.state,
+      e,
+      ctx.playerId,
+      ctx.targetId,
+      _trailFallbackPos,
+      _tableLookAtScratch,
+    );
   },
 
   _trailOnScreen(e, ctx) {

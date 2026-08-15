@@ -35,6 +35,8 @@ import {
   shouldDrawTableVfx,
   tableLookAtDelta,
   tableInstanceFarCullWu,
+  tableNpcTrailTier,
+  TABLE_TRAIL_TIER,
   TABLE_LOOT_MAGNET_CAP_WU,
   tableShadowCastRadius,
   tableShadowCasterRadius,
@@ -576,4 +578,38 @@ test('station side-events anchor on the sim table, not a 1400 WU horizon', async
     'a short-path lab 900 WU away does not spend its day off-table');
   assert.equal(stationSideEventDirector._resolveAnchor({ ...state, entityList: [far] }), null,
     'a station whose path cannot reach the table stays a map fact');
+});
+
+test('NPC engine trails follow the table, not a 2200/3600 leftover horizon', () => {
+  const state = {
+    camera: { liveZoom: 144, zoom: 144, fov: 50, aspect: 16 / 9, tilt: 60, focus: { x: 40, z: -10 } },
+    world: { frameOrigin: { x: 8000, z: 2000 } },
+    player: { targetId: 7 },
+  };
+  const player = { id: 1, alive: true, pos: { x: 8040, z: 1990 } };
+  const onGlass = { id: 2, alive: true, pos: { x: 8120, z: 1995 } };
+  const offTable = { id: 3, alive: true, pos: { x: 11000, z: 1990 } };
+  const target = { id: 7, alive: true, pos: { x: 11000, z: 4000 } };
+  const dead = { id: 4, alive: false, pos: { x: 8120, z: 1995 } };
+  const fallback = { x: 8040, z: 1990 };
+  assert.equal(tableNpcTrailTier(state, player, 1, 7, fallback), TABLE_TRAIL_TIER.FULL);
+  assert.equal(tableNpcTrailTier(state, onGlass, 1, 7, fallback), TABLE_TRAIL_TIER.NORMAL);
+  assert.equal(tableNpcTrailTier(state, offTable, 1, 7, fallback), TABLE_TRAIL_TIER.SKIP);
+  assert.equal(tableNpcTrailTier(state, target, 1, 7, fallback), TABLE_TRAIL_TIER.FULL);
+  assert.equal(tableNpcTrailTier(state, dead, 1, 7, fallback), TABLE_TRAIL_TIER.SKIP);
+  const shoved = {
+    ...state,
+    camera: { ...state.camera, focus: { x: 260, z: -10 } },
+  };
+  const stillOnGlass = { id: 5, alive: true, pos: { x: 8280, z: 1990 } };
+  assert.equal(tableNpcTrailTier(shoved, stillOnGlass, 1, 7, fallback), TABLE_TRAIL_TIER.NORMAL,
+    'a combat shove must not drop an on-glass NPC trail');
+});
+
+test('NPC trail helper is the live VFX path', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const source = await readFile(new URL('../src/render/vfx.js', import.meta.url), 'utf8');
+  assert.match(source, /tableNpcTrailTier/);
+  assert.doesNotMatch(source, /TRAIL_SKIP_PLAYER_DIST = 3600/);
+  assert.doesNotMatch(source, /TRAIL_NORMAL_PLAYER_DIST = 2200/);
 });
