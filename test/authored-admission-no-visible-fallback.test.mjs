@@ -998,7 +998,14 @@ test('the default Helios relay settles inside the loading-time authored runway',
     data: { ai: {} },
   };
   assert.equal(isInitialAuthoredCompositionEntity(interceptor, state), true,
-    '47-A cold-start holding ships still compose at load');
+    '47-A cold-start holding ships still compose at Helios load');
   assert.equal(isInitialAuthoredCompositionEntity(stray, state), false,
     'an ordinary ship at that hold is not an opening actor');
+  const later = {
+    ...state,
+    mode: 'loading',
+    world: { currentSectorId: 'sector_ceres_belt' },
+  };
+  assert.equal(isInitialAuthoredCompositionEntity(interceptor, later), false,
+    'a later Continue does not keep composing far story ships');
 });

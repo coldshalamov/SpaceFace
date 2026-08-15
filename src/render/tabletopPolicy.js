@@ -301,10 +301,20 @@ export function tableOpeningCompositionWu(state) {
   return radius;
 }
 
-/** 47-A cold-start holding ships sit 1.7–2.3 km out and must still compose at load. */
-export function isOpeningStoryActor(entity) {
-  const ai = entity && entity.data && entity.data.ai;
-  return !!(ai && ai.liveColdStartSafe === true);
+/**
+ * 47-A cold-start holding ships sit 1.7–2.3 km out and must still compose
+ * during the Helios loading screen. The safety flag is permanent, so later
+ * Continues must not treat those ships as opening identities.
+ */
+export function isOpeningStoryActor(entity, state) {
+  const data = entity && entity.data;
+  const ai = data && data.ai;
+  if (!ai || ai.liveColdStartSafe !== true) return false;
+  if (data._liveColdStartActivated === true) return false;
+  if (!state || state.mode !== 'loading') return false;
+  const sector = state.world && state.world.currentSectorId;
+  if (sector && sector !== 'sector_helios_prime') return false;
+  return true;
 }
 
 export function authoredLookaheadSeconds() {

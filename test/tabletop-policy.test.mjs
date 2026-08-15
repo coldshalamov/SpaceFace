@@ -201,8 +201,23 @@ test('opening compose follows the table, not a 2400 WU leftover horizon', () => 
   });
   assert.ok(opening < 800, `opening compose ${opening} stays on the table`);
   assert.ok(opening < 2400, 'opening compose is not the leftover 2400 WU ship horizon');
-  assert.equal(isOpeningStoryActor({ data: { ai: { liveColdStartSafe: true } } }), true);
-  assert.equal(isOpeningStoryActor({ data: { ai: {} } }), false);
+  assert.equal(isOpeningStoryActor(
+    { data: { ai: { liveColdStartSafe: true } } },
+    { mode: 'loading', world: { currentSectorId: 'sector_helios_prime' } },
+  ), true);
+  assert.equal(isOpeningStoryActor({ data: { ai: {} } }, { mode: 'loading' }), false);
+  assert.equal(isOpeningStoryActor(
+    { data: { ai: { liveColdStartSafe: true }, _liveColdStartActivated: true } },
+    { mode: 'loading', world: { currentSectorId: 'sector_helios_prime' } },
+  ), false);
+  assert.equal(isOpeningStoryActor(
+    { data: { ai: { liveColdStartSafe: true } } },
+    { mode: 'flight', world: { currentSectorId: 'sector_helios_prime' } },
+  ), false);
+  assert.equal(isOpeningStoryActor(
+    { data: { ai: { liveColdStartSafe: true } } },
+    { mode: 'loading', world: { currentSectorId: 'sector_ceres_belt' } },
+  ), false);
 });
 
 test('authored decode follows the table, not a 2400-unit horizon', () => {

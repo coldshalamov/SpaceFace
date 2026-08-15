@@ -645,7 +645,7 @@ export function isInitialAuthoredCompositionEntity(entity, state) {
   if (!entity || entity.alive === false || !state) return false;
   if (entity.id === state.playerId || entity.isPlayer === true) return true;
   if (isTableCriticalStartingHub(entity) || isCriticalStartingHub(entity)) return true;
-  if (isOpeningStoryActor(entity)) return true;
+  if (isOpeningStoryActor(entity, state)) return true;
   const player = state.entities && typeof state.entities.get === 'function'
     ? state.entities.get(state.playerId)
     : (state.entityList || []).find((candidate) => candidate && candidate.id === state.playerId);
