@@ -594,7 +594,7 @@ export function ensurePerfRuntime(state) {
             presentMs: framePhaseMs.render,
             uiMs: framePhaseMs.ui,
             vfxMs: framePhaseMs.vfx,
-            admissionMs: loop.admissionMs,
+            admissionMs: pendingAdmissionMs,
           }));
         } else {
           accumulateHitch(hitchHistogram, null);

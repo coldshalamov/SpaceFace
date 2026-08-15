@@ -75,6 +75,17 @@ test('a one-vsync hitch is unknown unless one phase owns the frame', () => {
   assert.equal(classified.attributed, false);
 });
 
+test('an admission stall on the interval that just ended is named admission', () => {
+  const state = { entityList: [], settings: { video: {} } };
+  const perf = ensurePerfRuntime(state);
+  perf.setHitchAttributionEnabled(true);
+  perf.beginFrame(0.016);
+  perf.recordAdmissionWork(250);
+  perf.beginFrame(0.27);
+  const report = perf.getHitchHistogram();
+  assert.equal(report.counts.admission, 1);
+});
+
 test('live hitch attribution pairs the interval with the previous frame phases', () => {
   const state = { entityList: [], settings: { video: {} } };
   const perf = ensurePerfRuntime(state);

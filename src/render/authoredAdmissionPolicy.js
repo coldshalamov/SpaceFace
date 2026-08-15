@@ -52,14 +52,17 @@ export function willEntityEnterAuthoredUpgradeRunway(entity, state, {
   const visual = Math.max(0, Number(entity.radius) || 0);
   const surface = Math.max(0, distance - visual);
   if (surface <= immediate) return true;
-  const zoom = Number(state && state.camera && state.camera.zoom);
-  const tilt = Number(state && state.camera && state.camera.tilt);
-  const glass = glassCornerWu(
-    Number.isFinite(zoom) ? zoom : 144,
-    50,
-    16 / 9,
-    Number.isFinite(tilt) ? tilt : 60,
-  );
+  const camera = state && state.camera || {};
+  const video = state && state.settings && state.settings.video || {};
+  const zoom = Number.isFinite(Number(camera.zoom)) ? Number(camera.zoom) : 144;
+  const tilt = Number.isFinite(Number(camera.tilt)) ? Number(camera.tilt) : 60;
+  const fov = Number.isFinite(Number(camera.fov))
+    ? Number(camera.fov)
+    : (Number.isFinite(Number(video.fov)) ? Number(video.fov) : 50);
+  const aspect = Number.isFinite(Number(camera.aspect)) && Number(camera.aspect) > 0
+    ? Number(camera.aspect)
+    : 16 / 9;
+  const glass = glassCornerWu(zoom, fov, aspect, tilt);
   if (surface <= glass) return true;
   if (distance <= 0) return false;
 

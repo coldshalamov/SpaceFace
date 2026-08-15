@@ -204,6 +204,17 @@ test('authored decode follows the table, not a 2400-unit horizon', () => {
   };
   assert.equal(isEntityAuthoredUpgradeRelevant(visibleStationary, state), true,
     'a stationary station already on the max-zoom glass must start authored decode');
+  state.camera = { zoom: 330, tilt: 60, fov: 70 };
+  const wideFovStation = {
+    id: 8,
+    type: 'station',
+    alive: true,
+    pos: { x: 520, z: 0 },
+    radius: 40,
+    vel: { x: 0, z: 0 },
+  };
+  assert.equal(isEntityAuthoredUpgradeRelevant(wideFovStation, state), true,
+    'authored glass must honor the live FOV the player actually set');
 });
 
 test('census splits glass, runway, and beyond without collapsing the table', () => {
