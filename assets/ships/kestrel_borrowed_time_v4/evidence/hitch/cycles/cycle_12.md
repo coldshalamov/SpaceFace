@@ -4,4 +4,10 @@
 - LOD0 triangles: 35814
 - Hid `V7_HeroMark_DieLaughing` card and leftover cassette bars. Vertical name web. Outboard pit mouths.
 
-Authoring look: three-quarter no longer has the DIE LAUGHING lid. Sponson is more skeletal. Drive still a dark barrel. Not wired.
+Independent reviews:
+
+- three-quarter: **revise** — DIE LAUGHING card gone; sponson still a sealed deck from this camera
+- starboard: **revise** — no well you can look into
+- drive: **keep**
+
+The remaining lid is the V6 sponson underframe tops themselves. Next cut those. Not wired.
