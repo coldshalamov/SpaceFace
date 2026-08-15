@@ -11,7 +11,7 @@ and [`CANONICAL_BUILD_MAP.md`](../CANONICAL_BUILD_MAP.md) §8 / §8.1 / §8.2 / 
 (exhaustive technique inventory)**.
 
 Existing identities `PQ-034`–`PQ-044` and `PQ-051`–`PQ-060` stay authoritative for their
-scopes. Identities `PQ-061`–`PQ-126` below are reserved so later campaigns can admit
+scopes. Identities `PQ-061`–`PQ-127` below are reserved so later campaigns can admit
 leaves without inventing overlapping outcomes.
 
 ## 1. Picture and behavior contract
@@ -236,6 +236,7 @@ Each still starts as INV unless a prior census already named that owner.
 | **`PQ-124` / `PERF-84-HAIL-HUD-HORIZON`** | Near INV | Hail and the HUD overview still name a leftover 5200 WU range. | Census first. Hail/scan range is gameplay. Overview at 5 Hz is radar/map awareness (`PQ-119`), not a 3D submit box. Do not shrink who the player can hail. Admit only if the list is a named hitch; then keep hail and drop only 3D/VFX work. | Hail still works at authored range; 3D cost stays on the table. |
 | **`PQ-125` / `PERF-85-REGION-CROSSFADE`** | Near INV | Region sky/ambient still fades across a 1500 WU sector boundary. | That number is the authored entry for the next region, not a 3D submit box. Do not shrink the fade. Admit only if the fade math is a named hitch. | Region volumes still read; 3D cost stays on the table. |
 | **`PQ-126` / `PERF-86-NPC-TRAIL-TABLE`** | Near IMPL | NPC engine trails still named leftover 2200/3600/2800 player-camera horizons. | Player and current target stay full. Other ribbons use `tableNpcTrailTier` + look-at. Do not keep off-glass ally/hostile ribbons as a courtesy. | On-glass trails stay; off-glass ribbons stop. |
+| **`PQ-127` / `PERF-87-NON-SUBMIT-HORIZONS`** | Near INV | Several leftover large numbers are not 3D submit. | Camera shake 1200, director compose 600, pair-frame 280, and planet/sun sky dressing at 2800–6000 are feel or painted sky. The 300 NPC-signature constant is leftover comment; live draw uses the table. Do not shrink. | No fake-visible mesh tax; shake, director, and sky stay. |
 
 ## 6. Investigation protocols (scaffolds this catalog may build)
 
