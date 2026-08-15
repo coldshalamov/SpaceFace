@@ -138,7 +138,7 @@ export function tableSimAuthorityWuFromState(state) {
  * Cosmetic VFX follow the same live table as hearing/AI. Off-table trails and
  * station-side lights stay map facts; on-glass VFX is unchanged.
  */
-const _vfxDrawCache = { key: '', value: 0 };
+const _vfxDrawCache = { zoom: NaN, fov: NaN, aspect: NaN, tilt: NaN, value: 0 };
 
 export function tableVfxDrawWuFromState(state) {
   const camera = state && state.camera || {};
@@ -150,10 +150,19 @@ export function tableVfxDrawWuFromState(state) {
     : (Number.isFinite(video.fov) ? video.fov : 50);
   const aspect = Number.isFinite(camera.aspect) && camera.aspect > 0 ? camera.aspect : 16 / 9;
   const tilt = Number.isFinite(camera.tilt) ? camera.tilt : 60;
-  const key = `${zoom}|${fov}|${aspect}|${tilt}`;
-  if (_vfxDrawCache.key === key) return _vfxDrawCache.value;
+  if (
+    _vfxDrawCache.zoom === zoom
+    && _vfxDrawCache.fov === fov
+    && _vfxDrawCache.aspect === aspect
+    && _vfxDrawCache.tilt === tilt
+  ) {
+    return _vfxDrawCache.value;
+  }
   const value = tableHearingFarWu(zoom, fov, aspect, tilt);
-  _vfxDrawCache.key = key;
+  _vfxDrawCache.zoom = zoom;
+  _vfxDrawCache.fov = fov;
+  _vfxDrawCache.aspect = aspect;
+  _vfxDrawCache.tilt = tilt;
   _vfxDrawCache.value = value;
   return value;
 }
