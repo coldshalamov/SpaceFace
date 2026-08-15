@@ -1,0 +1,586 @@
+{
+  "schema": "spaceface.hitchHeroV80.build.v1",
+  "status": "complete",
+  "packet": "SF-K0-HITCH-HERO-V80-071",
+  "polishPassId": "kestrel-hitch-hero-v80",
+  "generationFingerprint": "57C7F805BB620E3EB413C3E8A33A38668ECE2B27A9D06F62425B286649FD81FD",
+  "polish": {
+    "schema": "spaceface.hitchHero.v80",
+    "passId": "kestrel-hitch-hero-v80",
+    "method": "two overlapping rolled cone bands instead of stamp lids",
+    "priorPass": "v79",
+    "hiddenDonors": [
+      "V79_Course_Port_Aft",
+      "V79_Course_Port_AftMid",
+      "V79_Course_Port_Fore",
+      "V79_Course_Port_ForeOut",
+      "V79_Course_Port_Mid",
+      "V79_Course_Port_MidFore",
+      "V79_Course_Port_Nose",
+      "V79_Course_Starboard_Aft",
+      "V79_Course_Starboard_AftMid",
+      "V79_Course_Starboard_Fore",
+      "V79_Course_Starboard_ForeOut",
+      "V79_Course_Starboard_Mid",
+      "V79_Course_Starboard_MidFore",
+      "V79_Course_Starboard_Nose",
+      "V79_Hatch_Port_Aft_Frame",
+      "V79_Hatch_Port_Aft_Lid",
+      "V79_Hatch_Port_AftMid_Frame",
+      "V79_Hatch_Port_AftMid_Lid",
+      "V79_Hatch_Port_Fore_Frame",
+      "V79_Hatch_Port_Fore_Lid",
+      "V79_Hatch_Port_ForeOut_Frame",
+      "V79_Hatch_Port_ForeOut_Lid",
+      "V79_Hatch_Port_Mid_Frame",
+      "V79_Hatch_Port_Mid_Lid",
+      "V79_Hatch_Port_MidFore_Frame",
+      "V79_Hatch_Port_MidFore_Lid",
+      "V79_Hatch_Port_Nose_Frame",
+      "V79_Hatch_Port_Nose_Lid",
+      "V79_Hatch_Starboard_Aft_Frame",
+      "V79_Hatch_Starboard_Aft_Lid",
+      "V79_Hatch_Starboard_AftMid_Frame",
+      "V79_Hatch_Starboard_AftMid_Lid",
+      "V79_Hatch_Starboard_Fore_Frame",
+      "V79_Hatch_Starboard_Fore_Lid",
+      "V79_Hatch_Starboard_ForeOut_Frame",
+      "V79_Hatch_Starboard_ForeOut_Lid",
+      "V79_Hatch_Starboard_Mid_Frame",
+      "V79_Hatch_Starboard_Mid_Lid",
+      "V79_Hatch_Starboard_MidFore_Frame",
+      "V79_Hatch_Starboard_MidFore_Lid",
+      "V79_Hatch_Starboard_Nose_Frame",
+      "V79_Hatch_Starboard_Nose_Lid",
+      "V79_Seam_Port_Aft",
+      "V79_Seam_Port_AftMid",
+      "V79_Seam_Port_Fore",
+      "V79_Seam_Port_ForeOut",
+      "V79_Seam_Port_Mid",
+      "V79_Seam_Port_MidFore",
+      "V79_Seam_Starboard_Aft",
+      "V79_Seam_Starboard_AftMid",
+      "V79_Seam_Starboard_Fore",
+      "V79_Seam_Starboard_ForeOut",
+      "V79_Seam_Starboard_Mid",
+      "V79_Seam_Starboard_MidFore"
+    ],
+    "objectsAdded": 52,
+    "objectNames": [
+      "V80_Course_Port_In_Aft",
+      "V80_Seam_Port_In_Aft",
+      "V80_Course_Port_In_AftMid",
+      "V80_Seam_Port_In_AftMid",
+      "V80_Course_Port_In_Mid",
+      "V80_Seam_Port_In_Mid",
+      "V80_Course_Port_In_MidFore",
+      "V80_Seam_Port_In_MidFore",
+      "V80_Course_Port_In_Fore",
+      "V80_Seam_Port_In_Fore",
+      "V80_Course_Port_In_ForeOut",
+      "V80_Seam_Port_In_ForeOut",
+      "V80_Course_Port_In_Nose",
+      "V80_Course_Port_Out_Aft",
+      "V80_Seam_Port_Out_Aft",
+      "V80_Course_Port_Out_AftMid",
+      "V80_Seam_Port_Out_AftMid",
+      "V80_Course_Port_Out_Mid",
+      "V80_Seam_Port_Out_Mid",
+      "V80_Course_Port_Out_MidFore",
+      "V80_Seam_Port_Out_MidFore",
+      "V80_Course_Port_Out_Fore",
+      "V80_Seam_Port_Out_Fore",
+      "V80_Course_Port_Out_ForeOut",
+      "V80_Seam_Port_Out_ForeOut",
+      "V80_Course_Port_Out_Nose",
+      "V80_Course_Starboard_In_Aft",
+      "V80_Seam_Starboard_In_Aft",
+      "V80_Course_Starboard_In_AftMid",
+      "V80_Seam_Starboard_In_AftMid",
+      "V80_Course_Starboard_In_Mid",
+      "V80_Seam_Starboard_In_Mid",
+      "V80_Course_Starboard_In_MidFore",
+      "V80_Seam_Starboard_In_MidFore",
+      "V80_Course_Starboard_In_Fore",
+      "V80_Seam_Starboard_In_Fore",
+      "V80_Course_Starboard_In_ForeOut",
+      "V80_Seam_Starboard_In_ForeOut",
+      "V80_Course_Starboard_In_Nose",
+      "V80_Course_Starboard_Out_Aft",
+      "V80_Seam_Starboard_Out_Aft",
+      "V80_Course_Starboard_Out_AftMid",
+      "V80_Seam_Starboard_Out_AftMid",
+      "V80_Course_Starboard_Out_Mid",
+      "V80_Seam_Starboard_Out_Mid",
+      "V80_Course_Starboard_Out_MidFore",
+      "V80_Seam_Starboard_Out_MidFore",
+      "V80_Course_Starboard_Out_Fore",
+      "V80_Seam_Starboard_Out_Fore",
+      "V80_Course_Starboard_Out_ForeOut",
+      "V80_Seam_Starboard_Out_ForeOut",
+      "V80_Course_Starboard_Out_Nose"
+    ],
+    "componentReference": "kestrel_midship_material_truth_reference_v1.png"
+  },
+  "socketContract": [
+    {
+      "name": "SOCKET_Weapon_Front",
+      "position": [
+        12.62,
+        1.43,
+        0.0
+      ],
+      "role": "weapon_muzzle",
+      "forward": [
+        1.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "SOCKET_Mining_Front",
+      "position": [
+        12.26,
+        -1.08,
+        0.0
+      ],
+      "role": "mining_emitter",
+      "forward": [
+        1.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "SOCKET_Engine_Main",
+      "position": [
+        -13.85,
+        0.0,
+        0.0
+      ],
+      "role": "engine_exhaust",
+      "forward": [
+        -1.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "SOCKET_Trail_Main",
+      "position": [
+        -14.05,
+        0.0,
+        0.0
+      ],
+      "role": "engine_trail",
+      "forward": [
+        -1.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "SOCKET_Utility_Dorsal",
+      "position": [
+        -1.45,
+        1.95,
+        -3.8
+      ],
+      "role": "utility_dorsal",
+      "forward": [
+        0.0,
+        1.0,
+        0.0
+      ]
+    },
+    {
+      "name": "SOCKET_Cargo_Ventral",
+      "position": [
+        -0.8,
+        -2.1,
+        0.0
+      ],
+      "role": "cargo_ventral",
+      "forward": [
+        0.0,
+        -1.0,
+        0.0
+      ]
+    },
+    {
+      "name": "SOCKET_Camera_Focus",
+      "position": [
+        0.0,
+        0.35,
+        0.0
+      ],
+      "role": "camera_focus",
+      "forward": [
+        1.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "name": "SOCKET_RCS_Port",
+      "position": [
+        1.6,
+        0.45,
+        -6.6
+      ],
+      "role": "rcs_port",
+      "forward": [
+        0.0,
+        0.0,
+        -1.0
+      ]
+    },
+    {
+      "name": "SOCKET_RCS_Starboard",
+      "position": [
+        1.6,
+        0.45,
+        6.6
+      ],
+      "role": "rcs_starboard",
+      "forward": [
+        0.0,
+        0.0,
+        1.0
+      ]
+    }
+  ],
+  "visibleBoundsBlenderXYZ": {
+    "min": [
+      -15.25,
+      -6.64,
+      -2.77
+    ],
+    "max": [
+      13.905536,
+      6.64,
+      4.398539
+    ],
+    "dimensions": [
+      29.155536,
+      13.280001,
+      7.168539
+    ],
+    "center": [
+      -0.672232,
+      0.0,
+      0.814269
+    ]
+  },
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 45641,
+      "draws": 28,
+      "animatedRoleException": 13,
+      "collisionTriangles": 22,
+      "tangentRepairs": [
+        {
+          "object": "LOD0_static_BrushedMetal",
+          "removedDegenerateTriangles": 3012,
+          "patchedTriangles": 430,
+          "collapsedUvTriangles": 430,
+          "canonicalUvTriangles": 238,
+          "customNormalLoopRepairs": 0,
+          "badBefore": 0,
+          "badAfter": 0,
+          "tangentAttributeOmitted": false,
+          "customNormalsCleared": true
+        },
+        {
+          "object": "LOD0_static_CANOPY",
+          "removedDegenerateTriangles": 0,
+          "patchedTriangles": 1,
+          "collapsedUvTriangles": 1,
+          "canonicalUvTriangles": 0,
+          "customNormalLoopRepairs": 0,
+          "badBefore": 0,
+          "badAfter": 0,
+          "tangentAttributeOmitted": false,
+          "customNormalsCleared": true
+        },
+        {
+          "object": "LOD0_static_Hull",
+          "removedDegenerateTriangles": 0,
+          "patchedTriangles": 42,
+          "collapsedUvTriangles": 42,
+          "canonicalUvTriangles": 0,
+          "customNormalLoopRepairs": 0,
+          "badBefore": 0,
+          "badAfter": 0,
+          "tangentAttributeOmitted": false,
+          "customNormalsCleared": true
+        },
+        {
+          "object": "LOD0_static_Rubber",
+          "removedDegenerateTriangles": 244,
+          "patchedTriangles": 52,
+          "collapsedUvTriangles": 52,
+          "canonicalUvTriangles": 4,
+          "customNormalLoopRepairs": 0,
+          "badBefore": 0,
+          "badAfter": 0,
+          "tangentAttributeOmitted": false,
+          "customNormalsCleared": true
+        }
+      ],
+      "materialBillRuntimeMap": {
+        "active_aperture": [
+          "Material_ArmorDark",
+          "Material_Emissive_Cyan",
+          "Material_Emissive_Orange"
+        ],
+        "armor_plate": [
+          "Material_ArmorDark",
+          "Material_BrushedMetal"
+        ],
+        "cable_elastomer": [
+          "Material_Rubber"
+        ],
+        "canopy": [
+          "Material_Glass_Canopy"
+        ],
+        "ceramic_isolator": [
+          "Material_EngineCeramic"
+        ],
+        "coated_hull_panel": [
+          "Material_Hull"
+        ],
+        "drive_alloy": [
+          "Material_BrushedMetal"
+        ],
+        "marking": [
+          "Material_Accent_FrontierCyan",
+          "Material_Accent_WarningOrange",
+          "Material_Decal_Hazard",
+          "Material_Decal_Stencils",
+          "Material_V6_MarkingIvory"
+        ],
+        "pressure_shell": [
+          "Material_Hull"
+        ],
+        "radiator": [
+          "Material_BrushedMetal",
+          "Material_Radiator"
+        ],
+        "refractory_vane": [
+          "Material_EngineCeramic"
+        ],
+        "repair_panel": [
+          "Material_RepairGreen"
+        ],
+        "sensor": [
+          "Material_ArmorDark",
+          "Material_BrushedMetal",
+          "Material_Emissive_Cyan"
+        ],
+        "structural_metal": [
+          "Material_BrushedMetal",
+          "Material_Mechanical"
+        ]
+      },
+      "path": "source_candidates/hitch_hero_v80/wholeships/kestrel_borrowed_time_v4_lod0.glb",
+      "bytes": 54309952,
+      "sha256": "17D4D1029BECFC65DF795686A93669872042F3E8253F2089AA31712AE580BC6E"
+    },
+    {
+      "lod": 1,
+      "triangles": 18551,
+      "draws": 12,
+      "animatedRoleException": 0,
+      "collisionTriangles": 22,
+      "tangentRepairs": [
+        {
+          "object": "LOD1_static_BrushedMetal",
+          "removedDegenerateTriangles": 532,
+          "patchedTriangles": 24,
+          "collapsedUvTriangles": 24,
+          "canonicalUvTriangles": 0,
+          "customNormalLoopRepairs": 0,
+          "badBefore": 0,
+          "badAfter": 0,
+          "tangentAttributeOmitted": false,
+          "customNormalsCleared": true
+        },
+        {
+          "object": "LOD1_static_CANOPY",
+          "removedDegenerateTriangles": 0,
+          "patchedTriangles": 2,
+          "collapsedUvTriangles": 1,
+          "canonicalUvTriangles": 1,
+          "customNormalLoopRepairs": 1,
+          "badBefore": 1,
+          "badAfter": 0,
+          "tangentAttributeOmitted": false,
+          "customNormalsCleared": true
+        },
+        {
+          "object": "LOD1_static_Hull",
+          "removedDegenerateTriangles": 0,
+          "patchedTriangles": 18,
+          "collapsedUvTriangles": 18,
+          "canonicalUvTriangles": 0,
+          "customNormalLoopRepairs": 0,
+          "badBefore": 0,
+          "badAfter": 0,
+          "tangentAttributeOmitted": false,
+          "customNormalsCleared": true
+        },
+        {
+          "object": "LOD1_static_Rubber",
+          "removedDegenerateTriangles": 212,
+          "patchedTriangles": 46,
+          "collapsedUvTriangles": 46,
+          "canonicalUvTriangles": 0,
+          "customNormalLoopRepairs": 0,
+          "badBefore": 0,
+          "badAfter": 0,
+          "tangentAttributeOmitted": false,
+          "customNormalsCleared": true
+        }
+      ],
+      "materialBillRuntimeMap": {
+        "active_aperture": [
+          "Material_ArmorDark",
+          "Material_Emissive_Cyan",
+          "Material_Emissive_Orange"
+        ],
+        "armor_plate": [
+          "Material_ArmorDark",
+          "Material_BrushedMetal"
+        ],
+        "cable_elastomer": [
+          "Material_Rubber"
+        ],
+        "canopy": [
+          "Material_Glass_Canopy"
+        ],
+        "ceramic_isolator": [
+          "Material_ArmorDark"
+        ],
+        "coated_hull_panel": [
+          "Material_Hull"
+        ],
+        "drive_alloy": [
+          "Material_BrushedMetal"
+        ],
+        "marking": [
+          "Material_Accent_FrontierCyan",
+          "Material_Accent_WarningOrange",
+          "Material_V6_MarkingIvory"
+        ],
+        "pressure_shell": [
+          "Material_Hull"
+        ],
+        "radiator": [
+          "Material_BrushedMetal"
+        ],
+        "refractory_vane": [
+          "Material_ArmorDark"
+        ],
+        "repair_panel": [
+          "Material_RepairGreen"
+        ],
+        "sensor": [
+          "Material_ArmorDark",
+          "Material_BrushedMetal",
+          "Material_Emissive_Cyan"
+        ],
+        "structural_metal": [
+          "Material_BrushedMetal",
+          "Material_Mechanical"
+        ]
+      },
+      "path": "source_candidates/hitch_hero_v80/wholeships/kestrel_borrowed_time_v4_lod1.glb",
+      "bytes": 38940204,
+      "sha256": "2E29D5319AFAF10A128164292133DBE0537BCAAE5C1EE3CA80821F8528369A11"
+    },
+    {
+      "lod": 2,
+      "triangles": 8402,
+      "draws": 8,
+      "animatedRoleException": 0,
+      "collisionTriangles": 22,
+      "tangentRepairs": [
+        {
+          "object": "LOD2_static_ArmorDark",
+          "removedDegenerateTriangles": 0,
+          "patchedTriangles": 3,
+          "collapsedUvTriangles": 3,
+          "canonicalUvTriangles": 0,
+          "customNormalLoopRepairs": 0,
+          "badBefore": 0,
+          "badAfter": 0,
+          "tangentAttributeOmitted": false,
+          "customNormalsCleared": true
+        },
+        {
+          "object": "LOD2_static_Hull",
+          "removedDegenerateTriangles": 0,
+          "patchedTriangles": 65,
+          "collapsedUvTriangles": 65,
+          "canonicalUvTriangles": 0,
+          "customNormalLoopRepairs": 0,
+          "badBefore": 0,
+          "badAfter": 0,
+          "tangentAttributeOmitted": false,
+          "customNormalsCleared": true
+        }
+      ],
+      "materialBillRuntimeMap": {
+        "active_aperture": [
+          "Material_Accent_FrontierCyan"
+        ],
+        "armor_plate": [
+          "Material_ArmorDark"
+        ],
+        "cable_elastomer": [
+          "Material_Rubber"
+        ],
+        "canopy": [
+          "Material_ArmorDark"
+        ],
+        "ceramic_isolator": [
+          "Material_ArmorDark"
+        ],
+        "drive_alloy": [
+          "Material_BrushedMetal"
+        ],
+        "marking": [
+          "Material_V6_MarkingIvory"
+        ],
+        "pressure_shell": [
+          "Material_Hull"
+        ],
+        "radiator": [
+          "Material_BrushedMetal"
+        ],
+        "refractory_vane": [
+          "Material_ArmorDark"
+        ],
+        "repair_panel": [
+          "Material_RepairGreen"
+        ],
+        "sensor": [
+          "Material_ArmorDark",
+          "Material_BrushedMetal"
+        ],
+        "structural_metal": [
+          "Material_BrushedMetal",
+          "Material_Mechanical"
+        ]
+      },
+      "path": "source_candidates/hitch_hero_v80/wholeships/kestrel_borrowed_time_v4_lod2.glb",
+      "bytes": 32761072,
+      "sha256": "6966212FB122B69D080858EC3B04C04C7DF03484EE693D7773999989E58DFB28"
+    }
+  ],
+  "candidateOnly": true,
+  "livePromotion": false,
+  "cycle": 71
+}
