@@ -384,6 +384,7 @@ test('cosmetic VFX follow the live table, not a 1500 WU horizon', () => {
     camera: { zoom: 144, fov: 50, aspect: 16 / 9 },
   });
   assert.ok(defaultDraw < 800, `default VFX ${defaultDraw} stays on the table`);
+  assert.ok(defaultDraw < 580, `default table ${defaultDraw} is tighter than the leftover 580 WU magnet horizon`);
   assert.equal(shouldDrawTableVfx(200, 0, defaultDraw), true);
   assert.equal(shouldDrawTableVfx(1500, 0, defaultDraw), false);
   const wide = tableVfxDrawWuFromState({
@@ -410,7 +411,10 @@ test('VFX station-side and seam ranges use the table helper', async () => {
   assert.match(source, /shouldDrawTableVfx/);
   assert.match(source, /frame\.x - player\.pos\.x/);
   assert.match(source, /_updateNpcJobSignatures/);
+  assert.match(source, /_lootMagnetRelevant/);
+  assert.match(source, /_updateLootMagnet/);
   assert.doesNotMatch(source, /NPC_JOB_SIGNATURE_DRAW_RANGE \* NPC_JOB_SIGNATURE_DRAW_RANGE/);
+  assert.doesNotMatch(source, /LOOT_MAGNET_DRAW_RANGE \* LOOT_MAGNET_DRAW_RANGE/);
   assert.doesNotMatch(source, /VFX_STATION_SIDE_EVENT_DRAW_RANGE = 1500/);
 });
 

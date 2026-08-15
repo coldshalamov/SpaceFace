@@ -464,8 +464,9 @@ const VFX_SEAM_MARKERS_HZ = 20;
 // like a small drifting rock, so the single most repeated reward in the game read as nothing. This
 // draws it as light. Cadence-gated and fully asleep when nothing is homing.
 const VFX_LOOT_MAGNET_HZ = 24;
-// Slightly beyond bare MAGNET_RANGE (420); fitted tractors (560/780) still get trails in the
-// inner band. Outer-band pull beyond this is real but dim — avoid a permanent huge draw budget.
+// Tractor physics still reaches 420–780 WU. Trails only paint on the live table, and never
+// farther than this inner-band cap even on a zoomed-out wide lens. Off-table pull stays real
+// and dim — do not keep a 580 WU horizon at default zoom.
 const LOOT_MAGNET_DRAW_RANGE = 580;
 const LOOT_MAGNET_MIN_SPEED = 26;        // wu/s; below this a drop is drifting, not being pulled
 const LOOT_MAGNET_MAX_TRAILED = 24;      // hard cap on simultaneously trailed drops
@@ -8926,12 +8927,15 @@ export const vfx = {
     if (!player || !player.alive || !player.pos) return false;
     const list = state.entityList;
     if (!list || !list.length) return false;
-    const r2 = LOOT_MAGNET_DRAW_RANGE * LOOT_MAGNET_DRAW_RANGE;
+    const drawWu = Math.min(
+      this._tableVfxDrawWu || tableVfxDrawWuFromState(state),
+      LOOT_MAGNET_DRAW_RANGE,
+    );
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
       if (!e || !e.alive || e.type !== 'pickup' || !e.pos) continue;
       const dx = e.pos.x - player.pos.x, dz = e.pos.z - player.pos.z;
-      if (dx * dx + dz * dz > r2) continue;
+      if (!shouldDrawTableVfx(dx, dz, drawWu)) continue;
       const vx = (e.vel && e.vel.x) || 0, vz = (e.vel && e.vel.z) || 0;
       if (vx * vx + vz * vz >= LOOT_MAGNET_MIN_SPEED * LOOT_MAGNET_MIN_SPEED) return true;
     }
@@ -8943,15 +8947,17 @@ export const vfx = {
     const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(state.playerId);
     if (!player || !player.pos) { this._lootMagnetLive = 0; return 0; }
     const list = state.entityList || [];
-    const r2 = LOOT_MAGNET_DRAW_RANGE * LOOT_MAGNET_DRAW_RANGE;
+    const drawWu = Math.min(
+      this._tableVfxDrawWu || tableVfxDrawWuFromState(state),
+      LOOT_MAGNET_DRAW_RANGE,
+    );
     const burst = this._burst || 1;
     let drawn = 0;
     for (let i = 0; i < list.length && drawn < LOOT_MAGNET_MAX_TRAILED; i++) {
       const e = list[i];
       if (!e || !e.alive || e.type !== 'pickup' || !e.pos) continue;
       const dx = e.pos.x - player.pos.x, dz = e.pos.z - player.pos.z;
-      const dist2 = dx * dx + dz * dz;
-      if (dist2 > r2) continue;
+      if (!shouldDrawTableVfx(dx, dz, drawWu)) continue;
       const vx = (e.vel && e.vel.x) || 0, vz = (e.vel && e.vel.z) || 0;
       const speed = Math.hypot(vx, vz);
       if (speed < LOOT_MAGNET_MIN_SPEED) continue;
