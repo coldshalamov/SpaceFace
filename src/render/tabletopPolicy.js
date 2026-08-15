@@ -53,17 +53,26 @@ export const TABLE_HEARING_FAR_WU = tableHearingFarWu();
  * leftover 9000 WU horizon. Defaults cover the supported 90° / 330 WU
  * 16:9 table; live callers must pass the actual camera envelope.
  */
+const _instanceFarCullCache = { key: '', value: 0 };
+
 export function tableInstanceFarCullWu(
   zoom = 330,
   fovDeg = 90,
   aspect = 16 / 9,
   tiltDeg = 60,
 ) {
-  const xz = tableHearingFarWu(zoom, fovDeg, aspect, tiltDeg);
   const distance = Number.isFinite(zoom) ? zoom : 330;
-  const tilt = (Number.isFinite(tiltDeg) ? tiltDeg : 60) * Math.PI / 180;
-  const camY = distance * Math.sin(tilt);
-  return Math.hypot(xz, camY);
+  const fov = Number.isFinite(fovDeg) ? fovDeg : 90;
+  const aspectValue = Number.isFinite(aspect) && aspect > 0 ? aspect : 16 / 9;
+  const tilt = Number.isFinite(tiltDeg) ? tiltDeg : 60;
+  const key = `${distance}|${fov}|${aspectValue}|${tilt}`;
+  if (_instanceFarCullCache.key === key) return _instanceFarCullCache.value;
+  const xz = tableHearingFarWu(distance, fov, aspectValue, tilt);
+  const camY = distance * Math.sin(tilt * Math.PI / 180);
+  const value = Math.hypot(xz, camY);
+  _instanceFarCullCache.key = key;
+  _instanceFarCullCache.value = value;
+  return value;
 }
 
 /**

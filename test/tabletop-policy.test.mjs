@@ -463,11 +463,15 @@ test('instance far cull follows the table, not a 9000 WU horizon', async () => {
   assert.ok(close < far, 'a close table culls leaked chunks sooner than the wide default');
   const wide = tableInstanceFarCullWu(330, 90, 48 / 9);
   assert.ok(wide > far, 'a live ultrawide 90° table must not use the 16:9 default');
+  assert.equal(tableInstanceFarCullWu(330, 90, 16 / 9), far, 'same lens must reuse the cached envelope');
   const { readFile } = await import('node:fs/promises');
   const source = await readFile(new URL('../src/render/partsLibrary.js', import.meta.url), 'utf8');
   assert.match(source, /tableInstanceFarCullWu/);
   assert.match(source, /instanceFarCullWuFromOpts/);
   assert.doesNotMatch(source, /INSTANCE_FAR_CULL_RADIUS = 9000/);
+  assert.doesNotMatch(source, /camera\.position/);
+  const renderer = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+  assert.match(renderer, /authoredSyncOptions\.liveZoom/);
 });
 
 test('opening compose no longer hard-codes a 2400 WU ship horizon', async () => {

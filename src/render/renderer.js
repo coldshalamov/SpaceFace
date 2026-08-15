@@ -4700,6 +4700,16 @@ export const render = {
     authoredSyncOptions.castRadiusSq = shadowRadius * shadowRadius;
     authoredSyncOptions.castRadius = shadowRadius;
     authoredSyncOptions.consolidateOpaqueBatches = this._opaqueBatchEnabled === true;
+    const camState = this.state && this.state.camera || {};
+    const camObj = this.cam && this.cam.obj;
+    authoredSyncOptions.liveZoom = Number.isFinite(camState.liveZoom) ? camState.liveZoom : NaN;
+    authoredSyncOptions.zoom = Number.isFinite(camState.zoom) ? camState.zoom : NaN;
+    authoredSyncOptions.tilt = Number.isFinite(camState.tilt) ? camState.tilt : 60;
+    authoredSyncOptions.fov = camObj && Number.isFinite(camObj.fov) ? camObj.fov
+      : (Number.isFinite(camState.fov) ? camState.fov : 90);
+    authoredSyncOptions.aspect = camObj && Number.isFinite(camObj.aspect) && camObj.aspect > 0
+      ? camObj.aspect
+      : 16 / 9;
     const player = this.state.playerId
       ? (this.state.entities && this.state.entities.get(this.state.playerId))
       : null;

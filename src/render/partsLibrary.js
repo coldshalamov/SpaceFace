@@ -6826,29 +6826,18 @@ function finalizePoolStats(state, stats) {
 
 function instanceFarCullWuFromOpts(opts, camera) {
   const zoomOpt = Number(opts && (opts.liveZoom ?? opts.zoom));
-  let zoom = Number.isFinite(zoomOpt) ? zoomOpt : NaN;
-  let fov = Number(opts && opts.fov);
-  let aspect = Number(opts && opts.aspect);
-  let tilt = Number(opts && opts.tilt);
-  if (camera && camera.position) {
-    const pos = camera.position;
-    if (!Number.isFinite(zoom)) {
-      const live = Math.hypot(Number(pos.x) || 0, Number(pos.y) || 0, Number(pos.z) || 0);
-      if (live > 1) zoom = live;
-    }
-    if (!Number.isFinite(fov) && Number.isFinite(camera.fov)) fov = camera.fov;
-    if (!(Number.isFinite(aspect) && aspect > 0) && Number.isFinite(camera.aspect) && camera.aspect > 0) {
-      aspect = camera.aspect;
-    }
-    if (!Number.isFinite(tilt) && Number.isFinite(zoom) && zoom > 1e-6) {
-      tilt = Math.abs(Math.asin(Math.min(1, Math.max(-1, (Number(pos.y) || 0) / zoom))) * 180 / Math.PI);
-    }
-  }
+  const tiltOpt = Number(opts && opts.tilt);
+  const fovOpt = Number(opts && opts.fov);
+  const aspectOpt = Number(opts && opts.aspect);
+  const fov = Number.isFinite(fovOpt) ? fovOpt
+    : (camera && Number.isFinite(camera.fov) ? camera.fov : 90);
+  const aspect = Number.isFinite(aspectOpt) && aspectOpt > 0 ? aspectOpt
+    : (camera && Number.isFinite(camera.aspect) && camera.aspect > 0 ? camera.aspect : 16 / 9);
   return tableInstanceFarCullWu(
-    Number.isFinite(zoom) ? zoom : 330,
+    Number.isFinite(zoomOpt) ? zoomOpt : 330,
     Number.isFinite(fov) ? fov : 90,
     Number.isFinite(aspect) && aspect > 0 ? aspect : 16 / 9,
-    Number.isFinite(tilt) && tilt > 5 ? tilt : 60,
+    Number.isFinite(tiltOpt) && tiltOpt > 5 ? tiltOpt : 60,
   );
 }
 
