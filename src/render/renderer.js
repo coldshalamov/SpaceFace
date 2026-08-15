@@ -307,13 +307,18 @@ function entityWithinPlayerRadius(entity, state, radius) {
 function liveTableCamera(state) {
   const camera = state && state.camera || {};
   const video = state && state.settings && state.settings.video || {};
-  const zoom = Number.isFinite(camera.liveZoom) ? camera.liveZoom
-    : (Number.isFinite(camera.zoom) ? camera.zoom : 144);
+  const requested = Number.isFinite(camera.zoom) ? camera.zoom : NaN;
+  const live = Number.isFinite(camera.liveZoom) ? camera.liveZoom : NaN;
+  const zoom = Number.isFinite(live) ? live : (Number.isFinite(requested) ? requested : 144);
+  const prefetchZoom = Math.max(
+    Number.isFinite(live) ? live : 0,
+    Number.isFinite(requested) ? requested : 0,
+  ) || zoom;
   const fov = Number.isFinite(camera.fov) ? camera.fov
     : (Number.isFinite(video.fov) ? video.fov : 50);
   const tilt = Number.isFinite(camera.tilt) ? camera.tilt : 60;
   const aspect = Number.isFinite(camera.aspect) && camera.aspect > 0 ? camera.aspect : 16 / 9;
-  return { zoom, fov, tilt, aspect };
+  return { zoom, prefetchZoom, fov, tilt, aspect };
 }
 
 function renderResidencyRadius(state, kind = 'prefetch') {
@@ -321,7 +326,7 @@ function renderResidencyRadius(state, kind = 'prefetch') {
   const cam = liveTableCamera(state);
   return kind === 'evict'
     ? residencyEvictRadius(speed, cam.zoom, cam.fov, cam.aspect, cam.tilt)
-    : residencyPrefetchRadius(speed, cam.zoom, cam.fov, cam.aspect, cam.tilt);
+    : residencyPrefetchRadius(speed, cam.prefetchZoom, cam.fov, cam.aspect, cam.tilt);
 }
 
 /** Pure render-streaming policy used by reconciliation and focused tests. */

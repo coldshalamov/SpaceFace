@@ -233,6 +233,17 @@ test('authored decode follows the table, not a 2400-unit horizon', () => {
   };
   assert.equal(isEntityAuthoredUpgradeRelevant(ultrawideStation, state), true,
     'authored glass must honor the live viewport aspect');
+  state.camera = { zoom: 330, liveZoom: 144, tilt: 60, fov: 50 };
+  const pendingZoomOut = {
+    id: 10,
+    type: 'station',
+    alive: true,
+    pos: { x: 300, z: 0 },
+    radius: 40,
+    vel: { x: 0, z: 0 },
+  };
+  assert.equal(isEntityAuthoredUpgradeRelevant(pendingZoomOut, state), true,
+    'outward zoom must prefetch authored glass at the requested zoom, not only the easing live zoom');
 });
 
 test('census splits glass, runway, and beyond without collapsing the table', () => {
