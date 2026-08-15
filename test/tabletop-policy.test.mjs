@@ -424,28 +424,37 @@ test('station side-events anchor on the sim table, not a 1400 WU horizon', async
   const { stationSideEventDirector, stationSideEventReachWu } = await import(
     '../src/systems/stationSideEventDirector.js'
   );
-  const mid = {
+  const hub = {
     type: 'station',
     alive: true,
     pos: { x: 700, z: 0 },
-    data: { dockRadius: 72, size: 'M' },
+    data: { dockRadius: 72, size: 'M', stationTypeId: 'trade_hub' },
+  };
+  const lab = {
+    type: 'station',
+    alive: true,
+    pos: { x: 900, z: 0 },
+    data: { dockRadius: 72, size: 'M', stationTypeId: 'research' },
   };
   const far = {
     type: 'station',
     alive: true,
     pos: { x: 2200, z: 0 },
-    data: { dockRadius: 72, size: 'M' },
+    data: { dockRadius: 72, size: 'M', stationTypeId: 'trade_hub' },
   };
   const state = {
     playerId: 1,
     entities: { get: () => ({ pos: { x: 0, z: 0 } }) },
-    entityList: [mid, far],
+    entityList: [hub, far],
     camera: { zoom: 144 },
     settings: { video: { fov: 50 } },
   };
-  assert.ok(stationSideEventReachWu(mid) > 400, 'outbound path is hundreds of units past the pin');
-  assert.equal(stationSideEventDirector._resolveAnchor(state), mid,
-    'an M station 700 WU away still anchors because its path can enter the table');
+  assert.ok(stationSideEventReachWu(hub) > 400, 'a trade hub can send traffic past the pin');
+  assert.ok(stationSideEventReachWu(lab) < 200, 'a research lab only crawls its hull');
+  assert.equal(stationSideEventDirector._resolveAnchor(state), hub,
+    'a hub 700 WU away still anchors because its path can enter the table');
+  assert.equal(stationSideEventDirector._resolveAnchor({ ...state, entityList: [lab] }), null,
+    'a short-path lab 900 WU away does not spend its day off-table');
   assert.equal(stationSideEventDirector._resolveAnchor({ ...state, entityList: [far] }), null,
     'a station whose path cannot reach the table stays a map fact');
 });

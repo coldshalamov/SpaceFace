@@ -28,7 +28,7 @@
 // noTouch honored: world.js / encounterDirector.js / spawnBudget.js / traffic.js / combat.js are
 // imported read-only where needed, never edited.
 
-import { planStationSideEvents, SIDE_EVENTS } from '../data/stationSideEvents.js';
+import { planStationSideEvents, SIDE_EVENTS, SIDE_EVENT_IDS } from '../data/stationSideEvents.js';
 import { bubblesFor } from '../data/stationBubbles.js';
 import { tableSimAuthorityWuFromState } from '../render/tabletopPolicy.js';
 import { makeShipEntitySpec } from './ships.js';
@@ -39,11 +39,41 @@ const DEFER_S = 15;             // re-check period for a due-but-blocked item
 const MAX_BUDGETED = 1;         // concurrent BUDGETED side-events per sector (spawn-budget-war guard)
 const PATROL_SHIP = 'ship_wasp';
 
-/** How far a side-event mover can sit from the station pin (`outbound-past-traffic`). */
+function pathRadius(path, bubbles) {
+  if (!bubbles) return 0;
+  const traffic = Number(bubbles.traffic && bubbles.traffic.radius);
+  const docking = Number(bubbles.docking && bubbles.docking.radius);
+  const noFire = Number(bubbles.noFire && bubbles.noFire.radius);
+  switch (path) {
+    case 'inbound-to-docking':
+      return Number.isFinite(traffic) ? traffic : 0;
+    case 'outbound-past-traffic':
+      return Number.isFinite(traffic) ? traffic * 1.2 : 0;
+    case 'hull-crawl':
+      return Number.isFinite(noFire) ? noFire * 1.05 : 0;
+    case 'docking-orbit':
+      return Number.isFinite(docking) ? docking : 0;
+    default:
+      return Number.isFinite(traffic) ? traffic : 0;
+  }
+}
+
+/** Farthest mover this station type can actually schedule, from the pin. */
 export function stationSideEventReachWu(station) {
   const bubbles = bubblesFor(station);
-  const traffic = bubbles && bubbles.traffic && Number(bubbles.traffic.radius);
-  return Number.isFinite(traffic) && traffic > 0 ? traffic * 1.2 : 0;
+  const typeId = station && station.data && station.data.stationTypeId || '';
+  const eligible = SIDE_EVENT_IDS.filter((id) => {
+    const aff = SIDE_EVENTS[id].affinity;
+    return aff == null || aff.includes(typeId);
+  });
+  const pool = eligible.length ? eligible : ['repair_drone'];
+  let max = 0;
+  for (const id of pool) {
+    const def = SIDE_EVENTS[id];
+    const radius = pathRadius(def && def.path, bubbles);
+    if (radius > max) max = radius;
+  }
+  return max;
 }
 
 export const stationSideEventDirector = {
