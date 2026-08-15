@@ -63,6 +63,9 @@ export function tableAiAuthorityWu(
 
 export const TABLE_AI_AUTHORITY_WU = tableAiAuthorityWu();
 
+/** Worst-case supported gameplay aspect so sim cadence stays deterministic. */
+export const TABLE_SIM_ASPECT = 32 / 9;
+
 /** Live table envelope. Prefetch uses the wider of live and requested zoom. */
 export function tableCameraEnvelope(state) {
   const camera = state && state.camera || {};
@@ -96,7 +99,7 @@ export function tableSimAuthorityWuFromState(state) {
   const zoom = Number.isFinite(camera.zoom) ? camera.zoom : 144;
   const fov = Number.isFinite(video.fov) ? video.fov : 50;
   const tilt = Number.isFinite(camera.tilt) ? camera.tilt : 60;
-  return tableAiAuthorityWu(zoom, fov, 16 / 9, tilt);
+  return tableAiAuthorityWu(zoom, fov, TABLE_SIM_ASPECT, tilt);
 }
 
 /**
@@ -104,8 +107,16 @@ export function tableSimAuthorityWuFromState(state) {
  * station-side lights stay map facts; on-glass VFX is unchanged.
  */
 export function tableVfxDrawWuFromState(state) {
-  const cam = tableCameraEnvelope(state);
-  return tableHearingFarWu(cam.zoom, cam.fov, cam.aspect, cam.tilt);
+  const camera = state && state.camera || {};
+  const video = state && state.settings && state.settings.video || {};
+  const live = Number.isFinite(camera.liveZoom) ? camera.liveZoom : NaN;
+  const requested = Number.isFinite(camera.zoom) ? camera.zoom : NaN;
+  const zoom = Number.isFinite(live) ? live : (Number.isFinite(requested) ? requested : 144);
+  const fov = Number.isFinite(camera.fov) ? camera.fov
+    : (Number.isFinite(video.fov) ? video.fov : 50);
+  const aspect = Number.isFinite(camera.aspect) && camera.aspect > 0 ? camera.aspect : 16 / 9;
+  const tilt = Number.isFinite(camera.tilt) ? camera.tilt : 60;
+  return tableHearingFarWu(zoom, fov, aspect, tilt);
 }
 
 export function shouldDrawTableVfx(dx, dz, drawWu) {

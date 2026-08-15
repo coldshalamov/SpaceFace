@@ -4453,8 +4453,7 @@ export const vfx = {
     const player = this.helpers && this.helpers.player
       ? this.helpers.player()
       : this._ent(this.state.playerId);
-    const drawWu = tableVfxDrawWuFromState(this.state);
-    const drawRange2 = drawWu * drawWu;
+    const drawWu = this._tableVfxDrawWu || tableVfxDrawWuFromState(this.state);
     let emitted = 0;
 
     for (let i = 0; i < slots.length; i++) {
@@ -4474,11 +4473,6 @@ export const vfx = {
         || slot.profile.trajectory === 'docking-orbit') {
         this._retireStationSideEvent(slot);
         continue;
-      }
-      if (player && player.pos) {
-        const playerDx = slot.centerX - player.pos.x;
-        const playerDz = slot.centerZ - player.pos.z;
-        if (playerDx * playerDx + playerDz * playerDz > drawRange2) continue;
       }
       const frame = writeStationSideEventVfxFrame(
         slot.profile,
@@ -4520,6 +4514,11 @@ export const vfx = {
         frame.normalX = -frame.dirZ;
         frame.normalZ = frame.dirX;
       }
+      if (player && player.pos && !shouldDrawTableVfx(
+        frame.x - player.pos.x,
+        frame.z - player.pos.z,
+        drawWu,
+      )) continue;
 
       if (frame.emitStep === slot.lastEmitStep) continue;
       slot.lastEmitStep = frame.emitStep;
@@ -6716,7 +6715,7 @@ export const vfx = {
       if (!seams || !seams.length) continue;
       // Range cull stays galactic-global (origin-invariant); instance matrices are frame-local.
       const dx = e.pos.x - player.pos.x, dz = e.pos.z - player.pos.z;
-      if (!shouldDrawTableVfx(dx, dz, drawWu)) continue;
+      if (!shouldDrawTableVfx(dx, dz, this._tableVfxDrawWu || drawWu)) continue;
       const scanned = (e.data.scanHighlightUntil || 0) > simTime;
       const seamLocked = e.id === this._miningSeamPulseId && simTime <= this._miningSeamPulseUntil;
       const cr = Math.cos(e.rot || 0), sr = Math.sin(e.rot || 0);
@@ -8708,6 +8707,7 @@ export const vfx = {
     if (!(dt > 0)) return;
     if (dt > 0.1) dt = 0.1; // clamp pauses/tab-switches so particles don't teleport
     this._t += dt;
+    this._tableVfxDrawWu = tableVfxDrawWuFromState(this.state);
     if (this._weaponPresenter) {
       const render = this.state && this.state.render;
       const activeGraph = activeWeaponRenderGraph(this.state);
@@ -9249,7 +9249,8 @@ export const vfx = {
     if (!player || !player.pos) return false;
     const px = player.pos.x || 0;
     const pz = player.pos.z || 0;
-    const range2 = tableVfxDrawWuFromState(state) ** 2;
+    const drawWu = this._tableVfxDrawWu || tableVfxDrawWuFromState(state);
+    const range2 = drawWu * drawWu;
     const list = state.entityList || [];
     for (let i = 0; i < list.length; i++) {
       const e = list[i];

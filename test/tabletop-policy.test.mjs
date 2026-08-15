@@ -391,12 +391,16 @@ test('cosmetic VFX follow the live table, not a 1500 WU horizon', () => {
   });
   assert.ok(wide > 1500, `wide-lens VFX ${wide} still covers the live glass`);
   assert.equal(shouldDrawTableVfx(800, 0, wide), true);
+  const closeShot = tableVfxDrawWuFromState({
+    camera: { zoom: 330, liveZoom: 58, fov: 50, aspect: 16 / 9 },
+  });
+  assert.ok(closeShot < 400, `live close-up VFX ${closeShot} follows the actual table, not the pending zoom-out`);
   const sim = tableSimAuthorityWuFromState({
-    camera: { zoom: 144, liveZoom: 330, fov: 90, aspect: 32 / 9 },
+    camera: { zoom: 144, liveZoom: 330, fov: 90, aspect: 16 / 9 },
     settings: { video: { fov: 50 } },
   });
-  assert.ok(Math.abs(sim - defaultDraw) < 1e-6,
-    'sim cadence ignores the render camera that VFX may still read');
+  assert.ok(sim > 400 && sim < 900,
+    'sim cadence uses a conservative 32:9 table, not the render camera');
 });
 
 test('VFX station-side and seam ranges use the table helper', async () => {
@@ -404,5 +408,6 @@ test('VFX station-side and seam ranges use the table helper', async () => {
   const source = await readFile(new URL('../src/render/vfx.js', import.meta.url), 'utf8');
   assert.match(source, /tableVfxDrawWuFromState/);
   assert.match(source, /shouldDrawTableVfx/);
+  assert.match(source, /frame\.x - player\.pos\.x/);
   assert.doesNotMatch(source, /VFX_STATION_SIDE_EVENT_DRAW_RANGE = 1500/);
 });

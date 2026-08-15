@@ -127,10 +127,15 @@ test('sim AI authority follows requested zoom and settings FOV, not the render c
   assert.equal(isActiveOwner(hauler, { origin: { x: 0, z: 0 }, authorityRadius: wide }), true);
 
   const fromSettings = tableSimAuthorityWuFromState({
-    camera: { zoom: 330, liveZoom: 144, fov: 50, aspect: 32 / 9 },
+    camera: { zoom: 330, liveZoom: 144, fov: 50, aspect: 16 / 9 },
     settings: { video: { fov: 90 } },
   });
   assert.equal(fromSettings, wide, 'render-frame liveZoom/fov/aspect must not change sim authority');
+  const ultrawide = tableSimAuthorityWuFromState({
+    camera: { zoom: 330 },
+    settings: { video: { fov: 50 } },
+  });
+  assert.ok(ultrawide > 700, `sim authority ${ultrawide} covers a 32:9 max-zoom glass`);
   const liveRender = tableAiAuthorityWuFromState({
     camera: { zoom: 330, liveZoom: 144, fov: 90, aspect: 16 / 9 },
   });
