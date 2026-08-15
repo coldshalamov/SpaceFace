@@ -11,6 +11,34 @@
   --font: "Segoe UI", system-ui, -apple-system, sans-serif;
   --mono: "Consolas", "SFMono-Regular", ui-monospace, monospace;
   --ui-scale: 1;
+
+  /* ===== Instrument grammar role tokens (design/frontend/INSTRUMENT_GRAMMAR.md §4, binding) =====
+     Colour is assigned by MEANING, not by palette, so a screen cannot be restyled into
+     incoherence. Exact-hex mapping from SCREENS_B §0.1; each equals an existing compatibility
+     token, so contrast is already proven. At rest a screen is ≥80% calm+paper on the surface;
+     you/foe/goal are SPENT on state, never worn as chrome. Every colour-coded state carries a
+     second channel (shape or word) — never encode by colour alone. */
+  --sf-you: #7af7d0;    /* you, your agency, a gain        (equals --accent-2, 14.3:1 on surface) */
+  --sf-foe: #ff5470;    /* threat, cost, over-budget, loss (equals --danger,    6.0:1) */
+  --sf-goal: #ffb347;   /* next unlock, objective, opportunity (equals --warn, 10.5:1) */
+  --sf-calm: #84a0c8;   /* structure, chrome, labels, rest (equals --ink-dim,   6.9:1) */
+  --sf-paper: #d3e6ff;  /* all body copy                   (equals --ink,     ~14:1) */
+  --sf-surface: #0b1220; /* screen backdrop base            (equals --panel) */
+  --sf-edge: #1d3350;   /* 1px separators, socket rings    (equals --panel-edge) */
+
+  /* ===== Instrument grammar type tokens (§3: four roles, no fifth) =====
+     Faces are vendored and loaded at boot (styles/fonts.css). 12px floor; tracking above .06em
+     only on MICRO; every screen has exactly one DISPLAY-sized element. */
+  --sf-display-face: "Saira SemiCondensed", "Arial Narrow", sans-serif; /* 700 · 28/40/64px */
+  --sf-subhead-face: "Saira SemiCondensed", "Arial Narrow", sans-serif; /* 600 · 15/19/22px */
+  --sf-body-face: "IBM Plex Sans", "Segoe UI", sans-serif;              /* 400/500 · 13/14/15px */
+  --sf-data-face: "IBM Plex Mono", Consolas, monospace;                 /* 500 · 13/15/20px, tabular-nums, numerals only */
+
+  /* ===== Instrument grammar motion tokens (§5: nothing exceeds 180ms) ===== */
+  --sf-t-latch: 90ms;   /* discrete state change seats with a short travel and a hard stop */
+  --sf-t-settle: 180ms; /* a value arriving; instruments overshoot, text never does */
+  --sf-ease: cubic-bezier(.2, .9, .3, 1);
+
   /* extra from visual bible for pro polish */
   --nebula-purple: #3a1c6e;
   --nebula-cyan: #0e4030;

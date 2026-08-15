@@ -362,6 +362,28 @@ export const ui = {
     ctx.screens = this.screenManager;
     this._screenRegistrationCycle = beginScreenRegistrationCycle(this, this.screenManager);
 
+    // Grammar §9.10: sound on every state change — one delegated pointerover on #screens,
+    // rate-limited ~40ms, makes every surface feel responsive without per-widget listeners.
+    // Previously only gamepad focus emitted hover.
+    if (typeof this._hoverAudioTeardown === 'function') this._hoverAudioTeardown();
+    this._hoverAudioTeardown = null;
+    {
+      const screensHost = document.getElementById('screens');
+      if (screensHost) {
+        let lastHoverAt = 0;
+        const onHoverOver = (ev) => {
+          const target = ev.target;
+          if (!target || !target.closest || !target.closest('button, [role="option"], [role="tab"], [data-spatial-slot]')) return;
+          const now = performance.now();
+          if (now - lastHoverAt < 40) return;
+          lastHoverAt = now;
+          ctx.bus.emit('audio:cue', { id: 'ui_hover' });
+        };
+        screensHost.addEventListener('pointerover', onHoverOver);
+        this._hoverAudioTeardown = () => screensHost.removeEventListener('pointerover', onHoverOver);
+      }
+    }
+
     // DEV: arm the sandbox game:started hook (no-op unless a sandbox launch is pending). Resolved via
     // a thunk because ctx continues to be enriched after init(); the hook reads ctx at fire time.
     if (IS_DEV) {
