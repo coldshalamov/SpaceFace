@@ -950,3 +950,44 @@ button:active { translate: 0 1px; }
 .sf-spotlight:hover::before,
 .sf-spotlight:focus-within::before,
 .sf-spotlight:focus-visible::before { opacity: 1; }
+
+/* 10 ─ sf-select : styled replacement for native <select> (uiPrimitives.sfSelect) ----------------
+   Native OS dropdown chrome is deleted from screens (FRONTEND_DIRECTION §4.4). Field is a real
+   <button>; the drop list is a role=listbox anchored inside the root. No idle animation: the list
+   appears/disappears on open state only, and reduce-motion gets an instant state for free. */
+.sf-select { position: relative; display: inline-flex; min-width: 0; }
+.sf-select__field {
+  display: inline-flex; align-items: center; gap: var(--sp-2, 6px);
+  font: inherit; color: var(--ink);
+  background: var(--panel-2); border: 1px solid var(--panel-edge); border-radius: var(--r-sm, 5px);
+  padding: 5px 10px; cursor: pointer; pointer-events: auto;
+  transition: border-color .1s var(--ease, ease), color .1s var(--ease, ease);
+  text-transform: none; letter-spacing: normal; box-shadow: none;
+}
+.sf-select__field:hover { border-color: var(--accent); }
+.sf-select__field:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.sf-select__field:disabled { opacity: .4; cursor: default; }
+.sf-select__field svg { width: 12px; height: 12px; flex: none; color: var(--ink-mute); }
+.sf-select--open .sf-select__field svg { transform: rotate(180deg); }
+.sf-select__value { min-width: 3ch; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sf-select__list {
+  position: absolute; left: 0; top: calc(100% + 4px); z-index: 30;
+  width: max-content; min-width: 100%; max-width: min(340px, calc(100vw - 24px));
+  max-height: 220px; overflow-y: auto; overscroll-behavior: contain;
+  background: var(--panel-2); border: 1px solid var(--panel-edge); border-radius: var(--r-sm, 5px);
+  box-shadow: 0 10px 34px rgba(0,0,0,.55);
+  padding: 4px; display: none;
+}
+.sf-select--up .sf-select__list { top: auto; bottom: calc(100% + 4px); }
+.sf-select--open .sf-select__list { display: block; }
+.sf-select__opt {
+  padding: 6px 9px; border-radius: 4px; cursor: pointer; color: var(--ink);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sf-select__opt:hover { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.sf-select__opt.is-active { background: color-mix(in srgb, var(--accent) 18%, transparent); }
+.sf-select__opt.is-selected { color: var(--accent); }
+.sf-select__opt[aria-disabled="true"] { opacity: .4; cursor: default; background: none; }
+@media (prefers-reduced-motion: reduce) {
+  .sf-select__field, .sf-select__field svg { transition: none; }
+}

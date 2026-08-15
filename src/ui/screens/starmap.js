@@ -12,6 +12,7 @@ import {
   forecastTransitFor,
 } from '../../systems/sectorSim.js';
 import { BINDINGS } from '../bindings.js';
+import { enhanceSelects } from '../uiPrimitives.js';
 import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
 
 const FACTION_COLOR = Object.create(null);
@@ -63,9 +64,9 @@ const CSS = `
 #sf-starmap .sm-head-actions { display:flex; align-items:center; justify-content:flex-end; gap:12px; flex-wrap:wrap; }
 #sf-starmap .sm-commodity { display:flex; align-items:center; gap:6px; font-family:var(--mono); font-size:.68em;
   letter-spacing:.08em; text-transform:uppercase; color:var(--ink-dim); }
-#sf-starmap .sm-commodity select { max-width:190px; background:rgba(6,11,21,.78); border:1px solid var(--panel-edge);
+#sf-starmap .sm-commodity .sf-select__field { max-width:190px; background:rgba(6,11,21,.78); border:1px solid var(--panel-edge);
   color:var(--ink); border-radius:5px; padding:5px 7px; font:inherit; text-transform:none; letter-spacing:0; }
-#sf-starmap .sm-commodity select:focus-visible { outline:0; border-color:var(--accent); box-shadow:0 0 0 1px rgba(57,208,255,.2); }
+#sf-starmap .sm-commodity .sf-select__field:focus-visible { outline:0; border-color:var(--accent); box-shadow:0 0 0 1px rgba(57,208,255,.2); }
 #sf-starmap .sm-stats { font-family:var(--mono); font-size:.8em; color:var(--ink-dim); display:flex; gap:16px; flex-wrap:wrap; }
 #sf-starmap .sm-stats b { color:var(--ink); font-weight:600; }
 #sf-starmap .sm-close { background:transparent; border:1px solid var(--panel-edge); color:var(--ink);
@@ -543,6 +544,10 @@ export const starmapScreen = {
       .map((c) => '<option value="' + escapeHtml(c.id) + '">' + escapeHtml(c.name) + '</option>')
       .join('');
     this._els.commodity.innerHTML = commodityOptions;
+    // Styled sf-select replaces the native <select> (no OS dropdown chrome on screens); re-query
+    // because enhanceSelects swaps the node in place.
+    enhanceSelects(rootEl);
+    this._els.commodity = rootEl.querySelector('[data-commodity]');
     if (!COMMODITY_BY_ID.has(this._commodityId)) this._commodityId = DEFAULT_MEMORY_COMMODITY;
     this._els.commodity.value = this._commodityId;
     this._els.commodity.addEventListener('change', () => {
@@ -1016,7 +1021,10 @@ export const starmapScreen = {
     const fuel = state.fuel || { current: 0, max: 0 };
     setText(this._els.fuel, `${Math.round(fuel.current)}/${Math.round(fuel.max)}`);
     setText(this._els.jumpState, state.jump && state.jump.state || 'IDLE');
-    const longRange = state.player && (state.player.researchedNodes || []).includes('tech_advanced_navigation');
+    // tech_advanced_navigation was folded into tech_long_range_survey; accept either id so saves
+    // made before the fold keep their earned multi-hop range readout.
+    const researched = (state.player && state.player.researchedNodes) || [];
+    const longRange = researched.includes('tech_long_range_survey') || researched.includes('tech_advanced_navigation');
     setText(this._els.range, longRange ? 'multi-hop' : 'adjacent');
     const epoch = state.sectorSim && state.sectorSim.field && state.sectorSim.field.epochDays || 0;
     setText(this._els.epoch, `${epoch.toFixed(1)}d`);

@@ -185,6 +185,177 @@ export function trace(elm, tone) {
 }
 
 // ---------------------------------------------------------------------------------------------------
+// sf-select — the styled replacement for native <select> (FRONTEND_DIRECTION §4.4: native form
+// controls are deleted from screens). Listbox pattern per ARIA APG: the field button owns focus and
+// keyboard, the list carries role=listbox + aria-activedescendant. Root exposes `.value` and
+// dispatches a bubbling DOM `change` event on user commit, so existing screen handlers keep working.
+// ---------------------------------------------------------------------------------------------------
+const SF_SELECT_CARET = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+/** Build an .sf-select. items: [{ value, label, disabled? }]. opts: { value, ariaLabel, className, disabled, onChange }.
+ *  User commits dispatch a bubbling `change` event on the root (event.target === root, root.value set). */
+export function sfSelect(items = [], opts = {}) {
+  const root = el('div', 'sf-select' + (opts.className ? ' ' + opts.className : ''));
+  const valueEl = el('span', 'sf-select__value');
+  const field = el('button', 'sf-select__field', {
+    children: [valueEl],
+    attrs: {
+      type: 'button',
+      'aria-haspopup': 'listbox',
+      'aria-expanded': 'false',
+      ...(opts.ariaLabel ? { 'aria-label': opts.ariaLabel } : {}),
+    },
+  });
+  field.insertAdjacentHTML('beforeend', SF_SELECT_CARET);
+  const list = el('div', 'sf-select__list', { attrs: { role: 'listbox' } });
+  if (opts.ariaLabel) list.setAttribute('aria-label', opts.ariaLabel);
+  root.appendChild(field);
+  root.appendChild(list);
+
+  let options = [];
+  let value = null;
+  let open = false;
+  let activeIndex = -1;
+  let onDocPointer = null;
+
+  function optionByValue(v) {
+    for (let i = 0; i < options.length; i++) if (options[i].value === v) return i;
+    return -1;
+  }
+
+  function renderList() {
+    list.textContent = '';
+    options.forEach((o, i) => {
+      const node = el('div', 'sf-select__opt', {
+        text: o.label,
+        attrs: {
+          role: 'option',
+          'data-value': String(o.value),
+          'aria-selected': String(o.value === value),
+          ...(o.disabled ? { 'aria-disabled': 'true' } : {}),
+        },
+      });
+      if (o.value === value) node.classList.add('is-selected');
+      if (i === activeIndex) node.classList.add('is-active');
+      node.addEventListener('click', () => { if (!o.disabled) commit(i); });
+      list.appendChild(node);
+    });
+  }
+
+  function syncField() {
+    const idx = optionByValue(value);
+    valueEl.textContent = idx >= 0 ? options[idx].label : '';
+    field.disabled = !!opts.disabled || options.length === 0;
+  }
+
+  function setActive(i, focusOption) {
+    if (!options.length) return;
+    activeIndex = Math.max(0, Math.min(options.length - 1, i));
+    renderList();
+    const activeId = 'sf-select-opt-' + activeIndex;
+    const nodes = list.children;
+    if (nodes[activeIndex]) {
+      nodes[activeIndex].id = activeId;
+      list.setAttribute('aria-activedescendant', activeId);
+      if (focusOption !== false) nodes[activeIndex].scrollIntoView({ block: 'nearest' });
+    }
+  }
+
+  function openList() {
+    if (open || field.disabled) return;
+    open = true;
+    root.classList.add('sf-select--open');
+    field.setAttribute('aria-expanded', 'true');
+    // Flip above the field when the drop-down would leave the viewport.
+    const rect = field.getBoundingClientRect();
+    root.classList.toggle('sf-select--up', rect.bottom + Math.min(list.scrollHeight || 220, 220) > innerHeight && rect.top > 200);
+    setActive(Math.max(0, optionByValue(value)));
+    onDocPointer = (ev) => { if (!root.contains(ev.target)) closeList(); };
+    document.addEventListener('pointerdown', onDocPointer, true);
+  }
+
+  function closeList(returnFocus) {
+    if (!open) return;
+    open = false;
+    root.classList.remove('sf-select--open', 'sf-select--up');
+    field.setAttribute('aria-expanded', 'false');
+    list.removeAttribute('aria-activedescendant');
+    if (onDocPointer) { document.removeEventListener('pointerdown', onDocPointer, true); onDocPointer = null; }
+    if (returnFocus !== false) { try { field.focus({ preventScroll: true }); } catch (_) { field.focus(); } }
+  }
+
+  function commit(i) {
+    const o = options[i];
+    if (!o || o.disabled || o.value === value) { closeList(); return; }
+    value = o.value;
+    syncField();
+    renderList();
+    closeList();
+    root.dispatchEvent(new Event('change', { bubbles: true }));
+    if (typeof opts.onChange === 'function') opts.onChange(value);
+  }
+
+  field.addEventListener('click', () => { if (open) closeList(); else openList(); });
+  field.addEventListener('keydown', (ev) => {
+    switch (ev.key) {
+      case 'ArrowDown': ev.preventDefault(); if (!open) openList(); else setActive(activeIndex + 1); break;
+      case 'ArrowUp': ev.preventDefault(); if (!open) openList(); else setActive(activeIndex - 1); break;
+      case 'Home': ev.preventDefault(); if (open) setActive(0); break;
+      case 'End': ev.preventDefault(); if (open) setActive(options.length - 1); break;
+      case 'Enter': case ' ': ev.preventDefault(); if (open) commit(activeIndex); else openList(); break;
+      case 'Escape': if (open) { ev.preventDefault(); ev.stopPropagation(); closeList(); } break;
+      case 'Tab': if (open) closeList(false); break;
+    }
+  });
+
+  /** Programmatic value set — updates the UI, does NOT dispatch a change event. */
+  Object.defineProperty(root, 'value', {
+    get: () => (value == null ? '' : value),
+    set(v) { value = v; syncField(); renderList(); },
+  });
+  /** Replace the option set (and optionally the value) in place. */
+  root.sfSetOptions = (next, nextValue) => {
+    options = (next || []).map((o) => ({ value: o.value, label: o.label, disabled: !!o.disabled }));
+    const hadValue = nextValue !== undefined ? nextValue : value;
+    const idx = optionByValue(hadValue);
+    value = idx >= 0 ? hadValue : (options.length ? options[0].value : null);
+    activeIndex = idx >= 0 ? idx : 0;
+    syncField();
+    renderList();
+  };
+  root.sfSelectField = field;
+  root.sfSetOptions(items, opts.value);
+
+  return root;
+}
+
+/** Replace every native <select> under `root` with an .sf-select widget, carrying over id, class,
+ *  data-* attributes, aria-label, disabled state, options and current value. Call after assigning
+ *  innerHTML; later repopulation goes through `el.sfSetOptions([...], value)`. */
+export function enhanceSelects(root) {
+  if (!root || !root.querySelectorAll) return [];
+  const widgets = [];
+  for (const sel of Array.from(root.querySelectorAll('select'))) {
+    const items = Array.from(sel.options || []).map((o) => ({ value: o.value, label: o.textContent, disabled: o.disabled }));
+    const widget = sfSelect(items, {
+      value: sel.value,
+      ariaLabel: sel.getAttribute('aria-label') || sel.getAttribute('aria-labelledby') || undefined,
+      className: sel.className,
+      disabled: sel.disabled,
+    });
+    if (sel.id) widget.id = sel.id;
+    for (const attr of Array.from(sel.attributes)) {
+      if (attr.name === 'id' || attr.name === 'class' || attr.name === 'aria-label' || attr.name === 'disabled') continue;
+      if (attr.name === 'value' || attr.name === 'name') continue;
+      if (attr.name.startsWith('data-') || attr.name.startsWith('aria-')) widget.setAttribute(attr.name, attr.value);
+    }
+    sel.parentNode.replaceChild(widget, sel);
+    widgets.push(widget);
+  }
+  return widgets;
+}
+
+// ---------------------------------------------------------------------------------------------------
 function clamp01(n) {
   n = Number(n);
   if (!Number.isFinite(n)) return 0;

@@ -32,6 +32,7 @@ import {
 } from '../data/sectorCoordinates.js';
 import { zonesForSector, zoneTypeMeta, zoneThreat } from '../data/sectorZones.js';
 import { MAP_FOCUS, takeMapOpenIntent, normalizeMapFocus } from './mapAuthority.js';
+import { enhanceSelects } from './uiPrimitives.js';
 import { resolveWaypointPresentationPosition } from './navigationWaypoint.js';
 import { sectorLawProfile } from './securityReadout.js';
 import { causeFor } from './causeLedger.js';
@@ -2616,17 +2617,17 @@ const CSS = `
   color: var(--ink-mute);
   text-transform: uppercase;
 }
-#sf-galaxymap .gm-rail-commodity select {
+#sf-galaxymap .gm-rail-commodity .sf-select__field {
   background: #0c0e10;
   border: 1px solid var(--mf-line-2);
   border-radius: 2px;
   color: var(--ink);
   padding: 6px 8px;
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: 12px;
   outline: none;
 }
-#sf-galaxymap .gm-rail-commodity select:focus-visible {
+#sf-galaxymap .gm-rail-commodity .sf-select__field:focus-visible {
   border-color: var(--accent-3);
   box-shadow: inset 0 0 0 1px var(--accent-3);
 }
@@ -5231,15 +5232,20 @@ export const galaxyMapScreen = {
       });
     }
 
-    // Populate commodity dropdown
+    // Populate commodity dropdown. The native <select> is populated first, then swapped for the
+    // styled sf-select widget (no OS dropdown chrome on screens); re-query because the swap
+    // replaces the node in place.
     const commSelect = rootEl.querySelector('#gm-commodity-select');
     if (commSelect) {
       this._syncMarketCommoditySelector(this._ctx && this._ctx.state);
-
-      commSelect.addEventListener('change', () => {
-        this._selectedCommodity = commSelect.value;
-        this.refresh();
-      });
+      enhanceSelects(rootEl);
+      const commWidget = rootEl.querySelector('#gm-commodity-select');
+      if (commWidget) {
+        commWidget.addEventListener('change', () => {
+          this._selectedCommodity = commWidget.value;
+          this.refresh();
+        });
+      }
     }
 
     // Toggle layer click listeners
@@ -5374,6 +5380,12 @@ export const galaxyMapScreen = {
     if (!commSelect) return;
     const options = marketIntelCommodityOptions(state, COMMODITIES);
     this._selectedCommodity = selectedMarketCommodityOnOpen(state, this._selectedCommodity, COMMODITIES);
+    // After mount the element is the sf-select widget (sfSetOptions); the native path only runs
+    // during the initial populate-before-enhance pass in mount().
+    if (typeof commSelect.sfSetOptions === 'function') {
+      commSelect.sfSetOptions(options.map((commodity) => ({ value: commodity.id, label: commodity.name })), this._selectedCommodity);
+      return;
+    }
     commSelect.innerHTML = options
       .map((commodity) => `<option value="${escapeMapHtml(commodity.id)}">${escapeMapHtml(commodity.name)}</option>`)
       .join('');
