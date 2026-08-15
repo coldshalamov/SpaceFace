@@ -144,10 +144,11 @@ export function shouldDrawLootMagnetTrail(playerDx, playerDz, focusDx, focusDz, 
 }
 
 /**
- * Focus is frame-local. Pickups stay galactic-global. Convert focus to global
- * with world.frameOrigin before subtracting, or a rebase culls every trail.
+ * Focus is frame-local. World positions stay galactic-global. Convert focus
+ * to global with world.frameOrigin before subtracting, or a rebase culls
+ * every on-glass light when the camera is shoved.
  */
-export function lootMagnetFocusDelta(state, playerPos, entityPos, out) {
+export function tableLookAtDelta(state, fallbackPos, entityPos, out) {
   const target = out || { x: 0, z: 0 };
   const focus = state && state.camera && state.camera.focus;
   const hasFocus = Number.isFinite(focus && focus.x) && Number.isFinite(focus && focus.z);
@@ -158,12 +159,17 @@ export function lootMagnetFocusDelta(state, playerPos, entityPos, out) {
     originX = focus.x + (Number.isFinite(frame && frame.x) ? frame.x : 0);
     originZ = focus.z + (Number.isFinite(frame && frame.z) ? frame.z : 0);
   } else {
-    originX = Number.isFinite(playerPos && playerPos.x) ? playerPos.x : 0;
-    originZ = Number.isFinite(playerPos && playerPos.z) ? playerPos.z : 0;
+    originX = Number.isFinite(fallbackPos && fallbackPos.x) ? fallbackPos.x : 0;
+    originZ = Number.isFinite(fallbackPos && fallbackPos.z) ? fallbackPos.z : 0;
   }
   target.x = (Number.isFinite(entityPos && entityPos.x) ? entityPos.x : 0) - originX;
   target.z = (Number.isFinite(entityPos && entityPos.z) ? entityPos.z : 0) - originZ;
   return target;
+}
+
+/** Loot-magnet alias. Glass origin is the look-at; tractor cap stays on the player. */
+export function lootMagnetFocusDelta(state, playerPos, entityPos, out) {
+  return tableLookAtDelta(state, playerPos, entityPos, out);
 }
 
 export const TABLE_BAND = Object.freeze({

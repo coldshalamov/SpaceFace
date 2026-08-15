@@ -62,6 +62,7 @@ import {
   shouldDrawLootMagnetTrail,
   shouldDrawTableVfx,
   TABLE_LOOT_MAGNET_CAP_WU,
+  tableLookAtDelta,
   tableVfxDrawWuFromState,
 } from './tabletopPolicy.js';
 import { applyFlashAccessibility, resolveVfxAccessibilityProfile } from './vfxAccessibility.js';
@@ -475,6 +476,7 @@ const VFX_LOOT_MAGNET_HZ = 24;
 // real and dim. The tractor cap is player-centered; the glass cull uses the live look-at.
 const LOOT_MAGNET_DRAW_RANGE = TABLE_LOOT_MAGNET_CAP_WU;
 const _lootMagnetFocusScratch = { x: 0, z: 0 };
+const _tableLookAtScratch = { x: 0, z: 0 };
 const LOOT_MAGNET_MIN_SPEED = 26;        // wu/s; below this a drop is drifting, not being pulled
 const LOOT_MAGNET_MAX_TRAILED = 24;      // hard cap on simultaneously trailed drops
 const VFX_RIBBON_TRAILS_HZ = 30;
@@ -4521,11 +4523,10 @@ export const vfx = {
         frame.normalX = -frame.dirZ;
         frame.normalZ = frame.dirX;
       }
-      if (player && player.pos && !shouldDrawTableVfx(
-        frame.x - player.pos.x,
-        frame.z - player.pos.z,
-        drawWu,
-      )) continue;
+      if (player && player.pos) {
+        const look = tableLookAtDelta(this.state, player.pos, frame, _tableLookAtScratch);
+        if (!shouldDrawTableVfx(look.x, look.z, drawWu)) continue;
+      }
 
       if (frame.emitStep === slot.lastEmitStep) continue;
       slot.lastEmitStep = frame.emitStep;
@@ -5137,9 +5138,8 @@ export const vfx = {
       if (!ent || ent.alive === false || !ent.pos) continue;
 
       if (player && player.pos) {
-        const dx = ent.pos.x - player.pos.x;
-        const dz = ent.pos.z - player.pos.z;
-        if (!shouldDrawTableVfx(dx, dz, drawWu)) continue;
+        const look = tableLookAtDelta(this.state, player.pos, ent.pos, _tableLookAtScratch);
+        if (!shouldDrawTableVfx(look.x, look.z, drawWu)) continue;
       }
 
       // D3: prefer entity.data.ceresCausalCue when present; fall back to job phase.
@@ -6720,9 +6720,10 @@ export const vfx = {
       if (!e || !e.alive || e.type !== 'asteroid') continue;
       const seams = e.data && e.data.seams;
       if (!seams || !seams.length) continue;
-      // Range cull stays galactic-global (origin-invariant); instance matrices are frame-local.
-      const dx = e.pos.x - player.pos.x, dz = e.pos.z - player.pos.z;
-      if (!shouldDrawTableVfx(dx, dz, drawWu)) continue;
+      // Glass cull uses the live look-at (frame-local focus + frameOrigin).
+      // Instance matrices stay frame-local.
+      const look = tableLookAtDelta(state, player.pos, e.pos, _tableLookAtScratch);
+      if (!shouldDrawTableVfx(look.x, look.z, drawWu)) continue;
       const scanned = (e.data.scanHighlightUntil || 0) > simTime;
       const seamLocked = e.id === this._miningSeamPulseId && simTime <= this._miningSeamPulseUntil;
       const cr = Math.cos(e.rot || 0), sr = Math.sin(e.rot || 0);

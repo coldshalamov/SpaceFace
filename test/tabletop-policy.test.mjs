@@ -33,6 +33,7 @@ import {
   lootMagnetFocusDelta,
   shouldDrawLootMagnetTrail,
   shouldDrawTableVfx,
+  tableLookAtDelta,
   TABLE_LOOT_MAGNET_CAP_WU,
   tableShadowCastRadius,
   tableShadowCasterRadius,
@@ -440,12 +441,13 @@ test('VFX station-side and seam ranges use the table helper', async () => {
   const source = await readFile(new URL('../src/render/vfx.js', import.meta.url), 'utf8');
   assert.match(source, /tableVfxDrawWuFromState/);
   assert.match(source, /shouldDrawTableVfx/);
-  assert.match(source, /frame\.x - player\.pos\.x/);
+  assert.match(source, /tableLookAtDelta/);
   assert.match(source, /_updateNpcJobSignatures/);
   assert.match(source, /_lootMagnetRelevant/);
   assert.match(source, /_updateLootMagnet/);
   assert.match(source, /shouldDrawLootMagnetTrail/);
   assert.match(source, /lootMagnetFocusDelta/);
+  assert.doesNotMatch(source, /frame\.x - player\.pos\.x/);
   assert.doesNotMatch(source, /NPC_JOB_SIGNATURE_DRAW_RANGE \* NPC_JOB_SIGNATURE_DRAW_RANGE/);
   assert.doesNotMatch(source, /LOOT_MAGNET_DRAW_RANGE \* LOOT_MAGNET_DRAW_RANGE/);
   assert.doesNotMatch(source, /Math\.min\(\s*this\._tableVfxDrawWu/);
@@ -492,6 +494,23 @@ test('loot-magnet look-at converts frame-local focus across a floating origin', 
     { x: 10000, z: 0 }, { x: 10180, z: 0 }, scratch,
   );
   assert.equal(noFocus.x, 180);
+});
+
+test('seams, station lamps, and NPC lights share the look-at origin', () => {
+  const scratch = { x: 0, z: 0 };
+  const state = {
+    camera: { focus: { x: 40, z: -20 } },
+    world: { frameOrigin: { x: 8000, z: 2000 } },
+  };
+  const look = tableLookAtDelta(
+    state, { x: 8000, z: 2000 }, { x: 8220, z: 1980 }, scratch,
+  );
+  assert.equal(look.x, 180);
+  assert.equal(look.z, 0);
+  assert.equal(
+    lootMagnetFocusDelta(state, { x: 8000, z: 2000 }, { x: 8220, z: 1980 }).x,
+    look.x,
+  );
 });
 
 test('station side-events anchor on the sim table, not a 1400 WU horizon', async () => {
