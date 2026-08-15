@@ -127,10 +127,20 @@ slots. Slot assignment itself is specified in
 | — | **Drone Bay** | an open hatch with a small craft leaving it | deploying an autonomous helper | hatch left, craft exiting right |
 | — | **Travel Burn** | a long tapering exhaust trail behind a compact body | committing to sustained high speed | strong horizontal taper |
 
-> **Symbol-family rule.** Well and Repulsor are deliberate mirrors (arrows in / arrows out). Cloak
-> reads against its own solid half. Mass Seed and Scan Pulse are both radial and must therefore
-> differ in the centre — Mass Seed has a heavy filled-feeling core dot, Scan Pulse an empty origin.
-> **When two icons in this set share a silhouette, one of them is wrong.**
+> **Symbol-family rule.** When two icons in this set share a silhouette, one of them is wrong.
+>
+> **Mirror pairs are a trap — learned by rendering, not by reasoning.** Well and Repulsor were first
+> specified as exact mirrors (arrows in / arrows out). Prototyped at bar size in `_uilab.html`, they
+> are **indistinguishable**: at 21–32 px the arrowheads collapse and both read as the same asterisk.
+> Directional symmetry is elegant at 64 px and worthless at 32.
+>
+> **Therefore every mirror pair needs a second, non-directional channel:**
+> - **Well (gathers)** — arrows inward **plus a solid filled centre dot**. Something is accumulating there.
+> - **Repulsor (scatters)** — arrows outward **plus a broken or hollow centre ring**. Something burst apart.
+> - **Mass Seed vs Scan Pulse** — both radial; Mass Seed has a **heavy filled core**, Scan Pulse an
+>   **empty origin** with unequal echo weights.
+>
+> Apply the same rule to any future pair: *direction alone is never sufficient contrast at icon size.*
 
 ---
 

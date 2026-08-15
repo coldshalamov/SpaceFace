@@ -67,6 +67,57 @@ section{max-width:1500px;margin:0 auto;padding:52px 48px 0}
 .caption{display:flex;gap:14px;align-items:baseline;margin:12px 2px 0;color:var(--lab-dim);font-size:13px;line-height:1.5}
 .caption b{font-family:var(--data);font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:#ff3d7f;flex:none}
 
+/* ══ POWER BAR ═════════════════════════════════════════════════════════════════════════════
+   The number-key ability bar. Keys 4-8 are ALREADY bound in src/systems/input.js to Mass Seed,
+   Well, Repulsor, Clearing Cone and Skim Collector — and clearingCone/skimCollector have zero
+   HUD references today. The bar surfaces what already exists, then grows. */
+.pbar{position:absolute;left:50%;bottom:26px;transform:translateX(-50%);display:flex;gap:7px;z-index:3}
+.pslot{position:relative;width:56px;height:56px;border-radius:3px;display:grid;place-items:center;
+  background:linear-gradient(180deg,rgba(16,22,31,.90),rgba(8,11,17,.94));
+  border:1px solid rgba(140,170,205,.22)}
+.pslot__key{position:absolute;top:2px;left:5px;font-family:var(--display);font-weight:700;font-size:11px;
+  letter-spacing:.04em;color:var(--steel);line-height:1}
+.pslot svg{width:28px;height:28px;fill:none;stroke:currentColor;stroke-width:1.6;
+  stroke-linecap:round;stroke-linejoin:round;color:var(--steel)}
+.pslot__name{position:absolute;bottom:-15px;left:0;right:0;text-align:center;
+  font-family:var(--display);font-weight:600;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--steel-dim);white-space:nowrap}
+/* states */
+.pslot--ready{border-color:color-mix(in srgb,var(--hot) 55%,transparent)}
+.pslot--ready svg{color:var(--hot)}
+.pslot--ready::after{content:"";position:absolute;inset:-1px;border-radius:3px;
+  box-shadow:0 0 14px color-mix(in srgb,var(--hot) 40%,transparent);pointer-events:none}
+.pslot--cool svg{color:var(--steel-dim)}
+.pslot--cool .pcool{position:absolute;left:0;right:0;bottom:0;background:rgba(140,170,205,.16);border-radius:0 0 3px 3px}
+.pslot--empty{border-style:dashed;border-color:rgba(140,170,205,.16);background:rgba(10,14,20,.45)}
+.pslot--empty .pslot__key{color:var(--steel-dim);opacity:.5}
+.pslot--empty::before{content:"";width:12px;height:12px;border-radius:50%;
+  border:1px dashed rgba(140,170,205,.30)}
+.pslot--armed{border-color:var(--foe)}
+.pslot--armed svg{color:var(--foe)}
+/* the "what you can do now" strip above the bar */
+.pcount{position:absolute;left:50%;bottom:96px;transform:translateX(-50%);text-align:center;white-space:nowrap}
+.pcount b{font-family:var(--display);font-weight:700;font-size:15px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--paper);text-shadow:0 2px 6px #000}
+.pcount span{font-family:var(--data);font-size:12px;color:var(--steel);margin-left:8px}
+
+.stageRow{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.stageCell{position:relative;aspect-ratio:16/10;overflow:hidden;border:1px solid var(--lab-line);
+  border-radius:3px;background:#04060a}
+.stageCell .frame__scene{filter:saturate(.86) brightness(.34)}
+.stageCell .pbar{bottom:20px;gap:5px}
+.stageCell .pslot{width:40px;height:40px}
+.stageCell .pslot svg{width:21px;height:21px}
+.stageCell .pslot__key{font-size:9px}
+.stageCell .pslot__name{display:none}
+.stageCell .pcount{bottom:74px}
+.stageCell .pcount b{font-size:12px}
+.stageCell .pcount span{font-size:10px}
+.stageTag{position:absolute;top:10px;left:12px;font-family:var(--display);font-weight:700;font-size:13px;
+  letter-spacing:.18em;text-transform:uppercase;color:var(--paper);text-shadow:0 2px 6px #000;z-index:4}
+.stageTag i{display:block;font-style:normal;font-family:var(--body);font-weight:400;font-size:11px;
+  letter-spacing:0;text-transform:none;color:var(--steel);margin-top:2px}
+
 /* ══ ACCENT AXIS — the one art-direction choice offered ═══════════════════════════════════ */
 body[data-accent="signal"]{ --hot:#00e5ff; --hot-2:#7df9ff; --foe:#ff2e88; --obj:#ffb020; }
 body[data-accent="furnace"]{ --hot:#ff8a1e; --hot-2:#ffd27a; --foe:#ff2e88; --obj:#38e8c0; }
@@ -255,8 +306,10 @@ body[data-focus] .lab-head,body[data-focus] .legend,body[data-focus] .sec-head,
 body[data-focus] .caption{display:none}
 body[data-focus] section{padding:0}
 body[data-focus]{padding:0}
-body[data-focus="hud"] section:nth-of-type(2),
-body[data-focus="tt"] section:nth-of-type(1){display:none}
+body[data-focus] section{display:none}
+body[data-focus="hud"] section:nth-of-type(1),
+body[data-focus="tt"]  section:nth-of-type(2),
+body[data-focus="pb"]  section:nth-of-type(3){display:block}
 </style>
 </head>
 <body data-accent="signal">
@@ -533,6 +586,93 @@ body[data-focus="tt"] section:nth-of-type(1){display:none}
 
   <p class="caption"><b>Current</b><span>Every node says what it costs and whether it is locked. None say what you would be able to do. The 🔒 is drawn straight onto the canvas, and the whole chart paints in the browser fallback font — the code asks for <code style="font-family:inherit">var(--mono)</code>, which Canvas 2D cannot read.</span></p>
   <p class="caption"><b>Proposed</b><span>Eight capabilities phrased as verbs, each stating what you can do now and what the next rung buys — in tonnes and metres, never percentages. The prereq chart still exists underneath as the rule engine; it just stops being the picture. Progression is shown on the ship it modifies.</span></p>
+</section>
+
+<!-- ══════════════════════════ POWER BAR ══════════════════════════ -->
+<section>
+  <div class="sec-head">
+    <div>
+      <h2>3 · The big game, visible</h2>
+      <p class="note">The same HUD frame at three points in a playthrough. Five of these powers are
+      <b>already bound to keys 4&ndash;8 in the code today</b> — two of them have zero HUD references.
+      Growth is the bar filling up.</p>
+    </div>
+  </div>
+
+  <div class="stageRow">
+    <!-- HOUR 1 -->
+    <div class="stageCell pro">
+      <div class="frame__scene"></div>
+      <div class="stageTag">Hour 1<i>You have a tether and an anchor.</i></div>
+      <div class="pcount"><b>2 things you can do</b></div>
+      <div class="pbar">
+        <div class="pslot pslot--empty"><span class="pslot__key">1</span></div>
+        <div class="pslot pslot--empty"><span class="pslot__key">2</span></div>
+        <div class="pslot pslot--empty"><span class="pslot__key">3</span></div>
+        <div class="pslot pslot--ready"><span class="pslot__key">4</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="2.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="6" opacity=".7"/><circle cx="12" cy="12" r="9.4" opacity=".4"/></svg></div>
+        <div class="pslot pslot--empty"><span class="pslot__key">5</span></div>
+        <div class="pslot pslot--empty"><span class="pslot__key">6</span></div>
+        <div class="pslot pslot--empty"><span class="pslot__key">7</span></div>
+        <div class="pslot pslot--empty"><span class="pslot__key">8</span></div>
+        <div class="pslot pslot--empty"><span class="pslot__key">9</span></div>
+      </div>
+    </div>
+
+    <!-- HOUR 10 -->
+    <div class="stageCell pro">
+      <div class="frame__scene"></div>
+      <div class="stageTag">Hour 10<i>You can move other people's ships.</i></div>
+      <div class="pcount"><b>6 things you can do</b></div>
+      <div class="pbar">
+        <div class="pslot pslot--ready"><span class="pslot__key">1</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 15c2-3 2-3 0-6M6.8 15c2-3 2-3 0-6M9.6 15c2-3 2-3 0-6"/><circle cx="16" cy="12" r="2.4"/><path d="M19.4 12h1.8" opacity=".6"/></svg></div>
+        <div class="pslot pslot--ready"><span class="pslot__key">2</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.2 20.8 8 16"/><circle cx="13.5" cy="10" r="1.2"/><circle cx="18" cy="6.6" r="1.2"/><circle cx="17.2" cy="12.4" r="1.2"/><circle cx="11.6" cy="5.6" r="1.2"/></svg></div>
+        <div class="pslot pslot--empty"><span class="pslot__key">3</span></div>
+        <div class="pslot pslot--ready"><span class="pslot__key">4</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="2.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="6" opacity=".7"/><circle cx="12" cy="12" r="9.4" opacity=".4"/></svg></div>
+        <div class="pslot pslot--ready"><span class="pslot__key">5</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v5.2m-2.1-2.3L12 9.4l2.1-2.5M12 20v-5.2m-2.1 2.3L12 14.6l2.1 2.5M4 12h5.2M6.9 9.9 9.4 12l-2.5 2.1M20 12h-5.2m2.3-2.1L14.6 12l2.5 2.1"/><circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none"/></svg></div>
+        <div class="pslot pslot--cool"><span class="pslot__key">6</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 9.4V4.2m-2.1 2.3L12 4.2l2.1 2.3M12 14.6V19.8m-2.1-2.3L12 19.8l2.1-2.3M9.4 12H4.2m2.3-2.1L4.2 12l2.3 2.1M14.6 12H19.8m-2.3-2.1L19.8 12l-2.3 2.1"/><path d="M9.7 12A2.3 2.3 0 0 1 12 9.7M14.3 12a2.3 2.3 0 0 1-2.3 2.3"/></svg>
+          <span class="pcool" style="height:38%"></span></div>
+        <div class="pslot pslot--empty"><span class="pslot__key">7</span></div>
+        <div class="pslot pslot--empty"><span class="pslot__key">8</span></div>
+        <div class="pslot pslot--empty"><span class="pslot__key">9</span></div>
+      </div>
+    </div>
+
+    <!-- HOUR 50 -->
+    <div class="stageCell pro">
+      <div class="frame__scene"></div>
+      <div class="stageTag">Hour 50<i>You are a physics problem with a licence.</i></div>
+      <div class="pcount"><b>9 things you can do</b> <span>+ 3 fleet orders</span></div>
+      <div class="pbar">
+        <div class="pslot pslot--ready"><span class="pslot__key">1</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 15c2-3 2-3 0-6M6.8 15c2-3 2-3 0-6M9.6 15c2-3 2-3 0-6"/><circle cx="16" cy="12" r="2.4"/><path d="M19.4 12h1.8" opacity=".6"/></svg></div>
+        <div class="pslot pslot--ready"><span class="pslot__key">2</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.2 20.8 8 16"/><circle cx="13.5" cy="10" r="1.2"/><circle cx="18" cy="6.6" r="1.2"/><circle cx="17.2" cy="12.4" r="1.2"/><circle cx="11.6" cy="5.6" r="1.2"/></svg></div>
+        <div class="pslot pslot--armed"><span class="pslot__key">3</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 3.2v3M12 17.8v3M3.2 12h3M17.8 12h3M6 6l2 2M16 16l2 2M18 6l-2 2M8 16l-2 2" opacity=".8"/></svg></div>
+        <div class="pslot pslot--ready"><span class="pslot__key">4</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="2.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="6" opacity=".7"/><circle cx="12" cy="12" r="9.4" opacity=".4"/></svg></div>
+        <div class="pslot pslot--ready"><span class="pslot__key">5</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v5.2m-2.1-2.3L12 9.4l2.1-2.5M12 20v-5.2m-2.1 2.3L12 14.6l2.1 2.5M4 12h5.2M6.9 9.9 9.4 12l-2.5 2.1M20 12h-5.2m2.3-2.1L14.6 12l2.5 2.1"/><circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none"/></svg></div>
+        <div class="pslot pslot--ready"><span class="pslot__key">6</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 9.4V4.2m-2.1 2.3L12 4.2l2.1 2.3M12 14.6V19.8m-2.1-2.3L12 19.8l2.1-2.3M9.4 12H4.2m2.3-2.1L4.2 12l2.3 2.1M14.6 12H19.8m-2.3-2.1L19.8 12l-2.3 2.1"/><path d="M9.7 12A2.3 2.3 0 0 1 12 9.7M14.3 12a2.3 2.3 0 0 1-2.3 2.3"/></svg></div>
+        <div class="pslot pslot--ready"><span class="pslot__key">7</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 12h2.6"/><path d="M9.2 12 20 6.4v11.2Z"/><path d="M3.6 8.6h2M3.6 15.4h2" opacity=".55"/></svg></div>
+        <div class="pslot pslot--cool"><span class="pslot__key">8</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.4 8.6h17.2M3.4 13h17.2" opacity=".45"/><path d="M6.6 18.6c0-5.4 3.6-8.9 9-9.5"/><path d="M15.6 9 18.5 10.4 16 12.6"/></svg>
+          <span class="pcool" style="height:22%"></span></div>
+        <div class="pslot pslot--ready"><span class="pslot__key">9</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8.4 12 4.2l6 4.2"/><path d="M8 14.2 12 11.6l4 2.6" opacity=".8"/><path d="M9 19.4 12 17.2l3 2.2" opacity=".6"/></svg></div>
+      </div>
+    </div>
+  </div>
+
+  <p class="caption"><b>The point</b><span>Nothing here is invented. Keys 4&ndash;8 already fire Mass Seed, Well, Repulsor, Clearing Cone and Skim Collector in the shipping build — the HUD has simply never mentioned them, and two of the five appear in <em>zero</em> UI files. An empty socket is a promise; a filling bar is the only progression display that needs no explanation.</span></p>
 </section>
 
 <div class="legend">

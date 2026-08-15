@@ -8,6 +8,7 @@ STYLE ANCHOR. A single monochrome line-art pictogram on a plain dark background.
 
 SUBJECT: a burst of arrows radiating outward from a central point
 THE IDEA TO CONVEY: shoving everything nearby violently away
-COMPOSITION HINT: arrows point OUTWARD; must mirror the well icon exactly in reverse
+COMPOSITION HINT: arrows point OUTWARD from a BROKEN or HOLLOW centre ring. Direction alone is not
+enough contrast at 32px - the burst-apart hollow centre is what separates this from the well.
 
 Negative prompt: photorealistic, 3D render, gradient, glow, neon, lens flare, drop shadow, colour, filled shapes, text, letters, numbers, watermark, signature, frame, border, busy background, multiple objects, perspective, isometric, cute, cartoon mascot, fantasy runes, magic sparkles

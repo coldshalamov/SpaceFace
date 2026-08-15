@@ -8,6 +8,7 @@ STYLE ANCHOR. A single monochrome line-art pictogram on a plain dark background.
 
 SUBJECT: a funnel of converging arrows collapsing to a single point
 THE IDEA TO CONVEY: pulling loose objects inward to one place
-COMPOSITION HINT: arrows point INWARD; must mirror the repulsor icon exactly in reverse
+COMPOSITION HINT: arrows point INWARD toward a SOLID FILLED centre dot. Direction alone is not
+enough contrast at 32px - the filled accumulating centre is what separates this from the repulsor.
 
 Negative prompt: photorealistic, 3D render, gradient, glow, neon, lens flare, drop shadow, colour, filled shapes, text, letters, numbers, watermark, signature, frame, border, busy background, multiple objects, perspective, isometric, cute, cartoon mascot, fantasy runes, magic sparkles
