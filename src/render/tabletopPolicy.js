@@ -63,6 +63,23 @@ export function tableAiAuthorityWu(
 
 export const TABLE_AI_AUTHORITY_WU = tableAiAuthorityWu();
 
+/** Live table envelope. Prefetch uses the wider of live and requested zoom. */
+export function tableAiAuthorityWuFromState(state) {
+  const camera = state && state.camera || {};
+  const video = state && state.settings && state.settings.video || {};
+  const live = Number.isFinite(camera.liveZoom) ? camera.liveZoom : NaN;
+  const requested = Number.isFinite(camera.zoom) ? camera.zoom : NaN;
+  const zoom = Math.max(
+    Number.isFinite(live) ? live : 0,
+    Number.isFinite(requested) ? requested : 0,
+  ) || 144;
+  const fov = Number.isFinite(camera.fov) ? camera.fov
+    : (Number.isFinite(video.fov) ? video.fov : 50);
+  const aspect = Number.isFinite(camera.aspect) && camera.aspect > 0 ? camera.aspect : 16 / 9;
+  const tilt = Number.isFinite(camera.tilt) ? camera.tilt : 60;
+  return tableAiAuthorityWu(zoom, fov, aspect, tilt);
+}
+
 export const TABLE_BAND = Object.freeze({
   GLASS: 'glass',
   RUNWAY: 'runway',

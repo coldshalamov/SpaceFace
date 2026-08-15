@@ -8,7 +8,7 @@ import { contactGrammarFor } from '../data/factionContactGrammar.js';
 import { hash32 } from '../core/rng.js';
 import { isHostileToPlayer } from './scanner.js';
 import { shouldOwnerThink } from '../core/activityScheduler.js';
-import { TABLE_AI_AUTHORITY_WU } from '../render/tabletopPolicy.js';
+import { tableAiAuthorityWuFromState } from '../render/tabletopPolicy.js';
 
 const BARK_SET = new Set(BARK_SITUATIONS);
 const VOICE_TTL_S = 1.2;
@@ -54,7 +54,7 @@ export const barkDirector = {
       playerId: state.playerId,
       playerTeam: PLAYER_TEAM,
       origin: player && player.pos,
-      authorityRadius: TABLE_AI_AUTHORITY_WU,
+      authorityRadius: tableAiAuthorityWuFromState(state),
       sleepPeriodTicks: 8,
       activePeriodTicks: 1,
     };
