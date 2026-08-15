@@ -165,7 +165,7 @@ import {
   residencyEvictRadius,
   residencyPrefetchRadius,
   submitCullHalfExtents,
-  tableShadowCastRadius,
+  tableShadowCasterRadius,
   tableTravelSpeed,
 } from './tabletopPolicy.js';
 
@@ -324,7 +324,7 @@ function liveTableCamera(state) {
 
 function liveShadowCastRadius(state) {
   const cam = liveTableCamera(state);
-  return tableShadowCastRadius(cam.zoom, cam.fov, cam.aspect, cam.tilt);
+  return tableShadowCasterRadius(cam.zoom, cam.fov, cam.aspect, cam.tilt, SHADOW_ORTHO_EXTENT);
 }
 
 function renderResidencyRadius(state, kind = 'prefetch') {

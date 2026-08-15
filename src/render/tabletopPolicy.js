@@ -183,6 +183,22 @@ export function tableShadowCastRadius(zoom, fovDeg, aspect, tiltDeg = 60) {
   return Math.max(glass.halfX, glass.halfZ) + TABLE_SHADOW_SKIRT_WU;
 }
 
+/**
+ * Caster band must fit inside the key-light ortho. A larger number would flip
+ * far hulls to castShadow even though they sit outside the ±300 light box.
+ */
+export function tableShadowCasterRadius(
+  zoom,
+  fovDeg,
+  aspect,
+  tiltDeg = 60,
+  cap = 300,
+) {
+  const radius = tableShadowCastRadius(zoom, fovDeg, aspect, tiltDeg);
+  const limit = Number.isFinite(Number(cap)) && Number(cap) > 0 ? Number(cap) : 300;
+  return Math.min(limit, Math.max(80, radius));
+}
+
 export function classifyTableBand(options = {}) {
   const radius = Math.max(0, Number(options.radius) || 0);
   const absDx = Math.max(0, Math.abs(Number(options.dx) || 0) - radius);

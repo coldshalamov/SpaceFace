@@ -30,6 +30,7 @@ import {
   submitCullHalfExtents,
   submitRunwayWu,
   tableShadowCastRadius,
+  tableShadowCasterRadius,
   tableTravelSpeed,
 } from '../src/render/tabletopPolicy.js';
 import {
@@ -320,4 +321,30 @@ test('shadow radius follows the table plus a short skirt', () => {
   }), false);
   assert.equal(opaqueBatchLane(leftoverSq, atDefault * atDefault), 'nocast');
   assert.equal(opaqueBatchLane(nearSq, atDefault * atDefault), 'cast');
+});
+
+test('max-zoom casters cannot sit outside the key-light box', () => {
+  const uncapped = tableShadowCastRadius(330, 50, 16 / 9);
+  const capped = tableShadowCasterRadius(330, 50, 16 / 9, 60, 300);
+  assert.ok(uncapped > 300, `uncapped max-zoom radius ${uncapped} outgrows the 300 WU ortho`);
+  assert.equal(capped, 300);
+  const outsideBox = 320 * 320;
+  const insideBox = 200 * 200;
+  assert.equal(allowRealtimeShadowCast({
+    lodLevel: 'lod0',
+    distanceSq: outsideBox,
+    castRadius: capped,
+  }), false);
+  assert.equal(allowRealtimeShadowCast({
+    lodLevel: 'lod0',
+    distanceSq: insideBox,
+    castRadius: capped,
+  }), true);
+  assert.equal(shouldInstanceChunkCastShadow({
+    opaque: true,
+    submittedCount: 1,
+    nearestDistanceSq: outsideBox,
+    castRadiusSq: capped * capped,
+  }), false);
+  assert.equal(opaqueBatchLane(outsideBox, capped * capped), 'nocast');
 });
