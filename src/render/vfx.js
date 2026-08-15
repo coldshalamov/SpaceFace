@@ -6705,7 +6705,7 @@ export const vfx = {
     assertDynamicBufferOwnerWritable(sm.dynamicBufferOwner);
     const simTime = state.simTime || 0;
     const pulse = 0.82 + 0.18 * Math.sin(this._t * 4.2);
-    const drawWu = tableVfxDrawWuFromState(state);
+    const drawWu = this._tableVfxDrawWu || tableVfxDrawWuFromState(state);
     let n = 0;
     const list = state.entityList || [];
     for (let i = 0; i < list.length && n < sm.CAP; i++) {
@@ -6715,7 +6715,7 @@ export const vfx = {
       if (!seams || !seams.length) continue;
       // Range cull stays galactic-global (origin-invariant); instance matrices are frame-local.
       const dx = e.pos.x - player.pos.x, dz = e.pos.z - player.pos.z;
-      if (!shouldDrawTableVfx(dx, dz, this._tableVfxDrawWu || drawWu)) continue;
+      if (!shouldDrawTableVfx(dx, dz, drawWu)) continue;
       const scanned = (e.data.scanHighlightUntil || 0) > simTime;
       const seamLocked = e.id === this._miningSeamPulseId && simTime <= this._miningSeamPulseUntil;
       const cr = Math.cos(e.rot || 0), sr = Math.sin(e.rot || 0);
