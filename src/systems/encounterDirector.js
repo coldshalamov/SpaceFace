@@ -45,6 +45,8 @@ import { makeEnemySpawnSpec } from './combat.js';
 import { ENCOUNTERS, NAMED_CAPTAINS, barkText, receiptText } from '../data/encounters.js';
 import { ENCOUNTER_MODULES } from '../data/encounters/index.generated.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
+import { WEAPONS } from '../data/weapons.js';
+import { factionCompositionWeight } from '../data/factionDoctrines.js';
 import { ENCOUNTER_SCRIPTS } from './encounterScripts.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { SECTORS } from '../data/sectors.js';
@@ -82,6 +84,60 @@ import {
 } from '../economy/freightCausality.js';
 
 const ENEMY_BY_ID = new Map(ENEMY_TYPES.map((entry) => [entry.id, entry]));
+const WEAPON_BY_ID = new Map(WEAPONS.map((entry) => [entry.id, entry]));
+
+function combatMassClass(def) {
+  const mass = Number(def && def.mass) || 0;
+  if (mass <= 24) return 'light';
+  if (mass <= 80) return 'medium';
+  return 'heavy';
+}
+
+function combatWeaponFamilies(def) {
+  const families = new Set();
+  for (const weapon of def && def.weapons || []) {
+    const id = String(weapon && weapon.id || '').toLowerCase();
+    const weaponDef = WEAPON_BY_ID.get(weapon && weapon.id);
+    const damageType = String(weaponDef && weaponDef.damageType || '').toLowerCase();
+    if (weaponDef && weaponDef.intercepts === true) families.add('pd');
+    if (damageType === 'kinetic') families.add('kinetic');
+    if (damageType === 'energy') families.add('energy');
+    if (damageType === 'thermal') families.add('thermal');
+    if (damageType === 'explosive') families.add('ordnance');
+    if (damageType === 'emp') families.add('emp');
+    if (/impulse|concussion|repulsor/.test(id)) families.add('impulse');
+    if (/industrial|mining|cutter/.test(id)) families.add('industrial');
+  }
+  const enemyId = String(def && def.id || '');
+  const doctrineId = String(def && def.combatDoctrineId || '');
+  if (/foundry/.test(enemyId)) families.add('industrial');
+  if (/mine_layer/.test(enemyId)) families.add('ordnance');
+  if (/tether/.test(enemyId) || /tether/.test(doctrineId)) families.add('tether');
+  return [...families].sort();
+}
+
+const ARCHETYPE_COMPOSITION_READOUT = new Map(ENEMY_TYPES.map((def) => [def.id, Object.freeze({
+  id: def.id,
+  massClass: combatMassClass(def),
+  weaponFamilies: Object.freeze(combatWeaponFamilies(def)),
+})]));
+
+function pickFactionArchetype(archetypes, factionId, rng) {
+  if (!Array.isArray(archetypes) || archetypes.length <= 1) return archetypes && archetypes[0];
+  const weighted = archetypes.map((id) => ({
+    id,
+    weight: factionCompositionWeight(factionId, ARCHETYPE_COMPOSITION_READOUT.get(id) || { id }),
+  }));
+  const total = weighted.reduce((sum, row) => sum + Math.max(0, row.weight), 0);
+  if (!(total > 0)) return archetypes[0];
+  let roll = rng() * total;
+  for (const row of weighted) {
+    roll -= Math.max(0, row.weight);
+    if (roll < 0) return row.id;
+  }
+  return weighted[weighted.length - 1].id;
+}
+
 const SELF_REGISTERED_RUNTIME_BY_ID = new Map(
   ENCOUNTER_MODULES
     .filter((module) => module && module.trigger && module.runtime)
@@ -2537,7 +2593,7 @@ function addSquad(ships, squad, factionId, context, zone, levelBand, rng, role) 
     const isAnchor = i === 0 && hasIdentityAnchor;
     const archetype = isAnchor
       ? squad.anchorArchetype
-      : squad.archetypes[Math.floor(rng() * squad.archetypes.length) % squad.archetypes.length];
+      : pickFactionArchetype(squad.archetypes, factionId, rng);
     const level = Math.round(levelBand[0] + (levelBand[1] - levelBand[0]) * (0.4 + rng() * 0.6));
     ships.push({
       archetype,
