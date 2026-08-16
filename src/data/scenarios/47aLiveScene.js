@@ -4,6 +4,35 @@ import { CombatDoctrineId } from '../../ai/combatDoctrine.js';
 export const SCENARIO_47A_ID = 'scenario.47a.mass-discrepancy';
 export const SCENARIO_47A_CONTRACT_PATH = 'src/data/scenarios/47a.scenario.json';
 
+// Plan 30's contributor tribute is a named door into the real 47-A scenario, not a
+// second scenario contract. The checklist is deliberately flavor-only: it awards
+// nothing and never grades, unlocks, or gates the player's run.
+export const SCENARIO_47A_TRAINING_TRIBUTE = Object.freeze({
+  id: 'training.47a.golden-route',
+  scenarioId: SCENARIO_47A_ID,
+  archiveLabel: 'TRAINING ARCHIVE · TAPE 47-A',
+  title: '47-A // GOLDEN ROUTE',
+  briefing: 'Re-run the Mass Discrepancy exactly as filed. The tape records choices, not grades.',
+  seed: 47,
+  checklist: Object.freeze([
+    'SCENARIO CONTRACT · FOUND',
+    'ACTOR BINDINGS · QUEUED',
+    'EXPECTED OUTCOME · NOT RECORDED',
+  ]),
+});
+
+export function build47aTrainingLaunchOptions(options = {}) {
+  const name = String(options.name || '').trim() || 'Pilot';
+  const difficulty = String(options.difficulty || '').trim() || 'standard';
+  return {
+    name,
+    shipId: 'ship_kestrel',
+    difficulty,
+    skipArcadeVerbOnboarding: options.skipArcadeVerbOnboarding === true,
+    seed: SCENARIO_47A_TRAINING_TRIBUTE.seed,
+  };
+}
+
 export function mark47aPlayerActor(player) {
   if (!player) return null;
   player.data = Object.assign({}, player.data, {

@@ -3,6 +3,10 @@
 // The save system handles game:new (newGame()), seeds GameState and switches to flight.
 import { MODULES } from '../../data/modules.js';
 import { NEW_GAME } from '../../data/newGameDefaults.js';
+import {
+  SCENARIO_47A_TRAINING_TRIBUTE,
+  build47aTrainingLaunchOptions,
+} from '../../data/scenarios/47aLiveScene.js';
 import { WEAPONS } from '../../data/weapons.js';
 import { coreText } from '../localizedCoreCopy.js';
 
@@ -22,6 +26,13 @@ export function parseUniverseSeed(value) {
   if (!/^\d{1,10}$/.test(text)) return null;
   const seed = Number(text);
   return Number.isSafeInteger(seed) && seed > 0 && seed <= 0xffffffff ? seed : null;
+}
+
+export function request47aTrainingLaunch(bus, options = {}) {
+  if (!bus || typeof bus.emit !== 'function') return null;
+  const request = build47aTrainingLaunchOptions(options);
+  bus.emit('game:new', request);
+  return request;
 }
 
 function readNewGamePlusCandidate(ctx) {
@@ -73,6 +84,15 @@ function injectStyle() {
   .sf-ng-route__step b { display:block; font-family:var(--mf-display); font-weight:600; font-size:12.5px;
     letter-spacing:.05em; color:var(--ink); margin-bottom:3px; overflow-wrap:anywhere; }
   .sf-ng-route__step span { display:block; font-size:11px; color:var(--ink-dim); line-height:1.4; overflow-wrap:anywhere; }
+  .sf-ng-47a-training { margin-top:2px; padding:0; border:0; border-top:1px solid var(--mf-line-2); }
+  .sf-ng-47a-training summary { padding:10px 0 8px; cursor:pointer; color:var(--ink-mute); font:10px var(--mono);
+    letter-spacing:.18em; text-transform:uppercase; }
+  .sf-ng-47a-training__body { padding:2px 0 12px; display:grid; gap:8px; }
+  .sf-ng-47a-training__title { font-family:var(--mf-display); font-size:13px; letter-spacing:.08em; color:var(--ink); }
+  .sf-ng-47a-training__brief { margin:0; color:var(--ink-dim); font-size:11px; line-height:1.45; }
+  .sf-ng-47a-training__checks { margin:0; padding:8px 0; list-style:none; border-top:1px solid var(--mf-line-2);
+    border-bottom:1px solid var(--mf-line-2); color:var(--ink-mute); font:9.5px/1.65 var(--mono); letter-spacing:.09em; }
+  .sf-ng-47a-training__launch { justify-self:start; width:auto; }
   @media (max-width:520px) { .sf-ng-route__steps { grid-template-columns:1fr; } }
   /* New Game keeps its decision actions in view while the detailed setup content scrolls. */
   .sf-menu.sf-ng-shell { width:min(540px,calc(100vw - 32px)); min-width:0; height:min(88vh,820px);
@@ -372,6 +392,28 @@ export const newGameScreen = {
       '</div>';
     body.appendChild(route);
 
+    // A quiet, legitimately discoverable contributor tribute. This archive entry
+    // launches the same 47-A game:new route as an ordinary run with a fixed seed;
+    // its mock checklist is flavor, not validation or progression state.
+    const training47a = el('details', 'sf-ng-47a-training');
+    training47a.id = 'sf-ng-47a-training';
+    const trainingSummary = el('summary', null, SCENARIO_47A_TRAINING_TRIBUTE.archiveLabel);
+    training47a.appendChild(trainingSummary);
+    const trainingBody = el('div', 'sf-ng-47a-training__body');
+    trainingBody.appendChild(el('div', 'sf-ng-47a-training__title', SCENARIO_47A_TRAINING_TRIBUTE.title));
+    trainingBody.appendChild(el('p', 'sf-ng-47a-training__brief', SCENARIO_47A_TRAINING_TRIBUTE.briefing));
+    const trainingChecks = el('ul', 'sf-ng-47a-training__checks');
+    for (const check of SCENARIO_47A_TRAINING_TRIBUTE.checklist) {
+      trainingChecks.appendChild(el('li', null, check));
+    }
+    trainingBody.appendChild(trainingChecks);
+    const launchTraining = el('button', 'sf-btn sf-ng-47a-training__launch', 'Launch 47-A training route');
+    launchTraining.id = 'sf-ng-47a-training-launch';
+    launchTraining.type = 'button';
+    trainingBody.appendChild(launchTraining);
+    training47a.appendChild(trainingBody);
+    body.appendChild(training47a);
+
     // Starter ship preview — ship identity comes first, then stats.
     // The Tessera has a history. The player should feel it before they click Launch.
     body.appendChild(el('h2', null, 'Starting Ship'));
@@ -437,6 +479,7 @@ export const newGameScreen = {
     const setLaunching = (active) => {
       launching = !!active;
       launch.disabled = launching;
+      launchTraining.disabled = launching;
       back.disabled = launching;
       name.disabled = launching;
       diff.disabled = launching;
@@ -458,7 +501,7 @@ export const newGameScreen = {
     };
     const restoreLaunch = () => setLaunching(false);
     const unsubStartFailed = ctx.bus.on('game:startFailed', restoreLaunch);
-    launch.addEventListener('click', () => {
+    const beginLaunch = (trainingRoute = false) => {
       if (launching) return;
       setLaunching(true);
       const pilot = (name.value || '').trim() || 'Pilot';
@@ -466,7 +509,7 @@ export const newGameScreen = {
       // requires a finite positive number and otherwise randomises, so passing NaN or 0 through
       // would silently mean "random" while looking deliberate.
       const rawSeed = parseUniverseSeed(seed.value);
-      if (seededRun.checked && rawSeed == null) {
+      if (!trainingRoute && seededRun.checked && rawSeed == null) {
         setLaunching(false);
         seed.setAttribute('aria-invalid', 'true');
         try { seed.focus(); } catch (_) { /* focus is best-effort */ }
@@ -484,16 +527,25 @@ export const newGameScreen = {
         : {};
       // First-run splash (spec2/03 §3): a single full-screen line on black, 2.5s, then B0.
       try { showFirstRunSplash(ctx); } catch (e) { /* non-blocking */ }
-      ctx.bus.emit('game:new', {
+      const common = {
         name: pilot,
         shipId: STARTER_SHIP,
         difficulty: diff.value,
         skipArcadeVerbOnboarding: skipVerbDrills.checked,
+      };
+      if (trainingRoute) {
+        request47aTrainingLaunch(ctx.bus, common);
+        return;
+      }
+      ctx.bus.emit('game:new', {
+        ...common,
         seededRun: seededRun.checked,
         ...seedOpt,
         ...newGamePlusOpt,
       });
-    });
+    };
+    launch.addEventListener('click', () => beginLaunch(false));
+    launchTraining.addEventListener('click', () => beginLaunch(true));
     foot.appendChild(back); foot.appendChild(launch);
     rootEl.appendChild(foot);
 
