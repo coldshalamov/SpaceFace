@@ -208,6 +208,29 @@ function fireTell(bus, kind, extra = {}) {
     '1000 WU is on a 330/90 table even without a projectable camera');
 }
 
+// ── Live camera uses NDC project, not the headless table radius ────────────
+{
+  const live = makeHarness({ enemyX: 1000 });
+  const tilt = Math.PI / 3;
+  const distance = 144;
+  const cam = new THREE.PerspectiveCamera(50, 16 / 9, 1, 4000);
+  cam.position.set(0, distance * Math.sin(tilt), -distance * Math.cos(tilt));
+  cam.lookAt(0, 0, 0);
+  cam.updateMatrixWorld();
+  cam.updateProjectionMatrix();
+  live.state.render.camera = cam;
+  live.state.camera = { zoom: 330, fov: 90, aspect: 16 / 9, tilt: 60 };
+  fireTell(live.bus, 'engine_flare', { doctrineId: 'interceptor_flyby' });
+  assert.equal(live.system.inspect().doctrineTells.last.offscreen, true,
+    'a 1000 WU enemy stays off-screen on a real camera even at a wide table envelope');
+
+  const near = makeHarness({ enemyX: 80 });
+  near.state.render.camera = cam;
+  fireTell(near.bus, 'engine_flare', { doctrineId: 'interceptor_flyby' });
+  assert.equal(near.system.inspect().doctrineTells.last.offscreen, false,
+    'a near enemy still projects on-screen through a real camera');
+}
+
 // ── Duration floor: payload below 30 is raised to 30 ────────────────────────
 {
   const { bus, system } = makeHarness();
@@ -222,6 +245,6 @@ function fireTell(bus, kind, extra = {}) {
 console.log(JSON.stringify({
   schema: 'spaceface.m1.doctrine_vfx.v1',
   ok: true,
-  cases: ['flyby', 'tether', 'charge', 'reduced', 'offscreen', 'duration_floor', 'pause_tick', 'headless_fallback', 'headless_table'],
+  cases: ['flyby', 'tether', 'charge', 'reduced', 'offscreen', 'duration_floor', 'pause_tick', 'headless_fallback', 'headless_table', 'live_project'],
   doctrineTelegraphTicks: DOCTRINE_TELEGRAPH_TICKS,
 }, null, 2));

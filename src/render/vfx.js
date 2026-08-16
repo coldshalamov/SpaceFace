@@ -7424,8 +7424,14 @@ export const vfx = {
   _doctrineTellOnScreen(entity) {
     if (!entity || !entity.pos) return false;
     const camera = this.state && this.state.render && this.state.render.camera;
-    if (!camera || typeof camera.project !== 'function') {
-      // Headless / no camera: treat as on-screen if near the player so link cues still fire.
+    const canProject = !!(
+      camera
+      && camera.isCamera
+      && camera.projectionMatrix
+      && typeof camera.updateMatrixWorld === 'function'
+    );
+    if (!canProject) {
+      // Headless / no projectable camera: treat as on-screen if inside the live table.
       const pp = this._playerPos();
       const d = Math.hypot((entity.pos.x || 0) - (pp.x || 0), (entity.pos.z || 0) - (pp.z || 0));
       const tableWu = tableVfxDrawWuFromState(this.state);
