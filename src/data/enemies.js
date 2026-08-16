@@ -14,6 +14,15 @@
 //   wasp ~3s, reaver ~8–10s, corsair ~15s, bruiser tanky but never immune.
 // armorFlat must stay well below starter shot damage — flat DR ≥ dmg zeroes residual damage
 // after the shield layer and made bruisers literally unkillable with the Hitch gun.
+export const MEDIUM_FAMILY_ENEMY_IDS = Object.freeze([
+  'marauder_brawler',
+  'lancer_sniper',
+  'hostile_interceptor',
+  'bulwark_escort',
+  'corsair_raider',
+  'torcher_denial',
+]);
+
 export const ENEMY_TYPES = [
   {
     id: 'mote_swarmer', name: 'Mote', shipId: 'ship_wasp',
@@ -185,22 +194,139 @@ export const ENEMY_TYPES = [
       drops: [{ id: 'cmdty_scrap_metal', chance: 0.22, qtyRange: [1, 2] }],
     },
   },
+  // ── PR95 wave 2: medium-family admission (design/arcade-core/13_MEDIUM_FAMILY.md) ──
+  // These rows establish stable ids, fixed combat budgets, setup verbs, rewards, and the common
+  // visible-retreat handoff. `mediumSetup.runtime` and `visibleRetreat.runtime` are deliberately
+  // `unwired`: later behavior/presentation packets must consume them before claiming the verbs or
+  // cues on the player route. Difficulty comes from encounter composition, never level inflation.
+  {
+    id: 'marauder_brawler', name: 'Marauder', shipId: 'ship_bastion',
+    factionId: 'faction_reach',
+    aiArchetype: 'brawler', levelRange: [3, 8], fixedCombatStats: true,
+    combatDoctrineId: 'brawler_commit',
+    hull: 145, armor: 45, armorFlat: 1, shield: 45, shieldRegen: 0, cap: 145, capRegen: 22,
+    maxSpeed: 105, accel: 84, turnRate: 1.75, collisionRadius: 18, mass: 40,
+    weapons: [{ id: 'wpn_autocannon_m' }, { id: 'wpn_pulse_laser_s', dmgOverride: 5 }],
+    aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 220, leashRadius: 2400 },
+    mediumSetup: {
+      capability: 'close_shotgun_pressure', counterVerb: 'disrupt_rcs_then_terrain_shove', runtime: 'unwired',
+    },
+    visibleRetreat: {
+      hullFraction: 0.3, smokeCue: 'retreat_smoke', dumpCue: 'retreat_parts_dump',
+      bark: 'Marauder is dumping mass and breaking off.', runtime: 'unwired',
+    },
+    behavior: 'future medium setup: close pressure, then a readable low-hull retreat',
+    bountyCr: 360, shipClass: 'corvette', killRewardTier: 'medium',
+    loot: {
+      creditsRange: [120, 260],
+      drops: [
+        { id: 'cmdty_munitions', chance: 0.65, qtyRange: [2, 4] },
+        { id: 'cmdty_comp_hullplate', chance: 0.35, qtyRange: [1, 2] },
+      ],
+    },
+  },
   {
     id: 'lancer_sniper', name: 'Lancer Sniper', shipId: 'ship_wasp',
     silhouette: 'sniper_lance', factionId: 'faction_reach',
-    aiArchetype: 'sniper', levelRange: [2, 5],
+    aiArchetype: 'sniper', levelRange: [2, 5], fixedCombatStats: true,
     combatDoctrineId: 'ranged_disengager',
     hull: 70, armor: 12, armorFlat: 1, shield: 50, shieldRegen: 6, cap: 120, capRegen: 22,
-    maxSpeed: 126, accel: 84, turnRate: 1.5, collisionRadius: 14, mass: 24,
+    maxSpeed: 126, accel: 84, turnRate: 1.5, collisionRadius: 14, mass: 35,
     weapons: [{ id: 'wpn_railgun_m', dmgOverride: 40, rofOverride: 0.7, projSpeedOverride: 700, rangeOverride: 1100 }],
     aiDoctrine: { defaultActivity: 'reposition', roe: 'weapons_free', preferredRange: 760, leashRadius: 3000 },
+    mediumSetup: {
+      capability: 'rail_reposition', counterVerb: 'close_under_turn_rate_or_well_clump', runtime: 'unwired',
+    },
+    visibleRetreat: {
+      hullFraction: 0.3, smokeCue: 'retreat_smoke', dumpCue: 'retreat_munitions_dump',
+      bark: 'Lancer is venting charge and withdrawing.', runtime: 'unwired',
+    },
     behavior: 'kite at max range, retreat when closed',
-    bountyCr: 260, shipClass: 'fighter',
+    bountyCr: 260, shipClass: 'fighter', killRewardTier: 'medium',
     loot: {
       creditsRange: [60, 140],
       drops: [
         { id: 'cmdty_electronics', chance: 0.4, qtyRange: [1, 2] },
         { id: 'cmdty_scrap_metal',  chance: 0.6, qtyRange: [2, 4] },
+        { id: 'cmdty_munitions',    chance: 0.35, qtyRange: [1, 3] },
+      ],
+    },
+  },
+  {
+    id: 'hostile_interceptor', name: 'Interceptor', shipId: 'ship_hornet',
+    factionId: 'faction_reach',
+    aiArchetype: 'pirate', levelRange: [3, 8], fixedCombatStats: true,
+    combatDoctrineId: 'interceptor_flyby',
+    hull: 92, armor: 18, armorFlat: 1, shield: 42, shieldRegen: 0, cap: 135, capRegen: 24,
+    maxSpeed: 158, accel: 132, turnRate: 1.82, collisionRadius: 15, mass: 25,
+    weapons: [{ id: 'wpn_autocannon_s' }, { id: 'wpn_pulse_laser_s', dmgOverride: 5 }],
+    aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 250, leashRadius: 2900 },
+    mediumSetup: {
+      capability: 'escape_lane_cutoff', counterVerb: 'momentum_sink_then_terrain_walk', runtime: 'unwired',
+    },
+    visibleRetreat: {
+      hullFraction: 0.3, smokeCue: 'retreat_smoke', dumpCue: 'retreat_munitions_dump',
+      bark: 'Interceptor drive is shedding load. It is running.', runtime: 'unwired',
+    },
+    behavior: 'future medium setup: chase and cut escape, then visibly flee at low hull',
+    bountyCr: 310, shipClass: 'fighter', killRewardTier: 'medium',
+    loot: {
+      creditsRange: [90, 210],
+      drops: [
+        { id: 'cmdty_munitions', chance: 0.55, qtyRange: [2, 4] },
+        { id: 'cmdty_comp_circuitry', chance: 0.35, qtyRange: [1, 2] },
+      ],
+    },
+  },
+  {
+    id: 'bulwark_escort', name: 'Bulwark', shipId: 'ship_bastion',
+    factionId: 'faction_reach',
+    aiArchetype: 'brawler', levelRange: [4, 9], fixedCombatStats: true,
+    combatDoctrineId: 'brawler_commit',
+    hull: 155, armor: 55, armorFlat: 2, shield: 125, shieldRegen: 9, shieldRegenCapable: true, cap: 190, capRegen: 26,
+    maxSpeed: 88, accel: 58, turnRate: 0.95, collisionRadius: 21, mass: 55,
+    weapons: [{ id: 'wpn_pulse_laser_m' }, { id: 'wpn_flak_turret_s', defensiveOnly: true }],
+    aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 360, leashRadius: 2300 },
+    mediumSetup: {
+      capability: 'wing_shield_projection', counterVerb: 'emp_strip_or_vector_separate', runtime: 'unwired',
+    },
+    visibleRetreat: {
+      hullFraction: 0.3, smokeCue: 'retreat_smoke', dumpCue: 'retreat_field_parts_dump',
+      bark: 'Bulwark link is down. Escort is withdrawing.', runtime: 'unwired',
+    },
+    behavior: 'future medium setup: project wing shields until stripped or physically separated',
+    bountyCr: 470, shipClass: 'corvette', killRewardTier: 'medium',
+    loot: {
+      creditsRange: [160, 340],
+      drops: [
+        { id: 'cmdty_comp_circuitry', chance: 0.65, qtyRange: [2, 4] },
+        { id: 'cmdty_comp_hullplate', chance: 0.55, qtyRange: [1, 3] },
+      ],
+    },
+  },
+  {
+    id: 'torcher_denial', name: 'Torcher', shipId: 'ship_drifter',
+    factionId: 'faction_reach',
+    aiArchetype: 'brawler', levelRange: [3, 8], fixedCombatStats: true,
+    combatDoctrineId: 'brawler_commit',
+    hull: 118, armor: 28, armorFlat: 1, shield: 54, shieldRegen: 0, cap: 165, capRegen: 25,
+    maxSpeed: 116, accel: 90, turnRate: 1.55, collisionRadius: 17, mass: 38,
+    weapons: [{ id: 'wpn_plasma_cannon_m', occasional: true }, { id: 'wpn_pulse_laser_s', dmgOverride: 4 }],
+    aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 290, leashRadius: 2500 },
+    mediumSetup: {
+      capability: 'plasma_trail_denial', counterVerb: 'bait_trail_then_shove_through_it', runtime: 'unwired',
+    },
+    visibleRetreat: {
+      hullFraction: 0.3, smokeCue: 'retreat_smoke', dumpCue: 'retreat_coolant_dump',
+      bark: 'Torcher is dumping coolant and breaking away.', runtime: 'unwired',
+    },
+    behavior: 'future medium setup: herd with plasma trails and visibly flee at low hull',
+    bountyCr: 390, shipClass: 'corvette', killRewardTier: 'medium',
+    loot: {
+      creditsRange: [130, 290],
+      drops: [
+        { id: 'cmdty_munitions', chance: 0.55, qtyRange: [2, 5] },
+        { id: 'cmdty_comp_circuitry', chance: 0.4, qtyRange: [1, 2] },
       ],
     },
   },
@@ -266,14 +392,21 @@ export const ENEMY_TYPES = [
   {
     id: 'corsair_raider', name: 'Corsair Raider', shipId: 'ship_hornet',
     silhouette: 'corsair_blade', factionId: 'faction_reach',
-    aiArchetype: 'pirate', levelRange: [4, 10],
+    aiArchetype: 'pirate', levelRange: [4, 10], fixedCombatStats: true,
     combatDoctrineId: 'interceptor_flyby',
     hull: 180, armor: 45, armorFlat: 2, shield: 80, shieldRegen: 12, shieldRegenCapable: true, cap: 200, capRegen: 26,
-    maxSpeed: 147, accel: 119, turnRate: 2.1, collisionRadius: 18, mass: 64,
+    maxSpeed: 147, accel: 119, turnRate: 2.1, collisionRadius: 18, mass: 45,
     weapons: [{ id: 'wpn_autocannon_m' }, { id: 'wpn_plasma_cannon_m', occasional: true }],
     aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 320, leashRadius: 2800 },
+    mediumSetup: {
+      capability: 'cargo_tow_theft', counterVerb: 'break_tow_then_catch_spill', runtime: 'unwired',
+    },
+    visibleRetreat: {
+      hullFraction: 0.3, smokeCue: 'retreat_smoke', dumpCue: 'retreat_cargo_spill',
+      bark: 'Corsair has the cargo. Break the tow before it clears the lane.', runtime: 'unwired',
+    },
     behavior: 'mid-tier pirate elite, frontier ambush packs',
-    bountyCr: 620, shipClass: 'gunship',
+    bountyCr: 620, shipClass: 'gunship', killRewardTier: 'medium',
     loot: {
       creditsRange: [200, 600],
       drops: [

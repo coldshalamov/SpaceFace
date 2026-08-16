@@ -261,6 +261,10 @@ export function classifyKillRewardVictim(victim) {
   if (lootTableId === 'ember_swarmer') return 'swarmer_ember';
   const tokens = collectIdentityTokens(victim);
   if (isNamedOrAce(victim, tokens)) return 'ace';
+  const authoredTier = victim?.data?.killRewardTier;
+  if (typeof authoredTier === 'string' && KILL_REWARD_TIER_IDS.includes(authoredTier)) {
+    return authoredTier;
+  }
   if (hasToken(tokens, TOKEN_SETS.heavy)) return 'heavy';
   if (hasToken(tokens, TOKEN_SETS.medium)) return 'medium';
   if (hasToken(tokens, TOKEN_SETS.light)) return 'light';

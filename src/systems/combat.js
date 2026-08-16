@@ -200,6 +200,7 @@ export function makeEnemySpawnSpec(enemyTypeId, level, pos, opts = {}) {
   spec.data.loot = def.loot || null;
   spec.data.lootTableId = def.id;
   spec.data.shipClass = def.shipClass || 'fighter';
+  if (def.killRewardTier) spec.data.killRewardTier = def.killRewardTier;
   if (def.reinforcements) spec.data.reinforcements = { ...def.reinforcements };
   spec.data.level = level;
   // Enemy silhouette override (graphics spec Workstream D): when present, the render track
@@ -212,6 +213,8 @@ export function makeEnemySpawnSpec(enemyTypeId, level, pos, opts = {}) {
   if (def.fieldAnchor) spec.data.fieldAnchor = { ...def.fieldAnchor };
   if (def.terrainAmbush) spec.data.terrainAmbush = { ...def.terrainAmbush };
   if (def.deathCookOff) spec.data.deathCookOff = { ...def.deathCookOff };
+  if (def.mediumSetup) spec.data.mediumSetup = { ...def.mediumSetup };
+  if (def.visibleRetreat) spec.data.visibleRetreat = { ...def.visibleRetreat };
   if (def.fixedCombatStats === true) spec.data.fixedCombatStats = true;
   if (def.telegraph && def.telegraph.cue && !opts.approachTelegraph) {
     // Prefer role cue when doctrine telegraph is generic.
