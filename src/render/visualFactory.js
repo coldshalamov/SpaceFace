@@ -2515,6 +2515,105 @@ function commodityColor(e) {
   return '#7af7d0';
 }
 
+function isCreditChipEntity(e) {
+  const d = e && e.data || {};
+  return d.kind === 'credit_chip' || d.kind === 'credits';
+}
+
+// Minted salvage-rights chit: a short hexagonal token with a raised stamp and rim.
+// Top-down it reads as a coin; from the side it has thickness. Not a recolored
+// ore octahedron and not a camera-facing glow card.
+function buildCreditChip(e) {
+  const R = Math.max(1.4, Number(e && e.radius) || 2.2);
+  const g = new THREE.Group();
+  const bodyMat = getMaterial('creditchip:body', () => new THREE.MeshStandardMaterial({
+    color: 0xc9a24a,
+    emissive: 0x3a2508,
+    emissiveIntensity: 0.28,
+    metalness: 0.86,
+    roughness: 0.28,
+  }));
+  const rimMat = getMaterial('creditchip:rim', () => new THREE.MeshStandardMaterial({
+    color: 0x5a4220,
+    emissive: 0x1a1004,
+    emissiveIntensity: 0.12,
+    metalness: 0.78,
+    roughness: 0.42,
+  }));
+  const stampMat = getMaterial('creditchip:stamp', () => new THREE.MeshStandardMaterial({
+    color: 0xf2d27a,
+    emissive: 0x8a5a14,
+    emissiveIntensity: 0.55,
+    metalness: 0.7,
+    roughness: 0.22,
+  }));
+  const insetMat = getMaterial('creditchip:inset', () => new THREE.MeshStandardMaterial({
+    color: 0x2a2112,
+    emissive: 0x6a4810,
+    emissiveIntensity: 0.35,
+    metalness: 0.55,
+    roughness: 0.38,
+  }));
+
+  const stack = new THREE.Group();
+  stack.name = 'CreditChipStack';
+  const chipGeo = getGeometry('creditchip:hex', () => new THREE.CylinderGeometry(0.78, 0.78, 0.16, 6));
+  const offsets = [
+    { y: -0.14, rot: 0.08, scale: 1 },
+    { y: 0.02, rot: -0.18, scale: 0.94 },
+    { y: 0.16, rot: 0.12, scale: 0.86 },
+  ];
+  for (let i = 0; i < offsets.length; i++) {
+    const chip = new THREE.Mesh(chipGeo, bodyMat);
+    chip.name = i === 0 ? 'CreditChipBody' : `CreditChipStack_${i + 1}`;
+    chip.position.y = offsets[i].y;
+    chip.rotation.y = offsets[i].rot;
+    chip.scale.setScalar(offsets[i].scale);
+    stack.add(chip);
+  }
+
+  const rim = new THREE.Mesh(
+    getGeometry('creditchip:rim', () => new THREE.TorusGeometry(0.78, 0.045, 6, 6)),
+    rimMat,
+  );
+  rim.name = 'CreditChipRim';
+  rim.rotation.x = Math.PI / 2;
+  rim.position.y = 0.16;
+  stack.add(rim);
+
+  const stamp = new THREE.Mesh(
+    getGeometry('creditchip:stamp', () => new THREE.CylinderGeometry(0.28, 0.28, 0.06, 6)),
+    stampMat,
+  );
+  stamp.name = 'CreditChipStamp';
+  stamp.position.y = 0.26;
+  stack.add(stamp);
+
+  const bar = new THREE.Mesh(
+    getGeometry('creditchip:bar', () => new THREE.BoxGeometry(0.34, 0.05, 0.08)),
+    insetMat,
+  );
+  bar.name = 'CreditChipMintBar';
+  bar.position.y = 0.30;
+  stack.add(bar);
+
+  stack.scale.setScalar(R);
+  g.add(stack);
+  g.userData.kind = 'pickup';
+  g.userData.interactionKind = 'pickup';
+  g.userData.pickupVisual = 'credit_chip';
+  g.userData.visualLanguage = 'minted-credit-chip';
+  const ph = (hashId(e.id) % 100) / 100 * Math.PI * 2;
+  const host = stack.children[0];
+  host.frustumCulled = false;
+  host.onBeforeRender = () => {
+    const t = nowSec();
+    stack.rotation.y = t * 1.35 + ph;
+    stack.position.y = 0.35 * Math.sin(t * 1.8 + ph);
+  };
+  return g;
+}
+
 function buildPickup(e) {
   if (e.data && e.data.freightCustodyPod) {
     const canister = buildPayload(e);
@@ -2522,6 +2621,7 @@ function buildPickup(e) {
     canister.userData.interactionKind = 'pickup';
     return canister;
   }
+  if (isCreditChipEntity(e)) return buildCreditChip(e);
   const R = e.radius || 2.2;
   const color = commodityColor(e);
   const g = new THREE.Group();

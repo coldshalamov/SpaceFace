@@ -3,9 +3,10 @@
 // The finding that reframed this feature: pickup MAGNETISM already ships (mining._updatePickups —
 // homing vacuum: inherits player velocity + relative approach, pickups only). The real chore was
 // that a ship kill drops ONLY a salvage wreck you must sit on with the beam. So: on a player kill
-// of a hostile ship, ALSO emit the shipped `loot:drop` seam with an immediate shard burst — mining
-// spawns every item entry as its own pickup, the magnet flies them into the hull, and cargo remains
-// the collection writer. The bulk salvage wreck (and the whole salvage career) is untouched.
+// of a hostile ship, ALSO emit the shipped `loot:drop` seam with an immediate victim-scaled burst —
+// materials from hull class/cargo, plus physical credit chips. Mining spawns each entry as its own
+// pickup; cargo still owns commodity collection, and credit chips settle through economy on scoop.
+// The bulk salvage wreck (and the whole salvage career) is untouched.
 //
 // Deterministic: each victim gets a stateless roll derived from the CURRENT run seed plus durable
 // victim identity. There is no private cursor to serialize or accidentally carry across New Game.
@@ -30,17 +31,10 @@
 import { spawnPayloadEntity } from '../combat/industrialBeam.js';
 import { createVictimRewardRng, missionOwnsReward } from '../combat/rewardEligibility.js';
 import { massline2Flag } from '../data/featureFlags.js';
+import { rollKillRewardItems } from '../data/killRewards.js';
 import { isHostileToPlayer } from './scanner.js';
 
 const SHARD_REWARD_SALT = 'loot_shards_reward_v3';
-// Vision-alignment reward fountain: hostile kills must pay agency now, not pocket change against
-// 5-figure module prices. Scrap + electronics + refined metals form a magnetized burst; bulk salvage
-// beam work remains on the wreck for derelict career play.
-const SHARD_SCRAP_PICKUPS = 4;
-const SHARD_SCRAP_MIN = 12;
-const SHARD_SCRAP_MAX = 18;         // each scrap pickup rolls in [MIN, MAX]
-const SHARD_ELECTRONICS_QTY = 5;
-const SHARD_ALLOYS_QTY = 3;
 
 /** Live-resident cap for civilian-manifest cargo bodies (see file header). */
 export const MAX_CIVILIAN_MANIFEST_PAYLOADS = 6;
@@ -48,16 +42,7 @@ export const CIVILIAN_MANIFEST_PAYLOAD_TYPE = 'civilian_manifest';
 
 export function lootShardItemsFor(seed, victim) {
   const rng = createVictimRewardRng(seed, victim, SHARD_REWARD_SALT);
-  const items = [];
-  for (let i = 0; i < SHARD_SCRAP_PICKUPS; i++) {
-    items.push({
-      commodityId: 'cmdty_scrap_metal',
-      qty: SHARD_SCRAP_MIN + Math.floor(rng() * (SHARD_SCRAP_MAX - SHARD_SCRAP_MIN + 1)),
-    });
-  }
-  items.push({ commodityId: 'cmdty_salvage_electronics', qty: SHARD_ELECTRONICS_QTY });
-  items.push({ commodityId: 'cmdty_alloys', qty: SHARD_ALLOYS_QTY });
-  return items;
+  return rollKillRewardItems(rng, victim);
 }
 
 /** Expected-value helper for tests and balance audit (basePrice at equilibrium). */
@@ -202,7 +187,20 @@ export const lootShards = {
     if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return;
 
     const items = lootShardItemsFor(state.meta && state.meta.seed, victim);
-    this.bus.emit('loot:drop', { pos: { x: pos.x, z: pos.z }, items });
+    const vel = victim.vel && typeof victim.vel === 'object'
+      ? {
+        x: Number.isFinite(victim.vel.x) ? victim.vel.x : 0,
+        z: Number.isFinite(victim.vel.z) ? victim.vel.z : 0,
+      }
+      : { x: 0, z: 0 };
+    // Credits stay inside the physical chip items. A top-level credits field would look like
+    // the authored combat grant-at-death receipt; AC-01 settles only on collection.
+    this.bus.emit('loot:drop', {
+      pos: { x: pos.x, z: pos.z },
+      items,
+      vel,
+      source: 'kill_burst',
+    });
   },
 
   /**
