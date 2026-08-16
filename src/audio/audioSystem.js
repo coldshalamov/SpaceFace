@@ -145,6 +145,28 @@ export const MEDIUM_AUDIO_SIGNATURES = Object.freeze({
   'medium.torcher.trail.ended': Object.freeze({ recipeId: 'sfx_doctrine_brawler_withdraw', gain: 0.38, rate: 1.08, cooldownS: 0.45 }),
 });
 
+// Plan 14 heavy identities use low, mechanical variations of bounded shipped recipes. Raw combat
+// fire keeps its existing weapon voice; these one-shots only mark the heavy-family mechanic that
+// produced the sound, and are rate-limited by the same semantic owner as the medium family.
+export const HEAVY_AUDIO_SIGNATURES = Object.freeze({
+  'heavy.ramscoop.ram_spool': Object.freeze({ recipeId: 'sfx_doctrine_brawler_commit', gain: 0.9, rate: 0.56, cooldownS: 0.72 }),
+  'heavy.carrier.launch': Object.freeze({ recipeId: 'sfx_doctrine_flyby', gain: 0.68, rate: 0.74, cooldownS: 0.42 }),
+  'heavy.foundry.ore_release': Object.freeze({ recipeId: 'sfx_vector_mine', gain: 0.62, rate: 0.64, cooldownS: 0.52 }),
+  'heavy.foundry.ore_detonated': Object.freeze({ recipeId: 'sfx.chargeDetonate', gain: 0.82, rate: 0.82, cooldownS: 0.18 }),
+});
+
+export function resolveHeavyPresentationAudioCue(eventName, payload) {
+  if (eventName === 'ai:doctrinePhase') {
+    return payload && payload.phase === 'ram_spool'
+      ? HEAVY_AUDIO_SIGNATURES['heavy.ramscoop.ram_spool']
+      : null;
+  }
+  if (eventName === 'heavy:bayLaunch') return HEAVY_AUDIO_SIGNATURES['heavy.carrier.launch'];
+  if (eventName === 'heavy:chargedOreReleased') return HEAVY_AUDIO_SIGNATURES['heavy.foundry.ore_release'];
+  if (eventName === 'heavy:chargedOreDetonated') return HEAVY_AUDIO_SIGNATURES['heavy.foundry.ore_detonated'];
+  return null;
+}
+
 export function resolveMediumPresentationAudioCue(payload) {
   if (!payload) return null;
   const cueId = String(payload.cueId || '');
@@ -777,9 +799,12 @@ export const audio = {
     bus.on('dock:undocked', () => this._onUndocked());
     // Existing encounter/doctrine seams drive presentation pressure only; audio never writes AI.
     bus.on('ai:telegraph', (p) => this._onDoctrineTelegraphAudio(p));
-    bus.on('ai:doctrinePhase', (p) => this._onMediumDoctrineAudio(p));
+    bus.on('ai:doctrinePhase', (p) => { this._onMediumDoctrineAudio(p); this._onHeavyDoctrineAudio(p); });
     bus.on('medium:semanticCue', (p) => this._onMediumSemanticAudio(p));
     bus.on('freight:cargoSpilled', (p) => this._onMediumSemanticAudio({ ...p, event: 'freight:cargoSpilled' }));
+    bus.on('heavy:bayLaunch', (p) => this._onHeavySemanticAudio('heavy:bayLaunch', p));
+    bus.on('heavy:chargedOreReleased', (p) => this._onHeavySemanticAudio('heavy:chargedOreReleased', p));
+    bus.on('heavy:chargedOreDetonated', (p) => this._onHeavySemanticAudio('heavy:chargedOreDetonated', p));
     bus.on('encounter:telegraph', (p) => this._onEncounterTelegraphAudio(p));
     bus.on('encounter:resolved', (p) => this._onEncounterResolvedAudio(p));
     // Jump/cruise one-shots are owned by the normalized presentation lane below. Do not subscribe
@@ -1591,6 +1616,28 @@ export const audio = {
       signature = { recipeId: 'sfx_doctrine_flyby', gain: 0.76, rate: 1.18, cooldownS: 0.6 };
     }
     if (signature) this._playMediumSignature(`doctrine:${id}:${p.phase}`, signature, entity && entity.pos);
+  },
+
+  _onHeavyDoctrineAudio(p) {
+    if (!p || p.entityId == null) return;
+    const entity = this.state && this.state.entities && this.state.entities.get
+      ? this.state.entities.get(p.entityId)
+      : null;
+    const id = String(entity && entity.data && (entity.data.lootTableId || entity.data.enemyTypeId) || '');
+    if (id !== 'heavy_ramscoop') return;
+    const signature = resolveHeavyPresentationAudioCue('ai:doctrinePhase', p);
+    if (signature) this._playMediumSignature(`heavy-doctrine:${id}:${p.phase}`, signature, entity && entity.pos);
+  },
+
+  _onHeavySemanticAudio(eventName, p) {
+    const signature = resolveHeavyPresentationAudioCue(eventName, p);
+    if (!signature) return;
+    const sourceId = p && (p.parentId ?? p.mineId ?? p.entityId);
+    const entity = sourceId != null && this.state && this.state.entities && this.state.entities.get
+      ? this.state.entities.get(sourceId)
+      : null;
+    this._playMediumSignature(`${eventName}:${sourceId ?? 'world'}`, signature,
+      p && p.pos || (entity && entity.pos) || null);
   },
 
   _onMediumSemanticAudio(p) {

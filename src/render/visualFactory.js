@@ -50,6 +50,13 @@ import { interactionProfileForEntity } from '../data/entityInteractionProfiles.j
 import { resolveWeaponPresentationFamily } from './vfxProfiles.js';
 import { swarmerRecordFor } from '../data/swarmerFamily.js';
 import { JAMMER_ENEMY_ID } from '../presentation/radarJamming.js';
+import {
+  HEAVY_PRESENTATION_SILHOUETTES,
+  buildChargedOrePresentation,
+  buildHeavyPartPresentation,
+  buildHeavyPresentationHull,
+  heavyPresentationIdFor,
+} from './heavyFamilyPresentation.js';
 
 // ---------------------------------------------------------------------------------------------
 // Lookups + palette resolution
@@ -2931,9 +2938,12 @@ function buildShipMesh(e, pal) {
   // renders as its OWN hostile family, not the player ship-def's family. Player ships have no
   // silhouette field and fall through to familyFor() as before.
   const mediumPresentationId = mediumPresentationIdFor(e);
-  const enemySil = mediumPresentationId
-    ? MEDIUM_PRESENTATION_SILHOUETTES[mediumPresentationId]
-    : e.data && e.data.silhouette;
+  const heavyPresentationId = heavyPresentationIdFor(e);
+  const enemySil = heavyPresentationId
+    ? HEAVY_PRESENTATION_SILHOUETTES[heavyPresentationId]
+    : mediumPresentationId
+      ? MEDIUM_PRESENTATION_SILHOUETTES[mediumPresentationId]
+      : e.data && e.data.silhouette;
   const family = (enemySil && ENEMY_FAMILY_BUILDERS[enemySil]) ? enemySil : familyFor(defId);
   const isEnemyFamily = !!enemySil && !!ENEMY_FAMILY_BUILDERS[enemySil];
   // Designed-procedural swarmer bodies author every nozzle, mast and lit surface themselves. The
@@ -2946,7 +2956,8 @@ function buildShipMesh(e, pal) {
     && swarmerRecord.enemyId !== 'wasp_swarmer'
     && swarmerRecord.tell.silhouette === family;
   const isAuthoredMediumHull = !!mediumPresentationId;
-  const suppressGenericShipOverlays = isAuthoredSwarmerHull || isAuthoredMediumHull;
+  const isAuthoredHeavyHull = !!heavyPresentationId;
+  const suppressGenericShipOverlays = isAuthoredSwarmerHull || isAuthoredMediumHull || isAuthoredHeavyHull;
   const recipe = recipeFor(defId);
   const seed = hashId(e.id);
   const tierRow = tierForLoadout(defId, (e.data && e.data.fittings) || [], e.data && e.data.visualTier);
@@ -2967,13 +2978,17 @@ function buildShipMesh(e, pal) {
   outer.userData.tierName = tierRow.name || 'Mk.I';
   outer.userData.genericShipOverlaysSuppressed = suppressGenericShipOverlays;
   if (mediumPresentationId) outer.userData.mediumPresentationId = mediumPresentationId;
+  if (heavyPresentationId) outer.userData.heavyPresentationId = heavyPresentationId;
 
   const ctx = { g, R, pal, hm, accent, cockpit, vis: { length: 1.4, halfWidth: 0.5, height: 0.35, ...(vis.proportions || {}) }, tier: tierRow, hints, seed, blinkers };
 
   // 1) build the family hull — player families from FAMILY_BUILDERS, enemy silhouettes from
   //    ENEMY_FAMILY_BUILDERS (graphics spec Workstream D: enemies render as their own hostile forms).
-  const builder = isEnemyFamily ? ENEMY_FAMILY_BUILDERS[family] : (FAMILY_BUILDERS[family] || buildMultirole);
-  builder(ctx);
+  if (isAuthoredHeavyHull) buildHeavyPresentationHull(ctx, heavyPresentationId);
+  else {
+    const builder = isEnemyFamily ? ENEMY_FAMILY_BUILDERS[family] : (FAMILY_BUILDERS[family] || buildMultirole);
+    builder(ctx);
+  }
 
   if (jammerPresentationIdFor(e)) addJammerWorldTell(outer, g, R);
   if (tetherCutterPresentationIdFor(e)) addTetherCutterWorldTell(outer, g, R);
@@ -2989,7 +3004,7 @@ function buildShipMesh(e, pal) {
   //     coolant fins, armor plates, battle scorch) across the deck. The single biggest craftsmanship
   //     lever: deepens every player ship uniformly, density scales with tier. Enemies use their own
   //     bespoke detail in their family builders, so skip them here.
-  if (!isEnemyFamily) surfaceDetail(ctx);
+  if (!isEnemyFamily && !suppressGenericShipOverlays) surfaceDetail(ctx);
 
   // 2c) PAINT PROFILE — the art direction: grime overlay, chrome env-map, nose-art decal, repair
   //     patches. All driven by the faction personality so the dirty-outlaw vs clean-authority contrast
@@ -4718,6 +4733,8 @@ function buildFallback(e) {
 }
 
 function buildPayload(e) {
+  const chargedOre = buildChargedOrePresentation(e);
+  if (chargedOre) return chargedOre;
   const R = Math.max(1, (e && e.radius) || 3);
   const g = new THREE.Group();
   const shell = getMaterial('payload:shell', () => new THREE.MeshStandardMaterial({
@@ -4788,6 +4805,7 @@ export function createVisualFactory() {
           case 'pickup': return buildPickup(e);
           case 'projectile': return buildProjectile(e);
           case 'drone': return buildDrone(e);
+          case 'heavyPart': return buildHeavyPartPresentation(e) || buildFallback(e);
           case 'payload': return buildPayload(e);
           case 'mine': return buildMine(e);
           case 'vectormine': return buildVectorMine(e);

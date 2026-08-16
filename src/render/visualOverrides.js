@@ -31,6 +31,7 @@ import {
   mediumPresentationIdFor,
   tetherCutterPresentationIdFor,
 } from './visualFactory.js';
+import { heavyPresentationIdFor } from './heavyFamilyPresentation.js';
 
 const KESTREL_HERO_ASSET_ID = 'SF_K0_KESTREL_BORROWED_TIME';
 
@@ -181,10 +182,11 @@ export function installVisualOverrides(factory, options = {}) {
     let visual = null;
     const designedProceduralSwarmer = isDesignedProceduralSwarmer(entity);
     const designedProceduralMedium = !!mediumPresentationIdFor(entity);
+    const designedProceduralHeavy = !!heavyPresentationIdFor(entity);
     const designedProceduralJammer = !!jammerPresentationIdFor(entity);
     const designedProceduralTetherCutter = !!tetherCutterPresentationIdFor(entity);
     const designedProceduralShip = designedProceduralSwarmer || designedProceduralMedium
-      || designedProceduralJammer || designedProceduralTetherCutter;
+      || designedProceduralHeavy || designedProceduralJammer || designedProceduralTetherCutter;
     const requiredWholeShip = requiresProductionWholeShip(entity);
     const directShip = directAuthoredMount
       && authoredShips
@@ -254,7 +256,8 @@ export function installVisualOverrides(factory, options = {}) {
     } else if (entity && entity.type === 'ship' && entity.data) {
       // Faction bespoke ships (spec §8.2–§8.7, Phase 3 §20). Each is failure-isolated: any throw in
       // the bespoke builder falls back to the procedural factory, so a broken hero never blanks an NPC.
-      const entry = (designedProceduralMedium || designedProceduralJammer || designedProceduralTetherCutter)
+      const entry = (designedProceduralMedium || designedProceduralHeavy
+        || designedProceduralJammer || designedProceduralTetherCutter)
         ? null
         : SCENARIO_47A_SHIP_BUILDERS[entity.data.assetRef] || FACTION_BUILDERS[entity.data.lootTableId];
       if (entry) {

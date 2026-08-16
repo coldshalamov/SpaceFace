@@ -2137,6 +2137,9 @@ export const vfx = {
     add('ai:counterTether', (p) => this._onTetherCutterCharge(p));
     add('ai:telegraph', (p) => this._onAiTelegraph(p));
     add('ai:doctrinePhase', (p) => this._onSwarmerDoctrinePhase(p));
+    add('heavy:bayLaunch', (p) => this._onHeavyBayLaunch(p));
+    add('heavy:chargedOreReleased', (p) => this._onHeavyOreReleased(p));
+    add('heavy:chargedOreDetonated', (p) => this._onHeavyOreDetonated(p));
     add('ai:flee', (p) => this._onAiFlee(p));
     add('ai:formationBroken', (p) => this._onAiFormationBroken(p));
     add('presentation:cue', (p) => this._onDirectMiningPresentationCue(p));
@@ -2963,6 +2966,7 @@ export const vfx = {
     if (!origin) return;
     let base = this._dirAngle(p.dir, p.ownerId);
     const owner = this._ent(p.ownerId);
+    this._onHeavyCutterFire(p, owner);
     // Off-axis muzzle scatter while tumbling — guns whip with the thrash.
     const scatter = owner && owner.presentation && owner.presentation.tumble
       ? Math.max(0, owner.presentation.tumble.muzzleScatter || 0)
@@ -3620,7 +3624,57 @@ export const vfx = {
       if (phase === 'visible_retreat') mesh.userData.setMediumPresentationState('retreat', true);
       handled = true;
     }
+    if (String(entity.data && (entity.data.lootTableId || entity.data.enemyTypeId) || '') === 'heavy_ramscoop') {
+      const phase = String(p && p.phase || '');
+      const burn = phase === 'ram_commit' ? 1 : phase === 'ram_spool' ? 0.62 : 0;
+      handled = this._setHeavyPresentation(entity, 'burn', burn) || handled;
+      handled = this._setHeavyPartPresentation(entity.id, 'heavy_ramscoop_drive_cluster', 'burn', burn) || handled;
+    }
     return handled;
+  },
+
+  _setHeavyPresentation(entity, channel, value, options = null) {
+    const mesh = entity && entity.mesh;
+    if (!mesh || typeof mesh.userData.setHeavyPresentationState !== 'function') return false;
+    return mesh.userData.setHeavyPresentationState(channel, value, options);
+  },
+
+  _setHeavyPartPresentation(parentId, partId, channel, value, options = null) {
+    const list = this.state && this.state.entityList || [];
+    for (let i = 0; i < list.length; i++) {
+      const part = list[i];
+      if (!part || part.type !== 'heavyPart' || !part.data || part.data.parentId !== parentId) continue;
+      if (String(part.data.partId || '') !== partId) continue;
+      return this._setHeavyPresentation(part, channel, value, options);
+    }
+    return false;
+  },
+
+  _onHeavyBayLaunch(p) {
+    if (!p || p.parentId == null || !p.bayPartId) return false;
+    const options = { reduced: this._isReduced() };
+    return this._setHeavyPartPresentation(p.parentId, String(p.bayPartId), 'launch', true, options);
+  },
+
+  _onHeavyOreReleased(p) {
+    if (!p || p.parentId == null || !p.rackPartId) return false;
+    const options = { reduced: this._isReduced(), uses: Number(p.used) || 0 };
+    return this._setHeavyPartPresentation(p.parentId, String(p.rackPartId), 'oreRelease', true, options);
+  },
+
+  _onHeavyOreDetonated(p) {
+    const mine = this._ent(p && p.mineId);
+    return this._setHeavyPresentation(mine, 'oreRelease', true, { reduced: this._isReduced() });
+  },
+
+  _onHeavyCutterFire(p, owner) {
+    if (!owner || String(owner.data && (owner.data.lootTableId || owner.data.enemyTypeId) || '') !== 'heavy_foundry') return false;
+    if (String(p && p.weaponId || '') !== 'wpn_beam_laser_m') return false;
+    const options = { reduced: this._isReduced() };
+    const port = this._setHeavyPartPresentation(owner.id, 'heavy_foundry_cutter_port', 'cutterHeat', true, options);
+    const starboard = this._setHeavyPartPresentation(owner.id, 'heavy_foundry_cutter_starboard', 'cutterHeat', true, options);
+    this._setHeavyPresentation(owner, 'cutterHeat', true, options);
+    return port || starboard;
   },
 
   _onMediumStatusApplied(p) {
@@ -8652,6 +8706,14 @@ export const vfx = {
 
   _onAiTelegraph(p) {
     this._emitJuiceCue('ai.telegraph', p, 1);
+    const entity = this._ent(p && p.entityId);
+    const stableId = String(entity && entity.data
+      && (entity.data.lootTableId || entity.data.enemyTypeId || entity.data.typeId) || '');
+    // Ramscoop's mounted drive owns the ram setup as a physical, oversized advected plume. The
+    // generic doctrine ring would cover that wedge and turn the authored tell back into a soft
+    // circular overlay, so retain the semantic/audio cue while suppressing only that redundant
+    // visual substrate.
+    if (stableId === 'heavy_ramscoop' && String(p && p.kind || '') === 'ram_burn') return true;
     if (!this._scene) return;
     this._beginDoctrineTell(p || {});
   },
