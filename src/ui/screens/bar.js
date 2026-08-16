@@ -15,6 +15,8 @@ import { CONTACT_VOICE_REGISTERS } from '../../data/barks.js';
 import { stationSloganFor } from '../../data/stationSlogans.js';
 import { depthContactsForStation } from '../../story/campaign47a/embodiedDialogue.js';
 import {
+  FIXER_CONTACT,
+  fixerMemoryFor,
   stationContactCounterValue,
   stationContactMemoryFor,
   stationContactMemoryLine,
@@ -27,8 +29,10 @@ import {
 } from '../../data/wingmanPilots.js';
 import { uniqueWreckBarRumor } from '../uniqueWreckRumorSurface.js';
 import {
+  fixerCacheOffer,
   frontierRumorOffer,
   frontierRumorOwned,
+  frontierRumorPurchaseOffer,
   TETHYS_BLACK_MARKET_DISCOVERY,
 } from '../../data/frontierRumors.js';
 import { isChoiceECourierReady } from '../../story/endings/eligibility.js';
@@ -262,6 +266,26 @@ export function authoredBarContactsForStation(stationId, state = {}) {
   });
 }
 
+function fixerContactForStation(stationId, state = {}) {
+  const memory = fixerMemoryFor(state);
+  if (!memory.unlocked || memory.homeStationId !== stationId) return null;
+  const openCount = memory.openLeadIds.length;
+  const line = memory.outcomeCount > 0
+    ? `${memory.outcomeCount} cache lead${memory.outcomeCount === 1 ? '' : 's'} settled. ${openCount} still open.`
+    : memory.purchaseCount > 0
+      ? `${memory.purchaseCount} cache lead${memory.purchaseCount === 1 ? '' : 's'} sold. ${openCount} still open.`
+      : 'She marked your first paid rumor card. Now she sells the source.';
+  return {
+    ...FIXER_CONTACT,
+    line,
+    choices: [
+      { id: 'cache', label: 'Any cache work?' },
+      { id: 'history', label: 'How did the last lead settle?' },
+      { id: 'bye', label: 'Not today.' },
+    ],
+  };
+}
+
 export function generateContacts(stationId, state = {}) {
   const seed = fnvHash('bar_contacts_' + stationId);
   const rng  = mulberry32(seed);
@@ -384,7 +408,14 @@ export function generateContacts(stationId, state = {}) {
       ],
     }]
     : [];
-  return [...namedPilots, ...endingCourier, ...authoredBarContactsForStation(stationId, state), ...contacts];
+  const fixerContact = fixerContactForStation(stationId, state);
+  return [
+    ...(fixerContact ? [fixerContact] : []),
+    ...namedPilots,
+    ...endingCourier,
+    ...authoredBarContactsForStation(stationId, state),
+    ...contacts,
+  ];
 }
 
 /* ── dialog option builders (per role) ────────────────────────────── */
@@ -693,7 +724,11 @@ export function barContactIntelTags(contact = {}, state = {}, stationId = '') {
   if (memory && memory.met) add('Contact', stationContactStanding(memory), 'story');
   else if (contact.canonicalKey) add('Contact', 'New recurring contact', 'story');
 
-  if (role === 'merchant') {
+  if (role === 'fixer') {
+    const fixer = fixerMemoryFor(state);
+    add('Open Leads', String(fixer.openLeadIds.length), fixer.openLeadIds.length ? 'warn' : 'ok');
+    add('Settled', String(fixer.outcomeCount), fixer.outcomeCount ? 'story' : 'info');
+  } else if (role === 'merchant') {
     const route = bestTradeRoute(state, stationId);
     if (route) add('Route', commodityName(route.cmdtyId) + ' -> ' + stationName(route.sellStationId) + ' +' + Math.round(route.spread) + '/u', 'ok');
     const ev = localEconEvent(state, stationId);
@@ -805,6 +840,31 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
     return { text: "It stays open. The courier doesn't repeat the offer." };
   }
   const state = ctx.state || {};
+  if (contact && contact.id === FIXER_CONTACT.id) {
+    const memory = fixerMemoryFor(state);
+    if (choiceId === 'cache') {
+      const offer = fixerCacheOffer(state, stationId);
+      return offer
+        ? {
+            text: `A sealed discrepancy points to ${offer.sectorName}. I sell the ring; you find the cache.`,
+            frontierRumorOffer: offer,
+          }
+        : { text: 'No clean cache source today. I do not sell repeats.' };
+    }
+    if (choiceId === 'history') {
+      if (memory.outcomeCount > 0) {
+        const reason = String(memory.lastOutcomeReason || 'confirmed').replace(/_/g, ' ');
+        return {
+          text: `${memory.outcomeCount} settled. ${memory.openLeadIds.length} still open. Last card ended ${reason}.`,
+        };
+      }
+      if (memory.purchaseCount > 0) {
+        return { text: `${memory.openLeadIds.length} sold lead${memory.openLeadIds.length === 1 ? '' : 's'} still open. Bring back a result.` };
+      }
+      return { text: 'You bought the introduction, not a result.' };
+    }
+    return { text: 'Nera folds the amber card back into her coat.' };
+  }
   if (contact && contact.id === DOSS_ARCHIVE_CONTACT_ID) return buildDossArchiveReply(choiceId, state);
   if (contact && contact.id === VONN_FREIGHT_CONTACT_ID && choiceId === 'wrecks') {
     const reply = buildVonnFreightLossReply(state);
@@ -1278,10 +1338,10 @@ export function createBarPanel(ctx) {
     const rumorBtn = ev.target.closest('[data-buy-frontier-rumor]');
     if (rumorBtn) {
       const rumorId = rumorBtn.getAttribute('data-buy-frontier-rumor');
-      const offer = frontierRumorOffer(ctx.state || {}, currentStationId);
+      const offer = frontierRumorPurchaseOffer(ctx.state || {}, currentStationId, rumorId);
       const card = rumorBtn.closest('.st-bar-card');
       const replyEl = card && card.querySelector('.st-bar-reply');
-      if (!offer || offer.id !== rumorId) {
+      if (!offer) {
         if (replyEl) {
           replyEl.textContent = 'That rumor card is no longer available.';
           replyEl.classList.add('show');

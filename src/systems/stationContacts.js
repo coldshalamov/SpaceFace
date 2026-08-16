@@ -4,8 +4,10 @@
 import { COMMODITIES } from '../data/commodities.js';
 import {
   CONTACT_COUNTER_DEFS,
+  FIXER_CONTACT,
   QUARTERMASTER_CONTACT,
   createInitialStationContactCounters,
+  normalizeFixerMemory,
   normalizeQuartermasterMemory,
   normalizeStationContactCounters,
   normalizeStationContactRecord,
@@ -185,6 +187,8 @@ export const stationContacts = {
     on('module:equipped', (payload = {}) => this._recordQuartermasterFit(payload));
     on('tech:researched', (payload = {}) => this._recordQuartermasterTech(payload));
     on('ship:livingHullChanged', (payload = {}) => this._recordQuartermasterScar(payload));
+    on('frontierRumor:acquired', (payload = {}) => this._recordFixerAcquired(payload));
+    on('frontierRumor:resolved', (payload = {}) => this._recordFixerResolved(payload));
     on('stationContact:counterDelta', (payload = {}) => this._recordCounterDelta(payload));
     on('economy:tradeCompleted', (payload = {}) => {
       if (payload.stationId === 'station_beltout' && payload.side === 'buy'
@@ -369,6 +373,119 @@ export const stationContacts = {
     }
     this.bus.emit('quartermaster:voice', {
       contactId: QUARTERMASTER_CONTACT.id,
+      eventKey,
+      text,
+    });
+  },
+
+  // Plan 52 Fixer. The first paid ordinary bar card is only the causal introduction; purchase
+  // memory starts when the player later buys Nera's `source: fixer` cache card.
+  _recordFixerAcquired(payload) {
+    const source = String(payload && payload.source || '');
+    const rumorId = String(payload && payload.id || payload && payload.rumorId || '').trim();
+    const stationId = String(payload && payload.sourceStationId || '').trim();
+    if (!rumorId || (source !== 'bar' && source !== 'fixer')) return false;
+    const bag = ensureContactBag(this.state);
+    const previous = normalizeStationContactRecord(bag[FIXER_CONTACT.id]);
+    const priorMemory = normalizeFixerMemory(previous.fixer);
+    const now = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    if (!priorMemory.unlocked) {
+      if (source !== 'bar' || !stationId) return false;
+      const memory = normalizeFixerMemory({
+        ...priorMemory,
+        unlocked: true,
+        homeStationId: stationId,
+        triggerRumorId: rumorId,
+        unlockedAt: now,
+        lastSeenAt: now,
+      });
+      this._writeFixer(previous, memory, 'introduced');
+      this._speakFixer(
+        'NERA QUILL: You bought a whisper. Next time, buy the source.',
+        'introduced',
+      );
+      return true;
+    }
+    if (source !== 'fixer') return false;
+    const openLeadIds = [
+      ...priorMemory.openLeadIds.filter((id) => id !== rumorId),
+      rumorId,
+    ].slice(-8);
+    const memory = normalizeFixerMemory({
+      ...priorMemory,
+      purchaseCount: priorMemory.purchaseCount + 1,
+      lastPurchasedRumorId: rumorId,
+      lastPurchaseKind: payload.kind,
+      openLeadIds,
+      lastSeenAt: now,
+    });
+    this._writeFixer(previous, memory, 'lead-purchased');
+    this._speakFixer(
+      'NERA QUILL: Amber ring only. Find the cache yourself.',
+      `purchase:${memory.purchaseCount}`,
+    );
+    return true;
+  },
+
+  _recordFixerResolved(payload) {
+    const rumorId = String(payload && payload.rumorId || '').trim();
+    if (!rumorId) return false;
+    const bag = ensureContactBag(this.state);
+    const previous = normalizeStationContactRecord(bag[FIXER_CONTACT.id]);
+    const priorMemory = normalizeFixerMemory(previous.fixer);
+    if (!priorMemory.unlocked || !priorMemory.openLeadIds.includes(rumorId)) return false;
+    const now = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    const memory = normalizeFixerMemory({
+      ...priorMemory,
+      outcomeCount: priorMemory.outcomeCount + 1,
+      lastOutcomeRumorId: rumorId,
+      lastOutcomeReason: payload.reason,
+      openLeadIds: priorMemory.openLeadIds.filter((id) => id !== rumorId),
+      lastSeenAt: now,
+    });
+    this._writeFixer(previous, memory, 'lead-resolved');
+    this.bus.emit('fixer:outcomeRemembered', {
+      contactId: FIXER_CONTACT.id,
+      rumorId,
+      reason: memory.lastOutcomeReason,
+      outcomeCount: memory.outcomeCount,
+    });
+    return true;
+  },
+
+  _writeFixer(previous, memory, reason) {
+    const bag = ensureContactBag(this.state);
+    const next = normalizeStationContactRecord({
+      ...previous,
+      met: true,
+      name: FIXER_CONTACT.name,
+      canonicalKey: FIXER_CONTACT.canonicalKey,
+      stationId: memory.homeStationId,
+      standing: Math.min(3, Math.floor((memory.purchaseCount + memory.outcomeCount) / 2)),
+      fixer: memory,
+    });
+    bag[FIXER_CONTACT.id] = next;
+    this.bus.emit('stationContact:changed', {
+      contactId: FIXER_CONTACT.id,
+      record: { ...next, flags: { ...next.flags }, fixer: { ...next.fixer } },
+      reason,
+    });
+    return next;
+  },
+
+  _speakFixer(text, eventKey) {
+    const voice = this.helpers && this.helpers.voice;
+    if (voice && typeof voice.say === 'function') {
+      voice.say({
+        channel: 'bark',
+        kind: 'fixer',
+        id: `fixer:${FIXER_CONTACT.id}:${eventKey}`,
+        text,
+        ttl: 3,
+      });
+    }
+    this.bus.emit('fixer:voice', {
+      contactId: FIXER_CONTACT.id,
       eventKey,
       text,
     });

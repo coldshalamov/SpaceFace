@@ -7,6 +7,7 @@
 import { hash32 } from '../core/rng.js';
 import { sectorLocalToGlobalForSector } from './sectorCoordinates.js';
 import { SECTORS } from './sectors.js';
+import { fixerMemoryFor } from './stationContacts.js';
 
 export const FRONTIER_RUMOR_DAY_SECONDS = 600;
 export const FRONTIER_RUMOR_SCHEMA_VERSION = 1;
@@ -505,6 +506,79 @@ export function frontierRumorOffer(state, stationId) {
     free: false,
     idPrefix: `frontier-rumor:${stationSource.station.id}`,
   });
+}
+
+/** Plan 52 Fixer: one authored off-board cache lead backed by an existing physical cache POI.
+ * World still owns purchase, wallet charge, discovery, and resolution; this pure selector only
+ * guarantees that Nera's cache question cannot quietly degrade into a hunter or vein card. */
+export function fixerCacheOffer(state, stationId) {
+  const source = sourceForStation(stationId);
+  const fixer = fixerMemoryFor(state);
+  if (!source || !fixer.unlocked || fixer.homeStationId !== source.station.id) return null;
+  const owned = state && state.world && state.world.frontierRumors
+    && state.world.frontierRumors.byId || {};
+  const seed = finite(state && state.meta && state.meta.seed, 1) >>> 0;
+  const regional = regionalSectors(source.sector.id, 3);
+  const available = (regional.length
+    ? candidatesForKind('cache', regional, seed)
+    : candidatesForKind('cache', SECTORS, seed))
+    .filter((candidate) => candidateStillUnknown(state, candidate))
+    .filter((candidate) => !Object.values(owned).some((record) => record
+      && record.source === 'fixer'
+      && record.kind === 'cache'
+      && record.targetId === candidate.targetId
+      && record.sectorId === candidate.sector.id));
+  const candidates = available.length ? available
+    : candidatesForKind('cache', SECTORS, seed)
+      .filter((candidate) => candidateStillUnknown(state, candidate))
+      .filter((candidate) => !Object.values(owned).some((record) => record
+        && record.source === 'fixer'
+        && record.kind === 'cache'
+        && record.targetId === candidate.targetId
+        && record.sectorId === candidate.sector.id));
+  if (!candidates.length) return null;
+  const pick = hash32(seed, source.station.id, 'plan52-fixer-cache') % candidates.length;
+  const candidate = candidates[pick];
+  const targetGlobal = sectorLocalToGlobalForSector(candidate.localPos, candidate.sector.id);
+  const offsetAngle = (hash32(seed, source.station.id, candidate.targetId, 'fixer-bearing-angle')
+    / 0x100000000) * Math.PI * 2;
+  const offsetDistance = 180
+    + (hash32(seed, source.station.id, candidate.targetId, 'fixer-bearing-distance') % 241);
+  const radius = Math.ceil(Math.max(520, candidate.targetRadius + offsetDistance + 140) / 20) * 20;
+  const id = `frontier-rumor:fixer:${source.station.id}:${candidate.sector.id}:${candidate.targetId}`;
+  if (owned[id]) return null;
+  const tier = Math.max(0, finite(candidate.sector.tier, 0));
+  return {
+    id,
+    schemaVersion: FRONTIER_RUMOR_SCHEMA_VERSION,
+    source: 'fixer',
+    sourceStationId: source.station.id,
+    sourceBodyId: null,
+    sourceSectorId: source.sector.id,
+    dayIndex: dayIndexFor(state),
+    kind: 'cache',
+    kindLabel: 'Fixer Cache Lead',
+    targetId: candidate.targetId,
+    targetName: candidate.targetName,
+    sectorId: candidate.sector.id,
+    sectorName: candidate.sector.name || candidate.sector.id,
+    fieldType: null,
+    coordSpace: 'global_v1',
+    bearingCenter: {
+      x: targetGlobal.x + Math.cos(offsetAngle) * offsetDistance,
+      z: targetGlobal.z + Math.sin(offsetAngle) * offsetDistance,
+    },
+    radius,
+    price: KIND_BY_ID.get('cache').price + 80 + tier * 40,
+    phase: 'rumored',
+    text: `A sealed cargo discrepancy points to ${candidate.targetName} somewhere inside this amber ring. Find it in person; the card is not a waypoint.`,
+  };
+}
+
+/** One validation seam shared by both bar presentations and the World purchase owner. */
+export function frontierRumorPurchaseOffer(state, stationId, rumorId) {
+  return [frontierRumorOffer(state, stationId), fixerCacheOffer(state, stationId)]
+    .find((candidate) => candidate && candidate.id === rumorId) || null;
 }
 
 /** One free, strictly local card for an owned Sensor Post. */

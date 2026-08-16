@@ -6,6 +6,7 @@ import { normalizeVonnFreightLoss } from './vonnFreightLoss.js';
 export const STATION_CONTACT_MEMORY_VERSION = 1;
 export const STATION_CONTACT_COUNTER_VERSION = 1;
 export const QUARTERMASTER_MEMORY_VERSION = 1;
+export const FIXER_MEMORY_VERSION = 1;
 
 // Plan 52 recurring outfitter. This identity is intentionally owned by the existing station-contact
 // memory seam even though her player-facing surface is Shipworks, not the bar. A successful fit at
@@ -16,6 +17,15 @@ export const QUARTERMASTER_CONTACT = Object.freeze({
   name: 'Iri March',
   roleLabel: 'Quartermaster',
   factionId: 'faction_scn',
+});
+
+export const FIXER_CONTACT = Object.freeze({
+  id: 'contact_fixer_nera_quill',
+  canonicalKey: 'fixer_nera_quill',
+  name: 'Nera Quill',
+  role: 'fixer',
+  roleLabel: 'Fixer',
+  factionId: 'faction_free',
 });
 
 const counter = (contactId, min, max, label) => Object.freeze({ contactId, min, max, initial: 0, label });
@@ -77,6 +87,42 @@ function safeToken(value, fallback = '') {
     .slice(0, 48);
 }
 
+function safeReference(value) {
+  return String(value == null ? '' : value)
+    .toLowerCase()
+    .replace(/[^a-z0-9:_-]+/g, '')
+    .slice(0, 160) || null;
+}
+
+export function normalizeFixerMemory(raw = {}) {
+  const source = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+  const openLeadIds = [];
+  for (const value of Array.isArray(source.openLeadIds) ? source.openLeadIds : []) {
+    const id = safeReference(value);
+    if (id && !openLeadIds.includes(id)) openLeadIds.push(id);
+    if (openLeadIds.length >= 8) break;
+  }
+  return {
+    schemaVersion: FIXER_MEMORY_VERSION,
+    unlocked: source.unlocked === true,
+    purchaseCount: boundedInt(source.purchaseCount, 0, 999),
+    outcomeCount: boundedInt(source.outcomeCount, 0, 999),
+    homeStationId: safeToken(source.homeStationId) || null,
+    triggerRumorId: safeReference(source.triggerRumorId),
+    lastPurchasedRumorId: safeReference(source.lastPurchasedRumorId),
+    lastPurchaseKind: safeToken(source.lastPurchaseKind) || null,
+    lastOutcomeRumorId: safeReference(source.lastOutcomeRumorId),
+    lastOutcomeReason: safeToken(source.lastOutcomeReason) || null,
+    openLeadIds,
+    unlockedAt: Number.isFinite(source.unlockedAt)
+      ? Math.max(0, Math.round(source.unlockedAt * 1000) / 1000)
+      : 0,
+    lastSeenAt: Number.isFinite(source.lastSeenAt)
+      ? Math.max(0, Math.round(source.lastSeenAt * 1000) / 1000)
+      : 0,
+  };
+}
+
 export function normalizeQuartermasterMemory(raw = {}) {
   const source = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
   return {
@@ -113,6 +159,7 @@ export function normalizeStationContactRecord(raw = {}) {
   const talkCount = boundedInt(source.talkCount, 0, 9999);
   const vonnFreightLoss = normalizeVonnFreightLoss(source.vonnFreightLoss);
   const quartermaster = normalizeQuartermasterMemory(source.quartermaster);
+  const fixer = normalizeFixerMemory(source.fixer);
   const record = {
     schemaVersion: STATION_CONTACT_MEMORY_VERSION,
     met: source.met === true || talkCount > 0,
@@ -136,6 +183,9 @@ export function normalizeStationContactRecord(raw = {}) {
   // One named, bounded character record. It stores only Iri's witnessed fit/tech/scar events;
   // current fittings and hull history remain with their authoritative owners.
   if (quartermaster.unlocked) record.quartermaster = quartermaster;
+  // Bounded character memory, not another rumor ledger: no bearings, prices, wallet state, or POI
+  // facts are copied here. Nera retains only counts and up to eight lead identities she sold.
+  if (fixer.unlocked) record.fixer = fixer;
   return record;
 }
 
@@ -153,6 +203,11 @@ export function quartermasterMemoryFor(state) {
     : normalizeQuartermasterMemory();
 }
 
+export function fixerMemoryFor(state) {
+  const record = stationContactMemoryFor(state, FIXER_CONTACT.id);
+  return record && record.fixer ? normalizeFixerMemory(record.fixer) : normalizeFixerMemory();
+}
+
 export function stationContactStanding(record) {
   const normalized = normalizeStationContactRecord(record);
   return STANDING_LABELS[normalized.standing];
@@ -161,6 +216,17 @@ export function stationContactStanding(record) {
 export function stationContactMemoryLine(record, fallbackLine = '') {
   const normalized = normalizeStationContactRecord(record);
   if (!normalized.met) return String(fallbackLine || 'No prior contact.');
+  if (normalized.fixer) {
+    const fixer = normalizeFixerMemory(normalized.fixer);
+    const open = fixer.openLeadIds.length;
+    if (fixer.outcomeCount > 0) {
+      return `${fixer.outcomeCount} cache lead${fixer.outcomeCount === 1 ? '' : 's'} settled · ${open} still open.`;
+    }
+    if (fixer.purchaseCount > 0) {
+      return `${fixer.purchaseCount} cache lead${fixer.purchaseCount === 1 ? '' : 's'} sold · ${open} still open.`;
+    }
+    return String(fallbackLine || 'Introduced through a paid rumor card.');
+  }
   const count = normalized.talkCount;
   const subject = normalized.lastChoice
     ? normalized.lastChoice.replace(/_/g, ' ')

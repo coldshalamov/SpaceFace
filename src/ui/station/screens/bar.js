@@ -22,8 +22,8 @@ import { BINDINGS } from '../../bindings.js';
 import { missionConsequenceSummary, missionPreflight } from '../../missionPreflight.js';
 import { icon } from '../icons.js';
 import {
-  frontierRumorOffer,
   frontierRumorOwned,
+  frontierRumorPurchaseOffer,
   TETHYS_BLACK_MARKET_DISCOVERY,
 } from '../../../data/frontierRumors.js';
 import { DOSS_ARCHIVE_CONTACT_ID, dossArchiveMapOffer } from '../../../data/dossArchive.js';
@@ -316,8 +316,8 @@ export function createBarScreen(ctx) {
     const rumorButton = ev.target.closest('[data-buy-frontier-rumor]');
     if (rumorButton && !rumorButton.disabled) {
       const rumorId = rumorButton.getAttribute('data-buy-frontier-rumor');
-      const offer = frontierRumorOffer(ctx.state || {}, sid());
-      if (!offer || offer.id !== rumorId) {
+      const offer = frontierRumorPurchaseOffer(ctx.state || {}, sid(), rumorId);
+      if (!offer) {
         pendingFrontierRumorOffer = null;
         saidText = 'That rumor card is no longer available.';
         renderStage(ctx.state || {});

@@ -25,7 +25,7 @@ import { SECTORS, SECTOR_PALETTE_CLASSES, dangerIndex, surveyDataPrice } from '.
 import { stationSloganFor } from '../data/stationSlogans.js';
 import {
   FRONTIER_RUMOR_RECEIPT_LIMIT,
-  frontierRumorOffer,
+  frontierRumorPurchaseOffer,
   normalizeFrontierRumorState,
   sensorPostRumorOffer,
   TETHYS_BLACK_MARKET_DISCOVERY,
@@ -2617,8 +2617,8 @@ export const world = {
   },
 
   _onPurchaseFrontierRumor({ rumorId, stationId }) {
-    const offer = frontierRumorOffer(this.state, stationId);
-    if (!offer || offer.id !== rumorId) {
+    const offer = frontierRumorPurchaseOffer(this.state, stationId, rumorId);
+    if (!offer) {
       this.bus.emit('toast', { text: 'That rumor card is no longer available', kind: 'warn', ttl: 3 });
       return false;
     }
