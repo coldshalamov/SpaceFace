@@ -29,9 +29,14 @@
 //   transientSector:false so a claimed/persistent body survives sector change while the cap still
 //   bounds total residency.
 import { spawnPayloadEntity } from '../combat/industrialBeam.js';
+import { applyStyleMultiplier, styleMultiplierOf } from '../combat/killCause.js';
 import { createVictimRewardRng, missionOwnsReward } from '../combat/rewardEligibility.js';
 import { massline2Flag } from '../data/featureFlags.js';
-import { killResearchPointsForVictim, rollKillRewardItems } from '../data/killRewards.js';
+import {
+  isCreditChipItem,
+  killResearchPointsForVictim,
+  rollKillRewardItems,
+} from '../data/killRewards.js';
 import { isHostileToPlayer } from './scanner.js';
 
 const SHARD_REWARD_SALT = 'loot_shards_reward_v3';
@@ -43,6 +48,31 @@ export const CIVILIAN_MANIFEST_PAYLOAD_TYPE = 'civilian_manifest';
 export function lootShardItemsFor(seed, victim) {
   const rng = createVictimRewardRng(seed, victim, SHARD_REWARD_SALT);
   return rollKillRewardItems(rng, victim);
+}
+
+/**
+ * AC-08: scale the value of an already-rolled burst, never its substance.
+ *
+ * Runs strictly after `lootShardItemsFor` so the victim-local RNG stream, its draw order, and every
+ * material line survive byte-identical — same array length, same order, same material objects. Only
+ * credit chips are rewritten, and their `grantReason` (the economy's dedupe key) is preserved.
+ */
+export function scaleCreditChipItems(items, multiplier) {
+  if (!Array.isArray(items)) return [];
+  const scale = Number(multiplier);
+  if (!Number.isFinite(scale) || scale <= 0 || scale === 1) return items;
+  const out = [];
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    if (!isCreditChipItem(item)) {
+      out.push(item);
+      continue;
+    }
+    // Both fields carry the chip's value downstream (mining reads `credits` first, then `amount`).
+    const credits = applyStyleMultiplier(item.credits, scale);
+    out.push({ ...item, credits, amount: credits });
+  }
+  return out;
 }
 
 /** Expected-value helper for tests and balance audit (basePrice at equilibrium). */
@@ -186,7 +216,13 @@ export const lootShards = {
     const pos = (victim && victim.pos) || payload.pos;
     if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return;
 
-    const items = lootShardItemsFor(state.meta && state.meta.seed, victim);
+    // AC-08 style multiplier, read off the one immutable death receipt. An unclassified or absent
+    // receipt pays ×1, so this stays byte-identical to the AC-01 burst for an ordinary kill.
+    const styleMultiplier = styleMultiplierOf(payload.presentation && payload.presentation.style);
+    const items = scaleCreditChipItems(
+      lootShardItemsFor(state.meta && state.meta.seed, victim),
+      styleMultiplier,
+    );
     const vel = victim.vel && typeof victim.vel === 'object'
       ? {
         x: Number.isFinite(victim.vel.x) ? victim.vel.x : 0,
@@ -205,7 +241,7 @@ export const lootShards = {
     // death so duplicate kill publication cannot pay twice; no XP or parallel progression wallet.
     const seed = state.meta && state.meta.seed;
     this.bus.emit('research:grant', {
-      amount: killResearchPointsForVictim(victim),
+      amount: applyStyleMultiplier(killResearchPointsForVictim(victim), styleMultiplier),
       source: 'hostile_kill',
       receiptId: `hostile-kill-rp:${seed == null ? 'run' : seed}:${victim.id}`,
     });

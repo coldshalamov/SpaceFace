@@ -13,7 +13,9 @@ import { ensureCombatant } from '../combat/runtime.js';
 import { appendCombatTrace } from '../combat/trace.js';
 import {
   COLLISION_TUMBLE_KIND,
+  describeTumbleStatus,
   isTumbling,
+  readTumbleStatus,
   resolveTumbleEntry,
   resolveTumbleEntrySpin,
   resolveTumbleInertiaY,
@@ -44,6 +46,9 @@ export const collisionConsequences = {
     this._pairTicks = new Map();
     this._controlStates = new WeakMap();
     this._pendingCraftContacts = new Map();
+    // AC-08 chain depth: transient combat truth, never entity or save state. Keyed by live object
+    // so a body that no longer exists forgets its chain by construction.
+    this._chainDepths = new WeakMap();
     this._applicationEnabled = combatFlag('weaponImpulseConsequences');
     this._unsubs = [];
     if (this.bus && typeof this.bus.on === 'function') {
@@ -191,11 +196,21 @@ export const collisionConsequences = {
   },
 
   _resolveContact(a, b, payload, exchangedMomentum, tick, causalProvenance, suppressCraftDamage) {
-    this._resolveTarget(a, b, payload, exchangedMomentum, tick, causalProvenance, suppressCraftDamage);
-    this._resolveTarget(b, a, payload, exchangedMomentum, tick, causalProvenance, suppressCraftDamage);
+    // AC-08: real PRE-contact truth for both bodies, read exactly once, before either direction
+    // below can enter the tumble this same contact causes. A scheduled tumble is visible to the
+    // status reader immediately, so resolving `a` first would otherwise make `b`'s death read as a
+    // chain off the very collision that killed it.
+    const aTumbling = isTumbling(this.state, a);
+    const bTumbling = isTumbling(this.state, b);
+    const aChainDepth = this._chainDepthOf(a);
+    const bChainDepth = this._chainDepthOf(b);
+    const towardA = preContactTruth(aTumbling, bTumbling, bChainDepth);
+    const towardB = preContactTruth(bTumbling, aTumbling, aChainDepth);
+    this._resolveTarget(a, b, payload, exchangedMomentum, tick, causalProvenance, suppressCraftDamage, towardA);
+    this._resolveTarget(b, a, payload, exchangedMomentum, tick, causalProvenance, suppressCraftDamage, towardB);
   },
 
-  _resolveTarget(target, other, payload, exchangedMomentum, tick, causalProvenance, suppressCraftDamage) {
+  _resolveTarget(target, other, payload, exchangedMomentum, tick, causalProvenance, suppressCraftDamage, preContact) {
     const state = this.state;
     if (!DAMAGEABLE_MOTION.has(target.type) || target.id === state.playerId) return;
     const ramPlate = playerRamPlateImpact(other, state.playerId, tick, causalProvenance);
@@ -213,11 +228,25 @@ export const collisionConsequences = {
     });
     if (!receipt) return;
 
+    // A chain link is the next kill scored by a body that was ALREADY a projectile. Depth counts
+    // kills in this chain including this one, so the first bowled swarmer is link 1.
+    const chainLinkDepth = receipt.surface === 'craft' && preContact.sourceTumbling
+      ? preContact.sourceChainDepth + 1
+      : 0;
+
     // Stagger is a local, lighter loss of authority this system still owns outright. A tumble is the
     // canonical first-class state: it enters the shared status/control owner, and only falls back to
     // the local control state when no combat status service exists to hold it.
     if (receipt.control === 'stagger') this._beginControl(target, receipt);
-    const damageResult = receipt.impactDamage > 0 ? this._routeImpactDamage(target, other, receipt) : null;
+    const damageResult = receipt.impactDamage > 0
+      ? this._routeImpactDamage(target, other, receipt, preContact, chainLinkDepth)
+      : null;
+    // routeDamage may have crossed the lethal threshold synchronously. A dead body forgets its own
+    // chain; a surviving projectile advances one link for each kill it actually scored.
+    if (damageResult && target.alive === false) {
+      this._chainDepths.delete(target);
+      if (chainLinkDepth > 0) this._recordChainDepth(other, chainLinkDepth);
+    }
     if (receipt.control === 'tumble' && !this._enterTumble(target, receipt)) this._beginControl(target, receipt);
 
     appendCombatTrace(state.combat, tick, 'collision.consequence', {
@@ -269,14 +298,16 @@ export const collisionConsequences = {
     });
   },
 
-  _routeImpactDamage(target, other, receipt) {
+  _routeImpactDamage(target, other, receipt, preContact, chainLinkDepth) {
     const kernel = combatKernel(this);
     if (!kernel || typeof kernel.routeDamage !== 'function') return null;
     const sourceKind = `collision_${receipt.surface}`;
     // routeDamage may synchronously cross the lethal threshold and invoke combat.kill. Snapshot the
     // live body/contact truth before that call so the sole death owner can publish an immutable
     // presentation receipt without querying a retired entity or inventing collision provenance.
-    const collisionPresentation = buildCollisionPresentationProvenance(target, other, receipt);
+    const collisionPresentation = buildCollisionPresentationProvenance(
+      target, other, receipt, preContact, chainLinkDepth,
+    );
     const packet = scalarHitToDamagePacket({
       damage: receipt.impactDamage,
       damageType: 'kinetic',
@@ -351,6 +382,33 @@ export const collisionConsequences = {
     return !!(result && result.ok);
   },
 
+  /**
+   * Chain depth this body currently carries as a tumbling projectile, or 0.
+   *
+   * The stored depth belongs to ONE tumble episode. A hull that recovers and is tumbled again later
+   * by a fresh impulse starts a new chain, so a depth whose episode no longer matches is dropped
+   * rather than silently compounding an unrelated later kill.
+   */
+  _chainDepthOf(entity) {
+    const record = this._chainDepths.get(entity);
+    if (!record) return 0;
+    if (record.episode !== tumbleEpisodeKey(this.state, entity)) {
+      this._chainDepths.delete(entity);
+      return 0;
+    }
+    return record.depth;
+  },
+
+  _recordChainDepth(entity, depth) {
+    const episode = tumbleEpisodeKey(this.state, entity);
+    // A projectile that is no longer tumbling has nothing to carry the chain forward with.
+    if (!episode) {
+      this._chainDepths.delete(entity);
+      return;
+    }
+    this._chainDepths.set(entity, { depth, episode });
+  },
+
   _admitPair(aId, bId, tick) {
     const key = pairKey(aId, bId);
     const previous = this._pairTicks.get(key);
@@ -369,6 +427,7 @@ export const collisionConsequences = {
     this._pairTicks = new Map();
     this._controlStates = new WeakMap();
     this._pendingCraftContacts = new Map();
+    this._chainDepths = new WeakMap();
   },
 };
 
@@ -495,7 +554,9 @@ function explicitContactProvenance(payload, tick) {
 
 function playerRamPlateImpact(entity, playerId, tick, provenance) {
   if (!entity || entity.id !== playerId) return null;
-  if (!provenance || provenance.actorId !== playerId || provenance.tag !== 'direct_contact') return null;
+  // The player hull is itself the direct-contact actor. Physics need not duplicate that causality
+  // in an optional causalActorId field; only an explicit contradictory actor may displace it.
+  if (provenance && provenance.actorId != null && provenance.actorId !== playerId) return null;
   const damageMultiplier = clamp(finite(entity.data?.derived?.ramDamageDealtMult), 0, 4);
   if (!(damageMultiplier > 0)) return null;
   return {
@@ -509,19 +570,40 @@ function playerRamPlateImpact(entity, playerId, tick, provenance) {
   };
 }
 
-function buildCollisionPresentationProvenance(target, other, receipt) {
+function buildCollisionPresentationProvenance(target, other, receipt, preContact, chainLinkDepth) {
   return Object.freeze({
     position: freezeTransientPoint(receipt && receipt.pos),
     direction: freezeIncomingCollisionDirection(target, other, receipt),
     normal: freezeTransientDirection(receipt && receipt.normal),
     surface: collisionPresentationSurface(receipt && receipt.surface),
     targetVelocity: freezeTransientPoint(target && target.vel),
+    // AC-08 style truth: who was already a projectile before this contact, and how deep the chain
+    // that produced it runs. Snapshotted here because it is unreadable once the contact resolves.
+    tumble: Object.freeze({
+      victim: !!(preContact && preContact.victimTumbling),
+      source: !!(preContact && preContact.sourceTumbling),
+    }),
+    chainDepth: Math.max(0, Math.trunc(finite(chainLinkDepth))),
     impact: Object.freeze({
       deltaV: nonNegativeFinite(receipt && receipt.deltaV),
       exchangedMomentum: nonNegativeFinite(receipt && receipt.exchangedMomentum),
       impactDamage: nonNegativeFinite(receipt && receipt.impactDamage),
     }),
   });
+}
+
+function preContactTruth(victimTumbling, sourceTumbling, sourceChainDepth) {
+  return Object.freeze({ victimTumbling, sourceTumbling, sourceChainDepth });
+}
+
+/**
+ * Identity of a body's current tumble episode, or null when it is under its own control. Folding
+ * the window bounds in means a takeover or a fresh spin always reads as a different episode.
+ */
+function tumbleEpisodeKey(state, entity) {
+  const status = describeTumbleStatus(readTumbleStatus(state, entity));
+  if (!status) return null;
+  return [status.kind, status.startedAt, status.until].join('\u0000');
 }
 
 function freezeIncomingCollisionDirection(target, other, receipt) {
