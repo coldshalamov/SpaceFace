@@ -382,6 +382,7 @@ export const pauseScreen = {
     // with its pause-menu entry; the key case lives in the flight-only key router.
     mk('My Ship', () => nav(ctx, 'pushScreen', 'ship'));
     mk('Cargo & Modules', () => nav(ctx, 'pushScreen', 'pauseInventory'));
+    mk('Photo Mode', () => nav(ctx, 'pushScreen', 'photoMode'));
     mk('Field Fabricator', () => nav(ctx, 'pushScreen', 'fieldCrafting'));
     // Operations = the Automation ops board (drones / traders / outposts / fleet). Reachable from
     // pause anywhere in flight — fleet orders are a flight-time action ("recall to cash out"), so

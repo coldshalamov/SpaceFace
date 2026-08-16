@@ -84,6 +84,12 @@ const ZOOM_OUT_STEP_MAX_WU = 5.5;
 const DEFAULT_ZOOM = 144;
 export const CHASE_ZOOM_DEFAULT = DEFAULT_ZOOM;
 export const CHASE_ZOOM_CLOSE = 58; // optional tighter profile (settings.video.chaseClose)
+export const PHOTO_MODE_MOVE_SPEED_DEFAULT = 90;
+export const PHOTO_MODE_MOVE_SPEED_MIN = 18;
+export const PHOTO_MODE_MOVE_SPEED_MAX = 420;
+export const PHOTO_MODE_MOUSE_SENSITIVITY = 0.0022;
+export const PHOTO_MODE_KEY_LOOK_SPEED = 1.15;
+const PHOTO_MODE_PITCH_LIMIT = Math.PI * 0.49;
 
 export const CAMERA_TRAUMA_TUNING = Object.freeze({
   decayPerSecond: TRAUMA_DECAY_PER_S,
@@ -745,6 +751,118 @@ export function createChaseCamera(state) {
   const _safeFocusInputScratch = { x: 0, z: 0 };
   const _safeFocusOptionsScratch = { zoom: DEFAULT_ZOOM, fov: cam.fov, aspect: cam.aspect };
   const _safeFocusScratch = { x: 0, z: 0, clamped: false, safeX: 0, safeZ: 0 };
+  const _photoDirectionScratch = new THREE.Vector3();
+  const _photo = {
+    active: false,
+    yaw: 0,
+    pitch: 0,
+    moveSpeed: PHOTO_MODE_MOVE_SPEED_DEFAULT,
+    forward: false,
+    back: false,
+    left: false,
+    right: false,
+    up: false,
+    down: false,
+    fast: false,
+    slow: false,
+    lookLeft: false,
+    lookRight: false,
+    lookUp: false,
+    lookDown: false,
+  };
+
+  function clearPhotoInputs() {
+    _photo.forward = false;
+    _photo.back = false;
+    _photo.left = false;
+    _photo.right = false;
+    _photo.up = false;
+    _photo.down = false;
+    _photo.fast = false;
+    _photo.slow = false;
+    _photo.lookLeft = false;
+    _photo.lookRight = false;
+    _photo.lookUp = false;
+    _photo.lookDown = false;
+  }
+
+  function enterPhotoMode() {
+    if (_photo.active) return false;
+    cam.getWorldDirection(_photoDirectionScratch);
+    _photo.yaw = Math.atan2(-_photoDirectionScratch.x, -_photoDirectionScratch.z);
+    _photo.pitch = Math.asin(Math.max(-1, Math.min(1, _photoDirectionScratch.y)));
+    _photo.moveSpeed = PHOTO_MODE_MOVE_SPEED_DEFAULT;
+    _photo.active = true;
+    clearPhotoInputs();
+    cam.rotation.order = 'YXZ';
+    return true;
+  }
+
+  function exitPhotoMode() {
+    if (!_photo.active) return false;
+    _photo.active = false;
+    clearPhotoInputs();
+    const p = state.entities && state.entities.get(state.playerId);
+    if (p) snapToEntity(p);
+    return true;
+  }
+
+  function setPhotoModeAction(action, active) {
+    if (!_photo.active || !Object.prototype.hasOwnProperty.call(_photo, action)) return false;
+    if (action === 'active' || action === 'yaw' || action === 'pitch' || action === 'moveSpeed') return false;
+    _photo[action] = active === true;
+    return true;
+  }
+
+  function addPhotoModeLook(dx, dy) {
+    if (!_photo.active) return false;
+    const lookX = finiteOr(dx, 0);
+    const lookY = finiteOr(dy, 0);
+    _photo.yaw -= lookX * PHOTO_MODE_MOUSE_SENSITIVITY;
+    _photo.pitch = Math.max(
+      -PHOTO_MODE_PITCH_LIMIT,
+      Math.min(PHOTO_MODE_PITCH_LIMIT, _photo.pitch - lookY * PHOTO_MODE_MOUSE_SENSITIVITY),
+    );
+    return true;
+  }
+
+  function adjustPhotoModeSpeed(steps) {
+    if (!_photo.active) return false;
+    const factor = Math.pow(1.18, finiteOr(steps, 0));
+    _photo.moveSpeed = Math.max(
+      PHOTO_MODE_MOVE_SPEED_MIN,
+      Math.min(PHOTO_MODE_MOVE_SPEED_MAX, _photo.moveSpeed * factor),
+    );
+    return true;
+  }
+
+  function stepPhotoMode(frameDt) {
+    const dt = Number.isFinite(frameDt) && frameDt > 0 ? Math.min(frameDt, 1 / 15) : 0;
+    const keyYaw = (_photo.lookLeft ? 1 : 0) - (_photo.lookRight ? 1 : 0);
+    const keyPitch = (_photo.lookUp ? 1 : 0) - (_photo.lookDown ? 1 : 0);
+    _photo.yaw += keyYaw * PHOTO_MODE_KEY_LOOK_SPEED * dt;
+    _photo.pitch = Math.max(
+      -PHOTO_MODE_PITCH_LIMIT,
+      Math.min(PHOTO_MODE_PITCH_LIMIT, _photo.pitch + keyPitch * PHOTO_MODE_KEY_LOOK_SPEED * dt),
+    );
+
+    const forward = (_photo.forward ? 1 : 0) - (_photo.back ? 1 : 0);
+    const strafe = (_photo.right ? 1 : 0) - (_photo.left ? 1 : 0);
+    const vertical = (_photo.up ? 1 : 0) - (_photo.down ? 1 : 0);
+    const length = Math.hypot(forward, strafe, vertical) || 1;
+    const speedScale = _photo.fast ? 3 : _photo.slow ? 0.25 : 1;
+    const distance = _photo.moveSpeed * speedScale * dt / length;
+    const sinYaw = Math.sin(_photo.yaw);
+    const cosYaw = Math.cos(_photo.yaw);
+    cam.position.x += (-sinYaw * forward + cosYaw * strafe) * distance;
+    cam.position.z += (-cosYaw * forward - sinYaw * strafe) * distance;
+    cam.position.y += vertical * distance;
+    cam.rotation.order = 'YXZ';
+    cam.rotation.x = _photo.pitch;
+    cam.rotation.y = _photo.yaw;
+    cam.rotation.z = 0;
+    cam.updateMatrixWorld(true);
+  }
 
   function snapToEntity(p) {
     if (!p || !p.pos || !Number.isFinite(p.pos.x) || !Number.isFinite(p.pos.z)) return false;
@@ -804,6 +922,22 @@ export function createChaseCamera(state) {
       cam.updateMatrixWorld(true);
     },
     composition() { return _directorFrame; },
+    enterPhotoMode,
+    exitPhotoMode,
+    setPhotoModeAction,
+    addPhotoModeLook,
+    adjustPhotoModeSpeed,
+    photoModeState() {
+      return Object.freeze({
+        active: _photo.active,
+        x: cam.position.x,
+        y: cam.position.y,
+        z: cam.position.z,
+        yaw: _photo.yaw,
+        pitch: _photo.pitch,
+        moveSpeed: _photo.moveSpeed,
+      });
+    },
     // pushZoom(factor, durationS): factor>0 pushes the camera OUT (wider), factor<0 pushes IN
     // (tighter) for `durationS`, easing in and out. e.g. pushZoom(0.25, 0.8) widens 25% over 0.8s;
     // pushZoom(-0.04, 0.25) tightens to 0.96x for 0.25s (kill-cam kiss). The effect is additive on
@@ -835,6 +969,10 @@ export function createChaseCamera(state) {
     },
     follow(dt) {
       const frameDt = Number.isFinite(dt) && dt > 0 ? Math.min(dt, 1 / 15) : 0;
+      if (_photo.active) {
+        stepPhotoMode(frameDt);
+        return;
+      }
       const p = state.entities.get(state.playerId);
       let fx = finiteOr(c.focus.x, 0), fz = finiteOr(c.focus.z, 0);
       let bankForLean = 0;
