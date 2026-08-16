@@ -17,6 +17,7 @@ import { assertAssertionsConsumed } from './assertionConsumption.js';
 import { validateCanonicalScenario } from '../../contracts/simScenarioSchema.js';
 // Side-effect: register flight + massline metrics used by evaluateOracles.
 import '../metrics/masslineMetrics.js';
+import '../metrics/arcadeCoreMetrics.js';
 
 /** Focused flight systems only — no scripts/ node:crypto imports. */
 export const BROWSER_FOCUSED_FLIGHT_SYSTEMS = Object.freeze([
