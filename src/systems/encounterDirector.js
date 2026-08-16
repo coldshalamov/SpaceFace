@@ -461,12 +461,15 @@ export const encounterDirector = {
       archetype: 'reaver_pirate',
       combatDoctrineId: ENEMY_BY_ID.get('reaver_pirate')?.combatDoctrineId || null,
       compositionRole: 'identity_anchor',
+      role: 'leader',
     });
     while (ships.length < targetCount) ships.push({
       ...waspTemplate,
       archetype: 'wasp_swarmer',
       combatDoctrineId: ENEMY_BY_ID.get('wasp_swarmer')?.combatDoctrineId || null,
       compositionRole: threat >= 2 ? 'light' : undefined,
+      role: threat >= 2 ? 'member' : undefined,
+      fleeCargo: threat >= 2 ? { commodityId: 'cmdty_scrap_metal', qty: 1 } : null,
     });
 
     let bearing = Math.atan2(visit.center.z - player.pos.z, visit.center.x - player.pos.x);
@@ -1042,6 +1045,14 @@ export const encounterDirector = {
         if (sh.bossName) { ai.name = sh.bossName; spec.data.encounterBoss = true; }
         if (sh.bountyCr != null) spec.data.bountyCr = sh.bountyCr;
         if (sh.scanLabel) spec.data.scanLabel = sh.scanLabel;
+        if (sh.fleeCargo && typeof sh.fleeCargo.commodityId === 'string') {
+          const qty = Math.max(0, Math.floor(Number(sh.fleeCargo.qty) || 0));
+          if (qty > 0) spec.data.fleeCargo = {
+            commodityId: sh.fleeCargo.commodityId,
+            qty,
+            dumped: false,
+          };
+        }
         const ent = spawnEntity(spec);
         if (ent && ent.id != null) {
           spawned.push(ent.id);

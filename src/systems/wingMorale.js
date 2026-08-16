@@ -5,9 +5,11 @@
 // only short-lived morale intent flags on those same AI records.
 
 import { THUNDERCHILD, THUNDERCHILD_TITLE_ID } from '../data/titles.js';
+import { hash32 } from '../core/rng.js';
 
 const STATE_VERSION = 1;
-const SCATTER_S = 6;
+const SCATTER_S = 8;
+const FLEE_CARGO_TTL_S = 75;
 const ROLE_LEADER = 'leader';
 const ROLE_ESCORT = 'escort';
 
@@ -101,6 +103,28 @@ function massOf(entity) {
 
 function compareId(a, b) {
   return String(a).localeCompare(String(b), undefined, { numeric: true });
+}
+
+function fleeCargoVector(entity, rec) {
+  const vx = Number(entity && entity.vel && entity.vel.x) || 0;
+  const vz = Number(entity && entity.vel && entity.vel.z) || 0;
+  const speed = Math.hypot(vx, vz);
+  let baseX = speed > 0.5 ? -vx / speed : 0;
+  let baseZ = speed > 0.5 ? -vz / speed : 0;
+  if (speed <= 0.5 && rec && rec.breakPos && entity && entity.pos) {
+    baseX = entity.pos.x - rec.breakPos.x;
+    baseZ = entity.pos.z - rec.breakPos.z;
+    const length = Math.hypot(baseX, baseZ);
+    if (length > 1e-6) { baseX /= length; baseZ /= length; }
+  }
+  const seed = hash32(rec && rec.squadId || '', entity && entity.id, rec && rec.tick || 0, 'flee-cargo');
+  if (Math.hypot(baseX, baseZ) <= 1e-6) {
+    const fallback = (seed / 0x100000000) * Math.PI * 2;
+    baseX = Math.cos(fallback); baseZ = Math.sin(fallback);
+  }
+  const jitter = ((hash32(seed, 'jitter') / 0x100000000) - 0.5) * 0.5;
+  const c = Math.cos(jitter), s = Math.sin(jitter);
+  return { x: baseX * c - baseZ * s, z: baseX * s + baseZ * c };
 }
 
 function killedId(payload) {
@@ -217,6 +241,9 @@ export const wingMorale = {
       tick: state.tick || 0,
       t: now,
       until,
+      breakPos: payload && payload.pos
+        ? { x: Number(payload.pos.x) || 0, z: Number(payload.pos.z) || 0 }
+        : null,
     };
     own.brokenSquads[squadId] = rec;
     for (const survivor of survivors) this._scatter(survivor, rec, payload);
@@ -258,6 +285,7 @@ export const wingMorale = {
       until,
       auraTitleId: auraActive ? THUNDERCHILD_TITLE_ID : null,
     };
+    this._dumpFleeCargo(entity, rec);
     if (this.bus && typeof this.bus.emit === 'function') {
       this.bus.emit('ai:flee', {
         entityId: entity.id,
@@ -267,6 +295,49 @@ export const wingMorale = {
         auraTitleId: auraActive ? THUNDERCHILD_TITLE_ID : null,
       });
     }
+  },
+
+  _dumpFleeCargo(entity, rec) {
+    const data = entity && entity.data;
+    const reserve = data && data.fleeCargo;
+    const qty = Math.max(0, Math.floor(Number(reserve && reserve.qty) || 0));
+    const commodityId = reserve && typeof reserve.commodityId === 'string' ? reserve.commodityId : '';
+    const spawnEntity = this.helpers && this.helpers.spawnEntity;
+    if (!data || !commodityId || qty <= 0 || reserve.dumped === true || typeof spawnEntity !== 'function') return null;
+    const dir = fleeCargoVector(entity, rec);
+    const distance = Math.max(3, Number(entity.radius) || 0) + 4;
+    const speed = 18;
+    const pickup = spawnEntity({
+      type: 'pickup',
+      pos: { x: entity.pos.x + dir.x * distance, z: entity.pos.z + dir.z * distance },
+      vel: {
+        x: (Number(entity.vel && entity.vel.x) || 0) + dir.x * speed,
+        z: (Number(entity.vel && entity.vel.z) || 0) + dir.z * speed,
+      },
+      radius: Math.max(2, Math.min(3.5, 1.8 + qty * 0.35)),
+      mass: Math.max(4, qty * 4),
+      collides: true,
+      flags: { persistent: true },
+      data: {
+        kind: 'cargo', commodityId, amount: qty,
+        despawnAt: (this.state.simTime || 0) + FLEE_CARGO_TTL_S,
+        fleeCargoDump: {
+          schemaVersion: 1, sourceEntityId: entity.id, squadId: rec.squadId,
+          leaderId: rec.leaderId, tick: rec.tick,
+        },
+      },
+    });
+    if (!pickup) return null;
+    reserve.qty = 0;
+    reserve.dumped = true;
+    reserve.dumpedAt = this.state.simTime || 0;
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('wingMorale:cargoDumped', {
+        entityId: entity.id, pickupId: pickup.id == null ? null : pickup.id,
+        commodityId, amount: qty, squadId: rec.squadId,
+      });
+    }
+    return pickup;
   },
 
   _sayBroken(squadId) {
