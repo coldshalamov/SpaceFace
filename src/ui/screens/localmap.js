@@ -129,7 +129,7 @@ export const localmapScreen = {
       '<div class="lm-body"><canvas></canvas>' +
       '<div class="lm-objective" id="sf-localmap-objective" hidden></div>' +
       '<div class="lm-legend" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 10px; opacity: 0.85;">' +
-        `◆ STATION · ◇ GATE · ▲ HOSTILE · ▲ FRIENDLY · ● ASTEROID · ? SCAN PING · Zoom: [Scroll Wheel]` +
+        `◆ STATION · ◇ GATE · ▲ HOSTILE · ▲ FRIENDLY · ● ASTEROID · ? SCAN PING · Shift+click: queue · Zoom: [Scroll Wheel]` +
       '</div>' +
       '<div class="lm-routes" id="sf-localmap-routes"><h4>Trade Routes</h4><div class="lm-routes-empty">Scan markets at stations to rank routes</div></div>' +
       '</div>';
@@ -503,6 +503,7 @@ export const localmapScreen = {
     g.globalAlpha = 1;
 
     this._drawScanOverlays(g, state, wx, wz);
+    this._drawWaypointQueue(g, state, C, wx, wz);
 
     // Active waypoint / mission geometry. This uses the same state.nav.waypoint source as the HUD,
     // so the map remains a recovery surface when the tactical radar no longer has nearby dots.
@@ -585,17 +586,27 @@ export const localmapScreen = {
     const fix = snapped || this._screenToWorldFix(sx, sy);
     if (!fix || !fix.pos) return;
     const label = fix.label || 'Map fix';
+    const nav = this._ctx.state && this._ctx.state.nav;
+    const hadActiveCourse = !!(nav && nav.autopilot && nav.autopilot.active === true);
+    const beforeQueueLength = nav && Array.isArray(nav.waypointQueue) ? nav.waypointQueue.length : 0;
+    const queue = ev.shiftKey === true;
     this._ctx.bus.emit('ui:setCourse', {
-      pos: fix.pos,
+      pos: { x: fix.pos.x, z: fix.pos.z },
       targetEntityId: fix.targetEntityId,
       label,
       reason: label,
       waypointKind: fix.kind || 'local',
       arrivalRadius: fix.arrivalRadius || 36,
       autopilot: true,
+      queue,
     });
-    this._ctx.bus.emit('toast', { text: 'Autopilot set: ' + label, kind: 'info', ttl: 3 });
-    this._close();
+    const afterQueueLength = nav && Array.isArray(nav.waypointQueue) ? nav.waypointQueue.length : 0;
+    if (queue && hadActiveCourse && afterQueueLength > beforeQueueLength) {
+      this._ctx.bus.emit('toast', { text: 'Waypoint queued: ' + label, kind: 'info', ttl: 3 });
+    } else if (!queue || !hadActiveCourse) {
+      this._ctx.bus.emit('toast', { text: 'Autopilot set: ' + label, kind: 'info', ttl: 3 });
+    }
+    if (!queue) this._close();
   },
 
   _nearestClickTarget(sx, sy) {
@@ -673,6 +684,44 @@ export const localmapScreen = {
       g.fillText('?', x, y + 0.5);
       g.restore();
     }
+  },
+
+  _drawWaypointQueue(g, state, center, wx, wz) {
+    const nav = state && state.nav;
+    const queue = nav && Array.isArray(nav.waypointQueue) ? nav.waypointQueue : EMPTY_ROUTES;
+    if (!queue.length) return;
+    const current = nav.waypoint && nav.waypoint.pos;
+    let fromX = current ? wx(current.x) : center.x;
+    let fromY = current ? wz(current.z) : center.y;
+    g.save();
+    g.strokeStyle = 'rgba(122,247,208,0.78)';
+    g.fillStyle = '#7af7d0';
+    g.lineWidth = 1.4;
+    g.setLineDash([5, 5]);
+    for (let index = 0; index < queue.length; index += 1) {
+      const waypoint = queue[index];
+      if (!waypoint || !waypoint.pos) continue;
+      const x = wx(waypoint.pos.x);
+      const y = wz(waypoint.pos.z);
+      g.beginPath();
+      g.moveTo(fromX, fromY);
+      g.lineTo(x, y);
+      g.stroke();
+      g.setLineDash([]);
+      g.beginPath();
+      g.arc(x, y, 7, 0, Math.PI * 2);
+      g.fill();
+      g.fillStyle = '#07131b';
+      g.font = '700 8px monospace';
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.fillText(String(index + 1), x, y + 0.5);
+      g.fillStyle = '#7af7d0';
+      g.setLineDash([5, 5]);
+      fromX = x;
+      fromY = y;
+    }
+    g.restore();
   },
 
   _renderObjectivePanel(state, player) {

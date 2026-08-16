@@ -3161,6 +3161,10 @@ function sanitizeNavState(nav) {
   // (test/unified-map-professional.test.mjs:203, scripts/check-sectorSim.mjs:205).
   const executor = sanitizeNavExecutor(source.executor, route);
   if (executor) out.executor = executor;
+  const waypointQueue = Array.isArray(source.waypointQueue)
+    ? source.waypointQueue.slice(0, 8).map(sanitizeQueuedWaypoint).filter(Boolean)
+    : [];
+  if (waypointQueue.length) out.waypointQueue = waypointQueue;
   return out;
 }
 
@@ -3242,7 +3246,7 @@ function sanitizeNavWaypoint(waypoint) {
   if (!waypoint || typeof waypoint !== 'object' || Array.isArray(waypoint)) return null;
   const out = {};
   for (const field of [
-    'kind', 'missionId', 'missionType', 'stationId', 'sectorId', 'sectorName',
+    'kind', 'missionId', 'missionType', 'stationId', 'sectorId', 'targetSectorId', 'sectorName',
     'label', 'reason', 'mapLabel', 'markerId', 'markerKind', 'commodityId',
   ]) {
     const value = navString(waypoint[field]);
@@ -3257,6 +3261,15 @@ function sanitizeNavWaypoint(waypoint) {
   const pos = sanitizeNavPos(waypoint.pos);
   if (pos) out.pos = pos;
   return Object.keys(out).length ? out : null;
+}
+
+function sanitizeQueuedWaypoint(waypoint) {
+  const out = sanitizeNavWaypoint(waypoint);
+  if (!out || !out.pos) return null;
+  out.arrivalRadius = Number.isFinite(waypoint && waypoint.arrivalRadius)
+    ? Math.max(12, Math.min(500, waypoint.arrivalRadius))
+    : 36;
+  return out;
 }
 
 function sanitizeNavAutopilot(autopilot) {
@@ -3298,7 +3311,8 @@ function persistentNavEntityId(value) {
 
 function navWithStableEntityIdentity(state) {
   const nav = clonePlain(state?.nav || {});
-  for (const target of [nav.waypoint, nav.autopilot]) {
+  const queued = Array.isArray(nav.waypointQueue) ? nav.waypointQueue : [];
+  for (const target of [nav.waypoint, nav.autopilot, ...queued]) {
     if (!target || typeof target !== 'object') continue;
     const runtimeId = navEntityId(target.targetEntityId);
     if (!runtimeId) continue;

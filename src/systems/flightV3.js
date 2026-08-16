@@ -820,9 +820,15 @@ function stopAutopilot(host, state, reason) {
   if (bus && typeof bus.emit === 'function') {
     bus.emit('nav:autopilot', autopilot);
     bus.emit('toast', {
-      text: reason === 'arrived' ? 'Autopilot arrived' : 'Autopilot disengaged',
+      text: reason === 'arrived'
+        ? (Array.isArray(nav.waypointQueue) && nav.waypointQueue.length ? 'Waypoint reached' : 'Autopilot arrived')
+        : 'Autopilot disengaged',
       kind: reason === 'arrived' ? 'good' : 'info',
       ttl: 2,
+    });
+    bus.emit('nav:autopilotStopped', {
+      reason: reason || 'idle',
+      waypoint: nav.waypoint || null,
     });
   }
 }

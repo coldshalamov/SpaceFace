@@ -112,6 +112,8 @@ import {
   serializeEmbodimentCache,
 } from '../world/embodimentRecipes.js';
 
+export const LOCAL_WAYPOINT_QUEUE_LIMIT = 8;
+
 function applySameSectorPlayerRelocation(state, entryPoint) {
   const player = state && state.entities && state.entities.get
     ? state.entities.get(state.playerId)
@@ -331,6 +333,7 @@ export const world = {
     bus.on('world:requestRoute', (p) => this._onRequestRoute(p || {}));
     bus.on('world:requestSectorScan', () => this._beginScan());
     bus.on('ui:setCourse', (p) => this._onSetCourse(p || {}));
+    bus.on('nav:autopilotStopped', (p) => this._onAutopilotStopped(p || {}));
     bus.on('combat:lockChanged', (p) => this._onLockChanged(p || {}));
     bus.on('module:equipped', () => this._resolveShipModules());
     bus.on('module:unequipped', () => this._resolveShipModules());
@@ -3171,43 +3174,84 @@ export const world = {
     return route;
   },
 
+  _armLocalCourse(course, active = true) {
+    if (!course || !course.pos) return null;
+    const nav = this.state.nav;
+    nav.route = null;
+    nav.autoTravel = false;
+    nav.waypoint = {
+      kind: course.kind,
+      label: course.label,
+      reason: course.reason,
+      pos: { x: course.pos.x, z: course.pos.z },
+    };
+    if (course.targetEntityId != null) nav.waypoint.targetEntityId = course.targetEntityId;
+    if (course.targetSectorId) nav.waypoint.targetSectorId = course.targetSectorId;
+    nav.autopilot = {
+      active: active === true,
+      target: { x: course.pos.x, z: course.pos.z },
+      targetEntityId: course.targetEntityId,
+      label: course.label,
+      arrivalRadius: course.arrivalRadius,
+      status: 'armed',
+    };
+    this.bus.emit('nav:waypoint', nav.waypoint);
+    this.bus.emit('nav:autopilot', nav.autopilot);
+    return nav.autopilot;
+  },
+
+  _onAutopilotStopped(payload = {}) {
+    const nav = this.state && this.state.nav;
+    if (!nav) return null;
+    if (payload.reason !== 'arrived') {
+      if (Array.isArray(nav.waypointQueue) && nav.waypointQueue.length) {
+        delete nav.waypointQueue;
+        this.bus.emit('nav:waypointQueue', { waypoints: [], reason: payload.reason || 'interrupted' });
+      }
+      return null;
+    }
+    const queue = Array.isArray(nav.waypointQueue) ? nav.waypointQueue : null;
+    if (!queue || !queue.length) {
+      delete nav.waypointQueue;
+      return null;
+    }
+    const next = queue.shift();
+    if (!queue.length) delete nav.waypointQueue;
+    const armed = this._armLocalCourse(next);
+    this.bus.emit('nav:waypointQueue', {
+      waypoints: Array.isArray(nav.waypointQueue) ? nav.waypointQueue.slice() : [],
+      reason: 'advanced',
+    });
+    if (armed) {
+      this.bus.emit('toast', {
+        text: `Next waypoint: ${next.label}`,
+        kind: 'info',
+        ttl: 2,
+      });
+    }
+    return armed;
+  },
+
   _onSetCourse(payload = {}) {
-    const pos = sanitizeCoursePos(payload.pos);
-    if (pos) {
-      const label = String(payload.label || payload.reason || 'Autopilot fix');
-      const targetEntityId = payload.targetEntityId != null ? payload.targetEntityId : null;
-      const targetSectorId = typeof payload.targetSectorId === 'string'
-        ? payload.targetSectorId
-        : (payload.type === 'gate' && typeof payload.sectorId === 'string' ? payload.sectorId : null);
-      const arrivalRadius = Number.isFinite(payload.arrivalRadius)
-        ? Math.max(12, Math.min(500, payload.arrivalRadius))
-        : 36;
-      this.state.nav.route = null;
-      this.state.nav.autoTravel = false;
-      this.state.nav.waypoint = {
-        kind: payload.waypointKind || payload.kind || 'local',
-        label,
-        reason: payload.reason || label,
-        pos,
-      };
-      if (targetEntityId != null) this.state.nav.waypoint.targetEntityId = targetEntityId;
-      // A physical gate is a local position with an inter-sector completion condition. Preserve the
-      // destination identity so navigation can retire the old-sector marker only after authoritative
-      // sector entry; ordinary local fixes intentionally carry no targetSectorId.
-      if (targetSectorId) this.state.nav.waypoint.targetSectorId = targetSectorId;
-      this.state.nav.autopilot = {
-        active: payload.autopilot !== false,
-        target: pos,
-        targetEntityId,
-        label,
-        arrivalRadius,
-        status: 'armed',
-      };
-      this.bus.emit('nav:waypoint', this.state.nav.waypoint);
-      this.bus.emit('nav:autopilot', this.state.nav.autopilot);
-      return this.state.nav.autopilot;
+    const course = localCourseFromPayload(payload);
+    if (course) {
+      const nav = this.state.nav;
+      if (payload.queue === true && nav.autopilot && nav.autopilot.active === true) {
+        const queue = Array.isArray(nav.waypointQueue) ? nav.waypointQueue : [];
+        if (queue.length >= LOCAL_WAYPOINT_QUEUE_LIMIT) {
+          this.bus.emit('toast', { text: 'Waypoint queue full', kind: 'error', ttl: 2 });
+          return { queued: false, reason: 'queue_full', limit: LOCAL_WAYPOINT_QUEUE_LIMIT };
+        }
+        queue.push(course);
+        nav.waypointQueue = queue;
+        this.bus.emit('nav:waypointQueue', { waypoints: queue.slice(), reason: 'queued' });
+        return { queued: true, index: queue.length, waypoint: course };
+      }
+      delete nav.waypointQueue;
+      return this._armLocalCourse(course, payload.autopilot !== false);
     }
 
+    delete this.state.nav.waypointQueue;
     const sectorId = payload.sectorId;
     const route = this.computeRoute(sectorId, 'fuel');
     this.state.nav.route = route;
@@ -4255,6 +4299,7 @@ export const world = {
     state.fuel = { current: 100, max: 100 };
     state.nav.route = null; state.nav.autoTravel = false; state.nav.waypoint = null;
     state.nav.autopilot = { active: false, target: null, targetEntityId: null, label: '', arrivalRadius: 36, status: 'idle' };
+    delete state.nav.waypointQueue;
   },
 };
 
@@ -4327,6 +4372,31 @@ function sanitizeCoursePos(pos) {
   const z = Number(pos.z);
   if (!Number.isFinite(x) || !Number.isFinite(z)) return null;
   return { x, z };
+}
+
+function localCourseFromPayload(payload = {}) {
+  const pos = sanitizeCoursePos(payload.pos);
+  if (!pos) return null;
+  const label = String(payload.label || payload.reason || 'Autopilot fix');
+  const targetEntityId = payload.targetEntityId != null ? payload.targetEntityId : null;
+  const targetSectorId = typeof payload.targetSectorId === 'string'
+    ? payload.targetSectorId
+    : (payload.type === 'gate' && typeof payload.sectorId === 'string' ? payload.sectorId : null);
+  const course = {
+    kind: payload.waypointKind || payload.kind || 'local',
+    label,
+    reason: payload.reason || label,
+    pos,
+    targetEntityId,
+    arrivalRadius: Number.isFinite(payload.arrivalRadius)
+      ? Math.max(12, Math.min(500, payload.arrivalRadius))
+      : 36,
+  };
+  // A physical gate is a local position with an inter-sector completion condition. Preserve the
+  // destination identity so navigation can retire the old-sector marker only after authoritative
+  // sector entry; ordinary local fixes intentionally carry no targetSectorId.
+  if (targetSectorId) course.targetSectorId = targetSectorId;
+  return course;
 }
 
 function dist2(a, b) {
