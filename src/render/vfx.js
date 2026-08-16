@@ -167,6 +167,7 @@ import {
   registerDynamicBufferOwner,
   replaceDynamicBufferAttribute,
 } from './dynamicBufferRanges.js';
+import { createIonStormLightningSystem } from './anomalies/ionStorm.js';
 import { resolveRcsFirings, resolveActuatorScale, mainDriveDemand } from './rcsJets.js';
 import { PROPULSION_PROFILES } from '../core/flight/propulsionCatalog.js';
 import { resolveForceNeonScale, resolveTumbleContinuousVfxPlan } from './masslinePresentation.js';
@@ -1247,6 +1248,7 @@ function emptyVfxSubsystemDiag() {
     swarmerPresentation: 0, // AC-12 actual-path Dart wake + hard-geometry Skitter/Ember cues
     mediumPresentation: 0, // Plan 13 Bulwark lattices + Torcher owned heat-sheet hazards
     specialistPresentation: 0, // Plan 15 receipt-bound PD clamps + Tender weld geometry
+    ionStormLightning: 0, // Plan 19 fixed-pool hard branch geometry
   };
 }
 
@@ -1376,6 +1378,14 @@ export const vfx = {
     this._entityLocalXZ = { x: 0, z: 0 };
     this._specialistLocalA = { x: 0, z: 0 };
     this._specialistLocalB = { x: 0, z: 0 };
+    this._ionStormLocalStart = { x: 0, z: 0 };
+    this._ionStormLocalEnd = { x: 0, z: 0 };
+    this._ionStormStrikeScratch = {
+      start: { x: 0, y: 0, z: 0 },
+      end: { x: 0, y: 0, z: 0 },
+      sourceSeed: 0,
+    };
+    this._ionStormLightning = null;
     // Renderer prepareFrame calls this on frameOriginSeq change. Local one-shot effects reproject;
     // camera-prominent ribbon history clears and reseeds to avoid bridging coordinate spaces.
     this._vfxReprojectFramePort = (dx, dz) => this.reprojectFrame(dx, dz);
@@ -1586,6 +1596,8 @@ export const vfx = {
     this._mediumWorldTells = null;
     disposeSpecialistWorldTellSystem(this._specialistWorldTells);
     this._specialistWorldTells = null;
+    this._ionStormLightning?.dispose();
+    this._ionStormLightning = null;
   },
 
   _vfxOwnerRoots() {
@@ -1601,6 +1613,7 @@ export const vfx = {
     add(this._swarmerEventGeometry && this._swarmerEventGeometry.group);
     add(this._mediumWorldTells && this._mediumWorldTells.group);
     add(this._specialistWorldTells && this._specialistWorldTells.group);
+    add(this._ionStormLightning && this._ionStormLightning.group);
     add(this._trailStreakPool && this._trailStreakPool.mesh);
     add(this._spriteBatches && this._spriteBatches.glow.mesh);
     add(this._spriteBatches && this._spriteBatches.ring.mesh);
@@ -1721,6 +1734,7 @@ export const vfx = {
         }
         : null,
       specialistWorldTells: inspectSpecialistWorldTellSystem(this._specialistWorldTells),
+      ionStormLightning: this._ionStormLightning ? this._ionStormLightning.inspect() : null,
     };
   },
 
@@ -1732,6 +1746,10 @@ export const vfx = {
     const scene = state.render && state.render.scene;
     if (!scene) { this._scene = null; return; } // render not up yet (e.g. unit test) — degrade to no-op
     this._scene = scene;
+
+    if (!this._ionStormLightning) {
+      this._ionStormLightning = createIonStormLightningSystem(scene);
+    }
 
     const q = (state.settings.video && state.settings.video.particleQuality) || 'high';
     const cap = PARTICLE_CAP[q] || PARTICLE_CAP.high;
@@ -2123,6 +2141,7 @@ export const vfx = {
     // WF-12 law/heat telegraph — authoritative scan + heat observation only (GDX-A25).
     add('player:scannedByPatrol', (p) => this._onLawHeatScan(p));
     add('heat:changed', (p) => this._onLawHeatChanged(p));
+    add('anomaly:ionStormLightning', (p) => this._onIonStormLightning(p));
     add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); resetSwarmerPresentationGeometry(this._dartActualTrails, this._swarmerEventGeometry); this._tumbleVfxCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
     add('sector:exit', () => { this._resetRibbonTrails(); resetSwarmerPresentationGeometry(this._dartActualTrails, this._swarmerEventGeometry); this._clearStationSideEvents(); this._resetMomentumSinkPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); });
     add('game:new', () => { this._markEntityCacheDirty(); this._resetRibbonTrails(); resetSwarmerPresentationGeometry(this._dartActualTrails, this._swarmerEventGeometry); });
@@ -2139,6 +2158,7 @@ export const vfx = {
       this._resetPickupStreams();
       resetMediumWorldTellSystem(this._mediumWorldTells);
       resetSpecialistWorldTellSystem(this._specialistWorldTells);
+      this._ionStormLightning?.clear();
     });
     add('settings:changed', (p) => {
       if (!p || p.section !== 'video') return;
@@ -2292,6 +2312,7 @@ export const vfx = {
         }
       }
       reprojectSpecialistWorldTellSystem(this._specialistWorldTells, ox, oz);
+      this._ionStormLightning?.reproject(ox, oz);
       // The release annulus writes frame-local vertices directly into one shared mesh.
       const releaseArc = this._masslineReleaseArc;
       if (releaseArc && releaseArc.mesh && releaseArc.mesh.visible) {
@@ -2977,6 +2998,27 @@ export const vfx = {
     });
     const graph = this.state && this.state.render && this.state.render.renderGraph;
     if (graph) this._weaponPresenter.attachGraph(graph);
+  },
+
+  _onIonStormLightning(payload) {
+    if (!this._scene || !this._ionStormLightning || !payload || !payload.start || !payload.end) return false;
+    const localStart = this._toLocalXZ(payload.start.x, payload.start.z, this._ionStormLocalStart);
+    const localEnd = this._toLocalXZ(payload.end.x, payload.end.z, this._ionStormLocalEnd);
+    const strike = this._ionStormStrikeScratch;
+    strike.start.x = localStart.x;
+    strike.start.y = Number.isFinite(payload.start.y) ? payload.start.y : 0;
+    strike.start.z = localStart.z;
+    strike.end.x = localEnd.x;
+    strike.end.y = Number.isFinite(payload.end.y) ? payload.end.y : 0;
+    strike.end.z = localEnd.z;
+    strike.sourceSeed = Number(payload.sourceSeed) >>> 0;
+    const video = this.state && this.state.settings && this.state.settings.video;
+    const accessibility = this.state && this.state.settings && this.state.settings.accessibility;
+    const reducedFlash = !!(
+      video && video.flashReduce
+      || accessibility && (accessibility.flashReduce || accessibility.reducedFlash)
+    );
+    return this._ionStormLightning.strike(strike, { reducedFlash });
   },
 
   _onFire(p) {
@@ -10276,6 +10318,8 @@ export const vfx = {
     );
     sub.specialistPresentation = updateSpecialistWorldTellSystem(this._specialistWorldTells, dt)
       + jackalMineWakes > 0 ? 1 : 0;
+    sub.ionStormLightning = this._ionStormLightning
+      && this._ionStormLightning.update(dt) > 0 ? 1 : 0;
     sub.trails = this._emitTrails(dt) ? 1 : 0;
     sub.ribbons = this._updateRibbonTrails(dt) ? 1 : 0;
     if (this._projectileTrailsRelevant()) {

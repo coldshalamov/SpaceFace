@@ -133,6 +133,38 @@ function resolveEnemyWeapon(w, slotIndex) {
 // Weapon capacitor regen boost for the player — same ~15% faster recharge as weapons.js heat pacing.
 const WEAPON_CAP_REGEN_MULT = 1.15;
 
+const MIN_ENVIRONMENT_SHIELD_REGEN_MULT = 0.1;
+
+function writeEnvironmentalShieldRechargeZones(state, out) {
+  out.length = 0;
+  for (const entity of state && state.entityList || []) {
+    if (!entity || entity.alive === false || !entity.pos || !entity.data) continue;
+    const zone = entity.data.shieldRechargeZone;
+    if (!zone || !zone.sourceId || !(Number(zone.radiusWU) > 0)) continue;
+    const multiplier = Number(zone.multiplier);
+    if (!(multiplier >= MIN_ENVIRONMENT_SHIELD_REGEN_MULT && multiplier <= 1)) continue;
+    out.push(entity);
+  }
+  return out;
+}
+
+/** Combat-owned environmental modifier. It changes only the existing regeneration write below. */
+export function shieldRechargeMultiplierAt(entity, zones) {
+  if (!entity || !entity.pos || !Array.isArray(zones) || zones.length === 0) return 1;
+  let multiplier = 1;
+  for (const source of zones) {
+    const zone = source && source.data && source.data.shieldRechargeZone;
+    const radius = Number(zone && zone.radiusWU);
+    const authored = Number(zone && zone.multiplier);
+    if (!source || source.alive === false || !source.pos || !(radius > 0)
+      || !(authored >= MIN_ENVIRONMENT_SHIELD_REGEN_MULT && authored <= 1)) continue;
+    const dx = entity.pos.x - source.pos.x;
+    const dz = entity.pos.z - source.pos.z;
+    if (dx * dx + dz * dz <= radius * radius) multiplier = Math.min(multiplier, authored);
+  }
+  return multiplier;
+}
+
 export function makeEnemySpawnSpec(enemyTypeId, level, pos, opts = {}) {
   const def = ENEMY.get(enemyTypeId) || ENEMY_TYPES[0];
   level = level || (def.levelRange ? def.levelRange[0] : 1);
@@ -525,9 +557,12 @@ export const combat = {
     this._recoveryInFlight = false;
     this._beamCandidateScratch = [];
     this._beamQueryCenter = { x: 0, z: 0 };
+    this._environmentShieldRechargeZones = [];
     this._diag = {
       beamSpatialQueries: 0,
       beamCandidates: 0,
+      environmentalShieldRechargeZones: 0,
+      playerShieldRechargeMultiplier: 1,
     };
     this._heavyCookOff = createHeavyCookOffRuntime({
       state: this.state,
@@ -1053,12 +1088,20 @@ export const combat = {
     resetCombatDiagnostics(this._diag);
     this._playerDefeat?.update(dt, state);
     this._heavyCookOff?.update(dt);
+    const rechargeZones = writeEnvironmentalShieldRechargeZones(
+      state,
+      this._environmentShieldRechargeZones,
+    );
+    this._diag.environmentalShieldRechargeZones = rechargeZones.length;
     const ships = (state.entityIndex && state.entityIndex.ships) || state.entityList;
     for (const e of ships) {
       if (e.type !== 'ship' || !e.alive) continue;
       if (e.flags.invuln && e._invulnUntil != null && state.simTime >= e._invulnUntil) e.flags.invuln = false;
       if (e.shieldMax > 0 && e.shield < e.shieldMax && state.simTime - (e.lastDamageT || -1e9) >= (e.shieldRegenDelay || 3)) {
-        e.shield = Math.min(e.shieldMax, e.shield + (e.shieldRegenRate || 0) * dt);
+        const shieldRechargeMultiplier = shieldRechargeMultiplierAt(e, rechargeZones);
+        if (e.id === state.playerId) this._diag.playerShieldRechargeMultiplier = shieldRechargeMultiplier;
+        e.shield = Math.min(e.shieldMax,
+          e.shield + (e.shieldRegenRate || 0) * shieldRechargeMultiplier * dt);
       }
       if (e.capMax > 0 && e.cap < e.capMax) {
         const regenMult = this.kernel ? this.kernel.capRegenMultiplier(e.id) : 1;
@@ -1135,10 +1178,13 @@ function beamDamageCandidates(host, state, beam, dx, dz) {
 function ensureCombatRuntime(host) {
   if (!host._beamCandidateScratch) host._beamCandidateScratch = [];
   if (!host._beamQueryCenter) host._beamQueryCenter = { x: 0, z: 0 };
+  if (!host._environmentShieldRechargeZones) host._environmentShieldRechargeZones = [];
   if (!host._diag) {
     host._diag = {
       beamSpatialQueries: 0,
       beamCandidates: 0,
+      environmentalShieldRechargeZones: 0,
+      playerShieldRechargeMultiplier: 1,
     };
   }
 }
@@ -1147,6 +1193,8 @@ function resetCombatDiagnostics(diag) {
   if (!diag) return;
   diag.beamSpatialQueries = 0;
   diag.beamCandidates = 0;
+  diag.environmentalShieldRechargeZones = 0;
+  diag.playerShieldRechargeMultiplier = 1;
 }
 
 function lootPickupKind(id) {

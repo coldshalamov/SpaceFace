@@ -73,6 +73,28 @@ export const SCAVENGER_SWARM = Object.freeze({
   impulseCadenceS: 0.35,
 });
 
+// One canonical pocket, bound to the existing Blind Nebula Atlas zone. Runtime reads that zone's
+// centre/radius rather than copying coordinates here, so removing or renaming the canonical place
+// makes the anomaly fail closed. The marker is transient; only this stable identity crosses the
+// simulation/presentation boundary.
+export const ION_STORM_POCKET = Object.freeze({
+  id: 'anomaly_veil_ion_storm',
+  name: 'Veil Ion Storm',
+  sectorId: 'sector_veil_nebula',
+  zoneId: 'zone_veil_fog',
+  markerStableId: 'anomaly-marker:veil-ion-storm',
+  radar: Object.freeze({
+    maxSmearWU: 210,
+    truthRadiusWU: 240,
+  }),
+  shieldRechargeMultiplier: 0.42,
+  lightning: Object.freeze({
+    cadenceS: 1.4,
+    reachFraction: 0.72,
+    altitudeWU: 78,
+  }),
+});
+
 /** The exact authored anomaly for a sector, or null when that sector has none. */
 export function anomalySiteForSector(sectorId) {
   return sectorId === ORCUS_GRAVITY_EDDY.sectorId ? ORCUS_GRAVITY_EDDY : null;
@@ -81,4 +103,9 @@ export function anomalySiteForSector(sectorId) {
 /** The one authored moving debris site for a sector, or null outside its rare canonical sector. */
 export function debrisRiverForSector(sectorId) {
   return sectorId === ASHFALL_DEBRIS_RIVER.sectorId ? ASHFALL_DEBRIS_RIVER : null;
+}
+
+/** The one canonical ion-storm pocket, or null outside its rare authored sector. */
+export function ionStormForSector(sectorId) {
+  return sectorId === ION_STORM_POCKET.sectorId ? ION_STORM_POCKET : null;
 }

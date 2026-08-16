@@ -11,10 +11,12 @@
 
 import {
   ASHFALL_DEBRIS_RIVER,
+  ION_STORM_POCKET,
   ORCUS_GRAVITY_EDDY,
   SCAVENGER_SWARM,
   anomalySiteForSector,
   debrisRiverForSector,
+  ionStormForSector,
 } from '../data/anomalySites.js';
 import { fieldsFlag } from '../data/fields.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
@@ -69,6 +71,22 @@ function resolveAnchor(site) {
   const global = sectorLocalToGlobalForSector(zone.center, site.sectorId);
   if (!global || !Number.isFinite(global.x) || !Number.isFinite(global.z)) return null;
   return { x: global.x, z: global.z };
+}
+
+function resolveZoneVolume(site) {
+  const zones = site && SECTOR_ZONES[site.sectorId];
+  const zone = Array.isArray(zones)
+    ? zones.find((candidate) => candidate && candidate.id === site.zoneId)
+    : null;
+  if (!zone || !zone.center || !(finite(zone.radius) > 0)) return null;
+  const global = sectorLocalToGlobalForSector(zone.center, site.sectorId);
+  if (!global || !Number.isFinite(global.x) || !Number.isFinite(global.z)) return null;
+  return Object.freeze({
+    x: global.x,
+    z: global.z,
+    radius: zone.radius,
+    zoneId: zone.id,
+  });
 }
 
 function resolveRiverBasis(site) {
@@ -194,6 +212,45 @@ function scavengerDrones(state) {
     && entity.type === 'drone' && entity.data && entity.data.scavengerSwarmId === SCAVENGER_SWARM.id);
 }
 
+function ionStormMarkers(state) {
+  return (state && state.entityList || []).filter((entity) => entity && entity.alive !== false
+    && entity.type === 'fx' && entity.data
+    && entity.data.anomalyStableId === ION_STORM_POCKET.markerStableId);
+}
+
+function stableUnit(...parts) {
+  return hash32(...parts) / 0x100000000;
+}
+
+export function ionStormLightningReceipt(site, volume, state, pulseWindow) {
+  if (!site || !volume || !Number.isSafeInteger(pulseWindow)) return null;
+  const seed = seedOf(state);
+  const angle = stableUnit(seed, site.id, pulseWindow, 'strike-angle') * Math.PI * 2;
+  const radial = Math.sqrt(stableUnit(seed, site.id, pulseWindow, 'strike-radius'))
+    * volume.radius * site.lightning.reachFraction;
+  const end = {
+    x: volume.x + Math.cos(angle) * radial,
+    z: volume.z + Math.sin(angle) * radial,
+  };
+  const slantAngle = stableUnit(seed, site.id, pulseWindow, 'strike-slant') * Math.PI * 2;
+  const slant = volume.radius * (0.06
+    + stableUnit(seed, site.id, pulseWindow, 'strike-span') * 0.08);
+  return Object.freeze({
+    anomalyId: site.id,
+    markerStableId: site.markerStableId,
+    sectorId: site.sectorId,
+    zoneId: site.zoneId,
+    pulseWindow,
+    sourceSeed: hash32(seed, site.id, pulseWindow, 'lightning'),
+    start: Object.freeze({
+      x: end.x + Math.cos(slantAngle) * slant,
+      y: site.lightning.altitudeWU,
+      z: end.z + Math.sin(slantAngle) * slant,
+    }),
+    end: Object.freeze({ x: end.x, y: 0.4, z: end.z }),
+  });
+}
+
 function freshWreckIdentity(state, entity) {
   const data = entity && entity.data;
   const provenance = data && data.provenance;
@@ -249,6 +306,9 @@ export const anomalyRuntime = {
     this._riverBodies = new Map();
     this._riverAnnounced = false;
     this._scavenger = null;
+    this._ionStormMarkerId = null;
+    this._ionStormPulseWindow = null;
+    this._ionStormAnnounced = false;
     if (this.bus && typeof this.bus.on === 'function') {
       this._unsubs = [
         this.bus.on('sector:exit', () => this._clearTransient('sector_exit')),
@@ -279,6 +339,7 @@ export const anomalyRuntime = {
     this._updateEddy(activeRoute ? anomalySiteForSector(sectorId) : null, state);
     this._updateDebrisRiver(activeRoute ? debrisRiverForSector(sectorId) : null, state);
     this._updateScavengerSwarm(activeRoute, state);
+    this._updateIonStorm(activeRoute ? ionStormForSector(sectorId) : null, state);
   },
 
   diagnostics() {
@@ -304,7 +365,108 @@ export const anomalyRuntime = {
         markerId: this._scavenger && this._scavenger.markerId || null,
         liveDrones: scavengerDrones(this.state).length,
       }),
+      ionStorm: Object.freeze({
+        anomalyId: ION_STORM_POCKET.id,
+        markerStableId: ION_STORM_POCKET.markerStableId,
+        liveMarkers: ionStormMarkers(this.state).length,
+        lastPulseWindow: this._ionStormPulseWindow,
+      }),
     });
+  },
+
+  _updateIonStorm(site, state) {
+    if (!site || !this.helpers || typeof this.helpers.spawnEntity !== 'function') {
+      this._clearIonStorm(!site ? 'inactive_sector' : 'spawn_owner_missing');
+      return;
+    }
+    const volume = resolveZoneVolume(site);
+    if (!volume) {
+      this._clearIonStorm('canonical_zone_missing');
+      return;
+    }
+
+    const matches = ionStormMarkers(state);
+    let marker = matches[0] || null;
+    for (let i = 1; i < matches.length; i++) this._removeEntity(matches[i]);
+    if (!marker) {
+      marker = this.helpers.spawnEntity({
+        type: 'fx',
+        team: 2,
+        factionId: null,
+        pos: { x: volume.x, z: volume.z },
+        vel: { x: 0, z: 0 },
+        radius: volume.radius,
+        mass: 0,
+        hull: 1,
+        hullMax: 1,
+        collides: false,
+        collisionMask: 0,
+        flags: { persistent: false, noInterp: true },
+        data: {
+          kind: 'ionStormPocket',
+          parentType: 'environment',
+          name: site.name,
+          label: site.name,
+          scanLabel: site.name,
+          anomalySiteId: site.id,
+          anomalyStableId: site.markerStableId,
+          sectorId: site.sectorId,
+          zoneId: site.zoneId,
+          worldSiteTargetable: false,
+          noOrdinaryRewards: true,
+          ordinaryRewardsSuppressed: true,
+          bountyCr: 0,
+          loot: [],
+          radarJamming: {
+            environmental: true,
+            sourceId: site.markerStableId,
+            radiusWU: volume.radius,
+            maxSmearWU: site.radar.maxSmearWU,
+            truthRadiusWU: site.radar.truthRadiusWU,
+          },
+          shieldRechargeZone: {
+            sourceId: site.markerStableId,
+            radiusWU: volume.radius,
+            multiplier: site.shieldRechargeMultiplier,
+          },
+        },
+      });
+      this._ionStormPulseWindow = Math.floor(simTimeOf(state) / site.lightning.cadenceS);
+    }
+    this._ionStormMarkerId = marker.id;
+    marker.pos.x = volume.x;
+    marker.pos.z = volume.z;
+    marker.radius = volume.radius;
+
+    if (!this._ionStormAnnounced) {
+      this._ionStormAnnounced = true;
+      this.bus && this.bus.emit && this.bus.emit('anomaly:registered', {
+        anomalyId: site.id,
+        markerStableId: site.markerStableId,
+        sectorId: site.sectorId,
+        zoneId: site.zoneId,
+        center: { x: volume.x, z: volume.z },
+        radius: volume.radius,
+        presentation: 'ion_storm_pocket',
+      });
+    }
+
+    const player = state && state.entities && state.entities.get(state.playerId);
+    const dx = finite(player && player.pos && player.pos.x) - volume.x;
+    const dz = finite(player && player.pos && player.pos.z) - volume.z;
+    const inside = !!(player && player.alive !== false && dx * dx + dz * dz <= volume.radius * volume.radius);
+    const pulseWindow = Math.floor(simTimeOf(state) / site.lightning.cadenceS);
+    if (!inside) {
+      this._ionStormPulseWindow = pulseWindow;
+      return;
+    }
+    if (this._ionStormPulseWindow == null) this._ionStormPulseWindow = pulseWindow;
+    if (pulseWindow <= this._ionStormPulseWindow) return;
+    this._ionStormPulseWindow = pulseWindow;
+    const receipt = ionStormLightningReceipt(site, volume, state, pulseWindow);
+    if (receipt && this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('anomaly:ionStormLightning', receipt);
+    }
   },
 
   _updateEddy(site, state) {
@@ -814,10 +976,26 @@ export const anomalyRuntime = {
     this._registered = false;
   },
 
+  _clearIonStorm(why) {
+    const hadMarker = ionStormMarkers(this.state).length > 0;
+    for (const marker of ionStormMarkers(this.state)) this._removeEntity(marker);
+    this._ionStormMarkerId = null;
+    this._ionStormPulseWindow = null;
+    if ((hadMarker || this._ionStormAnnounced) && this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('anomaly:unregistered', {
+        anomalyId: ION_STORM_POCKET.id,
+        markerStableId: ION_STORM_POCKET.markerStableId,
+        why,
+      });
+    }
+    this._ionStormAnnounced = false;
+  },
+
   _clearTransient(why, options) {
     this._clearEddy(why);
     this._clearRiver(why, options);
     this._clearScavenger(why);
+    this._clearIonStorm(why);
   },
 
   _resetAll(why) {
