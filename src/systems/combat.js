@@ -21,6 +21,7 @@ import { isTumbling } from '../combat/tumbleStatus.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { combatFlag } from '../data/featureFlags.js';
 import { weakPointForEntity, isHitInWeakArc } from '../data/weakPoints.js';
+import { heavyPartRecipeForEnemy } from '../data/heavyFamily.js';
 import { buildDefeatReceipt, buildRecoveryPlan } from '../combat/playerDefeat.js';
 import { normalizeActivity, normalizeRoe, roeForActivity } from '../ai/doctrine.js';
 import {
@@ -215,6 +216,13 @@ export function makeEnemySpawnSpec(enemyTypeId, level, pos, opts = {}) {
   if (def.deathCookOff) spec.data.deathCookOff = { ...def.deathCookOff };
   if (def.mediumSetup) spec.data.mediumSetup = { ...def.mediumSetup };
   if (def.visibleRetreat) spec.data.visibleRetreat = { ...def.visibleRetreat };
+  const heavyPartRecipe = heavyPartRecipeForEnemy(def.id);
+  if (heavyPartRecipe && heavyPartRecipe.id === def.heavyPartRecipeId) {
+    // Immutable authored contract only. A later runtime owns mutable part health, detachment and
+    // phase state; spawn construction must not manufacture a competing subsystem implementation.
+    spec.data.heavyPartRecipeId = heavyPartRecipe.id;
+    spec.data.heavyPartRecipe = heavyPartRecipe;
+  }
   if (def.fixedCombatStats === true) spec.data.fixedCombatStats = true;
   if (def.telegraph && def.telegraph.cue && !opts.approachTelegraph) {
     // Prefer role cue when doctrine telegraph is generic.
