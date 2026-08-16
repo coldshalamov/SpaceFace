@@ -27,7 +27,9 @@ import { createFieldKernel, fieldAffectsBody, fieldRawAcceleration, sampleFieldA
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import { isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
 import { Masks } from '../core/entity.js';
+import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { getCombatKernel } from '../combat/kernel.js';
+import { KILL_ZONE_WELL_INNER } from '../combat/killCause.js';
 import { ensureCombatant } from '../combat/runtime.js';
 import { PINNED_STATUS_ID, UNMOORED_STATUS_ID } from '../data/combatDefs.js';
 
@@ -127,6 +129,8 @@ export const fields = {
     this._massStateStrengths = new Map();
     this._accel = { ax: 0, az: 0 };
     this._massStateAccel = { ax: 0, az: 0 };
+    this._wellInnerPrevious = new Set();
+    this._wellInnerCurrent = new Set();
     this._bodyProfile = { mass: 1, type: null, team: null, id: null, fieldResponseMult: 1, physicsMassScale: 1 };
     this._coneCenter = { x: 0, z: 0 };
     this._coneDir = { x: 1, z: 0 };
@@ -523,6 +527,8 @@ export const fields = {
       if (entity && entity.alive !== false) entity.alive = false;
     }
     if (this._kernel) this._kernel.clear();
+    this._wellInnerPrevious.clear();
+    this._wellInnerCurrent.clear();
     this.bus && this.bus.emit && this.bus.emit('fields:cleared', { reason, why });
     state.fields = defaultRuntime();
   },
@@ -615,12 +621,19 @@ export const fields = {
   _applyForces(dt, state, rt) {
     const fieldsList = this._kernel.list();
     const now = nowOf(state);
-    if (fieldsList.length === 0 || dt <= 0) return { queries: 0, affected: 0, accelSum: 0 };
+    if (fieldsList.length === 0 || dt <= 0) {
+      this._wellInnerPrevious.clear();
+      this._wellInnerCurrent.clear();
+      return { queries: 0, affected: 0, accelSum: 0 };
+    }
     const queryRadius = this.helpers && this.helpers.queryRadius;
     const affected = this._affected;
     affected.clear();
     this._massStateFields.clear();
     this._massStateStrengths.clear();
+    const wellInnerPrevious = this._wellInnerPrevious;
+    const wellInnerCurrent = this._wellInnerCurrent;
+    wellInnerCurrent.clear();
     let queries = 0;
     // One bounded spatial-hash query per active field (dormant = zero queries). Union the candidates
     // so a body inside two fields is force-summed once, then capped once.
@@ -636,6 +649,8 @@ export const fields = {
           if (this._forceableBody(e)) {
             const profile = this._profileFor(e, state);
             if (!fieldAffectsBody(field, profile)) continue;
+            this._applyWellInnerCapture(state, rt, field, e, wellInnerPrevious, wellInnerCurrent);
+            if (e.alive === false) continue;
             affected.set(e, true);
             this._considerMassState(field, e);
             fieldAffected++;
@@ -644,6 +659,8 @@ export const fields = {
         }
       }
     }
+    this._wellInnerPrevious = wellInnerCurrent;
+    this._wellInnerCurrent = wellInnerPrevious;
     const accel = this._accel;
     let affectedCount = 0, accelSum = 0;
     for (const e of affected.keys()) {
@@ -667,6 +684,33 @@ export const fields = {
       accelSum += Math.hypot(accel.ax, accel.az);
     }
     return { queries, affected: affectedCount, accelSum };
+  },
+
+  _applyWellInnerCapture(state, rt, field, entity, previous, current) {
+    const deployed = rt.deployed && rt.deployed[field.id];
+    const def = FIELD_DEFS.well;
+    if (!deployed || deployed.kind !== 'well' || field.kind !== FIELD_KINDS.WELL) return;
+    if (entity.type !== 'ship' && entity.type !== 'drone') return;
+    if (entity.id === field.ownerId) return;
+    if (field.team != null && entity.team != null && field.team === entity.team) return;
+    const dx = entity.pos.x - field.center.x;
+    const dz = entity.pos.z - field.center.z;
+    if (Math.hypot(dx, dz) > def.innerBandRadius) return;
+    const key = `${field.id}:${entity.id}`;
+    current.add(key);
+    if (previous.has(key)) return;
+    const packet = scalarHitToDamagePacket({
+      damage: def.collapseDamage,
+      damageType: 'kinetic',
+      pos: { x: entity.pos.x, z: entity.pos.z },
+      source: { kind: 'field_well', fieldId: field.id, zone: KILL_ZONE_WELL_INNER },
+    });
+    this._combatKernel.routeDamage({
+      attackerId: field.ownerId,
+      targetId: entity.id,
+      packet,
+      origin: { kind: 'field_well', id: field.id, sourceId: field.sourceId },
+    });
   },
 
   // ── presentation publish (VFX/HUD/predictor mirror) ──────────────────────────────────────────
