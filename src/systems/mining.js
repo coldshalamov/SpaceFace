@@ -452,6 +452,74 @@ export const mining = {
       : null;
   },
 
+  // Aftermath owns durable boarding/outcome state; Mining owns the physical results of a cut.
+  // The hatch plate carries no value. A recorder is one ordinary cargo pickup with provenance,
+  // so vacuum/capacity/collection remain on the existing Mining -> Cargo route.
+  materializeColdDerelictBoarding({
+    wreck,
+    markerId,
+    spawnHatchPlate = true,
+    blackBoxCommodityId = null,
+  } = {}) {
+    if (!wreck || wreck.alive === false || wreck.type !== 'wreck' || !wreck.pos || !markerId) return null;
+    const result = { hatchPlatePayloadId: null, blackBoxPickupId: null };
+    const rng = this.state.rng;
+    if (spawnHatchPlate) {
+      const angle = rng() * Math.PI * 2;
+      const radius = Math.max(3, Math.min(8, Math.round((wreck.radius || 9) * 0.45)));
+      const plate = spawnPayloadEntity(this.state, {
+        pos: {
+          x: wreck.pos.x + Math.cos(angle) * ((wreck.radius || 9) + radius),
+          z: wreck.pos.z + Math.sin(angle) * ((wreck.radius || 9) + radius),
+        },
+        vel: {
+          x: (wreck.vel && Number(wreck.vel.x) || 0) + Math.cos(angle) * 5,
+          z: (wreck.vel && Number(wreck.vel.z) || 0) + Math.sin(angle) * 5,
+        },
+        radius,
+        mass: Math.max(20, radius * 9),
+        ownerId: null,
+        factionId: wreck.factionId || wreck.data && wreck.data.provenance
+          && wreck.data.provenance.victimFactionId || 'neutral',
+        salvagePool: {},
+        payloadType: 'cold_derelict_hatch_plate',
+        transientSector: false,
+      });
+      plate.flags = Object.assign({}, plate.flags, { persistent: true });
+      plate.data.coldDerelictMarkerId = markerId;
+      plate.data.masslineTetherable = true;
+      plate.data.scanLabel = 'Cut Derelict Hatch Plate';
+      result.hatchPlatePayloadId = plate.id;
+    }
+
+    if (blackBoxCommodityId) {
+      const pickup = this._spawnPickupEntity(wreck, blackBoxCommodityId, 1, null, {
+        kind: 'cargo',
+        coldDerelictBlackBox: true,
+        coldDerelictMarkerId: markerId,
+        scanLabel: 'Recovered Flight Recorder',
+        lotSource: {
+          lotId: `cold-derelict-black-box:${markerId}`,
+          provenanceId: `cold-derelict-black-box:${markerId}`,
+          sourceKind: 'cold_derelict_black_box',
+          recordId: markerId,
+          sourceOwner: 'player',
+        },
+      });
+      if (!pickup) return null;
+      pickup.flags = Object.assign({}, pickup.flags, { persistent: true });
+      result.blackBoxPickupId = pickup.id;
+    }
+
+    this.bus.emit('derelictBoarding:physicalCut', {
+      markerId,
+      wreckId: wreck.id,
+      hatchPlatePayloadId: result.hatchPlatePayloadId,
+      blackBoxPickupId: result.blackBoxPickupId,
+    });
+    return result;
+  },
+
   _extractDisabledHeavy(player, target, dps, dt) {
     if (!isDisabledHeavyBeamTarget(target)) return false;
     const data = target.data;
@@ -1080,13 +1148,13 @@ export const mining = {
   },
 
   // ---- pickups: spawn + magnet pull + collection ----------------------------
-  _spawnPickup(srcEnt, commodityId, amount, lotSource = null) {
+  _spawnPickupEntity(srcEnt, commodityId, amount, lotSource = null, dataOverrides = null) {
     if (!this.helpers || typeof this.helpers.spawnEntity !== 'function' || !(amount > 0)) return 0;
     const rng = this.state.rng;
     const ang = rng() * Math.PI * 2;
     const r = (srcEnt.radius || 6) + 2 + rng() * 4;
     const speed = 8 + rng() * 10;
-    this.helpers.spawnEntity({
+    return this.helpers.spawnEntity({
       type: 'pickup',
       pos: { x: srcEnt.pos.x + Math.cos(ang) * r, z: srcEnt.pos.z + Math.sin(ang) * r },
       vel: { x: Math.cos(ang) * speed, z: Math.sin(ang) * speed },
@@ -1094,9 +1162,13 @@ export const mining = {
       data: {
         kind: 'ore', commodityId, amount, despawnAt: this.state.simTime + PICKUP_TTL,
         ...(lotSource ? { richLotSource: lotSource } : {}),
+        ...(dataOverrides || {}),
       },
     });
-    return amount;
+  },
+
+  _spawnPickup(srcEnt, commodityId, amount, lotSource = null) {
+    return this._spawnPickupEntity(srcEnt, commodityId, amount, lotSource) ? amount : 0;
   },
 
   _updatePickups(dt, state) {
@@ -1360,7 +1432,27 @@ export const mining = {
         sourceEntityId: wreck.id,
         wreckId: wreck.id,
       });
-      this._spawnPickup(wreck, id, got[id]);
+      const coldMarkerId = d.coldDerelictBoarding && d.coldDerelictBoarding.phase === 'extracted'
+        ? d.markerId || d.provenance && d.provenance.markerId || null
+        : null;
+      if (coldMarkerId) {
+        const pickup = this._spawnPickupEntity(wreck, id, got[id], null, {
+          kind: 'cargo',
+          coldDerelictMarkerId: coldMarkerId,
+          lotSource: {
+            lotId: `cold-derelict-cargo:${coldMarkerId}:${id}`,
+            provenanceId: `cold-derelict-cargo:${coldMarkerId}`,
+            sourceKind: 'cold_derelict_cargo',
+            recordId: coldMarkerId,
+            sourceOwner: 'player',
+          },
+        });
+        // The marker pool has already surrendered these units. Keep their loose physical custody
+        // in the production entity save so Continue cannot erase value before the vacuum arrives.
+        if (pickup) pickup.flags = Object.assign({}, pickup.flags, { persistent: true });
+      } else {
+        this._spawnPickup(wreck, id, got[id]);
+      }
     }
 
     if (d.salvageTimeLeft <= 0 || remaining <= 0) {

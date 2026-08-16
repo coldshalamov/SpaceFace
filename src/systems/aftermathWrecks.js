@@ -27,7 +27,8 @@ export const AFTERMATH_FRESH_WINDOW_S = 120;
 const COLD_HULK_SALVAGE_TIME = 12;
 export const COLD_DERELICT_CUT_THRESHOLD = 54;
 export const COLD_DERELICT_SURVIVOR_CHANCE_PCT = 45;
-const COLD_DERELICT_BOARDING_VERSION = 1;
+const COLD_DERELICT_BOARDING_VERSION = 2;
+const COLD_DERELICT_OUTCOMES = new Set(['survivor', 'cargo', 'black_box']);
 const FREIGHT_IDENTITY_TEXT_MAX = 160;
 const SHIPLIKE_TYPES = new Set(['ship', 'drone']);
 const DEFAULT_POOL = Object.freeze({ cmdty_scrap_metal: 3, cmdty_salvage_electronics: 1 });
@@ -189,27 +190,69 @@ function normalizeColdDerelictBoarding(input) {
     stabilizedAt: Number.isFinite(Number(input.stabilizedAt)) ? Math.max(0, Number(input.stabilizedAt)) : null,
     hatchOpenedAt: Number.isFinite(Number(input.hatchOpenedAt)) ? Math.max(0, Number(input.hatchOpenedAt)) : null,
     extractedAt: Number.isFinite(Number(input.extractedAt)) ? Math.max(0, Number(input.extractedAt)) : null,
+    outcome: COLD_DERELICT_OUTCOMES.has(input.outcome) ? input.outcome : null,
+    hatchPlatePayloadId: input.hatchPlatePayloadId == null ? null : input.hatchPlatePayloadId,
+    blackBoxPickupId: input.blackBoxPickupId == null ? null : input.blackBoxPickupId,
     podEntityId: input.podEntityId == null ? null : input.podEntityId,
   };
 }
 
+function coldDerelictBoardingEligible(marker) {
+  if (!marker || marker.playerLoss) return false;
+  return !String(marker.victimClass || '').toLowerCase().includes('drone');
+}
+
 export function coldDerelictHasSurvivor(state, marker) {
-  if (!marker || marker.playerLoss || marker.survivorPodEjected === true) return false;
-  if (String(marker.victimClass || '').toLowerCase().includes('drone')) return false;
+  if (!coldDerelictBoardingEligible(marker) || marker.survivorPodEjected === true) return false;
   return hash32(seedOf(state), marker.markerId, marker.victimId, 'cold-derelict-survivor') % 100
     < COLD_DERELICT_SURVIVOR_CHANCE_PCT;
+}
+
+export function coldDerelictOutcomeFor(state, marker) {
+  if (!coldDerelictBoardingEligible(marker)) return null;
+  if (coldDerelictHasSurvivor(state, marker)) return 'survivor';
+  return hash32(seedOf(state), marker.markerId, marker.victimId, 'cold-derelict-extraction') % 2 === 0
+    ? 'cargo'
+    : 'black_box';
 }
 
 function ensureColdDerelictBoarding(state, marker) {
   if (!marker || marker.lifecycleStage !== 'cold') return null;
   const existing = normalizeColdDerelictBoarding(marker.coldDerelictBoarding);
   if (existing) {
+    // v1 boarding saves were survivor-only. Preserve a completed/partially opened survivor branch
+    // even though its successful extraction already stamped survivorPodEjected on the marker.
+    existing.outcome = existing.outcome
+      || (existing.podEntityId != null || (existing.phase !== 'sealed' && marker.survivorPodEjected === true)
+        ? 'survivor'
+        : coldDerelictOutcomeFor(state, marker));
     marker.coldDerelictBoarding = existing;
     return existing;
   }
-  if (!coldDerelictHasSurvivor(state, marker)) return null;
-  marker.coldDerelictBoarding = normalizeColdDerelictBoarding({ phase: 'sealed' });
+  const outcome = coldDerelictOutcomeFor(state, marker);
+  if (!outcome) return null;
+  marker.coldDerelictBoarding = normalizeColdDerelictBoarding({ phase: 'sealed', outcome });
   return marker.coldDerelictBoarding;
+}
+
+function coldDerelictSignal(boarding) {
+  if (!boarding || boarding.phase === 'extracted') return 'HATCH OPEN';
+  if (boarding.outcome === 'survivor') return 'FAINT LIFE SIGN';
+  if (boarding.outcome === 'black_box') return 'FLIGHT RECORDER PING';
+  return null;
+}
+
+function coldDerelictScanLabel(baseScanLabel, boarding) {
+  const signal = coldDerelictSignal(boarding);
+  return signal ? `${baseScanLabel} · ${signal}` : baseScanLabel;
+}
+
+function coldDerelictProvenance(boarding) {
+  if (!boarding || boarding.phase === 'extracted') return 'The hull is cold; only deliberate salvage remains.';
+  if (boarding.outcome === 'cargo') {
+    return 'The hull is cold; a sealed cargo signature remains behind the marked hatch.';
+  }
+  return 'The hull is cold; only deliberate salvage remains.';
 }
 
 function aftermathLine(marker) {
@@ -818,11 +861,7 @@ export const aftermathWrecks = {
     const cold = lifecycle.stage === 'cold';
     const boarding = cold ? ensureColdDerelictBoarding(this.state, marker) : null;
     const baseScanLabel = lifecycleScanLabel(marker, cls, lifecycle.stage);
-    const scanLabel = boarding
-      ? boarding.phase === 'extracted'
-        ? `${baseScanLabel} · HATCH OPEN`
-        : `${baseScanLabel} · FAINT LIFE SIGN`
-      : baseScanLabel;
+    const scanLabel = boarding ? coldDerelictScanLabel(baseScanLabel, boarding) : baseScanLabel;
     const playerLoss = marker.playerLoss;
     const runtimeMass = Math.max(90, Math.min(5000,
       Number(playerLoss && playerLoss.shipSnapshot && playerLoss.shipSnapshot.runtimeMass) || 650));
@@ -849,7 +888,7 @@ export const aftermathWrecks = {
         wreckClass: marker.wreckClass || 'battlefield',
         wreckClassLabel: cls ? cls.label : marker.wreckClassLabel || 'Battlefield Wreck',
         wreckClassBlurb: cls ? cls.blurb : null,
-        provenanceLine: cold ? `${line} The hull is cold; only deliberate salvage remains.` : line,
+        provenanceLine: cold ? `${line} ${coldDerelictProvenance(boarding)}` : line,
         provenance: {
           source: 'battle-aftermath',
           markerId: marker.markerId,
@@ -911,11 +950,7 @@ export const aftermathWrecks = {
     const baseScanLabel = marker.playerLoss
       ? `YOUR HULK · ${marker.playerLoss.cargoQty}u CARGO IN CUSTODY`
       : lifecycleScanLabel(marker, cls, lifecycle.stage);
-    const scanLabel = boarding
-      ? boarding.phase === 'extracted'
-        ? `${baseScanLabel} · HATCH OPEN`
-        : `${baseScanLabel} · FAINT LIFE SIGN`
-      : baseScanLabel;
+    const scanLabel = boarding ? coldDerelictScanLabel(baseScanLabel, boarding) : baseScanLabel;
     entity.data.wreckLifecycle = lifecycle.stage;
     entity.data.lifecycleStage = lifecycle.stage;
     entity.data.freshUntil = lifecycle.freshUntil;
@@ -926,7 +961,7 @@ export const aftermathWrecks = {
     entity.data.provenanceLine = marker.playerLoss
       ? aftermathLine(marker)
       : cold
-      ? `${aftermathLine(marker)} The hull is cold; only deliberate salvage remains.`
+      ? `${aftermathLine(marker)} ${coldDerelictProvenance(boarding)}`
       : aftermathLine(marker);
     if (cold && entity.data.salvageTimeLeft === WRECK_SALVAGE_TIME) {
       entity.data.salvageTimeLeft = COLD_HULK_SALVAGE_TIME;
@@ -945,7 +980,7 @@ export const aftermathWrecks = {
     }
     this._refreshLifecycle(marker, true);
     const boarding = ensureColdDerelictBoarding(this.state, marker);
-    if (!boarding || boarding.phase === 'extracted') return { handled: false, reason: 'no-pending-survivor' };
+    if (!boarding || boarding.phase === 'extracted') return { handled: false, reason: 'no-pending-boarding' };
 
     if (!playerTetheredTo(this.state, wreck.id)) {
       if (wreck.data._coldBoardingTetherWarned !== true) {
@@ -993,38 +1028,107 @@ export const aftermathWrecks = {
       });
     }
 
-    const survivorOwner = this.registry && typeof this.registry.get === 'function'
-      ? this.registry.get('survivorPod') : null;
-    const pod = survivorOwner && typeof survivorOwner.spawnFromColdDerelict === 'function'
-      ? survivorOwner.spawnFromColdDerelict({
-        markerId: marker.markerId,
+    const miningOwner = this.registry && typeof this.registry.get === 'function'
+      ? this.registry.get('mining') : null;
+    const pool = poolForMarker(marker);
+    if (boarding.outcome === 'black_box' && !(pool.cmdty_salvage_electronics > 0)) {
+      // A hull partially stripped while still fresh cannot mint a recorder later. Its remaining
+      // conserved pool is still reachable through the ordinary cargo extraction branch.
+      boarding.outcome = 'cargo';
+    }
+    const materialized = miningOwner
+      && typeof miningOwner.materializeColdDerelictBoarding === 'function'
+      ? miningOwner.materializeColdDerelictBoarding({
         wreck,
-        victimId: marker.victimId,
-        factionId: marker.victimFactionId,
+        markerId: marker.markerId,
+        spawnHatchPlate: boarding.hatchPlatePayloadId == null,
+        blackBoxCommodityId: boarding.outcome === 'black_box' && boarding.blackBoxPickupId == null
+          ? 'cmdty_salvage_electronics'
+          : null,
       })
       : null;
-    if (!pod) {
+    if (!materialized || (boarding.hatchPlatePayloadId == null && materialized.hatchPlatePayloadId == null)) {
       wreck.data.coldDerelictBoarding = clonePlain(boarding);
-      return { handled: true, status: boarding.phase, reason: 'survivor-owner-unavailable' };
+      return { handled: true, status: boarding.phase, reason: 'extraction-owner-unavailable' };
+    }
+    if (materialized.hatchPlatePayloadId != null) {
+      boarding.hatchPlatePayloadId = materialized.hatchPlatePayloadId;
+    }
+    if (boarding.outcome === 'black_box' && boarding.blackBoxPickupId == null) {
+      if (materialized.blackBoxPickupId == null) {
+        wreck.data.coldDerelictBoarding = clonePlain(boarding);
+        return { handled: true, status: boarding.phase, reason: 'black-box-not-materialized' };
+      }
+      boarding.blackBoxPickupId = materialized.blackBoxPickupId;
+      pool.cmdty_salvage_electronics -= 1;
+      if (pool.cmdty_salvage_electronics <= 0) delete pool.cmdty_salvage_electronics;
+    }
+
+    if (boarding.outcome === 'survivor') {
+      const survivorOwner = this.registry && typeof this.registry.get === 'function'
+        ? this.registry.get('survivorPod') : null;
+      const pod = survivorOwner && typeof survivorOwner.spawnFromColdDerelict === 'function'
+        ? survivorOwner.spawnFromColdDerelict({
+          markerId: marker.markerId,
+          wreck,
+          victimId: marker.victimId,
+          factionId: marker.victimFactionId,
+        })
+        : null;
+      if (!pod) {
+        wreck.data.coldDerelictBoarding = clonePlain(boarding);
+        return { handled: true, status: boarding.phase, reason: 'survivor-owner-unavailable' };
+      }
+
+      boarding.phase = 'extracted';
+      boarding.extractedAt = now;
+      boarding.podEntityId = pod.id;
+      marker.survivorPodEjected = true;
+      this._syncLiveLifecycle(marker);
+      this.bus.emit('derelictBoarding:survivorExtracted', {
+        markerId: marker.markerId,
+        wreckId: wreck.id,
+        podEntityId: pod.id,
+        hatchPlatePayloadId: boarding.hatchPlatePayloadId,
+        minerId,
+      });
+      this.bus.emit('toast', {
+        text: 'Hatch open — survivor pod clear. Keep it on the Massline and reach lawful protection.',
+        kind: 'info',
+        ttl: 6,
+      });
+      return { handled: true, status: boarding.phase, podEntityId: pod.id };
     }
 
     boarding.phase = 'extracted';
     boarding.extractedAt = now;
-    boarding.podEntityId = pod.id;
-    marker.survivorPodEjected = true;
     this._syncLiveLifecycle(marker);
-    this.bus.emit('derelictBoarding:survivorExtracted', {
+    const remainingQty = Object.values(pool).reduce((sum, qty) => sum + (Number(qty) || 0), 0);
+    this.bus.emit(boarding.outcome === 'black_box'
+      ? 'derelictBoarding:blackBoxExtracted'
+      : 'derelictBoarding:cargoOpened', {
       markerId: marker.markerId,
       wreckId: wreck.id,
-      podEntityId: pod.id,
+      outcome: boarding.outcome,
+      hatchPlatePayloadId: boarding.hatchPlatePayloadId,
+      blackBoxPickupId: boarding.blackBoxPickupId,
+      remainingQty,
       minerId,
     });
     this.bus.emit('toast', {
-      text: 'Hatch open — survivor pod clear. Keep it on the Massline and reach lawful protection.',
+      text: boarding.outcome === 'black_box'
+        ? 'Hatch open — flight recorder clear. Bring it aboard; the remaining hold is still physical.'
+        : `Hatch open — ${remainingQty}u still aboard. Hold the beam and pull it out piece by piece.`,
       kind: 'info',
       ttl: 6,
     });
-    return { handled: true, status: boarding.phase, podEntityId: pod.id };
+    return {
+      handled: true,
+      status: boarding.phase,
+      outcome: boarding.outcome,
+      hatchPlatePayloadId: boarding.hatchPlatePayloadId,
+      blackBoxPickupId: boarding.blackBoxPickupId,
+    };
   },
 
   update(_dt, state) {
