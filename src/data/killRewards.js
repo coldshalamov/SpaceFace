@@ -17,9 +17,10 @@ export const KILL_BURST_VEL_INHERIT = 0.4;
 export const KILL_BURST_EJECT_SPEED_MIN = 16;
 export const KILL_BURST_EJECT_SPEED_MAX = 38;
 
-export const KILL_REWARD_TIER_IDS = Object.freeze(['light', 'medium', 'heavy', 'ace']);
+export const KILL_REWARD_TIER_IDS = Object.freeze(['mote', 'light', 'medium', 'heavy', 'ace']);
 
 const KILL_RESEARCH_POINTS = Object.freeze({
+  mote: 1,
   light: 1,
   medium: 2,
   heavy: 3,
@@ -52,6 +53,15 @@ const NAMED_ID_RE = /(?:^|_)named(?:_|$)/i;
  * currency, never cargo.
  */
 export const KILL_REWARD_RECIPES = Object.freeze({
+  mote: Object.freeze({
+    id: 'mote',
+    materials: Object.freeze([
+      Object.freeze({
+        commodityId: 'cmdty_scrap_metal', pickups: 1, qtyMin: 1, qtyMax: 1,
+      }),
+    ]),
+    creditChips: Object.freeze({ count: 0, amountMin: 0, amountMax: 0 }),
+  }),
   light: Object.freeze({
     id: 'light',
     materials: Object.freeze([
@@ -197,6 +207,7 @@ function finiteMass(victim) {
 
 /** Map a live victim onto a recipe tier. Safe fallback is light. */
 export function classifyKillRewardVictim(victim) {
+  if (victim?.data?.lootTableId === 'mote_swarmer') return 'mote';
   const tokens = collectIdentityTokens(victim);
   if (isNamedOrAce(victim, tokens)) return 'ace';
   if (hasToken(tokens, TOKEN_SETS.heavy)) return 'heavy';

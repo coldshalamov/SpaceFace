@@ -33,8 +33,15 @@ export function isPlayerKestrel(entity) {
     && entity.data && entity.data.defId === 'ship_kestrel';
 }
 
+function isDesignedProceduralMote(entity) {
+  return !!entity && entity.type === 'ship' && entity.data
+    && entity.data.lootTableId === 'mote_swarmer'
+    && entity.data.silhouette === 'mote_quad';
+}
+
 function requiresProductionWholeShip(entity) {
   if (!entity || entity.type !== 'ship' || !entity.data) return false;
+  if (isDesignedProceduralMote(entity)) return false;
   // The active-hull rebuild uses a short-lived render entity that does not retain `isPlayer`, even
   // though its authoritative defId has already changed. Keep the Kestrel's strict player-only boot
   // rule, while selecting the production Wasp for every Wasp render entity so ship switching cannot
@@ -156,10 +163,12 @@ export function installVisualOverrides(factory, options = {}) {
     : buildAuthoredStationArchetype;
   factory.build = (entity) => {
     let visual = null;
+    const designedProceduralMote = isDesignedProceduralMote(entity);
     const requiredWholeShip = requiresProductionWholeShip(entity);
     const directShip = directAuthoredMount
       && authoredShips
       && entity && entity.type === 'ship'
+      && !designedProceduralMote
       && !(entity.data && entity.data.precompileProbe === true)
       && !(authoredWholeShipsOnly && !requiredWholeShip);
     const authoredCargoCapsule = hasExplicitAuthoredPayloadPresentation(entity);
@@ -238,6 +247,14 @@ export function installVisualOverrides(factory, options = {}) {
     assertReleaseHeroVisual(entity, visual, releaseMode);
     if (!visual || !entity || entity.type !== 'ship') return visual;
     configureTransparentSinglePassSurfaces(visual);
+    if (designedProceduralMote) {
+      visual.visible = true;
+      visual.userData.authoredAssetState = 'designed-procedural-settled';
+      visual.userData.authoredVisualRoot = 'mote-quad-hard-geometry';
+      visual.userData.shipConstruction = 'designed-procedural';
+      setPresentationAdmission(entity, PRESENTATION_ADMISSION.ready);
+      return visual;
+    }
     if (!authoredShips) return visual;
 
     // Inspection surfaces must not replace a readable catalog ship with the generic modular kit.
