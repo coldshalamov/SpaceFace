@@ -31,7 +31,7 @@
 import { spawnPayloadEntity } from '../combat/industrialBeam.js';
 import { createVictimRewardRng, missionOwnsReward } from '../combat/rewardEligibility.js';
 import { massline2Flag } from '../data/featureFlags.js';
-import { rollKillRewardItems } from '../data/killRewards.js';
+import { killResearchPointsForVictim, rollKillRewardItems } from '../data/killRewards.js';
 import { isHostileToPlayer } from './scanner.js';
 
 const SHARD_REWARD_SALT = 'loot_shards_reward_v3';
@@ -200,6 +200,14 @@ export const lootShards = {
       items,
       vel,
       source: 'kill_burst',
+    });
+    // Missions owns the one positive RP writer. Keep the receipt tied to this run-local entity
+    // death so duplicate kill publication cannot pay twice; no XP or parallel progression wallet.
+    const seed = state.meta && state.meta.seed;
+    this.bus.emit('research:grant', {
+      amount: killResearchPointsForVictim(victim),
+      source: 'hostile_kill',
+      receiptId: `hostile-kill-rp:${seed == null ? 'run' : seed}:${victim.id}`,
     });
   },
 

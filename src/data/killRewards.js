@@ -17,6 +17,13 @@ export const KILL_BURST_EJECT_SPEED_MAX = 38;
 
 export const KILL_REWARD_TIER_IDS = Object.freeze(['light', 'medium', 'heavy', 'ace']);
 
+const KILL_RESEARCH_POINTS = Object.freeze({
+  light: 1,
+  medium: 2,
+  heavy: 3,
+  ace: 5,
+});
+
 const TOKEN_SETS = Object.freeze({
   ace: Object.freeze([
     'ace', 'named', 'named_ace', 'namedace', 'elite_ace', 'ace_pilot',
@@ -206,6 +213,12 @@ export function classifyKillRewardVictim(victim) {
 export function killRewardRecipeFor(victim) {
   const tier = classifyKillRewardVictim(victim);
   return KILL_REWARD_RECIPES[tier] || FALLBACK_RECIPE;
+}
+
+/** Existing tech-tree RP granted for an admitted hostile kill. Style-neutral until AC-08. */
+export function killResearchPointsForVictim(victim) {
+  const tier = classifyKillRewardVictim(victim);
+  return KILL_RESEARCH_POINTS[tier] || KILL_RESEARCH_POINTS.light;
 }
 
 export function isCreditChipItem(item) {
