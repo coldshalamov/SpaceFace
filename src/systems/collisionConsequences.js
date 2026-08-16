@@ -11,7 +11,15 @@ import {
 } from '../combat/impulseKernel.js';
 import { ensureCombatant } from '../combat/runtime.js';
 import { appendCombatTrace } from '../combat/trace.js';
-import { COLLISION_TUMBLE_KIND, TUMBLE_STATUS_ID } from '../combat/tumbleStatus.js';
+import {
+  COLLISION_TUMBLE_KIND,
+  isTumbling,
+  resolveTumbleEntry,
+  resolveTumbleEntrySpin,
+  resolveTumbleInertiaY,
+  stableTumbleSpinSign,
+  TUMBLE_STATUS_ID,
+} from '../combat/tumbleStatus.js';
 import { combatFlag, massline2Flag } from '../data/featureFlags.js';
 import {
   queuePhysicsTorqueImpulse,
@@ -72,6 +80,13 @@ export const collisionConsequences = {
       const control = entity && this._controlStates.get(entity);
       if (!control) continue;
       if (entity.alive === false || tick > control.untilTick) {
+        this._controlStates.delete(entity);
+        continue;
+      }
+      // AC-04: a contact tumble's zero-control window belongs to the shared owner (tumbleStates).
+      // This local state only survives as the fail-safe for a host with no combat status service,
+      // so it stands down the moment the canonical status is live.
+      if (control.kind === 'tumble' && isTumbling(state, entity)) {
         this._controlStates.delete(entity);
         continue;
       }
@@ -198,9 +213,12 @@ export const collisionConsequences = {
     });
     if (!receipt) return;
 
-    if (receipt.control !== 'none') this._beginControl(target, receipt);
+    // Stagger is a local, lighter loss of authority this system still owns outright. A tumble is the
+    // canonical first-class state: it enters the shared status/control owner, and only falls back to
+    // the local control state when no combat status service exists to hold it.
+    if (receipt.control === 'stagger') this._beginControl(target, receipt);
     const damageResult = receipt.impactDamage > 0 ? this._routeImpactDamage(target, other, receipt) : null;
-    if (receipt.control === 'tumble') this._scheduleTumbleStatus(target, receipt);
+    if (receipt.control === 'tumble' && !this._enterTumble(target, receipt)) this._beginControl(target, receipt);
 
     appendCombatTrace(state.combat, tick, 'collision.consequence', {
       actorId: receipt.provenance.actorId,
@@ -241,7 +259,7 @@ export const collisionConsequences = {
     const kind = previous && CONTROL_PRIORITY[previous.kind] > CONTROL_PRIORITY[receipt.control]
       ? previous.kind : receipt.control;
     const torqueImpulseY = kind === 'tumble'
-      ? collisionTumbleImpulse(target, receipt)
+      ? collisionTumbleSpin(target, receipt).impulseY
       : 0;
     this._controlStates.set(target, {
       kind,
@@ -283,7 +301,38 @@ export const collisionConsequences = {
     });
   },
 
-  _scheduleTumbleStatus(target, receipt) {
+  /**
+   * Enter the canonical tumble state from a contact receipt. Contact geometry is only known here, so
+   * the entry spin is authored here and delivered as a real angular impulse through the SG-02 command
+   * membrane; the bounded zero-control window and recovery belong to tumbleStates.
+   * Returns false when the shared owner cannot take it (no status service), so the caller can fall
+   * back to this system's local control state rather than leaving the hull fully in control.
+   */
+  _enterTumble(target, receipt) {
+    const entry = resolveTumbleEntry(this.state, target, {
+      kind: COLLISION_TUMBLE_KIND,
+      durationTicks: Math.max(1, receipt.staggerTicks),
+      tick: receipt.tick,
+    });
+    // Already tumbling from contact: grinding along a rock must not restart the spin every episode.
+    if (!entry) return true;
+    const spin = collisionTumbleSpin(target, receipt);
+    const startedAt = simSeconds(this.state, receipt.tick);
+    const scheduled = this._scheduleTumbleStatus(target, receipt, entry, {
+      kind: entry.kind,
+      source: entry.source,
+      // Cause is the surface the hull was overwhelmed by — never relabeled as a Massline cause.
+      cause: receipt.surface,
+      startedAt,
+      until: startedAt + entry.durationTicks / 60,
+      spin: Math.abs(spin.omega),
+    });
+    if (!scheduled) return false;
+    queuePhysicsTorqueImpulse(target, { x: 0, y: spin.impulseY, z: 0 });
+    return true;
+  },
+
+  _scheduleTumbleStatus(target, receipt, entry, data) {
     const kernel = combatKernel(this);
     if (!kernel || !kernel.statuses || typeof kernel.statuses.schedule !== 'function' || !kernel.catalog) return false;
     let runtime = null;
@@ -292,9 +341,9 @@ export const collisionConsequences = {
     const result = kernel.statuses.schedule(target, runtime, {
       id: TUMBLE_STATUS_ID,
       stacks: 1,
-      durationTicks: Math.max(1, receipt.staggerTicks),
+      durationTicks: entry.durationTicks,
       applyTick: receipt.tick + 1,
-      data: { kind: COLLISION_TUMBLE_KIND },
+      data,
     }, {
       attackerId: receipt.provenance.actorId,
       actionId: null,
@@ -330,19 +379,24 @@ function combatKernel(host) {
   return actions && actions.kernel ? actions.kernel : null;
 }
 
-function collisionTumbleImpulse(target, receipt) {
-  const radius = Math.max(0.1, finite(target.radius, 1));
-  const mass = Math.max(0.1, finite(target.mass, 1));
-  const authoredInertia = target.data && target.data.physicsBody && target.data.physicsBody.inertiaY;
-  const inertia = Math.max(0.1, finite(authoredInertia, 0.5 * mass * radius * radius));
-  const targetOmega = clamp(receipt.deltaV / radius, 0.8, 4);
+// Entry spin for a contact tumble: a real angular impulse (inertia × Δω) toward a spin inside the
+// shared entry band, signed by the contact lever arm. `omega` is the physical target spin — the value
+// presentation reads — while `impulseY` is the momentum the physics owner must apply to reach it.
+function collisionTumbleSpin(target, receipt) {
+  const inertia = resolveTumbleInertiaY(target);
+  const targetOmega = resolveTumbleEntrySpin(receipt.deltaV, finite(target.radius, 1));
   const rx = finite(receipt.pos && receipt.pos.x) - finite(target.pos && target.pos.x);
   const rz = finite(receipt.pos && receipt.pos.z) - finite(target.pos && target.pos.z);
   const nx = finite(receipt.normal && receipt.normal.x);
   const nz = finite(receipt.normal && receipt.normal.z);
   const crossY = rz * nx - rx * nz;
-  const sign = Math.abs(crossY) > 1e-6 ? Math.sign(crossY) : (numericParity(target.id) ? 1 : -1);
-  return sign * inertia * targetOmega;
+  const sign = Math.abs(crossY) > 1e-6 ? Math.sign(crossY) : stableTumbleSpinSign(target.id);
+  return { omega: sign * targetOmega, impulseY: sign * inertia * targetOmega };
+}
+
+function simSeconds(state, tick) {
+  if (state && Number.isFinite(state.simTime)) return state.simTime;
+  return nonNegativeTick(tick) / 60;
 }
 
 function entityById(state, id) {
@@ -353,14 +407,6 @@ function pairKey(aId, bId) {
   const a = String(aId);
   const b = String(bId);
   return a < b ? `${a}\u0000${b}` : `${b}\u0000${a}`;
-}
-
-function numericParity(value) {
-  if (Number.isFinite(value)) return Math.abs(Math.trunc(value)) % 2;
-  const text = String(value);
-  let sum = 0;
-  for (let i = 0; i < text.length; i++) sum += text.charCodeAt(i);
-  return sum % 2;
 }
 
 function nonNegativeTick(value) {
