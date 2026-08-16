@@ -67,7 +67,7 @@
     "audio:cue": 3
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "fc17a1ab4e22c19b81cd0e531e79b32877bc644cf4ff833740f325b0aff675a7",
+    "authoritativeHash": "9f79ee5b5d3759eb05910840bd0c438e8e7acc460648029feec8dc688ade8f36",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -119,6 +119,9 @@
     "sim-golden-diff --ref origin/master --flight-system v3 returned MOTION_CHANGED after the reference reproduced the prior hash: 47 leaf diffs, including 10 motion fields.",
     "The causal derived-state delta is dry mass 32 -> 36 plus the fitted ram plate.",
     "This gameplay delta is intentional: Arcade Core plan 05 requires the starter fit to expose an early ram-to-tumble-to-terrain kill. The heavier loadout changes V3 handling and the canonical tape accordingly; it is not a bookkeeping repin.",
-    "V3 trace counts are unchanged; only deterministic state and motion moved."
+    "V3 trace counts are unchanged; only deterministic state and motion moved.",
+    "2026-08-16 Plan 06 market-personality re-record: station families now select different curve-family weights while preserving shared durations, factor bands, and deterministic RNG.",
+    "The prior authoritativeHash was fc17a1ab4e22c19b81cd0e531e79b32877bc644cf4ff833740f325b0aff675a7.",
+    "sim-golden-diff --flight-system v3 against aee59d7272409664bb36be1a75fc966aa5fb89a1 returned CONTENT_ONLY: all 19,978 changed leaves are under $.economy, with zero entity pos/vel/rot/angVel/prevPos changes and zero trace changes."
   ]
 }

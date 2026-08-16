@@ -273,6 +273,17 @@ export function createMarketNews(ctx) {
     if (!p) return;
     surface({ type: p.type, stationId: p.stationId, commodityId: p.commodityId, eventId: p.eventId });
   });
+  on('economy:regimeChanged', (p) => {
+    if (!p || !p.stationId || !p.commodityId || !p.regime) return;
+    surface({
+      type: 'regime',
+      kind: 'regime',
+      regime: p.regime,
+      stationId: p.stationId,
+      commodityId: p.commodityId,
+      eventId: p.eventId,
+    });
+  });
   // When docking, stash a dock card for the most relevant local event (shown by the dock screen).
   on('dock:docked', (p) => {
     if (!p || !p.stationId) return;

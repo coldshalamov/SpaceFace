@@ -73,6 +73,45 @@ const REGIME_WEIGHTS = Object.freeze({
   turbulent: 4,
 });
 
+// Station families keep the same safe formula vocabulary, duration, and factor bands, but favor
+// different shapes. This makes a refinery's board learnably rhythmic while a black market remains
+// genuinely choppy, without layering station-specific price multipliers over the shared economy.
+// Unknown/modded station types deliberately retain the balanced baseline above.
+export const STATION_CYCLE_PERSONALITIES = Object.freeze({
+  trade_hub: Object.freeze({
+    stable: 18, sine: 16, rising: 16, falling: 16, quadratic: 9,
+    cubic: 7, sqrt: 6, log: 6, volatile: 4, turbulent: 2,
+  }),
+  refinery: Object.freeze({
+    stable: 18, sine: 34, rising: 10, falling: 10, quadratic: 10,
+    cubic: 5, sqrt: 4, log: 4, volatile: 3, turbulent: 2,
+  }),
+  mining: Object.freeze({
+    stable: 12, sine: 13, rising: 24, falling: 24, quadratic: 7,
+    cubic: 5, sqrt: 5, log: 4, volatile: 4, turbulent: 2,
+  }),
+  fab: Object.freeze({
+    stable: 15, sine: 12, rising: 9, falling: 9, quadratic: 26,
+    cubic: 13, sqrt: 5, log: 5, volatile: 4, turbulent: 2,
+  }),
+  military: Object.freeze({
+    stable: 32, sine: 18, rising: 12, falling: 12, quadratic: 7,
+    cubic: 5, sqrt: 4, log: 4, volatile: 4, turbulent: 2,
+  }),
+  blackmarket: Object.freeze({
+    stable: 6, sine: 8, rising: 10, falling: 10, quadratic: 7,
+    cubic: 8, sqrt: 5, log: 6, volatile: 24, turbulent: 16,
+  }),
+  research: Object.freeze({
+    stable: 10, sine: 10, rising: 7, falling: 7, quadratic: 12,
+    cubic: 16, sqrt: 14, log: 14, volatile: 6, turbulent: 4,
+  }),
+});
+
+export function cyclePersonalityForStationType(stationType) {
+  return STATION_CYCLE_PERSONALITIES[String(stationType || '')] || REGIME_WEIGHTS;
+}
+
 function lerp(a, b, t) { return a + (b - a) * t; }
 function randRange(rng, lo, hi) { return lo + rng() * (hi - lo); }
 function randInt(rng, lo, hi) { return lo + Math.floor(rng() * (hi - lo + 1)); }
@@ -102,14 +141,15 @@ function volScale(def) {
  * @param {() => number} rng  deterministic 0..1 stream
  * @param {object|null} def   commodity def (volatility scales amplitude)
  * @param {number} simTime
+ * @param {string|null} stationType  optional station-family market personality
  */
-export function createCycle(rng, def, simTime) {
+export function createCycle(rng, def, simTime, stationType = null) {
   if (typeof rng !== 'function') rng = () => 0.5;
   // A market can be established before the pilot's clock begins. Preserve that negative
   // start time so its initial history samples the same live formula rather than flattening
   // every point to t=0.
   simTime = Number.isFinite(Number(simTime)) ? Number(simTime) : 0;
-  const regime = pickWeighted(rng, REGIME_WEIGHTS);
+  const regime = pickWeighted(rng, cyclePersonalityForStationType(stationType));
   const vs = volScale(def);
   const period = randRange(rng, PERIOD_LO_S, PERIOD_HI_S);
   const frequency = periodToFreq(period);
@@ -428,7 +468,7 @@ export function applyCycleToMid(basePrice, stockMid, cycle, simTime) {
 }
 
 /** Maybe re-roll the formula if its regime has expired. Returns next cycle object. */
-export function maybeAdvanceRegime(cycle, rng, simTime) {
+export function maybeAdvanceRegime(cycle, rng, simTime, stationType = null) {
   if (!cycle) return cycle;
   // A formula that would make a price non-positive is never allowed to linger
   // behind the display clamp. Re-roll immediately, then keep normal regime
@@ -438,7 +478,7 @@ export function maybeAdvanceRegime(cycle, rng, simTime) {
     return pruneExpiredBlend(cycle, simTime);
   }
   const def = CMDTY_BY_ID.get(cycle.cmdtyId);
-  const next = createCycle(typeof rng === 'function' ? rng : () => 0.5, def, simTime);
+  const next = createCycle(typeof rng === 'function' ? rng : () => 0.5, def, simTime, stationType);
   if (cycle.cmdtyId) next.cmdtyId = cycle.cmdtyId;
   beginRegimeBlend(next, cycle, simTime);
   return next;

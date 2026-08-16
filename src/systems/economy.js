@@ -725,9 +725,29 @@ export const economy = {
           this.recomputePrices(entry, def, frontier, cycle, state.simTime);
           this.recordPriceHistory(entry, def, cycle, state.simTime, true);
         }
-        const nextCycle = maybeAdvanceRegime(cycle, () => this._rng(), state.simTime);
+        const nextCycle = maybeAdvanceRegime(
+          cycle,
+          () => this._rng(),
+          state.simTime,
+          info && info.type,
+        );
+        const regimeChanged = nextCycle !== cycle
+          && Number(nextCycle && nextCycle.regimeStartT) !== Number(cycle && cycle.regimeStartT);
         if (nextCycle !== cycle) {
           state.economy.cycles[sid][cid] = nextCycle;
+        }
+        // Regime news is a local market read, not a galaxy-wide ticker. The economy owns the
+        // transition; the existing market-news presenter owns wording and voice/toast policy.
+        if (regimeChanged && sid === this._lastDockedStation) {
+          this.bus.emit('economy:regimeChanged', Object.freeze({
+            eventId: `regime:${sid}:${cid}:${Math.floor(Number(nextCycle.regimeStartT) || 0)}`,
+            stationId: sid,
+            stationType: info && info.type || 'trade_hub',
+            commodityId: cid,
+            previousRegime: cycle.regime || cycle.family || 'sine',
+            regime: nextCycle.regime || nextCycle.family || 'sine',
+            t: state.simTime,
+          }));
         }
         const liveCycle = state.economy.cycles[sid][cid] || nextCycle || cycle;
         const eff = effectiveEq(entry, state, sid, cid);
@@ -981,7 +1001,7 @@ export const economy = {
       // learnable current trend on the very first dock instead of faking one in the UI.
       const historyAge = HISTORY_REGIME_AGE_MIN_S
         + this._rng() * (HISTORY_REGIME_AGE_MAX_S - HISTORY_REGIME_AGE_MIN_S);
-      const cycle = createCycle(() => this._rng(), def, now - historyAge);
+      const cycle = createCycle(() => this._rng(), def, now - historyAge, type);
       cycle.cmdtyId = def.id;
       state.economy.cycles[stationId][def.id] = cycle;
       this.refreshListingDemand(entry, def, stationId);
