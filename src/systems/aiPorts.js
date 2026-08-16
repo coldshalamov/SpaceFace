@@ -16,6 +16,14 @@ import { authorizeAIEngagement, isHostileForAI } from '../ai/engagementAuthority
 import { measureThrusterAuthority, writePhysicsControl } from '../core/physicsAuthority.js';
 import { resolveFlightProfile } from '../core/flightDynamics.js';
 import { massline2Flag } from '../data/featureFlags.js';
+import { SKITTER_ROCK_NEST } from '../data/swarmerFamily.js';
+import {
+  SKITTER_MIN_RETURN_TICKS,
+  selectSkitterCover,
+  skitterDepartedCover,
+  skitterReachedCover,
+  skitterSpringReason,
+} from '../ai/skitterCoverPolicy.js';
 import {
   CERES_ACTIVITY_POCKETS,
   CERES_ACTIVITY_SECTOR_ID,
@@ -79,6 +87,8 @@ export const aiPorts = {
     this._recentEventCacheTick = -1;
     this._recentEventsByTarget = new Map();
     this._sensorCandidateScratch = [];
+    this._skitterCoverCandidateScratch = [];
+    this._freshSpawnEntities = new WeakSet();
     this._sensorContactsScratch = [];
     this._sensorTetherContactsScratch = [];
     this._liveSensorFrameScratch = {
@@ -129,6 +139,11 @@ export const aiPorts = {
       issue: (command) => this._issueEncounterCommand(command),
     });
     this.helpers.inspectAIPorts = () => this.inspect();
+    if (this.bus && typeof this.bus.on === 'function') {
+      this.bus.on('entity:spawned', (payload) => {
+        if (payload && payload.entity && typeof payload.entity === 'object') this._freshSpawnEntities.add(payload.entity);
+      });
+    }
   },
 
   update(dt, state) {
@@ -423,6 +438,21 @@ export const aiPorts = {
     for (const entity of source) {
       if (!isLiveCraft(entity) || entity.id === state.playerId) continue;
       const ai = entity.data && entity.data.ai;
+      if (ai && isSkitter(entity)) {
+        const freshSpawn = this._freshSpawnEntities.has(entity);
+        if (freshSpawn) this._freshSpawnEntities.delete(entity);
+        maintainSkitterCover({
+          state,
+          entity,
+          ai,
+          tick,
+          helpers: this.helpers,
+          bus: this.bus,
+          recentEvents: this._recentEventsFor(entity, tick, identity),
+          candidateScratch: this._skitterCoverCandidateScratch,
+          freshSpawn,
+        });
+      }
       const factionBehavior = normalizeFactionBehaviorProfile(ai && ai.factionPresenceDoctrine);
       if (!ai || (ai.passive && !(ai.allowPassiveManeuver === true && factionBehavior))) continue;
       candidates.push(entity);
@@ -777,6 +807,168 @@ function addBrakeForce(force, entity, profile, dt) {
   force.z += ((vz * scale) - vz) * profile.mass / dtSafe;
 }
 
+function maintainSkitterCover({ state, entity, ai, tick, helpers, bus, recentEvents, candidateScratch, freshSpawn }) {
+  const player = getEntity(state, state && state.playerId);
+  let cover = ai.skitterCover && typeof ai.skitterCover === 'object' ? ai.skitterCover : null;
+  if (cover && cover.schemaVersion === 1 && cover.phase === 'unassigned' && cover.assignedRockId == null) {
+    if (tick < finiteInt(cover.retryAfterTick, 0)) return;
+    cover = ai.skitterCover = null;
+  }
+  if (!cover || cover.schemaVersion !== 1 || cover.assignedRockId == null) {
+    const anchor = ai.activity && ai.activity.anchor || entity.pos;
+    const nearby = nearbyEntities(state, anchor, SKITTER_ROCK_NEST.searchRadiusWu, helpers, candidateScratch);
+    const assignment = selectSkitterCover({
+      seed: state && state.meta && state.meta.seed,
+      entityId: entity.id,
+      squadId: ai.squadId || ai.wingId || null,
+      anchor,
+      playerPos: player && player.pos,
+      rocks: nearby,
+      hullRadiusWu: entity.radius,
+    });
+    if (!assignment) {
+      ai.skitterCover = {
+        schemaVersion: 1,
+        phase: 'unassigned',
+        assignedRockId: null,
+        reason: 'no_eligible_rock',
+        retryAfterTick: tick + 60,
+      };
+      return;
+    }
+    const positionBeforePhysics = freshSpawn === true;
+    cover = ai.skitterCover = {
+      schemaVersion: 1,
+      phase: positionBeforePhysics ? 'nested' : 'spring',
+      assignedRockId: assignment.rockId,
+      assignedRockOrigin: { ...assignment.rockOrigin },
+      coverPoint: { ...assignment.coverPoint },
+      returnRockId: assignment.rockId,
+      returnRockOrigin: { ...assignment.rockOrigin },
+      returnPoint: { ...assignment.coverPoint },
+      candidateCount: assignment.candidateCount,
+      originalRoe: normalizeRoe(ai.roe, 'weapons_free'),
+      triggerSequence: positionBeforePhysics ? 0 : 1,
+      triggerTick: positionBeforePhysics ? null : tick,
+      triggerReason: positionBeforePhysics ? null : 'late_assignment',
+      departedNest: false,
+      placedBeforePhysics: positionBeforePhysics,
+    };
+    if (positionBeforePhysics) {
+      entity.pos.x = assignment.coverPoint.x;
+      entity.pos.z = assignment.coverPoint.z;
+      if (entity.vel) {
+        entity.vel.x = 0;
+        entity.vel.z = 0;
+      }
+    }
+    ai.passive = positionBeforePhysics;
+    ai.roe = positionBeforePhysics ? 'hold_fire' : normalizeRoe(cover.originalRoe, 'weapons_free');
+    if (positionBeforePhysics) emitSkitterNest(bus, state, entity, cover, false);
+    return;
+  }
+
+  if (cover.phase === 'nested') {
+    const rock = getEntity(state, cover.assignedRockId);
+    const reason = skitterSpringReason({
+      cover: { coverPoint: cover.coverPoint, rockOrigin: cover.assignedRockOrigin },
+      rock,
+      playerPos: player && player.pos,
+      events: recentEvents,
+    });
+    if (!reason) return;
+    cover.phase = 'spring';
+    cover.triggerTick = tick;
+    cover.triggerReason = reason;
+    cover.triggerSequence = finiteInt(cover.triggerSequence, 0) + 1;
+    cover.departedNest = false;
+    if (reason === 'cover_broken' || reason === 'cover_moved') {
+      const anchor = entity.pos;
+      const nearby = nearbyEntities(state, anchor, SKITTER_ROCK_NEST.searchRadiusWu, helpers, candidateScratch);
+      const replacement = selectSkitterCover({
+        seed: state && state.meta && state.meta.seed,
+        entityId: entity.id,
+        squadId: ai.squadId || ai.wingId || null,
+        anchor,
+        playerPos: player && player.pos,
+        rocks: nearby,
+        hullRadiusWu: entity.radius,
+        excludeRockId: cover.assignedRockId,
+      });
+      cover.returnRockId = replacement && replacement.rockId || null;
+      cover.returnRockOrigin = replacement ? { ...replacement.rockOrigin } : null;
+      cover.returnPoint = replacement ? { ...replacement.coverPoint } : null;
+    }
+    ai.passive = false;
+    ai.roe = normalizeRoe(cover.originalRoe, 'weapons_free');
+    if (bus && typeof bus.emit === 'function') {
+      bus.emit('ai:skitterSpring', {
+        entityId: entity.id,
+        rockId: cover.assignedRockId,
+        reason,
+        tick,
+        pos: { x: finite(entity.pos && entity.pos.x), z: finite(entity.pos && entity.pos.z) },
+      });
+    }
+    return;
+  }
+
+  if (cover.phase !== 'spring' || !cover.returnPoint) return;
+  if (!cover.departedNest && skitterDepartedCover(entity.pos, cover.coverPoint)) cover.departedNest = true;
+  if (!cover.departedNest || tick - finiteInt(cover.triggerTick, tick) < SKITTER_MIN_RETURN_TICKS
+    || !skitterReachedCover(entity.pos, cover.returnPoint)) return;
+  const returnRock = getEntity(state, cover.returnRockId);
+  if (!returnRock || returnRock.alive === false) return;
+  cover.phase = 'nested';
+  cover.assignedRockId = cover.returnRockId;
+  cover.assignedRockOrigin = { x: finite(returnRock.pos && returnRock.pos.x), z: finite(returnRock.pos && returnRock.pos.z) };
+  cover.coverPoint = { ...cover.returnPoint };
+  cover.triggerTick = null;
+  cover.triggerReason = null;
+  cover.departedNest = false;
+  ai.passive = true;
+  ai.roe = 'hold_fire';
+  emitSkitterNest(bus, state, entity, cover, true);
+}
+
+function emitSkitterNest(bus, state, entity, cover, returned) {
+  if (!bus || typeof bus.emit !== 'function') return;
+  bus.emit('ai:skitterNest', {
+    entityId: entity.id,
+    rockId: cover.assignedRockId,
+    cueId: SKITTER_ROCK_NEST.revealCueId,
+    passive: true,
+    returned: returned === true,
+    tick: Number.isInteger(state && state.tick) ? state.tick : 0,
+    pos: { x: finite(cover.coverPoint && cover.coverPoint.x), z: finite(cover.coverPoint && cover.coverPoint.z) },
+  });
+}
+
+function skitterCoverSnapshot(state, entity, freeze) {
+  if (!isSkitter(entity)) return null;
+  const cover = entity.data && entity.data.ai && entity.data.ai.skitterCover;
+  if (!cover || cover.assignedRockId == null) return null;
+  const rock = getEntity(state, cover.assignedRockId);
+  const returnRock = getEntity(state, cover.returnRockId);
+  return freeze({
+    phase: String(cover.phase || 'unassigned'),
+    assignedRockId: cover.assignedRockId,
+    coverPoint: cover.coverPoint ? freeze({ x: finite(cover.coverPoint.x), z: finite(cover.coverPoint.z) }) : null,
+    returnRockId: cover.returnRockId == null ? null : cover.returnRockId,
+    returnPoint: cover.returnPoint ? freeze({ x: finite(cover.returnPoint.x), z: finite(cover.returnPoint.z) }) : null,
+    coverAlive: !!(rock && rock.alive !== false),
+    returnCoverAlive: !!(returnRock && returnRock.alive !== false),
+    triggered: cover.phase === 'spring',
+    triggerSequence: finiteInt(cover.triggerSequence, 0),
+    triggerReason: cover.triggerReason || null,
+  });
+}
+
+function isSkitter(entity) {
+  return !!(entity && entity.data && entity.data.lootTableId === 'skitter_swarmer'
+    && entity.data.terrainAmbush && entity.data.terrainAmbush.nest === 'rock');
+}
+
 function sensorSelf(state, entity, capabilities = capabilitiesFor(state, entity), attachmentIndex = null, freeze = Object.freeze, cacheOwner = null) {
   const runtime = combatRuntimeFor(state, entity.id);
   const ai = entity.data && entity.data.ai || {};
@@ -812,6 +1004,7 @@ function sensorSelf(state, entity, capabilities = capabilitiesFor(state, entity)
       positive(entity && entity.flightModel && entity.flightModel.maxSpeed, 0)),
     factionBehavior: normalizeFactionBehaviorProfile(ai.factionPresenceDoctrine),
     ramAuthorized,
+    coverAmbush: skitterCoverSnapshot(state, entity, freeze),
     ...bands,
   });
 }

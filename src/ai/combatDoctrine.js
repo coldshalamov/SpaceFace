@@ -30,6 +30,10 @@ const INTERCEPTOR_EXTEND_MAX_TICKS = 180;
 const INTERCEPTOR_REFORM_TICKS = 45;
 const SPEED_PASS_BREAK_LATERAL = 42;
 const SPEED_PASS_EXTENSION_DISTANCE = 1280;
+const SKITTER_SPRING_TICKS = 24;
+const SKITTER_STRIKE_MIN_TICKS = 30;
+const SKITTER_STRIKE_MAX_TICKS = 72;
+const SKITTER_COVER_ARRIVAL_WU = 46;
 const BRAWLER_COMMIT_MIN_TICKS = 90;
 const BRAWLER_COMMIT_MAX_TICKS = 120;
 const BRAWLER_BREAKAWAY_TICKS = 105;
@@ -108,18 +112,28 @@ export class CombatDoctrineRuntime {
     record.telegraphStartedTick = null;
 
     if (!target) {
-      enter(record, initialPhase(doctrineId), tick, null);
+      enter(record, initialPhase(doctrineId, record.flightProfile), tick, null);
       return snapshot(record, null, directive, factionBehavior);
     }
 
     const distance = self && self.pos ? distance2(self.pos, target.pos) : Infinity;
     if (factionBehavior && (factionBehavior.disableThenRun || factionBehavior.destroyTarget === false)
       && target.disabled === true) {
-      const egressPhase = doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY ? 'breakaway'
+      const egressPhase = doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY
+        ? (record.flightProfile === 'cover_ambush' ? 'return_to_cover' : 'breakaway')
         : doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER ? 'escape'
           : doctrineId === CombatDoctrineId.FIELD_ANCHOR_CONTROLLER ? 'recover'
           : 'retreat';
-      if (record.phase !== egressPhase) beginEgress(record, egressPhase, tick, self, target, 'target_disabled');
+      if (record.phase !== egressPhase) {
+        if (egressPhase === 'return_to_cover') {
+          const coverPoint = self && self.coverAmbush && self.coverAmbush.returnPoint;
+          record.outcome = 'target_disabled';
+          record.flightPoint = coverPoint
+            ? Object.freeze({ x: finite(coverPoint.x), z: finite(coverPoint.z) })
+            : egressPoint(self, target, record.side);
+          enter(record, egressPhase, tick, null);
+        } else beginEgress(record, egressPhase, tick, self, target, 'target_disabled');
+      }
       return snapshot(record, target, directive, factionBehavior);
     }
     if (doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY) {
@@ -214,6 +228,10 @@ export function applyCombatDoctrineToSelection(selected, doctrine) {
 }
 
 function updateInterceptor(record, tick, self, target, distance) {
+  if (record.flightProfile === 'cover_ambush') {
+    updateSkitterAmbush(record, tick, self, target, distance);
+    return;
+  }
   if (record.flightProfile === 'brawler_commit') {
     updateBrawler(record, tick, self, target, distance);
     return;
@@ -240,6 +258,60 @@ function updateInterceptor(record, tick, self, target, distance) {
     beginReform(record, tick);
   } else if (record.phase === 'reform' && age >= INTERCEPTOR_REFORM_TICKS) {
     advanceCycle(record, tick, 'ingress');
+  }
+}
+
+function updateSkitterAmbush(record, tick, self, target, distance) {
+  const cover = self && self.coverAmbush;
+  const triggerSequence = Number.isInteger(cover && cover.triggerSequence) ? cover.triggerSequence : 0;
+  if (cover && cover.triggered === true && triggerSequence !== record.skitterTriggerSequence) {
+    record.skitterTriggerSequence = triggerSequence;
+    record.coverRockId = cover.assignedRockId;
+    record.flightPoint = null;
+    enter(record, 'spring', tick, 'rock_dust');
+    return;
+  }
+
+  const age = tick - record.phaseStartedTick;
+  if (!cover || cover.triggered !== true) {
+    record.flightPoint = cover && (cover.coverPoint || cover.returnPoint) || record.flightPoint;
+    if (record.phase !== 'cover_hold') enter(record, 'cover_hold', tick, null);
+    return;
+  }
+  if (record.phase === 'cover_hold') {
+    enter(record, 'spring', tick, 'rock_dust');
+  } else if (record.phase === 'spring' && age >= SKITTER_SPRING_TICKS) {
+    record.closestDistance = distance;
+    enter(record, 'strike', tick, null);
+  } else if (record.phase === 'strike') {
+    record.closestDistance = Math.min(record.closestDistance, distance);
+    const passed = runHasPassed(record, self, target, distance);
+    if ((age >= SKITTER_STRIKE_MIN_TICKS && passed) || age >= SKITTER_STRIKE_MAX_TICKS) {
+      const returnPoint = cover.returnCoverAlive !== false && cover.returnPoint || null;
+      if (returnPoint) {
+        record.outcome = 'ambush_pass_complete';
+        record.flightPoint = Object.freeze({ x: finite(returnPoint.x), z: finite(returnPoint.z) });
+        enter(record, 'return_to_cover', tick, null);
+      } else {
+        beginEgress(record, 'extend', tick, self, target, 'cover_unavailable');
+      }
+    }
+  } else if (record.phase === 'return_to_cover') {
+    const returnPoint = cover.returnPoint;
+    if (returnPoint) record.flightPoint = Object.freeze({ x: finite(returnPoint.x), z: finite(returnPoint.z) });
+    if (returnPoint && distance2(self && self.pos, returnPoint) <= SKITTER_COVER_ARRIVAL_WU) {
+      enter(record, 'cover_hold', tick, null);
+    }
+  } else if (record.phase === 'extend' && age >= INTERCEPTOR_EXTEND_TICKS
+    && (distance >= 520 || age >= INTERCEPTOR_EXTEND_MAX_TICKS)) {
+    beginReform(record, tick);
+  } else if (record.phase === 'reform' && age >= INTERCEPTOR_REFORM_TICKS) {
+    advanceCycle(record, tick, 'ingress');
+  } else if (record.phase === 'ingress') {
+    // Old saves can resume before a nest assignment exists. As soon as the port supplies cover,
+    // return to the authored hold rather than entering the ordinary interceptor loop.
+    record.flightPoint = cover.returnPoint || cover.coverPoint || null;
+    enter(record, 'return_to_cover', tick, null);
   }
 }
 
@@ -345,7 +417,7 @@ function makeRecord(seed, tick, entityId, doctrineId, targetId, flightProfile, s
   const record = {
     doctrineId,
     flightProfile,
-    phase: initialPhase(doctrineId),
+    phase: initialPhase(doctrineId, flightProfile),
     phaseStartedTick: tick,
     phaseChangedTick: tick,
     targetId: targetId == null ? null : targetId,
@@ -359,6 +431,8 @@ function makeRecord(seed, tick, entityId, doctrineId, targetId, flightProfile, s
     closestDistance: Infinity,
     flightPoint: null,
     passLane: null,
+    coverRockId: null,
+    skitterTriggerSequence: -1,
     authoredMaxSpeed: finite(self && self.maxSpeed, 0),
     ramAuthorized: false,
     lastTick: tick,
@@ -418,9 +492,18 @@ function snapshot(record, target, directive, factionBehavior = null) {
   if (doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY || doctrineId === CombatDoctrineId.BRAWLER_COMMIT) {
     const brawler = doctrineId === CombatDoctrineId.BRAWLER_COMMIT || record.flightProfile === 'brawler_commit';
     const speedPass = record.flightProfile === 'speed_pass';
-    formationLocked = phase === 'ingress' || phase === 'reform';
-    lateralSign = speedPass || phase === 'ingress' || phase === 'reform' ? 0 : record.side;
-    if (phase === 'extend' || phase === 'breakaway') {
+    const coverAmbush = record.flightProfile === 'cover_ambush';
+    formationLocked = coverAmbush || phase === 'ingress' || phase === 'reform';
+    lateralSign = speedPass || coverAmbush || phase === 'ingress' || phase === 'reform' ? 0 : record.side;
+    if (coverAmbush && phase === 'cover_hold') {
+      maneuverKind = ManeuverKind.HOLD;
+      maneuverTargetId = null;
+      preferredRange = 0;
+    } else if (coverAmbush && phase === 'return_to_cover') {
+      maneuverKind = ManeuverKind.INTERCEPT;
+      maneuverTargetId = null;
+      preferredRange = 0;
+    } else if (phase === 'extend' || phase === 'breakaway') {
       maneuverKind = ManeuverKind.INTERCEPT;
       maneuverTargetId = null;
     } else if (phase === 'reform') {
@@ -434,7 +517,9 @@ function snapshot(record, target, directive, factionBehavior = null) {
     if (speedPass && (phase === 'strike' || phase === 'extend')) {
       maneuverMaxSpeed = record.authoredMaxSpeed > 0 ? record.authoredMaxSpeed : null;
     }
-    preferredRange = phase === 'extend' || phase === 'breakaway' ? 620 : (brawler ? 190 : 150);
+    if (!coverAmbush || (phase !== 'cover_hold' && phase !== 'return_to_cover')) {
+      preferredRange = phase === 'extend' || phase === 'breakaway' ? 620 : (brawler ? 190 : 150);
+    }
     if (phase === 'strike' || phase === 'commit') allowedActionId = 'action_burst';
   } else if (doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER) {
     formationLocked = phase === 'reform';
@@ -484,7 +569,8 @@ function snapshot(record, target, directive, factionBehavior = null) {
     faceTarget = phase !== 'retreat';
     if (phase === 'fire_window') allowedActionId = 'action_burst';
   }
-  const isEgress = phase === 'extend' || phase === 'breakaway' || phase === 'escape' || phase === 'recover' || phase === 'retreat';
+  const isEgress = phase === 'extend' || phase === 'breakaway' || phase === 'escape' || phase === 'recover'
+    || phase === 'retreat' || phase === 'return_to_cover';
   if (factionBehavior && !isEgress) preferredRange = factionBehavior.preferredRange;
   return Object.freeze({
     doctrineId,
@@ -573,7 +659,8 @@ function bandScore(value, ordered) {
   return index < 0 ? 0 : index;
 }
 
-function initialPhase(doctrineId) {
+function initialPhase(doctrineId, flightProfile = null) {
+  if (flightProfile === 'cover_ambush') return 'cover_hold';
   if (doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER) return 'flank';
   if (doctrineId === CombatDoctrineId.RANGED_DISENGAGER) return 'outer_standoff';
   if (doctrineId === CombatDoctrineId.FIELD_ANCHOR_CONTROLLER) return 'approach';
@@ -590,6 +677,9 @@ function flightProfileFor(doctrineId, self) {
   }
   if (doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY && self && self.combatRoleId === 'dart_swarmer') {
     return 'speed_pass';
+  }
+  if (doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY && self && self.combatRoleId === 'skitter_swarmer') {
+    return 'cover_ambush';
   }
   if (doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY) return 'flyby';
   if (doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER) return 'tether_raider';
