@@ -385,6 +385,9 @@ export const cargo = {
   /** Dump up to `qty` units of `commodityId` into space as recoverable physical pods. Returns amount dumped. */
   jettison(commodityId, qty, options = {}) {
     const state = this.state;
+    const placement = options && options.placement && typeof options.placement === 'object'
+      ? options.placement
+      : null;
     const richSources = richLotSourcesForQty(state.player.cargo, commodityId, qty);
     const dumped = removeCargo(state, commodityId, qty);
     if (dumped <= 0) return 0;
@@ -404,24 +407,32 @@ export const cargo = {
         const podRadius = Math.max(JETTISON_POD_RADIUS_MIN,
           Math.min(JETTISON_POD_RADIUS_MAX, JETTISON_POD_RADIUS_MIN + Math.sqrt(amount) * 0.35));
         const clearance = Math.max(0, Number(player.radius) || 0) + podRadius + JETTISON_CLEARANCE;
+        const placedX = placement && Number.isFinite(Number(placement.x)) ? Number(placement.x) : px - fx * clearance;
+        const placedZ = placement && Number.isFinite(Number(placement.z)) ? Number(placement.z) : pz - fz * clearance;
+        const placedVx = placement && Number.isFinite(Number(placement.vx)) ? Number(placement.vx) : vx - fx * JETTISON_EJECT_SPEED;
+        const placedVz = placement && Number.isFinite(Number(placement.vz)) ? Number(placement.vz) : vz - fz * JETTISON_EJECT_SPEED;
+        const placedSolid = !!(placement && placement.solid === true);
+        const ttl = placement && placement.persistent === true
+          ? Number.POSITIVE_INFINITY
+          : Math.max(1, Number(placement && placement.ttl) || 180);
         const pod = this.helpers.spawnEntity({
           type: 'payload',
           // Reaction mass leaves directly aft, already outside hull contact. A short sim-time
           // embargo lets the payload establish separation before it becomes a solid collision
           // body; the jettison owner then admits it to ordinary Rapier contact and recovery.
-          pos: { x: px - fx * clearance, z: pz - fz * clearance },
-          vel: { x: vx - fx * JETTISON_EJECT_SPEED, z: vz - fz * JETTISON_EJECT_SPEED },
+          pos: { x: placedX, z: placedZ },
+          vel: { x: placedVx, z: placedVz },
           radius: podRadius,
           mass: podMass,
-          ttl: 180,
-          collides: false,
+          ttl,
+          collides: placedSolid,
           physicsBody: {
             dynamic: true,
             ccd: true,
             radius: podRadius,
             mass: podMass,
             inertiaY: 0.5 * podMass * podRadius * podRadius,
-            material: 'massline_sensor',
+            material: placedSolid ? 'payload' : 'massline_sensor',
             shape: 'ball',
           },
           data: {
@@ -432,8 +443,8 @@ export const cargo = {
             sourceActorId: player.id,
             jettisonPurpose: String(options && options.purpose || 'manual'),
             solidMaterialAfterEmbargo: 'payload',
-            pickupEmbargoUntil: state.simTime + JETTISON_PICKUP_EMBARGO_S,
-            despawnAt: state.simTime + 180,
+            pickupEmbargoUntil: state.simTime + (placedSolid ? 0 : JETTISON_PICKUP_EMBARGO_S),
+            despawnAt: Number.isFinite(ttl) ? state.simTime + ttl : Number.POSITIVE_INFINITY,
           },
         });
         if (pod && pod.id != null) podIds.push(pod.id);
@@ -456,6 +467,7 @@ export const cargo = {
         amount: dumped,
         purpose: String(options && options.purpose || 'manual'),
         parleySquadId: options && options.parleySquadId || null,
+        reactionImpulse: !(options && options.reactionImpulse === false),
         podIds: Array.isArray(options && options.podIds) ? options.podIds.slice() : [],
       });
     }

@@ -57,6 +57,14 @@ import { collisionProxyIdForStation } from '../data/collisionProxyManifests.js';
 import { effectiveSectorFor } from './sectorSim.js';   // V2 §33 — live (drifted) hazard for spawn sizing
 import { regionalEcologyReadout, regionalResourceYieldMultiplier } from './regionalEcology.js';
 import { ASTEROIDS, FIELDS, deriveAsteroidSeams } from '../data/mining.js';
+import { COMMODITIES } from '../data/commodities.js';
+import {
+  SMUGGLING_DROP_CACHE,
+  normalizeSmugglingDropCacheState,
+  sellableSmugglingDropCaches,
+} from '../data/smugglingStealth.js';
+import { FIXER_CONTACT, fixerMemoryFor } from '../data/stationContacts.js';
+import { isUnsellableCargo } from './cargo.js';
 import {
   COMET_ICE,
   cometLocalPosition,
@@ -164,6 +172,7 @@ const DEFAULT_DRIVE = DRIVE_TIERS.jump_t1;
 
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 const AST_BY_ID = new Map(ASTEROIDS.map((a) => [a.id, a]));
+const COMMODITY_BY_ID = new Map(COMMODITIES.map((commodity) => [commodity.id, commodity]));
 const STATION_SECTOR_ID = new Map();
 for (const sector of SECTORS) {
   for (const station of sector.stations || []) STATION_SECTOR_ID.set(station.id, sector.id);
@@ -309,6 +318,7 @@ export const world = {
     this._vestaDecisionNeedsRebind = false;
     this._pallasDecisionSignature = null;
     this._pallasDecisionNeedsRebind = false;
+    this._pendingDropCacheStash = null;
     this._cometIceEntityId = null;
     this._cometIcePassId = null;
     this._hazardSet = new Set();      // hazard zone indices the player is currently inside
@@ -347,6 +357,8 @@ export const world = {
     bus.on('pallasHiddenCache:choose', (p) => this._onPallasHiddenCacheChoice(p || {}));
     bus.on('pickup:collected', (p) => this._onVestaOreCachePickupCollected(p || {}));
     bus.on('pickup:collected', (p) => this._onPallasHiddenCachePickupCollected(p || {}));
+    bus.on('cargo:jettisoned', (p) => this._onSmugglingDropCacheJettisoned(p || {}));
+    bus.on('cargo:podRecovered', (p) => this._onSmugglingDropCacheRecovered(p || {}));
     bus.on('save:restoring', () => {
       this._vestaDecisionSignature = null;
       this._pallasDecisionSignature = null;
@@ -360,6 +372,7 @@ export const world = {
       this._presentVestaOreCacheDecision('save-loaded');
       this._spawnPallasHiddenCachePickup(this.state.world.currentSectorId);
       this._presentPallasHiddenCacheDecision('save-loaded');
+      this._spawnSmugglingDropCaches(this.state.world.currentSectorId);
     });
     bus.on('dock:docked', (p) => this._presentPallasHiddenCacheDecision('dock:docked', p && p.stationId));
     bus.on('dock:undocked', () => { this._pallasDecisionSignature = null; });
@@ -641,6 +654,7 @@ export const world = {
     this._presentVestaOreCacheDecision('sector-enter');
     this._spawnPallasHiddenCachePickup(sectorId);
     this._presentPallasHiddenCacheDecision('sector-enter');
+    this._spawnSmugglingDropCaches(sectorId);
     if (!this._hazardSet) this._hazardSet = new Set();
     if (!this._hazardNextSet) this._hazardNextSet = new Set();
     this._hazardSet.clear();
@@ -4040,6 +4054,258 @@ export const world = {
     return true;
   },
 
+  smugglingDropCacheEligibility(commodityId, qty = 1) {
+    const state = this.state;
+    const player = state && state.entities && state.entities.get
+      ? state.entities.get(state.playerId)
+      : null;
+    if (!player || player.alive === false || player.flags && player.flags.docked) {
+      return { ok: false, reason: 'not_in_flight' };
+    }
+    if (state.mode !== 'paused') return { ok: false, reason: 'pause_required' };
+    if (isUnsellableCargo(state, commodityId)) return { ok: false, reason: 'cargo_locked' };
+    const available = Math.max(0, Math.floor(Number(state.player?.cargo?.items?.[commodityId]) || 0));
+    const requested = Math.max(1, Math.floor(Number(qty) || 1));
+    if (available <= 0) return { ok: false, reason: 'cargo_missing' };
+    const own = normalizeSmugglingDropCacheState(state.world.smugglingDropCaches);
+    const activeCount = own.records.filter((record) => record.status === 'stashed').length;
+    if (activeCount >= SMUGGLING_DROP_CACHE.activeLimit) return { ok: false, reason: 'cache_limit' };
+    let nearest = null;
+    for (const entity of state.entityList || []) {
+      if (!entity || entity.alive === false || entity.type !== 'asteroid' || entity.collides === false) continue;
+      const dx = Number(player.pos?.x) - Number(entity.pos?.x);
+      const dz = Number(player.pos?.z) - Number(entity.pos?.z);
+      const centerDistance = Math.hypot(dx || 0, dz || 0);
+      const surfaceDistance = Math.max(0, centerDistance - Math.max(0, Number(entity.radius) || 0));
+      if (surfaceDistance > SMUGGLING_DROP_CACHE.anchorRangeWU) continue;
+      const relativeSpeed = Math.hypot(
+        (Number(player.vel?.x) || 0) - (Number(entity.vel?.x) || 0),
+        (Number(player.vel?.z) || 0) - (Number(entity.vel?.z) || 0),
+      );
+      if (!nearest || surfaceDistance < nearest.surfaceDistance) {
+        nearest = { entity, centerDistance, surfaceDistance, relativeSpeed };
+      }
+    }
+    if (!nearest) return { ok: false, reason: 'no_nearby_rock' };
+    if (nearest.relativeSpeed > SMUGGLING_DROP_CACHE.maxRelativeSpeedWUPerS) {
+      return { ok: false, reason: 'relative_speed', relativeSpeedWUPerS: nearest.relativeSpeed };
+    }
+    return {
+      ok: true,
+      qty: Math.min(requested, available),
+      anchorEntityId: nearest.entity.id,
+      anchorName: nearest.entity.data?.name || 'unmarked rock',
+      surfaceDistanceWU: nearest.surfaceDistance,
+      relativeSpeedWUPerS: nearest.relativeSpeed,
+    };
+  },
+
+  stashSmugglingDropCache(commodityId, qty = 1) {
+    const eligibility = this.smugglingDropCacheEligibility(commodityId, qty);
+    if (!eligibility.ok) return eligibility;
+    const state = this.state;
+    const player = state.entities.get(state.playerId);
+    const anchor = state.entities.get(eligibility.anchorEntityId);
+    const cargo = this.registry && this.registry.get ? this.registry.get('cargo') : null;
+    if (!anchor || !cargo || typeof cargo.jettison !== 'function') return { ok: false, reason: 'owner_unavailable' };
+    const own = normalizeSmugglingDropCacheState(state.world.smugglingDropCaches);
+    const sequence = own.nextSequence++;
+    const sectorId = String(state.world.currentSectorId || anchor.data?.homeSectorId || 'unknown');
+    const commodity = COMMODITY_BY_ID.get(commodityId);
+    const dx = (Number(player.pos?.x) || 0) - (Number(anchor.pos?.x) || 0);
+    const dz = (Number(player.pos?.z) || 0) - (Number(anchor.pos?.z) || 0);
+    const mag = Math.hypot(dx, dz) || 1;
+    const nx = mag > 0 ? dx / mag : Math.cos(Number(player.rot) || 0);
+    const nz = mag > 0 ? dz / mag : Math.sin(Number(player.rot) || 0);
+    const fixedPos = {
+      x: (Number(anchor.pos?.x) || 0) + nx * (Math.max(0, Number(anchor.radius) || 0) + 4.5),
+      z: (Number(anchor.pos?.z) || 0) + nz * (Math.max(0, Number(anchor.radius) || 0) + 4.5),
+    };
+    const anchorId = `${String(anchor.data?.fieldId || 'rock')}:${Math.round(Number(anchor.pos?.x) || 0)}:${Math.round(Number(anchor.pos?.z) || 0)}`;
+    const record = {
+      schemaVersion: SMUGGLING_DROP_CACHE.schemaVersion,
+      id: `drop_cache:${state.meta?.seed || 0}:${sequence}`,
+      owner: 'player', status: 'stashed', sectorId,
+      sectorName: state.world.sectors?.[sectorId]?.name || sectorId,
+      anchorId, anchorName: eligibility.anchorName,
+      fixedPos,
+      commodityId,
+      commodityName: commodity?.name || commodityId,
+      quantity: eligibility.qty,
+      remainingQty: eligibility.qty,
+      pods: [],
+      createdAt: Math.max(0, Number(state.simTime) || 0),
+      soldAt: 0, soldStationId: null, payoutCr: 0, recoveredAt: 0,
+    };
+    this._pendingDropCacheStash = record;
+    const dumped = cargo.jettison(commodityId, eligibility.qty, {
+      purpose: `smuggling_drop_cache:${record.id}`,
+      reactionImpulse: false,
+      placement: {
+        x: fixedPos.x, z: fixedPos.z,
+        vx: Number(anchor.vel?.x) || 0,
+        vz: Number(anchor.vel?.z) || 0,
+        solid: true,
+        persistent: true,
+      },
+    });
+    this._pendingDropCacheStash = null;
+    if (!(dumped > 0) || !record.pods.length) return { ok: false, reason: 'jettison_failed' };
+    record.quantity = dumped;
+    record.remainingQty = record.pods.reduce((sum, pod) => sum + pod.amount, 0);
+    own.records.push(record);
+    state.world.smugglingDropCaches = normalizeSmugglingDropCacheState(own);
+    this.bus.emit('smuggling:dropCacheStashed', {
+      cacheId: record.id, sectorId, anchorId, commodityId,
+      quantity: record.remainingQty, tick: state.tick | 0,
+    });
+    return { ok: true, cacheId: record.id, quantity: record.remainingQty, anchorName: record.anchorName };
+  },
+
+  _onSmugglingDropCacheJettisoned(payload) {
+    const record = this._pendingDropCacheStash;
+    if (!record || payload.purpose !== `smuggling_drop_cache:${record.id}`) return false;
+    const podIds = Array.isArray(payload.podIds) ? payload.podIds : [];
+    for (let slot = 0; slot < podIds.length; slot++) {
+      const entity = this.state.entities.get(podIds[slot]);
+      if (!entity || entity.alive === false || entity.data?.recoverableCargoPod !== true) continue;
+      const amount = Math.max(0, Math.floor(Number(entity.data.amount) || 0));
+      if (!(amount > 0)) continue;
+      entity.data.smugglingDropCacheId = record.id;
+      entity.data.smugglingDropCacheSlot = slot;
+      entity.data.persistenceOwner = 'smugglingDropCaches';
+      entity.data.despawnAt = Number.POSITIVE_INFINITY;
+      entity.ttl = Number.POSITIVE_INFINITY;
+      this._stampHomeSector(entity, record.sectorId);
+      record.pods.push({
+        slot,
+        amount,
+        richLotSource: entity.data.richLotSource ? { ...entity.data.richLotSource } : null,
+      });
+    }
+    return record.pods.length > 0;
+  },
+
+  _onSmugglingDropCacheRecovered(payload) {
+    const entity = payload.podId != null ? this.state.entities.get(payload.podId) : null;
+    const cacheId = entity && entity.data && entity.data.smugglingDropCacheId;
+    if (!cacheId) return false;
+    const own = normalizeSmugglingDropCacheState(this.state.world.smugglingDropCaches);
+    const record = own.records.find((candidate) => candidate.id === cacheId && candidate.status === 'stashed');
+    if (!record) return false;
+    const slot = Math.max(0, Math.floor(Number(entity.data.smugglingDropCacheSlot) || 0));
+    const pod = record.pods.find((candidate) => candidate.slot === slot);
+    if (!pod) return false;
+    pod.amount = Math.max(0, Math.floor(Number(payload.remainingAmount) || 0));
+    record.pods = record.pods.filter((candidate) => candidate.amount > 0);
+    record.remainingQty = record.pods.reduce((sum, candidate) => sum + candidate.amount, 0);
+    if (record.remainingQty <= 0) {
+      record.status = 'recovered';
+      record.recoveredAt = Math.max(0, Number(this.state.simTime) || 0);
+    }
+    this.state.world.smugglingDropCaches = normalizeSmugglingDropCacheState(own);
+    this.bus.emit('smuggling:dropCacheChanged', {
+      cacheId: record.id, status: record.status, remainingQty: record.remainingQty,
+    });
+    return true;
+  },
+
+  _spawnSmugglingDropCaches(sectorId) {
+    if (!sectorId || !this.state.world.smugglingDropCaches) return 0;
+    const own = normalizeSmugglingDropCacheState(this.state.world.smugglingDropCaches);
+    this.state.world.smugglingDropCaches = own;
+    let spawned = 0;
+    for (const record of own.records) {
+      if (record.status !== 'stashed' || record.sectorId !== sectorId || record.remainingQty <= 0) continue;
+      for (const podRecord of record.pods) {
+        const existing = (this.state.entityList || []).find((entity) => entity && entity.alive !== false
+          && entity.data?.smugglingDropCacheId === record.id
+          && Number(entity.data?.smugglingDropCacheSlot) === podRecord.slot);
+        if (existing) continue;
+        const commodity = COMMODITY_BY_ID.get(record.commodityId);
+        const podMass = Math.max(1.5, Math.min(18, (Number(commodity?.massPerU) || 0.5) * podRecord.amount));
+        const radius = Math.max(2.2, Math.min(6.5, 2.2 + Math.sqrt(podRecord.amount) * 0.35));
+        const side = (podRecord.slot - (record.pods.length - 1) * 0.5) * (radius * 2.4);
+        const entity = this.helpers.spawnEntity({
+          type: 'payload',
+          pos: { x: record.fixedPos.x, z: record.fixedPos.z + side },
+          vel: { x: 0, z: 0 },
+          radius, mass: podMass, ttl: Number.POSITIVE_INFINITY, collides: true,
+          physicsBody: {
+            dynamic: true, ccd: true, radius, mass: podMass,
+            inertiaY: 0.5 * podMass * radius * radius,
+            material: 'payload', shape: 'ball',
+          },
+          data: {
+            kind: 'cargo', commodityId: record.commodityId, amount: podRecord.amount,
+            ...(podRecord.richLotSource ? { richLotSource: { ...podRecord.richLotSource } } : {}),
+            jettisonedCargo: true, recoverableCargoPod: true,
+            jettisonPurpose: `smuggling_drop_cache:${record.id}`,
+            smugglingDropCacheId: record.id,
+            smugglingDropCacheSlot: podRecord.slot,
+            persistenceOwner: 'smugglingDropCaches',
+            pickupEmbargoUntil: 0,
+            despawnAt: Number.POSITIVE_INFINITY,
+          },
+        });
+        this._stampHomeSector(entity, sectorId);
+        spawned++;
+      }
+    }
+    return spawned;
+  },
+
+  dropCacheSaleOffers(stationId) {
+    const memory = fixerMemoryFor(this.state);
+    if (!memory.unlocked || memory.homeStationId !== stationId
+      || this.state.ui?.dockedStationId !== stationId || this.state.ui?.docked !== true) return [];
+    const economy = this.registry && this.registry.get ? this.registry.get('economy') : null;
+    return sellableSmugglingDropCaches(this.state).map((record) => {
+      const quote = economy && typeof economy.quote === 'function'
+        ? economy.quote(stationId, record.commodityId, 'sell', record.remainingQty)
+        : null;
+      const base = quote && quote.ok
+        ? quote.total
+        : (Number(COMMODITY_BY_ID.get(record.commodityId)?.basePrice) || 0) * record.remainingQty;
+      return {
+        cacheId: record.id,
+        commodityId: record.commodityId,
+        commodityName: record.commodityName,
+        quantity: record.remainingQty,
+        sectorName: record.sectorName,
+        anchorName: record.anchorName,
+        payoutCr: Math.max(1, Math.round(base * SMUGGLING_DROP_CACHE.locationValueMult)),
+      };
+    });
+  },
+
+  sellDropCacheLocation(cacheId, stationId) {
+    const offer = this.dropCacheSaleOffers(stationId).find((candidate) => candidate.cacheId === cacheId);
+    if (!offer) return { ok: false, reason: 'offer_unavailable' };
+    const own = normalizeSmugglingDropCacheState(this.state.world.smugglingDropCaches);
+    const record = own.records.find((candidate) => candidate.id === cacheId && candidate.status === 'stashed');
+    if (!record) return { ok: false, reason: 'already_settled' };
+    record.status = 'sold';
+    record.soldAt = Math.max(0, Number(this.state.simTime) || 0);
+    record.soldStationId = stationId;
+    record.payoutCr = offer.payoutCr;
+    record.remainingQty = 0;
+    record.pods = [];
+    this.state.world.smugglingDropCaches = normalizeSmugglingDropCacheState(own);
+    for (const entity of [...(this.state.entityList || [])]) {
+      if (entity && entity.alive !== false && entity.data?.smugglingDropCacheId === cacheId) {
+        if (this.helpers && typeof this.helpers.removeEntity === 'function') this.helpers.removeEntity(entity.id);
+        else entity.alive = false;
+      }
+    }
+    this.bus.emit('economy:grantCredits', {
+      amount: offer.payoutCr,
+      reason: `smuggling:drop_cache_location:${record.id}`,
+    });
+    this.bus.emit('smuggling:dropCacheSold', { ...offer, stationId, tick: this.state.tick | 0 });
+    return { ok: true, ...offer, stationId };
+  },
+
   _contactTethysBlackMarket({ poiId, sectorId, completedAt }) {
     const discovery = TETHYS_BLACK_MARKET_DISCOVERY;
     if (poiId !== discovery.poiId || sectorId !== discovery.sectorId) return false;
@@ -4168,6 +4434,9 @@ export const world = {
       frontierRumors: cloneSaveTree(this._frontierRumorState()),
       vestaOreCache: cloneSaveTree(this._vestaOreCacheState()),
       pallasHiddenCache: cloneSaveTree(this._pallasHiddenCacheState()),
+      ...(state.world.smugglingDropCaches ? {
+        smugglingDropCaches: cloneSaveTree(normalizeSmugglingDropCacheState(state.world.smugglingDropCaches)),
+      } : {}),
       cometIce: cloneSaveTree(state.world.cometIce),
       // v11: durable global-space entity records (never frameOrigin / residentSectors / sectorContents).
       records: serializeRecordsBag(ensureWorldRecords(state.world)),
@@ -4207,6 +4476,11 @@ export const world = {
     state.world.frontierRumors = normalizeFrontierRumorState(data.frontierRumors);
     state.world.vestaOreCache = normalizeVestaOreCacheState(data.vestaOreCache);
     state.world.pallasHiddenCache = normalizePallasHiddenCacheState(data.pallasHiddenCache);
+    if (data.smugglingDropCaches) {
+      state.world.smugglingDropCaches = normalizeSmugglingDropCacheState(data.smugglingDropCaches);
+    } else {
+      delete state.world.smugglingDropCaches;
+    }
     const cometCycle = cometPassAt(state.meta && state.meta.seed || 1, state.simTime).cycle;
     state.world.cometIce = normalizeCometIceState(data.cometIce, cometCycle);
     this._cometIceEntityId = null;
@@ -4270,6 +4544,7 @@ export const world = {
     state.world.frontierRumors = normalizeFrontierRumorState(null);
     state.world.vestaOreCache = freshVestaOreCacheState();
     state.world.pallasHiddenCache = freshPallasHiddenCacheState();
+    delete state.world.smugglingDropCaches;
     state.world.cometIce = createCometIceState();
     state.world.records = createEmptyRecordsBag();
     state.world.embodiment = createEmptyEmbodimentCache();

@@ -71,6 +71,25 @@ export const jettisonImpulse = {
       });
       this._pendingPodIds.delete(podId);
     }
+    this._recoverTouchingPods(state);
+  },
+
+  _recoverTouchingPods(state) {
+    const player = state && state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+    if (!player || player.alive === false || !player.pos) return 0;
+    const payloads = state.entityIndex && Array.isArray(state.entityIndex.payloads)
+      ? state.entityIndex.payloads
+      : state.entityList || [];
+    let recovered = 0;
+    for (const pod of payloads) {
+      if (!pod || pod.alive === false || pod.collides === false || pod.data?.recoverableCargoPod !== true) continue;
+      const dx = (Number(pod.pos?.x) || 0) - (Number(player.pos?.x) || 0);
+      const dz = (Number(pod.pos?.z) || 0) - (Number(player.pos?.z) || 0);
+      const contactRadius = Math.max(0, Number(pod.radius) || 0) + Math.max(0, Number(player.radius) || 0) + 0.05;
+      if (dx * dx + dz * dz > contactRadius * contactRadius) continue;
+      if (this._tryRecoverPod(pod, player, { tick: state.tick | 0 })) recovered++;
+    }
+    return recovered;
   },
 
   _onJettison(payload) {
@@ -85,11 +104,12 @@ export const jettisonImpulse = {
       recordImpulseProvenance(pod, {
         actorId: player.id,
         weaponId: 'cargo_pod',
-        tag: 'cargo_jettison',
+        tag: payload.reactionImpulse === false ? 'cargo_stash' : 'cargo_jettison',
         appliedTick: state.tick,
         magnitude: Math.max(0, Number(pod.mass) || 0) * JETTISON_EJECT_SPEED,
       });
     }
+    if (payload.reactionImpulse === false) return;
     if (!massline2Flag('jettisonImpulse')) return;
     const physics = this.helpers && this.helpers.combatPhysics;
     if (!physics || typeof physics.applyImpulse !== 'function') return;
@@ -136,13 +156,19 @@ export const jettisonImpulse = {
       return;
     }
 
+    this._tryRecoverPod(pod, other, payload);
+  },
+
+  _tryRecoverPod(pod, other, payload = {}) {
+    const state = this.state;
+    if (!pod || !other || pod.alive === false || other.alive === false || other.id !== state.playerId) return false;
     const relativeSpeed = Math.hypot(
       (Number(pod.vel && pod.vel.x) || 0) - (Number(other.vel && other.vel.x) || 0),
       (Number(pod.vel && pod.vel.z) || 0) - (Number(other.vel && other.vel.z) || 0),
     );
-    if (relativeSpeed > POD_RECOVERY_MAX_REL_SPEED) return;
+    if (relativeSpeed > POD_RECOVERY_MAX_REL_SPEED) return false;
     const amount = Math.max(0, Math.floor(Number(pod.data.amount) || 0));
-    if (amount <= 0) return;
+    if (amount <= 0) return false;
     const collection = {
       pickupId: pod.id,
       collectorId: other.id,
@@ -154,7 +180,7 @@ export const jettisonImpulse = {
     };
     this.bus.emit('pickup:collected', collection);
     const accepted = Math.max(0, Math.floor(Number(collection.acceptedAmount) || 0));
-    if (accepted <= 0) return;
+    if (accepted <= 0) return false;
     pod.data.amount = Math.max(0, amount - accepted);
     if (pod.data.amount <= 0) pod.alive = false;
     this.bus.emit('cargo:podRecovered', {
@@ -164,6 +190,7 @@ export const jettisonImpulse = {
       remainingAmount: pod.data.amount,
       tick: Number.isFinite(payload.tick) ? payload.tick : state.tick | 0,
     });
+    return true;
   },
 
   _rebuildPendingPods() {

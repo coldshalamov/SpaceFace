@@ -14,6 +14,137 @@ export const CUSTOMS_SCAN_CONE = Object.freeze({
   decoyCaptureRadiusWU: 92,
 });
 
+export const SMUGGLING_DROP_CACHE = Object.freeze({
+  schemaVersion: 1,
+  anchorRangeWU: 118,
+  maxRelativeSpeedWUPerS: 8,
+  pickupEmbargoS: 2.5,
+  activeLimit: 8,
+  historyLimit: 16,
+  locationValueMult: 0.68,
+});
+
+const DROP_CACHE_STATUSES = new Set(['stashed', 'sold', 'recovered', 'lost']);
+
+function safeRef(value, max = 160) {
+  return String(value == null ? '' : value).trim().replace(/[^a-zA-Z0-9:_-]+/g, '_').slice(0, max);
+}
+
+function safeLabel(value, fallback = '') {
+  const text = String(value == null ? '' : value).replace(/[\u0000-\u001f]+/g, ' ').trim().slice(0, 96);
+  return text || fallback;
+}
+
+function whole(value, fallback = 0) {
+  const n = Math.floor(Number(value));
+  return Number.isFinite(n) ? Math.max(0, n) : fallback;
+}
+
+function safePoint(value) {
+  return {
+    x: finite(value && value.x),
+    z: finite(value && value.z),
+  };
+}
+
+function safeProvenance(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const out = {};
+  for (const key of Object.keys(value).sort().slice(0, 24)) {
+    const safeKey = safeRef(key, 48);
+    const raw = value[key];
+    if (!safeKey || raw == null) continue;
+    if (typeof raw === 'string') out[safeKey] = raw.slice(0, 160);
+    else if (typeof raw === 'number' && Number.isFinite(raw)) out[safeKey] = raw;
+    else if (typeof raw === 'boolean') out[safeKey] = raw;
+  }
+  return Object.keys(out).length ? out : null;
+}
+
+function normalizeDropCachePod(value, index) {
+  const amount = whole(value && value.amount);
+  if (!(amount > 0)) return null;
+  return {
+    slot: whole(value && value.slot, index),
+    amount,
+    richLotSource: safeProvenance(value && value.richLotSource),
+  };
+}
+
+function normalizeDropCacheRecord(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const id = safeRef(value.id);
+  const commodityId = safeRef(value.commodityId, 96);
+  const sectorId = safeRef(value.sectorId, 96);
+  const anchorId = safeRef(value.anchorId, 96);
+  if (!id || !commodityId || !sectorId || !anchorId) return null;
+  const pods = (Array.isArray(value.pods) ? value.pods : [])
+    .map(normalizeDropCachePod)
+    .filter(Boolean)
+    .slice(0, 8);
+  const podTotal = pods.reduce((sum, pod) => sum + pod.amount, 0);
+  const quantity = whole(value.quantity, podTotal);
+  const remainingQty = Math.min(quantity, whole(value.remainingQty, podTotal || quantity));
+  if (!(quantity > 0)) return null;
+  const status = DROP_CACHE_STATUSES.has(value.status) ? value.status : 'stashed';
+  return {
+    schemaVersion: SMUGGLING_DROP_CACHE.schemaVersion,
+    id,
+    owner: value.owner === 'external' ? 'external' : 'player',
+    status,
+    sectorId,
+    sectorName: safeLabel(value.sectorName, sectorId),
+    anchorId,
+    anchorName: safeLabel(value.anchorName, 'unnamed rock'),
+    fixedPos: safePoint(value.fixedPos),
+    commodityId,
+    commodityName: safeLabel(value.commodityName, commodityId),
+    quantity,
+    remainingQty,
+    pods: pods.length ? pods : (status === 'stashed' && remainingQty > 0
+      ? [{ slot: 0, amount: remainingQty, richLotSource: null }]
+      : []),
+    createdAt: Math.max(0, finite(value.createdAt)),
+    soldAt: Math.max(0, finite(value.soldAt)),
+    soldStationId: safeRef(value.soldStationId, 96) || null,
+    payoutCr: whole(value.payoutCr),
+    recoveredAt: Math.max(0, finite(value.recoveredAt)),
+  };
+}
+
+export function createSmugglingDropCacheState() {
+  return { schemaVersion: SMUGGLING_DROP_CACHE.schemaVersion, nextSequence: 1, records: [] };
+}
+
+export function normalizeSmugglingDropCacheState(value) {
+  const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  const records = [];
+  const seen = new Set();
+  for (const raw of Array.isArray(source.records) ? source.records : []) {
+    const record = normalizeDropCacheRecord(raw);
+    if (!record || seen.has(record.id)) continue;
+    seen.add(record.id);
+    records.push(record);
+  }
+  records.sort((a, b) => a.createdAt - b.createdAt || a.id.localeCompare(b.id));
+  while (records.length > SMUGGLING_DROP_CACHE.historyLimit) {
+    const completed = records.findIndex((record) => record.status !== 'stashed');
+    records.splice(completed >= 0 ? completed : 0, 1);
+  }
+  return {
+    schemaVersion: SMUGGLING_DROP_CACHE.schemaVersion,
+    nextSequence: Math.max(1, whole(source.nextSequence, 1)),
+    records,
+  };
+}
+
+export function sellableSmugglingDropCaches(state) {
+  const source = state && state.world && state.world.smugglingDropCaches;
+  const records = source && Array.isArray(source.records) ? source.records : [];
+  return records.filter((record) => record && record.owner === 'player'
+    && record.status === 'stashed' && whole(record.remainingQty) > 0);
+}
+
 const INPUT_EPSILON = 0.08;
 
 function finite(value, fallback = 0) {

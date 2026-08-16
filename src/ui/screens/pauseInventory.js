@@ -105,15 +105,45 @@ export function executePauseCargoJettison(ctx, commodityId, qty) {
   return owner.jettison(commodityId, Math.max(1, Math.floor(Number(qty) || 1)), { purpose: 'pause_inventory' });
 }
 
-function cargoHtml(model) {
+export function executePauseCargoStash(ctx, commodityId, qty) {
+  if (!ctx?.state || ctx.state.mode !== 'paused' || isUnsellableCargo(ctx.state, commodityId)) {
+    return { ok: false, reason: 'unavailable' };
+  }
+  const owner = ctx.registry?.get?.('world') || ctx.world || null;
+  if (!owner || typeof owner.stashSmugglingDropCache !== 'function') {
+    return { ok: false, reason: 'owner_unavailable' };
+  }
+  return owner.stashSmugglingDropCache(commodityId, Math.max(1, Math.floor(Number(qty) || 1)));
+}
+
+function stashReason(reason) {
+  switch (reason) {
+    case 'no_nearby_rock': return 'Fly within 118 WU of a physical rock.';
+    case 'relative_speed': return 'Match the rock below 8 WU/s first.';
+    case 'cache_limit': return 'Eight active caches already exist.';
+    case 'cargo_locked': return 'Contract and personal cargo cannot be cached.';
+    case 'pause_required': return 'Pause flight before caching cargo.';
+    default: return 'Cache controls require a settled rock-side flight position.';
+  }
+}
+
+function cargoHtml(model, ctx) {
   if (!model.cargoRows.length) return '<div class="sf-pause-inventory__empty">Hold empty. Mine, salvage, or buy cargo to fill it.</div>';
-  return model.cargoRows.map((row) => `<article class="sf-pause-inventory__row${row.locked ? ' is-locked' : ''}">` +
+  const world = ctx?.registry?.get?.('world') || ctx?.world || null;
+  return model.cargoRows.map((row) => {
+    const cache = !row.locked && world && typeof world.smugglingDropCacheEligibility === 'function'
+      ? world.smugglingDropCacheEligibility(row.id, row.qty)
+      : { ok: false, reason: row.locked ? 'cargo_locked' : 'owner_unavailable' };
+    return `<article class="sf-pause-inventory__row${row.locked ? ' is-locked' : ''}">` +
     `<div class="sf-pause-inventory__title"><b>${escapeHtml(row.name)}</b><span>${row.qty}u</span></div>` +
-    `<div class="sf-pause-inventory__meta">${row.locked ? 'Protected personal or contract cargo. It stays aboard.' : 'Physical cargo. Jettisoned units remain recoverable in space.'}</div>` +
+    `<div class="sf-pause-inventory__meta">${row.locked ? 'Protected personal or contract cargo. It stays aboard.' : cache.ok ? 'Rock-side cache ready. Cached pods remain physical and recoverable.' : stashReason(cache.reason)}</div>` +
     `<div class="sf-pause-inventory__actions">` +
       `<button class="sf-btn" type="button" data-jet="${escapeHtml(row.id)}" data-qty="1" ${row.locked ? 'disabled' : ''}>Jettison 1</button>` +
       `<button class="sf-btn" type="button" data-jet-all="${escapeHtml(row.id)}" data-qty="${row.qty}" ${row.locked ? 'disabled' : ''}>Jettison all</button>` +
-    `</div></article>`).join('');
+      `<button class="sf-btn" type="button" data-cache="${escapeHtml(row.id)}" data-qty="1" ${cache.ok ? '' : 'disabled'}>Cache 1</button>` +
+      `<button class="sf-btn" type="button" data-cache-all="${escapeHtml(row.id)}" data-qty="${row.qty}" ${cache.ok ? '' : 'disabled'}>Cache all</button>` +
+    `</div></article>`;
+  }).join('');
 }
 
 function modulesHtml(model) {
@@ -137,7 +167,7 @@ function render(ctx) {
   if (!mounted || mounted.ctx !== ctx) return;
   const model = pauseInventoryModel(ctx.state);
   mounted.headline.textContent = `${model.shipName} · hold ${model.cargoUsed}/${model.cargoCap}u · ${model.inventoryRows.length} stored systems`;
-  mounted.cargo.innerHTML = cargoHtml(model);
+  mounted.cargo.innerHTML = cargoHtml(model, ctx);
   mounted.modules.innerHTML = modulesHtml(model);
 }
 
@@ -191,18 +221,32 @@ export const pauseInventoryScreen = {
       }
       const all = event.target.closest('[data-jet-all]');
       const one = event.target.closest('[data-jet]');
-      const button = all || one;
+      const cacheAll = event.target.closest('[data-cache-all]');
+      const cacheOne = event.target.closest('[data-cache]');
+      const button = all || one || cacheAll || cacheOne;
       if (!button) return;
-      const commodityId = button.getAttribute(all ? 'data-jet-all' : 'data-jet');
+      const isCache = !!(cacheAll || cacheOne);
+      const commodityId = button.getAttribute(all ? 'data-jet-all'
+        : one ? 'data-jet'
+          : cacheAll ? 'data-cache-all' : 'data-cache');
       const qty = Math.max(1, Number(button.getAttribute('data-qty')) || 1);
-      if (all) {
+      if (all || cacheAll) {
         const ok = await confirm({
-          title: `Jettison all ${nameOf(commodityId)}?`,
-          body: `${qty}u leaves the hold as recoverable physical cargo. This cannot be undone from the menu.`,
-          confirmLabel: 'Jettison all',
-          danger: true,
+          title: `${isCache ? 'Cache' : 'Jettison'} all ${nameOf(commodityId)}?`,
+          body: isCache
+            ? `${qty}u leaves the hold as a recoverable pod tucked against the nearby rock.`
+            : `${qty}u leaves the hold as recoverable physical cargo. This cannot be undone from the menu.`,
+          confirmLabel: isCache ? 'Cache all' : 'Jettison all',
+          danger: !isCache,
         });
         if (!ok) return;
+      }
+      if (isCache) {
+        const result = executePauseCargoStash(ctx, commodityId, qty);
+        if (result.ok) ctx.bus?.emit?.('toast', { text: `Cached ${result.quantity}u ${nameOf(commodityId)} at ${result.anchorName}`, kind: 'success', ttl: 3 });
+        else ctx.bus?.emit?.('toast', { text: stashReason(result.reason), kind: 'warn', ttl: 2 });
+        render(ctx);
+        return;
       }
       const dumped = executePauseCargoJettison(ctx, commodityId, qty);
       if (dumped > 0) ctx.bus?.emit?.('toast', { text: `Jettisoned ${dumped}u ${nameOf(commodityId)}`, kind: 'warn', ttl: 2 });

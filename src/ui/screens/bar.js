@@ -53,6 +53,7 @@ import {
   ORRIN_WITNESS_SUBMISSION_EVENT,
 } from '../../data/orrinWitnessCase.js';
 import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
+import { sellableSmugglingDropCaches } from '../../data/smugglingStealth.js';
 
 /* ── lookup tables ──────────────────────────────────────────────────── */
 
@@ -275,10 +276,15 @@ function fixerContactForStation(stationId, state = {}) {
     : memory.purchaseCount > 0
       ? `${memory.purchaseCount} cache lead${memory.purchaseCount === 1 ? '' : 's'} sold. ${openCount} still open.`
       : 'She marked your first paid rumor card. Now she sells the source.';
+  const stashed = sellableSmugglingDropCaches(state);
   return {
     ...FIXER_CONTACT,
     line,
     choices: [
+      ...(stashed.length ? [{
+        id: 'sell_drop',
+        label: `Sell drop coordinates (${stashed[0].commodityName}, ${stashed[0].remainingQty}u)`,
+      }] : []),
       { id: 'cache', label: 'Any cache work?' },
       { id: 'history', label: 'How did the last lead settle?' },
       { id: 'bye', label: 'Not today.' },
@@ -842,6 +848,18 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
   const state = ctx.state || {};
   if (contact && contact.id === FIXER_CONTACT.id) {
     const memory = fixerMemoryFor(state);
+    if (choiceId === 'sell_drop') {
+      const world = ctx.registry?.get?.('world') || ctx.world || null;
+      const offer = world && typeof world.dropCacheSaleOffers === 'function'
+        ? world.dropCacheSaleOffers(stationId)[0]
+        : null;
+      const sale = offer && typeof world.sellDropCacheLocation === 'function'
+        ? world.sellDropCacheLocation(offer.cacheId, stationId)
+        : null;
+      return sale && sale.ok
+        ? { text: `${sale.payoutCr} credits. I bought the rock, not your history. Coordinates settle once.`, dropCacheSale: sale }
+        : { text: 'No live drop is yours to sell from this berth.' };
+    }
     if (choiceId === 'cache') {
       const offer = fixerCacheOffer(state, stationId);
       return offer
