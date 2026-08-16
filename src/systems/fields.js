@@ -154,6 +154,32 @@ export const fields = {
     this._clearAll(FIELD_END_REASONS.cleared, 'new_game');
   },
 
+  /** Field-owner reload seam for one crafted emitter charge. It never touches cargo. */
+  reloadPlayerEmitter(kind) {
+    if (kind !== 'well' && kind !== 'repulsor') return { ok: false, reason: 'invalid_emitter' };
+    if (!fieldsFlag('enabled')) return { ok: false, reason: 'fields_disabled' };
+    const state = this.state;
+    if (!state || (state.mode !== 'flight' && state.mode !== 'paused')) return { ok: false, reason: 'not_in_flight' };
+    if (state.ui && state.ui.docked === true) return { ok: false, reason: 'docked' };
+    const rt = ensureRuntime(state);
+    const now = nowOf(state);
+    const readyAt = Number(rt.cooldowns[kind]) || 0;
+    if (readyAt <= now) return { ok: false, reason: 'already_ready', kind, readyAt };
+    rt.cooldowns[kind] = now;
+    const receipt = {
+      ok: true,
+      reason: null,
+      kind,
+      secondsRecovered: readyAt - now,
+      readyAt: now,
+      tick: state.tick | 0,
+      t: now,
+    };
+    this.bus.emit('fields:reloaded', receipt);
+    this.bus.emit('toast', { text: `${kind === 'well' ? 'Well' : 'Repulsor'} emitter reloaded`, kind: 'success', ttl: 2 });
+    return receipt;
+  },
+
   update(dt, state) {
     const rt = ensureRuntime(state);
     // Golden-safety gate (layer b): strict no-op unless enabled (OFF under node).

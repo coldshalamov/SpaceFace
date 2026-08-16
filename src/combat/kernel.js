@@ -48,6 +48,7 @@ export function createCombatKernel(ctx, options = {}) {
     },
   });
   const routeHullRepair = (request = {}) => repairHull(request);
+  const routeFieldRepair = (request = {}) => repairField(request);
   const actions = createActionService(context, attachments, routeDamage);
   const subscriptions = [];
   let sortedCacheTick = -1;
@@ -73,6 +74,7 @@ export function createCombatKernel(ctx, options = {}) {
     subscriptions.push(bus.on('combat:requestAction', (payload) => actions.requestAction(payload || {})));
     subscriptions.push(bus.on('combat:routeDamage', (payload) => routeDamage(payload || {})));
     subscriptions.push(bus.on('combat:routeHullRepair', (payload) => routeHullRepair(payload || {})));
+    subscriptions.push(bus.on('combat:routeFieldRepair', (payload) => routeFieldRepair(payload || {})));
     subscriptions.push(bus.on('combat:repairSubsystem', (payload) => {
       if (payload) repair(payload.entityId, payload.subsystemId, payload.amount, payload.reason);
     }));
@@ -82,6 +84,7 @@ export function createCombatKernel(ctx, options = {}) {
     requestCombatAction: (request) => actions.requestAction(request || {}),
     routeCombatDamage: (request) => routeDamage(request || {}),
     routeCombatHullRepair: (request) => routeHullRepair(request || {}),
+    routeCombatFieldRepair: (request) => routeFieldRepair(request || {}),
     inspectCombat: (request) => inspect(request || {}),
     repairCombatSubsystem: (request) => repair(request && request.entityId, request && request.subsystemId, request && request.amount, request && request.reason),
     getCombatCapabilities: (entityId) => capabilities(entityId),
@@ -96,6 +99,7 @@ export function createCombatKernel(ctx, options = {}) {
     statuses,
     routeDamage,
     routeHullRepair,
+    routeFieldRepair,
     prePhysics,
     postPhysics,
     reconcilePhysicsAttachments,
@@ -240,6 +244,51 @@ export function createCombatKernel(ctx, options = {}) {
     };
     appendCombatTrace(state.combat, state.tick, 'combat.hullRepair', receipt);
     if (bus) bus.emit('combat:hullRepaired', receipt);
+    return receipt;
+  }
+
+  /**
+   * Combat-owned one-use field patch. The crafting owner proves and consumes the physical kit;
+   * combat alone writes hull. Patches restore hull only, are capped well below berth service, and
+   * fail while a hostile is close enough to make pause-menu healing an in-fight exploit.
+   */
+  function repairField(request = {}) {
+    const target = getEntity(request.targetId);
+    const amount = Math.max(0, Math.min(18, Number(request.amount) || 0));
+    if (!(amount > 0)) return { ok: false, reason: 'invalid_amount', applied: 0 };
+    if (!target || target.alive === false || target.type !== 'ship' || target.id !== state.playerId) {
+      return { ok: false, reason: 'invalid_player_ship', applied: 0 };
+    }
+    if (state.mode !== 'flight' && state.mode !== 'paused') return { ok: false, reason: 'not_in_flight', applied: 0 };
+    if (state.ui && state.ui.docked === true) return { ok: false, reason: 'docked', applied: 0 };
+    const threatRadiusSq = 480 * 480;
+    for (const entity of state.entityList || []) {
+      if (!entity || entity.alive === false || (entity.type !== 'ship' && entity.type !== 'drone')) continue;
+      if (entity.team !== 1 || entity.id === target.id) continue;
+      const dx = Number(entity.pos?.x || 0) - Number(target.pos?.x || 0);
+      const dz = Number(entity.pos?.z || 0) - Number(target.pos?.z || 0);
+      if (dx * dx + dz * dz <= threatRadiusSq) return { ok: false, reason: 'hostiles_nearby', applied: 0 };
+    }
+    const before = Number(target.hull) || 0;
+    const missing = Math.max(0, (Number(target.hullMax) || 0) - before);
+    const applied = Math.min(amount, missing);
+    if (!(applied > 0)) return { ok: false, reason: 'hull_intact', applied: 0 };
+    target.hull = before + applied;
+    const receipt = {
+      ok: true,
+      reason: null,
+      targetId: target.id,
+      source: String(request.source || 'field_patch'),
+      applied,
+      before,
+      after: target.hull,
+      hullMax: target.hullMax,
+      armorRestored: 0,
+      tick: state.tick | 0,
+      t: Number(state.simTime) || 0,
+    };
+    appendCombatTrace(state.combat, state.tick, 'combat.fieldRepair', receipt);
+    if (bus) bus.emit('combat:fieldRepaired', receipt);
     return receipt;
   }
 

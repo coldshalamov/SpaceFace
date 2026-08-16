@@ -1745,6 +1745,41 @@ export const economy = {
   // -------------------------------------------------------------------------------------------
   // SERVICES — refuel / repair / ammo / hull wash / restitution (ui:service {type, amount}).
   // -------------------------------------------------------------------------------------------
+  /**
+   * Economy-owned field refuel. Crafting proves and consumes the canister; this authority owns the
+   * fuel mutation and deliberately restores only a bounded 25u, so a repair/refuel berth remains
+   * the efficient full-service alternative.
+   */
+  applyFieldFuel(request = {}) {
+    const state = this.state;
+    if (!state || (state.mode !== 'flight' && state.mode !== 'paused')) {
+      return { ok: false, reason: 'not_in_flight', applied: 0 };
+    }
+    if (state.ui && state.ui.docked === true) return { ok: false, reason: 'docked', applied: 0 };
+    const fuel = state.fuel || (state.fuel = { current: 0, max: 100 });
+    const missing = Math.max(0, (Number(fuel.max) || 0) - (Number(fuel.current) || 0));
+    const requested = Math.max(0, Math.min(25, Number(request.amount) || 0));
+    const applied = Math.min(missing, requested);
+    if (!(applied > 0)) return { ok: false, reason: missing > 0 ? 'invalid_amount' : 'tank_full', applied: 0 };
+    const before = Number(fuel.current) || 0;
+    fuel.current = before + applied;
+    const receipt = {
+      ok: true,
+      reason: null,
+      source: String(request.source || 'field_fuel'),
+      applied,
+      before,
+      after: fuel.current,
+      max: fuel.max,
+      tick: state.tick | 0,
+      t: Number(state.simTime) || 0,
+    };
+    this.bus.emit('fuel:changed', { current: fuel.current, max: fuel.max });
+    this.bus.emit('fuel:fieldLoaded', receipt);
+    this.bus.emit('toast', { text: `Field fuel loaded (+${round(applied)}u)`, kind: 'success', ttl: 2 });
+    return receipt;
+  },
+
   transferFuelTender(p) {
     const reject = (reason) => ({ accepted: false, reason, amount: 0 });
     const state = this.state;

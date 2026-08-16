@@ -164,6 +164,109 @@ export const BLUEPRINTS = [
     outputs: { kind: 'ship', id: 'ship_drifter', qty: 1 },
     desc: 'Build a Drifter — a versatile multirole hull for the independent captain.',
   },
+
+  // ===================================================================================
+  // FIELD CHAINS — two or three decisions from found material to something the ship can use.
+  // These recipes do not require a station. Their unlocks are earned by production events from
+  // mining, salvage, reputation, named aces, and physical caches; no vendor sells blueprint flags.
+  // Every output remains a normal commodity/module/weapon with an ordinary market alternative.
+  // ===================================================================================
+  {
+    id: 'bp_field_explosive_compound', name: 'Mill Explosive Compound', category: 'refine', tier: 1,
+    stationType: 'fab', requiresTech: null, timeS: 0, fieldCraftable: true, fieldChain: 'ordnance',
+    unlock: { source: 'mining', label: 'Mine any physical ore deposit' },
+    inputs: { cmdty_ore_iron: 2 },
+    outputs: { kind: 'commodity', id: 'cmdty_explosive_compound', qty: 2 },
+    desc: 'Mill mined iron into a stable breaching compound. Military and black-market suppliers remain the cash alternative.',
+  },
+  {
+    id: 'bp_field_impulse_charges', name: 'Pack Impulse Charges', category: 'assemble', tier: 1,
+    stationType: 'fab', requiresTech: null, timeS: 0, fieldCraftable: true, fieldChain: 'ordnance',
+    unlock: { source: 'mining', label: 'Mine any physical ore deposit' },
+    inputs: { cmdty_explosive_compound: 1, cmdty_ore_iron: 1 },
+    outputs: { kind: 'commodity', id: 'cmdty_impulse_charge', qty: 2 },
+    desc: 'Pack a pair of live Y-throw / R-detonate charges from the compound you milled in flight.',
+  },
+  {
+    id: 'bp_field_munitions', name: 'Press Missile Munitions', category: 'assemble', tier: 2,
+    stationType: 'fab', requiresTech: null, timeS: 0, fieldCraftable: true, fieldChain: 'ordnance',
+    unlock: { source: 'ace', label: 'Defeat a named ace' },
+    inputs: { cmdty_explosive_compound: 1, cmdty_refined_metals: 1 },
+    outputs: { kind: 'commodity', id: 'cmdty_munitions', qty: 3 },
+    desc: 'Press three rack-compatible rounds. Military resupply remains faster when credits are plentiful.',
+  },
+  {
+    id: 'bp_field_vector_mine', name: 'Assemble Vector Mine', category: 'assemble', tier: 2,
+    stationType: 'fab', requiresTech: null, timeS: 0, fieldCraftable: true, fieldChain: 'ordnance',
+    unlock: { source: 'ace', label: 'Defeat a named ace' },
+    inputs: { cmdty_explosive_compound: 2, cmdty_alloys: 1, cmdty_electronics: 1 },
+    outputs: { kind: 'weapon', id: 'wpn_vector_mine_m', qty: 1 },
+    desc: 'Build the deployable Vector Mine weapon from the same ordnance stock; military yards also sell it.',
+  },
+  {
+    id: 'bp_field_refined_fuel', name: 'Crack Refined Fuel', category: 'refine', tier: 1,
+    stationType: 'refinery', requiresTech: null, timeS: 0, fieldCraftable: true, fieldChain: 'fuel',
+    unlock: { source: 'faction_rep', label: 'Earn positive faction reputation' },
+    inputs: { cmdty_volatiles: 2 },
+    outputs: { kind: 'commodity', id: 'cmdty_fuel_cells', qty: 2 },
+    desc: 'Crack mined volatiles into standard fuel cells, trading time and cargo room for the refinery fee.',
+  },
+  {
+    id: 'bp_field_jump_fuel', name: 'Seal Jump Fuel Canister', category: 'assemble', tier: 1,
+    stationType: 'refinery', requiresTech: null, timeS: 0, fieldCraftable: true, fieldChain: 'fuel',
+    unlock: { source: 'faction_rep', label: 'Earn positive faction reputation' },
+    inputs: { cmdty_fuel_cells: 2 },
+    outputs: { kind: 'commodity', id: 'cmdty_jump_fuel_canister', qty: 1 },
+    desc: 'Seal refined cells into one field-loadable jump canister. Dockside refuel remains more efficient.',
+  },
+  {
+    id: 'bp_field_boost_tank', name: 'Assemble Boost Tank', category: 'assemble', tier: 2,
+    stationType: 'fab', requiresTech: null, timeS: 0, fieldCraftable: true, fieldChain: 'fuel',
+    unlock: { source: 'faction_rep', label: 'Earn positive faction reputation' },
+    inputs: { cmdty_fuel_cells: 3, cmdty_alloys: 2, cmdty_electronics: 1 },
+    outputs: { kind: 'module', id: 'mod_afterburner_m', qty: 1 },
+    desc: 'Turn refined fuel and controls into an Afterburner M boost tank; outfitting markets remain the instant alternative.',
+  },
+  {
+    id: 'bp_field_tether_cable', name: 'Braid Massline Cable', category: 'refine', tier: 1,
+    stationType: 'fab', requiresTech: null, timeS: 0, fieldCraftable: true, fieldChain: 'tether',
+    unlock: { source: 'salvage', label: 'Complete a physical salvage recovery' },
+    inputs: { cmdty_alloys: 1, cmdty_electronics: 1 },
+    outputs: { kind: 'commodity', id: 'cmdty_tether_cable', qty: 2 },
+    desc: 'Braid alloy and control wire into load-bearing cable sold by mining and fabrication markets.',
+  },
+  {
+    id: 'bp_field_winch_kit', name: 'Assemble Winch Kit', category: 'assemble', tier: 1,
+    stationType: 'fab', requiresTech: null, timeS: 0, fieldCraftable: true, fieldChain: 'tether',
+    unlock: { source: 'salvage', label: 'Complete a physical salvage recovery' },
+    inputs: { cmdty_tether_cable: 2, cmdty_control_unit: 1 },
+    outputs: { kind: 'module', id: 'mod_winch_hd', qty: 1 },
+    desc: 'Build a Heavy-Duty Winch from recovered practice; ship outfitters still stock the finished kit.',
+  },
+  {
+    id: 'bp_field_massline_spool', name: 'Assemble Industrial Spool', category: 'assemble', tier: 2,
+    stationType: 'fab', requiresTech: null, timeS: 0, fieldCraftable: true, fieldChain: 'tether',
+    unlock: { source: 'salvage', label: 'Complete a physical salvage recovery' },
+    inputs: { cmdty_tether_cable: 3, cmdty_control_unit: 2, cmdty_alloys: 2 },
+    outputs: { kind: 'module', id: 'mod_massline_spool_m', qty: 1 },
+    desc: 'Wind a medium industrial spool without inventing a second tether system or fitting path.',
+  },
+  {
+    id: 'bp_field_emitter_charge', name: 'Tune Field Emitter Charges', category: 'assemble', tier: 2,
+    stationType: 'fab', requiresTech: null, timeS: 0, fieldCraftable: true, fieldChain: 'field_tech',
+    unlock: { source: 'cache', label: 'Resolve a physical cache' },
+    inputs: { cmdty_crystal_lumin: 1, cmdty_electronics: 1 },
+    outputs: { kind: 'commodity', id: 'cmdty_field_emitter_charge', qty: 2 },
+    desc: 'Tune two well/repulsor reloads. Research and military markets remain the purchase route.',
+  },
+  {
+    id: 'bp_field_patch_kit', name: 'Fold Field Patch Kit', category: 'assemble', tier: 1,
+    stationType: 'fab', requiresTech: null, timeS: 0, fieldCraftable: true, fieldChain: 'repairs',
+    unlock: { source: 'salvage', label: 'Complete a physical salvage recovery' },
+    inputs: { cmdty_scrap_metal: 2 },
+    outputs: { kind: 'commodity', id: 'cmdty_patch_kit', qty: 1 },
+    desc: 'Fold scrap into a one-use hull patch. It restores less than a paid repair berth and cannot replace armor.',
+  },
 ];
 
 // Quick lookup maps (populated by the crafting system on init).

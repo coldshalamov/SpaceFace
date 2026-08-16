@@ -36,6 +36,10 @@ function stationType(ctx) {
 function facilityName(type) { return FACILITY_LABEL[type] || `${String(type || 'specialist')} station`; }
 
 function readiness(bp, state, stnType) {
+  const learned = state && state.crafting && state.crafting.unlockedBlueprints;
+  if (bp.unlock && (!Array.isArray(learned) || !learned.includes(bp.id))) {
+    return { state: 'blueprint', label: 'Earn blueprint' };
+  }
   if (bp.requiresTech && !researched(state).has(bp.requiresTech)) return { state: 'tech', label: 'Tech locked' };
   if (bp.stationType && stnType && bp.stationType !== stnType) return { state: 'station', label: `Requires ${facilityName(bp.stationType)}` };
   const it = items(state);
@@ -126,6 +130,11 @@ export function createIndustryScreen(ctx) {
     const queueBp = queue && BLUEPRINTS.find((item) => item.id === queue.bpId);
     const progress = queue && queue.total > 0 ? Math.max(0, Math.min(1, (Number(queue.elapsed) || 0) / queue.total)) : 0;
     const notes = [];
+    if (bp.unlock) {
+      const known = Array.isArray(state?.crafting?.unlockedBlueprints)
+        && state.crafting.unlockedBlueprints.includes(bp.id);
+      notes.push({ ok: known, text: known ? 'Blueprint learned through play' : `Learn through play: ${bp.unlock.label}` });
+    }
     if (bp.requiresTech) notes.push({ ok: researched(state).has(bp.requiresTech), text: 'Tech: ' + String(bp.requiresTech).replace(/^tech_/, '').replace(/_/g, ' ') });
     if (bp.stationType) {
       const matches = !stn || bp.stationType === stn;
@@ -168,7 +177,11 @@ export function createIndustryScreen(ctx) {
     setTimeout(() => renderAll(ctx.state || {}), 80);
   });
   const onCraftChanged = () => renderAll(ctx.state || {});
-  if (ctx.bus && ctx.bus.on) { ctx.bus.on('craft:complete', onCraftChanged); ctx.bus.on('craft:queueChanged', onCraftChanged); }
+  if (ctx.bus && ctx.bus.on) {
+    ctx.bus.on('craft:complete', onCraftChanged);
+    ctx.bus.on('craft:queueChanged', onCraftChanged);
+    ctx.bus.on('craft:blueprintsUnlocked', onCraftChanged);
+  }
 
   return {
     el,
@@ -187,6 +200,7 @@ export function createIndustryScreen(ctx) {
       if (ctx.bus && ctx.bus.off) {
         ctx.bus.off('craft:complete', onCraftChanged);
         ctx.bus.off('craft:queueChanged', onCraftChanged);
+        ctx.bus.off('craft:blueprintsUnlocked', onCraftChanged);
       }
     },
   };

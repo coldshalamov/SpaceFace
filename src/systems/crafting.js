@@ -29,6 +29,20 @@ const DEFAULT_TIME_S = {
 const QUEUE_CAPACITY = 1; // one slot per station — capacity IS the strategic constraint
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const MODULE_BY_ID = new Map(MODULES.map((m) => [m.id, m]));
+const FIELD_BLUEPRINTS = BLUEPRINTS.filter((bp) => bp.fieldCraftable === true);
+const FIELD_STATION_ID = '__field_fabricator__';
+
+function normalizeUnlocked(raw) {
+  const known = new Set(FIELD_BLUEPRINTS.map((bp) => bp.id));
+  const values = Array.isArray(raw) ? raw : [];
+  return [...new Set(values.filter((id) => typeof id === 'string' && known.has(id)))].sort();
+}
+
+function unlockHint(bp) {
+  return bp && bp.unlock && bp.unlock.label
+    ? String(bp.unlock.label)
+    : 'Discover this blueprint through play';
+}
 
 function registryName(map, id) {
   const entry = map.get(id);
@@ -57,6 +71,9 @@ export function craftingMaterialBlockerText(bp, materials = []) {
 
 function buildDuration(bp) {
   if (!bp) return 0;
+  // The compact field kit is deliberately an immediate decision surface: the player already paid
+  // the material and blueprint cost, and the pause screen must not disguise a hidden idle queue.
+  if (bp.fieldCraftable === true) return Math.max(0, Number(bp.timeS) || 0);
   if (bp.timeS && bp.timeS > 0) return bp.timeS;
   return DEFAULT_TIME_S[bp.category] || 0;
 }
@@ -95,8 +112,33 @@ export const crafting = {
     this.ctx = ctx;
     // expose helpers for the UI to call without reaching through ctx
     ctx.crafting = this;
-    // Build queues live here: { [stationId]: { bpId, elapsed, total, productSpec } | null }
-    if (!this.state.crafting) this.state.crafting = { queues: {} };
+    // Build queues live here: { [stationId]: { bpId, elapsed, total, productSpec } | null }.
+    // Blueprint knowledge is a compact durable list; vendor inventory never writes it.
+    if (!this.state.crafting) this.state.crafting = { queues: {}, unlockedBlueprints: [] };
+    if (!this.state.crafting.queues || typeof this.state.crafting.queues !== 'object') this.state.crafting.queues = {};
+    this.state.crafting.unlockedBlueprints = normalizeUnlocked(this.state.crafting.unlockedBlueprints);
+
+    if (Array.isArray(this._unsubscribers)) {
+      for (const off of this._unsubscribers) { try { off(); } catch (_) {} }
+    }
+    this._unsubscribers = [];
+    const listen = (event, fn) => {
+      if (!this.bus || typeof this.bus.on !== 'function') return;
+      const off = this.bus.on(event, fn);
+      if (typeof off === 'function') this._unsubscribers.push(off);
+    };
+    // The public unlock routes are production receipts from physical play. Mining opens the
+    // starter ordnance loop; the four plan-named sources open the specialist chains.
+    listen('mining:yield', (p) => {
+      if (p && p.minerId === this.state.playerId && Number(p.qty) > 0) this.unlockSource('mining', p);
+    });
+    listen('salvage:completed', (p) => this.unlockSource('salvage', p));
+    listen('namedAce:defeated', (p) => this.unlockSource('ace', p));
+    listen('faction:repChanged', (p) => {
+      if (p && Number(p.delta) > 0) this.unlockSource('faction_rep', p);
+    });
+    listen('vestaOreCache:resolved', (p) => this.unlockSource('cache', p));
+    listen('pallasHiddenCache:resolved', (p) => this.unlockSource('cache', p));
   },
 
   // Lazy refs to sibling systems (they init before crafting via registry order). Using getters keeps
@@ -130,6 +172,41 @@ export const crafting = {
       .map((b) => ({ bp: b, ...this.status(b, p) }));
   },
 
+  /** Public in-flight catalog. Status includes durable play-source blueprint knowledge. */
+  listField() {
+    const p = this.state.player;
+    return FIELD_BLUEPRINTS.map((bp) => ({ bp, ...this.status(bp, p) }));
+  },
+
+  isBlueprintUnlocked(bpOrId) {
+    const bp = typeof bpOrId === 'string' ? BLUEPRINT_BY_ID.get(bpOrId) : bpOrId;
+    if (!bp || !bp.unlock) return true;
+    const unlocked = this.state.crafting && this.state.crafting.unlockedBlueprints;
+    return Array.isArray(unlocked) && unlocked.includes(bp.id);
+  },
+
+  unlockSource(source, receipt = null) {
+    if (typeof source !== 'string' || !source) return [];
+    const unlocked = this.state.crafting.unlockedBlueprints;
+    const added = [];
+    for (const bp of FIELD_BLUEPRINTS) {
+      if (!bp.unlock || bp.unlock.source !== source || unlocked.includes(bp.id)) continue;
+      unlocked.push(bp.id);
+      added.push(bp.id);
+    }
+    if (!added.length) return added;
+    unlocked.sort();
+    this.bus.emit('craft:blueprintsUnlocked', { source, blueprintIds: added.slice(), receipt });
+    const first = BLUEPRINT_BY_ID.get(added[0]);
+    this.bus.emit('toast', {
+      text: added.length === 1
+        ? `Field blueprint learned: ${first.name}`
+        : `Field chain learned: ${String(first.fieldChain || source).replace(/_/g, ' ')}`,
+      kind: 'good', ttl: 3,
+    });
+    return added;
+  },
+
   /** Effective build duration for a blueprint (honors bp.timeS, else DEFAULT_TIME_S by category). */
   buildTime(bp) {
     return buildDuration(bp);
@@ -160,6 +237,7 @@ export const crafting = {
    *  + queue free? */
   status(bp, p) {
     p = p || this.state.player;
+    const blueprintOk = this.isBlueprintUnlocked(bp);
     const techOk = !bp.requiresTech || p.researchedNodes.includes(bp.requiresTech);
     const mats = this.haveMaterials(bp, p);
     const matsOk = mats.every((m) => m.have >= m.need);
@@ -168,7 +246,15 @@ export const crafting = {
       // need at least one instance of the source module in inventory OR currently fitted
       sourceOk = this.countOwnedModule(p, bp.fromModule) > 0;
     }
-    return { techOk, matsOk, sourceOk, canBuild: techOk && matsOk && sourceOk, materials: mats };
+    return {
+      blueprintOk,
+      blueprintHint: blueprintOk ? null : unlockHint(bp),
+      techOk,
+      matsOk,
+      sourceOk,
+      canBuild: blueprintOk && techOk && matsOk && sourceOk,
+      materials: mats,
+    };
   },
 
   /** Material breakdown with have/need for display + gating. */
@@ -185,6 +271,10 @@ export const crafting = {
     if (!bp) return false;
     const p = this.state.player;
     const st = this.status(bp, p);
+    if (!st.blueprintOk) {
+      this.bus.emit('toast', { text: 'Blueprint locked — ' + st.blueprintHint, kind: 'error', ttl: 3 });
+      return false;
+    }
     if (!st.techOk) {
       this.bus.emit('toast', { text: 'Research required: ' + techDisplayName(bp.requiresTech), kind: 'error', ttl: 3 });
       return false;
@@ -231,6 +321,72 @@ export const crafting = {
     this.bus.emit('audio:cue', { id: 'confirm' });
     this.bus.emit('toast', { text: 'Fabrication started: ' + bp.name + ' (' + Math.round(total) + 's)', kind: 'info', ttl: 3 });
     return true;
+  },
+
+  /** Build only a recipe explicitly admitted to the field kit. */
+  buildField(bpId) {
+    const bp = BLUEPRINT_BY_ID.get(bpId);
+    if (!bp || bp.fieldCraftable !== true) return false;
+    if (this.state.mode !== 'flight' && this.state.mode !== 'paused') {
+      this.bus.emit('toast', { text: 'Field fabrication is available in flight', kind: 'info', ttl: 2 });
+      return false;
+    }
+    if (this.state.ui && this.state.ui.docked === true) {
+      this.bus.emit('toast', { text: 'Use the station Industry console while docked', kind: 'info', ttl: 2 });
+      return false;
+    }
+    return this.build(bpId, FIELD_STATION_ID);
+  },
+
+  /**
+   * Pure automation handoff. A factory may ask for an unlocked recipe, but it receives only the
+   * conversion contract — never cargo/wallet mutation methods and never a second build queue.
+   */
+  automationRecipe(bpId) {
+    const bp = BLUEPRINT_BY_ID.get(bpId);
+    if (!bp || !bp.fieldCraftable || !this.isBlueprintUnlocked(bp)) return null;
+    return {
+      blueprintId: bp.id,
+      inputs: { ...bp.inputs },
+      output: { [bp.outputs.id]: bp.outputs.qty || 1 },
+    };
+  },
+
+  /** Consume a crafted field supply through the system that owns the resulting state. */
+  useFieldSupply(commodityId, options = {}) {
+    const state = this.state;
+    if (!state || !state.player) return { ok: false, reason: 'unavailable' };
+    if (state.mode !== 'flight' && state.mode !== 'paused') return { ok: false, reason: 'not_in_flight' };
+    if (state.ui && state.ui.docked === true) return { ok: false, reason: 'docked' };
+    if (((state.player.cargo && state.player.cargo.items) || {})[commodityId] < 1) {
+      return { ok: false, reason: 'missing_supply' };
+    }
+    let result = null;
+    if (commodityId === 'cmdty_jump_fuel_canister') {
+      const owner = this.ctx.registry.get('economy');
+      result = owner && typeof owner.applyFieldFuel === 'function'
+        ? owner.applyFieldFuel({ amount: 25, source: 'crafted_canister' })
+        : { ok: false, reason: 'fuel_owner_unavailable' };
+    } else if (commodityId === 'cmdty_patch_kit') {
+      const owner = this.ctx.registry.get('combat');
+      const kernel = owner && typeof owner.ensureKernel === 'function' ? owner.ensureKernel() : null;
+      result = kernel && typeof kernel.routeFieldRepair === 'function'
+        ? kernel.routeFieldRepair({ targetId: state.playerId, amount: 18, source: 'crafted_patch_kit' })
+        : { ok: false, reason: 'combat_owner_unavailable' };
+    } else if (commodityId === 'cmdty_field_emitter_charge') {
+      const owner = this.ctx.registry.get('fields');
+      result = owner && typeof owner.reloadPlayerEmitter === 'function'
+        ? owner.reloadPlayerEmitter(options.kind === 'repulsor' ? 'repulsor' : 'well')
+        : { ok: false, reason: 'field_owner_unavailable' };
+    } else {
+      return { ok: false, reason: 'not_field_supply' };
+    }
+    if (!result || result.ok !== true) return result || { ok: false, reason: 'owner_rejected' };
+    if (removeCargo(state, commodityId, 1) !== 1) return { ok: false, reason: 'consume_failed' };
+    const receipt = { ...result, commodityId, tick: state.tick | 0, t: Number(state.simTime) || 0 };
+    this.bus.emit('craft:fieldSupplyUsed', receipt);
+    this.bus.emit('audio:cue', { id: 'confirm' });
+    return receipt;
   },
 
   // Grant the product for an instant build or a completed queued job.
@@ -282,14 +438,25 @@ export const crafting = {
   },
 
   serialize() {
-    return { queues: normalizeQueues(this.state.crafting && this.state.crafting.queues) };
+    return {
+      queues: normalizeQueues(this.state.crafting && this.state.crafting.queues),
+      unlockedBlueprints: normalizeUnlocked(this.state.crafting && this.state.crafting.unlockedBlueprints),
+    };
   },
 
   newGame() {
-    this.state.crafting = { queues: {} };
+    this.state.crafting = { queues: {}, unlockedBlueprints: [] };
   },
 
   deserialize(data) {
-    this.state.crafting = { queues: normalizeQueues(data && data.queues) };
+    this.state.crafting = {
+      queues: normalizeQueues(data && data.queues),
+      unlockedBlueprints: normalizeUnlocked(data && data.unlockedBlueprints),
+    };
+  },
+
+  destroy() {
+    if (!Array.isArray(this._unsubscribers)) return;
+    for (const off of this._unsubscribers.splice(0)) { try { off(); } catch (_) {} }
   },
 };

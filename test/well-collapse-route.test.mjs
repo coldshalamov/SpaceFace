@@ -102,7 +102,9 @@ test('a real Well pulls a hostile into its inner band, kills silently, and pays 
       sim.step(SIM_DT);
       minDistance = Math.min(minDistance, distanceTo(deployed.center, hostile));
     }
-    assert.equal(hostile.alive, false, 'the field-created trajectory reaches a terminal capture');
+    assert.equal(hostile.alive, false,
+      `the field-created trajectory reaches a terminal capture (minimum radius ${minDistance.toFixed(2)} WU, `
+      + `hull ${hostile.hull}, damage receipts ${damage.length})`);
     assert.ok(startDistance > FIELD_DEFS.well.innerBandRadius);
     assert.ok(minDistance <= FIELD_DEFS.well.innerBandRadius,
       `the body physically enters the authored inner band (${minDistance.toFixed(2)} WU)`);

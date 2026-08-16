@@ -1,5 +1,5 @@
 // src/data/commodities.js – canonical tradeable commodities.
-// 44 cmdty_* IDs: ARCHITECTURE §3.6.1 baseline plus classified-salvage addendum.
+// Canonical cmdty_* catalog: ARCHITECTURE §3.6.1 baseline plus later play-loop additions.
 // Balance data only; flavor merged from commodityFlavor.js.
 import { COMMODITY_FLAVOR } from './commodityFlavor.js';
 export { COMMODITY_FLAVOR } from './commodityFlavor.js';
@@ -56,11 +56,14 @@ export const COMMODITIES = [
   // --- COMPONENT ---
   { id: 'cmdty_comp_hullplate',     name: 'Hull Plate',            category: 'component', basePrice: 165, volatility: 0.28, elasticity: 0.40, legality: 'legal',      volPerU: 0.7, massPerU: 1.0, fineMult: 0,   producedBy: ['fab','refinery'],                 consumedBy: ['military','fab'] },
   { id: 'cmdty_comp_circuitry',     name: 'Circuitry',             category: 'component', basePrice: 200, volatility: 0.36, elasticity: 0.40, legality: 'legal',      volPerU: 0.6, massPerU: 0.3, fineMult: 0,   producedBy: ['fab'],                            consumedBy: ['research','military'] },
+  { id: 'cmdty_explosive_compound', name: 'Explosive Compound',    category: 'component', basePrice: 72,  volatility: 0.30, elasticity: 0.46, legality: 'restricted', volPerU: 0.7, massPerU: 0.8, fineMult: 0.5, producedBy: ['fab'],                            consumedBy: ['military','blackmarket','fab'] },
+  { id: 'cmdty_tether_cable',       name: 'Massline Cable',        category: 'component', basePrice: 260, volatility: 0.27, elasticity: 0.42, legality: 'legal',      volPerU: 0.8, massPerU: 1.0, fineMult: 0,   producedBy: ['fab'],                            consumedBy: ['mining','fab'] },
 
   // --- TECH ---
   { id: 'cmdty_microchips',         name: 'Microchips',            category: 'tech',      basePrice: 185, volatility: 0.35, elasticity: 0.40, legality: 'legal',      volPerU: 0.7, massPerU: 0.2, fineMult: 0,   producedBy: ['fab'],                            consumedBy: ['military','trade_hub','research'] },
   { id: 'cmdty_electronics',        name: 'Electronics',           category: 'tech',      basePrice: 150, volatility: 0.32, elasticity: 0.40, legality: 'legal',      volPerU: 0.9, massPerU: 0.5, fineMult: 0,   producedBy: ['fab'],                            consumedBy: ['trade_hub','military'] },
   { id: 'cmdty_quantum_cores',      name: 'Quantum Cores',         category: 'tech',      basePrice: 340, volatility: 0.45, elasticity: 0.46, legality: 'legal',      volPerU: 0.9, massPerU: 0.3, fineMult: 0,   producedBy: ['research'],                       consumedBy: ['military','fab'] },
+  { id: 'cmdty_field_emitter_charge', name: 'Field Emitter Charge', category: 'tech',      basePrice: 310, volatility: 0.34, elasticity: 0.46, legality: 'restricted', volPerU: 0.8, massPerU: 0.6, fineMult: 0.6, producedBy: ['research','fab'],                 consumedBy: ['military','research'] },
 
   // --- CONSUMER ---
   { id: 'cmdty_consumer_goods',     name: 'Consumer Goods',        category: 'consumer',  basePrice: 110, volatility: 0.28, elasticity: 0.45, legality: 'legal',      volPerU: 1.0, massPerU: 0.5, fineMult: 0,   producedBy: ['fab','trade_hub'],                consumedBy: ['trade_hub','mining'] },
@@ -91,6 +94,8 @@ export const COMMODITIES = [
   { id: 'cmdty_weapons',            name: 'Weapon Systems',        category: 'military',  basePrice: 280, volatility: 0.40, elasticity: 0.48, legality: 'restricted', volPerU: 0.9, massPerU: 1.5, fineMult: 1.2, producedBy: ['military'],                       consumedBy: ['military','blackmarket'] },
   { id: 'cmdty_munitions',          name: 'Munitions',             category: 'military',  basePrice: 115, volatility: 0.32, elasticity: 0.48, legality: 'restricted', volPerU: 0.6, massPerU: 1.1, fineMult: 0.8, producedBy: ['military','fab'],                 consumedBy: ['military','blackmarket'] },
   { id: 'cmdty_impulse_charge',     name: 'Impulse Charge',        category: 'military',  basePrice: 180, volatility: 0.25, elasticity: 0.50, legality: 'restricted', volPerU: 2.0, massPerU: 2.0, fineMult: 1.0, producedBy: ['military','fab'],                 consumedBy: ['military','blackmarket'] },
+  { id: 'cmdty_jump_fuel_canister', name: 'Jump Fuel Canister',    category: 'military',  basePrice: 235, volatility: 0.30, elasticity: 0.52, legality: 'legal',      volPerU: 1.2, massPerU: 0.9, fineMult: 0,   producedBy: ['refinery','fab'],                 consumedBy: ['trade_hub','mining','military'] },
+  { id: 'cmdty_patch_kit',          name: 'Field Patch Kit',       category: 'military',  basePrice: 145, volatility: 0.24, elasticity: 0.45, legality: 'legal',      volPerU: 1.0, massPerU: 1.1, fineMult: 0,   producedBy: ['fab','military'],                 consumedBy: ['trade_hub','mining','military'] },
 ];
 
 // Merge trade-terminal flavor onto each commodity record at module load.

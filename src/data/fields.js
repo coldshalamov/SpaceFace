@@ -101,7 +101,7 @@ export const FIELD_DEFS = Object.freeze({
     deployRange: 520,   // max distance from ship the aim-point emitter may be placed
     spawnGap: 3,
     innerBandRadius: 42, // entering the physical sink core triggers one crush per capture entry
-    collapseDamage: 18, // enough to finish a light hull; tougher bodies must be worked/re-captured
+    collapseDamage: 20, // survives standard kinetic mitigation to finish a light hull; tougher bodies need setup
   }),
   // REPULSOR — "the Plow". Dropped at the ship (behind you mid-chase); shoves bodies outward and
   // piles them at the boundary.
