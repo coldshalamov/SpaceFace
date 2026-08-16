@@ -645,7 +645,8 @@ export const fields = {
       rec.center.x = f.center.x; rec.center.z = f.center.z;
       rec.dir.x = f.dir.x; rec.dir.z = f.dir.z;
       rec.radius = f.radius; rec.strength = f.strength; rec.falloff = f.falloff;
-      rec.halfAngleRad = f.halfAngleRad; rec.palette = FIELD_PALETTE[f.kind];
+      rec.halfAngleRad = f.halfAngleRad;
+      rec.palette = f.tag === 'hostile' ? FIELD_PALETTE.hostileSnare : FIELD_PALETTE[f.kind];
       rec.expireAt = f.expireAt;  // Infinity for the sustained cone; the HUD countdown chip reads it
       // engaged = this tick actually pulled/pushed a body (state-driven; drives the world-space
       // engagement tell — no affected body, no articulation, per bible §4).
