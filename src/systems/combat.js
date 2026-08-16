@@ -16,7 +16,7 @@ import {
   styleMultiplierOf,
 } from '../combat/killCause.js';
 import { createVictimRewardRng, missionOwnsReward } from '../combat/rewardEligibility.js';
-import { triggerEmberCookOff } from '../combat/cookOff.js';
+import { createHeavyCookOffRuntime, triggerEmberCookOff } from '../combat/cookOff.js';
 import { isTumbling } from '../combat/tumbleStatus.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { combatFlag } from '../data/featureFlags.js';
@@ -507,6 +507,11 @@ export const combat = {
       beamSpatialQueries: 0,
       beamCandidates: 0,
     };
+    this._heavyCookOff = createHeavyCookOffRuntime({
+      state: this.state,
+      bus: this.bus,
+      helpers: this.helpers,
+    });
     ctx.bus.on('projectile:hit', (p) => this.onHit(p));
     ctx.bus.on('tether:whipImpact', (p) => this.onWhipImpact(p || {}));
     ctx.bus.on('dock:docked', (p) => {
@@ -519,6 +524,7 @@ export const combat = {
       this._pendingPlayerRecovery = null;
       this._recoveryInFlight = false;
       if (this.state.combat) this.state.combat.lastPlayerDefeat = null;
+      this._heavyCookOff?.reset();
     };
     ctx.bus.on('game:started', clearPendingDefeat);
     ctx.bus.on('save:loaded', clearPendingDefeat);
@@ -647,6 +653,10 @@ export const combat = {
     // reward burst created by that same death. This is impulse-only; combat remains the sole health
     // writer and collisionConsequences owns any later impact damage.
     triggerEmberCookOff({ state, bus, helpers: this.helpers, source: t, killerId, lethal });
+    // Plan 31 Heavy tier starts from this same one-shot lethal edge. It never emits another kill or
+    // reward: later phases only cross SG-02 and spawn bounded physical debris, while the canonical
+    // entity:killed notification below continues to own bounty, loot, and aftermath identity.
+    this._heavyCookOff?.begin(t, killerId, lethal);
     const presentation = buildKillPresentationReceipt(state, t, killerId, lethal);
     bus.emit('entity:killed', {
       id: t.id, killerId, type: t.type, pos: { x: t.pos.x, z: t.pos.z },
@@ -985,6 +995,7 @@ export const combat = {
   update(dt, state) {
     ensureCombatRuntime(this);
     resetCombatDiagnostics(this._diag);
+    this._heavyCookOff?.update(dt);
     const ships = (state.entityIndex && state.entityIndex.ships) || state.entityList;
     for (const e of ships) {
       if (e.type !== 'ship' || !e.alive) continue;

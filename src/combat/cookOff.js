@@ -3,12 +3,248 @@
 // transient attribution for collisionConsequences, and publishes one immutable death receipt.
 import { recordImpulseProvenance } from './impulseKernel.js';
 import { hash32 } from '../core/rng.js';
-import { isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
+import { Masks } from '../core/entity.js';
+import { ensurePhysicsBodySpec, isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { EMBER_COOK_OFF } from '../data/swarmerFamily.js';
 
 const EXCLUDED_BODY_TYPES = new Set(['fx', 'pickup', 'projectile']);
 const EMPTY_AFFECTED = Object.freeze([]);
+const HEAVY_DEBRIS_MASK = Masks.SHIP | Masks.DRONE | Masks.ASTEROID | Masks.STATION
+  | Masks.PROJECTILE | Masks.PAYLOAD | Masks.WRECK;
+
+// Plan 31 mechanics tier. Presentation may dress these immutable phase receipts later, but Combat
+// owns the physical event: four secondary pressure pulses walk the hull, the main burst shoves live
+// bodies, and six above-threshold chunks enter Rapier as ordinary mass-bearing wreck bodies.
+export const HEAVY_COOK_OFF = Object.freeze({
+  secondaryAtS: Object.freeze([0.18, 0.68, 1.18, 1.68]),
+  mainAtS: 2.1,
+  retireAtS: 3,
+  radiusWu: 132,
+  secondaryImpulse: 54,
+  mainImpulse: 360,
+  maxAffected: 8,
+  debrisCount: 6,
+  debrisRadiusThresholdWu: 4,
+  maxLiveDebris: 36,
+  maxDebrisPerUpdate: 12,
+  maxActiveCookOffs: 8,
+  provenance: 'heavy_cook_off',
+});
+
+/**
+ * Transient scheduler for the non-capital Heavy death tier.
+ *
+ * The scheduler never kills, rewards, or writes motion. Combat calls begin once from its canonical
+ * lethal edge; every physical write then crosses spawnEntity or SG-02's combat-physics membrane.
+ */
+export function createHeavyCookOffRuntime({ state, bus, helpers } = {}) {
+  const active = [];
+  const started = new WeakSet();
+  const liveDebrisIds = [];
+
+  return Object.freeze({ begin, update, reset, inspect });
+
+  function begin(source, killerId = null, lethal = null) {
+    if (!isNonCapitalHeavy(source) || started.has(source)) return null;
+    started.add(source);
+    if (active.length >= HEAVY_COOK_OFF.maxActiveCookOffs) return null;
+    const tick = nonNegativeTick(state && state.tick);
+    const actorId = lethalActorId(killerId, lethal);
+    const weaponId = lethalWeaponId(lethal);
+    const record = {
+      sourceId: source.id,
+      sourceRadius: Math.max(1, finite(source.radius, 1)),
+      sourceRot: finite(source.rot),
+      position: { x: finite(source.pos && source.pos.x), z: finite(source.pos && source.pos.z) },
+      velocity: { x: finite(source.vel && source.vel.x), z: finite(source.vel && source.vel.z) },
+      actorId,
+      weaponId,
+      startedTick: tick,
+      currentTick: tick,
+      ageS: 0,
+      nextSecondary: 0,
+      mainResolved: false,
+    };
+    active.push(record);
+    const receipt = freezeHeavyReceipt(record, 'started', null, null);
+    bus?.emit?.('combat:heavyCookOffStarted', receipt);
+    return receipt;
+  }
+
+  function update(dt) {
+    const step = Number.isFinite(dt) && dt > 0 ? dt : 0;
+    let debrisBudget = HEAVY_COOK_OFF.maxDebrisPerUpdate;
+    for (let index = active.length - 1; index >= 0; index--) {
+      const record = active[index];
+      record.currentTick = nonNegativeTick(state && state.tick);
+      record.ageS += step;
+      while (record.nextSecondary < HEAVY_COOK_OFF.secondaryAtS.length
+        && record.ageS >= HEAVY_COOK_OFF.secondaryAtS[record.nextSecondary]) {
+        const secondaryIndex = record.nextSecondary++;
+        const point = secondaryPoint(record, secondaryIndex);
+        const affected = applyHeavyPulse(record, point, HEAVY_COOK_OFF.secondaryImpulse, 'secondary');
+        bus?.emit?.('combat:heavyCookOffPhase', freezeHeavyReceipt(
+          record, 'secondary', secondaryIndex, affected, point,
+        ));
+      }
+      if (!record.mainResolved && record.ageS >= HEAVY_COOK_OFF.mainAtS
+        && debrisBudget >= HEAVY_COOK_OFF.debrisCount) {
+        record.mainResolved = true;
+        const affected = applyHeavyPulse(
+          record, record.position, HEAVY_COOK_OFF.mainImpulse, 'main',
+        );
+        const debris = spawnHeavyDebris(record);
+        debrisBudget -= debris.length;
+        bus?.emit?.('combat:heavyCookOffPhase', freezeHeavyReceipt(
+          record, 'main', null, affected, record.position, debris,
+        ));
+      }
+      if (record.mainResolved && record.ageS >= HEAVY_COOK_OFF.retireAtS) active.splice(index, 1);
+    }
+  }
+
+  function reset() {
+    active.length = 0;
+    pruneDebrisIds();
+  }
+
+  function inspect() {
+    pruneDebrisIds();
+    return Object.freeze({ active: active.length, liveDebris: liveDebrisIds.length });
+  }
+
+  function applyHeavyPulse(record, point, peakImpulse, phase) {
+    const physics = helpers && helpers.combatPhysics;
+    if (!physics || typeof physics.applyImpulse !== 'function') return EMPTY_AFFECTED;
+    const candidates = collectCandidates(state, { id: record.sourceId }, point, HEAVY_COOK_OFF.radiusWu);
+    const affected = [];
+    for (const candidate of candidates) {
+      if (affected.length >= HEAVY_COOK_OFF.maxAffected) break;
+      const direction = radialDirection(
+        record.sourceId, candidate.entity.id, candidate.dx, candidate.dz, candidate.distance,
+      );
+      const falloff = 1 - candidate.distance / HEAVY_COOK_OFF.radiusWu;
+      const magnitude = peakImpulse * Math.max(0, falloff);
+      if (!(magnitude > 0)) continue;
+      const provenance = {
+        actorId: record.actorId,
+        weaponId: record.weaponId,
+        tag: phase === 'main' ? HEAVY_COOK_OFF.provenance : 'heavy_cook_off_secondary',
+        appliedTick: nonNegativeTick(state && state.tick),
+      };
+      const accepted = physics.applyImpulse({
+        entityId: candidate.entity.id,
+        impulse: { x: direction.x * magnitude, z: direction.z * magnitude },
+        point: null,
+        reason: provenance.tag,
+        tick: provenance.appliedTick,
+        provenance,
+      });
+      if (accepted !== true) continue;
+      recordImpulseProvenance(candidate.entity, { ...provenance, magnitude });
+      affected.push(Object.freeze({
+        entityId: candidate.entity.id,
+        distanceWu: candidate.distance,
+        impulse: magnitude,
+        direction: Object.freeze(direction),
+      }));
+    }
+    return affected.length ? Object.freeze(affected) : EMPTY_AFFECTED;
+  }
+
+  function spawnHeavyDebris(record) {
+    const spawnEntity = helpers && helpers.spawnEntity;
+    if (typeof spawnEntity !== 'function') return EMPTY_AFFECTED;
+    pruneDebrisIds();
+    const spawned = [];
+    for (let index = 0; index < HEAVY_COOK_OFF.debrisCount; index++) {
+      while (liveDebrisIds.length >= HEAVY_COOK_OFF.maxLiveDebris) retireOldestDebris();
+      const angle = record.sourceRot + index * (Math.PI * 2 / HEAVY_COOK_OFF.debrisCount);
+      const variation = hash32(record.sourceId, index, 'heavy-cook-off-debris') / 0x100000000;
+      const radius = HEAVY_COOK_OFF.debrisRadiusThresholdWu + 0.75 + (index % 3) * 0.9;
+      const mass = 18 + index * 4;
+      const speed = 42 + variation * 18;
+      const offset = record.sourceRadius * 0.38 + radius + 2;
+      const direction = { x: Math.cos(angle), z: Math.sin(angle) };
+      const entity = spawnEntity({
+        type: 'wreck',
+        team: 2,
+        ownerId: record.sourceId,
+        pos: {
+          x: record.position.x + direction.x * offset,
+          z: record.position.z + direction.z * offset,
+        },
+        vel: {
+          x: record.velocity.x * 0.35 + direction.x * speed,
+          z: record.velocity.z * 0.35 + direction.z * speed,
+        },
+        rot: angle,
+        angVel: (index % 2 ? -1 : 1) * (0.8 + variation * 1.4),
+        radius,
+        mass,
+        hull: 1,
+        hullMax: 1,
+        ttl: Infinity,
+        collides: true,
+        collisionMask: HEAVY_DEBRIS_MASK,
+        physicsBody: {
+          dynamic: true,
+          ccd: true,
+          radius,
+          mass,
+          inertiaY: 0.5 * mass * radius * radius,
+          material: 'debris',
+          shape: 'ball',
+          revision: 1,
+        },
+        data: {
+          kind: 'heavy_cook_off_debris',
+          parentType: 'heavy_ship',
+          sourceId: record.sourceId,
+          causalActorId: record.actorId,
+          majorDebris: true,
+          vacuumImmune: true,
+          physicalRadiusThresholdWu: HEAVY_COOK_OFF.debrisRadiusThresholdWu,
+          debrisIndex: index,
+        },
+      });
+      if (!entity) continue;
+      ensurePhysicsBodySpec(entity);
+      helpers.refreshEntityIndex?.(entity);
+      recordImpulseProvenance(entity, {
+        actorId: record.actorId,
+        weaponId: record.weaponId,
+        tag: 'heavy_cook_off_debris',
+        appliedTick: nonNegativeTick(state && state.tick),
+        magnitude: mass * speed,
+      });
+      liveDebrisIds.push(entity.id);
+      spawned.push(Object.freeze({
+        entityId: entity.id,
+        radiusWu: radius,
+        mass,
+        direction: Object.freeze(direction),
+      }));
+    }
+    return spawned.length ? Object.freeze(spawned) : EMPTY_AFFECTED;
+  }
+
+  function pruneDebrisIds() {
+    for (let index = liveDebrisIds.length - 1; index >= 0; index--) {
+      const entity = state && state.entities && state.entities.get(liveDebrisIds[index]);
+      if (!entity || entity.alive === false || entity.data?.kind !== 'heavy_cook_off_debris') {
+        liveDebrisIds.splice(index, 1);
+      }
+    }
+  }
+
+  function retireOldestDebris() {
+    const entityId = liveDebrisIds.shift();
+    const entity = state && state.entities && state.entities.get(entityId);
+    if (entity && entity.data?.kind === 'heavy_cook_off_debris') entity.alive = false;
+  }
+}
 
 /**
  * Resolve and apply one Ember death cook-off.
@@ -178,4 +414,42 @@ function finite(value) {
 
 function stableTag(value) {
   return value == null ? '' : String(value).trim();
+}
+
+function isNonCapitalHeavy(entity) {
+  const data = entity && entity.data;
+  return !!(entity && entity.type === 'ship' && data
+    && data.killRewardTier === 'heavy' && data.shipClass !== 'capital');
+}
+
+function secondaryPoint(record, index) {
+  // Walk from stern to bow along the authored facing. Alternating lateral offsets make the
+  // multi-point receipt spatially distinct without drawing simulation RNG.
+  const count = HEAVY_COOK_OFF.secondaryAtS.length;
+  const along = ((index + 0.5) / count - 0.5) * record.sourceRadius * 1.35;
+  const across = (index % 2 ? 1 : -1) * record.sourceRadius * 0.22;
+  const forwardX = Math.cos(record.sourceRot);
+  const forwardZ = Math.sin(record.sourceRot);
+  return Object.freeze({
+    x: record.position.x + forwardX * along - forwardZ * across,
+    z: record.position.z + forwardZ * along + forwardX * across,
+  });
+}
+
+function freezeHeavyReceipt(record, phase, secondaryIndex, affected, point = record.position, debris = null) {
+  return Object.freeze({
+    schemaVersion: 1,
+    tier: 'heavy',
+    sourceId: record.sourceId,
+    actorId: record.actorId,
+    weaponId: record.weaponId,
+    phase,
+    secondaryIndex,
+    tick: record.currentTick,
+    ageS: record.ageS,
+    position: Object.freeze({ x: finite(point && point.x), z: finite(point && point.z) }),
+    radiusWu: HEAVY_COOK_OFF.radiusWu,
+    affected: affected || EMPTY_AFFECTED,
+    debris: debris || EMPTY_AFFECTED,
+  });
 }
