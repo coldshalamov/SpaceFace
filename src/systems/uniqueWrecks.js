@@ -58,6 +58,61 @@ function copyPoint(value, fallback) {
   };
 }
 
+function normalizePool(value, fallback = {}) {
+  const source = value && typeof value === 'object' && !Array.isArray(value) ? value : fallback;
+  const pool = {};
+  for (const [commodityId, rawQty] of Object.entries(source || {})) {
+    const qty = Math.max(0, Math.floor(finite(rawQty, 0)));
+    if (qty > 0) pool[commodityId] = qty;
+  }
+  return pool;
+}
+
+function poolTotal(pool) {
+  return Object.values(pool || {}).reduce((sum, qty) => sum + Math.max(0, finite(qty, 0)), 0);
+}
+
+function ancientLayersFor(def) {
+  return def && def.wreckClass === 'ancient' && Array.isArray(def.salvageLayers)
+    ? def.salvageLayers.filter((layer) => layer && layer.id && poolTotal(layer.pool) > 0)
+    : [];
+}
+
+function createAncientSalvageProgress(def, phase = 'rumored') {
+  const layers = ancientLayersFor(def);
+  if (layers.length < 2) return null;
+  const finished = phase === 'decision' || phase === 'salvaged';
+  return {
+    layerIndex: finished ? layers.length : 0,
+    currentLayerId: finished ? null : layers[0].id,
+    remainingPool: finished ? {} : normalizePool(layers[0].pool),
+    completedVisits: finished ? layers.length : 0,
+    visitSerial: 0,
+    nextVisitSerial: 0,
+    lastCompletedAtS: null,
+  };
+}
+
+function normalizeAncientSalvageProgress(value, def, phase) {
+  const layers = ancientLayersFor(def);
+  if (layers.length < 2) return null;
+  const fallback = createAncientSalvageProgress(def, phase);
+  if (!value || typeof value !== 'object') return fallback;
+  const finished = phase === 'decision' || phase === 'salvaged';
+  const maxIndex = finished ? layers.length : layers.length - 1;
+  const layerIndex = Math.max(0, Math.min(maxIndex, Math.floor(finite(value.layerIndex, fallback.layerIndex))));
+  const layer = layers[layerIndex] || null;
+  return {
+    layerIndex,
+    currentLayerId: finished || !layer ? null : layer.id,
+    remainingPool: finished || !layer ? {} : normalizePool(value.remainingPool, layer.pool),
+    completedVisits: Math.max(0, Math.min(layers.length, Math.floor(finite(value.completedVisits, layerIndex)))),
+    visitSerial: Math.max(0, Math.floor(finite(value.visitSerial, 0))),
+    nextVisitSerial: Math.max(0, Math.floor(finite(value.nextVisitSerial, 0))),
+    lastCompletedAtS: value.lastCompletedAtS == null ? null : Math.max(0, finite(value.lastCompletedAtS, 0)),
+  };
+}
+
 export function createUniqueWreckState(metaSeed) {
   return {
     schemaVersion: UNIQUE_WRECK_STATE_SCHEMA_VERSION,
@@ -122,6 +177,7 @@ export function normalizeUniqueWreckState(value, metaSeed) {
         ? clonePlain(record.rewardReceipt)
         : null,
       salvagedAtS: phase === 'salvaged' ? Math.max(0, finite(record.salvagedAtS, 0)) : null,
+      ancientSalvage: normalizeAncientSalvageProgress(record.ancientSalvage, def, phase),
     };
   }
   const dropIds = new Set(UNIQUE_WRECKS.flatMap((def) => rewardDescriptors(def)
@@ -250,12 +306,17 @@ export const uniqueWrecks = {
     this._wreckByEntity = new Map();
     this._bandRequestResolutions = new Map();
     this._gameStartDispatch = false;
+    this._saveRestoring = false;
+    this._activeSectorId = this.state.world && this.state.world.currentSectorId || null;
     this._subscriptions = [];
     this._ensureState();
 
     this._listen('game:started', () => this._onGameStarted());
     this._listen('save:loaded', () => this._onSaveLoaded());
-    this._listen('save:restoring', () => this._clearRuntime());
+    this._listen('save:restoring', () => {
+      this._saveRestoring = true;
+      this._clearRuntime();
+    });
     this._listen('sector:enter', (payload) => this._onSectorEnter(payload));
     this._listen('dock:docked', (payload) => this._onDocked(payload));
     for (const [channelId, event] of Object.entries(RUMOR_EVENT_BY_CHANNEL)) {
@@ -265,6 +326,7 @@ export const uniqueWrecks = {
     this._listen('scan:pulse', (payload) => this._onScanPulse(payload));
     this._listen('economy:tick', () => this._pumpComplications());
     this._listen('salvage:completed', (payload) => this._onSalvageCompleted(payload));
+    this._listen('mining:yield', (payload) => this._onMiningYield(payload));
     this._listen('uniqueWreck:choose', (payload) => this._onChoose(payload));
     this._listen('uniqueWreck:decisionRequest', (payload) => this._republishPendingDecisions(payload));
     this._listen('band:bearingRequest', (payload) => this._onBandBearingRequest(payload));
@@ -301,6 +363,8 @@ export const uniqueWrecks = {
     const player = ensurePlayer(this.state);
     player.uniqueWrecks = createUniqueWreckState(this.state.meta && this.state.meta.seed);
     player.flags.uniqueWrecksVisited = [];
+    this._saveRestoring = false;
+    this._activeSectorId = this.state.world && this.state.world.currentSectorId || null;
     this._clearRuntime();
     return player.uniqueWrecks;
   },
@@ -357,6 +421,8 @@ export const uniqueWrecks = {
   },
 
   _onSaveLoaded() {
+    this._saveRestoring = false;
+    this._activeSectorId = this.state.world && this.state.world.currentSectorId || null;
     this._ensureState();
     this._clearRuntime();
     // encounterDirector deliberately does not serialize live entity references. An authored boss
@@ -470,6 +536,7 @@ export const uniqueWrecks = {
       resolvedAtS: null,
       rewardReceipt: null,
       salvagedAtS: null,
+      ancientSalvage: createAncientSalvageProgress(def, 'rumored'),
     };
     own.bearings[def.id] = record;
     own.published[def.id] = true;
@@ -639,10 +706,28 @@ export const uniqueWrecks = {
 
   _onSectorEnter(payload) {
     const sectorId = payload && typeof payload === 'object' ? payload.sectorId : payload;
+    const changedSector = !!(sectorId && this._activeSectorId && this._activeSectorId !== sectorId);
+    if (!this._saveRestoring && changedSector) this._beginAncientVisit(sectorId);
+    this._activeSectorId = sectorId || this._activeSectorId;
     this._syncSector(sectorId);
     this._pumpComplications();
     this._surfaceSectorRumors(sectorId);
     this._activatePendingEncounters(sectorId);
+  },
+
+  _beginAncientVisit(sectorId) {
+    if (!sectorId) return 0;
+    let opened = 0;
+    for (const record of Object.values(this._ensureState().bearings)) {
+      if (!record || record.sectorId !== sectorId || record.phase === 'decision' || record.phase === 'salvaged') continue;
+      const def = uniqueWreckById(record.wreckId);
+      const progress = normalizeAncientSalvageProgress(record.ancientSalvage, def, record.phase);
+      if (!progress) continue;
+      progress.visitSerial += 1;
+      record.ancientSalvage = progress;
+      if (progress.visitSerial >= progress.nextVisitSerial) opened++;
+    }
+    return opened;
   },
 
   _onDocked(payload) {
@@ -1021,6 +1106,12 @@ export const uniqueWrecks = {
     const record = own.bearings[wreckId];
     if (!def || !record || (record.phase !== 'rumored' && record.phase !== 'fixed')) return null;
     if (def.sectorId !== (this.state.world && this.state.world.currentSectorId)) return null;
+    const ancient = normalizeAncientSalvageProgress(record.ancientSalvage, def, record.phase);
+    if (ancient) {
+      record.ancientSalvage = ancient;
+      if (ancient.layerIndex >= ancientLayersFor(def).length
+        || ancient.visitSerial < ancient.nextVisitSerial) return null;
+    }
     let entity = this._findLive(wreckId);
     if (!entity) {
       if (!this.helpers || typeof this.helpers.spawnEntity !== 'function') return null;
@@ -1093,22 +1184,50 @@ export const uniqueWrecks = {
       ? `Search for ${def.name}`
       : `Recover ${def.name}`;
     data.scanned = record.phase !== 'rumored';
+    const ancient = normalizeAncientSalvageProgress(record.ancientSalvage, def, record.phase);
+    const ancientLayers = ancientLayersFor(def);
+    const ancientLayer = ancient && ancientLayers[ancient.layerIndex] || null;
+    if (ancient) record.ancientSalvage = ancient;
+    if (ancientLayer) {
+      const layerNumber = ancient.layerIndex + 1;
+      data.ancientSalvageLayer = {
+        id: ancientLayer.id,
+        label: ancientLayer.label,
+        layerNumber,
+        totalLayers: ancientLayers.length,
+        visitSerial: ancient.visitSerial,
+      };
+      data.scanLabel = `${authored.scanLabel} · ${layerNumber}/${ancientLayers.length} ${ancientLayer.label}`;
+      data.scanDescription = record.phase === 'rumored'
+        ? 'Pulse scan inside the charted bearing ring to resolve this ancient hulk.'
+        : `${def.name}. Strip ${ancientLayer.label.toLowerCase()} this visit; deeper structure opens after departure.`;
+      data.interactionPrompt = record.phase === 'rumored'
+        ? 'PULSE SCANNER TO IDENTIFY'
+        : `SALVAGE LAYER ${layerNumber}/${ancientLayers.length}: ${ancientLayer.label.toUpperCase()}`;
+      data.objectiveLabel = record.phase === 'rumored'
+        ? `Search for ${def.name}`
+        : `Strip ${def.name}: ${ancientLayer.label}`;
+      // Ordinary aftermath remains fair game for the existing physical cutter profession. Ancient
+      // authored hulks are a player-gated archaeology route: a general salvor cannot remove a layer
+      // behind the durable visit ledger and thereby fork its conserved source pool.
+      data.playerVisitSalvageOnly = true;
+    }
     this._entityByWreck.set(def.id, entity.id);
     this._wreckByEntity.set(entity.id, def.id);
 
     const salvage = this.registry && this.registry.get && this.registry.get('salvageActions');
     const arm = !!(def.reactor && record.phase !== 'rumored');
+    const salvagePool = ancientLayer ? ancient.remainingPool : def.salvagePool;
     if (salvage && typeof salvage.configureAuthoredWreck === 'function') {
       salvage.configureAuthoredWreck(entity, {
-        salvagePool: def.salvagePool,
-        scanLabel: def.scanLabel,
+        salvagePool,
+        scanLabel: data.scanLabel,
         reactorTimerS: arm ? def.reactor.timerS : null,
       });
     } else {
-      data.authoredSalvagePool = { ...def.salvagePool };
-      data.salvagePool = salvagePoolForWreck(entity, def.salvagePool);
-      data.authoredScanLabel = def.scanLabel;
-      data.scanLabel = def.scanLabel;
+      data.authoredSalvagePool = { ...salvagePool };
+      data.salvagePool = salvagePoolForWreck(entity, salvagePool);
+      data.authoredScanLabel = data.scanLabel;
       if (arm) {
         data.unstableReactor = {
           dueAt: finite(this.state.simTime) + def.reactor.timerS,
@@ -1187,6 +1306,48 @@ export const uniqueWrecks = {
     const record = def && own.bearings[def.id];
     if (!def || !record || record.phase !== 'fixed') return null;
 
+    const layers = ancientLayersFor(def);
+    const ancient = normalizeAncientSalvageProgress(record.ancientSalvage, def, record.phase);
+    if (ancient && layers.length >= 2) {
+      ancient.remainingPool = {};
+      ancient.completedVisits = Math.max(ancient.completedVisits, ancient.layerIndex + 1);
+      ancient.lastCompletedAtS = Math.max(0, finite(this.state.simTime, 0));
+      if (ancient.layerIndex < layers.length - 1) {
+        const completedLayer = layers[ancient.layerIndex];
+        ancient.layerIndex += 1;
+        ancient.currentLayerId = layers[ancient.layerIndex].id;
+        ancient.remainingPool = normalizePool(layers[ancient.layerIndex].pool);
+        ancient.nextVisitSerial = Math.max(ancient.nextVisitSerial, ancient.visitSerial + 1);
+        record.ancientSalvage = ancient;
+        if (entity) {
+          entity.alive = false;
+          if (entity.data) entity.data._salvaged = true;
+        }
+        this._receipt('ancient_layer', def.id);
+        this._entityByWreck.delete(def.id);
+        this._wreckByEntity.delete(entityId);
+        this.bus.emit('uniqueWreck:ancientLayerCleared', {
+          wreckId: def.id,
+          sectorId: def.sectorId,
+          completedLayerId: completedLayer.id,
+          completedVisits: ancient.completedVisits,
+          totalLayers: layers.length,
+          nextLayerId: ancient.currentLayerId,
+          nextVisitSerial: ancient.nextVisitSerial,
+        });
+        this.bus.emit('toast', {
+          text: `${def.name}: ${completedLayer.label} cleared (${ancient.completedVisits}/${layers.length}). Leave the sector and return for the next hull layer.`,
+          kind: 'objective',
+          ttl: 8,
+        });
+        return record;
+      }
+      ancient.layerIndex = layers.length;
+      ancient.currentLayerId = null;
+      ancient.nextVisitSerial = ancient.visitSerial;
+      record.ancientSalvage = ancient;
+    }
+
     record.phase = 'decision';
     record.decisionReadyAtS = Math.max(0, finite(this.state.simTime, 0));
     record.choiceId = null;
@@ -1199,6 +1360,21 @@ export const uniqueWrecks = {
     this._wreckByEntity.delete(entityId);
     this._publishDecision(def.id, 'salvage');
     return record;
+  },
+
+  _onMiningYield(payload) {
+    const entityId = payload && (payload.wreckId != null ? payload.wreckId : payload.sourceEntityId);
+    if (entityId == null) return null;
+    const wreckId = this._wreckByEntity.get(entityId);
+    const def = uniqueWreckById(wreckId);
+    const record = def && this._ensureState().bearings[def.id];
+    const entity = this.state.entities && this.state.entities.get && this.state.entities.get(entityId);
+    if (!def || !record || record.phase !== 'fixed' || !entity || !entity.data) return null;
+    const ancient = normalizeAncientSalvageProgress(record.ancientSalvage, def, record.phase);
+    if (!ancient) return null;
+    ancient.remainingPool = normalizePool(entity.data.salvagePool);
+    record.ancientSalvage = ancient;
+    return ancient;
   },
 
   _decisionReadout(def, record, source = 'runtime') {
@@ -1426,6 +1602,10 @@ export const uniqueWrecks = {
   },
 
   serialize() {
+    for (const [wreckId, entityId] of this._entityByWreck || []) {
+      const def = uniqueWreckById(wreckId);
+      if (def && def.wreckClass === 'ancient') this._onMiningYield({ wreckId: entityId });
+    }
     return clonePlain(this._ensureState());
   },
 
@@ -1441,6 +1621,8 @@ export const uniqueWrecks = {
       for (const [event, handler] of this._subscriptions || []) this.bus.off(event, handler);
     }
     if (this._subscriptions) this._subscriptions.length = 0;
+    this._saveRestoring = false;
+    this._activeSectorId = null;
     this._clearRuntime();
   },
 };

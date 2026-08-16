@@ -3739,6 +3739,7 @@ export const traffic = {
   _isSalvageableBody(entity) {
     if (!entity || entity.alive === false || !entity.pos) return false;
     const data = entity.data || {};
+    if (data.playerVisitSalvageOnly === true) return false;
     const source = this._salvageSourceBinding(entity);
     if (source) return !!(source.source && !source.source.extracted && source.source.remainingQty > 0);
     if (entity.type === 'wreck') {

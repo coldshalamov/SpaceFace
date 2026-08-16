@@ -1189,7 +1189,14 @@ export const mining = {
       remaining = Object.values(pool).reduce((a, b) => a + b, 0);
     }
     for (const id in got) {
-      this.bus.emit('mining:yield', { commodityId: id, qty: got[id], pos: { x: wreck.pos.x, z: wreck.pos.z }, minerId: player ? player.id : null });
+      this.bus.emit('mining:yield', {
+        commodityId: id,
+        qty: got[id],
+        pos: { x: wreck.pos.x, z: wreck.pos.z },
+        minerId: player ? player.id : null,
+        sourceEntityId: wreck.id,
+        wreckId: wreck.id,
+      });
       this._spawnPickup(wreck, id, got[id]);
     }
 

@@ -13,7 +13,7 @@ import { hash32, mulberry32 } from '../core/rng.js';
 import { sectorLocalToGlobalForSector } from './sectorCoordinates.js';
 import { wreckClassById } from './wreckClasses.js';
 
-export const UNIQUE_WRECK_STATE_SCHEMA_VERSION = 2;
+export const UNIQUE_WRECK_STATE_SCHEMA_VERSION = 3;
 export const UNIQUE_WRECK_RECEIPT_LIMIT = 24;
 export const UNIQUE_WRECK_SCAN_RADIUS = 1200;
 
@@ -84,6 +84,7 @@ function wreck(spec) {
     seededTimers: [],
     encounterRefs: [],
     salvagePool: { cmdty_scrap_metal: 1 },
+    salvageLayers: [],
     bonusCargo: [],
     reactor: null,
     ...spec,
@@ -194,6 +195,11 @@ const RAW_UNIQUE_WRECKS = [
     rumorSources: [{ id: 'the_lost_coils', sourceRef: 'mission.the_lost_coils', channelId: 'mission' }],
     provenance: { lossId: 'loss_lanebreaker_pale_coil', incidentId: 'incident_pale_coil_impossible_blink', sourceRef: 'mission.the_lost_coils', recordType: 'sealed_relic' },
     hazardContext: { label: 'Silent Vault', anchorType: 'poi', anchorId: 'poi_phoebe_vault', zoneId: 'zone_phoebe_shrine', hazardTypes: ['radiation', 'nebula'], placementRule: 'near_hidden_poi', approachGate: 'survey_scan_only' },
+    salvageLayers: [
+      { id: 'outer_armor', label: 'Outer armor', pool: { cmdty_scrap_metal: 3 } },
+      { id: 'spindle_buses', label: 'Spindle buses', pool: { cmdty_salvage_electronics: 2, cmdty_alloys: 1 } },
+      { id: 'sealed_coil_vault', label: 'Sealed coil vault', pool: { cmdty_quantum_cores: 1 } },
+    ],
     placement: { anchorLocal: { x: -1480, z: 520 }, minRadius: 80, maxRadius: 240, bearingRadiusMin: 260, bearingRadiusMax: 460 },
     decision: salvageDecision({
       headline: 'PALE-COIL VAULT CLAIM', prompt: 'Choose whether the impossible coil flies or remains evidence.',
@@ -217,6 +223,11 @@ const RAW_UNIQUE_WRECKS = [
     hazardContext: { label: 'Wake Marker resonance field', anchorType: 'poi', anchorId: 'poi_triton_beacon', zoneId: 'zone_triton_glow', hazardTypes: ['nebula', 'radiation'], placementRule: 'hazard_intersection_near_poi', approachGate: 'tractor_resonance_beat' },
     timingGate: { id: 'choir_bell_resonance', kind: 'tractor_beat', periodS: 6, windowS: 1.2, failure: 'shield_discharge', clock: 'sim_time' },
     complications: [{ id: 'choir_bell_discharge', kind: 'timed_salvage', trigger: 'tractor', timingGateId: 'choir_bell_resonance' }],
+    salvageLayers: [
+      { id: 'resonance_armor', label: 'Resonance armor', pool: { cmdty_alloys: 2 } },
+      { id: 'bell_ribs', label: 'Bell-rib circuits', pool: { cmdty_salvage_electronics: 2 } },
+      { id: 'aegis_crypt', label: 'Aegis crypt', pool: { cmdty_quantum_cores: 1 } },
+    ],
     placement: { anchorLocal: { x: -600, z: -200 }, minRadius: 80, maxRadius: 260, bearingRadiusMin: 280, bearingRadiusMax: 500 },
     decision: salvageDecision({
       headline: 'CHOIR-BELL SHRINE CLAIM', prompt: 'Choose whether the ringing shield leaves the Wake.',
@@ -240,6 +251,11 @@ const RAW_UNIQUE_WRECKS = [
     hazardContext: { label: 'Gulf Hulk debris chain', anchorType: 'poi', anchorId: 'poi_eunomia_hulk', zoneId: 'zone_eunomia_hulk', hazardTypes: ['debris'], placementRule: 'along_debris_chain', approachGate: null },
     complications: [{ id: 'tideline_held_mass', kind: 'authored_encounter', trigger: 'wreck_fixed', encounterRef: 'unique_wreck_tideline_held_mass', role: 'held_mass_boss' }],
     encounterRefs: ['unique_wreck_tideline_held_mass'],
+    salvageLayers: [
+      { id: 'tug_plating', label: 'Tug plating', pool: { cmdty_scrap_metal: 2 } },
+      { id: 'winch_buses', label: 'Winch control buses', pool: { cmdty_control_unit: 1 } },
+      { id: 'coupling_core', label: 'Gravitic coupling core', pool: { cmdty_quantum_cores: 1 } },
+    ],
     placement: { anchorLocal: { x: 1180, z: 720 }, minRadius: 100, maxRadius: 300, bearingRadiusMin: 320, bearingRadiusMax: 560 },
     decision: salvageDecision({
       headline: 'TIDELINE COUPLING CLAIM', prompt: 'Choose whether to cut the tractor or preserve its final hold.',
@@ -560,6 +576,19 @@ export function validateUniqueWreckRegistry() {
       channels.add(source.channelId);
     }
     if (!(def.rumorSources || []).some((source) => source.sourceRef === def.bearingSourceRef)) errors.push(`${def.id}: bearing source is not authored`);
+    if (def.wreckClass === 'ancient') {
+      const layerIds = new Set();
+      if (!Array.isArray(def.salvageLayers) || def.salvageLayers.length < 2) {
+        errors.push(`${def.id}: ancient hulk needs multiple salvage layers`);
+      }
+      for (const layer of def.salvageLayers || []) {
+        if (!layer.id || layerIds.has(layer.id)) errors.push(`${def.id}: duplicate/missing salvage layer ${layer.id || '<empty>'}`);
+        layerIds.add(layer.id);
+        if (!layer.label || !layer.pool || Object.values(layer.pool).reduce((sum, qty) => sum + (Number(qty) || 0), 0) <= 0) {
+          errors.push(`${def.id}.${layer.id || '<empty>'}: empty ancient salvage layer`);
+        }
+      }
+    }
     const placement = def.placement || {};
     if (!(placement.minRadius > 0 && placement.maxRadius > placement.minRadius)) errors.push(`${def.id}: invalid placement radius`);
     if (!(placement.bearingRadiusMin > 0 && placement.bearingRadiusMax > placement.bearingRadiusMin)) errors.push(`${def.id}: invalid bearing radius`);

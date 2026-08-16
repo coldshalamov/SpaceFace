@@ -535,9 +535,19 @@ test('every wreck settles its named drops once and the durable receipt prevents 
       const record = emitRumor(t, def);
       const fixed = fixBearing(t, def, record);
       assert.equal(fixed.phase, 'fixed', `${def.programSlot} can be identified`);
-      const wreck = liveWreck(t, def.id);
+      let wreck = liveWreck(t, def.id);
       assert.ok(wreck, `${def.programSlot} materializes after its rumor`);
       t.bus.emit('salvage:completed', { wreckId: wreck.id, loot: {} });
+      while (record.phase === 'fixed' && def.wreckClass === 'ancient') {
+        assert.equal(liveWreck(t, def.id), null, `${def.programSlot} deeper layer waits for another visit`);
+        t.state.world.currentSectorId = 'sector_helios_prime';
+        t.bus.emit('sector:enter', { sectorId: 'sector_helios_prime' });
+        t.state.world.currentSectorId = def.sectorId;
+        t.bus.emit('sector:enter', { sectorId: def.sectorId });
+        wreck = liveWreck(t, def.id);
+        assert.ok(wreck, `${def.programSlot} exposes its next ancient layer after return`);
+        t.bus.emit('salvage:completed', { wreckId: wreck.id, loot: {} });
+      }
       assert.equal(record.phase, 'decision');
       const claim = def.decision.choices.find((choice) => choice.uniqueDrop);
       assert.ok(claim, `${def.programSlot} has a discovery-power claim choice`);

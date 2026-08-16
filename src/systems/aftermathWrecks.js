@@ -16,12 +16,14 @@ import {
   normalizeCausalAftermath,
 } from '../world/encounterCausality.js';
 
-const STATE_VERSION = 2;
+const STATE_VERSION = 3;
 const MAX_PER_SECTOR = 8;
 const MAX_SPAWNED_PER_SECTOR = 6;
 const MAX_CAUSES = 24;
 const WRECK_RADIUS = 9;
 const WRECK_SALVAGE_TIME = 8;
+export const AFTERMATH_FRESH_WINDOW_S = 120;
+const COLD_HULK_SALVAGE_TIME = 12;
 const FREIGHT_IDENTITY_TEXT_MAX = 160;
 const SHIPLIKE_TYPES = new Set(['ship', 'drone']);
 const DEFAULT_POOL = Object.freeze({ cmdty_scrap_metal: 3, cmdty_salvage_electronics: 1 });
@@ -155,12 +157,32 @@ function poolForMarker(marker) {
   return marker.salvagePool;
 }
 
+export function aftermathLifecycleForMarker(marker, simTime = 0) {
+  const bornAt = Math.max(0, Number(marker && marker.t) || 0);
+  const ageS = Math.max(0, (Number(simTime) || 0) - bornAt);
+  const stage = ageS >= AFTERMATH_FRESH_WINDOW_S ? 'cold' : 'fresh';
+  return {
+    stage,
+    ageS,
+    freshUntil: bornAt + AFTERMATH_FRESH_WINDOW_S,
+    cooledAt: stage === 'cold' ? bornAt + AFTERMATH_FRESH_WINDOW_S : null,
+  };
+}
+
 function aftermathLine(marker) {
   const zone = marker.zoneName || 'a local zone';
   const victim = marker.victimLabel || marker.victimClass || 'ship';
   const cause = marker.cause;
   if (cause && cause.actor) return `${victim} destroyed in ${zone}; evidence links ${cause.actor} to ${cause.motiveId}.`;
   return `${victim} destroyed in ${zone}; black box lists killer ${marker.killerId == null ? 'unknown' : marker.killerId}.`;
+}
+
+function lifecycleScanLabel(marker, cls, stage) {
+  const rawIdentity = marker && (marker.victimLabel || marker.victimClass)
+    || cls && cls.label
+    || 'Wreck';
+  const identity = String(rawIdentity).replace(/\s+(?:wreck|hulk)$/i, '');
+  return stage === 'cold' ? `Cold ${identity} Hulk` : `Fresh ${identity} Wreck`;
 }
 
 function newsLine(marker) {
@@ -215,6 +237,8 @@ function makeMarker(state, payload, entity) {
     motiveId: encounterCausality && encounterCausality.motiveId || null,
     freightIdentity: freightIdentityFor(data.cargoManifest),
     cause: null,
+    lifecycleStage: 'fresh',
+    cooledAt: null,
   };
   marker.salvagePool = initialPoolForMarker(marker);
   return marker;
@@ -322,6 +346,8 @@ function normalizeMarker(input) {
     motiveId: input.motiveId || null,
     freightIdentity: freightIdentityFor(input.freightIdentity),
     cause: normalizeCausalAftermath(input.cause),
+    lifecycleStage: input.lifecycleStage === 'cold' ? 'cold' : 'fresh',
+    cooledAt: Number.isFinite(Number(input.cooledAt)) ? Math.max(0, Number(input.cooledAt)) : null,
   };
   const savedPool = normalizeSalvagePool(input.salvagePool);
   marker.salvagePool = savedPool == null ? initialPoolForMarker(marker) : savedPool;
@@ -589,8 +615,11 @@ export const aftermathWrecks = {
   },
 
   _specForMarker(marker) {
+    const lifecycle = this._refreshLifecycle(marker, false);
     const cls = wreckClassById(marker.wreckClass) || wreckClassById('battlefield');
     const line = aftermathLine(marker);
+    const cold = lifecycle.stage === 'cold';
+    const scanLabel = lifecycleScanLabel(marker, cls, lifecycle.stage);
     return {
       type: 'wreck',
       pos: { x: marker.pos.x, z: marker.pos.z },
@@ -602,12 +631,17 @@ export const aftermathWrecks = {
         parentType: marker.wreckClass === 'military' ? 'military' : 'ship',
         loot: [],
         salvagePool: poolForMarker(marker),
-        salvageTimeLeft: WRECK_SALVAGE_TIME,
-        scanLabel: cls ? cls.scanLabel : 'Battle-scarred Hulk',
+        salvageTimeLeft: cold ? COLD_HULK_SALVAGE_TIME : WRECK_SALVAGE_TIME,
+        scanLabel,
+        authoredScanLabel: scanLabel,
+        wreckLifecycle: lifecycle.stage,
+        lifecycleStage: lifecycle.stage,
+        freshUntil: lifecycle.freshUntil,
+        cooledAt: lifecycle.cooledAt,
         wreckClass: marker.wreckClass || 'battlefield',
         wreckClassLabel: cls ? cls.label : marker.wreckClassLabel || 'Battlefield Wreck',
         wreckClassBlurb: cls ? cls.blurb : null,
-        provenanceLine: line,
+        provenanceLine: cold ? `${line} The hull is cold; only deliberate salvage remains.` : line,
         provenance: {
           source: 'battle-aftermath',
           markerId: marker.markerId,
@@ -632,6 +666,50 @@ export const aftermathWrecks = {
         causeContract: marker.cause ? clonePlain(marker.cause) : null,
       },
     };
+  },
+
+  _refreshLifecycle(marker, announce = true) {
+    const lifecycle = aftermathLifecycleForMarker(marker, this.state && this.state.simTime);
+    const changed = marker.lifecycleStage !== lifecycle.stage;
+    marker.lifecycleStage = lifecycle.stage;
+    marker.cooledAt = lifecycle.cooledAt;
+    if (changed && lifecycle.stage === 'cold' && announce && this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('aftermathWreck:cooled', {
+        markerId: marker.markerId,
+        sectorId: marker.sectorId,
+        wreckClass: marker.wreckClass,
+        cooledAt: lifecycle.cooledAt,
+      });
+    }
+    return lifecycle;
+  },
+
+  _syncLiveLifecycle(marker) {
+    const lifecycle = this._refreshLifecycle(marker, true);
+    const entity = this._resolveBoundWreck(marker && marker.markerId);
+    if (!entity || !entity.data) return lifecycle;
+    const cls = wreckClassById(marker.wreckClass) || wreckClassById('battlefield');
+    const cold = lifecycle.stage === 'cold';
+    const scanLabel = lifecycleScanLabel(marker, cls, lifecycle.stage);
+    entity.data.wreckLifecycle = lifecycle.stage;
+    entity.data.lifecycleStage = lifecycle.stage;
+    entity.data.freshUntil = lifecycle.freshUntil;
+    entity.data.cooledAt = lifecycle.cooledAt;
+    entity.data.scanLabel = scanLabel;
+    entity.data.authoredScanLabel = scanLabel;
+    entity.data.provenanceLine = cold
+      ? `${aftermathLine(marker)} The hull is cold; only deliberate salvage remains.`
+      : aftermathLine(marker);
+    if (cold && entity.data.salvageTimeLeft === WRECK_SALVAGE_TIME) {
+      entity.data.salvageTimeLeft = COLD_HULK_SALVAGE_TIME;
+    }
+    return lifecycle;
+  },
+
+  update(_dt, state) {
+    if (!state || !this._spawned || (state.tick | 0) % 30 !== 0) return;
+    const sectorId = state.world && state.world.currentSectorId;
+    for (const marker of aftermathForSector(state, sectorId)) this._syncLiveLifecycle(marker);
   },
 
   _clearLiveRefs(sectorId) {
