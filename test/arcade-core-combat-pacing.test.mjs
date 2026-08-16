@@ -5,7 +5,11 @@ import { createSimulation } from '../src/core/sim.js';
 import { sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
 import { ENEMY_TYPES } from '../src/data/enemies.js';
 import { WEAPONS } from '../src/data/weapons.js';
+import { killRewardRecipeFor, rollKillRewardItems } from '../src/data/killRewards.js';
 import { zonesForSector } from '../src/data/sectorZones.js';
+import { PRESENTATION_ADMISSION } from '../src/core/presentationAdmission.js';
+import { createVisualFactory, invalidateVisualFactoryCaches } from '../src/render/visualFactory.js';
+import { installVisualOverrides } from '../src/render/visualOverrides.js';
 import { aiPorts } from '../src/systems/aiPorts.js';
 import {
   ARCADE_ISLAND_CONTACT_MAX_DELAY_S,
@@ -21,6 +25,23 @@ import { createTacticalAISystem } from '../src/systems/tacticalAI.js';
 
 const CERES = 'sector_ceres_belt';
 const HELIOS = 'sector_helios_prime';
+
+function stubCanvas() {
+  const context = {
+    createImageData(width, height) {
+      return { data: new Uint8ClampedArray(width * height * 4), width, height };
+    },
+    putImageData() {}, fillRect() {}, strokeRect() {}, clearRect() {}, drawImage() {}, fillText() {},
+    save() {}, restore() {}, translate() {}, rotate() {}, scale() {}, setTransform() {},
+    beginPath() {}, closePath() {}, moveTo() {}, lineTo() {}, arc() {}, rect() {}, fill() {}, stroke() {}, clip() {},
+    quadraticCurveTo() {}, bezierCurveTo() {}, measureText() { return { width: 10 }; },
+    createLinearGradient() { return { addColorStop() {} }; },
+    createRadialGradient() { return { addColorStop() {} }; },
+  };
+  return { width: 256, height: 256, getContext: () => context };
+}
+
+globalThis.document ||= { createElement: () => stubCanvas() };
 
 function zone(sectorId, zoneId) {
   const found = zonesForSector(sectorId).find((candidate) => candidate.id === zoneId);
@@ -123,10 +144,11 @@ test('eligible tier-1 island reaches the real Tactical AI fire adapter by 20 sec
 
   const live = arcadeLive(h.state);
   assert.ok(live, 'the normal encounter runtime owns the island contact');
-  assert.ok(contactAt != null && firstFireAt <= 20, `first hostile fire observed at ${firstFireAt}`);
   const squad = actors(h, live);
-  assert.ok(squad.length >= 3 && squad.length <= 4, `tier-1 Wasp group is 3-4, observed ${squad.length}`);
-  assert.ok(squad.every((entity) => entity.data?.lootTableId === 'wasp_swarmer'));
+  assert.ok(contactAt != null && firstFireAt <= 20,
+    `first hostile fire observed at ${firstFireAt}`);
+  assert.ok(squad.length >= 8 && squad.length <= 14, `tier-1 Mote cloud is 8-14, observed ${squad.length}`);
+  assert.ok(squad.every((entity) => entity.data?.lootTableId === 'mote_swarmer'));
   assert.ok(h.sim.helpers.spawnBudget.current() <= 24);
   assert.equal(h.state.encounterDirector.lastMeaningfulAt, live.startedAt,
     'the island contact stamps the existing 30-second meaningful clock');
@@ -228,4 +250,60 @@ test('starter Pulse Laser still computes a 2-4 second perfect-hit Wasp TTK', () 
   const effectiveHealth = wasp.shield + wasp.armor + wasp.hull;
   const ttk = effectiveHealth / (pulse.dmg * pulse.rof);
   assert.ok(ttk >= 2 && ttk <= 4, `computed perfect-hit TTK ${ttk.toFixed(3)}s`);
+});
+
+test('Motes die in two starter hits, nibble shields, and erupt exactly one physical pickup', () => {
+  const mote = ENEMY_TYPES.find((enemy) => enemy.id === 'mote_swarmer');
+  const pulse = WEAPONS.find((weapon) => weapon.id === 'wpn_pulse_laser_s');
+  assert.ok(mote && pulse);
+  assert.equal(Math.ceil((mote.shield + mote.armor + mote.hull) / pulse.dmg), 2);
+  assert.ok(mote.weapons[0].dmgOverride * mote.weapons[0].rofOverride <= 1,
+    'one Mote remains a shield nibble instead of a fighter-scale threat');
+  const victim = { mass: mote.mass, data: { lootTableId: mote.id, shipClass: mote.shipClass } };
+  assert.equal(killRewardRecipeFor(victim).id, 'mote');
+  const items = rollKillRewardItems(() => 0.5, victim);
+  assert.deepEqual(items, [{ commodityId: 'cmdty_scrap_metal', qty: 1 }]);
+});
+
+test('live authored mounting admits the Mote hard-geometry identity instead of a Wasp body', () => {
+  const entity = {
+    id: 'mote-visual-contract',
+    type: 'ship',
+    team: 1,
+    alive: true,
+    radius: 5,
+    factionId: 'faction_reach',
+    data: {
+      defId: 'ship_wasp',
+      lootTableId: 'mote_swarmer',
+      silhouette: 'mote_quad',
+      fittings: [],
+    },
+  };
+  const factory = installVisualOverrides(createVisualFactory(), {
+    releaseMode: true,
+    directAuthoredMount: true,
+  });
+  globalThis.__SF_VISUAL_FACTORY_THROW__ = true;
+  let visual;
+  try {
+    visual = factory.build(entity);
+  } finally {
+    delete globalThis.__SF_VISUAL_FACTORY_THROW__;
+  }
+  assert.equal(entity.presentationAdmission, PRESENTATION_ADMISSION.ready);
+  assert.equal(visual.visible, true);
+  assert.equal(visual.userData.authoredAssetState, 'designed-procedural-settled');
+  assert.equal(visual.userData.enemySilhouette, 'mote_quad');
+  assert.equal(visual.userData.visualLanguage, 'open-quad-caged-coil');
+  assert.equal(visual.userData.motePodCount, 4);
+  let hardMeshes = 0;
+  let softStandIns = 0;
+  visual.traverse((object) => {
+    if (object.isMesh) hardMeshes++;
+    if (object.isSprite || object.isPoints) softStandIns++;
+  });
+  assert.ok(hardMeshes >= 3, 'open truss, caged coil, and pods remain physical geometry');
+  assert.equal(softStandIns, 0, 'Mote identity contains no sprite or point stand-in');
+  invalidateVisualFactoryCaches();
 });

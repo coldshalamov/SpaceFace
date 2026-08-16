@@ -408,7 +408,8 @@ export const encounterDirector = {
     }
     if (visit.firedAt != null || now < visit.dueAt) return;
     const budget = this.helpers && this.helpers.spawnBudget;
-    if (budget && typeof budget.available === 'function' && budget.available() < 3) return;
+    const minimumGroup = zoneThreat(visit.zone) >= 2 ? 3 : 8;
+    if (budget && typeof budget.available === 'function' && budget.available() < minimumGroup) return;
     const fired = this._fireArcadeIslandContact(dir, state, visit, now);
     if (fired) visit.firedAt = now;
   },
@@ -452,9 +453,10 @@ export const encounterDirector = {
     const threat = zoneThreat(visit.zone);
     const targetCount = threat >= 2
       ? 4 + Math.floor(rng() * 3)
-      : 3 + Math.floor(rng() * 2);
+      : 8 + Math.floor(rng() * 7);
     const waspTemplate = item.ships.find((ship) => ship.archetype === 'wasp_swarmer')
       || item.ships[0];
+    const moteDef = ENEMY_BY_ID.get('mote_swarmer');
     const ships = [];
     if (threat >= 2) ships.push({
       ...waspTemplate,
@@ -465,8 +467,10 @@ export const encounterDirector = {
     });
     while (ships.length < targetCount) ships.push({
       ...waspTemplate,
-      archetype: 'wasp_swarmer',
-      combatDoctrineId: ENEMY_BY_ID.get('wasp_swarmer')?.combatDoctrineId || null,
+      archetype: threat >= 2 ? 'wasp_swarmer' : 'mote_swarmer',
+      combatDoctrineId: threat >= 2
+        ? ENEMY_BY_ID.get('wasp_swarmer')?.combatDoctrineId || null
+        : moteDef?.combatDoctrineId || null,
       compositionRole: threat >= 2 ? 'light' : undefined,
       role: threat >= 2 ? 'member' : undefined,
       fleeCargo: threat >= 2 ? { commodityId: 'cmdty_scrap_metal', qty: 1 } : null,
@@ -478,20 +482,27 @@ export const encounterDirector = {
       visit.center.z - player.pos.z,
     ) < 1e-6) bearing = rng() * Math.PI * 2;
     const angle = bearing + (rng() * 2 - 1) * ARCADE_ISLAND_BEARING_SPREAD_RAD;
-    const radius = ARCADE_ISLAND_SPAWN_MIN_WU
+    const rolledRadius = ARCADE_ISLAND_SPAWN_MIN_WU
       + rng() * (ARCADE_ISLAND_SPAWN_MAX_WU - ARCADE_ISLAND_SPAWN_MIN_WU);
+    const radius = threat >= 2 ? rolledRadius : Math.min(220, rolledRadius);
     const radialX = Math.cos(angle);
     const radialZ = Math.sin(angle);
     const tangentX = -radialZ;
     const tangentZ = radialX;
     for (let index = 0; index < ships.length; index++) {
-      const centered = index - (ships.length - 1) * 0.5;
-      const lane = centered * 12;
-      const depth = (index % 2 === 0 ? -1 : 1) * Math.min(8, Math.abs(centered) * 3);
+      const cell = index % 3;
+      const rank = Math.floor(index / 3);
+      const cloudX = threat >= 2
+        ? (index - (ships.length - 1) * 0.5) * 12
+        : (cell - 1) * 68 + (rank % 2 === 0 ? -1 : 1) * rank * 7;
+      const cloudZ = threat >= 2
+        ? (index % 2 === 0 ? -1 : 1) * Math.min(8, index * 2)
+        : rank * 10;
       ships[index].pos = {
-        x: player.pos.x + radialX * (radius + depth) + tangentX * lane,
-        z: player.pos.z + radialZ * (radius + depth) + tangentZ * lane,
+        x: player.pos.x + radialX * radius + tangentX * cloudX + radialX * cloudZ,
+        z: player.pos.z + radialZ * radius + tangentZ * cloudX + radialZ * cloudZ,
       };
+      if (threat < 2) ships[index].squadId = `${visit.key}:mote-cell:${index % 3}`;
       ships[index].passive = true;
     }
 
@@ -1006,7 +1017,9 @@ export const encounterDirector = {
         spec.data = spec.data || {};
         spec.data.ai = spec.data.ai || {};
         const ai = spec.data.ai;
-        ai.squadId = live.squadId;
+        ai.squadId = typeof sh.squadId === 'string' && sh.squadId
+          ? sh.squadId
+          : live.squadId;
         ai.doctrine = sh.doctrine || ai.doctrine;
         if (sh.combatDoctrineId) ai.combatDoctrineId = sh.combatDoctrineId;
         if (sh.formation) ai.formation = sh.formation;
@@ -1277,9 +1290,14 @@ export const encounterDirector = {
         const player = this.player();
         if (player && player.id != null) spawn.targetId = player.id;
       }
-      setEntityDoctrine(e, {
-        activity: activityForEncounterSpawn(live, spawn, { now: this.now(), passive: !!passive }),
-      });
+      const nextActivity = activityForEncounterSpawn(live, spawn, { now: this.now(), passive: !!passive });
+      // The offer phase is already the player's authored no-fire response window. Preserve its
+      // start tick when the squad springs so fast craft do not spend their whole first attack pass
+      // waiting through a second, invisible response timer.
+      const activity = !passive && ai.activity && Number.isInteger(ai.activity.startedTick)
+        ? { ...nextActivity, startedTick: ai.activity.startedTick }
+        : nextActivity;
+      setEntityDoctrine(e, { activity });
       if (live.data && live.data.ceresActivityAmbush === true) {
         ai[CERES_ACTIVITY_AMBUSH_MARKER] = passive ? 'offer' : 'conflict';
       }

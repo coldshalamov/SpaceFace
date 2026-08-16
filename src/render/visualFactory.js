@@ -1399,6 +1399,75 @@ function buildDroneSwarm(ctx) {
   glow.position.set(0, 0, -s * R * 0.78); glow.scale.setScalar(R); g.add(glow);
 }
 
+// mote_quad — an open, hard-edged quad frame around a caged drive coil. Four offset service pods
+// make the silhouette intentionally imperfect; the pack shimmer comes from many rigid bodies
+// crossing and banking at different phases, not from a glow card or camera-facing particle.
+function buildMoteQuad(ctx) {
+  const { g, R, hm, accent, seed } = ctx;
+  const phase = ((seed >>> 3) % 11) * 0.017;
+  const trussGeo = () => getGeometry('edr:moteTruss', () => new THREE.BoxGeometry(1.25, 0.10, 0.13));
+  for (const angle of [Math.PI / 4, -Math.PI / 4]) {
+    const truss = new THREE.Mesh(trussGeo(), hm);
+    truss.name = 'MoteOpenXTruss';
+    truss.rotation.y = angle;
+    truss.position.y = -R * 0.04;
+    truss.scale.setScalar(R);
+    g.add(truss);
+  }
+
+  const coil = new THREE.Mesh(
+    getGeometry('edr:moteCoil', () => new THREE.TorusGeometry(0.24, 0.055, 6, 14)),
+    accent,
+  );
+  coil.name = 'MoteCagedCoil';
+  coil.rotation.x = Math.PI / 2;
+  coil.scale.setScalar(R);
+  g.add(coil);
+  for (const angle of [0, Math.PI / 2]) {
+    const cage = new THREE.Mesh(
+      getGeometry('edr:moteCage', () => new THREE.BoxGeometry(0.06, 0.22, 0.72)),
+      hm,
+    );
+    cage.name = 'MoteCoilCage';
+    cage.rotation.y = angle;
+    cage.scale.setScalar(R);
+    g.add(cage);
+  }
+
+  const podOffsets = [
+    [-0.47, 0.08, -0.43],
+    [0.54, -0.02, -0.36],
+    [-0.39, -0.05, 0.50],
+    [0.48, 0.05, 0.43],
+  ];
+  for (let i = 0; i < podOffsets.length; i++) {
+    const [x, y, z] = podOffsets[i];
+    const pod = new THREE.Mesh(
+      getGeometry('edr:motePod', () => new THREE.OctahedronGeometry(0.17, 0)),
+      i === ((seed >>> 5) & 3) ? accent : hm,
+    );
+    pod.name = 'MoteOffsetPod';
+    pod.position.set(x * R, (y + (i % 2 ? phase : -phase)) * R, z * R);
+    pod.rotation.set(0.18 * (i - 1.5), i * 0.37 + phase, 0.13 * (i % 2 ? 1 : -1));
+    pod.scale.setScalar(R);
+    g.add(pod);
+  }
+  for (const x of [-0.19, 0.21]) {
+    const nozzle = new THREE.Mesh(
+      getGeometry('edr:moteNozzle', () => new THREE.CylinderGeometry(0.07, 0.11, 0.22, 6)),
+      hm,
+    );
+    nozzle.name = 'MoteHardNozzle';
+    nozzle.rotation.x = Math.PI / 2;
+    nozzle.position.set(x * R, 0, -0.46 * R);
+    nozzle.scale.setScalar(R);
+    g.add(nozzle);
+  }
+  g.parent.userData.enemySilhouette = 'mote_quad';
+  g.parent.userData.visualLanguage = 'open-quad-caged-coil';
+  g.parent.userData.motePodCount = podOffsets.length;
+}
+
 // sniper_lance — Lancer Sniper. Slim needle, very long barrel, exposed cooling fins. Reads: keep distance.
 function buildSniperLance(ctx) {
   const { g, R, hm, accent, vis } = ctx;
@@ -1590,6 +1659,7 @@ function buildDreadnoughtEnemy(ctx) {
 }
 
 const ENEMY_FAMILY_BUILDERS = {
+  mote_quad: buildMoteQuad,
   drone_swarm: buildDroneSwarm,
   sniper_lance: buildSniperLance,
   bruiser_armor: buildBruiserArmor,
@@ -1619,6 +1689,7 @@ function buildShipMesh(e, pal) {
   const enemySil = e.data && e.data.silhouette;
   const family = (enemySil && ENEMY_FAMILY_BUILDERS[enemySil]) ? enemySil : familyFor(defId);
   const isEnemyFamily = !!enemySil && !!ENEMY_FAMILY_BUILDERS[enemySil];
+  const isMoteFamily = family === 'mote_quad';
   const recipe = recipeFor(defId);
   const seed = hashId(e.id);
   const tierRow = tierForLoadout(defId, (e.data && e.data.fittings) || [], e.data && e.data.visualTier);
@@ -1689,7 +1760,7 @@ function buildShipMesh(e, pal) {
   }
 
   // 5) ENGINES — nozzles+plumes at authored engineMounts, sized by fitted engine class.
-  const mounts = vis.engineMounts || [];
+  const mounts = isMoteFamily ? [] : (vis.engineMounts || []);
   for (let i = 0; i < mounts.length; i++) {
     const m = mounts[i];
     const en = engineProp(pal, R, m.scaleK || 1, loadout.engineClass || 60);
@@ -1699,7 +1770,7 @@ function buildShipMesh(e, pal) {
     outer.userData.engines.push(en);
   }
   // fallback: if no mounts authored, place a pair by recipe (back-compat for defs lacking visuals)
-  if (!mounts.length) {
+  if (!isMoteFamily && !mounts.length) {
     const n = Math.max(1, Math.min(6, recipe.engineCount || 2));
     for (let i = 0; i < n; i++) {
       const z = n === 1 ? 0 : (-(n - 1) / 2 + i) * 0.24 * 2;
@@ -1722,7 +1793,7 @@ function buildShipMesh(e, pal) {
   }
 
   // 8) SENSOR/UTILITY masts — antennas + dishes near the authored sensor anchor, count from loadout.
-  if (vis.sensor) {
+  if (!isMoteFamily && vis.sensor) {
     const n = Math.max(1, Math.min(5, (loadout.utilityCount || 1) + Math.round((hints.greeble || 0) * 2)));
     const rnd = mulberryLite(seed + 777);
     for (let i = 0; i < n; i++) {
@@ -1740,7 +1811,7 @@ function buildShipMesh(e, pal) {
   }
 
   // 9) NAV BLINKERS (port green / starboard red / white stern) for real aerospace cueing.
-  addNavBlinkers(g, R, ctx.vis.halfWidth, ctx.vis.length, blinkers);
+  if (!isMoteFamily) addNavBlinkers(g, R, ctx.vis.halfWidth, ctx.vis.length, blinkers);
 
   // 10) self-animation: engine plume throb + fan spin + nav blinker pulse + capital sensor ring
   //     spin + turret-head idle sweep. The driver must live on a renderable child (Three only fires
