@@ -101,7 +101,8 @@ function resolveEnemyWeapon(w, slotIndex) {
   const isTurret = base.tracking === 'auto_turret' || !!w.turret;
   const isHoming = base.tracking === 'homing';
   const facing = isTurret ? 'turret' : 'front';
-  const gimbalArc = isTurret ? (base.turretArcDeg || 180) * Math.PI / 180
+  const turretArcDeg = Number.isFinite(w.turretArcDeg) ? w.turretArcDeg : (base.turretArcDeg || 180);
+  const gimbalArc = isTurret ? turretArcDeg * Math.PI / 180
     : (isHoming ? Math.PI : 22 * Math.PI / 180);
   return {
     ...base, slotIndex, defId: w.id,
@@ -113,7 +114,7 @@ function resolveEnemyWeapon(w, slotIndex) {
     range: w.rangeOverride ?? base.range,
     spread: base.spreadDeg ?? 0,
     tracking: isTurret ? 'auto_turret' : (base.tracking || 'fixed'),
-    arc: isTurret ? { turret: base.turretArcDeg || 180 } : 'fixed',
+    arc: isTurret ? { turret: turretArcDeg } : 'fixed',
     heatMax: base.heatMax ?? 100, lockTimeS: base.lockTimeS ?? 0,
     _cooldown: 0, _heat: 0,
   };
@@ -215,6 +216,12 @@ export function makeEnemySpawnSpec(enemyTypeId, level, pos, opts = {}) {
   if (def.terrainAmbush) spec.data.terrainAmbush = { ...def.terrainAmbush };
   if (def.deathCookOff) spec.data.deathCookOff = { ...def.deathCookOff };
   if (def.mediumSetup) spec.data.mediumSetup = { ...def.mediumSetup };
+  if (def.heavyFightShape) {
+    spec.data.heavyFightShape = { ...def.heavyFightShape };
+    if (def.heavyFightShape.ramPlate === true) {
+      spec.data.intent = { ...(spec.data.intent || {}), ramPlate: true };
+    }
+  }
   if (def.visibleRetreat) spec.data.visibleRetreat = { ...def.visibleRetreat };
   const heavyPartRecipe = heavyPartRecipeForEnemy(def.id);
   if (heavyPartRecipe && heavyPartRecipe.id === def.heavyPartRecipeId) {

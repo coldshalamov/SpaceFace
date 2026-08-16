@@ -110,7 +110,12 @@ export function authorizeAIEngagement({
   if (nowTick < armedTick) return denied('response_window');
 
   const phase = doctrinePhase(objectiveReason, doctrineId);
-  if (!phase || !DOCTRINE_FIRE_PHASES[doctrineId]?.has(phase)) return denied('doctrine_fire_window');
+  const heavyTurretPressure = doctrineId === 'brawler_commit' && phase === 'turret_pressure'
+    && self.data?.heavyFightShape?.capability === 'turret_boat'
+    && self.data.heavyFightShape.runtime === 'combat_doctrine';
+  if (!phase || (!DOCTRINE_FIRE_PHASES[doctrineId]?.has(phase) && !heavyTurretPressure)) {
+    return denied('doctrine_fire_window');
+  }
 
   const protection = protectedStationAt(state, target);
   if (protection) {

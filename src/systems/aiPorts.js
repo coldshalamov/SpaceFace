@@ -1014,6 +1014,7 @@ function sensorSelf(state, entity, capabilities = capabilitiesFor(state, entity)
     // interceptor or field controller.
     combatRoleId: entity && entity.data && entity.data.lootTableId || null,
     mediumSetup: mediumSetupSnapshot(entity, runtime, state && state.tick, freeze),
+    heavyFightShape: heavyFightShapeSnapshot(entity, freeze),
     visibleRetreat: visibleRetreatSnapshot(entity, freeze),
     maxSpeed: positive(entity && entity.maxSpeed,
       positive(entity && entity.flightModel && entity.flightModel.maxSpeed, 0)),
@@ -1021,6 +1022,20 @@ function sensorSelf(state, entity, capabilities = capabilitiesFor(state, entity)
     ramAuthorized,
     coverAmbush: skitterCoverSnapshot(state, entity, freeze),
     ...bands,
+  });
+}
+
+function heavyFightShapeSnapshot(entity, freeze) {
+  const authored = entity && entity.data && entity.data.heavyFightShape;
+  if (!authored || typeof authored !== 'object') return null;
+  const capability = String(authored.capability || '');
+  return freeze({
+    capability,
+    counterVerb: String(authored.counterVerb || ''),
+    tell: String(authored.tell || ''),
+    runtime: String(authored.runtime || 'unwired'),
+    ramPlateAvailable: capability !== 'committed_ram'
+      || (entity.data.heavyProwDisabled !== true && entity.data.intent?.ramPlate === true),
   });
 }
 
@@ -1083,10 +1098,18 @@ function combatStatusLive(runtime, statusId, tick) {
 
 function explicitRamAuthorization(entity, ai, activity, bands) {
   const intent = entity && entity.data && entity.data.intent || {};
+  const heavyFight = entity && entity.data && entity.data.heavyFightShape;
   const trigger = String(ai && ai.engagementTrigger || '');
   const telegraph = String(ai && ai.approachTelegraph || '');
   const activityReason = String(activity && activity.reason || '');
-  const heavyEnough = bands && (bands.operationalMassBand === 'heavy' || bands.operationalMassBand === 'capital');
+  // The heavy-family source plan starts at mass 60, while the older generic sensor band names
+  // 40..139 "medium". Do not rewrite that shared vocabulary to authorize one weapon: the exact
+  // Ramscoop identity and its still-mounted physical prow are the narrower authority.
+  const authoredHeavyRam = heavyFight && heavyFight.capability === 'committed_ram'
+    && heavyFight.runtime === 'combat_doctrine'
+    && entity.data.heavyProwDisabled !== true;
+  const heavyEnough = authoredHeavyRam || bands
+    && (bands.operationalMassBand === 'heavy' || bands.operationalMassBand === 'capital');
   return intent.ramPlate === true
     && heavyEnough
     && ai && ai.passive !== true

@@ -255,6 +255,7 @@ function neutralSelf(entityId) {
     combatRoleId: null,
     maxSpeed: 0,
     mediumSetup: null,
+    heavyFightShape: null,
     visibleRetreat: null,
     factionBehavior: null,
     ramAuthorized: false,
@@ -287,6 +288,7 @@ function normalizeSelf(value, entityId) {
     combatRoleId: value.combatRoleId == null ? null : String(value.combatRoleId),
     maxSpeed: Math.max(0, finite(value.maxSpeed, 0)),
     mediumSetup: normalizeMediumSetupView(value.mediumSetup),
+    heavyFightShape: normalizeHeavyFightShapeView(value.heavyFightShape),
     visibleRetreat: normalizeVisibleRetreatView(value.visibleRetreat),
     factionBehavior: normalizeFactionBehaviorProfile(value.factionBehavior),
     ramAuthorized: value.ramAuthorized === true,
@@ -295,6 +297,17 @@ function normalizeSelf(value, entityId) {
     cargoBand: normalizeBand(value.cargoBand, ['empty', 'light', 'valuable', 'rich'], 'empty'),
     tetherabilityBand: normalizeBand(value.tetherabilityBand, ['poor', 'fair', 'good', 'excellent'], 'good'),
   };
+}
+
+function normalizeHeavyFightShapeView(value) {
+  if (!value || typeof value !== 'object') return null;
+  return Object.freeze({
+    capability: String(value.capability || ''),
+    counterVerb: String(value.counterVerb || ''),
+    tell: String(value.tell || ''),
+    runtime: String(value.runtime || 'unwired'),
+    ramPlateAvailable: value.ramPlateAvailable === true,
+  });
 }
 
 function normalizeMediumSetupView(value) {

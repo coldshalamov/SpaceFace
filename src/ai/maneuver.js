@@ -155,7 +155,12 @@ export class ManeuverPlanner {
       desired = applyFriendlySeparation(desired, self, perception.contacts, this.config);
       desired = applyShipCollisionAvoidance(desired, self, perception.contacts, intent, this.seed, entityId, tick, runtime, this.config);
     }
-    desired = applyObstacleAvoidance(desired, self, perception.contacts, this.config);
+    // A Ramscoop's charged run is deliberately a collision course. The doctrine has already frozen
+    // a world-space lane after a visible spool; steering around terrain here would erase the dodge
+    // payoff and turn the heavy back into an ordinary obstacle-avoiding interceptor.
+    if (intent.committedCollisionCourse !== true) {
+      desired = applyObstacleAvoidance(desired, self, perception.contacts, this.config);
+    }
     const speed = Math.hypot(self.vel.x, self.vel.z);
     const commanded = Math.hypot(desired.x, desired.z);
     const intentionalHold = intent.kind === ManeuverKind.HOLD && formationDistance <= this.config.arrivalRadius;
@@ -223,7 +228,8 @@ export class ManeuverPlanner {
       torqueYaw: rawTorqueYaw,
     }, this.config, { emergency: emergencyManeuver });
 
-    const boostWanted = (kind === ManeuverKind.RETREAT || kind === ManeuverKind.ESCAPE_TETHER || kind === ManeuverKind.CLEAR_DEADLOCK) &&
+    const boostWanted = (intent.boostDuringCommit === true || kind === ManeuverKind.RETREAT
+      || kind === ManeuverKind.ESCAPE_TETHER || kind === ManeuverKind.CLEAR_DEADLOCK) &&
       speed < envelope.maxSpeed * 0.85 && Math.abs(angleError) < 0.78;
     const boost = boostWanted && self.energyFraction >= this.config.minBoostEnergyFraction && self.heatFraction <= this.config.maxBoostHeatFraction;
     const brake = speedLimited || closingLimited || ((kind === ManeuverKind.HOLD || kind === ManeuverKind.FORMATION) &&

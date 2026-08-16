@@ -19,6 +19,7 @@ const WIRED_PART_OUTCOMES = new Set([
   'detach_as_momentum_debris',
   'disable_drive_and_leave_drifting_barge',
   'disable_committed_burn',
+  'remove_ram_plate_authority',
   'disable_drive',
   'reduce_capital_drive_authority',
 ]);
@@ -27,13 +28,31 @@ const partBehavior = (fields) => Object.freeze({
   ...fields,
 });
 const binding = (fields) => Object.freeze({ ...fields });
-const part = (id, partRole, subsystemId, partBinding, behaviorFields) => Object.freeze({
-  id,
-  partRole,
-  subsystemId,
-  binding: binding(partBinding),
-  behavior: partBehavior(behaviorFields),
-});
+const physicalSocket = (fields) => {
+  if (!fields) return null;
+  const x = Number(fields.x);
+  const z = Number(fields.z);
+  if (!Number.isFinite(x) || !Number.isFinite(z) || Math.abs(x) > 1 || Math.abs(z) > 1) {
+    throw new Error(`heavy physical socket ${fields.id || 'unnamed'} must use finite normalized coordinates`);
+  }
+  return Object.freeze({
+    id: String(fields.id || ''),
+    space: 'parent_radius',
+    x,
+    z,
+  });
+};
+const part = (id, partRole, subsystemId, partBinding, behaviorFields, socketFields = null) => {
+  const socket = physicalSocket(socketFields);
+  return Object.freeze({
+    id,
+    partRole,
+    subsystemId,
+    binding: binding(partBinding),
+    behavior: partBehavior(behaviorFields),
+    ...(socket ? { physicalSocket: socket } : {}),
+  });
+};
 const phase = (id, fields) => Object.freeze({
   id,
   runtime: 'unwired',
@@ -70,7 +89,8 @@ export const HEAVY_PART_RECIPES = Object.freeze([
         { onDestroyed: 'detach_as_momentum_debris' }),
       part('heavy_gunship_pd_ring', 'weapon', 'subsystem_weapon',
         { kind: 'weapon', weaponId: 'wpn_flak_turret_s', ordinal: 0 },
-        { onDestroyed: 'detach_as_momentum_debris' }),
+        { onDestroyed: 'detach_as_momentum_debris' },
+        { id: 'aft_pd_ring', x: -0.98, z: 0.12 }),
       part('heavy_gunship_drive_cluster', 'drive', 'subsystem_drive',
         { kind: 'subsystem', socket: 'aft_drive_cluster' },
         { onDestroyed: 'disable_drive_and_leave_drifting_barge' }),

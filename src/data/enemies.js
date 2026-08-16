@@ -332,8 +332,8 @@ export const ENEMY_TYPES = [
   },
   // ── PR95 wave 3: heavy-family identity (design/arcade-core/14_HEAVY_AND_CAPITAL.md) ──
   // Stable physical-part recipes live in heavyFamily.js and are copied onto spawn data by combat.
-  // Every recipe/part behavior is explicitly `runtime: unwired`: these rows establish identity,
-  // invariant combat budgets and reward continuity, not detachable parts or new encounter behavior.
+  // Each behavior/runtime field is explicit: Gunship/Ramscoop have live fight shapes, while later
+  // family identities stay unwired until their own packets land. Fixed stats never scale by level.
   {
     id: 'heavy_gunship', name: 'Gunship', shipId: 'ship_bastion',
     factionId: 'faction_reach',
@@ -343,13 +343,17 @@ export const ENEMY_TYPES = [
     cap: 300, capRegen: 30,
     maxSpeed: 72, accel: 42, turnRate: 0.62, collisionRadius: 31, mass: 150,
     weapons: [
-      { id: 'wpn_autocannon_m', turret: true },
-      { id: 'wpn_autocannon_m', turret: true },
-      { id: 'wpn_flak_turret_s', turret: true },
+      { id: 'wpn_autocannon_m', turret: true, turretArcDeg: 360 },
+      { id: 'wpn_autocannon_m', turret: true, turretArcDeg: 360 },
+      { id: 'wpn_flak_turret_s', turret: true, turretArcDeg: 360 },
     ],
     aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 390, leashRadius: 2600 },
     heavyPartRecipeId: 'heavy_parts_gunship_v1',
-    behavior: 'unwired heavy recipe: turret boat intended to become a drifting barge when stripped',
+    heavyFightShape: {
+      capability: 'turret_boat', counterVerb: 'strip_turrets_then_shove_or_ignore',
+      tell: 'wide_hull_and_visible_turret_rings', runtime: 'combat_doctrine',
+    },
+    behavior: 'slow 360-degree turret pressure; physical mount strip leaves a drifting barge',
     counterHint: 'strip_turrets_then_shove_or_ignore',
     bountyCr: 980, shipClass: 'gunship', killRewardTier: 'heavy',
     loot: {
@@ -370,7 +374,11 @@ export const ENEMY_TYPES = [
     weapons: [{ id: 'wpn_missile_rack_m', occasional: true }],
     aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 150, leashRadius: 2600 },
     heavyPartRecipeId: 'heavy_parts_ramscoop_v1',
-    behavior: 'unwired heavy recipe: committed ram intended to overshoot into geometry when dodged',
+    heavyFightShape: {
+      capability: 'committed_ram', counterVerb: 'dodge_then_use_terrain_against_its_mass',
+      tell: 'reinforced_wedge_nose_and_oversized_plume', ramPlate: true, runtime: 'combat_doctrine',
+    },
+    behavior: 'telegraphed fixed-lane ram with a physical burn and terrain overshoot',
     counterHint: 'dodge_then_use_terrain_against_its_mass',
     bountyCr: 820, shipClass: 'gunship', killRewardTier: 'heavy',
     loot: {

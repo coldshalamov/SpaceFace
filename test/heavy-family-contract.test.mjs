@@ -9,6 +9,7 @@ import {
   heavyPartRecipeForEnemy,
 } from '../src/data/heavyFamily.js';
 import { classifyKillRewardVictim, killRewardRecipeFor } from '../src/data/killRewards.js';
+import { buildHeavyPartLayouts } from '../src/combat/heavyParts.js';
 import { makeEnemySpawnSpec } from '../src/systems/combat.js';
 
 const EXPECTED_MASSES = new Map([
@@ -90,7 +91,7 @@ test('heavy recipes bind unique stable physical parts to the existing combat voc
       assert.ok(part.binding?.kind, `${part.id} has an explicit physical binding`);
       const outcome = part.behavior && part.behavior.onDestroyed;
       const remainsUnwired = outcome === 'weaken_pd_screen' || outcome === 'disable_bound_launch_bay'
-        || outcome === 'remove_ram_plate_authority' || outcome === 'disable_charged_ore_mine_release'
+        || outcome === 'disable_charged_ore_mine_release'
         || part.behavior?.onExposed === 'offer_board_salvage_or_destroy_decision';
       assert.equal(part.behavior?.runtime, remainsUnwired ? 'unwired' : 'physical_parts_v1', `${part.id} reports only wired mechanics`);
       if (part.binding.kind === 'weapon') {
@@ -128,7 +129,7 @@ test('spawn propagation preserves immutable recipes and names only physically wi
     for (const part of spec.data.heavyPartRecipe.parts) {
       const outcome = part.behavior.onDestroyed;
       const remainsUnwired = outcome === 'weaken_pd_screen' || outcome === 'disable_bound_launch_bay'
-        || outcome === 'remove_ram_plate_authority' || outcome === 'disable_charged_ore_mine_release'
+        || outcome === 'disable_charged_ore_mine_release'
         || part.behavior.onExposed === 'offer_board_salvage_or_destroy_decision';
       assert.equal(part.behavior.runtime, remainsUnwired ? 'unwired' : 'physical_parts_v1');
     }
@@ -136,6 +137,22 @@ test('spawn propagation preserves immutable recipes and names only physically wi
       assert.equal(phase.runtime, 'unwired');
     }
   }
+});
+
+test('the Gunship PD ring has an immutable normalized socket that reaches the hull surface', () => {
+  const recipe = heavyPartRecipeForEnemy('heavy_gunship');
+  const authored = recipe.parts.find((part) => part.id === 'heavy_gunship_pd_ring');
+  assert.deepEqual(authored.physicalSocket, {
+    id: 'aft_pd_ring', space: 'parent_radius', x: -0.98, z: 0.12,
+  });
+  assert.equal(Object.isFrozen(authored.physicalSocket), true);
+
+  const radius = 31;
+  const layout = buildHeavyPartLayouts({ radius, mass: 150 }, recipe)
+    .find((part) => part.partId === authored.id);
+  assert.deepEqual(layout.localOffset, { x: radius * -0.98, z: radius * 0.12 });
+  assert.ok(Math.hypot(layout.localOffset.x, layout.localOffset.z) + layout.radius > radius,
+    'the physical child protrudes beyond the coarse hull instead of being impossible to shoot');
 });
 
 test('Iron Maw has a capital part/phase recipe without claiming a phase runtime', () => {

@@ -29,7 +29,8 @@ export function buildHeavyPartLayouts(parent, recipe) {
     const ordinal = roleOrdinals.get(part.partRole) || 0;
     roleOrdinals.set(part.partRole, ordinal + 1);
     const count = roleCounts.get(part.partRole) || 1;
-    const localOffset = localOffsetFor(part.partRole, ordinal, count, recipeIndex, radius);
+    const localOffset = physicalSocketOffset(part.physicalSocket, radius)
+      || localOffsetFor(part.partRole, ordinal, count, recipeIndex, radius);
     const partRadius = Math.max(2.4, radius * (part.partRole === 'prow' ? 0.22 : 0.14));
     return Object.freeze({
       recipeIndex,
@@ -120,4 +121,12 @@ function localOffsetFor(role, ordinal, count, recipeIndex, radius) {
       return { x: radius * (0.48 - row * 0.18), z: side * radius * 0.78 };
     }
   }
+}
+
+function physicalSocketOffset(socket, radius) {
+  if (!socket || socket.space !== 'parent_radius') return null;
+  const x = Number(socket.x);
+  const z = Number(socket.z);
+  if (!Number.isFinite(x) || !Number.isFinite(z) || Math.abs(x) > 1 || Math.abs(z) > 1) return null;
+  return { x: radius * x, z: radius * z };
 }

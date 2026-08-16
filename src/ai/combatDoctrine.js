@@ -16,6 +16,12 @@ import {
   mediumSetupKind,
   visibleMediumRetreat,
 } from './mediumFamilyDoctrine.js';
+import {
+  heavyFightKind,
+  heavyFlightProfile,
+  initialHeavyFightPhase,
+  updateHeavyFight,
+} from './heavyFightDoctrine.js';
 
 export const CombatDoctrineId = Object.freeze({
   INTERCEPTOR_FLYBY: 'interceptor_flyby',
@@ -112,7 +118,11 @@ export class CombatDoctrineRuntime {
     }
     const factionBehavior = normalizeFactionBehaviorProfile(self && self.factionBehavior);
     const flightProfile = flightProfileFor(doctrineId, self);
-    if (!record || record.doctrineId !== doctrineId || record.targetId !== (target && target.id) ||
+    const preservesCommittedRam = !target
+      && record?.heavyFightKind === 'committed_ram'
+      && record.phase === 'ram_commit';
+    if (!record || record.doctrineId !== doctrineId
+      || (!preservesCommittedRam && record.targetId !== (target && target.id)) ||
       record.flightProfile !== flightProfile) {
       record = makeRecord(this.seed, tick, entityId, doctrineId, target && target.id, flightProfile, self);
       this.byEntity.set(entityId, record);
@@ -138,6 +148,10 @@ export class CombatDoctrineRuntime {
 
     if (!target) {
       record.mediumCounter = null;
+      if (record.heavyFightKind === 'committed_ram' && record.phase === 'ram_commit') {
+        updateHeavyFight(record, tick, self, null, Infinity, enter);
+        return snapshot(record, null, directive, factionBehavior);
+      }
       enter(record, initialPhase(doctrineId, record.flightProfile), tick, null);
       return snapshot(record, null, directive, factionBehavior);
     }
@@ -180,6 +194,8 @@ export class CombatDoctrineRuntime {
     }
     if (doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY) {
       updateInterceptor(record, tick, self, target, distance);
+    } else if (updateHeavyFight(record, tick, self, target, distance, enter)) {
+      // Heavy profiles own their explicit turret-pressure or committed-ram phase grammar.
     } else if (doctrineId === CombatDoctrineId.BRAWLER_COMMIT) {
       updateBrawler(record, tick, self, target, distance);
     } else if (doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER) {
@@ -263,6 +279,8 @@ export function applyCombatDoctrineToSelection(selected, doctrine) {
       preserveExternalFrame: doctrine.preserveExternalFrame === true,
       ramAuthorized: doctrine.ramAuthorized === true,
       flightPoint: doctrine.flightPoint,
+      committedCollisionCourse: doctrine.committedCollisionCourse === true,
+      boostDuringCommit: doctrine.boostDuringCommit === true,
       formationLocked: doctrine.formationLocked,
       breakFormation: !doctrine.formationLocked,
       reason: `combat_doctrine:${doctrine.doctrineId}:${doctrine.phase}`,
@@ -477,10 +495,13 @@ function makeRecord(seed, tick, entityId, doctrineId, targetId, flightProfile, s
     coverRockId: null,
     skitterTriggerSequence: -1,
     mediumSetupKind: mediumSetupKind(self),
+    heavyFightKind: heavyFightKind(self),
     mediumCounter: null,
     visibleRetreat: null,
     authoredMaxSpeed: finite(self && self.maxSpeed, 0),
     ramAuthorized: false,
+    ramLane: null,
+    committedCollisionCourse: false,
     lastTick: tick,
     seed,
     entityId,
@@ -498,7 +519,7 @@ function enter(record, phase, tick, telegraphKind) {
     : null;
   record.telegraphStartedTick = telegraphKind ? tick : null;
   record.fireWindow = phase === 'strike' || phase === 'commit' || phase === 'fire_window'
-    || phase === 'anchor_hold' || phase === 'broadside_fire';
+    || phase === 'anchor_hold' || phase === 'broadside_fire' || phase === 'turret_pressure';
 }
 
 function advanceCycle(record, tick, phase) {
@@ -546,6 +567,37 @@ function snapshot(record, target, directive, factionBehavior = null) {
     maneuverKind = ManeuverKind.HOLD;
     maneuverTargetId = null;
     preferredRange = 0;
+  } else if (record.heavyFightKind === 'turret_boat') {
+    maneuverKind = ManeuverKind.ORBIT;
+    preferredRange = 390;
+    lateralSign = record.side;
+    faceTarget = false;
+    formationLocked = true;
+    if (phase === 'turret_pressure') allowedActionId = 'action_burst';
+  } else if (record.heavyFightKind === 'committed_ram') {
+    // A committed ram owns a world-space lane, not a fleet slot. Leaving formation locked makes
+    // ManeuverPlanner's rejoin rule override that lane and quietly turns the ram back into tracking.
+    formationLocked = false;
+    lateralSign = 0;
+    if (phase === 'ram_approach') {
+      maneuverKind = ManeuverKind.INTERCEPT;
+      preferredRange = 250;
+      faceTarget = true;
+    } else if (phase === 'ram_spool') {
+      maneuverKind = ManeuverKind.HOLD;
+      preferredRange = 0;
+      faceTarget = true;
+    } else if (phase === 'ram_commit') {
+      maneuverKind = ManeuverKind.INTERCEPT;
+      maneuverTargetId = null;
+      preferredRange = 0;
+      maneuverMaxSpeed = record.authoredMaxSpeed > 0 ? record.authoredMaxSpeed : null;
+      straightPass = true;
+    } else {
+      maneuverKind = ManeuverKind.HOLD;
+      maneuverTargetId = null;
+      preferredRange = 0;
+    }
   } else if (doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY || doctrineId === CombatDoctrineId.BRAWLER_COMMIT) {
     const brawler = doctrineId === CombatDoctrineId.BRAWLER_COMMIT || record.flightProfile === 'brawler_commit';
     const speedPass = record.flightProfile === 'speed_pass';
@@ -628,7 +680,11 @@ function snapshot(record, target, directive, factionBehavior = null) {
   }
   const isEgress = phase === 'extend' || phase === 'breakaway' || phase === 'escape' || phase === 'recover'
     || phase === 'retreat' || phase === 'visible_retreat' || phase === 'return_to_cover';
-  if (factionBehavior && !isEgress) preferredRange = factionBehavior.preferredRange;
+  // The authored heavy identity owns its readable range/commit grammar. Generic faction flavor may
+  // still govern escalation and retreat, but cannot turn the turret boat or ram into a standoff fit.
+  if (factionBehavior && !isEgress && !record.heavyFightKind) {
+    preferredRange = factionBehavior.preferredRange;
+  }
   return Object.freeze({
     doctrineId,
     flightProfile: record.flightProfile,
@@ -651,6 +707,8 @@ function snapshot(record, target, directive, factionBehavior = null) {
     maneuverKind,
     maneuverMaxSpeed,
     straightPass,
+    committedCollisionCourse: record.committedCollisionCourse === true,
+    boostDuringCommit: record.heavyFightKind === 'committed_ram' && phase === 'ram_commit',
     preserveExternalFrame: !!record.mediumCounter,
     preferredRange,
     allowedActionId,
@@ -660,6 +718,11 @@ function snapshot(record, target, directive, factionBehavior = null) {
       runtime: 'combat_doctrine',
       countered: !!record.mediumCounter,
       reason: record.mediumCounter && record.mediumCounter.reason || null,
+    }) : null,
+    heavyFight: record.heavyFightKind ? Object.freeze({
+      kind: record.heavyFightKind,
+      runtime: 'combat_doctrine',
+      committed: record.committedCollisionCourse === true,
     }) : null,
     visibleRetreat: record.visibleRetreat,
     contestKind: doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER && phase === 'control'
@@ -725,6 +788,8 @@ function bandScore(value, ordered) {
 }
 
 function initialPhase(doctrineId, flightProfile = null) {
+  const heavyPhase = initialHeavyFightPhase(flightProfile);
+  if (heavyPhase) return heavyPhase;
   if (flightProfile === 'cover_ambush') return 'cover_hold';
   if (doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER) return 'flank';
   if (doctrineId === CombatDoctrineId.RANGED_DISENGAGER) return 'outer_standoff';
@@ -750,7 +815,7 @@ function flightProfileFor(doctrineId, self) {
   if (!profile && doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY) profile = 'flyby';
   else if (!profile && doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER) profile = 'tether_raider';
   else if (!profile && doctrineId === CombatDoctrineId.FIELD_ANCHOR_CONTROLLER) profile = 'field_anchor';
-  return mediumFlightProfile(self, profile || 'ranged_standoff');
+  return heavyFlightProfile(self, mediumFlightProfile(self, profile || 'ranged_standoff'));
 }
 
 function lockSpeedPassLane(record, self, target) {
@@ -890,6 +955,7 @@ function frozenRecord(record) {
     fireWindow: record.fireWindow,
     outcome: record.outcome,
     mediumSetupKind: record.mediumSetupKind,
+    heavyFightKind: record.heavyFightKind,
     mediumCounter: record.mediumCounter,
     visibleRetreat: record.visibleRetreat,
     lastTick: record.lastTick,
