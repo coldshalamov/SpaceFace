@@ -19,6 +19,10 @@ not rendered at all. Therefore:
 - Existing perf plans that assume far-field geometry (impostors, HLOD, far LOD demotion) do not
   apply to the moment-to-moment combat table and must not be cited to justify model swapping
   on gameplay entities.
+- This ban is scoped to gameplay entities on the combat table. It does not cancel background,
+  sky, off-glass admission, or other non-gameplay performance work in `CANONICAL_BUILD_MAP.md`
+  §8; those routes still may not substitute visible proxy boxes or identity-breaking swaps for
+  an on-glass gameplay entity.
 
 ## I-2. Player control and camera stability are sacred.
 

@@ -13,8 +13,9 @@ was simply never finished into the loop the owner described.
 - The magnet vacuum **already ships** inside mining (`mining._updatePickups` — homing vacuum
   with inherited player velocity + relative approach). It services ore pickups. It is not a
   general combat-loot system with its own tuning identity.
-- Tech tree (`src/data/tech.js`) and ship/module purchases consume credits. There is no
-  combat-XP currency; progression is purely monetary.
+- Tech tree (`src/data/tech.js`) consumes credits **and the existing
+  `state.player.researchPoints` (RP)**. Missions currently grant RP. Combat must feed that
+  existing progression channel through one assigned writer; it must not add a parallel XP wallet.
 
 ## The unified earn model (owner decision, encoded)
 
@@ -25,10 +26,10 @@ creatively killed enemy drop more stuff?" — it wouldn't:
 |---|---|---|---|
 | **Materials** | The victim's hull and cargo, physically blown out | YES (hull class, cargo manifest) | **NO — never** |
 | **Credits** | Bounty/salvage-rights payout for the kill (faction-of-victim hostile standing, contract multipliers) | YES | YES (02_STYLE_KILLS multiplier applies here) |
-| **Skill/XP** | Feeds tech-tree unlocks (audit `tech.js`; if the tree is credits-only, add a slim `xp` wallet on `state.player` rather than a parallel economy) | YES | YES (same multiplier) |
+| **Research points (RP)** | Existing tech-tree progression currency; granted through one progression owner | YES | YES (same multiplier) |
 
 Materials stay honest: a Wasp carries Wasp scrap whether you shot it or slammed it into a rock.
-Creativity pays through **credits and XP** (the world values skill), which is also what the
+Creativity pays through **credits and RP** (the world values skill), which is also what the
 player actually needs for the upgrade treadmill.
 
 ## Spec
@@ -54,7 +55,9 @@ player actually needs for the upgrade treadmill.
   - approach speed 100–280 wu/s relative, convergence authority ~900 wu/s²
   - pickups sweep *toward the player's current motion* so collecting while flying through a
     fight feels like breathing in, not stopping to vacuum
-- Magnet radius and pull strength become **module/ship upgrade stats** (progression = agency).
+- The existing tractor-module `magnetRange` stat is currently unwired in mining. The shared vacuum
+  must make that existing stat authoritative for radius/authority before any new magnet-array tier
+  is added; progression cannot ship a second inert number.
 
 ### 3. Flow feel (the 30-second loop)
 

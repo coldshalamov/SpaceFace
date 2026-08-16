@@ -33,7 +33,7 @@ zone}`. VFX and reward multiply consume the classified event. One classifier, tw
 
 ## Reward wiring
 
-- Multiplier applies to **credits and XP channels only** (01_KILL_ECONOMY table). Materials
+- Multiplier applies to **credits and RP channels only** (01_KILL_ECONOMY table). Materials
   never scale.
 - Chain kills are the arcade score engine: bowling one swarmer through its wing is the
   highest-value move in the game, and the compounding multiplier is what makes players

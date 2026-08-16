@@ -12,7 +12,8 @@ not a percentage. Every module below is a verb or a physics property.
   object; wells/shoves barely move you. The juggernaut fantasy module.
 - **Gyro dampeners**: tumble resistance + faster recovery.
 - **Winch tier line**: Massline max-load/reel-speed grades — tow bigger things.
-- **Magnet array line**: vacuum radius/authority (01's progression hook).
+- **Magnet array line**: vacuum radius/authority (01's progression hook), admitted only after the
+  existing tractor `magnetRange` stat is wired through the shared vacuum owner and proven non-inert.
 - **Field amplifier**: your deployed fields +radius/+strength; pairs with emitter charges (43).
 - **Inertial comp**: boosts effective thrust without touching class identity (I-5) — it's a
   *responsiveness* mod, not a speed mod.

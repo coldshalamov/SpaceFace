@@ -2,7 +2,7 @@
 # 46 — TECH TREE SHAPE: four fantasies, feat-gated
 
 `tech.js` (28 nodes) exists. Restructure target: four branches named for *what you become*,
-fed by 01's XP channel, with **feat gates** that teach the physics verbs.
+fed by 01's existing RP channel, with **feat gates** that teach the physics verbs.
 
 ## Branches
 

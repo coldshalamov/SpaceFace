@@ -58,7 +58,9 @@ dodger vs juggernaut ram/anchor), not just numbers.
   collateral risk — per VISION.
 - No spawn-closet pop-in on screen: reinforcements arrive from off-glass with engine-flare
   telegraphy.
-- No aimbot accuracy as a difficulty dial.
+- No hidden aimbot-accuracy inflation as difficulty design. A player-selected accuracy/ease
+  setting may deliberately change lead error as specified in 56, while enemy damage and HP stay
+  honest.
 
 ## Acceptance
 

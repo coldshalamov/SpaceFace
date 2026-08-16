@@ -1,8 +1,10 @@
 <!-- LIFETIME: DURABLE -->
 # 11 — ENEMY ARCHITECTURE: the mass ladder and the design grammar
 
-Every enemy in the game is built from one recipe, stored in data (`src/data/enemies.js`,
-archetype FSM in `src/systems/ai.js`). New enemies are **data entries, not code**. This doc is
+Every enemy in the game is built from one recipe, stored in data (`src/data/enemies.js`) and
+executed by the live SG-06 tactical stack (`src/systems/tacticalAI.js`, `src/ai/`, `aiPorts.js`).
+`src/systems/ai.js` is compatibility-only. New enemies are **data entries plus bounded extensions
+to the live tactical stack, not a parallel AI framework**. This doc is
 the grammar all bestiary docs (12–16, 20) follow.
 
 ## The mass ladder (the game's load-bearing idea)
@@ -25,9 +27,10 @@ Rules:
 
 ## The archetype FSM palette (existing, extend)
 
-Swarmer / sniper / brawler / pirate / trader / capital exist. Bestiary entries may compose
-these and add bounded new states (flee-dump, orbit-anchor, screen-allies). New AI goes through
-the existing FSM — no parallel AI frameworks (I-9).
+Swarmer / sniper / brawler / pirate / trader / capital behaviors exist across the data and tactical
+stack. Bestiary entries may compose these and add bounded tactical policies (flee-dump,
+orbit-anchor, screen-allies). New default-route behavior goes through `tacticalAI` + `src/ai/`;
+compatibility parity is explicit and never makes legacy `ai.js` the owner (I-9).
 
 ## Fleet composition grammar (how groups are authored)
 

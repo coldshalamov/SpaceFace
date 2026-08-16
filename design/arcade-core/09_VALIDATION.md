@@ -46,9 +46,12 @@ Agents can't iterate feel in real time — so give the *owner* the instrument:
 - **`_combatlab.html`** (new, follows the existing `_vfxlab.html` / `_rcslab.html` pattern): a
   small arena page with sliders over every tuning surface named in plans 01–05 — magnet
   radius/authority, impulse values, tumble thresholds, TTK knobs, spawn density, vacuum
-  params — writing to data and hot-reloading. The owner plays it in real time and lands the
-  numbers; agents implement and wire the sliders and persist chosen values.
-- Lab values are data, not code: the lab edits the same `src/data/` files the game reads.
+  params — applying bounded in-memory overrides to the same production owners. The owner plays it
+  in real time and lands the numbers; the lab exports the selected candidate as data, and the
+  controller deliberately lands those values in the owning `src/data/` files.
+- The browser lab never writes repository source files and never becomes a second gameplay path.
+  It imports production defaults, exports a candidate, and proves the candidate through the normal
+  route after the source data is updated.
 
 ## Rules
 

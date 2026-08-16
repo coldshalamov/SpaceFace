@@ -12,8 +12,11 @@ Each populated planet gains three concentric, data-driven zones:
 
 1. **Gravity gradient** (outer): a soft, always-on radial pull toward the planet, strength
    scaled by distance band — weak enough to ignore under thrust, strong enough that a
-   *tumbling* (control-less) body curves visibly inward. Runs through the field-kernel idiom
-   (radial acceleration + mass coupling), not bespoke per-planet code.
+   *tumbling* (control-less) body curves visibly inward. Reuse the field kernel's pure radial
+   acceleration and mass-coupling primitive through an explicit **world-owned source** contract;
+   do not pretend a planet is a player-deployed field device and do not fork planet-only physics.
+   The focused Arcade Core runtime profile must enable the same production seam explicitly even
+   though the historical golden profile keeps deployed fields off.
 2. **Atmosphere band** (middle): entering it applies drag + heating. Controlled thrust can
    still escape (it should be expensive and scary, not instant death — the player may need to
    dive in to grab something). A tumbling body cannot escape: drag circularizes then decays

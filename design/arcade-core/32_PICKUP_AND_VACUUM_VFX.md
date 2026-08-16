@@ -7,7 +7,7 @@ satisfying — a fight ends and the world *inhales* into your hull.
 ## The stream
 
 - **Pickup identity by color**: scrap amber-grey, alloys silver, electronics cyan, munitions
-  red-orange, credit chips gold, XP motes violet. Readable mid-chaos; colorblind-redundant via
+  red-orange, credit chips gold, RP motes violet. Readable mid-chaos; colorblind-redundant via
   pickup glyph shape (existing accessibility palette).
 - **Eruption**: kill-burst pickups eject with random impulse + drag (01) — the *scatter* is
   half the juice; give it 0.3–0.6 s of bloom before vacuum capture.
