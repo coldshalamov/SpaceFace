@@ -19,6 +19,8 @@ export const DISABLE_DONT_KILL_VARIANT_ID = 'disable_dont_kill';
 export const DISABLE_DONT_KILL_DRAW_MODULO = 3;
 export const LOUD_DELIVERY_VARIANT_ID = 'loud_delivery';
 export const LOUD_DELIVERY_DRAW_MODULO = 3;
+export const WRECK_TOW_VARIANT_ID = 'wreck_tow';
+export const WRECK_TOW_DRAW_MODULO = 3;
 
 /** One in three ordinary cargo-delivery rolls becomes Quiet Delivery, without consuming board RNG. */
 export function shouldRollQuietDelivery(hashValue) {
@@ -217,6 +219,44 @@ export function isDisableDontKill(value) {
 export function disableDontKillFollowupOfferId(mission) {
   const sourceId = mission && (mission.sourceOfferId || mission.id);
   return sourceId ? `mo_capture_black_box_${String(sourceId)}` : null;
+}
+
+/** One in three remaining lawful bounty rolls becomes a heavy disabled-hull tow. */
+export function shouldRollWreckTow(hashValue) {
+  return (Number(hashValue) >>> 0) % WRECK_TOW_DRAW_MODULO === 0;
+}
+
+/** Reframe a priced lawful bounty as a drive-dead hull recovery using the same custody route. */
+export function applyWreckTowVariant(offer, destinationName = 'the marked recovery yard') {
+  if (!offer || offer.type !== 'bounty_hunt') return offer;
+  return {
+    ...offer,
+    title: `Wreck Tow — Disabled Mule to ${destinationName}`,
+    brief: `Her drive is dead and scavengers are inbound. Take the heavy hull under Massline to ${destinationName}.`,
+    variantId: WRECK_TOW_VARIANT_ID,
+    params: {
+      ...(offer.params || {}),
+      missionVariant: WRECK_TOW_VARIANT_ID,
+      wreckTow: {
+        generation: 0,
+        hullDefId: 'ship_mule',
+        hullName: 'Disabled Recovery Mule',
+      },
+    },
+    clauses: [],
+  };
+}
+
+export function isWreckTow(value) {
+  return !!(value && (
+    value.variantId === WRECK_TOW_VARIANT_ID
+    || value.params && value.params.missionVariant === WRECK_TOW_VARIANT_ID
+  ));
+}
+
+export function wreckTowFollowupOfferId(mission) {
+  const sourceId = mission && (mission.sourceOfferId || mission.id);
+  return sourceId ? `mo_wreck_tow_black_box_${String(sourceId)}` : null;
 }
 
 /** One in three ordinary smuggling rolls becomes a physical scan-net delivery. */

@@ -26,6 +26,7 @@ const CIVILIAN_MANIFEST_QTY_CAP = 512;
 const RECOVERY_SURRENDERED = 'surrendered';
 const RECOVERY_DRIVE_DISABLED = 'drive_disabled';
 const RECOVERY_CIVILIAN_DISABLED = 'civilian_disabled';
+const WRECK_TOW_MISSION_VARIANT_ID = 'wreck_tow';
 const RECOVERY_ENTITY_INSTANCE = Symbol('surrenderRecoveryEntityInstance');
 
 export const surrenderRecovery = {
@@ -158,6 +159,11 @@ export const surrenderRecovery = {
     // or another NPC; that must not relax the player-causality gate for ordinary hostile hulls.
     if (eligibleCivilianRecovery(entity, this.state)) {
       return this._register(payload, RECOVERY_CIVILIAN_DISABLED, false);
+    }
+    // Wreck Tow authors an already-lost drive through combat with no player attacker. Admit only
+    // the exact active mission hull; ambient neutral disabled ships retain the ordinary causality gate.
+    if (eligibleWreckTowRecovery(entity, this.state)) {
+      return this._register(payload, RECOVERY_DRIVE_DISABLED, false);
     }
     if (payload.attackerId !== this.state.playerId) return null;
     return this._register(payload, RECOVERY_DRIVE_DISABLED, true);
@@ -868,6 +874,19 @@ function eligibleCivilianRecovery(entity, state, expectedManifest = null) {
     || (data.predationIdentityKey && custody.carrierIdentityKey !== data.predationIdentityKey)
   )) return false;
   return manifest.totalQty > 0;
+}
+
+function eligibleWreckTowRecovery(entity, state) {
+  if (!entity || entity.alive === false || !state || !entity.data || !entity.data.wreckTow
+    || entity.data.wreckTow.disabled !== true) return false;
+  const missionId = entity.data.missionId || entity.data.missionTag;
+  if (missionId == null) return false;
+  return (state.missions && state.missions.active || []).some((mission) => (
+    mission && mission.status === 'active' && mission.type === 'bounty_hunt'
+      && mission.params && mission.params.missionVariant === WRECK_TOW_MISSION_VARIANT_ID
+      && String(mission.id) === String(missionId)
+      && Array.isArray(mission.targetEntityIds) && mission.targetEntityIds.includes(entity.id)
+  ));
 }
 
 function eligibleRecovery(entity, state, recoveryKind, requireHostile = false) {

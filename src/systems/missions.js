@@ -63,6 +63,7 @@ import {
   applyLoudDeliveryVariant,
   applyPestControlVariant,
   applyQuietDeliveryVariant,
+  applyWreckTowVariant,
   debrisRecoveryFollowupOfferId,
   disableDontKillFollowupOfferId,
   loudDeliveryFollowupOfferId,
@@ -74,6 +75,7 @@ import {
   isPestControlFollowup,
   isQuietDelivery,
   isQuietDeliveryRecovery,
+  isWreckTow,
   pestControlFollowupOfferId,
   quietDeliveryRecoveryOfferId,
   shouldRollDebrisRecovery,
@@ -81,6 +83,8 @@ import {
   shouldRollLoudDelivery,
   shouldRollPestControl,
   shouldRollQuietDelivery,
+  shouldRollWreckTow,
+  wreckTowFollowupOfferId,
 } from '../data/missionVariants.js';
 import { factionMissionDoctrineMultiplier } from '../data/factionPlay.js';
 import { settleContractClauses, unsatisfiedRequiredConditions } from '../data/contractClauses.js';
@@ -124,6 +128,7 @@ import { ENEMY_TYPES } from '../data/enemies.js';
 import { hunterTrickForContract } from '../data/hunterTricks.js';
 import { hunterCareerAccess } from '../careers/ladders/hunterLadderDefs.js';
 import { makeEnemySpawnSpec } from './combat.js';
+import { makeShipEntitySpec } from './ships.js';
 import { isLawfulStationFaction, protectedStationAt } from '../ai/engagementAuthority.js';
 import { POI_CAUSAL_BOARD_CAP, validatePoiCausalOffer } from '../missions/poiCausalOffers.js';
 import {
@@ -697,6 +702,9 @@ export const missions = {
     // A bounty may close without a kill only after surrenderRecovery physically transfers this
     // mission's exact live target into lawful custody. Missions remains the sole contract settler.
     bus.on('law:custodyTransfer', (p) => this._onCustodyTransfer(p));
+    // Wreck Tow asks combat to make the advertised drive loss real. surrenderRecovery consumes the
+    // same receipt first; missions only neutralizes the now-disabled exact contract hull afterward.
+    bus.on('combat:subsystemDisabled', (p) => this._onWreckTowDriveDisabled(p || {}));
     // escort fail: escortee destroyed.
     bus.on('entity:destroyed', (p) => this._onEntityDestroyed(p));
     // recon_scan: a scan target (or sector scan) completed.
@@ -795,6 +803,15 @@ export const missions = {
       if (m.type === 'escort' && m._escorteeId != null) this._steerEscortee(m, state, dt);
       if (isLoudDelivery(m) && m.destSectorId === state.world.currentSectorId) {
         this._ensureLoudDeliveryScanNet(m);
+      }
+      if (isWreckTow(m)) {
+        const towTarget = (m.targetEntityIds || [])
+          .map((id) => state.entities && state.entities.get(id))
+          .find((entity) => entity && entity.alive !== false);
+        if (towTarget && !(towTarget.data && towTarget.data.wreckTow
+          && towTarget.data.wreckTow.driveDisabled === true)) {
+          this._requestWreckTowDriveDisable(m, towTarget);
+        }
       }
       if (m.type === 'bounty_hunt' || m.type === 'patrol_clear') {
         this._armAcceptedCombatTargets(m, state);
@@ -1643,6 +1660,11 @@ export const missions = {
       && typeId === 'bounty_hunt'
       && dest && isLawfulStationFaction(dest.factionId)
       && shouldRollDisableDontKill(variantHashFn(this.state.meta.seed, id, 'disable-dont-kill-variant'));
+    const wreckTow = options.attachConditions !== false
+      && typeId === 'bounty_hunt'
+      && !disableDontKill
+      && dest && isLawfulStationFaction(dest.factionId)
+      && shouldRollWreckTow(variantHashFn(this.state.meta.seed, id, 'wreck-tow-variant'));
     const loudDelivery = options.attachConditions !== false
       && typeId === 'smuggling_run'
       && shouldRollLoudDelivery(variantHashFn(this.state.meta.seed, id, 'loud-delivery-variant'));
@@ -1694,6 +1716,7 @@ export const missions = {
     if (disableDontKill) {
       return applyDisableDontKillVariant(offer, dest && dest.name || 'the marked sector');
     }
+    if (wreckTow) return applyWreckTowVariant(offer, dest && dest.name || 'the marked recovery yard');
     if (loudDelivery) return applyLoudDeliveryVariant(offer);
     // Physics terms are the last thing stamped onto a rolled offer so the reward/deadline family
     // above is untouched: a condition-free offer is byte-identical to the shipped one.
@@ -2025,7 +2048,7 @@ export const missions = {
     }
 
     const inst = this._instanceFromOffer(offer);
-    if (inst.type === 'bounty_hunt') {
+    if (inst.type === 'bounty_hunt' && !isWreckTow(inst)) {
       inst.params.hunterIntel = bountyIntelForMission(state, inst);
     }
     // A branch selection is atomic: withdraw both siblings from every board before any fee intent
@@ -3285,6 +3308,81 @@ export const missions = {
     return offer;
   },
 
+  /** A stripped tow leaves one physical recorder recovery, never another tow contract. */
+  _postWreckTowBlackBox(mission) {
+    const loss = mission && mission._wreckTowLoss;
+    const offerId = wreckTowFollowupOfferId(mission);
+    if (!mission || !loss || !offerId || !mission.stationId) return null;
+    const duplicateActive = (this.state.missions.active || []).find((candidate) => (
+      candidate && candidate.sourceOfferId === offerId
+    ));
+    if (duplicateActive) return duplicateActive;
+    for (const candidateBoard of Object.values(this.state.missions.boards || {})) {
+      const duplicate = candidateBoard && Array.isArray(candidateBoard.slots)
+        && candidateBoard.slots.find((candidate) => candidate && candidate.id === offerId);
+      if (duplicate) return duplicate;
+    }
+
+    const commodityId = 'cmdty_salvage_electronics';
+    const commodity = CMDTY_BY_ID.get(commodityId);
+    const pods = [{ slot: 0, commodityId, amount: 1 }];
+    const timeLimitS = Math.max(180,
+      Math.round(Number(mission.deadline_s) - Number(mission.acceptedAt_s)) || 0);
+    const targetName = loss.targetName || 'Disabled Recovery Mule';
+    const offer = {
+      id: offerId,
+      type: 'salvage_retrieval',
+      stationId: mission.stationId,
+      factionId: mission.factionId,
+      reward_cr: Math.max(100, Math.round((Number(mission.reward_cr) || 0) * 0.35)),
+      time_limit_s: timeLimitS,
+      duration_s: timeLimitS,
+      collateral_cr: 0,
+      riskTier: Math.max(1, Math.round(Number(mission.riskTier) || 1)),
+      destStationId: null,
+      destSectorId: loss.sectorId || mission.destSectorId,
+      distance: mission.distance,
+      params: {
+        cmdtyId: commodityId,
+        qty: 1,
+        cargoValue: Math.max(0, Number(commodity && commodity.basePrice) || 0),
+        fValue: 1,
+        taskTime: 30,
+        missionVariant: DEBRIS_RECOVERY_VARIANT_ID,
+        debrisRecovery: {
+          fieldName: `the stripped ${targetName} tow`,
+          generation: 1,
+          sourceMissionId: mission.id,
+          pos: { ...loss.pos },
+          vel: { ...loss.vel },
+          pods,
+        },
+      },
+      title: `Black Box Recovery — ${targetName}`,
+      brief: 'Scavengers stripped the tow. Pull its marked recorder from the moving wreckage.',
+      expiresAtEpoch: this._epoch() + 2,
+      storyTag: null,
+      variantId: DEBRIS_RECOVERY_VARIANT_ID,
+      source: DEBRIS_RECOVERY_FOLLOWUP_SOURCE,
+      cause: {
+        tag: 'wreck_tow_stripped',
+        sourceMissionId: mission.id,
+        sourceOfferId: mission.sourceOfferId || null,
+        targetEntityId: loss.targetEntityId,
+        killerId: loss.killerId,
+      },
+    };
+    let board = this.state.missions.boards[mission.stationId];
+    if (!board || typeof board !== 'object') {
+      board = { refreshEpoch: this._epoch(), slots: [] };
+      this.state.missions.boards[mission.stationId] = board;
+    }
+    if (!Array.isArray(board.slots)) board.slots = [];
+    board.slots.push(offer);
+    this.bus.emit('mission:updated', { missionId: null, stationId: mission.stationId });
+    return offer;
+  },
+
   /** A burned Loud drop leaves one moving recorder recovery through the existing pod owner. */
   _postLoudDeliveryRecovery(mission) {
     const loss = mission && mission._loudDeliveryScanLoss;
@@ -3487,8 +3585,49 @@ export const missions = {
     return false;
   },
 
+  _captureWreckTowLoss(mission, target = null, killerId = null) {
+    if (!mission || !isWreckTow(mission)) return null;
+    if (mission._wreckTowLoss) return mission._wreckTowLoss;
+    const tow = mission.params && mission.params.wreckTow;
+    const entity = target || (mission.targetEntityIds || [])
+      .map((id) => this.state.entities && this.state.entities.get(id))
+      .find(Boolean) || null;
+    mission._wreckTowLoss = {
+      targetEntityId: entity && entity.id || null,
+      targetName: entity && entity.data && entity.data.name
+        || tow && tow.hullName || 'Disabled Recovery Mule',
+      sectorId: this.state.world && this.state.world.currentSectorId || mission.destSectorId,
+      pos: {
+        x: Number(entity && entity.pos && entity.pos.x) || 0,
+        z: Number(entity && entity.pos && entity.pos.z) || 0,
+      },
+      vel: {
+        x: Number(entity && entity.vel && entity.vel.x) || 0,
+        z: Number(entity && entity.vel && entity.vel.z) || 0,
+      },
+      killerId: killerId == null ? null : killerId,
+    };
+    return mission._wreckTowLoss;
+  },
+
+  /** A Wreck Tow can never settle through the underlying bounty kill shortcut. */
+  _onWreckTowHullLost(payload) {
+    if (!payload || payload.id == null) return false;
+    for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
+      const mission = this.state.missions.active[i];
+      if (!mission || mission.status !== 'active' || !isWreckTow(mission)
+        || !(mission.targetEntityIds || []).includes(payload.id)) continue;
+      const target = this.state.entities && this.state.entities.get(payload.id);
+      this._captureWreckTowLoss(mission, target, payload.killerId);
+      this._failMission(mission, i, 'tow_hull_stripped');
+      return true;
+    }
+    return false;
+  },
+
   _onKill(p) {
     if (!p) return;
+    if (this._onWreckTowHullLost(p)) return;
     const byPlayer = p.killerId === this.state.playerId;
     if (!byPlayer) return; // mission kills only count for the player
     for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
@@ -3590,6 +3729,7 @@ export const missions = {
     // else happened this tick — not an immediate failure. It is stamped from the live tick because
     // this listener runs synchronously with the destruction that caused it.
     this._heistEach((h) => heistMissionRuntime.onEntityDestroyed(this._heistCtx(), h, p.id));
+    if (this._onWreckTowHullLost(p)) return;
     // Escort fail: the escortee entity died.
     for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
       const m = this.state.missions.active[i];
@@ -4659,6 +4799,7 @@ export const missions = {
     if (isLoudDelivery(m) && String(reason || '') === 'busted') {
       this._postLoudDeliveryRecovery(m);
     }
+    if (isWreckTow(m) && m._wreckTowLoss) this._postWreckTowBlackBox(m);
     const setPieceTransition = this._compileSetPieceTransition(m, 'failed', reason || 'failed');
     m.status = 'failed';
     this._clearMissionNav(m.id);
@@ -4703,6 +4844,10 @@ export const missions = {
     if (m.status !== 'active') return;
     if (isPestControl(m) && !isPestControlFollowup(m)) this._postPestControlFollowup(m);
     if (isDebrisRecovery(m) && !isDebrisRecoveryFollowup(m)) this._postDebrisRecoveryFollowup(m);
+    if (isWreckTow(m)) {
+      this._captureWreckTowLoss(m);
+      this._postWreckTowBlackBox(m);
+    }
     const setPieceTransition = this._compileSetPieceTransition(m, 'expired', 'deadline');
     m.status = 'expired';
     this._clearMissionNav(m.id);
@@ -4906,7 +5051,7 @@ export const missions = {
     // legal hostile. Stamp the existing scanner/engagement context here so fresh spawns and
     // Continue-adopted targets agree, without widening ambient team mismatch into hostility.
     // Lawful actors still resolve through scanner's earlier WANTED/securityTargetId gate.
-    if ((m.type === 'bounty_hunt' || m.type === 'patrol_clear') && ent.data.ai) {
+    if ((m.type === 'bounty_hunt' || m.type === 'patrol_clear') && !isWreckTow(m) && ent.data.ai) {
       const ai = ent.data.ai;
       const playerId = this.state.playerId;
       const player = this.state.entities && this.state.entities.get(playerId);
@@ -4974,6 +5119,72 @@ export const missions = {
       armed++;
     }
     return armed;
+  },
+
+  /** Route the authored dead drive through combat's real subsystem writer without hull damage. */
+  _requestWreckTowDriveDisable(mission, target) {
+    const tow = target && target.data && target.data.wreckTow;
+    if (!mission || !isWreckTow(mission) || !target || !tow) return false;
+    if (tow.driveDisabled === true) return true;
+    const combatSystem = this.registry && this.registry.get && this.registry.get('combat');
+    const kernel = combatSystem && typeof combatSystem.ensureKernel === 'function'
+      ? combatSystem.ensureKernel() : null;
+    if (!kernel || typeof kernel.inspect !== 'function' || typeof kernel.routeDamage !== 'function') return false;
+    const inspection = kernel.inspect({ entityId: target.id });
+    const drive = inspection && inspection.entity && inspection.entity.combat
+      && inspection.entity.combat.subsystems && inspection.entity.combat.subsystems.subsystem_drive;
+    if (!drive || !Number.isFinite(Number(drive.health))) return false;
+    if (Number(drive.health) <= 0) {
+      return drive.effectiveDisabled === true
+        || !!(drive.pendingTransition && drive.pendingTransition.destroyed === true);
+    }
+    const hullBefore = Number(target.hull);
+    const ionDamage = 2 + Number(drive.health) / 1.1;
+    const result = kernel.routeDamage({
+      attackerId: null,
+      targetId: target.id,
+      packet: {
+        channels: { ion: ionDamage },
+        penetration: 0,
+        shieldBypass: 1,
+        subsystemShare: 1,
+        hit: { subsystemId: 'subsystem_drive' },
+        source: { kind: 'wreck_tow_contract', id: mission.id },
+      },
+      origin: { kind: 'wreck_tow_contract', id: mission.id },
+    });
+    if (!result || result.ok !== true || result.hullDamage !== 0 || Number(target.hull) !== hullBefore) return false;
+    tow.impairmentRequested = true;
+    return true;
+  },
+
+  /** surrenderRecovery has admitted the real drive loss; make the derelict inert and readable. */
+  _onWreckTowDriveDisabled(payload) {
+    if (String(payload && payload.subsystemId || '') !== 'subsystem_drive') return false;
+    const targetId = payload.targetId != null ? payload.targetId : payload.entityId;
+    for (const mission of this.state.missions.active || []) {
+      if (!mission || mission.status !== 'active' || !isWreckTow(mission)
+        || !(mission.targetEntityIds || []).includes(targetId)) continue;
+      const target = this.state.entities && this.state.entities.get(targetId);
+      if (!target || target.alive === false || !target.data || !target.data.wreckTow) return false;
+      target.data.wreckTow.driveDisabled = true;
+      target.team = 2;
+      if (target.data.ai) {
+        target.data.ai.passive = true;
+        target.data.ai.fsm = 'disabled';
+        delete target.data.ai.hostileTeams;
+        delete target.data.ai.forcePlayerTarget;
+        delete target.data.ai.huntPlayer;
+      }
+      target.data.intent = null;
+      if (target.data.combat) {
+        target.data.combat.targetId = null;
+        target.data.combat.lockTarget = null;
+      }
+      this.bus.emit('mission:updated', { missionId: mission.id, targetEntityId: target.id });
+      return true;
+    }
+    return false;
   },
 
   _spawnTargetsFor(m) {
@@ -5143,19 +5354,54 @@ export const missions = {
         const storyTarget = durableSlot === 0 && m.storyTarget ? m.storyTarget : null;
         const bountyIntel = m.type === 'bounty_hunt' && m.params && m.params.hunterIntel;
         const pestControl = m.params && m.params.pestControl;
+        const wreckTow = m.params && m.params.wreckTow;
         const typeId = storyTarget && storyTarget.archetype
           || bountyIntel && bountyIntel.targetArchetype
           || pestControl && pestControl.archetypeId
+          || wreckTow && wreckTow.hullDefId
           || pool[Math.floor(rng() * pool.length)];
         const level = Math.round(lvLo + (lvHi - lvLo) * (0.4 + rng() * 0.6));
         const pos = storyTarget
           ? missionStoryTargetSpawnPos(m, storyTarget, rng)
           : missionHostileSpawnPos(this.state, { x: px, z: pz }, rng);
         if (!pos) continue;
-        const spec = makeEnemySpawnSpec(typeId, level, pos, {
-          factionId: storyTarget && storyTarget.factionId,
-          startedTick: this.state.tick,
-        });
+        const spec = wreckTow
+          ? makeShipEntitySpec(typeId, {
+              team: 2,
+              factionId: m.factionId,
+              pos,
+              rot: rng() * Math.PI * 2,
+              ai: {
+                fsm: 'disabled',
+                passive: true,
+                lawful: false,
+                surrenderImmune: false,
+                role: 'disabled_tow',
+                spawnContext: 'mission',
+              },
+            })
+          : makeEnemySpawnSpec(typeId, level, pos, {
+              factionId: storyTarget && storyTarget.factionId,
+              startedTick: this.state.tick,
+            });
+        if (wreckTow) {
+          const driftAngle = rng() * Math.PI * 2;
+          spec.collides = true;
+          spec.vel = { x: Math.cos(driftAngle) * 4, z: Math.sin(driftAngle) * 4 };
+          spec.angVel = (rng() - 0.5) * 0.35;
+          spec.thrust = 0;
+          spec.turnRate = 0;
+          spec.maxSpeed = 4;
+          spec.data.name = wreckTow.hullName || 'Disabled Recovery Mule';
+          spec.data.weapons = [];
+          spec.data.intent = null;
+          spec.data.masslineTetherable = true;
+          spec.data.wreckTow = {
+            disabled: true,
+            generation: Math.max(0, Number(wreckTow.generation) || 0),
+            hullName: wreckTow.hullName || 'Disabled Recovery Mule',
+          };
+        }
         spec.data = spec.data || {};
         spec.data.missionTag = m.id; // attribution helper (kill resolver matches by entity id below)
         if (bountyIntel) {
@@ -5214,7 +5460,17 @@ export const missions = {
         if (ent) {
           if (budget && typeof budget.bindEntity === 'function') budget.bindEntity(ent.id, requester);
           this._stampMissionTargetIdentity(ent, m, durableSlot);
-          m.targetEntityIds.push(ent.id);
+          if (wreckTow) {
+            m.targetEntityIds.push(ent.id);
+            if (!this._requestWreckTowDriveDisable(m, ent)) {
+              m.targetEntityIds = m.targetEntityIds.filter((id) => id !== ent.id);
+              ent.alive = false;
+              if (budget && typeof budget.releaseEntity === 'function') budget.releaseEntity(ent.id);
+              continue;
+            }
+          } else {
+            m.targetEntityIds.push(ent.id);
+          }
           spawned++;
           if (storyTarget && storyTarget.namedCaptainId) {
             this.bus.emit('encounter:namedCaptainBound', {
