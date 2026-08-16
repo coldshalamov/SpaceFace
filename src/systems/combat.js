@@ -32,6 +32,7 @@ import {
 import { MIN_AI_RESPONSE_WINDOW_S } from '../ai/engagementAuthority.js';
 import { contactGrammarFor } from '../data/factionContactGrammar.js';
 import { sampleFactionBehavior } from '../data/factionDoctrines.js';
+import { ordinaryShipIdentity } from '../data/factionNameBanks.js';
 import { isHostileToPlayer } from './scanner.js';
 
 const WPN = new Map(WEAPONS.map((w) => [w.id, w]));
@@ -197,6 +198,21 @@ export function makeEnemySpawnSpec(enemyTypeId, level, pos, opts = {}) {
       ? Math.max(MIN_AI_RESPONSE_WINDOW_S, opts.noFireResponseWindowS)
       : Math.max(MIN_AI_RESPONSE_WINDOW_S, DOCTRINE_TELEGRAPH_TICKS / 60),
   };
+  const identitySeed = Number.isFinite(opts.identitySeed)
+    ? opts.identitySeed
+    : (Number.isFinite(opts.startedTick) ? opts.startedTick : 0);
+  const identityKey = opts.identityKey || opts.worldRecordId || opts.encounterId || def.id;
+  const ordinaryIdentity = ordinaryShipIdentity(
+    factionId,
+    def.aiArchetype,
+    hash32(identitySeed, identityKey, def.id, Math.round(pos?.x || 0), Math.round(pos?.z || 0)),
+  );
+  // Keep authored identities authoritative: encounter bosses/aces replace ai.name, mission actors
+  // replace data.name, and named lane contacts replace both. Ordinary contacts now have a stable
+  // player-visible scan name without creating a second identity registry.
+  spec.data.callsign = ordinaryIdentity.callsign;
+  spec.data.ai.name = ordinaryIdentity.name;
+  spec.data.ordinaryIdentity = { ...ordinaryIdentity, schemaVersion: 1 };
   const doctrine = defaultDoctrineFor(def, pos, opts.startedTick);
   spec.data.ai.activity = doctrine.activity;
   spec.data.ai.roe = doctrine.roe;

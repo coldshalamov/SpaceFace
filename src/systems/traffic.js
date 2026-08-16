@@ -42,6 +42,7 @@ import {
   liveVolumeForSector,
 } from '../economy/freightCausality.js';
 import { FACTION_KITS } from '../data/factions.js';
+import { ordinaryShipIdentity } from '../data/factionNameBanks.js';
 import {
   PRIORITY_COURIER_ITINERARY_KIND,
   PRIORITY_COURIER_JOB_SCHEMA,
@@ -3056,16 +3057,28 @@ export const traffic = {
       ent.data.scanLabel = 'EXPRESS LINER · HITCHABLE';
       if (!ent.data.trafficLabel) ent.data.trafficLabel = 'Express Liner';
     }
-    if (ent.data.worldRecordId) return;
     const seed = (this.state.meta && this.state.meta.seed) || 1;
-    const qx = ent.pos ? Math.round(ent.pos.x / 4) * 4 : 0;
-    const qz = ent.pos ? Math.round(ent.pos.z / 4) * 4 : 0;
-    const key = `traffic:${role || 'hauler'}:${seq | 0}:${qx}:${qz}`;
-    const recordId = stableRecordId(seed, sectorId, RECORD_KIND.CONVOY, key);
-    ent.data.worldRecordId = recordId;
-    ent.data.identityKey = key;
-    ent.data.durable = true;
-    ent.data.recordCreatedTick = this.state.tick | 0;
+    if (!ent.data.worldRecordId) {
+      const qx = ent.pos ? Math.round(ent.pos.x / 4) * 4 : 0;
+      const qz = ent.pos ? Math.round(ent.pos.z / 4) * 4 : 0;
+      const key = `traffic:${role || 'hauler'}:${seq | 0}:${qx}:${qz}`;
+      ent.data.worldRecordId = stableRecordId(seed, sectorId, RECORD_KIND.CONVOY, key);
+      ent.data.identityKey = key;
+      ent.data.durable = true;
+      ent.data.recordCreatedTick = this.state.tick | 0;
+    }
+    if (!ent.data.namedLaneContactId && (!ent.data.name || ent.data.ordinaryIdentity)) {
+      const factionId = ent.factionId || ent.data.factionId || 'faction_free';
+      const identity = ordinaryShipIdentity(
+        factionId,
+        role || ent.data.ai?.archetype,
+        hash32(seed, ent.data.worldRecordId, role || 'hauler'),
+      );
+      ent.data.name = identity.name;
+      ent.data.callsign = identity.callsign;
+      ent.data.ordinaryIdentity = { ...identity, schemaVersion: 1 };
+      if (ent.data.ai) ent.data.ai.name = identity.name;
+    }
   },
 
   /**

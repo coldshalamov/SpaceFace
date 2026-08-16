@@ -5,6 +5,10 @@
 // semantic events plus a small live-entity presentation stamp for morale/decal/news/Ledger readers.
 
 import {
+  PLAYER_DEED_BY_ID,
+  PLAYER_DEED_BY_KILL_CAUSE,
+  PLAYER_DEED_HOLDER_KEY,
+  PLAYER_DEED_RECEIPT_LIMIT,
   THUNDERCHILD,
   THUNDERCHILD_TITLE_ID,
   TITLE_ACTIVE_HOLD_LIMIT,
@@ -48,6 +52,57 @@ function freshThunderchildState() {
     history: [],
     processedReceiptIds: [],
   };
+}
+
+function freshPlayerDeedState() {
+  return {
+    earnedById: {},
+    order: [],
+    processedReceiptIds: [],
+  };
+}
+
+function normalizePlayerDeedRecord(raw, deed) {
+  if (!raw || typeof raw !== 'object' || !deed) return null;
+  const receiptId = cleanText(raw.receiptId);
+  if (!receiptId) return null;
+  return {
+    id: deed.id,
+    title: deed.title,
+    description: deed.description,
+    earnedTick: finiteInteger(raw.earnedTick),
+    receiptId,
+    source: cleanText(raw.source, deed.trigger.event),
+  };
+}
+
+function ensurePlayerDeeds(titles) {
+  const source = titles.playerDeeds && typeof titles.playerDeeds === 'object'
+    ? titles.playerDeeds : freshPlayerDeedState();
+  const earnedById = {};
+  for (const [id, raw] of Object.entries(source.earnedById && typeof source.earnedById === 'object'
+    ? source.earnedById : {})) {
+    const record = normalizePlayerDeedRecord(raw, PLAYER_DEED_BY_ID[id]);
+    if (record) earnedById[id] = record;
+  }
+  const order = [];
+  const seen = new Set();
+  for (const id of Array.isArray(source.order) ? source.order : []) {
+    if (!earnedById[id] || seen.has(id)) continue;
+    seen.add(id);
+    order.push(id);
+  }
+  const missing = Object.keys(earnedById).filter((id) => !seen.has(id));
+  missing.sort((left, right) => earnedById[left].earnedTick - earnedById[right].earnedTick
+    || left.localeCompare(right));
+  order.push(...missing);
+  titles.playerDeeds = {
+    earnedById,
+    order,
+    processedReceiptIds: boundedTail(source.processedReceiptIds, PLAYER_DEED_RECEIPT_LIMIT)
+      .map((id) => cleanText(id)).filter(Boolean),
+  };
+  return titles.playerDeeds;
 }
 
 function normalizeActiveHold(raw, fallbackHolderKey = '') {
@@ -96,6 +151,7 @@ function ensureState(state) {
   const titles = story.titles;
   titles.schemaVersion = TITLES_SCHEMA_VERSION;
   if (!titles.byId || typeof titles.byId !== 'object') titles.byId = {};
+  ensurePlayerDeeds(titles);
 
   const source = titles.byId[THUNDERCHILD_TITLE_ID];
   const own = source && typeof source === 'object' ? source : freshThunderchildState();
@@ -276,6 +332,32 @@ function syncTitleStamp(state, own) {
   }
 }
 
+function syncPlayerDeedStamp(state) {
+  if (!state) return;
+  const titles = state.story && state.story.titles;
+  const deeds = titles && titles.playerDeeds ? titles.playerDeeds : ensurePlayerDeeds(titles || {});
+  const player = entityFor(state, state.playerId);
+  if (!player) return;
+  const data = player.data || (player.data = {});
+  const ids = deeds.order.filter((id) => deeds.earnedById[id]);
+  if (!ids.length) {
+    delete data.deedTitleIds;
+    delete data.deedTitleName;
+    return;
+  }
+  data.deedTitleIds = ids.slice();
+  data.deedTitleName = deeds.earnedById[ids[ids.length - 1]].title;
+}
+
+function playerDeedSeenRecord(record) {
+  return {
+    id: record.id,
+    title: record.title,
+    seenAt: record.earnedTick,
+    holderKey: PLAYER_DEED_HOLDER_KEY,
+  };
+}
+
 function normalizedReceipt(payload, entity) {
   const receiptId = cleanText(payload && payload.receiptId);
   const holderKey = holderKeyOf(entity);
@@ -364,6 +446,8 @@ export function createTitlesSystem() {
       this._onDamage = (payload) => this._onCombatDamage(payload || {});
       this._onKilled = (payload) => this._onEntityKilled(payload || {});
       this._onSpawned = (payload) => this._onEntitySpawned(payload || {});
+      this._onHeavyPartDetached = (payload) => this._onHeavyPartDetachedReceipt(payload || {});
+      this._onTetherLatched = (payload) => this._onTetherLatchedReceipt(payload || {});
       this._onSaveLoaded = () => this._rebindSilently();
       this._onNewGame = () => this.newGame();
       if (this.bus && typeof this.bus.on === 'function') {
@@ -371,6 +455,8 @@ export function createTitlesSystem() {
         this.bus.on('combat:damage', this._onDamage);
         this.bus.on('entity:killed', this._onKilled);
         this.bus.on('entity:spawned', this._onSpawned);
+        this.bus.on('heavyPart:detached', this._onHeavyPartDetached);
+        this.bus.on('tether:latched', this._onTetherLatched);
         this.bus.on('save:loaded', this._onSaveLoaded);
         this.bus.on('game:newGame', this._onNewGame);
       }
@@ -383,11 +469,13 @@ export function createTitlesSystem() {
       this.state.story.titles = {
         schemaVersion: TITLES_SCHEMA_VERSION,
         byId: { [THUNDERCHILD_TITLE_ID]: freshThunderchildState() },
+        playerDeeds: freshPlayerDeedState(),
       };
       this.state.story.titlesSeen = [];
       this._holderEntityId = null;
       this._activeEntityIds.clear();
       syncTitleStamp(this.state, ensureState(this.state));
+      syncPlayerDeedStamp(this.state);
     },
 
     update(_dt, state = this.state) {
@@ -440,6 +528,7 @@ export function createTitlesSystem() {
         }
       }
       syncTitleStamp(this.state, own);
+      syncPlayerDeedStamp(this.state);
     },
 
     _onCombatDamage(payload) {
@@ -466,6 +555,7 @@ export function createTitlesSystem() {
       if (holderKey && own.activeHolds[holderKey] && entity.alive !== false) {
         this._activeEntityIds.set(holderKey, entity.id);
       }
+      if (entity.id === (this.state && this.state.playerId)) syncPlayerDeedStamp(this.state);
       return entity;
     },
 
@@ -572,7 +662,81 @@ export function createTitlesSystem() {
       });
     },
 
+    _awardPlayerDeed(deed, receiptId, source) {
+      if (!deed || !this.state) return null;
+      ensureState(this.state);
+      const own = this.state.story.titles.playerDeeds;
+      const cleanReceiptId = cleanText(receiptId);
+      if (!cleanReceiptId || own.processedReceiptIds.includes(cleanReceiptId)
+        || own.earnedById[deed.id]) return null;
+      appendBounded(own.processedReceiptIds, cleanReceiptId, PLAYER_DEED_RECEIPT_LIMIT);
+      const record = {
+        id: deed.id,
+        title: deed.title,
+        description: deed.description,
+        earnedTick: finiteInteger(this.state.tick),
+        receiptId: cleanReceiptId,
+        source: cleanText(source, deed.trigger.event),
+      };
+      own.earnedById[deed.id] = record;
+      own.order.push(deed.id);
+      this.state.story.titlesSeen = this.state.story.titlesSeen
+        .filter((entry) => entry && entry.id !== deed.id);
+      appendBounded(this.state.story.titlesSeen, playerDeedSeenRecord(record), TITLES_SEEN_LIMIT);
+      syncPlayerDeedStamp(this.state);
+
+      const event = {
+        kind: 'player_deed',
+        titleId: deed.id,
+        title: deed.title,
+        description: deed.description,
+        holderKey: PLAYER_DEED_HOLDER_KEY,
+        earnedTick: record.earnedTick,
+        receiptId: cleanReceiptId,
+        source: record.source,
+      };
+      emit(this.bus, 'title:earned', event);
+      emit(this.bus, 'toast', {
+        text: `TITLE EARNED · ${deed.title} — ${deed.description}`,
+        kind: 'success',
+        ttl: 5,
+      });
+      return event;
+    },
+
+    _awardKillDeed(payload) {
+      if (!payload || payload.killerId !== (this.state && this.state.playerId)) return null;
+      const killCause = cleanText(payload.presentation && payload.presentation.style
+        && payload.presentation.style.id);
+      const deed = PLAYER_DEED_BY_KILL_CAUSE[killCause];
+      if (!deed) return null;
+      const victimId = payload.id != null ? payload.id : payload.entityId;
+      const receiptId = cleanText(payload.receiptId,
+        `deed:kill:${finiteInteger(this.state && this.state.tick)}:${victimId}:${killCause}`);
+      return this._awardPlayerDeed(deed, receiptId, `kill:${killCause}`);
+    },
+
+    _onHeavyPartDetachedReceipt(payload) {
+      if (!payload || payload.attackerId !== (this.state && this.state.playerId)) return null;
+      const parent = entityFor(this.state, payload.parentId);
+      if (!parent || parent.alive === false || parent.data?.heavyDisabled !== true
+        || parent.data?.towable !== true) return null;
+      const deed = PLAYER_DEED_BY_ID.deed_yardhand;
+      const receiptId = `deed:heavy-strip:${payload.parentId}:${cleanText(payload.partId, payload.entityId)}:${finiteInteger(this.state.tick)}`;
+      return this._awardPlayerDeed(deed, receiptId, 'heavy_strip');
+    },
+
+    _onTetherLatchedReceipt(payload) {
+      const target = entityFor(this.state, payload && payload.targetId);
+      if (!target || target.alive === false || target.data?.heavyDisabled !== true
+        || target.data?.towable !== true) return null;
+      const deed = PLAYER_DEED_BY_ID.deed_linehauler;
+      const receiptId = `deed:heavy-tow:${target.id}:${finiteInteger(this.state.tick)}`;
+      return this._awardPlayerDeed(deed, receiptId, 'heavy_tow');
+    },
+
     _onEntityKilled(payload) {
+      this._awardKillDeed(payload);
       const own = currentThunderchildState(this.state);
       const victimId = payload.id != null ? payload.id : payload.entityId;
       const victim = entityFor(this.state, victimId);
@@ -699,10 +863,14 @@ export function createTitlesSystem() {
         if (this._onDamage) this.bus.off('combat:damage', this._onDamage);
         if (this._onKilled) this.bus.off('entity:killed', this._onKilled);
         if (this._onSpawned) this.bus.off('entity:spawned', this._onSpawned);
+        if (this._onHeavyPartDetached) this.bus.off('heavyPart:detached', this._onHeavyPartDetached);
+        if (this._onTetherLatched) this.bus.off('tether:latched', this._onTetherLatched);
         if (this._onSaveLoaded) this.bus.off('save:loaded', this._onSaveLoaded);
         if (this._onNewGame) this.bus.off('game:newGame', this._onNewGame);
       }
-      this._onHold = this._onDamage = this._onKilled = this._onSpawned = this._onSaveLoaded = this._onNewGame = null;
+      this._onHold = this._onDamage = this._onKilled = this._onSpawned = null;
+      this._onHeavyPartDetached = this._onTetherLatched = null;
+      this._onSaveLoaded = this._onNewGame = null;
       this._activeEntityIds.clear();
     },
   };
