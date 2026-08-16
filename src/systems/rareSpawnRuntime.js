@@ -2,6 +2,7 @@
 // pressure, cooldowns, entity admission, and teardown. These handlers only author the physical
 // cast and translate real interaction receipts into durable outcomes.
 import { Masks } from '../core/entity.js';
+import { doubleWreckBlackBox } from '../data/doubleWreckBlackBoxes.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec } from './ships.js';
 
 const OFFER_S = 45;
@@ -23,12 +24,21 @@ function news(d, live, headline, stage = 'sighting', outcome = null) {
   });
 }
 
-function remember(state, live, outcome) {
+function ensureRareLedger(state) {
   const story = state.story || (state.story = { flags: {} });
   if (!story.flags || typeof story.flags !== 'object') story.flags = {};
   const ledger = story.flags.rareSpawns || (story.flags.rareSpawns = { completed: {}, history: [] });
   if (!ledger.completed || typeof ledger.completed !== 'object') ledger.completed = {};
   if (!Array.isArray(ledger.history)) ledger.history = [];
+  return ledger;
+}
+
+function trimRareHistory(ledger) {
+  if (ledger.history.length > 32) ledger.history.splice(0, ledger.history.length - 32);
+}
+
+function remember(state, live, outcome) {
+  const ledger = ensureRareLedger(state);
   const record = {
     encounterId: live.id,
     outcome,
@@ -39,8 +49,37 @@ function remember(state, live, outcome) {
   };
   ledger.completed[live.shapeId] = record;
   ledger.history.push({ shapeId: live.shapeId, ...record });
-  if (ledger.history.length > 32) ledger.history.splice(0, ledger.history.length - 32);
+  trimRareHistory(ledger);
   return record;
+}
+
+function rememberDoubleWreckBox(state, live, side, recoveredOrder, wreck) {
+  const box = doubleWreckBlackBox(side);
+  if (!box) return null;
+  const ledger = ensureRareLedger(state);
+  const receiptId = `double-wreck-box:${live.id}:${box.side}`;
+  const existing = ledger.history.find((row) => row && row.receiptId === receiptId);
+  if (existing) return { record: existing, created: false, box };
+  const cargoId = `${box.cargoPrefix}${live.id}`;
+  const record = {
+    kind: 'black_box',
+    receiptId,
+    shapeId: live.shapeId,
+    encounterId: live.id,
+    blackBoxSide: box.side,
+    cargoId,
+    sourceStoryPropKind: box.storyPropKind,
+    scanLabel: wreck && wreck.data && wreck.data.scanLabel || box.title,
+    recoveredOrder,
+    sectorId: live.sectorId,
+    zoneId: live.zoneId,
+    tick: state.tick | 0,
+    at: Number(state.simTime) || 0,
+  };
+  ledger.history.push(record);
+  trimRareHistory(ledger);
+  addPersistentStoryCargo(state, cargoId);
+  return { record, created: true, box };
 }
 
 function finish(d, live, state, outcome, headline) {
@@ -529,18 +568,46 @@ const doubleWreck = Object.freeze({
     first.data.lockedPair = true;
     second.data.lockedPair = true;
     live.data.wreckIds = [first.id, second.id];
+    live.data.wreckSideById = { [first.id]: 'a', [second.id]: 'b' };
+    live.data.handledWreckIds = [];
     live.data.recoveredWreckIds = [];
     startOffer(d, live, 'DOUBLE WRECK FOUND: two mutually-killed hulls remain locked and tumbling');
   },
   tick(d, live, state, now) { timeout(d, live, state, now, chooseDoubleWreck); },
   choose: chooseDoubleWreck,
   event(d, live, state, name, payload = {}) {
-    if (name !== 'entityGone' || !live.data.wreckIds.includes(payload.id)) return;
-    if (!live.data.recoveredWreckIds.includes(payload.id)) live.data.recoveredWreckIds.push(payload.id);
-    if (live.data.recoveredWreckIds.length < 2) return;
-    addPersistentStoryCargo(state, `rare_black_box:double-a:${live.id}`);
-    addPersistentStoryCargo(state, `rare_black_box:double-b:${live.id}`);
-    finish(d, live, state, 'both_manifests_recovered', 'DOUBLE WRECK READ: both black boxes agree that neither ship turned');
+    if (name !== 'salvageCompleted' && name !== 'entityGone') return;
+    const wreckId = name === 'salvageCompleted' ? payload.wreckId : payload.id;
+    if (!live.data.wreckIds.includes(wreckId) || live.data.handledWreckIds.includes(wreckId)) return;
+    live.data.handledWreckIds.push(wreckId);
+    const wreck = state.entities && state.entities.get && state.entities.get(wreckId);
+    const side = live.data.wreckSideById[wreckId];
+    if (name === 'salvageCompleted' && wreck && wreck.data && wreck.data.scanned === true) {
+      live.data.recoveredWreckIds.push(wreckId);
+      const recoveredOrder = live.data.recoveredWreckIds.length;
+      const result = rememberDoubleWreckBox(state, live, side, recoveredOrder, wreck);
+      if (result && result.created) {
+        d.emit('codex:blackBoxRecovered', {
+          encounterId: live.id,
+          shapeId: live.shapeId,
+          side: result.box.side,
+          cargoId: result.record.cargoId,
+          recoveredOrder,
+        });
+        d.say(live, 'info', `${result.box.shortTitle.toUpperCase()} RECOVERED (${recoveredOrder}/2) — Codex / Black Boxes updated.`, null, { literal: true });
+      }
+    } else {
+      const warning = name === 'salvageCompleted'
+        ? `BOX ${String(side || '?').toUpperCase()} LOST — scan a recorder before cutting it free.`
+        : `BOX ${String(side || '?').toUpperCase()} LOST — destruction left no recorder to collect.`;
+      d.say(live, 'warning', warning, null, { literal: true });
+    }
+    if (live.data.handledWreckIds.length < 2) return;
+    if (live.data.recoveredWreckIds.length === 2) {
+      finish(d, live, state, 'both_manifests_recovered', 'DOUBLE WRECK READ: both black boxes agree that neither ship turned');
+    } else {
+      finish(d, live, state, 'manifests_incomplete', 'DOUBLE WRECK STRIPPED: an unscanned recorder left no readable account');
+    }
   },
 });
 

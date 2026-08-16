@@ -10,6 +10,10 @@
 
 import { SHIP, COLD_START, REFS, FIGURES, COMMS, GRAFFITI, BEAT_CONTENT, ENDGAME_CHOICES, KURTZ, PERSISTENT_CARGO } from '../../data/narrative.js';
 import { TETHYS_BLACK_MARKET_DISCOVERY } from '../../data/frontierRumors.js';
+import {
+  DOUBLE_WRECK_BLACK_BOXES,
+  DOUBLE_WRECK_SHAPE_ID,
+} from '../../data/doubleWreckBlackBoxes.js';
 import { explorationDiscoveryPlates } from '../../world/explorationJournal.js';
 import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
 import { createShipLedgerPanel } from './shipLedger.js';
@@ -114,7 +118,7 @@ function shell(rootEl, title, extraClass) {
   return { panel: rootEl, body };
 }
 
-const TABS = ['Story', 'Comms', 'Discoveries', 'Graffiti', 'Figures', 'Ship', 'Archive', 'Ledger'];
+const TABS = ['Story', 'Comms', 'Discoveries', 'Black Boxes', 'Graffiti', 'Figures', 'Ship', 'Archive', 'Ledger'];
 
 // Signal Archive — the four authored intro cinematics, exposed as recovered transmission stills the
 // player can replay. Posters (C-INTRO-0N.jpg) are clean full-bleed frames; clips are the 6s mp4s.
@@ -317,6 +321,72 @@ export function codexProgressSummary(story = {}) {
   };
 }
 
+export function doubleWreckBlackBoxRecords(story = {}) {
+  const byEncounter = new Map();
+  const ensureGroup = (encounterId, source = {}) => {
+    let group = byEncounter.get(encounterId);
+    if (!group) {
+      group = {
+        encounterId,
+        sectorId: source.sectorId || null,
+        zoneId: source.zoneId || null,
+        boxesBySide: new Map(),
+      };
+      byEncounter.set(encounterId, group);
+    }
+    return group;
+  };
+  const history = story && story.flags && story.flags.rareSpawns
+    && story.flags.rareSpawns.history;
+  const historyRows = Array.isArray(history) ? history : [];
+  for (const receipt of historyRows) {
+    if (!receipt || receipt.kind !== 'black_box' || receipt.shapeId !== DOUBLE_WRECK_SHAPE_ID
+      || (receipt.blackBoxSide !== 'a' && receipt.blackBoxSide !== 'b')) continue;
+    const group = ensureGroup(receipt.encounterId, receipt);
+    if (!group.boxesBySide.has(receipt.blackBoxSide)) {
+      group.boxesBySide.set(receipt.blackBoxSide, receipt);
+    }
+  }
+  const cargoOrderByEncounter = new Map();
+  const cargo = Array.isArray(story && story.persistentCargo) ? story.persistentCargo : [];
+  for (const cargoId of cargo) {
+    const match = /^rare_black_box:double-([ab]):(.+)$/.exec(String(cargoId || ''));
+    if (!match) continue;
+    const [, side, encounterId] = match;
+    const recoveredOrder = (cargoOrderByEncounter.get(encounterId) || 0) + 1;
+    cargoOrderByEncounter.set(encounterId, recoveredOrder);
+    const group = ensureGroup(encounterId);
+    if (!group.boxesBySide.has(side)) {
+      group.boxesBySide.set(side, {
+        kind: 'black_box',
+        shapeId: DOUBLE_WRECK_SHAPE_ID,
+        encounterId,
+        blackBoxSide: side,
+        cargoId,
+        recoveredOrder,
+      });
+    }
+  }
+  return Array.from(byEncounter.values()).map((group) => {
+    const boxes = Array.from(group.boxesBySide.values())
+      .sort((a, b) => (a.recoveredOrder | 0) - (b.recoveredOrder | 0));
+    const logs = DOUBLE_WRECK_BLACK_BOXES
+      .filter((box) => group.boxesBySide.has(box.side))
+      .flatMap((box) => box.logs.map((entry) => ({ ...entry, side: box.side, boxTitle: box.title })))
+      .sort((a, b) => a.sequence - b.sequence);
+    return {
+      encounterId: group.encounterId,
+      sectorId: group.sectorId,
+      zoneId: group.zoneId,
+      recoveredCount: boxes.length,
+      complete: boxes.length === DOUBLE_WRECK_BLACK_BOXES.length,
+      recoveryOrder: boxes.map((box) => box.blackBoxSide),
+      boxes: boxes.map((box) => ({ ...box })),
+      logs,
+    };
+  });
+}
+
 function normalizeSearch(value) {
   return String(value || '').toLowerCase().replace(/\s+/g, ' ').trim();
 }
@@ -373,6 +443,7 @@ export const codexScreen = {
     this._unsubs.push(ctx.bus.on('comms:popup', refreshIfVisible));
     this._unsubs.push(ctx.bus.on('graffiti:show', refreshIfVisible));
     this._unsubs.push(ctx.bus.on('discovery:plateUnlocked', refreshIfVisible));
+    this._unsubs.push(ctx.bus.on('codex:blackBoxRecovered', refreshIfVisible));
 
     this._render(ctx);
   },
@@ -443,6 +514,7 @@ export const codexScreen = {
       case 'Story':    this._renderStory(ctx); break;
       case 'Comms':    this._renderComms(ctx); break;
       case 'Discoveries': this._renderDiscoveries(ctx); break;
+      case 'Black Boxes': this._renderBlackBoxes(ctx); break;
       case 'Graffiti': this._renderGraffiti(ctx); break;
       case 'Figures':  this._renderFigures(ctx); break;
       case 'Ship':     this._renderShip(ctx); break;
@@ -524,6 +596,33 @@ export const codexScreen = {
       }
       this._body.appendChild(entry);
       if (isRequested) focusCodexDiscoveryEntry(entry);
+    }
+  },
+
+  _renderBlackBoxes(ctx) {
+    this._body.appendChild(el('div', 'sf-codex-section-h', 'Recovered Black Boxes'));
+    const records = doubleWreckBlackBoxRecords(safeStory(ctx));
+    if (!records.length) {
+      this._body.appendChild(el('div', 'sf-codex-empty',
+        'No recorders recovered. Scan a wreck before cutting it free.'));
+      return;
+    }
+    for (const record of records.slice().reverse()) {
+      const entry = el('article', 'sf-codex-entry');
+      entry.dataset.blackBoxEncounterId = record.encounterId;
+      entry.appendChild(el('h3', null, 'Double Wreck — Opposing Accounts'));
+      const collectionOrder = record.recoveryOrder.map((side) => `Box ${side.toUpperCase()}`).join(' → ');
+      const location = [record.sectorId, record.zoneId].filter(Boolean).join(' · ');
+      entry.appendChild(el('div', 'sf-codex-meta',
+        `${record.recoveredCount}/2 recorders · recovered ${collectionOrder}${location ? ` · ${location}` : ''}`));
+      for (const log of record.logs) {
+        entry.appendChild(el('div', 'sf-codex-body',
+          `BOX ${log.side.toUpperCase()} · ${log.stamp} — ${log.text}`));
+      }
+      entry.appendChild(el('div', 'sf-codex-note', record.complete
+        ? 'Recovery note: matching turn calls are not clearance. Bleed speed before arguing lane priority.'
+        : 'One account is still missing. An unscanned recorder leaves no readable copy.'));
+      this._body.appendChild(entry);
     }
   },
 

@@ -205,6 +205,7 @@ export const encounterDirector = {
       this.bus.on('poi:discovered', (p) => this._rememberPoiVisit(p));
       this.bus.on('poi:identified', (p) => this._rememberPoiVisit(p));
       this.bus.on('salvage:communicatorFound', (p) => this._routeToScript('salvageSignal', 'communicatorFound', p));
+      this.bus.on('salvage:completed', (p) => this._routeToSelfRegistered('salvageCompleted', p));
       // The deterministic choice bridge (UI/test harness both speak this).
       this.bus.on('encounter:choose', (p) => this._onChoose(p));
       // Mining noise attracts predators (decaying accumulator; player yields only).

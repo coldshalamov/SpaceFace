@@ -20,6 +20,7 @@ import {
   planEncounterShape,
   planEncounters,
 } from '../src/systems/encounterDirector.js';
+import { scanner } from '../src/systems/scanner.js';
 import { makeShipEntitySpec } from '../src/systems/ships.js';
 import { world } from '../src/systems/world.js';
 
@@ -248,7 +249,12 @@ test('ghost ship and Double Wreck carry real salvage pools and durable black-box
     assert.equal(wrecks[1].data.doubleWreckPartnerId, wrecks[0].id);
     assert.deepEqual(wrecks[0].vel, wrecks[1].vel, 'the touching bodies retain one shared drift');
     paired.bus.emit('encounter:choose', { encounterId: live.id, choiceId: 'read' });
+    paired.state.input.actions.scanPulse = true;
+    paired.sim.registry.get('scanner').update(0, paired.state);
+    assert.ok(wrecks.every((wreck) => wreck.data.scanned === true),
+      'the ordinary scanner resolves both recorders before they are collected');
     for (const wreck of wrecks) {
+      paired.bus.emit('salvage:completed', { wreckId: wreck.id, loot: {} });
       wreck.alive = false;
       paired.bus.emit('entity:destroyed', { id: wreck.id, type: 'wreck' });
     }
@@ -305,11 +311,12 @@ function reachableZone(shape) {
 function boot(seed = 28_000_028) {
   const sim = createSimulation({
     seed,
-    systems: [world, encounterDirector],
-    updateOrder: [world, encounterDirector],
+    systems: [world, scanner, encounterDirector],
+    updateOrder: [world, scanner, encounterDirector],
   });
   const { state, bus } = sim;
   state.mode = 'flight';
+  state.input = { actions: { scanPulse: false } };
   state.world.currentSectorId = 'sector_ceres_belt';
   const player = sim.spawn(makeShipEntitySpec('ship_kestrel', {
     team: 0,

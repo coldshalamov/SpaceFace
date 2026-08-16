@@ -5,6 +5,7 @@ import { CombatDoctrineRuntime } from '../src/ai/combatDoctrine.js';
 import { authorizeAIEngagement, isHostileForAI } from '../src/ai/engagementAuthority.js';
 import { normalizeFactionBehaviorProfile } from '../src/ai/factionBehavior.js';
 import { SquadCommander } from '../src/ai/squad.js';
+import { nextRunTick } from '../src/core/activityScheduler.js';
 import { createBus } from '../src/core/eventBus.js';
 import { createGameState } from '../src/core/gameState.js';
 import { sampleFactionBehavior } from '../src/data/factionDoctrines.js';
@@ -123,9 +124,10 @@ test('production K1 spawn keeps Pitborn allied to the player while authorizing a
     'stable-id target binding selects the first live Concord actor');
   concord.alive = false;
   h.bus.emit('entity:killed', { id: concord.id, factionId: concord.factionId, killerId: pitborn.id });
+  h.state.tick = nextRunTick(h.state.tick + 1, 'factionPresence:pitbornBind', 8);
   h.presence.update();
   assert.equal(pitborn.data.ai.retaliationTargetId, secondConcord.id,
-    'the next production presence tick deterministically promotes the next live Concord target');
+    'the next scheduled production presence tick deterministically promotes the next live Concord target');
   assert.equal(isHostileForAI(h.state, pitborn, h.player), false,
     'target promotion never widens Pitborn hostility to the player');
 
