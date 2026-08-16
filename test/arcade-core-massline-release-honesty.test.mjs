@@ -31,7 +31,8 @@ test('AC-07 taut manual cut keeps earned velocity and adds no release impulse', 
     const sling = harness.events.find((event) => event.type === 'massline:selfSling')?.payload;
     assert.ok(receipt, 'a taut moving cut still publishes release telemetry');
     assert.equal(receipt.releaseId, sling.releaseId);
-    assert.equal(receipt.physicsEarned, false, 'telemetry must not claim a retired bonus as earned');
+    assert.equal(receipt.physicsEarned, true,
+      'telemetry must identify the retained tether-earned velocity without claiming a release kick');
     assert.equal(receipt.bonusDv, 0);
     assert.equal(receipt.releaseAddedDv, 0);
     assert.deepEqual(receipt.impulses, []);

@@ -532,7 +532,7 @@ export const masslineThrow = {
     const receipt = {
       releaseId,
       source: 'massline',
-      physicsEarned: false,
+      physicsEarned: true,
       targetId: self ? self.targetId : null,
       anchorId: swing.anchorId,
       corrected: false,
