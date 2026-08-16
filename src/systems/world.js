@@ -368,6 +368,7 @@ export const world = {
     bus.on('poi:identified', (p) => this._onFrontierRumorPoi(p || {}));
     bus.on('frontierRumor:planned', (p) => this._onFrontierRumorPlanned(p || {}));
     bus.on('encounter:telegraph', (p) => this._onFrontierRumorEncounter(p || {}));
+    bus.on('mission:bountyTargetContacted', (p) => this._onBountyRumorContact(p || {}));
     // Mark the boss POI defeated when the dreadnought dies, so it does not respawn on sector
     // re-entry or save reload. (The entity carries data.isBoss + data.bossSectorId/bossPoiId.)
     bus.on('entity:killed', (p) => {
@@ -2722,6 +2723,17 @@ export const world = {
       );
     }
     return resolved;
+  },
+
+  _onBountyRumorContact(payload) {
+    const missionId = String(payload.missionId || '').trim();
+    if (!missionId) return 0;
+    return this._resolveFrontierRumors(
+      (record) => record.kind === 'hunter'
+        && String(record.targetMissionId || '') === missionId
+        && (!payload.sectorId || record.sectorId === payload.sectorId),
+      'warrant_target_contact',
+    );
   },
 
   // =========================================================================================

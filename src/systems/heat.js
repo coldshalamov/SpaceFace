@@ -68,6 +68,9 @@ const THEFT_INCIDENT = 0.22;
 // make every future crime type free until someone remembered to add a row here.
 const INCIDENT_HEAT_DEFAULT = 0.12;
 const INCIDENT_HEAT_BY_KIND = Object.freeze({ payload_theft: THEFT_INCIDENT });
+const MAJOR_STAIN_LIMIT = 24;
+const CONVOY_MASSACRE_KILLS = 3;
+const HUNTER_KILL_HEAT = 0.22;
 
 function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
 
@@ -146,6 +149,20 @@ function playerEntity(state) {
   return state && state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
 }
 
+function ensureMajorCrimeLedger(player) {
+  if (!player.majorCrimeStains || typeof player.majorCrimeStains !== 'object'
+    || Array.isArray(player.majorCrimeStains)) {
+    player.majorCrimeStains = { schemaVersion: 1, sequence: 0, byId: {}, convoyKillsByRegion: {} };
+  }
+  const own = player.majorCrimeStains;
+  if (!own.byId || typeof own.byId !== 'object' || Array.isArray(own.byId)) own.byId = {};
+  if (!own.convoyKillsByRegion || typeof own.convoyKillsByRegion !== 'object'
+    || Array.isArray(own.convoyKillsByRegion)) own.convoyKillsByRegion = {};
+  own.sequence = Math.max(0, Math.floor(Number(own.sequence) || 0));
+  own.schemaVersion = 1;
+  return own;
+}
+
 function setZoneCenter(zone, entity) {
   if (!zone || !entity || !entity.pos) return;
   zone.center.x = entity.pos.x || 0;
@@ -199,6 +216,7 @@ export const heat = {
 
     // Intentional clear (e.g. Ending A record expunge). Sole heat writer path via _setHeat.
     bus.on('heat:clear', (p) => {
+      if (p && p.reason === 'restitution paid') this._settleMajorCrimeStains('restitution');
       this._setHeat(0, (p && p.reason) || 'heat:clear');
     });
 
@@ -208,6 +226,7 @@ export const heat = {
     // therefore no mission-side heat write anywhere in the chain — the mission cannot reach
     // player.heat even if it wants to, because the only door is a receipt it cannot sign.
     bus.on('law:reportIncidentReceipt', (p) => this.applyIncidentReceipt(p));
+    bus.on('law:activeHunterKilled', (p) => this._onActiveHunterKilled(p));
   },
 
   /**
@@ -283,8 +302,75 @@ export const heat = {
     this._burstAccrued = 0;
   },
 
+  _recordMajorCrime(kind, payload = {}) {
+    const player = this.state && this.state.player;
+    if (!player) return null;
+    const own = ensureMajorCrimeLedger(player);
+    const sectorId = payload.sectorId || this.state.world && this.state.world.currentSectorId || 'unknown';
+    const factionId = payload.factionId || null;
+    own.sequence += 1;
+    const id = `major-crime:${kind}:${sectorId}:${own.sequence}`;
+    own.byId[id] = {
+      id, kind, sectorId, factionId,
+      active: true,
+      at: Number(this.state.simTime) || 0,
+      sourceId: payload.sourceId == null ? null : payload.sourceId,
+    };
+    const ids = Object.keys(own.byId).sort((a, b) => (
+      (own.byId[a].at || 0) - (own.byId[b].at || 0)
+    ));
+    while (ids.length > MAJOR_STAIN_LIMIT) delete own.byId[ids.shift()];
+    this.bus.emit('law:majorCrimeStainChanged', { ...own.byId[id] });
+    return own.byId[id];
+  },
+
+  _settleMajorCrimeStains(reason) {
+    const own = this.state && this.state.player && this.state.player.majorCrimeStains;
+    if (!own || !own.byId) return 0;
+    let settled = 0;
+    for (const row of Object.values(own.byId)) {
+      if (!row || row.active === false) continue;
+      row.active = false;
+      row.settledAt = Number(this.state.simTime) || 0;
+      row.settlement = reason;
+      settled++;
+    }
+    return settled;
+  },
+
+  _onActiveHunterKilled(payload) {
+    if (!payload || !isPlayerWanted(this.state)) return false;
+    this._recordMajorCrime('hunter_killed', {
+      ...payload,
+      sourceId: payload.hunterEntityId,
+    });
+    this._raise(HUNTER_KILL_HEAT, 'active warrant hunter killed');
+    const zone = ensureHeatZone(this.state.player);
+    if (!zone.bountyPosted) this._postBounty(zone);
+    return true;
+  },
+
   _onKill(p) {
     if (!p || p.killerId !== this.state.playerId) return;
+    const victim = this.state.entities && this.state.entities.get && this.state.entities.get(p.id);
+    const data = victim && victim.data || {};
+    const sectorId = data.sectorId || victim && victim.homeSectorId
+      || this.state.world && this.state.world.currentSectorId || null;
+    if (p.victimClass === 'station' || victim && victim.type === 'station') {
+      this._recordMajorCrime('station_destroyed', {
+        sectorId, factionId: p.factionId, sourceId: p.id,
+      });
+    } else if (data.ai && data.ai.spawnContext === 'convoy_civilian') {
+      const own = ensureMajorCrimeLedger(this.state.player);
+      const region = sectorId || 'unknown';
+      const kills = Math.max(0, Math.floor(Number(own.convoyKillsByRegion[region]) || 0)) + 1;
+      own.convoyKillsByRegion[region] = kills;
+      if (kills === CONVOY_MASSACRE_KILLS) {
+        this._recordMajorCrime('convoy_massacre', {
+          sectorId: region, factionId: p.factionId, sourceId: p.id,
+        });
+      }
+    }
     // Lawful victims (patrol_lawman / factionLawful) are ALWAYS piracy — killing a cop is the
     // clearest criminal act even if you're already hostile to their faction.
     if (p.factionLawful) {
@@ -490,6 +576,15 @@ export function isPlayerBountyPosted(state) {
   const currentSectorId = state && state.world && state.world.currentSectorId;
   const local = !zone || !zone.sectorId || !currentSectorId || zone.sectorId === currentSectorId;
   return isPlayerWanted(state) && local && !!(zone && zone.active && zone.bountyPosted === true);
+}
+export function majorCrimeStainsForState(state, { activeOnly = false } = {}) {
+  const byId = state && state.player && state.player.majorCrimeStains
+    && state.player.majorCrimeStains.byId;
+  if (!byId || typeof byId !== 'object') return [];
+  return Object.values(byId)
+    .filter((row) => row && (!activeOnly || row.active !== false))
+    .map((row) => ({ ...row }))
+    .sort((a, b) => (a.at || 0) - (b.at || 0) || String(a.id).localeCompare(String(b.id)));
 }
 export function heatLevelFor(value) {
   if (!Number.isFinite(value) || value < WANTED_THRESHOLD) return 0;

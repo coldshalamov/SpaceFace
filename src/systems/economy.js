@@ -51,7 +51,7 @@ import {
   priceModForState,
 } from './factions.js';
 import { livingHullGrimeAt } from '../core/livingHull.js';
-import { heatRestitutionCost } from './heat.js';
+import { heatRestitutionCost, isPlayerBountyPosted } from './heat.js';
 import { difficultyEconomyRewardScale } from '../data/difficulty.js';
 
 // ---- tunables (design/specs/03 "Formulas") ------------------------------------------------
@@ -317,6 +317,22 @@ function commodityDef(state, id) {
 /** A station tolerates contraband/illegal goods iff it is a blackmarket (smuggler/pirate den). */
 function toleratesContraband(info) {
   return !!(info && info.type === 'blackmarket');
+}
+
+/** Personal terms offered by a black market while the player's local warrant is posted.
+ * The den wants fugitive traffic: buys are 6% cheaper and fences pay 8% better. This is deliberately
+ * a quote modifier, not market stock pressure, so one fugitive cannot rewrite the regional book for
+ * everyone. The sell cap preserves the house edge even on unusually tight listings. */
+export function wantedBlackmarketTerms(state, info, def, side, unitPrice, buyCeiling = null) {
+  const active = toleratesContraband(info) && isPlayerBountyPosted(state);
+  if (!active) return { unitPrice, multiplier: 1, active: false, illicit: false };
+  const illicit = !!(def && (def.legality === 'contraband' || def.legality === 'illegal'));
+  const multiplier = side === 'buy' ? 0.94 : 1.08;
+  let adjusted = unitPrice * multiplier;
+  if (side === 'sell' && Number.isFinite(buyCeiling)) {
+    adjusted = Math.min(adjusted, buyCeiling * 0.98);
+  }
+  return { unitPrice: adjusted, multiplier: adjusted / Math.max(0.0001, unitPrice), active: true, illicit };
 }
 
 /** Role of a commodity for a station type: 'produce' if the type makes it, 'consume' if it uses
@@ -1304,15 +1320,20 @@ export const economy = {
     // supply of resources that only occur deeper in the world. This preserves discovery value
     // and stops starter markets from becoming risk-free rare-ore vending machines.
     if (side === 'buy' && marketTier > stationTier) {
+      const baseUnit = entry.lastBuy * standing.buy;
+      const wantedTerms = wantedBlackmarketTerms(state, info, def, side, baseUnit);
       return {
-        ok: false, reason: 'tier_unavailable', unitAvg: entry.lastBuy * standing.buy, total: 0,
+        ok: false, reason: 'tier_unavailable', unitAvg: wantedTerms.unitPrice, total: 0,
         priceImpactPct: 0, stockAfter: entry.stock, marketTier, stationTier,
         legalityWarning: def.legality !== 'legal' ? def.legality : null,
+        wantedBlackmarket: wantedTerms.active,
       };
     }
     if (qty <= 0) {
       const u = side === 'buy' ? entry.lastBuy * standing.buy : entry.lastSell * standing.sell;
-      return { ok: false, reason: 'qty', unitAvg: u, total: 0, priceImpactPct: 0, stockAfter: entry.stock, legalityWarning: def.legality !== 'legal' ? def.legality : null };
+      const buyCeiling = entry.lastBuy * standing.buy * 0.94;
+      const wantedTerms = wantedBlackmarketTerms(state, info, def, side, u, buyCeiling);
+      return { ok: false, reason: 'qty', unitAvg: wantedTerms.unitPrice, total: 0, priceImpactPct: 0, stockAfter: entry.stock, legalityWarning: def.legality !== 'legal' ? def.legality : null, wantedBlackmarket: wantedTerms.active };
     }
     const frontier = info ? this.frontierPenalty(info) : 0;
     const spread = spreadOf(entry, frontier);
@@ -1341,7 +1362,10 @@ export const economy = {
     avgMidPrice = applyCycleToMid(def.basePrice, avgMidPrice, cycle, tNow);
     const standingPriceMultiplier = side === 'buy' ? standing.buy : standing.sell;
     const marketUnitAvg = side === 'buy' ? avgMidPrice * (1 + spread / 2) : avgMidPrice * (1 - spread / 2);
-    const unitAvg = marketUnitAvg * standingPriceMultiplier;
+    const personalUnitAvg = marketUnitAvg * standingPriceMultiplier;
+    const wantedBuyCeiling = entry.lastBuy * standing.buy * 0.94;
+    const wantedTerms = wantedBlackmarketTerms(state, info, def, side, personalUnitAvg, wantedBuyCeiling);
+    const unitAvg = wantedTerms.unitPrice;
     const total = round(unitAvg * qty);
     const beforeMid = applyCycleToMid(
       def.basePrice,
@@ -1361,6 +1385,9 @@ export const economy = {
       unitAvg, total,
       priceImpactPct, stockAfter,
       standingPriceMultiplier,
+      wantedBlackmarket: wantedTerms.active,
+      wantedBlackmarketMultiplier: wantedTerms.multiplier,
+      wantedBlackmarketIllicit: wantedTerms.illicit,
       stationSurchargeWaived: side === 'buy' && standing.surchargeWaived,
       legalityWarning: def.legality !== 'legal' ? def.legality : null,
     };
@@ -2688,7 +2715,11 @@ export const economy = {
     const info = stationInfo(this.state, stationId);
     const standing = priceModForState(this.state, info && info.factionId);
     const raw = side === 'buy' ? e.lastBuy * standing.buy : e.lastSell * standing.sell;
-    return Math.max(1, round(raw));
+    const def = commodityDef(this.state, commodityId);
+    const wantedTerms = wantedBlackmarketTerms(
+      this.state, info, def, side, raw, e.lastBuy * standing.buy * 0.94,
+    );
+    return Math.max(1, round(wantedTerms.unitPrice));
   },
 
   // -------------------------------------------------------------------------------------------

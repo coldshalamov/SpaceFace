@@ -87,6 +87,9 @@ import { effectiveDangerTierFor } from './sectorSim.js';   // V2 §33 — live (
 import { COMMODITIES } from '../data/commodities.js';
 import { FACTION_META } from '../data/factions.js';
 import { SHIPS } from '../data/ships.js';
+import { ENEMY_TYPES } from '../data/enemies.js';
+import { hunterTrickForContract } from '../data/hunterTricks.js';
+import { hunterCareerAccess } from '../careers/ladders/hunterLadderDefs.js';
 import { makeEnemySpawnSpec } from './combat.js';
 import { protectedStationAt } from '../ai/engagementAuthority.js';
 import { POI_CAUSAL_BOARD_CAP, validatePoiCausalOffer } from '../missions/poiCausalOffers.js';
@@ -137,6 +140,7 @@ const TYPE_ORDER = MISSION_TYPES.map((t) => t.type);
 const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
+const ENEMY_BY_ID = new Map(ENEMY_TYPES.map((enemy) => [enemy.id, enemy]));
 
 // station id → mission-board identity resolved from the SECTORS graph. Physical `type` remains
 // the economy/render contract; optional missionProfile/boardAnchorType only shape posted work.
@@ -176,6 +180,50 @@ const MISSION_HOSTILE_SPAWN_MIN_WU = 1700;
 const MISSION_HOSTILE_SPAWN_MAX_WU = 2600;
 const MISSION_HOSTILE_SPAWN_ATTEMPTS = 24;
 const MISSION_PORT_SAFE_RADIUS_WU = 1200;
+const BOUNTY_CONTACT_RANGE_SQ = 1200 * 1200;
+
+function bountyTargetPool(riskTier) {
+  const risk = Math.max(0, Math.round(Number(riskTier) || 0));
+  return risk <= 1
+    ? ['wasp_swarmer', 'wasp_swarmer', 'reaver_pirate']
+    : risk <= 2
+      ? ['wasp_swarmer', 'reaver_pirate', 'reaver_pirate']
+      : risk <= 3
+        ? ['reaver_pirate', 'reaver_pirate', 'corsair_raider', 'wasp_swarmer']
+        : ['reaver_pirate', 'corsair_raider', 'corsair_raider', 'bruiser_brawler'];
+}
+
+function bountyIntelForMission(state, mission) {
+  const access = hunterCareerAccess(state);
+  const seed = state && state.meta && state.meta.seed || 1;
+  const pool = bountyTargetPool(mission.riskTier);
+  const targetArchetype = pool[hash32(seed, mission.id, 'licensed-bounty-target') % pool.length];
+  const enemy = ENEMY_BY_ID.get(targetArchetype);
+  const trick = hunterTrickForContract(mission.id, seed);
+  const transponder = access.transponder && (hash32(seed, mission.id, 'hunter-transponder') % 3 === 0);
+  const sector = SECTOR_BY_ID.get(mission.destSectorId);
+  return {
+    rankId: access.id,
+    rankLabel: access.label,
+    killLicenseTier: access.killTier,
+    captureLicenseTier: access.captureTier,
+    intelTier: access.intelTier,
+    lastSeen: `${sector && sector.name || mission.destSectorId || 'unknown sector'} traffic ledger`,
+    targetArchetype,
+    knownFit: access.intelTier >= 1 && enemy
+      ? {
+        hull: enemy.name || targetArchetype,
+        weapons: (enemy.weapons || []).map((weapon) => weapon.id).filter(Boolean),
+      }
+      : null,
+    knownGimmick: access.intelTier >= 2 && trick
+      ? { id: trick.id, label: trick.label, telegraph: trick.telegraph }
+      : null,
+    trickId: trick && trick.id || null,
+    transponder,
+    contactReported: false,
+  };
+}
 const LONG_READ_RUMOR_EVENT = Object.freeze({
   news: 'news:headline',
   comms_intercept: 'comms:popup',
@@ -1866,6 +1914,9 @@ export const missions = {
     }
 
     const inst = this._instanceFromOffer(offer);
+    if (inst.type === 'bounty_hunt') {
+      inst.params.hunterIntel = bountyIntelForMission(state, inst);
+    }
     // A branch selection is atomic: withdraw both siblings from every board before any fee intent
     // or sealed-manifest cargo write can expose a half-selected route to synchronous listeners.
     const withdrawnSetPiece = setPieceCauseOf(offer)
@@ -2014,6 +2065,16 @@ export const missions = {
   },
 
   _acceptPreflight(offer) {
+    if (offer && offer.type === 'bounty_hunt') {
+      const access = hunterCareerAccess(this.state);
+      const riskTier = Math.max(0, Math.round(Number(offer.riskTier) || 0));
+      if (riskTier > access.killTier) {
+        return {
+          ok: false,
+          reason: `${access.label} clears bounty risk ${access.killTier}; rank up for tier ${riskTier}`,
+        };
+      }
+    }
     if (offer && offer.factionId) {
       const minRep = missionOfferMinRep(offer, this.state);
       const rep = this._repOf(offer.factionId);
@@ -4246,6 +4307,18 @@ export const missions = {
       }
       const combat = data.combat || (data.combat = {});
       if (combat.targetId !== player.id) combat.targetId = player.id;
+      const intel = m.type === 'bounty_hunt' && m.params && m.params.hunterIntel;
+      const rumorId = `frontier-rumor:bounty:${m.id}`;
+      const rumor = this.state.world && this.state.world.frontierRumors
+        && this.state.world.frontierRumors.byId && this.state.world.frontierRumors.byId[rumorId];
+      if (intel && !intel.contactReported && rumor && rumor.phase === 'rumored'
+        && distSq(player.pos, ent.pos) <= BOUNTY_CONTACT_RANGE_SQ) {
+        intel.contactReported = true;
+        this.bus.emit('mission:bountyTargetContacted', {
+          missionId: m.id, targetEntityId: ent.id, sectorId: m.destSectorId,
+          rumorId, pos: { x: ent.pos.x, z: ent.pos.z },
+        });
+      }
       armed++;
     }
     return armed;
@@ -4339,19 +4412,16 @@ export const missions = {
       // Early boards must not roll mid-tier corsairs. Risk-tier pools keep first-hour TTK fair
       // with the starter Pulse Laser S; higher risk opens tougher hulls.
       const riskTier = Math.max(0, Math.round(Number(m.riskTier) || 0));
-      const pool = riskTier <= 1
-        ? ['wasp_swarmer', 'wasp_swarmer', 'reaver_pirate']
-        : riskTier <= 2
-          ? ['wasp_swarmer', 'reaver_pirate', 'reaver_pirate']
-          : riskTier <= 3
-            ? ['reaver_pirate', 'reaver_pirate', 'corsair_raider', 'wasp_swarmer']
-            : ['reaver_pirate', 'corsair_raider', 'corsair_raider', 'bruiser_brawler'];
+      const pool = bountyTargetPool(riskTier);
       let spawned = 0;
       for (let i = 0; i < grant; i++) {
         const durableSlot = vacantSlots[i];
         const rng = nextRng(durableSlot);
         const storyTarget = durableSlot === 0 && m.storyTarget ? m.storyTarget : null;
-        const typeId = storyTarget && storyTarget.archetype || pool[Math.floor(rng() * pool.length)];
+        const bountyIntel = m.type === 'bounty_hunt' && m.params && m.params.hunterIntel;
+        const typeId = storyTarget && storyTarget.archetype
+          || bountyIntel && bountyIntel.targetArchetype
+          || pool[Math.floor(rng() * pool.length)];
         const level = Math.round(lvLo + (lvHi - lvLo) * (0.4 + rng() * 0.6));
         const pos = storyTarget
           ? missionStoryTargetSpawnPos(m, storyTarget, rng)
@@ -4363,6 +4433,22 @@ export const missions = {
         });
         spec.data = spec.data || {};
         spec.data.missionTag = m.id; // attribution helper (kill resolver matches by entity id below)
+        if (bountyIntel) {
+          spec.data.contractTargetId = this.state.playerId;
+          spec.data.hunterTrick = bountyIntel.trickId;
+          spec.data.bountyHunt = {
+            role: 'hunter', contractId: m.id, trickId: bountyIntel.trickId,
+          };
+          spec.data.hunterTransponder = bountyIntel.transponder === true;
+          if (bountyIntel.transponder) {
+            spec.data.ai = spec.data.ai || {};
+            spec.data.ai.forceFlee = true;
+            spec.data.ai.activity = {
+              kind: 'flee', reason: 'licensed_hunter_transponder', targetId: null,
+              startedTick: this.state.tick | 0,
+            };
+          }
+        }
         if (storyTarget) {
           spec.data.storyTargetId = storyTarget.id || null;
           spec.data.storyTargetRole = storyTarget.role || null;

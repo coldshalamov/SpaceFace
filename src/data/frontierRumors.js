@@ -188,6 +188,62 @@ function sourceForStation(stationId) {
   return STATION_SOURCE.get(String(stationId || '')) || null;
 }
 
+/** Paid bar chatter for the exact active warrant, never a generic ambient hunter. Missions owns
+ * the contract/intel; this rumor owner only turns those facts into its existing approximate-search
+ * record. Better ladder intel narrows the ring and lowers the price. */
+export function activeBountyRumorOffer(state, stationId) {
+  const source = sourceForStation(stationId);
+  if (!source) return null;
+  const mission = (state && state.missions && state.missions.active || []).find((row) => (
+    row && row.status === 'active' && row.type === 'bounty_hunt'
+      && row.params && row.params.hunterIntel
+  ));
+  if (!mission) return null;
+  const id = `frontier-rumor:bounty:${mission.id}`;
+  if (frontierRumorOwned(state, id)) return null;
+  const sector = SECTOR_BY_ID.get(mission.destSectorId);
+  if (!sector) return null;
+  const intel = mission.params.hunterIntel;
+  const tier = Math.max(0, Math.min(3, Math.floor(Number(intel.intelTier) || 0)));
+  const seed = finite(state && state.meta && state.meta.seed, 1) >>> 0;
+  const center = sectorLocalToGlobalForSector({ x: 0, z: 0 }, sector.id);
+  const angle = (hash32(seed, mission.id, 'warrant-chatter-angle') / 0x100000000) * Math.PI * 2;
+  const offset = 280 - tier * 55;
+  const bearingCenter = {
+    x: center.x + Math.cos(angle) * offset,
+    z: center.z + Math.sin(angle) * offset,
+  };
+  const radius = 3200 - tier * 500;
+  const details = [
+    intel.knownFit && `${intel.knownFit.hull} drive profile`,
+    intel.knownGimmick && `${intel.knownGimmick.label} package`,
+    intel.transponder && 'marshal transponder challenge',
+  ].filter(Boolean).join('; ');
+  return {
+    id,
+    schemaVersion: FRONTIER_RUMOR_SCHEMA_VERSION,
+    source: 'bar',
+    sourceStationId: source.station.id,
+    sourceBodyId: null,
+    sourceSectorId: source.sector.id,
+    dayIndex: dayIndexFor(state),
+    kind: 'hunter',
+    kindLabel: 'Warrant Chatter',
+    targetId: `mission:${mission.id}`,
+    targetMissionId: mission.id,
+    targetName: intel.knownFit && intel.knownFit.hull || 'licensed quarry',
+    sectorId: sector.id,
+    sectorName: sector.name || sector.id,
+    fieldType: null,
+    coordSpace: 'global_v1',
+    bearingCenter,
+    radius,
+    price: Math.max(120, 300 - tier * 45),
+    phase: 'rumored',
+    text: `Patrol chatter confirms the ${intel.lastSeen}.${details ? ` ${details}.` : ''} Search the marked traffic ring for the exact warrant.`,
+  };
+}
+
 export function createFrontierRumorState() {
   return { schemaVersion: FRONTIER_RUMOR_SCHEMA_VERSION, byId: {}, receipts: [] };
 }
@@ -433,6 +489,8 @@ function eunomiaQuietPatchOffer(state, stationSource) {
 export function frontierRumorOffer(state, stationId) {
   const stationSource = sourceForStation(stationId);
   if (!stationSource) return null;
+  const activeWarrant = activeBountyRumorOffer(state, stationId);
+  if (activeWarrant) return activeWarrant;
   const quietPatch = eunomiaQuietPatchOffer(state, stationSource);
   if (quietPatch) return quietPatch;
   const blackMarket = tethysBlackMarketOffer(state, stationSource);

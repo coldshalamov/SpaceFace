@@ -12,6 +12,7 @@ import { MISSION_TUNING, MISSION_TYPES, missionMinRepForRisk } from '../../../da
 import { SECTORS } from '../../../data/sectors.js';
 import { escapeHtml } from '../../comms.js';
 import { icon } from '../icons.js';
+import { hunterCareerAccess } from '../../../careers/ladders/hunterLadderDefs.js';
 
 const CMDTY = new Map(COMMODITIES.map((c) => [c.id, c]));
 const FAC = new Map(FACTION_META.map((f) => [f.id, f]));
@@ -340,11 +341,23 @@ export function createContractsScreen(ctx) {
     const hold = (state.player && state.player.cargo) || {};
     const holdFree = Math.max(0, (Number(hold.capVolume) || 0) - (Number(hold.usedVolume) || 0));
     const cargoOk = !(m.preloadedCargo && cargoVolume > holdFree);
-    const ready = standingOk && fundsOk && cargoOk;
+    const hunterAccess = m.type === 'bounty_hunt' ? hunterCareerAccess(state) : null;
+    const licenseOk = !hunterAccess || r <= hunterAccess.killTier;
+    const ready = standingOk && fundsOk && cargoOk && licenseOk;
     const repPreview = missionRepPreview(m);
     const readiness = !standingOk ? `${facName(m)} ${requiredRep > 0 ? '+' : ''}${requiredRep} standing required`
       : !fundsOk ? `${acceptCost.toLocaleString('en-US')} cr required to bind`
-        : !cargoOk ? `${Math.ceil(cargoVolume)}u free hold required` : 'Ship and account ready';
+        : !cargoOk ? `${Math.ceil(cargoVolume)}u free hold required`
+          : !licenseOk ? `${hunterAccess.label} clears bounty risk ${hunterAccess.killTier}`
+            : 'Ship and account ready';
+    const hunterIntel = m.params && m.params.hunterIntel;
+    const intelLine = hunterIntel
+      ? [hunterIntel.lastSeen,
+        hunterIntel.knownFit && `${hunterIntel.knownFit.hull} / ${(hunterIntel.knownFit.weapons || []).join(', ')}`,
+        hunterIntel.knownGimmick && hunterIntel.knownGimmick.label,
+        hunterIntel.transponder && 'TRANSPONDER CHALLENGE — quarry will run',
+      ].filter(Boolean).join(' · ')
+      : null;
     const authoredSummary = missionDossierSummary(m);
 
     dossierEl.innerHTML =
@@ -381,6 +394,8 @@ export function createContractsScreen(ctx) {
           (collateral(m) ? briefCell('info', 'Collateral', collateral(m).toLocaleString('en-US') + ' cr', 'on failure') : '') +
           (upfront(m) ? briefCell('credits', 'Upfront', upfront(m).toLocaleString('en-US') + ' cr', 'to accept') : '') +
           (missionOffersFollowUp(m) ? briefCell('spark', 'Follow-up', 'Posted on success', 'same contract family') : '') +
+          (hunterAccess ? briefCell('target', hunterAccess.label, `Kill T${hunterAccess.killTier} · Capture T${hunterAccess.captureTier}`, hunterAccess.transponder ? 'Hunter transponder active' : 'Better intel unlocks with rank') : '') +
+          (intelLine ? briefCell('info', 'Warrant intel', escapeHtml(intelLine), 'Buy exact-target patrol chatter at the bar') : '') +
           (!standingOk ? `<p class="sx-dossier__gate">${icon('factions', 14)}<span>${escapeHtml(readiness)}</span></p>` : '') +
           (clauses.length ? `<div class="sx-dossier__clauses">${clauses.map((c) => `<span class="sx-tag" title="${escapeHtml(c.prose || '')}">${escapeHtml(c.label || c.id || 'clause')}</span>`).join('')}</div>` : '') +
         `</div>` +
@@ -424,11 +439,17 @@ export function createContractsScreen(ctx) {
             const actionFlag = attention && attention.kind === 'turn_in' ? 'TURN IN'
               : attention && attention.kind === 'pickup' ? 'PICK UP'
                 : 'ACTIVE';
+            const intel = m.type === 'bounty_hunt' && m.params && m.params.hunterIntel;
+            const intelMeta = intel
+              ? [intel.lastSeen, intel.knownFit && intel.knownFit.hull,
+                intel.knownGimmick && intel.knownGimmick.label,
+                intel.transponder && 'transponder chase'].filter(Boolean).join(' · ')
+              : null;
             return (
               `<div class="sx-job${tracked ? ' is-tracked' : ''}${needs ? ' is-attention' : ''}" data-active-mid="${escapeHtml(id)}">` +
                 `<span class="sx-job__ic">${icon(TYPE_ICON[m.type] || 'contracts', 16)}</span>` +
                 `<span class="sx-job__body"><span class="sx-job__title">${escapeHtml(m.title || typeLabel(m.type))}</span>` +
-                  `<span class="sx-job__meta">${reward(m).toLocaleString('en-US')} cr · ${escapeHtml(status)}</span></span>` +
+                  `<span class="sx-job__meta">${reward(m).toLocaleString('en-US')} cr · ${escapeHtml(status)}${intelMeta ? ` · ${escapeHtml(intelMeta)}` : ''}</span></span>` +
                 (needs ? `<span class="sx-job__flag">${actionFlag}</span>` : '') +
                 `<button type="button" class="sx-job__track" data-track="${escapeHtml(id)}" aria-pressed="${tracked}" title="${tracked ? 'Tracked mission' : 'Track this mission'}">` +
                   `<span aria-hidden="true">${tracked ? '◆' : '◇'}</span><b>${tracked ? 'Tracked' : 'Track'}</b>` +

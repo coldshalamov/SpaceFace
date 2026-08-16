@@ -82,6 +82,30 @@ export const HUNTER_LADDER_STEP_IDS = Object.freeze([
   'role_hull_capstone',
 ]);
 
+// Plan 48 career access is derived from the registered ladder leaf rather than persisted as a
+// second progression track.  The completed-step count is stable across recoveries and Continue;
+// a failed/current step never grants its license early.
+export const HUNTER_RANKS = Object.freeze([
+  Object.freeze({ id: 'provisional', label: 'Provisional Warrant', minSteps: 0, killTier: 1, captureTier: 1, intelTier: 0, transponder: false }),
+  Object.freeze({ id: 'tracker', label: 'Licensed Tracker', minSteps: 1, killTier: 2, captureTier: 2, intelTier: 1, transponder: false }),
+  Object.freeze({ id: 'pursuer', label: 'Field Pursuer', minSteps: 2, killTier: 3, captureTier: 3, intelTier: 2, transponder: false }),
+  Object.freeze({ id: 'marshal', label: 'Warrant Marshal', minSteps: 4, killTier: 4, captureTier: 4, intelTier: 3, transponder: true }),
+]);
+
+export function hunterCareerAccess(state) {
+  const leaf = state && state.careers && state.careers.ladders
+    && state.careers.ladders[HUNTER_LADDER_CAREER_ID];
+  const steps = leaf && leaf.steps && typeof leaf.steps === 'object' ? leaf.steps : {};
+  const completedSteps = HUNTER_LADDER_STEP_IDS.reduce((count, id) => (
+    count + (steps[id] && steps[id].status === 'completed' ? 1 : 0)
+  ), 0);
+  let rank = HUNTER_RANKS[0];
+  for (const candidate of HUNTER_RANKS) {
+    if (completedSteps >= candidate.minSteps) rank = candidate;
+  }
+  return { ...rank, completedSteps };
+}
+
 export const HUNTER_LADDER_FAIL_CODES = Object.freeze({
   MARKED_LAWFUL: 'marked_lawful',
   MARKED_CIVILIAN: 'marked_civilian',

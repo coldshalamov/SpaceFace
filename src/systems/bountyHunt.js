@@ -84,6 +84,15 @@ export const bountyHunt = {
 
     if (killedRole === 'hunter') {
       recordOutcome(state, this.bus, killed.data.bountyHunt.contractId, byPlayer ? 'player_defended_quarry' : 'hunter_killed', payload);
+      if (byPlayer && String(killed.data.contractTargetId) === String(state.playerId)) {
+        emit(this.bus, 'law:activeHunterKilled', {
+          hunterEntityId: killed.id,
+          contractId: contractIdForHunter(killed),
+          factionId: killed.factionId || null,
+          sectorId: state.world && state.world.currentSectorId || null,
+          t: finite(state.simTime, 0),
+        });
+      }
       return;
     }
 
