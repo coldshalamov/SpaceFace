@@ -7,6 +7,7 @@ import {
   ORRIN_WITNESS_SOURCE_SHAPE_ID,
   orrinWitnessSourceIdForRecord,
 } from '../data/orrinWitnessCase.js';
+import { isRescuedSurvivorDebt, survivorCastForMemoryId } from '../data/survivorCast.js';
 import { ensureMoralMemory, nextMoralDebt, revealMoralDebt } from './moralMemory.js';
 import { makeShipEntitySpec } from './ships.js';
 
@@ -403,6 +404,28 @@ function settleMoralReturn(d, live, state, choiceId) {
   const debt = live.vars.debt;
   if (!debt || !['ask', 'accept', 'refuse'].includes(choiceId)) return;
   revealMoralDebt(state, debt.id);
+  const survivor = live.vars.survivor;
+  if (survivor) {
+    const flags = { lastMoralReturn: debt.id, lastSurvivorReturn: survivor.id };
+    if (choiceId === 'refuse') {
+      d.say(live, 'info', survivor.refusedLine, null, { literal: true });
+      return finish(d, live, state, 'survivor_refused', flags);
+    }
+    if (choiceId === 'ask') d.say(live, 'info', survivor.askedLine, null, { literal: true });
+    d.say(live, 'info', survivor.giftLine, null, { literal: true });
+    d.grant(survivor.giftCredits, `survivor_return:${debt.id}`);
+    d.emit('survivor:returnGift', {
+      survivorId: survivor.id,
+      memoryId: debt.id,
+      name: survivor.name,
+      credits: survivor.giftCredits,
+      encounterId: live.id,
+    });
+    return finish(d, live, state, 'survivor_gifted', {
+      ...flags,
+      lastSurvivorGiftCredits: survivor.giftCredits,
+    });
+  }
   const memory = ensureMoralMemory(state);
   const flags = { lastMoralReturn: debt.id, lastMoralReturnMercyCount: memory.mercyCount };
   if (choiceId === 'ask') {
@@ -426,29 +449,60 @@ function settleMoralReturn(d, live, state, choiceId) {
   return finish(d, live, state, 'vengeful', flags);
 }
 
+function nextSurvivorDebt(state) {
+  const memory = ensureMoralMemory(state);
+  for (const id of memory.order) {
+    const debt = memory.debts[id];
+    if (isRescuedSurvivorDebt(debt)) return debt;
+  }
+  return null;
+}
+
 const h7 = Object.freeze({
   fire(d, live, state) {
-    const debt = nextMoralDebt(state);
+    // A rescued pod is the authored Plan-52 return. It may sit behind an unrelated pending moral
+    // record; select it without revealing, quoting, or reordering that other person's memory.
+    // With no rescued pod, the existing H7 moral-debt behavior remains byte-for-byte below.
+    const rescuedDebt = nextSurvivorDebt(state);
+    const debt = rescuedDebt || nextMoralDebt(state);
     if (!debt) { d.abort(live, 'missing_moral_debt'); return; }
     live.vars.debt = { ...debt };
+    const survivor = rescuedDebt ? survivorCastForMemoryId(debt.id) : null;
+    if (survivor) live.vars.survivor = { ...survivor };
     live.factionId = debt.factionId;
     const tier = Math.max(1, Math.min(3, debt.escalationTier | 0));
-    const count = debt.disposition === 'ally' ? 1 : 2 + Math.min(2, tier);
+    const isFriendly = !!survivor || debt.disposition === 'ally';
+    const count = isFriendly ? 1 : 2 + Math.min(2, tier);
     live.plan.ships = Array.from({ length: count }, (_, index) => {
       const angle = Math.PI * 2 * index / count;
+      let entitySpec = null;
+      if (index === 0 && survivor) {
+        entitySpec = makeShipEntitySpec(survivor.shipDefId, {
+          team: 0,
+          factionId: debt.factionId,
+          pos: { x: live.anchor.x + Math.cos(angle) * 280, z: live.anchor.z + Math.sin(angle) * 280 },
+          ai: { archetype: 'mule_trader', passive: true },
+        });
+        entitySpec.data.callsign = survivor.name;
+        entitySpec.data.scanLabel = `${survivor.name} — Returned Survivor`;
+        entitySpec.data.recurringCastId = survivor.id;
+        entitySpec.data.survivorMemoryId = debt.id;
+        entitySpec.data.survivorReturn = true;
+      }
       return {
+        entitySpec,
         archetype: index === 0 ? (debt.archetype || 'corsair_raider') : 'wasp_swarmer',
         level: Math.max(4, debt.mercyOrdinal + 3 + tier - (index === 0 ? 0 : 1)),
         pos: { x: live.anchor.x + Math.cos(angle) * 280, z: live.anchor.z + Math.sin(angle) * 280 },
         factionId: debt.factionId,
-        context: debt.disposition === 'ally' ? 'convoy_civilian' : 'encounter',
-        doctrine: debt.disposition === 'ally' ? 'balanced' : 'scavenger',
+        context: isFriendly ? 'convoy_civilian' : 'encounter',
+        doctrine: isFriendly ? 'balanced' : 'scavenger',
         formation: 'loose', role: index === 0 ? 'return' : 'escort',
-        passive: debt.disposition === 'ally', team: debt.disposition === 'ally' ? 0 : 1,
+        passive: isFriendly, team: isFriendly ? 0 : 1,
       };
     });
-    begin(d, live, state, { spawn: true });
-    if (debt.disposition === 'vengeful') {
+    begin(d, live, state, { spawn: true, primaryLine: survivor ? survivor.primaryLine : null });
+    if (!survivor && debt.disposition === 'vengeful') {
       for (const entity of d.entsOf(live)) {
         const ai = entity.data && entity.data.ai;
         if (ai) { ai.forcePlayerTarget = true; ai.hostileTeams = [0]; }

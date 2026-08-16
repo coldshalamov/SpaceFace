@@ -23,5 +23,7 @@ export default defineEncounter(trigger, {
     allied: 'DEBT RETURNED — mercy made a mission possible.',
     vengeful: 'DEBT RETURNED — mercy came back armed.',
     refused: 'DEBT REFUSED — the spared contact departs.',
+    survivor_gifted: 'SURVIVOR RETURNED — berth fund transferred, clean.',
+    survivor_refused: 'SURVIVOR RETURNED — gratitude acknowledged, transfer declined.',
   },
 });
