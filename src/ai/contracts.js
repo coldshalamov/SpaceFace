@@ -170,6 +170,7 @@ export function makeThrusterRequest(entityId, tick, values = {}, options = {}) {
     torqueYaw: clamp(finite(values.torqueYaw, 0), -1, 1),
     boost: !!values.boost,
     brake: !!values.brake,
+    preserveExternalFrame: values.preserveExternalFrame === true,
     targetHeading: wrapAngle(finite(values.targetHeading, 0)),
     horizonTicks: clamp(finiteInt(values.horizonTicks, 30), 1, 240),
     trajectory: freeze(trajectory),

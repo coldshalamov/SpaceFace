@@ -113,6 +113,30 @@ export class ManeuverPlanner {
       breakFormation: directive.formation.breakFormation,
       reason: 'no_behavior_intent',
     };
+    if (intent.preserveExternalFrame === true) {
+      // A prepared medium counter hands translation to an already-live physics/status owner
+      // (RCS drift, Momentum Sink, Well, or the closing frame). Do not let ordinary HOLD braking,
+      // obstacle steering, or retained input smoothing cancel that authored external frame.
+      runtime.smoothedForward = 0;
+      runtime.smoothedRight = 0;
+      runtime.smoothedTorqueYaw = 0;
+      const request = makeThrusterRequest(entityId, tick, {
+        kind: intent.kind,
+        forceLocal: { forward: 0, right: 0 },
+        torqueYaw: 0,
+        boost: false,
+        brake: false,
+        preserveExternalFrame: true,
+        targetHeading: self.rot,
+        horizonTicks: 1,
+        trajectory: EMPTY_TRAJECTORY,
+        reason: intent.reason || 'prepared_external_frame',
+      }, { freeze: this.freeze });
+      runtime.lastKind = intent.kind;
+      runtime.lastRequest = request;
+      runtime.lastTick = tick;
+      return request;
+    }
     const target = intent.targetId == null ? null : perception.contacts.find((contact) => contact.id === intent.targetId);
     const formationDistance = distance2(self.pos, intent.formationSlot || self.pos);
     const formationBound = Math.max(1, intent.formationBound || 0);

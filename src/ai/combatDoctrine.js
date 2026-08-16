@@ -94,17 +94,22 @@ export class CombatDoctrineRuntime {
   update({ tick, entityId, doctrineId: doctrineValue, perception, directive = null } = {}) {
     const doctrineId = normalizeCombatDoctrineId(doctrineValue);
     if (!doctrineId || entityId == null || !Number.isInteger(tick) || tick < 0) return null;
-    if (!combatActorEligible(perception)) {
+    const self = perception && perception.self || null;
+    const visibleRetreat = visibleMediumRetreat(self);
+    // A medium can already be in an encounter-owned FLEE/HOLD_FIRE activity (for example, a
+    // Corsair releasing its tow) when the authored low-hull retreat becomes visible. Admit only
+    // that metadata-backed withdrawal before the ordinary offensive eligibility gate; generic
+    // HOLD_FIRE actors remain ineligible for combat doctrine decisions.
+    if (!combatActorEligible(perception) && !visibleRetreat) {
       this.byEntity.delete(entityId);
       return null;
     }
     const target = selectDoctrineTarget(doctrineId, perception);
     let record = this.byEntity.get(entityId);
-    if (conditionalHostilityActor(perception) && !target && !(record && record.targetId != null)) {
+    if (!visibleRetreat && conditionalHostilityActor(perception) && !target && !(record && record.targetId != null)) {
       this.byEntity.delete(entityId);
       return null;
     }
-    const self = perception && perception.self || null;
     const factionBehavior = normalizeFactionBehaviorProfile(self && self.factionBehavior);
     const flightProfile = flightProfileFor(doctrineId, self);
     if (!record || record.doctrineId !== doctrineId || record.targetId !== (target && target.id) ||
@@ -117,7 +122,6 @@ export class CombatDoctrineRuntime {
     record.outcome = null;
     record.telegraphStartedTick = null;
 
-    const visibleRetreat = visibleMediumRetreat(self);
     if (visibleRetreat) {
       record.mediumCounter = null;
       record.visibleRetreat = visibleRetreat;
@@ -256,6 +260,7 @@ export function applyCombatDoctrineToSelection(selected, doctrine) {
       faceTarget: doctrine.faceTarget === true,
       maxSpeed: doctrine.maneuverMaxSpeed,
       straightPass: doctrine.straightPass === true,
+      preserveExternalFrame: doctrine.preserveExternalFrame === true,
       ramAuthorized: doctrine.ramAuthorized === true,
       flightPoint: doctrine.flightPoint,
       formationLocked: doctrine.formationLocked,
@@ -646,6 +651,7 @@ function snapshot(record, target, directive, factionBehavior = null) {
     maneuverKind,
     maneuverMaxSpeed,
     straightPass,
+    preserveExternalFrame: !!record.mediumCounter,
     preferredRange,
     allowedActionId,
     outcome: record.outcome,

@@ -1,17 +1,23 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { ContactKind, ManeuverKind, ObjectiveKind } from '../src/ai/contracts.js';
+import { ContactKind, ManeuverKind, ObjectiveKind, wrapAngle } from '../src/ai/contracts.js';
 import { CombatDoctrineRuntime } from '../src/ai/combatDoctrine.js';
+import { ManeuverPlanner } from '../src/ai/maneuver.js';
+import { physics } from '../src/core/physics.js';
 import { createSimulation } from '../src/core/sim.js';
-import { writePhysicsTelemetry } from '../src/core/physicsAuthority.js';
+import { readPhysicsTelemetry, writePhysicsTelemetry } from '../src/core/physicsAuthority.js';
 import { COMBAT_FLAGS } from '../src/data/featureFlags.js';
 import { MEDIUM_FAMILY_ENEMY_IDS } from '../src/data/enemies.js';
+import { WEAPONS } from '../src/data/weapons.js';
+import { actions } from '../src/systems/actions.js';
 import { barkDirector } from '../src/systems/barkDirector.js';
 import { aiPorts } from '../src/systems/aiPorts.js';
 import { collisionConsequences } from '../src/systems/collisionConsequences.js';
 import { combat, makeEnemySpawnSpec } from '../src/systems/combat.js';
+import { flightV3 } from '../src/systems/flightV3.js';
 import { createTacticalAISystem } from '../src/systems/tacticalAI.js';
+import { buildWeaponDamagePacket, weapons } from '../src/systems/weapons.js';
 
 const DT = 1 / 60;
 const SETUP_TRIO = Object.freeze([
@@ -85,50 +91,85 @@ test('Marauder RCS drift, Lancer overrun, and Interceptor Momentum Sink break co
   assert.equal(interceptorDecision.fireWindow, false);
 });
 
-test('each owned intended-kill route beats its naive control through production damage and collision owners', (t) => {
+test('prepared external frames coast while ordinary HOLD keeps its braking contract', () => {
+  const perception = {
+    self: {
+      id: 77, pos: { x: 0, z: 0 }, vel: { x: 30, z: 0 }, rot: 0,
+      energyFraction: 1, heatFraction: 0,
+    },
+    contacts: [],
+  };
+  const formation = {
+    slot: { x: 0, z: 0 }, velocity: { x: 0, z: 0 }, bound: 170, breakFormation: true,
+  };
+  const holdIntent = {
+    kind: ManeuverKind.HOLD,
+    targetId: null,
+    formationSlot: formation.slot,
+    formationVelocity: formation.velocity,
+    formationBound: formation.bound,
+    breakFormation: formation.breakFormation,
+  };
+  const ordinary = new ManeuverPlanner().plan({
+    tick: 1, entityId: 77, perception,
+    behavior: { maneuver: { ...holdIntent, reason: 'ordinary_hold' } },
+    directive: { formation },
+  });
+  const prepared = new ManeuverPlanner().plan({
+    tick: 1, entityId: 77, perception,
+    behavior: {
+      maneuver: {
+        ...holdIntent,
+        preserveExternalFrame: true, reason: 'prepared_medium_counter',
+      },
+    },
+    directive: { formation },
+  });
+
+  assert.equal(ordinary.brake, true, 'ordinary HOLD still arrests drift');
+  assert.equal(ordinary.preserveExternalFrame, false, 'the new contract defaults closed');
+  assert.equal(prepared.brake, false, 'a prepared counter does not command braking');
+  assert.equal(prepared.preserveExternalFrame, true);
+  assert.deepEqual(prepared.forceLocal, { forward: 0, right: 0 });
+  assert.equal(prepared.torqueYaw, 0);
+});
+
+test('each owned intended-kill setup beats an equal-budget naive route through live owners', async (t) => {
   withImpulseConsequences(t);
 
-  const marauderPrepared = bootRoute(t, 'marauder_brawler');
-  writePhysicsTelemetry(marauderPrepared.enemy, {
-    tick: marauderPrepared.state.tick, mode: 'rcs_disrupted', dynamic: true, mass: marauderPrepared.enemy.mass,
+  const marauderIntended = await runTerrainCounterRoute({
+    enemyId: 'marauder_brawler', prepared: true, setupWeaponId: 'wpn_rcs_disruptor_m', seed: 13131,
   });
-  assert.equal(decide(marauderPrepared, productionFrame(marauderPrepared)).mediumSetup.reason, 'rcs_disrupted');
-  const marauderIntendedTicks = terrainFinish(marauderPrepared, 30, 3_000);
-  const marauderNaive = bootRoute(t, 'marauder_brawler');
-  assert.equal(terrainFinish(marauderNaive, 0, 300), null, 'one unprepared shove is corrected and nonlethal');
-  const marauderNaiveTicks = gunFinish(marauderNaive, 30, 90, 24);
-  assertMeaningfullyFaster('Marauder RCS → wall', marauderIntendedTicks, marauderNaiveTicks);
-
-  const lancerPrepared = bootRoute(t, 'lancer_sniper');
-  lancerPrepared.player.pos.x = 120;
-  lancerPrepared.player.pos.z = 160;
-  lancerPrepared.player.vel.x = -72;
-  lancerPrepared.player.vel.z = -96;
-  assert.equal(decide(lancerPrepared, productionFrame(lancerPrepared)).mediumSetup.reason, 'closed_under_turn_rate');
-  const lancerIntendedTicks = gunFinish(lancerPrepared, 0, 20, 24);
-  const lancerNaive = bootRoute(t, 'lancer_sniper');
-  const naiveLancerDecision = decide(lancerNaive, productionFrame(lancerNaive));
-  assert.equal(naiveLancerDecision.mediumSetup.countered, false);
-  const lancerNaiveTicks = gunFinish(lancerNaive, 0, 120, 24);
-  assertMeaningfullyFaster('Lancer close-under-turn-rate', lancerIntendedTicks, lancerNaiveTicks);
-
-  const interceptorPrepared = bootRoute(t, 'hostile_interceptor');
-  interceptorPrepared.bus.emit('projectile:hit', {
-    targetId: interceptorPrepared.enemy.id,
-    ownerId: interceptorPrepared.player.id,
-    damage: 1,
-    damageType: 'kinetic',
-    weaponId: 'wpn_momentum_sink_s',
-    statuses: [{ id: 'status_momentum_sink', stacks: 1 }],
-    pos: { ...interceptorPrepared.enemy.pos },
+  const marauderNaive = await runTerrainCounterRoute({
+    enemyId: 'marauder_brawler', prepared: false, setupWeaponId: 'wpn_rcs_disruptor_m', seed: 13131,
   });
-  interceptorPrepared.sim.step(DT);
-  assert.equal(decide(interceptorPrepared, productionFrame(interceptorPrepared)).mediumSetup.reason, 'momentum_sunk');
-  const interceptorIntendedTicks = terrainFinish(interceptorPrepared, 30, 2_100);
-  const interceptorNaive = bootRoute(t, 'hostile_interceptor');
-  assert.equal(terrainFinish(interceptorNaive, 0, 180), null, 'an unprepared nudge does not erase a medium');
-  const interceptorNaiveTicks = gunFinish(interceptorNaive, 30, 90, 24);
-  assertMeaningfullyFaster('Interceptor Momentum Sink → rock', interceptorIntendedTicks, interceptorNaiveTicks);
+  assertTerrainSetupWins('Marauder RCS → wall', marauderIntended, marauderNaive, 'rcs_disrupted');
+
+  const lancerIntended = await runLancerCounterRoute({ intended: true, seed: 13132 });
+  const lancerNaive = await runLancerCounterRoute({ intended: false, seed: 13132 });
+  assert.equal(lancerIntended.weaponId, lancerNaive.weaponId);
+  assert.equal(lancerIntended.playerHits, lancerNaive.playerHits,
+    'both Lancer routes spend the same real flak hit budget');
+  assert.ok(lancerIntended.playerHits > 0);
+  assert.equal(lancerIntended.triggerReleased, false);
+  assert.equal(lancerNaive.triggerReleased, false,
+    'both routes hold the trigger continuously; only movement strategy changes shot opportunities');
+  assert.equal(lancerIntended.initialDistance, lancerNaive.initialDistance);
+  assert.ok(Math.abs(lancerIntended.initialSpeed - lancerNaive.initialSpeed) < 1e-6);
+  assert.equal(lancerIntended.counterReason, 'closed_under_turn_rate');
+  assertMeaningfullyFaster('Lancer close-under-turn-rate', lancerIntended.killTick, lancerNaive.killTick);
+
+  const interceptorIntended = await runTerrainCounterRoute({
+    enemyId: 'hostile_interceptor', prepared: true, setupWeaponId: 'wpn_momentum_sink_s', seed: 13133,
+  });
+  const interceptorNaive = await runTerrainCounterRoute({
+    enemyId: 'hostile_interceptor', prepared: false, setupWeaponId: 'wpn_momentum_sink_s', seed: 13133,
+  });
+  assertTerrainSetupWins(
+    'Interceptor Momentum Sink → rock', interceptorIntended, interceptorNaive, 'momentum_sunk',
+  );
+  assert.ok(interceptorIntended.maxPreparedSpeed > 40,
+    `status/physics authority must move the coasting target, got ${interceptorIntended.maxPreparedSpeed}`);
 });
 
 test('all six authored mediums enter one common physical retreat below 30% hull', (t) => {
@@ -155,6 +196,11 @@ test('SG-06 emits the existing ai:flee seam once and bark presentation consumes 
   const spec = makeEnemySpawnSpec('corsair_raider', 6, { x: 0, z: 0 });
   const actor = entityFromSpec(spec, 2);
   actor.hull = actor.hullMax * 0.29;
+  actor.data.ai = {
+    ...actor.data.ai,
+    activity: { kind: 'flee', reason: 'corsair_tow_escape' },
+    roe: 'hold_fire',
+  };
   const target = playerEntity(1);
   target.pos.x = 520;
   const state = {
@@ -200,6 +246,26 @@ test('SG-06 emits the existing ai:flee seam once and bark presentation consumes 
   assert.equal(spoken.length, 1, 'the existing barkDirector consumer receives the shared flee event');
   assert.equal(spoken[0].channel, 'bark');
   bark.destroy();
+});
+
+test('only an authored medium retreat bypasses ordinary HOLD_FIRE ineligibility', () => {
+  const target = playerEntity(1);
+  const generic = tacticalFrame({
+    id: 2, team: 1, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, rot: 0,
+    radius: 12, hull: 20, hullMax: 100, maxSpeed: 120,
+    data: {
+      lootTableId: 'generic_hold_fire_actor', mediumSetup: null, visibleRetreat: null,
+      ai: {
+        activity: { kind: 'flee', reason: 'generic_escape' }, roe: 'hold_fire',
+        combatDoctrineId: 'interceptor_flyby',
+      },
+    },
+  }, target, 0);
+  const runtime = new CombatDoctrineRuntime({ seed: 1313 });
+  assert.equal(runtime.update({
+    tick: 0, entityId: 2, doctrineId: 'interceptor_flyby', perception: generic,
+    directive: directive(2, target.id),
+  }), null, 'a non-medium HOLD_FIRE actor does not become combat-eligible');
 });
 
 function bootRoute(t, enemyId) {
@@ -254,42 +320,299 @@ function directive(memberId, targetId) {
   };
 }
 
-function terrainFinish(route, tick, impulse) {
-  route.state.tick = tick;
-  route.state.simTime = tick / 60;
-  route.enemy.vel.x = 80;
-  route.bus.emit('physics:impact', {
-    consequenceKernelVersion: 1,
-    tick,
-    aId: route.enemy.id,
-    bId: route.rock.id,
-    causalActorId: route.player.id,
-    impulse,
-    pos: { x: route.rock.pos.x - route.rock.radius, z: 0 },
-    normal: { x: -1, z: 0 },
+async function runTerrainCounterRoute({ enemyId, prepared, setupWeaponId, seed }) {
+  const tactical = createTacticalAISystem({ config: { trace: { enabled: false } } });
+  const sim = createSimulation({
+    seed,
+    systems: [physics, combat, actions, collisionConsequences, aiPorts, tactical, flightV3, weapons],
+    updateOrder: [tactical, actions, flightV3, aiPorts, collisionConsequences, weapons, physics, combat],
   });
-  return route.enemy.alive === false ? tick : null;
+  const physicsSystem = sim.registry.get('physics');
+  try {
+    const { state, bus } = sim;
+    state.mode = 'flight';
+    state.settings.gameplay.difficulty = 'standard';
+    state.settings.gameplay.physicsBackend = 'rapier-dynamic';
+    const interceptor = enemyId === 'hostile_interceptor';
+    const player = sim.spawn(physicalPlayer({
+      pos: interceptor ? { x: -400, z: -500 } : { x: -500, z: 0 },
+      vel: interceptor ? { x: 140, z: 0 } : { x: 0, z: 0 },
+      rot: 0,
+      weaponId: 'wpn_pulse_laser_m',
+    }));
+    state.playerId = player.id;
+    state.player.targetId = null;
+    const enemy = sim.spawn(makeEnemySpawnSpec(enemyId, 6, { x: 0, z: 0 }));
+    enemy.data.encounter = true;
+    enemy.shield = 0;
+    enemy.armorHp = 0;
+    enemy.hull = 80;
+    enemy.rot = interceptor ? -Math.PI / 2 : Math.PI;
+    enemy.vel.x = interceptor ? 0 : 45;
+    enemy.vel.z = 0;
+    const rock = sim.spawn({
+      type: 'asteroid', alive: true, collides: true,
+      pos: { x: 100, z: 0 }, vel: { x: 0, z: 0 }, radius: 34, mass: 1e6,
+      hull: 10_000, hullMax: 10_000, data: {},
+    });
+    state.input.moveZ = interceptor ? 1 : 0;
+    state.input.moveX = 0;
+    state.input.turnIntent = 0;
+    state.input.fire = false;
+    state.input.autoAim = { targetId: enemy.id };
+    assert.equal(await physicsSystem.prepareBackend(state, { reset: true }), true,
+      'the medium counter route requires prepared Rapier authority');
+
+    let terrainImpactTick = null;
+    let killTick = null;
+    let counterReason = null;
+    let sawZeroCommand = false;
+    let sawPreparedExternalFrame = false;
+    let maxPreparedSpeed = 0;
+    let playerFiresBeforeTerrain = 0;
+    let lastDoctrineEvidence = null;
+    bus.on('physics:impact', (payload) => {
+      if (terrainImpactTick != null) return;
+      const ids = [payload && payload.aId, payload && payload.bId];
+      if (ids.includes(enemy.id) && ids.includes(rock.id)) terrainImpactTick = state.tick;
+    });
+    bus.on('entity:killed', (payload) => {
+      if (payload && payload.id === enemy.id && killTick == null) killTick = state.tick;
+    });
+    bus.on('combat:fire', (payload) => {
+      if (payload && payload.ownerId === player.id && terrainImpactTick == null) playerFiresBeforeTerrain++;
+    });
+
+    const setupTick = prepared ? 0 : 180;
+    let setupActions = 0;
+    if (prepared) {
+      const setup = routeWeaponHit(sim, player, enemy, setupWeaponId);
+      assert.equal(setup.ok, true);
+      setupActions++;
+    }
+    sim.step(DT);
+    const commonImpulse = routeWeaponHit(sim, player, enemy, 'wpn_autocannon_m');
+    assert.equal(commonImpulse.ok, true);
+    assert.equal(commonImpulse.impulseApplied, true, 'the shared terrain opportunity is a real impulse');
+    setupActions++;
+
+    const cleanupTick = 180;
+    for (let guard = 0; guard < 1_500 && enemy.alive !== false; guard++) {
+      if (!prepared && state.tick === setupTick) {
+        const lateSetup = routeWeaponHit(sim, player, enemy, setupWeaponId);
+        assert.equal(lateSetup.ok, true);
+        setupActions++;
+      }
+      if (state.tick >= cleanupTick) {
+        aimAndChase(state, player, enemy);
+        state.input.fire = true;
+      }
+      sim.step(DT);
+      const inspection = sim.helpers.inspectAI({ entityId: enemy.id });
+      const doctrine = inspection && inspection.result && inspection.result.combatDoctrine;
+      const maneuverRuntime = inspection && inspection.result && inspection.result.maneuver;
+      const maneuverRequest = maneuverRuntime && maneuverRuntime.lastRequest;
+      const liveDecision = inspection && inspection.result && inspection.result.lastResult &&
+        inspection.result.lastResult.decisions.find((entry) => entry.entityId === enemy.id);
+      lastDoctrineEvidence = doctrine || (liveDecision && liveDecision.combatDoctrine) || lastDoctrineEvidence;
+      if (doctrine && doctrine.mediumCounter) {
+        counterReason = counterReason || doctrine.mediumCounter.reason;
+      }
+      if (maneuverRequest && maneuverRequest.preserveExternalFrame === true) {
+        const local = maneuverRequest.forceLocal || {};
+        sawZeroCommand ||= maneuverRequest.brake === false &&
+          Math.hypot(local.forward || 0, local.right || 0, maneuverRequest.torqueYaw || 0) < 1e-9;
+        sawPreparedExternalFrame = true;
+        maxPreparedSpeed = Math.max(maxPreparedSpeed, Math.hypot(enemy.vel.x, enemy.vel.z));
+      }
+      const telemetry = readPhysicsTelemetry(enemy);
+      const speed = Math.hypot(enemy.vel.x, enemy.vel.z);
+      if (telemetry && (telemetry.mode === 'prepared_external_frame' || telemetry.mode === 'rcs_disrupted')) {
+        const force = telemetry.force || {};
+        const torque = telemetry.torque || {};
+        sawZeroCommand ||= Math.hypot(force.x || 0, force.z || 0, torque.y || 0) < 1e-9;
+        if (telemetry.mode === 'prepared_external_frame') sawPreparedExternalFrame = true;
+        maxPreparedSpeed = Math.max(maxPreparedSpeed, speed);
+      }
+    }
+    if (killTick == null && enemy.alive === false) killTick = state.tick;
+    return {
+      setupWeaponId,
+      commonWeaponId: 'wpn_autocannon_m',
+      cleanupWeaponId: 'wpn_pulse_laser_m',
+      cleanupTick,
+      setupTick,
+      setupActions,
+      counterReason,
+      terrainImpactTick,
+      killTick,
+      sawZeroCommand,
+      sawPreparedExternalFrame,
+      maxPreparedSpeed,
+      playerFiresBeforeTerrain,
+      lastDoctrineEvidence,
+    };
+  } finally {
+    physicsSystem._disableSg02DynamicAuthority?.();
+    sim.dispose();
+  }
 }
 
-function gunFinish(route, startTick, cadenceTicks, damage) {
-  for (let tick = startTick; tick <= 2_400; tick += cadenceTicks) {
-    route.state.tick = tick;
-    route.state.simTime = tick / 60;
-    route.bus.emit('projectile:hit', {
-      targetId: route.enemy.id,
-      ownerId: route.player.id,
-      damage,
-      damageType: 'kinetic',
-      weaponId: 'wpn_pulse_laser_s',
-      pos: { ...route.enemy.pos },
+async function runLancerCounterRoute({ intended, seed }) {
+  const tactical = createTacticalAISystem({ config: { trace: { enabled: false } } });
+  const sim = createSimulation({
+    seed,
+    systems: [physics, combat, actions, collisionConsequences, aiPorts, tactical, flightV3, weapons],
+    updateOrder: [tactical, actions, flightV3, aiPorts, collisionConsequences, weapons, physics, combat],
+  });
+  const physicsSystem = sim.registry.get('physics');
+  try {
+    const { state, bus } = sim;
+    state.mode = 'flight';
+    state.settings.gameplay.difficulty = 'standard';
+    state.settings.gameplay.physicsBackend = 'rapier-dynamic';
+    const diagonal = 500 / Math.sqrt(2);
+    const speed = 120 * Math.sqrt(2);
+    const player = sim.spawn(physicalPlayer({
+      pos: intended ? { x: diagonal, z: diagonal } : { x: 500, z: 0 },
+      vel: intended ? { x: -120, z: -120 } : { x: 0, z: speed },
+      rot: intended ? -3 * Math.PI / 4 : Math.PI / 2,
+      weaponId: 'wpn_flak_turret_s',
+    }));
+    state.playerId = player.id;
+    state.player.targetId = null;
+    const enemy = sim.spawn(makeEnemySpawnSpec('lancer_sniper', 6, { x: 0, z: 0 }));
+    enemy.data.encounter = true;
+    enemy.shield = 0;
+    enemy.armorHp = 0;
+    enemy.hull = 30;
+    enemy.rot = 0;
+    enemy.vel.x = 0;
+    enemy.vel.z = 0;
+    state.input.fire = true;
+    state.input.moveZ = 1;
+    state.input.moveX = 0;
+    state.input.turnIntent = 0;
+    state.input.autoAim = { targetId: enemy.id };
+    assert.equal(await physicsSystem.prepareBackend(state, { reset: true }), true,
+      'the Lancer route requires prepared Rapier authority');
+
+    const initialDistance = Math.hypot(player.pos.x - enemy.pos.x, player.pos.z - enemy.pos.z);
+    const initialSpeed = Math.hypot(player.vel.x, player.vel.z);
+    let killTick = null;
+    let counterReason = null;
+    let playerHits = 0;
+    let triggerReleased = false;
+    bus.on('projectile:hit', (payload) => {
+      if (payload && payload.ownerId === player.id && payload.targetId === enemy.id) playerHits++;
     });
-    if (route.enemy.alive === false) return tick;
+    bus.on('entity:killed', (payload) => {
+      if (payload && payload.id === enemy.id && killTick == null) killTick = state.tick;
+    });
+
+    for (let guard = 0; guard < 1_600 && enemy.alive !== false; guard++) {
+      if (intended || state.tick >= 240) aimAndChase(state, player, enemy);
+      else {
+        state.input.moveZ = 1;
+        state.input.turnIntent = 0;
+        state.input.aimAngle = Math.atan2(enemy.pos.z - player.pos.z, enemy.pos.x - player.pos.x);
+      }
+      state.input.fire = true;
+      triggerReleased ||= state.input.fire !== true;
+      sim.step(DT);
+      const inspection = sim.helpers.inspectAI({ entityId: enemy.id });
+      const doctrine = inspection && inspection.result && inspection.result.combatDoctrine;
+      if (doctrine && doctrine.mediumCounter) {
+        counterReason = counterReason || doctrine.mediumCounter.reason;
+      }
+    }
+    if (killTick == null && enemy.alive === false) killTick = state.tick;
+    return {
+      weaponId: 'wpn_flak_turret_s', initialDistance, initialSpeed,
+      playerHits, killTick, counterReason, triggerReleased,
+    };
+  } finally {
+    physicsSystem._disableSg02DynamicAuthority?.();
+    sim.dispose();
   }
-  throw new Error(`gun route failed to kill ${route.enemy.data.lootTableId}`);
+}
+
+function physicalPlayer({ pos, vel, rot, weaponId }) {
+  const base = playerEntity();
+  return {
+    ...base,
+    pos: { ...pos }, vel: { ...vel }, rot,
+    hull: 1_000, hullMax: 1_000, cap: 1_000, capMax: 1_000, capRegen: 100,
+    physicsBody: {
+      schemaVersion: 1, radius: base.radius, mass: base.mass,
+      inertiaY: base.mass * base.radius * base.radius * 0.5,
+      dynamic: true, ccd: true, material: 'ship', revision: 0,
+    },
+    data: {
+      ...base.data,
+      driveId: 'drive_reaction_s',
+      intent: {}, combat: {},
+      weapons: [{ defId: weaponId, projSpeed: weaponDef(weaponId).projSpeed }],
+    },
+  };
+}
+
+function routeWeaponHit(sim, attacker, target, weaponId) {
+  const def = weaponDef(weaponId);
+  const dx = target.pos.x - attacker.pos.x;
+  const dz = target.pos.z - attacker.pos.z;
+  const length = Math.hypot(dx, dz) || 1;
+  const approach = { x: dx / length, z: dz / length };
+  const packet = buildWeaponDamagePacket({ defId: weaponId }, def, def.dmg, def.damageType, target.pos);
+  packet.hit = {
+    pos: { x: target.pos.x, z: target.pos.z },
+    approach,
+    normal: { x: -approach.x, z: -approach.z },
+  };
+  return sim.registry.get('combat').ensureKernel().routeDamage({
+    attackerId: attacker.id,
+    targetId: target.id,
+    packet,
+    origin: { kind: 'weapon', id: weaponId, weaponId },
+  });
+}
+
+function weaponDef(weaponId) {
+  const def = WEAPONS.find((entry) => entry.id === weaponId);
+  assert.ok(def, `missing weapon definition ${weaponId}`);
+  return def;
+}
+
+function aimAndChase(state, player, enemy) {
+  const aim = Math.atan2(enemy.pos.z - player.pos.z, enemy.pos.x - player.pos.x);
+  state.input.aimAngle = aim;
+  state.input.autoAim = { targetId: enemy.id };
+  state.input.turnIntent = Math.max(-1, Math.min(1, wrapAngle(aim - player.rot) / 0.62));
+  state.input.moveZ = 1;
+  state.input.moveX = 0;
+}
+
+function assertTerrainSetupWins(label, intended, naive, counterReason) {
+  assert.equal(intended.setupWeaponId, naive.setupWeaponId, `${label} uses the same setup tool`);
+  assert.equal(intended.commonWeaponId, naive.commonWeaponId, `${label} uses the same impulse opportunity`);
+  assert.equal(intended.cleanupWeaponId, naive.cleanupWeaponId, `${label} uses the same cleanup weapon`);
+  assert.equal(intended.cleanupTick, naive.cleanupTick, `${label} begins identical cleanup at the same tick`);
+  assert.equal(intended.setupActions, naive.setupActions, `${label} spends the same two authored setup actions`);
+  assert.equal(intended.counterReason, counterReason,
+    `${label} doctrine evidence: ${JSON.stringify(intended.lastDoctrineEvidence)}`);
+  assert.notEqual(intended.terrainImpactTick, null, `${label} must physically reach terrain`);
+  assert.equal(intended.killTick, intended.terrainImpactTick, `${label} terrain contact is the intended completion`);
+  assert.ok(naive.terrainImpactTick == null || naive.terrainImpactTick > intended.killTick,
+    `${label} naive correction must survive the shared terrain opportunity`);
+  assert.equal(intended.playerFiresBeforeTerrain, 0,
+    `${label} completes before the common cleanup trigger, not through a hidden DPS cadence`);
+  assert.equal(intended.sawZeroCommand, true, `${label} counter commands neither thrust nor braking`);
+  assertMeaningfullyFaster(label, intended.killTick, naive.killTick);
 }
 
 function assertMeaningfullyFaster(label, intendedTicks, naiveTicks) {
   assert.notEqual(intendedTicks, null, `${label} must finish the physical actor`);
+  assert.notEqual(naiveTicks, null, `${label} naive control must eventually finish through the same live route`);
   assert.ok(intendedTicks * 2 <= naiveTicks,
     `${label} intended=${intendedTicks} ticks must be at least twice as fast as naive=${naiveTicks}`);
 }

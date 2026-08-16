@@ -13,6 +13,7 @@ import { activityAllowsOffense, effectiveActivityForAI, normalizeRoe } from '../
 import { CombatDoctrineId, normalizeCombatDoctrineId } from '../ai/combatDoctrine.js';
 import { normalizeFactionBehaviorProfile } from '../ai/factionBehavior.js';
 import { authorizeAIEngagement, isHostileForAI } from '../ai/engagementAuthority.js';
+import { readRecentImpulseProvenanceHistory } from '../combat/impulseKernel.js';
 import { measureThrusterAuthority, readPhysicsTelemetry, writePhysicsControl } from '../core/physicsAuthority.js';
 import { resolveFlightProfile } from '../core/flightDynamics.js';
 import { massline2Flag } from '../data/featureFlags.js';
@@ -41,6 +42,7 @@ const NORMALIZED_ROSTER_FLAG = '__spacefaceNormalizedAIRoster';
 const ROSTER_SIGNATURE_FLAG = '__spacefaceRosterSignature';
 const EMPTY_ATTACHMENTS = Object.freeze([]);
 const AI_SPATIAL_MIN_COLLIDABLES = 96;
+const RCS_DISRUPTION_WINDOW_TICKS = 96;
 const LAW_JOB_RESPONSE_HOLDER = 'lawSecurity';
 const CERES_LAW_JOB_SLOTS_BY_ID = new Map(CERES_ACTIVITY_POCKETS.flatMap((pocket) => (
   pocket.actorSlots
@@ -773,6 +775,17 @@ function rejectEncounterCommand(reason) {
 function controlFromManeuver(entity, request, dt, state) {
   const profile = resolveFlightProfile(entity, state);
   const authority = measureThrusterAuthority(entity);
+  if (request.preserveExternalFrame === true) {
+    return {
+      source: 'sg06-ai-maneuver',
+      mode: 'prepared_external_frame',
+      force: { x: 0, y: 0, z: 0 },
+      torque: { x: 0, y: 0, z: 0 },
+      authority,
+      // Omit maxSpeed: physicsAuthority normalizes it to Infinity, so the AI cannot silently clamp
+      // the inherited/status-authored frame after correctly standing down its thrusters.
+    };
+  }
   const axes = localAxes(entity.rot || 0);
   const boostMult = request.boost ? profile.boostMult : 1;
   const forwardInput = clamp(request.forceLocal.forward, -1, 1);
@@ -1021,13 +1034,28 @@ function mediumSetupSnapshot(entity, runtime, tick, freeze) {
     counterVerb: String(authored.counterVerb || ''),
     runtime: String(authored.runtime || 'unwired'),
     counterState: freeze({
-      rcsDisrupted: !!telemetry && telemetry.mode === 'rcs_disrupted',
+      // Physics telemetry describes the command Rapier most recently consumed, so its ordinary
+      // post-step publication can replace weapons' transient rcs_disrupted control before the next
+      // Tactical read. The immutable impulse history is the durable combat-owner receipt that also
+      // triggered the weapons owner's authored 1.6-second suppression window.
+      rcsDisrupted: (!!telemetry && telemetry.mode === 'rcs_disrupted') ||
+        rcsDisruptionProvenanceLive(entity, tick),
       driveDisabled: driveFraction <= 0 || runtime && runtime.capabilities && runtime.capabilities.drive === false,
       momentumSunk: combatStatusLive(runtime, 'status_momentum_sink', tick),
       wellPinned: combatStatusLive(runtime, 'status_pinned', tick),
       tumbling: combatStatusLive(runtime, 'status_tumbling', tick),
     }),
   });
+}
+
+function rcsDisruptionProvenanceLive(entity, tick) {
+  const now = finiteInt(tick, 0);
+  // Read with the impulse kernel's ordinary retention horizon, then apply the shorter RCS window
+  // locally. The history reader prunes at its requested horizon, so passing 96 here would erase
+  // still-valid collision attribution that the kernel intentionally retains for 180 ticks.
+  return readRecentImpulseProvenanceHistory(entity, now)
+    .some((record) => record && record.tag === 'rcs_disruptor_spike' &&
+      now - finiteInt(record.appliedTick, 0) <= RCS_DISRUPTION_WINDOW_TICKS);
 }
 
 function visibleRetreatSnapshot(entity, freeze) {
@@ -1257,6 +1285,7 @@ function normalizeManeuverRequest(request, fallbackTick) {
     torqueYaw: clamp(finite(request.torqueYaw), -1, 1),
     boost: !!request.boost,
     brake: !!request.brake,
+    preserveExternalFrame: request.preserveExternalFrame === true,
     targetHeading: wrapAngle(finite(request.targetHeading)),
     horizonTicks: clamp(Number.isInteger(request.horizonTicks) ? request.horizonTicks : 30, 1, 240),
     trajectory: Object.freeze(Array.isArray(request.trajectory) ? request.trajectory.slice(0, 8).map((point) => Object.freeze({
