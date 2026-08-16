@@ -132,6 +132,10 @@ const CERES_ACTIVITY_AMBUSH_INNER_R = 125;
 const CERES_ACTIVITY_AMBUSH_OUTER_R = 165;
 const CERES_ACTIVITY_AMBUSH_MARKER = 'ceresActivityAmbushPhase';
 const CERES_ACTIVITY_AMBUSH_RESTORE = 'ceresActivityAmbushRestore';
+const CERES_LIVING_CHAIN_SHAPE_ID = 'curtain_convoy';
+const CERES_LIVING_CHAIN_ZONE_ID = 'zone_ceres_refinery';
+const CERES_LIVING_CHAIN_HAULER_SLOT_ID = 'ceres_refinery_hauler';
+const CERES_LIVING_CHAIN_PATROL_SLOT_ID = 'ceres_cathedral_patrol';
 
 const CMDTY = new Map(COMMODITIES.map((c) => [c.id, c]));
 const LEGALITY_FINE_MULT = { restricted: 0.8, illegal: 1.2, contraband: 1.5 };
@@ -206,6 +210,7 @@ export const encounterDirector = {
       this.bus.on('resonance:scanCompleted', (p) => this._onResonanceScan(p));
       this.bus.on('world:zoneEntered', (p) => this._onArcadeIslandEntered(p || {}));
       this.bus.on('world:zoneExited', (p) => this._onArcadeIslandExited(p || {}));
+      this.bus.on('traffic:ceresManifestTransferred', (p) => this._onCeresManifestTransferred(p || {}));
     }
   },
 
@@ -515,6 +520,109 @@ export const encounterDirector = {
     if (!this._spawnAdmissionAvailable(item, shape)) return false;
     this._fire(dir, state, item, shape, now);
     return !!dir.live[item.encounterId];
+  },
+
+  // ── AC-14: one conserved Ceres living-world chain ──────────────────────────────────────────
+
+  _onCeresManifestTransferred(payload) {
+    const state = this.state;
+    if (!state || this._saveRestoring || this._currentSectorId() !== CERES_ACTIVITY_SECTOR_ID
+      || payload.sectorId !== CERES_ACTIVITY_SECTOR_ID
+      || typeof payload.handoffId !== 'string' || !payload.handoffId
+      || !Number.isInteger(payload.transferSeq) || payload.transferSeq <= 0
+      || typeof payload.manifestId !== 'string' || !payload.manifestId
+      || !Number.isSafeInteger(payload.qty) || payload.qty <= 0) return false;
+    const hauler = state.entities?.get(payload.haulerEntityId);
+    const manifest = hauler?.data?.cargoManifest;
+    if (!hauler || hauler.alive === false || hauler.type !== 'ship' || hauler.team !== 2
+      || hauler.data?.activityActorSlotId !== CERES_LIVING_CHAIN_HAULER_SLOT_ID
+      || hauler.data?.worldRecordId !== payload.haulerWorldRecordId
+      || manifest?.manifestId !== payload.manifestId || manifest.totalQty !== payload.qty
+      || manifest.custody?.handoffId !== payload.handoffId
+      || manifest.custody?.transferSeq !== payload.transferSeq) return false;
+    const patrol = (state.entityList || []).find((entity) => entity && entity.alive !== false
+      && entity.type === 'ship'
+      && entity.data?.activityActorSlotId === CERES_LIVING_CHAIN_PATROL_SLOT_ID
+      && entity.data?.ceresActivityCast === true
+      && entity.data?.ceresActivityJobOwned === true
+      && entity.data?.ai?.lawful === true);
+    const station = (state.entityList || []).find((entity) => entity && entity.alive !== false
+      && entity.type === 'station' && entity.data?.stationId === 'station_ceres' && entity.pos);
+    const shape = ENCOUNTERS[CERES_LIVING_CHAIN_SHAPE_ID];
+    const script = ENCOUNTER_SCRIPTS.convoy;
+    if (!patrol || !station || !shape || !script || typeof script.adoptLivingChain !== 'function') return false;
+
+    const encounterId = `ceres:living-chain:${payload.handoffId}:${payload.transferSeq}`;
+    const dir = ensureDirectorState(state);
+    if (dir.live[encounterId]) return true;
+    const angle = hash32(state.meta?.seed || 0, encounterId, 'pirate-bearing') / 4294967296 * Math.PI * 2;
+    const piratePos = {
+      x: hauler.pos.x + Math.cos(angle) * 145,
+      z: hauler.pos.z + Math.sin(angle) * 145,
+    };
+    const item = {
+      encounterId,
+      squadId: encounterId,
+      sectorId: CERES_ACTIVITY_SECTOR_ID,
+      zoneId: CERES_LIVING_CHAIN_ZONE_ID,
+      zoneName: 'Ceres Refinery Approach',
+      zoneCenter: { x: hauler.pos.x, z: hauler.pos.z },
+      zoneRadius: 720,
+      factionId: 'faction_reach',
+      variantKind: 'ceres_living_manifest_chain',
+      motive: 'cargo_raid',
+      engagementTrigger: 'manifest_predation',
+      predation: { ...shape.predation },
+      ships: [{
+        role: 'raider',
+        archetype: 'reaver_pirate',
+        level: 2,
+        factionId: 'faction_reach',
+        context: 'encounter',
+        passive: true,
+        combatDoctrineId: shape.predation?.attackerDoctrineId,
+        pos: piratePos,
+      }],
+      data: {
+        ceresLivingChain: true,
+        handoffId: payload.handoffId,
+        rootLotId: payload.rootLotId,
+        transferSeq: payload.transferSeq,
+        preservedWorldActorIds: [hauler.id],
+        preservedWorldActorSnapshots: {
+          [hauler.id]: capturePreservedWorldActor(hauler),
+        },
+      },
+    };
+    const live = makeEncounterLiveRecord(state, item, shape, state.simTime || 0);
+    dir.live[live.id] = live;
+    if (!script.adoptLivingChain(this, live, state, { hauler, patrol, station, payload })) {
+      this.abort(live, 'living_chain_adoption');
+      return false;
+    }
+    dir.stats.fired++;
+    this.emit('encounter:telegraph', {
+      encounterId: live.id,
+      kind: live.shapeId,
+      tier: live.tier,
+      deck: live.deck,
+      sectorId: live.sectorId,
+      zoneId: live.zoneId,
+      zoneName: live.zoneName,
+      pos: { ...live.anchor },
+      causality: { ...live.causality },
+    });
+    this.emit('encounter:spawned', {
+      encounterId: live.id,
+      kind: live.shapeId,
+      squadId: live.squadId,
+      sectorId: live.sectorId,
+      zoneId: live.zoneId,
+      count: 1,
+      fingerprint: live.causality.fingerprint,
+      motiveId: live.causality.motiveId,
+    });
+    return true;
   },
 
   _restorePersistedFreightCustodies() {
@@ -1247,6 +1355,18 @@ export const encounterDirector = {
     return true;
   },
 
+  preserveWorldActor(live, entity) {
+    if (!live || !entity || entity.id == null) return false;
+    const ids = Array.isArray(live.data?.preservedWorldActorIds)
+      ? live.data.preservedWorldActorIds
+      : (live.data.preservedWorldActorIds = []);
+    if (!ids.includes(entity.id)) ids.push(entity.id);
+    const snapshots = live.data.preservedWorldActorSnapshots
+      || (live.data.preservedWorldActorSnapshots = {});
+    if (!snapshots[entity.id]) snapshots[entity.id] = capturePreservedWorldActor(entity);
+    return true;
+  },
+
   // ── live-entity helpers ─────────────────────────────────────────────────────────────────────
   entsOf(live, role) {
     const out = [];
@@ -1310,8 +1430,12 @@ export const encounterDirector = {
   despawnAll(live, afterS, role) {
     if (live && live.data && live.data.adoptedWorldActors === true) return;
     const now = this.now();
+    const preserved = new Set(Array.isArray(live?.data?.preservedWorldActorIds)
+      ? live.data.preservedWorldActorIds
+      : []);
     let i = 0;
     for (const e of this.entsOf(live, role || undefined)) {
+      if (preserved.has(e.id)) continue;
       e.data = e.data || {};
       e.data.despawnAt = now + (afterS || 20) + i * 0.5;   // small stagger so departures read natural
       i++;
@@ -1429,9 +1553,14 @@ export const encounterDirector = {
       restoreCeresActivityAmbushEntities(this.state, live.data);
       dir.stats.ceresActivityAmbush = { phase: 'done', outcome };
     } else {
+      const preserved = new Set(Array.isArray(live.data?.preservedWorldActorIds)
+        ? live.data.preservedWorldActorIds
+        : []);
       for (const e of this.entsOf(live)) {
+        if (preserved.has(e.id)) continue;
         if (!e.data || e.data.despawnAt == null) { e.data = e.data || {}; e.data.despawnAt = now + 45; }
       }
+      restorePreservedWorldActors(this.state, live.data);
     }
     this.emit('encounter:resolved', {
       encounterId: live.id, shape: live.shapeId, kind: (live.plan && live.plan.variantKind) || live.shapeId,
@@ -1481,6 +1610,7 @@ export const encounterDirector = {
       dir.stats.ceresActivityAmbush = { phase: 'done', outcome: live.outcome };
     } else {
       this.despawnAll(live, 4);
+      restorePreservedWorldActors(this.state, live.data);
     }
     this.emit('encounter:resolved', {
       encounterId: live.id, shape: live.shapeId, kind: live.shapeId, outcome: live.outcome,
@@ -2043,6 +2173,54 @@ function makeEncounterLiveRecord(state, item, shape, now) {
   return live;
 }
 
+const PRESERVED_WORLD_DATA_FIELDS = Object.freeze([
+  'bountyCr',
+  'loot',
+  'freightRewardOwner',
+  'freightCustody',
+  'freightCustodyCarrierIdentityKey',
+  'freightCustodyPersistence',
+  'predationEncounterId',
+  'predationRole',
+  'predationIdentityKey',
+]);
+const PRESERVED_WORLD_AI_FIELDS = Object.freeze([
+  'encounterId',
+  'encounterKind',
+  'encounterRole',
+  'sectorId',
+  'zoneId',
+  'zoneName',
+]);
+
+function capturePreservedWorldActor(entity) {
+  const data = entity?.data || {};
+  const ai = data.ai || {};
+  return {
+    entity,
+    data: Object.fromEntries(PRESERVED_WORLD_DATA_FIELDS.map((key) => [key, ownSnapshot(data, key)])),
+    ai: Object.fromEntries(PRESERVED_WORLD_AI_FIELDS.map((key) => [key, ownSnapshot(ai, key)])),
+  };
+}
+
+function restorePreservedWorldActors(state, liveData) {
+  const snapshots = liveData?.preservedWorldActorSnapshots;
+  if (!snapshots || typeof snapshots !== 'object') return 0;
+  let restored = 0;
+  for (const [rawId, snapshot] of Object.entries(snapshots)) {
+    const numericId = Number(rawId);
+    const id = Number.isFinite(numericId) ? numericId : rawId;
+    const entity = state?.entities?.get(id);
+    if (!entity || entity !== snapshot?.entity || entity.alive === false) continue;
+    const data = entity.data || (entity.data = {});
+    const ai = data.ai || (data.ai = {});
+    for (const key of PRESERVED_WORLD_DATA_FIELDS) restoreSnapshot(data, key, snapshot.data?.[key]);
+    for (const key of PRESERVED_WORLD_AI_FIELDS) restoreSnapshot(ai, key, snapshot.ai?.[key]);
+    restored++;
+  }
+  return restored;
+}
+
 function ownSnapshot(object, key) {
   return Object.prototype.hasOwnProperty.call(object, key)
     ? { had: true, value: object[key] }
@@ -2474,6 +2652,10 @@ function buildPersistedFreightCustodyEnvelope(live, record, savedAt = null) {
         predation,
       },
       data: {
+        ceresLivingChain: data.ceresLivingChain === true,
+        handoffId: data.handoffId,
+        rootLotId: data.rootLotId,
+        transferSeq: data.transferSeq,
         end: data.end,
         destId: data.destId,
         destName: data.destName,
@@ -2616,6 +2798,10 @@ function normalizePersistedFreightCustodyEnvelope(raw) {
         predation: normalizeFreightPredation(predationRaw),
       },
       data: {
+        ceresLivingChain: dataRaw.ceresLivingChain === true,
+        handoffId: boundedFreightString(dataRaw.handoffId),
+        rootLotId: boundedFreightString(dataRaw.rootLotId),
+        transferSeq: nonnegativeFreightInt(dataRaw.transferSeq),
         end: finiteFreightVec(dataRaw.end),
         destId: boundedFreightString(dataRaw.destId),
         destName: boundedFreightString(dataRaw.destName),
