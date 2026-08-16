@@ -220,10 +220,14 @@ test('SG-06 emits the existing ai:flee seam once and bark presentation consumes 
   const tactical = createTacticalAISystem({
     seed: 1313,
     config: { trace: { enabled: false } },
-    sensors: { frameFor(_entityId, tick) { return tacticalFrame(actor, target, tick); } },
+    sensors: { frameFor(_entityId, tick) { return tacticalFrame(actor, target, tick, { ownedTether: true }); } },
     roster: { listSquads() { return [{
       id: 'medium_retreat_fixture', doctrine: 'scavenger', faction: 'faction_reach',
-      members: [{ id: actor.id, capabilities: ['drive', 'sensor', 'weapon', 'ranged'], combatDoctrineId: actor.data.ai.combatDoctrineId }],
+      members: [{
+        id: actor.id,
+        capabilities: actor.data.ai.capabilities,
+        combatDoctrineId: actor.data.ai.combatDoctrineId,
+      }],
     }]; } },
     maneuver: { request() { return true; } },
     actionPortFactory: () => noActionPort(),
@@ -231,6 +235,13 @@ test('SG-06 emits the existing ai:flee seam once and bark presentation consumes 
   tactical.init({ state, bus, helpers });
 
   tactical.update(DT, state);
+  const result = tactical.stack.lastResult;
+  const squadDirective = result.squads[0].directives.find((entry) => entry.memberId === actor.id);
+  const decision = result.decisions.find((entry) => entry.entityId === actor.id);
+  assert.equal(squadDirective.objective.kind, ObjectiveKind.COUNTER_TETHER_OVERLOAD,
+    'the owned tow keeps the real squad objective on counter-tether overload');
+  assert.equal(decision.combatDoctrine.phase, 'visible_retreat',
+    'the authored low-hull family retreat crosses the non-combat squad objective gate');
   state.tick = 1;
   state.simTime = DT;
   tactical.update(DT, state);
@@ -643,14 +654,14 @@ function entityFromSpec(spec, id) {
   };
 }
 
-function tacticalFrame(actor, target, tick) {
+function tacticalFrame(actor, target, tick, { ownedTether = false } = {}) {
   return {
     tick,
     self: {
       id: actor.id, team: actor.team, pos: actor.pos, vel: actor.vel, rot: actor.rot,
       radius: actor.radius, hullFraction: actor.hull / actor.hullMax,
-      energyFraction: 1, heatFraction: 0, disabled: false, tethered: false,
-      capabilities: ['drive', 'sensor', 'weapon', 'ranged'], subsystemFractions: {},
+      energyFraction: 1, heatFraction: 0, disabled: false, tethered: ownedTether,
+      capabilities: actor.data.ai.capabilities || ['drive', 'sensor', 'weapon', 'ranged'], subsystemFractions: {},
       activity: actor.data.ai.activity, roe: actor.data.ai.roe,
       combatDoctrineId: actor.data.ai.combatDoctrineId,
       combatRoleId: actor.data.lootTableId, maxSpeed: actor.maxSpeed,
@@ -663,7 +674,12 @@ function tacticalFrame(actor, target, tick) {
       confidence: 1, threat: 0.9, hostile: true, alive: true, valid: true, visible: true,
       operationalMassBand: 'medium', mobilityBand: 'medium', cargoBand: 'empty', tetherabilityBand: 'good',
       tags: ['armed'],
-    }],
+    }, ...(ownedTether ? [{
+      id: 991, attachmentId: 991, kind: ContactKind.TETHER,
+      ownerId: actor.id, targetId: 990, hostile: false, confidence: 1,
+      pos: { x: actor.pos.x + 20, z: actor.pos.z }, vel: { x: 0, z: 0 },
+      tags: ['massline', 'owned_by_self'],
+    }] : [])],
     events: [],
   };
 }

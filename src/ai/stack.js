@@ -15,6 +15,7 @@ import { ExplainabilityTrace } from './trace.js';
 import { CombatDoctrineRuntime, normalizeCombatDoctrineId, overrideDirectiveForCombatDoctrine } from './combatDoctrine.js';
 import { overrideDirectiveForWingOrder, perceptionForWingOrderCombatDoctrine } from './doctrine.js';
 import { normalizeFactionBehaviorProfile } from './factionBehavior.js';
+import { visibleMediumRetreat } from './mediumFamilyDoctrine.js';
 import { shouldOwnerThink } from '../core/activityScheduler.js';
 import { TABLE_AI_AUTHORITY_WU } from '../render/tabletopPolicy.js';
 
@@ -145,12 +146,15 @@ export class TacticalAIStack {
         const combatOrdered = objectiveKind === ObjectiveKind.ENGAGE
           || objectiveKind === ObjectiveKind.FOCUS
           || objectiveKind === ObjectiveKind.TUG;
+        const visibleRetreatDue = !!visibleMediumRetreat(perception.self);
         // Squad allocation owns the number and kind of committed attackers. Running a combat
         // doctrine for an overflow SCREEN/HOLD member used to replace that reserve objective with
-        // FOCUS, allowing ordinary gunners to consume the attacker cap ahead of a specialist.
-        if (!combatOrdered && doctrineId) this.combatDoctrine.forget(member.id);
+        // FOCUS, allowing ordinary gunners to consume the attacker cap ahead of a specialist. The
+        // sole exception is an authored medium already below its visible-retreat threshold: survival
+        // must still reach the common doctrine/event edge when towing selects COUNTER_TETHER_OVERLOAD.
+        if (!combatOrdered && !visibleRetreatDue && doctrineId) this.combatDoctrine.forget(member.id);
         const doctrinePerception = perceptionForWingOrderCombatDoctrine(perception, directive, freeze);
-        const combatDoctrine = doctrineId && combatOrdered ? this.combatDoctrine.update({
+        const combatDoctrine = doctrineId && (combatOrdered || visibleRetreatDue) ? this.combatDoctrine.update({
           tick, entityId: member.id, doctrineId, perception: doctrinePerception, directive,
         }) : null;
         const priorDecision = this.lastDecisionByEntity.get(member.id);
