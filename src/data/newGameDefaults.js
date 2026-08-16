@@ -26,6 +26,7 @@ export const NEW_GAME = {
     'mod_mining_laser_s',   // mining slot S (starter laser, price 0)
     'mod_engine_ion_m',     // engine slot M
     'mod_shield_booster_s', // shield slot S
+    'mod_ram_plate',        // utility slot S (starter physics verb: ram -> tumble -> environment)
   ],
 
   // Starting cargo.

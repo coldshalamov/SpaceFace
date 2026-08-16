@@ -30,16 +30,21 @@ test('starter role copy advertises only capabilities exercised by live runtime c
   for (const { build } of Object.values(builds)) {
     assert.equal(typeof build.benefit, 'string', `${build.id} must name its live benefit`);
     assert.ok(build.benefit.length >= 24, `${build.id} benefit must be player-readable`);
-    assert.doesNotMatch(`${build.benefit} ${build.tradeoff}`, /market intel|ram damage|route intelligence/i,
+    assert.doesNotMatch(`${build.benefit} ${build.tradeoff}`, /market intel|route intelligence/i,
       `${build.id} cannot advertise unconsumed metadata`);
   }
 
   const hitch = SHIPS.find((entry) => entry.id === generalist.build.shipId);
   const utilitySlot = buildSlotList(hitch).find((slot) => slot.type === 'utility');
   assert.ok(utilitySlot, 'Hitch must expose the utility slot named by the generalist copy');
-  assert.equal(generalist.fittings[utilitySlot.index], null, 'generalist benefit is a genuinely open slot');
-  assert.ok(generalist.derived.maxSpeed > hauler.derived.maxSpeed);
-  assert.ok(generalist.derived.turnRate > hauler.derived.turnRate);
+  assert.equal(generalist.fittings[utilitySlot.index], 'mod_ram_plate',
+    'fresh Hitch carries the starter physics verb in its real utility slot');
+  assert.ok(generalist.derived.ramDamageDealtMult > 1,
+    'the live derived-stat consumer makes the fitted plate mechanically real');
+  assert.equal(hunter.fittings[utilitySlot.index], 'mod_ram_plate',
+    'the Hunter preview keeps the already-fitted plate without duplicating the utility slot');
+  assert.equal(hauler.fittings[utilitySlot.index], 'mod_market_data_s');
+  assert.equal(prospector.fittings[utilitySlot.index], 'mod_winch_hd');
 
   assert.ok(hauler.derived.maxSpeed > hunter.derived.maxSpeed,
     'light hauler kit keeps more live speed than the heavy hunter kit');

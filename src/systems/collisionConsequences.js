@@ -200,12 +200,12 @@ export const collisionConsequences = {
     // below can enter the tumble this same contact causes. A scheduled tumble is visible to the
     // status reader immediately, so resolving `a` first would otherwise make `b`'s death read as a
     // chain off the very collision that killed it.
-    const aTumbling = isTumbling(this.state, a);
-    const bTumbling = isTumbling(this.state, b);
+    const aTumble = describeTumbleStatus(readTumbleStatus(this.state, a));
+    const bTumble = describeTumbleStatus(readTumbleStatus(this.state, b));
     const aChainDepth = this._chainDepthOf(a);
     const bChainDepth = this._chainDepthOf(b);
-    const towardA = preContactTruth(aTumbling, bTumbling, bChainDepth);
-    const towardB = preContactTruth(bTumbling, aTumbling, aChainDepth);
+    const towardA = preContactTruth(aTumble, bTumble, bChainDepth);
+    const towardB = preContactTruth(bTumble, aTumble, aChainDepth);
     this._resolveTarget(a, b, payload, exchangedMomentum, tick, causalProvenance, suppressCraftDamage, towardA);
     this._resolveTarget(b, a, payload, exchangedMomentum, tick, causalProvenance, suppressCraftDamage, towardB);
   },
@@ -214,7 +214,12 @@ export const collisionConsequences = {
     const state = this.state;
     if (!DAMAGEABLE_MOTION.has(target.type) || target.id === state.playerId) return;
     const ramPlate = playerRamPlateImpact(other, state.playerId, tick, causalProvenance);
-    const provenance = ramPlate?.provenance || causalProvenance;
+    // The first ram/contact enters a transient tumble status with its real attacker. When that
+    // projectile later meets terrain, the original impulse record may already have aged out; the
+    // pre-contact tumble episode is the remaining causal truth. Carry it across the payoff contact
+    // instead of turning a player-created environment kill into an unattributed accident.
+    const provenance = ramPlate?.provenance || causalProvenance
+      || tumbleContactProvenance(preContact, tick);
     const receipt = resolveCollisionConsequence({
       target,
       other,
@@ -592,8 +597,25 @@ function buildCollisionPresentationProvenance(target, other, receipt, preContact
   });
 }
 
-function preContactTruth(victimTumbling, sourceTumbling, sourceChainDepth) {
-  return Object.freeze({ victimTumbling, sourceTumbling, sourceChainDepth });
+function preContactTruth(victimTumble, sourceTumble, sourceChainDepth) {
+  return Object.freeze({
+    victimTumbling: !!victimTumble,
+    sourceTumbling: !!sourceTumble,
+    victimTumble,
+    sourceTumble,
+    sourceChainDepth,
+  });
+}
+
+function tumbleContactProvenance(preContact, tick) {
+  const status = preContact && (preContact.sourceTumble || preContact.victimTumble);
+  if (!status || status.attackerId == null) return null;
+  return {
+    actorId: status.attackerId,
+    weaponId: null,
+    tag: `${status.source || 'physical'}_tumble`,
+    appliedTick: tick,
+  };
 }
 
 /**
