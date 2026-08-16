@@ -116,6 +116,21 @@ export const DOCTRINE_AUDIO_SIGNATURES = Object.freeze({
   }),
 });
 
+// AC-12 family tells deliberately reuse shipped physical voices while keeping semantic identities
+// stable. Skitter gets a dry rock-fracture cue; Ember layers a low containment break from the
+// combat receipt before the existing kinetic shunt body lands through audio:cue.
+export const SWARMER_AUDIO_SIGNATURES = Object.freeze({
+  skitterRockDust: Object.freeze({
+    semanticId: 'swarmer_rock_dust', recipeId: 'sfx_mining_fracture_warning',
+    register: 'dry-mineral-mid', gain: 0.52, rate: 0.88,
+  }),
+  emberCookOff: Object.freeze({
+    semanticId: 'swarmer_ember_cook_off', recipeId: 'sfx_vector_mine',
+    layerRecipeId: 'sfx_doctrine_brawler_break', register: 'contained-low-rupture',
+    gain: 0.68, rate: 0.78,
+  }),
+});
+
 // The first-hour ear-training contract. These five foreground receipts deliberately occupy
 // different registers and priority levels. Continuous low-frequency ambience is intentionally not
 // part of the contract: the procedural stack stays quiet until a player action earns a cue.
@@ -394,6 +409,9 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   // Gameplay cues with dedicated recipes (drill.js loot/hazard, countermeasures.js, combat shield break).
   loot_collect: 'sfx_loot_collect', mining_core_fizzle: 'sfx_mining_core_fizzle',
   shield_break: 'sfx.shieldBreak', cm_chaff: 'sfx_cm_chaff', cm_ecm: 'sfx_cm_ecm',
+  rock_dust: SWARMER_AUDIO_SIGNATURES.skitterRockDust.recipeId,
+  [SWARMER_AUDIO_SIGNATURES.skitterRockDust.semanticId]: SWARMER_AUDIO_SIGNATURES.skitterRockDust.recipeId,
+  [SWARMER_AUDIO_SIGNATURES.emberCookOff.semanticId]: SWARMER_AUDIO_SIGNATURES.emberCookOff.recipeId,
   [FIRST_HOUR_AUDIO_SIGNATURES.masslineLatch.semanticId]: FIRST_HOUR_AUDIO_SIGNATURES.masslineLatch.recipeId,
   [FIRST_HOUR_AUDIO_SIGNATURES.masslineStrain.semanticId]: FIRST_HOUR_AUDIO_SIGNATURES.masslineStrain.recipeId,
   [FIRST_HOUR_AUDIO_SIGNATURES.masslineBreak.semanticId]: FIRST_HOUR_AUDIO_SIGNATURES.masslineBreak.recipeId,
@@ -693,6 +711,15 @@ export const audio = {
     });
     bus.on('shieldRestored', () => {});
     bus.on('entity:killed', (p) => this._onKilled(p));
+    bus.on('combat:emberCookOff', (p) => {
+      const signature = SWARMER_AUDIO_SIGNATURES.emberCookOff;
+      this.play(signature.layerRecipeId, {
+        position: p && p.position,
+        gain: 0.42,
+        rate: 0.62,
+        critical: true,
+      });
+    });
     bus.on('entity:destroyed', (p) => this._onDestroyed(p));
     bus.on('player:death', (p) => this._onPlayerDeath(p));
     bus.on('player:respawn', (p) => this._onPlayerRespawn(p));

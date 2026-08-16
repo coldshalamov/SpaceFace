@@ -48,6 +48,7 @@ import { attachStationHlod, isFarDetailSurface } from './hlod.js';
 import { attachLodState } from './lod.js';
 import { interactionProfileForEntity } from '../data/entityInteractionProfiles.js';
 import { resolveWeaponPresentationFamily } from './vfxProfiles.js';
+import { swarmerRecordFor } from '../data/swarmerFamily.js';
 
 // ---------------------------------------------------------------------------------------------
 // Lookups + palette resolution
@@ -392,6 +393,7 @@ function optimizeStaticBatches(root) {
 function isBatchCandidate(obj) {
   if (!obj || !obj.isMesh || obj.isBatchedMesh || obj.isInstancedMesh) return false;
   if (obj.onBeforeRender && obj.onBeforeRender !== THREE.Object3D.prototype.onBeforeRender) return false;
+  if (obj.userData && obj.userData.animated) return false;
   if (obj.children && obj.children.length) return false;
   const g = obj.geometry, m = obj.material;
   if (!g || !g.getAttribute || !g.getAttribute('position')) return false;
@@ -1399,6 +1401,40 @@ function buildDroneSwarm(ctx) {
   glow.position.set(0, 0, -s * R * 0.78); glow.scale.setScalar(R); g.add(glow);
 }
 
+// Enemy builders historically authored their long axis on +Z even though this factory's public
+// ship contract is +X-forward. Keep the retained construction coordinates readable while rotating
+// the completed swarmer form once at its root. VFX history then agrees with the actual velocity
+// vector instead of showing a needle flying broadside.
+function settleSwarmerForwardFrame(g) {
+  const frame = new THREE.Group();
+  frame.name = 'SwarmerFactoryForwardFrame';
+  while (g.children.length) frame.add(g.children[0]);
+  frame.rotation.y = Math.PI / 2;
+  frame.userData.animated = true;
+  g.add(frame);
+  return frame;
+}
+
+function swarmerStructureMaterial(key, color, name) {
+  return getMaterial(`edr:swarmerStructure:${key}`, () => new THREE.MeshStandardMaterial({
+    name,
+    color,
+    roughness: 0.52,
+    metalness: 0.74,
+  }));
+}
+
+function swarmerSignalMaterial(key, color, emissive, name, emissiveIntensity = 1.8) {
+  return getMaterial(`edr:swarmerSignal:${key}`, () => new THREE.MeshStandardMaterial({
+    name,
+    color,
+    emissive,
+    emissiveIntensity,
+    roughness: 0.36,
+    metalness: 0.46,
+  }));
+}
+
 // mote_quad — an open, hard-edged quad frame around a caged drive coil. Four offset service pods
 // make the silhouette intentionally imperfect; the pack shimmer comes from many rigid bodies
 // crossing and banking at different phases, not from a glow card or camera-facing particle.
@@ -1466,6 +1502,460 @@ function buildMoteQuad(ctx) {
   g.parent.userData.enemySilhouette = 'mote_quad';
   g.parent.userData.visualLanguage = 'open-quad-caged-coil';
   g.parent.userData.motePodCount = podOffsets.length;
+  settleSwarmerForwardFrame(g);
+}
+
+// =============================================================================================
+// PR95 wave 1 — the rest of the swarmer family. Four silhouettes, four different construction
+// languages. Rules these share (12_SWARMER_FAMILY "Bans", and the graphics reject list):
+//   • hard geometry only — no billboard sprite, no camera-facing glow card, no bead of light.
+//     Where a hot core reads, it reads because real ribs leave real gaps to see it through.
+//   • no solid-cone stand-ins: tapered bodies are low-segment PRISMS, so they carry facets and
+//     silhouette edges instead of a smooth blob.
+//   • the shape must survive at default zoom as a black cut-out — mass, proportion and one
+//     structural motif each, never a recolor of a neighbour.
+// =============================================================================================
+
+// dart_needle — Dart. A long tapered triangular needle with an over-long nose and a stubby tail
+// block. The two canards are DIFFERENT sizes and swept at different angles: nothing here suggests
+// it can turn, which is the whole read. Reads at a glance: it goes one way, fast.
+function buildDartNeedle(ctx) {
+  const { g, R, vis, seed } = ctx;
+  const L = (vis.length || 1.4) * 1.55;
+  const phase = ((seed >>> 4) % 7) * 0.02;
+  const hull = swarmerStructureMaterial('dart', 0x263a4a, 'DartColdGunmetal');
+  const coldSignal = swarmerSignalMaterial('dart-intake', 0xb9ddff, 0x4f9fff, 'DartColdIntake', 2.3);
+
+  // Triangular prism (radialSegments 3), not a cone: three long facets and three hard edges.
+  const spine = new THREE.Mesh(
+    getGeometry('edr:dartSpine', () => new THREE.CylinderGeometry(0.035, 0.155, 1.0, 3, 1)),
+    hull,
+  );
+  spine.name = 'DartNeedleSpine';
+  spine.rotation.x = Math.PI / 2;
+  spine.rotation.z = Math.PI / 6;
+  spine.scale.set(R, L * R, R);
+  spine.position.z = L * R * 0.16;
+  g.add(spine);
+
+  // Tail block: a squared-off mass the needle grows out of, so the taper has somewhere to start.
+  const block = new THREE.Mesh(
+    getGeometry('edr:dartBlock', () => new THREE.BoxGeometry(0.26, 0.2, 0.42)),
+    hull,
+  );
+  block.name = 'DartTailBlock';
+  block.position.z = -L * R * 0.34;
+  block.scale.setScalar(R);
+  g.add(block);
+
+  // Dorsal rail — a thin raised spine along the top. Breaks the round profile from above.
+  const rail = new THREE.Mesh(
+    getGeometry('edr:dartRail', () => new THREE.BoxGeometry(0.05, 0.075, 0.86)),
+    hull,
+  );
+  rail.name = 'DartDorsalRail';
+  rail.position.set(0, 0.115 * R, -L * R * 0.02);
+  rail.scale.setScalar(R);
+  g.add(rail);
+
+  // Mismatched canards. Deliberately asymmetric in span AND sweep — a symmetric pair would read
+  // as a manoeuvring surface, and this hull does not manoeuvre.
+  const canards = [
+    { dx: -1, span: 0.34, sweep: 0.52, z: 0.08 },
+    { dx: 1, span: 0.25, sweep: 0.71, z: -0.02 },
+  ];
+  for (const c of canards) {
+    const fin = new THREE.Mesh(
+      getGeometry('edr:dartCanard', () => new THREE.BoxGeometry(0.4, 0.035, 0.19)),
+      hull,
+    );
+    fin.name = 'DartCanard';
+    fin.position.set(c.dx * c.span * R, -0.02 * R, (c.z + phase) * L * R);
+    fin.rotation.y = -c.dx * c.sweep;
+    fin.scale.set(c.span / 0.34, 1, 1);
+    fin.scale.multiplyScalar(R);
+    g.add(fin);
+  }
+
+  // Recessed intake slot: a real inset box in the emissive material, sunk into the spine. Visible
+  // as a lit seam from the side, invisible head-on — a structure, not a decal.
+  const intake = new THREE.Mesh(
+    getGeometry('edr:dartIntake', () => new THREE.BoxGeometry(0.055, 0.05, 0.3)),
+    coldSignal,
+  );
+  intake.name = 'DartIntakeSlot';
+  intake.position.set(0, 0.055 * R, -L * R * 0.12);
+  intake.scale.setScalar(R);
+  g.add(intake);
+
+  // One deep nozzle, sunk into the tail block. A single big throat sells the straight-line drive.
+  const throat = new THREE.Mesh(
+    getGeometry('edr:dartThroat', () => new THREE.CylinderGeometry(0.1, 0.135, 0.26, 6)),
+    hull,
+  );
+  throat.name = 'DartDriveThroat';
+  throat.rotation.x = Math.PI / 2;
+  throat.position.z = -L * R * 0.46;
+  throat.scale.setScalar(R);
+  g.add(throat);
+
+  g.parent.userData.enemySilhouette = 'dart_needle';
+  g.parent.userData.visualLanguage = 'tapered-triangular-needle';
+  settleSwarmerForwardFrame(g);
+}
+
+// flea_grapnel — Flea. A squat hex core wearing four folded grappler arms, with the snare emitter
+// caged between two open half-ribs. The arms are the tell: they are the only limbs in the family,
+// they are folded FORWARD (ready), and they are what a player looks for after being dragged once.
+function buildFleaGrapnel(ctx) {
+  const { g, R, accent, seed } = ctx;
+  const rnd = mulberryLite(seed + 17);
+  const hull = swarmerStructureMaterial('flea', 0x242a31, 'FleaIronCore');
+  const armMaterial = getMaterial('edr:fleaArmRed', () => new THREE.MeshStandardMaterial({
+    name: 'FleaRedGrapplerMetal',
+    color: 0x751a24,
+    emissive: 0x280007,
+    emissiveIntensity: 0.35,
+    roughness: 0.48,
+    metalness: 0.72,
+  }));
+  const emitterMaterial = accent.clone();
+  emitterMaterial.name = 'FleaSnareHeat';
+  emitterMaterial.color.set('#b91f32');
+  emitterMaterial.emissive.set('#ff243d');
+  emitterMaterial.emissiveIntensity = 0.32;
+  emitterMaterial.roughness = 0.34;
+  emitterMaterial.metalness = 0.42;
+  const armParts = [];
+
+  const core = new THREE.Mesh(
+    getGeometry('edr:fleaCore', () => new THREE.CylinderGeometry(0.3, 0.34, 0.46, 6)),
+    hull,
+  );
+  core.name = 'FleaHexCore';
+  core.rotation.x = Math.PI / 2;
+  core.scale.setScalar(R);
+  g.add(core);
+
+  // Four arms. Each is upper arm + forearm + claw, hinged at a different fold angle so the set
+  // reads as machinery mid-motion rather than four copies of one decoration.
+  for (let i = 0; i < 4; i++) {
+    const side = i < 2 ? -1 : 1;
+    const rank = i % 2;
+    const root = 0.3 + rank * 0.06;
+    const fold = 0.5 + rnd() * 0.45;
+    const upper = new THREE.Mesh(
+      getGeometry('edr:fleaUpperArm', () => new THREE.BoxGeometry(0.085, 0.08, 0.36)),
+      armMaterial,
+    );
+    upper.name = 'FleaGrapplerUpperArm';
+    upper.position.set(side * root * R, (rank ? 0.11 : -0.1) * R, 0.18 * R);
+    upper.rotation.set(0, side * 0.34, side * 0.22);
+    upper.scale.setScalar(R);
+    upper.userData.animated = true;
+    g.add(upper);
+    armParts.push({ mesh: upper, side, stage: 0, px: upper.position.x, pz: upper.position.z,
+      rx: upper.rotation.x, ry: upper.rotation.y, rz: upper.rotation.z });
+
+    const fore = new THREE.Mesh(
+      getGeometry('edr:fleaForearm', () => new THREE.BoxGeometry(0.065, 0.062, 0.3)),
+      armMaterial,
+    );
+    fore.name = 'FleaGrapplerForearm';
+    fore.position.set(side * (root + 0.11) * R, (rank ? 0.13 : -0.12) * R, 0.44 * R);
+    fore.rotation.set(fold * 0.5, side * 0.62, side * 0.3);
+    fore.scale.setScalar(R);
+    fore.userData.animated = true;
+    g.add(fore);
+    armParts.push({ mesh: fore, side, stage: 1, px: fore.position.x, pz: fore.position.z,
+      rx: fore.rotation.x, ry: fore.rotation.y, rz: fore.rotation.z });
+
+    // Claw: a 4-sided pyramid, so the arm ends in a point that is still a faceted solid.
+    const claw = new THREE.Mesh(
+      getGeometry('edr:fleaClaw', () => new THREE.ConeGeometry(0.062, 0.16, 4)),
+      armMaterial,
+    );
+    claw.name = 'FleaGrapplerClaw';
+    claw.position.set(side * (root + 0.2) * R, (rank ? 0.15 : -0.14) * R, 0.6 * R);
+    claw.rotation.set(Math.PI / 2 - fold * 0.4, 0, side * 0.5);
+    claw.scale.setScalar(R);
+    claw.userData.animated = true;
+    g.add(claw);
+    armParts.push({ mesh: claw, side, stage: 2, px: claw.position.x, pz: claw.position.z,
+      rx: claw.rotation.x, ry: claw.rotation.y, rz: claw.rotation.z });
+  }
+
+  // Snare emitter, caged. Two open half-ribs leave the faceted emitter body visible between them
+  // from every angle — the hot part is seen THROUGH structure, never painted on as a card.
+  const emitter = new THREE.Mesh(
+    getGeometry('edr:fleaEmitter', () => new THREE.OctahedronGeometry(0.15, 0)),
+    emitterMaterial,
+  );
+  emitter.name = 'FleaSnareEmitter';
+  emitter.position.z = -0.14 * R;
+  emitter.scale.setScalar(R);
+  emitter.userData.animated = true;
+  g.add(emitter);
+  for (const roll of [0, Math.PI / 2]) {
+    const rib = new THREE.Mesh(
+      getGeometry('edr:fleaRib', () => new THREE.TorusGeometry(0.24, 0.032, 4, 7, Math.PI)),
+      hull,
+    );
+    rib.name = 'FleaEmitterCageRib';
+    rib.rotation.set(Math.PI / 2, 0, roll);
+    rib.position.z = -0.14 * R;
+    rib.scale.setScalar(R);
+    g.add(rib);
+  }
+
+  for (const dx of [-0.15, 0.15]) {
+    const noz = new THREE.Mesh(
+      getGeometry('edr:fleaNoz', () => new THREE.CylinderGeometry(0.06, 0.09, 0.2, 6)),
+      hull,
+    );
+    noz.name = 'FleaHardNozzle';
+    noz.rotation.x = Math.PI / 2;
+    noz.position.set(dx * R, 0, -0.4 * R);
+    noz.scale.setScalar(R);
+    g.add(noz);
+  }
+
+  g.parent.userData.enemySilhouette = 'flea_grapnel';
+  g.parent.userData.visualLanguage = 'folded-grappler-arms-caged-emitter';
+  settleSwarmerForwardFrame(g);
+
+  // The field controller publishes doctrine phase changes; VFX forwards those to this exact mesh.
+  // Deployment changes silhouette first and heat second, so reduced-flash remains fully readable.
+  const outer = g.parent;
+  const presentation = { phase: 'approach', deployment: 0, heat: 0.08, target: 0, lastT: 0 };
+  outer.userData.fleaPresentation = presentation;
+  outer.userData.setSwarmerDoctrinePhase = (phase) => {
+    const next = String(phase || 'approach');
+    presentation.phase = next;
+    presentation.target = next === 'anchor_hold' ? 1 : next === 'field_spool' ? 0.62 : 0;
+  };
+  outer.userData.updateRuntimeState = (_entity, now) => {
+    const t = Number.isFinite(now) ? now : presentation.lastT;
+    const dt = presentation.lastT > 0 ? Math.max(0, Math.min(0.1, t - presentation.lastT)) : 0.1;
+    presentation.lastT = t;
+    const rate = presentation.target > presentation.deployment ? 8.5 : 2.2;
+    presentation.deployment += (presentation.target - presentation.deployment) * (1 - Math.exp(-dt * rate));
+    presentation.heat += (presentation.target - presentation.heat) * (1 - Math.exp(-dt * (presentation.target > presentation.heat ? 7.2 : 1.7)));
+    const deploy = presentation.deployment;
+    for (let i = 0; i < armParts.length; i++) {
+      const part = armParts[i];
+      const reach = (part.stage + 1) / 3;
+      part.mesh.position.x = part.px + part.side * R * 0.18 * reach * deploy;
+      part.mesh.position.z = part.pz + R * 0.12 * reach * deploy;
+      part.mesh.rotation.x = part.rx - 0.26 * reach * deploy;
+      part.mesh.rotation.y = part.ry + part.side * 0.58 * reach * deploy;
+      part.mesh.rotation.z = part.rz + part.side * 0.16 * deploy;
+      part.mesh.updateMatrix();
+    }
+    const pulse = presentation.phase === 'anchor_hold' ? 0.16 * Math.sin(t * 12) : 0;
+    const scale = R * (1 + presentation.heat * 0.26 + pulse);
+    emitter.scale.setScalar(scale);
+    emitter.material.emissiveIntensity = 0.32 + presentation.heat * 3.2;
+    emitter.updateMatrix();
+  };
+  outer.userData.setSwarmerDoctrinePhase('approach');
+  outer.userData.updateRuntimeState(null, 0);
+}
+
+// skitter_lowprofile — Skitter. A flat, wide, chamfered plate with six splayed struts and two
+// belly skids: a body built to lie ALONG a rock face rather than fly in the open. It is the only
+// hull in the family that is wider than it is long, which is what makes it read at a glance from
+// a top-down camera even while it is parked in cover.
+function buildSkitterLowProfile(ctx) {
+  const { g, R, vis } = ctx;
+  const W = (vis.halfWidth || 0.5) * 1.9;
+  const hull = swarmerStructureMaterial('skitter', 0x384047, 'SkitterRockSteel');
+  const sensor = swarmerSignalMaterial('skitter-sensor', 0xb07b32, 0x8c3c0b, 'SkitterDullSensor', 1.35);
+
+  const deck = new THREE.Mesh(
+    getGeometry('edr:skitterDeck', () => new THREE.BoxGeometry(1.0, 0.115, 0.72)),
+    hull,
+  );
+  deck.name = 'SkitterFlatDeck';
+  deck.scale.set(W * R, R, R);
+  g.add(deck);
+
+  // Chamfered prow: a 4-sided pyramid squashed flat and laid on its side, so the leading edge is a
+  // blade rather than a nose. Keeps the plate silhouette instead of interrupting it.
+  const prow = new THREE.Mesh(
+    getGeometry('edr:skitterProw', () => new THREE.ConeGeometry(0.36, 0.44, 4)),
+    hull,
+  );
+  prow.name = 'SkitterChamferProw';
+  prow.rotation.set(-Math.PI / 2, 0, Math.PI / 4);
+  prow.position.z = 0.52 * R;
+  prow.scale.set(W * R, R, 0.34 * R);
+  g.add(prow);
+
+  // Six splayed struts, three per side, each further out and further back. This is the "clinging"
+  // read and the reason a Skitter parked on a rock does not look like a Wasp parked on a rock.
+  for (let i = 0; i < 6; i++) {
+    const side = i % 2 === 0 ? -1 : 1;
+    const rank = Math.floor(i / 2);
+    const strut = new THREE.Mesh(
+      getGeometry('edr:skitterStrut', () => new THREE.BoxGeometry(0.34, 0.05, 0.07)),
+      hull,
+    );
+    strut.name = 'SkitterSplayStrut';
+    strut.position.set(side * (W * 0.5 + 0.12) * R, -0.06 * R, (0.24 - rank * 0.26) * R);
+    strut.rotation.set(0, side * (0.3 + rank * 0.16), side * -0.42);
+    strut.scale.setScalar(R);
+    g.add(strut);
+  }
+
+  // Belly skids: the parts that actually touch rock. Long, thin, underneath — visible in profile.
+  for (const dx of [-0.3, 0.3]) {
+    const skid = new THREE.Mesh(
+      getGeometry('edr:skitterSkid', () => new THREE.BoxGeometry(0.06, 0.045, 0.62)),
+      hull,
+    );
+    skid.name = 'SkitterBellySkid';
+    skid.position.set(dx * W * R, -0.11 * R, -0.02 * R);
+    skid.scale.setScalar(R);
+    g.add(skid);
+  }
+
+  // Dorsal sensor blister — a low faceted dome, offset to one side. The only thing that breaks the
+  // flat top, so it is what you see first when one is nested behind a rock rim.
+  const blister = new THREE.Mesh(
+    getGeometry('edr:skitterBlister', () => new THREE.OctahedronGeometry(0.17, 0)),
+    hull,
+  );
+  blister.name = 'SkitterSensorBlister';
+  blister.position.set(-0.13 * R, 0.1 * R, -0.1 * R);
+  blister.scale.set(R, 0.55 * R, R);
+  g.add(blister);
+  const lens = new THREE.Mesh(
+    getGeometry('edr:skitterLens', () => new THREE.BoxGeometry(0.09, 0.026, 0.09)),
+    sensor,
+  );
+  lens.name = 'SkitterSensorLens';
+  lens.position.set(-0.13 * R, 0.16 * R, -0.1 * R);
+  lens.scale.setScalar(R);
+  g.add(lens);
+
+  for (const dx of [-0.2, 0.2]) {
+    const noz = new THREE.Mesh(
+      getGeometry('edr:skitterNoz', () => new THREE.CylinderGeometry(0.055, 0.08, 0.18, 6)),
+      hull,
+    );
+    noz.name = 'SkitterHardNozzle';
+    noz.rotation.x = Math.PI / 2;
+    noz.position.set(dx * W * R, -0.02 * R, -0.42 * R);
+    noz.scale.setScalar(R);
+    g.add(noz);
+  }
+
+  g.parent.userData.enemySilhouette = 'skitter_lowprofile';
+  g.parent.userData.visualLanguage = 'flat-plate-splayed-struts';
+  settleSwarmerForwardFrame(g);
+}
+
+// ember_corecage — Ember. An open longitudinal rib cage between two hard hex rings, with a faceted
+// reactor core suspended inside it. The core is legible "through the hull" because there IS no
+// hull over it — five ribs leave five real gaps, so the hot part occludes and reveals as the body
+// banks. That rotation-dependent flicker is the tell, and it cannot be faked by a glow card.
+function buildEmberCoreCage(ctx) {
+  const { g, R, seed } = ctx;
+  const ribCount = 5;
+  const twist = ((seed >>> 6) % 9) * 0.03;
+  const hull = swarmerStructureMaterial('ember', 0x29282d, 'EmberContainmentSteel');
+  const coreMaterial = new THREE.MeshStandardMaterial({
+    name: 'EmberOrangeReactorCore',
+    color: 0xff7a1a,
+    emissive: 0xff4800,
+    emissiveIntensity: 3.1,
+    roughness: 0.3,
+    metalness: 0.48,
+  });
+
+  const core = new THREE.Mesh(
+    getGeometry('edr:emberCore', () => new THREE.IcosahedronGeometry(0.2, 0)),
+    coreMaterial,
+  );
+  core.name = 'EmberReactorCore';
+  core.rotation.set(0.4, twist, 0.2);
+  core.scale.setScalar(R);
+  core.userData.animated = true;
+  g.add(core);
+
+  for (let i = 0; i < ribCount; i++) {
+    const a = (i / ribCount) * Math.PI * 2 + twist;
+    const rib = new THREE.Mesh(
+      getGeometry('edr:emberRib', () => new THREE.BoxGeometry(0.055, 0.055, 0.78)),
+      hull,
+    );
+    rib.name = 'EmberCageRib';
+    rib.position.set(Math.cos(a) * 0.29 * R, Math.sin(a) * 0.29 * R, 0);
+    rib.rotation.z = a;
+    rib.scale.setScalar(R);
+    g.add(rib);
+  }
+
+  // Two hard hex rings close the cage without covering it. RadialSegments 6 keeps them faceted.
+  for (const z of [0.36, -0.36]) {
+    const ring = new THREE.Mesh(
+      getGeometry('edr:emberRing', () => new THREE.TorusGeometry(0.29, 0.05, 3, 6)),
+      hull,
+    );
+    ring.name = 'EmberContainmentRing';
+    ring.rotation.z = twist;
+    ring.position.z = z * R;
+    ring.scale.setScalar(R);
+    g.add(ring);
+  }
+
+  // Forward mandibles: two heavy wedges that give the hull a direction and a reason to be close.
+  for (const dx of [-1, 1]) {
+    const jaw = new THREE.Mesh(
+      getGeometry('edr:emberJaw', () => new THREE.ConeGeometry(0.13, 0.42, 4)),
+      hull,
+    );
+    jaw.name = 'EmberForwardMandible';
+    jaw.rotation.set(-Math.PI / 2, 0, Math.PI / 4);
+    jaw.position.set(dx * 0.17 * R, 0, 0.6 * R);
+    jaw.scale.setScalar(R);
+    g.add(jaw);
+  }
+
+  // Aft plug: the cage has to end in mass or it reads as debris rather than a ship.
+  const plug = new THREE.Mesh(
+    getGeometry('edr:emberPlug', () => new THREE.CylinderGeometry(0.2, 0.24, 0.22, 6)),
+    hull,
+  );
+  plug.name = 'EmberAftPlug';
+  plug.rotation.x = Math.PI / 2;
+  plug.position.z = -0.5 * R;
+  plug.scale.setScalar(R);
+  g.add(plug);
+
+  for (const dx of [-0.11, 0.11]) {
+    const noz = new THREE.Mesh(
+      getGeometry('edr:emberNoz', () => new THREE.CylinderGeometry(0.06, 0.085, 0.18, 6)),
+      hull,
+    );
+    noz.name = 'EmberHardNozzle';
+    noz.rotation.x = Math.PI / 2;
+    noz.position.set(dx * R, 0, -0.62 * R);
+    noz.scale.setScalar(R);
+    g.add(noz);
+  }
+
+  g.parent.userData.enemySilhouette = 'ember_corecage';
+  g.parent.userData.visualLanguage = 'open-rib-cage-suspended-core';
+  g.parent.userData.emberCageRibCount = ribCount;
+  settleSwarmerForwardFrame(g);
+  const outer = g.parent;
+  outer.userData.emberCorePresentation = { color: 'orange', physicalCore: true, openCage: true };
+  outer.userData.updateRuntimeState = (_entity, now) => {
+    const t = Number.isFinite(now) ? now : 0;
+    core.material.emissiveIntensity = 3.05 + Math.sin(t * 5.2 + twist) * 0.28;
+  };
 }
 
 // sniper_lance — Lancer Sniper. Slim needle, very long barrel, exposed cooling fins. Reads: keep distance.
@@ -1660,6 +2150,10 @@ function buildDreadnoughtEnemy(ctx) {
 
 const ENEMY_FAMILY_BUILDERS = {
   mote_quad: buildMoteQuad,
+  dart_needle: buildDartNeedle,
+  flea_grapnel: buildFleaGrapnel,
+  skitter_lowprofile: buildSkitterLowProfile,
+  ember_corecage: buildEmberCoreCage,
   drone_swarm: buildDroneSwarm,
   sniper_lance: buildSniperLance,
   bruiser_armor: buildBruiserArmor,
@@ -1689,7 +2183,15 @@ function buildShipMesh(e, pal) {
   const enemySil = e.data && e.data.silhouette;
   const family = (enemySil && ENEMY_FAMILY_BUILDERS[enemySil]) ? enemySil : familyFor(defId);
   const isEnemyFamily = !!enemySil && !!ENEMY_FAMILY_BUILDERS[enemySil];
-  const isMoteFamily = family === 'mote_quad';
+  // Designed-procedural swarmer bodies author every nozzle, mast and lit surface themselves. The
+  // generic passes below would bolt on engine nacelles laid out along the ship-def's own axis plus
+  // sprite-based mast tips and nav blinkers — i.e. exactly the billboard/bead-of-light identity
+  // 12_SWARMER_FAMILY bans, on the one tier whose identity IS its silhouette. The Mote already
+  // carried this exemption alone; the rest of its family shares it.
+  const swarmerRecord = swarmerRecordFor(e.data && e.data.lootTableId);
+  const isAuthoredSwarmerHull = !!swarmerRecord
+    && swarmerRecord.enemyId !== 'wasp_swarmer'
+    && swarmerRecord.tell.silhouette === family;
   const recipe = recipeFor(defId);
   const seed = hashId(e.id);
   const tierRow = tierForLoadout(defId, (e.data && e.data.fittings) || [], e.data && e.data.visualTier);
@@ -1708,6 +2210,7 @@ function buildShipMesh(e, pal) {
   outer.userData.hull = g;
   outer.userData.engines = [];
   outer.userData.tierName = tierRow.name || 'Mk.I';
+  outer.userData.genericShipOverlaysSuppressed = isAuthoredSwarmerHull;
 
   const ctx = { g, R, pal, hm, accent, cockpit, vis: { length: 1.4, halfWidth: 0.5, height: 0.35, ...(vis.proportions || {}) }, tier: tierRow, hints, seed, blinkers };
 
@@ -1718,7 +2221,7 @@ function buildShipMesh(e, pal) {
 
   // 2) armor panel shell (tier Mk.II paneled / Mk.III armored): a slightly-larger shell with denser
   //    plating + decals so upgraded ships visibly read as reinforced.
-  if (hints.plating === 'paneled' || hints.plating === 'armored') {
+  if (!isAuthoredSwarmerHull && (hints.plating === 'paneled' || hints.plating === 'armored')) {
     const L = ctx.vis.length, W = ctx.vis.halfWidth, H = ctx.vis.height;
     addDecalShell(g, pal, R, L, H, W * 1.5, hints.plating === 'armored' ? 'greeble' : 'decal');
   }
@@ -1733,11 +2236,11 @@ function buildShipMesh(e, pal) {
   //     patches. All driven by the faction personality so the dirty-outlaw vs clean-authority contrast
   //     applies itself to every ship (player = haunted ex-gangster runner; Concord/Meridian = chrome;
   //     pirates = filthy tagged). Enemies get their own faction look too.
-  applyPaintProfile(ctx, e);
+  if (!isAuthoredSwarmerHull) applyPaintProfile(ctx, e);
 
   // 3) cockpit/bridge glass if the hull authored a position (fighters/scout/multirole use cockpit,
   //    freighters/frigates/capitals use the bridge built into their family hull).
-  if (vis.cockpit && family !== 'scout' && family !== 'fighter' && family !== 'miner' && family !== 'multirole') {
+  if (!isAuthoredSwarmerHull && vis.cockpit && family !== 'scout' && family !== 'fighter' && family !== 'miner' && family !== 'multirole') {
     // families that don't already draw their own canopy get a recessed one at the authored seat
     recessedCanopy(ctx, vis.cockpit[0] * R, vis.cockpit[1] * R, vis.cockpit[2] * R, R * 0.3, R * 0.2, R * 0.2);
   }
@@ -1745,7 +2248,7 @@ function buildShipMesh(e, pal) {
   // 4) WEAPONS — place a barrel at each authored hardpoint whose slot has a fitted weapon.
   const slots = def && def.slots;
   const hardpoints = vis.hardpoints || [];
-  if (slots && hardpoints.length) {
+  if (!isAuthoredSwarmerHull && slots && hardpoints.length) {
     const weaponFit = (e.data && e.data.fittings) || [];
     const wOffset = slotOffset(slots, 'weapon');
     for (let i = 0; i < hardpoints.length && i < (slots.weapon || []).length; i++) {
@@ -1760,7 +2263,7 @@ function buildShipMesh(e, pal) {
   }
 
   // 5) ENGINES — nozzles+plumes at authored engineMounts, sized by fitted engine class.
-  const mounts = isMoteFamily ? [] : (vis.engineMounts || []);
+  const mounts = isAuthoredSwarmerHull ? [] : (vis.engineMounts || []);
   for (let i = 0; i < mounts.length; i++) {
     const m = mounts[i];
     const en = engineProp(pal, R, m.scaleK || 1, loadout.engineClass || 60);
@@ -1770,7 +2273,7 @@ function buildShipMesh(e, pal) {
     outer.userData.engines.push(en);
   }
   // fallback: if no mounts authored, place a pair by recipe (back-compat for defs lacking visuals)
-  if (!isMoteFamily && !mounts.length) {
+  if (!isAuthoredSwarmerHull && !mounts.length) {
     const n = Math.max(1, Math.min(6, recipe.engineCount || 2));
     for (let i = 0; i < n; i++) {
       const z = n === 1 ? 0 : (-(n - 1) / 2 + i) * 0.24 * 2;
@@ -1780,20 +2283,20 @@ function buildShipMesh(e, pal) {
   }
 
   // 6) MINING drill/emitter when a mining module or beam is fitted.
-  if (loadout.hasMining && vis.drill) {
+  if (!isAuthoredSwarmerHull && loadout.hasMining && vis.drill) {
     const drill = miningProp(pal, R, loadout.miningTier);
     drill.position.set(vis.drill[0] * R, vis.drill[1] * R, vis.drill[2] * R);
     g.add(drill);
   }
 
   // 7) SHIELD emitter ring when a shield module is fitted.
-  if (loadout.hasShield && vis.proportions) {
+  if (!isAuthoredSwarmerHull && loadout.hasShield && vis.proportions) {
     const ring = shieldRingProp(pal, R, ctx.vis.halfWidth, ctx.vis.height, loadout.shieldClass);
     g.add(ring);
   }
 
   // 8) SENSOR/UTILITY masts — antennas + dishes near the authored sensor anchor, count from loadout.
-  if (!isMoteFamily && vis.sensor) {
+  if (!isAuthoredSwarmerHull && vis.sensor) {
     const n = Math.max(1, Math.min(5, (loadout.utilityCount || 1) + Math.round((hints.greeble || 0) * 2)));
     const rnd = mulberryLite(seed + 777);
     for (let i = 0; i < n; i++) {
@@ -1811,7 +2314,7 @@ function buildShipMesh(e, pal) {
   }
 
   // 9) NAV BLINKERS (port green / starboard red / white stern) for real aerospace cueing.
-  if (!isMoteFamily) addNavBlinkers(g, R, ctx.vis.halfWidth, ctx.vis.length, blinkers);
+  if (!isAuthoredSwarmerHull) addNavBlinkers(g, R, ctx.vis.halfWidth, ctx.vis.length, blinkers);
 
   // 10) self-animation: engine plume throb + fan spin + nav blinker pulse + capital sensor ring
   //     spin + turret-head idle sweep. The driver must live on a renderable child (Three only fires
