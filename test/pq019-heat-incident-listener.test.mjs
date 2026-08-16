@@ -288,8 +288,8 @@ test('all accepted incident ids remain spent beyond 32 receipts and across reloa
   reloaded.sim.dispose();
 });
 
-test('the incident path does not disturb heat existing sources or decay', () => {
-  const { sim, state, law } = boot();
+test('the incident path does not disturb heat existing sources or bounded local decay', () => {
+  const { sim, state, law, heat: heatSystem } = boot();
   law.reportIncident(report());
   const raised = state.player.heat;
   assert.ok(raised > 0);
@@ -297,8 +297,11 @@ test('the incident path does not disturb heat existing sources or decay', () => 
   // Escape the search zone: heat's own decay must still run untouched.
   const player = state.entities.get(state.playerId);
   player.pos.x = state.player.heatZone.center.x + state.player.heatZone.radius + 5000;
-  for (let i = 0; i < 400; i++) sim.step();
-  assert.ok(state.player.heat < raised, 'the escape path still lowers heat');
+  const clearAfterS = state.player.heatZone.clearAfterS;
+  heatSystem.update(clearAfterS - 1, state);
+  assert.equal(state.player.heat, raised, 'local response remains through the final second');
+  heatSystem.update(1, state);
+  assert.equal(state.player.heat, 0, 'the bounded escape window still clears the local response');
 
   // ...and the spent incident is still spent: decaying to clean does not re-arm the crime.
   const receipt = law.reportIncident(report());

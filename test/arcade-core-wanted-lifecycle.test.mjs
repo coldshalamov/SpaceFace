@@ -6,6 +6,7 @@ import { createBus } from '../src/core/eventBus.js';
 import { economy } from '../src/systems/economy.js';
 import {
   heat,
+  heatClearSecondsForLevel,
   heatLevelFor,
   heatRestitutionCost,
   isPlayerWanted,
@@ -30,6 +31,7 @@ function runtime({ heatValue = 0, credits = 5000, dockedStationId = 'station_hel
     entities: new Map([[playerEntity.id, playerEntity]]),
     ui: { dockedStationId },
     player: { credits, heat: heatValue, flags: { docked: !!dockedStationId } },
+    factions: { faction_scn: { rep: 23, aggro: false } },
   };
   const heatSystem = Object.create(heat);
   heatSystem.init({ state, bus });
@@ -40,8 +42,9 @@ function runtime({ heatValue = 0, credits = 5000, dockedStationId = 'station_hel
   return { bus, state, playerEntity, heatSystem, economySystem };
 }
 
-test('a witnessed hostile-status crime creates local WANTED heat that fully decays after escape', () => {
+test('a witnessed crime cools only after one bounded local search window and never changes reputation', () => {
   const h = runtime({ dockedStationId: null });
+  const factionsBefore = structuredClone(h.state.factions);
   h.bus.emit('entity:killed', {
     killerId: h.state.playerId,
     victimClass: 'ship',
@@ -51,12 +54,32 @@ test('a witnessed hostile-status crime creates local WANTED heat that fully deca
   assert.equal(isPlayerWanted(h.state), true);
   assert.equal(heatLevelFor(h.state.player.heat), 1);
   assert.equal(h.state.player.heatZone.active, true);
+  const clearAfterS = h.state.player.heatZone.clearAfterS;
+  assert.equal(clearAfterS, heatClearSecondsForLevel(1));
+  assert.ok(clearAfterS >= 300 && clearAfterS <= 900);
+
   h.playerEntity.pos.x = h.state.player.heatZone.radius + 10;
-  h.heatSystem.update(20, h.state);
+  h.heatSystem.update(clearAfterS / 2, h.state);
+  assert.equal(isPlayerWanted(h.state), true, 'leaving briefly does not erase a witnessed response');
+
+  h.playerEntity.pos.x = 0;
+  h.heatSystem.update(1, h.state);
+  assert.equal(h.state.player.heatZone.outsideS, 0, 'returning to the witnessed area resets escape');
+
+  h.playerEntity.pos.x = h.state.player.heatZone.radius + 10;
+  h.heatSystem.update(clearAfterS - 1, h.state);
+  assert.equal(isPlayerWanted(h.state), true, 'response remains through the final second');
+  h.heatSystem.update(1, h.state);
 
   assert.equal(h.state.player.heat, 0);
   assert.equal(isPlayerWanted(h.state), false);
   assert.equal(h.state.player.heatZone.active, false);
+  assert.deepEqual(h.state.factions, factionsBefore, 'an ordinary local incident never becomes reputation');
+});
+
+test('local search windows are monotonic and stay inside the authored five-to-fifteen-minute band', () => {
+  const windows = [1, 2, 3, 4, 5].map(heatClearSecondsForLevel);
+  assert.deepEqual(windows, [300, 450, 600, 750, 900]);
 });
 
 test('every station quotes restitution from canonical heat tier and payment clears WANTED once', () => {

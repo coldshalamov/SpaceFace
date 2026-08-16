@@ -8,8 +8,8 @@
 //   - Getting busted smuggling contraband — medium spike per bust
 //   - A faction going aggro on you — strong signal the law noticed
 // What lowers heat:
-//   - Escaping the active search zone. Once outside the visible heat radius, WANTED drops one
-//     level every few seconds until clean; returning inside the zone resets the escape timer.
+//   - Escaping the active search zone. Once outside the visible heat radius, WANTED clears after
+//     one tier-bounded local search window; returning inside the zone resets that window.
 //
 // Outputs:
 //   - player.heat (0..1) — the canonical scalar
@@ -47,7 +47,9 @@ const FactionsAggroAdd = 0.20;     // a faction flipping hostile (the law notice
 const WANTED_THRESHOLD = 0.15;     // above this, lawful patrols hunt you (playerWanted=true)
 const HEAT_LEVEL_COUNT = 5;
 const HEAT_RADIUS_BY_LEVEL = [0, 1200, 1700, 2300, 3000, 3700];
-const HEAT_CLEAR_SECONDS_BY_LEVEL = [0, 5, 6, 7, 8, 10];
+// GTA-rule local memory: ordinary incidents cool completely after five to fifteen minutes away
+// from the witnessed area. Higher tiers search longer, but never become a permanent local lockout.
+const HEAT_CLEAR_SECONDS_BY_LEVEL = [0, 300, 450, 600, 750, 900];
 // Restitution is the docked, wallet-costly escape hatch for the local WANTED loop. Keep the
 // price attached to the heat tier rather than to a UI-supplied amount: the heat owner defines
 // what is being cleared while economy remains the only credit writer.
@@ -139,11 +141,6 @@ function outsideHeatZone(entity, zone) {
   const dx = entity.pos.x - zone.center.x;
   const dz = entity.pos.z - zone.center.z;
   return dx * dx + dz * dz > zone.radius * zone.radius;
-}
-
-function heatValueForLevel(level) {
-  if (level <= 0) return 0;
-  return Math.max(WANTED_THRESHOLD, Math.min(HEAT_MAX, level / HEAT_LEVEL_COUNT));
 }
 
 export const heat = {
@@ -340,9 +337,8 @@ export const heat = {
       return;
     }
     zone.outsideS += Math.max(0, dt || 0);
-    while (zone.active && zone.outsideS >= zone.clearAfterS && heatLevelFor(player.heat) > 0) {
-      zone.outsideS -= zone.clearAfterS;
-      this._dropOneLevel();
+    if (zone.active && zone.outsideS >= zone.clearAfterS) {
+      this._setHeat(0, 'escaped local search area');
     }
   },
 
@@ -362,15 +358,6 @@ export const heat = {
     zone.radius = heatRadiusForLevel(level);
     zone.clearAfterS = heatClearSecondsForLevel(level);
     if (!Number.isFinite(zone.outsideS) || recenter) zone.outsideS = 0;
-  },
-
-  _dropOneLevel() {
-    const player = this.state.player;
-    if (!player) return;
-    const before = player.heat || 0;
-    const beforeLevel = heatLevelFor(before);
-    const after = beforeLevel <= 1 ? 0 : heatValueForLevel(beforeLevel - 1);
-    this._setHeat(after, 'escaped heat radius');
   },
 
   _setHeat(value, reason) {
