@@ -57,13 +57,15 @@ import * as encounter053 from './340-swarmer-ember-pack.js';
 import * as encounter054 from './341-corsair-cargo-cut.js';
 import * as encounter055 from './342-heavy-gunship-turret-boat.js';
 import * as encounter056 from './343-heavy-ramscoop-charge.js';
-import * as encounter057 from './346-medium-marauder-rockbreaker.js';
-import * as encounter058 from './347-medium-interceptor-cutoff.js';
-import * as encounter059 from './348-medium-bulwark-wing.js';
-import * as encounter060 from './349-medium-torcher-fireline.js';
-import * as encounter061 from './350-specialist-jammer-wing.js';
-import * as encounter062 from './351-specialist-repair-tender.js';
-import * as encounter063 from './352-specialist-harrier-kite.js';
+import * as encounter057 from './344-heavy-carrier-lite-screen.js';
+import * as encounter058 from './345-heavy-foundry-mine-line.js';
+import * as encounter059 from './346-medium-marauder-rockbreaker.js';
+import * as encounter060 from './347-medium-interceptor-cutoff.js';
+import * as encounter061 from './348-medium-bulwark-wing.js';
+import * as encounter062 from './349-medium-torcher-fireline.js';
+import * as encounter063 from './350-specialist-jammer-wing.js';
+import * as encounter064 from './351-specialist-repair-tender.js';
+import * as encounter065 from './352-specialist-harrier-kite.js';
 
 export const ENCOUNTER_MODULES = Object.freeze([
   encounter001,
@@ -129,5 +131,7 @@ export const ENCOUNTER_MODULES = Object.freeze([
   encounter061,
   encounter062,
   encounter063,
+  encounter064,
+  encounter065,
 ]);
 export const ENCOUNTERS = buildEncounterCatalog(ENCOUNTER_MODULES);

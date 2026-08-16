@@ -14,7 +14,6 @@ export const HEAVY_FAMILY_ENEMY_IDS = Object.freeze([
 
 export const IRON_MAW_ENEMY_ID = 'dreadnought_boss';
 
-const unwiredBehavior = (fields) => Object.freeze({ runtime: 'unwired', ...fields });
 const WIRED_PART_OUTCOMES = new Set([
   'detach_as_momentum_debris',
   'disable_drive_and_leave_drifting_barge',
@@ -22,6 +21,8 @@ const WIRED_PART_OUTCOMES = new Set([
   'remove_ram_plate_authority',
   'disable_drive',
   'reduce_capital_drive_authority',
+  'disable_bound_launch_bay',
+  'disable_charged_ore_mine_release',
 ]);
 const partBehavior = (fields) => Object.freeze({
   runtime: fields && WIRED_PART_OUTCOMES.has(fields.onDestroyed) ? 'physical_parts_v1' : 'unwired',
@@ -61,14 +62,17 @@ const phase = (id, fields) => Object.freeze({
     Array.isArray(value) ? Object.freeze([...value]) : value,
   ])),
 });
-const recipe = (fields) => Object.freeze({
-  ...fields,
-  runtime: 'physical_parts_v1',
-  combatProfileId: 'combat_profile_standard_ship',
-  behavior: unwiredBehavior(fields.behavior),
-  parts: Object.freeze(fields.parts),
-  phases: Object.freeze(fields.phases || []),
-});
+const recipe = (fields) => {
+  const { behaviorRuntime = 'unwired', ...authored } = fields;
+  return Object.freeze({
+    ...authored,
+    runtime: 'physical_parts_v1',
+    combatProfileId: 'combat_profile_standard_ship',
+    behavior: Object.freeze({ runtime: behaviorRuntime, ...fields.behavior }),
+    parts: Object.freeze(fields.parts),
+    phases: Object.freeze(fields.phases || []),
+  });
+};
 
 export const HEAVY_PART_RECIPES = Object.freeze([
   recipe({
@@ -121,6 +125,7 @@ export const HEAVY_PART_RECIPES = Object.freeze([
     id: 'heavy_parts_carrier_lite_v1',
     enemyTypeId: 'heavy_carrier_lite',
     class: 'heavy',
+    behaviorRuntime: 'physical_parts_v1',
     behavior: {
       fightShape: 'launches_small_screen_until_bays_are_stripped',
       counterVerb: 'destroy_launch_bays_before_the_screen_grows',
@@ -129,10 +134,12 @@ export const HEAVY_PART_RECIPES = Object.freeze([
     parts: [
       part('heavy_carrier_lite_bay_port', 'bay', 'subsystem_weapon',
         { kind: 'launch_bay', launchFamily: 'mote_or_wasp', capacity: 2 },
-        { onDestroyed: 'disable_bound_launch_bay' }),
+        { onDestroyed: 'disable_bound_launch_bay' },
+        { id: 'launch_bay_port', x: 0.08, z: 0.98 }),
       part('heavy_carrier_lite_bay_starboard', 'bay', 'subsystem_weapon',
         { kind: 'launch_bay', launchFamily: 'mote_or_wasp', capacity: 3 },
-        { onDestroyed: 'disable_bound_launch_bay' }),
+        { onDestroyed: 'disable_bound_launch_bay' },
+        { id: 'launch_bay_starboard', x: 0.08, z: -0.98 }),
       part('heavy_carrier_lite_pd_ring', 'weapon', 'subsystem_weapon',
         { kind: 'weapon', weaponId: 'wpn_flak_turret_s', ordinal: 0 },
         { onDestroyed: 'detach_as_momentum_debris' }),
@@ -148,21 +155,25 @@ export const HEAVY_PART_RECIPES = Object.freeze([
     id: 'heavy_parts_foundry_v1',
     enemyTypeId: 'heavy_foundry',
     class: 'heavy',
+    behaviorRuntime: 'physical_parts_v1',
     behavior: {
       fightShape: 'close_range_cutters_and_charged_ore_mines',
-      counterVerb: 'bait_the_mine_line_then_strip_cutters',
+      counterVerb: 'detonate_or_repulse_the_ore_then_strip_the_rack',
       tell: 'industrial_spine_drill_head_and_yellow_hazard_zones',
     },
     parts: [
       part('heavy_foundry_cutter_port', 'cutter', 'subsystem_weapon',
-        { kind: 'weapon', weaponId: 'wpn_plasma_cannon_m', ordinal: 0 },
-        { onDestroyed: 'detach_as_momentum_debris' }),
+        { kind: 'weapon', weaponId: 'wpn_beam_laser_m', ordinal: 0 },
+        { onDestroyed: 'detach_as_momentum_debris' },
+        { id: 'industrial_cutter_port', x: 0.72, z: 0.72 }),
       part('heavy_foundry_cutter_starboard', 'cutter', 'subsystem_weapon',
-        { kind: 'weapon', weaponId: 'wpn_plasma_cannon_m', ordinal: 1 },
-        { onDestroyed: 'detach_as_momentum_debris' }),
+        { kind: 'weapon', weaponId: 'wpn_beam_laser_m', ordinal: 1 },
+        { onDestroyed: 'detach_as_momentum_debris' },
+        { id: 'industrial_cutter_starboard', x: 0.72, z: -0.72 }),
       part('heavy_foundry_ore_mine_rack', 'rack', 'subsystem_weapon',
-        { kind: 'weapon', weaponId: 'wpn_missile_rack_m', ordinal: 0 },
-        { onDestroyed: 'disable_charged_ore_mine_release' }),
+        { kind: 'ore_mine_rack', capacity: 3 },
+        { onDestroyed: 'disable_charged_ore_mine_release' },
+        { id: 'charged_ore_rack', x: -0.2, z: 0.98 }),
       part('heavy_foundry_drive_cluster', 'drive', 'subsystem_drive',
         { kind: 'subsystem', socket: 'aft_industrial_drive' },
         { onDestroyed: 'disable_drive' }),

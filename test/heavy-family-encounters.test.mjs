@@ -12,10 +12,12 @@ const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const CASES = Object.freeze([
   Object.freeze({ id: 'heavy_gunship_turret_boat', order: 342, enemyId: 'heavy_gunship' }),
   Object.freeze({ id: 'heavy_ramscoop_charge', order: 343, enemyId: 'heavy_ramscoop' }),
+  Object.freeze({ id: 'heavy_carrier_lite_screen', order: 344, enemyId: 'heavy_carrier_lite' }),
+  Object.freeze({ id: 'heavy_foundry_mine_line', order: 345, enemyId: 'heavy_foundry' }),
 ]);
 const HEAVY_IDS = new Set(['heavy_gunship', 'heavy_ramscoop', 'heavy_carrier_lite', 'heavy_foundry']);
 
-test('Gunship and Ramscoop are guaranteed single anchors with only ordinary sampled companions', () => {
+test('each heavy fight shape is a guaranteed single anchor with only ordinary sampled companions', () => {
   const zones = [
     ...zonesForSector('sector_pallas_drift'),
     ...zonesForSector('sector_sker_haven'),
@@ -44,7 +46,7 @@ test('Gunship and Ramscoop are guaranteed single anchors with only ordinary samp
   }
 });
 
-test('both heavy fight shapes naturally win weighted planner slots and the generated index is fresh', () => {
+test('all landed heavy fight shapes naturally win weighted planner slots and the generated index is fresh', () => {
   const reached = new Set();
   for (let seed = 1; seed <= 512 && reached.size < CASES.length; seed++) {
     for (const sectorId of ['sector_pallas_drift', 'sector_sker_haven']) {
@@ -54,7 +56,7 @@ test('both heavy fight shapes naturally win weighted planner slots and the gener
     }
   }
   assert.deepEqual(CASES.filter((row) => !reached.has(row.id)), [],
-    'both anchors enter ordinary schedules without a forced request');
+    'every anchor enters ordinary schedules without a forced request');
 
   const freshness = spawnSync(process.execPath, ['scripts/build-encounter-index.mjs', '--check'], {
     cwd: ROOT,

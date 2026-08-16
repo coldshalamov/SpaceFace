@@ -7,6 +7,7 @@
 export const HeavyFightKind = Object.freeze({
   TURRET_BOAT: 'turret_boat',
   COMMITTED_RAM: 'committed_ram',
+  INDUSTRIAL_FOUNDRY: 'industrial_foundry',
 });
 
 export const HEAVY_RAM_SPOOL_TICKS = 30;
@@ -19,6 +20,10 @@ export const HEAVY_RAM_RECOVER_TICKS = 90;
 export function heavyFightKind(self) {
   const authored = self && self.heavyFightShape;
   const capability = String(authored && authored.capability || '');
+  if (capability === HeavyFightKind.INDUSTRIAL_FOUNDRY && self.combatRoleId === 'heavy_foundry'
+    && authored?.runtime === 'physical_parts_v1') {
+    return HeavyFightKind.INDUSTRIAL_FOUNDRY;
+  }
   if (authored?.runtime !== 'combat_doctrine') return null;
   if (capability === HeavyFightKind.TURRET_BOAT && self.combatRoleId === 'heavy_gunship') {
     return HeavyFightKind.TURRET_BOAT;
@@ -32,6 +37,9 @@ export function heavyFightKind(self) {
 
 export function heavyFlightProfile(self, fallback) {
   const kind = heavyFightKind(self);
+  // The Foundry keeps the proven brawler phase machine. Naming it here prevents faction flavor
+  // from widening its range beyond the 300-WU physical cutter fit; it does not invent a new phase.
+  if (kind === HeavyFightKind.INDUSTRIAL_FOUNDRY) return fallback;
   return kind ? `heavy_${kind}` : fallback;
 }
 

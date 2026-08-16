@@ -82,7 +82,8 @@ test('heavy recipes bind unique stable physical parts to the existing combat voc
     }
     assert.equal(row.combatProfileId, 'combat_profile_standard_ship');
     assert.equal(row.runtime, 'physical_parts_v1');
-    assert.equal(row.behavior.runtime, 'unwired');
+    const fightRuntimeWired = row.enemyTypeId === 'heavy_carrier_lite' || row.enemyTypeId === 'heavy_foundry';
+    assert.equal(row.behavior.runtime, fightRuntimeWired ? 'physical_parts_v1' : 'unwired');
     assert.ok(row.parts.length > 0, `${row.id} has first-class parts`);
     const boundWeaponKeys = [];
     for (const part of row.parts) {
@@ -90,8 +91,7 @@ test('heavy recipes bind unique stable physical parts to the existing combat voc
       assert.ok(KNOWN_SUBSYSTEM_IDS.has(part.subsystemId), `${part.id} reuses a real subsystem id`);
       assert.ok(part.binding?.kind, `${part.id} has an explicit physical binding`);
       const outcome = part.behavior && part.behavior.onDestroyed;
-      const remainsUnwired = outcome === 'weaken_pd_screen' || outcome === 'disable_bound_launch_bay'
-        || outcome === 'disable_charged_ore_mine_release'
+      const remainsUnwired = outcome === 'weaken_pd_screen'
         || part.behavior?.onExposed === 'offer_board_salvage_or_destroy_decision';
       assert.equal(part.behavior?.runtime, remainsUnwired ? 'unwired' : 'physical_parts_v1', `${part.id} reports only wired mechanics`);
       if (part.binding.kind === 'weapon') {
@@ -125,11 +125,11 @@ test('spawn propagation preserves immutable recipes and names only physically wi
     assert.strictEqual(spec.data.heavyPartRecipe, authored, 'spawn references the immutable authored recipe');
     assert.equal(Object.isFrozen(spec.data.heavyPartRecipe), true);
     assert.equal(spec.data.heavyPartRecipe.runtime, 'physical_parts_v1');
-    assert.equal(spec.data.heavyPartRecipe.behavior.runtime, 'unwired');
+    const fightRuntimeWired = enemyId === 'heavy_carrier_lite' || enemyId === 'heavy_foundry';
+    assert.equal(spec.data.heavyPartRecipe.behavior.runtime, fightRuntimeWired ? 'physical_parts_v1' : 'unwired');
     for (const part of spec.data.heavyPartRecipe.parts) {
       const outcome = part.behavior.onDestroyed;
-      const remainsUnwired = outcome === 'weaken_pd_screen' || outcome === 'disable_bound_launch_bay'
-        || outcome === 'disable_charged_ore_mine_release'
+      const remainsUnwired = outcome === 'weaken_pd_screen'
         || part.behavior.onExposed === 'offer_board_salvage_or_destroy_decision';
       assert.equal(part.behavior.runtime, remainsUnwired ? 'unwired' : 'physical_parts_v1');
     }
@@ -153,6 +153,23 @@ test('the Gunship PD ring has an immutable normalized socket that reaches the hu
   assert.deepEqual(layout.localOffset, { x: radius * -0.98, z: radius * 0.12 });
   assert.ok(Math.hypot(layout.localOffset.x, layout.localOffset.z) + layout.radius > radius,
     'the physical child protrudes beyond the coarse hull instead of being impossible to shoot');
+});
+
+test('Carrier bays and the Foundry rack are immutable surface sockets for honest launches and shots', () => {
+  const cases = [
+    ['heavy_carrier_lite', 'heavy_carrier_lite_bay_port'],
+    ['heavy_carrier_lite', 'heavy_carrier_lite_bay_starboard'],
+    ['heavy_foundry', 'heavy_foundry_ore_mine_rack'],
+  ];
+  for (const [enemyId, partId] of cases) {
+    const recipe = heavyPartRecipeForEnemy(enemyId);
+    const authored = recipe.parts.find((part) => part.id === partId);
+    assert.equal(Object.isFrozen(authored.physicalSocket), true);
+    const layout = buildHeavyPartLayouts({ radius: 34, mass: EXPECTED_MASSES.get(enemyId) }, recipe)
+      .find((part) => part.partId === partId);
+    assert.ok(Math.hypot(layout.localOffset.x, layout.localOffset.z) + layout.radius > 34,
+      `${partId} protrudes beyond the coarse parent circle`);
+  }
 });
 
 test('Iron Maw has a capital part/phase recipe without claiming a phase runtime', () => {
