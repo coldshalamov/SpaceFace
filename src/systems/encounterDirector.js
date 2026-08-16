@@ -110,6 +110,21 @@ const BARK_MIN_GAP_S = 4;          // per-encounter bark spacing (danger 'alert'
 const NOISE_DECAY_PER_S = 0.02;    // mining-noise half-life ~35s
 const PROX_SLACK = 600;            // "on the zone" slack for proximity-gated shapes
 
+// AC-10 populated-island contact. This is an entry-local one-shot layered through the ordinary
+// catalog/director/budget/spawn facade; it does not change the generic sector pacing law above.
+export const ARCADE_ISLAND_CONTACT_SHAPE_ID = 'arcade_island_contact';
+export const ARCADE_ISLAND_CONTACT_MIN_DELAY_S = 6;
+export const ARCADE_ISLAND_CONTACT_MAX_DELAY_S = 12;
+export const ARCADE_ISLAND_CONTACT_DEADLINE_S = 20;
+export const ARCADE_ISLAND_CONTACT_REARM_S = 90;
+export const ARCADE_ISLAND_CONTACT_DISTANCE_WU = 125;
+const ARCADE_ISLAND_SPAWN_MIN_WU = 180;
+const ARCADE_ISLAND_SPAWN_MAX_WU = 240;
+const ARCADE_ISLAND_BEARING_SPREAD_RAD = Math.PI / 3;
+const ARCADE_ISLAND_ELIGIBLE_TYPES = new Set([
+  'mining_belt', 'refinery_approach', 'outlaw_zone', 'ambush_lane', 'derelict_field',
+]);
+
 const CERES_ACTIVITY_SECTOR_ID = 'sector_ceres_belt';
 const CERES_ACTIVITY_AMBUSH_ZONE_ID = 'zone_ceres_ambush';
 const CERES_ACTIVITY_AMBUSH_ENCOUNTER_ID = 'ceres:activity:throughline-ambush';
@@ -142,6 +157,9 @@ export const encounterDirector = {
     this.registry = ctx.registry || null;
     this._saveRestoring = false;
     this._freightCustodyRebindPasses = 0;
+    this._arcadeIslandVisit = null;
+    this._arcadeIslandLastArm = new Map();
+    this._arcadeIslandLoadSuppressed = false;
     ensureDirectorState(this.state);
 
     if (this.bus && typeof this.bus.on === 'function') {
@@ -186,11 +204,15 @@ export const encounterDirector = {
       // Mining noise attracts predators (decaying accumulator; player yields only).
       this.bus.on('mining:yield', (p) => this._onMiningYield(p));
       this.bus.on('resonance:scanCompleted', (p) => this._onResonanceScan(p));
+      this.bus.on('world:zoneEntered', (p) => this._onArcadeIslandEntered(p || {}));
+      this.bus.on('world:zoneExited', (p) => this._onArcadeIslandExited(p || {}));
     }
   },
 
   newGame() {
     this._saveRestoring = false;
+    this._clearArcadeIslandContact(true);
+    this._arcadeIslandLoadSuppressed = false;
     this._routeToScript('convoy', 'lifecycle', { reason: 'new_game' });
     clearAllPredationBindings(this.state, 'new_game');
     this.state.encounterDirector = freshState();
@@ -212,6 +234,7 @@ export const encounterDirector = {
     dir._accum = 0;
     const now = state.simTime || 0;
     this._accrue(dir, state, step);
+    this._tickArcadeIslandContact(dir, state, now);
     if (!isDocked(state) && !isTutorialActive(state)) this._pump(dir, state, now);
     this._tickLive(dir, state, now);
   },
@@ -233,6 +256,8 @@ export const encounterDirector = {
       return;
     }
 
+    this._clearArcadeIslandContact(true);
+
     const state = this.state;
     const dir = ensureDirectorState(state);
     const now = state.simTime || 0;
@@ -253,6 +278,7 @@ export const encounterDirector = {
     // only for intentional jump / load / non-continuous boundaries.
     const sectorId = p && typeof p === 'object' ? p.sectorId : p;
     if (p && (p.continuous || p.noTeleport)) return;
+    this._clearArcadeIslandContact(true);
     if (sectorId === CERES_ACTIVITY_SECTOR_ID) this._leaveCeresActivityAmbush();
 
     const dir = ensureDirectorState(this.state);
@@ -292,6 +318,10 @@ export const encounterDirector = {
     // Some load owners publish save:loaded before their final entity-index rebuild. Two bounded
     // update passes catch that production ordering without turning this into a permanent scan.
     this._freightCustodyRebindPasses = 2;
+    // A Continue materializes the player inside their current zone. That is transport, not a fresh
+    // arrival beat: suppress until the player physically crosses a zone boundary.
+    this._clearArcadeIslandContact(true);
+    this._arcadeIslandLoadSuppressed = true;
     // Absolute cooldown stamps from another timeline are clamped into sane range.
     const now = state.simTime || 0;
     for (const k of Object.keys(fresh.cooldowns)) {
@@ -300,6 +330,177 @@ export const encounterDirector = {
       if (!(fresh.cooldowns[k] <= maxCd)) fresh.cooldowns[k] = maxCd;
     }
     this._seedCeresActivityAmbush(this._currentSectorId(), { loaded: true });
+  },
+
+  // ── AC-10 populated-island contact ──────────────────────────────────────────────────────────
+
+  _clearArcadeIslandContact(clearMemory = false) {
+    this._arcadeIslandVisit = null;
+    if (clearMemory) this._arcadeIslandLastArm = new Map();
+  },
+
+  _onArcadeIslandEntered(payload) {
+    if (this._saveRestoring || this._arcadeIslandLoadSuppressed) return;
+    const state = this.state;
+    if (!state || isDocked(state) || isTutorialActive(state)) return;
+    const sectorId = this._currentSectorId();
+    if (!sectorId || !payload.zoneId) return;
+    const zone = zonesForSector(sectorId).find((candidate) => candidate.id === payload.zoneId);
+    if (!isArcadeIslandContactZone(zone)) return;
+    const player = this.player();
+    if (player && this._arcadeIslandHasContact(player)) return;
+
+    const now = state.simTime || 0;
+    const key = `${sectorId}\u0000${zone.id}`;
+    const previous = this._arcadeIslandLastArm.get(key);
+    if (Number.isFinite(previous) && now - previous < ARCADE_ISLAND_CONTACT_REARM_S) return;
+    const center = sectorLocalToGlobalForSector(zone.center, sectorId);
+    if (!center || !Number.isFinite(center.x) || !Number.isFinite(center.z)) return;
+    const delay = arcadeIslandContactDelay(
+      (state.meta && state.meta.seed) || 0,
+      sectorId,
+      zone.id,
+      Math.floor(now / ARCADE_ISLAND_CONTACT_REARM_S),
+    );
+    this._arcadeIslandLastArm.set(key, now);
+    this._arcadeIslandVisit = {
+      key,
+      sectorId,
+      zoneId: zone.id,
+      zone,
+      center,
+      enteredAt: now,
+      dueAt: now + delay,
+      deadlineAt: now + ARCADE_ISLAND_CONTACT_DEADLINE_S,
+      firedAt: null,
+    };
+  },
+
+  _onArcadeIslandExited(payload) {
+    // Crossing a real zone boundary after Continue restores eligibility for the next actual visit.
+    this._arcadeIslandLoadSuppressed = false;
+    const visit = this._arcadeIslandVisit;
+    if (!visit || !payload.zoneId || payload.zoneId === visit.zoneId) this._arcadeIslandVisit = null;
+  },
+
+  _tickArcadeIslandContact(dir, state, now) {
+    const visit = this._arcadeIslandVisit;
+    if (!visit || this._arcadeIslandLoadSuppressed || isDocked(state) || isTutorialActive(state)) return;
+    if (visit.sectorId !== this._currentSectorId()) {
+      this._arcadeIslandVisit = null;
+      return;
+    }
+    const player = this.player();
+    if (!player || !player.pos) return;
+    const local = globalToSectorLocalForSector(player.pos, visit.sectorId);
+    const currentZone = zoneAt(visit.sectorId, local.x, local.z);
+    if (!currentZone || currentZone.id !== visit.zoneId) {
+      this._arcadeIslandVisit = null;
+      return;
+    }
+    if (this._arcadeIslandHasContact(player)) {
+      this._arcadeIslandVisit = null;
+      return;
+    }
+    if (now > visit.deadlineAt) {
+      this._arcadeIslandVisit = null;
+      return;
+    }
+    if (visit.firedAt != null || now < visit.dueAt) return;
+    const budget = this.helpers && this.helpers.spawnBudget;
+    if (budget && typeof budget.available === 'function' && budget.available() < 3) return;
+    const fired = this._fireArcadeIslandContact(dir, state, visit, now);
+    if (fired) visit.firedAt = now;
+  },
+
+  _arcadeIslandHasContact(player) {
+    const entities = this.state && this.state.entityList || [];
+    const maxD2 = ARCADE_ISLAND_CONTACT_DISTANCE_WU * ARCADE_ISLAND_CONTACT_DISTANCE_WU;
+    for (const entity of entities) {
+      if (!entity || entity.alive === false || !entity.pos || entity.id === player.id) continue;
+      if (entity.type !== 'ship' && entity.type !== 'drone') continue;
+      if (entity.team === player.team) continue;
+      const ai = entity.data && entity.data.ai;
+      if (ai && (ai.passive === true || ai.lawful === true)) continue;
+      const dx = entity.pos.x - player.pos.x;
+      const dz = entity.pos.z - player.pos.z;
+      if (dx * dx + dz * dz <= maxD2) return true;
+    }
+    return false;
+  },
+
+  _fireArcadeIslandContact(dir, state, visit, now) {
+    const shape = ENCOUNTERS[ARCADE_ISLAND_CONTACT_SHAPE_ID];
+    const player = this.player();
+    if (!shape || !player || !player.pos || !encounterScriptFor(shape)) return false;
+    const rng = mulberry32(hash32(
+      (state.meta && state.meta.seed) || 0,
+      visit.key,
+      Math.floor(visit.enteredAt),
+      'arcade-island-contact',
+    ));
+    const item = resolveEncounter(
+      shape,
+      visit.zone,
+      visit.sectorId,
+      Math.floor(now / DAY_SECONDS),
+      0,
+      rng,
+    );
+    if (!item || !item.ships.length) return false;
+
+    const threat = zoneThreat(visit.zone);
+    const targetCount = threat >= 2
+      ? 4 + Math.floor(rng() * 3)
+      : 3 + Math.floor(rng() * 2);
+    const waspTemplate = item.ships.find((ship) => ship.archetype === 'wasp_swarmer')
+      || item.ships[0];
+    const ships = [];
+    if (threat >= 2) ships.push({
+      ...waspTemplate,
+      archetype: 'reaver_pirate',
+      combatDoctrineId: ENEMY_BY_ID.get('reaver_pirate')?.combatDoctrineId || null,
+      compositionRole: 'identity_anchor',
+    });
+    while (ships.length < targetCount) ships.push({
+      ...waspTemplate,
+      archetype: 'wasp_swarmer',
+      combatDoctrineId: ENEMY_BY_ID.get('wasp_swarmer')?.combatDoctrineId || null,
+      compositionRole: threat >= 2 ? 'light' : undefined,
+    });
+
+    let bearing = Math.atan2(visit.center.z - player.pos.z, visit.center.x - player.pos.x);
+    if (!Number.isFinite(bearing) || Math.hypot(
+      visit.center.x - player.pos.x,
+      visit.center.z - player.pos.z,
+    ) < 1e-6) bearing = rng() * Math.PI * 2;
+    const angle = bearing + (rng() * 2 - 1) * ARCADE_ISLAND_BEARING_SPREAD_RAD;
+    const radius = ARCADE_ISLAND_SPAWN_MIN_WU
+      + rng() * (ARCADE_ISLAND_SPAWN_MAX_WU - ARCADE_ISLAND_SPAWN_MIN_WU);
+    const radialX = Math.cos(angle);
+    const radialZ = Math.sin(angle);
+    const tangentX = -radialZ;
+    const tangentZ = radialX;
+    for (let index = 0; index < ships.length; index++) {
+      const centered = index - (ships.length - 1) * 0.5;
+      const lane = centered * 12;
+      const depth = (index % 2 === 0 ? -1 : 1) * Math.min(8, Math.abs(centered) * 3);
+      ships[index].pos = {
+        x: player.pos.x + radialX * (radius + depth) + tangentX * lane,
+        z: player.pos.z + radialZ * (radius + depth) + tangentZ * lane,
+      };
+      ships[index].passive = true;
+    }
+
+    item.ships = ships;
+    item.encounterId = `arcade-island:${visit.sectorId}:${visit.zoneId}:${Math.floor(visit.enteredAt)}`;
+    item.squadId = item.encounterId;
+    item.zoneCenter = { x: visit.center.x, z: visit.center.z };
+    item.zoneRadius = visit.zone.radius || 400;
+    item.data = { arcadeIslandContact: true };
+    if (!this._spawnAdmissionAvailable(item, shape)) return false;
+    this._fire(dir, state, item, shape, now);
+    return !!dir.live[item.encounterId];
   },
 
   _restorePersistedFreightCustodies() {
@@ -2761,6 +2962,21 @@ function encounterAdmissionMinimum(item, shape) {
   // Named hunters assemble their roster inside the script from durable captain state.
   if (shape && shape.script === 'namedHunter') return 1;
   return 0;
+}
+
+/** Pure AC-10 geography gate: named industrial/outlaw pockets with real nonzero threat only. */
+export function isArcadeIslandContactZone(zone) {
+  return !!(zone && typeof zone.id === 'string'
+    && ARCADE_ISLAND_ELIGIBLE_TYPES.has(zone.type)
+    && zoneThreat(zone) > 0);
+}
+
+/** Stable 6–12 second entry delay without consuming the simulation RNG stream. */
+export function arcadeIslandContactDelay(seed, sectorId, zoneId, visitOrdinal = 0) {
+  const unit = hash32(seed || 0, sectorId || '', zoneId || '', visitOrdinal | 0, 'ac10-delay')
+    / 4294967296;
+  return ARCADE_ISLAND_CONTACT_MIN_DELAY_S
+    + unit * (ARCADE_ISLAND_CONTACT_MAX_DELAY_S - ARCADE_ISLAND_CONTACT_MIN_DELAY_S);
 }
 
 // ── small read-only helpers ───────────────────────────────────────────────────────────────────────
