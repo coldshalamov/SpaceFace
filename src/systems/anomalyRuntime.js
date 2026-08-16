@@ -12,10 +12,12 @@
 import {
   ASHFALL_DEBRIS_RIVER,
   ION_STORM_POCKET,
+  ORCUS_DRIFTER_SHOAL,
   ORCUS_GRAVITY_EDDY,
   SCAVENGER_SWARM,
   anomalySiteForSector,
   debrisRiverForSector,
+  drifterShoalForSector,
   ionStormForSector,
 } from '../data/anomalySites.js';
 import { fieldsFlag } from '../data/fields.js';
@@ -218,8 +220,35 @@ function ionStormMarkers(state) {
     && entity.data.anomalyStableId === ION_STORM_POCKET.markerStableId);
 }
 
+function drifterBodies(state) {
+  return (state && state.entityList || []).filter((entity) => entity && entity.alive !== false
+    && entity.type === 'drone' && entity.data
+    && entity.data.drifterShoalId === ORCUS_DRIFTER_SHOAL.id);
+}
+
 function stableUnit(...parts) {
   return hash32(...parts) / 0x100000000;
+}
+
+function drifterSlotPose(site, anchor, state, slot) {
+  const seed = seedOf(state);
+  const angle = stableUnit(seed, site.id, slot, 'angle') * Math.PI * 2;
+  const ringT = stableUnit(seed, site.id, slot, 'radius');
+  const speedT = stableUnit(seed, site.id, slot, 'speed');
+  const bodyT = stableUnit(seed, site.id, slot, 'body-radius');
+  const radius = site.ringRadiusMin + (site.ringRadiusMax - site.ringRadiusMin) * ringT;
+  const speed = site.tangentialSpeedMin
+    + (site.tangentialSpeedMax - site.tangentialSpeedMin) * speedT;
+  return Object.freeze({
+    angle,
+    radius,
+    bodyRadius: site.radiusMin + (site.radiusMax - site.radiusMin) * bodyT,
+    pos: Object.freeze({
+      x: anchor.x + Math.cos(angle) * radius,
+      z: anchor.z + Math.sin(angle) * radius,
+    }),
+    vel: Object.freeze({ x: -Math.sin(angle) * speed, z: Math.cos(angle) * speed }),
+  });
 }
 
 export function ionStormLightningReceipt(site, volume, state, pulseWindow) {
@@ -303,6 +332,8 @@ export const anomalyRuntime = {
     this.registry = ctx.registry || null;
     this._registered = false;
     this._anchor = { x: 0, z: 0 };
+    this._drifterAnnounced = false;
+    this._drifterUglinessSpoken = false;
     this._riverBodies = new Map();
     this._riverAnnounced = false;
     this._scavenger = null;
@@ -319,6 +350,7 @@ export const anomalyRuntime = {
         this.bus.on('mining:yield', (payload) => this._onMiningYield(payload)),
         this.bus.on('salvage:completed', (payload) => this._onSalvageCompleted(payload)),
         this.bus.on('aftermathWreck:spawned', (payload) => this._onFreshWreckSpawned(payload)),
+        this.bus.on('projectile:hit', (payload) => this._onDrifterProjectileHit(payload)),
       ];
     }
   },
@@ -337,6 +369,7 @@ export const anomalyRuntime = {
     const sectorId = state && state.world && state.world.currentSectorId;
     const activeRoute = !!(state && state.mode === 'flight');
     this._updateEddy(activeRoute ? anomalySiteForSector(sectorId) : null, state);
+    this._updateDrifterShoal(activeRoute ? drifterShoalForSector(sectorId) : null, state);
     this._updateDebrisRiver(activeRoute ? debrisRiverForSector(sectorId) : null, state);
     this._updateScavengerSwarm(activeRoute, state);
     this._updateIonStorm(activeRoute ? ionStormForSector(sectorId) : null, state);
@@ -355,6 +388,11 @@ export const anomalyRuntime = {
       fieldId: ORCUS_GRAVITY_EDDY.field.id,
       registered: !!live,
       center: Object.freeze({ x: this._anchor.x, z: this._anchor.z }),
+      drifterShoal: Object.freeze({
+        wildlifeId: ORCUS_DRIFTER_SHOAL.id,
+        liveBodies: drifterBodies(this.state).length,
+        uglinessSpoken: !!this._drifterUglinessSpoken,
+      }),
       debrisRiver: Object.freeze({
         anomalyId: ASHFALL_DEBRIS_RIVER.id,
         liveBodies: riverBodies(this.state).length,
@@ -467,6 +505,161 @@ export const anomalyRuntime = {
     if (receipt && this.bus && typeof this.bus.emit === 'function') {
       this.bus.emit('anomaly:ionStormLightning', receipt);
     }
+  },
+
+  _updateDrifterShoal(site, state) {
+    if (!site || !this.helpers || typeof this.helpers.spawnEntity !== 'function') {
+      this._clearDrifterShoal(!site ? 'inactive_sector' : 'spawn_owner_missing');
+      return;
+    }
+    const anchor = resolveAnchor(site);
+    const fields = this._fieldsSystem();
+    const fieldLive = !!(fields && typeof fields.hasExternal === 'function'
+      && fields.hasExternal(site.fieldId));
+    if (!anchor || !fieldLive) {
+      this._clearDrifterShoal(!anchor ? 'canonical_zone_missing' : 'field_owner_missing');
+      return;
+    }
+
+    const bySlot = new Map();
+    for (const body of drifterBodies(state)) {
+      const slot = whole(body.data && body.data.drifterSlot, -1);
+      if (slot < 0 || slot >= site.count) {
+        this._removeEntity(body);
+        continue;
+      }
+      if (!bySlot.has(slot)) bySlot.set(slot, body);
+      else this._removeEntity(body);
+    }
+    for (let slot = 0; slot < site.count; slot++) {
+      if (!bySlot.has(slot)) bySlot.set(slot, this._spawnDrifterBody(site, anchor, state, slot));
+    }
+
+    const video = state && state.settings && state.settings.video || {};
+    const accessibility = state && state.settings && state.settings.accessibility || {};
+    for (const body of bySlot.values()) {
+      if (!body || body.alive === false || !body.data) continue;
+      body.data.drifterPresentationTime = simTimeOf(state);
+      body.data.drifterMotionReduce = !!(video.motionReduce || accessibility.reducedMotion);
+      body.data.drifterFlashReduce = !!(
+        video.flashReduce || accessibility.flashReduce || accessibility.reducedFlash
+      );
+    }
+
+    if (!this._drifterAnnounced) {
+      this._drifterAnnounced = true;
+      this.bus && this.bus.emit && this.bus.emit('anomaly:registered', {
+        anomalyId: site.id,
+        sectorId: site.sectorId,
+        zoneId: site.zoneId,
+        fieldId: site.fieldId,
+        bodyCount: site.count,
+        presentation: 'physical_drifter_shoal',
+      });
+    }
+  },
+
+  _spawnDrifterBody(site, anchor, state, slot) {
+    const pose = drifterSlotPose(site, anchor, state, slot);
+    const stableId = `${site.id}:slot:${slot}`;
+    return this.helpers.spawnEntity({
+      type: 'drone',
+      team: 2,
+      factionId: null,
+      pos: { x: pose.pos.x, z: pose.pos.z },
+      vel: { x: pose.vel.x, z: pose.vel.z },
+      rot: Math.atan2(pose.vel.z, pose.vel.x),
+      angVel: (slot % 2 === 0 ? 1 : -1) * (0.025 + slot * 0.002),
+      radius: pose.bodyRadius,
+      mass: site.mass,
+      hull: 1,
+      hullMax: 1,
+      collides: true,
+      collisionMask: Masks.SHIP | Masks.ASTEROID | Masks.PROJECTILE,
+      flags: { invuln: true },
+      physicsBody: {
+        schemaVersion: 1,
+        radius: pose.bodyRadius,
+        mass: site.mass,
+        inertiaY: Math.max(1, site.mass * pose.bodyRadius * pose.bodyRadius * 0.45),
+        dynamic: true,
+        ccd: false,
+        shape: 'ball',
+        material: 'default',
+        revision: 0,
+      },
+      data: {
+        kind: 'drifter_wildlife',
+        parentType: 'environment',
+        name: 'Bioluminescent Drifter',
+        label: 'Bioluminescent Drifter',
+        scanLabel: 'Bioluminescent Drifter',
+        neutralWildlife: true,
+        drifterShoalId: site.id,
+        drifterSlot: slot,
+        anomalyStableId: stableId,
+        drifterFieldId: site.fieldId,
+        drifterPresentationTime: simTimeOf(state),
+        drifterMotionReduce: false,
+        drifterFlashReduce: false,
+        drifterHitPulse: 0,
+        drifterFlickerUntil: 0,
+        worldSiteTargetable: false,
+        targetable: false,
+        noHudHealth: true,
+        ordinaryRewardsSuppressed: true,
+        noOrdinaryRewards: true,
+        bountyCr: 0,
+        loot: [],
+        weapons: [],
+      },
+    });
+  },
+
+  _onDrifterProjectileHit(payload) {
+    if (!payload || payload.targetId == null) return false;
+    const body = this.state && this.state.entities && this.state.entities.get(payload.targetId);
+    if (!body || body.alive === false || !body.data
+      || body.data.drifterShoalId !== ORCUS_DRIFTER_SHOAL.id) return false;
+    body.data.drifterHitPulse = whole(body.data.drifterHitPulse) + 1;
+    body.data.drifterFlickerUntil = simTimeOf(this.state) + 0.65;
+    const receipt = {
+      anomalyId: ORCUS_DRIFTER_SHOAL.id,
+      entityId: body.id,
+      stableId: body.data.anomalyStableId,
+      hitPulse: body.data.drifterHitPulse,
+      cosmeticOnly: true,
+      combatOutcome: false,
+    };
+    this.bus && this.bus.emit && this.bus.emit('anomaly:drifterFlicker', receipt);
+
+    if (payload.ownerId !== this.state.playerId || this._drifterUglinessSpoken) return true;
+    this._drifterUglinessSpoken = true;
+    const voicePayload = {
+      channel: 'bark',
+      text: ORCUS_DRIFTER_SHOAL.uglinessBark,
+      kind: 'drifterUgliness',
+      ttl: 1.4,
+      id: `drifterUgliness:${ORCUS_DRIFTER_SHOAL.id}`,
+      factionId: 'faction_free',
+    };
+    const accepted = this.helpers && this.helpers.voice
+      && typeof this.helpers.voice.say === 'function'
+      ? this.helpers.voice.say(voicePayload)
+      : false;
+    if (!accepted && this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('toast', {
+        text: voicePayload.text,
+        kind: voicePayload.kind,
+        ttl: voicePayload.ttl,
+      });
+    }
+    this.bus && this.bus.emit && this.bus.emit('anomaly:drifterUglinessBark', {
+      ...receipt,
+      text: voicePayload.text,
+      voiceAccepted: !!accepted,
+    });
+    return true;
   },
 
   _updateEddy(site, state) {
@@ -976,6 +1169,18 @@ export const anomalyRuntime = {
     this._registered = false;
   },
 
+  _clearDrifterShoal(why) {
+    const hadBodies = drifterBodies(this.state).length > 0;
+    for (const body of drifterBodies(this.state)) this._removeEntity(body);
+    if ((hadBodies || this._drifterAnnounced) && this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('anomaly:unregistered', {
+        anomalyId: ORCUS_DRIFTER_SHOAL.id,
+        why,
+      });
+    }
+    this._drifterAnnounced = false;
+  },
+
   _clearIonStorm(why) {
     const hadMarker = ionStormMarkers(this.state).length > 0;
     for (const marker of ionStormMarkers(this.state)) this._removeEntity(marker);
@@ -993,6 +1198,7 @@ export const anomalyRuntime = {
 
   _clearTransient(why, options) {
     this._clearEddy(why);
+    this._clearDrifterShoal(why);
     this._clearRiver(why, options);
     this._clearScavenger(why);
     this._clearIonStorm(why);
@@ -1000,6 +1206,7 @@ export const anomalyRuntime = {
 
   _resetAll(why) {
     this._clearTransient(why, { capture: false });
+    this._drifterUglinessSpoken = false;
     const ledger = this._riverLedger(false);
     if (ledger) this._removeEntity(ledger);
   },

@@ -396,8 +396,12 @@ function appendEntityIndex(index, e) {
       break;
     case 'drone':
       index.drones.push(e);
-      index.shipLike.push(e);
-      index.damageables.push(e);
+      // Plan 19 wildlife borrows the proven drone physics category only. It must not leak into
+      // craft/HP rosters that feed combat, target panels, AI, or ordinary reward assumptions.
+      if (!(e.data && e.data.neutralWildlife === true)) {
+        index.shipLike.push(e);
+        index.damageables.push(e);
+      }
       break;
     case 'projectile':
       index.projectiles.push(e);

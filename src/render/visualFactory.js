@@ -57,6 +57,7 @@ import {
   buildHeavyPresentationHull,
   heavyPresentationIdFor,
 } from './heavyFamilyPresentation.js';
+import { buildDrifterShoalVisual } from './anomalies/drifterShoal.js';
 
 // ---------------------------------------------------------------------------------------------
 // Lookups + palette resolution
@@ -5102,7 +5103,8 @@ export function createVisualFactory() {
           case 'station': return freezeStaticPresentation(attachStationHlod(buildStation(e), e));
           case 'pickup': return buildPickup(e);
           case 'projectile': return buildProjectile(e);
-          case 'drone': return buildDrone(e);
+          // Plan 19 wildlife borrows the drone physics category but never its mechanical visual.
+          case 'drone': return buildDrifterShoalVisual(e) || buildDrone(e);
           case 'heavyPart': return buildHeavyPartPresentation(e) || buildFallback(e);
           case 'payload': return buildPayload(e);
           case 'mine': return buildMine(e);

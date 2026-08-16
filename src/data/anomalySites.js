@@ -21,6 +21,26 @@ export const ORCUS_GRAVITY_EDDY = Object.freeze({
   }),
 });
 
+// One shoal in the whole graph, carried by the canonical Orcus eddy instead of a private force.
+// The bodies are transient neutral wildlife; their stable slot identities make re-entry/Continue
+// deterministic without turning the observation into a collectible or farm.
+export const ORCUS_DRIFTER_SHOAL = Object.freeze({
+  id: 'wildlife_orcus_drifter_shoal',
+  name: 'Orcus Drifter Shoal',
+  sectorId: ORCUS_GRAVITY_EDDY.sectorId,
+  zoneId: ORCUS_GRAVITY_EDDY.zoneId,
+  fieldId: ORCUS_GRAVITY_EDDY.field.id,
+  count: 9,
+  radiusMin: 4.2,
+  radiusMax: 6.4,
+  mass: 2.4,
+  ringRadiusMin: 150,
+  ringRadiusMax: 285,
+  tangentialSpeedMin: 19,
+  tangentialSpeedMax: 31,
+  uglinessBark: 'ANCHOR: Easy. They were not hurting anybody.',
+});
+
 // One authored river in the whole graph. The endpoints straddle Ashfall's existing debris hazard;
 // runtime verifies that canonical hazard before materializing anything. Each body owns a fixed,
 // existing commodity pool. No roll is performed on entry, load, or lap, so the moving landmark can
@@ -98,6 +118,11 @@ export const ION_STORM_POCKET = Object.freeze({
 /** The exact authored anomaly for a sector, or null when that sector has none. */
 export function anomalySiteForSector(sectorId) {
   return sectorId === ORCUS_GRAVITY_EDDY.sectorId ? ORCUS_GRAVITY_EDDY : null;
+}
+
+/** The one authored living shoal, or null outside its rare canonical sector. */
+export function drifterShoalForSector(sectorId) {
+  return sectorId === ORCUS_DRIFTER_SHOAL.sectorId ? ORCUS_DRIFTER_SHOAL : null;
 }
 
 /** The one authored moving debris site for a sector, or null outside its rare canonical sector. */
