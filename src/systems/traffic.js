@@ -174,6 +174,7 @@ const SALVOR_NOTICE_DELAY_MIN_S = 18;
 const SALVOR_NOTICE_DELAY_SPAN_S = 27; // inclusive span → 18..45 s
 const SALVOR_WORK_LEDGER_CAP = 256;
 const CIVILIAN_MANIFEST_PAYLOAD_TYPE = 'civilian_manifest';
+const CAUSAL_SURVIVOR_POD_TYPE = 'survivor_pod';
 const NPC_MINER_WORK_LEDGER_CAP = 512;
 const CERES_JOB_ACTION_LEDGER_CAP = 512;
 const CERES_JOB_ACTION_RECEIPT_SCHEMA = 'spaceface.trafficJobActionReceipt.v1';
@@ -940,6 +941,11 @@ export const traffic = {
     this._ceresDisabledHaulerImpairmentActor = null;
     this._ceresDisabledHaulerRepairActor = null;
     this._ceresDisabledHaulerRestorePending = false;
+    // Plan 18 rescue response is a transient dispatch lease only. The survivorPod owner keeps
+    // custody, resolution, receipts, and persistence; traffic merely borrows one ordinary ambient
+    // route hull's existing flight intent until the physical pod is no longer available.
+    this._rescueResponseByPod = new Map();
+    this._rescuePodByResponder = new Map();
 
     if (this.helpers) {
       this.helpers.traffic = {
@@ -954,6 +960,8 @@ export const traffic = {
     this.bus.on('sector:exit', (p) => this._onSectorExit(p));
     // ECON-P2: freighter loss → owner-safe scarcity intents + named news (no wallet writes).
     this.bus.on('entity:killed', (p) => this._onEntityKilled(p));
+    this.bus.on('survivorPod:ejected', (p) => this._onSurvivorPodEjected(p || {}));
+    this.bus.on('survivorPod:resolved', (p) => this._onSurvivorPodResolved(p || {}));
     // Working freight is driven by npcJobsRuntime, so the ambient traffic stepper never reaches
     // its own work/dock branches. Consume only materialized kernel intents here and keep field and
     // economy authority on their existing event seams.
@@ -975,6 +983,7 @@ export const traffic = {
       this._restoreEpochPending = true;
       this._ceresDisabledHaulerRestorePending = true;
       this._invalidateCausalRunEpoch();
+      this._resetRescueResponses();
     });
     this.bus.on('save:loaded', () => {
       // Real restores already invalidated at save:restoring. Standalone fixture/compat signals still
@@ -1010,6 +1019,7 @@ export const traffic = {
       this._clearStalePassengerLinerDelays();
       this._applyWorldSiteTrafficHooks(sectorId);
       this._applyClaimTravelHooks(sectorId);
+      this._assignWaitingRescuePods(sectorId);
       if (sectorId === CERES_ACTIVITY_SECTOR_ID) this._ensureCeresCausalChain('save_loaded');
     });
     const refreshClaimTravel = () => this._applyClaimTravelHooks(
@@ -1024,6 +1034,175 @@ export const traffic = {
       const record = siteId && this.state.sites && this.state.sites.worldById && this.state.sites.worldById[siteId];
       this._applyWorldSiteTrafficHooks(record && record.sectorId);
     });
+  },
+
+  _ensureRescueResponseMaps() {
+    if (!(this._rescueResponseByPod instanceof Map)) this._rescueResponseByPod = new Map();
+    if (!(this._rescuePodByResponder instanceof Map)) this._rescuePodByResponder = new Map();
+  },
+
+  _resetRescueResponses() {
+    this._ensureRescueResponseMaps();
+    this._rescueResponseByPod.clear();
+    this._rescuePodByResponder.clear();
+  },
+
+  _releaseRescuePod(podId) {
+    this._ensureRescueResponseMaps();
+    const assignment = this._rescueResponseByPod.get(podId);
+    if (!assignment) return null;
+    this._rescueResponseByPod.delete(podId);
+    if (this._rescuePodByResponder.get(assignment.responderId) === podId) {
+      this._rescuePodByResponder.delete(assignment.responderId);
+    }
+    return assignment;
+  },
+
+  _releaseRescueResponder(responderId) {
+    this._ensureRescueResponseMaps();
+    const podId = this._rescuePodByResponder.get(responderId);
+    if (podId == null) return null;
+    this._rescuePodByResponder.delete(responderId);
+    const assignment = this._rescueResponseByPod.get(podId);
+    if (assignment && assignment.responderId === responderId) this._rescueResponseByPod.delete(podId);
+    return assignment || { podId, responderId, sectorId: null };
+  },
+
+  _liveRescuePod(podId, expectedSectorId = null) {
+    const pod = liveEntity(this.state, podId);
+    const data = pod && pod.data || {};
+    const stamp = data.survivorPodCausal;
+    if (!pod || pod.type !== 'payload' || data.payloadType !== CAUSAL_SURVIVOR_POD_TYPE
+      || !stamp || stamp.resolved === true) return null;
+    const sectorId = stamp.sectorId || data.sectorId
+      || (this.state.world && this.state.world.currentSectorId) || null;
+    if (expectedSectorId && sectorId && sectorId !== expectedSectorId) return null;
+    return pod;
+  },
+
+  _onSurvivorPodEjected(payload, excludedResponderId = null) {
+    this._ensureRescueResponseMaps();
+    const podId = payload && payload.entityId;
+    if (podId == null) return false;
+    const currentSectorId = this.state.world && this.state.world.currentSectorId || null;
+    const requestedSectorId = payload.sectorId || currentSectorId;
+    if (currentSectorId && requestedSectorId && currentSectorId !== requestedSectorId) return false;
+    const pod = this._liveRescuePod(podId, requestedSectorId);
+    if (!pod || !pod.pos) return false;
+
+    const existing = this._rescueResponseByPod.get(podId);
+    if (existing) {
+      const responder = liveEntity(this.state, existing.responderId);
+      const responderData = responder && responder.data || {};
+      const responderSectorId = responder && (responder.homeSectorId
+        || responderData.homeSectorId || responderData.sectorId || currentSectorId);
+      if (responder && responder.type === 'ship'
+        && (responderData.trafficRole || responderData.role) === 'rescue'
+        && existing.sectorId === requestedSectorId
+        && (!requestedSectorId || !responderSectorId || responderSectorId === requestedSectorId)) return true;
+      this._releaseRescuePod(podId);
+    }
+
+    const candidates = [];
+    for (const rec of this.state.traffic && this.state.traffic.freighters || []) {
+      if (!rec || rec.role !== 'rescue' || rec.id == null || rec.id === excludedResponderId
+        || this._rescuePodByResponder.has(rec.id)) continue;
+      const responder = liveEntity(this.state, rec.id);
+      const data = responder && responder.data || {};
+      if (!responder || responder.type !== 'ship' || !responder.pos
+        || (data.trafficRole || data.role) !== 'rescue') continue;
+      const responderSectorId = responder.homeSectorId || data.homeSectorId || data.sectorId
+        || currentSectorId;
+      if (requestedSectorId && responderSectorId && responderSectorId !== requestedSectorId) continue;
+      candidates.push({
+        rec,
+        responder,
+        distanceSq: distanceSquared(responder.pos, pod.pos),
+        stableKey: stableTrafficKey(responder),
+      });
+    }
+    candidates.sort((a, b) => a.distanceSq - b.distanceSq
+      || a.stableKey.localeCompare(b.stableKey)
+      || String(a.responder.id).localeCompare(String(b.responder.id)));
+    const selected = candidates[0];
+    if (!selected) return false;
+    const assignment = {
+      podId,
+      responderId: selected.responder.id,
+      sectorId: requestedSectorId || null,
+    };
+    this._rescueResponseByPod.set(podId, assignment);
+    this._rescuePodByResponder.set(selected.responder.id, podId);
+    return true;
+  },
+
+  _onSurvivorPodResolved(payload) {
+    const podId = payload && payload.entityId;
+    if (podId == null || !this._releaseRescuePod(podId)) return false;
+    this._assignWaitingRescuePods(payload.sectorId || null, podId);
+    return true;
+  },
+
+  _assignWaitingRescuePods(sectorId = null, excludedPodId = null, excludedResponderId = null) {
+    this._ensureRescueResponseMaps();
+    const currentSectorId = this.state.world && this.state.world.currentSectorId || null;
+    const expectedSectorId = sectorId || currentSectorId;
+    if (currentSectorId && expectedSectorId && currentSectorId !== expectedSectorId) return 0;
+    const pods = (this.state.entityList || [])
+      .filter((entity) => entity && entity.id !== excludedPodId
+        && !this._rescueResponseByPod.has(entity.id)
+        && this._liveRescuePod(entity.id, expectedSectorId))
+      .sort((a, b) => {
+        const aStamp = a.data && a.data.survivorPodCausal || {};
+        const bStamp = b.data && b.data.survivorPodCausal || {};
+        return (Number(aStamp.ejectedAt) || 0) - (Number(bStamp.ejectedAt) || 0)
+          || String(a.id).localeCompare(String(b.id));
+      });
+    let assigned = 0;
+    for (const pod of pods) {
+      if (this._onSurvivorPodEjected(
+        { entityId: pod.id, sectorId: expectedSectorId },
+        excludedResponderId,
+      )) assigned++;
+    }
+    return assigned;
+  },
+
+  _onRescueResponseEntityUnavailable(entityId) {
+    this._ensureRescueResponseMaps();
+    const responderAssignment = this._releaseRescueResponder(entityId);
+    const podAssignment = this._releaseRescuePod(entityId);
+    if (responderAssignment) {
+      // survivorPod is initialized before traffic, so a destroyed ambulance may synchronously emit
+      // its own newer pod before this listener runs. Rebuild the tiny (max four pods) transient
+      // matching oldest-first so that nested disaster cannot steal the replacement from the pod the
+      // destroyed hull was already answering.
+      this._resetRescueResponses();
+      this._assignWaitingRescuePods(responderAssignment.sectorId, null, entityId);
+    }
+    if (podAssignment) this._assignWaitingRescuePods(podAssignment.sectorId, entityId);
+  },
+
+  _stepRescueResponse(responder, rec) {
+    this._ensureRescueResponseMaps();
+    const podId = this._rescuePodByResponder.get(responder && responder.id);
+    if (podId == null) return false;
+    const assignment = this._rescueResponseByPod.get(podId);
+    const pod = assignment && this._liveRescuePod(podId, assignment.sectorId);
+    const currentSectorId = this.state.world && this.state.world.currentSectorId || null;
+    if (!assignment || assignment.responderId !== responder.id || rec.role !== 'rescue'
+      || !pod || !pod.pos || (assignment.sectorId && currentSectorId !== assignment.sectorId)) {
+      this._releaseRescueResponder(responder.id);
+      return false;
+    }
+    const dx = pod.pos.x - responder.pos.x;
+    const dz = pod.pos.z - responder.pos.z;
+    const distance = Math.hypot(dx, dz);
+    const aimAngle = Math.atan2(dz, dx);
+    // This is the same civilian data.intent membrane used by the station route. Flight V3 and the
+    // physics owner remain the only writers of force, velocity, and position.
+    setIntent(responder, 0, 1, distance > 100, false, null, aimAngle);
+    return true;
   },
 
   heaveToEntity(entityId, {
@@ -1083,6 +1262,7 @@ export const traffic = {
       || (p && p.sectorId)
       || (this.state.world && this.state.world.currentSectorId)
       || 'unknown';
+    this._resetRescueResponses();
     const repeatedCeresEntry = requestedSectorId === CERES_ACTIVITY_SECTOR_ID
       && this._active.some((id) => {
         const entity = liveEntity(this.state, id);
@@ -1106,6 +1286,7 @@ export const traffic = {
       // Continuous/noTeleport exit skips chain reset; live links would otherwise fast-forward one
       // phase per tick against a stale phaseEndsAt. Rebase remaining phase windows from now.
       this._rebaseCeresCausalPhaseEnds();
+      this._assignWaitingRescuePods(requestedSectorId);
       return;
     }
     this._resetRngForSector(sectorId);
@@ -1130,6 +1311,7 @@ export const traffic = {
         this._ensureNamedLaneContact(sectorId, sector, stations);
       this._applyWorldSiteTrafficHooks(sectorId);
       this._applyClaimTravelHooks(sectorId);
+      this._assignWaitingRescuePods(sectorId);
       return;
     }
 
@@ -1217,6 +1399,7 @@ export const traffic = {
     this._applyWorldSiteTrafficHooks(sectorId);
     this._applyClaimTravelHooks(sectorId);
     this._dispatchGeneralSalvors(sectorId);
+    this._assignWaitingRescuePods(sectorId);
   },
 
   _retireLegacyCeresTraffic() {
@@ -3043,6 +3226,7 @@ export const traffic = {
     // still names persistent bodies that need stamp cleanup.
     this._resetTransientCausalLedgers(true);
     this._resetCeresCausalChain('cleanup');
+    this._resetRescueResponses();
     // The core system exposes helpers.removeEntity (marks alive=false; the renderer/physics GC it).
     // Fall back to a direct alive=false if the helper shape differs across builds.
     const helper = this.helpers && (this.helpers.removeEntity || this.helpers.despawnEntity);
@@ -3102,11 +3286,13 @@ export const traffic = {
       const rec = list[i];
       const e = state.entities.get(rec.id);
       if (!e || !e.alive) {
+        if (rec && rec.role === 'rescue') this._onRescueResponseEntityUnavailable(rec.id);
         if (rec && rec.worldSiteRoute) lostWorldSiteRoute = true;
         if (rec && rec.claimTravelRoute) lostClaimTravelRoute = true;
         list.splice(i, 1);
         continue;
       }
+      if (this._stepRescueResponse(e, rec)) continue;
       // The seven authored pocket actors yield movement to npcJobsRuntime. A completed one-shot job
       // releases data.jobId; recommission it from the same immutable activity descriptor before any
       // ambient role branch can run. The reserved Cinder service slot is excluded and continues to
@@ -7095,6 +7281,7 @@ export const traffic = {
    */
   _onEntityKilled(p) {
     if (!p || p.id == null) return;
+    this._onRescueResponseEntityUnavailable(p.id);
     this._ensureState();
     const list = this.state.traffic.freighters || [];
     let rec = null;
@@ -7539,6 +7726,7 @@ export const traffic = {
       if (ledger && typeof ledger.clear === 'function') ledger.clear();
     }
     this._resetCeresCausalChain('new_game');
+    this._resetRescueResponses();
     this.state.traffic = {
       freighters: [],
       appliedArrivalIds: [],
@@ -7596,6 +7784,12 @@ function entityWithWorldRecord(state, worldRecordId) {
 function liveEntity(state, id) {
   const entity = state && state.entities && state.entities.get && state.entities.get(id);
   return entity && entity.alive !== false ? entity : null;
+}
+
+function distanceSquared(a, b) {
+  const dx = (Number(b && b.x) || 0) - (Number(a && a.x) || 0);
+  const dz = (Number(b && b.z) || 0) - (Number(a && a.z) || 0);
+  return dx * dx + dz * dz;
 }
 
 function stableTrafficKey(entity) {
