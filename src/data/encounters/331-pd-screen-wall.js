@@ -26,7 +26,8 @@ export default defineEncounter(trigger, {
   title: 'PD SCREEN WALL',
   primaryLine: 'SQUAD CONTACT: flak curtain ahead of a prize ship. Missiles die first.',
   squad: {
-    archetypes: ['pd_screen_escort', 'reaver_pirate'],
+    anchorArchetype: 'pd_screen_escort',
+    archetypes: ['wasp_swarmer', 'reaver_pirate'],
     size: [2, 3],
     doctrine: 'scavenger',
     formation: 'wedge',

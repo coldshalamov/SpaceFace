@@ -29,7 +29,7 @@ export default defineEncounter(trigger, {
   primaryLine: 'WAKE CONTACT: Massline specialist holding the crossing. Throw it, break it, or outweigh it.',
   squad: {
     anchorArchetype: 'tether_control_raider',
-    archetypes: ['mine_layer_jackal', 'wasp_swarmer'],
+    archetypes: ['wasp_swarmer', 'reaver_pirate'],
     size: [3, 4],
     doctrine: 'scavenger',
     formation: 'loose',

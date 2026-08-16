@@ -59,6 +59,9 @@ import * as encounter055 from './346-medium-marauder-rockbreaker.js';
 import * as encounter056 from './347-medium-interceptor-cutoff.js';
 import * as encounter057 from './348-medium-bulwark-wing.js';
 import * as encounter058 from './349-medium-torcher-fireline.js';
+import * as encounter059 from './350-specialist-jammer-wing.js';
+import * as encounter060 from './351-specialist-repair-tender.js';
+import * as encounter061 from './352-specialist-harrier-kite.js';
 
 export const ENCOUNTER_MODULES = Object.freeze([
   encounter001,
@@ -119,5 +122,8 @@ export const ENCOUNTER_MODULES = Object.freeze([
   encounter056,
   encounter057,
   encounter058,
+  encounter059,
+  encounter060,
+  encounter061,
 ]);
 export const ENCOUNTERS = buildEncounterCatalog(ENCOUNTER_MODULES);

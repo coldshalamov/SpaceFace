@@ -1,5 +1,5 @@
-// 325 — Minefield in the wake. A jackal seeds the lane exit; PD escort covers the claim.
-// Composes new mine_layer_jackal + pd_screen_escort roles. Not Helios-safe zones only.
+// 325 — Minefield in the wake. One guaranteed Jackal owns the specialist read; ordinary hulls
+// screen it without adding a second specialist puzzle.
 import { deepFreeze, defineEncounter } from './catalog.js';
 
 export const encounterOrder = 325;
@@ -29,7 +29,8 @@ export default defineEncounter(trigger, {
   title: 'MINEFIELD IN THE WAKE',
   primaryLine: 'LANE CONTACT: seeded wake signature. Someone wants your cargo more than a clean fight.',
   squad: {
-    archetypes: ['mine_layer_jackal', 'pd_screen_escort'],
+    anchorArchetype: 'mine_layer_jackal',
+    archetypes: ['wasp_swarmer', 'reaver_pirate'],
     size: [2, 3],
     doctrine: 'scavenger',
     formation: 'loose',

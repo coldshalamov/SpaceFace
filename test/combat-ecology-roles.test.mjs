@@ -12,6 +12,7 @@ import { hash32, mulberry32 } from '../src/core/rng.js';
 import { makeEnemySpawnSpec } from '../src/systems/combat.js';
 import { planEncounterShape } from '../src/systems/encounterDirector.js';
 import { WEAPONS } from '../src/data/weapons.js';
+import { SPECIALIST_ENEMY_IDS } from '../src/data/specialistFamily.js';
 
 const ECOLOGY = [
   {
@@ -21,6 +22,7 @@ const ECOLOGY = [
     mustHaveWeaponFamily: /missile|autocannon|flak/i,
     counter: 'cut_tether_or_clear_wake',
     telegraphCue: 'wake_mines',
+    guaranteedAnchor: true,
   },
   {
     id: 'pd_screen_escort',
@@ -29,6 +31,7 @@ const ECOLOGY = [
     mustHaveWeaponFamily: /flak/i,
     counter: 'hold_missiles_use_kinetics_peel_escort',
     telegraphCue: 'pd_curtain',
+    guaranteedAnchor: true,
   },
   {
     id: 'quiet_ghost',
@@ -41,6 +44,7 @@ const ECOLOGY = [
 ];
 
 const byId = new Map(ENEMY_TYPES.map((e) => [e.id, e]));
+const specialistIds = new Set(SPECIALIST_ENEMY_IDS);
 const weapons = Array.isArray(WEAPONS) ? WEAPONS : Object.values(WEAPONS);
 const weaponById = new Map(weapons.map((w) => [w.id, w]));
 
@@ -134,8 +138,15 @@ test('each ecology role has a mid-sec encounter composition with telegraph + aft
   for (const row of ECOLOGY) {
     const enc = ENCOUNTERS[row.encounterId];
     assert.ok(enc, `encounter ${row.encounterId}`);
-    assert.ok((enc.squad?.archetypes || []).includes(row.id),
-      `${row.encounterId} squad includes ${row.id}`);
+    const sampled = enc.squad?.archetypes || [];
+    if (row.guaranteedAnchor) {
+      assert.equal(enc.squad?.anchorArchetype, row.id,
+        `${row.encounterId} guarantees its specialist instead of sampling it`);
+      assert.ok(sampled.every((enemyId) => !specialistIds.has(enemyId)),
+        `${row.encounterId} samples only ordinary companions`);
+    } else {
+      assert.ok(sampled.includes(row.id), `${row.encounterId} squad includes ${row.id}`);
+    }
     assert.ok(enc.telegraph || byId.get(row.id).telegraph?.line,
       `${row.encounterId} has telegraph`);
     assert.ok(enc.aftermath && (enc.aftermath.flee || enc.aftermath.kill),

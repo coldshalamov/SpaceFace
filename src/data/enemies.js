@@ -691,6 +691,85 @@ export const ENEMY_TYPES = [
       ],
     },
   },
+  // ── PR95 wave 4: missing specialist identities (Plan 15) ──
+  // These are fixed-stat production identities and ordinary encounter anchors. Their planned
+  // specialist verbs and world tells remain explicitly unwired; admission must not be mistaken for
+  // radar smear, a repair drone, or kiter acceptance behavior.
+  {
+    id: 'jammer_specialist', name: 'Jammer', shipId: 'ship_hornet',
+    factionId: 'faction_reach',
+    aiArchetype: 'sniper', levelRange: [3, 8], fixedCombatStats: true,
+    combatDoctrineId: 'ranged_disengager',
+    hull: 96, armor: 20, armorFlat: 1, shield: 58, shieldRegen: 0, cap: 130, capRegen: 22,
+    maxSpeed: 122, accel: 88, turnRate: 1.55, collisionRadius: 16, mass: 42,
+    weapons: [{ id: 'wpn_pulse_laser_s', dmgOverride: 4, rofOverride: 1.4 }],
+    aiDoctrine: { defaultActivity: 'reposition', roe: 'weapons_free', preferredRange: 520, leashRadius: 2700 },
+    specialistBehavior: {
+      capability: 'presentation_only_contact_smear', runtime: 'unwired',
+      invariant: 'simulation_contacts_remain_exact',
+    },
+    specialistWorldTell: { cue: 'antenna_fan_and_static_shimmer', runtime: 'unwired' },
+    counterHint: 'kill_or_close_inside_fuzz',
+    behavior: 'ordinary ranged hull pending a presentation-only radar-smear specialist runtime',
+    bountyCr: 410, shipClass: 'corvette', killRewardTier: 'medium',
+    loot: {
+      creditsRange: [110, 250],
+      drops: [
+        { id: 'cmdty_electronics', chance: 0.7, qtyRange: [2, 4] },
+        { id: 'cmdty_comp_circuitry', chance: 0.4, qtyRange: [1, 2] },
+      ],
+    },
+  },
+  {
+    id: 'hostile_repair_tender', name: 'Hostile Repair Tender', shipId: 'ship_drifter',
+    factionId: 'faction_reach',
+    aiArchetype: 'pirate', levelRange: [4, 9], fixedCombatStats: true,
+    combatDoctrineId: 'ranged_disengager',
+    hull: 128, armor: 35, armorFlat: 1, shield: 62, shieldRegen: 0, cap: 175, capRegen: 26,
+    maxSpeed: 94, accel: 62, turnRate: 1.15, collisionRadius: 19, mass: 55,
+    weapons: [
+      { id: 'wpn_autocannon_s', dmgOverride: 4, rofOverride: 1.4 },
+      { id: 'wpn_flak_turret_s', defensiveOnly: true },
+    ],
+    aiDoctrine: { defaultActivity: 'screen', roe: 'weapons_free', preferredRange: 440, leashRadius: 2400 },
+    specialistBehavior: { capability: 'bounded_hull_repair_drone', runtime: 'unwired' },
+    specialistWorldTell: { cue: 'green_weld_flashes_on_repair_target', runtime: 'unwired' },
+    counterHint: 'kill_or_catch_tender_and_drone_in_well',
+    behavior: 'ordinary screening hull pending a bounded repair-drone specialist runtime',
+    bountyCr: 460, shipClass: 'corvette', killRewardTier: 'medium',
+    loot: {
+      creditsRange: [130, 290],
+      drops: [
+        { id: 'cmdty_medical', chance: 0.55, qtyRange: [1, 3] },
+        { id: 'cmdty_comp_hullplate', chance: 0.5, qtyRange: [1, 3] },
+      ],
+    },
+  },
+  {
+    id: 'harrier_kiter', name: 'Harrier', shipId: 'ship_hornet',
+    factionId: 'faction_reach',
+    aiArchetype: 'sniper', levelRange: [3, 8], fixedCombatStats: true,
+    combatDoctrineId: 'ranged_disengager',
+    hull: 78, armor: 14, armorFlat: 0, shield: 36, shieldRegen: 0, cap: 115, capRegen: 23,
+    maxSpeed: 146, accel: 112, turnRate: 1.35, collisionRadius: 14, mass: 28,
+    weapons: [{
+      id: 'wpn_pulse_laser_s', dmgOverride: 2, rofOverride: 0.7,
+      projSpeedOverride: 620, rangeOverride: 880,
+    }],
+    aiDoctrine: { defaultActivity: 'reposition', roe: 'weapons_free', preferredRange: 760, leashRadius: 3200 },
+    specialistBehavior: { capability: 'low_dps_long_range_disengage', runtime: 'unwired' },
+    specialistWorldTell: { cue: 'distant_tracer_flashes', runtime: 'unwired' },
+    counterHint: 'ignore_and_kill_wing',
+    behavior: 'low-DPS ranged hull pending a dedicated kite-and-disengage acceptance runtime',
+    bountyCr: 300, shipClass: 'fighter', killRewardTier: 'medium',
+    loot: {
+      creditsRange: [80, 190],
+      drops: [
+        { id: 'cmdty_munitions', chance: 0.5, qtyRange: [1, 3] },
+        { id: 'cmdty_scrap_metal', chance: 0.4, qtyRange: [1, 3] },
+      ],
+    },
+  },
   {
     id: 'tether_control_raider', name: 'Tether-Control Raider', shipId: 'ship_hornet',
     silhouette: 'corsair_blade', factionId: 'faction_reach',
