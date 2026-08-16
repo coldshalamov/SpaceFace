@@ -17,6 +17,8 @@ export const DEBRIS_RECOVERY_FOLLOWUP_SOURCE = 'debrisRecoveryFollowup';
 export const DEBRIS_RECOVERY_DRAW_MODULO = 3;
 export const DISABLE_DONT_KILL_VARIANT_ID = 'disable_dont_kill';
 export const DISABLE_DONT_KILL_DRAW_MODULO = 3;
+export const LOUD_DELIVERY_VARIANT_ID = 'loud_delivery';
+export const LOUD_DELIVERY_DRAW_MODULO = 3;
 
 /** One in three ordinary cargo-delivery rolls becomes Quiet Delivery, without consuming board RNG. */
 export function shouldRollQuietDelivery(hashValue) {
@@ -215,4 +217,45 @@ export function isDisableDontKill(value) {
 export function disableDontKillFollowupOfferId(mission) {
   const sourceId = mission && (mission.sourceOfferId || mission.id);
   return sourceId ? `mo_capture_black_box_${String(sourceId)}` : null;
+}
+
+/** One in three ordinary smuggling rolls becomes a physical scan-net delivery. */
+export function shouldRollLoudDelivery(hashValue) {
+  return (Number(hashValue) >>> 0) % LOUD_DELIVERY_DRAW_MODULO === 0;
+}
+
+/** Stamp the Loud physical situation onto a normal, fully priced smuggling offer. */
+export function applyLoudDeliveryVariant(offer) {
+  if (!offer || offer.type !== 'smuggling_run') return offer;
+  return {
+    ...offer,
+    title: `Loud Delivery — ${offer.title}`,
+    brief: `Contraband through a live customs scan net. Clear it cold, in an ion storm, or with a physical decoy.`,
+    duration_s: Math.max(1, Number(offer.time_limit_s) || 1),
+    variantId: LOUD_DELIVERY_VARIANT_ID,
+    preloadedCargo: true,
+    params: {
+      ...(offer.params || {}),
+      missionVariant: LOUD_DELIVERY_VARIANT_ID,
+      loudDelivery: {
+        generation: 0,
+        scanNetCleared: false,
+        method: null,
+        encounterId: null,
+      },
+    },
+    clauses: [],
+  };
+}
+
+export function isLoudDelivery(value) {
+  return !!(value && (
+    value.variantId === LOUD_DELIVERY_VARIANT_ID
+    || value.params && value.params.missionVariant === LOUD_DELIVERY_VARIANT_ID
+  ));
+}
+
+export function loudDeliveryFollowupOfferId(mission) {
+  const sourceId = mission && (mission.sourceOfferId || mission.id);
+  return sourceId ? `mo_loud_burned_drop_${String(sourceId)}` : null;
 }

@@ -53,19 +53,23 @@ import {
   DEBRIS_RECOVERY_FOLLOWUP_SOURCE,
   DEBRIS_RECOVERY_VARIANT_ID,
   DISABLE_DONT_KILL_VARIANT_ID,
+  LOUD_DELIVERY_VARIANT_ID,
   PEST_CONTROL_ARCHETYPE_ID,
   PEST_CONTROL_FOLLOWUP_SOURCE,
   PEST_CONTROL_VARIANT_ID,
   QUIET_DELIVERY_RECOVERY_SOURCE,
   applyDebrisRecoveryVariant,
   applyDisableDontKillVariant,
+  applyLoudDeliveryVariant,
   applyPestControlVariant,
   applyQuietDeliveryVariant,
   debrisRecoveryFollowupOfferId,
   disableDontKillFollowupOfferId,
+  loudDeliveryFollowupOfferId,
   isDebrisRecovery,
   isDebrisRecoveryFollowup,
   isDisableDontKill,
+  isLoudDelivery,
   isPestControl,
   isPestControlFollowup,
   isQuietDelivery,
@@ -74,6 +78,7 @@ import {
   quietDeliveryRecoveryOfferId,
   shouldRollDebrisRecovery,
   shouldRollDisableDontKill,
+  shouldRollLoudDelivery,
   shouldRollPestControl,
   shouldRollQuietDelivery,
 } from '../data/missionVariants.js';
@@ -735,7 +740,14 @@ export const missions = {
       }));
     }
     // smuggling bust: a patrol scan caught contraband.
-    bus.on('player:scannedByPatrol', (p) => this._onScannedByPatrol(p));
+    bus.on('smuggling:patrolEvaded', (p) => this._onLoudDeliveryScanNetCleared(p));
+    bus.on('smuggling:patrolDecoyResolved', (p) => this._onLoudDeliveryScanNetCleared({
+      ...(p || {}), outcome: 'decoyed',
+    }));
+    bus.on('player:scannedByPatrol', (p) => {
+      this._onLoudDeliveryScanned(p || {});
+      this._onScannedByPatrol(p);
+    });
     // Contract clauses are observers only. Their single breach intent returns here so the canonical
     // mission failure path owns collateral, reputation, cleanup, receipts, and SP1 recovery offers.
     bus.on('contract:clauseBroken', (p) => this._onContractClauseBroken(p));
@@ -781,6 +793,9 @@ export const missions = {
       if (m.heist) { this._driveHeist(m, i); continue; }
       // Escort: steer the friendly escortee toward the destination each tick.
       if (m.type === 'escort' && m._escorteeId != null) this._steerEscortee(m, state, dt);
+      if (isLoudDelivery(m) && m.destSectorId === state.world.currentSectorId) {
+        this._ensureLoudDeliveryScanNet(m);
+      }
       if (m.type === 'bounty_hunt' || m.type === 'patrol_clear') {
         this._armAcceptedCombatTargets(m, state);
       }
@@ -1628,6 +1643,9 @@ export const missions = {
       && typeId === 'bounty_hunt'
       && dest && isLawfulStationFaction(dest.factionId)
       && shouldRollDisableDontKill(variantHashFn(this.state.meta.seed, id, 'disable-dont-kill-variant'));
+    const loudDelivery = options.attachConditions !== false
+      && typeId === 'smuggling_run'
+      && shouldRollLoudDelivery(variantHashFn(this.state.meta.seed, id, 'loud-delivery-variant'));
     if (quietDelivery) {
       const commodityHash = variantHashFn(this.state.meta.seed, id, 'quiet-delivery-cargo') >>> 0;
       const cmdtyId = FRAGILE_LEGAL_TRADE_CMDTYS[commodityHash % FRAGILE_LEGAL_TRADE_CMDTYS.length];
@@ -1676,6 +1694,7 @@ export const missions = {
     if (disableDontKill) {
       return applyDisableDontKillVariant(offer, dest && dest.name || 'the marked sector');
     }
+    if (loudDelivery) return applyLoudDeliveryVariant(offer);
     // Physics terms are the last thing stamped onto a rolled offer so the reward/deadline family
     // above is untouched: a condition-free offer is byte-identical to the shipped one.
     return options.attachConditions === false ? offer : this._withConditions(offer, epoch);
@@ -2042,6 +2061,7 @@ export const missions = {
 
     // Spawn any immediate/deferred targets (if the player is already in the target sector).
     this._ensureMissionTargets(inst);
+    this._ensureLoudDeliveryScanNet(inst);
     // Accepting auto-tracks AND speaks the objective through the voiceArbiter objective channel
     // (tier 60) — same one-voice path as a manual Mission Log track. The ambient "Mission accepted"
     // toast below is a separate lane (transaction confirmation), so the two do not contend.
@@ -2913,6 +2933,56 @@ export const missions = {
     return cached;
   },
 
+  /** Accept only the shipped physical ways through this mission's exact customs lattice. */
+  _onLoudDeliveryScanNetCleared(payload) {
+    const outcome = payload && payload.outcome;
+    if (!['cold_run_evaded', 'storm_dive_evaded', 'decoyed'].includes(outcome)) return false;
+    let changed = false;
+    for (const mission of this.state.missions.active || []) {
+      const loud = mission && mission.params && mission.params.loudDelivery;
+      if (!mission || mission.status !== 'active' || !isLoudDelivery(mission) || !loud) continue;
+      if (!loud.encounterId || String(loud.encounterId) !== String(payload.encounterId)) continue;
+      if (loud.scanNetCleared) continue;
+      loud.scanNetCleared = true;
+      loud.method = outcome;
+      loud.clearedAt_s = Number(this.state.simTime) || 0;
+      loud.receiptId = `${loud.encounterId}:${outcome}`;
+      this.bus.emit('mission:updated', {
+        missionId: mission.id,
+        scanNetCleared: true,
+        method: outcome,
+      });
+      this.bus.emit('toast', { text: 'Scan net cleared. Make the drop.', kind: 'success', ttl: 3 });
+      changed = true;
+    }
+    return changed;
+  },
+
+  /** Cache the physical scan point before the ordinary smuggling failure removes the contract. */
+  _onLoudDeliveryScanned(payload) {
+    if (!payload || payload.hasContraband !== true) return false;
+    const player = this.state.entities && this.state.entities.get(this.state.playerId);
+    let cached = false;
+    for (const mission of this.state.missions.active || []) {
+      if (!mission || mission.status !== 'active' || !isLoudDelivery(mission)
+        || mission._loudDeliveryScanLoss) continue;
+      mission._loudDeliveryScanLoss = {
+        sectorId: this.state.world && this.state.world.currentSectorId || mission.destSectorId,
+        pos: {
+          x: Number(player && player.pos && player.pos.x) || 0,
+          z: Number(player && player.pos && player.pos.z) || 0,
+        },
+        vel: {
+          x: Number(player && player.vel && player.vel.x) || 0,
+          z: Number(player && player.vel && player.vel.z) || 0,
+        },
+        patrolId: payload.patrolId || null,
+      };
+      cached = true;
+    }
+    return cached;
+  },
+
   /** Post one save-carried physical recovery offer for the exact failed Quiet Delivery. */
   _postQuietDeliveryRecovery(mission) {
     const loss = mission && mission._quietDeliveryLoss;
@@ -3202,6 +3272,79 @@ export const missions = {
         sourceMissionId: mission.id,
         sourceOfferId: mission.sourceOfferId || null,
         targetEntityId: loss.targetEntityId,
+      },
+    };
+    let board = this.state.missions.boards[mission.stationId];
+    if (!board || typeof board !== 'object') {
+      board = { refreshEpoch: this._epoch(), slots: [] };
+      this.state.missions.boards[mission.stationId] = board;
+    }
+    if (!Array.isArray(board.slots)) board.slots = [];
+    board.slots.push(offer);
+    this.bus.emit('mission:updated', { missionId: null, stationId: mission.stationId });
+    return offer;
+  },
+
+  /** A burned Loud drop leaves one moving recorder recovery through the existing pod owner. */
+  _postLoudDeliveryRecovery(mission) {
+    const loss = mission && mission._loudDeliveryScanLoss;
+    const offerId = loudDeliveryFollowupOfferId(mission);
+    if (!mission || !loss || !offerId || !mission.stationId) return null;
+    const duplicateActive = (this.state.missions.active || []).find((candidate) => (
+      candidate && candidate.sourceOfferId === offerId
+    ));
+    if (duplicateActive) return duplicateActive;
+    for (const candidateBoard of Object.values(this.state.missions.boards || {})) {
+      const duplicate = candidateBoard && Array.isArray(candidateBoard.slots)
+        && candidateBoard.slots.find((candidate) => candidate && candidate.id === offerId);
+      if (duplicate) return duplicate;
+    }
+
+    const commodityId = 'cmdty_salvage_electronics';
+    const commodity = CMDTY_BY_ID.get(commodityId);
+    const pods = [{ slot: 0, commodityId, amount: 1 }];
+    const timeLimitS = Math.max(180,
+      Math.round(Number(mission.deadline_s) - Number(mission.acceptedAt_s)) || 0);
+    const offer = {
+      id: offerId,
+      type: 'salvage_retrieval',
+      stationId: mission.stationId,
+      factionId: mission.factionId,
+      reward_cr: Math.max(100, Math.round((Number(mission.reward_cr) || 0) * 0.3)),
+      time_limit_s: timeLimitS,
+      duration_s: timeLimitS,
+      collateral_cr: 0,
+      riskTier: Math.max(1, Math.round(Number(mission.riskTier) || 1)),
+      destStationId: null,
+      destSectorId: loss.sectorId || mission.destSectorId,
+      distance: mission.distance,
+      params: {
+        cmdtyId: commodityId,
+        qty: 1,
+        cargoValue: Math.max(0, Number(commodity && commodity.basePrice) || 0),
+        fValue: 1,
+        taskTime: 30,
+        missionVariant: DEBRIS_RECOVERY_VARIANT_ID,
+        debrisRecovery: {
+          fieldName: 'the burned scan-lane drop',
+          generation: 1,
+          sourceMissionId: mission.id,
+          pos: { ...loss.pos },
+          vel: { ...loss.vel },
+          pods,
+        },
+      },
+      title: 'Black Box Recovery — Burned Drop Recorder',
+      brief: 'Customs burned the drop. Pull its marked recorder from the moving scan-lane debris.',
+      expiresAtEpoch: this._epoch() + 2,
+      storyTag: null,
+      variantId: DEBRIS_RECOVERY_VARIANT_ID,
+      source: DEBRIS_RECOVERY_FOLLOWUP_SOURCE,
+      cause: {
+        tag: 'loud_delivery_burned',
+        sourceMissionId: mission.id,
+        sourceOfferId: mission.sourceOfferId || null,
+        patrolId: loss.patrolId,
       },
     };
     let board = this.state.missions.boards[mission.stationId];
@@ -4143,6 +4286,12 @@ export const missions = {
       }
       if (m.destStationId !== stationId) continue;
 
+      if (isLoudDelivery(m) && !(m.params && m.params.loudDelivery
+        && m.params.loudDelivery.scanNetCleared === true)) {
+        this.bus.emit('toast', { text: 'Delivery blocked: clear the live customs scan net first.', kind: 'warn', ttl: 4 });
+        continue;
+      }
+
       // A blocking physics term is checked BEFORE any cargo is consumed, so a refused turn-in costs
       // the player nothing but a second approach.
       if (this._refuseTurnInIfBlocked(m)) continue;
@@ -4506,6 +4655,9 @@ export const missions = {
     if (isDebrisRecovery(m) && !isDebrisRecoveryFollowup(m)) this._postDebrisRecoveryFollowup(m);
     if (isDisableDontKill(m) && String(reason || '').includes('no_kills')) {
       this._postDisableDontKillBlackBox(m);
+    }
+    if (isLoudDelivery(m) && String(reason || '') === 'busted') {
+      this._postLoudDeliveryRecovery(m);
     }
     const setPieceTransition = this._compileSetPieceTransition(m, 'failed', reason || 'failed');
     m.status = 'failed';
@@ -5213,10 +5365,48 @@ export const missions = {
     if (this._missionBudgetDeferrals) this._missionBudgetDeferrals.delete(String(m.id));
   },
 
+  /** Request the shipped physical patrol lattice for one active Loud contract. */
+  _ensureLoudDeliveryScanNet(mission) {
+    const loud = mission && mission.params && mission.params.loudDelivery;
+    if (!mission || mission.status !== 'active' || !isLoudDelivery(mission) || !loud
+      || loud.scanNetCleared === true
+      || this.state.world.currentSectorId !== mission.destSectorId) return false;
+    const director = this.registry && this.registry.get && this.registry.get('encounterDirector');
+    if (!director || typeof director.requestAuthoredEncounter !== 'function') return false;
+    const encounterId = loud.encounterId || `loud-delivery:${mission.id}`;
+    loud.encounterId = encounterId;
+    const existing = this.state.encounterDirector && this.state.encounterDirector.live
+      && this.state.encounterDirector.live[encounterId];
+    if (existing && !existing.resolved) return true;
+    const tick = this.state.tick | 0;
+    if (Number.isFinite(loud.nextRequestTick) && tick < loud.nextRequestTick) return false;
+    loud.nextRequestTick = tick + 120;
+    const player = this.state.entities && this.state.entities.get(this.state.playerId);
+    if (!player || !player.pos) return false;
+    const result = director.requestAuthoredEncounter({
+      shapeId: 'patrol_scan',
+      encounterId,
+      sectorId: mission.destSectorId,
+      anchor: { x: player.pos.x + 1000, z: player.pos.z },
+      zoneType: 'border_checkpoint',
+      zoneRadius: 1600,
+      force: true,
+    });
+    if (result && result.ok) {
+      loud.requestedAt_s = Number(this.state.simTime) || 0;
+      this.bus.emit('mission:updated', { missionId: mission.id, encounterId });
+      return true;
+    }
+    return false;
+  },
+
   _onSectorEnter(p) {
     const sectorId = p && p.sectorId;
     if (!sectorId) return;
     this.spawnTargetsForSector(sectorId);
+    for (const mission of this.state.missions.active || []) {
+      if (mission && mission.destSectorId === sectorId) this._ensureLoudDeliveryScanNet(mission);
+    }
     this._reconcileLandmarkQuestOffers({ sectorId });
     this._emitSetPieceTravelLine(sectorId);
     this._refreshNavigation({ preferStory: true });
