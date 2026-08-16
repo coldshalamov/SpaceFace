@@ -37,6 +37,7 @@
 import { hash32, mulberry32 } from '../core/rng.js';
 import { zonesForSector, zoneAt, zoneThreat } from '../data/sectorZones.js';
 import { ZONE_CERES_THROUGHLINE } from '../data/authoredPlaces.js';
+import { HELIOS_LIVING_CHAIN } from '../data/civilianCast.js';
 import {
   globalToSectorLocalForSector,
   sectorLocalToGlobalForSector,
@@ -195,6 +196,8 @@ const CERES_LIVING_CHAIN_SHAPE_ID = 'curtain_convoy';
 const CERES_LIVING_CHAIN_ZONE_ID = 'zone_ceres_refinery';
 const CERES_LIVING_CHAIN_HAULER_SLOT_ID = 'ceres_refinery_hauler';
 const CERES_LIVING_CHAIN_PATROL_SLOT_ID = 'ceres_cathedral_patrol';
+const HELIOS_LIVING_CHAIN_SHAPE_ID = 'curtain_convoy';
+const HELIOS_LIVING_CHAIN_ZONE_ID = 'zone_helios_freight';
 
 const CMDTY = new Map(COMMODITIES.map((c) => [c.id, c]));
 const LEGALITY_FINE_MULT = { restricted: 0.8, illegal: 1.2, contraband: 1.5 };
@@ -273,6 +276,7 @@ export const encounterDirector = {
       this.bus.on('world:zoneEntered', (p) => this._onArcadeIslandEntered(p || {}));
       this.bus.on('world:zoneExited', (p) => this._onArcadeIslandExited(p || {}));
       this.bus.on('traffic:ceresManifestTransferred', (p) => this._onCeresManifestTransferred(p || {}));
+      this.bus.on('traffic:heliosManifestTransferred', (p) => this._onHeliosManifestTransferred(p || {}));
     }
   },
 
@@ -662,6 +666,116 @@ export const encounterDirector = {
       this.abort(live, 'living_chain_adoption');
       return false;
     }
+    dir.stats.fired++;
+    this.emit('encounter:telegraph', {
+      encounterId: live.id,
+      kind: live.shapeId,
+      tier: live.tier,
+      deck: live.deck,
+      sectorId: live.sectorId,
+      zoneId: live.zoneId,
+      zoneName: live.zoneName,
+      pos: { ...live.anchor },
+      causality: { ...live.causality },
+    });
+    this.emit('encounter:spawned', {
+      encounterId: live.id,
+      kind: live.shapeId,
+      squadId: live.squadId,
+      sectorId: live.sectorId,
+      zoneId: live.zoneId,
+      count: 1,
+      fingerprint: live.causality.fingerprint,
+      motiveId: live.causality.motiveId,
+    });
+    return true;
+  },
+
+  _onHeliosManifestTransferred(payload) {
+    const state = this.state;
+    if (!state || this._saveRestoring || this._currentSectorId() !== HELIOS_LIVING_CHAIN.sectorId
+      || payload.sectorId !== HELIOS_LIVING_CHAIN.sectorId
+      || typeof payload.handoffId !== 'string' || !payload.handoffId
+      || !Number.isInteger(payload.transferSeq) || payload.transferSeq <= 0
+      || typeof payload.manifestId !== 'string' || !payload.manifestId
+      || !Number.isSafeInteger(payload.qty) || payload.qty <= 0) return false;
+    const hauler = state.entities?.get(payload.haulerEntityId);
+    const manifest = hauler?.data?.cargoManifest;
+    if (!hauler || hauler.alive === false || hauler.type !== 'ship' || hauler.team !== 2
+      || hauler.data?.civilianCastId !== HELIOS_LIVING_CHAIN.haulerCastId
+      || hauler.data?.livingChainRole !== 'hauler'
+      || hauler.data?.worldRecordId !== payload.haulerWorldRecordId
+      || manifest?.manifestId !== payload.manifestId || manifest.totalQty !== payload.qty
+      || manifest.custody?.handoffId !== payload.handoffId
+      || manifest.custody?.transferSeq !== payload.transferSeq) return false;
+    const patrol = (state.entityList || []).find((entity) => entity && entity.alive !== false
+      && entity.type === 'ship'
+      && entity.data?.civilianCastId === HELIOS_LIVING_CHAIN.patrolCastId
+      && entity.data?.livingChainRole === 'patrol'
+      && entity.data?.worldRecordId === payload.patrolWorldRecordId
+      && entity.data?.ai?.lawful === true);
+    const station = (state.entityList || []).find((entity) => entity && entity.alive !== false
+      && entity.type === 'station'
+      && entity.data?.stationId === HELIOS_LIVING_CHAIN.destinationStationId && entity.pos);
+    const shape = ENCOUNTERS[HELIOS_LIVING_CHAIN_SHAPE_ID];
+    const script = ENCOUNTER_SCRIPTS.convoy;
+    if (!patrol || !station || !shape || !script || typeof script.adoptLivingChain !== 'function') return false;
+
+    const encounterId = `helios:living-chain:${payload.handoffId}:${payload.transferSeq}`;
+    const dir = ensureDirectorState(state);
+    if (dir.live[encounterId]) return true;
+    const angle = hash32(state.meta?.seed || 0, encounterId, 'pirate-bearing') / 4294967296 * Math.PI * 2;
+    const piratePos = {
+      x: hauler.pos.x + Math.cos(angle) * 145,
+      z: hauler.pos.z + Math.sin(angle) * 145,
+    };
+    const item = {
+      encounterId,
+      squadId: encounterId,
+      sectorId: HELIOS_LIVING_CHAIN.sectorId,
+      zoneId: HELIOS_LIVING_CHAIN_ZONE_ID,
+      zoneName: 'Helios Outer Yard Freight Lane',
+      zoneCenter: { x: hauler.pos.x, z: hauler.pos.z },
+      zoneRadius: 1600,
+      factionId: 'faction_reach',
+      variantKind: 'helios_living_manifest_chain',
+      motive: 'cargo_raid',
+      engagementTrigger: 'manifest_predation',
+      predation: { ...shape.predation },
+      ships: [{
+        role: 'raider',
+        archetype: 'reaver_pirate',
+        level: 2,
+        factionId: 'faction_reach',
+        context: 'encounter',
+        passive: true,
+        combatDoctrineId: shape.predation?.attackerDoctrineId,
+        pos: piratePos,
+      }],
+      data: {
+        heliosLivingChain: true,
+        handoffId: payload.handoffId,
+        rootLotId: payload.rootLotId,
+        transferSeq: payload.transferSeq,
+        preservedWorldActorIds: [hauler.id],
+        preservedWorldActorSnapshots: {
+          [hauler.id]: capturePreservedWorldActor(hauler),
+        },
+      },
+    };
+    const live = makeEncounterLiveRecord(state, item, shape, state.simTime || 0);
+    dir.live[live.id] = live;
+    if (!script.adoptLivingChain(this, live, state, { hauler, patrol, station, payload })) {
+      this.abort(live, 'helios_living_chain_adoption');
+      return false;
+    }
+    // The shared custody script is sector-agnostic after adoption, but its original Ceres pilot
+    // labels its destination. Bind the live record to the actual Helios authored route immediately.
+    live.data.end = { x: station.pos.x, z: station.pos.z };
+    live.data.destId = HELIOS_LIVING_CHAIN.destinationStationId;
+    live.data.destName = 'Coalition Ore Intake';
+    live.vars.dest = live.data.destName;
+    live.vars.faction = 'Crimson Reach';
     dir.stats.fired++;
     this.emit('encounter:telegraph', {
       encounterId: live.id,

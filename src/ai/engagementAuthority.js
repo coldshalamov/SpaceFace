@@ -129,7 +129,7 @@ export function authorizeAIEngagement({
         && (ai.engagementTrigger === 'wanted_status' || ai.engagementTrigger === 'player_attack'))
     );
     const scenarioCounterplay = is47aScavengerCounterplayAuthorized(state, self, target);
-    const witnessedManifestCrime = isCeresLivingChainPredationAuthorized(state, self, target);
+    const witnessedManifestCrime = isLivingChainPredationAuthorized(state, self, target);
     if (!lawfulEnforcement && !scenarioCounterplay && !witnessedManifestCrime) {
       return denied('station_protection');
     }
@@ -196,7 +196,7 @@ export function is47aScavengerCounterplayAuthorized(state, self, target) {
  * stable role keys, drive/custody state, deadline, and leash are all re-read at the final gate so a
  * stale tactical frame or recycled numeric id cannot widen the exception.
  */
-export function isAuthorizedPredationRelation(state, self, target) {
+function hasExactPredationRelation(state, self, target, allowTelegraph = false) {
   if (!state || !self || !target || self === target || self.type !== 'ship' || target.type !== 'ship') return false;
   if (self.alive === false || target.alive === false || self.id == null || target.id == null) return false;
   if (target.id === state.playerId || target.team !== 2) return false;
@@ -206,7 +206,9 @@ export function isAuthorizedPredationRelation(state, self, target) {
   const targetData = target.data;
   const ai = selfData && selfData.ai;
   const targetAi = targetData && targetData.ai;
-  if (!ai || ai.passive === true || ai.predationStatus !== 'active') return false;
+  if (!ai || (ai.predationStatus !== 'active'
+    && !(allowTelegraph && ai.predationStatus === 'telegraph'))) return false;
+  if (ai.passive === true && ai.predationStatus !== 'telegraph') return false;
   if (selfData.predationRole !== 'raider' || targetData?.predationRole !== 'manifest_carrier') return false;
   if (ai.encounterRole !== 'raider' || targetAi?.encounterRole !== 'hauler') return false;
   if (ai.motive !== 'cargo_raid' || ai.engagementTrigger !== 'manifest_predation') return false;
@@ -222,7 +224,8 @@ export function isAuthorizedPredationRelation(state, self, target) {
   const live = state.encounterDirector && state.encounterDirector.live
     && state.encounterDirector.live[encounterId];
   if (!live || live.phase === 'done' || live.id !== encounterId || live.shapeId !== 'curtain_convoy') return false;
-  if (live.data?.predationStatus !== 'active'
+  if ((live.data?.predationStatus !== 'active'
+      && !(allowTelegraph && live.data?.predationStatus === 'telegraph'))
     || live.data.predationRaiderId !== self.id
     || live.data.predationTargetId !== target.id
     || live.data.predationTargetIdentityKey !== identityKey) return false;
@@ -252,21 +255,42 @@ export function isAuthorizedPredationRelation(state, self, target) {
   return Number.isFinite(dx) && Number.isFinite(dz) && dx * dx + dz * dz <= leash * leash;
 }
 
+export function isAuthorizedPredationRelation(state, self, target) {
+  return hasExactPredationRelation(state, self, target, false);
+}
+
 /**
- * The one authored exception that lets the Ceres living-world chain become a crime the player can
- * physically interrupt. It does not broaden convoy predation: the ordinary exact live relation is
- * still required, then narrowed to the transferred refinery hauler and the trigger-owned chain.
- * Law observes the first real damage and owns the patrol response.
+ * Authored living-world manifest raids may become witnessed crimes inside their station volumes.
+ * This does not broaden convoy predation: the ordinary exact live relation is still required, then
+ * narrowed to one stamped island carrier and the trigger-owned custody sequence. Law observes the
+ * first real damage and owns the patrol response.
  */
-export function isCeresLivingChainPredationAuthorized(state, self, target) {
-  if (!isAuthorizedPredationRelation(state, self, target)) return false;
-  if (state.world?.currentSectorId !== 'sector_ceres_belt') return false;
-  if (target.data?.activityActorSlotId !== 'ceres_refinery_hauler') return false;
+export function isLivingChainPredationAuthorized(state, self, target) {
+  // The station behavior gate sees the carrier during the authored warning window. Accept that
+  // exact bound relation here so the pirate may telegraph without being forced to disengage;
+  // weapon authority still rejects passive/hold-fire actors until the normal active transition.
+  if (!hasExactPredationRelation(state, self, target, true)) return false;
   const encounterId = self.data?.predationEncounterId;
   const live = encounterId && state.encounterDirector?.live?.[encounterId];
-  return !!(live && live.data?.ceresLivingChain === true
+  if (!live) return false;
+  const sectorId = state.world?.currentSectorId;
+  const ceresChain = sectorId === 'sector_ceres_belt'
+    && target.data?.activityActorSlotId === 'ceres_refinery_hauler'
+    && live.data?.ceresLivingChain === true;
+  const heliosChain = sectorId === 'sector_helios_prime'
+    && target.data?.civilianCastId === 'helios_belt_chain_hauler'
+    && target.data?.livingChainRole === 'hauler'
+    && live.data?.heliosLivingChain === true;
+  return !!((ceresChain || heliosChain)
     && live.data.handoffId === target.data.cargoManifest?.custody?.handoffId
     && live.data.transferSeq === target.data.cargoManifest?.custody?.transferSeq);
+}
+
+// Compatibility export for lawSecurity and the original Ceres focused checks. It now names the
+// shared exact living-chain gate so the same sanctuary-withdrawal seam recognizes Helios without
+// adding a second law-system exception.
+export function isCeresLivingChainPredationAuthorized(state, self, target) {
+  return isLivingChainPredationAuthorized(state, self, target);
 }
 
 /** Fresh hostility oracle for tactical perception and final execution authority. */

@@ -8,6 +8,22 @@
 export const CIVILIAN_CAST_SECTOR_ID = 'sector_helios_prime';
 export const CIVILIAN_CAST_TOW_PAYLOAD_ID = 'helios_yard_recovery_hulk';
 
+// Plan 07: Helios is the second complete living-world island after Ceres. These stable actor ids
+// are data, while traffic remains the sole owner of their jobs, manifest custody, and handoff.
+export const HELIOS_LIVING_CHAIN = Object.freeze({
+  schema: 'spaceface.heliosLivingChain.v1',
+  id: 'helios-starter-belt-living-chain',
+  sectorId: CIVILIAN_CAST_SECTOR_ID,
+  minerHomeStationId: 'station_helios',
+  destinationStationId: 'station_coalition',
+  minerCastId: 'helios_belt_chain_miner',
+  haulerCastId: 'helios_belt_chain_hauler',
+  patrolCastId: 'helios_belt_chain_patrol',
+  transferRangeWU: 72,
+  handoffHoldS: 2.5,
+  haulerCapacityU: 24,
+});
+
 const WHITE_ORANGE_RESCUE = Object.freeze({
   version: 1,
   hullColor: '#f2efe7',
@@ -75,6 +91,75 @@ const PILGRIM_ROUTE = Object.freeze([
   mark('pilgrim_departure', 1180, -330, 'Assembly at Helios'),
   mark('pilgrim_candle_fleet', 1640, -790, 'Candle Fleet Vigil'),
   mark('pilgrim_return', 1120, -250, 'Return Procession'),
+]);
+
+export const HELIOS_LIVING_CHAIN_CAST = Object.freeze([
+  cast({
+    id: HELIOS_LIVING_CHAIN.minerCastId,
+    role: 'miner',
+    livingChainRole: 'miner',
+    label: 'Starter Belt Miner · RILL NINE',
+    ship: 'ship_pelican',
+    factionId: 'faction_scn',
+    worldRecordSlotId: 'helios:civilian:living-chain-miner',
+    jobKind: 'miner',
+    speed: 30,
+    workS: 7,
+    spawnLocal: { x: 760, z: -235 },
+    appearance: INDUSTRIAL_TUG,
+    route: [
+      mark('home:station_helios', 1280, -420, 'Helios Ore Intake'),
+      mark('helios_living_seam', 720, -260, 'Starter Belt Working Face'),
+    ],
+    scanLabel: 'BELT MINER · RILL NINE · CUTTING STARTER IRON',
+    playerUse: 'The cut becomes a physical handoff pod before any hauler can claim it.',
+  }),
+  cast({
+    id: HELIOS_LIVING_CHAIN.haulerCastId,
+    role: 'hauler',
+    livingChainRole: 'hauler',
+    label: 'Ore Shuttle · COPPER WAKE',
+    ship: 'ship_mule',
+    factionId: 'faction_scn',
+    worldRecordSlotId: 'helios:civilian:living-chain-hauler',
+    // The empty shuttle flies a small staging beat until traffic leases it for the real rendezvous;
+    // after custody changes hands, traffic commissions the ordinary hauler route to Coalition.
+    jobKind: 'patrol',
+    speed: 34,
+    dwellS: 5,
+    spawnLocal: { x: 1010, z: -120 },
+    appearance: INDUSTRIAL_TUG,
+    route: [
+      mark('helios_hauler_staging_a', 1010, -120, 'Belt Shuttle Standby'),
+      mark('helios_hauler_staging_b', 1090, -250, 'Belt Shuttle Turn'),
+    ],
+    scanLabel: 'ORE SHUTTLE · EMPTY · STARTER BELT STANDBY',
+    playerUse: 'Its hard braking and open hold announce the cargo handoff before the route burn.',
+  }),
+  cast({
+    id: HELIOS_LIVING_CHAIN.patrolCastId,
+    role: 'patrol',
+    livingChainRole: 'patrol',
+    label: 'Helios Belt Watch · LANTERN TWO',
+    ship: 'ship_wasp',
+    factionId: 'faction_scn',
+    worldRecordSlotId: 'helios:civilian:living-chain-patrol',
+    jobKind: 'patrol',
+    lawful: true,
+    speed: 44,
+    // LANTERN TWO begins on the station watch and remains readable there through the first ore
+    // handoff. Law can therefore dispatch the already-visible hull instead of inventing a reserve.
+    dwellS: 75,
+    spawnLocal: { x: 1240, z: -460 },
+    appearance: WHITE_ORANGE_RESCUE,
+    route: [
+      mark('helios_watch_station', 1280, -420, 'Helios Approach Watch'),
+      mark('helios_watch_belt', 860, -430, 'Starter Belt Watch'),
+      mark('helios_watch_lane', 1110, -330, 'Ore Lane Watch'),
+    ],
+    scanLabel: 'BELT WATCH · LAWFUL PATROL · ORE LANE',
+    playerUse: 'Piracy inside the watched lane pulls this exact patrol off its loop.',
+  }),
 ]);
 
 export const HELIOS_CIVILIAN_CAST = Object.freeze([
@@ -159,13 +244,18 @@ export const HELIOS_CIVILIAN_CAST = Object.freeze([
   })),
 ]);
 
+const ALL_HELIOS_CIVILIAN_CAST = Object.freeze([
+  ...HELIOS_CIVILIAN_CAST,
+  ...HELIOS_LIVING_CHAIN_CAST,
+]);
+
 export const HELIOS_CIVILIAN_CAST_BY_ID = new Map(
-  HELIOS_CIVILIAN_CAST.map((entry) => [entry.id, entry]),
+  ALL_HELIOS_CIVILIAN_CAST.map((entry) => [entry.id, entry]),
 );
 
 export function castDefinitionForWorldRecord(seed, stableRecordId) {
   if (typeof stableRecordId !== 'function') return [];
-  return HELIOS_CIVILIAN_CAST.map((entry) => ({
+  return ALL_HELIOS_CIVILIAN_CAST.map((entry) => ({
     definition: entry,
     worldRecordId: stableRecordId(
       seed,

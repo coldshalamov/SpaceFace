@@ -79,6 +79,7 @@ import {
   CIVILIAN_CAST_SECTOR_ID,
   CIVILIAN_CAST_TOW_PAYLOAD_ID,
   HELIOS_CIVILIAN_CAST_BY_ID,
+  HELIOS_LIVING_CHAIN,
   RESCUE_PRIORITY_APPEARANCE,
   castDefinitionForWorldRecord,
   localCastRouteToGlobal,
@@ -364,6 +365,10 @@ const CERES_REFINERY_HAULER_CAPACITY_U = 28;
 const CERES_MINER_HAULER_HANDOFF_STATES = new Set([
   'requested', 'rendezvous', 'in_transit', 'delivered', 'interrupted',
 ]);
+const HELIOS_LIVING_CHAIN_STATES = new Set([
+  'requested', 'rendezvous', 'handoff', 'in_transit', 'delivered', 'interrupted',
+]);
+const HELIOS_HANDOFF_POD_TTL_S = 240;
 // PQ-048.04 is deliberately one bounded service incident, not another ambient controller. The
 // save record names durable actors only; numeric entity ids are always re-bound from the live cast.
 const CERES_TENDER_SERVICE_INCIDENT_SCHEMA = 'spaceface.ceresTenderServiceIncident.v1';
@@ -638,6 +643,25 @@ function normalizeCeresMinerHaulerHandoff(value, copy = true) {
     deliveredTransferSeq,
   };
   return normalized;
+}
+
+function normalizeHeliosLivingChain(value, copy = true) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)
+    || value.schema !== HELIOS_LIVING_CHAIN.schema
+    || typeof value.handoffId !== 'string' || !value.handoffId
+    || typeof value.minerWorldRecordId !== 'string' || !value.minerWorldRecordId
+    || typeof value.haulerWorldRecordId !== 'string' || !value.haulerWorldRecordId
+    || typeof value.patrolWorldRecordId !== 'string' || !value.patrolWorldRecordId
+    || !HELIOS_LIVING_CHAIN_STATES.has(value.state)
+    || !Number.isSafeInteger(value.cycle) || value.cycle < 1
+    || !Number.isSafeInteger(value.transferSeq) || value.transferSeq < 0) return null;
+  const manifest = value.manifest;
+  if (!validCausalManifest(manifest)
+    || typeof value.rootLotId !== 'string' || !value.rootLotId
+    || manifest.totalQty !== value.qty
+    || !Number.isSafeInteger(value.qty) || value.qty <= 0) return null;
+  if (!copy) return value;
+  return JSON.parse(JSON.stringify(value));
 }
 
 function normalizeCeresTenderServiceIncident(value, copy = true) {
@@ -1009,6 +1033,7 @@ export const traffic = {
       this._ceresDisabledHaulerRestorePending = true;
       this._invalidateCausalRunEpoch();
       this._resetRescueResponses();
+      this._releaseHeliosLivingControls(this.state.traffic && this.state.traffic.heliosLivingChain);
     });
     this.bus.on('save:loaded', () => {
       // Real restores already invalidated at save:restoring. Standalone fixture/compat signals still
@@ -3366,8 +3391,10 @@ export const traffic = {
       trafficRole: definition.role,
       trafficLabel: definition.label,
       role: definition.role,
-      civilianCast: true,
+      civilianCast: definition.livingChainRole ? false : true,
+      ...(definition.livingChainRole ? { livingWorldIslandCast: true } : {}),
       civilianCastId: definition.id,
+      ...(definition.livingChainRole ? { livingChainRole: definition.livingChainRole } : {}),
       civilianCastPlayerUse: definition.playerUse,
       appearance: { ...definition.appearance },
       scanLabel: definition.scanLabel,
@@ -3384,7 +3411,8 @@ export const traffic = {
         ...(data.ai || {}),
         archetype: 'passive',
         passive: true,
-        spawnContext: 'convoy_civilian',
+        ...(definition.lawful === true ? { lawful: true } : {}),
+        spawnContext: definition.lawful === true ? 'patrol' : 'convoy_civilian',
       },
     };
     if (definition.id === 'helios_news_observer' && !entity.data.coverageStatus) {
@@ -3398,6 +3426,10 @@ export const traffic = {
     this._ensureState();
     const records = this.state.world && this.state.world.records && this.state.world.records.byId || {};
     const assign = this.helpers.npcJobs && this.helpers.npcJobs.assign;
+    const stations = this._sectorStations();
+    const livingHome = stations.find((station) => stationIdentity(station) === HELIOS_LIVING_CHAIN.minerHomeStationId)
+      || stations[0]
+      || null;
     const worldOwner = this._registry && typeof this._registry.get === 'function'
       ? this._registry.get('world')
       : null;
@@ -3437,9 +3469,9 @@ export const traffic = {
       record.role = definition.role;
       record.worldRecordId = worldRecordId;
       record.civilianCastId = definition.id;
-      record.manifest = null;
+      if (!definition.livingChainRole) record.manifest = null;
       if (typeof assign === 'function') {
-        assign(entity, {
+        let jobSpec = {
           kind: definition.jobKind,
           sectorId: CIVILIAN_CAST_SECTOR_ID,
           speed: definition.speed,
@@ -3449,7 +3481,18 @@ export const traffic = {
             definition,
             (localPos) => sectorLocalToGlobalForSector(localPos, CIVILIAN_CAST_SECTOR_ID),
           ),
-        });
+        };
+        if (definition.livingChainRole === 'miner' && livingHome) {
+          jobSpec = this._buildJobSpec(
+            'miner', entity, livingHome, livingHome, stations, CIVILIAN_CAST_SECTOR_ID,
+          ) || jobSpec;
+        } else if (definition.livingChainRole === 'hauler'
+          && this.state.traffic.heliosLivingChain?.state === 'in_transit') {
+          // npcJobs is serialized independently. Do not replace the restored destination run with
+          // the empty shuttle's staging beat during Continue rematerialization.
+          jobSpec = null;
+        }
+        if (jobSpec) assign(entity, jobSpec);
       }
       if (worldOwner && typeof worldOwner.upsertWorldRecord === 'function') {
         worldOwner.upsertWorldRecord(entity);
@@ -3712,6 +3755,7 @@ export const traffic = {
     this._resetCeresTenderServiceRuntime();
     this._releaseCeresDisabledHaulerControls(this.state.traffic.ceresDisabledHaulerIncident);
     this._resetCeresDisabledHaulerRuntime();
+    this._releaseHeliosLivingControls(this.state.traffic.heliosLivingChain);
     // Hard exit drops the view and every view-scoped causality ledger while the freighter ledger
     // still names persistent bodies that need stamp cleanup.
     this._resetTransientCausalLedgers(true);
@@ -3768,6 +3812,9 @@ export const traffic = {
       if (!this._hasActiveCeresTenderServiceLink()) this._stepCeresTenderServiceIncident(dt);
       this._stepCeresDisabledHaulerIncident(dt);
       this._stepCeresMinerHaulerHandoffs(dt);
+    }
+    if (state.world && state.world.currentSectorId === CIVILIAN_CAST_SECTOR_ID) {
+      this._stepHeliosLivingChain();
     }
 
     let lostWorldSiteRoute = false;
@@ -5401,6 +5448,352 @@ export const traffic = {
     return true;
   },
 
+  // Plan 07 — second complete physical living-world island. This is deliberately a separate
+  // descriptor-bound state machine: Ceres remains byte-for-byte on its existing authored path.
+  _heliosLivingActor(role) {
+    const castId = role === 'miner' ? HELIOS_LIVING_CHAIN.minerCastId
+      : role === 'hauler' ? HELIOS_LIVING_CHAIN.haulerCastId
+      : role === 'patrol' ? HELIOS_LIVING_CHAIN.patrolCastId
+      : null;
+    if (!castId) return null;
+    const entity = (this.state.entityList || []).find((candidate) => candidate
+      && candidate.alive !== false && candidate.type === 'ship'
+      && candidate.data?.civilianCastId === castId
+      && candidate.data?.livingChainRole === role);
+    if (!entity || !entity.data?.worldRecordId) return null;
+    const rec = (this.state.traffic?.freighters || []).find((candidate) => candidate
+      && candidate.id === entity.id && candidate.worldRecordId === entity.data.worldRecordId);
+    return rec ? { entity, rec, worldRecordId: entity.data.worldRecordId } : null;
+  },
+
+  _stampHeliosLivingStatus(pair, chain, status, target = null) {
+    if (!pair?.entity?.data || !chain) return;
+    const data = pair.entity.data;
+    data.heliosLivingChainId = chain.handoffId;
+    data.heliosLivingChainState = chain.state;
+    data.heliosLivingChainStatus = String(status || chain.state).toUpperCase();
+    if (target?.entity?.id != null) data.heliosLivingChainTargetId = target.entity.id;
+    else delete data.heliosLivingChainTargetId;
+    const role = data.livingChainRole;
+    if (role === 'miner') data.scanLabel = `BELT MINER · ${data.heliosLivingChainStatus}`;
+    else if (role === 'hauler') data.scanLabel = `ORE SHUTTLE · ${data.heliosLivingChainStatus}`;
+    else if (role === 'patrol') data.scanLabel = `BELT WATCH · ${data.heliosLivingChainStatus}`;
+  },
+
+  _emitHeliosLivingTransition(chain, kind, extra = null) {
+    if (!this.bus || typeof this.bus.emit !== 'function' || !chain) return;
+    this.bus.emit('traffic:heliosLivingChain', {
+      schema: HELIOS_LIVING_CHAIN.schema,
+      chainId: HELIOS_LIVING_CHAIN.id,
+      sectorId: CIVILIAN_CAST_SECTOR_ID,
+      handoffId: chain.handoffId,
+      cycle: chain.cycle,
+      state: chain.state,
+      kind: String(kind || 'transition'),
+      manifestId: chain.manifest?.manifestId || null,
+      qty: chain.qty,
+      simTime: Number.isFinite(this.state.simTime) ? this.state.simTime : 0,
+      ...(extra && typeof extra === 'object' ? extra : {}),
+    });
+  },
+
+  _requestHeliosLivingHandoff(context, manifest, asteroid) {
+    if (!context?.entity?.data || context.entity.data.civilianCastId !== HELIOS_LIVING_CHAIN.minerCastId
+      || !validCausalManifest(manifest) || !asteroid?.pos) return null;
+    this._ensureState();
+    const current = normalizeHeliosLivingChain(this.state.traffic.heliosLivingChain, false);
+    if (current && !['delivered', 'interrupted'].includes(current.state)) return null;
+    const miner = this._heliosLivingActor('miner');
+    const hauler = this._heliosLivingActor('hauler');
+    const patrol = this._heliosLivingActor('patrol');
+    if (!miner || !hauler || !patrol || miner.entity.id !== context.entity.id) return null;
+    const cycle = current ? current.cycle + 1 : 1;
+    const rootLotId = `${manifest.manifestId}:helios-lot`;
+    manifest.role = 'ore_carrier';
+    manifest.lotId = rootLotId;
+    manifest.lotSource = {
+      rootLotId,
+      sourceKind: 'mining:npcExtraction',
+      asteroidId: asteroid.id,
+      fieldId: asteroid.data?.fieldId || null,
+      sectorId: CIVILIAN_CAST_SECTOR_ID,
+    };
+    manifest.custody = {
+      holderKind: 'traffic',
+      holderId: miner.worldRecordId,
+      acquiredBy: 'mining:npcExtraction',
+      rootLotId,
+    };
+    const handoffId = `helios-miner-hauler:${miner.worldRecordId}:${cycle}:${rootLotId}`;
+    const chain = {
+      schema: HELIOS_LIVING_CHAIN.schema,
+      handoffId,
+      cycle,
+      state: 'requested',
+      minerWorldRecordId: miner.worldRecordId,
+      haulerWorldRecordId: hauler.worldRecordId,
+      patrolWorldRecordId: patrol.worldRecordId,
+      rootLotId,
+      manifest: JSON.parse(JSON.stringify(manifest)),
+      qty: manifest.totalQty,
+      transferSeq: 0,
+      requestedAtSimT: Number.isFinite(this.state.simTime) ? this.state.simTime : 0,
+      seamEntityId: asteroid.id,
+    };
+    this.state.traffic.heliosLivingChain = chain;
+    this._setTrafficManifest(miner.entity, miner.rec, manifest);
+    this._stampHeliosLivingStatus(miner, chain, 'HAULER REQUESTED', hauler);
+    this._stampHeliosLivingStatus(hauler, chain, 'SEAM CALL RECEIVED', miner);
+    this._stampHeliosLivingStatus(patrol, chain, 'ORE LANE WATCH');
+    this._emitHeliosLivingTransition(chain, 'requested', { asteroidId: asteroid.id });
+    return chain;
+  },
+
+  _heliosLivingClaimId(chain, role) {
+    return `helios-living:${chain.handoffId}:${role}`;
+  },
+
+  _claimHeliosLivingControl(chain, pair, role) {
+    const jobs = this.helpers?.npcJobs;
+    const jobId = pair?.entity?.data?.jobId;
+    if (!chain || !pair || typeof jobId !== 'string' || !jobs?.claimControl) return false;
+    const result = jobs.claimControl(jobId, {
+      claimId: this._heliosLivingClaimId(chain, role),
+      holder: 'traffic:heliosLivingChain',
+    });
+    if (result?.granted === true) return true;
+    const existing = jobs.controlClaim?.(jobId);
+    return existing?.claimId === this._heliosLivingClaimId(chain, role);
+  },
+
+  _releaseHeliosLivingControl(chain, pair, role) {
+    const jobs = this.helpers?.npcJobs;
+    const jobId = pair?.entity?.data?.jobId || (pair?.worldRecordId ? `job:${pair.worldRecordId}` : null);
+    if (chain && jobId && jobs?.releaseControl) {
+      jobs.releaseControl(jobId, this._heliosLivingClaimId(chain, role));
+    }
+  },
+
+  _releaseHeliosLivingControls(chain) {
+    this._releaseHeliosLivingControl(chain, this._heliosLivingActor('miner'), 'miner');
+    this._releaseHeliosLivingControl(chain, this._heliosLivingActor('hauler'), 'hauler');
+  },
+
+  _heliosLivingPod(chain) {
+    if (!chain) return null;
+    return (this.state.entityList || []).find((entity) => entity && entity.alive !== false
+      && entity.type === 'payload'
+      && entity.data?.heliosLivingHandoffPod?.handoffId === chain.handoffId) || null;
+  },
+
+  _spawnHeliosLivingPod(chain, miner, hauler) {
+    if (!chain || !miner?.entity?.pos || !hauler?.entity?.pos || !this.helpers?.spawnEntity) return null;
+    const existing = this._heliosLivingPod(chain);
+    if (existing) return existing;
+    const manifest = chain.manifest;
+    if (!validCausalManifest(manifest)) return null;
+    const pos = {
+      x: (miner.entity.pos.x + hauler.entity.pos.x) * 0.5,
+      z: (miner.entity.pos.z + hauler.entity.pos.z) * 0.5,
+    };
+    const now = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    const pod = this.helpers.spawnEntity({
+      type: 'payload', team: 2, factionId: 'faction_scn',
+      pos, vel: { x: 0, z: 0 },
+      radius: Math.max(3, Math.min(7, 2 + Math.cbrt(chain.qty))),
+      mass: Math.max(24, chain.qty * 12), hull: 80, hullMax: 80, collides: true,
+      flags: { persistent: true },
+      data: {
+        payloadType: CIVILIAN_MANIFEST_PAYLOAD_TYPE,
+        salvagePool: Object.fromEntries(manifest.lines.map((line) => [line.commodityId, line.qty])),
+        cargoManifest: JSON.parse(JSON.stringify(manifest)),
+        scanLabel: `ORE HANDOFF POD · ${chain.qty}U · PHYSICAL CUSTODY`,
+        despawnAt: now + HELIOS_HANDOFF_POD_TTL_S,
+        heliosLivingHandoffPod: {
+          schema: HELIOS_LIVING_CHAIN.schema,
+          handoffId: chain.handoffId,
+          manifestId: manifest.manifestId,
+          rootLotId: chain.rootLotId,
+          qty: chain.qty,
+        },
+      },
+    });
+    if (!pod) return null;
+    chain.podOrigin = { ...pos };
+    chain.podSpawnedAtSimT = now;
+    chain.podReadyAtSimT = now + HELIOS_LIVING_CHAIN.handoffHoldS;
+    chain.podEntityId = pod.id;
+    return pod;
+  },
+
+  _commissionHeliosHaulerRoute(chain, hauler, manifest) {
+    const jobs = this.helpers?.npcJobs;
+    const station = this._sectorStations().find((candidate) => stationIdentity(candidate) === HELIOS_LIVING_CHAIN.destinationStationId);
+    if (!chain || !hauler?.entity?.pos || !station?.pos || !jobs?.assign) return false;
+    const priorJobId = hauler.entity.data?.jobId;
+    if (priorJobId && jobs.release) jobs.release(priorJobId);
+    if (hauler.entity.data) hauler.entity.data.jobId = null;
+    const assigned = jobs.assign(hauler.entity, {
+      kind: 'hauler',
+      sectorId: CIVILIAN_CAST_SECTOR_ID,
+      speed: 52,
+      route: [
+        { id: `origin:helios_living_handoff_${chain.cycle}`, pos: { ...hauler.entity.pos }, label: 'Starter Belt Handoff' },
+        // The authored Outer Yard leg keeps the manifest route readable after the witnessed opening
+        // and gives a robbery or player intervention physical room without weakening protection.
+        { id: `lane:helios_outer_yard_${chain.cycle}`, pos: sectorLocalToGlobalForSector({ x: -1760, z: -1260 }, CIVILIAN_CAST_SECTOR_ID), label: 'Outer Yard Freight Lane' },
+        { id: `dest:${HELIOS_LIVING_CHAIN.destinationStationId}`, pos: { x: station.pos.x, z: station.pos.z }, label: 'Coalition Ore Intake' },
+      ],
+      payload: { manifest },
+    });
+    return !!assigned;
+  },
+
+  _interruptHeliosLivingChain(chain, reason, extra = null) {
+    if (!chain || ['delivered', 'interrupted'].includes(chain.state)) return false;
+    chain.state = 'interrupted';
+    chain.interruption = String(reason || 'interrupted');
+    chain.interruptedAtSimT = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    this._releaseHeliosLivingControls(chain);
+    const miner = this._heliosLivingActor('miner');
+    const hauler = this._heliosLivingActor('hauler');
+    const patrol = this._heliosLivingActor('patrol');
+    this._stampHeliosLivingStatus(miner, chain, 'HANDOFF INTERRUPTED');
+    this._stampHeliosLivingStatus(hauler, chain, 'HANDOFF INTERRUPTED');
+    this._stampHeliosLivingStatus(patrol, chain, 'CARGO INCIDENT');
+    this._emitHeliosLivingTransition(chain, 'interrupted', { reason: chain.interruption, ...(extra || {}) });
+    return true;
+  },
+
+  _stepHeliosLivingChain() {
+    const chain = normalizeHeliosLivingChain(this.state.traffic?.heliosLivingChain, false);
+    if (!chain || ['delivered', 'interrupted'].includes(chain.state)) return;
+    if (this.state.world?.currentSectorId !== CIVILIAN_CAST_SECTOR_ID) {
+      this._releaseHeliosLivingControls(chain);
+      return;
+    }
+    const miner = this._heliosLivingActor('miner');
+    const hauler = this._heliosLivingActor('hauler');
+    if (!miner || !hauler) return;
+    const source = miner.entity.data?.cargoManifest || miner.rec.manifest;
+    const held = hauler.entity.data?.cargoManifest || hauler.rec.manifest;
+    if (chain.state === 'in_transit') {
+      if (!validCausalManifest(held) || held.custody?.handoffId !== chain.handoffId) {
+        this._interruptHeliosLivingChain(chain, 'transferred_manifest_missing');
+      } else if (!hauler.entity.data?.jobId) {
+        this._commissionHeliosHaulerRoute(chain, hauler, held);
+      }
+      return;
+    }
+    if (!this._claimHeliosLivingControl(chain, miner, 'miner')
+      || !this._claimHeliosLivingControl(chain, hauler, 'hauler')) return;
+    setIntent(miner.entity, 0, 0, false, false, null, miner.entity.rot || 0);
+    const dx = miner.entity.pos.x - hauler.entity.pos.x;
+    const dz = miner.entity.pos.z - hauler.entity.pos.z;
+    const distance = Math.hypot(dx, dz);
+    const aim = distance > 0.001 ? Math.atan2(dz, dx) : hauler.entity.rot || 0;
+    if (chain.state === 'requested' || chain.state === 'rendezvous') {
+      if (!validCausalManifest(source) || source.manifestId !== chain.manifest.manifestId) {
+        this._interruptHeliosLivingChain(chain, 'source_manifest_missing');
+        return;
+      }
+      if (distance > HELIOS_LIVING_CHAIN.transferRangeWU) {
+        chain.state = 'rendezvous';
+        setIntent(hauler.entity, 0, 1, distance > 180, false, null, aim);
+        this._stampHeliosLivingStatus(miner, chain, 'HOLDING AT SEAM', hauler);
+        this._stampHeliosLivingStatus(hauler, chain, 'BRAKING TO HANDOFF', miner);
+        return;
+      }
+      setIntent(hauler.entity, 0, 0, false, false, null, aim);
+      const pod = this._spawnHeliosLivingPod(chain, miner, hauler);
+      if (!pod) return;
+      chain.state = 'handoff';
+      this._setTrafficManifest(miner.entity, miner.rec,
+        this._buildMinerManifest(miner.entity, chain.cycle, null, 0, 'miner'));
+      this._stampHeliosLivingStatus(miner, chain, 'POD RELEASED', hauler);
+      this._stampHeliosLivingStatus(hauler, chain, 'HOLD OPEN — RECEIVING', miner);
+      this._emitHeliosLivingTransition(chain, 'pod_released', { podEntityId: pod.id });
+      return;
+    }
+    if (chain.state !== 'handoff') return;
+    const pod = this._heliosLivingPod(chain);
+    if (!pod) {
+      this._interruptHeliosLivingChain(chain, 'handoff_pod_missing');
+      return;
+    }
+    const moved = chain.podOrigin
+      ? Math.hypot(pod.pos.x - chain.podOrigin.x, pod.pos.z - chain.podOrigin.z)
+      : 0;
+    const podToHauler = Math.hypot(pod.pos.x - hauler.entity.pos.x, pod.pos.z - hauler.entity.pos.z);
+    if (moved > HELIOS_LIVING_CHAIN.transferRangeWU || podToHauler > HELIOS_LIVING_CHAIN.transferRangeWU) {
+      this._interruptHeliosLivingChain(chain, 'physical_handoff_intervened', { podEntityId: pod.id });
+      return;
+    }
+    setIntent(hauler.entity, 0, 0, false, false, null, aim);
+    const now = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    if (now < chain.podReadyAtSimT) return;
+    const transferred = JSON.parse(JSON.stringify(chain.manifest));
+    chain.transferSeq += 1;
+    transferred.role = 'hauler';
+    transferred.freighterKey = hauler.worldRecordId;
+    transferred.custody = {
+      holderKind: 'traffic', holderId: hauler.worldRecordId,
+      acquiredBy: 'traffic:heliosLivingChain', handoffId: chain.handoffId,
+      transferSeq: chain.transferSeq, rootLotId: chain.rootLotId,
+    };
+    if (!this._setTrafficManifest(hauler.entity, hauler.rec, transferred)) return;
+    this._releaseHeliosLivingControls(chain);
+    if (!this._commissionHeliosHaulerRoute(chain, hauler, transferred)) {
+      this._interruptHeliosLivingChain(chain, 'hauler_route_rejected');
+      return;
+    }
+    chain.state = 'in_transit';
+    chain.transferredAtSimT = now;
+    chain.transferredManifestId = transferred.manifestId;
+    pod.data.heliosLivingHandoffPod.consumed = true;
+    const remove = this.helpers.removeEntity || this.helpers.despawnEntity;
+    if (typeof remove === 'function') remove(pod.id);
+    else pod.alive = false;
+    this._stampHeliosLivingStatus(miner, chain, 'SEAM WORK RESUMED');
+    this._stampHeliosLivingStatus(hauler, chain, 'ORE RECEIVED — COALITION BOUND');
+    this._emitHeliosLivingTransition(chain, 'transferred', { haulerEntityId: hauler.entity.id });
+    this.bus.emit('traffic:heliosManifestTransferred', {
+      handoffId: chain.handoffId,
+      rootLotId: chain.rootLotId,
+      transferSeq: chain.transferSeq,
+      manifestId: transferred.manifestId,
+      commodityId: transferred.lines[0]?.commodityId || null,
+      qty: transferred.totalQty,
+      minerEntityId: miner.entity.id,
+      minerWorldRecordId: miner.worldRecordId,
+      haulerEntityId: hauler.entity.id,
+      haulerWorldRecordId: hauler.worldRecordId,
+      patrolWorldRecordId: chain.patrolWorldRecordId,
+      sectorId: CIVILIAN_CAST_SECTOR_ID,
+    });
+  },
+
+  _markHeliosLivingDelivered(context, manifest) {
+    const chain = normalizeHeliosLivingChain(this.state.traffic?.heliosLivingChain, false);
+    if (!chain || chain.state !== 'in_transit'
+      || context.worldRecordId !== chain.haulerWorldRecordId
+      || manifest?.manifestId !== chain.manifest.manifestId
+      || manifest?.custody?.handoffId !== chain.handoffId
+      || manifest.totalQty !== chain.qty) return false;
+    chain.state = 'delivered';
+    chain.deliveredAtSimT = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    const hauler = this._heliosLivingActor('hauler');
+    const miner = this._heliosLivingActor('miner');
+    const patrol = this._heliosLivingActor('patrol');
+    this._stampHeliosLivingStatus(hauler, chain, 'ORE DELIVERED');
+    this._stampHeliosLivingStatus(miner, chain, 'SHIFT COMPLETE');
+    this._stampHeliosLivingStatus(patrol, chain, 'ORE LANE CLEAR');
+    this._setTrafficManifest(context.entity, context.rec,
+      this._buildMinerManifest(context.entity, chain.cycle, null, 0, 'hauler'));
+    this._emitHeliosLivingTransition(chain, 'delivered');
+    return true;
+  },
+
   // PQ-048.03 — one exact Ceres custody relay. The durable record deliberately keeps only stable
   // world-record identities and JSON cargo facts; numeric entity ids are re-resolved every tick.
   _ceresHandoffRootLotId(manifest) {
@@ -6840,6 +7233,10 @@ export const traffic = {
           : null,
       );
       if (!this._setTrafficManifest(context.entity, context.rec, manifest)) throw new Error('miner_manifest_rejected');
+      const isHeliosLivingMiner = context.entity.data?.civilianCastId === HELIOS_LIVING_CHAIN.minerCastId;
+      if (isHeliosLivingMiner && !this._requestHeliosLivingHandoff(context, manifest, asteroid)) {
+        throw new Error('helios_living_handoff_request_rejected');
+      }
       if (isCeresRichSeamWork && !this._requestCeresMinerHaulerHandoff(context, manifest)) {
         throw new Error('ceres_miner_handoff_request_rejected');
       }
@@ -7769,6 +8166,13 @@ export const traffic = {
       dockSeq: Number.isSafeInteger(intent.seq) && intent.seq >= 0 ? intent.seq : undefined,
       manifest,
     });
+    if (applied && intent.kind === 'hauler'
+      && context.entity.data?.civilianCastId === HELIOS_LIVING_CHAIN.haulerCastId) {
+      this._markHeliosLivingDelivered(
+        context,
+        manifest || context.entity.data?.cargoManifest || context.rec.manifest,
+      );
+    }
     if (applied && priorityItinerary) {
       this._advancePriorityCourierLeg(context.entity, context.rec, this._sectorStations(), priorityItinerary);
     }
@@ -7845,6 +8249,12 @@ export const traffic = {
     const killedWorldRecordId = (ent && ent.data && ent.data.worldRecordId)
       || (rec && rec.worldRecordId)
       || null;
+    const heliosChain = normalizeHeliosLivingChain(this.state.traffic.heliosLivingChain, false);
+    if (heliosChain && !['delivered', 'interrupted'].includes(heliosChain.state)
+      && [heliosChain.minerWorldRecordId, heliosChain.haulerWorldRecordId,
+        heliosChain.patrolWorldRecordId].includes(killedWorldRecordId)) {
+      this._interruptHeliosLivingChain(heliosChain, 'participant_destroyed', { entityId: p.id });
+    }
     // The source ledger, not this traffic system, owns the durable claim. Releasing through its
     // helper happens before any future cutter can consider the exact Vesta wreck again.
     const killedSalvageSource = ent && ent.data && typeof ent.data.salvageSource === 'string'
@@ -8100,6 +8510,9 @@ export const traffic = {
     } else if (handoff.terminalizedQty == null) {
       handoff.terminalizedQty = normalizedHandoff.terminalizedQty;
     }
+    if (!normalizeHeliosLivingChain(this.state.traffic.heliosLivingChain, false)) {
+      this.state.traffic.heliosLivingChain = null;
+    }
     const serviceIncident = this.state.traffic.ceresTenderServiceIncident;
     const normalizedServiceIncident = normalizeCeresTenderServiceIncident(serviceIncident, false);
     if (!normalizedServiceIncident) {
@@ -8201,6 +8614,7 @@ export const traffic = {
       ceresMinerHaulerHandoff: normalizeCeresMinerHaulerHandoff(
         this.state.traffic.ceresMinerHaulerHandoff,
       ),
+      heliosLivingChain: normalizeHeliosLivingChain(this.state.traffic.heliosLivingChain),
       ceresTenderServiceIncident: normalizeCeresTenderServiceIncident(
         this.state.traffic.ceresTenderServiceIncident,
       ),
@@ -8227,6 +8641,11 @@ export const traffic = {
       && !Array.isArray(data)
       && data.schema === CERES_MINER_HAULER_SAVE_SCHEMA
       ? normalizeCeresMinerHaulerHandoff(data.ceresMinerHaulerHandoff)
+      : null;
+    this.state.traffic.heliosLivingChain = data
+      && !Array.isArray(data)
+      && data.schema === CERES_MINER_HAULER_SAVE_SCHEMA
+      ? normalizeHeliosLivingChain(data.heliosLivingChain)
       : null;
     this.state.traffic.ceresTenderServiceIncident = data
       && !Array.isArray(data)
@@ -8301,6 +8720,7 @@ export const traffic = {
       appliedJobActionIds: [],
       appliedSalvorWorkIds: [],
       ceresMinerHaulerHandoff: null,
+      heliosLivingChain: null,
       ceresTenderServiceIncident: null,
       ceresTenderServiceSequence: 0,
       ceresDisabledHaulerIncident: null,
