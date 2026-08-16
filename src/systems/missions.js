@@ -50,11 +50,19 @@ import {
   SET_PIECE_MISSIONS,
 } from '../data/missions.js';
 import {
+  PEST_CONTROL_ARCHETYPE_ID,
+  PEST_CONTROL_FOLLOWUP_SOURCE,
+  PEST_CONTROL_VARIANT_ID,
   QUIET_DELIVERY_RECOVERY_SOURCE,
+  applyPestControlVariant,
   applyQuietDeliveryVariant,
+  isPestControl,
+  isPestControlFollowup,
   isQuietDelivery,
   isQuietDeliveryRecovery,
+  pestControlFollowupOfferId,
   quietDeliveryRecoveryOfferId,
+  shouldRollPestControl,
   shouldRollQuietDelivery,
 } from '../data/missionVariants.js';
 import { factionMissionDoctrineMultiplier } from '../data/factionPlay.js';
@@ -1018,6 +1026,9 @@ export const missions = {
     // A failed Quiet Delivery posts exactly one deterministic debris-recovery row. It is a physical
     // consequence, not an epoch roll, so keep it until the player accepts it.
     const retainedQuietDeliveryRecovery = previousSlots.filter(isQuietDeliveryRecovery);
+    // A failed Pest Control leaves one expanded nest. Its follow-on is causal board state, not a
+    // procedural reroll, and remains until accepted.
+    const retainedPestControlFollowup = previousSlots.filter(isPestControlFollowup);
     board = {
       refreshEpoch: epoch,
       slots: [
@@ -1034,6 +1045,7 @@ export const missions = {
         // row placed before the generated block pushes the intro off the head.
         ...retainedHeistOffers,
         ...retainedQuietDeliveryRecovery,
+        ...retainedPestControlFollowup,
       ],
     };
     state.missions.boards[stationId] = board;
@@ -1586,6 +1598,9 @@ export const missions = {
     const quietDelivery = options.attachConditions !== false
       && typeId === 'cargo_delivery' && FRAGILE_LEGAL_TRADE_CMDTYS.length > 0
       && shouldRollQuietDelivery(variantHashFn(this.state.meta.seed, id, 'mission-variant'));
+    const pestControl = options.attachConditions !== false
+      && typeId === 'patrol_clear'
+      && shouldRollPestControl(variantHashFn(this.state.meta.seed, id, 'pest-control-variant'));
     if (quietDelivery) {
       const commodityHash = variantHashFn(this.state.meta.seed, id, 'quiet-delivery-cargo') >>> 0;
       const cmdtyId = FRAGILE_LEGAL_TRADE_CMDTYS[commodityHash % FRAGILE_LEGAL_TRADE_CMDTYS.length];
@@ -1623,8 +1638,10 @@ export const missions = {
       storyTag: null,
     };
     // Quiet Delivery pins its two defining terms; random terms must not dilute or contradict the
-    // advertised physical job. Other offers keep the ordinary seeded condition draw unchanged.
+    // advertised physical job. Pest Control likewise stays an all-wasp clear rather than inheriting
+    // a random finishing restriction. Other offers keep the ordinary seeded condition draw.
     if (quietDelivery) return applyQuietDeliveryVariant(offer);
+    if (pestControl) return applyPestControlVariant(offer, dest && dest.name || 'the claim');
     // Physics terms are the last thing stamped onto a rolled offer so the reward/deadline family
     // above is untouched: a condition-free offer is byte-identical to the shipped one.
     return options.attachConditions === false ? offer : this._withConditions(offer, epoch);
@@ -2250,7 +2267,8 @@ export const missions = {
       sourceOfferId: offer.id || null,
       cause: offer.cause ? JSON.parse(JSON.stringify(offer.cause)) : null,
       chainNextSeed: (offer.source !== SET_PIECE_MISSION_SOURCE
-        && offer.source !== QUIET_DELIVERY_RECOVERY_SOURCE && def && def.chainable)
+        && offer.source !== QUIET_DELIVERY_RECOVERY_SOURCE
+        && offer.source !== PEST_CONTROL_FOLLOWUP_SOURCE && def && def.chainable)
         ? this._chainSeed(offer) : null,
     };
   },
@@ -2909,6 +2927,77 @@ export const missions = {
       source: QUIET_DELIVERY_RECOVERY_SOURCE,
       cause: {
         tag: 'quiet_delivery_loss',
+        sourceMissionId: mission.id,
+        sourceOfferId: mission.sourceOfferId || null,
+      },
+    };
+    let board = this.state.missions.boards[mission.stationId];
+    if (!board || typeof board !== 'object') {
+      board = { refreshEpoch: this._epoch(), slots: [] };
+      this.state.missions.boards[mission.stationId] = board;
+    }
+    if (!Array.isArray(board.slots)) board.slots = [];
+    board.slots.push(offer);
+    this.bus.emit('mission:updated', { missionId: null, stationId: mission.stationId });
+    return offer;
+  },
+
+  /** A missed first clear leaves one larger, save-carried wasp nest follow-on. */
+  _postPestControlFollowup(mission) {
+    const offerId = pestControlFollowupOfferId(mission);
+    if (!mission || !offerId || !mission.stationId || isPestControlFollowup(mission)) return null;
+    const duplicateActive = (this.state.missions.active || []).find((candidate) => (
+      candidate && candidate.sourceOfferId === offerId
+    ));
+    if (duplicateActive) return duplicateActive;
+    for (const candidateBoard of Object.values(this.state.missions.boards || {})) {
+      const duplicate = candidateBoard && Array.isArray(candidateBoard.slots)
+        && candidateBoard.slots.find((candidate) => candidate && candidate.id === offerId);
+      if (duplicate) return duplicate;
+    }
+
+    const pest = mission.params && mission.params.pestControl || {};
+    const remaining = Math.max(1,
+      Math.floor(Number(mission.objectiveTarget) || 1) - Math.floor(Number(mission.objectiveProgress) || 0));
+    const clearCount = Math.min(6, Math.max(3, remaining + 1));
+    const claimName = pest.claimName || this._destName(mission) || 'the claim';
+    const timeLimitS = Math.max(180, Math.round(Number(mission.deadline_s) - Number(mission.acceptedAt_s)) || 0);
+    const targetStrength = (1 + Math.max(1, Number(mission.riskTier) || 1) * 0.4) * clearCount * 0.6;
+    const offer = {
+      id: offerId,
+      type: 'patrol_clear',
+      stationId: mission.stationId,
+      factionId: mission.factionId,
+      reward_cr: Math.max(120, Math.round((Number(mission.reward_cr) || 0) * 0.6)),
+      time_limit_s: timeLimitS,
+      duration_s: timeLimitS,
+      collateral_cr: 0,
+      riskTier: Math.max(1, Math.round(Number(mission.riskTier) || 1)),
+      destStationId: mission.destStationId,
+      destSectorId: mission.destSectorId,
+      distance: mission.distance,
+      params: {
+        clearCount,
+        killCount: 0,
+        targetStrength,
+        fValue: targetStrength,
+        taskTime: clearCount * 45,
+        missionVariant: PEST_CONTROL_VARIANT_ID,
+        pestControl: {
+          archetypeId: pest.archetypeId || PEST_CONTROL_ARCHETYPE_ID,
+          claimName,
+          generation: 1,
+          sourceMissionId: mission.id,
+        },
+      },
+      title: `Pest Control — Nest Spillover near ${claimName}`,
+      brief: `The uncleared wasp nest spread across ${claimName}. Burn ${clearCount} live signatures.`,
+      expiresAtEpoch: this._epoch() + 2,
+      storyTag: null,
+      variantId: PEST_CONTROL_VARIANT_ID,
+      source: PEST_CONTROL_FOLLOWUP_SOURCE,
+      cause: {
+        tag: 'pest_control_spread',
         sourceMissionId: mission.id,
         sourceOfferId: mission.sourceOfferId || null,
       },
@@ -4180,6 +4269,7 @@ export const missions = {
     if (isQuietDelivery(m) && String(reason || '').includes('fragile_intact')) {
       this._postQuietDeliveryRecovery(m);
     }
+    if (isPestControl(m) && !isPestControlFollowup(m)) this._postPestControlFollowup(m);
     const setPieceTransition = this._compileSetPieceTransition(m, 'failed', reason || 'failed');
     m.status = 'failed';
     this._clearMissionNav(m.id);
@@ -4222,6 +4312,7 @@ export const missions = {
 
   _expireMission(m, index) {
     if (m.status !== 'active') return;
+    if (isPestControl(m) && !isPestControlFollowup(m)) this._postPestControlFollowup(m);
     const setPieceTransition = this._compileSetPieceTransition(m, 'expired', 'deadline');
     m.status = 'expired';
     this._clearMissionNav(m.id);
@@ -4654,8 +4745,10 @@ export const missions = {
         const rng = nextRng(durableSlot);
         const storyTarget = durableSlot === 0 && m.storyTarget ? m.storyTarget : null;
         const bountyIntel = m.type === 'bounty_hunt' && m.params && m.params.hunterIntel;
+        const pestControl = m.params && m.params.pestControl;
         const typeId = storyTarget && storyTarget.archetype
           || bountyIntel && bountyIntel.targetArchetype
+          || pestControl && pestControl.archetypeId
           || pool[Math.floor(rng() * pool.length)];
         const level = Math.round(lvLo + (lvHi - lvLo) * (0.4 + rng() * 0.6));
         const pos = storyTarget
