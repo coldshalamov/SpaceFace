@@ -69,7 +69,8 @@ async function boot(seed, { withSave = false } = {}) {
   assert.equal(await sim.registry.get('physics').prepareBackend(state, { reset: true }), true);
   const eventNames = [
     'freight:cargoTowAttached', 'freight:cargoSpilled', 'freight:raiderEscaped',
-    'freight:custodyReceipt', 'pickup:collected', 'entity:killed', 'medium:retreatStarted',
+    'freight:custodyReceipt', 'pickup:collected', 'entity:killed', 'ai:flee',
+    'medium:retreatStarted',
   ];
   const events = Object.fromEntries(eventNames.map((name) => [name, []]));
   for (const name of eventNames) bus.on(name, (payload) => events[name].push(structuredClone(payload)));
@@ -264,6 +265,46 @@ test('a production collision slam releases the full towed burst once from the sa
   } finally {
     COMBAT_FLAGS.weaponImpulseConsequences = previous;
   }
+});
+
+test('the common low-hull retreat edge dumps one physical Corsair tow without a second retreat cue', async () => {
+  const h = await boot(0x13c0_0005);
+  const live = fire(h, ':retreat');
+  const { raider } = disableCarrier(h, live);
+  const record = waitForTow(h, live);
+  const towed = physicalPods(h, live).find((entity) => (
+    entity.data?.freightCustodyPod?.status === 'raider_towed'
+  ));
+  assert.ok(towed);
+  const towedId = towed.id;
+
+  raider.hull = Math.floor(raider.hullMax * 0.25);
+  h.sim.runTicks(61);
+
+  const retreatEdges = h.events['ai:flee'].filter((event) => (
+    event.entityId === raider.id && event.reason === 'low_hull_visible_retreat'
+  ));
+  assert.equal(retreatEdges.length, 1);
+  assert.equal(raider.data.ai.forceFlee, undefined,
+    'the common doctrine owns retreat without a second forceFlee writer');
+  assert.equal(h.events['medium:retreatStarted'].length, 0);
+  const retreatDumps = h.events['freight:cargoSpilled'].filter((event) => (
+    event.cause === 'corsair_visible_retreat_dump' && event.physicalReuse === true
+  ));
+  assert.equal(retreatDumps.length, 1);
+  assert.equal(record.raiderSecuredQty, 0);
+  const released = physicalPods(h, live).filter((entity) => entity.id === towedId);
+  assert.equal(released.length, 1);
+  assert.equal(released[0].data.freightCustodyPod.status, 'live');
+  assertConserved(record);
+
+  h.sim.runTicks(61);
+  assert.equal(h.events['ai:flee'].filter((event) => (
+    event.entityId === raider.id && event.reason === 'low_hull_visible_retreat'
+  )).length, 1);
+  assert.equal(h.events['freight:cargoSpilled'].filter((event) => (
+    event.cause === 'corsair_visible_retreat_dump' && event.physicalReuse === true
+  )).length, 1);
 });
 
 test('open Corsair tow survives a real save/Continue without duplicating custody', async () => {

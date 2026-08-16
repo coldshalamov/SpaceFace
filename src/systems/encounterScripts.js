@@ -1836,45 +1836,13 @@ function beginFreightRaiderEscape(d, live, state, record, raider) {
   publishFreightCustody(d, live, record, 'raider_escape_started');
 }
 
-function tickCorsairVisibleRetreat(d, live, state, raider) {
-  if (!isCorsairCargoRaider(raider) || !raider.alive || !raider.data) return false;
-  const metadata = raider.data.visibleRetreat;
-  if (!metadata || live.data.corsairVisibleRetreatStarted === true) return false;
-  const hullFraction = Number(raider.hull) / Math.max(1, Number(raider.hullMax) || 1);
-  const threshold = Number.isFinite(Number(metadata.hullFraction))
-    ? Math.max(0.05, Math.min(0.5, Number(metadata.hullFraction)))
-    : 0.3;
-  if (hullFraction > threshold) return false;
-
-  live.data.corsairVisibleRetreatStarted = true;
-  const ai = raider.data.ai || (raider.data.ai = {});
-  ai.forceFlee = true;
-  metadata.runtime = 'encounterScripts';
+function handleCorsairVisibleRetreatFlee(d, live, state, payload) {
+  if (!payload || payload.reason !== 'low_hull_visible_retreat') return false;
+  const raider = selectedFreightRaider(live, state, true);
+  if (!isCorsairCargoRaider(raider) || raider.alive === false || payload.entityId !== raider.id) return false;
   const record = live.data.freightCargoCustody;
-  if (record && record.corsairTowAttachmentId && record.raiderSecuredQty > 0) {
-    releaseCorsairCargoTow(d, live, state, record, raider, 'corsair_visible_retreat_dump');
-  }
-  const payload = {
-    schemaVersion: 1,
-    cueId: 'medium.retreat.started',
-    entityId: raider.id,
-    typeId: 'corsair_raider',
-    smokeCue: String(metadata.smokeCue || 'retreat_smoke'),
-    dumpCue: String(metadata.dumpCue || 'retreat_cargo_spill'),
-    bark: String(metadata.bark || 'Corsair breaking contact.'),
-    startedTick: state.tick | 0,
-    position: { x: raider.pos.x, z: raider.pos.z },
-  };
-  d.emit('medium:retreatStarted', payload);
-  d.emit('medium:semanticCue', payload);
-  d.emit('comms:popup', {
-    id: `medium-retreat:corsair:${raider.id}:${state.tick | 0}`,
-    sender: raider.name || 'Corsair Raider',
-    text: payload.bark,
-    category: 'combat',
-    ttl: 3.5,
-  });
-  return true;
+  if (!record || !record.corsairTowAttachmentId || record.raiderSecuredQty <= 0) return false;
+  return releaseCorsairCargoTow(d, live, state, record, raider, 'corsair_visible_retreat_dump');
 }
 
 function tickFreightCargoCustody(d, live, state, now) {
@@ -2334,7 +2302,6 @@ function convoyTick(d, live, state, now, isConvoy) {
   const p = d.player();
   const haulers = d.entsOf(live, 'hauler');
   tickConvoyPredation(d, live, state, now);
-  tickCorsairVisibleRetreat(d, live, state, selectedFreightRaider(live, state, true));
   tickFreightCargoCustody(d, live, state, now);
   const custody = live.data.freightCargoCustody;
   if (live.data.freightCarrierRecovered === true) {
@@ -2486,6 +2453,10 @@ const convoy = {
     }
     if (name === 'pickupCollected') {
       collectFreightPod(d, live, state, p);
+      return;
+    }
+    if (name === 'aiFlee') {
+      handleCorsairVisibleRetreatFlee(d, live, state, p);
       return;
     }
     if (name === 'freightRecovered') {
