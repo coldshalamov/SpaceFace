@@ -6,6 +6,10 @@ import { COMMODITIES } from '../../data/commodities.js';
 import { MODULES } from '../../data/modules.js';
 import { WEAPONS } from '../../data/weapons.js';
 import { escapeHtml } from '../comms.js';
+import {
+  formatEquippedComparison,
+  presentOutputItemComparison,
+} from '../presenters/engineeringPreview.js';
 
 const STYLE_ID = 'sf-field-crafting-style';
 const NAME = new Map([
@@ -126,7 +130,12 @@ function render(ctx) {
         const bp = entry.bp;
         const outputQty = Math.max(1, Number(bp.outputs.qty) || 1);
         const locked = entry.blueprintOk ? '' : ' is-locked';
-        return `<article class="sf-field-craft__card${locked}">` +
+        const comparison = formatEquippedComparison(presentOutputItemComparison({
+          kind: bp.outputs.kind,
+          itemId: bp.outputs.id,
+          player: state.player,
+        }));
+        return `<article class="sf-field-craft__card${locked}"${comparison ? ` tabindex="0" title="${escapeHtml(comparison)}" aria-label="${escapeHtml(nameOf(bp.outputs.id))}. ${escapeHtml(comparison)}"` : ''}>` +
           `<div class="sf-field-craft__title"><b>${escapeHtml(bp.name)}</b>` +
             `<button class="sf-btn${entry.canBuild ? ' sf-btn--primary' : ''}" type="button" data-build="${escapeHtml(bp.id)}" ${entry.canBuild ? '' : 'disabled'}>${escapeHtml(buildLabel(entry))}</button></div>` +
           `<div class="sf-field-craft__flow">${materialLine(bp, state)} → <strong>${escapeHtml(nameOf(bp.outputs.id))} ×${outputQty}</strong></div>` +

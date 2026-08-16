@@ -10,6 +10,10 @@ import { WEAPONS } from '../../data/weapons.js';
 import { SHIPS } from '../../data/ships.js';
 import { TECH_NODES } from '../../data/tech.js';
 import { escapeHtml } from '../comms.js';
+import {
+  formatEquippedComparison,
+  presentOutputItemComparison,
+} from '../presenters/engineeringPreview.js';
 
 const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const MOD_BY_ID = new Map(MODULES.map((m) => [m.id, m]));
@@ -269,6 +273,11 @@ export function createManufacturePanel(ctx) {
         }).join('');
 
         const outNm = niceName(bp.outputs.id, bp.outputs.kind);
+        const comparison = formatEquippedComparison(presentOutputItemComparison({
+          kind: bp.outputs.kind,
+          itemId: bp.outputs.id,
+          player: p,
+        }));
         const qtyLabel = bp.outputs.qty > 1 ? ' ×' + bp.outputs.qty : '';
         const techLabel = (!techOk && bp.requiresTech) ? `<span class="sf-badge sf-badge--warn">🔒 ${escapeHtml(techName(bp.requiresTech))}</span>` : '';
 
@@ -284,6 +293,11 @@ export function createManufacturePanel(ctx) {
 
         const timeLabel = timeS > 0 ? `<span class="st-manuf-time">${Math.round(timeS)}s fab</span>` : '';
 
+        if (comparison) {
+          card.tabIndex = 0;
+          card.title = comparison;
+          card.setAttribute('aria-label', `${rawName(bp.outputs.id, bp.outputs.kind)}. ${comparison}`);
+        }
         card.innerHTML =
           `<div class="st-manuf-card-h">
              <div class="st-manuf-title">${escapeHtml(bp.name)}${techLabel}</div>

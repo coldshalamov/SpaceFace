@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  formatEquippedComparison,
   presentEquippedItemComparison,
+  presentOutputItemComparison,
   presentShopModuleDelta,
 } from '../src/ui/presenters/engineeringPreview.js';
 import {
@@ -67,6 +69,25 @@ test('Plan54 shops and collected-module inspection share one fitted-delta author
   const loot = lootItemComparison(entry, state);
   assert.deepEqual(loot.chips, everywhere.chips);
   assert.equal(loot.feel, everywhere.feel);
+
+  const fabricated = presentOutputItemComparison({
+    kind: 'weapon',
+    itemId: 'wpn_autocannon_s',
+    player,
+  });
+  assert.deepEqual(fabricated.chips, everywhere.chips);
+  assert.match(formatEquippedComparison(fabricated),
+    /Against fitted Pulse Laser S: lighter fire and shorter reach\. Fitted delta: -13 dps · -80 range/);
+  assert.equal(presentOutputItemComparison({
+    kind: 'commodity',
+    itemId: 'cmdty_ore_iron',
+    player,
+  }), null, 'commodities do not receive invented fitted comparisons');
+  assert.equal(presentOutputItemComparison({
+    kind: 'ship',
+    itemId: 'ship_pelican',
+    player,
+  }), null, 'whole hulls keep their existing stock-hull comparison owner');
 });
 
 test('Plan54 item comparison fails closed when there is no active fitted hull', () => {

@@ -9,6 +9,10 @@ import { SHIPS } from '../../../data/ships.js';
 import { SECTORS } from '../../../data/sectors.js';
 import { escapeHtml } from '../../comms.js';
 import { icon } from '../icons.js';
+import {
+  formatEquippedComparison,
+  presentOutputItemComparison,
+} from '../../presenters/engineeringPreview.js';
 
 const NAME = new Map();
 for (const c of COMMODITIES) NAME.set('commodity:' + c.id, c.name);
@@ -34,6 +38,13 @@ function stationType(ctx) {
   return (id && STATION_TYPE.get(id)) || null;
 }
 function facilityName(type) { return FACILITY_LABEL[type] || `${String(type || 'specialist')} station`; }
+function outputComparison(bp, state) {
+  return formatEquippedComparison(presentOutputItemComparison({
+    kind: bp && bp.outputs && bp.outputs.kind,
+    itemId: bp && bp.outputs && bp.outputs.id,
+    player: state && state.player,
+  }));
+}
 
 function readiness(bp, state, stnType) {
   const learned = state && state.crafting && state.crafting.unlockedBlueprints;
@@ -74,7 +85,8 @@ export function createIndustryScreen(ctx) {
               const on = bp.id === selectedId ? ' is-active' : '';
               const tone = r.state === 'ready' ? 'var(--gain)' : r.state === 'materials' ? 'var(--warn)' : '#60757a';
               const output = `${niceName(bp.outputs.id, bp.outputs.kind)}${bp.outputs.qty > 1 ? ' ×' + bp.outputs.qty : ''}`;
-              return `<button type="button" class="sx-ind-row${on}" data-bp="${escapeHtml(bp.id)}" role="tab" aria-selected="${bp.id === selectedId}" style="--signal:${tone}" aria-label="${escapeHtml(output)}, ${CAT_LABEL[category]} process, tier ${bp.tier}, ${escapeHtml(r.label)}">` +
+              const comparison = outputComparison(bp, state);
+              return `<button type="button" class="sx-ind-row${on}" data-bp="${escapeHtml(bp.id)}" role="tab" aria-selected="${bp.id === selectedId}" style="--signal:${tone}" title="${escapeHtml(comparison)}" aria-label="${escapeHtml(output)}, ${CAT_LABEL[category]} process, tier ${bp.tier}, ${escapeHtml(r.label)}${comparison ? `. ${escapeHtml(comparison)}` : ''}">` +
                 `<span class="sx-ind-row__dot" aria-hidden="true"></span>` +
                 `<span class="sx-ind-row__process">${CAT_LABEL[category]}</span>` +
                 `<span class="sx-ind-row__name">${escapeHtml(output)}</span>` +
@@ -90,6 +102,7 @@ export function createIndustryScreen(ctx) {
     const bp = BLUEPRINTS.find((b) => b.id === selectedId) || BLUEPRINTS[0];
     if (!bp) { stageEl.innerHTML = ''; return; }
     const it = items(state);
+    const comparison = outputComparison(bp, state);
     const inputs = Object.keys(bp.inputs || {}).map((id) => {
       const need = bp.inputs[id]; const have = Math.floor(it[id] || 0);
       const ok = have >= need; const frac = Math.max(0, Math.min(1, need ? have / need : 1));
@@ -112,7 +125,7 @@ export function createIndustryScreen(ctx) {
         `<div class="sx-fab-inputs"><span class="sx-fab-col-k">Inputs</span>${inputs || '<p class="sx-muted">No inputs</p>'}</div>` +
         `<div class="sx-fab-arrow">${icon('chevron', 22)}<span>${bp.timeS ? bp.timeS + 's' : 'instant'}</span></div>` +
         `<div class="sx-fab-output"><span class="sx-fab-col-k">Output</span>` +
-          `<div class="sx-fab-out-card"><span class="sx-fab-out__kind">${bp.outputs.kind}</span>` +
+          `<div class="sx-fab-out-card"${comparison ? ` tabindex="0" title="${escapeHtml(comparison)}" aria-label="${escapeHtml(niceName(bp.outputs.id, bp.outputs.kind))}. ${escapeHtml(comparison)}"` : ''}><span class="sx-fab-out__kind">${bp.outputs.kind}</span>` +
             `<span class="sx-fab-out__name">${escapeHtml(niceName(bp.outputs.id, bp.outputs.kind))}</span>` +
             `<span class="sx-fab-out__qty">×${bp.outputs.qty || 1}</span></div>` +
         `</div>` +

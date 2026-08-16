@@ -626,6 +626,24 @@ export function presentEquippedItemComparison(opts = {}) {
   });
 }
 
+/** Module/weapon recipe outputs are fittable inspections; commodities and hulls are not. */
+export function presentOutputItemComparison(opts = {}) {
+  if (opts.kind !== 'module' && opts.kind !== 'weapon') return null;
+  return presentEquippedItemComparison({
+    player: opts.player,
+    moduleId: opts.itemId,
+    slotIndex: opts.slotIndex,
+  });
+}
+
+/** One player-facing hover/focus sentence shared by shop, loot and fabrication cards. */
+export function formatEquippedComparison(packet, chipLimit = 4) {
+  if (!packet) return '';
+  if (!packet.ok) return packet.detail || 'Fitted comparison unavailable.';
+  const deltas = (packet.chips || []).map((chip) => chip.label).filter(Boolean).slice(0, chipLimit);
+  return `${packet.feel}${deltas.length ? ` Fitted delta: ${deltas.join(' · ')}.` : ''}`;
+}
+
 function finite(value, fallback) {
   const n = Number(value);
   return Number.isFinite(n) ? n : fallback;
