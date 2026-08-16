@@ -78,6 +78,14 @@ function factionBehaviorForCombatSpawn(factionId, opts = {}) {
 
 /** Scale an enemy archetype's base stats by encounter level. */
 export function scaleCombatant(def, level) {
+  if (def && def.fixedCombatStats === true) {
+    return {
+      hull: Math.round(def.hull || 100),
+      armor: Math.round(def.armor || 0),
+      shield: Math.round(def.shield || 0),
+      dmgMult: 1,
+    };
+  }
   const f = 1 + 0.12 * Math.max(0, (level || 1) - 1);
   return { hull: Math.round((def.hull || 100) * f), armor: Math.round((def.armor || 0) * f), shield: Math.round((def.shield || 0) * f), dmgMult: f };
 }
@@ -201,6 +209,9 @@ export function makeEnemySpawnSpec(enemyTypeId, level, pos, opts = {}) {
   if (def.telegraph) spec.data.telegraph = { ...def.telegraph };
   if (def.counterHint) spec.data.counterHint = def.counterHint;
   if (def.fieldAnchor) spec.data.fieldAnchor = { ...def.fieldAnchor };
+  if (def.terrainAmbush) spec.data.terrainAmbush = { ...def.terrainAmbush };
+  if (def.deathCookOff) spec.data.deathCookOff = { ...def.deathCookOff };
+  if (def.fixedCombatStats === true) spec.data.fixedCombatStats = true;
   if (def.telegraph && def.telegraph.cue && !opts.approachTelegraph) {
     // Prefer role cue when doctrine telegraph is generic.
     spec.data.ai.approachTelegraph = def.telegraph.cue;

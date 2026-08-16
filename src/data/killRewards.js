@@ -17,10 +17,18 @@ export const KILL_BURST_VEL_INHERIT = 0.4;
 export const KILL_BURST_EJECT_SPEED_MIN = 16;
 export const KILL_BURST_EJECT_SPEED_MAX = 38;
 
-export const KILL_REWARD_TIER_IDS = Object.freeze(['mote', 'light', 'medium', 'heavy', 'ace']);
+export const KILL_REWARD_TIER_IDS = Object.freeze([
+  'mote', 'swarmer_wasp', 'swarmer_dart', 'swarmer_flea', 'swarmer_skitter', 'swarmer_ember',
+  'light', 'medium', 'heavy', 'ace',
+]);
 
 const KILL_RESEARCH_POINTS = Object.freeze({
   mote: 1,
+  swarmer_wasp: 1,
+  swarmer_dart: 1,
+  swarmer_flea: 1,
+  swarmer_skitter: 1,
+  swarmer_ember: 1,
   light: 1,
   medium: 2,
   heavy: 3,
@@ -61,6 +69,43 @@ export const KILL_REWARD_RECIPES = Object.freeze({
       }),
     ]),
     creditChips: Object.freeze({ count: 0, amountMin: 0, amountMax: 0 }),
+  }),
+  swarmer_wasp: Object.freeze({
+    id: 'swarmer_wasp',
+    materials: Object.freeze([
+      Object.freeze({ commodityId: 'cmdty_scrap_metal', pickups: 3, qtyMin: 2, qtyMax: 5 }),
+    ]),
+    creditChips: Object.freeze({ count: 1, amountMin: 20, amountMax: 60 }),
+  }),
+  swarmer_dart: Object.freeze({
+    id: 'swarmer_dart',
+    materials: Object.freeze([
+      Object.freeze({ commodityId: 'cmdty_scrap_metal', pickups: 1, qtyMin: 1, qtyMax: 2 }),
+    ]),
+    creditChips: Object.freeze({ count: 2, amountMin: 35, amountMax: 85 }),
+  }),
+  swarmer_flea: Object.freeze({
+    id: 'swarmer_flea',
+    materials: Object.freeze([
+      Object.freeze({ commodityId: 'cmdty_electronics', pickups: 1, qtyMin: 1, qtyMax: 2 }),
+      Object.freeze({ commodityId: 'cmdty_comp_circuitry', pickups: 1, qtyMin: 1, qtyMax: 2 }),
+    ]),
+    creditChips: Object.freeze({ count: 1, amountMin: 20, amountMax: 50 }),
+  }),
+  swarmer_skitter: Object.freeze({
+    id: 'swarmer_skitter',
+    materials: Object.freeze([
+      Object.freeze({ commodityId: 'cmdty_ore_iron', pickups: 2, qtyMin: 2, qtyMax: 4 }),
+      Object.freeze({ commodityId: 'cmdty_silicate', pickups: 1, qtyMin: 2, qtyMax: 5 }),
+    ]),
+    creditChips: Object.freeze({ count: 0, amountMin: 0, amountMax: 0 }),
+  }),
+  swarmer_ember: Object.freeze({
+    id: 'swarmer_ember',
+    materials: Object.freeze([
+      Object.freeze({ commodityId: 'cmdty_scrap_metal', pickups: 1, qtyMin: 1, qtyMax: 2 }),
+    ]),
+    creditChips: Object.freeze({ count: 2, amountMin: 45, amountMax: 110 }),
   }),
   light: Object.freeze({
     id: 'light',
@@ -207,7 +252,13 @@ function finiteMass(victim) {
 
 /** Map a live victim onto a recipe tier. Safe fallback is light. */
 export function classifyKillRewardVictim(victim) {
-  if (victim?.data?.lootTableId === 'mote_swarmer') return 'mote';
+  const lootTableId = victim?.data?.lootTableId;
+  if (lootTableId === 'mote_swarmer') return 'mote';
+  if (lootTableId === 'wasp_swarmer') return 'swarmer_wasp';
+  if (lootTableId === 'dart_swarmer') return 'swarmer_dart';
+  if (lootTableId === 'flea_swarmer') return 'swarmer_flea';
+  if (lootTableId === 'skitter_swarmer') return 'swarmer_skitter';
+  if (lootTableId === 'ember_swarmer') return 'swarmer_ember';
   const tokens = collectIdentityTokens(victim);
   if (isNamedOrAce(victim, tokens)) return 'ace';
   if (hasToken(tokens, TOKEN_SETS.heavy)) return 'heavy';

@@ -18,10 +18,10 @@ export const ENEMY_TYPES = [
   {
     id: 'mote_swarmer', name: 'Mote', shipId: 'ship_wasp',
     silhouette: 'mote_quad', factionId: 'faction_reach',
-    aiArchetype: 'swarmer', levelRange: [1, 3],
+    aiArchetype: 'swarmer', levelRange: [1, 3], fixedCombatStats: true,
     combatDoctrineId: 'interceptor_flyby',
     hull: 12, armor: 0, armorFlat: 0, shield: 0, shieldRegen: 0, cap: 20, capRegen: 8,
-    maxSpeed: 110, accel: 88, turnRate: 2.5, collisionRadius: 5, mass: 7,
+    maxSpeed: 110, accel: 88, turnRate: 2.5, collisionRadius: 5, mass: 6,
     weapons: [{ id: 'wpn_pulse_laser_s', dmgOverride: 1, rofOverride: 0.6 }],
     aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 145, leashRadius: 1900 },
     behavior: 'loose cloud flybys; fragile alone, readable as a moving pack',
@@ -30,7 +30,7 @@ export const ENEMY_TYPES = [
   {
     id: 'wasp_swarmer', name: 'Wasp Swarmer', shipId: 'ship_wasp',
     silhouette: 'drone_swarm', factionId: 'faction_reach',
-    aiArchetype: 'swarmer', levelRange: [1, 3],
+    aiArchetype: 'swarmer', levelRange: [1, 3], fixedCombatStats: true,
     combatDoctrineId: 'interceptor_flyby',
     hull: 55, armor: 8, armorFlat: 0, shield: 25, shieldRegen: 5, cap: 60, capRegen: 20,
     // Overnight B1 fairness: slower zip, softer DPS so early fights are readable.
@@ -42,6 +42,147 @@ export const ENEMY_TYPES = [
     loot: {
       creditsRange: [20, 60],
       drops: [{ id: 'cmdty_scrap_metal', chance: 0.5, qtyRange: [1, 3] }],
+    },
+  },
+  // ── PR95 wave 1: the rest of the swarmer family (design/arcade-core/12_SWARMER_FAMILY.md) ──
+  // The shared design grammar for these four — capability, counter verb, tell channels, loot read
+  // and the mass/tumble invariants — lives in src/data/swarmerFamily.js, which imports THIS file.
+  // Nothing below scales with level: harder sectors send different COMPOSITIONS, never an
+  // inflated copy of the same hull.
+  //
+  // TTK against the starter Pulse Laser S (dmg 8, ~5.5 rps, perfect hits) is the whole light-tier
+  // budget: effective pool = shield + armor + hull.
+  {
+    // DART — pure speed. Its threat is the closing rate and the fact that it is never where your
+    // lead was; the counter is to stop chasing and cross its lane, because turnRate 1.35 means it
+    // cannot re-aim inside its own pass. Thinnest hull in the game on purpose: 22 = three starter
+    // pulses, matching the authored "dies to 2-3 hits" read. No shield, no armor — nothing to
+    // grind, so a clean burst is a clean kill and a missed burst costs a whole re-approach.
+    id: 'dart_swarmer', name: 'Dart', shipId: 'ship_wasp',
+    silhouette: 'dart_needle', factionId: 'faction_reach',
+    aiArchetype: 'swarmer', levelRange: [1, 4], fixedCombatStats: true,
+    combatDoctrineId: 'interceptor_flyby',
+    hull: 22, armor: 0, armorFlat: 0, shield: 0, shieldRegen: 0, cap: 40, capRegen: 14,
+    // Fastest light hull in the catalog (Corsair 147 is the previous ceiling) and the worst turner
+    // in its own class — that pairing IS the entry. accel is high so the re-approach reads as a
+    // committed run-up rather than a drift.
+    maxSpeed: 172, accel: 154, turnRate: 1.35, collisionRadius: 8, mass: 10,
+    weapons: [{ id: 'wpn_pulse_laser_s', dmgOverride: 3, rofOverride: 1.5 }],
+    aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 150, leashRadius: 2400 },
+    telegraph: { bark: 'warn', line: 'Darts on the run-in. They cannot turn — cross the lane.', cue: 'engine_flare' },
+    counterHint: 'cross_the_lane_do_not_chase',
+    behavior: 'high-velocity straight passes in loose files of 4-7; never orbits, extends wide and comes back',
+    bountyCr: 90, shipClass: 'fighter',
+    loot: {
+      // They carry payroll: the credit line is the read, materials are almost absent.
+      creditsRange: [70, 170],
+      drops: [{ id: 'cmdty_scrap_metal', chance: 0.18, qtyRange: [1, 2] }],
+    },
+  },
+  {
+    // FLEA — a weak hull-anchored snare with a visible wind-up, then a real flee. It reuses the
+    // EXISTING anchor-snare field idiom (src/data/fields.js anchorSnare) at a fraction of the
+    // controller's authority: radius 118 vs 235, strength 62 vs 185, damping 1.15 vs 3.2, and it
+    // may only hold four bodies. That is a tickle you fly out of, not a lock.
+    //
+    // Runtime consumers must anchor the field to the Flea's hull, respect this family cap, and
+    // activate it only during the authored spool/hold cycle. Those requirements travel with the
+    // spawn record; the behavior packet is responsible for making them true on the live route.
+    id: 'flea_swarmer', name: 'Flea', shipId: 'ship_wasp',
+    silhouette: 'flea_grapnel', factionId: 'faction_reach',
+    aiArchetype: 'swarmer', levelRange: [2, 5], fixedCombatStats: true,
+    combatDoctrineId: 'field_anchor_controller',
+    hull: 55, armor: 6, armorFlat: 0, shield: 18, shieldRegen: 0, cap: 70, capRegen: 20,
+    maxSpeed: 124, accel: 102, turnRate: 2.6, collisionRadius: 10, mass: 12,
+    weapons: [{ id: 'wpn_pulse_laser_s', dmgOverride: 2, rofOverride: 1.1 }],
+    aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 210, leashRadius: 2200 },
+    fieldAnchor: {
+      defKey: 'anchorSnare',
+      spinupTicks: 45,   // 0.75 s of readable wind-up before the radius has any authority at all
+      radius: 118,
+      strength: 62,
+      damping: 1.15,
+      maxAffected: 4,
+      presentationTag: 'hostile',
+      // Pack-scale bound: the sector's field slots are shared with the player's Well/Repulsor, and
+      // a five-Flea pack would otherwise take every one. The field behavior must honor this cap.
+      familyCap: 2,
+      familyKey: 'flea_snare',
+    },
+    telegraph: { bark: 'warn', line: 'Flea spooling a drag rig. Shove it or shoot it — do not sit in it.', cue: 'field_spool' },
+    counterHint: 'displace_the_anchor_or_kill_it',
+    behavior: 'closes, plants a weak drag field with a visible wind-up, holds it briefly, then genuinely runs',
+    bountyCr: 140, shipClass: 'fighter',
+    loot: {
+      creditsRange: [30, 90],
+      drops: [
+        { id: 'cmdty_electronics', chance: 0.45, qtyRange: [1, 2] },
+        { id: 'cmdty_comp_circuitry', chance: 0.3, qtyRange: [1, 2] },
+      ],
+    },
+  },
+  {
+    // SKITTER — terrain hugger. The terrainAmbush record is the contract for a dedicated encounter
+    // behavior: deterministic far-side rock placement, a passive dust tell, and a spring only when
+    // the player closes, shoots, or removes the cover. The catalog does not claim that behavior is
+    // present merely because the data exists.
+    //
+    // The counter is to take the cover away — break, tether or shove the rock — which is why its
+    // stat line is unremarkable. It is not tanky; it is *behind something*.
+    id: 'skitter_swarmer', name: 'Skitter', shipId: 'ship_wasp',
+    silhouette: 'skitter_lowprofile', factionId: 'faction_reach',
+    aiArchetype: 'swarmer', levelRange: [2, 6], fixedCombatStats: true,
+    combatDoctrineId: 'interceptor_flyby',
+    hull: 60, armor: 10, armorFlat: 0, shield: 15, shieldRegen: 0, cap: 80, capRegen: 20,
+    maxSpeed: 106, accel: 94, turnRate: 2.85, collisionRadius: 11, mass: 14,
+    weapons: [{ id: 'wpn_pulse_laser_s', dmgOverride: 3, rofOverride: 2.0 }],
+    aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 190, leashRadius: 1800 },
+    // Dedicated rock-nest behavior consumes this; absent means an ordinary spawn ring.
+    terrainAmbush: { nest: 'rock', hugRadiusWu: 190 },
+    telegraph: { bark: 'warn', line: 'Dust off the rocks — Skitters are nested in the field.', cue: 'rock_dust' },
+    counterHint: 'strip_the_cover_break_or_move_the_rock',
+    behavior: 'nests behind asteroids, opens from cover, threads back into the field between passes',
+    bountyCr: 160, shipClass: 'fighter',
+    loot: {
+      // They live in rocks, so they carry rock.
+      creditsRange: [20, 70],
+      drops: [
+        { id: 'cmdty_ore_iron', chance: 0.6, qtyRange: [2, 5] },
+        { id: 'cmdty_silicate', chance: 0.45, qtyRange: [2, 6] },
+      ],
+    },
+  },
+  {
+    // EMBER — volatile. deathCookOff is the runtime contract for a future bounded radial impulse
+    // through the existing physics-authority/provenance path. It specifies zero blast damage: the
+    // Ember should add a place to stand, not hidden DPS. The behavior packet owns that execution.
+    //
+    // brawler_commit is the honest doctrine here: it must want to be CLOSE, or its death is never
+    // near anything worth moving.
+    id: 'ember_swarmer', name: 'Ember', shipId: 'ship_wasp',
+    silhouette: 'ember_corecage', factionId: 'faction_reach',
+    aiArchetype: 'swarmer', levelRange: [2, 6], fixedCombatStats: true,
+    combatDoctrineId: 'brawler_commit',
+    hull: 50, armor: 6, armorFlat: 0, shield: 20, shieldRegen: 0, cap: 70, capRegen: 18,
+    maxSpeed: 110, accel: 88, turnRate: 2.05, collisionRadius: 11, mass: 15,
+    weapons: [{ id: 'wpn_pulse_laser_s', dmgOverride: 2, rofOverride: 1.8 }],
+    aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 170, leashRadius: 2000 },
+    // Mirrors the authored EMBER_COOK_OFF record; kept inline because enemies.js is import-free.
+    deathCookOff: {
+      radiusWu: 130,
+      impulse: 340,
+      maxAffected: 12,
+      provenance: 'ember_cook_off',
+      cueId: 'swarmer_ember_cook_off',
+    },
+    telegraph: { bark: 'warn', line: 'Ember core is live. Choose where that one dies.', cue: 'engine_flare' },
+    counterHint: 'aim_the_blast_pop_it_next_to_something',
+    behavior: 'presses to knife range and stays; its reactor cook-off shoves nearby bodies on death',
+    bountyCr: 170, shipClass: 'fighter',
+    loot: {
+      // It burns its own materials on the way out; the payout is in credits.
+      creditsRange: [90, 220],
+      drops: [{ id: 'cmdty_scrap_metal', chance: 0.22, qtyRange: [1, 2] }],
     },
   },
   {
