@@ -13,7 +13,7 @@ export default defineEncounter(trigger, {
   motive: 'claim_the_gold_core',
   engagementTrigger: 'gold_claim_contested',
   title: 'GOLD ASTEROID',
-  primaryLine: 'ASSAY SPIKE: one gold body, two pirate claimants, and a jackpot core under the shell.',
+  primaryLine: 'ASSAY SPIKE: one gold body, pirate claimants, and a jackpot core under the shell.',
   rareRumor: {
     kind: 'vein', kindLabel: 'Gold Assay Whisper', targetName: 'unregistered gold assay',
     radius: 760,

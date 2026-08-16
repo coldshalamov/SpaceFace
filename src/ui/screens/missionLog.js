@@ -1091,6 +1091,81 @@ function replayStage(state, chain, run) {
   return null;
 }
 
+function endgameReplayAction(state) {
+  const replay = state && state.player && state.player.endgameReplay;
+  if (!replay || replay.active !== true) return null;
+  const challengeDefs = [
+    ['sector_ashfall_reach', 'Ashfall Gauntlet'],
+    ['sector_phoebe_echo', 'Phoebe Crucible'],
+  ];
+  const challengeEntry = challengeDefs
+    .map(([sectorId, title]) => ({ sectorId, title, progress: replay.challenges && replay.challenges[sectorId] }))
+    .find((entry) => entry.progress && (entry.progress.status === 'ready' || entry.progress.status === 'active'));
+  if (challengeEntry) {
+    const { sectorId, title, progress } = challengeEntry;
+    const active = progress.status === 'active';
+    return {
+      tone: active ? 'warn' : 'primary',
+      label: 'ENDGAME CHALLENGE',
+      title,
+      body: active
+        ? `Clear the physical specialist and elite contacts now live in ${prettyId(sectorId, 'the challenge sector')}.`
+        : `Enter ${prettyId(sectorId, 'the challenge sector')} to materialize the current specialist, hazard, and elite recipe. Re-roll changes the recipe without changing the universe seed.`,
+      meta: `${String(progress.recipeId || 'seeded recipe').replace(/-/g, ' ').toUpperCase()} · ROLL ${Number(progress.roll) || 0}`,
+      action: active ? null : 'rerollChallenge',
+      actionLabel: 'RE-ROLL COMPOSITION',
+      actionSectorId: sectorId,
+      mapAction: mapHandoffAction({
+        focus: MAP_FOCUS.GALAXY,
+        label: 'STAR MAP',
+        title: `Plot route to ${title}`,
+        body: `Travel to ${prettyId(sectorId, 'the challenge sector')} for the current post-ending composition.`,
+        sectorId,
+        source: 'missionLog-endgame-challenge',
+      }),
+    };
+  }
+  const huntDefs = [
+    ['legendary_capital_hulk', 'The Gun That Forgot the War', 'sector_sedna_dark'],
+    ['legendary_ace_crew', 'Two Names on One Burn', 'sector_orcus_shadow'],
+    ['legendary_gold_wings', 'Three Wings, One Gold Core', 'sector_haumea_rift'],
+  ];
+  const hunt = huntDefs
+    .map(([id, title, sectorId]) => ({ id, title, sectorId, progress: replay.hunts && replay.hunts[id] }))
+    .find((entry) => entry.progress && (entry.progress.status === 'rumored' || entry.progress.status === 'active'));
+  if (hunt) {
+    return {
+      tone: hunt.progress.status === 'active' ? 'warn' : 'primary',
+      label: 'LEGENDARY HUNT',
+      title: hunt.title,
+      body: hunt.progress.status === 'active'
+        ? `The rumored target is physically live in ${prettyId(hunt.sectorId, 'the marked sector')}.`
+        : `Follow the rumor to ${prettyId(hunt.sectorId, 'the marked sector')}; the contact materializes only when you arrive.`,
+      meta: `${hunt.id.replace(/^legendary_/, '').replace(/_/g, ' ').toUpperCase()} · ${hunt.progress.status.toUpperCase()}`,
+      mapAction: mapHandoffAction({
+        focus: MAP_FOCUS.GALAXY,
+        label: 'STAR MAP',
+        title: `Plot legendary hunt: ${hunt.title}`,
+        body: `Travel to ${prettyId(hunt.sectorId, 'the rumor sector')} and verify the target in physical space.`,
+        sectorId: hunt.sectorId,
+        source: 'missionLog-legendary-hunt',
+      }),
+    };
+  }
+  const first = challengeDefs[0];
+  const progress = replay.challenges && replay.challenges[first[0]];
+  return progress ? {
+    tone: 'info',
+    label: 'ENDGAME REPLAY',
+    title: 'All legendary routes cleared',
+    body: 'Re-roll either challenge sector for another deterministic specialist composition.',
+    meta: `BEST RUN · ${Number(replay.seededRun && replay.seededRun.score) || 0} SCORE`,
+    action: 'rerollChallenge',
+    actionLabel: 'RE-ROLL ASHFALL',
+    actionSectorId: first[0],
+  } : null;
+}
+
 function postEndingStoryAction(state) {
   const story = state && state.story || {};
   if (!story.endgameResolved && !story.endgameChoice && !(story.flags && story.flags.sandboxContinued)) return null;
@@ -1111,7 +1186,7 @@ function postEndingStoryAction(state) {
   const chain = choiceId && postEndingReplayChain(choiceId);
   const run = state && state.missions && state.missions.postEndingReplay;
   if (!chain) {
-    return {
+    return endgameReplayAction(state) || {
       tone: 'info',
       label: 'SANDBOX',
       title: 'The frontier remains open',
@@ -1121,7 +1196,7 @@ function postEndingStoryAction(state) {
   }
 
   if (run && run.status === 'completed') {
-    return {
+    return endgameReplayAction(state) || {
       tone: 'info',
       label: 'SANDBOX',
       title: `${chain.title} changed the world`,
@@ -1663,6 +1738,10 @@ export const missionLogScreen = {
         ctx.bus.emit('ui:endgameUnfiledJump', { source: 'missionLog' });
         ctx.bus.emit('audio:cue', { id: 'ui_click' });
         this._render();
+      } else if (act === 'rerollChallenge') {
+        ctx.bus.emit('ui:endgameChallengeReroll', { sectorId: btn.getAttribute('data-sector-id'), source: 'missionLog' });
+        ctx.bus.emit('audio:cue', { id: 'ui_click' });
+        this._render();
       } else if (act === 'openMap') {
         openMapScreen(ctx, mapOpenIntentFromButton(btn));
         ctx.bus.emit('audio:cue', { id: 'ui_click' });
@@ -1842,6 +1921,7 @@ export const missionLogScreen = {
     let target = this._recommendEl && this._recommendEl.querySelector(
       'button[data-rec-act="endgameUnfiledJump"]:not([disabled]),'
       + 'button[data-rec-act="endgameSandbox"]:not([disabled]),'
+      + 'button[data-rec-act="rerollChallenge"]:not([disabled]),'
       + 'button[data-rec-act="track"]:not([disabled]),button[data-rec-act="openMap"]:not([disabled])',
     );
     if (career && !career.hidden) {
@@ -1889,6 +1969,12 @@ export const missionLogScreen = {
     bus.on('story:replayHookUnlocked', refresh);
     bus.on('postEndingReplay:route', refresh);
     bus.on('postEndingReplay:cycleCompleted', refresh);
+    bus.on('endgameReplay:activated', refresh);
+    bus.on('endgameReplay:challengeRerolled', refresh);
+    bus.on('endgameReplay:challengeStarted', refresh);
+    bus.on('endgameReplay:challengeCompleted', refresh);
+    bus.on('endgameReplay:huntStarted', refresh);
+    bus.on('endgameReplay:huntCompleted', refresh);
   },
 
   _visible() {
@@ -2019,8 +2105,9 @@ export const missionLogScreen = {
         '<div class="sf-mlog-story-introduces">' + escapeHtml(action.body || '') + '</div>' +
         dispositionRouteRowsHtml(action.routeOptions) +
         (action.meta ? '<div class="sf-mlog-rec-meta mono">' + escapeHtml(action.meta) + '</div>' : '') +
-        (action.action === 'endgameSandbox' || action.action === 'endgameUnfiledJump' || action.secondaryAction === 'endgameSandbox' || action.mapAction ? '<div class="sf-mlog-rec-actions">' +
+        (action.action === 'endgameSandbox' || action.action === 'endgameUnfiledJump' || action.action === 'rerollChallenge' || action.secondaryAction === 'endgameSandbox' || action.mapAction ? '<div class="sf-mlog-rec-actions">' +
           (action.action === 'endgameSandbox' || action.action === 'endgameUnfiledJump' ? '<button class="sf-mlog-rec-action" type="button" data-rec-act="' + escapeHtml(action.action) + '">' + escapeHtml(action.actionLabel || 'CONTINUE OPEN') + '</button>' : '') +
+          (action.action === 'rerollChallenge' ? '<button class="sf-mlog-rec-action" type="button" data-rec-act="rerollChallenge" data-sector-id="' + escapeHtml(action.actionSectorId || '') + '">' + escapeHtml(action.actionLabel || 'RE-ROLL COMPOSITION') + '</button>' : '') +
           (action.secondaryAction === 'endgameSandbox' && action.action !== 'endgameSandbox' ? '<button class="sf-mlog-rec-action sf-mlog-rec-secondary" type="button" data-rec-act="endgameSandbox">' + escapeHtml(action.secondaryActionLabel || 'CONTINUE WITHOUT FILING') + '</button>' : '') +
           (action.mapAction ? '<button class="sf-mlog-rec-action sf-mlog-rec-map" type="button" data-rec-act="openMap"' + mapActionButtonAttrs(action.mapAction, action.mapAction.missionId || '') + ' title="' + escapeHtml(action.mapAction.body || action.mapAction.title || '') + '">' + escapeHtml(action.mapAction.label) + '</button>' : '') +
         '</div>' : '') +
@@ -2046,9 +2133,10 @@ export const missionLogScreen = {
         '<div class="sf-mlog-rec-marker mono">' + (a.mapAction
           ? '◆ BRIGHT AMBER DIAMOND = CURRENT GOAL'
           : (a.action === 'track' ? 'NO GOAL MARKER · TRACK NAV TO CREATE ONE' : 'NO GOAL MARKER YET')) + '</div>' +
-        ((a.action === 'track' && a.missionId) || a.action === 'endgameSandbox' || a.action === 'endgameUnfiledJump' || a.secondaryAction === 'endgameSandbox' || a.mapAction ? '<div class="sf-mlog-rec-actions">' +
+        ((a.action === 'track' && a.missionId) || a.action === 'endgameSandbox' || a.action === 'endgameUnfiledJump' || a.action === 'rerollChallenge' || a.secondaryAction === 'endgameSandbox' || a.mapAction ? '<div class="sf-mlog-rec-actions">' +
           (a.action === 'track' && a.missionId ? '<button class="sf-mlog-rec-action" type="button" data-rec-act="track" data-mid="' + escapeHtml(a.missionId) + '">' + escapeHtml(a.actionLabel || 'TRACK NAV') + '</button>' : '') +
           (a.action === 'endgameSandbox' || a.action === 'endgameUnfiledJump' ? '<button class="sf-mlog-rec-action" type="button" data-rec-act="' + escapeHtml(a.action) + '">' + escapeHtml(a.actionLabel || 'CONTINUE OPEN') + '</button>' : '') +
+          (a.action === 'rerollChallenge' ? '<button class="sf-mlog-rec-action" type="button" data-rec-act="rerollChallenge" data-sector-id="' + escapeHtml(a.actionSectorId || '') + '">' + escapeHtml(a.actionLabel || 'RE-ROLL COMPOSITION') + '</button>' : '') +
           (a.secondaryAction === 'endgameSandbox' && a.action !== 'endgameSandbox' ? '<button class="sf-mlog-rec-action sf-mlog-rec-secondary" type="button" data-rec-act="endgameSandbox">' + escapeHtml(a.secondaryActionLabel || 'CONTINUE WITHOUT FILING') + '</button>' : '') +
           (a.mapAction ? '<button class="sf-mlog-rec-action sf-mlog-rec-map" type="button" data-rec-act="openMap"' + mapActionButtonAttrs(a.mapAction, a.missionId || a.mapAction.missionId || '') + ' title="' + escapeHtml(a.mapAction.body || a.mapAction.title || '') + '">' + escapeHtml(a.mapAction.label) + '</button>' : '') +
         '</div>' : '') +

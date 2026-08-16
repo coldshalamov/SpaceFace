@@ -42,7 +42,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   'gateControlDirector', 'salvage', 'lossInvestigation', 'salvageActions', 'survivorPod',
   'recoveryEncounter', 'factions', 'sectorSim', 'npcJobsRuntime', 'fuelTenderService', 'timeTrials', 'careerOrigins',
   'careerLadders', 'liveCareerLadderBranches', 'missions', 'careerContracts',
-  'economyContracts', 'postEndingReplay', 'story', 'scenarioRuntime',
+  'economyContracts', 'postEndingReplay', 'endgameReplay', 'story', 'scenarioRuntime',
   'presentationOrchestrator', 'presentationAdapters', 'ships', 'crafting', 'heat', 'traffic',
   'drill', 'claims', 'beacons', 'bandRadio', 'v2FlavorRuntime', 'onboarding', 'masslineHud',
   // J6: massSeedHud is in UPDATE_ORDER (DOM-guarded HUD) — must also init so helpers bind.

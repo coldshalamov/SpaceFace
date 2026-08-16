@@ -1373,7 +1373,7 @@ export const ships = {
     p.ownedShips.push({
       defId,
       fittings: new Array(slots.length).fill(null),
-      appearance: defaultShipAppearance(defId),
+      appearance: normalizeShipAppearance(p.cosmeticPresets && p.cosmeticPresets[defId], defId),
       livingHull: defaultLivingHull(this.state.simTime || 0),
     });
     const newIndex = p.ownedShips.length - 1;
@@ -1448,6 +1448,26 @@ export const ships = {
     }
     this.bus.emit('ship:appearanceSaved', { shipIndex: index, appearance: normalized });
     return true;
+  },
+
+  /** Install the bounded per-hull appearance presets projected by New Run+. Ships remains the
+   * appearance writer: the projection contains no live entity ids and cannot mutate a prior hull. */
+  applyNewGamePlusCosmetics(cosmetics) {
+    const p = this.state.player;
+    if (!p) return 0;
+    const presets = {};
+    for (const row of Array.isArray(cosmetics) ? cosmetics.slice(0, 32) : []) {
+      const defId = row && typeof row.defId === 'string' ? row.defId : null;
+      if (!defId || !SHIP_BY_ID.has(defId) || presets[defId]) continue;
+      presets[defId] = normalizeShipAppearance(row.appearance, defId);
+    }
+    p.cosmeticPresets = presets;
+    for (const owned of Array.isArray(p.ownedShips) ? p.ownedShips : []) {
+      if (owned && presets[owned.defId]) owned.appearance = presets[owned.defId];
+    }
+    this.recomputeActiveShip();
+    this.bus.emit('ship:newGamePlusCosmeticsApplied', { count: Object.keys(presets).length });
+    return Object.keys(presets).length;
   },
 
   // ---- outfitting: fit / unfit modules ----------------------------------------------------
@@ -1586,6 +1606,7 @@ export const ships = {
     }];
     p.activeShipIndex = 0;
     p.moduleInventory = [];
+    delete p.cosmeticPresets;
     p.researchedNodes = (NEW_GAME.researchedNodes || []).slice();
     p.researchPoints = NEW_GAME.researchPoints || 0;
     // Keep the deterministic empty route byte-stable. The first earned feat lazily materializes

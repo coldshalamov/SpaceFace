@@ -450,6 +450,7 @@ export function createTitlesSystem() {
       this._onTetherLatched = (payload) => this._onTetherLatchedReceipt(payload || {});
       this._onSaveLoaded = () => this._rebindSilently();
       this._onNewGame = () => this.newGame();
+      this._onNewGamePlus = (payload) => this.applyNewGamePlusLegacy(payload && payload.titles);
       if (this.bus && typeof this.bus.on === 'function') {
         this.bus.on('title:holdResolved', this._onHold);
         this.bus.on('combat:damage', this._onDamage);
@@ -459,6 +460,7 @@ export function createTitlesSystem() {
         this.bus.on('tether:latched', this._onTetherLatched);
         this.bus.on('save:loaded', this._onSaveLoaded);
         this.bus.on('game:newGame', this._onNewGame);
+        this.bus.on('story:newGamePlusStarted', this._onNewGamePlus);
       }
       this._rebindSilently();
     },
@@ -476,6 +478,25 @@ export function createTitlesSystem() {
       this._activeEntityIds.clear();
       syncTitleStamp(this.state, ensureState(this.state));
       syncPlayerDeedStamp(this.state);
+    },
+
+    /** Carry only player-earned deed titles into New Run+. Cross-faction holder succession remains
+     * a property of the newly seeded world and is intentionally rebuilt from live combat. */
+    applyNewGamePlusLegacy(legacy) {
+      const raw = legacy && legacy.playerDeeds;
+      if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return 0;
+      ensureState(this.state);
+      this.state.story.titles.playerDeeds = {
+        earnedById: raw.earnedById && typeof raw.earnedById === 'object' ? { ...raw.earnedById } : {},
+        order: Array.isArray(raw.order) ? raw.order.slice(0, 64) : [],
+        processedReceiptIds: Array.isArray(raw.processedReceiptIds)
+          ? raw.processedReceiptIds.slice(-PLAYER_DEED_RECEIPT_LIMIT) : [],
+      };
+      const deeds = ensurePlayerDeeds(this.state.story.titles);
+      syncPlayerDeedStamp(this.state);
+      const count = deeds.order.length;
+      emit(this.bus, 'title:newGamePlusApplied', { count });
+      return count;
     },
 
     update(_dt, state = this.state) {
@@ -867,10 +888,12 @@ export function createTitlesSystem() {
         if (this._onTetherLatched) this.bus.off('tether:latched', this._onTetherLatched);
         if (this._onSaveLoaded) this.bus.off('save:loaded', this._onSaveLoaded);
         if (this._onNewGame) this.bus.off('game:newGame', this._onNewGame);
+        if (this._onNewGamePlus) this.bus.off('story:newGamePlusStarted', this._onNewGamePlus);
       }
       this._onHold = this._onDamage = this._onKilled = this._onSpawned = null;
       this._onHeavyPartDetached = this._onTetherLatched = null;
       this._onSaveLoaded = this._onNewGame = null;
+      this._onNewGamePlus = null;
       this._activeEntityIds.clear();
     },
   };

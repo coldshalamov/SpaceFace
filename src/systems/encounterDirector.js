@@ -1019,6 +1019,7 @@ export const encounterDirector = {
       defenseId: payload.defenseId || null,
       attackerName: payload.attackerName || 'Reach scavengers',
       requestedCount: Math.max(1, Math.min(6, Math.round(payload.attackerCount || 2))),
+      qualityTier: Math.max(0, Math.min(3, Math.floor(Number(payload.qualityTier) || 0))),
       resumed: !!payload.resume,
     };
     const base = item.ships.slice();
@@ -1028,13 +1029,22 @@ export const encounterDirector = {
       && ship.compositionRole !== 'identity_anchor');
     const lightPool = lightShips.length ? lightShips : [anchorShip];
     item.ships = [];
+    const qualityCompositions = [
+      null,
+      ['jammer_specialist', 'reaver_pirate', 'wasp_swarmer'],
+      ['heavy_gunship', 'hostile_repair_tender', 'corsair_raider', 'hostile_interceptor'],
+      ['heavy_carrier_lite', 'field_anchor_controller', 'jammer_specialist', 'corsair_raider', 'hostile_interceptor'],
+    ];
+    const qualityArchetypes = qualityCompositions[item.data.qualityTier];
     for (let i = 0; i < count; i++) {
       const source = i === 0 ? anchorShip : lightPool[(i - 1) % lightPool.length];
+      const archetype = qualityArchetypes && qualityArchetypes[i % qualityArchetypes.length];
       const angle = (Math.PI * 2 * i / count) + rng() * 0.24;
       const radius = 560 + rng() * 120;
       item.ships.push({
         ...source,
-        compositionRole: i === 0 ? 'identity_anchor' : 'light',
+        ...(archetype ? { archetype, level: Math.max(Number(source.level) || 1, 4 + item.data.qualityTier * 2) } : {}),
+        compositionRole: i === 0 ? 'identity_anchor' : item.data.qualityTier > 0 ? 'specialist' : 'light',
         passive: true,
         pos: {
           x: payload.anchor.x + Math.cos(angle) * radius,

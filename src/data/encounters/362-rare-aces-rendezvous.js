@@ -13,7 +13,7 @@ export default defineEncounter(trigger, {
   motive: 'trade_named_crew_hardware',
   engagementTrigger: 'rendezvous_interrupted',
   title: "ACES' RENDEZVOUS",
-  primaryLine: 'TWO NAMED TRANSPONDERS: a trade is underway. Interrupt it and both gimmicks turn at once.',
+  primaryLine: 'TWO NAMED TRANSPONDERS: a crew-to-crew trade is underway. Interrupt it and both formations turn at once.',
   choices: [
     { id: 'interrupt', label: 'Interrupt the trade' },
     { id: 'observe', label: 'Observe and leave' },

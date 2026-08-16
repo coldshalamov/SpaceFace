@@ -262,7 +262,27 @@ const FIGURE_DOSSIERS = {
 };
 
 function safeStory(ctx) {
-  return (ctx.state && ctx.state.story) || { beatIndex: 0, seenComms: {}, graffitiShown: {}, endgameChoice: null, flags: {} };
+  const current = (ctx.state && ctx.state.story)
+    || { beatIndex: 0, seenComms: {}, graffitiShown: {}, endgameChoice: null, flags: {} };
+  const legacy = current.newGamePlus && current.newGamePlus.codex;
+  if (!legacy || typeof legacy !== 'object') return current;
+  const currentRare = current.flags && current.flags.rareSpawns || {};
+  const legacyRare = legacy.rareSpawns || {};
+  return {
+    ...current,
+    beatIndex: Math.max(Number(current.beatIndex) || 0, Number(legacy.beatIndex) || 0),
+    seenComms: { ...(legacy.seenComms || {}), ...(current.seenComms || {}) },
+    graffitiShown: { ...(legacy.graffitiShown || {}), ...(current.graffitiShown || {}) },
+    endgameChoice: current.endgameChoice || legacy.endgameChoice || null,
+    persistentCargo: [...new Set([...(legacy.persistentCargo || []), ...(current.persistentCargo || [])])],
+    flags: {
+      ...(current.flags || {}),
+      rareSpawns: {
+        ...currentRare,
+        history: [...(legacyRare.history || []), ...(currentRare.history || [])].slice(-64),
+      },
+    },
+  };
 }
 
 function storyBeatIndex(story = {}) {

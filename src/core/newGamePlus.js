@@ -7,6 +7,7 @@ import { MODULES } from '../data/modules.js';
 import { ENDGAME_CHOICES } from '../data/narrative.js';
 import { PIRATE_PROMOTION_MAX_TIER, aceById } from '../data/namedAces.js';
 import { WEAPONS } from '../data/weapons.js';
+import { normalizeShipAppearance } from './shipAppearance.js';
 
 export const NEW_GAME_PLUS_SCHEMA = 'spaceface.newGamePlus.v1';
 
@@ -53,6 +54,7 @@ export function buildNewGamePlusCandidate(data, source = {}) {
     sourceEndingTitle: ending.title,
     keepsakes,
     grudgeCount: grudges.length,
+    codexEntries: codexEntryCount(projectCodex(storyFromSaveData(data))),
   };
 }
 
@@ -64,6 +66,7 @@ export function buildNewGamePlusOverlay(data, selection = {}, source = {}) {
     || (!requested ? candidate.keepsakes[0] : null);
   if (!keepsake) return null;
   const grudges = unresolvedHunterGrudges(data && data.aceMemory);
+  const story = storyFromSaveData(data);
   return {
     schema: NEW_GAME_PLUS_SCHEMA,
     sourceSlot: candidate.sourceSlot,
@@ -72,6 +75,10 @@ export function buildNewGamePlusOverlay(data, selection = {}, source = {}) {
     sourceEndingTitle: candidate.sourceEndingTitle,
     keepsake: { ...keepsake },
     grudges,
+    codex: projectCodex(story),
+    cosmetics: projectCosmetics(data && data.player),
+    titles: projectTitles(story),
+    eliteComposition: selection.eliteComposition !== false,
   };
 }
 
@@ -92,6 +99,9 @@ export function storyNewGamePlusRecord(overlay, seed = 0) {
     keepsakeName: keepsakeDef.name,
     hunterGrudgeCount: clampInt(grudgeCount, 0, 64),
     startedSeed: (Number(seed) >>> 0) || 1,
+    codex: normalizeCodexProjection(overlay.codex),
+    titles: normalizeTitlesProjection(overlay.titles),
+    eliteComposition: overlay.eliteComposition !== false,
   };
 }
 
@@ -111,7 +121,110 @@ export function normalizeStoryNewGamePlusRecord(input) {
     keepsakeName: keepsakeDef.name,
     hunterGrudgeCount: clampInt(input.hunterGrudgeCount, 0, 64),
     startedSeed: (Number(input.startedSeed) >>> 0) || 1,
+    codex: normalizeCodexProjection(input.codex),
+    titles: normalizeTitlesProjection(input.titles),
+    eliteComposition: input.eliteComposition !== false,
   };
+}
+
+function projectCodex(story) {
+  return normalizeCodexProjection(story && {
+    beatIndex: story.beatIndex,
+    seenComms: story.seenComms,
+    graffitiShown: story.graffitiShown,
+    endgameChoice: completedEndingChoiceFromStory(story),
+    persistentCargo: story.persistentCargo,
+    rareSpawns: story.flags && story.flags.rareSpawns,
+  });
+}
+
+function normalizeCodexProjection(input) {
+  const source = input && typeof input === 'object' && !Array.isArray(input) ? input : {};
+  const ending = String(source.endgameChoice || '').toUpperCase();
+  return {
+    beatIndex: clampInt(source.beatIndex, 0, 7),
+    seenComms: trueKeyMap(source.seenComms, 256),
+    graffitiShown: trueKeyMap(source.graffitiShown, 256),
+    endgameChoice: ENDING_BY_ID.has(ending) ? ending : null,
+    persistentCargo: cleanList(source.persistentCargo, 64),
+    rareSpawns: normalizeRareSpawnCodex(source.rareSpawns),
+  };
+}
+
+function normalizeRareSpawnCodex(input) {
+  const source = input && typeof input === 'object' && !Array.isArray(input) ? input : {};
+  const history = (Array.isArray(source.history) ? source.history : []).slice(-32).map((row) => {
+    if (!row || typeof row !== 'object' || Array.isArray(row)) return null;
+    const out = {};
+    for (const key of ['kind', 'receiptId', 'shapeId', 'encounterId', 'blackBoxSide', 'cargoId', 'sectorId', 'zoneId', 'outcome']) {
+      const value = clean(row[key]);
+      if (value) out[key] = value;
+    }
+    if (Number.isFinite(Number(row.recoveredOrder))) out.recoveredOrder = clampInt(row.recoveredOrder, 0, 99);
+    return Object.keys(out).length ? out : null;
+  }).filter(Boolean);
+  return { history };
+}
+
+function projectCosmetics(player) {
+  const byDef = new Map();
+  for (const ship of player && Array.isArray(player.ownedShips) ? player.ownedShips : []) {
+    const defId = clean(ship && ship.defId);
+    if (!defId || byDef.has(defId)) continue;
+    byDef.set(defId, { defId, appearance: { ...normalizeShipAppearance(ship.appearance, defId) } });
+    if (byDef.size >= 32) break;
+  }
+  return [...byDef.values()];
+}
+
+function projectTitles(story) {
+  const source = story && story.titles && story.titles.playerDeeds;
+  return normalizeTitlesProjection({ playerDeeds: source });
+}
+
+function normalizeTitlesProjection(input) {
+  const source = input && typeof input === 'object' && !Array.isArray(input) ? input : {};
+  const raw = source.playerDeeds && typeof source.playerDeeds === 'object' ? source.playerDeeds : {};
+  const earnedById = {};
+  const ids = Object.keys(raw.earnedById && typeof raw.earnedById === 'object' ? raw.earnedById : {})
+    .sort().slice(0, 64);
+  for (const id of ids) {
+    const row = raw.earnedById[id];
+    if (!row || typeof row !== 'object') continue;
+    earnedById[id] = {
+      id: clean(row.id || id),
+      title: clean(row.title),
+      description: clean(row.description),
+      earnedTick: clampInt(row.earnedTick, 0, 0x7fffffff),
+      receiptId: clean(row.receiptId),
+      source: clean(row.source),
+    };
+  }
+  const order = cleanList(raw.order, 64).filter((id) => earnedById[id]);
+  return { playerDeeds: { earnedById, order, processedReceiptIds: cleanList(raw.processedReceiptIds, 128) } };
+}
+
+function codexEntryCount(codex) {
+  return clampInt(codex && codex.beatIndex, 0, 7) + 1
+    + Object.keys(codex && codex.seenComms || {}).length
+    + Object.keys(codex && codex.graffitiShown || {}).length
+    + (codex && codex.persistentCargo || []).length
+    + (codex && codex.rareSpawns && codex.rareSpawns.history || []).length;
+}
+
+function trueKeyMap(input, limit) {
+  const out = {};
+  for (const key of Object.keys(input && typeof input === 'object' ? input : {}).sort()) {
+    if (input[key] !== true) continue;
+    const id = clean(key);
+    if (id) out[id] = true;
+    if (Object.keys(out).length >= limit) break;
+  }
+  return out;
+}
+
+function cleanList(input, limit) {
+  return (Array.isArray(input) ? input : []).map(clean).filter(Boolean).slice(-limit);
 }
 
 function ownedKeepsakeOptions(player) {

@@ -289,11 +289,28 @@ export const newGameScreen = {
     seedDesc.id = 'sf-ng-seed-desc';
     body.appendChild(seedDesc);
 
+    const seededRunRow = el('div', 'sf-row');
+    const seededRunLabel = el('label', null, 'Fixed-seed run');
+    seededRunLabel.htmlFor = 'sf-ng-seeded-run';
+    seededRunRow.appendChild(seededRunLabel);
+    const seededRunCtl = el('div', 'sf-ctl');
+    const seededRun = el('input');
+    seededRun.id = 'sf-ng-seeded-run';
+    seededRun.type = 'checkbox';
+    seededRun.setAttribute('aria-describedby', 'sf-ng-seeded-run-desc');
+    seededRunCtl.appendChild(seededRun);
+    seededRunRow.appendChild(seededRunCtl);
+    body.appendChild(seededRunRow);
+    const seededRunDesc = el('p', 'sf-muted', 'Score kills, contracts, and completed chains against a local board. Requires an explicit universe seed.');
+    seededRunDesc.id = 'sf-ng-seeded-run-desc';
+    body.appendChild(seededRunDesc);
+
     // New Run+ is opt-in and read-only until Launch. The save owner revalidates this exact slot and
     // selection at the transition boundary; the UI never copies a whole prior run into the event.
     const newGamePlusCandidate = readNewGamePlusCandidate(ctx);
     let legacyToggle = null;
     let legacySelect = null;
+    let legacyElite = null;
     if (newGamePlusCandidate) {
       const legacy = el('section', 'sf-ng-legacy');
       legacy.setAttribute('aria-labelledby', 'sf-ng-legacy-label');
@@ -326,8 +343,20 @@ export const newGameScreen = {
         option.value = item.defId;
         legacySelect.appendChild(option);
       }
-      legacyToggle.addEventListener('change', () => { legacySelect.disabled = !legacyToggle.checked; });
+      legacyToggle.addEventListener('change', () => {
+        legacySelect.disabled = !legacyToggle.checked;
+        if (legacyElite) legacyElite.disabled = !legacyToggle.checked;
+      });
       legacy.appendChild(legacySelect);
+      const eliteLabel = el('label', 'sf-ng-legacy__toggle');
+      legacyElite = el('input');
+      legacyElite.type = 'checkbox';
+      legacyElite.id = 'sf-ng-legacy-elites';
+      legacyElite.checked = true;
+      legacyElite.disabled = true;
+      eliteLabel.appendChild(legacyElite);
+      eliteLabel.appendChild(el('span', null, 'Elite challenge compositions'));
+      legacy.appendChild(eliteLabel);
       body.appendChild(legacy);
     }
 
@@ -412,9 +441,11 @@ export const newGameScreen = {
       name.disabled = launching;
       diff.disabled = launching;
       seed.disabled = launching;
+      seededRun.disabled = launching;
       skipVerbDrills.disabled = launching;
       if (legacyToggle) legacyToggle.disabled = launching;
       if (legacySelect) legacySelect.disabled = launching || !legacyToggle.checked;
+      if (legacyElite) legacyElite.disabled = launching || !legacyToggle.checked;
       launch.textContent = launching ? coreText('launching') : coreText('launch');
       if (launching) {
         // Veil the warmup after 300ms so the disabled button itself is never the resting state.
@@ -435,9 +466,21 @@ export const newGameScreen = {
       // requires a finite positive number and otherwise randomises, so passing NaN or 0 through
       // would silently mean "random" while looking deliberate.
       const rawSeed = parseUniverseSeed(seed.value);
+      if (seededRun.checked && rawSeed == null) {
+        setLaunching(false);
+        seed.setAttribute('aria-invalid', 'true');
+        try { seed.focus(); } catch (_) { /* focus is best-effort */ }
+        ctx.bus.emit('toast', { text: 'Fixed-seed runs require a universe seed.', kind: 'error', ttl: 5 });
+        return;
+      }
+      seed.removeAttribute('aria-invalid');
       const seedOpt = rawSeed == null ? {} : { seed: rawSeed };
       const newGamePlusOpt = legacyToggle && legacyToggle.checked && legacySelect && legacySelect.value
-        ? { newGamePlus: { slot: newGamePlusCandidate.sourceSlot, keepsakeId: legacySelect.value } }
+        ? { newGamePlus: {
+          slot: newGamePlusCandidate.sourceSlot,
+          keepsakeId: legacySelect.value,
+          eliteComposition: !legacyElite || legacyElite.checked,
+        } }
         : {};
       // First-run splash (spec2/03 §3): a single full-screen line on black, 2.5s, then B0.
       try { showFirstRunSplash(ctx); } catch (e) { /* non-blocking */ }
@@ -446,6 +489,7 @@ export const newGameScreen = {
         shipId: STARTER_SHIP,
         difficulty: diff.value,
         skipArcadeVerbOnboarding: skipVerbDrills.checked,
+        seededRun: seededRun.checked,
         ...seedOpt,
         ...newGamePlusOpt,
       });

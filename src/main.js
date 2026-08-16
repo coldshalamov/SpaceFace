@@ -375,6 +375,9 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
             );
           }
         }
+        if (ships && typeof ships.applyNewGamePlusCosmetics === 'function') {
+          ships.applyNewGamePlusCosmetics(newGamePlus.cosmetics);
+        }
       }
       if (!runTransitionGuard.isCurrent(transitionToken)) return;
 
@@ -416,7 +419,7 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
     enterFlight() {
       enterFlightMode(state, bus);
       if (!runTransitionGuard.isCurrent(transitionToken)) return;
-      bus.emit('game:started', { newGamePlus });
+      bus.emit('game:started', { newGamePlus, seededRun: opts && opts.seededRun === true });
       SF_DEBUG_ONLY: if (SF_DEBUG) console.log('[SpaceFace] new game started. entities=%d', state.entityList.length);
     },
   });

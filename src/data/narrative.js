@@ -502,6 +502,7 @@ export const PERSISTENT_CARGO = [
   { id: 'cmdty_unclassified_composite', name: 'UNCLASSIFIED COMPOSITE', mass: 0.0031, note: 'PERSONAL EFFECTS — 3.1 kg. The second fragment. In the manifest since first launch.' },
   KURTZ.ledgerCargoId && { id: KURTZ.ledgerCargoId, name: KURTZ.ledgerName, mass: KURTZ.ledgerMass, note: 'The Kurtz figure\u2019s ledger. 0.4t. The mass never changes, even if jettisoned.' },
   KURTZ.coordsCargoId && { id: KURTZ.coordsCargoId, name: KURTZ.coordsName, mass: KURTZ.coordsMass, note: 'Coordinates in a format no database recognizes. 0.01t. Format: unknown.' },
+  { id: 'cmdty_personal_capstone_lattice', name: 'CAPSTONE LATTICE', mass: 0.02, note: 'CHALLENGE-SOURCE MATERIAL — a fused specialist array recovered only from the Ashfall or Phoebe gauntlets.' },
 ].filter(Boolean);
 
 /** Thread-B fragment present from New Game (PERSONAL EFFECTS). Not the B0 assay sample. */

@@ -86,6 +86,7 @@ import { timeTrials } from '../systems/timeTrials.js'; // Plan 50 — physical g
 import { missions } from '../systems/missions.js';
 import { careerContracts } from '../systems/careerContracts.js';
 import { postEndingReplay } from '../systems/postEndingReplay.js';
+import { endgameReplay } from '../systems/endgameReplay.js';
 import { economyContracts } from '../systems/economyContracts.js';
 import { careerOrigins } from '../careers/origins/careerOrigins.js';
 import { careerLadders } from '../careers/ladders/careerLadders.js';
@@ -266,6 +267,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['careerContracts', careerContracts],
     ['economyContracts', economyContracts],
     ['postEndingReplay', postEndingReplay],
+    ['endgameReplay', endgameReplay],
     ['story', story],
     ['scenarioRuntime', scenarioRuntime],
     ['presentationOrchestrator', presentationOrchestrator],

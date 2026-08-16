@@ -118,6 +118,15 @@ const SLING_MIN_ROUTE_WU = 520;
 const SLING_LATERAL_OFFSETS_WU = Object.freeze([0, 160, -160, 280, -280]);
 const CLAIM_DAY_SECONDS = 600;
 
+/** Factory raids get one composition-quality step per successful defense, capped before the
+ * encounter becomes an unbounded ship-count escalation. Other claim specializations keep the
+ * ordinary stripping-crew profile. */
+export function claimRaidQualityTier(body) {
+  const spec = body && body.spec;
+  if (!spec || spec.id !== 'spec_refinery') return 0;
+  return Math.max(0, Math.min(3, Math.floor(Number(spec.totals && spec.totals.raidsRepelled) || 0)));
+}
+
 function pointSegmentDistanceSquared(px, pz, ax, az, bx, bz) {
   const dx = bx - ax;
   const dz = bz - az;
@@ -1588,6 +1597,7 @@ export const claims = {
     const now = this.state.simTime || 0;
     const defenseId = `${body.id}:${seq}`;
     const attackerCount = Math.max(1, Math.min(6, Math.round(options.attackerCount || 2)));
+    const qualityTier = claimRaidQualityTier(body);
     const previousWaypoint = this.state.nav && this.state.nav.waypoint
       ? JSON.parse(JSON.stringify(this.state.nav.waypoint)) : null;
     const defense = {
@@ -1598,8 +1608,9 @@ export const claims = {
       deadlineAt: now + CLAIM_DEFENSE_WARNING_S,
       requestedAt: null,
       attackerFactionId: 'faction_reach',
-      attackerName: 'Reach scavengers',
+      attackerName: ['Reach scavengers', 'Reach specialist cutters', 'Reach elite strike wing', 'Reach carrier raid'][qualityTier],
       attackerCount,
+      qualityTier,
       motive: `Stored freight at ${body.name} drew a Reach stripping crew to the seam.`,
       bastionId: options.bastionId || null,
       previousWaypoint,
@@ -1607,7 +1618,7 @@ export const claims = {
     spec.defense = defense;
     this._setDefenseWaypoint(body, defense);
     this._receipt(body, 'defense_warning', `${defense.attackerName} inbound — ${attackerCount} ships, ${CLAIM_DEFENSE_WARNING_S}s to respond`, {
-      defenseId, attackerFactionId: defense.attackerFactionId, attackerCount,
+      defenseId, attackerFactionId: defense.attackerFactionId, attackerCount, qualityTier,
     });
     this.bus.emit('claim:defenseWarning', {
       bodyId: body.id,
@@ -1618,6 +1629,7 @@ export const claims = {
       attackerFactionId: defense.attackerFactionId,
       attackerName: defense.attackerName,
       attackerCount,
+      qualityTier,
       motive: defense.motive,
       deadlineAt: defense.deadlineAt,
       countdownS: CLAIM_DEFENSE_WARNING_S,
@@ -1679,6 +1691,7 @@ export const claims = {
       attackerFactionId: defense.attackerFactionId,
       attackerName: defense.attackerName,
       attackerCount: defense.attackerCount,
+      qualityTier: defense.qualityTier || 0,
       motive: defense.motive,
       deadlineAt: defense.deadlineAt,
       resume: !!options.resume,
@@ -1765,7 +1778,7 @@ export const claims = {
       : `Claim defense ${outcome} — ${lostU}u lost; repair crews assigned.`;
     this._receipt(body, `defense_${outcome}`, summary, {
       defenseId: defense.id, encounterId: defense.encounterId, lostU,
-      repDelta: settlement.rep, dangerDelta: settlement.danger,
+      repDelta: settlement.rep, dangerDelta: settlement.danger, qualityTier: defense.qualityTier || 0,
     });
     spec.defense = null;
     this._restoreDefenseWaypoint(defense);
@@ -1773,6 +1786,7 @@ export const claims = {
       bodyId: body.id, defenseId: defense.id, encounterId: defense.encounterId,
       sectorId: body.sectorId, outcome, lostU, repDelta: settlement.rep,
       dangerDelta: settlement.danger,
+      qualityTier: defense.qualityTier || 0,
       repairDebtCr: Math.round(((def && def.upkeepPerMin) || 0) * settlement.repairMin),
       text: summary,
     });

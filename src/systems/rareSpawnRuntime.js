@@ -158,20 +158,52 @@ function addPersistentStoryCargo(state, id) {
 }
 
 function spawnGoldPirates(d, live) {
-  const plans = ['reaver_pirate', 'corsair_raider'].map((archetype, index) => ({
-    archetype,
-    level: 5,
-    role: 'gold_claimant',
-    team: 1,
-    factionId: 'faction_reach',
-    context: 'encounter',
-    passive: false,
-    doctrine: index === 0 ? 'scavenger' : 'balanced',
-    pos: {
-      x: live.anchor.x + 155 + index * 55,
-      z: live.anchor.z + (index === 0 ? -90 : 95),
-    },
-  }));
+  const legendary = live.data && live.data.legendaryHuntId === 'legendary_gold_wings';
+  const plans = legendary
+    ? Array.from({ length: 3 }, (_, wingIndex) => [
+      {
+        archetype: wingIndex === 1 ? 'corsair_raider' : 'reaver_pirate',
+        level: 7,
+        role: `gold_claimant_wing_${wingIndex + 1}`,
+        team: 1,
+        factionId: 'faction_reach',
+        context: 'encounter',
+        passive: false,
+        doctrine: wingIndex === 0 ? 'scavenger' : wingIndex === 1 ? 'balanced' : 'aggressive',
+        pos: {
+          x: live.anchor.x + 190 + wingIndex * 75,
+          z: live.anchor.z + (wingIndex - 1) * 170,
+        },
+      },
+      {
+        archetype: wingIndex === 2 ? 'harrier_kiter' : 'hostile_interceptor',
+        level: 6,
+        role: `gold_claimant_wing_${wingIndex + 1}_screen`,
+        team: 1,
+        factionId: 'faction_reach',
+        context: 'encounter',
+        passive: false,
+        doctrine: 'screen',
+        pos: {
+          x: live.anchor.x + 250 + wingIndex * 75,
+          z: live.anchor.z + (wingIndex - 1) * 170 + 45,
+        },
+      },
+    ]).flat()
+    : ['reaver_pirate', 'corsair_raider'].map((archetype, index) => ({
+      archetype,
+      level: 5,
+      role: 'gold_claimant',
+      team: 1,
+      factionId: 'faction_reach',
+      context: 'encounter',
+      passive: false,
+      doctrine: index === 0 ? 'scavenger' : 'balanced',
+      pos: {
+        x: live.anchor.x + 155 + index * 55,
+        z: live.anchor.z + (index === 0 ? -90 : 95),
+      },
+    }));
   return d.spawnShips(live, plans);
 }
 
@@ -216,10 +248,16 @@ const goldAsteroid = Object.freeze({
     if (!rock) return d.abort(live, 'spawn_failed');
     live.data.rockId = rock.id;
     live.data.coreSpawned = false;
-    spawnGoldPirates(d, live);
+    const pirateIds = spawnGoldPirates(d, live);
+    const legendary = live.data && live.data.legendaryHuntId === 'legendary_gold_wings';
+    if (legendary && pirateIds.length !== 6) return d.abort(live, 'legendary_wings_spawn_cap');
     live.phase = 'physical';
-    news(d, live, 'PROSPECTOR WHISPER CONFIRMED: a gold assay has drawn pirate claimants');
-    d.say(live, 'info', live.shape.primaryLine, null, { literal: true, primary: true });
+    news(d, live, legendary
+      ? 'LEGENDARY ASSAY CONFIRMED: three distinct pirate wings hold one gold core'
+      : 'PROSPECTOR WHISPER CONFIRMED: a gold assay has drawn pirate claimants');
+    d.say(live, 'info', legendary
+      ? 'THREE WING LOCKS: each pirate formation has a leader, a screen, and the same gold core in its sights.'
+      : live.shape.primaryLine, null, { literal: true, primary: true });
   },
   event(d, live, state, name, payload = {}) {
     if (name !== 'asteroidDestroyed' || payload.id !== live.data.rockId || live.data.coreSpawned) return;
@@ -628,7 +666,7 @@ function rendezvousPair(d, live, state) {
 }
 
 function armAces(d, live) {
-  armAgainstPlayer(d, live, ['rendezvous_ace']);
+  armAgainstPlayer(d, live, ['rendezvous_ace', 'rendezvous_crew']);
   live.phase = 'combat';
   live.data.escapeAt = d.now() + ACE_COMBAT_S;
 }
@@ -678,6 +716,26 @@ const acesRendezvous = Object.freeze({
         signatureSpoken: false,
       });
     }
+    const legendary = live.data && live.data.legendaryHuntId === 'legendary_ace_crew';
+    if (legendary) {
+      const escortPlans = pair.map((ace, index) => ({
+        archetype: index === 0 ? 'hostile_interceptor' : 'corsair_raider',
+        level: ace.baseReturnLevel + 1,
+        role: 'rendezvous_crew',
+        team: 2,
+        factionId: ace.factionId,
+        context: 'encounter',
+        passive: true,
+        doctrine: 'screen',
+        pos: {
+          x: live.anchor.x + (index === 0 ? -135 : 135),
+          z: live.anchor.z + (index === 0 ? 45 : -45),
+        },
+      }));
+      const crewIds = d.spawnShips(live, escortPlans);
+      if (crewIds.length !== 2) return d.abort(live, 'ace_crew_spawn_cap');
+      live.data.crewIds = crewIds;
+    }
     startOffer(d, live, `ACES RENDEZVOUS: ${pair[0].name} and ${pair[1].name} are trading in open space`);
   },
   tick(d, live, state, now) {
@@ -714,6 +772,58 @@ const acesRendezvous = Object.freeze({
   },
 });
 
+const capitalHulk = Object.freeze({
+  fire(d, live) {
+    const plans = [
+      {
+        archetype: 'dreadnought_boss',
+        level: 10,
+        role: 'legendary_capital_hulk',
+        team: 1,
+        factionId: 'faction_reach',
+        context: 'encounter',
+        passive: false,
+        doctrine: 'anchor',
+        bossName: 'The Gun That Forgot the War',
+        bountyCr: 28_000,
+        pos: { x: live.anchor.x, z: live.anchor.z },
+      },
+      {
+        archetype: 'heavy_gunship',
+        level: 7,
+        role: 'capital_hulk_screen',
+        team: 1,
+        factionId: 'faction_reach',
+        context: 'encounter',
+        passive: false,
+        doctrine: 'screen',
+        pos: { x: live.anchor.x - 170, z: live.anchor.z + 115 },
+      },
+      {
+        archetype: 'pd_screen_escort',
+        level: 7,
+        role: 'capital_hulk_screen',
+        team: 1,
+        factionId: 'faction_reach',
+        context: 'encounter',
+        passive: false,
+        doctrine: 'screen',
+        pos: { x: live.anchor.x + 180, z: live.anchor.z - 105 },
+      },
+    ];
+    const ids = d.spawnShips(live, plans);
+    if (ids.length !== plans.length) return d.abort(live, 'capital_hulk_spawn_cap');
+    live.data.hulkId = ids[0];
+    live.phase = 'combat';
+    news(d, live, 'LEGENDARY CONTACT: a pre-cataclysm capital hulk has resumed live fire');
+    d.say(live, 'alert', live.shape.primaryLine, null, { literal: true, primary: true });
+  },
+  event(d, live, state, name, payload = {}) {
+    if (name !== 'squadKill' || payload.role !== 'legendary_capital_hulk') return;
+    finish(d, live, state, 'hulk_silenced', 'CAPITAL HULK SILENCED: the last firing spine goes dark');
+  },
+});
+
 export const RARE_SPAWN_RUNTIMES = Object.freeze({
   goldAsteroid,
   merchantPrince,
@@ -721,4 +831,5 @@ export const RARE_SPAWN_RUNTIMES = Object.freeze({
   drifterMigration,
   doubleWreck,
   acesRendezvous,
+  capitalHulk,
 });

@@ -76,6 +76,7 @@ import * as encounter072 from './359-rare-ghost-ship.js';
 import * as encounter073 from './360-rare-drifter-migration.js';
 import * as encounter074 from './361-rare-double-wreck.js';
 import * as encounter075 from './362-rare-aces-rendezvous.js';
+import * as encounter076 from './363-legendary-capital-hulk.js';
 
 export const ENCOUNTER_MODULES = Object.freeze([
   encounter001,
@@ -153,5 +154,6 @@ export const ENCOUNTER_MODULES = Object.freeze([
   encounter073,
   encounter074,
   encounter075,
+  encounter076,
 ]);
 export const ENCOUNTERS = buildEncounterCatalog(ENCOUNTER_MODULES);

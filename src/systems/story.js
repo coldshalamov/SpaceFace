@@ -34,7 +34,7 @@
 // the base fields; we add the narrative fields defensively in deserialize).
 import {
   COMMS, GRAFFITI, BEAT_CONTENT, POST_SPINE_BEAT_CONTENT, KURTZ,
-  COLD_START, ENDING_AIRLOCK_GRAFFITI, HELIOS_BAY7, THREAD_B_FRAGMENT_ID,
+  COLD_START, ENDING_AIRLOCK_GRAFFITI, HELIOS_BAY7, PERSISTENT_CARGO, THREAD_B_FRAGMENT_ID,
 } from '../data/narrative.js';
 import {
   ORRIN_WITNESS_CONTACT_ID,
@@ -170,6 +170,7 @@ export const story = {
     // UI intent: player opened/took/dropped the ledger with the Kurtz figure.
     bus.on('ui:kurtzInteract', (p) => this._onKurtzInteract(p || {}));
     bus.on('ui:heliosBay7Scan', () => this._onHeliosBay7Scan());
+    bus.on('story:awardPersistentCargo', (p) => this._awardPersistentCargo(p || {}));
     bus.on('ui:talkContact', (p) => this._onVergeKellEvidence(p || {}));
     bus.on(ORRIN_WITNESS_SUBMISSION_EVENT, (p) => this._onOrrinWitnessSubmission(p || {}));
     bus.on('factionPresence:archiveEvidenceRead', (p) => this._onVergeArchiveEvidence(p || {}));
@@ -1402,6 +1403,26 @@ export const story = {
     if (cargoSys && typeof cargoSys.recompute === 'function') {
       try { cargoSys.recompute(); } catch (e) { /* best-effort */ }
     }
+  },
+
+  _awardPersistentCargo(payload) {
+    const id = String(payload && payload.id || '');
+    const def = PERSISTENT_CARGO.find((entry) => entry && entry.id === id);
+    if (!def) return false;
+    const before = Number(this.state.player && this.state.player.cargo
+      && this.state.player.cargo.items && this.state.player.cargo.items[id]) || 0;
+    this._addPersistentCargo(def.id, def.name, payload.qty || 1, def.mass);
+    const after = Number(this.state.player && this.state.player.cargo
+      && this.state.player.cargo.items && this.state.player.cargo.items[id]) || 0;
+    if (after <= before) return false;
+    this.bus.emit('story:persistentCargoAwarded', {
+      id: def.id,
+      name: def.name,
+      qty: after - before,
+      reason: payload.reason || 'story_reward',
+    });
+    this.bus.emit('toast', { text: `${def.name} secured in Personal Effects`, kind: 'success', ttl: 5 });
+    return true;
   },
 
   _onHeliosBay7Scan() {
