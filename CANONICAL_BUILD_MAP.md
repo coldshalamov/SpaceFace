@@ -316,6 +316,10 @@ verify it and move on; it does not count without a material player-facing produc
 | 19 | `AC-19` | Market charts display the real smooth station function with continuous sampling and blended regime changes instead of step noise | — |
 | 20 | `AC-20` | Witnessed crime produces a capped local wanted lifecycle that fully decays after leaving/cooldown and always exposes restitution | — |
 
+**Campaign result (2026-08-16): DONE.** All 20 production outcomes above are integrated and pushed
+on `codex/arcade-core-20` through `c6909729`. The orchestration ledger retains the per-outcome
+implementation, taste-review, focused-check, commit, reroute, and provider-exhaustion dispositions.
+
 Major boundaries for this campaign are settled here: RP is the third reward channel; SG-06 Tactical
 AI is the default behavior owner; world gravity reuses the field kernel's pure force/coupling
 primitive through an explicit world-owned source rather than masquerading as a deployed device;
