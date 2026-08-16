@@ -600,6 +600,22 @@ function travelDriveCooldownInput(drive) {
   return { ...drive, state: 'cooldown', breakReason: 'energy' };
 }
 
+export function oneHandedAutoFaceTurn(entity, raw = {}, state = null) {
+  const manualTurn = finite(raw.turnIntent ?? raw.turn, 0);
+  if (Math.abs(manualTurn) > 0.08
+    || state?.settings?.accessibility?.oneHandedAutoFace !== true
+    || raw.brake || raw.fullStop || raw.flipBurn) return manualTurn;
+  const travelState = raw.travelDrive && raw.travelDrive.state;
+  const movingCommand = finite(raw.moveZ ?? raw.throttle, 0) > 0.05
+    || travelState === 'charging' || travelState === 'engaged';
+  if (!movingCommand) return manualTurn;
+  const vx = finite(entity?.vel?.x, 0);
+  const vz = finite(entity?.vel?.z, 0);
+  if (Math.hypot(vx, vz) < 8) return manualTurn;
+  const desired = Math.atan2(vz, vx);
+  return clamp(wrapAngle(desired - finite(entity?.rot, 0)) / 0.62, -1, 1);
+}
+
 function normalizeCraftInput(entity, raw = {}, runtime, state, isPlayer, dt = SG02_INPUT_DT) {
   const boost = !!raw.boost;
   const previousBoost = !!runtime.previousBoost;
@@ -609,6 +625,7 @@ function normalizeCraftInput(entity, raw = {}, runtime, state, isPlayer, dt = SG
   if (!isPlayer && Number.isFinite(raw.aimAngle)) {
     turn = clamp(wrapAngle(raw.aimAngle - finite(entity.rot)) / 0.62, -1, 1);
   }
+  if (isPlayer) turn = oneHandedAutoFaceTurn(entity, raw, state);
   if (!isPlayer && entity.data) {
     // Actuator lag (NPC_INPUT_SLEW): the brain may flip its desire instantly; the engines can't.
     // Slew state rides on propulsionRuntime (save-additive; assignPropulsionRuntime preserves

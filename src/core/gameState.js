@@ -29,6 +29,12 @@ function defaultSettings() {
       autosaveIntervalS: 120,
       tutorialHints: true,
       difficulty: 'standard',
+      // Plan 56 keeps the stable legacy preset id (`standard`) but exposes the authored Pilot
+      // values independently. Presets write all four fields; sliders may then override one lever.
+      encounterPressure: 1,
+      enemyAccuracy: 1,
+      economyEase: 1,
+      ironman: false,
       physicsBackend: 'rapier-dynamic',
       aiBackend: 'sg06-tactical',
       flightBackend: 'v3',
@@ -53,6 +59,7 @@ function defaultSettings() {
     accessibility: {
       colorblindMode: 'none', highContrast: false, flashReduce: false, dyslexiaFont: false,
       motionPreference: 'system', captions: true, captionSize: 'medium', captionBackground: true,
+      oneHandedAutoFace: false, oneHandedFireToggle: false,
     },
   };
 }

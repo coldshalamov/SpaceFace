@@ -670,6 +670,19 @@ function simClockMs(state) {
   return t * 1000;
 }
 
+/** Pure edge reducer for the optional one-handed fire latch. */
+export function resolveOneHandedFire({
+  enabled = false,
+  physicalHeld = false,
+  previousPhysicalHeld = false,
+  latched = false,
+} = {}) {
+  const held = physicalHeld === true;
+  if (!enabled) return { fire: held, latched: false, previousPhysicalHeld: held };
+  const nextLatched = held && !previousPhysicalHeld ? !latched : latched;
+  return { fire: nextLatched, latched: nextLatched, previousPhysicalHeld: held };
+}
+
 export const input = {
   name: 'input',
   init(ctx) {
@@ -683,6 +696,8 @@ export const input = {
     this._screen = { x: Math.floor(viewportW * 0.5), y: Math.floor(viewportH * 0.5), active: false };
     resetAutoTargetPath(this, this.state);
     this._m0 = false; this._m1 = false; this._m2 = false;
+    this._oneHandedFireLatched = false;
+    this._oneHandedFirePhysicalPrev = false;
     this._cmHeld = false;
     this._gamepadLifecycleQuarantine = null;
     this._masslineGrammar = createMasslineInputGrammar();
@@ -811,6 +826,8 @@ export const input = {
     this._m0 = false;
     this._m1 = false;
     this._m2 = false;
+    this._oneHandedFireLatched = false;
+    this._oneHandedFirePhysicalPrev = false;
     this._prevM1 = false;
     if (this._screen) this._screen.active = false;
     const committedInput = this.state && this.state.input;
@@ -1112,7 +1129,15 @@ export const input = {
     inp.brake = (helm || pilot)
       ? ((pilotProjection ? pilotProjection.brake : (down || kbdBrakeHeld)) || gpBrake)
       : (down || gpBrake || gpMoveZ < -0.55 || tpMoveZ < -0.55);
-    inp.fire = kbdFire || gpFire || tpFire;
+    const oneHandedFire = resolveOneHandedFire({
+      enabled: state.settings?.accessibility?.oneHandedFireToggle === true,
+      physicalHeld: kbdFire || gpFire || tpFire,
+      previousPhysicalHeld: this._oneHandedFirePhysicalPrev,
+      latched: this._oneHandedFireLatched,
+    });
+    this._oneHandedFirePhysicalPrev = oneHandedFire.previousPhysicalHeld;
+    this._oneHandedFireLatched = oneHandedFire.latched;
+    inp.fire = oneHandedFire.fire;
     // Massline throw-arm (§3.3, flag massline2.throw): while latched to a throwable payload
     // (hostile ship/drone, fracture chunk, cargo mass), RMB is throwArm — mining yields and
     // masslineThrow owns the solution/auto-cut. While latched to a mineable asteroid or wreck,

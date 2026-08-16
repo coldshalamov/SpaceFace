@@ -9,6 +9,7 @@ import { massline2Flag } from '../../data/featureFlags.js';
 import { MASSLINE_BINDING_PROFILE_SPACE } from '../../core/graphicsProfileBootstrap.js';
 import { DEFAULT_BLOOM_STRENGTH } from '../../render/bloom.js';
 import { BINDINGS } from '../bindings.js';
+import { DIFFICULTY_PRESET_OPTIONS, difficultyPresetValues } from '../../data/difficulty.js';
 
 const STYLE_ID = 'sf-settings-menu-style';
 
@@ -353,7 +354,35 @@ export const settingsScreen = {
       g.physicsBackend = 'rapier-dynamic';
       g.aiBackend = 'sg06-tactical';
       g.flightBackend = 'v3';
-      rowSelect('Difficulty', () => g.difficulty, [['casual', 'Casual'], ['standard', 'Standard'], ['veteran', 'Veteran'], ['ironman', 'Ironman']], (v) => this._set(ctx, 'gameplay', 'difficulty', v));
+      rowSelect('Difficulty preset', () => g.difficulty, [...DIFFICULTY_PRESET_OPTIONS, ['custom', 'Custom']], (v) => {
+        if (v === 'custom') {
+          this._set(ctx, 'gameplay', 'difficulty', v);
+          return;
+        }
+        const preset = difficultyPresetValues(v);
+        for (const [key, value] of Object.entries(preset)) this._set(ctx, 'gameplay', key, value);
+        this._render(ctx);
+      });
+      rowSlider('Encounter pressure', () => Number.isFinite(g.encounterPressure) ? g.encounterPressure : 1,
+        0.6, 1.4, 0.05, (x) => Math.round(x * 100) + '%', (v, persist) => {
+          g.difficulty = 'custom';
+          this._set(ctx, 'gameplay', 'encounterPressure', v, persist);
+        });
+      rowSlider('Enemy accuracy', () => Number.isFinite(g.enemyAccuracy) ? g.enemyAccuracy : 1,
+        0.5, 1.25, 0.05, (x) => Math.round(x * 100) + '%', (v, persist) => {
+          g.difficulty = 'custom';
+          this._set(ctx, 'gameplay', 'enemyAccuracy', v, persist);
+        });
+      rowSlider('Economy ease', () => Number.isFinite(g.economyEase) ? g.economyEase : 1,
+        0.75, 1.5, 0.05, (x) => Math.round(x * 100) + '%', (v, persist) => {
+          g.difficulty = 'custom';
+          this._set(ctx, 'gameplay', 'economyEase', v, persist);
+        });
+      rowToggle('Ironman permadeath', () => g.ironman === true || g.difficulty === 'ironman', (v) => {
+        g.difficulty = 'custom';
+        this._set(ctx, 'gameplay', 'ironman', v);
+      });
+      pane.appendChild(el('p', 'sf-muted', 'Difficulty changes encounter cadence, enemy aim error, and rewards — never enemy hull, weapon damage, or projectile speed.'));
       rowSelect('Flight model', () => s.controls.flightMode || 'assisted', [['assisted', 'Assisted'], ['drift', 'Drift'], ['newtonian', 'Newtonian']], (v) => this._set(ctx, 'controls', 'flightMode', v));
       rowSelect('Massline orbit assist', () => g.orbitAssistStrength || 'standard', [
         ['full', 'Full'],
@@ -383,7 +412,8 @@ export const settingsScreen = {
       pane.appendChild(el('p', 'sf-muted', 'Off by default: kills read on the reticle, hits on the ship schematic, and payouts in the receipt strip. On adds floating damage numbers, shield/kill callouts, and pickup and ore-yield pops.'));
     } else if (refs.active === 'Access') {
       const ac = s.accessibility || (s.accessibility = { colorblindMode: 'none', highContrast: false, flashReduce: false, dyslexiaFont: false,
-        motionPreference: 'system', captions: true, captionSize: 'medium', captionBackground: true });
+        motionPreference: 'system', captions: true, captionSize: 'medium', captionBackground: true,
+        oneHandedAutoFace: false, oneHandedFireToggle: false });
       rowSelect('Colorblind palette', () => ac.colorblindMode || 'none',
         [['none', 'Off'], ['protanopia', 'Protanopia (red-weak)'], ['deuteranopia', 'Deuteranopia (green-weak)'], ['tritanopia', 'Tritanopia (blue-weak)']],
         (v) => this._set(ctx, 'accessibility', 'colorblindMode', v));
@@ -398,6 +428,10 @@ export const settingsScreen = {
         [['small', 'Small'], ['medium', 'Medium'], ['large', 'Large']],
         (v) => this._set(ctx, 'accessibility', 'captionSize', v));
       rowToggle('Solid caption backing', () => ac.captionBackground !== false, (v) => this._set(ctx, 'accessibility', 'captionBackground', v));
+      rowToggle('One-handed: face travel vector', () => ac.oneHandedAutoFace === true,
+        (v) => this._set(ctx, 'accessibility', 'oneHandedAutoFace', v));
+      rowToggle('One-handed: tap fire to latch', () => ac.oneHandedFireToggle === true,
+        (v) => this._set(ctx, 'accessibility', 'oneHandedFireToggle', v));
       rowSlider('UI scale', () => s.uiScale, 0.75, 2, 0.05, (x) => x.toFixed(2) + 'x', (v, persist) => {
         this._set(ctx, null, 'uiScale', v, persist);
         const root = document.getElementById('ui-root'); if (root) root.style.setProperty('--ui-scale', v);

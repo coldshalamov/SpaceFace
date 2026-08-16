@@ -43,6 +43,7 @@ import { applyPersistentDemand, effectiveDemandFor } from '../economy/demandMode
 import { priceModForState } from './factions.js';
 import { livingHullGrimeAt } from '../core/livingHull.js';
 import { heatRestitutionCost } from './heat.js';
+import { difficultyEconomyRewardScale } from '../data/difficulty.js';
 
 // ---- tunables (design/specs/03 "Formulas") ------------------------------------------------
 // M3 courier/freight balance (2026-07): produce=2.0 / consume=0.35 at baseEq=1000 left a permanent
@@ -1710,11 +1711,23 @@ export const economy = {
   // CREDITS — SOLE WRITER (§0.6). Everyone else emits economy:grant/chargeCredits.
   // -------------------------------------------------------------------------------------------
   grantCredits(amount, reason) {
-    amount = Math.round(amount || 0);
+    const baseAmount = Math.round(amount || 0);
+    const reasonId = String(reason || 'grant');
+    // Refunds, asset liquidation, migrations, and sandbox bookkeeping restore owned value rather
+    // than pay a reward. Scaling those would mint or destroy credits when a setting changes.
+    const restoredValue = /^(?:collateral_refund:|insurance:|sellShip:|sandbox(?::|$)|claim_migration$)/.test(reasonId);
+    const rewardScale = restoredValue ? 1 : difficultyEconomyRewardScale(this.state);
+    amount = Math.round(baseAmount * rewardScale);
     if (amount <= 0) return this.state.player.credits;
     const p = this.state.player;
     p.credits = Math.max(0, (p.credits | 0) + amount);
-    this.bus.emit('credits:changed', { delta: amount, reason: reason || 'grant', total: p.credits });
+    this.bus.emit('credits:changed', {
+      delta: amount,
+      reason: reasonId,
+      total: p.credits,
+      baseDelta: baseAmount,
+      economyEase: rewardScale,
+    });
     return p.credits;
   },
 

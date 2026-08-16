@@ -1,51 +1,100 @@
-// Run difficulty profiles (New Game / Settings gameplay.difficulty).
-// Combat applies these only on hits that involve the local player. NPC-vs-NPC is unscaled.
-//
-// Standard is tuned for playable QA while autotarget / flight assists are still settling:
-// slightly faster kills, substantially more player survivability. Veteran/Ironman keep the
-// unsoftened combat baseline; Ironman only adds permadeath at the recovery layer.
+// Player-facing run difficulty. Arcade Core difficulty changes encounter composition/cadence,
+// enemy aim error, and economic generosity. It never changes authored hull, weapon, or damage
+// values: Plan 11's fixed-stat contract stays true at every preset.
+
+const clamp = (value, lo, hi) => Math.max(lo, Math.min(hi, Number(value) || 0));
+
+function profile(fields) {
+  return Object.freeze({
+    playerOutgoingDamage: 1,
+    playerIncomingDamage: 1,
+    ...fields,
+  });
+}
 
 export const DIFFICULTY_PROFILES = Object.freeze({
-  casual: Object.freeze({
-    id: 'casual',
-    // Softer hits on the pilot; friendlier prices live in economy (when wired).
-    playerOutgoingDamage: 1.30,
-    playerIncomingDamage: 0.40,
+  // Stable internal ids preserve old saves; Settings presents these as Story and Pilot.
+  casual: profile({
+    id: 'casual', label: 'Story', encounterPressure: 0.70, enemyAccuracy: 0.65,
+    economyEase: 1.30, ironman: false,
   }),
-  standard: Object.freeze({
-    id: 'standard',
-    // ~15% faster kills, ~50% less lethal incoming for the current early-game feel.
-    playerOutgoingDamage: 1.15,
-    playerIncomingDamage: 0.50,
+  standard: profile({
+    id: 'standard', label: 'Pilot', encounterPressure: 1.0, enemyAccuracy: 1.0,
+    economyEase: 1.0, ironman: false,
   }),
-  veteran: Object.freeze({
-    id: 'veteran',
-    playerOutgoingDamage: 1.0,
-    playerIncomingDamage: 1.0,
+  veteran: profile({
+    id: 'veteran', label: 'Veteran', encounterPressure: 1.15, enemyAccuracy: 1.10,
+    economyEase: 0.90, ironman: false,
   }),
-  ironman: Object.freeze({
-    id: 'ironman',
-    playerOutgoingDamage: 1.0,
-    playerIncomingDamage: 1.0,
+  ironman: profile({
+    id: 'ironman', label: 'Ironman', encounterPressure: 1.30, enemyAccuracy: 1.20,
+    economyEase: 0.82, ironman: true,
   }),
 });
 
+export const DIFFICULTY_PRESET_OPTIONS = Object.freeze([
+  Object.freeze(['casual', 'Story']),
+  Object.freeze(['standard', 'Pilot']),
+  Object.freeze(['veteran', 'Veteran']),
+  Object.freeze(['ironman', 'Ironman']),
+]);
+
+export function difficultyPresetValues(id) {
+  const row = DIFFICULTY_PROFILES[id] || DIFFICULTY_PROFILES.standard;
+  return {
+    difficulty: row.id,
+    encounterPressure: row.encounterPressure,
+    enemyAccuracy: row.enemyAccuracy,
+    economyEase: row.economyEase,
+    ironman: row.ironman,
+  };
+}
+
+function gameplaySettings(state) {
+  return state && state.settings && state.settings.gameplay || {};
+}
+
 export function difficultyProfile(state) {
-  const id = state && state.settings && state.settings.gameplay
-    && state.settings.gameplay.difficulty || 'standard';
-  return DIFFICULTY_PROFILES[id] || DIFFICULTY_PROFILES.standard;
+  const gameplay = gameplaySettings(state);
+  const base = DIFFICULTY_PROFILES[gameplay.difficulty] || DIFFICULTY_PROFILES.standard;
+  return {
+    ...base,
+    encounterPressure: Number.isFinite(gameplay.encounterPressure)
+      ? clamp(gameplay.encounterPressure, 0.60, 1.40) : base.encounterPressure,
+    enemyAccuracy: Number.isFinite(gameplay.enemyAccuracy)
+      ? clamp(gameplay.enemyAccuracy, 0.50, 1.25) : base.enemyAccuracy,
+    economyEase: Number.isFinite(gameplay.economyEase)
+      ? clamp(gameplay.economyEase, 0.75, 1.50) : base.economyEase,
+    ironman: gameplay.ironman === true || base.ironman === true,
+  };
+}
+
+export function difficultyEncounterPressure(state) {
+  return difficultyProfile(state).encounterPressure;
+}
+
+export function difficultyEncounterDelayScale(state) {
+  return 1 / difficultyEncounterPressure(state);
+}
+
+export function difficultyEnemyAimErrorDeg(state) {
+  // Authored weapon spread remains the floor; lower accuracy adds a small deterministic error
+  // without touching damage, rate of fire, or projectile speed.
+  return Math.max(0, (1.20 - difficultyProfile(state).enemyAccuracy) * 2.5);
+}
+
+export function difficultyEconomyRewardScale(state) {
+  return difficultyProfile(state).economyEase;
+}
+
+export function ironmanEnabled(state) {
+  return difficultyProfile(state).ironman === true;
 }
 
 /**
- * Scale applied to an ordinary damage packet when the local player is attacker or target.
- * NPC↔NPC combat is always 1 so ambient brawls stay independent of run difficulty. The combat
- * router preserves the canonical non-lethal EMP disable verb separately; difficulty still scales
- * lethal, heat, mixed-ion, and legacy damage.
+ * Compatibility entrypoint for the combat damage router. Every preset intentionally returns one:
+ * difficulty now comes from pressure and accuracy, never effective HP or player damage inflation.
  */
-export function difficultyDamageScale(state, attackerId, targetId) {
-  if (!state) return 1;
-  const profile = difficultyProfile(state);
-  if (targetId === state.playerId) return profile.playerIncomingDamage;
-  if (attackerId === state.playerId) return profile.playerOutgoingDamage;
+export function difficultyDamageScale(_state, _attackerId, _targetId) {
   return 1;
 }

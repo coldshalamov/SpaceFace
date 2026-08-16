@@ -8,6 +8,7 @@
 // not ours. We emit ONLY combat:fire (+ combat:beamStop on release). Damage application and
 // projectile:hit/combat:damage are owned by physics + combat.
 import { WEAPONS } from '../data/weapons.js';
+import { difficultyEnemyAimErrorDeg } from '../data/difficulty.js';
 import { wrapAngle } from '../core/rng.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import {
@@ -515,7 +516,7 @@ export const weapons = {
       // deployable that later detonates into a radial impulse; the weapon spends cap/heat here.
       const deploy = (w.tracking || def.tracking) === 'deploy';
       if (continuous) {
-        capLeft = this._serviceBeam(e, w, def, firing, capLeft, dt, state, aimAngle, forceTarget, fireGate);
+        capLeft = this._serviceBeam(e, w, def, firing, isPlayer, capLeft, dt, state, aimAngle, forceTarget, fireGate);
       } else if (deploy) {
         if (firing) capLeft = this._serviceDeployWeapon(e, w, def, isPlayer, capLeft, state, aimAngle);
       } else if (firing) {
@@ -528,7 +529,7 @@ export const weapons = {
 
   // Continuous beam: drain cap/heat while firing, push a transient ray, emit combat:fire/beamStop.
   // Damage application is combat's responsibility (we only mark the ray + spend resources).
-  _serviceBeam(e, w, def, firing, capLeft, dt, state, aimAngle, forceTarget = null, fireGate = null) {
+  _serviceBeam(e, w, def, firing, isPlayer, capLeft, dt, state, aimAngle, forceTarget = null, fireGate = null) {
     const energyCost = w.energyCost != null ? w.energyCost : def.energyCost || 0; // cap/s
     const heatPerSec = w.heatPerSec != null ? w.heatPerSec : def.heatPerSec || 0;
     const heatMax = w.heatMax != null ? w.heatMax : def.heatMax || Infinity;
@@ -547,6 +548,7 @@ export const weapons = {
     }
     const canFire = firing && !solutionBlocked && !overheated && capLeft >= energyCost * dt;
     if (!canFire) {
+      if (!firing) w._difficultyAimErrorRad = null;
       // cool while not firing
       if (!firing) {
         const dissip = (def.heatDissip != null ? def.heatDissip : (w.heatDissip || 0)) * WEAPON_RECHARGE_MULT;
@@ -559,7 +561,11 @@ export const weapons = {
     if (w._heat >= heatMax) w._heat = heatMax;
 
     // A continuous beam still originates from its hardpoint facing and gimbal-assists toward aim.
-    const dir = this._hardpointDir(e, w, beamAim != null ? beamAim : e.rot, 0);
+    if (!isPlayer && !Number.isFinite(w._difficultyAimErrorRad)) {
+      w._difficultyAimErrorRad = this._spread(difficultyEnemyAimErrorDeg(state));
+    }
+    const dir = this._hardpointDir(e, w, beamAim != null ? beamAim : e.rot, 0)
+      + (!isPlayer ? (w._difficultyAimErrorRad || 0) : 0);
     const origin = this._muzzle(e, w, dir);
     const to = { x: origin.x + Math.cos(dir) * range, z: origin.z + Math.sin(dir) * range };
     const damage = (w.dmg != null ? w.dmg : def.dmg || 0) * dt;
@@ -718,6 +724,10 @@ export const weapons = {
       }
       dir = this._hardpointDir(e, w, fixedAim, def.spreadDeg != null ? def.spreadDeg : 0);
     }
+
+    // Difficulty owns only lead/spread error. It cannot change damage, projectile speed, heat,
+    // cooldown, or a physical PD assignment. The same seeded weapon RNG keeps replays stable.
+    if (!isPlayer && !pdLaunch) dir += this._spread(difficultyEnemyAimErrorDeg(state));
 
     // --- commit: spend cap + heat, set cooldown ---
     capLeft -= energyCost;

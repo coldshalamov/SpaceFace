@@ -46,6 +46,7 @@ import { ENCOUNTERS, NAMED_CAPTAINS, barkText, receiptText } from '../data/encou
 import { ENCOUNTER_MODULES } from '../data/encounters/index.generated.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
 import { WEAPONS } from '../data/weapons.js';
+import { difficultyEncounterDelayScale, difficultyEncounterPressure } from '../data/difficulty.js';
 import { factionCompositionWeight } from '../data/factionDoctrines.js';
 import { ENCOUNTER_SCRIPTS } from './encounterScripts.js';
 import { COMMODITIES } from '../data/commodities.js';
@@ -753,7 +754,12 @@ export const encounterDirector = {
         && s.zoneId === CERES_ACTIVITY_AMBUSH_ZONE_ID) {
         continue;
       }
-      dir.pending.push({ ...s, sectorId, dueAt: now + s.delay, defers: 0 });
+      dir.pending.push({
+        ...s,
+        sectorId,
+        dueAt: now + s.delay * difficultyEncounterDelayScale(state),
+        defers: 0,
+      });
       const rumor = frontierRumorForEncounterPlan({
         seed: state.meta && state.meta.seed,
         dayIndex,
@@ -791,7 +797,10 @@ export const encounterDirector = {
       (((state.player && state.player.bounty) | 0) > 0 ? 0.25 : 0) + ecologyDanger * 0.45;
     const civilRate =
       0.35 + sec * 0.45 + (zone && CIVIL_ZONE_TYPES.has(zone.type) ? 0.35 : 0);
-    dir.pressure.combat = Math.min(POOL_MAX, dir.pressure.combat + combatRate * step);
+    dir.pressure.combat = Math.min(
+      POOL_MAX,
+      dir.pressure.combat + combatRate * difficultyEncounterPressure(state) * step,
+    );
     dir.pressure.civilian = Math.min(POOL_MAX, dir.pressure.civilian + civilRate * step);
   },
 

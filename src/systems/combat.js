@@ -34,6 +34,7 @@ import { contactGrammarFor } from '../data/factionContactGrammar.js';
 import { sampleFactionBehavior } from '../data/factionDoctrines.js';
 import { ordinaryShipIdentity } from '../data/factionNameBanks.js';
 import { isHostileToPlayer } from './scanner.js';
+import { ironmanEnabled } from '../data/difficulty.js';
 
 const WPN = new Map(WEAPONS.map((w) => [w.id, w]));
 const ENEMY = new Map(ENEMY_TYPES.map((e) => [e.id, e]));
@@ -635,8 +636,7 @@ export const combat = {
       // the run instead of respawning. We still fire player:death so the death banner/VFX play,
       // then emit game:over (a gameOver screen subscribes and shows a run summary). The entity is
       // left dead (not healed/relocated) so the screen opens over a real wreck, not a live ship.
-      const difficulty = state.settings && state.settings.gameplay && state.settings.gameplay.difficulty;
-      if (difficulty === 'ironman') {
+      if (ironmanEnabled(state)) {
         state.combat.lastPlayerDefeat = receipt;
         t.alive = false;
         setVecXZ(t.vel, 0, 0);
@@ -755,8 +755,7 @@ export const combat = {
     if (this._pendingPlayerRecovery) return this._pendingPlayerRecovery;
     const state = this.state;
     if (!state) return null;
-    const difficulty = state.settings && state.settings.gameplay && state.settings.gameplay.difficulty;
-    if (difficulty === 'ironman') return null;
+    if (ironmanEnabled(state)) return null;
     const receipt = state.combat && state.combat.lastPlayerDefeat;
     if (!receipt) return null;
     const player = state.entities && typeof state.entities.get === 'function'
