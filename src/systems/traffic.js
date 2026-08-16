@@ -75,6 +75,14 @@ import {
   CERES_ACTIVITY_SERVICE_SLOTS,
 } from '../data/sectorActivityPockets.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
+import {
+  CIVILIAN_CAST_SECTOR_ID,
+  CIVILIAN_CAST_TOW_PAYLOAD_ID,
+  HELIOS_CIVILIAN_CAST_BY_ID,
+  RESCUE_PRIORITY_APPEARANCE,
+  castDefinitionForWorldRecord,
+  localCastRouteToGlobal,
+} from '../data/civilianCast.js';
 import { NPC_JOB_PHASE, NPC_JOB_SCHEMA } from './npcJobs.js';
 import {
   claimRichSeamOpportunity,
@@ -272,6 +280,16 @@ const TRAFFIC_ROLES = {
   // and settles it through freight/economy ownership.
   ore_carrier: { ship: 'ship_ironback', team: 2, speed: 22, archetype: 'fleeing_trader', weight: 4,
               label: 'Ore Barge', docks: true, trades: true, seeks: 'asteroid' },
+  // Plan 18 authored island residents. Weight zero keeps the ambient lottery unchanged: these are
+  // stable Helios jobs seeded below, not four new role rolls that can displace ordinary traffic.
+  tug: { ship: 'ship_pelican', team: 2, speed: 34, archetype: 'passive', weight: 0,
+              label: 'Recovery Tug', docks: false, trades: false },
+  news_drone: { ship: 'ship_kestrel', team: 2, speed: 40, archetype: 'passive', weight: 0,
+              label: 'News Observer', docks: false, trades: false },
+  tourist_liner: { ship: 'ship_mule', team: 2, speed: 46, archetype: 'passive', weight: 0,
+              label: 'Scenic Liner', docks: false, trades: false },
+  pilgrim: { ship: 'ship_drifter', team: 2, speed: 26, archetype: 'passive', weight: 0,
+              label: 'Pilgrim Procession', docks: false, trades: false },
 };
 
 // Exported for the PQ-045 identity contract test (distinct hull + label per occupational role);
@@ -291,6 +309,10 @@ const HEAVE_TO_COMPLIANT_ROLES = new Set([
   'ore_carrier',
   'patrol',
   'escort',
+  'tug',
+  'news_drone',
+  'tourist_liner',
+  'pilgrim',
 ]);
 
 function trafficHeaveToComplies(role, entity) {
@@ -966,6 +988,7 @@ export const traffic = {
     // Working freight is driven by npcJobsRuntime, so the ambient traffic stepper never reaches
     // its own work/dock branches. Consume only materialized kernel intents here and keep field and
     // economy authority on their existing event seams.
+    this.bus.on('npcjobs:commission', (p) => this._onNpcJobCommission(p || {}));
     this.bus.on('npcjobs:work', (p) => this._onNpcJobWork(p || {}));
     this.bus.on('npcjobs:load', (p) => this._onNpcJobLoad(p || {}));
     this.bus.on('npcjobs:unload', (p) => this._onNpcJobUnload(p || {}));
@@ -1015,6 +1038,7 @@ export const traffic = {
       // adoption pass cannot see them. Re-adopt here before the next traffic tick can refresh a
       // stable salvage point to its new numeric wreck id.
       this._adoptRematerializedTraffic(sectorId, this._sectorStations());
+      this._ensureHeliosCivilianCast(sectorId);
       // lawSecurity is session-only. A saved predeparture delay cannot remain asserted after its
       // raw incident map has gone away, while a saved physical diversion remains intact.
       this._clearStalePassengerLinerDelays();
@@ -1304,12 +1328,18 @@ export const traffic = {
     this._adoptRematerializedTraffic(sectorId, stations);
 
     // Continuous or after adopt: only top-up toward the target count.
-    const already = (this.state.traffic.freighters || []).length;
+    // The authored cast is additive to the island's ambient density. Continue can adopt those
+    // durable hulls before this top-up, so exclude them or the six workers would silently evict six
+    // ordinary miners/haulers/patrols from the default pocket.
+    const already = (this.state.traffic.freighters || []).filter((record) => (
+      !this._civilianCastDefinitionForTrafficRecord(record)
+    )).length;
     const need = Math.max(0, count - already);
       if (need <= 0) {
         this._ensurePriorityCourierService(sectorId, stations);
         this._ensurePassengerLinerService(sectorId, stations);
         this._ensureNamedLaneContact(sectorId, sector, stations);
+      this._ensureHeliosCivilianCast(sectorId);
       this._applyWorldSiteTrafficHooks(sectorId);
       this._applyClaimTravelHooks(sectorId);
       this._assignWaitingRescuePods(sectorId);
@@ -1397,6 +1427,7 @@ export const traffic = {
     this._ensurePriorityCourierService(sectorId, stations);
     this._ensurePassengerLinerService(sectorId, stations);
     this._ensureNamedLaneContact(sectorId, sector, stations);
+    this._ensureHeliosCivilianCast(sectorId);
     this._applyWorldSiteTrafficHooks(sectorId);
     this._applyClaimTravelHooks(sectorId);
     this._dispatchGeneralSalvors(sectorId);
@@ -3032,6 +3063,18 @@ export const traffic = {
    * Stamp homeSectorId + stable worldRecordId before first demotion so capture/kill never
    * attaches homeless freighters to the wrong sector bag.
    */
+  _stampTrafficRolePresentation(ent, role) {
+    if (!ent || role !== 'rescue') return;
+    const data = ent.data || (ent.data = {});
+    if (!data.appearance) data.appearance = { ...RESCUE_PRIORITY_APPEARANCE };
+    data.rescuePriorityTell = {
+      palette: 'white-orange',
+      priorityLights: true,
+      nonAudio: true,
+    };
+    if (!data.scanLabel) data.scanLabel = 'RESCUE CRAFT · WHITE-ORANGE PRIORITY';
+  },
+
   _stampTrafficDurableIdentity(ent, sectorId, role, def, seq) {
     if (!ent) return;
     if (!ent.data) ent.data = {};
@@ -3041,6 +3084,7 @@ export const traffic = {
       ent.data.trafficLabel = (def && def.label) || role;
     }
     ent.data.role = role; // readability for target panel / scanner
+    this._stampTrafficRolePresentation(ent, role);
     ent.homeSectorId = sectorId;
     ent.data.homeSectorId = sectorId;
     if (ent.data.sectorId == null) ent.data.sectorId = sectorId;
@@ -3112,6 +3156,7 @@ export const traffic = {
       tracked.add(e.id);
       this._active.push(e.id);
       const role = d.trafficRole || 'hauler';
+      this._stampTrafficRolePresentation(e, role);
       const priorityItinerary = role === 'courier' ? this._priorityCourierItinerary(e, sectorId) : null;
       const passengerClaim = role === 'express' ? this._passengerLinerClaim(e, sectorId) : null;
       const passengerItinerary = passengerClaim ? this._passengerLinerItinerary(e, sectorId) : null;
@@ -3163,6 +3208,332 @@ export const traffic = {
       this.state.traffic.freighters.push(rec);
       adoptIdx++;
     }
+  },
+
+  _civilianCastDescriptors() {
+    const seed = (this.state.meta && this.state.meta.seed) || 1;
+    return castDefinitionForWorldRecord(seed, stableRecordId);
+  },
+
+  _civilianCastDefinitionForWorldRecord(worldRecordId) {
+    if (typeof worldRecordId !== 'string' || !worldRecordId) return null;
+    for (const descriptor of this._civilianCastDescriptors()) {
+      if (descriptor.worldRecordId === worldRecordId) return descriptor.definition;
+    }
+    return null;
+  },
+
+  _civilianCastDefinitionForTrafficRecord(record) {
+    if (!record) return null;
+    if (record.civilianCastId) return HELIOS_CIVILIAN_CAST_BY_ID.get(record.civilianCastId) || null;
+    const entity = liveEntity(this.state, record.id);
+    return this._civilianCastDefinitionForWorldRecord(
+      record.worldRecordId || entity && entity.data && entity.data.worldRecordId,
+    );
+  },
+
+  _rehydrateCivilianCastShip(entity, definition, worldRecordId) {
+    if (!entity || !definition) return null;
+    const canonical = makeShipEntitySpec(definition.ship, {
+      team: 2,
+      factionId: definition.factionId,
+      pos: entity.pos || { x: 0, z: 0 },
+      ai: { archetype: 'passive', passive: true, spawnContext: 'convoy_civilian' },
+    });
+    for (const key of [
+      'radius', 'mass', 'flightClass', 'flightModel', 'propulsion', 'thrust', 'turnRate',
+      'maxSpeed', 'drag', 'capMax', 'capRegen', 'boost', 'physicsBody',
+    ]) {
+      if (canonical[key] !== undefined) entity[key] = canonical[key];
+    }
+    entity.type = 'ship';
+    entity.team = 2;
+    entity.factionId = definition.factionId;
+    entity.collides = canonical.collides !== false;
+    entity.homeSectorId = CIVILIAN_CAST_SECTOR_ID;
+    const data = entity.data || (entity.data = {});
+    const canonicalData = canonical.data || {};
+    entity.data = {
+      ...canonicalData,
+      ...data,
+      defId: definition.ship,
+      trafficRole: definition.role,
+      trafficLabel: definition.label,
+      role: definition.role,
+      civilianCast: true,
+      civilianCastId: definition.id,
+      civilianCastPlayerUse: definition.playerUse,
+      appearance: { ...definition.appearance },
+      scanLabel: definition.scanLabel,
+      worldRecordId,
+      identityKey: definition.worldRecordSlotId,
+      durable: true,
+      homeSectorId: CIVILIAN_CAST_SECTOR_ID,
+      sectorId: CIVILIAN_CAST_SECTOR_ID,
+      ...(Number.isInteger(definition.processionIndex)
+        ? { processionIndex: definition.processionIndex }
+        : {}),
+      ai: {
+        ...(canonicalData.ai || {}),
+        ...(data.ai || {}),
+        archetype: 'passive',
+        passive: true,
+        spawnContext: 'convoy_civilian',
+      },
+    };
+    if (definition.id === 'helios_news_observer' && !entity.data.coverageStatus) {
+      entity.data.coverageStatus = 'pre_event_watch';
+    }
+    return entity;
+  },
+
+  _ensureHeliosCivilianCast(sectorId) {
+    if (sectorId !== CIVILIAN_CAST_SECTOR_ID || !this.helpers || !this.helpers.spawnEntity) return 0;
+    this._ensureState();
+    const records = this.state.world && this.state.world.records && this.state.world.records.byId || {};
+    const assign = this.helpers.npcJobs && this.helpers.npcJobs.assign;
+    const worldOwner = this._registry && typeof this._registry.get === 'function'
+      ? this._registry.get('world')
+      : null;
+    let ensured = 0;
+    for (const { definition, worldRecordId } of this._civilianCastDescriptors()) {
+      if (terminalWorldRecord(records[worldRecordId])) continue;
+      let entity = entityWithWorldRecord(this.state, worldRecordId);
+      if (!entity) {
+        const pos = sectorLocalToGlobalForSector(definition.spawnLocal, CIVILIAN_CAST_SECTOR_ID);
+        entity = this.helpers.spawnEntity(makeShipEntitySpec(definition.ship, {
+          team: 2,
+          factionId: definition.factionId,
+          pos,
+          ai: { archetype: 'passive', passive: true, spawnContext: 'convoy_civilian' },
+        }));
+      }
+      if (!entity) continue;
+      this._rehydrateCivilianCastShip(entity, definition, worldRecordId);
+      this._stampTrafficDurableIdentity(entity, CIVILIAN_CAST_SECTOR_ID, definition.role, {
+        label: definition.label,
+      }, ensured);
+      if (!this._active.includes(entity.id)) this._active.push(entity.id);
+      let record = this.state.traffic.freighters.find((row) => row && row.id === entity.id);
+      if (!record) {
+        record = {
+          id: entity.id,
+          role: definition.role,
+          targetId: null,
+          waitT: 0,
+          nextTradeT: Infinity,
+          orbitPhase: 0,
+          dockSeq: 0,
+          manifest: null,
+        };
+        this.state.traffic.freighters.push(record);
+      }
+      record.role = definition.role;
+      record.worldRecordId = worldRecordId;
+      record.civilianCastId = definition.id;
+      record.manifest = null;
+      if (typeof assign === 'function') {
+        assign(entity, {
+          kind: definition.jobKind,
+          sectorId: CIVILIAN_CAST_SECTOR_ID,
+          speed: definition.speed,
+          ...(Number.isFinite(definition.dwellS) ? { dwellS: definition.dwellS } : {}),
+          ...(Number.isFinite(definition.workS) ? { workS: definition.workS } : {}),
+          route: localCastRouteToGlobal(
+            definition,
+            (localPos) => sectorLocalToGlobalForSector(localPos, CIVILIAN_CAST_SECTOR_ID),
+          ),
+        });
+      }
+      if (worldOwner && typeof worldOwner.upsertWorldRecord === 'function') {
+        worldOwner.upsertWorldRecord(entity);
+      }
+      ensured += 1;
+    }
+    this._ensureCivilianCastTowPayload();
+    return ensured;
+  },
+
+  _civilianCastTowRecordId() {
+    return stableRecordId(
+      (this.state.meta && this.state.meta.seed) || 1,
+      CIVILIAN_CAST_SECTOR_ID,
+      RECORD_KIND.WRECK,
+      CIVILIAN_CAST_TOW_PAYLOAD_ID,
+    );
+  },
+
+  _ensureCivilianCastTowPayload() {
+    if (this.state.world && this.state.world.currentSectorId !== CIVILIAN_CAST_SECTOR_ID) return null;
+    const worldRecordId = this._civilianCastTowRecordId();
+    const records = this.state.world && this.state.world.records && this.state.world.records.byId || {};
+    if (terminalWorldRecord(records[worldRecordId])) return null;
+    let wreck = entityWithWorldRecord(this.state, worldRecordId);
+    if (!wreck) {
+      const pos = sectorLocalToGlobalForSector({ x: -1740, z: -1210 }, CIVILIAN_CAST_SECTOR_ID);
+      wreck = this.helpers.spawnEntity({
+        type: 'wreck', team: 2, factionId: 'faction_free', pos, vel: { x: 0, z: 0 },
+        radius: 12, mass: 240, hull: 1, hullMax: 1, collides: true,
+      });
+    }
+    if (!wreck) return null;
+    wreck.type = 'wreck';
+    wreck.team = 2;
+    wreck.factionId = 'faction_free';
+    wreck.radius = 12;
+    wreck.mass = 240;
+    wreck.collides = true;
+    wreck.physicsBody = {
+      schemaVersion: 1,
+      radius: 12,
+      mass: 240,
+      inertiaY: 17280,
+      dynamic: true,
+      ccd: true,
+      material: 'debris',
+      revision: Math.max(0, Number(wreck.physicsBody && wreck.physicsBody.revision) || 0),
+    };
+    wreck.flags = { ...(wreck.flags || {}), persistent: true };
+    delete wreck.flags.noInterp;
+    wreck.homeSectorId = CIVILIAN_CAST_SECTOR_ID;
+    wreck.data = {
+      ...(wreck.data || {}),
+      worldRecordId,
+      identityKey: CIVILIAN_CAST_TOW_PAYLOAD_ID,
+      durable: true,
+      homeSectorId: CIVILIAN_CAST_SECTOR_ID,
+      sectorId: CIVILIAN_CAST_SECTOR_ID,
+      wreckClass: 'recovery_hulk',
+      combatProfileId: 'combat_profile_tether_anchor',
+      civilianCastTowPayloadId: CIVILIAN_CAST_TOW_PAYLOAD_ID,
+      name: 'Outer Yard Recovery Hulk',
+      scanLabel: 'RECOVERY HULK · TUG CUSTODY · MASSLINE-CAPABLE',
+    };
+    const worldOwner = this._registry && typeof this._registry.get === 'function'
+      ? this._registry.get('world')
+      : null;
+    if (worldOwner && typeof worldOwner.upsertWorldRecord === 'function') {
+      worldOwner.upsertWorldRecord(wreck);
+    }
+    return wreck;
+  },
+
+  _civilianCastIntentContext(intent, expectedKind, requireCompleted = true) {
+    if (!intent || (requireCompleted && intent.completed !== true) || intent.kind !== expectedKind) return null;
+    const jobId = typeof intent.jobId === 'string' ? intent.jobId : '';
+    if (!jobId.startsWith('job:') || jobId.length <= 4) return null;
+    const worldRecordId = jobId.slice(4);
+    const definition = this._civilianCastDefinitionForWorldRecord(worldRecordId);
+    const entity = entityWithWorldRecord(this.state, worldRecordId);
+    if (!definition || definition.jobKind !== expectedKind || !entity || !entity.data
+      || entity.data.jobId !== jobId || entity.data.civilianCastId !== definition.id) return null;
+    const record = this.state.traffic.freighters.find((row) => row && row.id === entity.id);
+    if (!record || record.civilianCastId !== definition.id) return null;
+    return { definition, entity, record, worldRecordId, jobId };
+  },
+
+  _civilianCastAttachmentService() {
+    const combat = this._registry && typeof this._registry.get === 'function'
+      ? this._registry.get('combat')
+      : null;
+    const kernel = combat && typeof combat.ensureKernel === 'function'
+      ? combat.ensureKernel()
+      : combat && combat.kernel;
+    return kernel && kernel.attachments || null;
+  },
+
+  _activeCivilianTowAttachment(tug, wreck) {
+    const byId = this.state.combat && this.state.combat.attachments
+      && this.state.combat.attachments.byId;
+    if (!byId || !tug || !wreck) return null;
+    return Object.values(byId).find((attachment) => attachment
+      && attachment.state === 'active'
+      && attachment.ownerId === tug.id
+      && attachment.targetId === wreck.id
+      && attachment.controlMode === 'civilian_recovery_tow') || null;
+  },
+
+  _civilianNewsObserver() {
+    for (const entity of this.state.entityList || []) {
+      if (entity && entity.alive !== false && entity.data
+        && entity.data.civilianCastId === 'helios_news_observer') return entity;
+    }
+    return null;
+  },
+
+  _beginCivilianCastTow(context, intent) {
+    const tow = this.state.traffic.civilianCastTow;
+    if (tow.status === 'delivered') return true;
+    const wreck = this._ensureCivilianCastTowPayload();
+    const attachments = this._civilianCastAttachmentService();
+    if (!wreck || !attachments || typeof attachments.create !== 'function') return false;
+    let attachment = this._activeCivilianTowAttachment(context.entity, wreck);
+    if (!attachment) {
+      const spec = {
+        ownerId: context.entity.id,
+        targetId: wreck.id,
+        controlMode: 'civilian_recovery_tow',
+        actionInstanceId: `${context.worldRecordId}:outer-yard-tow`,
+      };
+      let result = attachments.create({ ...spec, defId: 'tether_standard' });
+      if (!result || result.ok !== true) {
+        result = attachments.create({ ...spec, defId: 'attachment_massline' });
+      }
+      attachment = result && result.ok === true ? result.attachment : null;
+    }
+    if (!attachment) return false;
+    tow.status = 'towing';
+    tow.attachmentId = attachment.id;
+    tow.lastSequence = intent.seq | 0;
+    context.entity.data.civilianCastTow = { status: 'towing', attachmentId: attachment.id };
+    wreck.data.civilianCastTow = { status: 'towing', attachmentId: attachment.id };
+    wreck.data.scanLabel = 'RECOVERY HULK · ACTIVE MASSLINE TOW · CUT TO HIJACK';
+    const observer = this._civilianNewsObserver();
+    if (observer) {
+      observer.data.coverageStatus = 'live_tow_coverage';
+      observer.data.scanLabel = 'NEWS DRONE · LIVE TOW COVERAGE · OUTER YARD';
+    }
+    this.bus.emit('civilianCast:towAttached', {
+      jobId: context.jobId,
+      tugId: context.entity.id,
+      wreckId: wreck.id,
+      attachmentId: attachment.id,
+    });
+    return true;
+  },
+
+  _completeCivilianCastTow(context, intent) {
+    const tow = this.state.traffic.civilianCastTow;
+    if (tow.status === 'delivered') return true;
+    const wreck = this._ensureCivilianCastTowPayload();
+    const attachments = this._civilianCastAttachmentService();
+    const attachment = this._activeCivilianTowAttachment(context.entity, wreck);
+    if (!wreck || !attachments || !attachment || typeof attachments.breakAttachment !== 'function') return false;
+    const result = attachments.breakAttachment(
+      attachment,
+      'civilian_tow_delivered',
+      context.entity.id,
+    );
+    if (!result || result.ok !== true) return false;
+    tow.status = 'delivered';
+    tow.attachmentId = null;
+    tow.lastSequence = intent.seq | 0;
+    tow.deliveries = Math.max(0, tow.deliveries | 0) + 1;
+    context.entity.data.civilianCastTow = { status: 'delivered', attachmentId: null };
+    wreck.data.civilianCastTow = { status: 'delivered', attachmentId: null };
+    wreck.data.scanLabel = 'RECOVERY HULK · SALVAGE YARD DELIVERY · MASSLINE-FREE';
+    const observer = this._civilianNewsObserver();
+    if (observer) {
+      observer.data.coverageStatus = 'filed';
+      observer.data.scanLabel = 'NEWS DRONE · RECOVERY OBSERVATION FILED';
+    }
+    this.bus.emit('civilianCast:towDelivered', {
+      jobId: context.jobId,
+      tugId: context.entity.id,
+      wreckId: wreck.id,
+      attachmentId: attachment.id,
+    });
+    return true;
   },
 
   _sectorStations() {
@@ -6103,6 +6474,29 @@ export const traffic = {
   },
 
   _onNpcJobWork(intent) {
+    const castContext = this._civilianCastIntentContext(intent, 'surveyor');
+    if (castContext) {
+      const waypointId = typeof intent.waypointId === 'string'
+        ? intent.waypointId
+        : (typeof intent.field === 'string' ? intent.field : null);
+      castContext.entity.data.landmarkVisits = Math.max(
+        0,
+        castContext.entity.data.landmarkVisits | 0,
+      ) + 1;
+      castContext.entity.data.civilianCastLastVisit = {
+        waypointId,
+        sequence: intent.seq | 0,
+        simTime: Number.isFinite(intent.simTime) ? intent.simTime : this.state.simTime,
+      };
+      this.bus.emit('civilianCast:landmarkVisit', {
+        castId: castContext.definition.id,
+        entityId: castContext.entity.id,
+        jobId: castContext.jobId,
+        waypointId,
+        visit: castContext.entity.data.landmarkVisits,
+      });
+      return true;
+    }
     const ceresOwned = this._ceresActivityIntentClaimsOwnership(intent);
     const actorContext = this._ceresActivityActorContext(intent);
     if (ceresOwned) {
@@ -6164,6 +6558,13 @@ export const traffic = {
       asteroid,
       `npc-miner-work:${context.worldRecordId}:${seq}`,
     );
+  },
+
+  _onNpcJobCommission(intent) {
+    const castContext = this._civilianCastIntentContext(intent, 'patrol', false);
+    if (!castContext || castContext.definition.id !== 'helios_recovery_tug'
+      || intent.at !== 'tug_pickup') return false;
+    return this._beginCivilianCastTow(castContext, intent);
   },
 
   _onContactHailResponse(response) {
@@ -7282,6 +7683,32 @@ export const traffic = {
   },
 
   _onNpcJobHold(intent) {
+    const castContext = this._civilianCastIntentContext(intent, 'patrol');
+    if (castContext) {
+      const at = typeof intent.at === 'string' ? intent.at : intent.waypointId;
+      if (castContext.definition.id === 'helios_recovery_tug') {
+        if (at === 'tug_pickup') return this._beginCivilianCastTow(castContext, intent);
+        if (at === 'tug_drop') return this._completeCivilianCastTow(castContext, intent);
+      }
+      castContext.entity.data.civilianCastLastVisit = {
+        waypointId: at || null,
+        sequence: intent.seq | 0,
+        simTime: Number.isFinite(intent.simTime) ? intent.simTime : this.state.simTime,
+      };
+      if (castContext.definition.role === 'pilgrim') {
+        castContext.entity.data.processionVisits = Math.max(
+          0,
+          castContext.entity.data.processionVisits | 0,
+        ) + 1;
+      }
+      this.bus.emit('civilianCast:waypointVisited', {
+        castId: castContext.definition.id,
+        entityId: castContext.entity.id,
+        jobId: castContext.jobId,
+        waypointId: at || null,
+      });
+      return true;
+    }
     if (!this._ceresActivityIntentClaimsOwnership(intent)) return false;
     const actorContext = this._ceresActivityActorContext(intent);
     if (!actorContext) return false;
@@ -7535,6 +7962,19 @@ export const traffic = {
     if (!Array.isArray(this.state.traffic.appliedMinerWorkIds)) this.state.traffic.appliedMinerWorkIds = [];
     if (!Array.isArray(this.state.traffic.appliedJobActionIds)) this.state.traffic.appliedJobActionIds = [];
     if (!Array.isArray(this.state.traffic.appliedSalvorWorkIds)) this.state.traffic.appliedSalvorWorkIds = [];
+    const tow = this.state.traffic.civilianCastTow;
+    if (!tow || !['pending', 'towing', 'delivered'].includes(tow.status)) {
+      this.state.traffic.civilianCastTow = {
+        status: 'pending',
+        attachmentId: null,
+        lastSequence: 0,
+        deliveries: 0,
+      };
+    } else {
+      tow.attachmentId = typeof tow.attachmentId === 'string' ? tow.attachmentId : null;
+      tow.lastSequence = Math.max(0, Number.isSafeInteger(tow.lastSequence) ? tow.lastSequence : 0);
+      tow.deliveries = Math.max(0, Number.isSafeInteger(tow.deliveries) ? tow.deliveries : 0);
+    }
     this.state.traffic.passengerReceiptIds = compactStableIds(
       this.state.traffic.passengerReceiptIds,
       PASSENGER_LINER_RECEIPT_CAP,
@@ -7665,6 +8105,7 @@ export const traffic = {
       passengerReceiptIds: this.state.traffic.passengerReceiptIds.slice(),
       passengerLinerSuspendedIds: this.state.traffic.passengerLinerSuspendedIds.slice(),
       passengerLinerInvalidatedIds: this.state.traffic.passengerLinerInvalidatedIds.slice(),
+      civilianCastTow: { ...this.state.traffic.civilianCastTow },
     };
   },
 
@@ -7700,6 +8141,11 @@ export const traffic = {
       ? normalizeCeresDisabledHaulerIncident(data.ceresDisabledHaulerIncident)
       : null;
     const validTrafficSave = !!(data && !Array.isArray(data) && data.schema === CERES_MINER_HAULER_SAVE_SCHEMA);
+    const savedTow = validTrafficSave && data.civilianCastTow;
+    this.state.traffic.civilianCastTow = savedTow && typeof savedTow === 'object'
+      ? { ...savedTow }
+      : { status: 'pending', attachmentId: null, lastSequence: 0, deliveries: 0 };
+    this._ensureState();
     this.state.traffic.passengerReceiptIds = compactStableIds(
       validTrafficSave ? data.passengerReceiptIds : [],
       PASSENGER_LINER_RECEIPT_CAP,
@@ -7755,6 +8201,7 @@ export const traffic = {
       passengerReceiptIds: [],
       passengerLinerSuspendedIds: [],
       passengerLinerInvalidatedIds: [],
+      civilianCastTow: { status: 'pending', attachmentId: null, lastSequence: 0, deliveries: 0 },
       rngSeed: hash32(this.state.meta && this.state.meta.seed, 'traffic', 'boot'),
     };
   },
