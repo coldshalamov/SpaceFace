@@ -12,6 +12,7 @@
 import {
   ASHFALL_DEBRIS_RIVER,
   ORCUS_GRAVITY_EDDY,
+  SCAVENGER_SWARM,
   anomalySiteForSector,
   debrisRiverForSector,
 } from '../data/anomalySites.js';
@@ -20,6 +21,8 @@ import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { SECTORS } from '../data/sectors.js';
 import { SECTOR_ZONES } from '../data/sectorZones.js';
 import { Masks } from '../core/entity.js';
+import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
+import { hash32 } from '../core/rng.js';
 
 const LEDGER_SCHEMA = 1;
 const LEDGER_KIND = 'anomaly_runtime_ledger';
@@ -176,6 +179,61 @@ function riverBodies(state, siteId = ASHFALL_DEBRIS_RIVER.id) {
     && entity.type === 'wreck' && entity.data && entity.data.anomalySiteId === siteId);
 }
 
+function seedOf(state) {
+  return (state && state.meta && state.meta.seed >>> 0) || 1;
+}
+
+export function scavengerSwarmAdmitted(seed, sectorId) {
+  if (!SCAVENGER_SWARM.sectorIds.includes(sectorId)) return false;
+  return hash32(seed >>> 0, sectorId, SCAVENGER_SWARM.id, 'admission')
+    % SCAVENGER_SWARM.admissionModulo === 0;
+}
+
+function scavengerDrones(state) {
+  return (state && state.entityList || []).filter((entity) => entity && entity.alive !== false
+    && entity.type === 'drone' && entity.data && entity.data.scavengerSwarmId === SCAVENGER_SWARM.id);
+}
+
+function freshWreckIdentity(state, entity) {
+  const data = entity && entity.data;
+  const provenance = data && data.provenance;
+  const markerId = data && (data.markerId || provenance && provenance.markerId);
+  const sectorId = provenance && provenance.sectorId
+    || state && state.world && state.world.currentSectorId;
+  const freshUntil = Number(data && data.freshUntil);
+  if (!entity || entity.alive === false || entity.type !== 'wreck' || !markerId || !sectorId) return null;
+  if (!provenance || provenance.source !== 'battle-aftermath') return null;
+  if (data.aftermath && data.aftermath.playerLoss || data.ownedPlayerWreck === true) return null;
+  if (!Number.isFinite(freshUntil) || freshUntil <= simTimeOf(state)) return null;
+  if (poolTotal(data.salvagePool) <= 0) return null;
+  return { markerId: String(markerId), sectorId: String(sectorId), freshUntil };
+}
+
+function scavengerSlot(markerId, slot, anchor) {
+  const angle = hash32(markerId, SCAVENGER_SWARM.id, slot, 'slot') / 0x100000000 * Math.PI * 2;
+  const radius = SCAVENGER_SWARM.slotRadiusMin
+    + (slot % 3) * SCAVENGER_SWARM.slotRadiusStep;
+  return {
+    angle,
+    x: anchor.pos.x + Math.cos(angle) * radius,
+    z: anchor.pos.z + Math.sin(angle) * radius,
+  };
+}
+
+function boundedImpulse(entity, desiredVx, desiredVz, response = 0.72) {
+  const mass = Math.max(0.1, finite(entity && entity.mass, SCAVENGER_SWARM.droneMass));
+  const dvx = (desiredVx - finite(entity && entity.vel && entity.vel.x)) * response;
+  const dvz = (desiredVz - finite(entity && entity.vel && entity.vel.z)) * response;
+  const magnitude = Math.hypot(dvx, dvz);
+  const maxDv = SCAVENGER_SWARM.scatterSpeed;
+  const scale = magnitude > maxDv ? maxDv / magnitude : 1;
+  return queuePhysicsImpulse(entity, {
+    x: dvx * scale * mass,
+    y: 0,
+    z: dvz * scale * mass,
+  });
+}
+
 export const anomalyRuntime = {
   name: 'anomalyRuntime',
 
@@ -190,6 +248,7 @@ export const anomalyRuntime = {
     this._anchor = { x: 0, z: 0 };
     this._riverBodies = new Map();
     this._riverAnnounced = false;
+    this._scavenger = null;
     if (this.bus && typeof this.bus.on === 'function') {
       this._unsubs = [
         this.bus.on('sector:exit', () => this._clearTransient('sector_exit')),
@@ -199,6 +258,7 @@ export const anomalyRuntime = {
         this.bus.on('save:loaded', () => this._clearTransient('save_loaded', { capture: false })),
         this.bus.on('mining:yield', (payload) => this._onMiningYield(payload)),
         this.bus.on('salvage:completed', (payload) => this._onSalvageCompleted(payload)),
+        this.bus.on('aftermathWreck:spawned', (payload) => this._onFreshWreckSpawned(payload)),
       ];
     }
   },
@@ -218,6 +278,7 @@ export const anomalyRuntime = {
     const activeRoute = !!(state && state.mode === 'flight');
     this._updateEddy(activeRoute ? anomalySiteForSector(sectorId) : null, state);
     this._updateDebrisRiver(activeRoute ? debrisRiverForSector(sectorId) : null, state);
+    this._updateScavengerSwarm(activeRoute, state);
   },
 
   diagnostics() {
@@ -237,6 +298,11 @@ export const anomalyRuntime = {
         anomalyId: ASHFALL_DEBRIS_RIVER.id,
         liveBodies: riverBodies(this.state).length,
         depletedBodies: Object.values(records).filter((record) => record && record.depleted).length,
+      }),
+      scavengerSwarm: Object.freeze({
+        wildlifeId: SCAVENGER_SWARM.id,
+        markerId: this._scavenger && this._scavenger.markerId || null,
+        liveDrones: scavengerDrones(this.state).length,
       }),
     });
   },
@@ -530,6 +596,177 @@ export const anomalyRuntime = {
     return found;
   },
 
+  _onFreshWreckSpawned(payload) {
+    if (!payload || payload.entityId == null || !this.state || this.state.mode !== 'flight') return;
+    const entity = this.state.entities && this.state.entities.get(payload.entityId);
+    this._considerScavengerWreck(entity);
+  },
+
+  _considerScavengerWreck(entity) {
+    const identity = freshWreckIdentity(this.state, entity);
+    if (!identity) return false;
+    const currentSectorId = this.state && this.state.world && this.state.world.currentSectorId;
+    if (identity.sectorId !== currentSectorId
+      || !scavengerSwarmAdmitted(seedOf(this.state), identity.sectorId)) return false;
+    if (this._scavenger && this._scavenger.markerId !== identity.markerId) return false;
+    this._scavenger = {
+      markerId: identity.markerId,
+      sectorId: identity.sectorId,
+      wreckEntityId: entity.id,
+      freshUntil: identity.freshUntil,
+    };
+    this._syncScavengerDrones(entity);
+    return true;
+  },
+
+  _updateScavengerSwarm(activeRoute, state) {
+    const sectorId = state && state.world && state.world.currentSectorId;
+    if (!activeRoute || !scavengerSwarmAdmitted(seedOf(state), sectorId)) {
+      this._clearScavenger(!activeRoute ? 'inactive_route' : 'inactive_sector');
+      return;
+    }
+
+    if (!this._scavenger) {
+      const candidates = (state.entityList || [])
+        .filter((entity) => !!freshWreckIdentity(state, entity))
+        .sort((a, b) => String(a.data && a.data.markerId).localeCompare(String(b.data && b.data.markerId)));
+      if (candidates.length) this._considerScavengerWreck(candidates[0]);
+      if (!this._scavenger) {
+        for (const drone of scavengerDrones(state)) this._removeEntity(drone);
+        return;
+      }
+    }
+
+    const anchor = state.entities && state.entities.get(this._scavenger.wreckEntityId);
+    const identity = freshWreckIdentity(state, anchor);
+    if (!identity || identity.markerId !== this._scavenger.markerId
+      || identity.sectorId !== sectorId) {
+      this._clearScavenger(!anchor || anchor.alive === false ? 'wreck_removed' : 'wreck_cold');
+      return;
+    }
+    this._scavenger.freshUntil = identity.freshUntil;
+    this._syncScavengerDrones(anchor);
+
+    const player = state.entities && state.entities.get(state.playerId);
+    const now = simTimeOf(state);
+    for (const drone of scavengerDrones(state)) {
+      if (!drone.data || drone.data.scavengerMarkerId !== identity.markerId) continue;
+      if (now + 1e-9 < finite(drone.data.scavengerNextImpulseAt)) continue;
+      const playerDistance = player && player.alive !== false
+        ? Math.hypot(drone.pos.x - player.pos.x, drone.pos.z - player.pos.z)
+        : Infinity;
+      if (playerDistance <= SCAVENGER_SWARM.scatterRadius) {
+        let dx = drone.pos.x - player.pos.x;
+        let dz = drone.pos.z - player.pos.z;
+        let length = Math.hypot(dx, dz);
+        if (!(length > 1e-6)) {
+          const fallback = scavengerSlot(identity.markerId, drone.data.scavengerSlot, anchor);
+          dx = Math.cos(fallback.angle);
+          dz = Math.sin(fallback.angle);
+          length = 1;
+        }
+        boundedImpulse(
+          drone,
+          dx / length * SCAVENGER_SWARM.scatterSpeed,
+          dz / length * SCAVENGER_SWARM.scatterSpeed,
+          0.9,
+        );
+        drone.data.scavengerPhase = 'scatter';
+      } else if (playerDistance >= SCAVENGER_SWARM.returnRadius) {
+        const slot = scavengerSlot(identity.markerId, drone.data.scavengerSlot, anchor);
+        const dx = slot.x - drone.pos.x;
+        const dz = slot.z - drone.pos.z;
+        const distance = Math.hypot(dx, dz);
+        if (distance > 3) {
+          const speed = Math.min(SCAVENGER_SWARM.returnSpeed, Math.max(5, distance * 0.65));
+          boundedImpulse(drone, dx / distance * speed, dz / distance * speed, 0.62);
+          drone.data.scavengerPhase = 'return';
+        } else {
+          boundedImpulse(drone, 0, 0, 0.72);
+          drone.data.scavengerPhase = 'forage';
+        }
+      }
+      drone.data.scavengerNextImpulseAt = now + SCAVENGER_SWARM.impulseCadenceS;
+    }
+  },
+
+  _syncScavengerDrones(anchor) {
+    if (!this._scavenger || !anchor || anchor.alive === false) return;
+    const bySlot = new Map();
+    for (const drone of scavengerDrones(this.state)) {
+      const slot = whole(drone.data && drone.data.scavengerSlot, -1);
+      if (drone.data.scavengerMarkerId !== this._scavenger.markerId
+        || slot < 0 || slot >= SCAVENGER_SWARM.count) {
+        this._removeEntity(drone);
+        continue;
+      }
+      if (!bySlot.has(slot)) bySlot.set(slot, drone);
+      else this._removeEntity(drone);
+    }
+    for (let slot = 0; slot < SCAVENGER_SWARM.count; slot++) {
+      if (!bySlot.has(slot)) this._spawnScavengerDrone(anchor, slot);
+    }
+  },
+
+  _spawnScavengerDrone(anchor, slot) {
+    if (!this._scavenger || !this.helpers || typeof this.helpers.spawnEntity !== 'function') return null;
+    const position = scavengerSlot(this._scavenger.markerId, slot, anchor);
+    return this.helpers.spawnEntity({
+      type: 'drone',
+      team: 2,
+      factionId: null,
+      pos: { x: position.x, z: position.z },
+      vel: { x: finite(anchor.vel && anchor.vel.x), z: finite(anchor.vel && anchor.vel.z) },
+      rot: position.angle + Math.PI,
+      radius: SCAVENGER_SWARM.droneRadius,
+      mass: SCAVENGER_SWARM.droneMass,
+      hull: 1,
+      hullMax: 1,
+      collides: true,
+      collisionMask: Masks.SHIP | Masks.ASTEROID | Masks.WRECK,
+      flags: { invuln: true },
+      physicsBody: {
+        schemaVersion: 1,
+        radius: SCAVENGER_SWARM.droneRadius,
+        mass: SCAVENGER_SWARM.droneMass,
+        inertiaY: SCAVENGER_SWARM.droneMass * SCAVENGER_SWARM.droneRadius ** 2 * 0.5,
+        dynamic: true,
+        ccd: false,
+        material: 'debris',
+        revision: 0,
+      },
+      data: {
+        kind: 'scavenger_wildlife',
+        name: 'Unclaimed Scavenger',
+        scanLabel: 'Unclaimed Scavenger',
+        scavengerSwarmId: SCAVENGER_SWARM.id,
+        scavengerMarkerId: this._scavenger.markerId,
+        scavengerWreckId: anchor.id,
+        scavengerSlot: slot,
+        scavengerPhase: 'forage',
+        scavengerNextImpulseAt: 0,
+        worldSiteTargetable: false,
+        ordinaryRewardsSuppressed: true,
+        noOrdinaryRewards: true,
+        bountyCr: 0,
+        loot: [],
+      },
+    });
+  },
+
+  _clearScavenger(why) {
+    const prior = this._scavenger;
+    for (const drone of scavengerDrones(this.state)) this._removeEntity(drone);
+    this._scavenger = null;
+    if (prior && this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('anomaly:unregistered', {
+        anomalyId: SCAVENGER_SWARM.id,
+        markerId: prior.markerId,
+        why,
+      });
+    }
+  },
+
   _fieldsSystem() {
     return this.registry && typeof this.registry.get === 'function'
       ? this.registry.get('fields')
@@ -580,6 +817,7 @@ export const anomalyRuntime = {
   _clearTransient(why, options) {
     this._clearEddy(why);
     this._clearRiver(why, options);
+    this._clearScavenger(why);
   },
 
   _resetAll(why) {

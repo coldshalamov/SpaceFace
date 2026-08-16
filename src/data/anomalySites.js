@@ -50,6 +50,29 @@ export const ASHFALL_DEBRIS_RIVER = Object.freeze({
   ]),
 });
 
+// Small drones-of-no-one may gather only around a newly made battle wreck in these three authored
+// rough-space sectors. A seed gate in anomalyRuntime narrows this already-minority list per run;
+// no ambient spawn roll is consumed and only one wreck can own a live swarm at a time.
+export const SCAVENGER_SWARM = Object.freeze({
+  id: 'wildlife_scavenger_swarm',
+  sectorIds: Object.freeze([
+    'sector_ceres_belt',
+    'sector_charon_expanse',
+    'sector_ashfall_reach',
+  ]),
+  admissionModulo: 3,
+  count: 5,
+  droneRadius: 1.35,
+  droneMass: 2.5,
+  slotRadiusMin: 20,
+  slotRadiusStep: 4,
+  scatterRadius: 105,
+  returnRadius: 165,
+  scatterSpeed: 32,
+  returnSpeed: 20,
+  impulseCadenceS: 0.35,
+});
+
 /** The exact authored anomaly for a sector, or null when that sector has none. */
 export function anomalySiteForSector(sectorId) {
   return sectorId === ORCUS_GRAVITY_EDDY.sectorId ? ORCUS_GRAVITY_EDDY : null;
