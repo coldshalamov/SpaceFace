@@ -23,6 +23,10 @@ import { semanticColor, semanticShape, SEMANTIC_PALETTE } from './accessibility.
 import { solveIntercept } from '../core/flight/flightTelemetry.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
 import { resolveWaypointPresentationPosition } from './navigationWaypoint.js';
+import {
+  collectActiveRadarJammers,
+  writeRadarJammedContactPosition,
+} from '../presentation/radarJamming.js';
 
 // ── dimensions ──────────────────────────────────────────────────────────────────────────────
 // Compact flight uses a true compact canvas. Expanded tactical mode switches to the larger canvas
@@ -33,6 +37,59 @@ const COMPACT_R    = 86;
 const EXPAND_SIZE  = 340;
 const EXPAND_C     = EXPAND_SIZE / 2;
 const EXPAND_R     = 165;
+
+/** Shared projection seam used by the live canvas and focused presentation-route checks. */
+export function writeRadarContactDrawPosition(
+  out,
+  contact,
+  player,
+  jammers,
+  tick,
+  radarScale,
+  center,
+  motionReduce = false,
+) {
+  const target = writeRadarJammedContactPosition(
+    out || {}, contact, player, jammers, tick, motionReduce,
+  );
+  const px = player && player.pos && Number.isFinite(player.pos.x) ? player.pos.x : 0;
+  const pz = player && player.pos && Number.isFinite(player.pos.z) ? player.pos.z : 0;
+  const scale = Number.isFinite(radarScale) ? radarScale : 0;
+  const C = Number.isFinite(center) ? center : 0;
+  target.canvasX = C - (target.x - px) * scale;
+  target.canvasY = C - (target.z - pz) * scale;
+  return target;
+}
+
+/** Apply the selected contact's presentation-only error to its radar lead cue. */
+export function writeRadarLeadDrawPosition(
+  out,
+  leadAimPoint,
+  contactPresentation,
+  player,
+  radarScale,
+  center,
+  radius,
+  rangeSq,
+) {
+  const target = out || {};
+  const px = player && player.pos && Number.isFinite(player.pos.x) ? player.pos.x : 0;
+  const pz = player && player.pos && Number.isFinite(player.pos.z) ? player.pos.z : 0;
+  const offsetX = Number(contactPresentation && contactPresentation.offsetX) || 0;
+  const offsetZ = Number(contactPresentation && contactPresentation.offsetZ) || 0;
+  const dx = (Number(leadAimPoint && leadAimPoint.x) || 0) + offsetX - px;
+  const dz = (Number(leadAimPoint && leadAimPoint.z) || 0) + offsetZ - pz;
+  target.offRange = dx * dx + dz * dz > rangeSq;
+  if (target.offRange) {
+    const angle = Math.atan2(-dz, -dx);
+    target.canvasX = center + Math.cos(angle) * radius;
+    target.canvasY = center + Math.sin(angle) * radius;
+  } else {
+    target.canvasX = center - dx * radarScale;
+    target.canvasY = center - dz * radarScale;
+  }
+  return target;
+}
 
 // ── colors ──────────────────────────────────────────────────────────────────────────────────
 // IFF language (keep amber/yellow reserved for mission waypoints only — see COL.objective):
@@ -143,6 +200,8 @@ const TRAIL_PRUNE_INTERVAL = 20;
 const RADAR_QUERY_RADIUS_PAD = 32;
 const RADAR_SPATIAL_MIN_ASTEROIDS = 96;
 const RADAR_QUERY_VISIT_RATIO_LIMIT = 0.4;
+const JAMMER_DASH_PATTERN = Object.freeze([2, 2]);
+const EMPTY_DASH_PATTERN = Object.freeze([]);
 
 function updateTrail(e) {
   let hist = trailMap.get(e.id);
@@ -172,6 +231,37 @@ function drawTrail(g, e, px, pz, scale, C, col) {
     const y1 = C - (hist[i].z     - pz) * scale;
     g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke();
   }
+  g.restore();
+}
+
+// Crisp broken returns communicate uncertainty without a soft card, blur, or flash. The contact's
+// semantic shape remains the brightest mark, preserving the radar's non-color identity language.
+function drawJammedContactSmear(g, x, y, col, presentation, radarScale, motionReduce) {
+  if (!presentation || !presentation.jammed) return;
+  const sx = -presentation.offsetX * radarScale;
+  const sy = -presentation.offsetZ * radarScale;
+  const magnitude = Math.hypot(sx, sy);
+  const nx = magnitude > 0.001 ? sx / magnitude : 1;
+  const ny = magnitude > 0.001 ? sy / magnitude : 0;
+  const tx = -ny;
+  const ty = nx;
+  const length = 3 + 7 * presentation.strength;
+  const rails = motionReduce ? 2 : 3;
+  g.save();
+  g.strokeStyle = col;
+  g.lineWidth = 1;
+  g.globalAlpha = 0.2 + 0.22 * presentation.strength;
+  g.setLineDash(JAMMER_DASH_PATTERN);
+  for (let i = 0; i < rails; i++) {
+    const side = (i - (rails - 1) / 2) * 2.4;
+    const x0 = x + tx * side - nx * length;
+    const y0 = y + ty * side - ny * length;
+    g.beginPath();
+    g.moveTo(x0, y0);
+    g.lineTo(x + tx * side + nx * 2, y + ty * side + ny * 2);
+    g.stroke();
+  }
+  g.setLineDash(EMPTY_DASH_PATTERN);
   g.restore();
 }
 
@@ -501,6 +591,10 @@ export function createRadar(ctx) {
   let contactsDirty = true;
   let cachedEntityList = null, cachedLength = -1, cachedPlayerId = null;
   let radarQueryScratch = [];
+  const jammerScratch = [];
+  const jammerPositionScratch = {};
+  const targetJammerPositionScratch = {};
+  const targetLeadPositionScratch = {};
   let trailPruneCountdown = 0;
 
   function markContactsDirty() { contactsDirty = true; }
@@ -643,6 +737,7 @@ export function createRadar(ctx) {
     const targetId   = state.player.targetId;
     const playerTeam = p.team;
     const cbMode     = (state.settings.accessibility && state.settings.accessibility.colorblindMode) || 'none';
+    const motionReduce = !!(state.settings.video && state.settings.video.motionReduce);
 
     drawHeatZone(g, state.player && state.player.heatZone, px, pz, radarScale, C, R);
 
@@ -660,6 +755,7 @@ export function createRadar(ctx) {
 
     // ── contacts ─────────────────────────────────────────────────────────────────────────
     const list = contactsFor(p);
+    collectActiveRadarJammers(list, jammerScratch);
     const asteroidFallback = asteroidsFor(p);
     const asteroidSource = nearbyAsteroidCandidates(px, pz, range, asteroidFallback.length) || asteroidFallback;
 
@@ -728,6 +824,7 @@ export function createRadar(ctx) {
       const distSq = dx * dx + dz * dz;
       const col = blipColor(e, playerTeam, cbMode, state);
       let bx, by, off = false, offAngle = 0;
+      let jammed = false;
 
       if (distSq > rangeSq) {
         off = true;
@@ -735,7 +832,11 @@ export function createRadar(ctx) {
         offAngle = Math.atan2(-dz, -dx);
         bx = C + Math.cos(offAngle) * R; by = C + Math.sin(offAngle) * R;
       } else {
-        bx = C - dx * radarScale; by = C - dz * radarScale;   // both axes mirrored to match screen
+        const presentation = writeRadarContactDrawPosition(
+          jammerPositionScratch, e, p, jammerScratch, state.tick, radarScale, C, motionReduce,
+        );
+        bx = presentation.canvasX; by = presentation.canvasY;
+        jammed = presentation.jammed;
       }
 
       // motion trail (in-range ships/drones only)
@@ -744,7 +845,8 @@ export function createRadar(ctx) {
           updateTrail(e);
           trailUpdates++;
         }
-        drawTrail(g, e, px, pz, radarScale, C, col);
+        // A truthful history line through a smeared return would disclose the exact contact.
+        if (!jammed) drawTrail(g, e, px, pz, radarScale, C, col);
       }
 
       g.fillStyle = col; g.strokeStyle = col;
@@ -772,6 +874,7 @@ export function createRadar(ctx) {
         noGlow(g); g.restore();
 
       } else if (type === 'wreck') {
+        drawJammedContactSmear(g, bx, by, col, jammerPositionScratch, radarScale, motionReduce);
         g.strokeStyle = col;
         g.lineWidth = 1.5;
         g.beginPath();
@@ -780,6 +883,7 @@ export function createRadar(ctx) {
         g.stroke();
 
       } else {
+        drawJammedContactSmear(g, bx, by, col, jammerPositionScratch, radarScale, motionReduce);
         const isHostile = isHostileToPlayer(e, playerTeam, state);
         // Compact flight: keep hostiles readable with a light pulse; avoid heavy blur that softens edges.
         const glowBlur  = isHostile ? (expanded ? 7 + 3 * Math.sin(now * 0.004) : 4) : (expanded ? 5 : 2.5);
@@ -888,17 +992,24 @@ export function createRadar(ctx) {
         const projSpeed = playerProjSpeed(p);
         const lead = solveIntercept(p.pos, p.vel || { x: 0, z: 0 }, tgt.pos, tgt.vel || { x: 0, z: 0 }, projSpeed);
         if (lead) {
-          const ldx = lead.aimPoint.x - px, ldz = lead.aimPoint.z - pz;
-          const ldistSq = ldx * ldx + ldz * ldz;
-          // Project the lead point the same way blips are (both axes negated, see header note).
-          let lbx, lby, offR = false;
-          if (ldistSq > rangeSq) {
-            offR = true;
-            const la = Math.atan2(-ldz, -ldx);
-            lbx = C + Math.cos(la) * R; lby = C + Math.sin(la) * R;
-          } else {
-            lbx = C - ldx * radarScale; lby = C - ldz * radarScale;
-          }
+          const targetPresentation = writeRadarContactDrawPosition(
+            targetJammerPositionScratch, tgt, p, jammerScratch, state.tick, radarScale, C, motionReduce,
+          );
+          // The displayed lead cue shares the contact's bounded radar-only offset. The physical
+          // intercept solution, target id, weapons, and AI sensor truth are unchanged.
+          const leadPresentation = writeRadarLeadDrawPosition(
+            targetLeadPositionScratch,
+            lead.aimPoint,
+            targetPresentation,
+            p,
+            radarScale,
+            C,
+            R,
+            rangeSq,
+          );
+          const lbx = leadPresentation.canvasX;
+          const lby = leadPresentation.canvasY;
+          const offR = leadPresentation.offRange;
           g.save();
           g.strokeStyle = 'rgba(255,220,90,0.9)';
           g.fillStyle = 'rgba(255,220,90,0.9)';
@@ -907,12 +1018,11 @@ export function createRadar(ctx) {
           g.beginPath(); g.moveTo(lbx - 3.2, lby); g.lineTo(lbx + 3.2, lby);
           g.moveTo(lbx, lby - 3.2); g.lineTo(lbx, lby + 3.2); g.stroke();
           if (!offR) {
-            g.setLineDash([2, 2]);
+            g.setLineDash(JAMMER_DASH_PATTERN);
             g.beginPath();
-            const tdx = tgt.pos.x - px, tdz = tgt.pos.z - pz;
-            const tbx = C - tdx * radarScale, tby = C - tdz * radarScale;
+            const tbx = targetPresentation.canvasX, tby = targetPresentation.canvasY;
             g.moveTo(tbx, tby); g.lineTo(lbx, lby); g.stroke();
-            g.setLineDash([]);
+            g.setLineDash(EMPTY_DASH_PATTERN);
           }
           g.restore();
         }

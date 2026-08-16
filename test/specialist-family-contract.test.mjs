@@ -81,7 +81,7 @@ test('missing identities are fixed-stat medium rewards with exact authored masse
   }
 });
 
-test('contracts claim only the two specialist mechanics with landed production owners', () => {
+test('contracts claim only specialist mechanics with landed production owners', () => {
   const existingBehavior = SPECIALIST_FAMILY
     .filter((row) => row.behavior.runtime === 'existing')
     .map((row) => row.key);
@@ -89,9 +89,9 @@ test('contracts claim only the two specialist mechanics with landed production o
     .filter((row) => row.worldTell.runtime === 'existing')
     .map((row) => row.key);
 
-  assert.deepEqual(existingBehavior, ['shield_projector', 'anchor']);
-  assert.deepEqual(existingWorldTell, ['anchor']);
-  for (const key of ['tether_cutter', 'pd_screen', 'jammer', 'tender', 'minelayer', 'kiter']) {
+  assert.deepEqual(existingBehavior, ['jammer', 'shield_projector', 'anchor']);
+  assert.deepEqual(existingWorldTell, ['jammer', 'anchor']);
+  for (const key of ['tether_cutter', 'pd_screen', 'tender', 'minelayer', 'kiter']) {
     const row = SPECIALIST_FAMILY.find((candidate) => candidate.key === key);
     assert.equal(row.behavior.runtime, 'unwired', `${key} behavior stays an honest handoff`);
     assert.equal(row.worldTell.runtime, 'unwired', `${key} world tell stays an honest handoff`);

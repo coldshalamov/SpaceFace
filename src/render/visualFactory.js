@@ -49,6 +49,7 @@ import { attachLodState } from './lod.js';
 import { interactionProfileForEntity } from '../data/entityInteractionProfiles.js';
 import { resolveWeaponPresentationFamily } from './vfxProfiles.js';
 import { swarmerRecordFor } from '../data/swarmerFamily.js';
+import { JAMMER_ENEMY_ID } from '../presentation/radarJamming.js';
 
 // ---------------------------------------------------------------------------------------------
 // Lookups + palette resolution
@@ -80,6 +81,12 @@ export function mediumPresentationIdFor(entity) {
   const data = entity && entity.data;
   const id = String(data && (data.lootTableId || data.enemyTypeId || data.typeId) || '');
   return MEDIUM_PRESENTATION_SILHOUETTES[id] ? id : null;
+}
+
+export function jammerPresentationIdFor(entity) {
+  const data = entity && entity.data;
+  const id = String(data && (data.lootTableId || data.enemyTypeId || data.typeId) || '');
+  return id === JAMMER_ENEMY_ID ? id : null;
 }
 
 // The renderer injects the baked PMREM nebula env-map here (setEnvMapForShips) so chrome/authority
@@ -2613,6 +2620,129 @@ function buildDreadnoughtEnemy(ctx) {
   }
 }
 
+function jammerStaticCombGeometry() {
+  return getGeometry('specialist:jammer-static-comb', () => {
+    const positions = [];
+    const angles = [-0.94, -0.47, 0, 0.47, 0.94];
+    for (let ray = 0; ray < angles.length; ray++) {
+      const angle = angles[ray];
+      const nx = -Math.sin(angle);
+      const nz = Math.cos(angle);
+      for (let dash = 0; dash < 4; dash++) {
+        const r0 = 0.34 + dash * 0.19;
+        const r1 = r0 + 0.115;
+        const jog = ((ray + dash) % 2 ? 1 : -1) * (0.018 + dash * 0.008);
+        positions.push(
+          Math.cos(angle) * r0 + nx * jog, 0, Math.sin(angle) * r0 + nz * jog,
+          Math.cos(angle) * r1 - nx * jog, 0, Math.sin(angle) * r1 - nz * jog,
+        );
+      }
+    }
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.computeBoundingSphere();
+    return geometry;
+  });
+}
+
+function jammerEmitterFinGeometry() {
+  return getGeometry('specialist:jammer-emitter-fin-profile', () => {
+    const vertices = new Float32Array([
+      -0.5, -0.35, -0.18,  -0.5, 0.35, -0.18,  -0.5, 0.35, 0.18,  -0.5, -0.35, 0.18,
+       0.5, -0.12, -0.07,   0.5, 0.12, -0.07,   0.5, 0.12, 0.07,   0.5, -0.12, 0.07,
+    ]);
+    const indices = [
+      0, 1, 2, 0, 2, 3, 4, 6, 5, 4, 7, 6,
+      0, 4, 5, 0, 5, 1, 1, 5, 6, 1, 6, 2,
+      2, 6, 7, 2, 7, 3, 3, 7, 4, 3, 4, 0,
+    ];
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+    geometry.setIndex(indices);
+    geometry.computeVertexNormals();
+    geometry.computeBoundingSphere();
+    return geometry;
+  });
+}
+
+// Plan 15 Jammer: an unmistakable rooted antenna fan plus hard, broken interference combs. The
+// comb is real world geometry (LineSegments), never camera-facing, soft, expanding, or opacity-
+// animated. Killing the entity removes the whole root with the normal render lifecycle.
+function addJammerWorldTell(outer, hull, R) {
+  const root = new THREE.Group();
+  root.name = 'JammerAntennaFan';
+  root.position.set(-0.08 * R, 0.38 * R, 0);
+
+  const frameMaterial = getMaterial('specialist:jammer-frame', () => new THREE.MeshStandardMaterial({
+    name: 'JammerAntennaFrame',
+    color: 0x472d38,
+    roughness: 0.52,
+    metalness: 0.82,
+  }));
+  const signalMaterial = getMaterial('specialist:jammer-signal', () => new THREE.MeshStandardMaterial({
+    name: 'JammerStaticEmitter',
+    color: 0x6f334c,
+    emissive: 0xff315f,
+    emissiveIntensity: 1.15,
+    roughness: 0.36,
+    metalness: 0.68,
+  }));
+  const lineMaterial = getMaterial('specialist:jammer-comb-line', () => new THREE.LineBasicMaterial({
+    name: 'JammerHardStaticComb',
+    color: 0xff76a8,
+    toneMapped: false,
+  }));
+
+  const base = new THREE.Mesh(
+    getGeometry('specialist:jammer-base', () => new THREE.BoxGeometry(1, 1, 1)),
+    frameMaterial,
+  );
+  base.name = 'JammerAntennaRootHousing';
+  base.scale.set(0.28 * R, 0.15 * R, 0.36 * R);
+  root.add(base);
+
+  const angles = [-0.94, -0.47, 0, 0.47, 0.94];
+  for (let i = 0; i < angles.length; i++) {
+    const angle = angles[i];
+    const length = (0.72 + (2 - Math.abs(2 - i)) * 0.08) * R;
+    const beam = new THREE.Mesh(
+      getGeometry('specialist:jammer-beam', () => new THREE.BoxGeometry(1, 1, 1)),
+      frameMaterial,
+    );
+    beam.name = 'JammerRootedAntennaBoom';
+    beam.scale.set(length, 0.045 * R, 0.055 * R);
+    beam.position.set(Math.cos(angle) * length * 0.52, 0.04 * R, Math.sin(angle) * length * 0.52);
+    beam.rotation.y = -angle;
+    root.add(beam);
+
+    const emitter = new THREE.Mesh(
+      jammerEmitterFinGeometry(),
+      signalMaterial,
+    );
+    emitter.name = 'JammerEmitterFin';
+    emitter.scale.setScalar(0.2 * R);
+    emitter.position.set(Math.cos(angle) * length, 0.085 * R, Math.sin(angle) * length);
+    emitter.rotation.y = -angle;
+    root.add(emitter);
+  }
+
+  const comb = new THREE.LineSegments(jammerStaticCombGeometry(), lineMaterial);
+  comb.name = 'JammerStaticShimmerComb';
+  comb.scale.setScalar(R);
+  comb.position.y = 0.11 * R;
+  comb.renderOrder = 3;
+  root.add(comb);
+  hull.add(root);
+
+  outer.userData.specialistPresentationId = JAMMER_ENEMY_ID;
+  outer.userData.jammerWorldTell = Object.freeze({
+    cue: 'antenna_fan_and_static_shimmer',
+    geometry: 'rooted_five_boom_fan_with_hard_broken_world_combs',
+    cameraFacing: false,
+    animatedOpacity: false,
+  });
+}
+
 const ENEMY_FAMILY_BUILDERS = {
   mote_quad: buildMoteQuad,
   dart_needle: buildDartNeedle,
@@ -2695,6 +2825,8 @@ function buildShipMesh(e, pal) {
   //    ENEMY_FAMILY_BUILDERS (graphics spec Workstream D: enemies render as their own hostile forms).
   const builder = isEnemyFamily ? ENEMY_FAMILY_BUILDERS[family] : (FAMILY_BUILDERS[family] || buildMultirole);
   builder(ctx);
+
+  if (jammerPresentationIdFor(e)) addJammerWorldTell(outer, g, R);
 
   // 2) armor panel shell (tier Mk.II paneled / Mk.III armored): a slightly-larger shell with denser
   //    plating + decals so upgraded ships visibly read as reinforced.

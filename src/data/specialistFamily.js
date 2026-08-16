@@ -61,12 +61,14 @@ export const SPECIALIST_FAMILY = Object.freeze([
     counterVerb: 'kill_or_close_inside_fuzz',
     behavior: {
       capability: 'presentation_only_contact_smear',
-      runtime: 'unwired',
+      runtime: 'existing',
+      owner: 'radar_jamming_presentation_v1',
       invariant: 'simulation_contacts_remain_exact',
     },
     worldTell: {
       cue: 'antenna_fan_and_static_shimmer',
-      runtime: 'unwired',
+      runtime: 'existing',
+      owner: 'jammer_antenna_static_comb_v1',
     },
   }),
   contract({
