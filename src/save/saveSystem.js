@@ -2815,7 +2815,10 @@ function normalizeRestorableData(data) {
   if (!data || typeof data !== 'object') return { ok: false, reason: 'no_data' };
   if (!hasRestorablePlayer(data)) return { ok: false, reason: 'no_player' };
   const savedPlayer = data.entities.player;
-  if (savedPlayer.type && savedPlayer.type !== 'ship') return { ok: false, reason: 'invalid_player' };
+  const occupiedPod = isRestorableOccupiedPlayerPod(savedPlayer, data.player);
+  if (savedPlayer.type && savedPlayer.type !== 'ship' && !occupiedPod) {
+    return { ok: false, reason: 'invalid_player' };
+  }
 
   data.player = normalizePlayerSaveRecord(data.player, savedPlayer);
   data.cargo = normalizeCargoSaveRecord(data.cargo);
@@ -2823,8 +2826,50 @@ function normalizeRestorableData(data) {
     ? data.salvage
     : {};
   data.world = normalizeWorldSaveRecord(data.world);
-  data.entities.player = normalizePlayerEntitySave(savedPlayer, data.player);
+  data.entities.player = occupiedPod
+    ? normalizeOccupiedPlayerPodSave(savedPlayer)
+    : normalizePlayerEntitySave(savedPlayer, data.player);
   return { ok: true };
+}
+
+function isRestorableOccupiedPlayerPod(saved, player) {
+  if (!saved || saved.type !== 'payload' || !saved.data || saved.data.payloadType !== 'survivor_pod'
+    || saved.data.playerOccupied !== true) return false;
+  const stamp = saved.data.survivorPodCausal;
+  const receipt = player && player.activePhysicalDefeatReceipt;
+  const loss = receipt && receipt.loss;
+  return !!(stamp && stamp.playerOccupied === true && stamp.resolved !== true && stamp.lossId
+    && loss && loss.schemaVersion === 1 && loss.lossId === stamp.lossId);
+}
+
+function normalizeOccupiedPlayerPodSave(saved) {
+  const out = mergePlain({}, saved);
+  out.type = 'payload';
+  out.alive = true;
+  out.collides = true;
+  out.isPlayer = true;
+  out.pos = normalizedPos(saved.pos);
+  out.vel = normalizedPos(saved.vel);
+  out.radius = positiveNumber(saved.radius, 5);
+  out.mass = positiveNumber(saved.mass, 24);
+  out.hullMax = positiveNumber(saved.hullMax, 40);
+  out.hull = boundedVital(saved.hull, out.hullMax, 40);
+  out.armorMax = 0;
+  out.armorHp = 0;
+  out.shieldMax = 0;
+  out.shield = 0;
+  out.capMax = 0;
+  out.cap = 0;
+  out.flags = Object.assign({}, out.flags, { persistent: true, defeated: true });
+  out.data = mergePlain({}, saved.data);
+  out.data.playerOccupied = true;
+  out.data.payloadType = 'survivor_pod';
+  out.data.survivorPodCausal = mergePlain({}, saved.data.survivorPodCausal);
+  out.physicsBody = mergePlain({
+    dynamic: true, ccd: true, radius: 5, mass: 24, inertiaY: 300,
+    material: 'payload', shape: 'ball',
+  }, saved.physicsBody || {});
+  return out;
 }
 
 function normalizePlayerSaveRecord(player, savedEntity) {

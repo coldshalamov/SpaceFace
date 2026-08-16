@@ -61,6 +61,10 @@ for (const sector of SECTORS) {
 // any fittable def (weapon OR module) by id
 function defById(id) { return MODULE_BY_ID.get(id) || WEAPON_BY_ID.get(id) || null; }
 
+function cloneOwnedShip(value) {
+  return value == null ? value : JSON.parse(JSON.stringify(value));
+}
+
 /** Resolve the two distinct station capabilities exposed by Shipworks. Hull acquisition/switching
  * requires a shipyard; module purchase/fitting also works at a module fabricator. */
 export function shipworksAccessForServices(services) {
@@ -908,6 +912,133 @@ export const ships = {
     const p = this.state.player;
     const i = (index == null) ? p.activeShipIndex : index;
     return p.ownedShips[i] || null;
+  },
+
+  /** Durable player-loss snapshot. The hulk owner stores this exact plain record; ships remains the
+   * only authority allowed to turn it back into owned/live hull state. */
+  capturePlayerLoss(lossId) {
+    const owned = this.ownedShip();
+    const entity = this.state && this.state.entities && this.state.entities.get
+      ? this.state.entities.get(this.state.playerId) : null;
+    if (!owned || !lossId || !entity || entity.type !== 'ship') return null;
+    const def = SHIP_BY_ID.get(owned.defId);
+    return {
+      schemaVersion: 1,
+      lossId: String(lossId),
+      shipIndex: this.state.player.activeShipIndex | 0,
+      defId: owned.defId,
+      shipName: def && def.name || owned.defId,
+      fittings: Array.isArray(owned.fittings) ? owned.fittings.slice() : [],
+      appearance: cloneOwnedShip(owned.appearance),
+      livingHull: cloneOwnedShip(owned.livingHull),
+      runtimeMass: Math.max(1, Number(entity.mass) || Number(entity.data && entity.data.derived && entity.data.derived.operationalMass) || 1),
+    };
+  },
+
+  /** Replace the destroyed ownership slot with the policy result. Full preserves the fit and hull
+   * history; Basic is the same stock chassis; no policy gets the authored starter loadout. */
+  applyPlayerLossRefit({ lossId, tier, shipSnapshot } = {}) {
+    if (!lossId || !shipSnapshot || shipSnapshot.lossId !== lossId) return { ok: false, reason: 'loss_snapshot_unavailable' };
+    const p = this.state.player;
+    const index = Number.isInteger(shipSnapshot.shipIndex) ? shipSnapshot.shipIndex : p.activeShipIndex | 0;
+    let owned;
+    if (tier === 'full' || tier === 'loyalty') {
+      owned = {
+        defId: shipSnapshot.defId,
+        fittings: Array.isArray(shipSnapshot.fittings) ? shipSnapshot.fittings.slice() : [],
+        appearance: cloneOwnedShip(shipSnapshot.appearance),
+        livingHull: cloneOwnedShip(shipSnapshot.livingHull),
+      };
+    } else if (tier === 'basic') {
+      const def = SHIP_BY_ID.get(shipSnapshot.defId) || SHIP_BY_ID.get(NEW_GAME.shipId);
+      owned = {
+        defId: def.id,
+        fittings: new Array(buildSlotList(def).length).fill(null),
+        appearance: defaultShipAppearance(def.id),
+        livingHull: defaultLivingHull(this.state.simTime || 0),
+      };
+    } else {
+      owned = {
+        defId: NEW_GAME.shipId,
+        fittings: this.fittingsFromDefaults(NEW_GAME.shipId, NEW_GAME.fittedModules || []),
+        appearance: defaultShipAppearance(NEW_GAME.shipId),
+        livingHull: defaultLivingHull(this.state.simTime || 0),
+        loaner: { lossId, debtPending: true },
+      };
+      tier = 'loaner';
+    }
+    owned.lossRecovery = { lossId, tier, temporary: true };
+    while (p.ownedShips.length <= index) p.ownedShips.push(null);
+    p.ownedShips[index] = owned;
+    p.activeShipIndex = index;
+    const shipId = this._materializePlayerOwnedShip(owned);
+    if (shipId == null) return { ok: false, reason: 'player_entity_unavailable' };
+    this.bus.emit('ship:lossRefitApplied', { lossId, tier, shipId: owned.defId, shipIndex: index });
+    return { ok: true, lossId, tier, shipId: owned.defId, shipIndex: index };
+  },
+
+  /** A station-delivered own hulk replaces the temporary recovery hull, restoring the original
+   * fittings, appearance and living-hull scars exactly once. */
+  recoverPlayerLoss({ lossId, shipSnapshot } = {}) {
+    if (!lossId || !shipSnapshot || shipSnapshot.lossId !== lossId) return { ok: false, reason: 'loss_snapshot_unavailable' };
+    const p = this.state.player;
+    const active = this.ownedShip();
+    if (active && active.recoveredFromLoss === lossId) {
+      return { ok: true, idempotent: true, shipId: active.defId, shipIndex: p.activeShipIndex };
+    }
+    const index = p.activeShipIndex | 0;
+    const owned = {
+      defId: shipSnapshot.defId,
+      fittings: Array.isArray(shipSnapshot.fittings) ? shipSnapshot.fittings.slice() : [],
+      appearance: cloneOwnedShip(shipSnapshot.appearance),
+      livingHull: cloneOwnedShip(shipSnapshot.livingHull),
+      recoveredFromLoss: lossId,
+    };
+    p.ownedShips[index] = owned;
+    const entityId = this._materializePlayerOwnedShip(owned);
+    if (entityId == null) return { ok: false, reason: 'player_entity_unavailable' };
+    this.bus.emit('ship:lostHullRecovered', {
+      lossId,
+      shipId: owned.defId,
+      shipIndex: index,
+      livingHull: cloneOwnedShip(owned.livingHull),
+    });
+    return { ok: true, shipId: owned.defId, shipIndex: index };
+  },
+
+  _materializePlayerOwnedShip(owned) {
+    const entity = this.state.entities && this.state.entities.get
+      ? this.state.entities.get(this.state.playerId) : null;
+    if (!entity || !owned) return null;
+    const canonical = makeShipEntitySpec(owned.defId, {
+      team: 0,
+      factionId: 'player',
+      fittings: owned.fittings || [],
+      appearance: owned.appearance,
+      livingHull: owned.livingHull,
+      isPlayer: true,
+      player: this.state.player,
+      pos: entity.pos,
+      rot: entity.rot || 0,
+    });
+    entity.type = 'ship';
+    entity.alive = true;
+    entity.collides = true;
+    entity.isPlayer = true;
+    entity.factionId = 'player';
+    entity.team = 0;
+    for (const key of [
+      'radius', 'mass', 'flightClass', 'flightModel', 'propulsion', 'hull', 'hullMax',
+      'armorHp', 'armorMax', 'armorFlat', 'shield', 'shieldMax', 'shieldRegenRate',
+      'shieldRegenDelay', 'cap', 'capMax', 'capRegen', 'thrust', 'turnRate', 'maxSpeed',
+      'drag', 'boost',
+    ]) entity[key] = canonical[key];
+    entity.data = canonical.data;
+    delete entity.physicsBody;
+    entity.flags = Object.assign({}, entity.flags, { persistent: true });
+    delete entity.flags.defeated;
+    this.recomputeEntity(entity.id, owned.fittings || []);
+    return entity.id;
   },
 
   reconcileLivingHull({ announce = false } = {}) {

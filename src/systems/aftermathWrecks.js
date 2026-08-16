@@ -10,13 +10,14 @@ import { zoneAt, zoneThreat } from '../data/sectorZones.js';
 import { globalToSectorLocalForSector } from '../data/sectorCoordinates.js';
 import { wreckClassById } from '../data/wreckClasses.js';
 import { SECTORS } from '../data/sectors.js';
+import { protectedStationAt } from '../ai/engagementAuthority.js';
 import {
   causalAftermath,
   causeContractOffer,
   normalizeCausalAftermath,
 } from '../world/encounterCausality.js';
 
-const STATE_VERSION = 3;
+const STATE_VERSION = 4;
 const MAX_PER_SECTOR = 8;
 const MAX_SPAWNED_PER_SECTOR = 6;
 const MAX_CAUSES = 24;
@@ -107,6 +108,7 @@ function classForVictim(victimClass) {
 }
 
 function initialPoolForMarker(marker) {
+  if (marker && marker.playerLoss) return {};
   const cls = marker && marker.victimClass || '';
   if (String(cls).toLowerCase().includes('drone')) return { cmdty_scrap_metal: 2, cmdty_ore_iron: 1 };
   if (marker && marker.wreckClass === 'military') {
@@ -170,6 +172,9 @@ export function aftermathLifecycleForMarker(marker, simTime = 0) {
 }
 
 function aftermathLine(marker) {
+  if (marker && marker.playerLoss) {
+    return `Your ${marker.victimLabel || 'ship'} is adrift with ${marker.playerLoss.cargoQty || 0}u cargo in custody.`;
+  }
   const zone = marker.zoneName || 'a local zone';
   const victim = marker.victimLabel || marker.victimClass || 'ship';
   const cause = marker.cause;
@@ -186,6 +191,7 @@ function lifecycleScanLabel(marker, cls, stage) {
 }
 
 function newsLine(marker) {
+  if (marker && marker.playerLoss) return `Recovery tow posted for your ${marker.victimLabel || 'lost hull'}.`;
   const zone = marker.zoneName || 'a local zone';
   const victim = marker.victimClass || 'ship';
   return `Aftermath reported in ${zone}: ${victim} wreckage now drifting on the lane.`;
@@ -297,7 +303,15 @@ function rememberMarker(state, bus, marker, onEvicted = null) {
   }
   arr.unshift(marker);
   if (arr.length > MAX_PER_SECTOR) {
-    const evicted = arr.splice(MAX_PER_SECTOR);
+    const evicted = [];
+    while (arr.length > MAX_PER_SECTOR) {
+      let index = -1;
+      for (let i = arr.length - 1; i >= 0; i--) {
+        if (!arr[i] || !arr[i].playerLoss) { index = i; break; }
+      }
+      if (index < 0) index = arr.length - 1;
+      evicted.push(...arr.splice(index, 1));
+    }
     if (typeof onEvicted === 'function') onEvicted(evicted);
   }
   if (bus && typeof bus.emit === 'function') {
@@ -348,10 +362,38 @@ function normalizeMarker(input) {
     cause: normalizeCausalAftermath(input.cause),
     lifecycleStage: input.lifecycleStage === 'cold' ? 'cold' : 'fresh',
     cooledAt: Number.isFinite(Number(input.cooledAt)) ? Math.max(0, Number(input.cooledAt)) : null,
+    playerLoss: normalizePlayerLoss(input.playerLoss),
   };
   const savedPool = normalizeSalvagePool(input.salvagePool);
   marker.salvagePool = savedPool == null ? initialPoolForMarker(marker) : savedPool;
   return marker;
+}
+
+function normalizeCargoManifest(input) {
+  const rows = [];
+  for (const row of Array.isArray(input) ? input : []) {
+    const commodityId = row && typeof row.commodityId === 'string' ? row.commodityId : null;
+    const qty = Math.max(0, Math.floor(Number(row && row.qty) || 0));
+    if (commodityId && qty > 0) rows.push({ commodityId, qty });
+  }
+  rows.sort((a, b) => a.commodityId.localeCompare(b.commodityId));
+  return rows;
+}
+
+function normalizePlayerLoss(input) {
+  if (!input || typeof input !== 'object' || !input.lossId || !input.shipSnapshot) return null;
+  const cargoManifest = normalizeCargoManifest(input.cargoManifest);
+  return {
+    schemaVersion: 1,
+    lossId: String(input.lossId),
+    shipSnapshot: clonePlain(input.shipSnapshot),
+    cargoManifest,
+    cargoQty: cargoManifest.reduce((sum, row) => sum + row.qty, 0),
+    towStatus: ['held', 'offered', 'active', 'recovered'].includes(input.towStatus)
+      ? input.towStatus : 'held',
+    offeredAt: Number.isFinite(Number(input.offeredAt)) ? Number(input.offeredAt) : null,
+    offeredStationId: input.offeredStationId || null,
+  };
 }
 
 function trimAndSort(markers) {
@@ -369,8 +411,10 @@ export const aftermathWrecks = {
     this.state = ctx && ctx.state;
     this.bus = ctx && ctx.bus;
     this.helpers = ctx && ctx.helpers || {};
+    this.registry = ctx && ctx.registry || null;
     this._spawned = new Map();
     this._pendingOffers = new Map();
+    this._playerTowDeliveries = new WeakSet();
     this._saveRestoring = false;
     ensureAftermathState(this.state);
 
@@ -429,6 +473,97 @@ export const aftermathWrecks = {
         if (item && item.markerId) this._spawned.delete(item.markerId);
       }
     });
+  },
+
+  /** Create the one conserved player hulk outside the ordinary entity:killed filter. Cargo remains
+   * a manifest in this existing aftermath marker until the real Massline tow reaches protection. */
+  recordPlayerLoss({ lossId, receipt, shipSnapshot, cargoManifest } = {}) {
+    if (!this.state || !lossId || !shipSnapshot || !receipt || !receipt.pos) return null;
+    const sectorId = this.state.world && this.state.world.currentSectorId;
+    if (!sectorId) return null;
+    const pos = { x: Number(receipt.pos.x) || 0, z: Number(receipt.pos.z) || 0 };
+    const local = globalToSectorLocalForSector(pos, sectorId);
+    const zone = zoneAt(sectorId, local.x, local.z);
+    const playerLoss = normalizePlayerLoss({
+      lossId,
+      shipSnapshot,
+      cargoManifest,
+      towStatus: 'held',
+    });
+    if (!playerLoss) return null;
+    const marker = {
+      schemaVersion: STATE_VERSION,
+      markerId: `aft_player_${hash32(seedOf(this.state), lossId, sectorId, 'player-hulk').toString(36)}`,
+      sectorId,
+      zoneId: zone && zone.id || null,
+      zoneName: zone && (zone.name || zone.id) || 'open space',
+      zoneType: zone && zone.type || null,
+      zoneThreat: zone ? zoneThreat(zone) : 0,
+      pos,
+      victimId: this.state.playerId,
+      victimClass: shipSnapshot.defId || 'player ship',
+      victimLabel: shipSnapshot.shipName || shipSnapshot.defId || 'player ship',
+      victimFactionId: 'player',
+      killerId: receipt.killerId == null ? null : receipt.killerId,
+      tick: this.state.tick || 0,
+      t: Number(this.state.simTime || 0),
+      wreckClass: 'battlefield',
+      wreckClassLabel: 'Player Hulk',
+      source: 'playerDefeat',
+      encounterId: null,
+      encounterFingerprint: null,
+      motiveId: null,
+      freightIdentity: null,
+      cause: null,
+      lifecycleStage: 'fresh',
+      cooledAt: null,
+      salvagePool: {},
+      playerLoss,
+    };
+    const remembered = rememberMarker(this.state, this.bus, marker, (evicted) => {
+      for (const item of evicted || []) if (item && item.markerId) this._spawned.delete(item.markerId);
+    });
+    if (!remembered) return null;
+    let entity = this._resolveBoundWreck(marker.markerId);
+    if (!entity && this.helpers && typeof this.helpers.spawnEntity === 'function') {
+      entity = this.helpers.spawnEntity(this._specForMarker(marker));
+      if (entity) this._bindLiveMarker(marker, entity);
+    }
+    return { ...clonePlain(marker), liveEntityId: entity && entity.id != null ? entity.id : null };
+  },
+
+  playerLossForMarker(markerId) {
+    const marker = this._markerById(markerId);
+    return marker && marker.playerLoss ? clonePlain(marker.playerLoss) : null;
+  },
+
+  offerPlayerRecoveryTow(markerId, { stationId = null } = {}) {
+    const marker = this._markerById(markerId);
+    if (!marker || !marker.playerLoss || marker.playerLoss.towStatus === 'recovered') return null;
+    marker.playerLoss.towStatus = 'offered';
+    marker.playerLoss.offeredAt = Number(this.state && this.state.simTime) || 0;
+    marker.playerLoss.offeredStationId = stationId || null;
+    const payload = {
+      lossId: marker.playerLoss.lossId,
+      markerId: marker.markerId,
+      hulkEntityId: this._resolveBoundWreck(marker.markerId)?.id ?? null,
+      stationId,
+      cargoQty: marker.playerLoss.cargoQty,
+      requirement: 'Massline attachment + physical station delivery',
+    };
+    this.bus.emit('playerDefeat:recoveryTowOffered', payload);
+    this.bus.emit('toast', {
+      text: `Recovery tow offered: bring your hulk and ${marker.playerLoss.cargoQty}u cargo into a lawful berth.`,
+      kind: 'info',
+      ttl: 6,
+    });
+    return payload;
+  },
+
+  cancelPlayerLoss(markerId, reason = 'cancelled') {
+    const marker = this._markerById(markerId);
+    if (!marker || !marker.playerLoss) return false;
+    return this._removePlayerLossMarker(marker, reason);
   },
 
   // Production init order registers this system before mining. By the time mining observes the same
@@ -620,17 +755,20 @@ export const aftermathWrecks = {
     const line = aftermathLine(marker);
     const cold = lifecycle.stage === 'cold';
     const scanLabel = lifecycleScanLabel(marker, cls, lifecycle.stage);
+    const playerLoss = marker.playerLoss;
+    const runtimeMass = Math.max(90, Math.min(5000,
+      Number(playerLoss && playerLoss.shipSnapshot && playerLoss.shipSnapshot.runtimeMass) || 650));
     return {
       type: 'wreck',
       pos: { x: marker.pos.x, z: marker.pos.z },
       radius: WRECK_RADIUS,
-      mass: 1e6,
+      mass: playerLoss ? runtimeMass : 1e6,
       hull: 1,
       hullMax: 1,
       data: {
         parentType: marker.wreckClass === 'military' ? 'military' : 'ship',
         loot: [],
-        salvagePool: poolForMarker(marker),
+        salvagePool: playerLoss ? {} : poolForMarker(marker),
         salvageTimeLeft: cold ? COLD_HULK_SALVAGE_TIME : WRECK_SALVAGE_TIME,
         scanLabel,
         authoredScanLabel: scanLabel,
@@ -664,6 +802,15 @@ export const aftermathWrecks = {
         markerId: marker.markerId,
         encounterFingerprint: marker.encounterFingerprint,
         causeContract: marker.cause ? clonePlain(marker.cause) : null,
+        ...(playerLoss ? {
+          ownedPlayerWreck: true,
+          playerLoss: clonePlain(playerLoss),
+          cargoManifest: clonePlain(playerLoss.cargoManifest),
+          tetherRole: 'player_hulk',
+          masslineTetherable: true,
+          scanLabel: `YOUR HULK · ${playerLoss.cargoQty}u CARGO IN CUSTODY`,
+          authoredScanLabel: `YOUR HULK · ${playerLoss.cargoQty}u CARGO IN CUSTODY`,
+        } : {}),
       },
     };
   },
@@ -690,14 +837,18 @@ export const aftermathWrecks = {
     if (!entity || !entity.data) return lifecycle;
     const cls = wreckClassById(marker.wreckClass) || wreckClassById('battlefield');
     const cold = lifecycle.stage === 'cold';
-    const scanLabel = lifecycleScanLabel(marker, cls, lifecycle.stage);
+    const scanLabel = marker.playerLoss
+      ? `YOUR HULK · ${marker.playerLoss.cargoQty}u CARGO IN CUSTODY`
+      : lifecycleScanLabel(marker, cls, lifecycle.stage);
     entity.data.wreckLifecycle = lifecycle.stage;
     entity.data.lifecycleStage = lifecycle.stage;
     entity.data.freshUntil = lifecycle.freshUntil;
     entity.data.cooledAt = lifecycle.cooledAt;
     entity.data.scanLabel = scanLabel;
     entity.data.authoredScanLabel = scanLabel;
-    entity.data.provenanceLine = cold
+    entity.data.provenanceLine = marker.playerLoss
+      ? aftermathLine(marker)
+      : cold
       ? `${aftermathLine(marker)} The hull is cold; only deliberate salvage remains.`
       : aftermathLine(marker);
     if (cold && entity.data.salvageTimeLeft === WRECK_SALVAGE_TIME) {
@@ -709,7 +860,114 @@ export const aftermathWrecks = {
   update(_dt, state) {
     if (!state || !this._spawned || (state.tick | 0) % 30 !== 0) return;
     const sectorId = state.world && state.world.currentSectorId;
-    for (const marker of aftermathForSector(state, sectorId)) this._syncLiveLifecycle(marker);
+    for (const marker of aftermathForSector(state, sectorId)) {
+      this._syncLiveLifecycle(marker);
+      if (marker.playerLoss && ['offered', 'active'].includes(marker.playerLoss.towStatus)) {
+        this._tryCompletePlayerTow(marker);
+      }
+    }
+  },
+
+  _activePlayerTowAttachment(wreck) {
+    const tether = this.state && this.state.player && this.state.player.tether;
+    if (!tether || tether.active !== true || tether.targetId !== wreck.id || !tether.attachmentId) return null;
+    const registeredCombat = this.registry && typeof this.registry.get === 'function'
+      ? this.registry.get('combat') : null;
+    const kernel = registeredCombat && (registeredCombat.kernel
+      || (typeof registeredCombat.ensureKernel === 'function' ? registeredCombat.ensureKernel() : null));
+    const attachments = kernel && kernel.attachments;
+    const attachment = attachments && typeof attachments.get === 'function'
+      ? attachments.get(tether.attachmentId) : null;
+    return attachment && attachment.state === 'active'
+      && attachment.ownerId === this.state.playerId && attachment.targetId === wreck.id
+      ? attachment : null;
+  },
+
+  validatePlayerTowDelivery(payload = {}) {
+    const marker = this._markerById(payload.markerId);
+    if (!marker || !marker.playerLoss || marker.playerLoss.lossId !== payload.lossId) return false;
+    const wreck = this._resolveBoundWreck(marker.markerId);
+    if (!wreck || wreck.id !== payload.hulkEntityId || !wreck.pos
+      || !this._activePlayerTowAttachment(wreck)) return false;
+    const displaced = Math.hypot(wreck.pos.x - marker.pos.x, wreck.pos.z - marker.pos.z);
+    if (displaced < 80) return false;
+    const jurisdiction = protectedStationAt(this.state, wreck);
+    return Boolean(jurisdiction && jurisdiction.stationId === payload.stationId);
+  },
+
+  consumePlayerTowDelivery(payload) {
+    if (!payload || !this._playerTowDeliveries || !this._playerTowDeliveries.has(payload)) return false;
+    this._playerTowDeliveries.delete(payload);
+    return true;
+  },
+
+  _tryCompletePlayerTow(marker) {
+    const wreck = this._resolveBoundWreck(marker.markerId);
+    if (!wreck || !wreck.pos || !this._activePlayerTowAttachment(wreck)) return false;
+    const displaced = Math.hypot(wreck.pos.x - marker.pos.x, wreck.pos.z - marker.pos.z);
+    if (displaced < 80) return false;
+    const jurisdiction = protectedStationAt(this.state, wreck);
+    if (!jurisdiction) return false;
+    marker.playerLoss.towStatus = 'active';
+    const delivery = {
+      lossId: marker.playerLoss.lossId,
+      markerId: marker.markerId,
+      hulkEntityId: wreck.id,
+      stationId: jurisdiction.stationId,
+      shipSnapshot: clonePlain(marker.playerLoss.shipSnapshot),
+      cargoManifest: clonePlain(marker.playerLoss.cargoManifest),
+      result: null,
+    };
+    // Object identity is the synchronous commit capability. Only this owner can mint it, and it is
+    // minted only after the live attachment, displacement, and station jurisdiction checks above.
+    // It is deliberately transient: a save cannot replay an old delivery receipt.
+    this._playerTowDeliveries.add(delivery);
+    this.bus.emit('playerDefeat:wreckDelivered', delivery);
+    if (Array.isArray(delivery.remainingCargoManifest)) {
+      marker.playerLoss.cargoManifest = normalizeCargoManifest(delivery.remainingCargoManifest);
+      marker.playerLoss.cargoQty = marker.playerLoss.cargoManifest.reduce((sum, row) => sum + row.qty, 0);
+      if (wreck.data) {
+        wreck.data.cargoManifest = clonePlain(marker.playerLoss.cargoManifest);
+        wreck.data.playerLoss = clonePlain(marker.playerLoss);
+      }
+    }
+    if (!delivery.result || delivery.result.ok !== true) return false;
+    marker.playerLoss.towStatus = 'recovered';
+    this.bus.emit('playerDefeat:wreckRecovered', {
+      lossId: marker.playerLoss.lossId,
+      markerId: marker.markerId,
+      hulkEntityId: wreck.id,
+      stationId: jurisdiction.stationId,
+      shipId: delivery.result.shipId || null,
+    });
+    return this._removePlayerLossMarker(marker, 'player_hulk_recovered');
+  },
+
+  _removePlayerLossMarker(marker, reason) {
+    if (!marker || !marker.markerId) return false;
+    const own = ensureAftermathState(this.state);
+    const list = own.bySector[marker.sectorId] || [];
+    own.bySector[marker.sectorId] = list.filter((item) => item && item.markerId !== marker.markerId);
+    const wreck = this._resolveBoundWreck(marker.markerId);
+    this._spawned.delete(marker.markerId);
+    if (wreck) {
+      if (this.helpers && typeof this.helpers.removeEntity === 'function') {
+        // Core owns entity retirement. Its lifetime sweep removes every entity-index entry,
+        // publishes destruction once, and lets the physics owner retire the body next tick.
+        this.helpers.removeEntity(wreck.id);
+      } else {
+        // Isolated low-level owners can omit core helpers. Preserve the established fallback there,
+        // while production always takes the indexed lifetime path above.
+        wreck.alive = false;
+        if (this.state.entities && typeof this.state.entities.delete === 'function') this.state.entities.delete(wreck.id);
+        if (Array.isArray(this.state.entityList)) {
+          const index = this.state.entityList.indexOf(wreck);
+          if (index >= 0) this.state.entityList.splice(index, 1);
+        }
+        this.bus.emit('entity:destroyed', { id: wreck.id, type: wreck.type, reason });
+      }
+    }
+    return true;
   },
 
   _clearLiveRefs(sectorId) {
@@ -732,6 +990,8 @@ export const aftermathWrecks = {
     const live = this._resolveBoundWreck(claimedMarkerId);
     if (!live || live.id !== wreckId) return false;
     const markerId = claimedMarkerId;
+    const playerLossMarker = this._markerById(markerId);
+    if (playerLossMarker && playerLossMarker.playerLoss) return false;
     const own = ensureAftermathState(this.state);
     for (const sectorId of Object.keys(own.bySector)) {
       const before = own.bySector[sectorId] || [];
@@ -775,6 +1035,7 @@ export const aftermathWrecks = {
     }
     if (this._spawned) this._spawned.clear();
     if (this._pendingOffers) this._pendingOffers.clear();
+    this._playerTowDeliveries = new WeakSet();
   },
 
   destroy() {

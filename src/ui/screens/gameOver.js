@@ -167,6 +167,7 @@ export const gameOverScreen = {
   _subEl: null,
   _recoveryEl: null,
   _retryButton: null,
+  _waitButton: null,
   _loadButton: null,
   _newButton: null,
   _menuButton: null,
@@ -228,12 +229,28 @@ export const gameOverScreen = {
     bRetry.title = 'Apply the shown recovery receipt and continue beside the named lawful dock';
     bRetry.setAttribute('aria-label', 'Continue from the recovery berth with the shown consequences');
     bRetry.addEventListener('click', () => {
-      // Combat owns success/failure. Success closes via player:respawn; failure surfaces a toast
-      // (and player:recoveryFailed) so a dead latch never looks like a no-op button.
-      ctx.bus.emit('player:recoveryRequested', { source: 'after_action' });
+      const receipt = currentDefeat(ctx);
+      if (receipt && receipt.loss) {
+        ctx.bus.emit('player:rescueRequested', { source: 'after_action', mode: 'paid' });
+      } else {
+        // Compatibility receipt: combat keeps the older direct berth route only when the physical
+        // pod/wreck owners could not establish a complete handoff.
+        ctx.bus.emit('player:recoveryRequested', { source: 'after_action' });
+      }
     });
     this._retryButton = bRetry;
     foot.appendChild(bRetry);
+
+    const bWait = document.createElement('button');
+    bWait.className = 'sf-btn sf-go-wait';
+    bWait.textContent = 'Wait for friendly patrol';
+    bWait.title = 'Trust local faction standing and wait for a physical rescue craft';
+    bWait.setAttribute('aria-label', 'Wait for a friendly faction rescue craft');
+    bWait.addEventListener('click', () => {
+      ctx.bus.emit('player:rescueRequested', { source: 'after_action', mode: 'wait' });
+    });
+    this._waitButton = bWait;
+    foot.appendChild(bWait);
 
     const bLoad = document.createElement('button');
     bLoad.className = 'sf-btn';
@@ -296,6 +313,8 @@ export const gameOverScreen = {
     ctx.bus.on('player:recoveryFailed', () => {
       this._refreshSummary(ctx);
     });
+    ctx.bus.on('playerDefeat:rescueWaiting', () => this._refreshSummary(ctx));
+    ctx.bus.on('playerDefeat:rescueInbound', () => this._refreshSummary(ctx));
 
     rootEl.appendChild(foot);
     this._refreshSummary(ctx);
@@ -320,10 +339,14 @@ export const gameOverScreen = {
     const difficulty = state.settings && state.settings.gameplay && state.settings.gameplay.difficulty;
     const ironman = difficulty === 'ironman';
     const recoverable = !ironman && !!receipt;
+    const loss = receipt && receipt.loss || null;
+    const physical = !!loss;
     const death = lastDeathSummary(ctx);
     const cargoLost = Math.max(0, Number(recovery.cargoLostQty) || 0);
     const protectedQty = Math.max(0, Number(recovery.persistentCargoProtected) || 0);
-    const cargoText = cargoLost > 0
+    const cargoText = physical
+      ? `${Math.max(0, Number(loss.cargoCustodyQty) || 0)}u conserved in your hulk`
+      : cargoLost > 0
       ? cargoLost + 'u lost' + (protectedQty > 0 ? ' · ' + protectedQty + 'u protected' : '')
       : 'No cargo lost';
     const charged = Math.max(0, Number(recovery.costCr) || 0);
@@ -342,30 +365,50 @@ export const gameOverScreen = {
         receipt.vitalsPct && `S${receipt.vitalsPct.shield}% A${receipt.vitalsPct.armor}% H${receipt.vitalsPct.hull}%`,
       ].filter(Boolean).join(' · ') : 'Unresolved',
       tip: receipt && receipt.counterplayHint || 'Review the final hit before relaunch.',
-      dock: recovery.stationName || 'No recovery route',
-      cost: recovery.costCr != null ? costText : '-',
+      dock: physical ? 'Rescue craft must reach the pod' : recovery.stationName || 'No recovery route',
+      cost: physical ? `${fmtCr(loss.rescueCallFeeCr || 0)} call · friendly wait free` : recovery.costCr != null ? costText : '-',
       cargo: cargoText,
       insurance: recovery.insuranceStatus || 'No recovery coverage',
     };
     for (const key in values) {
       if (els[key] && els[key].textContent !== values[key]) els[key].textContent = values[key];
     }
-    if (this._titleEl) this._titleEl.textContent = ironman ? 'Run Over' : 'Ship Lost';
+    if (this._titleEl) this._titleEl.textContent = ironman ? 'Run Over' : physical ? 'Survival Pod Adrift' : 'Ship Lost';
     if (this._subEl) {
       this._subEl.textContent = ironman
         ? 'Your ship was lost. In Ironman, death is final.'
+        : physical && loss.phase === 'rescue_inbound'
+          ? 'Rescue craft inbound. Your pod is still drifting through the live sim.'
+          : physical && loss.phase === 'rescue_wait'
+            ? 'Friendly patrol notified. Hold position while a real responder closes.'
+            : physical
+              ? 'Your pod is the live player body. Call rescue now or wait on earned local standing.'
         : recoverable
         ? 'Flight controls locked. Review the loss, then continue from the lawful recovery berth.'
         : 'Recovery receipt unavailable. Load a save or start a new run.';
     }
     if (this._recoveryEl) {
-      this._recoveryEl.textContent = recoverable
+      this._recoveryEl.textContent = physical
+        ? `POD ${String(loss.phase || 'adrift').replace(/_/g, ' ').toUpperCase()} · HULK ${loss.wreckEntityId == null ? 'PERSISTED' : '#' + loss.wreckEntityId} · ${cargoText}`
+        : recoverable
         ? `RECOVERY BERTH · ${recovery.stationName || 'lawful dock'} · ${costText} · ${cargoText}`
         : ironman
           ? 'This is Ironman mode: Casual, Standard, and Veteran deaths use insurance respawn, but this save is sealed. New Game starts fresh; Main Menu lets you Continue or Load another save.'
           : 'No recovery consequences were applied. Load a valid save or begin a new run.';
     }
-    if (this._retryButton) this._retryButton.hidden = !recoverable;
+    if (this._retryButton) {
+      this._retryButton.hidden = !recoverable;
+      this._retryButton.disabled = physical && loss.phase !== 'pod_drift';
+      this._retryButton.textContent = physical
+        ? loss.phase === 'rescue_inbound' ? 'Rescue craft inbound'
+          : loss.phase === 'rescue_wait' ? 'Waiting for patrol'
+            : `Call rescue · ${fmtCr(loss.rescueCallFeeCr || 0)} cr`
+        : 'Continue from recovery berth';
+    }
+    if (this._waitButton) {
+      this._waitButton.hidden = !physical || loss.phase !== 'pod_drift' || loss.likedRescueAvailable !== true;
+      this._waitButton.disabled = physical && loss.phase !== 'pod_drift';
+    }
     if (this._loadButton) this._loadButton.hidden = false;
     if (this._newButton) this._newButton.hidden = recoverable;
     if (this._menuButton) this._menuButton.hidden = recoverable;

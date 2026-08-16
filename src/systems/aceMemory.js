@@ -71,6 +71,7 @@ export const aceMemory = {
     });
     this._listen('entity:destroyed', (p) => this._entityDestroyed(p));
     this._listen('massline:tumbled', (p) => this._flung(p));
+    this._listen('aceMemory:playerKilled', (p) => this._playerKilled(p));
   },
 
   newGame() {
@@ -143,19 +144,50 @@ export const aceMemory = {
   _appeared(payload) {
     const ace = resolveAce(payload);
     if (!ace) return;
-    const rec = recordFor(ensureMemory(this.state), ace);
+    let rec = recordFor(ensureMemory(this.state), ace);
     const first = rec.encountered !== true;
     rec.encountered = true;
     rec.encounterCount = (rec.encounterCount | 0) + 1;
     rec.lastSeenAt = nowOf(this.state, payload);
     rec.lastSectorId = sectorOf(this.state, payload);
     this._completePlanetChallenge(ace.id, 'appeared', payload);
+    // Planet-challenge normalization replaces the saved memory bag. Re-adopt the live record before
+    // consuming one-shot voice latches so the cleared bit is not written onto a detached clone.
+    rec = recordFor(ensureMemory(this.state), ace);
     if (first) this._emitTransition('encountered', ace, rec);
     if (payload && payload.signatureSpoken === true) rec.signatureSpoken = true;
     if (!rec.signatureSpoken) {
       rec.signatureSpoken = true;
       this._speakSignature(ace);
     }
+    if (rec.playerKillAcknowledgmentPending === true) {
+      rec.playerKillAcknowledgmentPending = false;
+      rec.playerKillAcknowledgedAt = nowOf(this.state, payload);
+      rec.playerKillAcknowledgedCount = (rec.playerKillAcknowledgedCount | 0) + 1;
+      this._speakPlayerKillAcknowledgment(ace, rec);
+    }
+  },
+
+  _playerKilled(payload) {
+    const killer = payload && payload.killerId != null && this.state && this.state.entities
+      ? this.state.entities.get(payload.killerId) : null;
+    const ace = resolveAceFromEntity(killer);
+    if (!ace) return false;
+    const rec = recordFor(ensureMemory(this.state), ace);
+    rec.encountered = true;
+    rec.playerKillCount = (rec.playerKillCount | 0) + 1;
+    rec.playerKillAcknowledgmentPending = true;
+    rec.lastPlayerKillAt = nowOf(this.state, payload);
+    rec.lastPlayerLossId = payload.lossId || null;
+    rec.lastSeenAt = rec.lastPlayerKillAt;
+    rec.lastSectorId = sectorOf(this.state, payload);
+    emit(this.bus, 'aceMemory:playerKillRemembered', {
+      aceId: ace.id,
+      aceName: ace.name,
+      lossId: rec.lastPlayerLossId,
+      t: rec.lastPlayerKillAt,
+    });
+    return true;
   },
 
   _transition(transition, payload) {
@@ -648,6 +680,28 @@ export const aceMemory = {
       aceName: ace.name,
       situation: 'signature',
       text: ace.signatureBark,
+    });
+  },
+
+  _speakPlayerKillAcknowledgment(ace, rec) {
+    const text = `${ace.name}: back in another hull? I remember how the last one opened.`;
+    const voice = this.helpers && this.helpers.voice;
+    if (voice && typeof voice.say === 'function') {
+      voice.say({
+        channel: 'bark',
+        text,
+        kind: 'aceMemory',
+        id: `aceMemory:${ace.id}:player-loss:${rec.playerKillAcknowledgedCount | 0}`,
+        factionId: ace.factionId || 'faction_reach',
+        ttl: 2.5,
+      });
+    }
+    emit(this.bus, 'aceMemory:voice', {
+      aceId: ace.id,
+      aceName: ace.name,
+      situation: 'player_loss_acknowledgment',
+      lossId: rec.lastPlayerLossId || null,
+      text,
     });
   },
 };

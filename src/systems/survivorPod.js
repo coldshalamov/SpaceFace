@@ -341,7 +341,10 @@ function causalPublic(entity, rec) {
     factionId: rec && rec.factionId,
     expireAt: rec && rec.expireAt,
     phase: rec && rec.phase,
-    source: 'causal_eject',
+    playerOccupied: rec && rec.playerOccupied === true,
+    lossId: rec && rec.lossId || null,
+    rescueAuthorized: rec && rec.rescueAuthorized === true,
+    source: rec && rec.playerOccupied === true ? 'player_defeat' : 'causal_eject',
   };
 }
 
@@ -394,6 +397,92 @@ export const survivorPod = {
 
     // Causal path: re-adopt + settle + TTL.
     this._tickCausal(state, own);
+  },
+
+  /** Transform the canonical player entity into the survival pod instead of spawning a spectator
+   * prop. state.playerId therefore remains the body followed by the camera, physics and save route;
+   * the inherited ship velocity becomes a visibly drifting, low-mass Rapier payload. */
+  convertPlayerToPod(entity, { lossId, receipt } = {}) {
+    const state = this._state;
+    if (!state || !entity || entity.id !== state.playerId || !lossId || entity.type !== 'ship') return null;
+    const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    const vx = Number(entity.vel && entity.vel.x) || 0;
+    const vz = Number(entity.vel && entity.vel.z) || 0;
+    const speed = Math.hypot(vx, vz);
+    const angleSeed = hash32((state.meta && state.meta.seed) || 1, lossId, receipt && receipt.tick || 0, 'playerPodDrift');
+    const angle = (angleSeed / 0x100000000) * Math.PI * 2;
+    const driftSpeed = Math.max(12, speed * 0.22);
+    const dirX = speed > 1e-4 ? vx / speed : Math.cos(angle);
+    const dirZ = speed > 1e-4 ? vz / speed : Math.sin(angle);
+    entity.type = 'payload';
+    entity.alive = true;
+    entity.collides = true;
+    entity.radius = 5;
+    entity.mass = 24;
+    entity.hull = 40;
+    entity.hullMax = 40;
+    entity.armorHp = 0;
+    entity.armorMax = 0;
+    entity.shield = 0;
+    entity.shieldMax = 0;
+    entity.cap = 0;
+    entity.capMax = 0;
+    entity.vel.x = dirX * driftSpeed;
+    entity.vel.z = dirZ * driftSpeed;
+    entity.intent = null;
+    entity.flightModel = null;
+    entity.physicsBody = {
+      dynamic: true,
+      ccd: true,
+      radius: 5,
+      mass: 24,
+      inertiaY: 300,
+      material: 'payload',
+      shape: 'ball',
+    };
+    entity.flags = Object.assign({}, entity.flags, { persistent: true, defeated: true });
+    const sectorId = state.world && state.world.currentSectorId || null;
+    const rec = {
+      entityId: entity.id,
+      victimId: entity.id,
+      sectorId,
+      factionId: 'player',
+      memoryId: `player-pod:${lossId}`,
+      lossId,
+      playerOccupied: true,
+      rescueAuthorized: false,
+      phase: 'adrift',
+      ejectedAt: now,
+      expireAt: null,
+      resolved: false,
+    };
+    entity.data = {
+      kind: 'payload',
+      payloadType: CAUSAL_SURVIVOR_PAYLOAD_TYPE,
+      ownerId: entity.id,
+      factionId: 'player',
+      ownership: { ownerId: entity.id, factionId: 'player' },
+      transientSector: false,
+      sourceVictimId: entity.id,
+      survivorPodCausal: { ...rec },
+      tetherRole: 'survivor_pod',
+      scanLabel: 'Your Survival Pod',
+      masslineTetherable: true,
+      playerOccupied: true,
+      lossId,
+    };
+    const own = ensureState(state);
+    own.causal.byEntityId[entity.id] = rec;
+    if (this._bus && typeof this._bus.emit === 'function') {
+      this._bus.emit('survivorPod:ejected', causalPublic(entity, rec));
+      this._bus.emit('playerDefeat:podDrifting', {
+        lossId,
+        entityId: entity.id,
+        pos: { x: entity.pos.x, z: entity.pos.z },
+        vel: { x: entity.vel.x, z: entity.vel.z },
+      });
+    }
+    return entity;
   },
 
   // ── Causal eject ─────────────────────────────────────────────────────────────────────────────
@@ -504,9 +593,14 @@ export const survivorPod = {
           sectorId: stamp.sectorId || (state.world && state.world.currentSectorId) || null,
           factionId: stamp.factionId || entity.factionId || 'neutral',
           memoryId: stamp.memoryId || `survivor:${entity.id}`,
+          lossId: stamp.lossId || null,
+          playerOccupied: stamp.playerOccupied === true,
+          rescueAuthorized: stamp.rescueAuthorized === true,
           phase: stamp.phase || 'adrift',
           ejectedAt: stamp.ejectedAt || 0,
-          expireAt: stamp.expireAt || ((Number(state.simTime) || 0) + CAUSAL_POD_TTL_S),
+          expireAt: stamp.playerOccupied === true
+            ? null
+            : (stamp.expireAt || ((Number(state.simTime) || 0) + CAUSAL_POD_TTL_S)),
           resolved: false,
         };
       }
@@ -533,7 +627,7 @@ export const survivorPod = {
       // Keep entity annotation in sync for save/Continue.
       entity.data.survivorPodCausal = { ...rec, entityId: entity.id };
 
-      if (Number.isFinite(rec.expireAt) && now >= rec.expireAt) {
+      if (rec.playerOccupied !== true && Number.isFinite(rec.expireAt) && now >= rec.expireAt) {
         this._resolveCausal(state, own, rec, entity, 'abandoned', {
           reason: 'ttl_expired',
         });
@@ -541,7 +635,9 @@ export const survivorPod = {
       }
 
       // Ambient rescue hull claim (unattended pod).
-      const rescuer = findRescueHullNear(state, entity.pos, CAUSAL_RESCUE_HULL_CLAIM_WU);
+      const rescuer = rec.playerOccupied === true && rec.rescueAuthorized !== true
+        ? null
+        : findRescueHullNear(state, entity.pos, CAUSAL_RESCUE_HULL_CLAIM_WU);
       if (rescuer && !playerLatchedTo(state, entity.id)) {
         this._resolveCausal(state, own, rec, entity, 'rescued', {
           reason: 'rescue_hull',
@@ -619,6 +715,19 @@ export const survivorPod = {
       own.causal.receipts.splice(0, own.causal.receipts.length - CAUSAL_RECEIPT_CAP);
     }
     delete own.causal.byEntityId[entity.id];
+
+    if (rec.playerOccupied === true) {
+      entity.data.survivorPodCausal = { ...rec, entityId: entity.id };
+      if (this._bus && typeof this._bus.emit === 'function') {
+        this._bus.emit('survivorPod:resolved', { ...receipt, playerOccupied: true, lossId: rec.lossId });
+        this._bus.emit('playerDefeat:podRescued', {
+          ...receipt,
+          playerOccupied: true,
+          lossId: rec.lossId,
+        });
+      }
+      return true;
+    }
 
     // moralMemory is the durable world memory; credits stay with economy (never written here).
     const cause = outcome === 'rescued'

@@ -985,6 +985,7 @@ export const traffic = {
     this.bus.on('entity:killed', (p) => this._onEntityKilled(p));
     this.bus.on('survivorPod:ejected', (p) => this._onSurvivorPodEjected(p || {}));
     this.bus.on('survivorPod:resolved', (p) => this._onSurvivorPodResolved(p || {}));
+    this.bus.on('playerDefeat:rescueAuthorized', (p) => this._onPlayerRescueAuthorized(p || {}));
     // Working freight is driven by npcJobsRuntime, so the ambient traffic stepper never reaches
     // its own work/dock branches. Consume only materialized kernel intents here and keep field and
     // economy authority on their existing event seams.
@@ -1114,6 +1115,8 @@ export const traffic = {
     if (currentSectorId && requestedSectorId && currentSectorId !== requestedSectorId) return false;
     const pod = this._liveRescuePod(podId, requestedSectorId);
     if (!pod || !pod.pos) return false;
+    const podStamp = pod.data && pod.data.survivorPodCausal;
+    if (podStamp && podStamp.playerOccupied === true && podStamp.rescueAuthorized !== true) return false;
 
     const existing = this._rescueResponseByPod.get(podId);
     if (existing) {
@@ -1159,6 +1162,109 @@ export const traffic = {
     this._rescueResponseByPod.set(podId, assignment);
     this._rescuePodByResponder.set(selected.responder.id, podId);
     return true;
+  },
+
+  /** Paid/faction player rescue is an explicit dispatch. It first borrows an existing rescue-role
+   * traffic hull; if the pocket has none, traffic materializes one ordinary rescue craft and lets
+   * the same Flight V3 intent + Rapier motion close the final distance. */
+  _onPlayerRescueAuthorized(payload) {
+    const podId = payload && payload.podEntityId;
+    const pod = this._liveRescuePod(podId, payload && payload.sectorId || null);
+    const stamp = pod && pod.data && pod.data.survivorPodCausal;
+    if (!pod || !stamp || stamp.playerOccupied !== true || stamp.lossId !== payload.lossId) {
+      payload.result = { ok: false, reason: 'player_pod_unavailable' };
+      return false;
+    }
+    stamp.rescueAuthorized = true;
+    stamp.rescueMode = payload.mode || 'paid';
+    if (payload.factionId) stamp.rescueFactionId = payload.factionId;
+    const own = this.state && this.state.survivorPod && this.state.survivorPod.causal
+      && this.state.survivorPod.causal.byEntityId;
+    const rec = own && (own[pod.id] || own[String(pod.id)]);
+    if (rec) {
+      rec.rescueAuthorized = true;
+      rec.rescueMode = stamp.rescueMode;
+      if (stamp.rescueFactionId) rec.rescueFactionId = stamp.rescueFactionId;
+    }
+
+    let assigned = this._onSurvivorPodEjected({
+      entityId: pod.id,
+      sectorId: payload.sectorId || stamp.sectorId || null,
+    });
+    let spawned = false;
+    if (!assigned) {
+      const responder = this._spawnPlayerRescueCraft(pod, payload);
+      spawned = !!responder;
+      if (responder) {
+        assigned = this._onSurvivorPodEjected({
+          entityId: pod.id,
+          sectorId: payload.sectorId || stamp.sectorId || null,
+        });
+      }
+    }
+    const assignment = this._rescueResponseByPod.get(pod.id);
+    payload.result = assigned && assignment
+      ? { ok: true, responderId: assignment.responderId, spawned }
+      : { ok: false, reason: 'responder_unavailable' };
+    if (payload.result.ok && this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('traffic:playerRescueDispatched', {
+        lossId: payload.lossId,
+        podEntityId: pod.id,
+        responderId: assignment.responderId,
+        spawned,
+        mode: payload.mode || 'paid',
+      });
+    }
+    return payload.result.ok;
+  },
+
+  _spawnPlayerRescueCraft(pod, payload = {}) {
+    if (!pod || !pod.pos || !this.helpers || typeof this.helpers.spawnEntity !== 'function') return null;
+    this._ensureState();
+    const stations = this._sectorStations();
+    if (!stations.length) return null;
+    const sectorId = payload.sectorId || (this.state.world && this.state.world.currentSectorId) || null;
+    if (!sectorId) return null;
+    const def = TRAFFIC_ROLES.rescue;
+    const sector = this.state.world && this.state.world.sectors && this.state.world.sectors[sectorId];
+    const factionId = payload.factionId || sector && sector.factionId
+      || this.state.world && this.state.world.currentSector && this.state.world.currentSector.factionId
+      || 'faction_free';
+    const h = hash32((this.state.meta && this.state.meta.seed) || 1, payload.lossId || '', sectorId, 'player-rescue');
+    const angle = (h / 0x100000000) * Math.PI * 2;
+    const radius = 360;
+    const pos = {
+      x: pod.pos.x + Math.cos(angle) * radius,
+      z: pod.pos.z + Math.sin(angle) * radius,
+    };
+    const spec = makeShipEntitySpec(factionHullFor(def.ship, factionId, () => 0.5), {
+      team: def.team,
+      factionId,
+      pos,
+      ai: { archetype: def.archetype, passive: true, spawnContext: 'convoy_civilian' },
+    });
+    const entity = this.helpers.spawnEntity(spec);
+    if (!entity) return null;
+    const seq = 900 + ((this.state.traffic.freighters || []).length | 0);
+    this._stampTrafficDurableIdentity(entity, sectorId, 'rescue', def, seq);
+    entity.flags = Object.assign({}, entity.flags, { persistent: true });
+    entity.data.playerRescueLossId = payload.lossId || null;
+    const target = stations[0];
+    const manifest = this._assignManifest(entity, 'rescue', target, sectorId);
+    const rec = {
+      id: entity.id,
+      role: 'rescue',
+      targetId: target.id,
+      waitT: 0,
+      nextTradeT: 0,
+      orbitPhase: angle,
+      dockSeq: 0,
+      manifest,
+      playerRescueLossId: payload.lossId || null,
+    };
+    this._active.push(entity.id);
+    this.state.traffic.freighters.push(rec);
+    return entity;
   },
 
   _onSurvivorPodResolved(payload) {

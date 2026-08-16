@@ -353,3 +353,345 @@ export function buildDefeatReceipt(state, playerEntity, killerId, lethal = {}) {
     recovery,
   };
 }
+
+export const PLAYER_RESCUE_CALL_FEE_CR = 350;
+export const LIKED_FACTION_RESCUE_REP = 100;
+export const LIKED_RESCUE_DELAY_S = 14;
+
+function clonePlain(value) {
+  return value == null ? value : JSON.parse(JSON.stringify(value));
+}
+
+function registryOwner(registry, name) {
+  return registry && typeof registry.get === 'function' ? registry.get(name) : null;
+}
+
+function currentSectorFactionId(state) {
+  const sectorId = state && state.world && state.world.currentSectorId;
+  const active = state && state.world && (state.world.currentSector || state.world.activeSector);
+  if (active && active.factionId) return active.factionId;
+  const sector = SECTORS.find((candidate) => candidate.id === sectorId);
+  return sector && sector.factionId || null;
+}
+
+export function likedFactionRescueQuote(state) {
+  const factionId = currentSectorFactionId(state);
+  const rec = factionId && state && state.factions && state.factions[factionId];
+  const rep = Number(rec && rec.rep) || 0;
+  return {
+    available: !!factionId && rep >= LIKED_FACTION_RESCUE_REP,
+    factionId,
+    rep,
+    requiredRep: LIKED_FACTION_RESCUE_REP,
+    delayS: LIKED_RESCUE_DELAY_S,
+  };
+}
+
+export function isPhysicalDefeatReceipt(receipt) {
+  return !!(receipt && receipt.loss && receipt.loss.schemaVersion === 1 && receipt.loss.lossId);
+}
+
+/**
+ * Runtime sequence coordinator installed by combat. It deliberately discovers the registered
+ * owners at the commit edges instead of importing their implementations: ships owns hulls,
+ * cargo owns the hold, survivorPod owns the player body, aftermathWrecks owns the hulk, and
+ * traffic owns the responding NPC. A missing owner fails closed into combat's legacy recovery
+ * rather than leaving half a loss in the world.
+ */
+export class PlayerDefeatCoordinator {
+  constructor(ctx, adapters = {}) {
+    this.state = ctx && ctx.state;
+    this.bus = ctx && ctx.bus;
+    this.registry = ctx && ctx.registry;
+    this.restorePlayerAtRecoveryDock = adapters.restorePlayerAtRecoveryDock || null;
+    this.onSequenceCleared = adapters.onSequenceCleared || null;
+  }
+
+  _owner(name) {
+    return registryOwner(this.registry, name);
+  }
+
+  activeReceipt() {
+    const combatReceipt = this.state && this.state.combat && this.state.combat.lastPlayerDefeat;
+    const savedReceipt = this.state && this.state.player && this.state.player.activePhysicalDefeatReceipt;
+    const receipt = isPhysicalDefeatReceipt(combatReceipt)
+      ? combatReceipt
+      : isPhysicalDefeatReceipt(savedReceipt) ? savedReceipt : null;
+    // Combat's runtime serializer intentionally persists only kernel state. Keep the one physical
+    // receipt on the already-saved player record and mirror it into combat for the existing UI.
+    if (receipt && this.state.combat && this.state.combat.lastPlayerDefeat !== receipt) {
+      this.state.combat.lastPlayerDefeat = receipt;
+    }
+    return receipt;
+  }
+
+  clear() {
+    if (this.state && this.state.combat) this.state.combat.lastPlayerDefeat = null;
+    if (this.state && this.state.player) delete this.state.player.activePhysicalDefeatReceipt;
+  }
+
+  tryBegin(playerEntity, receipt) {
+    if (!playerEntity || !receipt || this.activeReceipt()) return { ok: false, reason: 'already_active' };
+    const ships = this._owner('ships');
+    const cargo = this._owner('cargo');
+    const aftermath = this._owner('aftermathWrecks');
+    const survivor = this._owner('survivorPod');
+    if (!ships || typeof ships.capturePlayerLoss !== 'function'
+      || !cargo || typeof cargo.removeCargo !== 'function' || typeof cargo.addCargo !== 'function'
+      || !aftermath || typeof aftermath.recordPlayerLoss !== 'function'
+      || !survivor || typeof survivor.convertPlayerToPod !== 'function') {
+      return { ok: false, reason: 'physical_owner_unavailable' };
+    }
+
+    const seed = this.state && this.state.meta && this.state.meta.seed || 1;
+    const lossId = `player_loss_${(seed >>> 0).toString(36)}_${Math.max(0, receipt.tick | 0).toString(36)}`;
+    const shipSnapshot = ships.capturePlayerLoss(lossId);
+    if (!shipSnapshot) return { ok: false, reason: 'ship_snapshot_unavailable' };
+
+    const cargoManifest = [];
+    const items = this.state && this.state.player && this.state.player.cargo
+      && this.state.player.cargo.items || {};
+    for (const commodityId of Object.keys(items).sort()) {
+      const removed = cargo.removeCargo(commodityId, Math.max(0, Math.floor(Number(items[commodityId]) || 0)));
+      if (removed > 0) cargoManifest.push({ commodityId, qty: removed });
+    }
+
+    const liked = likedFactionRescueQuote(this.state);
+    const marker = aftermath.recordPlayerLoss({
+      lossId,
+      receipt,
+      shipSnapshot,
+      cargoManifest,
+    });
+    if (!marker) {
+      for (const row of cargoManifest) cargo.addCargo(row.commodityId, row.qty, { sourceKind: 'player_loss_rollback' });
+      return { ok: false, reason: 'wreck_unavailable' };
+    }
+
+    const loss = {
+      schemaVersion: 1,
+      lossId,
+      phase: 'pod_drift',
+      podEntityId: playerEntity.id,
+      wreckMarkerId: marker.markerId,
+      wreckEntityId: marker.liveEntityId == null ? null : marker.liveEntityId,
+      cargoCustodyQty: cargoManifest.reduce((sum, row) => sum + row.qty, 0),
+      rescueCallFeeCr: PLAYER_RESCUE_CALL_FEE_CR,
+      likedRescueAvailable: liked.available,
+      likedFactionId: liked.factionId,
+      likedFactionRep: liked.rep,
+      likedRescueDelayS: liked.delayS,
+      startedAt: Number(this.state.simTime) || 0,
+    };
+    receipt.loss = loss;
+    receipt.recovery = {
+      ...(receipt.recovery || {}),
+      cargoLosses: [],
+      cargoLostQty: 0,
+      hulkCargoQty: loss.cargoCustodyQty,
+      insuranceStatus: (this.state.player && this.state.player.insurance
+        && this.state.player.insurance.insuredModules)
+        ? 'FULL LEGACY COVER · HULL + FIT PRESERVED'
+        : 'NO ACTIVE POLICY · STARTER LOANER ON RESCUE',
+    };
+    const pod = survivor.convertPlayerToPod(playerEntity, { lossId, receipt });
+    if (!pod) {
+      if (typeof aftermath.cancelPlayerLoss === 'function') aftermath.cancelPlayerLoss(marker.markerId, 'pod_unavailable');
+      for (const row of cargoManifest) cargo.addCargo(row.commodityId, row.qty, { sourceKind: 'player_loss_rollback' });
+      delete receipt.loss;
+      return { ok: false, reason: 'pod_unavailable' };
+    }
+
+    this.state.combat.lastPlayerDefeat = receipt;
+    this.state.player.activePhysicalDefeatReceipt = receipt;
+    this.bus.emit('player:death', { ...receipt, recoverable: true, physicalLoss: true });
+    this.bus.emit('aceMemory:playerKilled', {
+      killerId: receipt.killerId,
+      lossId,
+      t: Number(this.state.simTime) || 0,
+      sectorId: this.state.world && this.state.world.currentSectorId || null,
+    });
+    this.bus.emit('camera:shake', { amount: 0.9 });
+    this.bus.emit('game:over', { reason: 'ship_destroyed', recoverable: true, physicalLoss: true, receipt });
+    return { ok: true, receipt, marker, pod };
+  }
+
+  requestRescue(payload = {}) {
+    const receipt = this.activeReceipt();
+    const loss = receipt && receipt.loss;
+    if (!loss || !['pod_drift', 'rescue_wait'].includes(loss.phase)) {
+      return this._fail('no_pending_defeat');
+    }
+    const mode = payload.mode === 'wait' ? 'wait' : 'paid';
+    if (mode === 'wait') {
+      const liked = likedFactionRescueQuote(this.state);
+      if (!liked.available) return this._fail('liked_rescue_unavailable');
+      loss.phase = 'rescue_wait';
+      loss.rescueMode = 'liked_faction';
+      loss.rescueFactionId = liked.factionId;
+      loss.rescueDueAt = (Number(this.state.simTime) || 0) + liked.delayS;
+      this.bus.emit('playerDefeat:rescueWaiting', clonePlain(loss));
+      return { ok: true, waiting: true, dueAt: loss.rescueDueAt };
+    }
+
+    const fee = Math.max(0, Math.round(Number(loss.rescueCallFeeCr) || PLAYER_RESCUE_CALL_FEE_CR));
+    if (Math.max(0, Number(this.state.player && this.state.player.credits) || 0) < fee) {
+      return this._fail('rescue_fee_unavailable');
+    }
+    return this._authorizeRescue(receipt, { mode: 'paid', feeCr: fee, factionId: null });
+  }
+
+  update() {
+    const receipt = this.activeReceipt();
+    const loss = receipt && receipt.loss;
+    if (!loss || loss.phase !== 'rescue_wait') return;
+    if ((Number(this.state.simTime) || 0) < Number(loss.rescueDueAt || Infinity)) return;
+    this._authorizeRescue(receipt, {
+      mode: 'liked_faction',
+      feeCr: 0,
+      factionId: loss.rescueFactionId || loss.likedFactionId || null,
+    });
+  }
+
+  _authorizeRescue(receipt, { mode, feeCr, factionId }) {
+    const loss = receipt.loss;
+    const request = {
+      lossId: loss.lossId,
+      podEntityId: loss.podEntityId,
+      sectorId: this.state.world && this.state.world.currentSectorId || null,
+      mode,
+      factionId,
+      result: null,
+    };
+    this.bus.emit('playerDefeat:rescueAuthorized', request);
+    if (!request.result || request.result.ok !== true) {
+      loss.phase = 'pod_drift';
+      loss.rescueFailure = request.result && request.result.reason || 'responder_unavailable';
+      return this._fail(loss.rescueFailure);
+    }
+    if (feeCr > 0) this.bus.emit('economy:chargeCredits', { amount: feeCr, reason: 'player_loss:rescue_call' });
+    loss.phase = 'rescue_inbound';
+    loss.rescueMode = mode;
+    loss.responderId = request.result.responderId;
+    loss.rescueAuthorizedAt = Number(this.state.simTime) || 0;
+    this.bus.emit('playerDefeat:rescueInbound', clonePlain(loss));
+    return { ok: true, responderId: loss.responderId, feeCr };
+  }
+
+  podRescued(payload = {}) {
+    const receipt = this.activeReceipt();
+    const loss = receipt && receipt.loss;
+    if (!loss || loss.phase !== 'rescue_inbound' || payload.lossId !== loss.lossId
+      || payload.entityId !== loss.podEntityId) return false;
+    const ships = this._owner('ships');
+    const aftermath = this._owner('aftermathWrecks');
+    const playerEntity = this.state.entities && this.state.entities.get
+      ? this.state.entities.get(this.state.playerId) : null;
+    if (!ships || typeof ships.applyPlayerLossRefit !== 'function' || !playerEntity
+      || typeof this.restorePlayerAtRecoveryDock !== 'function') return false;
+
+    const playerLoss = aftermath && typeof aftermath.playerLossForMarker === 'function'
+      ? aftermath.playerLossForMarker(loss.wreckMarkerId) : null;
+    const tier = this.state.player && this.state.player.insurance
+      && this.state.player.insurance.insuredModules ? 'full' : 'loaner';
+    const refit = ships.applyPlayerLossRefit({
+      lossId: loss.lossId,
+      tier,
+      shipSnapshot: playerLoss && playerLoss.shipSnapshot,
+    });
+    if (!refit || refit.ok !== true) return false;
+    this.restorePlayerAtRecoveryDock(playerEntity, receipt.recovery || buildRecoveryPlan(this.state, playerEntity));
+    loss.phase = 'rescued';
+    loss.rescuedAt = Number(this.state.simTime) || 0;
+    loss.recoveryTier = tier;
+    if (aftermath && typeof aftermath.offerPlayerRecoveryTow === 'function') {
+      aftermath.offerPlayerRecoveryTow(loss.wreckMarkerId, {
+        stationId: receipt.recovery && receipt.recovery.stationId || null,
+      });
+    }
+    this.clear();
+    if (typeof this.onSequenceCleared === 'function') this.onSequenceCleared();
+    this.bus.emit('player:respawn', {
+      stationId: receipt.recovery && receipt.recovery.stationId || null,
+      stationName: receipt.recovery && receipt.recovery.stationName || null,
+      shipId: refit.shipId,
+      lossId: loss.lossId,
+      recoveryTier: tier,
+      physicalRescue: true,
+      responderId: payload.rescueHullId || loss.responderId || null,
+    });
+    this.bus.emit('camera:shake', { amount: 0.35 });
+    return true;
+  }
+
+  wreckDelivered(payload = {}) {
+    if (!payload.lossId || !payload.shipSnapshot || !Array.isArray(payload.cargoManifest)) {
+      payload.result = { ok: false, reason: 'invalid_delivery_receipt' };
+      return false;
+    }
+    const ships = this._owner('ships');
+    const cargo = this._owner('cargo');
+    const aftermath = this._owner('aftermathWrecks');
+    if (!ships || typeof ships.recoverPlayerLoss !== 'function'
+      || !cargo || typeof cargo.addCargo !== 'function'
+      || !aftermath || typeof aftermath.consumePlayerTowDelivery !== 'function') {
+      payload.result = { ok: false, reason: 'recovery_owner_unavailable' };
+      return false;
+    }
+    if (!aftermath.consumePlayerTowDelivery(payload)) {
+      payload.result = { ok: false, reason: 'delivery_not_physical' };
+      return false;
+    }
+    const hull = ships.recoverPlayerLoss({ lossId: payload.lossId, shipSnapshot: payload.shipSnapshot });
+    if (!hull || hull.ok !== true) return false;
+    const remaining = [];
+    for (const row of payload.cargoManifest) {
+      const qty = Math.max(0, Math.floor(Number(row && row.qty) || 0));
+      if (!(qty > 0) || !row.commodityId) continue;
+      const accepted = cargo.addCargo(row.commodityId, qty, { sourceKind: 'recovered_player_hulk', lossId: payload.lossId });
+      if (accepted < qty) remaining.push({ commodityId: row.commodityId, qty: qty - accepted });
+    }
+    payload.remainingCargoManifest = remaining;
+    payload.result = remaining.length
+      ? { ok: false, reason: 'cargo_capacity', recoveredHull: true }
+      : { ok: true, recoveredHull: true, shipId: hull.shipId };
+    return payload.result.ok;
+  }
+
+  rearmAfterLoad() {
+    const receipt = this.activeReceipt();
+    const loss = receipt && receipt.loss;
+    const player = this.state && this.state.entities && this.state.entities.get
+      ? this.state.entities.get(this.state.playerId) : null;
+    const stamp = player && player.data && player.data.survivorPodCausal;
+    if (!loss || !player || player.type !== 'payload' || !stamp
+      || stamp.playerOccupied !== true || stamp.lossId !== loss.lossId) return false;
+    // Entity ids are intentionally fresh across Continue; the receipt follows the canonical player
+    // body and adopts its restored id instead of duplicating or searching for a second pod.
+    loss.podEntityId = player.id;
+    stamp.entityId = player.id;
+    stamp.victimId = player.id;
+    player.data.ownerId = player.id;
+    player.data.sourceVictimId = player.id;
+    player.data.ownership = { ownerId: player.id, factionId: 'player' };
+    this.state.player.activePhysicalDefeatReceipt = receipt;
+    this.state.combat.lastPlayerDefeat = receipt;
+    return true;
+  }
+
+  _fail(reason) {
+    const messages = {
+      no_pending_defeat: 'No active survival-pod recovery is available.',
+      liked_rescue_unavailable: 'No friendly local patrol owes you a pickup.',
+      rescue_fee_unavailable: `Rescue dispatch requires ${PLAYER_RESCUE_CALL_FEE_CR} cr.`,
+      responder_unavailable: 'No rescue hull can reach this pod yet.',
+    };
+    this.bus.emit('toast', { text: messages[reason] || messages.responder_unavailable, kind: 'error', ttl: 4 });
+    this.bus.emit('player:recoveryFailed', { reason });
+    return { ok: false, reason };
+  }
+}
+
+export function createPlayerDefeatCoordinator(ctx, adapters) {
+  return new PlayerDefeatCoordinator(ctx, adapters);
+}

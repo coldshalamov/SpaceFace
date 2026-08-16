@@ -22,7 +22,12 @@ import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { combatFlag } from '../data/featureFlags.js';
 import { weakPointForEntity, isHitInWeakArc } from '../data/weakPoints.js';
 import { heavyPartRecipeForEnemy } from '../data/heavyFamily.js';
-import { buildDefeatReceipt, buildRecoveryPlan } from '../combat/playerDefeat.js';
+import {
+  buildDefeatReceipt,
+  buildRecoveryPlan,
+  createPlayerDefeatCoordinator,
+  isPhysicalDefeatReceipt,
+} from '../combat/playerDefeat.js';
 import { normalizeActivity, normalizeRoe, roeForActivity } from '../ai/doctrine.js';
 import {
   CombatDoctrineId,
@@ -529,6 +534,13 @@ export const combat = {
       bus: this.bus,
       helpers: this.helpers,
     });
+    this._playerDefeat = createPlayerDefeatCoordinator(ctx, {
+      restorePlayerAtRecoveryDock: (player, plan) => this.restorePlayerAtRecoveryDock(player, plan),
+      onSequenceCleared: () => {
+        this._pendingPlayerRecovery = null;
+        this._recoveryInFlight = false;
+      },
+    });
     ctx.bus.on('projectile:hit', (p) => this.onHit(p));
     ctx.bus.on('tether:whipImpact', (p) => this.onWhipImpact(p || {}));
     ctx.bus.on('dock:docked', (p) => {
@@ -537,14 +549,25 @@ export const combat = {
     });
     ctx.bus.on('dock:undocked', () => this.setPlayerDocked(false));
     ctx.bus.on('player:recoveryRequested', (payload) => this.recoverPendingPlayer(payload || {}));
+    ctx.bus.on('player:rescueRequested', (payload) => this._playerDefeat.requestRescue(payload || {}));
+    ctx.bus.on('playerDefeat:podRescued', (payload) => this._playerDefeat.podRescued(payload || {}));
+    ctx.bus.on('playerDefeat:wreckDelivered', (payload) => this._playerDefeat.wreckDelivered(payload || {}));
     const clearPendingDefeat = () => {
       this._pendingPlayerRecovery = null;
       this._recoveryInFlight = false;
-      if (this.state.combat) this.state.combat.lastPlayerDefeat = null;
+      if (this._playerDefeat) this._playerDefeat.clear();
+      else if (this.state.combat) this.state.combat.lastPlayerDefeat = null;
       this._heavyCookOff?.reset();
     };
     ctx.bus.on('game:started', clearPendingDefeat);
-    ctx.bus.on('save:loaded', clearPendingDefeat);
+    ctx.bus.on('save:loaded', () => {
+      this._pendingPlayerRecovery = null;
+      this._recoveryInFlight = false;
+      const receipt = this._playerDefeat && this._playerDefeat.activeReceipt();
+      if (isPhysicalDefeatReceipt(receipt) && this._playerDefeat.rearmAfterLoad()) {
+        this._pendingPlayerRecovery = { playerId: this.state.playerId, receipt, physical: true };
+      }
+    });
   },
 
   // Transitional adapter: authored projectile/beam packets are routed directly; older scalar hit
@@ -734,6 +757,11 @@ export const combat = {
 
   beginPlayerDefeat(t, receipt) {
     if (!t || this._pendingPlayerRecovery) return false;
+    const physical = this._playerDefeat && this._playerDefeat.tryBegin(t, receipt);
+    if (physical && physical.ok) {
+      this._pendingPlayerRecovery = { playerId: t.id, receipt, physical: true };
+      return true;
+    }
     t.alive = false;
     t.flags = t.flags || {};
     t.flags.defeated = true;
@@ -794,6 +822,12 @@ export const combat = {
     if (!pending) {
       this.notifyRecoveryFailure('no_pending_defeat');
       return { ok: false, reason: 'no_pending_defeat' };
+    }
+    if (pending.physical || isPhysicalDefeatReceipt(pending.receipt)) {
+      return this._playerDefeat.requestRescue({
+        ...payload,
+        mode: payload.mode === 'wait' ? 'wait' : 'paid',
+      });
     }
     const player = this.state.entities && typeof this.state.entities.get === 'function'
       ? (this.state.entities.get(pending.playerId) || this.state.entities.get(this.state.playerId))
@@ -1010,6 +1044,7 @@ export const combat = {
   update(dt, state) {
     ensureCombatRuntime(this);
     resetCombatDiagnostics(this._diag);
+    this._playerDefeat?.update(dt, state);
     this._heavyCookOff?.update(dt);
     const ships = (state.entityIndex && state.entityIndex.ships) || state.entityList;
     for (const e of ships) {
