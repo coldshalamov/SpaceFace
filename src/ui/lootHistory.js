@@ -2,6 +2,10 @@
 // Pure UI/readout owner: listens to finalized cargo pickup receipts and keeps a bounded
 // session-local list. It does not own cargo, credits, world pickups, or save data.
 import { COMMODITIES } from '../data/commodities.js';
+import {
+  presentEquippedItemComparison,
+  resolveModuleDef,
+} from './presenters/engineeringPreview.js';
 
 export const LOOT_HISTORY_LIMIT = 12;
 
@@ -14,7 +18,10 @@ function finiteQty(value) {
 }
 
 function displayNameFor(payload = {}) {
-  if (payload.kind === 'module') return String(payload.commodityId || 'Module');
+  if (payload.kind === 'module') {
+    const def = resolveModuleDef(payload.commodityId);
+    return def && def.name ? def.name : String(payload.commodityId || 'Module');
+  }
   const def = COMMODITY_BY_ID.get(payload.commodityId);
   return def && def.name ? def.name : String(payload.commodityId || 'Cargo');
 }
@@ -33,12 +40,18 @@ export function normalizeLootHistoryEntry(payload = {}, state = null) {
   return {
     id: `${kind}:${payload.commodityId || 'unknown'}:${simTime.toFixed(3)}:${qty}`,
     kind,
+    moduleId: kind === 'module' ? String(payload.commodityId || '') : null,
     qty,
     name,
     label: kind === 'module' ? `Module acquired · ${name}` : `+${qty} ${name}`,
     detail: kind === 'module' ? `${qty} module${qty === 1 ? '' : 's'} in inventory` : 'Cargo hold',
     simTime,
   };
+}
+
+export function lootItemComparison(entry, state) {
+  if (!entry || entry.kind !== 'module' || !entry.moduleId) return null;
+  return presentEquippedItemComparison({ player: state && state.player, moduleId: entry.moduleId });
 }
 
 export function appendLootHistoryEntry(entries, entry, limit = LOOT_HISTORY_LIMIT) {
@@ -128,12 +141,24 @@ export function createLootHistory(ctx, options = {}) {
     for (const entry of entries) {
       const row = documentRef.createElement('div');
       row.className = `sf-loot-history__row sf-loot-history__row--${entry.kind}`;
+      const comparison = lootItemComparison(entry, state);
       const label = documentRef.createElement('span');
       label.className = 'sf-loot-history__label';
       label.textContent = entry.label;
       const detail = documentRef.createElement('span');
       detail.className = 'sf-loot-history__detail';
-      detail.textContent = entry.detail;
+      const deltas = comparison && comparison.ok
+        ? (comparison.chips || []).map((chip) => chip.label).filter(Boolean).slice(0, 2).join(' · ')
+        : '';
+      detail.textContent = deltas || entry.detail;
+      if (comparison) {
+        const comparisonText = comparison.ok
+          ? `${comparison.feel}${deltas ? ` ${deltas}.` : ''}`
+          : comparison.detail;
+        row.tabIndex = 0;
+        row.title = comparisonText;
+        row.setAttribute('aria-label', `${entry.label}. ${comparisonText}`);
+      }
       row.append(label, detail);
       frag.appendChild(row);
     }

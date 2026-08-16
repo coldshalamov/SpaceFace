@@ -479,6 +479,76 @@ export function formatPreviewDelta(row) {
   return shown + ' ' + String(row.label || row.key).toLowerCase();
 }
 
+const CAPABILITY_METRICS = Object.freeze([
+  Object.freeze({ key: 'weaponDps', field: 'dps', label: 'DPS', higherIsBetter: true }),
+  Object.freeze({ key: 'weaponRange', field: 'range', label: 'Range', higherIsBetter: true }),
+]);
+
+function capabilityRows(candidate, fitted) {
+  if (!candidate || (candidate.slotType !== 'weapon' && candidate.slotType !== 'mining')) return [];
+  const rows = CAPABILITY_METRICS.map((metric) => capabilityDeltaRow(metric, candidate, fitted)).filter(Boolean);
+  const heatField = candidate.heatPerSec != null ? 'heatPerSec'
+    : candidate.heatPerShot != null ? 'heatPerShot' : null;
+  if (heatField) {
+    const heat = capabilityDeltaRow({
+      key: heatField === 'heatPerSec' ? 'weaponHeatPerSec' : 'weaponHeatPerShot',
+      field: heatField,
+      label: heatField === 'heatPerSec' ? 'Heat/sec' : 'Heat/shot',
+      higherIsBetter: false,
+    }, candidate, fitted && fitted[heatField] != null ? fitted : null);
+    if (heat) rows.push(heat);
+  }
+  return rows;
+}
+
+function capabilityDeltaRow(metric, candidate, fitted) {
+  const after = Number(candidate && candidate[metric.field]);
+  if (!Number.isFinite(after)) return null;
+  const before = Number.isFinite(Number(fitted && fitted[metric.field])) ? Number(fitted[metric.field]) : 0;
+  const delta = after - before;
+  if (Math.abs(delta) < 0.05) return null;
+  const improved = metric.higherIsBetter ? delta > 0 : delta < 0;
+  return Object.freeze({
+    key: metric.key,
+    label: metric.label,
+    before,
+    after,
+    delta,
+    tone: improved ? 'better' : 'worse',
+    higherIsBetter: metric.higherIsBetter,
+  });
+}
+
+const FEEL_COPY = Object.freeze({
+  weaponDps: Object.freeze({ better: 'harder-hitting fire', worse: 'lighter fire' }),
+  weaponRange: Object.freeze({ better: 'longer reach', worse: 'shorter reach' }),
+  weaponHeatPerSec: Object.freeze({ better: 'cooler sustained fire', worse: 'hotter sustained fire' }),
+  weaponHeatPerShot: Object.freeze({ better: 'cooler shots', worse: 'hotter shots' }),
+  shieldMax: Object.freeze({ better: 'more shield', worse: 'less shield' }),
+  cargoCap: Object.freeze({ better: 'more cargo room', worse: 'less cargo room' }),
+  maxSpeed: Object.freeze({ better: 'higher top speed', worse: 'lower top speed' }),
+  turnRate: Object.freeze({ better: 'quicker turn-in', worse: 'slower turn-in' }),
+  thrust: Object.freeze({ better: 'stronger acceleration', worse: 'weaker acceleration' }),
+  operationalMass: Object.freeze({ better: 'lighter handling', worse: 'heavier handling' }),
+  continuousDrain: Object.freeze({ better: 'less sustained power draw', worse: 'more sustained power draw' }),
+});
+
+function comparisonFeel(rows, fittedName) {
+  const changed = rows.filter((row) => row && row.tone !== 'same');
+  const better = changed.filter((row) => row.tone === 'better')
+    .map((row) => FEEL_COPY[row.key] && FEEL_COPY[row.key].better || String(row.label || row.key).toLowerCase());
+  const worse = changed.filter((row) => row.tone === 'worse')
+    .map((row) => FEEL_COPY[row.key] && FEEL_COPY[row.key].worse || String(row.label || row.key).toLowerCase());
+  const basis = fittedName ? `Against fitted ${fittedName}` : 'On the open hardpoint';
+  if (!better.length && !worse.length) return `${basis}: no measurable fitted-stat change.`;
+  const clauses = [];
+  if (better.length) clauses.push(better.slice(0, 2).join(' and '));
+  if (worse.length) clauses.push(better.length
+    ? `trades for ${worse.slice(0, 2).join(' and ')}`
+    : worse.slice(0, 2).join(' and '));
+  return `${basis}: ${clauses.join('; ')}.`;
+}
+
 /**
  * Shop-row packet: derived deltas when fittable/swappable, else honest unavailable reason.
  */
@@ -502,9 +572,15 @@ export function presentShopModuleDelta(opts = {}) {
       slotIndex: preview.slotIndex,
       rows: Object.freeze([]),
       chips: Object.freeze([]),
+      feel: preview.detail,
     });
   }
-  const changed = (preview.changedRows || preview.rows.filter((r) => r.tone !== 'same')).slice(0, 4);
+  const fittedModuleId = preview.beforeFittings && preview.slotIndex >= 0
+    ? preview.beforeFittings[preview.slotIndex] : null;
+  const fittedModule = resolveModuleDef(fittedModuleId);
+  const directRows = capabilityRows(resolveModuleDef(preview.moduleId), fittedModule);
+  const derivedRows = preview.changedRows || preview.rows.filter((r) => r.tone !== 'same');
+  const changed = [...directRows, ...derivedRows].slice(0, 4);
   const chips = changed.map((row) => Object.freeze({
     label: formatPreviewDelta(row),
     tone: row.tone,
@@ -517,10 +593,36 @@ export function presentShopModuleDelta(opts = {}) {
     mode: preview.mode,
     moduleId: preview.moduleId,
     moduleName: preview.moduleName,
+    fittedModuleId: fittedModuleId || null,
+    fittedModuleName: fittedModule && fittedModule.name || null,
     slotIndex: preview.slotIndex,
     rows: preview.rows,
+    capabilityRows: Object.freeze(directRows),
     chips: Object.freeze(chips),
     gauges: preview.gauges,
+    feel: comparisonFeel(changed, fittedModule && fittedModule.name),
+  });
+}
+
+/**
+ * Compare a catalog or collected item with the active owned ship's fitted item. Shop, loot,
+ * pause-inventory and future inspection surfaces call this instead of reconstructing ship math.
+ */
+export function presentEquippedItemComparison(opts = {}) {
+  const player = opts.player || null;
+  const owned = activeOwnedShip(player);
+  if (!owned || !owned.defId) {
+    const unavailable = unavailableReason('missing_ship');
+    return Object.freeze({ ...unavailable, chips: Object.freeze([]), feel: unavailable.detail });
+  }
+  return presentShopModuleDelta({
+    defId: owned.defId,
+    fittings: owned.fittings || [],
+    moduleId: opts.moduleId,
+    slotIndex: opts.slotIndex,
+    player,
+    allowReplace: opts.allowReplace !== false,
+    metricKeys: opts.metricKeys,
   });
 }
 

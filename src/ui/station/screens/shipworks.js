@@ -881,33 +881,10 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     }).join('');
   }
 
-  function capabilityDeltaChips(candidate, fitted) {
-    if (!candidate || (candidate.slotType !== 'weapon' && candidate.slotType !== 'mining')) return [];
-    const rows = [];
-    const add = (label, candidateValue, fittedValue, higherIsBetter = true) => {
-      const after = Number(candidateValue);
-      if (!Number.isFinite(after)) return;
-      const before = Number.isFinite(Number(fittedValue)) ? Number(fittedValue) : 0;
-      const delta = after - before;
-      if (Math.abs(delta) < .05) return;
-      const shown = Math.abs(delta) >= 100 ? Math.round(delta) : Math.round(delta * 10) / 10;
-      rows.push({
-        label: `${shown > 0 ? '+' : ''}${shown} ${label}`,
-        tone: (higherIsBetter ? delta > 0 : delta < 0) ? 'better' : 'worse',
-      });
-    };
-    add(candidate.slotType === 'mining' ? 'ore dps' : 'dps', candidate.dps, fitted && fitted.dps);
-    add('range', candidate.range, fitted && fitted.range);
-    const candidateHeat = candidate.heatPerSec != null ? candidate.heatPerSec : candidate.heatPerShot;
-    const fittedHeat = fitted && (fitted.heatPerSec != null ? fitted.heatPerSec : fitted.heatPerShot);
-    add(candidate.heatPerSec != null ? 'heat/s' : 'heat/shot', candidateHeat, fittedHeat, false);
-    return rows;
-  }
-
-  function shopDeltaChipsHtml(shopDelta, candidate, fitted) {
+  function shopDeltaChipsHtml(shopDelta) {
     if (!shopDelta) return '<span class="sx-modrow__unchanged">Preview unavailable</span>';
     if (shopDelta.ok) {
-      const all = [...capabilityDeltaChips(candidate, fitted), ...(shopDelta.chips || [])];
+      const all = shopDelta.chips || [];
       if (!all.length) return '<span class="sx-modrow__unchanged">Current fit · no ship-level change</span>';
       return all.slice(0, 4).map((chip) => {
         const label = chip.label || formatPreviewDelta(chip);
@@ -978,8 +955,10 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         slotIndex,
         player: ctx.state.player,
       });
-      const fittedDef = fittedId ? FITTABLE_BY_ID.get(fittedId) : null;
-      const chips = shopDeltaChipsHtml(shopDelta, d, fittedDef);
+      const chips = shopDeltaChipsHtml(shopDelta);
+      const comparisonText = shopDelta && shopDelta.ok
+        ? [shopDelta.feel, ...(shopDelta.chips || []).map((chip) => chip.label)].filter(Boolean).join(' · ')
+        : shopDelta && shopDelta.detail || 'Fitted comparison unavailable.';
       const metaFallback = escapeHtml(d.size || '') + ' · T' + d.tier;
       const btn = equipped
         ? `<span class="sx-modrow__eq">Equipped</span>`
@@ -989,7 +968,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
           ? `<span class="sx-modrow__lock">${icon('info', 13)} Tech locked</span>`
           : `<button type="button" class="sx-modrow__buy" data-buyfit="${escapeHtml(d.id)}" data-slot="${slotIndex}" ${afford && availability.outfitEnabled ? '' : `disabled aria-label="${escapeHtml(availability.outfitEnabled ? `${fmt(d.price)} credits, ${fmt(Math.max(0, (d.price || 0) - credits))} credits short` : availability.outfitLabel)}"`}>${availability.outfitEnabled ? (d.price > 0 ? (afford ? 'Buy · ' + fmt(d.price) : `<span>${fmt(d.price)} cr</span><small>${fmt(Math.max(0, d.price - credits))} short</small>`) : 'Fit') : 'Dock to fit'}</button>`;
       return (
-        `<div class="sx-modrow${equipped ? ' is-eq' : ''}${locked || headConflict ? ' is-locked' : ''}" ${headConflict ? '' : `data-preview-module="${escapeHtml(d.id)}" data-preview-slot="${slotIndex}"`} tabindex="0">` +
+        `<div class="sx-modrow${equipped ? ' is-eq' : ''}${locked || headConflict ? ' is-locked' : ''}" ${headConflict ? '' : `data-preview-module="${escapeHtml(d.id)}" data-preview-slot="${slotIndex}"`} tabindex="0" title="${escapeHtml(comparisonText)}" aria-label="${escapeHtml(`${d.name}. ${comparisonText}`)}">` +
           `<span class="sx-modrow__ic">${icon(SLOT_ICON[slot.type] || 'spark', 18)}</span>` +
           `<span class="sx-modrow__body"><span class="sx-modrow__name">${escapeHtml(d.name)}</span>` +
             `<span class="sx-modrow__role">${escapeHtml(moduleRole(d))} · ${metaFallback}</span>` +

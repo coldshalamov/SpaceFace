@@ -23,6 +23,7 @@ import {
   factionLicensedFitOffersForState,
 } from '../../../systems/factions.js';
 import { playerSpoofStatusForState } from '../../../systems/pirateDisguise.js';
+import { presentEquippedItemComparison } from '../../presenters/engineeringPreview.js';
 
 // Standing colour ramp — meaningful, ordered crimson→gold. Index-aligned to FACTION_TIERS
 // (9 tiers, Sworn Enemy … Hero). This is the STANDING colour (how they feel about you).
@@ -104,6 +105,18 @@ function nextTierInfo(rep) {
 function signed(value) {
   const n = Math.round(Number(value) || 0);
   return `${n > 0 ? '+' : ''}${n}`;
+}
+
+export function factionLicensedFitComparison(offer, state) {
+  if (!offer || !offer.defId) return null;
+  return presentEquippedItemComparison({ player: state && state.player, moduleId: offer.defId });
+}
+
+function licensedFitComparisonHtml(packet) {
+  if (!packet) return '';
+  if (!packet.ok) return `<em>${escapeHtml(packet.detail || 'Fitted comparison unavailable.')}</em>`;
+  const deltas = (packet.chips || []).map((chip) => chip.label).filter(Boolean).join(' · ');
+  return `<em>${escapeHtml(packet.feel)}${deltas ? ` ${escapeHtml(deltas)}.` : ''}</em>`;
 }
 
 function liveFaction(state, id) {
@@ -302,14 +315,18 @@ export function createFactionsScreen(ctx) {
     const licensedOffers = stationFactionId === f.id
       ? factionLicensedFitOffersForState(state, f.id)
       : [];
-    const licenseRows = licensedOffers.map((offer) => (
+    const licenseRows = licensedOffers.map((offer) => {
+      const comparison = factionLicensedFitComparison(offer, state);
+      return (
       `<div class="sx-fac-intent">` +
         `<span>LICENSED FIT · ${escapeHtml(offer.name)}</span>` +
         `<b>${offer.available ? `${offer.price.toLocaleString('en-US')} credits` : `${Math.max(0, offer.minRep - offer.currentRep)} reputation needed`}</b>` +
         `<em>SCN point defence license · standing ${signed(offer.currentRep)} / ${signed(offer.minRep)}</em>` +
+        licensedFitComparisonHtml(comparison) +
         `<button type="button" class="sx-btn-primary" data-buy-faction-fit="${escapeHtml(offer.defId)}" ${offer.available && (state.player?.credits || 0) >= offer.price ? '' : 'disabled'}>BUY LICENSED FIT</button>` +
       `</div>`
-    )).join('');
+      );
+    }).join('');
     const conflictChoices = conflictChoicesForState(state).filter((choice) => choice.sideId === f.id);
     const conflictRows = conflictChoices.map((choice) => {
       const opponent = factions.find((entry) => entry.id === choice.opponentId);
