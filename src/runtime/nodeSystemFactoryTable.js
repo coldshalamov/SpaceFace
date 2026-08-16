@@ -47,6 +47,7 @@ import { impulseCharges } from '../systems/impulseCharges.js';
 import { massSeed } from '../systems/massSeed.js';
 import { fields } from '../systems/fields.js';
 import { environmentalMachinery } from '../systems/environmentalMachinery.js';
+import { anomalyRuntime } from '../systems/anomalyRuntime.js';
 import { planetRuntime } from '../systems/planetRuntime.js';
 import { massSeedHud } from '../ui/massSeedHud.js';
 import { fieldHud } from '../ui/fieldHud.js';
@@ -180,6 +181,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['uniqueLootAbilities', uniqueLootAbilities],
     ['fields', fields],
     ['environmentalMachinery', environmentalMachinery],
+    ['anomalyRuntime', anomalyRuntime],
     ['planetRuntime', planetRuntime],
     ['combat', combat],
     ['combatOutcome', combatOutcome],

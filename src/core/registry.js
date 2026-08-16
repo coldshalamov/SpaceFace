@@ -44,6 +44,7 @@ import { impulseCharges } from '../systems/impulseCharges.js';
 import { massSeed } from '../systems/massSeed.js';               // PQ-011/SF-11 deployable anchor Mass Seed
 import { fields } from '../systems/fields.js';                   // PQ-012/SF-12 continuous field kernel (Well/Repulsor/Cone)
 import { environmentalMachinery } from '../systems/environmentalMachinery.js'; // PQ-027/SF-22 timed Ceres current + World Site adapter
+import { anomalyRuntime } from '../systems/anomalyRuntime.js';   // PR95 Plan 19: physical Orcus Gravity Eddy through the shared field kernel
 import { planetRuntime } from '../systems/planetRuntime.js';     // PQ-013/SF-14 planetary site (sling/skim/harvest/reentry)
 import { massSeedHud } from '../ui/massSeedHud.js';              // PQ-011: seed status pill + lock-point marker (DOM-guarded)
 import { fieldHud } from '../ui/fieldHud.js';                    // PQ-012: field state/cooldown/denial chip (DOM-guarded)
@@ -193,6 +194,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['uniqueLootAbilities', uniqueLootAbilities],
     ['fields', fields],
     ['environmentalMachinery', environmentalMachinery],
+    ['anomalyRuntime', anomalyRuntime],
     ['planetRuntime', planetRuntime],
     ['combat', combat],
     ['combatOutcome', combatOutcome],

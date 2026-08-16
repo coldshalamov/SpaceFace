@@ -30,7 +30,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   'pirateDisengage', 'aceMemory', 'barkDirector', 'aiSlot', 'dockingCorridor', 'physics',
   'aiPorts', 'tumbleStates', 'collisionConsequences', 'aiEncounter', 'actions', 'flightSlot',
   'cruise', 'weapons', 'countermeasures', 'impulseCharges', 'mines', 'massSeed',
-  'uniqueLootAbilities', 'fields', 'environmentalMachinery', 'planetRuntime', 'combat', 'combatOutcome', 'aftermathWrecks',
+  'uniqueLootAbilities', 'fields', 'environmentalMachinery', 'anomalyRuntime', 'planetRuntime', 'combat', 'combatOutcome', 'aftermathWrecks',
   'uniqueWrecks', 'titles', 'wingMorale', 'tetherGameplay', 'surrenderRecovery', 'custodyConsequences',
   'masslineTelemetry', 'masslineThreats', 'masslineImpacts', 'masslineSnares', 'masslineThrow',
   'masslineImpactDamage', 'lootShards', 'terrainAnchors', 'jettisonImpulse', 'mining',
@@ -53,7 +53,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
 ]);
 
 /**
- * Production sim update order — matches createRegistry UPDATE_ORDER (98 entries).
+ * Production sim update order — matches createRegistry UPDATE_ORDER (101 entries).
  * Excludes pure render-phase systems; includes DOM-guarded HUD systems that no-op under Node.
  */
 export const PRODUCTION_UPDATE_ORDER = Object.freeze([
@@ -62,7 +62,7 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   'aceMemory', 'factionPresence', 'aiSlot', 'barkDirector', 'aiEncounter', 'actions',
   'beacons', 'travelLanes', 'flightSlot', 'cruise', 'aiPorts', 'tumbleStates',
   'collisionConsequences', 'weapons', 'countermeasures', 'impulseCharges', 'mines', 'massSeed',
-  'uniqueLootAbilities', 'dockingCorridor', 'environmentalMachinery', 'fields', 'planetRuntime', 'physics', 'combat',
+  'uniqueLootAbilities', 'dockingCorridor', 'environmentalMachinery', 'anomalyRuntime', 'fields', 'planetRuntime', 'physics', 'combat',
   'combatOutcome', 'aftermathWrecks', 'titles', 'wingMorale', 'tetherGameplay', 'surrenderRecovery',
   'custodyConsequences', 'masslineTelemetry', 'masslineThreats', 'masslineImpacts',
   'masslineSnares', 'masslineThrow', 'masslineImpactDamage', 'lootShards', 'terrainAnchors', 'jettisonImpulse',
