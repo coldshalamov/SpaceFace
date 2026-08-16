@@ -49,6 +49,14 @@ import {
   STORY_BRANCH_INTRO_TAG,
   SET_PIECE_MISSIONS,
 } from '../data/missions.js';
+import {
+  QUIET_DELIVERY_RECOVERY_SOURCE,
+  applyQuietDeliveryVariant,
+  isQuietDelivery,
+  isQuietDeliveryRecovery,
+  quietDeliveryRecoveryOfferId,
+  shouldRollQuietDelivery,
+} from '../data/missionVariants.js';
 import { factionMissionDoctrineMultiplier } from '../data/factionPlay.js';
 import { settleContractClauses, unsatisfiedRequiredConditions } from '../data/contractClauses.js';
 // Physics-aware contract terms (grammar §9.9.1). The catalog is data; the event half is observed by
@@ -162,6 +170,10 @@ const ALL_STATIONS = [...STATION_INFO.values()];
 
 // Commodities a player can plausibly haul for delivery / be asked to mine / smuggle.
 const LEGAL_TRADE_CMDTYS = COMMODITIES.filter((c) => c.legality === 'legal').map((c) => c.id);
+const FRAGILE_LEGAL_TRADE_CMDTYS = LEGAL_TRADE_CMDTYS.filter((id) => {
+  const commodity = CMDTY_BY_ID.get(id);
+  return isFragileCommodity(id) && Number(commodity && commodity.basePrice) <= 1000;
+});
 const MINEABLE_CMDTYS = COMMODITIES.filter((c) => (c.producedBy || []).includes('mining')).map((c) => c.id);
 const CONTRABAND_CMDTYS = COMMODITIES.filter((c) => c.legality === 'contraband' || c.legality === 'restricted').map((c) => c.id);
 const ONE_LOAD_CARGO_TYPES = new Set(['cargo_delivery', 'salvage_retrieval', 'smuggling_run']);
@@ -644,6 +656,13 @@ export const missions = {
     bus.on('salvage:completed', (p) => this._onSalvageCompleted(p));
     // bulk_haul: tethered bulk chunks delivered at refinery docks.
     bus.on('mining:bulkHaulDelivered', (p) => this._onBulkHaulDelivered(p));
+    // Quiet Delivery observes the canonical fragile-cargo receipt before the clause observer turns
+    // that same event into the one normal mission failure. The cached physical facts are used only
+    // to author its recovery offer; cargo already performed the loss write.
+    bus.on('cargo:fragileLost', (p) => this._onQuietDeliveryCargoLost(p || {}));
+    // Recovery progress is acknowledged only after jettisonImpulse has routed a real low-speed pod
+    // contact through pickup:collected and cargo has synchronously accepted the units.
+    bus.on('cargo:podRecovered', (p) => this._onQuietDeliveryPodRecovered(p || {}));
     // bounty_hunt / patrol_clear: a tagged hostile died to the player.
     bus.on('entity:killed', (p) => this._onKill(p));
     // A bounty may close without a kill only after surrenderRecovery physically transfers this
@@ -996,6 +1015,9 @@ export const missions = {
     const retainedHeistOffers = previousSlots.filter((offer) => (
       offer && offer.type === PQ019C_HEIST_TYPE
     )).slice(0, 1);
+    // A failed Quiet Delivery posts exactly one deterministic debris-recovery row. It is a physical
+    // consequence, not an epoch roll, so keep it until the player accepts it.
+    const retainedQuietDeliveryRecovery = previousSlots.filter(isQuietDeliveryRecovery);
     board = {
       refreshEpoch: epoch,
       slots: [
@@ -1011,6 +1033,7 @@ export const missions = {
         // on a fresh board and on a same-epoch cached board after story advancement. Any retained
         // row placed before the generated block pushes the intro off the head.
         ...retainedHeistOffers,
+        ...retainedQuietDeliveryRecovery,
       ],
     };
     state.missions.boards[stationId] = board;
@@ -1554,7 +1577,23 @@ export const missions = {
     const riskTier = clamp(sectorRisk, rLo, rHi);
 
     // Per-type params (quota qty, target strength, scan count, commodity, …) + cargo value.
-    const params = this._rollParams(typeId, info, dest, riskTier, rng);
+    // Mission variants draw from an independent hash, never this board RNG, so later slots remain
+    // byte-stable when an ordinary cargo offer becomes Quiet Delivery.
+    const id = `mo_${info.id}_${epoch}_${idx}`;
+    let params = this._rollParams(typeId, info, dest, riskTier, rng);
+    const variantHashFn = this.helpers && typeof this.helpers.hash32 === 'function'
+      ? this.helpers.hash32 : hash32;
+    const quietDelivery = options.attachConditions !== false
+      && typeId === 'cargo_delivery' && FRAGILE_LEGAL_TRADE_CMDTYS.length > 0
+      && shouldRollQuietDelivery(variantHashFn(this.state.meta.seed, id, 'mission-variant'));
+    if (quietDelivery) {
+      const commodityHash = variantHashFn(this.state.meta.seed, id, 'quiet-delivery-cargo') >>> 0;
+      const cmdtyId = FRAGILE_LEGAL_TRADE_CMDTYS[commodityHash % FRAGILE_LEGAL_TRADE_CMDTYS.length];
+      const unitVal = (CMDTY_BY_ID.get(cmdtyId) || {}).basePrice || 50;
+      const qty = Math.max(1, Math.floor(Number(params.qty) || 1));
+      const cargoValue = unitVal * qty;
+      params = { ...params, cmdtyId, cargoValue, fValue: 1 + cargoValue / 8000 };
+    }
 
     // ── reward (one multiplicative family) ──
     const fDist = 1 + distance / (cfg.distDivisor || 2000);
@@ -1573,7 +1612,6 @@ export const missions = {
 
     // ── collateral (anti accept-then-dump on bulk_trade / smuggling) ──
     const collateral_cr = def.collateral ? round((cfg.collateralPct || 0.25) * reward_cr) : 0;
-    const id = `mo_${info.id}_${epoch}_${idx}`;
     const offer = {
       id, type: typeId, stationId: info.id, factionId: info.factionId,
       reward_cr, time_limit_s, collateral_cr, riskTier,
@@ -1584,6 +1622,9 @@ export const missions = {
       expiresAtEpoch: epoch + 1,
       storyTag: null,
     };
+    // Quiet Delivery pins its two defining terms; random terms must not dilute or contradict the
+    // advertised physical job. Other offers keep the ordinary seeded condition draw unchanged.
+    if (quietDelivery) return applyQuietDeliveryVariant(offer);
     // Physics terms are the last thing stamped onto a rolled offer so the reward/deadline family
     // above is untouched: a condition-free offer is byte-identical to the shipped one.
     return options.attachConditions === false ? offer : this._withConditions(offer, epoch);
@@ -2163,6 +2204,7 @@ export const missions = {
       needsTargets: !!(def && this._typeSpawnsTargets(offer.type, offer.params)),
       status: 'active',
       storyTag: offer.storyTag || null,
+      variantId: offer.variantId || null,
       storyContractId: offer.storyContractId || null,
       campaign47aBeat: Number.isFinite(offer.campaign47aBeat) ? offer.campaign47aBeat : null,
       storyTarget: offer.storyTarget ? JSON.parse(JSON.stringify(offer.storyTarget)) : null,
@@ -2207,12 +2249,16 @@ export const missions = {
         ? { upfrontCostCr: setPieceUpfrontCost(offer, this.state) } : {}),
       sourceOfferId: offer.id || null,
       cause: offer.cause ? JSON.parse(JSON.stringify(offer.cause)) : null,
-      chainNextSeed: (offer.source !== SET_PIECE_MISSION_SOURCE && def && def.chainable)
+      chainNextSeed: (offer.source !== SET_PIECE_MISSION_SOURCE
+        && offer.source !== QUIET_DELIVERY_RECOVERY_SOURCE && def && def.chainable)
         ? this._chainSeed(offer) : null,
     };
   },
 
   _objectiveTarget(typeId, params) {
+    if (params && params.quietDeliveryRecovery) {
+      return Math.max(1, (params.quietDeliveryRecovery.pods || []).length);
+    }
     switch (typeId) {
       case 'bulk_trade': return params.qty;
       case BULK_HAUL_TYPE: return params.massU || 1;
@@ -2228,7 +2274,7 @@ export const missions = {
 
   _typeSpawnsTargets(typeId, params = null) {
     return typeId === 'bounty_hunt' || typeId === 'patrol_clear' || typeId === 'escort'
-      || !!(params && params.poiSignalFollowup);
+      || !!(params && (params.poiSignalFollowup || params.quietDeliveryRecovery));
   },
 
   _chainSeed(offer) {
@@ -2781,6 +2827,127 @@ export const missions = {
   // =========================================================================================
   // OBJECTIVE TRACKING (event resolvers)
   // =========================================================================================
+  /** Cache the cargo owner's real loss receipt before the existing fragile-intact clause fails. */
+  _onQuietDeliveryCargoLost(payload) {
+    if (!payload || !Array.isArray(payload.items)) return false;
+    const player = this.state.entities && this.state.entities.get(this.state.playerId);
+    let cached = false;
+    for (const mission of this.state.missions.active || []) {
+      if (!mission || mission.status !== 'active' || !isQuietDelivery(mission)) continue;
+      const commodityId = mission.params && mission.params.cmdtyId;
+      const lost = payload.items.find((item) => item && item.commodityId === commodityId
+        && Math.max(0, Math.floor(Number(item.qty) || 0)) > 0);
+      if (!lost || mission._quietDeliveryLoss) continue;
+      mission._quietDeliveryLoss = {
+        commodityId,
+        qty: Math.max(1, Math.floor(Number(lost.qty) || 1)),
+        sectorId: this.state.world && this.state.world.currentSectorId || mission.destSectorId,
+        pos: {
+          x: Number(player && player.pos && player.pos.x) || 0,
+          z: Number(player && player.pos && player.pos.z) || 0,
+        },
+        vel: {
+          x: Number(player && player.vel && player.vel.x) || 0,
+          z: Number(player && player.vel && player.vel.z) || 0,
+        },
+        tick: Number.isFinite(payload.tick) ? payload.tick | 0 : this.state.tick | 0,
+      };
+      cached = true;
+    }
+    return cached;
+  },
+
+  /** Post one save-carried physical recovery offer for the exact failed Quiet Delivery. */
+  _postQuietDeliveryRecovery(mission) {
+    const loss = mission && mission._quietDeliveryLoss;
+    const offerId = quietDeliveryRecoveryOfferId(mission);
+    if (!mission || !loss || !offerId || !mission.stationId) return null;
+    const duplicateActive = (this.state.missions.active || []).find((candidate) => (
+      candidate && candidate.sourceOfferId === offerId
+    ));
+    if (duplicateActive) return duplicateActive;
+    for (const candidateBoard of Object.values(this.state.missions.boards || {})) {
+      const duplicate = candidateBoard && Array.isArray(candidateBoard.slots)
+        && candidateBoard.slots.find((candidate) => candidate && candidate.id === offerId);
+      if (duplicate) return duplicate;
+    }
+
+    const commodity = CMDTY_BY_ID.get(loss.commodityId);
+    const qty = Math.max(1, Math.floor(Number(loss.qty) || 1));
+    const recovery = {
+      sourceMissionId: mission.id,
+      sourceOfferId: mission.sourceOfferId || null,
+      sectorId: loss.sectorId,
+      pos: { ...loss.pos },
+      vel: { ...loss.vel },
+      pods: [{ slot: 0, commodityId: loss.commodityId, amount: qty }],
+    };
+    const offer = {
+      id: offerId,
+      type: 'salvage_retrieval',
+      stationId: mission.stationId,
+      factionId: mission.factionId,
+      reward_cr: Math.max(80, Math.round((Number(mission.reward_cr) || 0) * 0.35)),
+      time_limit_s: 0,
+      collateral_cr: 0,
+      riskTier: Math.max(0, Math.round(Number(mission.riskTier) || 0)),
+      destStationId: null,
+      destSectorId: loss.sectorId,
+      distance: 0,
+      params: {
+        cmdtyId: loss.commodityId,
+        qty,
+        cargoValue: Math.max(0, Number(commodity && commodity.basePrice) || 0) * qty,
+        fValue: 1,
+        taskTime: 30,
+        quietDeliveryRecovery: recovery,
+      },
+      title: `Debris Recovery — ${qty}u ${commodity ? commodity.name : 'fragile freight'}`,
+      brief: `Pull ${recovery.pods.length} specific pod from the tumbling debris field.`,
+      expiresAtEpoch: this._epoch() + 1,
+      storyTag: null,
+      source: QUIET_DELIVERY_RECOVERY_SOURCE,
+      cause: {
+        tag: 'quiet_delivery_loss',
+        sourceMissionId: mission.id,
+        sourceOfferId: mission.sourceOfferId || null,
+      },
+    };
+    let board = this.state.missions.boards[mission.stationId];
+    if (!board || typeof board !== 'object') {
+      board = { refreshEpoch: this._epoch(), slots: [] };
+      this.state.missions.boards[mission.stationId] = board;
+    }
+    if (!Array.isArray(board.slots)) board.slots = [];
+    board.slots.push(offer);
+    this.bus.emit('mission:updated', { missionId: null, stationId: mission.stationId });
+    return offer;
+  },
+
+  /** A pod counts only after cargo accepted its final units from a real physical contact. */
+  _onQuietDeliveryPodRecovered(payload) {
+    if (!payload || payload.podId == null || Number(payload.remainingAmount) > 0) return false;
+    for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
+      const mission = this.state.missions.active[i];
+      if (!mission || mission.status !== 'active' || !isQuietDeliveryRecovery(mission)) continue;
+      if (!(mission.targetEntityIds || []).includes(payload.podId)) continue;
+      const entity = this.state.entities && this.state.entities.get(payload.podId);
+      const slot = missionTargetSlotOf(entity, mission.id);
+      if (slot == null) continue;
+      const completed = completedMissionTargetSlots(mission);
+      if (completed.has(slot)) return false;
+      mission.completedTargetSlots = [...completed, slot].sort((a, b) => a - b);
+      mission.objectiveProgress = Math.min(
+        mission.objectiveTarget,
+        Math.max(0, Number(mission.objectiveProgress) || 0) + 1,
+      );
+      if (mission.objectiveProgress >= mission.objectiveTarget) this._completeMission(mission, i);
+      else this.bus.emit('mission:updated', { missionId: mission.id });
+      return true;
+    }
+    return false;
+  },
+
   _onTrade(p) {
     if (!p || !p.commodityId || p.side !== 'sell') return;
     const stationId = p.stationId;
@@ -4010,6 +4177,9 @@ export const missions = {
 
   _failMission(m, index, reason) {
     if (m.status !== 'active') return;
+    if (isQuietDelivery(m) && String(reason || '').includes('fragile_intact')) {
+      this._postQuietDeliveryRecovery(m);
+    }
     const setPieceTransition = this._compileSetPieceTransition(m, 'failed', reason || 'failed');
     m.status = 'failed';
     this._clearMissionNav(m.id);
@@ -4244,10 +4414,11 @@ export const missions = {
     ent.data.missionId = m.id;
     ent.data.missionPinned = true;
     const combatTarget = m.type === 'bounty_hunt' || m.type === 'patrol_clear';
-    const durableSlot = combatTarget
+    const slottedTarget = combatTarget || isQuietDeliveryRecovery(m);
+    const durableSlot = slottedTarget
       ? Math.max(0, seq | 0)
       : (missionTargetSlotOf(ent, m.id) ?? Math.max(0, seq | 0));
-    if (combatTarget) {
+    if (slottedTarget) {
       ent.data.missionTargetSlot = durableSlot;
     }
     // Accepted combat contracts are the authored authority that makes their tagged quarry a
@@ -4379,6 +4550,70 @@ export const missions = {
         m.targetEntityIds.push(ent.id);
         this.bus.emit('mission:updated', { missionId: m.id, targetEntityId: ent.id });
       }
+      return;
+    }
+
+    const quietRecovery = m.params && m.params.quietDeliveryRecovery;
+    if (quietRecovery) {
+      const completed = completedMissionTargetSlots(m);
+      const occupied = new Set((m.targetEntityIds || []).map((id) => (
+        missionTargetSlotOf(this.state.entities.get(id), m.id)
+      )).filter((slot) => slot != null));
+      let spawned = 0;
+      for (const podDef of quietRecovery.pods || []) {
+        const slot = Math.max(0, Math.floor(Number(podDef && podDef.slot) || 0));
+        if (completed.has(slot) || occupied.has(slot)) continue;
+        const rng = nextRng(slot);
+        const angle = rng() * Math.PI * 2;
+        const radius = 34 + rng() * 26;
+        const amount = Math.max(1, Math.floor(Number(podDef && podDef.amount) || 1));
+        const unitMass = Math.max(0.1, Number((CMDTY_BY_ID.get(podDef.commodityId) || {}).massPerU) || 0.5);
+        const podMass = clamp(unitMass * amount, 4, 90);
+        const podRadius = clamp(2.5 + Math.sqrt(amount) * 0.35, 2.5, 6.5);
+        const basePos = quietRecovery.pos || { x: px, z: pz };
+        const baseVel = quietRecovery.vel || { x: 0, z: 0 };
+        const ent = helpers.spawnEntity({
+          type: 'payload',
+          pos: {
+            x: (Number(basePos.x) || 0) + Math.cos(angle) * radius,
+            z: (Number(basePos.z) || 0) + Math.sin(angle) * radius,
+          },
+          vel: {
+            x: (Number(baseVel.x) || 0) + Math.cos(angle + Math.PI / 2) * (3 + rng() * 5),
+            z: (Number(baseVel.z) || 0) + Math.sin(angle + Math.PI / 2) * (3 + rng() * 5),
+          },
+          rot: rng() * Math.PI * 2,
+          angVel: (rng() - 0.5) * 1.4,
+          radius: podRadius,
+          mass: podMass,
+          collides: true,
+          physicsBody: {
+            dynamic: true,
+            ccd: true,
+            radius: podRadius,
+            mass: podMass,
+            inertiaY: 0.5 * podMass * podRadius * podRadius,
+            material: 'payload',
+            shape: 'ball',
+          },
+          flags: { missionPinned: true, durable: true },
+          data: {
+            kind: 'cargo',
+            commodityId: podDef.commodityId,
+            amount,
+            recoverableCargoPod: true,
+            quietDeliveryRecovery: true,
+            solidMaterialAfterEmbargo: 'payload',
+            pickupEmbargoUntil: 0,
+          },
+        });
+        if (!ent) continue;
+        this._stampMissionTargetIdentity(ent, m, slot);
+        m.targetEntityIds.push(ent.id);
+        occupied.add(slot);
+        spawned++;
+      }
+      if (spawned) this.bus.emit('mission:updated', { missionId: m.id });
       return;
     }
 
@@ -5497,6 +5732,12 @@ export function missionReceiptFor(m, outcome, reason, settlement = {}) {
     ...setPieceFields,
     targetRecordId: m && m.params && m.params.poiSignalFollowup
       && m.params.poiSignalFollowup.targetRecordId || null,
+    ...(Array.isArray(settlement.termsHonored) && settlement.termsHonored.length
+      ? { termsHonored: [...settlement.termsHonored] } : {}),
+    ...(Array.isArray(settlement.termsBroken) && settlement.termsBroken.length
+      ? { termsBroken: [...settlement.termsBroken] } : {}),
+    ...(Array.isArray(settlement.termsUnmet) && settlement.termsUnmet.length
+      ? { termsUnmet: [...settlement.termsUnmet] } : {}),
   };
 }
 
