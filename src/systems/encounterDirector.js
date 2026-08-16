@@ -2717,7 +2717,7 @@ function normalizePersistedFreightCustodyEnvelope(raw) {
     const status = boundedFreightString(rawPod.status);
     const qty = nonnegativeFreightInt(rawPod.qty);
     if (!podIdentity || podIdentities.has(podIdentity) || qty <= 0
-      || !['live', 'player_collected', 'raider_secured', 'lost'].includes(status)) return null;
+      || !['live', 'player_collected', 'raider_secured', 'raider_towed', 'lost'].includes(status)) return null;
     podIdentities.add(podIdentity);
     pods.push({
       podIdentity,
@@ -2740,10 +2740,18 @@ function normalizePersistedFreightCustodyEnvelope(raw) {
   const deliveredQty = nonnegativeFreightInt(recordRaw.deliveredQty);
   const lostQty = nonnegativeFreightInt(recordRaw.lostQty);
   const livePodQty = pods.reduce((sum, pod) => sum + (pod.status === 'live' ? pod.qty : 0), 0);
-  const securedPodQty = pods.reduce((sum, pod) => sum + (pod.status === 'raider_secured' ? pod.qty : 0), 0);
+  const securedPodQty = pods.reduce((sum, pod) => (
+    sum + (pod.status === 'raider_secured' || pod.status === 'raider_towed' ? pod.qty : 0)
+  ), 0);
   if (initialQty <= 0 || raiderSecuredQty !== securedPodQty
     || carrierQty + livePodQty + playerCollectedQty + raiderSecuredQty
       + stationRecoveredQty + deliveredQty + lostQty !== initialQty) return null;
+
+  const corsairTowPodIdentity = boundedFreightString(recordRaw.corsairTowPodIdentity);
+  const towedPods = pods.filter((pod) => pod.status === 'raider_towed');
+  if (towedPods.length > 1
+    || (towedPods.length === 1) !== !!corsairTowPodIdentity
+    || (towedPods.length === 1 && towedPods[0].podIdentity !== corsairTowPodIdentity)) return null;
 
   const manifestId = boundedFreightString(recordRaw.manifestId);
   const freighterKey = boundedFreightString(recordRaw.freighterKey);
@@ -2851,6 +2859,7 @@ function normalizePersistedFreightCustodyEnvelope(raw) {
       deliveredQty,
       lostQty,
       pods,
+      corsairTowPodIdentity,
       nextPodIndex: Math.max(pods.length, nonnegativeFreightInt(recordRaw.nextPodIndex)),
       respillSeq: nonnegativeFreightInt(recordRaw.respillSeq),
       disableSpilled: recordRaw.disableSpilled === true,

@@ -58,6 +58,7 @@ const FREIGHT_CUSTODY_WINDOW_S = 80;
 const FREIGHT_RAIDER_CONTACT_PAD = 1;
 const FREIGHT_RAIDER_ESCAPE_R = 600;
 const FREIGHT_RAIDER_ESCAPE_S = 20;
+const CORSAIR_CARGO_GRAPPLE_R = 190;
 const FREIGHT_CARRIER_INSTANCE = Symbol('freightCarrierInstance');
 const FREIGHT_RAIDER_INSTANCE = Symbol('freightRaiderInstance');
 const FREIGHT_POD_INSTANCE = Symbol('freightPodInstance');
@@ -1203,6 +1204,169 @@ function liveFreightPodQty(record) {
   return record.pods.reduce((sum, pod) => sum + (pod.status === 'live' ? pod.qty : 0), 0);
 }
 
+function isCorsairCargoRaider(entity) {
+  return !!(entity && entity.data && entity.data.lootTableId === 'corsair_raider');
+}
+
+function freightAttachmentService(d) {
+  const combat = d && d.registry && typeof d.registry.get === 'function'
+    ? d.registry.get('combat')
+    : null;
+  const kernel = combat && typeof combat.ensureKernel === 'function'
+    ? combat.ensureKernel()
+    : combat && combat.kernel;
+  return kernel && kernel.attachments || null;
+}
+
+function activeFreightAttachment(state, attachmentId) {
+  const byId = state && state.combat && state.combat.attachments && state.combat.attachments.byId;
+  const attachment = byId && attachmentId ? byId[String(attachmentId)] : null;
+  return attachment && attachment.state === 'active' ? attachment : null;
+}
+
+function restoredCorsairCargoAttachment(state, record, raiderId, podEntityId) {
+  const byId = state && state.combat && state.combat.attachments && state.combat.attachments.byId;
+  if (!byId || !record) return null;
+  const actionInstanceId = `${record.custodyId}:corsair-tow`;
+  const matches = Object.values(byId).filter((attachment) => (
+    attachment && attachment.state === 'active'
+      && attachment.ownerId === raiderId
+      && attachment.targetId === podEntityId
+      && attachment.controlMode === 'corsair_cargo_tow'
+      && attachment.actionInstanceId === actionInstanceId
+  ));
+  return matches.length === 1 ? matches[0] : null;
+}
+
+/**
+ * A Corsair does not absorb manifest cargo into an abstract inventory. The ordinary pickup contact
+ * creates a real SG-02 rope from the pirate hull to that same persistent pod, then the custody
+ * ledger records the quantity as raider-held while the body remains in the world. Cargo is still
+ * owned by the freight manifest; this function creates no commodity and performs no hold write.
+ */
+function beginCorsairCargoTow(d, live, state, record, pod, entity, raider, payload) {
+  if (!record || record.terminal || record.corsairTowAttachmentId || record.raiderSecuredQty > 0
+    || !pod || pod.status !== 'live' || !entity || !isCorsairCargoRaider(raider)) return false;
+  const attachments = freightAttachmentService(d);
+  if (!attachments || typeof attachments.create !== 'function') return false;
+  const attachmentSpec = {
+    ownerId: raider.id, targetId: entity.id, controlMode: 'corsair_cargo_tow',
+    actionInstanceId: `${record.custodyId}:corsair-tow`,
+  };
+  let result = attachments.create({ ...attachmentSpec, defId: 'tether_standard' });
+  if (!result || result.ok !== true) {
+    // The standard spool may already be occupied by an authored combat line. The same hull also
+    // has its legacy massline socket; using that existing SG-02 definition keeps cargo physical
+    // instead of falling back to an abstract secured counter.
+    result = attachments.create({ ...attachmentSpec, defId: 'attachment_massline' });
+  }
+  if (!result || result.ok !== true || !result.attachment) return false;
+
+  pod.status = 'raider_towed';
+  record.raiderSecuredQty += pod.qty;
+  record.raiderId = raider.id;
+  record.corsairTowAttachmentId = result.attachment.id;
+  record.corsairTowPodIdentity = pod.podIdentity;
+  record.raiderPersistenceOwned = claimFreightCustodyPersistence(raider, record, 'secured_raider')
+    || record.raiderPersistenceOwned;
+  entity.flags = entity.flags || {};
+  entity.flags.persistent = true;
+  entity.collides = true;
+  entity.data.freightCustodyPod.status = 'raider_towed';
+  entity.data.freightCargoTow = {
+    attachmentId: result.attachment.id,
+    raiderIdentityKey: record.raiderIdentityKey,
+    custodyId: record.custodyId,
+  };
+  // Physics owns the mutable collection payload. Rejecting this collection keeps the exact pod
+  // alive; the long retry prevents an attached body from repeatedly publishing overlap receipts.
+  payload.acceptedAmount = 0;
+  payload.rejectedAmount = pod.qty;
+  payload.acceptanceRetryAt = Math.max(d.now() + 1, record.deadlineAt);
+  raider.data.corsairCargoTow = {
+    attachmentId: result.attachment.id,
+    podIdentity: pod.podIdentity,
+    custodyId: record.custodyId,
+  };
+  publishFreightCustody(d, live, record, 'corsair_tow_attached');
+  d.emit('freight:cargoTowAttached', {
+    encounterId: live.id,
+    custodyId: record.custodyId,
+    raiderId: raider.id,
+    pickupId: entity.id,
+    attachmentId: result.attachment.id,
+    qty: pod.qty,
+    t: d.now(),
+  });
+  d.emit('medium:semanticCue', {
+    schemaVersion: 1,
+    cueId: 'medium.corsair.cargo_tow',
+    entityId: raider.id,
+    targetId: entity.id,
+    position: { x: raider.pos.x, z: raider.pos.z },
+  });
+  return true;
+}
+
+/** Release the same physical pod the Corsair was towing. No respawn and no quantity rewrite. */
+function releaseCorsairCargoTow(d, live, state, record, raider, reason) {
+  if (!record || !record.corsairTowAttachmentId || !record.corsairTowPodIdentity) return false;
+  const pod = record.pods.find((candidate) => (
+    candidate.podIdentity === record.corsairTowPodIdentity && candidate.status === 'raider_towed'
+  ));
+  if (!pod) return false;
+  const entity = podEntityForRecord(state, record, pod);
+  const attachmentId = record.corsairTowAttachmentId;
+  const attachments = freightAttachmentService(d);
+  const attachment = activeFreightAttachment(state, attachmentId);
+  if (attachment && attachments && typeof attachments.cut === 'function') {
+    attachments.cut(attachmentId, raider && raider.id, reason);
+  }
+
+  pod.status = 'live';
+  pod.cause = reason;
+  pod.custodySourceKind = 'hostile_raider';
+  pod.sourceCustodianStableId = record.raiderIdentityKey;
+  record.raiderSecuredQty = Math.max(0, record.raiderSecuredQty - pod.qty);
+  record.corsairTowAttachmentId = null;
+  record.corsairTowPodIdentity = null;
+  record.escapeStartedAt = null;
+  record.escapeDeadlineAt = null;
+  record.escapeOrigin = null;
+  record.escapeTarget = null;
+  if (record.raiderSecuredQty === 0) {
+    releaseFreightCustodyPersistence(raider, record, record.raiderPersistenceOwned);
+    record.raiderPersistenceOwned = false;
+  }
+  if (raider && raider.data) delete raider.data.corsairCargoTow;
+  if (entity) {
+    entity.collides = true;
+    entity.flags = entity.flags || {};
+    entity.flags.persistent = true;
+    entity.data.freightCustodyPod.status = 'live';
+    entity.data.freightCustodyPod.cause = reason;
+    entity.data.freightCustodyPod.custodySourceKind = 'hostile_raider';
+    entity.data.freightCustodyPod.sourceCustodianStableId = record.raiderIdentityKey;
+    delete entity.data.freightCargoTow;
+    delete entity.data.pickupAcceptanceRetryAt;
+    delete entity.data.pickupAcceptanceRetryCollectorId;
+  }
+  publishFreightCustody(d, live, record, reason);
+  d.emit('freight:cargoSpilled', {
+    encounterId: live.id,
+    custodyId: record.custodyId,
+    manifestId: record.manifestId,
+    carrierId: record.carrierId,
+    raiderId: record.raiderId,
+    cause: reason,
+    qty: pod.qty,
+    podCount: record.pods.filter((candidate) => candidate.status === 'live').length,
+    physicalReuse: true,
+    t: d.now(),
+  });
+  return true;
+}
+
 function freightCustodySnapshot(record, reason, now) {
   const livePodQty = liveFreightPodQty(record);
   const accountedQty = record.carrierQty + livePodQty + record.playerCollectedQty
@@ -1469,6 +1633,18 @@ function collectFreightPod(d, live, state, payload) {
   }
   const raider = selectedFreightRaider(live, state);
   if (raider && payload.collectorId === raider.id) {
+    const entity = podEntityForRecord(state, record, pod);
+    if (isCorsairCargoRaider(raider)) {
+      if (entity && beginCorsairCargoTow(d, live, state, record, pod, entity, raider, payload)) {
+        return true;
+      }
+      // A Corsair must not silently turn a failed physical grapple into abstract cargo custody.
+      // Leave the real pod on the board and retry after the attachment service is available.
+      payload.acceptedAmount = 0;
+      payload.rejectedAmount = pod.qty;
+      payload.acceptanceRetryAt = d.now() + 0.25;
+      return false;
+    }
     payload.acceptedAmount = pod.qty;
     payload.rejectedAmount = 0;
     return settleFreightPod(d, live, state, record, pod, 'raider_secured', 'raider_secured');
@@ -1482,19 +1658,24 @@ function collectFreightPod(d, live, state, payload) {
   return false;
 }
 
-function freightRaiderTethered(state, entityId) {
+function freightRaiderTethered(state, entityId, record = null) {
   const playerEntity = state.entities && state.entities.get(state.playerId);
   const playerTether = state.player && state.player.tether || playerEntity && playerEntity.tether;
   if (playerTether && playerTether.active === true && playerTether.targetId === entityId) return true;
   const attachments = state.combat && state.combat.attachments && state.combat.attachments.byId;
   if (!attachments || typeof attachments !== 'object') return false;
   return Object.values(attachments).some((attachment) => (
-    attachment && attachment.state === 'active'
+    attachment && (attachment.state === 'active'
+        || (Number.isInteger(attachment.brokenTick)
+          && (state.tick | 0) - attachment.brokenTick <= 1
+          && (attachment.ownerId === state.playerId || attachment.controllerId === state.playerId)))
+      && attachment.id !== record?.corsairTowAttachmentId
+      && attachment.controlMode !== 'corsair_cargo_tow'
       && (attachment.ownerId === entityId || attachment.targetId === entityId)
   ));
 }
 
-function freightRaiderIneligibleReason(state, raider) {
+function freightRaiderIneligibleReason(state, raider, record = null) {
   if (!raider) return 'identity_lost';
   if (raider.alive === false) return 'destroyed';
   if (raider.disabled === true) return 'drive_disabled';
@@ -1502,12 +1683,15 @@ function freightRaiderIneligibleReason(state, raider) {
   const drive = runtime && runtime.subsystems && runtime.subsystems.subsystem_drive;
   if (runtime && runtime.capabilities && runtime.capabilities.drive === false
     || drive && drive.effectiveDisabled === true) return 'drive_disabled';
-  if (freightRaiderTethered(state, raider.id)) return 'tethered';
+  if (freightRaiderTethered(state, raider.id, record)) return 'tethered';
   return null;
 }
 
 function respillFreightFromRaider(d, live, state, record, raider, reason) {
   if (!record || record.terminal || record.raiderSecuredQty <= 0) return false;
+  if (record.corsairTowAttachmentId && record.corsairTowPodIdentity) {
+    return releaseCorsairCargoTow(d, live, state, record, raider, reason);
+  }
   const secured = record.pods
     .filter((pod) => pod.status === 'raider_secured')
     .sort((a, b) => a.podIndex - b.podIndex);
@@ -1652,6 +1836,47 @@ function beginFreightRaiderEscape(d, live, state, record, raider) {
   publishFreightCustody(d, live, record, 'raider_escape_started');
 }
 
+function tickCorsairVisibleRetreat(d, live, state, raider) {
+  if (!isCorsairCargoRaider(raider) || !raider.alive || !raider.data) return false;
+  const metadata = raider.data.visibleRetreat;
+  if (!metadata || live.data.corsairVisibleRetreatStarted === true) return false;
+  const hullFraction = Number(raider.hull) / Math.max(1, Number(raider.hullMax) || 1);
+  const threshold = Number.isFinite(Number(metadata.hullFraction))
+    ? Math.max(0.05, Math.min(0.5, Number(metadata.hullFraction)))
+    : 0.3;
+  if (hullFraction > threshold) return false;
+
+  live.data.corsairVisibleRetreatStarted = true;
+  const ai = raider.data.ai || (raider.data.ai = {});
+  ai.forceFlee = true;
+  metadata.runtime = 'encounterScripts';
+  const record = live.data.freightCargoCustody;
+  if (record && record.corsairTowAttachmentId && record.raiderSecuredQty > 0) {
+    releaseCorsairCargoTow(d, live, state, record, raider, 'corsair_visible_retreat_dump');
+  }
+  const payload = {
+    schemaVersion: 1,
+    cueId: 'medium.retreat.started',
+    entityId: raider.id,
+    typeId: 'corsair_raider',
+    smokeCue: String(metadata.smokeCue || 'retreat_smoke'),
+    dumpCue: String(metadata.dumpCue || 'retreat_cargo_spill'),
+    bark: String(metadata.bark || 'Corsair breaking contact.'),
+    startedTick: state.tick | 0,
+    position: { x: raider.pos.x, z: raider.pos.z },
+  };
+  d.emit('medium:retreatStarted', payload);
+  d.emit('medium:semanticCue', payload);
+  d.emit('comms:popup', {
+    id: `medium-retreat:corsair:${raider.id}:${state.tick | 0}`,
+    sender: raider.name || 'Corsair Raider',
+    text: payload.bark,
+    category: 'combat',
+    ttl: 3.5,
+  });
+  return true;
+}
+
 function tickFreightCargoCustody(d, live, state, now) {
   const record = live.data.freightCargoCustody;
   if (!record || record.terminal) return;
@@ -1675,7 +1900,12 @@ function tickFreightCargoCustody(d, live, state, now) {
     record.raiderLastPos = { x: raider.pos.x, z: raider.pos.z };
     record.raiderLastVel = { x: raider.vel && raider.vel.x || 0, z: raider.vel && raider.vel.z || 0 };
   }
-  const raiderIneligible = record.raiderEscaped ? null : freightRaiderIneligibleReason(state, raider);
+  const corsairTowLost = record.corsairTowAttachmentId
+    && !activeFreightAttachment(state, record.corsairTowAttachmentId);
+  if (corsairTowLost && record.raiderSecuredQty > 0 && !record.raiderEscaped) {
+    releaseCorsairCargoTow(d, live, state, record, raider, 'corsair_tow_broken');
+  }
+  const raiderIneligible = record.raiderEscaped ? null : freightRaiderIneligibleReason(state, raider, record);
   if (raiderIneligible === 'destroyed' || raiderIneligible === 'identity_lost') record.raiderDead = true;
   if (raiderIneligible && record.raiderSecuredQty > 0 && !record.raiderEscaped) {
     respillFreightFromRaider(d, live, state, record, raider, `raider_${raiderIneligible}`);
@@ -1700,6 +1930,15 @@ function tickFreightCargoCustody(d, live, state, now) {
       return ad - bd || a.pod.podIndex - b.pod.podIndex;
     });
     const nearest = livePods[0];
+    const nearestDistance = Math.hypot(
+      operationalRaider.pos.x - nearest.entity.pos.x,
+      operationalRaider.pos.z - nearest.entity.pos.z,
+    );
+    if (isCorsairCargoRaider(operationalRaider) && nearestDistance <= CORSAIR_CARGO_GRAPPLE_R) {
+      beginCorsairCargoTow(
+        d, live, state, record, nearest.pod, nearest.entity, operationalRaider, {},
+      );
+    }
     const contactRange = Math.max(
       1,
       (Number(operationalRaider.radius) || 0) + (Number(nearest.entity.radius) || 0)
@@ -1841,7 +2080,7 @@ function restoreFreightCargoCustody(d, state, envelope) {
 
   const podEntities = new Map();
   for (const pod of savedRecord.pods) {
-    if (pod.status !== 'live') continue;
+    if (pod.status !== 'live' && pod.status !== 'raider_towed') continue;
     const matches = entities.filter((entity) => {
       const annotation = entity.data && entity.data.freightCustodyPod;
       return entity.type === 'pickup' && annotation
@@ -2019,22 +2258,66 @@ function restoreFreightCargoCustody(d, state, envelope) {
   }
 
   for (const pod of record.pods) {
-    if (pod.status !== 'live') continue;
+    if (pod.status !== 'live' && pod.status !== 'raider_towed') continue;
     const entity = podEntities.get(pod.podIdentity);
     Object.defineProperty(entity, FREIGHT_POD_INSTANCE, { value: pod.podIdentity, configurable: true });
     entity.flags = entity.flags || {};
     entity.flags.persistent = true;
     Object.assign(entity.data.freightCustodyPod, {
-      status: 'live',
+      status: pod.status,
       qty: pod.qty,
       legalOwnerStableId: record.legalOwnerStableId,
       custodySourceKind: pod.custodySourceKind,
       sourceCustodianStableId: pod.sourceCustodianStableId,
     });
     if (typeof d.resizeFreightPickup === 'function') d.resizeFreightPickup(entity, record.commodityId, pod.qty);
+    if (pod.status === 'raider_towed') {
+      entity.data.freightCargoTow = {
+        attachmentId: record.corsairTowAttachmentId,
+        raiderIdentityKey: record.raiderIdentityKey,
+        custodyId: record.custodyId,
+      };
+    }
     pod.entityId = entity.id;
     live.ids.push(entity.id);
     live.roles[entity.id] = 'freight_pod';
+  }
+
+  const restoredTowPod = record.corsairTowPodIdentity
+    ? record.pods.find((pod) => (
+        pod.podIdentity === record.corsairTowPodIdentity && pod.status === 'raider_towed'
+      ))
+    : null;
+  if (restoredTowPod && raider) {
+    const towEntity = podEntities.get(restoredTowPod.podIdentity);
+    const attachments = freightAttachmentService(d);
+    const activeById = activeFreightAttachment(state, record.corsairTowAttachmentId);
+    const activeByStableEndpoints = restoredCorsairCargoAttachment(
+      state, record, raider.id, towEntity.id,
+    );
+    let attachment = activeById
+      && activeById.ownerId === raider.id && activeById.targetId === towEntity.id
+      ? activeById
+      : activeByStableEndpoints;
+    if (!attachment && attachments && typeof attachments.create === 'function') {
+      const spec = {
+        ownerId: raider.id, targetId: towEntity.id, controlMode: 'corsair_cargo_tow',
+        actionInstanceId: `${record.custodyId}:corsair-tow`,
+      };
+      let result = attachments.create({ ...spec, defId: 'tether_standard' });
+      if (!result || result.ok !== true) {
+        result = attachments.create({ ...spec, defId: 'attachment_massline' });
+      }
+      attachment = result && result.ok === true ? result.attachment : null;
+    }
+    if (!attachment) return null;
+    record.corsairTowAttachmentId = attachment.id;
+    towEntity.data.freightCargoTow.attachmentId = attachment.id;
+    raider.data.corsairCargoTow = {
+      attachmentId: attachment.id,
+      podIdentity: restoredTowPod.podIdentity,
+      custodyId: record.custodyId,
+    };
   }
 
   const dir = state.encounterDirector;
@@ -2051,6 +2334,7 @@ function convoyTick(d, live, state, now, isConvoy) {
   const p = d.player();
   const haulers = d.entsOf(live, 'hauler');
   tickConvoyPredation(d, live, state, now);
+  tickCorsairVisibleRetreat(d, live, state, selectedFreightRaider(live, state, true));
   tickFreightCargoCustody(d, live, state, now);
   const custody = live.data.freightCargoCustody;
   if (live.data.freightCarrierRecovered === true) {
