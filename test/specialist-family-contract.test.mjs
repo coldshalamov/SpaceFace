@@ -61,8 +61,9 @@ test('missing identities are fixed-stat medium rewards with exact authored masse
     assert.ok(def.mass > 20 && def.mass <= 60, `${enemyId} sits in the Plan 11 medium band`);
     assert.equal(def.fixedCombatStats, true);
     assert.equal(def.killRewardTier, 'medium');
-    assert.equal(def.specialistBehavior?.runtime, 'unwired');
-    assert.equal(def.specialistWorldTell?.runtime, 'unwired');
+    const expectedRuntime = enemyId === 'jammer_specialist' ? 'existing' : 'unwired';
+    assert.equal(def.specialistBehavior?.runtime, expectedRuntime);
+    assert.equal(def.specialistWorldTell?.runtime, expectedRuntime);
 
     const low = makeEnemySpawnSpec(enemyId, 1, { x: 0, z: 0 });
     const high = makeEnemySpawnSpec(enemyId, 12, { x: 0, z: 0 });

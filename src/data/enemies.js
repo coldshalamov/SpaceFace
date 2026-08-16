@@ -700,9 +700,9 @@ export const ENEMY_TYPES = [
     },
   },
   // ── PR95 wave 4: missing specialist identities (Plan 15) ──
-  // These are fixed-stat production identities and ordinary encounter anchors. Their planned
-  // specialist verbs and world tells remain explicitly unwired; admission must not be mistaken for
-  // radar smear, a repair drone, or kiter acceptance behavior.
+  // These are fixed-stat production identities and ordinary encounter anchors. Runtime markers
+  // stay explicit per identity so catalog admission cannot be mistaken for a mechanic that has not
+  // landed; the Jammer is now the first of these three with both behavior and world tell wired.
   {
     id: 'jammer_specialist', name: 'Jammer', shipId: 'ship_hornet',
     factionId: 'faction_reach',
@@ -713,12 +713,16 @@ export const ENEMY_TYPES = [
     weapons: [{ id: 'wpn_pulse_laser_s', dmgOverride: 4, rofOverride: 1.4 }],
     aiDoctrine: { defaultActivity: 'reposition', roe: 'weapons_free', preferredRange: 520, leashRadius: 2700 },
     specialistBehavior: {
-      capability: 'presentation_only_contact_smear', runtime: 'unwired',
+      capability: 'presentation_only_contact_smear', runtime: 'existing',
+      owner: 'radar_jamming_presentation_v1',
       invariant: 'simulation_contacts_remain_exact',
     },
-    specialistWorldTell: { cue: 'antenna_fan_and_static_shimmer', runtime: 'unwired' },
+    specialistWorldTell: {
+      cue: 'antenna_fan_and_static_shimmer', runtime: 'existing',
+      owner: 'jammer_antenna_static_comb_v1',
+    },
     counterHint: 'kill_or_close_inside_fuzz',
-    behavior: 'ordinary ranged hull pending a presentation-only radar-smear specialist runtime',
+    behavior: 'ranged jammer whose bounded display-only field smears radar truth until killed or closed on',
     bountyCr: 410, shipClass: 'corvette', killRewardTier: 'medium',
     loot: {
       creditsRange: [110, 250],
