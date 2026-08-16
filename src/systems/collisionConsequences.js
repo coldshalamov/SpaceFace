@@ -218,7 +218,13 @@ export const collisionConsequences = {
     // projectile later meets terrain, the original impulse record may already have aged out; the
     // pre-contact tumble episode is the remaining causal truth. Carry it across the payoff contact
     // instead of turning a player-created environment kill into an unattributed accident.
-    const provenance = ramPlate?.provenance || causalProvenance
+    // A weapon/field impulse that physically delivered this hull into the contact remains the
+    // cause.  A fitted Ram Plate may strengthen the contact, but it must not relabel a fresh
+    // railgun/concussion/tether setup as a ram merely because the player hull is also touching it.
+    const setupProvenance = causalProvenance && causalProvenance.tag !== 'direct_contact'
+      ? causalProvenance
+      : null;
+    const provenance = setupProvenance || ramPlate?.provenance || causalProvenance
       || tumbleContactProvenance(preContact, tick);
     const receipt = resolveCollisionConsequence({
       target,

@@ -286,8 +286,14 @@ test('SG-02 reports deterministic bounded contact momentum for default-route con
       'dynamic owner must expose contact receipts to the physics/event membrane');
     owner.step(1 / 60);
     assert.ok(Math.abs(ship.angVel) > 0, 'the SG-02 owner physically applies the angular impulse');
-    owner.step(1 / 60);
-    const contacts = owner.drainContactImpacts();
+    // Rapier may report the first CCD/contact manifold one or two fixed steps after geometric
+    // overlap depending on the current solver build. Follow the real body until its first bounded
+    // contact instead of pinning the receipt to an owner-internal lifetime tick.
+    let contacts = [];
+    for (let step = 0; step < 5 && contacts.length === 0; step++) {
+      owner.step(1 / 60);
+      contacts = owner.drainContactImpacts();
+    }
     assert.equal(contacts.length, 1, 'one body pair produces one merged contact receipt');
     assert.deepEqual(new Set([contacts[0].aId, contacts[0].bId]), new Set([ship.id, station.id]));
     assert.ok(contacts[0].impulse > 0 && contacts[0].impulse <= ship.mass * 40 + 1e-9,
