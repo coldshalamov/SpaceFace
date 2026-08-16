@@ -804,6 +804,12 @@ function sensorSelf(state, entity, capabilities = capabilitiesFor(state, entity)
     activity,
     roe: normalizeRoe(ai.roe, ai.passive ? 'hold_fire' : 'weapons_free'),
     combatDoctrineId: normalizeCombatDoctrineId(ai.combatDoctrineId),
+    // Stable combat-content identity is a read-only behavior discriminator. It lets an authored
+    // hull opt into a doctrine profile without widening the shared doctrine id for every existing
+    // interceptor or field controller.
+    combatRoleId: entity && entity.data && entity.data.lootTableId || null,
+    maxSpeed: positive(entity && entity.maxSpeed,
+      positive(entity && entity.flightModel && entity.flightModel.maxSpeed, 0)),
     factionBehavior: normalizeFactionBehaviorProfile(ai.factionPresenceDoctrine),
     ramAuthorized,
     ...bands,
