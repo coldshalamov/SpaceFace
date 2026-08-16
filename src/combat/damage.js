@@ -17,6 +17,7 @@ import {
 } from './tumbleStatus.js';
 import { verbAcceptsType } from '../data/interactionDescriptorCatalog.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
+import { activeBulwarkProjectionFor } from '../systems/mediumEnemyRuntime.js';
 import {
   currentPlayerRewardIdentity,
   readPlayerFirstHitTruth,
@@ -86,6 +87,10 @@ export function createDamageRouter(context, statusService, options = {}) {
     // [4]=subsystemInput, [5]=hullInput. Zeroed across the active channel order before each use.
     const penetratingRaw = emptyChannelsInto(model.channelOrder, ROUTE_SCRATCH[0]);
     const postShieldRaw = emptyChannelsInto(model.channelOrder, ROUTE_SCRATCH[1]);
+    const projection = activeBulwarkProjectionFor(state, target);
+    const projectedBy = projection && projection.source || null;
+    const projectedShieldBefore = projectedBy ? Math.max(0, Number(projectedBy.shield) || 0) : 0;
+    let projectedShieldDamage = 0;
     let shieldDamage = 0;
 
     for (const channel of model.channelOrder) {
@@ -95,16 +100,31 @@ export function createDamageRouter(context, statusService, options = {}) {
       const bypassed = raw * shieldBypass;
       const normal = (raw - penetratingRaw[channel] - bypassed);
       const multiplier = positiveMultiplier(model.shieldMultipliers[channel]);
-      const potentialHp = normal * multiplier;
+      // Plan 13 Bulwark projection is a real upstream shield pool. Its own current shield absorbs
+      // ordinary shield-coupled damage before the wing member's pool; penetration and EMP bypass
+      // still pass through. The damage router remains the only shield writer.
+      const projectedPotentialHp = normal * multiplier;
+      const projectedAbsorbedHp = projectedBy
+        ? Math.min(Math.max(0, projectedBy.shield || 0), projectedPotentialHp)
+        : 0;
+      if (projectedBy) projectedBy.shield = Math.max(0, (projectedBy.shield || 0) - projectedAbsorbedHp);
+      projectedShieldDamage += projectedAbsorbedHp;
+      const projectedConsumedRaw = multiplier > 0 ? projectedAbsorbedHp / multiplier : 0;
+      const afterProjection = Math.max(0, normal - projectedConsumedRaw);
+      const potentialHp = afterProjection * multiplier;
       const absorbedHp = Math.min(Math.max(0, target.shield || 0), potentialHp);
       target.shield = Math.max(0, (target.shield || 0) - absorbedHp);
       shieldDamage += absorbedHp;
       const consumedRaw = multiplier > 0 ? absorbedHp / multiplier : 0;
       // The bypassed fraction (EMP coupling through the shield) passes onward to armor/hull.
-      postShieldRaw[channel] = Math.max(0, normal - consumedRaw) + bypassed;
+      postShieldRaw[channel] = Math.max(0, afterProjection - consumedRaw) + bypassed;
+    }
+    if (projectedShieldDamage > 0) {
+      projectedBy.lastDamageT = Number.isFinite(state.simTime) ? state.simTime : (state.tick || 0) / 60;
     }
 
     const shieldBroke = before.shield > 0 && target.shield <= 0;
+    const projectedShieldBroke = !!projectedBy && projectedShieldBefore > 0 && projectedBy.shield <= 0;
     const postFlatRaw = applyArmorFlatInto(postShieldRaw, Math.max(0, Number(target.armorFlat) || 0), model.channelOrder, ROUTE_SCRATCH[2]);
     const terminalRaw = emptyChannelsInto(model.channelOrder, ROUTE_SCRATCH[3]);
     let armorDamage = 0;
@@ -166,7 +186,7 @@ export function createDamageRouter(context, statusService, options = {}) {
     const impulseResult = applyImpulse(target, attacker, packet, input, origin);
     syncCombatantBounds(target, runtime);
     const after = snapshotVitals(target, runtime);
-    const totalApplied = shieldDamage + armorDamage + subsystemDamage + hullDamage;
+    const totalApplied = projectedShieldDamage + shieldDamage + armorDamage + subsystemDamage + hullDamage;
     const result = {
       ok: true,
       attackerId: input && input.attackerId == null ? null : input.attackerId,
@@ -174,6 +194,8 @@ export function createDamageRouter(context, statusService, options = {}) {
       rawTotal,
       totalApplied,
       shieldDamage,
+      projectedShieldDamage,
+      projectedById: projectedBy && projectedBy.id || null,
       armorDamage,
       hullDamage,
       hullByChannel,
@@ -182,7 +204,7 @@ export function createDamageRouter(context, statusService, options = {}) {
       subsystemResult,
       heatApplied,
       shieldBroke,
-      dominantLayer: hullDamage > 0 ? 'hull' : armorDamage > 0 ? 'armor' : shieldDamage > 0 ? 'shield' : null,
+      dominantLayer: hullDamage > 0 ? 'hull' : armorDamage > 0 ? 'armor' : (shieldDamage > 0 || projectedShieldDamage > 0) ? 'shield' : null,
       before,
       after,
       impulseApplied: impulseResult.applied,
@@ -234,6 +256,8 @@ export function createDamageRouter(context, statusService, options = {}) {
       rawTotal,
       applied: totalApplied,
       shieldDamage,
+      projectedShieldDamage,
+      projectedById: projectedBy && projectedBy.id || null,
       armorDamage,
       hullDamage,
       subsystemId,
@@ -247,7 +271,20 @@ export function createDamageRouter(context, statusService, options = {}) {
     });
 
     if (shieldBroke && bus) bus.emit('shieldDown', { combatantId: target.id, pos: packet.hit && packet.hit.pos || target.pos });
+    if (projectedShieldBroke && bus) bus.emit('shieldDown', {
+      combatantId: projectedBy.id,
+      pos: projectedBy.pos,
+      reason: 'wing_projection_depleted',
+    });
     if (bus) {
+      if (projectedShieldDamage > 0) bus.emit('combat:projectedShieldHit', {
+        sourceId: projectedBy.id,
+        targetId: target.id,
+        attackerId: result.attackerId,
+        absorbed: projectedShieldDamage,
+        brokeShield: projectedShieldBroke,
+        cueId: 'medium.bulwark.link.hit',
+      });
       bus.emit('combat:damage', {
         targetId: target.id,
         attackerId: result.attackerId,
@@ -257,17 +294,19 @@ export function createDamageRouter(context, statusService, options = {}) {
         type: dominantChannel(packet.channels, model.channelOrder),
         channels: { ...packet.channels },
         shieldDamage,
+        projectedShieldDamage,
+        projectedById: projectedBy && projectedBy.id || null,
         armorDamage,
         hullDamage,
         subsystemDamage,
         before,
         after,
-        shieldHit: shieldDamage > 0,
+        shieldHit: shieldDamage > 0 || projectedShieldDamage > 0,
         armorHit: armorDamage > 0,
         hullHit: hullDamage > 0,
         dominantLayer: result.dominantLayer,
         brokeShield: shieldBroke,
-        shieldAbsorbed: shieldDamage > 0,
+        shieldAbsorbed: shieldDamage > 0 || projectedShieldDamage > 0,
         isPlayer: target.id === state.playerId,
         pos: packet.hit && packet.hit.pos || { x: target.pos.x, z: target.pos.z },
         approach: packet.hit && packet.hit.approach || null,

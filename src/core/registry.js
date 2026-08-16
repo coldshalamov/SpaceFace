@@ -46,6 +46,7 @@ import { fields } from '../systems/fields.js';                   // PQ-012/SF-12
 import { environmentalMachinery } from '../systems/environmentalMachinery.js'; // PQ-027/SF-22 timed Ceres current + World Site adapter
 import { anomalyRuntime } from '../systems/anomalyRuntime.js';   // PR95 Plan 19: physical Orcus Gravity Eddy through the shared field kernel
 import { planetRuntime } from '../systems/planetRuntime.js';     // PQ-013/SF-14 planetary site (sling/skim/harvest/reentry)
+import { mediumEnemyRuntime } from '../systems/mediumEnemyRuntime.js'; // PR95 Plan 13: Bulwark projection + Torcher trail setup verbs
 import { massSeedHud } from '../ui/massSeedHud.js';              // PQ-011: seed status pill + lock-point marker (DOM-guarded)
 import { fieldHud } from '../ui/fieldHud.js';                    // PQ-012: field state/cooldown/denial chip (DOM-guarded)
 import { planetHud } from '../ui/planetHud.js';                  // PQ-013: band pill + heat readout (DOM-guarded)
@@ -196,6 +197,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['environmentalMachinery', environmentalMachinery],
     ['anomalyRuntime', anomalyRuntime],
     ['planetRuntime', planetRuntime],
+    ['mediumEnemyRuntime', mediumEnemyRuntime],
     ['combat', combat],
     ['combatOutcome', combatOutcome],
     ['aftermathWrecks', aftermathWrecks],
