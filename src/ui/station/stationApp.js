@@ -32,6 +32,7 @@ import {
 } from '../screens/stationHub.js';
 import { missionDockAttention } from './missionDockAttention.js';
 import { isChoiceECourierReady } from '../../story/endings/eligibility.js';
+import { heatLevelFor } from '../../systems/heat.js';
 
 const STATION_REC = new Map();
 for (const sec of SECTORS) for (const s of (sec.stations || [])) STATION_REC.set(s.id, { station: s, sector: sec });
@@ -704,6 +705,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
         wash: washAvailable
           ? toCost(q('hull_wash'), 'hull_wash')
           : { text: 'Offline', disabled: true, title: 'Hull wash requires a repair berth' },
+        restitution: toCost(q('restitution'), 'restitution'),
         undock,
       };
     }
@@ -716,6 +718,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       refuel: fuelMissing > 0 ? { text: fmtCr(Math.ceil(fuelMissing * 3)) + ' cr', tone: 'warn' } : { text: 'Fuel OK', disabled: true, tone: 'gain' },
       resupply: { text: 'Rearm', tone: '' },
       wash: { text: 'Offline', disabled: true, title: 'Hull wash quote unavailable' },
+      restitution: { text: 'Unavailable', disabled: true, title: 'Restitution quote unavailable' },
       undock,
     };
   }
@@ -732,7 +735,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       commitUndock();
       return true;
     }
-    const typeMap = { repair: 'repair', refuel: 'refuel', resupply: 'ammo', wash: 'hull_wash' };
+    const typeMap = { repair: 'repair', refuel: 'refuel', resupply: 'ammo', wash: 'hull_wash', restitution: 'restitution' };
     const type = typeMap[id];
     if (type && bus) {
       if (type === 'hull_wash' && !resolveStation(ctx).services.includes('repair')) return false;
@@ -836,6 +839,14 @@ export function createStationApp(rootEl, ctx, opts = {}) {
         k: 'muni', label: 'Munitions', frac: 0, tone: 'warn', track: false,
         value: 'Low', aria: 'Munitions low',
         acts: [vitalActHtml('resupply', costs.resupply, 'Resupply')],
+      });
+    }
+    const wantedLevel = heatLevelFor(Number(s && s.player && s.player.heat || 0));
+    if (wantedLevel > 0 && costs.restitution) {
+      vitals.push({
+        k: 'law', label: 'Law', frac: Math.min(1, wantedLevel / 5), tone: 'bad', track: false,
+        value: `WANTED ${wantedLevel}`, aria: `WANTED level ${wantedLevel}`,
+        acts: [vitalActHtml('restitution', costs.restitution, 'Pay')],
       });
     }
 

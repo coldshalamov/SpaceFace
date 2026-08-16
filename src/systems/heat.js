@@ -48,6 +48,10 @@ const WANTED_THRESHOLD = 0.15;     // above this, lawful patrols hunt you (playe
 const HEAT_LEVEL_COUNT = 5;
 const HEAT_RADIUS_BY_LEVEL = [0, 1200, 1700, 2300, 3000, 3700];
 const HEAT_CLEAR_SECONDS_BY_LEVEL = [0, 5, 6, 7, 8, 10];
+// Restitution is the docked, wallet-costly escape hatch for the local WANTED loop. Keep the
+// price attached to the heat tier rather than to a UI-supplied amount: the heat owner defines
+// what is being cleared while economy remains the only credit writer.
+const RESTITUTION_CR_BY_LEVEL = [0, 300, 650, 1100, 1700, 2500];
 
 // PQ-019B — validated law incidents, priced on the same scale as every other crime above. A
 // witnessed cargo theft sits between a contraband bust (0.16: passive smuggling, caught on a scan)
@@ -435,6 +439,10 @@ export function heatRadiusForLevel(level) {
 export function heatClearSecondsForLevel(level) {
   const i = Math.max(0, Math.min(HEAT_LEVEL_COUNT, Math.round(level || 0)));
   return HEAT_CLEAR_SECONDS_BY_LEVEL[i] || 0;
+}
+export function heatRestitutionCost(value) {
+  const level = heatLevelFor(value);
+  return RESTITUTION_CR_BY_LEVEL[level] || 0;
 }
 export const THRESHOLD = WANTED_THRESHOLD;
 // PQ-019B: exported so the owner-invariant suite prices heat from the implementation rather than

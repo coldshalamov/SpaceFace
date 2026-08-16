@@ -4,6 +4,7 @@
 import { COMMODITIES } from '../../data/commodities.js';
 import { SERVICE_PRICES } from '../../systems/economy.js';
 import { livingHullCyclesSinceWash, livingHullGrimeAt } from '../../core/livingHull.js';
+import { heatLevelFor, heatRestitutionCost } from '../../systems/heat.js';
 import { confirm } from '../confirm.js';
 
 export function factionPresenceServiceRows(state, stationId) {
@@ -64,6 +65,7 @@ const SERVICE_ROWS = Object.freeze([
   { type: 'repair', label: 'Repair Hull', desc: 'Restore hull integrity', requires: ['repair'] },
   { type: 'hull_wash', label: 'Hull Wash', desc: 'Clear surface grime without erasing hull history', requires: ['repair'] },
   { type: 'ammo', label: 'Buy Munitions', desc: 'Restock missile/ammo stores', requires: ['trade', 'refuel'] },
+  { type: 'restitution', label: 'Pay Restitution', desc: 'Settle the local WANTED notice', requires: [] },
   { type: 'insurance', label: 'Hull Insurance', desc: 'Station recovery payout; cargo loss still applies', requires: [] },
 ]);
 
@@ -212,6 +214,29 @@ export function serviceReadinessRecommendation(state, entity, stationServices = 
 export function serviceQuote(type, state, entity) {
   const p = state && state.player || {};
   const credits = playerCredits(state);
+  if (type === 'restitution') {
+    const level = heatLevelFor(p.heat);
+    const cost = heatRestitutionCost(p.heat);
+    if (level <= 0 || cost <= 0) {
+      return {
+        amount: 0, cost: 0, detail: 'No active local WANTED notice', buttonLabel: 'Clear',
+        disabled: true, chips: [{ text: 'record clear', kind: 'ok' }],
+      };
+    }
+    const disabled = credits < cost;
+    return {
+      amount: 1,
+      cost,
+      detail: `WANTED ${level} · settle at any station`,
+      buttonLabel: disabled ? `Need ${fmtCr(cost)} cr` : 'Pay Restitution',
+      disabled,
+      disabledReason: disabled ? `need ${fmtCr(cost)} cr` : '',
+      chips: [
+        { text: `${fmtCr(cost)} cr`, kind: 'cost' },
+        ...(disabled ? [{ text: 'insufficient credits', kind: 'bad' }] : [afterCreditsChip(credits, cost)]),
+      ],
+    };
+  }
   if (type === 'refuel') {
     const fuel = state && state.fuel || { current: 0, max: 0 };
     const current = Math.round(fuel.current || 0);
