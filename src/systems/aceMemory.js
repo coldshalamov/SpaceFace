@@ -71,6 +71,7 @@ export const aceMemory = {
     this._listen('timeTrial:started', (p) => this._rivalTrialStarted(p));
     this._listen('timeTrial:completed', (p) => this._rivalTrialCompleted(p));
     this._listen('timeTrial:invalidated', (p) => this._rivalTrialInvalidated(p));
+    this._listen('playerDefeat:podRescued', (p) => this._rivalSavedPlayer(p));
     this._listen('save:loaded', () => {
       this._rearmCultureIntroAfterLoad();
       this._rearmPlanetChallengesAfterLoad();
@@ -591,6 +592,35 @@ export const aceMemory = {
     return this._finishRivalRace('rival', { ...payload, invalidated: true });
   },
 
+  _rivalSavedPlayer(payload) {
+    const responder = payload && payload.rescueHullId != null && this.state && this.state.entities
+      ? this.state.entities.get(payload.rescueHullId) : null;
+    const responderData = responder && responder.data || {};
+    if (!payload || !payload.lossId || !responder || responder.alive === false
+      || responderData.rivalTrafficOwned !== true
+      || responderData.namedRivalId !== RECURRING_RIVAL.id) return false;
+    const rival = rivalRecordFor(ensureMemory(this.state));
+    const lossId = String(payload.lossId).slice(0, 160);
+    if (!rival.unlocked || rival.recentSaveLossIds.includes(lossId)) return false;
+    rival.recentSaveLossIds = [...rival.recentSaveLossIds, lossId].slice(-8);
+    rival.savesCount += 1;
+    rival.appearances += 1;
+    rival.lastAppearance = 'rescue';
+    rival.lastSaveLossId = lossId;
+    rival.lastSaveAt = nowOf(this.state, payload);
+    rival.lastSeenAt = rival.lastSaveAt;
+    this._speakRival('rescue');
+    emit(this.bus, 'recurringRival:savedPlayer', {
+      rivalId: RECURRING_RIVAL.id,
+      rivalName: RECURRING_RIVAL.name,
+      lossId,
+      entityId: responder.id,
+      savesCount: rival.savesCount,
+      physical: true,
+    });
+    return true;
+  },
+
   _processRival(state) {
     const rival = rivalRecordFor(ensureMemory(state));
     const now = nowOf(state);
@@ -740,11 +770,14 @@ export const aceMemory = {
     if (!entities || typeof entities.values !== 'function') return null;
     const direct = rival.activeEntityId != null && typeof entities.get === 'function'
       ? entities.get(rival.activeEntityId) : null;
-    if (direct && direct.alive !== false && direct.data && direct.data.namedRivalId === RECURRING_RIVAL.id) {
+    if (direct && direct.alive !== false && direct.data
+      && direct.data.namedRivalId === RECURRING_RIVAL.id
+      && direct.data.rivalTrafficOwned !== true) {
       return direct;
     }
     for (const entity of entities.values()) {
       if (entity && entity.alive !== false && entity.data
+        && entity.data.rivalTrafficOwned !== true
         && (entity.data.namedRivalId === RECURRING_RIVAL.id
           || (typeof entity.data.worldRecordId === 'string'
             && entity.data.worldRecordId.startsWith(`${RIVAL_WORLD_RECORD_ID}:appearance:`)))) {
@@ -1033,6 +1066,8 @@ function freshRivalRecord() {
     racesStarted: 0,
     playerWins: 0,
     rivalWins: 0,
+    savesCount: 0,
+    recentSaveLossIds: [],
     activeEntityId: null,
     activeWorldRecordId: null,
     activeRace: null,
@@ -1050,11 +1085,20 @@ function normalizeRivalRecord(input) {
   out.racesStarted = Math.max(0, Math.floor(Number(input.racesStarted) || 0));
   out.playerWins = Math.max(0, Math.floor(Number(input.playerWins) || 0));
   out.rivalWins = Math.max(0, Math.floor(Number(input.rivalWins) || 0));
+  out.savesCount = Math.max(0, Math.floor(Number(input.savesCount) || 0));
+  out.recentSaveLossIds = Array.from(new Set(
+    (Array.isArray(input.recentSaveLossIds) ? input.recentSaveLossIds : [])
+      .map((value) => String(value || '').replace(/[^a-zA-Z0-9:_-]+/g, '').slice(0, 160))
+      .filter(Boolean),
+  )).slice(-8);
   out.triggerCourseId = typeof input.triggerCourseId === 'string' ? input.triggerCourseId : null;
   out.lastCourseId = typeof input.lastCourseId === 'string' ? input.lastCourseId : null;
   out.lastAppearance = typeof input.lastAppearance === 'string' ? input.lastAppearance : null;
   out.unlockedAt = Number.isFinite(input.unlockedAt) ? input.unlockedAt : null;
   out.lastSeenAt = Number.isFinite(input.lastSeenAt) ? input.lastSeenAt : null;
+  out.lastSaveLossId = typeof input.lastSaveLossId === 'string'
+    ? input.lastSaveLossId.slice(0, 160) : null;
+  out.lastSaveAt = Number.isFinite(input.lastSaveAt) ? input.lastSaveAt : null;
   out.retireAt = Number.isFinite(input.retireAt) ? input.retireAt : null;
   out.activeEntityId = input.activeEntityId != null ? input.activeEntityId : null;
   out.activeWorldRecordId = typeof input.activeWorldRecordId === 'string'

@@ -350,8 +350,22 @@ export const RECURRING_RIVAL = deepFreeze({
     playerWon: 'KEI HALBER: Clean run. Keep the line warm.',
     rivalWon: 'KEI HALBER: I left you the wake.',
     invalidated: 'KEI HALBER: Bent line. Run it again.',
+    rescue: 'KEI HALBER: Dispatch found me. Hold still.',
   },
 });
+
+/** Plan 52's occasional-save cadence is derived only from Kei's own head-to-head history.
+ * One rescue is available after the first resolved race, then one more after every two results. */
+export function recurringRivalRescueReady(state, lossId = null) {
+  const rival = state && state.aceMemory && state.aceMemory.rival;
+  if (!rival || rival.unlocked !== true) return false;
+  const results = Math.max(0, Math.floor(Number(rival.playerWins) || 0))
+    + Math.max(0, Math.floor(Number(rival.rivalWins) || 0));
+  const saves = Math.max(0, Math.floor(Number(rival.savesCount) || 0));
+  const savedLossIds = Array.isArray(rival.recentSaveLossIds) ? rival.recentSaveLossIds : [];
+  if (lossId && savedLossIds.includes(String(lossId))) return false;
+  return results > 0 && saves < Math.ceil(results / 2);
+}
 
 const CAPTAIN_ALIASES = Object.freeze(NAMED_CAPTAINS.map((cap) => Object.freeze({
   id: cap.id,

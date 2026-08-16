@@ -44,6 +44,10 @@ import {
 import { FACTION_KITS } from '../data/factions.js';
 import { ordinaryShipIdentity } from '../data/factionNameBanks.js';
 import {
+  RECURRING_RIVAL,
+  recurringRivalRescueReady,
+} from '../data/namedAces.js';
+import {
   PRIORITY_COURIER_ITINERARY_KIND,
   PRIORITY_COURIER_JOB_SCHEMA,
   PRIORITY_COURIER_SERVICE,
@@ -1189,6 +1193,39 @@ export const traffic = {
     return true;
   },
 
+  _availableRecurringRivalRescue(sectorId, pod) {
+    const candidates = [];
+    for (const rec of this.state.traffic && this.state.traffic.freighters || []) {
+      if (!rec || rec.role !== 'rescue' || rec.id == null || this._rescuePodByResponder.has(rec.id)) continue;
+      const entity = liveEntity(this.state, rec.id);
+      const data = entity && entity.data || {};
+      const entitySectorId = entity && (entity.homeSectorId || data.homeSectorId || data.sectorId)
+        || (this.state.world && this.state.world.currentSectorId) || null;
+      if (!entity || entity.type !== 'ship' || !entity.pos || data.rivalTrafficOwned !== true
+        || data.namedRivalId !== RECURRING_RIVAL.id
+        || (sectorId && entitySectorId && entitySectorId !== sectorId)) continue;
+      candidates.push({
+        entity,
+        distanceSq: pod && pod.pos ? distanceSquared(entity.pos, pod.pos) : Infinity,
+      });
+    }
+    candidates.sort((a, b) => a.distanceSq - b.distanceSq
+      || String(a.entity.id).localeCompare(String(b.entity.id)));
+    return candidates[0] && candidates[0].entity || null;
+  },
+
+  _assignSpecificRescueResponder(pod, responder, sectorId) {
+    this._ensureRescueResponseMaps();
+    if (!pod || !responder || responder.alive === false || responder.type !== 'ship'
+      || this._rescueResponseByPod.has(pod.id) || this._rescuePodByResponder.has(responder.id)) return false;
+    const data = responder.data || {};
+    if ((data.trafficRole || data.role) !== 'rescue') return false;
+    const assignment = { podId: pod.id, responderId: responder.id, sectorId: sectorId || null };
+    this._rescueResponseByPod.set(pod.id, assignment);
+    this._rescuePodByResponder.set(responder.id, pod.id);
+    return true;
+  },
+
   /** Paid/faction player rescue is an explicit dispatch. It first borrows an existing rescue-role
    * traffic hull; if the pocket has none, traffic materializes one ordinary rescue craft and lets
    * the same Flight V3 intent + Rapier motion close the final distance. */
@@ -1212,11 +1249,23 @@ export const traffic = {
       if (stamp.rescueFactionId) rec.rescueFactionId = stamp.rescueFactionId;
     }
 
-    let assigned = this._onSurvivorPodEjected({
-      entityId: pod.id,
-      sectorId: payload.sectorId || stamp.sectorId || null,
-    });
+    const sectorId = payload.sectorId || stamp.sectorId || null;
+    let assigned = false;
     let spawned = false;
+    if (recurringRivalRescueReady(this.state, payload.lossId)) {
+      let responder = this._availableRecurringRivalRescue(sectorId, pod);
+      if (!responder) {
+        responder = this._spawnPlayerRescueCraft(pod, payload, RECURRING_RIVAL);
+        spawned = !!responder;
+      }
+      if (responder) assigned = this._assignSpecificRescueResponder(pod, responder, sectorId);
+    }
+    if (!assigned) {
+      assigned = this._onSurvivorPodEjected({
+        entityId: pod.id,
+        sectorId,
+      });
+    }
     if (!assigned) {
       const responder = this._spawnPlayerRescueCraft(pod, payload);
       spawned = !!responder;
@@ -1228,8 +1277,18 @@ export const traffic = {
       }
     }
     const assignment = this._rescueResponseByPod.get(pod.id);
+    const assignedResponder = assignment && liveEntity(this.state, assignment.responderId);
+    const responderData = assignedResponder && assignedResponder.data || {};
+    const recurringRival = responderData.rivalTrafficOwned === true
+      && responderData.namedRivalId === RECURRING_RIVAL.id;
     payload.result = assigned && assignment
-      ? { ok: true, responderId: assignment.responderId, spawned }
+      ? {
+          ok: true,
+          responderId: assignment.responderId,
+          spawned,
+          recurringRival,
+          rivalId: recurringRival ? RECURRING_RIVAL.id : null,
+        }
       : { ok: false, reason: 'responder_unavailable' };
     if (payload.result.ok && this.bus && typeof this.bus.emit === 'function') {
       this.bus.emit('traffic:playerRescueDispatched', {
@@ -1238,12 +1297,14 @@ export const traffic = {
         responderId: assignment.responderId,
         spawned,
         mode: payload.mode || 'paid',
+        recurringRival,
+        rivalId: recurringRival ? RECURRING_RIVAL.id : null,
       });
     }
     return payload.result.ok;
   },
 
-  _spawnPlayerRescueCraft(pod, payload = {}) {
+  _spawnPlayerRescueCraft(pod, payload = {}, identity = null) {
     if (!pod || !pod.pos || !this.helpers || typeof this.helpers.spawnEntity !== 'function') return null;
     this._ensureState();
     const stations = this._sectorStations();
@@ -1252,7 +1313,7 @@ export const traffic = {
     if (!sectorId) return null;
     const def = TRAFFIC_ROLES.rescue;
     const sector = this.state.world && this.state.world.sectors && this.state.world.sectors[sectorId];
-    const factionId = payload.factionId || sector && sector.factionId
+    const factionId = identity && identity.factionId || payload.factionId || sector && sector.factionId
       || this.state.world && this.state.world.currentSector && this.state.world.currentSector.factionId
       || 'faction_free';
     const h = hash32((this.state.meta && this.state.meta.seed) || 1, payload.lossId || '', sectorId, 'player-rescue');
@@ -1262,11 +1323,17 @@ export const traffic = {
       x: pod.pos.x + Math.cos(angle) * radius,
       z: pod.pos.z + Math.sin(angle) * radius,
     };
-    const spec = makeShipEntitySpec(factionHullFor(def.ship, factionId, () => 0.5), {
+    const spec = makeShipEntitySpec(identity && identity.shipDefId
+      || factionHullFor(def.ship, factionId, () => 0.5), {
       team: def.team,
       factionId,
       pos,
-      ai: { archetype: def.archetype, passive: true, spawnContext: 'convoy_civilian' },
+      appearance: identity && identity.appearance || null,
+      ai: {
+        archetype: def.archetype,
+        passive: true,
+        spawnContext: identity ? 'recurring_rival_rescue' : 'convoy_civilian',
+      },
     });
     const entity = this.helpers.spawnEntity(spec);
     if (!entity) return null;
@@ -1274,6 +1341,16 @@ export const traffic = {
     this._stampTrafficDurableIdentity(entity, sectorId, 'rescue', def, seq);
     entity.flags = Object.assign({}, entity.flags, { persistent: true });
     entity.data.playerRescueLossId = payload.lossId || null;
+    if (identity) {
+      entity.data.name = identity.name;
+      entity.data.callsign = identity.name;
+      entity.data.scanLabel = `${identity.name} / RESCUE VECTOR`;
+      entity.data.namedRivalId = identity.id;
+      entity.data.rivalAppearance = 'rescue';
+      entity.data.rivalTrafficOwned = true;
+      entity.data.aceTierPeer = true;
+      entity.data.trafficLabel = `${identity.name} / Rescue`;
+    }
     const target = stations[0];
     const manifest = this._assignManifest(entity, 'rescue', target, sectorId);
     const rec = {
