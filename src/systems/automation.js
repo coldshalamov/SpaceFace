@@ -39,7 +39,19 @@ import {
   makeWingOrderCommand,
   normalizeLiveWingOrder,
   normalizePersistedWingOrder,
+  normalizeWingOrderKind,
 } from '../data/wingOrders.js';
+import {
+  WINGMAN_DAY_SECONDS,
+  WINGMAN_PILOTS,
+  WINGMAN_ROSTER_VERSION,
+  WINGMAN_VETERAN_DISCOUNT_PCT,
+  WINGMAN_VETERAN_SORTIES,
+  createInitialWingmanRoster,
+  effectiveWingmanDailyRate,
+  normalizeWingmanRoster,
+  wingmanPilotById,
+} from '../data/wingmanPilots.js';
 import { isHostileForAI } from '../ai/engagementAuthority.js';
 import { droneBayCompatibleSlotCount, droneBayCountForFittings } from './ships.js';
 
@@ -57,6 +69,7 @@ const OUTPOST_BY_ID = new Map(OUTPOSTS.map((o) => [o.id, o]));
 const TECH_BY_ID = new Map(TECH_NODES.map((node) => [node.id, node]));
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 const ASTEROID_BY_ID = new Map(ASTEROIDS.map((a) => [a.id, a]));
+const WINGMAN_SORTIE_MIN_TICKS = 60;
 const COMMON_ORES = ['cmdty_ore_iron', 'cmdty_ore_copper', 'cmdty_ore_titanium', 'cmdty_ore_platinoid'];
 const TRADER_SHIP_DEF = Object.freeze({
   trader_hauler_l: 'ship_mule',
@@ -462,6 +475,7 @@ export const automation = {
     };
     this._programCtx = makeProgramContext(this);
     this._saveRestoring = false;
+    this._wingmanRateDay = -1;
 
     // Dedicated seeded RNG stream (§0.5) for loss/raid rolls so they don't disturb other streams.
     this._initRng();
@@ -472,6 +486,10 @@ export const automation = {
     // assignFleet) through this one event; `order` is the verb we switch on.
     bus.on('ui:fleetOrder', (p) => { if (p) this.handleOrder(p); });
     bus.on('ui:wingOrder', (p) => { if (p) this.handleWingOrder(p); });
+    bus.on('ui:hireWingman', (p) => { if (p) this.hireNamedPilot(p); });
+    bus.on('ui:acknowledgeWingmanDeath', (p) => { if (p) this.acknowledgeWingmanDeath(p); });
+    bus.on('dock:undocked', (p) => this._beginWingmanSortie(p || {}));
+    bus.on('dock:docked', (p) => this._completeWingmanSortie(p || {}));
 
     // Combat dealing damage to one of our assets (drone group / outpost / fleet ship).
     bus.on('combat:hitAsset', (p) => { if (p) this.onHitAsset(p); });
@@ -543,6 +561,8 @@ export const automation = {
     if (!(dt > 0)) return;
     ensureAutomationRuntime(this);
     resetAutomationDiagnostics(this._diag);
+    this._advanceWingmanSortie();
+    this._settleWingmanDailyRates();
 
     // Refill the per-minute cap token bucket: capLimit/60 per second, clamped to [0, capLimit].
     const capLimit = this.passiveCapPerMin();
@@ -1583,11 +1603,12 @@ export const automation = {
 
   handleWingOrder(p) {
     const requestedOrder = String(p && p.order || '');
-    const validOrder = Object.values(WING_ORDER).includes(requestedOrder);
+    const normalizedOrder = normalizeWingOrderKind(requestedOrder, null);
+    const validOrder = normalizedOrder != null;
     const meta = this.meta();
     meta.wingCommandSeq = Math.max(0, Number.isInteger(meta.wingCommandSeq) ? meta.wingCommandSeq : 0) + 1;
     const command = makeWingOrderCommand({
-      order: validOrder ? requestedOrder : WING_ORDER.REGROUP,
+      order: validOrder ? normalizedOrder : WING_ORDER.SCATTER,
       scope: p && p.scope,
       selectedWingmanId: p && p.selectedWingmanId,
       targetId: p && p.targetId,
@@ -1654,10 +1675,24 @@ export const automation = {
     if (blockedRecipients.length) this.bus.emit('wingOrder:blocked', payload);
     this.bus.emit('wingOrder:status', payload);
     const acknowledgement = acceptedRecipientIds.length === 0 ? 'UNABLE'
-      : blockedRecipients.length ? 'PARTIAL' : command.order.toUpperCase();
+      : blockedRecipients.length ? 'PARTIAL' : command.order.toUpperCase().replace(/_/g, ' ');
     const voice = this.helpers && this.helpers.voice;
     if (voice && typeof voice.say === 'function') {
-      voice.say({ channel: 'comms', text: acknowledgement, kind: 'wingOrder', id: command.id });
+      const named = acceptedRecipientIds
+        .map((id) => fleet.find((row) => row && row.id === id))
+        .map((row) => wingmanPilotById(row && row.pilotId))
+        .find(Boolean);
+      const voiceKey = command.order === WING_ORDER.FOLLOW ? 'follow'
+        : command.order === WING_ORDER.HOLD ? 'hold'
+          : command.order === WING_ORDER.ATTACK_MY_TARGET ? 'attackMyTarget' : 'scatter';
+      const text = named
+        ? `${named.callsign}: ${named.voice[voiceKey]}`
+        : acknowledgement;
+      voice.say({
+        channel: 'comms', text, kind: 'wingOrder', id: command.id,
+        speakerId: named && named.id || null,
+        voiceRegister: named && named.voice.register || null,
+      });
     }
     return payload;
   },
@@ -1837,6 +1872,218 @@ export const automation = {
     return true;
   },
 
+  // ---- NAMED PILOTS / RELATIONSHIP-LITE FLEET ----
+  hireNamedPilot(payload = {}) {
+    const definition = wingmanPilotById(payload.pilotId);
+    const stationId = String(payload.stationId
+      || (this.state.ui && this.state.ui.dockedStationId) || '');
+    if (!definition || definition.stationId !== stationId) return false;
+    const roster = this._wingmanRoster();
+    const record = roster.records[definition.id];
+    if (!record || record.status === 'dead' || record.status === 'hired') return false;
+    const fleet = this.state.automation.fleet;
+    if (fleet.length >= this.fleetCap()) {
+      this.toast('No open wing berth', 'error');
+      return false;
+    }
+    const day = Math.floor((this.state.simTime || 0) / WINGMAN_DAY_SECONDS);
+    record.status = 'hired';
+    record.hiredAtS = Math.max(0, this.state.simTime || 0);
+    record.nextRateDay = day + 1;
+    record.arrearsCr = 0;
+    record.deathAcknowledgement = 'none';
+    const fs = {
+      id: `wing_${definition.id}`,
+      pilotId: definition.id,
+      shipDefId: definition.shipDefId,
+      defId: definition.shipDefId,
+      name: definition.name,
+      fitId: definition.fit.id,
+      order: 'guard',
+      targetRef: null,
+      wingOrder: normalizeLiveWingOrder({ kind: WING_ORDER.FOLLOW }),
+      redeployTimer: 0,
+      hp: 1,
+      hullPct: 1,
+      status: WING_ORDER.FOLLOW,
+    };
+    fleet.push(fs);
+    const voice = this.helpers && this.helpers.voice;
+    if (voice && typeof voice.say === 'function') {
+      voice.say({
+        channel: 'comms', kind: 'wingmanHire', id: `wingman-hire:${definition.id}`,
+        speakerId: definition.id, voiceRegister: definition.voice.register,
+        text: `${definition.callsign}: ${definition.voice.hire}`,
+      });
+    }
+    this.bus.emit('wingman:hired', {
+      pilotId: definition.id,
+      name: definition.name,
+      callsign: definition.callsign,
+      stationId,
+      fitId: definition.fit.id,
+      fitLabel: definition.fit.label,
+      voiceRegister: definition.voice.register,
+      dailyRateCr: effectiveWingmanDailyRate(definition, record),
+      loyalty: record.loyalty,
+      fleetId: fs.id,
+    });
+    this.toast(`${definition.callsign} joined the wing`, 'success');
+    return true;
+  },
+
+  acknowledgeWingmanDeath(payload = {}) {
+    const definition = wingmanPilotById(payload.pilotId);
+    if (!definition) return false;
+    const record = this._wingmanRoster().records[definition.id];
+    if (!record || record.status !== 'dead' || record.deathAcknowledgement !== 'pending') return false;
+    record.deathAcknowledgement = 'heard';
+    this.bus.emit('wingman:deathAcknowledged', {
+      pilotId: definition.id,
+      name: definition.name,
+      callsign: definition.callsign,
+      deathOrder: record.deathOrder,
+      stationId: String(payload.stationId || ''),
+    });
+    return true;
+  },
+
+  _wingmanRoster() {
+    const a = this.state.automation;
+    if (!a.wingmanRoster || a.wingmanRoster.schemaVersion !== WINGMAN_ROSTER_VERSION
+      || !a.wingmanRoster.records || typeof a.wingmanRoster.records !== 'object') {
+      a.wingmanRoster = normalizeWingmanRoster(a.wingmanRoster, this.state.simTime);
+    }
+    return a.wingmanRoster;
+  },
+
+  _beginWingmanSortie() {
+    const roster = this._wingmanRoster();
+    if (roster.activeSortie) return false;
+    const pilotIds = this.state.automation.fleet
+      .map((entry) => entry && entry.pilotId)
+      .filter((pilotId) => pilotId && roster.records[pilotId] && roster.records[pilotId].status === 'hired');
+    if (!pilotIds.length) return false;
+    const id = roster.nextSortieId++;
+    roster.activeSortie = {
+      id,
+      startedAtS: Math.max(0, this.state.simTime || 0),
+      startedTick: Math.max(0, this.state.tick | 0),
+      flightTicks: 0,
+      startSectorId: this.state.world && this.state.world.currentSectorId || null,
+      pilotIds: pilotIds.slice(0, WINGMAN_PILOTS.length),
+    };
+    this.bus.emit('wingman:sortieStarted', { sortieId: id, pilotIds: roster.activeSortie.pilotIds.slice() });
+    return true;
+  },
+
+  _advanceWingmanSortie() {
+    const roster = this.state.automation && this.state.automation.wingmanRoster;
+    const sortie = roster && roster.activeSortie;
+    if (!sortie || this.state.mode !== 'flight') return;
+    sortie.flightTicks = Math.min(2147483647, (sortie.flightTicks | 0) + 1);
+  },
+
+  _completeWingmanSortie(payload = {}) {
+    const roster = this._wingmanRoster();
+    const sortie = roster.activeSortie;
+    if (!sortie || (sortie.flightTicks | 0) < WINGMAN_SORTIE_MIN_TICKS) return false;
+    const fleet = this.state.automation.fleet;
+    const survivors = [];
+    for (const pilotId of sortie.pilotIds) {
+      const definition = wingmanPilotById(pilotId);
+      const record = roster.records[pilotId];
+      const fs = fleet.find((entry) => entry && entry.pilotId === pilotId);
+      if (!definition || !record || record.status !== 'hired' || !fs) continue;
+      const previousSorties = record.sortiesSurvived | 0;
+      record.sortiesSurvived = Math.min(999, previousSorties + 1);
+      record.loyalty = clamp((record.loyalty | 0) + (fs.hullPct >= 0.5 ? 3 : 1), 0, 100);
+      if (previousSorties < WINGMAN_VETERAN_SORTIES
+        && record.sortiesSurvived >= WINGMAN_VETERAN_SORTIES) {
+        record.title = definition.veteranTitle;
+        record.rateDiscountPct = WINGMAN_VETERAN_DISCOUNT_PCT;
+        this.bus.emit('wingman:veteran', {
+          pilotId,
+          name: definition.name,
+          title: record.title,
+          rateDiscountPct: record.rateDiscountPct,
+          dailyRateCr: effectiveWingmanDailyRate(definition, record),
+        });
+      }
+      survivors.push(pilotId);
+    }
+    roster.activeSortie = null;
+    this.bus.emit('wingman:sortieCompleted', {
+      sortieId: sortie.id,
+      stationId: payload.stationId || null,
+      survivingPilotIds: survivors,
+    });
+    return survivors.length > 0;
+  },
+
+  _settleWingmanDailyRates() {
+    const day = Math.floor((this.state.simTime || 0) / WINGMAN_DAY_SECONDS);
+    if (this._wingmanRateDay === day) return;
+    this._wingmanRateDay = day;
+    const roster = this._wingmanRoster();
+    const due = [];
+    let totalDue = 0;
+    for (const definition of WINGMAN_PILOTS) {
+      const record = roster.records[definition.id];
+      if (!record || record.status !== 'hired' || record.nextRateDay > day) continue;
+      const days = Math.max(1, day - record.nextRateDay + 1);
+      const owed = Math.min(999999, record.arrearsCr + effectiveWingmanDailyRate(definition, record) * days);
+      due.push({ definition, record, days, owed });
+      totalDue += owed;
+    }
+    if (!due.length) return;
+    let payable = Math.min(Math.max(0, ((this.state.player && this.state.player.credits) || 0) | 0), totalDue);
+    const charged = payable;
+    for (const item of due) {
+      const paid = Math.min(item.owed, payable);
+      payable -= paid;
+      item.record.arrearsCr = item.owed - paid;
+      item.record.nextRateDay = day + 1;
+      if (item.record.arrearsCr > 0) {
+        item.record.loyalty = clamp((item.record.loyalty | 0) - Math.min(12, item.days * 2), 0, 100);
+      }
+      this.bus.emit('wingman:dailyRateSettled', {
+        pilotId: item.definition.id,
+        day,
+        owedCr: item.owed,
+        paidCr: paid,
+        arrearsCr: item.record.arrearsCr,
+        loyalty: item.record.loyalty,
+      });
+    }
+    if (charged > 0) {
+      this.bus.emit('economy:chargeCredits', { amount: charged, reason: 'wingman:daily-rates' });
+    }
+  },
+
+  _recordNamedPilotDeath(fs, payload = {}) {
+    const definition = wingmanPilotById(fs && fs.pilotId);
+    if (!definition) return false;
+    const roster = this._wingmanRoster();
+    const record = roster.records[definition.id];
+    if (!record || record.status === 'dead') return false;
+    record.status = 'dead';
+    record.diedAtS = Math.max(0, this.state.simTime || 0);
+    record.deathOrder = fs.wingOrder && fs.wingOrder.kind || WING_ORDER.FOLLOW;
+    record.deathStationId = payload.sectorId
+      || (this.state.world && this.state.world.currentSectorId) || null;
+    record.deathAcknowledgement = 'pending';
+    this.bus.emit('wingman:pilotDied', {
+      pilotId: definition.id,
+      name: definition.name,
+      callsign: definition.callsign,
+      deathOrder: record.deathOrder,
+      sectorId: record.deathStationId,
+      killerId: payload.killerId == null ? null : payload.killerId,
+    });
+    return true;
+  },
+
   // ---- FLEET ----
   assignFleet(ownedShipIndex) {
     const a = this.state.automation;
@@ -1909,7 +2156,12 @@ export const automation = {
       if (!fs) return;
       fs.hp = Math.max(0, (fs.hp || 1) - dmg / 100);
       fs.hullPct = fs.hp;
-      if (fs.hp <= 0) { const i = a.fleet.indexOf(fs); if (i >= 0) a.fleet.splice(i, 1); this._loseAsset('fleet', fs, 0, p.sectorId || (this.state.world && this.state.world.currentSectorId)); }
+      if (fs.hp <= 0) {
+        this._recordNamedPilotDeath(fs, p);
+        const i = a.fleet.indexOf(fs);
+        if (i >= 0) a.fleet.splice(i, 1);
+        this._loseAsset('fleet', fs, 0, p.sectorId || (this.state.world && this.state.world.currentSectorId));
+      }
     }
   },
 
@@ -2460,7 +2712,22 @@ export const automation = {
     a.outposts = a.outposts || [];
     for (const o of a.outposts) delete o.entityId;
     a.fleet = a.fleet || [];
+    a.wingmanRoster = normalizeWingmanRoster(a.wingmanRoster, this.state && this.state.simTime);
     const sectorId = this.state && this.state.world && this.state.world.currentSectorId || null;
+    const seenPilots = new Set();
+    a.fleet = a.fleet.filter((fs) => {
+      if (!fs || !fs.pilotId) return true;
+      const definition = wingmanPilotById(fs.pilotId);
+      const record = definition && a.wingmanRoster.records[definition.id];
+      if (!definition || !record || record.status !== 'hired' || seenPilots.has(definition.id)) return false;
+      seenPilots.add(definition.id);
+      fs.pilotId = definition.id;
+      fs.shipDefId = definition.shipDefId;
+      fs.defId = definition.shipDefId;
+      fs.name = definition.name;
+      fs.fitId = definition.fit.id;
+      return true;
+    });
     for (const fs of a.fleet) {
       fs.wingOrder = normalizePersistedWingOrder(fs.wingOrder, sectorId, fs.order);
       fs.order = legacyFleetOrderFor(fs.wingOrder.kind);
@@ -2503,6 +2770,7 @@ export const automation = {
     this._capBudget = 0;
     this._outpostRaidAccum = 0;
     this._outpostSellAccum = 0;
+    this._wingmanRateDay = -1;
   },
 
   serialize() {
@@ -2525,6 +2793,7 @@ export const automation = {
     });
     return {
       drones, traders: a.traders, outposts, fleet,
+      wingmanRoster: normalizeWingmanRoster(a.wingmanRoster, this.state.simTime),
       fleetCap: a.fleetCap, balance: a.balance, accumulators: a.accumulators,
       meta: {
         lastTickTime: a.meta.lastTickTime,
@@ -2556,6 +2825,7 @@ export const automation = {
     this._capBudget = 0;
     this._outpostRaidAccum = 0;
     this._outpostSellAccum = 0;
+    this._wingmanRateDay = -1;
     // runOfflineCatchup() runs on the subsequent save:loaded event.
   },
 };
@@ -2607,6 +2877,7 @@ function makeProgramContext(host) {
 function makeDefaultAutomation() {
   return {
     drones: [], traders: [], outposts: [], fleet: [],
+    wingmanRoster: createInitialWingmanRoster(),
     fleetCap: 0,
     balance: Object.assign({}, AUTO_BALANCE),
     accumulators: { creditBuffer: 0, upkeepDebt: 0 },
