@@ -40,6 +40,7 @@ import {
 } from './engineTrailSurfaces.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
 import { successfulPickupAmount } from '../core/pickupAcceptance.js';
+import { pickupPresentationFor } from '../data/pickupPresentation.js';
 import { MOMENTUM_SINK_FRAME_KIND } from '../combat/momentumSink.js';
 import { MOMENTUM_SINK_STATUS_ID } from '../data/combatDefs.js';
 import {
@@ -9468,9 +9469,7 @@ export const vfx = {
   // the punctuation is one small short-lived intake light on real geometry.
   _onPickup(p) {
     if (successfulPickupAmount(p) <= 0 || !this._scene || !p.pos) return;
-    const col = (p.kind === 'credits' || p.kind === 'credit_chip')
-      ? '#ffcc44'
-      : oreColor(p.commodityId);
+    const col = pickupPresentationFor(p).worldColor;
     const collector = p.collectorId == null
       ? (this.helpers && this.helpers.player ? this.helpers.player() : this._ent(this.state.playerId))
       : this._ent(p.collectorId);
@@ -10617,9 +10616,7 @@ export const vfx = {
       if (speed < PICKUP_STREAM_MIN_SPEED) continue;
 
       const data = e.data || {};
-      const col = (data.kind === 'credits' || data.kind === 'credit_chip')
-        ? '#ffcc44'
-        : oreColor(data.commodityId);
+      const col = pickupPresentationFor(data).worldColor;
       const slot = existing || this._acquirePickupStream(e.id, col);
       if (!slot) continue;         // pool saturated: the cap holds, no ribbon is faked
       this._tintPickupStream(slot, col);

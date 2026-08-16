@@ -343,7 +343,9 @@ test('renderer selects a distinct minted credit-chip object', () => {
     radius: 2.2,
     data: { kind: CREDIT_CHIP_KIND, amount: 80, credits: 80 },
   });
-  assert.equal(ore.userData.gem?.geometry?.type, 'OctahedronGeometry');
+  assert.equal(ore.userData.pickupPresentationId, 'ore');
+  assert.equal(ore.userData.visualLanguage, 'split-ore-cluster');
+  assert.ok(ore.getObjectByName('PickupOreSplitCore'));
   assert.equal(chip.userData.pickupVisual, 'credit_chip');
   assert.equal(chip.userData.visualLanguage, 'minted-credit-chip');
   assert.equal(chip.userData.gem, undefined);

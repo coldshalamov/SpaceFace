@@ -39,7 +39,7 @@ import { paletteWithShipAppearance } from '../core/shipAppearance.js';
 import { SHIPS } from '../data/ships.js';
 import { WEAPONS } from '../data/weapons.js';
 import { MODULES } from '../data/modules.js';
-import { COMMODITIES } from '../data/commodities.js';
+import { pickupPresentationFor } from '../data/pickupPresentation.js';
 import { FACTION_META } from '../data/factions.js';
 import { configureMaterialLibrary } from './materialLibrary.js';
 import { createEnergyMaterial } from './energy/energyMaterials.js';
@@ -64,7 +64,6 @@ import {
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
 const WPN_BY_ID = new Map(WEAPONS.map((w) => [w.id, w]));
 const MOD_BY_ID = new Map(MODULES.map((m) => [m.id, m]));
-const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const FACTION_PERSONALITY = new Map(FACTION_META.map((f) => [f.id, f.personality]));
 
 // Player cyan / hostile red; otherwise the faction palette (else a neutral fallback).
@@ -3842,27 +3841,8 @@ function applyStructureProfile(g, pal, R, seed) {
 }
 
 // ---------------------------------------------------------------------------------------------
-// PICKUPS — spinning glowing gem colored by commodity, with additive halo.
+// PICKUPS — opaque manufactured reward families with color + silhouette redundancy.
 // ---------------------------------------------------------------------------------------------
-function commodityColor(e) {
-  const d = e.data || {};
-  if (d.kind === 'credits') return '#ffcc44';
-  if (d.kind === 'module' || d.kind === 'cargo') return '#9b6cff';
-  const cm = d.commodityId && CMDTY_BY_ID.get(d.commodityId);
-  if (cm) {
-    switch (cm.category) {
-      case 'raw ore': return '#c89a6a';
-      case 'gas': return '#7fe0c0';
-      case 'crystal': return '#b878ff';
-      case 'exotic': return '#ff70d0';
-      case 'refined': return '#bcd0e0';
-      case 'salvage': return '#9aa0a8';
-      default: return '#9fd8a0';
-    }
-  }
-  return '#7af7d0';
-}
-
 function isCreditChipEntity(e) {
   const d = e && e.data || {};
   return d.kind === 'credit_chip' || d.kind === 'credits';
@@ -3872,6 +3852,7 @@ function isCreditChipEntity(e) {
 // Top-down it reads as a coin; from the side it has thickness. Not a recolored
 // ore octahedron and not a camera-facing glow card.
 function buildCreditChip(e) {
+  const presentation = pickupPresentationFor(e && e.data);
   const R = Math.max(1.4, Number(e && e.radius) || 2.2);
   const g = new THREE.Group();
   const bodyMat = getMaterial('creditchip:body', () => new THREE.MeshStandardMaterial({
@@ -3951,6 +3932,8 @@ function buildCreditChip(e) {
   g.userData.interactionKind = 'pickup';
   g.userData.pickupVisual = 'credit_chip';
   g.userData.visualLanguage = 'minted-credit-chip';
+  g.userData.pickupPresentationId = presentation.id;
+  g.userData.pickupColor = presentation.worldColor;
   const ph = (hashId(e.id) % 100) / 100 * Math.PI * 2;
   const host = stack.children[0];
   host.frustumCulled = false;
@@ -3962,40 +3945,268 @@ function buildCreditChip(e) {
   return g;
 }
 
+function pickupMaterial(profile, role) {
+  const key = `pickup:${profile.id}:${role}`;
+  if (role === 'dark') {
+    return getMaterial(key, () => new THREE.MeshStandardMaterial({
+      color: new THREE.Color(profile.darkColor), roughness: 0.62, metalness: 0.52,
+    }));
+  }
+  if (role === 'accent') {
+    return getMaterial(key, () => new THREE.MeshStandardMaterial({
+      color: new THREE.Color(profile.accentColor),
+      emissive: new THREE.Color(profile.emissiveColor),
+      emissiveIntensity: 0.72,
+      roughness: 0.3,
+      metalness: 0.64,
+    }));
+  }
+  return getMaterial(key, () => new THREE.MeshStandardMaterial({
+    color: new THREE.Color(profile.worldColor),
+    emissive: new THREE.Color(profile.emissiveColor),
+    emissiveIntensity: 0.24,
+    roughness: 0.46,
+    metalness: 0.58,
+  }));
+}
+
+function finishPickupBody(root, body, profile, e, spinRate = 1.45) {
+  root.add(body);
+  root.userData.kind = 'pickup';
+  root.userData.interactionKind = 'pickup';
+  root.userData.pickupVisual = profile.id;
+  root.userData.pickupPresentationId = profile.id;
+  root.userData.pickupColor = profile.worldColor;
+  root.userData.visualLanguage = profile.worldShape;
+  const ph = (hashId(e && e.id) % 100) / 100 * Math.PI * 2;
+  let host = null;
+  body.traverse((object) => { if (!host && object.isMesh) host = object; });
+  if (host) {
+    host.frustumCulled = false;
+    host.onBeforeRender = () => {
+      const t = nowSec();
+      body.rotation.y = t * spinRate + ph;
+      body.rotation.x = Math.sin(t * 0.72 + ph) * 0.18;
+      body.position.y = 0.36 * Math.sin(t * 1.8 + ph);
+    };
+  }
+  return root;
+}
+
+function buildOrePickup(e, profile, R) {
+  const root = new THREE.Group();
+  const body = new THREE.Group();
+  const base = pickupMaterial(profile, 'body');
+  const accent = pickupMaterial(profile, 'accent');
+  const core = new THREE.Mesh(
+    getGeometry('pickup:ore:split-core', () => new THREE.DodecahedronGeometry(0.58, 0)), base,
+  );
+  core.name = 'PickupOreSplitCore';
+  core.scale.set(1.05, 0.72, 0.92);
+  body.add(core);
+  const shardGeo = getGeometry('pickup:ore:shard', () => new THREE.TetrahedronGeometry(0.46, 0));
+  for (let index = 0; index < 3; index++) {
+    const angle = index * Math.PI * 2 / 3 + 0.25;
+    const shard = new THREE.Mesh(shardGeo, index === 1 ? accent : base);
+    shard.name = `PickupOreShard_${index + 1}`;
+    shard.position.set(Math.cos(angle) * 0.57, (index - 1) * 0.18, Math.sin(angle) * 0.57);
+    shard.rotation.set(angle * 0.22, angle, angle * 0.31);
+    shard.scale.set(0.72, 1.05, 0.6);
+    body.add(shard);
+  }
+  body.scale.setScalar(R);
+  return finishPickupBody(root, body, profile, e, 1.3);
+}
+
+function buildRefinedPickup(e, profile, R) {
+  const root = new THREE.Group();
+  const body = new THREE.Group();
+  const base = pickupMaterial(profile, 'body');
+  const accent = pickupMaterial(profile, 'accent');
+  const dark = pickupMaterial(profile, 'dark');
+  const ingotGeo = getGeometry('pickup:refined:ingot', () => new THREE.BoxGeometry(1.35, 0.28, 0.56));
+  for (let index = 0; index < 3; index++) {
+    const ingot = new THREE.Mesh(ingotGeo, index === 1 ? accent : base);
+    ingot.name = `PickupRefinedIngot_${index + 1}`;
+    ingot.position.set((index - 1) * 0.1, (index - 1) * 0.3, (index - 1) * 0.16);
+    ingot.rotation.y = (index - 1) * 0.08;
+    body.add(ingot);
+  }
+  const bandGeo = getGeometry('pickup:refined:band', () => new THREE.BoxGeometry(0.18, 0.92, 0.7));
+  for (const x of [-0.38, 0.38]) {
+    const band = new THREE.Mesh(bandGeo, dark);
+    band.name = x < 0 ? 'PickupRefinedBandPort' : 'PickupRefinedBandStarboard';
+    band.position.x = x;
+    body.add(band);
+  }
+  body.scale.setScalar(R * 0.82);
+  return finishPickupBody(root, body, profile, e, 1.1);
+}
+
+function buildComponentPickup(e, profile, R) {
+  const root = new THREE.Group();
+  const body = new THREE.Group();
+  const dark = pickupMaterial(profile, 'dark');
+  const base = pickupMaterial(profile, 'body');
+  const accent = pickupMaterial(profile, 'accent');
+  const hub = new THREE.Mesh(
+    getGeometry('pickup:component:hub', () => new THREE.BoxGeometry(0.58, 0.42, 0.58)), dark,
+  );
+  hub.name = 'PickupComponentShieldedHub';
+  body.add(hub);
+  const railGeo = getGeometry('pickup:component:rail', () => new THREE.BoxGeometry(0.82, 0.13, 0.16));
+  const nodeGeo = getGeometry('pickup:component:node', () => new THREE.OctahedronGeometry(0.19, 0));
+  for (let index = 0; index < 4; index++) {
+    const angle = index * Math.PI * 0.5;
+    const rail = new THREE.Mesh(railGeo, base);
+    rail.name = `PickupComponentBusRail_${index + 1}`;
+    rail.position.set(Math.cos(angle) * 0.58, 0, Math.sin(angle) * 0.58);
+    rail.rotation.y = -angle;
+    body.add(rail);
+    const node = new THREE.Mesh(nodeGeo, accent);
+    node.name = `PickupComponentNode_${index + 1}`;
+    node.position.set(Math.cos(angle) * 0.98, (index & 1) ? 0.13 : -0.13, Math.sin(angle) * 0.98);
+    body.add(node);
+  }
+  body.scale.setScalar(R * 0.82);
+  return finishPickupBody(root, body, profile, e, 1.55);
+}
+
+function buildMunitionsPickup(e, profile, R) {
+  const root = new THREE.Group();
+  const body = new THREE.Group();
+  const dark = pickupMaterial(profile, 'dark');
+  const base = pickupMaterial(profile, 'body');
+  const accent = pickupMaterial(profile, 'accent');
+  const caseBody = new THREE.Mesh(
+    getGeometry('pickup:munitions:case', () => new THREE.CylinderGeometry(0.29, 0.34, 1.35, 8).rotateZ(Math.PI / 2)),
+    base,
+  );
+  caseBody.name = 'PickupMunitionPressureCase';
+  body.add(caseBody);
+  const nose = new THREE.Mesh(
+    getGeometry('pickup:munitions:nose', () => new THREE.ConeGeometry(0.3, 0.52, 8).rotateZ(-Math.PI / 2)),
+    accent,
+  );
+  nose.name = 'PickupMunitionCappedNose';
+  nose.position.x = 0.92;
+  body.add(nose);
+  const finGeo = getGeometry('pickup:munitions:fin', () => new THREE.BoxGeometry(0.34, 0.08, 0.5));
+  for (let index = 0; index < 3; index++) {
+    const fin = new THREE.Mesh(finGeo, dark);
+    fin.name = `PickupMunitionFin_${index + 1}`;
+    fin.position.x = -0.62;
+    fin.rotation.x = index * Math.PI / 3;
+    body.add(fin);
+  }
+  body.scale.setScalar(R * 0.86);
+  return finishPickupBody(root, body, profile, e, 1.0);
+}
+
+function buildModulePickup(e, profile, R) {
+  const root = new THREE.Group();
+  const body = new THREE.Group();
+  const dark = pickupMaterial(profile, 'dark');
+  const base = pickupMaterial(profile, 'body');
+  const accent = pickupMaterial(profile, 'accent');
+  const spindle = new THREE.Mesh(
+    getGeometry('pickup:module:spindle', () => new THREE.CylinderGeometry(0.36, 0.36, 1.0, 8).rotateZ(Math.PI / 2)),
+    base,
+  );
+  spindle.name = 'PickupModuleServiceSpindle';
+  body.add(spindle);
+  const collarGeo = getGeometry('pickup:module:collar', () => new THREE.TorusGeometry(0.43, 0.075, 6, 12).rotateY(Math.PI / 2));
+  for (const x of [-0.42, 0.42]) {
+    const collar = new THREE.Mesh(collarGeo, accent);
+    collar.name = x < 0 ? 'PickupModuleCollarA' : 'PickupModuleCollarB';
+    collar.position.x = x;
+    body.add(collar);
+  }
+  const bracketGeo = getGeometry('pickup:module:bracket', () => new THREE.BoxGeometry(0.22, 0.16, 0.92));
+  for (const x of [-0.66, 0.66]) {
+    const bracket = new THREE.Mesh(bracketGeo, dark);
+    bracket.name = x < 0 ? 'PickupModuleClevisA' : 'PickupModuleClevisB';
+    bracket.position.x = x;
+    body.add(bracket);
+  }
+  body.scale.setScalar(R * 0.9);
+  return finishPickupBody(root, body, profile, e, 1.25);
+}
+
+function buildRarePickup(e, profile, R) {
+  const root = new THREE.Group();
+  const body = new THREE.Group();
+  const dark = pickupMaterial(profile, 'dark');
+  const base = pickupMaterial(profile, 'body');
+  const accent = pickupMaterial(profile, 'accent');
+  const core = new THREE.Mesh(
+    getGeometry('pickup:rare:core', () => new THREE.DodecahedronGeometry(0.36, 0)), dark,
+  );
+  core.name = 'PickupRareSealedCore';
+  body.add(core);
+  const needleGeo = getGeometry('pickup:rare:needle', () => new THREE.ConeGeometry(0.18, 0.78, 4).rotateZ(-Math.PI / 2));
+  for (let index = 0; index < 6; index++) {
+    const angle = index * Math.PI / 3;
+    const needle = new THREE.Mesh(needleGeo, index % 2 ? accent : base);
+    needle.name = `PickupRareCompassNeedle_${index + 1}`;
+    needle.position.set(Math.cos(angle) * 0.68, (index & 1) ? 0.16 : -0.1, Math.sin(angle) * 0.68);
+    needle.rotation.y = -angle;
+    body.add(needle);
+  }
+  body.scale.setScalar(R * 0.9);
+  return finishPickupBody(root, body, profile, e, 0.82);
+}
+
+function buildCargoPickup(e, profile, R) {
+  const root = new THREE.Group();
+  const body = new THREE.Group();
+  const dark = pickupMaterial(profile, 'dark');
+  const base = pickupMaterial(profile, 'body');
+  const accent = pickupMaterial(profile, 'accent');
+  const crate = new THREE.Mesh(
+    getGeometry('pickup:cargo:body', () => new THREE.BoxGeometry(1.05, 0.72, 0.84)), base,
+  );
+  crate.name = 'PickupCargoSealedBrick';
+  body.add(crate);
+  const railGeo = getGeometry('pickup:cargo:rail', () => new THREE.BoxGeometry(1.22, 0.1, 0.1));
+  for (const y of [-0.38, 0.38]) {
+    for (const z of [-0.46, 0.46]) {
+      const rail = new THREE.Mesh(railGeo, dark);
+      rail.position.set(0, y, z);
+      rail.name = `PickupCargoEdgeRail_${body.children.length}`;
+      body.add(rail);
+    }
+  }
+  const latch = new THREE.Mesh(
+    getGeometry('pickup:cargo:latch', () => new THREE.BoxGeometry(0.26, 0.18, 0.12)), accent,
+  );
+  latch.name = 'PickupCargoLatch';
+  latch.position.set(0.18, 0.42, 0);
+  body.add(latch);
+  body.scale.setScalar(R * 0.86);
+  return finishPickupBody(root, body, profile, e, 0.92);
+}
+
 function buildPickup(e) {
+  const profile = pickupPresentationFor(e && e.data);
   if (e.data && e.data.freightCustodyPod) {
     const canister = buildPayload(e);
     canister.userData.kind = 'pickup';
     canister.userData.interactionKind = 'pickup';
+    canister.userData.pickupVisual = profile.id;
+    canister.userData.pickupPresentationId = profile.id;
+    canister.userData.pickupColor = profile.worldColor;
     return canister;
   }
   if (isCreditChipEntity(e)) return buildCreditChip(e);
-  const R = e.radius || 2.2;
-  const color = commodityColor(e);
-  const g = new THREE.Group();
-  const gem = new THREE.Mesh(
-    getGeometry('pickup:gem', () => new THREE.OctahedronGeometry(1, 0)),
-    getMaterial(`gemmat:${color}`, () => new THREE.MeshStandardMaterial({
-      color: 0x101014, emissive: new THREE.Color(color), emissiveIntensity: 1.5, metalness: 0.9, roughness: 0.15,
-    })),
-  );
-  gem.scale.setScalar(R);
-  g.add(gem);
-  const halo = makeHalo(color, R * 2.6);
-  g.add(halo);
-  g.userData.kind = 'pickup'; g.userData.gem = gem;
-  // spin + bob + halo pulse. Driver lives on the gem mesh (a Group never gets onBeforeRender).
-  const ph = (hashId(e.id) % 100) / 100 * Math.PI * 2;
-  const haloBase = halo.scale.x;
-  gem.frustumCulled = false;
-  gem.onBeforeRender = () => {
-    const t = nowSec();
-    gem.rotation.y = t * 2.2 + ph;
-    gem.rotation.x = t * 1.1;
-    gem.position.y = 0.6 * Math.sin(t * 2 + ph);
-    halo.scale.setScalar(haloBase * (1 + 0.18 * Math.sin(t * 3 + ph)));
-  };
-  return g;
+  const R = Math.max(1.4, Number(e && e.radius) || 2.2);
+  if (profile.id === 'ore') return buildOrePickup(e, profile, R);
+  if (profile.id === 'refined') return buildRefinedPickup(e, profile, R);
+  if (profile.id === 'component') return buildComponentPickup(e, profile, R);
+  if (profile.id === 'munitions') return buildMunitionsPickup(e, profile, R);
+  if (profile.id === 'module') return buildModulePickup(e, profile, R);
+  if (profile.id === 'rare') return buildRarePickup(e, profile, R);
+  return buildCargoPickup(e, profile, R);
 }
 
 // ---------------------------------------------------------------------------------------------

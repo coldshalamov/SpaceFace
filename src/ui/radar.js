@@ -20,6 +20,7 @@
 // contacts (and the heading marker) flip left/right or up/down relative to the viewport.
 
 import { semanticColor, semanticShape, SEMANTIC_PALETTE } from './accessibility.js';
+import { pickupPresentationFor, pickupRadarColorFor } from '../data/pickupPresentation.js';
 import { solveIntercept } from '../core/flight/flightTelemetry.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
 import { resolveWaypointPresentationPosition } from './navigationWaypoint.js';
@@ -107,7 +108,6 @@ const COL = {
   player: '#00F0FF', hostile: '#ff5470', neutral: '#9aa8bc',
   // Asteroids stay cool-grey and dim so they never compete with stations or hostiles.
   asteroid: '#4a5564',
-  pickup: '#ffe36b',
   // Station identity is always cyan-blue infrastructure — not faction-tinted grey squares.
   // Faction color used to make SCN docks look like generic blue ship blips.
   station: '#3ecbff',
@@ -137,7 +137,7 @@ function shipState(e, playerTeam, state) {
 
 function blipColor(e, playerTeam, mode, state) {
   if (e.type === 'asteroid') return COL.asteroid;
-  if (e.type === 'pickup')   return COL.pickup;
+  if (e.type === 'pickup')   return pickupRadarColorFor(e.data, mode);
   if (e.type === 'station') {
     // Gates keep a violet ring identity; all docks share one cyan-blue hex so players can
     // learn "blue hex = place I can dock" without reading faction palette first.
@@ -175,6 +175,54 @@ function drawShipShape(g, x, y, shape, scale = 1) {
   } else {
     g.fillRect(x - 2 * s, y - 2 * s, 4 * s, 4 * s);
   }
+}
+
+// Plan 32 pickup families remain shape-redundant under every colorblind palette. This is canvas
+// geometry, not world text: the same frozen family record also drives the physical body and vacuum
+// ribbon, so radar cannot silently drift to a second identity table.
+export function drawPickupRadarShape(g, x, y, shape, rotation, scale = 1) {
+  const s = scale > 0 ? scale : 1;
+  g.save();
+  g.translate(x, y);
+  g.rotate(rotation || 0);
+  g.beginPath();
+  if (shape === 'hexagon') {
+    for (let index = 0; index < 6; index++) {
+      const angle = index * Math.PI / 3;
+      const px = Math.cos(angle) * 4.1 * s;
+      const py = Math.sin(angle) * 4.1 * s;
+      if (index === 0) g.moveTo(px, py); else g.lineTo(px, py);
+    }
+    g.closePath(); g.fill();
+  } else if (shape === 'diamond') {
+    g.moveTo(0, -4.4 * s); g.lineTo(3.7 * s, 0); g.lineTo(0, 4.4 * s);
+    g.lineTo(-3.7 * s, 0); g.closePath(); g.fill();
+  } else if (shape === 'double-bar') {
+    g.rect(-4.2 * s, -3.2 * s, 8.4 * s, 2.2 * s);
+    g.rect(-4.2 * s, 1.0 * s, 8.4 * s, 2.2 * s); g.fill();
+  } else if (shape === 'cross') {
+    g.rect(-1.25 * s, -4.4 * s, 2.5 * s, 8.8 * s);
+    g.rect(-4.4 * s, -1.25 * s, 8.8 * s, 2.5 * s); g.fill();
+  } else if (shape === 'triangle') {
+    g.moveTo(4.6 * s, 0); g.lineTo(-3.7 * s, -3.4 * s);
+    g.lineTo(-3.7 * s, 3.4 * s); g.closePath(); g.fill();
+  } else if (shape === 'bracket') {
+    g.rect(-4.4 * s, -4.1 * s, 1.8 * s, 8.2 * s);
+    g.rect(2.6 * s, -4.1 * s, 1.8 * s, 8.2 * s);
+    g.rect(-2.6 * s, -1.1 * s, 5.2 * s, 2.2 * s); g.fill();
+  } else if (shape === 'star') {
+    for (let index = 0; index < 12; index++) {
+      const radius = index % 2 === 0 ? 4.8 : 2.0;
+      const angle = -Math.PI / 2 + index * Math.PI / 6;
+      const px = Math.cos(angle) * radius * s;
+      const py = Math.sin(angle) * radius * s;
+      if (index === 0) g.moveTo(px, py); else g.lineTo(px, py);
+    }
+    g.closePath(); g.fill();
+  } else {
+    g.rect(-3.6 * s, -3.6 * s, 7.2 * s, 7.2 * s); g.fill();
+  }
+  g.restore();
 }
 
 // ── glow helpers ────────────────────────────────────────────────────────────────────────────
@@ -864,13 +912,14 @@ export function createRadar(ctx) {
         continue;
 
       } else if (type === 'pickup') {
-        // spinning animated diamond with pulse glow
-        const pulse = 0.5 + 0.5 * Math.sin(now * 0.005);
+        const pickupProfile = pickupPresentationFor(e.data);
+        const pickupMotionReduced = motionReduce || !!state.settings.accessibility?.flashReduce;
+        const pulse = pickupMotionReduced ? 1 : 0.72 + 0.28 * Math.sin(now * 0.004);
         g.save();
-        g.globalAlpha = 0.6 + 0.4 * pulse;
-        glow(g, col, 10 * pulse);
-        g.translate(bx, by); g.rotate((now * 0.0008) % (Math.PI * 2));
-        g.beginPath(); g.moveTo(0, -4); g.lineTo(3.5, 0); g.lineTo(0, 4); g.lineTo(-3.5, 0); g.closePath(); g.fill();
+        g.globalAlpha = 0.72 + 0.28 * pulse;
+        glow(g, col, 5 * pulse);
+        drawPickupRadarShape(g, bx, by, pickupProfile.radarShape,
+          pickupMotionReduced ? 0 : (now * 0.00055) % (Math.PI * 2));
         noGlow(g); g.restore();
 
       } else if (type === 'wreck') {
