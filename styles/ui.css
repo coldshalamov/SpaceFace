@@ -1413,7 +1413,35 @@ button:active { translate: 0 1px; }
 @keyframes sf-hullcrit-breathe { 0%, 100% { opacity: .62; } 50% { opacity: 1; } }
 @keyframes sf-ret-acquire { from { opacity: .12; transform: scale(1.28); } to { opacity: .58; transform: scale(1); } }
 
+/* Plan 54 — optional docking approach vector. The real dockingCorridor system publishes the
+   berth/phase; this retained HUD geometry only draws while physically inside that volume. It is a
+   short technical sightline, not a screen-edge/cockpit frame, and it has no idle animation. */
+#hud .sf-dockassist {
+  position: absolute; left: 0; top: 0; z-index: 0; pointer-events: none;
+  color: var(--visor-cyan, #67d8e8); transform-origin: 0 0;
+}
+#hud .sf-dockassist__line {
+  position: absolute; left: 0; top: 0; height: 1px; transform-origin: 0 50%;
+  background: repeating-linear-gradient(90deg, currentColor 0 12px, transparent 12px 18px);
+  opacity: .68;
+}
+#hud .sf-dockassist__berth {
+  position: absolute; left: -7px; top: -7px; width: 12px; height: 12px;
+  border: 1px solid currentColor; background: color-mix(in srgb, currentColor 12%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 10%, transparent);
+}
+#hud .sf-dockassist__label {
+  position: absolute; left: 0; top: 0; white-space: nowrap; padding: 2px 5px;
+  border-left: 2px solid currentColor; background: color-mix(in srgb, #071116 82%, transparent);
+  color: currentColor; font-size: 9px; letter-spacing: .1em;
+}
+#hud .sf-dockassist.is-aligning { color: var(--sf-warn, #ffd24a); }
+#hud .sf-dockassist.is-assisting { color: var(--sf-good, #67e6a2); }
+
 @media (forced-colors: active) {
-  #hud .sf-ret-tick, #hud .sf-ret-ring, #hud .sf-hullcrit > i { border-color: CanvasText; }
+  #hud .sf-ret-tick, #hud .sf-ret-ring, #hud .sf-hullcrit > i,
+  #hud .sf-dockassist__berth, #hud .sf-dockassist__label { border-color: CanvasText; }
   #hud .sf-ret-pip { background: CanvasText; }
+  #hud .sf-dockassist { color: CanvasText; }
+  #hud .sf-dockassist__line { background: CanvasText; }
 }

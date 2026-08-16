@@ -88,6 +88,51 @@ export function hullCriticalTreatmentActive(hullFrac, sinceDamageS) {
   return Number.isFinite(since) && since < HULL_CRIT_CALM_S;
 }
 
+/**
+ * Presentation model for Plan 54's optional docking vector.
+ *
+ * The sim remains authoritative: this reads the dockingCorridor publication and never infers a
+ * second corridor or changes the capture assist. A retained output object keeps the HUD cadence
+ * allocation-free; callers that omit it get a convenient one-off record for tests/tools.
+ */
+export function dockingAssistHintModel(state, out = {}) {
+  const settings = state && state.settings;
+  const enabled = !!(settings && settings.gameplay && settings.gameplay.dockAssistHint === true);
+  const corridor = state && state.dockingCorridor;
+  const active = !!(enabled && corridor && corridor.berth
+    && (corridor.inCorridor === true || corridor.inCapture === true));
+  out.visible = active;
+  out.berth = active ? corridor.berth : null;
+  out.assisting = active && !!corridor.assist;
+  out.headingOk = active && corridor.headingOk === true;
+  out.label = !active ? '' : (out.assisting ? 'CAPTURE ASSIST' : (out.headingOk ? 'DOCK VECTOR' : 'ALIGN TO BERTH'));
+  return out;
+}
+
+/** Resolve a projected player→berth segment without inventing off-screen direction. */
+export function dockingAssistScreenGeometry(playerScreen, berthScreen, out = {}) {
+  const valid = !!(playerScreen && berthScreen
+    && playerScreen.onScreen !== false && berthScreen.onScreen !== false
+    && Number.isFinite(playerScreen.x) && Number.isFinite(playerScreen.y)
+    && Number.isFinite(berthScreen.x) && Number.isFinite(berthScreen.y));
+  const dx = valid ? berthScreen.x - playerScreen.x : 0;
+  const dy = valid ? berthScreen.y - playerScreen.y : 0;
+  const length = valid ? Math.hypot(dx, dy) : 0;
+  out.visible = valid && length >= 10;
+  out.x = valid ? playerScreen.x : 0;
+  out.y = valid ? playerScreen.y : 0;
+  out.dx = dx;
+  out.dy = dy;
+  out.length = length;
+  out.angleDeg = out.visible ? Math.atan2(dy, dx) * 180 / Math.PI : 0;
+  const invLength = out.visible ? 1 / length : 0;
+  // Keep copy away from both the player silhouette and berth/anchor endpoint. A small normal offset
+  // makes it read as the vector's caption rather than a second target label.
+  out.labelDx = out.visible ? dx * 0.52 - dy * invLength * 11 : 0;
+  out.labelDy = out.visible ? dy * 0.52 + dx * invLength * 11 : 0;
+  return out;
+}
+
 /** Does this combat:damage receipt mean "a shot of OURS landed on someone else"? */
 export function reticleHitFromDamage(payload, playerId) {
   if (!payload || playerId == null) return false;
@@ -1104,6 +1149,29 @@ export function createHud(ctx, alerts) {
   root.innerHTML = '';
   root.dataset.objectiveHierarchy = 'one-objective-one-action-one-threat';
   injectTravelTapeStyle();
+
+  // Plan 54 docking approach hint. One compact projected vector appears only while the real
+  // dockingCorridor owner says the ship is inside its authored corridor/capture volume. It is a
+  // HUD readout, not a second navigator and never changes the bounded sim-side capture assist.
+  const dockAssistHint = document.createElement('div');
+  dockAssistHint.className = 'sf-dockassist';
+  dockAssistHint.hidden = true;
+  dockAssistHint.setAttribute('role', 'img');
+  dockAssistHint.setAttribute('aria-label', 'Docking approach vector');
+  dockAssistHint.innerHTML =
+    '<i class="sf-dockassist__line"></i>' +
+    '<i class="sf-dockassist__berth"></i>' +
+    '<span class="sf-dockassist__label mono"></span>';
+  root.appendChild(dockAssistHint);
+  const dockAssistLine = dockAssistHint.querySelector('.sf-dockassist__line');
+  const dockAssistBerth = dockAssistHint.querySelector('.sf-dockassist__berth');
+  const dockAssistLabel = dockAssistHint.querySelector('.sf-dockassist__label');
+  const dockAssistModel = {};
+  const dockAssistPlayerWorld = { x: 0, y: 0, z: 0 };
+  const dockAssistBerthWorld = { x: 0, y: 0, z: 0 };
+  const dockAssistPlayerScreen = { x: 0, y: 0, onScreen: false };
+  const dockAssistBerthScreen = { x: 0, y: 0, onScreen: false };
+  const dockAssistGeometry = {};
 
   // ---- bottom-left: ship schematic (hull + shield) + thin micro-bars (energy/heat/boost) ----
   // Bottom-left anchor (SPEC3-36 three-anchor law, design/revamp/HUD_THREE_ANCHOR.md): one flex
@@ -4079,6 +4147,38 @@ export function createHud(ctx, alerts) {
     }
   }
 
+  function updateDockAssistHint(p) {
+    const model = dockingAssistHintModel(state, dockAssistModel);
+    if (!model.visible || !p || !p.pos || !helpers || typeof helpers.worldToScreen !== 'function') {
+      setHidden(dockAssistHint, true);
+      return;
+    }
+    dockAssistPlayerWorld.x = Number(p.pos.x) || 0;
+    dockAssistPlayerWorld.z = Number(p.pos.z) || 0;
+    dockAssistBerthWorld.x = Number(model.berth.x) || 0;
+    dockAssistBerthWorld.z = Number(model.berth.z) || 0;
+    const playerScreen = helpers.worldToScreen(dockAssistPlayerWorld, dockAssistPlayerScreen);
+    const berthScreen = helpers.worldToScreen(dockAssistBerthWorld, dockAssistBerthScreen);
+    const geometry = dockingAssistScreenGeometry(playerScreen, berthScreen, dockAssistGeometry);
+    if (!geometry.visible) {
+      setHidden(dockAssistHint, true);
+      return;
+    }
+    setHidden(dockAssistHint, false);
+    setClass(dockAssistHint, 'is-assisting', model.assisting);
+    setClass(dockAssistHint, 'is-aligning', !model.headingOk);
+    setStyle(dockAssistHint, 'transform', `translate3d(${geometry.x.toFixed(1)}px,${geometry.y.toFixed(1)}px,0)`);
+    setStyle(dockAssistLine, 'width', `${geometry.length.toFixed(1)}px`);
+    setStyle(dockAssistLine, 'transform', `rotate(${geometry.angleDeg.toFixed(1)}deg)`);
+    setStyle(dockAssistBerth, 'transform', `translate3d(${geometry.dx.toFixed(1)}px,${geometry.dy.toFixed(1)}px,0) rotate(45deg)`);
+    setStyle(dockAssistLabel, 'transform', `translate3d(${geometry.labelDx.toFixed(1)}px,${geometry.labelDy.toFixed(1)}px,0)`);
+    setText(dockAssistLabel, model.label);
+    setAttr(dockAssistHint, 'aria-label', `${model.label.toLowerCase()}, ${Math.round(Math.hypot(
+      dockAssistBerthWorld.x - dockAssistPlayerWorld.x,
+      dockAssistBerthWorld.z - dockAssistPlayerWorld.z,
+    ))} world units`);
+  }
+
   function frame(dt) {
     const frameDt = Number.isFinite(dt) && dt > 0 ? Math.min(dt, 0.25) : 1 / 60;
     const numericDt = consumeHudClock(numericClock, frameDt);
@@ -4095,6 +4195,7 @@ export function createHud(ctx, alerts) {
     resolveReticle();
     updateReticleFeedback(frameDt);
     updateDoctrineTells(frameDt);
+    if (overlayTick || slow) updateDockAssistHint(p);
 
     // --- schematic + arcs + micro-bars (every frame, transform/stroke only) ---
     if (p) {

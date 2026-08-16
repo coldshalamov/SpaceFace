@@ -371,6 +371,9 @@ export const settingsScreen = {
       }
       rowSelect('Autosave', () => String(g.autosaveIntervalS), [['0', 'Off'], ['60', '60s'], ['120', '120s'], ['300', '300s']], (v) => this._set(ctx, 'gameplay', 'autosaveIntervalS', parseInt(v, 10)));
       rowToggle('Tutorial hints', () => g.tutorialHints, (v) => this._set(ctx, 'gameplay', 'tutorialHints', v));
+      rowToggle('Docking approach hint', () => g.dockAssistHint === true,
+        (v) => this._set(ctx, 'gameplay', 'dockAssistHint', v));
+      pane.appendChild(el('p', 'sf-muted', 'Shows a short berth vector only while your ship is inside an authored docking corridor. It never takes control or changes the physical capture assist.'));
       // Verbose combat text. This row used to write `gameplay.damageNumbers`, a field NOTHING reads —
       // floatingText.js has always gated on the root `showDamageNumbers`, so the toggle was inert.
       // It now drives the real persisted field (SAVE_SCHEMA $.settings.showDamageNumbers), which is

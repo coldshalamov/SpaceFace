@@ -2523,6 +2523,8 @@ export const save = {
     const saveSettings = migrateDefaultMutedAudioProfile(
       migrateLegacyMasslineBindingProfile(clonePlain(d)),
     );
+    const saveHasDockAssistHint = !!(saveSettings && saveSettings.gameplay
+      && Object.prototype.hasOwnProperty.call(saveSettings.gameplay, 'dockAssistHint'));
     let restored = sanitizeRestoredSettings(mergePlain(this.state.settings, saveSettings));
     // A binding map is an atomic player choice, and that rule has to apply to the SAVE as well as to
     // the profile below — it was only applied to the profile. mergePlain() is a deep merge, so a
@@ -2536,6 +2538,8 @@ export const save = {
     const profile = migrateDefaultMutedAudioProfile(
       migrateLegacyMasslineBindingProfile(this._readProfileSettings()),
     );
+    const profileHasDockAssistHint = !!(profile && profile.gameplay
+      && Object.prototype.hasOwnProperty.call(profile.gameplay, 'dockAssistHint'));
     if (profile) {
       restored = sanitizeRestoredSettings(mergePlain(restored, profile));
       // Binding maps are an atomic player profile choice. Deep-merging here would retain keys
@@ -2543,6 +2547,12 @@ export const save = {
       if (profile.controls && Object.prototype.hasOwnProperty.call(profile.controls, 'bindings')) {
         restored.controls.bindings = normalizeControlBindings(profile.controls.bindings);
       }
+    }
+    // This option intentionally defaults on only for NEW careers. Deep-merge forward compatibility
+    // would otherwise inject the new default into every old slot. An explicit save/profile choice
+    // always wins; true absence on both legacy surfaces defaults the restored career to off.
+    if (!saveHasDockAssistHint && !profileHasDockAssistHint) {
+      restored.gameplay.dockAssistHint = false;
     }
     this.state.settings = restored;
   },
@@ -3468,6 +3478,7 @@ function profileSettingsSnapshot(settings) {
       controlScheme: s.gameplay && s.gameplay.controlScheme,
       controlSchemeV2: s.gameplay && s.gameplay.controlSchemeV2,
       masslineReleaseAssist: s.gameplay && s.gameplay.masslineReleaseAssist,
+      dockAssistHint: s.gameplay && s.gameplay.dockAssistHint === true,
     },
   };
 }
