@@ -258,7 +258,8 @@ export function buildRecoveryPlan(state, playerEntity) {
   const ship = SHIP_BY_ID.get(shipId) || SHIP_BY_ID.get('ship_kestrel');
   const rate = Math.max(0, Math.min(1, Number(insurance.rate) || 0));
   const deductible = Math.max(0, Math.round(Number(insurance.deductibleCr) || 0));
-  const insured = insurance.insuredModules === true;
+  const policyTier = insurance.activePolicy && insurance.activePolicy.tier || insurance.tier || null;
+  const insured = policyTier === 'full' || policyTier === 'loyalty' || insurance.insuredModules === true;
   const shipPrice = Math.max(0, Math.round(Number(ship && ship.price) || 0));
   const quotedCostCr = ship && ship.tier === 0
     ? deductible
@@ -489,10 +490,7 @@ export class PlayerDefeatCoordinator {
       cargoLosses: [],
       cargoLostQty: 0,
       hulkCargoQty: loss.cargoCustodyQty,
-      insuranceStatus: (this.state.player && this.state.player.insurance
-        && this.state.player.insurance.insuredModules)
-        ? 'FULL LEGACY COVER · HULL + FIT PRESERVED'
-        : 'NO ACTIVE POLICY · STARTER LOANER ON RESCUE',
+      insuranceStatus: 'INSURANCE SETTLEMENT PENDING',
     };
     const pod = survivor.convertPlayerToPod(playerEntity, { lossId, receipt });
     if (!pod) {
@@ -500,6 +498,27 @@ export class PlayerDefeatCoordinator {
       for (const row of cargoManifest) cargo.addCargo(row.commodityId, row.qty, { sourceKind: 'player_loss_rollback' });
       delete receipt.loss;
       return { ok: false, reason: 'pod_unavailable' };
+    }
+
+    const economy = this._owner('economy');
+    const settled = economy && typeof economy.settlePlayerLossPolicy === 'function'
+      ? economy.settlePlayerLossPolicy({ lossId, shipSnapshot, cargoManifest }) : null;
+    if (settled && settled.ok === true && settled.claim) {
+      loss.insuranceClaim = clonePlain(settled.claim);
+      receipt.insuranceClaim = clonePlain(settled.claim);
+      receipt.recovery.insuranceStatus = settled.claim.tier === 'loaner'
+        ? `UNINSURED · STARTER LOANER · ${settled.claim.debtAddedCr.toLocaleString('en-US')} CR DEBT`
+        : `${String(settled.claim.tier).toUpperCase()} CLAIM · ${settled.claim.refitFundingCr.toLocaleString('en-US')} CR REFIT FUNDED`
+          + (settled.claim.cashPayoutCr > 0
+            ? ` · ${settled.claim.cashPayoutCr.toLocaleString('en-US')} CR CARGO CASH` : ' · NO CASH PAYOUT');
+    } else {
+      const legacy = this.state.player && this.state.player.insurance || {};
+      const legacyTier = legacy.activePolicy && legacy.activePolicy.tier
+        || (legacy.insuredModules === true ? 'full' : 'loaner');
+      loss.insuranceClaim = { tier: legacyTier, settlementValueCr: 0, debtAddedCr: 0 };
+      receipt.recovery.insuranceStatus = legacyTier === 'loaner'
+        ? 'NO ACTIVE POLICY · STARTER LOANER ON RESCUE'
+        : 'FULL LEGACY COVER · HULL + FIT PRESERVED';
     }
 
     this.state.combat.lastPlayerDefeat = receipt;
@@ -592,12 +611,13 @@ export class PlayerDefeatCoordinator {
 
     const playerLoss = aftermath && typeof aftermath.playerLossForMarker === 'function'
       ? aftermath.playerLossForMarker(loss.wreckMarkerId) : null;
-    const tier = this.state.player && this.state.player.insurance
-      && this.state.player.insurance.insuredModules ? 'full' : 'loaner';
+    const claimTier = loss.insuranceClaim && loss.insuranceClaim.tier;
+    const tier = ['basic', 'full', 'loyalty'].includes(claimTier) ? claimTier : 'loaner';
     const refit = ships.applyPlayerLossRefit({
       lossId: loss.lossId,
       tier,
       shipSnapshot: playerLoss && playerLoss.shipSnapshot,
+      insuranceClaim: loss.insuranceClaim || null,
     });
     if (!refit || refit.ok !== true) return false;
     this.restorePlayerAtRecoveryDock(playerEntity, receipt.recovery || buildRecoveryPlan(this.state, playerEntity));
@@ -632,6 +652,7 @@ export class PlayerDefeatCoordinator {
     const ships = this._owner('ships');
     const cargo = this._owner('cargo');
     const aftermath = this._owner('aftermathWrecks');
+    const economy = this._owner('economy');
     if (!ships || typeof ships.recoverPlayerLoss !== 'function'
       || !cargo || typeof cargo.addCargo !== 'function'
       || !aftermath || typeof aftermath.consumePlayerTowDelivery !== 'function') {
@@ -644,17 +665,22 @@ export class PlayerDefeatCoordinator {
     }
     const hull = ships.recoverPlayerLoss({ lossId: payload.lossId, shipSnapshot: payload.shipSnapshot });
     if (!hull || hull.ok !== true) return false;
+    const cargoLien = economy && typeof economy.consumeInsuranceCargoLien === 'function'
+      ? economy.consumeInsuranceCargoLien({ lossId: payload.lossId }) : false;
     const remaining = [];
-    for (const row of payload.cargoManifest) {
-      const qty = Math.max(0, Math.floor(Number(row && row.qty) || 0));
-      if (!(qty > 0) || !row.commodityId) continue;
-      const accepted = cargo.addCargo(row.commodityId, qty, { sourceKind: 'recovered_player_hulk', lossId: payload.lossId });
-      if (accepted < qty) remaining.push({ commodityId: row.commodityId, qty: qty - accepted });
+    if (!cargoLien) {
+      for (const row of payload.cargoManifest) {
+        const qty = Math.max(0, Math.floor(Number(row && row.qty) || 0));
+        if (!(qty > 0) || !row.commodityId) continue;
+        const accepted = cargo.addCargo(row.commodityId, qty, { sourceKind: 'recovered_player_hulk', lossId: payload.lossId });
+        if (accepted < qty) remaining.push({ commodityId: row.commodityId, qty: qty - accepted });
+      }
     }
     payload.remainingCargoManifest = remaining;
+    payload.cargoLienConsumed = cargoLien;
     payload.result = remaining.length
       ? { ok: false, reason: 'cargo_capacity', recoveredHull: true }
-      : { ok: true, recoveredHull: true, shipId: hull.shipId };
+      : { ok: true, recoveredHull: true, shipId: hull.shipId, cargoLienConsumed: cargoLien };
     return payload.result.ok;
   }
 

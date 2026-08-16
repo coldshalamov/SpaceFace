@@ -23,6 +23,9 @@
 //   stock target. We honor the schema field names (equilibrium = role-modified drift target,
 //   baseEq = fixed reference). Absolute early ROI is now moderated for M3 career parity.
 import { COMMODITIES } from '../data/commodities.js';
+import { MODULES } from '../data/modules.js';
+import { SHIPS } from '../data/ships.js';
+import { WEAPONS } from '../data/weapons.js';
 import { FACTION_BACKROOM } from '../data/factionPlay.js';
 import { SECTORS } from '../data/sectors.js';
 import { CERES_ACTIVITY_SECTOR_ID, CERES_FUEL_TENDER_SERVICE } from '../data/sectorActivityPockets.js';
@@ -114,11 +117,159 @@ export const SERVICE_PRICES = Object.freeze({
   hullWashCr: HULL_WASH_CR,
 });
 
+export const INSURANCE_POLICY_TIERS = Object.freeze({
+  basic: Object.freeze({ id: 'basic', label: 'Basic', premiumRate: 0.05 }),
+  full: Object.freeze({ id: 'full', label: 'Full', premiumRate: 0.10 }),
+  loyalty: Object.freeze({ id: 'loyalty', label: 'Loyalty', premiumRate: 0.14 }),
+});
+export const LOANER_DEBT_PER_LOSS_CR = 2500;
+export const LOANER_DEBT_CAP_CR = 7500;
+const INSURANCE_CLAIM_LIMIT = 4;
+
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 const round = Math.round;
 
 // ---- static lookups (built once) ----------------------------------------------------------
 const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
+const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
+const FIT_BY_ID = new Map([...MODULES, ...WEAPONS].map((fit) => [fit.id, fit]));
+
+function cloneInsuranceValue(value) {
+  return value == null ? value : JSON.parse(JSON.stringify(value));
+}
+
+function activeOwnedShipForInsurance(state) {
+  const player = state && state.player;
+  const index = Math.max(0, Math.floor(Number(player && player.activeShipIndex) || 0));
+  const owned = player && Array.isArray(player.ownedShips) ? player.ownedShips[index] : null;
+  return { index, owned: owned || null };
+}
+
+function assessedFitValue(fittings) {
+  let total = 0;
+  for (const id of Array.isArray(fittings) ? fittings : []) {
+    const def = FIT_BY_ID.get(id);
+    if (!def) continue;
+    const base = def.baseId && FIT_BY_ID.get(def.baseId);
+    total += Math.max(0, Math.round(Number(def.price) || Number(base && base.price) || 0));
+  }
+  return total;
+}
+
+function assessedCargoValue(state, manifest = null) {
+  const items = manifest || state && state.player && state.player.cargo && state.player.cargo.items || {};
+  let total = 0;
+  if (Array.isArray(items)) {
+    for (const row of items) {
+      const def = row && commodityDef(state, row.commodityId);
+      const qty = Math.max(0, Math.floor(Number(row && row.qty) || 0));
+      total += qty * Math.max(0, Math.round(Number(def && def.basePrice) || 0));
+    }
+  } else {
+    for (const commodityId of Object.keys(items || {})) {
+      const def = commodityDef(state, commodityId);
+      const qty = Math.max(0, Math.floor(Number(items[commodityId]) || 0));
+      total += qty * Math.max(0, Math.round(Number(def && def.basePrice) || 0));
+    }
+  }
+  return total;
+}
+
+function activePhysicalLoss(state) {
+  const saved = state && state.player && state.player.activePhysicalDefeatReceipt;
+  const combat = state && state.combat && state.combat.lastPlayerDefeat;
+  return !!((saved && saved.loss && saved.loss.lossId) || (combat && combat.loss && combat.loss.lossId));
+}
+
+function normalizeInsuranceState(state) {
+  const player = state && state.player;
+  if (!player) return null;
+  const legacy = player.insurance && typeof player.insurance === 'object' ? player.insurance : {};
+  const insurance = player.insurance = {
+    ...legacy,
+    schemaVersion: 2,
+    rate: Number.isFinite(Number(legacy.rate)) ? Number(legacy.rate) : 0.6,
+    deductibleCr: Math.max(0, Math.round(Number(legacy.deductibleCr) || 500)),
+    lastStationId: legacy.lastStationId || null,
+    nextPolicySeq: Math.max(1, Math.floor(Number(legacy.nextPolicySeq) || 1)),
+    loanerDebtAccruedCr: Math.max(0, Math.min(LOANER_DEBT_CAP_CR,
+      Math.round(Number(legacy.loanerDebtAccruedCr) || 0))),
+    claims: Array.isArray(legacy.claims) ? legacy.claims.slice(-INSURANCE_CLAIM_LIMIT) : [],
+  };
+  if (legacy.activePolicy && typeof legacy.activePolicy === 'object'
+    && INSURANCE_POLICY_TIERS[legacy.activePolicy.tier]) {
+    insurance.activePolicy = cloneInsuranceValue(legacy.activePolicy);
+  } else if (legacy.insuredModules === true) {
+    const { index, owned } = activeOwnedShipForInsurance(state);
+    insurance.activePolicy = {
+      schemaVersion: 1,
+      policyId: 'legacy_full_cover',
+      tier: 'full',
+      shipDefId: owned && owned.defId || null,
+      shipIndex: index,
+      premiumCr: 0,
+      purchasedAt: 0,
+      stationId: legacy.lastStationId || null,
+      legacy: true,
+    };
+  } else {
+    insurance.activePolicy = null;
+  }
+  insurance.tier = insurance.activePolicy && insurance.activePolicy.tier || null;
+  insurance.insuredModules = insurance.tier === 'full' || insurance.tier === 'loyalty';
+  return insurance;
+}
+
+function trimInsuranceClaims(claims) {
+  while (claims.length > INSURANCE_CLAIM_LIMIT) {
+    const removable = claims.findIndex((claim) => !claim || claim.cargoLienOutstanding !== true);
+    claims.splice(removable >= 0 ? removable : 0, 1);
+  }
+  return claims;
+}
+
+export function insurancePolicyQuoteForState(state, tierId) {
+  const tier = INSURANCE_POLICY_TIERS[tierId];
+  if (!tier) return null;
+  const player = state && state.player || {};
+  const { index, owned } = activeOwnedShipForInsurance(state);
+  const ship = SHIP_BY_ID.get(owned && owned.defId) || SHIP_BY_ID.get('ship_kestrel');
+  const hullValueCr = Math.max(0, Math.round(Number(ship && (ship.price || ship.buyback)) || 0));
+  const fitValueCr = assessedFitValue(owned && owned.fittings);
+  const cargoValueCr = assessedCargoValue(state);
+  const refitValueCr = tierId === 'basic' ? hullValueCr : hullValueCr + fitValueCr;
+  const cashPayoutCr = tierId === 'loyalty' ? cargoValueCr : 0;
+  const settlementValueCr = refitValueCr + cashPayoutCr;
+  const wantedHeat = clamp(Number(player.heat) || 0, 0, 1);
+  const wantedMultiplier = 1 + wantedHeat * 1.5;
+  const premiumCr = Math.max(250, Math.round(hullValueCr * tier.premiumRate * wantedMultiplier));
+  const insurance = player.insurance || {};
+  const activePolicy = insurance.activePolicy && INSURANCE_POLICY_TIERS[insurance.activePolicy.tier]
+    ? insurance.activePolicy : null;
+  const samePolicy = !!(activePolicy && activePolicy.tier === tierId
+    && activePolicy.shipDefId === (owned && owned.defId || null)
+    && activePolicy.shipIndex === index);
+  return {
+    schemaVersion: 1,
+    tier: tierId,
+    label: tier.label,
+    shipIndex: index,
+    shipDefId: owned && owned.defId || ship && ship.id || null,
+    hullValueCr,
+    fitValueCr,
+    cargoValueCr: tierId === 'loyalty' ? cargoValueCr : 0,
+    refitValueCr,
+    refitFundingCr: refitValueCr,
+    cashPayoutCr,
+    settlementValueCr,
+    premiumCr,
+    wantedHeat,
+    wantedMultiplier,
+    active: samePolicy,
+    activeLoss: activePhysicalLoss(state),
+    credits: Math.max(0, Math.round(Number(player.credits) || 0)),
+  };
+}
 
 // station id -> { type, size, factionId, sectorId, tier, neighbors:[sectorId] } from the SECTORS graph.
 // (world is the runtime owner of sectors, but dock:docked only hands us a stationId, so we resolve
@@ -599,6 +750,9 @@ export const economy = {
     // ---- SOLE credits writer (§0.6) -------------------------------------------------------
     bus.on('economy:grantCredits', (p) => this.grantCredits((p && p.amount) || 0, p && p.reason));
     bus.on('economy:chargeCredits', (p) => this.chargeCredits((p && p.amount) || 0, p && p.reason));
+    bus.on('economy:purchaseInsurance', (p) => {
+      if (p && typeof p === 'object') p.result = this.purchaseInsurancePolicy(p.tier);
+    });
 
     // ---- trade intents from UI ------------------------------------------------------------
     bus.on('ui:buy', (p) => { if (p) this.handleTrade(p.commodityId, 'buy', p.qty); });
@@ -1754,6 +1908,146 @@ export const economy = {
     return p.credits;
   },
 
+  quoteInsurancePolicy(tier) {
+    normalizeInsuranceState(this.state);
+    return insurancePolicyQuoteForState(this.state, tier);
+  },
+
+  purchaseInsurancePolicy(tier) {
+    const quote = this.quoteInsurancePolicy(tier);
+    if (!quote) return { ok: false, reason: 'unknown_policy_tier' };
+    if (quote.activeLoss) return { ok: false, reason: 'active_loss' };
+    const stationId = this.dockedStationId();
+    if (!stationId) return { ok: false, reason: 'station_required' };
+    if (quote.active) return { ok: false, reason: 'already_active', quote };
+    if ((this.state.player.credits | 0) < quote.premiumCr) {
+      return { ok: false, reason: 'insufficient_credits', need: quote.premiumCr, quote };
+    }
+    const insurance = normalizeInsuranceState(this.state);
+    const policyId = `policy_${Math.max(1, insurance.nextPolicySeq++).toString(36)}`;
+    this.chargeCredits(quote.premiumCr, `service:insurance_${tier}`);
+    insurance.activePolicy = {
+      schemaVersion: 1,
+      policyId,
+      tier,
+      shipDefId: quote.shipDefId,
+      shipIndex: quote.shipIndex,
+      premiumCr: quote.premiumCr,
+      quotedSettlementValueCr: quote.settlementValueCr,
+      wantedHeat: quote.wantedHeat,
+      wantedMultiplier: quote.wantedMultiplier,
+      purchasedAt: Number(this.state.simTime) || 0,
+      stationId,
+    };
+    insurance.tier = tier;
+    insurance.insuredModules = tier === 'full' || tier === 'loyalty';
+    insurance.lastStationId = stationId;
+    const receipt = {
+      ok: true,
+      policy: cloneInsuranceValue(insurance.activePolicy),
+      quote,
+      remainingCredits: this.state.player.credits | 0,
+    };
+    this.bus.emit('insurance:policyPurchased', receipt);
+    this.bus.emit('toast', {
+      text: `${INSURANCE_POLICY_TIERS[tier].label} one-loss cover active · ${quote.refitFundingCr.toLocaleString('en-US')} cr refit funded`
+        + (quote.cashPayoutCr > 0 ? ` · ${quote.cashPayoutCr.toLocaleString('en-US')} cr cargo cash at current assessment` : ''),
+      kind: 'success', ttl: 4,
+    });
+    return receipt;
+  },
+
+  settlePlayerLossPolicy({ lossId, shipSnapshot, cargoManifest } = {}) {
+    if (!lossId || !shipSnapshot || shipSnapshot.lossId !== lossId) {
+      return { ok: false, reason: 'loss_snapshot_unavailable' };
+    }
+    const insurance = normalizeInsuranceState(this.state);
+    const existing = insurance.claims.find((claim) => claim && claim.lossId === lossId);
+    if (existing) return { ok: true, idempotent: true, claim: cloneInsuranceValue(existing) };
+
+    const policy = insurance.activePolicy;
+    const matched = !!(policy && INSURANCE_POLICY_TIERS[policy.tier]
+      && policy.shipDefId === shipSnapshot.defId
+      && policy.shipIndex === shipSnapshot.shipIndex);
+    const tier = matched ? policy.tier : 'loaner';
+    const ship = SHIP_BY_ID.get(shipSnapshot.defId) || SHIP_BY_ID.get('ship_kestrel');
+    const hullValueCr = Math.max(0, Math.round(Number(ship && (ship.price || ship.buyback)) || 0));
+    const fitValueCr = assessedFitValue(shipSnapshot.fittings);
+    const cargoValueCr = tier === 'loyalty' ? assessedCargoValue(this.state, cargoManifest) : 0;
+    const refitFundingCr = tier === 'basic' ? hullValueCr
+      : tier === 'full' || tier === 'loyalty' ? hullValueCr + fitValueCr : 0;
+    const settlementValueCr = refitFundingCr + cargoValueCr;
+    let debtAddedCr = 0;
+
+    if (matched) {
+      // Refit funding is an in-kind authorization consumed by Ships, never spendable wallet cash.
+      // Only Loyalty's assessed cargo cash crosses the credits writer, exactly once.
+      if (cargoValueCr > 0) this.grantCredits(cargoValueCr, `insurance:claim:${lossId}`);
+      insurance.activePolicy = null;
+      insurance.tier = null;
+      insurance.insuredModules = false;
+    } else {
+      const debtRoom = Math.max(0, LOANER_DEBT_CAP_CR - insurance.loanerDebtAccruedCr);
+      debtAddedCr = Math.min(LOANER_DEBT_PER_LOSS_CR, debtRoom);
+      if (debtAddedCr > 0) {
+        this.state.player.debt = Math.max(0, Math.round(Number(this.state.player.debt) || 0)) + debtAddedCr;
+        insurance.loanerDebtAccruedCr += debtAddedCr;
+        this.bus.emit('debt:changed', {
+          delta: debtAddedCr,
+          total: this.state.player.debt,
+          reason: `player_loss:loaner:${lossId}`,
+        });
+      }
+    }
+
+    const claim = {
+      schemaVersion: 1,
+      lossId,
+      policyId: matched ? policy.policyId : null,
+      tier,
+      shipDefId: shipSnapshot.defId,
+      shipIndex: shipSnapshot.shipIndex,
+      hullValueCr,
+      fitValueCr: tier === 'basic' || tier === 'loaner' ? 0 : fitValueCr,
+      cargoValueCr,
+      cashPayoutCr: cargoValueCr,
+      settlementValueCr,
+      refitFundingCr,
+      netCreditsCr: cargoValueCr,
+      debtAddedCr,
+      cargoLienOutstanding: tier === 'loyalty' && cargoValueCr > 0,
+      settledAt: Number(this.state.simTime) || 0,
+    };
+    insurance.claims.push(claim);
+    trimInsuranceClaims(insurance.claims);
+    insurance.lastClaim = cloneInsuranceValue(claim);
+    this.bus.emit('insurance:claimSettled', cloneInsuranceValue(claim));
+    return { ok: true, claim: cloneInsuranceValue(claim) };
+  },
+
+  insuranceClaimForLoss(lossId) {
+    const insurance = normalizeInsuranceState(this.state);
+    const claim = insurance.claims.find((entry) => entry && entry.lossId === lossId);
+    return claim ? cloneInsuranceValue(claim) : null;
+  },
+
+  consumeInsuranceCargoLien({ lossId } = {}) {
+    const insurance = normalizeInsuranceState(this.state);
+    const claim = insurance.claims.find((entry) => entry && entry.lossId === lossId);
+    if (!claim || claim.cargoLienOutstanding !== true) return false;
+    claim.cargoLienOutstanding = false;
+    claim.cargoLienConsumedAt = Number(this.state.simTime) || 0;
+    if (insurance.lastClaim && insurance.lastClaim.lossId === lossId) {
+      insurance.lastClaim = cloneInsuranceValue(claim);
+    }
+    this.bus.emit('insurance:cargoLienConsumed', {
+      lossId,
+      cargoValueCr: claim.cargoValueCr,
+      consumedAt: claim.cargoLienConsumedAt,
+    });
+    return true;
+  },
+
   /** Economy-owned licensed-fit point of sale. Factions supplies eligibility; ships supplies the
    * inventory write. All preconditions are checked before the synchronous debit/grant commit. */
   buyFactionLicensedFit(defId) {
@@ -2063,21 +2357,18 @@ export const economy = {
         atT: Number(state.simTime) || 0,
       });
       this.bus.emit('toast', { text: `Restitution paid (${cost}cr)`, kind: 'success', ttl: 2 });
-    } else if (type === 'insurance') {
-      const ins = state.player.insurance || (state.player.insurance = { rate: 0.6, deductibleCr: 500, insuredModules: false, lastStationId: null });
-      const enable = !!p.amount;
-      if (enable) {
-        if (ins.insuredModules) { this.bus.emit('toast', { text: 'Hull insurance already active', kind: 'info', ttl: 2 }); return; }
-        const cost = Math.max(0, Math.round(ins.deductibleCr || 0));
-        if ((state.player.credits | 0) < cost) { this.bus.emit('toast', { text: 'Insufficient credits for insurance', kind: 'error', ttl: 2 }); return; }
-        if (cost) this.chargeCredits(cost, 'service:insurance');
-        ins.insuredModules = true;
-        ins.lastStationId = (state.ui && state.ui.dockedStationId) || this._lastDockedStation || ins.lastStationId;
-        this.bus.emit('toast', { text: `Hull insurance active (${cost}cr)`, kind: 'success', ttl: 2 });
-      } else {
-        if (!ins.insuredModules) { this.bus.emit('toast', { text: 'Hull insurance already inactive', kind: 'info', ttl: 2 }); return; }
-        ins.insuredModules = false;
-        this.bus.emit('toast', { text: 'Hull insurance cancelled', kind: 'info', ttl: 2 });
+    } else if (type === 'insurance' || /^insurance_(?:basic|full|loyalty)$/.test(type)) {
+      // The old toggle maps to Full for compatibility; the production Services surface emits an
+      // exact one-loss tier and Economy re-quotes it rather than trusting DOM prices.
+      const tier = type === 'insurance' ? 'full' : type.slice('insurance_'.length);
+      const result = this.purchaseInsurancePolicy(tier);
+      if (!result.ok) {
+        const text = result.reason === 'active_loss' ? 'Insurance cannot change during an active loss.'
+          : result.reason === 'station_required' ? 'Dock at a station to buy insurance.'
+            : result.reason === 'already_active' ? `${INSURANCE_POLICY_TIERS[tier].label} cover is already active.`
+              : result.reason === 'insufficient_credits' ? `Insurance requires ${result.need || 0}cr.`
+                : 'Insurance purchase unavailable.';
+        this.bus.emit('toast', { text, kind: result.reason === 'already_active' ? 'info' : 'error', ttl: 3 });
       }
     }
   },

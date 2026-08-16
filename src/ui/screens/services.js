@@ -2,7 +2,7 @@
 // Refuel / repair hull / buy ammo / toggle insurance. Each action emits ui:service {type,amount};
 // economy/world own the credit charge + the effect (§0.6, §4.4). Read-only over sim state.
 import { COMMODITIES } from '../../data/commodities.js';
-import { SERVICE_PRICES } from '../../systems/economy.js';
+import { insurancePolicyQuoteForState, SERVICE_PRICES } from '../../systems/economy.js';
 import { livingHullCyclesSinceWash, livingHullGrimeAt } from '../../core/livingHull.js';
 import { heatLevelFor, heatRestitutionCost } from '../../systems/heat.js';
 import { confirm } from '../confirm.js';
@@ -66,7 +66,9 @@ const SERVICE_ROWS = Object.freeze([
   { type: 'hull_wash', label: 'Hull Wash', desc: 'Clear surface grime without erasing hull history', requires: ['repair'] },
   { type: 'ammo', label: 'Buy Munitions', desc: 'Restock missile/ammo stores', requires: ['trade', 'refuel'] },
   { type: 'restitution', label: 'Pay Restitution', desc: 'Settle the local WANTED notice', requires: [] },
-  { type: 'insurance', label: 'Hull Insurance', desc: 'Station recovery payout; cargo loss still applies', requires: [] },
+  { type: 'insurance_basic', label: 'Basic Cover', desc: 'One loss: same stock hull, no fit or scars', requires: [] },
+  { type: 'insurance_full', label: 'Full Cover', desc: 'One loss: exact fit, customization, and scars', requires: [] },
+  { type: 'insurance_loyalty', label: 'Loyalty Cover', desc: 'Full cover plus assessed cargo payout', requires: [] },
 ]);
 
 function fmtCr(n) { return (Math.round(n) || 0).toLocaleString('en-US'); }
@@ -97,6 +99,11 @@ function afterCreditsChip(credits, cost) {
 
 function serviceRow(type) {
   return SERVICE_ROWS.find((row) => row.type === type) || null;
+}
+
+function insuranceTierForService(type) {
+  const match = /^insurance_(basic|full|loyalty)$/.exec(String(type || ''));
+  return match ? match[1] : type === 'insurance' ? 'full' : null;
 }
 
 function stationRecordId(station) {
@@ -372,32 +379,56 @@ export function serviceQuote(type, state, entity) {
       chips: [{ text: fmtCr(cost) + ' cr', kind: 'cost' }, ...(limited ? [{ text: limitReason, kind: 'warn' }] : []), afterCreditsChip(credits, cost)],
     };
   }
-  if (type === 'insurance') {
-    const ins = p.insurance || {};
-    const active = !!ins.insuredModules;
-    const deductible = Math.max(0, Math.round(ins.deductibleCr || 0));
-    const recovery = 'station recovery · cargo loss still applies';
-    if (active) {
+  const insuranceTier = insuranceTierForService(type);
+  if (insuranceTier) {
+    const quote = insurancePolicyQuoteForState(state, insuranceTier);
+    if (!quote) return { amount: 0, cost: 0, detail: '', buttonLabel: '', disabled: true, chips: [] };
+    const fitText = insuranceTier === 'basic' ? 'stock hull · fit and scars excluded'
+      : insuranceTier === 'loyalty' ? 'exact fit + scars · cargo lien after payout'
+        : 'exact fit + customization + scars';
+    const wantedText = quote.wantedHeat > 0
+      ? `WANTED ×${quote.wantedMultiplier.toFixed(2)}` : 'record clear';
+    const settlementText = insuranceTier === 'loyalty'
+      ? `funds ${fmtCr(quote.refitFundingCr)} cr refit · current cargo assessment ${fmtCr(quote.cashPayoutCr)} cr cash (re-assessed at claim time)`
+      : `funds ${fmtCr(quote.refitFundingCr)} cr refit · no spendable cash payout`;
+    const detail = `One-loss policy · ${fitText} · ${settlementText}`;
+    if (quote.activeLoss) {
       return {
-        amount: 0,
-        cost: 0,
-        detail: 'Active · ' + recovery + ' · payout ' + Math.round((ins.rate || 0.6) * 100) + '% · deductible ' + fmtCr(deductible) + ' cr',
-        buttonLabel: 'Cancel',
-        disabled: false,
-        chips: [{ text: 'active', kind: 'ok' }],
+        amount: 0, cost: quote.premiumCr, detail,
+        refitFundingCr: quote.refitFundingCr, cashPayoutCr: quote.cashPayoutCr,
+        wantedHeat: quote.wantedHeat, wantedMultiplier: quote.wantedMultiplier,
+        buttonLabel: 'Loss Active', disabled: true,
+        disabledReason: 'policy changes locked until recovery',
+        chips: [{ text: wantedText, kind: 'bad' }, { text: 'claim in progress', kind: 'bad' }],
       };
     }
-    const disabled = credits < deductible;
+    if (quote.active) {
+      return {
+        amount: 0, cost: 0, detail,
+        refitFundingCr: quote.refitFundingCr, cashPayoutCr: quote.cashPayoutCr,
+        wantedHeat: quote.wantedHeat, wantedMultiplier: quote.wantedMultiplier,
+        buttonLabel: 'Active', disabled: true,
+        chips: [{ text: 'next loss covered', kind: 'ok' }, { text: wantedText, kind: quote.wantedHeat > 0 ? 'warn' : 'ok' }],
+      };
+    }
+    const disabled = credits < quote.premiumCr;
     return {
       amount: 1,
-      cost: deductible,
-      detail: 'Inactive · ' + recovery + ' · payout ' + Math.round((ins.rate || 0.6) * 100) + '% · deductible ' + fmtCr(deductible) + ' cr',
-      buttonLabel: 'Purchase',
+      cost: quote.premiumCr,
+      refitFundingCr: quote.refitFundingCr,
+      cashPayoutCr: quote.cashPayoutCr,
+      wantedHeat: quote.wantedHeat,
+      wantedMultiplier: quote.wantedMultiplier,
+      detail,
+      buttonLabel: disabled ? `Need ${fmtCr(quote.premiumCr)} cr` : `Buy ${quote.label}`,
       disabled,
-      disabledReason: disabled ? 'need ' + fmtCr(deductible - credits) + ' cr' : '',
-      chips: disabled
-        ? [{ text: fmtCr(deductible) + ' cr', kind: 'cost' }, { text: 'need ' + fmtCr(deductible - credits) + ' cr', kind: 'bad' }]
-        : [{ text: fmtCr(deductible) + ' cr', kind: 'cost' }, afterCreditsChip(credits, deductible)],
+      disabledReason: disabled ? 'need ' + fmtCr(quote.premiumCr - credits) + ' cr' : '',
+      chips: [
+        { text: fmtCr(quote.premiumCr) + ' cr premium', kind: 'cost' },
+        { text: wantedText, kind: quote.wantedHeat > 0 ? 'warn' : 'ok' },
+        ...(disabled ? [{ text: 'need ' + fmtCr(quote.premiumCr - credits) + ' cr', kind: 'bad' }]
+          : [afterCreditsChip(credits, quote.premiumCr)]),
+      ],
     };
   }
   return { amount: 0, cost: 0, detail: '', buttonLabel: '', disabled: true, chips: [] };
@@ -454,27 +485,16 @@ export function createServicesPanel(ctx) {
       amount = repairMissing(e).total;
     } else if (type === 'ammo') {
       amount = AMMO_BATCH;
-    } else if (type === 'insurance') {
-      amount = state.player.insurance && state.player.insurance.insuredModules ? 0 : 1; // toggle intent
+    } else if (insuranceTierForService(type)) {
+      amount = 1;
     }
     if ((type === 'refuel' || type === 'repair' || type === 'hull_wash' || type === 'ammo') && amount <= 0) {
       ctx.bus.emit('audio:cue', { id: 'ui_deny' });
       ctx.bus.emit('toast', { text: type === 'ammo' ? 'No munitions can fit right now' : 'Nothing to ' + type, kind: 'info', ttl: 2 });
       return;
     }
-    if (type === 'insurance' && amount === 0 && state.player.insurance && state.player.insurance.insuredModules) {
-      const ok = await confirm({
-        title: 'Cancel hull insurance?',
-        body: 'Station recovery will no longer protect installed modules on death. Cargo loss still applies either way, and cancelling does not refund the paid deductible.',
-        confirmLabel: 'Cancel Insurance',
-        cancelLabel: 'Keep Insurance',
-        danger: true,
-      });
-      if (!ok) {
-        ctx.bus.emit('audio:cue', { id: 'ui_deny' });
-        return;
-      }
-    } else if (type === 'refuel' || type === 'repair' || type === 'hull_wash' || type === 'ammo') {
+    if (type === 'refuel' || type === 'repair' || type === 'hull_wash' || type === 'ammo'
+      || insuranceTierForService(type)) {
       // Quote → confirm for paid berth verbs (Station OS control grammar).
       const e = state.entities && state.entities.get(state.playerId);
       const quote = serviceQuote(type, state, e);

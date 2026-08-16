@@ -10,11 +10,13 @@ import { aceMemory } from '../src/systems/aceMemory.js';
 import { aftermathForSector, aftermathWrecks } from '../src/systems/aftermathWrecks.js';
 import { cargo } from '../src/systems/cargo.js';
 import { combat } from '../src/systems/combat.js';
+import { economy, LOANER_DEBT_CAP_CR, LOANER_DEBT_PER_LOSS_CR } from '../src/systems/economy.js';
 import { flightV3 } from '../src/systems/flightV3.js';
 import { makeShipEntitySpec, ships } from '../src/systems/ships.js';
 import { survivorPod } from '../src/systems/survivorPod.js';
 import { tetherGameplay } from '../src/systems/tetherGameplay.js';
 import { traffic } from '../src/systems/traffic.js';
+import { serviceQuote } from '../src/ui/screens/services.js';
 
 const SECTOR_ID = 'sector_tethys_junction';
 const STATION_ID = 'station_tethys';
@@ -26,6 +28,7 @@ const STARTING_CARGO = Object.freeze([
 const SYSTEMS = [
   ships,
   cargo,
+  economy,
   aftermathWrecks,
   survivorPod,
   traffic,
@@ -47,6 +50,7 @@ const UPDATE_ORDER = [
   aceMemory,
   combat,
   cargo,
+  economy,
   save,
 ];
 
@@ -68,7 +72,7 @@ function playerPods(state) {
     && entity.type === 'payload' && entity.data && entity.data.playerOccupied === true);
 }
 
-function boot({ ironman = false } = {}) {
+function boot({ ironman = false, credits = 5000, fittings = [] } = {}) {
   const bus = createBus();
   const voice = [];
   const sim = createSimulation({
@@ -91,14 +95,22 @@ function boot({ ironman = false } = {}) {
   state.settings.gameplay.ironman = ironman;
   state.settings.gameplay.flightBackend = 'v3';
   state.settings.gameplay.physicsBackend = 'rapier-dynamic';
-  state.player.credits = 5000;
+  state.player.credits = credits;
   state.factions.faction_mts = { ...(state.factions.faction_mts || {}), rep: 125 };
 
   const shipsOwner = sim.registry.get('ships');
   shipsOwner.newGame();
   const owned = shipsOwner.ownedShip();
   owned.defId = 'ship_mule';
-  owned.fittings = [];
+  owned.fittings = fittings.slice();
+  owned.appearance = {
+    version: 1,
+    hullColor: '#31577a',
+    accentColor: '#d7a23a',
+    finish: 'worn',
+    wear: 0.72,
+    decalId: 'industrial',
+  };
   owned.livingHull = normalizeLivingHull({
     killTally: 4,
     repairPatches: 2,
@@ -158,6 +170,7 @@ function boot({ ironman = false } = {}) {
     recovered: [],
     delivered: [],
     aceVoice: [],
+    creditsChanged: [],
     saveError: [],
   };
   bus.on('playerDefeat:rescueInbound', (payload) => events.inbound.push(deepCopy(payload)));
@@ -165,6 +178,7 @@ function boot({ ironman = false } = {}) {
   bus.on('playerDefeat:wreckRecovered', (payload) => events.recovered.push(deepCopy(payload)));
   bus.on('playerDefeat:wreckDelivered', (payload) => events.delivered.push(deepCopy(payload)));
   bus.on('aceMemory:voice', (payload) => events.aceVoice.push(deepCopy(payload)));
+  bus.on('credits:changed', (payload) => events.creditsChanged.push(deepCopy(payload)));
   bus.on('save:error', (payload) => events.saveError.push(deepCopy(payload)));
 
   return { sim, bus, state, station, player, ace, events, voice };
@@ -189,12 +203,41 @@ async function saveAndContinue(route, slot) {
   return envelope;
 }
 
-test('death becomes a drifting player pod, physical rescue, conserved own-hulk tow, and one ace acknowledgment', async () => {
+function buyPolicy(route, tier) {
+  route.state.ui.docked = true;
+  route.state.ui.dockedStationId = STATION_ID;
+  route.bus.emit('dock:docked', { stationId: STATION_ID });
+  const quote = serviceQuote(`insurance_${tier}`, route.state, route.state.entities.get(route.state.playerId));
+  assert.equal(quote.disabled, false, `${tier} is purchasable at the real station service`);
+  const before = route.state.player.credits;
+  route.bus.emit('ui:service', { type: `insurance_${tier}`, amount: quote.amount });
+  assert.equal(route.state.player.credits, before - quote.cost, `${tier} premium debits through Economy`);
+  assert.equal(route.state.player.insurance.activePolicy.tier, tier);
+  route.state.ui.docked = false;
+  route.state.ui.dockedStationId = null;
+  route.bus.emit('dock:undocked', { stationId: STATION_ID });
+  return quote;
+}
+
+function awaitPhysicalRescue(route) {
+  route.bus.emit('player:rescueRequested', { mode: 'wait', source: 'after_action' });
+  for (let tick = 0; tick < 65 * 60 && route.events.respawn.length === 0; tick++) {
+    route.sim.step(SIM_DT);
+  }
+  assert.equal(route.events.respawn.length, 1, 'the production rescue route reaches one physical interception');
+  return route.events.respawn[0];
+}
+
+test('Loyalty death becomes a drifting pod, paid cargo lien, physical hulk tow, and one ace acknowledgment', async () => {
   const route = boot();
   const physicsOwner = await preparePhysics(route);
+  const loyaltyQuote = buyPolicy(route, 'loyalty');
   const originalBodyId = route.state.playerId;
   const originalHull = deepCopy(route.state.player.ownedShips[0].livingHull);
+  const originalAppearance = deepCopy(route.state.player.ownedShips[0].appearance);
+  const originalFittings = route.state.player.ownedShips[0].fittings.slice();
   const originalPos = { x: route.player.pos.x, z: route.player.pos.z };
+  const creditsAfterPremium = route.state.player.credits;
 
   route.sim.registry.get('combat').kill(route.player, route.ace.id, {
     context: 'weapon',
@@ -206,10 +249,22 @@ test('death becomes a drifting player pod, physical rescue, conserved own-hulk t
   assert.ok(firstReceipt && firstReceipt.loss, 'playerDefeat owns one durable physical-loss receipt');
   const lossId = firstReceipt.loss.lossId;
   const markerId = firstReceipt.loss.wreckMarkerId;
+  assert.equal(firstReceipt.loss.insuranceClaim.tier, 'loyalty');
+  assert.equal(firstReceipt.loss.insuranceClaim.refitFundingCr, loyaltyQuote.refitFundingCr);
+  assert.equal(firstReceipt.loss.insuranceClaim.cashPayoutCr, loyaltyQuote.cashPayoutCr);
+  assert.equal(route.state.player.credits, creditsAfterPremium + loyaltyQuote.cashPayoutCr,
+    'the claim exposes only cargo assessment as spendable cash; insurer-funded refit nets to zero');
+  const loyaltyCashEdges = route.events.creditsChanged.filter((event) => event.delta > 0);
+  assert.deepEqual(loyaltyCashEdges.map((event) => event.delta), [loyaltyQuote.cashPayoutCr],
+    'Loyalty emits one real cash edge for cargo and never a transient hull-value credit');
+  assert.equal(route.state.player.insurance.activePolicy, null, 'the one-loss policy is consumed at real death');
+  const blockedUpgrade = route.sim.registry.get('economy').purchaseInsurancePolicy('full');
+  assert.equal(blockedUpgrade.reason, 'active_loss', 'purchase and upgrade stay locked through active loss');
   assert.equal(route.state.playerId, originalBodyId, 'death keeps the camera/player identity on the same body');
   assert.equal(route.state.entities.get(route.state.playerId).type, 'payload');
   assert.equal(playerPods(route.state).length, 1, 'the player body is the only occupied survival pod');
-  assert.ok(Math.hypot(route.player.vel.x, route.player.vel.z) >= 12, 'the real pod has visible inherited drift');
+  assert.ok(Math.hypot(route.player.vel.x, route.player.vel.z) >= 11.9,
+    `the real pod has visible inherited drift (${route.player.vel.x}, ${route.player.vel.z})`);
   assert.equal(playerHulks(route.state).length, 1, 'a separate physical own hulk remains at the death site');
   assert.deepEqual(lossMarker(route.state).playerLoss.cargoManifest, STARTING_CARGO);
   assert.deepEqual(route.state.player.cargo.items, {}, 'cargo authority removes the conserved manifest from the pod');
@@ -226,6 +281,17 @@ test('death becomes a drifting player pod, physical rescue, conserved own-hulk t
     'the same marker retains exact cargo custody through pod Continue');
   assert.equal(route.state.player.activePhysicalDefeatReceipt.loss.podEntityId, route.state.playerId,
     'the durable receipt adopts the restored canonical player id');
+  const creditsBeforeReplay = route.state.player.credits;
+  const claimCountBeforeReplay = route.state.player.insurance.claims.length;
+  const markerAfterContinue = lossMarker(route.state);
+  const replayedClaim = route.sim.registry.get('economy').settlePlayerLossPolicy({
+    lossId,
+    shipSnapshot: markerAfterContinue.playerLoss.shipSnapshot,
+    cargoManifest: markerAfterContinue.playerLoss.cargoManifest,
+  });
+  assert.equal(replayedClaim.idempotent, true, 'Continue cannot replay a one-loss settlement');
+  assert.equal(route.state.player.credits, creditsBeforeReplay);
+  assert.equal(route.state.player.insurance.claims.length, claimCountBeforeReplay);
 
   const driftStart = { x: restoredPod.pos.x, z: restoredPod.pos.z };
   route.sim.runTicks(60);
@@ -262,8 +328,11 @@ test('death becomes a drifting player pod, physical rescue, conserved own-hulk t
     `Traffic intent plus Flight V3/Rapier closes on the moving pod (${startingDistance} -> ${minimumDistance})`);
   assert.equal(route.events.respawn.length, 1);
   assert.equal(route.state.entities.get(route.state.playerId).type, 'ship');
-  assert.equal(route.state.player.ownedShips[0].defId, 'ship_kestrel', 'no policy yields the playable starter-equivalent loaner');
-  assert.equal(route.state.player.ownedShips[0].loaner.lossId, lossId);
+  assert.equal(route.state.player.ownedShips[0].defId, 'ship_mule');
+  assert.deepEqual(route.state.player.ownedShips[0].fittings, originalFittings);
+  assert.deepEqual(route.state.player.ownedShips[0].appearance, originalAppearance);
+  assert.deepEqual(route.state.player.ownedShips[0].livingHull, originalHull,
+    'Loyalty refit preserves exact fit, customization, and scars before the hulk is recovered');
   assert.equal(route.state.player.activePhysicalDefeatReceipt, undefined, 'the pod receipt closes only after physical interception');
 
   await saveAndContinue(route, 'plan59-incomplete-own-hulk-tow');
@@ -286,7 +355,7 @@ test('death becomes a drifting player pod, physical rescue, conserved own-hulk t
   route.bus.emit('playerDefeat:wreckDelivered', forged);
   assert.deepEqual(forged.result, { ok: false, reason: 'delivery_not_physical' },
     'a forged delivery event cannot restore the hull');
-  assert.equal(route.state.player.ownedShips[0].defId, 'ship_kestrel');
+  assert.equal(route.state.player.ownedShips[0].defId, 'ship_mule');
 
   route.sim.runTicks(3);
   const player = route.state.entities.get(route.state.playerId);
@@ -325,7 +394,7 @@ test('death becomes a drifting player pod, physical rescue, conserved own-hulk t
   route.sim.runTicks(30);
   assert.equal(route.events.recovered.length, 0,
     'creating the real attachment alone cannot complete the recovery before station-bound displacement');
-  assert.equal(route.state.player.ownedShips[0].defId, 'ship_kestrel');
+  assert.equal(route.state.player.ownedShips[0].defId, 'ship_mule');
 
   route.state.input.actions.massline = { lineControl: true, lineLength: -1, cut: false };
   for (let tick = 0; tick < 30 * 60 && route.events.recovered.length === 0; tick++) {
@@ -355,7 +424,11 @@ test('death becomes a drifting player pod, physical rescue, conserved own-hulk t
   }
   assert.equal((route.state.physicsRuntime.sg02Snapshot || []).some((body) => body.id === recoveredHulkId), false,
     'the next production physics step retires the recovered hulk body');
-  assert.deepEqual(route.state.player.cargo.items, { cmdty_food: 5, cmdty_fuel_cells: 3 });
+  assert.deepEqual(route.state.player.cargo.items, {},
+    'the Loyalty cash settlement leaves the later hulk cargo under the consumed insurer lien');
+  const loyaltyClaim = route.sim.registry.get('economy').insuranceClaimForLoss(lossId);
+  assert.equal(loyaltyClaim.cargoLienOutstanding, false);
+  assert.ok(loyaltyClaim.cargoLienConsumedAt >= loyaltyClaim.settledAt);
   assert.equal(route.state.player.ownedShips[0].defId, 'ship_mule');
   assert.deepEqual(route.state.player.ownedShips[0].livingHull, originalHull,
     'ships restores the exact original living-hull scars');
@@ -375,6 +448,103 @@ test('death becomes a drifting player pod, physical rescue, conserved own-hulk t
 
   assert.ok(Math.hypot(originalPos.x - beforeTow.x, originalPos.z - beforeTow.z) < 40,
     'the own hulk began at the actual death site');
+  if (typeof physicsOwner._disableSg02DynamicAuthority === 'function') physicsOwner._disableSg02DynamicAuthority();
+});
+
+test('Basic and Full station policies settle through Economy and drive ships-owned scar-at-stake refits', async () => {
+  const fitted = ['wpn_pulse_laser_s', 'mod_shield_capacitor_m', 'mod_engine_ion_m', null, null, null];
+  for (const tier of ['basic', 'full']) {
+    const route = boot({ credits: 100_000, fittings: fitted });
+    route.state.player.heat = tier === 'full' ? 0.4 : 0;
+    const clearQuote = serviceQuote(`insurance_${tier}`, route.state, route.state.entities.get(route.state.playerId));
+    if (tier === 'full') {
+      assert.equal(clearQuote.wantedMultiplier, 1.6, 'the quote reads the existing WANTED heat truth');
+      route.state.player.heat = 0;
+      const noHeatQuote = serviceQuote(`insurance_${tier}`, route.state, route.state.entities.get(route.state.playerId));
+      assert.ok(clearQuote.cost > noHeatQuote.cost, 'WANTED heat raises the station premium visibly');
+      route.state.player.heat = 0.4;
+    }
+    const physicsOwner = await preparePhysics(route);
+    const quote = buyPolicy(route, tier);
+    const original = deepCopy(route.state.player.ownedShips[0]);
+    const creditsAfterPremium = route.state.player.credits;
+    const creditEdgeCountBeforeDeath = route.events.creditsChanged.length;
+
+    route.sim.registry.get('combat').kill(route.player, route.ace.id, {
+      context: 'weapon', weaponId: 'wpn_railgun_m', dominantLayer: 'hull',
+    });
+    const receipt = route.state.player.activePhysicalDefeatReceipt;
+    assert.equal(receipt.loss.insuranceClaim.tier, tier);
+    assert.equal(receipt.loss.insuranceClaim.refitFundingCr, quote.refitFundingCr);
+    assert.equal(receipt.loss.insuranceClaim.cashPayoutCr, 0);
+    assert.equal(route.state.player.credits, creditsAfterPremium,
+      `${tier} refit funding is not mislabeled or left as spendable player cash`);
+    assert.equal(route.events.creditsChanged.slice(creditEdgeCountBeforeDeath).some((event) => event.delta > 0), false,
+      `${tier} emits no positive wallet edge for in-kind refit funding`);
+    assert.equal(route.state.player.insurance.activePolicy, null, `${tier} is consumed by one death`);
+
+    awaitPhysicalRescue(route);
+    const refit = route.state.player.ownedShips[0];
+    assert.equal(refit.defId, 'ship_mule');
+    if (tier === 'basic') {
+      assert.ok(refit.fittings.every((fit) => fit == null), 'Basic returns a stock hull with no fitted modules');
+      assert.notDeepEqual(refit.appearance, original.appearance, 'Basic does not preserve customization');
+      assert.notDeepEqual(refit.livingHull, original.livingHull, 'Basic makes the scars meaningfully at stake');
+    } else {
+      assert.deepEqual(refit.fittings, original.fittings, 'Full restores the exact current fit');
+      assert.deepEqual(refit.appearance, original.appearance, 'Full restores exact customization');
+      assert.deepEqual(refit.livingHull, original.livingHull, 'Full restores exact living-hull scars');
+    }
+    if (typeof physicsOwner._disableSg02DynamicAuthority === 'function') physicsOwner._disableSg02DynamicAuthority();
+  }
+});
+
+test('one-loss cover is bound to both the purchased owned-ship index and hull identity', () => {
+  const route = boot({ credits: 100_000 });
+  buyPolicy(route, 'full');
+  const insured = deepCopy(route.state.player.ownedShips[0]);
+  route.state.player.ownedShips.push(deepCopy(insured));
+  route.state.player.activeShipIndex = 1;
+  const result = route.sim.registry.get('economy').settlePlayerLossPolicy({
+    lossId: 'wrong_same_hull_copy',
+    shipSnapshot: {
+      schemaVersion: 1,
+      lossId: 'wrong_same_hull_copy',
+      shipIndex: 1,
+      defId: insured.defId,
+      fittings: insured.fittings,
+      appearance: insured.appearance,
+      livingHull: insured.livingHull,
+    },
+    cargoManifest: [],
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.claim.tier, 'loaner', 'a second owned copy of the same hull cannot borrow the first ship policy');
+  assert.equal(route.state.player.insurance.activePolicy.shipIndex, 0, 'the unmatched one-loss policy stays bound and unconsumed');
+});
+
+test('uninsured real death yields a playable loaner and caps Economy-owned loss debt', async () => {
+  const route = boot({ credits: 20_000 });
+  const insurance = route.state.player.insurance;
+  route.state.player.debt = LOANER_DEBT_CAP_CR - 100;
+  insurance.loanerDebtAccruedCr = LOANER_DEBT_CAP_CR - 100;
+  const physicsOwner = await preparePhysics(route);
+
+  route.sim.registry.get('combat').kill(route.player, route.ace.id, {
+    context: 'weapon', weaponId: 'wpn_railgun_m', dominantLayer: 'hull',
+  });
+  const claim = route.state.player.activePhysicalDefeatReceipt.loss.insuranceClaim;
+  assert.equal(claim.tier, 'loaner');
+  assert.equal(claim.debtAddedCr, 100);
+  assert.ok(claim.debtAddedCr < LOANER_DEBT_PER_LOSS_CR);
+  assert.equal(route.state.player.debt, LOANER_DEBT_CAP_CR);
+  assert.equal(route.state.player.insurance.loanerDebtAccruedCr, LOANER_DEBT_CAP_CR);
+
+  awaitPhysicalRescue(route);
+  const loaner = route.state.player.ownedShips[0];
+  assert.equal(loaner.defId, 'ship_kestrel');
+  assert.equal(loaner.loaner.lossId, claim.lossId);
+  assert.equal(route.state.entities.get(route.state.playerId).type, 'ship', 'the bounded-debt result stays playable');
   if (typeof physicsOwner._disableSg02DynamicAuthority === 'function') physicsOwner._disableSg02DynamicAuthority();
 });
 

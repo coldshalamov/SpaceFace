@@ -937,8 +937,14 @@ export const ships = {
 
   /** Replace the destroyed ownership slot with the policy result. Full preserves the fit and hull
    * history; Basic is the same stock chassis; no policy gets the authored starter loadout. */
-  applyPlayerLossRefit({ lossId, tier, shipSnapshot } = {}) {
+  applyPlayerLossRefit({ lossId, tier, shipSnapshot, insuranceClaim = null } = {}) {
     if (!lossId || !shipSnapshot || shipSnapshot.lossId !== lossId) return { ok: false, reason: 'loss_snapshot_unavailable' };
+    if (tier !== 'loaner' && (!insuranceClaim || insuranceClaim.lossId !== lossId
+      || insuranceClaim.tier !== tier || insuranceClaim.shipDefId !== shipSnapshot.defId
+      || insuranceClaim.shipIndex !== shipSnapshot.shipIndex
+      || !(Number(insuranceClaim.refitFundingCr) > 0))) {
+      return { ok: false, reason: 'insurance_refit_unfunded' };
+    }
     const p = this.state.player;
     const index = Number.isInteger(shipSnapshot.shipIndex) ? shipSnapshot.shipIndex : p.activeShipIndex | 0;
     let owned;
