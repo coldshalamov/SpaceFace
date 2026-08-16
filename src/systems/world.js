@@ -56,6 +56,13 @@ import { collisionProxyIdForStation } from '../data/collisionProxyManifests.js';
 import { effectiveSectorFor } from './sectorSim.js';   // V2 §33 — live (drifted) hazard for spawn sizing
 import { regionalEcologyReadout, regionalResourceYieldMultiplier } from './regionalEcology.js';
 import { ASTEROIDS, FIELDS, deriveAsteroidSeams } from '../data/mining.js';
+import {
+  COMET_ICE,
+  cometLocalPosition,
+  cometPassAt,
+  createCometIceState,
+  normalizeCometIceState,
+} from '../data/miningDepth.js';
 import { makeEnemySpawnSpec } from './combat.js';
 import { planZoneSpawns, zoneAt, zoneThreat } from '../data/sectorZones.js'; // named-zone purposeful spawning (WORLD_OVERHAUL_2_1)
 import {
@@ -281,6 +288,8 @@ export const world = {
     state.world.frontierRumors = normalizeFrontierRumorState(state.world.frontierRumors);
     state.world.vestaOreCache = normalizeVestaOreCacheState(state.world.vestaOreCache);
     state.world.pallasHiddenCache = normalizePallasHiddenCacheState(state.world.pallasHiddenCache);
+    const cometCycle = cometPassAt(state.meta && state.meta.seed || 1, state.simTime).cycle;
+    state.world.cometIce = normalizeCometIceState(state.world.cometIce, cometCycle);
     // M2-C2 durable world-entity records (global-space). Runtime residency bags stay separate.
     ensureWorldRecords(state.world);
     // M2-C2/C3 latest-epoch recipe cache. It is bounded data, not a live-entity authority.
@@ -297,6 +306,8 @@ export const world = {
     this._vestaDecisionNeedsRebind = false;
     this._pallasDecisionSignature = null;
     this._pallasDecisionNeedsRebind = false;
+    this._cometIceEntityId = null;
+    this._cometIcePassId = null;
     this._hazardSet = new Set();      // hazard zone indices the player is currently inside
     this._hazardNextSet = new Set();  // scratch set reused while computing the next frame
     // Floating-origin scratch (allocation-free no-shift path).
@@ -324,6 +335,7 @@ export const world = {
     bus.on('module:unequipped', () => this._resolveShipModules());
     bus.on('ship:statsChanged', () => this._resolveShipModules());
     bus.on('field:depletedChanged', (p) => this._onFieldDepleted(p || {}));
+    bus.on('asteroid:destroyed', (p) => this._onCometIceDestroyed(p || {}));
     bus.on('anomaly:triangulated', (p) => this._onAnomalyTriangulated(p || {}));
     bus.on('signal:investigated', (p) => this._onSignalInvestigated(p || {}));
     bus.on('orrinWitness:ensureEvidence', (p) => this._ensureOrrinWitnessEvidence(p || {}));
@@ -818,6 +830,7 @@ export const world = {
 
     this._spawnStations(sector, active, rng);
     this._spawnFields(sector, active, disc, rng);
+    this._spawnCometIce(sector, active);
     this._spawnGates(sector, active, rng);
     this._spawnPOIs(sector, active, disc, rng);
     this._spawnHazards(sector, active);
@@ -912,6 +925,7 @@ export const world = {
   _demoteSectorToRecordOnly(sectorId) {
     // Write epoch-stable durable records before scoped despawn (identity must not reroll).
     this._captureSectorDurableRecords(sectorId, { reason: 'evict' });
+    this._captureCometIce(sectorId);
     this._despawnEntitiesForSector(sectorId);
     if (this.state.world.sectorContents) {
       this.state.world.sectorContents[sectorId] = this._emptySectorBag();
@@ -1572,6 +1586,201 @@ export const world = {
       mulberry32: this.helpers.mulberry32,
     });
     return ent;
+  },
+
+  // Plan 42: one real, moving Ceres ice body. The schedule is pure data; world owns the durable
+  // event overlay/body recipe, Rapier owns its motion, and mining owns every unit removed from it.
+  _spawnCometIce(sector, active) {
+    if (!sector || sector.id !== COMET_ICE.sectorId || !active) return null;
+    const state = this.state;
+    const pass = cometPassAt(state.meta && state.meta.seed || 1, state.simTime);
+    if (!pass.active) return null;
+    const own = state.world.cometIce || (state.world.cometIce = createCometIceState());
+    let rec = own.byPassId[pass.passId];
+    if (!rec) {
+      rec = own.byPassId[pass.passId] = {
+        oreHP: COMET_ICE.oreHP,
+        oreCarry: 0,
+        dustCarry: 0,
+        pctEjected: 0,
+        depleted: false,
+        pos: null,
+        vel: null,
+      };
+    }
+    if (rec.depleted || !(rec.oreHP > 0)) return null;
+    const already = this._liveCometIce(pass.passId);
+    if (already) return already;
+
+    const origin = sectorGlobalOrigin(pass.sectorId);
+    const local = cometLocalPosition(pass, state.simTime);
+    const pos = rec.pos
+      ? { x: rec.pos.x, z: rec.pos.z }
+      : { x: origin.x + local.x, z: origin.z + local.z };
+    const vel = rec.vel
+      ? { x: rec.vel.x, z: rec.vel.z }
+      : { x: pass.velocity.x, z: pass.velocity.z };
+    const ent = this.helpers.spawnEntity({
+      type: 'asteroid',
+      pos,
+      vel,
+      radius: COMET_ICE.radius,
+      mass: COMET_ICE.mass,
+      angVel: 0.08,
+      hull: rec.oreHP,
+      hullMax: COMET_ICE.oreHP,
+      collides: true,
+      physicsBody: {
+        schemaVersion: 1,
+        radius: COMET_ICE.radius,
+        mass: COMET_ICE.mass,
+        inertiaY: 0.5 * COMET_ICE.mass * COMET_ICE.radius * COMET_ICE.radius,
+        dynamic: true,
+        ccd: true,
+        material: 'ice',
+        revision: 0,
+      },
+      data: {
+        typeId: 'ast_icy',
+        tier: 1,
+        tierCap: 1,
+        oreHP: rec.oreHP,
+        oreHPMax: COMET_ICE.oreHP,
+        yieldU: COMET_ICE.yieldU,
+        pctEjected: rec.pctEjected || 0,
+        _oreCarry: rec.oreCarry || 0,
+        _resonanceDustCarry: rec.dustCarry || 0,
+        size: COMET_ICE.radius,
+        fieldId: pass.fieldId,
+        sectorId: pass.sectorId,
+        homeSectorId: pass.sectorId,
+        cometIce: true,
+        cometPassId: pass.passId,
+        cometWindowEndsAtS: pass.endsAtS,
+        name: 'Drift Comet Ice',
+        interactionPrompt: 'Match its drift and mine the ice before the pass closes',
+      },
+    });
+    this._stampHomeSector(ent, pass.sectorId);
+    ent.data.seams = deriveAsteroidSeams(state.meta.seed, `comet:${pass.passId}`, ent.radius, {
+      hash32: this.helpers.hash32,
+      mulberry32: this.helpers.mulberry32,
+    });
+    this._cometIceEntityId = ent.id;
+    this._cometIcePassId = pass.passId;
+    active.fields.push({
+      id: pass.fieldId,
+      type: 'ast_icy',
+      center: { x: ent.pos.x, z: ent.pos.z },
+      asteroidIds: [ent.id],
+      eventType: 'comet_ice',
+      passId: pass.passId,
+    });
+    this.bus.emit('world:cometIceMaterialized', {
+      passId: pass.passId,
+      sectorId: pass.sectorId,
+      asteroidId: ent.id,
+      endsAtS: pass.endsAtS,
+      velocity: { x: ent.vel.x, z: ent.vel.z },
+    });
+    if (own.announcedPassId !== pass.passId) {
+      own.announcedPassId = pass.passId;
+      this.bus.emit('news:publish', {
+        id: `comet-window:${pass.passId}`,
+        text: 'CERES TRAFFIC: a comet-ice body is crossing the refinery belt. Match its drift to cut water and volatiles before the two-day window closes.',
+        kind: 'resource-window',
+        sectorId: pass.sectorId,
+        source: 'physical-comet-ice',
+        passId: pass.passId,
+        asteroidId: ent.id,
+      });
+    }
+    return ent;
+  },
+
+  _liveCometIce(passId = null) {
+    const state = this.state;
+    const direct = this._cometIceEntityId != null ? state.entities.get(this._cometIceEntityId) : null;
+    if (direct && direct.alive !== false && direct.data && direct.data.cometIce
+      && (passId == null || direct.data.cometPassId === passId)) return direct;
+    for (const entity of state.entityList || []) {
+      if (!entity || entity.alive === false || !entity.data || !entity.data.cometIce) continue;
+      if (passId != null && entity.data.cometPassId !== passId) continue;
+      this._cometIceEntityId = entity.id;
+      this._cometIcePassId = entity.data.cometPassId;
+      return entity;
+    }
+    return null;
+  },
+
+  _captureCometIce(sectorId = null) {
+    const entity = this._liveCometIce();
+    if (!entity || (sectorId && entity.data.homeSectorId !== sectorId)) return null;
+    const own = this.state.world.cometIce || (this.state.world.cometIce = createCometIceState());
+    const passId = entity.data.cometPassId;
+    const rec = own.byPassId[passId] || (own.byPassId[passId] = {});
+    rec.oreHP = Math.max(0, Math.min(COMET_ICE.oreHP, Number(entity.data.oreHP) || 0));
+    rec.oreCarry = Math.max(0, Number(entity.data._oreCarry) || 0);
+    rec.dustCarry = Math.max(0, Number(entity.data._resonanceDustCarry) || 0);
+    rec.pctEjected = Math.max(0, Math.min(1, Number(entity.data.pctEjected) || 0));
+    rec.depleted = rec.depleted === true || entity.alive === false || rec.oreHP <= 0;
+    rec.pos = { x: entity.pos.x, z: entity.pos.z };
+    rec.vel = { x: entity.vel.x, z: entity.vel.z };
+    return rec;
+  },
+
+  _onCometIceDestroyed(payload) {
+    const entity = payload && payload.id != null ? this.state.entities.get(payload.id) : null;
+    if (!entity || !entity.data || !entity.data.cometIce) return false;
+    const rec = this._captureCometIce(entity.data.homeSectorId);
+    if (rec) {
+      rec.oreHP = 0;
+      rec.depleted = true;
+    }
+    this.bus.emit('world:cometIceDepleted', {
+      passId: entity.data.cometPassId,
+      sectorId: entity.data.homeSectorId,
+      asteroidId: entity.id,
+      pos: { x: entity.pos.x, z: entity.pos.z },
+    });
+    return true;
+  },
+
+  _retireCometIce(entity, reason) {
+    if (!entity) return false;
+    this._captureCometIce(entity.data && entity.data.homeSectorId);
+    entity.alive = false;
+    for (const bag of Object.values(this.state.world.sectorContents || {})) {
+      for (const field of bag && bag.fields || []) {
+        if (Array.isArray(field.asteroidIds)) {
+          field.asteroidIds = field.asteroidIds.filter((id) => id !== entity.id);
+        }
+      }
+    }
+    this.bus.emit('world:cometIceRetired', {
+      passId: entity.data && entity.data.cometPassId,
+      sectorId: entity.data && entity.data.homeSectorId,
+      asteroidId: entity.id,
+      reason,
+    });
+    this._cometIceEntityId = null;
+    this._cometIcePassId = null;
+    return true;
+  },
+
+  _tickCometIce(state) {
+    const pass = cometPassAt(state.meta && state.meta.seed || 1, state.simTime);
+    const live = this._liveCometIce();
+    if (live && (!pass.active || live.data.cometPassId !== pass.passId)) {
+      this._retireCometIce(live, pass.active ? 'next-pass' : 'window-closed');
+    }
+    if (!pass.active || this._liveCometIce(pass.passId)) return;
+    state.world.cometIce = normalizeCometIceState(state.world.cometIce, pass.cycle);
+    const resident = state.world.residentSectors && state.world.residentSectors[pass.sectorId];
+    if (!resident || (resident.tier !== RESIDENCY_TIER.FULL && resident.tier !== RESIDENCY_TIER.REDUCED)) return;
+    const active = state.world.sectorContents && state.world.sectorContents[pass.sectorId];
+    if (!active) return;
+    this._spawnCometIce(state.world.sectors[pass.sectorId] || SECTOR_BY_ID.get(pass.sectorId), active);
   },
 
   // Jump GATES: one per outbound edge, placed on the disc rim toward the neighbor's map position.
@@ -2535,6 +2744,7 @@ export const world = {
 
     this._tickFrameOrigin(state);
     this._tickResidency(state);
+    this._tickCometIce(state);
     this._tickDeferredCriticalSpawns(state);
     this._tickScan(dt, state);
     this._tickHazards(dt, state);
@@ -3859,6 +4069,7 @@ export const world = {
   // =========================================================================================
   serialize() {
     const state = this.state;
+    this._captureCometIce();
     // Capture live durable entities into the bag before save so mid-route Continue
     // restores NPC/convoy/mission outcomes without depending on residency bags.
     const membership = state.world.currentSectorId;
@@ -3898,6 +4109,7 @@ export const world = {
       frontierRumors: cloneSaveTree(this._frontierRumorState()),
       vestaOreCache: cloneSaveTree(this._vestaOreCacheState()),
       pallasHiddenCache: cloneSaveTree(this._pallasHiddenCacheState()),
+      cometIce: cloneSaveTree(state.world.cometIce),
       // v11: durable global-space entity records (never frameOrigin / residentSectors / sectorContents).
       records: serializeRecordsBag(ensureWorldRecords(state.world)),
       // Latest sectorSim recipes are bounded per sector and needed because sectorSim restores its
@@ -3936,6 +4148,10 @@ export const world = {
     state.world.frontierRumors = normalizeFrontierRumorState(data.frontierRumors);
     state.world.vestaOreCache = normalizeVestaOreCacheState(data.vestaOreCache);
     state.world.pallasHiddenCache = normalizePallasHiddenCacheState(data.pallasHiddenCache);
+    const cometCycle = cometPassAt(state.meta && state.meta.seed || 1, state.simTime).cycle;
+    state.world.cometIce = normalizeCometIceState(data.cometIce, cometCycle);
+    this._cometIceEntityId = null;
+    this._cometIcePassId = null;
     this._vestaDecisionSignature = null;
     this._vestaDecisionNeedsRebind = true;
     this._pallasDecisionSignature = null;
@@ -3995,6 +4211,7 @@ export const world = {
     state.world.frontierRumors = normalizeFrontierRumorState(null);
     state.world.vestaOreCache = freshVestaOreCacheState();
     state.world.pallasHiddenCache = freshPallasHiddenCacheState();
+    state.world.cometIce = createCometIceState();
     state.world.records = createEmptyRecordsBag();
     state.world.embodiment = createEmptyEmbodimentCache();
     state.world.residentSectors = {};
@@ -4006,6 +4223,8 @@ export const world = {
     this._vestaDecisionNeedsRebind = false;
     this._pallasDecisionSignature = null;
     this._pallasDecisionNeedsRebind = false;
+    this._cometIceEntityId = null;
+    this._cometIcePassId = null;
     // Coordinate membrane: new games always start at global_v1 with a zero runtime frame.
     state.world.coordinateSchema = 'global_v1';
     if (!state.world.frameOrigin || typeof state.world.frameOrigin !== 'object') {

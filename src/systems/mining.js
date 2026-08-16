@@ -17,6 +17,7 @@
 import { ORES, ASTEROIDS, BEAMS, deriveAsteroidSeams } from '../data/mining.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { MODULES } from '../data/modules.js';
+import { CRYSTAL_RESONANCE, resonanceTiming } from '../data/miningDepth.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import {
   clearPickupAcceptanceRetry,
@@ -188,6 +189,13 @@ export const mining = {
     this._heatEmitPct = -1;
     this._noiseImpulseAt = -Infinity;
     this._ventTaught = false;
+    // A crystal strike is classified on the physical beam edge and settles only after that edge
+    // removes positive ore-HP. The guide stays alive briefly after release so the player can hear
+    // a beat, tap back in, and improve instead of guessing against an invisible clock.
+    this._resonanceStrike = null;
+    this._resonanceGuideTargetId = null;
+    this._resonanceGuideUntil = 0;
+    this._resonanceGuideCycle = null;
 
     const bus = this.bus;
     // Combat spawns a wreck on ship death so the player can salvage it.
@@ -202,6 +210,10 @@ export const mining = {
       this._lockTargetId = null;
       this._stopBeam();
       this._resetBeamHeat();
+      this._resonanceStrike = null;
+      this._resonanceGuideTargetId = null;
+      this._resonanceGuideUntil = 0;
+      this._resonanceGuideCycle = null;
       // A regenerated world invalidates every scheduled activation; the ripple restarts from scratch.
       resetCaptureWave(this._captureWave);
     });
@@ -226,6 +238,7 @@ export const mining = {
     // Heat runs after the beam so the vent evaluated on a release edge reads the heat the player
     // actually let go at, and so cooling keeps ticking on every frame the beam is off.
     this._updateBeamHeat(beam, this._beaming, dt, state);
+    this._updateResonanceGuide(dt, state);
     this._updateRichCoreCharge(firing, dt, state);
     this._updateMiningNoise(this._beaming, dt, state);
 
@@ -273,6 +286,7 @@ export const mining = {
     if (!this._beaming || this._lockTargetId !== target.id || this._activeVerb !== resolved.verb) {
       this._lockTargetId = target.id;
       this._activeVerb = resolved.verb;
+      this._beginCrystalResonance(target, player, state, resolved);
       this.bus.emit('mining:start', {
         minerId: player.id,
         targetId: target.id,
@@ -521,6 +535,109 @@ export const mining = {
     this._resolveVent();
     this.bus.emit('mining:stop', { minerId: this.state.playerId, targetId: this._lockTargetId, position: null });
     this._lockTargetId = null;
+    this._resonanceStrike = null;
+  },
+
+  _beginCrystalResonance(target, player, state, resolved) {
+    this._resonanceStrike = null;
+    if (!resolved || !resolved.ok || resolved.verb !== 'extract' || !isCrystallineAsteroid(target)) return;
+    const timing = resonanceTiming(state.meta && state.meta.seed || 1, target.id, state.simTime);
+    this._resonanceStrike = {
+      asteroidId: target.id,
+      minerId: player.id,
+      cycleId: timing.cycleId,
+      grade: timing.grade,
+      distanceS: timing.distanceS,
+      yieldMult: timing.yieldMult,
+      settled: false,
+    };
+    this._resonanceGuideTargetId = target.id;
+    this._resonanceGuideUntil = state.simTime + CRYSTAL_RESONANCE.guideHoldS;
+    this._resonanceGuideCycle = timing.cycle;
+  },
+
+  _updateResonanceGuide(dt, state) {
+    const id = this._resonanceGuideTargetId;
+    if (id == null || state.simTime > this._resonanceGuideUntil) {
+      this._resonanceGuideTargetId = null;
+      this._resonanceGuideCycle = null;
+      return;
+    }
+    const asteroid = state.entities.get(id);
+    if (!isCrystallineAsteroid(asteroid)) {
+      this._resonanceGuideTargetId = null;
+      this._resonanceGuideCycle = null;
+      return;
+    }
+    const timing = resonanceTiming(state.meta && state.meta.seed || 1, asteroid.id, state.simTime);
+    if (timing.cycle === this._resonanceGuideCycle) return;
+    this._resonanceGuideCycle = timing.cycle;
+    // Fixed-step crossing may land a few milliseconds after the mathematical beat. Reject a large
+    // first-frame phase jump so entering range never invents a pulse halfway through a cycle.
+    if (timing.distanceS > Math.max(0.03, dt * 1.25)) return;
+    const position = { x: asteroid.pos.x, z: asteroid.pos.z };
+    this.bus.emit('mining:resonanceBeat', {
+      asteroidId: asteroid.id,
+      targetId: asteroid.id,
+      cycleId: timing.cycleId,
+      position,
+    });
+    this.bus.emit('presentation:vfxCue', {
+      id: 'mining.resonance.beat', lane: 'mining', material: 'crystal',
+      targetId: asteroid.id, position, particles: 4, lights: 1, magnitude: 0.7,
+      importance: 0.65, playerRelevance: 1, targetRelevance: 1,
+      tags: ['crystal', 'timing', 'beat'],
+    });
+    this.bus.emit('audio:cue', { id: 'ui_tick', position, gain: 0.34 });
+  },
+
+  _crystalResonanceFor(ast, minerId) {
+    if (minerId !== this.state.playerId || !isCrystallineAsteroid(ast)) return null;
+    const strike = this._resonanceStrike;
+    return strike && strike.asteroidId === ast.id && strike.minerId === minerId ? strike : null;
+  },
+
+  _settleCrystalResonance(ast, strike, lostHp) {
+    if (!strike || strike.settled || !(lostHp > 0)) return;
+    strike.settled = true;
+    const position = { x: ast.pos.x, z: ast.pos.z };
+    const payload = {
+      minerId: strike.minerId,
+      asteroidId: ast.id,
+      targetId: ast.id,
+      cycleId: strike.cycleId,
+      grade: strike.grade,
+      timingErrorS: strike.distanceS,
+      yieldMult: strike.yieldMult,
+      dustCommodityId: strike.grade === 'miss' ? CRYSTAL_RESONANCE.dustCommodityId : null,
+      physicalLossHp: lostHp,
+      position,
+    };
+    this.bus.emit('mining:resonanceResolved', payload);
+    const perfect = strike.grade === 'perfect';
+    const miss = strike.grade === 'miss';
+    this.bus.emit('presentation:vfxCue', {
+      id: `mining.resonance.${strike.grade}`, lane: 'mining', material: 'crystal',
+      targetId: ast.id, position,
+      particles: perfect ? 10 : miss ? 3 : 6,
+      lights: perfect ? 2 : miss ? 0 : 1,
+      magnitude: perfect ? 1.4 : miss ? 0.35 : 0.85,
+      importance: perfect ? 0.9 : 0.7,
+      playerRelevance: 1, targetRelevance: 1,
+      tags: ['crystal', 'timing', strike.grade],
+    });
+    this.bus.emit('audio:cue', {
+      id: perfect ? 'sfx_mining_seam_reward' : miss ? 'ui_deny' : 'ui_confirm',
+      position,
+      gain: perfect ? 0.8 : miss ? 0.32 : 0.48,
+    });
+    this.bus.emit('alert', {
+      key: 'crystal-resonance',
+      sev: perfect ? 'good' : miss ? 'warn' : 'info',
+      text: perfect ? 'PERFECT RESONANCE · CRYSTAL INTACT'
+        : miss ? 'RESONANCE MISALIGNED · SILICATE DUST' : 'RESONANCE ALIGNED',
+      ttl: perfect ? 1.5 : 1.1,
+    });
   },
 
   // ---- heat / vent rhythm ---------------------------------------------------
@@ -739,10 +856,12 @@ export const mining = {
     }
     if (d.pctEjected == null) d.pctEjected = 0;
     if (d._oreCarry == null) d._oreCarry = 0; // fractional ore awaiting a whole unit
+    if (d._resonanceDustCarry == null) d._resonanceDustCarry = 0;
 
     const miner = state.entities.get(minerId);
     const contact = this._beamContactPoint(ast, miner);
     const seam = this._seamYield(ast, contact);
+    const resonance = this._crystalResonanceFor(ast, minerId);
     if (seam.onSeam) this._emitSeamHit(ast, d, state);
 
     const before = d.oreHP;
@@ -750,12 +869,16 @@ export const mining = {
     ast.hull = d.oreHP; // keep the hull alias in sync
     const lost = before - d.oreHP;
     if (lost <= 0) return 0;
+    this._settleCrystalResonance(ast, resonance, lost);
+    const resonanceMult = resonance ? resonance.yieldMult : 1;
+    const combinedYieldMult = seam.yieldMult * resonanceMult;
 
     this.bus.emit('mining:tick', {
       contactPos: contact,
       oreType: this._dominantOre(def),
       seamHit: seam.onSeam,
-      yieldMult: seam.yieldMult,
+      yieldMult: combinedYieldMult,
+      resonanceGrade: resonance && resonance.grade || null,
     });
 
     // Continuous ore delivery (Mining 2.0 feel fix — see design/WORLD_OVERHAUL_2_1.md §Mining).
@@ -771,8 +894,10 @@ export const mining = {
     const pctNow = 1 - d.oreHP / hpMax;
     const destroyed = d.oreHP <= 0;
     const yieldPerHp = hpMax > 0 ? yieldTotal / hpMax : 0;
-    const delivered = lost * yieldPerHp * seam.yieldMult;
-    d._oreCarry += delivered;
+    const delivered = lost * yieldPerHp * combinedYieldMult;
+    const dustStrike = resonance && resonance.grade === 'miss';
+    if (dustStrike) d._resonanceDustCarry += delivered;
+    else d._oreCarry += delivered;
     let richClaim = null;
     if (destroyed && minerId === state.playerId) {
       richClaim = claimRichSeamOpportunity(state, {
@@ -821,18 +946,35 @@ export const mining = {
     if (minerId === state.playerId) {
       this._pulseOre += delivered;
       this._pulseTargetId = ast.id;
-      this._pulseCommodityId = d.commodityId || this._dominantOre(def);
+      this._pulseCommodityId = dustStrike
+        ? CRYSTAL_RESONANCE.dustCommodityId
+        : d.commodityId || this._dominantOre(def);
     }
     d.pctEjected = destroyed ? 1 : pctNow; // kept in sync for telemetry/readers
     d.miningWear = destroyed ? 1 : pctNow; // render hint: 0 = pristine, 1 = spent (progressive shrink/darken)
     let releaseUnits = Math.floor(d._oreCarry + 1e-9);
     d._oreCarry -= releaseUnits;
+    let dustUnits = Math.floor(d._resonanceDustCarry + 1e-9);
+    d._resonanceDustCarry -= dustUnits;
     if (destroyed && d._oreCarry > 1e-6) {
       releaseUnits += 1; // flush the final fractional remainder so small rocks still yield their last unit
       d._oreCarry = 0;
     }
+    if (destroyed && d._resonanceDustCarry > 1e-6) {
+      dustUnits += 1;
+      d._resonanceDustCarry = 0;
+    }
 
     if (releaseUnits > 0) this._releaseOre(ast, def, releaseUnits, miner, d._richLotSource, d);
+    if (dustUnits > 0) this._releaseOre(
+      ast,
+      def,
+      dustUnits,
+      miner,
+      null,
+      d,
+      CRYSTAL_RESONANCE.dustCommodityId,
+    );
 
     if (destroyed) {
       if (!d.isChunk) {
@@ -843,12 +985,12 @@ export const mining = {
       d.respawnAt = state.simTime + ((def && def.respawnSec) || 90); // world reads this to repopulate
       ast.alive = false;
     }
-    return releaseUnits;
+    return releaseUnits + dustUnits;
   },
 
   // Release `units` of ore: roll each unit's commodity from the asteroid's weighted table
   // (tier-gated, renormalized), then either credit cargo directly or eject magnet pickups.
-  _releaseOre(ast, def, units, miner, richLotSource = null, asteroidData = null) {
+  _releaseOre(ast, def, units, miner, richLotSource = null, asteroidData = null, forcedCommodityId = null) {
     const beam = miner ? this._beamRuntime(miner) : null;
     const direct = !!(beam && beam.directToCargo) && miner && miner.id === this.state.playerId;
     const rareOreChance = validRareOreChance(beam && beam.rareOreChance) && beam.rareOreChance > 0
@@ -859,9 +1001,9 @@ export const mining = {
     for (let i = 0; i < units; i++) {
       // The Pulverizer's chance draw is part of the deterministic sim stream. A hit replaces this
       // one ordinary unit's weighted result; it never manufactures a bonus unit or reroutes cargo.
-      const id = rareOreChance !== null && this.state.rng() < rareOreChance
+      const id = forcedCommodityId || (rareOreChance !== null && this.state.rng() < rareOreChance
         ? richOreForTier(rareOreTier)
-        : this._rollOre(def, ast);
+        : this._rollOre(def, ast));
       if (!id) continue;
       buckets.set(id, (buckets.get(id) || 0) + 1);
     }
@@ -1849,6 +1991,11 @@ function activeMineableTetherTarget(state, ship, range) {
 function isDisabledHeavyBeamTarget(entity) {
   return !!(entity && entity.alive !== false && entity.type === 'ship' && entity.data
     && entity.data.heavyDisabled === true && entity.data.beamExtractableHeavy === true);
+}
+
+function isCrystallineAsteroid(entity) {
+  return !!(entity && entity.alive !== false && entity.type === 'asteroid' && entity.data
+    && entity.data.typeId === 'ast_crystalline');
 }
 
 function resetMiningDiagnostics(diag) {
