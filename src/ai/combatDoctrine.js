@@ -28,6 +28,8 @@ const INTERCEPTOR_STRIKE_MAX_TICKS = 54;
 const INTERCEPTOR_EXTEND_TICKS = 75;
 const INTERCEPTOR_EXTEND_MAX_TICKS = 180;
 const INTERCEPTOR_REFORM_TICKS = 45;
+const SPEED_PASS_BREAK_LATERAL = 42;
+const SPEED_PASS_EXTENSION_DISTANCE = 1280;
 const BRAWLER_COMMIT_MIN_TICKS = 90;
 const BRAWLER_COMMIT_MAX_TICKS = 120;
 const BRAWLER_BREAKAWAY_TICKS = 105;
@@ -97,7 +99,7 @@ export class CombatDoctrineRuntime {
     const flightProfile = flightProfileFor(doctrineId, self);
     if (!record || record.doctrineId !== doctrineId || record.targetId !== (target && target.id) ||
       record.flightProfile !== flightProfile) {
-      record = makeRecord(this.seed, tick, entityId, doctrineId, target && target.id, flightProfile);
+      record = makeRecord(this.seed, tick, entityId, doctrineId, target && target.id, flightProfile, self);
       this.byEntity.set(entityId, record);
     }
     record.lastTick = tick;
@@ -200,6 +202,8 @@ export function applyCombatDoctrineToSelection(selected, doctrine) {
       preferredRange: doctrine.preferredRange,
       lateralSign: doctrine.lateralSign,
       faceTarget: doctrine.faceTarget === true,
+      maxSpeed: doctrine.maneuverMaxSpeed,
+      straightPass: doctrine.straightPass === true,
       ramAuthorized: doctrine.ramAuthorized === true,
       flightPoint: doctrine.flightPoint,
       formationLocked: doctrine.formationLocked,
@@ -218,12 +222,18 @@ function updateInterceptor(record, tick, self, target, distance) {
   if (record.phase === 'ingress' && distance <= 420) enter(record, 'engine_flare', tick, 'engine_flare');
   else if (record.phase === 'engine_flare' && age >= DOCTRINE_TELEGRAPH_TICKS) {
     record.closestDistance = distance;
+    if (record.flightProfile === 'speed_pass') lockSpeedPassLane(record, self, target);
     enter(record, 'strike', tick, null);
   } else if (record.phase === 'strike') {
     record.closestDistance = Math.min(record.closestDistance, distance);
+    if (record.flightProfile === 'speed_pass' && speedPassLaneCrossed(record, target)) {
+      beginSpeedPassExtension(record, tick, self, 'lane_crossed');
+      return;
+    }
     const passed = runHasPassed(record, self, target, distance);
     if ((age >= INTERCEPTOR_STRIKE_MIN_TICKS && passed) || age >= INTERCEPTOR_STRIKE_MAX_TICKS) {
-      beginEgress(record, 'extend', tick, self, target, 'attack_run_complete');
+      if (record.flightProfile === 'speed_pass') beginSpeedPassExtension(record, tick, self, 'attack_run_complete');
+      else beginEgress(record, 'extend', tick, self, target, 'attack_run_complete');
     }
   } else if (record.phase === 'extend' && age >= INTERCEPTOR_EXTEND_TICKS &&
     (distance >= 520 || age >= INTERCEPTOR_EXTEND_MAX_TICKS)) {
@@ -331,7 +341,7 @@ function updateCapitalBroadside(record, tick, distance) {
   }
 }
 
-function makeRecord(seed, tick, entityId, doctrineId, targetId, flightProfile) {
+function makeRecord(seed, tick, entityId, doctrineId, targetId, flightProfile, self = null) {
   const record = {
     doctrineId,
     flightProfile,
@@ -348,6 +358,8 @@ function makeRecord(seed, tick, entityId, doctrineId, targetId, flightProfile) {
     outcome: null,
     closestDistance: Infinity,
     flightPoint: null,
+    passLane: null,
+    authoredMaxSpeed: finite(self && self.maxSpeed, 0),
     ramAuthorized: false,
     lastTick: tick,
     seed,
@@ -401,10 +413,13 @@ function snapshot(record, target, directive, factionBehavior = null) {
   let maneuverTargetId = target ? target.id : record.targetId;
   let lateralSign = record.side;
   let faceTarget = false;
+  let maneuverMaxSpeed = null;
+  let straightPass = false;
   if (doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY || doctrineId === CombatDoctrineId.BRAWLER_COMMIT) {
     const brawler = doctrineId === CombatDoctrineId.BRAWLER_COMMIT || record.flightProfile === 'brawler_commit';
+    const speedPass = record.flightProfile === 'speed_pass';
     formationLocked = phase === 'ingress' || phase === 'reform';
-    lateralSign = phase === 'ingress' || phase === 'reform' ? 0 : record.side;
+    lateralSign = speedPass || phase === 'ingress' || phase === 'reform' ? 0 : record.side;
     if (phase === 'extend' || phase === 'breakaway') {
       maneuverKind = ManeuverKind.INTERCEPT;
       maneuverTargetId = null;
@@ -412,6 +427,13 @@ function snapshot(record, target, directive, factionBehavior = null) {
       maneuverKind = ManeuverKind.FORMATION;
       maneuverTargetId = null;
     } else maneuverKind = ManeuverKind.INTERCEPT;
+    if (speedPass && phase === 'strike') {
+      maneuverTargetId = null;
+      straightPass = true;
+    }
+    if (speedPass && (phase === 'strike' || phase === 'extend')) {
+      maneuverMaxSpeed = record.authoredMaxSpeed > 0 ? record.authoredMaxSpeed : null;
+    }
     preferredRange = phase === 'extend' || phase === 'breakaway' ? 620 : (brawler ? 190 : 150);
     if (phase === 'strike' || phase === 'commit') allowedActionId = 'action_burst';
   } else if (doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER) {
@@ -484,6 +506,8 @@ function snapshot(record, target, directive, factionBehavior = null) {
     maneuverTargetId,
     flightPoint: record.flightPoint,
     maneuverKind,
+    maneuverMaxSpeed,
+    straightPass,
     preferredRange,
     allowedActionId,
     outcome: record.outcome,
@@ -564,10 +588,54 @@ function flightProfileFor(doctrineId, self) {
     (self && (self.operationalMassBand === 'heavy' || self.operationalMassBand === 'capital'))) {
     return 'brawler_commit';
   }
+  if (doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY && self && self.combatRoleId === 'dart_swarmer') {
+    return 'speed_pass';
+  }
   if (doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY) return 'flyby';
   if (doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER) return 'tether_raider';
   if (doctrineId === CombatDoctrineId.FIELD_ANCHOR_CONTROLLER) return 'field_anchor';
   return 'ranged_standoff';
+}
+
+function lockSpeedPassLane(record, self, target) {
+  if (!self || !self.pos || !target || !target.pos) return;
+  const sx = finite(self.pos.x);
+  const sz = finite(self.pos.z);
+  const dx = finite(target.pos.x) - sx;
+  const dz = finite(target.pos.z) - sz;
+  const length = Math.hypot(dx, dz) || 1;
+  const dirX = dx / length;
+  const dirZ = dz / length;
+  record.passLane = { originX: sx, originZ: sz, dirX, dirZ };
+  record.flightPoint = {
+    x: sx + dirX * SPEED_PASS_EXTENSION_DISTANCE,
+    z: sz + dirZ * SPEED_PASS_EXTENSION_DISTANCE,
+  };
+}
+
+function speedPassLaneCrossed(record, target) {
+  const lane = record.passLane;
+  if (!lane || !target || !target.pos) return false;
+  const dx = finite(target.pos.x) - lane.originX;
+  const dz = finite(target.pos.z) - lane.originZ;
+  return Math.abs(dx * -lane.dirZ + dz * lane.dirX) >= SPEED_PASS_BREAK_LATERAL;
+}
+
+function beginSpeedPassExtension(record, tick, self, outcome) {
+  const lane = record.passLane;
+  const sx = finite(self && self.pos && self.pos.x);
+  const sz = finite(self && self.pos && self.pos.z);
+  const vx = finite(self && self.vel && self.vel.x);
+  const vz = finite(self && self.vel && self.vel.z);
+  const speed = Math.hypot(vx, vz);
+  const dirX = lane ? lane.dirX : (speed > 8 ? vx / speed : Math.cos(finite(self && self.rot)));
+  const dirZ = lane ? lane.dirZ : (speed > 8 ? vz / speed : Math.sin(finite(self && self.rot)));
+  record.outcome = outcome;
+  record.flightPoint = {
+    x: sx + dirX * SPEED_PASS_EXTENSION_DISTANCE,
+    z: sz + dirZ * SPEED_PASS_EXTENSION_DISTANCE,
+  };
+  enter(record, 'extend', tick, null);
 }
 
 function runHasPassed(record, self, target, distance) {

@@ -123,8 +123,14 @@ export class ManeuverPlanner {
       ? seekPoint(self, predictedFormationSlot, 1)
       : desiredForIntent(intent, self, target, perception.contacts, this.seed, entityId, this.config);
 
-    desired = applyFriendlySeparation(desired, self, perception.contacts, this.config);
-    desired = applyShipCollisionAvoidance(desired, self, perception.contacts, intent, this.seed, entityId, tick, runtime, this.config);
+    // A speed-pass lane is deliberately committed geometry: once the telegraph ends the pilot does
+    // not bend toward the target or its wingmates. The doctrine breaks the run when the target
+    // crosses the lane; obstacle avoidance remains authoritative so a Dart does not suicide into
+    // world geometry merely to preserve a cosmetic line.
+    if (intent.straightPass !== true) {
+      desired = applyFriendlySeparation(desired, self, perception.contacts, this.config);
+      desired = applyShipCollisionAvoidance(desired, self, perception.contacts, intent, this.seed, entityId, tick, runtime, this.config);
+    }
     desired = applyObstacleAvoidance(desired, self, perception.contacts, this.config);
     const speed = Math.hypot(self.vel.x, self.vel.z);
     const commanded = Math.hypot(desired.x, desired.z);
@@ -490,6 +496,9 @@ function applyObstacleAvoidance(desired, self, contacts, config) {
 }
 
 function motionEnvelope(kind, intent, arrival, formationDistance, formationBound, config) {
+  const authoredMaxSpeed = Number.isFinite(intent && intent.maxSpeed) && intent.maxSpeed > 0
+    ? intent.maxSpeed
+    : null;
   switch (kind) {
     case ManeuverKind.HOLD:
       return { maxSpeed: arrival <= config.arrivalRadius ? 0 : config.holdSpeed, maxClosingSpeed: config.maxApproachClosingSpeed };
@@ -503,7 +512,7 @@ function motionEnvelope(kind, intent, arrival, formationDistance, formationBound
     case ManeuverKind.CUT_TETHER:
       return { maxSpeed: Math.min(config.approachSpeed, Math.max(config.patrolSpeed, arrival * 0.45)), maxClosingSpeed: config.maxApproachClosingSpeed };
     case ManeuverKind.INTERCEPT:
-      return { maxSpeed: config.interceptSpeed, maxClosingSpeed: Math.max(config.maxApproachClosingSpeed, (intent.preferredRange || formationBound) * 0.12) };
+      return { maxSpeed: authoredMaxSpeed || config.interceptSpeed, maxClosingSpeed: Math.max(config.maxApproachClosingSpeed, (intent.preferredRange || formationBound) * 0.12) };
     case ManeuverKind.RETREAT:
       return { maxSpeed: config.retreatSpeed, maxClosingSpeed: Infinity };
     case ManeuverKind.ESCAPE_TETHER:

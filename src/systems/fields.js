@@ -141,6 +141,7 @@ export const fields = {
           this._rebuildAnchoredFieldsFromEntities();
         }),
         this.bus.on('entity:spawned', (payload) => this._onEntitySpawned(payload)),
+        this.bus.on('ai:doctrinePhase', (payload) => this._onDoctrinePhase(payload)),
       ];
     }
   },
@@ -187,19 +188,42 @@ export const fields = {
     if (!def) return null;
     const rt = ensureRuntime(this.state);
     const existing = Object.values(rt.anchored).find((rec) => rec && rec.sourceId === entity.id);
-    if (existing && this._kernel.has(existing.fieldId)) return existing.fieldId;
-    if (this._kernel.size >= FIELD_MAX_ACTIVE) return null;
-    const now = nowOf(this.state);
+    if (existing) return existing.fieldId;
     const spinupTicks = Math.max(0, Math.floor(Number(anchor.spinupTicks ?? def.spinupTicks) || 0));
     const fieldId = String(anchor.fieldId || `field_anchor_${entity.id}`);
     const radius = positive(anchor.radius, def.radius);
     const strength = positive(anchor.strength, def.strength);
+    const phaseGated = anchor.familyKey === 'flea_snare';
+    rt.anchored[fieldId] = {
+      fieldId,
+      defKey,
+      sourceId: entity.id,
+      activateTick: (this.state.tick | 0) + spinupTicks,
+      strength,
+      radius,
+      phaseGated,
+      phase: phaseGated ? 'approach' : null,
+      familyKey: anchor.familyKey || null,
+      familyCap: positive(anchor.familyCap, Infinity),
+    };
+    if (phaseGated) return fieldId;
+    return this._activateAnchoredField(entity, rt.anchored[fieldId], spinupTicks);
+  },
+
+  _activateAnchoredField(entity, rec, spinupTicks = 0) {
+    if (!entity || !rec || !this._kernel) return null;
+    if (this._kernel.has(rec.fieldId)) return rec.fieldId;
+    if (this._kernel.size >= FIELD_MAX_ACTIVE) return null;
+    const anchor = entity.data && entity.data.fieldAnchor || {};
+    const def = FIELD_DEFS[rec.defKey];
+    if (!def) return null;
+    const now = nowOf(this.state);
     const record = this._kernel.register({
-      id: fieldId,
+      id: rec.fieldId,
       kind: def.kind,
       center: { x: entity.pos.x, z: entity.pos.z },
-      radius,
-      strength: spinupTicks > 0 ? 0 : strength,
+      radius: rec.radius,
+      strength: spinupTicks > 0 ? 0 : rec.strength,
       damping: positive(anchor.damping, def.damping || 0),
       falloff: positive(anchor.falloff, def.falloff),
       durationS: Infinity,
@@ -211,35 +235,59 @@ export const fields = {
       tag: anchor.presentationTag || 'environmental',
       filters: { excludeId: entity.id },
     });
-    rt.anchored[fieldId] = {
-      fieldId,
-      defKey,
-      sourceId: entity.id,
-      activateTick: (this.state.tick | 0) + spinupTicks,
-      strength,
-      radius,
-    };
+    rec.activateTick = (this.state.tick | 0) + spinupTicks;
     this.bus.emit('fields:anchorRegistered', {
-      fieldId,
+      fieldId: rec.fieldId,
       sourceId: entity.id,
-      kind: defKey,
-      radius,
-      activateTick: rt.anchored[fieldId].activateTick,
+      kind: rec.defKey,
+      radius: rec.radius,
+      activateTick: rec.activateTick,
     });
-    this._emitDeployCue('well', entity.pos.x, entity.pos.z, radius);
+    this._emitDeployCue('well', entity.pos.x, entity.pos.z, rec.radius);
     return record.id;
   },
 
+  _onDoctrinePhase(payload) {
+    if (!payload || payload.entityId == null) return;
+    const rt = ensureRuntime(this.state);
+    for (const rec of Object.values(rt.anchored)) {
+      if (rec && rec.sourceId === payload.entityId && rec.phaseGated) rec.phase = String(payload.phase || 'approach');
+    }
+  },
+
   _syncAnchoredFields(state, rt) {
-    const ids = Object.keys(rt.anchored || {});
+    const ids = Object.keys(rt.anchored || {}).sort((a, b) => {
+      const left = rt.anchored[a] && rt.anchored[a].sourceId;
+      const right = rt.anchored[b] && rt.anchored[b].sourceId;
+      if (typeof left === 'number' && typeof right === 'number') return left - right;
+      const leftKey = String(left);
+      const rightKey = String(right);
+      return leftKey < rightKey ? -1 : (leftKey > rightKey ? 1 : 0);
+    });
     for (const fieldId of ids) {
       const rec = rt.anchored[fieldId];
       const entity = state.entities && state.entities.get ? state.entities.get(rec.sourceId) : null;
       if (!entity || entity.alive === false) {
-        this._kernel.unregister(fieldId);
+        if (this._kernel.has(fieldId)) this._kernel.unregister(fieldId);
         delete rt.anchored[fieldId];
         this.bus.emit('fields:ended', { fieldId, kind: rec.defKey, reason: FIELD_END_REASONS.destroyed });
         continue;
+      }
+      if (rec.phaseGated) {
+        const passive = entity.data && entity.data.ai && entity.data.ai.passive === true;
+        const shouldBeActive = !passive && rec.phase === 'anchor_hold';
+        if (!shouldBeActive) {
+          if (this._kernel.has(fieldId)) {
+            this._kernel.unregister(fieldId);
+            this.bus.emit('fields:ended', { fieldId, kind: rec.defKey, reason: FIELD_END_REASONS.toggledOff });
+          }
+          continue;
+        }
+        if (!this._kernel.has(fieldId)) {
+          const familyActive = Object.values(rt.anchored).filter((other) => other && other !== rec
+            && other.familyKey === rec.familyKey && this._kernel.has(other.fieldId)).length;
+          if (familyActive >= rec.familyCap || !this._activateAnchoredField(entity, rec, 0)) continue;
+        }
       }
       this._kernel.update(fieldId, {
         center: { x: entity.pos.x, z: entity.pos.z },
