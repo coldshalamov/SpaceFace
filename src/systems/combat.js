@@ -78,18 +78,20 @@ function factionBehaviorForCombatSpawn(factionId, opts = {}) {
   )[0] || null;
 }
 
-/** Scale an enemy archetype's base stats by encounter level. */
-export function scaleCombatant(def, level) {
-  if (def && def.fixedCombatStats === true) {
-    return {
-      hull: Math.round(def.hull || 100),
-      armor: Math.round(def.armor || 0),
-      shield: Math.round(def.shield || 0),
-      dmgMult: 1,
-    };
-  }
-  const f = 1 + 0.12 * Math.max(0, (level || 1) - 1);
-  return { hull: Math.round((def.hull || 100) * f), armor: Math.round((def.armor || 0) * f), shield: Math.round((def.shield || 0) * f), dmgMult: f };
+/**
+ * Resolve an enemy archetype's authored combat stats.
+ *
+ * Encounter level is deliberately absent from this calculation: Plan 11 makes difficulty a
+ * composition/geometry/timing decision, never hidden HP or damage inflation on the same hull.
+ * The level remains available to encounter and presentation owners (for example visualTier).
+ */
+export function scaleCombatant(def, _level) {
+  return {
+    hull: Math.round(def?.hull || 100),
+    armor: Math.round(def?.armor || 0),
+    shield: Math.round(def?.shield || 0),
+    dmgMult: 1,
+  };
 }
 
 function resolveEnemyWeapon(w, slotIndex) {
@@ -230,7 +232,7 @@ export function makeEnemySpawnSpec(enemyTypeId, level, pos, opts = {}) {
     spec.data.heavyPartRecipeId = heavyPartRecipe.id;
     spec.data.heavyPartRecipe = heavyPartRecipe;
   }
-  if (def.fixedCombatStats === true) spec.data.fixedCombatStats = true;
+  spec.data.fixedCombatStats = true;
   if (def.telegraph && def.telegraph.cue && !opts.approachTelegraph) {
     // Prefer role cue when doctrine telegraph is generic.
     spec.data.ai.approachTelegraph = def.telegraph.cue;

@@ -73,9 +73,9 @@ test('all six resolve to the medium burst while authored per-entry drops remain 
   }
 });
 
-test('non-family scaling and reward classification are unchanged', () => {
+test('global fixed-stat policy and non-family reward classification are explicit', () => {
   assert.deepEqual(scaleCombatant({ hull: 100, armor: 10, shield: 20 }, 3), {
-    hull: 124, armor: 12, shield: 25, dmgMult: 1.24,
+    hull: 100, armor: 10, shield: 20, dmgMult: 1,
   });
   assert.equal(classifyKillRewardVictim({ mass: 12, data: { shipClass: 'fighter' } }), 'light');
   assert.equal(classifyKillRewardVictim({ mass: 70, data: { shipClass: 'gunship' } }), 'heavy');

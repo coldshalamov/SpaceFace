@@ -60,8 +60,8 @@ test('each swarmer owns a distinct physical reward read instead of the generic l
   ]);
 });
 
-test('non-swarmer scaling remains unchanged', () => {
+test('the spawn authority never reintroduces per-level stat inflation', () => {
   assert.deepEqual(scaleCombatant({ hull: 100, armor: 10, shield: 20 }, 3), {
-    hull: 124, armor: 12, shield: 25, dmgMult: 1.24,
+    hull: 100, armor: 10, shield: 20, dmgMult: 1,
   });
 });
