@@ -21,6 +21,12 @@ import { SHIPS } from '../../../data/ships.js';
 import { SECTORS } from '../../../data/sectors.js';
 import { MODULES } from '../../../data/modules.js';
 import { WEAPONS } from '../../../data/weapons.js';
+import { TECH_NODES } from '../../../data/tech.js';
+import {
+  QUARTERMASTER_CONTACT,
+  quartermasterMemoryFor,
+} from '../../../data/stationContacts.js';
+import { normalizeLivingHull } from '../../../core/livingHull.js';
 import { escapeHtml } from '../../comms.js';
 import { confirm, isConfirmOpen } from '../../confirm.js';
 import { describeOutfittingSpendConfirm } from '../../outfittingSpendConfirm.js';
@@ -48,6 +54,7 @@ for (const sector of SECTORS) {
 const CENTERED_SHIP_YAW = 0;
 const FITTABLE = MODULES.concat(WEAPONS);
 const FITTABLE_BY_ID = new Map(FITTABLE.map((d) => [d.id, d]));
+const TECH_BY_ID = new Map(TECH_NODES.map((node) => [node.id, node]));
 
 const SLOT_ICON = { weapon: 'target', shield: 'hull', engine: 'refuel', cargo: 'cargo', mining: 'industry', utility: 'spark' };
 const SLOT_LABEL = { weapon: 'Weapon', shield: 'Shield', engine: 'Engine', cargo: 'Cargo', mining: 'Mining', utility: 'Utility' };
@@ -75,6 +82,48 @@ export function shipworksActionAvailability(state) {
     outfitEnabled: access.outfit,
     hullLabel: access.hull ? 'Shipyard service available' : access.hullReason,
     outfitLabel: access.outfit ? 'Outfitting service available' : access.outfitReason,
+  };
+}
+
+/** Read-only Plan 52 character projection. Contact memory determines whether Iri exists and what
+ * she most recently witnessed; ships, livingHull and tech remain the factual sources for the line. */
+export function quartermasterShipworksComment(state, ownedShip) {
+  const memory = quartermasterMemoryFor(state);
+  if (!memory.unlocked || !ownedShip) return null;
+  const hull = normalizeLivingHull(ownedShip.livingHull, state && state.simTime);
+  const fitted = new Set((ownedShip.fittings || []).filter(Boolean));
+  const fittedDef = memory.lastModuleId && fitted.has(memory.lastModuleId)
+    ? FITTABLE_BY_ID.get(memory.lastModuleId) : null;
+  const tech = memory.lastTechNodeId && TECH_BY_ID.get(memory.lastTechNodeId);
+  const scarLine = () => {
+    if (hull.graffitiLine) return 'Keep the writing. A clean invoice is not a clean hull.';
+    if (hull.repairPatches > 0) {
+      return `${hull.repairPatches} repair patch${hull.repairPatches === 1 ? '' : 'es'}. Keep ${hull.repairPatches === 1 ? 'it' : 'them'} visible; ${hull.repairPatches === 1 ? 'it shows' : 'they show'} where the frame moved.`;
+    }
+    if (hull.heatScorch > 0) return 'Vent marks on the spine. Move heat before adding hardware.';
+    if (hull.killTally > 0) return `${hull.killTally} cut mark${hull.killTally === 1 ? '' : 's'}. The frame is keeping score.`;
+    return null;
+  };
+  const techLine = tech
+    ? (tech.branch === 'bond'
+      ? `The Bond line is open. ${tech.name} needs a whole fit, not one trick.`
+      : `${tech.name} is cleared. Fit for it, not around it.`)
+    : null;
+  const fitLine = fittedDef
+    ? `${fittedDef.name} is seated. Make the rest of the fit agree.`
+    : null;
+  const recent = memory.lastEvent === 'scar' ? scarLine()
+    : memory.lastEvent === 'tech' ? techLine
+      : memory.lastEvent === 'fit' ? fitLine : null;
+  return {
+    id: QUARTERMASTER_CONTACT.id,
+    name: QUARTERMASTER_CONTACT.name,
+    roleLabel: QUARTERMASTER_CONTACT.roleLabel,
+    text: recent || scarLine() || techLine || fitLine
+      || 'Bring me choices, not empty slots.',
+    fitCount: memory.fitCount,
+    techCount: memory.techCount,
+    scarCount: memory.scarCount,
   };
 }
 const titleCaseWords = (value) => String(value || '').replace(/[_-]+/g, ' ')
@@ -799,6 +848,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const activeIndex = Number(ctx.state.player && ctx.state.player.activeShipIndex) || 0;
     const inspectedIndex = owned().indexOf(s);
     const availability = shipworksActionAvailability(ctx.state);
+    const quartermaster = host !== 'flight' && availability.outfitEnabled
+      ? quartermasterShipworksComment(ctx.state, s) : null;
     // MAKE ACTIVE is a berth verb — it never renders on the flight host (SCREENS_B §1.2). While
     // docked it stays gated by hull service availability with the reason printed on the verb.
     const activeControl = host === 'flight' ? '' : inspectedIndex !== activeIndex
@@ -837,6 +888,13 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       `</div>` +
     `</div>`;
     sideEl.innerHTML =
+      (quartermaster
+        ? `<section class="sx-panel" data-quartermaster="${escapeHtml(quartermaster.id)}" aria-label="${escapeHtml(`${quartermaster.roleLabel} ${quartermaster.name}`)}">` +
+            `<div class="sx-panel__head">${icon('shipworks', 15)}<span>${escapeHtml(quartermaster.roleLabel.toUpperCase())} · ${escapeHtml(quartermaster.name)}</span></div>` +
+            `<p class="sx-muted">“${escapeHtml(quartermaster.text)}”</p>` +
+            `<div class="sx-tags"><span class="sx-tag">${quartermaster.fitCount} fit${quartermaster.fitCount === 1 ? '' : 's'}</span><span class="sx-tag">${quartermaster.techCount} tech note${quartermaster.techCount === 1 ? '' : 's'}</span><span class="sx-tag">${quartermaster.scarCount} hull note${quartermaster.scarCount === 1 ? '' : 's'}</span></div>` +
+          `</section>`
+        : '') +
       `<div class="sx-sw-circuit">` +
         `<div class="sx-sw-circuit__identity"><span>BUILD IDENTITY</span><strong>${escapeHtml((def.role || 'ship').toUpperCase())}</strong><em>${equippedDefs.length}/${slots.length} systems fitted · ${fmt(moduleMass)}t modules</em></div>` +
         `<div class="sx-sw-circuit__core"><i aria-hidden="true"></i><span>ENERGY CORE</span><b>${fmt(def.energyCap || 0)}</b><em>${fmt(totalDraw)} continuous draw</em></div>` +

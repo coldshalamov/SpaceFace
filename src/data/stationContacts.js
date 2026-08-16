@@ -5,6 +5,18 @@ import { normalizeVonnFreightLoss } from './vonnFreightLoss.js';
 
 export const STATION_CONTACT_MEMORY_VERSION = 1;
 export const STATION_CONTACT_COUNTER_VERSION = 1;
+export const QUARTERMASTER_MEMORY_VERSION = 1;
+
+// Plan 52 recurring outfitter. This identity is intentionally owned by the existing station-contact
+// memory seam even though her player-facing surface is Shipworks, not the bar. A successful fit at
+// a real outfitting berth is what introduces her; no fixed story beat can manufacture the meeting.
+export const QUARTERMASTER_CONTACT = Object.freeze({
+  id: 'contact_quartermaster_iri_march',
+  canonicalKey: 'quartermaster_iri_march',
+  name: 'Iri March',
+  roleLabel: 'Quartermaster',
+  factionId: 'faction_scn',
+});
 
 const counter = (contactId, min, max, label) => Object.freeze({ contactId, min, max, initial: 0, label });
 
@@ -65,6 +77,30 @@ function safeToken(value, fallback = '') {
     .slice(0, 48);
 }
 
+export function normalizeQuartermasterMemory(raw = {}) {
+  const source = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+  return {
+    schemaVersion: QUARTERMASTER_MEMORY_VERSION,
+    unlocked: source.unlocked === true,
+    fitCount: boundedInt(source.fitCount, 0, 999),
+    techCount: boundedInt(source.techCount, 0, 999),
+    scarCount: boundedInt(source.scarCount, 0, 999),
+    firstStationId: safeToken(source.firstStationId) || null,
+    lastStationId: safeToken(source.lastStationId) || null,
+    lastShipDefId: safeToken(source.lastShipDefId) || null,
+    lastModuleId: safeToken(source.lastModuleId) || null,
+    lastTechNodeId: safeToken(source.lastTechNodeId) || null,
+    lastScarSource: safeToken(source.lastScarSource) || null,
+    lastEvent: ['fit', 'tech', 'scar'].includes(source.lastEvent) ? source.lastEvent : null,
+    unlockedAt: Number.isFinite(source.unlockedAt)
+      ? Math.max(0, Math.round(source.unlockedAt * 1000) / 1000)
+      : 0,
+    lastSeenAt: Number.isFinite(source.lastSeenAt)
+      ? Math.max(0, Math.round(source.lastSeenAt * 1000) / 1000)
+      : 0,
+  };
+}
+
 export function normalizeStationContactRecord(raw = {}) {
   const source = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
   const flags = {};
@@ -76,6 +112,7 @@ export function normalizeStationContactRecord(raw = {}) {
   }
   const talkCount = boundedInt(source.talkCount, 0, 9999);
   const vonnFreightLoss = normalizeVonnFreightLoss(source.vonnFreightLoss);
+  const quartermaster = normalizeQuartermasterMemory(source.quartermaster);
   const record = {
     schemaVersion: STATION_CONTACT_MEMORY_VERSION,
     met: source.met === true || talkCount > 0,
@@ -96,6 +133,9 @@ export function normalizeStationContactRecord(raw = {}) {
   // This is intentionally a single named subrecord rather than another general-purpose flag bag.
   // It is valid only for the exact independent freight/aftermath identity accepted by its reader.
   if (vonnFreightLoss) record.vonnFreightLoss = vonnFreightLoss;
+  // One named, bounded character record. It stores only Iri's witnessed fit/tech/scar events;
+  // current fittings and hull history remain with their authoritative owners.
+  if (quartermaster.unlocked) record.quartermaster = quartermaster;
   return record;
 }
 
@@ -104,6 +144,13 @@ export function stationContactMemoryFor(state, contactId) {
   const id = String(contactId || '');
   if (!id || !bag || typeof bag !== 'object' || !bag[id]) return null;
   return normalizeStationContactRecord(bag[id]);
+}
+
+export function quartermasterMemoryFor(state) {
+  const record = stationContactMemoryFor(state, QUARTERMASTER_CONTACT.id);
+  return record && record.quartermaster
+    ? normalizeQuartermasterMemory(record.quartermaster)
+    : normalizeQuartermasterMemory();
 }
 
 export function stationContactStanding(record) {

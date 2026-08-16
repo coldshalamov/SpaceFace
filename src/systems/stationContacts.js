@@ -4,10 +4,13 @@
 import { COMMODITIES } from '../data/commodities.js';
 import {
   CONTACT_COUNTER_DEFS,
+  QUARTERMASTER_CONTACT,
   createInitialStationContactCounters,
+  normalizeQuartermasterMemory,
   normalizeStationContactCounters,
   normalizeStationContactRecord,
 } from '../data/stationContacts.js';
+import { shipworksStationAccess } from './ships.js';
 import {
   VONN_FREIGHT_CASE_VERSION,
   VONN_FREIGHT_CONTACT_ID,
@@ -161,12 +164,14 @@ export const stationContacts = {
   name: 'stationContacts',
   state: null,
   bus: null,
+  helpers: null,
   _subs: null,
   _vonnFreightReceipts: null,
 
   init(ctx) {
     this.state = ctx.state;
     this.bus = ctx.bus;
+    this.helpers = ctx.helpers || {};
     this._subs = [];
     this._vonnFreightReceipts = new Map();
     ensureContactBag(this.state);
@@ -177,6 +182,9 @@ export const stationContacts = {
       this._subs.push([event, handler]);
     };
     on('ui:talkContact', (payload = {}) => this._recordTalk(payload));
+    on('module:equipped', (payload = {}) => this._recordQuartermasterFit(payload));
+    on('tech:researched', (payload = {}) => this._recordQuartermasterTech(payload));
+    on('ship:livingHullChanged', (payload = {}) => this._recordQuartermasterScar(payload));
     on('stationContact:counterDelta', (payload = {}) => this._recordCounterDelta(payload));
     on('economy:tradeCompleted', (payload = {}) => {
       if (payload.stationId === 'station_beltout' && payload.side === 'buy'
@@ -235,6 +243,134 @@ export const stationContacts = {
       previous: previous[trackerId],
       value: next[trackerId],
       reason: String(payload.reason || '').slice(0, 96) || null,
+    });
+  },
+
+  // Plan 52 Quartermaster: the successful fit receipt is the causal introduction. This record
+  // remembers only what Iri herself witnessed; ships/livingHull/tech remain their own writers.
+  _recordQuartermasterFit(payload) {
+    const access = shipworksStationAccess(this.state);
+    const moduleId = String(payload && payload.defId || '').trim();
+    if (!access.outfit || !moduleId) return false;
+    const bag = ensureContactBag(this.state);
+    const previous = normalizeStationContactRecord(bag[QUARTERMASTER_CONTACT.id]);
+    const priorMemory = normalizeQuartermasterMemory(previous.quartermaster);
+    const now = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    const owned = this.state.player && this.state.player.ownedShips
+      && this.state.player.ownedShips[this.state.player.activeShipIndex || 0];
+    const memory = normalizeQuartermasterMemory({
+      ...priorMemory,
+      unlocked: true,
+      fitCount: priorMemory.fitCount + 1,
+      firstStationId: priorMemory.firstStationId || access.stationId,
+      lastStationId: access.stationId,
+      lastShipDefId: owned && owned.defId,
+      lastModuleId: moduleId,
+      lastEvent: 'fit',
+      unlockedAt: priorMemory.unlocked ? priorMemory.unlockedAt : now,
+      lastSeenAt: now,
+    });
+    this._writeQuartermaster(previous, memory, priorMemory.unlocked ? 'fit-witnessed' : 'introduced');
+    this._speakQuartermaster(
+      priorMemory.unlocked
+        ? 'IRI MARCH: Seated. Make the rest of the loadout agree.'
+        : 'IRI MARCH: Good. Bring me choices, not empty slots.',
+      priorMemory.unlocked ? `fit:${memory.fitCount}` : 'introduced',
+    );
+    return true;
+  },
+
+  _recordQuartermasterTech(payload) {
+    const nodeId = String(payload && payload.nodeId || '').trim();
+    if (!nodeId) return false;
+    const access = shipworksStationAccess(this.state);
+    if (!access.outfit) return false;
+    const bag = ensureContactBag(this.state);
+    const previous = normalizeStationContactRecord(bag[QUARTERMASTER_CONTACT.id]);
+    const priorMemory = normalizeQuartermasterMemory(previous.quartermaster);
+    if (!priorMemory.unlocked) return false;
+    const now = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    const memory = normalizeQuartermasterMemory({
+      ...priorMemory,
+      techCount: priorMemory.techCount + 1,
+      lastTechNodeId: nodeId,
+      lastStationId: access.stationId,
+      lastEvent: 'tech',
+      lastSeenAt: now,
+    });
+    this._writeQuartermaster(previous, memory, 'tech-witnessed');
+    this._speakQuartermaster(
+      "IRI MARCH: New line's open. Fit for it, not around it.",
+      `tech:${nodeId}`,
+    );
+    return true;
+  },
+
+  _recordQuartermasterScar(payload) {
+    const hull = payload && payload.livingHull;
+    const source = String(payload && payload.source || '').trim();
+    const hasScar = !!(hull && (Number(hull.killTally) > 0 || Number(hull.repairPatches) > 0
+      || Number(hull.heatScorch) > 0 || hull.graffitiLine));
+    if (!hasScar || !source || source === 'reconciled') return false;
+    const access = shipworksStationAccess(this.state);
+    if (!access.outfit) return false;
+    const bag = ensureContactBag(this.state);
+    const previous = normalizeStationContactRecord(bag[QUARTERMASTER_CONTACT.id]);
+    const priorMemory = normalizeQuartermasterMemory(previous.quartermaster);
+    if (!priorMemory.unlocked) return false;
+    const now = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    const memory = normalizeQuartermasterMemory({
+      ...priorMemory,
+      scarCount: priorMemory.scarCount + 1,
+      lastStationId: access.stationId,
+      lastShipDefId: payload.defId || priorMemory.lastShipDefId,
+      lastScarSource: source,
+      lastEvent: 'scar',
+      lastSeenAt: now,
+    });
+    this._writeQuartermaster(previous, memory, 'scar-witnessed');
+    this._speakQuartermaster(
+      'IRI MARCH: Keep the patch visible. It shows where the frame moved.',
+      `scar:${memory.scarCount}`,
+    );
+    return true;
+  },
+
+  _writeQuartermaster(previous, memory, reason) {
+    const bag = ensureContactBag(this.state);
+    const next = normalizeStationContactRecord({
+      ...previous,
+      met: true,
+      name: QUARTERMASTER_CONTACT.name,
+      canonicalKey: QUARTERMASTER_CONTACT.canonicalKey,
+      stationId: memory.lastStationId || memory.firstStationId,
+      standing: Math.min(3, Math.floor(memory.fitCount / 3)),
+      quartermaster: memory,
+    });
+    bag[QUARTERMASTER_CONTACT.id] = next;
+    this.bus.emit('stationContact:changed', {
+      contactId: QUARTERMASTER_CONTACT.id,
+      record: { ...next, flags: { ...next.flags }, quartermaster: { ...next.quartermaster } },
+      reason,
+    });
+    return next;
+  },
+
+  _speakQuartermaster(text, eventKey) {
+    const voice = this.helpers && this.helpers.voice;
+    if (voice && typeof voice.say === 'function') {
+      voice.say({
+        channel: 'bark',
+        kind: 'quartermaster',
+        id: `quartermaster:${QUARTERMASTER_CONTACT.id}:${eventKey}`,
+        text,
+        ttl: 3,
+      });
+    }
+    this.bus.emit('quartermaster:voice', {
+      contactId: QUARTERMASTER_CONTACT.id,
+      eventKey,
+      text,
     });
   },
 
@@ -416,5 +552,6 @@ export const stationContacts = {
     for (const [event, handler] of (this._subs || [])) this.bus.off(event, handler);
     this._subs = [];
     this._clearVonnFreightReceipts();
+    this.helpers = null;
   },
 };
