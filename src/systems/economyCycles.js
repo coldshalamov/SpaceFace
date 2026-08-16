@@ -26,6 +26,10 @@ const TAU = Math.PI * 2;
 // separate (frequencies below) and is what the sparkline actually draws.
 const REGIME_MIN_S = 1500;       // ~25 min sim — rare end of the band
 const REGIME_MAX_S = 5400;       // ~90 min sim
+// A re-roll crossfades the outgoing formula into the fresh one over a few minutes, so the
+// chart bends through a regime change instead of snapping vertically (MARKET_COHERENCE §3).
+const REGIME_BLEND_MIN_S = 120;  // ~2 min crossfade
+const REGIME_BLEND_MAX_S = 300;  // ~5 min crossfade
 // Soft factor band applied on top of stock mid. Stacked with stock mult, then absolute-clamped.
 export const CYCLE_FACTOR_LO = 0.58;
 export const CYCLE_FACTOR_HI = 1.72;
@@ -253,6 +257,15 @@ export function normalizeCycle(raw, cmdtyId) {
   // intentionally negative relative to the pilot's playtime clock and must survive
   // a save/load round trip.
   const regimeStartT = Number.isFinite(Number(raw.regimeStartT)) ? Number(raw.regimeStartT) : 0;
+  // Blend state survives save/load so a regime change mid-crossfade does not jump on reload.
+  // The carried formula is snapshotted to exactly the evaluation fields (no nested blend).
+  const blendStartT = Number.isFinite(Number(raw.blendStartT)) ? Number(raw.blendStartT) : null;
+  const blendEndT = Number.isFinite(Number(raw.blendEndT)) ? Number(raw.blendEndT) : null;
+  const blendFrom = raw.blendFrom && typeof raw.blendFrom === 'object'
+    ? snapshotFormula(raw.blendFrom)
+    : null;
+  const blending = blendFrom && Number.isFinite(blendStartT) && Number.isFinite(blendEndT)
+    && blendEndT > blendStartT;
   return {
     cmdtyId: raw.cmdtyId || cmdtyId || null,
     regime,
@@ -277,6 +290,7 @@ export function normalizeCycle(raw, cmdtyId) {
       regimeStartT + REGIME_MIN_S,
       Number(raw.regimeEndT) || (regimeStartT + REGIME_MIN_S),
     ),
+    ...(blending ? { blendFrom, blendStartT, blendEndT } : {}),
   };
 }
 
@@ -376,7 +390,26 @@ export function cycleFactorAt(cycle, simTime) {
   const raw = rawCycleFactorAt(cycle, simTime);
   if (!Number.isFinite(raw)) return 1;
   const weighted = 1 + (raw - 1) * CYCLE_WEIGHT;
-  return clamp(weighted, CYCLE_FACTOR_LO, CYCLE_FACTOR_HI);
+  return blendRegimeFactor(cycle, simTime, clamp(weighted, CYCLE_FACTOR_LO, CYCLE_FACTOR_HI));
+}
+
+/**
+ * Crossfade a freshly re-rolled regime in from the formula it replaced.
+ * factor = lerp(oldFactor, newFactor, blendT) over [blendStartT, blendEndT]; outside that
+ * window (or without blend state) the factor is untouched. The outgoing formula keeps
+ * evaluating past its own end — the same "if it holds" semantics the forecast uses — so the
+ * fade folds two live curves rather than fading to a frozen step.
+ */
+function blendRegimeFactor(cycle, simTime, factor) {
+  const from = cycle && cycle.blendFrom;
+  const start = Number(cycle && cycle.blendStartT);
+  const end = Number(cycle && cycle.blendEndT);
+  if (!from || !(end > start) || simTime < start || simTime > end) return factor;
+  const oldRaw = rawCycleFactorAt(from, simTime);
+  if (!Number.isFinite(oldRaw)) return factor;
+  const oldWeighted = 1 + (oldRaw - 1) * CYCLE_WEIGHT;
+  const oldFactor = clamp(oldWeighted, CYCLE_FACTOR_LO, CYCLE_FACTOR_HI);
+  return lerp(oldFactor, factor, (simTime - start) / (end - start));
 }
 
 /**
@@ -401,11 +434,78 @@ export function maybeAdvanceRegime(cycle, rng, simTime) {
   // behind the display clamp. Re-roll immediately, then keep normal regime
   // changes deliberately infrequent.
   const raw = rawCycleFactorAt(cycle, simTime);
-  if (simTime < cycle.regimeEndT && Number.isFinite(raw) && raw > 0) return cycle;
+  if (simTime < cycle.regimeEndT && Number.isFinite(raw) && raw > 0) {
+    return pruneExpiredBlend(cycle, simTime);
+  }
   const def = CMDTY_BY_ID.get(cycle.cmdtyId);
   const next = createCycle(typeof rng === 'function' ? rng : () => 0.5, def, simTime);
   if (cycle.cmdtyId) next.cmdtyId = cycle.cmdtyId;
+  beginRegimeBlend(next, cycle, simTime);
   return next;
+}
+
+// Raw-formula equivalents of the public factor band, so a phase-bias target stays inside
+// values the band can actually express.
+const RAW_FACTOR_LO = 1 + (CYCLE_FACTOR_LO - 1) / CYCLE_WEIGHT;
+const RAW_FACTOR_HI = 1 + (CYCLE_FACTOR_HI - 1) / CYCLE_WEIGHT;
+
+/**
+ * Continuity on re-roll: rotate the fresh wave's phase so the new formula opens near the
+ * value the old one ended on, then record the crossfade the factor evaluation blends over.
+ * Consumes no rng draws — the blend window is derived from the (already drawn) phase, so
+ * the deterministic rng stream is byte-identical to an un-blended roll.
+ */
+function beginRegimeBlend(next, old, simTime) {
+  const targetRaw = rawCycleFactorAt(old, simTime);
+  const amp = Number(next.amplitude) || 0;
+  if (Number.isFinite(targetRaw) && amp > 0) {
+    // At regime start elapsed = 0, so the primary wave contributes sin(phase) exactly.
+    const startRaw = rawCycleFactorAt(next, simTime);
+    const waveNow = Math.sin(Number(next.phase) || 0);
+    const delta = clamp(targetRaw, RAW_FACTOR_LO, RAW_FACTOR_HI) - startRaw;
+    next.phase = Math.asin(clamp(waveNow + delta / amp, -1, 1));
+  }
+  const frac = (((Number(next.phase) || 0) % TAU) + TAU) % TAU / TAU;
+  const blendS = REGIME_BLEND_MIN_S + frac * (REGIME_BLEND_MAX_S - REGIME_BLEND_MIN_S);
+  next.blendFrom = snapshotFormula(old);
+  next.blendStartT = simTime;
+  next.blendEndT = simTime + blendS;
+}
+
+/** Exact copy of the fields rawCycleFactorAt reads — never carries another blend layer. */
+function snapshotFormula(cycle) {
+  const start = Number.isFinite(Number(cycle.regimeStartT)) ? Number(cycle.regimeStartT) : 0;
+  return {
+    regime: cycle.regime || cycle.family || 'sine',
+    family: cycle.family || cycle.regime || 'sine',
+    phase: Number(cycle.phase) || 0,
+    frequency: Number(cycle.frequency) > 0 ? Number(cycle.frequency) : periodToFreq(600),
+    amplitude: Number.isFinite(cycle.amplitude) ? cycle.amplitude : 0,
+    bias: Number.isFinite(cycle.bias) ? cycle.bias : 0,
+    slope: Number.isFinite(cycle.slope) ? cycle.slope : 0,
+    a: Number.isFinite(cycle.a) ? cycle.a : 0,
+    b: Number.isFinite(cycle.b) ? cycle.b : 0,
+    c: Number.isFinite(cycle.c) ? cycle.c : 0,
+    pivot: Number.isFinite(cycle.pivot) ? clamp(cycle.pivot, 0, 1) : 0.5,
+    amp2: Number.isFinite(cycle.amp2) ? cycle.amp2 : 0,
+    freq2: Number.isFinite(cycle.freq2) ? cycle.freq2 : periodToFreq(400) * 1.7,
+    phase2: Number.isFinite(cycle.phase2) ? cycle.phase2 : 0,
+    amp3: Number.isFinite(cycle.amp3) ? cycle.amp3 : 0,
+    freq3: Number.isFinite(cycle.freq3) ? cycle.freq3 : periodToFreq(300) * 2.4,
+    phase3: Number.isFinite(cycle.phase3) ? cycle.phase3 : 0,
+    regimeStartT: start,
+    regimeEndT: Math.max(start + 1, Number(cycle.regimeEndT) || (start + REGIME_MIN_S)),
+  };
+}
+
+/** Drop finished blend state so memory and saves do not carry dead formulas forever. */
+function pruneExpiredBlend(cycle, simTime) {
+  if (!cycle.blendFrom || simTime < cycle.blendEndT) return cycle;
+  const pruned = { ...cycle };
+  pruned.blendFrom = null;
+  pruned.blendStartT = null;
+  pruned.blendEndT = null;
+  return pruned;
 }
 
 /**
@@ -465,14 +565,30 @@ export function serializeCycles(state) {
       // A populated galaxy owns more than a thousand cycles. Compact positional rows avoid
       // allocating and structured-cloning ~20 named properties for every entry during autosave.
       // deserializeCycles still accepts the original object map indefinitely.
-      sOut.push([
+      const row = [
         c.cmdtyId || cid, c.regime, c.family,
         c.phase, c.frequency, c.amplitude, c.bias, c.slope,
         c.a, c.b, c.c, c.pivot,
         c.amp2, c.freq2, c.phase2,
         c.amp3, c.freq3, c.phase3,
         c.regimeStartT, c.regimeEndT,
-      ]);
+      ];
+      // Only cycles still inside their crossfade window carry the tail; older readers
+      // ignore trailing row entries, and rows without a tail load as un-blended.
+      if (c.blendFrom && Number(c.blendEndT) > Number(c.blendStartT)) {
+        const f = c.blendFrom;
+        row.push(
+          c.blendStartT, c.blendEndT,
+          [
+            f.regime, f.family, f.phase, f.frequency, f.amplitude, f.bias, f.slope,
+            f.a, f.b, f.c, f.pivot,
+            f.amp2, f.freq2, f.phase2,
+            f.amp3, f.freq3, f.phase3,
+            f.regimeStartT, f.regimeEndT,
+          ],
+        );
+      }
+      sOut.push(row);
     }
     out[sid] = sOut;
   }
@@ -489,14 +605,27 @@ export function deserializeCycles(state, data) {
       for (const row of station) {
         if (!Array.isArray(row) || !row[0]) continue;
         const cid = row[0];
-        cycles[sid][cid] = normalizeCycle({
+        const obj = {
           cmdtyId: cid, regime: row[1], family: row[2],
           phase: row[3], frequency: row[4], amplitude: row[5], bias: row[6], slope: row[7],
           a: row[8], b: row[9], c: row[10], pivot: row[11],
           amp2: row[12], freq2: row[13], phase2: row[14],
           amp3: row[15], freq3: row[16], phase3: row[17],
           regimeStartT: row[18], regimeEndT: row[19],
-        }, cid);
+        };
+        if (row.length >= 23 && Array.isArray(row[22])) {
+          const f = row[22];
+          obj.blendFrom = {
+            regime: f[0], family: f[1], phase: f[2], frequency: f[3], amplitude: f[4],
+            bias: f[5], slope: f[6], a: f[7], b: f[8], c: f[9], pivot: f[10],
+            amp2: f[11], freq2: f[12], phase2: f[13],
+            amp3: f[14], freq3: f[15], phase3: f[16],
+            regimeStartT: f[17], regimeEndT: f[18],
+          };
+          obj.blendStartT = row[20];
+          obj.blendEndT = row[21];
+        }
+        cycles[sid][cid] = normalizeCycle(obj, cid);
       }
       continue;
     }
@@ -510,6 +639,8 @@ export function deserializeCycles(state, data) {
 export const _test = Object.freeze({
   REGIME_MIN_S,
   REGIME_MAX_S,
+  REGIME_BLEND_MIN_S,
+  REGIME_BLEND_MAX_S,
   PERIOD_LO_S,
   PERIOD_HI_S,
   pickWeighted,
