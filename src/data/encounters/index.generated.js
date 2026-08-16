@@ -50,6 +50,10 @@ import * as encounter046 from './333-field-anchor-controller.js';
 import * as encounter047 from './334-tether-control-raider-ambush.js';
 import * as encounter048 from './335-tether-control-raider-wake.js';
 import * as encounter049 from './336-tether-control-raider-hunter.js';
+import * as encounter050 from './337-swarmer-dart-run.js';
+import * as encounter051 from './338-swarmer-flea-rig.js';
+import * as encounter052 from './339-swarmer-skitter-nest.js';
+import * as encounter053 from './340-swarmer-ember-pack.js';
 
 export const ENCOUNTER_MODULES = Object.freeze([
   encounter001,
@@ -101,5 +105,9 @@ export const ENCOUNTER_MODULES = Object.freeze([
   encounter047,
   encounter048,
   encounter049,
+  encounter050,
+  encounter051,
+  encounter052,
+  encounter053,
 ]);
 export const ENCOUNTERS = buildEncounterCatalog(ENCOUNTER_MODULES);
