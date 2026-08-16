@@ -54,7 +54,8 @@ export const SPECIALIST_FAMILY = Object.freeze([
     },
     worldTell: {
       cue: 'interceptor_flashes_around_hull',
-      runtime: 'unwired',
+      runtime: 'existing',
+      owner: 'physics_projectile_intercept_hard_geometry_v1',
     },
   }),
   contract({
@@ -102,7 +103,8 @@ export const SPECIALIST_FAMILY = Object.freeze([
     },
     worldTell: {
       cue: 'green_weld_flashes_on_repair_target',
-      runtime: 'unwired',
+      runtime: 'existing',
+      owner: 'combat_repair_green_weld_v1',
     },
   }),
   contract({
@@ -112,11 +114,14 @@ export const SPECIALIST_FAMILY = Object.freeze([
     counterVerb: 'detonate_at_range_or_repulse_field',
     behavior: {
       capability: 'dynamic_mine_wake',
-      runtime: 'unwired',
+      runtime: 'existing',
+      owner: 'mines_fields_physics_dynamic_wake_v1',
+      invariant: 'wake drift is authored once; field counters move mines only through the physics impulse membrane',
     },
     worldTell: {
       cue: 'rack_spine_and_drifting_payload',
-      runtime: 'unwired',
+      runtime: 'existing',
+      owner: 'armored_dynamic_mine_wake_v1',
     },
   }),
   contract({

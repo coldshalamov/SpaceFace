@@ -130,8 +130,15 @@ function seedMinefieldWake(d, live, state, player) {
     const mine = place({
       ownerId: jackal.id,
       pos,
+      // The payload leaves the rack with a slow authored wake drift. From here on velocity is
+      // physics-owned, so a real Repulsor/Well can redirect it through queuePhysicsImpulse.
+      vel: {
+        x: ux * (5 + i * 1.25) + (Number(jackal.vel?.x) || 0) * 0.12 + px * (i - 1) * 0.8,
+        z: uz * (5 + i * 1.25) + (Number(jackal.vel?.z) || 0) * 0.12 + pz * (i - 1) * 0.8,
+      },
       team: jackal.team,
       factionId: jackal.factionId || null,
+      mineLayerWake: true,
       telegraph: i === 0,
     });
     if (mine && mine.id != null) live.data.minesSeeded.push(mine.id);

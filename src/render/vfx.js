@@ -69,6 +69,17 @@ import {
 } from './tabletopPolicy.js';
 import { applyFlashAccessibility, resolveVfxAccessibilityProfile } from './vfxAccessibility.js';
 import {
+  createSpecialistWorldTellSystem,
+  disposeSpecialistWorldTellSystem,
+  inspectSpecialistWorldTellSystem,
+  reprojectSpecialistWorldTellSystem,
+  resetSpecialistWorldTellSystem,
+  spawnPdInterceptTell,
+  spawnTenderWeldTell,
+  updateJackalMineWakeTells,
+  updateSpecialistWorldTellSystem,
+} from './specialistWorldTells.js';
+import {
   createStationSideEventVfxFrameScratch,
   resolveStationSideEventVfxProfile,
   STATION_SIDE_EVENT_VFX_CAPACITY,
@@ -1233,6 +1244,7 @@ function emptyVfxSubsystemDiag() {
     lawHeatTelegraph: 0,  // WF-12 scan-sweep / suspicion / WANTED-flip via shared event-light pool
     swarmerPresentation: 0, // AC-12 actual-path Dart wake + hard-geometry Skitter/Ember cues
     mediumPresentation: 0, // Plan 13 Bulwark lattices + Torcher owned heat-sheet hazards
+    specialistPresentation: 0, // Plan 15 receipt-bound PD clamps + Tender weld geometry
   };
 }
 
@@ -1360,6 +1372,8 @@ export const vfx = {
     };
     this._flashAccessibilityScratch = { life: 0, size0: 0, size1: 0, opacity0: 0, opacity1: 0 };
     this._entityLocalXZ = { x: 0, z: 0 };
+    this._specialistLocalA = { x: 0, z: 0 };
+    this._specialistLocalB = { x: 0, z: 0 };
     // Renderer prepareFrame calls this on frameOriginSeq change. Local one-shot effects reproject;
     // camera-prominent ribbon history clears and reseeds to avoid bridging coordinate spaces.
     this._vfxReprojectFramePort = (dx, dz) => this.reprojectFrame(dx, dz);
@@ -1511,6 +1525,7 @@ export const vfx = {
     this._initPools();
     this._initSwarmerPresentationGeometry();
     this._initMediumPresentationGeometry();
+    this._initSpecialistPresentationGeometry();
     // The renderer's loading-stage residency pass runs after every system has initialized. Publish
     // the exact live VFX roots so their already-created textures are uploaded under the loading
     // shell instead of on the first ambient impact during exposed flight. The getter stays live
@@ -1567,6 +1582,8 @@ export const vfx = {
     this._swarmerEventGeometry = null;
     disposeMediumWorldTellSystem(this._mediumWorldTells);
     this._mediumWorldTells = null;
+    disposeSpecialistWorldTellSystem(this._specialistWorldTells);
+    this._specialistWorldTells = null;
   },
 
   _vfxOwnerRoots() {
@@ -1581,6 +1598,7 @@ export const vfx = {
     add(this._dartActualTrails && this._dartActualTrails.group);
     add(this._swarmerEventGeometry && this._swarmerEventGeometry.group);
     add(this._mediumWorldTells && this._mediumWorldTells.group);
+    add(this._specialistWorldTells && this._specialistWorldTells.group);
     add(this._trailStreakPool && this._trailStreakPool.mesh);
     add(this._spriteBatches && this._spriteBatches.glow.mesh);
     add(this._spriteBatches && this._spriteBatches.ring.mesh);
@@ -1700,6 +1718,7 @@ export const vfx = {
           lightKeys: LAW_HEAT_LIGHT_KEY,
         }
         : null,
+      specialistWorldTells: inspectSpecialistWorldTellSystem(this._specialistWorldTells),
     };
   },
 
@@ -2077,7 +2096,9 @@ export const vfx = {
     add('combat:fire', (p) => this._onFire(p));
     add('combat:beamStop', (p) => this._onBeamStop(p));
     add('projectile:hit', (p) => this._onProjectileHit(p));
+    add('combat:projectileIntercepted', (p) => this._onPdProjectileIntercepted(p));
     add('combat:damage', (p) => this._onDamage(p));
+    add('combat:hullRepaired', (p) => this._onTenderHullRepaired(p));
     add('combat:statusApplied', (p) => this._onMediumStatusApplied(p));
     add('physics:impact', (p) => this._onPhysicsImpact(p));
     add('collision', (p) => this._onCollision(p));
@@ -2115,6 +2136,7 @@ export const vfx = {
     ]) add(boundary, () => {
       this._resetPickupStreams();
       resetMediumWorldTellSystem(this._mediumWorldTells);
+      resetSpecialistWorldTellSystem(this._specialistWorldTells);
     });
     add('settings:changed', (p) => {
       if (!p || p.section !== 'video') return;
@@ -2267,6 +2289,7 @@ export const vfx = {
           slot.z += oz;
         }
       }
+      reprojectSpecialistWorldTellSystem(this._specialistWorldTells, ox, oz);
       // The release annulus writes frame-local vertices directly into one shared mesh.
       const releaseArc = this._masslineReleaseArc;
       if (releaseArc && releaseArc.mesh && releaseArc.mesh.visible) {
@@ -3603,6 +3626,51 @@ export const vfx = {
     if (!this._scene) return false;
     if (!this._mediumWorldTells) this._mediumWorldTells = createMediumWorldTellSystem(this._scene);
     return true;
+  },
+
+  _initSpecialistPresentationGeometry() {
+    if (!this._scene) return false;
+    if (!this._specialistWorldTells) {
+      this._specialistWorldTells = createSpecialistWorldTellSystem(this._scene);
+    }
+    return !!this._specialistWorldTells;
+  },
+
+  _onPdProjectileIntercepted(p) {
+    const position = p && p.position;
+    if (!position || !Number.isFinite(position.x) || !Number.isFinite(position.z)) return false;
+    if (!this._initSpecialistPresentationGeometry()) return false;
+    const source = this._ent(p.sourceId) || this._ent(p.shooterId) || this._ent(p.defenderId);
+    const sourcePos = source && source.pos || position;
+    this._toLocalXZ(position.x, position.z, this._specialistLocalA);
+    const angle = Math.atan2(position.z - sourcePos.z, position.x - sourcePos.x);
+    return spawnPdInterceptTell(
+      this._specialistWorldTells,
+      p,
+      this._specialistLocalA,
+      angle,
+      this._isReduced(),
+    );
+  },
+
+  _onTenderHullRepaired(p) {
+    if (!p || p.cue !== 'green_weld_flashes' || !(Number(p.applied) > 0)) return false;
+    const target = this._ent(p.targetId);
+    const drone = this._ent(p.droneId);
+    const targetPos = target && target.pos || p.pos;
+    if (!targetPos || !Number.isFinite(targetPos.x) || !Number.isFinite(targetPos.z)) return false;
+    if (!this._initSpecialistPresentationGeometry()) return false;
+    const dronePos = drone && drone.pos || targetPos;
+    this._toLocalXZ(targetPos.x, targetPos.z, this._specialistLocalA);
+    this._toLocalXZ(dronePos.x, dronePos.z, this._specialistLocalB);
+    return spawnTenderWeldTell(
+      this._specialistWorldTells,
+      p,
+      this._specialistLocalA,
+      this._specialistLocalB,
+      Math.max(3, Number(target && target.radius) || 8),
+      this._isReduced(),
+    );
   },
 
   _onSwarmerDoctrinePhase(p) {
@@ -10159,6 +10227,7 @@ export const vfx = {
     }
     this._initSwarmerPresentationGeometry();
     this._initMediumPresentationGeometry();
+    this._initSpecialistPresentationGeometry();
     if (this._perfVfxIsolationRestore) {
       this._reassertPerfVfxRoots();
       return;
@@ -10199,6 +10268,14 @@ export const vfx = {
     const swarmerEvents = this._updateSwarmerEventGeometry(dt);
     sub.swarmerPresentation = dartTrails + swarmerEvents > 0 ? 1 : 0;
     sub.mediumPresentation = this._updateMediumWorldTells() > 0 ? 1 : 0;
+    const jackalMineWakes = updateJackalMineWakeTells(
+      this._specialistWorldTells,
+      this.state && this.state.entityList,
+      this._combatBeamLocalizer,
+      this._isReduced(),
+    );
+    sub.specialistPresentation = updateSpecialistWorldTellSystem(this._specialistWorldTells, dt)
+      + jackalMineWakes > 0 ? 1 : 0;
     sub.trails = this._emitTrails(dt) ? 1 : 0;
     sub.ribbons = this._updateRibbonTrails(dt) ? 1 : 0;
     if (this._projectileTrailsRelevant()) {

@@ -66,7 +66,9 @@ test('missing identities are fixed-stat medium rewards with exact authored masse
       || enemyId === 'harrier_kiter'
       ? 'existing'
       : 'unwired';
-    const expectedWorldTellRuntime = enemyId === 'jammer_specialist' || enemyId === 'harrier_kiter'
+    const expectedWorldTellRuntime = enemyId === 'jammer_specialist'
+      || enemyId === 'hostile_repair_tender'
+      || enemyId === 'harrier_kiter'
       ? 'existing'
       : 'unwired';
     assert.equal(def.specialistBehavior?.runtime, expectedBehaviorRuntime);
@@ -97,17 +99,17 @@ test('contracts claim only specialist mechanics with landed production owners', 
     .filter((row) => row.worldTell.runtime === 'existing')
     .map((row) => row.key);
 
-  assert.deepEqual(existingBehavior, ['tether_cutter', 'pd_screen', 'jammer', 'shield_projector', 'tender', 'anchor', 'kiter']);
-  assert.deepEqual(existingWorldTell, ['tether_cutter', 'jammer', 'anchor', 'kiter']);
+  assert.deepEqual(existingBehavior, ['tether_cutter', 'pd_screen', 'jammer', 'shield_projector', 'tender', 'minelayer', 'anchor', 'kiter']);
+  assert.deepEqual(existingWorldTell, ['tether_cutter', 'pd_screen', 'jammer', 'tender', 'minelayer', 'anchor', 'kiter']);
   const pdScreen = SPECIALIST_FAMILY.find((candidate) => candidate.key === 'pd_screen');
   assert.equal(pdScreen.behavior.owner, 'physics_owned_pd_interception_v1');
-  assert.equal(pdScreen.worldTell.runtime, 'unwired', 'pd_screen world tell stays an honest handoff');
+  assert.equal(pdScreen.worldTell.owner, 'physics_projectile_intercept_hard_geometry_v1');
   const tender = SPECIALIST_FAMILY.find((candidate) => candidate.key === 'tender');
   assert.equal(tender.behavior.owner, 'combat_owned_repair_tender_drone_v1');
-  assert.equal(tender.worldTell.runtime, 'unwired', 'tender render/audio world tell stays an honest handoff');
+  assert.equal(tender.worldTell.owner, 'combat_repair_green_weld_v1');
   const minelayer = SPECIALIST_FAMILY.find((candidate) => candidate.key === 'minelayer');
-  assert.equal(minelayer.behavior.runtime, 'unwired', 'minelayer behavior stays an honest handoff');
-  assert.equal(minelayer.worldTell.runtime, 'unwired', 'minelayer world tell stays an honest handoff');
+  assert.equal(minelayer.behavior.owner, 'mines_fields_physics_dynamic_wake_v1');
+  assert.equal(minelayer.worldTell.owner, 'armored_dynamic_mine_wake_v1');
 });
 
 test('each ordinary specialist shape guarantees exactly one anchor and only ordinary companions', () => {
@@ -149,7 +151,10 @@ test('all eight specialist roles naturally enter the ordinary weighted planner',
   const sectors = ['sector_pallas_drift', 'sector_sker_haven'];
   const target = new Set(ROLE_ROUTES.map((row) => row.encounterId));
   const reached = new Set();
-  for (let seed = 1; seed <= 256 && reached.size < ROLE_ROUTES.length; seed++) {
+  // The rare-spawn catalog adds ordinary weighted candidates ahead of this deterministic deck.
+  // Keep a bounded sample that still reaches the latest-arriving specialist (Anchor first appears
+  // at seed 294 in the current production catalog) without turning reachability into a forced ask.
+  for (let seed = 1; seed <= 320 && reached.size < ROLE_ROUTES.length; seed++) {
     for (const sectorId of sectors) {
       const schedule = planEncounters(seed, sectorId, 0, zonesForSector(sectorId));
       for (const item of schedule) {

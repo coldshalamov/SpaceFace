@@ -601,6 +601,14 @@ export const ENEMY_TYPES = [
     ],
     aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 300, leashRadius: 2500 },
     telegraph: { bark: 'warn', line: 'Wake is salted. Turn now or fly through our work.', cue: 'wake_mines' },
+    specialistBehavior: {
+      capability: 'dynamic_mine_wake', runtime: 'existing',
+      owner: 'mines_fields_physics_dynamic_wake_v1',
+      invariant: 'wake drift is authored once; field counters move mines only through the physics impulse membrane',
+    },
+    specialistWorldTell: {
+      cue: 'rack_spine_and_drifting_payload', runtime: 'existing', owner: 'armored_dynamic_mine_wake_v1',
+    },
     counterHint: 'cut_tether_or_clear_wake',
     behavior: 'mines the wake, prefers cargo and wrecks over clean kills, breaks when outnumbered',
     bountyCr: 380, shipClass: 'gunship',
@@ -630,6 +638,10 @@ export const ENEMY_TYPES = [
     specialistBehavior: {
       capability: 'ordnance_interception_bubble', runtime: 'existing',
       owner: 'physics_owned_pd_interception_v1',
+    },
+    specialistWorldTell: {
+      cue: 'interceptor_flashes_around_hull', runtime: 'existing',
+      owner: 'physics_projectile_intercept_hard_geometry_v1',
     },
     counterHint: 'hold_missiles_use_kinetics_peel_escort',
     behavior: 'screens a leader or wreck claim; shreds missiles and light craft at mid range',
@@ -760,7 +772,9 @@ export const ENEMY_TYPES = [
       owner: 'combat_owned_repair_tender_drone_v1',
       invariant: 'finite physical drones spend repair only through the combat hull writer',
     },
-    specialistWorldTell: { cue: 'green_weld_flashes_on_repair_target', runtime: 'unwired' },
+    specialistWorldTell: {
+      cue: 'green_weld_flashes_on_repair_target', runtime: 'existing', owner: 'combat_repair_green_weld_v1',
+    },
     counterHint: 'kill_or_catch_tender_and_drone_in_well',
     behavior: 'launches a finite physical repair-drone pool; source death or drone separation stops repairs',
     bountyCr: 460, shipClass: 'corvette', killRewardTier: 'medium',

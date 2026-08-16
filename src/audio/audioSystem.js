@@ -155,6 +155,21 @@ export const HEAVY_AUDIO_SIGNATURES = Object.freeze({
   'heavy.foundry.ore_detonated': Object.freeze({ recipeId: 'sfx.chargeDetonate', gain: 0.82, rate: 0.82, cooldownS: 0.18 }),
 });
 
+// Plan 15 Tender punctuation is admitted only from the combat writer's successful repair receipt.
+// It reuses the shipped cutter-lock synthesis at a tighter, higher register: a brief weld bite, not
+// a parallel repair authority or a looping ambience voice.
+export const SPECIALIST_AUDIO_SIGNATURES = Object.freeze({
+  tenderGreenWeld: Object.freeze({
+    recipeId: 'sfx_mining_cutter_lock', gain: 0.48, rate: 1.35, cooldownS: 0.22,
+  }),
+});
+
+export function resolveSpecialistPresentationAudioCue(eventName, payload) {
+  if (eventName !== 'combat:hullRepaired') return null;
+  if (!payload || payload.cue !== 'green_weld_flashes' || !(Number(payload.applied) > 0)) return null;
+  return SPECIALIST_AUDIO_SIGNATURES.tenderGreenWeld;
+}
+
 export function resolveHeavyPresentationAudioCue(eventName, payload) {
   if (eventName === 'ai:doctrinePhase') {
     return payload && payload.phase === 'ram_spool'
@@ -746,6 +761,7 @@ export const audio = {
     });
     bus.on('projectile:hit', (p) => this._onHit(p, false));
     bus.on('combat:damage', (p) => this._onDamage(p));
+    bus.on('combat:hullRepaired', (p) => this._onSpecialistPresentationAudio('combat:hullRepaired', p));
     bus.on('collision', (p) => this._onCollision(p));
     bus.on('shieldDown', (p) => {
       // Shield break: a sharp energy crackle at the target's position. Use the explosion-small recipe
@@ -1649,6 +1665,20 @@ export const audio = {
       : null;
     this._playMediumSignature(`${p.cueId || p.event}:${sourceId}`, signature,
       p.position || p.center || (entity && entity.pos) || null);
+  },
+
+  _onSpecialistPresentationAudio(eventName, p) {
+    const signature = resolveSpecialistPresentationAudioCue(eventName, p);
+    if (!signature) return;
+    const sourceId = p.droneId ?? p.sourceId ?? p.targetId ?? 'world';
+    const entity = sourceId !== 'world' && this.state && this.state.entities && this.state.entities.get
+      ? this.state.entities.get(sourceId)
+      : null;
+    this._playMediumSignature(
+      `specialist:${eventName}:${p.targetId ?? 'world'}`,
+      signature,
+      p.pos || (entity && entity.pos) || null,
+    );
   },
 
   _playMediumSignature(key, signature, position) {

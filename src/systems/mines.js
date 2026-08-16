@@ -41,7 +41,7 @@ export const mines = {
 
   /**
    * Place a physical mine. Enforces per-owner caps. Returns the entity or null.
-   * @param {{ ownerId: number, pos: {x:number,z:number}, team?: number, factionId?: string, armDelayS?: number, triggerRadius?: number, hull?: number, telegraph?: boolean }} opts
+   * @param {{ ownerId: number, pos: {x:number,z:number}, vel?: {x:number,z:number}, team?: number, factionId?: string, armDelayS?: number, triggerRadius?: number, hull?: number, telegraph?: boolean, mineLayerWake?: boolean }} opts
    */
   placeMine(opts = {}) {
     const state = this.state;
@@ -63,7 +63,10 @@ export const mines = {
     const ent = spawnEntity({
       type: MINE_TYPE,
       pos: { x: opts.pos.x, z: opts.pos.z },
-      vel: { x: 0, z: 0 },
+      vel: {
+        x: Number.isFinite(opts.vel?.x) ? opts.vel.x : 0,
+        z: Number.isFinite(opts.vel?.z) ? opts.vel.z : 0,
+      },
       radius: 6,
       mass: 8,
       hull,
@@ -71,10 +74,11 @@ export const mines = {
       collides: true,
       // Mines accept projectile sweeps only; their distinct category is owned by physics.js.
       collisionMask: Masks.PROJECTILE,
-      // Rapier solver contacts are disabled. Projectile damage remains authoritative in the
-      // deterministic swept-segment path in physics.js.
+      // Dynamic so the existing field -> physics impulse membrane can move a wake mine. The
+      // projectile material remains a ghost in solver contacts: ships do not shove mines and
+      // projectile damage stays authoritative in physics.js's deterministic swept path.
       physicsBody: {
-        dynamic: false,
+        dynamic: true,
         ccd: false,
         material: 'projectile',
       },
@@ -92,6 +96,9 @@ export const mines = {
         placedAt: now,
         sectorId: state.world && state.world.currentSectorId || null,
         triggered: false,
+        // Authored Jackal wake admission only. Render reads the live physics velocity from this
+        // entity; the marker never grants a second motion or force authority.
+        mineLayerWake: opts.mineLayerWake === true,
       },
     });
     if (!ent) return null;

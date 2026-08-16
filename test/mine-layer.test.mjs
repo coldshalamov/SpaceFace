@@ -7,8 +7,10 @@ import test from 'node:test';
 import { createSimulation, SIM_DT } from '../src/core/sim.js';
 import { Masks } from '../src/core/entity.js';
 import { physics } from '../src/core/physics.js';
+import { fields } from '../src/systems/fields.js';
 import { mines, MINE_TYPE, MINE_TELEGRAPH_CUE, countOwnerMines, listMines } from '../src/systems/mines.js';
 import { combat } from '../src/systems/combat.js';
+import { FIELD_FLAGS } from '../src/data/fields.js';
 import { ENCOUNTER_SCRIPTS } from '../src/systems/encounterScripts.js';
 
 function boot(seed = 3251) {
@@ -49,10 +51,10 @@ test('ownership + arm delay + per-owner cap lifecycle', () => {
   assert.equal(m1.data.armed, false);
   assert.equal(m1.data.armedAt, 2, 'default arm delay is independently pinned at two seconds');
   assert.deepEqual(m1.physicsBody, {
-    dynamic: false,
+    dynamic: true,
     ccd: false,
     material: 'projectile',
-  }, 'Rapier authors mines as fixed ghost bodies; projectile hits remain swept in physics.js');
+  }, 'Rapier authors field-repulsable ghost bodies; projectile hits remain swept in physics.js');
   assert.equal(t.events.placed.length, 1);
   assert.ok(t.events.telegraph.some((e) => e.cue === MINE_TELEGRAPH_CUE || e.kind === MINE_TELEGRAPH_CUE));
 
@@ -308,6 +310,59 @@ test('shape 325 minefield_wake seeds mines on ambush spring', () => {
   assert.equal(live.phase, 'conflict');
   assert.ok((live.data.minesSeeded || []).length >= 1, 'mines seeded on wake spring');
   assert.ok(listMines(t.state).length >= 1);
+  assert.ok(listMines(t.state).every((mine) => mine.physicsBody?.dynamic === true));
+  assert.ok(listMines(t.state).every((mine) => mine.data?.mineLayerWake === true),
+    'ordinary Jackal wake mines admit the velocity-rail read without granting motion authority');
+  assert.ok(listMines(t.state).some((mine) => Math.hypot(mine.vel.x, mine.vel.z) > 4),
+    'the ordinary Jackal route authors a slow physical wake drift before physics takes ownership');
+});
+
+test('real Repulsor moves a live Jackal mine through fields -> physics ownership', async () => {
+  const previousFieldFlag = FIELD_FLAGS.enabled;
+  FIELD_FLAGS.enabled = true;
+  let physicsSys = null;
+  try {
+    const sim = createSimulation({ seed: 326, systems: [fields, mines, physics] });
+    const { state } = sim;
+    state.mode = 'flight';
+    state.settings.gameplay.physicsBackend = 'rapier-dynamic';
+    state.input.actions = {};
+    const player = sim.spawn({
+      type: 'ship', team: 0, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 },
+      rot: 0, angVel: 0, radius: 12, mass: 28, collides: true,
+      hull: 200, hullMax: 200, flightModel: { inertia: 88 }, flags: {},
+      physicsBody: {
+        schemaVersion: 1, radius: 12, mass: 28, inertiaY: 88,
+        dynamic: true, ccd: true, material: 'ship', revision: 0,
+      },
+      data: { combatProfileId: 'combat_profile_standard_ship' },
+    });
+    state.playerId = player.id;
+    physicsSys = sim.registry.get('physics');
+    assert.equal(await physicsSys.prepareBackend(state), true);
+    const mine = sim.registry.get('mines').placeMine({
+      ownerId: 7001,
+      pos: { x: 60, z: 0 },
+      vel: { x: 0, z: 0 },
+      team: 1,
+      armDelayS: 99,
+      mineLayerWake: true,
+      telegraph: false,
+    });
+    const beforeX = mine.pos.x;
+    state.input.actions.deployRepulsor = true;
+    sim.step();
+    assert.equal(state.input.actions.deployRepulsor, false, 'real field owner consumes the deploy edge');
+    for (let tick = 0; tick < 40; tick++) sim.step();
+    assert.ok(state.fields.telemetry.affected >= 1, 'field query admits the dynamic mine body');
+    assert.ok(mine.pos.x > beforeX + 1, `Repulsor physically separates the mine (${beforeX} -> ${mine.pos.x})`);
+    assert.ok(mine.vel.x > 0.5, `physics-owned mine retains outward velocity, got ${mine.vel.x}`);
+  } finally {
+    FIELD_FLAGS.enabled = previousFieldFlag;
+    if (physicsSys && typeof physicsSys._disableSg02DynamicAuthority === 'function') {
+      physicsSys._disableSg02DynamicAuthority();
+    }
+  }
 });
 
 test('determinism: same seed + placements produce identical mine layout', () => {
