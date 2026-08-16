@@ -415,6 +415,12 @@ export const mining = {
   },
 
   _applyCut(player, target, resolved, dps, dt) {
+    const boarding = this._tryColdDerelictBoarding(player, target, dps, dt);
+    if (boarding && boarding.handled) return boarding;
+    if (target.data && target.data.coldDerelictBoarding
+      && target.data.coldDerelictBoarding.phase === 'extracted') {
+      return this._drainWreck(player, target, dps, dt, true);
+    }
     const d = target.data || (target.data = {});
     d.cutProgress = (d.cutProgress || 0) + dps * dt;
     const threshold = Number(d.cutThreshold) || 50;
@@ -434,6 +440,16 @@ export const mining = {
       });
       this.bus.emit('salvage:cutComplete', { targetId: target.id, payloadId: payload.id });
     }
+  },
+
+  _tryColdDerelictBoarding(player, wreck, dps, dt) {
+    if (!wreck || wreck.type !== 'wreck' || !wreck.data || wreck.data.wreckLifecycle !== 'cold'
+      || !wreck.data.markerId) return null;
+    const owner = this.registry && typeof this.registry.get === 'function'
+      ? this.registry.get('aftermathWrecks') : null;
+    return owner && typeof owner.applyColdDerelictBoardingBeam === 'function'
+      ? owner.applyColdDerelictBoardingBeam({ wreck, minerId: player && player.id, dps, dt })
+      : null;
   },
 
   _extractDisabledHeavy(player, target, dps, dt) {
@@ -1268,7 +1284,11 @@ export const mining = {
     return pool;
   },
 
-  _drainWreck(player, wreck, dps, dt) {
+  _drainWreck(player, wreck, dps, dt, skipColdBoarding = false) {
+    if (!skipColdBoarding) {
+      const boarding = this._tryColdDerelictBoarding(player, wreck, dps, dt);
+      if (boarding && boarding.handled) return boarding;
+    }
     const d = wreck.data || (wreck.data = {});
     const sourceKey = typeof d.salvageSourceKey === 'string' ? d.salvageSourceKey : null;
     const salvageApi = sourceKey && this.helpers && this.helpers.salvage;

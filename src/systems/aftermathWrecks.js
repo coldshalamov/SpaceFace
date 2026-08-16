@@ -17,7 +17,7 @@ import {
   normalizeCausalAftermath,
 } from '../world/encounterCausality.js';
 
-const STATE_VERSION = 4;
+const STATE_VERSION = 5;
 const MAX_PER_SECTOR = 8;
 const MAX_SPAWNED_PER_SECTOR = 6;
 const MAX_CAUSES = 24;
@@ -25,6 +25,9 @@ const WRECK_RADIUS = 9;
 const WRECK_SALVAGE_TIME = 8;
 export const AFTERMATH_FRESH_WINDOW_S = 120;
 const COLD_HULK_SALVAGE_TIME = 12;
+export const COLD_DERELICT_CUT_THRESHOLD = 54;
+export const COLD_DERELICT_SURVIVOR_CHANCE_PCT = 45;
+const COLD_DERELICT_BOARDING_VERSION = 1;
 const FREIGHT_IDENTITY_TEXT_MAX = 160;
 const SHIPLIKE_TYPES = new Set(['ship', 'drone']);
 const DEFAULT_POOL = Object.freeze({ cmdty_scrap_metal: 3, cmdty_salvage_electronics: 1 });
@@ -149,6 +152,11 @@ function isBoundWreck(entity, markerId) {
     && data.provenance && data.provenance.markerId === markerId);
 }
 
+function playerTetheredTo(state, targetId) {
+  const tether = state && state.player && state.player.tether;
+  return !!(tether && tether.active === true && tether.targetId === targetId);
+}
+
 // The marker owns the pool. Live immediate/rematerialized wrecks receive this same object, so
 // partial salvage cannot fork an anonymous combat pool from the durable aftermath pool.
 function poolForMarker(marker) {
@@ -169,6 +177,39 @@ export function aftermathLifecycleForMarker(marker, simTime = 0) {
     freshUntil: bornAt + AFTERMATH_FRESH_WINDOW_S,
     cooledAt: stage === 'cold' ? bornAt + AFTERMATH_FRESH_WINDOW_S : null,
   };
+}
+
+function normalizeColdDerelictBoarding(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return null;
+  const phase = ['sealed', 'hatch_open', 'extracted'].includes(input.phase) ? input.phase : 'sealed';
+  return {
+    schemaVersion: COLD_DERELICT_BOARDING_VERSION,
+    phase,
+    cutProgress: Math.max(0, Math.min(COLD_DERELICT_CUT_THRESHOLD, Number(input.cutProgress) || 0)),
+    stabilizedAt: Number.isFinite(Number(input.stabilizedAt)) ? Math.max(0, Number(input.stabilizedAt)) : null,
+    hatchOpenedAt: Number.isFinite(Number(input.hatchOpenedAt)) ? Math.max(0, Number(input.hatchOpenedAt)) : null,
+    extractedAt: Number.isFinite(Number(input.extractedAt)) ? Math.max(0, Number(input.extractedAt)) : null,
+    podEntityId: input.podEntityId == null ? null : input.podEntityId,
+  };
+}
+
+export function coldDerelictHasSurvivor(state, marker) {
+  if (!marker || marker.playerLoss || marker.survivorPodEjected === true) return false;
+  if (String(marker.victimClass || '').toLowerCase().includes('drone')) return false;
+  return hash32(seedOf(state), marker.markerId, marker.victimId, 'cold-derelict-survivor') % 100
+    < COLD_DERELICT_SURVIVOR_CHANCE_PCT;
+}
+
+function ensureColdDerelictBoarding(state, marker) {
+  if (!marker || marker.lifecycleStage !== 'cold') return null;
+  const existing = normalizeColdDerelictBoarding(marker.coldDerelictBoarding);
+  if (existing) {
+    marker.coldDerelictBoarding = existing;
+    return existing;
+  }
+  if (!coldDerelictHasSurvivor(state, marker)) return null;
+  marker.coldDerelictBoarding = normalizeColdDerelictBoarding({ phase: 'sealed' });
+  return marker.coldDerelictBoarding;
 }
 
 function aftermathLine(marker) {
@@ -245,6 +286,8 @@ function makeMarker(state, payload, entity) {
     cause: null,
     lifecycleStage: 'fresh',
     cooledAt: null,
+    survivorPodEjected: data.survivorPodEjected === true,
+    coldDerelictBoarding: null,
   };
   marker.salvagePool = initialPoolForMarker(marker);
   return marker;
@@ -362,6 +405,8 @@ function normalizeMarker(input) {
     cause: normalizeCausalAftermath(input.cause),
     lifecycleStage: input.lifecycleStage === 'cold' ? 'cold' : 'fresh',
     cooledAt: Number.isFinite(Number(input.cooledAt)) ? Math.max(0, Number(input.cooledAt)) : null,
+    survivorPodEjected: input.survivorPodEjected === true,
+    coldDerelictBoarding: normalizeColdDerelictBoarding(input.coldDerelictBoarding),
     playerLoss: normalizePlayerLoss(input.playerLoss),
   };
   const savedPool = normalizeSalvagePool(input.salvagePool);
@@ -419,6 +464,7 @@ export const aftermathWrecks = {
     ensureAftermathState(this.state);
 
     this._onKilled = (payload) => this._recordKill(payload || {});
+    this._onSurvivorPodEjected = (payload) => this._noteSurvivorPodEjected(payload || {});
     this._onSectorEnter = (payload) => this._spawnForSector(payload && payload.sectorId);
     this._onSectorExit = (payload) => this._clearLiveRefs(payload && payload.sectorId);
     this._onSalvageCompleted = (payload) => this._completeByEntity(payload || {});
@@ -439,6 +485,7 @@ export const aftermathWrecks = {
 
     if (this.bus && typeof this.bus.on === 'function') {
       this.bus.on('entity:killed', this._onKilled);
+      this.bus.on('survivorPod:ejected', this._onSurvivorPodEjected);
       this.bus.on('sector:enter', this._onSectorEnter);
       this.bus.on('sector:exit', this._onSectorExit);
       this.bus.on('salvage:completed', this._onSalvageCompleted);
@@ -474,6 +521,20 @@ export const aftermathWrecks = {
         if (item && item.markerId) this._spawned.delete(item.markerId);
       }
     });
+  },
+
+  _noteSurvivorPodEjected(payload) {
+    if (!payload || payload.source === 'cold_derelict_boarding' || payload.victimId == null) return false;
+    const own = ensureAftermathState(this.state);
+    let changed = false;
+    for (const markers of Object.values(own.bySector)) {
+      for (const marker of markers || []) {
+        if (!marker || marker.victimId !== payload.victimId) continue;
+        marker.survivorPodEjected = true;
+        changed = true;
+      }
+    }
+    return changed;
   },
 
   /** Create the one conserved player hulk outside the ordinary entity:killed filter. Cargo remains
@@ -755,7 +816,13 @@ export const aftermathWrecks = {
     const cls = wreckClassById(marker.wreckClass) || wreckClassById('battlefield');
     const line = aftermathLine(marker);
     const cold = lifecycle.stage === 'cold';
-    const scanLabel = lifecycleScanLabel(marker, cls, lifecycle.stage);
+    const boarding = cold ? ensureColdDerelictBoarding(this.state, marker) : null;
+    const baseScanLabel = lifecycleScanLabel(marker, cls, lifecycle.stage);
+    const scanLabel = boarding
+      ? boarding.phase === 'extracted'
+        ? `${baseScanLabel} · HATCH OPEN`
+        : `${baseScanLabel} · FAINT LIFE SIGN`
+      : baseScanLabel;
     const playerLoss = marker.playerLoss;
     const runtimeMass = Math.max(90, Math.min(5000,
       Number(playerLoss && playerLoss.shipSnapshot && playerLoss.shipSnapshot.runtimeMass) || 650));
@@ -777,6 +844,8 @@ export const aftermathWrecks = {
         lifecycleStage: lifecycle.stage,
         freshUntil: lifecycle.freshUntil,
         cooledAt: lifecycle.cooledAt,
+        coldDerelictBoarding: clonePlain(boarding),
+        masslineTetherable: true,
         wreckClass: marker.wreckClass || 'battlefield',
         wreckClassLabel: cls ? cls.label : marker.wreckClassLabel || 'Battlefield Wreck',
         wreckClassBlurb: cls ? cls.blurb : null,
@@ -838,13 +907,20 @@ export const aftermathWrecks = {
     if (!entity || !entity.data) return lifecycle;
     const cls = wreckClassById(marker.wreckClass) || wreckClassById('battlefield');
     const cold = lifecycle.stage === 'cold';
-    const scanLabel = marker.playerLoss
+    const boarding = cold ? ensureColdDerelictBoarding(this.state, marker) : null;
+    const baseScanLabel = marker.playerLoss
       ? `YOUR HULK · ${marker.playerLoss.cargoQty}u CARGO IN CUSTODY`
       : lifecycleScanLabel(marker, cls, lifecycle.stage);
+    const scanLabel = boarding
+      ? boarding.phase === 'extracted'
+        ? `${baseScanLabel} · HATCH OPEN`
+        : `${baseScanLabel} · FAINT LIFE SIGN`
+      : baseScanLabel;
     entity.data.wreckLifecycle = lifecycle.stage;
     entity.data.lifecycleStage = lifecycle.stage;
     entity.data.freshUntil = lifecycle.freshUntil;
     entity.data.cooledAt = lifecycle.cooledAt;
+    entity.data.coldDerelictBoarding = clonePlain(boarding);
     entity.data.scanLabel = scanLabel;
     entity.data.authoredScanLabel = scanLabel;
     entity.data.provenanceLine = marker.playerLoss
@@ -856,6 +932,99 @@ export const aftermathWrecks = {
       entity.data.salvageTimeLeft = COLD_HULK_SALVAGE_TIME;
     }
     return lifecycle;
+  },
+
+  applyColdDerelictBoardingBeam({ wreck, minerId, dps, dt } = {}) {
+    if (!wreck || wreck.alive === false || wreck.type !== 'wreck' || !wreck.data || !wreck.data.markerId) {
+      return { handled: false, reason: 'not-aftermath-wreck' };
+    }
+    if (minerId !== this.state.playerId) return { handled: false, reason: 'not-player' };
+    const marker = this._markerById(wreck.data.markerId);
+    if (!marker || this._resolveBoundWreck(marker.markerId)?.id !== wreck.id) {
+      return { handled: false, reason: 'not-bound' };
+    }
+    this._refreshLifecycle(marker, true);
+    const boarding = ensureColdDerelictBoarding(this.state, marker);
+    if (!boarding || boarding.phase === 'extracted') return { handled: false, reason: 'no-pending-survivor' };
+
+    if (!playerTetheredTo(this.state, wreck.id)) {
+      if (wreck.data._coldBoardingTetherWarned !== true) {
+        wreck.data._coldBoardingTetherWarned = true;
+        this.bus.emit('derelictBoarding:requiresStabilization', {
+          markerId: marker.markerId,
+          wreckId: wreck.id,
+          requirement: 'Massline attachment',
+        });
+        this.bus.emit('toast', {
+          text: 'Cold hull tumbling — hold it on the Massline before cutting the hatch.',
+          kind: 'info',
+          ttl: 4,
+        });
+      }
+      return { handled: true, status: boarding.phase, reason: 'requires-stabilization' };
+    }
+
+    delete wreck.data._coldBoardingTetherWarned;
+    const now = Number(this.state.simTime) || 0;
+    if (boarding.stabilizedAt == null) {
+      boarding.stabilizedAt = now;
+      this.bus.emit('derelictBoarding:stabilized', {
+        markerId: marker.markerId,
+        wreckId: wreck.id,
+        minerId,
+      });
+    }
+
+    if (boarding.phase === 'sealed') {
+      boarding.cutProgress = Math.min(
+        COLD_DERELICT_CUT_THRESHOLD,
+        boarding.cutProgress + Math.max(0, Number(dps) || 0) * Math.max(0, Number(dt) || 0),
+      );
+      if (boarding.cutProgress < COLD_DERELICT_CUT_THRESHOLD) {
+        wreck.data.coldDerelictBoarding = clonePlain(boarding);
+        return { handled: true, status: boarding.phase, progress: boarding.cutProgress };
+      }
+      boarding.phase = 'hatch_open';
+      boarding.hatchOpenedAt = now;
+      this.bus.emit('derelictBoarding:hatchOpened', {
+        markerId: marker.markerId,
+        wreckId: wreck.id,
+        minerId,
+      });
+    }
+
+    const survivorOwner = this.registry && typeof this.registry.get === 'function'
+      ? this.registry.get('survivorPod') : null;
+    const pod = survivorOwner && typeof survivorOwner.spawnFromColdDerelict === 'function'
+      ? survivorOwner.spawnFromColdDerelict({
+        markerId: marker.markerId,
+        wreck,
+        victimId: marker.victimId,
+        factionId: marker.victimFactionId,
+      })
+      : null;
+    if (!pod) {
+      wreck.data.coldDerelictBoarding = clonePlain(boarding);
+      return { handled: true, status: boarding.phase, reason: 'survivor-owner-unavailable' };
+    }
+
+    boarding.phase = 'extracted';
+    boarding.extractedAt = now;
+    boarding.podEntityId = pod.id;
+    marker.survivorPodEjected = true;
+    this._syncLiveLifecycle(marker);
+    this.bus.emit('derelictBoarding:survivorExtracted', {
+      markerId: marker.markerId,
+      wreckId: wreck.id,
+      podEntityId: pod.id,
+      minerId,
+    });
+    this.bus.emit('toast', {
+      text: 'Hatch open — survivor pod clear. Keep it on the Massline and reach lawful protection.',
+      kind: 'info',
+      ttl: 6,
+    });
+    return { handled: true, status: boarding.phase, podEntityId: pod.id };
   },
 
   update(_dt, state) {
@@ -1042,6 +1211,7 @@ export const aftermathWrecks = {
   destroy() {
     if (this.bus && typeof this.bus.off === 'function') {
       if (this._onKilled) this.bus.off('entity:killed', this._onKilled);
+      if (this._onSurvivorPodEjected) this.bus.off('survivorPod:ejected', this._onSurvivorPodEjected);
       if (this._onSectorEnter) this.bus.off('sector:enter', this._onSectorEnter);
       if (this._onSectorExit) this.bus.off('sector:exit', this._onSectorExit);
       if (this._onSalvageCompleted) this.bus.off('salvage:completed', this._onSalvageCompleted);
@@ -1058,7 +1228,7 @@ export const aftermathWrecks = {
       if (this._onSaveLoaded) this.bus.off('save:loaded', this._onSaveLoaded);
       if (this._onSaveError) this.bus.off('save:error', this._onSaveError);
     }
-    this._onKilled = this._onSectorEnter = this._onSectorExit = null;
+    this._onKilled = this._onSurvivorPodEjected = this._onSectorEnter = this._onSectorExit = null;
     this._onSalvageCompleted = this._onEncounterResolved = this._onDocked = null;
     this._onOfferBoarded = this._onMissionAccepted = this._onMissionCompleted = this._onMissionFailed = null;
     this._onNewGame = this._onSaveRestoring = this._onSaveLoaded = this._onSaveError = null;

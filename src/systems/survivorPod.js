@@ -343,8 +343,10 @@ function causalPublic(entity, rec) {
     phase: rec && rec.phase,
     playerOccupied: rec && rec.playerOccupied === true,
     lossId: rec && rec.lossId || null,
+    sourceMarkerId: rec && rec.sourceMarkerId || null,
     rescueAuthorized: rec && rec.rescueAuthorized === true,
-    source: rec && rec.playerOccupied === true ? 'player_defeat' : 'causal_eject',
+    source: rec && rec.source
+      || (rec && rec.playerOccupied === true ? 'player_defeat' : 'causal_eject'),
   };
 }
 
@@ -487,6 +489,39 @@ export const survivorPod = {
 
   // ── Causal eject ─────────────────────────────────────────────────────────────────────────────
 
+  spawnFromColdDerelict({ markerId, wreck, victimId = null, factionId = null } = {}) {
+    const state = this._state;
+    if (!state || !markerId || !wreck || wreck.alive === false || wreck.type !== 'wreck'
+      || !wreck.data || wreck.data.markerId !== markerId) return null;
+    const existing = (state.entityList || []).find((entity) => isCausalSurvivorPod(entity)
+      && entity.data && entity.data.survivorPodCausal
+      && entity.data.survivorPodCausal.sourceMarkerId === markerId);
+    if (existing) return existing;
+
+    const angleHash = hash32((state.meta && state.meta.seed) || 1, markerId, 'coldDerelictPodHatch');
+    const angle = (angleHash / 0x100000000) * Math.PI * 2;
+    const clearance = Math.max(8, Number(wreck.radius) || 9);
+    const source = {
+      id: victimId == null ? wreck.id : victimId,
+      type: 'ship',
+      pos: {
+        x: (Number(wreck.pos && wreck.pos.x) || 0) + Math.cos(angle) * clearance,
+        z: (Number(wreck.pos && wreck.pos.z) || 0) + Math.sin(angle) * clearance,
+      },
+      vel: {
+        x: (Number(wreck.vel && wreck.vel.x) || 0) + Math.cos(angle) * 8,
+        z: (Number(wreck.vel && wreck.vel.z) || 0) + Math.sin(angle) * 8,
+      },
+      factionId: factionId || wreck.factionId || (wreck.data && wreck.data.factionId) || 'neutral',
+      data: { worldRecordId: markerId },
+    };
+    return this._spawnCausalPod(state, source, { pos: source.pos, vel: source.vel }, {
+      source: 'cold_derelict_boarding',
+      sourceMarkerId: markerId,
+      memoryId: `survivor:wreck:${markerId}`,
+    });
+  },
+
   _onEntityKilled(payload) {
     const state = this._state;
     if (!state || causalSurvivorPodsGatedOut(state)) return null;
@@ -514,7 +549,7 @@ export const survivorPod = {
     return this._spawnCausalPod(state, hull, payload);
   },
 
-  _spawnCausalPod(state, victim, payload) {
+  _spawnCausalPod(state, victim, payload, options = {}) {
     const pos = (victim && victim.pos) || (payload && payload.pos);
     if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return null;
     if (victim && victim.data) victim.data.survivorPodEjected = true;
@@ -529,7 +564,8 @@ export const survivorPod = {
       || (victim.data && victim.data.factionId)
       || 'neutral';
     const sectorId = state.world && state.world.currentSectorId || null;
-    const memoryId = `survivor:${victim.id}:${hash32((state.meta && state.meta.seed) || 1, victim.id, 'podId').toString(36)}`;
+    const memoryId = options.memoryId
+      || `survivor:${victim.id}:${hash32((state.meta && state.meta.seed) || 1, victim.id, 'podId').toString(36)}`;
 
     const entity = spawnPayloadEntity(state, {
       pos: { x: pos.x, z: pos.z },
@@ -552,12 +588,15 @@ export const survivorPod = {
       sectorId,
       factionId,
       memoryId,
+      source: options.source || 'causal_eject',
+      sourceMarkerId: options.sourceMarkerId || null,
       phase: 'adrift',
       ejectedAt: now,
       expireAt: now + CAUSAL_POD_TTL_S,
       resolved: false,
     };
     entity.data.sourceVictimId = victim.id;
+    entity.data.sourceMarkerId = options.sourceMarkerId || null;
     entity.data.survivorPodCausal = { ...rec };
     entity.data.tetherRole = 'survivor_pod';
     entity.data.scanLabel = 'Survivor Pod';
@@ -593,6 +632,8 @@ export const survivorPod = {
           sectorId: stamp.sectorId || (state.world && state.world.currentSectorId) || null,
           factionId: stamp.factionId || entity.factionId || 'neutral',
           memoryId: stamp.memoryId || `survivor:${entity.id}`,
+          source: stamp.source || (stamp.playerOccupied === true ? 'player_defeat' : 'causal_eject'),
+          sourceMarkerId: stamp.sourceMarkerId || null,
           lossId: stamp.lossId || null,
           playerOccupied: stamp.playerOccupied === true,
           rescueAuthorized: stamp.rescueAuthorized === true,
@@ -707,6 +748,8 @@ export const survivorPod = {
       entityId: entity && entity.id,
       victimId: rec.victimId,
       sectorId: rec.sectorId,
+      source: rec.source || (rec.playerOccupied === true ? 'player_defeat' : 'causal_eject'),
+      sourceMarkerId: rec.sourceMarkerId || null,
       t: rec.resolvedAt,
       ...detail,
     };
