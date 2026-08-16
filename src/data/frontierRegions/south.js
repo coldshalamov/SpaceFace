@@ -163,6 +163,10 @@ export const SOUTH_SECTORS = Object.freeze([
         flavorSourceId: 'planet_hush',
         bandProximityRadius: 2400,
         dressingExclusionRadius: 900,
+        discoveryPlate: Object.freeze({
+          title: 'The Quiet Patch',
+          body: 'Radio carriers vanish here. Engine vibration and hull noise remain. Nothing waits there.',
+        }),
       }),
     ]),
   }),

@@ -23,6 +23,15 @@ export const TETHYS_BLACK_MARKET_DISCOVERY = Object.freeze({
   opportunityType: 'heist_intercept',
 });
 
+// PR95 Plan 19: Eunomia sells one stable lead to the already-physical Hush. The target remains an
+// approximate search circle and the POI stays under ordinary world discovery authority.
+export const EUNOMIA_QUIET_PATCH_RUMOR = Object.freeze({
+  rumorId: 'frontier-rumor:station_eunomia:quiet-patch',
+  stationId: 'station_eunomia',
+  sectorId: 'sector_eunomia_gulf',
+  poiId: 'poi_hush',
+});
+
 export const FRONTIER_RUMOR_KINDS = Object.freeze([
   Object.freeze({ id: 'hunter', label: 'Hunter Location', price: 260 }),
   Object.freeze({ id: 'vein', label: 'Vein Whisper', price: 220 }),
@@ -126,6 +135,7 @@ function candidatesForKind(kind, sectors, seed) {
     for (const poi of sector.pois || []) {
       const localPos = finitePoint(poi && poi.pos);
       if (!poi || poi.type !== wantedType || !poi.id || !localPos) continue;
+      if (poi.id === EUNOMIA_QUIET_PATCH_RUMOR.poiId) continue;
       candidates.push({
         kind,
         sector,
@@ -329,6 +339,49 @@ function tethysBlackMarketOffer(state, stationSource) {
   };
 }
 
+function eunomiaQuietPatchOffer(state, stationSource) {
+  const authored = EUNOMIA_QUIET_PATCH_RUMOR;
+  if (!stationSource || stationSource.station.id !== authored.stationId) return null;
+  if (frontierRumorOwned(state, authored.rumorId)) return null;
+  const sector = SECTOR_BY_ID.get(authored.sectorId);
+  const poi = sector && (sector.pois || []).find((row) => row && row.id === authored.poiId);
+  const localPos = finitePoint(poi && poi.pos);
+  if (!sector || !poi || !localPos || !candidateStillUnknown(state, {
+    kind: 'anomaly', sector, targetId: poi.id,
+  })) return null;
+
+  const seed = finite(state && state.meta && state.meta.seed, 1) >>> 0;
+  const targetGlobal = sectorLocalToGlobalForSector(localPos, sector.id);
+  const offsetAngle = (hash32(seed, authored.rumorId, 'bearing-offset-angle') / 0x100000000) * Math.PI * 2;
+  const offsetDistance = 240 + (hash32(seed, authored.rumorId, 'bearing-offset-distance') % 181);
+  const radius = 760;
+  return {
+    id: authored.rumorId,
+    schemaVersion: FRONTIER_RUMOR_SCHEMA_VERSION,
+    source: 'bar',
+    sourceStationId: authored.stationId,
+    sourceBodyId: null,
+    sourceSectorId: authored.sectorId,
+    dayIndex: dayIndexFor(state),
+    kind: 'anomaly',
+    kindLabel: 'Quiet Patch Bearing',
+    targetId: authored.poiId,
+    targetName: 'missing radio carriers',
+    sectorId: authored.sectorId,
+    sectorName: sector.name || sector.id,
+    fieldType: null,
+    coordSpace: 'global_v1',
+    bearingCenter: {
+      x: targetGlobal.x + Math.cos(offsetAngle) * offsetDistance,
+      z: targetGlobal.z + Math.sin(offsetAngle) * offsetDistance,
+    },
+    radius,
+    price: KIND_BY_ID.get('anomaly').price + Math.max(0, finite(sector.tier, 0)) * 35,
+    phase: 'rumored',
+    text: 'Eunomia traffic logs lose every radio carrier around one patch of the Gulf while engine and hull noise remain. The ring marks missing noise, not treasure or a waypoint.',
+  };
+}
+
 /**
  * Build the one bar rumor available at a station for the current 10-minute sector-day.
  * The selection is stable and never mutates state. Purchased cards return null until the next day.
@@ -336,6 +389,8 @@ function tethysBlackMarketOffer(state, stationSource) {
 export function frontierRumorOffer(state, stationId) {
   const stationSource = sourceForStation(stationId);
   if (!stationSource) return null;
+  const quietPatch = eunomiaQuietPatchOffer(state, stationSource);
+  if (quietPatch) return quietPatch;
   const blackMarket = tethysBlackMarketOffer(state, stationSource);
   if (blackMarket) return blackMarket;
   return buildRumorOffer(state, {
