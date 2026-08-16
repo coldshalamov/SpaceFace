@@ -846,9 +846,14 @@ export const ships = {
     // UI intent events (§4.4): the UI emits these; ships owns the mutation + credit emits. The
     // adapter validates the physical berth, while direct methods remain available to internal
     // crafting/reward/sandbox owners that do not originate at a station screen.
-    const withShipworksAccess = (capability, action) => (payload) => {
+    const withShipworksAccess = (capability, action) => (payload = {}) => {
+      // Plan 54: fitting owned modules from the explicit pause inventory is fee-free field work,
+      // not station commerce. Keep buying and hull switching behind the physical berth gate.
+      const pauseInventoryOutfit = capability === 'outfit'
+        && payload.source === 'pause_inventory'
+        && this.state.mode === 'paused';
       const access = shipworksStationAccess(this.state);
-      if (!access[capability]) {
+      if (!pauseInventoryOutfit && !access[capability]) {
         this.bus.emit('toast', {
           text: access[capability + 'Reason'],
           kind: 'error',
@@ -856,7 +861,7 @@ export const ships = {
         });
         return false;
       }
-      return action(payload || {});
+      return action(payload);
     };
     bus.on('ui:buyShip', withShipworksAccess('hull', (p) => this.buyShip(p)));
     bus.on('ui:setActiveShip', withShipworksAccess('hull', (p) => this.setActiveShip(p && p.index)));

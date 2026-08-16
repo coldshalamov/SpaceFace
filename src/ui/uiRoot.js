@@ -74,6 +74,7 @@ const SCREEN_MODULES = [
   { path: './screens/mainMenu.js', load: () => import('./screens/mainMenu.js'), name: 'mainMenuScreen' },
   { path: './screens/newGame.js', load: () => import('./screens/newGame.js'), name: 'newGameScreen' },
   { path: './screens/pause.js', load: () => import('./screens/pause.js'), name: 'pauseScreen' },
+  { path: './screens/pauseInventory.js', load: () => import('./screens/pauseInventory.js'), name: 'pauseInventoryScreen' },
   { path: './screens/fieldCrafting.js', load: () => import('./screens/fieldCrafting.js'), name: 'fieldCraftingScreen' },
   { path: './screens/gameOver.js', load: () => import('./screens/gameOver.js'), name: 'gameOverScreen' },
   { path: './screens/settings.js', load: () => import('./screens/settings.js'), name: 'settingsScreen' },
