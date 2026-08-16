@@ -2,6 +2,13 @@
 // other beats: ore yield, credits, "SHIELD DOWN", bounty, pickups). Pure presentation: subscribes
 // to bus events, reads entity transforms via helpers.worldToScreen, never touches sim state. Gated
 // on state.settings.showDamageNumbers. Driven each frame by hud.frame() -> update().
+//
+// QUIET BY DEFAULT. Every floater in this module is verbose combat/pickup text, so the whole layer
+// is one opt-in channel (gameState defaults showDamageNumbers to false; Settings > Gameplay >
+// "Verbose combat text" restores it). Nothing is lost when it is off: the toasts raised from here
+// (bounty, cargo full, market alerts, standing changes) go out on the one-voice receipt channel
+// regardless, kills still read on the reticle, hits still read on the ship schematic, and a mining
+// or pickup yield still moves the contextual CARGO chip. Only the numerals go away.
 import { COMMODITIES } from '../data/commodities.js';
 import { FACTION_META } from '../data/factions.js';
 import { SECTORS } from '../data/sectors.js';
@@ -20,6 +27,19 @@ for (const sec of SECTORS) {
   if (sec.stations) for (const st of sec.stations) STATION_BY_ID[st.id] = st;
 }
 const STYLE_ID = 'sf-floattext-style';
+
+/**
+ * The one gate for verbose combat/pickup floaters. `showDamageNumbers` is the shipped persisted
+ * field (SAVE_SCHEMA $.settings.showDamageNumbers, mirrored into the settings profile), so an
+ * explicit stored choice — including an old `true` written before the default flipped — is honored
+ * verbatim. Anything non-boolean (missing field, legacy tree, headless probe) resolves to the quiet
+ * default rather than inheriting a truthy accident.
+ * @param {object} settings state.settings (or any object with the same shape)
+ */
+export function verboseCombatTextEnabled(settings) {
+  if (!settings) return false;
+  return settings.showDamageNumbers === true;
+}
 
 export function pickupFloatingTextSpec(payload) {
   const qty = successfulPickupAmount(payload);
@@ -72,7 +92,7 @@ export function createFloatingText(ctx) {
   }
 
   function spawn(text, cls, wx, wz, targetId, opts) {
-    if (!state.settings || state.settings.showDamageNumbers === false) return;
+    if (!verboseCombatTextEnabled(state.settings)) return;
     opts = opts || {};
     let n = null;
     for (let k = 0; k < POOL; k++) { const idx = (head + k) % POOL; if (!nodes[idx].alive) { n = nodes[idx]; head = (idx + 1) % POOL; break; } }

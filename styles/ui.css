@@ -1300,3 +1300,120 @@ button:active { translate: 0 1px; }
   .sf-entity-link { color: LinkText; text-decoration-color: LinkText; }
   .sf-drawer__verb, .sf-drawer__facts .sf-tile { border: 1px solid CanvasText; }
 }
+
+/* 15 ─ QUIET COMBAT HUD (PR95): reticle acquire/hit/kill + critical-hull treatment ---------------
+   Verbose floating combat text is off by default, so an ordinary flight reads its combat off two
+   instruments instead of off a screenful of numerals: the aim reticle (what am I on, did that
+   land, is it dead) and the bottom-left ship-condition schematic (am I about to die).
+
+   JS owns only the CLOCK — hud.js sets three normalised 1 -> 0 lifetimes as custom properties and
+   toggles state classes. Everything below is look, including both accessibility reductions, so
+   there is exactly one place to retune the feel.
+
+   Selectors are #hud-scoped because uiRoot.js injectHudCss() appends its <style> to <head> AFTER
+   this linked sheet; the id keeps these rules from being outranked by a same-specificity rule
+   landing later in document order. */
+
+/* --- reticle feedback layer (child of #aim-reticle, after the crosshair SVG) --- */
+#hud .sf-ret-fx {
+  position: absolute; inset: 0; pointer-events: none;
+  --sf-ret-hit: 0; --sf-ret-kill: 0; --sf-ret-acquire: 0;
+}
+#hud .sf-ret-fx > i { position: absolute; display: block; }
+
+/* ACQUIRE: four corner ticks that mark the authoritative selection. Present and steady while a
+   target is held — a state, not an effect. They never animate on their own once settled. */
+#hud .sf-ret-tick {
+  width: 7px; height: 7px; opacity: 0;
+  border: 0 solid var(--sf-hostile, #ff5470);
+  transition: opacity .08s linear;
+}
+#hud .sf-ret-tick--tl { top: 9px; left: 9px; border-top-width: 2px; border-left-width: 2px; }
+#hud .sf-ret-tick--tr { top: 9px; right: 9px; border-top-width: 2px; border-right-width: 2px; }
+#hud .sf-ret-tick--bl { bottom: 9px; left: 9px; border-bottom-width: 2px; border-left-width: 2px; }
+#hud .sf-ret-tick--br { bottom: 9px; right: 9px; border-bottom-width: 2px; border-right-width: 2px; }
+#hud .sf-ret-fx.is-acquired .sf-ret-tick { opacity: .58; }
+
+/* ACQUIRE's rising edge breathes the brackets inward once, then the held-target state is static. */
+:root:not(.sf-reduce-motion) #hud .sf-ret-fx.is-acquiring .sf-ret-tick {
+  animation: sf-ret-acquire .18s ease-out both;
+}
+
+/* HIT: the same four ticks go crisp for RETICLE_HIT_S. Fixed geometry — only opacity and colour
+   move, so a sustained burst re-arms an identical tick instead of blooming the reticle open. */
+#hud .sf-ret-fx.is-hit .sf-ret-tick--tr {
+  opacity: calc(.25 + .75 * var(--sf-ret-hit, 0));
+  border-color: var(--sf-warn, #ffd24a);
+  transition: none;
+}
+
+/* KILL: one short ring-onto-pip collapse, then nothing. */
+#hud .sf-ret-ring {
+  top: 50%; left: 50%; width: 34px; height: 34px; margin: -17px 0 0 -17px;
+  border: 2px solid var(--sf-warn, #ffd24a); border-radius: 50%;
+  opacity: 0; transform: scale(1.25);
+}
+#hud .sf-ret-pip {
+  top: 50%; left: 50%; width: 4px; height: 4px; margin: -2px 0 0 -2px;
+  background: var(--sf-warn, #ffd24a); border-radius: 50%; opacity: 0;
+}
+#hud .sf-ret-fx.is-kill .sf-ret-ring {
+  opacity: var(--sf-ret-kill, 0);
+  transform: scale(calc(.55 + .7 * var(--sf-ret-kill, 0)));   /* 1.25 -> .55: collapses inward */
+}
+#hud .sf-ret-fx.is-kill .sf-ret-pip { opacity: calc(1 - var(--sf-ret-kill, 0)); }
+
+/* Reduced MOTION: the collapse stops travelling and simply resolves in place. */
+:root.sf-reduce-motion #hud .sf-ret-fx.is-kill .sf-ret-ring { transform: scale(.8); }
+@media (prefers-reduced-motion: reduce) {
+  #hud .sf-ret-fx.is-kill .sf-ret-ring { transform: scale(.8); }
+  #hud .sf-ret-tick { transition: none; }
+  #hud .sf-ret-fx.is-acquiring .sf-ret-tick { animation: none; }
+}
+/* Reduced FLASH: separate axis. Hit and kill hold one steady value for their whole (still short)
+   life instead of spiking, so nothing on the reticle reads as a blink. */
+:root.sf-reduce-flash #hud .sf-ret-fx.is-hit .sf-ret-tick--tr { opacity: .8; }
+:root.sf-reduce-flash #hud .sf-ret-fx.is-kill .sf-ret-ring { opacity: .8; }
+:root.sf-reduce-flash #hud .sf-ret-fx.is-kill .sf-ret-pip { opacity: .8; }
+
+/* --- critical-hull treatment: brackets close on the ship-condition instrument ---
+   Armed only while hull is critical AND we are still being shot at; hud.js drops the class after
+   HULL_CRIT_CALM_S (2) damage-free seconds. This is a 96px gauge marker in the bottom-left anchor:
+   NOT a visor or cockpit frame, NOT a screen-edge arc, NOT a full-screen wash, and it moves no
+   camera or FOV. The persistent HULL CRITICAL words stay in the one-voice alert lane. */
+#hud .sf-hullcrit {
+  position: absolute; inset: -7px; pointer-events: none;
+  opacity: 0; visibility: hidden;
+}
+#hud .sf-hullcrit > i {
+  position: absolute; display: block; width: 14px; height: 14px;
+  border: 0 solid var(--sf-danger, #ff5470);
+}
+#hud .sf-hullcrit > i:nth-child(1) { top: 0; left: 0; border-top-width: 2px; border-left-width: 2px; }
+#hud .sf-hullcrit > i:nth-child(2) { top: 0; right: 0; border-top-width: 2px; border-right-width: 2px; }
+#hud .sf-hullcrit > i:nth-child(3) { bottom: 0; left: 0; border-bottom-width: 2px; border-left-width: 2px; }
+#hud .sf-hullcrit > i:nth-child(4) { bottom: 0; right: 0; border-bottom-width: 2px; border-right-width: 2px; }
+/* BASE treatment — what remains with reduced motion AND reduced flash both on. Static, and it
+   still reads: solid danger brackets plus a danger edge on the gauge itself. */
+#hud .sf-schematic.sf-hullcrit-armed .sf-hullcrit { opacity: 1; visibility: visible; }
+#hud .sf-schematic.sf-hullcrit-armed { outline: 1px solid color-mix(in srgb, var(--sf-danger, #ff5470) 55%, transparent); outline-offset: 5px; }
+/* MOTION reinforcement (one-shot bracket close on arm) — on the wrapper's transform. */
+:root:not(.sf-reduce-motion) #hud .sf-schematic.sf-hullcrit-armed .sf-hullcrit {
+  animation: sf-hullcrit-close .22s ease-out both;
+}
+/* FLASH reinforcement (slow breathe, ~0.6Hz) — on the bracket children's opacity. Separate element
+   and separate property from the motion rule, so enabling one never cancels the other. */
+:root:not(.sf-reduce-flash) #hud .sf-schematic.sf-hullcrit-armed .sf-hullcrit > i {
+  animation: sf-hullcrit-breathe 1.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  #hud .sf-schematic.sf-hullcrit-armed .sf-hullcrit { animation: none; }
+}
+@keyframes sf-hullcrit-close { from { transform: scale(1.14); } to { transform: scale(1); } }
+@keyframes sf-hullcrit-breathe { 0%, 100% { opacity: .62; } 50% { opacity: 1; } }
+@keyframes sf-ret-acquire { from { opacity: .12; transform: scale(1.28); } to { opacity: .58; transform: scale(1); } }
+
+@media (forced-colors: active) {
+  #hud .sf-ret-tick, #hud .sf-ret-ring, #hud .sf-hullcrit > i { border-color: CanvasText; }
+  #hud .sf-ret-pip { background: CanvasText; }
+}

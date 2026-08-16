@@ -371,7 +371,13 @@ export const settingsScreen = {
       }
       rowSelect('Autosave', () => String(g.autosaveIntervalS), [['0', 'Off'], ['60', '60s'], ['120', '120s'], ['300', '300s']], (v) => this._set(ctx, 'gameplay', 'autosaveIntervalS', parseInt(v, 10)));
       rowToggle('Tutorial hints', () => g.tutorialHints, (v) => this._set(ctx, 'gameplay', 'tutorialHints', v));
-      rowToggle('Damage numbers', () => !!g.damageNumbers, (v) => this._set(ctx, 'gameplay', 'damageNumbers', v));
+      // Verbose combat text. This row used to write `gameplay.damageNumbers`, a field NOTHING reads —
+      // floatingText.js has always gated on the root `showDamageNumbers`, so the toggle was inert.
+      // It now drives the real persisted field (SAVE_SCHEMA $.settings.showDamageNumbers), which is
+      // off for new games; flipping it On is stored in the settings profile and survives boot.
+      rowToggle('Verbose combat text', () => s.showDamageNumbers === true,
+        (v) => this._set(ctx, null, 'showDamageNumbers', v));
+      pane.appendChild(el('p', 'sf-muted', 'Off by default: kills read on the reticle, hits on the ship schematic, and payouts in the receipt strip. On adds floating damage numbers, shield/kill callouts, and pickup and ore-yield pops.'));
     } else if (refs.active === 'Access') {
       const ac = s.accessibility || (s.accessibility = { colorblindMode: 'none', highContrast: false, flashReduce: false, dyslexiaFont: false,
         motionPreference: 'system', captions: true, captionSize: 'medium', captionBackground: true });

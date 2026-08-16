@@ -65,6 +65,72 @@ import {
   vitalNumericVisible,
 } from './hudAttention.js';
 
+// ---- PR95 quiet combat HUD: the three timings the flight overlay speaks in ------------------------
+// All three are short and bounded by construction. Exported so the contract is testable as a number
+// rather than as a screenshot, and so nothing downstream re-derives a second copy of them.
+//
+// The reticle is the combat instrument when verbose floating text is off (the default), so it gets
+// exactly three states and no more: acquire (authoritative selection settled), hit (a shot of ours
+// landed), kill (that target is gone). Each one plays once and stops.
+export const RETICLE_ACQUIRE_S = 0.18;
+export const RETICLE_HIT_S = 1 / 60;
+export const RETICLE_KILL_S = 0.1;
+// Damage-free seconds after which the critical-hull treatment releases. Critical hull is a
+// condition; being shot at is an event. The treatment marks the event, so it clears when the
+// shooting stops even though the hull is still red — the persistent words stay in the alert lane.
+export const HULL_CRIT_CALM_S = 2;
+
+/** Is the critical-hull treatment armed? Pure so the two-damage-free-seconds rule is testable. */
+export function hullCriticalTreatmentActive(hullFrac, sinceDamageS) {
+  const frac = Number(hullFrac);
+  const since = Number(sinceDamageS);
+  if (!(frac > 0) || !(frac < 0.25)) return false;
+  return Number.isFinite(since) && since < HULL_CRIT_CALM_S;
+}
+
+/** Does this combat:damage receipt mean "a shot of OURS landed on someone else"? */
+export function reticleHitFromDamage(payload, playerId) {
+  if (!payload || playerId == null) return false;
+  if (payload.attackerId !== playerId) return false;
+  if (payload.targetId === playerId) return false;   // our own hull is the schematic's job
+  const landed = Math.max(0, Number(payload.applied != null ? payload.applied : payload.amount) || 0);
+  return landed > 0 || !!payload.brokeShield;
+}
+
+/** Does this entity:killed receipt mean "we killed it"? */
+export function reticleKillFromEvent(payload, playerId) {
+  return !!(payload && playerId != null && payload.killerId === playerId);
+}
+
+/**
+ * Advance the reticle's three bounded lifetimes by `dt`.
+ *
+ * Every timing rule that matters lives here, in a pure step, so it is checkable as arithmetic:
+ *   - hit is ASSIGNED, never accumulated — a held trigger re-arms an identical one-frame tick and can
+ *     never integrate into a growing bloom;
+ *   - a kill supersedes a pending hit, so the tick and the collapse never draw together;
+ *   - acquire fires on the RISING EDGE of the authoritative target only — holding does not re-snap,
+ *     and losing the target drops straight to idle with no lingering acquire.
+ *
+ * @param {{hitT:number,killT:number,acquireT:number,targetId:*}} prev
+ * @param {number} dt seconds
+ * @param {{targetId:*,hit:boolean,kill:boolean}} input authoritative target + receipts seen this step
+ */
+export function stepReticleFeedback(prev, dt, input) {
+  const step = Number.isFinite(dt) && dt > 0 ? dt : 0;
+  const p = prev || {};
+  const was = p.targetId != null ? p.targetId : null;
+  const now = input && input.targetId != null ? input.targetId : null;
+  const acquireT = now !== was
+    ? (now != null ? RETICLE_ACQUIRE_S : 0)
+    : Math.max(0, (Number(p.acquireT) || 0) - step);
+  let hitT = Math.max(0, (Number(p.hitT) || 0) - step);
+  let killT = Math.max(0, (Number(p.killT) || 0) - step);
+  if (input && input.hit) hitT = RETICLE_HIT_S;
+  if (input && input.kill) { killT = RETICLE_KILL_S; hitT = 0; }
+  return { hitT, killT, acquireT, targetId: now };
+}
+
 // Ship role → friendly archetype label (Phase 3 HUD class indicator).
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
 const ROLE_LABEL = {
@@ -1155,10 +1221,26 @@ export function createHud(ctx, alerts) {
     clearTimeout(_schFlashTimer);
     _schFlashTimer = setTimeout(() => schematic.classList.remove('sf-sch-hit'), 340);
   }
+  // Seconds since anything last damaged the player. The critical-hull treatment below is armed on
+  // this rather than on hull alone, so limping home at 12% hull is not a permanent screen alarm.
+  let _sinceHullDamage = Infinity;
   ctx.bus.on('combat:damage', (p) => {
     if (!p || p.targetId !== state.playerId) return;
+    _sinceHullDamage = 0;
     flashSchematic();
   });
+
+  // Critical-hull treatment (PR95 quiet HUD): four brackets that close on the ship-condition
+  // instrument — the 96px schematic in the bottom-left anchor that already owns hull. Explicitly
+  // NOT a visor/cockpit frame, a screen-edge arc, a full-screen wash, or an FOV move: it marks the
+  // gauge, it does not dress the windshield. Reduced motion (no bracket travel) and reduced flash
+  // (no breathing opacity) are honored SEPARATELY in styles/ui.css — the static bracketed state is
+  // the base treatment and reads on its own with both reductions on.
+  const hullCritFrame = document.createElement('div');
+  hullCritFrame.className = 'sf-hullcrit';
+  hullCritFrame.setAttribute('aria-hidden', 'true');
+  hullCritFrame.innerHTML = '<i></i><i></i><i></i><i></i>';
+  schematic.appendChild(hullCritFrame);
 
   // ---- top-left: mission tracker (shows the tracked mission objective + timer) ----
   const missionTracker = document.createElement('div');
@@ -3104,6 +3186,20 @@ export function createHud(ctx, alerts) {
     _recoilBloom = Math.min(1, _recoilBloom + 0.35);
   });
 
+  // ---- Reticle combat feedback: acquire / hit / kill (PR95) -----------------------------------
+  // With verbose floating text off by default, this is where an ordinary flight reads its own
+  // gunnery. Driven off the shipped combat receipts (combat:damage / entity:killed) and the
+  // authoritative selection field — never a hover guess, a local raycast, or a second target model.
+  // The timing rules themselves live in the pure stepReticleFeedback() above; the bus handlers only
+  // latch "a receipt arrived this frame" so no rule is duplicated between an event and a frame.
+  let _retState = { hitT: 0, killT: 0, acquireT: 0, targetId: null };
+  let _retPendingHit = false;
+  let _retPendingKill = false;
+  const _retStepInput = { targetId: null, hit: false, kill: false };
+  let elReticleFx = null;
+  ctx.bus.on('combat:damage', (p) => { if (reticleHitFromDamage(p, state.playerId)) _retPendingHit = true; });
+  ctx.bus.on('entity:killed', (p) => { if (reticleKillFromEvent(p, state.playerId)) _retPendingKill = true; });
+
   // WANTED indicator (V2 §20b / cut-list #15): a persistent red alert when the player's heat is
   // above the lawful-engagement threshold. Event-driven from the heat system's heat:changed.
   let wantedActive = false;
@@ -3751,6 +3847,51 @@ export function createHud(ctx, alerts) {
     if (!elReticle) elReticle = document.getElementById('aim-reticle');
   }
 
+  // The feedback layer is appended INSIDE #aim-reticle so it inherits the reticle's transform (and
+  // its display:none under modals / auto-target) for free — but strictly AFTER the crosshair SVG,
+  // because the accuracy bloom scales elReticle.firstElementChild and must keep finding the SVG.
+  function ensureReticleFx() {
+    if (elReticleFx) return elReticleFx;
+    if (!elReticle || typeof elReticle.appendChild !== 'function') return null;
+    const fx = document.createElement('div');
+    fx.className = 'sf-ret-fx';
+    fx.setAttribute('aria-hidden', 'true');   // decorative; the target panel carries the words
+    fx.innerHTML =
+      '<i class="sf-ret-tick sf-ret-tick--tl"></i><i class="sf-ret-tick sf-ret-tick--tr"></i>' +
+      '<i class="sf-ret-tick sf-ret-tick--bl"></i><i class="sf-ret-tick sf-ret-tick--br"></i>' +
+      '<i class="sf-ret-ring"></i><i class="sf-ret-pip"></i>';
+    elReticle.appendChild(fx);
+    elReticleFx = fx;
+    return fx;
+  }
+
+  function updateReticleFeedback(dt) {
+    const fx = ensureReticleFx();
+    if (!fx) return;
+    // ACQUIRE reads state.player.targetId — the same authoritative field the lock diamond, the
+    // target panel, and the wingman radial consume. A dead or unresolvable id is NOT a target, so a
+    // stale selection can never leave the reticle claiming a lock on nothing.
+    const tid = state.player ? state.player.targetId : null;
+    const tgt = tid != null && state.entities ? state.entities.get(tid) : null;
+    _retStepInput.targetId = tgt && tgt.alive ? tid : null;
+    _retStepInput.hit = _retPendingHit;
+    _retStepInput.kill = _retPendingKill;
+    _retPendingHit = false;
+    _retPendingKill = false;
+    _retState = stepReticleFeedback(_retState, dt, _retStepInput);
+
+    setClass(fx, 'is-acquiring', _retState.acquireT > 0);
+    setClass(fx, 'is-acquired', _retState.targetId != null);
+    setClass(fx, 'is-hit', _retState.hitT > 0);
+    setClass(fx, 'is-kill', _retState.killT > 0);
+    // Normalised 1 -> 0 lifetimes. JS owns the clock, styles/ui.css owns the look (including both
+    // accessibility reductions). Quantised to 1/20 so the deduped writer actually dedups.
+    setCssVar(fx, '--sf-ret-hit', (Math.round((_retState.hitT / RETICLE_HIT_S) * 20) / 20).toFixed(2));
+    setCssVar(fx, '--sf-ret-kill', (Math.round((_retState.killT / RETICLE_KILL_S) * 20) / 20).toFixed(2));
+    setCssVar(fx, '--sf-ret-acquire',
+      (Math.round((1 - _retState.acquireT / RETICLE_ACQUIRE_S) * 20) / 20).toFixed(2));
+  }
+
   function updateTargetArcs() {
     const tid = state.player.targetId;
     const tgt = tid != null ? state.entities.get(tid) : null;
@@ -3952,6 +4093,7 @@ export function createHud(ctx, alerts) {
 
     const p = state.entities.get(state.playerId);
     resolveReticle();
+    updateReticleFeedback(frameDt);
     updateDoctrineTells(frameDt);
 
     // --- schematic + arcs + micro-bars (every frame, transform/stroke only) ---
@@ -3973,6 +4115,14 @@ export function createHud(ctx, alerts) {
       setClass(schematic, 'sf-sch-shield-low', shieldFrac < 0.25);
       setClass(bars, 'sf-condition-critical', hullFrac < 0.25);
       setClass(bars, 'sf-condition-shield-low', shieldFrac < 0.25 && hullFrac >= 0.25);
+
+      // Critical-hull treatment: armed by hull AND by still being under fire, released after
+      // HULL_CRIT_CALM_S damage-free seconds. sf-condition-critical above stays a pure condition
+      // class (it must keep tracking hull alone); this is the separate, self-clearing emphasis.
+      _sinceHullDamage = Math.min(_sinceHullDamage + frameDt, 1e6);
+      const hullCrit = hullCriticalTreatmentActive(hullFrac, _sinceHullDamage);
+      setClass(schematic, 'sf-hullcrit-armed', hullCrit);
+      setClass(bars, 'sf-hullcrit-armed', hullCrit);
 
       setScaleX(fillEls.energy, capFrac);
       setScaleX(fillEls.heat, heatFrac);
