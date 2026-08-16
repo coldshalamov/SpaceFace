@@ -150,6 +150,18 @@ export function createTacticalAISystem({
             tick,
           });
         }
+        if (doctrine && doctrine.phaseChanged && doctrine.visibleRetreat
+          && ctxRef.bus && typeof ctxRef.bus.emit === 'function') {
+          ctxRef.bus.emit('ai:flee', {
+            entityId: decision.entityId,
+            targetId: doctrine.targetId,
+            reason: 'low_hull_visible_retreat',
+            smokeCue: doctrine.visibleRetreat.smokeCue,
+            dumpCue: doctrine.visibleRetreat.dumpCue,
+            bark: doctrine.visibleRetreat.bark,
+            tick,
+          });
+        }
         if (doctrine && doctrine.phaseChanged && ctxRef.bus && typeof ctxRef.bus.emit === 'function') {
           ctxRef.bus.emit('ai:doctrinePhase', {
             entityId: decision.entityId,

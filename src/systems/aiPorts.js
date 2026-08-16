@@ -13,7 +13,7 @@ import { activityAllowsOffense, effectiveActivityForAI, normalizeRoe } from '../
 import { CombatDoctrineId, normalizeCombatDoctrineId } from '../ai/combatDoctrine.js';
 import { normalizeFactionBehaviorProfile } from '../ai/factionBehavior.js';
 import { authorizeAIEngagement, isHostileForAI } from '../ai/engagementAuthority.js';
-import { measureThrusterAuthority, writePhysicsControl } from '../core/physicsAuthority.js';
+import { measureThrusterAuthority, readPhysicsTelemetry, writePhysicsControl } from '../core/physicsAuthority.js';
 import { resolveFlightProfile } from '../core/flightDynamics.js';
 import { massline2Flag } from '../data/featureFlags.js';
 import { SKITTER_ROCK_NEST } from '../data/swarmerFamily.js';
@@ -1000,6 +1000,8 @@ function sensorSelf(state, entity, capabilities = capabilitiesFor(state, entity)
     // hull opt into a doctrine profile without widening the shared doctrine id for every existing
     // interceptor or field controller.
     combatRoleId: entity && entity.data && entity.data.lootTableId || null,
+    mediumSetup: mediumSetupSnapshot(entity, runtime, state && state.tick, freeze),
+    visibleRetreat: visibleRetreatSnapshot(entity, freeze),
     maxSpeed: positive(entity && entity.maxSpeed,
       positive(entity && entity.flightModel && entity.flightModel.maxSpeed, 0)),
     factionBehavior: normalizeFactionBehaviorProfile(ai.factionPresenceDoctrine),
@@ -1007,6 +1009,48 @@ function sensorSelf(state, entity, capabilities = capabilitiesFor(state, entity)
     coverAmbush: skitterCoverSnapshot(state, entity, freeze),
     ...bands,
   });
+}
+
+function mediumSetupSnapshot(entity, runtime, tick, freeze) {
+  const authored = entity && entity.data && entity.data.mediumSetup;
+  if (!authored || typeof authored !== 'object') return null;
+  const telemetry = readPhysicsTelemetry(entity);
+  const driveFraction = subsystemFraction(runtime, 'subsystem_drive');
+  return freeze({
+    capability: String(authored.capability || ''),
+    counterVerb: String(authored.counterVerb || ''),
+    runtime: String(authored.runtime || 'unwired'),
+    counterState: freeze({
+      rcsDisrupted: !!telemetry && telemetry.mode === 'rcs_disrupted',
+      driveDisabled: driveFraction <= 0 || runtime && runtime.capabilities && runtime.capabilities.drive === false,
+      momentumSunk: combatStatusLive(runtime, 'status_momentum_sink', tick),
+      wellPinned: combatStatusLive(runtime, 'status_pinned', tick),
+      tumbling: combatStatusLive(runtime, 'status_tumbling', tick),
+    }),
+  });
+}
+
+function visibleRetreatSnapshot(entity, freeze) {
+  const authored = entity && entity.data && entity.data.visibleRetreat;
+  if (!authored || typeof authored !== 'object') return null;
+  return freeze({
+    hullFraction: clamp(finite(authored.hullFraction, 0.3), 0, 1),
+    smokeCue: String(authored.smokeCue || ''),
+    dumpCue: String(authored.dumpCue || ''),
+    bark: String(authored.bark || ''),
+    runtime: String(authored.runtime || 'unwired'),
+  });
+}
+
+function combatStatusLive(runtime, statusId, tick) {
+  const active = runtime && runtime.statuses && runtime.statuses[statusId];
+  if (active && (!Number.isFinite(active.expiresTick) || active.expiresTick > finiteInt(tick, 0))) return true;
+  // Tactical AI runs before combat's pre-physics advance. A status due on this tick is therefore
+  // part of the same production frame even though the combat owner has not moved it to `statuses`
+  // yet; observing only the active map would make steering fight the physical counter for one tick.
+  return Array.isArray(runtime && runtime.pendingStatuses) && runtime.pendingStatuses.some((status) => (
+    status && status.id === statusId && finiteInt(status.applyTick, 0) <= finiteInt(tick, 0)
+  ));
 }
 
 function explicitRamAuthorization(entity, ai, activity, bands) {

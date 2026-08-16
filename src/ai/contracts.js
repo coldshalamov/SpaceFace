@@ -251,6 +251,10 @@ function neutralSelf(entityId) {
     activity: null,
     roe: 'weapons_free',
     combatDoctrineId: null,
+    combatRoleId: null,
+    maxSpeed: 0,
+    mediumSetup: null,
+    visibleRetreat: null,
     factionBehavior: null,
     ramAuthorized: false,
     operationalMassBand: 'medium',
@@ -279,6 +283,10 @@ function normalizeSelf(value, entityId) {
     activity: normalizeActivityView(value.activity),
     roe: normalizeRoeView(value.roe),
     combatDoctrineId: normalizeDoctrineIdView(value.combatDoctrineId),
+    combatRoleId: value.combatRoleId == null ? null : String(value.combatRoleId),
+    maxSpeed: Math.max(0, finite(value.maxSpeed, 0)),
+    mediumSetup: normalizeMediumSetupView(value.mediumSetup),
+    visibleRetreat: normalizeVisibleRetreatView(value.visibleRetreat),
     factionBehavior: normalizeFactionBehaviorProfile(value.factionBehavior),
     ramAuthorized: value.ramAuthorized === true,
     operationalMassBand: normalizeBand(value.operationalMassBand, ['light', 'medium', 'heavy', 'capital'], 'medium'),
@@ -286,6 +294,34 @@ function normalizeSelf(value, entityId) {
     cargoBand: normalizeBand(value.cargoBand, ['empty', 'light', 'valuable', 'rich'], 'empty'),
     tetherabilityBand: normalizeBand(value.tetherabilityBand, ['poor', 'fair', 'good', 'excellent'], 'good'),
   };
+}
+
+function normalizeMediumSetupView(value) {
+  if (!value || typeof value !== 'object') return null;
+  const counter = value.counterState && typeof value.counterState === 'object' ? value.counterState : {};
+  return Object.freeze({
+    capability: String(value.capability || ''),
+    counterVerb: String(value.counterVerb || ''),
+    runtime: String(value.runtime || 'unwired'),
+    counterState: Object.freeze({
+      rcsDisrupted: counter.rcsDisrupted === true,
+      driveDisabled: counter.driveDisabled === true,
+      momentumSunk: counter.momentumSunk === true,
+      wellPinned: counter.wellPinned === true,
+      tumbling: counter.tumbling === true,
+    }),
+  });
+}
+
+function normalizeVisibleRetreatView(value) {
+  if (!value || typeof value !== 'object') return null;
+  return Object.freeze({
+    hullFraction: saturate(finite(value.hullFraction, 0.3)),
+    smokeCue: String(value.smokeCue || ''),
+    dumpCue: String(value.dumpCue || ''),
+    bark: String(value.bark || ''),
+    runtime: String(value.runtime || 'unwired'),
+  });
 }
 
 function normalizeContact(value) {

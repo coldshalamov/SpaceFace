@@ -10,6 +10,12 @@ import {
   stableId,
 } from './contracts.js';
 import { normalizeFactionBehaviorProfile } from './factionBehavior.js';
+import {
+  mediumCounterWindow,
+  mediumFlightProfile,
+  mediumSetupKind,
+  visibleMediumRetreat,
+} from './mediumFamilyDoctrine.js';
 
 export const CombatDoctrineId = Object.freeze({
   INTERCEPTOR_FLYBY: 'interceptor_flyby',
@@ -111,12 +117,44 @@ export class CombatDoctrineRuntime {
     record.outcome = null;
     record.telegraphStartedTick = null;
 
+    const visibleRetreat = visibleMediumRetreat(self);
+    if (visibleRetreat) {
+      record.mediumCounter = null;
+      record.visibleRetreat = visibleRetreat;
+      if (record.phase !== 'visible_retreat') {
+        record.outcome = 'low_hull_visible_retreat';
+        record.flightPoint = egressPoint(self, target, record.side);
+        // ai:flee is the existing retreat presentation seam. Do not also raise ai:telegraph here:
+        // HUD maps doctrine ids to attack warnings, which would label a withdrawal as FLYBY/CHARGE.
+        enter(record, 'visible_retreat', tick, null);
+      }
+      return snapshot(record, target, directive, factionBehavior);
+    }
+    record.visibleRetreat = null;
+
     if (!target) {
+      record.mediumCounter = null;
       enter(record, initialPhase(doctrineId, record.flightProfile), tick, null);
       return snapshot(record, null, directive, factionBehavior);
     }
 
     const distance = self && self.pos ? distance2(self.pos, target.pos) : Infinity;
+    const mediumCounter = mediumCounterWindow(self, target);
+    if (mediumCounter) {
+      const newlyCountered = !record.mediumCounter || record.mediumCounter.reason !== mediumCounter.reason;
+      record.mediumCounter = mediumCounter;
+      record.outcome = `medium_counter:${mediumCounter.reason}`;
+      record.flightPoint = self && self.pos
+        ? Object.freeze({ x: finite(self.pos.x), z: finite(self.pos.z) })
+        : null;
+      if (record.phase !== mediumCounter.phase || newlyCountered) enter(record, mediumCounter.phase, tick, null);
+      return snapshot(record, target, directive, factionBehavior);
+    }
+    if (record.mediumCounter) {
+      record.mediumCounter = null;
+      record.flightPoint = null;
+      enter(record, initialPhase(doctrineId, record.flightProfile), tick, null);
+    }
     if (factionBehavior && (factionBehavior.disableThenRun || factionBehavior.destroyTarget === false)
       && target.disabled === true) {
       const egressPhase = doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY
@@ -433,6 +471,9 @@ function makeRecord(seed, tick, entityId, doctrineId, targetId, flightProfile, s
     passLane: null,
     coverRockId: null,
     skitterTriggerSequence: -1,
+    mediumSetupKind: mediumSetupKind(self),
+    mediumCounter: null,
+    visibleRetreat: null,
     authoredMaxSpeed: finite(self && self.maxSpeed, 0),
     ramAuthorized: false,
     lastTick: tick,
@@ -489,7 +530,18 @@ function snapshot(record, target, directive, factionBehavior = null) {
   let faceTarget = false;
   let maneuverMaxSpeed = null;
   let straightPass = false;
-  if (doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY || doctrineId === CombatDoctrineId.BRAWLER_COMMIT) {
+  if (phase === 'visible_retreat') {
+    maneuverKind = ManeuverKind.RETREAT;
+    maneuverTargetId = null;
+    preferredRange = RUN_EGRESS_DISTANCE;
+  } else if (record.mediumCounter) {
+    // The shipped counter systems own the physical frame. Holding at the current point prevents AI
+    // correction from fighting RCS drift, a Well pin, or Momentum Sink while keeping all forces in
+    // the normal maneuver/physics membrane.
+    maneuverKind = ManeuverKind.HOLD;
+    maneuverTargetId = null;
+    preferredRange = 0;
+  } else if (doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY || doctrineId === CombatDoctrineId.BRAWLER_COMMIT) {
     const brawler = doctrineId === CombatDoctrineId.BRAWLER_COMMIT || record.flightProfile === 'brawler_commit';
     const speedPass = record.flightProfile === 'speed_pass';
     const coverAmbush = record.flightProfile === 'cover_ambush';
@@ -570,7 +622,7 @@ function snapshot(record, target, directive, factionBehavior = null) {
     if (phase === 'fire_window') allowedActionId = 'action_burst';
   }
   const isEgress = phase === 'extend' || phase === 'breakaway' || phase === 'escape' || phase === 'recover'
-    || phase === 'retreat' || phase === 'return_to_cover';
+    || phase === 'retreat' || phase === 'visible_retreat' || phase === 'return_to_cover';
   if (factionBehavior && !isEgress) preferredRange = factionBehavior.preferredRange;
   return Object.freeze({
     doctrineId,
@@ -597,6 +649,13 @@ function snapshot(record, target, directive, factionBehavior = null) {
     preferredRange,
     allowedActionId,
     outcome: record.outcome,
+    mediumSetup: record.mediumSetupKind ? Object.freeze({
+      kind: record.mediumSetupKind,
+      runtime: 'combat_doctrine',
+      countered: !!record.mediumCounter,
+      reason: record.mediumCounter && record.mediumCounter.reason || null,
+    }) : null,
+    visibleRetreat: record.visibleRetreat,
     contestKind: doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER && phase === 'control'
       ? 'tether-control-contest'
       : null,
@@ -669,22 +728,23 @@ function initialPhase(doctrineId, flightProfile = null) {
 }
 
 function flightProfileFor(doctrineId, self) {
-  if (doctrineId === CombatDoctrineId.BRAWLER_COMMIT) return 'brawler_commit';
-  if (doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE) return 'capital_broadside';
+  let profile = null;
+  if (doctrineId === CombatDoctrineId.BRAWLER_COMMIT) profile = 'brawler_commit';
+  else if (doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE) profile = 'capital_broadside';
   if (doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY &&
     (self && (self.operationalMassBand === 'heavy' || self.operationalMassBand === 'capital'))) {
-    return 'brawler_commit';
+    profile = 'brawler_commit';
   }
-  if (doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY && self && self.combatRoleId === 'dart_swarmer') {
-    return 'speed_pass';
+  if (!profile && doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY && self && self.combatRoleId === 'dart_swarmer') {
+    profile = 'speed_pass';
   }
-  if (doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY && self && self.combatRoleId === 'skitter_swarmer') {
-    return 'cover_ambush';
+  if (!profile && doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY && self && self.combatRoleId === 'skitter_swarmer') {
+    profile = 'cover_ambush';
   }
-  if (doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY) return 'flyby';
-  if (doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER) return 'tether_raider';
-  if (doctrineId === CombatDoctrineId.FIELD_ANCHOR_CONTROLLER) return 'field_anchor';
-  return 'ranged_standoff';
+  if (!profile && doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY) profile = 'flyby';
+  else if (!profile && doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER) profile = 'tether_raider';
+  else if (!profile && doctrineId === CombatDoctrineId.FIELD_ANCHOR_CONTROLLER) profile = 'field_anchor';
+  return mediumFlightProfile(self, profile || 'ranged_standoff');
 }
 
 function lockSpeedPassLane(record, self, target) {
@@ -823,6 +883,9 @@ function frozenRecord(record) {
     side: record.side,
     fireWindow: record.fireWindow,
     outcome: record.outcome,
+    mediumSetupKind: record.mediumSetupKind,
+    mediumCounter: record.mediumCounter,
+    visibleRetreat: record.visibleRetreat,
     lastTick: record.lastTick,
   });
 }
