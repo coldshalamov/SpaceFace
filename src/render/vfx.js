@@ -459,16 +459,22 @@ const DOCTRINE_TELL_OFFSCREEN_R = 58;
 // The player Hitch continuous plume is intentionally NOT cadence-gated: it is ship-attached
 // nozzle geometry, and lagging pose updates at high speed creates a ghosted double thruster.
 const VFX_SEAM_MARKERS_HZ = 20;
-// Loot magnet comet trails. The magnet itself is real physics (src/systems/mining.js: range 420,
-// accel 900 wu/s², velocity-inheriting homing) and it already works — but a drop flying home looked
-// like a small drifting rock, so the single most repeated reward in the game read as nothing. This
-// draws it as light. Cadence-gated and fully asleep when nothing is homing.
+// Pickup intake streams (AC-12). The magnet itself is real physics (src/systems/mining.js: range
+// 420, accel 900 wu/s², velocity-inheriting homing) and mining publishes which drops the capture
+// ripple has actually claimed. Each claimed drop lays a true XZ ribbon along the curved path it
+// really flew — never a straight pickup-to-hull chord, and never a stretched billboard standing in
+// for a trail. Cadence-gated and fully asleep when nothing is homing.
 const VFX_LOOT_MAGNET_HZ = 24;
 // Slightly beyond bare MAGNET_RANGE (420); fitted tractors (560/780) still get trails in the
 // inner band. Outer-band pull beyond this is real but dim — avoid a permanent huge draw budget.
 const LOOT_MAGNET_DRAW_RANGE = 580;
-const LOOT_MAGNET_MIN_SPEED = 26;        // wu/s; below this a drop is drifting, not being pulled
-const LOOT_MAGNET_MAX_TRAILED = 24;      // hard cap on simultaneously trailed drops
+const LOOT_MAGNET_MAX_TRAILED = 24;      // hard cap on simultaneous intake ribbons
+const PICKUP_STREAM_SEGMENTS = 16;       // bounded history per drop: a short curved wake, not a cable
+const PICKUP_STREAM_WIDTH = 1.15;
+const PICKUP_STREAM_SPACING_WU = 2.2;    // history sample spacing along the real flown path
+const PICKUP_STREAM_DISCONTINUITY_WU = 160;
+const PICKUP_STREAM_ARRIVAL_S = 0.20;    // hull-intake runout: the stream drains into the surface
+const PICKUP_STREAM_MIN_SPEED = 4;       // a drop this slow has no path worth drawing yet
 const VFX_RIBBON_TRAILS_HZ = 30;
 // Owner call 2026-08-11: half the long "tube" wake. History still trails past positions, but the
 // retained path is roughly ~half the prior 72×2.4 WU arc so the jet reads as exhaust, not a cable.
@@ -809,6 +815,13 @@ export const vfx = {
     this._momentumSinkParticleEnd = new THREE.Color(MOMENTUM_SINK_VFX_COLORS.particleEnd);
     this._cadenceStationSideEvent = 0;
     this._lootMagnetLive = 0;
+    // AC-12 intake streams. Fixed pool of at most LOOT_MAGNET_MAX_TRAILED ribbons; slots are
+    // acquired and released by pickup id, never allocated per drop.
+    this._pickupStreams = new Map();
+    this._pickupStreamPool = [];
+    this._pickupStreamFree = [];
+    this._pickupStreamLocal = { x: 0, z: 0 };
+    this._pickupStreamSeen = new Set();
     this._stationSideEventSlots = [];
     for (let i = 0; i < STATION_SIDE_EVENT_VFX_CAPACITY; i++) {
       this._stationSideEventSlots.push({
@@ -956,6 +969,7 @@ export const vfx = {
     this._weaponPresenter = null;
     if (this._combatBeams && typeof this._combatBeams.dispose === 'function') this._combatBeams.dispose();
     this._combatBeams = null;
+    this._disposePickupStreams();
   },
 
   _vfxOwnerRoots() {
@@ -990,6 +1004,7 @@ export const vfx = {
       add(this._energy.rcsSystem && this._energy.rcsSystem.group);
     }
     for (const trail of this._ribbonTrails?.values?.() || []) add(trail.getMesh?.());
+    for (const slot of this._pickupStreamPool || []) add(slot.trail && slot.trail.getMesh?.());
     return roots;
   },
 
@@ -1491,6 +1506,12 @@ export const vfx = {
     add('save:restoring', () => this._resetRibbonTrails());
     add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
     add('world:playerRelocated', () => this._resetRibbonTrails());
+    // AC-12 intake streams follow the same lifecycle boundaries as the engine wakes: a regenerated
+    // world, a restored save, or a relocated player invalidates every in-flight path.
+    for (const boundary of [
+      'sector:enter', 'sector:exit', 'game:new', 'game:newGame',
+      'save:restoring', 'save:loaded', 'world:playerRelocated', 'player:death',
+    ]) add(boundary, () => this._resetPickupStreams());
     add('settings:changed', (p) => {
       if (!p || p.section !== 'video') return;
       if (p.key === 'particleQuality' || p.key == null) this._syncParticleQuality();
@@ -1636,6 +1657,9 @@ export const vfx = {
           if (typeof trail.clear === 'function') trail.clear();
         }
       }
+      // Intake streams live in the same frame-local XZ space. They are short and reseed within a
+      // handful of samples, so the same clear-and-reseed rule applies rather than a joined strip.
+      if (this._pickupStreams && this._pickupStreams.size) this._resetPickupStreams();
       if (this._weaponPresenter && typeof this._weaponPresenter.reproject === 'function') {
         this._weaponPresenter.reproject(ox, oz);
       }
@@ -7918,53 +7942,38 @@ export const vfx = {
   // to be a 12-particle puff. Now it reads as light ARRIVING: a stretched streak laid along the
   // last leg of the drop's path into the hull, a hot pop at the intake, and a short spray that
   // implodes rather than scattering — so the eye is pulled to the exact collecting hull.
+  // AC-12 arrival. The drop's own stream is walked onto the truthful hull-surface intake point the
+  // sim reported and then drained over a short runout, so the light resolves INTO the ship at the
+  // place it actually entered. No stretched flash cards, no arrival ring, no camera-facing disc —
+  // the punctuation is one small short-lived intake light on real geometry.
   _onPickup(p) {
     if (successfulPickupAmount(p) <= 0 || !this._scene || !p.pos) return;
-    const col = p.kind === 'credits' ? '#ffcc44' : oreColor(p.commodityId);
+    const col = (p.kind === 'credits' || p.kind === 'credit_chip')
+      ? '#ffcc44'
+      : oreColor(p.commodityId);
     const collector = p.collectorId == null
       ? (this.helpers && this.helpers.player ? this.helpers.player() : this._ent(this.state.playerId))
       : this._ent(p.collectorId);
-    this._spawnSprite(SPR_FLASH, p.pos.x, 1.2, p.pos.z, 0.22, 3.0, 5.6, 0.9, 0.0, col, 0, 0);
-    this._c0.set('#ffffff'); this._c1.set(col);
+    if (!collector || !collector.pos) return;
 
-    if (collector && collector.pos) {
-      const dx = collector.pos.x - p.pos.x, dz = collector.pos.z - p.pos.z;
-      const dist = Math.hypot(dx, dz) || 1;
-      const ux = dx / dist, uz = dz / dist;
-      const roll = Math.atan2(uz, ux);
-      const leg = Math.min(dist, 22);
+    const intake = p.intakePoint && Number.isFinite(p.intakePoint.x) && Number.isFinite(p.intakePoint.z)
+      ? p.intakePoint
+      : collector.pos;
 
-      // The arrival streak: three overlapping stretched sprites along the final approach, brightest
-      // nearest the hull, so the light visibly resolves INTO the ship rather than fading in place.
-      for (let k = 0; k < 3; k++) {
-        const f = (k + 1) / 4;
-        this._spawnSprite(SPR_FLASH,
-          collector.pos.x - ux * leg * f, 1.3, collector.pos.z - uz * leg * f,
-          0.16 + k * 0.04, leg * (0.34 + 0.12 * k), 0.4,
-          0.75 - k * 0.16, 0.0, k === 0 ? '#ffffff' : col,
-          ux * 90, uz * 90, 3.4, roll);
-      }
-      // Imploding spray: particles converge on the intake instead of scattering away from it.
-      for (let k = 0; k < 14; k++) {
-        const a = Math.random() * Math.PI * 2;
-        const r = 6 + Math.random() * 12;
-        const sx = collector.pos.x + Math.cos(a) * r;
-        const sz = collector.pos.z + Math.sin(a) * r;
-        const pull = 42 + Math.random() * 46;
-        this._spawnParticle(sx, sz, -Math.cos(a) * pull, -Math.sin(a) * pull,
-          0.20 + Math.random() * 0.12, 1.5, 0.0, this._c0, this._c1, 1.2, 1.6, 0,
-          a + Math.PI, 0.8);
-      }
-      this._spawnSprite(SPR_FLASH, collector.pos.x, 1.4, collector.pos.z, 0.14, 2.6, 5.2, 0.9, 0.0, '#ffffff', 0, 0);
-      this._spawnSprite(SPR_RING, collector.pos.x, 1.0, collector.pos.z, 0.26, 1.2, 6.5, 0.5, 0.0, col, 0, 0);
-      this._flashLight({ x: collector.pos.x, z: collector.pos.z }, col, 3.4, 7.0, 110);
-    } else {
-      for (let k = 0; k < 12; k++) {
-        const a = Math.random() * Math.PI * 2;
-        const sp = 12 + Math.random() * 18;
-        this._spawnParticle(p.pos.x, p.pos.z, Math.cos(a) * sp, Math.sin(a) * sp,
-          0.3 + Math.random() * 0.15, 1.8, 0.0, this._c0, this._c1, 3.0, 2, 6 + Math.random() * 10);
-      }
+    const streamId = p.capturePathId != null ? p.capturePathId : p.pickupId;
+    const slot = this._pickupStreams && streamId != null ? this._pickupStreams.get(streamId) : null;
+    if (slot && slot.arrivalAge < 0) {
+      // Terminate the real flown path exactly on the hull surface, then let it drain.
+      const local = this._toLocalXZ(intake.x, intake.z, this._pickupStreamLocal);
+      slot.trail.push(local.x, local.z, Math.atan2(intake.z - p.pos.z, intake.x - p.pos.x));
+      slot.owner = null;
+      slot.arrivalAge = 0;
+    }
+
+    const accessibilityProfile = resolveVfxAccessibilityProfile(this.state && this.state.settings);
+    const flashScale = accessibilityProfile.flashOpacityScale;
+    if (flashScale > 0.01) {
+      this._flashLight({ x: intake.x, z: intake.z }, col, 2.2 * flashScale, 6.5, 78);
     }
   },
 
@@ -8830,7 +8839,9 @@ export const vfx = {
       const lootStep = this._consumeCadence('_cadenceLootMagnet', dt, VFX_LOOT_MAGNET_HZ);
       sub.lootMagnet = lootStep > 0 ? this._updateLootMagnet(lootStep) : (sub.lootMagnet || 0);
     } else {
-      this._lootMagnetLive = 0;
+      // Nothing captured and nothing draining: release every pooled ribbon so the subsystem sleeps
+      // with no live geometry rather than leaving a frozen stream in the world.
+      this._resetPickupStreams();
       sub.lootMagnet = 0;
     }
     // PQ-012 continuous field flow — cadence-gated pooled emission; slept when no field is deployed.
@@ -8906,87 +8917,208 @@ export const vfx = {
   },
 
   // -------------------------------------------------------------------------
-  // Loot magnet presentation.
+  // Pickup intake streams (AC-12).
   //
   // The pull itself is real and already tuned (src/systems/mining.js — 420 wu range, 900 wu/s²,
-  // velocity-inheriting so a combat flyby sweeps drops up). What was missing is that it LOOKED like
-  // nothing: a drop being vacuumed in at 280 wu/s rendered as a small tumbling rock, so the most
-  // frequently repeated reward in the game had no reward read at all.
+  // velocity-inheriting so a combat flyby sweeps drops up) and the capture ripple decides which
+  // drops have actually been claimed. What was missing is that it LOOKED like nothing: a drop being
+  // vacuumed in at 280 wu/s rendered as a small tumbling rock.
   //
-  // Here each homing drop gets a stretched additive comet trail oriented along its own velocity
-  // (the instanced sprite pool already carries aspect + roll) plus a bright head, tinted by the ore
-  // it carries. Cost is bounded three ways: a cadence gate, a hard cap on trailed drops, and a
-  // whole-subsystem sleep when nothing is homing.
+  // The drop entity stays the visible head. Behind it, a true XZ ribbon is laid down from the
+  // positions the drop really occupied, so the stream curves exactly the way the drop flew, and it
+  // terminates on the hull surface point the sim reported rather than at the ship's center. Cost is
+  // bounded four ways: a cadence gate, a fixed pool of at most LOOT_MAGNET_MAX_TRAILED ribbons that
+  // are acquired/released rather than allocated, retirement when a drop dies or leaves the band, and
+  // a whole-subsystem sleep when nothing is homing.
   // -------------------------------------------------------------------------
+  _captureWave() {
+    const runtime = this.state && this.state.miningRuntime;
+    const wave = runtime && runtime.captureWave;
+    return wave && wave.entries && typeof wave.entries.get === 'function' ? wave : null;
+  },
+
+  _pickupStreamCaptured(wave, entity, simTime) {
+    if (!wave || !entity) return false;
+    const entry = wave.entries.get(entity.id);
+    if (!entry) return false;
+    return Number.isFinite(simTime) && simTime >= entry.activateAt;
+  },
+
   _lootMagnetRelevant() {
     const state = this.state;
     if (!state) return false;
+    // A stream still draining into the hull keeps the subsystem awake for its short runout.
+    if (this._pickupStreams && this._pickupStreams.size) return true;
+    const wave = this._captureWave();
+    if (!wave || wave.entries.size === 0) return false;
     const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(state.playerId);
     if (!player || !player.alive || !player.pos) return false;
     const list = state.entityList;
     if (!list || !list.length) return false;
     const r2 = LOOT_MAGNET_DRAW_RANGE * LOOT_MAGNET_DRAW_RANGE;
+    const simTime = state.simTime;
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
       if (!e || !e.alive || e.type !== 'pickup' || !e.pos) continue;
       const dx = e.pos.x - player.pos.x, dz = e.pos.z - player.pos.z;
       if (dx * dx + dz * dz > r2) continue;
-      const vx = (e.vel && e.vel.x) || 0, vz = (e.vel && e.vel.z) || 0;
-      if (vx * vx + vz * vz >= LOOT_MAGNET_MIN_SPEED * LOOT_MAGNET_MIN_SPEED) return true;
+      if (this._pickupStreamCaptured(wave, e, simTime)) return true;
     }
     return false;
+  },
+
+  /** Acquire a pooled ribbon for this drop, growing the pool only up to the hard cap. */
+  _acquirePickupStream(pickupId, color) {
+    if (!this._pickupStreams) return null;
+    let slot = this._pickupStreams.get(pickupId);
+    if (slot) return slot;
+    if (this._pickupStreams.size >= LOOT_MAGNET_MAX_TRAILED) return null;
+    slot = this._pickupStreamFree.pop() || null;
+    if (!slot) {
+      if (this._pickupStreamPool.length >= LOOT_MAGNET_MAX_TRAILED || !this._scene) return null;
+      slot = {
+        trail: createRibbonTrail(this._scene, color, PICKUP_STREAM_SEGMENTS, PICKUP_STREAM_WIDTH),
+        owner: null,
+        arrivalAge: -1,
+        colorHex: null,
+      };
+      this._pickupStreamPool.push(slot);
+    }
+    slot.owner = null;
+    slot.arrivalAge = -1;
+    slot.trail.clear();
+    this._pickupStreams.set(pickupId, slot);
+    this._tintPickupStream(slot, color);
+    return slot;
+  },
+
+  _tintPickupStream(slot, color) {
+    if (!slot || slot.colorHex === color) return;
+    const material = slot.trail.getMaterial && slot.trail.getMaterial();
+    if (material && material.uniforms && material.uniforms.uColor) {
+      material.uniforms.uColor.value.set(color);
+    }
+    slot.colorHex = color;
+  },
+
+  _releasePickupStream(pickupId) {
+    if (!this._pickupStreams) return;
+    const slot = this._pickupStreams.get(pickupId);
+    if (!slot) return;
+    this._pickupStreams.delete(pickupId);
+    slot.owner = null;
+    slot.arrivalAge = -1;
+    slot.trail.clear();
+    this._pickupStreamFree.push(slot);
+  },
+
+  _resetPickupStreams() {
+    if (!this._pickupStreams) return;
+    for (const id of [...this._pickupStreams.keys()]) this._releasePickupStream(id);
+    this._lootMagnetLive = 0;
+  },
+
+  _disposePickupStreams() {
+    this._resetPickupStreams();
+    for (const slot of this._pickupStreamPool || []) slot.trail?.dispose?.();
+    this._pickupStreams = new Map();
+    this._pickupStreamPool = [];
+    this._pickupStreamFree = [];
   },
 
   _updateLootMagnet(step) {
     const state = this.state;
     const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(state.playerId);
-    if (!player || !player.pos) { this._lootMagnetLive = 0; return 0; }
+    if (!player || !player.pos || !this._scene) { this._resetPickupStreams(); return 0; }
+    const wave = this._captureWave();
     const list = state.entityList || [];
     const r2 = LOOT_MAGNET_DRAW_RANGE * LOOT_MAGNET_DRAW_RANGE;
-    const burst = this._burst || 1;
+    const accessibilityProfile = resolveVfxAccessibilityProfile(this.state && this.state.settings);
+    const flashReduce = accessibilityProfile.flashOpacityScale < 1;
+    const simTime = state.simTime;
+    const dt = Number.isFinite(step) && step > 0 ? Math.min(step, 0.1) : 1 / 60;
+
+    // Streams already draining into the hull run their short arrival runout to completion; the
+    // sim entity is gone, so no follow() happens — only the fade.
+    for (const [pickupId, slot] of this._pickupStreams) {
+      if (slot.arrivalAge < 0) continue;
+      slot.arrivalAge += dt;
+      if (slot.arrivalAge >= PICKUP_STREAM_ARRIVAL_S) {
+        this._releasePickupStream(pickupId);
+        continue;
+      }
+      const runout = 1 - slot.arrivalAge / PICKUP_STREAM_ARRIVAL_S;
+      slot.trail.rebuild(
+        (flashReduce ? 0.44 : 0.78) * runout,
+        (this._t * 0.5) % 1,
+        this._t,
+        (flashReduce ? 1.1 : 1.9) * runout,
+      );
+    }
+
+    const seen = this._pickupStreamSeen;
+    seen.clear();
     let drawn = 0;
-    for (let i = 0; i < list.length && drawn < LOOT_MAGNET_MAX_TRAILED; i++) {
+    for (let i = 0; i < list.length; i++) {
       const e = list[i];
       if (!e || !e.alive || e.type !== 'pickup' || !e.pos) continue;
+      const existing = this._pickupStreams.get(e.id);
+      if (existing && existing.arrivalAge >= 0) continue;
       const dx = e.pos.x - player.pos.x, dz = e.pos.z - player.pos.z;
-      const dist2 = dx * dx + dz * dz;
-      if (dist2 > r2) continue;
+      const inBand = dx * dx + dz * dz <= r2 && this._pickupStreamCaptured(wave, e, simTime);
+      if (!inBand) {
+        if (existing) this._releasePickupStream(e.id);
+        continue;
+      }
+      // In-band drops hold their slot even while momentarily too slow to lay a path, so a stream
+      // cannot flicker out at the instant of capture and re-acquire a frame later.
+      seen.add(e.id);
       const vx = (e.vel && e.vel.x) || 0, vz = (e.vel && e.vel.z) || 0;
       const speed = Math.hypot(vx, vz);
-      if (speed < LOOT_MAGNET_MIN_SPEED) continue;
-      drawn++;
+      if (speed < PICKUP_STREAM_MIN_SPEED) continue;
 
       const data = e.data || {};
-      const col = data.kind === 'credits' ? '#ffcc44' : oreColor(data.commodityId);
-      // Closing hard reads hotter and longer: the trail is a speed gauge you never have to read.
-      const rush = Math.min(1, speed / 260);
-      const roll = Math.atan2(vz, vx);
-      const stretch = 1.5 + rush * 2.0;
+      const col = (data.kind === 'credits' || data.kind === 'credit_chip')
+        ? '#ffcc44'
+        : oreColor(data.commodityId);
+      const slot = existing || this._acquirePickupStream(e.id, col);
+      if (!slot) continue;         // pool saturated: the cap holds, no ribbon is faked
+      this._tintPickupStream(slot, col);
+      drawn++;
 
-      // Head: a small white-cored spark riding the drop itself.
-      this._spawnSprite(SPR_FLASH, e.pos.x, 1.2, e.pos.z,
-        0.16 + rush * 0.10, 1.5 + rush * 1.3, 0.5,
-        0.55 + rush * 0.35, 0.0, '#ffffff', vx * 0.35, vz * 0.35,
-        Math.min(3.5, stretch), roll);
-      // Tail: a coloured streak laid down behind it, drifting slower so it reads as a wake.
-      this._spawnSprite(SPR_FLASH, e.pos.x - vx * step * 1.4, 1.1, e.pos.z - vz * step * 1.4,
-        0.24 + rush * 0.16, 1.1 + rush * 1.9, 0.35,
-        0.30 + rush * 0.28, 0.0, col, vx * 0.18, vz * 0.18,
-        Math.min(3.5, stretch * 1.25), roll);
-      // A couple of trailing embers so the wake has grain rather than being one clean smear.
-      if (burst > 0.7) {
-        this._c0.set('#ffffff'); this._c1.set(col);
-        const jitter = (Math.random() - 0.5) * 8;
-        this._spawnParticle(
-          e.pos.x - vx * step, e.pos.z - vz * step,
-          vx * 0.22 - vz * 0.02 + jitter, vz * 0.22 + vx * 0.02 + jitter,
-          0.22 + Math.random() * 0.16, 0.9 + rush * 0.7, 0.0,
-          this._c0, this._c1, 2.4, 1.1, 0, roll, 0.7 + rush * 0.5,
-        );
-      }
+      // Sample the drop's ACTUAL position; the ribbon's own history is what curves, so a drop that
+      // arcs around the hull leaves an arc rather than a chord.
+      const local = this._toLocalXZ(e.pos.x, e.pos.z, this._pickupStreamLocal);
+      slot.trail.follow(
+        local.x,
+        local.z,
+        Math.atan2(vz, vx),
+        dt,
+        e,
+        PICKUP_STREAM_SPACING_WU,
+        PICKUP_STREAM_DISCONTINUITY_WU,
+        1 / VFX_LOOT_MAGNET_HZ,
+      );
+      slot.owner = e;
+      // Closing hard reads hotter: the stream is a speed gauge you never have to read.
+      const rush = Math.min(1, speed / 260);
+      slot.trail.rebuild(
+        (0.34 + rush * 0.36) * (flashReduce ? 0.58 : 1),
+        (this._t * (flashReduce ? 0.22 : 0.45)) % 1,
+        this._t,
+        (1.25 + rush * 0.55) * (flashReduce ? 0.72 : 1),
+      );
     }
-    this._lootMagnetLive = drawn;
-    return drawn > 0 ? 1 : 0;
+
+    // A drop that died, despawned, or fell out of the entity list this frame never reaches the loop
+    // above, so retirement is swept here rather than left to a stale owner reference.
+    for (const [pickupId, slot] of this._pickupStreams) {
+      if (slot.arrivalAge >= 0 || seen.has(pickupId)) continue;
+      this._releasePickupStream(pickupId);
+    }
+
+    this._lootMagnetLive = this._pickupStreams.size;
+    return drawn > 0 || this._pickupStreams.size > 0 ? 1 : 0;
   },
 
   // -------------------------------------------------------------------------

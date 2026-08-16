@@ -18,6 +18,12 @@ import { RECIPES, MUSIC_STEMS } from '../data/audioRecipes.js';
 import { playRecipe, releaseVoice, disposeVoice, getNoiseBuffer } from './synth.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { successfulPickupAmount } from '../core/pickupAcceptance.js';
+import {
+  advancePickupChain,
+  createPickupChain,
+  isCreditChipGrantReason,
+  resetPickupChain,
+} from '../systems/pickupCaptureWave.js';
 import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
 import { DRIVE_FAMILIES, resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { CombatDoctrineId } from '../ai/combatDoctrine.js';
@@ -608,6 +614,9 @@ export const audio = {
     rt._loopPositionDirty = true;
     rt._nextLoopPositionUpdate = 0;
     rt._musicThreatScratch = [];
+    // AC-12 collection pitch ladder. Transient presentation state only: it advances on every
+    // collected pickup even when the voice is muted, culled, or soft-capped away.
+    rt._pickupChain = createPickupChain();
     // First-hour identity + mix hierarchy (cosmetic audio only — never mutates gameplay).
     rt._priorityBus = createCuePriorityBus();
     rt._priorityEngineProbe = { role: 'engineLoop', loop: true };
@@ -692,7 +701,14 @@ export const audio = {
     bus.on('mining:tick', (p) => this._onMiningTick(p));
     bus.on('asteroid:destroyed', (p) => this.play('sfx_explosion_small', { position: p && p.pos, gain: 0.7 }));
     bus.on('pickup:collected', (p) => this._onPickupCollected(p));
-    bus.on('credits:changed', (p) => { if (p && p.delta > 0) this.play('sfx_ui_confirm', { gain: 0.7 }); });
+    bus.on('credits:changed', (p) => {
+      if (!p || !(p.delta > 0)) return;
+      // A collected credit chip already spoke with its own rounder arrival voice on
+      // pickup:collected. Layering the generic positive-credit confirm on the same grant is two
+      // money sounds for one pickup, so the chip grant reason silences this one.
+      if (isCreditChipGrantReason(p.reason)) return;
+      this.play('sfx_ui_confirm', { gain: 0.7 });
+    });
     bus.on('economy:tradeCompleted', () => this.play('sfx_ui_confirm', { gain: 0.6 }));
     // Mission accept/complete: previously TOTAL silence on the core progression loop. Accept gets a
     // bright rising stinger; complete gets a triumphant two-note chord + a brief music duck so the
@@ -734,6 +750,7 @@ export const audio = {
     bus.on('sector:enter', () => {
       rt._activeCombatEncounters.clear();
       rt._doctrineThreatUntil = -1e9;
+      resetPickupChain(rt._pickupChain);
       this._markMusicDirty();
     });
     bus.on('ship:boostStart', (p) => {
@@ -806,6 +823,8 @@ export const audio = {
     bus.on('save:loaded', () => {
       rt._activeCombatEncounters.clear();
       rt._doctrineThreatUntil = -1e9;
+      // A restored save can move sim time backwards; a stale ladder would start mid-climb.
+      resetPickupChain(rt._pickupChain);
       this._applySettings();
       this._markMusicDirty();
     });
@@ -1587,9 +1606,24 @@ export const audio = {
     }
   },
 
+  // AC-12 collection ladder. The pitch climbs a bounded semitone per chained pickup and saturates
+  // on the eighth; a 0.32 s gap resets it. Past the soft cap voices thin out and lose gain so a
+  // mote cloud shimmers instead of machine-gunning. Materials read light; credit chips read
+  // rounder and lower, so you learn to hear money without a single word of UI.
   _onPickupCollected(p) {
     if (successfulPickupAmount(p) <= 0) return;
-    this.play('sfx_mining_impact', { position: p && p.pos, gain: 0.8 });
+    const rt = this.rt;
+    const chain = rt && rt._pickupChain;
+    if (!chain) return;
+    const kind = p && p.kind;
+    const credit = kind === 'credits' || kind === 'credit_chip' || (p && p.credits > 0);
+    // The ladder advances first and unconditionally — a muted, distance-culled, or soft-capped
+    // pickup must still move the chain, or the next audible voice restarts at the bottom rung.
+    const voice = advancePickupChain(chain, this.state ? this.state.simTime : 0, { credit });
+    if (!voice.play) return;
+    // The intake point is where the drop actually entered the hull; pan from there.
+    const position = (p && p.intakePoint) || (p && p.pos) || null;
+    this.play(voice.recipeId, { position, gain: voice.gain, rate: voice.rate });
   },
 
   _onPlayerDeath(p) {
