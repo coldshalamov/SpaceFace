@@ -18,6 +18,7 @@ import { explorationDiscoveryPlates } from '../../world/explorationJournal.js';
 import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
 import { createShipLedgerPanel } from './shipLedger.js';
 import { ARCADE_VERB_BEATS, arcadeVerbStatus } from '../../data/onboardingVerbs.js';
+import { launchAces } from '../../data/namedAces.js';
 
 const STYLE_ID = 'sf-codex-style';
 
@@ -119,7 +120,7 @@ function shell(rootEl, title, extraClass) {
   return { panel: rootEl, body };
 }
 
-const TABS = ['Story', 'Verbs', 'Comms', 'Discoveries', 'Black Boxes', 'Graffiti', 'Figures', 'Ship', 'Archive', 'Ledger'];
+const TABS = ['Story', 'Aces', 'Verbs', 'Comms', 'Discoveries', 'Black Boxes', 'Graffiti', 'Figures', 'Ship', 'Archive', 'Ledger'];
 
 // Signal Archive — the four authored intro cinematics, exposed as recovered transmission stills the
 // player can replay. Posters (C-INTRO-0N.jpg) are clean full-bleed frames; clips are the 6s mp4s.
@@ -465,6 +466,8 @@ export const codexScreen = {
     this._unsubs.push(ctx.bus.on('graffiti:show', refreshIfVisible));
     this._unsubs.push(ctx.bus.on('discovery:plateUnlocked', refreshIfVisible));
     this._unsubs.push(ctx.bus.on('codex:blackBoxRecovered', refreshIfVisible));
+    this._unsubs.push(ctx.bus.on('aceMemory:transition', refreshIfVisible));
+    this._unsubs.push(ctx.bus.on('aceMemory:rewardUnlocked', refreshIfVisible));
 
     this._render(ctx);
   },
@@ -533,6 +536,7 @@ export const codexScreen = {
     if (!isChromeLess) this._renderStatus(ctx);
     switch (this._activeTab) {
       case 'Story':    this._renderStory(ctx); break;
+      case 'Aces':     this._renderAces(ctx); break;
       case 'Verbs':    this._renderVerbs(ctx); break;
       case 'Comms':    this._renderComms(ctx); break;
       case 'Discoveries': this._renderDiscoveries(ctx); break;
@@ -663,6 +667,40 @@ export const codexScreen = {
     box.appendChild(grid);
     box.appendChild(el('div', 'sf-codex-status-note', summary.note));
     this._body.appendChild(box);
+  },
+
+  _renderAces(ctx) {
+    this._body.appendChild(el('div', 'sf-codex-section-h', 'Named Aces'));
+    const memory = ctx && ctx.state && ctx.state.aceMemory || {};
+    const seen = launchAces().filter((ace) => {
+      const rec = memory[ace.id];
+      return rec && rec.encountered === true;
+    });
+    if (!seen.length) {
+      this._body.appendChild(el('div', 'sf-codex-empty',
+        'No named hulls logged. Their stories begin when you meet them in flight.'));
+      return;
+    }
+    for (const ace of seen) {
+      const rec = memory[ace.id] || {};
+      const status = rec.defeated
+        ? 'DEFEATED'
+        : (rec.returned ? 'RETURNED' : (rec.returnScheduled ? 'RETURN EXPECTED' : (rec.fled ? 'AT LARGE' : 'ENCOUNTERED')));
+      const entry = el('article', 'sf-codex-entry');
+      entry.dataset.namedAceId = ace.id;
+      entry.appendChild(el('h3', null, `${ace.name} — ${ace.crew}`));
+      entry.appendChild(el('div', 'sf-codex-meta',
+        `${status} · ${ace.gimmick && ace.gimmick.label || ace.gimmickTag}`));
+      entry.appendChild(el('div', 'sf-codex-body', ace.barStory));
+      entry.appendChild(el('div', 'sf-codex-note', `First sighting: ${ace.spawnStory}`));
+      entry.appendChild(el('div', 'sf-codex-note',
+        `Flight read: ${ace.gimmick.mechanic} Counter: ${ace.gimmick.counter}`));
+      const reward = ace.reward;
+      entry.appendChild(el('div', 'sf-codex-note', rec.rewardClaimed
+        ? `Claimed: ${reward.physicalLabel}; ${reward.bountyCr} Cr bounty; ${reward.techLabel} (+${reward.researchPoints} RP).`
+        : `On defeat: ${reward.physicalLabel}; ${reward.bountyCr} Cr bounty; ${reward.techLabel} (+${reward.researchPoints} RP).`));
+      this._body.appendChild(entry);
+    }
   },
 
   _applySearchFilter() {

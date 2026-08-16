@@ -127,10 +127,37 @@ test('named Ace physically flees across its zone-scaled boundary before escape a
   assert.equal(h.transitions.filter((row) => row.transition === 'fled').length, 1);
   assert.equal(h.state.aceMemory[ACE_ID].returnScheduled, true,
     'the existing aceMemory receipt seam schedules the capped return');
+  const returnAt = h.state.aceMemory[ACE_ID].returnAt;
+  h.state.simTime = returnAt;
+  h.sim.registry.get('aceMemory')._returnAccum = 1;
+  h.sim.step();
+  const returnId = h.state.aceMemory[ACE_ID].returnEncounterId;
+  const returnLive = h.state.encounterDirector.live[returnId];
+  assert.ok(returnLive && returnLive.shapeId === 'named_hunter',
+    `recurrence re-enters through the same encounter owner rather than a private spawn shortcut: ${JSON.stringify({
+      returnId,
+      record: h.state.aceMemory[ACE_ID],
+      liveIds: Object.keys(h.state.encounterDirector.live || {}),
+    })}`);
+  assert.equal(returnLive.data.aceId, ACE_ID);
+  assert.equal(returnLive.data.recurrence, true);
+  const returnBoss = returnLive.ids.filter((id) => returnLive.roles[id] === 'boss')
+    .map((id) => h.state.entities.get(id))[0];
+  assert.ok(returnBoss);
+  assert.equal(returnBoss.data.namedAceId, ACE_ID);
+  assert.equal(returnBoss.data.appearance.hullColor, '#7e0f16');
+  assert.equal(h.state.aceMemory[ACE_ID].returnScheduled, false);
 
-  h.sim.runTicks(4);
-  h.bus.emit('entity:killed', { id: h.boss.id, killerId: h.player.id, pos: { ...h.boss.pos } });
-  assert.equal(h.resolved.length, 1, 'later ticks/events cannot add a second terminal outcome');
+  h.state.simTime = returnLive.data.engageAt;
+  h.state.encounterDirector._accum = 1;
+  h.sim.step();
+  returnBoss.hull = returnBoss.hullMax * 0.26;
+  h.state.encounterDirector._accum = 1;
+  h.sim.step();
+  assert.equal(returnLive.phase, 'retreat',
+    'the returning Ace retains the physical flee-and-intercept route');
+  assert.equal(returnBoss.data.ai.forceFlee, true);
+  assert.equal(h.resolved.length, 1, 'the recurrence does not mutate the first encounter receipt');
 });
 
 test('killing the fleeing Ace before the boundary wins and suppresses escape recurrence', async (t) => {

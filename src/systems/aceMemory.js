@@ -10,16 +10,10 @@ import {
   aceByName,
   aceFromText,
   newsForAceTransition,
-  returnCrewForAce,
-  returnLevelBandsForAce,
   returnPlanForAce,
 } from '../data/namedAces.js';
-import { barkFor } from '../data/barks.js';
-import { reachCultureDoctrineById } from '../data/pirateDoctrines.js';
 import { planetStatesForSector } from '../data/planetStates.js';
 import { hash32 } from '../core/rng.js';
-import { normalizeFactionBehaviorProfile } from '../ai/factionBehavior.js';
-import { makeEnemySpawnSpec } from './combat.js';
 
 export const ACE_MEMORY_VERSION = 2;
 
@@ -69,7 +63,8 @@ export const aceMemory = {
       this._rearmCultureIntroAfterLoad();
       this._rearmPlanetChallengesAfterLoad();
     });
-    this._listen('entity:destroyed', (p) => this._entityDestroyed(p));
+    this._listen('entity:killed', (p) => this._namedAceKilled(p));
+    this._listen('law:custodyTransfer', (p) => this._namedAceCustody(p));
     this._listen('massline:tumbled', (p) => this._flung(p));
     this._listen('aceMemory:playerKilled', (p) => this._playerKilled(p));
   },
@@ -186,6 +181,67 @@ export const aceMemory = {
       aceName: ace.name,
       lossId: rec.lastPlayerLossId,
       t: rec.lastPlayerKillAt,
+    });
+    return true;
+  },
+
+  _namedAceKilled(payload) {
+    if (!payload || payload.killerId !== this.state.playerId || payload.id == null) return false;
+    const entity = this.state.entities && this.state.entities.get(payload.id);
+    const ace = resolveAceFromEntity(entity);
+    const reward = ace && ace.reward;
+    if (!ace || !reward) return false;
+    const rec = recordFor(ensureMemory(this.state), ace);
+    return this._claimAceReward(ace, rec, payload, { physicalClaimed: true });
+  },
+
+  _namedAceCustody(payload) {
+    if (!payload || payload.entityId == null) return false;
+    const entity = this.state.entities && this.state.entities.get(payload.entityId);
+    const ace = resolveAceFromEntity(entity);
+    if (!ace || !ace.reward) return false;
+    this._transition('defeated', {
+      aceId: ace.id,
+      sectorId: sectorOf(this.state, payload),
+      t: payload.t,
+    });
+    const rec = recordFor(ensureMemory(this.state), ace);
+    rec.captured = true;
+    rec.capturedAt = nowOf(this.state, payload);
+    rec.custodyReceiptId = payload.custodyReceiptId || payload.id || null;
+    return this._claimAceReward(ace, rec, payload, {
+      physicalClaimed: false,
+      custodyReceiptId: rec.custodyReceiptId,
+    });
+  },
+
+  _claimAceReward(ace, rec, payload, options = {}) {
+    const reward = ace && ace.reward;
+    if (!reward || rec.rewardClaimed === true) return false;
+    rec.rewardClaimed = true;
+    rec.rewardClaimedAt = nowOf(this.state, payload);
+    rec.physicalRewardId = options.physicalClaimed === false ? null : (reward.uniqueItemId || null);
+    rec.physicalRewardSecuredByCustody = options.physicalClaimed === false;
+    rec.namedTechId = reward.techId || null;
+    rec.namedTechLabel = reward.techLabel || null;
+    if (reward.researchPoints > 0 && reward.techId) {
+      emit(this.bus, 'research:grant', {
+        amount: reward.researchPoints,
+        source: reward.techId,
+        receiptId: `named-ace:${ace.id}:tech`,
+      });
+    }
+    emit(this.bus, 'aceMemory:rewardUnlocked', {
+      aceId: ace.id,
+      aceName: ace.name,
+      uniqueItemId: reward.uniqueItemId || null,
+      physicalLabel: reward.physicalLabel || null,
+      physicalClaimed: options.physicalClaimed !== false,
+      custodyReceiptId: options.custodyReceiptId || null,
+      techId: reward.techId || null,
+      techLabel: reward.techLabel || null,
+      researchPoints: reward.researchPoints || 0,
+      t: rec.rewardClaimedAt,
     });
     return true;
   },
@@ -468,168 +524,58 @@ export const aceMemory = {
   },
 
   _spawnReturn(ace, rec, now) {
-    const spawnEntity = this.helpers && this.helpers.spawnEntity;
-    const budget = this.helpers && this.helpers.spawnBudget;
     const requestId = `aceReturn:${ace.id}:${rec.returnSeed || 0}:${rec.returnTier || 1}`;
-    const crew = returnCrewForAce(ace, rec.returnTier || 1);
-    const bands = returnLevelBandsForAce(ace, rec.returnTier || 1);
-    const wanted = crew.length;
     emit(this.bus, 'aceMemory:returnRequested', {
       aceId: ace.id,
       aceName: ace.name,
       requestId,
       returnTier: rec.returnTier || 1,
-      wanted,
-      levelBand: bands.current.slice(),
-      previousLevelBand: bands.previous.slice(),
     });
-
-    if (typeof spawnEntity !== 'function') {
+    const director = this.registry && this.registry.get('encounterDirector');
+    if (!director || typeof director.requestAuthoredEncounter !== 'function') {
       rec.nextReturnAttemptAt = now + 10;
       return;
     }
-
-    let grant = wanted;
-    if (budget && typeof budget.request === 'function') {
-      grant = budget.request(wanted, requestId);
-      if (grant <= 0) {
-        rec.nextReturnAttemptAt = now + 10;
-        return;
-      }
-    }
-
-    const spawnedIds = [];
-    for (let i = 0; i < crew.length && spawnedIds.length < grant; i++) {
-      const ship = crew[i];
-      const spec = this._returnShipSpec(ace, rec, requestId, ship, i);
-      const entity = spawnEntity(spec);
-      if (entity && entity.id != null) {
-        spawnedIds.push(entity.id);
-        rememberActiveReturn(this.state, entity.id, ace.id, requestId);
-      }
-    }
-    if (budget && typeof budget.releaseSome === 'function' && spawnedIds.length < grant) {
-      budget.releaseSome(requestId, grant - spawnedIds.length);
-    }
-    if (!spawnedIds.length) {
-      if (budget && typeof budget.release === 'function') budget.release(requestId);
+    const result = director.requestAuthoredEncounter({
+      shapeId: 'named_hunter',
+      encounterId: requestId,
+      sectorId: sectorOf(this.state),
+      force: true,
+      // The deterministic 6-13 minute return plan is already the recurrence pacing gate. Reapplying
+      // the generic encounter cooldown here can postpone the authored return indefinitely.
+      respectPacing: false,
+      data: {
+        aceId: ace.id,
+        recurrence: true,
+        returnTier: rec.returnTier || 1,
+      },
+    });
+    if (!result || result.ok !== true) {
       rec.nextReturnAttemptAt = now + 10;
+      rec.lastReturnRejectReason = result && result.reason || 'unavailable';
       return;
     }
-
+    // `namedAce:appeared` is synchronous and its planet-challenge normalizer may replace the saved
+    // memory bag. Re-adopt the current record before clearing the recurrence latch.
+    rec = recordFor(ensureMemory(this.state), ace);
+    const live = this.state.encounterDirector
+      && this.state.encounterDirector.live
+      && this.state.encounterDirector.live[requestId];
+    const spawnedIds = live && Array.isArray(live.ids) ? live.ids.slice() : [];
     rec.returnScheduled = false;
     rec.returned = true;
     rec.returnedAt = now;
     rec.returnRequestId = requestId;
-    rec.activeReturnIds = spawnedIds.slice();
-    rec.levelBand = bands.current.slice();
-    rec.previousLevelBand = bands.previous.slice();
+    rec.returnEncounterId = requestId;
     rec.spawnedCount = spawnedIds.length;
-    this._speakReturnTaunt(ace, rec, requestId);
     emit(this.bus, 'aceMemory:returnSpawned', {
       aceId: ace.id,
       aceName: ace.name,
       requestId,
       returnTier: rec.returnTier || 1,
-      levelBand: bands.current.slice(),
-      previousLevelBand: bands.previous.slice(),
       spawnedIds: spawnedIds.slice(),
       t: now,
     });
-  },
-
-  _returnShipSpec(ace, rec, requestId, ship, index) {
-    const pos = returnPosition(this.state, ace, rec, index);
-    const spec = makeEnemySpawnSpec(ship.archetype, ship.level, pos, {
-      factionId: ace.factionId || 'faction_reach',
-      startedTick: this.state.tick,
-    });
-    spec.data = spec.data || {};
-    spec.data.ai = spec.data.ai || {};
-    const ai = spec.data.ai;
-    const culture = reachCultureDoctrineById(ace.cultureId);
-    const cultureProfile = normalizeFactionBehaviorProfile(
-      culture && culture.factionPresenceDoctrine,
-    );
-    ai.squadId = requestId;
-    ai.doctrine = 'scavenger';
-    ai.formation = cultureProfile ? cultureProfile.liveFormation : 'wedge';
-    ai.spawnContext = 'ace_return';
-    ai.encounterKind = 'named_ace_return';
-    ai.encounterRole = ship.role;
-    ai.forcePlayerTarget = true;
-    ai.hostileTeams = [0];
-    ai.passive = false;
-    if (cultureProfile) {
-      ai.cultureId = culture.id;
-      ai.combatDoctrineId = cultureProfile.combatDoctrineId;
-      ai.factionPresenceDoctrine = cultureProfile;
-      spec.data.reachCulture = {
-        id: culture.id,
-        label: culture.label,
-      };
-    }
-    if (ship.role === 'boss') {
-      ai.name = ace.name;
-      spec.data.encounterBoss = true;
-      spec.data.bountyCr = (spec.data.bountyCr || 0) + 250 * Math.max(1, rec.returnTier | 0);
-    }
-    const returnTag = {
-      aceId: ace.id,
-      aceName: ace.name,
-      requestId,
-      role: ship.role,
-      promoted: true,
-      returnTier: rec.returnTier || 1,
-      level: ship.level,
-      gimmickTag: ace.gimmickTag || 'ace',
-    };
-    if (culture) returnTag.cultureId = culture.id;
-    spec.data.aceMemory = returnTag;
-    return spec;
-  },
-
-  _speakReturnTaunt(ace, rec, requestId) {
-    if (rec.lastTauntRequestId === requestId) return;
-    rec.lastTauntRequestId = requestId;
-    const bark = barkFor(
-      ace.factionId || 'faction_reach',
-      'taunt',
-      hash32(seedOf(this.state), ace.id, requestId, 'taunt'),
-    );
-    const text = `${ace.name}: you should have finished me. ${bark}`;
-    const voice = this.helpers && this.helpers.voice;
-    if (voice && typeof voice.say === 'function') {
-      voice.say({
-        channel: 'bark',
-        text,
-        kind: 'aceMemory',
-        id: `aceMemory:${ace.id}:return-taunt`,
-        factionId: ace.factionId || 'faction_reach',
-        ttl: 2,
-      });
-    }
-    emit(this.bus, 'aceMemory:voice', {
-      aceId: ace.id,
-      aceName: ace.name,
-      situation: 'taunt',
-      text,
-    });
-  },
-
-  _entityDestroyed(payload) {
-    const id = payload && payload.id;
-    if (id == null || !this.state) return;
-    const memory = ensureMemory(this.state);
-    const active = memory.activeReturns && memory.activeReturns[String(id)];
-    if (!active) return;
-    delete memory.activeReturns[String(id)];
-    const rec = memory[active.aceId];
-    if (rec && Array.isArray(rec.activeReturnIds)) {
-      rec.activeReturnIds = rec.activeReturnIds.filter((entityId) => entityId !== id);
-    }
-    const budget = this.helpers && this.helpers.spawnBudget;
-    if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(active.requestId, 1);
   },
 
   _completeTransition(transition, ace, rec) {
@@ -684,7 +630,8 @@ export const aceMemory = {
   },
 
   _speakPlayerKillAcknowledgment(ace, rec) {
-    const text = `${ace.name}: back in another hull? I remember how the last one opened.`;
+    const text = ace.barks && ace.barks.playerLoss
+      || `${ace.name}: back in another hull? I remember how the last one opened.`;
     const voice = this.helpers && this.helpers.voice;
     if (voice && typeof voice.say === 'function') {
       voice.say({
@@ -718,7 +665,7 @@ function resolveAceFromEntity(entity) {
   const data = entity.data;
   const memory = data.aceMemory || {};
   const ai = data.ai || {};
-  return aceById(memory.aceId || data.aceId || ai.aceId)
+  return aceById(memory.aceId || data.namedAceId || data.aceId || ai.namedAceId || ai.aceId)
     || aceByName(memory.aceName || data.aceName || ai.name || data.name)
     || aceFromText(data.callsign || data.name || ai.name || '');
 }
@@ -825,34 +772,6 @@ function nowOf(state, payload) {
 function sectorOf(state, payload) {
   if (payload && payload.sectorId) return payload.sectorId;
   return state && state.world && state.world.currentSectorId || null;
-}
-
-function returnPosition(state, ace, rec, index) {
-  const player = state && state.entities && state.entities.get(state.playerId);
-  const anchor = player && player.pos || { x: 0, z: 0 };
-  const seed = seedOf(state);
-  const h = hash32(seed, ace.id, rec.returnSeed || 0, 'return-pos', index | 0);
-  const angle = (h / 0x100000000) * Math.PI * 2;
-  const radius = index === 0 ? 900 : 120 + index * 35;
-  const bossH = hash32(seed, ace.id, rec.returnSeed || 0, 'return-pos', 0);
-  const bossAngle = (bossH / 0x100000000) * Math.PI * 2;
-  const center = {
-    x: anchor.x + Math.cos(bossAngle) * 900,
-    z: anchor.z + Math.sin(bossAngle) * 900,
-  };
-  if (index === 0) return center;
-  return {
-    x: center.x + Math.cos(angle) * radius,
-    z: center.z + Math.sin(angle) * radius,
-  };
-}
-
-function rememberActiveReturn(state, entityId, aceId, requestId) {
-  const memory = state && state.aceMemory && typeof state.aceMemory === 'object'
-    ? state.aceMemory
-    : ensureMemory(state);
-  if (!memory.activeReturns || typeof memory.activeReturns !== 'object') memory.activeReturns = {};
-  memory.activeReturns[String(entityId)] = { aceId, requestId };
 }
 
 function emit(bus, evt, payload) {

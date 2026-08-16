@@ -1238,6 +1238,33 @@ export const encounterDirector = {
           ai.namedAceId = sh.namedAceId;
           spec.data.namedAceId = sh.namedAceId;
         }
+        // Named Aces author presentation and rewards through one narrow overlay. The render owner
+        // already consumes `appearance`, combat already owns physical loot + credits, and this
+        // director remains the only first-contact spawn path; no parallel Ace entity factory.
+        if (sh.namedAceProfile && sh.role === 'boss') {
+          const profile = sh.namedAceProfile;
+          if (profile.appearance) spec.data.appearance = { ...profile.appearance };
+          if (profile.spawnStory) spec.data.spawnStory = String(profile.spawnStory);
+          if (profile.gimmick) spec.data.namedAceGimmick = { ...profile.gimmick };
+          if (profile.reward) {
+            const reward = profile.reward;
+            spec.data.namedAceReward = { ...reward };
+            if (reward.uniqueItemId) {
+              const baseLoot = spec.data.loot || {};
+              // This is now an authored Ace payout, not the unmodified archetype table named by
+              // `lootTableId`. Preserve the enemy identity separately for PD/render consumers and
+              // make the kill receipt decline to publish a false catalog-table identity.
+              spec.data.enemyTypeId = spec.data.lootTableId || profile.gimmick && profile.gimmick.runtime || null;
+              spec.data.lootTableId = null;
+              spec.data.loot = {
+                ...baseLoot,
+                creditsRange: Array.isArray(baseLoot.creditsRange) ? baseLoot.creditsRange.slice() : [0, 0],
+                guaranteed: [{ id: reward.uniqueItemId, qtyRange: [1, 1] }],
+                drops: Array.isArray(baseLoot.drops) ? baseLoot.drops.slice() : [],
+              };
+            }
+          }
+        }
         ai.spawnContext = sh.context;
         ai.sectorId = live.sectorId;
         ai.zoneId = live.zoneId;

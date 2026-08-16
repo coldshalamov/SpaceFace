@@ -4,6 +4,8 @@ import test from 'node:test';
 import { physics } from '../src/core/physics.js';
 import { createSimulation, SIM_DT } from '../src/core/sim.js';
 import { makeEnemySpawnSpec, combat } from '../src/systems/combat.js';
+import { aceById } from '../src/data/namedAces.js';
+import { aceMemory } from '../src/systems/aceMemory.js';
 import { bountyHunt } from '../src/systems/bountyHunt.js';
 import { encounterDirector } from '../src/systems/encounterDirector.js';
 import {
@@ -21,6 +23,7 @@ import { resolveDockDeny } from '../src/ui/dockDenyBanner.js';
 const SECTOR_ID = 'sector_tethys_junction';
 const STATION_ID = 'station_plan48_custody';
 const MISSION_ID = 'plan48:capture:mid-ace';
+const CAPTURE_ACE_ID = 'ace_maw_rake_veyra';
 
 function collect(bus, names) {
   const rows = Object.fromEntries(names.map((name) => [name, []]));
@@ -112,8 +115,8 @@ async function bootCaptureRoute() {
   };
   const sim = createSimulation({
     seed: 48002,
-    systems: [physics, combat, tetherGameplay, surrenderRecovery, bountyHunt, missions],
-    updateOrder: [physics, combat, tetherGameplay, surrenderRecovery, bountyHunt, missions],
+    systems: [physics, combat, tetherGameplay, surrenderRecovery, bountyHunt, missions, aceMemory],
+    updateOrder: [physics, combat, tetherGameplay, surrenderRecovery, bountyHunt, missions, aceMemory],
     helpers: { spawnBudget: budget },
   });
   const { state, bus } = sim;
@@ -152,9 +155,13 @@ async function bootCaptureRoute() {
     startedTick: state.tick,
   });
   targetSpec.vel = { x: -45, z: 0 };
+  const captureAce = aceById(CAPTURE_ACE_ID);
+  assert.ok(captureAce);
   targetSpec.data = {
     ...targetSpec.data,
-    name: 'Morrow Vane',
+    name: captureAce.name,
+    namedAceId: captureAce.id,
+    appearance: { ...captureAce.appearance },
     bountyCr: 1000,
     missionId: MISSION_ID,
     missionTag: MISSION_ID,
@@ -165,7 +172,7 @@ async function bootCaptureRoute() {
   state.missions.active.push({
     id: MISSION_ID,
     type: 'bounty_hunt',
-    title: 'Bring Morrow Vane to custody',
+    title: `Bring ${captureAce.name} to custody`,
     status: 'active',
     factionId: 'faction_scn',
     sourceStationId: STATION_ID,
@@ -195,6 +202,7 @@ async function bootCaptureRoute() {
     'economy:grantCredits',
     'faction:repDelta',
     'mission:completed',
+    'research:grant',
   ]);
   assert.equal(await sim.registry.get('physics').prepareBackend(state, { reset: true }), true);
   return { sim, state, bus, budget, station, player, target, events };
@@ -204,6 +212,8 @@ test('the exact active bounty takes real EMP, reels under Massline, draws an int
   const route = await bootCaptureRoute();
   const { sim, state, bus, player, target, events } = route;
   const kernel = sim.registry.get('combat').ensureKernel();
+  assert.equal(target.data.namedAceId, CAPTURE_ACE_ID,
+    'Plan 48 capture acceptance runs against a real mid-roster named Ace');
 
   let lastHit = null;
   for (let pulse = 0; pulse < 12 && events['combat:subsystemDisabled'].length === 0; pulse++) {
@@ -293,10 +303,22 @@ test('the exact active bounty takes real EMP, reels under Massline, draws an int
   assert.equal(events['mission:completed'][0].resolution, 'capture');
   assert.equal(events['mission:completed'][0].rewardCr, 1500);
   assert.equal(events['mission:completed'][0].custodyReceiptId, custody.custodyReceiptId);
+  assert.equal(state.aceMemory[CAPTURE_ACE_ID].defeated, true,
+    'lawful custody is a terminal named-Ace outcome and cancels recurrence');
+  assert.equal(state.aceMemory[CAPTURE_ACE_ID].captured, true);
+  assert.equal(state.aceMemory[CAPTURE_ACE_ID].custodyReceiptId, custody.custodyReceiptId);
+  assert.equal(state.aceMemory[CAPTURE_ACE_ID].physicalRewardSecuredByCustody, true,
+    'the unique fitting stays with the captured hull rather than duplicating as a kill pickup');
+  assert.deepEqual(events['research:grant'].map(({ amount, source, receiptId }) => ({ amount, source, receiptId })), [{
+    amount: 21,
+    source: 'ace_tech_rake_bearing',
+    receiptId: `named-ace:${CAPTURE_ACE_ID}:tech`,
+  }]);
 
   bus.emit('law:custodyTransfer', custody);
   assert.equal(events['economy:grantCredits'].length, 1);
   assert.equal(events['mission:completed'].length, 1);
+  assert.equal(events['research:grant'].length, 1);
 
   const savedAfter = sim.registry.get('missions').serialize();
   const continued = createSimulation({ systems: [missions], updateOrder: [] });

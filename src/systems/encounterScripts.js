@@ -532,7 +532,8 @@ const ambush = {
 
 function repairTenderAnchor(d, live) {
   return d.entsOf(live).find((entity) => (
-    entity?.type === 'ship' && entity.data?.lootTableId === REPAIR_TENDER_ENEMY_ID
+    entity?.type === 'ship'
+      && (entity.data?.lootTableId || entity.data?.enemyTypeId) === REPAIR_TENDER_ENEMY_ID
   )) || null;
 }
 
@@ -708,7 +709,7 @@ function onRepairTenderSquadKill(d, live, state, payload) {
   const runtime = live.data?.repairTender;
   const dead = payload?.id == null ? null : state.entities?.get(payload.id);
   const tenderKilled = payload?.id === runtime?.sourceId
-    || dead?.data?.lootTableId === REPAIR_TENDER_ENEMY_ID;
+    || (dead?.data?.lootTableId || dead?.data?.enemyTypeId) === REPAIR_TENDER_ENEMY_ID;
   if (tenderKilled) shutdownRepairTender(d, live, state, 'tender_destroyed');
 }
 
@@ -2974,7 +2975,7 @@ const namedHunter = {
         archetype: authoredAce.returnArchetype,
         combatDoctrineId: cultureProfile && cultureProfile.combatDoctrineId,
         levelBonus: 2,
-        bountyCr: 500,
+        bountyCr: authoredAce.reward && authoredAce.reward.bountyCr || 500,
         escort: {
           archetypes: [authoredAce.escortArchetype],
           size: [1, 1],
@@ -3013,6 +3014,7 @@ const namedHunter = {
       factionPresenceDoctrine: cultureProfile,
       cultureId: culture && culture.id,
       namedAceId: authoredAce && authoredAce.id,
+      namedAceProfile: authoredAce,
       role: 'boss',
       passive: true,                                    // the entrance: silhouette first, guns later
       bossName: cap.name,
@@ -3032,7 +3034,6 @@ const namedHunter = {
         formation: esc.formation || 'wedge',
         factionPresenceDoctrine: cultureProfile,
         cultureId: culture && culture.id,
-        namedAceId: authoredAce && authoredAce.id,
         role: 'escort',
         passive: true,
       });
@@ -3047,9 +3048,21 @@ const namedHunter = {
       d.say(
         live,
         'alert',
-        culture
-          ? `${cap.name}, ${culture.label}: This lane answers to ${cap.crew}.`
-          : (cap.signatureBark || `${cap.name}: this lane has your name on it.`),
+        live.data && live.data.recurrence
+          ? [
+            cap.spawnStory,
+            cap.barks && cap.barks.return
+              || cap.signatureBark
+              || `${cap.name}: this lane has your name on it.`,
+          ].filter(Boolean).join(' ')
+          : culture
+            ? `${cap.name}, ${culture.label}: This lane answers to ${cap.crew}.`
+            : [
+              cap.spawnStory,
+              cap.barks && cap.barks.opening
+                || cap.signatureBark
+                || `${cap.name}: this lane has your name on it.`,
+            ].filter(Boolean).join(' '),
         live.vars,
         { primary: true, literal: true },
       );
@@ -3061,6 +3074,8 @@ const namedHunter = {
         sectorId: live.sectorId,
         zoneId: live.zoneId,
         spawnedIds: ids.slice(),
+        spawnStory: authoredAce.spawnStory,
+        gimmickId: authoredAce.gimmick && authoredAce.gimmick.id,
         signatureSpoken: true,
         t: d.now(),
       });
@@ -3075,10 +3090,25 @@ const namedHunter = {
       d.setPassive(live, false);
       live.phase = 'conflict';
       live.data.engaged = true;
+      const boss = d.entsOf(live, 'boss')[0];
+      const runtime = boss && boss.data && boss.data.namedAceGimmick
+        && boss.data.namedAceGimmick.runtime;
+      // Representative specialist routes keep using their production mechanic owners. Jex seeds
+      // the existing physical mine wake at the engagement edge; Drell launches the same bounded
+      // repair drone pool as the specialist encounter instead of receiving a names-only tender hull.
+      if (runtime === 'mine_layer_jackal' && !live.data.namedAceMineWakeSeeded) {
+        live.data.namedAceMineWakeSeeded = true;
+        seedMinefieldWake(d, live, state, p);
+      }
+      if (runtime === REPAIR_TENDER_ENEMY_ID) ensureRepairTenderRuntime(d, live, state);
     }
     if (live.phase === 'conflict') {
       const boss = d.entsOf(live, 'boss')[0];
       if (!boss || boss.alive === false) return;        // kill event will resolve
+      if (boss.data && boss.data.namedAceGimmick
+          && boss.data.namedAceGimmick.runtime === REPAIR_TENDER_ENEMY_ID) {
+        updateRepairTender(d, live, state);
+      }
       const threshold = namedAceRetreatHullFraction(boss);
       const hull = Number(boss.hull);
       const hullMax = Number(boss.hullMax);
@@ -3137,7 +3167,9 @@ const namedHunter = {
       boundaryRadius: Math.max(ACE_ESCAPE_MIN_BOUNDARY_R, Number(live.zoneRadius) || 0),
     };
     namedHunter._holdRetreat(live, d.entsOf(live));
-    d.say(live, 'alert', `${live.vars.name || 'The hunter'} breaks for the lane.`, live.vars, {
+    const ace = aceById(live.data && live.data.captainId);
+    d.say(live, 'alert', ace && ace.barks && ace.barks.flee
+      || `${live.vars.name || 'The hunter'} breaks for the lane.`, live.vars, {
       primary: true,
       literal: true,
     });

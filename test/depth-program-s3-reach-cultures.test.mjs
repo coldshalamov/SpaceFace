@@ -139,11 +139,12 @@ test('culture aces enter through deterministic mapped routes 60-90 seconds after
       `${route.aceId} appeared event must not add a second ace-memory signature voice`);
 
     const doctrine = reachCultureDoctrineById(route.cultureId);
-    for (const id of appearance.spawnedIds) {
+    for (const [index, id] of appearance.spawnedIds.entries()) {
       const entity = first.state.entities.get(id);
       assert.ok(entity, `${route.aceId} spawned entity ${id} must exist`);
       assert.equal(entity.data.ai.cultureId, route.cultureId);
-      assert.equal(entity.data.ai.namedAceId, route.aceId);
+      assert.equal(entity.data.ai.namedAceId, index === 0 ? route.aceId : undefined,
+        'the boss owns the named identity while its crew owns only the shared culture');
       assert.deepEqual(entity.data.ai.factionPresenceDoctrine, doctrine.factionPresenceDoctrine);
     }
     first.sim.runTicks(Math.ceil(9.1 / SIM_DT));
@@ -328,7 +329,7 @@ function escapeRegExp(value) {
 }
 
 function returnedCrewEvidence(aceId, seed) {
-  const sim = createSimulation({ seed, systems: [spawnBudget, aceMemory, aiPorts] });
+  const sim = createSimulation({ seed, systems: [spawnBudget, aceMemory, encounterDirector, aiPorts] });
   const { state, bus, helpers } = sim;
   state.mode = 'flight';
   state.world.currentSectorId = 'sector_sker_haven';
@@ -346,17 +347,20 @@ function returnedCrewEvidence(aceId, seed) {
   assert.ok(returnEvent, `${aceId} must spawn after its deterministic return schedule`);
 
   const ace = aceById(aceId);
+  const returnLive = state.encounterDirector.live[returnEvent.requestId];
+  assert.ok(returnLive?.shapeId === 'named_hunter', `${aceId} return must use the shared named encounter owner`);
+  sim.runTicks(Math.ceil(9.1 / SIM_DT));
   const ships = returnEvent.spawnedIds.map((id) => state.entities.get(id)).map((entity) => ({
     id: entity.id,
-    role: entity.data.aceMemory.role,
+    role: returnLive.roles[entity.id],
     archetype: entity.data.ai.archetype,
-    level: entity.data.aceMemory.level,
-    cultureId: entity.data.aceMemory.cultureId,
+    level: entity.data.level,
+    cultureId: entity.data.cultureId || entity.data.ai.cultureId || null,
     profile: JSON.stringify(entity.data.ai.factionPresenceDoctrine),
     position: [round(entity.pos.x), round(entity.pos.z)],
   }));
   const squad = helpers.aiRoster.listSquads(state.tick)
-    .find((candidate) => candidate.id === returnEvent.requestId);
+    .find((candidate) => candidate.id === returnLive.squadId);
   assert.ok(squad, `${aceId} return must be visible to aiPorts`);
   const boss = squad.members.find((member) => member.id === returnEvent.spawnedIds[0]);
   assert.ok(boss, `${aceId} boss must be a live SG-06 roster member`);
