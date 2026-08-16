@@ -6,6 +6,7 @@ import {
   buildDamageReadout,
   buildDefeatReceipt,
   buildRecoveryPlan,
+  defeatCounterplayHint,
   formatDefeatCause,
 } from '../src/combat/playerDefeat.js';
 import { scalarHitToDamagePacket } from '../src/combat/damage.js';
@@ -233,7 +234,36 @@ test('defeat receipt preserves source faction, fatal summary, direction, subsyst
     receipt.fatalSummary,
     'Final hit from Reaver Pirate (Crimson Reach) · Autocannon S · starboard hull breach.',
   );
+  assert.equal(
+    receipt.counterplayHint,
+    'The final hit came from starboard; rotate that side away and break line of fire sooner.',
+  );
   assert.deepEqual(receipt.vitalsPct, { shield: 0, armor: 0, hull: 0 });
+});
+
+test('death rewind advice uses the lethal actor\'s authored counter instead of a generic tip', () => {
+  const state = makeState();
+  const attacker = state.entities.get(9);
+  attacker.data.lootTableId = 'field_anchor_controller';
+  const receipt = buildDefeatReceipt(state, state.entities.get(1), attacker.id, {
+    origin: { kind: 'field_anchor', id: 'anchor-field-1' },
+    result: {
+      dominantLayer: 'hull',
+      after: { shield: 0, shieldMax: 55, armor: 0, armorMax: 30, hull: 0, hullMax: 140 },
+    },
+  });
+  assert.equal(
+    receipt.counterplayHint,
+    'Kill or Massline-displace the Anchor, then leave its field radius.',
+  );
+});
+
+test('missing actors still produce causal field, collision, and weapon hints', () => {
+  const state = makeState();
+  state.entities.delete(9);
+  assert.match(defeatCounterplayHint(state, 9, { origin: { kind: 'field_well' } }), /field source/i);
+  assert.match(defeatCounterplayHint(state, null, { origin: { kind: 'collision' } }), /closing speed/i);
+  assert.match(defeatCounterplayHint(state, 9, { weaponId: 'wpn_missile_rack_m' }), /missile lock/i);
 });
 
 test('environmental loss does not fabricate an unknown weapon', () => {
@@ -588,6 +618,7 @@ test('after-action DOM locks focus, emits retry intent, and only closes on succe
     assert.equal(root.getAttribute('role'), 'dialog');
     assert.equal(root.getAttribute('aria-modal'), 'true');
     assert.equal(document.activeElement, gameOverScreen._retryButton);
+    assert.match(gameOverScreen._summaryEls.tip.textContent, /starboard/i);
 
     gameOverScreen._retryButton.click();
     assert.equal(events.filter((entry) => entry.event === 'player:recoveryRequested').length, 1);

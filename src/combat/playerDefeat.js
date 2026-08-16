@@ -29,6 +29,24 @@ const ENVIRONMENT_LABELS = Object.freeze({
   salvage_reactor: 'Salvage reactor',
   environmental: 'Environmental hazard',
 });
+const COUNTER_HINT_TEXT = Object.freeze({
+  cross_the_lane_do_not_chase: 'Cross the Dart\'s firing lane; chasing its tail keeps you inside the pass.',
+  displace_the_anchor_or_kill_it: 'Displace or kill the Flea anchor before committing inside its snare.',
+  strip_the_cover_break_or_move_the_rock: 'Break or move the Skitter\'s cover before following it around the rock.',
+  aim_the_blast_pop_it_next_to_something: 'Finish the Ember beside another hostile so its cook-off works for you.',
+  strip_turrets_then_shove_or_ignore: 'Strip the Gunship\'s physical turrets before closing on the hull.',
+  dodge_then_use_terrain_against_its_mass: 'Dodge the locked Ramscoop burn, then let terrain punish its mass.',
+  destroy_launch_bays_before_the_screen_grows: 'Open on the Carrier\'s launch bays before its screen grows.',
+  detonate_or_repulse_the_ore_then_strip_the_rack: 'Shoot or repulse the Foundry\'s charged ore, then strip its rack.',
+  cut_tether_or_clear_wake: 'Clear the Jackal\'s mine wake with a Repulsor instead of following its turn.',
+  hold_missiles_use_kinetics_peel_escort: 'Peel the point-defense escort with kinetics before spending missiles.',
+  break_lock_close_under_cover: 'Break the sniper lock with cover, then close from an off-axis bearing.',
+  kill_or_close_inside_fuzz: 'Close inside the Jammer fuzz or kill its antenna hull before relying on radar.',
+  kill_or_catch_tender_and_drone_in_well: 'Separate the repair drone with a Well or kill the Tender first.',
+  ignore_and_kill_wing: 'Break the Harrier\'s close wing first; the sniper will withdraw.',
+  displace_break_anchor_or_outmass: 'Break or displace the tether anchor before fighting the raider\'s line.',
+  kill_or_massline_displace_anchor_leave_radius: 'Kill or Massline-displace the Anchor, then leave its field radius.',
+});
 
 function pct(value, max) {
   return max > 0 ? Math.max(0, Math.min(100, Math.round((Number(value) || 0) / max * 100))) : 0;
@@ -139,6 +157,44 @@ export function buildDamageReadout(state, payload = {}) {
     .filter(Boolean)
     .join(' · ');
   return readout;
+}
+
+/** One concise, causal next-attempt hint derived from the same lethal facts as the receipt. */
+export function defeatCounterplayHint(state, attackerId, lethal = {}, finalDamage = null) {
+  const attacker = attackerId == null || !state.entities || typeof state.entities.get !== 'function'
+    ? null : state.entities.get(attackerId);
+  const data = attacker && attacker.data || {};
+  const enemy = ENEMY_BY_ID.get(data.lootTableId || data.enemyTypeId);
+  const authored = data.counterHint || enemy && enemy.counterHint;
+  if (typeof authored === 'string' && authored.trim()) {
+    return COUNTER_HINT_TEXT[authored] || authored;
+  }
+
+  const originKind = String(lethal.origin && lethal.origin.kind || lethal.context || '').toLowerCase();
+  const sourceKind = String(lethal.packet && lethal.packet.source && lethal.packet.source.kind || '').toLowerCase();
+  const weaponId = lethal.weaponId || weaponIdFromDamage(lethal) || '';
+  if (originKind.includes('field') || sourceKind.includes('field')) {
+    return 'Break the field source or leave its radius before committing to the trapped target.';
+  }
+  if (originKind.includes('collision')) {
+    return 'Reduce closing speed and use lateral thrust before the next contact.';
+  }
+  if (originKind === 'deep_core_gas') {
+    return 'Back out when the gas readout rises; re-enter after the pocket vents.';
+  }
+  if (weaponId.includes('missile')) {
+    return 'Break the missile lock with cover or countermeasures before re-engaging.';
+  }
+  if (weaponId.includes('railgun')) {
+    return 'Leave the firing line and close from an off-axis bearing between rail shots.';
+  }
+  if (weaponId.includes('emp')) {
+    return 'Preserve distance while disabled; commit only after drive control returns.';
+  }
+  const direction = String(finalDamage && finalDamage.direction || '').toLowerCase();
+  return direction && direction !== 'unknown' && direction !== 'contact'
+    ? `The final hit came from ${direction}; rotate that side away and break line of fire sooner.`
+    : 'Break line of fire before the damaged layer is exposed again.';
 }
 
 export function formatDefeatCause(state, receipt = {}) {
@@ -268,6 +324,7 @@ export function buildDefeatReceipt(state, playerEntity, killerId, lethal = {}) {
     after: lethal.result && lethal.result.after || {},
     pos: lethal.packet && lethal.packet.hit && lethal.packet.hit.pos || null,
   });
+  const counterplayHint = defeatCounterplayHint(state, killerId, lethal, finalDamage);
   const recovery = buildRecoveryPlan(state, playerEntity);
   return {
     schemaVersion: 1,
@@ -291,6 +348,7 @@ export function buildDefeatReceipt(state, playerEntity, killerId, lethal = {}) {
     context,
     cause: formatDefeatCause(state, { killerId, source, weaponId, dominantLayer, context }),
     fatalSummary: fatalSummary(source, weaponId ? weaponLabel(weaponId) : null, finalDamage.direction, dominantLayer),
+    counterplayHint,
     pos: playerEntity && playerEntity.pos ? { x: playerEntity.pos.x, z: playerEntity.pos.z } : null,
     recovery,
   };
