@@ -194,6 +194,20 @@ function fireTell(bus, kind, extra = {}) {
   assert.equal(last.entityId, 2, 'offscreen cue still bound to the real enemy id');
 }
 
+// ── Headless cutoff follows the configured table, not a leftover 900 pin ───
+{
+  const defaultTable = makeHarness({ enemyX: 1000 });
+  fireTell(defaultTable.bus, 'engine_flare', { doctrineId: 'interceptor_flyby' });
+  assert.equal(defaultTable.system.inspect().doctrineTells.last.offscreen, true,
+    '1000 WU is off the default 144/50 table');
+
+  const wide = makeHarness({ enemyX: 1000 });
+  wide.state.camera = { zoom: 330, fov: 90, aspect: 16 / 9, tilt: 60 };
+  fireTell(wide.bus, 'engine_flare', { doctrineId: 'interceptor_flyby' });
+  assert.equal(wide.system.inspect().doctrineTells.last.offscreen, false,
+    '1000 WU is on a 330/90 table even without a projectable camera');
+}
+
 // ── Duration floor: payload below 30 is raised to 30 ────────────────────────
 {
   const { bus, system } = makeHarness();
@@ -208,6 +222,6 @@ function fireTell(bus, kind, extra = {}) {
 console.log(JSON.stringify({
   schema: 'spaceface.m1.doctrine_vfx.v1',
   ok: true,
-  cases: ['flyby', 'tether', 'charge', 'reduced', 'offscreen', 'duration_floor', 'pause_tick', 'headless_fallback'],
+  cases: ['flyby', 'tether', 'charge', 'reduced', 'offscreen', 'duration_floor', 'pause_tick', 'headless_fallback', 'headless_table'],
   doctrineTelegraphTicks: DOCTRINE_TELEGRAPH_TICKS,
 }, null, 2));

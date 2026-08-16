@@ -7428,7 +7428,9 @@ export const vfx = {
       // Headless / no camera: treat as on-screen if near the player so link cues still fire.
       const pp = this._playerPos();
       const d = Math.hypot((entity.pos.x || 0) - (pp.x || 0), (entity.pos.z || 0) - (pp.z || 0));
-      return d < TABLE_HEARING_FAR_WU;
+      const tableWu = tableVfxDrawWuFromState(this.state);
+      const limit = Number.isFinite(tableWu) && tableWu > 0 ? tableWu : TABLE_HEARING_FAR_WU;
+      return d < limit;
     }
     const scratch = this._doctrineTellScreenScratch || this._trailScreenScratch;
     const local = this._toLocalXZ(
