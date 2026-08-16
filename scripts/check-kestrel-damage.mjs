@@ -34,6 +34,7 @@ globalThis.THREE = THREE;
 
 const { buildKestrelHero } = await import('../src/render/ships/kestrelHero.js');
 const { damageStateFor } = await import('../src/render/ships/kestrelDamage.js');
+const { damageStateFor: sharedDamageStateFor } = await import('../src/render/ships/shipDamage.js');
 
 let ok = 0, fail = 0;
 function check(label, cond, detail = '') {
@@ -44,15 +45,27 @@ function check(label, cond, detail = '') {
 // Build a player Kestrel and a helper to set its hull fraction then tick the damage driver.
 const HULLMAX = 1000;
 const root = buildKestrelHero({ id: 'p', type: 'ship', team: 0, radius: 14, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, data: { defId: 'ship_kestrel', fittings: [] } });
-const entity = { id: 'p', hull: HULLMAX, hullMax: HULLMAX };
-const tick = (hull) => { entity.hull = hull; root.userData.updateDamageState(entity, 0); };
+const entity = { id: 'p', hull: HULLMAX, hullMax: HULLMAX, disabled: false };
+let now = 0;
+const tick = (hull, advance = 0) => {
+  now += advance;
+  entity.hull = hull;
+  root.userData.updateDamageState(entity, now);
+};
+const heal = (hull = HULLMAX) => {
+  tick(hull, 0);
+  tick(hull, 2);
+};
 
-// ---- the five named states exist + the threshold resolver is correct (spec §9.11) ----
+// ---- named states + the shared threshold resolver (AC-18) ----
+check('Kestrel resolver is the shared owner', damageStateFor === sharedDamageStateFor);
 check('state resolver: >0.75 = operational', damageStateFor(0.80) === 'operational');
 check('state resolver: 0.50–0.75 = stressed', damageStateFor(0.60) === 'stressed');
 check('state resolver: 0.25–0.50 = damaged', damageStateFor(0.35) === 'damaged');
-check('state resolver: 0.05–0.25 = critical', damageStateFor(0.15) === 'critical');
+check('state resolver: <0.25 = critical', damageStateFor(0.15) === 'critical');
 check('state resolver: <=0 = destruction', damageStateFor(0) === 'destruction');
+check('state resolver: disabled outranks hull', damageStateFor(0.80, true) === 'disabled');
+check('state resolver: hull 0 + disabled stays disabled', damageStateFor(0, true) === 'disabled');
 
 // ---- contract declares all five states ----
 const states = root.userData.renderContract.damageStates || [];
@@ -73,39 +86,52 @@ tick(600);           check('60% hull -> stressed', snap() === 'stressed', `got $
 tick(350);           check('35% hull -> damaged', snap() === 'damaged', `got ${snap()}`);
 tick(100);           check('10% hull -> critical', snap() === 'critical', `got ${snap()}`);
 
-// ---- reversibility: recovering hull restores Operational (only Destruction is terminal) ----
+// ---- reversibility: recovering hull restores Operational after the repair ease window ----
 tick(100); // critical
-tick(1000); // heal fully
+heal(1000);
 check('recovered to operational (reversible through critical)', snap() === 'operational', `got ${snap()}`);
 
 // ---- Damaged: one nav light group fails (dimmed) but the core silhouette is intact ----
 tick(350);
 const navOn = parts.navLights[0].material.emissiveIntensity;
-tick(1000); // operational baseline
+heal(1000);
 const navFull = parts.navLights[0].material.emissiveIntensity;
 check('Damaged dims a nav light group (failed-light cue)', navOn < navFull * 0.5, `damaged=${navOn} operational=${navFull}`);
 
 // ---- Critical: the secondary part (utility pod) is shed, but the drive core stays visible ----
 tick(100);
 const podVisibleCritical = parts.secondary[0].visible;
-tick(1000);
+heal(1000);
 const podVisibleOperational = parts.secondary[0].visible;
 check('Critical sheds the utility pod (debris shedding)', podVisibleCritical === false && podVisibleOperational === true, `critical=${podVisibleCritical} op=${podVisibleOperational}`);
 check('drive core never hidden (silhouette preserved through Critical)', !!parts.driveCore && parts.driveCore.visible === true);
 
-// ---- Destruction is terminal: the driver is a no-op (entity-death path owns fragmentation) ----
+// ---- Disabled is a live band (dark hull + one beacon); destruction is the wreck with no dressing ----
+entity.disabled = true;
+tick(800);
+check('disabled flag outranks a healthy hull fraction', snap() === 'disabled', `got ${snap()}`);
+const dressing = root.userData.damageDressing;
+const disabledVisible = dressing.meshes.filter((mesh) => mesh.visible);
+check('disabled shows exactly one emergency beacon', disabledVisible.length === 1 && disabledVisible[0].userData.damageDressingRole === 'beacon');
+entity.disabled = false;
+heal(800);
+check('clearing disabled returns the hull band', snap() === 'operational', `got ${snap()}`);
+
 tick(0);
 check('destruction state is terminal (driver does not assert breakup)', typeof root.userData.updateDamageState === 'function');
+check('destruction hides all live dressing', dressing.meshes.every((mesh) => mesh.visible === false));
 
 // ---- the core hull + canopy stay visible in every non-terminal state (recognizable through Critical) ----
-let hullVisible = true, canopyVisible = true;
+let hullVisible = true;
 for (const frac of [1.0, 0.6, 0.35, 0.10]) {
-  tick(frac * HULLMAX);
+  if (frac >= 1) heal(frac * HULLMAX);
+  else tick(frac * HULLMAX);
   root.traverse((o) => {
     if (o.name === 'Kestrel_Pressure_Hull' || o.name === 'Kestrel_Static_Kestrel_shell') { if (!o.visible) hullVisible = false; }
   });
 }
 check('core silhouette visible in every non-terminal state', hullVisible, 'hull hidden in some state');
+check('shared dressing group is a fixed 8-mesh allocation', dressing.meshes.length === 8 && dressing.group.children.length === 8);
 
 console.log(`\n${ok} ok, ${fail} fail`);
 process.exit(fail ? 1 : 0);
