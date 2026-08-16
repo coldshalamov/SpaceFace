@@ -21,6 +21,7 @@ import { resolveSystemsForScenario } from './systemBundles.js';
 import { deriveEvidenceClass } from './evidenceClass.js';
 import { resolvePolicy } from '../policies/masslinePolicies.js';
 import '../metrics/masslineMetrics.js';
+import '../metrics/arcadeCoreMetrics.js';
 
 export { SIM_DT };
 // Re-export pure guard for Node callers; browser imports assertionConsumption.js directly.

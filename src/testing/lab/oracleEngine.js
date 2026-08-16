@@ -10,6 +10,7 @@ import {
 } from './equivalenceAuthority.js';
 // Side-effect: register massline + flight metrics.
 import '../metrics/masslineMetrics.js';
+import '../metrics/arcadeCoreMetrics.js';
 
 /** Numeric fields the deterministic surface tracks — any non-finite value fails finite-state. */
 export const FINITE_STATE_FIELDS = Object.freeze([

@@ -1,0 +1,485 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Combat Lab — Arcade Core tuning surface</title>
+<style>
+  html,body{margin:0;background:#0b0907;color:#e8dcc6;
+    font:13px/1.45 "Inter","Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  header{padding:18px 26px 12px;border-bottom:1px solid #2a2118}
+  h1{margin:0 0 4px;font-size:15px;font-weight:600;letter-spacing:.10em;text-transform:uppercase;color:#d8b45c}
+  h2{margin:0 0 10px;font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#c9a227}
+  p{margin:0;color:#8d8271;max-width:118ch;font-size:12.5px}
+  b{color:#c9a227;font-weight:600}
+  main{display:grid;grid-template-columns:420px 1fr;gap:0;align-items:start}
+  #panel{padding:18px 22px 40px;border-right:1px solid #2a2118}
+  #out{padding:18px 22px 40px;min-width:0}
+  fieldset{border:1px solid #241d15;margin:0 0 16px;padding:12px 14px 14px}
+  legend{padding:0 6px;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#8d8271}
+  .row{display:grid;grid-template-columns:118px 1fr 62px;gap:8px;align-items:center;margin:0 0 7px}
+  .row label{color:#8d8271;font-size:11.5px}
+  .row output{font:11px ui-monospace,Consolas,monospace;color:#e0a33c;text-align:right}
+  input[type=range]{width:100%;accent-color:#c9a227}
+  select{width:100%;background:#141009;color:#e8dcc6;border:1px solid #2f2619;padding:4px 6px;font:inherit;font-size:12px}
+  button{background:#1b150c;color:#d8b45c;border:1px solid #4a3a1c;padding:7px 14px;font:inherit;
+    font-size:11.5px;letter-spacing:.10em;text-transform:uppercase;cursor:pointer;margin:0 8px 8px 0}
+  button:hover{background:#241c10}
+  table{border-collapse:collapse;width:100%;margin:0 0 18px;font:11.5px ui-monospace,Consolas,monospace}
+  th{text-align:left;color:#8d8271;font-weight:400;border-bottom:1px solid #2a2118;padding:4px 8px 4px 0}
+  td{padding:3px 8px 3px 0;border-bottom:1px solid #17120c;color:#c8bda8}
+  td.n{text-align:right;color:#e0a33c}
+  .pass{color:#5fb3ab}
+  .fail{color:#e2624a}
+  .why{color:#6d6355;font-size:11px}
+  pre{background:#0f0c07;border:1px solid #241d15;padding:12px;overflow:auto;max-height:340px;
+    font:11px ui-monospace,Consolas,monospace;color:#8d8271}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:0 26px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Combat Lab — Arcade Core tuning surface</h1>
+  <p>Every number below is computed by <b>src/testing/metrics/arcadeCoreMetrics.js</b>, the same
+  module <b>check:arcade-core</b> and the lab oracle read — no combat formula is copied into this
+  page. It imports the live owners: <b>ENEMY_TYPES</b> (mass/hull/shield), <b>WEAPONS</b>,
+  <b>resolveWeaponImpulseForHit</b>, the <b>field kernel</b>, <b>rollKillRewardItems</b>, and
+  <b>applyPickupAttraction</b>. Sliders are <b>bounded in-memory overrides</b> — this page never
+  writes a repository source file. Land a candidate with <b>Export candidate</b>; the controller
+  puts those values in the owning <b>src/data/</b> file and proves them through the normal route.</p>
+</header>
+
+<main>
+<div id="panel"></div>
+<div id="out">
+  <div id="battery"></div>
+  <div class="cols">
+    <div id="ttk"></div>
+    <div id="impulse"></div>
+    <div id="group"></div>
+    <div id="reward"></div>
+    <div id="vacuum"></div>
+  </div>
+  <h2>Candidate JSON</h2>
+  <pre id="json"></pre>
+</div>
+</main>
+
+<script type="module">
+import {
+  ARCADE_REFERENCE_MASSES,
+  PACING_ENEMY_IDS,
+  STARTER_WEAPON_IDS,
+  arcadeCoreCandidateJson,
+  arcadeEnemy,
+  arcadeWeapon,
+  computeFieldDeltaV,
+  computeGroupPressure,
+  computeShotsToKill,
+  computeTtk,
+  computeWeaponHitDeltaV,
+  evaluateArcadeCoreProjection,
+} from './src/testing/metrics/arcadeCoreMetrics.js';
+import { ENEMY_TYPES } from './src/data/enemies.js';
+import { WEAPONS } from './src/data/weapons.js';
+import { FIELD_DEFS } from './src/data/fields.js';
+import { MAGNET_RANGE } from './src/systems/pickupAttraction.js';
+
+// ---- control model ---------------------------------------------------------------------------
+// `state` holds ONLY deltas the owner has moved. Anything untouched stays at the shipped value,
+// so an exported candidate names exactly what changed.
+
+const TUNABLE_ENEMIES = ENEMY_TYPES
+  .filter((e) => PACING_ENEMY_IDS.includes(e.id) || e.shipClass === 'fighter' || e.shipClass === 'gunship')
+  .map((e) => e.id);
+// Starter fits first — they are the ones plan 09 paces the TTK table against.
+const TUNABLE_WEAPONS = [
+  ...STARTER_WEAPON_IDS,
+  ...WEAPONS
+    .filter((w) => w.slotType === 'weapon' && w.size !== 'L' && !STARTER_WEAPON_IDS.includes(w.id))
+    .map((w) => w.id),
+];
+
+const state = {
+  enemyId: 'wasp_swarmer',
+  weaponId: 'wpn_pulse_laser_s',
+  fieldKey: 'well',
+  refMass: 16,
+  seed: 0x47a,
+  groupSize: 14,
+  playerHealth: 200,
+  enemies: {},
+  weapons: {},
+  fields: {},
+  vacuum: {},
+};
+
+function enemyOv(id) { return (state.enemies[id] ||= {}); }
+function weaponOv(id) { return (state.weapons[id] ||= {}); }
+function fieldOv(key) { return (state.fields[key] ||= {}); }
+
+function pruneEmpty(map) {
+  const out = {};
+  for (const [key, value] of Object.entries(map)) {
+    const kept = {};
+    for (const [k, v] of Object.entries(value)) if (v != null) kept[k] = v;
+    if (Object.keys(kept).length) out[key] = kept;
+  }
+  return out;
+}
+
+function overrides() {
+  const vacuum = {};
+  for (const [k, v] of Object.entries(state.vacuum)) if (v != null) vacuum[k] = v;
+  return {
+    enemies: pruneEmpty(state.enemies),
+    weapons: pruneEmpty(state.weapons),
+    fields: pruneEmpty(state.fields),
+    ...(Object.keys(vacuum).length ? { vacuum } : {}),
+    groupSize: state.groupSize,
+    playerHealth: state.playerHealth,
+    seed: state.seed,
+  };
+}
+
+// ---- panel builders --------------------------------------------------------------------------
+
+const panel = document.getElementById('panel');
+const rebuilders = [];
+
+function group(title) {
+  const fs = document.createElement('fieldset');
+  const lg = document.createElement('legend');
+  lg.textContent = title;
+  fs.append(lg);
+  panel.append(fs);
+  return fs;
+}
+
+function select(parent, label, options, get, set) {
+  const row = document.createElement('div');
+  row.className = 'row';
+  row.style.gridTemplateColumns = '118px 1fr';
+  const lab = document.createElement('label');
+  lab.textContent = label;
+  const sel = document.createElement('select');
+  for (const value of options) {
+    const opt = document.createElement('option');
+    opt.value = value;
+    opt.textContent = value;
+    sel.append(opt);
+  }
+  sel.value = get();
+  sel.addEventListener('change', () => {
+    set(sel.value);
+    for (const sync of rebuilders) sync();
+    refresh();
+  });
+  rebuilders.push(() => { sel.value = get(); });
+  row.append(lab, sel);
+  parent.append(row);
+}
+
+function slider(parent, label, { min, max, step = 1 }, get, set) {
+  const row = document.createElement('div');
+  row.className = 'row';
+  const lab = document.createElement('label');
+  lab.textContent = label;
+  const input = document.createElement('input');
+  input.type = 'range';
+  input.min = min; input.max = max; input.step = step;
+  const out = document.createElement('output');
+  const sync = () => {
+    const value = get();
+    input.min = Math.min(min, value);
+    input.max = Math.max(max, value);
+    input.value = value;
+    out.textContent = Number(value).toFixed(step < 1 ? 2 : 0);
+  };
+  input.addEventListener('input', () => { set(Number(input.value)); sync(); refresh(); });
+  rebuilders.push(sync);
+  sync();
+  row.append(lab, input, out);
+  parent.append(row);
+}
+
+// Hull / shield / mass — the victim side.
+const gVictim = group('Victim — mass · hull · shield');
+select(gVictim, 'class', TUNABLE_ENEMIES, () => state.enemyId, (v) => { state.enemyId = v; });
+slider(gVictim, 'hull', { min: 1, max: 400 },
+  () => enemyOv(state.enemyId).hull ?? arcadeEnemy(state.enemyId).hull,
+  (v) => { enemyOv(state.enemyId).hull = v; });
+slider(gVictim, 'shield', { min: 0, max: 300 },
+  () => enemyOv(state.enemyId).shield ?? arcadeEnemy(state.enemyId).shield,
+  (v) => { enemyOv(state.enemyId).shield = v; });
+slider(gVictim, 'armor', { min: 0, max: 200 },
+  () => enemyOv(state.enemyId).armor ?? arcadeEnemy(state.enemyId).armor,
+  (v) => { enemyOv(state.enemyId).armor = v; });
+slider(gVictim, 'mass', { min: 4, max: 250 },
+  () => enemyOv(state.enemyId).mass ?? arcadeEnemy(state.enemyId).mass,
+  (v) => { enemyOv(state.enemyId).mass = v; });
+
+// Weapon — the aggressor side.
+const gWeapon = group('Weapon — damage · rate · impulse');
+select(gWeapon, 'weapon', TUNABLE_WEAPONS, () => state.weaponId, (v) => { state.weaponId = v; });
+slider(gWeapon, 'dmg', { min: 0, max: 200, step: 0.5 },
+  () => weaponOv(state.weaponId).dmg ?? arcadeWeapon(state.weaponId).dmg,
+  (v) => { weaponOv(state.weaponId).dmg = v; });
+slider(gWeapon, 'rof / s', { min: 0, max: 12, step: 0.1 },
+  () => weaponOv(state.weaponId).rof ?? arcadeWeapon(state.weaponId).rof,
+  (v) => { weaponOv(state.weaponId).rof = v; });
+slider(gWeapon, 'impulse/hit', { min: 0, max: 700, step: 0.5 },
+  () => weaponOv(state.weaponId).impulsePerHit ?? (arcadeWeapon(state.weaponId).impulsePerHit || 0),
+  (v) => { weaponOv(state.weaponId).impulsePerHit = v; });
+slider(gWeapon, 'tumble torque', { min: 0, max: 80, step: 0.5 },
+  () => weaponOv(state.weaponId).tumbleTorque ?? (arcadeWeapon(state.weaponId).tumbleTorque || 0),
+  (v) => { weaponOv(state.weaponId).tumbleTorque = v; });
+
+// Field impulse — the physics kit.
+const gField = group('Impulse field — strength · reach');
+select(gField, 'field', Object.keys(FIELD_DEFS), () => state.fieldKey, (v) => { state.fieldKey = v; });
+slider(gField, 'strength', { min: 0, max: 900 },
+  () => fieldOv(state.fieldKey).strength ?? FIELD_DEFS[state.fieldKey].strength,
+  (v) => { fieldOv(state.fieldKey).strength = v; });
+slider(gField, 'radius', { min: 20, max: 500 },
+  () => fieldOv(state.fieldKey).radius ?? FIELD_DEFS[state.fieldKey].radius,
+  (v) => { fieldOv(state.fieldKey).radius = v; });
+slider(gField, 'falloff', { min: 0.5, max: 4, step: 0.05 },
+  () => fieldOv(state.fieldKey).falloff ?? FIELD_DEFS[state.fieldKey].falloff,
+  (v) => { fieldOv(state.fieldKey).falloff = v; });
+slider(gField, 'reference mass', { min: 4, max: 400 },
+  () => state.refMass, (v) => { state.refMass = v; });
+
+// Group pressure.
+const gGroup = group('Group pressure');
+slider(gGroup, 'group size', { min: 1, max: 24 }, () => state.groupSize, (v) => { state.groupSize = v; });
+slider(gGroup, 'player health', { min: 20, max: 1200 }, () => state.playerHealth, (v) => { state.playerHealth = v; });
+
+// Vacuum / reward.
+const gVac = group('Vacuum & reward');
+slider(gVac, 'magnet range', { min: 60, max: 1200 },
+  () => state.vacuum.magnetRange ?? MAGNET_RANGE, (v) => { state.vacuum.magnetRange = v; });
+slider(gVac, 'collect radius', { min: 4, max: 90 },
+  () => state.vacuum.collectRadius ?? 22, (v) => { state.vacuum.collectRadius = v; });
+slider(gVac, 'fly-over speed', { min: 0, max: 320 },
+  () => state.vacuum.playerSpeed ?? 140, (v) => { state.vacuum.playerSpeed = v; });
+slider(gVac, 'reward seed', { min: 1, max: 4096 }, () => state.seed, (v) => { state.seed = v; });
+
+// Actions.
+const gAct = group('Candidate');
+const actions = document.createElement('div');
+const btnExport = document.createElement('button');
+btnExport.textContent = 'Export candidate';
+btnExport.addEventListener('click', downloadCandidate);
+const btnCopy = document.createElement('button');
+btnCopy.textContent = 'Copy JSON';
+btnCopy.addEventListener('click', () => navigator.clipboard?.writeText(document.getElementById('json').textContent));
+const btnReset = document.createElement('button');
+btnReset.textContent = 'Reset to shipped';
+btnReset.addEventListener('click', () => {
+  state.enemies = {}; state.weapons = {}; state.fields = {}; state.vacuum = {};
+  state.groupSize = 14; state.playerHealth = 200; state.seed = 0x47a; state.refMass = 16;
+  for (const sync of rebuilders) sync();
+  refresh();
+});
+actions.append(btnExport, btnCopy, btnReset);
+gAct.append(actions);
+
+// ---- output ----------------------------------------------------------------------------------
+
+function bandText(band) {
+  if (!band) return '';
+  if (band.op === 'calibration') return 'OWNER CALIBRATION REQUIRED';
+  if (band.op === 'range') return `${round(band.min)} .. ${round(band.max)}`;
+  return `${band.op} ${round(band.value)}`;
+}
+
+function round(n) {
+  return typeof n === 'number' ? Math.round(n * 1e4) / 1e4 : n;
+}
+
+function table(host, title, head, rows) {
+  const el = document.getElementById(host);
+  el.innerHTML = '';
+  const h2 = document.createElement('h2');
+  h2.textContent = title;
+  const t = document.createElement('table');
+  const thead = document.createElement('tr');
+  for (const label of head) {
+    const th = document.createElement('th');
+    th.textContent = label;
+    thead.append(th);
+  }
+  t.append(thead);
+  for (const row of rows) {
+    const tr = document.createElement('tr');
+    for (const cell of row) {
+      const td = document.createElement('td');
+      if (cell && typeof cell === 'object') {
+        td.textContent = cell.text;
+        if (cell.cls) td.className = cell.cls;
+      } else {
+        td.textContent = cell;
+        if (typeof cell === 'number') td.className = 'n';
+      }
+      tr.append(td);
+    }
+    t.append(tr);
+  }
+  el.append(h2, t);
+}
+
+function refresh() {
+  const ov = overrides();
+  const battery = evaluateArcadeCoreProjection(ov);
+
+  // Banded battery, grouped by route.
+  const el = document.getElementById('battery');
+  el.innerHTML = '';
+  const head = document.createElement('h2');
+  const openCount = battery.calibrationOpen?.length || 0;
+  const issueText = [openCount ? `${openCount} OPEN` : '', battery.failures.length ? `${battery.failures.length} OUT OF BAND` : '']
+    .filter(Boolean).join(' · ');
+  head.innerHTML = `Candidate projection — <span class="${battery.ok ? 'pass' : 'fail'}">${battery.ok ? 'ALL AUTHORED BANDS HOLD' : issueText}</span>`;
+  el.append(head);
+  const bt = document.createElement('table');
+  const hr = document.createElement('tr');
+  for (const label of ['route', 'metric', 'value', 'band', '', 'why']) {
+    const th = document.createElement('th');
+    th.textContent = label;
+    hr.append(th);
+  }
+  bt.append(hr);
+  for (const row of battery.results) {
+    const tr = document.createElement('tr');
+    const cells = [
+      { text: row.route },
+      { text: row.metric },
+      { text: String(round(row.value)), cls: 'n' },
+      { text: bandText(row.band) },
+      { text: row.status === 'open' ? 'OPEN' : row.ok ? 'PASS' : 'FAIL', cls: row.ok ? 'pass' : 'fail' },
+      { text: row.band ? row.band.why : '', cls: 'why' },
+    ];
+    for (const cell of cells) {
+      const td = document.createElement('td');
+      td.textContent = cell.text;
+      if (cell.cls) td.className = cell.cls;
+      tr.append(td);
+    }
+    bt.append(tr);
+  }
+  el.append(bt);
+
+  // TTK table (starter fits) + the currently selected pair.
+  const pair = battery.detail.ttkTable;
+  const selected = {
+    weaponId: state.weaponId,
+    enemyId: state.enemyId,
+  };
+  const selectedArgs = {
+    weaponId: state.weaponId,
+    enemyId: state.enemyId,
+    weaponOverrides: ov.weapons?.[state.weaponId] || {},
+    enemyOverrides: ov.enemies?.[state.enemyId] || {},
+  };
+  const selectedTtk = computeTtk(selectedArgs);
+  const selectedShots = computeShotsToKill(selectedArgs);
+  table('ttk', 'TTK — starter fits × paced classes', ['weapon', 'class', 'ttk s', 'shots'], [
+    ...pair.map((row) => [row.weaponId, row.enemyId, round(row.ttkS), row.shots]),
+    [{ text: `→ ${selected.weaponId}`, cls: 'why' }, { text: selected.enemyId, cls: 'why' },
+      { text: String(round(selectedTtk)), cls: 'n' }, { text: String(selectedShots), cls: 'n' }],
+  ]);
+
+  // Impulse — field Δv on reference masses + this weapon's hit Δv on the slider mass.
+  // Reference masses (plan 09) plus whatever the reference-mass and victim-mass sliders name, so
+  // both mass controls read out against the same field.
+  const victimMass = ov.enemies?.[state.enemyId]?.mass ?? arcadeEnemy(state.enemyId).mass;
+  const fieldRows = [...new Set([...ARCADE_REFERENCE_MASSES, state.refMass, victimMass])]
+    .sort((a, b) => a - b)
+    .map((mass) => {
+      const dv = computeFieldDeltaV({
+        fieldKey: state.fieldKey, mass, seconds: 1,
+        fieldOverrides: ov.fields?.[state.fieldKey] || {},
+      });
+      const tag = mass === victimMass ? `${state.fieldKey} · victim` : state.fieldKey;
+      return [tag, mass, dv.coupling, dv.accel, dv.deltaV];
+    });
+  const hitMasses = [...new Set([state.refMass, victimMass])];
+  const hitRows = hitMasses.map((mass) => {
+    const hit = computeWeaponHitDeltaV({
+      weaponId: state.weaponId, mass,
+      weaponOverrides: ov.weapons?.[state.weaponId] || {},
+    });
+    return [{ text: hit.weaponId, cls: 'why' }, hit.mass, '', hit.magnitude, hit.deltaV];
+  });
+  table('impulse', 'Impulse — Δv per second (field) and per hit (weapon)',
+    ['source', 'mass', 'couple', 'accel', 'Δv'], [...fieldRows, ...hitRows]);
+
+  // Group pressure — what a wing of this class does to a player of this health.
+  const pressure = computeGroupPressure({
+    enemyId: state.enemyId,
+    count: state.groupSize,
+    enemyOverrides: { targetHealth: state.playerHealth },
+  });
+  const moteCloud = battery.detail.moteCloud;
+  table('group', 'Group pressure — incoming DPS and time-to-kill the player',
+    ['wing', 'size', 'per-ship dps', 'group dps', 'kills player in s'], [
+      [pressure.enemyId, pressure.count, pressure.perShipDps, pressure.groupDps,
+        pressure.timeToKillPlayerS ?? '—'],
+      [{ text: `${moteCloud.enemyId} (banded)`, cls: 'why' }, moteCloud.count,
+        moteCloud.perShipDps, moteCloud.groupDps, moteCloud.timeToKillPlayerS ?? '—'],
+    ]);
+
+  // Reward burst per tier.
+  table('reward', 'Kill reward — pickups and credits per victim class',
+    ['tier', 'pickups', 'promised', 'materials', 'chips', 'credits', 'band'],
+    battery.detail.rewardTable.map((row) => [
+      row.tier, row.pickups, row.promisedPickups, row.materialPickups, row.chipPickups,
+      row.chipCredits, `${row.chipCreditsMin}..${row.chipCreditsMax}`,
+    ]));
+
+  // Vacuum.
+  const flyover = battery.detail.flyover;
+  table('vacuum', `Vacuum — fly-over sweep at ${flyover.playerSpeed} wu/s`,
+    ['lateral', 'onset s', 'capture s', 'closest', 'collected'],
+    [
+      ['head-on (rest)', battery.detail.vacuumEdge.onsetS, battery.detail.vacuumEdge.captureS,
+        battery.detail.vacuumEdge.minDistance,
+        { text: battery.detail.vacuumEdge.captured ? 'yes' : 'no', cls: battery.detail.vacuumEdge.captured ? 'pass' : 'fail' }],
+      ...flyover.runs.map((run) => [
+        run.lateral, run.onsetS ?? '—', run.captureS ?? '—', run.minDistance,
+        { text: run.captured ? 'yes' : 'no', cls: run.captured ? 'pass' : 'fail' },
+      ]),
+    ]);
+
+  const candidate = arcadeCoreCandidateJson(ov);
+  document.getElementById('json').textContent = JSON.stringify(candidate, null, 2);
+  window.__COMBAT_LAB__ = {
+    ready: true,
+    ok: battery.ok,
+    regressionsOk: battery.regressionsOk,
+    calibrationOpen: openCount,
+    overrides: ov,
+    candidate,
+    groupPressure: computeGroupPressure({
+      enemyId: state.enemyId,
+      count: state.groupSize,
+      enemyOverrides: { targetHealth: state.playerHealth },
+    }),
+  };
+  document.title = `Combat Lab — ${battery.ok ? 'in band' : issueText.toLowerCase()}`;
+}
+
+function downloadCandidate() {
+  const text = document.getElementById('json').textContent;
+  const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'arcade-core-candidate.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+refresh();
+</script>
+</body>
+</html>
