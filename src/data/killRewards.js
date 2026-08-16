@@ -5,8 +5,10 @@
 //   mining     — materializes pickups and settles credit chips
 //   visualFactory — distinct 3D credit-chip object
 //
-// Materials come from hull class / identity / cargo only. Kill style is ignored here
-// on purpose: AC-08 will multiply credits/RP later, never materials.
+// Materials come from hull class / identity / cargo only. Kill style is ignored here on purpose:
+// AC-08's classifier multiplies the credit and RP channels at their payout edges (lootShards for
+// the chip burst and hostile-kill RP, combat for authored bounty/loot), never materials. Nothing in
+// this file reads a style, a multiplier, or any authored kill-style metadata on the victim.
 
 export const CREDIT_CHIP_KIND = 'credit_chip';
 
@@ -215,7 +217,11 @@ export function killRewardRecipeFor(victim) {
   return KILL_REWARD_RECIPES[tier] || FALLBACK_RECIPE;
 }
 
-/** Existing tech-tree RP granted for an admitted hostile kill. Style-neutral until AC-08. */
+/**
+ * Base tech-tree RP for an admitted hostile kill, scaled by victim identity only. The AC-08 style
+ * multiplier is applied by the caller at the single `research:grant` writer, so this stays the
+ * victim-scaled base and never encodes how the kill was made.
+ */
 export function killResearchPointsForVictim(victim) {
   const tier = classifyKillRewardVictim(victim);
   return KILL_RESEARCH_POINTS[tier] || KILL_RESEARCH_POINTS.light;
