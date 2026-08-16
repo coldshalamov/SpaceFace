@@ -82,17 +82,19 @@ test('heavy recipes bind unique stable physical parts to the existing combat voc
     }
     assert.equal(row.combatProfileId, 'combat_profile_standard_ship');
     assert.equal(row.runtime, 'physical_parts_v1');
-    const fightRuntimeWired = row.enemyTypeId === 'heavy_carrier_lite' || row.enemyTypeId === 'heavy_foundry';
-    assert.equal(row.behavior.runtime, fightRuntimeWired ? 'physical_parts_v1' : 'unwired');
+    const fightRuntime = row.enemyTypeId === IRON_MAW_ENEMY_ID
+      ? 'capital_phase_runtime_v1'
+      : (row.enemyTypeId === 'heavy_carrier_lite' || row.enemyTypeId === 'heavy_foundry'
+        ? 'physical_parts_v1'
+        : 'unwired');
+    assert.equal(row.behavior.runtime, fightRuntime);
     assert.ok(row.parts.length > 0, `${row.id} has first-class parts`);
     const boundWeaponKeys = [];
     for (const part of row.parts) {
       roles.add(part.partRole);
       assert.ok(KNOWN_SUBSYSTEM_IDS.has(part.subsystemId), `${part.id} reuses a real subsystem id`);
       assert.ok(part.binding?.kind, `${part.id} has an explicit physical binding`);
-      const outcome = part.behavior && part.behavior.onDestroyed;
-      const remainsUnwired = outcome === 'weaken_pd_screen'
-        || part.behavior?.onExposed === 'offer_board_salvage_or_destroy_decision';
+      const remainsUnwired = part.behavior?.onExposed === 'offer_board_salvage_or_destroy_decision';
       assert.equal(part.behavior?.runtime, remainsUnwired ? 'unwired' : 'physical_parts_v1', `${part.id} reports only wired mechanics`);
       if (part.binding.kind === 'weapon') {
         assert.ok(part.binding.weaponId, `${part.id} binds a weapon definition`);
@@ -125,16 +127,18 @@ test('spawn propagation preserves immutable recipes and names only physically wi
     assert.strictEqual(spec.data.heavyPartRecipe, authored, 'spawn references the immutable authored recipe');
     assert.equal(Object.isFrozen(spec.data.heavyPartRecipe), true);
     assert.equal(spec.data.heavyPartRecipe.runtime, 'physical_parts_v1');
-    const fightRuntimeWired = enemyId === 'heavy_carrier_lite' || enemyId === 'heavy_foundry';
-    assert.equal(spec.data.heavyPartRecipe.behavior.runtime, fightRuntimeWired ? 'physical_parts_v1' : 'unwired');
+    const fightRuntime = enemyId === IRON_MAW_ENEMY_ID
+      ? 'capital_phase_runtime_v1'
+      : (enemyId === 'heavy_carrier_lite' || enemyId === 'heavy_foundry'
+        ? 'physical_parts_v1'
+        : 'unwired');
+    assert.equal(spec.data.heavyPartRecipe.behavior.runtime, fightRuntime);
     for (const part of spec.data.heavyPartRecipe.parts) {
-      const outcome = part.behavior.onDestroyed;
-      const remainsUnwired = outcome === 'weaken_pd_screen'
-        || part.behavior.onExposed === 'offer_board_salvage_or_destroy_decision';
+      const remainsUnwired = part.behavior.onExposed === 'offer_board_salvage_or_destroy_decision';
       assert.equal(part.behavior.runtime, remainsUnwired ? 'unwired' : 'physical_parts_v1');
     }
     for (const phase of spec.data.heavyPartRecipe.phases) {
-      assert.equal(phase.runtime, 'unwired');
+      assert.equal(phase.runtime, enemyId === IRON_MAW_ENEMY_ID ? 'capital_phase_runtime_v1' : 'unwired');
     }
   }
 });
@@ -172,7 +176,7 @@ test('Carrier bays and the Foundry rack are immutable surface sockets for honest
   }
 });
 
-test('Iron Maw has a capital part/phase recipe without claiming a phase runtime', () => {
+test('Iron Maw exposes its physical capital phase runtime and finale verbs', () => {
   const ironMaw = BY_ID.get(IRON_MAW_ENEMY_ID);
   const recipe = heavyPartRecipeForEnemy(IRON_MAW_ENEMY_ID);
   assert.equal(ironMaw.fixedCombatStats, true);
@@ -183,8 +187,8 @@ test('Iron Maw has a capital part/phase recipe without claiming a phase runtime'
     'iron_maw_phase_drive_kill',
     'iron_maw_phase_hulk_decision',
   ]);
-  assert.deepEqual(recipe.phases.at(-1).choices, ['board_lite', 'salvage', 'destroy']);
-  assert.ok(recipe.phases.every((row) => row.runtime === 'unwired'));
+  assert.deepEqual(recipe.phases.at(-1).choices, ['board_lite', 'tow', 'destroy']);
+  assert.ok(recipe.phases.every((row) => row.runtime === 'capital_phase_runtime_v1'));
 });
 
 test('heavy reward identity and authored loot survive the spawn boundary', () => {

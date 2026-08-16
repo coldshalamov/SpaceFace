@@ -223,14 +223,14 @@ test('defeating Iron Maw records a durable exploration trophy', () => {
   const plate = explorationDiscoveryPlates(t.state)
     .find((entry) => entry.poiId === 'poi_boss');
   assert.ok(plate);
-  assert.equal(plate.title, 'Iron Maw Defeated');
+  assert.equal(plate.title, 'Iron Maw Broken');
   assert.match(plate.meta, /SITE RESOLVED/);
   assert.match(plate.body, /Vael-grown Deep-Mother/);
   const headline = t.events.find((event) => event.name === 'news:publish');
   assert.ok(headline);
   assert.equal(headline.payload.id, 'boss-defeated:sector_ashfall_reach:poi_boss');
   assert.equal(headline.payload.kind, 'combat-aftermath');
-  assert.match(headline.payload.text, /Iron Maw is dead/);
+  assert.match(headline.payload.text, /Iron Maw has gone silent/);
   assert.match(headline.payload.text, /vault coordinates/);
   assert.match(plate.note, /1\/3 authored sites found · 33% sector exploration/);
   assert.equal(t.events.filter((event) => event.name === 'discovery:plateUnlocked').length, 1);

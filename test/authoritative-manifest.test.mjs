@@ -23,8 +23,8 @@ import { combat } from '../src/systems/combat.js';
 import { weapons } from '../src/systems/weapons.js';
 
 test('production init + update order lengths match the live browser baseline', () => {
-  assert.equal(PRODUCTION_INIT_ORDER.length, 135);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 103);
+  assert.equal(PRODUCTION_INIT_ORDER.length, 136);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 104);
   assert.equal(PRODUCTION_INIT_ORDER[0], 'core');
   assert.ok(PRODUCTION_INIT_ORDER.includes('render'));
   assert.ok(PRODUCTION_INIT_ORDER.includes('save'));
@@ -139,7 +139,7 @@ test('browser production system set is unchanged vs production manifest constant
   const registry = createRegistry({ state, bus: createBus(), helpers: {} });
 
   // Full init list length and terminal platform systems preserved.
-  assert.equal(registry.systems.length, 135);
+  assert.equal(registry.systems.length, 136);
   const names = registry.systems.map((s) => s.name);
   assert.ok(names.includes('render') || registry.runtimeManifest.authoritativeSystemIds.includes('render'));
   assert.ok(registry.runtimeManifest.authoritativeSystemIds.includes('ui'));
@@ -151,7 +151,8 @@ test('browser production system set is unchanged vs production manifest constant
   const consequenceIndex = updates.indexOf('collisionConsequences');
   assert.ok(consequenceIndex > updates.indexOf('aiPorts'));
   assert.ok(consequenceIndex < updates.indexOf('heavyPartsRuntime'));
-  assert.ok(updates.indexOf('heavyPartsRuntime') < updates.indexOf('weapons'));
+  assert.ok(updates.indexOf('heavyPartsRuntime') < updates.indexOf('capitalRuntime'));
+  assert.ok(updates.indexOf('capitalRuntime') < updates.indexOf('weapons'));
   assert.ok(updates.indexOf('masslineImpacts') < updates.indexOf('masslineSnares'));
   assert.ok(updates.indexOf('masslineSnares') < updates.indexOf('masslineThrow'));
 });

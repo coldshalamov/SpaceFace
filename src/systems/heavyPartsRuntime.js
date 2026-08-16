@@ -22,6 +22,7 @@ import { makeEnemySpawnSpec } from './combat.js';
 const ZERO = Object.freeze({ x: 0, y: 0, z: 0 });
 const CARRIER_RECIPE_ID = 'heavy_parts_carrier_lite_v1';
 const FOUNDRY_RECIPE_ID = 'heavy_parts_foundry_v1';
+const IRON_MAW_RECIPE_ID = 'capital_parts_iron_maw_v1';
 const FAMILY_INITIAL_TELL_S = 1.25;
 const CARRIER_LAUNCH_INTERVAL_S = 1.1;
 const CARRIER_ENGAGE_RANGE = 960;
@@ -438,8 +439,15 @@ export const heavyPartsRuntime = {
       runtime.lethalLocked = false;
       parent.data.heavyDisabled = true;
       parent.data.towable = true;
-      parent.data.beamExtractableHeavy = true;
+      // Ordinary heavy barges immediately admit the finite extraction verb. Iron Maw's disabled
+      // hull is the Plan 20 choice surface: its industrial-beam breach remains closed until the
+      // player explicitly chooses board-lite, so generic auto-extract cannot decide the finale.
+      parent.data.beamExtractableHeavy = runtime.recipeId !== IRON_MAW_RECIPE_ID;
       parent.data.masslineTetherable = true;
+      if (runtime.recipeId === IRON_MAW_RECIPE_ID) {
+        parent.data.stationaryTerrain = true;
+        parent.data.capitalChoicePending = true;
+      }
       if (parent.data.ai) parent.data.ai.passive = true;
       this._holdDisabled(parent);
       this.bus.emit('heavy:disabled', { parentId: parent.id, recipeId: runtime.recipeId, partId: record.partId });

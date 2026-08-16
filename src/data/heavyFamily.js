@@ -21,6 +21,7 @@ const WIRED_PART_OUTCOMES = new Set([
   'remove_ram_plate_authority',
   'disable_drive',
   'reduce_capital_drive_authority',
+  'weaken_pd_screen',
   'disable_bound_launch_bay',
   'disable_charged_ore_mine_release',
 ]);
@@ -56,7 +57,7 @@ const part = (id, partRole, subsystemId, partBinding, behaviorFields, socketFiel
 };
 const phase = (id, fields) => Object.freeze({
   id,
-  runtime: 'unwired',
+  runtime: fields.runtime || 'unwired',
   ...Object.fromEntries(Object.entries(fields).map(([key, value]) => [
     key,
     Array.isArray(value) ? Object.freeze([...value]) : value,
@@ -183,6 +184,7 @@ export const HEAVY_PART_RECIPES = Object.freeze([
     id: 'capital_parts_iron_maw_v1',
     enemyTypeId: IRON_MAW_ENEMY_ID,
     class: 'capital',
+    behaviorRuntime: 'capital_phase_runtime_v1',
     behavior: {
       fightShape: 'pd_screen_then_drives_then_stationary_hulk_decision',
       counterVerb: 'strip_pd_kill_drives_then_salvage_board_or_destroy',
@@ -243,6 +245,7 @@ export const HEAVY_PART_RECIPES = Object.freeze([
     ],
     phases: [
       phase('iron_maw_phase_pd_screen', {
+        runtime: 'capital_phase_runtime_v1',
         objectivePartIds: [
           'iron_maw_pd_port_fore',
           'iron_maw_pd_port_aft',
@@ -252,14 +255,16 @@ export const HEAVY_PART_RECIPES = Object.freeze([
         nextPhaseId: 'iron_maw_phase_drive_kill',
       }),
       phase('iron_maw_phase_drive_kill', {
+        runtime: 'capital_phase_runtime_v1',
         requiresPhaseId: 'iron_maw_phase_pd_screen',
         objectivePartIds: ['iron_maw_drive_port', 'iron_maw_drive_starboard'],
         nextPhaseId: 'iron_maw_phase_hulk_decision',
       }),
       phase('iron_maw_phase_hulk_decision', {
+        runtime: 'capital_phase_runtime_v1',
         requiresPhaseId: 'iron_maw_phase_drive_kill',
         objectivePartIds: ['iron_maw_boarding_spine'],
-        choices: ['board_lite', 'salvage', 'destroy'],
+        choices: ['board_lite', 'tow', 'destroy'],
       }),
     ],
   }),

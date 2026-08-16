@@ -361,6 +361,7 @@ export const world = {
       this._onBossKilled(p || {});
       this._onDurableEntityKilled(p || {});
     });
+    bus.on('boss:resolved', (p) => this._onBossResolved(p || {}));
     bus.on('sectorsim:embodiment', (p) => this._onSectorEmbodiment(p || {}));
   },
 
@@ -441,8 +442,17 @@ export const world = {
   },
 
   _onBossKilled(p) {
-    if (!p || !p.id) return;
-    const e = this.state.entities.get(p.id);
+    if (!p || p.id == null) return;
+    return this._settleBossOutcome({ ...p, entityId: p.id }, 'destroyed');
+  },
+
+  _onBossResolved(p) {
+    if (!p || p.entityId == null) return;
+    return this._settleBossOutcome(p, p.outcome || 'defeated');
+  },
+
+  _settleBossOutcome(p, outcome) {
+    const e = this.state.entities.get(p.entityId);
     const d = e && e.data;
     if (!d || !d.isBoss) return;
     const sectorId = d.bossSectorId || this.state.world.currentSectorId;
@@ -458,6 +468,7 @@ export const world = {
     rec.discovered = true;
     rec.identified = true;
     rec.defeated = true;
+    rec.resolutionOutcome = String(outcome || 'defeated');
     rec.type = poi && poi.type || rec.type || 'anomaly';
     rec.name = poi && poi.name || rec.name || poiId;
     if (newlyDefeated) {
@@ -484,11 +495,16 @@ export const world = {
         });
       }
       this.bus.emit('discovery:plateUnlocked', { sectorId, poiId, type: rec.type });
-      if (poi && poi.defeatNews && typeof poi.defeatNews.text === 'string') {
+      const outcomeNews = outcome === 'boarded'
+        ? 'ASHFALL RELAY: boarders breached the silent Iron Maw. Salvagers are racing for the vault coordinates released from its arena signal.'
+        : (outcome === 'towed'
+          ? 'ASHFALL RELAY: the disabled Iron Maw is moving under tow. Salvagers are racing for the vault coordinates released from its arena signal.'
+          : null);
+      if (outcomeNews || (poi && poi.defeatNews && typeof poi.defeatNews.text === 'string')) {
         this.bus.emit('news:publish', {
           id: `boss-defeated:${sectorId}:${poiId}`,
-          text: poi.defeatNews.text,
-          kind: poi.defeatNews.kind || 'combat-aftermath',
+          text: outcomeNews || poi.defeatNews.text,
+          kind: poi && poi.defeatNews && poi.defeatNews.kind || 'combat-aftermath',
           sectorId,
           poiId,
           source: 'boss-defeated',
@@ -528,7 +544,12 @@ export const world = {
         });
       }
     }
-    this.bus.emit('boss:defeated', { sectorId, poiId, killerId: p.killerId || null });
+    this.bus.emit('boss:defeated', {
+      sectorId,
+      poiId,
+      killerId: p.killerId || null,
+      outcome: rec.resolutionOutcome,
+    });
   },
 
   // =========================================================================================

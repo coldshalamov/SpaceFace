@@ -368,12 +368,12 @@ const CORE_SECTORS = [
       {
         id: 'poi_boss', type: 'anomaly', name: 'Boss Arena Signal',
         discoveryPlate: {
-          title: 'Iron Maw Defeated',
-          body: 'The Vael-grown Deep-Mother that guarded Ashfall\'s vault is dead. Its silent arena signal now marks a navigable grave.',
+          title: 'Iron Maw Broken',
+          body: 'The Vael-grown Deep-Mother that guarded Ashfall\'s vault has been silenced. Its arena signal now marks a navigable salvage ground.',
         },
         defeatNews: {
           kind: 'combat-aftermath',
-          text: 'ASHFALL RELAY: the Iron Maw is dead. Salvagers are already racing for the vault coordinates released from its arena signal.',
+          text: 'ASHFALL RELAY: the Iron Maw has gone silent. Salvagers are already racing for the vault coordinates released from its arena signal.',
         },
       },
       {

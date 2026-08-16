@@ -51,6 +51,7 @@ import { anomalyRuntime } from '../systems/anomalyRuntime.js';
 import { planetRuntime } from '../systems/planetRuntime.js';
 import { mediumEnemyRuntime } from '../systems/mediumEnemyRuntime.js';
 import { heavyPartsRuntime } from '../systems/heavyPartsRuntime.js';
+import { capitalRuntime } from '../systems/capitalRuntime.js';
 import { massSeedHud } from '../ui/massSeedHud.js';
 import { fieldHud } from '../ui/fieldHud.js';
 import { planetHud } from '../ui/planetHud.js';
@@ -187,6 +188,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['planetRuntime', planetRuntime],
     ['mediumEnemyRuntime', mediumEnemyRuntime],
     ['heavyPartsRuntime', heavyPartsRuntime],
+    ['capitalRuntime', capitalRuntime],
     ['combat', combat],
     ['combatOutcome', combatOutcome],
     ['aftermathWrecks', aftermathWrecks],

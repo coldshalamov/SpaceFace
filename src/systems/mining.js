@@ -427,7 +427,8 @@ export const mining = {
     const extraction = data.heavyExtraction || (data.heavyExtraction = { progress: 0, completed: false });
     if (extraction.completed) return false;
     extraction.progress += Math.max(0, Number(dps) || 0) * Math.max(0, Number(dt) || 0);
-    const threshold = Math.max(120, Number(target.mass) || 0);
+    const threshold = Math.max(120,
+      Number(data.heavyExtractionThreshold) || Number(target.mass) || 0);
     if (extraction.progress < threshold) return true;
     extraction.progress = threshold;
     extraction.completed = true;
@@ -440,10 +441,17 @@ export const mining = {
       mass: Math.max(20, Math.round((target.mass || 60) * 0.16)),
       ownerId: player.id,
       factionId: player.factionId || 'player',
-      salvagePool: { cmdty_scrap_metal: Math.max(4, Math.round((target.mass || 60) / 20)) },
-      payloadType: 'disabled_heavy_extract',
+      salvagePool: data.heavyExtractionSalvagePool || {
+        cmdty_scrap_metal: Math.max(4, Math.round((target.mass || 60) / 20)),
+      },
+      payloadType: data.heavyExtractionPayloadType || 'disabled_heavy_extract',
     });
-    this.bus.emit('heavy:beamExtracted', { targetId: target.id, payloadId: payload.id, minerId: player.id });
+    this.bus.emit('heavy:beamExtracted', {
+      targetId: target.id,
+      payloadId: payload.id,
+      minerId: player.id,
+      mode: data.heavyExtractionMode || 'disabled_heavy_extract',
+    });
     return true;
   },
 
