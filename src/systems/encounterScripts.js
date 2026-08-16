@@ -68,6 +68,7 @@ const CLAIM_RETREAT_R = 2400;     // leaving the defended site is a deliberate r
 const CLAIM_RETREAT_HOLD_S = 12;  // brief overshoots do not forfeit the defense
 const MINEFIELD_WAKE_COUNT = 3;   // mines seeded on minefield_wake spring
 const MINEFIELD_WAKE_SPACING = 70;
+const HARRIER_KITE_SHAPE_ID = 'specialist_harrier_kite';
 
 /**
  * W03: seed physical mines behind the jackal on minefield_wake spring.
@@ -473,7 +474,11 @@ const ambush = {
     }
   },
 
-  event(d, live, state, name) {
+  event(d, live, state, name, payload) {
+    if (name === 'squadKill' && live.shapeId === HARRIER_KITE_SHAPE_ID
+      && live.phase === 'conflict') {
+      if (beginHarrierScreenBreak(d, live, state, payload)) return;
+    }
     if (name === 'playerHitSquad' && live.phase === 'offer') {
       d.setPassive(live, false);
       live.phase = 'conflict';
@@ -494,6 +499,69 @@ const ambush = {
     return true;
   },
 };
+
+function livingHarrierAnchor(d, live) {
+  return d.entsOf(live).find((entity) => (
+    entity && entity.data && entity.data.lootTableId === 'harrier_kiter'
+  )) || null;
+}
+
+function livingHarrierWing(d, live) {
+  return d.entsOf(live).filter((entity) => (
+    entity && entity.data && entity.data.ai
+      && entity.data.ai.encounterCompositionRole === 'light'
+  ));
+}
+
+function beginHarrierScreenBreak(d, live, state, payload) {
+  if (!payload || livingHarrierWing(d, live).length > 0) return false;
+  const anchor = livingHarrierAnchor(d, live);
+  if (!anchor || !anchor.pos) return false;
+  const data = anchor.data || (anchor.data = {});
+  const ai = data.ai || (data.ai = {});
+  const intent = data.intent || (data.intent = {});
+  live.phase = 'harrier_retreat';
+  live.data.harrierRetreat = {
+    startedAt: d.now(),
+    origin: { x: anchor.pos.x, z: anchor.pos.z },
+    wingKillId: payload.id,
+  };
+  setEntityDoctrine(anchor, {
+    kind: ActivityKind.FLEE,
+    reason: 'harrier_screen_broken',
+    anchor: live.anchor || anchor.pos,
+    leashRadius: Math.max(2600, Number(live.zoneRadius) || 0),
+    preferredRange: 820,
+    startedTick: Number.isInteger(state && state.tick) ? state.tick : 0,
+    encounterId: live.id,
+    roe: RulesOfEngagement.HOLD_FIRE,
+  });
+  // forceFlee is the existing immediate survival override consumed by doctrine, squad movement,
+  // combat outcome, bark, VFX, and audio. The encounter owns only when this exact actor starts it.
+  ai.forceFlee = true;
+  ai.fsm = 'flee';
+  intent.fire = false;
+  intent.fireGroup = null;
+  intent.boost = true;
+  d.emit('ai:flee', {
+    entityId: anchor.id,
+    squadId: live.squadId,
+    encounterId: live.id,
+    reason: 'harrier_screen_broken',
+    tick: Number.isInteger(state && state.tick) ? state.tick : 0,
+  });
+  d.say(live, 'alert', 'The Harrier abandons the long bearing as its screen collapses.', null, {
+    primary: true,
+    literal: true,
+  });
+  // The counter is complete when the screen is gone, not after grinding down a deliberately
+  // low-threat plinker. Keep the actor physically alive for its six-second retreat beat, while the
+  // ordinary resolution owner closes this fight immediately and prevents chain pursuit.
+  d.despawnAll(live, 6);
+  d.dangerImpulse(live, 'harrier_screen_broken', -0.02);
+  d.resolve(live, 'wing_broken');
+  return true;
+}
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 // D. DISTRESS — 60/40 genuine/bait preserved. Assist / scan-first / ignore, all flown, not clicked.

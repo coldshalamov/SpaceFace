@@ -1,5 +1,5 @@
 // One low-DPS Harrier on a long open bearing. Its light screen is the immediate damage race; the
-// dedicated patience-kiter acceptance behavior remains a later packet.
+// ordinary ambush runtime orders the surviving anchor out when that screen breaks.
 import { deepFreeze, defineEncounter } from './catalog.js';
 
 export const encounterOrder = 352;

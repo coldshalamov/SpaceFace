@@ -61,7 +61,9 @@ test('missing identities are fixed-stat medium rewards with exact authored masse
     assert.ok(def.mass > 20 && def.mass <= 60, `${enemyId} sits in the Plan 11 medium band`);
     assert.equal(def.fixedCombatStats, true);
     assert.equal(def.killRewardTier, 'medium');
-    const expectedRuntime = enemyId === 'jammer_specialist' ? 'existing' : 'unwired';
+    const expectedRuntime = enemyId === 'jammer_specialist' || enemyId === 'harrier_kiter'
+      ? 'existing'
+      : 'unwired';
     assert.equal(def.specialistBehavior?.runtime, expectedRuntime);
     assert.equal(def.specialistWorldTell?.runtime, expectedRuntime);
 
@@ -90,9 +92,12 @@ test('contracts claim only specialist mechanics with landed production owners', 
     .filter((row) => row.worldTell.runtime === 'existing')
     .map((row) => row.key);
 
-  assert.deepEqual(existingBehavior, ['tether_cutter', 'jammer', 'shield_projector', 'anchor']);
-  assert.deepEqual(existingWorldTell, ['tether_cutter', 'jammer', 'anchor']);
-  for (const key of ['pd_screen', 'tender', 'minelayer', 'kiter']) {
+  assert.deepEqual(existingBehavior, ['tether_cutter', 'pd_screen', 'jammer', 'shield_projector', 'anchor', 'kiter']);
+  assert.deepEqual(existingWorldTell, ['tether_cutter', 'jammer', 'anchor', 'kiter']);
+  const pdScreen = SPECIALIST_FAMILY.find((candidate) => candidate.key === 'pd_screen');
+  assert.equal(pdScreen.behavior.owner, 'physics_owned_pd_interception_v1');
+  assert.equal(pdScreen.worldTell.runtime, 'unwired', 'pd_screen world tell stays an honest handoff');
+  for (const key of ['tender', 'minelayer']) {
     const row = SPECIALIST_FAMILY.find((candidate) => candidate.key === key);
     assert.equal(row.behavior.runtime, 'unwired', `${key} behavior stays an honest handoff`);
     assert.equal(row.worldTell.runtime, 'unwired', `${key} world tell stays an honest handoff`);

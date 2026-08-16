@@ -59,6 +59,11 @@ const FIELD_ANCHOR_RECOVER_TICKS = 75;
 const RANGED_REPOSITION_TICKS = 45;
 const RANGED_FIRE_TICKS = 18;
 const RANGED_RESET_TICKS = 18;
+const HARRIER_STANDOFF_RANGE = 820;
+const HARRIER_RETREAT_FLOOR = 700;
+const HARRIER_RETREAT_RESET_RANGE = 760;
+const HARRIER_CLOSING_INTERRUPT = 12;
+const HARRIER_REPOSITION_TICKS = 12;
 const CAPITAL_BROADSIDE_FIRE_TICKS = 60;
 const CAPITAL_BROADSIDE_SHIFT_TICKS = 90;
 const RUN_EGRESS_DISTANCE = 960;
@@ -435,19 +440,30 @@ function updateFieldAnchor(record, tick, self, target, distance) {
 
 function updateRanged(record, tick, self, target, distance) {
   const age = tick - record.phaseStartedTick;
-  const closing = closingSpeed(self, target);
-  if (distance < 300 || closing > 55) {
+  const harrierKiter = record.flightProfile === 'harrier_kiter';
+  const closing = harrierKiter ? targetApproachSpeed(self, target) : closingSpeed(self, target);
+  const retreatFloor = harrierKiter ? HARRIER_RETREAT_FLOOR : 300;
+  const closingInterrupt = harrierKiter ? HARRIER_CLOSING_INTERRUPT : 55;
+  if (distance < retreatFloor || closing > closingInterrupt) {
     if (record.phase !== 'retreat') {
       record.outcome = 'closing_interrupt';
+      if (harrierKiter) record.flightPoint = harrierEgressPoint(self, target, record.side);
       enter(record, 'retreat', tick, null);
+    } else if (harrierKiter && distance2(self.pos, record.flightPoint) < 260) {
+      record.flightPoint = harrierEgressPoint(self, target, record.side);
     }
     return;
   }
   if (record.phase === 'retreat') {
-    if (distance >= 520 && closing < 10) enter(record, 'outer_standoff', tick, null);
+    const resetRange = harrierKiter ? HARRIER_RETREAT_RESET_RANGE : 520;
+    if (distance >= resetRange && closing < 10) {
+      record.flightPoint = null;
+      enter(record, 'outer_standoff', tick, null);
+    }
     return;
   }
-  if (record.phase === 'outer_standoff' && age >= RANGED_REPOSITION_TICKS && distance >= 420 && distance <= 1100) {
+  const repositionTicks = harrierKiter ? HARRIER_REPOSITION_TICKS : RANGED_REPOSITION_TICKS;
+  if (record.phase === 'outer_standoff' && age >= repositionTicks && distance >= 420 && distance <= 1100) {
     enter(record, 'charge_cue', tick, 'weapon_charge');
   }
   else if (record.phase === 'charge_cue' && age >= DOCTRINE_TELEGRAPH_TICKS) enter(record, 'fire_window', tick, null);
@@ -672,7 +688,7 @@ function snapshot(record, target, directive, factionBehavior = null) {
   } else {
     maneuverKind = phase === 'retreat' ? ManeuverKind.RETREAT
       : (phase === 'outer_standoff' || phase === 'reset' ? ManeuverKind.ORBIT : ManeuverKind.HOLD);
-    preferredRange = 620;
+    preferredRange = record.flightProfile === 'harrier_kiter' ? HARRIER_STANDOFF_RANGE : 620;
     // The standoff orbit is translational: fixed-gun ships keep their nose on the target while
     // sliding around the engagement ring, so even high-inertia hulls are aligned before the cue.
     faceTarget = phase !== 'retreat';
@@ -682,7 +698,8 @@ function snapshot(record, target, directive, factionBehavior = null) {
     || phase === 'retreat' || phase === 'visible_retreat' || phase === 'return_to_cover';
   // The authored heavy identity owns its readable range/commit grammar. Generic faction flavor may
   // still govern escalation and retreat, but cannot turn the turret boat or ram into a standoff fit.
-  if (factionBehavior && !isEgress && !record.heavyFightKind) {
+  if (factionBehavior && !isEgress && !record.heavyFightKind
+    && record.flightProfile !== 'harrier_kiter') {
     preferredRange = factionBehavior.preferredRange;
   }
   return Object.freeze({
@@ -812,6 +829,13 @@ function flightProfileFor(doctrineId, self) {
   if (!profile && doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY && self && self.combatRoleId === 'skitter_swarmer') {
     profile = 'cover_ambush';
   }
+  if (!profile && doctrineId === CombatDoctrineId.RANGED_DISENGAGER
+    && self && self.combatRoleId === 'harrier_kiter') {
+    // The Harrier uses the common ranged-disengager phase grammar, but its authored identity keeps
+    // that grammar on the long bearing. Other snipers retain the generic 620-WU orbit and close
+    // interrupt, rather than inheriting a specialist counter merely because they share a doctrine.
+    profile = 'harrier_kiter';
+  }
   if (!profile && doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY) profile = 'flyby';
   else if (!profile && doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER) profile = 'tether_raider';
   else if (!profile && doctrineId === CombatDoctrineId.FIELD_ANCHOR_CONTROLLER) profile = 'field_anchor';
@@ -896,6 +920,21 @@ function egressPoint(self, target, side) {
   });
 }
 
+function harrierEgressPoint(self, target, side) {
+  const sx = finite(self && self.pos && self.pos.x);
+  const sz = finite(self && self.pos && self.pos.z);
+  const awayX = sx - finite(target && target.pos && target.pos.x);
+  const awayZ = sz - finite(target && target.pos && target.pos.z);
+  const length = Math.hypot(awayX, awayZ) || 1;
+  const dx = awayX / length;
+  const dz = awayZ / length;
+  const lateral = side < 0 ? -1 : 1;
+  return Object.freeze({
+    x: sx + dx * RUN_EGRESS_DISTANCE - dz * lateral * 80,
+    z: sz + dz * RUN_EGRESS_DISTANCE + dx * lateral * 80,
+  });
+}
+
 /**
  * True when a control line owned by somebody OTHER than this raider is already attached to the
  * body it is about to lasso. Reads the same TETHER contact stream `ownedTether` uses
@@ -936,6 +975,15 @@ function closingSpeed(self, target) {
   const rvx = finite(target.vel && target.vel.x) - finite(self.vel && self.vel.x);
   const rvz = finite(target.vel && target.vel.z) - finite(self.vel && self.vel.z);
   return -(rvx * dx + rvz * dz) / length;
+}
+
+function targetApproachSpeed(self, target) {
+  if (!self || !self.pos || !target || !target.pos) return 0;
+  const dx = finite(target.pos.x) - finite(self.pos.x);
+  const dz = finite(target.pos.z) - finite(self.pos.z);
+  const length = Math.hypot(dx, dz);
+  if (length <= 1e-6) return 0;
+  return -(finite(target.vel && target.vel.x) * dx + finite(target.vel && target.vel.z) * dz) / length;
 }
 
 function sideFor(seed, entityId, doctrineId, cycle, targetId) {

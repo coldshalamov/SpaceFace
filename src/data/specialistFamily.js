@@ -49,7 +49,8 @@ export const SPECIALIST_FAMILY = Object.freeze([
     counterVerb: 'guns_beams_or_displace_into_mine',
     behavior: {
       capability: 'ordnance_interception_bubble',
-      runtime: 'unwired',
+      runtime: 'existing',
+      owner: 'physics_owned_pd_interception_v1',
     },
     worldTell: {
       cue: 'interceptor_flashes_around_hull',
@@ -139,11 +140,14 @@ export const SPECIALIST_FAMILY = Object.freeze([
     counterVerb: 'ignore_and_kill_wing',
     behavior: {
       capability: 'low_dps_long_range_disengage',
-      runtime: 'unwired',
+      runtime: 'existing',
+      owner: 'harrier_kiter_doctrine_encounter_v1',
+      invariant: 'screen break orders a live withdrawal instead of a second damage race',
     },
     worldTell: {
       cue: 'distant_tracer_flashes',
-      runtime: 'unwired',
+      runtime: 'existing',
+      owner: 'weapons_projectile_v1',
     },
   }),
 ]);

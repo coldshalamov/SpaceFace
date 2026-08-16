@@ -627,6 +627,10 @@ export const ENEMY_TYPES = [
     ],
     aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 280, leashRadius: 2200 },
     telegraph: { bark: 'warn', line: 'Point-defense curtain spinning up. Hold missiles.', cue: 'pd_curtain' },
+    specialistBehavior: {
+      capability: 'ordnance_interception_bubble', runtime: 'existing',
+      owner: 'physics_owned_pd_interception_v1',
+    },
     counterHint: 'hold_missiles_use_kinetics_peel_escort',
     behavior: 'screens a leader or wreck claim; shreds missiles and light craft at mid range',
     bountyCr: 480, shipClass: 'gunship',
@@ -709,7 +713,7 @@ export const ENEMY_TYPES = [
   // ── PR95 wave 4: missing specialist identities (Plan 15) ──
   // These are fixed-stat production identities and ordinary encounter anchors. Runtime markers
   // stay explicit per identity so catalog admission cannot be mistaken for a mechanic that has not
-  // landed; the Jammer is now the first of these three with both behavior and world tell wired.
+  // landed; Jammer and Harrier now name the production owners behind their behavior and tell.
   {
     id: 'jammer_specialist', name: 'Jammer', shipId: 'ship_hornet',
     factionId: 'faction_reach',
@@ -776,10 +780,17 @@ export const ENEMY_TYPES = [
       projSpeedOverride: 620, rangeOverride: 880,
     }],
     aiDoctrine: { defaultActivity: 'reposition', roe: 'weapons_free', preferredRange: 760, leashRadius: 3200 },
-    specialistBehavior: { capability: 'low_dps_long_range_disengage', runtime: 'unwired' },
-    specialistWorldTell: { cue: 'distant_tracer_flashes', runtime: 'unwired' },
+    specialistBehavior: {
+      capability: 'low_dps_long_range_disengage', runtime: 'existing',
+      owner: 'harrier_kiter_doctrine_encounter_v1',
+      invariant: 'screen_break orders a live withdrawal instead of a second damage race',
+    },
+    specialistWorldTell: {
+      cue: 'distant_tracer_flashes', runtime: 'existing',
+      owner: 'weapons_projectile_v1',
+    },
     counterHint: 'ignore_and_kill_wing',
-    behavior: 'low-DPS ranged hull pending a dedicated kite-and-disengage acceptance runtime',
+    behavior: 'low-DPS long-bearing plinker that withdraws when its close screen breaks',
     bountyCr: 300, shipClass: 'fighter', killRewardTier: 'medium',
     loot: {
       creditsRange: [80, 190],
