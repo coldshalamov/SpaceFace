@@ -331,6 +331,28 @@ export const VARIETY_ACES = Object.freeze(Object.fromEntries(
 ));
 export const LAUNCH_ACE_IDS = Object.freeze(LAUNCH_ROSTER.map((ace) => ace.id));
 
+// Plan 52 recurring peer. Kei is deliberately not part of ALL_KNOWN_ACES: that roster feeds the
+// hostile named-hunter lifecycle, while this pilot enters through the self-bounded aceMemory.rival
+// route as neutral physical competition. Keeping the identity beside the ace roster gives the Codex
+// and renderer one authored face without letting a peer inherit bounty, grudge, or pirate returns.
+export const RECURRING_RIVAL = deepFreeze({
+  id: 'rival_kei_halber',
+  name: 'Kei Halber',
+  crew: 'Second Line',
+  factionId: 'faction_free',
+  shipDefId: 'ship_hornet',
+  appearance: {
+    hullColor: '#223746', accentColor: '#f0b64b', finish: 'satin', wear: 0.26, decalId: 'frontier',
+  },
+  barks: {
+    intro: 'KEI HALBER: Your line is clean. Mine is cleaner.',
+    challenge: 'KEI HALBER: Same gates. No excuses.',
+    playerWon: 'KEI HALBER: Clean run. Keep the line warm.',
+    rivalWon: 'KEI HALBER: I left you the wake.',
+    invalidated: 'KEI HALBER: Bent line. Run it again.',
+  },
+});
+
 const CAPTAIN_ALIASES = Object.freeze(NAMED_CAPTAINS.map((cap) => Object.freeze({
   id: cap.id,
   name: cap.name,

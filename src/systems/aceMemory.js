@@ -1,10 +1,11 @@
 // BP-13/B10 Named Crews & Aces.
 //
 // Durable lifecycle owner: records named-ace outcomes, schedules director-owned first contacts,
-// spawns only its established promoted-return crews, and emits the station-news seam. It never
-// owns first-contact entities or changes hostility.
+// spawns its established promoted-return crews and the bounded neutral Rival peer, and emits the
+// station-news seam. It never owns hostile first-contact entities or changes hostility.
 import {
   PIRATE_PROMOTION_MAX_TIER,
+  RECURRING_RIVAL,
   REACH_CULTURE_ACES,
   aceById,
   aceByName,
@@ -12,13 +13,20 @@ import {
   newsForAceTransition,
   returnPlanForAce,
 } from '../data/namedAces.js';
+import { timeTrialCourseById } from '../data/timeTrialCourses.js';
 import { planetStatesForSector } from '../data/planetStates.js';
 import { hash32 } from '../core/rng.js';
+import { makeShipEntitySpec } from './ships.js';
+import { resolveTimeTrialPoint } from './timeTrials.js';
 
-export const ACE_MEMORY_VERSION = 2;
+export const ACE_MEMORY_VERSION = 3;
 
-const META_KEYS = new Set(['schemaVersion', 'news', 'activeReturns', 'cultureIntros', 'planetChallenges']);
+const META_KEYS = new Set(['schemaVersion', 'news', 'activeReturns', 'cultureIntros', 'planetChallenges', 'rival']);
 const RETURN_CHECK_S = 0.5;
+const RIVAL_RECORD_SCHEMA = 'spaceface.recurringRival.v1';
+const RIVAL_WORLD_RECORD_ID = `recurring-rival:${RECURRING_RIVAL.id}`;
+const RIVAL_FINISH_RADIUS_WU = 110;
+const RIVAL_DEPART_DELAY_S = 10;
 const CULTURE_INTRO_RETRY_S = 10;
 const PLANET_CHALLENGE_RETRY_S = 10;
 const CULTURE_INTRO_ROUTES = Object.freeze([
@@ -59,9 +67,14 @@ export const aceMemory = {
       this._scheduleCultureIntro(p);
       this._schedulePlanetChallenges(p);
     });
+    this._listen('sector:exit', () => this._retireRival('sector_exit'));
+    this._listen('timeTrial:started', (p) => this._rivalTrialStarted(p));
+    this._listen('timeTrial:completed', (p) => this._rivalTrialCompleted(p));
+    this._listen('timeTrial:invalidated', (p) => this._rivalTrialInvalidated(p));
     this._listen('save:loaded', () => {
       this._rearmCultureIntroAfterLoad();
       this._rearmPlanetChallengesAfterLoad();
+      this._adoptRivalEntity();
     });
     this._listen('entity:killed', (p) => this._namedAceKilled(p));
     this._listen('law:custodyTransfer', (p) => this._namedAceCustody(p));
@@ -119,6 +132,7 @@ export const aceMemory = {
     this._processCultureIntros(state);
     this._processPlanetChallenges(state);
     this._processReturns(state);
+    this._processRival(state);
   },
 
   destroy() {
@@ -509,6 +523,295 @@ export const aceMemory = {
     this._emitTransition('flung', ace, rec);
   },
 
+  // ── Plan 52 recurring peer ────────────────────────────────────────────────────────────────
+  // A completed physical course is the history gate. The resulting memory owns only Kei's own
+  // appearances and head-to-head outcomes; it never mirrors the player's general history.
+  _rivalTrialCompleted(payload) {
+    const course = timeTrialCourseById(payload && payload.courseId);
+    if (!course) return false;
+    const rival = rivalRecordFor(ensureMemory(this.state));
+    if (rival.unlocked !== true) {
+      rival.unlocked = true;
+      rival.triggerCourseId = course.id;
+      rival.unlockedAt = nowOf(this.state, payload);
+      const entity = this._spawnRival(course, 'intro', rival);
+      if (!entity) {
+        rival.lastSpawnFailure = 'intro_unavailable';
+        return false;
+      }
+      rival.introSeen = true;
+      this._speakRival('intro');
+      emit(this.bus, 'recurringRival:unlocked', {
+        rivalId: RECURRING_RIVAL.id,
+        rivalName: RECURRING_RIVAL.name,
+        courseId: course.id,
+        entityId: entity.id,
+      });
+      return true;
+    }
+    const race = rival.activeRace;
+    if (!race || race.courseId !== course.id || race.status !== 'running') return false;
+    return this._finishRivalRace('player', payload);
+  },
+
+  _rivalTrialStarted(payload) {
+    const course = timeTrialCourseById(payload && payload.courseId);
+    const rival = rivalRecordFor(ensureMemory(this.state));
+    if (!course || rival.unlocked !== true || rival.activeRace) return false;
+    rival.activeRace = {
+      courseId: course.id,
+      status: 'running',
+      startedAt: nowOf(this.state, payload),
+      startedTick: Number.isInteger(payload && payload.startedTick)
+        ? payload.startedTick : (this.state && this.state.tick) || 0,
+      entityId: null,
+    };
+    const entity = this._spawnRival(course, 'race', rival);
+    if (!entity) {
+      rival.lastSpawnFailure = 'race_unavailable';
+      rival.activeRace = null;
+      return false;
+    }
+    rival.racesStarted += 1;
+    rival.activeRace.entityId = entity.id;
+    this._speakRival('challenge');
+    emit(this.bus, 'recurringRival:raceStarted', {
+      rivalId: RECURRING_RIVAL.id,
+      rivalName: RECURRING_RIVAL.name,
+      courseId: course.id,
+      entityId: entity.id,
+    });
+    return true;
+  },
+
+  _rivalTrialInvalidated(payload) {
+    const rival = rivalRecordFor(ensureMemory(this.state));
+    const race = rival.activeRace;
+    if (!race || race.status !== 'running' || race.courseId !== (payload && payload.courseId)) return false;
+    return this._finishRivalRace('rival', { ...payload, invalidated: true });
+  },
+
+  _processRival(state) {
+    const rival = rivalRecordFor(ensureMemory(state));
+    const now = nowOf(state);
+    if (Number.isFinite(rival.retireAt) && rival.retireAt <= now) {
+      this._retireRival('appearance_complete');
+      return;
+    }
+    const race = rival.activeRace;
+    if (!race || race.status !== 'running') return;
+    const entity = this._rivalEntity(rival);
+    const course = timeTrialCourseById(race.courseId);
+    if (!entity || !course || !course.gates.length) return;
+    const finish = resolveTimeTrialPoint(course, course.gates[course.gates.length - 1].center, state);
+    if (!finish) return;
+    const dx = entity.pos.x - finish.x;
+    const dz = entity.pos.z - finish.z;
+    if (dx * dx + dz * dz <= RIVAL_FINISH_RADIUS_WU * RIVAL_FINISH_RADIUS_WU) {
+      this._finishRivalRace('rival', { physicalFinish: true });
+    }
+  },
+
+  _spawnRival(course, context, rivalRecord = null) {
+    if (!course || !this.helpers || typeof this.helpers.spawnEntity !== 'function') return null;
+    const rival = rivalRecord || rivalRecordFor(ensureMemory(this.state));
+    let entity = this._rivalEntity(rival);
+    const spawnPos = rivalSpawnPosition(course, this.state, context);
+    const jobs = this.helpers.npcJobs;
+    // A fresh race appearance must enter beside Gate 1. Retire the post-finish intro hull through
+    // the same job/entity owners instead of teleporting a live Rapier body across the sector.
+    if (context === 'race' && entity && entity.data && entity.data.rivalAppearance !== 'race') {
+      if (entity.data.jobId && jobs && typeof jobs.release === 'function') jobs.release(entity.data.jobId);
+      this._removeRivalEntity(entity);
+      entity = null;
+    }
+    const appearanceWorldRecordId = entity && entity.data && entity.data.worldRecordId
+      || `${RIVAL_WORLD_RECORD_ID}:appearance:${rival.appearances + 1}`;
+    if (!entity) {
+      const spec = makeShipEntitySpec(RECURRING_RIVAL.shipDefId, {
+        team: 2,
+        factionId: RECURRING_RIVAL.factionId,
+        pos: spawnPos,
+        appearance: RECURRING_RIVAL.appearance,
+        ai: { archetype: 'harrier_kiter', passive: true, spawnContext: 'recurring_rival' },
+      });
+      spec.collides = true;
+      spec.flags = { persistent: true };
+      spec.data = {
+        ...spec.data,
+        name: RECURRING_RIVAL.name,
+        callsign: RECURRING_RIVAL.name,
+        scanLabel: `${RECURRING_RIVAL.name} / SECOND LINE`,
+        namedRivalId: RECURRING_RIVAL.id,
+        aceTierPeer: true,
+        worldRecordId: appearanceWorldRecordId,
+        sectorId: course.sectorId,
+        homeSectorId: course.sectorId,
+        jobKind: 'patrol',
+      };
+      entity = this.helpers.spawnEntity(spec);
+      if (!entity) return null;
+    }
+    entity.team = 2;
+    entity.factionId = RECURRING_RIVAL.factionId;
+    entity.flags = { ...(entity.flags || {}), persistent: true };
+    entity.data = {
+      ...(entity.data || {}),
+      namedRivalId: RECURRING_RIVAL.id,
+      worldRecordId: appearanceWorldRecordId,
+      sectorId: course.sectorId,
+      homeSectorId: course.sectorId,
+      jobKind: 'patrol',
+      rivalAppearance: context,
+    };
+    entity.data.ai = { ...(entity.data.ai || {}), passive: true, spawnContext: 'recurring_rival' };
+
+    if (!jobs || typeof jobs.assign !== 'function') {
+      this._removeRivalEntity(entity);
+      return null;
+    }
+    if (entity.data.jobId && typeof jobs.release === 'function') jobs.release(entity.data.jobId);
+    delete entity.data.jobId;
+    const route = rivalRouteForCourse(course, this.state, spawnPos);
+    const jobId = jobs.assign(entity, {
+      kind: 'patrol',
+      sectorId: course.sectorId,
+      route,
+      speed: 170,
+      commissionS: 0.1,
+      approachS: 0.1,
+      dwellS: 0.1,
+    });
+    if (!jobId) {
+      this._removeRivalEntity(entity);
+      return null;
+    }
+    entity.data.jobId = jobId;
+    rival.activeEntityId = entity.id;
+    rival.activeWorldRecordId = appearanceWorldRecordId;
+    rival.appearances += 1;
+    rival.lastAppearance = context;
+    rival.lastCourseId = course.id;
+    rival.lastSeenAt = nowOf(this.state);
+    rival.retireAt = context === 'intro' ? rival.lastSeenAt + RIVAL_DEPART_DELAY_S : null;
+    emit(this.bus, 'recurringRival:appeared', {
+      rivalId: RECURRING_RIVAL.id,
+      rivalName: RECURRING_RIVAL.name,
+      courseId: course.id,
+      context,
+      entityId: entity.id,
+      jobId,
+      physical: true,
+      hostile: false,
+    });
+    return entity;
+  },
+
+  _finishRivalRace(winner, payload = {}) {
+    const rival = rivalRecordFor(ensureMemory(this.state));
+    const race = rival.activeRace;
+    if (!race || race.status !== 'running' || (winner !== 'player' && winner !== 'rival')) return false;
+    race.status = 'finished';
+    race.winner = winner;
+    race.finishedAt = nowOf(this.state, payload);
+    race.physicalRivalFinish = payload.physicalFinish === true;
+    race.playerInvalidated = payload.invalidated === true;
+    if (winner === 'player') rival.playerWins += 1;
+    else rival.rivalWins += 1;
+    rival.lastRace = clonePlain(race);
+    rival.retireAt = race.finishedAt + RIVAL_DEPART_DELAY_S;
+    this._speakRival(winner === 'player' ? 'playerWon'
+      : (payload.invalidated === true ? 'invalidated' : 'rivalWon'));
+    emit(this.bus, 'recurringRival:raceResolved', {
+      rivalId: RECURRING_RIVAL.id,
+      rivalName: RECURRING_RIVAL.name,
+      courseId: race.courseId,
+      winner,
+      entityId: rival.activeEntityId,
+      physicalRivalFinish: race.physicalRivalFinish,
+      playerInvalidated: race.playerInvalidated,
+    });
+    return true;
+  },
+
+  _rivalEntity(rivalRecord = null) {
+    const rival = rivalRecord || rivalRecordFor(ensureMemory(this.state));
+    const entities = this.state && this.state.entities;
+    if (!entities || typeof entities.values !== 'function') return null;
+    const direct = rival.activeEntityId != null && typeof entities.get === 'function'
+      ? entities.get(rival.activeEntityId) : null;
+    if (direct && direct.alive !== false && direct.data && direct.data.namedRivalId === RECURRING_RIVAL.id) {
+      return direct;
+    }
+    for (const entity of entities.values()) {
+      if (entity && entity.alive !== false && entity.data
+        && (entity.data.namedRivalId === RECURRING_RIVAL.id
+          || (typeof entity.data.worldRecordId === 'string'
+            && entity.data.worldRecordId.startsWith(`${RIVAL_WORLD_RECORD_ID}:appearance:`)))) {
+        rival.activeEntityId = entity.id;
+        return entity;
+      }
+    }
+    rival.activeEntityId = null;
+    return null;
+  },
+
+  _adoptRivalEntity() {
+    const rival = rivalRecordFor(ensureMemory(this.state));
+    const entity = this._rivalEntity(rival);
+    if (rival.activeRace && rival.activeRace.status === 'running') {
+      rival.lastRace = { ...clonePlain(rival.activeRace), status: 'interrupted', reason: 'continue' };
+      rival.activeRace = null;
+    }
+    if (entity) rival.retireAt = nowOf(this.state) + 1;
+    return entity;
+  },
+
+  _retireRival(reason) {
+    const rival = rivalRecordFor(ensureMemory(this.state));
+    const entity = this._rivalEntity(rival);
+    if (entity && entity.data && entity.data.jobId) {
+      const release = this.helpers && this.helpers.npcJobs && this.helpers.npcJobs.release;
+      if (typeof release === 'function') release(entity.data.jobId);
+      delete entity.data.jobId;
+    }
+    if (entity) this._removeRivalEntity(entity);
+    if (rival.activeRace && rival.activeRace.status === 'running') {
+      rival.lastRace = { ...clonePlain(rival.activeRace), status: 'interrupted', reason };
+    }
+    rival.activeRace = null;
+    rival.activeEntityId = null;
+    rival.activeWorldRecordId = null;
+    rival.retireAt = null;
+    return !!entity;
+  },
+
+  _removeRivalEntity(entity) {
+    if (!entity) return;
+    if (this.helpers && typeof this.helpers.removeEntity === 'function') this.helpers.removeEntity(entity.id);
+    else entity.alive = false;
+  },
+
+  _speakRival(situation) {
+    const text = RECURRING_RIVAL.barks && RECURRING_RIVAL.barks[situation];
+    if (!text) return;
+    const voice = this.helpers && this.helpers.voice;
+    if (voice && typeof voice.say === 'function') voice.say({
+      channel: 'bark',
+      text,
+      kind: 'recurringRival',
+      id: `recurringRival:${RECURRING_RIVAL.id}:${situation}`,
+      factionId: RECURRING_RIVAL.factionId,
+      ttl: 2,
+    });
+    emit(this.bus, 'recurringRival:voice', {
+      rivalId: RECURRING_RIVAL.id,
+      rivalName: RECURRING_RIVAL.name,
+      situation,
+      text,
+    });
+  },
+
   _processReturns(state) {
     const memory = ensureMemory(state);
     const now = state.simTime || 0;
@@ -677,6 +980,7 @@ function freshMemory() {
     activeReturns: {},
     cultureIntros: {},
     planetChallenges: {},
+    rival: freshRivalRecord(),
   };
 }
 
@@ -693,6 +997,7 @@ function normalizeMemory(input) {
   out.activeReturns = clonePlain(input.activeReturns || {});
   out.cultureIntros = clonePlain(input.cultureIntros || {});
   out.planetChallenges = clonePlain(input.planetChallenges || {});
+  out.rival = normalizeRivalRecord(input.rival);
   if (input.aces && typeof input.aces === 'object') {
     for (const [id, rec] of Object.entries(input.aces)) out[id] = normalizeRecord(id, rec);
   }
@@ -709,6 +1014,116 @@ function recordFor(memory, ace) {
   const rec = normalizeRecord(ace.id, existing, ace);
   memory[ace.id] = rec;
   return rec;
+}
+
+function rivalRecordFor(memory) {
+  const record = normalizeRivalRecord(memory && memory.rival);
+  if (memory) memory.rival = record;
+  return record;
+}
+
+function freshRivalRecord() {
+  return {
+    schema: RIVAL_RECORD_SCHEMA,
+    rivalId: RECURRING_RIVAL.id,
+    rivalName: RECURRING_RIVAL.name,
+    unlocked: false,
+    introSeen: false,
+    appearances: 0,
+    racesStarted: 0,
+    playerWins: 0,
+    rivalWins: 0,
+    activeEntityId: null,
+    activeWorldRecordId: null,
+    activeRace: null,
+    lastRace: null,
+    retireAt: null,
+  };
+}
+
+function normalizeRivalRecord(input) {
+  const out = freshRivalRecord();
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return out;
+  out.unlocked = input.unlocked === true;
+  out.introSeen = input.introSeen === true;
+  out.appearances = Math.max(0, Math.floor(Number(input.appearances) || 0));
+  out.racesStarted = Math.max(0, Math.floor(Number(input.racesStarted) || 0));
+  out.playerWins = Math.max(0, Math.floor(Number(input.playerWins) || 0));
+  out.rivalWins = Math.max(0, Math.floor(Number(input.rivalWins) || 0));
+  out.triggerCourseId = typeof input.triggerCourseId === 'string' ? input.triggerCourseId : null;
+  out.lastCourseId = typeof input.lastCourseId === 'string' ? input.lastCourseId : null;
+  out.lastAppearance = typeof input.lastAppearance === 'string' ? input.lastAppearance : null;
+  out.unlockedAt = Number.isFinite(input.unlockedAt) ? input.unlockedAt : null;
+  out.lastSeenAt = Number.isFinite(input.lastSeenAt) ? input.lastSeenAt : null;
+  out.retireAt = Number.isFinite(input.retireAt) ? input.retireAt : null;
+  out.activeEntityId = input.activeEntityId != null ? input.activeEntityId : null;
+  out.activeWorldRecordId = typeof input.activeWorldRecordId === 'string'
+    ? input.activeWorldRecordId : null;
+  out.activeRace = normalizeRivalRace(input.activeRace);
+  out.lastRace = normalizeRivalRace(input.lastRace, true);
+  out.lastSpawnFailure = typeof input.lastSpawnFailure === 'string' ? input.lastSpawnFailure : null;
+  return out;
+}
+
+function normalizeRivalRace(input, allowTerminal = false) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)
+    || typeof input.courseId !== 'string') return null;
+  const legalStatus = allowTerminal
+    ? new Set(['running', 'finished', 'interrupted'])
+    : new Set(['running', 'finished']);
+  const status = legalStatus.has(input.status) ? input.status : 'running';
+  return {
+    courseId: input.courseId,
+    status,
+    startedAt: Number.isFinite(input.startedAt) ? input.startedAt : 0,
+    startedTick: Number.isInteger(input.startedTick) ? input.startedTick : 0,
+    entityId: input.entityId != null ? input.entityId : null,
+    winner: input.winner === 'player' || input.winner === 'rival' ? input.winner : null,
+    finishedAt: Number.isFinite(input.finishedAt) ? input.finishedAt : null,
+    physicalRivalFinish: input.physicalRivalFinish === true,
+    playerInvalidated: input.playerInvalidated === true,
+    reason: typeof input.reason === 'string' ? input.reason : null,
+  };
+}
+
+function rivalSpawnPosition(course, state, context) {
+  const player = state && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(state.playerId) : null;
+  const first = course && course.gates && course.gates[0]
+    ? resolveTimeTrialPoint(course, course.gates[0].center, state) : null;
+  const second = course && course.gates && course.gates[1]
+    ? resolveTimeTrialPoint(course, course.gates[1].center, state) : null;
+  if (context === 'race' && first && second) {
+    const dx = second.x - first.x;
+    const dz = second.z - first.z;
+    const length = Math.max(1, Math.hypot(dx, dz));
+    return {
+      x: first.x - (dx / length) * 70 - (dz / length) * 72,
+      z: first.z - (dz / length) * 70 + (dx / length) * 72,
+    };
+  }
+  const anchor = player && player.pos || first || { x: 0, z: 0 };
+  const angle = (hash32(seedOf(state), RECURRING_RIVAL.id, 'intro-bearing') / 0x100000000)
+    * Math.PI * 2;
+  return { x: anchor.x + Math.cos(angle) * 150, z: anchor.z + Math.sin(angle) * 150 };
+}
+
+function rivalRouteForCourse(course, state, spawnPos) {
+  const route = [];
+  for (let index = 0; index < (course.gates || []).length; index += 1) {
+    const point = resolveTimeTrialPoint(course, course.gates[index].center, state);
+    if (!point) continue;
+    route.push({
+      id: `rival-gate:${course.id}:${index}`,
+      pos: { x: point.x, z: point.z },
+      label: `Gate ${index + 1}`,
+    });
+  }
+  if (route.length >= 2) return route;
+  return [
+    { id: `rival-hold:${course.id}:0`, pos: { x: spawnPos.x, z: spawnPos.z }, label: 'Second Line' },
+    { id: `rival-hold:${course.id}:1`, pos: { x: spawnPos.x + 140, z: spawnPos.z + 60 }, label: 'Warm Line' },
+  ];
 }
 
 function normalizeRecord(id, input, ace = null) {
