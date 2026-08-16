@@ -16,6 +16,7 @@ import {
   styleMultiplierOf,
 } from '../combat/killCause.js';
 import { createVictimRewardRng, missionOwnsReward } from '../combat/rewardEligibility.js';
+import { triggerEmberCookOff } from '../combat/cookOff.js';
 import { isTumbling } from '../combat/tumbleStatus.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { combatFlag } from '../data/featureFlags.js';
@@ -621,6 +622,11 @@ export const combat = {
     const factionLawful = lethal && typeof lethal.factionLawful === 'boolean'
       ? lethal.factionLawful
       : !!(d.ai && d.ai.lawful);
+    // AC-12 Ember: fire the impulse before entity:killed listeners materialize loot pickups, so the
+    // bounded body budget belongs to combatants/debris already present at the death rather than the
+    // reward burst created by that same death. This is impulse-only; combat remains the sole health
+    // writer and collisionConsequences owns any later impact damage.
+    triggerEmberCookOff({ state, bus, helpers: this.helpers, source: t, killerId, lethal });
     const presentation = buildKillPresentationReceipt(state, t, killerId, lethal);
     bus.emit('entity:killed', {
       id: t.id, killerId, type: t.type, pos: { x: t.pos.x, z: t.pos.z },
