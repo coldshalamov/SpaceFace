@@ -17,6 +17,7 @@ import {
 import { explorationDiscoveryPlates } from '../../world/explorationJournal.js';
 import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
 import { createShipLedgerPanel } from './shipLedger.js';
+import { ARCADE_VERB_BEATS, arcadeVerbStatus } from '../../data/onboardingVerbs.js';
 
 const STYLE_ID = 'sf-codex-style';
 
@@ -118,7 +119,7 @@ function shell(rootEl, title, extraClass) {
   return { panel: rootEl, body };
 }
 
-const TABS = ['Story', 'Comms', 'Discoveries', 'Black Boxes', 'Graffiti', 'Figures', 'Ship', 'Archive', 'Ledger'];
+const TABS = ['Story', 'Verbs', 'Comms', 'Discoveries', 'Black Boxes', 'Graffiti', 'Figures', 'Ship', 'Archive', 'Ledger'];
 
 // Signal Archive — the four authored intro cinematics, exposed as recovered transmission stills the
 // player can replay. Posters (C-INTRO-0N.jpg) are clean full-bleed frames; clips are the 6s mp4s.
@@ -512,6 +513,7 @@ export const codexScreen = {
     if (!isChromeLess) this._renderStatus(ctx);
     switch (this._activeTab) {
       case 'Story':    this._renderStory(ctx); break;
+      case 'Verbs':    this._renderVerbs(ctx); break;
       case 'Comms':    this._renderComms(ctx); break;
       case 'Discoveries': this._renderDiscoveries(ctx); break;
       case 'Black Boxes': this._renderBlackBoxes(ctx); break;
@@ -713,6 +715,20 @@ export const codexScreen = {
       });
     } else {
       this._body.appendChild(el('div', 'sf-codex-empty', 'The endgame has not revealed itself yet.'));
+    }
+  },
+
+  // Plan 55: permanent flight-manual role after the diegetic drills. These references are never
+  // locked away by a veteran skip; practice state adds a truthful status stamp but not access.
+  _renderVerbs(ctx) {
+    this._body.appendChild(el('div', 'sf-codex-section-h', 'Signature Physics Verbs'));
+    for (const verb of ARCADE_VERB_BEATS) {
+      const entry = el('article', 'sf-codex-entry');
+      entry.dataset.codexVerbId = verb.id;
+      entry.appendChild(el('h3', null, verb.title));
+      entry.appendChild(el('div', 'sf-codex-meta', arcadeVerbStatus(ctx && ctx.state, verb.id)));
+      entry.appendChild(el('div', 'sf-codex-body', verb.reference));
+      this._body.appendChild(entry);
     }
   },
 

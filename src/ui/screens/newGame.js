@@ -244,6 +244,24 @@ export const newGameScreen = {
     const setDesc = () => { const d = DIFFICULTIES.find((x) => x[0] === diff.value); diffDesc.textContent = d ? d[2] : ''; };
     diff.addEventListener('change', setDesc); setDesc();
 
+    // Plan 55 replay control: experienced pilots can keep the permanent Codex references while
+    // declining the five diegetic signature-verb drills for this fresh run.
+    const veteranVerbRow = el('div', 'sf-row');
+    const veteranVerbLabel = el('label', null, 'Veteran replay');
+    veteranVerbLabel.htmlFor = 'sf-ng-skip-verb-drills';
+    veteranVerbRow.appendChild(veteranVerbLabel);
+    const veteranVerbCtl = el('div', 'sf-ctl');
+    const skipVerbDrills = el('input');
+    skipVerbDrills.id = 'sf-ng-skip-verb-drills';
+    skipVerbDrills.type = 'checkbox';
+    skipVerbDrills.setAttribute('aria-describedby', 'sf-ng-skip-verb-drills-desc');
+    veteranVerbCtl.appendChild(skipVerbDrills);
+    veteranVerbRow.appendChild(veteranVerbCtl);
+    body.appendChild(veteranVerbRow);
+    const veteranVerbDesc = el('p', 'sf-muted', 'Skip the five signature drills. Their references remain in the Codex.');
+    veteranVerbDesc.id = 'sf-ng-skip-verb-drills-desc';
+    body.appendChild(veteranVerbDesc);
+
     // Seed. A real player feature — a shareable, reproducible universe — and the ONLY way to make
     // the run's procedural content repeatable. Board offers are drawn from
     // `hash32(state.meta.seed, ...)` (missions.js `_generateOffers`), so the seed already decides
@@ -394,6 +412,7 @@ export const newGameScreen = {
       name.disabled = launching;
       diff.disabled = launching;
       seed.disabled = launching;
+      skipVerbDrills.disabled = launching;
       if (legacyToggle) legacyToggle.disabled = launching;
       if (legacySelect) legacySelect.disabled = launching || !legacyToggle.checked;
       launch.textContent = launching ? coreText('launching') : coreText('launch');
@@ -426,6 +445,7 @@ export const newGameScreen = {
         name: pilot,
         shipId: STARTER_SHIP,
         difficulty: diff.value,
+        skipArcadeVerbOnboarding: skipVerbDrills.checked,
         ...seedOpt,
         ...newGamePlusOpt,
       });

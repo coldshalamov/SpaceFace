@@ -42,6 +42,12 @@ import {
   isTrainingActor,
   maxWeaponHeatFraction,
 } from '../onboarding/flightDrill.js';
+import {
+  ARCADE_VERB_BEATS,
+  ARCADE_VERB_BY_ID,
+  ARCADE_VERB_ORDER,
+  createArcadeVerbProgress,
+} from '../data/onboardingVerbs.js';
 
 const PANEL_ID = 'sf-onboarding';
 const STYLE_ID = 'sf-onboarding-style';
@@ -65,6 +71,13 @@ const TRAINER_MARKER_OFFSET_WU = 620;
 const TRAINER_BURST_OFFSET_WU = 260;
 const TRAINER_FLYBY_SPEED_WU = 118;
 const TRAINER_FLYBY_OFFSET_WU = 52;
+const VERB_SHOVE_WEAPON_ID = 'wpn_concussion_cannon_m';
+const VERB_INHALE_PICKUPS = 4;
+const VERB_INHALE_REQUIRED = 3;
+const VERB_SWING_RELEASE_SPEED = 28;
+const VERB_SWING_TANGENT_RATIO = 0.55;
+const VERB_SWING_RING_RADIUS = 34;
+const VERB_WELL_CLOUD_REQUIRED = 3;
 
 // B0 one-verb hierarchy (UIUX-B0-ONE-VERB):
 //   1. HUD mission tracker (.sf-mission-tracker) is the sole persistent actionable objective
@@ -203,6 +216,20 @@ export const onboarding = {
       if (p && p.targetId === this._trainerId) this._onBeatEvent('flybyFocus:start', p);
     });
     bus.on('combat:fire', (p) => this._onTrainingFire(p || {}));
+
+    // Plan 55 signature-verb rail. Every completion listens to the production event that owns the
+    // action; objective copy and spawned practice bodies can never mark a metric by themselves.
+    bus.on('projectile:hit', (p) => this._onArcadeProjectileHit(p || {}));
+    bus.on('physics:impact', (p) => this._onArcadePhysicsImpact(p || {}));
+    bus.on('pickup:collected', (p) => this._onArcadePickupCollected(p || {}));
+    bus.on('tether:latched', (p) => this._onArcadeTetherLatched(p || {}));
+    bus.on('tether:released', (p) => this._onArcadeTetherReleased(p || {}));
+    bus.on('fields:deployed', (p) => this._onArcadeFieldDeployed(p || {}));
+    bus.on('entity:killed', (p) => this._onArcadeEntityKilled(p || {}));
+    bus.on('planet:registered', () => this._tryEnterArcadeVerbBeat());
+    bus.on('planet:plungeStage', (p) => this._onArcadePlungeStage(p || {}));
+    bus.on('dock:undocked', () => this._tryEnterArcadeVerbBeat());
+    bus.on('story:beatAdvanced', () => this._tryEnterArcadeVerbBeat());
 
     // ── Contextual first-time hints (fire once per hint, persist across saves) ───────────────
     // These are independent of the tutorial chain: they fire for all players whose
@@ -386,7 +413,11 @@ export const onboarding = {
       burstShots: 0,
       burstPeakHeat: 0,
       burstCooling: false,
+      arcadeVerbs: createArcadeVerbProgress({
+        skipped: !!(st.meta && st.meta.skipArcadeVerbOnboarding),
+      }),
     };
+    if (st.meta) delete st.meta.skipArcadeVerbOnboarding;
     // A fresh new game starts in tutorial mode (not story mode).
     this._storyMode = false;
     this._lastTextAtS = -Infinity;
@@ -429,6 +460,7 @@ export const onboarding = {
   _teardown() {
     const ob = this.state.onboarding; if (ob) ob.active = false;
     this._removeTrainingActors();
+    this._clearArcadeVerbWorld({ restoreWeapon: true, restoreWaypoint: false });
     if (this._panel) { this._panel.remove(); this._panel = null; }
     this._bodyEl = null;
     this._titleEl = null;
@@ -475,6 +507,10 @@ export const onboarding = {
   _tryAdvanceBeat() {
     const ob = this.state.onboarding;
     if (!ob || !ob.active || ob.finished) return;
+    const arcadeVerbs = ob.arcadeVerbs;
+    // Shove → inhale → swing temporarily owns the one-voice floor after the flyby lesson. Swing is
+    // the upgraded derelict beat, so the legacy latch/winch/cut row is advanced only after it lands.
+    if (arcadeVerbs && arcadeVerbs.active && arcadeVerbs.currentIndex < 3) return;
     const nextIndex = ob.currentBeat + 1;
     if (nextIndex >= BEATS.length) return;
     // First-run opening line owns the screen until its fade has completed.
@@ -668,6 +704,7 @@ export const onboarding = {
     const ob = this.state.onboarding;
     if (!ob || ob.beatDoneAt[beat.key] != null) return;
     ob.beatDoneAt[beat.key] = this.state.simTime || 0;
+    if (beat.key === 'focus') this._armArcadeVerbTraining();
     if (beat.key === 'choice' || BEATS.indexOf(beat) === CHOICE_BEAT_INDEX) {
       this._finish();
     }
@@ -720,6 +757,7 @@ export const onboarding = {
     this._storyMode = true;
     this._retireTutorialPanel();
     this._refreshStory();
+    this._armArcadeVerbTraining();
   },
 
   // Story objectives persist through the HUD mission tracker. This system deliberately keeps no
@@ -756,6 +794,7 @@ export const onboarding = {
 
     // ── First-hour pacing (only while active) ────────────────────────────────────────────
     const ob = state.onboarding;
+    try { this._updateArcadeVerbTraining(dt, state); } catch (_) { /* non-blocking tutorial */ }
     if (!ob || !ob.active) return;
     try {
       this._accum = (this._accum || 0) + dt;
@@ -1072,6 +1111,531 @@ export const onboarding = {
       if (d < bestD) { bestD = d; best = e; }
     }
     return best ? { pos: best.pos, label: 'Station' } : null;
+  },
+
+  // ---- Plan 55: signature physics verbs ------------------------------------------------------
+
+  _arcadeVerbProgress() {
+    const ob = this.state && this.state.onboarding;
+    return ob && ob.arcadeVerbs || null;
+  },
+
+  _currentArcadeVerb() {
+    const progress = this._arcadeVerbProgress();
+    if (!progress || !progress.active || progress.complete) return null;
+    return ARCADE_VERB_BEATS[progress.currentIndex] || null;
+  },
+
+  _armArcadeVerbTraining() {
+    const progress = this._arcadeVerbProgress();
+    if (!progress || progress.skipped || progress.complete || progress.active) return false;
+    progress.active = true;
+    progress.waitingForMainRail = false;
+    progress.entered = false;
+    this._tryEnterArcadeVerbBeat();
+    return true;
+  },
+
+  _tryEnterArcadeVerbBeat() {
+    const progress = this._arcadeVerbProgress();
+    const beat = this._currentArcadeVerb();
+    if (!progress || !beat || progress.entered || this.state.mode !== 'flight') return false;
+    if (beat.id === 'well' && Number(this.state.story && this.state.story.beatIndex || 0) < 2) return false;
+    if (beat.id === 'burn_line' && !(this.state.planet && this.state.planet.active)) return false;
+    progress.entered = true;
+    progress.runtime = {};
+    if (beat.id === 'shove') this._spawnShoveLesson();
+    else if (beat.id === 'inhale') this._spawnInhaleLesson();
+    else if (beat.id === 'swing') this._spawnSwingLesson();
+    else if (beat.id === 'well') this._spawnWellLesson();
+    else if (beat.id === 'burn_line') this._spawnBurnLineLesson();
+    this._sayTutorial(beat.objective);
+    return true;
+  },
+
+  _completeArcadeVerb(id, detail = {}) {
+    const progress = this._arcadeVerbProgress();
+    const beat = this._currentArcadeVerb();
+    if (!progress || !beat || beat.id !== id || progress.metrics[id] === true) return false;
+    progress.metrics[id] = true;
+    progress.completedOrder.push(id);
+    this.bus.emit('tutorial:verbCompleted', {
+      verbId: id,
+      metric: true,
+      order: progress.completedOrder.length,
+      source: detail.source || null,
+      detail,
+    });
+    this._clearArcadeVerbWorld({ restoreWeapon: true, restoreWaypoint: false });
+    progress.currentIndex += 1;
+    progress.entered = false;
+    progress.runtime = {};
+    const onboardingState = this.state && this.state.onboarding;
+    if (id === 'swing' && onboardingState && onboardingState.finished !== true) {
+      // The signature swing replaces the older tether trio rather than making a new pilot repeat
+      // it. Preserve the main rail's silence gate, then let Burst remain the next ordinary lesson.
+      const tetherIndex = BEATS.findIndex((candidate) => candidate.key === 'tether');
+      onboardingState.currentBeat = tetherIndex;
+      if (!onboardingState.beatDoneAt || typeof onboardingState.beatDoneAt !== 'object') onboardingState.beatDoneAt = {};
+      onboardingState.beatDoneAt.tether = this.state.simTime || 0;
+      onboardingState.beatAction = 'Swing logged.';
+      progress.active = false;
+      progress.waitingForMainRail = true;
+      this._restoreArcadeVerbWaypoint();
+      this._refreshBeatPanel();
+      return true;
+    }
+    if (progress.currentIndex >= ARCADE_VERB_ORDER.length) {
+      progress.complete = true;
+      progress.active = false;
+      this._restoreArcadeVerbWaypoint();
+      this.bus.emit('tutorial:verbsFinished', {
+        metrics: { ...progress.metrics },
+        completedOrder: progress.completedOrder.slice(),
+      });
+      this.bus.emit('toast', {
+        text: 'Signature drills logged. The Codex keeps the five verb references.',
+        kind: 'success',
+        ttl: 4,
+      });
+      return true;
+    }
+    this._tryEnterArcadeVerbBeat();
+    return true;
+  },
+
+  _updateArcadeVerbTraining(_dt, state) {
+    const progress = this._arcadeVerbProgress();
+    if (!progress || !progress.active || progress.complete) return;
+    this._tryEnterArcadeVerbBeat();
+    const beat = this._currentArcadeVerb();
+    if (!beat || !progress.entered) return;
+    const rt = progress.runtime || {};
+    if (beat.id === 'swing' && rt.releaseQualified === true) {
+      const player = state.entities && state.entities.get(state.playerId);
+      const ring = rt.ringId != null && state.entities && state.entities.get(rt.ringId);
+      if (player && ring && player.pos && ring.pos
+          && Math.hypot(player.pos.x - ring.pos.x, player.pos.z - ring.pos.z) <= VERB_SWING_RING_RADIUS) {
+        this._completeArcadeVerb('swing', {
+          source: 'tether:released+checkpoint',
+          releaseSpeed: rt.releaseSpeed,
+          tangentRatio: rt.tangentRatio,
+        });
+      }
+    } else if (beat.id === 'well' && rt.fieldId) {
+      const active = state.fields && Array.isArray(state.fields.active)
+        ? state.fields.active.find((field) => field && field.id === rt.fieldId)
+        : null;
+      if (active && active.engaged === true) rt.fieldAffected = true;
+      if (state.fields && state.fields.telemetry && state.fields.telemetry.affected > 0) {
+        rt.fieldAffected = true;
+      }
+      if (rt.fieldAffected === true && rt.wellKill === true
+          && Array.isArray(rt.collectedIds) && rt.collectedIds.length >= VERB_WELL_CLOUD_REQUIRED) {
+        this._completeArcadeVerb('well', {
+          source: 'fields:deployed+entity:killed+pickup:collected',
+          fieldAffected: true,
+          collected: rt.collectedIds.length,
+        });
+      }
+    }
+  },
+
+  _spawnShoveLesson() {
+    const state = this.state;
+    const progress = this._arcadeVerbProgress();
+    const rt = progress && progress.runtime;
+    const player = state.entities && state.entities.get(state.playerId);
+    if (!rt || !player || !player.pos || typeof this.helpers.spawnEntity !== 'function') return;
+    const angle = Number.isFinite(player.rot) ? player.rot : 0;
+    const fx = Math.cos(angle), fz = Math.sin(angle);
+    const rock = this.helpers.spawnEntity({
+      type: 'asteroid',
+      pos: { x: player.pos.x + fx * 170, z: player.pos.z + fz * 170 },
+      vel: { x: 0, z: 0 },
+      radius: 22,
+      mass: 5000,
+      hull: 5000,
+      hullMax: 5000,
+      collides: true,
+      physicsBody: { dynamic: false, ccd: false, material: 'asteroid', mass: 5000, radius: 22 },
+      data: { onboarding: true, onboardingVerb: 'shove', kind: 'training_rock' },
+    });
+    const spec = makeEnemySpawnSpec('reaver_pirate', 1, {
+      x: player.pos.x + fx * 105,
+      z: player.pos.z + fz * 105,
+    }, { startedTick: state.tick, motive: 'training', engagementTrigger: 'onboarding_verb' });
+    spec.type = 'drone';
+    spec.name = 'Crippled Impact Drone';
+    spec.hull = spec.hullMax = 34;
+    spec.armorHp = spec.armorMax = 0;
+    spec.armorFlat = 0;
+    spec.shield = spec.shieldMax = 0;
+    spec.mass = 16;
+    spec.vel = { x: 0, z: 0 };
+    spec.data.weapons = [];
+    spec.data.onboarding = true;
+    spec.data.onboardingVerb = 'shove';
+    spec.data.ai = { ...(spec.data.ai || {}), passive: true, roe: 'hold_fire', motive: 'training' };
+    spec.data.intent = { moveX: 0, moveZ: 0, boost: false, fire: false, fireGroup: null, aimAngle: angle };
+    const drone = this.helpers.spawnEntity(spec);
+    if (!rock || !drone) return;
+    rt.rockId = rock.id;
+    rt.droneId = drone.id;
+    rt.ids = [rock.id, drone.id];
+    state.player.targetId = drone.id;
+    this._installArcadeConcussion(player);
+    this._setArcadeVerbWaypoint(drone, ARCADE_VERB_BY_ID.get('shove').objective);
+  },
+
+  _installArcadeConcussion(player) {
+    if (!player || !player.data) return false;
+    const weapons = Array.isArray(player.data.weapons) ? player.data.weapons : (player.data.weapons = []);
+    if (weapons.some((weapon) => weapon && weapon.defId === VERB_SHOVE_WEAPON_ID)) return true;
+    weapons.push({
+      slotIndex: 55,
+      defId: VERB_SHOVE_WEAPON_ID,
+      name: 'Concussion Cannon M — Training Round',
+      facing: 'front',
+      facingAngle: 0,
+      gimbalArc: Math.PI / 3,
+      _cooldown: 0,
+      _heat: 0,
+      onboardingVerbGift: true,
+    });
+    return true;
+  },
+
+  _onArcadeProjectileHit(payload) {
+    const beat = this._currentArcadeVerb();
+    const progress = this._arcadeVerbProgress();
+    const rt = progress && progress.runtime;
+    if (!beat || beat.id !== 'shove' || !rt) return;
+    if (payload.ownerId !== this.state.playerId || payload.targetId !== rt.droneId
+        || payload.weaponId !== VERB_SHOVE_WEAPON_ID) return;
+    rt.concussionHit = true;
+    rt.concussionHitTick = this.state.tick | 0;
+  },
+
+  _onArcadePhysicsImpact(payload) {
+    const beat = this._currentArcadeVerb();
+    const progress = this._arcadeVerbProgress();
+    const rt = progress && progress.runtime;
+    if (!beat || beat.id !== 'shove' || !rt || rt.concussionHit !== true) return;
+    const exactPair = (payload.aId === rt.droneId && payload.bId === rt.rockId)
+      || (payload.aId === rt.rockId && payload.bId === rt.droneId);
+    if (!exactPair || !(Number(payload.impulse) > 1)) return;
+    rt.impactPos = payload.pos && { x: payload.pos.x, z: payload.pos.z };
+    this._completeArcadeVerb('shove', {
+      source: 'projectile:hit+physics:impact',
+      weaponId: VERB_SHOVE_WEAPON_ID,
+      impulse: Number(payload.impulse),
+    });
+  },
+
+  _spawnInhaleLesson() {
+    const state = this.state;
+    const progress = this._arcadeVerbProgress();
+    const rt = progress && progress.runtime;
+    const player = state.entities && state.entities.get(state.playerId);
+    if (!rt || !player || !player.pos || typeof this.helpers.spawnEntity !== 'function') return;
+    const angle = Number.isFinite(player.rot) ? player.rot : 0;
+    const center = {
+      x: player.pos.x + Math.cos(angle) * 72,
+      z: player.pos.z + Math.sin(angle) * 72,
+    };
+    rt.pickupIds = [];
+    rt.collectedIds = [];
+    for (let i = 0; i < VERB_INHALE_PICKUPS; i++) {
+      const a = angle + (i - 1.5) * 0.28;
+      const pickup = this.helpers.spawnEntity({
+        type: 'pickup',
+        pos: { x: center.x + Math.cos(a) * 10, z: center.z + Math.sin(a) * 10 },
+        vel: { x: Math.cos(a) * 5, z: Math.sin(a) * 5 },
+        radius: 2.2,
+        data: {
+          kind: 'cargo', commodityId: 'cmdty_salvage_electronics', amount: 1,
+          despawnAt: (state.simTime || 0) + 90,
+          onboarding: true, onboardingVerb: 'inhale',
+        },
+      });
+      if (pickup) rt.pickupIds.push(pickup.id);
+    }
+    this._setArcadeVerbWaypoint({ pos: center, name: 'Drift Cloud' }, ARCADE_VERB_BY_ID.get('inhale').objective);
+  },
+
+  _onArcadePickupCollected(payload) {
+    const beat = this._currentArcadeVerb();
+    const progress = this._arcadeVerbProgress();
+    const rt = progress && progress.runtime;
+    if (!beat || !rt || payload.collectorId !== this.state.playerId
+        || successfulPickupAmount(payload) <= 0) return;
+    const ids = Array.isArray(rt.pickupIds) ? rt.pickupIds : [];
+    if (!ids.includes(payload.pickupId)) return;
+    if (!Array.isArray(rt.collectedIds)) rt.collectedIds = [];
+    if (!rt.collectedIds.includes(payload.pickupId)) rt.collectedIds.push(payload.pickupId);
+    if (beat.id === 'inhale' && rt.collectedIds.length >= VERB_INHALE_REQUIRED) {
+      this._completeArcadeVerb('inhale', { source: 'pickup:collected', collected: rt.collectedIds.length });
+    } else if (beat.id === 'well' && rt.wellKill === true && rt.fieldAffected === true
+        && rt.collectedIds.length >= VERB_WELL_CLOUD_REQUIRED) {
+      this._completeArcadeVerb('well', {
+        source: 'fields:deployed+entity:killed+pickup:collected',
+        fieldAffected: rt.fieldAffected === true,
+        collected: rt.collectedIds.length,
+      });
+    }
+  },
+
+  _spawnSwingLesson() {
+    const state = this.state;
+    const progress = this._arcadeVerbProgress();
+    const rt = progress && progress.runtime;
+    const player = state.entities && state.entities.get(state.playerId);
+    if (!rt || !player || !player.pos || typeof this.helpers.spawnEntity !== 'function') return;
+    const heading = Number.isFinite(player.rot) ? player.rot : 0;
+    const fx = Math.cos(heading), fz = Math.sin(heading);
+    const rx = -fz, rz = fx;
+    const anchor = this.helpers.spawnEntity({
+      type: 'wreck',
+      pos: { x: player.pos.x + fx * 92, z: player.pos.z + fz * 92 },
+      vel: { x: 0, z: 0 },
+      radius: 15,
+      mass: 1200,
+      hull: 1,
+      hullMax: 1,
+      data: { parentType: 'ship', loot: [], salvagePool: {}, onboarding: true, onboardingVerb: 'swing', kind: 'derelict' },
+    });
+    const ring = this.helpers.spawnEntity({
+      type: 'beacon',
+      pos: { x: player.pos.x + rx * 190, z: player.pos.z + rz * 190 },
+      vel: { x: 0, z: 0 },
+      radius: VERB_SWING_RING_RADIUS,
+      collides: false,
+      data: { onboarding: true, onboardingVerb: 'swing', kind: 'checkpoint_ring', name: 'Release Ring' },
+    });
+    if (!anchor || !ring) return;
+    rt.anchorId = anchor.id;
+    rt.ringId = ring.id;
+    rt.ids = [anchor.id, ring.id];
+    state.player.targetId = anchor.id;
+    this._setArcadeVerbWaypoint(ring, ARCADE_VERB_BY_ID.get('swing').objective);
+  },
+
+  _onArcadeTetherLatched(payload) {
+    const beat = this._currentArcadeVerb();
+    const rt = this._arcadeVerbProgress() && this._arcadeVerbProgress().runtime;
+    if (beat && beat.id === 'swing' && rt && payload.targetId === rt.anchorId) rt.latched = true;
+  },
+
+  _onArcadeTetherReleased(payload) {
+    const beat = this._currentArcadeVerb();
+    const rt = this._arcadeVerbProgress() && this._arcadeVerbProgress().runtime;
+    if (!beat || beat.id !== 'swing' || !rt || rt.latched !== true || payload.targetId !== rt.anchorId) return;
+    const player = this.state.entities && this.state.entities.get(this.state.playerId);
+    const anchor = this.state.entities && this.state.entities.get(rt.anchorId);
+    const ring = this.state.entities && this.state.entities.get(rt.ringId);
+    if (!player || !anchor || !ring || !player.pos || !player.vel) return;
+    const rx = player.pos.x - anchor.pos.x, rz = player.pos.z - anchor.pos.z;
+    const radialLength = Math.hypot(rx, rz);
+    const speed = Math.hypot(player.vel.x || 0, player.vel.z || 0);
+    const tangentRatio = radialLength > 0 && speed > 0
+      ? Math.abs(rx * player.vel.z - rz * player.vel.x) / (radialLength * speed)
+      : 0;
+    const toRingX = ring.pos.x - player.pos.x, toRingZ = ring.pos.z - player.pos.z;
+    const towardRing = speed > 0 && Math.hypot(toRingX, toRingZ) > 0
+      ? (toRingX * player.vel.x + toRingZ * player.vel.z) / (Math.hypot(toRingX, toRingZ) * speed)
+      : -1;
+    if (speed < VERB_SWING_RELEASE_SPEED || tangentRatio < VERB_SWING_TANGENT_RATIO || towardRing <= 0) return;
+    rt.releaseQualified = true;
+    rt.releaseSpeed = speed;
+    rt.tangentRatio = tangentRatio;
+  },
+
+  _spawnWellLesson() {
+    const state = this.state;
+    const progress = this._arcadeVerbProgress();
+    const rt = progress && progress.runtime;
+    const player = state.entities && state.entities.get(state.playerId);
+    if (!rt || !player || !player.pos || typeof this.helpers.spawnEntity !== 'function') return;
+    const heading = Number.isFinite(player.rot) ? player.rot : 0;
+    const center = {
+      x: player.pos.x + Math.cos(heading) * 150,
+      z: player.pos.z + Math.sin(heading) * 150,
+    };
+    rt.center = center;
+    rt.pickupIds = [];
+    rt.collectedIds = [];
+    const spec = makeEnemySpawnSpec('reaver_pirate', 1, { x: center.x + 34, z: center.z }, {
+      startedTick: state.tick,
+      motive: 'training',
+      engagementTrigger: 'onboarding_verb',
+    });
+    spec.type = 'drone';
+    spec.name = 'Well Practice Mote';
+    spec.hull = spec.hullMax = 12;
+    spec.armorHp = spec.armorMax = 0;
+    spec.armorFlat = 0;
+    spec.shield = spec.shieldMax = 0;
+    spec.mass = 10;
+    spec.vel = { x: 0, z: 0 };
+    spec.data.weapons = [];
+    spec.data.onboarding = true;
+    spec.data.onboardingVerb = 'well';
+    spec.data.ai = { ...(spec.data.ai || {}), passive: true, roe: 'hold_fire', motive: 'training' };
+    spec.data.intent = { moveX: 0, moveZ: 0, boost: false, fire: false, fireGroup: null, aimAngle: heading };
+    const drone = this.helpers.spawnEntity(spec);
+    if (drone) {
+      rt.droneId = drone.id;
+      rt.ids = [drone.id];
+    }
+    // The standard field tool is already a production action; this authored beat gifts one use by
+    // clearing only its transient cooldown, never minting a second inventory or force writer.
+    if (state.fields && state.fields.cooldowns) state.fields.cooldowns.well = 0;
+    rt.giftedWellCharge = true;
+    this._setArcadeVerbWaypoint({ pos: center, name: 'Mote Pack' }, ARCADE_VERB_BY_ID.get('well').objective);
+  },
+
+  _onArcadeFieldDeployed(payload) {
+    const beat = this._currentArcadeVerb();
+    const rt = this._arcadeVerbProgress() && this._arcadeVerbProgress().runtime;
+    if (!beat || beat.id !== 'well' || !rt || payload.kind !== 'well' || !payload.center || !rt.center) return;
+    const source = payload.sourceId != null && this.state.entities && this.state.entities.get(payload.sourceId);
+    if (!source || source.data && source.data.ownerId !== this.state.playerId) return;
+    if (Math.hypot(payload.center.x - rt.center.x, payload.center.z - rt.center.z) > 70) return;
+    rt.fieldId = payload.fieldId;
+  },
+
+  _onArcadeEntityKilled(payload) {
+    const beat = this._currentArcadeVerb();
+    const rt = this._arcadeVerbProgress() && this._arcadeVerbProgress().runtime;
+    if (!beat || beat.id !== 'well' || !rt || payload.id !== rt.droneId
+        || payload.killerId !== this.state.playerId || !rt.fieldId) return;
+    if (!payload.presentation || !payload.presentation.style
+        || payload.presentation.style.id !== 'well_collapse') return;
+    rt.wellKill = true;
+    rt.fieldAffected = true; // exact well-collapse classification is the force kernel's inner-capture receipt
+    const pos = payload.pos || rt.center;
+    for (let i = 0; i < VERB_WELL_CLOUD_REQUIRED; i++) {
+      const a = (i / VERB_WELL_CLOUD_REQUIRED) * TAU;
+      const pickup = this.helpers.spawnEntity({
+        type: 'pickup',
+        pos: { x: pos.x + Math.cos(a) * 9, z: pos.z + Math.sin(a) * 9 },
+        vel: { x: Math.cos(a) * 8, z: Math.sin(a) * 8 },
+        radius: 2.2,
+        data: {
+          kind: 'cargo', commodityId: 'cmdty_salvage_electronics', amount: 1,
+          despawnAt: (this.state.simTime || 0) + 90,
+          onboarding: true, onboardingVerb: 'well',
+        },
+      });
+      if (pickup) rt.pickupIds.push(pickup.id);
+    }
+    this._setArcadeVerbWaypoint({ pos, name: 'Collapse Cloud' }, 'Inhale the collapse cloud.');
+  },
+
+  _spawnBurnLineLesson() {
+    const state = this.state;
+    const progress = this._arcadeVerbProgress();
+    const rt = progress && progress.runtime;
+    const planet = state.planet;
+    if (!rt || !planet || !planet.active || typeof this.helpers.spawnEntity !== 'function') return;
+    const planetEntity = state.entities && state.entities.get(planet.entityId);
+    const bands = planetEntity && planetEntity.data && planetEntity.data.planetSite
+      && planetEntity.data.planetSite.bands;
+    if (!bands) { progress.entered = false; return; }
+    const angle = onboardingRandom(state) * TAU;
+    const radius = Math.max(planetEntity.radius + 60, (Number(bands.reentry) || 800) - 12);
+    const ux = Math.cos(angle), uz = Math.sin(angle);
+    const spec = makeEnemySpawnSpec('reaver_pirate', 1, {
+      x: planet.center.x + ux * radius,
+      z: planet.center.z + uz * radius,
+    }, { startedTick: state.tick, motive: 'distress', engagementTrigger: 'onboarding_verb' });
+    spec.type = 'drone';
+    spec.name = 'Tumbling Rescue Derelict';
+    spec.hull = spec.hullMax = 16;
+    spec.armorHp = spec.armorMax = 0;
+    spec.armorFlat = 0;
+    spec.shield = spec.shieldMax = 0;
+    spec.mass = 30;
+    spec.vel = { x: -ux * 32, z: -uz * 32 };
+    spec.data.weapons = [];
+    spec.data.onboarding = true;
+    spec.data.onboardingVerb = 'burn_line';
+    spec.data.ai = { ...(spec.data.ai || {}), passive: true, roe: 'hold_fire', motive: 'distress' };
+    spec.data.intent = { moveX: 0, moveZ: 0, boost: false, fire: false, fireGroup: null, aimAngle: angle + Math.PI };
+    const drone = this.helpers.spawnEntity(spec);
+    if (!drone) { progress.entered = false; return; }
+    rt.derelictId = drone.id;
+    rt.ids = [drone.id];
+    this._setArcadeVerbWaypoint(drone, ARCADE_VERB_BY_ID.get('burn_line').objective);
+  },
+
+  _onArcadePlungeStage(payload) {
+    const beat = this._currentArcadeVerb();
+    const rt = this._arcadeVerbProgress() && this._arcadeVerbProgress().runtime;
+    if (!beat || beat.id !== 'burn_line' || !rt || payload.id !== rt.derelictId) return;
+    if (payload.stage === 'commit' || payload.stage === 'breakup' || payload.stage === 'descent') {
+      rt.sawBurnLine = true;
+    }
+    if (payload.stage === 'aftermath' && rt.sawBurnLine === true) {
+      this._completeArcadeVerb('burn_line', { source: 'planet:plungeStage', outcome: 'burned' });
+    } else if (payload.stage === 'clear' && rt.sawBurnLine === true) {
+      this._completeArcadeVerb('burn_line', { source: 'planet:plungeStage', outcome: 'saved' });
+    }
+  },
+
+  _setArcadeVerbWaypoint(target, reason) {
+    const state = this.state;
+    const progress = this._arcadeVerbProgress();
+    if (!progress || !state.nav || !target || !target.pos) return;
+    if (!Object.prototype.hasOwnProperty.call(progress, 'previousWaypoint')) {
+      const prior = state.nav.waypoint;
+      progress.previousWaypoint = prior ? {
+        ...prior,
+        ...(prior.pos ? { pos: { x: prior.pos.x, z: prior.pos.z } } : {}),
+      } : null;
+    }
+    const beat = this._currentArcadeVerb();
+    state.nav.waypoint = {
+      onboarding: true,
+      arcadeVerb: true,
+      pos: { x: target.pos.x, z: target.pos.z },
+      label: target.name || target.data && target.data.name || beat && beat.title || 'Training',
+      reason,
+      markerId: `onboarding:verb:${beat && beat.id || 'training'}`,
+      markerKind: ONBOARDING_OBJECTIVE_MARKER.markerKind,
+      mapLabel: ONBOARDING_OBJECTIVE_MARKER.mapLabel,
+    };
+  },
+
+  _restoreArcadeVerbWaypoint() {
+    const progress = this._arcadeVerbProgress();
+    const nav = this.state && this.state.nav;
+    if (!progress || !nav) return;
+    if (nav.waypoint && nav.waypoint.arcadeVerb) nav.waypoint = progress.previousWaypoint || null;
+    delete progress.previousWaypoint;
+  },
+
+  _clearArcadeVerbWorld({ restoreWeapon = false, restoreWaypoint = false } = {}) {
+    const progress = this._arcadeVerbProgress();
+    const rt = progress && progress.runtime || {};
+    const ids = new Set(Array.isArray(rt.ids) ? rt.ids : []);
+    for (const id of Array.isArray(rt.pickupIds) ? rt.pickupIds : []) ids.add(id);
+    if (typeof this.helpers.removeEntity === 'function') {
+      for (const id of ids) {
+        const entity = this.state.entities && this.state.entities.get(id);
+        if (entity && entity.alive !== false) this.helpers.removeEntity(id);
+      }
+    }
+    const selectedId = this.state && this.state.player && this.state.player.targetId;
+    if (ids.has(selectedId)) this.state.player.targetId = null;
+    if (restoreWeapon) {
+      const player = this.state.entities && this.state.entities.get(this.state.playerId);
+      if (player && player.data && Array.isArray(player.data.weapons)) {
+        player.data.weapons = player.data.weapons.filter((weapon) => !weapon || weapon.onboardingVerbGift !== true);
+      }
+    }
+    if (restoreWaypoint) this._restoreArcadeVerbWaypoint();
   },
 
   // ---- DOM ------------------------------------------------------------------------------------

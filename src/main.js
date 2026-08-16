@@ -708,6 +708,7 @@ function resetRunState(state, opts = {}) {
   const cameraShake = state.camera && state.camera.shakeOffset;
 
   state.meta = fresh.meta;
+  if (opts.skipArcadeVerbOnboarding === true) state.meta.skipArcadeVerbOnboarding = true;
   createTimeEffects(state).reset();
   state.accumulator = 0;
   state.simTime = 0;
