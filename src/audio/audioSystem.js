@@ -131,6 +131,30 @@ export const SWARMER_AUDIO_SIGNATURES = Object.freeze({
   }),
 });
 
+// Plan 13 medium hulls share combat machinery but must not share a voice. These signatures reuse
+// shipped physical recordings/synth recipes while assigning each mechanic its own register. The
+// semantic event remains the authority; audio never infers or writes the gameplay result.
+export const MEDIUM_AUDIO_SIGNATURES = Object.freeze({
+  'medium.bulwark.link.active': Object.freeze({ recipeId: 'sfx.shieldHit', gain: 0.58, rate: 0.72, cooldownS: 0.35 }),
+  'medium.bulwark.link.broken': Object.freeze({ recipeId: 'sfx.shieldBreak', gain: 0.78, rate: 0.82, cooldownS: 0.2 }),
+  'medium.bulwark.link.hit': Object.freeze({ recipeId: 'sfx.shieldHit', gain: 0.5, rate: 0.66, cooldownS: 0.18 }),
+  'medium.corsair.cargo_tow': Object.freeze({ recipeId: 'sfx_doctrine_tether_spool', gain: 0.72, rate: 0.84, cooldownS: 0.25 }),
+  'medium.corsair.cargo_spill': Object.freeze({ recipeId: 'sfx_doctrine_tether_break', gain: 0.86, rate: 0.94, cooldownS: 0.2 }),
+  'medium.torcher.trail.laid': Object.freeze({ recipeId: 'sfx_vent_chime', gain: 0.48, rate: 0.7, cooldownS: 0.42 }),
+  'medium.torcher.trail.hit': Object.freeze({ recipeId: 'sfx.hullHit', gain: 0.62, rate: 0.74, cooldownS: 0.18 }),
+  'medium.torcher.trail.ended': Object.freeze({ recipeId: 'sfx_doctrine_brawler_withdraw', gain: 0.38, rate: 1.08, cooldownS: 0.45 }),
+});
+
+export function resolveMediumPresentationAudioCue(payload) {
+  if (!payload) return null;
+  const cueId = String(payload.cueId || '');
+  if (MEDIUM_AUDIO_SIGNATURES[cueId]) return MEDIUM_AUDIO_SIGNATURES[cueId];
+  if (payload.event === 'freight:cargoSpilled' && String(payload.cause || '').includes('corsair')) {
+    return MEDIUM_AUDIO_SIGNATURES['medium.corsair.cargo_spill'];
+  }
+  return null;
+}
+
 // The first-hour ear-training contract. These five foreground receipts deliberately occupy
 // different registers and priority levels. Continuous low-frequency ambience is intentionally not
 // part of the contract: the procedural stack stays quiet until a player action earns a cue.
@@ -667,6 +691,7 @@ export const audio = {
     rt._lastTrafficBlipAt = 0;
     rt._lastMachineryAt = 0;
     rt._signatureLastAt = Object.create(null);
+    rt._mediumSignatureLastAt = Object.create(null);
     rt._lastSquelchEndTime = 0;
     rt.sidechainDuck = 1;
     rt._busGainCache = null;      // last settings-derived bus gain written per bus
@@ -751,6 +776,9 @@ export const audio = {
     bus.on('dock:undocked', () => this._onUndocked());
     // Existing encounter/doctrine seams drive presentation pressure only; audio never writes AI.
     bus.on('ai:telegraph', (p) => this._onDoctrineTelegraphAudio(p));
+    bus.on('ai:doctrinePhase', (p) => this._onMediumDoctrineAudio(p));
+    bus.on('medium:semanticCue', (p) => this._onMediumSemanticAudio(p));
+    bus.on('freight:cargoSpilled', (p) => this._onMediumSemanticAudio({ ...p, event: 'freight:cargoSpilled' }));
     bus.on('encounter:telegraph', (p) => this._onEncounterTelegraphAudio(p));
     bus.on('encounter:resolved', (p) => this._onEncounterResolvedAudio(p));
     // Jump/cruise one-shots are owned by the normalized presentation lane below. Do not subscribe
@@ -1545,6 +1573,47 @@ export const audio = {
     this._markMusicDirty();
     // Presentation owns the audible setup/phase family. This raw seam only keeps adaptive music
     // pressure truthful; playing here would stack a second doctrine voice under the semantic cue.
+  },
+
+  _onMediumDoctrineAudio(p) {
+    if (!p || p.entityId == null) return;
+    const entity = this.state && this.state.entities && this.state.entities.get
+      ? this.state.entities.get(p.entityId)
+      : null;
+    const id = String(entity && entity.data && (entity.data.lootTableId || entity.data.enemyTypeId) || '');
+    let signature = null;
+    if (id === 'marauder_brawler' && p.phase === 'commit') {
+      signature = { recipeId: 'sfx_doctrine_brawler_commit', gain: 0.82, rate: 0.68, cooldownS: 0.6 };
+    } else if (id === 'lancer_sniper' && p.phase === 'charge_cue') {
+      signature = { recipeId: 'sfx_doctrine_ranged_charge', gain: 0.8, rate: 0.92, cooldownS: 0.6 };
+    } else if (id === 'hostile_interceptor' && p.phase === 'engine_flare') {
+      signature = { recipeId: 'sfx_doctrine_flyby', gain: 0.76, rate: 1.18, cooldownS: 0.6 };
+    }
+    if (signature) this._playMediumSignature(`doctrine:${id}:${p.phase}`, signature, entity && entity.pos);
+  },
+
+  _onMediumSemanticAudio(p) {
+    const signature = resolveMediumPresentationAudioCue(p);
+    if (!signature) return;
+    const sourceId = p.sourceId ?? p.entityId ?? p.raiderId ?? p.targetId ?? 'world';
+    const entity = sourceId !== 'world' && this.state && this.state.entities && this.state.entities.get
+      ? this.state.entities.get(sourceId)
+      : null;
+    this._playMediumSignature(`${p.cueId || p.event}:${sourceId}`, signature,
+      p.position || p.center || (entity && entity.pos) || null);
+  },
+
+  _playMediumSignature(key, signature, position) {
+    const now = Math.max(0, Number(this.state && this.state.simTime) || 0);
+    const last = this.rt._mediumSignatureLastAt[key];
+    if (Number.isFinite(last) && now - last < signature.cooldownS) return;
+    this.rt._mediumSignatureLastAt[key] = now;
+    this.play(signature.recipeId, {
+      position,
+      gain: signature.gain,
+      rate: signature.rate,
+      critical: signature.gain >= 0.8,
+    });
   },
 
   _onEncounterTelegraphAudio(p) {

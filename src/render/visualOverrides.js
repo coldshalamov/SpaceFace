@@ -26,6 +26,7 @@ import {
   setPresentationAdmission,
 } from '../core/presentationAdmission.js';
 import { swarmerRecordFor } from '../data/swarmerFamily.js';
+import { mediumPresentationIdFor } from './visualFactory.js';
 
 const KESTREL_HERO_ASSET_ID = 'SF_K0_KESTREL_BORROWED_TIME';
 
@@ -175,11 +176,13 @@ export function installVisualOverrides(factory, options = {}) {
   factory.build = (entity) => {
     let visual = null;
     const designedProceduralSwarmer = isDesignedProceduralSwarmer(entity);
+    const designedProceduralMedium = !!mediumPresentationIdFor(entity);
+    const designedProceduralShip = designedProceduralSwarmer || designedProceduralMedium;
     const requiredWholeShip = requiresProductionWholeShip(entity);
     const directShip = directAuthoredMount
       && authoredShips
       && entity && entity.type === 'ship'
-      && !designedProceduralSwarmer
+      && !designedProceduralShip
       && !(entity.data && entity.data.precompileProbe === true)
       && !(authoredWholeShipsOnly && !requiredWholeShip);
     const authoredCargoCapsule = hasExplicitAuthoredPayloadPresentation(entity);
@@ -244,7 +247,9 @@ export function installVisualOverrides(factory, options = {}) {
     } else if (entity && entity.type === 'ship' && entity.data) {
       // Faction bespoke ships (spec §8.2–§8.7, Phase 3 §20). Each is failure-isolated: any throw in
       // the bespoke builder falls back to the procedural factory, so a broken hero never blanks an NPC.
-      const entry = SCENARIO_47A_SHIP_BUILDERS[entity.data.assetRef] || FACTION_BUILDERS[entity.data.lootTableId];
+      const entry = designedProceduralMedium
+        ? null
+        : SCENARIO_47A_SHIP_BUILDERS[entity.data.assetRef] || FACTION_BUILDERS[entity.data.lootTableId];
       if (entry) {
         try { visual = entry.build(entity); }
         catch (error) {
@@ -258,10 +263,10 @@ export function installVisualOverrides(factory, options = {}) {
     assertReleaseHeroVisual(entity, visual, releaseMode);
     if (!visual || !entity || entity.type !== 'ship') return visual;
     configureTransparentSinglePassSurfaces(visual);
-    if (designedProceduralSwarmer) {
+    if (designedProceduralShip) {
       visual.visible = true;
       visual.userData.authoredAssetState = 'designed-procedural-settled';
-      visual.userData.authoredVisualRoot = `${entity.data.silhouette}-hard-geometry`;
+      visual.userData.authoredVisualRoot = `${visual.userData.enemySilhouette || entity.data.silhouette}-hard-geometry`;
       visual.userData.shipConstruction = 'designed-procedural';
       setPresentationAdmission(entity, PRESENTATION_ADMISSION.ready);
       return visual;

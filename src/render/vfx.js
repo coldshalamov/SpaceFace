@@ -845,6 +845,258 @@ function disposeSwarmerPresentationGeometry(dart, events) {
   }
 }
 
+// Plan 13 medium-family world tells. Projector links are bounded hard line structures between the
+// actual source and wing target. Torcher hazards are broken, open wake cells rooted at the
+// authoritative trail centers; reach/heat animate, never opacity. No camera-facing cards, cones,
+// point sprites, procedural-noise art, or free-floating generic flashes participate.
+const MEDIUM_LINK_TELL_CAP = 12;
+const MEDIUM_TOW_TELL_CAP = 8;
+const MEDIUM_TRAIL_TELL_CAP = 48;
+
+function createMediumHeatWakeCellGeometry() {
+  const positions = [];
+  const along = [];
+  const facets = [];
+  const indices = [];
+  const ring = [
+    [-1, 0], [-0.58, 0.72], [0.46, 0.86],
+    [1, 0.12], [0.62, -0.7], [-0.5, -0.82],
+  ];
+  // Five short, open prisms form one wake. The gaps are literal negative space and each cell has
+  // a different offset/taper, so the effect cannot collapse into a solid thrust cone in plan view.
+  for (let cell = 0; cell < 5; cell++) {
+    const z0 = -0.5 + cell * 0.205;
+    const z1 = z0 + 0.125 + (cell % 2) * 0.018;
+    const width0 = 0.27 - cell * 0.018;
+    const width1 = width0 * (cell % 2 ? 0.82 : 0.68);
+    const height0 = 0.08 + (cell % 3) * 0.012;
+    const height1 = height0 * 0.74;
+    const offset0 = (cell % 2 ? 1 : -1) * 0.025;
+    const offset1 = -offset0 * 0.45;
+    const base = positions.length / 3;
+    for (let end = 0; end < 2; end++) {
+      const width = end ? width1 : width0;
+      const height = end ? height1 : height0;
+      const offset = end ? offset1 : offset0;
+      const z = end ? z1 : z0;
+      for (let point = 0; point < ring.length; point++) {
+        positions.push(offset + ring[point][0] * width, ring[point][1] * height, z);
+        along.push(z + 0.5);
+        facets.push(point + cell * 0.37);
+      }
+    }
+    for (let point = 0; point < ring.length; point++) {
+      const next = (point + 1) % ring.length;
+      indices.push(base + point, base + ring.length + point, base + ring.length + next);
+      indices.push(base + point, base + ring.length + next, base + next);
+    }
+  }
+  const indexed = new THREE.BufferGeometry();
+  indexed.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  indexed.setAttribute('aHeight', new THREE.Float32BufferAttribute(along, 1));
+  indexed.setAttribute('aFacet', new THREE.Float32BufferAttribute(facets, 1));
+  indexed.setIndex(indices);
+  const geometry = indexed.toNonIndexed();
+  indexed.dispose();
+  geometry.computeVertexNormals();
+  geometry.computeBoundingSphere();
+  return geometry;
+}
+
+function createMediumHeatWakeCellMaterial() {
+  return new THREE.ShaderMaterial({
+    name: 'TorcherOwnedHeatFractureVolumes',
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    blending: THREE.NormalBlending,
+    uniforms: { uTime: { value: 0 } },
+    vertexShader: `
+      uniform float uTime;
+      attribute float aHeight;
+      attribute float aFacet;
+      varying float vHeight;
+      varying vec3 vWorldNormal;
+      varying vec3 vWorldPosition;
+      void main() {
+        vec3 heatPosition = position;
+        float crossflow = sin(aHeight * 15.0 - uTime * 3.1 + aFacet * 1.7);
+        heatPosition.x += crossflow * 0.018;
+        heatPosition.y += sin(aHeight * 11.0 - uTime * 2.3 + aFacet) * 0.01;
+        vec4 world = modelMatrix * vec4(heatPosition, 1.0);
+        vHeight = aHeight;
+        vWorldPosition = world.xyz;
+        vWorldNormal = normalize(mat3(modelMatrix) * normal);
+        gl_Position = projectionMatrix * viewMatrix * world;
+      }
+    `,
+    fragmentShader: `
+      uniform float uTime;
+      varying float vHeight;
+      varying vec3 vWorldNormal;
+      varying vec3 vWorldPosition;
+      void main() {
+        vec3 viewDir = normalize(cameraPosition - vWorldPosition);
+        float grazing = pow(1.0 - abs(dot(normalize(vWorldNormal), viewDir)), 1.6);
+        float travellingHeat = 0.56 + 0.44 * sin(vHeight * 13.0 - uTime * 4.2);
+        float runout = 1.0 - smoothstep(0.72, 1.0, vHeight);
+        vec3 cold = vec3(0.18, 0.035, 0.012);
+        vec3 hot = vec3(1.35, 0.34, 0.045);
+        vec3 radiance = mix(cold, hot, travellingHeat) * (0.5 + grazing * 0.82) * runout;
+        gl_FragColor = vec4(radiance, 0.2 + grazing * 0.28);
+      }
+    `,
+  });
+}
+
+function createMediumWorldTellSystem(scene) {
+  const group = new THREE.Group();
+  group.name = 'MediumFamilyOwnedWorldTells';
+  const linkMaterial = new THREE.LineBasicMaterial({
+    name: 'BulwarkProjectedShieldLattice', color: '#67ddff', toneMapped: false,
+  });
+  const links = [];
+  for (let i = 0; i < MEDIUM_LINK_TELL_CAP; i++) {
+    const positions = new Float32Array(12 * 3);
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3).setUsage(THREE.DynamicDrawUsage));
+    const mesh = new THREE.LineSegments(geometry, linkMaterial);
+    mesh.name = `BulwarkProjectedShieldLattice_${i}`;
+    mesh.visible = false;
+    mesh.frustumCulled = false;
+    group.add(mesh);
+    links.push({ mesh, positions, source: { x: 0, z: 0 }, target: { x: 0, z: 0 } });
+  }
+  const towMaterial = new THREE.LineBasicMaterial({
+    name: 'CorsairPhysicalTowCable', color: '#c9a16f', toneMapped: true,
+  });
+  const tows = [];
+  for (let i = 0; i < MEDIUM_TOW_TELL_CAP; i++) {
+    const positions = new Float32Array(18 * 2 * 3);
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3).setUsage(THREE.DynamicDrawUsage));
+    const mesh = new THREE.LineSegments(geometry, towMaterial);
+    mesh.name = `CorsairPhysicalTowCable_${i}`;
+    mesh.visible = false;
+    mesh.frustumCulled = false;
+    group.add(mesh);
+    tows.push({ mesh, positions, source: { x: 0, z: 0 }, target: { x: 0, z: 0 } });
+  }
+  const trailGeometry = createMediumHeatWakeCellGeometry();
+  const trailEdgeGeometry = new THREE.EdgesGeometry(trailGeometry, 18);
+  const trailMaterial = createMediumHeatWakeCellMaterial();
+  const trailEdgeMaterial = new THREE.LineBasicMaterial({
+    name: 'TorcherHeatWakeCellRibs', color: '#d45a28', transparent: true, opacity: 0.52,
+    toneMapped: true,
+  });
+  const trails = [];
+  for (let i = 0; i < MEDIUM_TRAIL_TELL_CAP; i++) {
+    const mesh = new THREE.Group();
+    mesh.name = `TorcherOwnedHeatFracture_${i}`;
+    const volume = new THREE.Mesh(trailGeometry, trailMaterial);
+    volume.name = `TorcherHeatWakeCellVolumes_${i}`;
+    const ribs = new THREE.LineSegments(trailEdgeGeometry, trailEdgeMaterial);
+    ribs.name = `TorcherHeatWakeCellRibs_${i}`;
+    mesh.add(volume, ribs);
+    mesh.visible = false;
+    mesh.traverse((object) => { object.frustumCulled = false; });
+    group.add(mesh);
+    trails.push({ mesh, volume, ribs, local: { x: 0, z: 0 }, source: { x: 0, z: 0 } });
+  }
+  scene.add(group);
+  return {
+    group, links, tows, trails, linkMaterial, towMaterial,
+    trailGeometry, trailEdgeGeometry, trailMaterial, trailEdgeMaterial,
+  };
+}
+
+function writeMediumLineSegment(positions, cursor, x0, y0, z0, x1, y1, z1) {
+  positions[cursor++] = x0; positions[cursor++] = y0; positions[cursor++] = z0;
+  positions[cursor++] = x1; positions[cursor++] = y1; positions[cursor++] = z1;
+  return cursor;
+}
+
+function writeMediumLinkTell(slot, source, target, radius) {
+  const dx = target.x - source.x;
+  const dz = target.z - source.z;
+  const length = Math.max(0.001, Math.hypot(dx, dz));
+  const nx = -dz / length;
+  const nz = dx / length;
+  const width = Math.max(0.7, Math.min(3.2, radius * 0.13));
+  const p = slot.positions;
+  let cursor = 0;
+  cursor = writeMediumLineSegment(p, cursor, source.x + nx * width, 0.55, source.z + nz * width,
+    target.x + nx * width, 0.55, target.z + nz * width);
+  cursor = writeMediumLineSegment(p, cursor, source.x - nx * width, 0.55, source.z - nz * width,
+    target.x - nx * width, 0.55, target.z - nz * width);
+  for (let rung = 0; rung < 4; rung++) {
+    const t = (rung + 0.5) / 4;
+    const x = source.x + dx * t;
+    const z = source.z + dz * t;
+    cursor = writeMediumLineSegment(p, cursor,
+      x - nx * width, 0.55, z - nz * width, x + nx * width, 0.55, z + nz * width);
+  }
+  slot.mesh.geometry.attributes.position.needsUpdate = true;
+  slot.mesh.visible = true;
+}
+
+function writeMediumTowTell(slot, source, target, radius) {
+  const dx = target.x - source.x;
+  const dz = target.z - source.z;
+  const length = Math.max(0.001, Math.hypot(dx, dz));
+  const nx = -dz / length;
+  const nz = dx / length;
+  const width = Math.max(0.32, Math.min(1.1, radius * 0.055));
+  const p = slot.positions;
+  let cursor = 0;
+  // Two crossing strands and terminal yokes read as a load-bearing tow cable, not the Bulwark's
+  // straight projected ladder. Every point is derived from the live SG-02 attachment endpoints.
+  for (let strandIndex = 0; strandIndex < 2; strandIndex++) {
+    const strand = strandIndex === 0 ? -1 : 1;
+    for (let segment = 0; segment < 8; segment++) {
+      const t0 = segment / 8;
+      const t1 = (segment + 1) / 8;
+      const offset0 = strand * width * Math.cos(t0 * Math.PI * 4);
+      const offset1 = strand * width * Math.cos(t1 * Math.PI * 4);
+      cursor = writeMediumLineSegment(p, cursor,
+        source.x + dx * t0 + nx * offset0, 0.52 - Math.sin(t0 * Math.PI) * 0.72,
+        source.z + dz * t0 + nz * offset0,
+        source.x + dx * t1 + nx * offset1, 0.52 - Math.sin(t1 * Math.PI) * 0.72,
+        source.z + dz * t1 + nz * offset1);
+    }
+  }
+  for (let yokeIndex = 0; yokeIndex < 2; yokeIndex++) {
+    const t = yokeIndex === 0 ? 0.04 : 0.96;
+    const x = source.x + dx * t;
+    const z = source.z + dz * t;
+    cursor = writeMediumLineSegment(p, cursor,
+      x - nx * width, 0.52, z - nz * width,
+      x + nx * width, 0.52, z + nz * width);
+  }
+  slot.mesh.geometry.attributes.position.needsUpdate = true;
+  slot.mesh.visible = true;
+}
+
+function resetMediumWorldTellSystem(system) {
+  if (!system) return;
+  for (const slot of system.links) slot.mesh.visible = false;
+  for (const slot of system.tows) slot.mesh.visible = false;
+  for (const slot of system.trails) slot.mesh.visible = false;
+}
+
+function disposeMediumWorldTellSystem(system) {
+  if (!system) return;
+  system.group.removeFromParent();
+  for (const slot of system.links) slot.mesh.geometry.dispose();
+  for (const slot of system.tows) slot.mesh.geometry.dispose();
+  system.linkMaterial.dispose();
+  system.towMaterial.dispose();
+  system.trailGeometry.dispose();
+  system.trailEdgeGeometry.dispose();
+  system.trailMaterial.dispose();
+  system.trailEdgeMaterial.dispose();
+}
+
 function emptyTrailBudgetDiag() {
   return {
     trailCandidates: 0,
@@ -980,6 +1232,7 @@ function emptyVfxSubsystemDiag() {
     ceresJobActions: 0,   // R6B receipt-bound punctuation; detached from sim authority after intake
     lawHeatTelegraph: 0,  // WF-12 scan-sweep / suspicion / WANTED-flip via shared event-light pool
     swarmerPresentation: 0, // AC-12 actual-path Dart wake + hard-geometry Skitter/Ember cues
+    mediumPresentation: 0, // Plan 13 Bulwark lattices + Torcher owned heat-sheet hazards
   };
 }
 
@@ -1257,6 +1510,7 @@ export const vfx = {
 
     this._initPools();
     this._initSwarmerPresentationGeometry();
+    this._initMediumPresentationGeometry();
     // The renderer's loading-stage residency pass runs after every system has initialized. Publish
     // the exact live VFX roots so their already-created textures are uploaded under the loading
     // shell instead of on the first ambient impact during exposed flight. The getter stays live
@@ -1311,6 +1565,8 @@ export const vfx = {
     disposeSwarmerPresentationGeometry(this._dartActualTrails, this._swarmerEventGeometry);
     this._dartActualTrails = null;
     this._swarmerEventGeometry = null;
+    disposeMediumWorldTellSystem(this._mediumWorldTells);
+    this._mediumWorldTells = null;
   },
 
   _vfxOwnerRoots() {
@@ -1324,6 +1580,7 @@ export const vfx = {
     add(this._points);
     add(this._dartActualTrails && this._dartActualTrails.group);
     add(this._swarmerEventGeometry && this._swarmerEventGeometry.group);
+    add(this._mediumWorldTells && this._mediumWorldTells.group);
     add(this._trailStreakPool && this._trailStreakPool.mesh);
     add(this._spriteBatches && this._spriteBatches.glow.mesh);
     add(this._spriteBatches && this._spriteBatches.ring.mesh);
@@ -1821,6 +2078,7 @@ export const vfx = {
     add('combat:beamStop', (p) => this._onBeamStop(p));
     add('projectile:hit', (p) => this._onProjectileHit(p));
     add('combat:damage', (p) => this._onDamage(p));
+    add('combat:statusApplied', (p) => this._onMediumStatusApplied(p));
     add('physics:impact', (p) => this._onPhysicsImpact(p));
     add('collision', (p) => this._onCollision(p));
     // SF-10: the PQ-009 collision-consequence receipts (a hull slammed into terrain — the concussion
@@ -1854,7 +2112,10 @@ export const vfx = {
     for (const boundary of [
       'sector:enter', 'sector:exit', 'game:new', 'game:newGame',
       'save:restoring', 'save:loaded', 'world:playerRelocated', 'player:death',
-    ]) add(boundary, () => this._resetPickupStreams());
+    ]) add(boundary, () => {
+      this._resetPickupStreams();
+      resetMediumWorldTellSystem(this._mediumWorldTells);
+    });
     add('settings:changed', (p) => {
       if (!p || p.section !== 'video') return;
       if (p.key === 'particleQuality' || p.key == null) this._syncParticleQuality();
@@ -3333,12 +3594,142 @@ export const vfx = {
     return true;
   },
 
+  _initMediumPresentationGeometry() {
+    if (!this._scene) return false;
+    if (!this._mediumWorldTells) this._mediumWorldTells = createMediumWorldTellSystem(this._scene);
+    return true;
+  },
+
   _onSwarmerDoctrinePhase(p) {
     const entity = this._ent(p && p.entityId);
     const mesh = entity && entity.mesh;
-    if (!mesh || typeof mesh.userData.setSwarmerDoctrinePhase !== 'function') return false;
-    mesh.userData.setSwarmerDoctrinePhase(p && p.phase);
+    if (!mesh) return false;
+    let handled = false;
+    if (typeof mesh.userData.setSwarmerDoctrinePhase === 'function') {
+      mesh.userData.setSwarmerDoctrinePhase(p && p.phase);
+      handled = true;
+    }
+    if (typeof mesh.userData.setMediumPresentationState === 'function') {
+      const id = String(entity.data && (entity.data.lootTableId || entity.data.enemyTypeId) || '');
+      const phase = String(p && p.phase || '');
+      const charging = id === 'lancer_sniper'
+        ? phase === 'charge_cue'
+        : id === 'hostile_interceptor' && phase === 'engine_flare';
+      mesh.userData.setMediumPresentationState('charge', charging);
+      if (phase === 'visible_retreat') mesh.userData.setMediumPresentationState('retreat', true);
+      handled = true;
+    }
+    return handled;
+  },
+
+  _onMediumStatusApplied(p) {
+    if (!p || p.statusId !== MOMENTUM_SINK_STATUS_ID) return false;
+    const entity = this._ent(p.targetId);
+    const mesh = entity && entity.mesh;
+    if (!mesh || typeof mesh.userData.setMediumPresentationState !== 'function') return false;
+    mesh.userData.setMediumPresentationState('disrupted', true);
     return true;
+  },
+
+  _syncMediumMeshStates(runtime) {
+    const list = this.state && this.state.entityList || [];
+    for (let i = 0; i < list.length; i++) {
+      const entity = list[i];
+      const mesh = entity && entity.mesh;
+      if (!mesh || typeof mesh.userData.setMediumPresentationState !== 'function') continue;
+      let link = false;
+      let trail = false;
+      if (runtime && runtime.bulwarkLinksByTarget) {
+        for (const key in runtime.bulwarkLinksByTarget) {
+          const record = runtime.bulwarkLinksByTarget[key];
+          if (record && record.sourceId === entity.id) { link = true; break; }
+        }
+      }
+      if (runtime && runtime.torcherTrails) {
+        for (let trailIndex = 0; trailIndex < runtime.torcherTrails.length; trailIndex++) {
+          if (runtime.torcherTrails[trailIndex].sourceId === entity.id) { trail = true; break; }
+        }
+      }
+      mesh.userData.setMediumPresentationState('link', link);
+      mesh.userData.setMediumPresentationState('trail', trail);
+    }
+  },
+
+  _updateMediumWorldTells() {
+    if (!this._initMediumPresentationGeometry()) return 0;
+    const system = this._mediumWorldTells;
+    const runtime = this.state && this.state.mediumEnemyRuntime;
+    let linkCount = 0;
+    if (runtime && runtime.bulwarkLinksByTarget) {
+      for (const key in runtime.bulwarkLinksByTarget) {
+        if (linkCount >= system.links.length) break;
+        const record = runtime.bulwarkLinksByTarget[key];
+        const source = this._ent(record && record.sourceId);
+        const target = this._ent(record && record.targetId);
+        if (!source || !target || !source.pos || !target.pos) continue;
+        const slot = system.links[linkCount++];
+        this._toLocalXZ(source.pos.x, source.pos.z, slot.source);
+        this._toLocalXZ(target.pos.x, target.pos.z, slot.target);
+        writeMediumLinkTell(slot, slot.source, slot.target, Math.max(source.radius || 8, target.radius || 8));
+      }
+    }
+    for (let i = linkCount; i < system.links.length; i++) system.links[i].mesh.visible = false;
+
+    const attachments = this.state && this.state.combat
+      && this.state.combat.attachments && this.state.combat.attachments.byId;
+    let towCount = 0;
+    if (attachments) {
+      for (const key in attachments) {
+        if (towCount >= system.tows.length) break;
+        const record = attachments[key];
+        if (!record || record.state !== 'active') continue;
+        const owner = this._ent(record.ownerId);
+        const target = this._ent(record.targetId);
+        const towData = owner && owner.data && owner.data.corsairCargoTow;
+        if (!owner || !target || !owner.pos || !target.pos || !towData) continue;
+        if (String(towData.attachmentId || '') !== String(record.id || key)) continue;
+        const stableId = String(owner.data.lootTableId || owner.data.enemyTypeId || '');
+        if (stableId !== 'corsair_raider') continue;
+        const slot = system.tows[towCount++];
+        this._toLocalXZ(owner.pos.x, owner.pos.z, slot.source);
+        this._toLocalXZ(target.pos.x, target.pos.z, slot.target);
+        writeMediumTowTell(slot, slot.source, slot.target, Math.max(owner.radius || 8, target.radius || 4));
+      }
+    }
+    for (let i = towCount; i < system.tows.length; i++) system.tows[i].mesh.visible = false;
+
+    const trails = runtime && runtime.torcherTrails || null;
+    const now = Math.max(0, Number(this.state && this.state.simTime) || 0);
+    let trailCount = 0;
+    if (trails) {
+      for (let i = 0; i < trails.length && trailCount < system.trails.length; i++) {
+        const record = trails[i];
+        if (!record || !record.center || !(record.expiresAt > now)) continue;
+        const slot = system.trails[trailCount++];
+        this._toLocalXZ(record.center.x, record.center.z, slot.local);
+        const source = this._ent(record.sourceId);
+        if (source && source.pos) this._toLocalXZ(source.pos.x, source.pos.z, slot.source);
+        else { slot.source.x = slot.local.x; slot.source.z = slot.local.z - 1; }
+        const createdAt = Number.isFinite(record.createdAt) ? Number(record.createdAt) : now;
+        const life = Math.max(0.001, record.expiresAt - createdAt);
+        const age = Math.max(0, now - createdAt);
+        const attack = Math.min(1, age / 0.18);
+        const release = Math.min(1, Math.max(0, record.expiresAt - now) / 0.62);
+        const envelope = Math.min(attack, release);
+        const radius = Math.max(8, Number(record.radius) || 48);
+        slot.mesh.position.set(slot.local.x, 0.12, slot.local.z);
+        const flowX = slot.local.x - slot.source.x;
+        const flowZ = slot.local.z - slot.source.z;
+        slot.mesh.rotation.y = Math.atan2(flowX, flowZ) + i * 0.08;
+        slot.mesh.scale.set(radius * envelope, radius * envelope, radius * 1.35 * envelope);
+        slot.mesh.visible = envelope > 0.01 && life > 0;
+      }
+    }
+    for (let i = trailCount; i < system.trails.length; i++) system.trails[i].mesh.visible = false;
+    system.trailMaterial.uniforms.uTime.value = this._t;
+    system.group.visible = linkCount + towCount + trailCount > 0;
+    this._syncMediumMeshStates(runtime);
+    return linkCount + towCount + trailCount;
   },
 
   _updateDartActualTrails(dt) {
@@ -3439,6 +3830,14 @@ export const vfx = {
   _onPresentationCue(p) {
     if (!this._scene || !p) return;
     if (this._onSwarmerPresentationCue(p)) return;
+    if (p.id === 'ship.rcsDisrupt' && p.targetId != null) {
+      const entity = this._ent(p.targetId);
+      const mesh = entity && entity.mesh;
+      if (mesh && typeof mesh.userData.setMediumPresentationState === 'function') {
+        mesh.userData.setMediumPresentationState('disrupted', true);
+        return;
+      }
+    }
     // Cruise owns its directional travel grammar directly below. Keep the legacy cue receipt for
     // audio/contracts, but do not fan it back into the generic presentation particle family.
     if (typeof p.id === 'string' && p.id.startsWith('cruise.')) return;
@@ -8644,6 +9043,14 @@ export const vfx = {
     if (!this._scene) return;
     const e = this._ent(p && p.entityId);
     if (!e || !e.pos) return;
+    const mesh = e.mesh;
+    if (mesh && typeof mesh.userData.setMediumPresentationState === 'function') {
+      mesh.userData.setMediumPresentationState('retreat', true);
+      mesh.userData.setMediumPresentationState('charge', false);
+      // The medium hull itself opens vents, sheds load, or breaks its emitter stance. Do not layer
+      // the legacy random particle burst and billboard flash over that authored mechanical tell.
+      return;
+    }
     this._c0.set('#a6f0ff'); this._c1.set('#39d0ff');
     for (let k = 0; k < 8; k++) {
       const a = Math.random() * Math.PI * 2;
@@ -9667,6 +10074,7 @@ export const vfx = {
       if (!this._scene) return;
     }
     this._initSwarmerPresentationGeometry();
+    this._initMediumPresentationGeometry();
     if (this._perfVfxIsolationRestore) {
       this._reassertPerfVfxRoots();
       return;
@@ -9706,6 +10114,7 @@ export const vfx = {
     const dartTrails = this._updateDartActualTrails(dt);
     const swarmerEvents = this._updateSwarmerEventGeometry(dt);
     sub.swarmerPresentation = dartTrails + swarmerEvents > 0 ? 1 : 0;
+    sub.mediumPresentation = this._updateMediumWorldTells() > 0 ? 1 : 0;
     sub.trails = this._emitTrails(dt) ? 1 : 0;
     sub.ribbons = this._updateRibbonTrails(dt) ? 1 : 0;
     if (this._projectileTrailsRelevant()) {

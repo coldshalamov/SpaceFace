@@ -64,6 +64,24 @@ const PLAYER_PAL = { hull: '#9fb2c8', accent: '#39d0ff', emissive: '#39d0ff', th
 const HOSTILE_PAL = { hull: '#5a3038', accent: '#ff3b30', emissive: '#ff5470', thruster: '#ff7a3c' };
 const NEUTRAL_PAL = { hull: '#6b7280', accent: '#b0b8c4', emissive: '#9fb2c8', thruster: '#aebfd6' };
 
+// Plan 13 stable combat ids own their silhouettes. Several of these rows intentionally reuse an
+// existing ship definition for slots/collision, so data.silhouette alone cannot distinguish them.
+// Keep this presentation lookup local: combat data remains the gameplay authority.
+const MEDIUM_PRESENTATION_SILHOUETTES = Object.freeze({
+  marauder_brawler: 'medium_marauder',
+  lancer_sniper: 'medium_lancer',
+  hostile_interceptor: 'medium_interceptor',
+  bulwark_escort: 'medium_bulwark',
+  corsair_raider: 'medium_corsair',
+  torcher_denial: 'medium_torcher',
+});
+
+export function mediumPresentationIdFor(entity) {
+  const data = entity && entity.data;
+  const id = String(data && (data.lootTableId || data.enemyTypeId || data.typeId) || '');
+  return MEDIUM_PRESENTATION_SILHOUETTES[id] ? id : null;
+}
+
 // The renderer injects the baked PMREM nebula env-map here (setEnvMapForShips) so chrome/authority
 // hulls can mirror the actual space around them. Null until the bake completes — chrome then falls
 // back to high-metalness matte, which is still a clean-shiny read, just not mirror.
@@ -2108,6 +2126,453 @@ function buildPatrolInterdict(ctx) {
   }
 }
 
+// =============================================================================================
+// Plan 13 medium-family presentation. These are designed-procedural Tier B bodies: each stable
+// enemy id gets a manufactured silhouette and moving mechanical tell instead of inheriting the
+// player hull named by its combat slot recipe. Hot surfaces are recessed inside hardware; no
+// billboard, point sprite, glow card, or cone-as-gas carries identity.
+// =============================================================================================
+const MEDIUM_PRESENTATION_CHANNELS = Object.freeze(['charge', 'disrupted', 'link', 'tow', 'trail', 'retreat']);
+
+function mediumMaterial(key, color, name, roughness = 0.5, metalness = 0.72) {
+  return getMaterial(`medium:${key}`, () => new THREE.MeshStandardMaterial({
+    name, color, roughness, metalness,
+  }));
+}
+
+function mediumSignalMaterial(key, color, emissive, name) {
+  const material = mediumMaterial(key, color, name, 0.34, 0.64).clone();
+  material.emissive.set(emissive);
+  material.emissiveIntensity = 0.12;
+  return material;
+}
+
+function mediumBox(parent, name, material, sx, sy, sz, x, y, z, animated = false) {
+  const mesh = new THREE.Mesh(getGeometry('medium:unit-box', () => new THREE.BoxGeometry(1, 1, 1)), material);
+  mesh.name = name;
+  mesh.scale.set(sx, sy, sz);
+  mesh.position.set(x, y, z);
+  if (animated) mesh.userData.animated = true;
+  parent.add(mesh);
+  return mesh;
+}
+
+function mediumLongCylinder(parent, name, material, radiusA, radiusB, length, x, y, z, segments = 8, animated = false) {
+  const key = `medium:cylinder:${radiusA}:${radiusB}:${length}:${segments}`;
+  const mesh = new THREE.Mesh(getGeometry(key, () => new THREE.CylinderGeometry(radiusA, radiusB, length, segments)), material);
+  mesh.name = name;
+  mesh.rotation.x = Math.PI / 2;
+  mesh.position.set(x, y, z);
+  if (animated) mesh.userData.animated = true;
+  parent.add(mesh);
+  return mesh;
+}
+
+// A cached axial profile gives the camera-prominent hull mass a deliberately stepped, asymmetric
+// manufactured section. It is not a scaled DCC primitive: every station owns its width, height,
+// vertical bias and shoulder cut, so the outline can carry class/function before surface colour.
+function createMediumProfileGeometry(stations) {
+  const section = [
+    [-0.58, 1], [0.5, 1], [1, 0.34], [0.9, -0.42],
+    [0.48, -1], [-0.62, -0.88], [-1, -0.28], [-0.92, 0.42],
+  ];
+  const vertices = [];
+  const indices = [];
+  for (let stationIndex = 0; stationIndex < stations.length; stationIndex++) {
+    const station = stations[stationIndex];
+    const shoulder = Number.isFinite(station.shoulder) ? station.shoulder : 1;
+    for (let pointIndex = 0; pointIndex < section.length; pointIndex++) {
+      const point = section[pointIndex];
+      const upperShoulder = point[1] > 0.3 ? shoulder : 1;
+      vertices.push(
+        (station.x || 0) + point[0] * station.w * upperShoulder,
+        (station.y || 0) + point[1] * station.h,
+        station.z,
+      );
+    }
+  }
+  const ringSize = section.length;
+  for (let stationIndex = 0; stationIndex < stations.length - 1; stationIndex++) {
+    const ring0 = stationIndex * ringSize;
+    const ring1 = ring0 + ringSize;
+    for (let pointIndex = 0; pointIndex < ringSize; pointIndex++) {
+      const next = (pointIndex + 1) % ringSize;
+      indices.push(ring0 + pointIndex, ring1 + pointIndex, ring1 + next);
+      indices.push(ring0 + pointIndex, ring1 + next, ring0 + next);
+    }
+  }
+  for (let pointIndex = 1; pointIndex < ringSize - 1; pointIndex++) {
+    indices.push(0, pointIndex + 1, pointIndex);
+    const last = (stations.length - 1) * ringSize;
+    indices.push(last, last + pointIndex, last + pointIndex + 1);
+  }
+  const indexed = new THREE.BufferGeometry();
+  indexed.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+  indexed.setIndex(indices);
+  // Camera-prominent panels keep manufactured facet breaks. Smooth shared ring normals made the
+  // deliberately stepped profiles collapse into black, featureless lozenges under flight light.
+  const geometry = indexed.toNonIndexed();
+  indexed.dispose();
+  geometry.computeVertexNormals();
+  geometry.computeBoundingSphere();
+  return geometry;
+}
+
+function mediumProfile(parent, name, material, key, stations, R, x = 0, y = 0, z = 0, animated = false) {
+  const mesh = new THREE.Mesh(
+    getGeometry(`medium:profile:${key}`, () => createMediumProfileGeometry(stations)),
+    material,
+  );
+  mesh.name = name;
+  mesh.scale.setScalar(R);
+  mesh.position.set(x * R, y * R, z * R);
+  if (animated) mesh.userData.animated = true;
+  parent.add(mesh);
+  return mesh;
+}
+
+function installMediumPresentationController(outer, apply) {
+  const state = { lastT: 0, impulseAt: -1e9 };
+  for (const channel of MEDIUM_PRESENTATION_CHANNELS) {
+    state[channel] = 0;
+    state[`${channel}Target`] = 0;
+  }
+  outer.userData.mediumPresentationState = state;
+  outer.userData.setMediumPresentationState = (channel, active = true) => {
+    if (!MEDIUM_PRESENTATION_CHANNELS.includes(channel)) return false;
+    state[`${channel}Target`] = active === true ? 1 : Math.max(0, Math.min(1, Number(active) || 0));
+    if (channel === 'disrupted' && state[`${channel}Target`] > 0) state.impulseAt = state.lastT;
+    return true;
+  };
+  outer.userData.updateRuntimeState = (entity, now) => {
+    const t = Number.isFinite(now) ? now : state.lastT;
+    const dt = state.lastT > 0 ? Math.max(0, Math.min(0.1, t - state.lastT)) : 1 / 60;
+    state.lastT = t;
+    if (t - state.impulseAt > 1.65) state.disruptedTarget = 0;
+    const data = entity && entity.data;
+    state.towTarget = data && data.corsairCargoTow ? 1 : 0;
+    const hullMax = Math.max(1, Number(entity && entity.hullMax) || 1);
+    state.retreatTarget = entity && Number(entity.hull) / hullMax <= 0.3 ? 1 : 0;
+    for (const channel of MEDIUM_PRESENTATION_CHANNELS) {
+      const current = state[channel];
+      const target = state[`${channel}Target`];
+      const rate = target > current ? 8.2 : 2.15;
+      state[channel] = current + (target - current) * (1 - Math.exp(-dt * rate));
+    }
+    apply(state, entity, t);
+  };
+  return state;
+}
+
+function finishMediumHull(g, stableId, visualLanguage) {
+  const frame = settleSwarmerForwardFrame(g);
+  frame.name = 'MediumFactoryForwardFrame';
+  const outer = g.parent;
+  outer.userData.enemySilhouette = MEDIUM_PRESENTATION_SILHOUETTES[stableId];
+  outer.userData.mediumPresentationId = stableId;
+  outer.userData.visualLanguage = visualLanguage;
+  outer.userData.genericShipOverlaysSuppressed = true;
+  return outer;
+}
+
+function buildMediumMarauder(ctx) {
+  const { g, R } = ctx;
+  const hull = mediumMaterial('marauder-hull', 0x684346, 'MarauderRolledArmor', 0.66, 0.74);
+  const armor = mediumMaterial('marauder-armor', 0x483033, 'MarauderHardfacedProw', 0.58, 0.82);
+  const signal = mediumSignalMaterial('marauder-rcs', 0x8b351d, 0xff471b, 'MarauderRcsFaultVanes');
+  mediumProfile(g, 'MarauderPressureHull', hull, 'marauder-pressure', [
+    { z: -0.72, w: 0.4, h: 0.24, y: -0.03 },
+    { z: -0.42, w: 0.57, h: 0.34, shoulder: 0.82 },
+    { z: 0.28, w: 0.64, h: 0.33, shoulder: 0.9 },
+    { z: 0.61, w: 0.72, h: 0.25, y: -0.02, shoulder: 0.72 },
+  ], R);
+  // Two separated armour courses leave a real sight/ram channel between them instead of reading
+  // as one scaled cube. Their unequal station profiles give the prow rolled, repairable edges.
+  for (const side of [-1, 1]) {
+    mediumProfile(g, 'MarauderForwardArmorSlab', armor, `marauder-slab-${side}`, [
+      { z: 0.48, w: 0.29, h: 0.17, x: side * 0.35, shoulder: 0.78 },
+      { z: 0.79, w: 0.36, h: 0.14, x: side * 0.4, y: 0.01, shoulder: 0.62 },
+      { z: 0.91, w: 0.3, h: 0.1, x: side * 0.42, y: -0.03, shoulder: 0.55 },
+    ], R);
+  }
+  mediumProfile(g, 'MarauderProwLowerCheek', armor, 'marauder-lower-cheek', [
+    { z: 0.42, w: 0.49, h: 0.13, y: -0.21 },
+    { z: 0.82, w: 0.56, h: 0.12, y: -0.2, shoulder: 0.62 },
+  ], R);
+  for (const side of [-1, 1]) {
+    mediumBox(g, 'MarauderProwGusset', hull, 0.22 * R, 0.34 * R, 0.66 * R,
+      side * 0.62 * R, -0.02 * R, 0.2 * R);
+  }
+  for (const side of [-1, 0, 1]) {
+    mediumLongCylinder(g, 'MarauderDeepDriveBell', hull, 0.13 * R, 0.2 * R, 0.34 * R,
+      side * 0.28 * R, 0, -0.76 * R, 8);
+  }
+  const vanes = [];
+  for (let i = 0; i < 4; i++) {
+    const side = i < 2 ? -1 : 1;
+    const fore = i % 2 ? 0.36 : -0.3;
+    vanes.push(mediumBox(g, 'MarauderRcsFaultVane', signal, 0.08 * R, 0.09 * R, 0.34 * R,
+      side * 0.77 * R, 0.02 * R, fore * R, true));
+  }
+  const outer = finishMediumHull(g, 'marauder_brawler', 'armored-box-prow-and-three-deep-drive-bells');
+  installMediumPresentationController(outer, (state) => {
+    signal.emissiveIntensity = 0.12 + state.disrupted * 3.2 + state.retreat * 0.8;
+    for (let i = 0; i < vanes.length; i++) {
+      const side = i < 2 ? -1 : 1;
+      vanes[i].rotation.z = side * state.disrupted * 0.82;
+      vanes[i].position.y = (0.02 + state.disrupted * (i % 2 ? 0.14 : -0.08)) * R;
+    }
+  });
+}
+
+function buildMediumLancer(ctx) {
+  const { g, R } = ctx;
+  const hull = mediumMaterial('lancer-hull', 0x46535f, 'LancerDrawnSpine', 0.48, 0.79);
+  const ceramic = mediumMaterial('lancer-ceramic', 0xb9b09a, 'LancerRailCeramic', 0.72, 0.18);
+  const charge = mediumSignalMaterial('lancer-charge', 0x42385c, 0xb98cff, 'LancerChargeBus');
+  mediumProfile(g, 'LancerServiceSpine', hull, 'lancer-service', [
+    { z: -0.88, w: 0.17, h: 0.16 },
+    { z: -0.61, w: 0.28, h: 0.22, y: -0.03 },
+    { z: 0.12, w: 0.24, h: 0.18, shoulder: 0.7 },
+    { z: 0.42, w: 0.13, h: 0.12, y: 0.03 },
+  ], R);
+  mediumProfile(g, 'LancerLongBarrelSpine', hull, 'lancer-long-barrel', [
+    { z: 0.1, w: 0.08, h: 0.07, y: 0.04 },
+    { z: 0.56, w: 0.07, h: 0.065, y: 0.04 },
+    { z: 1.32, w: 0.052, h: 0.05, y: 0.04, shoulder: 0.65 },
+    { z: 1.72, w: 0.035, h: 0.035, y: 0.04, shoulder: 0.5 },
+  ], R);
+  const chargeRails = [];
+  for (const side of [-1, 1]) {
+    chargeRails.push(mediumBox(g, 'LancerChargeRail', charge, 0.055 * R, 0.07 * R, 0.94 * R,
+      side * 0.14 * R, 0.04 * R, 0.72 * R, true));
+  }
+  for (let i = 0; i < 4; i++) {
+    const z = (0.28 + i * 0.31) * R;
+    for (const side of [-1, 1]) {
+      mediumBox(g, 'LancerBarrelClampJaw', ceramic, 0.11 * R, 0.12 * R, 0.065 * R,
+        side * 0.13 * R, 0.04 * R, z);
+    }
+  }
+  for (const side of [-1, 1]) {
+    mediumBox(g, 'LancerCoolingLattice', hull, 0.1 * R, 0.42 * R, 0.52 * R,
+      side * 0.34 * R, 0.05 * R, -0.38 * R);
+    mediumLongCylinder(g, 'LancerTrimDriveBell', hull, 0.07 * R, 0.11 * R, 0.26 * R,
+      side * 0.18 * R, 0, -0.86 * R, 8);
+  }
+  const outer = finishMediumHull(g, 'lancer_sniper', 'long-clamped-rail-spine-and-exposed-cooling-lattice');
+  installMediumPresentationController(outer, (state) => {
+    charge.emissiveIntensity = 0.08 + state.charge * 3.7;
+    for (let i = 0; i < chargeRails.length; i++) {
+      chargeRails[i].position.z = (0.72 + state.charge * (0.12 + i * 0.04)) * R;
+      chargeRails[i].scale.y = (0.07 + state.charge * 0.035) * R;
+    }
+  });
+}
+
+function buildMediumInterceptor(ctx) {
+  const { g, R } = ctx;
+  const hull = mediumMaterial('interceptor-hull', 0x47535f, 'InterceptorStressedFrame', 0.44, 0.8);
+  const edge = mediumMaterial('interceptor-edge', 0x82474a, 'InterceptorNoseHardface', 0.58, 0.72);
+  const drive = mediumSignalMaterial('interceptor-drive', 0x4e2e22, 0xff6b28, 'InterceptorRecessedDriveThroat');
+  const noses = [];
+  for (const side of [-1, 1]) {
+    noses.push(mediumProfile(g, 'InterceptorTwinNose', edge, `interceptor-nose-${side}`, [
+      { z: -0.34, w: 0.15, h: 0.16, x: side * 0.28 },
+      { z: 0.35, w: 0.17, h: 0.14, x: side * 0.3, shoulder: 0.72 },
+      { z: 0.92, w: 0.1, h: 0.09, x: side * 0.32, y: -0.015, shoulder: 0.56 },
+      { z: 1.16, w: 0.025, h: 0.03, x: side * 0.34, y: -0.025, shoulder: 0.5 },
+    ], R, 0, 0, 0, true));
+    mediumBox(g, 'InterceptorNoseRootClevis', hull, 0.18 * R, 0.32 * R, 0.28 * R,
+      side * 0.28 * R, 0, -0.3 * R);
+  }
+  // Four rooted rails keep the drive throat genuinely open from front/rear views.
+  for (const y of [-0.2, 0.2]) {
+    mediumBox(g, 'InterceptorOpenCrossFrameRail', hull, 0.72 * R, 0.075 * R, 0.18 * R,
+      0, y * R, -0.28 * R);
+  }
+  for (const side of [-1, 1]) {
+    mediumBox(g, 'InterceptorDriveRootClevis', hull, 0.08 * R, 0.38 * R, 0.2 * R,
+      side * 0.38 * R, 0, -0.3 * R);
+  }
+  mediumLongCylinder(g, 'InterceptorOversizedDriveBell', hull, 0.28 * R, 0.46 * R, 0.52 * R,
+    0, 0, -0.72 * R, 10);
+  mediumLongCylinder(g, 'InterceptorRecessedDriveThroat', drive, 0.17 * R, 0.22 * R, 0.22 * R,
+    0, 0, -0.92 * R, 10, true);
+  const shutters = [];
+  for (let i = 0; i < 4; i++) {
+    const side = i < 2 ? -1 : 1;
+    shutters.push(mediumBox(g, 'InterceptorDriveShutter', hull, 0.09 * R, 0.12 * R, 0.48 * R,
+      side * (0.35 + (i % 2) * 0.07) * R, (i % 2 ? 0.12 : -0.12) * R, -0.7 * R, true));
+  }
+  const outer = finishMediumHull(g, 'hostile_interceptor', 'split-nose-open-frame-and-oversized-drive-bell');
+  installMediumPresentationController(outer, (state) => {
+    const load = Math.max(state.charge, state.disrupted);
+    drive.emissiveIntensity = 0.3 + state.charge * 3.3 - state.disrupted * 0.2;
+    for (let i = 0; i < shutters.length; i++) {
+      const side = i < 2 ? -1 : 1;
+      shutters[i].rotation.z = side * load * (state.disrupted > state.charge ? -0.72 : 0.42);
+    }
+    for (let i = 0; i < noses.length; i++) noses[i].rotation.z = (i ? -1 : 1) * state.disrupted * 0.08;
+  });
+}
+
+function buildMediumBulwark(ctx) {
+  const { g, R } = ctx;
+  const hull = mediumMaterial('bulwark-hull', 0x4b5968, 'BulwarkEscortFrame', 0.56, 0.78);
+  const armor = mediumMaterial('bulwark-armor', 0x71808e, 'BulwarkLayeredPlate', 0.62, 0.72);
+  const emitter = mediumSignalMaterial('bulwark-emitter', 0x245a69, 0x52e0ff, 'BulwarkProjectedShieldEmitter');
+  mediumProfile(g, 'BulwarkCentralKeel', hull, 'bulwark-keel', [
+    { z: -0.76, w: 0.28, h: 0.25 },
+    { z: -0.48, w: 0.48, h: 0.32, shoulder: 0.78 },
+    { z: 0.36, w: 0.5, h: 0.3, shoulder: 0.86 },
+    { z: 0.68, w: 0.35, h: 0.2, y: -0.02, shoulder: 0.6 },
+  ], R);
+  for (const side of [-1, 1]) {
+    mediumProfile(g, 'BulwarkShieldShoulder', armor, `bulwark-shoulder-${side}`, [
+      { z: -0.48, w: 0.2, h: 0.2, x: side * 0.57 },
+      { z: -0.08, w: 0.27, h: 0.25, x: side * 0.63, shoulder: 0.7 },
+      { z: 0.42, w: 0.19, h: 0.19, x: side * 0.68, shoulder: 0.55 },
+    ], R);
+    mediumBox(g, 'BulwarkEmitterBrace', hull, 0.28 * R, 0.1 * R, 0.84 * R,
+      side * 0.86 * R, 0, -0.02 * R);
+    mediumLongCylinder(g, 'BulwarkTrimDriveBell', hull, 0.09 * R, 0.14 * R, 0.3 * R,
+      side * 0.3 * R, 0, -0.76 * R, 8);
+  }
+  const ring = new THREE.Mesh(
+    getGeometry('medium:bulwark-emitter-ring', () => new THREE.TorusGeometry(0.88, 0.055, 6, 32)), emitter,
+  );
+  ring.name = 'BulwarkProjectedShieldEmitterRing';
+  ring.rotation.x = Math.PI / 2;
+  ring.scale.setScalar(R);
+  ring.userData.animated = true;
+  g.add(ring);
+  // Six mounting yokes cross the gap between ring and hull. The negative space remains visible,
+  // but the projector now has a credible load path instead of a free-floating luminous torus.
+  for (let i = 0; i < 6; i++) {
+    const angle = i / 6 * Math.PI * 2;
+    const bracket = mediumBox(g, 'BulwarkEmitterRootBracket', hull,
+      0.12 * R, 0.09 * R, 0.3 * R,
+      Math.cos(angle) * 0.72 * R, 0, Math.sin(angle) * 0.72 * R);
+    bracket.rotation.y = Math.PI / 2 - angle;
+  }
+  const outer = finishMediumHull(g, 'bulwark_escort', 'wide-escort-frame-and-braced-projector-ring');
+  installMediumPresentationController(outer, (state, _entity, t) => {
+    emitter.emissiveIntensity = 0.1 + state.link * 2.8 + state.retreat * 0.6;
+    ring.rotation.z = t * 0.24 + state.link * 0.38;
+    const scale = R * (0.92 + state.link * 0.08 - state.disrupted * 0.12);
+    ring.scale.setScalar(scale);
+  });
+}
+
+function buildMediumCorsair(ctx) {
+  const { g, R } = ctx;
+  const hull = mediumMaterial('corsair-hull', 0x554047, 'CorsairCutPlateHull', 0.54, 0.72);
+  const patchA = mediumMaterial('corsair-patch-a', 0x7c4b32, 'CorsairSalvagedPrimerPanel', 0.72, 0.61);
+  const patchB = mediumMaterial('corsair-patch-b', 0x365b62, 'CorsairForeignRepairPanel', 0.46, 0.76);
+  const rig = mediumMaterial('corsair-rig', 0x293035, 'CorsairTowRigSteel', 0.48, 0.86);
+  mediumProfile(g, 'CorsairKnifeKeel', hull, 'corsair-knife-keel', [
+    { z: -0.92, w: 0.22, h: 0.17, x: -0.03 },
+    { z: -0.38, w: 0.32, h: 0.23, x: 0.02, shoulder: 0.74 },
+    { z: 0.4, w: 0.26, h: 0.18, x: -0.02, shoulder: 0.62 },
+    { z: 0.93, w: 0.05, h: 0.07, x: 0.06, y: -0.04, shoulder: 0.5 },
+  ], R);
+  for (const side of [-1, 1]) {
+    mediumProfile(g, 'CorsairSweptBladeWing', hull, `corsair-blade-${side}`, [
+      { z: -0.55, w: 0.12, h: 0.07, x: side * 0.34 },
+      { z: -0.12, w: 0.3, h: 0.08, x: side * 0.56, shoulder: 0.7 },
+      { z: 0.38, w: 0.16, h: 0.055, x: side * 0.76, shoulder: 0.5 },
+    ], R);
+  }
+  mediumBox(g, 'CorsairMismatchedRepairPanelA', patchA, 0.3 * R, 0.055 * R, 0.54 * R,
+    -0.28 * R, 0.2 * R, 0.14 * R);
+  mediumBox(g, 'CorsairMismatchedRepairPanelB', patchB, 0.22 * R, 0.06 * R, 0.38 * R,
+    0.38 * R, 0.18 * R, -0.18 * R);
+  const towArms = [];
+  for (const side of [-1, 1]) {
+    towArms.push(mediumBox(g, 'CorsairTailTowArm', rig, 0.1 * R, 0.16 * R, 0.72 * R,
+      side * 0.24 * R, -0.03 * R, -0.83 * R, true));
+    mediumLongCylinder(g, 'CorsairAsymmetricDriveBell', hull, (side < 0 ? 0.09 : 0.12) * R,
+      (side < 0 ? 0.14 : 0.18) * R, 0.28 * R, side * 0.34 * R, 0, -0.77 * R, 8);
+  }
+  mediumBox(g, 'CorsairTowCrosshead', rig, 0.62 * R, 0.12 * R, 0.14 * R, 0, -0.03 * R, -1.16 * R);
+  const outer = finishMediumHull(g, 'corsair_raider', 'swept-salvage-blades-and-exposed-tail-tow-rig');
+  installMediumPresentationController(outer, (state) => {
+    const deploy = Math.max(state.tow, state.retreat * 0.45);
+    for (let i = 0; i < towArms.length; i++) {
+      const side = i ? 1 : -1;
+      towArms[i].rotation.z = side * deploy * 0.52;
+      towArms[i].position.x = side * (0.24 + deploy * 0.11) * R;
+    }
+  });
+}
+
+function buildMediumTorcher(ctx) {
+  const { g, R } = ctx;
+  const hull = mediumMaterial('torcher-hull', 0x59484b, 'TorcherHeatShieldHull', 0.68, 0.68);
+  const refractory = mediumMaterial('torcher-refractory', 0xa2704d, 'TorcherRefractoryLiner', 0.82, 0.28);
+  const heat = mediumSignalMaterial('torcher-heat', 0x6c2d1e, 0xff5a18, 'TorcherVentHeat');
+  mediumProfile(g, 'TorcherPressureKeel', hull, 'torcher-keel', [
+    { z: -0.72, w: 0.3, h: 0.23 },
+    { z: -0.42, w: 0.48, h: 0.29, shoulder: 0.74 },
+    { z: 0.34, w: 0.44, h: 0.26, y: -0.02, shoulder: 0.82 },
+    { z: 0.66, w: 0.34, h: 0.18, y: -0.04, shoulder: 0.55 },
+  ], R);
+  mediumProfile(g, 'TorcherForwardHeatShield', refractory, 'torcher-heat-shield', [
+    { z: 0.38, w: 0.47, h: 0.14, y: 0.11, shoulder: 0.72 },
+    { z: 0.72, w: 0.55, h: 0.1, y: 0.12, shoulder: 0.55 },
+    { z: 0.81, w: 0.42, h: 0.07, y: 0.09, shoulder: 0.48 },
+  ], R);
+  const shutters = [];
+  const shutterBaseY = [];
+  const ventCollars = new THREE.InstancedMesh(
+    getGeometry('medium:torcher-open-vent-collar', () => new THREE.TorusGeometry(0.17, 0.034, 6, 20)),
+    hull,
+    6,
+  );
+  ventCollars.name = 'TorcherVentWallCollars';
+  ventCollars.userData.functionalAssembly = 'open-twin-vent-cages';
+  const collarMatrix = new THREE.Matrix4();
+  let collarInstance = 0;
+  for (const side of [-1, 1]) {
+    // Four rails and three collars expose the refractory core through real openings. The stack is
+    // mechanically readable from silhouette even with the emissive surface turned off.
+    for (const railSide of [-1, 1]) {
+      mediumBox(g, 'TorcherTwinVentStackRail', hull, 0.055 * R, 0.055 * R, 0.78 * R,
+        (side * 0.36 + railSide * 0.14) * R, 0.34 * R, -0.2 * R);
+      mediumBox(g, 'TorcherTwinVentStackRail', hull, 0.055 * R, 0.055 * R, 0.78 * R,
+        side * 0.36 * R, (0.34 + railSide * 0.14) * R, -0.2 * R);
+    }
+    for (let collarIndex = 0; collarIndex < 3; collarIndex++) {
+      collarMatrix.makeScale(R, R, R);
+      collarMatrix.setPosition(side * 0.36 * R, 0.34 * R, (-0.5 + collarIndex * 0.3) * R);
+      ventCollars.setMatrixAt(collarInstance++, collarMatrix);
+    }
+    mediumLongCylinder(g, 'TorcherRefractoryVentCore', heat, 0.075 * R, 0.095 * R, 0.6 * R,
+      side * 0.36 * R, 0.34 * R, -0.2 * R, 8, true);
+    for (let i = 0; i < 3; i++) {
+      const shutter = mediumBox(g, 'TorcherVentShutter', refractory, 0.26 * R, 0.055 * R, 0.13 * R,
+        side * 0.36 * R, (0.12 + i * 0.2) * R, (-0.42 + i * 0.2) * R, true);
+      shutters.push(shutter);
+      shutterBaseY.push(shutter.position.y);
+    }
+    mediumLongCylinder(g, 'TorcherDriveBell', hull, 0.1 * R, 0.16 * R, 0.3 * R,
+      side * 0.27 * R, 0, -0.76 * R, 8);
+  }
+  ventCollars.instanceMatrix.needsUpdate = true;
+  g.add(ventCollars);
+  const outer = finishMediumHull(g, 'torcher_denial', 'twin-refractory-vent-stacks-and-heat-shielded-keel');
+  installMediumPresentationController(outer, (state, _entity, t) => {
+    const hot = Math.max(state.trail, state.retreat * 0.75);
+    heat.emissiveIntensity = 0.12 + hot * 3.45;
+    for (let i = 0; i < shutters.length; i++) {
+      const side = i < 3 ? -1 : 1;
+      shutters[i].rotation.z = side * hot * (0.22 + (i % 3) * 0.07);
+      shutters[i].position.y = shutterBaseY[i] + Math.sin(t * 4.2 - (i % 3) * 0.7) * hot * 0.018 * R;
+    }
+  });
+}
+
 // dreadnought_enemy — Dreadnought 'Iron Maw' (boss). Hand-authored capital: multi-section spine,
 // command tower, sensor ring, broadside turrets, signature split prow. The showpiece enemy.
 function buildDreadnoughtEnemy(ctx) {
@@ -2161,6 +2626,12 @@ const ENEMY_FAMILY_BUILDERS = {
   pirate_swoop: buildPirateSwoop,
   corsair_blade: buildCorsairBlade,
   patrol_interdict: buildPatrolInterdict,
+  medium_marauder: buildMediumMarauder,
+  medium_lancer: buildMediumLancer,
+  medium_interceptor: buildMediumInterceptor,
+  medium_bulwark: buildMediumBulwark,
+  medium_corsair: buildMediumCorsair,
+  medium_torcher: buildMediumTorcher,
   dreadnought_enemy: buildDreadnoughtEnemy,
 };
 
@@ -2180,7 +2651,10 @@ function buildShipMesh(e, pal) {
   // Enemy silhouette override (graphics spec Workstream D): an NPC carrying data.silhouette
   // renders as its OWN hostile family, not the player ship-def's family. Player ships have no
   // silhouette field and fall through to familyFor() as before.
-  const enemySil = e.data && e.data.silhouette;
+  const mediumPresentationId = mediumPresentationIdFor(e);
+  const enemySil = mediumPresentationId
+    ? MEDIUM_PRESENTATION_SILHOUETTES[mediumPresentationId]
+    : e.data && e.data.silhouette;
   const family = (enemySil && ENEMY_FAMILY_BUILDERS[enemySil]) ? enemySil : familyFor(defId);
   const isEnemyFamily = !!enemySil && !!ENEMY_FAMILY_BUILDERS[enemySil];
   // Designed-procedural swarmer bodies author every nozzle, mast and lit surface themselves. The
@@ -2192,6 +2666,8 @@ function buildShipMesh(e, pal) {
   const isAuthoredSwarmerHull = !!swarmerRecord
     && swarmerRecord.enemyId !== 'wasp_swarmer'
     && swarmerRecord.tell.silhouette === family;
+  const isAuthoredMediumHull = !!mediumPresentationId;
+  const suppressGenericShipOverlays = isAuthoredSwarmerHull || isAuthoredMediumHull;
   const recipe = recipeFor(defId);
   const seed = hashId(e.id);
   const tierRow = tierForLoadout(defId, (e.data && e.data.fittings) || [], e.data && e.data.visualTier);
@@ -2210,7 +2686,8 @@ function buildShipMesh(e, pal) {
   outer.userData.hull = g;
   outer.userData.engines = [];
   outer.userData.tierName = tierRow.name || 'Mk.I';
-  outer.userData.genericShipOverlaysSuppressed = isAuthoredSwarmerHull;
+  outer.userData.genericShipOverlaysSuppressed = suppressGenericShipOverlays;
+  if (mediumPresentationId) outer.userData.mediumPresentationId = mediumPresentationId;
 
   const ctx = { g, R, pal, hm, accent, cockpit, vis: { length: 1.4, halfWidth: 0.5, height: 0.35, ...(vis.proportions || {}) }, tier: tierRow, hints, seed, blinkers };
 
@@ -2221,7 +2698,7 @@ function buildShipMesh(e, pal) {
 
   // 2) armor panel shell (tier Mk.II paneled / Mk.III armored): a slightly-larger shell with denser
   //    plating + decals so upgraded ships visibly read as reinforced.
-  if (!isAuthoredSwarmerHull && (hints.plating === 'paneled' || hints.plating === 'armored')) {
+  if (!suppressGenericShipOverlays && (hints.plating === 'paneled' || hints.plating === 'armored')) {
     const L = ctx.vis.length, W = ctx.vis.halfWidth, H = ctx.vis.height;
     addDecalShell(g, pal, R, L, H, W * 1.5, hints.plating === 'armored' ? 'greeble' : 'decal');
   }
@@ -2236,11 +2713,11 @@ function buildShipMesh(e, pal) {
   //     patches. All driven by the faction personality so the dirty-outlaw vs clean-authority contrast
   //     applies itself to every ship (player = haunted ex-gangster runner; Concord/Meridian = chrome;
   //     pirates = filthy tagged). Enemies get their own faction look too.
-  if (!isAuthoredSwarmerHull) applyPaintProfile(ctx, e);
+  if (!suppressGenericShipOverlays) applyPaintProfile(ctx, e);
 
   // 3) cockpit/bridge glass if the hull authored a position (fighters/scout/multirole use cockpit,
   //    freighters/frigates/capitals use the bridge built into their family hull).
-  if (!isAuthoredSwarmerHull && vis.cockpit && family !== 'scout' && family !== 'fighter' && family !== 'miner' && family !== 'multirole') {
+  if (!suppressGenericShipOverlays && vis.cockpit && family !== 'scout' && family !== 'fighter' && family !== 'miner' && family !== 'multirole') {
     // families that don't already draw their own canopy get a recessed one at the authored seat
     recessedCanopy(ctx, vis.cockpit[0] * R, vis.cockpit[1] * R, vis.cockpit[2] * R, R * 0.3, R * 0.2, R * 0.2);
   }
@@ -2248,7 +2725,7 @@ function buildShipMesh(e, pal) {
   // 4) WEAPONS — place a barrel at each authored hardpoint whose slot has a fitted weapon.
   const slots = def && def.slots;
   const hardpoints = vis.hardpoints || [];
-  if (!isAuthoredSwarmerHull && slots && hardpoints.length) {
+  if (!suppressGenericShipOverlays && slots && hardpoints.length) {
     const weaponFit = (e.data && e.data.fittings) || [];
     const wOffset = slotOffset(slots, 'weapon');
     for (let i = 0; i < hardpoints.length && i < (slots.weapon || []).length; i++) {
@@ -2263,7 +2740,7 @@ function buildShipMesh(e, pal) {
   }
 
   // 5) ENGINES — nozzles+plumes at authored engineMounts, sized by fitted engine class.
-  const mounts = isAuthoredSwarmerHull ? [] : (vis.engineMounts || []);
+  const mounts = suppressGenericShipOverlays ? [] : (vis.engineMounts || []);
   for (let i = 0; i < mounts.length; i++) {
     const m = mounts[i];
     const en = engineProp(pal, R, m.scaleK || 1, loadout.engineClass || 60);
@@ -2273,7 +2750,7 @@ function buildShipMesh(e, pal) {
     outer.userData.engines.push(en);
   }
   // fallback: if no mounts authored, place a pair by recipe (back-compat for defs lacking visuals)
-  if (!isAuthoredSwarmerHull && !mounts.length) {
+  if (!suppressGenericShipOverlays && !mounts.length) {
     const n = Math.max(1, Math.min(6, recipe.engineCount || 2));
     for (let i = 0; i < n; i++) {
       const z = n === 1 ? 0 : (-(n - 1) / 2 + i) * 0.24 * 2;
@@ -2283,20 +2760,20 @@ function buildShipMesh(e, pal) {
   }
 
   // 6) MINING drill/emitter when a mining module or beam is fitted.
-  if (!isAuthoredSwarmerHull && loadout.hasMining && vis.drill) {
+  if (!suppressGenericShipOverlays && loadout.hasMining && vis.drill) {
     const drill = miningProp(pal, R, loadout.miningTier);
     drill.position.set(vis.drill[0] * R, vis.drill[1] * R, vis.drill[2] * R);
     g.add(drill);
   }
 
   // 7) SHIELD emitter ring when a shield module is fitted.
-  if (!isAuthoredSwarmerHull && loadout.hasShield && vis.proportions) {
+  if (!suppressGenericShipOverlays && loadout.hasShield && vis.proportions) {
     const ring = shieldRingProp(pal, R, ctx.vis.halfWidth, ctx.vis.height, loadout.shieldClass);
     g.add(ring);
   }
 
   // 8) SENSOR/UTILITY masts — antennas + dishes near the authored sensor anchor, count from loadout.
-  if (!isAuthoredSwarmerHull && vis.sensor) {
+  if (!suppressGenericShipOverlays && vis.sensor) {
     const n = Math.max(1, Math.min(5, (loadout.utilityCount || 1) + Math.round((hints.greeble || 0) * 2)));
     const rnd = mulberryLite(seed + 777);
     for (let i = 0; i < n; i++) {
@@ -2314,7 +2791,7 @@ function buildShipMesh(e, pal) {
   }
 
   // 9) NAV BLINKERS (port green / starboard red / white stern) for real aerospace cueing.
-  if (!isAuthoredSwarmerHull) addNavBlinkers(g, R, ctx.vis.halfWidth, ctx.vis.length, blinkers);
+  if (!suppressGenericShipOverlays) addNavBlinkers(g, R, ctx.vis.halfWidth, ctx.vis.length, blinkers);
 
   // 10) self-animation: engine plume throb + fan spin + nav blinker pulse + capital sensor ring
   //     spin + turret-head idle sweep. The driver must live on a renderable child (Three only fires
