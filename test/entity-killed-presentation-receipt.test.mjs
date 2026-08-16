@@ -86,7 +86,7 @@ function weaponLethal(weaponId, overrides = {}) {
   };
 }
 
-function collisionLethal(surface) {
+function collisionLethal(surface, style = {}) {
   return {
     origin: { kind: 'collision', id: surface },
     packet: {
@@ -98,6 +98,8 @@ function collisionLethal(surface) {
           normal: { x: -1, z: 0 },
           surface,
           targetVelocity: { x: 72, z: 8 },
+          tumble: { victim: style.victimTumbling === true, source: style.sourceTumbling === true },
+          chainDepth: style.chainDepth ?? 0,
           impact: { deltaV: 26, exchangedMomentum: 1040, impactDamage: 88 },
         },
       },
@@ -139,6 +141,14 @@ test('kill presentation receipts classify all five causes from canonical lethal 
   });
   assert.equal(unauthoredExplosive.cause, 'generic',
     'channel mixes and claimed legacy damage types cannot fabricate an authored explosive origin');
+
+  // AC-08 rides alongside the legacy cause above without repurposing it. Neither of these contacts
+  // carries a tumbling body, so both stay ordinary while their low-level VFX cause is unchanged.
+  assert.deepEqual([kinetic.style.id, terrain.style.id, craft.style.id], [
+    'ordinary', 'ordinary', 'ordinary',
+  ]);
+  assert.equal(terrain.cause, 'terrain_collision', 'the legacy VFX cause is never overwritten');
+  assert.equal(kinetic.style.multiplier, 1);
 });
 
 test('receipt and every nested record are immutable and remain event-only', () => {
@@ -160,14 +170,20 @@ test('receipt and every nested record are immutable and remain event-only', () =
     event.presentation.direction,
     event.presentation.normal,
     event.presentation.targetVelocity,
+    event.presentation.style,
   ]) assert.equal(Object.isFrozen(value), true);
   const impactReceipt = buildKillPresentationReceipt(state, target, state.playerId, collisionLethal('terrain'));
   assert.equal(Object.isFrozen(impactReceipt.impact), true);
   assert.throws(() => { event.presentation.position.x = 999; }, TypeError);
+  assert.throws(() => { event.presentation.style.multiplier = 4; }, TypeError);
   assert.equal(Object.hasOwn(target, 'presentation'), false);
   assert.equal(Object.hasOwn(state, 'presentation'), false);
-  assert.doesNotMatch(JSON.stringify(state), /terrain_collision|ship_collision|"presentation"/,
-    'transient presentation data must not enter entity, state, or save-shaped graphs');
+  assert.equal(Object.hasOwn(target.data, 'style'), false);
+  assert.doesNotMatch(
+    JSON.stringify(state),
+    /terrain_collision|ship_collision|"presentation"|terrain_smash|well_collapse|burn_up|"style"/,
+    'transient presentation and style data must not enter entity, state, or save-shaped graphs',
+  );
 });
 
 test('authored projectile routing preserves the real approach and surface normal through death', () => {
@@ -247,6 +263,9 @@ test('real lethal terrain and Ram-Plate contacts survive synchronous damage rout
       targetVelocity: { x: 84, z: -12 },
       playerCaused: true,
       impact: terrainKills[0].presentation.impact,
+      // A hull still under its own control when it met the rock is an ordinary death, however hard
+      // it hit. AC-08's terrain smash requires the victim to have already been a tumbling body.
+      style: { version: 1, id: 'ordinary', multiplier: 1, chainDepth: 0 },
     });
     assert.ok(terrainKills[0].presentation.impact.impactDamage > 0);
     assert.ok(terrainKills[0].presentation.impact.exchangedMomentum > 0);

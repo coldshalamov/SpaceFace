@@ -282,6 +282,55 @@ The optional
 captures the useful PR #92/ChatGPT research loop for comparing alternatives and cutting weak ideas;
 it supplies no task, ownership, gate, quota, or acceptance authority.
 
+### 2.1 Arcade Core — current moment-to-moment product campaign
+
+The owner-directed Arcade Core program starts at
+[`design/arcade-core/README.md`](./design/arcade-core/README.md) and its binding campaign rules at
+[`00_INVARIANTS.md`](./design/arcade-core/00_INVARIANTS.md). It converts the product north star into
+the fast loop: encounter → physical kill → cause-readable consequence → material/credit/RP burst →
+automatic collection → immediate re-engagement, inside populated working islands separated by real
+empty space.
+
+For a user-authorized **Arcade Core 20** campaign, take the following non-performance production
+outcomes in dependency order and run disjoint leaves in parallel. Each leaf still gets a bounded
+packet, current live-owner audit, exact write set, focused direct verification, review, commit, and
+explicit push. Audits, plans, checks, probes, receipts, docs, tuning labs, and human-review captures
+support these outcomes but never count as one. If current live behavior already satisfies a row,
+verify it and move on; it does not count without a material player-facing production delta.
+
+| Order | Stable ID | Player-facing production outcome | Depends on |
+|---:|---|---|---|
+| 1 | `AC-01` | Victim-scaled hostile kill bursts with physical credit chips; materials stay style-neutral and credits settle only on collection | — |
+| 2 | `AC-02` | One universal pickup vacuum for mining and combat loot, including the existing tractor `magnetRange` authority | `AC-01` |
+| 3 | `AC-03` | Hostile kills feed the existing RP progression channel through one assigned writer; no XP currency | `AC-01` |
+| 4 | `AC-04` | Tumbling is a readable, mass-scaled physical state with honest NPC recovery | — |
+| 5 | `AC-05` | Combat juice obeys hit-stop, camera-trauma, input-buffer, shake-zero, reduced-motion, and reduced-flash safety | — |
+| 6 | `AC-06` | The existing concussion, mine, marker, disruptor, sink, and field arsenal produces its promised physical verbs on the live route | `AC-04` |
+| 7 | `AC-07` | Massline release is physically honest: no release impulse beyond the body's real state | — |
+| 8 | `AC-08` | One deterministic silent kill-cause classifier drives credit/RP style multipliers without scaling materials | `AC-01`, `AC-03`, `AC-04` |
+| 9 | `AC-09` | Ordinary, terrain-smash, chain, well-collapse, and burn-up deaths have distinct accessible cause-readable signatures | `AC-05`, `AC-08` |
+| 10 | `AC-10` | Populated-island combat reaches contact within 20 seconds, uses readable 3–7 ship groups, and gives swarmers a 2–4 second starter TTK | `AC-01`, `AC-02`, `AC-06` |
+| 11 | `AC-11` | A fresh Kestrel can produce a real environment kill within its first three fights without a global speed or damage inflation | `AC-06`, `AC-10` |
+| 12 | `AC-12` | The pickup “inhale” ships as a capture ripple, hull-seeking streams, soft-capped pitch ladder, and distinct credit read | `AC-02`, `AC-05` |
+| 13 | `AC-13` | Populated planets provide escapable gravity/atmosphere/kill-depth execution zones; tumbling bodies burn up through the real physics seam | `AC-04`, `AC-06`, `AC-08` |
+| 14 | `AC-14` | One populated island runs the visible miner → cargo → hauler → pirate → patrol job chain, with player intervention possible at every handoff | `AC-10` |
+| 15 | `AC-15` | Live Tactical AI wings scatter after leader loss and visibly fleeing ships dump physical collectible cargo | `AC-10` |
+| 16 | `AC-16` | The Mote pack is a distinct near-harmless field-clumpable swarmer encounter that produces the cloud-inhale payoff | `AC-06`, `AC-12`, `AC-15` |
+| 17 | `AC-17` | Well, Repulsor, Cone, hostile snare, and Massline forces are legible from world motion and line behavior without HUD prose | `AC-05`, `AC-06` |
+| 18 | `AC-18` | Ships, including the player, communicate 75/50/25/disabled hull bands through persistent physical dressing and progressive repair | `AC-05` |
+| 19 | `AC-19` | Market charts display the real smooth station function with continuous sampling and blended regime changes instead of step noise | — |
+| 20 | `AC-20` | Witnessed crime produces a capped local wanted lifecycle that fully decays after leaving/cooldown and always exposes restitution | — |
+
+**Campaign result (2026-08-16): DONE.** All 20 production outcomes above are integrated and pushed
+on `codex/arcade-core-20` through `c6909729`. The orchestration ledger retains the per-outcome
+implementation, taste-review, focused-check, commit, reroute, and provider-exhaustion dispositions.
+
+Major boundaries for this campaign are settled here: RP is the third reward channel; SG-06 Tactical
+AI is the default behavior owner; world gravity reuses the field kernel's pure force/coupling
+primitive through an explicit world-owned source rather than masquerading as a deployed device;
+enemy-applied forces require visible cause, telegraph, bounded duration, and physical counterplay;
+and human taste gates are batched while deterministic implementation continues on disjoint leaves.
+
 ## 3. Authority and truth
 
 Use this order when sources disagree:
@@ -290,10 +339,12 @@ Use this order when sources disagree:
 2. [`ARCHITECTURE.md`](./ARCHITECTURE.md) for technical invariants and owner boundaries;
 3. [`design/VISION.md`](./design/VISION.md) for the owner's fantasy and UVP — wins on product emphasis;
 4. [`design/GDD_2_0.md`](./design/GDD_2_0.md) for product intent;
-5. `design/program/` for admitted work, live status, and acceptance;
-6. the selected active packet or activated spec;
-7. supporting plans and references;
-8. historical handoffs and archives, for archaeology only.
+5. [`design/arcade-core/`](./design/arcade-core/README.md) for the current owner-directed
+   moment-to-moment product program; it cannot override technical contracts above;
+6. `design/program/` for admitted work, live status, and acceptance;
+7. the selected active packet or activated spec;
+8. supporting plans and references;
+9. historical handoffs and archives, for archaeology only.
 
 A lower source cannot impose a palette, layout recipe, asset ceiling, implementation technique, process quota, permanent ownership lane, or gameplay prohibition that contradicts a higher source.
 

@@ -57,7 +57,7 @@ const SHAKE_POS_MAX = 1.55;
 // 144 Hz display; only the amplitude envelope follows trauma decay. 32 Hz reads as a hard rattle
 // without aliasing into a visible strobe at the low end.
 const SHAKE_NOISE_STEP_S = 1 / 32;
-const MOTION_REDUCE_SHAKE_SCALE = 0.25;
+const MOTION_REDUCE_SHAKE_SCALE = 0;
 export const MASSLINE_RELEASE_ZOOM_MIN = 0.06;
 export const MASSLINE_RELEASE_ZOOM_MAX = 0.14;
 export const MASSLINE_RELEASE_ZOOM_DURATION_S = 0.65;
@@ -122,6 +122,25 @@ export function shakeDistanceAttenuation(distanceWu) {
   const rolloff = SHAKE_FULL_RADIUS_WU / d;
   const taper = 1 - (d - SHAKE_FULL_RADIUS_WU) / (SHAKE_CUTOFF_RADIUS_WU - SHAKE_FULL_RADIUS_WU);
   return Math.max(0, Math.min(1, rolloff * taper));
+}
+
+/**
+ * The player's screen-shake slider, as a 0..1 multiplier.
+ *
+ * `settings.video.screenShake` is a 0-100 percentage the settings screen has exposed for a long
+ * time while this file ignored it entirely — the slider moved and nothing happened. It is applied
+ * multiplicatively at the point where trauma becomes camera motion, so it scales the translational
+ * offset AND the rotational roll/pitch together, and 0 means exactly zero of both even while
+ * trauma events keep arriving.
+ *
+ * Missing / null / non-finite is 100%: a fresh profile has no `screenShake` key at all, so the
+ * absent case must be the full authored shake rather than a silent mute.
+ */
+export function resolveScreenShakeScale(state) {
+  const video = state && state.settings && state.settings.video;
+  const raw = video ? video.screenShake : undefined;
+  if (raw == null || !Number.isFinite(raw)) return 1;
+  return Math.max(0, Math.min(1, raw / 100));
 }
 
 export function traumaFromMomentumExchange(dp) {
@@ -1070,18 +1089,22 @@ export function createChaseCamera(state) {
       computeOffset(_dynamicZoom);
       let shakeRoll = 0;
       let shakePitch = 0;
-      if (c.trauma > 0) {
-        c.trauma = decayCameraTrauma(c.trauma, frameDt);
+      // Trauma decays on its own schedule, BEFORE the slider is consulted. Suppressing the decay
+      // when the slider is 0 would leave trauma pinned at its ceiling, so raising the slider
+      // mid-fight would fire a full-amplitude shake out of an event minutes old.
+      if (c.trauma > 0) c.trauma = decayCameraTrauma(c.trauma, frameDt);
+      const sliderShake = resolveScreenShakeScale(state);
+      if (c.trauma > 0 && sliderShake > 0) {
         const t2 = c.trauma * c.trauma;
-        // Shake amplitude = motionReduce factor × band-3 shakeScale × trauma². The two reductions are
-        // composed deliberately rather than folded: motionReduce is the player's accessibility choice
-        // and is owned HERE; shakeScale is the ADR D7 band-3 design choice (1 → 0.55 across ratio
-        // 5 → 10) and is owned by velocityLanguage.js, which the field leaves UNSCALED by motionReduce
-        // so the camera lane's own motionReduce handling is what carries the accessibility reduction.
+        // Shake amplitude = player shake slider × motionReduce factor × band-3 shakeScale × trauma².
+        // The reductions are composed deliberately rather than folded: the slider and motionReduce
+        // are the player's own choices and are owned HERE; shakeScale is the ADR D7 band-3 design
+        // choice (1 → 0.55 across ratio 5 → 10) and is owned by velocityLanguage.js, which the field
+        // leaves UNSCALED by motionReduce so the camera lane's own handling carries accessibility.
         const motionScale = isMotionReduced(state) ? MOTION_REDUCE_SHAKE_SCALE : 1;
         const vl = readVelocityLanguage(state);
         const bandShake = vl && vl.drive && Number.isFinite(vl.drive.shakeScale) ? vl.drive.shakeScale : 1;
-        const shakeScale = motionScale * bandShake;
+        const shakeScale = sliderShake * motionScale * bandShake;
         // Resample the shake noise on a FIXED-RATE accumulator, not once per rendered frame. The
         // amplitude was already frame-rate independent (trauma decays against frameDt above), but the
         // *frequency* was the display refresh rate: the same trauma read as a fast buzz at 144 Hz and
@@ -1105,6 +1128,9 @@ export function createChaseCamera(state) {
         shakeRoll = _shakeNoise[2] * SHAKE_ROT_ROLL * shakeScale * t2;
         shakePitch = _shakeNoise[3] * SHAKE_ROT_PITCH * shakeScale * t2;
       } else {
+        // No trauma, or the slider is at 0. Structurally zero: the offset is cleared and shakeRoll /
+        // shakePitch stay at their 0 initializers, so the `if (shakeRoll)` guards below skip the
+        // quaternion multiplies entirely and the pose is bit-identical to the no-trauma pose.
         c.shakeOffset.set(0, 0, 0);
         // Arm the resampler so the FIRST shaking frame displaces immediately. Without this the
         // fixed-rate accumulator can swallow up to one step (31 ms) before the first sample lands,

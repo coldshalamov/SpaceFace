@@ -52,21 +52,21 @@
     "scenario:dialogueLine": 1,
     "tether:attached": 1,
     "combat:fire": 17,
-    "projectile:hit": 11,
-    "combat:damage": 11,
+    "projectile:hit": 9,
+    "combat:damage": 9,
     "economy:tick": 2,
-    "camera:shake": 3,
-    "presentation:cameraCue": 3,
-    "presentation:vfxCue": 4,
-    "presentation:audioCue": 4,
-    "presentation:uiCue": 4,
-    "presentation:caption": 4,
-    "presentation:cueApplied": 15,
-    "presentation:cue": 15,
-    "audio:cue": 4
+    "camera:shake": 2,
+    "presentation:cameraCue": 2,
+    "presentation:vfxCue": 3,
+    "presentation:audioCue": 3,
+    "presentation:uiCue": 3,
+    "presentation:caption": 3,
+    "presentation:cueApplied": 12,
+    "presentation:cue": 12,
+    "audio:cue": 3
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "5e8f34fb3784dfb12835feeb20e64b4d439ae35c2324be5a1e381a89658d0d25",
+    "authoritativeHash": "f65bb81bbd84dce67a367645995e1ae8c48b87af5bd501f4dd4941123068c6d8",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -113,6 +113,11 @@
     "The prior authoritativeHash was 94f18fccf9554d2e9fe879d4e661bb2a9ff93947bd14a844953efb28421039a0.",
     "Cause: simSnapshot.snapshotMeta hashes state.meta.version, and _restore sets it to CURRENT_VERSION, so any save-version bump drifts this hash by construction.",
     "Evidence: pinning CURRENT_VERSION back to 12 with every other J4 change left in place made check:sim pass, so the version field alone moved and no simulated behaviour did.",
-    "reload-at 600 baselineSha256 equals the run sha256, so the new save key round-trips without divergence."
+    "reload-at 600 baselineSha256 equals the run sha256, so the new save key round-trips without divergence.",
+    "2026-08-16 deliberate motion re-record for the Arcade Core starter environment-kill loadout: mod_ram_plate adds 4 dry mass and ramDamageDealtMult 1.8 to the default Hitch.",
+    "sim-golden-diff --ref origin/master returned MOTION_CHANGED after the reference reproduced the prior hash: 42 leaf diffs, including 8 motion fields.",
+    "The causal derived-state delta is dry mass 32 -> 36 plus the fitted ram plate.",
+    "This gameplay delta is intentional: Arcade Core plan 05 requires the starter fit to expose an early ram-to-tumble-to-terrain kill. The heavier loadout changes flight handling and the canonical tape accordingly; it is not a bookkeeping repin.",
+    "Legacy trace changes are projectile:hit/combat:damage 11 -> 9, camera cues 3 -> 2, and the corresponding presentation/audio fanout 4 -> 3 (cue totals 15 -> 12). combat:fire remains 17."
   ]
 }

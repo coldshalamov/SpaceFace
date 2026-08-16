@@ -8,6 +8,9 @@ export const STARTER_BUILDS_SCHEMA_ID = 'spaceface.starterBuilds.v1';
 
 const SHIP_ID = NEW_GAME.shipId;
 const GENERALIST_FITTINGS = Object.freeze(NEW_GAME.fittedModules.slice());
+const CAREER_BASE_FITTINGS = Object.freeze(
+  GENERALIST_FITTINGS.filter((defId) => defId !== 'mod_ram_plate'),
+);
 const CAREER_BUILD_COPY = Object.freeze({
   hauler: Object.freeze({
     benefit: 'Lightest career utility fit, preserving the best speed and turn authority of the three role kits.',
@@ -49,7 +52,10 @@ function careerBuild(careerId, label, verb) {
     label,
     careerId,
     verb,
-    fittings: [...GENERALIST_FITTINGS, kit.defId],
+    // A career utility is a replacement choice for Hitch's one S utility slot. The generalist
+    // begins with the Ram Plate so the starter has a real physics verb; career previews never
+    // fabricate a second utility slot or silently drop the selected career kit.
+    fittings: [...CAREER_BASE_FITTINGS, kit.defId],
     acquisition: acquisition('career_origin', careerId, kit.defId),
     benefit: copy.benefit,
     tradeoff: copy.tradeoff,
@@ -64,8 +70,8 @@ export const STARTER_BUILDS = Object.freeze([
     verb: 'adapt',
     fittings: GENERALIST_FITTINGS,
     acquisition: acquisition('new_game'),
-    benefit: 'Open utility slot plus the Hitch baseline fit\'s best speed and turn authority.',
-    tradeoff: 'Keeps the utility slot open; flexible now, without a career-specific edge.',
+    benefit: 'A fitted Ram Plate turns committed contact into a real tumble-and-terrain kill path.',
+    tradeoff: 'Uses Hitch\'s utility slot and adds mass; swap it at Outfitting for a career tool.',
   }),
   careerBuild('hauler', 'Hitch Route Runner', 'carry'),
   careerBuild('hunter', 'Hitch Warrant Chaser', 'intercept'),

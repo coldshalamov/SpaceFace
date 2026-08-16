@@ -304,7 +304,7 @@ test('PQ-006 corrupt release-assist profile values fail closed to Arm', () => {
   });
 });
 
-test('PQ-006 self-sling publishes earned-speed provenance and one explicit impulse ledger', () => {
+test('PQ-006 self-sling publishes earned-speed provenance with no release impulse', () => {
   withMasslineFlags(() => {
     const player = {
       id: 1, type: 'ship', alive: true, mass: 20, radius: 8,
@@ -348,11 +348,11 @@ test('PQ-006 self-sling publishes earned-speed provenance and one explicit impul
     assert.match(sling.releaseId, /^massline:self-sling:/);
     assert.equal(sling.prediction.sampleTick, 300);
     assert.ok(Math.abs(sling.prediction.payloadSpeed - sling.exitSpeed) < 1e-9,
-      'the shared self-sling predictor includes the earned-speed impulse');
-    assert.equal(sling.impulses.length, 1);
-    assert.equal(sling.impulses[0].reason, 'massline_sling_bonus');
-    assert.equal(sling.impulses[0].accepted, true);
-    assert.equal(queued.length, 1, 'the explicit ledger matches authority commands one-for-one');
+      'the shared self-sling predictor reflects the real release-state speed');
+    assert.equal(sling.bonusDv, 0);
+    assert.equal(sling.releaseAddedDv, 0);
+    assert.deepEqual(sling.impulses, []);
+    assert.equal(queued.length, 0, 'release must not submit a synthetic impulse command');
     assert.equal(state.massline2.throw.lastSelfSling.releaseId, sling.releaseId);
 
     state.player.tether.active = false;
@@ -362,7 +362,7 @@ test('PQ-006 self-sling publishes earned-speed provenance and one explicit impul
     const validated = state.massline2.throw.lastReleaseValidation;
     assert.equal(validated.releaseId, sling.releaseId);
     assert.equal(validated.source, 'massline');
-    assert.equal(validated.impulses.length, 1);
+    assert.equal(validated.impulses.length, 0);
     assert.equal(validated.actual.speed, sling.exitSpeed);
     assert.ok(validated.trajectory.divergenceWU < 1e-9,
       'earned speed follows the course presented before release');

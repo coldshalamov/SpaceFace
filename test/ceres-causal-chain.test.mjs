@@ -508,6 +508,8 @@ test('real miner work opens the hauler-call link while rich seam may still be ac
 
 test('miner-to-hauler handoff drives a physical rendezvous, transfers one conserved lot, and reaches the refinery sink', () => {
   const { traffic, state, bus, station, asteroid, controlClaims } = bootCausalHarness({ simTime: 0 });
+  const livingTransfers = [];
+  bus.on('traffic:ceresManifestTransferred', (payload) => livingTransfers.push(payload));
   const { actor: miner } = materializeRichLoad(traffic, state, asteroid, 1, { rendezvous: false });
   const { rec: haulerRec, actor: hauler } = actorBySlot(state, 'ceres_refinery_hauler');
   const sourceQty = miner.data.cargoManifest.totalQty;
@@ -543,6 +545,20 @@ test('miner-to-hauler handoff drives a physical rendezvous, transfers one conser
   stepTo(traffic, state, transferredAt + 1);
   assert.equal(handoff.transferSeq, transferSeq, 'duplicate traffic ticks cannot transfer the same lot twice');
   assert.equal(hauler.data.cargoManifest.totalQty, sourceQty);
+  assert.equal(livingTransfers.length, 1, 'the conserved transfer opens the living chain exactly once');
+  assert.deepEqual(livingTransfers[0], {
+    handoffId: handoff.handoffId,
+    rootLotId: handoff.rootLotId,
+    transferSeq,
+    manifestId: moved.manifestId,
+    commodityId: moved.lines[0].commodityId,
+    qty: sourceQty,
+    minerEntityId: miner.id,
+    minerWorldRecordId: miner.data.worldRecordId,
+    haulerEntityId: hauler.id,
+    haulerWorldRecordId: hauler.data.worldRecordId,
+    sectorId: CERES_ACTIVITY_SECTOR_ID,
+  });
 
   const tradeRequests = [];
   bus.on('aiTrader:requestTrade', (intent) => tradeRequests.push(intent));

@@ -496,21 +496,32 @@ test('collision consequence runtime captures weapon setup into one terrain tumbl
     assert.ok(routed[0].packet.channels.kinetic > 0);
     assert.equal(scheduled.length, 1, 'tumble blocks combat actions through the status owner');
     assert.equal(scheduled[0][2].id, 'status_tumbling');
-    assert.equal(scheduled[0][2].data.kind, 'collision_tumble',
+    const tumbleData = scheduled[0][2].data;
+    assert.equal(tumbleData.kind, 'collision_tumble',
       'collision status must not masquerade as a Massline-owned physical tumble');
+    // AC-04: the shared control-loss owner needs the same readable metadata from every source.
+    assert.equal(tumbleData.source, 'collision');
+    assert.equal(tumbleData.cause, 'terrain', 'the surface that overwhelmed the hull is the cause');
+    assert.ok(Number.isFinite(tumbleData.startedAt) && Number.isFinite(tumbleData.until));
+    assert.ok(tumbleData.until > tumbleData.startedAt, 'the tumble window is bounded and positive');
+    assert.ok(tumbleData.spin >= 0.8 && tumbleData.spin <= 4,
+      'entry spin is a physical rad/s figure inside the shared band, not a torque magnitude');
     assert.equal(debris.length, 1, 'terrain damage publishes its deterministic debris receipt');
     assert.equal(debris[0].count, receipts[0].debrisCount);
 
-    state.tick++;
-    system.update(1 / 60, state);
+    // The entry torque crosses the angular command membrane at contact time; the bounded zero-control
+    // window itself is tumbleStates' (see test/arcade-core-readable-tumble.test.mjs), so this system
+    // no longer forks a second control-loss implementation for a tumble it already handed over.
     const command = consumePhysicsCommand(target);
-    assert.equal(command.control.mode, 'collision_tumble');
-    assert.deepEqual(command.control.force, { x: 0, y: 0, z: 0 });
     assert.equal(command.torqueImpulses.length, 1,
       'tumble enters through the angular physics-command membrane');
-    assert.equal(target.data.intent.fire, false);
-    assert.equal(target.data.intent.moveX, 0);
-    assert.equal(target.data.intent.moveZ, 0);
+    assert.ok(Math.abs(command.torqueImpulses[0].y) > 0);
+    assert.equal(command.control, null,
+      'the contact owner does not also write a second zero-control command for a handed-over tumble');
+    assert.equal(system._controlStates.has(target), false,
+      'a tumble accepted by the shared status owner leaves no local control fork behind');
+    state.tick++;
+    system.update(1 / 60, state);
 
     const playerImpact = { ...impact, aId: attacker.id, bId: terrain.id, tick: state.tick };
     bus.emit('physics:impact', playerImpact);
@@ -579,6 +590,17 @@ test('collision consequence runtime captures weapon setup into one terrain tumbl
     assert.equal(routed[4].packet.source.weaponId, 'mod_ram_plate');
     assert.ok(routed[4].packet.channels.kinetic > ordinaryCraftDamage);
     assert.ok(routed[4].packet.channels.kinetic <= impulse.COLLISION_CONSEQUENCE_LIMITS.maxDamage);
+
+    // Stagger stays this system's own lighter loss of authority: it is not a tumble, so it never
+    // enters the shared first-class state and keeps its local bounded control receipt.
+    state.tick += 30;
+    const scheduledBeforeStagger = scheduled.length;
+    bus.emit('physics:impact', {
+      ...impact, aId: target.id, bId: terrain.id, dp: 120, impulse: 120, tick: state.tick,
+    });
+    assert.equal(scheduled.length, scheduledBeforeStagger,
+      'a stagger never schedules the first-class tumble state');
+    assert.equal(system._controlStates.get(target).kind, 'stagger');
 
     state.player = {
       tether: { active: true, targetId: target.id, phase: 'loaded' },

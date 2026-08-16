@@ -4958,6 +4958,22 @@ export const traffic = {
       handoff,
       recommissioned ? 'ORE TRANSFERRED — REFINERY BOUND' : 'REFINERY ROUTE PENDING',
     );
+    handoff.livingChainTransferSeq = transferSeq;
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('traffic:ceresManifestTransferred', {
+        handoffId: handoff.handoffId,
+        rootLotId: handoff.rootLotId,
+        transferSeq,
+        manifestId: transferred.manifestId,
+        commodityId: transferred.lines[0] && transferred.lines[0].commodityId,
+        qty: transferred.totalQty,
+        minerEntityId: minerPair.entity.id,
+        minerWorldRecordId: handoff.minerWorldRecordId,
+        haulerEntityId: haulerPair.entity.id,
+        haulerWorldRecordId: handoff.haulerWorldRecordId,
+        sectorId: CERES_ACTIVITY_SECTOR_ID,
+      });
+    }
     return true;
   },
 

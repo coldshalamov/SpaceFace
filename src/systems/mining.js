@@ -37,12 +37,41 @@ import {
   recordFieldExtraction,
   richSeamOpportunityForEntity,
 } from './fieldDepletion.js';
+import {
+  CREDIT_CHIP_KIND,
+  isCreditChipPickup,
+  KILL_BURST_EJECT_SPEED_MAX,
+  KILL_BURST_EJECT_SPEED_MIN,
+  KILL_BURST_VEL_INHERIT,
+} from '../data/killRewards.js';
+import {
+  applyPickupAttraction,
+  MAGNET_ACCEL,
+  MAGNET_APPROACH_MAX,
+  MAGNET_APPROACH_MIN,
+  MAGNET_RANGE,
+  playerPickupMagnetRange,
+} from './pickupAttraction.js';
+import {
+  CAPTURE_WAVE_SPACING_S,
+  captureChainInfo,
+  createCaptureWave,
+  hullIntakePoint,
+  isCaptureActive,
+  pruneCaptureWave,
+  releaseCaptureEntry,
+  resetCaptureWave,
+  scheduleCaptureCandidates,
+} from './pickupCaptureWave.js';
 
-export const MAGNET_RANGE = 420; // wu pull radius for Mining 2.0's stronger ore vacuum
-export const MAGNET_ACCEL = 900; // wu/s² authority toward the seek velocity (not absolute thrust)
-// Relative approach speed while magnetized (added on top of the player's velocity so flybys collect).
-export const MAGNET_APPROACH_MIN = 100;
-export const MAGNET_APPROACH_MAX = 280;
+// Compatibility exports for existing callers; implementation and policy live with pickups.
+export {
+  MAGNET_ACCEL,
+  MAGNET_APPROACH_MAX,
+  MAGNET_APPROACH_MIN,
+  MAGNET_RANGE,
+  playerPickupMagnetRange,
+};
 export const RICH_CORE_CHANCE = 0.15;
 export const RICH_CORE_DURATION_S = 3.5;
 export const RICH_CORE_WINDOW_LO = 0.12;
@@ -126,12 +155,23 @@ export const mining = {
     this.registry = ctx.registry;
     this._pickupScratch = [];
     this._mineableScratch = [];
+    // AC-12 capture ripple. Transient and system-owned: rebuilt from live entities every tick,
+    // never serialized, published on the existing miningRuntime bag so presentation can read which
+    // drops the vacuum has actually claimed instead of guessing from speed.
+    this._captureWave = createCaptureWave();
+    this._captureCandidates = [];
+    this._captureRecordPool = [];
+    this._captureSeen = new Set();
+    this._captureKeep = (id) => this._captureSeen.has(id);
+    this._intakeScratch = { x: 0, z: 0 };
+    this._lastCaptureSimTime = 0;
     this._diag = {
       pickupScans: 0,
       pickupSpatialQueries: 0,
       pickupCandidates: 0,
       pickupsMagnetized: 0,
       pickupsCollected: 0,
+      pickupsCaptureScheduled: 0,
       targetSpatialQueries: 0,
       targetCandidates: 0,
     };
@@ -157,7 +197,13 @@ export const mining = {
     bus.on('pickup:collected', (p) => this._onPickupCollected(p));
     bus.on('dock:docked', (p) => this._onDocked(p));
     // Fresh sector → drop the stale beam lock (world regenerates the field).
-    bus.on('sector:enter', () => { this._lockTargetId = null; this._stopBeam(); this._resetBeamHeat(); });
+    bus.on('sector:enter', () => {
+      this._lockTargetId = null;
+      this._stopBeam();
+      this._resetBeamHeat();
+      // A regenerated world invalidates every scheduled activation; the ripple restarts from scratch.
+      resetCaptureWave(this._captureWave);
+    });
   },
 
   // ---- main per-tick update -------------------------------------------------
@@ -877,8 +923,20 @@ export const mining = {
     this._diag.pickupCandidates = pickups.length;
     this._diag.pickupsMagnetized = 0;
     this._diag.pickupsCollected = 0;
-    const pvx = finiteNum(player.vel && player.vel.x);
-    const pvz = finiteNum(player.vel && player.vel.z);
+    // A load or lab rewind moves sim time backwards; stale future activation times would freeze the
+    // whole band, so the ripple restarts rather than waiting out a schedule from another timeline.
+    if (state.simTime < this._lastCaptureSimTime) resetCaptureWave(this._captureWave);
+    this._lastCaptureSimTime = state.simTime;
+
+    const wave = this._captureWave;
+    const candidates = clearScratch(this._captureCandidates);
+    const seen = this._captureSeen;
+    seen.clear();
+    let poolUsed = 0;
+
+    // Pass 1 — guards, beam/scoop collection, and gathering the vacuum band. Scheduling has to
+    // happen before any attraction runs this tick, otherwise the nearest drop of a fresh burst
+    // would idle one extra frame before its zero-offset slot opened.
     for (const e of pickups) {
       if (!e.alive || e.type !== 'pickup') continue;
       const pickupData = e.data || {};
@@ -898,54 +956,73 @@ export const mining = {
       if (pickupData.jettisonedCargo && e.collides === false) e.collides = true;
       const beamCollection = this._collectPickupOnBeamLine(e, player);
       if (beamCollection) {
+        // Direct beam collection stays immediate — the ripple governs the vacuum, not the drill.
         if (beamCollection.accepted > 0 || beamCollection.legacyFullConsume) this._diag.pickupsCollected++;
         continue;
       }
       const dx = player.pos.x - e.pos.x, dz = player.pos.z - e.pos.z;
       const dist = Math.hypot(dx, dz) || 1e-4;
-      if (dist <= magnet) {
-        // Homing vacuum: inherit player velocity, then accelerate relative approach.
-        // An absolute speed cap used to make combat flybys miss (player ~combatSpeed, pickups
-        // clamped below the ship's speed so they couldn't catch up). Cap relative approach only.
-        const nx = dx / dist, nz = dz / dist;
-        const rangeT = clamp01(dist / Math.max(1, magnet));
-        const approach = MAGNET_APPROACH_MIN + (MAGNET_APPROACH_MAX - MAGNET_APPROACH_MIN) * rangeT;
-        // Closer scrap rushes in harder so final scoop doesn't feel floaty.
-        const closeBoost = dist < collectRadius * 2.5 ? 1.35 : 1;
-        const desiredVx = pvx + nx * approach * closeBoost;
-        const desiredVz = pvz + nz * approach * closeBoost;
-        const dvx = desiredVx - finiteNum(e.vel && e.vel.x);
-        const dvz = desiredVz - finiteNum(e.vel && e.vel.z);
-        const need = Math.hypot(dvx, dvz);
-        const maxDv = MAGNET_ACCEL * dt * (closeBoost > 1 ? 1.6 : 1);
-        if (!(e.vel)) e.vel = { x: 0, z: 0 };
-        if (need <= maxDv || need < 1e-6) {
-          e.vel.x = desiredVx;
-          e.vel.z = desiredVz;
-        } else {
-          const s = maxDv / need;
-          e.vel.x = finiteNum(e.vel.x) + dvx * s;
-          e.vel.z = finiteNum(e.vel.z) + dvz * s;
-        }
-        this._diag.pickupsMagnetized++;
-      }
-      // direct collect on overlap (physics also emits pickup:collected on contact; idempotent via alive guard)
       if (dist <= collectRadius) {
+        // Already inside the scoop: nothing left to schedule, so attraction and collection both run
+        // now. A rejected acceptance keeps being pulled rather than stalling on the hull.
+        if (applyPickupAttraction(e, player, dt, magnet, collectRadius, dx, dz, dist)) {
+          this._diag.pickupsMagnetized++;
+        }
+        // direct collect on overlap (physics also emits pickup:collected on contact; idempotent via alive guard)
         const acceptance = this._collectPickupViaEvent(e, player);
         if (acceptance.accepted > 0 || acceptance.legacyFullConsume) this._diag.pickupsCollected++;
+        continue;
+      }
+      if (dist > magnet) continue;
+      seen.add(e.id);
+      if (!wave.entries.has(e.id)) {
+        const record = this._captureRecordPool[poolUsed]
+          || (this._captureRecordPool[poolUsed] = { id: null, distance: 0 });
+        poolUsed++;
+        record.id = e.id;
+        record.distance = dist;
+        candidates.push(record);
       }
     }
+
+    // Drops that died, were collected, or left the band release their slot; the surviving schedule
+    // is never re-sorted, so a live ripple keeps the order it was given.
+    pruneCaptureWave(wave, this._captureKeep);
+    if (candidates.length) {
+      scheduleCaptureCandidates(wave, candidates, state.simTime, CAPTURE_WAVE_SPACING_S);
+    }
+
+    // Pass 2 — only pickups whose activation time has arrived join the vacuum. Everything else
+    // keeps its authored ejection/drift untouched.
+    for (const e of pickups) {
+      if (!e.alive || e.type !== 'pickup') continue;
+      if (!seen.has(e.id)) continue;
+      if (!isCaptureActive(wave, e.id, state.simTime)) continue;
+      const dx = player.pos.x - e.pos.x, dz = player.pos.z - e.pos.z;
+      const dist = Math.hypot(dx, dz) || 1e-4;
+      if (applyPickupAttraction(e, player, dt, magnet, collectRadius, dx, dz, dist)) {
+        this._diag.pickupsMagnetized++;
+      }
+    }
+
+    this._diag.pickupsCaptureScheduled = wave.entries.size;
     state.miningRuntime = state.miningRuntime || {};
     state.miningRuntime.diagnostics = this._diag;
+    state.miningRuntime.captureWave = wave;
   },
 
   _onPickupCollected(p) {
-    if (!p || !p.commodityId) return;
+    if (!p) return;
     if (p.collectorId !== this.state.playerId) return; // drones manage their own holds
+    if (isCreditChipPickup(p) || isCreditChipPickup(this._pickupDataForEvent(p))) {
+      this._collectCreditChip(p);
+      return;
+    }
+    if (!p.commodityId) return;
     const cargoSys = this.registry && this.registry.get && this.registry.get('cargo');
     if (cargoSys && typeof cargoSys.addCargo === 'function') return; // cargo owns collected pickups
     const kind = p.kind || 'ore';
-    if (kind === 'credits' || kind === 'module') return; // economy/ships own those
+    if (kind === 'credits' || kind === CREDIT_CHIP_KIND || kind === 'module') return; // economy/ships own those
     const requested = finiteWholePickupAmount(p.amount);
     if (requested <= 0) {
       p.acceptedAmount = 0;
@@ -1099,9 +1176,113 @@ export const mining = {
     if (!p) return;
     const pos = p.pos || { x: 0, z: 0 };
     const stub = { pos: { x: pos.x, z: pos.z }, radius: 4 };
+    const inheritX = (Number.isFinite(p.vel && p.vel.x) ? p.vel.x : 0) * KILL_BURST_VEL_INHERIT;
+    const inheritZ = (Number.isFinite(p.vel && p.vel.z) ? p.vel.z : 0) * KILL_BURST_VEL_INHERIT;
+    const burst = p.source === 'kill_burst' || (Array.isArray(p.items) && p.items.some(isCreditChipPickup));
     for (const it of (p.items || [])) {
-      if (it && it.commodityId) this._spawnPickup(stub, it.commodityId, it.qty || 1);
+      if (!it) continue;
+      if (isCreditChipPickup(it)) {
+        const credits = finiteWholePickupAmount(it.credits != null ? it.credits : it.amount);
+        if (credits <= 0) continue;
+        this._spawnLootBurstPickup(stub, {
+          kind: CREDIT_CHIP_KIND,
+          amount: credits,
+          credits,
+          grantReason: typeof it.grantReason === 'string' ? it.grantReason : null,
+          inheritX,
+          inheritZ,
+        });
+        continue;
+      }
+      if (!it.commodityId) continue;
+      if (burst) {
+        this._spawnLootBurstPickup(stub, {
+          kind: 'ore',
+          commodityId: it.commodityId,
+          amount: it.qty || 1,
+          inheritX,
+          inheritZ,
+        });
+      } else {
+        this._spawnPickup(stub, it.commodityId, it.qty || 1);
+      }
     }
+  },
+
+  _spawnLootBurstPickup(srcEnt, opts) {
+    if (!this.helpers || typeof this.helpers.spawnEntity !== 'function') return 0;
+    const amount = finiteWholePickupAmount(opts && opts.amount);
+    if (amount <= 0) return 0;
+    const rng = this.state.rng;
+    const ang = rng() * Math.PI * 2;
+    const r = (srcEnt.radius || 6) + 2 + rng() * 4;
+    const eject = KILL_BURST_EJECT_SPEED_MIN
+      + rng() * (KILL_BURST_EJECT_SPEED_MAX - KILL_BURST_EJECT_SPEED_MIN);
+    const inheritX = Number.isFinite(opts.inheritX) ? opts.inheritX : 0;
+    const inheritZ = Number.isFinite(opts.inheritZ) ? opts.inheritZ : 0;
+    const data = {
+      kind: opts.kind || 'ore',
+      amount,
+      despawnAt: this.state.simTime + PICKUP_TTL,
+    };
+    if (opts.commodityId) data.commodityId = opts.commodityId;
+    if (opts.kind === CREDIT_CHIP_KIND || opts.kind === 'credits') {
+      data.credits = amount;
+      if (opts.grantReason) data.grantReason = opts.grantReason;
+    }
+    this.helpers.spawnEntity({
+      type: 'pickup',
+      pos: { x: srcEnt.pos.x + Math.cos(ang) * r, z: srcEnt.pos.z + Math.sin(ang) * r },
+      vel: {
+        x: inheritX + Math.cos(ang) * eject,
+        z: inheritZ + Math.sin(ang) * eject,
+      },
+      radius: PICKUP_RADIUS, mass: 0.1, collides: true,
+      data,
+    });
+    return amount;
+  },
+
+  _pickupDataForEvent(p) {
+    if (!p || p.pickupId == null) return null;
+    const entity = this.state && this.state.entities && this.state.entities.get
+      ? this.state.entities.get(p.pickupId)
+      : null;
+    return entity && entity.data || null;
+  },
+
+  _collectCreditChip(p) {
+    const pickupData = this._pickupDataForEvent(p) || {};
+    const requested = finiteWholePickupAmount(
+      p.amount != null ? p.amount : (p.credits != null ? p.credits : pickupData.amount),
+    );
+    if (requested <= 0) {
+      p.acceptedAmount = 0;
+      p.rejectedAmount = 0;
+      p.invalidAmount = true;
+      return 0;
+    }
+    if (p.creditGranted === true || pickupData.creditGranted === true) {
+      p.acceptedAmount = requested;
+      p.rejectedAmount = 0;
+      return requested;
+    }
+    const reason = (typeof p.grantReason === 'string' && p.grantReason)
+      || (typeof pickupData.grantReason === 'string' && pickupData.grantReason)
+      || `kill:credit_chip:${p.pickupId != null ? p.pickupId : 'anon'}`;
+    this.bus.emit('economy:grantCredits', {
+      amount: requested,
+      reason,
+      receiptId: reason,
+    });
+    p.acceptedAmount = requested;
+    p.rejectedAmount = 0;
+    p.creditGranted = true;
+    const pickup = p.pickupId != null && this.state.entities && this.state.entities.get
+      ? this.state.entities.get(p.pickupId)
+      : null;
+    if (pickup && pickup.data) pickup.data.creditGranted = true;
+    return requested;
   },
 
   _fractureAsteroid(ast, def, miner) {
@@ -1300,7 +1481,8 @@ export const mining = {
 
   _collectPickupOnBeamLine(pickup, player) {
     const line = this._activeBeamLine;
-    if (!line || !pickup || !pickup.data || !pickup.data.commodityId) return false;
+    if (!line || !pickup || !pickup.data) return false;
+    if (!pickup.data.commodityId && !isCreditChipPickup(pickup.data)) return false;
     if (pointSegmentDistanceSq(pickup.pos.x, pickup.pos.z, line.ax, line.az, line.bx, line.bz) >
       BEAM_PICKUP_DIRECT_RADIUS * BEAM_PICKUP_DIRECT_RADIUS) return false;
     return this._collectPickupViaEvent(pickup, player);
@@ -1326,6 +1508,11 @@ export const mining = {
       pickup.alive = false;
       return { accepted: 0, rejected: 0, legacyFullConsume: false, invalidAmount: true };
     }
+    // AC-12 presentation truth. The stream terminates on the hull surface the drop actually
+    // arrived at, and carries the ripple position it landed on so the pitch ladder and the ribbon
+    // retirement both key off the same schedule instead of re-deriving one.
+    const intake = hullIntakePoint(player, pickup.pos.x, pickup.pos.z, this._intakeScratch);
+    const chain = captureChainInfo(this._captureWave, pickup.id);
     const payload = {
       pickupId: pickup.id,
       collectorId: player.id,
@@ -1333,6 +1520,15 @@ export const mining = {
       amount: requested,
       commodityId: pickup.data.commodityId,
       pos: { x: pickup.pos.x, z: pickup.pos.z },
+      intakePoint: { x: intake.x, z: intake.z },
+      capturePathId: pickup.id,
+      captured: !!chain,
+      chainIndex: chain ? chain.chainIndex : 0,
+      chainCount: chain ? chain.chainCount : 1,
+      ...(isCreditChipPickup(pickup.data) ? {
+        credits: requested,
+        grantReason: pickup.data.grantReason || null,
+      } : {}),
       ...(pickup.data.richLotSource ? {
         richLotSource: {
           ...pickup.data.richLotSource,
@@ -1345,6 +1541,8 @@ export const mining = {
     if (acceptance.rejected <= 0) {
       pickup.alive = false;
       clearPickupAcceptanceRetry(pickup.data);
+      // The slot is free the instant the drop lands, so the next ripple never waits behind a ghost.
+      releaseCaptureEntry(this._captureWave, pickup.id);
     } else {
       if (acceptance.accepted > 0) pickup.data.amount = acceptance.rejected;
       const ownerRetryAt = Number(payload.acceptanceRetryAt);
@@ -1567,6 +1765,7 @@ function resetMiningDiagnostics(diag) {
   diag.pickupCandidates = 0;
   diag.pickupsMagnetized = 0;
   diag.pickupsCollected = 0;
+  diag.pickupsCaptureScheduled = 0;
   diag.targetSpatialQueries = 0;
   diag.targetCandidates = 0;
 }
@@ -1774,35 +1973,4 @@ function playerModSum(state, key) {
     if (Number.isFinite(value)) sum += value;
   }
   return sum;
-}
-
-/**
- * Ore-pickup magnet radius for the ordinary freeflight scoop.
- * Single resolve path: max(MAGNET_RANGE floor, ships-owned derived.magnetRange).
- * If derived is missing (lab fixtures), re-scan fittings once so the scoop still works.
- * Exported for focused characterization tests (not a new runtime policy layer).
- */
-export function playerPickupMagnetRange(state, playerEntity = null) {
-  const player = playerEntity
-    || (state && state.entities && state.entities.get && state.entities.get(state.playerId))
-    || null;
-  const derived = player && player.data && player.data.derived;
-  let fromDerived = derived && Number(derived.magnetRange);
-  if (!(Number.isFinite(fromDerived) && fromDerived > 0)) {
-    fromDerived = maxFittedMagnetRange(player);
-  }
-  if (Number.isFinite(fromDerived) && fromDerived > MAGNET_RANGE) return fromDerived;
-  return MAGNET_RANGE;
-}
-
-function maxFittedMagnetRange(player) {
-  if (!player || !player.data) return 0;
-  const fittings = Array.isArray(player.data.fittings) ? player.data.fittings : [];
-  let max = 0;
-  for (const id of fittings) {
-    const mod = id && MODULE_BY_ID.get(id);
-    const value = mod && mod.mods && Number(mod.mods.magnetRange);
-    if (Number.isFinite(value) && value > max) max = value;
-  }
-  return max;
 }

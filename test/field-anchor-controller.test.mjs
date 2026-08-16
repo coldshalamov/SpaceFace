@@ -10,7 +10,7 @@ import { encounterDirector } from '../src/systems/encounterDirector.js';
 import { save } from '../src/save/saveSystem.js';
 import { makeEnemySpawnSpec } from '../src/systems/combat.js';
 import { ENCOUNTERS } from '../src/data/encounters.js';
-import { FIELD_DEFS, FIELD_FLAGS } from '../src/data/fields.js';
+import { FIELD_DEFS, FIELD_FLAGS, FIELD_PALETTE } from '../src/data/fields.js';
 
 const SHAPE_ID = 'field_anchor_controller';
 const SECTOR_ID = 'sector_ceres_belt';
@@ -124,8 +124,14 @@ test('seeded authored spawn produces one anchor controller plus escorts', () => 
     const anchors = ships.filter((e) => e.data?.lootTableId === 'field_anchor_controller');
     assert.equal(anchors.length, 1, 'exactly one field anchor hull');
     assert.ok(anchors[0].data.fieldAnchor, 'anchor hull carries fieldAnchor record');
+    assert.equal(anchors[0].data.fieldAnchor.presentationTag, 'hostile', 'anchor declares hostile field ownership');
     h.sim.step();
-    assert.ok(activeFieldSnapshot(h.state).some((f) => f.sourceId === anchors[0].id), 'field registered through shared owner');
+    const activeKernelField = activeFieldSnapshot(h.state).find((f) => f.sourceId === anchors[0].id);
+    assert.ok(activeKernelField, 'field registered through shared owner');
+    assert.equal(activeKernelField.tag, 'hostile', 'physics record retains hostile ownership');
+    const activePresentation = h.state.fields.active.find((f) => f.id === activeKernelField.id);
+    assert.equal(activePresentation.palette, FIELD_PALETTE.hostileSnare, 'hostile snare uses its amber force palette');
+    assert.notEqual(activePresentation.palette, FIELD_PALETTE.well, 'hostile snare cannot read as the player Intake');
     assert.equal(ENCOUNTERS[SHAPE_ID].rare, true, 'shape is specialist rare');
   });
 });

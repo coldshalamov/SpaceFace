@@ -41,6 +41,7 @@ import { allRegionalPressureRecipes } from '../economy/regionalSupply.js';
 import { applyPersistentDemand, effectiveDemandFor } from '../economy/demandModel.js';
 import { priceModForState } from './factions.js';
 import { livingHullGrimeAt } from '../core/livingHull.js';
+import { heatRestitutionCost } from './heat.js';
 
 // ---- tunables (design/specs/03 "Formulas") ------------------------------------------------
 // M3 courier/freight balance (2026-07): produce=2.0 / consume=0.35 at baseEq=1000 left a permanent
@@ -1499,7 +1500,7 @@ export const economy = {
   },
 
   // -------------------------------------------------------------------------------------------
-  // SERVICES — refuel / repair / ammo / hull wash (ui:service {type, amount}).
+  // SERVICES — refuel / repair / ammo / hull wash / restitution (ui:service {type, amount}).
   // -------------------------------------------------------------------------------------------
   handleService(p) {
     const state = this.state;
@@ -1597,6 +1598,33 @@ export const economy = {
       const realCost = round(added * AMMO_UNIT_CR);
       this.chargeCredits(realCost, 'service:ammo');
       this.bus.emit('toast', { text: `Bought ${added} munitions (${realCost}cr)`, kind: 'success', ttl: 2 });
+    } else if (type === 'restitution') {
+      const player = state.player || {};
+      const stationId = this.dockedStationId();
+      if (!stationId) {
+        this.bus.emit('toast', { text: 'Dock at a station to pay restitution', kind: 'error', ttl: 2 });
+        return;
+      }
+      const cost = heatRestitutionCost(player.heat);
+      if (cost <= 0) {
+        this.bus.emit('toast', { text: 'No local WANTED notice to settle', kind: 'info', ttl: 2 });
+        return;
+      }
+      if ((player.credits | 0) < cost) {
+        this.bus.emit('toast', { text: `Restitution requires ${cost}cr`, kind: 'error', ttl: 2 });
+        return;
+      }
+      this.chargeCredits(cost, 'service:restitution');
+      // Heat is the sole WANTED writer. Economy settles the wallet side, then sends the existing
+      // clear intent instead of reaching across the ownership boundary.
+      this.bus.emit('heat:clear', { reason: 'restitution paid' });
+      this.bus.emit('service:completed', {
+        type: 'restitution',
+        cost,
+        stationId,
+        atT: Number(state.simTime) || 0,
+      });
+      this.bus.emit('toast', { text: `Restitution paid (${cost}cr)`, kind: 'success', ttl: 2 });
     } else if (type === 'insurance') {
       const ins = state.player.insurance || (state.player.insurance = { rate: 0.6, deductibleCr: 500, insuredModules: false, lastStationId: null });
       const enable = !!p.amount;

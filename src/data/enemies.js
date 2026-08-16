@@ -16,6 +16,18 @@
 // after the shield layer and made bruisers literally unkillable with the Hitch gun.
 export const ENEMY_TYPES = [
   {
+    id: 'mote_swarmer', name: 'Mote', shipId: 'ship_wasp',
+    silhouette: 'mote_quad', factionId: 'faction_reach',
+    aiArchetype: 'swarmer', levelRange: [1, 3],
+    combatDoctrineId: 'interceptor_flyby',
+    hull: 12, armor: 0, armorFlat: 0, shield: 0, shieldRegen: 0, cap: 20, capRegen: 8,
+    maxSpeed: 110, accel: 88, turnRate: 2.5, collisionRadius: 5, mass: 7,
+    weapons: [{ id: 'wpn_pulse_laser_s', dmgOverride: 1, rofOverride: 0.6 }],
+    aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 145, leashRadius: 1900 },
+    behavior: 'loose cloud flybys; fragile alone, readable as a moving pack',
+    bountyCr: 0, shipClass: 'drone', loot: null,
+  },
+  {
     id: 'wasp_swarmer', name: 'Wasp Swarmer', shipId: 'ship_wasp',
     silhouette: 'drone_swarm', factionId: 'faction_reach',
     aiArchetype: 'swarmer', levelRange: [1, 3],
@@ -347,7 +359,7 @@ export const ENEMY_TYPES = [
       strength: 185,
       damping: 3.2,
       maxAffected: 12,
-      presentationTag: 'environmental',
+      presentationTag: 'hostile',
     },
     telegraph: { bark: 'warn', line: 'Anchor field winding. Break radius or move the hull.', cue: 'field_spool' },
     counterHint: 'kill_or_massline_displace_anchor_leave_radius',

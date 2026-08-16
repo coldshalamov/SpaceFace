@@ -17,6 +17,7 @@ import { sectorGlobalOrigin } from '../data/sectorCoordinates.js';
 import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../ai/doctrine.js';
 import {
   is47aScavengerCounterplayAuthorized,
+  isCeresLivingChainPredationAuthorized,
   protectedStationAt,
 } from '../ai/engagementAuthority.js';
 import { hotUntilActive } from '../economy/customsRisk.js';
@@ -441,6 +442,7 @@ export const lawSecurity = {
       const target = entityById(state, targetId);
       if (!target) continue;
       if (is47aScavengerCounterplayAuthorized(state, entity, target)) continue;
+      if (isCeresLivingChainPredationAuthorized(state, entity, target)) continue;
       const jurisdiction = protectedStationAt(state, target) || protectedStationAt(state, entity);
       if (!jurisdiction) continue;
       this._withdrawFromSanctuary(entity, target, jurisdiction);

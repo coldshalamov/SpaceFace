@@ -95,11 +95,16 @@ export function fieldBodyProfile(entity, state, out = null) {
     ? state.combat.entities[String(entity.id)]
     : null;
   const fieldResponse = runtime && runtime.multipliers && runtime.multipliers.fieldCoupling;
+  const massScale = runtime && runtime.physicsResponse && runtime.physicsResponse.massScale;
   profile.mass = positive(entity && entity.physicsBody && entity.physicsBody.mass, positive(entity && entity.mass, 1));
   profile.type = entity && entity.type;
   profile.team = entity && entity.team;
   profile.id = entity && entity.id;
   profile.fieldResponseMult = Number.isFinite(fieldResponse) ? Math.max(0, fieldResponse) : 1;
+  // The transient mass/inertia scale the physics owner will solve this body at (Pinned = 6x,
+  // Unmoored = 0.3x). Coupling never reads it — it is not a mass CLASS, it is the effective solver
+  // mass the queued impulse has to be authored against. See _applyForces.
+  profile.physicsMassScale = positive(massScale, 1);
   return profile;
 }
 
@@ -122,7 +127,7 @@ export const fields = {
     this._massStateStrengths = new Map();
     this._accel = { ax: 0, az: 0 };
     this._massStateAccel = { ax: 0, az: 0 };
-    this._bodyProfile = { mass: 1, type: null, team: null, id: null, fieldResponseMult: 1 };
+    this._bodyProfile = { mass: 1, type: null, team: null, id: null, fieldResponseMult: 1, physicsMassScale: 1 };
     this._coneCenter = { x: 0, z: 0 };
     this._coneDir = { x: 1, z: 0 };
     ensureRuntime(ctx.state);
@@ -599,7 +604,16 @@ export const fields = {
       const profile = this._profileFor(e, state);
       sampleFieldAcceleration(e.pos, e.vel, fieldsList, now, profile, accel);
       if (accel.ax === 0 && accel.az === 0) continue;
-      const mass = positive(e.physicsBody && e.physicsBody.mass, positive(e.mass, 1));
+      // p = a·m·dt, where m must be the mass the SOLVER will use this tick — not the authored one.
+      // A Well pins the very bodies it pulls (massScale 6) and a Repulsor unmoors the ones it shoves
+      // (massScale 0.3), both applied in this same tick by the combat kernel. Authoring the impulse
+      // against the base mass therefore delivered a/6 to a pinned body (the Intake crept instead of
+      // clumping) and a/0.3 to an unmoored one — 300 wu/s^2 realized as 1000, straight through the
+      // FIELD_MAX_ACCEL 820 safety bound the kernel had already clamped. Scaling here restores the
+      // data contract ("Δv per tick = a·dt, MASS-INDEPENDENT") and makes the cap mean what it says.
+      // Same seam momentumSink.js uses for effective mass; still one additive membrane write.
+      const mass = positive(e.physicsBody && e.physicsBody.mass, positive(e.mass, 1))
+        * positive(profile.physicsMassScale, 1);
       queuePhysicsImpulse(e, { x: accel.ax * mass * dt, y: 0, z: accel.az * mass * dt });
       affectedCount++;
       accelSum += Math.hypot(accel.ax, accel.az);
@@ -631,7 +645,8 @@ export const fields = {
       rec.center.x = f.center.x; rec.center.z = f.center.z;
       rec.dir.x = f.dir.x; rec.dir.z = f.dir.z;
       rec.radius = f.radius; rec.strength = f.strength; rec.falloff = f.falloff;
-      rec.halfAngleRad = f.halfAngleRad; rec.palette = FIELD_PALETTE[f.kind];
+      rec.halfAngleRad = f.halfAngleRad;
+      rec.palette = f.tag === 'hostile' ? FIELD_PALETTE.hostileSnare : FIELD_PALETTE[f.kind];
       rec.expireAt = f.expireAt;  // Infinity for the sustained cone; the HUD countdown chip reads it
       // engaged = this tick actually pulled/pushed a body (state-driven; drives the world-space
       // engagement tell — no affected body, no articulation, per bible §4).

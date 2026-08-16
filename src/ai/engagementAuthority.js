@@ -120,7 +120,10 @@ export function authorizeAIEngagement({
         && (ai.engagementTrigger === 'wanted_status' || ai.engagementTrigger === 'player_attack'))
     );
     const scenarioCounterplay = is47aScavengerCounterplayAuthorized(state, self, target);
-    if (!lawfulEnforcement && !scenarioCounterplay) return denied('station_protection');
+    const witnessedManifestCrime = isCeresLivingChainPredationAuthorized(state, self, target);
+    if (!lawfulEnforcement && !scenarioCounterplay && !witnessedManifestCrime) {
+      return denied('station_protection');
+    }
   }
 
   if (inFirstSession(state, nowTick) && !claimFirstSessionAttackerOwnership(state, self, target)) {
@@ -238,6 +241,23 @@ export function isAuthorizedPredationRelation(state, self, target) {
   const dx = self.pos.x - target.pos.x;
   const dz = self.pos.z - target.pos.z;
   return Number.isFinite(dx) && Number.isFinite(dz) && dx * dx + dz * dz <= leash * leash;
+}
+
+/**
+ * The one authored exception that lets the Ceres living-world chain become a crime the player can
+ * physically interrupt. It does not broaden convoy predation: the ordinary exact live relation is
+ * still required, then narrowed to the transferred refinery hauler and the trigger-owned chain.
+ * Law observes the first real damage and owns the patrol response.
+ */
+export function isCeresLivingChainPredationAuthorized(state, self, target) {
+  if (!isAuthorizedPredationRelation(state, self, target)) return false;
+  if (state.world?.currentSectorId !== 'sector_ceres_belt') return false;
+  if (target.data?.activityActorSlotId !== 'ceres_refinery_hauler') return false;
+  const encounterId = self.data?.predationEncounterId;
+  const live = encounterId && state.encounterDirector?.live?.[encounterId];
+  return !!(live && live.data?.ceresLivingChain === true
+    && live.data.handoffId === target.data.cargoManifest?.custody?.handoffId
+    && live.data.transferSeq === target.data.cargoManifest?.custody?.transferSeq);
 }
 
 /** Fresh hostility oracle for tactical perception and final execution authority. */

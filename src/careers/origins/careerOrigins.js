@@ -110,6 +110,16 @@ function seedOf(state) {
   return ((state && state.meta && state.meta.seed) || (state && state.seed) || 1) >>> 0 || 1;
 }
 
+function playerAlreadyOwnsModule(state, defId) {
+  const player = state && state.player;
+  if (!player || !defId) return false;
+  if (Array.isArray(player.moduleInventory)
+    && player.moduleInventory.some((entry) => entry && entry.defId === defId)) return true;
+  return Array.isArray(player.ownedShips) && player.ownedShips.some((ship) => (
+    ship && Array.isArray(ship.fittings) && ship.fittings.includes(defId)
+  ));
+}
+
 function emit(bus, event, payload) {
   if (bus && typeof bus.emit === 'function') bus.emit(event, payload);
 }
@@ -1056,7 +1066,8 @@ export function createCareerOriginsSystem() {
       const ships = this.registry && typeof this.registry.get === 'function'
         ? this.registry.get('ships') : null;
       if (!ships || typeof ships.grantModule !== 'function') return false;
-      const granted = ships.grantModule({
+      const alreadyOwned = playerAlreadyOwnsModule(this.state, kit.defId);
+      const granted = alreadyOwned || ships.grantModule({
         defId: kit.defId,
         reason: `career_origin:${careerId}:complete`,
       });
@@ -1065,6 +1076,7 @@ export function createCareerOriginsSystem() {
         defId: kit.defId,
         label: kit.label,
         grantedAtS: simTimeOf(this.state),
+        source: alreadyOwned ? 'already_fitted' : 'career_completion',
       };
       const identityReceipt = meta.identityReceipts[careerId];
       if (identityReceipt && identityReceipt.loadout) {
@@ -1073,7 +1085,10 @@ export function createCareerOriginsSystem() {
       }
       if (meta.routes[careerId]) meta.routes[careerId].upgradeGranted = true;
       emit(this.bus, 'toast', {
-        text: `${kit.label} issued. Fit it at Outfitting.`, kind: 'success', ttl: 5,
+        text: alreadyOwned
+          ? `${kit.label} is already fitted.`
+          : `${kit.label} issued. Fit it at Outfitting.`,
+        kind: 'success', ttl: 5,
       });
       return true;
     },
@@ -1088,7 +1103,8 @@ export function createCareerOriginsSystem() {
       const ships = this.registry && typeof this.registry.get === 'function'
         ? this.registry.get('ships') : null;
       if (!ships || typeof ships.grantModule !== 'function') return false;
-      const granted = ships.grantModule({
+      const alreadyOwned = playerAlreadyOwnsModule(this.state, kit.defId);
+      const granted = alreadyOwned || ships.grantModule({
         defId: kit.defId,
         reason: `career_origin:${careerId}:starter`,
       });
@@ -1097,7 +1113,7 @@ export function createCareerOriginsSystem() {
         defId: kit.defId,
         label: kit.label,
         grantedAtS: simTimeOf(this.state),
-        source: 'primary_origin_start',
+        source: alreadyOwned ? 'already_fitted' : 'primary_origin_start',
       };
       if (meta.routes[careerId]) meta.routes[careerId].upgradeGranted = true;
       const identityReceipt = meta.identityReceipts[careerId];
@@ -1106,7 +1122,10 @@ export function createCareerOriginsSystem() {
         identityReceipt.loadout.issuedAtS = simTimeOf(this.state);
       }
       emit(this.bus, 'toast', {
-        text: `${kit.label} starter kit issued. Fit it when ready.`, kind: 'success', ttl: 5,
+        text: alreadyOwned
+          ? `${kit.label} is already fitted.`
+          : `${kit.label} starter kit issued. Fit it when ready.`,
+        kind: 'success', ttl: 5,
       });
       return true;
     },

@@ -5,13 +5,20 @@
 // DESIGN (cooperates with the rest of the engine, never fights it):
 //   - Hit-stop is a render-phase request to the core time-effects owner. The lowest active request
 //     wins, so expiry reveals any remaining pause/Focus request instead of restoring over it.
+//   - Hit-stop is a RARE event, not a per-hit response: every combat/death request is clamped to
+//     HS_COMBAT_MAX, admitted at most once per HS_COOLDOWN_S of render time, and refused outright
+//     while the player is boosting or dashing. A refused request still produces its audio and its
+//     local hull/vignette presentation — only the world-freeze is withheld (10_JUICE_DISCIPLINE).
 //   - The FOV punch is a transient additive offset on the chase camera's fov, eased back. We reach
 //     the camera via state.render.camera (a PerspectiveCamera) and restore its projection matrix.
+//     COMBAT DOES NOT USE IT — zoom pulsing during flight is banned (I-2); the remaining owners are
+//     warp, mining, and massline release.
 //   - The damage vignette is a pooled DOM radial gradient that flashes on heavy player hits and
 //     snaps off — the directional-hit indicator work is a separate concern; this is pure *punch*.
-//   - Everything is gated on state.settings.video.motionReduce (new): vestibular-sensitive players
-//     get the audio/number feedback with the shake/zoom/time-freeze suppressed. Accessibility is
-//     table stakes (V2 §9, §12). Default OFF (motionReduce=false) so the punch is felt by default.
+//   - Two independent accessibility preferences gate this layer. state.settings.video.motionReduce
+//     drops the vestibular effects (hit-stop, FOV punch, shake) for motion-sensitive players.
+//     state.settings.accessibility.flashReduce drops the screen flash for photosensitive players.
+//     They are separate senses, so neither implies the other. Both default OFF.
 //
 // This is a render-phase system (no sim update). Driven from registry.renderUpdate -> feel.frame().
 // All event subscriptions are registered in init; frame() integrates the timers.
@@ -54,32 +61,38 @@ function recoilWeight(weaponId) {
 
 const STYLE_ID = 'sf-feel-style';
 
-// Tunables — spec2/02 §3 exact numbers. Hit-stop is short so it reads as "weight," not "lag.
-// No hit-stop on ordinary hits; shield-break = 40 ms, player kill = 60 ms. Capital kills carry
-// longer trauma but no extended freeze by default. Death is the only long cinematic dip.
+// Tunables — AC-05 juice discipline (design/arcade-core/10_JUICE_DISCIPLINE.md, I-2).
+// Hit-stop is short so it reads as "weight," not "lag." No hit-stop on ordinary hits; shield-break
+// = 40 ms, kill = 60 ms. The authored numbers below are the *intent*; HS_COMBAT_MAX is the
+// enforcer, applied in _trigger() to every combat/death request including the ones authored by
+// other presentation modules. That is deliberate: this file previously authored an 800 ms capital
+// dip and a 900 ms death dip, which is a freeze long enough to lose a fight inside.
+export const HS_COMBAT_MAX = 0.06;   // s — hard ceiling on ANY combat/death hit-stop
+export const HS_COOLDOWN_S = 2.0;    // s — minimum render-clock gap between two admitted hit-stops
+export const HS_DASH_LATCH_S = 0.25; // s — transient window after the player's dash that refuses one
 const HS_HEAVY = 0.055;       // s — timeScale dip duration for a heavy hit (big damage)
 const HS_SHIELD_BREAK = 0.04; // s — shield-break hit-stop (spec2/02 §3)
 const HS_ARMOR_HIT = 0.0;     // s — armor hits do NOT freeze (spec2/02 §3)
 const HS_HULL_HIT = 0.0;      // s — hull hits do NOT freeze (spec2/02 §3)
 const HS_KILL = 0.06;         // s — small-kill hit-stop (spec2/02 §3)
-const HS_CAPITAL_KILL = 0.80; // s — capital-kill hit-stop window (≤ 800 ms, spec2/02 §3)
-const HS_DEATH = 0.90;        // s — dip duration for the player dying (the biggest beat)
-const HS_RAMP_TIME = 0.25;    // s — cinematic ease-IN for the death dip (1 -> floor over this window)
+const HS_CAPITAL_KILL = 0.06; // s — a capital kill is LOUDER, not longer; trauma + audio carry it
+const HS_DEATH = 0.06;        // s — death is the biggest beat, but it no longer takes the ship away
+const HS_RAMP_FRACTION = 0.4; // × the admitted duration — cinematic ease-IN for the death dip, so
+                              //     the floor is still reached inside the clamped window
 const HS_DEPTH = 0.12;        // timeScale floor during a normal dip
-const FOV_PUNCH_HEAVY = 2.2;   // deg additive on heavy hit
-const FOV_PUNCH_KILL  = 4.0;   // deg additive on kill
-const FOV_PUNCH_DEATH = 7.0;   // deg additive on player death
+// Combat no longer pulses the FOV at all. Fire, damage, kill, and death are carried by audio,
+// bounded camera trauma, and local hull dressing — a zoom pulse during flight is banned outright by
+// 10_JUICE_DISCIPLINE. The punch machinery below stays live for the callers that still legitimately
+// own it (warp charge/out/arrival, mining yield, massline release) and for the dense-scene
+// legibility probe, which pins its rise rate.
+const FOV_PUNCH_MAX = 7.0;     // deg — largest single authored punch (the warp-out arc)
 const FOV_DECAY = 6.5;         // exponential decay rate (higher = snappier return)
 // U13 (WF-15 dense-scene legibility): the punch ENVELOPE still steps to full amplitude so combat
 // energy is unchanged, but the applied camera FOV rises at a bounded rate so dense recoil+hit
 // stacking cannot thrash the projection matrix at 100+ deg/s. Decay only runs once the applied
 // FOV has caught the envelope peak — spectacle lands in full; only the discontinuous jump is gone.
-export const FOV_PUNCH_RISE_RATE = 28; // deg/s — full 2.2° heavy punch peaks in ~80 ms
-export const FOV_PUNCH_CAP = FOV_PUNCH_DEATH + 1;
-// Weapon-recoil fov kick (per player shot). Smaller than a heavy-hit punch since it fires often; a
-// quick 0.5-1.5° kick that decays fast reads as "kickback" without going seasick on auto fire.
-const RECOIL_FOV_MAX = 1.5;    // deg additive per shot (scaled down by recoilWeight)
-const RECOIL_FOV_MIN = 0.4;    // floor so even the lightest weapon nudges the fov a touch
+export const FOV_PUNCH_RISE_RATE = 28; // deg/s — a 2.2° punch peaks in ~80 ms
+export const FOV_PUNCH_CAP = FOV_PUNCH_MAX + 1;
 
 const VIG_HEAVY = 0.18;   // peak vignette opacity for a heavy hit on the player
 const VIG_DEATH = 0.55;   // peak vignette opacity for player death
@@ -283,8 +296,16 @@ export const feel = {
     // live state
     this._hsTimer = 0;        // remaining hit-stop seconds (0 = no active dip)
     this._hsRampIn = 0;       // >0 = cinematic ease-in window (death); timeScale ramps 1 -> floor
+    this._hsRampTotal = 0;    // the ramp window this dip was armed with (the ease-in divisor)
     this._hsFreezeTimer = 0;  // kill-cam hard-freeze window (timeScale = 0)
     this._hsRequest = { scale: HS_DEPTH }; // reused: frame() performs no request allocation
+    // The ONE unscaled render clock. frameDt reaches frame() from the render update phase and is
+    // never simulation-scaled, so accumulating it gives a real-seconds cadence for the rare-event
+    // gate and the dash latch without a wall-clock read. Nothing in the sim, in save data, or in
+    // replay determinism reads any of these three fields — they are presentation-only.
+    this._renderClock = 0;
+    this._hsLastAdmitT = -Infinity; // render-clock stamp of the last ADMITTED hit-stop
+    this._dashLatch = 0;      // s remaining on the transient post-dash refusal window
     this._velocityDriveScratch = {};
     this._legacyDriveScratch = {};
     this._regionCrossfadeScratch = {};
@@ -659,11 +680,20 @@ export const feel = {
   _subscribe() {
     const bus = this.bus, state = this.state;
 
-    const clearHitStop = () => this._resetHitStop();
+    const clearHitStop = () => this._resetFeelLifecycle();
     bus.on('sim:pause', clearHitStop);
     bus.on('game:new', clearHitStop);
     bus.on('save:restoring', clearHitStop);
     bus.on('save:loaded', clearHitStop);
+
+    // Dash has no durable entity flag: the ability applies its impulse inside the tick that emits
+    // this event, so there is nothing to poll the way boosting is polled. We therefore keep the
+    // shortest transient latch that can refuse a hit-stop landing on top of the player's own dash,
+    // and nothing else — no input state, no cooldown state, no flight ownership is read or written.
+    bus.on('ship:dash', (p) => {
+      if (!p || p.shipId !== state.playerId) return;
+      this._dashLatch = HS_DASH_LATCH_S;
+    });
 
     // Spec2/02 §3 exact feel rules: shield-break 40 ms hit-stop + 0.3 trauma if player involved;
     // armor/hull hits get NO hit-stop (only trauma for player-as-target); big damage gets a micro dip.
@@ -673,20 +703,19 @@ export const feel = {
       const playerInvolved = isPlayer || p.attackerId === state.playerId;
       const ctrl = this.state.render && this.state.render.cameraCtrl;
 
+      // fovAdd is 0 on every branch: damage does not pulse the projection. Weight is carried by the
+      // hit-stop (rare, clamped), the bounded trauma, and the local hull vignette.
       if (p.brokeShield) {
-        const fov = isPlayer ? FOV_PUNCH_HEAVY : FOV_PUNCH_HEAVY * 0.4;
-        this._trigger(HS_SHIELD_BREAK, fov, isPlayer ? VIG_HEAVY : 0, isPlayer ? 'hit' : null);
+        this._trigger(HS_SHIELD_BREAK, 0, isPlayer ? VIG_HEAVY : 0, isPlayer ? 'hit' : null);
         if (playerInvolved && ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(0.3);
         return;
       }
       if (p.armorHit) {
-        const fov = isPlayer ? FOV_PUNCH_HEAVY * 0.7 : FOV_PUNCH_HEAVY * 0.3;
-        this._trigger(HS_ARMOR_HIT, fov, isPlayer ? VIG_HEAVY * 0.6 : 0, isPlayer ? 'hit' : null);
+        this._trigger(HS_ARMOR_HIT, 0, isPlayer ? VIG_HEAVY * 0.6 : 0, isPlayer ? 'hit' : null);
         return;
       }
       if (p.hullHit) {
-        const fov = isPlayer ? FOV_PUNCH_HEAVY * 0.7 : FOV_PUNCH_HEAVY * 0.3;
-        this._trigger(HS_HULL_HIT, fov, isPlayer ? VIG_HEAVY * 0.6 : 0, isPlayer ? 'hit' : null);
+        this._trigger(HS_HULL_HIT, 0, isPlayer ? VIG_HEAVY * 0.6 : 0, isPlayer ? 'hit' : null);
         if (isPlayer && ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(0.08);
         return;
       }
@@ -694,20 +723,20 @@ export const feel = {
       const big = (p.amount >= 25) || p.killing;
       if (!big) return;
       const dur = isPlayer ? HS_HEAVY * 1.3 : HS_HEAVY * 0.6;
-      const fov = isPlayer ? FOV_PUNCH_HEAVY : FOV_PUNCH_HEAVY * 0.4;
-      this._trigger(dur, fov, isPlayer ? VIG_HEAVY : 0, isPlayer ? 'hit' : null);
+      this._trigger(dur, 0, isPlayer ? VIG_HEAVY : 0, isPlayer ? 'hit' : null);
     });
 
-    // Spec2/02 §3: small kill = 60 ms hit-stop + kill-cam kiss; capital kill = 0.5 trauma scaled
-    // 1/d² (max 0.5 at ≤ 400 wu) + 800 ms hit-stop window. Player involvement required for the kiss.
+    // A kill is a hit-stop candidate and a trauma source. It is NOT a camera move: the kill-cam
+    // push-zoom used to fire on every small kill the player scored, which is a forced re-framing
+    // during flight. camera.js still owns killCam() and renderer.js still wires `camera:kill` for
+    // deliberate cinematic callers; combat simply stopped emitting it.
     bus.on('entity:killed', (p) => {
       if (!p) return;
       const playerInvolved = (p.killerId === state.playerId) || (p.id === state.playerId);
       const ctrl = this.state.render && this.state.render.cameraCtrl;
       const isCapital = p.capital || /capital|flagship|cruiser|gunship/i.test(String(p.victimClass || p.type || '')) || (p.radius || 0) >= 55;
       if (!playerInvolved) {
-        // Distant NPC kill: tiny punch only, never a hit-stop.
-        this._trigger(0, FOV_PUNCH_KILL * 0.3, 0, null);
+        // Distant NPC kill: nothing from this layer. vfx/audio still carry the death.
         return;
       }
       if (isCapital) {
@@ -719,33 +748,29 @@ export const feel = {
           trauma = d2 <= 400 * 400 ? 0.5 : Math.min(0.5, 0.5 * ((400 * 400) / d2));
         }
         if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(trauma);
-        this._trigger(HS_CAPITAL_KILL, FOV_PUNCH_KILL, 0, null);
+        this._trigger(HS_CAPITAL_KILL, 0, 0, null);
         return;
       }
-      // Small kill: short hit-stop + camera kiss.
-      this._trigger(HS_KILL, FOV_PUNCH_KILL, 0, null);
-      this.bus.emit('camera:kill', {});
+      this._trigger(HS_KILL, 0, 0, null);
     });
 
-    // Player death is the single biggest beat in the game — long dip, big FOV punch, red wash.
+    // Player death is the single biggest beat in the game — a brief dip and a red wash. It reads as
+    // a hard stop, not as a cinematic that holds the ship hostage while enemies keep shooting.
     bus.on('player:death', () => {
-      this._trigger(HS_DEATH, FOV_PUNCH_DEATH, VIG_DEATH, 'death');
+      this._trigger(HS_DEATH, 0, VIG_DEATH, 'death');
     });
 
-    // Weapon recoil on the player's own shots. Firing currently produces VFX + audio but ZERO camera
-    // response, so every shot feels like a laser pointer. We add a small weapon-class-scaled fov kick
-    // (via the shared punch mechanism) + a tiny camera shake via the controller's addTrauma. No
-    // hit-stop/vignette — those belong to impacts, not muzzle. Gated to the player's shots only so an
-    // NPC furball doesn't jitter your view.
+    // Weapon recoil on the player's own shots: a tiny weapon-class-scaled camera shake, and nothing
+    // else. The fov kick this handler used to add is retired — auto fire pulsed the projection
+    // several times a second, which is the "camera zoom pulses during combat" failure by volume
+    // rather than by amplitude. Recoil trauma is unchanged and stays subject to the shake slider.
+    // Gated to the player's shots only so an NPC furball doesn't jitter your view.
     bus.on('combat:fire', (p) => {
       if (!p || p.ownerId !== state.playerId) return;
       if (this.state.mode !== 'flight' || !this._modalClear()) return;
       const mr = this.state.settings && this.state.settings.video && this.state.settings.video.motionReduce;
       if (mr) return;
       const w = recoilWeight(p.weaponId);
-      // fov punch scaled by weapon weight, clamped to [min, max]
-      const fov = RECOIL_FOV_MIN + (RECOIL_FOV_MAX - RECOIL_FOV_MIN) * (w / 0.2);
-      this._fovPunch = addFovPunch(this._fovPunch, fov);
       // small camera shake via the controller (trauma is squared internally → 0.04 reads as a nudge)
       const ctrl = this.state.render && this.state.render.cameraCtrl;
       if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(w * 0.4);
@@ -891,40 +916,69 @@ export const feel = {
     if (this.state.mode !== 'flight') return;
     if (!this._modalClear()) return;
     const mr = this.state.settings && this.state.settings.video && this.state.settings.video.motionReduce;
+
+    // Vignette FIRST, on its own preference. A screen flash is a photosensitivity concern, not a
+    // vestibular one, so it is owned by settings.accessibility.flashReduce and is neither implied
+    // by nor suppressed by motionReduce. This is also why it sits above the hit-stop gate: a
+    // request refused by the rare-event cadence still lands its local, non-camera presentation.
+    if (vigPeak > 0 && !this._flashReduced()) {
+      const vigEl = this._ensureVignette();
+      if (vigEl) {
+        vigEl.className = 'sf-feel-vig' + (vigCls ? (' sf-feel-vig--' + vigCls) : '');
+        vigEl.style.display = 'block';
+        this._vig = Math.max(this._vig, vigPeak);
+      }
+    }
+
     // Motion-reduce keeps the information (it's still a big hit) but drops the vestibular effects.
     if (mr) return;
 
-    // Hit-stop: take the longer of the current remaining dip and the new one (don't truncate a
-    // death punch with a late small hit). Floor the timeScale for the dip duration.
-    if (hsDur > this._hsTimer) {
-      this._hsTimer = hsDur;
+    // Hit-stop: clamped to the campaign ceiling, then admitted only if the rare-event gate lets it
+    // through. Still takes the longer of the current remaining dip and the new one, so a late small
+    // hit can never truncate a dip already running.
+    const dur = this._clampHitStop(hsDur);
+    if (dur > this._hsTimer && this._admitHitStop()) {
+      this._hsLastAdmitT = this._renderClock;
+      this._hsTimer = dur;
       this._hsFreezeTimer = 0;
-      // Death gets a cinematic RAMP-IN (timeScale eases 1 -> floor over ~0.25s) instead of the
-      // snappy snap-to-floor normal hits use. Reads as slow-motion rather than a stutter. Only set
-      // when this is the death beat (vigCls === 'death').
-      this._hsRampIn = (vigCls === 'death') ? HS_RAMP_TIME : 0;
+      // Death gets a cinematic RAMP-IN (timeScale eases 1 -> floor) instead of the snappy
+      // snap-to-floor normal hits use. The window is a FRACTION of the admitted duration, not a
+      // fixed 0.25 s: at the 60 ms ceiling a fixed ramp would outlive the dip and the floor would
+      // never actually be reached. Only set when this is the death beat (vigCls === 'death').
+      this._hsRampTotal = (vigCls === 'death') ? dur * HS_RAMP_FRACTION : 0;
+      this._hsRampIn = this._hsRampTotal;
       this._hsRequest.scale = this._hsRampIn > 0 ? 1 : HS_DEPTH;
       this.timeEffects.set('feel:hit-stop', this._hsRequest);
     }
-    // FOV punch: stack onto the envelope (peak preserved; applied FOV rises in frame()).
+    // FOV punch: stack onto the envelope (peak preserved; applied FOV rises in frame()). Combat
+    // passes 0 here; the live callers are warp, mining, and massline release.
     this._fovPunch = addFovPunch(this._fovPunch, fovAdd);
-
-    // Vignette: swap gradient class and raise opacity toward the peak.
-    const vigEl = this._ensureVignette();
-    if (vigEl && vigPeak > 0) {
-      vigEl.className = 'sf-feel-vig' + (vigCls ? (' sf-feel-vig--' + vigCls) : '');
-      vigEl.style.display = 'block';
-      this._vig = Math.max(this._vig, vigPeak);
-    }
   },
 
-  // Kill-cam "kiss": camera push-zoom only. The actual hit-stop is now a short 60 ms dip in the
-  // entity:killed handler; this helper exists for callers that want to trigger the kiss explicitly.
-  _triggerKillCam() {
-    if (this.state.mode !== 'flight') return;
-    if (!this._modalClear()) return;
-    if (this.state.settings && this.state.settings.video && this.state.settings.video.motionReduce) return;
-    this.bus.emit('camera:kill', {});
+  /** The campaign ceiling on any combat/death dip. Non-finite and negative collapse to zero. */
+  _clampHitStop(hsDur) {
+    const d = Number.isFinite(hsDur) ? Math.max(0, hsDur) : 0;
+    return d > HS_COMBAT_MAX ? HS_COMBAT_MAX : d;
+  },
+
+  /**
+   * The rare-event gate. Hit-stop is admitted at most once per HS_COOLDOWN_S of unscaled render
+   * time, and never while the player is under their own thrust burst — a world-freeze landing in
+   * the middle of a boost or a dash is exactly the "my ship suddenly moves differently" report I-2
+   * exists to prevent. Boost has a live entity flag; dash only has an event, so it uses the latch.
+   */
+  _admitHitStop() {
+    if (this._dashLatch > 0) return false;
+    const ents = this.state.entities;
+    const player = ents && this.state.playerId != null ? ents.get(this.state.playerId) : null;
+    if (player && player.flags && player.flags.boosting) return false;
+    return (this._renderClock - this._hsLastAdmitT) >= HS_COOLDOWN_S;
+  },
+
+  /** Transient screen-flash preference (photosensitivity), independent of motionReduce. */
+  _flashReduced() {
+    const settings = this.state.settings;
+    return !!(settings && settings.accessibility && settings.accessibility.flashReduce);
   },
 
   // True when no modal screen is open (screenManager maintains state.ui.screenStack).
@@ -935,16 +989,37 @@ export const feel = {
     return !ui.docked && (!stack || stack.length === 0);
   },
 
+  // Release the active dip only. Deliberately does NOT touch the cadence stamp: ordinary expiry
+  // must not re-open the two-second window it just consumed.
   _resetHitStop() {
     this._hsTimer = 0;
     this._hsRampIn = 0;
+    this._hsRampTotal = 0;
     this._hsFreezeTimer = 0;
     this.timeEffects.clear('feel:hit-stop');
+  },
+
+  // Lifecycle boundary (pause, new game, save restore/load): drop the dip AND every transient this
+  // layer carries across it. The render clock restarts so a fresh run is not gated by the cadence
+  // of the run before it, and the dash latch cannot survive into a ship that never dashed.
+  _resetFeelLifecycle() {
+    this._resetHitStop();
+    this._renderClock = 0;
+    this._hsLastAdmitT = -Infinity;
+    this._dashLatch = 0;
   },
 
   frame(frameDt, state) {
     // We keep using the ctx-cached state reference; the registry passes the live state too.
     void state;
+
+    // ---- unscaled render clock ----
+    // Advanced unconditionally, BEFORE the hit-stop branch. If this only ticked while a dip was
+    // running, the two-second cadence would stop counting down at exactly the moment it needs to,
+    // and the second hit-stop of a fight would never be admitted.
+    const step = Number.isFinite(frameDt) && frameDt > 0 ? frameDt : 0;
+    this._renderClock += step;
+    if (this._dashLatch > 0) this._dashLatch = Math.max(0, this._dashLatch - step);
 
     // ---- hit-stop timer updates only its time-effects request ----
     if (this._hsTimer > 0) {
@@ -956,11 +1031,11 @@ export const feel = {
         if (this._hsFreezeTimer > 0) {
           // Kill-cam hard freeze: the world stops completely.
           this._hsRequest.scale = 0;
-        } else if (this._hsRampIn > 0) {
+        } else if (this._hsRampIn > 0 && this._hsRampTotal > 0) {
           // Cinematic death ease-in: ramp timeScale 1 -> HS_DEPTH over the ramp window. The ramp
           // progresses monotonically from 0 -> 1. Once complete, the floor holds until expiry.
           this._hsRampIn = Math.max(0, this._hsRampIn - frameDt);
-          const progress = 1 - (this._hsRampIn / HS_RAMP_TIME);
+          const progress = 1 - (this._hsRampIn / this._hsRampTotal);
           const eased = progress * progress;
           this._hsRequest.scale = 1 - (1 - HS_DEPTH) * eased;
         } else {

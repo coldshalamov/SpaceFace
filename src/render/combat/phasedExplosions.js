@@ -20,8 +20,28 @@ const EXPLOSION_CAUSES = new Set([
   'ship_collision',
 ]);
 
+export const EXPLOSION_STYLE_IDS = Object.freeze([
+  'ordinary',
+  'terrain_smash',
+  'chain',
+  'well_collapse',
+  'burn_up',
+]);
+
+const EXPLOSION_STYLES = new Set(EXPLOSION_STYLE_IDS);
+
 function normalizeExplosionCause(value) {
   return EXPLOSION_CAUSES.has(value) ? value : 'generic';
+}
+
+export function normalizeExplosionStyle(value) {
+  return EXPLOSION_STYLES.has(value) ? value : 'ordinary';
+}
+
+/** Chain depth only scales radiance/density. Missing or junk values carry no extra weight. */
+export function normalizeExplosionChainDepth(value) {
+  const depth = Math.trunc(Number(value));
+  return Number.isFinite(depth) && depth > 0 ? Math.min(4, depth) : 0;
 }
 
 // Explosion layout needs authored irregularity, but Math.random() made the same destruction receipt
@@ -41,6 +61,8 @@ const PHASE_SALTS = Object.freeze({
   debris: 0xe8075b91,
   pressure: 0x253ab58d,
   residue: 0x6d2b79f5,
+  'well-implode': 0x91c40b63,
+  'burn-shroud': 0xb8a32e47,
 });
 
 function mix32(value) {
@@ -134,6 +156,40 @@ export const EXPLOSION_CAUSE_SCHEDULES = Object.freeze({
   ]),
 });
 
+// AC-09 style cadence is independent of the legacy weapon/contact cause schedule. Ordinary
+// keeps the accepted class/cause recipe; the other four identities get their own motion beats.
+// Size still stacks through the same small/ordinary/capital time scale.
+export const EXPLOSION_STYLE_SCHEDULES = Object.freeze({
+  ordinary: EXPLOSION_SCHEDULES.ordinary,
+  terrain_smash: schedule(1.36, [
+    { phase: 'contact-compression', at: 0 },
+    { phase: 'terrain-spall', at: 0.045 },
+    { phase: 'internal', at: 0.16 },
+    { phase: 'rupture', at: 0.24 },
+    { phase: 'debris', at: 0.32 },
+    { phase: 'residue', at: 0.58 },
+  ]),
+  chain: schedule(0.88, [
+    { phase: 'ignition', at: 0 },
+    { phase: 'collision-shear', at: 0.05 },
+    { phase: 'debris', at: 0.14 },
+    { phase: 'residue', at: 0.32 },
+  ]),
+  well_collapse: schedule(1.28, [
+    { phase: 'well-implode', at: 0 },
+    { phase: 'internal', at: 0.14 },
+    { phase: 'rupture', at: 0.30 },
+    { phase: 'debris', at: 0.38 },
+    { phase: 'residue', at: 0.56 },
+  ]),
+  burn_up: schedule(1.72, [
+    { phase: 'burn-shroud', at: 0 },
+    { phase: 'internal', at: 0.22 },
+    { phase: 'debris', at: 0.48 },
+    { phase: 'residue', at: 0.82 },
+  ]),
+});
+
 const CAUSE_CLASS_TIME_SCALE = Object.freeze({ small: 0.78, ordinary: 1, capital: 1.65 });
 
 function scaledCauseSchedule(base, classId) {
@@ -161,8 +217,21 @@ const EXPLOSION_CAUSE_CLASS_SCHEDULES = Object.freeze(Object.fromEntries(
   })]),
 ));
 
-export function explosionScheduleFor(classId, cause = 'generic') {
+const EXPLOSION_STYLE_CLASS_SCHEDULES = Object.freeze(Object.fromEntries(
+  EXPLOSION_STYLE_IDS.filter((styleId) => styleId !== 'ordinary').map((styleId) => {
+    const base = EXPLOSION_STYLE_SCHEDULES[styleId];
+    return [styleId, Object.freeze({
+      small: scaledCauseSchedule(base, 'small'),
+      ordinary: base,
+      capital: scaledCauseSchedule(base, 'capital'),
+    })];
+  }),
+));
+
+export function explosionScheduleFor(classId, cause = 'generic', style = 'ordinary') {
   const safeClass = EXPLOSION_SCHEDULES[classId] ? classId : 'small';
+  const safeStyle = normalizeExplosionStyle(style);
+  if (safeStyle !== 'ordinary') return EXPLOSION_STYLE_CLASS_SCHEDULES[safeStyle][safeClass];
   const safeCause = normalizeExplosionCause(cause);
   return EXPLOSION_CAUSE_CLASS_SCHEDULES[safeCause][safeClass];
 }
@@ -187,6 +256,8 @@ export class PhasedExplosionLifecycle {
       dirX: 1,
       dirZ: 0,
       cause: 'generic',
+      styleId: 'ordinary',
+      chainDepth: 0,
       hasNormal: false,
       normalX: 0,
       normalZ: 0,
@@ -245,6 +316,8 @@ export class PhasedExplosionLifecycle {
     entry.dirX = dx;
     entry.dirZ = dz;
     entry.cause = normalizeExplosionCause(input.cause);
+    entry.styleId = normalizeExplosionStyle(input.styleId ?? input.style);
+    entry.chainDepth = entry.styleId === 'chain' ? normalizeExplosionChainDepth(input.chainDepth) : 0;
     const normal = input.normal || null;
     let nx = finite(normal && normal.x, 0);
     let nz = finite(normal && normal.z, 0);
@@ -272,7 +345,7 @@ export class PhasedExplosionLifecycle {
       const entry = this.entries[entryIndex];
       if (!entry.active) continue;
       entry.age += step;
-      const scheduleDef = explosionScheduleFor(entry.classId, entry.cause);
+      const scheduleDef = explosionScheduleFor(entry.classId, entry.cause, entry.styleId);
       while (entry.phaseIndex < scheduleDef.events.length) {
         const event = scheduleDef.events[entry.phaseIndex];
         if (event.at > entry.age) break;
@@ -299,6 +372,8 @@ export class PhasedExplosionLifecycle {
     entry.dirX = 1;
     entry.dirZ = 0;
     entry.cause = 'generic';
+    entry.styleId = 'ordinary';
+    entry.chainDepth = 0;
     entry.hasNormal = false;
     entry.normalX = 0;
     entry.normalZ = 0;

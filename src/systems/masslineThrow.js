@@ -5,7 +5,7 @@
 // of angular momentum through the Rapier constraint); this system supplies ONLY the release
 // precision the player's hardware can't: a solution read each tick (mirrored for the HUD/VFX
 // indicator) and an auto-cut on the solution frame while the throw is explicitly armed. Manual
-// self-sling cuts preserve their real exit direction and receive only the load-scaled flourish.
+// self-sling cuts keep the real body/constraint-derived exit velocity and add no release impulse.
 //
 // Runs AFTER tetherGameplay/masslineTelemetry/masslineImpacts in UPDATE_ORDER so it reads settled
 // tether state. NOT in the sf-sim curated harness; every behavioral path is additionally gated on
@@ -20,8 +20,7 @@ import { queryNearbyEntities } from '../core/spatialQuery.js';
 // --- Dials (design doc §12) -----------------------------------------------------------------
 const SNAP_WINDOW_MS = 90;          // manual-release forgiveness half-window
 const CURSOR_AIM_GRACE = 48;        // wu of surface miss that still soft-snaps the throw aim
-const SLING_RELEASE_SPEED_FRACTION = 0.15; // small game-feel flourish on top of a real taut swing
-const SLING_MIN_EXIT_SPEED = 25;    // "genuinely moving" bar (mirrors SNAP_CATCH_MIN_SPEED)
+const SLING_MIN_EXIT_SPEED = 25;    // "genuinely moving" bar for self-sling telemetry
 const THROW_MIN_PAYLOAD_SPEED = 25; // don't auto-cut a parked payload — no throw below this
 const AIM_QUERY_RADIUS = 220;       // cursor-aim entity search radius around aimWorld
 
@@ -329,21 +328,13 @@ export const masslineThrow = {
   _selfSolution(state, player, omega) {
     const aim = this._resolveSelfAim(state);
     if (!aim) return null;
-    const baseSpeed = Math.hypot(finite(player.vel && player.vel.x), finite(player.vel && player.vel.z));
-    const anticipatedBonusDv = selfSlingBonusDv(
-      baseSpeed,
-      this._swing && this._swing.load,
-      this._swing && this._swing.taut,
-    );
-    const predictedSpeed = baseSpeed + anticipatedBonusDv;
-    const speedScale = baseSpeed > 1 ? predictedSpeed / baseSpeed : 1;
     const solution = sampleThrowSolution(
       this._selfPrediction,
       {
         pos: player.pos,
         vel: {
-          x: finite(player.vel && player.vel.x) * speedScale,
-          z: finite(player.vel && player.vel.z) * speedScale,
+          x: finite(player.vel && player.vel.x),
+          z: finite(player.vel && player.vel.z),
         },
       },
       aim.target,
@@ -372,7 +363,7 @@ export const masslineThrow = {
       sampled: solution.sampled,
       targetPos: { x: aim.target.pos.x, z: aim.target.pos.z },
       predicted: solution.predicted ? { ...solution.predicted } : null,
-      anticipatedBonusDv,
+      anticipatedBonusDv: 0,
     };
   },
 
@@ -516,8 +507,9 @@ export const masslineThrow = {
     this.bus.emit('massline:releaseValidated', receipt);
   },
 
-  // Manual cut preserves the player's real exit direction. The only addition is a load-scaled
-  // percentage of actual exit speed, so a slack or stationary release adds exactly nothing.
+  // Manual cut preserves the player's real exit direction and speed. AC-07: the cut itself
+  // applies no impulse, writes no velocity, and does not claim physics-earned bonus energy.
+  // Rapier / the tether constraint already produced the exit the player keeps.
   _onManualCut() {
     const state = this.state;
     if (!massline2Flag('throw') || !state || state.mode !== 'flight') return;
@@ -525,70 +517,51 @@ export const masslineThrow = {
     if (!swing) return;
     const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
     if (!player || !player.alive || !player.vel) return;
-    const speed = Math.hypot(finite(player.vel.x), finite(player.vel.z));
+    const preReleaseVelocity = { x: finite(player.vel.x), z: finite(player.vel.z) };
+    const speed = Math.hypot(preReleaseVelocity.x, preReleaseVelocity.z);
     if (speed < SLING_MIN_EXIT_SPEED) return;
+    if (!swing.taut) return;
 
-    const physics = this.helpers && this.helpers.combatPhysics;
-    if (!physics || typeof physics.applyImpulse !== 'function' || !swing.taut) return;
-    const exitAngle = Math.atan2(player.vel.z, player.vel.x);
+    const exitAngle = Math.atan2(preReleaseVelocity.z, preReleaseVelocity.x);
     const runtime = ensureThrowSubtree(state);
     const self = runtime.selfSolution;
-    const proposedBonusDv = selfSlingBonusDv(speed, swing.load, swing.taut);
-    if (!(proposedBonusDv > 0)) return;
-    const impulse = {
-      x: Math.cos(exitAngle) * proposedBonusDv * swing.playerMass,
-      z: Math.sin(exitAngle) * proposedBonusDv * swing.playerMass,
-    };
-    const accepted = !!physics.applyImpulse({
-      entityId: player.id,
-      impulse,
-      point: null,
-      reason: 'massline_sling_bonus',
+    const postReleaseVelocity = { x: finite(player.vel.x), z: finite(player.vel.z) };
+    const impulses = [];
+    const releaseId = `massline:self-sling:${state.tick}:${player.id}`;
+    const prediction = predictionReceipt(self || {});
+    const receipt = {
+      releaseId,
+      source: 'massline',
+      physicsEarned: true,
+      targetId: self ? self.targetId : null,
+      anchorId: swing.anchorId,
+      corrected: false,
+      bonusDv: 0,
+      releaseAddedDv: 0,
+      load: swing.load,
+      taut: true,
+      exitAngle,
+      exitSpeed: speed,
+      preReleaseVelocity,
+      postReleaseVelocity,
       tick: state.tick,
-    });
-    if (accepted) {
-      const bonusDv = proposedBonusDv;
-      const impulses = [{
-        entityId: player.id,
-        reason: 'massline_sling_bonus',
-        accepted: true,
-        impulse,
-        deltaSpeed: bonusDv,
-        load: swing.load,
-        tick: state.tick,
-      }];
-      const releaseId = `massline:self-sling:${state.tick}:${player.id}`;
-      const prediction = predictionReceipt(self || {});
-      const receipt = {
-        releaseId,
-        source: 'massline',
-        physicsEarned: bonusDv > 0,
-        targetId: self ? self.targetId : null,
-        anchorId: swing.anchorId,
-        corrected: false,
-        bonusDv,
-        load: swing.load,
-        exitAngle,
-        exitSpeed: speed + bonusDv,
-        tick: state.tick,
-        prediction,
-        impulses,
-        releasePosition: { x: finite(player.pos && player.pos.x), z: finite(player.pos && player.pos.z) },
-      };
-      runtime.lastSelfSling = receipt;
-      this._pendingReleaseValidation = {
-        releaseId,
-        kind: 'self-sling',
-        entityId: player.id,
-        source: 'massline',
-        releaseTick: state.tick,
-        prediction,
-        impulses,
-        releasePosition: { ...receipt.releasePosition },
-      };
-      this.bus.emit('massline:selfSling', receipt);
-      this.bus.emit('audio:cue', { id: 'massline.sling', position: { x: player.pos.x, z: player.pos.z } });
-    }
+      prediction,
+      impulses,
+      releasePosition: { x: finite(player.pos && player.pos.x), z: finite(player.pos && player.pos.z) },
+    };
+    runtime.lastSelfSling = receipt;
+    this._pendingReleaseValidation = {
+      releaseId,
+      kind: 'self-sling',
+      entityId: player.id,
+      source: 'massline',
+      releaseTick: state.tick,
+      prediction,
+      impulses,
+      releasePosition: { ...receipt.releasePosition },
+    };
+    this.bus.emit('massline:selfSling', receipt);
+    this.bus.emit('audio:cue', { id: 'massline.sling', position: { x: player.pos.x, z: player.pos.z } });
   },
 };
 
@@ -658,11 +631,10 @@ function predictionReceipt(solution) {
   };
 }
 
-export function selfSlingBonusDv(exitSpeed, lineLoad, taut) {
-  const speed = Math.abs(finite(exitSpeed));
-  const load = taut ? clamp01(finite(lineLoad)) : 0;
-  if (speed < SLING_MIN_EXIT_SPEED || !(load > 0)) return 0;
-  return speed * SLING_RELEASE_SPEED_FRACTION * load;
+// AC-07 retired the load-scaled release flourish. The export stays so callers can still
+// ask "how much extra Δv does a release add?" and receive the honest answer: none.
+export function selfSlingBonusDv(_exitSpeed, _lineLoad, _taut) {
+  return 0;
 }
 
 function releaseTrajectoryReceipt(pending, actualVelocity) {

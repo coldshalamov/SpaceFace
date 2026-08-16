@@ -676,6 +676,73 @@ function convoyFire(d, live, state, isConvoy) {
   d.say(live, isConvoy ? 'news' : 'info', live.shape.bark, live.vars, { primary: true });
 }
 
+function adoptCeresLivingChain(d, live, state, context) {
+  const hauler = context?.hauler;
+  const patrol = context?.patrol;
+  const station = context?.station;
+  const payload = context?.payload;
+  const manifest = hauler?.data?.cargoManifest;
+  const commodityId = manifest?.lines?.[0]?.commodityId;
+  const lineQty = Array.isArray(manifest?.lines)
+    ? manifest.lines.reduce((sum, line) => sum + Math.max(0, Math.floor(Number(line?.qty) || 0)), 0)
+    : 0;
+  if (!hauler || !patrol || !station || !payload || !manifest
+    || manifest.manifestId !== payload.manifestId
+    || manifest.totalQty !== payload.qty
+    || !Array.isArray(manifest.lines) || manifest.lines.length === 0
+    || typeof commodityId !== 'string' || !commodityId
+    || manifest.lines.some((line) => line?.commodityId !== commodityId)
+    || lineQty !== payload.qty) return false;
+
+  const targetData = hauler.data || (hauler.data = {});
+  const targetAi = targetData.ai || (targetData.ai = {});
+  targetAi.encounterId = live.id;
+  targetAi.encounterKind = live.shapeId;
+  targetAi.encounterRole = 'hauler';
+  targetAi.sectorId = live.sectorId;
+  targetAi.zoneId = live.zoneId;
+  targetAi.zoneName = live.zoneName;
+  targetData.bountyCr = 0;
+  targetData.loot = null;
+  targetData.freightRewardOwner = 'manifest_custody';
+  live.ids.push(hauler.id);
+  live.roles[hauler.id] = 'hauler';
+
+  const pirateIds = d.spawnShips(live, live.plan.ships);
+  if (pirateIds.length !== 1) return false;
+  live.phase = 'transit';
+  live.deadlineAt = d.now() + 120;
+  live.data.end = { x: station.pos.x, z: station.pos.z };
+  live.data.destId = 'station_ceres';
+  live.data.destName = 'Ceres Refinery';
+  live.data.cargoId = commodityId;
+  live.data.perHauler = payload.qty;
+  live.data.initialHaulerCount = 1;
+  live.data.initialCargoUnits = payload.qty;
+  live.data.freightManifest = {
+    manifestId: manifest.manifestId,
+    freighterKey: manifest.freighterKey,
+    role: manifest.role,
+    lines: manifest.lines.map((line) => ({ ...line })),
+    totalQty: manifest.totalQty,
+  };
+  live.data.patrolEntityId = patrol.id;
+  live.data.patrolWorldRecordId = patrol.data?.worldRecordId || null;
+  live.data.robbed = false;
+  live.data.lossKillerId = null;
+  live.data.guardKills = 0;
+  live.data.noticed = true;
+  live.vars.cargo = 'refinery ore';
+  live.vars.dest = live.data.destName;
+  live.vars.faction = 'Crimson Reach';
+  if (!initializeConvoyPredation(d, live, state)) return false;
+  d.say(live, 'alert', 'ORE ALERT: raider cutting across the refinery handoff.', null, {
+    primary: true,
+    literal: true,
+  });
+  return true;
+}
+
 function attachConvoyCargoManifests(d, live, commodityId, perHauler) {
   const haulers = d.entsOf(live, 'hauler').slice().sort(compareEntityIds);
   for (let i = 0; i < haulers.length; i++) {
@@ -1866,7 +1933,22 @@ function restoreFreightCargoCustody(d, state, envelope) {
   });
 
   if (carrier) {
+    if (savedLive.data.ceresLivingChain === true && typeof d.preserveWorldActor === 'function') {
+      d.preserveWorldActor(live, carrier);
+    }
     const data = carrier.data || (carrier.data = {});
+    const carrierAi = data.ai || (data.ai = {});
+    if (savedLive.data.ceresLivingChain === true) {
+      carrierAi.encounterId = live.id;
+      carrierAi.encounterKind = live.shapeId;
+      carrierAi.encounterRole = 'hauler';
+      carrierAi.sectorId = live.sectorId;
+      carrierAi.zoneId = live.zoneId;
+      carrierAi.zoneName = live.zoneName;
+      data.bountyCr = 0;
+      data.loot = null;
+      data.freightRewardOwner = 'manifest_custody';
+    }
     data.predationEncounterId = live.id;
     data.predationRole = 'manifest_carrier';
     data.predationIdentityKey = record.carrierIdentityKey;
@@ -1961,6 +2043,9 @@ function restoreFreightCargoCustody(d, state, envelope) {
 }
 
 function convoyTick(d, live, state, now, isConvoy) {
+  if (live.data.ceresLivingChain === true) {
+    return tickCeresLivingChain(d, live, state, now);
+  }
   const p = d.player();
   const haulers = d.entsOf(live, 'hauler');
   tickConvoyPredation(d, live, state, now);
@@ -2055,8 +2140,47 @@ function convoyTick(d, live, state, now, isConvoy) {
   });
 }
 
+function tickCeresLivingChain(d, live, state, now) {
+  tickConvoyPredation(d, live, state, now);
+  tickFreightCargoCustody(d, live, state, now);
+  const custody = live.data.freightCargoCustody;
+  if (custody?.terminal) {
+    d.despawnAll(live, 8, 'raider');
+    return d.resolve(live, custody.outcome || 'intervened', {
+      vars: live.vars,
+      channel: 'news',
+      speak: true,
+    });
+  }
+
+  const hauler = selectedFreightCarrier(live, state, true);
+  if (!hauler || hauler.alive === false) {
+    if (custody && !custody.terminal) return;
+    d.despawnAll(live, 8, 'raider');
+    return d.resolve(live, 'lost', { vars: live.vars, channel: 'news', speak: true });
+  }
+
+  // Traffic remains the movement and refinery-settlement owner. Its real sink clears the manifest;
+  // that physical arrival, rather than director steering or a timer, closes the chain.
+  if (!manifestStillInCarrierCustody(hauler) && !custody) {
+    clearConvoyPredation(d, live, 'carrier_arrived');
+    d.despawnAll(live, 8, 'raider');
+    return d.resolve(live, live.data.guardKills > 0 ? 'guarded' : 'arrived', {
+      vars: live.vars,
+      channel: 'news',
+      speak: true,
+    });
+  }
+  if (now >= live.deadlineAt) {
+    clearConvoyPredation(d, live, 'objective_timeout');
+    d.despawnAll(live, 8, 'raider');
+    return d.resolve(live, 'escaped', { vars: live.vars, speak: false });
+  }
+}
+
 const convoy = {
   restoreCustody(d, state, envelope) { return restoreFreightCargoCustody(d, state, envelope); },
+  adoptLivingChain(d, live, state, context) { return adoptCeresLivingChain(d, live, state, context); },
   fire(d, live, state) { convoyFire(d, live, state, true); },
   tick(d, live, state, now) { convoyTick(d, live, state, now, true); },
   event(d, live, state, name, p) {

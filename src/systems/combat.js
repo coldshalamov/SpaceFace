@@ -10,7 +10,13 @@ import { removeCargo } from './cargo.js';
 import { hash32 } from '../core/rng.js';
 import { getCombatKernel } from '../combat/kernel.js';
 import { legacyHitToDamagePacket, scalarHitToDamagePacket } from '../combat/damage.js';
+import {
+  applyStyleMultiplier,
+  classifyKillCause,
+  styleMultiplierOf,
+} from '../combat/killCause.js';
 import { createVictimRewardRng, missionOwnsReward } from '../combat/rewardEligibility.js';
+import { isTumbling } from '../combat/tumbleStatus.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { combatFlag } from '../data/featureFlags.js';
 import { weakPointForEntity, isHitInWeakArc } from '../data/weakPoints.js';
@@ -351,9 +357,10 @@ export function buildKillPresentationReceipt(state, target, killerId, lethal = {
     collision && collision.targetVelocity || target && target.vel,
   );
   const impact = freezeKillImpact(collision && collision.impact);
+  const legacyCause = KILL_PRESENTATION_CAUSES.has(cause) ? cause : 'generic';
   return Object.freeze({
     version: 1,
-    cause: KILL_PRESENTATION_CAUSES.has(cause) ? cause : 'generic',
+    cause: legacyCause,
     position,
     direction,
     normal,
@@ -361,7 +368,34 @@ export function buildKillPresentationReceipt(state, target, killerId, lethal = {
     targetVelocity,
     playerCaused: !!state && killerId === state.playerId,
     impact,
+    // AC-08: the classified style identity rides ALONGSIDE the legacy low-level cause above, which
+    // existing VFX still key off. One receipt, two fields, neither repurposed.
+    style: classifyKillCause({
+      victimId: target && target.id != null ? target.id : null,
+      killerId: killerId == null ? null : killerId,
+      cause: legacyCause,
+      tumbleState: collision
+        ? collision.tumble
+        // Non-contact deaths carry live tumble truth so the "tumbling ship shot dead in open space"
+        // case is decided by the classifier on real state rather than by an absent input.
+        : { victim: isTumbling(state, target), source: false },
+      impactVelocity: impact ? impact.deltaV : 0,
+      zone: killZoneOf(lethal, packet),
+      chainDepth: collision ? collision.chainDepth : 0,
+    }),
   });
+}
+
+/**
+ * Execution-zone identity for this death. AC-13 owns the atmosphere/gravity-well producer and will
+ * stamp it onto the lethal event or its damage packet source; until then this reads null and the
+ * classifier resolves burn-up and well-collapse to ordinary rather than guessing from geometry.
+ */
+function killZoneOf(lethal, packet) {
+  if (lethal && lethal.zone != null) return lethal.zone;
+  const source = packet && packet.source;
+  if (source && source.zone != null) return source.zone;
+  return null;
 }
 
 function collisionPresentationProvenance(lethal, packet) {
@@ -589,9 +623,16 @@ export const combat = {
     // amplitude of the destruction-VFX shake. The neighbouring emitters in this file are all
     // player-scoped by construction (player hit, player death, respawn) and correctly send none.
     bus.emit('camera:shake', { amount: 0.5, position: { x: t.pos.x, z: t.pos.z } });
+    // AC-08 pays style through credits and RP only. The multiplier resolves at the payout edge, so
+    // the authored `bountyCr` published above stays the victim's real world value for the ledger,
+    // telemetry, and custody readers that account it rather than pay it.
+    const styleMultiplier = styleMultiplierOf(presentation.style);
     const bounty = Math.max(0, Math.round(d.bountyCr || 0));
     if (bounty > 0 && authoredRewardEligible) {
-      bus.emit('economy:grantCredits', { amount: bounty, reason: 'bounty' });
+      bus.emit('economy:grantCredits', {
+        amount: applyStyleMultiplier(bounty, styleMultiplier),
+        reason: 'bounty',
+      });
     }
     if (d.loot && !missionOwns) {
       // Current run seed + durable victim identity makes authored rewards stable across entity-id
@@ -602,7 +643,9 @@ export const combat = {
         'combat_authored_loot_v1',
       );
       const { credits, items } = this.rollLoot(d.loot, rewardRng);
-      const creditedLoot = authoredRewardEligible ? credits : 0;
+      // Scale the credit value AFTER the deterministic roll. `items` are materials and are never
+      // touched, so no draw shifts and the burst stays byte-identical whatever the kill style was.
+      const creditedLoot = authoredRewardEligible ? applyStyleMultiplier(credits, styleMultiplier) : 0;
       if (creditedLoot > 0) bus.emit('economy:grantCredits', { amount: creditedLoot, reason: 'loot' });
       // NPC-on-NPC kills still publish the deterministic world receipt used by observers, but
       // authored credits and physical pickups remain player-earned. Commodity cargo continues to

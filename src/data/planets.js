@@ -7,10 +7,10 @@
 // sector-local anchor and the Atlas derives the global position (D2).
 //
 // Attraction profile is the documented ARTISTIC-LIBERTIES profile (STEP 12: softened, bounded,
-// annular — coherence not realism). It is NOT gravity: zero pull inside the atmosphere (escape
-// windows are real; the reentry consequence is heat, never a gravity trap), peak in the sling
-// region, zero beyond the influence edge. It rides the PQ-012 field kernel as a WELL with
-// innerRadius/innerSoft (see fieldKernel.js) — no bespoke planet gravity path.
+// annular — coherence not realism). The static body remains force-free, while the field reaches
+// through the atmosphere strongly enough to curve an uncontrolled hull inward. Controlled outward
+// thrust plus the authored recovery burn still wins. It rides the PQ-012 field kernel as a WELL
+// with innerRadius/innerSoft (see fieldKernel.js) — no bespoke planet gravity path.
 //
 // Determinism: pure frozen data. No imports with side effects, no RNG, no Date.
 
@@ -47,8 +47,8 @@ export const PLANET_SITE = Object.freeze({
 
   // ---- attraction (annular WELL registered into the PQ-012 kernel) ----------------------------
   field: Object.freeze({
-    innerRadius: 900,   // zero pull below this (the atmosphere is not a gravity trap)
-    innerSoft: 250,     // ramp 0->1 across [900, 1150] — peak lands at the sling inner edge
+    innerRadius: 470,   // the static exclusion body is force-free; atmosphere remains physically live
+    innerSoft: 250,     // ramp across the visible limb; full pull by the terminal descent corridor
     radius: 2600,       // falloff reaches zero here (the influence edge — bounded, never infinite)
     strength: 240,      // wu/s^2 pre-coupling; FIELD_MAX_ACCEL still caps the summed total
     falloff: 1.4,       // outer ease (same falloff family every field uses)
