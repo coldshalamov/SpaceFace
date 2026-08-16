@@ -518,6 +518,333 @@ const VFX_FIELD_FLOW_HZ = 30;
 const FIELD_FLOW_GOLDEN = 2.399963229728653; // golden angle — even, deterministic spawn distribution
 const FIELD_FLOW_MAX_FIELDS = 6;
 
+// AC-12 swarmer presentation uses bounded hard geometry. Dart history records the entity's actual
+// world path; Skitter and Ember events use opaque instanced fragments. None of these substrates is
+// camera-facing, and visual lifetime is expressed through motion/radiance rather than alpha fades.
+const DART_TRAIL_SLOTS = 12;
+const DART_TRAIL_SAMPLES = 16;
+const DART_TRAIL_SEGMENTS = DART_TRAIL_SAMPLES - 1;
+const SWARMER_EVENT_SLOTS = 4;
+const SWARMER_EVENT_PIECES = 12;
+
+function createDartTrailMaterial() {
+  return new THREE.ShaderMaterial({
+    name: 'DartActualMotionTrailMaterial',
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    blending: THREE.AdditiveBlending,
+    vertexShader: `
+      attribute float aHeat;
+      varying float vHeat;
+      varying vec3 vWorldNormal;
+      varying vec3 vWorldPosition;
+      void main() {
+        vec4 world = modelMatrix * vec4(position, 1.0);
+        vWorldPosition = world.xyz;
+        vWorldNormal = normalize(mat3(modelMatrix) * normal);
+        vHeat = aHeat;
+        gl_Position = projectionMatrix * viewMatrix * world;
+      }
+    `,
+    fragmentShader: `
+      varying float vHeat;
+      varying vec3 vWorldNormal;
+      varying vec3 vWorldPosition;
+      void main() {
+        vec3 viewDir = normalize(cameraPosition - vWorldPosition);
+        float grazing = pow(1.0 - abs(dot(normalize(vWorldNormal), viewDir)), 2.0);
+        vec3 cold = vec3(0.08, 0.38, 1.10);
+        vec3 hot = vec3(1.35, 1.70, 2.30);
+        vec3 radiance = mix(cold, hot, clamp(vHeat * 0.78 + grazing * 0.38, 0.0, 1.0));
+        radiance *= (0.16 + vHeat * vHeat * 1.9 + grazing * 0.38);
+        gl_FragColor = vec4(radiance, 0.82);
+      }
+    `,
+  });
+}
+
+function createDartTrailGeometry() {
+  const verticesPerSegment = 8;
+  const positions = new Float32Array(DART_TRAIL_SEGMENTS * verticesPerSegment * 3);
+  const normals = new Float32Array(DART_TRAIL_SEGMENTS * verticesPerSegment * 3);
+  const heat = new Float32Array(DART_TRAIL_SEGMENTS * verticesPerSegment);
+  const indices = new Uint16Array(DART_TRAIL_SEGMENTS * 12);
+  for (let segment = 0; segment < DART_TRAIL_SEGMENTS; segment++) {
+    const vertex = segment * verticesPerSegment;
+    const index = segment * 12;
+    indices[index] = vertex;
+    indices[index + 1] = vertex + 1;
+    indices[index + 2] = vertex + 2;
+    indices[index + 3] = vertex;
+    indices[index + 4] = vertex + 2;
+    indices[index + 5] = vertex + 3;
+    indices[index + 6] = vertex + 4;
+    indices[index + 7] = vertex + 5;
+    indices[index + 8] = vertex + 6;
+    indices[index + 9] = vertex + 4;
+    indices[index + 10] = vertex + 6;
+    indices[index + 11] = vertex + 7;
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3).setUsage(THREE.DynamicDrawUsage));
+  geometry.setAttribute('normal', new THREE.BufferAttribute(normals, 3).setUsage(THREE.DynamicDrawUsage));
+  geometry.setAttribute('aHeat', new THREE.BufferAttribute(heat, 1).setUsage(THREE.DynamicDrawUsage));
+  geometry.setIndex(new THREE.BufferAttribute(indices, 1));
+  geometry.setDrawRange(0, 0);
+  return geometry;
+}
+
+function createDartTrailSystem(scene) {
+  const group = new THREE.Group();
+  group.name = 'DartActualWorldMotionTrails';
+  const material = createDartTrailMaterial();
+  const slots = [];
+  for (let i = 0; i < DART_TRAIL_SLOTS; i++) {
+    const geometry = createDartTrailGeometry();
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.name = `DartActualMotionTrail_${i}`;
+    mesh.visible = false;
+    mesh.frustumCulled = false;
+    group.add(mesh);
+    slots.push({
+      entityId: null,
+      count: 0,
+      seen: false,
+      radius: 1,
+      x: new Float32Array(DART_TRAIL_SAMPLES),
+      y: new Float32Array(DART_TRAIL_SAMPLES),
+      z: new Float32Array(DART_TRAIL_SAMPLES),
+      age: new Float32Array(DART_TRAIL_SAMPLES),
+      mesh,
+    });
+  }
+  scene.add(group);
+  return { group, material, slots, local: { x: 0, z: 0 } };
+}
+
+function dartTrailSlot(system, entityId) {
+  let free = null;
+  let oldest = system.slots[0];
+  for (let i = 0; i < system.slots.length; i++) {
+    const slot = system.slots[i];
+    if (slot.entityId === entityId) return slot;
+    if (slot.entityId == null && !free) free = slot;
+    if ((slot.age[0] || 0) > (oldest.age[0] || 0)) oldest = slot;
+  }
+  const slot = free || oldest;
+  slot.entityId = entityId;
+  slot.count = 0;
+  slot.mesh.visible = false;
+  slot.mesh.geometry.setDrawRange(0, 0);
+  return slot;
+}
+
+function insertDartTrailSample(slot, x, y, z) {
+  const nextCount = Math.min(DART_TRAIL_SAMPLES, slot.count + 1);
+  if (nextCount > 1) {
+    slot.x.copyWithin(1, 0, nextCount - 1);
+    slot.y.copyWithin(1, 0, nextCount - 1);
+    slot.z.copyWithin(1, 0, nextCount - 1);
+    slot.age.copyWithin(1, 0, nextCount - 1);
+  }
+  slot.x[0] = x;
+  slot.y[0] = y;
+  slot.z[0] = z;
+  slot.age[0] = 0;
+  slot.count = nextCount;
+}
+
+function writeDartTrailSlot(slot, reducedMotion) {
+  const life = reducedMotion ? 0.20 : 0.38;
+  const geometry = slot.mesh.geometry;
+  const positions = geometry.attributes.position.array;
+  const normals = geometry.attributes.normal.array;
+  const heat = geometry.attributes.aHeat.array;
+  let written = 0;
+  for (let i = 0; i + 1 < slot.count && written < DART_TRAIL_SEGMENTS; i++) {
+    if (slot.age[i + 1] >= life) break;
+    const x0 = slot.x[i], y0 = slot.y[i], z0 = slot.z[i];
+    const x1 = slot.x[i + 1], y1 = slot.y[i + 1], z1 = slot.z[i + 1];
+    const dx = x0 - x1, dz = z0 - z1;
+    const distance = Math.hypot(dx, dz);
+    if (!(distance > 0.05)) continue;
+    const nx = -dz / distance, nz = dx / distance;
+    const h = Math.max(0, 1 - slot.age[i + 1] / life);
+    const width = slot.radius * (0.28 + h * 0.34);
+    const base = written * 24;
+    // Sheet one lies close to the flight plane.
+    positions[base] = x0 + nx * width; positions[base + 1] = y0; positions[base + 2] = z0 + nz * width;
+    positions[base + 3] = x0 - nx * width; positions[base + 4] = y0; positions[base + 5] = z0 - nz * width;
+    positions[base + 6] = x1 - nx * width; positions[base + 7] = y1; positions[base + 8] = z1 - nz * width;
+    positions[base + 9] = x1 + nx * width; positions[base + 10] = y1; positions[base + 11] = z1 + nz * width;
+    // Sheet two crosses it vertically, preserving a designed streak from oblique cameras.
+    positions[base + 12] = x0; positions[base + 13] = y0 + width; positions[base + 14] = z0;
+    positions[base + 15] = x0; positions[base + 16] = y0 - width; positions[base + 17] = z0;
+    positions[base + 18] = x1; positions[base + 19] = y1 - width; positions[base + 20] = z1;
+    positions[base + 21] = x1; positions[base + 22] = y1 + width; positions[base + 23] = z1;
+    for (let vertex = 0; vertex < 4; vertex++) {
+      const normal = base + vertex * 3;
+      normals[normal] = 0; normals[normal + 1] = 1; normals[normal + 2] = 0;
+      const crossNormal = base + 12 + vertex * 3;
+      normals[crossNormal] = nx; normals[crossNormal + 1] = 0; normals[crossNormal + 2] = nz;
+      heat[written * 8 + vertex] = h;
+      heat[written * 8 + 4 + vertex] = h;
+    }
+    written++;
+  }
+  geometry.setDrawRange(0, written * 12);
+  geometry.attributes.position.needsUpdate = written > 0;
+  geometry.attributes.normal.needsUpdate = written > 0;
+  geometry.attributes.aHeat.needsUpdate = written > 0;
+  slot.mesh.visible = written > 0;
+  return written;
+}
+
+function createSwarmerEventGeometrySystem(scene) {
+  const group = new THREE.Group();
+  group.name = 'SwarmerCausalEventGeometry';
+  const instanceCount = SWARMER_EVENT_SLOTS * SWARMER_EVENT_PIECES;
+  const dust = new THREE.InstancedMesh(
+    new THREE.TetrahedronGeometry(0.75, 0),
+    new THREE.MeshStandardMaterial({ name: 'SkitterRockDustClasts', color: '#8a7059', roughness: 0.96, metalness: 0.02 }),
+    instanceCount,
+  );
+  dust.name = 'SkitterPassiveRockDustClasts';
+  dust.frustumCulled = false;
+  dust.visible = false;
+  const ember = new THREE.InstancedMesh(
+    new THREE.BoxGeometry(0.24, 0.18, 1.65),
+    new THREE.MeshStandardMaterial({
+      name: 'EmberCookOffContainmentRibs', color: '#e85a12', emissive: '#ff4d08',
+      emissiveIntensity: 3.2, roughness: 0.42, metalness: 0.58,
+    }),
+    instanceCount,
+  );
+  ember.name = 'EmberCookOffRupturedRibs';
+  ember.frustumCulled = false;
+  ember.visible = false;
+  const hiddenMatrix = new THREE.Matrix4().makeScale(0, 0, 0);
+  for (let i = 0; i < instanceCount; i++) {
+    dust.setMatrixAt(i, hiddenMatrix);
+    ember.setMatrixAt(i, hiddenMatrix);
+  }
+  dust.instanceMatrix.needsUpdate = true;
+  ember.instanceMatrix.needsUpdate = true;
+  group.add(dust, ember);
+  scene.add(group);
+  const makeSlots = () => Array.from({ length: SWARMER_EVENT_SLOTS }, () => ({
+    alive: false, drawn: false, age: 0, life: 0, x: 0, z: 0, serial: 0,
+  }));
+  return {
+    group, dust, ember, dustSlots: makeSlots(), emberSlots: makeSlots(), cursorDust: 0, cursorEmber: 0,
+    serial: 0, matrix: new THREE.Matrix4(), position: new THREE.Vector3(), rotation: new THREE.Quaternion(),
+    scale: new THREE.Vector3(), euler: new THREE.Euler(),
+  };
+}
+
+function spawnSwarmerEventGeometry(system, kind, x, z, reducedMotion) {
+  if (!system) return false;
+  const dust = kind === 'dust';
+  const slots = dust ? system.dustSlots : system.emberSlots;
+  const cursorKey = dust ? 'cursorDust' : 'cursorEmber';
+  const slot = slots[system[cursorKey]++ % slots.length];
+  slot.alive = true;
+  slot.age = 0;
+  slot.life = dust ? (reducedMotion ? 0.44 : 0.78) : (reducedMotion ? 0.30 : 0.58);
+  slot.x = x;
+  slot.z = z;
+  slot.serial = ++system.serial;
+  return true;
+}
+
+function updateSwarmerEventMesh(system, mesh, slots, kind, dt) {
+  let active = 0;
+  let changed = false;
+  for (let slotIndex = 0; slotIndex < slots.length; slotIndex++) {
+    const slot = slots[slotIndex];
+    if (slot.alive) {
+      slot.age += dt;
+      if (slot.age >= slot.life) slot.alive = false;
+    }
+    if (!slot.alive) {
+      if (slot.drawn) {
+        system.position.set(0, -10000, 0);
+        system.rotation.identity();
+        system.scale.set(0, 0, 0);
+        system.matrix.compose(system.position, system.rotation, system.scale);
+        const first = slotIndex * SWARMER_EVENT_PIECES;
+        for (let piece = 0; piece < SWARMER_EVENT_PIECES; piece++) mesh.setMatrixAt(first + piece, system.matrix);
+        slot.drawn = false;
+        changed = true;
+      }
+      continue;
+    }
+    active++;
+    const progress = slot.age / slot.life;
+    for (let piece = 0; piece < SWARMER_EVENT_PIECES; piece++) {
+      const index = slotIndex * SWARMER_EVENT_PIECES + piece;
+      const phase = (piece / SWARMER_EVENT_PIECES) * Math.PI * 2 + slot.serial * 0.73;
+      if (kind === 'dust') {
+        const speed = 4.5 + (piece % 5) * 1.15;
+        const rise = 4.2 + (piece % 4) * 0.85;
+        system.position.set(
+          slot.x + Math.cos(phase) * speed * slot.age,
+          0.28 + rise * slot.age - 8.5 * slot.age * slot.age,
+          slot.z + Math.sin(phase) * speed * slot.age,
+        );
+        system.euler.set(piece * 0.41 + slot.age * 2.2, phase + slot.age * 1.3, piece * 0.23);
+        system.scale.set(0.55 + (piece % 3) * 0.18, 0.35 + (piece % 2) * 0.15, 0.72 + (piece % 4) * 0.12);
+      } else {
+        const radius = (2.2 + (piece % 3) * 0.9) * (1 - Math.pow(1 - progress, 2));
+        system.position.set(slot.x + Math.cos(phase) * radius, 0.7 + Math.sin(piece * 2.1) * 0.35, slot.z + Math.sin(phase) * radius);
+        system.euler.set((piece % 2) * 0.34, phase, 0.28 + progress * 0.5);
+        system.scale.set(0.9, 0.9, 0.8 + (piece % 4) * 0.18);
+      }
+      system.rotation.setFromEuler(system.euler);
+      system.matrix.compose(system.position, system.rotation, system.scale);
+      mesh.setMatrixAt(index, system.matrix);
+    }
+    slot.drawn = true;
+    changed = true;
+  }
+  if (changed) mesh.instanceMatrix.needsUpdate = true;
+  mesh.visible = active > 0;
+  return active;
+}
+
+function resetSwarmerPresentationGeometry(dart, events) {
+  if (dart) {
+    for (const slot of dart.slots) {
+      slot.entityId = null;
+      slot.count = 0;
+      slot.mesh.visible = false;
+      slot.mesh.geometry.setDrawRange(0, 0);
+    }
+  }
+  if (events) {
+    for (const slot of events.dustSlots) slot.alive = false;
+    for (const slot of events.emberSlots) slot.alive = false;
+    events.dust.visible = false;
+    events.ember.visible = false;
+  }
+}
+
+function disposeSwarmerPresentationGeometry(dart, events) {
+  if (dart) {
+    dart.group.removeFromParent();
+    for (const slot of dart.slots) slot.mesh.geometry.dispose();
+    dart.material.dispose();
+  }
+  if (events) {
+    events.group.removeFromParent();
+    events.dust.geometry.dispose();
+    events.dust.material.dispose();
+    events.ember.geometry.dispose();
+    events.ember.material.dispose();
+  }
+}
+
 function emptyTrailBudgetDiag() {
   return {
     trailCandidates: 0,
@@ -652,6 +979,7 @@ function emptyVfxSubsystemDiag() {
     npcJobSignatures: 0,  // "The Working Light" — live NPC jobs showing their working state
     ceresJobActions: 0,   // R6B receipt-bound punctuation; detached from sim authority after intake
     lawHeatTelegraph: 0,  // WF-12 scan-sweep / suspicion / WANTED-flip via shared event-light pool
+    swarmerPresentation: 0, // AC-12 actual-path Dart wake + hard-geometry Skitter/Ember cues
   };
 }
 
@@ -928,6 +1256,7 @@ export const vfx = {
     this._cFaction = new THREE.Color('#88aaff');
 
     this._initPools();
+    this._initSwarmerPresentationGeometry();
     // The renderer's loading-stage residency pass runs after every system has initialized. Publish
     // the exact live VFX roots so their already-created textures are uploaded under the loading
     // shell instead of on the first ambient impact during exposed flight. The getter stays live
@@ -979,6 +1308,9 @@ export const vfx = {
     if (this._combatBeams && typeof this._combatBeams.dispose === 'function') this._combatBeams.dispose();
     this._combatBeams = null;
     this._disposePickupStreams();
+    disposeSwarmerPresentationGeometry(this._dartActualTrails, this._swarmerEventGeometry);
+    this._dartActualTrails = null;
+    this._swarmerEventGeometry = null;
   },
 
   _vfxOwnerRoots() {
@@ -990,6 +1322,8 @@ export const vfx = {
       roots.push(object);
     };
     add(this._points);
+    add(this._dartActualTrails && this._dartActualTrails.group);
+    add(this._swarmerEventGeometry && this._swarmerEventGeometry.group);
     add(this._trailStreakPool && this._trailStreakPool.mesh);
     add(this._spriteBatches && this._spriteBatches.glow.mesh);
     add(this._spriteBatches && this._spriteBatches.ring.mesh);
@@ -1508,13 +1842,13 @@ export const vfx = {
     // WF-12 law/heat telegraph — authoritative scan + heat observation only (GDX-A25).
     add('player:scannedByPatrol', (p) => this._onLawHeatScan(p));
     add('heat:changed', (p) => this._onLawHeatChanged(p));
-    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
-    add('sector:exit', () => { this._resetRibbonTrails(); this._clearStationSideEvents(); this._resetMomentumSinkPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); });
-    add('game:new', () => { this._markEntityCacheDirty(); this._resetRibbonTrails(); });
-    add('game:newGame', () => { this._markEntityCacheDirty(); this._explosions.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
-    add('save:restoring', () => this._resetRibbonTrails());
-    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); this._tumbleVfxCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
-    add('world:playerRelocated', () => this._resetRibbonTrails());
+    add('sector:enter', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); resetSwarmerPresentationGeometry(this._dartActualTrails, this._swarmerEventGeometry); this._tumbleVfxCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
+    add('sector:exit', () => { this._resetRibbonTrails(); resetSwarmerPresentationGeometry(this._dartActualTrails, this._swarmerEventGeometry); this._clearStationSideEvents(); this._resetMomentumSinkPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); });
+    add('game:new', () => { this._markEntityCacheDirty(); this._resetRibbonTrails(); resetSwarmerPresentationGeometry(this._dartActualTrails, this._swarmerEventGeometry); });
+    add('game:newGame', () => { this._markEntityCacheDirty(); this._explosions.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); resetSwarmerPresentationGeometry(this._dartActualTrails, this._swarmerEventGeometry); this._tumbleVfxCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
+    add('save:restoring', () => { this._resetRibbonTrails(); resetSwarmerPresentationGeometry(this._dartActualTrails, this._swarmerEventGeometry); });
+    add('save:loaded', () => { this._markEntityCacheDirty(); this._markProjectileCacheDirty(); this._combatBeams?.clear(); this._beamDamageCueNext.clear(); this._explosions.clear(); this._clearTrailStreaks(); this._resetRibbonTrails(); resetSwarmerPresentationGeometry(this._dartActualTrails, this._swarmerEventGeometry); this._tumbleVfxCd?.clear(); this._resetMomentumSinkPresentation(); this._resetCollisionPresentation(); this._clearStationSideEvents(); this._clearCeresJobActionVfx(); this._clearLawHeatTelegraph(); this._resetMasslineReleaseArc(); this._resetEnergyForBoundary(); });
+    add('world:playerRelocated', () => { this._resetRibbonTrails(); resetSwarmerPresentationGeometry(this._dartActualTrails, this._swarmerEventGeometry); });
     // AC-12 intake streams follow the same lifecycle boundaries as the engine wakes: a regenerated
     // world, a restored save, or a relocated player invalidates every in-flight path.
     for (const boundary of [
@@ -1540,6 +1874,7 @@ export const vfx = {
     add('cruise:dropped', (p) => this._onCruiseDropped(p));
     add('charge:detonated', (p) => this._onChargeDetonated(p));
     add('ai:telegraph', (p) => this._onAiTelegraph(p));
+    add('ai:doctrinePhase', (p) => this._onSwarmerDoctrinePhase(p));
     add('ai:flee', (p) => this._onAiFlee(p));
     add('ai:formationBroken', (p) => this._onAiFormationBroken(p));
     add('presentation:cue', (p) => this._onDirectMiningPresentationCue(p));
@@ -1643,6 +1978,28 @@ export const vfx = {
           if (!slot || !slot.obj) continue;
           slot.obj.position.x += ox;
           slot.obj.position.z += oz;
+        }
+      }
+      // AC-12 Dart samples are retained in frame-local world space; unlike nozzle ribbons they can
+      // be translated safely because every vertex is rebuilt from this bounded history next frame.
+      if (this._dartActualTrails) {
+        for (const slot of this._dartActualTrails.slots) {
+          for (let sample = 0; sample < slot.count; sample++) {
+            slot.x[sample] += ox;
+            slot.z[sample] += oz;
+          }
+        }
+      }
+      if (this._swarmerEventGeometry) {
+        for (const slot of this._swarmerEventGeometry.dustSlots) {
+          if (!slot.alive) continue;
+          slot.x += ox;
+          slot.z += oz;
+        }
+        for (const slot of this._swarmerEventGeometry.emberSlots) {
+          if (!slot.alive) continue;
+          slot.x += ox;
+          slot.z += oz;
         }
       }
       // The release annulus writes frame-local vertices directly into one shared mesh.
@@ -2969,8 +3326,119 @@ export const vfx = {
     this._flashLight({ x, z }, color, 2.5, 14, 100);
   },
 
+  _initSwarmerPresentationGeometry() {
+    if (!this._scene) return false;
+    if (!this._dartActualTrails) this._dartActualTrails = createDartTrailSystem(this._scene);
+    if (!this._swarmerEventGeometry) this._swarmerEventGeometry = createSwarmerEventGeometrySystem(this._scene);
+    return true;
+  },
+
+  _onSwarmerDoctrinePhase(p) {
+    const entity = this._ent(p && p.entityId);
+    const mesh = entity && entity.mesh;
+    if (!mesh || typeof mesh.userData.setSwarmerDoctrinePhase !== 'function') return false;
+    mesh.userData.setSwarmerDoctrinePhase(p && p.phase);
+    return true;
+  },
+
+  _updateDartActualTrails(dt) {
+    const system = this._dartActualTrails;
+    if (!system) return 0;
+    for (let i = 0; i < system.slots.length; i++) {
+      const slot = system.slots[i];
+      slot.seen = false;
+      for (let sample = 0; sample < slot.count; sample++) slot.age[sample] += dt;
+    }
+    const list = this.state && this.state.entityList || [];
+    const reducedMotion = this._isReduced();
+    const spacing = reducedMotion ? 3.2 : 1.25;
+    for (let i = 0; i < list.length; i++) {
+      const entity = list[i];
+      const data = entity && entity.data;
+      if (!entity || entity.alive === false || entity.type !== 'ship' || !entity.pos || !data
+        || data.lootTableId !== 'dart_swarmer' || data.silhouette !== 'dart_needle') continue;
+      const slot = dartTrailSlot(system, entity.id);
+      slot.seen = true;
+      slot.radius = Math.max(0.65, Math.min(1.8, (entity.radius || 7) * 0.14));
+      const local = this._toLocalXZ(entity.pos.x, entity.pos.z, system.local);
+      const y = entity.mesh && entity.mesh.position ? entity.mesh.position.y + 0.35 : 0.35;
+      if (slot.count === 0) {
+        insertDartTrailSample(slot, local.x, y, local.z);
+        continue;
+      }
+      const dx = local.x - slot.x[0], dz = local.z - slot.z[0];
+      const distance = Math.hypot(dx, dz);
+      if (distance > 220) {
+        slot.count = 0;
+        insertDartTrailSample(slot, local.x, y, local.z);
+        continue;
+      }
+      const vx = entity.vel && Number.isFinite(entity.vel.x) ? entity.vel.x : 0;
+      const vz = entity.vel && Number.isFinite(entity.vel.z) ? entity.vel.z : 0;
+      if (Math.hypot(vx, vz) >= 48 && distance >= spacing) {
+        insertDartTrailSample(slot, local.x, y, local.z);
+      }
+    }
+    let live = 0;
+    for (let i = 0; i < system.slots.length; i++) {
+      const slot = system.slots[i];
+      const segments = writeDartTrailSlot(slot, reducedMotion);
+      live += segments > 0 ? 1 : 0;
+      if (!slot.seen && segments === 0) {
+        slot.entityId = null;
+        slot.count = 0;
+      }
+    }
+    return live;
+  },
+
+  _updateSwarmerEventGeometry(dt) {
+    const system = this._swarmerEventGeometry;
+    if (!system) return 0;
+    const dust = updateSwarmerEventMesh(system, system.dust, system.dustSlots, 'dust', dt);
+    const ember = updateSwarmerEventMesh(system, system.ember, system.emberSlots, 'ember', dt);
+    return dust + ember;
+  },
+
+  _onSwarmerPresentationCue(p) {
+    const id = p && p.id;
+    if (id !== 'swarmer_rock_dust' && id !== 'swarmer_ember_cook_off') return false;
+    if (!this._initSwarmerPresentationGeometry()) return true;
+    const global = this._presentationPos(p);
+    if (!global) return true;
+    const local = this._toLocalXZ(global.x, global.z, this._spawnLocalXZ);
+    const ember = id === 'swarmer_ember_cook_off';
+    spawnSwarmerEventGeometry(
+      this._swarmerEventGeometry,
+      ember ? 'ember' : 'dust',
+      local.x,
+      local.z,
+      this._isReduced() || !!p.flashReduced,
+    );
+    let lightsActivated = 0;
+    if (ember && this._flashLight(
+      { x: local.x, z: local.z }, '#ff5a14', 3.8, 9.5, 78,
+      normalizeVfxAdmissionPriority(p.admissionPriority),
+    )) lightsActivated = 1;
+    this._presentationCueCount++;
+    this._presentationLightCount += lightsActivated;
+    this._lastPresentationCue = {
+      id,
+      lane: p.lane || 'combat',
+      material: ember ? 'ruptured-containment-ribs' : 'opaque-rock-clasts',
+      particlesRequested: budgetInt(p.particles),
+      particlesSpawned: 0,
+      lightsRequested: ember ? 1 : 0,
+      lightsActivated,
+      flashReduced: !!p.flashReduced,
+      admissionPriority: normalizeVfxAdmissionPriority(p.admissionPriority),
+    };
+    return true;
+  },
+
   _onPresentationCue(p) {
     if (!this._scene || !p) return;
+    if (this._onSwarmerPresentationCue(p)) return;
     // Cruise owns its directional travel grammar directly below. Keep the legacy cue receipt for
     // audio/contracts, but do not fan it back into the generic presentation particle family.
     if (typeof p.id === 'string' && p.id.startsWith('cruise.')) return;
@@ -9198,6 +9666,7 @@ export const vfx = {
       if (this.state.render && this.state.render.scene) { this._initPools(); this._subscribeOnce(); }
       if (!this._scene) return;
     }
+    this._initSwarmerPresentationGeometry();
     if (this._perfVfxIsolationRestore) {
       this._reassertPerfVfxRoots();
       return;
@@ -9234,6 +9703,9 @@ export const vfx = {
     }
 
     const sub = this._vfxSubsystemLast;
+    const dartTrails = this._updateDartActualTrails(dt);
+    const swarmerEvents = this._updateSwarmerEventGeometry(dt);
+    sub.swarmerPresentation = dartTrails + swarmerEvents > 0 ? 1 : 0;
     sub.trails = this._emitTrails(dt) ? 1 : 0;
     sub.ribbons = this._updateRibbonTrails(dt) ? 1 : 0;
     if (this._projectileTrailsRelevant()) {

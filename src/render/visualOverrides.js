@@ -25,6 +25,7 @@ import {
   PRESENTATION_ADMISSION,
   setPresentationAdmission,
 } from '../core/presentationAdmission.js';
+import { swarmerRecordFor } from '../data/swarmerFamily.js';
 
 const KESTREL_HERO_ASSET_ID = 'SF_K0_KESTREL_BORROWED_TIME';
 
@@ -33,15 +34,25 @@ export function isPlayerKestrel(entity) {
     && entity.data && entity.data.defId === 'ship_kestrel';
 }
 
-function isDesignedProceduralMote(entity) {
-  return !!entity && entity.type === 'ship' && entity.data
-    && entity.data.lootTableId === 'mote_swarmer'
-    && entity.data.silhouette === 'mote_quad';
+// Designed procedural bodies: the swarmer family's light hulls whose IDENTITY is their authored
+// hard geometry (src/render/visualFactory.js ENEMY_FAMILY_BUILDERS). For these, substituting an
+// authored whole-ship GLB is not an upgrade, it is a different enemy — a Dart that renders as a
+// generic strike hull has lost the entire tell. The pair must match: a hull claiming one of these
+// silhouettes without the matching loot table is not admitted through this bypass.
+//
+function isDesignedProceduralSwarmer(entity) {
+  if (!entity || entity.type !== 'ship' || !entity.data) return false;
+  // Wasp owns the accepted production whole-ship asset. Every other row derives its render
+  // admission from the canonical family grammar, rather than maintaining a second id/silhouette
+  // table beside it.
+  if (entity.data.lootTableId === 'wasp_swarmer') return false;
+  const record = swarmerRecordFor(entity.data.lootTableId);
+  return !!record && entity.data.silhouette === record.tell.silhouette;
 }
 
 function requiresProductionWholeShip(entity) {
   if (!entity || entity.type !== 'ship' || !entity.data) return false;
-  if (isDesignedProceduralMote(entity)) return false;
+  if (isDesignedProceduralSwarmer(entity)) return false;
   // The active-hull rebuild uses a short-lived render entity that does not retain `isPlayer`, even
   // though its authoritative defId has already changed. Keep the Kestrel's strict player-only boot
   // rule, while selecting the production Wasp for every Wasp render entity so ship switching cannot
@@ -163,12 +174,12 @@ export function installVisualOverrides(factory, options = {}) {
     : buildAuthoredStationArchetype;
   factory.build = (entity) => {
     let visual = null;
-    const designedProceduralMote = isDesignedProceduralMote(entity);
+    const designedProceduralSwarmer = isDesignedProceduralSwarmer(entity);
     const requiredWholeShip = requiresProductionWholeShip(entity);
     const directShip = directAuthoredMount
       && authoredShips
       && entity && entity.type === 'ship'
-      && !designedProceduralMote
+      && !designedProceduralSwarmer
       && !(entity.data && entity.data.precompileProbe === true)
       && !(authoredWholeShipsOnly && !requiredWholeShip);
     const authoredCargoCapsule = hasExplicitAuthoredPayloadPresentation(entity);
@@ -247,10 +258,10 @@ export function installVisualOverrides(factory, options = {}) {
     assertReleaseHeroVisual(entity, visual, releaseMode);
     if (!visual || !entity || entity.type !== 'ship') return visual;
     configureTransparentSinglePassSurfaces(visual);
-    if (designedProceduralMote) {
+    if (designedProceduralSwarmer) {
       visual.visible = true;
       visual.userData.authoredAssetState = 'designed-procedural-settled';
-      visual.userData.authoredVisualRoot = 'mote-quad-hard-geometry';
+      visual.userData.authoredVisualRoot = `${entity.data.silhouette}-hard-geometry`;
       visual.userData.shipConstruction = 'designed-procedural';
       setPresentationAdmission(entity, PRESENTATION_ADMISSION.ready);
       return visual;
