@@ -2,7 +2,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { cargo } from '../src/systems/cargo.js';
-import { mining } from '../src/systems/mining.js';
 import { jettisonImpulse } from '../src/systems/jettisonImpulse.js';
 import { MASSLINE2_FLAGS } from '../src/data/featureFlags.js';
 
@@ -95,31 +94,43 @@ assert.doesNotMatch(
     combatPhysics: { applyImpulse(input) { impulses.push(input); return true; } },
   };
   const cargoSystem = Object.create(cargo);
-  const miningSystem = Object.create(mining);
   const impulseSystem = Object.create(jettisonImpulse);
   const registry = { get: (name) => (name === 'cargo' ? cargoSystem : null) };
   cargoSystem.init({ state, bus, helpers, registry });
-  miningSystem.init({ state, bus, helpers, registry });
   const savedFlags = { ...MASSLINE2_FLAGS };
   MASSLINE2_FLAGS.enabled = true;
   MASSLINE2_FLAGS.jettisonImpulse = true;
   try {
     impulseSystem.init({ state, bus, helpers, registry });
     assert.equal(cargoSystem.jettison('cmdty_ore_iron', 4), 4);
-    const pickup = state.entityList.find((e) => e.type === 'pickup');
-    assert.ok(pickup && pickup.data.jettisonedCargo && pickup.data.pickupEmbargoUntil > state.simTime,
+    const pod = state.entityList.find((e) => e.data && e.data.recoverableCargoPod);
+    assert.ok(pod && pod.data.jettisonedCargo && pod.data.pickupEmbargoUntil > state.simTime,
       'dumped cargo must carry a deterministic collection embargo');
-    assert.ok(pickup.pos.x < -(player.radius + pickup.radius), 'dumped cargo must start safely aft');
-    assert.equal(pickup.collides, false, 'physics collection must stay disabled during the embargo');
-    miningSystem._updatePickups(1 / 60, state);
-    assert.equal(pickup.alive, true, 'dumped cargo must not be immediately re-collected');
+    assert.equal(pod.type, 'payload', 'dumped cargo is a mass-bearing physical payload');
+    assert.equal(pod.physicsBody.material, 'massline_sensor', 'launch clearance begins as a ghost body');
+    assert.ok(pod.pos.x < -(player.radius + pod.radius), 'dumped cargo must start safely aft');
+    assert.equal(pod.collides, false, 'physics collection must stay disabled during the embargo');
+    impulseSystem.update(1 / 60, state);
+    assert.equal(pod.alive, true, 'dumped cargo must not be immediately re-collected');
     assert.equal(state.player.cargo.items.cmdty_ore_iron || 0, 0, 'the hold stays empty after the kick');
     assert.equal(impulses.length, 1, 'one dump grants exactly one reaction impulse');
 
-    state.simTime = pickup.data.pickupEmbargoUntil + 0.01;
-    pickup.pos.x = player.pos.x; pickup.pos.z = player.pos.z;
-    miningSystem._updatePickups(1 / 60, state);
-    assert.equal(pickup.alive, false, 'expired dumped cargo can be recovered normally');
+    state.simTime = pod.data.pickupEmbargoUntil + 0.01;
+    impulseSystem.update(1 / 60, state);
+    assert.equal(pod.collides, true, 'expired cargo becomes a solid payload');
+    assert.equal(pod.physicsBody.material, 'payload');
+    pod.pos.x = player.pos.x; pod.pos.z = player.pos.z;
+    pod.vel.x = player.vel.x; pod.vel.z = player.vel.z;
+    bus.emit('physics:impact', {
+      consequenceKernelVersion: 1,
+      tick: state.tick,
+      aId: pod.id,
+      bId: player.id,
+      impulse: 8,
+      pos: { x: pod.pos.x, z: pod.pos.z },
+      normal: { x: -1, z: 0 },
+    });
+    assert.equal(pod.alive, false, 'expired dumped cargo can be recovered through physical contact');
     assert.equal(state.player.cargo.items.cmdty_ore_iron, 4, 'later recovery returns through cargo ownership');
   } finally {
     Object.assign(MASSLINE2_FLAGS, savedFlags);

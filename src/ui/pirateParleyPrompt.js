@@ -78,6 +78,7 @@ export function parleyReceiptText(payload) {
   if (outcome === 'complied') return `PAID · ${paymentText(payload) || 'toll settled'} · raiders disengaging`;
   if (outcome === 'unprofitable') return 'NO PAYMENT · hold had no collectible toll · raiders disengaging';
   if (outcome === 'evaded') return 'EVADED · clear of intercept radius · raiders disengaging';
+  if (outcome === 'decoyed') return 'DECOYED · raiders committed to the dropped pod · disengaging';
   if (outcome === 'player_attack') return 'ESCALATED · you fired during parley · raiders weapons free';
   if (outcome === 'refused') return 'ESCALATED · you refused the toll · raiders weapons free';
   if (outcome === 'timeout') return 'ESCALATED · response window expired · raiders weapons free';
@@ -144,7 +145,7 @@ export function createPirateParleyPrompt(ctx) {
     active = { ...payload, phase: 'demand', selected: null };
     setText(senderEl, sender.toUpperCase());
     setText(demandEl, demand);
-    setText(whyEl, 'Cargo toll. Profit motive; weapons held during response.');
+    setText(whyEl, 'Cargo toll. Profit motive; weapons held. A manual cargo jettison seeds a physical decoy.');
     whyEl.hidden = false;
     runButton.disabled = false;
     runButton.querySelector('span').textContent = 'RUN 1.2 KM';
@@ -152,7 +153,7 @@ export function createPirateParleyPrompt(ctx) {
     receiptEl.hidden = true;
     root.hidden = false;
     root.classList.remove('sf-parley--receipt', 'sf-parley--danger', 'sf-parley--running');
-    root.setAttribute('aria-label', `${sender} hailing. ${demand}. Cargo toll for profit. Choose comply, refuse, or run.`);
+    root.setAttribute('aria-label', `${sender} hailing. ${demand}. Cargo toll for profit. Choose comply, refuse, run, or manually jettison cargo as a decoy.`);
     updateTimer();
     return true;
   }

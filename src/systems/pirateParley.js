@@ -23,6 +23,7 @@ const TITHE_SPAN_PERCENT = 10;
 const BRAKE_TO_COMPLY_HOLD_S = 1.25;
 const ESCAPE_RADIUS = 1200;
 const MAX_ROBBERY_SECURITY = 0.75;
+const DECOY_CAPTURE_RADIUS = 90;
 const PROFIT_MOTIVES = new Set(['assigned_interdiction', 'cargo_extortion', 'toll_collection']);
 
 const VALUE_BY_COMMODITY = new Map(COMMODITIES.map((c) => [c.id, Number(c.basePrice) || 1]));
@@ -37,8 +38,10 @@ export const pirateParley = {
     this.helpers = ctx.helpers || {};
     this.registry = ctx.registry || null;
     this._onChoice = (p) => this._choose(p);
+    this._onCargoJettisoned = (p) => this._tryDecoy(p || {});
     if (this.bus && typeof this.bus.on === 'function') {
       this.bus.on('pirateParley:choose', this._onChoice);
+      this.bus.on('cargo:jettisoned', this._onCargoJettisoned);
     }
   },
 
@@ -62,6 +65,7 @@ export const pirateParley = {
       }
       rec.memberIds = members.map((e) => e.id);
       if (rec.phase === 'scan' || rec.phase === 'demand') holdFire(state, rec, members);
+      else if (rec.phase === 'decoy') holdDecoyPursuit(state, rec, members);
     }
 
     for (const squadId of Object.keys(own.squads)) {
@@ -73,7 +77,17 @@ export const pirateParley = {
         rec.phase = 'gone';
         continue;
       }
-      if (rec.phase === 'scan' && now >= rec.demandAt) {
+      if (rec.phase === 'decoy') {
+        const pod = state.entities && state.entities.get && state.entities.get(rec.decoyPodId);
+        if (!pod || pod.alive === false) {
+          this._escalate(rec, 'decoy_lost');
+          continue;
+        }
+        holdDecoyPursuit(state, rec, members);
+        if (members.some((member) => distanceBetween(member, pod) <= DECOY_CAPTURE_RADIUS)) {
+          this._resolveDecoy(rec, pod, members, now);
+        }
+      } else if (rec.phase === 'scan' && now >= rec.demandAt) {
         rec.phase = 'demand';
         rec.deadlineAt = now + DEMAND_WINDOW_S;
         rec.tithe = chooseTithe(state, rec.squadId);
@@ -128,6 +142,53 @@ export const pirateParley = {
       return true;
     }
     return false;
+  },
+
+  _tryDecoy(payload) {
+    if (!payload || payload.purpose === 'pirate_tithe') return false;
+    const state = this.state;
+    const own = state && state.pirateParley;
+    const podIds = Array.isArray(payload.podIds) ? payload.podIds : [];
+    if (!own || !own.squads || podIds.length === 0) return false;
+    const pod = podIds.map((id) => state.entities && state.entities.get && state.entities.get(id))
+      .find((entity) => entity && entity.alive !== false && entity.data?.recoverableCargoPod === true);
+    if (!pod) return false;
+    for (const squadId of Object.keys(own.squads).sort()) {
+      const rec = own.squads[squadId];
+      if (!rec || rec.resolved || (rec.phase !== 'scan' && rec.phase !== 'demand')) continue;
+      rec.phase = 'decoy';
+      rec.choice = 'decoy';
+      rec.decoyPodId = pod.id;
+      rec.deadlineAt = 0;
+      pod.data.pirateScanDecoy = { squadId: rec.squadId, hailerId: rec.hailerId || null };
+      const members = membersFor(state, rec);
+      holdDecoyPursuit(state, rec, members);
+      this._emit('pirateParley:decoyed', {
+        ...publicRecord(rec),
+        podId: pod.id,
+        commodityId: pod.data.commodityId,
+        amount: pod.data.amount,
+      });
+      return true;
+    }
+    return false;
+  },
+
+  _resolveDecoy(rec, pod, members, now) {
+    rec.phase = 'break-off';
+    rec.resolved = true;
+    rec.outcome = 'decoyed';
+    rec.payment = null;
+    rec.breakOffUntil = now + BREAK_OFF_S;
+    for (const entity of members) breakOff(entity, rec, this.state);
+    this._emit('pirateParley:resolved', {
+      ...publicRecord(rec),
+      outcome: 'decoyed',
+      next: 'break-off',
+      payment: null,
+      decoyPodId: pod.id,
+    });
+    return true;
   },
 
   _comply(rec) {
@@ -261,8 +322,10 @@ export const pirateParley = {
   destroy() {
     if (this.bus && this._onChoice && typeof this.bus.off === 'function') {
       this.bus.off('pirateParley:choose', this._onChoice);
+      this.bus.off('cargo:jettisoned', this._onCargoJettisoned);
     }
     this._onChoice = null;
+    this._onCargoJettisoned = null;
   },
 };
 
@@ -381,6 +444,45 @@ function holdFire(state, rec, members) {
     };
     const intent = data.intent || (data.intent = {});
     intent.fire = false;
+    const combat = data.combat || (data.combat = {});
+    if (combat.targetId === state.playerId) combat.targetId = null;
+    if (combat.lockTarget === state.playerId) combat.lockTarget = null;
+  }
+}
+
+function holdDecoyPursuit(state, rec, members) {
+  const pod = state.entities && state.entities.get && state.entities.get(rec.decoyPodId);
+  if (!pod || pod.alive === false) return;
+  for (const entity of members) {
+    const data = entity.data || (entity.data = {});
+    const ai = data.ai || (data.ai = {});
+    ai.passive = true;
+    ai.forcePlayerTarget = false;
+    ai.huntPlayer = false;
+    ai.fsm = 'scan';
+    ai.parleySquadId = rec.squadId;
+    ai.parleyDecoyId = pod.id;
+    ai.motive = 'cargo_extortion';
+    ai.engagementTrigger = 'cargo_decoy';
+    ai.roe = RulesOfEngagement.HOLD_FIRE;
+    ai.activity = normalizeActivity({
+      kind: ActivityKind.SCAN_APPROACH,
+      reason: 'pirate_parley:cargo_decoy',
+      anchor: pod.pos,
+      preferredRange: DECOY_CAPTURE_RADIUS * 0.6,
+      leashRadius: ESCAPE_RADIUS + 600,
+      startedTick: state.tick | 0,
+      targetId: pod.id,
+      encounterId: rec.squadId,
+    });
+    data.pirateParley = {
+      squadId: rec.squadId,
+      phase: 'decoy',
+      decoyPodId: pod.id,
+    };
+    const intent = data.intent || (data.intent = {});
+    intent.fire = false;
+    intent.fireGroup = null;
     const combat = data.combat || (data.combat = {});
     if (combat.targetId === state.playerId) combat.targetId = null;
     if (combat.lockTarget === state.playerId) combat.lockTarget = null;
@@ -511,7 +613,10 @@ function settleDemand(system, state, rec, demand, tithe) {
   }
   const cargoSys = system.registry && system.registry.get && system.registry.get('cargo');
   const dropped = tithe.commodityId && tithe.qty > 0 && cargoSys && typeof cargoSys.jettison === 'function'
-    ? cargoSys.jettison(tithe.commodityId, tithe.qty)
+    ? cargoSys.jettison(tithe.commodityId, tithe.qty, {
+      purpose: 'pirate_tithe',
+      parleySquadId: rec.squadId,
+    })
     : 0;
   return dropped > 0
     ? { kind: 'cargo', amount: dropped | 0, commodityId: tithe.commodityId }
@@ -580,8 +685,14 @@ function publicRecord(rec) {
     deadlineAt: rec.deadlineAt || null,
     demand: rec.demand ? { ...rec.demand } : null,
     choice: rec.choice || null,
+    decoyPodId: rec.decoyPodId || null,
     escapeRadius: ESCAPE_RADIUS,
   };
+}
+
+function distanceBetween(a, b) {
+  if (!a || !a.pos || !b || !b.pos) return Infinity;
+  return Math.hypot(a.pos.x - b.pos.x, a.pos.z - b.pos.z);
 }
 
 function outsideSquadRange(player, members, radius) {

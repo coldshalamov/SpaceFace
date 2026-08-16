@@ -47,6 +47,7 @@ test('surface refuses Helios, empty-hold, docked, expired and malformed demands'
 test('receipts name the exact disengagement or escalation cause', () => {
   assert.match(parleyReceiptText({ outcome: 'complied', payment: { kind: 'credits', amount: 300 } }), /300 credits transferred.*disengaging/i);
   assert.match(parleyReceiptText({ outcome: 'evaded' }), /clear of intercept radius.*disengaging/i);
+  assert.match(parleyReceiptText({ outcome: 'decoyed' }), /committed to the dropped pod.*disengaging/i);
   assert.match(parleyReceiptText({ outcome: 'refused' }), /refused the toll.*weapons free/i);
   assert.match(parleyReceiptText({ outcome: 'timeout' }), /window expired.*weapons free/i);
   assert.match(parleyReceiptText({ outcome: 'player_attack' }), /you fired during parley.*weapons free/i);
