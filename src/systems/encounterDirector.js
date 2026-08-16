@@ -48,6 +48,7 @@ import { ENEMY_TYPES } from '../data/enemies.js';
 import { ENCOUNTER_SCRIPTS } from './encounterScripts.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { SECTORS } from '../data/sectors.js';
+import { frontierRumorForEncounterPlan } from '../data/frontierRumors.js';
 import {
   isResonanceObeliskSignal,
   RESONANCE_OBELISK,
@@ -208,6 +209,7 @@ export const encounterDirector = {
       this.bus.on('encounter:choose', (p) => this._onChoose(p));
       // Mining noise attracts predators (decaying accumulator; player yields only).
       this.bus.on('mining:yield', (p) => this._onMiningYield(p));
+      this.bus.on('asteroid:destroyed', (p) => this._routeToSelfRegistered('asteroidDestroyed', p));
       this.bus.on('resonance:scanCompleted', (p) => this._onResonanceScan(p));
       this.bus.on('world:zoneEntered', (p) => this._onArcadeIslandEntered(p || {}));
       this.bus.on('world:zoneExited', (p) => this._onArcadeIslandExited(p || {}));
@@ -695,6 +697,14 @@ export const encounterDirector = {
         continue;
       }
       dir.pending.push({ ...s, sectorId, dueAt: now + s.delay, defers: 0 });
+      const rumor = frontierRumorForEncounterPlan({
+        seed: state.meta && state.meta.seed,
+        dayIndex,
+        sectorId,
+        item: s,
+        shape: ENCOUNTERS[s.shapeId],
+      });
+      if (rumor) this.emit('frontierRumor:planned', rumor);
     }
     dir.lastPlanned = { sectorId, dayIndex, count: schedule.length };
   },
@@ -1720,6 +1730,9 @@ export const encounterDirector = {
       const live = dir.live[lid];
       const liveIndex = live.ids.indexOf(id);
       if (!this._saveRestoring && live.script === 'convoy' && liveIndex !== -1) {
+        this._scriptEvent(live, 'entityGone', { ...(p || {}), id });
+      }
+      if (!this._saveRestoring && liveIndex !== -1 && SELF_REGISTERED_RUNTIME_BY_ID.has(live.shapeId)) {
         this._scriptEvent(live, 'entityGone', { ...(p || {}), id });
       }
       if (live.script === 'salvageSignal' && live.data && live.data.cacheId === id) {

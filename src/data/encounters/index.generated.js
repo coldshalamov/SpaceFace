@@ -66,6 +66,16 @@ import * as encounter062 from './349-medium-torcher-fireline.js';
 import * as encounter063 from './350-specialist-jammer-wing.js';
 import * as encounter064 from './351-specialist-repair-tender.js';
 import * as encounter065 from './352-specialist-harrier-kite.js';
+import * as encounter066 from './353-event-falling-rock.js';
+import * as encounter067 from './354-event-station-siege.js';
+import * as encounter068 from './355-event-convoy-last-stand.js';
+import * as encounter069 from './356-event-runaway-reactor.js';
+import * as encounter070 from './357-rare-gold-asteroid.js';
+import * as encounter071 from './358-rare-merchant-prince.js';
+import * as encounter072 from './359-rare-ghost-ship.js';
+import * as encounter073 from './360-rare-drifter-migration.js';
+import * as encounter074 from './361-rare-double-wreck.js';
+import * as encounter075 from './362-rare-aces-rendezvous.js';
 
 export const ENCOUNTER_MODULES = Object.freeze([
   encounter001,
@@ -133,5 +143,15 @@ export const ENCOUNTER_MODULES = Object.freeze([
   encounter063,
   encounter064,
   encounter065,
+  encounter066,
+  encounter067,
+  encounter068,
+  encounter069,
+  encounter070,
+  encounter071,
+  encounter072,
+  encounter073,
+  encounter074,
+  encounter075,
 ]);
 export const ENCOUNTERS = buildEncounterCatalog(ENCOUNTER_MODULES);

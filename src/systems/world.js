@@ -354,6 +354,7 @@ export const world = {
     bus.on('claim:sensorPostRumor', (p) => this._onSensorPostRumor(p || {}));
     bus.on('poi:discovered', (p) => this._onFrontierRumorPoi(p || {}));
     bus.on('poi:identified', (p) => this._onFrontierRumorPoi(p || {}));
+    bus.on('frontierRumor:planned', (p) => this._onFrontierRumorPlanned(p || {}));
     bus.on('encounter:telegraph', (p) => this._onFrontierRumorEncounter(p || {}));
     // Mark the boss POI defeated when the dreadnought dies, so it does not respawn on sector
     // re-entry or save reload. (The entity carries data.isBoss + data.bossSectorId/bossPoiId.)
@@ -2485,14 +2486,33 @@ export const world = {
     );
   },
 
+  _onFrontierRumorPlanned(payload) {
+    if (payload.source !== 'encounter_whisper'
+      || !payload.id || !payload.targetId || !payload.targetShapeId
+      || payload.phase !== 'rumored') return false;
+    return this._acquireFrontierRumor(payload, { charge: false });
+  },
+
   _onFrontierRumorEncounter(payload) {
-    if (payload.kind !== 'bounty_hunter' && payload.kind !== 'named_hunter') return 0;
     const sectorId = payload.sectorId || this.state.world.currentSectorId;
     if (!sectorId) return 0;
-    return this._resolveFrontierRumors(
-      (record) => record.kind === 'hunter' && record.sectorId === sectorId,
-      'hunter_contact',
-    );
+    let resolved = 0;
+    if (payload.encounterId) {
+      resolved += this._resolveFrontierRumors(
+        (record) => record.source === 'encounter_whisper'
+          && record.targetId === payload.encounterId
+          && record.targetShapeId === payload.kind
+          && record.sectorId === sectorId,
+        'rare_contact',
+      );
+    }
+    if (payload.kind === 'bounty_hunter' || payload.kind === 'named_hunter') {
+      resolved += this._resolveFrontierRumors(
+        (record) => record.kind === 'hunter' && record.sectorId === sectorId,
+        'hunter_contact',
+      );
+    }
+    return resolved;
   },
 
   // =========================================================================================

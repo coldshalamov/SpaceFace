@@ -235,6 +235,50 @@ export function frontierRumorOwned(state, rumorId) {
   return !!(byId && byId[String(rumorId || '')]);
 }
 
+/** Build an approximate rumor for one encounter that the deterministic sector-day planner really
+ * scheduled. The encounter id remains the resolution key, while the player only sees a broad
+ * circle offset from the physical anchor. No independent rumor RNG can point at a nonexistent
+ * event because this function has no target without the planner's resolved item. */
+export function frontierRumorForEncounterPlan({ seed, dayIndex, sectorId, item, shape }) {
+  const authored = shape && shape.rareRumor;
+  const center = finitePoint(item && item.zoneCenter);
+  const encounterId = String(item && item.encounterId || '').trim();
+  const kind = String(authored && authored.kind || '').trim();
+  const sector = SECTOR_BY_ID.get(String(sectorId || ''));
+  if (!authored || !center || !encounterId || !sector || !KIND_BY_ID.has(kind)) return null;
+
+  const rumorId = `frontier-rumor:rare:${encounterId}`;
+  const angle = (hash32(seed || 0, rumorId, 'bearing-offset-angle') / 0x100000000) * Math.PI * 2;
+  const offset = 260 + (hash32(seed || 0, rumorId, 'bearing-offset-distance') % 261);
+  const radius = Math.ceil(Math.max(Number(authored.radius) || 0, offset + 240) / 20) * 20;
+  return {
+    id: rumorId,
+    schemaVersion: FRONTIER_RUMOR_SCHEMA_VERSION,
+    source: 'encounter_whisper',
+    sourceStationId: null,
+    sourceBodyId: null,
+    sourceSectorId: sector.id,
+    dayIndex: Math.max(0, Math.floor(Number(dayIndex) || 0)),
+    kind,
+    kindLabel: String(authored.kindLabel || KIND_BY_ID.get(kind).label),
+    targetId: encounterId,
+    targetShapeId: shape.id,
+    targetName: String(authored.targetName || shape.title || shape.id),
+    sectorId: sector.id,
+    sectorName: sector.name || sector.id,
+    fieldType: null,
+    coordSpace: 'global_v1',
+    bearingCenter: {
+      x: center.x + Math.cos(angle) * offset,
+      z: center.z + Math.sin(angle) * offset,
+    },
+    radius,
+    price: 0,
+    phase: 'rumored',
+    text: String(authored.text || 'A low-confidence frontier whisper marks a real contact somewhere inside this search ring.'),
+  };
+}
+
 function buildRumorOffer(state, source) {
   const dayIndex = dayIndexFor(state);
   const seed = finite(state && state.meta && state.meta.seed, 1) >>> 0;
