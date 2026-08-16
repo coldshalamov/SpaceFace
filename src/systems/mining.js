@@ -52,6 +52,17 @@ import {
   MAGNET_RANGE,
   playerPickupMagnetRange,
 } from './pickupAttraction.js';
+import {
+  CAPTURE_WAVE_SPACING_S,
+  captureChainInfo,
+  createCaptureWave,
+  hullIntakePoint,
+  isCaptureActive,
+  pruneCaptureWave,
+  releaseCaptureEntry,
+  resetCaptureWave,
+  scheduleCaptureCandidates,
+} from './pickupCaptureWave.js';
 
 // Compatibility exports for existing callers; implementation and policy live with pickups.
 export {
@@ -144,12 +155,23 @@ export const mining = {
     this.registry = ctx.registry;
     this._pickupScratch = [];
     this._mineableScratch = [];
+    // AC-12 capture ripple. Transient and system-owned: rebuilt from live entities every tick,
+    // never serialized, published on the existing miningRuntime bag so presentation can read which
+    // drops the vacuum has actually claimed instead of guessing from speed.
+    this._captureWave = createCaptureWave();
+    this._captureCandidates = [];
+    this._captureRecordPool = [];
+    this._captureSeen = new Set();
+    this._captureKeep = (id) => this._captureSeen.has(id);
+    this._intakeScratch = { x: 0, z: 0 };
+    this._lastCaptureSimTime = 0;
     this._diag = {
       pickupScans: 0,
       pickupSpatialQueries: 0,
       pickupCandidates: 0,
       pickupsMagnetized: 0,
       pickupsCollected: 0,
+      pickupsCaptureScheduled: 0,
       targetSpatialQueries: 0,
       targetCandidates: 0,
     };
@@ -175,7 +197,13 @@ export const mining = {
     bus.on('pickup:collected', (p) => this._onPickupCollected(p));
     bus.on('dock:docked', (p) => this._onDocked(p));
     // Fresh sector → drop the stale beam lock (world regenerates the field).
-    bus.on('sector:enter', () => { this._lockTargetId = null; this._stopBeam(); this._resetBeamHeat(); });
+    bus.on('sector:enter', () => {
+      this._lockTargetId = null;
+      this._stopBeam();
+      this._resetBeamHeat();
+      // A regenerated world invalidates every scheduled activation; the ripple restarts from scratch.
+      resetCaptureWave(this._captureWave);
+    });
   },
 
   // ---- main per-tick update -------------------------------------------------
@@ -895,6 +923,20 @@ export const mining = {
     this._diag.pickupCandidates = pickups.length;
     this._diag.pickupsMagnetized = 0;
     this._diag.pickupsCollected = 0;
+    // A load or lab rewind moves sim time backwards; stale future activation times would freeze the
+    // whole band, so the ripple restarts rather than waiting out a schedule from another timeline.
+    if (state.simTime < this._lastCaptureSimTime) resetCaptureWave(this._captureWave);
+    this._lastCaptureSimTime = state.simTime;
+
+    const wave = this._captureWave;
+    const candidates = clearScratch(this._captureCandidates);
+    const seen = this._captureSeen;
+    seen.clear();
+    let poolUsed = 0;
+
+    // Pass 1 — guards, beam/scoop collection, and gathering the vacuum band. Scheduling has to
+    // happen before any attraction runs this tick, otherwise the nearest drop of a fresh burst
+    // would idle one extra frame before its zero-offset slot opened.
     for (const e of pickups) {
       if (!e.alive || e.type !== 'pickup') continue;
       const pickupData = e.data || {};
@@ -914,22 +956,59 @@ export const mining = {
       if (pickupData.jettisonedCargo && e.collides === false) e.collides = true;
       const beamCollection = this._collectPickupOnBeamLine(e, player);
       if (beamCollection) {
+        // Direct beam collection stays immediate — the ripple governs the vacuum, not the drill.
         if (beamCollection.accepted > 0 || beamCollection.legacyFullConsume) this._diag.pickupsCollected++;
         continue;
       }
       const dx = player.pos.x - e.pos.x, dz = player.pos.z - e.pos.z;
       const dist = Math.hypot(dx, dz) || 1e-4;
+      if (dist <= collectRadius) {
+        // Already inside the scoop: nothing left to schedule, so attraction and collection both run
+        // now. A rejected acceptance keeps being pulled rather than stalling on the hull.
+        if (applyPickupAttraction(e, player, dt, magnet, collectRadius, dx, dz, dist)) {
+          this._diag.pickupsMagnetized++;
+        }
+        // direct collect on overlap (physics also emits pickup:collected on contact; idempotent via alive guard)
+        const acceptance = this._collectPickupViaEvent(e, player);
+        if (acceptance.accepted > 0 || acceptance.legacyFullConsume) this._diag.pickupsCollected++;
+        continue;
+      }
+      if (dist > magnet) continue;
+      seen.add(e.id);
+      if (!wave.entries.has(e.id)) {
+        const record = this._captureRecordPool[poolUsed]
+          || (this._captureRecordPool[poolUsed] = { id: null, distance: 0 });
+        poolUsed++;
+        record.id = e.id;
+        record.distance = dist;
+        candidates.push(record);
+      }
+    }
+
+    // Drops that died, were collected, or left the band release their slot; the surviving schedule
+    // is never re-sorted, so a live ripple keeps the order it was given.
+    pruneCaptureWave(wave, this._captureKeep);
+    if (candidates.length) {
+      scheduleCaptureCandidates(wave, candidates, state.simTime, CAPTURE_WAVE_SPACING_S);
+    }
+
+    // Pass 2 — only pickups whose activation time has arrived join the vacuum. Everything else
+    // keeps its authored ejection/drift untouched.
+    for (const e of pickups) {
+      if (!e.alive || e.type !== 'pickup') continue;
+      if (!seen.has(e.id)) continue;
+      if (!isCaptureActive(wave, e.id, state.simTime)) continue;
+      const dx = player.pos.x - e.pos.x, dz = player.pos.z - e.pos.z;
+      const dist = Math.hypot(dx, dz) || 1e-4;
       if (applyPickupAttraction(e, player, dt, magnet, collectRadius, dx, dz, dist)) {
         this._diag.pickupsMagnetized++;
       }
-      // direct collect on overlap (physics also emits pickup:collected on contact; idempotent via alive guard)
-      if (dist <= collectRadius) {
-        const acceptance = this._collectPickupViaEvent(e, player);
-        if (acceptance.accepted > 0 || acceptance.legacyFullConsume) this._diag.pickupsCollected++;
-      }
     }
+
+    this._diag.pickupsCaptureScheduled = wave.entries.size;
     state.miningRuntime = state.miningRuntime || {};
     state.miningRuntime.diagnostics = this._diag;
+    state.miningRuntime.captureWave = wave;
   },
 
   _onPickupCollected(p) {
@@ -1429,6 +1508,11 @@ export const mining = {
       pickup.alive = false;
       return { accepted: 0, rejected: 0, legacyFullConsume: false, invalidAmount: true };
     }
+    // AC-12 presentation truth. The stream terminates on the hull surface the drop actually
+    // arrived at, and carries the ripple position it landed on so the pitch ladder and the ribbon
+    // retirement both key off the same schedule instead of re-deriving one.
+    const intake = hullIntakePoint(player, pickup.pos.x, pickup.pos.z, this._intakeScratch);
+    const chain = captureChainInfo(this._captureWave, pickup.id);
     const payload = {
       pickupId: pickup.id,
       collectorId: player.id,
@@ -1436,6 +1520,11 @@ export const mining = {
       amount: requested,
       commodityId: pickup.data.commodityId,
       pos: { x: pickup.pos.x, z: pickup.pos.z },
+      intakePoint: { x: intake.x, z: intake.z },
+      capturePathId: pickup.id,
+      captured: !!chain,
+      chainIndex: chain ? chain.chainIndex : 0,
+      chainCount: chain ? chain.chainCount : 1,
       ...(isCreditChipPickup(pickup.data) ? {
         credits: requested,
         grantReason: pickup.data.grantReason || null,
@@ -1452,6 +1541,8 @@ export const mining = {
     if (acceptance.rejected <= 0) {
       pickup.alive = false;
       clearPickupAcceptanceRetry(pickup.data);
+      // The slot is free the instant the drop lands, so the next ripple never waits behind a ghost.
+      releaseCaptureEntry(this._captureWave, pickup.id);
     } else {
       if (acceptance.accepted > 0) pickup.data.amount = acceptance.rejected;
       const ownerRetryAt = Number(payload.acceptanceRetryAt);
@@ -1674,6 +1765,7 @@ function resetMiningDiagnostics(diag) {
   diag.pickupCandidates = 0;
   diag.pickupsMagnetized = 0;
   diag.pickupsCollected = 0;
+  diag.pickupsCaptureScheduled = 0;
   diag.targetSpatialQueries = 0;
   diag.targetCandidates = 0;
 }
