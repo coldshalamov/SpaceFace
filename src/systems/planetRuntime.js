@@ -38,6 +38,7 @@ import { SECTOR_ZONES } from '../data/sectorZones.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { queuePhysicsImpulse, isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
+import { describeTumbleStatus, readTumbleStatus } from '../combat/tumbleStatus.js';
 
 const MAX_TRACKED_SHIPS = 8;   // bounded per-tick work: player + the nearest 7 ships in the bands
 const MAX_AFTERMATH = 4;       // bounded presentation memory of recent plunge terminations
@@ -59,6 +60,7 @@ function defaultRuntime() {
     player: {
       region: 'outside', regionRank: 0, r: Infinity,
       heat: 0, stage: null, stageAt: 0, outwardS: 0, burnNextAt: 0,
+      plungeAttackerId: null,
       collectorOn: false, pendingShallow: 0, pendingRich: 0, harvestedUnits: 0,
       recoveryBurn: false, commitCueAt: -Infinity,
     },
@@ -76,7 +78,10 @@ function ensureRuntime(state) {
 }
 
 function newShipRecord() {
-  return { region: 'outside', regionRank: 0, r: Infinity, heat: 0, stage: null, stageAt: 0, outwardS: 0, burnNextAt: 0 };
+  return {
+    region: 'outside', regionRank: 0, r: Infinity, heat: 0,
+    stage: null, stageAt: 0, outwardS: 0, burnNextAt: 0, plungeAttackerId: null,
+  };
 }
 
 export const planetRuntime = {
@@ -202,6 +207,8 @@ export const planetRuntime = {
       innerRadius: site.field.innerRadius,
       innerSoft: site.field.innerSoft,
       sourceId: rt.entityId,
+      ownerId: null,
+      team: null,
       createdAt: nowOf(this.state),
     });
   },
@@ -303,6 +310,7 @@ export const planetRuntime = {
     }
 
     // The Plunge (staged, escape windows preserved).
+    this._latchPlungeAttacker(state, e, rec, region, isPlayer);
     this._tickPlunge(dt, state, rt, site, e, rec, r, region, now, isPlayer);
 
     // Player-only: recovery burn + the one-voice commit cue.
@@ -360,7 +368,7 @@ export const planetRuntime = {
       if (!(rec.burnNextAt > 0)) rec.burnNextAt = now + 0.5;
       if (now >= rec.burnNextAt) {
         rec.burnNextAt = now + 0.5;
-        this._routeBurn(state, rt, e, dps * 0.5);
+        this._routeBurn(state, rt, e, rec, dps * 0.5);
       }
       if (e.alive === false || (e.hull != null && e.hull <= 0)) {
         // Terminal at the site: remember the plunge point briefly (Aftermath — the band remembers).
@@ -377,11 +385,18 @@ export const planetRuntime = {
     rec.stage = stage;
     rec.stageAt = now;
     rec.outwardS = 0;
+    if (stage === null) rec.plungeAttackerId = null;
     if (stage !== 'breakup' && stage !== 'descent') rec.burnNextAt = 0; // re-schedule on re-entry
     this.bus.emit('planet:plungeStage', { id: e.id, stage: stage || 'clear', siteId: rt.siteId, isPlayer });
   },
 
-  _routeBurn(state, rt, e, damage) {
+  _latchPlungeAttacker(state, e, rec, region, isPlayer) {
+    if (isPlayer || rec.plungeAttackerId != null || (region !== 'danger' && region !== 'reentry')) return;
+    const tumble = describeTumbleStatus(readTumbleStatus(state, e));
+    if (tumble && tumble.attackerId === state.playerId) rec.plungeAttackerId = state.playerId;
+  },
+
+  _routeBurn(state, rt, e, rec, damage) {
     const combat = this.registry && this.registry.get ? this.registry.get('combat') : null;
     const kernel = combat && (combat.kernel || (typeof combat.ensureKernel === 'function' ? combat.ensureKernel() : null));
     if (!kernel || typeof kernel.routeDamage !== 'function') return;
@@ -392,11 +407,12 @@ export const planetRuntime = {
       damage,
       damageType: 'plasma',
       pos: { x: e.pos.x, z: e.pos.z },
-      source: { kind: 'planet_reentry' },
+      source: { kind: 'planet_reentry', zone: 'atmosphere_burn' },
     });
     packet.flags = { ignoreFriendlyFire: true, allowAnyTarget: true };
+    const creditedPlayer = e.id !== state.playerId && rec && rec.plungeAttackerId === state.playerId;
     kernel.routeDamage({
-      attackerId: rt.entityId,
+      attackerId: creditedPlayer ? state.playerId : rt.entityId,
       targetId: e.id,
       packet,
       origin: { kind: 'planet_reentry', id: rt.siteId },
