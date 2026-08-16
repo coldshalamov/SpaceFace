@@ -38,6 +38,8 @@ import {
   tableNpcTrailTier,
   TABLE_TRAIL_TIER,
   TABLE_LOOT_MAGNET_CAP_WU,
+  TABLE_DOCTRINE_TELL_CUE_WU,
+  tableDoctrineTellCueWu,
   tableShadowCastRadius,
   tableShadowCasterRadius,
   isOpeningStoryActor,
@@ -612,6 +614,16 @@ test('NPC engine trails follow the table, not a 2200/3600 leftover horizon', () 
     TABLE_TRAIL_TIER.SKIP,
     'a caller-supplied table radius must not recompute the envelope',
   );
+});
+
+test('off-screen doctrine cues stay on the glass at close zoom', () => {
+  const defaultCue = tableDoctrineTellCueWu({ camera: { zoom: 144, fov: 50, aspect: 16 / 9, tilt: 60 } });
+  assert.equal(defaultCue, TABLE_DOCTRINE_TELL_CUE_WU, 'default table keeps the 58 WU pin');
+  const close = tableDoctrineTellCueWu({ camera: { zoom: 45, fov: 50, aspect: 16 / 9, tilt: 60 } });
+  const glass = glassHalfExtents(45, 50, 16 / 9, 60);
+  assert.ok(close < Math.min(glass.halfX, glass.halfZ),
+    `close-zoom cue ${close} must sit inside the ${Math.min(glass.halfX, glass.halfZ)} glass`);
+  assert.ok(close >= 18, 'close-zoom cue still has a readable offset');
 });
 
 test('NPC trail helper is the live VFX path', async () => {

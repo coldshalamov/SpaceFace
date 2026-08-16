@@ -28,6 +28,28 @@ export const TABLE_AUTHORED_DECODE_SECONDS = 4.0;
 /** Immediate authored radius: already next to the glass. */
 export const TABLE_AUTHORED_IMMEDIATE_SECONDS = 1.25;
 
+/** Off-screen doctrine-tell cue sits this far from the player when the glass is wide enough. */
+export const TABLE_DOCTRINE_TELL_CUE_WU = 58;
+
+/**
+ * Keep the off-screen tell marker on the glass. At close zoom the old
+ * 58 WU pin sits outside the frustum, so the warning never appears.
+ */
+export function tableDoctrineTellCueWu(state) {
+  const camera = state && state.camera || {};
+  const video = state && state.settings && state.settings.video || {};
+  const live = Number.isFinite(camera.liveZoom) ? camera.liveZoom : NaN;
+  const requested = Number.isFinite(camera.zoom) ? camera.zoom : NaN;
+  const zoom = Number.isFinite(live) ? live : (Number.isFinite(requested) ? requested : 144);
+  const fov = Number.isFinite(camera.fov) ? camera.fov
+    : (Number.isFinite(video.fov) ? video.fov : 50);
+  const aspect = Number.isFinite(camera.aspect) && camera.aspect > 0 ? camera.aspect : 16 / 9;
+  const tilt = Number.isFinite(camera.tilt) ? camera.tilt : 60;
+  const glass = glassHalfExtents(zoom, fov, aspect, tilt);
+  const inner = Math.min(glass.halfX, glass.halfZ) * 0.7;
+  return Math.max(18, Math.min(TABLE_DOCTRINE_TELL_CUE_WU, inner));
+}
+
 /** Extra world units around the glass that can still throw a readable key-light shadow. */
 export const TABLE_SHADOW_SKIRT_WU = 80;
 

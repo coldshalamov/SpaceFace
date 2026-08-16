@@ -63,6 +63,7 @@ import {
   shouldDrawTableVfx,
   TABLE_HEARING_FAR_WU,
   TABLE_LOOT_MAGNET_CAP_WU,
+  tableDoctrineTellCueWu,
   tableLookAtDelta,
   tableNpcTrailTier,
   tableVfxDrawWuFromState,
@@ -460,7 +461,7 @@ const DOCTRINE_TELL_KIND = Object.freeze({
 // 30 ticks @ 60 Hz = 0.5s; floor keeps a readable window even if payload omits durationTicks.
 const DOCTRINE_TELL_MIN_LIFE = 0.5;
 const DOCTRINE_TELL_PULSE = 0.11;
-const DOCTRINE_TELL_OFFSCREEN_R = 58;
+
 
 // Optional subsystem cadence (Hz) — runs at the stated Hz when active, slept when inactive.
 // The player Hitch continuous plume is intentionally NOT cadence-gated: it is ship-attached
@@ -7488,8 +7489,9 @@ export const vfx = {
       const uz = dz / len;
       slot._lastDx = dx;
       slot._lastDz = dz;
-      const cx = (origin.x || 0) + ux * DOCTRINE_TELL_OFFSCREEN_R;
-      const cz = (origin.z || 0) + uz * DOCTRINE_TELL_OFFSCREEN_R;
+      const cueR = tableDoctrineTellCueWu(this.state);
+      const cx = (origin.x || 0) + ux * cueR;
+      const cz = (origin.z || 0) + uz * cueR;
       this._spawnDoctrineTellOffscreenCue(slot, style, cx, cz, ux, uz, isStart);
       return;
     }
