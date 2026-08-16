@@ -20,6 +20,7 @@
 // Flight/nav/jump ownership stays in world.js; the map never mutates jump/sector state directly.
 
 import { SECTORS } from '../data/sectors.js';
+import { contributorConstellations } from '../data/constellationLabels.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { FACTION_META } from '../data/factions.js';
 import { BODY_SPECIALIZATION_BY_ID } from '../data/claimableBodies.js';
@@ -1270,7 +1271,7 @@ export function buildClaimOwnershipMarkers(state, sectorId, claimsSystem = null)
  * screen-independent graph position), and one edge per neighbor pair (deduped). Trade edges connect
  * two charted sectors; uncharted edges are drawn faint. Pure — no DOM.
  *
- * @returns {{ level:'galaxy', currentSectorId, nodes:Array, edges:Array }}
+ * @returns {{ level:'galaxy', currentSectorId, nodes:Array, edges:Array, constellations:Array }}
  */
 export function buildGalaxyModel(state) {
   const records = sectorRecords(state);
@@ -1386,7 +1387,14 @@ export function buildGalaxyModel(state) {
     };
   }
 
-  return { level: 'galaxy', currentSectorId: curId, nodes, edges, player: playerMark };
+  return {
+    level: 'galaxy',
+    currentSectorId: curId,
+    nodes,
+    edges,
+    player: playerMark,
+    constellations: contributorConstellations(),
+  };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -7904,6 +7912,42 @@ export const galaxyMapScreen = {
     const sx = (x) => w / 2 + (x - cam.cx) * graphScale;
     const sy = (y) => h / 2 + (y - cam.cy) * graphScale;
     const nodeById = new Map(model.nodes.map((n) => [n.id, n]));
+
+    // Plan 30: contributor/tester handles live in the paper grain behind the route graph. They are
+    // deliberately not click targets, discoveries, sectors, or save state. Keeping the linework
+    // static and faint makes them a charming chart-reader reward without competing with navigation.
+    if (this._layers.discovery) {
+      for (const constellation of model.constellations || []) {
+        const points = constellation.points || [];
+        if (points.length < 2) continue;
+        g.save();
+        g.strokeStyle = 'rgba(216, 190, 150, 0.10)';
+        g.fillStyle = 'rgba(216, 190, 150, 0.20)';
+        g.lineWidth = 0.75;
+        g.setLineDash([2, 5]);
+        g.beginPath();
+        for (let index = 0; index < points.length; index += 1) {
+          const px = points[index].x * w;
+          const py = points[index].y * h;
+          if (index === 0) g.moveTo(px, py);
+          else g.lineTo(px, py);
+        }
+        g.stroke();
+        g.setLineDash([]);
+        for (const star of points) {
+          g.beginPath();
+          g.arc(star.x * w, star.y * h, 1.35, 0, Math.PI * 2);
+          g.fill();
+        }
+        const labelAt = constellation.labelAt || points[0];
+        g.font = FONT_MONO(500, 9);
+        g.textAlign = 'center';
+        g.textBaseline = 'middle';
+        g.fillStyle = 'rgba(216, 190, 150, 0.46)';
+        g.fillText(constellation.label, labelAt.x * w, labelAt.y * h);
+        g.restore();
+      }
+    }
 
     // Sector-graph edges: warm hairlines for charted lanes, faint dashes at the frontier.
     // Lanes. A charted lane is engraved rather than merely drawn: a wide soft rule with a dark
