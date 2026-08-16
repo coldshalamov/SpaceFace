@@ -3174,7 +3174,8 @@ export const world = {
     return route;
   },
 
-  _armLocalCourse(course, active = true) {
+  _armLocalCourse(payload) {
+    const course = payload;
     if (!course || !course.pos) return null;
     const nav = this.state.nav;
     nav.route = null;
@@ -3187,8 +3188,8 @@ export const world = {
     };
     if (course.targetEntityId != null) nav.waypoint.targetEntityId = course.targetEntityId;
     if (course.targetSectorId) nav.waypoint.targetSectorId = course.targetSectorId;
-    nav.autopilot = {
-      active: active === true,
+    this.state.nav.autopilot = {
+      active: payload.autopilot !== false,
       target: { x: course.pos.x, z: course.pos.z },
       targetEntityId: course.targetEntityId,
       label: course.label,
@@ -3196,8 +3197,8 @@ export const world = {
       status: 'armed',
     };
     this.bus.emit('nav:waypoint', nav.waypoint);
-    this.bus.emit('nav:autopilot', nav.autopilot);
-    return nav.autopilot;
+    this.bus.emit('nav:autopilot', this.state.nav.autopilot);
+    return this.state.nav.autopilot;
   },
 
   _onAutopilotStopped(payload = {}) {
@@ -3248,7 +3249,7 @@ export const world = {
         return { queued: true, index: queue.length, waypoint: course };
       }
       delete nav.waypointQueue;
-      return this._armLocalCourse(course, payload.autopilot !== false);
+      return this._armLocalCourse({ ...course, autopilot: payload.autopilot !== false });
     }
 
     delete this.state.nav.waypointQueue;
