@@ -347,7 +347,7 @@ export const ENEMY_TYPES = [
       strength: 185,
       damping: 3.2,
       maxAffected: 12,
-      presentationTag: 'environmental',
+      presentationTag: 'hostile',
     },
     telegraph: { bark: 'warn', line: 'Anchor field winding. Break radius or move the hull.', cue: 'field_spool' },
     counterHint: 'kill_or_massline_displace_anchor_leave_radius',

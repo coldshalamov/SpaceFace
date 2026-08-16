@@ -75,6 +75,9 @@ export const FIELD_PALETTE = Object.freeze({
   cone: Object.freeze({
     bank: '#39d0ff', chevron: '#39d0ff', pulse: '#eaffff', hazard: '#ffb35c',
   }),
+  hostileSnare: Object.freeze({
+    filament: '#ff9f43', core: '#ffc878', coreHot: '#fff2d0', rim: '#ffcf8a', hostile: '#ff9f43',
+  }),
 });
 
 // The three consumer definitions. radius R, strength = peak raw acceleration at the center
