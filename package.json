@@ -263,7 +263,7 @@
     "check:economy:market-intelligence": "node scripts/check-economy-market-intelligence.mjs",
     "check:economy:contract-risk": "node scripts/check-economy-contract-risk.mjs",
     "check:economy:automation-offline": "node scripts/check-economy-automation-offline.mjs",
-    "check:economy:demand": "node --test test/economy-demand-mods.test.mjs test/economy-demand-integration.test.mjs test/economy-cycle-weight.test.mjs test/market-driver-presenter.test.mjs test/economy-demand-route.test.mjs test/galaxy-map-market-discovery.test.mjs test/sim-snapshot-economy-history.test.mjs",
+    "check:economy:demand": "node --test test/economy-demand-mods.test.mjs test/economy-demand-integration.test.mjs test/economy-cycle-weight.test.mjs test/arcade-core-market-continuity.test.mjs test/market-driver-presenter.test.mjs test/economy-demand-route.test.mjs test/galaxy-map-market-discovery.test.mjs test/sim-snapshot-economy-history.test.mjs",
     "check:economy:anti-exploit": "node --test test/economy-professional-anti-exploit.test.mjs",
     "check:economy:smuggling-authority": "node scripts/check-economy-smuggling-authority.mjs",
     "check:professional-economy": "npm run check:economy:regional-supply && npm run check:economy:freight-causality && npm run check:economy:market-intelligence && npm run check:economy:demand && npm run check:economy:contract-risk && npm run check:economy:automation-offline && npm run check:economy:anti-exploit && npm run check:economy:smuggling-authority && npm run check:price-memory && npm run check:sim:compare",
