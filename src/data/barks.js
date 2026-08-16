@@ -75,7 +75,7 @@ export const BARK_ARCHETYPE_LINES = Object.freeze({
   }),
   heavy: Object.freeze({
     dying: Object.freeze(['Core breach.', 'Bulkhead failed.', 'All hands brace.']),
-    winning: Object.freeze(['Hold the line.', 'Keep guns walking.', 'They are inside our shadow.']),
+    winning: Object.freeze(['Do not turn. Keep firing.', 'Keep the guns on them.', 'They are inside our shadow.']),
   }),
   specialist: Object.freeze({
     dying: Object.freeze(['Tool is broken.', 'Contract failed.', 'Cut line lost.']),
@@ -232,7 +232,7 @@ export const BARKS = {
       'Our manifest is proprietary.',
     ],
     robbed: [
-      'Inventory discrepancy. Armed correction follows.',
+      'Inventory discrepancy. Collections dispatched.',
       'You stole from the margin.',
       'That cargo had owners.',
     ],
@@ -284,7 +284,7 @@ export const BARKS = {
       'Reactor’s old. Hands are cold. Still got enough to gut you for the vein.',
     ],
     chase: [
-      'Stay on him. That load feeds the shift.',
+      'Stay on them.',
       'Do not let our ore leave the belt.',
       'Close it before the foreman hears.',
     ],
@@ -295,7 +295,7 @@ export const BARKS = {
       'Going home. Two riggers didn’t this cycle. I will.',
     ],
     winning: [
-      'He is venting. Keep it steady.',
+      'They are venting.',
       'One more clean hit.',
       'Bring it down and clock out.',
     ],
@@ -373,9 +373,9 @@ export const BARKS = {
       'Strip the panels first. Cargo floats if the hull pops.',
     ],
     chase: [
-      'Run him down. Weigh-slip stays open.',
+      'Run them down.',
       'Stay close. Cargo shakes loose when they panic.',
-      'He is light on friends. Close.',
+      'No friends on their scope. Close.',
     ],
     flee: [
       'This one bites — break off, break off!',
@@ -385,7 +385,7 @@ export const BARKS = {
     ],
     winning: [
       'Hull is soft. Cut it open.',
-      'He is paying in panels now.',
+      'Paying in panels now.',
       'Keep the weight coming off.',
     ],
     dying: [
@@ -628,8 +628,8 @@ export const BARKS = {
       'Two of my crew starved on the last lean run. You made it personal.',
     ],
     chase: [
-      'Stay with him. We are owed daylight.',
-      'Do not let him drag this home.',
+      'Stay with them. We are owed for this.',
+      'Do not let them.',
       'Close the gap. Then we talk.',
     ],
     flee: [
@@ -639,7 +639,7 @@ export const BARKS = {
       'Going home. Tell the station we tried.',
     ],
     winning: [
-      'He is hurting. Keep it clean.',
+      'They are hurting.',
       'Almost over.',
       'One more and we all leave.',
     ],

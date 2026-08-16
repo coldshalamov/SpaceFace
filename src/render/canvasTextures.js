@@ -481,15 +481,50 @@ export function makeStationSloganTexture(opts = {}) {
   }
 
   const label = String(text || '').toUpperCase();
+  const fitted = fitStationSloganLines(ctx, label, width - 52, {
+    maxPx: Math.round(height * 0.28),
+    minPx: Math.round(height * 0.18),
+  });
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.font = `700 ${Math.round(height * 0.28)}px monospace`;
   ctx.fillStyle = '#f1f4f8';
-  ctx.fillText(fitText(ctx, label, width - 52), width / 2, height * 0.50);
+  ctx.font = `700 ${fitted.fontPx}px monospace`;
+  if (fitted.lines.length === 1) {
+    ctx.fillText(fitted.lines[0], width / 2, height * 0.50);
+  } else {
+    ctx.fillText(fitted.lines[0], width / 2, height * 0.42);
+    ctx.fillText(fitted.lines[1], width / 2, height * 0.60);
+  }
   ctx.fillStyle = accent;
   ctx.font = `700 ${Math.round(height * 0.12)}px monospace`;
   ctx.fillText('LOCAL BERTH NOTICE', width / 2, height * 0.78);
   return finalize(canvas, { srgb: true, repeat: [1, 1] });
+}
+
+function fitStationSloganLines(ctx, text, maxWidth, opts = {}) {
+  const raw = String(text || '');
+  const maxPx = Math.max(1, Number(opts.maxPx) || 36);
+  const minPx = Math.max(1, Math.min(maxPx, Number(opts.minPx) || 22));
+  for (let px = maxPx; px >= minPx; px--) {
+    ctx.font = `700 ${px}px monospace`;
+    if (ctx.measureText(raw).width <= maxWidth) return { fontPx: px, lines: [raw] };
+  }
+  const words = raw.trim().split(/\s+/).filter(Boolean);
+  if (words.length >= 2) {
+    for (let px = maxPx; px >= minPx; px--) {
+      ctx.font = `700 ${px}px monospace`;
+      let best = null;
+      for (let split = 1; split < words.length; split++) {
+        const a = words.slice(0, split).join(' ');
+        const b = words.slice(split).join(' ');
+        const width = Math.max(ctx.measureText(a).width, ctx.measureText(b).width);
+        if (width <= maxWidth && (!best || width < best.width)) best = { lines: [a, b], width };
+      }
+      if (best) return { fontPx: px, lines: best.lines };
+    }
+  }
+  ctx.font = `700 ${minPx}px monospace`;
+  return { fontPx: minPx, lines: [fitText(ctx, raw, maxWidth)] };
 }
 
 function fitText(ctx, text, maxWidth) {
