@@ -600,13 +600,14 @@ export const physics = {
       const hit = this._segmentHitScratch;
       const bestHit = this._bestSegmentHitScratch;
       // A deliberately selected mounted component can sit inside its parent's coarse hull circle.
-      // Seed the sweep with that exact child only when this segment truly intersects it, then ignore
-      // the overlapping parent for this contact. Unrelated bodies remain eligible, and a missed
-      // component does not make the projectile pass through its hull.
+      // Seed the sweep with that exact child on the contact tick. Before then, suppress only its
+      // coarse parent while the projectile's actual forward course can still reach the child within
+      // remaining travel. Unrelated bodies remain eligible, and an off-course shot still hits hull.
       const componentTarget = selectedProjectileComponentTarget(state, proj);
+      const componentTargetCollidable = componentTarget
+        && (canCollide(proj, componentTarget) || canCollide(componentTarget, proj));
       let componentTargetHit = false;
-      if (componentTarget
-        && (canCollide(proj, componentTarget) || canCollide(componentTarget, proj))
+      if (componentTargetCollidable
         && segmentCircleHitInto(
           hit,
           start,
@@ -618,10 +619,13 @@ export const physics = {
         bestTarget = componentTarget;
         copySegmentHit(bestHit, hit);
       }
+      const componentTargetOnCourse = componentTargetHit
+        || (componentTargetCollidable
+          && projectileCourseReachesComponent(proj, start, end, componentTarget));
       for (const tgt of candidates) {
         if (!tgt.alive || tgt === proj || !tgt.collides || tgt.type === 'projectile') continue;
         if (proj.ownerId === tgt.id) continue;
-        if (componentTargetHit && tgt.id === componentTarget.data.parentId) continue;
+        if (componentTargetOnCourse && tgt.id === componentTarget.data.parentId) continue;
         if (!canCollide(proj, tgt) && !canCollide(tgt, proj)) continue;
         if (!segmentCircleHitInto(hit, start, end, tgt.pos, (proj.radius || 0) + (tgt.radius || 0))) continue;
         if (!bestTarget || hit.t < bestHit.t) {
@@ -1413,6 +1417,37 @@ function selectedProjectileComponentTarget(state, projectile) {
   if (!target || target.alive === false || target.collides === false || target.type !== 'heavyPart') return null;
   if (!target.data || target.data.heavyPartState !== 'mounted' || target.data.parentId == null) return null;
   return target;
+}
+
+function projectileCourseReachesComponent(projectile, start, end, component) {
+  if (!projectile || !start || !end || !component || !component.pos) return false;
+  const stepX = end.x - start.x;
+  const stepZ = end.z - start.z;
+  const stepLength = Math.hypot(stepX, stepZ);
+  if (!(stepLength > 1e-9)) return false;
+  const ux = stepX / stepLength;
+  const uz = stepZ / stepLength;
+  const toTargetX = component.pos.x - start.x;
+  const toTargetZ = component.pos.z - start.z;
+  const along = toTargetX * ux + toTargetZ * uz;
+  if (!(along >= 0)) return false;
+
+  const radius = Math.max(0, Number(projectile.radius) || 0)
+    + Math.max(0, Number(component.radius) || 0);
+  const perpendicular2 = Math.max(0,
+    toTargetX * toTargetX + toTargetZ * toTargetZ - along * along);
+  const radius2 = radius * radius;
+  if (perpendicular2 > radius2) return false;
+
+  const data = projectile.data || {};
+  const origin = data.spawnPos || data.origin;
+  const maxDistance = Number(data.maxDistance);
+  if (!origin || !Number.isFinite(origin.x) || !Number.isFinite(origin.z) || !(maxDistance > 0)) {
+    return false;
+  }
+  const travelled = Math.hypot(start.x - origin.x, start.z - origin.z);
+  const firstContactDistance = Math.max(0, along - Math.sqrt(Math.max(0, radius2 - perpendicular2)));
+  return firstContactDistance <= Math.max(0, maxDistance - travelled) + 1e-6;
 }
 
 function nowMs() {

@@ -117,10 +117,11 @@ function stepWithPd(route, pd, ward) {
   route.sim.step(SIM_DT);
 }
 
-async function fireRealGun(route, target, def = SIEGE, shooter = route.attacker) {
+async function fireRealGun(route, target, def = SIEGE, shooter = route.attacker, options = {}) {
   const dx = target.pos.x - shooter.pos.x;
   const dz = target.pos.z - shooter.pos.z;
-  const dir = Math.atan2(dz, dx);
+  const dir = Math.atan2(dz, dx) + (Number(options.directionOffset) || 0);
+  const expectedTarget = options.expectedTarget || target;
   const projectile = route.registry.get('weapons')._spawnProjectile(
     shooter,
     runtimeWeapon(def, 90),
@@ -130,17 +131,35 @@ async function fireRealGun(route, target, def = SIEGE, shooter = route.attacker)
     false,
     route.state,
   );
+  if (target.type === 'heavyPart') {
+    assert.equal(projectile.data.componentTargetId, target.id,
+      'catalog projectile preserves the exact selected mounted component binding');
+  }
   const before = route.hits.length;
   for (let tick = 0; tick < 180 && projectile.alive; tick++) route.sim.step(SIM_DT);
   const newHits = route.hits.slice(before);
-  const hit = newHits.find((payload) => payload.targetId === target.id);
-  assert.ok(hit, `real ${def.id} projectile reaches target ${String(target.id)}; diag=${JSON.stringify({
+  const hit = newHits.find((payload) => payload.targetId === expectedTarget.id);
+  assert.ok(hit, `real ${def.id} projectile reaches target ${String(expectedTarget.id)}; diag=${JSON.stringify({
     shooter: { id: shooter.id, pos: shooter.pos },
     target: { id: target.id, pos: target.pos, state: target.data && target.data.heavyPartState },
     projectile: { id: projectile.id, alive: projectile.alive, pos: projectile.pos },
     hits: newHits.map((row) => row.targetId),
   })}`);
   return hit;
+}
+
+function spawnOutsideComponentGunner(route, parent, part) {
+  const ox = part.pos.x - parent.pos.x;
+  const oz = part.pos.z - parent.pos.z;
+  const length = Math.hypot(ox, oz) || 1;
+  const distance = (Number(parent.radius) || 0) + 90;
+  return route.sim.spawn({
+    type: 'ship', team: 0, factionId: 'faction_free',
+    pos: { x: parent.pos.x + ox / length * distance, z: parent.pos.z + oz / length * distance },
+    vel: { x: 0, z: 0 }, rot: Math.atan2(-oz, -ox), radius: 1, mass: 24,
+    hull: 200, hullMax: 200, shield: 0, shieldMax: 0, armorHp: 0, armorMax: 0,
+    collides: false, data: { combatProfileId: 'combat_profile_standard_ship', weapons: [] },
+  });
 }
 
 test('dedicated PD spends two real contacts, leaks the saturated missile, and gun removal leaves the ward open', async (t) => {
@@ -276,18 +295,20 @@ test('Iron Maw interception capacity comes from surviving physical PD children',
   assert.ok(pdRecords.some((record) => record.entityId === receipt.sourceId
     && record.partId === receipt.sourcePartId), 'receipt names the exact mounted PD heavyPart source');
 
+  const missRecord = pdRecords[0];
+  const missPart = route.state.entities.get(missRecord.entityId);
+  const missGunner = spawnOutsideComponentGunner(route, maw, missPart);
+  await fireRealGun(route, missPart, SIEGE, missGunner, {
+    directionOffset: 0.15,
+    expectedTarget: maw,
+  });
+  assert.equal(missRecord.destroyed, false,
+    'an explicitly selected but genuinely off-course component shot still lands on the parent');
+  assert.equal(missPart.data.heavyPartState, 'mounted');
+
   for (const record of pdRecords) {
     const part = route.state.entities.get(record.entityId);
-    const ox = part.pos.x - maw.pos.x;
-    const oz = part.pos.z - maw.pos.z;
-    const length = Math.hypot(ox, oz) || 1;
-    const gunner = route.sim.spawn({
-      type: 'ship', team: 0, factionId: 'faction_free',
-      pos: { x: part.pos.x + ox / length * 25, z: part.pos.z + oz / length * 25 },
-      vel: { x: 0, z: 0 }, rot: Math.atan2(-oz, -ox), radius: 1, mass: 24,
-      hull: 200, hullMax: 200, shield: 0, shieldMax: 0, armorHp: 0, armorMax: 0,
-      collides: false, data: { combatProfileId: 'combat_profile_standard_ship', weapons: [] },
-    });
+    const gunner = spawnOutsideComponentGunner(route, maw, part);
     await fireRealGun(route, part, SIEGE, gunner);
     assert.equal(record.destroyed, true);
     assert.equal(part.data.heavyPartState, 'debris');
