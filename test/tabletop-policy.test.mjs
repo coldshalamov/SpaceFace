@@ -621,4 +621,6 @@ test('NPC trail helper is the live VFX path', async () => {
   assert.match(source, /ctx\.tableWu/);
   assert.doesNotMatch(source, /TRAIL_SKIP_PLAYER_DIST = 3600/);
   assert.doesNotMatch(source, /TRAIL_NORMAL_PLAYER_DIST = 2200/);
+  assert.match(source, /TABLE_HEARING_FAR_WU/);
+  assert.doesNotMatch(source, /d < 900/);
 });
