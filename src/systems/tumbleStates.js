@@ -1,4 +1,4 @@
-// Tumble states (Wave M2 §3.4, design/revamp/MASSLINE_PHYSICS_IDENTITY.md).
+// Tumble states (Wave M2 §3.4, design/revamp/MASSLINE_PHYSICS_IDENTITY.md; AC-04).
 //
 // The payoff that makes flinging matter without requiring kills: a ship whipped past what its
 // attitude thrusters can counter enters an uncontrolled spin — can't aim, can't burn — until its
@@ -6,14 +6,21 @@
 // with mass ratio for free (heavy flicks light), and the entry spin is a REAL angular impulse
 // through the physics-authority command membrane, never a direct body write.
 //
-// Player-side only power (design principle 2): tumbles are caused exclusively by the player's
-// massline (throw releases and whip impacts). THE PLAYER SHIP NEVER TUMBLES on any path here.
+// AC-04: this file owns the Massline *entry*, but it is the single zero-control/recovery owner for
+// EVERY canonical tumble source (Massline, physical contact, authored weapon impulse). Producers
+// keep their own admission gates and their own entry geometry; each writes a distinct kind into the
+// shared `status_tumbling` record, and this loop honors any supported kind while preserving that
+// provenance in the physics command it writes. Nothing here relabels a contact or weapon tumble as
+// Massline, and nothing here reads a feature flag on a source's behalf — a status that exists was
+// already admitted by its own gated producer.
+//
+// THE PLAYER SHIP NEVER TUMBLES on any path here.
 // The same last-writer slot also enforces NPC Drifting when the canonical combat runtime reports a
 // destroyed drive: zero continuous authority, with existing velocity and external forces untouched.
 //
 // Runs AFTER aiPorts in UPDATE_ORDER so its zero-control overwrite is the last writer before
 // physics consumes the command; runs BEFORE weapons so a cleared fire intent gates this tick's
-// shots. Not in the sf-sim harness; every path also gates on massline2Flag('tumble').
+// shots. Not in the sf-sim harness; the Massline entry paths gate on massline2Flag('tumble').
 import { massline2Flag } from '../data/featureFlags.js';
 import {
   ensurePhysicsBodySpec,
@@ -24,8 +31,11 @@ import {
 import { resolveFlightProfile } from '../core/flightDynamics.js';
 import { ensureCombatant } from '../combat/runtime.js';
 import {
+  describeTumbleStatus,
   MASSLINE_TUMBLE_KIND,
-  readMasslineTumbleStatus,
+  readTumbleStatus,
+  resolveTumbleEntry,
+  TUMBLE_KIND_SOURCES,
   TUMBLE_STATUS_ID,
 } from '../combat/tumbleStatus.js';
 
@@ -38,12 +48,17 @@ const TUMBLE_THROW_MIN_SPEED = 60;    // wu/s — a thrown ship below this was n
 const TUMBLE_MASS_RATIO_MIN = 0.5;    // sqrt(player/victim) clamp — heavy victims resist
 const TUMBLE_MASS_RATIO_MAX = 2.2;
 
-const TUMBLE_CONTROL = Object.freeze({
-  mode: 'tumbling',
-  force: Object.freeze({ x: 0, y: 0, z: 0 }),
-  torque: Object.freeze({ x: 0, y: 0, z: 0 }),
-  source: 'massline_tumble',
-});
+const ZERO_VECTOR = Object.freeze({ x: 0, y: 0, z: 0 });
+// One control-loss mode ("tumbling") for every source, one physics-command `source` per source so
+// the membrane keeps the provenance instead of attributing every tumble to the Massline.
+const TUMBLE_CONTROLS = Object.freeze(Object.fromEntries(
+  Object.keys(TUMBLE_KIND_SOURCES).map((kind) => [kind, Object.freeze({
+    mode: 'tumbling',
+    force: ZERO_VECTOR,
+    torque: ZERO_VECTOR,
+    source: kind,
+  })]),
+));
 const DRIFT_CONTROL = Object.freeze({
   mode: 'drifting',
   force: Object.freeze({ x: 0, y: 0, z: 0 }),
@@ -77,39 +92,43 @@ export const tumbleStates = {
     const entities = state.entities;
     if (!entities || typeof entities.values !== 'function') return;
     const now = finite(state.simTime, state.tick / 60);
-    const tumbleEnabled = massline2Flag('tumble');
 
     for (const e of entities.values()) {
-      const tumble = tumbleEnabled && e ? readMasslineTumbleStatus(state, e) : null;
+      // Any supported tumble kind — Massline, contact, or authored weapon impulse — lands here.
+      const tumble = e ? readTumbleStatus(state, e) : null;
       const drifting = isNpcDrifting(state, e);
       if (!tumble && !drifting) continue;
 
-      let tumbleActive = !!tumble;
-      if (tumbleActive && (!e.alive || e.id === state.playerId)) {
+      let record = tumble ? describeTumbleStatus(tumble) : null;
+      if (record && (!e.alive || e.id === state.playerId)) {
+        // Hard player immunity, enforced at the shared owner as well as at every producer.
         this._clearTumbleStatus(e, e.alive ? 'player_immune' : 'entity_dead');
-        tumbleActive = false;
+        record = null;
       }
       if (!e.alive) continue;
 
-      if (tumbleActive) {
+      if (record) {
+        // Recovery is real spin decay first (the RCS physically caught the rotation), with the
+        // authored window as the outer bound. Clearing the status is the whole recovery: no
+        // rotation, angular-velocity, or velocity write ever happens on this path.
         const spin = Math.abs(finite(e.angVel, 0));
-        const elapsed = now - finite(tumble.data && tumble.data.startedAt, now);
+        const elapsed = now - finite(record.startedAt, now);
         const recovered = elapsed >= TUMBLE_MIN_S && spin <= TUMBLE_RECOVER_OMEGA;
-        if (recovered || now >= finite(tumble.data && tumble.data.until, now)) {
+        if (recovered || now >= finite(record.until, now)) {
           this._clearTumbleStatus(e, recovered ? 'rcs_recovered' : 'duration_elapsed');
-          if (this.bus) this.bus.emit('massline:tumbleEnd', { victimId: e.id, durationS: elapsed });
-          tumbleActive = false;
+          this._emitTumbleEnd(e, record, elapsed, recovered);
+          record = null;
         }
       }
-      if (!tumbleActive && !drifting) continue;
+      if (!record && !drifting) continue;
 
       // Suppress this tick's drive authority. writePhysicsControl replaces the command aiPorts
       // queued earlier in the tick (last-writer-wins by design of the command membrane), while
-      // leaving collision, tether, and other external impulses intact. A destroyed drive therefore
-      // drifts ballistically instead of receiving hidden braking or station-keeping.
-      writePhysicsControl(e, tumbleActive ? TUMBLE_CONTROL : DRIFT_CONTROL);
+      // leaving collision, field, tether, and other external impulses intact. A destroyed drive
+      // therefore drifts ballistically instead of receiving hidden braking or station-keeping.
+      writePhysicsControl(e, record ? TUMBLE_CONTROLS[record.kind] : DRIFT_CONTROL);
       if (e.data && e.data.intent) {
-        if (tumbleActive) e.data.intent.fire = false;
+        if (record) e.data.intent.fire = false;
         e.data.intent.moveX = 0;
         e.data.intent.moveZ = 0;
         if (drifting) {
@@ -117,6 +136,23 @@ export const tumbleStates = {
           e.data.intent.brake = false;
         }
       }
+    }
+  },
+
+  _emitTumbleEnd(entity, record, durationS, recovered) {
+    if (!this.bus) return;
+    this.bus.emit('combat:tumbleEnd', {
+      victimId: entity.id,
+      kind: record.kind,
+      source: record.source,
+      cause: record.cause,
+      durationS,
+      recovered,
+    });
+    // Massline consumers (feel, aceMemory, check-massline2) keep their existing, source-specific
+    // event; a contact or weapon-impulse tumble must never arrive on the Massline channel.
+    if (record.kind === MASSLINE_TUMBLE_KIND) {
+      this.bus.emit('massline:tumbleEnd', { victimId: entity.id, durationS });
     }
   },
 
@@ -141,7 +177,6 @@ export const tumbleStates = {
     if (!victim || victim.alive === false || !victim.data) return;
     if (victim.id === state.playerId) return;                       // players never tumble
     if (victim.type !== 'ship' && victim.type !== 'drone') return;  // rocks/stations don't flail
-    if (readMasslineTumbleStatus(state, victim)) return;            // already tumbling
 
     const player = state.entities.get(state.playerId);
     const now = finite(state.simTime, state.tick / 60);
@@ -163,9 +198,22 @@ export const tumbleStates = {
     // Duration is a clamp around the physical decay (angularDamping ~0.4/s gives ln(spin/recover)
     // / 0.4 seconds); update() ends the state early the moment the spin is genuinely caught.
     const expected = Math.log(Math.max(1.5, targetSpin / TUMBLE_RECOVER_OMEGA)) / 0.4;
-    const until = now + clamp(expected, TUMBLE_MIN_S, TUMBLE_MAX_S);
-    const scheduled = this._scheduleTumbleStatus(victim, until - now, {
+    const requestedS = clamp(expected, TUMBLE_MIN_S, TUMBLE_MAX_S);
+    // Shared admission: the Massline never restarts its own spin, and taking the state over from a
+    // contact/impulse tumble may not shorten the window that hull already owns.
+    const entry = resolveTumbleEntry(state, victim, {
       kind: MASSLINE_TUMBLE_KIND,
+      durationTicks: Math.max(1, Math.ceil(Math.max(0, requestedS) * 60) + 1),
+      tick: state.tick,
+    });
+    if (!entry) return;
+    const durationS = entry.takeoverFromKind
+      ? Math.max(requestedS, entry.durationTicks / 60)
+      : requestedS;
+    const until = now + durationS;
+    const scheduled = this._scheduleTumbleStatus(victim, entry.durationTicks, {
+      kind: entry.kind,
+      source: entry.source,
       startedAt: now,
       until,
       cause,
@@ -191,11 +239,10 @@ export const tumbleStates = {
     }
   },
 
-  _scheduleTumbleStatus(victim, durationS, data) {
+  _scheduleTumbleStatus(victim, durationTicks, data) {
     const kernel = combatKernel(this);
     if (!kernel || !kernel.statuses || !kernel.catalog) return false;
     const runtime = ensureCombatant(this.state, victim, kernel.catalog);
-    const durationTicks = Math.max(1, Math.ceil(Math.max(0, durationS) * 60) + 1);
     const result = kernel.statuses.schedule(victim, runtime, {
       id: TUMBLE_STATUS_ID,
       stacks: 1,

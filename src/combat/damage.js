@@ -5,6 +5,16 @@ import { appendCombatTrace } from './trace.js';
 import { difficultyDamageScale } from '../data/difficulty.js';
 import { combatFlag } from '../data/featureFlags.js';
 import { recordImpulseProvenance } from './impulseKernel.js';
+import {
+  IMPULSE_TUMBLE_KIND,
+  overwhelmsAttitudeControl,
+  resolveTumbleEntry,
+  resolveTumbleEntrySpin,
+  resolveTumbleInertiaY,
+  stableTumbleSpinSign,
+  TUMBLE_ENTRY_DURATION_TICKS,
+  TUMBLE_STATUS_ID,
+} from './tumbleStatus.js';
 import { verbAcceptsType } from '../data/interactionDescriptorCatalog.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
 import {
@@ -345,6 +355,10 @@ export function createDamageRouter(context, statusService, options = {}) {
       if (provenance) {
         recordImpulseProvenance(target, { ...provenance, magnitude: Math.hypot(vector.x, vector.z) });
       }
+      // AC-04: an authored impulse this body cannot hold enters the SAME first-class tumble state as
+      // a contact or Massline tumble. Threshold and entry-spin band are the shared physical ones; the
+      // make-up torque still crosses this port, so no parallel physics implementation appears here.
+      const tumble = enterImpulseTumble(target, vector, packet, input, torqueY, weaponId, tag);
       appendCombatTrace(state.combat, state.tick, 'physics.impulse', {
         actorId: input && input.attackerId,
         targetId: target.id,
@@ -353,8 +367,9 @@ export function createDamageRouter(context, statusService, options = {}) {
         weaponId,
         provenance: tag,
         torqueApplied,
+        tumbleEntered: !!tumble,
       });
-      return { applied: true, impulse: vector, torqueApplied };
+      return { applied: true, impulse: vector, torqueApplied, tumble };
     } catch (error) {
       appendCombatTrace(state.combat, state.tick, 'physics.error', {
         actorId: input && input.attackerId,
@@ -364,6 +379,87 @@ export function createDamageRouter(context, statusService, options = {}) {
       });
       return { applied: false, reason: 'physics_error' };
     }
+  }
+
+  /**
+   * AC-04 — a direct authored impulse enters the canonical tumble state only from a deterministic,
+   * physical threshold: the delta-v this impulse actually imparts to THIS hull's mass. The same
+   * impulse that flips a light swarmer therefore leaves a heavy hull merely shoved, with no global
+   * difficulty knob anywhere in the path. Returns the entry receipt, or null when refused.
+   */
+  function enterImpulseTumble(target, vector, packet, input, authoredTorqueY, weaponId, tag) {
+    if (!combatFlag('weaponImpulseConsequences')) return null;
+    if (!target || target.alive === false) return null;
+    if (target.id === state.playerId) return null;                       // players never tumble
+    if (target.type !== 'ship' && target.type !== 'drone') return null;  // rocks/stations don't flail
+    const mass = Math.max(0.1, Number(target.mass) || 1);
+    const deltaV = Math.hypot(vector.x, vector.z) / mass;
+    if (!overwhelmsAttitudeControl(deltaV)) return null;
+
+    const tick = Math.max(0, Math.trunc(Number(state.tick) || 0));
+    const entry = resolveTumbleEntry(state, target, {
+      kind: IMPULSE_TUMBLE_KIND,
+      durationTicks: TUMBLE_ENTRY_DURATION_TICKS,
+      tick,
+    });
+    // Refused: this hull already tumbles from an authored impulse. A sustained beam past the
+    // threshold must not restart its own spin every tick.
+    if (!entry) return null;
+
+    const runtime = ensureCombatant(state, target, catalog);
+    const now = Number.isFinite(state.simTime) ? state.simTime : tick / 60;
+    const spin = resolveTumbleEntrySpin(deltaV, Number(target.radius) || 1);
+    const scheduled = statusService.schedule(target, runtime, {
+      id: TUMBLE_STATUS_ID,
+      stacks: 1,
+      durationTicks: entry.durationTicks,
+      applyTick: tick + 1,
+      data: {
+        kind: entry.kind,
+        source: entry.source,
+        cause: tag || weaponId || 'impulse',
+        startedAt: now,
+        until: now + entry.durationTicks / 60,
+        spin,
+      },
+    }, { attackerId: input && input.attackerId == null ? null : input.attackerId, actionId: null });
+    if (!(scheduled && scheduled.ok)) return null;
+
+    // Real angular physics through the existing port: entry torque is inertia × Δω, so a wide, heavy
+    // hull demands proportionally more of it. Whatever the weapon's authored per-hit tumbleTorque
+    // already delivered counts toward the entry spin; this only queues the shortfall, and never
+    // reduces or reverses an authored torque that already exceeds it.
+    const inertia = resolveTumbleInertiaY(target);
+    const sign = authoredTorqueY
+      ? Math.sign(authoredTorqueY)
+      : (impulseLeverSign(target, vector, packet.hit) || stableTumbleSpinSign(target.id));
+    const makeupY = sign * inertia * spin - (Number(authoredTorqueY) || 0);
+    let entryTorqueApplied = false;
+    if (sign * makeupY > 1e-9 && typeof physics.applyTorqueImpulse === 'function') {
+      entryTorqueApplied = physics.applyTorqueImpulse({
+        entityId: target.id,
+        impulse: { x: 0, y: makeupY, z: 0 },
+        reason: 'weapon_impulse_tumble_entry',
+        tick: state.tick,
+        provenance: {
+          actorId: input && input.attackerId == null ? null : input.attackerId,
+          weaponId: weaponId || null,
+          tag: tag || null,
+          appliedTick: state.tick,
+        },
+      }) !== false;
+    }
+    appendCombatTrace(state.combat, state.tick, 'tumble.entered', {
+      actorId: input && input.attackerId,
+      targetId: target.id,
+      kind: entry.kind,
+      source: entry.source,
+      deltaV,
+      spin,
+      durationTicks: entry.durationTicks,
+      entryTorqueApplied,
+    });
+    return { kind: entry.kind, source: entry.source, deltaV, spin, durationTicks: entry.durationTicks };
   }
 
   function fallbackKill(target, killerId) {
@@ -535,6 +631,17 @@ function resolveImpulseVector(target, attacker, impulse, hit) {
   }
   const length = Math.hypot(dx, dz) || 1;
   return { x: dx / length * magnitude, z: dz / length * magnitude };
+}
+
+// Sign of the angular lever an off-centre impulse applies, matching resolveTumbleTorque's
+// convention. Returns 0 when the hit carries no usable position, so the caller can fall back to a
+// stable per-entity parity instead of an arbitrary direction.
+function impulseLeverSign(target, impulse, hit) {
+  if (!hit || !hit.pos || !target || !target.pos) return 0;
+  const rx = (Number(hit.pos.x) || 0) - (Number(target.pos.x) || 0);
+  const rz = (Number(hit.pos.z) || 0) - (Number(target.pos.z) || 0);
+  const cross = rz * impulse.x - rx * impulse.z;
+  return Math.abs(cross) > 1e-9 ? Math.sign(cross) : 0;
 }
 
 function resolveTumbleTorque(target, impulse, authoredTorque, hit) {

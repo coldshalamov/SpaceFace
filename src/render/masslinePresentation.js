@@ -4,6 +4,7 @@
 // Simulation authority for tumble scheduling and player immunity remains in tumbleStates / combat.
 
 import { INACTIVE_TUMBLE_VFX_PLAN } from './inactiveVfxPlan.js';
+import { describeTumbleStatus } from '../combat/tumbleStatus.js';
 
 export const TUMBLE_STATUS_ID = 'status_tumbling';
 const EMPTY_THROWN_TRAIL_INPUT = Object.freeze({});
@@ -31,11 +32,21 @@ export function readControlLossPresentation(state, entity) {
     ? state.simTime
     : (Number.isFinite(state.tick) ? state.tick / 60 : 0);
   const data = status && status.data ? status.data : null;
+  // AC-04: every canonical tumble source now stamps kind/source/cause/timing/spin, so the readable
+  // state is identical regardless of who overwhelmed the hull while its provenance stays distinct.
+  const described = tumbling ? describeTumbleStatus(status) : null;
   const startedAt = data && Number.isFinite(data.startedAt) ? data.startedAt : null;
   const until = data && Number.isFinite(data.until) ? data.until : null;
-  const spin = data && Number.isFinite(data.spin) ? Math.abs(data.spin) : Math.abs(finite(entity.angVel, 0));
+  // Live rotation is the honest floor: a status whose authored entry spin is missing or already bled
+  // off still reads from the body's real angular velocity rather than collapsing to zero.
+  const spin = Math.max(
+    data && Number.isFinite(data.spin) ? Math.abs(data.spin) : 0,
+    Math.abs(finite(entity.angVel, 0)),
+  );
   const elapsedS = startedAt != null ? Math.max(0, now - startedAt) : 0;
   const remainS = until != null ? Math.max(0, until - now) : 0;
+  const kind = described ? described.kind : null;
+  const source = described ? described.source : null;
   const cause = tumbling && data && typeof data.cause === 'string' ? data.cause : null;
   const attackerId = tumbling && status && Object.prototype.hasOwnProperty.call(status, 'attackerId')
     ? status.attackerId
@@ -48,6 +59,8 @@ export function readControlLossPresentation(state, entity) {
     mode,
     tumbling,
     drifting,
+    kind,
+    source,
     startedAt,
     until,
     spin,
@@ -64,6 +77,8 @@ function idleControlLossPresentation() {
     mode: 'idle',
     tumbling: false,
     drifting: false,
+    kind: null,
+    source: null,
     startedAt: null,
     until: null,
     spin: 0,
