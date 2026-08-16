@@ -20,6 +20,12 @@ import {
   resolveBerthWorld,
   resolveCollisionProxyManifest,
 } from '../data/collisionProxyManifests.js';
+import {
+  immutableProjectileInterceptReceipt,
+  isPdInterceptorProjectile,
+  recordPdInterceptionOutcome,
+  sweptAssignedProjectileContact,
+} from '../combat/projectileInterception.js';
 
 const DEFAULT_MATERIAL = Object.freeze({
   push: 1,
@@ -560,6 +566,7 @@ export const physics = {
   },
 
   sweepProjectiles(dt, state) {
+    this._resolveAssignedProjectileInterceptions(dt, state);
     const out = this._scratch;
     const useHash = hasActiveSpatialHash(state.spatialHash);
     const projectiles = (state.entityIndex && state.entityIndex.projectiles) || state.entityList;
@@ -572,6 +579,16 @@ export const physics = {
         continue;
       }
       const end = limit;
+      // Assigned PD rounds interact only with their immutable incomingId through the selective
+      // moving/moving pass above. They never fall through into ordinary body damage.
+      if (isPdInterceptorProjectile(proj)) {
+        if (limit.expired) {
+          proj.pos.x = end.x;
+          proj.pos.z = end.z;
+          proj.alive = false;
+        }
+        continue;
+      }
       let candidates = (state.entityIndex && state.entityIndex.collidables) || state.entityList;
       if (useHash) {
         const sweepRadius = Math.hypot(end.x - start.x, end.z - start.z) * 0.5 + (proj.radius || 0);
@@ -582,9 +599,29 @@ export const physics = {
       let bestTarget = null;
       const hit = this._segmentHitScratch;
       const bestHit = this._bestSegmentHitScratch;
+      // A deliberately selected mounted component can sit inside its parent's coarse hull circle.
+      // Seed the sweep with that exact child only when this segment truly intersects it, then ignore
+      // the overlapping parent for this contact. Unrelated bodies remain eligible, and a missed
+      // component does not make the projectile pass through its hull.
+      const componentTarget = selectedProjectileComponentTarget(state, proj);
+      let componentTargetHit = false;
+      if (componentTarget
+        && (canCollide(proj, componentTarget) || canCollide(componentTarget, proj))
+        && segmentCircleHitInto(
+          hit,
+          start,
+          end,
+          componentTarget.pos,
+          (proj.radius || 0) + (componentTarget.radius || 0),
+        )) {
+        componentTargetHit = true;
+        bestTarget = componentTarget;
+        copySegmentHit(bestHit, hit);
+      }
       for (const tgt of candidates) {
         if (!tgt.alive || tgt === proj || !tgt.collides || tgt.type === 'projectile') continue;
         if (proj.ownerId === tgt.id) continue;
+        if (componentTargetHit && tgt.id === componentTarget.data.parentId) continue;
         if (!canCollide(proj, tgt) && !canCollide(tgt, proj)) continue;
         if (!segmentCircleHitInto(hit, start, end, tgt.pos, (proj.radius || 0) + (tgt.radius || 0))) continue;
         if (!bestTarget || hit.t < bestHit.t) {
@@ -605,6 +642,36 @@ export const physics = {
       proj.pos.z = bestHit.z;
       this.bus.emit('projectile:hit', projectileHitPayload(proj, bestTarget, { x: proj.pos.x, z: proj.pos.z }));
       proj.alive = false;
+      this._diag.sweptProjectileHits++;
+    }
+  },
+
+  _resolveAssignedProjectileInterceptions(dt, state) {
+    const source = (state.entityIndex && state.entityIndex.projectiles) || state.entityList || [];
+    const interceptors = source
+      .filter((entity) => isPdInterceptorProjectile(entity))
+      .sort((a, b) => stableEntityId(a.id).localeCompare(stableEntityId(b.id)));
+    for (const interceptor of interceptors) {
+      if (!interceptor.alive) continue;
+      const binding = interceptor.data.pdIntercept;
+      const incoming = state.entities && state.entities.get(binding.incomingId);
+      if (!incoming || !incoming.alive) continue;
+      const contact = sweptAssignedProjectileContact(interceptor, incoming, dt);
+      if (!contact) continue;
+      const receipt = immutableProjectileInterceptReceipt(interceptor, incoming, contact, state.tick);
+      interceptor.pos.x = contact.position.x;
+      interceptor.pos.z = contact.position.z;
+      incoming.pos.x = contact.position.x;
+      incoming.pos.z = contact.position.z;
+      interceptor.data.pdIntercepted = true;
+      incoming.data = incoming.data || {};
+      incoming.data.pdIntercepted = true;
+      incoming.data.pdInterceptedBy = interceptor.id;
+      interceptor.alive = false;
+      incoming.alive = false;
+      const shooter = state.entities && state.entities.get(receipt.shooterId);
+      if (shooter) recordPdInterceptionOutcome(shooter, receipt);
+      this.bus.emit('combat:projectileIntercepted', receipt);
       this._diag.sweptProjectileHits++;
     }
   },
@@ -1333,6 +1400,19 @@ function segmentCircleHitInto(out, start, end, center, radius) {
 
 function clamp01(v) {
   return v < 0 ? 0 : v > 1 ? 1 : v;
+}
+
+function stableEntityId(value) {
+  return `${typeof value}:${String(value)}`;
+}
+
+function selectedProjectileComponentTarget(state, projectile) {
+  const targetId = projectile?.data?.componentTargetId;
+  if (targetId == null || !state?.entities) return null;
+  const target = state.entities.get(targetId);
+  if (!target || target.alive === false || target.collides === false || target.type !== 'heavyPart') return null;
+  if (!target.data || target.data.heavyPartState !== 'mounted' || target.data.parentId == null) return null;
+  return target;
 }
 
 function nowMs() {

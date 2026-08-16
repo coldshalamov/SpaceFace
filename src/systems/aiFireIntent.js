@@ -4,12 +4,18 @@ import { authorizeAIEngagement, isHostileForAI } from '../ai/engagementAuthority
 import { assessFriendlyFireLane } from '../ai/fireDiscipline.js';
 import {
   isPdScreenActor,
+  isDedicatedPdScreenActor,
+  pdActorCanDefend,
   resolvePdCharge,
   selectPdInterceptTarget,
-  ensurePdSaturation,
-  beginPdIntercept,
+  refreshPdAssignment,
   PD_SCREEN_DEFAULT_RADIUS,
 } from '../ai/pdScreen.js';
+import {
+  isInterceptableOrdnance,
+  isIronMawPdActor,
+  liveIronMawPdMounts,
+} from '../combat/projectileInterception.js';
 import { isPlayerWanted } from './heat.js';
 
 const RECENT_DEFENSIVE_DAMAGE_TICKS = 180;
@@ -27,14 +33,18 @@ export function applyAIFiringIntent(decision, state) {
   const objective = decision.directive && decision.directive.objective;
   const combatDoctrine = decision.combatDoctrine || null;
   const pdActor = isPdScreenActor(e);
+  let pdTargeting = false;
 
   // W04: pd_screen_escort policy owns target selection, but never fire authorization.
   // A null selection is an explicit saturated/unavailable result, not permission to fall back
   // to the squad directive's target.
   let targetId = objective && objective.targetId;
   if (pdActor) {
-    targetId = applyPdScreenTargetPolicy(e, state, decision);
-    if (targetId == null) {
+    const pdTargetId = applyPdScreenTargetPolicy(e, state, decision);
+    if (pdTargetId != null) {
+      targetId = pdTargetId;
+      pdTargeting = true;
+    } else if (isDedicatedPdScreenActor(e)) {
       clearFire(intent, 'pd_screen_unavailable');
       return;
     }
@@ -64,7 +74,7 @@ export function applyAIFiringIntent(decision, state) {
     clearFire(intent);
     return;
   }
-  const engagementTarget = pdActor ? pdEngagementTarget(state, target) : target;
+  const engagementTarget = pdTargeting ? pdEngagementTarget(state, target) : target;
   if (!engagementTarget) {
     clearFire(intent, 'pd_target_not_authorized');
     return;
@@ -74,8 +84,8 @@ export function applyAIFiringIntent(decision, state) {
   // SCREEN activity.targetId names the defended charge, so it is not an offensive target lock.
   // Map the selected intercept into the ordinary ENGAGE doctrine gate while preserving SCREEN
   // activity/ROE semantics and the final engagement authority below.
-  const objectiveKind = pdActor ? ObjectiveKind.ENGAGE : objective && objective.kind;
-  const activity = pdActor && ai.activity
+  const objectiveKind = pdTargeting ? ObjectiveKind.ENGAGE : objective && objective.kind;
+  const activity = pdTargeting && ai.activity
     ? { ...ai.activity, targetId: null }
     : ai.activity;
   const permitted = canFireByDoctrine({
@@ -104,7 +114,7 @@ export function applyAIFiringIntent(decision, state) {
   const aimAngle = leadAngleFor(e, target, data.weapons);
   const combat = data.combat || (data.combat = {});
   combat.targetId = targetId;
-  combat.pdScreen = pdActor;
+  combat.pdScreen = pdTargeting;
   const lane = assessFriendlyFireLane({
     shooter: e,
     target,
@@ -144,25 +154,35 @@ export function friendlyFireLaneEntities(state) {
 export function applyPdScreenTargetPolicy(entity, state, decision = null) {
   if (!entity || !isPdScreenActor(entity)) return null;
   const tick = Number.isInteger(state && state.tick) ? state.tick : 0;
-  const sat = ensurePdSaturation(entity);
+  const sat = refreshPdAssignment(entity, state);
   const charge = resolvePdCharge(entity, state, decision && decision.perception);
+  const screenRadius = (entity.data && entity.data.pdScreenRadius) || PD_SCREEN_DEFAULT_RADIUS;
+  if (!pdActorCanDefend(entity, state, charge, screenRadius)) {
+    sat.lastTargetId = null;
+    sat.lastScore = null;
+    return null;
+  }
+  if (isIronMawPdActor(entity)) {
+    sat.maxIntercepts = liveIronMawPdMounts(entity, state).length;
+    sat.saturationModel = 'surviving_pd_mounts';
+  } else {
+    sat.maxIntercepts = 2;
+    sat.saturationModel = 'two_intercept_recovery';
+  }
   const contacts = collectPdContacts(entity, state, charge);
   const selected = selectPdInterceptTarget({
     self: entity,
     charge,
     contacts,
-    screenRadius: (entity.data && entity.data.pdScreenRadius) || PD_SCREEN_DEFAULT_RADIUS,
+    screenRadius,
     saturation: sat,
     tick,
   });
   const runtime = entity.data.pdScreenRuntime;
-  if (!selected) {
+  if (!selected || selected.inside !== true) {
     runtime.lastTargetId = null;
     runtime.lastScore = null;
     return null;
-  }
-  if (runtime.lastTargetId !== selected.targetId) {
-    beginPdIntercept(sat, tick);
   }
   runtime.lastTargetId = selected.targetId;
   runtime.lastScore = selected.score;
@@ -180,6 +200,7 @@ function collectPdContacts(self, state, charge) {
     if (!e || !e.alive || e.id === self.id) continue;
     if (charge && e.id === charge.id) continue;
     if (e.type === 'projectile') {
+      if (!isInterceptableOrdnance(e)) continue;
       // A projectile is hostile only through its live owner's authored hostility. Team mismatch
       // and ownerless ordnance cannot broaden the final engagement authority.
       const owner = e.ownerId != null && state.entities ? state.entities.get(e.ownerId) : null;

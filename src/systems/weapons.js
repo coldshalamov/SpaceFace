@@ -25,6 +25,16 @@ import {
 } from '../combat/tetherFireControl.js';
 import { presentationAllowsPlayerFacingAction } from '../core/presentationAdmission.js';
 import { selectedMountedHeavyPart } from '../combat/heavyParts.js';
+import {
+  bindPdInterceptorProjectile,
+  claimPdInterceptionAssignment,
+  clearStalePdInterceptionAssignment,
+  ensurePdInterceptionRuntime,
+  isInterceptableOrdnance,
+  PD_INTERCEPT_CONTACT_RADIUS,
+  pdInterceptionAvailable,
+  resolvePdShotSource,
+} from '../combat/projectileInterception.js';
 
 const RAD = Math.PI / 180;
 const TWO_PI = Math.PI * 2;
@@ -498,6 +508,7 @@ export const weapons = {
     let capLeft = cap;
     if (aimAngle == null) aimAngle = e.rot;
     for (const w of ws) {
+      if (w.heavyPartDestroyed === true) continue;
       const def = this._byId.get(w.defId) || {};
       const continuous = w.continuous != null ? w.continuous : def.continuous;
       // DEPLOY verb (SF-10 vector mine): a third fire path alongside projectile + beam. It lobs a
@@ -642,12 +653,29 @@ export const weapons = {
 
     // Targeting: missiles/turrets need a target (the forced auto-fire target, else the ship's selected).
     let tgt = (isMissile || isTurret) ? (forceTarget || this._resolveTarget(e)) : null;
+    // Fixed guns normally need only an aim point. Component selection is different: preserve the
+    // exact live mounted child through projectile creation so the sweep can land the authored hit
+    // on that child even when its parent hull's coarse collision circle overlaps it.
+    if (!tgt && forceTarget && forceTarget.type === 'heavyPart'
+      && forceTarget.alive !== false
+      && forceTarget.data?.heavyPartState === 'mounted') {
+      tgt = forceTarget;
+    }
     // Player turret with no selected target: synthesize a point-target along the aim direction at
     // weapon range so manual LMB still fires the turret toward the cursor (a fixed gun would gimbal
     // there; a turret should too). Missiles still require a real lockable target.
     if (!tgt && isTurret && isPlayer && !isMissile) {
       const r = (w.range != null ? w.range : def.range || 600);
       tgt = { pos: { x: e.pos.x + Math.cos(aimAngle) * r, z: e.pos.z + Math.sin(aimAngle) * r }, vel: { x: 0, z: 0 } };
+    }
+
+    // A projectile target is never an ordinary gunnery target. Only an intercept-authorized flak
+    // mount may launch, and the descriptor binds this exact shot to this exact hostile ordnance id.
+    let pdLaunch = null;
+    if (tgt && tgt.type === 'projectile') {
+      if (def.intercepts !== true || !isInterceptableOrdnance(tgt)) return capLeft;
+      pdLaunch = this._preparePdLaunch(e, w, tgt, state);
+      if (!pdLaunch) return capLeft;
     }
 
     let dir;
@@ -706,7 +734,14 @@ export const weapons = {
     // consume missile lock so each missile needs a fresh lock
     if (isMissile && e.data.combat) { e.data.combat.lockProgress = 0; }
 
-    this._spawnProjectile(e, w, def, dir, tgt, isMissile, state);
+    const projectile = this._spawnProjectile(e, w, def, dir, tgt, isMissile, state);
+    if (pdLaunch && projectile) {
+      const claimed = claimPdInterceptionAssignment(e, pdLaunch.incomingId, projectile.id, state.tick);
+      if (!claimed || !bindPdInterceptorProjectile(projectile, pdLaunch)) {
+        projectile.alive = false;
+        return capLeft;
+      }
+    }
 
     const origin = this._muzzle(e, w, dir);
     this.bus.emit('combat:fire', {
@@ -752,6 +787,10 @@ export const weapons = {
       spawnPos: { x: muzzle.x, z: muzzle.z },
       maxDistance: range,
     };
+    if (tgt && tgt.type === 'heavyPart' && tgt.alive !== false
+      && tgt.data?.heavyPartState === 'mounted') {
+      data.componentTargetId = tgt.id;
+    }
     if (isMissile) {
       data.targetId = tgt ? tgt.id : null;
       data.turnRate = w.turnRate != null ? w.turnRate : def.turnRate || 0;
@@ -764,7 +803,7 @@ export const weapons = {
       if (splashDmg != null) data.splashDmg = splashDmg;
     }
 
-    this.helpers.spawnEntity({
+    return this.helpers.spawnEntity({
       type: 'projectile',
       pos: muzzle,
       vel,
@@ -778,6 +817,27 @@ export const weapons = {
       collides: true,
       data,
     });
+  },
+
+  _preparePdLaunch(shooter, weapon, incoming, state) {
+    clearStalePdInterceptionAssignment(shooter, state);
+    const runtime = ensurePdInterceptionRuntime(shooter);
+    if (!pdInterceptionAvailable(runtime, Number.isInteger(state.tick) ? state.tick : 0)) return null;
+    if (runtime.pendingInterceptorId != null) return null;
+    const source = resolvePdShotSource(shooter, weapon, state);
+    if (!source || !(source.liveCapacity > 0)) return null;
+    runtime.maxIntercepts = source.liveCapacity;
+    runtime.saturationModel = source.saturationModel;
+    const defenderId = runtime.chargeId == null ? shooter.id : runtime.chargeId;
+    return {
+      defenderId,
+      sourceId: source.sourceId,
+      sourcePartId: source.sourcePartId,
+      shooterId: shooter.id,
+      incomingId: incoming.id,
+      contactRadius: PD_INTERCEPT_CONTACT_RADIUS,
+      assignedTick: Number.isInteger(state.tick) ? state.tick : 0,
+    };
   },
 
   // --- SF-10 DEPLOY verb: vector mine ------------------------------------------------------------

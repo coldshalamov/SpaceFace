@@ -35,6 +35,10 @@ const DOCTRINE_FIRE_PHASES = Object.freeze({
   // resolved like a passive hauler and the whole fight fell to the escorts. The 30-tick
   // field_spool telegraph always precedes this phase.
   field_anchor_controller: new Set(['anchor_hold']),
+  // Capital point defense is a defensive firing window over one hostile ordnance owner. The
+  // ordinary broadside phases remain closed here; only the exact PD override from aiFireIntent may
+  // name this phase, and every motive/hostility/response/jurisdiction gate above still applies.
+  capital_broadside: new Set(['pd_intercept']),
 });
 const ROBBERY_ESCALATION_TRIGGERS = new Set(['explicit_refusal', 'ignored_demand', 'player_attack']);
 const SCENARIO_47A_SCAVENGERS = new Map([

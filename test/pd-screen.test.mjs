@@ -1,6 +1,5 @@
 /**
  * W04 point-defense screen — target/priority/cap contracts + doctrine distinction.
- * Honest v1: priority-targeting + saturation (no projectile intercept kill seam on weapons).
  */
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -14,10 +13,10 @@ import {
   scorePdThreat,
   ensurePdSaturation,
   pdSaturationAllows,
-  beginPdIntercept,
   recoverPdSaturation,
   releasePdIntercept,
 } from '../src/ai/pdScreen.js';
+import { recordPdInterceptionOutcome } from '../src/combat/projectileInterception.js';
 import { applyPdScreenTargetPolicy, applyAIFiringIntent } from '../src/systems/aiFireIntent.js';
 import { authorizeAIEngagement } from '../src/ai/engagementAuthority.js';
 import { createSimulation } from '../src/core/sim.js';
@@ -102,18 +101,17 @@ test('screen radius is independently pinned at 320 on both sides and remains fin
   assert.equal(Number.isFinite(extreme), true);
 });
 
-test('saturation cap is two charges with exact 44/45/46 recovery bounds', () => {
-  const initialized = ensurePdSaturation({ data: {} });
+test('saturation advances only from real contact receipts and recovers on the exact boundary', () => {
+  const actor = { data: {} };
+  const initialized = ensurePdSaturation(actor);
   assert.equal(initialized.maxIntercepts, 2);
   assert.equal(initialized.recoveryTicks, 45);
 
-  const sat = {
-    activeIntercepts: 0,
-    lastReleaseTick: 100,
-  };
-  assert.equal(beginPdIntercept(sat, 100), true, 'first charge is available');
-  assert.equal(beginPdIntercept(sat, 101), true, 'second charge is available');
-  assert.equal(beginPdIntercept(sat, 102), false, 'third charge is blocked');
+  const sat = initialized;
+  assert.equal(recordPdInterceptionOutcome(actor, contactReceipt('pd-shot-1', 'missile-1', 100)), true);
+  assert.equal(recordPdInterceptionOutcome(actor, contactReceipt('pd-shot-2', 'missile-2', 101)), true);
+  assert.equal(recordPdInterceptionOutcome(actor, contactReceipt('pd-shot-2', 'missile-2', 101)), false,
+    'duplicate lifecycle receipt is idempotent');
   assert.equal(sat.activeIntercepts, 2);
   assert.equal(pdSaturationAllows(sat, 102), false);
 
@@ -122,21 +120,23 @@ test('saturation cap is two charges with exact 44/45/46 recovery bounds', () => 
     charge: { id: 'w', pos: { x: 0, z: 0 } },
     contacts: makeContacts(),
     saturation: sat,
-    tick: 144,
+    tick: 145,
   });
   assert.equal(selectedWhileFull, null);
 
-  recoverPdSaturation(sat, 144);
-  assert.equal(sat.activeIntercepts, 2, '44 ticks does not recover a charge');
   recoverPdSaturation(sat, 145);
-  assert.equal(sat.activeIntercepts, 1, '45 ticks recovers exactly one charge');
+  assert.equal(sat.activeIntercepts, 2, '44 ticks does not recover a charge');
   recoverPdSaturation(sat, 146);
+  assert.equal(sat.activeIntercepts, 1, '45 ticks recovers exactly one charge');
+  recoverPdSaturation(sat, 147);
   assert.equal(sat.activeIntercepts, 1, '46 ticks does not double-recover');
 
   sat.activeIntercepts = 2;
+  sat.pendingIncomingId = 'pending';
+  sat.pendingInterceptorId = 'pending-shot';
   releasePdIntercept(sat, 200);
-  assert.equal(sat.activeIntercepts, 1, 'an authoritative early-release receipt frees one charge');
-  assert.equal(sat.lastReleaseTick, 200);
+  assert.equal(sat.activeIntercepts, 2, 'cancelling a pending assignment never refunds real contact');
+  assert.equal(sat.pendingInterceptorId, null);
 
   const huge = { activeIntercepts: 2, lastReleaseTick: Number.MAX_SAFE_INTEGER - 45 };
   recoverPdSaturation(huge, Number.MAX_SAFE_INTEGER);
@@ -201,7 +201,8 @@ test('applyPdScreenTargetPolicy wires charge + saturation on live entities', () 
   assert.equal(targetId, threat.id);
   assert.equal(pd.data.pdScreenRuntime.lastTargetId, threat.id);
   assert.equal(pd.data.pdScreenRuntime.chargeId, ward.id);
-  assert.ok(pd.data.pdScreenRuntime.activeIntercepts >= 1);
+  assert.equal(pd.data.pdScreenRuntime.activeIntercepts, 0,
+    'selection alone cannot spend a physical interception charge');
 });
 
 test('determinism: identical contacts/seeds yield identical PD selection', () => {
@@ -255,11 +256,12 @@ test('saturated live PD emits no fire intent, then recovers at the exact tick', 
   assert.equal(h.pd.data.intent.fire, true, 'one recovered charge reopens the authorized fire path at 45 ticks');
 });
 
-test('live target death/change consumes first and second charges; the third waits for recovery', () => {
+test('live target changes spend no charge; only contact receipts saturate the third route', () => {
   const h = livePdFixture();
   applyAIFiringIntent(pdDecision(h.pd.id, h.threat.id), h.state);
   assert.equal(h.pd.data.intent.fire, true);
-  assert.equal(h.pd.data.pdScreenRuntime.activeIntercepts, 1);
+  assert.equal(h.pd.data.pdScreenRuntime.activeIntercepts, 0);
+  recordPdInterceptionOutcome(h.pd, contactReceipt(8001, h.threat.id, 100));
 
   h.threat.alive = false;
   const second = spawnThreat(h.sim, 121, 0);
@@ -267,6 +269,8 @@ test('live target death/change consumes first and second charges; the third wait
   applyAIFiringIntent(pdDecision(h.pd.id, second.id), h.state);
   assert.equal(h.pd.data.intent.fire, true);
   assert.equal(h.pd.data.combat.targetId, second.id);
+  assert.equal(h.pd.data.pdScreenRuntime.activeIntercepts, 1);
+  recordPdInterceptionOutcome(h.pd, contactReceipt(8002, second.id, 101));
   assert.equal(h.pd.data.pdScreenRuntime.activeIntercepts, 2);
 
   second.alive = false;
@@ -281,7 +285,7 @@ test('PD accepts hostile-owner projectiles and rejects ownerless or neutral team
   const hostile = livePdFixture();
   const projectile = hostile.sim.spawn({
     type: 'projectile', team: hostile.threat.team, ownerId: hostile.threat.id,
-    pos: { x: 60, z: 0 }, vel: { x: -200, z: 0 }, radius: 2, data: {},
+    pos: { x: 60, z: 0 }, vel: { x: -200, z: 0 }, radius: 2, data: { kind: 'missile', armed: true },
   });
   applyAIFiringIntent(pdDecision(hostile.pd.id, null), hostile.state);
   assert.equal(hostile.pd.data.intent.fire, true);
@@ -290,7 +294,7 @@ test('PD accepts hostile-owner projectiles and rejects ownerless or neutral team
   const ownerless = livePdFixture({ includeThreat: false });
   ownerless.sim.spawn({
     type: 'projectile', team: 0, ownerId: null,
-    pos: { x: 60, z: 0 }, vel: { x: -200, z: 0 }, radius: 2, data: {},
+    pos: { x: 60, z: 0 }, vel: { x: -200, z: 0 }, radius: 2, data: { kind: 'missile', armed: true },
   });
   applyAIFiringIntent(pdDecision(ownerless.pd.id, null), ownerless.state);
   assert.equal(ownerless.pd.data.intent.fire, false, 'ownerless team mismatch is not authored hostility');
@@ -370,6 +374,7 @@ function spawnThreat(sim, x, z, team = 0) {
 function pdDecision(entityId, targetId) {
   return {
     entityId,
+    action: { actionId: `pd-fire-${String(entityId)}` },
     directive: {
       tactic: 'pd_screen',
       objective: {
@@ -380,4 +385,13 @@ function pdDecision(entityId, targetId) {
     },
     combatDoctrine: { fireWindow: true, doctrineId: 'interceptor_flyby', phase: 'strike' },
   };
+}
+
+function contactReceipt(interceptorId, incomingId, tick) {
+  return Object.freeze({
+    interceptorId,
+    incomingId,
+    tick,
+    position: Object.freeze({ x: 0, z: 0 }),
+  });
 }

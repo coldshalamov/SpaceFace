@@ -2,18 +2,24 @@
 //
 // Protection geometry: a defended radius around the escorted charge (ward).
 // Target policy: prioritize threats that have entered the screen.
-// Saturation: a two-charge acquisition budget with deterministic recovery over sim ticks.
-//
-// Honest v1: shipped weapons do not consume weapon.intercepts for projectile
-// kill/divert at runtime (data-only flag). This module implements
-// priority-targeting + recovery-charge cap + doctrine distinction. Projectile
-// contacts, when present in the sensor frame, score highest inside the screen.
+// Saturation: two real projectile contacts before deterministic recovery over sim ticks. Target
+// selection and fire intent are advisory and never spend a charge.
 
 import { ContactKind, distance2, finite, stableId } from './contracts.js';
+import {
+  PD_INTERCEPT_MAX_CHARGES,
+  PD_INTERCEPT_RECOVERY_TICKS,
+  clearStalePdInterceptionAssignment,
+  ensurePdInterceptionRuntime,
+  isIronMawPdActor,
+  liveIronMawPdMounts,
+  pdInterceptionAvailable,
+  recoverPdInterceptionRuntime,
+} from '../combat/projectileInterception.js';
 
 export const PD_SCREEN_DEFAULT_RADIUS = 320;
-export const PD_SCREEN_MAX_INTERCEPTS = 2;
-export const PD_SCREEN_RECOVERY_TICKS = 45;
+export const PD_SCREEN_MAX_INTERCEPTS = PD_INTERCEPT_MAX_CHARGES;
+export const PD_SCREEN_RECOVERY_TICKS = PD_INTERCEPT_RECOVERY_TICKS;
 export const PD_ROLE_IDS = Object.freeze(new Set(['pd_screen_escort']));
 
 /**
@@ -33,7 +39,20 @@ export function isPdScreenActor(entityOrSelf) {
   if (PD_ROLE_IDS.has(role)) return true;
   const tags = data && Array.isArray(data.tags) ? data.tags : null;
   if (tags && tags.includes('pd_screen')) return true;
-  return false;
+  return isIronMawPdActor(entityOrSelf);
+}
+
+export function isDedicatedPdScreenActor(entityOrSelf) {
+  if (!entityOrSelf || isIronMawPdActor(entityOrSelf)) return false;
+  return isPdScreenActor(entityOrSelf);
+}
+
+/** The source must remain inside its ward's bubble; Iron Maw additionally needs a mounted PD part. */
+export function pdActorCanDefend(entity, state, charge, screenRadius = PD_SCREEN_DEFAULT_RADIUS) {
+  if (!entity || !charge || entity.alive === false) return false;
+  if (distance2(entity.pos, charge.pos) > screenRadius) return false;
+  if (isIronMawPdActor(entity)) return liveIronMawPdMounts(entity, state).length > 0;
+  return isDedicatedPdScreenActor(entity);
 }
 
 /**
@@ -147,52 +166,27 @@ export function selectPdInterceptTarget({
 
 /** Mutable saturation ledger on entity.data.pdScreenRuntime. */
 export function ensurePdSaturation(entity) {
-  const data = entity.data || (entity.data = {});
-  if (!data.pdScreenRuntime) {
-    data.pdScreenRuntime = {
-      activeIntercepts: 0,
-      lastReleaseTick: -Infinity,
-      maxIntercepts: PD_SCREEN_MAX_INTERCEPTS,
-      recoveryTicks: PD_SCREEN_RECOVERY_TICKS,
-      saturationModel: 'recovery_charges',
-    };
-  }
-  return data.pdScreenRuntime;
+  return ensurePdInterceptionRuntime(entity);
 }
 
 export function pdSaturationAllows(sat, tick) {
-  if (!sat) return true;
-  const max = Number.isFinite(sat.maxIntercepts) ? sat.maxIntercepts : PD_SCREEN_MAX_INTERCEPTS;
-  recoverPdSaturation(sat, tick);
-  return (sat.activeIntercepts || 0) < max;
+  return pdInterceptionAvailable(sat, tick);
 }
 
 export function recoverPdSaturation(sat, tick) {
-  if (!sat) return;
-  const recovery = Number.isFinite(sat.recoveryTicks) ? sat.recoveryTicks : PD_SCREEN_RECOVERY_TICKS;
-  const last = Number.isFinite(sat.lastReleaseTick) ? sat.lastReleaseTick : -Infinity;
-  if (!(sat.activeIntercepts > 0)) return;
-  if (!Number.isInteger(tick) || tick - last < recovery) return;
-  // Recover one slot per recovery window.
-  const steps = Math.floor((tick - last) / recovery);
-  if (steps <= 0) return;
-  sat.activeIntercepts = Math.max(0, (sat.activeIntercepts || 0) - steps);
-  sat.lastReleaseTick = last + steps * recovery;
+  recoverPdInterceptionRuntime(sat, tick);
 }
 
-export function beginPdIntercept(sat, tick) {
-  if (!sat) return false;
-  if (!pdSaturationAllows(sat, tick)) return false;
-  sat.activeIntercepts = (sat.activeIntercepts || 0) + 1;
-  if (!Number.isFinite(sat.lastReleaseTick) || sat.lastReleaseTick < 0) sat.lastReleaseTick = tick;
-  return true;
+/** Cancel an unfulfilled launch assignment. This never refunds a real interception charge. */
+export function releasePdIntercept(sat, _tick) {
+  if (!sat) return;
+  sat.pendingIncomingId = null;
+  sat.pendingInterceptorId = null;
 }
 
-/** Free one spent charge early when an authoritative intercept-lifecycle receipt exists. */
-export function releasePdIntercept(sat, tick) {
-  if (!sat) return;
-  sat.activeIntercepts = Math.max(0, (sat.activeIntercepts || 0) - 1);
-  sat.lastReleaseTick = tick;
+export function refreshPdAssignment(entity, state) {
+  clearStalePdInterceptionAssignment(entity, state);
+  return ensurePdSaturation(entity);
 }
 
 /**
