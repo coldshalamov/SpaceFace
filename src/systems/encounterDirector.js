@@ -256,6 +256,7 @@ export const encounterDirector = {
       this.bus.on('encounter:namedCaptainBound', (p) => this._onExternalNamedBound(p));
       this.bus.on('combat:damage', (p) => this._onCombatDamage(p));
       this.bus.on('contraband:scanned', (p) => this._routeToScript('patrolScan', 'contrabandScanned', p));
+      this.bus.on('cargo:jettisoned', (p) => this._routeToScript('patrolScan', 'cargoJettisoned', p));
       this.bus.on('scan:pulse', (p) => {
         this._routeToScript('distress', 'scanPulse', p);
         this._routeToSelfRegistered('scanPulse', p);

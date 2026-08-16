@@ -37,6 +37,11 @@ import { ActivityKind, RulesOfEngagement, setEntityDoctrine } from '../ai/doctri
 import { isPdScreenActor } from '../ai/pdScreen.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import { buildEncounterCausality } from '../world/encounterCausality.js';
+import {
+  CUSTOMS_SCAN_CONE,
+  customsScanPresentation,
+  customsScanSample,
+} from '../data/smugglingStealth.js';
 
 // ── shared tuning ─────────────────────────────────────────────────────────────────────────────────
 const TOLL_PAY_DIST = 520;        // brake inside this of the toll leader to hand over the toll
@@ -190,6 +195,57 @@ export function patrolCanInitiateScan(state, observer, player) {
     <= runtime.radius * runtime.radius;
 }
 
+function installCustomsScanLattice(entity, encounterId, player, d) {
+  if (!entity?.pos || !player?.pos) return;
+  entity.rot = Math.atan2(player.pos.z - entity.pos.z, player.pos.x - entity.pos.x);
+  const data = entity.data || (entity.data = {});
+  data.smugglingScanCone = {
+    ...customsScanPresentation(),
+    encounterId,
+    active: true,
+    exposure: 0,
+    enginesDark: false,
+    stormSignalMultiplier: 1,
+  };
+  // The encounter stamps this presentation contract immediately after spawn. If the render owner
+  // won the same-frame mesh race, rebuild that exact ship so the live scan is not visually absent.
+  d?.emit?.('ship:appearanceChanged', { id: entity.id, reason: 'customs_scan_lattice' });
+}
+
+function clearCustomsScanLattice(live, d) {
+  for (const entity of d.entsOf(live)) {
+    if (entity?.data?.smugglingScanCone) entity.data.smugglingScanCone.active = false;
+  }
+}
+
+function holdPatrolDecoyPursuit(state, live, d, pod) {
+  if (!pod?.pos) return;
+  for (const entity of d.entsOf(live)) {
+    const ai = setEntityDoctrine(entity, {
+      activity: {
+        kind: ActivityKind.SCAN_APPROACH,
+        reason: 'patrol_scan:cargo_decoy',
+        anchor: { x: pod.pos.x, z: pod.pos.z },
+        preferredRange: CUSTOMS_SCAN_CONE.decoyCaptureRadiusWU * 0.6,
+        leashRadius: SCAN_RANGE + 900,
+        startedTick: state.tick | 0,
+        targetId: pod.id,
+        encounterId: live.id,
+      },
+      roe: RulesOfEngagement.HOLD_FIRE,
+    });
+    ai.passive = false;
+    ai.forcePlayerTarget = false;
+    ai.huntPlayer = false;
+    ai.patrolScanDecoyId = pod.id;
+    const intent = entity.data.intent || (entity.data.intent = {});
+    intent.fire = false;
+    const combat = entity.data.combat || (entity.data.combat = {});
+    if (combat.targetId === state.playerId) combat.targetId = null;
+    if (combat.lockTarget === state.playerId) combat.lockTarget = null;
+  }
+}
+
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 // A. PIRATE TOLL — scan, price, choice. Pay / Refuse / Run, physical verbs included.
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
@@ -336,6 +392,12 @@ const patrolScan = {
     live.phase = 'offer';
     live.deadlineAt = d.now() + (live.shape.scanS || 10);
     live.data.breakTicks = 0;
+    live.data.clearTicks = 0;
+    live.data.scanExposure = 0;
+    live.data.lastScanSampleAt = d.now();
+    live.data.coldRunEligible = true;
+    live.data.stormUsed = false;
+    installCustomsScanLattice(leader, live.id, p, d);
     live.data.scan = null;
     d.say(live, 'bark', 'patrol_scan_hail', null, { primary: true });
     const opts = ['submit', 'run'];
@@ -344,12 +406,69 @@ const patrolScan = {
   },
 
   tick(d, live, state, now) {
+    if (live.phase === 'decoy') {
+      const pod = state.entities?.get?.(live.data.decoyPodId);
+      if (!pod || pod.alive === false) {
+        live.phase = 'offer';
+        live.data.decoyPodId = null;
+        return;
+      }
+      holdPatrolDecoyPursuit(state, live, d, pod);
+      const captured = d.entsOf(live).some((entity) => entity?.pos
+        && dist2(entity.pos.x, entity.pos.z, pod.pos.x, pod.pos.z)
+          <= CUSTOMS_SCAN_CONE.decoyCaptureRadiusWU * CUSTOMS_SCAN_CONE.decoyCaptureRadiusWU);
+      if (!captured) return;
+      clearCustomsScanLattice(live, d);
+      d.despawnAll(live, 24);
+      d.emit('smuggling:patrolDecoyResolved', {
+        encounterId: live.id,
+        podId: pod.id,
+        commodityId: pod.data?.commodityId || null,
+        amount: Number(pod.data?.amount) || 0,
+      });
+      return d.resolve(live, 'decoyed');
+    }
     if (live.phase !== 'offer') return;
     const p = d.player(); if (!p) return d.abort(live, 'no_player');
     if (d.aliveCount(live) === 0) return d.abort(live, 'squad_gone');
+    const leader = d.entsOf(live)[0];
+    const previousSampleAt = Number(live.data.lastScanSampleAt);
+    const dt = Math.max(0, Math.min(2, now - (Number.isFinite(previousSampleAt) ? previousSampleAt : now)));
+    live.data.lastScanSampleAt = now;
+    const sample = customsScanSample(state, leader, p, dt);
+    live.data.scanExposure = Math.max(0, Math.min(CUSTOMS_SCAN_CONE.acquireThreshold,
+      Number(live.data.scanExposure || 0) + sample.exposureDelta));
+    if (sample.insideCone && !sample.enginesDark) live.data.coldRunEligible = false;
+    if (sample.stormMultiplier < 1) live.data.stormUsed = true;
+    for (const entity of d.entsOf(live)) {
+      const cone = entity?.data?.smugglingScanCone;
+      if (!cone) continue;
+      cone.exposure = live.data.scanExposure;
+      cone.enginesDark = sample.enginesDark;
+      cone.stormSignalMultiplier = sample.stormMultiplier;
+    }
+    if (live.data.scanExposure >= CUSTOMS_SCAN_CONE.acquireThreshold) {
+      return patrolScan.choose(d, live, state, 'submit');
+    }
     const near2 = d.minDist2ToSquad(live, p);
-    if (near2 > SCAN_RANGE * SCAN_RANGE) {
-      if (++live.data.breakTicks >= SCAN_BREAK_TICKS) return patrolScan.choose(d, live, state, 'run');
+    if (!sample.insideCone) live.data.clearTicks++;
+    else live.data.clearTicks = 0;
+    if (near2 > SCAN_RANGE * SCAN_RANGE || live.data.clearTicks >= SCAN_BREAK_TICKS) {
+      if (++live.data.breakTicks >= SCAN_BREAK_TICKS) {
+        const outcome = live.data.stormUsed
+          ? 'storm_dive_evaded'
+          : live.data.coldRunEligible ? 'cold_run_evaded' : 'ran';
+        clearCustomsScanLattice(live, d);
+        if (outcome === 'ran') return patrolScan.choose(d, live, state, 'run');
+        d.despawnAll(live, 24);
+        d.emit('smuggling:patrolEvaded', {
+          encounterId: live.id,
+          outcome,
+          exposure: live.data.scanExposure,
+          stormSignalMultiplier: sample.stormMultiplier,
+        });
+        return d.resolve(live, outcome, { speak: false });
+      }
     } else live.data.breakTicks = 0;
     if (now >= live.deadlineAt) return patrolScan.choose(d, live, state, 'submit');
   },
@@ -361,6 +480,7 @@ const patrolScan = {
       // transponder flag: a small rep nick. WANTED heat only ever comes from heat's own inputs.
       d.rep('faction_scn', -3, 'scan_refused');
       d.say(live, 'bark', 'patrol_scan_refused');
+      clearCustomsScanLattice(live, d);
       d.despawnAll(live, 40);
       return d.resolve(live, 'ran');
     }
@@ -378,6 +498,7 @@ const patrolScan = {
       if ((state.player.credits | 0) < cost) return;    // cannot afford → choice unavailable
       d.emit('contraband:bribe', { fine });             // economy charges 30% (single writer)
       d.rep('faction_scn', -2, 'bribe');
+      clearCustomsScanLattice(live, d);
       d.despawnAll(live, 40);
       return d.resolve(live, 'bribed');
     }
@@ -396,6 +517,7 @@ const patrolScan = {
     // economy.runScan is synchronous: contraband:scanned (if caught) has already routed back into
     // live.data.scan by the time we get here.
     const scan = live.data.scan;
+    clearCustomsScanLattice(live, d);
     d.despawnAll(live, 40);
     if (scan && scan.found) {
       live.vars.fine = scan.fine | 0;
@@ -409,6 +531,22 @@ const patrolScan = {
 
   event(d, live, state, name, p) {
     if (name === 'contrabandScanned') live.data.scan = p;   // routed only while this scan is live
+    if (name !== 'cargoJettisoned' || live.phase !== 'offer') return;
+    const podIds = Array.isArray(p?.podIds) ? p.podIds : [];
+    const pod = podIds.map((id) => state.entities?.get?.(id))
+      .find((entity) => entity && entity.alive !== false && entity.data?.recoverableCargoPod === true);
+    if (!pod) return;
+    live.phase = 'decoy';
+    live.data.decoyPodId = pod.id;
+    pod.data.customsScanDecoy = { encounterId: live.id, patrolIds: live.ids.slice() };
+    clearCustomsScanLattice(live, d);
+    holdPatrolDecoyPursuit(state, live, d, pod);
+    d.emit('smuggling:patrolDecoyCommitted', {
+      encounterId: live.id,
+      podId: pod.id,
+      commodityId: pod.data.commodityId || null,
+      amount: Number(pod.data.amount) || 0,
+    });
   },
 };
 

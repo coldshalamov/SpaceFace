@@ -27,6 +27,7 @@ import {
 } from '../core/presentationAdmission.js';
 import { swarmerRecordFor } from '../data/swarmerFamily.js';
 import {
+  attachCustomsScanLattice,
   jammerPresentationIdFor,
   mediumPresentationIdFor,
   tetherCutterPresentationIdFor,
@@ -298,7 +299,7 @@ export function installVisualOverrides(factory, options = {}) {
     // The wrapper is synchronous and fail-closed. Live direct mounts carry no renderables; preview
     // modes may still provide a hidden bespoke/procedural substrate for isolated inspection tools.
     try {
-      return wrapShipWithAuthoredParts(entity, visual, {
+      const boundary = wrapShipWithAuthoredParts(entity, visual, {
         releaseMode,
         libraryScope: options.authoredLibraryScope,
         bootstrapPlan: options.authoredBootstrapPlan,
@@ -311,6 +312,8 @@ export function installVisualOverrides(factory, options = {}) {
           if (typeof options.onAuthoredAssetSwap === 'function') options.onAuthoredAssetSwap(payload);
         },
       });
+      if (directShip) attachCustomsScanLattice(boundary, entity);
+      return boundary;
     }
     catch (error) {
       reportVisualWarning(options, '[visualOverrides] authored-asset boundary failed; using selected ship visual', error);

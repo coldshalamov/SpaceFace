@@ -59,6 +59,7 @@ import {
 } from './heavyFamilyPresentation.js';
 import { buildDrifterShoalVisual } from './anomalies/drifterShoal.js';
 import { buildCrystalShoalVisual } from './anomalies/crystalShoal.js';
+import { CUSTOMS_SCAN_CONE } from '../data/smugglingStealth.js';
 
 // ---------------------------------------------------------------------------------------------
 // Lookups + palette resolution
@@ -2147,6 +2148,133 @@ function buildPatrolInterdict(ctx) {
   }
 }
 
+function customsScanLatticeGeometry(rangeWU, halfAngleRad, bowOffsetWU) {
+  const range = Math.max(80, Number(rangeWU) || CUSTOMS_SCAN_CONE.rangeWU);
+  const halfAngle = Math.max(0.12, Number(halfAngleRad) || CUSTOMS_SCAN_CONE.halfAngleRad);
+  const bow = Math.max(0, Number(bowOffsetWU) || 0);
+  const points = [];
+  const rayCount = 5;
+  for (let ray = 0; ray < rayCount; ray++) {
+    const angle = -halfAngle + ray / (rayCount - 1) * halfAngle * 2;
+    points.push(bow, 0, 0, bow + Math.cos(angle) * range, 0, Math.sin(angle) * range);
+  }
+  const bandFractions = [0.48, 1];
+  for (const fraction of bandFractions) {
+    const radius = range * fraction;
+    for (let segment = 0; segment < rayCount - 1; segment++) {
+      const a0 = -halfAngle + segment / (rayCount - 1) * halfAngle * 2;
+      const a1 = -halfAngle + (segment + 1) / (rayCount - 1) * halfAngle * 2;
+      points.push(
+        bow + Math.cos(a0) * radius, 0, Math.sin(a0) * radius,
+        bow + Math.cos(a1) * radius, 0, Math.sin(a1) * radius,
+      );
+    }
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(points, 3));
+  geometry.computeBoundingSphere();
+  return geometry;
+}
+
+function addCustomsScanLattice(outer, g, entity, R) {
+  const profile = entity?.data?.smugglingScanCone;
+  if (!profile || profile.kind !== 'customs_scan_lattice') return null;
+  const gameplayRange = Math.max(80, Number(profile.rangeWU) || CUSTOMS_SCAN_CONE.rangeWU);
+  const range = Math.min(gameplayRange,
+    Math.max(80, Number(profile.visualRangeWU) || gameplayRange));
+  const halfAngle = Math.max(0.12, Number(profile.halfAngleRad) || CUSTOMS_SCAN_CONE.halfAngleRad);
+  const bow = Math.max(1, R * 0.74);
+  const geometryKey = `customs:scan-lattice:${range}:${halfAngle.toFixed(4)}:${bow.toFixed(2)}`;
+  const geometry = getGeometry(geometryKey,
+    () => customsScanLatticeGeometry(range, halfAngle, bow));
+  const material = getMaterial('customs:scan-lattice:cyan', () => new THREE.LineBasicMaterial({
+    name: 'CustomsScanLatticeCyan',
+    color: 0x6fdcff,
+    transparent: true,
+    opacity: 0.26,
+    depthWrite: false,
+    depthTest: true,
+    toneMapped: false,
+  }));
+  const lattice = new THREE.LineSegments(geometry, material);
+  lattice.name = 'CustomsScanLattice';
+  lattice.position.y = Math.max(0.6, R * 0.08);
+  lattice.frustumCulled = false;
+  lattice.renderOrder = 3;
+  lattice.userData.technique = 'hard-line-fan';
+  lattice.userData.scanRangeWU = gameplayRange;
+  lattice.userData.visualRangeWU = range;
+  lattice.userData.scanHalfAngleRad = halfAngle;
+
+  // WebGL line width is fixed to one physical pixel on the shipped browsers and vanished against
+  // ordinary flight contrast. One instanced set of narrow world-space rails preserves the exact
+  // fan topology without a soft cone volume, camera-facing card, or per-frame object churn.
+  const railGeometry = getGeometry('customs:scan-lattice-rail', () => new THREE.BoxGeometry(1, 1, 1));
+  const railMaterial = getMaterial('customs:scan-lattice-rail:cyan', () => new THREE.MeshBasicMaterial({
+    name: 'CustomsScanLatticeHardRails',
+    color: 0x7cecff,
+    transparent: true,
+    opacity: 0.3,
+    depthWrite: false,
+    depthTest: true,
+    toneMapped: false,
+  }));
+  const positions = geometry.getAttribute('position');
+  const railCount = Math.floor(positions.count / 2);
+  const rails = new THREE.InstancedMesh(railGeometry, railMaterial, railCount);
+  rails.name = 'CustomsScanLatticeHardRails';
+  rails.frustumCulled = false;
+  rails.renderOrder = 4;
+  const transform = new THREE.Object3D();
+  for (let index = 0; index < railCount; index++) {
+    const a = index * 2;
+    const b = a + 1;
+    const x0 = positions.getX(a), z0 = positions.getZ(a);
+    const x1 = positions.getX(b), z1 = positions.getZ(b);
+    const dx = x1 - x0, dz = z1 - z0;
+    transform.position.set((x0 + x1) * 0.5, 0, (z0 + z1) * 0.5);
+    transform.rotation.set(0, -Math.atan2(dz, dx), 0);
+    transform.scale.set(Math.hypot(dx, dz), 0.26, 0.26);
+    transform.updateMatrix();
+    rails.setMatrixAt(index, transform.matrix);
+  }
+  rails.instanceMatrix.needsUpdate = true;
+  lattice.add(rails);
+  lattice.userData.hardRailInstances = railCount;
+  g.add(lattice);
+
+  const emitterMaterial = getMaterial('customs:scan-emitter:hard', () => new THREE.MeshStandardMaterial({
+    name: 'CustomsScanEmitterHardware',
+    color: 0x243744,
+    emissive: 0x1786a8,
+    emissiveIntensity: 0.72,
+    roughness: 0.34,
+    metalness: 0.76,
+  }));
+  for (const side of [-1, 1]) {
+    const rail = new THREE.Mesh(
+      getGeometry('customs:scan-emitter-rail', () => new THREE.BoxGeometry(1, 1, 1)),
+      emitterMaterial,
+    );
+    rail.name = `CustomsScanEmitterRail_${side < 0 ? 'Port' : 'Starboard'}`;
+    rail.scale.set(R * 0.52, Math.max(0.14, R * 0.035), Math.max(0.12, R * 0.045));
+    rail.position.set(R * 0.46, R * 0.08, side * R * 0.42);
+    g.add(rail);
+  }
+  outer.userData.customsScanLattice = lattice;
+  outer.userData.customsScanLatticeRails = rails;
+  outer.userData.customsScanPresentation = 'hard-line-fan';
+  return lattice;
+}
+
+// Direct-authored ship admission bypasses the procedural hull builder entirely. Keep the scan tell
+// attachable to that stable boundary so an async GLB swap cannot erase the live encounter overlay.
+export function attachCustomsScanLattice(root, entity, radius = null) {
+  if (!root?.isObject3D || root.userData?.customsScanLattice) return root?.userData?.customsScanLattice || null;
+  const resolvedRadius = Math.max(2, Number(radius) || Number(entity?.radius) || 4);
+  return addCustomsScanLattice(root, root, entity, resolvedRadius);
+}
+
 // =============================================================================================
 // Plan 13 medium-family presentation. These are designed-procedural Tier B bodies: each stable
 // enemy id gets a manufactured silhouette and moving mechanical tell instead of inheriting the
@@ -2993,6 +3121,7 @@ function buildShipMesh(e, pal) {
 
   if (jammerPresentationIdFor(e)) addJammerWorldTell(outer, g, R);
   if (tetherCutterPresentationIdFor(e)) addTetherCutterWorldTell(outer, g, R);
+  addCustomsScanLattice(outer, g, e, R);
 
   // 2) armor panel shell (tier Mk.II paneled / Mk.III armored): a slightly-larger shell with denser
   //    plating + decals so upgraded ships visibly read as reinforced.
