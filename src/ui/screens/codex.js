@@ -19,6 +19,7 @@ import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
 import { createShipLedgerPanel } from './shipLedger.js';
 import { ARCADE_VERB_BEATS, arcadeVerbStatus } from '../../data/onboardingVerbs.js';
 import { launchAces } from '../../data/namedAces.js';
+import { LISTENING_POST, listeningPostPuzzleState } from '../../data/listeningPost.js';
 
 const STYLE_ID = 'sf-codex-style';
 
@@ -468,6 +469,9 @@ export const codexScreen = {
     this._unsubs.push(ctx.bus.on('codex:blackBoxRecovered', refreshIfVisible));
     this._unsubs.push(ctx.bus.on('aceMemory:transition', refreshIfVisible));
     this._unsubs.push(ctx.bus.on('aceMemory:rewardUnlocked', refreshIfVisible));
+    this._unsubs.push(ctx.bus.on('secret:listeningPostLogRecovered', refreshIfVisible));
+    this._unsubs.push(ctx.bus.on('secret:listeningPostDecodeFailed', refreshIfVisible));
+    this._unsubs.push(ctx.bus.on('secret:listeningPostDecoded', refreshIfVisible));
 
     this._render(ctx);
   },
@@ -612,6 +616,10 @@ export const codexScreen = {
       entry.appendChild(el('div', 'sf-codex-meta', plate.meta));
       entry.appendChild(el('div', 'sf-codex-body', plate.body));
       entry.appendChild(el('div', 'sf-codex-note', plate.note));
+      if (plate.sectorId === LISTENING_POST.sourceSectorId
+        && plate.poiId === LISTENING_POST.sourcePoiId) {
+        this._renderListeningPostPuzzle(ctx, entry);
+      }
       if (tethysCodexReturnIntent(ctx && ctx.state, plate)) {
         const returnToTethys = el('button', 'sf-btn', 'Show Tethys Trade Hub');
         returnToTethys.type = 'button';
@@ -623,6 +631,63 @@ export const codexScreen = {
       this._body.appendChild(entry);
       if (isRequested) focusCodexDiscoveryEntry(entry);
     }
+  },
+
+  _renderListeningPostPuzzle(ctx, entry) {
+    const puzzle = listeningPostPuzzleState(ctx && ctx.state);
+    if (!puzzle.recovered) return;
+    const box = el('section', 'sf-codex-note');
+    box.dataset.codexPuzzleId = 'listening-post';
+    box.appendChild(el('div', 'sf-codex-meta', 'Recovered carrier cadence'));
+    const pattern = el('div', 'sf-codex-body', LISTENING_POST.pulsePattern);
+    pattern.style.fontFamily = 'var(--mono, monospace)';
+    pattern.style.letterSpacing = '.12em';
+    pattern.setAttribute('aria-label', 'Five short pings, long pause, fifteen short pings');
+    box.appendChild(pattern);
+    if (puzzle.decoded) {
+      box.appendChild(el('div', 'sf-codex-body',
+        `DECODED · ${LISTENING_POST.chartCoordinate.x},${LISTENING_POST.chartCoordinate.y} · ${LISTENING_POST.targetStationName}`));
+      const show = el('button', 'sf-btn', `Show ${LISTENING_POST.targetStationName}`);
+      show.type = 'button';
+      show.style.marginTop = '10px';
+      show.addEventListener('click', () => openGalaxyMap(ctx, {
+        focus: MAP_FOCUS.SYSTEM,
+        sectorId: LISTENING_POST.targetSectorId,
+        stationId: LISTENING_POST.targetStationId,
+        label: LISTENING_POST.targetStationName,
+        source: 'codex:listening-post',
+      }));
+      box.appendChild(show);
+      entry.appendChild(box);
+      return;
+    }
+
+    box.appendChild(el('div', 'sf-codex-body', LISTENING_POST.puzzlePrompt));
+    const input = el('input', 'sf-codex-search');
+    input.type = 'text';
+    input.inputMode = 'numeric';
+    input.autocomplete = 'off';
+    input.placeholder = 'X,Y';
+    input.setAttribute('aria-label', 'Listening Post chart coordinate');
+    const submit = el('button', 'sf-btn', 'Decode Cadence');
+    submit.type = 'button';
+    submit.style.marginTop = '8px';
+    const decode = () => ctx.bus.emit('secret:listeningPostDecodeRequested', {
+      attempt: input.value,
+      source: 'codex',
+    });
+    submit.addEventListener('click', decode);
+    input.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') decode();
+    });
+    box.appendChild(input);
+    box.appendChild(submit);
+    if (puzzle.lastResult === 'format') {
+      box.appendChild(el('div', 'sf-codex-note', 'The decoder expects a chart pair in X,Y format.'));
+    } else if (puzzle.lastResult === 'mismatch') {
+      box.appendChild(el('div', 'sf-codex-note', 'That pair does not match both pulse groups.'));
+    }
+    entry.appendChild(box);
   },
 
   _renderBlackBoxes(ctx) {

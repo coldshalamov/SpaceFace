@@ -1016,6 +1016,12 @@ function discoveryForSector(state, sectorId) {
   return state && state.world && state.world.discovery && state.world.discovery[sectorId] || null;
 }
 
+function stationVisibleOnMap(state, sectorId, station) {
+  if (!station || station.hidden !== true) return true;
+  const disc = discoveryForSector(state, sectorId);
+  return !!(disc && disc.stations && disc.stations[station.stationId || station.id]?.discovered);
+}
+
 function discoveryEpochDays(disc) {
   if (!disc) return null;
   const candidates = [
@@ -1496,6 +1502,7 @@ export function buildSystemModel(state, sectorId, options = {}) {
       if (e.type === 'station') {
         const data = e.data || {};
         const isGate = !!data.isGate;
+        if (!isGate && !stationVisibleOnMap(state, sid, data)) continue;
         points.push({
           id: e.id,
           kind: isGate ? 'gate' : 'station',
@@ -1525,6 +1532,7 @@ export function buildSystemModel(state, sectorId, options = {}) {
   if (record && Array.isArray(record.stations)) {
     for (const st of record.stations) {
       if (!st || !st.id || seenIds.has(st.id)) continue;
+      if (!stationVisibleOnMap(state, sid, st)) continue;
       const anchor = st.pos || st.anchor || st.position || null; // sectorAnchors merges canonical pos
       const frames = anchorFrames(anchor, sid, anchor ? (Number(anchor.z) || 0) : 0);
       points.push({
@@ -6116,7 +6124,8 @@ export const galaxyMapScreen = {
       html += sectorCauseIntelHtml(cause);
 
       if (record) {
-        const stationCount = (record.stations && record.stations.length) || 0;
+        const stationCount = (record.stations && record.stations
+          .filter((station) => stationVisibleOnMap(state, record.id, station)).length) || 0;
         const hazardList = (record.hazards && record.hazards.map(h => hazardTypeGlyph(h.type)).join(' ')) || 'None';
         html += `
           <div class="gm-ins-section">

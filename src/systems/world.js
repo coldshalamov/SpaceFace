@@ -64,6 +64,11 @@ import {
   sellableSmugglingDropCaches,
 } from '../data/smugglingStealth.js';
 import { FIXER_CONTACT, fixerMemoryFor } from '../data/stationContacts.js';
+import {
+  LISTENING_POST,
+  listeningPostPuzzleState,
+  validateListeningPostAttempt,
+} from '../data/listeningPost.js';
 import { isUnsellableCargo } from './cargo.js';
 import {
   COMET_ICE,
@@ -352,6 +357,7 @@ export const world = {
     bus.on('asteroid:destroyed', (p) => this._onCometIceDestroyed(p || {}));
     bus.on('anomaly:triangulated', (p) => this._onAnomalyTriangulated(p || {}));
     bus.on('signal:investigated', (p) => this._onSignalInvestigated(p || {}));
+    bus.on('secret:listeningPostDecodeRequested', (p) => this._onListeningPostDecodeRequested(p || {}));
     bus.on('orrinWitness:ensureEvidence', (p) => this._ensureOrrinWitnessEvidence(p || {}));
     bus.on('vestaOreCache:choose', (p) => this._onVestaOreCacheChoice(p || {}));
     bus.on('pallasHiddenCache:choose', (p) => this._onPallasHiddenCacheChoice(p || {}));
@@ -1445,6 +1451,7 @@ export const world = {
           chartNote: st.chartNote || null,
           stationSlogan: stationSloganFor(st.id),
           contested: !!st.contested, repGated: !!st.repGated,
+          hidden: !!st.hidden,
           // The authored repGated flag means positive standing, not merely "not attack-on-sight".
           // An explicit minRep remains available for stations with a stricter local contract.
           ...(Number.isFinite(st.minRep)
@@ -3594,6 +3601,98 @@ export const world = {
     this._onVestaOreCacheSignalInvestigated({ ...payload, sectorId, poiId, completedAt: rec.investigatedAt });
     this._onPallasHiddenCacheSignalInvestigated({ ...payload, sectorId, poiId, completedAt: rec.investigatedAt });
     this._contactTethysBlackMarket({ poiId, sectorId, completedAt: rec.investigatedAt });
+    this._onListeningPostSignalInvestigated({ ...payload, sectorId, poiId, completedAt: rec.investigatedAt }, rec);
+    return true;
+  },
+
+  _onListeningPostSignalInvestigated(payload, discoveryRecord = null) {
+    if (payload.sectorId !== LISTENING_POST.sourceSectorId
+      || payload.poiId !== LISTENING_POST.sourcePoiId) return false;
+    const rec = discoveryRecord || this._discoveryFor(LISTENING_POST.sourceSectorId).pois[LISTENING_POST.sourcePoiId];
+    if (!rec || rec.investigated !== true) return false;
+    const current = rec.listeningPost && typeof rec.listeningPost === 'object'
+      ? rec.listeningPost : null;
+    if (current) return true;
+    rec.listeningPost = {
+      phase: 'recovered',
+      recoveredAt: Math.max(0, Number(payload.completedAt) || Number(this.state.simTime) || 0),
+      attemptCount: 0,
+      decoded: false,
+      lastResult: null,
+    };
+    this.bus.emit('secret:listeningPostLogRecovered', {
+      sectorId: LISTENING_POST.sourceSectorId,
+      poiId: LISTENING_POST.sourcePoiId,
+      signalId: LISTENING_POST.signalId,
+    });
+    this.bus.emit('toast', {
+      text: 'Listening Post cadence filed in Codex',
+      kind: 'info',
+      ttl: 4,
+    });
+    return true;
+  },
+
+  _onListeningPostDecodeRequested(payload) {
+    const sourceDisc = this._discoveryFor(LISTENING_POST.sourceSectorId);
+    const rec = sourceDisc.pois[LISTENING_POST.sourcePoiId];
+    const current = listeningPostPuzzleState(this.state);
+    if (!rec || !current.recovered) return false;
+    if (current.decoded) return true;
+
+    const result = validateListeningPostAttempt(payload.attempt);
+    const secret = rec.listeningPost;
+    secret.attemptCount = Math.min(99, Math.max(0, Math.floor(Number(secret.attemptCount) || 0)) + 1);
+    secret.lastResult = result.ok ? null : result.reason;
+    if (!result.ok) {
+      this.bus.emit('secret:listeningPostDecodeFailed', {
+        reason: result.reason,
+        attemptCount: secret.attemptCount,
+      });
+      this.bus.emit('toast', {
+        text: result.reason === 'format' ? 'Use chart format X,Y' : 'Cadence does not match that chart pair',
+        kind: 'warn',
+        ttl: 3,
+      });
+      return false;
+    }
+
+    const decodedAt = Math.max(0, Number(this.state.simTime) || 0);
+    secret.phase = 'decoded';
+    secret.decoded = true;
+    secret.decodedAt = decodedAt;
+    secret.targetSectorId = LISTENING_POST.targetSectorId;
+    secret.targetStationId = LISTENING_POST.targetStationId;
+
+    const targetDisc = this._discoveryFor(LISTENING_POST.targetSectorId);
+    const newlyCharted = targetDisc.discovered !== true;
+    targetDisc.discovered = true;
+    targetDisc.source = 'listening_post';
+    targetDisc.chartedAt = decodedAt;
+    targetDisc.listeningPostStationId = LISTENING_POST.targetStationId;
+    if (!targetDisc.stations || typeof targetDisc.stations !== 'object') targetDisc.stations = {};
+    targetDisc.stations[LISTENING_POST.targetStationId] = {
+      discovered: true,
+      source: 'listening_post',
+      discoveredAt: decodedAt,
+    };
+    if (newlyCharted) {
+      this.bus.emit('map:sectorCharted', {
+        sectorId: LISTENING_POST.targetSectorId,
+        source: 'listening_post',
+      });
+    }
+    this.bus.emit('secret:listeningPostDecoded', {
+      sectorId: LISTENING_POST.targetSectorId,
+      stationId: LISTENING_POST.targetStationId,
+      coordinate: { ...LISTENING_POST.chartCoordinate },
+      newlyCharted,
+    });
+    this.bus.emit('toast', {
+      text: `${LISTENING_POST.targetStationName} added to the chart`,
+      kind: 'info',
+      ttl: 4,
+    });
     return true;
   },
 

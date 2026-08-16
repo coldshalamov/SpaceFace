@@ -199,6 +199,16 @@ export const SOUTH_SECTORS = Object.freeze([
         services: Object.freeze(['scan_tech', 'repair']),
         chartNote: 'Sensors and hull patches at the dark rim; no fuel, no rescue, few questions.',
       }),
+      Object.freeze({
+        id: 'station_sedna_last_light',
+        name: 'Last Light Station',
+        type: 'research',
+        factionId: 'faction_vael',
+        size: 'S',
+        services: Object.freeze(['scan_tech', 'repair']),
+        hidden: true,
+        chartNote: 'One receiver, one berth, and no open carrier at the edge of the chart.',
+      }),
     ]),
     fields: Object.freeze([
       Object.freeze({ id: 'f_sedna_1', type: 'ast_rare_exotic', countWeight: 1.0 }),
@@ -273,6 +283,13 @@ export const SOUTH_SECTORS = Object.freeze([
         id: 'poi_dione_relay',
         type: 'beacon',
         name: 'Lane Relay',
+        scannerSignalKind: 'archive',
+        scannerSignalPriority: 98,
+        manualInvestigation: true,
+        discoveryPlate: Object.freeze({
+          title: 'The Listening Post Log',
+          body: 'Dione’s lane relay is not counting traffic. Two pulse groups repeat around one long carrier pause; the recovered timing belongs in the Codex.',
+        }),
       }),
     ]),
   }),
@@ -337,6 +354,12 @@ export const SOUTH_ANCHORS = Object.freeze({
       Object.freeze({
         id: 'station_sedna',
         pos: Object.freeze({ x: -480, z: 620 }),
+        archetypeGlb: 'place_station_research',
+        landmark: true,
+      }),
+      Object.freeze({
+        id: 'station_sedna_last_light',
+        pos: Object.freeze({ x: 4300, z: -900 }),
         archetypeGlb: 'place_station_research',
         landmark: true,
       }),
