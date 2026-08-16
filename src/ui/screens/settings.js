@@ -410,6 +410,9 @@ export const settingsScreen = {
       rowToggle('Verbose combat text', () => s.showDamageNumbers === true,
         (v) => this._set(ctx, null, 'showDamageNumbers', v));
       pane.appendChild(el('p', 'sf-muted', 'Off by default: kills read on the reticle, hits on the ship schematic, and payouts in the receipt strip. On adds floating damage numbers, shield/kill callouts, and pickup and ore-yield pops.'));
+      rowToggle('Loot history side log', () => s.showLootHistory === true,
+        (v) => this._set(ctx, null, 'showLootHistory', v));
+      pane.appendChild(el('p', 'sf-muted', 'Off by default: keeps a small side log of finalized cargo and module pickups from this session. It never changes loot, cargo, or payouts.'));
     } else if (refs.active === 'Access') {
       const ac = s.accessibility || (s.accessibility = { colorblindMode: 'none', highContrast: false, flashReduce: false, dyslexiaFont: false,
         motionPreference: 'system', captions: true, captionSize: 'medium', captionBackground: true,

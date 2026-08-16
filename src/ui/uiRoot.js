@@ -44,6 +44,7 @@ import { createLawfulInspectionPrompt } from './lawfulInspectionPrompt.js';
 import { createCommandBar } from './commandBar.js';
 import { createToasts } from './toasts.js';
 import { createMarketNews } from './marketNews.js'; // REVAMP 2.1 — economy news ticker + dock event cards
+import { createLootHistory } from './lootHistory.js';
 import { createAlerts } from './alerts.js';
 import { createComms } from './comms.js';
 import { createWingmanRadial } from './wingmanRadial.js';
@@ -323,6 +324,8 @@ export const ui = {
     this.hud = null;
     if (this.bandHud && typeof this.bandHud.destroy === 'function') this.bandHud.destroy();
     this.bandHud = null;
+    if (this.lootHistory && typeof this.lootHistory.destroy === 'function') this.lootHistory.destroy();
+    this.lootHistory = null;
     if (this.encounterChoicePrompt && typeof this.encounterChoicePrompt.destroy === 'function') {
       this.encounterChoicePrompt.destroy();
     }
@@ -426,6 +429,7 @@ export const ui = {
     // the always-mounted flight HUD
     this.hud = createHud(ctx, this.alerts);
     this.bandHud = createBandHud(ctx);
+    this.lootHistory = createLootHistory(ctx);
 
     // Command Bar — a persistent top-center resource strip (hull/shield/energy/heat/cargo/credits/
     // role/sector). It is a FOURTH permanent anchor that duplicates the bottom-left schematic vitals

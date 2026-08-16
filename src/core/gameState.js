@@ -12,6 +12,7 @@ function defaultSettings() {
   return {
     uiScale: 1,
     showDamageNumbers: false,
+    showLootHistory: false,
     keybinds: {},
     audio: {
       master: 0.55,

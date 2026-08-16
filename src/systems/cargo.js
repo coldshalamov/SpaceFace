@@ -79,6 +79,19 @@ function emitChanged(cargo) {
   if (busRef) busRef.emit('cargo:changed', { cargo, usedU: cargo.usedVolume, massT: cargo.usedMass });
 }
 
+function emitLootCollected(bus, payload, amount) {
+  if (!bus || !bus.emit || !(amount > 0)) return;
+  bus.emit('loot:collected', {
+    kind: payload.kind,
+    commodityId: payload.commodityId,
+    amount,
+    pickupId: payload.pickupId ?? null,
+    collectorId: payload.collectorId ?? null,
+    source: 'pickup',
+    simTime: payload.simTime ?? null,
+  });
+}
+
 function richLotSource(source, commodityId, qty) {
   if (!source || typeof source !== 'object') return null;
   const opportunityId = typeof source.richOpportunityId === 'string' && source.richOpportunityId
@@ -241,6 +254,7 @@ export const cargo = {
         if (payload.rejectedAmount > 0) {
           payload.acceptanceRetryAt = (state.simTime || 0) + PICKUP_ACCEPTANCE_RETRY_S;
         }
+        emitLootCollected(bus, payload, accepted);
       } else if (kind === 'module') {
         // physics only hands us a commodityId → treat it as the module defId; mint a deterministic instanceId.
         const count = typeof commodityId === 'string' && commodityId.length > 0 ? qty : 0;
@@ -253,6 +267,7 @@ export const cargo = {
         if (payload.rejectedAmount > 0) {
           payload.acceptanceRetryAt = (state.simTime || 0) + PICKUP_ACCEPTANCE_RETRY_S;
         }
+        emitLootCollected(bus, payload, count);
       }
       // kind 'credits' is economy's concern (§4.4) — ignore here.
     });
