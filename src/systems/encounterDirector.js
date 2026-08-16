@@ -83,6 +83,7 @@ import {
   buildLossIntent,
   filterNewFreightIntents,
 } from '../economy/freightCausality.js';
+import { isPlayerBountyPosted } from './heat.js';
 
 const ENEMY_BY_ID = new Map(ENEMY_TYPES.map((entry) => [entry.id, entry]));
 const WEAPON_BY_ID = new Map(WEAPONS.map((entry) => [entry.id, entry]));
@@ -794,7 +795,8 @@ export const encounterDirector = {
     const combatRate =
       0.25 + 0.22 * zt + (1 - sec) * 0.5 + cargoBand * 0.35 +
       (wanted ? 0.6 : 0) + Math.min(1, dir.noise.mining) * 0.5 +
-      (((state.player && state.player.bounty) | 0) > 0 ? 0.25 : 0) + ecologyDanger * 0.45;
+      ((((state.player && state.player.bounty) | 0) > 0 || isPlayerBountyPosted(state)) ? 0.25 : 0)
+      + ecologyDanger * 0.45;
     const civilRate =
       0.35 + sec * 0.45 + (zone && CIVIL_ZONE_TYPES.has(zone.type) ? 0.35 : 0);
     dir.pressure.combat = Math.min(
@@ -875,7 +877,9 @@ export const encounterDirector = {
     }
     if (g.moralDebtOnly && !nextMoralDebt(state)) return false;
     if (g.minCargoValue && this.cargoValue() < g.minCargoValue) return false;
-    if (g.bountyOnly && (((state.player && state.player.bounty) | 0) <= 0)) return false;
+    if (g.bountyOnly
+      && (((state.player && state.player.bounty) | 0) <= 0)
+      && !isPlayerBountyPosted(state)) return false;
     if (Number.isFinite(g.maxSecurity) && sectorSecurityOf(state) > g.maxSecurity) return false;
     if (Number.isFinite(g.minSecurity) && sectorSecurityOf(state) < g.minSecurity) return false;
     if (g.claimsOnly) {

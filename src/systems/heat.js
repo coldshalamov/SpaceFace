@@ -45,6 +45,10 @@ const BUST_CONTRABAND = 0.16;      // smuggling scan bust
 const FactionsAggroAdd = 0.20;     // a faction flipping hostile (the law noticed)
 
 const WANTED_THRESHOLD = 0.15;     // above this, lawful patrols hunt you (playerWanted=true)
+// A WANTED crossing starts as a payable local notice. Only time physically spent inside the
+// witnessed search zone advances the notice: leaving immediately is the real "lie low" answer,
+// while staying under the law's nose long enough turns the notice into a posted regional warrant.
+export const WANTED_NOTICE_GRACE_S = 45;
 const HEAT_LEVEL_COUNT = 5;
 const HEAT_RADIUS_BY_LEVEL = [0, 1200, 1700, 2300, 3000, 3700];
 // GTA-rule local memory: ordinary incidents cool completely after five to fifteen minutes away
@@ -92,22 +96,30 @@ const EMPTY_LEDGER = Object.freeze({});
 function defaultHeatZone() {
   return {
     active: false,
+    sectorId: null,
     center: { x: 0, z: 0 },
     radius: 0,
     level: 0,
     outsideS: 0,
     clearAfterS: 0,
+    noticeElapsedS: 0,
+    bountyPosted: false,
+    bountyPostedAt: null,
   };
 }
 
 function heatZoneSnapshot(zone) {
   return zone ? {
     active: !!zone.active,
+    sectorId: typeof zone.sectorId === 'string' ? zone.sectorId : null,
     center: { x: zone.center.x || 0, z: zone.center.z || 0 },
     radius: zone.radius || 0,
     level: zone.level || 0,
     outsideS: zone.outsideS || 0,
     clearAfterS: zone.clearAfterS || 0,
+    noticeElapsedS: zone.noticeElapsedS || 0,
+    bountyPosted: zone.bountyPosted === true,
+    bountyPostedAt: Number.isFinite(zone.bountyPostedAt) ? zone.bountyPostedAt : null,
   } : defaultHeatZone();
 }
 
@@ -116,12 +128,16 @@ function ensureHeatZone(player) {
   const zone = player.heatZone && typeof player.heatZone === 'object' ? player.heatZone : defaultHeatZone();
   if (!zone.center || typeof zone.center !== 'object') zone.center = { x: 0, z: 0 };
   if (typeof zone.active !== 'boolean') zone.active = false;
+  if (typeof zone.sectorId !== 'string') zone.sectorId = null;
   if (!Number.isFinite(zone.center.x)) zone.center.x = 0;
   if (!Number.isFinite(zone.center.z)) zone.center.z = 0;
   if (!Number.isFinite(zone.radius)) zone.radius = 0;
   if (!Number.isFinite(zone.level)) zone.level = 0;
   if (!Number.isFinite(zone.outsideS)) zone.outsideS = 0;
   if (!Number.isFinite(zone.clearAfterS)) zone.clearAfterS = 0;
+  if (!Number.isFinite(zone.noticeElapsedS)) zone.noticeElapsedS = 0;
+  if (typeof zone.bountyPosted !== 'boolean') zone.bountyPosted = false;
+  if (!Number.isFinite(zone.bountyPostedAt)) zone.bountyPostedAt = null;
   player.heatZone = zone;
   return zone;
 }
@@ -304,7 +320,11 @@ export const heat = {
     const before = player.heat || 0;
     const after = clamp01(before + delta);
     player.heat = after;
-    if (after >= WANTED_THRESHOLD) this._refreshZone(true);
+    const crossedWanted = before < WANTED_THRESHOLD && after >= WANTED_THRESHOLD;
+    if (after >= WANTED_THRESHOLD) {
+      this._refreshZone(true);
+      if (crossedWanted) this._beginWantedNotice();
+    }
     if (player.heat !== before) {
       // emit immediately on threshold crossings (WANTED appearing/disappearing) so the HUD reacts
       // crisply, otherwise throttle to once per ~0.4s.
@@ -334,6 +354,10 @@ export const heat = {
     this._refreshZone(false);
     if (!outsideHeatZone(entity, zone)) {
       zone.outsideS = 0;
+      if (!zone.bountyPosted) {
+        zone.noticeElapsedS += Math.max(0, dt || 0);
+        if (zone.noticeElapsedS >= WANTED_NOTICE_GRACE_S) this._postBounty(zone);
+      }
       return;
     }
     zone.outsideS += Math.max(0, dt || 0);
@@ -354,10 +378,51 @@ export const heat = {
     const entity = playerEntity(this.state);
     if (!zone.active || recenter) setZoneCenter(zone, entity);
     zone.active = true;
+    if (recenter) zone.sectorId = this.state.world && this.state.world.currentSectorId || null;
     zone.level = level;
     zone.radius = heatRadiusForLevel(level);
     zone.clearAfterS = heatClearSecondsForLevel(level);
     if (!Number.isFinite(zone.outsideS) || recenter) zone.outsideS = 0;
+  },
+
+  _beginWantedNotice() {
+    const zone = ensureHeatZone(this.state.player);
+    zone.noticeElapsedS = 0;
+    zone.bountyPosted = false;
+    zone.bountyPostedAt = null;
+    const notice = {
+      level: zone.level,
+      zone: heatZoneSnapshot(zone),
+      restitutionCr: heatRestitutionCost(this.state.player.heat),
+      graceS: WANTED_NOTICE_GRACE_S,
+      t: Number(this.state.simTime) || 0,
+    };
+    this.bus.emit('law:fineNotice', notice);
+    this.bus.emit('toast', {
+      text: `LOCAL FINE NOTICE - ${notice.restitutionCr}cr restitution. Leave the search zone or settle at a station.`,
+      kind: 'warn',
+      ttl: 6,
+    });
+  },
+
+  _postBounty(zone = ensureHeatZone(this.state.player)) {
+    if (!zone.active || zone.bountyPosted || !isPlayerWanted(this.state)) return false;
+    zone.noticeElapsedS = WANTED_NOTICE_GRACE_S;
+    zone.bountyPosted = true;
+    zone.bountyPostedAt = Number(this.state.simTime) || 0;
+    this._emitChanged('restitution notice ignored; bounty posted', true, this.state.player.heat);
+    this.bus.emit('law:bountyPosted', {
+      level: zone.level,
+      zone: heatZoneSnapshot(zone),
+      heat: this.state.player.heat,
+      t: zone.bountyPostedAt,
+    });
+    this.bus.emit('toast', {
+      text: 'BOUNTY POSTED - lawful berths closed; hunter traffic inbound.',
+      kind: 'error',
+      ttl: 6,
+    });
+    return true;
   },
 
   _setHeat(value, reason) {
@@ -375,10 +440,14 @@ export const heat = {
     if (!player) return;
     const zone = ensureHeatZone(player);
     zone.active = false;
+    zone.sectorId = null;
     zone.radius = 0;
     zone.level = 0;
     zone.outsideS = 0;
     zone.clearAfterS = 0;
+    zone.noticeElapsedS = 0;
+    zone.bountyPosted = false;
+    zone.bountyPostedAt = null;
   },
 
   /**
@@ -403,6 +472,7 @@ export const heat = {
       reason,
       wanted,
       wantedCrossed: wanted !== wasWanted,
+      bountyPosted: wanted && ensureHeatZone(player).bountyPosted === true,
       // 0..1 approach toward the WANTED gate. 1 at/above threshold. Presentation-only scalar.
       suspicion: value <= 0 ? 0 : Math.min(1, value / WANTED_THRESHOLD),
       threshold: WANTED_THRESHOLD,
@@ -414,6 +484,12 @@ export const heat = {
 export function isPlayerWanted(state) {
   const h = state.player && state.player.heat;
   return typeof h === 'number' ? h >= WANTED_THRESHOLD : false;
+}
+export function isPlayerBountyPosted(state) {
+  const zone = state && state.player && state.player.heatZone;
+  const currentSectorId = state && state.world && state.world.currentSectorId;
+  const local = !zone || !zone.sectorId || !currentSectorId || zone.sectorId === currentSectorId;
+  return isPlayerWanted(state) && local && !!(zone && zone.active && zone.bountyPosted === true);
 }
 export function heatLevelFor(value) {
   if (!Number.isFinite(value) || value < WANTED_THRESHOLD) return 0;

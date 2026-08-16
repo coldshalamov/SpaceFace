@@ -363,6 +363,12 @@ export const surrenderRecovery = {
     record.resolvedAt = now;
     record.stationId = jurisdiction.stationId;
     record.authorityFactionId = jurisdiction.factionId || null;
+    // A live bounty contract is the exclusive settlement authority for its exact quarry. Custody
+    // still owns the physical handoff/receipt, but its ordinary finder fee and rep tip are suppressed
+    // so missions can pay the authored 1.5x capture award once without stacking an ambient reward.
+    const bountyMission = activeBountyMissionFor(this.state, entity);
+    const missionCapture = !!bountyMission;
+    const creditedRewardCr = missionCapture ? 0 : record.rewardCr;
     const data = entity.data || (entity.data = {});
     data.despawnAt = now + CUSTODY_DESPAWN_S;
     annotate(entity, record, 'Custody transferred.');
@@ -374,9 +380,12 @@ export const surrenderRecovery = {
       factionId: record.factionId,
       authorityFactionId: record.authorityFactionId,
       stationId: record.stationId,
-      credits: record.rewardCr,
+      credits: creditedRewardCr,
       t: now,
       recoveryKind: record.recoveryKind,
+      custodyReceiptId: `surrender-custody:${entity.id}`,
+      missionCapture,
+      missionId: bountyMission && bountyMission.id || null,
       text: record.recoveryKind === RECOVERY_DRIVE_DISABLED
         ? 'CUSTODY TRANSFERRED - disabled hull secured without a kill.'
         : 'CUSTODY TRANSFERRED - surrendered hull secured without a kill.',
@@ -384,12 +393,14 @@ export const surrenderRecovery = {
     const own = ensureState(this.state);
     own.receipts.push(receipt);
     if (own.receipts.length > RECEIPT_CAP) own.receipts.splice(0, own.receipts.length - RECEIPT_CAP);
-    this._emit('economy:grantCredits', {
-      amount: record.rewardCr,
-      reason: `surrender_custody:${entity.id}`,
-      entityId: entity.id,
-    });
-    if (record.authorityFactionId) {
+    if (creditedRewardCr > 0) {
+      this._emit('economy:grantCredits', {
+        amount: creditedRewardCr,
+        reason: `surrender_custody:${entity.id}`,
+        entityId: entity.id,
+      });
+    }
+    if (record.authorityFactionId && !missionCapture) {
       this._emit('faction:repDelta', {
         factionId: record.authorityFactionId,
         delta: 2,
@@ -912,6 +923,18 @@ function canonicalPlayerAttachment(state, targetId, attachmentId = null) {
 function custodyReward(entity) {
   const bounty = Math.max(0, Math.round(Number(entity && entity.data && entity.data.bountyCr) || 0));
   return Math.max(75, Math.min(1200, Math.round(bounty * 0.6)));
+}
+
+function activeBountyMissionFor(state, entity) {
+  if (!state || !entity || entity.id == null) return null;
+  const missionId = entity.data && (entity.data.missionId || entity.data.missionTag);
+  if (missionId == null) return null;
+  return (state.missions && state.missions.active || []).find((mission) => (
+    mission && mission.status === 'active' && mission.type === 'bounty_hunt'
+      && String(mission.id) === String(missionId)
+      && Array.isArray(mission.targetEntityIds)
+      && mission.targetEntityIds.includes(entity.id)
+  )) || null;
 }
 
 function civilianRecoveryReward(manifest) {

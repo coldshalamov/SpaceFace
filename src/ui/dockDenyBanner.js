@@ -1,19 +1,15 @@
 // dockDenyBanner.js — BP-11 packet A3 "Sealed Berth" (SURFACE — see design/revamp/detail/A_sector_station.md).
 //
-// dockDeny.js is SHIPPED (faction-voiced refusal reasons) but until now had zero callers — the
-// player never met a station that turns them away in its own voice. This module surfaces it: on a
+// dockDeny.js owns faction-voiced refusal reasons and ui/input.js calls resolveDockDeny as the
+// authoritative command gate. This module also surfaces it: on a
 // dock attempt against a non-dockable station it resolves the SHIPPED dockDenyReason(station,
 // factionMeta) and surfaces {label, reason, text} as a scan-result line + routes the flavored
 // `text` through ctx.helpers.voice.say({channel:'comms'}) EXACTLY ONCE per attempt (debounced).
 //
-// Wiring (noTouch honored — world.js / uiRoot.js / bindings.js / input.js are never edited):
-//   * Subscribes to `dock:attempt` {stationId|station} — the canonical attempt seam (nothing emits
-//     it yet; the input lead can emit it from doDock() when deny-flagged stations enter content).
-//   * Also subscribes to `dock:docked` — today's only live attempt signal. In the default game no
-//     spawned station carries a deny flag, so this resolves null and stays silent; once content
-//     flags stations, the denial surfaces even before the input-side block lands.
-//   * On a denial it emits `dock:denied` {stationId, reason, text} — the additive seam a future
-//     input-side blocker / contacts strip can consume.
+// Wiring:
+//   * ui/input.js publishes `dock:attempt`, calls this pure selector, and stops before `dock:docked`
+//     on a denial. Keyboard, gamepad, and touch all share that one command gate.
+//   * This listener owns the explanation and emits `dock:denied` for other presentation consumers.
 //
 // Contract details (packet failureModes):
 //   * ALWAYS passes factionMeta (FACTION_META entry + live rep) so the faction-flavored line wins
@@ -25,6 +21,7 @@
 
 import { dockDenyReason } from '../data/dockDeny.js';
 import { FACTION_META } from '../data/factions.js';
+import { isPlayerBountyPosted } from '../systems/heat.js';
 
 const DEBOUNCE_S = 2;        // same station inside this simTime window = one attempt
 const BANNER_TTL_MS = 6000;  // cosmetic DOM auto-hide
@@ -46,6 +43,12 @@ function findStationData(state, stationId) {
     if (data.stationId === stationId) return { ...data, factionId: data.factionId || e.factionId || null };
   }
   return null;
+}
+
+function isBlackMarketStation(station) {
+  const type = String(station && (station.stationTypeId || station.type) || '').toLowerCase();
+  const services = Array.isArray(station && station.services) ? station.services : [];
+  return type === 'blackmarket' || services.includes('black_market');
 }
 
 /**
@@ -74,7 +77,16 @@ export function resolveDockDeny(state, stationRef) {
     ? (Number.isFinite(rep) ? { ...meta, rep } : meta)
     : (factionId || undefined);
 
-  const deny = dockDenyReason(station, factionMeta);
+  let deny = dockDenyReason(station, factionMeta);
+  // A posted warrant closes ordinary berths through the command gate that already owns docking.
+  // Fences remain reachable so WANTED play has a destination; unrelated quarantine/private/rep
+  // restrictions above still apply and are never silently waived.
+  if (!deny && isPlayerBountyPosted(state) && !isBlackMarketStation(station)) {
+    deny = dockDenyReason({ ...station, hostile: true }, factionMeta) || {
+      reason: 'hostile_rep',
+      text: 'ACCESS DENIED. Your registry is under an active warrant.',
+    };
+  }
   if (!deny) return null;
   return {
     stationId: stationId || null,

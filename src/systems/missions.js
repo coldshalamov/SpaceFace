@@ -598,6 +598,9 @@ export const missions = {
     bus.on('mining:bulkHaulDelivered', (p) => this._onBulkHaulDelivered(p));
     // bounty_hunt / patrol_clear: a tagged hostile died to the player.
     bus.on('entity:killed', (p) => this._onKill(p));
+    // A bounty may close without a kill only after surrenderRecovery physically transfers this
+    // mission's exact live target into lawful custody. Missions remains the sole contract settler.
+    bus.on('law:custodyTransfer', (p) => this._onCustodyTransfer(p));
     // escort fail: escortee destroyed.
     bus.on('entity:destroyed', (p) => this._onEntityDestroyed(p));
     // recon_scan: a scan target (or sector scan) completed.
@@ -2851,6 +2854,43 @@ export const missions = {
     }
   },
 
+  _onCustodyTransfer(payload) {
+    if (!payload || payload.entityId == null || payload.missionCapture !== true
+      || !payload.missionId || !payload.custodyReceiptId) return false;
+    for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
+      const m = this.state.missions.active[i];
+      if (!m || m.status !== 'active' || m.type !== 'bounty_hunt'
+        || String(m.id) !== String(payload.missionId)
+        || !(m.targetEntityIds || []).includes(payload.entityId)) continue;
+      const entity = this.state.entities && this.state.entities.get(payload.entityId);
+      if (!entity || entity.alive === false || String(missionIdentityOf(entity)) !== String(m.id)) continue;
+      if (m.captureSettlement && m.captureSettlement.custodyReceiptId) return false;
+
+      const slot = missionTargetSlotOf(entity, m.id);
+      if (slot != null) {
+        const completed = completedMissionTargetSlots(m);
+        completed.add(slot);
+        m.completedTargetSlots = [...completed].sort((a, b) => a - b);
+      }
+      // Persist this commit point inside the already-serialized active mission before settlement.
+      // A required clause may temporarily block completion; a repeated custody event or Continue
+      // then finds the spent receipt instead of multiplying the 1.5x capture premium.
+      m.captureSettlement = {
+        kind: 'lawful_custody',
+        entityId: payload.entityId,
+        custodyReceiptId: String(payload.custodyReceiptId),
+        multiplier: 1.5,
+        stationId: payload.stationId || null,
+        at: Number(payload.t) || Number(this.state.simTime) || 0,
+      };
+      m.targetEntityIds = m.targetEntityIds.filter((id) => id !== payload.entityId);
+      m.objectiveProgress = m.objectiveTarget;
+      this._completeMission(m, i);
+      return true;
+    }
+    return false;
+  },
+
   _onEntityDestroyed(p) {
     if (!p || p.id == null) return;
     // PQ-019C: a destroyed capsule is a `payload_destroyed` CANDIDATE, arbitrated against whatever
@@ -3760,7 +3800,12 @@ export const missions = {
     if (m._settlePending) delete m._settlePending;
     const setPieceTransition = this._compileSetPieceTransition(m, 'completed');
     const clauseSettlement = settleContractClauses(m);
-    const settledRewardCr = clauseSettlement.rewardCr;
+    const captureSettlement = m.type === 'bounty_hunt' && m.captureSettlement
+      && m.captureSettlement.kind === 'lawful_custody'
+      ? m.captureSettlement : null;
+    const captureMultiplier = captureSettlement
+      ? Math.max(1, Number(captureSettlement.multiplier) || 1) : 1;
+    const settledRewardCr = Math.round(clauseSettlement.rewardCr * captureMultiplier);
     m.status = 'completed';
     this._clearMissionNav(m.id);
     const displayRewardCr = m.storyTag === CONTRACT_47A_B0_TAG
@@ -3818,6 +3863,10 @@ export const missions = {
       causeFingerprint: m.cause && m.cause.fingerprint || undefined,
       causeTag: m.cause && m.cause.tag || undefined,
       rewardCr: settledRewardCr,
+      ...(captureSettlement ? {
+        resolution: 'capture',
+        custodyReceiptId: captureSettlement.custodyReceiptId,
+      } : {}),
       ...setPieceEventFields(m, setPieceTransition),
     };
     if (storyOutcome !== undefined) completedPayload.storyOutcome = storyOutcome;
@@ -3844,6 +3893,11 @@ export const missions = {
       collateralRefundCr: m.collateral_cr || 0,
       repDelta: m.factionId ? specRep : 0,
       researchPoints,
+      ...(captureSettlement ? {
+        resolution: 'capture',
+        custodyReceiptId: captureSettlement.custodyReceiptId,
+        captureMultiplier,
+      } : {}),
       setPieceReceipt: setPieceTransition && setPieceTransition.receipt || null,
       // Absent entirely on a term-free contract, so the shipped receipt shape is unchanged.
       ...(clauseSettlement.honored.length
@@ -5344,6 +5398,11 @@ export function missionReceiptFor(m, outcome, reason, settlement = {}) {
     collateralLostCr,
     repDelta,
     researchPoints,
+    ...(typeof settlement.resolution === 'string' ? { resolution: settlement.resolution } : {}),
+    ...(typeof settlement.custodyReceiptId === 'string'
+      ? { custodyReceiptId: settlement.custodyReceiptId } : {}),
+    ...(Number.isFinite(Number(settlement.captureMultiplier))
+      ? { captureMultiplier: Number(settlement.captureMultiplier) } : {}),
     contractCargoRemoved: Math.max(0, Math.round(Number(settlement.contractCargoRemoved) || 0)),
     storyOutcome: m && m.params && m.params.investigationOutcome || null,
     source: m && m.source || null,

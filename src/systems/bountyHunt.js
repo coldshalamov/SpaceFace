@@ -12,6 +12,8 @@ import {
   hunterTrickById,
   hunterTrickForContract,
 } from '../data/hunterTricks.js';
+import { hash32 } from '../core/rng.js';
+import { makeEnemySpawnSpec } from './combat.js';
 
 export {
   BOUNTY_HUNTER_NEUTRAL_CONTEXT,
@@ -37,6 +39,10 @@ export const bountyHunt = {
     this._subs = [];
     ensureState(this.state);
     this._listen('entity:killed', (p) => this._onEntityKilled(p));
+    this._listen('surrender:secured', (p) => this._onBountySecured(p));
+    this._listen('mission:completed', (p) => this._releaseTowPersistence(p));
+    this._listen('mission:failed', (p) => this._releaseTowPersistence(p));
+    this._listen('mission:expired', (p) => this._releaseTowPersistence(p));
   },
 
   newGame() {
@@ -47,6 +53,7 @@ export const bountyHunt = {
     if (!state || (state.mode && state.mode !== 'flight')) return;
     this.state = state;
     ensureState(state);
+    this._retryTowInterceptions();
     for (const entity of state.entityList || []) {
       if (isBountyHunter(entity)) {
         normalizeHunter(entity, state);
@@ -84,6 +91,130 @@ export const bountyHunt = {
     if (contractId) {
       recordOutcome(state, this.bus, contractId, byPlayer ? 'player_helped_hunter' : 'quarry_killed', payload);
     }
+  },
+
+  _onBountySecured(payload) {
+    if (!payload || payload.entityId == null || !this.state) return null;
+    const target = entityFor(this.state, payload.entityId);
+    const mission = activeBountyMissionFor(this.state, target);
+    if (!mission) return null;
+    const existing = mission.captureTowInterception;
+    if (existing && existing.missionId === mission.id) {
+      if (existing.status === 'pending') this._spawnTowInterceptor(mission, target);
+      return existing;
+    }
+    // The mission is already part of the canonical save surface. Commit the one-shot marker before
+    // touching spawn budget so a Continue or duplicate secure event cannot create a second hunter.
+    mission.captureTowInterception = {
+      missionId: mission.id,
+      targetSlot: missionTargetSlot(target),
+      status: 'pending',
+      requestedAt: finite(this.state.simTime, 0),
+      requester: `bounty-tow:${mission.id}`,
+      hunterEntityId: null,
+    };
+    this._spawnTowInterceptor(mission, target);
+    return mission.captureTowInterception;
+  },
+
+  _retryTowInterceptions() {
+    for (const mission of this.state && this.state.missions && this.state.missions.active || []) {
+      const rec = mission && mission.captureTowInterception;
+      if (!mission || mission.status !== 'active' || mission.type !== 'bounty_hunt' || !rec) continue;
+      if (rec.status === 'spawned') {
+        const restored = (this.state.entityList || []).find((entity) => (
+          entity && entity.alive !== false && entity.data
+            && String(entity.data.towInterceptionMissionId) === String(mission.id)
+        ));
+        if (restored && restored.id !== rec.hunterEntityId) rec.hunterEntityId = restored.id;
+        continue;
+      }
+      if (rec.status !== 'pending') continue;
+      const target = exactMissionTarget(this.state, mission, rec.targetSlot);
+      if (target) this._spawnTowInterceptor(mission, target);
+    }
+  },
+
+  _spawnTowInterceptor(mission, target) {
+    const state = this.state;
+    const rec = mission && mission.captureTowInterception;
+    if (!state || !rec || rec.status !== 'pending' || !target || target.alive === false) return false;
+    if (!isSecuredByPlayerMassline(state, target)) return false;
+    const player = entityFor(state, state.playerId);
+    if (!player || player.alive === false || !player.pos) return false;
+
+    const budget = this.helpers && this.helpers.spawnBudget;
+    const requester = rec.requester || `bounty-tow:${mission.id}`;
+    const grant = budget && typeof budget.request === 'function' ? budget.request(1, requester) : 1;
+    if (grant <= 0) return false;
+
+    const seed = hash32(state.meta && state.meta.seed || 1, mission.id, 'tow-interceptor');
+    const angle = (seed / 0x100000000) * Math.PI * 2;
+    const distance = 520;
+    const pos = {
+      x: player.pos.x + Math.cos(angle) * distance,
+      z: player.pos.z + Math.sin(angle) * distance,
+    };
+    const level = Math.max(4, 4 + Math.max(0, Math.round(Number(mission.riskTier) || 0)) * 2);
+    const authored = makeEnemySpawnSpec('corsair_raider', level, pos, {
+      factionId: 'faction_quiet',
+      startedTick: state.tick | 0,
+    });
+    const contract = makeBountyHunterSpec({
+      contractId: requester,
+      contractTargetId: player.id,
+      pos,
+      factionId: 'faction_quiet',
+    });
+    authored.team = contract.team;
+    authored.factionId = contract.factionId;
+    authored.flags = { ...(authored.flags || {}), persistent: true };
+    authored.data = {
+      ...(authored.data || {}),
+      ...(contract.data || {}),
+      towInterceptionMissionId: mission.id,
+      towInterceptionTargetSlot: rec.targetSlot,
+      missionCaptureTargetId: target.id,
+      ai: {
+        ...((authored.data && authored.data.ai) || {}),
+        ...((contract.data && contract.data.ai) || {}),
+      },
+    };
+    const spawnEntity = this.helpers && this.helpers.spawnEntity;
+    const hunter = typeof spawnEntity === 'function' ? spawnEntity(authored) : null;
+    if (!hunter) {
+      if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
+      return false;
+    }
+    if (budget && typeof budget.bindEntity === 'function') budget.bindEntity(hunter.id, requester);
+    normalizeHunter(hunter, state);
+    hunter.data.combat = { ...(hunter.data.combat || {}), targetId: player.id, lockTarget: player.id };
+    rec.status = 'spawned';
+    rec.hunterEntityId = hunter.id;
+    rec.spawnedAt = finite(state.simTime, 0);
+    emit(this.bus, 'bountyHunt:towIntercepted', {
+      missionId: mission.id,
+      targetEntityId: target.id,
+      hunterEntityId: hunter.id,
+      contractId: requester,
+      at: rec.spawnedAt,
+    });
+    return true;
+  },
+
+  _releaseTowPersistence(payload) {
+    const missionId = payload && payload.missionId;
+    if (!missionId || !this.state) return false;
+    let changed = false;
+    for (const entity of this.state.entityList || []) {
+      if (!entity || !entity.data
+        || String(entity.data.towInterceptionMissionId) !== String(missionId)) continue;
+      if (entity.flags && entity.flags.persistent) {
+        delete entity.flags.persistent;
+        changed = true;
+      }
+    }
+    return changed;
   },
 };
 
@@ -285,6 +416,49 @@ function applyEmergencyJump(entity, state, payload) {
 function isBountyHunter(entity) {
   const data = entity && entity.data;
   return !!(data && data.bountyHunt && data.bountyHunt.role === 'hunter');
+}
+
+function entityFor(state, id) {
+  return id == null || !state || !state.entities || typeof state.entities.get !== 'function'
+    ? null : state.entities.get(id) || null;
+}
+
+function missionTargetSlot(entity) {
+  const slot = Number(entity && entity.data && entity.data.missionTargetSlot);
+  return Number.isInteger(slot) && slot >= 0 ? slot : 0;
+}
+
+function activeBountyMissionFor(state, entity) {
+  if (!state || !entity || entity.id == null) return null;
+  const missionId = entity.data && (entity.data.missionId || entity.data.missionTag);
+  if (missionId == null) return null;
+  return (state.missions && state.missions.active || []).find((mission) => (
+    mission && mission.status === 'active' && mission.type === 'bounty_hunt'
+      && String(mission.id) === String(missionId)
+      && Array.isArray(mission.targetEntityIds)
+      && mission.targetEntityIds.includes(entity.id)
+  )) || null;
+}
+
+function exactMissionTarget(state, mission, targetSlot) {
+  for (const entity of state && state.entityList || []) {
+    const data = entity && entity.data;
+    if (!entity || entity.alive === false || !data) continue;
+    if (String(data.missionId || data.missionTag) !== String(mission.id)) continue;
+    if (missionTargetSlot(entity) !== targetSlot) continue;
+    if ((mission.targetEntityIds || []).includes(entity.id)) return entity;
+  }
+  return null;
+}
+
+function isSecuredByPlayerMassline(state, target) {
+  const annotation = target && target.data && target.data.surrenderRecovery;
+  if (!annotation || annotation.phase !== 'secured') return false;
+  const byId = state && state.combat && state.combat.attachments && state.combat.attachments.byId;
+  return !!(byId && Object.values(byId).some((attachment) => (
+    attachment && attachment.state === 'active'
+      && attachment.ownerId === state.playerId && attachment.targetId === target.id
+  )));
 }
 
 function contractIdForQuarryKill(state, quarryId) {
