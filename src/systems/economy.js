@@ -24,6 +24,7 @@
 //   baseEq = fixed reference). Absolute early ROI is now moderated for M3 career parity.
 import { COMMODITIES } from '../data/commodities.js';
 import { SECTORS } from '../data/sectors.js';
+import { CERES_ACTIVITY_SECTOR_ID, CERES_FUEL_TENDER_SERVICE } from '../data/sectorActivityPockets.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
 import { addCargo, isUnsellableCargo, removeCargo } from './cargo.js';
 import {
@@ -647,6 +648,9 @@ export const economy = {
 
     // ---- services (refuel / repair / ammo) ------------------------------------------------
     bus.on('ui:service', (p) => { if (p) this.handleService(p); });
+    bus.on('fuelTender:transferRequested', (p) => {
+      if (p && typeof p === 'object') p.result = this.transferFuelTender(p);
+    });
 
     // ---- contraband scanning (jump-gate use / patrol proximity) ---------------------------
     bus.on('sim:jumpGate', (p) => this.runScan(p || {}));
@@ -1728,6 +1732,75 @@ export const economy = {
   // -------------------------------------------------------------------------------------------
   // SERVICES — refuel / repair / ammo / hull wash / restitution (ui:service {type, amount}).
   // -------------------------------------------------------------------------------------------
+  transferFuelTender(p) {
+    const reject = (reason) => ({ accepted: false, reason, amount: 0 });
+    const state = this.state;
+    const service = CERES_FUEL_TENDER_SERVICE;
+    if (!p || p.serviceId !== service.id) return reject('unknown_service');
+    if (state.mode !== 'flight' || state.world?.currentSectorId !== CERES_ACTIVITY_SECTOR_ID) {
+      return reject('wrong_sector');
+    }
+    if (p.playerId !== state.playerId) return reject('wrong_player');
+    const player = state.entities?.get?.(state.playerId);
+    const tender = state.entities?.get?.(p.tenderId);
+    if (!player || player.alive === false || player.id !== state.playerId) return reject('player_unavailable');
+    if (!tender || tender.alive === false
+      || tender.data?.activityActorSlotId !== 'ceres_refinery_tender'
+      || tender.data?.durable !== true
+      || !tender.data?.worldRecordId) return reject('tender_unavailable');
+
+    const jobId = tender.data.jobId;
+    const jobEntry = jobId && state.npcJobs?.byId?.[jobId];
+    const phase = jobEntry?.job?.phase;
+    if (!jobEntry || jobEntry.entityId !== tender.id || jobEntry.job?.kind !== 'tender'
+      || phase === 'flee' || phase === 'complete') return reject('service_interrupted');
+
+    const dx = player.pos.x - tender.pos.x;
+    const dz = player.pos.z - tender.pos.z;
+    const distanceWU = Math.hypot(dx, dz);
+    const relativeSpeedWUPerS = Math.hypot(
+      (player.vel?.x || 0) - (tender.vel?.x || 0),
+      (player.vel?.z || 0) - (tender.vel?.z || 0),
+    );
+    if (!Number.isFinite(distanceWU) || distanceWU > service.rendezvousRadiusWU) {
+      return reject('out_of_range');
+    }
+    if (!Number.isFinite(relativeSpeedWUPerS)
+      || relativeSpeedWUPerS > service.maxRelativeSpeedWUPerS) return reject('relative_speed');
+
+    const lot = tender.data.cargoManifest?.fuelTenderService;
+    if (!lot || lot.lotId !== service.cargoLotId || lot.commodityId !== service.commodityId) {
+      return reject('missing_fuel_lot');
+    }
+    const remaining = Math.max(0, Math.min(service.capacityUnits, Number(lot.remainingUnits) || 0));
+    const fuel = state.fuel || (state.fuel = { current: 0, max: 100 });
+    const missing = Math.max(0, (Number(fuel.max) || 0) - (Number(fuel.current) || 0));
+    const requested = Number.isFinite(p.amount) ? Math.max(0, p.amount) : service.transferQuantumUnits;
+    const amount = Math.min(requested, service.transferQuantumUnits, remaining, missing);
+    if (!(amount > 0)) return reject(remaining <= 0 ? 'empty' : 'tank_full');
+
+    lot.remainingUnits = remaining - amount;
+    fuel.current = Math.min(fuel.max, fuel.current + amount);
+    const receipt = {
+      accepted: true,
+      reason: null,
+      serviceId: service.id,
+      tenderId: tender.id,
+      playerId: player.id,
+      amount,
+      remainingUnits: lot.remainingUnits,
+      fuelCurrent: fuel.current,
+      fuelMax: fuel.max,
+      distanceWU,
+      relativeSpeedWUPerS,
+      tick: state.tick | 0,
+      t: state.simTime || 0,
+    };
+    this.bus.emit('fuel:changed', { current: fuel.current, max: fuel.max });
+    this.bus.emit('fuelTender:transferred', receipt);
+    return receipt;
+  },
+
   handleService(p) {
     const state = this.state;
     const type = p.type;

@@ -81,6 +81,7 @@ import { travelLanes } from '../systems/travelLanes.js';
 import { factions } from '../systems/factions.js';
 import { sectorSim } from '../systems/sectorSim.js';
 import { npcJobsRuntime } from '../systems/npcJobsRuntime.js';
+import { fuelTenderService } from '../systems/fuelTenderService.js';
 import { missions } from '../systems/missions.js';
 import { careerContracts } from '../systems/careerContracts.js';
 import { postEndingReplay } from '../systems/postEndingReplay.js';
@@ -242,6 +243,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['factions', factions],
     ['sectorSim', sectorSim],
     ['npcJobsRuntime', npcJobsRuntime],
+    ['fuelTenderService', fuelTenderService],
     ['careerOrigins', careerOrigins],
     ['careerLadders', careerLadders],
     ['liveCareerLadderBranches', liveCareerLadderBranches],

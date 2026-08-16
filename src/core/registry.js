@@ -81,6 +81,7 @@ import { travelLanes } from '../systems/travelLanes.js';             // D8 lane 
 import { factions } from '../systems/factions.js';
 import { sectorSim } from '../systems/sectorSim.js';   // ADR-0002 / V2 §33 — offscreen stat sim
 import { npcJobsRuntime } from '../systems/npcJobsRuntime.js'; // PQ-014/SF-15/W06 — drives the pure npcJobs kernel into live NPC miner/hauler/patrol hulls
+import { fuelTenderService } from '../systems/fuelTenderService.js'; // Plan 18 — physical Ceres rendezvous into the economy fuel writer
 import { missions } from '../systems/missions.js';
 import { careerContracts } from '../systems/careerContracts.js';
 import { postEndingReplay } from '../systems/postEndingReplay.js';
@@ -255,6 +256,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['factions', factions],
     ['sectorSim', sectorSim],
     ['npcJobsRuntime', npcJobsRuntime],
+    ['fuelTenderService', fuelTenderService],
     ['careerOrigins', careerOrigins],
     ['careerLadders', careerLadders],
     ['liveCareerLadderBranches', liveCareerLadderBranches],

@@ -308,7 +308,31 @@ function stampCeresTenderIdentity(entity, context) {
     entity.data.recordCreatedTick = context.createdTick | 0;
   }
   entity.data.activityActorSlotId = context.slot.id;
+  ensureCeresTenderFuelCargo(entity, context.slot.service);
   delete entity.data.trafficRole;
+}
+
+function ensureCeresTenderFuelCargo(entity, service) {
+  if (!service || !Number.isFinite(service.capacityUnits) || service.capacityUnits <= 0) return;
+  const data = entity.data || (entity.data = {});
+  const cargoManifest = data.cargoManifest && typeof data.cargoManifest === 'object'
+    && !Array.isArray(data.cargoManifest)
+    ? data.cargoManifest
+    : {};
+  const savedLot = cargoManifest.fuelTenderService;
+  const sameLot = savedLot && savedLot.lotId === service.cargoLotId;
+  const remainingUnits = sameLot && Number.isFinite(savedLot.remainingUnits)
+    ? Math.max(0, Math.min(service.capacityUnits, savedLot.remainingUnits))
+    : service.capacityUnits;
+  data.cargoManifest = {
+    ...cargoManifest,
+    fuelTenderService: {
+      lotId: service.cargoLotId,
+      commodityId: service.commodityId,
+      capacityUnits: service.capacityUnits,
+      remainingUnits,
+    },
+  };
 }
 
 function releaseCeresTenderFromWorldExtras(state, entity) {

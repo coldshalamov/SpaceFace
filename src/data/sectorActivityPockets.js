@@ -19,6 +19,20 @@ import {
 
 export const CERES_ACTIVITY_SECTOR_ID = 'sector_ceres_belt';
 export const CERES_AUTHORED_ACTIVITY_CAPACITY = 9;
+export const CERES_FUEL_TENDER_SERVICE = Object.freeze({
+  id: 'ceres_refinery_fuel_top_up',
+  cargoLotId: 'ceres_refinery_service_fuel',
+  commodityId: 'fuel',
+  capacityUnits: 30,
+  // Flight V3's ordinary moving-entity autopilot holds outside the two collision hulls. This radius
+  // admits that physical safe standoff (about 75 WU for Kestrel + Ironback) without becoming a
+  // broad proximity refill bubble.
+  rendezvousRadiusWU: 82,
+  maxRelativeSpeedWUPerS: 6,
+  settleTimeS: 1.25,
+  transferRateUnitsPerS: 6,
+  transferQuantumUnits: 1,
+});
 
 /** R1's accepted camera-local population bands, measured from each pocket activity anchor. */
 export const CERES_ACTIVITY_BANDS = Object.freeze({
@@ -103,6 +117,7 @@ function actor({
   lawful = false,
   passive = true,
   binding = null,
+  service = null,
 }) {
   assertDistanceInBand(spawnOffset, CERES_ACTIVITY_BANDS.immediate, `actor ${id} spawn`);
   return Object.freeze({
@@ -117,6 +132,7 @@ function actor({
     spawnOffset,
     route: jobRoute,
     binding,
+    ...(service ? { service } : {}),
     worldRecordSlotId: `ceres:activity:${id}`,
     tombstonePolicy: 'no_refill_or_reassign',
     countsTowardPocketActorCensus: true,
@@ -333,6 +349,7 @@ const refineryActors = Object.freeze([
       }),
       runtimeStatus: 'requires_world_record_adoption',
     }),
+    service: CERES_FUEL_TENDER_SERVICE,
     route: route({
       id: 'ceres_refinery_tender_service',
       jobKind: 'tender',
