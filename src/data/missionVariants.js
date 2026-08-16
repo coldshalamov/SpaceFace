@@ -2,6 +2,7 @@
 // Pure data/helpers only: missions remains the board/lifecycle owner, cargo remains the inventory
 // writer, and physics remains the motion/contact owner.
 import { missionConditionById, serializableMissionCondition } from './missionConditions.js';
+import { clauseById } from './contractClauses.js';
 
 export const QUIET_DELIVERY_VARIANT_ID = 'quiet_delivery';
 export const QUIET_DELIVERY_RECOVERY_SOURCE = 'quietDeliveryRecovery';
@@ -14,6 +15,8 @@ export const PEST_CONTROL_ARCHETYPE_ID = 'wasp_swarmer';
 export const DEBRIS_RECOVERY_VARIANT_ID = 'debris_recovery';
 export const DEBRIS_RECOVERY_FOLLOWUP_SOURCE = 'debrisRecoveryFollowup';
 export const DEBRIS_RECOVERY_DRAW_MODULO = 3;
+export const DISABLE_DONT_KILL_VARIANT_ID = 'disable_dont_kill';
+export const DISABLE_DONT_KILL_DRAW_MODULO = 3;
 
 /** One in three ordinary cargo-delivery rolls becomes Quiet Delivery, without consuming board RNG. */
 export function shouldRollQuietDelivery(hashValue) {
@@ -170,4 +173,46 @@ export function isDebrisRecoveryFollowup(value) {
   return !!(value && value.source === DEBRIS_RECOVERY_FOLLOWUP_SOURCE
     && value.params && value.params.debrisRecovery
     && Number(value.params.debrisRecovery.generation) === 1);
+}
+
+/** One in three ordinary bounty rolls becomes a nonlethal capture warrant. */
+export function shouldRollDisableDontKill(hashValue) {
+  return (Number(hashValue) >>> 0) % DISABLE_DONT_KILL_DRAW_MODULO === 0;
+}
+
+/** Pin the existing No Kills term onto a fully priced ordinary bounty offer. */
+export function applyDisableDontKillVariant(offer, destinationName = 'the marked sector') {
+  if (!offer || offer.type !== 'bounty_hunt') return offer;
+  const clause = clauseById('no_kills');
+  const noKills = clause ? [{
+    id: clause.id,
+    event: clause.event,
+    label: clause.label,
+    prose: clause.prose,
+    rewardMult: clause.rewardMult,
+  }] : [];
+  return {
+    ...offer,
+    title: `Disable, Don’t Kill — Take the Warrant Alive near ${destinationName}`,
+    brief: `Disable the quarry's drive, reel it under Massline, and tow it into lawful custody.`,
+    variantId: DISABLE_DONT_KILL_VARIANT_ID,
+    params: {
+      ...(offer.params || {}),
+      missionVariant: DISABLE_DONT_KILL_VARIANT_ID,
+      disableDontKill: { generation: 0 },
+    },
+    clauses: noKills,
+  };
+}
+
+export function isDisableDontKill(value) {
+  return !!(value && (
+    value.variantId === DISABLE_DONT_KILL_VARIANT_ID
+    || value.params && value.params.missionVariant === DISABLE_DONT_KILL_VARIANT_ID
+  ));
+}
+
+export function disableDontKillFollowupOfferId(mission) {
+  const sourceId = mission && (mission.sourceOfferId || mission.id);
+  return sourceId ? `mo_capture_black_box_${String(sourceId)}` : null;
 }

@@ -26,6 +26,11 @@ const LAWFUL_STATION_FACTIONS = new Set([
   'faction_dmc',
   'faction_free',
 ]);
+
+/** Shared station-faction gate for authored routes that require lawful physical custody. */
+export function isLawfulStationFaction(factionId) {
+  return LAWFUL_STATION_FACTIONS.has(factionId);
+}
 const DOCTRINE_FIRE_PHASES = Object.freeze({
   interceptor_flyby: new Set(['strike', 'commit']),
   ranged_disengager: new Set(['fire_window']),
@@ -476,7 +481,7 @@ export function protectedStationAt(state, entity) {
     if (!station || station.alive === false || !station.pos) continue;
     const stationId = station.data && station.data.stationId || station.stationId || station.id;
     const factionId = station.factionId || station.data && station.data.factionId || null;
-    if (stationId !== 'station_helios' && !LAWFUL_STATION_FACTIONS.has(factionId)) continue;
+    if (stationId !== 'station_helios' && !isLawfulStationFaction(factionId)) continue;
     const rings = bubblesFor(station);
     const radius = stationId === 'station_helios'
       ? Math.max(HELIOS_STARTER_PROTECTION_RADIUS_WU, rings.patrol.radius)

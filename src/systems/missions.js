@@ -52,16 +52,20 @@ import {
 import {
   DEBRIS_RECOVERY_FOLLOWUP_SOURCE,
   DEBRIS_RECOVERY_VARIANT_ID,
+  DISABLE_DONT_KILL_VARIANT_ID,
   PEST_CONTROL_ARCHETYPE_ID,
   PEST_CONTROL_FOLLOWUP_SOURCE,
   PEST_CONTROL_VARIANT_ID,
   QUIET_DELIVERY_RECOVERY_SOURCE,
   applyDebrisRecoveryVariant,
+  applyDisableDontKillVariant,
   applyPestControlVariant,
   applyQuietDeliveryVariant,
   debrisRecoveryFollowupOfferId,
+  disableDontKillFollowupOfferId,
   isDebrisRecovery,
   isDebrisRecoveryFollowup,
+  isDisableDontKill,
   isPestControl,
   isPestControlFollowup,
   isQuietDelivery,
@@ -69,6 +73,7 @@ import {
   pestControlFollowupOfferId,
   quietDeliveryRecoveryOfferId,
   shouldRollDebrisRecovery,
+  shouldRollDisableDontKill,
   shouldRollPestControl,
   shouldRollQuietDelivery,
 } from '../data/missionVariants.js';
@@ -114,7 +119,7 @@ import { ENEMY_TYPES } from '../data/enemies.js';
 import { hunterTrickForContract } from '../data/hunterTricks.js';
 import { hunterCareerAccess } from '../careers/ladders/hunterLadderDefs.js';
 import { makeEnemySpawnSpec } from './combat.js';
-import { protectedStationAt } from '../ai/engagementAuthority.js';
+import { isLawfulStationFaction, protectedStationAt } from '../ai/engagementAuthority.js';
 import { POI_CAUSAL_BOARD_CAP, validatePoiCausalOffer } from '../missions/poiCausalOffers.js';
 import {
   LANDMARK_QUEST_SOURCE,
@@ -1619,6 +1624,10 @@ export const missions = {
     const debrisRecovery = options.attachConditions !== false
       && typeId === 'salvage_retrieval'
       && shouldRollDebrisRecovery(variantHashFn(this.state.meta.seed, id, 'debris-recovery-variant'));
+    const disableDontKill = options.attachConditions !== false
+      && typeId === 'bounty_hunt'
+      && dest && isLawfulStationFaction(dest.factionId)
+      && shouldRollDisableDontKill(variantHashFn(this.state.meta.seed, id, 'disable-dont-kill-variant'));
     if (quietDelivery) {
       const commodityHash = variantHashFn(this.state.meta.seed, id, 'quiet-delivery-cargo') >>> 0;
       const cmdtyId = FRAGILE_LEGAL_TRADE_CMDTYS[commodityHash % FRAGILE_LEGAL_TRADE_CMDTYS.length];
@@ -1663,6 +1672,9 @@ export const missions = {
     if (debrisRecovery) {
       const podCount = 2 + (variantHashFn(this.state.meta.seed, id, 'debris-recovery-pods') % 2);
       return applyDebrisRecoveryVariant(offer, dest && dest.name || 'the marked field', podCount);
+    }
+    if (disableDontKill) {
+      return applyDisableDontKillVariant(offer, dest && dest.name || 'the marked sector');
     }
     // Physics terms are the last thing stamped onto a rolled offer so the reward/deadline family
     // above is untouched: a condition-free offer is byte-identical to the shipped one.
@@ -3129,6 +3141,80 @@ export const missions = {
     return offer;
   },
 
+  /** A forbidden quarry kill leaves one physical recorder recovery, never a second capture job. */
+  _postDisableDontKillBlackBox(mission) {
+    const loss = mission && mission._disableDontKillLoss;
+    const offerId = disableDontKillFollowupOfferId(mission);
+    if (!mission || !loss || !offerId || !mission.stationId) return null;
+    const duplicateActive = (this.state.missions.active || []).find((candidate) => (
+      candidate && candidate.sourceOfferId === offerId
+    ));
+    if (duplicateActive) return duplicateActive;
+    for (const candidateBoard of Object.values(this.state.missions.boards || {})) {
+      const duplicate = candidateBoard && Array.isArray(candidateBoard.slots)
+        && candidateBoard.slots.find((candidate) => candidate && candidate.id === offerId);
+      if (duplicate) return duplicate;
+    }
+
+    const commodityId = 'cmdty_salvage_electronics';
+    const commodity = CMDTY_BY_ID.get(commodityId);
+    const pods = [{ slot: 0, commodityId, amount: 1 }];
+    const timeLimitS = Math.max(180,
+      Math.round(Number(mission.deadline_s) - Number(mission.acceptedAt_s)) || 0);
+    const fieldName = `the ${loss.targetName || 'quarry'} wreck site`;
+    const offer = {
+      id: offerId,
+      type: 'salvage_retrieval',
+      stationId: mission.stationId,
+      factionId: mission.factionId,
+      reward_cr: Math.max(100, Math.round((Number(mission.reward_cr) || 0) * 0.35)),
+      time_limit_s: timeLimitS,
+      duration_s: timeLimitS,
+      collateral_cr: 0,
+      riskTier: Math.max(1, Math.round(Number(mission.riskTier) || 1)),
+      destStationId: null,
+      destSectorId: loss.sectorId || mission.destSectorId,
+      distance: mission.distance,
+      params: {
+        cmdtyId: commodityId,
+        qty: 1,
+        cargoValue: Math.max(0, Number(commodity && commodity.basePrice) || 0),
+        fValue: 1,
+        taskTime: 30,
+        missionVariant: DEBRIS_RECOVERY_VARIANT_ID,
+        debrisRecovery: {
+          fieldName,
+          generation: 1,
+          sourceMissionId: mission.id,
+          pos: { ...loss.pos },
+          vel: { ...loss.vel },
+          pods,
+        },
+      },
+      title: `Black Box Recovery — ${loss.targetName || 'Destroyed Quarry'}`,
+      brief: `The capture target is a wreck. Pull its marked recorder from the moving debris.`,
+      expiresAtEpoch: this._epoch() + 2,
+      storyTag: null,
+      variantId: DEBRIS_RECOVERY_VARIANT_ID,
+      source: DEBRIS_RECOVERY_FOLLOWUP_SOURCE,
+      cause: {
+        tag: 'capture_target_destroyed',
+        sourceMissionId: mission.id,
+        sourceOfferId: mission.sourceOfferId || null,
+        targetEntityId: loss.targetEntityId,
+      },
+    };
+    let board = this.state.missions.boards[mission.stationId];
+    if (!board || typeof board !== 'object') {
+      board = { refreshEpoch: this._epoch(), slots: [] };
+      this.state.missions.boards[mission.stationId] = board;
+    }
+    if (!Array.isArray(board.slots)) board.slots = [];
+    board.slots.push(offer);
+    this.bus.emit('mission:updated', { missionId: null, stationId: mission.stationId });
+    return offer;
+  },
+
   /** A pod counts only after cargo accepted its final units from a real physical contact. */
   _onPhysicalRecoveryPodRecovered(payload) {
     if (!payload || payload.podId == null || Number(payload.remainingAmount) > 0) return false;
@@ -3266,6 +3352,23 @@ export const missions = {
       const m = this.state.missions.active[i];
       if (m.status !== 'active') continue;
       if (m.type !== 'bounty_hunt' && m.type !== 'patrol_clear') continue;
+      if (isDisableDontKill(m) && (m.targetEntityIds || []).includes(p.id)
+        && !m._disableDontKillLoss) {
+        const target = this.state.entities && this.state.entities.get(p.id);
+        m._disableDontKillLoss = {
+          targetEntityId: p.id,
+          targetName: target && target.data && target.data.name || 'Destroyed Quarry',
+          sectorId: this.state.world && this.state.world.currentSectorId || m.destSectorId,
+          pos: {
+            x: Number(target && target.pos && target.pos.x) || 0,
+            z: Number(target && target.pos && target.pos.z) || 0,
+          },
+          vel: {
+            x: Number(target && target.vel && target.vel.x) || 0,
+            z: Number(target && target.vel && target.vel.z) || 0,
+          },
+        };
+      }
       // contractClauses observes this same synchronous event after missions. Never let the kill
       // objective pay/complete first; the observer will emit the one canonical breach intent.
       if (missionObservesClauseEvent(m, 'entity:killed')) continue;
@@ -4401,6 +4504,9 @@ export const missions = {
     }
     if (isPestControl(m) && !isPestControlFollowup(m)) this._postPestControlFollowup(m);
     if (isDebrisRecovery(m) && !isDebrisRecoveryFollowup(m)) this._postDebrisRecoveryFollowup(m);
+    if (isDisableDontKill(m) && String(reason || '').includes('no_kills')) {
+      this._postDisableDontKillBlackBox(m);
+    }
     const setPieceTransition = this._compileSetPieceTransition(m, 'failed', reason || 'failed');
     m.status = 'failed';
     this._clearMissionNav(m.id);
