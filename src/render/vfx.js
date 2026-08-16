@@ -7489,10 +7489,8 @@ export const vfx = {
       const uz = dz / len;
       slot._lastDx = dx;
       slot._lastDz = dz;
-      const cueR = tableDoctrineTellCueWu(this.state);
-      const cx = (origin.x || 0) + ux * cueR;
-      const cz = (origin.z || 0) + uz * cueR;
-      this._spawnDoctrineTellOffscreenCue(slot, style, cx, cz, ux, uz, isStart);
+      const cue = this._doctrineTellOffscreenPoint(origin, ux, uz);
+      this._spawnDoctrineTellOffscreenCue(slot, style, cue.x, cue.z, ux, uz, isStart);
       return;
     }
 
@@ -7595,6 +7593,44 @@ export const vfx = {
       3.0, reduced ? 8.0 : 6.0,
       style.linkOp * 0.9, 0.0, style.color0, 0, 0,
     );
+  },
+
+  _doctrineTellOffscreenPoint(origin, ux, uz) {
+    const ox = Number(origin && origin.x) || 0;
+    const oz = Number(origin && origin.z) || 0;
+    const fallbackR = tableDoctrineTellCueWu(this.state);
+    const camera = this.state && this.state.render && this.state.render.camera;
+    const canProject = !!(
+      camera
+      && camera.isCamera
+      && camera.projectionMatrix
+      && typeof camera.updateMatrixWorld === 'function'
+    );
+    if (!canProject) {
+      return { x: ox + ux * fallbackR, z: oz + uz * fallbackR };
+    }
+    const scratch = this._doctrineTellScreenScratch || this._trailScreenScratch;
+    const pad = 0.78;
+    let lo = 8;
+    let hi = Math.max(fallbackR, 8);
+    let best = lo;
+    for (let i = 0; i < 10; i++) {
+      const mid = (lo + hi) * 0.5;
+      const local = this._toLocalXZ(ox + ux * mid, oz + uz * mid, this._entityLocalXZ);
+      scratch.set(local.x, 0, local.z);
+      scratch.project(camera);
+      const inside = Math.abs(scratch.x) <= pad
+        && Math.abs(scratch.y) <= pad
+        && scratch.z >= -1
+        && scratch.z <= 1;
+      if (inside) {
+        best = mid;
+        lo = mid;
+      } else {
+        hi = mid;
+      }
+    }
+    return { x: ox + ux * best, z: oz + uz * best };
   },
 
   _spawnDoctrineTellOffscreenCue(slot, style, cx, cz, ux, uz, isStart) {

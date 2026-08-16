@@ -231,6 +231,24 @@ function fireTell(bus, kind, extra = {}) {
     'a near enemy still projects on-screen through a real camera');
 }
 
+// ── Close-zoom rear cues stay inside the live frustum ──────────────────────
+{
+  const close = makeHarness({ enemyX: 0, enemyZ: -80 });
+  const tilt = Math.PI / 3;
+  const distance = 45;
+  const cam = new THREE.PerspectiveCamera(50, 16 / 9, 1, 4000);
+  cam.position.set(0, distance * Math.sin(tilt), -distance * Math.cos(tilt));
+  cam.lookAt(0, 0, 0);
+  cam.updateMatrixWorld();
+  cam.updateProjectionMatrix();
+  close.state.render.camera = cam;
+  close.state.camera = { zoom: 45, fov: 50, aspect: 16 / 9, tilt: 60 };
+  const cue = close.system._doctrineTellOffscreenPoint({ x: 0, z: 0 }, 0, -1);
+  const ndc = new THREE.Vector3(cue.x, 0, cue.z).project(cam);
+  assert.ok(Math.abs(ndc.x) <= 0.85 && Math.abs(ndc.y) <= 0.85,
+    `rear close-zoom cue NDC (${ndc.x.toFixed(2)}, ${ndc.y.toFixed(2)}) must stay on-screen`);
+}
+
 // ── Duration floor: payload below 30 is raised to 30 ────────────────────────
 {
   const { bus, system } = makeHarness();
@@ -245,6 +263,6 @@ function fireTell(bus, kind, extra = {}) {
 console.log(JSON.stringify({
   schema: 'spaceface.m1.doctrine_vfx.v1',
   ok: true,
-  cases: ['flyby', 'tether', 'charge', 'reduced', 'offscreen', 'duration_floor', 'pause_tick', 'headless_fallback', 'headless_table', 'live_project'],
+  cases: ['flyby', 'tether', 'charge', 'reduced', 'offscreen', 'duration_floor', 'pause_tick', 'headless_fallback', 'headless_table', 'live_project', 'close_rear_cue'],
   doctrineTelegraphTicks: DOCTRINE_TELEGRAPH_TICKS,
 }, null, 2));
