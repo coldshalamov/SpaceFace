@@ -10,7 +10,7 @@ import { AUDIO_DEFAULT_MUTE_VERSION } from './graphicsProfileBootstrap.js';
 function defaultSettings() {
   return {
     uiScale: 1,
-    showDamageNumbers: true,
+    showDamageNumbers: false,
     keybinds: {},
     audio: {
       master: 0.55,
