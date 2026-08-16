@@ -308,6 +308,8 @@ Current save version: `13`
 | `$.settings.accessibility.flashReduce` | boolean | false |
 | `$.settings.accessibility.highContrast` | boolean | false |
 | `$.settings.accessibility.motionPreference` | string | system |
+| `$.settings.accessibility.oneHandedAutoFace` | boolean | false |
+| `$.settings.accessibility.oneHandedFireToggle` | boolean | false |
 | `$.settings.audio` | object | {} |
 | `$.settings.audio.defaultMuteVersion` | number | 1 |
 | `$.settings.audio.master` | number | 0.55 |
@@ -328,7 +330,12 @@ Current save version: `13`
 | `$.settings.gameplay.controlScheme` | string | pilot |
 | `$.settings.gameplay.controlSchemeV2` | boolean | true |
 | `$.settings.gameplay.difficulty` | string | standard |
+| `$.settings.gameplay.dockAssistHint` | boolean | true |
+| `$.settings.gameplay.economyEase` | number | 1 |
+| `$.settings.gameplay.encounterPressure` | number | 1 |
+| `$.settings.gameplay.enemyAccuracy` | number | 1 |
 | `$.settings.gameplay.flightBackend` | string | v3 |
+| `$.settings.gameplay.ironman` | boolean | false |
 | `$.settings.gameplay.masslineReleaseAssist` | string | arm |
 | `$.settings.gameplay.orbitAssistStrength` | string | standard |
 | `$.settings.gameplay.physicsBackend` | string | rapier-dynamic |

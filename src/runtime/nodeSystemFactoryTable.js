@@ -82,6 +82,7 @@ import { factions } from '../systems/factions.js';
 import { sectorSim } from '../systems/sectorSim.js';
 import { npcJobsRuntime } from '../systems/npcJobsRuntime.js';
 import { fuelTenderService } from '../systems/fuelTenderService.js';
+import { timeTrials } from '../systems/timeTrials.js';
 import { missions } from '../systems/missions.js';
 import { careerContracts } from '../systems/careerContracts.js';
 import { postEndingReplay } from '../systems/postEndingReplay.js';
@@ -244,6 +245,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['sectorSim', sectorSim],
     ['npcJobsRuntime', npcJobsRuntime],
     ['fuelTenderService', fuelTenderService],
+    ['timeTrials', timeTrials],
     ['careerOrigins', careerOrigins],
     ['careerLadders', careerLadders],
     ['liveCareerLadderBranches', liveCareerLadderBranches],

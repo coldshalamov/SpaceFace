@@ -40,7 +40,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   'travelLanes', 'livingPoiBehaviors', 'pirateRumor', 'ambushSignatures', 'bountyHunt',
   'stationSideEventDirector', 'stationContacts', 'stationContactLoadBoundary',
   'gateControlDirector', 'salvage', 'lossInvestigation', 'salvageActions', 'survivorPod',
-  'recoveryEncounter', 'factions', 'sectorSim', 'npcJobsRuntime', 'fuelTenderService', 'careerOrigins',
+  'recoveryEncounter', 'factions', 'sectorSim', 'npcJobsRuntime', 'fuelTenderService', 'timeTrials', 'careerOrigins',
   'careerLadders', 'liveCareerLadderBranches', 'missions', 'careerContracts',
   'economyContracts', 'postEndingReplay', 'story', 'scenarioRuntime',
   'presentationOrchestrator', 'presentationAdapters', 'ships', 'crafting', 'heat', 'traffic',
@@ -53,7 +53,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
 ]);
 
 /**
- * Production sim update order — matches createRegistry UPDATE_ORDER (101 entries).
+ * Production sim update order — matches createRegistry UPDATE_ORDER (106 entries).
  * Excludes pure render-phase systems; includes DOM-guarded HUD systems that no-op under Node.
  */
 export const PRODUCTION_UPDATE_ORDER = Object.freeze([
@@ -72,7 +72,7 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   'regionalEcology', 'encounterDirector', 'routeFollower', 'livingPoiBehaviors', 'pirateRumor',
   'ambushSignatures', 'bountyHunt', 'stationSideEventDirector', 'gateControlDirector',
   'salvage', 'lossInvestigation', 'salvageActions', 'survivorPod', 'recoveryEncounter',
-  'factions', 'sectorSim', 'npcJobsRuntime', 'fuelTenderService', 'missions', 'careerOrigins', 'careerLadders',
+  'factions', 'sectorSim', 'npcJobsRuntime', 'fuelTenderService', 'timeTrials', 'missions', 'careerOrigins', 'careerLadders',
   'liveCareerLadderBranches', 'story', 'scenarioRuntime', 'heat', 'traffic', 'drill', 'claims',
   'bandRadio', 'onboarding', 'masslineHud', 'massSeedHud', 'fieldHud', 'planetHud',
   'voiceArbiter',
