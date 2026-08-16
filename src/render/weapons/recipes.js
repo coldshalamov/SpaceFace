@@ -1,4 +1,5 @@
 import { resolveWeaponPresentationFamily } from '../vfxProfiles.js';
+import { FACTION_PALETTES, TEAM_FALLBACK_PALETTES } from '../../data/palettes.js';
 
 export const FLIGHT_MODE = Object.freeze({
   ENERGY_CARD: 'energy-card',
@@ -587,9 +588,15 @@ export function listWeaponRecipes() {
 export function flightColorsForEntity(recipe, entity, out = null) {
   const flight = recipe.flight;
   const target = out || {};
-  if (entity && entity.team === 1 && flight.enemyCoreColor) {
-    target.core = flight.enemyCoreColor;
-    target.sheath = flight.enemySheathColor || flight.sheathColor;
+  // AC-33 symmetry: the family still owns bolt structure/variant, while the canonical faction
+  // palette identifies who fired hostile ordnance. `thruster` and `accent` are already the bright,
+  // emissive-safe fleet colors; using the frozen table avoids allocations in the per-frame pool
+  // writer. Shape, cadence, and family shader remain redundant for color-vision accessibility.
+  if (entity && entity.team === 1) {
+    const factionId = entity.factionId || (entity.data && entity.data.factionId) || null;
+    const palette = (factionId && FACTION_PALETTES[factionId]) || TEAM_FALLBACK_PALETTES.hostile;
+    target.core = palette.thruster;
+    target.sheath = palette.accent;
     return target;
   }
   target.core = flight.coreColor;

@@ -443,9 +443,18 @@ export function audioNearbyHostileCount(state, player, range = 1200, scratch = [
 function recipeForWeapon(weaponId) {
   const id = (weaponId || '').toLowerCase();
   if (id.includes('beam')) return 'sfx_wpn_beam_laser';
+  // AC-33 family identity: order the authored specialists before broad catalog substrings
+  // (`concussion_cannon` is not an autocannon; `siege_lance` is not an ordinary rail shot).
+  if (id.includes('siege')) return 'sfx_wpn_siege_lance';
   if (id.includes('rail')) return 'sfx_wpn_railgun';
   if (id.includes('missile') || id.includes('rocket') || id.includes('torp')) return 'sfx_wpn_missile';
-  if (id.includes('cannon') || id.includes('gatling') || id.includes('flak') || id.includes('auto')) return 'sfx_wpn_autocannon';
+  if (id.includes('plasma')) return 'sfx_wpn_plasma';
+  if (id.includes('flak')) return 'sfx_wpn_flak';
+  if (id.includes('emp') || id.includes('disruptor') || id.includes('gravity_marker') || id.includes('momentum_sink')) {
+    return 'sfx_wpn_emp';
+  }
+  if (id.includes('concussion')) return 'sfx_wpn_concussion';
+  if (id.includes('cannon') || id.includes('gatling') || id.includes('auto')) return 'sfx_wpn_autocannon';
   // pulse / laser / blaster / default
   return 'sfx_wpn_pulse_laser';
 }

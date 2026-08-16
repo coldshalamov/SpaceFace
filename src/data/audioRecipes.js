@@ -79,6 +79,76 @@ export const RECIPES = [
     pitchRange: [0.95, 1.05],
     dopplerEnabled: true,
   },
+  // AC-33 catalog-family voices. These remain finite recipes on the existing combat bus: flak's
+  // three reports are sub-voices inside one capped AudioSystem voice, not three unbounded events.
+  // Their frequency contours, source types, envelopes, and spectral bands intentionally do more
+  // work than pitch-shifting the pulse/autocannon recipes.
+  {
+    id: 'sfx_wpn_plasma',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sawtooth',
+    baseFreq: 230, freqSweep: [310, 72], sweepTimeS: 0.2,
+    gainEnvelope: { attack: 0.012, sustain: 0.025, release: 0.24 },
+    filterType: 'lowpass', filterFreq: 560, filterQ: 1.4,
+    distortionAmount: 0.22,
+    pitchRange: [0.94, 1.04],
+  },
+  {
+    id: 'sfx_wpn_flak',
+    category: 'weapon',
+    type: 'noise_burst',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.045 },
+    filterType: 'bandpass', filterFreq: 1850, filterQ: 1.9,
+    repeatCount: 2, repeatIntervalS: 0.043,
+    pitchRange: [0.96, 1.08],
+  },
+  {
+    id: 'sfx_wpn_emp',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'square',
+    baseFreq: 620, freqSweep: [430, 1760], sweepTimeS: 0.17,
+    freqMod: 0.11,
+    gainEnvelope: { attack: 0.003, sustain: 0.035, release: 0.2 },
+    filterType: 'bandpass', filterFreq: 1380, filterQ: 4.2,
+    distortionAmount: 0.12,
+    pitchRange: [0.98, 1.03],
+  },
+  {
+    id: 'sfx_wpn_concussion',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 74, freqSweep: [92, 38], sweepTimeS: 0.28,
+    gainEnvelope: { attack: 0.006, sustain: 0.045, release: 0.38 },
+    filterType: 'lowpass', filterFreq: 190, filterQ: 0.8,
+    pitchRange: [0.97, 1.02],
+  },
+  {
+    id: 'sfx_wpn_siege_coil',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 140, freqSweep: [140, 2200], sweepTimeS: 0.22,
+    gainEnvelope: { attack: 0.004, sustain: 0.02, release: 0.27 },
+    filterType: 'bandpass', filterFreq: 980, filterQ: 2.6,
+  },
+  {
+    id: 'sfx_wpn_siege_crack',
+    category: 'weapon',
+    type: 'noise_burst',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.13 },
+    filterType: 'highpass', filterFreq: 820, filterQ: 0.7,
+  },
+  {
+    id: 'sfx_wpn_siege_lance',
+    category: 'weapon',
+    type: 'layered',
+    layers: ['sfx_wpn_siege_coil', 'sfx_wpn_siege_crack'],
+  },
 
   // --- Combat doctrine signatures ---------------------------------------------------------
   // These are short telegraphs, never loops. One squad cue is enough to teach the ear whether the
