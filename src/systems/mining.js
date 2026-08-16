@@ -44,12 +44,23 @@ import {
   KILL_BURST_EJECT_SPEED_MIN,
   KILL_BURST_VEL_INHERIT,
 } from '../data/killRewards.js';
+import {
+  applyPickupAttraction,
+  MAGNET_ACCEL,
+  MAGNET_APPROACH_MAX,
+  MAGNET_APPROACH_MIN,
+  MAGNET_RANGE,
+  playerPickupMagnetRange,
+} from './pickupAttraction.js';
 
-export const MAGNET_RANGE = 420; // wu pull radius for Mining 2.0's stronger ore vacuum
-export const MAGNET_ACCEL = 900; // wu/s² authority toward the seek velocity (not absolute thrust)
-// Relative approach speed while magnetized (added on top of the player's velocity so flybys collect).
-export const MAGNET_APPROACH_MIN = 100;
-export const MAGNET_APPROACH_MAX = 280;
+// Compatibility exports for existing callers; implementation and policy live with pickups.
+export {
+  MAGNET_ACCEL,
+  MAGNET_APPROACH_MAX,
+  MAGNET_APPROACH_MIN,
+  MAGNET_RANGE,
+  playerPickupMagnetRange,
+};
 export const RICH_CORE_CHANCE = 0.15;
 export const RICH_CORE_DURATION_S = 3.5;
 export const RICH_CORE_WINDOW_LO = 0.12;
@@ -884,8 +895,6 @@ export const mining = {
     this._diag.pickupCandidates = pickups.length;
     this._diag.pickupsMagnetized = 0;
     this._diag.pickupsCollected = 0;
-    const pvx = finiteNum(player.vel && player.vel.x);
-    const pvz = finiteNum(player.vel && player.vel.z);
     for (const e of pickups) {
       if (!e.alive || e.type !== 'pickup') continue;
       const pickupData = e.data || {};
@@ -910,30 +919,7 @@ export const mining = {
       }
       const dx = player.pos.x - e.pos.x, dz = player.pos.z - e.pos.z;
       const dist = Math.hypot(dx, dz) || 1e-4;
-      if (dist <= magnet) {
-        // Homing vacuum: inherit player velocity, then accelerate relative approach.
-        // An absolute speed cap used to make combat flybys miss (player ~combatSpeed, pickups
-        // clamped below the ship's speed so they couldn't catch up). Cap relative approach only.
-        const nx = dx / dist, nz = dz / dist;
-        const rangeT = clamp01(dist / Math.max(1, magnet));
-        const approach = MAGNET_APPROACH_MIN + (MAGNET_APPROACH_MAX - MAGNET_APPROACH_MIN) * rangeT;
-        // Closer scrap rushes in harder so final scoop doesn't feel floaty.
-        const closeBoost = dist < collectRadius * 2.5 ? 1.35 : 1;
-        const desiredVx = pvx + nx * approach * closeBoost;
-        const desiredVz = pvz + nz * approach * closeBoost;
-        const dvx = desiredVx - finiteNum(e.vel && e.vel.x);
-        const dvz = desiredVz - finiteNum(e.vel && e.vel.z);
-        const need = Math.hypot(dvx, dvz);
-        const maxDv = MAGNET_ACCEL * dt * (closeBoost > 1 ? 1.6 : 1);
-        if (!(e.vel)) e.vel = { x: 0, z: 0 };
-        if (need <= maxDv || need < 1e-6) {
-          e.vel.x = desiredVx;
-          e.vel.z = desiredVz;
-        } else {
-          const s = maxDv / need;
-          e.vel.x = finiteNum(e.vel.x) + dvx * s;
-          e.vel.z = finiteNum(e.vel.z) + dvz * s;
-        }
+      if (applyPickupAttraction(e, player, dt, magnet, collectRadius, dx, dz, dist)) {
         this._diag.pickupsMagnetized++;
       }
       // direct collect on overlap (physics also emits pickup:collected on contact; idempotent via alive guard)
@@ -1895,35 +1881,4 @@ function playerModSum(state, key) {
     if (Number.isFinite(value)) sum += value;
   }
   return sum;
-}
-
-/**
- * Ore-pickup magnet radius for the ordinary freeflight scoop.
- * Single resolve path: max(MAGNET_RANGE floor, ships-owned derived.magnetRange).
- * If derived is missing (lab fixtures), re-scan fittings once so the scoop still works.
- * Exported for focused characterization tests (not a new runtime policy layer).
- */
-export function playerPickupMagnetRange(state, playerEntity = null) {
-  const player = playerEntity
-    || (state && state.entities && state.entities.get && state.entities.get(state.playerId))
-    || null;
-  const derived = player && player.data && player.data.derived;
-  let fromDerived = derived && Number(derived.magnetRange);
-  if (!(Number.isFinite(fromDerived) && fromDerived > 0)) {
-    fromDerived = maxFittedMagnetRange(player);
-  }
-  if (Number.isFinite(fromDerived) && fromDerived > MAGNET_RANGE) return fromDerived;
-  return MAGNET_RANGE;
-}
-
-function maxFittedMagnetRange(player) {
-  if (!player || !player.data) return 0;
-  const fittings = Array.isArray(player.data.fittings) ? player.data.fittings : [];
-  let max = 0;
-  for (const id of fittings) {
-    const mod = id && MODULE_BY_ID.get(id);
-    const value = mod && mod.mods && Number(mod.mods.magnetRange);
-    if (Number.isFinite(value) && value > max) max = value;
-  }
-  return max;
 }
