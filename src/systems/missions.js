@@ -161,6 +161,7 @@ const MINEABLE_CMDTYS = COMMODITIES.filter((c) => (c.producedBy || []).includes(
 const CONTRABAND_CMDTYS = COMMODITIES.filter((c) => c.legality === 'contraband' || c.legality === 'restricted').map((c) => c.id);
 const ONE_LOAD_CARGO_TYPES = new Set(['cargo_delivery', 'salvage_retrieval', 'smuggling_run']);
 const MISSION_RECEIPT_LIMIT = 10;
+const RESEARCH_GRANT_RECEIPT_LIMIT = 256;
 const BULK_HAUL_TYPE = 'bulk_haul';
 const BULK_HAUL_MIN_MASS_U = 25;
 const BULK_HAUL_PAY_MULT = 0.8;
@@ -518,6 +519,9 @@ export const missions = {
     // Ensure the state tree exists (gameState seeds it, but be defensive for headless tests).
     if (!state.missions) state.missions = { boards: {}, active: [], completedLog: [], receipts: [], nextId: 1, config: null };
     state.missions.receipts = normalizeMissionReceipts(state.missions.receipts);
+    const researchGrantReceipts = normalizeResearchGrantReceipts(state.missions.researchGrantReceipts);
+    if (researchGrantReceipts.length) state.missions.researchGrantReceipts = researchGrantReceipts;
+    else delete state.missions.researchGrantReceipts;
     const setPieceSettlements = normalizeSetPieceSettlements(
       state.missions.setPieceSettlements,
       state.missions.receipts,
@@ -551,6 +555,7 @@ export const missions = {
     // authority and boards only a complete, normal offer shape; discovery-only salvage hooks keep
     // their existing consumers and cannot accidentally become malformed board entries.
     bus.on('mission:offered', (p) => this._onExternalBoardOffer(p));
+    bus.on('research:grant', (p) => this._onResearchGrant(p || {}));
     bus.on('poi:identified', (p) => this._reconcileLandmarkQuestOffers(p || {}));
 
     // ── Docking: refresh expired boards, run delivery/passenger/escort/salvage objectives ────
@@ -2920,15 +2925,52 @@ export const missions = {
         + Math.max(0, Number(found.anomalies) || 0)
       : 0;
     if (foundCount + signalCount <= 0) return 0;
-    state.player.researchPoints = (state.player.researchPoints || 0) + bonus;
+    return this._grantResearchPoints(bonus, { source: 'scan_rp_bonus' });
+  },
+
+  _onResearchGrant(payload) {
+    return this._grantResearchPoints(payload && payload.amount, {
+      source: payload && payload.source,
+      receiptId: payload && payload.receiptId,
+      requireReceipt: true,
+    });
+  },
+
+  /** The one positive researchPoints writer. External intents require a durable dedupe receipt. */
+  _grantResearchPoints(rawAmount, {
+    source = null,
+    receiptId = null,
+    requireReceipt = false,
+  } = {}) {
+    const state = this.state;
+    if (!state || !state.player || !state.missions) return 0;
+    const amount = Math.round(Number(rawAmount));
+    if (!Number.isFinite(amount) || amount <= 0) return 0;
+    const cleanSource = typeof source === 'string' ? source.trim() : '';
+    if (!cleanSource) return 0;
+    const cleanReceipt = typeof receiptId === 'string' ? receiptId.trim() : '';
+    if (requireReceipt && !cleanReceipt) return 0;
+
+    let receipts = normalizeResearchGrantReceipts(state.missions.researchGrantReceipts);
+    if (cleanReceipt && receipts.includes(cleanReceipt)) return 0;
+    if (cleanReceipt) {
+      receipts.push(cleanReceipt);
+      if (receipts.length > RESEARCH_GRANT_RECEIPT_LIMIT) {
+        receipts = receipts.slice(receipts.length - RESEARCH_GRANT_RECEIPT_LIMIT);
+      }
+      state.missions.researchGrantReceipts = receipts;
+    }
+
+    state.player.researchPoints = (Number(state.player.researchPoints) || 0) + amount;
     if (this.bus) {
       this.bus.emit('research:pointsChanged', {
         researchPoints: state.player.researchPoints,
-        source: 'scan_rp_bonus',
-        granted: bonus,
+        source: cleanSource,
+        granted: amount,
+        receiptId: cleanReceipt || null,
       });
     }
-    return bonus;
+    return amount;
   },
 
   _onLandmarkProbeScan(payload) {
@@ -3786,9 +3828,10 @@ export const missions = {
     let researchPoints = 0;
     if (m.type === 'recon_scan' || m.type === 'salvage_retrieval') {
       const rp = m.type === 'recon_scan' ? (3 + (m.riskTier || 0)) : (1 + (m.riskTier || 0));
-      researchPoints = rp;
-      state.player.researchPoints = (state.player.researchPoints || 0) + rp;
-      this.bus.emit('research:pointsChanged', { researchPoints: state.player.researchPoints });
+      researchPoints = this._grantResearchPoints(rp, {
+        source: `mission_${m.type}`,
+        receiptId: `mission-rp:${m.id}`,
+      });
     }
 
     // ── stats / ledger ──
@@ -5001,6 +5044,7 @@ export const missions = {
     state.missions.active = [];
     state.missions.completedLog = [];
     state.missions.receipts = [];
+    delete state.missions.researchGrantReceipts;
     delete state.missions.setPieceSettlements;
     state.missions.nextId = 1;
     state.missions.config = MISSION_TUNING;
@@ -5066,6 +5110,8 @@ export const missions = {
       nextId: m.nextId, config: m.config || MISSION_TUNING,
       story: this.state.story,
     };
+    const researchGrantReceipts = normalizeResearchGrantReceipts(m.researchGrantReceipts);
+    if (researchGrantReceipts.length) serialized.researchGrantReceipts = researchGrantReceipts;
     const setPieceSettlements = normalizeSetPieceSettlements(m.setPieceSettlements, m.receipts);
     if (Object.keys(setPieceSettlements).length) serialized.setPieceSettlements = setPieceSettlements;
     // Optional extension state must preserve absence for reduced headless registries that do not
@@ -5085,6 +5131,9 @@ export const missions = {
     state.missions.boards = data.boards || {};
     state.missions.completedLog = data.completedLog || [];
     state.missions.receipts = normalizeMissionReceipts(data.receipts);
+    const researchGrantReceipts = normalizeResearchGrantReceipts(data.researchGrantReceipts);
+    if (researchGrantReceipts.length) state.missions.researchGrantReceipts = researchGrantReceipts;
+    else delete state.missions.researchGrantReceipts;
     const setPieceSettlements = normalizeSetPieceSettlements(data.setPieceSettlements, state.missions.receipts);
     if (Object.keys(setPieceSettlements).length) state.missions.setPieceSettlements = setPieceSettlements;
     else delete state.missions.setPieceSettlements;
@@ -5135,6 +5184,21 @@ export const missions = {
 };
 
 // ── Receipt helpers (module-scope, derived from shared mission tuning) ───────────────────────
+
+function normalizeResearchGrantReceipts(value) {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set();
+  const receipts = [];
+  for (const raw of value) {
+    const receipt = typeof raw === 'string' ? raw.trim() : '';
+    if (!receipt || seen.has(receipt)) continue;
+    seen.add(receipt);
+    receipts.push(receipt);
+  }
+  return receipts.length > RESEARCH_GRANT_RECEIPT_LIMIT
+    ? receipts.slice(receipts.length - RESEARCH_GRANT_RECEIPT_LIMIT)
+    : receipts;
+}
 
 function normalizeMissionReceipts(value) {
   if (!Array.isArray(value)) return [];
