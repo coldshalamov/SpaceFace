@@ -325,6 +325,16 @@ verify it and move on; it does not count without a material player-facing produc
 on `codex/arcade-core-20` through `c6909729`. The orchestration ledger retains the per-outcome
 implementation, taste-review, focused-check, commit, reroute, and provider-exhaustion dispositions.
 
+**Scope clarification (2026-08-16): the 20 outcomes above are the completed seed campaign, not
+completion of the full Arcade Core plan set.** The current owner-authorized milestone is every
+explicit production requirement in [`design/arcade-core/00_INVARIANTS.md`](./design/arcade-core/00_INVARIANTS.md)
+through [`60_RIVALS_AND_WINGMEN.md`](./design/arcade-core/60_RIVALS_AND_WINGMEN.md); the complete
+61-plan index and build waves live in [`design/arcade-core/README.md`](./design/arcade-core/README.md).
+That milestone is **OPEN** on `codex/pr95-all`. A prior AC-01–20 outcome, test, receipt, plan, lab,
+or source-level implementation closes a full numbered plan only when every named production route
+and required Layer 1/2/human gate in that plan is terminal. Performance work is excluded from this
+campaign and does not count toward its completion.
+
 Major boundaries for this campaign are settled here: RP is the third reward channel; SG-06 Tactical
 AI is the default behavior owner; world gravity reuses the field kernel's pure force/coupling
 primitive through an explicit world-owned source rather than masquerading as a deployed device;
