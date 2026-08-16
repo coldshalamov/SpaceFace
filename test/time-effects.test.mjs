@@ -286,8 +286,13 @@ function testFeelComposition(createEffects) {
     feel.frame(0.1, state);
     assert.equal(state.timeScale, 0.5, 'hit-stop expiry must reveal, not overwrite, Focus slow-time');
 
+    // AC-05: hit-stop is admitted at most once per two seconds of render time, so a second dip has
+    // to be paid for on the render clock. Spend it explicitly — otherwise the request below is
+    // silently refused and every assertion after it passes against a timer that was already zero.
+    advanceRenderClock(feel, state, 2.1);
     bus.emit('combat:damage', { brokeShield: true, isPlayer: true, amount: 10, pos: { x: 0, z: 0 } });
     feel.frame(0, state);
+    assert(feel._hsTimer > 0, 'a paid-off cadence must re-admit hit-stop');
     effects.set('ui:pausing-screen', { scale: 0 });
     bus.emit('sim:pause', {});
     assert.equal(feel._hsTimer, 0, 'pause must clear the hit-stop timer');
@@ -315,13 +320,18 @@ function testFeelComposition(createEffects) {
   }
 
   {
+    // The death dip is clamped to 60 ms like every other combat dip (AC-05), so the cinematic
+    // ease-in is a FRACTION of the admitted window rather than a fixed 250 ms. Sampled inside that
+    // window: it must still start at normal time, fall monotonically, and actually reach the floor.
     const { state, bus, feel } = makeFeelFixture(createEffects, 5);
     bus.emit('player:death', {});
+    assert(feel._hsTimer > 0 && feel._hsTimer <= 0.06 + 1e-9,
+      `death hit-stop must be admitted and capped at 60 ms (got ${feel._hsTimer})`);
     const samples = [];
     feel.frame(0, state);
     samples.push(state.timeScale);
-    for (let i = 0; i < 7; i += 1) {
-      feel.frame(0.05, state);
+    for (let i = 0; i < 9; i += 1) {
+      feel.frame(0.006, state);
       samples.push(state.timeScale);
     }
     for (let i = 1; i < samples.length; i += 1) {
@@ -329,10 +339,19 @@ function testFeelComposition(createEffects) {
         `death ramp must be monotonic 1 -> .12; ${samples[i - 1]} -> ${samples[i]}`);
     }
     assert.equal(samples[0], 1, 'death ramp must begin at normal time');
-    assert.equal(samples.at(-1), 0.12, 'death ramp must reach the authored floor');
-    feel.frame(0.1, state);
-    assert.equal(state.timeScale, 0.12, 'death slow-time must hold its floor until the timer expires');
+    assert.equal(samples.at(-1), 0.12, 'death ramp must reach the authored floor inside the 60 ms dip');
+    assert(samples.some((value) => value > 0.12 && value < 1),
+      'the ease-in must produce intermediate values, not a single-frame snap to the floor');
+    feel.frame(0.02, state);
+    assert.equal(state.timeScale, 1, 'the clamped death dip must expire and release the scalar');
+    assert.equal(feel._hsTimer, 0, 'expiry must clear the timer');
   }
+}
+
+// Advance the feel layer's unscaled render clock by `seconds` without asserting on the frames in
+// between. Used to pay off the AC-05 rare-event cadence between two deliberate hit-stop requests.
+function advanceRenderClock(feel, state, seconds, step = 1 / 60) {
+  for (let t = 0; t < seconds; t += step) feel.frame(step, state);
 }
 
 function makeFeelFixture(createEffects, seed) {
