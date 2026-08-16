@@ -69,6 +69,27 @@ export function listComponents(state, entity) {
   const authoredSiteComponent = siteComponentForEntity(state, entity, key);
   if (authoredSiteComponent) return [authoredSiteComponent];
 
+  // Plan 14 heavies expose their actual mounted child bodies, not abstract parent subsystem HP.
+  // Destroyed/detached children disappear from the selectable list but remain physical debris.
+  const heavyRuntime = entity.data && entity.data.heavyPartsRuntime;
+  if (heavyRuntime && Array.isArray(heavyRuntime.parts)) {
+    for (const record of heavyRuntime.parts) {
+      const child = state && state.entities && state.entities.get(record.entityId);
+      if (!child || child.alive === false || record.destroyed || child.data?.heavyPartState !== 'mounted') continue;
+      out.push({
+        componentId: record.partId,
+        entityId: child.id,
+        kind: COMPONENT_KINDS.HEAVY_PART,
+        verb: COMPONENT_KIND_VERB.heavyPart,
+        label: String(record.partId).replace(/^(heavy_|iron_maw_)/, '').replace(/_/g, ' ').toUpperCase(),
+        key: `${key}::${record.partId}`,
+        destroyed: false,
+        live: true,
+      });
+    }
+    return out;
+  }
+
   // Combat subsystems (ship / drone / station) — the DAMAGE-serviced components.
   const profile = profileForEntity(entity);
   const subsystemIds = (profile && Array.isArray(profile.subsystemIds)) ? profile.subsystemIds : [];
@@ -240,6 +261,9 @@ export function resolveComponentForVerb(state, entity, verb, selection) {
   if (comp.verb !== verb) return { ok: false, reason: DENIAL.COMPONENT_NOT_SERVICEABLE, detail: comp.verb };
   if (verb === 'damage') {
     if (comp.destroyed) return { ok: false, reason: DENIAL.COMPONENT_NOT_SERVICEABLE, detail: 'destroyed' };
+    if (comp.kind === COMPONENT_KINDS.HEAVY_PART) {
+      return { ok: true, componentId: comp.componentId, heavyPartEntityId: comp.entityId };
+    }
     return { ok: true, subsystemId: comp.componentId, componentId: comp.componentId };
   }
   const resolved = { ok: true, componentId: comp.componentId };

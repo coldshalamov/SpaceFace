@@ -24,6 +24,7 @@ import {
   masslineOwnsGuns,
 } from '../combat/tetherFireControl.js';
 import { presentationAllowsPlayerFacingAction } from '../core/presentationAdmission.js';
+import { selectedMountedHeavyPart } from '../combat/heavyParts.js';
 
 const RAD = Math.PI / 180;
 const TWO_PI = Math.PI * 2;
@@ -174,6 +175,9 @@ export const weapons = {
           forcedTarget = tetherGate.target;
         }
       }
+      // Plan 14 component selection resolves to a live physical child. Massline fire-control still
+      // wins while it owns the guns; otherwise every mount solves against the selected body.
+      if (!forcedTarget) forcedTarget = selectedMountedHeavyPart(state, this.helpers);
       // MIXED BATTERY (auto-aim path). state.input.aimAngle can carry exactly one lead solution and
       // it is the PRIMARY mount's — so pulse/autocannon/railgun all gimbaled to the pulse's 320
       // intercept and two thirds of the battery knowingly fired short. Handing the auto-target down
@@ -361,6 +365,7 @@ export const weapons = {
     // Does this ship carry any lock-requiring weapon?
     let needsLock = false, lockTimeS = 1.2;
     for (const w of ws) {
+      if (w.heavyPartDestroyed === true) continue;
       const def = this._byId.get(w.defId) || {};
       const tracking = w.tracking || def.tracking;
       if (tracking === 'homing') {

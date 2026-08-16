@@ -80,7 +80,7 @@ test('heavy recipes bind unique stable physical parts to the existing combat voc
       }
     }
     assert.equal(row.combatProfileId, 'combat_profile_standard_ship');
-    assert.equal(row.runtime, 'unwired');
+    assert.equal(row.runtime, 'physical_parts_v1');
     assert.equal(row.behavior.runtime, 'unwired');
     assert.ok(row.parts.length > 0, `${row.id} has first-class parts`);
     const boundWeaponKeys = [];
@@ -88,7 +88,11 @@ test('heavy recipes bind unique stable physical parts to the existing combat voc
       roles.add(part.partRole);
       assert.ok(KNOWN_SUBSYSTEM_IDS.has(part.subsystemId), `${part.id} reuses a real subsystem id`);
       assert.ok(part.binding?.kind, `${part.id} has an explicit physical binding`);
-      assert.equal(part.behavior?.runtime, 'unwired', `${part.id} cannot imply live mechanics`);
+      const outcome = part.behavior && part.behavior.onDestroyed;
+      const remainsUnwired = outcome === 'weaken_pd_screen' || outcome === 'disable_bound_launch_bay'
+        || outcome === 'remove_ram_plate_authority' || outcome === 'disable_charged_ore_mine_release'
+        || part.behavior?.onExposed === 'offer_board_salvage_or_destroy_decision';
+      assert.equal(part.behavior?.runtime, remainsUnwired ? 'unwired' : 'physical_parts_v1', `${part.id} reports only wired mechanics`);
       if (part.binding.kind === 'weapon') {
         assert.ok(part.binding.weaponId, `${part.id} binds a weapon definition`);
         assert.ok(Number.isInteger(part.binding.ordinal) && part.binding.ordinal >= 0);
@@ -111,7 +115,7 @@ test('heavy recipes bind unique stable physical parts to the existing combat voc
   }
 });
 
-test('spawn propagation preserves immutable recipes while all future behavior stays unwired', () => {
+test('spawn propagation preserves immutable recipes and names only physically wired outcomes', () => {
   for (const enemyId of [...HEAVY_FAMILY_ENEMY_IDS, IRON_MAW_ENEMY_ID]) {
     const authored = heavyPartRecipeForEnemy(enemyId);
     const spec = makeEnemySpawnSpec(enemyId, 9, { x: 12, z: -4 });
@@ -119,10 +123,14 @@ test('spawn propagation preserves immutable recipes while all future behavior st
     assert.equal(spec.data.heavyPartRecipeId, authored.id);
     assert.strictEqual(spec.data.heavyPartRecipe, authored, 'spawn references the immutable authored recipe');
     assert.equal(Object.isFrozen(spec.data.heavyPartRecipe), true);
-    assert.equal(spec.data.heavyPartRecipe.runtime, 'unwired');
+    assert.equal(spec.data.heavyPartRecipe.runtime, 'physical_parts_v1');
     assert.equal(spec.data.heavyPartRecipe.behavior.runtime, 'unwired');
     for (const part of spec.data.heavyPartRecipe.parts) {
-      assert.equal(part.behavior.runtime, 'unwired');
+      const outcome = part.behavior.onDestroyed;
+      const remainsUnwired = outcome === 'weaken_pd_screen' || outcome === 'disable_bound_launch_bay'
+        || outcome === 'remove_ram_plate_authority' || outcome === 'disable_charged_ore_mine_release'
+        || part.behavior.onExposed === 'offer_board_salvage_or_destroy_decision';
+      assert.equal(part.behavior.runtime, remainsUnwired ? 'unwired' : 'physical_parts_v1');
     }
     for (const phase of spec.data.heavyPartRecipe.phases) {
       assert.equal(phase.runtime, 'unwired');

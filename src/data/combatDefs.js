@@ -364,6 +364,7 @@ export const DEFAULT_COMBAT_PROFILE_BY_TYPE = Object.freeze({
   pickup: 'combat_profile_tether_anchor',
   fieldEmitter: 'combat_profile_tether_anchor',
   masslineSnareAnchor: 'combat_profile_tether_anchor',
+  heavyPart: 'combat_profile_tether_anchor',
   station: 'combat_profile_standard_station',
 });
 

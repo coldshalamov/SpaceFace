@@ -43,7 +43,9 @@ export function resolveBeamVerb(descriptor, toolState = {}) {
       }
       const caps = descriptor.capabilities || {};
       const type = descriptor.type;
-      const isExtractableType = type === 'asteroid' || type === 'wreck' || caps.mineable || caps.beamExtractable;
+      const disabledHeavy = type === 'ship' && descriptor.data?.heavyDisabled === true
+        && descriptor.data?.beamExtractableHeavy === true;
+      const isExtractableType = type === 'asteroid' || type === 'wreck' || caps.mineable || caps.beamExtractable || disabledHeavy;
       if (!isExtractableType) {
         return { verb: 'extract', ok: false, reason: 'wrong-type', receiverHints: null };
       }
@@ -107,6 +109,7 @@ function isRepairOnlyTarget(descriptor) {
   if (!descriptor) return false;
   const type = descriptor.type;
   if (type === 'asteroid' || descriptor.wreckLike || type === 'wreck') return false;
+  if (type === 'ship' && descriptor.data?.heavyDisabled === true && descriptor.data?.beamExtractableHeavy === true) return false;
   return type === 'ship' || type === 'drone' || type === 'station';
 }
 

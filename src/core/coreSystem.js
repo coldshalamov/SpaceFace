@@ -92,10 +92,16 @@ export const core = {
         : state.entities.get(entityOrId);
       return entity ? publishPresentation('recordVisual', entity) : 0;
     };
+    const refreshEntityIndex = (entityOrId) => {
+      const entity = typeof entityOrId === 'object'
+        ? entityOrId
+        : state.entities.get(entityOrId);
+      return refreshEntityIndexEntity(state, entity);
+    };
     Object.assign(ctx.helpers, {
       spawnEntity, getEntity, removeEntity, queryRadius, player,
       entityIndex: () => ensureEntityIndex(state),
-      markEntityVisualChanged,
+      markEntityVisualChanged, refreshEntityIndex,
       mulberry32, hash32, wrapAngle,
     });
     this.helpers = ctx.helpers;
@@ -224,6 +230,17 @@ export const core = {
     this.bus.flush();
   },
 };
+
+// Reclassify one entity whose collision/body authoring changed in place. This preserves the shared
+// index object and every unrelated row; callers do not need to force a full entity-tree rebuild.
+export function refreshEntityIndexEntity(state, entity) {
+  if (!state || !entity || entity.alive === false) return false;
+  const index = ensureEntityIndex(state);
+  removeEntityIndex(index, entity);
+  appendEntityIndex(index, entity);
+  markEntityIndexSourceSynced(index, state.entityList);
+  return true;
+}
 
 function ensureEntityIndex(state) {
   if (state.entityIndex && state.entityIndex.__spacefaceEntityIndexV1) return repairEntityIndex(state.entityIndex);
@@ -363,7 +380,7 @@ function appendEntityIndex(index, e) {
     }
   }
   if (movable) index.movables.push(e);
-  if (e.type !== 'projectile' && e.type !== 'fx'
+  if (e.type !== 'projectile' && e.type !== 'fx' && e.type !== 'heavyPart'
       && e.type !== 'masslineSnare' && e.type !== 'masslineSnareAnchor') {
     if (e.type === 'asteroid') index.radarAsteroids.push(e);
     else index.radarContacts.push(e);
@@ -427,6 +444,11 @@ function appendEntityIndex(index, e) {
     case 'masslineSnareAnchor':
       // PQ-030: visible snare endpoints are fixed ghost bodies but remain projectile-damageable;
       // destroying either endpoint cleanly breaks the authority-owned line.
+      index.damageables.push(e);
+      break;
+    case 'heavyPart':
+      // Plan 14: mounted children are independently projectile-damageable; detached children keep
+      // the same identity and become dynamic debris without entering ship/reward/AI rosters.
       index.damageables.push(e);
       break;
   }
@@ -526,6 +548,7 @@ function isMovableEntity(e) {
     case 'projectile':
     case 'pickup':
     case 'payload':
+    case 'heavyPart':
     case 'fx':
       return true;
     // PQ-011: a Mass Seed's Rapier body stays FIXED (physicsStatics), but the entity itself moves

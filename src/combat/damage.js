@@ -169,7 +169,11 @@ export function createDamageRouter(context, statusService, options = {}) {
       hullByChannel[channel] = applied;
       hullDamage += applied;
     }
-    hullDamage = Math.min(Math.max(0, target.hull || 0), hullDamage);
+    // Plan 14 heavy parents cannot be erased through the abstract hull while their authored
+    // physical-part route is live. They bottom out at one hull and become disabled assets only
+    // through the heavy-parts runtime's strip condition.
+    const heavyLethalFloor = target.data && target.data.heavyPartsRuntime?.lethalLocked ? 1 : 0;
+    hullDamage = Math.min(Math.max(0, (target.hull || 0) - heavyLethalFloor), hullDamage);
     target.hull = Math.max(0, (target.hull || 0) - hullDamage);
     target.lastDamageT = Number.isFinite(state.simTime) ? state.simTime : (state.tick || 0) / 60;
 
@@ -321,7 +325,17 @@ export function createDamageRouter(context, statusService, options = {}) {
     }
 
     if (before.hull > 0 && target.hull <= 0) {
-      if (onKill) onKill(target, result.attackerId, {
+      if (target.type === 'heavyPart' && bus) {
+        // The part runtime converts this exact child into debris synchronously. It deliberately
+        // bypasses combat.kill, so no bounty, loot, AI death roster, or aftermath marker fires.
+        bus.emit('heavyPart:lethal', {
+          targetId: target.id,
+          attackerId: result.attackerId,
+          origin,
+          packet,
+          result,
+        });
+      } else if (onKill) onKill(target, result.attackerId, {
         origin,
         packet,
         result,

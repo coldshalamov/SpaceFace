@@ -34,6 +34,7 @@ const COLLISION_MATERIALS = Object.freeze({
   payload: { push: 0.75, restitution: 0.08, tangentDamping: 0.18, impactScale: 0.5 },
   asteroid: { push: 1, restitution: 0.24, tangentDamping: 0.08, impactScale: 1.1 },
   station: { push: 0.48, restitution: 0.05, tangentDamping: 0.35, impactScale: 0.35 },
+  heavyPart: { push: 0.82, restitution: 0.22, tangentDamping: 0.08, impactScale: 0.9 },
 });
 const DYNAMIC_SPATIAL_QUERY_MIN_COLLIDABLES = 96;
 const DYNAMIC_SPATIAL_QUERY_MIN_ASTEROIDS = 96;
@@ -963,6 +964,7 @@ function maskOf(e) {
     case 'drone': return Masks.DRONE;
     case 'payload': return Masks.PAYLOAD;
     case 'wreck': return Masks.WRECK;
+    case 'heavyPart': return Masks.HEAVY_PART;
     case 'mine': return MINE_COLLISION_CATEGORY;
     // PQ-011: anchor seeds share the deployed-device category — projectile sweeps/hits resolve
     // (the seed spawns with collisionMask PROJECTILE), ships never broadphase against it.

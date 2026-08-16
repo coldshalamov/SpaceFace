@@ -313,6 +313,7 @@ function normalizeAttachmentPoints(points) {
 function defaultDynamic(entity) {
   return entity.type === 'ship' || entity.type === 'drone' || entity.type === 'payload' || entity.type === 'projectile' ||
     entity.type === 'pickup' || entity.type === 'wreck' ||
+    (entity.type === 'heavyPart' && !!(entity.data && entity.data.detached)) ||
     (entity.type === 'asteroid' && !!(entity.data && entity.data.isChunk)) ||
     !!(entity.data && (entity.data.majorDebris || entity.data.tetherPayload));
 }
@@ -328,6 +329,7 @@ function defaultMaterial(entity) {
   if (entity.type === 'wreck') return 'debris';
   if (entity.type === 'pickup') return 'sensor';
   if (entity.type === 'payload') return 'payload';
+  if (entity.type === 'heavyPart') return 'debris';
   return entity.type === 'ship' || entity.type === 'drone' ? 'ship' : 'default';
 }
 

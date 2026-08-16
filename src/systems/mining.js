@@ -292,7 +292,8 @@ export const mining = {
     const dps = (beam.dps || 18) * (beam.directToCargo ? 1.08 : 1);
     switch (resolved.verb) {
       case 'extract':
-        if (target.type === 'wreck') this._drainWreck(player, target, dps, dt);
+        if (isDisabledHeavyBeamTarget(target)) this._extractDisabledHeavy(player, target, dps, dt);
+        else if (target.type === 'wreck') this._drainWreck(player, target, dps, dt);
         else this.applyMining(target.id, dps, dt, player.id);
         break;
 
@@ -418,6 +419,32 @@ export const mining = {
       });
       this.bus.emit('salvage:cutComplete', { targetId: target.id, payloadId: payload.id });
     }
+  },
+
+  _extractDisabledHeavy(player, target, dps, dt) {
+    if (!isDisabledHeavyBeamTarget(target)) return false;
+    const data = target.data;
+    const extraction = data.heavyExtraction || (data.heavyExtraction = { progress: 0, completed: false });
+    if (extraction.completed) return false;
+    extraction.progress += Math.max(0, Number(dps) || 0) * Math.max(0, Number(dt) || 0);
+    const threshold = Math.max(120, Number(target.mass) || 0);
+    if (extraction.progress < threshold) return true;
+    extraction.progress = threshold;
+    extraction.completed = true;
+    data.beamExtractableHeavy = false;
+    const radius = Math.max(4, Math.min(18, Math.round((target.radius || 20) * 0.3)));
+    const payload = spawnPayloadEntity(this.state, {
+      pos: { x: target.pos.x, z: target.pos.z },
+      vel: { x: target.vel.x, z: target.vel.z },
+      radius,
+      mass: Math.max(20, Math.round((target.mass || 60) * 0.16)),
+      ownerId: player.id,
+      factionId: player.factionId || 'player',
+      salvagePool: { cmdty_scrap_metal: Math.max(4, Math.round((target.mass || 60) / 20)) },
+      payloadType: 'disabled_heavy_extract',
+    });
+    this.bus.emit('heavy:beamExtracted', { targetId: target.id, payloadId: payload.id, minerId: player.id });
+    return true;
   },
 
   _applyRepair(player, target, resolved, dps, dt) {
@@ -618,7 +645,7 @@ export const mining = {
     if (!entity || !entity.alive) return false;
     // PQ-015: beam type-membership from the shared catalog (identical to the former asteroid|wreck
     // literal). The mined-out and range layers below are UNCHANGED.
-    if (!verbAcceptsType('mine', entity.type)) return false;
+    if (!verbAcceptsType('mine', entity.type) && !isDisabledHeavyBeamTarget(entity)) return false;
     if (!presentationAllowsPlayerFacingAction(entity, state)) return false;
     if (entity.type === 'asteroid' && entity.data && entity.data.respawnAt != null) return false;
     const dx = entity.pos.x - ship.pos.x, dz = entity.pos.z - ship.pos.z;
@@ -1748,7 +1775,7 @@ function activeMineableTetherTarget(state, ship, range) {
   if (!ids.length) return undefined;
   for (const id of ids) {
     const target = state.entities && state.entities.get && state.entities.get(id);
-    if (!target || !target.alive || (target.type !== 'asteroid' && target.type !== 'wreck')) continue;
+    if (!target || !target.alive || (target.type !== 'asteroid' && target.type !== 'wreck' && !isDisabledHeavyBeamTarget(target))) continue;
     const dx = target.pos.x - ship.pos.x;
     const dz = target.pos.z - ship.pos.z;
     const dist = Math.hypot(dx, dz);
@@ -1756,6 +1783,11 @@ function activeMineableTetherTarget(state, ship, range) {
     return dist <= allowed ? target : null;
   }
   return undefined;
+}
+
+function isDisabledHeavyBeamTarget(entity) {
+  return !!(entity && entity.alive !== false && entity.type === 'ship' && entity.data
+    && entity.data.heavyDisabled === true && entity.data.beamExtractableHeavy === true);
 }
 
 function resetMiningDiagnostics(diag) {

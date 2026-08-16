@@ -54,7 +54,7 @@ export const VERB_OWNERS = Object.freeze({
 export const VERB_TYPE_MEMBERSHIP = Object.freeze({
   target: Object.freeze(new Set(['ship', 'drone'])),
   mine: Object.freeze(new Set(['asteroid', 'wreck'])),
-  damage: Object.freeze(new Set(['ship', 'station', 'drone', 'mine', 'massSeed'])),
+  damage: Object.freeze(new Set(['ship', 'station', 'drone', 'mine', 'massSeed', 'heavyPart'])),
   salvage: Object.freeze(new Set(['wreck'])),
   dock: Object.freeze(new Set(['station'])),
   contact: Object.freeze(new Set(['ship', 'drone', 'wreck'])),
@@ -132,12 +132,14 @@ export const DENIAL = Object.freeze({
 // ---------------------------------------------------------------------------------------------
 export const COMPONENT_KINDS = Object.freeze({
   SUBSYSTEM: 'subsystem',
+  HEAVY_PART: 'heavyPart',
   WEAKPOINT: 'weakpoint',
   MACHINE: 'machine',
 });
 
 export const COMPONENT_KIND_VERB = Object.freeze({
   subsystem: 'damage',
+  heavyPart: 'damage',
   weakpoint: 'salvage',
   machine: 'mine',
 });
@@ -172,12 +174,14 @@ export function stableEntityKey(entity) {
 // ---------------------------------------------------------------------------------------------
 export function capabilityFlagsForEntity(entity) {
   const p = interactionProfileForEntity(entity);
+  const disabledHeavy = !!(entity && entity.type === 'ship' && entity.data
+    && entity.data.heavyDisabled === true && entity.data.beamExtractableHeavy === true);
   return Object.freeze({
     kind: p.kind,
     mineable: !!p.mineable,
     drillable: !!p.drillable,
     salvageable: !!p.salvageable,
-    beamExtractable: !!p.beamExtractable,
+    beamExtractable: disabledHeavy || !!p.beamExtractable,
     tetherable: !!p.tetherable,
     destructible: !!p.destructible,
     hazardous: !!p.hazardous,

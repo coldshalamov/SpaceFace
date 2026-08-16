@@ -15,13 +15,24 @@ export const HEAVY_FAMILY_ENEMY_IDS = Object.freeze([
 export const IRON_MAW_ENEMY_ID = 'dreadnought_boss';
 
 const unwiredBehavior = (fields) => Object.freeze({ runtime: 'unwired', ...fields });
+const WIRED_PART_OUTCOMES = new Set([
+  'detach_as_momentum_debris',
+  'disable_drive_and_leave_drifting_barge',
+  'disable_committed_burn',
+  'disable_drive',
+  'reduce_capital_drive_authority',
+]);
+const partBehavior = (fields) => Object.freeze({
+  runtime: fields && WIRED_PART_OUTCOMES.has(fields.onDestroyed) ? 'physical_parts_v1' : 'unwired',
+  ...fields,
+});
 const binding = (fields) => Object.freeze({ ...fields });
 const part = (id, partRole, subsystemId, partBinding, behaviorFields) => Object.freeze({
   id,
   partRole,
   subsystemId,
   binding: binding(partBinding),
-  behavior: unwiredBehavior(behaviorFields),
+  behavior: partBehavior(behaviorFields),
 });
 const phase = (id, fields) => Object.freeze({
   id,
@@ -33,7 +44,7 @@ const phase = (id, fields) => Object.freeze({
 });
 const recipe = (fields) => Object.freeze({
   ...fields,
-  runtime: 'unwired',
+  runtime: 'physical_parts_v1',
   combatProfileId: 'combat_profile_standard_ship',
   behavior: unwiredBehavior(fields.behavior),
   parts: Object.freeze(fields.parts),

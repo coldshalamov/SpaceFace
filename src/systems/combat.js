@@ -1016,7 +1016,8 @@ export const combat = {
       const damageables = beamDamageCandidates(this, state, beam, dx, dz);
       for (const e of damageables) {
         if (!e.alive) continue;
-        if (e.type !== 'ship' && e.type !== 'station' && e.type !== 'drone') continue;
+        if (e.type !== 'ship' && e.type !== 'station' && e.type !== 'drone' && e.type !== 'heavyPart') continue;
+        if (e.type === 'heavyPart' && e.data?.heavyPartState !== 'mounted') continue;
         if (e.id === beam.ownerId) continue;
         if (e.id === state.playerId && this.playerIsDockProtected()) continue;
         if (ownerTeam != null && e.team === ownerTeam) continue; // no friendly fire
