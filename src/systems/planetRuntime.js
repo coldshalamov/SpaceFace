@@ -363,7 +363,12 @@ export const planetRuntime = {
     // micro-packets (dps·dt ≈ 0.1) would be silently erased by any armorFlat > 0 — a defect the
     // live route capture caught (node's seam recorder had no armor model). Batching keeps the
     // authored dps truthful against armored hulls; the schedule derives from simTime (no drift).
-    const dps = rec.stage === 'descent' ? p.descentDps : rec.stage === 'breakup' ? p.burnDps : 0;
+    // A craft that has physically climbed out of the hot bands has escaped the damaging medium,
+    // even while the visible plunge stage cools/regresses. Keeping DPS live outside the atmosphere
+    // made a successful recovery burn terminal several seconds after clearing the rim.
+    const dps = inHot
+      ? (rec.stage === 'descent' ? p.descentDps : rec.stage === 'breakup' ? p.burnDps : 0)
+      : 0;
     if (dps > 0 && e.alive !== false) {
       if (!(rec.burnNextAt > 0)) rec.burnNextAt = now + 0.5;
       if (now >= rec.burnNextAt) {

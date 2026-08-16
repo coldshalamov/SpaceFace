@@ -4,6 +4,7 @@ import test from 'node:test';
 import { FIELD_FLAGS } from '../src/data/fields.js';
 import { PLANET_FLAGS } from '../src/data/planets.js';
 import {
+  ATMOSPHERE_REFERENCE_HULL,
   ATMOSPHERE_REFERENCE_ENTRY_VELOCITIES,
   runArcadeCoreAtmosphereRoute,
 } from '../src/testing/metrics/arcadeCoreAtmosphereRoute.js';
@@ -39,7 +40,10 @@ test('Plan 09 atmosphere matrix records real escape-vs-burn outcomes at each ent
 
     const controlled = receipt.cases.filter((entry) => entry.control === 'full-burn');
     const uncontrolled = receipt.cases.filter((entry) => entry.control === 'uncontrolled');
-    assert.ok(controlled.some((entry) => entry.outcome === 'escape'), 'an authored recovery burn can produce an actual escape');
+    assert.ok(controlled.every((entry) => entry.outcome === 'escape'),
+      'the real full-burn route escapes at every reference entry velocity');
+    assert.ok(controlled.every((entry) => entry.finalHull > 0 && entry.referenceHull === ATMOSPHERE_REFERENCE_HULL),
+      'every controlled escape clears the band with hull to spare');
     assert.ok(uncontrolled.every((entry) => entry.outcome === 'burn'), 'every uncontrolled reference entry burns');
 
     for (const row of uncontrolled) {
