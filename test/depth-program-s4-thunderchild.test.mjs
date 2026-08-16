@@ -491,9 +491,9 @@ test('Thunderchild aura shortens only nearby allied leader-loss panic without st
     bus.emit('entity:killed', { id: leader.id, killerId: 99, pos: leader.pos });
 
     const morale = wingMoraleStateForTest(state);
-    assert.ok(Math.abs(morale.scatter[near.id].until - 15.1) < 1e-9);
+    assert.ok(Math.abs(morale.scatter[near.id].until - 16.8) < 1e-9);
     assert.equal(morale.scatter[near.id].auraTitleId, THUNDERCHILD_TITLE_ID);
-    assert.equal(morale.scatter[far.id].until, 16);
+    assert.equal(morale.scatter[far.id].until, 18);
     assert.equal(morale.scatter[far.id].auraTitleId, null);
     assert.equal(near.data.ai.forceFlee, true, 'the existing panic intent remains player-legible');
     assert.equal(near.data.intent.thrust, undefined, 'the aura never writes movement or steering intent');

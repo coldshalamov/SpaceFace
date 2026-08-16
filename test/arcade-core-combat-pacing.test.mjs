@@ -149,6 +149,12 @@ test('tier-2 island keeps the Reaver controller and hard budget never preempts',
   assert.ok(squad.length >= 4 && squad.length <= 6, `tier-2 group is 4-6, observed ${squad.length}`);
   assert.equal(squad.filter((entity) => entity.data?.lootTableId === 'reaver_pirate').length, 1);
   assert.equal(squad.filter((entity) => entity.data?.lootTableId === 'wasp_swarmer').length, squad.length - 1);
+  const leader = squad.find((entity) => entity.data?.lootTableId === 'reaver_pirate');
+  const members = squad.filter((entity) => entity !== leader);
+  assert.equal(leader.data.ai.encounterRole, 'leader', 'the Reaver is the live morale leader');
+  assert.ok(members.every((entity) => entity.data.ai.encounterRole === 'member'));
+  assert.ok(members.every((entity) => entity.data.fleeCargo?.commodityId === 'cmdty_scrap_metal'
+    && entity.data.fleeCargo.qty === 1), 'the wing carries its bounded flee reserve before combat');
 
   const saturated = bootIsland({ seed: 10013, tactical: false });
   assert.equal(saturated.sim.helpers.spawnBudget.request(22, 'existing-population'), 22);
