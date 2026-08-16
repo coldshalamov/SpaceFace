@@ -89,6 +89,12 @@ export function jammerPresentationIdFor(entity) {
   return id === JAMMER_ENEMY_ID ? id : null;
 }
 
+export function tetherCutterPresentationIdFor(entity) {
+  const data = entity && entity.data;
+  const id = String(data && (data.lootTableId || data.enemyTypeId || data.typeId) || '');
+  return id === 'tether_control_raider' ? id : null;
+}
+
 // The renderer injects the baked PMREM nebula env-map here (setEnvMapForShips) so chrome/authority
 // hulls can mirror the actual space around them. Null until the bake completes — chrome then falls
 // back to high-metalness matte, which is still a clean-shiny read, just not mirror.
@@ -2743,6 +2749,149 @@ function addJammerWorldTell(outer, hull, R) {
   });
 }
 
+function tetherCutterBladeGeometry() {
+  return getGeometry('specialist:tether-cutter-blade', () => {
+    const vertices = new Float32Array([
+      0, -0.08, -0.2,  0, 0.08, -0.2,  0, 0.08, 0.2,  0, -0.08, 0.2,
+      1, -0.045, -0.035,  1, 0.045, -0.035,  1, 0.045, 0.035,  1, -0.045, 0.035,
+    ]);
+    const indices = [
+      0, 1, 2, 0, 2, 3, 4, 6, 5, 4, 7, 6,
+      0, 4, 5, 0, 5, 1, 1, 5, 6, 1, 6, 2,
+      2, 6, 7, 2, 7, 3, 3, 7, 4, 3, 4, 0,
+    ];
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+    geometry.setIndex(indices);
+    geometry.computeVertexNormals();
+    geometry.computeBoundingSphere();
+    return geometry;
+  });
+}
+
+// Plan 15 Tether-cutter: the warning is a rooted machine, not a free-floating telegraph. Paired
+// hard-metal jaws open around the prow while copper induction rails rise in emissive intensity,
+// then scissor shut at the SG-03 response-window edge. Accessibility keeps the charged silhouette
+// and rail contrast but removes the moving stroke. No opacity, billboard, sprite, or particle owns
+// this read.
+function addTetherCutterWorldTell(outer, hull, R) {
+  const root = new THREE.Group();
+  root.name = 'TetherCutterShearRig';
+  root.position.set(0.46 * R, 0.34 * R, 0);
+  root.userData.animated = true;
+
+  const frameMaterial = getMaterial('specialist:tether-cutter-frame', () => new THREE.MeshStandardMaterial({
+    name: 'TetherCutterBlackenedFrame', color: 0x271e20, roughness: 0.48, metalness: 0.88,
+  }));
+  const bladeMaterial = getMaterial('specialist:tether-cutter-blade-metal', () => new THREE.MeshStandardMaterial({
+    name: 'TetherCutterCarbideBlade', color: 0x858b91, roughness: 0.26, metalness: 0.96,
+  }));
+  const signalMaterial = new THREE.MeshStandardMaterial({
+    name: 'TetherCutterInductionRail', color: 0x7a3216, emissive: 0xff5b18,
+    emissiveIntensity: 0.16, roughness: 0.32, metalness: 0.72,
+  });
+
+  const housing = new THREE.Mesh(
+    getGeometry('specialist:tether-cutter-housing', () => new THREE.BoxGeometry(1, 1, 1)),
+    frameMaterial,
+  );
+  housing.name = 'TetherCutterRootHousing';
+  housing.scale.set(0.48 * R, 0.2 * R, 0.82 * R);
+  root.add(housing);
+
+  const hinges = [];
+  for (const side of [-1, 1]) {
+    const hinge = new THREE.Group();
+    hinge.name = side < 0 ? 'TetherCutterPortJaw' : 'TetherCutterStarboardJaw';
+    hinge.position.set(0.12 * R, 0.02 * R, side * 0.4 * R);
+    hinge.userData.animated = true;
+
+    const knuckle = new THREE.Mesh(
+      getGeometry('specialist:tether-cutter-knuckle', () => new THREE.CylinderGeometry(1, 1, 1, 10)),
+      frameMaterial,
+    );
+    knuckle.name = 'TetherCutterJawKnuckle';
+    knuckle.rotation.x = Math.PI / 2;
+    knuckle.scale.set(0.14 * R, 0.14 * R, 0.18 * R);
+    knuckle.userData.animated = true;
+    hinge.add(knuckle);
+
+    const arm = new THREE.Mesh(
+      getGeometry('specialist:tether-cutter-arm', () => new THREE.BoxGeometry(1, 1, 1)),
+      frameMaterial,
+    );
+    arm.name = 'TetherCutterForgedJawArm';
+    arm.position.set(0.34 * R, 0, 0);
+    arm.scale.set(0.7 * R, 0.12 * R, 0.14 * R);
+    arm.userData.animated = true;
+    hinge.add(arm);
+
+    const blade = new THREE.Mesh(tetherCutterBladeGeometry(), bladeMaterial);
+    blade.name = 'TetherCutterCarbideShearBlade';
+    blade.position.set(0.64 * R, -0.015 * R, -side * 0.02 * R);
+    blade.scale.set(0.66 * R, R, R);
+    blade.userData.animated = true;
+    hinge.add(blade);
+
+    const rail = new THREE.Mesh(
+      getGeometry('specialist:tether-cutter-rail', () => new THREE.BoxGeometry(1, 1, 1)),
+      signalMaterial,
+    );
+    rail.name = 'TetherCutterCopperChargeRail';
+    rail.position.set(0.36 * R, 0.1 * R, -side * 0.005 * R);
+    rail.scale.set(0.6 * R, 0.035 * R, 0.06 * R);
+    rail.userData.animated = true;
+    hinge.add(rail);
+
+    root.add(hinge);
+    hinges.push({ hinge, side });
+  }
+  hull.add(root);
+
+  const runtime = {
+    start: -Infinity, end: -Infinity, settle: -Infinity, reduced: false, lastT: 0,
+  };
+  const previousUpdate = outer.userData.updateRuntimeState;
+  outer.userData.specialistPresentationId = 'tether_control_raider';
+  outer.userData.tetherCutterPresentationState = runtime;
+  outer.userData.tetherCutterWorldTell = Object.freeze({
+    cue: 'glowing_shear_rig_and_charge_whine',
+    geometry: 'rooted_twin_hinge_carbide_shear_with_copper_induction_rails',
+    cameraFacing: false,
+    animatedOpacity: false,
+  });
+  outer.userData.beginTetherCutterCharge = (now, durationSeconds = 1, reduced = false) => {
+    const start = Number.isFinite(now) ? now : runtime.lastT;
+    const duration = Math.max(0.25, Number(durationSeconds) || 1);
+    runtime.start = start;
+    runtime.end = start + duration;
+    runtime.settle = runtime.end + 0.18;
+    runtime.reduced = reduced === true;
+    return true;
+  };
+  outer.userData.updateRuntimeState = (entity, now) => {
+    if (typeof previousUpdate === 'function') previousUpdate(entity, now);
+    const t = Number.isFinite(now) ? now : runtime.lastT;
+    runtime.lastT = t;
+    let jawAngle = 0.08;
+    let intensity = 0.16;
+    if (t >= runtime.start && t <= runtime.end) {
+      const progress = Math.max(0, Math.min(1, (t - runtime.start) / Math.max(0.001, runtime.end - runtime.start)));
+      intensity = 0.55 + progress * 2.45;
+      if (runtime.reduced) jawAngle = 0.34;
+      else if (progress < 0.78) jawAngle = 0.08 + (progress / 0.78) * 0.38;
+      else jawAngle = 0.46 - ((progress - 0.78) / 0.22) * 0.44;
+    } else if (t > runtime.end && t <= runtime.settle) {
+      const settle = (t - runtime.end) / Math.max(0.001, runtime.settle - runtime.end);
+      jawAngle = runtime.reduced ? 0.34 : 0.02 + settle * 0.06;
+      intensity = 3 - settle * 2.84;
+    }
+    for (const jaw of hinges) jaw.hinge.rotation.y = jaw.side * jawAngle;
+    signalMaterial.emissiveIntensity = intensity;
+  };
+  outer.userData.updateRuntimeState(null, 0);
+}
+
 const ENEMY_FAMILY_BUILDERS = {
   mote_quad: buildMoteQuad,
   dart_needle: buildDartNeedle,
@@ -2827,6 +2976,7 @@ function buildShipMesh(e, pal) {
   builder(ctx);
 
   if (jammerPresentationIdFor(e)) addJammerWorldTell(outer, g, R);
+  if (tetherCutterPresentationIdFor(e)) addTetherCutterWorldTell(outer, g, R);
 
   // 2) armor panel shell (tier Mk.II paneled / Mk.III armored): a slightly-larger shell with denser
   //    plating + decals so upgraded ships visibly read as reinforced.

@@ -90,9 +90,9 @@ test('contracts claim only specialist mechanics with landed production owners', 
     .filter((row) => row.worldTell.runtime === 'existing')
     .map((row) => row.key);
 
-  assert.deepEqual(existingBehavior, ['jammer', 'shield_projector', 'anchor']);
-  assert.deepEqual(existingWorldTell, ['jammer', 'anchor']);
-  for (const key of ['tether_cutter', 'pd_screen', 'tender', 'minelayer', 'kiter']) {
+  assert.deepEqual(existingBehavior, ['tether_cutter', 'jammer', 'shield_projector', 'anchor']);
+  assert.deepEqual(existingWorldTell, ['tether_cutter', 'jammer', 'anchor']);
+  for (const key of ['pd_screen', 'tender', 'minelayer', 'kiter']) {
     const row = SPECIALIST_FAMILY.find((candidate) => candidate.key === key);
     assert.equal(row.behavior.runtime, 'unwired', `${key} behavior stays an honest handoff`);
     assert.equal(row.worldTell.runtime, 'unwired', `${key} world tell stays an honest handoff`);

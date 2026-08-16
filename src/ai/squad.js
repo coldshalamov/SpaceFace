@@ -200,7 +200,9 @@ export class SquadCommander {
         if (objectives === 0) firstObjectiveValue = contact.objectiveValue || 0;
         objectives++;
       } else if (!exposedTether && contact.kind === ContactKind.TETHER && contact.exposed && contact.confidence >= 0.55 &&
-        (contact.ownedBySelf || contact.tags.includes('owned_by_self') || contact.tags.includes('cuttable_by_self'))) {
+        (contact.ownedBySelf || contact.specialistShearable
+          || contact.tags.includes('owned_by_self') || contact.tags.includes('cuttable_by_self')
+          || contact.tags.includes('specialist_shearable'))) {
         exposedTether = true;
       }
     }
@@ -307,12 +309,18 @@ function mergeContacts(perceptions, freeze = Object.freeze, mergeScratch = null,
       if (!record) {
         record = {
           ...contact,
+          specialistShearable: Array.isArray(contact.tags)
+            && contact.tags.includes('specialist_shearable'),
           confidenceTotal: 0,
           confidenceSamples: 0,
           hostileVotes: 0,
           friendlyVotes: 0,
         };
         merged.set(key, record);
+      }
+      if (Array.isArray(contact.tags) && contact.tags.includes('specialist_shearable')) {
+        record.specialistShearable = true;
+        record.exposed = true;
       }
       record.confidenceTotal += contact.confidence;
       record.confidenceSamples++;
@@ -384,7 +392,14 @@ function formationSlotFor(squad, leaderPerception, index, count) {
 function objectiveFor(tactic, role, focus, objective, tether, perception, assignedTarget = null,
   allocationActive = false, freeze = Object.freeze) {
   if (tactic === 'fighting_retreat') return freezeObjective(ObjectiveKind.RETREAT, null, 'director_or_attrition', freeze);
-  if (tactic === 'cut_and_scatter') return freezeObjective(role === SquadRole.SUPPORT || role === SquadRole.STRIKER ? ObjectiveKind.COUNTER_TETHER_CUT : ObjectiveKind.SCREEN, tether && tether.id, 'exposed_tether', freeze);
+  if (tactic === 'cut_and_scatter') {
+    const specialistShear = perception && perception.self
+      && perception.self.combatDoctrineId === 'tether_control_raider'
+      && tether && tether.specialistShearable === true;
+    const cuts = specialistShear || role === SquadRole.SUPPORT || role === SquadRole.STRIKER;
+    return freezeObjective(cuts ? ObjectiveKind.COUNTER_TETHER_CUT : ObjectiveKind.SCREEN,
+      tether && tether.id, specialistShear ? 'specialist_player_line_shear' : 'exposed_tether', freeze);
+  }
   if (tactic === 'overload_and_break') return freezeObjective(perception && perception.self.tethered ? ObjectiveKind.COUNTER_TETHER_OVERLOAD : ObjectiveKind.SCREEN, tether && tether.id, 'tethered_member', freeze);
   if (tactic === 'screen_tug_steal') {
     if (role === SquadRole.TUG) return freezeObjective(ObjectiveKind.TUG, objective && objective.id, 'assigned_tug', freeze);

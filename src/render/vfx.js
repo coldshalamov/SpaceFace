@@ -2134,6 +2134,7 @@ export const vfx = {
     add('cruise:engaged', (p) => this._onCruiseEngaged(p));
     add('cruise:dropped', (p) => this._onCruiseDropped(p));
     add('charge:detonated', (p) => this._onChargeDetonated(p));
+    add('ai:counterTether', (p) => this._onTetherCutterCharge(p));
     add('ai:telegraph', (p) => this._onAiTelegraph(p));
     add('ai:doctrinePhase', (p) => this._onSwarmerDoctrinePhase(p));
     add('ai:flee', (p) => this._onAiFlee(p));
@@ -8628,6 +8629,27 @@ export const vfx = {
   // full pre-consequence window (default ≥30 sim ticks). Sim owns the hold-fire gate; VFX only
   // presents — never writes sim state, never uses wall-clock for lifetime.
   // Lifetime: state.tick / startTick / deadlineTick so pause/tab render frames cannot burn the window.
+  _onTetherCutterCharge(p) {
+    if (!p || p.kind !== 'line_cut' || p.actorId == null) return false;
+    const actor = this.state && this.state.entities && this.state.entities.get
+      ? this.state.entities.get(p.actorId) : null;
+    const data = actor && actor.data;
+    const stableId = String(data && (data.lootTableId || data.enemyTypeId || data.typeId) || '');
+    if (stableId !== 'tether_control_raider') return false;
+    const meshes = this.state && this.state.render && this.state.render.meshes;
+    const mesh = meshes && typeof meshes.get === 'function' ? meshes.get(p.actorId) : null;
+    if (!mesh || typeof mesh.userData.beginTetherCutterCharge !== 'function') return false;
+    // This root is advanced by renderer.syncEntityViews with the render monotonic clock. Seed it
+    // from the same domain; the SG-03 response edge remains sim-tick authoritative and this clock
+    // controls only cosmetic jaw interpolation between the warning and consequence.
+    const now = typeof performance !== 'undefined' ? performance.now() * 0.001 : 0;
+    return mesh.userData.beginTetherCutterCharge(
+      now,
+      Math.max(1, Number(p.durationTicks) || 60) / 60,
+      this._isReduced(),
+    );
+  },
+
   _onAiTelegraph(p) {
     this._emitJuiceCue('ai.telegraph', p, 1);
     if (!this._scene) return;

@@ -51,6 +51,10 @@ const CERES_LAW_JOB_SLOTS_BY_ID = new Map(CERES_ACTIVITY_POCKETS.flatMap((pocket
 )));
 const OWNED_TETHER_TAGS = Object.freeze(['cuttable_by_self', 'massline', 'owned_by_self', 'severable']);
 const HOSTILE_TETHER_TAGS = Object.freeze(['hostile', 'massline', 'overloadable']);
+const TETHER_CUTTER_SHEAR_TAGS = Object.freeze([
+  'hostile', 'massline', 'severable', 'specialist_shearable',
+]);
+const TETHER_CUTTER_ENEMY_ID = 'tether_control_raider';
 const SOLID_TAGS = Object.freeze(['solid']);
 const EMPTY_SUBSYSTEM_FRACTIONS = Object.freeze({});
 const CAPABILITY_DEPENDENCIES = Object.freeze({
@@ -1214,6 +1218,12 @@ function attachmentContacts(state, self, range, activeAttachments = null, freeze
     if (!endpointVisible && distance > range) continue;
     const hostile = isHostileForAI(state, self, attachment.ownerId === self.id ? target : owner);
     const ownedBySelf = attachment.ownerId === self.id;
+    // Plan 15's cutter observes exactly one foreign rope as actionable: the player's own live
+    // Massline. Other enemies still see it as an ordinary hostile tether and cannot borrow the
+    // specialist verb. SG-03 remains the action authority; this is perception only.
+    const specialistShearable = !ownedBySelf
+      && attachment.ownerId === state.playerId
+      && isTetherCutterEntity(self);
     out.push({
       id: attachment.id,
       kind: ContactKind.TETHER,
@@ -1233,7 +1243,7 @@ function attachmentContacts(state, self, range, activeAttachments = null, freeze
       attachmentId: attachment.id,
       sourceSocketId: attachment.sourceSocketId || null,
       targetSocketId: attachment.targetSocketId || null,
-      exposed: ownedBySelf,
+      exposed: ownedBySelf || specialistShearable,
       tethered: attachment.targetId === self.id || attachment.ownerId === self.id,
       disabled: false,
       ownedBySelf,
@@ -1243,17 +1253,27 @@ function attachmentContacts(state, self, range, activeAttachments = null, freeze
       mobilityBand: 'low',
       cargoBand: 'empty',
       tetherabilityBand: 'poor',
-      tags: tetherTags(ownedBySelf, attachment, owner, target),
+      tags: tetherTags(ownedBySelf, specialistShearable, attachment, owner, target),
     });
   }
   return out;
 }
 
-function tetherTags(ownedBySelf, attachment, owner, target) {
-  const base = ownedBySelf ? OWNED_TETHER_TAGS : HOSTILE_TETHER_TAGS;
+function tetherTags(ownedBySelf, specialistShearable, attachment, owner, target) {
+  const base = ownedBySelf
+    ? OWNED_TETHER_TAGS
+    : specialistShearable
+      ? TETHER_CUTTER_SHEAR_TAGS
+      : HOSTILE_TETHER_TAGS;
   const length = distance2(owner && owner.pos, target && target.pos);
   const slack = positive(attachment && attachment.restLength, 0) - length;
   return slack >= 6 ? Object.freeze([...base, 'slack']) : base;
+}
+
+function isTetherCutterEntity(entity) {
+  const data = entity && entity.data;
+  return String(data && (data.lootTableId || data.enemyTypeId || data.typeId) || '')
+    === TETHER_CUTTER_ENEMY_ID;
 }
 
 function recentEventIndexFor(state, tick) {
@@ -1343,6 +1363,7 @@ function capabilitiesFor(state, entity) {
   if (role.includes('thief')) add('steal');
   if (role.includes('screen')) add('screen');
   if (role.includes('support')) add('disable');
+  if (isTetherCutterEntity(entity)) add('counter_tether_cut');
   return [...out].sort();
 }
 

@@ -32,12 +32,14 @@ export const SPECIALIST_FAMILY = Object.freeze([
     counterVerb: 'kill_first_or_bait_cut_then_relatch',
     behavior: {
       capability: 'charged_player_tether_shear',
-      runtime: 'unwired',
-      note: 'the existing hostile Massline contest is not the planned player-line shear',
+      runtime: 'existing',
+      owner: 'tether_cutter_action_cut_v1',
+      invariant: 'only the authored cutter objective may shear a foreign player line',
     },
     worldTell: {
       cue: 'glowing_shear_rig_and_charge_whine',
-      runtime: 'unwired',
+      runtime: 'existing',
+      owner: 'tether_cutter_shear_rig_v1',
     },
   }),
   contract({

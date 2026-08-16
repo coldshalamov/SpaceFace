@@ -79,7 +79,7 @@ export const PRESENTATION_AUDIO_CUE_BY_ID = Object.freeze({
   'tether.break': 'presentation.tether.break',
   'tether.whip_impact': 'presentation.tether.whip_impact',
   'massline.threat': 'presentation.massline.threat',
-  'massline.counter_tether.cut': 'presentation.massline.threat',
+  'massline.counter_tether.cut': 'presentation.massline.counter_tether.cut',
   'massline.counter_tether.overload': 'presentation.massline.threat',
   'tether.release.good': 'presentation.tether.release',
   'tether.release.clean': 'presentation.tether.release',

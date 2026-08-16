@@ -158,7 +158,9 @@ export function createSG03ActionPort(ctx, { controllerId = 'sg06' } = {}) {
       if (def.target && def.target.required && request.targetId == null) return { ok: false, reason: 'target_required' };
       if (def.target && def.target.ownedByActor) {
         const tags = new Set(request.target && request.target.tags || []);
-        if (!request.target || (!request.target.ownedBySelf && !tags.has('owned_by_self') && !tags.has('cuttable_by_self'))) {
+        const specialistPlayerLineShear = authorizesTetherCutterPrediction(entity, actionId, request, tags);
+        if (!request.target || (!request.target.ownedBySelf && !tags.has('owned_by_self')
+            && !tags.has('cuttable_by_self') && !specialistPlayerLineShear)) {
           return { ok: false, reason: 'not_attachment_owner' };
         }
       }
@@ -243,6 +245,16 @@ export function createSG03ActionPort(ctx, { controllerId = 'sg06' } = {}) {
       return kernel.inspect({ entityId, actorId: entityId, limit: 128 });
     },
   });
+}
+
+function authorizesTetherCutterPrediction(actor, actionId, request, tags) {
+  const data = actor && actor.data;
+  return actionId === 'action_cut'
+    && String(data && (data.lootTableId || data.enemyTypeId || data.typeId) || '')
+      === 'tether_control_raider'
+    && request && request.objective === ObjectiveKind.COUNTER_TETHER_CUT
+    && request.objectiveReason === 'specialist_player_line_shear'
+    && tags.has('specialist_shearable');
 }
 
 function authorizeOffensiveAction(state, actor, def, request) {

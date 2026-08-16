@@ -80,7 +80,7 @@ export function createActionService(context, attachments, routeDamage) {
     if (blocked) return reject(request, `disabled:${blocked}`);
     const missingPhysics = missingPhysicsOperation(def, combatPhysics());
     if (missingPhysics) return reject(request, `physics_port_unavailable:${missingPhysics}`);
-    const targetCheck = validateTarget(actor, request.target, def.target);
+    const targetCheck = validateTarget(actor, request.target, def.target, request);
     if (!targetCheck.ok) return reject(request, targetCheck.reason);
 
     const cooldowns = cooldownMap(actor.id);
@@ -223,7 +223,12 @@ export function createActionService(context, attachments, routeDamage) {
         result = attachments.reel(instance.target && instance.target.attachmentId, effect.restLengthDelta, effect.minRestLength);
         break;
       case 'cutAttachment':
-        result = attachments.cut(instance.target && instance.target.attachmentId, actor.id, effect.reason || 'action_cut');
+        {
+          const attachment = attachments.get(instance.target && instance.target.attachmentId);
+          result = authorizesSpecialistPlayerLineShear(actor, instance, attachment)
+            ? attachments.breakAttachment(attachment, effect.reason || 'action_cut', actor.id)
+            : attachments.cut(instance.target && instance.target.attachmentId, actor.id, effect.reason || 'action_cut');
+        }
         break;
       case 'damage': {
         const targetId = instance.target && instance.target.entityId;
@@ -351,7 +356,7 @@ export function createActionService(context, attachments, routeDamage) {
     return helpers && helpers.combatPhysics;
   }
 
-  function validateTarget(actor, target, targetDef = {}) {
+  function validateTarget(actor, target, targetDef = {}, request = null) {
     if (!targetDef.required && (!target || target.kind === 'none')) return { ok: true };
     if (!target) return { ok: false, reason: 'target_required' };
     if (targetDef.kind === 'entity') {
@@ -367,7 +372,10 @@ export function createActionService(context, attachments, routeDamage) {
     if (targetDef.kind === 'attachment') {
       const attachment = attachments.get(target.attachmentId);
       if (!attachment || attachment.state !== 'active') return { ok: false, reason: 'attachment_missing' };
-      if (targetDef.ownedByActor && attachment.ownerId !== actor.id) return { ok: false, reason: 'not_attachment_owner' };
+      if (targetDef.ownedByActor && attachment.ownerId !== actor.id
+          && !authorizesSpecialistPlayerLineShear(actor, request, attachment)) {
+        return { ok: false, reason: 'not_attachment_owner' };
+      }
       return { ok: true };
     }
     if (targetDef.kind === 'point') return Number.isFinite(target.x) && Number.isFinite(target.z) ? { ok: true } : { ok: false, reason: 'point_target_invalid' };
@@ -390,6 +398,24 @@ export function createActionService(context, attachments, routeDamage) {
 
   function entity(id) {
     return state.entities && state.entities.get ? state.entities.get(id) || null : null;
+  }
+
+  function authorizesSpecialistPlayerLineShear(actor, action, attachment) {
+    const data = actor && actor.data;
+    const source = action && action.source;
+    const metadata = action && action.metadata;
+    return !!(
+      attachment
+      && attachment.state === 'active'
+      && attachment.ownerId === state.playerId
+      && actor && actor.alive !== false
+      && String(data && (data.lootTableId || data.enemyTypeId || data.typeId) || '')
+        === 'tether_control_raider'
+      && action.actionId === 'action_cut'
+      && source && source.kind === 'ai' && source.controllerId === 'sg06'
+      && metadata && metadata.objective === 'counter_tether_cut'
+      && metadata.objectiveReason === 'specialist_player_line_shear'
+    );
   }
 }
 

@@ -440,6 +440,7 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   [FIRST_HOUR_AUDIO_SIGNATURES.masslineStrain.semanticId]: FIRST_HOUR_AUDIO_SIGNATURES.masslineStrain.recipeId,
   [FIRST_HOUR_AUDIO_SIGNATURES.masslineBreak.semanticId]: FIRST_HOUR_AUDIO_SIGNATURES.masslineBreak.recipeId,
   'presentation.tether.whip_impact': 'sfx.tetherSnap',
+  'presentation.massline.counter_tether.cut': 'sfx_doctrine_tether_spool',
   // Massline Physics Identity (Wave M2): throw/sling/tumble/bullet-time/cloak semantic cues.
   'massline.throw': 'sfx_massline_throw',
   'massline.solutionLock': 'sfx_massline_solution',
