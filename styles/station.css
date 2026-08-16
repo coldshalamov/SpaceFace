@@ -312,7 +312,9 @@
 .sx-mkt-line { vector-effect:non-scaling-stroke; }
 .sx-mkt-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; border-top:1px solid var(--line-1); padding-top:14px; }
 .sx-stat { display:flex; flex-direction:column; gap:3px; }
-.sx-stat__k { font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-3); }
+/* 12px floor (INSTRUMENT_GRAMMAR §3). Was 10.5px: uppercase at .12em tracking below the floor
+   is the 'tracked-out kit label' the grammar bans, and these are the six stat labels on THE SHIP. */
+.sx-stat__k { font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-3); }
 .sx-stat__v { font-family:var(--sx-mono); font-size:16px; color:var(--ink-0); font-variant-numeric:tabular-nums; }
 .sx-stat__sub { font-size:11px; color:var(--ink-3); }
 .sx-demand { display:inline-flex; gap:3px; align-items:flex-end; height:16px; margin:1px 0; }
@@ -459,7 +461,8 @@
 .sx-sw-row__name { font-size:14px; color:var(--ink-1); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .sx-sw-row.is-active .sx-sw-row__name { color:var(--ink-0); }
 .sx-sw-row__sub { font-size:11.5px; color:var(--ink-3); text-transform:capitalize; }
-.sx-sw-row__flag { font-family:var(--sx-display); font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--gain); }
+/* 12px floor (INSTRUMENT_GRAMMAR §3). Was 10px. */
+.sx-sw-row__flag { font-family:var(--sx-display); font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--gain); }
 .sx-sw-row__price { font-family:var(--sx-mono); font-size:13px; color:var(--ink-2); }
 
 .sx-sw__main { display:flex; flex-direction:column; gap:14px; min-height:0; }
@@ -469,7 +472,8 @@
 .sx-sw__nameplate h2 { font-family:var(--sx-display); font-weight:700; font-size:26px; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-0); margin:0; }
 .sx-sw__nameplate span { font-size:12px; color:var(--ink-2); letter-spacing:.04em; text-transform:capitalize; }
 .sx-sw__stats { display:grid; grid-template-columns:repeat(6,1fr); gap:10px; border:1px solid var(--line-1); border-radius:var(--r-md); padding:14px 16px; background:linear-gradient(180deg,var(--surface-1),var(--void-2)); }
-.sx-sw__stats .sx-stat__v i { font-style:normal; font-size:11px; color:var(--ink-3); margin-left:2px; }
+/* 12px floor (INSTRUMENT_GRAMMAR §3). Was 11px — these are the dps/u/t unit suffixes. */
+.sx-sw__stats .sx-stat__v i { font-style:normal; font-size:12px; color:var(--ink-3); margin-left:2px; }
 
 .sx-sw__side { display:flex; flex-direction:column; gap:8px; overflow-y:auto; min-height:0; padding-right:2px; }
 .sx-panel__head--bare { padding:2px 2px 6px; }

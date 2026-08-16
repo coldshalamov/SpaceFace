@@ -41,6 +41,11 @@ disjoint files. No coordinator, task-long reservation, or worktree is required.
 [`design/program/INFERENCE_LANES.md`](./design/program/INFERENCE_LANES.md):
 
 - `NEXT` → one admitted queue unit, then stop. Use `program-dispatch --next/--ready/--id`.
+- **Any 2D / HUD / menu / screen work** → §11 below, then
+  [`design/frontend/INSTRUMENT_GRAMMAR.md`](./design/frontend/INSTRUMENT_GRAMMAR.md) **before you
+  design or build anything.** The grammar is binding; per-screen specs live beside it in
+  [`design/frontend/`](./design/frontend/README.md). Frontend work that skips it is the documented
+  cause of "cheap and uninspired" output.
 - `INFERENCE <Nx> [optional scope]` → [`design/vision/INFERENCE_CONVERGENCE_METHOD.md`](./design/vision/INFERENCE_CONVERGENCE_METHOD.md)
   plus [`INFERENCE_LANES.md`](./design/program/INFERENCE_LANES.md). That door does **not** run the
   flyable-ship remaster.
@@ -742,3 +747,739 @@ coordinator is required. A named human or independent-review gate remains a sepa
 the packet explicitly requires that evidence.
 
 A receipt must say what changed, what passed, what route was observed, what performance profile was measured, what remains unproven, and which follow-ups were deliberately excluded. “Tests pass” is not a substitute for those facts; neither is a screenshot a substitute for simulation truth.
+
+## 11. The frontend is the strategic half of the game
+
+The screens and the HUD are not connective tissue between the fun parts. They are where the player
+understands the world, understands their ship, and decides what to do next. Owner direction,
+2026-08-15:
+
+> "The frontend screens and HUD **ARE** the gameplay… the home of the strategic experience that's
+> symbiotic with the fast combat and spaceflight and keeps it grounded and understood. The map,
+> menus, everything… The player needs to be able to understand the systems of the game through these
+> screens, and understand the world outside the immediate view by the map, their ship by the ship
+> menu."
+
+> "I keep having agents working on the frontend and it's very cheap and uninspired… the moment to
+> moment experience is weak right now partially because of the frontend and menu experiences."
+
+**Design authority for every 2D surface is [`design/frontend/`](./design/frontend/README.md).**
+Read [`INSTRUMENT_GRAMMAR.md`](./design/frontend/INSTRUMENT_GRAMMAR.md) before designing or building
+any screen; it is binding.
+
+### 11.1 Why frontend work keeps coming back cheap
+
+It is a **specification** failure, not a talent failure. "Make the ship screen good" produces slop
+from any author, human or agent. The grammar removes the guesswork — type roles with a hard 12 px
+floor, colour assigned by meaning, a motion contract, one layout skeleton, three disclosure tiers,
+and class-naming rules that survive the accessibility sanitisers. A per-screen document then only
+supplies the *idea*, because everything else is already decided.
+
+Three rules carry most of the weight:
+
+1. **Screens differ by centerpiece and manipulation verb, never by styling.** The Ship is a *stage
+   you orbit*; the Chart a *table you push things around on*; the Footprint a *board you trace*; the
+   Range a *box you play in*. **If two screens share a silhouette, one of them has no idea in it.**
+2. **No motion ships without a named state variable behind it.** Overshoot amplitude is your hull's
+   inertia; power beams reverse when you overdraw. Anything that cannot name its variable is
+   decoration and is cut in review.
+3. **The UI never invents.** Explanatory phrases come from an enumerated bank; an unknown tag renders
+   *nothing*. Already the discipline in `src/ui/causeLedger.js`; promoted here to house law.
+
+### 11.2 The finding that sizes the work
+
+**SpaceFace is a very large simulation with almost no windows into it.** Verified by audit of every
+system in `src/systems/` and dataset in `src/data/`, cross-checked by reverse-import map, `state.*`
+subtree grep, and event emit ∩ subscribe:
+
+| Running now | What the player sees |
+|---|---|
+| **183 KB** of NPC careers (hauler, miner, salvor, surveyor, patrol, tender) with full phase machines | `state.npcJobs` read by **0 UI files** |
+| **350 KB** of traffic simulation moving real prices — the largest file in the repo | `state.traffic` read by **0 UI files** |
+| **124 KB** encounter director deciding what attacks you and when | no read on accumulating danger |
+| **78 KB** law system — incidents, witnesses, warrants, custody, sanctuary | a **5-second banner** |
+| **73 KB** claims — 15 sites, 6 buildable modules, raids, defenses | undifferentiated dots on a map |
+| **53 KB** surrender & custody — capture, prisoners, escape | **a mercy outcome is indistinguishable from a kill** |
+| **28 KB** ace memory — 12 named pilots who remember your fights and adapt | **nothing ever names them** |
+| `player.bounty`, which decides who hunts you | appears in **zero** UI files |
+| `getDerivedStats` returns **~35** ship fields | the ship screen shows **6** |
+| Living hull already accrues kill tallies, patches, scorch, grime, graffiti | its only UI reader is **dead code** |
+| Five physics powers already bound to keys `4`–`8` | `clearingCone` / `skimCollector`: **zero** HUD refs |
+
+**The MMO depth the owner asked for does not need inventing — it needs revealing.** This is also the
+literal answer to *"I can't look at the HUD and see the big game that it will become"*: the game is
+already bigger than the HUD admits.
+
+### 11.3 The surface manifest
+
+Four instruments, one non-pausing quick tier, the docked station, and the meta layer. **Everything in
+the invisible-simulation inventory is absorbed into one of these — four surfaces, not twenty screens.**
+
+| Surface | Key | Archetype · verb | Absorbs |
+|---|---|---|---|
+| **THE SHIP** | `F2` | a stage you **orbit** | condition, living-hull scars, handling, energy budget, capability/tech, insurance |
+| **THE CHART** | `M`/`N` | a table you **push** | economy pressure, risk, living-world traffic, live events, holdings, sector dossiers, history |
+| **THE FOOTPRINT** | `F3` | a board you **trace** | crime, bounty, faction standing + spillover, ledgers, surrender outcomes, named rivals, titles |
+| **THE RANGE** | `F4` | a box you **fly in** | systems teaching, recoverable onboarding, bestiary, weak points |
+| **Verb wheel** | `Alt` held | non-pausing radial | Massline head, fleet orders, consumables |
+| **Power Bar** | `1`–`9` | HUD, permanent | the number-key abilities — see §11.4 |
+| **Docked station** | dock rail | 7 pinned destinations | market, contracts, industry, bar, factions, ledger, shipworks |
+| **Meta** | — | — | title, pause, settings, save/load, codex, mission log, game over |
+
+Owner ruling: **menus pause the world, Skyrim-style.** Full-depth full-viewport strategic screens in
+flight are legitimate; the four instruments join `PAUSING_SCREENS`. Quick mid-combat verbs stay on
+the non-pausing radial. Pause is for *thinking*; the radial is for *doing*.
+
+### 11.4 The Power Bar
+
+The owner's headline request — *"boxes for the different powers you could accumulate on the HUD,
+activated by the number keys"* — is **already half-built at the input layer.** `src/systems/input.js`
+`VERB_BINDINGS` binds `Digit4` Mass Seed · `Digit5` Well (pull) · `Digit6` Repulsor (shove) ·
+`Digit7` Clearing Cone · `Digit8` Skim Collector. `Digit0` is brake, `Digit1`–`3` answer modal
+prompts only, `Digit9` is free repo-wide. **Two of those five powers have zero references anywhere in
+`src/ui/`.**
+
+So the work is *surfacing what exists and defining how the rest of the bar fills*, not inventing an
+ability system. An empty socket is a promise, not clutter; **a filling bar is the only progression
+display that needs no explanation.** Slot map, states, and the hour-1/10/50 densification are
+specified in [`SCREENS_A_FLIGHT.md`](./design/frontend/SCREENS_A_FLIGHT.md); a rendered prototype of
+all three stages is in `_uilab.html`.
+
+Icons follow [`ICON_PIPELINE.md`](./design/frontend/ICON_PIPELINE.md): one fixed style anchor and one
+parameterised template, because the hard problem with an AI icon set is generating twenty that look
+like **one set**. Generated raster is concept reference only — the shipped artifact is authored
+24 × 24 `currentColor` stroke SVG, because `currentColor` carries ready/cooling/locked state and
+`forced-colors` strips `background-image` outright. Sixteen ready-to-run prompts are committed at
+[`design/frontend/icon-prompts/`](./design/frontend/icon-prompts/).
+
+### 11.5 Sequencing
+
+Phase 0 is not optional; every later phase depends on the shell and the motion contract, and doing it
+late means rebuilding.
+
+| Phase | Work | Payoff |
+|---|---|---|
+| **0 · Foundation** | **add the `--sf-you/foe/goal/calm/paper` role tokens to `styles/ui.css`** (they do not exist yet); **build the entity resolver** (id → dossier + label + route) that ideas 1/3/7 of `ADDITIONS.md` all share; screen shell with `onEnter`/`onExit` + per-screen backdrop; motion contract as shared helpers; adopt `uiPrimitives`; hover audio; type scale; add the four ids to `PAUSING_SCREENS`; **plus the A-list properties every screen must inherit rather than remember** — state memory, the empty/loading/error/denied state set, the responsive scalar (incl. the ultrawide HUD safe box), and text-expansion-safe layout primitives (see §11.7) | nothing visible — but every screen after is faster, consistent, cross-linkable, and does not fall over in pseudo-loc, on ultrawide, or when its data set is empty. **Retrofitting the tokens or the resolver into finished screens costs several times more than emitting them as you build.** |
+| **1 · THE SHIP** | promote `shipEngineeringStage` into live shipworks; mount `handlingProfile` + `massDelta`; power budget with beam reversal; **living-hull scars projected onto the hull**; capability sentences | biggest visible win, mostly assembly of code that already exists |
+| **2 · THE FOOTPRINT** | append-only `provenanceLedger` listening to already-emitted events; rap sheet + bounty; standing with spillover edges; queryable log; named rivals | the world visibly remembers what you did |
+| **3 · THE CHART** | pressure flows; real risk in route ranking; living-world traffic layer; live events; holdings; sector dossiers; history | the world outside the window becomes legible and actionable |
+| **4 · THE RANGE** | three drills first, not thirty; then bestiary and weak-point passes | the game finally teaches itself |
+| **5 · HUD + Power Bar** | slot bar, capacitor headroom, contextual bands, retained craft rulings | sequenced late deliberately — this is where the live performance work sits |
+| **6 · Station interiors** | flatten `station-workbench.css` with appearance held constant, **then** redesign | success test is "looks identical, file is half the size" |
+| **7 · Cleanup** | retire ~10,780 lines of dead station UI after repointing `check-ui-screen-imports.mjs` and `check-command-deck-ui.mjs` at `src/ui/station/` | both checks currently require the dead files to exist, and neither lints the live station |
+
+**Out of scope by owner ruling: progression rebalancing.** The pacing defects are real and recorded
+(start 5,000 cr vs cheapest node 6,000; the Massline's top tier behind a 2,500,000 cr capital node;
+research points have exactly one writer) but the numbers are not changed under this program —
+presentation only.
+
+### 11.6 Verification
+
+Standard UI suite plus a **capture matrix**, not a single screenshot: every new surface captured in
+**default · reduced-motion · `forced-colors` · pseudo-localized**, at **2560×1080 · 1920×1080 · 1280×720**.
+Pseudo-loc and ultrawide are where this design is most likely to silently degrade, and both harnesses
+already exist. Reference frames are diffed in CI (§11.7 item 13) — otherwise "a green check is not
+proof" stays permanently true. A screen is not done until its silhouette is distinguishable from every other screen with
+the text removed, its APRON holds at least one verb, and it has been *looked at* in a captured frame.
+
+**A green check is not proof, demonstrated three times here:** the clipped Mission Log card passes
+every check in the suite; `check:ui-frame-sleep` inspects `rAF` and cannot see compositor-side
+`infinite` CSS keyframes; and `src/ui/screens/techTree.js` renders in browser-default 10 px sans on
+every frame because Canvas 2D silently ignores `var()` in `ctx.font` — with nothing reporting it.
+
+### 11.7 A-list standards — properties every screen must have
+
+Beyond the per-screen designs, a top-tier frontend is defined by the screens that **do not fall over**
+in conditions the author was not thinking about. Full detail:
+[`design/frontend/A_LIST_GAPS.md`](./design/frontend/A_LIST_GAPS.md). The four that will visibly
+break this build if ignored:
+
+| # | Standard | Status | The rule |
+|---|---|---|---|
+| 1 | **Text expansion** | **missing from every spec** | The game has a live localization system and a pseudo-loc capture harness — every `.devshots/alpha/m6-*` frame is pseudo-localized. No spec mentions it, while the specs are full of fixed widths and `nowrap`. **No fixed-width text container; design against +40 %; never concatenate a sentence; capture in pseudo-loc, not just English.** |
+| 2 | **Empty / loading / error / denied states** | unspecified | A correct-but-blank screen reads as broken (the Chart's Economy tab returning empty until you have priced two stations is the live symptom). Every pane defines all four, each naming *what would fill it* and carrying a verb. |
+| 3 | **Screen state memory** | **verified missing** | `galaxyMap.js` persists no layer toggle, commodity, zoom or tab — every open is a fresh open. Every instrument restores the state the player last chose, per save. Invisible when present, infuriating when absent. |
+| 4 | **Responsive strategy** | **verified missing** | Exactly one breakpoint exists (`max-width:900px`). Ultrawide must **clamp the HUD to a centred safe box** rather than stretch to unreadable corners; 4K scales by `--ui-scale`; handheld gets a reduced-density variant. Capture at 2560×1080 / 1920×1080 / 1280×720. |
+
+Tier-2 and tier-3 standards in the same document cover: skill-tree needs an A-list tree has and this
+plan lacks (search, "what leads to this?", a planned path, preview-before-commit, branch comparison,
+and an explicit respec decision); Chart gaps (measurement, route comparison, authored fog-of-war,
+layer presets); data-presentation conventions; list virtualization and a UI frame budget;
+destructive-action policy; key-rebinding conflict display; a notification priority ladder across all
+transient channels; returning-player re-establishment; **visual regression testing** (the only real
+answer to "a green check is not proof"); text scaling; and the three absent meta screens — credits,
+lifetime statistics, and photo mode.
+
+### 11.8 Candidate additions
+
+Ranked backlog in [`design/frontend/ADDITIONS.md`](./design/frontend/ADDITIONS.md), each verified as
+genuinely absent from the codebase, with a deliberately-rejected list so they are not re-proposed.
+
+The three that would most change how the game feels:
+
+1. **Everything is a link.** Every entity name rendered anywhere — faction, commodity, station, hull,
+   captain, sector, module — is clickable and opens that entity's dossier in place. **This is what
+   makes a large game feel like one system rather than twelve menus**, and it is the cheapest answer
+   to "the player needs to understand the systems through these screens": rather than a screen per
+   system, every mention of a thing becomes a door into it.
+2. **Loadout presets.** Customisation only produces *different kinds of gameplay* if switching is
+   cheap enough to experiment with. Each preset is labelled by playstyle, never by stats.
+3. **The watch list.** Pin a price, a rival, a deadline, a faction; it follows you onto the HUD. The
+   game tracks far more than a player can hold in their head — let the player choose the slice.
+
+**All three share one entity resolver**, which is why it sits in Phase 0.
+
+**Rejected and recorded:** a separate stats screen (folds into the Footprint), a fleet-management
+screen (VISION.md forbids the empire manager — the player never orders anything but their own ship),
+a player market, skill *points* to allocate (progression grants verbs, not sliders), a second
+minimap, tutorial popups (THE RANGE replaces them), and floating damage numbers (the HP-bar
+dogfighting VISION.md forbids).
+
+### 11.9 The one scheduling law
+
+Three separate reviews reached the same conclusion by different routes:
+
+> **Anything every screen needs must exist before the first screen is built.**
+
+The colour token block, the canonical entry-key table, the entity resolver, state memory, the four
+required states, the responsive scalar and text-expansion-safe layout are all in this class. Each was
+discovered as a *defect* — a divergence between parallel authors, or a gap only visible once
+rendered. Retrofitting any of them means touching every screen a second time.
+
+That is what Phase 0 is for, and it is why Phase 0 is not optional.
+
+### 11.10 Implementation status
+
+| Phase | State | Evidence |
+|---|---|---|
+| **0 · Foundation** | **NEARLY DONE.** Role/type/motion tokens, the CREST/STAGE/APRON/DRAWER skeleton, text-expansion base rules and delegated hover audio landed (`8adcd339`, `65b81ee8`). **J3 the four data states, J5 the entity resolver + drawer, and J4 screen state memory have now landed** (`09111881`, `61497eab`, `16067c5e`). **Still owed: the responsive / ultrawide strategy — and nothing in J1–J10 covers it.** | `styles/ui.css` §11/§13/§14; `src/ui/entityResolver.js`; `src/ui/screenMemory.js` |
+| **1 · THE SHIP** | **step 1 of 3 done.** Promoted to a pausing in-flight screen (`F2`), one shared WebGL mount serving both hosts, flight host = instrument minus commerce. Polish pass fixed the loading gate, 22 clipped nodes and 11 sub-floor type nodes (`c01e55c4`). **Steps 2–3 (handling, power, condition, capability) are J2 below.** | `src/ui/ship/shipScreen.js`; `scripts/probe-ship-polish-audit.mjs` |
+| **2–7** | not started | — |
+
+**Phase-0 addendum — three rulings the build produced, binding on every job below.**
+
+1. **`--sf-data-face` is not optional.** It was declared "numerals only, tabular-nums" and used **zero
+   times**, while the Chart's own inspector — directly behind the first drawer built on it — already
+   sets its numbers in mono. Every figure on every new surface binds it. This one change did more
+   for "reads as an instrument, not a web component" than any other in the pass.
+2. **No motion without a state variable — enforce by subtraction.** J3's LOADING sweep shipped as
+   `animation: … infinite`, which §5 forbids (nothing supplied progress) and which
+   `check:ui-frame-sleep` structurally cannot see, because it inspects rAF and this is a compositor
+   keyframe. It was **deleted**, not tuned. The state is carried by the word, the glyph, `aria-busy`
+   on the host, and the skeleton's shape. `check:data-states` now fails any `infinite` in the block.
+3. **Shape tokens exist now — use them, don't re-declare.** `--sf-rail-w`, `--sf-goal-edge`,
+   `--sf-track-micro`. Sections 13 and 14 had already drifted apart on rail width, radius and micro
+   tracking before a second screen adopted anything; three overrides in the first two consumers is
+   how `station.css` became a 202-selector override pile.
+
+### 11.10a What the reviews changed, and what they cost
+
+Four independent design reviews ran against the shipped J3/J5 code and captured frames. They are
+recorded here because several findings **generalise to every job below**, and two of them were
+defects in the *verification*, not the feature.
+
+**The checks were wrong in the same way the repo has been bitten before — twice, in one session.**
+
+- `check-data-states` asserted a `forced-colors` branch existed by substring, and **matched the
+  words in a comment** while the `@media` rule was gone. Its reduced-motion assertion read a
+  fixed-size window that **spilled into the next block** and was satisfied by *that* block's rule.
+  Both now parse the brace-balanced at-rule with comments stripped.
+- It scanned `font-size:` only, so an **11px keycap shipped inside the block whose own comment
+  claims a 12px floor**. It reads the `font:` shorthand now too.
+- `probe-data-states` captured every frame at ~535px while the live sites render in a **~287px
+  inspector column**, and no fixture passed `verb.key`, so the offending keycap was never
+  instantiated in any of 12 frames. **The worst case was the common case, and nobody had looked at
+  it.** Adding the real column immediately exposed prose wrapping **one character per line** — which
+  violated none of the type-floor, clipping or focus measures and reported green.
+- `check-screen-memory` had two rules that **passed their own mutation**: an LRU test that a frozen
+  clock satisfied by accident, and deny-list keys compound enough that three rules matched each, so
+  removing one changed nothing. Both rewritten.
+
+> **The generalised rule, now the standard for every job below: negative-test every rule you write.
+> A check that has never been seen to fail is a check you have not written yet.** Four of the
+> fourteen rules added this session were too weak to catch the defect they existed to catch, and all
+> four were found by mutation, not by reading.
+
+**Findings that change the plans below** are folded into J1, J2, J6–J10 directly. The two worth
+stating once, globally:
+
+- **Adoption is the deliverable, not the primitive.** J3 shipped with three EMPTY sites in one tab
+  of one screen; LOADING, ERROR and DENIED had zero production consumers. J5 shipped with three
+  tagged nouns. A `tagged > 0` check passes both and proves nothing. **Every job below states a
+  named minimum adoption set, and its check asserts that set — not a non-zero count.**
+  **`check:data-states` and `check:entity-links` do NOT yet do this** — they still fail only on a
+  zero/near-zero count. Encoding the named sets is part of finishing each job's adoption pass, not a
+  separate task; until then the rule binds J1 onward and those two are explicitly grandfathered.
+- **Tier 2 does not exist yet.** `[data-why]` has one match in `src/ui/` and it is a *comment*. The
+  disclosure ladder runs 1 → 3 across every surface built so far, and §7 calls tier 2 "the mechanism
+  that lets this game be deep without being a spreadsheet." It is cheap — `causeLedger`'s enumerated
+  phrase bank is the pattern — and it is now a line item in J2, J6 and J8.
+
+**Also landed from the earlier direction document:** the live-overlay fix (`body.ui-live-screen #hud { opacity: .5 }`) so a non-pausing screen no longer blinds the player, and an `sf-select` primitive (adoption incomplete — native `<select>` remains in `galaxyMap.js`, `screens/automationPanel.js`, `screens/starmap.js`).
+
+### 11.11 What inhibits the player's best experience
+
+Measured, not asserted. Ranked by cost to the player. This table is the *why* behind §11.12.
+
+| # | Inhibitor | Verified evidence |
+|---|---|---|
+| 1 | **The simulation is invisible** | `state.npcJobs` (183 KB of career sim) and `state.traffic` (350 KB, largest file in the repo) are read by **0 UI files**. `player.bounty` — the number deciding who hunts you — appears in **0** UI files. |
+| 2 | **You cannot read your own ship** | `getDerivedStats` returns ~35 fields; the ship screen shows **6**. Every module advertises a power `DRAW` against a capacity never displayed. Condition/damage absent. |
+| 3 | **Nothing explains a rule** | `screens/help.js` = four blocks of keybindings. `screens/codex.js` = 8 story-gated *narrative* tabs. `systems/onboarding.js` speaks one 6-second line, unrecoverable. Station tooltips: factions 0, industry 0. |
+| 4 | **The world does not remember you** | `heat` is a 0..1 scalar that decays. `factions.js` overwrites rep by scalar. Both emit a `reason` and discard it. No crime log, no standing history. |
+| 5 | **The good powers are unreachable** | Start = 5,000 cr; cheapest of 29 tech nodes = 6,000. `mod_massline_spool_l` (the signature mechanic's ceiling) requires `tech_flagship_command` = 2,500,000 cr behind Capital Hulls. RP has exactly one writer. |
+| 6 | **The HUD hides what you can already do** | Keys `4`–`8` fire five physics powers today. `clearingCone` and `skimCollector` have **zero** references in `src/ui/`. |
+| 7 | **Screens forget everything** | `galaxyMap.js` persists no layer toggle, commodity, zoom or tab. |
+| 8 | **Correct-but-blank reads as broken** | Fixed once by hand (THE SHIP showed an empty bay for 12 s cold). No shared state policy, so the next screen repeats it. |
+| 9 | **The UI would break in translation** | A live localization system and pseudo-loc harness exist; no spec accounted for +40 % string growth. |
+| 10 | **One breakpoint** | `@media (max-width:900px)` is the only one. No ultrawide, 4K or handheld strategy. |
+
+> **The through-line: this is a surfacing problem, not a content problem.** Nearly every inhibitor is
+> *"the game already computes this and never shows it."* Several jobs below are therefore assembly,
+> not invention.
+
+### 11.12 The ten jobs
+
+Each job states the A-list pattern it borrows, the player outcome, the exact seams, the build steps,
+how it is verified, and the traps that will bite. Full narrative in
+[`design/frontend/NEXT_JOBS.md`](./design/frontend/NEXT_JOBS.md).
+
+---
+
+#### J1 · The Power Rail — *short*
+
+**Pattern:** the MMO/looter action bar (WoW, Destiny) — permanent, numbered, fills as you grow.
+**Player outcome:** *"I can see what I can do, and I can see it growing."* The direct answer to
+*"I can't look at the HUD and see the big game."*
+
+**Current state.** `src/systems/input.js` `VERB_BINDINGS` already binds `Digit4` `deployMassSeed` ·
+`Digit5` `deployWell` · `Digit6` `deployRepulsor` · `Digit7` `toggleClearingCone` · `Digit8`
+`toggleSkimCollector`. `Digit0` = `brake` (keep, render as **not a slot**). `Digit9` free.
+
+**Build steps.**
+1. Render the rank bottom-centre in three bands of three — **ORDNANCE** (1–3, instantaneous, leaves
+   nothing behind), **FIELDWORK** (4–6, spawns a persistent bounded object), **RIG** (7–9,
+   ship-attached sustained toggle). The banding is the teaching and costs zero rebinding.
+2. Add the slot digit to each action's existing code array — never substitute. Multi-code bindings
+   are already the house idiom (`tether: ['Space','KeyF']`).
+3. Slot states: ready · cooling (radial) · armed · locked · unaffordable · empty socket. **Empty
+   sockets ship visible** — they are the progression display.
+4. Implement the **slot-claim contract**: `hud:slotClaim { claimId, slots[], answers[], expiresAt, mode }`
+   on prompt open, `hud:slotRelease { claimId }` on close. Modes `SINGLE` / `PARTIAL` / `FULL`.
+5. Icons: generate from the 16 committed prompts, author to 24 × 24 `currentColor` stroke SVG per
+   `ICON_PIPELINE.md`, register beside `station/icons.js`.
+
+**Seams:** `src/ui/hud.js`, `injectHudCss` in `src/ui/uiRoot.js`, `src/systems/input.js`,
+`src/ui/bindings.js`, new `src/ui/powerIcons.js`.
+
+**TRAP — the digits are already claimed, and the claimants win.** Four prompt surfaces register on
+`document` in the **capture phase** and call `stopPropagation()`, so they beat the window-level
+flight adapter today: `contactHailPrompt.js` (`Digit1–3`), `pirateParleyPrompt.js` (`Digit1–3`),
+`lawfulInspectionPrompt.js` (whose comment states it deliberately owns `Digit1` "so a flight binding
+cannot fire through it"), and **`encounterChoicePrompt.js`, which claims `Digit1`–`Digit9` — the
+entire rank** (`:149` capture listener, `:212` `/^(?:Digit|Numpad)([1-9])$/`). The HUD cannot
+un-claim these. It must **render the claim.**
+
+**Other traps:** never name a class `*-pulse|blink|flash` (`sf-reduce-flash` blanket-kills it); never
+put `panel|card|menu|modal` on a tile carrying meaning in a gradient (`forced-colors` strips it).
+
+**Verify:** slot fires the verb; claim/release round-trips through an encounter prompt without
+eating a keystroke in either direction; reduced-motion and `forced-colors` legible; capture at hour-1
+/ hour-10 / hour-50 densities (prototype exists in `_uilab.html?focus=pb`).
+
+**Now free from Phase 0 (use them, do not re-invent):** the four data states for an empty/locked
+socket (`mountDataState`), `[data-entity]` on any power that names a thing, `--sf-data-face` for the
+slot digits and cooldown figures, and the `--sf-rail-w` / `--sf-goal-edge` / `--sf-track-micro`
+shape tokens. **Slot digits are numerals — they bind the DATA face.**
+
+**Motion budget, per §11.10a ruling 2:** the cooling radial is legitimate (it encodes a real
+remaining-time variable). Nothing else on the rail animates at rest, and no `infinite` keyframe
+ships — `check:ui-frame-sleep` inspects rAF and cannot see one.
+
+**Depends on:** nothing. Spec complete in `design/frontend/SCREENS_A_FLIGHT.md` §2.
+
+---
+
+#### J2 · Ship bands 2–3: handling, power, condition, capability — *short*
+
+**Pattern:** Elite Dangerous outfitting comparison + Warframe ghost-preview on hover.
+**Player outcome:** the answer to *"why does my ship fly like this"*, a power budget with a capacity
+to draw against, visible damage, and progression stated as capability.
+
+**Current state — mostly assembly.** These are **finished renderers behind a dead import chain**
+(`screens/stationHub.js` → `outfitting.js`/`shipyard.js`, neither registered):
+- `src/ui/panels/handlingProfile.js` — returns agility / inertia / topSpeed / brake **normalised
+  against the whole 13-hull roster**, plus `flightClass` and `driveLabel`. A full bar therefore means
+  "best in the game", not "100 units".
+- `src/ui/panels/massDelta.js` — already speaks in verbs (`sluggish`/`twitchier`, `shorter stop`/
+  `longer stop`) and returns a real `stopDistanceEstimate` in world units.
+- `src/ui/panels/moduleRisk.js` — contraband / noise / mass / power / mass-stack marks.
+- `src/ui/shipEngineeringStage.js` — 3D stage + `routeBeam` + `rippleField` + **6 `circularGauge`s**
+  + `projectSlot()` bridging `projectLocalPoint`.
+
+**Build steps.**
+1. **HANDLING** — mount `handlingProfile` verbatim. Bars kick and settle in proportion to their own
+   value (agility snaps, inertia lumbers). Hovering a fitted module runs `massDelta` and **ghosts the
+   bars to where they would go**. Print the verb at 40 px and the number at 12 px.
+2. **POWER** — headroom = `capRegen − continuousDrain` against `capMax`. `setGauges` already computes
+   `continuousDrain / (capRegen * 1.5)`. `routeBeam` runs reactor → each drawing slot with dash
+   velocity ∝ headroom; **over budget the dashes march backwards.** *Flag honestly: per-use burst
+   costs are not modelled as fields — ship standing drain and label burst "not modelled".*
+3. **CONDITION** — `src/core/livingHull.js` already persists `killTally` (cap 13), `repairPatches`
+   (cap 4), `heatScorch` (cap 3), `grime`, `washCount`, `graffitiLine`/`graffitiAuthor`, and
+   `render/livingHullPresentation.js` holds `PATCH_TRANSFORMS`/`SCORCH_TRANSFORMS` **in the same
+   normalised ship-space format `projectLocalPoint` consumes** — so captions pin to real scars for
+   free. Washing costs you the tally: a real decision.
+4. **CAPABILITY** — every tech node's headline is the physical act it grants, second person.
+   `describeTechNodeReadiness()` already returns structured blockers — render "you're short 2 parts",
+   never a greyed button.
+
+**Seams:** `src/ui/station/screens/shipworks.js` (the live host — extend, do not fork),
+`src/ui/shipPreviewMount.js` (`projectLocalPoint`), the four dead panels above.
+
+**Now free from Phase 0:** `--sf-data-face` for every figure in all four bands (this is the band
+most made of numbers, so it gains the most); `mountDataState` for the hull-resolve gate, replacing
+`sx-sw__acquiring` and its unbounded `infinite` sweep; `[data-entity]` on every module and hull name
+so a fitted part is a door to its dossier; `[data-why]` on each derived stat.
+
+**`describeTechNodeReadiness()` pairs with the DENIED state** — "you're short 2 parts" is exactly
+DENIED's contract (why, and what would make it allowed), so render it through the primitive rather
+than as a bespoke greyed row.
+
+**Verify:** extend `scripts/probe-ship-polish-audit.mjs` — assert the four bands render, the beam
+reverses when `continuousDrain > capRegen`, and `belowFloor` stays 0. **Capture at the real pane
+width, not a comfortable one** (§11.10a), and **negative-test every assertion you add**: four of the
+fourteen rules written this session passed their own mutation.
+
+**Depends on:** Phase 1 step 1 (done). **Do before J9.**
+
+---
+
+#### J3 · The four data states, as a shared primitive — *short* — **PRIMITIVE LANDED `09111881`, ADOPTION OWED**
+
+**Pattern:** the skeleton/empty-state discipline of every shipped consumer app.
+**Player outcome:** never a blank screen that is technically correct.
+
+**Shipped:** `dataState` / `dataStateHtml` / `mountDataState` / `settleDataState` in
+`src/ui/uiPrimitives.js` + `styles/ui.css` §13. `headline`, `fills` and `verb` are **required and
+throw** — optional arguments get omitted, and this decays back into the dead `.sf-empty` with more
+ceremony. A **string form** exists because most screens here assemble `innerHTML`; a DOM-only
+primitive could not be adopted where the defect lives.
+
+**Corrections to the plan as written:**
+
+- ~~"`sx-sw__acquiring` is now a correct LOADING state"~~ — **it is not a model to copy.** It runs
+  `animation: … infinite` and only sets `visibility:hidden` when done. A compositor animation does
+  not reliably stop on `visibility:hidden`, and `check:ui-frame-sleep` inspects rAF so it cannot see
+  it. In a shared primitive that defect multiplies across every pane. `mountDataState` **clears its
+  host** and `settleDataState` **detaches**; hiding is not stopping.
+- **"LOADING bound to real work" is stronger than it reads: with no progress signal, ship NO
+  motion.** See §11.10a ruling 2.
+- **`aria-busy` goes on the host being mutated, not on the live region** — on the region it can
+  suppress the announcement the region exists to make. ERROR/DENIED use `role="alert"` (implicit
+  assertive + atomic), not `role="status"` + an explicit `aria-live`.
+- **Give each state a rail silhouette** (dashed EMPTY, doubled DENIED). Under `forced-colors` every
+  rail collapses to one `CanvasText` colour and three of four states were otherwise
+  pixel-identical — and use the **longhand** `border-inline-start-color` there, since the shorthand
+  resets style and width and erases the silhouettes.
+
+**"Then audit every pane" is the job, and it is NOT done.** Three EMPTY sites in one tab of one
+screen shipped; LOADING, ERROR and DENIED have **zero** production consumers. §12 item 9 is a
+per-*screen* requirement, so what exists today is a component, not a property. **Named minimum
+adoption set, and `check:data-states` should assert it rather than `count > 0`:** the Chart's
+market-feed path (ERROR), THE SHIP's hull-resolve gate (LOADING, replacing `sx-sw__acquiring`), and
+the station dock-refusal path (DENIED — `dockDeny.js` already enumerates the reasons).
+
+**Verify:** `check:data-states` (contract, statically) + `probe-data-states` (the capture matrix).
+**The probe must render the pane's REAL width** — capturing at ~535px when the live column is ~287px
+hid a one-character-per-line wrap that broke none of the other measures.
+
+**Depends on:** nothing. **Do before J6/J7/J8** or the fix is repeated per screen.
+
+---
+
+#### J4 · Screen state memory — *short* — **LANDED `16067c5e`**
+
+**Pattern:** universal. Invisible when present, infuriating when absent.
+**Player outcome:** the map, ship and station open where they were left.
+
+**Shipped:** `src/ui/screenMemory.js`, a bag on `state.ui.screenMemory` persisted per save under
+`data.uiScreenMemory` (schema **v13** + migration). Adopted by the Chart for tab, commodity, layer
+set and bookmarks; `screenManager` owns scroll generically via `[data-sf-scroll]`.
+`check:screen-memory` is a real behavioural test of the store.
+
+**The plan as written was wrong in one place — corrected, and the correction is the lesson.**
+
+> ~~"active tab, filters, sort order, layer set, **zoom/focus**, scroll position, **selected
+> entity**"~~
+
+- **Zoom/focus must NOT persist.** `galaxyMap.js` `onShow` carries an explicit ruling: *the camera is
+  rebuilt from the intent on every open rather than persisted; `mapAuthority` is the single authority
+  for where the map opens (pinned by `check:map-authority`), and a camera that survived the close
+  would silently outrank it.* `onShow` always applies an intent, and its `SYSTEM` default sets a
+  camera — so a persisted zoom is overwritten on every open. **Inert first, harmful second:** the
+  next engineer sees "the zoom restore doesn't work" and fixes it by making the restore outrank the
+  intent, which is exactly what that comment exists to prevent.
+- **Selected entity must NOT persist.** Entity ids are re-minted when the sector regenerates on load
+  — which is why `saveSystem` clears stale targets at all. A restored selection points at a different
+  ship.
+- **Nor the search query.** A forgotten filter is the fastest way to make a working screen look
+  broken, and it lands squarely on §12 item 9.
+
+**Two hazards the plan did not name, both found by testing:**
+
+1. **Recency cannot be `simTime`.** Menus **pause the world**, so `simTime` is frozen for exactly as
+   long as the player is using screens: every bag carries an identical timestamp and eviction order
+   is undefined. Use a monotonic write counter, and carry it through the save.
+2. **Screens are module singletons.** `galaxyMapScreen._layers` lives on the object literal, so save
+   A's choices sit there when save B opens. **Restore must start from authored defaults every time**,
+   never merge over whatever is present. Note the ordering trap: `save:loaded` is emitted *after*
+   `_restoreScreenMemory`, so a reset on that event wipes the bag it just restored.
+
+**Also:** flush on `save:started` — the Chart is a non-pausing live overlay, so the interval autosave
+fires while it is open and would otherwise record the previous session.
+
+**Trap (as written, and it held):** declare a cap and an eviction policy with the new save key.
+Shipped as 16 screens / 24 keys / 160-char strings / 32-entry arrays, bounded on the **write** path.
+
+**Trap the plan missed — the save plan is duplicated and has ALREADY diverged.** `saveSystem.js`
+lists its keys twice (an ordered `[key, fn]` array *and* `serializeData()`). `entropy` is in the
+second and **not the first**, so **autosaves ship without RNG continuation while manual saves do
+not** — and `check:sim` cannot see it, because it reloads via the manual path.
+`check:screen-memory` reports this as a standing warning. **Not fixed here; it is a real behaviour
+change and belongs to whoever owns save.**
+
+**Trap for any future save-version bump:** `simSnapshot.snapshotMeta` hashes `state.meta.version`,
+so **every** version bump drifts the 47-A authoritative hash by construction. Re-record the golden
+with the isolation evidence (pin the version back, confirm the check passes, then bump).
+
+---
+
+#### J5 · Everything is a link — *medium* — **MECHANISM LANDED `61497eab`, TAGGING PASS OWED**
+
+**Pattern:** EVE Online "Show Info", Destiny inspect — every noun is a door.
+**Player outcome:** twelve menus stop being twelve menus. Read a contract naming a company → click →
+standing, doctrine, territory, your history → click a sector → the Chart opens focused there.
+
+**Shipped:** `src/ui/entityResolver.js` (all eight nouns, `null` for anything unknown) and
+`src/ui/entityLinks.js` (delegated handler + tier-3 drawer). `check:entity-links` exercises the
+resolver for real; `probe-entity-drawer` drives it in the running game.
+
+**Three placement facts, each a live trap — bake them into any future drawer:**
+
+1. **The delegate goes on `#screens`, never `document`.** `screenManager` binds
+   `shieldModalPointerEvent` to that node in the **bubble** phase and `stopPropagation()`s whenever a
+   modal is open, so a document-level delegate is silently dead. Same node is fine — it is not
+   `stopImmediatePropagation`.
+2. **The drawer mounts INSIDE the active screen root.** The Tab trap cycles within `rec.el` and tests
+   `rec.el.contains(active)`; a body-parented drawer is yanked back into the screen behind it on
+   every Tab, and `screensRoot.inert` does not cover it either.
+3. **It is `position: absolute`, not `fixed`.** `.screen` carries `transform: translateY(0)` for its
+   transition, and **any** transform makes that element the containing block for fixed descendants —
+   while `#screens` flex-centres its children, so a screen root can be content-sized. `.sf-drawer`'s
+   default in §11 is now `absolute` at source rather than patched by a descendant selector.
+
+**Defects worth not repeating:**
+
+- **Do not tint a structural rail with an entity's lore colour.** The 14 faction hexes are not roles:
+  `faction_free #4ECBE0` **is** the banned cyan, `faction_vael #2FCFA0` reads as `--sf-you` ("a
+  gain") for a hostile power, `faction_archive #3A2A5A` sits at ~1.5:1 on `--sf-surface`. A mark that
+  means "structure" on one dossier and "identity" on another cannot be learned.
+- **A route verb must not push a screen that already owns the stack.** `pushScreen` has **no
+  duplicate guard** — it runs `onHide`, then pushes unconditionally — so "Open on the Chart" from the
+  Chart stacked it twice and cost the player two Escapes. Guard it, and relabel to *Focus* when
+  already there.
+- **A focusable element needs a role.** Tagged `<span>`s carried `tabindex="0"` with no `role`, so a
+  screen reader announced plain text (WCAG 4.1.2).
+- **Never print a noun twice in one dossier**, once as inert prose and once as a link. It teaches the
+  player that links are arbitrary.
+- **Group the link list by entity type.** Ungrouped it is a wrapped paragraph of underlined proper
+  nouns — a "See also" footer, the most generic pattern on the internet — and the player cannot tell
+  what kind of thing they are about to open. Grouped, full-width rows are the drawer's **STAGE**; a
+  CREST and an APRON with nothing between them is what read as an unfinished sidebar.
+
+**The tagging pass is the actual deliverable and it is NOT done — three nouns in one screen.** A
+`tagged > 0` check passes that and proves nothing. **Named minimum set:** the Chart inspector's
+Jurisdiction value, mission-log rows, station market and contract rows, and the codex. Promote
+`entityAttr` out of `galaxyMap.js` into the resolver as a shared export first.
+
+**Still owed on the mechanism:** `ui:entityRoute` is emitted with **zero consumers**, so "the Chart
+opens focused there" — J5's own headline — does not happen yet. Consume it in `galaxyMap.onShow`.
+
+**Extends the existing tier-2 mechanism.** `src/ui/causeLedger.js` already hovers an explanation over
+market rows from an **enumerated phrase bank** with the rule *"unknown tag renders NOTHING"*.
+`[data-why]` is tier 2; `[data-entity]` is its tier-3 sibling. Keep the no-invented-text discipline.
+**Tier 2 is still entirely absent** — the drawer computes reasons (`aggro → "Refused — attacks on
+sight"`, the raw security scalar) and flattens them into value strings. Emit `[data-why]` from the
+same enumerated source.
+
+**Why early:** the resolver is shared with the watch list and global find (`ADDITIONS.md` §3, §7).
+Retrofitting tags into finished screens costs several times more than emitting them while building.
+
+---
+
+#### J6 · THE FOOTPRINT — *medium*
+
+**Pattern:** Red Dead 2's wanted system + Crusader Kings' *"why does this person hate me"* causal chain.
+**Player outcome:** the world visibly remembers. A hostile patrol is traceable back to the collision
+that caused it. Key `F3` (canonical table, `INSTRUMENT_GRAMMAR.md` §10.5).
+
+**Current state — the chain is already emitted and thrown away.**
+- `src/systems/lawSecurity.js` emits `law:incidentReceipt`.
+- `src/systems/factions.js` `applyRep(factionId, delta, reason)` emits
+  `faction:repChanged { factionId, delta, reason, newRep, newTier, tierChanged }` — **carries `reason`**.
+- Spillover emits `faction:repSpillover { factionId, delta, srcFaction }` — **carries `srcFaction`** —
+  plus a second `repChanged` with `` reason: `spillover:${reason}` ``.
+
+So *collision → incident → rep change → spillover to a faction you have never met → hostile patrol*
+is fully reconstructible.
+
+**Build steps.**
+1. An **append-only `provenanceLedger` LISTENER**. It must not touch `lawSecurity`'s ring buffer or
+   `factions`' mutation point. Note both existing stores actively discard history: `RECEIPT_CAP = 24`,
+   `TRADE_LEDGER_MAX = 10`.
+2. New save key with a **declared cap and eviction policy** (schema v12; `SAVE_SCHEMA.md` is generated).
+3. Three linked panes: **Rap sheet** (crimes, sector, witness, decay clock, and **your bounty** — a
+   number currently in zero UI files) · **Standing** (faction nodes with **visible spillover edges**)
+   · **Log** (a queryable/filterable/sortable `shipLedger`, today prose-only, plus `lossLedger`,
+   `aftermathWrecks`, surrender outcomes, and the **12 named aces who already remember your fights**).
+4. **Verbs, so it is not a spreadsheet:** pay bounty, bribe (`bribeCost` exists in `factions.js`),
+   find the accuser, take the amends contract, jump to the sector on the Chart.
+
+**Trap:** surrender/custody must appear as a distinct outcome type — today a player **cannot tell a
+mercy outcome from a kill**.
+
+---
+
+#### J7 · THE RANGE — *medium*
+
+**Pattern:** Titanfall 2's gauntlet, Hitman training, Deep Rock tutorial bays — teaching by doing.
+**Player outcome:** learns the physics toolkit by flying it, and can return to the lesson. Key `F4`.
+
+**Precedent:** `src/ui/screens/drill.js` is a **3,154-line playable full-screen pausing minigame**
+already in this repo. The pattern is proven — read it before designing.
+
+**Build steps.** Three drills first, not thirty: a Massline swing with one asteroid and one drone; a
+mass-versus-turn-rate slalom; an energy-budget hold. Then weak-point passes per enemy class, which
+absorbs the **bestiary**: `src/data/enemies.js` (15 types, imported only by the dev sandbox),
+`src/data/encounters.js` (48 encounters, 31 barks, 38 receipts — **0 UI importers**),
+`weakPoints.js` (7 classes).
+
+**Trap:** research points currently have **exactly one writer** (mission completion, `missions.js`).
+Rewarding drills with RP is a **sim ask** — flag it, do not assume it.
+
+---
+
+#### J8 · THE CHART as a dispatch console — *long*
+
+**Pattern:** X4's map, Total War's campaign layer, Death Stranding route planning.
+**Player outcome:** answers *"where should I take this cargo, and is that route survivable?"* in
+seconds — and lets the player act on the answer without leaving the map.
+
+**Sharpen, never rebuild.** `src/ui/galaxyMap.js` is 10,109 lines and is the strongest asset in the
+repo: 3 zoom levels, 8 toggleable layers, an 8-tab inspector with stated unavailability reasons, a
+knowledge/staleness model, route plotting, search, bookmarks, live at ~15 Hz. **Nothing inside
+`src/ui/map/mapCamera.js` moves** — its `zoomAt` is cursor-anchored and provably correct even when
+the span clamps.
+
+**Build steps, each fixing a verified defect.**
+1. **Flows as economic pressure.** Inter-sector cargo *volume does not exist* — do not invent it.
+   Compute surplus-vs-equilibrium from the shipped pure functions `economyEquilibriumForListing`,
+   `economyStockTargetForRole`, `priceMult`. Replace `trade: bothCharted` (**graph adjacency
+   relabelled as a trade lane**) with a pressure-weighted edge. Add a top-3-pressures mode — today
+   the gradient shows **one commodity at a time**, defaulting to `'cmdty_ore_iron'`.
+2. **Risk stops being zero.** `riskEstimator: () => 0` makes route ranking a lie. Feed it
+   `dangerModel` + `securityReadout` + `factionPresence`, then offer **fast / safe / profitable** and
+   state the trade-off in words.
+3. **The living world.** `trafficRoleMixForSector(sector, state)` is a **pure function returning
+   traffic composition** — a real layer with no new sim.
+4. **Live events** from `src/data/conflictZones.js` (`CONTESTED_SECTOR_BY_PAIR`).
+5. **Holdings** — `claims.js`: 15 sites, 6 buildable modules, 3 specializations, raids, defenses,
+   currently undifferentiated dots with zero `claim:*` events subscribed.
+6. **Sector dossiers** — 24 regional economy + 24 regional ecology profiles + 24 × 14 zone types,
+   **all with 0 UI importers**.
+7. **History** — "where I have been", fed from J6's ledger.
+8. **Measurement, route comparison, layer presets, authored fog-of-war** (`A_LIST_GAPS.md` §6).
+
+**Trap:** the Chart's rAF loop **never self-parks** — it runs every frame while open. Do not add a
+second such loop; park it while the inspector is idle.
+
+**Guardrail:** `design/VISION.md` forbids the X4 empire manager. **The player never issues an order
+to anything but their own ship.**
+
+---
+
+#### J9 · Loadout presets and build identity — *long*
+
+**Pattern:** Destiny loadouts, Monster Hunter equipment sets.
+**Player outcome:** *"different kinds of gameplay"* becomes real, because switching is cheap enough
+to experiment with. Verified absent — the only matches are the save system and the dev sandbox.
+
+**Build steps.** Save named fits; swap at any station; a preset rail in THE SHIP's APRON. **Each
+preset is labelled by playstyle, never by stats** — *"Tow & Swing · you can swing a frigate"* vs
+*"Skirmish · you turn 40 % faster"*. `getDerivedStats`, `handlingProfile` and `massDelta` already
+compute everything needed for the comparison.
+
+**Depends on:** J2 — a preset must show what it changes about how the ship flies.
+**Trap:** declare a cap and eviction policy on the new save key.
+
+---
+
+#### J10 · Visual regression in CI — *long, start early*
+
+**Pattern:** standard practice at every A-list studio — reference frames diffed automatically.
+**Player outcome:** nothing silently regresses.
+
+**Build steps.** Extend the existing probes into a **capture matrix**: default · reduced-motion ·
+`forced-colors` · **pseudo-localized**, at **2560 × 1080 · 1920 × 1080 · 1280 × 720**. Commit
+reference frames; diff on change; fail on a threshold.
+
+**Partly started.** `scripts/probe-data-states.mjs` already runs the full 4 × 3 matrix (including a
+working pseudo-localizer) and `scripts/probe-entity-drawer.mjs` drives the real game. Both are
+**assertion probes, not frame diffs** — generalise their harness rather than writing a third.
+
+**Two rules the first two probes paid for:**
+
+1. **Capture the pane at its SHIPPING width.** Every J3 frame rendered at ~535px while the live
+   column is ~287px. The narrow case exposed prose wrapping one character per line — which violated
+   none of the type-floor, clipping or focus measures and reported green. A matrix that photographs
+   a comfortable case is a matrix that certifies the wrong thing.
+2. **Instantiate every optional part.** No J3 fixture passed `verb.key`, so an 11px keycap was never
+   rendered in any of 12 frames — inside the block whose own comment claims a 12px floor. **A
+   component's capture set must exercise its optional slots, or the matrix has holes shaped exactly
+   like the code nobody looked at.**
+
+**Why this is not optional here.** Three demonstrated cases where a green check coexisted with a
+visibly broken screen: the clipped Mission Log card passes every check in the suite;
+`check:ui-frame-sleep` inspects rAF and cannot see compositor-side `infinite` CSS keyframes; and
+`screens/techTree.js` renders in browser-default 10 px sans on every frame because Canvas 2D silently
+ignores `var()` in `ctx.font`. A fourth was found this session — the ship stage showed an empty bay
+for 12 s while every check was green. **Until frames are diffed, "a green check is not proof" stays
+permanently true.**
+
+**Start as soon as J1 lands** — its value is proportional to how many screens exist to protect.
+
+---
+
+### 11.13 Ordering
+
+```
+J3 ~─┐                       properties first: every screen after inherits them free,
+J4 ✔─┼─► J1 ──► J2 ──► J9    every screen before must be revisited
+J5 ~─┘        └─► J6 ──► J8
+              └─► J7
+                             J10 runs alongside everything from J1 onward  (harness ~started)
+```
+
+**J3 ~ · J4 ✔ · J5 ~** — J3's and J5's *mechanisms* are complete; their **adoption passes are not**,
+and in both cases adoption is what delivers the outcome. J3 has three EMPTY sites in one tab of one
+screen and zero LOADING/ERROR/DENIED consumers; J5 has three tagged nouns. Finish both *while*
+building J1/J2 rather than after, for the reason §11.9 gives about retrofitting.
+
+Two rules decide this shape:
+
+1. **J3, J4 and J5 are properties, not features.** They are the same class as the colour token block
+   and the canonical key table — §11.9's scheduling law applies: *anything every screen needs must
+   exist before the first screen is built.*
+2. **J10 starts as soon as J1 lands.** It protects everything built after it, and this repo has four
+   proven instances of a green check over a broken screen.

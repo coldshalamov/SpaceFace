@@ -12,6 +12,7 @@ import { TECH_NODES } from '../../data/tech.js';
 import { droneBayCapacityForState } from '../../systems/automation.js';
 import { shipworksStationAccess } from '../../systems/ships.js';
 import { escapeHtml } from '../comms.js';
+import { enhanceSelects } from '../uiPrimitives.js';
 import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
 
 const DRONE_DISPLAY_ORE_ID = 'cmdty_ore_iron';
@@ -451,9 +452,11 @@ export const automationScreen = {
       const btn = e.target.closest('button[data-act]');
       if (btn) this._onAction(btn.dataset.act, btn.dataset.ref, btn.dataset.kind);
     });
-    // V2 §4 / cut-list #28: program dropdown change handler (selects don't fire 'click').
+    // V2 §4 / cut-list #28: program dropdown change handler. Selector is tag-agnostic: since the
+    // native select was replaced by the sf-select widget the element is a div carrying the same
+    // data-act/data-ref/data-kind attributes and a .value property.
     body.addEventListener('change', (e) => {
-      const sel = e.target.closest('select[data-act="assignProgram"]');
+      const sel = e.target.closest('[data-act="assignProgram"]');
       if (!sel) return;
       this._onAction('assignProgram', sel.dataset.ref, sel.dataset.kind, sel.value);
     });
@@ -622,6 +625,9 @@ export const automationScreen = {
     else if (this._tab === 'outposts') this._renderOutposts(frag);
     else this._renderFleet(frag);
     body.replaceChildren(frag);
+    // Swap any native <select> (drone program dropdowns) for the styled sf-select widget before
+    // focus restore, so the restored focus lands on the live control.
+    enhanceSelects(body);
     if (this._tab === 'outposts' && openOutpostDetails.size) {
       for (const details of body.querySelectorAll('details[data-outpost-detail]')) {
         if (openOutpostDetails.has(details.dataset.outpostDetail)) details.open = true;

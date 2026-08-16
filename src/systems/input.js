@@ -472,8 +472,11 @@ function isUiCommandTarget(target) {
 
 function modalInputActive() {
   const body = typeof document !== 'undefined' ? document.body : null;
-  return !!(body && body.classList && typeof body.classList.contains === 'function'
-    && body.classList.contains('ui-modal-open'));
+  if (!body || !body.classList || typeof body.classList.contains !== 'function') return false;
+  // Pausing modals AND live overlays both own the keyboard: a screen over a running sim must not
+  // double as flight input (FRONTEND_DIRECTION §3.5 un-blinds the player, it does not hand the
+  // stick back while a map is open).
+  return body.classList.contains('ui-modal-open') || body.classList.contains('ui-live-screen');
 }
 
 function syncPointerScreen(state, x, y) {

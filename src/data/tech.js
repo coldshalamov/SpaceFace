@@ -48,7 +48,10 @@ export const TECH_NODES = [
   {
     id: 'tech_fire_control', name: 'Fire Control', branch: 'combat', prereqs: ['tech_strike_craft'],
     cost: { credits: 80000, rp: 110 },
-    unlocks: { modules: ['mod_targeting_computer_m', 'mod_ecm_jammer_l', 'mod_monofilament_sweep_m', 'mod_transverse_snare_m', 'mod_twin_bridle_m'] },
+    // Massline-native home of the spool ceiling: this node already grants the three advanced
+    // Massline heads (monofilament sweep, transverse snare, twin bridle). Gating the signature
+    // mechanic's 6x spool behind Flagship Command forced a capital-empire buy-in VISION.md forbids.
+    unlocks: { modules: ['mod_targeting_computer_m', 'mod_ecm_jammer_l', 'mod_monofilament_sweep_m', 'mod_transverse_snare_m', 'mod_twin_bridle_m', 'mod_massline_spool_l'] },
   },
   {
     id: 'tech_warship_license', name: 'Warship License', branch: 'combat', prereqs: ['tech_strike_craft'],
@@ -68,7 +71,7 @@ export const TECH_NODES = [
   {
     id: 'tech_flagship_command', name: 'Flagship Command', branch: 'combat', prereqs: ['tech_capital_hulls', 'tech_graviton_drives'],
     cost: { credits: 2500000, rp: 1200 },
-    unlocks: { ships: ['ship_leviathan'], modules: ['wpn_siege_lance_l', 'mod_massline_spool_l'] },
+    unlocks: { ships: ['ship_leviathan'], modules: ['wpn_siege_lance_l'] },
   },
 
   // ---------------- INDUSTRY branch (5 nodes) ----------------
@@ -117,12 +120,11 @@ export const TECH_NODES = [
   {
     id: 'tech_long_range_survey', name: 'Long-Range Survey', branch: 'drives', prereqs: ['tech_drive_tuning'],
     cost: { credits: 60000, rp: 90 },
-    unlocks: { ships: ['ship_ranger'], modules: ['mod_sensor_array_l', 'mod_sensor_post'], flags: ['wormhole_access'] },
-  },
-  {
-    id: 'tech_advanced_navigation', name: 'Advanced Navigation', branch: 'drives', prereqs: ['tech_long_range_survey'],
-    cost: { credits: 180000, rp: 220 },
-    unlocks: { efficiency: { jumpRangeMult: 0.20, jumpCooldownMult: -0.15 } },
+    // Folded: the former tech_advanced_navigation pure-stat node (jumpRangeMult +0.20 /
+    // jumpCooldownMult -0.15) merged here — a node that unlocks nothing but numbers is the
+    // "170 -> 212" failure VISION.md names. Saves that already researched the old node keep their
+    // persisted efficiencyMods; saves that stopped at Survey gain the bonus going forward.
+    unlocks: { ships: ['ship_ranger'], modules: ['mod_sensor_array_l', 'mod_sensor_post'], flags: ['wormhole_access'], efficiency: { jumpRangeMult: 0.20, jumpCooldownMult: -0.15 } },
   },
 
   // ---------------- LOGISTICS branch (6 nodes) ----------------

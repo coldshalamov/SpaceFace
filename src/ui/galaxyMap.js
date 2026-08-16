@@ -32,6 +32,17 @@ import {
 } from '../data/sectorCoordinates.js';
 import { zonesForSector, zoneTypeMeta, zoneThreat } from '../data/sectorZones.js';
 import { MAP_FOCUS, takeMapOpenIntent, normalizeMapFocus } from './mapAuthority.js';
+import { enhanceSelects, dataStateHtml } from './uiPrimitives.js';
+import { entityExists } from './entityResolver.js';
+
+/** J5 tagging helper: emit `data-entity` ONLY for a ref that actually resolves, so a stale or
+ *  runtime-only id renders as plain text instead of a door into an empty room. Returns the class
+ *  too, because an entity link must read as one by underline — never by colour alone. */
+function entityAttr(ref) {
+  // `role="link"` is not decoration: a focusable element with no role has no name/role/value to
+  // expose, so a screen-reader user tabs onto something announced as plain text (WCAG 4.1.2).
+  return ref && entityExists(ref) ? ` class="sf-entity-link" role="link" tabindex="0" data-entity="${ref}"` : '';
+}
 import { resolveWaypointPresentationPosition } from './navigationWaypoint.js';
 import { sectorLawProfile } from './securityReadout.js';
 import { causeFor } from './causeLedger.js';
@@ -2616,17 +2627,17 @@ const CSS = `
   color: var(--ink-mute);
   text-transform: uppercase;
 }
-#sf-galaxymap .gm-rail-commodity select {
+#sf-galaxymap .gm-rail-commodity .sf-select__field {
   background: #0c0e10;
   border: 1px solid var(--mf-line-2);
   border-radius: 2px;
   color: var(--ink);
   padding: 6px 8px;
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: 12px;
   outline: none;
 }
-#sf-galaxymap .gm-rail-commodity select:focus-visible {
+#sf-galaxymap .gm-rail-commodity .sf-select__field:focus-visible {
   border-color: var(--accent-3);
   box-shadow: inset 0 0 0 1px var(--accent-3);
 }
@@ -5072,6 +5083,21 @@ export const galaxyMapScreen = {
     if (this._inspectorDetails && typeof this._inspectorDetails.addEventListener === 'function') {
       this._inspectorDetails.addEventListener('click', (ev) => {
         const target = ev && ev.target;
+        // J3 data-state verbs. Every EMPTY/LOADING/ERROR/DENIED block this pane renders carries a
+        // way out; this is where those land. An unrecognised action does NOTHING rather than
+        // guessing — the same discipline causeLedger applies to unknown driver tags.
+        const stateVerb = target && typeof target.closest === 'function'
+          ? target.closest('[data-sf-verb]') : null;
+        if (stateVerb) {
+          const action = stateVerb.getAttribute('data-sf-verb');
+          if (action === 'economy:services') galaxyMapScreen._setTab('services', { focus: true });
+          else if (action === 'economy:commodity') {
+            const sel = galaxyMapScreen._root && galaxyMapScreen._root.querySelector('#gm-commodity-select');
+            const focusable = sel && (sel.sfSelectField || sel);
+            if (focusable && focusable.focus) { try { focusable.focus({ preventScroll: true }); } catch (_) { focusable.focus(); } }
+          }
+          return;
+        }
         const siteRow = target && typeof target.closest === 'function'
           ? target.closest('[data-world-site-id]') : null;
         if (siteRow) {
@@ -5231,15 +5257,20 @@ export const galaxyMapScreen = {
       });
     }
 
-    // Populate commodity dropdown
+    // Populate commodity dropdown. The native <select> is populated first, then swapped for the
+    // styled sf-select widget (no OS dropdown chrome on screens); re-query because the swap
+    // replaces the node in place.
     const commSelect = rootEl.querySelector('#gm-commodity-select');
     if (commSelect) {
       this._syncMarketCommoditySelector(this._ctx && this._ctx.state);
-
-      commSelect.addEventListener('change', () => {
-        this._selectedCommodity = commSelect.value;
-        this.refresh();
-      });
+      enhanceSelects(rootEl);
+      const commWidget = rootEl.querySelector('#gm-commodity-select');
+      if (commWidget) {
+        commWidget.addEventListener('change', () => {
+          this._selectedCommodity = commWidget.value;
+          this.refresh();
+        });
+      }
     }
 
     // Toggle layer click listeners
@@ -5374,6 +5405,12 @@ export const galaxyMapScreen = {
     if (!commSelect) return;
     const options = marketIntelCommodityOptions(state, COMMODITIES);
     this._selectedCommodity = selectedMarketCommodityOnOpen(state, this._selectedCommodity, COMMODITIES);
+    // After mount the element is the sf-select widget (sfSetOptions); the native path only runs
+    // during the initial populate-before-enhance pass in mount().
+    if (typeof commSelect.sfSetOptions === 'function') {
+      commSelect.sfSetOptions(options.map((commodity) => ({ value: commodity.id, label: commodity.name })), this._selectedCommodity);
+      return;
+    }
     commSelect.innerHTML = options
       .map((commodity) => `<option value="${escapeMapHtml(commodity.id)}">${escapeMapHtml(commodity.name)}</option>`)
       .join('');
@@ -5388,6 +5425,11 @@ export const galaxyMapScreen = {
     this._scanRings = [];
     this._syncReduceMotion();
     this._subscribeKills();
+
+    // J4: restore what the player last chose BEFORE the commodity re-validation and BEFORE the
+    // open-intent view is applied. Order matters both ways — the restored commodity is what gets
+    // validated, and a caller that asked to open focused on a sector still wins on framing.
+    this._restoreScreenState();
 
     // Consume map-authority open intent (LOCAL vs STAR/GALAXY focus + optional target fix).
     const state = this._ctx && this._ctx.state;
@@ -5442,6 +5484,11 @@ export const galaxyMapScreen = {
     }
     this._lastTime = (typeof performance !== 'undefined' ? performance.now() : Date.now());
     this._lastDrawTime = 0;
+
+    // J4: the restored tab and layer set exist as fields by now; push them into the DOM. Done here,
+    // after the root and controls are built, because _setTab renders — calling it during restore
+    // would run against controls that do not exist yet.
+    this._syncRestoredControls(state);
 
     if (typeof requestAnimationFrame === 'undefined') return;
 
@@ -5501,6 +5548,99 @@ export const galaxyMapScreen = {
     }
     this._animFrame = null;
     this._unsubscribeKills();
+    this._rememberScreenState();
+  },
+
+  // ── J4 screen state memory (build map §11.12) ───────────────────────────────────────────────
+  // Inhibitor #7 names this screen: "persists no layer toggle, commodity, zoom or tab — every open
+  // is a fresh open." Three of those four are remembered here. The fourth is deliberately not.
+  //
+  // ZOOM IS NOT PERSISTED, against the build map's own wording, because this file already carries a
+  // ruling that forbids it (see onShow): "The camera is rebuilt from the intent on every open
+  // rather than persisted across opens… mapAuthority is the single authority for where the map
+  // opens (pinned by check:map-authority), and a camera that survived the close would silently
+  // outrank it." onShow always applies an intent — `takeMapOpenIntent(state) || {focus: SYSTEM}` —
+  // and the SYSTEM default sets a camera, so a persisted zoom would be overwritten on every open:
+  // a save key with no observable effect. Inert first, and harmful the moment someone "fixes" the
+  // restore by making it outrank the intent. The rule this obeys: the camera owns continuity
+  // WITHIN a chart session; the intent owns where that session starts.
+  //
+  // ALSO NOT remembered: `_selectedTarget`/`_hoverTarget` (entity ids are re-minted when the sector
+  // regenerates on load — that is why saveSystem clears stale targets at all), the search query (a
+  // forgotten filter is the fastest way to make a working screen look broken), `_searchResultsList`
+  // (derived), and `_scanRings`/`_iris`/`_animT` (animation clocks; a restored mid-wipe iris would
+  // leave the chart permanently occluded).
+  _rememberScreenState() {
+    const mem = this._ctx && this._ctx.screenMemory;
+    if (!mem) return;
+    mem.set('galaxyMap', {
+      activeTab: this._activeTab,
+      selectedCommodity: this._selectedCommodity,
+      layers: { ...this._layers },
+      // An explicit player artifact — the player MADE these, and today they die on page reload.
+      // FLATTENED to {label,x,z,span}: a bookmark's live shape nests focusGlobal one level deeper
+      // than a bag value may go, and storing only the label would persist a bookmark that cannot
+      // navigate — an inert save key, the exact defect zoom was refused for.
+      bookmarks: Array.isArray(this._bookmarks)
+        ? this._bookmarks.slice(-8)
+          .filter((b) => b && b.focusGlobal && Number.isFinite(b.focusGlobal.x) && Number.isFinite(b.focusGlobal.z))
+          .map((b) => ({ label: String(b.label || ''), x: b.focusGlobal.x, z: b.focusGlobal.z, span: Number(b.spanWU) || 0 }))
+        : [],
+    });
+  },
+
+  _restoreScreenState() {
+    const mem = this._ctx && this._ctx.screenMemory;
+    if (!mem) return;
+    // Screen modules are SINGLETONS: `_layers` and `_activeTab` live on this object literal, so
+    // loading save A then save B in one page session would leave A's choices sitting here. Restore
+    // therefore starts from the AUTHORED DEFAULTS every time and applies the bag over them — never
+    // a merge over whatever the previous save left behind.
+    if (!this._authoredDefaults) {
+      this._authoredDefaults = { activeTab: this._activeTab, selectedCommodity: this._selectedCommodity, layers: { ...this._layers } };
+    }
+    const def = this._authoredDefaults;
+    this._activeTab = def.activeTab;
+    this._selectedCommodity = def.selectedCommodity;
+    for (const k of Object.keys(def.layers)) this._layers[k] = def.layers[k];
+
+    const bag = mem.get('galaxyMap');
+    if (bag.activeTab && MAP_INSPECTOR_TAB_IDS.includes(bag.activeTab)) this._activeTab = bag.activeTab;
+    // A remembered commodity that no longer exists in the catalogue must not become a lens on
+    // nothing; onShow re-validates through selectedMarketCommodityOnOpen either way.
+    if (bag.selectedCommodity && COMMODITIES.some((c) => c.id === bag.selectedCommodity)) {
+      this._selectedCommodity = bag.selectedCommodity;
+    }
+    if (bag.layers && typeof bag.layers === 'object') {
+      // Merge, never replace: a layer added since the save was written keeps its authored default
+      // instead of arriving undefined and rendering as off.
+      for (const k of Object.keys(this._layers)) {
+        if (typeof bag.layers[k] === 'boolean') this._layers[k] = bag.layers[k];
+      }
+    }
+    // Bookmarks are rehydrated to their live nested shape. A bookmark that cannot be clicked back
+    // to is not a bookmark, so the coordinates are restored, not just the name.
+    if (Array.isArray(bag.bookmarks) && bag.bookmarks.length) {
+      this._bookmarks = bag.bookmarks
+        .filter((b) => b && Number.isFinite(b.x) && Number.isFinite(b.z))
+        .map((b) => ({ label: String(b.label || 'Chart'), focusGlobal: { x: b.x, z: b.z }, spanWU: Number(b.span) || 0 }))
+        .slice(-8);
+    }
+    // Deliberately no zoom/camera restore — see _rememberScreenState. Restoring a bookmark's
+    // coordinates is not the same thing: the player must still choose to jump to one.
+  },
+
+  /** Push the restored fields into the built DOM. Separate from _restoreScreenState because the
+   *  controls do not exist when that runs. */
+  _syncRestoredControls(state) {
+    if (!HAS_DOC || !this._root) return;
+    for (const btn of Array.from(this._root.querySelectorAll('.gm-layer-btn'))) {
+      const id = btn.getAttribute('data-layer');
+      if (!id || !(id in this._layers)) continue;
+      btn.classList.toggle('active', !!this._layers[id]);
+      btn.setAttribute('aria-pressed', this._layers[id] ? 'true' : 'false');
+    }
+    if (this._activeTab) this._setTab(this._activeTab);
   },
 
   /**
@@ -6345,9 +6485,20 @@ export const galaxyMapScreen = {
           <span class="gm-tl-sub">${escapeMapHtml(lane.originName)} → ${escapeMapHtml(lane.destinationName)} · ${Math.max(0, Math.floor(lane.units))}u · ${perMin}/min</span>
         </button>`;
       }).join('')
-      : `<div class="gm-ins-note">${(state && state.economy && state.economy.marketIntel && Object.keys(state.economy.marketIntel).length)
-        ? 'No profitable lanes in current intel. Fresh quotes at two or more stations will rank routes here.'
-        : 'Dock at stations to record market intel. Ranked lanes will appear here.'}</div>`;
+      // The build map's named live symptom (§11.11 #8): this pane was correct-but-blank until two
+      // stations had been priced, and said so without offering a way to get there. Both branches now
+      // name what would fill them AND carry a verb (J3).
+      : (state && state.economy && state.economy.marketIntel && Object.keys(state.economy.marketIntel).length)
+        ? dataStateHtml('empty', {
+          headline: 'No lane in your intel turns a profit yet.',
+          fills: 'Ranked lanes appear once you hold fresh quotes at two or more stations trading the same goods.',
+          verb: { label: 'Find somewhere to dock', action: 'economy:services' },
+        })
+        : dataStateHtml('empty', {
+          headline: 'You have not priced a market yet.',
+          fills: 'Dock anywhere and open its market — the first quote you record starts the ledger this ranks from.',
+          verb: { label: 'Find somewhere to dock', action: 'economy:services' },
+        });
 
     const offers = bestKnownSellOffers(state, this._selectedCommodity, 3);
     const commodityLabel = String(this._selectedCommodity || '').replace('cmdty_', '').replace(/_/g, ' ').toUpperCase();
@@ -6356,7 +6507,12 @@ export const galaxyMapScreen = {
         const tint = memoryTint(offer.ageS);
         return `<div class="gm-bk-row"><span class="gm-bk-station">${escapeMapHtml(offer.stationName)}</span><span class="gm-bk-val ${tint.key}">${offer.sell} cr · ${ageText(offer.ageS)}</span></div>`;
       }).join('')
-      : `<div class="gm-ins-note">No remembered quotes for ${escapeMapHtml(commodityLabel)}. Prices appear after you dock and trade.</div>`;
+      : dataStateHtml('empty', {
+        headline: 'Nobody has quoted you a price for ' + commodityLabel + '.',
+        fills: 'Dock at a station that buys it and the price you are shown is remembered here, with its age.',
+        verb: { label: 'Lens another commodity', action: 'economy:commodity' },
+        compact: true,
+      });
 
     const credits = state.player && state.player.credits ? Math.round(state.player.credits).toLocaleString() : '0';
     const cargo = state.player && state.player.cargo ? (state.player.cargo.volume || 0) : 0;
@@ -6373,7 +6529,7 @@ export const galaxyMapScreen = {
         ${lanesHtml}
       </div>
       <div class="gm-ins-section">
-        <div class="gm-ins-title">Best known sell · ${escapeMapHtml(commodityLabel)}</div>
+        <div class="gm-ins-title">Best known sell · <span${entityAttr('commodity:' + this._selectedCommodity)}>${escapeMapHtml(commodityLabel)}</span></div>
         ${offersHtml}
       </div>`;
   },
@@ -6394,7 +6550,7 @@ export const galaxyMapScreen = {
     return `
       <div class="gm-ins-section">
         <div class="gm-ins-kind">Threat assessment</div>
-        <div class="gm-ins-target-name">${escapeMapHtml(sectorNameOf(state, sectorId))}</div>
+        <div class="gm-ins-target-name"><span${entityAttr('sector:' + sectorId)}>${escapeMapHtml(sectorNameOf(state, sectorId))}</span></div>
         <div class="gm-ins-row"><span>Security</span><span class="gm-ins-row-val">${law.level} · ${securityPips(sec)}</span></div>
         <div class="gm-ins-row"><span>Jurisdiction</span><span class="gm-ins-row-val">${law.authority}</span></div>
         <div class="gm-ins-row"><span>Hazards</span><span class="gm-ins-row-val">${hazards}</span></div>
@@ -6411,12 +6567,12 @@ export const galaxyMapScreen = {
     const t = this._selectedTarget;
     const stations = [];
     if (t && t.kind === 'station') {
-      stations.push({ name: t.name, services: t.services || [] });
+      stations.push({ id: t.id, name: t.name, services: t.services || [] });
     } else {
       const sectorId = (t && (t.sectorId || t.id)) || currentSectorId(state);
       const record = sectorRecordById(state, sectorId);
       for (const s of (record && record.stations) || []) {
-        stations.push({ name: s.name || s.id, services: s.services || [] });
+        stations.push({ id: s.id, name: s.name || s.id, services: s.services || [] });
       }
     }
     if (!stations.length) {
@@ -6424,7 +6580,7 @@ export const galaxyMapScreen = {
     }
     return stations.map((s) => `
       <div class="gm-ins-section">
-        <div class="gm-ins-title">${escapeMapHtml(s.name)}</div>
+        <div class="gm-ins-title"><span${entityAttr('station:' + s.id)}>${escapeMapHtml(s.name)}</span></div>
         ${s.services.length
           ? `<div class="gm-svc-row">${s.services.map((svc) => `<span class="gm-svc-chip"><span aria-hidden="true">${serviceIconSvg(svc)}</span>${escapeMapHtml(svc === 'ore_buy' ? 'Ore buy' : svc)}</span>`).join('')}</div>`
           : '<div class="gm-ins-note">No services listed.</div>'}

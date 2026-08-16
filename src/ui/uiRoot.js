@@ -11,6 +11,7 @@
 // is missing or throws on import/register does NOT break the HUD or the other screens.
 
 import { createScreenManager } from './screenManager.js';
+import { createEntityLinks } from './entityLinks.js';
 import { createUiInput } from './input.js';
 import { initPriceHistory } from './priceHistory.js';
 import { isConfirmOpen } from './confirm.js';
@@ -57,6 +58,9 @@ const SCREEN_MODULES = [
   { path: './station/stationScreen.js', load: () => import('./station/stationScreen.js'), name: 'stationScreen' },
   // REVAMP 2.1 — one zoomable galaxy map (supersedes starmap+localmap once BP-03 parity passes). Lives in src/ui/, not screens/.
   { path: './galaxyMap.js', load: () => import('./galaxyMap.js'), name: 'galaxyMapScreen' },
+  // THE SHIP (frontend program §11.3 / SCREENS_B): the promoted shipworks stage, one shared
+  // instance with the dock's shipworks destination (§0.5 — one WebGL mount, two hosts).
+  { path: './ship/shipScreen.js', load: () => import('./ship/shipScreen.js'), name: 'shipScreen' },
   { path: './screens/starmap.js', load: () => import('./screens/starmap.js'), name: 'starmapScreen' },
   { path: './screens/localmap.js', load: () => import('./screens/localmap.js'), name: 'localmapScreen' },
   { path: './screens/techTree.js', load: () => import('./screens/techTree.js'), name: 'techTreeScreen' },
@@ -333,6 +337,8 @@ export const ui = {
     this._fulfillmentBlackoutTeardown = null;
     if (typeof this._cinematicTeardown === 'function') this._cinematicTeardown();
     this._cinematicTeardown = null;
+    if (this.entityLinks && typeof this.entityLinks.destroy === 'function') this.entityLinks.destroy();
+    this.entityLinks = null;
     if (this.screenManager && typeof this.screenManager.destroy === 'function') this.screenManager.destroy();
     this.screenManager = null;
     this.manager = null;
@@ -353,6 +359,11 @@ export const ui = {
     replaceMarketNewsOwner(this, ctx); // REVAMP 2.1 — economy headlines/ticker (read-only)
     this.alerts = createAlerts(ctx);
     wireSaveFeedback(this.bus);
+    this.bus.on('save:store-synced', () => {
+      if (this.screenManager && typeof this.screenManager.refreshTop === 'function') {
+        try { this.screenManager.refreshTop(); } catch (e) { console.error(e); }
+      }
+    });
 
     // screen manager — expose on ctx + on this system so screens can reach it (§ screens
     // resolve ctx.screenManager / registry.get('ui').screenManager / .manager).
@@ -361,6 +372,36 @@ export const ui = {
     ctx.screenManager = this.screenManager;
     ctx.screens = this.screenManager;
     this._screenRegistrationCycle = beginScreenRegistrationCycle(this, this.screenManager);
+
+    // J5 "everything is a link": ONE delegated handler on #screens turns every [data-entity] into a
+    // door onto that entity's dossier. Mounted after the screen manager because it reads which
+    // screen owns the stack, and because its listener must sit on the same node as the manager's
+    // pointer shield — a document-level delegate never fires (that shield stopPropagations).
+    if (this.entityLinks && typeof this.entityLinks.destroy === 'function') this.entityLinks.destroy();
+    this.entityLinks = createEntityLinks(ctx);
+    ctx.entityLinks = this.entityLinks;
+
+    // Grammar §9.10: sound on every state change — one delegated pointerover on #screens,
+    // rate-limited ~40ms, makes every surface feel responsive without per-widget listeners.
+    // Previously only gamepad focus emitted hover.
+    if (typeof this._hoverAudioTeardown === 'function') this._hoverAudioTeardown();
+    this._hoverAudioTeardown = null;
+    {
+      const screensHost = document.getElementById('screens');
+      if (screensHost) {
+        let lastHoverAt = 0;
+        const onHoverOver = (ev) => {
+          const target = ev.target;
+          if (!target || !target.closest || !target.closest('button, [role="option"], [role="tab"], [data-spatial-slot]')) return;
+          const now = performance.now();
+          if (now - lastHoverAt < 40) return;
+          lastHoverAt = now;
+          ctx.bus.emit('audio:cue', { id: 'ui_hover' });
+        };
+        screensHost.addEventListener('pointerover', onHoverOver);
+        this._hoverAudioTeardown = () => screensHost.removeEventListener('pointerover', onHoverOver);
+      }
+    }
 
     // DEV: arm the sandbox game:started hook (no-op unless a sandbox launch is pending). Resolved via
     // a thunk because ctx continues to be enriched after init(); the hook reads ctx at fire time.
@@ -432,7 +473,7 @@ export const ui = {
         && this.state.settings.gameplay.controlScheme);
     });
 
-    const syncFlightCursor = (visible) => {
+    const syncFlightCursor = (visible, reticleAlive = visible) => {
       const st = this.state;
       const pointer = st && st.input && st.input.pointerScreen;
       const active = !!(visible && pointer && pointer.active);
@@ -442,7 +483,9 @@ export const ui = {
         && Array.isArray(flightPath.points) && flightPath.points.length >= 2);
       document.body.classList.toggle('sf-flight-cursor', active);
       const reticleEl = document.getElementById('aim-reticle') || reticle;
-      const nextReticleDisplay = visible && !autoTarget ? 'block' : 'none';
+      // reticleAlive keeps the aim marker readable under live (non-pausing) overlays while the
+      // cursor-hiding flight mode stays off (FRONTEND_DIRECTION §3.5: reticle + alerts survive).
+      const nextReticleDisplay = reticleAlive && !autoTarget ? 'block' : 'none';
       if (lastReticleDisplay !== nextReticleDisplay) {
         lastReticleDisplay = nextReticleDisplay;
         reticleEl.style.display = nextReticleDisplay;
@@ -758,7 +801,11 @@ export const ui = {
       const screenOpen = !!(this.screenManager && this.screenManager.isOpen && this.screenManager.isOpen());
       const externalOpen = active || isConfirmOpen()
         || !!(this.comms && this.comms.isModalOpen && this.comms.isModalOpen());
-      syncModalChrome(screenOpen, externalOpen);
+      // During a blackout isLiveOverlay() is false by definition, so live screens collapse into the
+      // full modal treatment here.
+      const liveOverlay = !!(this.screenManager && this.screenManager.isLiveOverlay
+        && this.screenManager.isLiveOverlay());
+      syncModalChrome(screenOpen, externalOpen, liveOverlay);
       const docked = !!(this.state.ui && this.state.ui.docked === true);
       if (this.screenManager && typeof this.screenManager.syncHudAccessibility === 'function') {
         this.screenManager.syncHudAccessibility(screenOpen || externalOpen || docked || this.state.mode !== 'flight');
@@ -992,13 +1039,19 @@ export const ui = {
       const modalOpen = !!(this.screenManager && this.screenManager.isOpen && this.screenManager.isOpen());
       const externalModalOpen = !!this._fulfillmentBlackoutActive || isConfirmOpen()
         || !!(this.comms && this.comms.isModalOpen && this.comms.isModalOpen());
-      const modalChromeOpen = syncModalChrome(modalOpen, externalModalOpen);
+      // Live (non-pausing) overlays keep the HUD ticking visibly under a light dim instead of the
+      // full modal blackout (FRONTEND_DIRECTION §3.5): no ui-modal-open, hud stays live.
+      const liveOverlay = !!(this.screenManager && this.screenManager.isLiveOverlay
+        && this.screenManager.isLiveOverlay());
+      const modalChromeOpen = syncModalChrome(modalOpen, externalModalOpen, liveOverlay);
       const docked = !!(st && st.ui && st.ui.docked === true);
       if (this.screenManager && typeof this.screenManager.syncHudAccessibility === 'function') {
-        this.screenManager.syncHudAccessibility(modalChromeOpen || docked || !st || st.mode !== 'flight');
+        this.screenManager.syncHudAccessibility(modalChromeOpen || liveOverlay || docked || !st || st.mode !== 'flight');
       }
       const hudVisible = !!(st && st.mode === 'flight' && !modalChromeOpen && !docked);
-      if (this._syncFlightCursor) this._syncFlightCursor(hudVisible);
+      // Flight cursor (cursor:none) only in pure flight — over any open screen the pointer is a UI
+      // cursor. The reticle itself stays alive under live overlays (second arg).
+      if (this._syncFlightCursor) this._syncFlightCursor(hudVisible && !modalOpen, hudVisible);
       if (this.hud) {
         if (hudVisible) {
           if (!this._hudVisibleLast && this.hud.forceRefresh) this.hud.forceRefresh();
@@ -1058,6 +1111,8 @@ export const ui = {
     this._fulfillmentBlackoutTeardown = null;
     if (typeof this._cinematicTeardown === 'function') this._cinematicTeardown();
     this._cinematicTeardown = null;
+    if (this.entityLinks && typeof this.entityLinks.destroy === 'function') this.entityLinks.destroy();
+    this.entityLinks = null;
     if (this.screenManager && typeof this.screenManager.destroy === 'function') this.screenManager.destroy();
     this.screenManager = null;
     this.manager = null;
@@ -2102,8 +2157,10 @@ function injectHudCss() {
   document.head.appendChild(s);
 }
 
-function syncModalChrome(screenOpen, externalModalOpen = false) {
-  const modalOpen = !!(screenOpen || externalModalOpen);
+function syncModalChrome(screenOpen, externalModalOpen = false, liveOverlay = false) {
+  // liveOverlay: screens are open but non-pausing over a running sim — no modal chrome, the body
+  // class is `ui-live-screen` (owned by screenManager); only the shared backdrop still shows.
+  const modalOpen = !!((screenOpen && !liveOverlay) || externalModalOpen);
   if (_lastModalOpen !== modalOpen || document.body.classList.contains('ui-modal-open') !== modalOpen) {
     document.body.classList.toggle('ui-modal-open', modalOpen);
     _lastModalOpen = modalOpen;

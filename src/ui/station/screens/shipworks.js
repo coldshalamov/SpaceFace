@@ -124,6 +124,38 @@ function shipSilhouette(def) {
 }
 
 export function createShipworksScreen(ctx) {
+  // Dock host (station destination): the shared stage locked to commerce. One module instance and
+  // one WebGL mount serve this dock destination AND the in-flight 'ship' screen (SCREENS_B §0.5) —
+  // whoever shows last re-parents the same node; nobody re-creates the mount. Dispose is a no-op
+  // on purpose: the station shell caches and tears down destinations, but the shared stage outlives
+  // any single host and must never be disposed by one of them.
+  const stage = getSharedShipStage(ctx);
+  return {
+    el: stage.el,
+    onShow(showCtx) { stage.setHost('dock'); stage.onShow(showCtx); },
+    onHide() { stage.onHide(); },
+    refresh(refreshCtx) { stage.refresh(refreshCtx); },
+    dispose() { /* shared stage — see above */ },
+  };
+}
+
+let sharedStage = null;
+
+/** The one ship stage (SCREENS_B §0.5: one module instance, one WebGLRenderer, two hosts). */
+export function getSharedShipStage(ctx) {
+  if (!sharedStage) sharedStage = createShipStage(ctx, { host: 'dock' });
+  return sharedStage;
+}
+
+/**
+ * The shipworks stage. `host` selects the entry point (SCREENS_B §1.2):
+ *  - 'dock'  (default): full commerce — fleet + Buy Ship rail, fit/unfit, MAKE ACTIVE, station bay.
+ *  - 'flight': the same instrument minus commerce — fleet rail inspect-only, chooser read-only
+ *    (buttons carry the unavailability reason), no MAKE ACTIVE, transparent dock backdrop.
+ * Everything else — the mount, the projection, the callouts, ghost preview — is identical.
+ */
+export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
+  let host = initialHost;
   const el = document.createElement('div');
   el.className = 'sx-sw';
   el.innerHTML =
@@ -195,6 +227,24 @@ export function createShipworksScreen(ctx) {
 
   function owned() { return (ctx.state.player && ctx.state.player.ownedShips) || []; }
   function viewedShip() { const o = owned(); return o[viewIdx] || o[ctx.state.player && ctx.state.player.activeShipIndex] || o[0] || null; }
+
+  function setHost(next) {
+    if (host === next) return;
+    host = next;
+    // Flight entry: inspect-only. Buy mode and MAKE ACTIVE belong to a station berth.
+    el.classList.toggle('sx-sw--flight', host === 'flight');
+    if (!chooserEl.hidden) closeChooser();
+    if (host === 'flight') {
+      mode = 'fleet';
+      selectedSlot = -1;
+      // Opening in flight means "my ship": land on the active hull, not index 0.
+      const activeIdx = (ctx.state.player && ctx.state.player.activeShipIndex) || 0;
+      if (owned()[activeIdx]) viewIdx = activeIdx;
+    }
+    renderRail();
+    renderCenter();
+    renderSide();
+  }
 
   function writeCanvasPreviewMeta(defId, fittings, meta) {
     canvas.dataset.previewDefId = defId || '';
@@ -276,7 +326,11 @@ export function createShipworksScreen(ctx) {
       settlePreviewReveal(defId, state, generation);
       return;
     }
-    if (performance.now() - startedAt >= 8000) {
+    // Budget raised 8s -> 20s: a cold flight-first open (no prior dock to warm the mesh cache)
+    // measured 12s+ to resolve the authored hull, so the old budget expired BEFORE the asset
+    // arrived and revealed an empty bay. The terminal degraded state below is the honest floor,
+    // not the common path — it must not be reached by an asset that was merely slow.
+    if (performance.now() - startedAt >= 20000) {
       // Never leave the bay blank forever. This is an explicit degraded terminal state, not a
       // silent placeholder-to-final swap, and remains visible to the probe through the dataset.
       settlePreviewReveal(defId, state === 'loading' ? 'fallback-timeout' : state, generation);
@@ -333,7 +387,13 @@ export function createShipworksScreen(ctx) {
     writeCanvasPreviewMeta(defId, fittings, meta);
     expectedPreviewDefId = defId || null;
     const sameHull = mount.getDefId && mount.getDefId() === defId;
-    const gated = !sameHull && !(meta && meta.mode === 'module');
+    // Gate on ASSET READINESS, not hull identity alone. The stage is a shared singleton built for
+    // the dock host, so a flight-first F2 open can match the hull id while that hull's GLB is
+    // still seconds away on a cold cache. An identity-only gate dismissed the acquiring state
+    // immediately and left the player staring at an empty bay with floating slot callouts —
+    // measured at 12s+ before the hull arrived (scripts/probe-ship-polish-audit.mjs).
+    const assetStableNow = stablePreviewState(mount.getAssetState ? mount.getAssetState() : 'rendered');
+    const gated = (!sameHull && !(meta && meta.mode === 'module')) || !assetStableNow;
     stageEl.dataset.revealWasGated = gated ? 'true' : 'false';
     const revealGeneration = beginPreviewReveal(defId, gated);
     const key = defId + '|' + (fittings || []).join(',') + '|' + (isPlayer ? 'p' : 's') + '|' + ((meta && meta.mode) || 'base');
@@ -734,7 +794,9 @@ export function createShipworksScreen(ctx) {
     const activeIndex = Number(ctx.state.player && ctx.state.player.activeShipIndex) || 0;
     const inspectedIndex = owned().indexOf(s);
     const availability = shipworksActionAvailability(ctx.state);
-    const activeControl = inspectedIndex !== activeIndex
+    // MAKE ACTIVE is a berth verb — it never renders on the flight host (SCREENS_B §1.2). While
+    // docked it stays gated by hull service availability with the reason printed on the verb.
+    const activeControl = host === 'flight' ? '' : inspectedIndex !== activeIndex
       ? `<button type="button" class="sx-sw-circuit__activate" data-activate-ship="${inspectedIndex}" ${availability.hullEnabled ? '' : 'disabled'} aria-label="${escapeHtml(availability.hullEnabled ? 'Make active ship' : availability.hullLabel)}">${availability.hullEnabled ? 'MAKE ACTIVE' : escapeHtml(availability.hullLabel.toUpperCase())}</button>`
       : `<span class="sx-sw-circuit__active">ACTIVE FLIGHT HULL</span>`;
     sideEl.innerHTML =
@@ -879,7 +941,11 @@ export function createShipworksScreen(ctx) {
           padding: 18,
           apply({ availableWidth, availableHeight, elements }) {
             elements.floating.style.maxWidth = `${Math.max(340, Math.min(560, availableWidth))}px`;
-            elements.floating.style.maxHeight = `${Math.max(320, availableHeight)}px`;
+            // Inline max-height is the only ceiling that actually binds (a stylesheet rule loses
+            // to this inline write). Fit the room we actually have, hard cap 640; the 320 fall-back
+            // only covers the degenerate no-space case the flip middleware could not escape.
+            const maxH = availableHeight > 0 ? Math.min(availableHeight, 640) : 320;
+            elements.floating.style.maxHeight = `${Math.round(maxH)}px`;
           },
         }),
       ],
@@ -921,7 +987,7 @@ export function createShipworksScreen(ctx) {
           ? `<span class="sx-modrow__lock">${icon('info', 13)} Unfit ${escapeHtml(headConflict.name)} first</span>`
         : locked
           ? `<span class="sx-modrow__lock">${icon('info', 13)} Tech locked</span>`
-          : `<button type="button" class="sx-modrow__buy" data-buyfit="${escapeHtml(d.id)}" data-slot="${slotIndex}" ${afford && availability.outfitEnabled ? '' : `disabled aria-label="${escapeHtml(availability.outfitEnabled ? `${fmt(d.price)} credits, ${fmt(Math.max(0, (d.price || 0) - credits))} credits short` : availability.outfitLabel)}"`}>${availability.outfitEnabled ? (d.price > 0 ? (afford ? 'Buy · ' + fmt(d.price) : `<span>${fmt(d.price)} cr</span><small>${fmt(Math.max(0, d.price - credits))} short</small>`) : 'Fit') : escapeHtml(availability.outfitLabel)}</button>`;
+          : `<button type="button" class="sx-modrow__buy" data-buyfit="${escapeHtml(d.id)}" data-slot="${slotIndex}" ${afford && availability.outfitEnabled ? '' : `disabled aria-label="${escapeHtml(availability.outfitEnabled ? `${fmt(d.price)} credits, ${fmt(Math.max(0, (d.price || 0) - credits))} credits short` : availability.outfitLabel)}"`}>${availability.outfitEnabled ? (d.price > 0 ? (afford ? 'Buy · ' + fmt(d.price) : `<span>${fmt(d.price)} cr</span><small>${fmt(Math.max(0, d.price - credits))} short</small>`) : 'Fit') : 'Dock to fit'}</button>`;
       return (
         `<div class="sx-modrow${equipped ? ' is-eq' : ''}${locked || headConflict ? ' is-locked' : ''}" ${headConflict ? '' : `data-preview-module="${escapeHtml(d.id)}" data-preview-slot="${slotIndex}"`} tabindex="0">` +
           `<span class="sx-modrow__ic">${icon(SLOT_ICON[slot.type] || 'spark', 18)}</span>` +
@@ -948,11 +1014,11 @@ export function createShipworksScreen(ctx) {
       `<div class="sx-chooser__panel" role="dialog" aria-modal="true" aria-label="Compatible ${escapeHtml(SLOT_LABEL[slot.type] || slot.type)} modules">` +
         `<header class="sx-chooser__head">` +
           `<div><span class="sx-chooser__kicker">${SLOT_LABEL[slot.type] || slot.type} slot · Size ${escapeHtml(slot.size || '')}${slot.facing ? ' · ' + escapeHtml(slot.facing) : ''}</span>` +
-          `<h3>Compatible Modules</h3></div>` +
+          `<h3>Compatible Modules${compat.length ? ` (${compat.length})` : ''}</h3></div>` +
           `<button type="button" class="sx-chooser__x" data-close aria-label="Close">${icon('close', 18)}</button>` +
         `</header>` +
         (availability.outfitEnabled ? '' : `<p class="sx-muted">${escapeHtml(availability.outfitLabel)}</p>`) +
-        (fittedId ? `<button type="button" class="sx-chooser__unfit" data-unfit="${slotIndex}" ${availability.outfitEnabled ? '' : `disabled aria-label="${escapeHtml(availability.outfitLabel)}"`}>${availability.outfitEnabled ? `Unfit ${escapeHtml((FITTABLE_BY_ID.get(fittedId) || {}).name || 'module')}` : escapeHtml(availability.outfitLabel)}</button>` : '') +
+        (fittedId ? `<button type="button" class="sx-chooser__unfit" data-unfit="${slotIndex}" ${availability.outfitEnabled ? '' : `disabled aria-label="${escapeHtml(availability.outfitLabel)}"`}>${availability.outfitEnabled ? `Unfit ${escapeHtml((FITTABLE_BY_ID.get(fittedId) || {}).name || 'module')}` : 'Dock to unfit'}</button>` : '') +
         `<div class="sx-chooser__list">${list || '<p class="sx-muted" style="padding:14px">No compatible modules.</p>'}</div>` +
       `</div>`;
     chooserEl.hidden = false;
@@ -1232,7 +1298,12 @@ export function createShipworksScreen(ctx) {
   });
 
   function refresh(periodicCtx) {
-    syncShipworksDockForState(mount, ctx.state);
+    if (host === 'flight') {
+      // Flight host: no station bay behind the hull — the screen's own backdrop shows instead.
+      if (mount && typeof mount.setDockId === 'function') mount.setDockId(null);
+    } else {
+      syncShipworksDockForState(mount, ctx.state);
+    }
     // The shell owns its 18-frame status cadence. Shipworks is event-driven; repainting its full
     // body on that cadence destroys live pointer targets and wastes the authored preview frame.
     if (periodicCtx === ctx) return;
@@ -1244,6 +1315,8 @@ export function createShipworksScreen(ctx) {
 
   return {
     el,
+    setHost,
+    get host() { return host; },
     onShow() { refresh(); if (mount) mount.setActive(true); },
     onHide() {
       if (previewSettleTimer) clearTimeout(previewSettleTimer);

@@ -60,8 +60,10 @@ const COMMAND_BAR_CSS = `
   transition: opacity .2s ease;
 }
 #sf-command-bar.sf-cb--active { opacity: 1; }
-/* Hidden whenever a modal/menu is open or the player is docked — same gate as #hud. */
-body.ui-modal-open #sf-command-bar { opacity: 0; }
+/* Hidden whenever a modal/menu is open or the player is docked — same gate as #hud. Live
+   (non-pausing) overlays also own pointer input, so the bar steps aside for them too. */
+body.ui-modal-open #sf-command-bar,
+body.ui-live-screen #sf-command-bar { opacity: 0; }
 
 #sf-command-bar .sf-cb-cell {
   display: flex;

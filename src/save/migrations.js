@@ -273,6 +273,22 @@ export const MIGRATIONS = [
       }
     },
   },
+  // v13: J4 screen state memory (build map §11.12) persists per-screen UI bags under
+  // data.uiScreenMemory. An old save simply has none — every screen opens at its default, which is
+  // exactly today's behaviour, so this seeds an empty bag rather than inventing preferences.
+  // Idempotent and pure; a malformed subtree is replaced rather than repaired, since a UI
+  // preference is not worth defending and screenMemory re-screens everything on deserialize anyway.
+  {
+    from: 12,
+    to: 13,
+    fn(data) {
+      if (!data || typeof data !== 'object' || Array.isArray(data)) return;
+      const m = data.uiScreenMemory;
+      if (!m || typeof m !== 'object' || Array.isArray(m) || !m.bags || typeof m.bags !== 'object' || Array.isArray(m.bags)) {
+        data.uiScreenMemory = { v: 1, bags: {} };
+      }
+    },
+  },
 ];
 
 /**

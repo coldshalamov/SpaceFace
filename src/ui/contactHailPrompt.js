@@ -173,7 +173,8 @@ function injectStyle() {
   .sf-contact-hail__actions button { min-height:30px; flex:1 1 0; border:1px solid rgba(57,208,255,.34);
     background:rgba(57,208,255,.05); color:#d7e6ff; cursor:pointer;
     font:9px var(--mono, Consolas, monospace); letter-spacing:.08em; }
-  body.ui-modal-open #sf-contact-hail { opacity:0; visibility:hidden; pointer-events:none; }
+  body.ui-modal-open #sf-contact-hail,
+  body.ui-live-screen #sf-contact-hail { opacity:0; visibility:hidden; pointer-events:none; }
   @media (max-width:900px), (max-height:620px) {
     #sf-contact-hail { left:85px; top:12px; }
     .sf-contact-hail__panel { left:-65px; }

@@ -185,6 +185,361 @@ export function trace(elm, tone) {
 }
 
 // ---------------------------------------------------------------------------------------------------
+// sf-select — the styled replacement for native <select> (FRONTEND_DIRECTION §4.4: native form
+// controls are deleted from screens). Listbox pattern per ARIA APG: the field button owns focus and
+// keyboard, the list carries role=listbox + aria-activedescendant. Root exposes `.value` and
+// dispatches a bubbling DOM `change` event on user commit, so existing screen handlers keep working.
+// ---------------------------------------------------------------------------------------------------
+const SF_SELECT_CARET = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+/** Build an .sf-select. items: [{ value, label, disabled? }]. opts: { value, ariaLabel, className, disabled, onChange }.
+ *  User commits dispatch a bubbling `change` event on the root (event.target === root, root.value set). */
+export function sfSelect(items = [], opts = {}) {
+  const root = el('div', 'sf-select' + (opts.className ? ' ' + opts.className : ''));
+  const valueEl = el('span', 'sf-select__value');
+  const field = el('button', 'sf-select__field', {
+    children: [valueEl],
+    attrs: {
+      type: 'button',
+      'aria-haspopup': 'listbox',
+      'aria-expanded': 'false',
+      ...(opts.ariaLabel ? { 'aria-label': opts.ariaLabel } : {}),
+    },
+  });
+  field.insertAdjacentHTML('beforeend', SF_SELECT_CARET);
+  const list = el('div', 'sf-select__list', { attrs: { role: 'listbox' } });
+  if (opts.ariaLabel) list.setAttribute('aria-label', opts.ariaLabel);
+  root.appendChild(field);
+  root.appendChild(list);
+
+  let options = [];
+  let value = null;
+  let open = false;
+  let activeIndex = -1;
+  let onDocPointer = null;
+
+  function optionByValue(v) {
+    for (let i = 0; i < options.length; i++) if (options[i].value === v) return i;
+    return -1;
+  }
+
+  function renderList() {
+    list.textContent = '';
+    options.forEach((o, i) => {
+      const node = el('div', 'sf-select__opt', {
+        text: o.label,
+        attrs: {
+          role: 'option',
+          'data-value': String(o.value),
+          'aria-selected': String(o.value === value),
+          ...(o.disabled ? { 'aria-disabled': 'true' } : {}),
+        },
+      });
+      if (o.value === value) node.classList.add('is-selected');
+      if (i === activeIndex) node.classList.add('is-active');
+      node.addEventListener('click', () => { if (!o.disabled) commit(i); });
+      list.appendChild(node);
+    });
+  }
+
+  function syncField() {
+    const idx = optionByValue(value);
+    valueEl.textContent = idx >= 0 ? options[idx].label : '';
+    field.disabled = !!opts.disabled || options.length === 0;
+  }
+
+  function setActive(i, focusOption) {
+    if (!options.length) return;
+    activeIndex = Math.max(0, Math.min(options.length - 1, i));
+    renderList();
+    const activeId = 'sf-select-opt-' + activeIndex;
+    const nodes = list.children;
+    if (nodes[activeIndex]) {
+      nodes[activeIndex].id = activeId;
+      list.setAttribute('aria-activedescendant', activeId);
+      if (focusOption !== false) nodes[activeIndex].scrollIntoView({ block: 'nearest' });
+    }
+  }
+
+  function openList() {
+    if (open || field.disabled) return;
+    open = true;
+    root.classList.add('sf-select--open');
+    field.setAttribute('aria-expanded', 'true');
+    // Flip above the field when the drop-down would leave the viewport.
+    const rect = field.getBoundingClientRect();
+    root.classList.toggle('sf-select--up', rect.bottom + Math.min(list.scrollHeight || 220, 220) > innerHeight && rect.top > 200);
+    setActive(Math.max(0, optionByValue(value)));
+    onDocPointer = (ev) => { if (!root.contains(ev.target)) closeList(); };
+    document.addEventListener('pointerdown', onDocPointer, true);
+  }
+
+  function closeList(returnFocus) {
+    if (!open) return;
+    open = false;
+    root.classList.remove('sf-select--open', 'sf-select--up');
+    field.setAttribute('aria-expanded', 'false');
+    list.removeAttribute('aria-activedescendant');
+    if (onDocPointer) { document.removeEventListener('pointerdown', onDocPointer, true); onDocPointer = null; }
+    if (returnFocus !== false) { try { field.focus({ preventScroll: true }); } catch (_) { field.focus(); } }
+  }
+
+  function commit(i) {
+    const o = options[i];
+    if (!o || o.disabled || o.value === value) { closeList(); return; }
+    value = o.value;
+    syncField();
+    renderList();
+    closeList();
+    root.dispatchEvent(new Event('change', { bubbles: true }));
+    if (typeof opts.onChange === 'function') opts.onChange(value);
+  }
+
+  field.addEventListener('click', () => { if (open) closeList(); else openList(); });
+  field.addEventListener('keydown', (ev) => {
+    switch (ev.key) {
+      case 'ArrowDown': ev.preventDefault(); if (!open) openList(); else setActive(activeIndex + 1); break;
+      case 'ArrowUp': ev.preventDefault(); if (!open) openList(); else setActive(activeIndex - 1); break;
+      case 'Home': ev.preventDefault(); if (open) setActive(0); break;
+      case 'End': ev.preventDefault(); if (open) setActive(options.length - 1); break;
+      case 'Enter': case ' ': ev.preventDefault(); if (open) commit(activeIndex); else openList(); break;
+      case 'Escape': if (open) { ev.preventDefault(); ev.stopPropagation(); closeList(); } break;
+      case 'Tab': if (open) closeList(false); break;
+    }
+  });
+
+  /** Programmatic value set — updates the UI, does NOT dispatch a change event. */
+  Object.defineProperty(root, 'value', {
+    get: () => (value == null ? '' : value),
+    set(v) { value = v; syncField(); renderList(); },
+  });
+  /** Replace the option set (and optionally the value) in place. */
+  root.sfSetOptions = (next, nextValue) => {
+    options = (next || []).map((o) => ({ value: o.value, label: o.label, disabled: !!o.disabled }));
+    const hadValue = nextValue !== undefined ? nextValue : value;
+    const idx = optionByValue(hadValue);
+    value = idx >= 0 ? hadValue : (options.length ? options[0].value : null);
+    activeIndex = idx >= 0 ? idx : 0;
+    syncField();
+    renderList();
+  };
+  root.sfSelectField = field;
+  root.sfSetOptions(items, opts.value);
+
+  return root;
+}
+
+/** Replace every native <select> under `root` with an .sf-select widget, carrying over id, class,
+ *  data-* attributes, aria-label, disabled state, options and current value. Call after assigning
+ *  innerHTML; later repopulation goes through `el.sfSetOptions([...], value)`. */
+export function enhanceSelects(root) {
+  if (!root || !root.querySelectorAll) return [];
+  const widgets = [];
+  for (const sel of Array.from(root.querySelectorAll('select'))) {
+    const items = Array.from(sel.options || []).map((o) => ({ value: o.value, label: o.textContent, disabled: o.disabled }));
+    const widget = sfSelect(items, {
+      value: sel.value,
+      ariaLabel: sel.getAttribute('aria-label') || sel.getAttribute('aria-labelledby') || undefined,
+      className: sel.className,
+      disabled: sel.disabled,
+    });
+    if (sel.id) widget.id = sel.id;
+    for (const attr of Array.from(sel.attributes)) {
+      if (attr.name === 'id' || attr.name === 'class' || attr.name === 'aria-label' || attr.name === 'disabled') continue;
+      if (attr.name === 'value' || attr.name === 'name') continue;
+      if (attr.name.startsWith('data-') || attr.name.startsWith('aria-')) widget.setAttribute(attr.name, attr.value);
+    }
+    sel.parentNode.replaceChild(widget, sel);
+    widgets.push(widget);
+  }
+  return widgets;
+}
+
+// ---------------------------------------------------------------------------------------------------
+// dataState — the FOUR REQUIRED DATA STATES (J3; CANONICAL_BUILD_MAP §11.12, grammar §12 item 9).
+//
+// "A correct-but-blank screen reads as broken." Every pane must be able to render EMPTY / LOADING /
+// ERROR / DENIED, and each state must name WHAT WOULD FILL IT and carry a VERB. Supersedes the dead
+// `.sf-empty` class (a centred italic string that named nothing and did nothing).
+//
+// TWO CONTRACTS THIS MODULE ENFORCES IN CODE, because a doc cannot:
+//
+//  1. `fills` and `verb` are REQUIRED and throw when absent. If they were options every caller would
+//     omit them and this decays back into `.sf-empty` with more ceremony. Authoring-time failure is
+//     the point — scripts/check-data-states.mjs asserts the same rule statically.
+//
+//  2. LOADING's sweep is REMOVED, never hidden. The repo's existing "good" loading state
+//     (`.sx-sw__acquiring`) runs `animation: … infinite` and only sets visibility:hidden when done —
+//     a compositor-side animation that `check:ui-frame-sleep` cannot see because it inspects rAF.
+//     Mounting through `mountDataState()` clears the host, so resolving a load necessarily detaches
+//     the animating nodes. `settleDataState()` is the explicit form.
+//
+// Colour follows grammar §4 roles only — never `--accent`, which is deliberately roleless. At rest a
+// state is calm+paper; exactly one hot accent is spent on the rail/glyph, and the verb carries
+// `--sf-goal` because it is the way out. Meaning never lives in colour alone: every state prints its
+// own state word and carries a distinct glyph silhouette, so `forced-colors` (which strips
+// background-image, box-shadow and filter) still reads correctly.
+// ---------------------------------------------------------------------------------------------------
+
+/** The four states. `word` is the second, non-colour channel; `role` names the grammar §4 token.
+ *
+ *  `aria` is the ARIA role, not a guess: `alert` carries implicit assertive+atomic and is what
+ *  browsers handle most reliably for a node inserted WITH its content already present, which is
+ *  exactly how these mount. `status` + an explicit `aria-live="assertive"` is the non-idiomatic
+ *  pairing and was the first version. No explicit aria-live is set on either — both roles carry an
+ *  implicit politeness, and restating it is how the two end up disagreeing.
+ *
+ *  `aria-busy` is NOT here on purpose. It belongs on the HOST being mutated, not on the live region
+ *  doing the announcing; on the region itself it can suppress the very announcement the region
+ *  exists to make. mountDataState sets and clears it on the host. */
+const DATA_STATES = {
+  empty:   { word: 'NOTHING HERE', role: 'calm', aria: 'status' },
+  loading: { word: 'WORKING',      role: 'calm', aria: 'status' },
+  error:   { word: 'FAULT',        role: 'foe',  aria: 'alert' },
+  denied:  { word: 'BLOCKED',      role: 'foe',  aria: 'alert' },
+};
+
+// 24×24, stroke=currentColor, distinguishable by SILHOUETTE alone (the mirror-pair test): an open
+// socket, a broken arc, a struck triangle, a barred ring.
+const STATE_GLYPHS = {
+  empty:   '<circle cx="12" cy="12" r="8.2" stroke-dasharray="3 3.4"/>',
+  loading: '<path d="M12 3.8a8.2 8.2 0 0 1 8.2 8.2"/><path d="M12 20.2a8.2 8.2 0 0 1-8.2-8.2" opacity=".45"/>',
+  error:   '<path d="M12 4.2 21 19.4H3z"/><path d="M12 10v4.1M12 16.8v.1"/>',
+  denied:  '<circle cx="12" cy="12" r="8.2"/><path d="M6.2 17.8 17.8 6.2"/>',
+};
+
+function stateGlyph(kind) {
+  return '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" '
+    + 'stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' + STATE_GLYPHS[kind] + '</svg>';
+}
+
+/**
+ * dataState(kind, opts) -> HTMLElement (detached).
+ *
+ * kind: 'empty' | 'loading' | 'error' | 'denied'
+ * opts.headline  REQUIRED — what is (or is not) here, in the player's words. Not a status code.
+ * opts.fills     REQUIRED — what WOULD fill this pane. For LOADING, the real work being awaited
+ *                (never a timer). For DENIED, the rule that blocks it.
+ * opts.verb      REQUIRED — { label, onActivate? , action? , key? }. The way out. A pane the player
+ *                can only stare at is the failure this primitive exists to prevent. `onActivate` is
+ *                a direct listener; `action` emits `data-sf-verb="<action>"` for a host screen's
+ *                existing delegated click handler (the only form that survives dataStateHtml).
+ * opts.detail    optional second line.
+ * opts.skeleton  LOADING only — [{ w, h }] rows echoing the REAL layout, or a row count.
+ * opts.compact   dense inline variant (drawer decks, apron tiles).
+ *
+ * Throws on a missing kind / headline / fills / verb.label — see contract 1 above.
+ */
+export function dataState(kind, opts = {}) {
+  const spec = DATA_STATES[kind];
+  if (!spec) throw new TypeError('dataState: unknown kind "' + kind + '" (empty|loading|error|denied)');
+  if (!opts.headline) throw new TypeError('dataState(' + kind + '): `headline` is required');
+  if (!opts.fills) throw new TypeError('dataState(' + kind + '): `fills` is required — name what would fill this pane');
+  const verb = opts.verb;
+  if (!verb || !verb.label) {
+    throw new TypeError('dataState(' + kind + '): `verb` is required — every data state carries a way out');
+  }
+
+  const body = [];
+  body.push(el('span', 'sf-state__word', { text: spec.word }));
+  body.push(el('p', 'sf-state__head', { text: String(opts.headline), attrs: { 'data-sf-text': '' } }));
+  body.push(el('p', 'sf-state__fills', { text: String(opts.fills), attrs: { 'data-sf-text': '' } }));
+  if (opts.detail) body.push(el('p', 'sf-state__detail', { text: String(opts.detail), attrs: { 'data-sf-text': '' } }));
+
+  const verbKids = [el('span', null, { text: String(verb.label) })];
+  if (verb.key) verbKids.push(el('kbd', 'sf-state__key', { text: String(verb.key) }));
+  const verbAttrs = { type: 'button' };
+  if (verb.action) verbAttrs['data-sf-verb'] = String(verb.action);
+  const verbBtn = el('button', 'sf-state__verb', { children: verbKids, attrs: verbAttrs });
+  if (typeof verb.onActivate === 'function') verbBtn.addEventListener('click', verb.onActivate);
+  body.push(verbBtn);
+
+  const kids = [
+    el('span', 'sf-state__glyph', { html: stateGlyph(kind), attrs: { 'aria-hidden': 'true' } }),
+    el('div', 'sf-state__body', { children: body }),
+  ];
+
+  // LOADING renders a skeleton OF THE REAL LAYOUT above the copy, so the pane's shape is legible
+  // before its content is. Rows are authored by the caller; a bare count gets an even default.
+  if (kind === 'loading' && opts.skeleton) {
+    const rows = Array.isArray(opts.skeleton)
+      ? opts.skeleton
+      : Array.from({ length: Math.max(1, Math.min(8, Number(opts.skeleton) || 3)) }, () => ({}));
+    const skel = el('div', 'sf-state__skel', { attrs: { 'aria-hidden': 'true' } });
+    for (const r of rows.slice(0, 8)) {
+      const bar = el('div', 'sf-state__bar');
+      if (r && r.w) bar.style.width = String(r.w);
+      if (r && r.h) bar.style.height = (Number(r.h) || 12) + 'px';
+      skel.appendChild(bar);
+    }
+    kids.unshift(skel);
+  }
+
+  const node = el('div', 'sf-state sf-state--' + kind + (opts.compact ? ' sf-state--compact' : ''), {
+    children: kids,
+    attrs: { 'data-sf-state': kind, role: spec.aria },
+  });
+  node.sfStateVerb = verbBtn;
+  return node;
+}
+
+/**
+ * mountDataState(host, kind, opts) -> the mounted node.
+ *
+ * CLEARS `host` first. This is the sanctioned mount path precisely because clearing is what makes
+ * contract 2 hold: replacing a LOADING state with real content detaches its animating nodes rather
+ * than hiding them. Returns null (and leaves the host alone) when `host` is missing.
+ */
+export function mountDataState(host, kind, opts) {
+  if (!host) return null;
+  const node = dataState(kind, opts);
+  host.textContent = '';
+  host.appendChild(node);
+  // aria-busy belongs on the HOST being mutated, not on the live region inside it. settleDataState
+  // clears it, which is the other half of the contract.
+  if (kind === 'loading') host.setAttribute('aria-busy', 'true');
+  else host.removeAttribute('aria-busy');
+  return node;
+}
+
+/**
+ * dataStateHtml(kind, opts) -> markup string.
+ *
+ * Most screens in this repo assemble innerHTML strings (galaxyMap, the station screens), so a
+ * DOM-only primitive could not be adopted where the defect actually lives. Built from the SAME
+ * dataState() node so the two forms cannot drift apart.
+ *
+ * The verb must be `verb.action` here: a listener cannot survive serialization, and silently
+ * dropping one would ship a dead button — the exact "correct-but-inert" failure this job exists to
+ * remove. Host screens route `[data-sf-verb]` through the delegated click handler they already own.
+ */
+export function dataStateHtml(kind, opts = {}) {
+  const verb = opts && opts.verb;
+  if (verb && typeof verb.onActivate === 'function' && !verb.action) {
+    throw new TypeError('dataStateHtml(' + kind + '): `verb.onActivate` cannot be serialized — use `verb.action`');
+  }
+  if (verb && !verb.action) {
+    throw new TypeError('dataStateHtml(' + kind + '): `verb.action` is required so the verb survives innerHTML');
+  }
+  return dataState(kind, opts).outerHTML;
+}
+
+/**
+ * settleDataState(host) — remove every data state under `host`, animation and all.
+ *
+ * Call this before writing real content by any path other than mountDataState(). A hidden LOADING
+ * sweep keeps running on the compositor where no check in this repo can see it.
+ */
+export function settleDataState(host) {
+  if (!host || !host.querySelectorAll) return 0;
+  const nodes = Array.from(host.querySelectorAll('.sf-state'));
+  if (host.classList && host.classList.contains('sf-state')) nodes.push(host);
+  for (const n of nodes) if (n.parentNode) n.parentNode.removeChild(n);
+  if (host.removeAttribute) host.removeAttribute('aria-busy');
+  return nodes.length;
+}
+
+// ---------------------------------------------------------------------------------------------------
 function clamp01(n) {
   n = Number(n);
   if (!Number.isFinite(n)) return 0;

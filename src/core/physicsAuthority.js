@@ -128,6 +128,7 @@ export function ensurePhysicsBodySpec(entity) {
   const modelInertia = finite(entity.flightModel && entity.flightModel.inertia, finite(derivedModel && derivedModel.inertia, 0));
   const inertiaY = positive(authored.inertiaY, positive(modelInertia, 0.5 * mass * radius * radius));
   const isCraft = entity.type === 'ship' || entity.type === 'drone';
+  const shape = authored.shape ? String(authored.shape) : (isCraft ? 'capsule' : 'ball');
   const thrusters = Array.isArray(authored.thrusters)
     ? authored.thrusters.map(normalizeThruster)
     : (isCraft ? DEFAULT_THRUSTERS.map((thruster) => ({ ...thruster, health: 1 })) : []);
@@ -139,6 +140,7 @@ export function ensurePhysicsBodySpec(entity) {
     inertiaY,
     centerOfMass: vector3(authored.centerOfMass),
     radius,
+    shape,
     dynamic: authored.dynamic == null ? defaultDynamic(entity) : !!authored.dynamic,
     ccd: authored.ccd == null ? defaultCcd(entity) : !!authored.ccd,
     material: String(authored.material || defaultMaterial(entity)),
@@ -221,6 +223,7 @@ export function resolvePhysicsBodySpec(entity) {
     inertiaY: positive(body.inertiaY, 1),
     centerOfMass: vector3(body.centerOfMass),
     radius: positive(body.radius, 1),
+    shape: String(body.shape || (entity.type === 'ship' || entity.type === 'drone' ? 'capsule' : 'ball')),
     dynamic: !!body.dynamic,
     ccd: !!body.ccd,
     material: String(body.material || 'default'),

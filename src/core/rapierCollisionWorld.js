@@ -13,6 +13,7 @@ import {
   proxyScaleFor,
   resolveCollisionProxyManifest,
 } from '../data/collisionProxyManifests.js';
+import { resolveCraftProportions } from './sg02DynamicBodyOwner.js';
 import { loadRapierCompatRuntime } from './rapierCompatRuntime.js';
 
 export async function createRapierDynamicsWorld() {
@@ -119,13 +120,34 @@ export async function createRapierCollisionWorld() {
         .setAngvel({ x: 0, y: finite(e.angVel), z: 0 });
     }
     const body = world.createRigidBody(desc);
-    const proxyManifest = dynamic ? null : resolveCollisionProxyManifest(e);
+    const proxyManifest = resolveCollisionProxyManifest(e);
+    const isCraft = e.type === 'ship' || e.type === 'drone';
     const colliderDescs = proxyManifest
       ? buildObserverProxyColliderDescs(e, proxyManifest)
-      : [buildObserverBallColliderDesc(e.radius)];
+      : (isCraft
+        ? [buildObserverCraftCapsuleColliderDesc(e)]
+        : [buildObserverBallColliderDesc(e.radius)]);
     const colliders = colliderDescs.map((colliderDesc) => world.createCollider(colliderDesc, body));
     const collider = colliders[0];
     return { body, collider, colliders, radius: e.radius, queryShape: new RAPIER.Ball(e.radius), ccdEnabled, dynamic };
+  }
+
+  function buildObserverCraftCapsuleColliderDesc(entity) {
+    const proportions = resolveCraftProportions(entity);
+    const R_ref = Number.isFinite(entity && entity.radius) && entity.radius > 0 ? entity.radius : 14;
+    const length = Math.max(0.1, (proportions && proportions.length || 1.35) * R_ref);
+    const halfWidth = Math.max(0.1, (proportions && proportions.halfWidth || 0.42) * R_ref);
+    const capRadius = halfWidth;
+    const halfHeight = Math.max(0, (length * 0.5) - capRadius);
+
+    const colliderDesc = RAPIER.ColliderDesc.capsule(halfHeight, capRadius)
+      .setRotation({ x: 0, y: 0, z: -Math.SQRT1_2, w: Math.SQRT1_2 })
+      .setSensor(false)
+      .setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS);
+    if (RAPIER.ActiveCollisionTypes && RAPIER.ActiveCollisionTypes.ALL != null) {
+      colliderDesc.setActiveCollisionTypes(RAPIER.ActiveCollisionTypes.ALL);
+    }
+    return colliderDesc;
   }
 
   function buildObserverBallColliderDesc(radius) {

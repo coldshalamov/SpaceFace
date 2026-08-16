@@ -66,7 +66,10 @@ const STATION_STYLES = [
   { id: 'sx-station-workbench-css', href: '/styles/station-workbench.css' },
   { id: 'sx-station-berth-css', href: '/styles/station-berth.css' },
 ];
-function ensureStylesheet() {
+// Also called by the in-flight THE SHIP screen (src/ui/ship/shipScreen.js): the shared shipworks
+// stage wears .sx-* classes styled only by these sheets, so opening F2 before the first dock must
+// not wait for a dock to inject them.
+export function ensureStylesheet() {
   if (typeof document === 'undefined') return;
   for (const style of STATION_STYLES) {
     if (document.getElementById(style.id)) continue;

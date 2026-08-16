@@ -255,6 +255,13 @@ export function createUiInput(ctx, screenManager) {
           doDock();
         }
         return;
+      case 'F2':
+        // THE SHIP (grammar §10.5 canonical key table; build map §11.3). Pausing by owner ruling —
+        // full-depth strategic screen. F1 (help) and F7 (debug) are the adjacent literal precedents.
+        ev.preventDefault();
+        screenManager.pushScreen('ship');
+        bus.emit('audio:cue', { id: 'ui_open' });
+        return;
       case 'F7': {
         // Collision / socket / landing-contact debug overlay toggle (graphics spec §12.5).
         ev.preventDefault();

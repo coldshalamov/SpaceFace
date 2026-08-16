@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>SpaceFace · UI Direction Lab</title>
+<!--
+  _uilab.html — art-direction comparison harness for design/revamp/FRONTEND_DIRECTION_AND_MENU_ARCHITECTURE.md
+
+  Static markup only. No game code, no live data, no build step. Serve the repo root and open /_uilab.html.
+  CURRENT frames are honest reproductions of what ships today (measurements taken from
+  src/ui/uiRoot.js injectHudCss and src/ui/screens/techTree.js). PROPOSED frames are the direction
+  proposed in §4 of the plan. Fonts are the ones already vendored in styles/fonts/.
+
+  Constraints modelled deliberately: no backdrop-filter, no remote fonts, no idle animation at rest.
+-->
+<style>
+/* ── vendored faces (same files styles/fonts.css loads at boot) ───────────────────────────── */
+@font-face{font-family:"Saira SemiCondensed";font-weight:600;font-display:swap;src:url("./styles/fonts/saira-scond-600.woff2") format("woff2")}
+@font-face{font-family:"Saira SemiCondensed";font-weight:700;font-display:swap;src:url("./styles/fonts/saira-scond-700.woff2") format("woff2")}
+@font-face{font-family:"IBM Plex Sans";font-weight:400;font-display:swap;src:url("./styles/fonts/plex-sans-400.woff2") format("woff2")}
+@font-face{font-family:"IBM Plex Sans";font-weight:500;font-display:swap;src:url("./styles/fonts/plex-sans-500.woff2") format("woff2")}
+@font-face{font-family:"IBM Plex Sans";font-weight:600;font-display:swap;src:url("./styles/fonts/plex-sans-600.woff2") format("woff2")}
+@font-face{font-family:"IBM Plex Mono";font-weight:400;font-display:swap;src:url("./styles/fonts/plex-mono-400.woff2") format("woff2")}
+@font-face{font-family:"IBM Plex Mono";font-weight:500;font-display:swap;src:url("./styles/fonts/plex-mono-500.woff2") format("woff2")}
+
+*,*::before,*::after{box-sizing:border-box}
+
+/* ── page chrome ─────────────────────────────────────────────────────────────────────────── */
+:root{
+  --lab-bg:#07090e; --lab-ink:#e8eef6; --lab-dim:#8b9bb0; --lab-line:rgba(140,170,205,.16);
+  --display:"Saira SemiCondensed",system-ui,sans-serif;
+  --body:"IBM Plex Sans",system-ui,sans-serif;
+  --data:"IBM Plex Mono",ui-monospace,monospace;
+}
+html,body{margin:0;background:var(--lab-bg);color:var(--lab-ink);font-family:var(--body);}
+body{padding:0 0 120px;-webkit-font-smoothing:antialiased}
+
+.lab-head{padding:56px 48px 28px;max-width:1500px;margin:0 auto;border-bottom:1px solid var(--lab-line)}
+.lab-kicker{font-family:var(--data);font-size:11px;letter-spacing:.34em;text-transform:uppercase;color:#ff3d7f}
+.lab-head h1{font-family:var(--display);font-weight:700;font-size:clamp(40px,6vw,76px);line-height:.92;
+  margin:14px 0 0;letter-spacing:-.01em;text-transform:uppercase}
+.lab-head p{max-width:64ch;color:var(--lab-dim);font-size:15px;line-height:1.6;margin:16px 0 0}
+.lab-head b{color:var(--lab-ink);font-weight:600}
+
+section{max-width:1500px;margin:0 auto;padding:52px 48px 0}
+.sec-head{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:20px}
+.sec-head h2{font-family:var(--display);font-weight:700;font-size:32px;text-transform:uppercase;
+  letter-spacing:.02em;margin:0}
+.sec-head .note{color:var(--lab-dim);font-size:13.5px;max-width:52ch;line-height:1.55}
+
+/* segmented toggle */
+.seg{display:inline-flex;border:1px solid var(--lab-line);border-radius:2px;overflow:hidden;flex:none}
+.seg button{appearance:none;border:0;background:transparent;color:var(--lab-dim);cursor:pointer;
+  font-family:var(--display);font-weight:600;font-size:14px;letter-spacing:.14em;text-transform:uppercase;
+  padding:10px 20px;transition:background .12s,color .12s}
+.seg button+button{border-left:1px solid var(--lab-line)}
+.seg button[aria-pressed="true"]{background:var(--lab-ink);color:#06080c}
+
+.frame{position:relative;aspect-ratio:16/9;width:100%;overflow:hidden;border:1px solid var(--lab-line);
+  border-radius:3px;background:#04060a}
+.frame__scene{position:absolute;inset:0;background:url("./assets/cinematics/C-INTRO-01.jpg") center 38%/cover no-repeat;
+  filter:saturate(.86) brightness(.42)}
+.frame__scene::after{content:"";position:absolute;inset:0;
+  background:radial-gradient(66% 58% at 50% 52%,rgba(3,5,9,.18) 30%,rgba(2,4,8,.86) 100%)}
+.stage{position:absolute;inset:0;display:none}
+.stage.is-on{display:block}
+.caption{display:flex;gap:14px;align-items:baseline;margin:12px 2px 0;color:var(--lab-dim);font-size:13px;line-height:1.5}
+.caption b{font-family:var(--data);font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:#ff3d7f;flex:none}
+
+/* ══ POWER BAR ═════════════════════════════════════════════════════════════════════════════
+   The number-key ability bar. Keys 4-8 are ALREADY bound in src/systems/input.js to Mass Seed,
+   Well, Repulsor, Clearing Cone and Skim Collector — and clearingCone/skimCollector have zero
+   HUD references today. The bar surfaces what already exists, then grows. */
+.pbar{position:absolute;left:50%;bottom:26px;transform:translateX(-50%);display:flex;gap:7px;z-index:3}
+.pslot{position:relative;width:56px;height:56px;border-radius:3px;display:grid;place-items:center;
+  background:linear-gradient(180deg,rgba(16,22,31,.90),rgba(8,11,17,.94));
+  border:1px solid rgba(140,170,205,.22)}
+.pslot__key{position:absolute;top:2px;left:5px;font-family:var(--display);font-weight:700;font-size:11px;
+  letter-spacing:.04em;color:var(--steel);line-height:1}
+.pslot svg{width:28px;height:28px;fill:none;stroke:currentColor;stroke-width:1.6;
+  stroke-linecap:round;stroke-linejoin:round;color:var(--steel)}
+.pslot__name{position:absolute;bottom:-15px;left:0;right:0;text-align:center;
+  font-family:var(--display);font-weight:600;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--steel-dim);white-space:nowrap}
+/* states */
+.pslot--ready{border-color:color-mix(in srgb,var(--hot) 55%,transparent)}
+.pslot--ready svg{color:var(--hot)}
+.pslot--ready::after{content:"";position:absolute;inset:-1px;border-radius:3px;
+  box-shadow:0 0 14px color-mix(in srgb,var(--hot) 40%,transparent);pointer-events:none}
+.pslot--cool svg{color:var(--steel-dim)}
+.pslot--cool .pcool{position:absolute;left:0;right:0;bottom:0;background:rgba(140,170,205,.16);border-radius:0 0 3px 3px}
+.pslot--empty{border-style:dashed;border-color:rgba(140,170,205,.16);background:rgba(10,14,20,.45)}
+.pslot--empty .pslot__key{color:var(--steel-dim);opacity:.5}
+.pslot--empty::before{content:"";width:12px;height:12px;border-radius:50%;
+  border:1px dashed rgba(140,170,205,.30)}
+.pslot--armed{border-color:var(--foe)}
+.pslot--armed svg{color:var(--foe)}
+/* the "what you can do now" strip above the bar */
+.pcount{position:absolute;left:50%;bottom:96px;transform:translateX(-50%);text-align:center;white-space:nowrap}
+.pcount b{font-family:var(--display);font-weight:700;font-size:15px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--paper);text-shadow:0 2px 6px #000}
+.pcount span{font-family:var(--data);font-size:12px;color:var(--steel);margin-left:8px}
+
+.stageRow{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.stageCell{position:relative;aspect-ratio:16/10;overflow:hidden;border:1px solid var(--lab-line);
+  border-radius:3px;background:#04060a}
+.stageCell .frame__scene{filter:saturate(.86) brightness(.34)}
+.stageCell .pbar{bottom:20px;gap:5px}
+.stageCell .pslot{width:40px;height:40px}
+.stageCell .pslot svg{width:21px;height:21px}
+.stageCell .pslot__key{font-size:9px}
+.stageCell .pslot__name{display:none}
+.stageCell .pcount{bottom:74px}
+.stageCell .pcount b{font-size:12px}
+.stageCell .pcount span{font-size:10px}
+.stageTag{position:absolute;top:10px;left:12px;font-family:var(--display);font-weight:700;font-size:13px;
+  letter-spacing:.18em;text-transform:uppercase;color:var(--paper);text-shadow:0 2px 6px #000;z-index:4}
+.stageTag i{display:block;font-style:normal;font-family:var(--body);font-weight:400;font-size:11px;
+  letter-spacing:0;text-transform:none;color:var(--steel);margin-top:2px}
+
+/* ══ ACCENT AXIS — the one art-direction choice offered ═══════════════════════════════════ */
+body[data-accent="signal"]{ --hot:#00e5ff; --hot-2:#7df9ff; --foe:#ff2e88; --obj:#ffb020; }
+body[data-accent="furnace"]{ --hot:#ff8a1e; --hot-2:#ffd27a; --foe:#ff2e88; --obj:#38e8c0; }
+:root{ --steel:#8fa6bd; --steel-dim:#5d7189; --paper:#f2f7ff; }
+
+/* ═══════════════════════════════════════════════════════════════════════════════════════════
+   CURRENT — honest reproduction of what ships today.
+   Mono everywhere (Consolas via var(--mono)), 7–11px, .1–.3em tracking, bordered + shadowed
+   plates, saturated #00F0FF with an 8px glow. Sizes taken from src/ui/uiRoot.js.
+   ═══════════════════════════════════════════════════════════════════════════════════════════ */
+.cur{--visor-cyan:#00F0FF;--visor-amber:#FF9900;--hud-line:rgba(148,178,205,.18);
+  font-family:Consolas,ui-monospace,monospace}
+.cur .plate{position:absolute;border:1px solid var(--hud-line);border-radius:3px;
+  background:linear-gradient(180deg,rgba(15,20,27,.96),rgba(8,11,16,.97));
+  box-shadow:0 6px 18px rgba(0,0,0,.5);padding:7px 9px}
+.cur .k{font-size:8px;letter-spacing:.22em;text-transform:uppercase;color:#71828f}
+.cur .v{font-size:9px;letter-spacing:.14em;color:var(--visor-cyan);text-shadow:0 0 8px rgba(0,240,255,.6)}
+.cur .v--am{color:var(--visor-amber);text-shadow:0 0 8px rgba(255,153,0,.6)}
+.cur .row{display:flex;justify-content:space-between;gap:12px;margin-top:3px}
+.cur .bar{height:3px;background:rgba(255,255,255,.09);margin-top:4px}
+.cur .bar i{display:block;height:100%;background:var(--visor-cyan);box-shadow:0 0 8px var(--visor-cyan)}
+
+/* ═══════════════════════════════════════════════════════════════════════════════════════════
+   PROPOSED — §4. Chromeless. Saira display for anything read at speed, Plex Mono for numerals
+   only, 11px floor, saturated accent spent on danger + agency, one grid.
+   ═══════════════════════════════════════════════════════════════════════════════════════════ */
+.pro{font-family:var(--body);color:var(--paper)}
+.pro .lbl{font-family:var(--display);font-weight:600;font-size:11px;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--steel);text-shadow:0 1px 3px rgba(0,0,0,.9)}
+.pro .num{font-family:var(--data);font-weight:500;font-variant-numeric:tabular-nums;
+  text-shadow:0 1px 4px rgba(0,0,0,.95)}
+.pro .big{font-family:var(--display);font-weight:700;font-size:64px;line-height:.82;
+  letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:var(--paper);
+  text-shadow:0 2px 12px rgba(0,0,0,.95)}
+.pro .anchor{position:absolute}
+/* soft per-anchor vignette instead of a bordered plate */
+.pro .anchor::before{content:"";position:absolute;inset:-26px -34px;pointer-events:none;
+  background:radial-gradient(64% 68% at var(--vx,20%) 60%,rgba(3,6,11,.80),transparent 72%)}
+.pro .anchor>*{position:relative}
+
+/* bottom-left vitals */
+.pro .vitals{left:44px;bottom:40px;--vx:14%}
+.pro .vstack{display:grid;grid-template-columns:auto 1fr;gap:5px 14px;align-items:center;width:290px;margin-top:12px}
+.pro .vbar{height:7px;background:rgba(255,255,255,.10);border-radius:1px;overflow:hidden}
+.pro .vbar i{display:block;height:100%;transform-origin:left;border-radius:1px}
+.pro .spdrow{display:flex;align-items:baseline;gap:11px}
+.pro .spdrow .unit{font-family:var(--display);font-weight:600;font-size:15px;letter-spacing:.16em;
+  color:var(--steel);text-transform:uppercase}
+
+/* centre — reticle only; the world is the show */
+.pro .centre{left:50%;top:50%;transform:translate(-50%,-50%);width:46px;height:46px}
+.pro .centre::before{display:none}
+.pro .cross{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)}
+
+/* bottom-centre — the Massline instrument owns this lane while latched (HUD_FLIGHT_ATTENTION §2.8):
+   analog tension, line length, release. Loud because tension is the whole feel of a tether. */
+.pro .mlbay{left:50%;bottom:38px;transform:translateX(-50%);--vx:50%;width:520px;text-align:center}
+.pro .mlhead{display:flex;align-items:baseline;justify-content:center;gap:14px;margin-bottom:9px}
+.pro .mlname{font-family:var(--display);font-weight:700;font-size:26px;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--paper);text-shadow:0 0 20px var(--hot),0 2px 6px #000}
+.pro .mlstate{font-family:var(--display);font-weight:600;font-size:12px;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--hot-2);text-shadow:0 2px 5px #000}
+.pro .mltension{position:relative;height:12px;border-radius:1px;overflow:hidden;
+  background:rgba(255,255,255,.10)}
+.pro .mltension i{display:block;height:100%;background:var(--hot);
+  box-shadow:0 0 16px var(--hot);border-radius:1px}
+/* the snap threshold — the one thing the player is actually watching */
+.pro .mlredline{position:absolute;top:-3px;bottom:-3px;left:88%;width:2px;background:var(--foe);
+  box-shadow:0 0 10px var(--foe)}
+.pro .mlfoot{display:flex;align-items:baseline;justify-content:center;gap:9px;margin-top:9px}
+.pro .mlnum{font-family:var(--data);font-weight:500;font-size:15px;color:var(--paper);
+  font-variant-numeric:tabular-nums;text-shadow:0 2px 5px #000;margin-right:8px}
+.pro .mlrel{font-family:var(--display);font-weight:600;font-size:12px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--steel);text-shadow:0 2px 5px #000;margin-left:6px}
+.pro .mlrel b{color:var(--paper)}
+
+/* right — threat shape, not a list (§5.4) */
+.pro .threat{right:44px;top:46px;--vx:80%;text-align:right;width:250px}
+.pro .tcount{display:flex;align-items:baseline;gap:10px;justify-content:flex-end}
+.pro .tcount b{font-family:var(--display);font-weight:700;font-size:46px;line-height:.8;color:var(--foe);
+  text-shadow:0 0 24px rgba(255,46,136,.5),0 2px 6px #000}
+.pro .tlist{margin-top:14px;display:grid;gap:5px;justify-items:end}
+.pro .tpip{display:flex;align-items:center;gap:9px}
+.pro .tpip .nm{font-size:13px;color:var(--paper);text-shadow:0 1px 3px #000}
+.pro .tpip .d{width:5px;height:5px;background:var(--foe);border-radius:50%}
+.pro .tpip.is-far .nm{color:var(--steel);font-size:12px}
+.pro .tmore{margin-top:9px;font-family:var(--display);font-weight:600;font-size:12px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--steel)}
+
+/* destination — ONE line, in the left stack above the vitals (bottom-centre is the Massline's
+   while latched). World diamond + radar mark carry the rest. */
+.pro .obj{left:44px;bottom:176px;--vx:14%;white-space:nowrap}
+.pro .obj .o{font-family:var(--display);font-weight:600;font-size:18px;letter-spacing:.04em;color:var(--paper);
+  text-shadow:0 2px 8px #000}
+.pro .obj .dist{font-family:var(--data);font-weight:500;font-size:13px;color:var(--steel);
+  margin-left:10px;text-shadow:0 2px 5px #000}
+.pro .obj .o em{font-style:normal;color:var(--obj)}
+
+/* ═══ PROGRESSION FRAMES ═══════════════════════════════════════════════════════════════════ */
+.pframe{border:1px solid var(--lab-line);border-radius:3px;overflow:hidden;background:#080b11}
+
+/* CURRENT: canvas DAG. The var() in g.font is invalid in Canvas 2D, so this is what actually
+   paints — 10px browser-default sans, every intended size and face discarded (plan §3.9). */
+.tt-cur{position:relative;padding:0;background:linear-gradient(180deg,#111d30,#0b1220)}
+.tt-cur .hd{display:flex;justify-content:space-between;align-items:center;padding:12px 18px;
+  border-bottom:1px solid #1d3350;background:rgba(8,14,26,.7)}
+.tt-cur .ti{font-size:1.2em;letter-spacing:.12em;text-transform:uppercase;color:#39d0ff;
+  text-shadow:0 0 12px rgba(57,208,255,.5);font-family:Consolas,monospace}
+.tt-cur .res{font-family:Consolas,monospace;font-size:.85em;display:flex;gap:18px}
+.tt-cur .res .cr{color:#ffd84a}.tt-cur .res .rp{color:#7af7d0}
+.tt-cur .bd{display:flex;min-height:352px}
+.tt-cur .canvas{flex:1;position:relative;padding:26px}
+/* the nodes as they actually render: 150×58, default sans at 10px */
+.tt-cur .n{position:absolute;width:150px;height:58px;border-radius:4px;border:1px solid #33425c;
+  background:#141c2b;font-family:sans-serif;font-size:10px;color:#c9d6e8;padding:6px 8px}
+.tt-cur .n.on{border-color:#39d0ff;box-shadow:0 0 6px rgba(57,208,255,.6)}
+.tt-cur .n .nm{display:block;line-height:1.15;margin-bottom:2px}
+.tt-cur .n .ft{position:absolute;left:8px;right:8px;bottom:5px;display:flex;justify-content:space-between}
+.tt-cur .n .ft .c{color:#ffd84a}.tt-cur .n .ft .r{color:#7af7d0}
+.tt-cur .n .lk{position:absolute;right:7px;top:5px;font-size:10px}
+.tt-cur .side{width:282px;border-left:1px solid #1d3350;background:rgba(6,11,21,.6);padding:16px;
+  font-family:Consolas,monospace;font-size:.8em;color:#84a0c8;line-height:1.75}
+.tt-cur .side .h{color:#d3e6ff;font-size:1.06em;font-family:sans-serif;margin-bottom:8px}
+.tt-cur svg.wires{position:absolute;inset:0;pointer-events:none}
+
+/* PROPOSED: "Ship & Capability" — verbs, not costs (plan §5.5) */
+.tt-pro{position:relative;grid-template-columns:1fr 336px;min-height:430px;background:
+  radial-gradient(120% 90% at 22% 0%,#121a26,#070a0f 62%)}
+/* .stage.is-on sets display:block; this frame needs grid instead. */
+.tt-pro.is-on{display:grid}
+.tt-pro .main{padding:30px 32px 34px;min-width:0}
+.tt-pro .crumb{font-family:var(--display);font-weight:600;font-size:12px;letter-spacing:.26em;
+  text-transform:uppercase;color:var(--steel-dim)}
+.tt-pro h3{font-family:var(--display);font-weight:700;font-size:40px;text-transform:uppercase;
+  letter-spacing:-.005em;margin:6px 0 3px;line-height:.95}
+.tt-pro .sub{color:var(--steel);font-size:14px;margin-bottom:24px}
+.tt-pro .sub b{color:var(--hot);font-weight:500}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(252px,1fr));gap:12px}
+.cap{position:relative;padding:16px 16px 14px;border-radius:3px;border:1px solid rgba(140,170,205,.14);
+  background:linear-gradient(180deg,rgba(24,32,44,.86),rgba(11,15,22,.92));overflow:hidden}
+.cap::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--steel-dim)}
+.cap.is-live::before{background:var(--hot);box-shadow:0 0 14px var(--hot)}
+.cap .ct{font-family:var(--display);font-weight:700;font-size:19px;text-transform:uppercase;
+  letter-spacing:.03em;margin-bottom:9px}
+.cap .now{font-size:14px;line-height:1.45;color:var(--paper)}
+.cap .now b{color:var(--hot);font-weight:600}
+.cap .next{margin-top:9px;padding-top:9px;border-top:1px solid rgba(140,170,205,.13);
+  font-size:13px;line-height:1.45;color:var(--steel)}
+.cap .next em{font-style:normal;color:var(--obj)}
+.cap .rung{display:flex;gap:3px;margin-top:12px}
+.cap .rung i{height:4px;flex:1;background:rgba(255,255,255,.11);border-radius:1px}
+.cap .rung i.f{background:var(--hot)}
+.cap.is-locked{opacity:.52}
+.cap.is-locked .ct{color:var(--steel)}
+
+/* right band — the machine + consequence readout */
+.tt-pro .aside{border-left:1px solid rgba(140,170,205,.13);padding:30px 26px;
+  background:linear-gradient(180deg,rgba(8,11,17,.5),rgba(6,8,13,.8))}
+.hull{aspect-ratio:4/3;border-radius:3px;border:1px solid rgba(140,170,205,.13);position:relative;
+  background:radial-gradient(128% 100% at 50% 116%,rgba(143,166,189,.13),#06080d 62%);overflow:hidden}
+.hull svg{position:absolute;inset:0;width:100%;height:100%}
+.hull .tag{position:absolute;font-family:var(--display);font-weight:600;font-size:10.5px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--hot);text-shadow:0 0 10px rgba(0,0,0,.9)}
+.hull .tag::before{content:"";position:absolute;left:-13px;top:50%;width:8px;height:1px;background:var(--hot)}
+.conseq{margin-top:22px}
+.conseq .ch{font-family:var(--display);font-weight:600;font-size:11px;letter-spacing:.24em;
+  text-transform:uppercase;color:var(--steel-dim);margin-bottom:12px}
+.dl{display:grid;grid-template-columns:1fr auto;gap:9px 12px;align-items:baseline}
+.dl .k{font-size:13.5px;color:var(--steel)}
+.dl .v{font-family:var(--data);font-size:14px;font-variant-numeric:tabular-nums;color:var(--paper)}
+.dl .v u{text-decoration:none;color:var(--hot);font-size:12.5px;margin-left:7px}
+.dl .v u.dn{color:var(--foe)}
+.tt-pro .foot{margin-top:22px;padding-top:16px;border-top:1px solid rgba(140,170,205,.13);
+  font-size:13px;line-height:1.5;color:var(--steel-dim)}
+
+.legend{max-width:1500px;margin:0 auto;padding:38px 48px 0}
+.legend .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(288px,1fr));gap:22px;margin-top:16px}
+.legend h4{font-family:var(--display);font-weight:700;font-size:15px;letter-spacing:.14em;
+  text-transform:uppercase;margin:0 0 7px;color:var(--lab-ink)}
+.legend p{margin:0;font-size:13.5px;line-height:1.6;color:var(--lab-dim)}
+.legend code{font-family:var(--data);font-size:12px;color:#ff6ba0}
+
+/* ?focus=hud | ?focus=tt — isolate one frame, chrome removed. Used by the capture script and
+   handy for reviewing a single surface full-bleed without the surrounding page. */
+body[data-focus] .lab-head,body[data-focus] .legend,body[data-focus] .sec-head,
+body[data-focus] .caption{display:none}
+body[data-focus] section{padding:0}
+body[data-focus]{padding:0}
+body[data-focus] section{display:none}
+body[data-focus="hud"] section:nth-of-type(1),
+body[data-focus="tt"]  section:nth-of-type(2),
+body[data-focus="pb"]  section:nth-of-type(3){display:block}
+</style>
+</head>
+<body data-accent="signal">
+
+<header class="lab-head">
+  <div class="lab-kicker">SpaceFace · UI Direction Lab</div>
+  <h1>What the 2D<br />could look like</h1>
+  <p>Two surfaces, each shown <b>as it ships today</b> and <b>as proposed</b>. Nothing here is wired to
+  the game — it is a look, for a yes/no. The typefaces are the ones the game already downloads at
+  boot. Full reasoning in <b>design/revamp/FRONTEND_DIRECTION_AND_MENU_ARCHITECTURE.md</b>.</p>
+</header>
+
+<!-- ══════════════════════════ FLIGHT HUD ══════════════════════════ -->
+<section>
+  <div class="sec-head">
+    <div>
+      <h2>1 · Flight HUD</h2>
+      <p class="note">The surface you look at while playing. Today it is thirteen bordered boxes ringing
+      the frame, set in 7–11px tracked monospace.</p>
+    </div>
+    <div class="seg" role="group" aria-label="Flight HUD variant">
+      <button type="button" data-t="hud" data-v="cur" aria-pressed="true">Current</button>
+      <button type="button" data-t="hud" data-v="pro" aria-pressed="false">Proposed</button>
+    </div>
+  </div>
+
+  <div class="frame">
+    <div class="frame__scene"></div>
+
+    <!-- ── CURRENT ────────────────────────────────────────────────── -->
+    <div class="stage cur is-on" data-stage="hud-cur">
+      <div class="plate" style="left:22px;top:20px;width:118px">
+        <div class="k">Comms</div><div class="v">3 UNREAD</div></div>
+      <div class="plate" style="left:150px;top:20px;width:96px">
+        <div class="k">Band</div><div class="v">HAULING</div></div>
+      <div class="plate" style="left:50%;top:20px;transform:translateX(-50%);width:392px;text-align:center">
+        <div class="v">FREIGHT ROUTE · ESCORT 0/1 · CONVOY EXPOSURE</div></div>
+      <div class="plate" style="right:22px;top:20px;width:238px">
+        <div class="k">Helios Freight</div><div class="v" style="text-transform:none">Hitch active — mine, tow, or fly without changing hulls.</div></div>
+      <div class="plate" style="right:22px;top:96px;width:238px">
+        <div class="k">Selector Law</div><div class="v v--am" style="text-transform:none">Attacking civilians triggers response.</div></div>
+      <div class="plate" style="right:22px;top:168px;width:238px">
+        <div class="k">Local Contacts</div>
+        <div class="row"><span class="v">Dereliict</span><span class="v">405</span></div>
+        <div class="row"><span class="v">Reclaimer</span><span class="v">885</span></div>
+        <div class="row"><span class="v">Field Coil</span><span class="v">979</span></div>
+        <div class="row"><span class="v">Cargo Brace</span><span class="v">979</span></div>
+        <div class="row"><span class="v">Relay Core</span><span class="v">981</span></div>
+        <div class="k" style="margin-top:5px">+14 · 3 WRECKS · 11 OTHERS</div></div>
+      <div class="plate" style="left:22px;top:298px;width:262px">
+        <div class="k">Payload · Tow 76%</div><div class="bar"><i style="width:76%"></i></div></div>
+      <div class="plate" style="left:22px;top:352px;width:262px">
+        <div class="row" style="margin:0"><span class="k">Statuos</span><span class="v">1 / 10</span></div></div>
+      <div class="plate" style="left:22px;top:398px;width:262px">
+        <div class="k">Log · Keeper</div><div class="v" style="text-transform:none">Keestreer, that pulse is the job. Tag the seaboard mass.</div></div>
+      <div class="plate" style="left:22px;top:470px;width:262px">
+        <div class="k v--am">Tutorial Objective</div>
+        <div class="v" style="text-transform:none">Thrust until speed passes forty. Beacon</div>
+        <div class="k" style="margin-top:3px">AMBER DIAMOND · GOAL · 345 WU</div></div>
+      <div class="plate" style="left:22px;bottom:20px;width:262px">
+        <div class="row" style="margin:0"><span class="k">Ship Condition</span><span class="v">140 / 115</span></div>
+        <div class="row"><span class="k">Energy</span><span class="v">80</span></div><div class="bar"><i style="width:80%"></i></div>
+        <div class="row"><span class="k">Drive</span><span class="v">100</span></div><div class="bar"><i style="width:100%"></i></div>
+        <div class="row"><span class="k">Heat</span><span class="v">0%</span></div><div class="bar"><i style="width:4%"></i></div>
+        <div class="row"><span class="k">Shield</span><span class="v">100%</span></div><div class="bar"><i style="width:100%"></i></div></div>
+      <div class="plate" style="left:50%;bottom:64px;transform:translateX(-50%);width:352px;text-align:center">
+        <div class="v" style="text-transform:none">Unregistered signal pulse.</div></div>
+      <div class="plate" style="left:50%;bottom:20px;transform:translateX(-50%);width:352px">
+        <div class="row" style="margin:0">
+          <span class="k">SPD <span class="v">0</span></span><span class="k">WPN <span class="v">Pulse Laser S</span></span></div>
+        <div class="row"><span class="k">Cargo <span class="v">0 / 40 UU</span></span><span class="k">CR <span class="v">5,000</span></span></div>
+        <div class="row"><span class="k">Class <span class="v">Hitch · Starter · Reaction</span></span></div></div>
+      <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:26px;height:26px;
+        border:1px solid rgba(0,240,255,.5);border-radius:50%;box-shadow:0 0 8px rgba(0,240,255,.35)"></div>
+    </div>
+
+    <!-- ── PROPOSED ───────────────────────────────────────────────── -->
+    <div class="stage pro" data-stage="hud-pro">
+      <!-- bottom-left: one vitals cluster, chromeless -->
+      <div class="anchor vitals">
+        <div class="spdrow"><span class="big">218</span><span class="unit">m/s</span></div>
+        <div class="vstack">
+          <span class="lbl">Hull</span>
+          <div class="vbar"><i style="width:100%;background:var(--paper)"></i></div>
+          <span class="lbl">Shield</span>
+          <div class="vbar"><i style="width:62%;background:var(--hot)"></i></div>
+          <span class="lbl">Heat</span>
+          <div class="vbar"><i style="width:24%;background:var(--obj)"></i></div>
+        </div>
+      </div>
+
+      <!-- centre: reticle only. The world is the show. -->
+      <div class="anchor centre">
+        <svg class="cross" width="46" height="46" viewBox="0 0 46 46" aria-hidden="true">
+          <g stroke="var(--paper)" stroke-width="1.6" stroke-linecap="round" opacity=".92">
+            <path d="M23 4v9M23 33v9M4 23h9M33 23h9"/></g>
+          <circle cx="23" cy="23" r="2.1" fill="var(--hot)"/>
+        </svg>
+      </div>
+
+      <!-- bottom-centre: while latched, the Massline OWNS this lane — analog tension, length,
+           release. Placement per design/HUD_FLIGHT_ATTENTION.md; loudness is the point. -->
+      <div class="anchor mlbay">
+        <div class="mlhead"><span class="mlname">Massline</span><span class="mlstate">Latched · Hauler</span></div>
+        <div class="mltension">
+          <i style="width:78%"></i>
+          <span class="mlredline"></span>
+        </div>
+        <div class="mlfoot">
+          <span class="lbl">Tension</span>
+          <span class="mlnum">78%</span>
+          <span class="lbl">Line</span>
+          <span class="mlnum">240 m</span>
+          <span class="mlrel">Release <b>RMB</b></span>
+        </div>
+      </div>
+
+      <!-- right: the swarm is a shape and a count, not a table -->
+      <div class="anchor threat">
+        <div class="tcount"><span class="lbl">Hostiles</span><b>17</b></div>
+        <div class="tlist">
+          <div class="tpip"><span class="nm">Rook · Interceptor</span><span class="d"></span></div>
+          <div class="tpip"><span class="nm">Vane · Interceptor</span><span class="d"></span></div>
+          <div class="tpip is-far"><span class="nm">Cleat · Skiff</span><span class="d"></span></div>
+        </div>
+        <div class="tmore">+14 on radar</div>
+      </div>
+
+      <!-- destination: one line, left stack -->
+      <div class="anchor obj">
+        <div class="o">Swing the hauler wide of <em>Ceres Belt</em><span class="dist">345 WU</span></div>
+      </div>
+    </div>
+  </div>
+
+  <p class="caption"><b>Current</b><span>Thirteen bordered plates, ragged widths, 7–11px tracked Consolas, saturated cyan with an 8px glow. The ship and the spectacle get whatever is left in the middle.</span></p>
+  <p class="caption"><b>Proposed</b><span>Four anchors, no plates — soft vignettes and hard text-shadow carry legibility. Speed is 64px and readable at a glance. A swarm of seventeen becomes one number, three names and a count.</span></p>
+</section>
+
+<!-- ══════════════════════════ PROGRESSION ══════════════════════════ -->
+<section>
+  <div class="sec-head">
+    <div>
+      <h2>2 · Progression</h2>
+      <p class="note">The "deep skill tree". Today it is a canvas chart of cost and padlocks — and it
+      renders in the browser's fallback font because of a bug nothing catches.</p>
+    </div>
+    <div class="seg" role="group" aria-label="Progression variant">
+      <button type="button" data-t="tt" data-v="cur" aria-pressed="true">Current</button>
+      <button type="button" data-t="tt" data-v="pro" aria-pressed="false">Proposed</button>
+    </div>
+  </div>
+
+  <div class="pframe">
+    <!-- CURRENT -->
+    <div class="stage tt-cur is-on" data-stage="tt-cur">
+      <div class="hd">
+        <div class="ti">Research &amp; Tech</div>
+        <div class="res"><span class="cr">CR <b>5,000</b></span><span class="rp">RP <b>0</b></span>
+          <span style="color:#84a0c8">UNLOCKED <b>0/29</b></span></div>
+      </div>
+      <div class="bd">
+        <div class="canvas">
+          <svg class="wires" aria-hidden="true">
+            <g stroke="#2b3a52" stroke-width="1" fill="none">
+              <path d="M100 92 L100 118"/><path d="M100 176 L100 202"/>
+              <path d="M276 92 L276 118"/><path d="M100 176 L276 202"/>
+              <path d="M452 92 L452 118"/>
+            </g>
+          </svg>
+          <div class="n on" style="left:26px;top:34px"><span class="nm">Combat Refit</span>
+            <span class="ft"><span class="c">18,000 cr</span><span class="r">40 RP</span></span></div>
+          <div class="n" style="left:26px;top:118px"><span class="nm">Kinetic Coupling</span>
+            <span class="lk">🔒</span><span class="ft"><span class="c">64,000 cr</span><span class="r">120 RP</span></span></div>
+          <div class="n" style="left:26px;top:202px"><span class="nm">Capital Hulls</span>
+            <span class="lk">🔒</span><span class="ft"><span class="c">900,000 cr</span><span class="r">600 RP</span></span></div>
+          <div class="n" style="left:202px;top:34px"><span class="nm">Graviton Drives</span>
+            <span class="lk">🔒</span><span class="ft"><span class="c">420,000 cr</span><span class="r">380 RP</span></span></div>
+          <div class="n" style="left:202px;top:202px"><span class="nm">Flagship Command</span>
+            <span class="lk">🔒</span><span class="ft"><span class="c">2,500,000 cr</span><span class="r">1200 RP</span></span></div>
+          <div class="n" style="left:378px;top:34px"><span class="nm">Advanced Navigation</span>
+            <span class="lk">🔒</span><span class="ft"><span class="c">85,000 cr</span><span class="r">90 RP</span></span></div>
+          <div class="n" style="left:378px;top:118px"><span class="nm">Industrial Mining</span>
+            <span class="lk">🔒</span><span class="ft"><span class="c">25,000 cr</span><span class="r">30 RP</span></span></div>
+        </div>
+        <div class="side">
+          <div class="h">Flagship Command</div>
+          combat branch<br />LOCKED<br />2,500,000 cr · 1200 RP<br /><br />
+          ✓ Capital Hulls<br />✗ Graviton Drives<br /><br />
+          Unlocks: Leviathan, Siege Lance L, Capital Massline Spool
+        </div>
+      </div>
+    </div>
+
+    <!-- PROPOSED -->
+    <div class="stage tt-pro" data-stage="tt-pro">
+      <div class="main">
+        <div class="crumb">Hitch · Starter Frame</div>
+        <h3>Ship &amp; Capability</h3>
+        <p class="sub">Eight things this ship can do. <b>Four have room to grow.</b></p>
+
+        <div class="cards">
+          <div class="cap is-live">
+            <div class="ct">Tow &amp; Swing</div>
+            <p class="now">You can tow a <b>40-tonne hauler</b> and swing off anything heavier than you.</p>
+            <p class="next">Next: <em>swing a frigate</em> — spool holds 3× the load before it snaps.</p>
+            <div class="rung"><i class="f"></i><i class="f"></i><i></i><i></i></div>
+          </div>
+          <div class="cap is-live">
+            <div class="ct">Hit Things Hard</div>
+            <p class="now">Ramming does <b>1.8× damage</b>. Light hulls spin off you instead of stopping you.</p>
+            <p class="next">Next: <em>a charged impulse</em> that throws what it hits.</p>
+            <div class="rung"><i class="f"></i><i class="f"></i><i class="f"></i><i></i></div>
+          </div>
+          <div class="cap is-live">
+            <div class="ct">Reach &amp; Grab</div>
+            <p class="now">Magnet reaches <b>560 WU</b>. You can pull loose cargo without slowing down.</p>
+            <p class="next">Next: <em>lift whole wrecks</em>, not just pods.</p>
+            <div class="rung"><i class="f"></i><i></i><i></i><i></i></div>
+          </div>
+          <div class="cap">
+            <div class="ct">Take a Hit</div>
+            <p class="now">You survive a <b>glancing</b> collision. A square one still ends you.</p>
+            <p class="next">Next: <em>ram at full burn and keep flying</em>.</p>
+            <div class="rung"><i class="f"></i><i></i><i></i><i></i></div>
+          </div>
+          <div class="cap is-locked">
+            <div class="ct">Bend Space</div>
+            <p class="now">Locked. Gravity fields pull loose bodies into a single point.</p>
+            <p class="next">Opens with: <em>a gravity marker launcher</em>.</p>
+            <div class="rung"><i></i><i></i><i></i><i></i></div>
+          </div>
+          <div class="cap is-locked">
+            <div class="ct">Go Dark</div>
+            <p class="now">Locked. Run cold and drop off every contact list.</p>
+            <p class="next">Opens with: <em>a cloak core</em>.</p>
+            <div class="rung"><i></i><i></i><i></i><i></i></div>
+          </div>
+        </div>
+      </div>
+
+      <aside class="aside">
+        <div class="hull">
+          <svg viewBox="0 0 200 150" aria-hidden="true">
+            <g fill="none" stroke="var(--steel)" stroke-width="1.15" opacity=".82">
+              <path d="M46 75 L86 56 L146 62 L166 75 L146 88 L86 94 Z"/>
+              <path d="M86 56 L92 44 L124 46 L130 60"/>
+              <path d="M86 94 L92 106 L124 104 L130 90"/>
+              <path d="M46 75 L34 71 L34 79 Z"/>
+            </g>
+            <circle cx="106" cy="60" r="3.4" fill="var(--hot)"/>
+            <circle cx="106" cy="90" r="3.4" fill="var(--hot)"/>
+            <circle cx="150" cy="75" r="3.4" fill="var(--obj)"/>
+          </svg>
+          <span class="tag" style="left:126px;top:36px">Spool II</span>
+          <span class="tag" style="left:126px;top:100px">Magnet</span>
+          <span class="tag" style="left:166px;top:68px">Impulse</span>
+        </div>
+
+        <div class="conseq">
+          <div class="ch">If you fit Spool III</div>
+          <div class="dl">
+            <span class="k">Tow ceiling</span><span class="v">120 t <u>+80</u></span>
+            <span class="k">Mass</span><span class="v">+14 t <u class="dn">heavier</u></span>
+            <span class="k">Turn rate</span><span class="v">−6% <u class="dn">slower</u></span>
+            <span class="k">Energy draw</span><span class="v">8/s <u class="dn">+3</u></span>
+          </div>
+        </div>
+
+        <p class="foot">You can swing a frigate. You will feel it in the turn.</p>
+      </aside>
+    </div>
+  </div>
+
+  <p class="caption"><b>Current</b><span>Every node says what it costs and whether it is locked. None say what you would be able to do. The 🔒 is drawn straight onto the canvas, and the whole chart paints in the browser fallback font — the code asks for <code style="font-family:inherit">var(--mono)</code>, which Canvas 2D cannot read.</span></p>
+  <p class="caption"><b>Proposed</b><span>Eight capabilities phrased as verbs, each stating what you can do now and what the next rung buys — in tonnes and metres, never percentages. The prereq chart still exists underneath as the rule engine; it just stops being the picture. Progression is shown on the ship it modifies.</span></p>
+</section>
+
+<!-- ══════════════════════════ POWER BAR ══════════════════════════ -->
+<section>
+  <div class="sec-head">
+    <div>
+      <h2>3 · The big game, visible</h2>
+      <p class="note">The same HUD frame at three points in a playthrough. Five of these powers are
+      <b>already bound to keys 4&ndash;8 in the code today</b> — two of them have zero HUD references.
+      Growth is the bar filling up.</p>
+    </div>
+  </div>
+
+  <div class="stageRow">
+    <!-- HOUR 1 -->
+    <div class="stageCell pro">
+      <div class="frame__scene"></div>
+      <div class="stageTag">Hour 1<i>You have a tether and an anchor.</i></div>
+      <div class="pcount"><b>2 things you can do</b></div>
+      <div class="pbar">
+        <div class="pslot pslot--empty"><span class="pslot__key">1</span></div>
+        <div class="pslot pslot--empty"><span class="pslot__key">2</span></div>
+        <div class="pslot pslot--empty"><span class="pslot__key">3</span></div>
+        <div class="pslot pslot--ready"><span class="pslot__key">4</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="2.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="6" opacity=".7"/><circle cx="12" cy="12" r="9.4" opacity=".4"/></svg></div>
+        <div class="pslot pslot--empty"><span class="pslot__key">5</span></div>
+        <div class="pslot pslot--empty"><span class="pslot__key">6</span></div>
+        <div class="pslot pslot--empty"><span class="pslot__key">7</span></div>
+        <div class="pslot pslot--empty"><span class="pslot__key">8</span></div>
+        <div class="pslot pslot--empty"><span class="pslot__key">9</span></div>
+      </div>
+    </div>
+
+    <!-- HOUR 10 -->
+    <div class="stageCell pro">
+      <div class="frame__scene"></div>
+      <div class="stageTag">Hour 10<i>You can move other people's ships.</i></div>
+      <div class="pcount"><b>6 things you can do</b></div>
+      <div class="pbar">
+        <div class="pslot pslot--ready"><span class="pslot__key">1</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 15c2-3 2-3 0-6M6.8 15c2-3 2-3 0-6M9.6 15c2-3 2-3 0-6"/><circle cx="16" cy="12" r="2.4"/><path d="M19.4 12h1.8" opacity=".6"/></svg></div>
+        <div class="pslot pslot--ready"><span class="pslot__key">2</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.2 20.8 8 16"/><circle cx="13.5" cy="10" r="1.2"/><circle cx="18" cy="6.6" r="1.2"/><circle cx="17.2" cy="12.4" r="1.2"/><circle cx="11.6" cy="5.6" r="1.2"/></svg></div>
+        <div class="pslot pslot--empty"><span class="pslot__key">3</span></div>
+        <div class="pslot pslot--ready"><span class="pslot__key">4</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="2.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="6" opacity=".7"/><circle cx="12" cy="12" r="9.4" opacity=".4"/></svg></div>
+        <div class="pslot pslot--ready"><span class="pslot__key">5</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v5.2m-2.1-2.3L12 9.4l2.1-2.5M12 20v-5.2m-2.1 2.3L12 14.6l2.1 2.5M4 12h5.2M6.9 9.9 9.4 12l-2.5 2.1M20 12h-5.2m2.3-2.1L14.6 12l2.5 2.1"/><circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none"/></svg></div>
+        <div class="pslot pslot--cool"><span class="pslot__key">6</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 9.4V4.2m-2.1 2.3L12 4.2l2.1 2.3M12 14.6V19.8m-2.1-2.3L12 19.8l2.1-2.3M9.4 12H4.2m2.3-2.1L4.2 12l2.3 2.1M14.6 12H19.8m-2.3-2.1L19.8 12l-2.3 2.1"/><path d="M9.7 12A2.3 2.3 0 0 1 12 9.7M14.3 12a2.3 2.3 0 0 1-2.3 2.3"/></svg>
+          <span class="pcool" style="height:38%"></span></div>
+        <div class="pslot pslot--empty"><span class="pslot__key">7</span></div>
+        <div class="pslot pslot--empty"><span class="pslot__key">8</span></div>
+        <div class="pslot pslot--empty"><span class="pslot__key">9</span></div>
+      </div>
+    </div>
+
+    <!-- HOUR 50 -->
+    <div class="stageCell pro">
+      <div class="frame__scene"></div>
+      <div class="stageTag">Hour 50<i>You are a physics problem with a licence.</i></div>
+      <div class="pcount"><b>9 things you can do</b> <span>+ 3 fleet orders</span></div>
+      <div class="pbar">
+        <div class="pslot pslot--ready"><span class="pslot__key">1</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 15c2-3 2-3 0-6M6.8 15c2-3 2-3 0-6M9.6 15c2-3 2-3 0-6"/><circle cx="16" cy="12" r="2.4"/><path d="M19.4 12h1.8" opacity=".6"/></svg></div>
+        <div class="pslot pslot--ready"><span class="pslot__key">2</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.2 20.8 8 16"/><circle cx="13.5" cy="10" r="1.2"/><circle cx="18" cy="6.6" r="1.2"/><circle cx="17.2" cy="12.4" r="1.2"/><circle cx="11.6" cy="5.6" r="1.2"/></svg></div>
+        <div class="pslot pslot--armed"><span class="pslot__key">3</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 3.2v3M12 17.8v3M3.2 12h3M17.8 12h3M6 6l2 2M16 16l2 2M18 6l-2 2M8 16l-2 2" opacity=".8"/></svg></div>
+        <div class="pslot pslot--ready"><span class="pslot__key">4</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="2.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="6" opacity=".7"/><circle cx="12" cy="12" r="9.4" opacity=".4"/></svg></div>
+        <div class="pslot pslot--ready"><span class="pslot__key">5</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v5.2m-2.1-2.3L12 9.4l2.1-2.5M12 20v-5.2m-2.1 2.3L12 14.6l2.1 2.5M4 12h5.2M6.9 9.9 9.4 12l-2.5 2.1M20 12h-5.2m2.3-2.1L14.6 12l2.5 2.1"/><circle cx="12" cy="12" r="2.1" fill="currentColor" stroke="none"/></svg></div>
+        <div class="pslot pslot--ready"><span class="pslot__key">6</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 9.4V4.2m-2.1 2.3L12 4.2l2.1 2.3M12 14.6V19.8m-2.1-2.3L12 19.8l2.1-2.3M9.4 12H4.2m2.3-2.1L4.2 12l2.3 2.1M14.6 12H19.8m-2.3-2.1L19.8 12l-2.3 2.1"/><path d="M9.7 12A2.3 2.3 0 0 1 12 9.7M14.3 12a2.3 2.3 0 0 1-2.3 2.3"/></svg></div>
+        <div class="pslot pslot--ready"><span class="pslot__key">7</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 12h2.6"/><path d="M9.2 12 20 6.4v11.2Z"/><path d="M3.6 8.6h2M3.6 15.4h2" opacity=".55"/></svg></div>
+        <div class="pslot pslot--cool"><span class="pslot__key">8</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.4 8.6h17.2M3.4 13h17.2" opacity=".45"/><path d="M6.6 18.6c0-5.4 3.6-8.9 9-9.5"/><path d="M15.6 9 18.5 10.4 16 12.6"/></svg>
+          <span class="pcool" style="height:22%"></span></div>
+        <div class="pslot pslot--ready"><span class="pslot__key">9</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8.4 12 4.2l6 4.2"/><path d="M8 14.2 12 11.6l4 2.6" opacity=".8"/><path d="M9 19.4 12 17.2l3 2.2" opacity=".6"/></svg></div>
+      </div>
+    </div>
+  </div>
+
+  <p class="caption"><b>The point</b><span>Nothing here is invented. Keys 4&ndash;8 already fire Mass Seed, Well, Repulsor, Clearing Cone and Skim Collector in the shipping build — the HUD has simply never mentioned them, and two of the five appear in <em>zero</em> UI files. An empty socket is a promise; a filling bar is the only progression display that needs no explanation.</span></p>
+</section>
+
+<div class="legend">
+  <div class="sec-head" style="margin-bottom:0">
+    <div>
+      <h2>Accent</h2>
+      <p class="note">The one open art-direction call. Everything else above is fixed by the plan.</p>
+    </div>
+    <div class="seg" role="group" aria-label="Accent direction">
+      <button type="button" data-t="accent" data-v="signal" aria-pressed="true">Signal · cyan</button>
+      <button type="button" data-t="accent" data-v="furnace" aria-pressed="false">Furnace · orange</button>
+    </div>
+  </div>
+  <div class="grid">
+    <div><h4>Type does the work</h4><p>Saira SemiCondensed for anything read at speed, IBM Plex Sans for
+      words, IBM Plex Mono for numerals only. All three already ship in <code>styles/fonts/</code>. Nothing
+      below 11px.</p></div>
+    <div><h4>No plates in flight</h4><p>Borders and drop-shadows over a 3D scene are what read as a web
+      page. Legibility comes from a soft vignette behind each anchor plus a hard text-shadow.</p></div>
+    <div><h4>Colour is a signal, not a coat</h4><p>One hot accent, spent on danger and on what you can do
+      right now. Everything at rest is steel. The world supplies the colour.</p></div>
+    <div><h4>Consequence, not cost</h4><p>"You can tow a 40-tonne hauler" beats "+18% tractor strength".
+      Numbers stay available for players who want them — they just stop being the headline.</p></div>
+  </div>
+</div>
+
+<script>
+// Variant toggles. No animation loop, no timers — the page is static at rest by design.
+function setVariant(t, v) {
+  const group = document.querySelector(`button[data-t="${t}"][data-v="${v}"]`);
+  if (!group) return;
+  for (const sib of group.parentElement.querySelectorAll('button')) {
+    sib.setAttribute('aria-pressed', String(sib === group));
+  }
+  if (t === 'accent') { document.body.dataset.accent = v; return; }
+  for (const stage of document.querySelectorAll(`[data-stage^="${t}-"]`)) {
+    stage.classList.toggle('is-on', stage.dataset.stage === `${t}-${v}`);
+  }
+}
+
+document.addEventListener('click', (ev) => {
+  const btn = ev.target.closest('button[data-t]');
+  if (btn) setVariant(btn.dataset.t, btn.dataset.v);
+});
+
+// Every state is linkable: ?hud=pro&tt=pro&accent=furnace. Lets a capture script (or a reviewer)
+// jump straight to one comparison without clicking through.
+const q = new URLSearchParams(location.search);
+for (const t of ['hud', 'tt', 'accent']) { if (q.has(t)) setVariant(t, q.get(t)); }
+if (q.has('focus')) document.body.dataset.focus = q.get('focus');
+</script>
+</body>
+</html>

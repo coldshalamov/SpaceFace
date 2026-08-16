@@ -11,6 +11,47 @@
   --font: "Segoe UI", system-ui, -apple-system, sans-serif;
   --mono: "Consolas", "SFMono-Regular", ui-monospace, monospace;
   --ui-scale: 1;
+
+  /* ===== Instrument grammar role tokens (design/frontend/INSTRUMENT_GRAMMAR.md §4, binding) =====
+     Colour is assigned by MEANING, not by palette, so a screen cannot be restyled into
+     incoherence. Exact-hex mapping from SCREENS_B §0.1; each equals an existing compatibility
+     token, so contrast is already proven. At rest a screen is ≥80% calm+paper on the surface;
+     you/foe/goal are SPENT on state, never worn as chrome. Every colour-coded state carries a
+     second channel (shape or word) — never encode by colour alone. */
+  --sf-you: #7af7d0;    /* you, your agency, a gain        (equals --accent-2, 14.3:1 on surface) */
+  --sf-foe: #ff5470;    /* threat, cost, over-budget, loss (equals --danger,    6.0:1) */
+  --sf-goal: #ffb347;   /* next unlock, objective, opportunity (equals --warn, 10.5:1) */
+  --sf-calm: #84a0c8;   /* structure, chrome, labels, rest (equals --ink-dim,   6.9:1) */
+  --sf-paper: #d3e6ff;  /* all body copy                   (equals --ink,     ~14:1) */
+  --sf-surface: #0b1220; /* screen backdrop base            (equals --panel) */
+  --sf-edge: #1d3350;   /* 1px separators, socket rings    (equals --panel-edge) */
+
+  /* ===== Instrument grammar type tokens (§3: four roles, no fifth) =====
+     Faces are vendored and loaded at boot (styles/fonts.css). 12px floor; tracking above .06em
+     only on MICRO; every screen has exactly one DISPLAY-sized element. */
+  --sf-display-face: "Saira SemiCondensed", "Arial Narrow", sans-serif; /* 700 · 28/40/64px */
+  --sf-subhead-face: "Saira SemiCondensed", "Arial Narrow", sans-serif; /* 600 · 15/19/22px */
+  --sf-body-face: "IBM Plex Sans", "Segoe UI", sans-serif;              /* 400/500 · 13/14/15px */
+  --sf-data-face: "IBM Plex Mono", Consolas, monospace;                 /* 500 · 13/15/20px, tabular-nums, numerals only */
+
+  /* ===== Instrument grammar motion tokens (§5: nothing exceeds 180ms) ===== */
+  --sf-t-latch: 90ms;   /* discrete state change seats with a short travel and a hard stop */
+  --sf-t-settle: 180ms; /* a value arriving; instruments overshoot, text never does */
+  --sf-ease: cubic-bezier(.2, .9, .3, 1);
+  /* No --sf-t-spool. SPOOL must be bound to real progress (§5), and nothing supplies one yet;
+     declaring the token would invite an unbound loop to claim it. Add it WITH its first honest
+     consumer, not before. */
+
+  /* ===== Instrument grammar SHAPE tokens =====
+     Introduced because sections 11/13/14 had already drifted apart on the same three decisions —
+     a 2px rail against a 3px one, `var(--r-sm,5px)` against two hardcoded 3px radii, and the same
+     color-mix literal written twice. This repo has a documented history of an append-only
+     stylesheet becoming an override pile (styles/station.css: 202 selectors redefined at
+     brace-depth 0). Three drifts in the first two consumers is where that starts. */
+  --sf-rail-w: 2px;                                                    /* the meaning rail on any instrument block */
+  --sf-goal-edge: color-mix(in srgb, var(--sf-goal) 45%, transparent); /* the resting edge of a verb */
+  --sf-track-micro: .18em;                                             /* MICRO tracking, one value */
+
   /* extra from visual bible for pro polish */
   --nebula-purple: #3a1c6e;
   --nebula-cyan: #0e4030;
@@ -83,6 +124,20 @@ body.ui-modal-open #hud { opacity: 0; pointer-events: none; }
 body.ui-modal-open #modal-backdrop { display: block; opacity: 1; visibility: visible; pointer-events: auto; }
 body.ui-modal-open #sf-onboarding,
 body.ui-modal-open .sf-ob-intro { display: none; }
+
+/* --- Live overlays (FRONTEND_DIRECTION §3.5/§6.1) -------------------------------------
+   Non-pausing screens (galaxy/starmap/localmap, techTree, missionLog, automation) open over a
+   RUNNING sim. The old blanket ui-modal-open zeroed the HUD, reticle and alerts while enemies
+   kept shooting — a blindfold, not a trade-off. Live keeps the world and the player's instruments
+   readable: light ~25% dim, HUD at half opacity (reticle, alerts and toasts are not targeted, so
+   they survive at full strength), pointer input still owned by the screen. */
+body.ui-live-screen #hud { opacity: .5; pointer-events: none; }
+body.ui-live-screen #modal-backdrop {
+  display: block; opacity: 1; visibility: visible; pointer-events: auto;
+  background: radial-gradient(circle at 50% 40%, rgba(2,5,12,.16), rgba(2,5,12,.28));
+}
+body.ui-live-screen #sf-onboarding,
+body.ui-live-screen .sf-ob-intro { display: none; }
 
 .panel { background: linear-gradient(180deg, var(--panel-2), var(--panel)); border: 1px solid var(--panel-edge); border-radius: 8px; box-shadow: 0 6px 30px rgba(0, 0, 0, .5); }
 button { font-family: inherit; font-size: inherit; color: var(--ink); background: var(--panel-2); border: 1px solid var(--panel-edge); border-radius: 5px; padding: 6px 12px; cursor: pointer; pointer-events: auto; transition: border-color .1s, color .1s; }
@@ -223,18 +278,23 @@ button:active { translate: 0 1px; }
   image-rendering: pixelated;
 }
 
-/* Better toasts / feedback for fun factor (mining hits, kills, yields feel satisfying) */
+/* Receipts / telemetry feedback (clean HUD type, restrained lines, no heavy cards) */
 .toast {
-  background: var(--panel);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: .04em;
+  color: var(--ink);
+  background: rgba(10, 16, 26, 0.88);
   border: 1px solid var(--panel-edge);
-  border-left: 4px solid var(--accent);
-  padding: 8px 14px;
-  border-radius: 6px;
-  box-shadow: 0 4px 20px rgba(0,0,0,.5);
-  font-size: 13px;
+  border-left: 3px solid var(--accent);
+  padding: 5px 12px;
+  border-radius: 4px;
+  box-shadow: 0 4px 14px rgba(0,0,0,.45);
 }
-.toast.good { border-left-color: var(--good); }
-.toast.warn { border-left-color: var(--warn); }
+.toast.good, .toast[data-kind="good"], .toast[data-kind="credits"], .toast[data-kind="success"] { border-left-color: var(--good); color: #d4f7e2; }
+.toast.warn, .toast[data-kind="warn"] { border-left-color: var(--warn); color: #fce8cc; }
+.toast.danger, .toast.error, .toast[data-kind="danger"], .toast[data-kind="error"] { border-left-color: var(--danger); color: #ffd6dc; }
+
 
 /* Icons atlas usage hint (the generated B-006 + expansion can be used as decorative or future sliced icons) */
 .icon-ref {
@@ -366,7 +426,8 @@ button:active { translate: 0 1px; }
 .sf-divider { height: 1px; background: linear-gradient(90deg, transparent, var(--panel-edge), transparent);
   border: none; margin: var(--sp-3) 0; }
 
-/* Empty state */
+/* Empty state — LEGACY, superseded by .sf-state (section 13). Zero consumers; kept only so any
+   out-of-tree screen still renders. New panes use uiPrimitives.mountDataState(). */
 .sf-empty { color: var(--ink-mute); font-style: italic; font-size: var(--t-sm); padding: var(--sp-3); text-align: center; }
 
 /* Fade-in for screens/panels so they feel responsive, not pop-in. */
@@ -950,3 +1011,292 @@ button:active { translate: 0 1px; }
 .sf-spotlight:hover::before,
 .sf-spotlight:focus-within::before,
 .sf-spotlight:focus-visible::before { opacity: 1; }
+
+/* 10 ─ sf-select : styled replacement for native <select> (uiPrimitives.sfSelect) ----------------
+   Native OS dropdown chrome is deleted from screens (FRONTEND_DIRECTION §4.4). Field is a real
+   <button>; the drop list is a role=listbox anchored inside the root. No idle animation: the list
+   appears/disappears on open state only, and reduce-motion gets an instant state for free. */
+.sf-select { position: relative; display: inline-flex; min-width: 0; }
+.sf-select__field {
+  display: inline-flex; align-items: center; gap: var(--sp-2, 6px);
+  font: inherit; color: var(--ink);
+  background: var(--panel-2); border: 1px solid var(--panel-edge); border-radius: var(--r-sm, 5px);
+  padding: 5px 10px; cursor: pointer; pointer-events: auto;
+  transition: border-color .1s var(--ease, ease), color .1s var(--ease, ease);
+  text-transform: none; letter-spacing: normal; box-shadow: none;
+}
+.sf-select__field:hover { border-color: var(--accent); }
+.sf-select__field:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.sf-select__field:disabled { opacity: .4; cursor: default; }
+.sf-select__field svg { width: 12px; height: 12px; flex: none; color: var(--ink-mute); }
+.sf-select--open .sf-select__field svg { transform: rotate(180deg); }
+.sf-select__value { min-width: 3ch; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sf-select__list {
+  position: absolute; left: 0; top: calc(100% + 4px); z-index: 30;
+  width: max-content; min-width: 100%; max-width: min(340px, calc(100vw - 24px));
+  max-height: 220px; overflow-y: auto; overscroll-behavior: contain;
+  background: var(--panel-2); border: 1px solid var(--panel-edge); border-radius: var(--r-sm, 5px);
+  box-shadow: 0 10px 34px rgba(0,0,0,.55);
+  padding: 4px; display: none;
+}
+.sf-select--up .sf-select__list { top: auto; bottom: calc(100% + 4px); }
+.sf-select--open .sf-select__list { display: block; }
+.sf-select__opt {
+  padding: 6px 9px; border-radius: 4px; cursor: pointer; color: var(--ink);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sf-select__opt:hover { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.sf-select__opt.is-active { background: color-mix(in srgb, var(--accent) 18%, transparent); }
+.sf-select__opt.is-selected { color: var(--accent); }
+.sf-select__opt[aria-disabled="true"] { opacity: .4; cursor: default; background: none; }
+@media (prefers-reduced-motion: reduce) {
+  .sf-select__field, .sf-select__field svg { transition: none; }
+}
+
+/* 11 ─ instrument skeleton : CREST / STAGE / APRON / DRAWER (grammar §6, Phase 0) ---------------
+   Every instrument uses the same three zones so muscle memory transfers between screens even
+   though the centerpieces differ completely. Proportions per screen spec (12/58/30 etc. via
+   grid-template-rows on .sf-instrument). The APRON always holds ≥1 verb; the STAGE is the
+   manipulable centerpiece. Class vocabulary follows grammar §8 (no banned substrings). */
+.sf-instrument { display: grid; grid-template-rows: 12fr 58fr 30fr; width: 100%; height: 100%; min-height: 0; }
+.sf-crest { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 14px 22px 10px; }
+.sf-crest__title { font-family: var(--sf-display-face); font-weight: 700; font-size: 40px; line-height: 1.04; color: var(--sf-paper); }
+.sf-crest__line { font-family: var(--sf-subhead-face); font-weight: 600; font-size: 22px; line-height: 1.25; color: var(--sf-calm); }
+.sf-stage { position: relative; min-height: 0; }
+.sf-apron { display: flex; flex-direction: column; gap: 8px; padding: 10px 22px 14px; min-height: 0; }
+.sf-deck { display: flex; flex-direction: column; gap: 6px; min-height: 0; }
+.sf-deck__label { font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px; letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-calm); }
+.sf-tile { display: flex; align-items: baseline; gap: 8px; padding: 6px 10px; }
+.sf-housing { display: flex; flex-direction: column; gap: 6px; }
+.sf-anchor { position: absolute; transform: translate(-50%, -50%); }
+/* absolute, NOT fixed: a drawer always lives inside a .screen, which carries a transform for its
+   enter/exit transition and is therefore the containing block for fixed descendants. Shipping
+   `fixed` here and patching it with a descendant selector in §14 is how an override pile starts. */
+.sf-drawer { position: absolute; top: 0; bottom: 0; width: min(520px, 42vw); right: 0; z-index: 40;
+  background: var(--sf-surface); border-left: 1px solid var(--sf-edge);
+  box-shadow: -18px 0 48px rgba(0,0,0,.5); transform: translateX(100%);
+  transition: transform var(--sf-t-settle) var(--sf-ease); }
+.sf-drawer.is-open { transform: translateX(0); }
+.sf-drawer__deck { display: flex; flex-direction: column; gap: 10px; padding: 16px; overflow-y: auto; height: 100%; }
+@media (prefers-reduced-motion: reduce) { .sf-drawer { transition: none; } }
+
+/* Text-expansion base (A_LIST_GAPS #1, binding from Phase 0): no fixed-width text container;
+   design against +40%; nowrap only on numerals and keycaps; sentences get a two-line budget. */
+.sf-instrument .sf-crest__line, .sf-instrument .sf-tile, .sf-instrument .sf-deck__label { min-width: 0; }
+.sf-instrument .sf-tile span[data-sf-text] { overflow-wrap: break-word; }
+
+/* 12 ─ THE SHIP screen host (src/ui/ship/shipScreen.js; SCREENS_B §1.2/§1.3) ---------------------
+   The shared shipworks stage re-parented into a pausing flight screen (F2). Full-bleed with its
+   own opaque bay backdrop so it never reads as the same room as the menu plate. Absolute inset
+   full-bleed (not flex-child sizing): #screens flex-centers its children, so a plain width:100%
+   child can still end up content-sized and clipped (vision-review blocker, frame 04). The flight
+   host hides commerce: no Fleet/Buy segment (fleet rail stays, inspect-only). */
+.sf-ship { position: absolute; inset: 0; width: 100%; height: 100%; background: linear-gradient(160deg, #070c16 0%, #0b1220 100%); }
+.sf-ship .sx-sw { width: 100%; }
+.sf-ship .sx-sw--flight .sx-seg { display: none; }
+.sf-ship .sx-sw--flight .sx-sw__railstep { display: none; }
+
+/* 13 ─ sf-state : the four required data states (J3; uiPrimitives.dataState) --------------------
+   EMPTY / LOADING / ERROR / DENIED. Each names what would fill it and carries a verb — a
+   correct-but-blank pane reads as broken (grammar §12 item 9). Supersedes .sf-empty.
+
+   Colour: grammar §4 roles only; `--accent` is roleless and banned here. At rest the block is
+   calm+paper (the 80% rule) and spends exactly ONE hot colour on the rail + glyph. Meaning never
+   lives in colour alone — the state word and the glyph silhouette are the second and third
+   channels, both of which survive forced-colors.
+
+   Naming: no `panel|card|menu|modal` substring (forced-colors strips background-image/box-shadow
+   from those) and no `pulse|blink|flash` (sf-reduce-flash blanket-kills [class*=…] animation). */
+.sf-state {
+  display: flex; align-items: flex-start; gap: 14px;
+  flex-wrap: wrap;
+  padding: clamp(16px, 3.4vh, 30px) clamp(16px, 2.6vw, 30px);
+  min-width: 0; width: 100%; max-width: min(62ch, 640px); margin-inline: auto; margin-block: auto;
+  font-size: 14px;                 /* anchors the ch measure; it otherwise resolves against whatever
+                                      the host inherits (12px inside the Chart's inspector) */
+  container-type: inline-size;     /* so type sizes to the PANE, not the monitor */
+  color: var(--sf-paper);
+  border-inline-start: var(--sf-rail-w) solid var(--sf-calm);
+}
+.sf-state--error, .sf-state--denied { border-inline-start-color: var(--sf-foe); }
+.sf-state--empty { border-inline-start-style: dashed; }
+.sf-state--denied { border-inline-start-width: calc(var(--sf-rail-w) * 2); }
+.sf-state--compact { padding: 12px 14px; gap: 10px; }
+
+.sf-state__glyph { flex: none; width: 30px; height: 30px; color: var(--sf-calm); }
+.sf-state--error .sf-state__glyph, .sf-state--denied .sf-state__glyph { color: var(--sf-foe); }
+.sf-state__glyph svg { width: 100%; height: 100%; display: block; }
+
+.sf-state__body { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; flex: 1 1 22ch; }
+
+/* The state word is the non-colour channel. 12px floor, per the ship polish pass. */
+.sf-state__word {
+  font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
+  letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-calm);
+}
+.sf-state--error .sf-state__word, .sf-state--denied .sf-state__word { color: var(--sf-foe); }
+
+/* Headline is the pane's DISPLAY element while the state is up. No fixed width, +40% safe. */
+.sf-state__head {
+  margin: 0; font-family: var(--sf-display-face); font-weight: 700;
+  font-size: clamp(19px, 7cqi, 28px); line-height: 1.12; color: var(--sf-paper);
+  overflow-wrap: break-word; text-wrap: balance;
+}
+.sf-state--compact .sf-state__head { font-size: clamp(15px, 1.5vw, 19px); }
+.sf-state__fills, .sf-state__detail {
+  margin: 0; font-size: 14px; line-height: 1.45; color: var(--sf-calm); overflow-wrap: break-word;
+}
+.sf-state__detail { font-size: 13px; opacity: .85; }
+
+/* The verb carries --sf-goal: it is the way out, which is exactly "what you're heading for". */
+.sf-state__verb {
+  margin-top: 4px; display: inline-flex; align-items: center; gap: 8px;
+  font: 600 15px/1.2 var(--sf-subhead-face); letter-spacing: .01em; text-transform: none;
+  color: var(--sf-goal); background: transparent;
+  border: 1px solid color-mix(in srgb, var(--sf-goal) 70%, transparent);
+  border-radius: var(--r-sm, 5px); padding: 7px 14px; cursor: pointer; box-shadow: none;
+  transition: border-color var(--sf-t-latch) var(--sf-ease), color var(--sf-t-latch) var(--sf-ease);
+}
+.sf-state__verb:hover { border-color: var(--sf-goal); }
+.sf-state__verb:focus-visible { outline: 2px solid var(--sf-goal); outline-offset: 2px; }
+.sf-state__verb:active { transform: none; }   /* ui.css `button:active{transform}` clobbers centering */
+/* Keycap. 12px floor applies here too — this was 11px in a `font:` shorthand, which the check's
+   `font-size:` scan could not see. nowrap is allowed on a keycap (grammar §12 item 11). */
+.sf-state__key {
+  font: 600 12px/1 var(--sf-data-face); letter-spacing: .06em; white-space: nowrap;
+  padding: 3px 5px; border: 1px solid var(--sf-edge); border-radius: var(--r-sm, 5px); color: var(--sf-calm);
+}
+
+/* LOADING skeleton — echoes the REAL layout so the pane's shape reads before its content does.
+
+   IT DOES NOT SHIMMER, and that is the design, not an omission. Grammar §5: "no motion ships
+   without a named state variable behind it," and a spinner that outlives its work is a lie.
+   dataState's callers supply no progress signal, so a perpetual sweep would encode nothing — it
+   would be decoration, and it is exactly the compositor-side `infinite` keyframe that
+   check:ui-frame-sleep cannot see because it inspects rAF. The state is carried honestly by the
+   WORKING word, the arc glyph, `aria-busy`, and the skeleton's shape.
+
+   If a caller ever supplies real progress, the bar's WIDTH becomes the encoding and earns a
+   `--sf-t-spool` motion token. Until then the correct implementation is the subtraction. */
+.sf-state__skel { flex: 1 0 100%; display: flex; flex-direction: column; gap: 8px; margin-bottom: 6px; }
+.sf-state__bar {
+  width: 72%; height: 12px; border-radius: var(--r-sm, 5px);
+  background: color-mix(in srgb, var(--sf-calm) 14%, transparent);
+}
+.sf-state__bar:nth-child(2) { width: 92%; }
+.sf-state__bar:nth-child(3) { width: 54%; }
+
+@media (prefers-reduced-motion: reduce) {
+  .sf-state__verb { transition: none; }
+}
+/* forced-colors: gradients/shadows are stripped, so the sweep and the tinted bars vanish. Give the
+   skeleton a real border so LOADING stays legible rather than blank (grammar §11). */
+@media (forced-colors: active) {
+  .sf-state { border-inline-start-color: CanvasText; }   /* colour only — keep the per-state style/width */
+  .sf-state__bar { border: 1px solid CanvasText; background: none; }
+  .sf-state__verb { border: 1px solid ButtonText; color: ButtonText; }
+}
+
+/* 14 ─ entity links + the entity DRAWER (J5; entityLinks.js) ------------------------------------
+   Every noun is a door: [data-entity="type:id"] anywhere under #screens opens that entity's
+   dossier in a tier-3 drawer. Progressive disclosure stops here — a drawer REPLACES its content
+   and never stacks a second surface (grammar §7).
+
+   POSITIONING, and why it is absolute rather than fixed: `.screen` carries transform:translateY(0)
+   for its enter/exit transition, and any transform other than `none` makes that element the
+   containing block for position:fixed descendants. #screens flex-centres its children, so a screen
+   root can be content-sized — a "fixed" drawer would anchor to that small box, not the viewport.
+   The layer therefore stretches its host while open (.sf-drawerhost) and the class comes off on
+   close, so no screen is left relaid-out. */
+.screen.sf-drawerhost { position: absolute; inset: 0; width: 100%; height: 100%; }
+.sf-drawerlayer { position: absolute; inset: 0; z-index: 40; pointer-events: none; }
+.sf-drawerlayer > .sf-drawer { pointer-events: auto; }   /* position now correct at source (§11) */
+
+/* An entity link reads as a link by UNDERLINE, not by colour alone — forced-colors and colour-blind
+   modes both need the second channel (grammar §4). */
+.sf-entity-link {
+  font: inherit; color: var(--sf-paper); background: none; border: 0; padding: 0;
+  text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--sf-you) 55%, transparent);
+  text-underline-offset: 3px; cursor: pointer; text-transform: none; letter-spacing: normal;
+  box-shadow: none; text-align: left; min-width: 0; overflow-wrap: break-word;
+}
+.sf-entity-link:hover { color: var(--sf-you); text-decoration-color: var(--sf-you); }
+.sf-entity-link:focus-visible { outline: 2px solid var(--sf-you); outline-offset: 2px; }
+.sf-entity-link:active { transform: none; }
+.sf-drawer__links { display: flex; flex-direction: column; min-width: 0; }
+.sf-entity-link--row {
+  padding: 7px 2px; border-bottom: 1px solid var(--sf-edge); width: 100%;
+  text-decoration-color: transparent;   /* the row IS the affordance; underline returns on hover/focus */
+}
+.sf-entity-link--row:last-child { border-bottom: 0; }
+.sf-entity-link--row:hover, .sf-entity-link--row:focus-visible { text-decoration-color: var(--sf-you); }
+
+.sf-drawer--entity { --sf-entity-accent: var(--sf-calm); }
+.sf-drawerlayer > .sf-drawer--entity { top: auto; bottom: 0; height: fit-content; max-height: 100%; }
+.sf-drawer--entity .sf-drawer__deck { gap: 16px; padding: 18px 20px 20px; }
+/* The graph is the drawer's STAGE. A CREST and an APRON with nothing between them is what read as
+   an unfinished sidebar; grouped, full-width link rows are the centerpiece (grammar §6). */
+.sf-drawer__stage { display: flex; flex-direction: column; gap: 14px; min-height: 0; }
+.sf-drawer__x {
+  position: absolute; top: 10px; right: 12px; z-index: 1;
+  width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center;
+  color: var(--sf-calm); background: none; border: 1px solid transparent; border-radius: var(--r-sm, 5px);
+  cursor: pointer; padding: 0; box-shadow: none;
+}
+.sf-drawer__x:hover { color: var(--sf-paper); border-color: var(--sf-edge); }
+.sf-drawer__x:focus-visible { outline: 2px solid var(--sf-goal); outline-offset: 1px; }
+.sf-drawer__x:active { transform: none; }
+.sf-drawer__x svg { width: 15px; height: 15px; }
+
+.sf-drawer__crest { display: flex; flex-direction: column; gap: 3px; padding-right: 38px;
+  border-inline-start: var(--sf-rail-w) solid var(--sf-calm); padding-inline-start: 12px; }
+.sf-drawer__kicker {
+  font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
+  letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-calm);
+}
+.sf-drawer__title {
+  margin: 0; font-family: var(--sf-display-face); font-weight: 700;
+  font-size: clamp(24px, 2.4vw, 34px); line-height: 1.06; color: var(--sf-paper);
+  overflow-wrap: break-word; text-wrap: balance;
+}
+
+.sf-drawer__facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 13ch), 1fr)); gap: 8px; }
+.sf-drawer__facts .sf-tile {
+  flex-direction: column; align-items: flex-start; gap: 2px;
+  border: 1px solid var(--sf-edge); border-radius: var(--r-sm, 5px); padding: 8px 10px; min-width: 0;
+}
+.sf-tile__k { font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
+  letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-calm); }
+.sf-tile__v { font-size: 15px; line-height: 1.25; color: var(--sf-paper); overflow-wrap: break-word; }
+.sf-tile--data .sf-tile__v {
+  font-family: var(--sf-data-face); font-weight: 500; font-variant-numeric: tabular-nums;
+  letter-spacing: -.01em;
+}
+.sf-tile--you .sf-tile__v { color: var(--sf-you); }
+.sf-tile--foe .sf-tile__v { color: var(--sf-foe); }
+.sf-tile--goal .sf-tile__v { color: var(--sf-goal); }
+
+.sf-drawer__prose { margin: 0; font-size: 14px; line-height: 1.5; color: var(--sf-paper); overflow-wrap: break-word; }
+.sf-drawer__prose--foe { color: var(--sf-foe); }
+
+.sf-drawer__apron { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 12px; border-top: 1px solid var(--sf-edge); }
+.sf-drawer__verb {
+  font: inherit; font-size: 14px; font-weight: 600; text-transform: none; letter-spacing: .01em;
+  color: var(--sf-goal); background: transparent;
+  border: 1px solid var(--sf-goal-edge);
+  border-radius: var(--r-sm, 5px); padding: 7px 14px; cursor: pointer; box-shadow: none;
+  transition: border-color var(--sf-t-latch) var(--sf-ease);
+}
+.sf-drawer__verb--quiet { color: var(--sf-calm); border-color: var(--sf-edge); }
+.sf-drawer__verb:hover { border-color: currentColor; }
+.sf-drawer__verb:focus-visible { outline: 2px solid var(--sf-goal); outline-offset: 2px; }
+.sf-drawer__verb:active { transform: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .sf-drawer__verb { transition: none; }
+}
+@media (forced-colors: active) {
+  .sf-drawerlayer > .sf-drawer { border-inline-start: 1px solid CanvasText; }
+  .sf-entity-link { color: LinkText; text-decoration-color: LinkText; }
+  .sf-drawer__verb, .sf-drawer__facts .sf-tile { border: 1px solid CanvasText; }
+}
