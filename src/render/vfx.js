@@ -7611,9 +7611,9 @@ export const vfx = {
     }
     const scratch = this._doctrineTellScreenScratch || this._trailScreenScratch;
     const pad = 0.78;
-    let lo = 8;
+    let lo = 0;
     let hi = Math.max(fallbackR, 8);
-    let best = lo;
+    let best = 0;
     for (let i = 0; i < 10; i++) {
       const mid = (lo + hi) * 0.5;
       const local = this._toLocalXZ(ox + ux * mid, oz + uz * mid, this._entityLocalXZ);

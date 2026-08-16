@@ -249,6 +249,24 @@ function fireTell(bus, kind, extra = {}) {
     `rear close-zoom cue NDC (${ndc.x.toFixed(2)}, ${ndc.y.toFixed(2)}) must stay on-screen`);
 }
 
+// ── Narrow low-FOV close zoom cannot seed an 8 WU off-screen pin ───────────
+{
+  const narrow = makeHarness({ enemyX: 80, enemyZ: 0 });
+  const tilt = Math.PI / 3;
+  const distance = 45;
+  const cam = new THREE.PerspectiveCamera(35, 0.5, 1, 4000);
+  cam.position.set(0, distance * Math.sin(tilt), -distance * Math.cos(tilt));
+  cam.lookAt(0, 0, 0);
+  cam.updateMatrixWorld();
+  cam.updateProjectionMatrix();
+  narrow.state.render.camera = cam;
+  narrow.state.camera = { zoom: 45, fov: 35, aspect: 0.5, tilt: 60 };
+  const cue = narrow.system._doctrineTellOffscreenPoint({ x: 0, z: 0 }, 1, 0);
+  const ndc = new THREE.Vector3(cue.x, 0, cue.z).project(cam);
+  assert.ok(Math.abs(ndc.x) <= 0.85 && Math.abs(ndc.y) <= 0.85,
+    `narrow 35°/0.5 cue NDC (${ndc.x.toFixed(2)}, ${ndc.y.toFixed(2)}) must stay on-screen`);
+}
+
 // ── Duration floor: payload below 30 is raised to 30 ────────────────────────
 {
   const { bus, system } = makeHarness();
@@ -263,6 +281,6 @@ function fireTell(bus, kind, extra = {}) {
 console.log(JSON.stringify({
   schema: 'spaceface.m1.doctrine_vfx.v1',
   ok: true,
-  cases: ['flyby', 'tether', 'charge', 'reduced', 'offscreen', 'duration_floor', 'pause_tick', 'headless_fallback', 'headless_table', 'live_project', 'close_rear_cue'],
+  cases: ['flyby', 'tether', 'charge', 'reduced', 'offscreen', 'duration_floor', 'pause_tick', 'headless_fallback', 'headless_table', 'live_project', 'close_rear_cue', 'narrow_low_fov'],
   doctrineTelegraphTicks: DOCTRINE_TELEGRAPH_TICKS,
 }, null, 2));
