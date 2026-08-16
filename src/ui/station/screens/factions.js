@@ -3,6 +3,7 @@
 // faction rail + progressive-disclosure detail. Read-only: reflects state.factions[id].rep.
 //
 // Screen module shape (hosted by stationApp): create(ctx) -> { el, onShow, refresh, dispose }.
+// Standing remains factions-owned; the two buttons emit intents to Economy/Factions owners.
 import { FACTION_META } from '../../../data/factions.js';
 import { NEW_GAME } from '../../../data/newGameDefaults.js';
 import { SECTORS } from '../../../data/sectors.js';
@@ -15,6 +16,10 @@ import {
 } from '../../screens/factions.js';
 import { escapeHtml } from '../../comms.js';
 import { icon } from '../icons.js';
+import {
+  conflictChoicesForState,
+  factionLicensedFitOffersForState,
+} from '../../../systems/factions.js';
 
 // Standing colour ramp — meaningful, ordered crimson→gold. Index-aligned to FACTION_TIERS
 // (9 tiers, Sworn Enemy … Hero). This is the STANDING colour (how they feel about you).
@@ -290,6 +295,31 @@ export function createFactionsScreen(ctx) {
       hideLastDelta: shouldHideOwnRepDelta(state),
     });
     const relations = relationEntries(meta);
+    const stationFactionId = STATION_FACTION.get(state && state.ui && state.ui.dockedStationId);
+    const licensedOffers = stationFactionId === f.id
+      ? factionLicensedFitOffersForState(state, f.id)
+      : [];
+    const licenseRows = licensedOffers.map((offer) => (
+      `<div class="sx-fac-intent">` +
+        `<span>LICENSED FIT · ${escapeHtml(offer.name)}</span>` +
+        `<b>${offer.available ? `${offer.price.toLocaleString('en-US')} credits` : `${Math.max(0, offer.minRep - offer.currentRep)} reputation needed`}</b>` +
+        `<em>SCN point defence license · standing ${signed(offer.currentRep)} / ${signed(offer.minRep)}</em>` +
+        `<button type="button" class="sx-btn-primary" data-buy-faction-fit="${escapeHtml(offer.defId)}" ${offer.available && (state.player?.credits || 0) >= offer.price ? '' : 'disabled'}>BUY LICENSED FIT</button>` +
+      `</div>`
+    )).join('');
+    const conflictChoices = conflictChoicesForState(state).filter((choice) => choice.sideId === f.id);
+    const conflictRows = conflictChoices.map((choice) => {
+      const opponent = factions.find((entry) => entry.id === choice.opponentId);
+      const label = choice.status === 'resolved' ? 'SKIRMISH RESOLVED'
+        : choice.status === 'active' ? (choice.chosen ? 'SIDE CHOSEN' : 'FRONT ACTIVE')
+          : 'JOIN BORDER SKIRMISH';
+      return `<div class="sx-fac-intent">` +
+        `<span>CONFLICT FRONT</span>` +
+        `<b>${escapeHtml(f.name)} vs ${escapeHtml(opponent ? opponent.name : choice.opponentId)}</b>` +
+        `<em>Choose once · live 2v2 · earned classified-salvage rights</em>` +
+        `<button type="button" class="sx-btn-primary" data-conflict-pair="${escapeHtml(choice.pairKey)}" data-conflict-side="${escapeHtml(choice.sideId)}" ${choice.available ? '' : 'disabled'}>${label}</button>` +
+      `</div>`;
+    }).join('');
 
     detailEl.innerHTML =
       `<div class="sx-fac-ladder">` +
@@ -299,7 +329,7 @@ export function createFactionsScreen(ctx) {
       `<div class="sx-fac-intent">` +
         `<span>NEXT MOVE</span><b>${escapeHtml(guidance.plan)}</b>` +
         `<em>${relations.length} consequential relation${relations.length === 1 ? '' : 's'} mapped</em>` +
-      `</div>`;
+      `</div>` + licenseRows + conflictRows;
   }
 
   function refresh(c) {
@@ -329,6 +359,24 @@ export function createFactionsScreen(ctx) {
   }
   railEl.addEventListener('click', onFactionClick);
   stageEl.addEventListener('click', onFactionClick);
+  detailEl.addEventListener('click', (ev) => {
+    const licensed = ev.target.closest('[data-buy-faction-fit]');
+    if (licensed && ctx && ctx.bus) {
+      const payload = { defId: licensed.getAttribute('data-buy-faction-fit') };
+      ctx.bus.emit('ui:buyFactionFit', payload);
+      refresh(ctx);
+      return;
+    }
+    const conflict = ev.target.closest('[data-conflict-pair][data-conflict-side]');
+    if (conflict && ctx && ctx.bus) {
+      const payload = {
+        pairKey: conflict.getAttribute('data-conflict-pair'),
+        sideId: conflict.getAttribute('data-conflict-side'),
+      };
+      ctx.bus.emit('ui:chooseConflictSide', payload);
+      refresh(ctx);
+    }
+  });
 
   const onRepChanged = (payload = {}) => {
     if (!payload.factionId || payload.factionId === selectedId) refresh(ctx);

@@ -9,7 +9,13 @@
 // state.world.sectors[id].owner on war resolution (§0.6). Pure-data deps only (no 'three').
 import { FACTION_META } from '../data/factions.js';
 import { NEW_GAME } from '../data/newGameDefaults.js';
-import { CONTESTED_SECTOR_BY_PAIR, contestedSectorForPair } from '../data/conflictZones.js';
+import { WEAPONS } from '../data/weapons.js';
+import {
+  CONTESTED_SECTOR_BY_PAIR,
+  conflictPairsForSector,
+  contestedSectorForPair,
+} from '../data/conflictZones.js';
+import { makeShipEntitySpec } from './ships.js';
 
 // ── Tiers (§0.9 / spec): 9 named bands across -1000..+1000, evaluated high→low. ──────────────
 const TIERS = [
@@ -41,6 +47,12 @@ const PLAYER_WEIGHT = 25;     // playerLean contribution to war momentum
 // impactful) but high enough that a real power gap flips a sector over a few days of grinding.
 const POWER_WEIGHT = 0.9;
 const DECAY_POSITIVE = false; // default: only negative rep decays toward neutral (spec)
+const CONFLICT_SALVAGE_COMMODITY_ID = 'cmdty_classified_salvage';
+const CONFLICT_SALVAGE_QTY = 3;
+const CONFLICT_REP_REWARD = 18;
+const LICENSED_FIT_BY_ID = new Map(
+  WEAPONS.filter((def) => def && def.factionLicense).map((def) => [def.id, def]),
+);
 
 // Contested sectors flippable in war: pairKey → sectorId (spec CONTESTED SECTORS, sector_ ids).
 const CONTESTED = CONTESTED_SECTOR_BY_PAIR;
@@ -137,6 +149,8 @@ export const factions = {
     // New game → seed reputations + conflicts from data defaults (idempotent: skip if a load
     // already populated state.factions).
     bus.on('game:started', () => this.newGame());
+    bus.on('save:loaded', () => this._resetStaleActiveFronts());
+    bus.on('sector:enter', (p) => this._resetStaleActiveFronts(p && p.sectorId));
 
     // Sole rep-mutation entry point for every other system (§0.6).
     bus.on('faction:repDelta', ({ factionId, delta, reason }) => {
@@ -147,6 +161,7 @@ export const factions = {
     // that faction's enemies. Only the player's own kills move the player's standing.
     bus.on('entity:killed', (p) => {
       if (!p || p.type !== 'ship' || !p.factionId) return;
+      this._observeConflictFrontKill(p);
       if (p.killerId !== state.playerId) return; // NPC-on-NPC kills don't touch player rep
       const victim = p.factionId;
       const cls = p.victimClass || 'fighter';
@@ -164,6 +179,12 @@ export const factions = {
       }
       // Pirate/law kills feed inter-faction tension around contested space.
       this._feedTensionForKill(victim, p.pos);
+    });
+
+    // UI emits one intent; factions validates and spawns the front it already owns. Weapons,
+    // tactical AI, physics and combat remain the only authorities that can fight or resolve it.
+    bus.on('ui:chooseConflictSide', (p) => {
+      if (p && typeof p === 'object') p.result = this.chooseConflictSide(p);
     });
 
     // Trade at a faction station: small standing gain scaled by net trade value, capped per docking.
@@ -327,6 +348,245 @@ export const factions = {
     return contestedSectorForPair(pairKey);
   },
 
+  /** Read-only standing gate consumed by economy's point-of-sale transaction. */
+  licensedFitOffer(defId) {
+    return factionLicensedFitOfferForState(this.state || _state, defId);
+  },
+
+  /** Materialize one bounded faction front in the live contested sector. */
+  chooseConflictSide({ pairKey, sideId } = {}) {
+    const state = this.state || _state;
+    const sectorId = state && state.world && state.world.currentSectorId;
+    const sides = typeof pairKey === 'string' ? pairKey.split(':') : [];
+    if (!state || sides.length !== 2 || !sides.includes(sideId)) {
+      return { ok: false, reason: 'invalid_side' };
+    }
+    if (contestedSectorForPair(pairKey) !== sectorId) {
+      return { ok: false, reason: 'wrong_sector' };
+    }
+    const conflict = this._ensureConflict(pairKey);
+    if (conflict.front && (conflict.front.status === 'active' || conflict.front.status === 'resolved')) {
+      return { ok: false, reason: conflict.front.status === 'resolved' ? 'already_resolved' : 'already_active' };
+    }
+    const player = state.entities && state.entities.get && state.entities.get(state.playerId);
+    if (!player || !player.pos || !this.helpers || typeof this.helpers.spawnEntity !== 'function') {
+      return { ok: false, reason: 'player_not_present' };
+    }
+
+    const opponentId = sides[0] === sideId ? sides[1] : sides[0];
+    // Stage outside lawful station-protection volumes so the shared engagement authority can
+    // authorize an actual faction fight. Helios has the larger 1,400-WU starter sanctuary.
+    const stagingDistance = sectorId === 'sector_helios_prime' ? 1500 : 700;
+    const anchor = { x: player.pos.x + stagingDistance, z: player.pos.z };
+    const spawnSide = (factionId, team, offsets) => offsets.map((offset, index) => {
+      const concord = factionId === 'faction_scn';
+      const fittings = concord
+        ? ['wpn_flak_turret_s', 'wpn_pulse_laser_s']
+        : ['wpn_autocannon_s', 'wpn_pulse_laser_s'];
+      const spec = makeShipEntitySpec('ship_wasp', {
+        team,
+        factionId,
+        fittings,
+        pos: { x: anchor.x + offset.x, z: anchor.z + offset.z },
+        rot: team === 0 ? 0 : Math.PI,
+        ai: {
+          archetype: 'fighter',
+          passive: false,
+          spawnContext: 'conflict_zone',
+          roe: 'weapons_free',
+          combatDoctrineId: concord ? 'ranged_disengager' : 'interceptor_flyby',
+          motive: 'hold_conflict_front',
+          engagementTrigger: 'player_side_choice',
+          zoneId: sectorId,
+          approachTelegraph: 'conflict_weapons_hot',
+          noFireResponseWindowS: 1,
+          capabilities: concord ? ['point_defence', 'ranged'] : ['ranged'],
+          activity: {
+            kind: 'attack_run',
+            reason: `conflict_front:${pairKey}`,
+            anchor: { ...anchor },
+            leashRadius: 1100,
+            preferredRange: concord ? 240 : 320,
+            startedTick: state.tick | 0,
+            targetId: null,
+          },
+        },
+      });
+      spec.data.conflictFront = { pairKey, sideId: factionId, index };
+      return this.helpers.spawnEntity(spec);
+    });
+    const allies = spawnSide(sideId, 0, [{ x: -60, z: -50 }, { x: -60, z: 50 }]);
+    const opponents = spawnSide(opponentId, 1, [{ x: 60, z: -50 }, { x: 60, z: 50 }]);
+    if (allies.some((entity) => !entity) || opponents.some((entity) => !entity)) {
+      for (const entity of [...allies, ...opponents]) if (entity) entity.alive = false;
+      return { ok: false, reason: 'spawn_failed' };
+    }
+    for (let i = 0; i < 2; i++) {
+      const ally = allies[i], opponent = opponents[i];
+      ally.data.ai.activity.targetId = opponent.id;
+      ally.data.ai.retaliationTargetId = opponent.id;
+      opponent.data.ai.activity.targetId = ally.id;
+      opponent.data.ai.retaliationTargetId = ally.id;
+    }
+
+    conflict.tension = Math.min(100, (Number(conflict.tension) || 0) + 12);
+    conflict.front = {
+      status: 'active',
+      pairKey,
+      sectorId,
+      chosenSide: sideId,
+      opponentSide: opponentId,
+      allyIds: allies.map((entity) => entity.id),
+      opponentIds: opponents.map((entity) => entity.id),
+      anchor: { ...anchor },
+      startedAt: Number(state.simTime) || 0,
+    };
+    this._refreshConflictState(pairKey, conflict);
+    const receipt = { ok: true, ...conflict.front };
+    this.bus.emit('conflict:sideChosen', receipt);
+    if (state.nav && !state.nav.waypoint) {
+      state.nav.waypoint = {
+        kind: 'conflict_front',
+        markerKind: 'mission-objective',
+        pairKey,
+        sectorId,
+        pos: { ...anchor },
+        label: 'CONFLICT FRONT',
+        reason: `${META_BY_ID[sideId]?.name || sideId} border skirmish`,
+        arrivalRadius: 220,
+      };
+      this.bus.emit('nav:waypoint', state.nav.waypoint);
+    }
+    this.bus.emit('toast', {
+      text: `Joined ${META_BY_ID[sideId]?.name || sideId} — conflict front marked ${stagingDistance} wu local-east`,
+      kind: 'info',
+      ttl: 5,
+    });
+    return receipt;
+  },
+
+  /** Observe exact front casualties before the ordinary player-kill reputation path. An allied
+   * victory earns no player rights, but it also cannot strand an exhausted transient front. */
+  _observeConflictFrontKill(payload) {
+    const state = this.state || _state;
+    if (!state || !payload) return null;
+    for (const pairKey of conflictPairsForSector(state.world && state.world.currentSectorId)) {
+      const conflict = state.conflicts && state.conflicts[pairKey];
+      const front = conflict && conflict.front;
+      if (!front || front.status !== 'active' || !front.opponentIds.includes(payload.id)) continue;
+      if (payload.killerId === state.playerId) return this._resolveConflictFrontKill(payload);
+
+      const opponentsRemain = front.opponentIds.some((id) => {
+        const entity = state.entities && state.entities.get && state.entities.get(id);
+        return !!(entity && entity.alive !== false);
+      });
+      if (opponentsRemain) return null;
+
+      delete conflict.front;
+      if (state.nav?.waypoint?.kind === 'conflict_front'
+        && state.nav.waypoint.pairKey === pairKey) {
+        state.nav.waypoint = null;
+        this.bus.emit('nav:waypoint', null);
+      }
+      const receipt = { pairKey, outcome: 'allies_won', salvageRights: false };
+      this.bus.emit('conflict:skirmishUnclaimed', receipt);
+      this.bus.emit('toast', {
+        text: 'Allied pilots won the skirmish before you secured salvage rights — front available to retry',
+        kind: 'info',
+        ttl: 5,
+      });
+      return receipt;
+    }
+    return null;
+  },
+
+  /** One player-earned opposing kill resolves the front and materializes one physical rights lot. */
+  _resolveConflictFrontKill(payload) {
+    const state = this.state || _state;
+    if (!state || !payload || payload.killerId !== state.playerId) return null;
+    for (const pairKey of conflictPairsForSector(state.world && state.world.currentSectorId)) {
+      const conflict = state.conflicts && state.conflicts[pairKey];
+      const front = conflict && conflict.front;
+      if (!front || front.status !== 'active' || !front.opponentIds.includes(payload.id)) continue;
+      const rightId = `conflict-right:${pairKey}:${front.chosenSide}:${state.tick | 0}`;
+      front.status = 'resolved';
+      front.resolvedAt = Number(state.simTime) || 0;
+      front.resolvedKillId = payload.id;
+      front.salvageRightId = rightId;
+      const sides = pairKey.split(':');
+      conflict.playerLean = Math.max(-1, Math.min(1,
+        (Number(conflict.playerLean) || 0) + (front.chosenSide === sides[1] ? 0.25 : -0.25)));
+      this.applyRep(front.chosenSide, CONFLICT_REP_REWARD, 'conflict_zone_support');
+
+      const pickup = this.helpers && typeof this.helpers.spawnEntity === 'function'
+        ? this.helpers.spawnEntity({
+          type: 'pickup',
+          pos: { x: payload.pos.x + 8, z: payload.pos.z },
+          vel: { x: 0, z: 0 },
+          radius: 2.2,
+          mass: 0.1,
+          collides: true,
+          data: {
+            kind: 'cargo',
+            commodityId: CONFLICT_SALVAGE_COMMODITY_ID,
+            amount: CONFLICT_SALVAGE_QTY,
+            despawnAt: (Number(state.simTime) || 0) + 90,
+            richLotSource: {
+              lotId: rightId,
+              provenanceId: rightId,
+              sourceKind: 'conflict_salvage_right',
+              sourceOwner: 'player',
+              choiceId: front.chosenSide,
+              richQty: CONFLICT_SALVAGE_QTY,
+            },
+          },
+        })
+        : null;
+      const receipt = {
+        pairKey,
+        sideId: front.chosenSide,
+        defeatedSide: front.opponentSide,
+        killId: payload.id,
+        salvageRightId: rightId,
+        pickupId: pickup && pickup.id,
+        salvageQty: CONFLICT_SALVAGE_QTY,
+      };
+      if (state.nav?.waypoint?.kind === 'conflict_front'
+        && state.nav.waypoint.pairKey === pairKey) {
+        state.nav.waypoint = null;
+        this.bus.emit('nav:waypoint', null);
+      }
+      this.bus.emit('conflict:skirmishResolved', receipt);
+      this.bus.emit('toast', { text: 'Skirmish won — classified salvage rights granted', kind: 'success', ttl: 4 });
+      return receipt;
+    }
+    return null;
+  },
+
+  /** Conflict actors are sector-local and intentionally not save entities. Continue or a sector
+   * transition may therefore retain an active receipt after every exact actor disappeared. Reset
+   * only that stale active attempt; resolved fronts and their earned-right provenance are durable. */
+  _resetStaleActiveFronts(enteredSectorId = null) {
+    const state = this.state || _state;
+    if (!state || !state.conflicts) return 0;
+    let reset = 0;
+    for (const conflict of Object.values(state.conflicts)) {
+      const front = conflict && conflict.front;
+      if (!front || front.status !== 'active') continue;
+      const actorIds = [...(front.allyIds || []), ...(front.opponentIds || [])];
+      const actorStillPresent = actorIds.some((id) => {
+        const entity = state.entities && state.entities.get && state.entities.get(id);
+        return !!(entity && entity.alive !== false && entity.data?.conflictFront?.pairKey === front.pairKey);
+      });
+      const leftSector = enteredSectorId && enteredSectorId !== front.sectorId;
+      if (!leftSector && actorStillPresent) continue;
+      delete conflict.front;
+      reset++;
+    }
+    if (reset > 0 && this.bus) this.bus.emit('conflict:staleFrontReset', { count: reset });
+    return reset;
+  },
+
   _refreshConflictState(key, c) {
     const prev = c.state;
     c.state = c.tension >= WAR_THRESHOLD ? 'war' : (c.tension >= TENSE_THRESHOLD ? 'tense' : 'cold');
@@ -484,6 +744,7 @@ export const factions = {
     state.conflicts = data.conflicts || {};
     // Heal any missing fields / new factions added since the save was written.
     for (const id of FACTION_IDS) ensureFaction(state, id);
+    this._resetStaleActiveFronts();
   },
 };
 
@@ -493,6 +754,73 @@ export const factions = {
 export function getStanding(factionId) {
   if (!_state || !_state.factions) return null;
   return _state.factions[factionId] || null;
+}
+
+/** Pure licensed-fit read for economy/UI. Authored standing controls access, not item stats. */
+export function factionLicensedFitOfferForState(state, defId) {
+  const def = LICENSED_FIT_BY_ID.get(defId);
+  if (!def) return null;
+  const license = def.factionLicense;
+  const currentRep = Number(state?.factions?.[license.factionId]?.rep) || 0;
+  const price = Math.max(0, Math.round((Number(def.price) || 0)
+    * priceModForState(state, license.factionId).buy));
+  return {
+    defId: def.id,
+    name: def.name,
+    factionId: license.factionId,
+    minRep: Number(license.minRep) || 0,
+    currentRep,
+    price,
+    available: currentRep >= (Number(license.minRep) || 0),
+    def,
+  };
+}
+
+export function factionLicensedFitOffersForState(state, factionId = null) {
+  const offers = [];
+  for (const defId of LICENSED_FIT_BY_ID.keys()) {
+    const offer = factionLicensedFitOfferForState(state, defId);
+    if (offer && (!factionId || offer.factionId === factionId)) offers.push(offer);
+  }
+  return offers;
+}
+
+/** Current-sector conflict choices for the player-facing station surface. */
+export function conflictChoicesForState(state) {
+  const sectorId = state && state.world && state.world.currentSectorId;
+  if (!sectorId) return [];
+  return conflictPairsForSector(sectorId).flatMap((pairKey) => {
+    const sides = pairKey.split(':');
+    const front = state.conflicts && state.conflicts[pairKey] && state.conflicts[pairKey].front;
+    return sides.map((sideId) => ({
+      pairKey,
+      sideId,
+      opponentId: sides[0] === sideId ? sides[1] : sides[0],
+      available: !front,
+      status: front ? front.status : 'available',
+      chosen: !!front && front.chosenSide === sideId,
+      anchor: front && front.anchor ? { ...front.anchor } : null,
+    }));
+  });
+}
+
+/** Exact customs exemption quantity proven by a resolved front and its physical rich-lot receipt. */
+export function earnedConflictSalvageQtyForState(state, commodityId) {
+  if (commodityId !== CONFLICT_SALVAGE_COMMODITY_ID) return 0;
+  const lots = state?.player?.cargo?.richLots;
+  if (!Array.isArray(lots)) return 0;
+  const validRights = new Set();
+  for (const conflict of Object.values(state.conflicts || {})) {
+    const front = conflict && conflict.front;
+    if (front && front.status === 'resolved' && front.salvageRightId) validRights.add(front.salvageRightId);
+  }
+  let qty = 0;
+  for (const lot of lots) {
+    if (!lot || lot.commodityId !== commodityId || lot.sourceKind !== 'conflict_salvage_right') continue;
+    if (lot.sourceOwner !== 'player' || !validRights.has(lot.provenanceId)) continue;
+    qty += Math.max(0, Math.floor(Number(lot.qty) || 0));
+  }
+  return qty;
 }
 
 /** Choice A's commission removes station markups, but never creates a discount by itself. */

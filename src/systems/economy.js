@@ -40,7 +40,11 @@ import {
 } from '../economy/customsRisk.js';
 import { allRegionalPressureRecipes } from '../economy/regionalSupply.js';
 import { applyPersistentDemand, effectiveDemandFor } from '../economy/demandModel.js';
-import { priceModForState } from './factions.js';
+import {
+  earnedConflictSalvageQtyForState,
+  factionLicensedFitOfferForState,
+  priceModForState,
+} from './factions.js';
 import { livingHullGrimeAt } from '../core/livingHull.js';
 import { heatRestitutionCost } from './heat.js';
 import { difficultyEconomyRewardScale } from '../data/difficulty.js';
@@ -600,6 +604,9 @@ export const economy = {
     // plan-54 QoL intents: dock-session buy-back and sell-all-junk (same trade authority below).
     bus.on('ui:buyBack', (p) => { if (p) this.buyBack(p.commodityId, p.qty); });
     bus.on('ui:sellAllJunk', () => { this.sellAllJunk(); });
+    bus.on('ui:buyFactionFit', (p) => {
+      if (p && typeof p === 'object') p.result = this.buyFactionLicensedFit(p.defId);
+    });
     bus.on('economy:marketOpened', (p) => {
       if (!p || !p.stationId) return;
       this.refreshStationDemand(p.stationId);
@@ -1742,6 +1749,46 @@ export const economy = {
     return p.credits;
   },
 
+  /** Economy-owned licensed-fit point of sale. Factions supplies eligibility; ships supplies the
+   * inventory write. All preconditions are checked before the synchronous debit/grant commit. */
+  buyFactionLicensedFit(defId) {
+    const state = this.state;
+    const offer = factionLicensedFitOfferForState(state, defId);
+    if (!offer) return { ok: false, reason: 'not_faction_licensed' };
+    if (!offer.available) {
+      return { ok: false, reason: 'standing_required', minRep: offer.minRep, currentRep: offer.currentRep };
+    }
+    const stationId = state.ui && state.ui.dockedStationId || this._lastDockedStation;
+    const info = stationInfo(state, stationId);
+    if (!stationId || !info || info.factionId !== offer.factionId) {
+      return { ok: false, reason: 'licensed_vendor_required', factionId: offer.factionId };
+    }
+    if ((state.player.credits | 0) < offer.price) {
+      return { ok: false, reason: 'insufficient_credits', price: offer.price };
+    }
+    const ships = this.registryGet('ships');
+    if (!ships || typeof ships.grantModule !== 'function'
+      || !state.player || !Array.isArray(state.player.moduleInventory)) {
+      return { ok: false, reason: 'inventory_unavailable' };
+    }
+
+    // grantModule is an unbounded, synchronous inventory append after the checks above. If a future
+    // ships owner adds a rejection condition, no debit occurs and the failure stays honest.
+    const granted = ships.grantModule({ defId: offer.defId, reason: `faction_license:${offer.factionId}` });
+    if (!granted) return { ok: false, reason: 'inventory_rejected' };
+    this.chargeCredits(offer.price, `faction_license:${offer.defId}`);
+    const receipt = {
+      ok: true,
+      defId: offer.defId,
+      factionId: offer.factionId,
+      price: offer.price,
+      remainingCredits: state.player.credits | 0,
+    };
+    this.bus.emit('faction:licensedFitPurchased', receipt);
+    this.bus.emit('toast', { text: `Licensed fit purchased: ${offer.name}`, kind: 'success', ttl: 3 });
+    return receipt;
+  },
+
   // -------------------------------------------------------------------------------------------
   // SERVICES — refuel / repair / ammo / hull wash / restitution (ui:service {type, amount}).
   // -------------------------------------------------------------------------------------------
@@ -2012,7 +2059,10 @@ export const economy = {
     const items = state.player.cargo.items;
     for (const id in items) {
       const def = commodityDef(state, id);
-      if (def && def.legality && def.legality !== 'legal') all.push({ commodityId: id, qty: items[id], def });
+      if (!def || !def.legality || def.legality === 'legal') continue;
+      const rightsQty = earnedConflictSalvageQtyForState(state, id);
+      const exposedQty = Math.max(0, (Number(items[id]) || 0) - rightsQty);
+      if (exposedQty > 0) all.push({ commodityId: id, qty: exposedQty, def });
     }
     if (!all.length) return all;
     const caps = this.smugglingCapabilities(state);

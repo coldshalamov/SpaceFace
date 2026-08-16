@@ -60,7 +60,11 @@ for (const m of MODULES) FITTABLE_BY_ID.set(m.id, m);
 for (const w of WEAPONS) if (!FITTABLE_BY_ID.has(w.id)) FITTABLE_BY_ID.set(w.id, w);
 const HANDLING_PROFILE_DOMAIN = handlingProfileDomain();
 
-const ALL_BUYABLE = [...MODULES, ...WEAPONS].filter((d) => d.price > 0);
+export function isOrdinaryOutfittingItem(def) {
+  return !!(def && def.price > 0 && def.purchasable !== false);
+}
+
+const ALL_BUYABLE = [...MODULES, ...WEAPONS].filter(isOrdinaryOutfittingItem);
 ALL_BUYABLE.sort((a, b) => {
   if (a.slotType < b.slotType) return -1;
   if (a.slotType > b.slotType) return 1;

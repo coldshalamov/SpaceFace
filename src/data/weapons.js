@@ -31,6 +31,11 @@ export const WEAPONS = [
     dmg: 4, rof: 8.0, dps: 32, damageType: 'kinetic', energyCost: 1,
     projSpeed: 600, range: 300, tracking: 'auto_turret', turretArcDeg: 180,
     intercepts: true,
+    // Concord-controlled point defence is a standing reward, not a second copy of the same gun.
+    // Economy sells this existing fit through the faction-license route; ordinary outfitters hide
+    // it while ships/weapons continue to own the unchanged inventory, fitting and firing paths.
+    purchasable: false,
+    factionLicense: { factionId: 'faction_scn', minRep: 30 },
     impulsePerHit: 5, tumbleTorque: 0.6, impulseProvenance: 'flak_fragment',
   },
 
