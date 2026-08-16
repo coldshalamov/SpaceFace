@@ -4,16 +4,21 @@
 export const PRIORITY_DUCK_THRESHOLD = 0.8;
 export const PRIORITY_DUCK_DURATION_MS = 250;
 export const PRIORITY_DUCK_DB = -8;
-export const PRIORITY_DUCK_TARGETS = Object.freeze(['weaponLoop', 'engineLoop']);
+export const AUDIO_PRIORITY_LADDER = Object.freeze([
+  'playerCriticalPhysics',
+  'weapons',
+  'pickupStream',
+  'deaths',
+  'worldEvents',
+  'comms',
+  'ambienceMusic',
+]);
+export const PRIORITY_DUCK_TARGETS = Object.freeze([
+  'weaponLoop', 'pickupStream', 'deaths', 'worldEvents', 'comms', 'ambient', 'music', 'engineLoop',
+]);
 export const PRIORITY_DUCK_UNAFFECTED_TARGETS = Object.freeze([
   'critical',
-  'music',
-  'sfx',
-  'ui',
-  'ambient',
-  'comms',
   'master',
-  'combat',
 ]);
 
 const DEFAULT_MIX_PROBES = Object.freeze([
@@ -54,6 +59,8 @@ export function priorityDuckEnvelopeForCue(cue, nowMs = 0, opts = {}) {
     audioId: cue && (cue.audioId || cue.audioCueId || (cue.id && String(cue.id).startsWith('presentation.') ? cue.id : null)) || null,
     importance: cuePriorityImportance(cue),
     playerRelevance: clamp01(finite(cue && cue.playerRelevance, 0)),
+    priorityLane: cuePriorityLane(cue),
+    priorityRank: cuePriorityRank(cue),
     threshold: finite(opts.threshold, PRIORITY_DUCK_THRESHOLD),
     startMs,
     endMs: startMs + durationMs,
@@ -64,29 +71,41 @@ export function priorityDuckEnvelopeForCue(cue, nowMs = 0, opts = {}) {
   });
 }
 
-export function isPriorityDuckTarget(target) {
+export function isPriorityDuckTarget(target, envelope = null) {
   if (!target) return false;
+  const cueRank = envelope && Number.isFinite(envelope.priorityRank) ? envelope.priorityRank : 1;
   if (typeof target === 'string') {
-    const key = normalizeTargetToken(target);
-    return key === 'weaponloop' || key === 'engineloop';
+    return audioPriorityRank(target) > cueRank;
   }
 
   if (target.critical || target.priorityCue) return false;
-  const role = normalizeTargetToken(target.role || target.target || target.kind || target.lane);
-  if (role === 'weaponloop' || role === 'engineloop') return true;
-
-  const busName = normalizeTargetToken(target.busName || target.bus || target.output);
-  const category = normalizeTargetToken(target.category || target.recipeCategory);
-  const loop = target.loop === true || target.sustained === true;
-  if (!loop) return false;
-  if (busName === 'engine' || category === 'engine') return true;
-  if (category === 'weapon') return true;
-  return busName === 'combat' && (target.weapon === true || target.recipeId && String(target.recipeId).includes('wpn'));
+  return audioPriorityRank(target) > cueRank;
 }
 
 export function duckGainForTarget(target, envelope, nowMs = 0) {
   if (!envelope || finite(nowMs, 0) < envelope.startMs || finite(nowMs, 0) >= envelope.endMs) return 1;
-  return isPriorityDuckTarget(target) ? envelope.duckGain : 1;
+  return isPriorityDuckTarget(target, envelope) ? envelope.duckGain : 1;
+}
+
+export function cuePriorityLane(cue) {
+  const explicit = cue && (cue.priorityLane || cue.priorityRole || cue.audioLane || cue.role);
+  if (explicit) return canonicalPriorityLane(explicit);
+  return 'playerCriticalPhysics';
+}
+
+export function cuePriorityRank(cue) {
+  return audioPriorityRank(cuePriorityLane(cue));
+}
+
+export function audioPriorityRank(target) {
+  const token = priorityToken(target);
+  if (['playercriticalphysics', 'playercritical', 'critical', 'hullwarning', 'tetherstrain', 'impact'].includes(token)) return 1;
+  if (['weapons', 'weapon', 'weaponloop', 'combat'].includes(token)) return 2;
+  if (['pickupstream', 'pickup', 'miningreward'].includes(token)) return 3;
+  if (['deaths', 'death', 'explosion', 'cookoff'].includes(token)) return 4;
+  if (['worldevents', 'worldevent', 'world'].includes(token)) return 5;
+  if (['comms', 'bark', 'radio'].includes(token)) return 6;
+  return 7;
 }
 
 export function createCuePriorityBus(opts = {}) {
@@ -132,6 +151,21 @@ function keyForProbe(probe) {
 
 function normalizeTargetToken(value) {
   return String(value || '').replace(/[_\-\s]/g, '').toLowerCase();
+}
+
+function priorityToken(target) {
+  if (typeof target === 'string') return normalizeTargetToken(target);
+  if (!target) return '';
+  return normalizeTargetToken(
+    target.priorityLane || target.priorityRole || target.role || target.target || target.kind
+    || target.lane || target.category || target.recipeCategory || target.busName || target.bus
+    || target.output,
+  );
+}
+
+function canonicalPriorityLane(value) {
+  const rank = audioPriorityRank(value);
+  return AUDIO_PRIORITY_LADDER[rank - 1];
 }
 
 function finite(value, fallback = 0) {

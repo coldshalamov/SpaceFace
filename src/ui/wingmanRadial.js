@@ -14,9 +14,9 @@ const STYLE_ID = 'sf-wingman-radial-style';
 
 // N / E / S / W wedges. `order` is the batched ui:wingOrder kind; `key` is the shortcut.
 const OPTIONS = [
-  { key: '1', order: 'attack', label: 'Attack Target', glyph: '⌖', pos: 'top', needsTarget: true },
-  { key: '2', order: 'screen', label: 'Screen', glyph: '⛊', pos: 'right' },
-  { key: '3', order: 'regroup', label: 'Regroup', glyph: '↟', pos: 'bottom' },
+  { key: '1', order: 'attack_my_target', label: 'Attack My Target', glyph: '⌖', pos: 'top', needsTarget: true },
+  { key: '2', order: 'follow', label: 'Follow', glyph: '⛊', pos: 'right' },
+  { key: '3', order: 'scatter', label: 'Scatter', glyph: '↟', pos: 'bottom' },
   { key: '4', order: 'hold', label: 'Hold', glyph: '✦', pos: 'left' },
 ];
 
@@ -125,7 +125,7 @@ export function createWingmanRadial(ctx) {
       order: opt.order,
       scope,
       selectedWingmanId: scope === 'selected' && selected ? selected.id : null,
-      targetId: opt.order === 'attack' ? (state.player && state.player.targetId) : null,
+      targetId: opt.order === 'attack_my_target' ? (state.player && state.player.targetId) : null,
     });
     close();
   }

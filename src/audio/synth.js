@@ -8,7 +8,9 @@
 //     baseFreq, freqMod?, freqSweep?[from,to], sweepTimeS?, noiseColor?, wave?,
 //     gainEnvelope:{attack,sustain,release}, filterType?, filterFreq?, filterQ?,
 //     lfoRate?, lfoDepth?, pitchRange?[lo,hi], layers?[ids], gainMult?, filterFreqMult?,
-//     distortionAmount?, dopplerEnabled? }
+//     distortionAmount?, dopplerEnabled?, authoredSourceId?, authoredBlend?'replace'|'layer' }
+// A decoded authored AudioBuffer can be supplied in playRecipe opts. The graph keeps the same
+// envelope/pool/disposal contract as synthesis; missing buffers simply use the recipe fallback.
 
 import { RECIPES } from '../data/audioRecipes.js';
 
@@ -229,6 +231,24 @@ function buildRecipeVoice(ctx, recipe, dest, t0, rate, detune, peak, freqMult, c
   return { nodes, sources, extra, gain: vGain, tail, loop: isLoop, filter };
 }
 
+function buildAuthoredBufferVoice(ctx, recipe, buffer, dest, t0, rate, peak) {
+  const isLoop = recipe.type === 'continuous_oscillator' || recipe.type === 'continuous_noise';
+  const env = recipe.gainEnvelope || { attack: 0.005, sustain: 0, release: 0.08 };
+  const vGain = ctx.createGain();
+  vGain.gain.value = 0.0001;
+  const tail = applyEnvelope(vGain.gain, t0, peak, env, isLoop);
+  const source = ctx.createBufferSource();
+  source.buffer = buffer;
+  source.loop = isLoop;
+  if (source.playbackRate) source.playbackRate.value = rate;
+  source.connect(vGain);
+  vGain.connect(dest);
+  try { source.start(t0); } catch (_) {}
+  return {
+    nodes: [vGain], sources: [source], extra: [], gain: vGain, tail, loop: isLoop, filter: null,
+  };
+}
+
 /**
  * Build and start a voice from a recipe. Returns a Voice object:
  *   { nodes:[], gain, source(s), startedAt, loop, recipe, stopAt, release(t), stop(t), id }
@@ -282,11 +302,25 @@ export function playRecipe(ctx, recipe, dest, opts, caches) {
     }
   }
 
-  // Build the initial sound (may be a layered recipe).
-  buildLayers(recipe, 1, 1, t0);
+  // A registered decoded recording owns the exact same gain envelope, output bus and bounded voice
+  // lifetime as the synth. `replace` is the normal authored path; `layer` retains the synth under a
+  // recording when a deliberate hybrid recipe asks for it. With no buffer, synthesis is the live
+  // fallback and the game never stalls on an asset fetch.
+  if (opts.authoredBuffer) {
+    const authored = buildAuthoredBufferVoice(
+      ctx, recipe, opts.authoredBuffer, vGain, t0, pickRate(recipe, opts), peak,
+    );
+    subVoices.push(authored);
+    sources.push(...authored.sources);
+    nodes.push(...authored.nodes);
+  }
+  if (!opts.authoredBuffer || recipe.authoredBlend === 'layer') {
+    // Build the initial sound (may be a layered recipe).
+    buildLayers(recipe, 1, 1, t0);
+  }
 
   // Schedule additional repeats at fixed intervals, each with fresh pitch randomization.
-  for (let n = 1; n <= repeatCount; n++) {
+  for (let n = 1; n <= repeatCount && !opts.authoredBuffer; n++) {
     buildLayers(recipe, 1, 1, t0 + repeatIntervalS * n);
   }
 

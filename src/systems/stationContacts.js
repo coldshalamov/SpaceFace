@@ -178,6 +178,17 @@ export const stationContacts = {
     };
     on('ui:talkContact', (payload = {}) => this._recordTalk(payload));
     on('stationContact:counterDelta', (payload = {}) => this._recordCounterDelta(payload));
+    on('economy:tradeCompleted', (payload = {}) => {
+      if (payload.stationId === 'station_beltout' && payload.side === 'buy'
+        && String(payload.commodityId || '').startsWith('cmdty_ore_')) {
+        this._recordCounterDelta({ trackerId: 'voss.purchases', delta: 1, reason: 'ore-purchase' });
+      }
+    });
+    on('customs:breakScan', (payload = {}) => {
+      if (payload.factionId === 'faction_scn') {
+        this._recordCounterDelta({ trackerId: 'hale.scanBreaks', delta: 1, reason: 'scan-break' });
+      }
+    });
     on('freight:arrival', (payload = {}) => this._recordFreight(payload, 'arrival'));
     on('freight:loss', (payload = {}) => {
       this._recordFreight(payload, 'loss');

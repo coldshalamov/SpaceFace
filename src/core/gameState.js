@@ -6,6 +6,7 @@ import { SpatialHash } from './spatialHash.js';
 import { CURRENT_VERSION } from '../data/saveVersion.js';
 import { AI_CONTRACT_VERSION } from '../ai/contracts.js';
 import { AUDIO_DEFAULT_MUTE_VERSION } from './graphicsProfileBootstrap.js';
+import { createInitialWingmanRoster } from '../data/wingmanPilots.js';
 
 function defaultSettings() {
   return {
@@ -99,6 +100,7 @@ function defaultPlayer() {
 function defaultAutomation() {
   return {
     drones: [], traders: [], outposts: [], fleet: [],
+    wingmanRoster: createInitialWingmanRoster(),
     fleetCap: 0,
     balance: { activeRefByTier: [250, 600, 1400, 3200, 7000], passiveCapFrac: 0.45, overflowEff: 0.25, offlineEff: 0.6, offlineCapSec: 14400, distressGraceSec: 120 },
     accumulators: { creditBuffer: 0, upkeepDebt: 0 },

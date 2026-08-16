@@ -14,10 +14,16 @@ import { mountContactPortrait } from '../portraitArt.js';
 import { CONTACT_VOICE_REGISTERS } from '../../data/barks.js';
 import { depthContactsForStation } from '../../story/campaign47a/embodiedDialogue.js';
 import {
+  stationContactCounterValue,
   stationContactMemoryFor,
   stationContactMemoryLine,
   stationContactStanding,
 } from '../../data/stationContacts.js';
+import {
+  WINGMAN_PILOTS,
+  effectiveWingmanDailyRate,
+  wingmanPilotRecordFor,
+} from '../../data/wingmanPilots.js';
 import { uniqueWreckBarRumor } from '../uniqueWreckRumorSurface.js';
 import {
   frontierRumorOffer,
@@ -52,11 +58,15 @@ const COMMODITY_BY_ID = new Map(COMMODITIES.map(c => [c.id, c]));
 /** Route Orrin's physical-evidence control outside generic station-contact memory. */
 export function emitBarContactChoice(bus, payload = {}) {
   if (!bus || typeof bus.emit !== 'function') return null;
-  const event = payload.contactId === ORRIN_WITNESS_CONTACT_ID
+  const event = String(payload.contactId || '').startsWith('wingman_hire:') && payload.choiceId === 'hire'
+    ? 'ui:hireWingman'
+    : String(payload.contactId || '').startsWith('wingman_memorial:') && payload.choiceId === 'raise_glass'
+      ? 'ui:acknowledgeWingmanDeath'
+      : payload.contactId === ORRIN_WITNESS_CONTACT_ID
     && payload.stationId === ORRIN_WITNESS_STATION_ID
     && payload.choiceId === 'evidence'
-    ? ORRIN_WITNESS_SUBMISSION_EVENT
-    : 'ui:talkContact';
+        ? ORRIN_WITNESS_SUBMISSION_EVENT
+        : 'ui:talkContact';
   bus.emit(event, payload);
   return event;
 }
@@ -211,16 +221,21 @@ for (const contact of CANONICAL_CONTACTS) {
 
 /* ── contact generation ─────────────────────────────────────────────── */
 
-function canonicalContactForStation(stationId) {
+function canonicalContactForStation(stationId, state) {
   const base = CANONICAL_BY_STATION.get(stationId);
   if (!base) return null;
+  const regularLine = base.key === 'voss' && stationContactCounterValue(state, 'voss.purchases') >= 3
+    ? 'Voss raises a chipped cup. "You keep buying my ore, I keep the cutter warm."'
+    : base.key === 'hale' && stationContactCounterValue(state, 'hale.scanBreaks') >= 2
+      ? 'Hale watches your hands instead of the manifest. "Twice is a habit. Third time is a charge."'
+      : base.line;
   return {
     id: 'contact_' + stationId + '_' + base.key,
     name: base.name,
     role: base.role,
     roleLabel: base.roleLabel,
     factionId: base.factionId,
-    line: base.line,
+    line: regularLine,
     canonicalKey: base.key,
   };
 }
@@ -293,7 +308,7 @@ export function generateContacts(stationId, state = {}) {
     });
   }
 
-  const canonical = canonicalContactForStation(stationId);
+  const canonical = canonicalContactForStation(stationId, state);
   if (canonical) {
     if (canonical.role === 'barkeep') {
       contacts[0] = canonical;
@@ -302,6 +317,52 @@ export function generateContacts(stationId, state = {}) {
       if (contacts.length > 4) contacts.pop();
     }
   }
+
+  const namedPilots = WINGMAN_PILOTS
+    .filter((definition) => definition.stationId === stationId)
+    .flatMap((definition) => {
+      const record = wingmanPilotRecordFor(state, definition.id);
+      if (!record) return [];
+      if (record.status === 'dead' && record.deathAcknowledgement === 'pending') {
+        return [{
+          id: `wingman_memorial:${definition.id}`,
+          wingmanPilotId: definition.id,
+          name: definition.callsign,
+          role: 'wingman_memorial',
+          roleLabel: 'Empty Stool',
+          factionId: null,
+          line: `${definition.name} did not come back from the ${String(record.deathOrder || 'last').replace(/_/g, ' ')} order. The glass is still full.`,
+          choices: [{ id: 'raise_glass', label: 'Raise the glass.' }],
+        }];
+      }
+      if (record.status === 'hired') {
+        const displayName = record.title || `${definition.name} “${definition.callsign}”`;
+        return [{
+          id: `wingman_roster:${definition.id}`,
+          wingmanPilotId: definition.id,
+          name: displayName,
+          role: 'wingman_roster',
+          roleLabel: record.title ? 'Veteran Wingman' : 'Contract Wingman',
+          factionId: 'faction_scn',
+          line: `${record.sortiesSurvived} surviving sorties · loyalty ${record.loyalty} · ${effectiveWingmanDailyRate(definition, record)} cr/day. ${definition.fit.label}.`,
+          choices: [{ id: 'terms', label: 'Review the contract.' }],
+        }];
+      }
+      if (record.status !== 'available') return [];
+      return [{
+        id: `wingman_hire:${definition.id}`,
+        wingmanPilotId: definition.id,
+        name: `${definition.name} “${definition.callsign}”`,
+        role: 'wingman_hire',
+        roleLabel: 'Pilot for Hire',
+        factionId: 'faction_scn',
+        line: `${definition.fit.label}. ${definition.voice.register} comms. ${effectiveWingmanDailyRate(definition, record)} cr/day · loyalty ${record.loyalty}.`,
+        choices: [
+          { id: 'hire', label: `Hire for ${effectiveWingmanDailyRate(definition, record)} cr/day.` },
+          { id: 'decline', label: 'Not today.' },
+        ],
+      }];
+    });
 
   const endingCourier = isChoiceECourierReady(state, stationId)
     ? [{
@@ -319,7 +380,7 @@ export function generateContacts(stationId, state = {}) {
       ],
     }]
     : [];
-  return [...endingCourier, ...authoredBarContactsForStation(stationId, state), ...contacts];
+  return [...namedPilots, ...endingCourier, ...authoredBarContactsForStation(stationId, state), ...contacts];
 }
 
 /* ── dialog option builders (per role) ────────────────────────────── */
@@ -704,6 +765,26 @@ function bestTradeRoute(state, currentStationId) {
  * Returns { text, missionOffer? }.
  */
 export function buildReply(role, choiceId, ctx, stationId, contact = null) {
+  if (contact && contact.wingmanPilotId) {
+    const definition = WINGMAN_PILOTS.find((pilot) => pilot.id === contact.wingmanPilotId);
+    const record = wingmanPilotRecordFor(ctx && ctx.state, contact.wingmanPilotId);
+    if (role === 'wingman_hire') {
+      if (choiceId !== 'hire') return { text: `${definition && definition.callsign || 'The pilot'} leaves the berth open.` };
+      return record && record.status === 'hired'
+        ? { text: `${definition.callsign}: ${definition.voice.hire} Current loyalty ${record.loyalty}; ${effectiveWingmanDailyRate(definition, record)} cr/day.` }
+        : { text: 'No wing berth is available. The pilot keeps the contract.' };
+    }
+    if (role === 'wingman_memorial') {
+      return record && record.deathAcknowledgement === 'heard'
+        ? { text: `The bar speaks ${definition && definition.name || 'the pilot'}'s name once. The stool is cleared.` }
+        : { text: 'The untouched glass stays on the bar.' };
+    }
+    if (role === 'wingman_roster') {
+      return record && record.status === 'hired'
+        ? { text: `${record.title || definition.callsign}: ${record.sortiesSurvived} returns, loyalty ${record.loyalty}, ${effectiveWingmanDailyRate(definition, record)} cr/day.` }
+        : { text: 'The contract is no longer active.' };
+    }
+  }
   if (contact && contact.endgameChoice === 'E') {
     if (choiceId === 'accept_next_run') {
       if (!isChoiceECourierReady(ctx && ctx.state, stationId)) {
@@ -1310,6 +1391,7 @@ export function createBarPanel(ctx) {
       stationId: currentStationId,
       canonicalKey: contact.canonicalKey || null,
       trackerId: contact.trackerId || null,
+      pilotId: contact.wingmanPilotId || null,
       name: contact.name,
     });
     ctx.bus.emit('audio:cue', { id: 'ui_click' });

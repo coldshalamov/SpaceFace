@@ -1,10 +1,14 @@
 // Deterministic player-wing command contract. Pure data/helpers: no game-state authority.
 
 export const WING_ORDER = Object.freeze({
-  ATTACK: 'attack',
-  SCREEN: 'screen',
+  FOLLOW: 'follow',
   HOLD: 'hold',
-  REGROUP: 'regroup',
+  ATTACK_MY_TARGET: 'attack_my_target',
+  SCATTER: 'scatter',
+  // Compatibility names for existing callers. Persisted/public values use the exact four verbs.
+  ATTACK: 'attack_my_target',
+  SCREEN: 'follow',
+  REGROUP: 'scatter',
 });
 
 export const WING_ORDER_SCOPE = Object.freeze({
@@ -14,9 +18,11 @@ export const WING_ORDER_SCOPE = Object.freeze({
 
 export const WING_ORDER_LIMITS = Object.freeze({
   attackLeashWu: 1800,
-  screenArcWu: 180,
+  followArcWu: 180,
   holdRadiusWu: 40,
-  regroupRadiusWu: 80,
+  scatterArcWu: 420,
+  screenArcWu: 180,
+  regroupRadiusWu: 420,
 });
 
 const ORDER_VALUES = new Set(Object.values(WING_ORDER));
@@ -42,8 +48,9 @@ export function makeWingOrderCommand(input = {}) {
 export function normalizeWingOrderKind(value, fallback = WING_ORDER.REGROUP) {
   const text = String(value || '');
   if (ORDER_VALUES.has(text)) return text;
-  if (text === 'guard' || text === 'escort') return WING_ORDER.SCREEN;
-  if (text === 'idle' || text === 'recall') return WING_ORDER.REGROUP;
+  if (text === 'attack' || text === 'attack-my-target') return WING_ORDER.ATTACK_MY_TARGET;
+  if (text === 'screen' || text === 'guard' || text === 'escort') return WING_ORDER.FOLLOW;
+  if (text === 'regroup' || text === 'idle' || text === 'recall') return WING_ORDER.SCATTER;
   return fallback;
 }
 
@@ -113,16 +120,18 @@ export function wingOrderActivity(orderValue, options = {}) {
       targetId: null, startedTick: order.issuedTick,
     });
   }
-  const radius = order.kind === WING_ORDER.SCREEN
-    ? WING_ORDER_LIMITS.screenArcWu : WING_ORDER_LIMITS.regroupRadiusWu;
+  const radius = order.kind === WING_ORDER.FOLLOW
+    ? WING_ORDER_LIMITS.followArcWu : WING_ORDER_LIMITS.scatterArcWu;
   const angle = -Math.PI / 2 + recipientIndex * Math.PI * 2 / recipientCount;
   const anchor = Object.freeze({
     x: playerPos.x + Math.cos(angle) * radius,
     z: playerPos.z + Math.sin(angle) * radius,
   });
   return Object.freeze({
-    kind: order.kind === WING_ORDER.SCREEN ? 'screen' : 'return_to_anchor',
-    reason: `wing_order:${order.kind}`,
+    kind: order.kind === WING_ORDER.FOLLOW ? 'screen' : 'return_to_anchor',
+    // The tactical stack already has proven attack/screen/regroup doctrine reasons. Keep that
+    // internal grammar while the saved/player contract exposes the exact Plan 60 verbs.
+    reason: `wing_order:${legacyDoctrineReason(order.kind)}`,
     anchor,
     leashRadius: radius,
     preferredRange: radius,
@@ -148,6 +157,13 @@ function regroupFrom(source) {
     sectorId: null,
     issuedTick: Math.max(0, Number.isInteger(source.issuedTick) ? source.issuedTick : 0),
   });
+}
+
+function legacyDoctrineReason(kind) {
+  if (kind === WING_ORDER.ATTACK_MY_TARGET) return 'attack';
+  if (kind === WING_ORDER.FOLLOW) return 'screen';
+  if (kind === WING_ORDER.HOLD) return 'hold';
+  return 'regroup';
 }
 
 function point(value) {

@@ -12,7 +12,7 @@
 // fleet entry (so the ledger stays the source of truth). The squad/formation AI already handles
 // team-0 wings — wingmen just join it.
 
-import { makeShipEntitySpec } from './ships.js';
+import { fittingsFromDefaultModules, makeShipEntitySpec } from './ships.js';
 import {
   WING_ORDER,
   WING_ORDER_LIMITS,
@@ -21,6 +21,7 @@ import {
   wingOrderActivity,
 } from '../data/wingOrders.js';
 import { setEntityDoctrine } from '../ai/doctrine.js';
+import { wingmanPilotById } from '../data/wingmanPilots.js';
 
 const WINGMAN_ARCHETYPE_BY_ORDER = {
   escort: 'brawler',   // stick near the player, engage nearby hostiles
@@ -42,6 +43,7 @@ export const wingmen = {
     this._fleetSourceIds = [];
     this._orderedFleet = [];
     this._orderRuntime = new Map();
+    this._killerByEntity = new Map();
 
     // Spawn wingmen when the player enters a sector (world emits sector:enter on entry).
     // _spawnWingmen skips fleet entries that already have a live _liveId (continuous handoff).
@@ -58,6 +60,9 @@ export const wingmen = {
     // is earlier in UPDATE_ORDER, so it has already applied the change by the time we tick).
     this.bus.on('ui:fleetOrder', (p) => { if (p) this._onFleetOrder(p); });
     this.bus.on('wingOrder:accepted', (p) => { if (p) this._onWingOrderAccepted(p); });
+    this.bus.on('entity:killed', (p) => {
+      if (p && p.id != null) this._killerByEntity.set(p.id, p.killerId == null ? null : p.killerId);
+    });
   },
 
   newGame() {
@@ -66,6 +71,7 @@ export const wingmen = {
     this._fleetSourceIds.length = 0;
     this._orderedFleet.length = 0;
     this._orderRuntime.clear();
+    this._killerByEntity.clear();
   },
 
   update(dt, state) {
@@ -85,7 +91,13 @@ export const wingmen = {
         // Wingman died in combat. Route through the existing onHitAsset path so the ledger stays
         // consistent + the LOST/asset-lost flow fires (same as the pre-P1-8 passive path).
         fs.hp = 0; fs.hullPct = 0;
-        this.bus.emit('combat:hitAsset', { assetKind: 'fleet', assetId: fs.id, dmg: 9999, killerId: null });
+        const killerId = this._killerByEntity.has(fs._liveId)
+          ? this._killerByEntity.get(fs._liveId) : null;
+        this.bus.emit('combat:hitAsset', {
+          assetKind: 'fleet', assetId: fs.id, damage: 9999, killerId,
+          sectorId: state.world && state.world.currentSectorId || null,
+        });
+        this._killerByEntity.delete(fs._liveId);
         fs._liveId = null;
         continue;
       }
@@ -114,6 +126,7 @@ export const wingmen = {
       fs._liveId = e.id;
       e.data.wingmanOf = fs.id; // link live entity → fleet ledger entry
       e.data.isWingman = true;  // flag for render/AI (friend marker, no bounty, no loot)
+      if (fs.pilotId) e.data.wingmanPilotId = fs.pilotId;
       this._applyWingOrder(fs, e, player, ordered.indexOf(fs), ordered.length);
       spawned++;
     }
@@ -134,9 +147,11 @@ export const wingmen = {
       }
       fs._liveId = null;
     }
+    this._killerByEntity.clear();
   },
 
   _buildWingmanSpec(fs, player) {
+    const namedPilot = wingmanPilotById(fs.pilotId);
     const archetype = WINGMAN_ARCHETYPE_BY_ORDER[fs.order] || 'brawler';
     // Spawn in a loose formation near the player (offset by fleet index so wingmen don't overlap).
     const idx = (this.state.automation.fleet.indexOf(fs)) || 0;
@@ -146,9 +161,14 @@ export const wingmen = {
     const spec = makeShipEntitySpec(fs.shipDefId || fs.defId, {
       team: 0,                  // player-aligned — the AI auto-targets team-1 hostiles
       factionId: 'faction_scn', // Concord-aligned (lawful escort)
+      fittings: fittingsFromDefaultModules(
+        fs.shipDefId || fs.defId,
+        namedPilot ? namedPilot.fit.moduleIds : [],
+      ),
       pos,
       ai: {
         archetype,
+        lawful: true,
         squadId: 'player_wing',
         motive: 'player_command',
         engagementTrigger: 'player_order',
@@ -163,6 +183,14 @@ export const wingmen = {
     spec.data = spec.data || {};
     spec.data.isWingman = true;
     spec.data.wingmanOrder = fs.order || 'escort';
+    if (namedPilot) {
+      spec.data.name = namedPilot.name;
+      spec.data.callsign = namedPilot.callsign;
+      spec.data.wingmanPilotId = namedPilot.id;
+      spec.data.wingmanFit = namedPilot.fit;
+      spec.data.wingmanVoice = namedPilot.voice.register;
+      spec.data.ai.name = namedPilot.name;
+    }
     spec.data.bountyCr = 0;    // no bounty for killing a wingman (player-owned)
     spec.data.lootTableId = null;
     return spec;

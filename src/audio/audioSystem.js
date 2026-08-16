@@ -45,6 +45,7 @@ const PAN_SPAN = TABLE_HEARING_PAN_WU;  // wu — half-pan distance
 const XFADE_S = 2.5;
 const XFADE_COMBAT_S = 1.0;
 const STATE_HOLD_S = 1.5;       // hysteresis
+const MUSIC_STATE_BPM = Object.freeze({ calm: 80, tense: 95, combat: 130, docked: 72 });
 const IN_COMBAT_WINDOW = 6;     // s since last damage counts as "in combat"
 const MUSIC_RECOMPUTE_S = 0.1;  // analysis cadence; state changes still have 1.5s hysteresis
 const LOOP_POSITION_UPDATE_S = 0.05; // AudioParam smoothing already runs over this window
@@ -65,6 +66,25 @@ const STEM_WEIGHTS = {
 };
 
 export const MAX_AUDIO_VOICES = 12;
+
+export const FIELD_AUDIO_SIGNATURES = Object.freeze({
+  well: Object.freeze({ recipeId: 'sfx_field_well_presence', gain: 0.32 }),
+  repulsor: Object.freeze({ recipeId: 'sfx_field_repulsor_presence', gain: 0.3 }),
+  cone: Object.freeze({ recipeId: 'sfx_field_cone_presence', gain: 0.24 }),
+});
+
+export function musicTransitionSchedule(nowS, desiredState, instant = false, currentState = 'calm', epochS = 0) {
+  const now = Math.max(0, Number(nowS) || 0);
+  if (instant || desiredState === 'combat') {
+    return Object.freeze({ atS: now, crossfadeS: desiredState === 'combat' ? 0.72 : 0 });
+  }
+  const epoch = Math.max(0, Number(epochS) || 0);
+  const bpm = MUSIC_STATE_BPM[currentState] || MUSIC_STATE_BPM.calm;
+  const barS = 240 / bpm;
+  const elapsed = Math.max(0, now - epoch);
+  const atS = epoch + Math.ceil((elapsed + 1e-6) / barS) * barS;
+  return Object.freeze({ atS, crossfadeS: XFADE_S });
+}
 
 // Propulsion is a gameplay contract, but its *voice* is presentation-only. Each family keeps the
 // spec's tier fundamentals (55/78/110/65 Hz) while changing harmonic weight, air and sub response.
@@ -696,6 +716,8 @@ export const audio = {
     rt._lastWallTime = undefined;
     rt._wantBeam = {};            // owners desiring a beam loop (started on resume)
     rt._wantMining = null;        // { minerId, targetId } desired mining loop
+    rt._wantEnvironmentLoops = Object.create(null); // event-owned field/burn loops, restored after unlock
+    rt._authoredBuffers = rt._authoredBuffers instanceof Map ? rt._authoredBuffers : new Map();
     rt._wantDrillGrind = false;   // state-derived deep-drill bed (survives AudioContext resume)
     rt._drillGrindMix = { active: false, gain: 0, rate: 1, filterHz: 560 };
     rt._musicDirty = true;
@@ -710,8 +732,10 @@ export const audio = {
     rt._priorityBus = createCuePriorityBus();
     rt._priorityEngineProbe = { role: 'engineLoop', loop: true };
     rt._priorityWeaponProbe = { role: 'weaponLoop', loop: true };
+    rt._priorityAmbientProbe = { role: 'ambient', loop: true };
     rt._priorityDuckEngine = 1;
     rt._priorityDuckWeapon = 1;
+    rt._priorityDuckAmbient = 1;
     rt._criticalSquelchUntilMs = 0;
     rt._engineTier = 'idle';
     rt._engineTierSince = 0;
@@ -793,12 +817,18 @@ export const audio = {
         critical: true,
       });
     });
+    bus.on('combat:heavyCookOffPhase', (p) => this._onHeavyCookOffPhase(p));
     bus.on('entity:destroyed', (p) => this._onDestroyed(p));
     bus.on('player:death', (p) => this._onPlayerDeath(p));
     bus.on('player:respawn', (p) => this._onPlayerRespawn(p));
     bus.on('mining:start', (p) => this._onMiningStart(p));
     bus.on('mining:stop', (p) => this._onMiningStop(p));
     bus.on('mining:tick', (p) => this._onMiningTick(p));
+    bus.on('fields:deployed', (p) => this._onFieldDeployed(p));
+    bus.on('fields:ended', (p) => this._onFieldEnded(p));
+    bus.on('fields:cleared', () => this._clearEnvironmentLoops('field_'));
+    bus.on('fields:coneToggled', (p) => this._onConeToggled(p));
+    bus.on('planet:plungeStage', (p) => this._onPlanetPlungeStage(p));
     bus.on('asteroid:destroyed', (p) => this.play('sfx_explosion_small', { position: p && p.pos, gain: 0.7 }));
     bus.on('pickup:collected', (p) => this._onPickupCollected(p));
     bus.on('credits:changed', (p) => {
@@ -856,6 +886,7 @@ export const audio = {
     bus.on('sector:enter', () => {
       rt._activeCombatEncounters.clear();
       rt._doctrineThreatUntil = -1e9;
+      this._clearEnvironmentLoops();
       resetPickupChain(rt._pickupChain);
       this._markMusicDirty();
     });
@@ -974,6 +1005,36 @@ export const audio = {
 
   _markLoopPositionDirty() {
     if (this.rt) this.rt._loopPositionDirty = true;
+  },
+
+  registerAuthoredSource(sourceId, audioBuffer) {
+    const id = String(sourceId || '').trim();
+    if (!id || !this.rt) return false;
+    if (!audioBuffer) {
+      this.rt._authoredBuffers.delete(id);
+      return false;
+    }
+    this.rt._authoredBuffers.set(id, audioBuffer);
+    return true;
+  },
+
+  async loadAuthoredSource(sourceId, url, fetchImpl = globalThis.fetch) {
+    const id = String(sourceId || '').trim();
+    const href = String(url || '').trim();
+    const ctx = this.rt && this.rt.ctx;
+    if (!id || !href || !ctx || typeof ctx.decodeAudioData !== 'function'
+      || typeof fetchImpl !== 'function') return false;
+    try {
+      const response = await fetchImpl(href);
+      if (!response || response.ok !== true || typeof response.arrayBuffer !== 'function') return false;
+      const bytes = await response.arrayBuffer();
+      const buffer = await ctx.decodeAudioData(bytes.slice(0));
+      return this.registerAuthoredSource(id, buffer);
+    } catch (_) {
+      // A missing authored recording is non-fatal: every registered identity keeps its synth
+      // fallback and the player never loses a gameplay tell to an asset/network failure.
+      return false;
+    }
   },
 
   _setBulletTimeAudio(active) {
@@ -1478,9 +1539,12 @@ export const audio = {
     }
 
     this._evictIfFull();
+    const authoredSourceId = recipe.authoredSourceId || recipe.id;
+    const authoredBuffer = rt._authoredBuffers && rt._authoredBuffers.get(authoredSourceId);
     const voice = playRecipe(ctx, recipe, dest, {
       peakGain: peak, detune: opts.detune || 0, rate, id: rt._nextVoiceId++, trackId: opts.trackId || null,
       startTime: opts.startTime,
+      authoredBuffer,
     }, rt._caches);
     voice.busName = busName;
     voice._panner = panner;
@@ -1856,6 +1920,134 @@ export const audio = {
     try { filter.frequency.setTargetAtTime(targetHz, ctx.currentTime, 0.045); } catch (_) {}
   },
 
+  _onFieldDeployed(payload = {}) {
+    const signature = FIELD_AUDIO_SIGNATURES[payload.kind];
+    const fieldId = String(payload.fieldId || '').trim();
+    if (!signature || !fieldId) return;
+    this._requestEnvironmentLoop(`field_${fieldId}`, {
+      recipeId: signature.recipeId,
+      gain: signature.gain,
+      position: payload.center || null,
+      trackId: payload.sourceId == null ? null : payload.sourceId,
+    });
+  },
+
+  _onFieldEnded(payload = {}) {
+    const fieldId = String(payload.fieldId || '').trim();
+    if (fieldId) this._releaseEnvironmentLoop(`field_${fieldId}`);
+  },
+
+  _onConeToggled(payload = {}) {
+    const fieldId = String(payload.fieldId || '').trim();
+    if (!fieldId) return;
+    const key = `field_${fieldId}`;
+    if (payload.active !== true) {
+      this._releaseEnvironmentLoop(key);
+      return;
+    }
+    const signature = FIELD_AUDIO_SIGNATURES.cone;
+    this._requestEnvironmentLoop(key, {
+      recipeId: signature.recipeId,
+      gain: signature.gain,
+      position: this._playerPos(),
+      trackId: this.state.playerId,
+    });
+  },
+
+  _onPlanetPlungeStage(payload = {}) {
+    const entityId = payload.id;
+    if (entityId == null) return;
+    const key = `burn_${entityId}`;
+    if (payload.stage !== 'breakup' && payload.stage !== 'descent') {
+      this._releaseEnvironmentLoop(key);
+      return;
+    }
+    const entity = this.state.entities && this.state.entities.get(entityId);
+    const gain = payload.stage === 'descent' ? 0.58 : 0.34;
+    this._requestEnvironmentLoop(key, {
+      recipeId: 'sfx_burn_up_roar', gain,
+      position: entity && entity.pos || null,
+      trackId: entityId,
+    });
+  },
+
+  _onHeavyCookOffPhase(payload = {}) {
+    if (payload.phase === 'secondary') {
+      const index = Math.max(0, Number(payload.secondaryIndex) || 0);
+      this.play('sfx_heavy_cookoff_thump', {
+        position: payload.position || null,
+        gain: Math.min(0.82, 0.48 + index * 0.08),
+        rate: Math.max(0.76, 1.04 - index * 0.07),
+      });
+      return;
+    }
+    if (payload.phase === 'main') {
+      this._applyPriorityCue({
+        id: 'death.heavy.cookoff.main', importance: 0.84,
+        priorityLane: 'deaths',
+        playerRelevance: payload.actorId === this.state.playerId ? 1 : 0.65,
+      });
+      this.play('sfx_heavy_cookoff_main', {
+        position: payload.position || null, gain: 0.92,
+        critical: payload.actorId === this.state.playerId,
+      });
+    }
+  },
+
+  _requestEnvironmentLoop(key, descriptor) {
+    const rt = this.rt;
+    if (!rt || !key || !descriptor || !descriptor.recipeId) return null;
+    rt._wantEnvironmentLoops[key] = {
+      recipeId: descriptor.recipeId,
+      gain: descriptor.gain,
+      position: descriptor.position || null,
+      trackId: descriptor.trackId == null ? null : descriptor.trackId,
+    };
+    const current = rt.loops[key];
+    if (current) {
+      current._baseGain = this._ampFor(AUDIO_RECIPE_BY_ID[descriptor.recipeId])
+        * (descriptor.gain == null ? 1 : descriptor.gain);
+      current.trackId = descriptor.trackId == null ? current.trackId : descriptor.trackId;
+      this._markLoopPositionDirty();
+      return current;
+    }
+    return this._restoreEnvironmentLoop(key);
+  },
+
+  _restoreEnvironmentLoop(key) {
+    const rt = this.rt;
+    const descriptor = rt && rt._wantEnvironmentLoops && rt._wantEnvironmentLoops[key];
+    if (!descriptor || rt.loops[key]) return rt && rt.loops[key] || null;
+    const voice = this._startLoopVoice(descriptor.recipeId, descriptor.position, descriptor.gain);
+    if (!voice) return null;
+    voice.trackId = descriptor.trackId;
+    voice.role = 'ambient';
+    voice.busName = 'ambient';
+    rt.loops[key] = voice;
+    this._markLoopPositionDirty();
+    return voice;
+  },
+
+  _releaseEnvironmentLoop(key) {
+    const rt = this.rt;
+    if (!rt || !key) return;
+    delete rt._wantEnvironmentLoops[key];
+    const voice = rt.loops[key];
+    if (voice) {
+      this._endLoopVoice(voice);
+      delete rt.loops[key];
+    }
+    this._markLoopPositionDirty();
+  },
+
+  _clearEnvironmentLoops(prefix = '') {
+    const rt = this.rt;
+    if (!rt) return;
+    for (const key of Object.keys(rt._wantEnvironmentLoops || {})) {
+      if (!prefix || key.startsWith(prefix)) this._releaseEnvironmentLoop(key);
+    }
+  },
+
   _updateDrillGrind() {
     const rt = this.rt;
     const mix = drillGrindMix(this.state && this.state.drill, rt._drillGrindMix);
@@ -1923,10 +2115,14 @@ export const audio = {
       dest = panner;
     }
     const peak = Math.min(1, this._ampFor(recipe) * (gain == null ? 1 : gain) * att);
+    if (position && !(att > 0)) return null;
+    const authoredSourceId = recipe.authoredSourceId || recipe.id;
+    const authoredBuffer = rt._authoredBuffers && rt._authoredBuffers.get(authoredSourceId);
     const v = playRecipe(ctx, recipe, dest, {
       peakGain: Math.max(0.02, peak),
       rate: isPhysicalAudioBus(busName) ? (rt._bulletTimePitch || 1) : 1,
       id: rt._nextVoiceId++,
+      authoredBuffer,
     }, rt._caches);
     v._panner = panner;
     v._baseGain = this._ampFor(recipe) * (gain == null ? 1 : gain);
@@ -2101,6 +2297,7 @@ export const audio = {
     const rt = this.rt, ctx = rt.ctx;
     if (!ctx || rt._musicStarted) return;
     rt._musicStarted = true;
+    rt._musicEpochAt = ctx.currentTime + 0.2;
     // Map our 4 states to MUSIC_STEMS indices: A=calm, B=tense, C=combat, D=docked(reuse boss/warm).
     const stemKeys = ['A', 'B', 'C', 'D'];
     for (let i = 0; i < 4; i++) {
@@ -2536,16 +2733,31 @@ export const audio = {
   _setMusicState(stateName, instant) {
     const rt = this.rt, ctx = rt.ctx;
     if (!ctx) return;
+    const priorState = rt.musicState || 'calm';
     rt.musicState = stateName;
     const w = STEM_WEIGHTS[stateName] || STEM_WEIGHTS.calm;
-    const xf = stateName === 'combat' ? XFADE_COMBAT_S : XFADE_S;
     const t = ctx.currentTime;
+    const schedule = musicTransitionSchedule(t, stateName, instant, priorState, rt._musicEpochAt || 0);
+    const startAt = schedule.atS;
+    const endAt = startAt + Math.min(
+      stateName === 'combat' ? XFADE_COMBAT_S : XFADE_S,
+      schedule.crossfadeS,
+    );
+    rt._musicTransition = Object.freeze({ state: stateName, startAt, endAt });
     for (const key of ['A', 'B', 'C', 'D']) {
       const g = rt.stemGains[key]; if (!g) continue;
       const target = Math.max(0.0001, w[key]);
       try {
-        if (instant) { g.gain.cancelScheduledValues(t); g.gain.setValueAtTime(target, t); }
-        else { g.gain.setTargetAtTime(target, t, xf / 3); }
+        g.gain.cancelScheduledValues(t);
+        if (instant || endAt <= t) {
+          g.gain.setValueAtTime(target, t);
+        } else {
+          const current = Math.max(0.0001, Number(g.gain.value) || 0.0001);
+          g.gain.setValueAtTime(current, t);
+          // Hold the current mix until the outgoing stem's next bar boundary, then crossfade once.
+          g.gain.setValueAtTime(current, startAt);
+          g.gain.linearRampToValueAtTime(target, endAt);
+        }
       } catch (_) { try { g.gain.value = target; } catch (__) {} }
     }
   },
@@ -2673,6 +2885,9 @@ export const audio = {
         if (!rt.loops['beam_' + ownerId]) this._startBeam(Number(ownerId));
       }
       if (rt._wantMining && !rt.loops.mining) this._onMiningStart({ minerId: rt._wantMining.minerId, targetId: rt._wantMining.targetId });
+      for (const key of Object.keys(rt._wantEnvironmentLoops || {})) {
+        if (!rt.loops[key]) this._restoreEnvironmentLoop(key);
+      }
     }
 
     // Sidechaining logic (spec §1): combat ducks ambient & music buses by 6 dB (120ms attack / 900ms release)
@@ -2751,9 +2966,12 @@ export const audio = {
       const t = now == null ? rt.ctx.currentTime : now;
       const isWeaponLoop = v.role === 'weaponLoop'
         || (v.busName === 'combat' && v.loop);
+      const isAmbientLoop = v.role === 'ambient' || v.busName === 'ambient';
       const priorityDuck = isWeaponLoop
         ? (rt._priorityDuckWeapon == null ? 1 : rt._priorityDuckWeapon)
-        : 1;
+        : isAmbientLoop
+          ? (rt._priorityDuckAmbient == null ? 1 : rt._priorityDuckAmbient)
+          : 1;
       try {
         v.gain.gain.setTargetAtTime(
           Math.max(0.0001, (v._baseGain || 0.3) * att * priorityDuck),
@@ -3206,26 +3424,34 @@ export const audio = {
     }
   },
 
-  /** Apply cue-priority envelope gains to continuous engine + weapon loops each frame. */
+  /** Apply the explicit AC-40 ladder to continuous engine, weapon and environmental loops. */
   _updatePriorityDuckGains() {
     const rt = this.rt;
     if (!rt || !rt._priorityBus) return;
     const nowMs = this._wallClockMs();
     rt._priorityDuckEngine = rt._priorityBus.gainFor(rt._priorityEngineProbe, nowMs);
     rt._priorityDuckWeapon = rt._priorityBus.gainFor(rt._priorityWeaponProbe, nowMs);
+    rt._priorityDuckAmbient = rt._priorityBus.gainFor(rt._priorityAmbientProbe, nowMs);
 
-    // Scale active beam/weapon loops without touching music/critical one-shots.
+    // Scale live lower-priority beds without touching critical one-shots. Music owns its own
+    // AudioParam transition/duck path because it is a shared bus rather than a voice-pool entry.
     const wDuck = rt._priorityDuckWeapon;
+    const aDuck = rt._priorityDuckAmbient;
     if (rt.loops) {
       for (const key in rt.loops) {
         const v = rt.loops[key];
         if (!v || !v.gain || !v.gain.gain) continue;
         const isWeaponLoop = key.startsWith('beam_') || v.role === 'weaponLoop'
           || (v.busName === 'combat' && v.loop);
-        if (!isWeaponLoop) continue;
+        const isAmbientLoop = v.role === 'ambient' || v.busName === 'ambient';
+        if (!isWeaponLoop && !isAmbientLoop) continue;
         const base = v._baseGain != null ? v._baseGain : (v.callGain != null ? v.callGain : 0.5);
         try {
-          v.gain.gain.setTargetAtTime(Math.max(0.0001, base * wDuck), rt.ctx.currentTime, 0.04);
+          v.gain.gain.setTargetAtTime(
+            Math.max(0.0001, base * (isWeaponLoop ? wDuck : aDuck)),
+            rt.ctx.currentTime,
+            0.04,
+          );
         } catch (_) {}
       }
     }

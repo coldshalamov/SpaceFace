@@ -306,6 +306,52 @@ export const RECIPES = [
     pitchRange: [0.85, 1.2],
   },
 
+  // AC-40 continuous force voices. These are deliberately low in the ambient mix and positional:
+  // their job is to identify an off-screen force, not to fill otherwise empty space. Each row also
+  // exposes a stable authoredSourceId. AudioSystem may replace the synthesis layer with a decoded
+  // authored recording at runtime; when no recording is registered, the shipped synth remains the
+  // deterministic, bundle-free fallback.
+  {
+    id: 'sfx_field_well_presence', authoredSourceId: 'field.well.presence', authoredBlend: 'replace',
+    category: 'ambient', type: 'continuous_oscillator', wave: 'sawtooth',
+    baseFreq: 52, freqMod: 0.035,
+    gainEnvelope: { attack: 0.42, sustain: 1.0, release: 0.5 },
+    filterType: 'lowpass', filterFreq: 145, filterQ: 1.8,
+  },
+  {
+    id: 'sfx_field_repulsor_presence', authoredSourceId: 'field.repulsor.presence', authoredBlend: 'replace',
+    category: 'ambient', type: 'continuous_noise', noiseColor: 'pink',
+    gainEnvelope: { attack: 0.18, sustain: 1.0, release: 0.32 },
+    filterType: 'bandpass', filterFreq: 470, filterQ: 1.15,
+    lfoRate: 1.8, lfoDepth: 0.18,
+  },
+  {
+    id: 'sfx_field_cone_presence', authoredSourceId: 'field.cone.presence', authoredBlend: 'replace',
+    category: 'ambient', type: 'continuous_noise', noiseColor: 'white',
+    gainEnvelope: { attack: 0.12, sustain: 1.0, release: 0.2 },
+    filterType: 'bandpass', filterFreq: 920, filterQ: 0.62,
+    lfoRate: 3.2, lfoDepth: 0.22,
+  },
+  {
+    id: 'sfx_burn_up_roar', authoredSourceId: 'death.burn_up.roar', authoredBlend: 'replace',
+    category: 'ambient', type: 'continuous_noise', noiseColor: 'pink',
+    gainEnvelope: { attack: 0.28, sustain: 1.0, release: 0.65 },
+    filterType: 'bandpass', filterFreq: 360, filterQ: 0.55,
+    lfoRate: 2.4, lfoDepth: 0.28,
+  },
+  {
+    id: 'sfx_heavy_cookoff_thump', authoredSourceId: 'death.heavy.cookoff.thump', authoredBlend: 'replace',
+    category: 'explosion', type: 'oscillator', wave: 'sine',
+    baseFreq: 76, freqSweep: [88, 34], sweepTimeS: 0.24,
+    gainEnvelope: { attack: 0.003, sustain: 0.035, release: 0.34 },
+    filterType: 'lowpass', filterFreq: 180, filterQ: 0.7,
+  },
+  {
+    id: 'sfx_heavy_cookoff_main', authoredSourceId: 'death.heavy.cookoff.main', authoredBlend: 'replace',
+    category: 'explosion', type: 'layered',
+    layers: ['sfx_heavy_cookoff_thump', 'sfx_explosion_large'], gainMult: 0.82,
+  },
+
   // --- Mining SFX ---
   {
     id: 'sfx_mining_beam',
