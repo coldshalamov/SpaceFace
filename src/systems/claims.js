@@ -21,9 +21,22 @@
 // Specialization behavior ticks in update():
 //   - REFINERY converts delivered ore into refined goods (REFINE_MAP truth, 2:1) into an output
 //     store the player hauls out. Its risk: upkeep + stored goods draw raiders in low-sec space.
-//   - RELAY dispatches scheduled convoys to the linked station and sells at the destination's REAL
+//   - RELAY dispatches a PHYSICAL CARRIER to the linked station and sells at the destination's REAL
 //     market price less the fee (the proven outpost autosell −20%), pressing that market honestly.
 //     No economy peer / no market price → freight is held, never converted to fabricated profit.
+//
+// Carrier model (spec.convoy — schema claim_carrier_v1, see _dispatchCarrier):
+//   ONE persistent record per relay shipment carries the whole life of that freight: its MANIFEST,
+//   CUSTODY (site → carrier → delivered/site/lost), route + time-derived PROGRESS, the live entity
+//   it is BOUND to while the player shares its sector, its telegraphed INTERCEPT state, and its
+//   single SETTLEMENT. The record is the authority and the ship is its body: progress is a pure
+//   function of (simTime, departedAt, transitS, holdS), so the run advances identically off-screen
+//   and materialized. Materializing binds the existing record to one hull at the position the
+//   record already holds — cargo never duplicates (custody left the store at dispatch and lives in
+//   the manifest until exactly one settlement) and never teleports (the hull is placed at the
+//   record's own last position, and de-materializing keeps it). Every terminal path — arrival,
+//   intercept, a destroyed hull, an abandoned engagement — funnels through _settleCarrier, which
+//   refuses a second settlement for the same record.
 //   - BASTION contests raids: it raises this body's defense rating, lends coverage to every claim
 //     in the sector, and announces inbound raids (warning coverage). It never spawns combat, never
 //     aggros lawful traffic, and never writes heat/reputation — raids are the only threats it acts
@@ -35,6 +48,11 @@
 //   Raids only roll in sectors below RAID_SECURITY_FLOOR (lawful space never raids player bases),
 //   only against sites with stored goods, lose a bounded fraction (never the base), and freeze the
 //   site for a recoverable cooldown. Claims never tick offline, so there is no off-screen loss.
+//   (A carrier already in flight is the one thing that keeps advancing while the player is in
+//   another sector. It still carries the legacy relay's risk, but that risk can only ever SCHEDULE
+//   a telegraphed cut off-screen — it can never take the freight there. An uncontested strike
+//   holds the run in place with its manifest whole until the player is present for a physical
+//   outcome, so no unseen die ever deletes player property.)
 //
 // Single-writer: claims owns only state.claims. Credits route through economy intents, cargo
 // through the cargo helpers; claims never writes credits/cargo caches/reputation/heat directly.
@@ -42,13 +60,16 @@
 // lazily on first commission so unspecialized saves and the 47a golden keep their exact shape).
 // PERSISTENCE: serialize()/deserialize() capture state.claims (bodies + spec state + meta +
 // migration receipt) with a specVersion stamp; older saves default bodies to spec:null and run the
-// F6-owned legacy-outpost migration exactly once (see _migrateLegacyOutposts).
+// F6-owned legacy-outpost migration exactly once (see _migrateLegacyOutposts). A carrier record
+// rides in spec.convoy and is healed + RESUMED by _normalizeCarrier on load (a pre-carrier convoy
+// upgrades in place; the entity binding is dropped and re-established from the record's position).
 import {
   BODY_MODULES, BODY_MODULE_BY_ID, BODY_SLOTS_BY_SIZE, CLAIM_COST,
   BODY_SPECIALIZATIONS, BODY_SPECIALIZATION_BY_ID,
 } from '../data/claimableBodies.js';
 import { techDisplayName } from '../data/tech.js';
 import { addCargo, removeCargo } from './cargo.js';
+import { makeShipEntitySpec } from './ships.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
 import { SECTORS, dangerIndex } from '../data/sectors.js';
 import { OUTPOSTS } from '../data/automation.js';
@@ -79,6 +100,17 @@ export const CLAIM_TRAVEL_INFRASTRUCTURE_SCHEMA = 'claim_travel_sling_v1';
 const RELAY_LOSS_BASE = 0.05;              // convoy loss floor in unlawful space…
 const RELAY_LOSS_DANGER = 0.25;            // …plus danger scaling, capped:
 const RELAY_LOSS_CAP = 0.35;
+// ── Physical carrier contract ─────────────────────────────────────────────────────────────────
+export const CLAIM_CARRIER_SCHEMA = 'claim_carrier_v1';
+export const CARRIER_HULL_ID = 'ship_mule';        // the freighter hull traffic already flies
+export const CARRIER_TEAM = 2;                     // neutral civilian, same as ambient freight
+export const CARRIER_INTERCEPT_PROGRESS = 0.35;    // where along the run a cut can happen
+export const CARRIER_INTERCEPT_WARNING_S = 45;     // telegraph window before the strike lands
+export const CARRIER_INTERVENTION_R = 900;         // player must be this close to contest the cut
+export const CARRIER_ENGAGE_TIMEOUT_S = 240;       // an engaged cut the player walks away from
+export const CARRIER_PARTIAL_LOSS_FRAC = 0.5;      // a half-fought cut bleeds, it does not settle
+export const CARRIER_RESYNC_WU = 25;               // hull drift the record tolerates before a snap
+export const CARRIER_ATTACKER_RANGE = Object.freeze([2, 3]);
 const MAX_RECEIPTS = 8;                    // per-body receipt ring (the ledger's memory)
 const SLING_BODY_CLEARANCE_WU = 160;
 const SLING_STATION_CLEARANCE_WU = 180;
@@ -120,6 +152,29 @@ function sumStore(bucket) {
   let total = 0;
   for (const id in bucket) total += bucket[id] || 0;
   return total;
+}
+
+/** Units aboard a carrier — the single truth for "how much freight is in custody". */
+function manifestTotal(manifest) {
+  let total = 0;
+  for (const line of Array.isArray(manifest) ? manifest : []) {
+    total += Math.max(0, Math.floor(Number(line && line.qty) || 0));
+  }
+  return total;
+}
+
+/** Sanitize a persisted/dispatched manifest: whole units, no empty lines, stable order. */
+function normalizeManifest(manifest) {
+  const out = [];
+  for (const line of Array.isArray(manifest) ? manifest : []) {
+    const goodId = line && typeof line.goodId === 'string' ? line.goodId : null;
+    const qty = Math.max(0, Math.floor(Number(line && line.qty) || 0));
+    if (!goodId || qty <= 0) continue;
+    const existing = out.find((entry) => entry.goodId === goodId);
+    if (existing) existing.qty += qty;
+    else out.push({ goodId, qty });
+  }
+  return out;
 }
 
 function materialName(id) {
@@ -175,6 +230,7 @@ export const claims = {
     this.state = ctx.state;
     this.bus = ctx.bus;
     this.ctx = ctx;
+    this.helpers = ctx.helpers || null;
     // state.claims: { bodies: [{ id, sectorId, poiId, name, size, slots, modules:[modId|null],
     //   linkedStationId, x, z, spec }], specVersion, meta?, legacyMigration? }
     if (!this.state.claims) this.state.claims = { bodies: [] };
@@ -186,6 +242,10 @@ export const claims = {
         const body = this._body(payload && payload.bodyId);
         if (body && body.spec && body.spec.defense) this._settleDefense(body, 'ignored');
       });
+      // A carrier is a real hull while the player shares its sector. Leaving the sector releases
+      // the body without touching the record; a killed hull is a REAL loss of the freight aboard.
+      this.bus.on('sector:exit', () => this._dematerializeAllCarriers('sector_exit'));
+      this.bus.on('entity:killed', (payload) => this._onCarrierEntityKilled(payload || {}));
     }
     this._resumeDefenseIds = new Set();
   },
@@ -506,8 +566,18 @@ export const claims = {
         nextRollInS: meta ? Math.max(0, SPEC_RAID_EVERY_S - (meta.raidAccum || 0)) : SPEC_RAID_EVERY_S,
       },
       convoy: spec.convoy
-        ? { ...spec.convoy, etaS: Math.max(0, spec.convoy.arriveAt - t) }
+        ? {
+          ...spec.convoy,
+          etaS: Math.max(0, spec.convoy.arriveAt - t),
+          progress: this._carrierProgress(spec.convoy, t),
+          manifest: (spec.convoy.manifest || []).map((line) => ({ ...line })),
+          interceptPhase: spec.convoy.intercept ? spec.convoy.intercept.phase : 'clear',
+          interceptInS: spec.convoy.intercept && spec.convoy.intercept.phase === 'telegraphed'
+            ? Math.max(0, spec.convoy.intercept.strikeAt - t)
+            : 0,
+        }
         : null,
+      lastCarrierSettlement: spec.lastCarrierSettlement ? { ...spec.lastCarrierSettlement } : null,
       throughput: null,
       readiness: null,
       infrastructure: body.infrastructure ? {
@@ -821,6 +891,9 @@ export const claims = {
     const def = BODY_SPECIALIZATION_BY_ID.get(spec.id);
     if (!def) return;
     const t = state.simTime || 0;
+    // A carrier already away is a physical object with its own custody: it keeps flying (and can
+    // still be cut, bound to a hull, or settled) while its home site is cold, frozen, or raided.
+    if (spec.convoy) this._tickCarrier(body, def, state, t);
     if (spec.status === 'raided') {
       if (t < (spec.statusUntil || 0)) return; // frozen: no work, no upkeep accrual
       spec.status = 'active';
@@ -864,61 +937,568 @@ export const claims = {
     if (spec.acc > REFINE_RATIO * 4) spec.acc = REFINE_RATIO * 4;
   },
 
+  // Scheduled dispatch — only while staffed, only with a real destination + market truth. The
+  // carrier already away is advanced by _tickCarrier (from _tickSpec), which runs even when this
+  // site is cold or frozen.
   _tickSpecRelay(body, def, state) {
     const spec = body.spec;
     const t = state.simTime || 0;
-    // arrivals resolve even while cold — the convoy is already flying
-    if (spec.convoy && t >= spec.convoy.arriveAt) {
-      const convoy = spec.convoy;
-      spec.convoy = null;
+    if (spec.convoy || spec.status !== 'active' || t < (spec.nextDispatchAt || 0)) return;
+    spec.nextDispatchAt = t + def.dispatchEveryS;
+    const dest = this._relayDestination(body);
+    const economy = this._economyPeer();
+    if (!dest || !economy) return;
+    let bestGood = null, bestQty = 0;
+    for (const id in spec.store.input) {
+      const q = spec.store.input[id] || 0;
+      if (q > bestQty) { bestQty = q; bestGood = id; }
+    }
+    if (!bestGood || bestQty < def.minLoadU) return;
+    const qty = Math.min(def.convoyLoadU, bestQty);
+    this._dispatchCarrier(body, def, t, dest, [{ goodId: bestGood, qty }]);
+  },
+
+  // ------------------------------------------------------------------------------------------
+  // PHYSICAL CARRIER — one durable record per shipment (schema claim_carrier_v1).
+  //
+  // Custody is a chain with no forks: the units leave spec.store.input HERE and exist only in
+  // carrier.manifest until exactly one settlement puts them somewhere real (a market sale, the
+  // site store, or the loss ledger). Nothing else may add or remove freight from a live manifest
+  // except _bleedCarrier (a fought cut) — and that mutation is recorded on the record itself.
+  // ------------------------------------------------------------------------------------------
+  _dispatchCarrier(body, def, t, destStationId, manifest) {
+    const spec = body.spec;
+    const lines = normalizeManifest(manifest);
+    if (!spec || spec.convoy || !lines.length) return null;
+    // custody transfer OUT of the site store — the only place freight enters a manifest
+    for (const line of lines) {
+      const have = Math.max(0, Math.floor(spec.store.input[line.goodId] || 0));
+      line.qty = Math.min(line.qty, have);
+      if (line.qty <= 0) continue;
+      spec.store.input[line.goodId] = have - line.qty;
+      if (spec.store.input[line.goodId] <= 0) delete spec.store.input[line.goodId];
+    }
+    const loaded = normalizeManifest(lines);
+    if (!loaded.length) return null;
+    const meta = this._ensureMeta();
+    const seq = Math.max(1, meta.nextCarrierId | 0);
+    meta.nextCarrierId = seq + 1;
+    const transitS = Math.max(1, Number(def.transitS) || 1);
+    const carrier = {
+      schema: CLAIM_CARRIER_SCHEMA,
+      id: `${body.id}:carrier:${seq}`,
+      bodyId: body.id,
+      sectorId: body.sectorId || null,
+      name: `${body.name} freight run ${seq}`,
+      custody: 'carrier',
+      manifest: loaded,
+      // legacy mirrors — every existing reader (ledger, Base screen, receipts) speaks these two
+      goodId: loaded[0].goodId,
+      qty: manifestTotal(loaded),
+      destStationId,
+      departedAt: t,
+      transitS,
+      arriveAt: t + transitS,
+      holdS: 0,
+      holdSince: 0,
+      progress: 0,
+      route: { from: { x: Number(body.x) || 0, z: Number(body.z) || 0 }, to: null },
+      pos: { x: Number(body.x) || 0, z: Number(body.z) || 0 },
+      entityId: null,
+      materialized: false,
+      intercept: this._freshIntercept(),
+      settlement: null,
+    };
+    spec.convoy = carrier;
+    this._syncCarrierRoute(body, carrier);
+    this._receipt(body, 'convoy_dispatched', 'Convoy away — ' + carrier.qty + 'u to ' + (this._stationName(destStationId) || destStationId),
+      { carrierId: carrier.id, goodId: carrier.goodId, qty: carrier.qty, destStationId });
+    this.bus.emit('claim:carrierDispatched', {
+      bodyId: body.id,
+      carrierId: carrier.id,
+      sectorId: carrier.sectorId,
+      destStationId,
+      manifest: carrier.manifest.map((line) => ({ ...line })),
+      qty: carrier.qty,
+      arriveAt: carrier.arriveAt,
+    });
+    return carrier;
+  },
+
+  _freshIntercept() {
+    return {
+      phase: 'clear',        // clear → telegraphed → engaged → resolved
+      rolled: false,
+      warnedAt: 0,
+      strikeAt: 0,
+      deadlineAt: 0,
+      requested: false,
+      deferredAt: 0,         // set when the strike came due with nobody there to see it
+      encounterId: null,
+      attackerFactionId: null,
+      attackerName: null,
+      attackerCount: 0,
+    };
+  },
+
+  /**
+   * Time-derived progress: a pure function of the record. This is exactly why the same shipment
+   * advances identically whether or not anyone is watching — there is no per-frame integration to
+   * diverge, and a save/load in the middle changes nothing.
+   */
+  _carrierProgress(carrier, t) {
+    if (!carrier) return 0;
+    const transitS = Math.max(1, Number(carrier.transitS) || 1);
+    const held = Math.max(0, Number(carrier.holdS) || 0)
+      + (carrier.holdSince ? Math.max(0, t - carrier.holdSince) : 0);
+    const flown = t - (Number(carrier.departedAt) || 0) - held;
+    return Math.max(0, Math.min(1, flown / transitS));
+  },
+
+  _tickCarrier(body, def, state, t) {
+    const carrier = body.spec && body.spec.convoy;
+    if (!carrier || carrier.settlement) return;
+    if (!carrier.intercept) carrier.intercept = this._freshIntercept();
+    carrier.progress = this._carrierProgress(carrier, t);
+    this._syncCarrierRoute(body, carrier);
+    this._advanceCarrierPos(carrier);
+    this._tickCarrierIntercept(body, carrier, state, t);
+    if (!body.spec.convoy || carrier.settlement) return;   // the cut settled it
+    this._syncCarrierEmbodiment(body, carrier, state, t);
+    if (carrier.intercept.phase === 'telegraphed' || carrier.intercept.phase === 'engaged') return;
+    if (t >= carrier.arriveAt) this._settleCarrier(body, 'arrived', { def });
+  },
+
+  /** Resolve the destination end of the route once a real station endpoint is observable. */
+  _syncCarrierRoute(body, carrier) {
+    if (!carrier || !carrier.route) return;
+    if (carrier.route.to) return;
+    const station = this._stationEntity(carrier.destStationId);
+    if (!station || !station.pos) return;                  // stays abstract until the pier is real
+    if (!Number.isFinite(station.pos.x) || !Number.isFinite(station.pos.z)) return;
+    carrier.route.to = { x: station.pos.x, z: station.pos.z };
+  },
+
+  /** The record's own position. Off-screen this is bookkeeping; materialized it drives the hull. */
+  _advanceCarrierPos(carrier) {
+    const route = carrier.route;
+    if (!route || !route.from || !route.to) return;
+    const p = Math.max(0, Math.min(1, Number(carrier.progress) || 0));
+    carrier.pos = {
+      x: route.from.x + (route.to.x - route.from.x) * p,
+      z: route.from.z + (route.to.z - route.from.z) * p,
+    };
+  },
+
+  // ── Telegraphed cut ───────────────────────────────────────────────────────────────────────
+  // The old model rolled an invisible die at arrival. The same probability now buys a WARNING
+  // with a window: the carrier holds at the cut point and the player can reach it and fight.
+  // The die SCHEDULES a threat; it never resolves one. A strike that comes due with nobody at
+  // the freight cannot delete it — the record simply HOLDS, in custody, manifest intact, until a
+  // physical outcome exists in-sector. Only three things can ever settle a carrier 'lost': the
+  // hull it is bound to is destroyed, an encounter that actually began returns a loss/abandon/
+  // timeout verdict, or the manifest is physically stripped to zero by _bleedCarrier.
+  _tickCarrierIntercept(body, carrier, state, t) {
+    const cut = carrier.intercept;
+    if (!cut || cut.phase === 'resolved') return;
+    if (cut.phase === 'clear') {
+      if (cut.rolled || carrier.progress < CARRIER_INTERCEPT_PROGRESS) return;
+      cut.rolled = true;
       const sector = SECTOR_BY_ID.get(body.sectorId);
-      const danger = sector ? dangerIndex(sector) : 0;
-      const lawful = !!sector && sector.security >= RAID_SECURITY_FLOOR;
-      const pLoss = lawful ? 0 : Math.min(RELAY_LOSS_BASE + danger * RELAY_LOSS_DANGER, RELAY_LOSS_CAP);
-      if (pLoss > 0 && this._rng() < pLoss) {
-        spec.totals.lostU += convoy.qty;
-        this._receipt(body, 'convoy_lost', 'Convoy lost en route — ' + convoy.qty + 'u gone',
-          { goodId: convoy.goodId, qty: convoy.qty, destStationId: convoy.destStationId });
-        this.bus.emit('toast', { text: 'Relay convoy lost near ' + body.name + ' (-' + convoy.qty + ' goods)', kind: 'warn', ttl: 4 });
-      } else {
-        const economy = this._economyPeer();
-        const unit = economy && economy.priceOf ? economy.priceOf(convoy.destStationId, convoy.goodId, 'sell') : null;
+      const lawful = !sector || sector.security >= RAID_SECURITY_FLOOR;
+      const pCut = lawful ? 0 : Math.min(RELAY_LOSS_BASE + dangerIndex(sector) * RELAY_LOSS_DANGER, RELAY_LOSS_CAP);
+      if (!(pCut > 0) || this._rng() >= pCut) return;
+      const [minAttackers, maxAttackers] = CARRIER_ATTACKER_RANGE;
+      cut.phase = 'telegraphed';
+      cut.warnedAt = t;
+      cut.strikeAt = t + CARRIER_INTERCEPT_WARNING_S;
+      cut.attackerFactionId = 'faction_reach';
+      cut.attackerName = 'Reach cutters';
+      cut.attackerCount = minAttackers + Math.floor(this._rng() * (maxAttackers - minAttackers + 1));
+      carrier.holdSince = t;                                // the run stalls while it is threatened
+      this._receipt(body, 'carrier_threatened', `${cut.attackerName} moving on the ${carrier.qty}u run — ${CARRIER_INTERCEPT_WARNING_S}s to reach it`,
+        { carrierId: carrier.id, attackerCount: cut.attackerCount, strikeAt: cut.strikeAt });
+      this.bus.emit('claim:carrierThreat', {
+        bodyId: body.id,
+        carrierId: carrier.id,
+        sectorId: carrier.sectorId,
+        pos: carrier.pos ? { ...carrier.pos } : null,
+        destStationId: carrier.destStationId,
+        qty: carrier.qty,
+        attackerFactionId: cut.attackerFactionId,
+        attackerName: cut.attackerName,
+        attackerCount: cut.attackerCount,
+        strikeAt: cut.strikeAt,
+        countdownS: CARRIER_INTERCEPT_WARNING_S,
+      });
+      this.bus.emit('toast', {
+        text: `FREIGHT ALERT — ${cut.attackerName} closing on ${body.name}'s ${carrier.qty}u run. ${CARRIER_INTERCEPT_WARNING_S}s.`,
+        kind: 'warn', ttl: 6,
+      });
+      this.bus.emit('audio:cue', { id: 'warning' });
+      return;
+    }
+    if (cut.phase === 'telegraphed') {
+      if (t < cut.strikeAt) return;
+      // The player standing with the carrier turns the cut into a real fight; otherwise it lands.
+      if (this._playerNearCarrier(carrier, state)) {
+        if (!cut.requested && this._requestCarrierEncounter(body, carrier, cut, t)) return;
+        if (cut.phase === 'engaged') return;
+        // no director budget for a set piece — presence alone still contests the cut
+        this._releaseCarrierHold(carrier, t);
+        cut.phase = 'resolved';
+        this._receipt(body, 'carrier_escorted', 'Escort held the line — freight running again',
+          { carrierId: carrier.id, attackerName: cut.attackerName });
+        this.bus.emit('claim:carrierIntercept', {
+          bodyId: body.id, carrierId: carrier.id, outcome: 'escorted', lostU: 0,
+        });
+        this.bus.emit('toast', { text: `Cutters broke off ${body.name}'s freight run`, kind: 'good', ttl: 4 });
+        return;
+      }
+      // Nobody is at the freight. The threat does NOT become a loss — the run stalls where it is
+      // and keeps its whole manifest until the player comes and something physical happens to it.
+      if (!cut.deferredAt) {
+        cut.deferredAt = t;
+        if (!carrier.holdSince) carrier.holdSince = t;      // stay stalled, never drift into arrival
+        this._receipt(body, 'carrier_held', `${cut.attackerName} shadowing the ${carrier.qty}u run — freight holding until someone reaches it`,
+          { carrierId: carrier.id, attackerCount: cut.attackerCount, heldAt: t });
+        this.bus.emit('claim:carrierHeld', {
+          bodyId: body.id,
+          carrierId: carrier.id,
+          sectorId: carrier.sectorId,
+          pos: carrier.pos ? { ...carrier.pos } : null,
+          destStationId: carrier.destStationId,
+          qty: carrier.qty,
+          attackerFactionId: cut.attackerFactionId,
+          attackerName: cut.attackerName,
+          attackerCount: cut.attackerCount,
+          heldAt: t,
+        });
+      }
+      return;
+    }
+    if (cut.phase === 'engaged') {
+      // Walking away from a fight you started is an answer. So is letting it run forever.
+      const abandoned = !state.world || state.world.currentSectorId !== body.sectorId;
+      if (abandoned || t >= (cut.deadlineAt || 0)) {
+        this._settleCarrier(body, 'lost', {
+          cause: abandoned ? 'abandoned' : 'overrun', attackerName: cut.attackerName,
+        });
+      }
+    }
+  },
+
+  _requestCarrierEncounter(body, carrier, cut, t) {
+    const registry = this.ctx && this.ctx.registry;
+    const director = registry && typeof registry.get === 'function' ? registry.get('encounterDirector') : null;
+    if (!director || typeof director.requestClaimDefense !== 'function' || !carrier.pos) return false;
+    const encounterId = `claim-carrier:${carrier.id}`;
+    const result = director.requestClaimDefense({
+      encounterId,
+      claimId: body.id,
+      defenseId: carrier.id,
+      sectorId: body.sectorId,
+      anchor: { x: carrier.pos.x, z: carrier.pos.z },
+      attackerFactionId: cut.attackerFactionId,
+      attackerName: cut.attackerName,
+      attackerCount: cut.attackerCount,
+      motive: `A loaded ${body.name} freight run drew a Reach cutting crew onto the lane.`,
+      deadlineAt: cut.strikeAt,
+    });
+    cut.requested = true;
+    if (!result || result.ok === false) return false;
+    cut.phase = 'engaged';
+    cut.encounterId = result.encounterId || encounterId;
+    cut.deadlineAt = t + CARRIER_ENGAGE_TIMEOUT_S;
+    this._receipt(body, 'carrier_engaged', `${cut.attackerName} on the freight run — ${cut.attackerCount} ships`,
+      { carrierId: carrier.id, encounterId: cut.encounterId });
+    this.bus.emit('claim:carrierEngaged', {
+      bodyId: body.id,
+      carrierId: carrier.id,
+      encounterId: cut.encounterId,
+      sectorId: body.sectorId,
+      pos: { ...carrier.pos },
+      attackerCount: cut.attackerCount,
+    });
+    return true;
+  },
+
+  /** Encounter verdict for a cut. 'defended' frees the run; a mauled run bleeds and flies on. */
+  _resolveCarrierEncounter(body, carrier, rawOutcome) {
+    const cut = carrier.intercept;
+    const t = this.state.simTime || 0;
+    // Only a cut that is actually engaged has a verdict to receive. A duplicate/late resolution
+    // for an already-resolved cut must not bleed the manifest a second time.
+    if (!cut || cut.phase !== 'engaged') return false;
+    if (String(rawOutcome || '').startsWith('aborted:')) {
+      // the set piece never happened — fall back to the telegraph window, do not eat the freight
+      cut.phase = 'telegraphed';
+      cut.requested = false;
+      cut.encounterId = null;
+      cut.strikeAt = Math.max(cut.strikeAt || 0, t + 20);
+      return true;
+    }
+    const outcome = ['defended', 'partial', 'retreated', 'timeout', 'destroyed', 'ignored'].includes(rawOutcome)
+      ? rawOutcome : 'timeout';
+    if (outcome === 'defended' || outcome === 'partial' || outcome === 'retreated') {
+      const bleedFrac = outcome === 'defended' ? 0
+        : (outcome === 'partial' ? CARRIER_PARTIAL_LOSS_FRAC * 0.5 : CARRIER_PARTIAL_LOSS_FRAC);
+      const lostU = bleedFrac > 0 ? this._bleedCarrier(body, carrier, bleedFrac) : 0;
+      this._releaseCarrierHold(carrier, t);
+      cut.phase = 'resolved';
+      if (!carrier.manifest.length) {
+        this._settleCarrier(body, 'lost', { cause: 'stripped', attackerName: cut.attackerName });
+        return true;
+      }
+      this._receipt(body, 'carrier_defended', lostU > 0
+        ? `Cut fought off — ${lostU}u stripped, ${carrier.qty}u still running`
+        : 'Cut fought off — freight intact and running', { carrierId: carrier.id, lostU, outcome });
+      this.bus.emit('claim:carrierIntercept', { bodyId: body.id, carrierId: carrier.id, outcome, lostU });
+      this.bus.emit('toast', {
+        text: lostU > 0 ? `${body.name} freight run mauled — ${lostU}u lost, run continues`
+          : `${body.name} freight run held — cutters driven off`,
+        kind: lostU > 0 ? 'warn' : 'good', ttl: 5,
+      });
+      return true;
+    }
+    this._settleCarrier(body, 'lost', { cause: 'intercepted', attackerName: cut.attackerName, outcome });
+    return true;
+  },
+
+  /** Freight physically stripped off a live manifest. Never a settlement — the run continues. */
+  _bleedCarrier(body, carrier, frac) {
+    let lostU = 0;
+    for (const line of carrier.manifest) {
+      const lost = Math.floor(line.qty * frac);
+      if (lost <= 0) continue;
+      line.qty -= lost;
+      lostU += lost;
+    }
+    carrier.manifest = normalizeManifest(carrier.manifest);
+    this._syncCarrierMirror(carrier);
+    if (lostU > 0) body.spec.totals.lostU += lostU;
+    return lostU;
+  },
+
+  _syncCarrierMirror(carrier) {
+    carrier.qty = manifestTotal(carrier.manifest);
+    carrier.goodId = carrier.manifest.length ? carrier.manifest[0].goodId : carrier.goodId;
+  },
+
+  _releaseCarrierHold(carrier, t) {
+    if (carrier.holdSince) {
+      carrier.holdS = Math.max(0, Number(carrier.holdS) || 0) + Math.max(0, t - carrier.holdSince);
+      carrier.holdSince = 0;
+    }
+    carrier.arriveAt = (Number(carrier.departedAt) || 0) + Math.max(1, Number(carrier.transitS) || 1)
+      + Math.max(0, Number(carrier.holdS) || 0);
+  },
+
+  // ── Materialization ───────────────────────────────────────────────────────────────────────
+  // Binding, not spawning cargo: the hull is created at the position the record already holds and
+  // carries no manifest of its own, so no other system can mint or duplicate this freight.
+  _syncCarrierEmbodiment(body, carrier, state, t) {
+    const inSector = !!state.world && state.world.currentSectorId === body.sectorId;
+    const live = this._carrierEntity(carrier);
+    if (!inSector || !carrier.route || !carrier.route.to || carrier.settlement) {
+      if (live) this._dematerializeCarrier(carrier, 'offscreen');
+      return;
+    }
+    if (!live) this._materializeCarrier(body, carrier, t);
+    else this._driveCarrierEntity(carrier, live);
+  },
+
+  _carrierEntity(carrier) {
+    if (!carrier || carrier.entityId == null) return null;
+    const entity = this.state.entities && this.state.entities.get
+      ? this.state.entities.get(carrier.entityId)
+      : null;
+    if (!entity || entity.alive === false) return null;
+    // identity check — a recycled numeric id must never be mistaken for our carrier
+    if (!entity.data || entity.data.claimCarrierId !== carrier.id) return null;
+    return entity;
+  },
+
+  _materializeCarrier(body, carrier, t) {
+    const spawn = this.helpers && this.helpers.spawnEntity;
+    if (typeof spawn !== 'function' || !carrier.pos) return null;
+    const sector = SECTOR_BY_ID.get(body.sectorId);
+    const heading = this._carrierHeading(carrier);
+    const spec = makeShipEntitySpec(CARRIER_HULL_ID, {
+      team: CARRIER_TEAM,
+      factionId: (sector && sector.factionId) || 'faction_free',
+      pos: { x: carrier.pos.x, z: carrier.pos.z },
+      rot: heading,
+      ai: null,                      // the RECORD flies this hull; no steering authority is added
+    });
+    const entity = spawn(spec);
+    if (!entity) return null;
+    const data = entity.data || (entity.data = {});
+    data.claimCarrierId = carrier.id;
+    data.claimId = body.id;
+    data.name = carrier.name;
+    data.trafficLabel = `${body.name} freight run`;
+    // Display copy only. The real custody lives on the record — a hull that carried a live
+    // manifest could be looted into existence twice.
+    data.claimCarrierManifest = carrier.manifest.map((line) => ({ ...line }));
+    data.claimCarrierDestStationId = carrier.destStationId;
+    carrier.entityId = entity.id;
+    carrier.materialized = true;
+    carrier.materializedAt = t;
+    this._driveCarrierEntity(carrier, entity);
+    this.bus.emit('claim:carrierMaterialized', {
+      bodyId: body.id, carrierId: carrier.id, entityId: entity.id, sectorId: body.sectorId,
+      pos: { ...carrier.pos }, qty: carrier.qty,
+    });
+    return entity;
+  },
+
+  _carrierHeading(carrier) {
+    const route = carrier.route;
+    if (!route || !route.from || !route.to) return 0;
+    return Math.atan2(route.to.z - route.from.z, route.to.x - route.from.x);
+  },
+
+  /**
+   * The record steers; physics carries. Velocity comes from the route so the hull moves like a
+   * ship (and reads correctly to trails, scanners and the camera), and position is only snapped
+   * back when it has drifted off the record's own truth — the record, not the hull, is authority.
+   */
+  _driveCarrierEntity(carrier, entity) {
+    if (!entity || !carrier.pos || !entity.pos) return;
+    entity.rot = this._carrierHeading(carrier);
+    if (!entity.vel) entity.vel = { x: 0, z: 0 };
+    const holding = !!carrier.holdSince || carrier.progress >= 1;
+    const route = carrier.route;
+    if (holding || !route || !route.from || !route.to) {
+      entity.vel.x = 0;
+      entity.vel.z = 0;
+    } else {
+      const transitS = Math.max(1, Number(carrier.transitS) || 1);
+      entity.vel.x = (route.to.x - route.from.x) / transitS;
+      entity.vel.z = (route.to.z - route.from.z) / transitS;
+    }
+    const drift = Math.hypot(entity.pos.x - carrier.pos.x, entity.pos.z - carrier.pos.z);
+    if (drift > CARRIER_RESYNC_WU) {
+      entity.pos.x = carrier.pos.x;
+      entity.pos.z = carrier.pos.z;
+    }
+  },
+
+  _dematerializeCarrier(carrier, reason) {
+    if (!carrier) return false;
+    const entity = this._carrierEntity(carrier);
+    // Release the binding BEFORE the hull goes away: a release must never be mistaken for a kill.
+    carrier.entityId = null;
+    carrier.materialized = false;
+    if (entity) {
+      const remove = this.helpers && (this.helpers.removeEntity || this.helpers.despawnEntity);
+      if (typeof remove === 'function') { try { remove(entity.id); } catch (_) { entity.alive = false; } }
+      else entity.alive = false;
+      this.bus.emit('claim:carrierDematerialized', { carrierId: carrier.id, entityId: entity.id, reason });
+    }
+    return true;
+  },
+
+  _dematerializeAllCarriers(reason) {
+    for (const body of (this.state.claims && this.state.claims.bodies) || []) {
+      const carrier = body && body.spec && body.spec.convoy;
+      if (carrier) this._dematerializeCarrier(carrier, reason);
+    }
+  },
+
+  _onCarrierEntityKilled(payload) {
+    if (!payload || payload.id == null) return;
+    for (const body of (this.state.claims && this.state.claims.bodies) || []) {
+      const carrier = body && body.spec && body.spec.convoy;
+      if (!carrier || carrier.entityId !== payload.id) continue;
+      carrier.entityId = null;
+      carrier.materialized = false;
+      this._settleCarrier(body, 'lost', { cause: 'hull_destroyed' });
+      return;
+    }
+  },
+
+  _playerNearCarrier(carrier, state) {
+    if (!carrier || !carrier.pos) return false;
+    if (!state.world || state.world.currentSectorId !== carrier.sectorId) return false;
+    const player = state.entities && state.entities.get(state.playerId);
+    if (!player || player.alive === false || !player.pos) return false;
+    const dx = player.pos.x - carrier.pos.x;
+    const dz = player.pos.z - carrier.pos.z;
+    return dx * dx + dz * dz <= CARRIER_INTERVENTION_R * CARRIER_INTERVENTION_R;
+  },
+
+  // ── Settlement ────────────────────────────────────────────────────────────────────────────
+  /**
+   * The ONE place a manifest stops existing. Outcomes:
+   *   'arrived' — sold at the destination's real price (or returned home when there is no market
+   *               truth: this system never fabricates a price);
+   *   'lost'    — intercepted, stripped, abandoned, or the hull was destroyed.
+   * Re-entrant by construction (a hull can die inside the same tick an arrival settles), so the
+   * guard is checked and armed BEFORE any credit/cargo/ledger effect runs.
+   */
+  _settleCarrier(body, outcome, detail = {}) {
+    const spec = body && body.spec;
+    const carrier = spec && spec.convoy;
+    if (!carrier || carrier.settlement || carrier._settling) return false;
+    carrier._settling = true;
+    const t = this.state.simTime || 0;
+    const def = detail.def || BODY_SPECIALIZATION_BY_ID.get(spec.id);
+    const settlement = {
+      id: `${carrier.id}:${outcome}`,
+      carrierId: carrier.id,
+      outcome,
+      at: t,
+      qty: carrier.qty,
+      goodId: carrier.goodId,
+      destStationId: carrier.destStationId,
+      revenueCr: 0,
+      returnedU: 0,
+      lostU: 0,
+      cause: detail.cause || null,
+    };
+    if (outcome === 'lost') {
+      settlement.lostU = manifestTotal(carrier.manifest);
+      spec.totals.lostU += settlement.lostU;
+      this._receipt(body, 'convoy_lost', 'Convoy lost en route — ' + settlement.lostU + 'u gone',
+        { carrierId: carrier.id, goodId: carrier.goodId, qty: settlement.lostU, destStationId: carrier.destStationId, cause: settlement.cause });
+      this.bus.emit('toast', { text: 'Relay convoy lost near ' + body.name + ' (-' + settlement.lostU + ' goods)', kind: 'warn', ttl: 4 });
+    } else {
+      const economy = this._economyPeer();
+      for (const line of carrier.manifest) {
+        const unit = economy && economy.priceOf ? economy.priceOf(carrier.destStationId, line.goodId, 'sell') : null;
         if (!(unit > 0)) {
           // no market truth at arrival: freight comes home — never fabricate a price
-          spec.store.input[convoy.goodId] = (spec.store.input[convoy.goodId] || 0) + convoy.qty;
+          spec.store.input[line.goodId] = (spec.store.input[line.goodId] || 0) + line.qty;
+          settlement.returnedU += line.qty;
           this._receipt(body, 'convoy_returned', 'No buyer found — freight returned',
-            { goodId: convoy.goodId, qty: convoy.qty, destStationId: convoy.destStationId });
-        } else {
-          const revenue = Math.round(convoy.qty * unit * (1 - def.saleFee));
-          this.bus.emit('economy:grantCredits', { amount: revenue, reason: 'claim_relay_sale' });
-          this.bus.emit('economy:applyTradePressure', { stationId: convoy.destStationId, good: convoy.goodId, vol: convoy.qty });
-          spec.totals.soldTotalCr += revenue;
-          this._receipt(body, 'convoy_sold', 'Convoy sold ' + convoy.qty + 'u at ' + (this._stationName(convoy.destStationId) || convoy.destStationId),
-            { goodId: convoy.goodId, qty: convoy.qty, destStationId: convoy.destStationId, revenueCr: revenue });
+            { carrierId: carrier.id, goodId: line.goodId, qty: line.qty, destStationId: carrier.destStationId });
+          continue;
         }
+        const revenue = Math.round(line.qty * unit * (1 - ((def && def.saleFee) || 0)));
+        this.bus.emit('economy:grantCredits', { amount: revenue, reason: 'claim_relay_sale' });
+        this.bus.emit('economy:applyTradePressure', { stationId: carrier.destStationId, good: line.goodId, vol: line.qty });
+        spec.totals.soldTotalCr += revenue;
+        settlement.revenueCr += revenue;
+        this._receipt(body, 'convoy_sold', 'Convoy sold ' + line.qty + 'u at ' + (this._stationName(carrier.destStationId) || carrier.destStationId),
+          { carrierId: carrier.id, goodId: line.goodId, qty: line.qty, destStationId: carrier.destStationId, revenueCr: revenue });
       }
     }
-    // scheduled dispatch — only while staffed, only with a real destination + market truth
-    if (!spec.convoy && spec.status === 'active' && t >= (spec.nextDispatchAt || 0)) {
-      spec.nextDispatchAt = t + def.dispatchEveryS;
-      const dest = this._relayDestination(body);
-      const economy = this._economyPeer();
-      if (dest && economy) {
-        let bestGood = null, bestQty = 0;
-        for (const id in spec.store.input) {
-          const q = spec.store.input[id] || 0;
-          if (q > bestQty) { bestQty = q; bestGood = id; }
-        }
-        if (bestGood && bestQty >= def.minLoadU) {
-          const qty = Math.min(def.convoyLoadU, bestQty);
-          spec.store.input[bestGood] -= qty;
-          if (spec.store.input[bestGood] <= 0) delete spec.store.input[bestGood];
-          spec.convoy = { goodId: bestGood, qty, destStationId: dest, departedAt: t, arriveAt: t + def.transitS };
-          this._receipt(body, 'convoy_dispatched', 'Convoy away — ' + qty + 'u to ' + (this._stationName(dest) || dest),
-            { goodId: bestGood, qty, destStationId: dest });
-        }
-      }
-    }
+    carrier.manifest = [];
+    carrier.qty = 0;
+    carrier.custody = outcome === 'lost' ? 'lost' : (settlement.revenueCr > 0 ? 'delivered' : 'site');
+    carrier.settlement = settlement;
+    carrier.progress = outcome === 'lost' ? carrier.progress : 1;
+    if (carrier.intercept) carrier.intercept.phase = 'resolved';
+    delete carrier._settling;
+    this._dematerializeCarrier(carrier, 'settled');
+    // The record's proof outlives the record: the site keeps the last settlement so a reader can
+    // always answer "what happened to that shipment?" after the carrier itself is gone.
+    spec.lastCarrierSettlement = settlement;
+    spec.convoy = null;
+    this.bus.emit('claim:carrierSettled', { bodyId: body.id, sectorId: body.sectorId, ...settlement });
+    return true;
   },
 
   _settleUpkeep(bodies, state) {
@@ -1117,6 +1697,14 @@ export const claims = {
   _onDefenseEncounterResolved(payload) {
     if (!payload || payload.shape !== 'claim_threat' || !payload.encounterId) return;
     const bodies = (this.state.claims && this.state.claims.bodies) || [];
+    // A cut on a freight run borrows the same shape; match carriers before site defenses.
+    const carrierBody = bodies.find((candidate) => candidate && candidate.spec && candidate.spec.convoy
+      && candidate.spec.convoy.intercept
+      && candidate.spec.convoy.intercept.encounterId === payload.encounterId);
+    if (carrierBody) {
+      this._resolveCarrierEncounter(carrierBody, carrierBody.spec.convoy, payload.outcome || 'timeout');
+      return;
+    }
     const body = bodies.find((candidate) => candidate && candidate.spec && candidate.spec.defense
       && candidate.spec.defense.encounterId === payload.encounterId);
     if (!body) return;
@@ -1377,12 +1965,79 @@ export const claims = {
     };
   },
 
+  /**
+   * Heal a persisted carrier back to the live schema and RESUME it — the shipment continues from
+   * exactly where the record says it was, because progress is derived from the saved clock rather
+   * than replayed. Entity binding is deliberately dropped: entity ids do not survive a Continue,
+   * so the run re-materializes from its own position on the next tick in-sector.
+   * A carrier from a pre-carrier save (goodId/qty/arriveAt only) is upgraded in place, never lost.
+   */
+  _normalizeCarrier(raw, body, def) {
+    if (!raw || typeof raw !== 'object') return null;
+    const manifest = Array.isArray(raw.manifest) && raw.manifest.length
+      ? normalizeManifest(raw.manifest)
+      : normalizeManifest([{ goodId: raw.goodId, qty: raw.qty }]);
+    if (!manifest.length) return null;                      // nothing aboard → no carrier
+    const departedAt = Number.isFinite(Number(raw.departedAt)) ? Number(raw.departedAt) : (this.state.simTime || 0);
+    const transitS = Math.max(1, Number(raw.transitS) || Number((def && def.transitS)) || 1);
+    // A save taken mid-hold must not gift the run the time it spent stalled: credit the elapsed
+    // hold into the durable total before the restored record starts deriving progress again.
+    const now = this.state.simTime || 0;
+    const savedHoldSince = Math.max(0, Number(raw.holdSince) || 0);
+    const holdS = Math.max(0, Number(raw.holdS) || 0)
+      + (savedHoldSince > 0 ? Math.max(0, now - savedHoldSince) : 0);
+    const from = raw.route && raw.route.from && Number.isFinite(Number(raw.route.from.x))
+      ? { x: Number(raw.route.from.x), z: Number(raw.route.from.z) }
+      : { x: Number(body.x) || 0, z: Number(body.z) || 0 };
+    const to = raw.route && raw.route.to && Number.isFinite(Number(raw.route.to.x))
+      ? { x: Number(raw.route.to.x), z: Number(raw.route.to.z) }
+      : null;
+    const savedCut = raw.intercept && typeof raw.intercept === 'object' ? raw.intercept : {};
+    const intercept = Object.assign(this._freshIntercept(), savedCut);
+    if (!['clear', 'telegraphed', 'engaged', 'resolved'].includes(intercept.phase)) intercept.phase = 'clear';
+    // An engagement cannot survive the load that destroyed its encounter — fall back to the
+    // telegraph so the player gets the window again instead of an unwinnable stranded cut.
+    if (intercept.phase === 'engaged') {
+      intercept.phase = 'telegraphed';
+      intercept.requested = false;
+      intercept.encounterId = null;
+      intercept.strikeAt = Math.max(Number(intercept.strikeAt) || 0, (this.state.simTime || 0) + 20);
+    }
+    const carrier = {
+      schema: CLAIM_CARRIER_SCHEMA,
+      id: typeof raw.id === 'string' && raw.id ? raw.id : `${body.id}:carrier:restored`,
+      bodyId: body.id,
+      sectorId: raw.sectorId || body.sectorId || null,
+      name: typeof raw.name === 'string' && raw.name ? raw.name : `${body.name} freight run`,
+      custody: 'carrier',
+      manifest,
+      goodId: manifest[0].goodId,
+      qty: manifestTotal(manifest),
+      destStationId: raw.destStationId || null,
+      departedAt,
+      transitS,
+      arriveAt: Number.isFinite(Number(raw.arriveAt)) ? Number(raw.arriveAt) : departedAt + transitS + holdS,
+      holdS,
+      holdSince: intercept.phase === 'telegraphed' ? now : 0,
+      progress: 0,
+      route: { from, to },
+      pos: raw.pos && Number.isFinite(Number(raw.pos.x)) ? { x: Number(raw.pos.x), z: Number(raw.pos.z) } : { ...from },
+      entityId: null,
+      materialized: false,
+      intercept,
+      settlement: null,
+    };
+    carrier.progress = this._carrierProgress(carrier, this.state.simTime || 0);
+    return carrier;
+  },
+
   // Heal a deserialized spec to the full schema (legacy/partial saves).
-  _normalizeSpec(spec) {
+  _normalizeSpec(spec, body) {
     if (!spec || typeof spec !== 'object' || !BODY_SPECIALIZATION_BY_ID.has(spec.id)) return null;
     const def = BODY_SPECIALIZATION_BY_ID.get(spec.id);
     const fresh = this._freshSpec(def);
     const out = Object.assign(fresh, spec);
+    out.convoy = body ? this._normalizeCarrier(spec.convoy, body, def) : null;
     out.store = spec.store && typeof spec.store === 'object'
       ? { input: { ...(spec.store.input || {}) }, output: { ...(spec.store.output || {}) } }
       : { input: {}, output: {} };
@@ -1523,6 +2178,42 @@ export const claims = {
   // Public read API for the Base screen.
   list() { return (this.state.claims && this.state.claims.bodies) || []; },
 
+  /** The live carrier record for a claim (or null). Read-only view — claims stays its writer. */
+  carrier(bodyId) {
+    const body = this._body(bodyId);
+    return (body && body.spec && body.spec.convoy) || null;
+  },
+
+  /**
+   * Every shipment currently in custody, optionally scoped to one sector. Consumers (map, hud,
+   * traffic) read this instead of re-deriving a route: the record already knows where the freight
+   * is, whether it is embodied, and whether it is under threat.
+   */
+  carrierManifests(sectorId) {
+    const out = [];
+    for (const body of (this.state.claims && this.state.claims.bodies) || []) {
+      const carrier = body && body.spec && body.spec.convoy;
+      if (!carrier) continue;
+      if (sectorId && carrier.sectorId !== sectorId) continue;
+      out.push({
+        id: carrier.id,
+        bodyId: body.id,
+        name: carrier.name,
+        sectorId: carrier.sectorId,
+        custody: carrier.custody,
+        manifest: (carrier.manifest || []).map((line) => ({ ...line })),
+        qty: carrier.qty,
+        destStationId: carrier.destStationId,
+        pos: carrier.pos ? { ...carrier.pos } : null,
+        progress: carrier.progress,
+        materialized: carrier.materialized === true,
+        entityId: carrier.entityId,
+        interceptPhase: carrier.intercept ? carrier.intercept.phase : 'clear',
+      });
+    }
+    return out;
+  },
+
   // Serialization (save system delegates via serialize/deserialize). state.claims is plain JSON.
   // Bodies (including spec state) deep-copy so the snapshot can't alias live buffers. The
   // module-level _nextClaimId counter is NOT serialized — deserialize re-derives it from the
@@ -1549,7 +2240,7 @@ export const claims = {
       // versioned default: bodies from older saves have no spec — they stay unspecialized
       // Presence in the claims store is the ownership proof. Older saves predate the explicit bit.
       b.owned = true;
-      b.spec = 'spec' in b ? this._normalizeSpec(b.spec) : null;
+      b.spec = 'spec' in b ? this._normalizeSpec(b.spec, b) : null;
       const infrastructure = this._normalizeTravelInfrastructure(b.infrastructure, b);
       if (infrastructure) b.infrastructure = infrastructure;
       else delete b.infrastructure;
