@@ -2021,9 +2021,10 @@ function aimWorldFor(player, state, range) {
 export function isAttachable(entity, playerId) {
   if (!entity || !entity.alive || !entity.pos || entity.id === playerId) return false;
   if (!Number.isFinite(entity.pos.x) || !Number.isFinite(entity.pos.z)) return false;
-  // Plan 19 neutral wildlife is physical for flight/contact, not a Massline pickup. Excluding it at
-  // the acquisition owner also keeps the hover HUD from presenting an animal as PICK/READY salvage.
-  if (entity.data?.neutralWildlife === true) return false;
+  // Plan 19 wildlife and free-floating anomaly matter are physical for flight/contact, not
+  // Massline pickups. Excluding them at the acquisition owner also keeps the hover HUD from
+  // presenting either as PICK/READY salvage.
+  if (entity.data?.neutralWildlife === true || entity.data?.neutralAnomalyBody === true) return false;
   if (entity.data?.masslineTetherable === false || entity.flags?.masslineTetherable === false) return false;
   const explicitlyTetherable = entity.data?.masslineTetherable === true
     || entity.flags?.masslineTetherable === true;

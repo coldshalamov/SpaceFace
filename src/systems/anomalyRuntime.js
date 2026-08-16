@@ -14,19 +14,22 @@ import {
   ION_STORM_POCKET,
   ORCUS_DRIFTER_SHOAL,
   ORCUS_GRAVITY_EDDY,
+  PALLAS_CRYSTAL_SHOAL,
   SCAVENGER_SWARM,
   anomalySiteForSector,
+  crystalShoalForSector,
   debrisRiverForSector,
   drifterShoalForSector,
   ionStormForSector,
 } from '../data/anomalySites.js';
+import { seededAsteroidMotion } from '../data/asteroidMotion.js';
 import { fieldsFlag } from '../data/fields.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { SECTORS } from '../data/sectors.js';
 import { SECTOR_ZONES } from '../data/sectorZones.js';
 import { Masks } from '../core/entity.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
-import { hash32 } from '../core/rng.js';
+import { hash32, mulberry32 } from '../core/rng.js';
 
 const LEDGER_SCHEMA = 1;
 const LEDGER_KIND = 'anomaly_runtime_ledger';
@@ -89,6 +92,17 @@ function resolveZoneVolume(site) {
     radius: zone.radius,
     zoneId: zone.id,
   });
+}
+
+function resolveCrystalShoalAnchor(site) {
+  const volume = resolveZoneVolume(site);
+  const sector = site && SECTORS.find((candidate) => candidate && candidate.id === site.sectorId);
+  const iceField = sector && Array.isArray(sector.fields)
+    ? sector.fields.find((candidate) => candidate && candidate.id === site.iceFieldId
+      && candidate.type === site.iceFieldType)
+    : null;
+  if (!volume || !iceField) return null;
+  return Object.freeze({ ...volume, iceFieldId: iceField.id, iceFieldType: iceField.type });
 }
 
 function resolveRiverBasis(site) {
@@ -226,6 +240,12 @@ function drifterBodies(state) {
     && entity.data.drifterShoalId === ORCUS_DRIFTER_SHOAL.id);
 }
 
+function crystalShoalBodies(state) {
+  return (state && state.entityList || []).filter((entity) => entity && entity.alive !== false
+    && entity.type === 'drone' && entity.data
+    && entity.data.crystalShoalId === PALLAS_CRYSTAL_SHOAL.id);
+}
+
 function stableUnit(...parts) {
   return hash32(...parts) / 0x100000000;
 }
@@ -248,6 +268,38 @@ function drifterSlotPose(site, anchor, state, slot) {
       z: anchor.z + Math.sin(angle) * radius,
     }),
     vel: Object.freeze({ x: -Math.sin(angle) * speed, z: Math.cos(angle) * speed }),
+  });
+}
+
+function crystalSlotPose(site, anchor, state, slot) {
+  const seed = seedOf(state);
+  const stableId = `${site.id}:slot:${slot}`;
+  const angleJitter = (stableUnit(seed, site.id, slot, 'angle-jitter') - 0.5)
+    * Math.PI / site.count * 0.72;
+  const angle = slot / site.count * Math.PI * 2 + angleJitter;
+  const radialT = stableUnit(seed, site.id, slot, 'radius');
+  const bodyT = stableUnit(seed, site.id, slot, 'body-radius');
+  const massT = stableUnit(seed, site.id, slot, 'mass');
+  const radius = site.spreadRadiusMin
+    + (site.spreadRadiusMax - site.spreadRadiusMin) * radialT;
+  const bodyRadius = site.radiusMin + (site.radiusMax - site.radiusMin) * bodyT;
+  const motion = seededAsteroidMotion(seed, stableId, site.iceFieldId, bodyRadius, {
+    hash32,
+    mulberry32,
+  });
+  return Object.freeze({
+    stableId,
+    angle,
+    bodyRadius,
+    mass: site.massMin + (site.massMax - site.massMin) * massT,
+    pos: Object.freeze({
+      x: anchor.x + Math.cos(angle) * radius,
+      z: anchor.z + Math.sin(angle) * radius,
+    }),
+    vel: Object.freeze({ x: motion.drift.x, z: motion.drift.z }),
+    rot: stableUnit(seed, site.id, slot, 'rotation') * Math.PI * 2,
+    angVel: motion.angVel,
+    motionProfileId: motion.profileId,
   });
 }
 
@@ -334,6 +386,9 @@ export const anomalyRuntime = {
     this._anchor = { x: 0, z: 0 };
     this._drifterAnnounced = false;
     this._drifterUglinessSpoken = false;
+    this._crystalShoalAnnounced = false;
+    this._crystalChimeLastAt = new Map();
+    this._crystalChimeGlobalAt = -Infinity;
     this._riverBodies = new Map();
     this._riverAnnounced = false;
     this._scavenger = null;
@@ -351,6 +406,7 @@ export const anomalyRuntime = {
         this.bus.on('salvage:completed', (payload) => this._onSalvageCompleted(payload)),
         this.bus.on('aftermathWreck:spawned', (payload) => this._onFreshWreckSpawned(payload)),
         this.bus.on('projectile:hit', (payload) => this._onDrifterProjectileHit(payload)),
+        this.bus.on('physics:impact', (payload) => this._onCrystalImpact(payload)),
       ];
     }
   },
@@ -370,6 +426,7 @@ export const anomalyRuntime = {
     const activeRoute = !!(state && state.mode === 'flight');
     this._updateEddy(activeRoute ? anomalySiteForSector(sectorId) : null, state);
     this._updateDrifterShoal(activeRoute ? drifterShoalForSector(sectorId) : null, state);
+    this._updateCrystalShoal(activeRoute ? crystalShoalForSector(sectorId) : null, state);
     this._updateDebrisRiver(activeRoute ? debrisRiverForSector(sectorId) : null, state);
     this._updateScavengerSwarm(activeRoute, state);
     this._updateIonStorm(activeRoute ? ionStormForSector(sectorId) : null, state);
@@ -392,6 +449,11 @@ export const anomalyRuntime = {
         wildlifeId: ORCUS_DRIFTER_SHOAL.id,
         liveBodies: drifterBodies(this.state).length,
         uglinessSpoken: !!this._drifterUglinessSpoken,
+      }),
+      crystalShoal: Object.freeze({
+        anomalyId: PALLAS_CRYSTAL_SHOAL.id,
+        liveBodies: crystalShoalBodies(this.state).length,
+        announced: !!this._crystalShoalAnnounced,
       }),
       debrisRiver: Object.freeze({
         anomalyId: ASHFALL_DEBRIS_RIVER.id,
@@ -557,6 +619,175 @@ export const anomalyRuntime = {
         presentation: 'physical_drifter_shoal',
       });
     }
+  },
+
+  _updateCrystalShoal(site, state) {
+    if (!site || !this.helpers || typeof this.helpers.spawnEntity !== 'function') {
+      this._clearCrystalShoal(!site ? 'inactive_sector' : 'spawn_owner_missing');
+      return;
+    }
+    const anchor = resolveCrystalShoalAnchor(site);
+    if (!anchor) {
+      this._clearCrystalShoal('canonical_ice_field_missing');
+      return;
+    }
+
+    const bySlot = new Map();
+    for (const body of crystalShoalBodies(state)) {
+      const slot = whole(body.data && body.data.crystalSlot, -1);
+      if (slot < 0 || slot >= site.count) {
+        this._removeEntity(body);
+        continue;
+      }
+      if (!bySlot.has(slot)) bySlot.set(slot, body);
+      else this._removeEntity(body);
+    }
+    for (let slot = 0; slot < site.count; slot++) {
+      if (!bySlot.has(slot)) bySlot.set(slot, this._spawnCrystalShoalBody(site, anchor, state, slot));
+    }
+
+    const video = state && state.settings && state.settings.video || {};
+    const accessibility = state && state.settings && state.settings.accessibility || {};
+    for (const body of bySlot.values()) {
+      if (!body || body.alive === false || !body.data) continue;
+      body.data.crystalPresentationTime = simTimeOf(state);
+      body.data.crystalMotionReduce = !!(video.motionReduce || accessibility.reducedMotion);
+      body.data.crystalFlashReduce = !!(
+        video.flashReduce || accessibility.flashReduce || accessibility.reducedFlash
+      );
+    }
+
+    if (!this._crystalShoalAnnounced) {
+      this._crystalShoalAnnounced = true;
+      this.bus && this.bus.emit && this.bus.emit('anomaly:registered', {
+        anomalyId: site.id,
+        sectorId: site.sectorId,
+        zoneId: site.zoneId,
+        iceFieldId: site.iceFieldId,
+        bodyCount: site.count,
+        presentation: 'physical_crystal_singing_field',
+      });
+    }
+  },
+
+  _spawnCrystalShoalBody(site, anchor, state, slot) {
+    const pose = crystalSlotPose(site, anchor, state, slot);
+    return this.helpers.spawnEntity({
+      type: 'drone',
+      team: 2,
+      factionId: null,
+      pos: { x: pose.pos.x, z: pose.pos.z },
+      vel: { x: pose.vel.x, z: pose.vel.z },
+      rot: pose.rot,
+      angVel: pose.angVel,
+      radius: pose.bodyRadius,
+      mass: pose.mass,
+      hull: 1,
+      hullMax: 1,
+      collides: true,
+      collisionMask: Masks.SHIP | Masks.ASTEROID | Masks.WRECK | Masks.PAYLOAD,
+      flags: { invuln: true, persistent: false },
+      physicsBody: {
+        schemaVersion: 1,
+        radius: pose.bodyRadius,
+        mass: pose.mass,
+        inertiaY: Math.max(1, pose.mass * pose.bodyRadius * pose.bodyRadius * 0.5),
+        dynamic: true,
+        ccd: false,
+        shape: 'ball',
+        material: 'rock',
+        revision: 0,
+      },
+      data: {
+        kind: 'crystal_shoal_growth',
+        parentType: 'environment',
+        name: 'Singing Crystal Growth',
+        label: 'Singing Crystal Growth',
+        scanLabel: 'Singing Crystal Growth',
+        neutralAnomalyBody: true,
+        crystalShoalId: site.id,
+        crystalSlot: slot,
+        anomalyStableId: pose.stableId,
+        sectorId: site.sectorId,
+        zoneId: site.zoneId,
+        iceFieldId: site.iceFieldId,
+        motionProfileId: pose.motionProfileId,
+        crystalPresentationTime: simTimeOf(state),
+        crystalMotionReduce: false,
+        crystalFlashReduce: false,
+        worldSiteTargetable: false,
+        targetable: false,
+        masslineTetherable: false,
+        noHudHealth: true,
+        ordinaryRewardsSuppressed: true,
+        noOrdinaryRewards: true,
+        bountyCr: 0,
+        loot: [],
+        weapons: [],
+      },
+    });
+  },
+
+  _onCrystalImpact(payload) {
+    if (!payload || payload.aId == null || payload.bId == null || !(finite(payload.dp) > 0)) return false;
+    const state = this.state;
+    if (!state || state.mode !== 'flight'
+      || state.world && state.world.currentSectorId !== PALLAS_CRYSTAL_SHOAL.sectorId) return false;
+    const a = state.entities && state.entities.get(payload.aId);
+    const b = state.entities && state.entities.get(payload.bId);
+    const crystal = a && a.data && a.data.crystalShoalId === PALLAS_CRYSTAL_SHOAL.id
+      ? a
+      : b && b.data && b.data.crystalShoalId === PALLAS_CRYSTAL_SHOAL.id ? b : null;
+    const other = crystal === a ? b : crystal === b ? a : null;
+    if (!crystal || crystal.alive === false || !other || other.alive === false) return false;
+    const debrisContact = other.type === 'asteroid' || other.type === 'wreck'
+      || other.type === 'payload' || other.type === 'pickup' || other.type === 'heavyPart';
+    if (other.id !== state.playerId && !debrisContact) return false;
+
+    const now = simTimeOf(state);
+    const stableId = String(crystal.data.anomalyStableId || '');
+    const lastBodyAt = this._crystalChimeLastAt.get(stableId);
+    if (Number.isFinite(lastBodyAt) && now - lastBodyAt < PALLAS_CRYSTAL_SHOAL.chime.cooldownS) return false;
+    if (now - this._crystalChimeGlobalAt < PALLAS_CRYSTAL_SHOAL.chime.globalCadenceS) return false;
+    this._crystalChimeLastAt.set(stableId, now);
+    this._crystalChimeGlobalAt = now;
+
+    const slot = whole(crystal.data.crystalSlot);
+    const rates = PALLAS_CRYSTAL_SHOAL.chime.rates;
+    const rate = rates[slot % rates.length];
+    const position = {
+      x: finite(payload.pos && payload.pos.x, crystal.pos.x),
+      z: finite(payload.pos && payload.pos.z, crystal.pos.z),
+    };
+    const receipt = Object.freeze({
+      anomalyId: PALLAS_CRYSTAL_SHOAL.id,
+      sectorId: PALLAS_CRYSTAL_SHOAL.sectorId,
+      crystalId: crystal.id,
+      stableId,
+      slot,
+      contactEntityId: other.id,
+      contactType: other.id === state.playerId ? 'player' : other.type,
+      physicsBackend: String(payload.backend || 'unknown'),
+      tick: whole(payload.tick, whole(state.tick)),
+      dp: finite(payload.dp),
+      position: Object.freeze(position),
+      audioRecipeId: 'sfx_vent_chime',
+      rate,
+      reward: false,
+      damage: false,
+    });
+    this.bus && this.bus.emit && this.bus.emit('anomaly:crystalChime', receipt);
+    this.bus && this.bus.emit && this.bus.emit('audio:cue', {
+      id: receipt.audioRecipeId,
+      cueId: 'anomaly.crystal_shoal.contact',
+      position,
+      gain: PALLAS_CRYSTAL_SHOAL.chime.gain,
+      rate,
+      importance: 0.2,
+      sourceEvent: 'anomaly:crystalChime',
+      sourceEntityId: crystal.id,
+    });
+    return true;
   },
 
   _spawnDrifterBody(site, anchor, state, slot) {
@@ -1181,6 +1412,20 @@ export const anomalyRuntime = {
     this._drifterAnnounced = false;
   },
 
+  _clearCrystalShoal(why) {
+    const hadBodies = crystalShoalBodies(this.state).length > 0;
+    for (const body of crystalShoalBodies(this.state)) this._removeEntity(body);
+    if ((hadBodies || this._crystalShoalAnnounced) && this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('anomaly:unregistered', {
+        anomalyId: PALLAS_CRYSTAL_SHOAL.id,
+        why,
+      });
+    }
+    this._crystalShoalAnnounced = false;
+    this._crystalChimeLastAt.clear();
+    this._crystalChimeGlobalAt = -Infinity;
+  },
+
   _clearIonStorm(why) {
     const hadMarker = ionStormMarkers(this.state).length > 0;
     for (const marker of ionStormMarkers(this.state)) this._removeEntity(marker);
@@ -1199,6 +1444,7 @@ export const anomalyRuntime = {
   _clearTransient(why, options) {
     this._clearEddy(why);
     this._clearDrifterShoal(why);
+    this._clearCrystalShoal(why);
     this._clearRiver(why, options);
     this._clearScavenger(why);
     this._clearIonStorm(why);

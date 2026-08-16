@@ -396,9 +396,10 @@ function appendEntityIndex(index, e) {
       break;
     case 'drone':
       index.drones.push(e);
-      // Plan 19 wildlife borrows the proven drone physics category only. It must not leak into
-      // craft/HP rosters that feed combat, target panels, AI, or ordinary reward assumptions.
-      if (!(e.data && e.data.neutralWildlife === true)) {
+      // Plan 19 wildlife and free-floating anomaly matter borrow the proven drone physics category
+      // only. Neither may leak into craft/HP rosters that feed combat, target panels, AI, or
+      // ordinary reward assumptions. Ordinary drones retain the exact prior membership.
+      if (!(e.data && (e.data.neutralWildlife === true || e.data.neutralAnomalyBody === true))) {
         index.shipLike.push(e);
         index.damageables.push(e);
       }

@@ -41,6 +41,32 @@ export const ORCUS_DRIFTER_SHOAL = Object.freeze({
   uglinessBark: 'ANCHOR: Easy. They were not hurting anybody.',
 });
 
+// One singing field in the whole graph, rooted in Pallas' canonical ice-bearing Independent Seams
+// and its existing f_pallas_2 ice field. Runtime verifies both records before it materializes the
+// transient growths. The bodies borrow the shared drift-shear profile and Rapier contact; nothing
+// here defines a force, damage packet, resource yield, or reward.
+export const PALLAS_CRYSTAL_SHOAL = Object.freeze({
+  id: 'anomaly_pallas_crystal_shoal',
+  name: 'Pallas Singing Field',
+  sectorId: 'sector_pallas_drift',
+  zoneId: 'zone_pallas_belt',
+  iceFieldId: 'f_pallas_2',
+  iceFieldType: 'ast_icy',
+  count: 9,
+  radiusMin: 7.5,
+  radiusMax: 13.5,
+  massMin: 16,
+  massMax: 34,
+  spreadRadiusMin: 88,
+  spreadRadiusMax: 330,
+  chime: Object.freeze({
+    cooldownS: 0.72,
+    globalCadenceS: 0.12,
+    gain: 0.42,
+    rates: Object.freeze([0.72, 0.81, 0.9, 1, 1.12, 1.26]),
+  }),
+});
+
 // One authored river in the whole graph. The endpoints straddle Ashfall's existing debris hazard;
 // runtime verifies that canonical hazard before materializing anything. Each body owns a fixed,
 // existing commodity pool. No roll is performed on entry, load, or lap, so the moving landmark can
@@ -123,6 +149,11 @@ export function anomalySiteForSector(sectorId) {
 /** The one authored living shoal, or null outside its rare canonical sector. */
 export function drifterShoalForSector(sectorId) {
   return sectorId === ORCUS_DRIFTER_SHOAL.sectorId ? ORCUS_DRIFTER_SHOAL : null;
+}
+
+/** The one authored singing crystal field, or null outside its rare canonical ice-belt sector. */
+export function crystalShoalForSector(sectorId) {
+  return sectorId === PALLAS_CRYSTAL_SHOAL.sectorId ? PALLAS_CRYSTAL_SHOAL : null;
 }
 
 /** The one authored moving debris site for a sector, or null outside its rare canonical sector. */
