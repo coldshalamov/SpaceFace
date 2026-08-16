@@ -6,6 +6,12 @@
 // Export: techTreeScreen  (id 'techTree'). No 'three' import.
 
 import { TECH_NODES } from '../../data/tech.js';
+import {
+  TECH_BRANCHES,
+  featGateStatus,
+  techNodeVisible,
+  techRespecPlan,
+} from '../../data/techProgression.js';
 import { SHIPS } from '../../data/ships.js';
 import { MODULES } from '../../data/modules.js';
 import { WEAPONS } from '../../data/weapons.js';
@@ -13,12 +19,7 @@ import { escapeHtml } from '../comms.js';
 
 // Branch -> column index and accent colour. The DAG is laid out as columns by branch,
 // rows by topological depth (longest prereq chain).
-const BRANCHES = [
-  { id: 'combat',    label: 'Combat',    color: '#ff5470' },
-  { id: 'industry',  label: 'Industry',  color: '#ffb347' },
-  { id: 'drives',    label: 'Drives',    color: '#39d0ff' },
-  { id: 'logistics', label: 'Logistics', color: '#7af7d0' },
-];
+const BRANCHES = TECH_BRANCHES;
 const BRANCH_INDEX = {};
 BRANCHES.forEach((b, i) => { BRANCH_INDEX[b.id] = i; });
 const BRANCH_COLOR = {};
@@ -58,6 +59,10 @@ const CSS = `
 #sf-techtree .tt-actions button { width: 100%; padding: 9px; }
 #sf-techtree .tt-unlock { background: rgba(57,208,255,.12); border-color: var(--accent); color: #fff;
   text-shadow: 0 0 8px rgba(57,208,255,.6); }
+#sf-techtree .tt-respec { background: rgba(255,179,71,.08); border-color: rgba(255,179,71,.7); color: var(--ink); }
+#sf-techtree .tt-feats { padding: 8px 10px; border: 1px solid rgba(122,247,208,.22); border-radius: 6px;
+  color: var(--ink-dim); font-size: .78em; line-height: 1.5; background: rgba(122,247,208,.04); }
+#sf-techtree .tt-feats b { color: var(--good); }
 #sf-techtree .tt-foot { display: flex; gap: 16px; padding: 8px 18px; border-top: 1px solid var(--panel-edge);
   font-family: var(--mono); font-size: .72em; color: var(--ink-mute); }
 #sf-techtree .tt-foot span { display: inline-flex; align-items: center; gap: 5px; }
@@ -123,6 +128,16 @@ function missingCostParts(cost, player) {
 export function describeTechNodeReadiness(node, state, nodes = TECH_NODES) {
   if (!node) return { state: 'missing', actionLabel: 'Select a node', actionTitle: 'Select a tech node to inspect it.' };
   const player = state && state.player || {};
+  const featGate = featGateStatus(node, player);
+  if (!featGate.revealed) {
+    return {
+      state: 'hidden',
+      actionLabel: 'Unrecorded field work',
+      actionTitle: 'This capstone has not revealed itself yet.',
+      missingPrereqs: [],
+      missingCost: [],
+    };
+  }
   const researched = researchedSetFrom(player.researchedNodes || []);
   const prereqs = node.prereqs || [];
   const missingPrereqs = prereqs.filter((id) => !researched.has(id)).map((id) => nodeName(id, nodes));
@@ -338,6 +353,7 @@ export const techTreeScreen = {
   refresh(ctx, opts = {}) {
     if (ctx) this._ctx = ctx;
     if (!this._root) return;
+    this._syncLayout();
     this._syncHeader();
     const sidebarSig = this._sidebarSignature();
     if (!opts.periodic || sidebarSig !== this._sidebarSig) {
@@ -353,10 +369,23 @@ export const techTreeScreen = {
 
   // ---- internals ----------------------------------------------------------
   _nodes() {
+    return this._allNodes().filter((node) => techNodeVisible(node, this._ctx.state.player));
+  },
+
+  _allNodes() {
     const st = this._ctx.state;
     const c = st.content && st.content.techNodes;
-    if (c && c.length) return c;
-    return TECH_NODES;
+    return c && c.length ? c : TECH_NODES;
+  },
+
+  _syncLayout() {
+    const nodes = this._nodes();
+    const signature = nodes.map((node) => node.id).join('|');
+    if (signature === this._nodeLayoutSignature) return;
+    this._nodeLayoutSignature = signature;
+    this._layout = buildLayout(nodes);
+    if (this._selectedId && !this._layout.byId[this._selectedId]) this._selectedId = null;
+    this._sizeCanvas();
   },
 
   _researched() {
@@ -566,6 +595,10 @@ export const techTreeScreen = {
           return `<div class="${ok ? 'ok' : 'no'}">${ok ? '✓' : '✗'} ${escapeHtml(pn)}</div>`;
         }).join('')
       : `<div class="ok">No prerequisites</div>`;
+    const featGate = featGateStatus(n, st.player);
+    const featHtml = featGate.gated
+      ? `<div class="tt-feats"><b>THE TREE NOTICED</b><br>${featGate.feats.map((feat) => `${feat.unlocked ? '✓' : '·'} ${escapeHtml(feat.label)}`).join('<br>')}</div>`
+      : '';
 
     sel.innerHTML = `
       <div class="tt-sel-name">${escapeHtml(n.name)}</div>
@@ -576,21 +609,40 @@ export const techTreeScreen = {
         <span class="rp${rp >= (cost.rp || 0) ? '' : ' bad'}">${cost.rp || 0} RP</span>
       </div>
       <div class="tt-unlocks">${formatUnlocks(n.unlocks)}</div>
+      ${featHtml}
       <div class="tt-prereq"><b style="color:var(--ink-dim)">Prerequisites</b>${prereqHtml}</div>
     `;
 
+    let primaryAction = '';
     if (stt === 'researched') {
-      actions.innerHTML = disabledActionHtml(readiness);
+      primaryAction = disabledActionHtml(readiness);
     } else if (stt === 'locked') {
-      actions.innerHTML = disabledActionHtml(readiness);
+      primaryAction = disabledActionHtml(readiness);
     } else if (!canAfford) {
-      actions.innerHTML = disabledActionHtml(readiness);
+      primaryAction = disabledActionHtml(readiness);
     } else {
-      actions.innerHTML = `<button class="tt-unlock" data-act="unlock" title="${escapeHtml(readiness.actionTitle)}" aria-label="${escapeHtml(readiness.actionTitle)}">${escapeHtml(readiness.actionLabel)}</button>`;
+      primaryAction = `<button class="tt-unlock" data-act="unlock" title="${escapeHtml(readiness.actionTitle)}" aria-label="${escapeHtml(readiness.actionTitle)}">${escapeHtml(readiness.actionLabel)}</button>`;
     }
+    const respec = techRespecPlan(st.player && st.player.researchedNodes, n.branch, this._allNodes());
+    const docked = !!(st.ui && st.ui.docked === true && st.ui.dockedStationId);
+    const canPayRespec = creds >= respec.costCr;
+    const respecTitle = !docked
+      ? 'Dock at a station to respec research'
+      : !canPayRespec
+        ? `Respec requires ${fmtCr(respec.costCr)} cr`
+        : `Remove ${respec.removed.length} node${respec.removed.length === 1 ? '' : 's'} in ${n.branch} and any dependent research`;
+    const respecAction = respec.removed.length
+      ? `<button class="tt-respec" data-act="respec:${escapeHtml(n.branch)}" ${docked && canPayRespec ? '' : 'disabled'} title="${escapeHtml(respecTitle)}" aria-label="${escapeHtml(respecTitle)}">Respec ${escapeHtml(n.branch.toUpperCase())} · ${fmtCr(respec.costCr)} cr</button>`
+      : '';
+    actions.innerHTML = primaryAction + respecAction;
   },
 
   _onAction(act) {
+    if (typeof act === 'string' && act.startsWith('respec:')) {
+      this._ctx.bus.emit('ui:respecTech', { branch: act.slice('respec:'.length) });
+      this.refresh(this._ctx);
+      return;
+    }
     if (act !== 'unlock' || !this._selectedId) return;
     const n = this._nodes().find((x) => x.id === this._selectedId);
     if (!n) return;
@@ -618,6 +670,7 @@ export const techTreeScreen = {
       this._researchSignature(),
       Math.round(player.credits || 0),
       player.researchPoints || 0,
+      JSON.stringify(player.techProgression && player.techProgression.feats || {}),
       this._nodes().length,
     ].join('|');
   },
@@ -647,6 +700,7 @@ function formatUnlocks(u) {
   if (u.outpostConstruction) parts.push(`<b>Unlocks:</b> outpost construction`);
   if (u.extraDronePerBay) parts.push(`<b>+${u.extraDronePerBay}</b> drone per bay`);
   if (u.flags && u.flags.length) parts.push(`<b>Flags:</b> ${u.flags.map(escapeHtml).join(', ')}`);
+  if (u.verbs && u.verbs.length) parts.push(`<b>New verbs:</b> ${u.verbs.map((id) => escapeHtml(String(id).replace(/_/g, ' '))).join(', ')}`);
   return parts.length ? parts.join('<br>') : '<b>Effects:</b> —';
 }
 

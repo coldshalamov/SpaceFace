@@ -11,6 +11,15 @@ import { FLIGHT_TUNING } from '../data/flightTuning.js';
 import { WEAPONS } from '../data/weapons.js';
 import { MODULES } from '../data/modules.js';
 import { TECH_NODES, techDisplayName } from '../data/tech.js';
+import {
+  TECH_BRANCHES,
+  TECH_CAPSTONES,
+  TECH_EVENT_NAMES,
+  featGateStatus,
+  normalizeTechProgression,
+  reduceTechProgression,
+  techRespecPlan,
+} from '../data/techProgression.js';
 import { BEAMS } from '../data/mining.js';
 import { NEW_GAME } from '../data/newGameDefaults.js';
 import { SECTORS } from '../data/sectors.js';
@@ -803,11 +812,15 @@ export const ships = {
   name: 'ships',
 
   init(ctx) {
+    for (const unsubscribe of this._techProgressionUnsubs || []) unsubscribe();
     this.state = ctx.state;
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
     this._cargoMassRefreshPending = false;
     const bus = this.bus;
+    if (this.state.player.techProgression != null) {
+      this.state.player.techProgression = normalizeTechProgression(this.state.player.techProgression);
+    }
 
     // re-derive on fit/research changes coming from other systems
     bus.on('module:equipped', ({ shipId }) => this.recomputeEntity(shipId));
@@ -816,6 +829,9 @@ export const ships = {
     bus.on('cargo:changed', () => { this._cargoMassRefreshPending = true; });
     bus.on('cargo:massSettled', () => this.flushCargoMassRefresh());
     bus.on('save:loaded', () => {
+      if (this.state.player.techProgression != null) {
+        this.state.player.techProgression = normalizeTechProgression(this.state.player.techProgression);
+      }
       this.flushCargoMassRefresh();
       this.reconcileLivingHull({ announce: true });
       // Role identity is derived from the restored active hull. Publish once per Continue so the
@@ -844,7 +860,11 @@ export const ships = {
     bus.on('ui:fitModule', withShipworksAccess('outfit', (p) => this.fitModule(p)));
     bus.on('ui:unfitModule', withShipworksAccess('outfit', (p) => this.unfitModule(p)));
     bus.on('ui:unlockTech', (p) => this.unlockTech((p && p.nodeId) || null));
+    bus.on('ui:respecTech', (p) => this.respecTech(p && p.branch));
     bus.on('ui:setShipAppearance', (p) => this.setShipAppearance(p || {}));
+    this._techProgressionUnsubs = TECH_EVENT_NAMES.map((eventName) => bus.on(eventName, (payload) => {
+      this.recordTechProgress(eventName, payload || {});
+    }));
     // Canonical gameplay receipts feed a small per-owned-ship history record. Presentation gets a
     // rare in-place update event; none of these events requests a ship rebuild or asset admission.
     bus.on('lossLedger:recorded', (p) => {
@@ -1065,6 +1085,7 @@ export const ships = {
     const p = this.state.player;
     if (p.researchedNodes.includes(nodeId)) return false;
     for (const pre of node.prereqs) if (!p.researchedNodes.includes(pre)) return false;
+    if (!featGateStatus(node, p).revealed) return false;
     if (p.credits < node.cost.credits) return false;
     if ((p.researchPoints || 0) < node.cost.rp) return false;
     return true;
@@ -1088,6 +1109,150 @@ export const ships = {
     this.bus.emit('toast', { text: 'Researched ' + (node.name || nodeId), kind: 'success', ttl: 3 });
     this.recomputeActiveShip();
     return true;
+  },
+
+  /** Quietly reduce real production receipts into the player's durable feat record. Individual
+   * counters never toast or expose a checklist. Completing all records in a fantasy reveals its
+   * capstone once, with the intended "the tree noticed" surprise. */
+  recordTechProgress(eventName, payload) {
+    const p = this.state && this.state.player;
+    if (!p) return false;
+    const result = reduceTechProgression(p.techProgression, eventName, payload || {}, {
+      playerId: this.state.playerId,
+      tick: this.state.tick,
+      tetherTargetId: p.tether && p.tether.active ? p.tether.targetId : null,
+    });
+    if (!result.changed) return false;
+    p.techProgression = result.progression;
+    for (const branchId of result.newlyRevealedBranches) {
+      const branch = TECH_BRANCHES.find((entry) => entry.id === branchId);
+      const node = TECH_BY_ID.get(TECH_CAPSTONES[branchId]);
+      this.bus.emit('tech:featGateRevealed', {
+        branch: branchId,
+        nodeId: node && node.id,
+        featIds: Array.isArray(node && node.featGate) ? node.featGate.slice() : [],
+      });
+      this.bus.emit('toast', {
+        text: `The tree noticed: ${(branch && branch.label) || branchId} capstone revealed.`,
+        kind: 'success',
+        ttl: 4,
+      });
+    }
+    return true;
+  },
+
+  /** Paid branch respec at a physical station. It removes dependent researched nodes as a closure,
+   * returns their RP through the missions grant writer, and unfits modules whose license vanished.
+   * Efficiency deltas are subtracted exactly instead of rebuilding from 1 and erasing legacy or
+   * non-tech bonuses. */
+  respecTech(branch) {
+    const state = this.state;
+    const p = state && state.player;
+    if (!p || !state.ui || state.ui.docked !== true || !state.ui.dockedStationId) {
+      this.bus.emit('toast', { text: 'Dock at a station to respec research', kind: 'error', ttl: 3 });
+      return false;
+    }
+    const plan = techRespecPlan(p.researchedNodes, branch, TECH_NODES);
+    if (!plan.removed.length) {
+      this.bus.emit('toast', { text: 'Nothing researched in that branch', kind: 'info', ttl: 2 });
+      return false;
+    }
+    if ((p.credits || 0) < plan.costCr) {
+      this.bus.emit('toast', { text: `Respec requires ${plan.costCr.toLocaleString()} cr`, kind: 'error', ttl: 3 });
+      return false;
+    }
+    const removed = new Set(plan.removed);
+    const unfitPlan = this._respecUnfitPlan(removed);
+    if (!unfitPlan.ok) {
+      this.bus.emit('toast', { text: unfitPlan.reason, kind: 'error', ttl: 3 });
+      return false;
+    }
+
+    this.bus.emit('economy:chargeCredits', { amount: plan.costCr, reason: `tech_respec:${branch}` });
+    const refundRp = plan.removed.reduce((sum, id) => sum + Math.max(0, Number(TECH_BY_ID.get(id)?.cost?.rp) || 0), 0);
+    p.researchedNodes = plan.kept;
+    this._removeTechEffects(plan.removed);
+    this._applyRespecUnfits(unfitPlan.rows);
+    if (refundRp > 0) {
+      this.bus.emit('research:grant', {
+        amount: refundRp,
+        source: 'tech_respec',
+        receiptId: `tech-respec:${branch}:${state.tick | 0}:${plan.removed.slice().sort().join(',')}`,
+      });
+    }
+    this.recomputeActiveShip();
+    this.bus.emit('tech:respecced', {
+      branch,
+      removedNodeIds: plan.removed.slice(),
+      costCr: plan.costCr,
+      refundedRp: refundRp,
+      unfittedModuleIds: unfitPlan.rows.map((row) => row.defId),
+      stationId: state.ui.dockedStationId,
+    });
+    this.bus.emit('toast', {
+      text: `${branchLabel(branch)} research respecced · ${refundRp} RP returned`,
+      kind: 'success',
+      ttl: 4,
+    });
+    return true;
+  },
+
+  _respecUnfitPlan(removed) {
+    const p = this.state.player;
+    const rows = [];
+    for (let shipIndex = 0; shipIndex < (p.ownedShips || []).length; shipIndex += 1) {
+      const owned = p.ownedShips[shipIndex];
+      for (let slotIndex = 0; slotIndex < (owned && owned.fittings || []).length; slotIndex += 1) {
+        const defId = owned.fittings[slotIndex];
+        const def = defById(defId);
+        if (def && def.requiresTech && removed.has(def.requiresTech)) rows.push({ shipIndex, slotIndex, defId });
+      }
+    }
+    const active = this.ownedShip();
+    if (active && p.cargo && rows.some((row) => row.shipIndex === p.activeShipIndex)) {
+      const fittings = active.fittings.slice();
+      for (const row of rows) if (row.shipIndex === p.activeShipIndex) fittings[row.slotIndex] = null;
+      const derived = getDerivedStats(active.defId, fittings, p);
+      if ((p.cargo.usedVolume || 0) > derived.cargoCap) {
+        return { ok: false, reason: 'Cargo would overflow after respec — jettison first', rows: [] };
+      }
+    }
+    return { ok: true, reason: null, rows };
+  },
+
+  _applyRespecUnfits(rows) {
+    const p = this.state.player;
+    if (!Array.isArray(p.moduleInventory)) p.moduleInventory = [];
+    for (const row of rows) {
+      const owned = p.ownedShips[row.shipIndex];
+      if (!owned || owned.fittings[row.slotIndex] !== row.defId) continue;
+      owned.fittings[row.slotIndex] = null;
+      p.moduleInventory.push({ instanceId: this.nextInstanceId(), defId: row.defId });
+      this.bus.emit('module:unequipped', {
+        shipId: this.shipIdFor(row.shipIndex),
+        slotIndex: row.slotIndex,
+        defId: row.defId,
+        reason: 'tech_respec',
+      });
+    }
+  },
+
+  _removeTechEffects(removedNodeIds) {
+    const p = this.state.player;
+    const efficiencyMods = p.efficiencyMods && typeof p.efficiencyMods === 'object'
+      ? p.efficiencyMods
+      : (p.efficiencyMods = {});
+    for (const id of removedNodeIds) {
+      const efficiency = TECH_BY_ID.get(id)?.unlocks?.efficiency;
+      for (const [key, delta] of Object.entries(efficiency || {})) {
+        const current = Number(efficiencyMods[key]);
+        efficiencyMods[key] = Math.max(0, (Number.isFinite(current) ? current : 1) - (Number(delta) || 0));
+      }
+    }
+    p.droneTierCap = (p.researchedNodes || []).reduce((cap, id) => {
+      const value = Number(TECH_BY_ID.get(id)?.unlocks?.droneTierCap);
+      return Number.isFinite(value) ? Math.max(cap, value) : cap;
+    }, 0);
   },
 
   /** Apply a tech node's unlock effects we own: efficiencyMods + droneTierCap. (Ship/module buy
@@ -1423,6 +1588,9 @@ export const ships = {
     p.moduleInventory = [];
     p.researchedNodes = (NEW_GAME.researchedNodes || []).slice();
     p.researchPoints = NEW_GAME.researchPoints || 0;
+    // Keep the deterministic empty route byte-stable. The first earned feat lazily materializes
+    // this saved subtree; New Game only has to remove prior-run progress.
+    delete p.techProgression;
     p.droneTierCap = 0;
     p.efficiencyMods = { miningYieldMult: 1, shieldRegenMult: 1, energyRegenMult: 1, cargoCapMult: 1, tradeFeeMult: 1 };
     // One-time New Game role packet for presentationAdapters (no permanent HUD, no mission text).
@@ -1438,6 +1606,10 @@ export const ships = {
 // ---- small utils ---------------------------------------------------------------------------
 
 function clamp01(x) { return x < 0 ? 0 : x > 1 ? 1 : x; }
+
+function branchLabel(branchId) {
+  return TECH_BRANCHES.find((entry) => entry.id === branchId)?.label || String(branchId || 'Research');
+}
 
 /** Best-effort identity when a save carries a hull outside the live lattice (legacy / missing). */
 function legacyRoleIdentity(defId) {

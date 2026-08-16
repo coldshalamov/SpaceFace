@@ -38,10 +38,23 @@ const EMITTER_MATERIAL = 'projectile'; // ghost collider: projectile sweeps can 
 const MASS_STATE_TYPES = new Set(['ship', 'drone', 'payload', 'asteroid', 'wreck', 'pickup']);
 const MASS_STATE_DURATION_TICKS = 90;
 const MASS_STATE_REFRESH_LEAD_TICKS = 30;
+export const PAIRED_WELL_TECH_ID = 'tech_flagship_command';
+export const PAIRED_WELL_ARM_S = 1.25;
 
 function finite(value, fallback = 0) { return Number.isFinite(value) ? value : fallback; }
 function positive(value, fallback) { return Number.isFinite(value) && value > 0 ? value : fallback; }
 function nowOf(state) { return Number.isFinite(state.simTime) ? state.simTime : state.tick / 60; }
+
+function hasPairedWellAuthority(state) {
+  const researched = state && state.player && state.player.researchedNodes;
+  return Array.isArray(researched) && researched.includes(PAIRED_WELL_TECH_ID);
+}
+
+function deployedOfKind(rt, kind) {
+  return Object.values(rt && rt.deployed || {})
+    .filter((rec) => rec && rec.kind === kind)
+    .sort((a, b) => a.deployedAt - b.deployedAt || String(a.fieldId).localeCompare(String(b.fieldId)));
+}
 
 function defaultRuntime() {
   return {
@@ -361,7 +374,7 @@ export const fields = {
     if (this._deployBlocked(state, player)) return;
     const def = FIELD_DEFS[kind];
     const now = nowOf(state);
-    const cd = rt.cooldowns[kind] || 0;
+    const cd = this._radialReadyAt(state, rt, kind);
     if (now < cd) {
       rt.lastDenial = { kind, reason: 'cooldown', at: now, readyAt: cd };
       this.bus.emit('fields:deployDenied', { kind, reason: 'cooldown', readyAt: cd });
@@ -385,7 +398,10 @@ export const fields = {
       cz = player.pos.z + dir.z * dist;
     }
 
-    // Enforce the active-field cap by retiring the oldest deployed emitter (bounded work + read).
+    // Ordinary pilots replace their one live Well. Paired-Well Command raises that physical
+    // authority to two separately aimed emitters; a third replaces the oldest so the verb stays
+    // legible and bounded. The global cap remains the final kernel safety boundary.
+    this._enforcePlayerRadialCap(state, rt, kind);
     this._enforceCap(state, rt);
 
     const spawnEntity = this.helpers && this.helpers.spawnEntity;
@@ -431,11 +447,21 @@ export const fields = {
       team: player.team,
       createdAt: now,
     });
+    const pairSlot = kind === 'well' ? deployedOfKind(rt, kind).length + 1 : null;
     rt.deployed[fieldId] = { fieldId, kind, emitterId: emitter.id, deployedAt: now, expireAt };
     rt.cooldowns[kind] = now + def.cooldownS;
     rt.lastDenial = null;
 
-    this.bus.emit('fields:deployed', { fieldId, kind, sourceId: emitter.id, center: { x: cx, z: cz }, radius: def.radius, expireAt });
+    this.bus.emit('fields:deployed', {
+      fieldId,
+      kind,
+      sourceId: emitter.id,
+      center: { x: cx, z: cz },
+      radius: def.radius,
+      expireAt,
+      pairSlot,
+      capstoneVerb: kind === 'well' && hasPairedWellAuthority(state) ? 'paired_wells' : null,
+    });
     this._emitDeployCue(kind, cx, cz, def.radius);
     this.bus.emit('audio:cue', { id: 'confirm' });
   },
@@ -492,6 +518,26 @@ export const fields = {
   },
 
   // ── lifecycle: expiry + destruction cleanup (brief req 8) ────────────────────────────────────
+
+  _radialReadyAt(state, rt, kind) {
+    const ordinary = Number(rt.cooldowns[kind]) || 0;
+    if (kind !== 'well' || !hasPairedWellAuthority(state)) return ordinary;
+    const activeWells = deployedOfKind(rt, kind);
+    if (activeWells.length !== 1) return ordinary;
+    // The first Well arms a distinct second throw quickly enough to shape one live encounter.
+    // Once both slots are occupied, the ordinary recharge applies again.
+    return Math.min(ordinary, activeWells[0].deployedAt + PAIRED_WELL_ARM_S);
+  },
+
+  _enforcePlayerRadialCap(state, rt, kind) {
+    if (kind !== 'well') return;
+    const max = hasPairedWellAuthority(state) ? 2 : 1;
+    const active = deployedOfKind(rt, kind);
+    while (active.length >= max) {
+      const oldest = active.shift();
+      if (oldest) this._retireDeployed(state, rt, oldest, FIELD_END_REASONS.replaced);
+    }
+  },
 
   _enforceCap(state, rt) {
     const ids = Object.keys(rt.deployed);
