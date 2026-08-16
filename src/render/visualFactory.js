@@ -4982,6 +4982,66 @@ function buildPayload(e) {
   return g;
 }
 
+function buildTimeTrialGhost(e) {
+  const source = {
+    ...e,
+    type: 'ship',
+    isPlayer: false,
+    data: { ...(e.data || {}), defId: e.data?.defId || 'ship_kestrel' },
+  };
+  const root = buildShipMesh(source, resolvePalette(source));
+  if (!root) return null;
+  const flatDecorations = [];
+  const hullMeshes = [];
+  root.traverse((node) => {
+    if (node?.isSprite || node?.isPoints) {
+      flatDecorations.push(node);
+      return;
+    }
+    if (node?.isMesh && node.material && node.geometry) hullMeshes.push(node);
+  });
+  for (const decoration of flatDecorations) decoration.parent?.remove(decoration);
+  const surfaceMaterial = new THREE.MeshBasicMaterial({
+    color: '#2bd9e8', transparent: true, opacity: 0.1,
+    depthWrite: true, depthTest: true, blending: THREE.NormalBlending,
+    side: THREE.FrontSide, toneMapped: false,
+  });
+  const rimMaterial = new THREE.MeshBasicMaterial({
+    color: '#b9f8ff', transparent: true, opacity: 0.52,
+    depthWrite: false, depthTest: true, blending: THREE.NormalBlending,
+    side: THREE.BackSide, toneMapped: false,
+  });
+  const edgeMaterial = new THREE.LineBasicMaterial({
+    color: '#73efff', transparent: true, opacity: 0.58,
+    depthWrite: false, depthTest: true, blending: THREE.NormalBlending,
+    toneMapped: false,
+  });
+  for (const node of hullMeshes) {
+    const materialCount = Array.isArray(node.material) ? node.material.length : 1;
+    node.material = materialCount > 1 ? new Array(materialCount).fill(surfaceMaterial) : surfaceMaterial;
+    node.castShadow = false;
+    node.receiveShadow = false;
+    const rim = new THREE.Mesh(node.geometry, rimMaterial);
+    rim.name = `${node.name || 'hull'}-own-best-rim`;
+    rim.scale.setScalar(1.035);
+    rim.renderOrder = (node.renderOrder || 0) + 1;
+    rim.castShadow = false;
+    rim.receiveShadow = false;
+    rim.userData.timeTrialGhostRim = true;
+    node.add(rim);
+    const edges = new THREE.LineSegments(new THREE.EdgesGeometry(node.geometry, 28), edgeMaterial);
+    edges.name = `${node.name || 'hull'}-own-best-edges`;
+    edges.scale.setScalar(1.012);
+    edges.renderOrder = (node.renderOrder || 0) + 2;
+    edges.userData.timeTrialGhostEdges = true;
+    node.add(edges);
+  }
+  root.userData.kind = 'timeTrialGhost';
+  root.userData.nonPhysicalPresentation = true;
+  root.userData.visualLanguage = 'recorded-hull-local-ghost';
+  return root;
+}
+
 // ---------------------------------------------------------------------------------------------
 // Public factory
 // ---------------------------------------------------------------------------------------------
@@ -5026,7 +5086,7 @@ export function createVisualFactory() {
           case 'wreck': return freezeStaticPresentation(buildWreck(e));
           // PQ-013: the colossal planet-site body (Q18 identity transaction spawns exactly one).
           case 'planet': return freezeStaticPresentation(buildPlanetSiteVisual(e));
-          case 'fx': return null; // fx entities are handled by the vfx particle system, not meshed
+          case 'fx': return e.data?.timeTrialGhost ? buildTimeTrialGhost(e) : null;
           default: return buildFallback(e);
         }
       } catch (err) {

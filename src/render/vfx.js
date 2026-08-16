@@ -41,6 +41,7 @@ import {
 import { isHostileToPlayer } from '../systems/scanner.js';
 import { successfulPickupAmount } from '../core/pickupAcceptance.js';
 import { pickupPresentationFor } from '../data/pickupPresentation.js';
+import { timeTrialTrailTintById } from '../data/timeTrialCourses.js';
 import { MOMENTUM_SINK_FRAME_KIND } from '../combat/momentumSink.js';
 import { MOMENTUM_SINK_STATUS_ID } from '../data/combatDefs.js';
 import {
@@ -11073,6 +11074,15 @@ export const vfx = {
     }
     if (!this._energy) this._initEnergy();
     if (!this._energy) return false;
+    const trialLedger = this.state.player?.timeTrials;
+    const selectedTintId = trialLedger?.selectedTrailTint || null;
+    const selectedTint = trialLedger?.unlockedTrailTints?.[selectedTintId] === true
+      ? timeTrialTrailTintById(selectedTintId) : null;
+    const resolvedTintId = selectedTint?.id || null;
+    if (this._energy.trailTintId !== resolvedTintId) {
+      this._energy.plasmaStream?.setTrailTint?.(selectedTint?.color || null);
+      this._energy.trailTintId = resolvedTintId;
+    }
     let active = false;
     if (plumeRelevant) {
       // Full display-rate pose/drive sample. Cadence here used to leave the jet one frame

@@ -683,7 +683,11 @@ export const combat = {
     // authorities. The durable mission identity survives sector rematerialization and Continue;
     // ambient enemies have neither tag and retain the normal combat reward path below.
     const missionOwns = missionOwnsReward(t);
-    const authoredRewardEligible = killedByPlayer && !missionOwns;
+    // Sanctioned bouts and other authored non-reward actors retain their real combat archetype,
+    // weapons, and optional loot metadata, but this explicit marker closes the ordinary bounty /
+    // pickup owner. Callers must not have to erase archetype identity merely to prevent farming.
+    const ordinaryRewardsSuppressed = d.noOrdinaryRewards === true;
+    const authoredRewardEligible = killedByPlayer && !missionOwns && !ordinaryRewardsSuppressed;
     const factionLawful = lethal && typeof lethal.factionLawful === 'boolean'
       ? lethal.factionLawful
       : !!(d.ai && d.ai.lawful);
@@ -699,8 +703,11 @@ export const combat = {
     const presentation = buildKillPresentationReceipt(state, t, killerId, lethal);
     bus.emit('entity:killed', {
       id: t.id, killerId, type: t.type, pos: { x: t.pos.x, z: t.pos.z },
-      factionId: t.factionId, factionLawful, bountyCr: missionOwns ? 0 : (d.bountyCr || 0),
-      lootTableId: d.lootTableId || null, victimClass: d.shipClass || t.type,
+      factionId: t.factionId, factionLawful,
+      bountyCr: missionOwns || ordinaryRewardsSuppressed ? 0 : (d.bountyCr || 0),
+      lootTableId: ordinaryRewardsSuppressed ? null : (d.lootTableId || null),
+      ordinaryRewardsSuppressed,
+      victimClass: d.shipClass || t.type,
       targetHostileToPlayer,
       presentation,
     });
@@ -720,7 +727,7 @@ export const combat = {
         reason: 'bounty',
       });
     }
-    if (d.loot && !missionOwns) {
+    if (d.loot && !missionOwns && !ordinaryRewardsSuppressed) {
       // Current run seed + durable victim identity makes authored rewards stable across entity-id
       // rematerialization and save/load without a private combat cursor to serialize or reset.
       const rewardRng = createVictimRewardRng(

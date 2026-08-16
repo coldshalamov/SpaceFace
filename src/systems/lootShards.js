@@ -213,6 +213,7 @@ export const lootShards = {
 
   _onKilled(payload) {
     if (!massline2Flag('lootShards')) return;
+    if (payload.ordinaryRewardsSuppressed === true) return;
     const state = this.state;
     const victim = payload.id != null && state.entities && state.entities.get
       ? state.entities.get(payload.id) : null;

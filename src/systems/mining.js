@@ -1223,6 +1223,7 @@ export const mining = {
   // The wreck itself stays put; hold mining beam on it to strip the remaining salvagePool.
   _onShipDestroyed(p) {
     if (!p) return;
+    if (p.ordinaryRewardsSuppressed === true) return;
     const isShip = p.type === 'ship' || p.victimClass === 'ship';
     if (!isShip) return;
     const pos = p.pos || { x: 0, z: 0 };

@@ -424,6 +424,10 @@ export class PlasmaStreamSystem {
     if (this._contrail) this._contrail.material.uniforms.uCamPos.value.set(x, y, z);
   }
 
+  setTrailTint(color = null) {
+    return this._contrail?.setTint?.(color) || false;
+  }
+
   attach(scene) {
     if (this._disposed || !scene || this.group) return this.group;
     const T = this.THREE;

@@ -465,6 +465,7 @@ export const aftermathWrecks = {
   },
 
   _recordKill(payload) {
+    if (payload.ordinaryRewardsSuppressed === true) return null;
     const entity = entityFor(this.state, payload.id);
     const marker = makeMarker(this.state, payload, entity);
     return rememberMarker(this.state, this.bus, marker, (evicted) => {

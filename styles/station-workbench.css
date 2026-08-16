@@ -2431,3 +2431,49 @@ button.sx-fab-in { cursor:pointer; }
   .sx-ind-spindle { grid-template-columns:1.35fr 1fr .9fr .95fr; }
   .sx-ind-row__name { font-size:8px; }
 }
+
+/* Plan 50 — local flight-skill board. Dense enough to compare records, quiet enough that the
+   selectable verbs remain the only bright elements. */
+.sx-trials { display:grid; gap:16px; padding:4px 0 24px; color:var(--sx-ink,#d8e8e8); }
+.sx-trials__section {
+  padding:16px; border-left:2px solid rgba(98,223,255,.34);
+  background:linear-gradient(90deg,rgba(10,28,36,.94),rgba(7,17,24,.72));
+  box-shadow:inset 0 0 0 1px rgba(98,223,255,.08);
+}
+.sx-trials__section.is-muted { border-left-color:rgba(117,143,148,.24); }
+.sx-trials__section > header { display:flex; align-items:end; justify-content:space-between; gap:18px; margin-bottom:12px; }
+.sx-trials__section h2,.sx-trials__section h3 { margin:0; color:#e4f1f2; font-family:var(--sx-ui); font-weight:620; }
+.sx-trials__section > header p,.sx-trial-card p,.sx-arena-tier p,.sx-arena-tier small {
+  margin:0; color:#78979b; font:500 10px/1.35 var(--sx-mono);
+}
+.sx-trials__eyebrow,.sx-trial-card__sector {
+  display:block; margin-bottom:4px; color:#5aaeba; font:650 8px/1 var(--sx-mono); letter-spacing:.14em; text-transform:uppercase;
+}
+.sx-trials__course-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+.sx-trial-card,.sx-arena-tier {
+  display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:76px; padding:12px;
+  border:1px solid rgba(100,188,198,.12); background:rgba(7,18,24,.72);
+}
+.sx-trial-card h2,.sx-arena-tier h3 { margin-bottom:5px; font-size:14px; }
+.sx-trials__button,.sx-trials__tint {
+  border:1px solid rgba(105,204,216,.34); border-radius:2px; background:#0b2029; color:#bfe8eb;
+  font:600 9px/1 var(--sx-mono); letter-spacing:.045em; cursor:pointer;
+}
+.sx-trials__button { min-height:34px; padding:0 12px; white-space:nowrap; }
+.sx-trials__button:hover,.sx-trials__button:focus-visible,.sx-trials__tint:hover,.sx-trials__tint:focus-visible {
+  border-color:#87dce7; outline:1px solid rgba(135,220,231,.42); outline-offset:2px;
+}
+.sx-trials__button:disabled { opacity:.38; cursor:not-allowed; }
+.sx-trials__tints { display:flex; flex-wrap:wrap; gap:8px; }
+.sx-trials__tint { display:flex; align-items:center; gap:8px; min-height:36px; padding:0 11px; text-transform:capitalize; }
+.sx-trials__tint > span { width:20px; height:4px; background:var(--trial-tint,#62dfff); box-shadow:0 0 9px var(--trial-tint,#62dfff); }
+.sx-trials__tint > span.is-stock { background:linear-gradient(90deg,#0756d9,#66dfff,#eafcff); box-shadow:none; }
+.sx-trials__tint.is-selected { border-color:#d9f8fb; background:#12313a; color:#f2ffff; }
+.sx-trials__arena { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+.sx-arena-tier { min-height:92px; }
+.sx-arena-tier.is-cleared { border-color:rgba(93,203,151,.28); }
+.sx-trials__status { min-height:14px; margin:10px 0 0; color:#d7a572; font:600 9px/1.4 var(--sx-mono); }
+@media (max-width:1000px) {
+  .sx-trials__course-grid,.sx-trials__arena { grid-template-columns:1fr; }
+  .sx-trials__section > header { align-items:start; flex-direction:column; gap:5px; }
+}

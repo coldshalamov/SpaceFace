@@ -13,6 +13,7 @@ const RAW = {
   contracts: `<path ${P} d="M7 3h7l4 4v14H7Z"/><path ${P} d="M14 3v4h4" opacity="0.7"/><path ${P} d="M10 12h5M10 15.5h5" opacity="0.75"/>`,
   factions: `<path ${P} d="M12 3 5 6v5.5c0 4 2.9 7.4 7 8.5 4.1-1.1 7-4.5 7-8.5V6Z"/><path ${P} d="M12 8.2 13.3 11l3 .3-2.3 2 .7 3-2.7-1.6L9.3 16.3l.7-3-2.3-2 3-.3Z" opacity="0.85"/>`,
   bar: `<path ${P} d="M5 4h14l-6 7v6M13 17h4M9 17h-2"/><path ${P} d="M8 8h8" opacity="0.6"/>`,
+  trials: `<path ${P} d="M5 18 12 5l7 13Z"/><path ${P} d="M8 15h8M10 11h4" opacity="0.75"/><circle cx="12" cy="19" r="1.5" ${P}/>`,
   ledger: `<path ${P} d="M6 3.5h9l3 3V20.5H6Z"/><path ${P} d="M15 3.5V6.5h3" opacity="0.7"/><path ${P} d="M8.5 11h6M8.5 14h6M8.5 17h3.5" opacity="0.8"/>`,
 
   // --- dock actions ---

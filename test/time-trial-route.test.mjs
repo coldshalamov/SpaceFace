@@ -271,13 +271,26 @@ async function assertCourseReplayRoundTrip(t, route, result, reloadSeed) {
   const record = route.state.player.timeTrials.courses[route.course.id];
   assert.equal(record.bestTicks, result.elapsedTicks);
   const replayBytes = JSON.stringify(record.bestReplay);
-  const ghost = route.runtime.prepareGhostReplay(route.course.id);
-  assert.equal(JSON.stringify(ghost.replay), replayBytes);
+  assert.equal(record.bestReplay.poses.length, record.bestReplay.frames.length,
+    'the input+seed tape carries an additive render pose for each production tick');
+  const preparedGhost = route.runtime.prepareGhostReplay(route.course.id);
+  assert.equal(JSON.stringify(preparedGhost.replay), replayBytes);
   const envelope = route.sim.registry.get('save').serialize(`time-trial:${route.course.id}`);
   const continued = await boot(t, reloadSeed, route.course);
   assert.equal(continued.sim.registry.get('save').loadEnvelope(envelope, `time-trial:${route.course.id}`), true);
   assert.equal(JSON.stringify(continued.state.player.timeTrials.courses[route.course.id].bestReplay), replayBytes);
   assert.equal(JSON.stringify(continued.runtime.prepareGhostReplay(route.course.id).replay), replayBytes);
+  continued.bus.emit('timeTrial:selectGhost', { courseId: route.course.id, enabled: true });
+  const ghostId = continued.runtime.getRuntimeState().ghostEntityId;
+  const liveGhost = continued.state.entities.get(ghostId);
+  assert.equal(liveGhost?.type, 'fx');
+  assert.equal(liveGhost?.collides, false);
+  assert.equal(liveGhost?.data?.timeTrialGhost, true);
+  continued.state.world.currentSectorId = 'sector_ceres_belt';
+  continued.bus.emit('sector:exit', { sectorId: route.course.sectorId });
+  assert.equal(continued.runtime.getRuntimeState().ghostEntityId, null);
+  assert.equal(continued.state.entities.get(ghostId)?.alive, false,
+    'the local ghost is retired from the render world with its selected course sector');
 }
 
 test('Plan 50: Vesta Foundry Teeth is a silver-completable physical slalom and rock contact only voids time', async (t) => {

@@ -473,6 +473,12 @@ export class ContrailTrail {
     this.material.uniforms.uSampleCount.value = this.samples;
     this.material.uniforms.uStrandCount.value = this.strands;
     this.material.uniforms.uTrailSeconds.value = this.trailSeconds;
+    this._defaultCoreColor = this.material.uniforms.uCoreColor.value.clone();
+    this._defaultMidColor = this.material.uniforms.uMidColor.value.clone();
+    this._defaultEdgeColor = this.material.uniforms.uEdgeColor.value.clone();
+    this._tintBase = new T.Color();
+    this._tintWhite = new T.Color(1, 0.99, 0.97);
+    this._tintKey = null;
 
     this.mesh = new T.Mesh(this.geometry, this.material);
     this.mesh.frustumCulled = false;
@@ -503,6 +509,24 @@ export class ContrailTrail {
 
   liveSampleCount() {
     return this._live;
+  }
+
+  setTint(color = null) {
+    const key = color == null ? '' : String(color);
+    if (key === this._tintKey) return false;
+    this._tintKey = key;
+    const uniforms = this.material.uniforms;
+    if (!key) {
+      uniforms.uCoreColor.value.copy(this._defaultCoreColor);
+      uniforms.uMidColor.value.copy(this._defaultMidColor);
+      uniforms.uEdgeColor.value.copy(this._defaultEdgeColor);
+      return true;
+    }
+    this._tintBase.set(key);
+    uniforms.uCoreColor.value.copy(this._tintBase).lerp(this._tintWhite, 0.72);
+    uniforms.uMidColor.value.copy(this._tintBase).lerp(this._tintWhite, 0.12);
+    uniforms.uEdgeColor.value.copy(this._tintBase).multiplyScalar(0.42);
+    return true;
   }
 
   _copySample(dst, src) {

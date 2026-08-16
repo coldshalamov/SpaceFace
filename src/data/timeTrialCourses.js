@@ -175,8 +175,45 @@ export const TIME_TRIAL_COURSES = Object.freeze([
   TETHYS_ANVIL_SKIM,
 ]);
 
+export const VESTA_STATION_ARENA = Object.freeze({
+  id: 'time_trial_vesta_station_arena',
+  name: 'Forgeyard Arena',
+  sectorId: 'sector_vesta_forge',
+  stationId: 'station_forge',
+  rewardTint: Object.freeze({ id: 'trail_vesta_arena_crown', color: '#d86cff' }),
+  tiers: Object.freeze([
+    Object.freeze({
+      id: 'spar', name: 'Spar', unlockAfter: null, creditReward: 90,
+      waves: Object.freeze([
+        Object.freeze(['mote_swarmer']),
+        Object.freeze(['mote_swarmer', 'mote_swarmer']),
+      ]),
+    }),
+    Object.freeze({
+      id: 'circuit', name: 'Circuit', unlockAfter: 'spar', creditReward: 170,
+      waves: Object.freeze([
+        Object.freeze(['mote_swarmer', 'wasp_swarmer']),
+        Object.freeze(['reaver_pirate', 'mote_swarmer']),
+      ]),
+    }),
+    Object.freeze({
+      id: 'crown', name: 'Crown', unlockAfter: 'circuit', creditReward: 280,
+      waves: Object.freeze([
+        Object.freeze(['wasp_swarmer', 'wasp_swarmer']),
+        Object.freeze(['reaver_pirate', 'hostile_interceptor']),
+        Object.freeze(['heavy_gunship']),
+      ]),
+    }),
+  ]),
+});
+
 const COURSE_BY_ID = new Map(TIME_TRIAL_COURSES.map((course) => [course.id, course]));
 const COURSE_BY_SECTOR = new Map(TIME_TRIAL_COURSES.map((course) => [course.sectorId, course]));
+const ARENA_TIER_BY_ID = new Map(VESTA_STATION_ARENA.tiers.map((tier) => [tier.id, tier]));
+const TRAIL_TINT_BY_ID = new Map([
+  ...TIME_TRIAL_COURSES.map((course) => [course.rewards.goldTrailTint.id, course.rewards.goldTrailTint]),
+  [VESTA_STATION_ARENA.rewardTint.id, VESTA_STATION_ARENA.rewardTint],
+]);
 
 export function timeTrialCourseById(courseId) {
   return COURSE_BY_ID.get(courseId) || null;
@@ -184,6 +221,14 @@ export function timeTrialCourseById(courseId) {
 
 export function timeTrialCourseForSector(sectorId) {
   return COURSE_BY_SECTOR.get(sectorId) || null;
+}
+
+export function timeTrialArenaTierById(tierId) {
+  return ARENA_TIER_BY_ID.get(tierId) || null;
+}
+
+export function timeTrialTrailTintById(tintId) {
+  return TRAIL_TINT_BY_ID.get(tintId) || null;
 }
 
 export function medalForTimeTrialTicks(course, elapsedTicks) {
@@ -208,4 +253,42 @@ export function cumulativeTimeTrialCredits(course, medal) {
   if (medal === 'silver') return course.rewards.silverCredits;
   if (medal === 'bronze') return course.rewards.bronzeCredits;
   return 0;
+}
+
+export function timeTrialLocalBoard(state) {
+  const ledger = state?.player?.timeTrials || {};
+  const courses = ledger.courses || {};
+  const unlocked = ledger.unlockedTrailTints || {};
+  const arena = ledger.arena || {};
+  return {
+    locality: 'device',
+    courses: TIME_TRIAL_COURSES.map((course) => {
+      const record = courses[course.id] || {};
+      return {
+        id: course.id,
+        name: course.name,
+        sectorId: course.sectorId,
+        postingStationId: course.postingStationId,
+        bestTicks: Number.isFinite(record.bestTicks) ? Math.max(0, Math.trunc(record.bestTicks)) : null,
+        bestMedal: record.bestMedal || null,
+        hasRenderableGhost: Array.isArray(record.bestReplay?.poses) && record.bestReplay.poses.length > 0,
+        ghostEnabled: ledger.ghostEnabled?.[course.id] === true,
+      };
+    }),
+    trailTints: [...TIME_TRIAL_COURSES.map((course) => course.rewards.goldTrailTint), VESTA_STATION_ARENA.rewardTint]
+      .map((tint) => ({ ...tint, unlocked: unlocked[tint.id] === true,
+        selected: ledger.selectedTrailTint === tint.id })),
+    selectedTrailTint: ledger.selectedTrailTint || null,
+    arena: VESTA_STATION_ARENA.tiers.map((tier) => ({
+      id: tier.id,
+      name: tier.name,
+      unlocked: tier.unlockAfter == null || arena.cleared?.[tier.unlockAfter] === true,
+      cleared: arena.cleared?.[tier.id] === true,
+      bestScore: Number.isFinite(arena.scores?.[tier.id]?.bestScore)
+        ? Math.max(0, Math.trunc(arena.scores[tier.id].bestScore)) : null,
+      bestTicks: Number.isFinite(arena.scores?.[tier.id]?.bestTicks)
+        ? Math.max(0, Math.trunc(arena.scores[tier.id].bestTicks)) : null,
+      creditReward: tier.creditReward,
+    })),
+  };
 }

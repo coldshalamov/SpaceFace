@@ -9,12 +9,17 @@ import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import {
   TIME_TRIAL_SCHEMA_VERSION,
   TIME_TRIAL_TICK_RATE,
+  VESTA_STATION_ARENA,
   cumulativeTimeTrialCredits,
   medalForTimeTrialTicks,
+  timeTrialArenaTierById,
   timeTrialCourseById,
   timeTrialCourseForSector,
+  timeTrialLocalBoard,
   timeTrialMedalRank,
+  timeTrialTrailTintById,
 } from '../data/timeTrialCourses.js';
+import { makeEnemySpawnSpec } from './combat.js';
 
 const REPLAY_SCHEMA = 'spaceface.time-trial-replay.v1';
 const GHOST_SCHEMA = 'spaceface.time-trial-ghost.v1';
@@ -50,7 +55,23 @@ function quantizedPose(player, scale) {
     vel: [quantize(player.vel?.x, scale), quantize(player.vel?.z, scale)],
     rot: quantize(player.rot, scale),
     angVel: quantize(player.angVel, scale),
+    bank: quantize(player.bank, scale),
+    pitch: quantize(player.pitch, scale),
   };
+}
+
+function applyQuantizedPose(entity, pose, scale) {
+  if (!entity || !pose || !Array.isArray(pose.pos)) return false;
+  const divisor = Number.isFinite(scale) && scale > 0 ? scale : 1000;
+  entity.prevPos?.copy?.(entity.pos);
+  entity.prevRot = finite(entity.rot);
+  entity.pos.set(pose.pos[0] / divisor, 0, pose.pos[1] / divisor);
+  if (Array.isArray(pose.vel)) entity.vel.set(pose.vel[0] / divisor, 0, pose.vel[1] / divisor);
+  entity.rot = finite(pose.rot) / divisor;
+  entity.angVel = finite(pose.angVel) / divisor;
+  entity.bank = finite(pose.bank) / divisor;
+  entity.pitch = finite(pose.pitch) / divisor;
+  return true;
 }
 
 function quantizedInput(input, scale) {
@@ -246,6 +267,18 @@ function ensureLedger(state) {
   }
   if (!ledger.unlockedTrailTints || typeof ledger.unlockedTrailTints !== 'object'
     || Array.isArray(ledger.unlockedTrailTints)) ledger.unlockedTrailTints = {};
+  if (ledger.selectedTrailTint != null
+    && (ledger.unlockedTrailTints[ledger.selectedTrailTint] !== true
+      || !timeTrialTrailTintById(ledger.selectedTrailTint))) ledger.selectedTrailTint = null;
+  if (!ledger.ghostEnabled || typeof ledger.ghostEnabled !== 'object'
+    || Array.isArray(ledger.ghostEnabled)) ledger.ghostEnabled = {};
+  if (!ledger.arena || typeof ledger.arena !== 'object' || Array.isArray(ledger.arena)) ledger.arena = {};
+  if (!ledger.arena.scores || typeof ledger.arena.scores !== 'object'
+    || Array.isArray(ledger.arena.scores)) ledger.arena.scores = {};
+  if (!ledger.arena.cleared || typeof ledger.arena.cleared !== 'object'
+    || Array.isArray(ledger.arena.cleared)) ledger.arena.cleared = {};
+  if (!ledger.arena.rewarded || typeof ledger.arena.rewarded !== 'object'
+    || Array.isArray(ledger.arena.rewarded)) ledger.arena.rewarded = {};
   return ledger;
 }
 
@@ -260,6 +293,10 @@ function normalizeCourseRecord(ledger, course) {
     record.bestReplay = null;
   } else if (record.bestReplay.frames.length > course.replay.maxFrames) {
     record.bestReplay.frames = record.bestReplay.frames.slice(0, course.replay.maxFrames);
+  }
+  if (record.bestReplay && Array.isArray(record.bestReplay.poses)
+    && record.bestReplay.poses.length > course.replay.maxFrames) {
+    record.bestReplay.poses = record.bestReplay.poses.slice(0, course.replay.maxFrames);
   }
   ledger.courses[course.id] = record;
   return record;
@@ -318,8 +355,12 @@ export const timeTrials = {
     this._courseBodyIds = new Set();
     this._obstacleIds = new Set();
     this._anchorId = null;
+    this._ghostEntityId = null;
     this._lastSlingshotCutCheck = null;
     this._run = null;
+    this._dockedStationId = null;
+    this._arenaPending = null;
+    this._arenaRun = null;
     this._lastBuoyContactTick = -1;
     ensureLedger(this.state);
     this._unsubs = [
@@ -329,6 +370,13 @@ export const timeTrials = {
       this.bus.on('tether:cut', (payload) => this._onTetherCut(payload || {})),
       this.bus.on('planet:plungeStage', (payload) => this._onPlanetPlungeStage(payload || {})),
       this.bus.on('dock:docked', (payload) => this._onDocked(payload || {})),
+      this.bus.on('dock:undocked', () => this._onUndocked()),
+      this.bus.on('entity:killed', (payload) => this._onArenaEntityKilled(payload || {})),
+      this.bus.on('entity:destroyed', (payload) => this._onArenaEntityDestroyed(payload || {})),
+      this.bus.on('player:death', () => this._abortArena('player_defeated')),
+      this.bus.on('timeTrial:selectGhost', (payload) => this._selectGhost(payload || {})),
+      this.bus.on('timeTrial:selectTrailTint', (payload) => this._selectTrailTint(payload || {})),
+      this.bus.on('timeTrial:arenaRequest', (payload) => this._requestArena(payload || {})),
       this.bus.on('save:restoring', () => this._leaveSector('save_restoring')),
       this.bus.on('save:loaded', () => {
         ensureLedger(this.state);
@@ -360,6 +408,12 @@ export const timeTrials = {
       return;
     }
 
+    if (this._arenaPending && !this._arenaRun) this._startArena(player);
+    if (this._arenaRun) {
+      this._updateArena(player);
+      return;
+    }
+
     if (!this._run) {
       const crossing = gateCrossing(course, 0, player.prevPos, player.pos, player.radius, state);
       if (crossing) this._startRun(course, player, crossing);
@@ -374,6 +428,8 @@ export const timeTrials = {
       return;
     }
     this._run.frames.push(quantizedInput(state.input, course.replay.inputQuantization));
+    this._run.poses.push(quantizedPose(player, course.replay.inputQuantization));
+    this._updateGhostPlayback(course);
 
     const expected = this._run.expectedGateIndex;
     for (let index = expected + 1; index < course.gates.length; index++) {
@@ -415,6 +471,10 @@ export const timeTrials = {
     };
   },
 
+  localBoard() {
+    return timeTrialLocalBoard(this.state);
+  },
+
   readGhostInput(ghost) {
     if (!ghost || ghost.schema !== GHOST_SCHEMA || !ghost.replay || !Array.isArray(ghost.replay.frames)) return null;
     const index = Math.max(0, Math.trunc(finite(ghost.cursor)));
@@ -431,8 +491,11 @@ export const timeTrials = {
       obstacleIds: [...this._obstacleIds],
       courseBodyIds: [...this._courseBodyIds],
       anchorId: this._anchorId,
+      ghostEntityId: this._ghostEntityId,
       slingshotCutCheck: this._lastSlingshotCutCheck ? copyPlain(this._lastSlingshotCutCheck) : null,
       run: this._run ? copyPlain(this._run) : null,
+      arenaPending: this._arenaPending ? copyPlain(this._arenaPending) : null,
+      arenaRun: this._arenaRun ? copyPlain({ ...this._arenaRun, enemyIds: [...this._arenaRun.enemyIds] }) : null,
     };
   },
 
@@ -447,6 +510,7 @@ export const timeTrials = {
     this._course = course;
     this._spawnCourse(course);
     normalizeCourseRecord(ensureLedger(this.state), course);
+    this._syncGhostForCourse(course);
     this.bus.emit('timeTrial:courseAvailable', {
       courseId: course.id,
       name: course.name,
@@ -565,6 +629,64 @@ export const timeTrials = {
     this._courseBodyIds.add(entity.id);
   },
 
+  _syncGhostForCourse(course) {
+    this._removeGhost();
+    if (!course) return;
+    const ledger = ensureLedger(this.state);
+    if (ledger.ghostEnabled[course.id] !== true) return;
+    const record = normalizeCourseRecord(ledger, course);
+    const replay = record.bestReplay;
+    if (!replay || !Array.isArray(replay.poses) || replay.poses.length === 0 || !replay.startPose) return;
+    const spawn = this.helpers?.spawnEntity;
+    if (typeof spawn !== 'function') return;
+    const entity = spawn({
+      type: 'fx', team: 0, factionId: null,
+      pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, rot: 0,
+      radius: 9, collides: false, collisionMask: 0, ttl: Infinity,
+      flags: { forceRender: true, neverCull: true },
+      data: {
+        timeTrialGhost: true,
+        timeTrialCourseId: course.id,
+        defId: replay.shipDefId || 'ship_kestrel',
+        name: `${course.name} / Your best`,
+        scanLabel: 'YOUR BEST / LOCAL GHOST',
+        sectorId: course.sectorId,
+        homeSectorId: course.sectorId,
+      },
+    });
+    if (!entity) return;
+    this._ghostEntityId = entity.id;
+    applyQuantizedPose(entity, replay.startPose, replay.quantization);
+    this.bus.emit('timeTrial:ghostSpawned', {
+      courseId: course.id, ghostId: entity.id, bestTicks: record.bestTicks,
+    });
+  },
+
+  _updateGhostPlayback(course) {
+    if (!this._run || !this._ghostEntityId) return;
+    const ghost = this.state.entities?.get?.(this._ghostEntityId);
+    const record = normalizeCourseRecord(ensureLedger(this.state), course);
+    const replay = record.bestReplay;
+    if (!ghost || !replay || !Array.isArray(replay.poses) || replay.poses.length === 0) return;
+    const index = Math.min(replay.poses.length - 1, Math.max(0, this._run.frames.length - 1));
+    applyQuantizedPose(ghost, replay.poses[index], replay.quantization);
+  },
+
+  _resetGhostPlayback(course) {
+    if (!course || !this._ghostEntityId) return;
+    const ghost = this.state.entities?.get?.(this._ghostEntityId);
+    const replay = normalizeCourseRecord(ensureLedger(this.state), course).bestReplay;
+    if (ghost && replay?.startPose) applyQuantizedPose(ghost, replay.startPose, replay.quantization);
+  },
+
+  _removeGhost() {
+    if (this._ghostEntityId == null) return;
+    const id = this._ghostEntityId;
+    this._ghostEntityId = null;
+    this.helpers?.removeEntity?.(id);
+    this.bus?.emit?.('timeTrial:ghostRemoved', { ghostId: id });
+  },
+
   _startRun(course, player, crossing) {
     this._run = {
       courseId: course.id,
@@ -574,8 +696,10 @@ export const timeTrials = {
       reason: null,
       startPose: quantizedPose(player, course.replay.inputQuantization),
       frames: [],
+      poses: [],
       slingshotRelease: null,
     };
+    this._resetGhostPlayback(course);
     this.bus.emit('timeTrial:started', {
       courseId: course.id,
       playerId: player.id,
@@ -606,9 +730,11 @@ export const timeTrials = {
       tickRate: TIME_TRIAL_TICK_RATE,
       quantization: course.replay.inputQuantization,
       startPose: this._run.startPose,
+      shipDefId: player.data?.defId || 'ship_kestrel',
       elapsedTicks,
       medal,
       frames: this._run.frames,
+      poses: this._run.poses,
     };
     const improved = record.bestTicks == null || elapsedTicks < record.bestTicks;
     if (improved) {
@@ -649,6 +775,7 @@ export const timeTrials = {
       replayFrames: replay.frames.length,
     });
     this._run = null;
+    this._syncGhostForCourse(course);
   },
 
   _invalidate(reason, extra = {}) {
@@ -662,6 +789,201 @@ export const timeTrials = {
       ...extra,
     });
     this._run = null;
+    if (this._course) this._resetGhostPlayback(this._course);
+  },
+
+  _requestArena(payload) {
+    const tier = timeTrialArenaTierById(payload.tierId);
+    const ledger = ensureLedger(this.state);
+    const unlocked = tier && (tier.unlockAfter == null || ledger.arena.cleared[tier.unlockAfter] === true);
+    if (!tier || !unlocked || this._dockedStationId !== VESTA_STATION_ARENA.stationId
+      || this.state.world?.currentSectorId !== VESTA_STATION_ARENA.sectorId
+      || this._arenaRun || this._arenaPending) {
+      this.bus.emit('timeTrial:arenaRejected', {
+        tierId: payload.tierId || null,
+        reason: !tier ? 'unknown_tier' : !unlocked ? 'tier_locked'
+          : this._dockedStationId !== VESTA_STATION_ARENA.stationId ? 'wrong_station'
+            : this._arenaRun || this._arenaPending ? 'arena_busy' : 'wrong_sector',
+      });
+      return false;
+    }
+    this._arenaPending = { tierId: tier.id, requestedTick: this.state.tick };
+    this.bus.emit('timeTrial:arenaQueued', {
+      arenaId: VESTA_STATION_ARENA.id, tierId: tier.id, stationId: VESTA_STATION_ARENA.stationId,
+    });
+    return true;
+  },
+
+  _onUndocked() {
+    this._dockedStationId = null;
+  },
+
+  _startArena(player) {
+    const tier = timeTrialArenaTierById(this._arenaPending?.tierId);
+    if (!tier || this.state.world?.currentSectorId !== VESTA_STATION_ARENA.sectorId) {
+      this._arenaPending = null;
+      return false;
+    }
+    if (this._run) this._invalidate('arena_started');
+    this._arenaRun = {
+      arenaId: VESTA_STATION_ARENA.id,
+      tierId: tier.id,
+      startedTick: this.state.tick,
+      waveIndex: 0,
+      nextWaveTick: null,
+      kills: 0,
+      enemyIds: new Set(),
+      origin: { x: finite(player.pos?.x), z: finite(player.pos?.z) },
+    };
+    this._arenaPending = null;
+    this._spawnArenaWave(tier);
+    this.bus.emit('timeTrial:arenaStarted', {
+      arenaId: VESTA_STATION_ARENA.id, tierId: tier.id, waveCount: tier.waves.length,
+    });
+    return true;
+  },
+
+  _spawnArenaWave(tier) {
+    const run = this._arenaRun;
+    const wave = tier?.waves?.[run?.waveIndex];
+    const spawn = this.helpers?.spawnEntity;
+    if (!run || !Array.isArray(wave) || typeof spawn !== 'function') return false;
+    run.nextWaveTick = null;
+    for (let index = 0; index < wave.length; index++) {
+      const angle = run.waveIndex * 1.17 + index * (Math.PI * 2 / Math.max(1, wave.length));
+      const distance = 360 + index * 55 + run.waveIndex * 40;
+      const pos = {
+        x: run.origin.x + Math.cos(angle) * distance,
+        z: run.origin.z + Math.sin(angle) * distance,
+      };
+      const spec = makeEnemySpawnSpec(wave[index], 1 + run.waveIndex, pos, {
+        identityKey: `arena:${run.tierId}:${run.waveIndex}:${index}`,
+        identitySeed: this.state.meta?.seed,
+        motive: 'sanctioned_arena_match',
+        engagementTrigger: 'arena_ladder_start',
+        zoneId: VESTA_STATION_ARENA.id,
+        noFireResponseWindowS: 0.35,
+      });
+      spec.factionId = null;
+      spec.data = spec.data || {};
+      spec.data.bountyCr = 0;
+      spec.data.loot = null;
+      spec.data.lootTableId = null;
+      spec.data.noOrdinaryRewards = true;
+      spec.data.encounter = true;
+      spec.data.timeTrialArena = {
+        arenaId: VESTA_STATION_ARENA.id,
+        tierId: run.tierId,
+        waveIndex: run.waveIndex,
+        slotIndex: index,
+      };
+      const enemy = spawn(spec);
+      if (enemy) run.enemyIds.add(enemy.id);
+    }
+    this.bus.emit('timeTrial:arenaWaveStarted', {
+      arenaId: VESTA_STATION_ARENA.id,
+      tierId: run.tierId,
+      waveIndex: run.waveIndex,
+      enemyIds: [...run.enemyIds],
+    });
+    return run.enemyIds.size > 0;
+  },
+
+  _updateArena(player) {
+    const run = this._arenaRun;
+    if (!run) return;
+    if (!player || player.alive === false) {
+      this._abortArena('player_unavailable');
+      return;
+    }
+    if (run.nextWaveTick != null && this.state.tick >= run.nextWaveTick) {
+      const tier = timeTrialArenaTierById(run.tierId);
+      if (!this._spawnArenaWave(tier)) this._abortArena('wave_spawn_failed');
+    }
+  },
+
+  _onArenaEntityKilled(payload) {
+    const run = this._arenaRun;
+    if (!run || !run.enemyIds.has(payload.id)) return;
+    if (payload.killerId !== this.state.playerId) {
+      this._abortArena('combatant_killed_by_non_player');
+      return;
+    }
+    run.enemyIds.delete(payload.id);
+    run.kills += 1;
+    if (run.enemyIds.size > 0) return;
+    const tier = timeTrialArenaTierById(run.tierId);
+    this.bus.emit('timeTrial:arenaWaveCleared', {
+      arenaId: VESTA_STATION_ARENA.id, tierId: run.tierId, waveIndex: run.waveIndex,
+    });
+    if (!tier || run.waveIndex + 1 >= tier.waves.length) {
+      this._completeArena(tier);
+      return;
+    }
+    run.waveIndex += 1;
+    run.nextWaveTick = this.state.tick + 45;
+  },
+
+  _onArenaEntityDestroyed(payload) {
+    const run = this._arenaRun;
+    if (!run || !run.enemyIds.has(payload.id)) return;
+    this._abortArena('combatant_lost_without_kill');
+  },
+
+  _completeArena(tier) {
+    const run = this._arenaRun;
+    if (!run || !tier) return;
+    const elapsedTicks = Math.max(0, this.state.tick - run.startedTick);
+    const player = this.state.entities?.get?.(this.state.playerId);
+    const hullFraction = player?.hullMax > 0 ? clamp(player.hull / player.hullMax, 0, 1) : 0;
+    const score = Math.max(0, Math.round(run.kills * 100 + hullFraction * 400
+      + Math.max(0, 1800 - elapsedTicks / 3)));
+    const ledger = ensureLedger(this.state);
+    const prior = ledger.arena.scores[tier.id] || {};
+    const improved = !Number.isFinite(prior.bestScore) || score > prior.bestScore;
+    if (improved) ledger.arena.scores[tier.id] = { bestScore: score, bestTicks: elapsedTicks };
+    ledger.arena.cleared[tier.id] = true;
+    const creditDelta = ledger.arena.rewarded[tier.id] === true ? 0 : tier.creditReward;
+    if (creditDelta > 0) {
+      ledger.arena.rewarded[tier.id] = true;
+      this.bus.emit('economy:grantCredits', {
+        amount: creditDelta,
+        reason: `time_trial_arena:${tier.id}`,
+      });
+    }
+    let trailTintUnlocked = null;
+    if (tier.id === 'crown') {
+      const tint = VESTA_STATION_ARENA.rewardTint;
+      const newlyUnlocked = ledger.unlockedTrailTints[tint.id] !== true;
+      ledger.unlockedTrailTints[tint.id] = true;
+      trailTintUnlocked = tint.id;
+      if (newlyUnlocked) this.bus.emit('timeTrial:trailTintUnlocked', {
+        arenaId: VESTA_STATION_ARENA.id, tintId: tint.id, color: tint.color,
+      });
+    }
+    this._arenaRun = null;
+    this.bus.emit('timeTrial:arenaCompleted', {
+      arenaId: VESTA_STATION_ARENA.id,
+      tierId: tier.id,
+      score,
+      elapsedTicks,
+      improved,
+      creditDelta,
+      trailTintUnlocked,
+    });
+  },
+
+  _abortArena(reason) {
+    const run = this._arenaRun;
+    if (!run) {
+      if (reason !== 'dock_transition') this._arenaPending = null;
+      return;
+    }
+    this._arenaRun = null;
+    for (const id of run.enemyIds) this.helpers?.removeEntity?.(id);
+    this.bus.emit('timeTrial:arenaAborted', {
+      arenaId: VESTA_STATION_ARENA.id, tierId: run.tierId, reason,
+    });
   },
 
   _onImpact(payload) {
@@ -752,6 +1074,15 @@ export const timeTrials = {
   },
 
   _onDocked(payload) {
+    this._dockedStationId = payload.stationId || null;
+    if (this._arenaRun) this._abortArena('docked');
+    if (payload.stationId === VESTA_STATION_ARENA.stationId) {
+      this.bus.emit('timeTrial:arenaAvailable', {
+        arenaId: VESTA_STATION_ARENA.id,
+        stationId: VESTA_STATION_ARENA.stationId,
+        tiers: timeTrialLocalBoard(this.state).arena,
+      });
+    }
     const course = timeTrialCourseForSector(this.state.world?.currentSectorId);
     if (!course || payload.stationId !== course.postingStationId) return;
     this.bus.emit('toast', { text: coursePostingText(course), kind: 'info', ttl: 9 });
@@ -762,8 +1093,45 @@ export const timeTrials = {
     });
   },
 
+  _selectGhost(payload) {
+    const course = timeTrialCourseById(payload.courseId);
+    if (!course) return false;
+    const ledger = ensureLedger(this.state);
+    const record = normalizeCourseRecord(ledger, course);
+    const enabled = payload.enabled !== false;
+    if (enabled && (!record.bestReplay || !Array.isArray(record.bestReplay.poses)
+      || record.bestReplay.poses.length === 0)) {
+      this.bus.emit('timeTrial:ghostSelectionRejected', {
+        courseId: course.id, reason: 'no_renderable_best',
+      });
+      return false;
+    }
+    ledger.ghostEnabled[course.id] = enabled;
+    if (this._course?.id === course.id) this._syncGhostForCourse(course);
+    this.bus.emit('timeTrial:ghostSelected', { courseId: course.id, enabled });
+    return true;
+  },
+
+  _selectTrailTint(payload) {
+    const tintId = payload.tintId == null || payload.tintId === 'stock' ? null : String(payload.tintId);
+    const ledger = ensureLedger(this.state);
+    if (tintId != null
+      && (ledger.unlockedTrailTints[tintId] !== true || !timeTrialTrailTintById(tintId))) {
+      this.bus.emit('timeTrial:trailTintSelectionRejected', { tintId, reason: 'not_earned' });
+      return false;
+    }
+    ledger.selectedTrailTint = tintId;
+    this.bus.emit('timeTrial:trailTintSelected', {
+      tintId,
+      color: timeTrialTrailTintById(tintId)?.color || null,
+    });
+    return true;
+  },
+
   _leaveSector(reason) {
     if (this._run) this._invalidate(reason);
+    this._abortArena(reason);
+    this._removeGhost();
     const remove = this.helpers?.removeEntity;
     if (typeof remove === 'function') {
       for (const id of this._courseBodyIds || []) remove(id);
@@ -772,6 +1140,8 @@ export const timeTrials = {
     this._obstacleIds?.clear?.();
     this._courseBodyIds?.clear?.();
     this._anchorId = null;
+    this._arenaPending = null;
+    this._dockedStationId = null;
     this._lastSlingshotCutCheck = null;
     this._course = null;
   },
