@@ -3,17 +3,26 @@ import { physics } from '../../core/physics.js';
 import { createSimulation, SIM_DT } from '../../core/sim.js';
 import { FIELD_FLAGS } from '../../data/fields.js';
 import { PLANET_FLAGS, PLANET_SITE } from '../../data/planets.js';
+import { NEW_GAME } from '../../data/newGameDefaults.js';
 import { sectorLocalToGlobalForSector } from '../../data/sectorCoordinates.js';
 import { ZONE_TETHYS_ANVIL } from '../../data/authoredPlaces.js';
 import { fields } from '../../systems/fields.js';
+import { flightV3 } from '../../systems/flightV3.js';
 import { planetRuntime } from '../../systems/planetRuntime.js';
+import { fittingsFromDefaultModules, makeShipEntitySpec } from '../../systems/ships.js';
 
 export const ATMOSPHERE_REFERENCE_ENTRY_VELOCITIES = Object.freeze([40, 60, 80]);
 
 const CONTROL_STATES = Object.freeze(['full-burn', 'uncontrolled']);
 const MAX_ROUTE_S = 12;
-const START_RADIUS = 760;
-const REFERENCE_HULL = 48;
+// The controlled/uncontrolled comparison begins in the authored middle (danger) band. Starting
+// inside reentry/descent would test recovery from the kill depth, not Plan 04's promised escape
+// from the atmosphere band.
+const START_RADIUS = 840;
+// Existing Plan 04 production acceptance uses this hull value for its reference tumble. Keep the
+// propulsion/body shape real while standardizing survivability so the 3–6 second band measures the
+// atmosphere rather than whichever fitting happens to be the current new-game default.
+export const ATMOSPHERE_REFERENCE_HULL = 48;
 const CENTRE = Object.freeze(sectorLocalToGlobalForSector(
   ZONE_TETHYS_ANVIL.center,
   PLANET_SITE.sectorId,
@@ -57,7 +66,10 @@ async function runEntryCase(control, entryVelocity, seed) {
   const sim = createSimulation({
     seed,
     bus: createBus(),
-    systems: [fields, planetRuntime, physics, combat],
+    // The controlled row is a real full burn, not merely planetRuntime's emergency assist.
+    // Flight writes its force first; fields/planetRuntime add their impulses before physics owns
+    // the solve, matching the production command-membrane order.
+    systems: [flightV3, fields, planetRuntime, physics, combat],
   });
   const { state } = sim;
   const physicsSystem = sim.registry.get('physics');
@@ -67,6 +79,8 @@ async function runEntryCase(control, entryVelocity, seed) {
     state.mode = 'flight';
     state.input.actions = {};
     state.input.boost = control === 'full-burn';
+    state.input.moveZ = control === 'full-burn' ? 1 : 0;
+    state.input.throttle = control === 'full-burn' ? 1 : 0;
     state.world.currentSectorId = PLANET_SITE.sectorId;
     // The authored planet is galactic-global. Keep the unrelated starter-sector fence from adding
     // a second force to this focused production route.
@@ -76,31 +90,21 @@ async function runEntryCase(control, entryVelocity, seed) {
       center: { x: CENTRE.x, z: CENTRE.z },
     };
 
-    const player = sim.spawn({
-      type: 'ship',
+    const fittings = fittingsFromDefaultModules(NEW_GAME.shipId, NEW_GAME.fittedModules || []);
+    const player = sim.spawn(makeShipEntitySpec(NEW_GAME.shipId, {
       team: 0,
+      isPlayer: true,
+      player: state.player,
+      fittings,
       pos: { x: CENTRE.x, z: CENTRE.z + START_RADIUS },
-      radius: 12,
-      collides: true,
-      vel: { x: 0, z: -entryVelocity },
       // At +Z from the planet, PI/2 points the recovery-burn heading directly outward.
       rot: Math.PI / 2,
-      angVel: control === 'uncontrolled' ? 2.2 : 0,
-      hull: REFERENCE_HULL,
-      hullMax: REFERENCE_HULL,
-      flightModel: { inertia: 88 },
-      flags: {},
-      physicsBody: {
-        schemaVersion: 1,
-        radius: 12,
-        mass: 28,
-        inertiaY: 88,
-        dynamic: true,
-        ccd: true,
-        material: 'ship',
-        revision: 0,
-      },
-    });
+    }));
+    player.vel.x = 0;
+    player.vel.z = -entryVelocity;
+    player.angVel = control === 'uncontrolled' ? 2.2 : 0;
+    player.hull = ATMOSPHERE_REFERENCE_HULL;
+    player.hullMax = ATMOSPHERE_REFERENCE_HULL;
     state.playerId = player.id;
     state.settings.gameplay.physicsBackend = 'rapier-dynamic';
     prepared = await physicsSystem.prepareBackend(state);
@@ -120,6 +124,8 @@ async function runEntryCase(control, entryVelocity, seed) {
 
     while (state.simTime - entryAt < MAX_ROUTE_S) {
       state.input.boost = control === 'full-burn';
+      state.input.moveZ = control === 'full-burn' ? 1 : 0;
+      state.input.throttle = control === 'full-burn' ? 1 : 0;
       sim.step(SIM_DT);
       const radius = radiusOf(player);
       minRadius = Math.min(minRadius, radius);
@@ -159,6 +165,8 @@ async function runEntryCase(control, entryVelocity, seed) {
       physicsBackend: state.physicsRuntime && state.physicsRuntime.diagnostics
         ? state.physicsRuntime.diagnostics.backend
         : null,
+      referenceShipId: NEW_GAME.shipId,
+      referenceHull: ATMOSPHERE_REFERENCE_HULL,
     });
   } finally {
     if (prepared && physicsSystem && typeof physicsSystem._disableSg02DynamicAuthority === 'function') {
@@ -202,6 +210,8 @@ export async function runArcadeCoreAtmosphereRoute(options = {}) {
       family: 'atmosphere',
       cases: Object.freeze(cases),
       referenceEntryVelocities: Object.freeze([...velocities]),
+      referenceShipId: NEW_GAME.shipId,
+      referenceHull: ATMOSPHERE_REFERENCE_HULL,
       uncontrolledBurnTimesS: Object.freeze(uncontrolled.map((entry) => Object.freeze({
         entryVelocity: entry.entryVelocity,
         outcome: entry.outcome,
