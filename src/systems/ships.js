@@ -47,6 +47,10 @@ import {
   normalizeLivingHull,
   sameLivingHull,
 } from '../core/livingHull.js';
+import {
+  loadoutCargoPolicyStatus,
+  normalizeLoadoutCargoPolicy,
+} from './cargo.js';
 
 // ---- catalog lookup tables (built once at module load) ------------------------------------
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
@@ -60,6 +64,46 @@ for (const sector of SECTORS) {
 }
 // any fittable def (weapon OR module) by id
 function defById(id) { return MODULE_BY_ID.get(id) || WEAPON_BY_ID.get(id) || null; }
+
+export const LOADOUT_PRESET_LIMIT = 6;
+export const LOADOUT_PRESET_NAME_MAX = 28;
+
+export function normalizeLoadoutPresetName(value) {
+  return Array.from(String(value == null ? '' : value)
+    .replace(/[\u0000-\u001f\u007f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()).slice(0, LOADOUT_PRESET_NAME_MAX).join('');
+}
+
+export function normalizeLoadoutPresets(value) {
+  const rows = Array.isArray(value) ? value : [];
+  const out = [];
+  const ids = new Set();
+  for (const candidate of rows) {
+    if (out.length >= LOADOUT_PRESET_LIMIT) break;
+    if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) continue;
+    const hullDefId = typeof candidate.hullDefId === 'string' && SHIP_BY_ID.has(candidate.hullDefId)
+      ? candidate.hullDefId : null;
+    if (!hullDefId) continue;
+    let id = typeof candidate.id === 'string'
+      ? candidate.id.replace(/[^a-zA-Z0-9:_-]/g, '').slice(0, 64)
+      : '';
+    if (!id || ids.has(id)) id = `loadout_${out.length + 1}`;
+    while (ids.has(id)) id += '_';
+    ids.add(id);
+    out.push({
+      id,
+      name: normalizeLoadoutPresetName(candidate.name) || `Loadout ${out.length + 1}`,
+      hullDefId,
+      // Keep an identifier that no longer resolves after a content change. Application then fails
+      // clearly and atomically instead of silently turning a missing system into an empty slot.
+      fittings: normalizedLoadoutFittings(hullDefId, candidate.fittings, { preserveUnavailable: true }),
+      cargoPolicy: normalizeLoadoutCargoPolicy(candidate.cargoPolicy),
+      savedAt: Number.isFinite(Number(candidate.savedAt)) ? Number(candidate.savedAt) : 0,
+    });
+  }
+  return out;
+}
 
 function cloneOwnedShip(value) {
   return value == null ? value : JSON.parse(JSON.stringify(value));
@@ -142,9 +186,33 @@ function fmtCr(value) {
   return Math.max(0, Math.round(Number(value) || 0)).toLocaleString('en-US');
 }
 
+function shipName(defId) {
+  const def = SHIP_BY_ID.get(defId);
+  return def ? def.name : String(defId || 'ship');
+}
+
 function purchaseFundingText(def, price, credits) {
   const missing = Math.max(0, (Number(price) || 0) - (Number(credits) || 0));
   return 'Need ' + fmtCr(missing) + ' more cr for ' + ((def && def.name) || 'this purchase');
+}
+
+function normalizedLoadoutFittings(defId, fittings = [], { preserveUnavailable = false } = {}) {
+  const shipDef = SHIP_BY_ID.get(defId);
+  const slots = buildSlotList(shipDef);
+  const out = new Array(slots.length).fill(null);
+  for (let i = 0; i < slots.length; i += 1) {
+    const id = typeof (fittings && fittings[i]) === 'string'
+      ? fittings[i].replace(/[^a-zA-Z0-9:_-]/g, '').slice(0, 96)
+      : '';
+    out[i] = id && (preserveUnavailable || defById(id)) ? id : null;
+  }
+  return out;
+}
+
+export function loadoutCargoPolicyLabel(value) {
+  const policy = normalizeLoadoutCargoPolicy(value);
+  if (policy === 'reserve_quarter') return 'Keep 25% hold free';
+  return 'Carry current cargo';
 }
 
 // Legacy fallback for pre-explicit-loadout saves. NEW_GAME now fits this weapon directly; the
@@ -868,6 +936,9 @@ export const ships = {
     bus.on('ui:buyModule', withShipworksAccess('outfit', (p) => this.buyModule(p)));
     bus.on('ui:fitModule', withShipworksAccess('outfit', (p) => this.fitModule(p)));
     bus.on('ui:unfitModule', withShipworksAccess('outfit', (p) => this.unfitModule(p)));
+    bus.on('ui:saveLoadoutPreset', withShipworksAccess('outfit', (p) => this.saveLoadoutPreset(p)));
+    bus.on('ui:applyLoadoutPreset', withShipworksAccess('outfit', (p) => this.applyLoadoutPreset(p)));
+    bus.on('ui:deleteLoadoutPreset', withShipworksAccess('outfit', (p) => this.deleteLoadoutPreset(p)));
     bus.on('ui:unlockTech', (p) => this.unlockTech((p && p.nodeId) || null));
     bus.on('ui:respecTech', (p) => this.respecTech(p && p.branch));
     bus.on('ui:setShipAppearance', (p) => this.setShipAppearance(p || {}));
@@ -1610,6 +1681,151 @@ export const ships = {
     this.recomputeActiveShip();
     this.bus.emit('ship:newGamePlusCosmeticsApplied', { count: Object.keys(presets).length });
     return Object.keys(presets).length;
+  },
+
+  // ---- loadout presets --------------------------------------------------------------------
+
+  saveLoadoutPreset({ shipIndex, name, cargoPolicy = 'carry_current' } = {}) {
+    const p = this.state.player;
+    const activeIndex = Math.max(0, Number(p && p.activeShipIndex) | 0);
+    const resolvedIndex = Number.isInteger(shipIndex) ? shipIndex : activeIndex;
+    const owned = this.ownedShip(resolvedIndex);
+    if (!p || !owned || !SHIP_BY_ID.has(owned.defId)) return false;
+    if (resolvedIndex !== activeIndex) {
+      this.bus.emit('toast', { text: 'Make this hull active before saving its loadout', kind: 'error', ttl: 3 });
+      return false;
+    }
+    const presets = normalizeLoadoutPresets(p.loadoutPresets);
+    const fittings = normalizedLoadoutFittings(owned.defId, owned.fittings);
+    const normalizedName = normalizeLoadoutPresetName(name) || `Loadout ${presets.length + 1}`;
+    const existingIndex = presets.findIndex((row) => row.hullDefId === owned.defId
+      && row.name.toLocaleLowerCase() === normalizedName.toLocaleLowerCase());
+    const ids = new Set(presets.map((row) => row.id));
+    let presetId = existingIndex >= 0 ? presets[existingIndex].id
+      : `lp_${Math.max(0, Math.floor(Number(this.state.tick) || 0))}_${(this._loadoutSeq = (this._loadoutSeq || 0) + 1)}`;
+    while (ids.has(presetId) && (existingIndex < 0 || presets[existingIndex].id !== presetId)) {
+      presetId += '_';
+    }
+    const preset = {
+      id: presetId,
+      name: normalizedName,
+      hullDefId: owned.defId,
+      fittings,
+      cargoPolicy: normalizeLoadoutCargoPolicy(cargoPolicy),
+      savedAt: Math.max(0, Number(this.state.simTime) || 0),
+    };
+    if (existingIndex >= 0) presets.splice(existingIndex, 1);
+    presets.unshift(preset);
+    const replacedOldest = presets.length > LOADOUT_PRESET_LIMIT;
+    p.loadoutPresets = presets.slice(0, LOADOUT_PRESET_LIMIT);
+    this.bus.emit('loadoutPresets:changed', { action: 'saved', preset: { ...preset, fittings: preset.fittings.slice() } });
+    this.bus.emit('toast', {
+      text: `${existingIndex >= 0 ? 'Updated' : 'Saved'} loadout: ${preset.name}${replacedOldest ? ' (oldest replaced)' : ''}`,
+      kind: 'success',
+      ttl: 3,
+    });
+    return true;
+  },
+
+  applyLoadoutPreset({ shipIndex, presetId } = {}) {
+    const p = this.state.player;
+    if (!p) return false;
+    p.loadoutPresets = normalizeLoadoutPresets(p.loadoutPresets);
+    const preset = p.loadoutPresets.find((row) => row.id === presetId);
+    const activeIndex = Math.max(0, Number(p.activeShipIndex) | 0);
+    const resolvedIndex = Number.isInteger(shipIndex) ? shipIndex : activeIndex;
+    const owned = this.ownedShip(resolvedIndex);
+    if (!preset || !owned) return false;
+    if (resolvedIndex !== activeIndex) {
+      this.bus.emit('toast', { text: 'Make this hull active before applying its loadout', kind: 'error', ttl: 3 });
+      return false;
+    }
+    if (owned.defId !== preset.hullDefId) {
+      this.bus.emit('toast', { text: 'Preset is for ' + shipName(preset.hullDefId), kind: 'error', ttl: 3 });
+      return false;
+    }
+    const shipDef = SHIP_BY_ID.get(owned.defId);
+    const slots = buildSlotList(shipDef);
+    const target = normalizedLoadoutFittings(preset.hullDefId, preset.fittings, { preserveUnavailable: true });
+    const current = normalizedLoadoutFittings(owned.defId, owned.fittings);
+    const blocker = this.loadoutPresetBlocker(owned, target, slots, preset.cargoPolicy);
+    if (blocker) {
+      if (blocker.text) this.bus.emit('toast', { text: blocker.text, kind: 'error', ttl: 3 });
+      return false;
+    }
+    const inventory = Array.isArray(p.moduleInventory) ? p.moduleInventory : [];
+    const unusedCurrent = new Map();
+    for (const id of current) if (id) unusedCurrent.set(id, (unusedCurrent.get(id) || 0) + 1);
+    const claimedInventory = new Set();
+    for (const id of target) {
+      if (!id) continue;
+      const fittedCount = unusedCurrent.get(id) || 0;
+      if (fittedCount > 0) {
+        unusedCurrent.set(id, fittedCount - 1);
+        continue;
+      }
+      const inventoryIndex = inventory.findIndex((item, index) => !claimedInventory.has(index)
+        && item && item.defId === id);
+      if (inventoryIndex < 0) {
+        const def = defById(id);
+        this.bus.emit('toast', { text: 'Missing stored system: ' + ((def && def.name) || id), kind: 'error', ttl: 3 });
+        return false;
+      }
+      claimedInventory.add(inventoryIndex);
+    }
+
+    const inventoryAfter = inventory.filter((_, index) => !claimedInventory.has(index));
+    const instanceIds = new Set(inventoryAfter.map((item) => item && item.instanceId).filter(Boolean));
+    for (const [defId, count] of unusedCurrent) {
+      for (let n = 0; n < count; n += 1) {
+        let instanceId = this.nextInstanceId();
+        while (instanceIds.has(instanceId)) instanceId = this.nextInstanceId();
+        instanceIds.add(instanceId);
+        inventoryAfter.push({ instanceId, defId });
+      }
+    }
+
+    // Commit both owned containers together. The checks above are read-only, and no observer sees
+    // a partial refit or gets a chance to consume a transient inventory entry.
+    owned.fittings = target.slice();
+    p.moduleInventory = inventoryAfter;
+    this.recomputeIfActive(resolvedIndex, owned.fittings);
+    this.bus.emit('loadoutPresets:changed', { action: 'applied', presetId: preset.id, shipIndex: resolvedIndex });
+    this.bus.emit('toast', { text: 'Applied loadout: ' + preset.name, kind: 'success', ttl: 3 });
+    return true;
+  },
+
+  deleteLoadoutPreset({ presetId } = {}) {
+    const p = this.state.player;
+    if (!p) return false;
+    const before = normalizeLoadoutPresets(p.loadoutPresets);
+    const after = before.filter((row) => row.id !== presetId);
+    p.loadoutPresets = after;
+    if (after.length === before.length) return false;
+    this.bus.emit('loadoutPresets:changed', { action: 'deleted', presetId });
+    this.bus.emit('toast', { text: 'Deleted loadout preset', kind: 'success', ttl: 2 });
+    return true;
+  },
+
+  loadoutPresetBlocker(owned, target, slots, cargoPolicy = 'carry_current') {
+    if (!owned || !Array.isArray(target)) return { reason: 'missing_fit_target', text: null };
+    for (let slotIndex = 0; slotIndex < target.length; slotIndex += 1) {
+      const defId = target[slotIndex];
+      if (!defId) continue;
+      const def = defById(defId);
+      const slot = slots[slotIndex];
+      if (!def) return { reason: 'unavailable_system', text: 'Unavailable system in preset: ' + defId };
+      if (!slot || !fits(slot, def)) return { reason: 'incompatible_slot', text: 'Preset no longer fits this hull' };
+      if (!this.isUnlocked(def)) return { reason: 'research_required', text: 'Research required: ' + techDisplayName(def.requiresTech) };
+      const conflict = findMasslineHeadConflict(target, slotIndex, def);
+      if (conflict) return { reason: 'massline_head_conflict', text: 'Preset has two Massline heads' };
+    }
+    const budgetBlocker = outfitBudgetBlocker(owned.defId, target);
+    if (budgetBlocker) return budgetBlocker;
+    const derived = getDerivedStats(owned.defId, target, this.state.player);
+    const cargoStatus = loadoutCargoPolicyStatus(this.state, cargoPolicy, derived && derived.cargoCap);
+    if (!cargoStatus.ok) return { reason: 'cargo_policy', text: cargoStatus.text };
+    return null;
   },
 
   // ---- outfitting: fit / unfit modules ----------------------------------------------------

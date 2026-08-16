@@ -10,8 +10,13 @@ import {
   buildSlotList,
   findMasslineHeadConflict,
   fits,
+  LOADOUT_PRESET_LIMIT,
+  loadoutCargoPolicyLabel,
+  normalizeLoadoutPresets,
   shipworksStationAccess,
 } from '../../../systems/ships.js';
+import { LOADOUT_CARGO_POLICIES } from '../../../systems/cargo.js';
+import { presentLoadoutCapability } from '../loadoutPresentation.js';
 import { SHIPS } from '../../../data/ships.js';
 import { SECTORS } from '../../../data/sectors.js';
 import { MODULES } from '../../../data/modules.js';
@@ -799,6 +804,38 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const activeControl = host === 'flight' ? '' : inspectedIndex !== activeIndex
       ? `<button type="button" class="sx-sw-circuit__activate" data-activate-ship="${inspectedIndex}" ${availability.hullEnabled ? '' : 'disabled'} aria-label="${escapeHtml(availability.hullEnabled ? 'Make active ship' : availability.hullLabel)}">${availability.hullEnabled ? 'MAKE ACTIVE' : escapeHtml(availability.hullLabel.toUpperCase())}</button>`
       : `<span class="sx-sw-circuit__active">ACTIVE FLIGHT HULL</span>`;
+    const allPresets = normalizeLoadoutPresets(ctx.state.player && ctx.state.player.loadoutPresets);
+    const presets = allPresets
+      .filter((preset) => preset.hullDefId === def.id);
+    const activeHull = inspectedIndex === activeIndex;
+    const canPreset = host !== 'flight' && availability.outfitEnabled && activeHull;
+    const presetReason = host === 'flight' || !availability.outfitEnabled
+      ? 'Dock at an outfitting berth to save or apply builds.'
+      : !activeHull ? 'Make this hull active before managing its builds.'
+        : 'Save this complete fit, then recall it without buying duplicate systems.';
+    const presetRail = `<div class="sx-sw-presets" aria-label="Loadout presets">` +
+      `<div class="sx-sw-presets__head"><span>LOADOUT PRESETS</span><b>${allPresets.length}/${LOADOUT_PRESET_LIMIT}</b></div>` +
+      `<p>${escapeHtml(presetReason)}</p>` +
+      `<div class="sx-sw-presets__list">` +
+        (presets.length ? presets.map((preset) => {
+          const capability = presentLoadoutCapability(preset.hullDefId, preset.fittings, ctx.state.player);
+          return `<article class="sx-sw-preset">` +
+            `<div class="sx-sw-preset__copy"><strong>${escapeHtml(preset.name)}</strong><span>${escapeHtml(capability)}</span><em>${escapeHtml(loadoutCargoPolicyLabel(preset.cargoPolicy))}</em></div>` +
+            `<div class="sx-sw-preset__actions">` +
+              `<button type="button" data-apply-loadout="${escapeHtml(preset.id)}" ${canPreset ? '' : 'disabled'}>${canPreset ? 'Apply' : 'Locked'}</button>` +
+              `<button type="button" data-delete-loadout="${escapeHtml(preset.id)}" ${canPreset ? '' : 'disabled'} aria-label="Delete ${escapeHtml(preset.name)}">×</button>` +
+            `</div>` +
+          `</article>`;
+        }).join('') : `<div class="sx-sw-preset sx-sw-preset--empty">No saved builds for this hull yet.</div>`) +
+      `</div>` +
+      `<div class="sx-sw-presets__form">` +
+        `<label><span>BUILD NAME</span><input type="text" data-loadout-name maxlength="28" placeholder="e.g. Ceres survey" ${canPreset ? '' : 'disabled'}></label>` +
+        `<label><span>CARGO RULE</span><select data-loadout-policy ${canPreset ? '' : 'disabled'}>` +
+          LOADOUT_CARGO_POLICIES.map((policy) => `<option value="${escapeHtml(policy.id)}">${escapeHtml(policy.label)}</option>`).join('') +
+        `</select></label>` +
+        `<button type="button" class="sx-btn-ghost" data-save-loadout="${inspectedIndex}" ${canPreset ? '' : 'disabled'} aria-label="${escapeHtml(canPreset ? 'Save current loadout preset' : presetReason)}">Save Current</button>` +
+      `</div>` +
+    `</div>`;
     sideEl.innerHTML =
       `<div class="sx-sw-circuit">` +
         `<div class="sx-sw-circuit__identity"><span>BUILD IDENTITY</span><strong>${escapeHtml((def.role || 'ship').toUpperCase())}</strong><em>${equippedDefs.length}/${slots.length} systems fitted · ${fmt(moduleMass)}t modules</em></div>` +
@@ -814,7 +851,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
           `</div>`;
         }).join('')}</div>` +
         `<div class="sx-sw-circuit__instruction"><span>SELECT ON HULL</span><b>Choose a system node to preview compatible hardware.</b>${activeControl}</div>` +
-      `</div>`;
+      `</div>` +
+      presetRail;
   }
 
   function specRow(k, v) { return `<div class="sx-kv"><span>${k}</span><b>${v}</b></div>`; }
@@ -1122,6 +1160,46 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   });
 
   sideEl.addEventListener('click', (ev) => {
+    const savePreset = ev.target.closest('[data-save-loadout]');
+    if (savePreset && !savePreset.disabled && ctx.bus && shipworksActionAvailability(ctx.state).outfitEnabled) {
+      const shipIndex = Number(savePreset.getAttribute('data-save-loadout'));
+      const form = savePreset.closest('.sx-sw-presets__form');
+      const nameInput = form && form.querySelector('[data-loadout-name]');
+      const policyInput = form && form.querySelector('[data-loadout-policy]');
+      const name = nameInput ? nameInput.value.trim() : '';
+      if (!name) {
+        ctx.bus.emit('toast', { text: 'Name this loadout first', kind: 'error', ttl: 3 });
+        if (nameInput) nameInput.focus();
+        return;
+      }
+      ctx.bus.emit('ui:saveLoadoutPreset', {
+        shipIndex,
+        name,
+        cargoPolicy: policyInput ? policyInput.value : 'carry_current',
+      });
+      ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+      setTimeout(refresh, 60);
+      return;
+    }
+    const applyPreset = ev.target.closest('[data-apply-loadout]');
+    if (applyPreset && !applyPreset.disabled && ctx.bus && shipworksActionAvailability(ctx.state).outfitEnabled) {
+      ctx.bus.emit('ui:applyLoadoutPreset', {
+        shipIndex: viewIdx,
+        presetId: applyPreset.getAttribute('data-apply-loadout'),
+      });
+      ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+      setTimeout(refresh, 70);
+      return;
+    }
+    const deletePreset = ev.target.closest('[data-delete-loadout]');
+    if (deletePreset && !deletePreset.disabled && ctx.bus && shipworksActionAvailability(ctx.state).outfitEnabled) {
+      ctx.bus.emit('ui:deleteLoadoutPreset', {
+        presetId: deletePreset.getAttribute('data-delete-loadout'),
+      });
+      ctx.bus.emit('audio:cue', { id: 'ui_click' });
+      setTimeout(refresh, 60);
+      return;
+    }
     const slot = ev.target.closest('[data-slot]');
     if (slot) { openChooser(Number(slot.getAttribute('data-slot'))); if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_click' }); return; }
     const buy = ev.target.closest('[data-buyship]');

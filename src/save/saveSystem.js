@@ -18,7 +18,7 @@ import { mulberry32, mulberry32FromContinuation } from '../core/rng.js';
 import { NEW_GAME } from '../data/newGameDefaults.js';
 import { STORY_BEATS } from '../data/missions.js';
 import { restoreCombatState, serializeCombatState } from '../combat/persistence.js';
-import { fittingsFromDefaultModules, makeShipEntitySpec } from '../systems/ships.js';
+import { fittingsFromDefaultModules, makeShipEntitySpec, normalizeLoadoutPresets } from '../systems/ships.js';
 import { createTimeEffects } from '../core/timeEffects.js';
 import {
   buildNewGamePlusCandidate,
@@ -2431,6 +2431,11 @@ export const save = {
       if (k === 'cargo') continue;
       player[k] = p[k];
     }
+    if (Object.hasOwn(p, 'loadoutPresets') && Array.isArray(player.loadoutPresets)) {
+      player.loadoutPresets = normalizeLoadoutPresets(player.loadoutPresets);
+    } else if (Object.hasOwn(player, 'loadoutPresets')) {
+      delete player.loadoutPresets;
+    }
     player.cargo = cargo;
   },
 
@@ -2888,6 +2893,10 @@ function normalizePlayerSaveRecord(player, savedEntity) {
   if (!active.defId) active.defId = defId;
   if (!Array.isArray(active.fittings)) active.fittings = fittings;
   if (!Array.isArray(out.moduleInventory)) out.moduleInventory = [];
+  // Preserve the ordinary-run save shape. The bounded key is admitted lazily only after the
+  // player actually saves a preset, so Plan 54 is a no-op for deterministic legacy/new runs.
+  if (Array.isArray(out.loadoutPresets)) out.loadoutPresets = normalizeLoadoutPresets(out.loadoutPresets);
+  else delete out.loadoutPresets;
   if (!Array.isArray(out.researchedNodes)) out.researchedNodes = [];
   if (!out.efficiencyMods || typeof out.efficiencyMods !== 'object' || Array.isArray(out.efficiencyMods)) {
     out.efficiencyMods = { miningYieldMult: 1, shieldRegenMult: 1, energyRegenMult: 1, cargoCapMult: 1, tradeFeeMult: 1 };

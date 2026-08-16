@@ -22,6 +22,53 @@ const JETTISON_EJECT_SPEED = 60;
 const JETTISON_CLEARANCE = 4;
 const JETTISON_PICKUP_EMBARGO_S = 2;
 
+// Plan 54 loadout presets keep cargo under Cargo's authority. A fit preset never owns a shadow
+// hold and never silently throws freight away; its saved policy is an admission rule evaluated
+// against the target derived capacity before Ships commits an otherwise-atomic module swap.
+export const LOADOUT_CARGO_POLICIES = Object.freeze([
+  Object.freeze({
+    id: 'carry_current',
+    label: 'Carry current cargo',
+    detail: 'Switch if every unit already aboard fits the target hold.',
+  }),
+  Object.freeze({
+    id: 'reserve_quarter',
+    label: 'Keep 25% hold free',
+    detail: 'Switch only with one quarter of the target hold left open for salvage or ore.',
+  }),
+]);
+const LOADOUT_CARGO_POLICY_IDS = new Set(LOADOUT_CARGO_POLICIES.map((policy) => policy.id));
+
+export function normalizeLoadoutCargoPolicy(value) {
+  return LOADOUT_CARGO_POLICY_IDS.has(value) ? value : 'carry_current';
+}
+
+/** Pure Cargo-owned gate for a proposed loadout capacity. Returns the exact unload requirement;
+ * callers may explain the failure, but only Cargo/economy writers may change the hold. */
+export function loadoutCargoPolicyStatus(state, policyId, targetCapacity) {
+  const cargo = state && state.player && state.player.cargo || {};
+  const cargoPolicy = normalizeLoadoutCargoPolicy(policyId);
+  const capacity = Math.max(0, Math.floor(Number(targetCapacity) || 0));
+  const used = Math.max(0, Number(cargo.usedVolume) || 0);
+  const reserve = cargoPolicy === 'reserve_quarter' ? Math.ceil(capacity * 0.25) : 0;
+  const permittedUsed = Math.max(0, capacity - reserve);
+  const unloadVolume = Math.max(0, Math.ceil(used - permittedUsed));
+  const ok = unloadVolume === 0;
+  const text = ok ? null : cargoPolicy === 'reserve_quarter'
+    ? `Preset keeps 25% of the hold free — unload ${unloadVolume}u first`
+    : `Current cargo exceeds the target hold — unload ${unloadVolume}u first`;
+  return Object.freeze({
+    ok,
+    policyId: cargoPolicy,
+    capacity,
+    used,
+    reserve,
+    permittedUsed,
+    unloadVolume,
+    text,
+  });
+}
+
 function volumePerUnit(def) {
   return def.persistent ? 0 : (def.vol > 0 ? def.vol : 1);
 }

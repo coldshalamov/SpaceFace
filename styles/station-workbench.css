@@ -364,8 +364,8 @@
 .sx-sw__stats .sx-stat__k { color:#6f706a; }
 .sx-sw__stats .sx-stat__v { color:var(--ink-0); }
 
-.sx-sw__side { min-width:0; min-height:0; padding:0; overflow:visible; }
-.sx-sw-circuit { height:100%; display:grid; grid-template-columns:210px 128px 40px minmax(360px,1fr) 220px; align-items:center; gap:12px; padding:10px 13px; border:1px solid #343633; background:#0e1112; }
+.sx-sw__side { min-width:0; min-height:0; display:grid; grid-template-rows:auto auto; gap:3px; padding:0; overflow:visible; }
+.sx-sw-circuit { min-height:92px; height:auto; display:grid; grid-template-columns:210px 128px 40px minmax(360px,1fr) 220px; align-items:center; gap:12px; padding:10px 13px; border:1px solid #343633; background:#0e1112; }
 .sx-sw-circuit__identity,
 .sx-sw-circuit__core,
 .sx-sw-circuit__instruction { display:flex; flex-direction:column; min-width:0; }
@@ -394,6 +394,51 @@
 .sx-sw-circuit__active { margin-top:7px; }
 .sx-sw-circuit__activate { border:1px solid #665439; border-radius:1px; background:#211c15; color:#e6c48d; padding:5px 8px; font:600 9px/1 var(--sx-display); letter-spacing:.08em; cursor:pointer; }
 .sx-sw-circuit__active { color:var(--gain); font:500 8px/1 var(--sx-mono); letter-spacing:.1em; }
+
+.sx-sw-presets {
+  min-width:0; min-height:94px; display:grid;
+  grid-template-columns:126px 210px minmax(280px,1fr) minmax(360px,.8fr);
+  align-items:stretch; gap:10px; padding:9px 12px;
+  border:1px solid rgba(99,210,225,.18);
+  background:linear-gradient(90deg,rgba(7,20,28,.96),rgba(5,13,20,.9));
+}
+.sx-sw-presets__head { display:flex; flex-direction:column; justify-content:center; gap:6px; }
+.sx-sw-presets__head span,
+.sx-sw-presets__form label > span { color:#6e8588; font:600 8px/1 var(--sx-mono); letter-spacing:.14em; }
+.sx-sw-presets__head b { color:#d7f8fb; font:600 19px/1 var(--sx-display); letter-spacing:.06em; }
+.sx-sw-presets > p { align-self:center; margin:0; color:#819194; font:400 10px/1.35 var(--sx-ui); }
+.sx-sw-presets__list { min-width:0; display:flex; gap:5px; overflow-x:auto; scrollbar-width:thin; }
+.sx-sw-preset {
+  flex:0 0 270px; min-width:0; display:grid; grid-template-columns:minmax(0,1fr) auto;
+  align-items:center; gap:8px; padding:7px 8px 7px 10px;
+  border-left:2px solid rgba(89,216,234,.52); background:rgba(10,27,36,.78);
+}
+.sx-sw-preset__copy { min-width:0; display:flex; flex-direction:column; gap:3px; }
+.sx-sw-preset__copy strong { overflow:hidden; color:#d9eeee; font:600 11px/1.1 var(--sx-ui); text-overflow:ellipsis; white-space:nowrap; }
+.sx-sw-preset__copy span { color:#82999b; font:400 9px/1.25 var(--sx-ui); }
+.sx-sw-preset__copy em { color:#d2a75e; font:500 8px/1 var(--sx-mono); font-style:normal; letter-spacing:.05em; }
+.sx-sw-preset__actions { display:flex; align-items:stretch; gap:3px; }
+.sx-sw-preset__actions button { min-height:30px; padding:0 8px; border:1px solid rgba(100,214,229,.25); background:rgba(8,20,27,.9); color:#a9d7dc; font:600 8px/1 var(--sx-mono); cursor:pointer; }
+.sx-sw-preset__actions button:last-child { width:28px; padding:0; color:#9d8582; font-size:15px; }
+.sx-sw-preset__actions button:hover:not(:disabled) { border-color:#79e0ea; color:#edffff; }
+.sx-sw-preset__actions button:focus-visible,
+.sx-sw-presets__form input:focus-visible,
+.sx-sw-presets__form select:focus-visible,
+.sx-sw-presets__form button:focus-visible { outline:2px solid #b7f6fb; outline-offset:1px; }
+.sx-sw-preset__actions button:disabled { cursor:not-allowed; opacity:.42; }
+.sx-sw-preset--empty { place-items:center start; color:#687a7c; font:400 9px/1.3 var(--sx-ui); }
+.sx-sw-presets__form { min-width:0; display:grid; grid-template-columns:minmax(120px,1fr) minmax(145px,.8fr) auto; align-items:end; gap:5px; }
+.sx-sw-presets__form label { min-width:0; display:flex; flex-direction:column; gap:5px; }
+.sx-sw-presets__form input,
+.sx-sw-presets__form select { width:100%; min-width:0; height:31px; padding:0 8px; border:1px solid rgba(103,199,213,.22); border-radius:1px; background:#07131a; color:#c7dfe1; font:500 10px/1 var(--sx-ui); }
+.sx-sw-presets__form input::placeholder { color:#52676a; }
+.sx-sw-presets__form button { min-height:31px; padding-inline:10px; white-space:nowrap; }
+
+@media (max-width:1280px) {
+  .sx-sw-presets { grid-template-columns:100px minmax(240px,1fr) minmax(330px,.8fr); }
+  .sx-sw-presets > p { display:none; }
+  .sx-sw-preset { flex-basis:245px; }
+}
 
 /* Hull-purchase mode keeps the same bay; spec and commit become a bottom work order. */
 .sx-sw__side > .sx-panel,
