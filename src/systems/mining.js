@@ -44,6 +44,7 @@ import {
   KILL_BURST_EJECT_SPEED_MIN,
   KILL_BURST_VEL_INHERIT,
 } from '../data/killRewards.js';
+import { PLANET_REWARD_SCATTER_KIND, PLANET_SITE } from '../data/planets.js';
 import {
   applyPickupAttraction,
   MAGNET_ACCEL,
@@ -1211,11 +1212,38 @@ export const mining = {
     if (!p) return;
     const pos = p.pos || { x: 0, z: 0 };
     const stub = { pos: { x: pos.x, z: pos.z }, radius: 4 };
-    const inheritX = (Number.isFinite(p.vel && p.vel.x) ? p.vel.x : 0) * KILL_BURST_VEL_INHERIT;
-    const inheritZ = (Number.isFinite(p.vel && p.vel.z) ? p.vel.z : 0) * KILL_BURST_VEL_INHERIT;
+    const baseInheritX = (Number.isFinite(p.vel && p.vel.x) ? p.vel.x : 0) * KILL_BURST_VEL_INHERIT;
+    const baseInheritZ = (Number.isFinite(p.vel && p.vel.z) ? p.vel.z : 0) * KILL_BURST_VEL_INHERIT;
     const burst = p.source === 'kill_burst' || (Array.isArray(p.items) && p.items.some(isCreditChipPickup));
+    const scatter = this._burnUpRewardScatter(p.rewardScatter);
+    let rewardCount = 0;
+    if (scatter) {
+      for (const item of (p.items || [])) {
+        if (isCreditChipPickup(item)) {
+          if (finiteWholePickupAmount(item.credits != null ? item.credits : item.amount) > 0) rewardCount++;
+        } else if (item?.commodityId) rewardCount++;
+      }
+    }
+    let rewardIndex = 0;
     for (const it of (p.items || [])) {
       if (!it) continue;
+      let inheritX = baseInheritX;
+      let inheritZ = baseInheritZ;
+      if (scatter) {
+        const pathIndex = rewardCount <= 1
+          ? scatter.path.length - 1
+          : Math.round((rewardIndex * (scatter.path.length - 1)) / (rewardCount - 1));
+        const point = scatter.path[pathIndex];
+        stub.pos.x = point.x;
+        stub.pos.z = point.z;
+        if ((rewardIndex & 1) === 0 && scatter.outwardSpeed > 0) {
+          const dx = point.x - scatter.center.x;
+          const dz = point.z - scatter.center.z;
+          const distance = Math.hypot(dx, dz) || 1;
+          inheritX += (dx / distance) * scatter.outwardSpeed;
+          inheritZ += (dz / distance) * scatter.outwardSpeed;
+        }
+      }
       if (isCreditChipPickup(it)) {
         const credits = finiteWholePickupAmount(it.credits != null ? it.credits : it.amount);
         if (credits <= 0) continue;
@@ -1227,6 +1255,7 @@ export const mining = {
           inheritX,
           inheritZ,
         });
+        rewardIndex++;
         continue;
       }
       if (!it.commodityId) continue;
@@ -1238,10 +1267,27 @@ export const mining = {
           inheritX,
           inheritZ,
         });
+        rewardIndex++;
       } else {
         this._spawnPickup(stub, it.commodityId, it.qty || 1);
       }
     }
+  },
+
+  _burnUpRewardScatter(source) {
+    if (source?.kind !== PLANET_REWARD_SCATTER_KIND || !Array.isArray(source.path)) return null;
+    if (!Number.isFinite(source.center?.x) || !Number.isFinite(source.center?.z)) return null;
+    const path = [];
+    for (let i = 0; i < source.path.length && i < PLANET_SITE.rewardScatter.maxPathPoints; i++) {
+      const point = source.path[i];
+      if (Number.isFinite(point?.x) && Number.isFinite(point?.z)) path.push(point);
+    }
+    if (!path.length) return null;
+    return {
+      path,
+      center: source.center,
+      outwardSpeed: Math.max(0, Number(source.outwardSpeed) || 0),
+    };
   },
 
   _spawnLootBurstPickup(srcEnt, opts) {

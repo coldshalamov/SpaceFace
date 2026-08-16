@@ -29,9 +29,14 @@
 //   transientSector:false so a claimed/persistent body survives sector change while the cap still
 //   bounds total residency.
 import { spawnPayloadEntity } from '../combat/industrialBeam.js';
-import { applyStyleMultiplier, styleMultiplierOf } from '../combat/killCause.js';
+import {
+  applyStyleMultiplier,
+  KILL_CAUSE_BURN_UP,
+  styleMultiplierOf,
+} from '../combat/killCause.js';
 import { createVictimRewardRng, missionOwnsReward } from '../combat/rewardEligibility.js';
 import { massline2Flag } from '../data/featureFlags.js';
+import { PLANET_REWARD_SCATTER_KIND, PLANET_SITE } from '../data/planets.js';
 import {
   isCreditChipItem,
   killResearchPointsForVictim,
@@ -86,6 +91,28 @@ export function lootShardBasePriceEv(items, commodityBasePriceById) {
     total += price * Math.max(0, Number(it.qty) || 0);
   }
   return total;
+}
+
+function burnUpRewardScatterOf(payload, victim) {
+  if (payload?.presentation?.style?.id !== KILL_CAUSE_BURN_UP) return null;
+  const source = victim?.data?.burnUpRewardScatter;
+  if (source?.kind !== PLANET_REWARD_SCATTER_KIND || !Array.isArray(source.path)) return null;
+  const center = source.center;
+  if (!Number.isFinite(center?.x) || !Number.isFinite(center?.z)) return null;
+  const path = [];
+  for (let i = 0; i < source.path.length && i < PLANET_SITE.rewardScatter.maxPathPoints; i++) {
+    const point = source.path[i];
+    if (!Number.isFinite(point?.x) || !Number.isFinite(point?.z)) continue;
+    path.push(Object.freeze({ x: point.x, z: point.z }));
+  }
+  if (!path.length) return null;
+  return Object.freeze({
+    kind: PLANET_REWARD_SCATTER_KIND,
+    siteId: source.siteId || PLANET_SITE.id,
+    center: Object.freeze({ x: center.x, z: center.z }),
+    path: Object.freeze(path),
+    outwardSpeed: Math.max(0, Number(source.outwardSpeed) || 0),
+  });
 }
 
 /** True when a cargoManifest carries at least one positive commodity line. */
@@ -229,6 +256,7 @@ export const lootShards = {
         z: Number.isFinite(victim.vel.z) ? victim.vel.z : 0,
       }
       : { x: 0, z: 0 };
+    const rewardScatter = burnUpRewardScatterOf(payload, victim);
     // Credits stay inside the physical chip items. A top-level credits field would look like
     // the authored combat grant-at-death receipt; AC-01 settles only on collection.
     this.bus.emit('loot:drop', {
@@ -236,6 +264,7 @@ export const lootShards = {
       items,
       vel,
       source: 'kill_burst',
+      ...(rewardScatter ? { rewardScatter } : {}),
     });
     // Missions owns the one positive RP writer. Keep the receipt tied to this run-local entity
     // death so duplicate kill publication cannot pay twice; no XP or parallel progression wallet.

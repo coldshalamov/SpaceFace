@@ -20,6 +20,11 @@ const IS_BROWSER = typeof window !== 'undefined';
 export const PLANET_FLAGS = { enabled: IS_BROWSER };
 export function planetFlag(name) { return !!PLANET_FLAGS[name]; }
 
+// Stable cross-owner identity for the Plan 04 burn-up reward route. PlanetRuntime authors the
+// bounded path, lootShards admits it only on a classified burn-up, and mining owns the physical
+// pickup placement/velocity consequence.
+export const PLANET_REWARD_SCATTER_KIND = 'planet_descent_reward_v1';
+
 /** Band edges are PLANAR radii (x/z distance from the site centre, WU). Hysteresis is applied
  *  symmetrically at every boundary by the runtime so states never flap on the line. */
 export const PLANET_SITE = Object.freeze({
@@ -80,6 +85,14 @@ export const PLANET_SITE = Object.freeze({
     descentRadius: 740, // r < this while Breakup -> Descent (committed to the limb)
     aftermathS: 4.0,    // Aftermath presentation window after a terminal kill at the site
     regressS: 1.2,      // seconds of outward motion required to step a stage back (escape window)
+  }),
+
+  // ---- burn-up reward path (bounded transient handoff; no reward values live here) -------------
+  rewardScatter: Object.freeze({
+    kind: PLANET_REWARD_SCATTER_KIND,
+    maxPathPoints: 12,      // retains the full 3-6 s show without sampling every fixed tick
+    sampleIntervalS: 0.35,  // enough separation to read as a trail without sampling every tick
+    outwardSpeed: 300,      // alternating pickups beat the live field and clear back to the rim
   }),
 
   // ---- skim harvest (yield = path x density through an explicit collector device) --------------

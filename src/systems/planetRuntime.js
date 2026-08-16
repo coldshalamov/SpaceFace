@@ -61,6 +61,7 @@ function defaultRuntime() {
       region: 'outside', regionRank: 0, r: Infinity,
       heat: 0, stage: null, stageAt: 0, outwardS: 0, burnNextAt: 0,
       plungeAttackerId: null,
+      descentPath: [], descentSampleAt: -Infinity,
       collectorOn: false, pendingShallow: 0, pendingRich: 0, harvestedUnits: 0,
       recoveryBurn: false, commitCueAt: -Infinity,
     },
@@ -81,6 +82,7 @@ function newShipRecord() {
   return {
     region: 'outside', regionRank: 0, r: Infinity, heat: 0,
     stage: null, stageAt: 0, outwardS: 0, burnNextAt: 0, plungeAttackerId: null,
+    descentPath: [], descentSampleAt: -Infinity,
   };
 }
 
@@ -358,6 +360,12 @@ export const planetRuntime = {
       if (region !== 'reentry' && region !== 'danger' && rec.outwardS >= p.regressS) this._setStage(rt, e, rec, 'breakup', now, isPlayer);
     }
 
+    // Capture the actual world-space plunge, oldest to newest. This is transient bounded state,
+    // sampled from the production trajectory rather than reconstructed later from a death point.
+    if (rec.stage === 'breakup' || rec.stage === 'descent') {
+      this._sampleDescentPath(site, e, rec, now);
+    }
+
     // Burn damage — routed, named, ordinary hull consequence (terminal = normal combat kill).
     // Cadence-batched at 0.5s: the real router applies flat armor PER PACKET, so per-tick
     // micro-packets (dps·dt ≈ 0.1) would be silently erased by any armorFlat > 0 — a defect the
@@ -373,7 +381,7 @@ export const planetRuntime = {
       if (!(rec.burnNextAt > 0)) rec.burnNextAt = now + 0.5;
       if (now >= rec.burnNextAt) {
         rec.burnNextAt = now + 0.5;
-        this._routeBurn(state, rt, e, rec, dps * 0.5);
+        this._routeBurn(state, rt, site, e, rec, dps * 0.5);
       }
       if (e.alive === false || (e.hull != null && e.hull <= 0)) {
         // Terminal at the site: remember the plunge point briefly (Aftermath — the band remembers).
@@ -387,10 +395,22 @@ export const planetRuntime = {
 
   _setStage(rt, e, rec, stage, now, isPlayer) {
     if (rec.stage === stage) return;
+    const prior = rec.stage;
+    if (!Array.isArray(rec.descentPath)) rec.descentPath = [];
+    if (!Number.isFinite(rec.descentSampleAt)) rec.descentSampleAt = -Infinity;
     rec.stage = stage;
     rec.stageAt = now;
     rec.outwardS = 0;
-    if (stage === null) rec.plungeAttackerId = null;
+    if (stage === 'skim' && prior === null) {
+      rec.descentPath.length = 0;
+      rec.descentSampleAt = -Infinity;
+    }
+    if (stage === null) {
+      rec.plungeAttackerId = null;
+      rec.descentPath.length = 0;
+      rec.descentSampleAt = -Infinity;
+      if (e.data) delete e.data.burnUpRewardScatter;
+    }
     if (stage !== 'breakup' && stage !== 'descent') rec.burnNextAt = 0; // re-schedule on re-entry
     this.bus.emit('planet:plungeStage', { id: e.id, stage: stage || 'clear', siteId: rt.siteId, isPlayer });
   },
@@ -401,7 +421,45 @@ export const planetRuntime = {
     if (tumble && tumble.attackerId === state.playerId) rec.plungeAttackerId = state.playerId;
   },
 
-  _routeBurn(state, rt, e, rec, damage) {
+  _sampleDescentPath(site, e, rec, now) {
+    const scatter = site && site.rewardScatter;
+    if (!scatter || !(scatter.maxPathPoints > 0) || !(scatter.sampleIntervalS > 0)) return;
+    if (!Array.isArray(rec.descentPath)) rec.descentPath = [];
+    if (!Number.isFinite(rec.descentSampleAt)) rec.descentSampleAt = -Infinity;
+    if (rec.descentPath.length && now - rec.descentSampleAt < scatter.sampleIntervalS) return;
+    rec.descentSampleAt = now;
+    if (rec.descentPath.length >= scatter.maxPathPoints) rec.descentPath.shift();
+    rec.descentPath.push({ x: e.pos.x, z: e.pos.z });
+  },
+
+  _stampBurnUpRewardScatter(rt, site, e, rec, now) {
+    const scatter = site && site.rewardScatter;
+    if (!scatter || !rec || !Array.isArray(rec.descentPath)) return;
+    // The terminal packet can land between sample cadences; include the real lethal position.
+    const path = rec.descentPath;
+    const tail = path[path.length - 1];
+    if (!tail || tail.x !== e.pos.x || tail.z !== e.pos.z) {
+      if (path.length >= scatter.maxPathPoints) path.shift();
+      path.push({ x: e.pos.x, z: e.pos.z });
+      rec.descentSampleAt = now;
+    }
+    if (!path.length) return;
+    const snapshot = [];
+    for (let i = 0; i < path.length && i < scatter.maxPathPoints; i++) {
+      const point = path[i];
+      snapshot.push(Object.freeze({ x: point.x, z: point.z }));
+    }
+    e.data ||= {};
+    e.data.burnUpRewardScatter = Object.freeze({
+      kind: scatter.kind,
+      siteId: rt.siteId,
+      center: Object.freeze({ x: rt.center.x, z: rt.center.z }),
+      path: Object.freeze(snapshot),
+      outwardSpeed: scatter.outwardSpeed,
+    });
+  },
+
+  _routeBurn(state, rt, site, e, rec, damage) {
     const combat = this.registry && this.registry.get ? this.registry.get('combat') : null;
     const kernel = combat && (combat.kernel || (typeof combat.ensureKernel === 'function' ? combat.ensureKernel() : null));
     if (!kernel || typeof kernel.routeDamage !== 'function') return;
@@ -416,6 +474,7 @@ export const planetRuntime = {
     });
     packet.flags = { ignoreFriendlyFire: true, allowAnyTarget: true };
     const creditedPlayer = e.id !== state.playerId && rec && rec.plungeAttackerId === state.playerId;
+    this._stampBurnUpRewardScatter(rt, site, e, rec, nowOf(state));
     kernel.routeDamage({
       attackerId: creditedPlayer ? state.playerId : rt.entityId,
       targetId: e.id,
