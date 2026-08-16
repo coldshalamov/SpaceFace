@@ -4,6 +4,7 @@
 import { COMMODITIES } from '../../../data/commodities.js';
 import { SECTORS } from '../../../data/sectors.js';
 import { isUnsellableCargo } from '../../../systems/cargo.js';
+import { currentBuyBackOffers } from '../../../systems/economy.js';
 import { escapeHtml } from '../../comms.js';
 import { icon } from '../icons.js';
 import { renderAdBoardNotice } from '../adBoard.js';
@@ -467,6 +468,11 @@ export function createMarketScreen(ctx) {
     if (qty < 1 && maxQty >= 1) qty = 1;
     const total = unit * qty;
     const canAct = qty >= 1 && qty <= maxQty && maxQty >= 1;
+    const buyBackOffer = currentBuyBackOffers().find((offer) => offer.commodityId === r.id) || null;
+    const junkQty = COMMODITIES.reduce((sum, commodity) => {
+      if (commodity.junk !== true || isUnsellableCargo(state, commodity.id)) return sum;
+      return sum + Math.max(0, Math.floor(Number(state.player?.cargo?.items?.[commodity.id]) || 0));
+    }, 0);
 
     tradeEl.innerHTML =
       `<div class="sx-trade">` +
@@ -492,6 +498,14 @@ export function createMarketScreen(ctx) {
         `<button type="button" class="sx-trade__go sx-trade__go--${mode}" data-go ${canAct ? '' : 'disabled'}>` +
           `${mode === 'buy' ? 'Confirm Purchase' : 'Confirm Sale'}` +
         `</button>` +
+        `<div class="sx-trade__aux">` +
+          (mode === 'buy' && buyBackOffer
+            ? `<button type="button" class="sx-lead__go sx-trade__aux-btn" data-buy-back="${escapeHtml(r.id)}" data-buy-back-qty="${buyBackOffer.qty}">Buy Back ${fmt(buyBackOffer.qty)}u · ${fmt(buyBackOffer.total)} cr</button>`
+            : '') +
+          (mode === 'sell' && junkQty > 0
+            ? `<button type="button" class="sx-lead__go sx-trade__aux-btn" data-sell-all-junk>Sell All Junk · ${fmt(junkQty)}u</button>`
+            : '') +
+        `</div>` +
         (maxQty < 1 ? `<p class="sx-trade__note">${mode === 'buy' ? 'Not enough credits or hold space.' : 'Nothing to sell here.'}</p>` : '') +
       `</div>`;
   }
@@ -642,6 +656,27 @@ export function createMarketScreen(ctx) {
   });
 
   consoleEl.addEventListener('click', (ev) => {
+    const buyBack = ev.target.closest('[data-buy-back]');
+    if (buyBack) {
+      if (ctx.bus) {
+        ctx.bus.emit('ui:buyBack', {
+          commodityId: buyBack.getAttribute('data-buy-back'),
+          qty: Number(buyBack.getAttribute('data-buy-back-qty')) || 0,
+        });
+        ctx.bus.emit('audio:cue', { id: 'ui_click' });
+      }
+      setTimeout(() => renderAll(ctx.state || {}), 60);
+      return;
+    }
+    const sellAllJunk = ev.target.closest('[data-sell-all-junk]');
+    if (sellAllJunk) {
+      if (ctx.bus) {
+        ctx.bus.emit('ui:sellAllJunk', {});
+        ctx.bus.emit('audio:cue', { id: 'ui_click' });
+      }
+      setTimeout(() => renderAll(ctx.state || {}), 60);
+      return;
+    }
     const course = ev.target.closest('[data-course]');
     if (course) {
       const cmdtyId = course.getAttribute('data-course');

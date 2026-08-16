@@ -567,6 +567,7 @@ export const economy = {
     this.helpers = ctx.helpers;
     this._registry = ctx.registry || null;
     this._lastDockedStation = null;
+    this._buyBackSession = null; // dock-session-only; intentionally never saved (plan-54 buy-back)
     this._syntheticHistoryKeys = new Set();
     economy._instance = this; // so exported quote()/execute() reach the live system
 
@@ -594,6 +595,9 @@ export const economy = {
     // ---- trade intents from UI ------------------------------------------------------------
     bus.on('ui:buy', (p) => { if (p) this.handleTrade(p.commodityId, 'buy', p.qty); });
     bus.on('ui:sell', (p) => { if (p) this.handleTrade(p.commodityId, 'sell', p.qty); });
+    // plan-54 QoL intents: dock-session buy-back and sell-all-junk (same trade authority below).
+    bus.on('ui:buyBack', (p) => { if (p) this.buyBack(p.commodityId, p.qty); });
+    bus.on('ui:sellAllJunk', () => { this.sellAllJunk(); });
     bus.on('economy:marketOpened', (p) => {
       if (!p || !p.stationId) return;
       this.refreshStationDemand(p.stationId);
@@ -632,9 +636,13 @@ export const economy = {
 
     // ---- station markets populated on dock + sector entry ---------------------------------
     bus.on('dock:docked', (p) => {
-      if (p && p.stationId) { this._lastDockedStation = p.stationId; this.ensureStationMarkets(p.stationId); this.snapshotIntel(p.stationId); }
+      if (p && p.stationId) {
+        // Entering a different station ends the previous dock's buy-back offer.
+        if (this._buyBackSession && this._buyBackSession.stationId !== p.stationId) this._buyBackSession = null;
+        this._lastDockedStation = p.stationId; this.ensureStationMarkets(p.stationId); this.snapshotIntel(p.stationId);
+      }
     });
-    bus.on('dock:undocked', () => { this._lastDockedStation = null; });
+    bus.on('dock:undocked', () => { this._lastDockedStation = null; this._buyBackSession = null; });
     bus.on('sector:enter', (p) => this.populateSector(p));
 
     // ---- services (refuel / repair / ammo) ------------------------------------------------
@@ -651,7 +659,12 @@ export const economy = {
     bus.on('combat:baseDestroyed', (p) => this.onBaseDestroyed(p || {}));
     // Save owners restore after economy. Rebuild this derived read model only after factions and
     // sectorSim have restored their authoritative conflict/field state.
-    bus.on('save:loaded', () => this.refreshAllPersistentDemand({ reseedSynthetic: true }));
+    bus.on('save:loaded', () => {
+      // Buy-back is a dock-session convenience, not save data. The system instance survives a
+      // restore, so explicitly clear the transient offer instead of relying on serialization.
+      this._buyBackSession = null;
+      this.refreshAllPersistentDemand({ reseedSynthetic: true });
+    });
     // Registry listener order places economy before sectorSim. If offline catch-up crosses a
     // blockade/surplus threshold, this receipt arrives after the field mutation and reconciles the
     // same derived quotes and omitted chart caches immediately.
@@ -1260,6 +1273,7 @@ export const economy = {
 
   /** Common post-trade bookkeeping: stats, intel refresh, emit economy:tradeCompleted. */
   afterTrade(state, stationId, commodityId, side, qty, unitAvg, total, priceImpactPct, def) {
+    if (side === 'sell') this._noteDockedSale(stationId, commodityId, qty, total);
     const info = stationInfo(state, stationId);
     const receipt = this.recordTradeLedger(state, stationId, commodityId, side, qty, unitAvg, total, def);
     const profit = side === 'sell' && receipt ? receipt.profit : null;
@@ -1379,6 +1393,198 @@ export const economy = {
       });
     }
     return res;
+  },
+
+  // -------------------------------------------------------------------------------------------
+  // PLAN-54 QoL — dock-session buy-back + sell-all-junk.
+  // Buy-back state lives ONLY on this system instance (`_buyBackSession`): it is not part of
+  // state.economy, so it can never survive a save/reload, and dock:docked/dock:undocked reset it.
+  // Both actions reuse the single-writer seams (chargeCredits/grantCredits, addCargo/removeCargo,
+  // afterTrade ledger/receipts) — no second wallet or pricing authority.
+  // -------------------------------------------------------------------------------------------
+
+  /** Record a realized player sale into the current dock session's buy-back offer. */
+  _noteDockedSale(stationId, commodityId, qty, total) {
+    qty = Math.max(0, Math.floor(Number(qty) || 0));
+    total = Math.max(0, Math.round(Number(total) || 0));
+    if (!stationId || stationId !== this.dockedStationId() || !commodityId || qty <= 0 || total <= 0) return;
+    let session = this._buyBackSession;
+    if (!session || session.stationId !== stationId) {
+      session = this._buyBackSession = { stationId, lines: new Map() };
+    }
+    const line = session.lines.get(commodityId) || { qty: 0, total: 0, lots: [] };
+    line.qty += qty;
+    line.total += total;
+    line.lots.push({ qty, total });
+    session.lines.set(commodityId, line);
+  },
+
+  /** Exact realized credit cost of the newest `qty` sold units. */
+  _buyBackCost(line, qty) {
+    const lots = Array.isArray(line && line.lots) && line.lots.length
+      ? line.lots
+      : [{ qty: line.qty, total: line.total }];
+    let remaining = Math.max(0, Math.min(Math.floor(Number(qty) || 0), line.qty));
+    let cost = 0;
+    for (let index = lots.length - 1; index >= 0 && remaining > 0; index--) {
+      const lot = lots[index];
+      const take = Math.min(remaining, Math.max(0, Math.floor(Number(lot.qty) || 0)));
+      if (take <= 0) continue;
+      cost += take === lot.qty ? lot.total : Math.max(1, Math.round(lot.total * (take / lot.qty)));
+      remaining -= take;
+    }
+    return Math.max(0, Math.round(cost));
+  },
+
+  /** Remove the newest `qty` units from an offer using the same exact-lot arithmetic as pricing. */
+  _consumeBuyBack(line, qty) {
+    if (!Array.isArray(line.lots) || !line.lots.length) {
+      const cost = this._buyBackCost(line, qty);
+      line.qty -= qty;
+      line.total -= cost;
+      return cost;
+    }
+    let remaining = Math.max(0, Math.min(Math.floor(Number(qty) || 0), line.qty));
+    let cost = 0;
+    while (remaining > 0 && line.lots.length) {
+      const lot = line.lots[line.lots.length - 1];
+      const take = Math.min(remaining, lot.qty);
+      const charge = take === lot.qty ? lot.total : Math.max(1, Math.round(lot.total * (take / lot.qty)));
+      lot.qty -= take;
+      lot.total -= charge;
+      if (lot.qty <= 0) line.lots.pop();
+      cost += charge;
+      remaining -= take;
+    }
+    line.qty -= qty;
+    line.total -= cost;
+    return cost;
+  },
+
+  /** Current dock's buy-back offers: [{ commodityId, qty, total, unit }], oldest sale first. */
+  buyBackOffers() {
+    const session = this._buyBackSession;
+    if (!session || session.stationId !== this.dockedStationId()) return [];
+    const out = [];
+    for (const [commodityId, line] of session.lines) {
+      if (!line || line.qty <= 0) continue;
+      out.push({ commodityId, qty: line.qty, total: line.total, unit: line.total / line.qty });
+    }
+    return out;
+  },
+
+  /**
+   * Rebuy cargo sold earlier in this dock session at the exact realized sale price.
+   * Validate-then-apply like execute(): a failed credit/cargo/stock check changes nothing.
+   */
+  buyBack(commodityId, qty) {
+    const state = this.state;
+    const fail = (reason, extra = null) => {
+      const msg = reason === 'credits' ? 'Insufficient credits'
+        : reason === 'cargo_full' ? 'Cargo hold full'
+        : reason === 'no_stock' ? 'Station out of stock'
+        : reason === 'not_docked' ? 'Not docked'
+        : 'No buy-back offer';
+      this.bus.emit('toast', { text: msg, kind: 'error', ttl: 2 });
+      this.bus.emit('economy:tradeFailed', {
+        stationId: this.dockedStationId(),
+        commodityId,
+        side: 'buy',
+        qty: Math.max(0, Math.floor(Number(qty) || 0)),
+        reason,
+        ...(extra || {}),
+      });
+      return { ok: false, reason, ...(extra || {}) };
+    };
+    const stationId = this.dockedStationId();
+    if (!stationId) return fail('not_docked');
+    const session = this._buyBackSession;
+    const line = session && session.stationId === stationId ? session.lines.get(commodityId) : null;
+    if (!line || line.qty <= 0) return fail('no_offer');
+    const def = commodityDef(state, commodityId);
+    const market = state.economy.markets[stationId];
+    const entry = market && market[commodityId];
+    if (!entry || !def) return fail('untraded');
+
+    qty = Math.max(0, Math.floor(Number(qty) || 0));
+    if (qty <= 0 || qty > line.qty) qty = line.qty;
+    // Mirror the execute() buy clamps so market stock truth holds: can't drain below 1u.
+    if (entry.stock - qty < 1) qty = Math.max(0, Math.floor(entry.stock - 1));
+    if (qty <= 0) return fail('no_stock');
+    let cost = this._buyBackCost(line, qty);
+    if ((Number(state.player.credits) || 0) < cost) return fail('credits', { need: cost });
+    // Cargo volume is the ONLY hard cap (§0.13) — clamp to what fits, re-price the clamped qty.
+    const free = state.player.cargo.capVolume - state.player.cargo.usedVolume;
+    const canFit = Math.floor(free / (def.volPerU > 0 ? def.volPerU : 1));
+    if (canFit < qty) { qty = canFit; cost = this._buyBackCost(line, qty); }
+    if (qty <= 0) return fail('cargo_full');
+    if ((Number(state.player.credits) || 0) < cost) return fail('credits', { need: cost });
+
+    // APPLY
+    const added = this.addToCargo(null, state, commodityId, qty);
+    if (added <= 0) return fail('cargo_full');
+    const realQty = added;
+    const realCost = this._buyBackCost(line, realQty);
+    if ((Number(state.player.credits) || 0) < realCost) {
+      // Extremely defensive: the pre-check passed, so only a rounding edge can land here.
+      // Roll the cargo back through the canonical writer rather than double-settling.
+      this.removeFromCargo(null, state, commodityId, realQty);
+      return fail('credits', { need: realCost });
+    }
+    entry.stock = Math.max(1, entry.stock - realQty);
+    this.chargeCredits(realCost, 'trade:buyback:' + commodityId);
+    this.recomputeLivePrices(entry, def, stationId, commodityId);
+    this.recordLivePriceHistory(entry, def, stationId, commodityId);
+    const unitAvg = realCost / realQty;
+    this.afterTrade(state, stationId, commodityId, 'buy', realQty, unitAvg, realCost, 0, def);
+    this._consumeBuyBack(line, realQty);
+    if (line.qty <= 0) session.lines.delete(commodityId);
+    else session.lines.set(commodityId, line);
+    return { ok: true, qty: realQty, unitAvg, total: realCost };
+  },
+
+  /**
+   * Sell every hold line whose commodity is explicitly tagged junk (commodities.js `junk:true`),
+   * each routed through execute() so stock, price, ledger, receipts, and the sealed-freight guard
+   * all behave exactly like a manual Sell. Quest/rare/protected and ordinary cargo stay aboard.
+   */
+  sellAllJunk() {
+    const state = this.state;
+    const stationId = this.dockedStationId();
+    if (!stationId) {
+      this.bus.emit('toast', { text: 'Not docked', kind: 'error', ttl: 2 });
+      return { ok: false, reason: 'not_docked', sold: [], skipped: [] };
+    }
+    const items = (state.player && state.player.cargo && state.player.cargo.items) || {};
+    const sold = [];
+    const skipped = [];
+    for (const def of COMMODITIES) {
+      if (!def || def.junk !== true) continue;
+      const have = Math.max(0, Math.floor(Number(items[def.id]) || 0));
+      if (have <= 0) continue;
+      if (isUnsellableCargo(state, def.id)) {
+        skipped.push({ commodityId: def.id, reason: 'mission_cargo_locked' });
+        continue;
+      }
+      const res = this.execute(stationId, def.id, 'sell', have);
+      if (res && res.ok) sold.push({ commodityId: def.id, qty: res.qty, total: res.total });
+      else skipped.push({ commodityId: def.id, reason: (res && res.reason) || 'invalid' });
+    }
+    if (!sold.length) {
+      const reason = skipped.length ? 'rejected' : 'no_junk';
+      this.bus.emit('toast', {
+        text: skipped.length ? 'Scrap could not be sold here' : 'No scrap in the hold',
+        kind: 'error', ttl: 2,
+      });
+      return { ok: false, reason, sold, skipped };
+    }
+    const totalCr = sold.reduce((sum, line) => sum + (Math.round(Number(line.total) || 0)), 0);
+    const totalQty = sold.reduce((sum, line) => sum + line.qty, 0);
+    this.bus.emit('toast', {
+      text: 'Sold ' + totalQty + 'u scrap for ' + totalCr.toLocaleString('en-US') + ' CR',
+      kind: 'info', ttl: 3,
+    });
+    return { ok: true, sold, skipped, totalCr };
   },
 
   /** Move stock without crediting anyone (automation trade pressure). */
@@ -1968,6 +2174,7 @@ export const economy = {
 
   newGame() {
     const state = this.state;
+    this._buyBackSession = null;
     state.economy.markets = {};
     state.economy.cycles = {};
     state.economy.econEvents = [];
@@ -2107,6 +2314,9 @@ export function quote(stationId, commodityId, side, qty) {
 }
 export function execute(stationId, commodityId, side, qty) {
   return economy._instance ? economy._instance.execute(stationId, commodityId, side, qty) : { ok: false, reason: 'no_economy' };
+}
+export function currentBuyBackOffers() {
+  return economy._instance ? economy._instance.buyBackOffers() : [];
 }
 export function getCycle(stationId, commodityId) {
   return economy._instance ? economy._instance.getCycle(stationId, commodityId) : null;

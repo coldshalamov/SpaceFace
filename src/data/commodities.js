@@ -77,7 +77,9 @@ export const COMMODITIES = [
   { id: 'cmdty_medical',            name: 'Medical Supplies',      category: 'med',       basePrice: 150, volatility: 0.30, elasticity: 0.40, legality: 'legal',      volPerU: 0.8, massPerU: 0.4, fineMult: 0,   producedBy: ['research','fab'],                 consumedBy: ['trade_hub','mining','military'] },
 
   // --- SALVAGE ---
-  { id: 'cmdty_scrap_metal',        name: 'Scrap Metal',           category: 'salvage',   basePrice: 8,   volatility: 0.18, elasticity: 0.30, legality: 'legal',      volPerU: 1.0, massPerU: 0.9, fineMult: 0,   producedBy: ['mining'],                         consumedBy: ['refinery','fab'] },
+  // junk:true marks bulk refuse a player liquidates without a second thought (plan-54 sell-all-junk).
+  // Valuable salvage (electronics) and rare/restricted finds (classified) deliberately stay untagged.
+  { id: 'cmdty_scrap_metal',        name: 'Scrap Metal',           category: 'salvage',   basePrice: 8,   volatility: 0.18, elasticity: 0.30, legality: 'legal',      volPerU: 1.0, massPerU: 0.9, fineMult: 0,   junk: true, producedBy: ['mining'],                         consumedBy: ['refinery','fab'] },
   { id: 'cmdty_salvage_electronics',name: 'Salvage Electronics',   category: 'salvage',   basePrice: 55,  volatility: 0.25, elasticity: 0.40, legality: 'legal',      volPerU: 0.6, massPerU: 0.4, fineMult: 0,   producedBy: ['mining'],                         consumedBy: ['fab','military'] },
   { id: 'cmdty_classified_salvage', name: 'Classified Salvage',    category: 'salvage',   basePrice: 90,  volatility: 0.35, elasticity: 0.45, legality: 'restricted', volPerU: 0.6, massPerU: 0.4, fineMult: 0.8, producedBy: ['blackmarket'],                    consumedBy: ['military','blackmarket','fab'] },
 
