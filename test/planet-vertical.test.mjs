@@ -31,6 +31,7 @@ import { ZONE_TETHYS_ANVIL } from '../src/data/authoredPlaces.js';
 import { SECTOR_ZONES } from '../src/data/sectorZones.js';
 import { sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
 import { normalizeField, fieldFalloff, sampleFieldAcceleration, projectFieldTrajectory, couplingScale } from '../src/core/fields/fieldKernel.js';
+import { COLLISION_TUMBLE_KIND, TUMBLE_STATUS_ID } from '../src/combat/tumbleStatus.js';
 
 const DT = SIM_DT;
 const SECTOR = PLANET_SITE.sectorId;
@@ -129,6 +130,8 @@ test('identity: ONE registration transaction binds entity + field + runtime to t
   assert.ok(snap, 'profile visible on the predictor snapshot seam');
   assert.equal(snap.center.x, CENTRE.x, 'field centred on the SAME identity');
   assert.equal(snap.tag, 'external');
+  assert.equal(snap.ownerId, null, 'authored world pull never acquires a player owner');
+  assert.equal(snap.sourceId, rt.entityId, 'the physical planet body is the external field source');
   assert.equal(t.state.fields.active.some((a) => a.id === rt.fieldId), false,
     'external profile carries no deploy-tool presentation record (no Intake funnel)');
   assert.ok(t.events.some((e) => e.name === 'planet:registered' && e.p.zoneId === PLANET_SITE.zoneId));
@@ -162,7 +165,7 @@ test('golden inertness: flag OFF -> strict no-op (no entity, no field, no state)
 
 // ── influence profile (annular, bounded, deterministic, heavy-shrug, predictor) ─────────────────
 
-test('influence: annular profile — zero inside, peak in the sling region, zero beyond the edge', () => {
+test('influence: annular profile — body-safe, atmosphere-live, bounded beyond the edge', () => {
   const f = normalizeField({
     id: 'p', kind: 'well', center: { x: 0, z: 0 },
     radius: PLANET_SITE.field.radius, strength: PLANET_SITE.field.strength,
@@ -172,15 +175,18 @@ test('influence: annular profile — zero inside, peak in the sling region, zero
   assert.equal(fieldFalloff(f, 100), 0, 'no pull at the core');
   assert.equal(fieldFalloff(f, PLANET_SITE.field.innerRadius), 0, 'no pull at the inner edge');
   assert.equal(fieldFalloff(f, PLANET_SITE.field.radius + 1), 0, 'no pull beyond the influence edge');
-  const peakR = PLANET_SITE.field.innerRadius + PLANET_SITE.field.innerSoft; // 1150 — sling inner
+  const peakR = PLANET_SITE.field.innerRadius + PLANET_SITE.field.innerSoft;
   const atPeak = fieldFalloff(f, peakR);
-  assert.ok(atPeak > 0.3, `readable pull at the sling inner edge (got ${atPeak})`);
+  assert.ok(atPeak > 0.3, `readable pull at the full-coupling edge (got ${atPeak})`);
   assert.ok(atPeak > fieldFalloff(f, 2200), 'pull decays outward');
-  assert.ok(atPeak > fieldFalloff(f, 950), 'pull ramps up across the soft inner margin');
-  // The atmosphere corridor itself must be pull-free (escape windows are real):
-  for (const r of [PLANET_SITE.bands.reentry - 20, PLANET_SITE.bands.danger - 20, 890]) {
-    assert.equal(fieldFalloff(f, r), 0, `no attraction inside the bands (r=${r})`);
-  }
+  assert.equal(fieldFalloff(f, PLANET_SITE.bodyRadius - 1), 0, 'the static body remains force-free');
+  assert.ok(fieldFalloff(f, PLANET_SITE.plunge.descentRadius) > 0.3,
+    'terminal atmosphere carries a real inward curve');
+  const starterInwardAccel = PLANET_SITE.field.strength
+    * fieldFalloff(f, PLANET_SITE.plunge.descentRadius)
+    * couplingScale({ mass: 28, type: 'ship' });
+  assert.ok(PLANET_SITE.recovery.assistAccel > starterInwardAccel,
+    'the authored outward recovery burn can overpower the field for the starter mass');
 });
 
 test('influence: deterministic sampling + heavy-shrug + predictor bend', () => {
@@ -308,6 +314,7 @@ test('plunge: stage ladder with escape regression; burn damage routed with the n
   const call = t.combat.calls[0];
   assert.ok(call.packet.channels.plasma > 0, 'burn rides the plasma damage channel');
   assert.equal(call.packet.source.kind, 'planet_reentry', 'the reentry NAME travels in the packet source');
+  assert.equal(call.packet.source.zone, 'atmosphere_burn', 'the lethal packet carries the AC-08 burn-up zone');
   assert.equal(call.origin.kind, 'planet_reentry');
   assert.equal(call.origin.id, PLANET_SITE.id);
   assert.ok(t.player.hull < hullBefore, 'hull consequence is real');
@@ -339,7 +346,50 @@ test('plunge: a hostile ship in the danger band takes the same staged consequenc
   const hostileStages = t.events.filter((e) => e.name === 'planet:plungeStage' && e.p.id === hostile.id).map((e) => e.p.stage);
   assert.ok(hostileStages.includes('skim') && hostileStages.includes('commit') && hostileStages.includes('breakup'),
     `hostile walks the ladder (${hostileStages.join(',')})`);
-  assert.ok(t.combat.calls.some((c) => c.targetId === hostile.id), 'hostile burn routed');
+  const hostileCall = t.combat.calls.find((c) => c.targetId === hostile.id);
+  assert.ok(hostileCall, 'hostile burn routed');
+  assert.equal(hostileCall.attackerId, t.state.planet.entityId,
+    'an uncaused plunge remains an authored-world consequence');
+  assert.equal(hostileCall.packet.source.zone, 'atmosphere_burn');
+  cleanup();
+});
+
+test('plunge: a player-created tumble keeps credit after the status expires and burns up in 3–6 seconds', () => {
+  const t = boot(1081);
+  stepN(t.sim, 2);
+  const hostile = t.sim.spawn({
+    type: 'ship', team: 2, pos: { x: CENTRE.x, z: CENTRE.z + 700 }, radius: 10, collides: true,
+    vel: { x: 65, z: 0 }, rot: 0, angVel: 2.2, hull: 48, hullMax: 48,
+    physicsBody: { schemaVersion: 1, radius: 10, mass: 20, inertiaY: 40, dynamic: true, ccd: false, material: 'ship', revision: 0 },
+  });
+  t.state.combat.entities = {
+    [String(hostile.id)]: {
+      statuses: {
+        [TUMBLE_STATUS_ID]: {
+          id: TUMBLE_STATUS_ID, attackerId: t.player.id, expiresTick: t.state.tick + 1,
+          data: { kind: COLLISION_TUMBLE_KIND, source: 'collision', startedAt: t.state.simTime, until: t.state.simTime + DT },
+        },
+      },
+      pendingStatuses: [],
+    },
+  };
+  placePlayer(t, 2400);
+  t.sim.step(DT); // hot-band entry latches the real player cause
+  delete t.state.combat.entities[String(hostile.id)]; // the short tumble status is now gone
+
+  const startedAt = t.state.simTime;
+  while (hostile.alive !== false && t.state.simTime - startedAt < 6.1) {
+    hostile.pos.x = CENTRE.x; hostile.pos.z = CENTRE.z + 700;
+    placePlayer(t, 2400);
+    t.sim.step(DT);
+  }
+  const elapsed = t.state.simTime - startedAt;
+  const calls = t.combat.calls.filter((call) => call.targetId === hostile.id);
+  assert.equal(hostile.alive, false, 'ordinary routed burn reaches the terminal hull consequence');
+  assert.ok(elapsed >= 3 && elapsed <= 6, `terminal burn lands in the authored 3–6 s window (${elapsed.toFixed(2)} s)`);
+  assert.ok(calls.length > 0 && calls.every((call) => call.attackerId === t.player.id),
+    'the plunge episode retains player credit after the transient tumble status expires');
+  assert.ok(calls.every((call) => call.packet.source.zone === 'atmosphere_burn'));
   cleanup();
 });
 
