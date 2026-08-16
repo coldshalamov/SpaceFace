@@ -2,13 +2,16 @@
 // Canonical public-route capture for Plan 54 pause-time cargo/module management.
 import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { createServer as createNetServer } from 'node:net';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { spawn } from 'node:child_process';
 
 import { collectPageIssues } from './lib/browser-issues.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
+
+const require = createRequire(import.meta.url);
+const { createGameServer } = require('./lib/gameServer.cjs');
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const OUT = join(ROOT, '.devshots', 'plan54-pause-inventory');
@@ -92,7 +95,7 @@ try {
   console.log(JSON.stringify(report, null, 2));
 } finally {
   if (browser) await browser.close().catch(() => {});
-  if (server) server.kill();
+  if (server) await server.kill().catch(() => {});
 }
 
 function sha256(path) {
@@ -102,20 +105,19 @@ function sha256(path) {
 async function startFreshServer() {
   const port = await findFreePort(8460);
   const url = `http://127.0.0.1:${port}/`;
-  const child = spawn(process.execPath, ['server.js', String(port)], {
-    cwd: ROOT,
-    stdio: ['ignore', 'pipe', 'pipe'],
-    windowsHide: true,
+  const gameServer = createGameServer({ root: ROOT, async: true });
+  await new Promise((resolve, reject) => {
+    gameServer.once('error', reject);
+    gameServer.once('listening', resolve);
+    gameServer.listen(port, '127.0.0.1');
   });
-  child.stdout.on('data', () => {});
-  child.stderr.on('data', () => {});
-  for (let attempt = 0; attempt < 80; attempt += 1) {
-    if (child.exitCode != null) throw new Error('dev server exited before becoming reachable');
-    try { const response = await fetch(url); if (response.ok) return { baseUrl: url, kill: () => child.kill() }; } catch (_) {}
-    await new Promise((resolve) => setTimeout(resolve, 250));
-  }
-  child.kill();
-  throw new Error('dev server did not become reachable at ' + url);
+  return {
+    baseUrl: url,
+    kill: () => new Promise((resolve, reject) => {
+      if (!gameServer.listening) { resolve(); return; }
+      gameServer.close((error) => (error ? reject(error) : resolve()));
+    }),
+  };
 }
 
 async function findFreePort(start) {
