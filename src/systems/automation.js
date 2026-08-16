@@ -326,14 +326,14 @@ export function droneGrossCrPerMin(def, orePrice, count = 1) {
   return Math.round(((def && def.mineRate) || 0) * (count || 1) * 60 * (orePrice || 0));
 }
 
-export function outpostOutputGoodId(def) {
-  return def && def.recipe && def.recipe.output ? Object.keys(def.recipe.output)[0] : DRONE_ORE_ID;
+export function outpostOutputGoodId(def, recipe = def && def.recipe) {
+  return recipe && recipe.output ? Object.keys(recipe.output)[0] : DRONE_ORE_ID;
 }
 
-export function outpostGrossValue(def, quantity, orePriceForGood) {
+export function outpostGrossValue(def, quantity, orePriceForGood, recipe = def && def.recipe) {
   const qty = Math.max(0, quantity || 0);
-  if (def && def.recipe && def.recipe.passive) return qty;
-  const goodId = outpostOutputGoodId(def);
+  if (recipe && recipe.passive) return qty;
+  const goodId = outpostOutputGoodId(def, recipe);
   const price = typeof orePriceForGood === 'function' ? orePriceForGood(goodId) : orePriceForGood;
   return qty * (price || 0) * OUTPOST_AUTOSELL_MULT;
 }
@@ -343,7 +343,7 @@ export function outpostGrossCrPerMin(def, orePriceForGood, opts = {}) {
   const outRate = opts.outRate != null
     ? opts.outRate
     : ((def && def.outRate) || 0) * Math.pow(1.6, level - 1);
-  return Math.round(outpostGrossValue(def, outRate * 60, orePriceForGood));
+  return Math.round(outpostGrossValue(def, outRate * 60, orePriceForGood, opts.recipe));
 }
 
 // Pure coarse production planner shared by live ticks and offline catch-up. The planner knows
@@ -467,6 +467,7 @@ export const automation = {
     this._outpostSellAccum = 0;
     this._nextId = 1;
     this._asteroidScratch = [];
+    this._outpostRecipeCache = new WeakMap();
     this._diag = {
       asteroidSpatialQueries: 0,
       asteroidCandidates: 0,
@@ -1322,9 +1323,28 @@ export const automation = {
     }
   },
 
-  _outpostRatePerMin(o, def, outRate) {
+  _outpostRatePerMin(o, def, outRate, recipe = def && def.recipe) {
     // Hab/trade hub generates credits directly; production outposts bank goods at the local price -20%.
-    return outpostGrossCrPerMin(def, (goodId) => this._orePrice(goodId), { outRate, level: o.level || 1 });
+    return outpostGrossCrPerMin(def, (goodId) => this._orePrice(goodId), {
+      outRate,
+      level: o.level || 1,
+      recipe,
+    });
+  },
+
+  _outpostRecipe(o, def) {
+    if (def && def.recipe && def.recipe.passive) return def.recipe;
+    if (!o || !o.recipeBlueprintId) return def && def.recipe || null;
+    const cached = this._outpostRecipeCache && this._outpostRecipeCache.get(o);
+    if (cached && cached.blueprintId === o.recipeBlueprintId) return cached.recipe;
+    const crafting = this._registry && this._registry.get && this._registry.get('crafting');
+    const recipe = crafting && typeof crafting.automationRecipe === 'function'
+      ? crafting.automationRecipe(o.recipeBlueprintId)
+      : null;
+    const outputId = recipe && recipe.output && Object.keys(recipe.output)[0];
+    if (!recipe || !String(outputId || '').startsWith('cmdty_')) return def && def.recipe || null;
+    if (this._outpostRecipeCache) this._outpostRecipeCache.set(o, { blueprintId: o.recipeBlueprintId, recipe });
+    return recipe;
   },
 
   _advanceOutpost(o, def, dt, a) {
@@ -1345,7 +1365,7 @@ export const automation = {
     const authoredRate = (def.outRate || 0) * Math.pow(1.6, level - 1);
     const cap = (def.storageCap || 0) * Math.pow(1.7, level - 1);
     const room = Math.max(0, cap - (o.storage || 0));
-    const recipe = def.recipe || o.recipe || null;
+    const recipe = this._outpostRecipe(o, def);
     const availableByGood = this._availableOutpostInputs(o, recipe, a);
     const requestedOutput = Math.max(0, authoredRate * dt);
     const plan = planOutpostProduction({ recipe, requestedOutput, storageRoom: room, availableByGood });
@@ -1355,19 +1375,20 @@ export const automation = {
     o.storageCap = cap;
     o.status = plan.status === 'storage_full' ? 'storage_full' : plan.status;
     const actualRate = dt > 0 ? plan.produced / dt : 0;
-    o.ratePerMin = this._outpostRatePerMin(o, def, actualRate);
+    o.ratePerMin = this._outpostRatePerMin(o, def, actualRate, recipe);
     o.production = {
       status: o.status,
-      outputGoodId: recipe && recipe.passive ? 'credits' : outpostOutputGoodId(def),
+      outputGoodId: recipe && recipe.passive ? 'credits' : outpostOutputGoodId(def, recipe),
       requestedRate: authoredRate,
       actualRate,
       consumedByGood: plan.consumedByGood,
       missingByGood: plan.missingByGood,
       limitingGoodId: plan.limitingGoodId,
-      localFeeders: (a.drones || []).filter((g) => (
-        g && g.sectorId === o.sectorId && g.status !== 'distressed'
-        && !(g.program && TEMPLATES[g.program.templateId])
-      )).length,
+      localFeeders: Object.keys((recipe && recipe.inputs) || {}).reduce((count, goodId) => (
+        count
+        + this._outpostFeedGroups(o, goodId, a).length
+        + this._outpostFeedFacilities(o, goodId, a).length
+      ), 0),
     };
     return plan;
   },
@@ -1385,11 +1406,26 @@ export const automation = {
       .sort(compareStableId);
   },
 
+  _outpostFeedFacilities(o, goodId, a) {
+    return (a.outposts || [])
+      .filter((source) => {
+        if (!source || source === o || source.sectorId !== o.sectorId) return false;
+        if (source.status === 'distressed' || source.status === 'raided' || !(Number(source.storage) > 0)) return false;
+        const sourceDef = OUTPOST_BY_ID.get(source.defId) || source;
+        const sourceRecipe = this._outpostRecipe(source, sourceDef);
+        return outpostOutputGoodId(sourceDef, sourceRecipe) === goodId;
+      })
+      .sort(compareStableId);
+  },
+
   _availableOutpostInputs(o, recipe, a) {
     const available = {};
     for (const goodId of Object.keys((recipe && recipe.inputs) || {}).sort()) {
-      available[goodId] = this._outpostFeedGroups(o, goodId, a)
+      const droneFeed = this._outpostFeedGroups(o, goodId, a)
         .reduce((sum, g) => sum + Math.max(0, Number(g.buffer) || 0), 0);
+      const facilityFeed = this._outpostFeedFacilities(o, goodId, a)
+        .reduce((sum, source) => sum + Math.max(0, Number(source.storage) || 0), 0);
+      available[goodId] = droneFeed + facilityFeed;
     }
     return available;
   },
@@ -1403,6 +1439,12 @@ export const automation = {
         g.buffer = Math.max(0, (Number(g.buffer) || 0) - take);
         remaining -= take;
       }
+      for (const source of this._outpostFeedFacilities(o, goodId, a)) {
+        if (!(remaining > 1e-9)) break;
+        const take = Math.min(Math.max(0, Number(source.storage) || 0), remaining);
+        source.storage = Math.max(0, (Number(source.storage) || 0) - take);
+        remaining -= take;
+      }
     }
   },
 
@@ -1413,7 +1455,8 @@ export const automation = {
       const def = OUTPOST_BY_ID.get(o.defId) || o;
       const sellable = o.storage || 0;
       if (sellable <= 0) continue;
-      const income = outpostGrossValue(def, sellable, (goodId) => this._orePrice(goodId));
+      const recipe = this._outpostRecipe(o, def);
+      const income = outpostGrossValue(def, sellable, (goodId) => this._orePrice(goodId), recipe);
       o.storage = 0;
       if (income > 0) this.creditPassive(income, 'outpost');
     }
@@ -1586,6 +1629,7 @@ export const automation = {
       case 'dismiss': return this.dismissTrader(p.shipId);
       case 'buildOutpost': return this.buildOutpost(p.targetRef);
       case 'decommission': return this.decommissionOutpost(p.shipId);
+      case 'assignOutpostRecipe': return this.assignOutpostRecipe(p.shipId, p.targetRef);
       case 'assignFleet': return this.assignFleet(p.targetRef);
       case 'orderEscort': return this.setFleetOrder(p.shipId, 'escort', p.targetRef);
       case 'orderMine': return this.setFleetOrder(p.shipId, 'mine', p.targetRef);
@@ -1859,6 +1903,39 @@ export const automation = {
     // automation remains sole outpost deployer — no second ownership system.
     this.bus.emit('asset:deployed', { kind: 'outpost', id: o.id, defId: def.id || defId });
     this.toast(`Outpost established in ${prettySector(o.sectorId)}`, 'success');
+    return true;
+  },
+
+  /** Select a learned field recipe for an outpost-owned production ledger. */
+  assignOutpostRecipe(id, blueprintId) {
+    const o = this.state.automation.outposts.find((entry) => entry.id === id);
+    if (!o) return false;
+    const def = OUTPOST_BY_ID.get(o.defId) || o;
+    if (def.recipe && def.recipe.passive) return false;
+    if ((Number(o.storage) || 0) > 1e-9) {
+      this.toast('Empty or autosell stored output before changing the line', 'warn');
+      return false;
+    }
+    if (!blueprintId) {
+      delete o.recipeBlueprintId;
+      this._outpostRecipeCache && this._outpostRecipeCache.delete(o);
+    } else {
+      const crafting = this._registry && this._registry.get && this._registry.get('crafting');
+      const recipe = crafting && typeof crafting.automationRecipe === 'function'
+        ? crafting.automationRecipe(String(blueprintId))
+        : null;
+      const outputId = recipe && recipe.output && Object.keys(recipe.output)[0];
+      if (!recipe || !String(outputId || '').startsWith('cmdty_')) {
+        this.toast('That learned recipe is not a factory commodity line', 'warn');
+        return false;
+      }
+      o.recipeBlueprintId = recipe.blueprintId;
+      this._outpostRecipeCache && this._outpostRecipeCache.set(o, { blueprintId: recipe.blueprintId, recipe });
+    }
+    o.production = null;
+    o.status = 'producing';
+    this.bus.emit('automation:outpostRecipeChanged', { outpostId: o.id, blueprintId: o.recipeBlueprintId || null });
+    this.toast(o.recipeBlueprintId ? 'Factory line changed to learned recipe' : 'Factory line restored', 'success');
     return true;
   },
 
@@ -2382,7 +2459,8 @@ export const automation = {
         const def = OUTPOST_BY_ID.get(o.defId) || o;
         const sellable = Math.max(0, Number(o.storage) || 0);
         if (sellable <= 0) continue;
-        outpostCr += outpostGrossValue(def, sellable, (goodId) => this._orePrice(goodId));
+        const recipe = this._outpostRecipe(o, def);
+        outpostCr += outpostGrossValue(def, sellable, (goodId) => this._orePrice(goodId), recipe);
         o.storage = 0;
         if (o.status === 'storage_full') o.status = 'producing';
         if (o.production && o.production.status === 'storage_full') {
@@ -2770,6 +2848,7 @@ export const automation = {
     this._capBudget = 0;
     this._outpostRaidAccum = 0;
     this._outpostSellAccum = 0;
+    this._outpostRecipeCache = new WeakMap();
     this._wingmanRateDay = -1;
   },
 
@@ -2825,6 +2904,7 @@ export const automation = {
     this._capBudget = 0;
     this._outpostRaidAccum = 0;
     this._outpostSellAccum = 0;
+    this._outpostRecipeCache = new WeakMap();
     this._wingmanRateDay = -1;
     // runOfflineCatchup() runs on the subsequent save:loaded event.
   },

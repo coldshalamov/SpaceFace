@@ -7,6 +7,7 @@
 // Export: automationScreen  (id 'automation'). No 'three' import.
 
 import { DRONES, TRADERS, OUTPOSTS, AUTO_BALANCE } from '../../data/automation.js';
+import { BLUEPRINTS } from '../../data/blueprints.js';
 import { COMMODITIES } from '../../data/commodities.js';
 import { TECH_NODES } from '../../data/tech.js';
 import { droneBayCapacityForState } from '../../systems/automation.js';
@@ -19,6 +20,7 @@ const DRONE_DISPLAY_ORE_ID = 'cmdty_ore_iron';
 const DRONE_DISPLAY_ORE_VALUE = (COMMODITIES.find((c) => c.id === DRONE_DISPLAY_ORE_ID) || {}).basePrice || 28;
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((commodity) => [commodity.id, commodity]));
 const TECH_BY_ID = new Map(TECH_NODES.map((t) => [t.id, t]));
+const FIELD_FACTORY_BLUEPRINTS = BLUEPRINTS.filter((bp) => bp.fieldCraftable === true && bp.outputs.kind === 'commodity');
 
 const PROGRAM_OPTIONS = Object.freeze([
   { value: '', label: 'Manual (mine -> bank)', meta: 'Banks ore in the drone buffer; recall to cash out.' },
@@ -456,9 +458,9 @@ export const automationScreen = {
     // native select was replaced by the sf-select widget the element is a div carrying the same
     // data-act/data-ref/data-kind attributes and a .value property.
     body.addEventListener('change', (e) => {
-      const sel = e.target.closest('[data-act="assignProgram"]');
+      const sel = e.target.closest('[data-act="assignProgram"], [data-act="assignOutpostRecipe"]');
       if (!sel) return;
-      this._onAction('assignProgram', sel.dataset.ref, sel.dataset.kind, sel.value);
+      this._onAction(sel.dataset.act, sel.dataset.ref, sel.dataset.kind, sel.value);
     });
   },
 
@@ -585,6 +587,7 @@ export const automationScreen = {
         parts.push(
           o.id,
           o.defId,
+          o.recipeBlueprintId || '',
           o.status,
           o.sectorId || '',
           Math.round(o.storage || 0),
@@ -817,7 +820,22 @@ export const automationScreen = {
     } else {
       for (const o of owned) {
         const def = OUTPOSTS.find((x) => x.id === o.defId) || o;
-        const operation = describeOutpostOperation(o, def);
+        const factoryCapable = !(def.recipe && def.recipe.passive);
+        const unlocked = new Set(st.crafting && st.crafting.unlockedBlueprints || []);
+        const selectedBlueprint = factoryCapable
+          ? FIELD_FACTORY_BLUEPRINTS.find((bp) => bp.id === o.recipeBlueprintId && unlocked.has(bp.id))
+          : null;
+        const recipe = selectedBlueprint
+          ? { inputs: selectedBlueprint.inputs, output: { [selectedBlueprint.outputs.id]: selectedBlueprint.outputs.qty || 1 } }
+          : def.recipe;
+        const operation = describeOutpostOperation(o, { ...def, recipe });
+        const recipeOptions = [
+          `<option value=""${selectedBlueprint ? '' : ' selected'}>Facility standard — ${escapeHtml(recipeText(def.recipe))}</option>`,
+          ...FIELD_FACTORY_BLUEPRINTS.filter((bp) => unlocked.has(bp.id)).map((bp) => (
+            `<option value="${escapeHtml(bp.id)}"${selectedBlueprint && selectedBlueprint.id === bp.id ? ' selected' : ''}>${escapeHtml(bp.name)} — ${escapeHtml(recipeText({ inputs: bp.inputs, output: { [bp.outputs.id]: bp.outputs.qty || 1 } }))}</option>`
+          )),
+        ].join('');
+        const lineChangeBlocked = (Number(o.storage) || 0) > 1e-9;
         const inputHtml = operation.inputs.length
           ? operation.inputs.map((input) => `
               <strong>${escapeHtml(input.label)}</strong>
@@ -852,10 +870,15 @@ export const automationScreen = {
               </div>
             </div>
             <div class="au-operation-reason">${escapeHtml(operation.detail)}</div>
+            ${factoryCapable ? `<div class="au-program-row">
+              <span class="au-program-label">Factory line:</span>
+              <select class="au-program" data-act="assignOutpostRecipe" data-ref="${o.id != null ? o.id : def.id}" data-kind="outpost" ${lineChangeBlocked ? 'disabled' : ''}>${recipeOptions}</select>
+              ${lineChangeBlocked ? '<span class="au-program-badge">empty stored output to change</span>' : ''}
+            </div>` : ''}
             <details class="au-outpost-detail" data-outpost-detail="${escapeHtml(o.id != null ? o.id : def.id)}">
               <summary>Facility details</summary>
               <div class="au-detail-row">
-                <span>${escapeHtml(recipeText(def.recipe))}</span>
+                <span>${escapeHtml(recipeText(recipe))}</span>
                 <span>defense ${escapeHtml(def.defense)}</span>
                 <span>upkeep ${escapeHtml(def.upkeepPerMin)}/min</span>
                 <span>${o.autoSell ? 'autosell every minute' : 'manual logistics'}</span>
@@ -996,13 +1019,14 @@ export const automationScreen = {
       orderRecall: 'Order: recall.',
       assignFleet: 'Assigning wingman…',
       assignProgram: 'Assigning drone program…',
+      assignOutpostRecipe: 'Changing factory line…',
     };
 
     // For purchases/assigns the instance does not exist yet → shipId null, targetRef = defId/index.
     const purchaseLike = ['buyDrone', 'hireTrader', 'buildOutpost', 'assignFleet'];
     const isPurchase = purchaseLike.includes(act);
     // assignProgram targets an EXISTING drone (shipId = ref) with the templateId as targetRef.
-    const isProgram = act === 'assignProgram';
+    const isProgram = act === 'assignProgram' || act === 'assignOutpostRecipe';
 
     bus.emit('ui:fleetOrder', {
       shipId: (isPurchase) ? null : numOr(ref),
