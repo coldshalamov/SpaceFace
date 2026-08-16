@@ -11,6 +11,9 @@ export const PEST_CONTROL_VARIANT_ID = 'pest_control';
 export const PEST_CONTROL_FOLLOWUP_SOURCE = 'pestControlFollowup';
 export const PEST_CONTROL_DRAW_MODULO = 3;
 export const PEST_CONTROL_ARCHETYPE_ID = 'wasp_swarmer';
+export const DEBRIS_RECOVERY_VARIANT_ID = 'debris_recovery';
+export const DEBRIS_RECOVERY_FOLLOWUP_SOURCE = 'debrisRecoveryFollowup';
+export const DEBRIS_RECOVERY_DRAW_MODULO = 3;
 
 /** One in three ordinary cargo-delivery rolls becomes Quiet Delivery, without consuming board RNG. */
 export function shouldRollQuietDelivery(hashValue) {
@@ -108,4 +111,63 @@ export function isPestControlFollowup(value) {
   return !!(value && value.source === PEST_CONTROL_FOLLOWUP_SOURCE
     && value.params && value.params.pestControl
     && Number(value.params.pestControl.generation) === 1);
+}
+
+/** One in three ordinary salvage rolls becomes Debris Recovery without consuming board RNG. */
+export function shouldRollDebrisRecovery(hashValue) {
+  return (Number(hashValue) >>> 0) % DEBRIS_RECOVERY_DRAW_MODULO === 0;
+}
+
+export function debrisRecoveryPods(commodityId, quantity, requestedCount) {
+  const total = Math.max(2, Math.floor(Number(quantity) || 2));
+  const count = Math.min(total, Math.max(2, Math.floor(Number(requestedCount) || 2)));
+  const base = Math.floor(total / count);
+  const remainder = total % count;
+  return Array.from({ length: count }, (_, slot) => ({
+    slot,
+    commodityId,
+    amount: base + (slot < remainder ? 1 : 0),
+  }));
+}
+
+/** Stamp one ordinary salvage offer as a multi-body recovery field. */
+export function applyDebrisRecoveryVariant(offer, fieldName = 'the marked field', podCount = 2) {
+  if (!offer || offer.type !== 'salvage_retrieval') return offer;
+  const params = offer.params || {};
+  const pods = debrisRecoveryPods(params.cmdtyId, params.qty, podCount);
+  return {
+    ...offer,
+    destStationId: null,
+    title: `Debris Recovery — ${pods.length} Tumbling Pods near ${fieldName}`,
+    brief: `Pull ${pods.length} specific pods from a tumbling debris field near ${fieldName}.`,
+    duration_s: Math.max(1, Number(offer.time_limit_s) || 1),
+    variantId: DEBRIS_RECOVERY_VARIANT_ID,
+    params: {
+      ...params,
+      missionVariant: DEBRIS_RECOVERY_VARIANT_ID,
+      debrisRecovery: {
+        fieldName,
+        generation: 0,
+        pods,
+      },
+    },
+  };
+}
+
+export function isDebrisRecovery(value) {
+  return !!(value && (
+    value.variantId === DEBRIS_RECOVERY_VARIANT_ID
+    || value.params && value.params.missionVariant === DEBRIS_RECOVERY_VARIANT_ID
+  ));
+}
+
+export function debrisRecoveryFollowupOfferId(mission) {
+  const sourceId = mission && (mission.sourceOfferId || mission.id);
+  return sourceId ? `mo_debris_fragments_${String(sourceId)}` : null;
+}
+
+export function isDebrisRecoveryFollowup(value) {
+  return !!(value && value.source === DEBRIS_RECOVERY_FOLLOWUP_SOURCE
+    && value.params && value.params.debrisRecovery
+    && Number(value.params.debrisRecovery.generation) === 1);
 }

@@ -50,18 +50,25 @@ import {
   SET_PIECE_MISSIONS,
 } from '../data/missions.js';
 import {
+  DEBRIS_RECOVERY_FOLLOWUP_SOURCE,
+  DEBRIS_RECOVERY_VARIANT_ID,
   PEST_CONTROL_ARCHETYPE_ID,
   PEST_CONTROL_FOLLOWUP_SOURCE,
   PEST_CONTROL_VARIANT_ID,
   QUIET_DELIVERY_RECOVERY_SOURCE,
+  applyDebrisRecoveryVariant,
   applyPestControlVariant,
   applyQuietDeliveryVariant,
+  debrisRecoveryFollowupOfferId,
+  isDebrisRecovery,
+  isDebrisRecoveryFollowup,
   isPestControl,
   isPestControlFollowup,
   isQuietDelivery,
   isQuietDeliveryRecovery,
   pestControlFollowupOfferId,
   quietDeliveryRecoveryOfferId,
+  shouldRollDebrisRecovery,
   shouldRollPestControl,
   shouldRollQuietDelivery,
 } from '../data/missionVariants.js';
@@ -201,6 +208,7 @@ const MISSION_HOSTILE_SPAWN_MAX_WU = 2600;
 const MISSION_HOSTILE_SPAWN_ATTEMPTS = 24;
 const MISSION_PORT_SAFE_RADIUS_WU = 1200;
 const BOUNTY_CONTACT_RANGE_SQ = 1200 * 1200;
+const DEBRIS_RECOVERY_BREAK_IMPULSE = 80;
 
 function bountyTargetPool(riskTier) {
   const risk = Math.max(0, Math.round(Number(riskTier) || 0));
@@ -670,7 +678,10 @@ export const missions = {
     bus.on('cargo:fragileLost', (p) => this._onQuietDeliveryCargoLost(p || {}));
     // Recovery progress is acknowledged only after jettisonImpulse has routed a real low-speed pod
     // contact through pickup:collected and cargo has synchronously accepted the units.
-    bus.on('cargo:podRecovered', (p) => this._onQuietDeliveryPodRecovered(p || {}));
+    bus.on('cargo:podRecovered', (p) => this._onPhysicalRecoveryPodRecovered(p || {}));
+    // A hard contact with another physical craft is the canonical lost-pod receipt. The pod owner
+    // publishes it after physics contact; missions only settles its own target lifecycle.
+    bus.on('cargo:podStrike', (p) => this._onDebrisRecoveryPodStrike(p || {}));
     // bounty_hunt / patrol_clear: a tagged hostile died to the player.
     bus.on('entity:killed', (p) => this._onKill(p));
     // A bounty may close without a kill only after surrenderRecovery physically transfers this
@@ -1029,6 +1040,9 @@ export const missions = {
     // A failed Pest Control leaves one expanded nest. Its follow-on is causal board state, not a
     // procedural reroll, and remains until accepted.
     const retainedPestControlFollowup = previousSlots.filter(isPestControlFollowup);
+    // A lost debris pod scatters into one bounded fragment sweep. Preserve that exact causal row
+    // through ordinary board epochs until it is accepted.
+    const retainedDebrisRecoveryFollowup = previousSlots.filter(isDebrisRecoveryFollowup);
     board = {
       refreshEpoch: epoch,
       slots: [
@@ -1046,6 +1060,7 @@ export const missions = {
         ...retainedHeistOffers,
         ...retainedQuietDeliveryRecovery,
         ...retainedPestControlFollowup,
+        ...retainedDebrisRecoveryFollowup,
       ],
     };
     state.missions.boards[stationId] = board;
@@ -1601,6 +1616,9 @@ export const missions = {
     const pestControl = options.attachConditions !== false
       && typeId === 'patrol_clear'
       && shouldRollPestControl(variantHashFn(this.state.meta.seed, id, 'pest-control-variant'));
+    const debrisRecovery = options.attachConditions !== false
+      && typeId === 'salvage_retrieval'
+      && shouldRollDebrisRecovery(variantHashFn(this.state.meta.seed, id, 'debris-recovery-variant'));
     if (quietDelivery) {
       const commodityHash = variantHashFn(this.state.meta.seed, id, 'quiet-delivery-cargo') >>> 0;
       const cmdtyId = FRAGILE_LEGAL_TRADE_CMDTYS[commodityHash % FRAGILE_LEGAL_TRADE_CMDTYS.length];
@@ -1642,6 +1660,10 @@ export const missions = {
     // a random finishing restriction. Other offers keep the ordinary seeded condition draw.
     if (quietDelivery) return applyQuietDeliveryVariant(offer);
     if (pestControl) return applyPestControlVariant(offer, dest && dest.name || 'the claim');
+    if (debrisRecovery) {
+      const podCount = 2 + (variantHashFn(this.state.meta.seed, id, 'debris-recovery-pods') % 2);
+      return applyDebrisRecoveryVariant(offer, dest && dest.name || 'the marked field', podCount);
+    }
     // Physics terms are the last thing stamped onto a rolled offer so the reward/deadline family
     // above is untouched: a condition-free offer is byte-identical to the shipped one.
     return options.attachConditions === false ? offer : this._withConditions(offer, epoch);
@@ -2268,7 +2290,8 @@ export const missions = {
       cause: offer.cause ? JSON.parse(JSON.stringify(offer.cause)) : null,
       chainNextSeed: (offer.source !== SET_PIECE_MISSION_SOURCE
         && offer.source !== QUIET_DELIVERY_RECOVERY_SOURCE
-        && offer.source !== PEST_CONTROL_FOLLOWUP_SOURCE && def && def.chainable)
+        && offer.source !== PEST_CONTROL_FOLLOWUP_SOURCE
+        && offer.source !== DEBRIS_RECOVERY_FOLLOWUP_SOURCE && def && def.chainable)
         ? this._chainSeed(offer) : null,
     };
   },
@@ -2276,6 +2299,9 @@ export const missions = {
   _objectiveTarget(typeId, params) {
     if (params && params.quietDeliveryRecovery) {
       return Math.max(1, (params.quietDeliveryRecovery.pods || []).length);
+    }
+    if (params && params.debrisRecovery) {
+      return Math.max(1, (params.debrisRecovery.pods || []).length);
     }
     switch (typeId) {
       case 'bulk_trade': return params.qty;
@@ -2292,7 +2318,7 @@ export const missions = {
 
   _typeSpawnsTargets(typeId, params = null) {
     return typeId === 'bounty_hunt' || typeId === 'patrol_clear' || typeId === 'escort'
-      || !!(params && (params.poiSignalFollowup || params.quietDeliveryRecovery));
+      || !!(params && (params.poiSignalFollowup || params.quietDeliveryRecovery || params.debrisRecovery));
   },
 
   _chainSeed(offer) {
@@ -3013,12 +3039,103 @@ export const missions = {
     return offer;
   },
 
+  /** One destroyed or timed-out field scatters its unresolved cargo into one fragment sweep. */
+  _postDebrisRecoveryFollowup(mission) {
+    const offerId = debrisRecoveryFollowupOfferId(mission);
+    if (!mission || !offerId || !mission.stationId || isDebrisRecoveryFollowup(mission)) return null;
+    const duplicateActive = (this.state.missions.active || []).find((candidate) => (
+      candidate && candidate.sourceOfferId === offerId
+    ));
+    if (duplicateActive) return duplicateActive;
+    for (const candidateBoard of Object.values(this.state.missions.boards || {})) {
+      const duplicate = candidateBoard && Array.isArray(candidateBoard.slots)
+        && candidateBoard.slots.find((candidate) => candidate && candidate.id === offerId);
+      if (duplicate) return duplicate;
+    }
+
+    const recovery = mission.params && mission.params.debrisRecovery;
+    if (!recovery || !Array.isArray(recovery.pods)) return null;
+    const completed = completedMissionTargetSlots(mission);
+    const unresolved = recovery.pods.filter((pod) => (
+      pod && !completed.has(Math.max(0, Math.floor(Number(pod.slot) || 0)))
+    ));
+    if (!unresolved.length) return null;
+    const fragments = [];
+    let split = false;
+    for (const pod of unresolved) {
+      const amount = Math.max(1, Math.floor(Number(pod.amount) || 1));
+      if (!split && amount > 1) {
+        const first = Math.floor(amount / 2);
+        fragments.push({ commodityId: pod.commodityId, amount: first });
+        fragments.push({ commodityId: pod.commodityId, amount: amount - first });
+        split = true;
+      } else {
+        fragments.push({ commodityId: pod.commodityId, amount });
+      }
+    }
+    const pods = fragments.map((pod, slot) => ({ slot, ...pod }));
+    const qty = pods.reduce((sum, pod) => sum + pod.amount, 0);
+    const commodityId = pods[0].commodityId || mission.params.cmdtyId;
+    const commodity = CMDTY_BY_ID.get(commodityId);
+    const fieldName = recovery.fieldName || this._destName(mission) || 'the marked field';
+    const timeLimitS = Math.max(180, Math.round(Number(mission.deadline_s) - Number(mission.acceptedAt_s)) || 0);
+    const offer = {
+      id: offerId,
+      type: 'salvage_retrieval',
+      stationId: mission.stationId,
+      factionId: mission.factionId,
+      reward_cr: Math.max(100, Math.round((Number(mission.reward_cr) || 0) * 0.5)),
+      time_limit_s: timeLimitS,
+      duration_s: timeLimitS,
+      collateral_cr: 0,
+      riskTier: Math.max(1, Math.round(Number(mission.riskTier) || 1)),
+      destStationId: null,
+      destSectorId: mission.destSectorId,
+      distance: mission.distance,
+      params: {
+        cmdtyId: commodityId,
+        qty,
+        cargoValue: Math.max(0, Number(commodity && commodity.basePrice) || 0) * qty,
+        fValue: 1,
+        taskTime: pods.length * 30,
+        missionVariant: DEBRIS_RECOVERY_VARIANT_ID,
+        debrisRecovery: {
+          fieldName,
+          generation: 1,
+          sourceMissionId: mission.id,
+          pods,
+        },
+      },
+      title: `Debris Recovery — Fragment Sweep near ${fieldName}`,
+      brief: `The tumbling field scattered. Pull ${pods.length} marked fragments before drift wins.`,
+      expiresAtEpoch: this._epoch() + 2,
+      storyTag: null,
+      variantId: DEBRIS_RECOVERY_VARIANT_ID,
+      source: DEBRIS_RECOVERY_FOLLOWUP_SOURCE,
+      cause: {
+        tag: 'debris_field_scattered',
+        sourceMissionId: mission.id,
+        sourceOfferId: mission.sourceOfferId || null,
+      },
+    };
+    let board = this.state.missions.boards[mission.stationId];
+    if (!board || typeof board !== 'object') {
+      board = { refreshEpoch: this._epoch(), slots: [] };
+      this.state.missions.boards[mission.stationId] = board;
+    }
+    if (!Array.isArray(board.slots)) board.slots = [];
+    board.slots.push(offer);
+    this.bus.emit('mission:updated', { missionId: null, stationId: mission.stationId });
+    return offer;
+  },
+
   /** A pod counts only after cargo accepted its final units from a real physical contact. */
-  _onQuietDeliveryPodRecovered(payload) {
+  _onPhysicalRecoveryPodRecovered(payload) {
     if (!payload || payload.podId == null || Number(payload.remainingAmount) > 0) return false;
     for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
       const mission = this.state.missions.active[i];
-      if (!mission || mission.status !== 'active' || !isQuietDeliveryRecovery(mission)) continue;
+      if (!mission || mission.status !== 'active'
+        || (!isQuietDeliveryRecovery(mission) && !isDebrisRecovery(mission))) continue;
       if (!(mission.targetEntityIds || []).includes(payload.podId)) continue;
       const entity = this.state.entities && this.state.entities.get(payload.podId);
       const slot = missionTargetSlotOf(entity, mission.id);
@@ -3169,6 +3286,19 @@ export const missions = {
       if (m.objectiveProgress >= m.objectiveTarget) this._completeMission(m, i);
       else { this._refreshTrackedMissionNav(m); this.bus.emit('mission:updated', { missionId: m.id }); }
     }
+  },
+
+  _onDebrisRecoveryPodStrike(payload) {
+    if (!payload || payload.podId == null
+      || Math.max(0, Number(payload.impulse) || 0) < DEBRIS_RECOVERY_BREAK_IMPULSE) return false;
+    for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
+      const mission = this.state.missions.active[i];
+      if (!mission || mission.status !== 'active' || !isDebrisRecovery(mission)) continue;
+      if (!(mission.targetEntityIds || []).includes(payload.podId)) continue;
+      this._failMission(mission, i, 'recovery_pod_destroyed');
+      return true;
+    }
+    return false;
   },
 
   _onCustodyTransfer(payload) {
@@ -4270,6 +4400,7 @@ export const missions = {
       this._postQuietDeliveryRecovery(m);
     }
     if (isPestControl(m) && !isPestControlFollowup(m)) this._postPestControlFollowup(m);
+    if (isDebrisRecovery(m) && !isDebrisRecoveryFollowup(m)) this._postDebrisRecoveryFollowup(m);
     const setPieceTransition = this._compileSetPieceTransition(m, 'failed', reason || 'failed');
     m.status = 'failed';
     this._clearMissionNav(m.id);
@@ -4313,6 +4444,7 @@ export const missions = {
   _expireMission(m, index) {
     if (m.status !== 'active') return;
     if (isPestControl(m) && !isPestControlFollowup(m)) this._postPestControlFollowup(m);
+    if (isDebrisRecovery(m) && !isDebrisRecoveryFollowup(m)) this._postDebrisRecoveryFollowup(m);
     const setPieceTransition = this._compileSetPieceTransition(m, 'expired', 'deadline');
     m.status = 'expired';
     this._clearMissionNav(m.id);
@@ -4505,7 +4637,7 @@ export const missions = {
     ent.data.missionId = m.id;
     ent.data.missionPinned = true;
     const combatTarget = m.type === 'bounty_hunt' || m.type === 'patrol_clear';
-    const slottedTarget = combatTarget || isQuietDeliveryRecovery(m);
+    const slottedTarget = combatTarget || isQuietDeliveryRecovery(m) || isDebrisRecovery(m);
     const durableSlot = slottedTarget
       ? Math.max(0, seq | 0)
       : (missionTargetSlotOf(ent, m.id) ?? Math.max(0, seq | 0));
@@ -4645,13 +4777,15 @@ export const missions = {
     }
 
     const quietRecovery = m.params && m.params.quietDeliveryRecovery;
-    if (quietRecovery) {
+    const debrisRecovery = m.params && m.params.debrisRecovery;
+    const physicalRecovery = quietRecovery || debrisRecovery;
+    if (physicalRecovery) {
       const completed = completedMissionTargetSlots(m);
       const occupied = new Set((m.targetEntityIds || []).map((id) => (
         missionTargetSlotOf(this.state.entities.get(id), m.id)
       )).filter((slot) => slot != null));
       let spawned = 0;
-      for (const podDef of quietRecovery.pods || []) {
+      for (const podDef of physicalRecovery.pods || []) {
         const slot = Math.max(0, Math.floor(Number(podDef && podDef.slot) || 0));
         if (completed.has(slot) || occupied.has(slot)) continue;
         const rng = nextRng(slot);
@@ -4661,8 +4795,11 @@ export const missions = {
         const unitMass = Math.max(0.1, Number((CMDTY_BY_ID.get(podDef.commodityId) || {}).massPerU) || 0.5);
         const podMass = clamp(unitMass * amount, 4, 90);
         const podRadius = clamp(2.5 + Math.sqrt(amount) * 0.35, 2.5, 6.5);
-        const basePos = quietRecovery.pos || { x: px, z: pz };
-        const baseVel = quietRecovery.vel || { x: 0, z: 0 };
+        const basePos = physicalRecovery.pos || { x: px, z: pz };
+        const baseVel = physicalRecovery.vel || {
+          x: Number(player && player.vel && player.vel.x) || 0,
+          z: Number(player && player.vel && player.vel.z) || 0,
+        };
         const ent = helpers.spawnEntity({
           type: 'payload',
           pos: {
@@ -4693,7 +4830,9 @@ export const missions = {
             commodityId: podDef.commodityId,
             amount,
             recoverableCargoPod: true,
-            quietDeliveryRecovery: true,
+            masslineTetherable: true,
+            ...(quietRecovery ? { quietDeliveryRecovery: true } : {}),
+            ...(debrisRecovery ? { debrisRecovery: true } : {}),
             solidMaterialAfterEmbargo: 'payload',
             pickupEmbargoUntil: 0,
           },
