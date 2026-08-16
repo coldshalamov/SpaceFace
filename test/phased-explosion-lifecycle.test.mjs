@@ -3,9 +3,12 @@ import test from 'node:test';
 
 import {
   EXPLOSION_CAUSE_SCHEDULES,
+  EXPLOSION_STYLE_IDS,
+  EXPLOSION_STYLE_SCHEDULES,
   explosionPattern01,
   explosionPatternSigned,
   explosionScheduleFor,
+  normalizeExplosionStyle,
   PhasedExplosionLifecycle,
   EXPLOSION_SCHEDULES,
 } from '../src/render/combat/phasedExplosions.js';
@@ -100,4 +103,80 @@ test('invalid receipt numerics cannot poison the resident explosion pool', () =>
   assert.ok(Number.isFinite(entry.dirZ));
   lifecycle.update(Infinity, () => {});
   assert.equal(entry.age, 0, 'non-finite frame deltas are ignored rather than corrupting lifecycle age');
+});
+
+test('style identity is carried separately and fails closed to ordinary', () => {
+  assert.deepEqual([...EXPLOSION_STYLE_IDS], [
+    'ordinary', 'terrain_smash', 'chain', 'well_collapse', 'burn_up',
+  ]);
+  assert.equal(normalizeExplosionStyle('terrain_smash'), 'terrain_smash');
+  assert.equal(normalizeExplosionStyle('not-a-style'), 'ordinary');
+  assert.equal(normalizeExplosionStyle(null), 'ordinary');
+  assert.equal(normalizeExplosionStyle({ id: 'chain' }), 'ordinary');
+
+  const signatures = EXPLOSION_STYLE_IDS.map((styleId) => [
+    styleId,
+    explosionScheduleFor('ordinary', 'generic', styleId).events
+      .map((event) => `${event.phase}@${event.at}`).join('|'),
+  ]);
+  assert.equal(new Set(signatures.map(([, signature]) => signature)).size, 5);
+  assert.equal(
+    explosionScheduleFor('ordinary', 'generic', 'ordinary'),
+    EXPLOSION_SCHEDULES.ordinary,
+  );
+  assert.equal(
+    explosionScheduleFor('ordinary', 'terrain_collision', 'ordinary'),
+    EXPLOSION_CAUSE_SCHEDULES.terrain_collision,
+    'ordinary style keeps the legacy cause recipe',
+  );
+  assert.equal(
+    explosionScheduleFor('ordinary', 'terrain_collision', 'terrain_smash'),
+    EXPLOSION_STYLE_SCHEDULES.terrain_smash,
+    'a style kill uses the style cadence even when the legacy cause is still present',
+  );
+  assert.equal(
+    explosionScheduleFor('ordinary', 'kinetic', 'nope'),
+    EXPLOSION_CAUSE_SCHEDULES.kinetic,
+  );
+  assert.ok(Object.isFrozen(EXPLOSION_STYLE_SCHEDULES));
+
+  const lifecycle = new PhasedExplosionLifecycle({ capacity: 1 });
+  const smash = lifecycle.start({
+    classId: 'ordinary',
+    cause: 'terrain_collision',
+    styleId: 'terrain_smash',
+    chainDepth: 3,
+  });
+  assert.equal(smash.cause, 'terrain_collision');
+  assert.equal(smash.styleId, 'terrain_smash');
+  assert.equal(smash.chainDepth, 0, 'non-chain styles never carry a depth');
+  const phases = [];
+  for (let i = 0; i < 80; i++) lifecycle.update(0.05, (phase) => phases.push(phase));
+  assert.deepEqual(
+    phases,
+    explosionScheduleFor('ordinary', 'terrain_collision', 'terrain_smash').events
+      .map((event) => event.phase),
+  );
+
+  const chained = lifecycle.start({
+    cause: 'ship_collision',
+    styleId: 'chain',
+    chainDepth: 3,
+  });
+  assert.equal(chained.styleId, 'chain');
+  assert.equal(chained.chainDepth, 3);
+  lifecycle.clear();
+
+  const fallback = lifecycle.start({
+    cause: 'ship_collision',
+    styleId: 'made-up',
+    chainDepth: 9,
+  });
+  assert.equal(fallback.cause, 'ship_collision');
+  assert.equal(fallback.styleId, 'ordinary');
+  assert.equal(fallback.chainDepth, 0);
+  lifecycle.clear();
+  assert.equal(fallback.styleId, 'ordinary');
+  assert.equal(fallback.cause, 'generic');
+  assert.equal(fallback.chainDepth, 0);
 });
