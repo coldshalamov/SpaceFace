@@ -49,6 +49,8 @@ const ESCAPE_R = 2600;            // generic combat-escape distance
 const CONVOY_ARRIVE_R = 240;      // convoy centroid inside this of the endpoint = arrived
 const CONVOY_NOTICE_R = 1200;     // player inside this of a hauler marks the convoy "witnessed"
 const TRADE_PRESSURE_CAP = 12;    // hard cap on units of market pressure per arrival (bounded valve)
+const ACE_ESCAPE_FALLBACK_HULL_FRAC = 0.30;
+const ACE_ESCAPE_MIN_BOUNDARY_R = 480;
 const PREDATION_MIN_RESPONSE_S = 1;
 const FREIGHT_POD_LIMIT = 3;
 const FREIGHT_POD_TTL_S = 90;
@@ -2393,6 +2395,15 @@ const whisper = {
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 // I. NAMED HUNTER — a persistent captain with a staged entrance, a grudge, and a permanent death.
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
+function namedAceRetreatHullFraction(boss) {
+  const ai = boss && boss.data && boss.data.ai || {};
+  const profileThreshold = ai.factionPresenceDoctrine
+    && ai.factionPresenceDoctrine.retreatHullFraction;
+  const authored = Number(profileThreshold ?? ai.retreatHullFraction);
+  if (!Number.isFinite(authored)) return ACE_ESCAPE_FALLBACK_HULL_FRAC;
+  return Math.max(0.05, Math.min(0.95, authored));
+}
+
 const namedHunter = {
   fire(d, live, state) {
     const named = d.namedState();
@@ -2512,9 +2523,37 @@ const namedHunter = {
     if (live.phase === 'conflict') {
       const boss = d.entsOf(live, 'boss')[0];
       if (!boss || boss.alive === false) return;        // kill event will resolve
-      if (d.minDist2ToSquad(live, p) >= ESCAPE_R * ESCAPE_R * 2) return namedHunter._depart(d, live, true);
+      const threshold = namedAceRetreatHullFraction(boss);
+      const hull = Number(boss.hull);
+      const hullMax = Number(boss.hullMax);
+      if (hull > 0 && hullMax > 0 && hull / hullMax <= threshold) {
+        namedHunter._beginRetreat(d, live, boss, now, threshold, 'low_hull');
+        return;
+      }
+      // Player disengagement and the long encounter deadline may make the Ace leave, but neither
+      // is an escape receipt. They start the same physical retreat and remain catchable.
+      if (d.minDist2ToSquad(live, p) >= ESCAPE_R * ESCAPE_R * 2) {
+        namedHunter._beginRetreat(d, live, boss, now, threshold, 'player_disengaged');
+        return;
+      }
+      if (now >= live.deadlineAt) {
+        namedHunter._beginRetreat(d, live, boss, now, threshold, 'encounter_deadline');
+        return;
+      }
     }
-    if (now >= live.deadlineAt) return namedHunter._depart(d, live, live.data.engaged);
+    if (live.phase === 'retreat') {
+      const boss = d.entsOf(live, 'boss')[0];
+      if (!boss || boss.alive === false) return;        // a pending kill event keeps precedence
+      namedHunter._holdRetreat(live, d.entsOf(live));
+      const retreat = live.data.aceRetreat;
+      const dx = boss.pos.x - retreat.origin.x;
+      const dz = boss.pos.z - retreat.origin.z;
+      if (dx * dx + dz * dz >= retreat.boundaryRadius * retreat.boundaryRadius) {
+        return namedHunter._depart(d, live, true);
+      }
+      return;
+    }
+    if (now >= live.deadlineAt) return namedHunter._depart(d, live, false);
   },
 
   event(d, live, state, name, p) {
@@ -2528,8 +2567,50 @@ const namedHunter = {
     }
   },
 
+  _beginRetreat(d, live, boss, now, threshold, reason) {
+    if (live.data.aceRetreat) return;
+    live.phase = 'retreat';
+    live.data.aceRetreat = {
+      threshold,
+      reason,
+      startedAt: now,
+      origin: { x: boss.pos.x, z: boss.pos.z },
+      // The Ace must physically leave a bubble sized from the live encounter zone. Centering the
+      // boundary on the threshold position prevents an entrance spawn outside a small zone from
+      // resolving instantly, while retaining the zone's authored scale.
+      boundaryRadius: Math.max(ACE_ESCAPE_MIN_BOUNDARY_R, Number(live.zoneRadius) || 0),
+    };
+    namedHunter._holdRetreat(live, d.entsOf(live));
+    d.say(live, 'alert', `${live.vars.name || 'The hunter'} breaks for the lane.`, live.vars, {
+      primary: true,
+      literal: true,
+    });
+  },
+
+  _holdRetreat(live, entities) {
+    for (const entity of entities) {
+      if (!entity || entity.alive === false) continue;
+      const data = entity.data || (entity.data = {});
+      const ai = data.ai || (data.ai = {});
+      const intent = data.intent || (data.intent = {});
+      ai.forceFlee = true;
+      ai.fsm = 'flee';
+      intent.fire = false;
+      intent.fireGroup = null;
+      ai.aceRetreatEncounterId = live.id;
+    }
+  },
+
   // The captain leaves alive. If the player actually engaged, the grudge deepens.
   _depart(d, live, engaged) {
+    if (engaged && live.phase === 'retreat') {
+      const retreat = live.data && live.data.aceRetreat;
+      const boss = d.entsOf(live, 'boss')[0];
+      if (!retreat || !boss || boss.alive === false) return false;
+      const dx = boss.pos.x - retreat.origin.x;
+      const dz = boss.pos.z - retreat.origin.z;
+      if (dx * dx + dz * dz < retreat.boundaryRadius * retreat.boundaryRadius) return false;
+    }
     const named = d.namedState();
     const rec = named[live.data.captainId];
     if (rec && rec.alive !== false) {
