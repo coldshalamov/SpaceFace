@@ -10,6 +10,8 @@ import { assertValidCombatCatalog } from './validate.js';
 import { isDynamicPhysicsBodyEntity, writePhysicsBodyResponse } from '../core/physicsAuthority.js';
 
 const KERNELS = new WeakMap();
+const REPAIR_TENDER_ENEMY_ID = 'hostile_repair_tender';
+const REPAIR_TENDER_DRONE_KIND = 'repair_tender_drone';
 
 export function getCombatKernel(ctx, options = {}) {
   if (!ctx || !ctx.state) throw new TypeError('Combat kernel requires ctx.state');
@@ -45,6 +47,7 @@ export function createCombatKernel(ctx, options = {}) {
       }
     },
   });
+  const routeHullRepair = (request = {}) => repairHull(request);
   const actions = createActionService(context, attachments, routeDamage);
   const subscriptions = [];
   let sortedCacheTick = -1;
@@ -69,6 +72,7 @@ export function createCombatKernel(ctx, options = {}) {
     subscriptions.push(bus.on('physics:attachmentBroken', (payload) => attachments.onPhysicsBreak(payload)));
     subscriptions.push(bus.on('combat:requestAction', (payload) => actions.requestAction(payload || {})));
     subscriptions.push(bus.on('combat:routeDamage', (payload) => routeDamage(payload || {})));
+    subscriptions.push(bus.on('combat:routeHullRepair', (payload) => routeHullRepair(payload || {})));
     subscriptions.push(bus.on('combat:repairSubsystem', (payload) => {
       if (payload) repair(payload.entityId, payload.subsystemId, payload.amount, payload.reason);
     }));
@@ -77,6 +81,7 @@ export function createCombatKernel(ctx, options = {}) {
   Object.assign(helpers, {
     requestCombatAction: (request) => actions.requestAction(request || {}),
     routeCombatDamage: (request) => routeDamage(request || {}),
+    routeCombatHullRepair: (request) => routeHullRepair(request || {}),
     inspectCombat: (request) => inspect(request || {}),
     repairCombatSubsystem: (request) => repair(request && request.entityId, request && request.subsystemId, request && request.amount, request && request.reason),
     getCombatCapabilities: (entityId) => capabilities(entityId),
@@ -90,6 +95,7 @@ export function createCombatKernel(ctx, options = {}) {
     attachments,
     statuses,
     routeDamage,
+    routeHullRepair,
     prePhysics,
     postPhysics,
     reconcilePhysicsAttachments,
@@ -170,6 +176,71 @@ export function createCombatKernel(ctx, options = {}) {
     const runtime = ensureCombatant(state, entity, catalog);
     const result = repairSubsystem(context, entity, runtime, subsystemId, Math.max(0, Number(amount) || 0), reason);
     return { ok: result.applied > 0, ...result };
+  }
+
+  /**
+   * Combat-owned hull repair route for the Plan 15 Tender. Encounter scripting may choose a target
+   * and pilot its physical drone, but it cannot write health or consume the finite repair pool.
+   * Re-validating source, drone custody, IFF, physical range and one receipt per tick here keeps the
+   * combat kernel the only hull writer and makes duplicate requests harmless.
+   */
+  function repairHull(request = {}) {
+    const source = getEntity(request.sourceId);
+    const drone = getEntity(request.droneId);
+    const target = getEntity(request.targetId);
+    const amount = Math.max(0, Number(request.amount) || 0);
+    if (!(amount > 0)) return { ok: false, reason: 'invalid_amount', applied: 0 };
+    if (!source || source.alive === false || source.type !== 'ship'
+      || source.data?.lootTableId !== REPAIR_TENDER_ENEMY_ID) {
+      return { ok: false, reason: 'invalid_tender', applied: 0 };
+    }
+    const droneRuntime = drone?.data?.repairTenderDrone;
+    if (!drone || drone.alive === false || drone.type !== 'drone'
+      || drone.data?.kind !== REPAIR_TENDER_DRONE_KIND
+      || !droneRuntime || droneRuntime.active === false
+      || droneRuntime.sourceId !== source.id || drone.ownerId !== source.id) {
+      return { ok: false, reason: 'invalid_repair_drone', applied: 0 };
+    }
+    if (!target || target.alive === false || target.type !== 'ship' || target.id === source.id
+      || source.team == null || target.team !== source.team) {
+      return { ok: false, reason: 'invalid_repair_target', applied: 0 };
+    }
+    const range = Math.max(1, Math.min(80, Number(droneRuntime.repairRange) || 0));
+    const dx = Number(target.pos?.x || 0) - Number(drone.pos?.x || 0);
+    const dz = Number(target.pos?.z || 0) - Number(drone.pos?.z || 0);
+    if (dx * dx + dz * dz > range * range) {
+      return { ok: false, reason: 'drone_out_of_range', applied: 0 };
+    }
+    if (droneRuntime.lastRepairTick === state.tick) {
+      return { ok: false, reason: 'duplicate_tick', applied: 0 };
+    }
+    const remaining = Math.max(0, Number(droneRuntime.remainingRepair) || 0);
+    const missing = Math.max(0, Number(target.hullMax) - Number(target.hull));
+    const applied = Math.min(amount, remaining, missing);
+    if (!(applied > 0)) {
+      return { ok: false, reason: remaining > 0 ? 'target_full' : 'repair_pool_empty', applied: 0 };
+    }
+    const before = Number(target.hull) || 0;
+    target.hull = before + applied;
+    droneRuntime.remainingRepair = remaining - applied;
+    droneRuntime.lastRepairTick = state.tick;
+    const receipt = {
+      ok: true,
+      sourceId: source.id,
+      droneId: drone.id,
+      targetId: target.id,
+      encounterId: droneRuntime.encounterId || null,
+      applied,
+      before,
+      after: target.hull,
+      remainingRepair: droneRuntime.remainingRepair,
+      tick: state.tick,
+      cue: 'green_weld_flashes',
+      pos: { x: target.pos.x, z: target.pos.z },
+    };
+    appendCombatTrace(state.combat, state.tick, 'combat.hullRepair', receipt);
+    if (bus) bus.emit('combat:hullRepaired', receipt);
+    return receipt;
   }
 
   function capabilities(entityId) {

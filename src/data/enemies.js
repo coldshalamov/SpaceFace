@@ -755,10 +755,14 @@ export const ENEMY_TYPES = [
       { id: 'wpn_flak_turret_s', defensiveOnly: true },
     ],
     aiDoctrine: { defaultActivity: 'screen', roe: 'weapons_free', preferredRange: 440, leashRadius: 2400 },
-    specialistBehavior: { capability: 'bounded_hull_repair_drone', runtime: 'unwired' },
+    specialistBehavior: {
+      capability: 'bounded_hull_repair_drone', runtime: 'existing',
+      owner: 'combat_owned_repair_tender_drone_v1',
+      invariant: 'finite physical drones spend repair only through the combat hull writer',
+    },
     specialistWorldTell: { cue: 'green_weld_flashes_on_repair_target', runtime: 'unwired' },
     counterHint: 'kill_or_catch_tender_and_drone_in_well',
-    behavior: 'ordinary screening hull pending a bounded repair-drone specialist runtime',
+    behavior: 'launches a finite physical repair-drone pool; source death or drone separation stops repairs',
     bountyCr: 460, shipClass: 'corvette', killRewardTier: 'medium',
     loot: {
       creditsRange: [130, 290],

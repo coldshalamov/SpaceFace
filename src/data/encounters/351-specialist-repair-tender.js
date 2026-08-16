@@ -1,5 +1,5 @@
-// One hostile tender behind an ordinary wing. The sparse debris premise leaves room to catch the
-// support hull and an escort in one field once the bounded repair-drone mechanic is implemented.
+// One hostile tender behind an ordinary wing. Its finite physical repair drones can sustain that
+// screen, but the player can kill the source or peel a drone off its weld with the ordinary Well.
 import { deepFreeze, defineEncounter } from './catalog.js';
 
 export const encounterOrder = 351;

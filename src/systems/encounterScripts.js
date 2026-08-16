@@ -35,6 +35,7 @@ import { markEntityGhost } from './scanner.js';
 import { mines as minesSystem, MINE_TELEGRAPH_CUE } from './mines.js';
 import { ActivityKind, RulesOfEngagement, setEntityDoctrine } from '../ai/doctrine.js';
 import { isPdScreenActor } from '../ai/pdScreen.js';
+import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import { buildEncounterCausality } from '../world/encounterCausality.js';
 
 // ── shared tuning ─────────────────────────────────────────────────────────────────────────────────
@@ -69,6 +70,15 @@ const CLAIM_RETREAT_HOLD_S = 12;  // brief overshoots do not forfeit the defense
 const MINEFIELD_WAKE_COUNT = 3;   // mines seeded on minefield_wake spring
 const MINEFIELD_WAKE_SPACING = 70;
 const HARRIER_KITE_SHAPE_ID = 'specialist_harrier_kite';
+const REPAIR_TENDER_SHAPE_ID = 'specialist_repair_tender';
+const REPAIR_TENDER_ENEMY_ID = 'hostile_repair_tender';
+const REPAIR_DRONE_POOL_SIZE = 1;
+const REPAIR_DRONE_CAPACITY = 72;
+const REPAIR_DRONE_RANGE = 48;
+const REPAIR_DRONE_AMOUNT = 2;
+const REPAIR_DRONE_CADENCE_TICKS = 12;
+const REPAIR_DRONE_ACCEL = 48;
+const REPAIR_DRONE_MAX_SPEED = 52;
 
 /**
  * W03: seed physical mines behind the jackal on minefield_wake spring.
@@ -466,15 +476,28 @@ const ambush = {
       return;
     }
     if (live.phase === 'conflict') {
-      if (d.aliveCount(live) === 0) {
+      if (live.shapeId === REPAIR_TENDER_SHAPE_ID) updateRepairTender(d, live, state);
+      const repairTenderFightMembers = live.shapeId === REPAIR_TENDER_SHAPE_ID
+        ? livingRepairTenderFightMembers(d, live)
+        : null;
+      const liveFightMemberCount = repairTenderFightMembers
+        ? repairTenderFightMembers.length
+        : d.aliveCount(live);
+      if (liveFightMemberCount === 0) {
         d.dangerImpulse(live, 'ambush_cleared', -0.02);
         return d.resolve(live, 'cleared');
       }
-      if (d.minDist2ToSquad(live, p) >= ESCAPE_R * ESCAPE_R) return d.resolve(live, 'escaped');
+      const escapeDistance2 = repairTenderFightMembers
+        ? minDist2ToEntities(repairTenderFightMembers, p)
+        : d.minDist2ToSquad(live, p);
+      if (escapeDistance2 >= ESCAPE_R * ESCAPE_R) return d.resolve(live, 'escaped');
     }
   },
 
   event(d, live, state, name, payload) {
+    if (name === 'squadKill' && live.shapeId === REPAIR_TENDER_SHAPE_ID) {
+      onRepairTenderSquadKill(d, live, state, payload);
+    }
     if (name === 'squadKill' && live.shapeId === HARRIER_KITE_SHAPE_ID
       && live.phase === 'conflict') {
       if (beginHarrierScreenBreak(d, live, state, payload)) return;
@@ -499,6 +522,209 @@ const ambush = {
     return true;
   },
 };
+
+function repairTenderAnchor(d, live) {
+  return d.entsOf(live).find((entity) => (
+    entity?.type === 'ship' && entity.data?.lootTableId === REPAIR_TENDER_ENEMY_ID
+  )) || null;
+}
+
+function livingRepairTenderFightMembers(d, live) {
+  return d.entsOf(live).filter((entity) => entity?.data?.kind !== 'repair_tender_drone');
+}
+
+function minDist2ToEntities(entities, target) {
+  let best = Infinity;
+  for (const entity of entities) {
+    if (!entity?.pos || !target?.pos) continue;
+    best = Math.min(best, dist2(entity.pos.x, entity.pos.z, target.pos.x, target.pos.z));
+  }
+  return best;
+}
+
+function ensureRepairTenderRuntime(d, live, state) {
+  const existing = live.data.repairTender;
+  if (existing?.initialized === true) return existing;
+  const runtime = existing || (live.data.repairTender = {});
+  runtime.initialized = true;
+  runtime.droneIds = [];
+  runtime.poolSize = REPAIR_DRONE_POOL_SIZE;
+  runtime.totalRepairCapacity = REPAIR_DRONE_POOL_SIZE * REPAIR_DRONE_CAPACITY;
+  runtime.totalApplied = 0;
+  runtime.stoppedAtTick = null;
+  const tender = repairTenderAnchor(d, live);
+  runtime.sourceId = tender?.id ?? null;
+  const spawn = d.helpers?.spawnEntity;
+  if (!tender || typeof spawn !== 'function') return runtime;
+  for (let index = 0; index < REPAIR_DRONE_POOL_SIZE; index++) {
+    const angle = tender.rot + (index === 0 ? -0.65 : 0.65);
+    const drone = spawn({
+      type: 'drone',
+      team: tender.team,
+      factionId: tender.factionId,
+      ownerId: tender.id,
+      pos: {
+        x: tender.pos.x + Math.cos(angle) * 22,
+        z: tender.pos.z + Math.sin(angle) * 22,
+      },
+      vel: { x: tender.vel.x, z: tender.vel.z },
+      rot: angle,
+      radius: 4,
+      mass: 5,
+      collides: true,
+      hull: 18,
+      hullMax: 18,
+      maxSpeed: REPAIR_DRONE_MAX_SPEED,
+      drag: 0.8,
+      physicsBody: {
+        schemaVersion: 1,
+        radius: 4,
+        mass: 5,
+        inertiaY: 40,
+        dynamic: true,
+        ccd: true,
+        material: 'ship',
+        revision: 0,
+      },
+      data: {
+        kind: 'repair_tender_drone',
+        scanLabel: 'Tender Repair Drone',
+        encounterId: live.id,
+        repairTenderDrone: {
+          sourceId: tender.id,
+          encounterId: live.id,
+          active: true,
+          targetId: null,
+          remainingRepair: REPAIR_DRONE_CAPACITY,
+          maxRepair: REPAIR_DRONE_CAPACITY,
+          repairRange: REPAIR_DRONE_RANGE,
+          lastRepairTick: -1,
+          nextRequestTick: state.tick + index * REPAIR_DRONE_CADENCE_TICKS / 2,
+        },
+      },
+    });
+    if (!drone) continue;
+    runtime.droneIds.push(drone.id);
+    live.ids.push(drone.id);
+    live.roles[drone.id] = 'repair_drone';
+    d.emit('specialist:repairDroneLaunched', {
+      encounterId: live.id,
+      sourceId: tender.id,
+      droneId: drone.id,
+      poolIndex: index,
+      capacity: REPAIR_DRONE_CAPACITY,
+      tick: state.tick,
+    });
+  }
+  return runtime;
+}
+
+function updateRepairTender(d, live, state) {
+  const runtime = ensureRepairTenderRuntime(d, live, state);
+  const tender = runtime.sourceId == null ? null : state.entities?.get(runtime.sourceId);
+  if (!tender || tender.alive === false) {
+    shutdownRepairTender(d, live, state, 'tender_destroyed');
+    return;
+  }
+  const routeRepair = d.helpers?.routeCombatHullRepair;
+  const candidates = livingRepairTenderFightMembers(d, live)
+    .filter((entity) => entity.type === 'ship' && entity.id !== tender.id
+      && entity.team === tender.team && entity.hull < entity.hullMax)
+    .sort(compareRepairTargets);
+  for (const droneId of runtime.droneIds) {
+    const drone = state.entities?.get(droneId);
+    const repair = drone?.data?.repairTenderDrone;
+    if (!drone || drone.alive === false || !repair || repair.active === false) continue;
+    if (!(repair.remainingRepair > 0)) {
+      repair.active = false;
+      drone.data.despawnAt = d.now() + 1.5;
+      continue;
+    }
+    let target = repair.targetId == null ? null : state.entities?.get(repair.targetId);
+    if (!validRepairTarget(target, tender)) target = candidates[0] || null;
+    repair.targetId = target?.id ?? null;
+    if (!target) {
+      steerRepairDrone(drone, tender);
+      continue;
+    }
+    steerRepairDrone(drone, target);
+    if (state.tick < repair.nextRequestTick || typeof routeRepair !== 'function') continue;
+    repair.nextRequestTick = state.tick + REPAIR_DRONE_CADENCE_TICKS;
+    const result = routeRepair({
+      sourceId: tender.id,
+      droneId: drone.id,
+      targetId: target.id,
+      amount: REPAIR_DRONE_AMOUNT,
+      reason: 'repair_tender_drone',
+    });
+    if (result?.ok) runtime.totalApplied += result.applied;
+  }
+}
+
+function compareRepairTargets(left, right) {
+  const leftMissing = Math.max(0, Number(left.hullMax) - Number(left.hull));
+  const rightMissing = Math.max(0, Number(right.hullMax) - Number(right.hull));
+  if (leftMissing !== rightMissing) return rightMissing - leftMissing;
+  return compareEntityIds(left, right);
+}
+
+function validRepairTarget(target, tender) {
+  return !!(target && target.alive !== false && target.type === 'ship' && target.id !== tender.id
+    && target.team === tender.team && target.hull < target.hullMax);
+}
+
+function steerRepairDrone(drone, target) {
+  if (!drone?.pos || !target?.pos) return;
+  const dx = target.pos.x - drone.pos.x;
+  const dz = target.pos.z - drone.pos.z;
+  const distance = Math.hypot(dx, dz);
+  const desiredSpeed = distance > 24 ? Math.min(REPAIR_DRONE_MAX_SPEED, (distance - 18) * 1.2) : 0;
+  const ux = distance > 1e-6 ? dx / distance : 0;
+  const uz = distance > 1e-6 ? dz / distance : 0;
+  const targetVx = Number(target.vel?.x) || 0;
+  const targetVz = Number(target.vel?.z) || 0;
+  let dvx = targetVx + ux * desiredSpeed - (Number(drone.vel?.x) || 0);
+  let dvz = targetVz + uz * desiredSpeed - (Number(drone.vel?.z) || 0);
+  const delta = Math.hypot(dvx, dvz);
+  // Encounter scripts tick at 1 Hz. Queue one bounded velocity correction for the next physics
+  // frame; the Well still applies continuously at 60 Hz and can overpower/peel this light body.
+  const maxDelta = REPAIR_DRONE_ACCEL;
+  if (delta > maxDelta && delta > 1e-6) {
+    dvx *= maxDelta / delta;
+    dvz *= maxDelta / delta;
+  }
+  const mass = Math.max(0.1, Number(drone.physicsBody?.mass) || Number(drone.mass) || 1);
+  queuePhysicsImpulse(drone, { x: dvx * mass, y: 0, z: dvz * mass });
+}
+
+function onRepairTenderSquadKill(d, live, state, payload) {
+  const runtime = live.data?.repairTender;
+  const dead = payload?.id == null ? null : state.entities?.get(payload.id);
+  const tenderKilled = payload?.id === runtime?.sourceId
+    || dead?.data?.lootTableId === REPAIR_TENDER_ENEMY_ID;
+  if (tenderKilled) shutdownRepairTender(d, live, state, 'tender_destroyed');
+}
+
+function shutdownRepairTender(d, live, state, reason) {
+  const runtime = live.data?.repairTender;
+  if (!runtime || runtime.stoppedAtTick != null) return;
+  runtime.stoppedAtTick = state.tick;
+  runtime.stopReason = reason;
+  for (const droneId of runtime.droneIds || []) {
+    const drone = state.entities?.get(droneId);
+    const repair = drone?.data?.repairTenderDrone;
+    if (!drone || !repair) continue;
+    repair.active = false;
+    repair.targetId = null;
+    drone.data.despawnAt = d.now() + 1.5;
+  }
+  d.emit('specialist:repairTenderStopped', {
+    encounterId: live.id,
+    sourceId: runtime.sourceId,
+    reason,
+    tick: state.tick,
+  });
+}
 
 function livingHarrierAnchor(d, live) {
   return d.entsOf(live).find((entity) => (

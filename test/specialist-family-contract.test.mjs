@@ -61,11 +61,16 @@ test('missing identities are fixed-stat medium rewards with exact authored masse
     assert.ok(def.mass > 20 && def.mass <= 60, `${enemyId} sits in the Plan 11 medium band`);
     assert.equal(def.fixedCombatStats, true);
     assert.equal(def.killRewardTier, 'medium');
-    const expectedRuntime = enemyId === 'jammer_specialist' || enemyId === 'harrier_kiter'
+    const expectedBehaviorRuntime = enemyId === 'jammer_specialist'
+      || enemyId === 'hostile_repair_tender'
+      || enemyId === 'harrier_kiter'
       ? 'existing'
       : 'unwired';
-    assert.equal(def.specialistBehavior?.runtime, expectedRuntime);
-    assert.equal(def.specialistWorldTell?.runtime, expectedRuntime);
+    const expectedWorldTellRuntime = enemyId === 'jammer_specialist' || enemyId === 'harrier_kiter'
+      ? 'existing'
+      : 'unwired';
+    assert.equal(def.specialistBehavior?.runtime, expectedBehaviorRuntime);
+    assert.equal(def.specialistWorldTell?.runtime, expectedWorldTellRuntime);
 
     const low = makeEnemySpawnSpec(enemyId, 1, { x: 0, z: 0 });
     const high = makeEnemySpawnSpec(enemyId, 12, { x: 0, z: 0 });
@@ -92,16 +97,17 @@ test('contracts claim only specialist mechanics with landed production owners', 
     .filter((row) => row.worldTell.runtime === 'existing')
     .map((row) => row.key);
 
-  assert.deepEqual(existingBehavior, ['tether_cutter', 'pd_screen', 'jammer', 'shield_projector', 'anchor', 'kiter']);
+  assert.deepEqual(existingBehavior, ['tether_cutter', 'pd_screen', 'jammer', 'shield_projector', 'tender', 'anchor', 'kiter']);
   assert.deepEqual(existingWorldTell, ['tether_cutter', 'jammer', 'anchor', 'kiter']);
   const pdScreen = SPECIALIST_FAMILY.find((candidate) => candidate.key === 'pd_screen');
   assert.equal(pdScreen.behavior.owner, 'physics_owned_pd_interception_v1');
   assert.equal(pdScreen.worldTell.runtime, 'unwired', 'pd_screen world tell stays an honest handoff');
-  for (const key of ['tender', 'minelayer']) {
-    const row = SPECIALIST_FAMILY.find((candidate) => candidate.key === key);
-    assert.equal(row.behavior.runtime, 'unwired', `${key} behavior stays an honest handoff`);
-    assert.equal(row.worldTell.runtime, 'unwired', `${key} world tell stays an honest handoff`);
-  }
+  const tender = SPECIALIST_FAMILY.find((candidate) => candidate.key === 'tender');
+  assert.equal(tender.behavior.owner, 'combat_owned_repair_tender_drone_v1');
+  assert.equal(tender.worldTell.runtime, 'unwired', 'tender render/audio world tell stays an honest handoff');
+  const minelayer = SPECIALIST_FAMILY.find((candidate) => candidate.key === 'minelayer');
+  assert.equal(minelayer.behavior.runtime, 'unwired', 'minelayer behavior stays an honest handoff');
+  assert.equal(minelayer.worldTell.runtime, 'unwired', 'minelayer world tell stays an honest handoff');
 });
 
 test('each ordinary specialist shape guarantees exactly one anchor and only ordinary companions', () => {

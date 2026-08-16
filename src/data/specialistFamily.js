@@ -96,7 +96,9 @@ export const SPECIALIST_FAMILY = Object.freeze([
     counterVerb: 'kill_or_catch_tender_and_drone_in_well',
     behavior: {
       capability: 'bounded_hull_repair_drone',
-      runtime: 'unwired',
+      runtime: 'existing',
+      owner: 'combat_owned_repair_tender_drone_v1',
+      invariant: 'finite physical drones spend repair only through the combat hull writer',
     },
     worldTell: {
       cue: 'green_weld_flashes_on_repair_target',
