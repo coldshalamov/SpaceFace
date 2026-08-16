@@ -2,9 +2,9 @@
 // check:arcade-core — the single regenerating gate named by design/arcade-core/09_VALIDATION.md.
 //
 // Two halves, both required:
-//   1. Every test/arcade-core-*.test.mjs runs exactly once. The set is discovered from disk AND
-//      compared to the manifest below, so a newly authored arcade-core test cannot sit unwired
-//      behind a green check (the failure mode this repo has hit before).
+//   1. Every test/arcade-core-*.test.mjs discovered on disk runs exactly once. The original
+//      foundation set remains required, so a new test is automatic while an accidental deletion
+//      cannot hide behind a green check.
 //   2. The Layer-1 metric battery is regenerated from live production owners and compared to its
 //      authored tolerance bands. Numbers land in a receipt, not in chat.
 //
@@ -29,8 +29,9 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const TEST_DIR = join(ROOT, 'test');
 const RECEIPT_DIR = join(ROOT, '.devshots', 'arcade-core');
 
-// Explicit manifest. Discovery below must agree with it exactly.
-const MANIFEST = [
+// Foundation tests required by Plan 09. Additional arcade-core tests are discovered and run
+// automatically; they do not require a second-file allowlist edit to become authoritative.
+const REQUIRED_FOUNDATION = [
   'arcade-core-combat-pacing.test.mjs',
   'arcade-core-atmosphere-route.test.mjs',
   'arcade-core-damage-dressing.test.mjs',
@@ -62,13 +63,9 @@ function discoverTests() {
     .sort();
 }
 
-function diffSets(discovered, manifest) {
-  const inManifest = new Set(manifest);
+function missingRequired(discovered, required) {
   const onDisk = new Set(discovered);
-  return {
-    unwired: discovered.filter((name) => !inManifest.has(name)),
-    missing: manifest.filter((name) => !onDisk.has(name)),
-  };
+  return required.filter((name) => !onDisk.has(name));
 }
 
 function runTests(files) {
@@ -95,7 +92,7 @@ function formatBand(band) {
 }
 
 const discovered = discoverTests();
-const { unwired, missing } = diffSets(discovered, MANIFEST);
+const missing = missingRequired(discovered, REQUIRED_FOUNDATION);
 
 // These two families cannot be computed honestly from constants. Await the real fixed-step routes
 // once, then inject their receipts into the otherwise synchronous numeric battery.
@@ -106,10 +103,9 @@ const battery = evaluateArcadeCoreBattery({}, {
   atmosphere: atmosphereReceipt,
 });
 const coverage = {
-  ok: unwired.length === 0 && missing.length === 0,
+  ok: missing.length === 0,
   discovered,
-  manifest: MANIFEST,
-  unwired,
+  requiredFoundation: REQUIRED_FOUNDATION,
   missing,
 };
 
@@ -154,8 +150,7 @@ if (asJson) {
       if (!row.ok && row.band) console.log(`          why: ${row.band.why}`);
     }
   }
-  if (unwired.length) console.log(`\n  UNWIRED arcade-core tests (add to the manifest): ${unwired.join(', ')}`);
-  if (missing.length) console.log(`\n  MISSING manifest tests (deleted?): ${missing.join(', ')}`);
+  if (missing.length) console.log(`\n  MISSING required foundation tests (deleted?): ${missing.join(', ')}`);
   if (!metricsOnly) {
     console.log(`\n  tests: ${tests.skipped ? 'skipped (coverage drift)' : `${tests.files} files, ${tests.durationMs} ms`}`);
   }

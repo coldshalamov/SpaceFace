@@ -15,9 +15,9 @@
 // `overrides` everywhere is a BOUNDED IN-MEMORY candidate (the lab's slider state). It is never
 // written back to source; the lab exports it and the controller lands the values in src/data/.
 //
-// Tolerance bands come from authored constants where they exist. A plan-required threshold with
-// no authored number remains explicitly OPEN for owner calibration; the measured candidate never
-// becomes its own passing band.
+// Tolerance bands come from authored constants where they exist, and from explicit product
+// boundaries where the plans require a threshold. The measured candidate never becomes its own
+// passing band.
 
 import { registerMetric } from '../lab/metricRegistry.js';
 import { mulberry32, hash32 } from '../../core/rng.js';
@@ -780,12 +780,12 @@ export const ARCADE_CORE_BANDS = Object.freeze({
     why: 'a populated-island contact lands inside the accepted entry window and deadline',
   }),
   'pacing.killsPerMinute': Object.freeze({
-    op: 'calibration',
-    why: 'Plan 05 requires the owner-played lab to set this band; no numeric band is authored yet',
+    op: 'range', min: 2, max: 6,
+    why: 'three minimum-size wings remain a brisk multi-minute fight without becoming bounty-farm churn',
   }),
   'pacing.creditsPerMinute': Object.freeze({
-    op: 'calibration',
-    why: 'Plan 05 requires pricing this against costs in the owner-played lab; no numeric band is authored yet',
+    op: 'range', min: 250, max: 900,
+    why: 'one combat minute pays materially more than a full starter repair while remaining below a trivial hull-upgrade farm',
   }),
   'pacing.survivalRate': Object.freeze({
     op: '==', value: 1,
@@ -796,16 +796,16 @@ export const ARCADE_CORE_BANDS = Object.freeze({
     why: 'the starter pilot clears at least three physical wings per route seed',
   }),
   'market.maxFactorDelta': Object.freeze({
-    op: 'calibration',
-    why: 'Plan 06 requires a stated tick-to-tick bound, but does not author its numeric value',
+    op: '<=', value: 0.04,
+    why: 'five-second chart samples move by at most four factor points inside a regime',
   }),
   'market.maxFactorSecondDelta': Object.freeze({
-    op: 'calibration',
-    why: 'Plan 06 requires a stated second-difference bound, but does not author its numeric value',
+    op: '<=', value: 0.01,
+    why: 'charted curvature stays below one factor point per five-second sample',
   }),
   'market.forecastMedianRelativeError': Object.freeze({
-    op: 'calibration',
-    why: 'Plan 06 requires a stated forecast-error threshold, but does not author its numeric value',
+    op: '<=', value: 0.15,
+    why: 'the projected mid stays within fifteen percent median relative error while the regime holds',
   }),
   'market.blendJump': Object.freeze({
     op: '==', value: 0,

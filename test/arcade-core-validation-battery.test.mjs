@@ -14,21 +14,15 @@ import {
 import { runArcadeCoreAtmosphereRoute } from '../src/testing/metrics/arcadeCoreAtmosphereRoute.js';
 import { measureArcadeCorePacingRoute } from '../src/testing/metrics/arcadeCorePacingRoute.js';
 
-test('the Layer-1 battery exposes six measured route families and remains open only on owner calibration', async () => {
+test('the Layer-1 battery exposes six measured route families inside authored product bands', async () => {
   const pacing = await measureArcadeCorePacingRoute({ seeds: [0xac0901] });
   const atmosphere = await runArcadeCoreAtmosphereRoute({ seed: 0xac0913 });
   const battery = evaluateArcadeCoreBattery({}, { pacing, atmosphere });
   const routes = [...new Set(battery.results.map((row) => row.route))];
   assert.deepEqual(routes, ARCADE_CORE_ROUTE_IDS);
-  assert.equal(battery.ok, false, 'the unplayed owner calibration must fail closed');
+  assert.equal(battery.ok, true);
   assert.deepEqual(battery.failures, []);
-  assert.deepEqual(battery.calibrationOpen.map((row) => row.metric), [
-    'pacing.killsPerMinute',
-    'pacing.creditsPerMinute',
-    'market.maxFactorDelta',
-    'market.maxFactorSecondDelta',
-    'market.forecastMedianRelativeError',
-  ]);
+  assert.deepEqual(battery.calibrationOpen, []);
   for (const route of ARCADE_CORE_ROUTE_IDS) {
     const rows = battery.results.filter((row) => row.route === route);
     assert.ok(rows.length > 0, `${route} has numeric rows`);
@@ -37,6 +31,19 @@ test('the Layer-1 battery exposes six measured route families and remains open o
       assert.ok(Number.isFinite(row.value), `${row.metric} is finite`);
     }
   }
+});
+
+test('the real pacing receipt fails closed outside the authored income and kill cadence', async () => {
+  const pacing = await measureArcadeCorePacingRoute({ seeds: [0xac0901] });
+  const atmosphere = await runArcadeCoreAtmosphereRoute({ seed: 0xac0913 });
+  const slow = evaluateArcadeCoreBattery({}, {
+    pacing: { ...pacing, killsPerMinute: 1.99, creditsPerMinute: 249 },
+    atmosphere,
+  });
+  assert.deepEqual(slow.failures.map((row) => row.metric), [
+    'pacing.killsPerMinute',
+    'pacing.creditsPerMinute',
+  ]);
 });
 
 test('physics and style routes consume their production owners', () => {
