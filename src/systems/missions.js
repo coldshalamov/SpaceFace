@@ -49,6 +49,7 @@ import {
   STORY_BRANCH_INTRO_TAG,
   SET_PIECE_MISSIONS,
 } from '../data/missions.js';
+import { factionMissionDoctrineMultiplier } from '../data/factionPlay.js';
 import { settleContractClauses, unsatisfiedRequiredConditions } from '../data/contractClauses.js';
 // Physics-aware contract terms (grammar §9.9.1). The catalog is data; the event half is observed by
 // the ONE generic observer in contractClauses.js; the per-tick half is the predicate slot in update().
@@ -1423,7 +1424,7 @@ export const missions = {
       // opens on a bounty-free epoch.
       const typeId = i === 0 && info.boardAnchorType
         ? info.boardAnchorType
-        : this._pickType(weights, rng, repBoost, profile);
+        : this._pickType(weights, rng, repBoost, profile, info.factionId, rep);
       const offer = this._rollOffer(typeId, info, rng, epoch, i);
       if (offer) offers.push(offer);
     }
@@ -1445,13 +1446,14 @@ export const missions = {
   },
 
   /** Weighted pick of a mission type by OFFER_MIX (signature types rep-boosted). */
-  _pickType(weights, rng, repBoost, stationType) {
+  _pickType(weights, rng, repBoost, stationType, factionId = null, rep = 0) {
     let total = 0;
     const w = new Array(TYPE_ORDER.length);
     for (let i = 0; i < TYPE_ORDER.length; i++) {
       let weight = weights[i] || 0;
       // signature types (weight>=3) get the friendly-rep boost.
       if (weight >= 3) weight *= repBoost;
+      weight *= factionMissionDoctrineMultiplier(factionId, TYPE_ORDER[i], rep);
       w[i] = weight; total += weight;
     }
     if (total <= 0) return TYPE_ORDER[0];

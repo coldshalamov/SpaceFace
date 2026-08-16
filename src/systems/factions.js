@@ -8,7 +8,9 @@
 // Also owns state.conflicts[pairKey] (dynamic inter-faction war) and writes
 // state.world.sectors[id].owner on war resolution (§0.6). Pure-data deps only (no 'three').
 import { FACTION_META } from '../data/factions.js';
+import { FACTION_BACKROOM } from '../data/factionPlay.js';
 import { NEW_GAME } from '../data/newGameDefaults.js';
+import { SECTORS } from '../data/sectors.js';
 import { WEAPONS } from '../data/weapons.js';
 import {
   CONTESTED_SECTOR_BY_PAIR,
@@ -61,6 +63,16 @@ const CONTESTED = CONTESTED_SECTOR_BY_PAIR;
 const META_BY_ID = Object.create(null);
 const FACTION_IDS = [];
 for (const f of FACTION_META) { META_BY_ID[f.id] = f; FACTION_IDS.push(f.id); }
+const STATION_BY_ID = new Map();
+for (const sector of SECTORS) {
+  for (const station of sector.stations || []) {
+    STATION_BY_ID.set(station.id, {
+      ...station,
+      factionId: station.factionId || sector.factionId || null,
+      sectorId: sector.id,
+    });
+  }
+}
 
 function sortedPairKey(a, b) { return a < b ? `${a}:${b}` : `${b}:${a}`; }
 
@@ -783,6 +795,23 @@ export function factionLicensedFitOffersForState(state, factionId = null) {
     if (offer && (!factionId || offer.factionId === factionId)) offers.push(offer);
   }
   return offers;
+}
+
+/** Trusted standing opens the discreet room inside a legitimate faction station. The service
+ * remains separate from authored black-market stations: this is access earned inside the law. */
+export function factionBackroomAccessForState(state, stationId) {
+  const station = STATION_BY_ID.get(stationId);
+  if (!station || station.type === 'blackmarket' || !station.factionId) return null;
+  const currentRep = Number(state?.factions?.[station.factionId]?.rep) || 0;
+  return {
+    stationId: station.id,
+    stationName: station.name,
+    factionId: station.factionId,
+    minRep: FACTION_BACKROOM.minRep,
+    currentRep,
+    available: currentRep >= FACTION_BACKROOM.minRep,
+    serviceId: FACTION_BACKROOM.serviceId,
+  };
 }
 
 /** Current-sector conflict choices for the player-facing station surface. */

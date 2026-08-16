@@ -5,6 +5,7 @@
 // Screen module shape (hosted by stationApp): create(ctx) -> { el, onShow, refresh, dispose }.
 // Standing remains factions-owned; the two buttons emit intents to Economy/Factions owners.
 import { FACTION_META } from '../../../data/factions.js';
+import { FACTION_BACKROOM } from '../../../data/factionPlay.js';
 import { NEW_GAME } from '../../../data/newGameDefaults.js';
 import { SECTORS } from '../../../data/sectors.js';
 import { shouldHideOwnRepDelta } from '../../../story/endings/publicIdentity.js';
@@ -18,8 +19,10 @@ import { escapeHtml } from '../../comms.js';
 import { icon } from '../icons.js';
 import {
   conflictChoicesForState,
+  factionBackroomAccessForState,
   factionLicensedFitOffersForState,
 } from '../../../systems/factions.js';
+import { playerSpoofStatusForState } from '../../../systems/pirateDisguise.js';
 
 // Standing colour ramp — meaningful, ordered crimson→gold. Index-aligned to FACTION_TIERS
 // (9 tiers, Sworn Enemy … Hero). This is the STANDING colour (how they feel about you).
@@ -320,6 +323,21 @@ export function createFactionsScreen(ctx) {
         `<button type="button" class="sx-btn-primary" data-conflict-pair="${escapeHtml(choice.pairKey)}" data-conflict-side="${escapeHtml(choice.sideId)}" ${choice.available ? '' : 'disabled'}>${label}</button>` +
       `</div>`;
     }).join('');
+    const stationId = state && state.ui && state.ui.dockedStationId;
+    const backroom = stationFactionId === f.id ? factionBackroomAccessForState(state, stationId) : null;
+    const spoof = playerSpoofStatusForState(state, f.id);
+    const backroomRow = backroom ? (
+      `<div class="sx-fac-intent">` +
+        `<span>TRUSTED BACKROOM</span>` +
+        `<b>${backroom.available ? escapeHtml(FACTION_BACKROOM.label) : `${Math.max(0, backroom.minRep - backroom.currentRep)} reputation needed`}</b>` +
+        `<em>${spoof.exposed
+          ? `IDENTITY MADE · local scrutiny ${Math.ceil(spoof.exposureRemainingS)}s`
+          : spoof.ready
+            ? `MANIFEST READY · ${escapeHtml(f.name)} customs · one use`
+            : `${FACTION_BACKROOM.price.toLocaleString('en-US')} credits · one eligible ${escapeHtml(f.name)} customs challenge`}</em>` +
+        `<button type="button" class="sx-btn-primary" data-buy-faction-backroom="${escapeHtml(backroom.serviceId)}" ${backroom.available && !spoof.ready && (state.player?.credits || 0) >= FACTION_BACKROOM.price ? '' : 'disabled'}>${spoof.ready ? 'MANIFEST READY' : 'FORGE MANIFEST'}</button>` +
+      `</div>`
+    ) : '';
 
     detailEl.innerHTML =
       `<div class="sx-fac-ladder">` +
@@ -329,7 +347,7 @@ export function createFactionsScreen(ctx) {
       `<div class="sx-fac-intent">` +
         `<span>NEXT MOVE</span><b>${escapeHtml(guidance.plan)}</b>` +
         `<em>${relations.length} consequential relation${relations.length === 1 ? '' : 's'} mapped</em>` +
-      `</div>` + licenseRows + conflictRows;
+      `</div>` + licenseRows + backroomRow + conflictRows;
   }
 
   function refresh(c) {
@@ -360,6 +378,13 @@ export function createFactionsScreen(ctx) {
   railEl.addEventListener('click', onFactionClick);
   stageEl.addEventListener('click', onFactionClick);
   detailEl.addEventListener('click', (ev) => {
+    const backroom = ev.target.closest('[data-buy-faction-backroom]');
+    if (backroom && ctx && ctx.bus) {
+      const payload = { serviceId: backroom.getAttribute('data-buy-faction-backroom') };
+      ctx.bus.emit('ui:buyFactionBackroom', payload);
+      refresh(ctx);
+      return;
+    }
     const licensed = ev.target.closest('[data-buy-faction-fit]');
     if (licensed && ctx && ctx.bus) {
       const payload = { defId: licensed.getAttribute('data-buy-faction-fit') };

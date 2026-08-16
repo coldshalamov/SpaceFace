@@ -23,6 +23,7 @@
 //   stock target. We honor the schema field names (equilibrium = role-modified drift target,
 //   baseEq = fixed reference). Absolute early ROI is now moderated for M3 career parity.
 import { COMMODITIES } from '../data/commodities.js';
+import { FACTION_BACKROOM } from '../data/factionPlay.js';
 import { SECTORS } from '../data/sectors.js';
 import { CERES_ACTIVITY_SECTOR_ID, CERES_FUEL_TENDER_SERVICE } from '../data/sectorActivityPockets.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
@@ -42,6 +43,7 @@ import { allRegionalPressureRecipes } from '../economy/regionalSupply.js';
 import { applyPersistentDemand, effectiveDemandFor } from '../economy/demandModel.js';
 import {
   earnedConflictSalvageQtyForState,
+  factionBackroomAccessForState,
   factionLicensedFitOfferForState,
   priceModForState,
 } from './factions.js';
@@ -606,6 +608,9 @@ export const economy = {
     bus.on('ui:sellAllJunk', () => { this.sellAllJunk(); });
     bus.on('ui:buyFactionFit', (p) => {
       if (p && typeof p === 'object') p.result = this.buyFactionLicensedFit(p.defId);
+    });
+    bus.on('ui:buyFactionBackroom', (p) => {
+      if (p && typeof p === 'object') p.result = this.buyFactionBackroomService(p.serviceId);
     });
     bus.on('economy:marketOpened', (p) => {
       if (!p || !p.stationId) return;
@@ -1789,6 +1794,45 @@ export const economy = {
     return receipt;
   },
 
+  /** Economy-owned backroom point of sale. Factions answers whether the door is open, while the
+   * existing pirateDisguise owner installs and later consumes the forged identity. */
+  buyFactionBackroomService(serviceId) {
+    const state = this.state;
+    if (serviceId !== FACTION_BACKROOM.serviceId) return { ok: false, reason: 'unknown_backroom_service' };
+    const stationId = this.dockedStationId();
+    const access = factionBackroomAccessForState(state, stationId);
+    if (!access) return { ok: false, reason: 'backroom_unavailable' };
+    if (!access.available) {
+      return { ok: false, reason: 'standing_required', minRep: access.minRep, currentRep: access.currentRep };
+    }
+    if ((state.player.credits | 0) < FACTION_BACKROOM.price) {
+      return { ok: false, reason: 'insufficient_credits', price: FACTION_BACKROOM.price };
+    }
+    const disguise = this.registryGet('pirateDisguise');
+    if (!disguise || typeof disguise.grantPlayerSpoof !== 'function') {
+      return { ok: false, reason: 'spoof_owner_unavailable' };
+    }
+    const installed = disguise.grantPlayerSpoof({
+      serviceId,
+      stationId,
+      factionId: access.factionId,
+    });
+    if (!installed?.ok) return installed || { ok: false, reason: 'spoof_install_rejected' };
+
+    this.chargeCredits(FACTION_BACKROOM.price, `faction_backroom:${serviceId}`);
+    const receipt = {
+      ok: true,
+      serviceId,
+      stationId,
+      factionId: access.factionId,
+      price: FACTION_BACKROOM.price,
+      remainingCredits: state.player.credits | 0,
+    };
+    this.bus.emit('faction:backroomPurchased', receipt);
+    this.bus.emit('toast', { text: `${FACTION_BACKROOM.label} ready for one customs challenge.`, kind: 'success', ttl: 3 });
+    return receipt;
+  },
+
   // -------------------------------------------------------------------------------------------
   // SERVICES — refuel / repair / ammo / hull wash / restitution (ui:service {type, amount}).
   // -------------------------------------------------------------------------------------------
@@ -2103,13 +2147,28 @@ export const economy = {
       : null;
     const scannedPayload = { hasContraband };
     if (lawfulInspectionCaseId) scannedPayload.lawfulInspectionCaseId = lawfulInspectionCaseId;
-    this.bus.emit('player:scannedByPatrol', scannedPayload);
-    if (!hasContraband) return { found: false };
+    if (!hasContraband) {
+      this.bus.emit('player:scannedByPatrol', scannedPayload);
+      return { found: false };
+    }
     const security = p.security != null ? p.security : this.currentSecurity();
     const cloak = (p.scannerCloak != null ? p.scannerCloak : this.scannerCloak(state));
     const factionId = p.factionId || (p.patrolId && this.factionOfEntity(p.patrolId)) || this.scanningFaction(state);
+    const disguise = this.registryGet && this.registryGet('pirateDisguise');
+    const spoof = disguise && typeof disguise.attemptPlayerSpoof === 'function'
+      ? disguise.attemptPlayerSpoof({ ...p, factionId })
+      : null;
+    if (spoof?.passed) {
+      const clearedPayload = { hasContraband: false, spoofed: true };
+      if (lawfulInspectionCaseId) clearedPayload.lawfulInspectionCaseId = lawfulInspectionCaseId;
+      this.bus.emit('player:scannedByPatrol', clearedPayload);
+      return { found: false, spoofed: true, factionId };
+    }
+    this.bus.emit('player:scannedByPatrol', scannedPayload);
     const hotMap = state.player.customsHotUntil || null;
-    const hot = hotUntilActive(hotMap, state.simTime, factionId);
+    const hot = hotUntilActive(hotMap, state.simTime, factionId)
+      || Boolean(disguise && typeof disguise.hasActivePlayerExposure === 'function'
+        && disguise.hasActivePlayerExposure(factionId));
     const pScan = scanChance({ security, cloak, hot });
     const roll = this._rng();
     if (roll > pScan) {

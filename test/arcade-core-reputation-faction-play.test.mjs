@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import { createSimulation, SIM_DT } from '../src/core/sim.js';
 import { physics } from '../src/core/physics.js';
+import { FACTION_BACKROOM, FACTION_MISSION_DOCTRINES } from '../src/data/factionPlay.js';
 import { WEAPONS } from '../src/data/weapons.js';
 import { actions } from '../src/systems/actions.js';
 import { aiPorts } from '../src/systems/aiPorts.js';
@@ -11,14 +12,20 @@ import { combat } from '../src/systems/combat.js';
 import { economy } from '../src/systems/economy.js';
 import {
   earnedConflictSalvageQtyForState,
+  factionBackroomAccessForState,
   factionLicensedFitOfferForState,
   factions,
 } from '../src/systems/factions.js';
 import { flightV3 } from '../src/systems/flightV3.js';
+import { heat } from '../src/systems/heat.js';
+import { lawSecurity } from '../src/systems/lawSecurity.js';
 import { mining } from '../src/systems/mining.js';
+import { missions } from '../src/systems/missions.js';
+import { pirateDisguise, playerSpoofStatusForState } from '../src/systems/pirateDisguise.js';
 import { makeShipEntitySpec, ships } from '../src/systems/ships.js';
 import { createTacticalAISystem } from '../src/systems/tacticalAI.js';
 import { weapons } from '../src/systems/weapons.js';
+import { customsPrompt } from '../src/ui/customsPrompt.js';
 import { isOrdinaryOutfittingItem } from '../src/ui/screens/outfitting.js';
 
 const LICENSED_FIT_ID = 'wpn_flak_turret_s';
@@ -63,6 +70,31 @@ async function preparePhysics(t, sim) {
     sim.dispose();
   });
   return owner;
+}
+
+function spawnHeliosInspectionActors(sim, patrolWorldRecordId, { station = true } = {}) {
+  const { state } = sim;
+  let stationEntity = null;
+  if (station) {
+    stationEntity = sim.spawn({
+      type: 'station', team: 2, factionId: 'faction_scn', pos: { x: 0, z: 0 }, radius: 42,
+      data: { stationId: LICENSE_STATION, factionId: 'faction_scn', dockRadius: 72 },
+    });
+  }
+  const patrol = sim.spawn({
+    type: 'ship', team: 2, factionId: 'faction_scn', pos: { x: 180, z: 0 },
+    hull: 140, hullMax: 140, radius: 7,
+    data: {
+      trafficRole: 'patrol',
+      worldRecordId: patrolWorldRecordId,
+      homeSectorId: LICENSE_SECTOR,
+      sectorId: LICENSE_SECTOR,
+      durable: true,
+      ai: { lawful: true, spawnContext: 'patrol', passive: false },
+      intent: {}, combat: {},
+    },
+  });
+  return { station: stationEntity, patrol };
 }
 
 test('deliberate reputation unlocks, buys, fits and physically fires the existing SCN license reward', async (t) => {
@@ -165,6 +197,145 @@ test('deliberate reputation unlocks, buys, fits and physically fires the existin
   assert.ok(hits.some((payload) => payload.targetId === target.id));
   assert.ok(target.hull < startHull,
     'the licensed flak round crosses Rapier and the combat owner into a live opposing hull');
+});
+
+test('Trusted backrooms sell one-use forged identities that pass matching patrols and fail mismatched customs', () => {
+  const systems = [lawSecurity, cargo, economy, factions, heat, customsPrompt, pirateDisguise];
+  const sim = createSimulation({ seed: 0x470047, systems, updateOrder: systems });
+  const { state, bus } = sim;
+  state.world.currentSectorId = LICENSE_SECTOR;
+  state.player.credits = 20_000;
+  state.player.cargo.items = { cmdty_narcotics: 2 };
+  state.player.cargo.capVolume = 80;
+  state.player.cargo.capMass = 80;
+  const player = sim.spawn({
+    type: 'ship', team: 0, factionId: 'faction_free', pos: { x: 0, z: 0 },
+    hull: 200, hullMax: 200, radius: 8, data: { intent: {}, combat: {} },
+  });
+  state.playerId = player.id;
+  spawnHeliosInspectionActors(sim, 'world:plan47:helios:patrol:01');
+  sim.registry.get('cargo').recompute();
+  bus.emit('game:started', {});
+
+  state.mode = 'docked';
+  state.ui.docked = true;
+  state.ui.dockedStationId = LICENSE_STATION;
+  bus.emit('dock:docked', { stationId: LICENSE_STATION });
+  const locked = { serviceId: FACTION_BACKROOM.serviceId };
+  bus.emit('ui:buyFactionBackroom', locked);
+  assert.deepEqual(locked.result, {
+    ok: false,
+    reason: 'standing_required',
+    minRep: FACTION_BACKROOM.minRep,
+    currentRep: 0,
+  });
+
+  for (let i = 0; i < 10; i++) bus.emit('mission:completed', { factionId: 'faction_scn', repMult: 1 });
+  const access = factionBackroomAccessForState(state, LICENSE_STATION);
+  assert.equal(access.available, true, 'real faction mission outcomes open the legitimate-station backroom');
+  const creditsBefore = state.player.credits;
+  const bought = { serviceId: FACTION_BACKROOM.serviceId };
+  bus.emit('ui:buyFactionBackroom', bought);
+  assert.equal(bought.result.ok, true);
+  assert.equal(creditsBefore - state.player.credits, FACTION_BACKROOM.price,
+    'Economy performs the only backroom debit');
+  assert.equal(playerSpoofStatusForState(state, 'faction_scn').ready, true,
+    'pirateDisguise owns a concrete one-use manifest after purchase');
+
+  const passed = [];
+  const made = [];
+  const contraband = [];
+  bus.on('playerSpoof:passed', (payload) => passed.push(structuredClone(payload)));
+  bus.on('playerSpoof:made', (payload) => made.push(structuredClone(payload)));
+  bus.on('contraband:scanned', (payload) => contraband.push(structuredClone(payload)));
+  state.mode = 'flight';
+  state.ui.docked = false;
+  state.ui.dockedStationId = null;
+  bus.emit('dock:undocked', {});
+  sim.step(SIM_DT);
+  const matchingCase = state.player.lawfulInspection?.active;
+  assert.ok(matchingCase, 'a durable lawful patrol physically offers the customs stop');
+  bus.emit('lawfulInspection:choose', { caseId: matchingCase.id, choice: 'comply', source: 'plan47' });
+  assert.equal(passed.length, 1);
+  assert.equal(passed[0].matched, true);
+  assert.equal(state.player.lawfulInspection.last.outcome, 'cleared');
+  assert.equal(state.player.cargo.items.cmdty_narcotics, 2,
+    'the matching manifest crosses the real scan without confiscation');
+  assert.equal(playerSpoofStatusForState(state, 'faction_scn').ready, false,
+    'the successful manifest is consumed exactly once');
+
+  // A trusted MTS backroom can forge MTS papers, but presenting that crest to an SCN patrol is a
+  // legible mismatch: the disguise is made and the ordinary scan penalties continue untouched.
+  for (let i = 0; i < 10; i++) bus.emit('mission:completed', { factionId: 'faction_mts', repMult: 1 });
+  state.mode = 'docked';
+  state.ui.docked = true;
+  state.ui.dockedStationId = 'station_tethys';
+  bus.emit('dock:docked', { stationId: 'station_tethys' });
+  const wrongPapers = { serviceId: FACTION_BACKROOM.serviceId };
+  bus.emit('ui:buyFactionBackroom', wrongPapers);
+  assert.equal(wrongPapers.result.ok, true);
+  assert.equal(playerSpoofStatusForState(state, 'faction_mts').sourceFactionId, 'faction_mts');
+  state.mode = 'flight';
+  state.world.currentSectorId = LICENSE_SECTOR;
+  state.ui.docked = false;
+  state.ui.dockedStationId = null;
+  bus.emit('dock:undocked', {});
+  spawnHeliosInspectionActors(sim, 'world:plan47:helios:patrol:02', { station: false });
+  sim.registry.get('economy')._rng = () => 0;
+  for (let i = 0; i < 31 && !state.player.lawfulInspection?.active; i++) sim.step(SIM_DT);
+  const mismatchCase = state.player.lawfulInspection?.active;
+  assert.ok(mismatchCase, 'a second durable patrol supplies a distinct real customs challenge');
+  bus.emit('lawfulInspection:choose', { caseId: mismatchCase.id, choice: 'comply', source: 'plan47' });
+  assert.equal(made.length, 1);
+  assert.equal(made[0].matched, false);
+  assert.equal(state.player.lawfulInspection.last.outcome, 'contraband_discovered');
+  assert.equal(contraband.length, 1, 'ordinary Economy confiscation still settles the failed disguise');
+  assert.equal(state.player.cargo.items.cmdty_narcotics, undefined);
+  const exposed = playerSpoofStatusForState(state, 'faction_scn');
+  assert.equal(exposed.exposed, true);
+  state.simTime = exposed.exposureUntil + 0.01;
+  assert.equal(playerSpoofStatusForState(state, 'faction_scn').exposed, false,
+    'being made is local and expires rather than becoming a permanent lock');
+  sim.dispose();
+});
+
+test('trusted faction doctrine deterministically changes ordinary board composition without displacing anchors', () => {
+  const systems = [factions, missions];
+  const sim = createSimulation({ seed: 0x4700bd, systems, updateOrder: systems });
+  const { state, bus } = sim;
+  bus.emit('game:started', {});
+  const missionSystem = sim.registry.get('missions');
+  const doctrine = new Set(FACTION_MISSION_DOCTRINES.faction_scn);
+  let neutralDoctrineRows = 0;
+  let trustedDoctrineRows = 0;
+
+  for (let epoch = 1; epoch <= 48; epoch++) {
+    state.simTime = epoch * state.missions.config.refreshSec;
+    state.factions.faction_scn.rep = 0;
+    delete state.missions.boards[LICENSE_STATION];
+    const neutral = missionSystem.ensureBoard(LICENSE_STATION).slots.map((offer) => offer.type);
+    neutralDoctrineRows += neutral.filter((type) => doctrine.has(type)).length;
+
+    state.factions.faction_scn.rep = FACTION_BACKROOM.minRep;
+    delete state.missions.boards[LICENSE_STATION];
+    const trusted = missionSystem.ensureBoard(LICENSE_STATION).slots.map((offer) => offer.type);
+    trustedDoctrineRows += trusted.filter((type) => doctrine.has(type)).length;
+    delete state.missions.boards[LICENSE_STATION];
+    assert.deepEqual(
+      missionSystem.ensureBoard(LICENSE_STATION).slots.map((offer) => offer.type),
+      trusted,
+      'same seed, station, epoch and standing reproduce the same trusted board',
+    );
+  }
+  assert.ok(trustedDoctrineRows >= Math.ceil(neutralDoctrineRows * 1.2),
+    `trusted SCN doctrine must materially shape posted work (${neutralDoctrineRows} -> ${trustedDoctrineRows})`);
+
+  state.factions.faction_mts.rep = FACTION_BACKROOM.minRep;
+  state.simTime += state.missions.config.refreshSec;
+  delete state.missions.boards.station_tethys;
+  assert.equal(missionSystem.ensureBoard('station_tethys').slots[0].type, 'escort',
+    'the authored Tethys dispatch anchor remains first under doctrine weighting');
+  sim.dispose();
 });
 
 test('choosing either side creates a real 2v2, and a player kill yields one physical lawful salvage lot', async (t) => {
@@ -348,6 +519,23 @@ test('choosing either side creates a real 2v2, and a player kill yields one phys
       'resolved fronts and salvage rights survive Continue');
     assert.equal(factionSystem.chooseConflictSide({ pairKey: CONFLICT_PAIR, sideId: chosenSide }).reason, 'already_resolved',
       'the durable front cannot become a repeatable salvage printer');
+
+    // The ordinary Economy sale consumes the earned rich lot first, pays it exactly once, and
+    // leaves the identical unprovenanced unit exposed to customs.
+    state.ui.docked = true;
+    state.ui.dockedStationId = 'station_tethys';
+    bus.emit('dock:docked', { stationId: 'station_tethys' });
+    economySystem.ensureMarket('station_tethys');
+    const creditsBeforeSale = state.player.credits;
+    const sold = economySystem.execute('station_tethys', SALVAGE_ID, 'sell', 3);
+    assert.equal(sold.ok, true);
+    assert.equal(sold.qty, 3);
+    assert.equal(state.player.credits - creditsBeforeSale, sold.total);
+    assert.equal(earnedConflictSalvageQtyForState(state, SALVAGE_ID), 0,
+      'selling the earned lot consumes its exact lawful provenance');
+    assert.equal(state.player.cargo.items[SALVAGE_ID], 1);
+    assert.equal(economySystem.illicitCargo(state).find((stack) => stack.commodityId === SALVAGE_ID)?.qty, 1,
+      'sale neither launders nor consumes the identical unprovenanced remainder');
   }
 });
 
