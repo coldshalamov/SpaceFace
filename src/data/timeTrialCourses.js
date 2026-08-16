@@ -1,4 +1,4 @@
-// Plan 50 — first authored gate-ring time trial.
+// Plan 50 — authored physical flight-skill courses.
 //
 // Course coordinates are sector-local and converted exactly once by the runtime owner. Medal bands
 // are fixed simulation ticks (60 Hz), never wall time, so the same input tape earns the same result.
@@ -10,6 +10,48 @@ function freezePoint(x, z) {
   return Object.freeze({ x, z });
 }
 
+function freezePlanetPoint(radiusWU, angleRad) {
+  return Object.freeze({ planetRadiusWU: radiusWU, planetAngleRad: angleRad });
+}
+
+function freezeGate(id, center) {
+  return Object.freeze({ id, center });
+}
+
+function freezeRing(radiusWU = 58) {
+  return Object.freeze({
+    nodeCount: 4,
+    radiusWU,
+    buoyRadiusWU: 3.5,
+    buoyMass: 1_000_000,
+    placeScale: 0.42,
+  });
+}
+
+function freezeMedals(goldS, silverS, bronzeS) {
+  return Object.freeze({
+    goldTicks: goldS * TIME_TRIAL_TICK_RATE,
+    silverTicks: silverS * TIME_TRIAL_TICK_RATE,
+    bronzeTicks: bronzeS * TIME_TRIAL_TICK_RATE,
+  });
+}
+
+function freezeRewards(prefix, bronzeCredits, silverCredits, goldCredits, color) {
+  return Object.freeze({
+    bronzeCredits,
+    silverCredits,
+    goldCredits,
+    goldTrailTint: Object.freeze({ id: `trail_${prefix}_gold`, color }),
+  });
+}
+
+function freezeReplay(maxSeconds) {
+  return Object.freeze({
+    maxFrames: maxSeconds * TIME_TRIAL_TICK_RATE,
+    inputQuantization: 1000,
+  });
+}
+
 export const CERES_SHIFT_RING = Object.freeze({
   id: 'time_trial_ceres_shift_ring',
   name: 'Ceres Shift Ring',
@@ -19,40 +61,119 @@ export const CERES_SHIFT_RING = Object.freeze({
   placeId: 'place_nav_buoy',
   staging: freezePoint(-1280, -80),
   gates: Object.freeze([
-    Object.freeze({ id: 'shift-01', center: freezePoint(-1050, -250) }),
-    Object.freeze({ id: 'shift-02', center: freezePoint(-650, -520) }),
-    Object.freeze({ id: 'shift-03', center: freezePoint(-150, -820) }),
-    Object.freeze({ id: 'shift-04', center: freezePoint(350, -1040) }),
-    Object.freeze({ id: 'shift-05', center: freezePoint(780, -850) }),
-    Object.freeze({ id: 'shift-06', center: freezePoint(1200, -520) }),
+    freezeGate('shift-01', freezePoint(-1050, -250)),
+    freezeGate('shift-02', freezePoint(-650, -520)),
+    freezeGate('shift-03', freezePoint(-150, -820)),
+    freezeGate('shift-04', freezePoint(350, -1040)),
+    freezeGate('shift-05', freezePoint(780, -850)),
+    freezeGate('shift-06', freezePoint(1200, -520)),
   ]),
-  ring: Object.freeze({
-    // Four fixed bodies make two genuinely physical side rails. Their small fore/aft stagger reads
-    // as a ring frame without parking a collider on the racing line in the 2.5D flight plane.
-    nodeCount: 4,
-    radiusWU: 58,
-    buoyRadiusWU: 3.5,
-    buoyMass: 1_000_000,
-    placeScale: 0.42,
-  }),
-  medals: Object.freeze({
-    goldTicks: 38 * TIME_TRIAL_TICK_RATE,
-    silverTicks: 52 * TIME_TRIAL_TICK_RATE,
-    bronzeTicks: 75 * TIME_TRIAL_TICK_RATE,
-  }),
-  rewards: Object.freeze({
-    bronzeCredits: 160,
-    silverCredits: 320,
-    goldCredits: 560,
-    goldTrailTint: Object.freeze({ id: 'trail_ceres_shift_gold', color: '#f4c857' }),
-  }),
-  replay: Object.freeze({
-    maxFrames: 75 * TIME_TRIAL_TICK_RATE,
-    inputQuantization: 1000,
-  }),
+  // Four fixed bodies make two genuinely physical side rails. Their small fore/aft stagger reads
+  // as a ring frame without parking a collider on the racing line in the 2.5D flight plane.
+  ring: freezeRing(58),
+  medals: freezeMedals(38, 52, 75),
+  rewards: freezeRewards('ceres_shift', 160, 320, 560, '#f4c857'),
+  replay: freezeReplay(75),
 });
 
-export const TIME_TRIAL_COURSES = Object.freeze([CERES_SHIFT_RING]);
+export const VESTA_FOUNDRY_SLALOM = Object.freeze({
+  id: 'time_trial_vesta_foundry_slalom',
+  kind: 'slalom',
+  name: 'Foundry Teeth Slalom',
+  sectorId: 'sector_vesta_forge',
+  postingStationId: 'station_forge',
+  postingLabel: 'FOUNDRY TEETH / CLEAN HULL',
+  postingRule: 'Rock contact voids the clock; your hull stays live.',
+  placeId: 'place_nav_buoy',
+  staging: freezePoint(-1700, -1800),
+  gates: Object.freeze([
+    freezeGate('teeth-01', freezePoint(-1450, -1800)),
+    freezeGate('teeth-02', freezePoint(-1100, -1750)),
+    freezeGate('teeth-03', freezePoint(-750, -1850)),
+    freezeGate('teeth-04', freezePoint(-400, -1750)),
+    freezeGate('teeth-05', freezePoint(-50, -1850)),
+    freezeGate('teeth-06', freezePoint(300, -1750)),
+    freezeGate('teeth-07', freezePoint(650, -1850)),
+    freezeGate('teeth-08', freezePoint(1000, -1800)),
+  ]),
+  ring: freezeRing(110),
+  obstacles: Object.freeze([
+    freezePoint(-1292, -1656), freezePoint(-1258, -1894),
+    freezePoint(-892, -1685), freezePoint(-958, -1915),
+    freezePoint(-608, -1685), freezePoint(-542, -1915),
+    freezePoint(-192, -1685), freezePoint(-258, -1915),
+    freezePoint(92, -1685), freezePoint(158, -1915),
+    freezePoint(508, -1685), freezePoint(442, -1915),
+    freezePoint(808, -1706), freezePoint(842, -1944),
+  ]),
+  obstacle: Object.freeze({ radiusWU: 14, mass: 1_000_000, placeScale: 1.0 }),
+  medals: freezeMedals(40, 56, 82),
+  rewards: freezeRewards('vesta_slalom', 190, 390, 650, '#ff8b45'),
+  replay: freezeReplay(82),
+});
+
+export const PALLAS_MASSLINE_SLINGSHOT = Object.freeze({
+  id: 'time_trial_pallas_massline_slingshot',
+  kind: 'slingshot',
+  name: 'Pallas Longline Sling',
+  sectorId: 'sector_pallas_drift',
+  postingStationId: 'station_drift',
+  postingLabel: 'LONGLINE SLING / RELEASE RUN',
+  postingRule: 'Gate 2 only opens on a live Massline cut above sling speed.',
+  placeId: 'place_nav_buoy',
+  staging: freezePoint(-820, 0),
+  gates: Object.freeze([
+    freezeGate('sling-01', freezePoint(-600, 0)),
+    freezeGate('sling-02', freezePoint(-750, -85)),
+    freezeGate('sling-03', freezePoint(-1100, -400)),
+    freezeGate('sling-04', freezePoint(-1450, -650)),
+  ]),
+  ring: freezeRing(120),
+  anchor: Object.freeze({
+    center: freezePoint(-300, 0),
+    radiusWU: 38,
+    mass: 1_000_000_000,
+    typeId: 'ast_common_rock',
+    placeScale: 2.1,
+  }),
+  qualification: Object.freeze({ gateIndex: 1, minCheckpointSpeedWU: 155 }),
+  medals: freezeMedals(48, 70, 105),
+  rewards: freezeRewards('pallas_slingshot', 240, 480, 800, '#7ce7ff'),
+  replay: freezeReplay(105),
+});
+
+export const TETHYS_ANVIL_SKIM = Object.freeze({
+  id: 'time_trial_tethys_anvil_skim',
+  kind: 'skim',
+  name: 'Anvil Rim Skim',
+  sectorId: 'sector_tethys_junction',
+  postingStationId: 'station_tethys',
+  postingLabel: 'ANVIL RIM / SKIM RUN',
+  postingRule: 'Stay inside the live skim band; storm depth or climbing clear voids the clock.',
+  placeId: 'place_nav_buoy',
+  planetSiteId: 'planet_tethys_anvil',
+  staging: freezePlanetPoint(995, -2.05),
+  gates: Object.freeze([
+    freezeGate('skim-01', freezePlanetPoint(965, -1.88)),
+    freezeGate('skim-02', freezePlanetPoint(965, -1.52)),
+    freezeGate('skim-03', freezePlanetPoint(965, -1.16)),
+    freezeGate('skim-04', freezePlanetPoint(965, -0.80)),
+    freezeGate('skim-05', freezePlanetPoint(965, -0.44)),
+    freezeGate('skim-06', freezePlanetPoint(965, -0.08)),
+  ]),
+  ring: freezeRing(54),
+  safety: Object.freeze({ minRadiusWU: 900, maxRadiusWU: 1058 }),
+  medals: freezeMedals(42, 60, 88),
+  rewards: freezeRewards('tethys_skim', 220, 450, 760, '#ffae68'),
+  replay: freezeReplay(88),
+});
+
+export const TIME_TRIAL_COURSES = Object.freeze([
+  CERES_SHIFT_RING,
+  VESTA_FOUNDRY_SLALOM,
+  PALLAS_MASSLINE_SLINGSHOT,
+  TETHYS_ANVIL_SKIM,
+]);
 
 const COURSE_BY_ID = new Map(TIME_TRIAL_COURSES.map((course) => [course.id, course]));
 const COURSE_BY_SECTOR = new Map(TIME_TRIAL_COURSES.map((course) => [course.sectorId, course]));

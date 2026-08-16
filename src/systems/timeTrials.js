@@ -1,4 +1,4 @@
-// Plan 50 gate-ring time trial foundation.
+// Plan 50 physical flight-skill courses.
 //
 // Flight V3 and physics remain the only motion owners. This system authors fixed physical buoy
 // bodies, observes the player's real post-Rapier segment, records a bounded input tape, and submits
@@ -54,19 +54,30 @@ function quantizedPose(player, scale) {
 }
 
 function quantizedInput(input, scale) {
+  const actions = input?.actions;
+  const massline = actions?.massline;
+  const aim = input?.aimWorld;
   return [
     quantize(clamp(finite(input?.moveX), -1, 1), scale),
     quantize(clamp(finite(input?.moveZ), -1, 1), scale),
     quantize(clamp(finite(input?.turnIntent), -1, 1), scale),
     input?.boost ? 1 : 0,
     input?.brake ? 1 : 0,
+    actions?.tetherFire ? 1 : 0,
+    massline?.cut || actions?.tetherCut ? 1 : 0,
+    quantize(clamp(finite(massline?.lineLength, actions?.reelDelta), -1, 1), scale),
+    quantize(clamp(finite(massline?.orbitDirection), -1, 1), scale),
+    massline?.pump ? 1 : 0,
+    Number.isFinite(aim?.x) ? quantize(aim.x, scale) : null,
+    Number.isFinite(aim?.z) ? quantize(aim.z, scale) : null,
+    input?.aimIntentActive ? 1 : 0,
   ];
 }
 
 export function decodeTimeTrialInputFrame(frame, quantization = 1000) {
   const scale = Number.isFinite(quantization) && quantization > 0 ? quantization : 1000;
   const brake = frame?.[4] === 1;
-  return {
+  const decoded = {
     moveX: finite(frame?.[0]) / scale,
     moveZ: finite(frame?.[1]) / scale,
     turnIntent: finite(frame?.[2]) / scale,
@@ -74,13 +85,56 @@ export function decodeTimeTrialInputFrame(frame, quantization = 1000) {
     brake,
     actions: { brake },
   };
+  if (frame?.length > 5) {
+    const lineLength = finite(frame?.[7]) / scale;
+    const orbitDirection = finite(frame?.[8]) / scale;
+    decoded.actions.tetherFire = frame?.[5] === 1;
+    decoded.actions.tetherCut = frame?.[6] === 1;
+    decoded.actions.reelDelta = lineLength;
+    decoded.actions.massline = {
+      latch: frame?.[5] === 1,
+      cut: frame?.[6] === 1,
+      lineControl: lineLength !== 0 || orbitDirection !== 0,
+      lineLength,
+      reelIn: Math.max(0, -lineLength),
+      payOut: Math.max(0, lineLength),
+      orbitDirection,
+      pump: frame?.[9] === 1,
+      source: 'time-trial-ghost',
+    };
+    if (Number.isFinite(frame?.[10]) && Number.isFinite(frame?.[11])) {
+      decoded.aimWorld = { x: frame[10] / scale, z: frame[11] / scale };
+    }
+    decoded.aimIntentActive = frame?.[12] === 1;
+  }
+  return decoded;
 }
 
-export function referenceTimeTrialInput(course, player, expectedGateIndex) {
+export function resolveTimeTrialPoint(course, point, state = null) {
+  if (!course || !point) return null;
+  if (Number.isFinite(point.planetRadiusWU) && Number.isFinite(point.planetAngleRad)) {
+    const planet = state?.planet;
+    if (!planet?.active || planet.siteId !== course.planetSiteId
+      || !Number.isFinite(planet.center?.x) || !Number.isFinite(planet.center?.z)) return null;
+    return {
+      x: planet.center.x + Math.cos(point.planetAngleRad) * point.planetRadiusWU,
+      z: planet.center.z + Math.sin(point.planetAngleRad) * point.planetRadiusWU,
+    };
+  }
+  if (!Number.isFinite(point.x) || !Number.isFinite(point.z)) return null;
+  return sectorLocalToGlobalForSector(point, course.sectorId);
+}
+
+export function referenceTimeTrialInput(course, player, expectedGateIndex, state = null, runtime = null) {
   const gate = course?.gates?.[expectedGateIndex];
   if (!gate || !player?.pos) return { moveX: 0, moveZ: 0, turnIntent: 0, boost: false, brake: true };
-  const center = sectorLocalToGlobalForSector(gate.center, course.sectorId);
-  const frame = gateFrame(course, expectedGateIndex);
+  if (course.kind === 'slingshot' && runtime?.run && !runtime.run.slingshotRelease) {
+    const anchor = state?.entities?.get?.(runtime.anchorId);
+    if (anchor?.alive !== false && anchor?.pos) return referenceSlingshotInput(course, player, state, anchor);
+  }
+  const center = resolveTimeTrialPoint(course, gate.center, state);
+  const frame = gateFrame(course, expectedGateIndex, state);
+  if (!center || !frame) return { moveX: 0, moveZ: 0, turnIntent: 0, boost: false, brake: true };
   const lateral = (player.pos.x - center.x) * frame.tx + (player.pos.z - center.z) * frame.tz;
   const lateralSpeed = finite(player.vel?.x) * frame.tx + finite(player.vel?.z) * frame.tz;
   const correction = clamp(lateral * 0.72 + lateralSpeed * 1.6, -110, 110);
@@ -90,21 +144,93 @@ export function referenceTimeTrialInput(course, player, expectedGateIndex) {
     x: center.x + frame.nx * 105 - frame.tx * correction,
     z: center.z + frame.nz * 105 - frame.tz * correction,
   };
+  if (course.kind === 'skim' && state?.planet?.active) {
+    const px = player.pos.x - state.planet.center.x;
+    const pz = player.pos.z - state.planet.center.z;
+    const radius = Math.hypot(px, pz) || 1;
+    const radialSpeed = (finite(player.vel?.x) * px + finite(player.vel?.z) * pz) / radius;
+    const desiredRadius = finite(gate.center?.planetRadiusWU, 965);
+    const radialCorrection = clamp((radius - desiredRadius) * 2.2 + radialSpeed * 1.4, -150, 150);
+    target.x -= (px / radius) * radialCorrection;
+    target.z -= (pz / radius) * radialCorrection;
+  }
   const dx = target.x - player.pos.x;
   const dz = target.z - player.pos.z;
   const distance = Math.hypot(dx, dz);
   const desired = Math.atan2(dz, dx);
   const error = wrapAngle(desired - finite(player.rot));
   const speed = Math.hypot(finite(player.vel?.x), finite(player.vel?.z));
-  const sharpTurn = Math.abs(error) > 1.15;
-  const brake = sharpTurn && speed > 55;
+  const slalom = course.kind === 'slalom';
+  const skim = course.kind === 'skim';
+  const sharpTurn = Math.abs(error) > (slalom ? 0.34 : 1.15);
+  const brake = sharpTurn && speed > (slalom ? 25 : 55);
   return {
     moveX: 0,
-    moveZ: brake ? -0.25 : (Math.abs(error) < 0.85 ? 0.82 : 0.28),
+    moveZ: brake ? (slalom ? -0.6 : -0.25)
+      : (Math.abs(error) < (slalom ? 0.34 : 0.85) ? (slalom ? 0.4 : skim ? 0.62 : 0.82) : (slalom ? 0.08 : skim ? 0.18 : 0.28)),
     turnIntent: clamp(error / 0.56, -1, 1),
     boost: false,
     brake,
     distance,
+  };
+}
+
+function referenceSlingshotInput(course, player, state, anchor) {
+  const tether = state?.player?.tether;
+  const dx = player.pos.x - anchor.pos.x;
+  const dz = player.pos.z - anchor.pos.z;
+  const radius = Math.hypot(dx, dz);
+  const speed = Math.hypot(finite(player.vel?.x), finite(player.vel?.z));
+  const releaseReady = speed >= finite(player.maxSpeed, 120) * 1.405
+    && dx < -Math.max(85, radius * 0.62)
+    && finite(player.vel?.z) < -80;
+  if (!tether?.active) {
+    return {
+      moveX: 0, moveZ: 0.12, turnIntent: 0, boost: false, brake: false,
+      aimWorld: { x: anchor.pos.x, z: anchor.pos.z },
+      aimIntentActive: true,
+      actions: {
+        tetherFire: true,
+        massline: idleMasslineCommand({ latch: true }),
+      },
+    };
+  }
+  const lineLength = radius > 170 ? -0.48 : radius > 125 ? -0.18 : 0;
+  return {
+    moveX: 0,
+    moveZ: 1,
+    turnIntent: 1,
+    boost: false,
+    brake: false,
+    aimWorld: { x: anchor.pos.x, z: anchor.pos.z },
+    aimIntentActive: true,
+    actions: {
+      tetherFire: false,
+      reelDelta: lineLength,
+      massline: idleMasslineCommand({
+        cut: releaseReady,
+        lineControl: !releaseReady,
+        lineLength: releaseReady ? 0 : lineLength,
+        orbitDirection: releaseReady ? 0 : 1,
+        pump: !releaseReady,
+      }),
+    },
+  };
+}
+
+function idleMasslineCommand(overrides = {}) {
+  const lineLength = finite(overrides.lineLength);
+  return {
+    latch: false,
+    cut: false,
+    lineControl: false,
+    lineLength,
+    reelIn: Math.max(0, -lineLength),
+    payOut: Math.max(0, lineLength),
+    orbitDirection: 0,
+    pump: false,
+    source: 'time-trial-reference',
+    ...overrides,
   };
 }
 
@@ -139,20 +265,26 @@ function normalizeCourseRecord(ledger, course) {
   return record;
 }
 
-function gateFrame(course, gateIndex) {
-  const current = course.gates[gateIndex].center;
-  const previous = gateIndex === 0 ? course.staging : course.gates[gateIndex - 1].center;
+function gateFrame(course, gateIndex, state = null) {
+  const current = resolveTimeTrialPoint(course, course.gates[gateIndex].center, state);
+  const previous = resolveTimeTrialPoint(
+    course,
+    gateIndex === 0 ? course.staging : course.gates[gateIndex - 1].center,
+    state,
+  );
+  if (!current || !previous) return null;
   const dx = current.x - previous.x;
   const dz = current.z - previous.z;
   const length = Math.hypot(dx, dz) || 1;
   return { nx: dx / length, nz: dz / length, tx: -dz / length, tz: dx / length };
 }
 
-function gateCrossing(course, gateIndex, from, to, playerRadiusWU = 0) {
+function gateCrossing(course, gateIndex, from, to, playerRadiusWU = 0, state = null) {
   const gate = course.gates[gateIndex];
   if (!gate || !from || !to) return null;
-  const center = sectorLocalToGlobalForSector(gate.center, course.sectorId);
-  const frame = gateFrame(course, gateIndex);
+  const center = resolveTimeTrialPoint(course, gate.center, state);
+  const frame = gateFrame(course, gateIndex, state);
+  if (!center || !frame) return null;
   const fromPlane = (from.x - center.x) * frame.nx + (from.z - center.z) * frame.nz;
   const toPlane = (to.x - center.x) * frame.nx + (to.z - center.z) * frame.nz;
   if (!(fromPlane < 0 && toPlane >= 0)) return null;
@@ -170,7 +302,8 @@ function gateCrossing(course, gateIndex, from, to, playerRadiusWU = 0) {
 
 function coursePostingText(course) {
   const seconds = (ticks) => Math.round(ticks / TIME_TRIAL_TICK_RATE);
-  return `${course.postingLabel}: ${seconds(course.medals.goldTicks)}s gold / ${seconds(course.medals.silverTicks)}s silver / ${seconds(course.medals.bronzeTicks)}s bronze. Cross Ring 1 outbound to start.`;
+  const rule = typeof course.postingRule === 'string' ? ` ${course.postingRule}` : '';
+  return `${course.postingLabel}: ${seconds(course.medals.goldTicks)}s gold / ${seconds(course.medals.silverTicks)}s silver / ${seconds(course.medals.bronzeTicks)}s bronze.${rule} Cross Ring 1 outbound to start.`;
 }
 
 export const timeTrials = {
@@ -182,6 +315,10 @@ export const timeTrials = {
     this.helpers = ctx.helpers;
     this._course = null;
     this._buoyIds = new Set();
+    this._courseBodyIds = new Set();
+    this._obstacleIds = new Set();
+    this._anchorId = null;
+    this._lastSlingshotCutCheck = null;
     this._run = null;
     this._lastBuoyContactTick = -1;
     ensureLedger(this.state);
@@ -189,6 +326,8 @@ export const timeTrials = {
       this.bus.on('sector:enter', ({ sectorId } = {}) => this._enterSector(sectorId)),
       this.bus.on('sector:exit', () => this._leaveSector('sector_exit')),
       this.bus.on('physics:impact', (payload) => this._onImpact(payload || {})),
+      this.bus.on('tether:cut', (payload) => this._onTetherCut(payload || {})),
+      this.bus.on('planet:plungeStage', (payload) => this._onPlanetPlungeStage(payload || {})),
       this.bus.on('dock:docked', (payload) => this._onDocked(payload || {})),
       this.bus.on('save:restoring', () => this._leaveSector('save_restoring')),
       this.bus.on('save:loaded', () => {
@@ -222,27 +361,36 @@ export const timeTrials = {
     }
 
     if (!this._run) {
-      const crossing = gateCrossing(course, 0, player.prevPos, player.pos, player.radius);
+      const crossing = gateCrossing(course, 0, player.prevPos, player.pos, player.radius, state);
       if (crossing) this._startRun(course, player, crossing);
       return;
     }
     if (this._run.invalidated) return;
 
+    if (!this._validateCourseEnvironment(course, player)) return;
+
     if (this._run.frames.length >= course.replay.maxFrames) {
-      this._invalidate('time_expired');
+      this._invalidate('time_expired', { expectedGateIndex: this._run.expectedGateIndex });
       return;
     }
     this._run.frames.push(quantizedInput(state.input, course.replay.inputQuantization));
 
     const expected = this._run.expectedGateIndex;
     for (let index = expected + 1; index < course.gates.length; index++) {
-      if (gateCrossing(course, index, player.prevPos, player.pos, player.radius)) {
+      if (gateCrossing(course, index, player.prevPos, player.pos, player.radius, state)) {
         this._invalidate('missed_gate', { expectedGateIndex: expected, crossedGateIndex: index });
         return;
       }
     }
-    const crossing = gateCrossing(course, expected, player.prevPos, player.pos, player.radius);
+    const crossing = gateCrossing(course, expected, player.prevPos, player.pos, player.radius, state);
     if (!crossing) return;
+    if (course.kind === 'slingshot' && expected === course.qualification?.gateIndex) {
+      const speed = Math.hypot(finite(player.vel?.x), finite(player.vel?.z));
+      if (!this._run.slingshotRelease || speed < finite(course.qualification.minCheckpointSpeedWU, Infinity)) {
+        this._invalidate('slingshot_release_required', { speed, anchorId: this._anchorId });
+        return;
+      }
+    }
     this._run.expectedGateIndex += 1;
     this.bus.emit('timeTrial:gatePassed', {
       courseId: course.id,
@@ -280,6 +428,10 @@ export const timeTrials = {
     return {
       courseId: this._course?.id || null,
       buoyIds: [...this._buoyIds],
+      obstacleIds: [...this._obstacleIds],
+      courseBodyIds: [...this._courseBodyIds],
+      anchorId: this._anchorId,
+      slingshotCutCheck: this._lastSlingshotCutCheck ? copyPlain(this._lastSlingshotCutCheck) : null,
       run: this._run ? copyPlain(this._run) : null,
     };
   },
@@ -307,10 +459,12 @@ export const timeTrials = {
   _spawnCourse(course) {
     const spawn = this.helpers?.spawnEntity;
     if (typeof spawn !== 'function') return;
+    const centers = course.gates.map((gate) => resolveTimeTrialPoint(course, gate.center, this.state));
+    if (centers.some((center) => !center)) return;
     for (let gateIndex = 0; gateIndex < course.gates.length; gateIndex++) {
       const gate = course.gates[gateIndex];
-      const center = sectorLocalToGlobalForSector(gate.center, course.sectorId);
-      const frame = gateFrame(course, gateIndex);
+      const center = centers[gateIndex];
+      const frame = gateFrame(course, gateIndex, this.state);
       for (let nodeIndex = 0; nodeIndex < course.ring.nodeCount; nodeIndex++) {
         const side = nodeIndex < course.ring.nodeCount * 0.5 ? -1 : 1;
         const stagger = nodeIndex % 2 === 0 ? -0.28 : 0.28;
@@ -355,8 +509,60 @@ export const timeTrials = {
         });
         if (!entity) continue;
         this._buoyIds.add(entity.id);
+        this._courseBodyIds.add(entity.id);
       }
     }
+    this._spawnObstacles(course, spawn);
+    this._spawnAnchor(course, spawn);
+  },
+
+  _spawnObstacles(course, spawn) {
+    if (!Array.isArray(course.obstacles) || !course.obstacle) return;
+    for (let index = 0; index < course.obstacles.length; index++) {
+      const pos = resolveTimeTrialPoint(course, course.obstacles[index], this.state);
+      if (!pos) continue;
+      const radius = finite(course.obstacle.radiusWU, 18);
+      const mass = finite(course.obstacle.mass, 1_000_000);
+      const entity = spawn({
+        type: 'fx', team: 2, factionId: 'faction_dmc', pos, vel: { x: 0, z: 0 },
+        rot: index * 0.73, radius, mass, collides: true, collisionMask: PHYSICAL_RING_MASK,
+        hull: 1_000_000, hullMax: 1_000_000, flags: { noInterp: true },
+        physicsBody: { dynamic: false, ccd: false, radius, mass, material: 'rock', shape: 'ball' },
+        data: {
+          placeId: 'place_asteroid_rock_a', typeId: 'ast_common_rock',
+          name: `${course.name} / Tooth ${index + 1}`,
+          sectorId: course.sectorId, homeSectorId: course.sectorId,
+          timeTrialCourseId: course.id, timeTrialObstacleIndex: index,
+          placeScale: finite(course.obstacle.placeScale, 1), visualRadius: radius,
+        },
+      });
+      if (!entity) continue;
+      this._obstacleIds.add(entity.id);
+      this._courseBodyIds.add(entity.id);
+    }
+  },
+
+  _spawnAnchor(course, spawn) {
+    if (!course.anchor) return;
+    const pos = resolveTimeTrialPoint(course, course.anchor.center, this.state);
+    if (!pos) return;
+    const radius = finite(course.anchor.radiusWU, 36);
+    const mass = finite(course.anchor.mass, 1_000_000_000);
+    const entity = spawn({
+      type: 'asteroid', team: 2, factionId: 'faction_free', pos, vel: { x: 0, z: 0 },
+      rot: 0, radius, mass, collides: true, collisionMask: PHYSICAL_RING_MASK,
+      hull: 1_000_000_000, hullMax: 1_000_000_000, flags: { noInterp: true },
+      physicsBody: { dynamic: false, ccd: false, radius, mass, material: 'rock', shape: 'ball' },
+      data: {
+        typeId: course.anchor.typeId || 'ast_common_rock', name: `${course.name} / Massline Anchor`,
+        sectorId: course.sectorId, homeSectorId: course.sectorId,
+        timeTrialCourseId: course.id, timeTrialAnchor: true,
+        placeScale: finite(course.anchor.placeScale, 1), visualRadius: radius,
+      },
+    });
+    if (!entity) return;
+    this._anchorId = entity.id;
+    this._courseBodyIds.add(entity.id);
   },
 
   _startRun(course, player, crossing) {
@@ -368,6 +574,7 @@ export const timeTrials = {
       reason: null,
       startPose: quantizedPose(player, course.replay.inputQuantization),
       frames: [],
+      slingshotRelease: null,
     };
     this.bus.emit('timeTrial:started', {
       courseId: course.id,
@@ -461,9 +668,87 @@ export const timeTrials = {
     const playerId = this.state.playerId;
     if (payload.aId !== playerId && payload.bId !== playerId) return;
     const otherId = payload.aId === playerId ? payload.bId : payload.aId;
+    if (this._obstacleIds.has(otherId)) {
+      if (this._run) this._invalidate('touched_obstacle', {
+        obstacleId: otherId,
+        obstacleIndex: this.state.entities?.get?.(otherId)?.data?.timeTrialObstacleIndex ?? null,
+      });
+      return;
+    }
     if (!this._buoyIds.has(otherId)) return;
     this._lastBuoyContactTick = Math.max(0, Math.trunc(finite(payload.tick, this.state.tick)));
     if (this._run) this._invalidate('touched_buoy', { buoyId: otherId, gateIndex: this.state.entities?.get?.(otherId)?.data?.timeTrialGateIndex ?? null });
+  },
+
+  _onTetherCut(payload) {
+    if (!this._run || this._course?.kind !== 'slingshot' || this._run.slingshotRelease) return;
+    if (payload.targetId !== this._anchorId || payload.slingshot !== true) {
+      this._lastSlingshotCutCheck = { accepted: false, reason: 'wrong_anchor_or_speed_class' };
+      return;
+    }
+    const player = this.state.entities?.get?.(this.state.playerId);
+    const tether = this.state.player?.tether;
+    if (!player || tether?.active !== true || tether.targetId !== this._anchorId) {
+      this._lastSlingshotCutCheck = {
+        accepted: false, reason: 'no_live_course_attachment',
+        tetherActive: tether?.active === true, tetherTargetId: tether?.targetId ?? null,
+      };
+      return;
+    }
+    const speed = Math.hypot(finite(player.vel?.x), finite(player.vel?.z));
+    const payloadSpeed = finite(payload.speed, -1);
+    const threshold = finite(player.maxSpeed, 120) * 1.4;
+    if (speed < threshold || Math.abs(speed - payloadSpeed) > 0.05) {
+      this._lastSlingshotCutCheck = {
+        accepted: false, reason: 'physical_speed_mismatch', speed, payloadSpeed, threshold,
+      };
+      return;
+    }
+    this._run.slingshotRelease = {
+      tick: this.state.tick,
+      anchorId: this._anchorId,
+      speed: payloadSpeed,
+      velocity: { x: finite(payload.velocity?.x), z: finite(payload.velocity?.z) },
+      position: { x: finite(player.pos?.x), z: finite(player.pos?.z) },
+    };
+    this._lastSlingshotCutCheck = {
+      accepted: true, speed: payloadSpeed, anchorId: this._anchorId,
+      position: { x: finite(player.pos?.x), z: finite(player.pos?.z) },
+      velocity: { x: finite(payload.velocity?.x), z: finite(payload.velocity?.z) },
+    };
+    this.bus.emit('timeTrial:slingshotQualified', {
+      courseId: this._course.id, anchorId: this._anchorId, speed: payloadSpeed,
+    });
+  },
+
+  _onPlanetPlungeStage(payload) {
+    if (!this._run || this._course?.kind !== 'skim') return;
+    if (payload.siteId !== this._course.planetSiteId || payload.id !== this.state.playerId) return;
+    if (payload.stage === 'aftermath') this._invalidate('burn_up');
+  },
+
+  _validateCourseEnvironment(course, player) {
+    if (course.kind !== 'skim') return true;
+    const planet = this.state.planet;
+    if (!planet?.active || planet.siteId !== course.planetSiteId) {
+      this._invalidate('planet_unavailable');
+      return false;
+    }
+    const dx = finite(player.pos?.x) - finite(planet.center?.x);
+    const dz = finite(player.pos?.z) - finite(planet.center?.z);
+    const radius = Math.hypot(dx, dz);
+    const region = planet.player?.region;
+    const belowAuthoredFloor = radius < finite(course.safety?.minRadiusWU) && region !== 'skim';
+    if (belowAuthoredFloor || region === 'danger' || region === 'reentry') {
+      this._invalidate('unsafe_depth', { radius, region });
+      return false;
+    }
+    const aboveAuthoredCeiling = radius > finite(course.safety?.maxRadiusWU, Infinity) && region !== 'skim';
+    if (aboveAuthoredCeiling || region === 'sling' || region === 'influence' || region === 'outside') {
+      this._invalidate('escaped_skim', { radius, region });
+      return false;
+    }
+    return true;
   },
 
   _onDocked(payload) {
@@ -481,9 +766,13 @@ export const timeTrials = {
     if (this._run) this._invalidate(reason);
     const remove = this.helpers?.removeEntity;
     if (typeof remove === 'function') {
-      for (const id of this._buoyIds || []) remove(id);
+      for (const id of this._courseBodyIds || []) remove(id);
     }
     this._buoyIds?.clear?.();
+    this._obstacleIds?.clear?.();
+    this._courseBodyIds?.clear?.();
+    this._anchorId = null;
+    this._lastSlingshotCutCheck = null;
     this._course = null;
   },
 
