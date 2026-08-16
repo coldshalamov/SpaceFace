@@ -22,6 +22,7 @@
 //   gate tolls and never writes credits/cargo/rep directly. (Radiation hull drain is an
 //   environmental effect applied to the entity hull, which has no separate combat owner.)
 import { SECTORS, SECTOR_PALETTE_CLASSES, dangerIndex, surveyDataPrice } from '../data/sectors.js';
+import { stationSloganFor } from '../data/stationSlogans.js';
 import {
   FRONTIER_RUMOR_RECEIPT_LIMIT,
   frontierRumorOffer,
@@ -1425,6 +1426,7 @@ export const world = {
           // entity data over the static catalog, so a catalog-only note would vanish once the
           // sector spawns. See src/ui/galaxyMap.js `findStationRecord`.
           chartNote: st.chartNote || null,
+          stationSlogan: stationSloganFor(st.id),
           contested: !!st.contested, repGated: !!st.repGated,
           // The authored repGated flag means positive standing, not merely "not attack-on-sight".
           // An explicit minRep remains available for stations with a stricter local contract.

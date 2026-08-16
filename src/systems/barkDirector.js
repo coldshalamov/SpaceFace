@@ -3,7 +3,7 @@
 // Observer-only voice surfacing for already-live ship state. It reads AI/contact transitions,
 // routes faction-specific lines through voiceArbiter's bark channel, and writes only its own
 // state.barkDirector receipt cache so combat/AI/economy behavior stays unchanged.
-import { BARK_SITUATIONS, barkFor } from '../data/barks.js';
+import { BARK_SITUATIONS, BARK_SITUATION_RULES, barkFor } from '../data/barks.js';
 import { contactGrammarFor } from '../data/factionContactGrammar.js';
 import { hash32 } from '../core/rng.js';
 import { isHostileToPlayer } from './scanner.js';
@@ -34,10 +34,12 @@ export const barkDirector = {
     this.helpers = ctx.helpers || {};
     this._onFlee = (payload) => this._speakFromEvent(payload, 'flee', 'ai:flee');
     this._onReinforcement = (payload) => this._speakFromEvent(payload, 'reinforce', 'ai:reinforcementScheduled');
+    this._onKilled = (payload) => this._speakFromEvent(payload, 'dying', 'entity:killed');
     this._onCombatOutcome = () => this._enterPostCombatSilence();
     if (this.bus && typeof this.bus.on === 'function') {
       this.bus.on('ai:flee', this._onFlee);
       this.bus.on('ai:reinforcementScheduled', this._onReinforcement);
+      this.bus.on('entity:killed', this._onKilled);
       this.bus.on('combat:outcome', this._onCombatOutcome);
     }
   },
@@ -87,7 +89,8 @@ export const barkDirector = {
     const factionId = factionFor(entity);
     const seed = state.meta && state.meta.seed;
     const index = hash32(seed == null ? 0 : seed, 'barkDirector', entityId, situation);
-    const text = barkFor(factionId, situation, index);
+    const context = barkContextFor(entity, extra);
+    const text = barkFor(factionId, situation, index, context);
     const voice = this.helpers && this.helpers.voice;
     if (!voice || typeof voice.say !== 'function') return false;
 
@@ -104,14 +107,17 @@ export const barkDirector = {
       ttl: VOICE_TTL_S,
       id: `barkDirector:${entityId}:${situation}`,
       factionId,
+      archetypeTag: context.archetypeTag || null,
     });
     if (accepted) {
+      markSituationCooldown(own, state, entity, situation);
       this._emit('barkDirector:voice', {
         entityId: entity.id,
         situation,
         reason,
         text,
         factionId,
+        archetypeTag: context.archetypeTag || null,
         t: rec.lastSpokenAt,
         ...(extra ? { source: extra.sourceEvent || null } : {}),
       });
@@ -143,6 +149,11 @@ export const barkDirector = {
       rememberSuppressed(own, entity, situation, now, until, 'post-combat-silence');
       return true;
     }
+    const cooldownUntil = situationCooldownUntil(own, state, entity, situation);
+    if (cooldownUntil > now) {
+      rememberSuppressed(own, entity, situation, now, cooldownUntil, 'situation-cooldown');
+      return true;
+    }
     if (situation !== 'patrol-greeting') return false;
 
     const sectorId = currentSectorId(state);
@@ -168,10 +179,12 @@ export const barkDirector = {
     if (this.bus && typeof this.bus.off === 'function') {
       if (this._onFlee) this.bus.off('ai:flee', this._onFlee);
       if (this._onReinforcement) this.bus.off('ai:reinforcementScheduled', this._onReinforcement);
+      if (this._onKilled) this.bus.off('entity:killed', this._onKilled);
       if (this._onCombatOutcome) this.bus.off('combat:outcome', this._onCombatOutcome);
     }
     this._onFlee = null;
     this._onReinforcement = null;
+    this._onKilled = null;
     this._onCombatOutcome = null;
   },
 };
@@ -194,6 +207,7 @@ export function classifyBarkSituation(entity, state) {
     return 'demand-cargo';
   }
   if (WARN_FSMS.has(fsm) || ai.warning || data.zoneWarning || data.customsWarning) return 'warn';
+  if (targetsPlayer(entity, state) && (fsm === 'pursue' || fsm === 'intercept' || ai.chasing === true)) return 'chase';
   if (isAttackingPlayer(entity, state, fsm)) return 'attack';
   if (isScanningPlayer(entity, state, fsm)) {
     // Concord grammar: first contact is paperwork (scan), not a taunt.
@@ -213,6 +227,7 @@ function freshState() {
     entities: {},
     postCombatSilenceUntil: 0,
     ambientBySector: {},
+    cooldownByTag: {},
     suppressed: [],
   };
 }
@@ -221,6 +236,7 @@ function ensureState(state) {
   if (!state.barkDirector || typeof state.barkDirector !== 'object') state.barkDirector = freshState();
   if (!state.barkDirector.entities || typeof state.barkDirector.entities !== 'object') state.barkDirector.entities = {};
   if (!state.barkDirector.ambientBySector || typeof state.barkDirector.ambientBySector !== 'object') state.barkDirector.ambientBySector = {};
+  if (!state.barkDirector.cooldownByTag || typeof state.barkDirector.cooldownByTag !== 'object') state.barkDirector.cooldownByTag = {};
   if (!Array.isArray(state.barkDirector.suppressed)) state.barkDirector.suppressed = [];
   return state.barkDirector;
 }
@@ -295,6 +311,53 @@ function isScanningPlayer(entity, state, fsm) {
 
 function currentSectorId(state) {
   return state && state.world && state.world.currentSectorId || 'unknown';
+}
+
+function barkContextFor(entity, payload = null) {
+  const data = entity && entity.data || {};
+  const ai = data.ai || {};
+  const raw = String(
+    data.barkArchetypeTag
+    || ai.barkArchetypeTag
+    || ai.archetype
+    || data.archetype
+    || data.shipClass
+    || payload && payload.victimClass
+    || '',
+  ).toLowerCase();
+  let archetypeTag = null;
+  if (raw.includes('swarm') || raw.includes('wasp') || raw.includes('mote') || raw.includes('drone')) archetypeTag = 'swarmer';
+  else if (raw.includes('heavy') || raw.includes('gunship') || raw.includes('carrier') || raw.includes('ramscoop') || raw.includes('foundry')) archetypeTag = 'heavy';
+  else if (raw.includes('tender') || raw.includes('jammer') || raw.includes('harrier') || raw.includes('anchor') || raw.includes('cutter')) archetypeTag = 'specialist';
+  else if (raw.includes('hauler') || raw.includes('trader') || raw.includes('traffic') || ai.passive === true) archetypeTag = 'traffic';
+  else if (raw.includes('medium') || raw.includes('marauder') || raw.includes('lancer') || raw.includes('interceptor') || raw.includes('torcher') || raw.includes('corsair')) archetypeTag = 'medium';
+  return { archetypeTag };
+}
+
+function situationCooldownKey(state, entity, situation) {
+  const factionId = factionFor(entity);
+  return `${currentSectorId(state)}:${factionId}:${situation}`;
+}
+
+function situationCooldownUntil(own, state, entity, situation) {
+  const rules = BARK_SITUATION_RULES[situation];
+  if (!rules || !(Number(rules.cooldownS) > 0)) return 0;
+  const key = situationCooldownKey(state, entity, situation);
+  return Number(own.cooldownByTag[key]) || 0;
+}
+
+function markSituationCooldown(own, state, entity, situation) {
+  const rules = BARK_SITUATION_RULES[situation];
+  if (!rules || !(Number(rules.cooldownS) > 0)) return;
+  const key = situationCooldownKey(state, entity, situation);
+  own.cooldownByTag[key] = (Number(state && state.simTime) || 0) + Number(rules.cooldownS);
+  const keys = Object.keys(own.cooldownByTag);
+  if (keys.length > 64) {
+    keys
+      .sort((a, b) => (Number(own.cooldownByTag[a]) || 0) - (Number(own.cooldownByTag[b]) || 0))
+      .slice(0, keys.length - 64)
+      .forEach((keyToDrop) => { delete own.cooldownByTag[keyToDrop]; });
+  }
 }
 
 function ambientRecord(own, sectorId) {

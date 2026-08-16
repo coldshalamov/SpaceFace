@@ -12,6 +12,7 @@ import { missionPreflight } from '../missionPreflight.js';
 import { missionConsequenceSummary } from '../missionPreflight.js';
 import { mountContactPortrait } from '../portraitArt.js';
 import { CONTACT_VOICE_REGISTERS } from '../../data/barks.js';
+import { stationSloganFor } from '../../data/stationSlogans.js';
 import { depthContactsForStation } from '../../story/campaign47a/embodiedDialogue.js';
 import {
   stationContactCounterValue,
@@ -269,6 +270,7 @@ export function generateContacts(stationId, state = {}) {
   const info = STATION_INDEX.get(stationId);
   const stationFactionId = info ? info.station.factionId : 'faction_scn';
   const sector = info ? info.sector : SECTORS[0];
+  const localSlogan = stationSloganFor(stationId);
 
   // Gather nearby factions for variety
   const nearbyFactions = [stationFactionId];
@@ -304,7 +306,9 @@ export function generateContacts(stationId, state = {}) {
       name: fullName,
       role,
       factionId,
-      line: ROLE_LINES[role],
+      line: role === 'barkeep' && localSlogan
+        ? `${info && info.station && info.station.name || 'Station'}: "${localSlogan}"`
+        : ROLE_LINES[role],
     });
   }
 
@@ -722,6 +726,8 @@ export function barContactIntelTags(contact = {}, state = {}, stationId = '') {
   }
 
   if (role === 'barkeep') {
+    const localSlogan = stationSloganFor(stationId);
+    if (localSlogan) add('Hull', localSlogan, 'story');
     const survey = availableSurveyOffer(state, stationId);
     if (survey) add('Survey', survey.sectorName + ' ' + survey.price.toLocaleString('en-US') + ' cr', 'warn');
   }
@@ -860,6 +866,10 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
         return { text: 'Things have been quiet lately. Too quiet, if you ask me. Keep your eyes open out there.' };
       }
       if (choiceId === 'word') {
+        const localSlogan = stationSloganFor(stationId);
+        if (localSlogan) {
+          return { text: 'Paint on the pressure door says: "' + localSlogan + '" Around here, that counts as the welcome speech.' };
+        }
         const survey = availableSurveyOffer(state, stationId);
         if (survey) {
           return {
@@ -873,7 +883,10 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
         }
         return { text: 'The usual. Ships come, ships go. Nobody says much around here.' };
       }
-      return { text: 'Coming right up. Best synthale this side of the belt.' };
+      const localSlogan = stationSloganFor(stationId);
+      return localSlogan
+        ? { text: 'Coming right up. The old hull stencil still reads: "' + localSlogan + '"' }
+        : { text: 'Coming right up. Best synthale this side of the belt.' };
     }
 
     /* ── MERCHANT ──────────────────────────────────────── */

@@ -14,7 +14,13 @@
 //   warn            — you are somewhere you shouldn't be; back off
 //   demand-cargo    — hand over the goods (piracy / shakedown / toll)
 //   attack          — opening fire
+//   chase           — closing on a target already trying to leave
 //   flee            — breaking off, running
+//   winning         — target is badly hurt and the speaker has momentum
+//   dying           — terminal bark at the moment this speaker is destroyed
+//   docking         — station-side or escorting dock approach line
+//   scanned         — speaker has just been scanned or exposed
+//   robbed          — cargo or salvage has just been taken from the speaker
 //   reinforce       — calling in / rallying the squad
 //   taunt           — jeering mid-fight
 //   patrol-greeting — ambient friendly/neutral passing hail
@@ -37,8 +43,49 @@ export const BARK_FACTIONS = [
 
 // The core situations every faction is guaranteed to cover.
 export const BARK_SITUATIONS = [
-  'scan', 'warn', 'demand-cargo', 'attack', 'flee', 'reinforce', 'taunt', 'patrol-greeting',
+  'scan', 'warn', 'demand-cargo', 'attack', 'chase', 'flee', 'winning', 'dying',
+  'docking', 'scanned', 'robbed', 'reinforce', 'taunt', 'patrol-greeting',
 ];
+
+export const BARK_SITUATION_RULES = Object.freeze({
+  scan: Object.freeze({ cooldownS: 24 }),
+  warn: Object.freeze({ cooldownS: 18 }),
+  'demand-cargo': Object.freeze({ cooldownS: 28 }),
+  attack: Object.freeze({ cooldownS: 14 }),
+  chase: Object.freeze({ cooldownS: 22 }),
+  flee: Object.freeze({ cooldownS: 20 }),
+  winning: Object.freeze({ cooldownS: 36 }),
+  dying: Object.freeze({ cooldownS: 9 }),
+  docking: Object.freeze({ cooldownS: 45 }),
+  scanned: Object.freeze({ cooldownS: 30 }),
+  robbed: Object.freeze({ cooldownS: 30 }),
+  reinforce: Object.freeze({ cooldownS: 32 }),
+  taunt: Object.freeze({ cooldownS: 28 }),
+  'patrol-greeting': Object.freeze({ cooldownS: 60 }),
+});
+
+export const BARK_ARCHETYPE_LINES = Object.freeze({
+  swarmer: Object.freeze({
+    dying: Object.freeze(['Wing broke.', 'Lost the turn.', 'Too close.']),
+    chase: Object.freeze(['Stay on the wake.', 'Cut inside.', 'Do not let it straighten.']),
+  }),
+  medium: Object.freeze({
+    dying: Object.freeze(['Drive is gone.', 'Hull opened.', 'That did it.']),
+    winning: Object.freeze(['Keep pressure.', 'They are bleeding speed.', 'Finish the drift.']),
+  }),
+  heavy: Object.freeze({
+    dying: Object.freeze(['Core breach.', 'Bulkhead failed.', 'All hands brace.']),
+    winning: Object.freeze(['Hold the line.', 'Keep guns walking.', 'They are inside our shadow.']),
+  }),
+  specialist: Object.freeze({
+    dying: Object.freeze(['Tool is broken.', 'Contract failed.', 'Cut line lost.']),
+    scanned: Object.freeze(['They have the tool ID.', 'Signature exposed.', 'Mask is gone.']),
+  }),
+  traffic: Object.freeze({
+    docking: Object.freeze(['Berth lights seen.', 'Cutting to approach.', 'Hands off the throttle.']),
+    robbed: Object.freeze(['Cargo seal broken.', 'Hold is light.', 'They took the lot.']),
+  }),
+});
 
 // Corpus: BARKS[factionId][situation] = [lines...]. Each array is non-empty.
 export const BARKS = {
@@ -68,11 +115,41 @@ export const BARKS = {
       'Filing use-of-force report. Weapons free.',
       'Force report pre-dated to your first deviation. Saves a step.',
     ],
+    chase: [
+      'Pursuit logged. Hold your vector for enforcement.',
+      'You are fleeing an active inspection. That compounds.',
+      'Do not make us chase your paperwork.',
+    ],
     flee: [
       'Disengaging. Your registry has been flagged for follow-up.',
       'Pursuit suspended. This incident remains open, Ref 44-C.',
       'Withdrawing to reassess. The paperwork does not withdraw.',
       'Your escape is filed as evasion. Evasion accrues a surcharge per cycle. We invoice.',
+    ],
+    winning: [
+      'Target compliance imminent.',
+      'Disablement threshold reached. Continue procedure.',
+      'Your objection is structurally failing.',
+    ],
+    dying: [
+      'Officer down. File remains open.',
+      'Recorder sealed.',
+      'Ref 44-C survives this hull.',
+    ],
+    docking: [
+      'Docking permission provisional. Keep the seal visible.',
+      'Berth assigned. Inspection may follow.',
+      'Cut thrust on the line. The line is logged.',
+    ],
+    scanned: [
+      'Unauthorized scan recorded.',
+      'Your sensor ping is evidence.',
+      'That sweep requires a form.',
+    ],
+    robbed: [
+      'Seized property reclassified: stolen.',
+      'Cargo theft logged under force.',
+      'The missing seal has your signature on it.',
     ],
     reinforce: [
       'Requesting patrol support. Additional units inbound.',
@@ -123,11 +200,41 @@ export const BARKS = {
       'Bad for business, but we do settle accounts.',
       'Your insurance countersigned our terms. Payout begins on your hull debris.',
     ],
+    chase: [
+      'Keep the pressure. Interest hates distance.',
+      'Run if you like. The account follows.',
+      'Their drive is our collection schedule.',
+    ],
     flee: [
       'Pleasure not doing business. Your balance remains open.',
       'We will meet again. The Syndicate always collects.',
       'Withdrawing. Consider the account merely deferred.',
       'Run. Your debt compounds every cycle you stay ahead of us.',
+    ],
+    winning: [
+      'Margin is improving.',
+      'They are almost cheaper as salvage.',
+      'Close the account.',
+    ],
+    dying: [
+      'Write this off.',
+      'Bad quarter.',
+      'Asset loss. Yours next.',
+    ],
+    docking: [
+      'Berth secured. Fees posted.',
+      'Dock smooth and spend honestly.',
+      'The meter starts at seal contact.',
+    ],
+    scanned: [
+      'That peek has a price.',
+      'You looked without buying.',
+      'Our manifest is proprietary.',
+    ],
+    robbed: [
+      'Inventory discrepancy. Armed correction follows.',
+      'You stole from the margin.',
+      'That cargo had owners.',
     ],
     reinforce: [
       'Calling in the collections team. Do stay put.',
@@ -176,11 +283,41 @@ export const BARKS = {
       'Didn’t sign up for this today, but here we are.',
       'Reactor’s old. Hands are cold. Still got enough to gut you for the vein.',
     ],
+    chase: [
+      'Stay on him. That load feeds the shift.',
+      'Do not let our ore leave the belt.',
+      'Close it before the foreman hears.',
+    ],
     flee: [
       'Not worth it. I’m going home. Keep the rocks.',
       'Pulling out. Ain’t dying over somebody else’s quota.',
       'Done. This one’s above my pay grade.',
       'Going home. Two riggers didn’t this cycle. I will.',
+    ],
+    winning: [
+      'He is venting. Keep it steady.',
+      'One more clean hit.',
+      'Bring it down and clock out.',
+    ],
+    dying: [
+      'Tell the shift.',
+      'Clock me out.',
+      'Save the ore.',
+    ],
+    docking: [
+      'Scale is lit. Bring it in slow.',
+      'Berth crew is tired. Make it easy.',
+      'Dock on the mark and kill the cutter.',
+    ],
+    scanned: [
+      'You done looking?',
+      'That is crew business.',
+      'Scan says we are tired. Accurate.',
+    ],
+    robbed: [
+      'That was the shift load.',
+      'You took food off the board.',
+      'Ore is missing. Somebody answers.',
     ],
     reinforce: [
       'Radioing the other rigs. Hang on, they’re coming.',
@@ -235,11 +372,41 @@ export const BARKS = {
       'Light him up before he calls it in!',
       'Strip the panels first. Cargo floats if the hull pops.',
     ],
+    chase: [
+      'Run him down. Weigh-slip stays open.',
+      'Stay close. Cargo shakes loose when they panic.',
+      'He is light on friends. Close.',
+    ],
     flee: [
       'This one bites — break off, break off!',
       'Not worth the salvage. We’re gone!',
       'Scatter! There’s easier prey than this.',
       'Pull out. Three of us for one of him. The math turned. It does that.',
+    ],
+    winning: [
+      'Hull is soft. Cut it open.',
+      'He is paying in panels now.',
+      'Keep the weight coming off.',
+    ],
+    dying: [
+      'Bad math.',
+      'Tag my hull.',
+      'Scale broke.',
+    ],
+    docking: [
+      'Berth paid. Keep your hands where we see them.',
+      'Dock quick. Favor clocks run hot.',
+      'Vouch stands until it does not.',
+    ],
+    scanned: [
+      'Eyes off our hold.',
+      'Scan me again and pay.',
+      'That readout is worth blood.',
+    ],
+    robbed: [
+      'That was ours to take.',
+      'You just bought a hunt.',
+      'Stolen from thieves still counts.',
     ],
     reinforce: [
       'Call the pack! Tell ’em there’s a fat one!',
@@ -288,11 +455,41 @@ export const BARKS = {
       'Then this.',
       'One less to count.',
     ],
+    chase: [
+      'Close.',
+      'Keep near.',
+      'No wake.',
+    ],
     flee: [
       'Gone.',
       'Later.',
       'Not today.',
       'Forty-two. Still.',
+    ],
+    winning: [
+      'Nearly.',
+      'Open.',
+      'Done soon.',
+    ],
+    dying: [
+      'Quiet.',
+      'Name gone.',
+      'No count.',
+    ],
+    docking: [
+      'Dock. Quiet.',
+      'Lights low.',
+      'No names inside.',
+    ],
+    scanned: [
+      'Too loud.',
+      'Stop looking.',
+      'Seen back.',
+    ],
+    robbed: [
+      'Return it.',
+      'Hold light.',
+      'Debt marked.',
     ],
     reinforce: [
       'Others come.',
@@ -346,11 +543,41 @@ export const BARKS = {
       'Refrain. Fire is the answer.',
       'The seventh interval. Your correction is already notated.',
     ],
+    chase: [
+      'The line closes.',
+      'Follow the dissonance.',
+      'Do not let the note fall away.',
+    ],
     flee: [
       'Recorded. Distance changes nothing.',
       'The Pattern holds. We withdraw.',
       'Deferred. Never denied.',
       'The next chorus remembers your heading.',
+    ],
+    winning: [
+      'The correction nears.',
+      'Their noise thins.',
+      'Hold the note.',
+    ],
+    dying: [
+      'Voice spent.',
+      'Pattern holds.',
+      'I am counted.',
+    ],
+    docking: [
+      'Berth as written.',
+      'Enter lightly.',
+      'Your mass is tolerated.',
+    ],
+    scanned: [
+      'The look is returned.',
+      'You read only the surface.',
+      'Your instrument hums off-key.',
+    ],
+    robbed: [
+      'The tithe is stolen.',
+      'Weight mislaid. Pattern notes.',
+      'Return what burden chose.',
     ],
     reinforce: [
       'Choir, converge.',
@@ -400,11 +627,41 @@ export const BARKS = {
       'Fine. No hard feelings, but I’m shooting now.',
       'Two of my crew starved on the last lean run. You made it personal.',
     ],
+    chase: [
+      'Stay with him. We are owed daylight.',
+      'Do not let him drag this home.',
+      'Close the gap. Then we talk.',
+    ],
     flee: [
       'This ain’t worth it. Peeling off, good luck out there.',
       'Nope. Not dying today. We’re gone.',
       'Call it a draw. Fly safe, seriously.',
       'Going home. Tell the station we tried.',
+    ],
+    winning: [
+      'He is hurting. Keep it clean.',
+      'Almost over.',
+      'One more and we all leave.',
+    ],
+    dying: [
+      'Tell home.',
+      'Not today, then.',
+      'Keep them breathing.',
+    ],
+    docking: [
+      'Open dock. Come in easy.',
+      'Berth is yours if you fly neighborly.',
+      'Kill the drive and wave once.',
+    ],
+    scanned: [
+      'You could just ask.',
+      'Nothing hidden worth dying over.',
+      'Scan is clean enough.',
+    ],
+    robbed: [
+      'That was for the station.',
+      'You took more than cargo.',
+      'We needed that run.',
     ],
     reinforce: [
       'Getting the others on the line. Sit tight.',
@@ -453,11 +710,41 @@ export const BARKS = {
       'The accord permits correction. It is administered.',
       'Clause 9.5: correction. Your form resists the term. The term does not resist.',
     ],
+    chase: [
+      'Clause 10: pursuit continues.',
+      'Distance is not remedy.',
+      'Your vector remains inside the term.',
+    ],
     flee: [
       'The term is suspended, not dissolved. This-vessel withdraws.',
       'Clause 12: engagement lapses. The obligation persists in the ledger.',
       'Disposition deferred. Your entry remains in the accord.',
       'Clause 12.3: lapsed. Your entry is permanent. Distance is decorative.',
+    ],
+    winning: [
+      'Your form approaches settlement.',
+      'The term is nearly fulfilled.',
+      'Resistance costs more now.',
+    ],
+    dying: [
+      'Clause closes.',
+      'This-vessel lapses.',
+      'Accord persists.',
+    ],
+    docking: [
+      'Passage docked under temporary clause.',
+      'Berth permitted. Obligation deferred.',
+      'Enter as cargo of yourself.',
+    ],
+    scanned: [
+      'Your instrument misreads the accord.',
+      'Assessment reflected.',
+      'This-vessel is not disclosed by looking.',
+    ],
+    robbed: [
+      'Clause 7 breached by theft.',
+      'Carried-mass wrongly transferred.',
+      'The debt follows your hold.',
     ],
     reinforce: [
       'Consensus summoned. Additional-vessels enter the accord.',
@@ -509,11 +796,12 @@ function pickIndex(rng, len) {
  * @param {string} factionId   one of BARK_FACTIONS (unknown ids fall back to faction_free).
  * @param {string} situation   one of BARK_SITUATIONS (unknown falls back to 'scan').
  * @param {function|number} [rng]  seeded rng fn (returns [0,1)) or a numeric index. Deterministic.
+ * @param {{archetypeTag?:string}} [context] optional archetype context for authored overlays.
  * @returns {string}  a non-empty radio line. Always returns a string (never null/undefined).
  */
-export function barkFor(factionId, situation, rng) {
+export function barkFor(factionId, situation, rng, context = null) {
   const faction = (factionId && BARKS[factionId]) ? BARKS[factionId] : BARKS.faction_free;
-  let lines = faction[situation];
+  let lines = linesForContext(faction, situation, context);
   if (!Array.isArray(lines) || lines.length === 0) {
     // Situation not covered for this faction — fall back to 'scan', then to any populated situation.
     lines = faction.scan;
@@ -527,6 +815,14 @@ export function barkFor(factionId, situation, rng) {
   const idx = pickIndex(rng, lines.length);
   const line = lines[idx];
   return (typeof line === 'string' && line.length) ? line : '...';
+}
+
+function linesForContext(faction, situation, context) {
+  if (!context || !context.archetypeTag) return faction[situation];
+  const tagged = BARK_ARCHETYPE_LINES[context.archetypeTag];
+  const lines = tagged && tagged[situation];
+  if (!Array.isArray(lines) || lines.length === 0) return faction[situation];
+  return lines;
 }
 
 const contactChoice = (id, label, lineIndexes) => Object.freeze({
@@ -728,4 +1024,12 @@ export const CONTACT_VOICE_REGISTERS = Object.freeze({
   ], true),
 });
 
-export default { BARKS, BARK_FACTIONS, BARK_SITUATIONS, CONTACT_VOICE_REGISTERS, barkFor };
+export default {
+  BARKS,
+  BARK_FACTIONS,
+  BARK_SITUATIONS,
+  BARK_SITUATION_RULES,
+  BARK_ARCHETYPE_LINES,
+  CONTACT_VOICE_REGISTERS,
+  barkFor,
+};

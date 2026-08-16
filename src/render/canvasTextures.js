@@ -448,6 +448,58 @@ export function makeDecalSheet(opts = {}) {
   return finalize(canvas, { srgb: true });
 }
 
+export function makeStationSloganTexture(opts = {}) {
+  const {
+    width = 512,
+    height = 128,
+    seed = 1,
+    text = '',
+    accent = '#d8c24a',
+    base = '#10141c',
+  } = opts;
+  const rnd = mulberry32(seed);
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = base;
+  ctx.fillRect(0, 0, width, height);
+
+  ctx.strokeStyle = 'rgba(255,255,255,0.16)';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(8, 8, width - 16, height - 16);
+  ctx.strokeStyle = accent;
+  ctx.globalAlpha = 0.72;
+  ctx.strokeRect(18, 18, width - 36, height - 36);
+  ctx.globalAlpha = 1;
+
+  ctx.fillStyle = 'rgba(255,255,255,0.08)';
+  for (let i = 0; i < 18; i++) {
+    const x = rnd() * width;
+    const y = rnd() * height;
+    ctx.fillRect(x, y, 12 + rnd() * 46, 1 + rnd() * 2);
+  }
+
+  const label = String(text || '').toUpperCase();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = `700 ${Math.round(height * 0.28)}px monospace`;
+  ctx.fillStyle = '#f1f4f8';
+  ctx.fillText(fitText(ctx, label, width - 52), width / 2, height * 0.50);
+  ctx.fillStyle = accent;
+  ctx.font = `700 ${Math.round(height * 0.12)}px monospace`;
+  ctx.fillText('LOCAL BERTH NOTICE', width / 2, height * 0.78);
+  return finalize(canvas, { srgb: true, repeat: [1, 1] });
+}
+
+function fitText(ctx, text, maxWidth) {
+  const raw = String(text || '');
+  if (ctx.measureText(raw).width <= maxWidth) return raw;
+  let out = raw;
+  while (out.length > 4 && ctx.measureText(`${out}...`).width > maxWidth) out = out.slice(0, -1);
+  return `${out}...`;
+}
+
 /**
  * GRIME layer — oil streaks, rust blooms, soot, dust, and water-stain runs. Transparent overlay so
  * it darkens/weather-ops the hull beneath without re-baking the base plating. intensity 0..1 scales

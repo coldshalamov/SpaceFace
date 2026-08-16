@@ -32,7 +32,7 @@ import { freezeStaticChildMatrices } from './staticChildMatrices.js';
 import {
   makeNoiseTexture, makeGreebleTexture, makeGradientTexture, makeHullPanelTexture, makeStarTexture,
   makeHullNormalMap, makeGreebleDetailTexture, makeDecalSheet,
-  makeGrimeTexture, makePatchTexture, makeNoseArtTexture,
+  makeGrimeTexture, makePatchTexture, makeNoseArtTexture, makeStationSloganTexture,
 } from './canvasTextures.js';
 import { FACTION_PALETTES, SHIP_RECIPES, paintProfileFor, PLAYER_NOSE_ART } from '../data/palettes.js';
 import { paletteWithShipAppearance } from '../core/shipAppearance.js';
@@ -3716,7 +3716,7 @@ function buildGate(e, pal) {
   animateGate(outerRing, innerRing, portal, hubGlow, blinkers, R);
   // Gates carry the faction's paint profile too (grimy frontier jump-rings vs pristine chrome
   // core gates) so the world reads consistently across stations and travel infrastructure.
-  applyStructureProfile(g, pal, R, hashId(e.id));
+  applyStructureProfile(g, pal, R, hashId(e.id), e && e.data && e.data.stationSlogan);
   g.userData.kind = 'station';
   return g;
 }
@@ -3811,7 +3811,7 @@ function buildStation(e) {
   // PAINT PROFILE for stations — the same dirty-vs-clean art direction as ships: grimy frontier
   // outposts (grime + patches), pristine chrome core stations (env-map foil + insignia). Reads the
   // faction personality via resolvePalette's profile, exactly like ships.
-  applyStructureProfile(g, pal, R, hashId(e.id));
+  applyStructureProfile(g, pal, R, hashId(e.id), e && e.data && e.data.stationSlogan);
   animateStation(core, blinkers, r1, null);
   g.userData.kind = 'station';
   return g;
@@ -3821,9 +3821,9 @@ function buildStation(e) {
 // as applyPaintProfile for ships, but without global transparent shells: stations should read as
 // their actual structure, not a colored glass bubble. Independent of the ship helper so station
 // geometry/scale assumptions don't leak into ship code.
-function applyStructureProfile(g, pal, R, seed) {
+function applyStructureProfile(g, pal, R, seed, slogan = null) {
   const profile = (pal && pal.profile) || null;
-  if (!profile) return;
+  if (!profile && !slogan) return;
   // --- FACTION INSIGNIA: a large glowing faction banner panel on the station flank — reads the
   //     faction identity at a glance (authority crest, punk tag, or bomber insignia).
   if (profile.noseArt) {
@@ -3837,6 +3837,33 @@ function applyStructureProfile(g, pal, R, seed) {
     });
     const banner = new THREE.Mesh(getGeometry('stat:banner', () => new THREE.PlaneGeometry(0.6, 0.4)), naMat);
     banner.position.set(0, R * 0.1, R * 0.92); banner.scale.setScalar(R); g.add(banner);
+  }
+  if (slogan) {
+    const text = String(slogan);
+    const keyText = text.replace(/[^a-z0-9]+/gi, '_').slice(0, 48);
+    const mat = getMaterial(`station:slogan:${keyText}:${pal.accent}`, () => {
+      const tex = getTexture(`station:slogan:${keyText}:${pal.accent}`, () =>
+        makeStationSloganTexture({
+          width: 512,
+          height: 128,
+          seed: (seed ^ 0x29) & 0xffff,
+          text,
+          accent: pal.accent,
+          base: shade(pal.hull, 0.42),
+        }));
+      return new THREE.MeshStandardMaterial({
+        map: tex,
+        color: 0xffffff,
+        roughness: 0.72,
+        metalness: 0.28,
+        side: THREE.DoubleSide,
+      });
+    });
+    const sign = new THREE.Mesh(getGeometry('stat:sloganPanel', () => new THREE.PlaneGeometry(0.9, 0.22)), mat);
+    sign.name = 'StationSloganPanel';
+    sign.position.set(0, -R * 0.32, R * 0.94);
+    sign.scale.setScalar(R);
+    g.add(sign);
   }
 }
 
