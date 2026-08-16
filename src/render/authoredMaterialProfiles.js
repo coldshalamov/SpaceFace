@@ -40,9 +40,9 @@ export function authoredMaterialRole(name) {
 // Deliberate choices:
 //   * LOW frequency (large soft zones, not grain). High-frequency roughness noise sparkles and
 //     aliases at distance, which would be worse than the flat map it replaces.
-//   * Injected at `#include <lights_physical_fragment>`, NOT at `roughnessmap_fragment` — the
-//     packed-ORM single-sample shader in partsLibrary.js already rewrites that include, and two
-//     replacements of the same needle would silently no-op whichever ran second.
+//   * The helper function is declared at the top-level `#include <common>` seam. GLSL forbids
+//     declaring a function inside fragment `main`; the roughness application remains at
+//     `lights_physical_fragment`, away from the packed-ORM hook in partsLibrary.js.
 //   * ONE shared program cache key, so this adds a single program variant rather than one per
 //     material (this project has been burned by shader compile storms before).
 //   * Amplitude is small and clamped; assets that already carry authored variation are not harmed.
@@ -56,7 +56,7 @@ export function authoredMaterialRole(name) {
 // The reviewer's note does not change either: "reads mostly as one matte gray material". It wants
 // authored variety per zone — painted metal vs glass vs worn edge, readable at ship size — which is
 // texture content, not a shader modulation. Do not spend another round modulating a global here.
-const ROUGHNESS_BREAKUP_KEY = 'spaceface-surface-breakup-v3-roughness-only';
+const ROUGHNESS_BREAKUP_KEY = 'spaceface-surface-breakup-v4-top-level-helper';
 const ROUGHNESS_BREAKUP_ROLES = new Set(['hull', 'mechanical', 'accent', 'ceramic', 'radiator', 'service', 'docking']);
 
 export function installRoughnessBreakup(material, { amount = 0.16, scale = 3.5 } = {}) {
@@ -72,15 +72,13 @@ export function installRoughnessBreakup(material, { amount = 0.16, scale = 3.5 }
     if (typeof originalOnBeforeCompile === 'function') {
       originalOnBeforeCompile.call(this, shader, renderer);
     }
-    const needle = '#include <lights_physical_fragment>';
-    if (!shader.fragmentShader.includes(needle)) {
-      // Fail loud rather than silently shipping a no-op: a three.js upgrade that renames this
-      // include would otherwise turn the whole effect off with no signal.
-      throw new Error('[render] roughness-breakup shader contract changed: missing lights_physical_fragment');
+    const helperNeedle = '#include <common>';
+    if (!shader.fragmentShader.includes(helperNeedle)) {
+      throw new Error('[render] roughness-breakup shader contract changed: missing fragment common include');
     }
-    shader.fragmentShader = shader.fragmentShader.replace(needle, [
-      // Smooth value noise over the material UV. Two cheap octaves: broad zones plus a softer
-      // second band so the result does not read as a single repeating blob.
+    shader.fragmentShader = shader.fragmentShader.replace(helperNeedle, [
+      helperNeedle,
+      // Smooth value noise over the material UV. This declaration must remain before `main`.
       'float sfBreakNoise( vec2 p ) {',
       '\tvec2 i = floor( p ); vec2 f = fract( p );',
       '\tf = f * f * ( 3.0 - 2.0 * f );',
@@ -90,8 +88,14 @@ export function installRoughnessBreakup(material, { amount = 0.16, scale = 3.5 }
       '\tfloat d = fract( sin( dot( i + vec2( 1.0, 1.0 ), vec2( 127.1, 311.7 ) ) ) * 43758.5453 );',
       '\treturn mix( mix( a, b, f.x ), mix( c, d, f.x ), f.y );',
       '}',
-      needle,
     ].join('\n'));
+
+    const needle = '#include <lights_physical_fragment>';
+    if (!shader.fragmentShader.includes(needle)) {
+      // Fail loud rather than silently shipping a no-op: a three.js upgrade that renames this
+      // include would otherwise turn the whole effect off with no signal.
+      throw new Error('[render] roughness-breakup shader contract changed: missing lights_physical_fragment');
+    }
 
     // Perturb roughnessFactor before the lighting model consumes it.
     const applyNeedle = 'material.roughness = max( roughnessFactor, 0.0525 );';
