@@ -119,7 +119,7 @@ export const TECH_NODES = [
   {
     id: 'tech_graviton_drives', name: 'Graviton Drives', branch: 'kinesis', prereqs: ['tech_impulse_ballistics'],
     cost: { credits: 95000, rp: 22 },
-    unlocks: { modules: ['mod_engine_warp_l', 'wpn_gravity_marker_s', 'wpn_momentum_sink_s'], efficiency: { energyRegenMult: 0.08 } },
+    unlocks: { modules: ['mod_engine_warp_l', 'wpn_gravity_marker_s', 'wpn_momentum_sink_s', 'wpn_impulse_lance_m'], efficiency: { energyRegenMult: 0.08 } },
   },
   {
     id: 'tech_long_range_survey', name: 'Far-Side Listening', branch: 'ghost', prereqs: ['tech_drive_tuning'],

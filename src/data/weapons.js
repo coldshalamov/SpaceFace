@@ -80,6 +80,19 @@ export const WEAPONS = [
     impulsePerHit: 120, tumbleTorque: 16, impulseProvenance: 'railgun_penetrator',
   },
   {
+    // IMPULSE LANCE — the precision, long-range member of the physics arsenal. It gives up damage,
+    // cadence and heat endurance to place one light hull onto one chosen collision line from beyond
+    // Concussion range. The ordinary projectile/damage/impulse path owns the hit; this definition
+    // adds no parallel force mechanic. A full hit yields 45 / 12 / 4.8 wu/s on masses 16 / 60 / 150:
+    // lights tumble, mediums move without becoming deletes, and heavy hulls never fling.
+    id: 'wpn_impulse_lance_m', name: 'Impulse Lance M', slotType: 'weapon', size: 'M', tier: 3, mass: 10, price: 72000, requiresTech: 'tech_graviton_drives',
+    dmg: 8, rof: 0.4, dps: 3.2, damageType: 'kinetic', energyCost: 26,
+    projSpeed: 950, range: 1400, tracking: 'fixed', spreadDeg: 0.35, armorPierce: 0.2,
+    heatPerShot: 70, heatMax: 100, heatDissip: 18,
+    impulsePerHit: 720, tumbleTorque: 84, impulseProvenance: 'impulse_lance_impact',
+    npcCounterthrustDelayS: 0.65,
+  },
+  {
     id: 'wpn_plasma_cannon_m', name: 'Plasma Cannon M', slotType: 'weapon', size: 'M', tier: 3, mass: 8, price: 42000, requiresTech: 'tech_plasma_dynamics',
     dmg: 34, rof: 3.0, dps: 102, damageType: 'thermal', energyCost: 9,
     projSpeed: 360, range: 600, tracking: 'fixed', splashRadius: 30,
@@ -130,7 +143,9 @@ export const WEAPONS = [
     id: 'wpn_siege_lance_l', name: 'Siege Lance L', slotType: 'weapon', size: 'L', tier: 5, mass: 24, price: 310000, requiresTech: 'tech_flagship_command',
     dmg: 420, rof: 0.5, dps: 210, damageType: 'kinetic', energyCost: 40,
     projSpeed: 600, range: 1600, tracking: 'fixed', armorPierce: 0.5,
-    impulsePerHit: 420, tumbleTorque: 64, impulseProvenance: 'siege_lance_impact',
+    // Capital ordnance remains the ceiling above the low-damage Impulse Lance. Even this full hit
+    // gives a mass-150 hull only 6.4 wu/s — a readable nudge, never a tumble or a heavy-class fling.
+    impulsePerHit: 960, tumbleTorque: 110, impulseProvenance: 'siege_lance_impact',
   },
   {
     // EMP Disruptor (spec §9 weapon-verb variety): a distinct DISABLE verb. Unlike hull weapons, it
