@@ -63,6 +63,7 @@ import {
   applyLoudDeliveryVariant,
   applyPestControlVariant,
   applyQuietDeliveryVariant,
+  applyRockDiversionVariant,
   applyWreckTowVariant,
   debrisRecoveryFollowupOfferId,
   disableDontKillFollowupOfferId,
@@ -75,14 +76,17 @@ import {
   isPestControlFollowup,
   isQuietDelivery,
   isQuietDeliveryRecovery,
+  isRockDiversion,
   isWreckTow,
   pestControlFollowupOfferId,
   quietDeliveryRecoveryOfferId,
+  rockDiversionFollowupOfferId,
   shouldRollDebrisRecovery,
   shouldRollDisableDontKill,
   shouldRollLoudDelivery,
   shouldRollPestControl,
   shouldRollQuietDelivery,
+  shouldRollRockDiversion,
   shouldRollWreckTow,
   wreckTowFollowupOfferId,
 } from '../data/missionVariants.js';
@@ -224,6 +228,10 @@ const MISSION_HOSTILE_SPAWN_ATTEMPTS = 24;
 const MISSION_PORT_SAFE_RADIUS_WU = 1200;
 const BOUNTY_CONTACT_RANGE_SQ = 1200 * 1200;
 const DEBRIS_RECOVERY_BREAK_IMPULSE = 80;
+const ROCK_DIVERSION_SHAPE_ID = 'event_falling_rock';
+const ROCK_DIVERSION_SUCCESS_OUTCOMES = new Set([
+  'stacked_impulse_charges', 'mass_driver_barrage', 'multi_burn_tow',
+]);
 
 function bountyTargetPool(riskTier) {
   const risk = Math.max(0, Math.round(Number(riskTier) || 0));
@@ -573,6 +581,9 @@ function missionNavReason(m, station, sector) {
       ? 'Choose: fire to close the tag, or reel Elroy inside sixty'
       : 'Scan the marked vessel before acting';
   }
+  if (p.rockDiversion) {
+    return 'Turn the falling rock with charges, mass-driver fire, or a Massline tow-burn';
+  }
   if (m.type === 'recon_scan' && p.originSurveySample) {
     const sample = CMDTY_BY_ID.get(p.sampleCmdtyId);
     return p.surveyComplete
@@ -709,6 +720,8 @@ export const missions = {
     bus.on('entity:destroyed', (p) => this._onEntityDestroyed(p));
     // recon_scan: a scan target (or sector scan) completed.
     bus.on('scan:completed', (p) => this._onScan(p));
+    // Rock Diversion contracts settle only from Plan 20's real falling-rock runtime receipt.
+    bus.on('encounter:resolved', (p) => this._onRockDiversionResolved(p || {}));
     bus.on('signal:scanResults', (p) => {
       this._onLandmarkProbeScan(p || {});
       // A multi-scan landmark may become board-ready on this exact pulse. Reconcile after scanner
@@ -803,6 +816,9 @@ export const missions = {
       if (m.type === 'escort' && m._escorteeId != null) this._steerEscortee(m, state, dt);
       if (isLoudDelivery(m) && m.destSectorId === state.world.currentSectorId) {
         this._ensureLoudDeliveryScanNet(m);
+      }
+      if (isRockDiversion(m) && m.destSectorId === state.world.currentSectorId) {
+        this._ensureRockDiversionEncounter(m);
       }
       if (isWreckTow(m)) {
         const towTarget = (m.targetEntityIds || [])
@@ -1665,6 +1681,9 @@ export const missions = {
       && !disableDontKill
       && dest && isLawfulStationFaction(dest.factionId)
       && shouldRollWreckTow(variantHashFn(this.state.meta.seed, id, 'wreck-tow-variant'));
+    const rockDiversion = options.attachConditions !== false
+      && typeId === 'recon_scan'
+      && shouldRollRockDiversion(variantHashFn(this.state.meta.seed, id, 'rock-diversion-variant'));
     const loudDelivery = options.attachConditions !== false
       && typeId === 'smuggling_run'
       && shouldRollLoudDelivery(variantHashFn(this.state.meta.seed, id, 'loud-delivery-variant'));
@@ -1717,6 +1736,9 @@ export const missions = {
       return applyDisableDontKillVariant(offer, dest && dest.name || 'the marked sector');
     }
     if (wreckTow) return applyWreckTowVariant(offer, dest && dest.name || 'the marked recovery yard');
+    if (rockDiversion) {
+      return applyRockDiversionVariant(offer, dest && dest.name || 'the marked approach');
+    }
     if (loudDelivery) return applyLoudDeliveryVariant(offer);
     // Physics terms are the last thing stamped onto a rolled offer so the reward/deadline family
     // above is untouched: a condition-free offer is byte-identical to the shipped one.
@@ -2085,6 +2107,7 @@ export const missions = {
     // Spawn any immediate/deferred targets (if the player is already in the target sector).
     this._ensureMissionTargets(inst);
     this._ensureLoudDeliveryScanNet(inst);
+    this._ensureRockDiversionEncounter(inst);
     // Accepting auto-tracks AND speaks the objective through the voiceArbiter objective channel
     // (tier 60) — same one-voice path as a manual Mission Log track. The ambient "Mission accepted"
     // toast below is a separate lane (transaction confirmation), so the two do not contend.
@@ -2352,6 +2375,7 @@ export const missions = {
   },
 
   _objectiveTarget(typeId, params) {
+    if (params && params.rockDiversion) return 1;
     if (params && params.quietDeliveryRecovery) {
       return Math.max(1, (params.quietDeliveryRecovery.pods || []).length);
     }
@@ -2636,6 +2660,26 @@ export const missions = {
         ),
         reason: `Hold station off ${launcher.name} for the launch`,
       };
+    }
+
+    if (isRockDiversion(m)) {
+      const diversion = m.params && m.params.rockDiversion;
+      const encounter = diversion && diversion.encounterId
+        && this.state.encounterDirector && this.state.encounterDirector.live
+        && this.state.encounterDirector.live[diversion.encounterId];
+      const rockId = encounter && encounter.data && encounter.data.rockId;
+      const rock = rockId != null && this.state.entities && this.state.entities.get(rockId);
+      if (rock && rock.alive !== false && rock.pos) {
+        return {
+          ...base,
+          label: 'Falling Rock',
+          stationId: null,
+          targetEntityId: rock.id,
+          pos: { x: rock.pos.x, z: rock.pos.z },
+          reason: missionNavReason(m, station, sector),
+        };
+      }
+      return { ...base, stationId: null };
     }
 
     if (m.type === 'recon_scan' && m.params && m.params.landmarkProbe) {
@@ -3383,6 +3427,110 @@ export const missions = {
     return offer;
   },
 
+  /** Snapshot the director-owned impact field while its synchronous resolution receipt is live. */
+  _captureRockDiversionLoss(mission) {
+    if (!mission || !isRockDiversion(mission)) return null;
+    if (mission._rockDiversionLoss) return mission._rockDiversionLoss;
+    const diversion = mission.params && mission.params.rockDiversion || {};
+    const live = diversion.encounterId && this.state.encounterDirector
+      && this.state.encounterDirector.live && this.state.encounterDirector.live[diversion.encounterId];
+    const debrisIds = live && live.data && Array.isArray(live.data.debrisIds)
+      ? live.data.debrisIds : [];
+    const debris = debrisIds.map((id) => this.state.entities && this.state.entities.get(id))
+      .find((entity) => entity && entity.alive !== false);
+    const rock = live && live.data && live.data.rockId != null
+      && this.state.entities && this.state.entities.get(live.data.rockId);
+    const body = debris || rock || null;
+    const anchor = diversion.anchor || { x: 0, z: 0 };
+    mission._rockDiversionLoss = {
+      sectorId: mission.destSectorId,
+      encounterId: diversion.encounterId || null,
+      pos: {
+        x: Number(body && body.pos && body.pos.x) || Number(anchor.x) || 0,
+        z: Number(body && body.pos && body.pos.z) || Number(anchor.z) || 0,
+      },
+      vel: {
+        x: Number(body && body.vel && body.vel.x) || 0,
+        z: Number(body && body.vel && body.vel.z) || 0,
+      },
+    };
+    return mission._rockDiversionLoss;
+  },
+
+  /** A failed diversion leaves one recorder recovery in the physical impact debris. */
+  _postRockDiversionRecovery(mission) {
+    const loss = mission && mission._rockDiversionLoss;
+    const offerId = rockDiversionFollowupOfferId(mission);
+    if (!mission || !loss || !offerId || !mission.stationId) return null;
+    const duplicateActive = (this.state.missions.active || []).find((candidate) => (
+      candidate && candidate.sourceOfferId === offerId
+    ));
+    if (duplicateActive) return duplicateActive;
+    for (const candidateBoard of Object.values(this.state.missions.boards || {})) {
+      const duplicate = candidateBoard && Array.isArray(candidateBoard.slots)
+        && candidateBoard.slots.find((candidate) => candidate && candidate.id === offerId);
+      if (duplicate) return duplicate;
+    }
+
+    const commodityId = 'cmdty_salvage_electronics';
+    const commodity = CMDTY_BY_ID.get(commodityId);
+    const pods = [{ slot: 0, commodityId, amount: 1 }];
+    const timeLimitS = Math.max(180,
+      Math.round(Number(mission.deadline_s) - Number(mission.acceptedAt_s)) || 0);
+    const fieldName = `${this._destName(mission)} impact field`;
+    const offer = {
+      id: offerId,
+      type: 'salvage_retrieval',
+      stationId: mission.stationId,
+      factionId: mission.factionId,
+      reward_cr: Math.max(100, Math.round((Number(mission.reward_cr) || 0) * 0.35)),
+      time_limit_s: timeLimitS,
+      duration_s: timeLimitS,
+      collateral_cr: 0,
+      riskTier: Math.max(1, Math.round(Number(mission.riskTier) || 1)),
+      destStationId: null,
+      destSectorId: loss.sectorId || mission.destSectorId,
+      distance: mission.distance,
+      params: {
+        cmdtyId: commodityId,
+        qty: 1,
+        cargoValue: Math.max(0, Number(commodity && commodity.basePrice) || 0),
+        fValue: 1,
+        taskTime: 30,
+        missionVariant: DEBRIS_RECOVERY_VARIANT_ID,
+        debrisRecovery: {
+          fieldName,
+          generation: 1,
+          sourceMissionId: mission.id,
+          pos: { ...loss.pos },
+          vel: { ...loss.vel },
+          pods,
+        },
+      },
+      title: 'Debris Recovery — Rock Impact Recorder',
+      brief: 'The failed diversion left a moving wreck field. Pull the station recorder from it.',
+      expiresAtEpoch: this._epoch() + 2,
+      storyTag: null,
+      variantId: DEBRIS_RECOVERY_VARIANT_ID,
+      source: DEBRIS_RECOVERY_FOLLOWUP_SOURCE,
+      cause: {
+        tag: 'rock_diversion_impact',
+        sourceMissionId: mission.id,
+        sourceOfferId: mission.sourceOfferId || null,
+        encounterId: loss.encounterId,
+      },
+    };
+    let board = this.state.missions.boards[mission.stationId];
+    if (!board || typeof board !== 'object') {
+      board = { refreshEpoch: this._epoch(), slots: [] };
+      this.state.missions.boards[mission.stationId] = board;
+    }
+    if (!Array.isArray(board.slots)) board.slots = [];
+    board.slots.push(offer);
+    this.bus.emit('mission:updated', { missionId: null, stationId: mission.stationId });
+    return offer;
+  },
+
   /** A burned Loud drop leaves one moving recorder recovery through the existing pod owner. */
   _postLoudDeliveryRecovery(mission) {
     const loss = mission && mission._loudDeliveryScanLoss;
@@ -3750,6 +3898,8 @@ export const missions = {
     for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
       const m = this.state.missions.active[i];
       if (m.status !== 'active' || m.type !== 'recon_scan') continue;
+      // This contract is a physics emergency, not a scanner job wearing different copy.
+      if (isRockDiversion(m)) continue;
       if (m.params && m.params.setPieceObjective === 'long_read_rumor_survey') continue;
       // Authored landmark probes settle only from scanner's exact physical signal result below.
       // A generic sector pulse must never finish a job aimed at one named hull.
@@ -4800,6 +4950,7 @@ export const missions = {
       this._postLoudDeliveryRecovery(m);
     }
     if (isWreckTow(m) && m._wreckTowLoss) this._postWreckTowBlackBox(m);
+    if (isRockDiversion(m) && m._rockDiversionLoss) this._postRockDiversionRecovery(m);
     const setPieceTransition = this._compileSetPieceTransition(m, 'failed', reason || 'failed');
     m.status = 'failed';
     this._clearMissionNav(m.id);
@@ -5656,12 +5807,81 @@ export const missions = {
     return false;
   },
 
+  /** Launch the contracted form of Plan 20's existing physical falling-rock event. */
+  _ensureRockDiversionEncounter(mission) {
+    const diversion = mission && mission.params && mission.params.rockDiversion;
+    if (!mission || mission.status !== 'active' || !isRockDiversion(mission) || !diversion
+      || diversion.outcome || this.state.mode !== 'flight'
+      || this.state.world.currentSectorId !== mission.destSectorId) return false;
+    const director = this.registry && this.registry.get && this.registry.get('encounterDirector');
+    if (!director || typeof director.requestAuthoredEncounter !== 'function') return false;
+    const encounterId = diversion.encounterId || `rock-diversion:${mission.id}`;
+    diversion.encounterId = encounterId;
+    const existing = this.state.encounterDirector && this.state.encounterDirector.live
+      && this.state.encounterDirector.live[encounterId];
+    if (existing && existing.phase !== 'done') return true;
+    const tick = this.state.tick | 0;
+    if (Number.isFinite(diversion.nextRequestTick) && tick < diversion.nextRequestTick) return false;
+    const player = this.state.entities && this.state.entities.get(this.state.playerId);
+    if (!player || !player.pos) return false;
+    if (!diversion.anchor || !Number.isFinite(diversion.anchor.x)
+      || !Number.isFinite(diversion.anchor.z)) {
+      // Keep the pilot near the response geometry but laterally clear of the collision line.
+      diversion.anchor = { x: player.pos.x - 230, z: player.pos.z + 140 };
+    }
+    const result = director.requestAuthoredEncounter({
+      shapeId: ROCK_DIVERSION_SHAPE_ID,
+      encounterId,
+      sectorId: mission.destSectorId,
+      anchor: { x: diversion.anchor.x, z: diversion.anchor.z },
+      zoneType: 'civilian_core',
+      zoneRadius: 900,
+      data: { missionId: mission.id, contractVariant: 'rock_diversion' },
+      force: true,
+    });
+    if (result && result.ok) {
+      diversion.requestedAt_s = Number(this.state.simTime) || 0;
+      delete diversion.nextRequestTick;
+      this.bus.emit('mission:updated', { missionId: mission.id, encounterId });
+      return true;
+    }
+    diversion.nextRequestTick = tick + 120;
+    return false;
+  },
+
+  /** Settle only from the exact director receipt belonging to this accepted contract. */
+  _onRockDiversionResolved(payload) {
+    if (!payload || payload.shape !== ROCK_DIVERSION_SHAPE_ID || !payload.encounterId) return false;
+    for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
+      const mission = this.state.missions.active[i];
+      const diversion = mission && mission.params && mission.params.rockDiversion;
+      if (!mission || mission.status !== 'active' || !isRockDiversion(mission) || !diversion
+        || diversion.encounterId !== payload.encounterId) continue;
+      diversion.outcome = payload.outcome || 'unknown';
+      diversion.resolvedAt_s = Number(payload.t) || Number(this.state.simTime) || 0;
+      if (ROCK_DIVERSION_SUCCESS_OUTCOMES.has(diversion.outcome)) {
+        mission.objectiveProgress = mission.objectiveTarget;
+        this._completeMission(mission, i);
+        return true;
+      }
+      if (diversion.outcome === 'rock_hit_station') {
+        this._captureRockDiversionLoss(mission);
+        this._failMission(mission, i, 'rock_hit_station');
+        return true;
+      }
+      return false;
+    }
+    return false;
+  },
+
   _onSectorEnter(p) {
     const sectorId = p && p.sectorId;
     if (!sectorId) return;
     this.spawnTargetsForSector(sectorId);
     for (const mission of this.state.missions.active || []) {
-      if (mission && mission.destSectorId === sectorId) this._ensureLoudDeliveryScanNet(mission);
+      if (!mission || mission.destSectorId !== sectorId) continue;
+      this._ensureLoudDeliveryScanNet(mission);
+      this._ensureRockDiversionEncounter(mission);
     }
     this._reconcileLandmarkQuestOffers({ sectorId });
     this._emitSetPieceTravelLine(sectorId);

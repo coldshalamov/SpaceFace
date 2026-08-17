@@ -21,6 +21,8 @@ export const LOUD_DELIVERY_VARIANT_ID = 'loud_delivery';
 export const LOUD_DELIVERY_DRAW_MODULO = 3;
 export const WRECK_TOW_VARIANT_ID = 'wreck_tow';
 export const WRECK_TOW_DRAW_MODULO = 3;
+export const ROCK_DIVERSION_VARIANT_ID = 'rock_diversion';
+export const ROCK_DIVERSION_DRAW_MODULO = 3;
 
 /** One in three ordinary cargo-delivery rolls becomes Quiet Delivery, without consuming board RNG. */
 export function shouldRollQuietDelivery(hashValue) {
@@ -257,6 +259,41 @@ export function isWreckTow(value) {
 export function wreckTowFollowupOfferId(mission) {
   const sourceId = mission && (mission.sourceOfferId || mission.id);
   return sourceId ? `mo_wreck_tow_black_box_${String(sourceId)}` : null;
+}
+
+/** One in three ordinary recon rolls becomes the contracted form of Plan 20's falling-rock event. */
+export function shouldRollRockDiversion(hashValue) {
+  return (Number(hashValue) >>> 0) % ROCK_DIVERSION_DRAW_MODULO === 0;
+}
+
+/** Name the physical emergency on the ordinary board before the player accepts it. */
+export function applyRockDiversionVariant(offer, destinationName = 'the marked approach') {
+  if (!offer || offer.type !== 'recon_scan') return offer;
+  return {
+    ...offer,
+    title: `Rock Diversion — Collision Course near ${destinationName}`,
+    brief: `A falling rock is minutes from the burn line. Turn it with charges, mass-driver fire, or a Massline tow-burn.`,
+    duration_s: Math.max(1, Number(offer.time_limit_s) || 1),
+    variantId: ROCK_DIVERSION_VARIANT_ID,
+    params: {
+      ...(offer.params || {}),
+      missionVariant: ROCK_DIVERSION_VARIANT_ID,
+      rockDiversion: { generation: 0, encounterId: null, outcome: null },
+    },
+    clauses: [],
+  };
+}
+
+export function isRockDiversion(value) {
+  return !!(value && (
+    value.variantId === ROCK_DIVERSION_VARIANT_ID
+    || value.params && value.params.missionVariant === ROCK_DIVERSION_VARIANT_ID
+  ));
+}
+
+export function rockDiversionFollowupOfferId(mission) {
+  const sourceId = mission && (mission.sourceOfferId || mission.id);
+  return sourceId ? `mo_rock_diversion_recorder_${String(sourceId)}` : null;
 }
 
 /** One in three ordinary smuggling rolls becomes a physical scan-net delivery. */
