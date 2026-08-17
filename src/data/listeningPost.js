@@ -3,8 +3,12 @@
 
 export const LISTENING_POST = Object.freeze({
   sourceSectorId: 'sector_dione_lane',
+  sourceStationId: 'station_dione',
   sourcePoiId: 'poi_dione_relay',
+  sourceName: 'Relay Monument',
   signalId: 'signal:poi:poi_dione_relay',
+  rumorId: 'frontier-rumor:station_dione:relay-monument',
+  rumorText: 'The old relay at Dione still pings five carriers, then fifteen, around one long pause. The lane crews say the pattern is a chart pair, not a fault.',
   targetSectorId: 'sector_sedna_dark',
   targetStationId: 'station_sedna_last_light',
   targetStationName: 'Last Light Station',

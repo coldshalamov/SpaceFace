@@ -4,6 +4,10 @@ import test from 'node:test';
 import { createSimulation } from '../src/core/sim.js';
 import { SECTORS } from '../src/data/sectors.js';
 import {
+  frontierRumorOffer,
+  frontierRumorPurchaseOffer,
+} from '../src/data/frontierRumors.js';
+import {
   LISTENING_POST,
   listeningPostPuzzleState,
   validateListeningPostAttempt,
@@ -61,12 +65,26 @@ test('physical Dione relay scan unlocks the Codex cadence and only its decoded p
       'the decoded pair is the real Atlas coordinate of the named rim station sector');
     assert.equal(sourcePoi.scannerSignalKind, 'archive');
     assert.equal(sourcePoi.manualInvestigation, true);
+    assert.equal(sourcePoi.name, LISTENING_POST.sourceName);
     assert.equal(typeof codexScreen._renderListeningPostPuzzle, 'function');
+
+    const rumor = frontierRumorOffer(route.state, LISTENING_POST.sourceStationId);
+    assert.equal(rumor?.id, LISTENING_POST.rumorId,
+      'the ordinary Dione bar surfaces the exact monument rumor before generic cards');
+    assert.equal(rumor?.targetId, LISTENING_POST.sourcePoiId);
+    assert.equal(rumor?.targetName, LISTENING_POST.sourceName);
+    assert.match(rumor?.text || '', /five carriers.*fifteen.*chart pair/i);
+    assert.deepEqual(frontierRumorPurchaseOffer(
+      route.state,
+      LISTENING_POST.sourceStationId,
+      LISTENING_POST.rumorId,
+    ), rumor, 'the existing World purchase owner validates the same visible rumor card');
 
     route.owner.enterSector(LISTENING_POST.sourceSectorId, { placePlayer: false });
     const relay = livePoi(route.state, LISTENING_POST.sourcePoiId);
     assert.ok(relay, 'ordinary Dione entry materializes the existing relay body');
-    assert.equal(relay.data.landmarkGlb, 'place_lane_beacon');
+    assert.equal(relay.data.landmarkGlb, 'place_claim_outpost_relay');
+    assert.equal(relay.data.name, LISTENING_POST.sourceName);
 
     route.player.pos.x = relay.pos.x - 70;
     route.player.pos.z = relay.pos.z;

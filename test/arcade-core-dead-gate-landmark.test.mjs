@@ -5,6 +5,7 @@ import { createSimulation } from '../src/core/sim.js';
 import { physics } from '../src/core/physics.js';
 import { DEAD_GATE } from '../src/data/deadGate.js';
 import { frontierRumorOffer } from '../src/data/frontierRumors.js';
+import { LISTENING_POST } from '../src/data/listeningPost.js';
 import { SECTORS } from '../src/data/sectors.js';
 import { cargo } from '../src/systems/cargo.js';
 import { economy } from '../src/systems/economy.js';
@@ -101,6 +102,17 @@ test('the charted Dead Gate rumor resolves at one physical inert ring and releas
     assert.equal(buildSystemModel(route.state, DEAD_GATE.sectorId).points
       .some((point) => point.id === DEAD_GATE.poiId && point.name === 'The Dead Gate'), true,
     'charted space exposes the exact landmark on the ordinary system map before any rumor');
+
+    const relayOffer = frontierRumorOffer(route.state, DEAD_GATE.sourceStationId);
+    assert.equal(relayOffer?.id, LISTENING_POST.rumorId,
+      'Dione first offers the route-revealing monument pattern');
+    const creditsBeforeRelay = route.state.player.credits;
+    route.bus.emit('ui:purchaseFrontierRumor', {
+      stationId: LISTENING_POST.sourceStationId,
+      rumorId: LISTENING_POST.rumorId,
+    });
+    assert.ok(route.state.player.credits < creditsBeforeRelay);
+    assert.equal(route.state.world.frontierRumors.byId[LISTENING_POST.rumorId]?.phase, 'rumored');
 
     const offer = frontierRumorOffer(route.state, DEAD_GATE.sourceStationId);
     assert.equal(offer?.id, DEAD_GATE.rumorId);

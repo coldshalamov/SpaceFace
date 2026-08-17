@@ -6,6 +6,7 @@
 
 import { hash32 } from '../core/rng.js';
 import { DEAD_GATE } from './deadGate.js';
+import { LISTENING_POST } from './listeningPost.js';
 import { sectorLocalToGlobalForSector } from './sectorCoordinates.js';
 import { SECTORS } from './sectors.js';
 import { fixerMemoryFor } from './stationContacts.js';
@@ -525,6 +526,47 @@ function dioneDeadGateOffer(state, stationSource) {
   };
 }
 
+function dioneRelayMonumentOffer(state, stationSource) {
+  if (!stationSource || stationSource.station.id !== LISTENING_POST.sourceStationId) return null;
+  if (frontierRumorOwned(state, LISTENING_POST.rumorId)) return null;
+  const sector = SECTOR_BY_ID.get(LISTENING_POST.sourceSectorId);
+  const poi = sector && (sector.pois || []).find((row) => row && row.id === LISTENING_POST.sourcePoiId);
+  const localPos = finitePoint(poi && poi.pos);
+  if (!sector || !poi || !localPos || !candidateStillUnknown(state, {
+    kind: 'anomaly', sector, targetId: poi.id,
+  })) return null;
+
+  const seed = finite(state && state.meta && state.meta.seed, 1) >>> 0;
+  const targetGlobal = sectorLocalToGlobalForSector(localPos, sector.id);
+  const angle = (hash32(seed, LISTENING_POST.rumorId, 'bearing-offset-angle') / 0x100000000) * Math.PI * 2;
+  const offset = 180 + (hash32(seed, LISTENING_POST.rumorId, 'bearing-offset-distance') % 101);
+  return {
+    id: LISTENING_POST.rumorId,
+    schemaVersion: FRONTIER_RUMOR_SCHEMA_VERSION,
+    source: 'bar',
+    sourceStationId: LISTENING_POST.sourceStationId,
+    sourceBodyId: null,
+    sourceSectorId: LISTENING_POST.sourceSectorId,
+    dayIndex: dayIndexFor(state),
+    kind: 'anomaly',
+    kindLabel: 'Relay Monument Pulse Log',
+    targetId: LISTENING_POST.sourcePoiId,
+    targetName: LISTENING_POST.sourceName,
+    sectorId: LISTENING_POST.sourceSectorId,
+    sectorName: sector.name || sector.id,
+    fieldType: null,
+    coordSpace: 'global_v1',
+    bearingCenter: {
+      x: targetGlobal.x + Math.cos(angle) * offset,
+      z: targetGlobal.z + Math.sin(angle) * offset,
+    },
+    radius: 560,
+    price: KIND_BY_ID.get('anomaly').price + Math.max(0, finite(sector.tier, 0)) * 35,
+    phase: 'rumored',
+    text: LISTENING_POST.rumorText,
+  };
+}
+
 /**
  * Build the one bar rumor available at a station for the current 10-minute sector-day.
  * The selection is stable and never mutates state. Purchased cards return null until the next day.
@@ -536,6 +578,8 @@ export function frontierRumorOffer(state, stationId) {
   if (activeWarrant) return activeWarrant;
   const quietPatch = eunomiaQuietPatchOffer(state, stationSource);
   if (quietPatch) return quietPatch;
+  const relayMonument = dioneRelayMonumentOffer(state, stationSource);
+  if (relayMonument) return relayMonument;
   const deadGate = dioneDeadGateOffer(state, stationSource);
   if (deadGate) return deadGate;
   const blackMarket = tethysBlackMarketOffer(state, stationSource);
@@ -624,6 +668,7 @@ export function frontierRumorPurchaseOffer(state, stationId, rumorId) {
   const source = sourceForStation(stationId);
   return [
     frontierRumorOffer(state, stationId),
+    dioneRelayMonumentOffer(state, source),
     dioneDeadGateOffer(state, source),
     fixerCacheOffer(state, stationId),
   ]

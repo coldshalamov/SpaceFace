@@ -282,7 +282,7 @@ export const SOUTH_SECTORS = Object.freeze([
       Object.freeze({
         id: 'poi_dione_relay',
         type: 'beacon',
-        name: 'Lane Relay',
+        name: 'Relay Monument',
         scannerSignalKind: 'archive',
         scannerSignalPriority: 98,
         manualInvestigation: true,
@@ -446,7 +446,7 @@ export const SOUTH_ANCHORS = Object.freeze({
       Object.freeze({
         id: 'poi_dione_relay',
         pos: Object.freeze({ x: 320, z: -420 }),
-        landmarkGlb: 'place_lane_beacon',
+        landmarkGlb: 'place_claim_outpost_relay',
         landmark: true,
       }),
       Object.freeze({
