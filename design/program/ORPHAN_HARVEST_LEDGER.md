@@ -36,7 +36,7 @@ Dispositions and anti-loop rules live in the playbook, not here.
 | A-ac16 | `C:\sf-agents\ac16-mote-pack` | near-done | CHECKPOINT | Mote swarm encounter; new encounter file missing on master. | Review + port encounter |
 | A-ac17 | `C:\sf-agents\ac17-force-legibility` | partial | CHECKPOINT | Hostile anchor snares; edits enemies + fields. | Review with A-ac06 |
 | A-ac18 | `C:\sf-agents\ac18-damage-dressing` | near-done | CHECKPOINT | New `shipDamageDressing.js` absent on master. Quality-sensitive. | Visual review before wire |
-| A-ac19 | `C:\sf-agents\ac19-market-continuity` | near-done | CHECKPOINT | 3-file economyCycles patch applies cleanly. Unreviewed. | One review panel then MERGE or DROP |
+| A-ac19 | `C:\sf-agents\ac19-market-continuity` | done | MERGE 2026-08-17 | Market re-rolls now lerp instead of snapping. Review said merge. 5 tests green. | Keep worktree until pushed |
 | A-ac20 | `C:\sf-agents\ac20-wanted-lifecycle` | junk | DROP 2026-08-17 | Clone whose tip is a second copy of AC-03. | Delete with A-ac03 |
 | A-ac-close | `C:\sf-agents\arcade-core-20` | junk | DROP 2026-08-17 | Tip is docs-only “campaign closed”. Packets live in A-ac01–19. | Delete after those rows are terminal |
 | A-ac-husk | `C:\sf-agents\arcade-core-20-incomplete-20260815` | junk | DROP 2026-08-17 | Gitless partial factory-asset copy. No Hornet body. Not a source of unique ships. | Safe to delete folder |
