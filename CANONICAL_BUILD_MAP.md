@@ -330,7 +330,21 @@ completion of the full Arcade Core plan set.** The current owner-authorized mile
 explicit production requirement in [`design/arcade-core/00_INVARIANTS.md`](./design/arcade-core/00_INVARIANTS.md)
 through [`60_RIVALS_AND_WINGMEN.md`](./design/arcade-core/60_RIVALS_AND_WINGMEN.md); the complete
 61-plan index and build waves live in [`design/arcade-core/README.md`](./design/arcade-core/README.md).
-That milestone is **OPEN** on `codex/pr95-all`. A prior AC-01–20 outcome, test, receipt, plan, lab,
+That milestone is **OPEN** on `codex/pr95-all`.
+
+Checkpoint residue (2026-08-17): the Plan 31 size-ladder slice is published (radius on
+`entity:killed` -> small/ordinary/capital clocks; radius-scaled kinetic fragment fans; pool-dump
+evidence in `.devshots/plan31-death-size-ladder-live`), with size-x-cause skins, real debris above
+threshold, explosion impulse, reduced-flash, and the human 30 s kill-montage watch still open in
+Plan 31. Plan 58 audited closed against live data: every named good, service fee, rumor price,
+the 3-tier legality ladder, survivor pods as deliverables, and the breadth route audit are live;
+the plan's "~45 total commodities" cap is exceeded at 52 by concurrent production adds and stays
+flagged for the owner rather than silently trimmed. Plans 09 (owner calibration bands), 04
+(atmosphere burn-up human watch), 30 (remaining secrets as honest ??? placeholders), and the
+07/08 factory/living-world re-audit remain explicit owner/agent-open gates from the campaign
+handoff. `check:baseline` is red only on the 47a telemetry envelope - content-only drift per
+`scripts/sim-golden-diff.mjs`, pre-dating the Plan 31 slice; the golden re-record decision is the
+owner's. A prior AC-01–20 outcome, test, receipt, plan, lab,
 or source-level implementation closes a full numbered plan only when every named production route
 and required Layer 1/2/human gate in that plan is terminal. Performance work is excluded from this
 campaign and does not count toward its completion.
