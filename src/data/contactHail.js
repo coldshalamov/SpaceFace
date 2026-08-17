@@ -12,6 +12,7 @@ import {
 } from './laneContacts.js';
 import { richSeamOpportunityForEntity } from '../systems/fieldDepletion.js';
 import { buildSlotList, fits } from '../systems/ships.js';
+import { playerShipIdentityHailLine } from './shipIdentityReactions.js';
 
 export const CONTACT_HAIL_RANGE = 5200;
 export const CONTACT_HAIL_REQUEST_TTL_S = 8;
@@ -468,7 +469,7 @@ export function createContactHailOffer(state, availability, requestId, expiresAt
     if (availability.heaveToAvailable) actions.push({ id: CONTACT_HAIL_ACTION_HEAVE_TO, label: 'HEAVE TO' });
     return {
       requestId, targetId: availability.targetId, kind: 'patrol', expiresAt,
-      lines: [`${name} · LAWFUL PATROL`, 'CHANNEL OPEN.'],
+      lines: [`${name} · LAWFUL PATROL`, identityHailLine(state, availability.entity)],
       actions,
     };
   }
@@ -507,7 +508,7 @@ export function createContactHailOffer(state, availability, requestId, expiresAt
     }
     return {
       requestId, targetId: availability.targetId, kind: 'worker', expiresAt,
-      lines: [`${name} · WORKING TRAFFIC`, 'CHANNEL OPEN.'],
+      lines: [`${name} · WORKING TRAFFIC`, identityHailLine(state, availability.entity)],
       actions,
     };
   }
@@ -520,7 +521,7 @@ export function createContactHailOffer(state, availability, requestId, expiresAt
     }
     return {
       requestId, targetId: availability.targetId, kind: 'trader', expiresAt,
-      lines: [`${name} · HELIOS CIVIC LINER`, 'PASSENGER SERVICE · CHANNEL OPEN.'],
+      lines: [`${name} · HELIOS CIVIC LINER`, identityHailLine(state, availability.entity)],
       actions,
     };
   }
@@ -535,7 +536,7 @@ export function createContactHailOffer(state, availability, requestId, expiresAt
     }
     return {
       requestId, targetId: availability.targetId, kind: 'trader', expiresAt,
-      lines: [`${name} · PRIORITY COURIER`, 'CHANNEL OPEN.'],
+      lines: [`${name} · PRIORITY COURIER`, identityHailLine(state, availability.entity)],
       actions,
     };
   }
@@ -544,9 +545,16 @@ export function createContactHailOffer(state, availability, requestId, expiresAt
   if (availability.heaveToAvailable) actions.push({ id: CONTACT_HAIL_ACTION_HEAVE_TO, label: 'HEAVE TO' });
   return {
     requestId, targetId: availability.targetId, kind: 'trader', expiresAt,
-    lines: [`${name} · CIVILIAN FREIGHT`, 'CHANNEL OPEN.'],
+    lines: [`${name} · CIVILIAN FREIGHT`, identityHailLine(state, availability.entity)],
     actions,
   };
+}
+
+function identityHailLine(state, entity) {
+  const data = entity && entity.data || {};
+  const ai = data.ai || {};
+  const factionId = entity && entity.factionId || data.factionId || ai.factionId || null;
+  return playerShipIdentityHailLine(state, factionId) || 'CHANNEL OPEN.';
 }
 
 function traderRecord(state, targetId) {
