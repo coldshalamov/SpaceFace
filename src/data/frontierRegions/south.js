@@ -281,7 +281,7 @@ export const SOUTH_SECTORS = Object.freeze([
     pois: Object.freeze([
       Object.freeze({
         id: 'poi_dione_relay',
-        type: 'beacon',
+        type: 'anomaly',
         name: 'Relay Monument',
         scannerSignalKind: 'archive',
         scannerSignalPriority: 98,

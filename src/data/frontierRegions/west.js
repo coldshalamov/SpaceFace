@@ -14,6 +14,8 @@
 //
 // Schema: spaceface.frontierCluster.v1
 
+import { ORCUS_ANCHOR } from '../anchorLandmark.js';
+
 /** Documented lattice spacing (world units) — matches sectorCoordinates.SECTOR_ORIGIN_LATTICE_WU. */
 export const SECTOR_ORIGIN_LATTICE_WU = 4096;
 
@@ -537,6 +539,15 @@ const REGION_ORCUS = freezeRegion({
         chartNote: 'The only Vael dock in the dark. Scan work goes only to pilots they admit.',
         repGated: true,
       },
+      {
+        id: ORCUS_ANCHOR.stationId,
+        name: ORCUS_ANCHOR.name,
+        type: ORCUS_ANCHOR.stationType,
+        factionId: ORCUS_ANCHOR.factionId,
+        size: 'L',
+        services: [...ORCUS_ANCHOR.services],
+        chartNote: 'A station-scale mass fixed at the Orcus well. Smugglers sell from the only frame that does not drift.',
+      },
     ],
     fields: [
       { id: 'f_orcus_1', type: 'ast_rare_exotic', countWeight: 1.0 },
@@ -558,6 +569,12 @@ const REGION_ORCUS = freezeRegion({
         id: 'station_orcus_shadow',
         pos: { x: 420, z: -960 },
         archetypeGlb: 'place_station_research',
+        landmark: true,
+      },
+      {
+        id: ORCUS_ANCHOR.stationId,
+        pos: { ...ORCUS_ANCHOR.fixedLocalPos },
+        archetypeGlb: 'place_station_blackmarket',
         landmark: true,
       },
     ],
