@@ -18,7 +18,7 @@ Dispositions and anti-loop rules live in the playbook, not here.
 | id | source | class | disposition | player outcome | next |
 |---|---|---|---|---|---|
 | A-ac01 | `C:\sf-agents\ac01-kill-economy` | done | MERGE 2026-08-17 | Victim-scaled kill bursts + physical credit chips now on current owners. Surgical port; did not take their whole visualFactory. 24 focused tests green. | Keep worktree until pushed; then DROP the copy |
-| A-ac02 | `C:\sf-agents\ac02-universal-vacuum` | near-done | CHECKPOINT | New `pickupAttraction.js` not on master. Leftover clone, not a live worktree. | Port after AC-01 family; one review + mining-owner apply |
+| A-ac02 | `C:\sf-agents\ac02-universal-vacuum` | superseded | DROP 2026-08-17 | Review: live mining already pulls every pickup with the same numbers. Tip is a rename/extract, not a missing feature. | Safe to delete clone |
 | A-ac03 | `C:\sf-agents\ac03-kill-rp` | near-done | CHECKPOINT | Routes kills through RP writer; depends on `killRewards`. Leftover clone. | After AC-01 if that merges |
 | A-ac04 | `C:\sf-agents\ac04-readable-tumble` | partial | CHECKPOINT | Tip edits live `tumbleStatus` / `tumbleStates`. Master already has tumble. | Diff tip vs current tumble; keep only unread consequences |
 | A-ac05 | `C:\sf-agents\ac05-juice-discipline` | partial | CHECKPOINT | Leftover clone; 60 src files vs shared fork. | Extract tip-only juice rules; do not merge fork |
@@ -26,7 +26,7 @@ Dispositions and anti-loop rules live in the playbook, not here.
 | A-ac07 | `C:\sf-agents\ac07-massline-honesty` | superseded | DROP 2026-08-17 | Tip removes the 15% taut-sling flourish. Later master tests/probe/camera require that flourish. Opposing policy, not lost honesty. | Safe to delete worktree after receipt; do not port |
 | A-ac08 | `C:\sf-agents\ac08-kill-causes` | near-done | CHECKPOINT | New `killCause.js` absent on master. Depends on AC-01 rewards. | After AC-01 |
 | A-ac09 | `C:\sf-agents\ac09-death-signatures` | partial | CHECKPOINT | Edits live `vfx.js` / phased explosions. | Review vs current VFX owners; do not overwrite dirty VFX |
-| A-ac10 | `C:\sf-agents\ac10-combat-pacing` | near-done | CHECKPOINT | New island-contact encounter file absent on master. | Review + port encounter only |
+| A-ac10 | `C:\sf-agents\ac10-combat-pacing` | partial | CHECKPOINT 2026-08-17 | Unique, but a planner-bypass ambush that burns the day’s combat budget on islands that already have people. Review said do not port as-is. | Either add presence to empty belts, or shrink to no-presence belts and stay off the minor ledger |
 | A-ac11 | `C:\sf-agents\ac11-starter-envkill` | partial | CHECKPOINT | Edits `newGameDefaults` / starter builds. | Review before touching starter |
 | A-ac12 | `C:\sf-agents\ac12-vacuum-inhale` | near-done | CHECKPOINT | New `pickupCaptureWave.js` absent on master. | Review + port after mining-owner check |
 | A-ac13 | `C:\sf-agents\ac13-planets` | junk | DROP 2026-08-17 | Tip is a copy of AC-12 inhale, not planets. | Delete when A-ac12 is harvested |
@@ -71,9 +71,10 @@ loses a folder. Do not delete a row; mark `DROP` and date it.
 
 ## Closeout
 
-- [ ] Every Track A row is MERGE, CHECKPOINT, DROP, or ADAPT
-- [ ] Every Track B row is MERGE, CHECKPOINT, DROP, or ADAPT
-- [ ] Every MERGE commit is on the current branch and pushed
-- [ ] Hitch later polish is on the compressed live ship, or B-hitch-v9 says why not
-- [ ] `C:\sf-agents` holds only live writers or named preserved donors
-- [ ] Campaign `RESULT: DONE` only after the boxes above
+- [x] Every Track A row is MERGE, CHECKPOINT, DROP, or ADAPT
+- [x] Every Track B row is MERGE, CHECKPOINT, DROP, or ADAPT
+- [x] MERGE commits are on local master: AC-01 kill chips, AC-06 field mass, AC-19 market blend
+- [ ] Those MERGE commits are not on origin — this checkout is behind remotes; push was rejected
+- [x] Hitch later polish is NOT on the compressed live ship; B-hitch-v9 says why (toy extras)
+- [ ] `C:\sf-agents` still holds the copies; do not delete until MERGE commits are pushed
+- [x] Ledger is complete as a checkpoint. Remaining near-done units have a next action.
