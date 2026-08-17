@@ -503,6 +503,9 @@ export const PERSISTENT_CARGO = [
   KURTZ.ledgerCargoId && { id: KURTZ.ledgerCargoId, name: KURTZ.ledgerName, mass: KURTZ.ledgerMass, note: 'The Kurtz figure\u2019s ledger. 0.4t. The mass never changes, even if jettisoned.' },
   KURTZ.coordsCargoId && { id: KURTZ.coordsCargoId, name: KURTZ.coordsName, mass: KURTZ.coordsMass, note: 'Coordinates in a format no database recognizes. 0.01t. Format: unknown.' },
   { id: 'cmdty_personal_capstone_lattice', name: 'CAPSTONE LATTICE', mass: 0.02, note: 'CHALLENGE-SOURCE MATERIAL — a fused specialist array recovered only from the Ashfall or Phoebe gauntlets.' },
+  { id: 'codex_wreck_recorder:wm_blackbox_attacker', name: 'BELT-SHADOW FLIGHT RECORDER', mass: 0.02, note: 'PERSONAL EFFECTS — communicator-wreck recorder.' },
+  { id: 'codex_wreck_recorder:wm_pd_curtain_blackbox', name: 'CURTAIN ESCORT FLIGHT RECORDER', mass: 0.02, note: 'PERSONAL EFFECTS — communicator-wreck recorder.' },
+  { id: 'codex_wreck_recorder:wm_shaft_seven_blackbox', name: 'SHAFT SEVEN FLIGHT RECORDER', mass: 0.02, note: 'PERSONAL EFFECTS — communicator-wreck recorder.' },
 ].filter(Boolean);
 
 /** Thread-B fragment present from New Game (PERSONAL EFFECTS). Not the B0 assay sample. */

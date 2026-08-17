@@ -45,6 +45,10 @@ import {
   isOrrinWitnessRecorder,
   orrinWitnessSource,
 } from '../data/orrinWitnessCase.js';
+import {
+  WRECK_MISSION_BLACK_BOX_SOURCE_KIND,
+  wreckMissionBlackBox,
+} from '../data/wreckMissionBlackBoxes.js';
 import { addCargo } from './cargo.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
 import {
@@ -171,6 +175,7 @@ export const story = {
     bus.on('ui:kurtzInteract', (p) => this._onKurtzInteract(p || {}));
     bus.on('ui:heliosBay7Scan', () => this._onHeliosBay7Scan());
     bus.on('story:awardPersistentCargo', (p) => this._awardPersistentCargo(p || {}));
+    bus.on('loot:collected', (p) => this._onWreckMissionRecorderCollected(p || {}));
     bus.on('ui:talkContact', (p) => this._onVergeKellEvidence(p || {}));
     bus.on(ORRIN_WITNESS_SUBMISSION_EVENT, (p) => this._onOrrinWitnessSubmission(p || {}));
     bus.on('factionPresence:archiveEvidenceRead', (p) => this._onVergeArchiveEvidence(p || {}));
@@ -1423,6 +1428,21 @@ export const story = {
     });
     this.bus.emit('toast', { text: `${def.name} secured in Personal Effects`, kind: 'success', ttl: 5 });
     return true;
+  },
+
+  _onWreckMissionRecorderCollected(payload) {
+    if (!(Number(payload && payload.amount) > 0)) return false;
+    const source = payload && payload.lotSource;
+    if (!source || source.sourceKind !== WRECK_MISSION_BLACK_BOX_SOURCE_KIND) return false;
+    const record = wreckMissionBlackBox(source.missionId || source.recordId);
+    if (!record || source.cargoId !== record.cargoId) return false;
+    const locked = this.state.story && this.state.story.persistentCargo;
+    if (Array.isArray(locked) && locked.includes(record.cargoId)) return false;
+    return this._awardPersistentCargo({
+      id: record.cargoId,
+      qty: 1,
+      reason: `wreck_mission_recorder:${record.id}`,
+    });
   },
 
   _onHeliosBay7Scan() {

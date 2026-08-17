@@ -32,6 +32,10 @@ import { verbAcceptsType } from '../data/interactionDescriptorCatalog.js';
 import { describeEntity } from './interactionDescriptors.js';
 import { resolveBeamVerb, spawnPayloadEntity, BEAM_CUE_IDS } from '../combat/industrialBeam.js';
 import { actionForWreck, poolForAction } from '../data/salvageActions.js';
+import {
+  WRECK_MISSION_BLACK_BOX_SOURCE_KIND,
+  wreckMissionBlackBox,
+} from '../data/wreckMissionBlackBoxes.js';
 import { removeCargo, addCargo } from './cargo.js';
 import {
   claimRichSeamOpportunity,
@@ -1451,7 +1455,28 @@ export const mining = {
         // in the production entity save so Continue cannot erase value before the vacuum arrives.
         if (pickup) pickup.flags = Object.assign({}, pickup.flags, { persistent: true });
       } else {
-        this._spawnPickup(wreck, id, got[id]);
+        const recorder = id === 'cmdty_salvage_electronics'
+          ? wreckMissionBlackBox(d.wreckMissionId) : null;
+        if (recorder) {
+          const sourceId = d.salvagePointId || `entity:${wreck.id}`;
+          const pickup = this._spawnPickupEntity(wreck, id, got[id], null, {
+            wreckMissionRecorder: true,
+            lotSource: {
+              lotId: `wreck-mission-recorder:${recorder.id}:${sourceId}`,
+              provenanceId: `wreck-mission-recorder:${recorder.id}:${sourceId}`,
+              sourceKind: WRECK_MISSION_BLACK_BOX_SOURCE_KIND,
+              recordId: recorder.id,
+              missionId: recorder.id,
+              cargoId: recorder.cargoId,
+              salvagePointId: d.salvagePointId || null,
+              sectorId: this.state.world && this.state.world.currentSectorId || null,
+              sourceOwner: 'player',
+            },
+          });
+          if (pickup) pickup.flags = Object.assign({}, pickup.flags, { persistent: true });
+        } else {
+          this._spawnPickup(wreck, id, got[id]);
+        }
       }
     }
 
