@@ -4,6 +4,7 @@
 
 import { FRONTIER_ANCHORS, FRONTIER_CORE_GATE_PATCHES } from './frontierRegions/index.js';
 import { PQ019_FACILITY_ANCHORS } from './heistFacilities.js';
+import { WRECK_CATHEDRAL_SETTLEMENT } from './wreckCathedralSettlement.js';
 
 const GATE_R = 0.82;
 
@@ -59,6 +60,11 @@ const CORE_SECTOR_ANCHORS = {
     stations: [
       { id: 'station_ceres', pos: { x: -1100, z: 620 }, archetypeGlb: 'place_station_refinery', landmark: true },
       { id: 'station_beltout', pos: { x: 780, z: -940 }, archetypeGlb: 'place_station_mining' },
+      {
+        id: WRECK_CATHEDRAL_SETTLEMENT.stationId,
+        pos: WRECK_CATHEDRAL_SETTLEMENT.localPos,
+        archetypeGlb: WRECK_CATHEDRAL_SETTLEMENT.archetypeGlb,
+      },
     ],
     gates: [
       { to: 'sector_helios_prime', pos: { x: 2866, z: -1910 } },

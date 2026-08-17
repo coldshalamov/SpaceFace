@@ -3772,14 +3772,14 @@ export const traffic = {
 
   _sectorStations() {
     const index = this.state.entityIndex;
-    if (index && index.__spacefaceEntityIndexV1 && Array.isArray(index.dockStations)) {
-      return index.dockStations;
-    }
     const out = this._stationScratch || (this._stationScratch = []);
     out.length = 0;
-    const stations = this.state.entityList || [];
+    const stations = index && index.__spacefaceEntityIndexV1 && Array.isArray(index.dockStations)
+      ? index.dockStations
+      : (this.state.entityList || []);
     for (const e of stations) {
-      if (e.type === 'station' && e.alive && !(e.data && e.data.isGate)) out.push(e);
+      if (e.type === 'station' && e.alive && !(e.data && e.data.isGate)
+          && e.data?.ambientTraffic !== false) out.push(e);
     }
     return out;
   },

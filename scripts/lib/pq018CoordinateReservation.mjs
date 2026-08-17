@@ -13,6 +13,11 @@ const STATION_SAFE_RADIUS_WU = 1100;
 const GATE_SAFE_RADIUS_WU = 900;
 const OTHER_PLACE_RADIUS_WU = 200;
 
+function isEmbeddedCathedralBerth(station) {
+  return station?.embeddedWorldSiteId === 'world_site_wreck_cathedral'
+    && station?.ambientTraffic === false;
+}
+
 export function evaluatePq018CoordinateReservation() {
   const sector = SECTORS.find((candidate) => candidate.id === 'sector_ceres_belt');
   if (!sector) {
@@ -40,6 +45,9 @@ export function evaluatePq018CoordinateReservation() {
   };
 
   for (const station of sector.stations || []) {
+    // A dockable body deliberately authored inside the reserved world-site envelope is not a
+    // competing safe body. It remains excluded from ambient station lanes by the same descriptor.
+    if (isEmbeddedCathedralBerth(station)) continue;
     addCircle(
       'station-safe-body',
       station.id,
@@ -76,11 +84,13 @@ export function evaluatePq018CoordinateReservation() {
   // superset of possible arrival/transit corridors between every authored gate and station/gate.
   // PQ-020 may choose a smaller topology, but it cannot consume this already-reserved envelope.
   const laneNodes = [
-    ...(sector.stations || []).map((station) => ({
-      id: `station:${station.id}`,
-      kind: 'station',
-      pos: station.pos,
-    })),
+    ...(sector.stations || [])
+      .filter((station) => !isEmbeddedCathedralBerth(station))
+      .map((station) => ({
+        id: `station:${station.id}`,
+        kind: 'station',
+        pos: station.pos,
+      })),
     ...(sector.gates || []).map((gate) => ({
       id: `gate:${gate.to}`,
       kind: 'gate',

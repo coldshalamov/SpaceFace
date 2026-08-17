@@ -14,6 +14,7 @@ import { MEMORIAL_FIELD } from './memorialFieldLandmark.js';
 import { sectorLocalToGlobalForSector } from './sectorCoordinates.js';
 import { SECTORS } from './sectors.js';
 import { fixerMemoryFor } from './stationContacts.js';
+import { WRECK_CATHEDRAL_SETTLEMENT } from './wreckCathedralSettlement.js';
 
 export const FRONTIER_RUMOR_DAY_SECONDS = 600;
 export const FRONTIER_RUMOR_SCHEMA_VERSION = 1;
@@ -728,6 +729,50 @@ function heliosMemorialFieldOffer(state, stationSource) {
   };
 }
 
+function wreckCathedralLedgerOffer(state, stationSource) {
+  const authored = WRECK_CATHEDRAL_SETTLEMENT;
+  const rumor = authored.rumor;
+  if (!stationSource || stationSource.station.id !== authored.stationId) return null;
+  if (frontierRumorOwned(state, rumor.id)) return null;
+  const sector = SECTOR_BY_ID.get(rumor.targetSectorId);
+  const poi = sector && (sector.pois || []).find((row) => row && row.id === rumor.targetPoiId);
+  const localPos = finitePoint(poi && poi.pos);
+  if (!sector || !poi || !localPos || !candidateStillUnknown(state, {
+    kind: rumor.kind, sector, targetId: poi.id,
+  })) return null;
+
+  const seed = finite(state && state.meta && state.meta.seed, 1) >>> 0;
+  const targetGlobal = sectorLocalToGlobalForSector(localPos, sector.id);
+  const angle = (hash32(seed, rumor.id, 'bearing-offset-angle') / 0x100000000) * Math.PI * 2;
+  const offset = 120 + (hash32(seed, rumor.id, 'bearing-offset-distance') % 101);
+  return {
+    id: rumor.id,
+    schemaVersion: FRONTIER_RUMOR_SCHEMA_VERSION,
+    source: 'bar',
+    sourceStationId: authored.stationId,
+    sourceBodyId: null,
+    sourceSectorId: authored.sectorId,
+    dayIndex: dayIndexFor(state),
+    kind: rumor.kind,
+    kindLabel: rumor.kindLabel,
+    targetId: rumor.targetPoiId,
+    targetPlaceKind: 'poi',
+    targetName: rumor.targetName,
+    sectorId: sector.id,
+    sectorName: sector.name || sector.id,
+    fieldType: null,
+    coordSpace: 'global_v1',
+    bearingCenter: {
+      x: targetGlobal.x + Math.cos(angle) * offset,
+      z: targetGlobal.z + Math.sin(angle) * offset,
+    },
+    radius: rumor.radius,
+    price: rumor.price,
+    phase: 'rumored',
+    text: rumor.text,
+  };
+}
+
 /**
  * Build the one bar rumor available at a station for the current 10-minute sector-day.
  * The selection is stable and never mutates state. Purchased cards return null until the next day.
@@ -737,6 +782,8 @@ export function frontierRumorOffer(state, stationId) {
   if (!stationSource) return null;
   const activeWarrant = activeBountyRumorOffer(state, stationId);
   if (activeWarrant) return activeWarrant;
+  const cathedralLedger = wreckCathedralLedgerOffer(state, stationSource);
+  if (cathedralLedger) return cathedralLedger;
   const quietPatch = eunomiaQuietPatchOffer(state, stationSource);
   if (quietPatch) return quietPatch;
   const anchor = orcusAnchorOffer(state, stationSource);

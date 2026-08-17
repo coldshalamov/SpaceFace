@@ -10,6 +10,7 @@ import { applyClaimableBodySites } from './claimableBodies.js';
 import { applyPlanetStateAssignments } from './planetStates.js';
 import { appendPq019FacilityPois } from './heistFacilities.js';
 import { FUEL_STACK } from './fuelStackLandmark.js';
+import { WRECK_CATHEDRAL_SETTLEMENT } from './wreckCathedralSettlement.js';
 // Per ARCHITECTURE §0.8:
 //   dangerTier(s) = clamp(round((1 - s.security) * 5), 0, 5)
 //   wealthIndex(s) = clamp(0.3 + 0.16*tier + 0.10*(1-security), 0.3, 1.6)
@@ -118,6 +119,19 @@ const CORE_SECTORS = [
         chartNote: 'Refinery row — buys ore dear, sells plates cheap.' },
       { id: 'station_beltout', name: 'Belt Outpost',   type: 'mining',   factionId: 'faction_dmc', size: 'S', services: ['trade','missions','ore_buy'],
         chartNote: 'Rock crews and a scale. Ore moves same-shift; nothing else does.' },
+      {
+        id: WRECK_CATHEDRAL_SETTLEMENT.stationId,
+        name: WRECK_CATHEDRAL_SETTLEMENT.name,
+        type: WRECK_CATHEDRAL_SETTLEMENT.type,
+        factionId: WRECK_CATHEDRAL_SETTLEMENT.factionId,
+        size: WRECK_CATHEDRAL_SETTLEMENT.size,
+        services: WRECK_CATHEDRAL_SETTLEMENT.services,
+        marketEquilibriumFactors: WRECK_CATHEDRAL_SETTLEMENT.marketEquilibriumFactors,
+        embeddedWorldSiteId: WRECK_CATHEDRAL_SETTLEMENT.embeddedWorldSiteId,
+        ambientTraffic: WRECK_CATHEDRAL_SETTLEMENT.ambientTraffic,
+        rngNeutralAuthoredAddition: WRECK_CATHEDRAL_SETTLEMENT.rngNeutralAuthoredAddition,
+        chartNote: WRECK_CATHEDRAL_SETTLEMENT.chartNote,
+      },
     ],
     fields: [
       { id: 'f_ceres_1', type: 'ast_metallic',    countWeight: 1.0 },

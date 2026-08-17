@@ -137,8 +137,9 @@ export function projectSectorEmbodiment(opts = {}) {
   const dangerDelta = danger - baseDanger;
   const densityMultiplier = clamp(1 + dangerDelta * 1.35 + Math.max(0, pricePressure) * 0.25, 0.35, 2.75);
   const encounterLoad = clamp(0.65 + 1.35 * danger, 0.2, 2.5);
+  const ambientStationIds = stationIdsOf(sector);
   const trafficCountHint = clamp(
-    Math.round((2 + (sector && sector.stations ? sector.stations.length : 1) * 0.75) * densityMultiplier),
+    Math.round((2 + (sector ? ambientStationIds.length : 1) * 0.75) * densityMultiplier),
     0,
     12,
   );
@@ -179,7 +180,7 @@ export function projectSectorEmbodiment(opts = {}) {
     payload: {
       pricePressure: round6(pricePressure),
       lanePressure: round6(clamp(pricePressure + dangerDelta * 0.18 + (danger - 0.45) * 0.035, -1, 1)),
-      stationIds: stationIdsOf(sector),
+      stationIds: ambientStationIds,
       marketFlowUnitsPerDay: -Math.round(pricePressure * 72),
     },
   }));
@@ -557,7 +558,11 @@ function buildRoleMixBias({ danger, pricePressure, scn, reach, sector }) {
 
 function stationIdsOf(sector) {
   if (!sector || !Array.isArray(sector.stations)) return [];
-  return sector.stations.map((s) => s && s.id).filter(Boolean).sort();
+  return sector.stations
+    .filter((station) => station && station.ambientTraffic !== false)
+    .map((station) => station.id)
+    .filter(Boolean)
+    .sort();
 }
 
 function lookupSector(map, id) {

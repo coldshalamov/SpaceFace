@@ -1419,12 +1419,20 @@ export const world = {
   _spawnStations(sector, active, rng) {
     const wr = sector.worldRadius || DEFAULT_WORLD_RADIUS;
     const stations = sector.stations || [];
-    const n = stations.length;
-    stations.forEach((st, i) => {
+    const layoutCount = stations.reduce((count, station) => (
+      count + (station.pos && station.rngNeutralAuthoredAddition === true ? 0 : 1)
+    ), 0);
+    let layoutIndex = 0;
+    stations.forEach((st) => {
       // Authored anchors win; procedural ring is fallback for dev sectors missing pos.
-      // RNG order preserved: roll ang/ringR before conversion even when pos is authored.
-      const ang = (Math.PI * 2 * i) / Math.max(1, n) + rng() * 0.6;
-      const ringR = wr * (0.28 + rng() * 0.22);
+      // Ordinary authored anchors retain their historical unused draws. An explicit RNG-neutral
+      // embedded addition consumes none, so adding a berth inside an existing world site cannot
+      // re-lay the sector's fields, hazards, POIs, or encounter dressing.
+      const rngNeutral = st.pos && st.rngNeutralAuthoredAddition === true;
+      const ringIndex = rngNeutral ? 0 : layoutIndex++;
+      const ang = (Math.PI * 2 * ringIndex) / Math.max(1, layoutCount)
+        + (rngNeutral ? 0 : rng()) * 0.6;
+      const ringR = wr * (0.28 + (rngNeutral ? 0 : rng()) * 0.22);
       const local = st.pos
         ? { x: st.pos.x, z: st.pos.z }
         : { x: Math.cos(ang) * ringR, z: Math.sin(ang) * ringR };
@@ -1467,6 +1475,10 @@ export const world = {
           archetypeGlb: st.archetypeGlb || null,
           landmark: !!st.landmark,
           landmarkGlb: st.landmarkGlb || null,
+          ...(st.ambientTraffic === false ? { ambientTraffic: false } : {}),
+          ...(st.embeddedWorldSiteId
+            ? { embeddedWorldSiteId: String(st.embeddedWorldSiteId) }
+            : {}),
         },
       });
       this._stampHomeSector(ent, sector.id);
