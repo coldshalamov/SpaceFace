@@ -17,6 +17,8 @@ import {
   timeTrialCourseForSector,
   timeTrialLocalBoard,
   timeTrialMedalRank,
+  timeTrialTrailTintForAnomaly,
+  timeTrialTrailTintForPlayerDeed,
   timeTrialTrailTintById,
 } from '../data/timeTrialCourses.js';
 import { makeEnemySpawnSpec } from './combat.js';
@@ -364,6 +366,7 @@ export const timeTrials = {
     this._arenaRun = null;
     this._lastBuoyContactTick = -1;
     ensureLedger(this.state);
+    this._syncPlayerDeedTrailTints();
     this._unsubs = [
       this.bus.on('sector:enter', ({ sectorId } = {}) => this._enterSector(sectorId)),
       this.bus.on('sector:exit', () => this._leaveSector('sector_exit')),
@@ -378,9 +381,12 @@ export const timeTrials = {
       this.bus.on('timeTrial:selectGhost', (payload) => this._selectGhost(payload || {})),
       this.bus.on('timeTrial:selectTrailTint', (payload) => this._selectTrailTint(payload || {})),
       this.bus.on('timeTrial:arenaRequest', (payload) => this._requestArena(payload || {})),
+      this.bus.on('title:earned', (payload) => this._onTitleEarned(payload || {})),
+      this.bus.on('anomaly:drifterUglinessBark', (payload) => this._onDrifterEvent(payload || {})),
       this.bus.on('save:restoring', () => this._leaveSector('save_restoring')),
       this.bus.on('save:loaded', () => {
         ensureLedger(this.state);
+        this._syncPlayerDeedTrailTints();
         this._enterSector(this.state.world?.currentSectorId);
       }),
       this.bus.on('game:new', () => this._resetForNewGame()),
@@ -1165,6 +1171,49 @@ export const timeTrials = {
       color: timeTrialTrailTintById(tintId)?.color || null,
     });
     return true;
+  },
+
+  _unlockReceiptTrailTint(tint, source) {
+    if (!tint) return false;
+    const ledger = ensureLedger(this.state);
+    if (ledger.unlockedTrailTints[tint.id] === true) return false;
+    ledger.unlockedTrailTints[tint.id] = true;
+    this.bus.emit('timeTrial:trailTintUnlocked', {
+      tintId: tint.id,
+      color: tint.color,
+      source,
+    });
+    return true;
+  },
+
+  _onTitleEarned(payload) {
+    if (payload.kind !== 'player_deed') return false;
+    return this._unlockReceiptTrailTint(
+      timeTrialTrailTintForPlayerDeed(payload.titleId),
+      `player_deed:${payload.titleId}`,
+    );
+  },
+
+  _onDrifterEvent(payload) {
+    if (payload.combatOutcome !== false) return false;
+    return this._unlockReceiptTrailTint(
+      timeTrialTrailTintForAnomaly(payload.anomalyId),
+      `anomaly:${payload.anomalyId}`,
+    );
+  },
+
+  _syncPlayerDeedTrailTints() {
+    const earned = this.state?.story?.titles?.playerDeeds?.earnedById;
+    if (!earned || typeof earned !== 'object') return 0;
+    const ledger = ensureLedger(this.state);
+    let count = 0;
+    for (const titleId of Object.keys(earned)) {
+      const tint = timeTrialTrailTintForPlayerDeed(titleId);
+      if (!tint || ledger.unlockedTrailTints[tint.id] === true) continue;
+      ledger.unlockedTrailTints[tint.id] = true;
+      count += 1;
+    }
+    return count;
   },
 
   _leaveSector(reason) {

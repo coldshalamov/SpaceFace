@@ -211,12 +211,37 @@ export const VESTA_STATION_ARENA = Object.freeze({
   ]),
 });
 
+function freezeDeedTrailTint(id, color, unlock) {
+  return Object.freeze({ id, color, unlock: Object.freeze(unlock) });
+}
+
+// Plan 44 reuses the existing Trials selector and physical contrail owner. These two wakes are
+// earned by canonical world receipts rather than a race medal, and never create another cosmetic
+// inventory or render path.
+export const SMOKEWALKER_EMBER_TRAIL_TINT = freezeDeedTrailTint(
+  'trail_smokewalker_ember',
+  '#ff6f32',
+  { event: 'title:earned', titleId: 'deed_smokewalker' },
+);
+
+export const DRIFTER_BIOLUMINESCENT_TRAIL_TINT = freezeDeedTrailTint(
+  'trail_drifter_bioluminescent',
+  '#62f1c8',
+  { event: 'anomaly:drifterUglinessBark', anomalyId: 'wildlife_orcus_drifter_shoal' },
+);
+
+export const DEED_EVENT_TRAIL_TINTS = Object.freeze([
+  SMOKEWALKER_EMBER_TRAIL_TINT,
+  DRIFTER_BIOLUMINESCENT_TRAIL_TINT,
+]);
+
 const COURSE_BY_ID = new Map(TIME_TRIAL_COURSES.map((course) => [course.id, course]));
 const COURSE_BY_SECTOR = new Map(TIME_TRIAL_COURSES.map((course) => [course.sectorId, course]));
 const ARENA_TIER_BY_ID = new Map(VESTA_STATION_ARENA.tiers.map((tier) => [tier.id, tier]));
 const TRAIL_TINT_BY_ID = new Map([
   ...TIME_TRIAL_COURSES.map((course) => [course.rewards.goldTrailTint.id, course.rewards.goldTrailTint]),
   [VESTA_STATION_ARENA.rewardTint.id, VESTA_STATION_ARENA.rewardTint],
+  ...DEED_EVENT_TRAIL_TINTS.map((tint) => [tint.id, tint]),
 ]);
 
 export function timeTrialCourseById(courseId) {
@@ -233,6 +258,16 @@ export function timeTrialArenaTierById(tierId) {
 
 export function timeTrialTrailTintById(tintId) {
   return TRAIL_TINT_BY_ID.get(tintId) || null;
+}
+
+export function timeTrialTrailTintForPlayerDeed(titleId) {
+  return DEED_EVENT_TRAIL_TINTS.find((tint) => tint.unlock.event === 'title:earned'
+    && tint.unlock.titleId === titleId) || null;
+}
+
+export function timeTrialTrailTintForAnomaly(anomalyId) {
+  return DEED_EVENT_TRAIL_TINTS.find((tint) => tint.unlock.event === 'anomaly:drifterUglinessBark'
+    && tint.unlock.anomalyId === anomalyId) || null;
 }
 
 export function medalForTimeTrialTicks(course, elapsedTicks) {
@@ -280,7 +315,11 @@ export function timeTrialLocalBoard(state) {
         ghostEnabled: ledger.ghostEnabled?.[course.id] === true,
       };
     }),
-    trailTints: [...TIME_TRIAL_COURSES.map((course) => course.rewards.goldTrailTint), VESTA_STATION_ARENA.rewardTint]
+    trailTints: [
+      ...TIME_TRIAL_COURSES.map((course) => course.rewards.goldTrailTint),
+      VESTA_STATION_ARENA.rewardTint,
+      ...DEED_EVENT_TRAIL_TINTS,
+    ]
       .map((tint) => ({ ...tint, unlocked: unlocked[tint.id] === true,
         selected: ledger.selectedTrailTint === tint.id })),
     selectedTrailTint: ledger.selectedTrailTint || null,

@@ -23,6 +23,10 @@ import { NEW_GAME } from '../src/data/newGameDefaults.js';
 import { sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
 import { SECTORS } from '../src/data/sectors.js';
 import { SECTOR_ZONES } from '../src/data/sectorZones.js';
+import {
+  DRIFTER_BIOLUMINESCENT_TRAIL_TINT,
+  timeTrialLocalBoard,
+} from '../src/data/timeTrialCourses.js';
 import { createVisualFactory } from '../src/render/visualFactory.js';
 import { save } from '../src/save/saveSystem.js';
 import { anomalyRuntime } from '../src/systems/anomalyRuntime.js';
@@ -30,6 +34,7 @@ import { combat } from '../src/systems/combat.js';
 import { fields } from '../src/systems/fields.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec } from '../src/systems/ships.js';
 import { isAttachable } from '../src/systems/tetherGameplay.js';
+import { timeTrials } from '../src/systems/timeTrials.js';
 import { cycleTarget } from '../src/ui/uiRoot.js';
 
 const SHOAL = ORCUS_DRIFTER_SHOAL;
@@ -87,7 +92,7 @@ async function boot(seed = 1901910, options = {}) {
     seed,
     bus,
     helpers,
-    systems: [fields, anomalyRuntime, physics, combat, save],
+    systems: [fields, anomalyRuntime, physics, combat, timeTrials, save],
     updateOrder: options.updatePhysics === false
       ? [anomalyRuntime, fields, combat, save]
       : [anomalyRuntime, fields, physics, combat, save],
@@ -275,6 +280,13 @@ test('a real player projectile produces one flicker/bark but no damage, reward, 
     assert.equal(body.data.drifterHitPulse, 1);
     assert.deepEqual(route.events.outcomes, [], 'the bark is not a combat outcome');
     assert.deepEqual(route.events.rewards, [], 'shooting wildlife creates no kill/loot/wallet route');
+    assert.equal(route.state.player.timeTrials.unlockedTrailTints[
+      DRIFTER_BIOLUMINESCENT_TRAIL_TINT.id
+    ], true, 'the player-caused physical Drifter event unlocks its bioluminescent wake');
+    route.bus.emit('timeTrial:selectTrailTint', { tintId: DRIFTER_BIOLUMINESCENT_TRAIL_TINT.id });
+    assert.equal(timeTrialLocalBoard(route.state).trailTints.find((entry) => (
+      entry.id === DRIFTER_BIOLUMINESCENT_TRAIL_TINT.id
+    ))?.selected, true, 'the existing Trials selector accepts the earned Drifter wake');
 
     route.bus.emit('projectile:hit', { targetId: body.id, ownerId: route.player.id });
     assert.equal(route.events.flickers.length, 2, 'later hits may flicker the struck body');

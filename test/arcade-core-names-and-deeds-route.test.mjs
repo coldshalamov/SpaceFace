@@ -15,9 +15,14 @@ import {
   ordinaryShipIdentity,
 } from '../src/data/factionNameBanks.js';
 import { PLAYER_DEEDS } from '../src/data/titles.js';
+import {
+  SMOKEWALKER_EMBER_TRAIL_TINT,
+  timeTrialLocalBoard,
+} from '../src/data/timeTrialCourses.js';
 import { barkDirector } from '../src/systems/barkDirector.js';
 import { makeEnemySpawnSpec } from '../src/systems/combat.js';
 import { createTitlesSystem } from '../src/systems/titles.js';
+import { timeTrials } from '../src/systems/timeTrials.js';
 import { traffic } from '../src/systems/traffic.js';
 import { barContactIntelTags, buildReply, generateContacts } from '../src/ui/screens/bar.js';
 import { targetDisplayName } from '../src/ui/targetPanel.js';
@@ -71,6 +76,8 @@ function titleHarness(story = {}) {
   });
   const state = {
     story,
+    player: {},
+    world: {},
     tick: 1200,
     simTime: 20,
     playerId: player.id,
@@ -80,7 +87,9 @@ function titleHarness(story = {}) {
   const bus = new TestBus();
   const system = createTitlesSystem();
   system.init({ state, bus, helpers: {} });
-  return { state, bus, system, player, heavy };
+  const trialSystem = Object.create(timeTrials);
+  trialSystem.init({ state, bus, helpers: {} });
+  return { state, bus, system, trialSystem, player, heavy };
 }
 
 function kill(bus, state, cause, victimId, overrides = {}) {
@@ -157,6 +166,15 @@ test('canonical physical receipts earn each player deed exactly once and survive
   kill(bus, state, 'chain', 102, { style: { chainDepth: 3 } });
   kill(bus, state, 'well_collapse', 103);
   kill(bus, state, 'burn_up', 104);
+  assert.equal(state.player.timeTrials.unlockedTrailTints[SMOKEWALKER_EMBER_TRAIL_TINT.id], true,
+    'the canonical Smokewalker title receipt unlocks its existing contrail tint');
+  assert.equal(bus.emitted('timeTrial:trailTintUnlocked').filter((entry) => (
+    entry.tintId === SMOKEWALKER_EMBER_TRAIL_TINT.id
+  )).length, 1, 'the duplicated kill receipt cannot duplicate the cosmetic unlock');
+  bus.emit('timeTrial:selectTrailTint', { tintId: SMOKEWALKER_EMBER_TRAIL_TINT.id });
+  assert.equal(timeTrialLocalBoard(state).trailTints.find((entry) => (
+    entry.id === SMOKEWALKER_EMBER_TRAIL_TINT.id
+  ))?.selected, true, 'the existing Trials selector exposes the earned ember wake');
 
   const strip = {
     parentId: heavy.id,
@@ -192,6 +210,9 @@ test('canonical physical receipts earn each player deed exactly once and survive
   assert.equal(continued.player.data.deedTitleName, 'Keelbreaker');
   assert.equal(continued.bus.emitted('title:earned').length, 0,
     'Continue rebinds deed presentation without re-awarding it');
+  assert.equal(continued.state.player.timeTrials.unlockedTrailTints[
+    SMOKEWALKER_EMBER_TRAIL_TINT.id
+  ], true, 'an older save with Smokewalker reconciles into the existing tint ledger');
   assert.equal(continued.bus.emissions.length, emittedBeforeLoad + 1,
     'save:loaded itself is the only Continue bus emission in the focused route');
 });
