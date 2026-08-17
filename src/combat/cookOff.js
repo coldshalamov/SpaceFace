@@ -1,7 +1,7 @@
 // AC-12 Ember cook-off: a bounded, damage-free radial impulse routed through SG-02's combat
 // physics membrane. This module owns neither motion nor damage; it describes the impulse, records
 // transient attribution for collisionConsequences, and publishes one immutable death receipt.
-import { recordImpulseProvenance } from './impulseKernel.js';
+import { readRecentImpulseProvenance, recordImpulseProvenance } from './impulseKernel.js';
 import { hash32 } from '../core/rng.js';
 import { Masks } from '../core/entity.js';
 import { ensurePhysicsBodySpec, isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
@@ -317,12 +317,18 @@ export function triggerDeathBlastImpulse({ state, bus, helpers, source, killerId
         provenance,
       });
       if (accepted !== true) continue;
-      recordImpulseProvenance(candidate.entity, { ...provenance, magnitude });
+      // The push always lands; the *claim* does not. collisionConsequences resolves who owns a
+      // collision by reading the latest impulse record, so stamping every body near every popcorn
+      // death would quietly reassign chain-kill credit away from the weapon or debris that really
+      // acted on it. This tier only claims bodies nobody else currently owns.
+      const claimed = !readRecentImpulseProvenance(candidate.entity, tick);
+      if (claimed) recordImpulseProvenance(candidate.entity, { ...provenance, magnitude });
       affected.push(Object.freeze({
         entityId: candidate.entity.id,
         distanceWu: candidate.distance,
         impulse: magnitude,
         direction: Object.freeze(direction),
+        attributed: claimed,
       }));
     }
   }

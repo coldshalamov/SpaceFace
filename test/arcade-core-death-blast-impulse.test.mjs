@@ -9,7 +9,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { DEATH_BLAST } from '../src/combat/cookOff.js';
-import { readRecentImpulseProvenance } from '../src/combat/impulseKernel.js';
+import { readRecentImpulseProvenance, recordImpulseProvenance } from '../src/combat/impulseKernel.js';
 import { createSimulation, SIM_DT } from '../src/core/sim.js';
 import { physics } from '../src/core/physics.js';
 import { actions } from '../src/systems/actions.js';
@@ -178,6 +178,36 @@ test('the ordinary blast is bounded and declines any death another tier already 
   combatSystem.kill(emberVictim, null, {});
   sim.step(SIM_DT);
   assert.equal(receipts.length, 0, 'an authored Ember death is not shoved twice');
+});
+
+test('the blast pushes a body another actor already owns without stealing its attribution', async (t) => {
+  const sim = await liveSim(t, 0xac3113);
+  const { state, bus } = sim;
+  const combatSystem = sim.registry.get('combat');
+
+  const victim = sim.spawn(body({ x: 0, z: 0, radius: 20, mass: 60, hull: 90 }));
+  const owned = sim.spawn(body({ x: 0, z: 22, mass: 44 }));
+  for (let tick = 0; tick < 3; tick++) sim.step(SIM_DT);
+
+  // Somebody else acted on this body first - a weapon, a tether, a debris chunk. Whoever it was
+  // still owns any collision it goes on to cause; collisionConsequences reads the latest record.
+  recordImpulseProvenance(owned, {
+    actorId: 4242, weaponId: 'wpn_prior_actor', tag: 'prior_actor', appliedTick: state.tick,
+  });
+
+  const receipts = [];
+  bus.on('combat:deathBlast', (payload) => receipts.push(structuredClone(payload)));
+  combatSystem.kill(victim, null, {});
+  const after = readRecentImpulseProvenance(owned, state.tick);
+  for (let tick = 0; tick < 4; tick++) sim.step(SIM_DT);
+
+  assert.equal(receipts.length, 1);
+  const entry = receipts[0].affected.find((row) => row.entityId === owned.id);
+  assert.ok(entry, 'the owned body is still physically shoved');
+  assert.equal(entry.attributed, false, 'and the receipt says so honestly');
+  assert.ok(speedOf(owned) > 0.5, 'the push is real even though the claim was declined');
+  assert.equal(after?.tag, 'prior_actor', 'the earlier actor keeps the body');
+  assert.equal(after?.actorId, 4242);
 });
 
 test('the same death produces the same shove on a replayed seed', async (t) => {
