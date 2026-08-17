@@ -8,6 +8,9 @@ and exact-revision status. It does not replace source plans or live code.
 - Read [`NOW.md`](./NOW.md) only for threads mutating now and exact dirty hunks that must be preserved.
 - For `NEXT` / a named `PQ-*`, read the queue row, exactly one active packet, and
   [`roadmap/00_EXECUTION_PROTOCOL.md`](./roadmap/00_EXECUTION_PROTOCOL.md).
+- For leftover worktrees / unused models, follow
+  [`ORPHAN_HARVEST_PLAYBOOK.md`](./ORPHAN_HARVEST_PLAYBOOK.md). Do not invent a
+  new parking lot.
 - For `INFERENCE N ...`, follow [`INFERENCE_LANES.md`](./INFERENCE_LANES.md). Do not silently convert
   autonomous production into a PQ campaign or acceptance-infrastructure campaign.
 - Run `node scripts/check-inference-control.mjs` after changing the INFERENCE control surface.

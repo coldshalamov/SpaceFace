@@ -11,6 +11,12 @@ That closeout deletes the external `SpaceFace-archives` parking lot. The earlier
 [`roadmap/receipts/WORKTREE-RECOVERY-2026-08-08-REPORT.md`](./roadmap/receipts/WORKTREE-RECOVERY-2026-08-08-REPORT.md)
 transaction remains durable for the 13 harvested `_recovery` sources.
 
+Current leftover checkouts under `C:\sf-agents` and unused in-repo models are
+**not** closed by those receipts. Harvest them through
+[`ORPHAN_HARVEST_PLAYBOOK.md`](./ORPHAN_HARVEST_PLAYBOOK.md) and keep
+[`ORPHAN_HARVEST_LEDGER.md`](./ORPHAN_HARVEST_LEDGER.md) current. This file
+still owns the disposition words and delete-safety rules.
+
 ## Occupancy and coordination
 
 A path is occupied only when it is exact dirty/untracked foreign work, or a current claim names that

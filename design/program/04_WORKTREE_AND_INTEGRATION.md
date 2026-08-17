@@ -8,6 +8,10 @@ expiresAfterCommits: 10
 expiresAfterDays: 2
 ```
 
+This snapshot is historical. Current leftover `C:\sf-agents` copies and unused
+models are harvested through [`ORPHAN_HARVEST_PLAYBOOK.md`](./ORPHAN_HARVEST_PLAYBOOK.md)
+and [`ORPHAN_HARVEST_LEDGER.md`](./ORPHAN_HARVEST_LEDGER.md), not this table.
+
 ## Live shared-tree snapshot — 2026-08-09
 
 At reconciliation, `master`, `HEAD`, and `origin/master` are

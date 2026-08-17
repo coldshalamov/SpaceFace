@@ -1,0 +1,16 @@
+This is a campaign: harvest leftover agent work and unused models into the live game. Do not use INFERENCE. Do not stop after one unit.
+
+Law: design/program/ORPHAN_HARVEST_PLAYBOOK.md. Follow it for classify, review, merge, finish, wire, plan updates, and cleanup. The running board is design/program/ORPHAN_HARVEST_LEDGER.md.
+
+Mission:
+1. Mine C:\sf-agents and leftover branches. Mark each copy done, near-done, partial, superseded, or junk. Merge only done work, or near-done work after you finish its one missing seam. Checkpoint everything else so it cannot rot. Port onto current master owners. Do not merge a branch wholesale.
+2. Review unused models in the main project. First model unit: rebuild the compressed Hitch the player actually flies from the later polish that was left off the release copy. Never paste uncompressed source over that release. Then other unused ships, traffic, markings, and Ceres props. Polish if they are still wonky. Wire only what beats live and is not broken. A clay tube with boxes does not ship.
+3. After every unit, update the ledger and the owning plan or queue row.
+
+One unit at a time in the main checkout. Do not create worktrees. Classify, finish a near-done seam if there is one, run ONE subagent review panel and ONE focused proof, then MERGE, CHECKPOINT, DROP, or ADAPT. Never merge half-done or failing work. Never re-review the same hash. Never rerun the same failing check unchanged. If the first repair pass is not merge-safe, checkpoint and take the next unit.
+
+Commit and push each merged unit on the current branch by name. Do not delete a copy until its ledger row exists and every port from it is pushed.
+
+Keep going until every known copy and unused model has a ledger row, every MERGE is on the main line, every near-done item is finished or honestly checkpointed with a next action, and DROP copies are safe to delete.
+
+RESULT: DONE only when no finished work remains only on an orphan copy and the ledger is complete.
