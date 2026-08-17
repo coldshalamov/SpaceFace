@@ -71,7 +71,7 @@ is dead as the visible Hornet silhouette. Live factory wholeships are still
 unwired. Stay off INFERENCE, the dock/hulk remaster, and the expansion-research
 brief.
 
-- **Hornet is on cycle 51.** Tip-to-transom loft replaced by short gloves plus
+- **Hornet is on cycle 52.** Tip-to-transom loft replaced by short gloves plus
   telescoping plate bands, plated slab wings, hoop-framed drive house. Clay is
   no longer a foam dart. Hitch still wins. Not wired.
 - **Remaining remasters** are getting the same plate-skin cover

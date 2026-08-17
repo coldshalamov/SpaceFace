@@ -23,6 +23,14 @@ Class: player flyable interceptor. Hitch untouched.
 
 Working scene: headless `tools/blender/build_hornet_mtx.py`. Supported cameras in that script.
 
+## C52 approaches (brainstorm 3x)
+
+1. Rib-and-skin: hoop ribs at every station, small tiles between them — Hitch language, interceptor silhouette.
+2. Faceted closed diamond: more stepped wrap only — rejected as the C49–C51 failure mode (cardboard bands).
+3. Component-ref density: plate-course gaps + wing-root tiles translated onto C51 form.
+
+C52 implements 1 + 3.
+
 ## C49 construction (form rebuild)
 
 Shape-grammar failure being repaired: tip-to-transom `Pressure_Hull` loft still read as a foam dart after C41–C48 garnish.

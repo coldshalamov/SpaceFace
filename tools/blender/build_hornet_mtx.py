@@ -25,6 +25,7 @@ from fleet_construction import (  # noqa: E402
     add_rcs_cluster,
     add_sensor_dish,
     add_stepped_wrap,
+    add_tile_bank,
     apply_modifiers,
     boolean_cut_cylinder,
     center_loft,
@@ -540,6 +541,10 @@ def add_manufactured_delta(name, sign, material, collection):
     add_overlap_plate(f"{name}_TileB", (-0.15, 2.15 * s, 0.24), (0.32, 0.20, 0.020), material, collection, 0.004)
     add_overlap_plate(f"{name}_TileC", (-0.85, 2.85 * s, 0.16), (0.28, 0.18, 0.018), material, collection, 0.004)
     add_overlap_plate(f"{name}_TileD", (0.20, 1.70 * s, -0.22), (0.34, 0.20, 0.018), material, collection, 0.004)
+    add_overlap_plate(f"{name}_TileE", (0.85, 1.25 * s, 0.28), (0.26, 0.16, 0.018), material, collection, 0.003)
+    add_overlap_plate(f"{name}_TileF", (-0.45, 2.55 * s, 0.20), (0.24, 0.16, 0.016), material, collection, 0.003)
+    add_overlap_plate(f"{name}_TileG", (-1.10, 3.10 * s, 0.12), (0.22, 0.14, 0.016), material, collection, 0.003)
+    add_overlap_plate(f"{name}_TileH", (0.40, 2.00 * s, -0.20), (0.26, 0.16, 0.016), material, collection, 0.003)
     return wing
 
 
@@ -959,8 +964,28 @@ def build_lod(lod, mats):
     add_cylinder("TransomRing", (-7.22, 0.0, 0.08), 0.38, 0.07, armor, collection, 22, 0.005)
     add_manufactured_drive("Main", -7.18, 0.0, lod, mats, collection, scale=1.00, z=0.08)
 
-    for hx, hw, hh in ((-2.90, 0.68, 0.48), (-4.30, 0.60, 0.50), (-5.70, 0.50, 0.42), (-6.75, 0.42, 0.34)):
-        add_hoop_frame(f"HouseHoop_{hx:.2f}".replace(".", "p").replace("-", "m"), hx, hw, hh, 0.10, armor, collection, thick=0.028, half_w=0.045)
+    for hx, hw, hh in (
+        (6.20, 0.42, 0.30),
+        (4.80, 0.62, 0.44),
+        (3.40, 0.82, 0.46),
+        (2.00, 1.00, 0.42),
+        (0.40, 1.12, 0.44),
+        (-1.10, 0.86, 0.38),
+        (-2.90, 0.68, 0.48),
+        (-4.30, 0.60, 0.50),
+        (-5.70, 0.50, 0.42),
+        (-6.75, 0.42, 0.34),
+    ):
+        add_hoop_frame(
+            f"Rib_{hx:.2f}".replace(".", "p").replace("-", "m"),
+            hx, hw, hh, 0.10, armor, collection, thick=0.024, half_w=0.038,
+        )
+    add_tile_bank("NeedleTiles_D", 7.40, 4.70, 0.00, 0.34, 6, 0.18, 0.12, 0.018, armor, collection, 0.04)
+    add_tile_bank("WaistTiles_D", 2.20, -1.20, 0.00, 0.54, 8, 0.20, 0.14, 0.018, armor, collection, 0.05)
+    add_tile_bank("HouseTiles_D", -2.40, -6.40, 0.00, 0.56, 7, 0.18, 0.12, 0.016, armor, collection, 0.04)
+    add_tile_bank("FlankTiles_P", 2.00, -1.40, -0.92, 0.22, 7, 0.16, 0.028, 0.10, armor, collection, 0.03)
+    add_tile_bank("FlankTiles_S", 2.00, -1.40, 0.92, 0.22, 7, 0.16, 0.028, 0.10, armor, collection, 0.03)
+    add_tile_bank("KeelTiles", 1.80, -1.50, 0.00, -0.56, 6, 0.18, 0.10, 0.016, hull, collection, 0.03)
 
     add_folded_sheet(
         "Chine_P",
