@@ -10,7 +10,7 @@
 
 import { SHIP, COLD_START, REFS, FIGURES, COMMS, GRAFFITI, BEAT_CONTENT, ENDGAME_CHOICES, KURTZ, PERSISTENT_CARGO } from '../../data/narrative.js';
 import { TETHYS_BLACK_MARKET_DISCOVERY } from '../../data/frontierRumors.js';
-import { explorationDiscoveryPlates } from '../../world/explorationJournal.js';
+import { explorationDiscoveryPlates, galaxyExplorationSummary } from '../../world/explorationJournal.js';
 import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
 import { createShipLedgerPanel } from './shipLedger.js';
 
@@ -286,7 +286,7 @@ function countEncounteredGraffiti(story = {}) {
   return count;
 }
 
-export function codexProgressSummary(story = {}) {
+export function codexProgressSummary(story = {}, state = null) {
   const beat = storyBeatIndex(story);
   let commsTotal = COLD_START.length;
   let commsUnlocked = COLD_START.length;
@@ -302,18 +302,23 @@ export function codexProgressSummary(story = {}) {
   const storyUnlocked = Math.min(BEAT_CONTENT.length, beat + 1);
   const endgameUnlocked = beat >= 7 ? ENDGAME_CHOICES.length : 0;
   const phase = BEAT_CONTENT[beat] && BEAT_CONTENT[beat].phase || 1;
+  const items = [
+    { key: 'Story', value: storyUnlocked + '/' + BEAT_CONTENT.length + ' beats' },
+    { key: 'Comms', value: commsUnlocked + '/' + commsTotal + ' unlocked' },
+    { key: 'Figures', value: figureUnlocked + '/' + figureTotal + ' known' },
+    { key: 'Graffiti', value: graffitiUnlocked + '/' + graffitiTotal + ' encountered' },
+    { key: 'Endgame', value: endgameUnlocked + '/' + ENDGAME_CHOICES.length + ' revealed' },
+    { key: 'Phase', value: 'Phase ' + phase },
+  ];
+  if (state) {
+    const gal = galaxyExplorationSummary(state);
+    items.push({ key: 'Survey', value: gal.overallPercent + '% (' + gal.foundPois + '/' + gal.totalPois + ' sites)' });
+  }
   return {
     beat,
     phase,
     note: 'Locked counts mean future entries are intentionally hidden until story progress, encounter flags, or conditional signal triggers reveal them.',
-    items: [
-      { key: 'Story', value: storyUnlocked + '/' + BEAT_CONTENT.length + ' beats' },
-      { key: 'Comms', value: commsUnlocked + '/' + commsTotal + ' unlocked' },
-      { key: 'Figures', value: figureUnlocked + '/' + figureTotal + ' known' },
-      { key: 'Graffiti', value: graffitiUnlocked + '/' + graffitiTotal + ' encountered' },
-      { key: 'Endgame', value: endgameUnlocked + '/' + ENDGAME_CHOICES.length + ' revealed' },
-      { key: 'Phase', value: 'Phase ' + phase },
-    ],
+    items,
   };
 }
 
@@ -352,7 +357,7 @@ export const codexScreen = {
     rootEl.appendChild(search);
     this._search = search;
 
-    const body = el('div', 'sf-col');
+    const body = el('div', 'sf-settings-pane');
     body.style.overflowY = 'auto';
     body.style.flex = '1';
     body.style.minHeight = '0';
@@ -500,7 +505,33 @@ export const codexScreen = {
 
   _renderDiscoveries(ctx) {
     this._body.appendChild(el('div', 'sf-codex-section-h', 'Exploration Plates'));
-    const plates = explorationDiscoveryPlates(ctx && ctx.state);
+    const state = ctx && ctx.state;
+    const gal = galaxyExplorationSummary(state);
+    const summaryCard = el('div', 'sf-codex-status');
+    summaryCard.setAttribute('aria-label', 'Survey and cartography summary');
+    summaryCard.appendChild(el('div', 'sf-codex-status-title', 'Galaxy Cartography & Survey Status'));
+    const summaryGrid = el('div', 'sf-codex-status-grid');
+
+    const item1 = el('div', 'sf-codex-status-item');
+    item1.appendChild(el('div', 'sf-codex-status-k', 'Survey Completion'));
+    item1.appendChild(el('div', 'sf-codex-status-v', `${gal.overallPercent}% (${gal.foundPois}/${gal.totalPois} sites)`));
+    summaryGrid.appendChild(item1);
+
+    const item2 = el('div', 'sf-codex-status-item');
+    item2.appendChild(el('div', 'sf-codex-status-k', 'Explored Sectors'));
+    item2.appendChild(el('div', 'sf-codex-status-v', `${gal.exploredSectors} / ${gal.totalSectors}`));
+    summaryGrid.appendChild(item2);
+
+    const item3 = el('div', 'sf-codex-status-item');
+    item3.appendChild(el('div', 'sf-codex-status-k', 'Recovered Artifacts'));
+    item3.appendChild(el('div', 'sf-codex-status-v', `${gal.trophies}`));
+    summaryGrid.appendChild(item3);
+
+    summaryCard.appendChild(summaryGrid);
+    summaryCard.appendChild(el('div', 'sf-codex-status-note', 'Fly close to unresolved signatures or perform deep triangulations to expand known frontier cartography.'));
+    this._body.appendChild(summaryCard);
+
+    const plates = explorationDiscoveryPlates(state);
     if (!plates.length) {
       this._body.appendChild(el('div', 'sf-codex-empty', 'No physical discoveries logged yet. Earn a fix, then fly down the source.'));
       return;
@@ -514,7 +545,7 @@ export const codexScreen = {
       entry.appendChild(el('div', 'sf-codex-meta', plate.meta));
       entry.appendChild(el('div', 'sf-codex-body', plate.body));
       entry.appendChild(el('div', 'sf-codex-note', plate.note));
-      if (tethysCodexReturnIntent(ctx && ctx.state, plate)) {
+      if (tethysCodexReturnIntent(state, plate)) {
         const returnToTethys = el('button', 'sf-btn', 'Show Tethys Trade Hub');
         returnToTethys.type = 'button';
         returnToTethys.style.marginTop = '10px';
@@ -528,7 +559,7 @@ export const codexScreen = {
   },
 
   _renderStatus(ctx) {
-    const summary = codexProgressSummary(safeStory(ctx));
+    const summary = codexProgressSummary(safeStory(ctx), ctx && ctx.state);
     const box = el('div', 'sf-codex-status');
     box.setAttribute('aria-label', 'Codex unlock status');
     box.appendChild(el('div', 'sf-codex-status-title', 'Codex Unlock Status'));

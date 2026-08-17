@@ -111,3 +111,43 @@ export function explorationDiscoveryPlates(state) {
   plates.sort((a, b) => (b.completedAt - a.completedAt) || a.id.localeCompare(b.id));
   return plates;
 }
+
+export function galaxyExplorationSummary(state) {
+  let totalSectors = 0;
+  let exploredSectors = 0;
+  let partialSectors = 0;
+  let totalPois = 0;
+  let foundPois = 0;
+  let trophies = 0;
+
+  for (const sector of SECTORS) {
+    totalSectors++;
+    const progress = sectorExplorationProgress(state, sector);
+    totalPois += progress.total;
+    foundPois += progress.found;
+    if (progress.total > 0) {
+      if (progress.found >= progress.total) {
+        exploredSectors++;
+      } else if (progress.found > 0) {
+        partialSectors++;
+      }
+    }
+    const disc = discoveryFor(state, sector.id);
+    const byId = (disc && disc.pois) || {};
+    for (const key of Object.keys(byId)) {
+      if (byId[key]?.landmarkArtifact?.id) trophies++;
+    }
+  }
+
+  const overallPercent = totalPois > 0 ? Math.round((foundPois / totalPois) * 100) : 0;
+
+  return {
+    totalSectors,
+    exploredSectors,
+    partialSectors,
+    totalPois,
+    foundPois,
+    overallPercent,
+    trophies,
+  };
+}
