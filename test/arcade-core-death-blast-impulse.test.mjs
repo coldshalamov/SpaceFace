@@ -210,6 +210,28 @@ test('the blast pushes a body another actor already owns without stealing its at
   assert.equal(after?.actorId, 4242);
 });
 
+test('the player hull is a body like any other: dying inside a knot of hostiles shoves them', async (t) => {
+  const sim = await liveSim(t, 0xac3114);
+  const { state, bus } = sim;
+  const combatSystem = sim.registry.get('combat');
+
+  const player = sim.spawn(body({ x: 0, z: 0, radius: 18, mass: 18, hull: 60, team: 0 }));
+  player.isPlayer = true;
+  state.playerId = player.id;
+  const hostile = sim.spawn(body({ x: 0, z: 24, mass: 44 }));
+  for (let tick = 0; tick < 3; tick++) sim.step(SIM_DT);
+
+  const receipts = [];
+  bus.on('combat:deathBlast', (payload) => receipts.push(structuredClone(payload)));
+  combatSystem.kill(player, null, {});
+  for (let tick = 0; tick < 4; tick++) sim.step(SIM_DT);
+
+  assert.equal(receipts.length, 1, 'the player defeat edge fires the same one blast');
+  assert.equal(receipts[0].sourceId, player.id);
+  assert.ok(speedOf(hostile) > 0.5,
+    `the hostile standing over the player is really shoved (got ${speedOf(hostile)})`);
+});
+
 test('the same death produces the same shove on a replayed seed', async (t) => {
   const run = async (seed) => {
     const sim = await liveSim(t, seed);
