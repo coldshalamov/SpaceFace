@@ -1,5 +1,6 @@
 // Depth Program W1 planet-state data contract.
-// Immutable authored identities and future hooks only: no render, scanner, gameplay, or save state.
+// Immutable authored identities and hooks only. Scanner consumes the stable signal descriptors;
+// runtime scan/save state remains owned by the scanner system.
 import { hash32 } from '../core/rng.js';
 
 const EMPTY_ASSIGNMENTS = Object.freeze([]);

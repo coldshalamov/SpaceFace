@@ -23,6 +23,7 @@ import {
   pallasHiddenCacheSignalAvailable,
   pallasHiddenCacheSignalCopy,
 } from '../data/pallasHiddenCache.js';
+import { planetStatesForSector } from '../data/planetStates.js';
 import {
   CONTACT_HAIL_RANGE,
   CONTACT_HAIL_REQUEST_TTL_S,
@@ -519,16 +520,35 @@ function signalKindForLivingPoi(row) {
 function collectSignalCandidates(state, sectorId, origin, nearby = [], profile = scannerProfileForState(state)) {
   const byId = new Map();
   const add = (candidate) => {
-    if (!candidate || !candidate.id || !candidate.pos || !candidate.kind) return;
-    const distance = dist(origin, candidate.pos);
+    if (!candidate || !candidate.id || !candidate.kind) return;
+    const candidatePos = candidate.pos || (candidate.sectorWide === true ? origin : null);
+    if (!candidatePos) return;
+    const distance = dist(origin, candidatePos);
     const range = Math.max(1, Number(candidate.range) || NEAR_SCAN_RADIUS);
     if (distance > range) return;
-    const row = { ...candidate, distance, range, pos: pos2(candidate.pos) };
+    const row = { ...candidate, distance, range, pos: pos2(candidatePos) };
     const previous = byId.get(row.id);
     if (!previous || row.distance < previous.distance) byId.set(row.id, row);
   };
 
   const active = state.world && state.world.activeSector;
+  // Plan 23 planets are distant authored bodies, not navigable POIs. Their sector-wide spectral
+  // return is earned by the real scanner pulse and deliberately cannot become a fake flight course.
+  for (const assignment of planetStatesForSector(sectorId)) {
+    const signal = assignment && assignment.scannerSignal;
+    if (!signal || assignment.sectorId !== sectorId) continue;
+    add({
+      id: signal.id,
+      kind: signal.kind,
+      sourceId: signal.sourceId,
+      sectorWide: true,
+      range: profile.nearRadius,
+      trackable: false,
+      retainRecord: true,
+      firstScanOnly: true,
+      classification: signal.label,
+    });
+  }
   for (const entity of nearby || []) {
     if (!entity || !entity.alive || entity.id === state.playerId || !entity.pos) continue;
     // POI identities must flow through the POI loop below so scanner completion carries the stable
@@ -644,15 +664,17 @@ function pruneSignalRecords(own) {
   const ids = Object.keys(own.records || {});
   if (ids.length <= SIGNAL_RECORD_CAP) return;
   ids.sort((a, b) => {
-    const aProtected = a === own.trackedId || !!own.completed[a];
-    const bProtected = b === own.trackedId || !!own.completed[b];
+    const aProtected = a === own.trackedId || !!own.completed[a] || own.records[a].retainRecord === true;
+    const bProtected = b === own.trackedId || !!own.completed[b] || own.records[b].retainRecord === true;
     if (aProtected !== bProtected) return aProtected ? 1 : -1;
     const time = (Number(own.records[a] && own.records[a].lastScanAt) || 0)
       - (Number(own.records[b] && own.records[b].lastScanAt) || 0);
     return time || a.localeCompare(b);
   });
   for (const id of ids.slice(0, Math.max(0, ids.length - SIGNAL_RECORD_CAP))) {
-    if (id !== own.trackedId && !own.completed[id]) delete own.records[id];
+    if (id !== own.trackedId && !own.completed[id] && own.records[id].retainRecord !== true) {
+      delete own.records[id];
+    }
   }
 }
 
@@ -939,6 +961,7 @@ export const scanner = {
       const repeatableSignal = resonanceSignal || candidate.repeatableScannerSignal === true;
       if (own.completed[candidate.id] && !repeatableSignal) continue;
       const previous = own.records[candidate.id] || null;
+      if (previous && candidate.firstScanOnly === true) continue;
       if (candidate.kind === 'anomaly' && candidate.requiresTriangulation && !candidate.triangulated) {
         const config = candidate.triangulation && typeof candidate.triangulation === 'object'
           ? candidate.triangulation
@@ -1042,7 +1065,10 @@ export const scanner = {
         ),
         status: previous && previous.status === 'tracked' ? 'tracked' : 'detected',
         manualInvestigation: candidate.manualInvestigation === true,
+        trackable: candidate.trackable !== false,
+        retainRecord: candidate.retainRecord === true,
       };
+      if (candidate.classification) record.classification = candidate.classification;
       const discoveryCopy = vestaOreCacheSignalCopy(candidate.sourceId)
         || pallasHiddenCacheSignalCopy(candidate.sourceId);
       if (discoveryCopy) {

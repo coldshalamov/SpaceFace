@@ -28,6 +28,7 @@ import { LISTENING_POST, listeningPostPuzzleState } from '../../data/listeningPo
 import { CODEX_BESTIARY, codexBestiaryPages, mergeCodexBestiaryRows } from '../../data/codexBestiary.js';
 import { CODEX_DEEDS, codexDeedPages } from '../../data/codexDeeds.js';
 import { CODEX_SECRETS, codexSecretPages } from '../../data/codexSecrets.js';
+import { codexPlanetArchetypePages } from '../../data/codexPlanetArchetypes.js';
 
 const STYLE_ID = 'sf-codex-style';
 
@@ -497,6 +498,7 @@ export const codexScreen = {
     this._unsubs.push(ctx.bus.on('comms:popup', refreshIfVisible));
     this._unsubs.push(ctx.bus.on('graffiti:show', refreshIfVisible));
     this._unsubs.push(ctx.bus.on('discovery:plateUnlocked', refreshIfVisible));
+    this._unsubs.push(ctx.bus.on('signal:scanResults', refreshIfVisible));
     this._unsubs.push(ctx.bus.on('codex:blackBoxRecovered', refreshIfVisible));
     this._unsubs.push(ctx.bus.on('codex:bestiaryUpdated', refreshIfVisible));
     this._unsubs.push(ctx.bus.on('title:earned', refreshIfVisible));
@@ -637,12 +639,26 @@ export const codexScreen = {
   },
 
   _renderDiscoveries(ctx) {
-    this._body.appendChild(el('div', 'sf-codex-section-h', 'Exploration Plates'));
+    const planetPages = codexPlanetArchetypePages(ctx && ctx.state);
     const plates = explorationDiscoveryPlates(ctx && ctx.state);
-    if (!plates.length) {
-      this._body.appendChild(el('div', 'sf-codex-empty', 'No physical discoveries logged yet. Earn a fix, then fly down the source.'));
+    if (!planetPages.length && !plates.length) {
+      this._body.appendChild(el('div', 'sf-codex-empty', 'No surveys logged yet. Pulse the scanner or earn a fix and fly down the source.'));
       return;
     }
+    if (planetPages.length) {
+      this._body.appendChild(el('div', 'sf-codex-section-h', 'Planet Surveys'));
+      for (const page of planetPages) {
+        const entry = el('article', 'sf-codex-entry');
+        entry.dataset.codexPlanetArchetypeId = page.id;
+        entry.appendChild(el('h3', null, page.title));
+        entry.appendChild(el('div', 'sf-codex-meta', page.meta));
+        entry.appendChild(el('div', 'sf-codex-body', page.body));
+        entry.appendChild(el('div', 'sf-codex-note', page.note));
+        this._body.appendChild(entry);
+      }
+    }
+    if (!plates.length) return;
+    this._body.appendChild(el('div', 'sf-codex-section-h', 'Exploration Plates'));
     for (const plate of plates) {
       const entry = el('article', 'sf-codex-entry');
       const isRequested = plate.id === this._requestedDiscoveryId;
