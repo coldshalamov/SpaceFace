@@ -28,9 +28,18 @@ function el(tag, className, opts = {}) {
 // this set tight: add a glyph when a real surface needs it, never "icons for later." currentColor only
 // (a hex baked into a path is invisible to the token discipline and will drift off-palette).
 // ---------------------------------------------------------------------------------------------------
+// J05 metaphor purge: two glyphs here were borrowed from the wrong century. `market` was a medieval
+// BALANCE SCALE and `bar` was a COFFEE MUG, sitting beside a hull, a gear and a factory. Both now
+// speak the same aerospace-console language as the rest of the set.
+//
+// `src/ui/station/icons.js` is the canonical vocabulary; `market` below is deliberately the same
+// order-book drawing as its `market` entry so the two sets cannot diverge into rival dialects. This
+// module keeps its own copy rather than importing because `.sf-glyph` in ui.css supplies the stroke
+// weight here, while `icons.js` bakes stroke attributes into each path — one set of paths cannot
+// satisfy both conventions without a wider refactor.
 const GLYPH_PATHS = {
-  // Market — balance scale (trade).
-  market: '<path d="M12 3v16M7 20h10M4.5 7h15M4.5 7l-2 5a2.6 2.6 0 0 0 4 0zM19.5 7l-2 5a2.6 2.6 0 0 0 4 0z"/>',
+  // Market — order-book bars on a baseline (trade volume, not a merchant's scale).
+  market: '<path d="M4 20V9.5M9.3 20V4.5M14.7 20v-7.4M20 20V7"/><path d="M2.8 20h18.4"/>',
   // Shipyard — hull with a viewport (buy hulls).
   shipyard: '<path d="M12 2.5c2.4 2.8 3.6 6 3.6 10l-3.6 3.2-3.6-3.2c0-4 1.2-7.2 3.6-10z"/><path d="M8.7 13.5 6.7 17M15.3 13.5l2 3.5M9.7 20h4.6"/><circle cx="12" cy="8.4" r="1.5"/>',
   // Outfitting — gear (install modules).
@@ -43,8 +52,9 @@ const GLYPH_PATHS = {
   services: '<path d="M12 3.2s6 6.4 6 10.8a6 6 0 0 1-12 0c0-4.4 6-10.8 6-10.8z"/><path d="M9.3 14.3a2.7 2.7 0 0 0 2.7 2.7"/>',
   // Factions — standard/crest flag.
   factions: '<path d="M6 3.2V21"/><path d="M6 4.4h12l-2.4 3.4L18 11.2H6z"/>',
-  // Bar — mug (rumors, contacts).
-  bar: '<path d="M6.5 8.2h9v5.4a4 4 0 0 1-4 4h-1a4 4 0 0 1-4-4z"/><path d="M15.5 9.5h1.8a2.1 2.1 0 0 1 0 4.2h-1.8M8.4 3.4v1.8M11.5 3.4v1.8"/>',
+  // Bar — two contacts in conversation. The screen's payload is rumors and people, so it is drawn
+  // as people; a drinking vessel described the furniture instead of the verb.
+  bar: '<circle cx="9" cy="9.2" r="2.7"/><path d="M4 18.6c0-2.7 2.2-4.4 5-4.4s5 1.7 5 4.4"/><circle cx="16.9" cy="10.6" r="2"/><path d="M15.6 18.6c0-2.3 1.3-3.8 3-4.1"/>',
 };
 
 // Filled ship silhouette for the .sf-asset-stage fallback (uses fill, not stroke — not a .sf-glyph).

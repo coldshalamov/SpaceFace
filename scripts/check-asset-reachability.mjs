@@ -56,8 +56,6 @@ const REFERENCE_ONLY = {
     'Labelled FX contact sheet — the mining beam is procedural additive quads (vfx.js).',
   'assets/fx/fx_thruster_main.jpg':
     'Labelled FX contact sheet — engine trails are procedural particles (vfx.js).',
-  'assets/ui/reticle.jpg':
-    'Labelled reticle reference JPG (baked title/description text, no alpha) — the HUD uses the clean inline RETICLE_SVG in uiRoot.js.',
   'assets/cinematics/menu_background.jpg':
     'Labelled "MENU / INTRO BACKGROUND TREATMENT" reference still — menus, splash and boot use the clean label-free C-INTRO-01.jpg instead.',
 };

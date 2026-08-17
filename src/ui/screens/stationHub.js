@@ -3681,7 +3681,11 @@ button.st-departure-chip:focus-visible { outline: 2px solid var(--st-accent); ou
 .st-fit-node--preview-ok { border-left-color: var(--good); }
 .st-fit-node--preview-bad { border-left-color: var(--danger); animation: st-fit-blink 1s ease-in-out 2; }
 .st-fit-node--invalid { border-color: var(--danger); }
-.st-fit-icon { width: 18px; text-align: center; }
+/* J05: holds an inline 16px stroke SVG now, not a Unicode character. inline-flex centres the glyph
+   on the row's optical middle; a bare inline <svg> would sit on the text baseline and ride low. The
+   per-type `color` rules below still drive it, because the art strokes with currentColor. */
+.st-fit-icon { width: 18px; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+.st-fit-icon svg { display: block; }
 .st-fit-icon--hull { color: var(--accent); }
 .st-fit-icon--weapon { color: var(--danger); }
 .st-fit-icon--shield { color: var(--shield); }

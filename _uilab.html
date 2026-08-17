@@ -347,10 +347,39 @@ body[data-lab="shots"] [data-shot^="state-"]{grid-column:span 2}
 .lab-caps{display:flex;gap:14px}
 .lab-caps .cap{width:280px}
 
+/* ── Right-dock instruments (J07). Both are pinned to ONE 220px column on purpose: the shipped dock
+   staggers .sf-target / .sf-overview / .sf-radar at differing widths, and the overhang is only
+   visible when they are stacked at a single width like this. ── */
+.lab-dock{width:220px;display:flex;flex-direction:column;gap:10px}
+.lab-tgt{border:1px solid var(--edge);padding:9px 10px;display:flex;flex-direction:column;gap:7px}
+.lab-tgt__top{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.lab-tgt__name{font-family:var(--display);font-size:13px;letter-spacing:.06em;color:var(--paper)}
+.lab-tgt__iff{font-family:var(--data);font-size:10px;letter-spacing:.14em;color:var(--hot)}
+.lab-tgt__row{display:flex;align-items:center;gap:6px}
+.lab-tgt__k{font-family:var(--data);font-size:9.5px;letter-spacing:.16em;color:var(--steel);width:38px}
+.lab-tgt__bar{flex:1;height:3px;background:#12233a}
+.lab-tgt__bar i{display:block;height:100%}
+.lab-tgt__v{font-family:var(--data);font-size:10px;color:var(--paper);width:34px;text-align:right}
+.lab-tgt__foot{display:flex;justify-content:space-between;font-family:var(--data);font-size:10px;
+  letter-spacing:.1em;color:var(--steel)}
+.lab-tgt__intent{color:var(--hot)}
+.lab-radar{width:220px;height:220px;position:relative;border:1px solid var(--edge)}
+.lab-radar svg{position:absolute;inset:0;width:100%;height:100%}
+.lab-radar__lbl{position:absolute;left:8px;top:6px;font-family:var(--data);font-size:9.5px;
+  letter-spacing:.16em;color:var(--steel)}
+.lab-radar__rng{position:absolute;right:8px;bottom:6px;font-family:var(--data);font-size:9.5px;
+  letter-spacing:.1em;color:var(--steel)}
+
 .lab-roundels{display:flex;flex-wrap:wrap;gap:18px;width:640px}
-.lab-roundel{width:72px;display:flex;flex-direction:column;align-items:center;gap:8px}
-.lab-roundel svg{width:56px;height:56px;stroke:var(--paper);fill:none;stroke-width:1.5;
-  stroke-linecap:round;stroke-linejoin:round}
+.lab-roundel{width:72px;display:flex;flex-direction:column;align-items:center;gap:6px}
+.lab-roundel svg{stroke:var(--paper);fill:none;stroke-linecap:round;stroke-linejoin:round}
+.lab-roundel .lg svg{width:56px;height:56px}
+/* SHIPPING SIZE. The crests render near 20px in faction rows and chart pins; a board that only
+   showed the 56px version would keep certifying detail that dissolves in the actual product.
+   Anything unreadable in this strip is a defect even when the row above looks immaculate. */
+.lab-roundel .sm{padding:4px 0;border-top:1px solid #16263c;border-bottom:1px solid #16263c;
+  width:100%;display:flex;justify-content:center}
+.lab-roundel .sm svg{width:20px;height:20px}
 .lab-roundel b{font-family:var(--display);font-weight:600;font-size:12px;letter-spacing:.14em;
   text-transform:uppercase;color:var(--steel);text-align:center}
 
@@ -935,23 +964,62 @@ body[data-lab="shots"] [data-shot^="state-"]{grid-column:span 2}
     </div>
   </div>
 
-  <div class="lab-shot" data-shot="faction-roundels">
-    <div class="lab-roundels">
-      <div class="lab-roundel" data-faction="scn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.2 20 20.6H4Z"/><path d="M12 8.2v8.4"/></svg><b>SCN</b></div>
-      <div class="lab-roundel" data-faction="mts"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18 12 5l8 13H4Z"/><path d="M8.4 18 12 11.2 15.6 18"/></svg><b>MTS</b></div>
-      <div class="lab-roundel" data-faction="dmc"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.6 19.2 12 12 20.4 4.8 12Z"/><path d="M12 8.2v7.6M8.4 12h7.2"/></svg><b>DMC</b></div>
-      <div class="lab-roundel" data-faction="reach"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 17.6c4.2-8.8 9.8-8.8 14 0"/><path d="M7.2 7.2 12 12.4 16.8 7.2"/></svg><b>Reach</b></div>
-      <div class="lab-roundel" data-faction="quiet"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 5.2a6.8 6.8 0 0 1 6.8 6.8M12 18.8A6.8 6.8 0 0 1 5.2 12"/></svg><b>Quiet</b></div>
-      <div class="lab-roundel" data-faction="vael"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4.2c2.4 3.4 5.8 7.4 5.8 11.2A5.8 5.8 0 0 1 6.2 15.4C6.2 11.6 9.6 7.6 12 4.2Z"/></svg><b>Vael</b></div>
-      <div class="lab-roundel" data-faction="free"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.2"/><path d="M5.6 18.4 18.4 5.6"/></svg><b>Free</b></div>
-      <div class="lab-roundel" data-faction="choir"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="2.2"/><path d="M12 4v3.2M12 16.8V20M4 12h3.2M16.8 12H20M6.4 6.4l2.2 2.2M15.4 15.4l2.2 2.2M17.6 6.4l-2.2 2.2M8.6 15.4l-2.2 2.2"/></svg><b>Choir</b></div>
-      <div class="lab-roundel" data-faction="helix"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4.4c6 3.2 6 12 0 15.2M16 4.4c-6 3.2-6 12 0 15.2"/><path d="M8.6 9.2h6.8M8.6 14.8h6.8"/></svg><b>Helix</b></div>
-      <div class="lab-roundel" data-faction="understory"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20V8.2"/><path d="M12 12.4 6.4 7.2M12 12.4 17.6 7.2"/><path d="M12 8.2c0-3 2.6-4.4 5.2-4"/></svg><b>Under</b></div>
-      <div class="lab-roundel" data-faction="fulfillment"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8.2h14v11.2H5Z"/><path d="M5 8.2 12 4.4 19 8.2"/><path d="M9.2 14.2 11.2 16l4.2-4.4"/></svg><b>Fill</b></div>
-      <div class="lab-roundel" data-faction="archive"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5.2h10v13.6H7Z"/><path d="M9.2 8.4h5.6M9.2 11.6h5.6M9.2 14.8h3.4"/></svg><b>Archive</b></div>
-      <div class="lab-roundel" data-faction="pitborn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 16.8 9.4 5.6l4.2 6.2 5.4-3.2-2.8 11.2H5Z"/></svg><b>Pit</b></div>
-      <div class="lab-roundel" data-faction="verge_layers"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 16.8c2.4-3.6 4.6-5.2 7-5.2s4.6 1.6 7 5.2"/><path d="M6.4 13.2c1.8-2.6 3.4-3.8 5.6-3.8s3.8 1.2 5.6 3.8"/><path d="M8 9.6c1.2-1.8 2.4-2.6 4-2.6s2.8.8 4 2.6"/></svg><b>Verge</b></div>
+  <div class="lab-shot" data-shot="target-card">
+    <div class="lab-dock">
+      <div class="lab-tgt">
+        <div class="lab-tgt__top">
+          <span class="lab-tgt__name">Rook</span><span class="lab-tgt__iff">HOSTILE</span>
+        </div>
+        <div class="lab-tgt__row">
+          <span class="lab-tgt__k">HULL</span>
+          <span class="lab-tgt__bar"><i style="width:46%;background:var(--paper)"></i></span>
+          <span class="lab-tgt__v">46%</span>
+        </div>
+        <div class="lab-tgt__row">
+          <span class="lab-tgt__k">SHLD</span>
+          <span class="lab-tgt__bar"><i style="width:12%;background:var(--hot)"></i></span>
+          <span class="lab-tgt__v">12%</span>
+        </div>
+        <div class="lab-tgt__foot">
+          <span>Interceptor</span><span class="lab-tgt__intent">CLOSING</span><span>1.2 km</span>
+        </div>
+      </div>
     </div>
+  </div>
+
+  <div class="lab-shot" data-shot="radar-compact">
+    <div class="lab-radar">
+      <svg viewBox="0 0 220 220" aria-hidden="true">
+        <g fill="none" stroke="#1d3350" stroke-width="1">
+          <circle cx="110" cy="110" r="104"/><circle cx="110" cy="110" r="69"/><circle cx="110" cy="110" r="35"/>
+          <path d="M110 6v208M6 110h208" opacity=".55"/>
+        </g>
+        <!-- heading chevrons, not dots: bearing is half the read -->
+        <g fill="none" stroke="#ff5470" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M148 74l6 9-6 9"/><path d="M79 63l6 9-6 9"/><path d="M158 137l6 9-6 9"/>
+        </g>
+        <g fill="none" stroke="#84a0c8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M66 148l6 9-6 9"/>
+        </g>
+        <!-- capital hull: double-stroke silhouette outranks a bigger dot -->
+        <g fill="none" stroke="#ff5470" stroke-width="1.6">
+          <rect x="36" y="94" width="19" height="9"/><rect x="33" y="91" width="25" height="15" opacity=".5"/>
+        </g>
+        <g fill="none" stroke="#7af7d0" stroke-width="1.6" stroke-linejoin="round">
+          <path d="M110 101l7 13h-14Z"/>
+        </g>
+      </svg>
+      <span class="lab-radar__lbl">CONTACTS 5</span>
+      <span class="lab-radar__rng">8 km</span>
+    </div>
+  </div>
+
+  <!-- Hydrated from src/ui/station/icons.js by the module script at the foot of this file, NOT
+       hand-copied. A duplicated copy here would drift from the shipped art the first time either
+       side was edited, and the snapshot would then certify a crest the game does not draw.
+       If the import fails the labels render with empty crest boxes — a visible failure, by design. -->
+  <div class="lab-shot" data-shot="faction-roundels">
+    <div class="lab-roundels" id="lab-roundels" data-hydrate="factions"></div>
   </div>
 
   <div class="lab-shot lab-state" data-shot="state-empty">
@@ -1030,6 +1098,33 @@ if (q.has('shot')) {
   const only = q.get('shot');
   for (const el of document.querySelectorAll('[data-shot]')) {
     el.hidden = el.getAttribute('data-shot') !== only;
+  }
+}
+</script>
+
+<!-- Hydrate the crest board straight from the shipped module so the lab cannot certify art the game
+     does not draw. icons.js is deliberately dependency-free, so this pulls in no game state. -->
+<script type="module">
+const SHORT = {
+  scn: 'SCN', mts: 'MTS', dmc: 'DMC', reach: 'Reach', quiet: 'Quiet', vael: 'Vael', free: 'Free',
+  choir: 'Choir', helix: 'Helix', understory: 'Under', fulfillment: 'Fill', archive: 'Archive',
+  pitborn: 'Pit', verge_layers: 'Verge',
+};
+const host = document.getElementById('lab-roundels');
+if (host) {
+  try {
+    const { factionIcon, FACTION_ICON_KEYS } = await import('/src/ui/station/icons.js');
+    host.innerHTML = FACTION_ICON_KEYS.map((key) =>
+      `<div class="lab-roundel" data-faction="${key}">` +
+        `<div class="lg">${factionIcon(key, 56)}</div>` +
+        `<div class="sm">${factionIcon(key, 20)}</div>` +
+        `<b>${SHORT[key] || key}</b>` +
+      `</div>`).join('');
+    host.dataset.hydrated = String(FACTION_ICON_KEYS.length);
+  } catch (err) {
+    // Fail loudly. A silently empty board would snapshot as "no crests" and read as intentional.
+    host.dataset.hydrated = 'error';
+    host.innerHTML = `<b style="color:#ff5470">crest hydration failed: ${String(err && err.message || err)}</b>`;
   }
 }
 </script>

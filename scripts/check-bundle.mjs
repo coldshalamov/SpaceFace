@@ -32,7 +32,8 @@ const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const BUILD_WEB = join(ROOT, 'build', 'web');
 const MIN_SAVING_PCT = 20; // the bundler must beat raw by at least this much
 const SCENARIO_47A_BUNDLE_PATH = join(BUILD_WEB, 'data', 'scenarios', '47a.scenario.json');
-const UI_ICON_ATLAS_BUNDLE_PATH = join(BUILD_WEB, 'assets', 'ui', 'icons_atlas.jpg');
+// (J05 removed UI_ICON_ATLAS_BUNDLE_PATH. Its assertion existed to guarantee the atlas shipped for
+// `.icon-ref` in styles/ui.css; that rule had no markup consumer and both it and the JPEG are gone.)
 
 function runBuild() {
   return new Promise((resolve, reject) => {
@@ -92,8 +93,6 @@ for (const clip of SIGNAL_ARCHIVE) {
     assert.ok(existsSync(p), `${rel} must be bundled for the Signal Archive (missing ${p})`);
   }
 }
-assert.ok(existsSync(UI_ICON_ATLAS_BUNDLE_PATH),
-  'build/web/assets/ui/icons_atlas.jpg must exist for bundled CSS icon atlas references');
 
 // 5. The release receipt is deterministic and proves every copied player-facing runtime tree
 // matches its declared projection byte-for-byte. It also rejects source art/evidence/sourcemaps.

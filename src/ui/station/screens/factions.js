@@ -14,7 +14,7 @@ import {
   factionStandingGuidance,
 } from '../../screens/factions.js';
 import { escapeHtml } from '../../comms.js';
-import { icon } from '../icons.js';
+import { icon, factionIcon } from '../icons.js';
 
 // Standing colour ramp — meaningful, ordered crimson→gold. Index-aligned to FACTION_TIERS
 // (9 tiers, Sworn Enemy … Hero). This is the STANDING colour (how they feel about you).
@@ -52,6 +52,14 @@ const DIAL_MAX = 1000;
 const REP_SPAN = DIAL_MAX; // arc spans ±135° at ±1000
 
 function tintFor(id) { return FACTION_TINT[id] || DEFAULT_TINT; }
+
+// J05: every row, relation node and network core previously drew `icon('factions')` — ONE generic
+// shield repeated fourteen times, so the roster was a column of identical marks distinguishable
+// only by their text label. `factionIcon` returns that power's own heraldry, and '' for an id it
+// does not know, in which case we fall back to the generic mark rather than render nothing.
+function crest(id, size) {
+  return factionIcon(id, size) || icon('factions', size);
+}
 
 function tierIndex(rep) {
   const t = tierFor(rep);
@@ -172,7 +180,7 @@ export function createFactionsScreen(ctx) {
       const active = f.id === selectedId ? ' is-active' : '';
       return (
         `<button type="button" class="sx-fac-row${active}" data-fac="${escapeHtml(f.id)}" role="tab" aria-selected="${f.id === selectedId}">` +
-          `<span class="sx-fac-row__crest" style="--tint:${tint}">${icon('factions', 18)}</span>` +
+          `<span class="sx-fac-row__crest" style="--tint:${tint}">${crest(f.id, 18)}</span>` +
           `<span class="sx-fac-row__body">` +
             `<span class="sx-fac-row__name">${escapeHtml(f.name)}</span>` +
             `<span class="sx-fac-row__bar"><span class="sx-fac-row__mid"></span><span class="sx-fac-row__fill" style="width:${(frac * 100).toFixed(1)}%;background:${col}"></span></span>` +
@@ -215,7 +223,7 @@ export function createFactionsScreen(ctx) {
       return `<button type="button" class="sx-fac-node" data-fac="${escapeHtml(relation.id)}" ` +
         `style="--x:${relation.x.toFixed(2)}%;--y:${relation.y.toFixed(2)}%;--relation:${relationColor};--identity:${tintFor(relation.id)}" ` +
         `aria-label="Inspect ${escapeHtml(related ? related.name : relation.id)}, ${relation.weight > 0 ? 'aligned' : 'rival'} relation ${Math.abs(relation.weight).toFixed(2)}">` +
-          `<span class="sx-fac-node__mark">${icon('factions', 15)}</span>` +
+          `<span class="sx-fac-node__mark">${crest(relation.id, 15)}</span>` +
           `<span class="sx-fac-node__copy"><b>${escapeHtml(related ? related.name : relation.id)}</b>` +
           `<em>${relation.weight > 0 ? 'ALIGN' : 'RIVAL'} ${Math.abs(relation.weight).toFixed(2)} · ${signed(relatedRep)}</em></span>` +
         `</button>`;
@@ -248,7 +256,7 @@ export function createFactionsScreen(ctx) {
           `<header><span>RELATION FIELD</span><b>Select a connected power to follow the consequence web</b></header>` +
           (relations.length
             ? `<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${lines}</svg>` +
-              `<div class="sx-fac-network__core"><span style="--identity:${tint}">${icon('factions', 25)}</span><b>${escapeHtml(f.meta.short || f.name)}</b><em>SELECTED</em></div>${nodes}`
+              `<div class="sx-fac-network__core"><span style="--identity:${tint}">${crest(f.id, 25)}</span><b>${escapeHtml(f.meta.short || f.name)}</b><em>SELECTED</em></div>${nodes}`
             : `<div class="sx-fac-network__empty">NO MATERIAL RELATIONS RECORDED</div>`) +
           `<footer><span><i class="is-aligned"></i> aligned spillover</span><span><i class="is-rival"></i> rival spillover</span></footer>` +
         `</section>` +

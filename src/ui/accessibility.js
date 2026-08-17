@@ -110,32 +110,50 @@ const PALETTES = {
 //   colorblind-safe hues + an icon for parity and for any future label-less compact HUD.
 //
 //   ALERT SEVERITY (src/ui/alerts.js, hud.js raises sev:'warn'|'danger') — severity is color-coded;
-//   we pair each with an icon glyph so a flashing red vs amber strip is also a ⛔ vs ⚠ strip.
+//   we pair each with an icon glyph so a flashing red vs amber strip is also a ⊘ vs ⚠ strip.
 //
 // `shape` values are a small enum the canvas code can switch on: 'triangle' (hostile — reads as a
 // threat caret), 'square' (neutral), 'diamond' (friendly), 'chevron' (ally heading), 'ring' (target).
-// `icon` is a unicode glyph for DOM contexts (target panel, legend, alert strips).
+//
+// ---------------------------------------------------------------------------------------------------
+// TWO ICON CHANNELS, AND WHY BOTH MUST STAY
+//
+// `icon`  — a single PLAIN-TEXT character, for `textContent` call sites.
+// `glyph` — a key into `station/icons.js`, for `innerHTML` call sites that want vector art.
+//
+// They are not redundant, and `icon` must never be replaced with SVG markup. At least one consumer
+// writes it as text: `hud.js` builds DOCTRINE_TELL_ICON from `.icon` and renders it through
+// `setText(slot.iconEl, icon)`. Assigning SVG markup there prints a literal `<svg viewBox=…>` string
+// across the combat HUD — and `check:ui-identity` stays green while it happens, because that check
+// verifies the palette is *imported*, not that its glyphs render. If you add a consumer, pick the
+// channel that matches how you write it into the DOM.
+//
+// J05 de-emojified the `icon` column (was 🛡 ⚡ ♨ ⛔). Those four have Unicode
+// Emoji_Presentation=Yes, so the OS substituted a full-colour emoji font mid-sentence and the strips
+// shipped with cartoon glyphs. Replacements are geometric text-presentation characters that match
+// the ▲ ■ ◆ set already here. `⚠` is kept deliberately: it is Emoji_Presentation=No, renders as
+// text everywhere, and is the standard warning mark.
 // ---------------------------------------------------------------------------------------------------
 export const SEMANTIC_PALETTE = {
   // --- radar / target states (canvas — color was the sole channel; shape is the fix) ---
-  hostile:  { color: '#ff5470', cssVar: '--sf-hostile',  shape: 'triangle', icon: '▲', label: 'Hostile' },
-  neutral:  { color: '#9aa8bc', cssVar: '--sf-neutral',  shape: 'square',   icon: '■', label: 'Neutral' },
-  friendly: { color: '#62e08a', cssVar: '--sf-friendly', shape: 'diamond',  icon: '◆', label: 'Friendly' },
-  ally:     { color: '#39d0ff', cssVar: '--sf-ally',     shape: 'chevron',  icon: '➤', label: 'Ally / You' },
-  target:   { color: '#ffffff', cssVar: null,            shape: 'ring',     icon: '◎', label: 'Target' },
+  hostile:  { color: '#ff5470', cssVar: '--sf-hostile',  shape: 'triangle', icon: '▲', glyph: 'target',      label: 'Hostile' },
+  neutral:  { color: '#9aa8bc', cssVar: '--sf-neutral',  shape: 'square',   icon: '■', glyph: 'info',        label: 'Neutral' },
+  friendly: { color: '#62e08a', cssVar: '--sf-friendly', shape: 'diamond',  icon: '◆', glyph: 'info',        label: 'Friendly' },
+  ally:     { color: '#39d0ff', cssVar: '--sf-ally',     shape: 'chevron',  icon: '➤', glyph: 'chevron',     label: 'Ally / You' },
+  target:   { color: '#ffffff', cssVar: null,            shape: 'ring',     icon: '◎', glyph: 'target',      label: 'Target' },
 
   // --- status bars (label-redundant today; registered for completeness + colorblind hues) ---
-  hull:     { color: '#ff5470', cssVar: '--sf-hull',     shape: 'bar',      icon: '🛡', label: 'Hull' },
-  shield:   { color: '#39d0ff', cssVar: '--sf-shield',   shape: 'bar',      icon: '◇', label: 'Shield' },
-  energy:   { color: '#ffd84a', cssVar: '--sf-energy',   shape: 'bar',      icon: '⚡', label: 'Energy (cap)' },
+  hull:     { color: '#ff5470', cssVar: '--sf-hull',     shape: 'bar',      icon: '▣', glyph: 'slot_hull',   label: 'Hull' },
+  shield:   { color: '#39d0ff', cssVar: '--sf-shield',   shape: 'bar',      icon: '◇', glyph: 'shield',      label: 'Shield' },
+  energy:   { color: '#ffd84a', cssVar: '--sf-energy',   shape: 'bar',      icon: '↯', glyph: 'energy',      label: 'Energy (cap)' },
   // NOTE: the game has no "armor" stat — hull/shield/energy(=cap)/heat/boost are the real bars
   // (gameState.js:14, hud.js:61-67). 'energy' IS the capacitor ('cap' in entity state).
-  heat:     { color: '#ff8a3d', cssVar: '--sf-warn',     shape: 'bar',      icon: '♨', label: 'Heat' },
-  boost:    { color: '#c98cff', cssVar: '--sf-cargo',    shape: 'bar',      icon: '»', label: 'Boost' },
+  heat:     { color: '#ff8a3d', cssVar: '--sf-warn',     shape: 'bar',      icon: '≋', glyph: 'heat',        label: 'Heat' },
+  boost:    { color: '#c98cff', cssVar: '--sf-cargo',    shape: 'bar',      icon: '»', glyph: 'boost',       label: 'Boost' },
 
   // --- alert severities (color-coded strips; icon makes them non-color-only) ---
-  warning:  { color: '#ffb347', cssVar: '--sf-warn',     shape: 'tri-bang', icon: '⚠', label: 'Warning' },
-  danger:   { color: '#ff5470', cssVar: '--sf-danger',   shape: 'octagon',  icon: '⛔', label: 'Danger' },
+  warning:  { color: '#ffb347', cssVar: '--sf-warn',     shape: 'tri-bang', icon: '⚠', glyph: 'warning',     label: 'Warning' },
+  danger:   { color: '#ff5470', cssVar: '--sf-danger',   shape: 'octagon',  icon: '⊘', glyph: 'danger',      label: 'Danger' },
 };
 
 // ---------------------------------------------------------------------------------------------------

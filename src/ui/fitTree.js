@@ -5,15 +5,32 @@ import { buildSlotList, fits } from '../systems/ships.js';
 import { SHIPS } from '../data/ships.js';
 import { MODULES } from '../data/modules.js';
 import { WEAPONS } from '../data/weapons.js';
+import { icon } from './station/icons.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
 const FITTABLE_BY_ID = new Map();
 for (const m of MODULES) FITTABLE_BY_ID.set(m.id, m);
 for (const w of WEAPONS) if (!FITTABLE_BY_ID.has(w.id)) FITTABLE_BY_ID.set(w.id, w);
 
+// J05: these were Unicode stand-ins (◆ ▣ ⬡ ▦ ✦ ◎), and the hull was a ⛴ FERRY BOAT — an emoji of a
+// passenger boat representing a starship. All six slot types now draw from the shared 24×24 stroke
+// set, so the fit tree speaks the same visual language as the station and the HUD.
+//
+// Safe as markup because every call site below writes through `innerHTML`. Do not copy this pattern
+// to a `textContent` site — see the two-channel note in ../accessibility.js.
 const TYPE_ICONS = {
-  weapon: '◆', shield: '▣', engine: '⬡', cargo: '▦', mining: '✦', utility: '◎',
+  weapon: 'slot_weapon',
+  shield: 'slot_shield',
+  engine: 'slot_engine',
+  cargo: 'slot_cargo',
+  mining: 'slot_mining',
+  utility: 'slot_utility',
 };
+
+/** Slot-type glyph at fit-tree scale. Falls back to the generic utility mark for unknown types. */
+function typeIcon(type) {
+  return icon(TYPE_ICONS[type] || 'slot_utility', 16);
+}
 
 function escapeHtml(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -82,7 +99,7 @@ export function createFitTree(container, opts = {}) {
     hullNode.className = 'st-fit-node st-fit-node--root';
     const invalidRoot = preview && !slots.some((s, i) => !fittings[i] && fits(s, FITTABLE_BY_ID.get(preview.defId)));
     if (invalidRoot) hullNode.classList.add('st-fit-node--invalid');
-    hullNode.innerHTML = `<span class="st-fit-icon st-fit-icon--hull">⛴</span>` +
+    hullNode.innerHTML = `<span class="st-fit-icon st-fit-icon--hull">${icon('slot_hull', 16)}</span>` +
       `<span class="st-fit-label">SHIP · ${escapeHtml(shipDef.name)}</span>` +
       `<span class="st-fit-meta mono">T${shipDef.tier} ${shipDef.role || ''}</span>`;
     frag.appendChild(hullNode);
@@ -103,7 +120,7 @@ export function createFitTree(container, opts = {}) {
       branch.className = 'st-fit-branch';
       const branchHead = document.createElement('div');
       branchHead.className = 'st-fit-branch-head';
-      branchHead.innerHTML = `<span class="st-fit-icon st-fit-icon--${type}">${TYPE_ICONS[type]}</span>` +
+      branchHead.innerHTML = `<span class="st-fit-icon st-fit-icon--${type}">${typeIcon(type)}</span>` +
         `<span class="st-fit-branch-label">${type}</span>` +
         `<span class="st-fit-branch-count mono">${list.length}</span>`;
       branch.appendChild(branchHead);

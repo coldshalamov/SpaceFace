@@ -3696,13 +3696,23 @@ function strokeSvg(paths) {
   return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
 }
 
+// J05: the unknown-service fallback used to be `<rect>` + the service's first LETTER — a
+// letter-in-a-box, which is not a pictogram at all. It also broke the set's own rules: `<text>`
+// picks up the ambient font, ignores `stroke`, and reflows under pseudo-localization while every
+// other mark here is a fixed 24×24 stroke path.
+//
+// A dashed ring with a centred query stroke is honest instead: it reads as "service present, symbol
+// not yet authored" rather than impersonating a designed glyph. If an unknown key shows up here,
+// the fix is to add it to SERVICE_ICON_PATHS, not to dress up the fallback.
+const UNKNOWN_SERVICE_PATHS =
+  '<circle cx="12" cy="12" r="8.2" stroke-dasharray="2.6 2.8"/>'
+  + '<path d="M9.9 9.6a2.2 2.2 0 1 1 2.6 2.9v1.2M12.5 17v.2"/>';
+
 /** DOM service chip icon: keyed pictogram, always paired with its label beside it. */
 export function serviceIconSvg(service) {
   const key = String(service || '').toLowerCase();
   const paths = SERVICE_ICON_PATHS[key];
-  if (paths) return strokeSvg(paths);
-  const letter = String(key || '?')[0].toUpperCase();
-  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="4" y="4" width="16" height="16"/><text x="12" y="16" text-anchor="middle" font-size="11" fill="currentColor" stroke="none">${letter}</text></svg>`;
+  return strokeSvg(paths || UNKNOWN_SERVICE_PATHS);
 }
 
 const LEGEND_SERVICES = Object.freeze(['trade', 'shipyard', 'repair', 'refuel', 'refine', 'missions']);

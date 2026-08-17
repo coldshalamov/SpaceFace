@@ -150,8 +150,10 @@ button:disabled { opacity: .4; cursor: default; }
    #boot-overlay(.hidden), [data-loading-label/detail/progress]. */
 
 /* ==================== PROFESSIONAL POLISH (post asset integration) ==================== */
-/* Use generated assets (menu_background, pilot portrait, icons_atlas, reticle, bible colors) for beauty and "SpaceFace" identity.
-   Clearer, more fun, less janky UI. Better feedback, modern space-industrial feel, strong readability from the 60° camera game. */
+/* Use generated assets (pilot portrait, bible colors) for beauty and "SpaceFace" identity.
+   Clearer, more fun, less janky UI. Better feedback, modern space-industrial feel, strong readability from the 60° camera game.
+   J05 removed icons_atlas and reticle from this list: both were labelled reference JPEGs with baked
+   caption text, and the UI draws inline stroke SVG (station/icons.js, RETICLE_SVG) instead. */
 
 #screens {
   /* Clean, label-free cinematic still (C-INTRO-01). Replaces menu_background.jpg, which carried
@@ -296,12 +298,9 @@ button:active { translate: 0 1px; }
 .toast.danger, .toast.error, .toast[data-kind="danger"], .toast[data-kind="error"] { border-left-color: var(--danger); color: #ffd6dc; }
 
 
-/* Icons atlas usage hint (the generated B-006 + expansion can be used as decorative or future sliced icons) */
-.icon-ref {
-  background-image: url('../assets/ui/icons_atlas.jpg');
-  background-size: contain;
-  image-rendering: crisp-edges;
-}
+/* J05 removed `.icon-ref`, the only referrer to assets/ui/icons_atlas.jpg. It was a "usage hint" for
+   future sliced icons that no markup ever claimed — a dead class keeping a 271 KB labelled contact
+   sheet alive in the bundle. Icons are inline 24×24 stroke SVG; see src/ui/station/icons.js. */
 
 /* Screen titles and pro touches */
 #screens h1, #screens .title {
