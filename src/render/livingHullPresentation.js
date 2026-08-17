@@ -11,8 +11,8 @@ import {
   LIVING_HULL_REPAIR_PATCH_MAX,
 } from '../core/livingHull.js';
 
-const GRAFFITI_WIDTH = 256;
-const GRAFFITI_HEIGHT = 64;
+const MARKING_WIDTH = 384;
+const MARKING_HEIGHT = 96;
 const EMPTY_LINE = '';
 
 function clampInteger(value, max) {
@@ -70,8 +70,90 @@ function createCanvas(width, height) {
   return null;
 }
 
-function createGraffitiSurface() {
-  const canvas = createCanvas(GRAFFITI_WIDTH, GRAFFITI_HEIGHT);
+function drawMarkingSymbol(context, decalId) {
+  const x = 48;
+  const y = MARKING_HEIGHT * 0.5;
+  context.save();
+  context.translate(x, y);
+  context.lineJoin = 'round';
+  context.lineCap = 'round';
+  context.lineWidth = 5;
+  context.strokeStyle = 'rgba(226, 205, 164, 0.96)';
+  context.fillStyle = 'rgba(41, 29, 22, 0.88)';
+  if (decalId === 'borrowed_time') {
+    context.beginPath();
+    context.moveTo(-22, -28); context.lineTo(22, -28); context.lineTo(-16, 28); context.lineTo(16, 28);
+    context.closePath(); context.stroke();
+    context.beginPath(); context.moveTo(-13, -17); context.lineTo(13, -17); context.lineTo(0, -2);
+    context.closePath(); context.fill();
+    context.beginPath(); context.moveTo(0, 2); context.lineTo(-12, 18); context.lineTo(12, 18);
+    context.closePath(); context.fill();
+  } else if (decalId === 'concord') {
+    context.beginPath();
+    context.moveTo(0, -31); context.lineTo(28, -13); context.lineTo(21, 20); context.lineTo(0, 31);
+    context.lineTo(-21, 20); context.lineTo(-28, -13); context.closePath(); context.stroke();
+    context.beginPath(); context.moveTo(-14, -6); context.lineTo(0, 10); context.lineTo(18, -12); context.stroke();
+  } else if (decalId === 'industrial') {
+    context.beginPath();
+    for (let i = 0; i < 6; i += 1) {
+      const a = -Math.PI / 2 + i * Math.PI / 3;
+      const px = Math.cos(a) * 29;
+      const py = Math.sin(a) * 29;
+      if (i === 0) context.moveTo(px, py); else context.lineTo(px, py);
+    }
+    context.closePath(); context.stroke();
+    context.strokeRect(-12, -13, 24, 26);
+    context.beginPath(); context.moveTo(-22, 17); context.lineTo(22, -17); context.stroke();
+  } else if (decalId === 'frontier') {
+    context.beginPath();
+    for (let i = 0; i < 10; i += 1) {
+      const a = -Math.PI / 2 + i * Math.PI / 5;
+      const radius = i % 2 === 0 ? 30 : 12;
+      const px = Math.cos(a) * radius;
+      const py = Math.sin(a) * radius;
+      if (i === 0) context.moveTo(px, py); else context.lineTo(px, py);
+    }
+    context.closePath(); context.stroke();
+    context.beginPath(); context.moveTo(-31, 20); context.lineTo(31, -20); context.stroke();
+  }
+  context.restore();
+}
+
+function drawWreckSilhouettes(context, count) {
+  const total = clampInteger(count, LIVING_HULL_KILL_TALLY_MAX);
+  context.save();
+  context.fillStyle = 'rgba(226, 205, 164, 0.96)';
+  context.strokeStyle = 'rgba(41, 29, 22, 0.92)';
+  context.lineWidth = 2;
+  context.lineJoin = 'round';
+  for (let i = 0; i < total; i += 1) {
+    const row = Math.floor(i / 7);
+    const col = i % 7;
+    const x = 105 + col * 42;
+    const y = 27 + row * 42;
+    context.beginPath();
+    context.moveTo(x + 18, y);
+    context.lineTo(x + 4, y + 5);
+    context.lineTo(x - 3, y + 3);
+    context.lineTo(x - 15, y + 11);
+    context.lineTo(x - 11, y + 2);
+    context.lineTo(x - 18, y);
+    context.lineTo(x - 11, y - 2);
+    context.lineTo(x - 15, y - 11);
+    context.lineTo(x - 3, y - 3);
+    context.lineTo(x + 4, y - 5);
+    context.closePath();
+    context.fill();
+    context.beginPath();
+    context.moveTo(x - 10, y + 7);
+    context.lineTo(x + 8, y - 6);
+    context.stroke();
+  }
+  context.restore();
+}
+
+function createMarkingSurface() {
+  const canvas = createCanvas(MARKING_WIDTH, MARKING_HEIGHT);
   const context = canvas && typeof canvas.getContext === 'function' ? canvas.getContext('2d') : null;
   let texture;
   if (canvas && context) {
@@ -79,7 +161,7 @@ function createGraffitiSurface() {
   } else {
     texture = new THREE.DataTexture(new Uint8Array(4 * 4 * 4), 4, 4, THREE.RGBAFormat);
   }
-  texture.name = 'LivingHull_GraffitiAtlas';
+  texture.name = 'LivingHull_DockBakedMarkingAtlas';
   texture.magFilter = THREE.LinearFilter;
   texture.minFilter = THREE.LinearFilter;
   texture.generateMipmaps = false;
@@ -87,22 +169,26 @@ function createGraffitiSurface() {
   if ('colorSpace' in texture) texture.colorSpace = THREE.SRGBColorSpace;
 
   let updates = 0;
-  function draw(line) {
+  function draw(decalId, line, wreckCount) {
     updates += 1;
     texture.userData.livingHullLine = line;
+    texture.userData.shipDecalId = decalId;
+    texture.userData.dockBaked = true;
     if (!context) return;
-    context.clearRect(0, 0, GRAFFITI_WIDTH, GRAFFITI_HEIGHT);
+    context.clearRect(0, 0, MARKING_WIDTH, MARKING_HEIGHT);
+    if (decalId && decalId !== 'none') drawMarkingSymbol(context, decalId);
+    drawWreckSilhouettes(context, wreckCount);
     if (line) {
-      let size = 24;
+      let size = 27;
       context.textAlign = 'center';
       context.textBaseline = 'middle';
       do {
         context.font = `800 ${size}px "Arial Narrow", "DIN Condensed", sans-serif`;
-        if (context.measureText(line).width <= GRAFFITI_WIDTH - 20) break;
+        if (context.measureText(line).width <= MARKING_WIDTH - 130) break;
         size -= 1;
       } while (size > 10);
       context.save();
-      context.translate(GRAFFITI_WIDTH * 0.5, GRAFFITI_HEIGHT * 0.52);
+      context.translate(250, MARKING_HEIGHT * 0.52);
       context.rotate(-0.025);
       context.lineJoin = 'round';
       context.lineWidth = 4;
@@ -116,6 +202,24 @@ function createGraffitiSurface() {
   }
 
   return { texture, draw, updates: () => updates };
+}
+
+function createWreckSilhouetteGeometry() {
+  const shape = new THREE.Shape();
+  shape.moveTo(0.55, 0);
+  shape.lineTo(0.12, 0.16);
+  shape.lineTo(-0.08, 0.12);
+  shape.lineTo(-0.42, 0.34);
+  shape.lineTo(-0.32, 0.06);
+  shape.lineTo(-0.52, 0);
+  shape.lineTo(-0.32, -0.06);
+  shape.lineTo(-0.42, -0.34);
+  shape.lineTo(-0.08, -0.12);
+  shape.lineTo(0.12, -0.16);
+  shape.closePath();
+  const geometry = new THREE.ShapeGeometry(shape);
+  geometry.name = 'LivingHull_WreckSilhouetteGeometry';
+  return geometry;
 }
 
 function composeInstance(mesh, index, position, rotation, scale, scratch) {
@@ -143,12 +247,12 @@ function prepareStaticInstances(mesh, transforms, scratch) {
 function tallyTransforms() {
   const transforms = [];
   for (let i = 0; i < LIVING_HULL_KILL_TALLY_MAX; i += 1) {
-    const row = Math.floor(i / 5);
-    const col = i % 5;
+    const row = Math.floor(i / 7);
+    const col = i % 7;
     transforms.push({
-      position: [0.18 - col * 0.045, 0.372 + row * 0.002, 0.13 + row * 0.075],
-      rotation: [-Math.PI / 2, 0, (col === 4 && row < 2) ? -0.55 : 0],
-      scale: [0.018, 0.11, 1],
+      position: [0.27 - col * 0.075, 0.384 + row * 0.002, -0.01 + row * 0.084],
+      rotation: [-Math.PI / 2, 0, (col === 6 && row < 2) ? -0.55 : 0],
+      scale: [0.06, 0.06, 1],
     });
   }
   return transforms;
@@ -175,8 +279,24 @@ const GRIME_TRANSFORMS = Object.freeze([
 
 function authoredSurfaceReady(root) {
   const state = root && root.userData && root.userData.authoredAssetState;
-  if (!state || state === 'procedural-settled') return true;
+  if (!state || state === 'procedural-settled' || state === 'designed-procedural-settled') return true;
   return state === 'authored' || state === 'authored-with-cleanup-error';
+}
+
+function suppressLegacyIdentityDecals(root) {
+  if (!root || typeof root.traverse !== 'function') return 0;
+  let hidden = 0;
+  root.traverse((object) => {
+    if (!object || object.userData?.spacefaceLivingHullPresentation) return;
+    const materialName = Array.isArray(object.material)
+      ? object.material.map((material) => material && material.name || '').join('|')
+      : object.material && object.material.name || '';
+    if (!/decal[_ -]*borrowed/i.test(`${object.name || ''}|${materialName}`)) return;
+    object.visible = false;
+    object.userData = { ...(object.userData || {}), spacefaceIdentityDecalSuperseded: true };
+    hidden += 1;
+  });
+  return hidden;
 }
 
 /**
@@ -197,16 +317,16 @@ export function createLivingHullPresentation() {
     matrix: new THREE.Matrix4(),
   };
   const planeGeometry = new THREE.PlaneGeometry(1, 1);
+  const tallyGeometry = createWreckSilhouetteGeometry();
   const patchGeometry = new THREE.BoxGeometry(1, 1, 1);
   const scorchGeometry = new THREE.CircleGeometry(1, 16);
   const grimeTexture = createGrimeTexture();
-  const graffitiSurface = createGraffitiSurface();
+  const markingSurface = createMarkingSurface();
 
-  const tallyMaterial = configureDecalMaterial(new THREE.MeshStandardMaterial({
+  const tallyMaterial = configureDecalMaterial(new THREE.MeshBasicMaterial({
     color: 0xd8c79e,
-    roughness: 0.92,
-    metalness: 0,
     side: THREE.DoubleSide,
+    toneMapped: false,
   }));
   const patchMaterial = new THREE.MeshStandardMaterial({
     color: 0x806f5d,
@@ -229,7 +349,7 @@ export function createLivingHullPresentation() {
     toneMapped: false,
   }));
   const graffitiMaterial = configureDecalMaterial(new THREE.MeshStandardMaterial({
-    map: graffitiSurface.texture,
+    map: markingSurface.texture,
     color: 0xffffff,
     roughness: 0.88,
     metalness: 0,
@@ -238,7 +358,7 @@ export function createLivingHullPresentation() {
     side: THREE.DoubleSide,
   }));
 
-  const tallies = new THREE.InstancedMesh(planeGeometry, tallyMaterial, LIVING_HULL_KILL_TALLY_MAX);
+  const tallies = new THREE.InstancedMesh(tallyGeometry, tallyMaterial, LIVING_HULL_KILL_TALLY_MAX);
   tallies.name = 'LivingHull_KillTallies';
   prepareStaticInstances(tallies, tallyTransforms(), scratch);
   tallies.renderOrder = 5;
@@ -262,16 +382,16 @@ export function createLivingHullPresentation() {
   grime.renderOrder = 3;
   root.add(grime);
 
-  const graffiti = new THREE.Mesh(planeGeometry, graffitiMaterial);
-  graffiti.name = 'LivingHull_Graffiti';
-  graffiti.position.set(-0.20, 0.382, -0.05);
-  graffiti.rotation.x = -Math.PI / 2;
-  graffiti.scale.set(0.58, 0.13, 1);
-  graffiti.renderOrder = 6;
-  graffiti.visible = false;
-  graffiti.castShadow = false;
-  graffiti.receiveShadow = false;
-  root.add(graffiti);
+  const marking = new THREE.Mesh(planeGeometry, graffitiMaterial);
+  marking.name = 'LivingHull_DockBakedMarking';
+  marking.position.set(-0.20, 0.382, -0.05);
+  marking.rotation.x = -Math.PI / 2;
+  marking.scale.set(0.72, 0.18, 1);
+  marking.renderOrder = 6;
+  marking.visible = false;
+  marking.castShadow = false;
+  marking.receiveShadow = false;
+  root.add(marking);
 
   let attachedRoot = null;
   let disposed = false;
@@ -283,6 +403,8 @@ export function createLivingHullPresentation() {
     grimeCycles: -1,
     grime: -1,
     line: null,
+    decalId: null,
+    atlasTallies: -1,
     radius: -1,
     ready: false,
     any: false,
@@ -297,6 +419,7 @@ export function createLivingHullPresentation() {
     if (disposed || !nextRoot || !nextRoot.isObject3D) return false;
     if (attachedRoot === nextRoot && root.parent === nextRoot) return true;
     root.removeFromParent();
+    suppressLegacyIdentityDecals(nextRoot);
     nextRoot.add(root);
     attachedRoot = nextRoot;
     last.ready = authoredSurfaceReady(nextRoot);
@@ -316,7 +439,8 @@ export function createLivingHullPresentation() {
   function sync(record, simTime = 0, entity = null) {
     if (disposed) return false;
     let changed = false;
-    const tallyCount = clampInteger(record && record.killTally, LIVING_HULL_KILL_TALLY_MAX);
+    const appearance = entity && entity.data && entity.data.appearance || {};
+    const tallyCount = clampInteger(appearance.decalKillMarks, LIVING_HULL_KILL_TALLY_MAX);
     const patchCount = clampInteger(record && record.repairPatches, LIVING_HULL_REPAIR_PATCH_MAX);
     const scorchCount = clampInteger(record && record.heatScorch, LIVING_HULL_HEAT_SCORCH_MAX);
     const now = Math.max(0, finite(simTime, 0));
@@ -326,6 +450,7 @@ export function createLivingHullPresentation() {
     const grimeCycles = Math.max(0, Math.floor((now - lastWashAtT) / LIVING_HULL_CYCLE_SECONDS));
     const grimeAmount = Math.min(LIVING_HULL_GRIME_MAX, grimeCycles * LIVING_HULL_GRIME_PER_CYCLE);
     const line = record && typeof record.graffitiLine === 'string' ? record.graffitiLine : EMPTY_LINE;
+    const decalId = typeof appearance.decalId === 'string' ? appearance.decalId : 'none';
     const radius = Math.max(1, finite(entity && entity.radius, 12));
 
     if (tallyCount !== last.tallies) {
@@ -350,10 +475,12 @@ export function createLivingHullPresentation() {
       last.grime = grimeAmount;
       changed = true;
     }
-    if (line !== last.line) {
-      graffitiSurface.draw(line);
-      graffiti.visible = !!line;
+    if (line !== last.line || decalId !== last.decalId || tallyCount !== last.atlasTallies) {
+      markingSurface.draw(decalId, line, tallyCount);
+      marking.visible = !!line || decalId !== 'none' || tallyCount > 0;
       last.line = line;
+      last.decalId = decalId;
+      last.atlasTallies = tallyCount;
       changed = true;
     }
     if (radius !== last.radius) {
@@ -367,7 +494,8 @@ export function createLivingHullPresentation() {
       root.rotation.z = finite(entity.pitch, 0);
     }
     const ready = authoredSurfaceReady(attachedRoot);
-    const any = tallyCount > 0 || patchCount > 0 || scorchCount > 0 || grimeAmount > 0 || !!line;
+    const any = tallyCount > 0 || patchCount > 0 || scorchCount > 0 || grimeAmount > 0
+      || !!line || decalId !== 'none';
     if (ready !== last.ready || any !== last.any) {
       last.ready = ready;
       last.any = any;
@@ -387,14 +515,14 @@ export function createLivingHullPresentation() {
       scorch: scorch.count,
       grime: grime.count,
       grimeOpacity: grimeMaterial.opacity,
-      graffiti: graffiti.visible,
+      graffiti: marking.visible,
     };
     tallies.count = LIVING_HULL_KILL_TALLY_MAX;
     patches.count = LIVING_HULL_REPAIR_PATCH_MAX;
     scorch.count = LIVING_HULL_HEAT_SCORCH_MAX;
     grime.count = GRIME_TRANSFORMS.length;
     grimeMaterial.opacity = Math.max(0.3, grimeMaterial.opacity);
-    graffiti.visible = true;
+    marking.visible = true;
     root.visible = true;
     let restored = false;
     return () => {
@@ -406,7 +534,7 @@ export function createLivingHullPresentation() {
       scorch.count = snapshot.scorch;
       grime.count = snapshot.grime;
       grimeMaterial.opacity = snapshot.grimeOpacity;
-      graffiti.visible = snapshot.graffiti;
+      marking.visible = snapshot.graffiti;
       applyVisibility();
     };
   }
@@ -422,9 +550,11 @@ export function createLivingHullPresentation() {
       scorch: scorch.count,
       grimeInstances: grime.count,
       grime: last.grime,
-      graffitiVisible: graffiti.visible,
+      graffitiVisible: marking.visible,
       graffitiLine: last.line || EMPTY_LINE,
-      graffitiTextureUpdates: graffitiSurface.updates(),
+      decalId: last.decalId || 'none',
+      killMarkGeometry: tallyGeometry.name,
+      graffitiTextureUpdates: markingSurface.updates(),
       instanceMatrixVersions: {
         tallies: tallies.instanceMatrix.version,
         patches: patches.instanceMatrix.version,
@@ -435,6 +565,7 @@ export function createLivingHullPresentation() {
       resourceIds: {
         root: root.uuid,
         planeGeometry: planeGeometry.uuid,
+        tallyGeometry: tallyGeometry.uuid,
         patchGeometry: patchGeometry.uuid,
         scorchGeometry: scorchGeometry.uuid,
         tallyMaterial: tallyMaterial.uuid,
@@ -443,7 +574,7 @@ export function createLivingHullPresentation() {
         grimeMaterial: grimeMaterial.uuid,
         graffitiMaterial: graffitiMaterial.uuid,
         grimeTexture: grimeTexture.uuid,
-        graffitiTexture: graffitiSurface.texture.uuid,
+        graffitiTexture: markingSurface.texture.uuid,
       },
     };
   }
@@ -453,6 +584,7 @@ export function createLivingHullPresentation() {
     detach();
     disposed = true;
     planeGeometry.dispose();
+    tallyGeometry.dispose();
     patchGeometry.dispose();
     scorchGeometry.dispose();
     tallyMaterial.dispose();
@@ -461,7 +593,7 @@ export function createLivingHullPresentation() {
     grimeMaterial.dispose();
     graffitiMaterial.dispose();
     grimeTexture.dispose();
-    graffitiSurface.texture.dispose();
+    markingSurface.texture.dispose();
     root.clear();
   }
 

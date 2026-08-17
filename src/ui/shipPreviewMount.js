@@ -25,6 +25,7 @@ import { isReleaseAssetMode } from '../render/releaseMode.js';
 import { setEnvMapForShips, createVisualFactory } from '../render/visualFactory.js';
 import { installVisualOverrides } from '../render/visualOverrides.js';
 import { buildKestrelHero } from '../render/ships/kestrelHero.js';
+import { createLivingHullPresentation } from '../render/livingHullPresentation.js';
 import { normalizeShipAppearance } from '../core/shipAppearance.js';
 
 const PART_ROOT = 'assets/ships/parts/';
@@ -536,6 +537,7 @@ export function createShipPreviewMount(canvas, opts) {
   let disposed = false;
   let renderedDefId = null;
   let warmupPromise = null;
+  const livingHullPresentation = createLivingHullPresentation();
   const meshCache = new Map(); // defId -> THREE.Object3D, retained to avoid rebuilding on hover.
   const meshCacheOrder = [];
 
@@ -555,6 +557,7 @@ export function createShipPreviewMount(canvas, opts) {
 
   function disposePreviewMesh(mesh) {
     if (!mesh) return;
+    livingHullPresentation.detach(mesh);
     mesh.traverse((c) => { if (c.geometry) c.geometry.dispose(); });
   }
 
@@ -639,6 +642,10 @@ export function createShipPreviewMount(canvas, opts) {
       };
     mesh.traverse((object) => {
       if (!object || !object.material) return;
+      for (let parent = object; parent; parent = parent.parent) {
+        if (parent.userData?.spacefaceLivingHullPresentation === true) return;
+        if (parent === mesh) break;
+      }
       const tags = object.userData && object.userData.spacefaceTags || {};
       object.material = Array.isArray(object.material)
         ? object.material.map((material) => tuneMaterial(material, tags))
@@ -686,6 +693,14 @@ export function createShipPreviewMount(canvas, opts) {
         if (tint) applyAuthoredSurfaceTint(material, tint, role, true);
         material.needsUpdate = true;
       }
+    });
+    const def = SHIP_BY_ID.get(defId);
+    livingHullPresentation.attach(mesh);
+    livingHullPresentation.sync(null, 0, {
+      radius: Number(def && def.collisionRadius) || 12,
+      bank: 0,
+      pitch: 0,
+      data: { appearance },
     });
   }
 
@@ -1149,6 +1164,7 @@ export function createShipPreviewMount(canvas, opts) {
     rafId = 0;
     dockLoadGen++;
     removeDockRoot();
+    livingHullPresentation.dispose();
     if (current) { scene.remove(current); current = null; }
     for (const mesh of meshCache.values()) disposePreviewMesh(mesh);
     meshCache.clear();

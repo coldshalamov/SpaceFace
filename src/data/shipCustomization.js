@@ -1,7 +1,20 @@
 // Authored, hull-specific yard coatings for the Shipworks paint booth. These are included with hull
-// ownership: Ships remains the sole appearance writer and normalization authority. Decals are kept
-// out of this table until their baked-at-dock render path is real.
+// ownership: Ships remains the sole appearance writer and normalization authority. Shipworks copies
+// the selected hard marking and earned silhouette count into appearance only at the dock press.
 import { defaultShipAppearance, normalizeShipAppearance } from '../core/shipAppearance.js';
+import { normalizeLivingHull } from '../core/livingHull.js';
+
+function marking(id, label, story) {
+  return Object.freeze({ id, label, story });
+}
+
+export const SHIP_MARKING_STYLES = Object.freeze([
+  marking('none', 'Bare Plate', 'No yard emblem; earned wreck silhouettes may still be commissioned.'),
+  marking('borrowed_time', 'Borrowed Time', 'A broken clock and wake line for a machine living past its invoice.'),
+  marking('concord', 'Concord Chevron', 'A restrained lawful-service chevron cut for long-range recognition.'),
+  marking('industrial', 'Yard Hex', 'Load-frame geometry used by miners, haulers, and crews paid by the shift.'),
+  marking('frontier', 'Frontier Split-Star', 'A pathfinder star divided by one hard outbound course.'),
+]);
 
 function paint(id, label, hullColor, accentColor, finish, wear, story) {
   return Object.freeze({
@@ -91,12 +104,37 @@ export function paintSchemesForShip(defId) {
 export function shipPaintAppearance(defId, schemeId, currentAppearance = null) {
   const schemes = paintSchemesForShip(defId);
   const scheme = schemes.find((candidate) => candidate.id === schemeId) || schemes[0];
-  if (scheme.id === 'original') return normalizeShipAppearance(defaultShipAppearance(defId), defId);
   const current = normalizeShipAppearance(currentAppearance, defId);
+  if (scheme.id === 'original') {
+    return normalizeShipAppearance({
+      ...defaultShipAppearance(defId),
+      decalId: current.decalId,
+      decalKillMarks: current.decalKillMarks,
+    }, defId);
+  }
   return normalizeShipAppearance({
     ...current,
     ...scheme.appearance,
     decalId: current.decalId,
+    decalKillMarks: current.decalKillMarks,
+  }, defId);
+}
+
+export function markingStylesForShip(_defId) {
+  return SHIP_MARKING_STYLES;
+}
+
+/** Shipworks owns the dock interaction; Ships remains the sole appearance writer. The kill count is
+ * copied into the appearance only here, so flight never redraws a texture when a kill arrives. */
+export function shipMarkingAppearance(defId, markingId, currentAppearance = null, livingHull = null) {
+  const current = normalizeShipAppearance(currentAppearance, defId);
+  const style = SHIP_MARKING_STYLES.find((candidate) => candidate.id === markingId)
+    || SHIP_MARKING_STYLES[0];
+  const history = normalizeLivingHull(livingHull, 0);
+  return normalizeShipAppearance({
+    ...current,
+    decalId: style.id,
+    decalKillMarks: history.killTally,
   }, defId);
 }
 

@@ -31,10 +31,12 @@ import {
   quartermasterMemoryFor,
 } from '../../../data/stationContacts.js';
 import { normalizeLivingHull } from '../../../core/livingHull.js';
-import { shipAppearanceSignature } from '../../../core/shipAppearance.js';
+import { normalizeShipAppearance, shipAppearanceSignature } from '../../../core/shipAppearance.js';
 import {
+  markingStylesForShip,
   paintSchemesForShip,
   selectedPaintSchemeId,
+  shipMarkingAppearance,
   shipPaintAppearance,
 } from '../../../data/shipCustomization.js';
 import { escapeHtml } from '../../comms.js';
@@ -929,6 +931,11 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const paintSchemes = paintSchemesForShip(def.id);
     const selectedPaint = selectedPaintSchemeId(def.id, s.appearance);
     const selectedPaintScheme = paintSchemes.find((scheme) => scheme.id === selectedPaint) || null;
+    const normalizedAppearance = normalizeShipAppearance(s.appearance, def.id);
+    const livingHull = normalizeLivingHull(s.livingHull, ctx.state.simTime || 0);
+    const markingStyles = markingStylesForShip(def.id);
+    const bakedKillMarks = Number(normalizedAppearance.decalKillMarks) || 0;
+    const unbakedKillMarks = Math.max(0, livingHull.killTally - bakedKillMarks);
     const canPaint = host !== 'flight' && availability.outfitEnabled;
     const paintReason = canPaint
       ? 'Commission coats are included with hull ownership.'
@@ -949,8 +956,24 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
             `<span class="sx-sw-paint__state">${isSelected ? 'FITTED' : 'APPLY'}</span>` +
           `</button>`;
       }).join('')}</div>` +
+      `<div class="sx-sw-paint__markings" aria-label="Dock-baked hull markings">${markingStyles.map((style) => {
+        const isSelected = normalizedAppearance.decalId === style.id;
+        const stateLabel = isSelected && unbakedKillMarks > 0
+          ? `REFRESH +${unbakedKillMarks}`
+          : isSelected ? 'FITTED' : 'APPLY';
+        return `<button type="button" class="sx-sw-paint__marking${isSelected ? ' is-selected' : ''}" ` +
+          `data-marking-style="${escapeHtml(style.id)}" data-ship-index="${inspectedIndex}" ` +
+          `aria-pressed="${isSelected}" aria-label="${escapeHtml(`${style.label}. ${style.story}`)}" ` +
+          `title="${escapeHtml(style.story)}" ${canPaint ? '' : 'disabled'}>` +
+            `<span class="sx-sw-paint__marking-glyph is-${escapeHtml(style.id)}" aria-hidden="true"><i></i></span>` +
+            `<span class="sx-sw-paint__copy"><strong>${escapeHtml(style.label)}</strong></span>` +
+            `<span class="sx-sw-paint__state">${escapeHtml(stateLabel)}</span>` +
+          `</button>`;
+      }).join('')}</div>` +
       `<p class="sx-sw-paint__detail"><b>${escapeHtml(selectedPaintScheme?.label || 'Custom Coating')}</b>` +
-        `<span>${escapeHtml(selectedPaintScheme?.story || 'A retained field mix outside this yard’s commission book.')}</span></p>` +
+        `<span>${escapeHtml(unbakedKillMarks > 0
+          ? `${unbakedKillMarks} earned wreck silhouette${unbakedKillMarks === 1 ? '' : 's'} waiting for the marking press.`
+          : selectedPaintScheme?.story || 'A retained field mix outside this yard’s commission book.')}</span></p>` +
     `</section>`;
     sideEl.innerHTML =
       (quartermaster
@@ -1298,6 +1321,25 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   });
 
   sideEl.addEventListener('click', (ev) => {
+    const markingStyle = ev.target.closest('[data-marking-style]');
+    if (markingStyle && !markingStyle.disabled && ctx.bus && shipworksActionAvailability(ctx.state).outfitEnabled) {
+      const shipIndex = Number(markingStyle.getAttribute('data-ship-index'));
+      const ship = owned()[shipIndex];
+      if (!ship) return;
+      ctx.bus.emit('ui:setShipAppearance', {
+        shipIndex,
+        appearance: shipMarkingAppearance(
+          ship.defId,
+          markingStyle.getAttribute('data-marking-style'),
+          ship.appearance,
+          ship.livingHull,
+        ),
+        source: 'shipworks_marking_press',
+      });
+      ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+      setTimeout(refresh, 60);
+      return;
+    }
     const paintScheme = ev.target.closest('[data-paint-scheme]');
     if (paintScheme && !paintScheme.disabled && ctx.bus && shipworksActionAvailability(ctx.state).outfitEnabled) {
       const shipIndex = Number(paintScheme.getAttribute('data-ship-index'));

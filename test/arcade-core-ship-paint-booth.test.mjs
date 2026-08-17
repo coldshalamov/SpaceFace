@@ -6,8 +6,10 @@ import {
   shipAppearanceSignature,
 } from '../src/core/shipAppearance.js';
 import {
+  markingStylesForShip,
   paintSchemesForShip,
   selectedPaintSchemeId,
+  shipMarkingAppearance,
   shipPaintAppearance,
 } from '../src/data/shipCustomization.js';
 import { SHIPS } from '../src/data/ships.js';
@@ -18,14 +20,23 @@ import { makeShipPreviewEntitySpec } from '../src/ui/shipPreviewMount.js';
 test('every flyable hull has a bounded authored paint set with an original coating', () => {
   for (const ship of SHIPS) {
     const schemes = paintSchemesForShip(ship.id);
+    const markings = markingStylesForShip(ship.id);
     assert.equal(schemes.length, 3, `${ship.id} has original plus two authored commission coats`);
+    assert.equal(markings.length, 5, `${ship.id} has the shared bounded marking press`);
     assert.equal(schemes[0].id, 'original');
     assert.equal(new Set(schemes.map((scheme) => scheme.id)).size, schemes.length);
+    assert.deepEqual(markings.map((marking) => marking.id),
+      ['none', 'borrowed_time', 'concord', 'industrial', 'frontier']);
     for (const scheme of schemes) {
       assert.equal(Object.isFrozen(scheme), true);
       assert.ok(scheme.label.length >= 4);
       assert.ok(scheme.story.length >= 12);
     }
+    const marked = shipMarkingAppearance(ship.id, 'frontier', null, { killTally: 3 });
+    const originalCoat = shipPaintAppearance(ship.id, 'original', marked);
+    assert.equal(originalCoat.decalId, 'frontier');
+    assert.equal(originalCoat.decalKillMarks, 3,
+      `${ship.id} coating and marking presses remain orthogonal`);
   }
 });
 
@@ -86,12 +97,31 @@ test('the real Shipworks intent is berth-gated, persists through Continue, and r
     assert.equal(saved[0].shipIndex, 0);
     assert.deepEqual(player.data.appearance, commissioned);
 
+    owned.livingHull = { ...owned.livingHull, killTally: 4 };
+    const frontierMarking = shipMarkingAppearance(
+      owned.defId,
+      'frontier',
+      owned.appearance,
+      owned.livingHull,
+    );
+    bus.emit('ui:setShipAppearance', {
+      shipIndex: 0,
+      appearance: frontierMarking,
+      source: 'shipworks_marking_press',
+    });
+    assert.equal(owned.appearance.decalId, 'frontier');
+    assert.equal(owned.appearance.decalKillMarks, 4,
+      'wreck silhouettes are copied to the retained hull atlas only at the marking press');
+    assert.deepEqual(player.data.appearance, frontierMarking);
+    assert.equal(changed.length, 2);
+    assert.equal(saved.length, 2);
+
     const preview = makeShipPreviewEntitySpec(owned.defId, 44, {
       isPlayer: true,
       fittings: owned.fittings,
       appearance: owned.appearance,
     });
-    assert.deepEqual(preview.data.appearance, commissioned,
+    assert.deepEqual(preview.data.appearance, frontierMarking,
       'the real Shipworks turntable consumes the same normalized owned appearance');
     const palette = paletteWithShipAppearance(preview, {
       hull: '#777777', accent: '#999999', thruster: '#70d9ee', dark: '#20262a',
@@ -104,7 +134,7 @@ test('the real Shipworks intent is berth-gated, persists through Continue, and r
     assert.equal(save.loadEnvelope(structuredClone(envelope), 'plan44-paint-booth'), true);
     const restored = state.player.ownedShips[state.player.activeShipIndex];
     assert.equal(shipAppearanceSignature(restored.appearance, restored.defId),
-      shipAppearanceSignature(commissioned, owned.defId));
+      shipAppearanceSignature(frontierMarking, owned.defId));
   } finally {
     runtime.dispose();
   }

@@ -44,6 +44,16 @@ test('appearance normalization accepts safe colors and rejects unstable fields',
   });
 });
 
+test('dock-baked wreck silhouettes are bounded and stay absent from untouched save payloads', () => {
+  assert.equal('decalKillMarks' in normalizeShipAppearance(null, 'ship_kestrel'), false);
+  assert.equal(normalizeShipAppearance({ decalKillMarks: 99 }, 'ship_kestrel').decalKillMarks, 13);
+  assert.equal('decalKillMarks' in normalizeShipAppearance({ decalKillMarks: -4 }, 'ship_kestrel'), false);
+  assert.notEqual(
+    shipAppearanceSignature({ decalKillMarks: 3 }, 'ship_kestrel'),
+    shipAppearanceSignature({ decalKillMarks: 4 }, 'ship_kestrel'),
+  );
+});
+
 test('appearance palette overrides only declared colors and carries finish identity', () => {
   const base = { hull: '#808090', accent: '#a0eef8', thruster: '#60d8ee', dark: '#206070' };
   const entity = { data: { appearance: { hullColor: '#334455', finish: 'polished', wear: 0.1 } } };

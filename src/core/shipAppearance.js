@@ -1,6 +1,7 @@
 export const SHIP_APPEARANCE_VERSION = 1;
 export const SHIP_FINISHES = Object.freeze(['worn', 'satin', 'polished']);
 export const SHIP_DECALS = Object.freeze(['none', 'borrowed_time', 'concord', 'industrial', 'frontier']);
+export const SHIP_DECAL_KILL_MARK_MAX = 13;
 
 const GENERIC_DEFAULT = Object.freeze({
   version: SHIP_APPEARANCE_VERSION,
@@ -29,14 +30,22 @@ export function normalizeShipAppearance(input, defId = null) {
   const finish = SHIP_FINISHES.includes(source.finish) ? source.finish : fallback.finish;
   const decalId = SHIP_DECALS.includes(source.decalId) ? source.decalId : fallback.decalId;
   const wearNumber = Number(source.wear);
-  return Object.freeze({
+  const decalKillMarks = Math.max(0, Math.min(
+    SHIP_DECAL_KILL_MARK_MAX,
+    Math.floor(Number.isFinite(Number(source.decalKillMarks)) ? Number(source.decalKillMarks) : 0),
+  ));
+  const normalized = {
     version: SHIP_APPEARANCE_VERSION,
     hullColor: normalizeHexColor(source.hullColor),
     accentColor: normalizeHexColor(source.accentColor),
     finish,
     wear: Number.isFinite(wearNumber) ? Math.max(0, Math.min(1, wearNumber)) : fallback.wear,
     decalId,
-  });
+  };
+  // Keep the ordinary/default save payload byte-stable. This field appears only after the player
+  // actually commissions kill silhouettes at Shipworks; old saves and untouched hulls stay v1-shaped.
+  if (decalKillMarks > 0) normalized.decalKillMarks = decalKillMarks;
+  return Object.freeze(normalized);
 }
 
 export function shipAppearanceSignature(input, defId = null) {
@@ -48,6 +57,7 @@ export function shipAppearanceSignature(input, defId = null) {
     appearance.finish,
     appearance.wear.toFixed(3),
     appearance.decalId,
+    String(appearance.decalKillMarks || 0),
   ].join('|');
 }
 
