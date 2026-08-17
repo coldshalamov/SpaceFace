@@ -485,6 +485,32 @@
       "integration": "live",
       "commit": "a5bf1495",
       "verification": "focused_green"
+    },
+    {
+      "id": "smuggler-hardware-progression",
+      "date": "2026-08-17",
+      "wf": "WF-07",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "Smuggler hold and sensor scrambler modules now provide progression for cargo concealment and customs scan evasion",
+      "fingerprint": "verb=evade-customs-scan,subject=smuggler-hardware,sector=any,domain=wf-07",
+      "references": [],
+      "integration": "live",
+      "commit": "f3566969",
+      "verification": "focused_green"
+    },
+    {
+      "id": "galaxy-exploration-journal-tracker",
+      "date": "2026-08-17",
+      "wf": "WF-10",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "Codex and exploration journal now aggregate whole-galaxy survey completion, fully charted sectors, and recovered artifact counts",
+      "fingerprint": "verb=track-galaxy-survey,subject=exploration-journal,sector=any,domain=wf-10",
+      "references": [],
+      "integration": "live",
+      "commit": "ae024b0f",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
