@@ -36,6 +36,8 @@ See [`../design/program/roadmap/00_EXECUTION_PROTOCOL.md`](../design/program/roa
 - Program orientation: `program-dispatch.mjs --next` for one exact unit, `--ready` for the current
   ready set, and `--id PQ-XXX` for parent context.
 - Simulation: `sf-sim.mjs` and focused `check-*-sim`/compare scripts.
+- Runtime liveness and frame-cost ranking: `probe-runtime-witness.mjs` (plain-language report under
+  `.devshots/runtime-witness/`).
 - Browser/Electron proof: launcher/probe scripts plus the shared game server and validation broker.
 - Assets: reachability, status, live-load, release-build, residency, and visual-stability scripts.
 - UI: accessibility, contrast, reachability, player labels, behavior, and compositor/performance checks.
