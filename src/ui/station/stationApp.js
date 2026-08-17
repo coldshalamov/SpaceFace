@@ -34,6 +34,7 @@ import {
 import { missionDockAttention } from './missionDockAttention.js';
 import { isChoiceECourierReady } from '../../story/endings/eligibility.js';
 import { heatLevelFor } from '../../systems/heat.js';
+import { confirm } from '../confirm.js';
 
 const STATION_REC = new Map();
 for (const sec of SECTORS) for (const s of (sec.stations || [])) STATION_REC.set(s.id, { station: s, sector: sec });
@@ -706,6 +707,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       const washAvailable = resolveStation(ctx).services.includes('repair');
       return {
         repair: toCost(q('repair'), 'repair'),
+        showroom: toCost(q('showroom_rebuild'), 'showroom_rebuild'),
         refuel: toCost(q('refuel'), 'refuel'),
         resupply: toCost(q('ammo'), 'ammo'),
         wash: washAvailable
@@ -721,6 +723,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     const fuelMissing = fuel.max > 0 ? Math.max(0, fuel.max - (fuel.current || 0)) : 0;
     return {
       repair: hullMissing > 0 ? { text: fmtCr(Math.ceil(hullMissing * 6)) + ' cr', tone: 'warn' } : { text: 'Hull OK', disabled: true, tone: 'gain' },
+      showroom: { text: 'Unavailable', disabled: true, title: 'Showroom rebuild quote unavailable' },
       refuel: fuelMissing > 0 ? { text: fmtCr(Math.ceil(fuelMissing * 3)) + ' cr', tone: 'warn' } : { text: 'Fuel OK', disabled: true, tone: 'gain' },
       resupply: { text: 'Rearm', tone: '' },
       wash: { text: 'Offline', disabled: true, title: 'Hull wash quote unavailable' },
@@ -741,6 +744,10 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       commitUndock();
       return true;
     }
+    if (id === 'showroom') {
+      void runShowroomRebuild();
+      return true;
+    }
     const typeMap = { repair: 'repair', refuel: 'refuel', resupply: 'ammo', wash: 'hull_wash', restitution: 'restitution' };
     const type = typeMap[id];
     if (type && bus) {
@@ -757,6 +764,29 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     return true;
   }
 
+  async function runShowroomRebuild() {
+    const s = state();
+    const ship = playerEntity(s);
+    let quote = null;
+    if (typeof opts.serviceQuote === 'function') {
+      try { quote = opts.serviceQuote('showroom_rebuild', s, ship); } catch (_) { quote = null; }
+    }
+    if (!quote || quote.disabled || !ctx.bus) return false;
+    const accepted = await confirm({
+      title: 'Erase this hull history?',
+      body: `${quote.detail || 'Restore this hull to delivery condition.'}\n\n` +
+        `Cost: ${fmtCr(quote.cost)} credits. Paint and fitted systems stay; tallies, patches, scorch, grime, and writing are erased.`,
+      confirmLabel: 'Rebuild Clean',
+      cancelLabel: 'Keep History',
+      danger: true,
+    });
+    if (!accepted) return false;
+    ctx.bus.emit('ui:service', { type: 'showroom_rebuild', amount: 1 });
+    ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+    setTimeout(refresh, 60);
+    return true;
+  }
+
   // ---------- vitals ----------
   // A vital is a resource and the verb that changes it, as one object. The verb is only rendered
   // when it is worth offering: a full tank shows "Full", not a Refuel button you cannot use.
@@ -769,7 +799,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   }
 
   /** cost → the trailing element of a vital: an amber verb, or a quiet fact. */
-  function vitalActHtml(id, cost, label, ghost = false) {
+  function vitalActHtml(id, cost, label, ghost = false, compact = false) {
     if (!cost) return '';
     const text = String(cost.text == null ? '' : cost.text);
     if (cost.disabled) {
@@ -777,7 +807,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     }
     const cls = 'sxb-vital__act' + (ghost ? ' sxb-vital__act--ghost' : '');
     const title = cost.title ? ` title="${escapeHtml(cost.title)}"` : '';
-    const copy = ghost ? label : `${label} · ${text}`;
+    const copy = compact ? `${label} · ${text}` : ghost ? label : `${label} · ${text}`;
     return `<button type="button" class="${cls}" data-vital-act="${id}"${title}` +
       ` aria-label="${escapeHtml(cost.title || (label + ' ' + text))}">${escapeHtml(copy)}</button>`;
   }
@@ -819,7 +849,8 @@ export function createStationApp(rootEl, ctx, opts = {}) {
         k: 'hull', label: 'Hull', frac: hullF, tone: vitalTone(hullF, 'hull'),
         value: `${fmtCr(ship && ship.hull)} / ${fmtCr(ship && ship.hullMax)}`,
         aria: `Hull ${(hullF * 100).toFixed(0)} percent`,
-        acts: [vitalActHtml('repair', costs.repair, 'Repair'),
+        acts: [vitalActHtml('repair', costs.repair, 'Field', false, true),
+               vitalActHtml('showroom', costs.showroom, 'Showroom', true, true),
                vitalActHtml('wash', costs.wash, 'Wash', true)],
       },
       {

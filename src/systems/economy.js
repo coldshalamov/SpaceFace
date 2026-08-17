@@ -51,7 +51,7 @@ import {
   factionLicensedFitOfferForState,
   priceModForState,
 } from './factions.js';
-import { livingHullGrimeAt } from '../core/livingHull.js';
+import { livingHullGrimeAt, normalizeLivingHull } from '../core/livingHull.js';
 import { heatRestitutionCost, isPlayerBountyPosted } from './heat.js';
 import { difficultyEconomyRewardScale } from '../data/difficulty.js';
 
@@ -113,12 +113,16 @@ const FUEL_STACK_UNIT_CR = FUEL_STACK.fuelCrPerUnit;
 const REPAIR_HP_CR = 0.9;          // cr per hull/armor point restored
 const AMMO_UNIT_CR = 12;           // cr per munition
 const HULL_WASH_CR = 75;           // cosmetic berth service; history survives the wash
+const SHOWROOM_REBUILD_MIN_CR = 900;
+const SHOWROOM_REBUILD_HULL_RATE = 0.025;
 export const SERVICE_PRICES = Object.freeze({
   fuelCrPerUnit: FUEL_UNIT_CR,
   fuelStackCrPerUnit: FUEL_STACK_UNIT_CR,
   repairCrPerHp: REPAIR_HP_CR,
   ammoCrPerUnit: AMMO_UNIT_CR,
   hullWashCr: HULL_WASH_CR,
+  showroomRebuildMinCr: SHOWROOM_REBUILD_MIN_CR,
+  showroomRebuildHullRate: SHOWROOM_REBUILD_HULL_RATE,
 });
 
 export const INSURANCE_POLICY_TIERS = Object.freeze({
@@ -147,6 +151,45 @@ function activeOwnedShipForInsurance(state) {
   const index = Math.max(0, Math.floor(Number(player && player.activeShipIndex) || 0));
   const owned = player && Array.isArray(player.ownedShips) ? player.ownedShips[index] : null;
   return { index, owned: owned || null };
+}
+
+/** One legible repair-tier quote shared by Economy and the Station Services read model. Field
+ * repair charges only restored protection and keeps the living-hull record. The showroom tier
+ * includes that physical repair plus a hull-value refinish, and is useful whenever damage, grime,
+ * or any durable mark exists. */
+export function showroomRebuildQuoteForState(state, entity = null) {
+  const player = state && state.player || {};
+  const { index, owned } = activeOwnedShipForInsurance(state);
+  const ship = SHIP_BY_ID.get(owned && owned.defId) || SHIP_BY_ID.get('ship_kestrel');
+  const hullValueCr = Math.max(0, Math.round(Number(ship && (ship.price || ship.buyback)) || 0));
+  const hullMax = Number(entity && entity.hullMax) || 0;
+  const hull = Number(entity && entity.hull) || 0;
+  const armorMax = Number(entity && entity.armorMax) || 0;
+  const armor = Number(entity && entity.armorHp) || 0;
+  const missHull = Math.max(0, hullMax - hull);
+  const missArmor = Math.max(0, armorMax - armor);
+  const repairCr = round((missHull + missArmor) * REPAIR_HP_CR);
+  const refinishCr = Math.max(SHOWROOM_REBUILD_MIN_CR,
+    round(hullValueCr * SHOWROOM_REBUILD_HULL_RATE));
+  const now = Number(state && state.simTime) || 0;
+  const livingHull = normalizeLivingHull(owned && owned.livingHull, now);
+  const grime = livingHullGrimeAt(livingHull, now);
+  const markCount = livingHull.killTally + livingHull.repairPatches + livingHull.heatScorch
+    + (livingHull.graffitiLine ? 1 : 0);
+  return Object.freeze({
+    shipIndex: index,
+    shipDefId: owned && owned.defId || ship && ship.id || null,
+    hullValueCr,
+    repairCr,
+    refinishCr,
+    cost: repairCr + refinishCr,
+    missingProtection: missHull + missArmor,
+    markCount,
+    grime,
+    hasHistory: markCount > 0 || livingHull.washCount > 0 || grime > 0.001,
+    available: missHull + missArmor > 0.5 || markCount > 0 || livingHull.washCount > 0 || grime > 0.001,
+    affordable: (player.credits | 0) >= repairCr + refinishCr,
+  });
 }
 
 function assessedFitValue(fittings) {
@@ -2438,6 +2481,45 @@ export const economy = {
         stationId: (state.ui && state.ui.dockedStationId) || this._lastDockedStation || null,
         atT: Number(state.simTime) || 0,
       });
+    } else if (type === 'showroom_rebuild') {
+      const stationId = this.dockedStationId();
+      const info = stationInfo(state, stationId);
+      if (!stationId || !info || !Array.isArray(info.services) || !info.services.includes('repair')) {
+        this.bus.emit('toast', { text: 'Showroom rebuild requires a repair berth', kind: 'error', ttl: 2 });
+        return { ok: false, reason: 'repair_berth_required' };
+      }
+      const e = state.entities && state.entities.get(state.playerId);
+      if (!e) return { ok: false, reason: 'player_ship_missing' };
+      const quote = showroomRebuildQuoteForState(state, e);
+      if (!quote.available) {
+        this.bus.emit('toast', { text: 'Hull is already in showroom condition', kind: 'info', ttl: 2 });
+        return { ok: false, reason: 'already_showroom' };
+      }
+      if ((state.player.credits | 0) < quote.cost) {
+        this.bus.emit('toast', { text: `Showroom rebuild requires ${quote.cost}cr`, kind: 'error', ttl: 2 });
+        return { ok: false, reason: 'insufficient_credits', need: quote.cost };
+      }
+      const beforeHull = Number(e.hull) || 0;
+      const beforeArmor = Number(e.armorHp) || 0;
+      e.hull = Number(e.hullMax) || beforeHull;
+      e.armorHp = Number(e.armorMax) || beforeArmor;
+      this.chargeCredits(quote.cost, 'service:showroom_rebuild');
+      const receipt = Object.freeze({
+        ok: true,
+        type: 'showroom_rebuild',
+        cost: quote.cost,
+        repairCr: quote.repairCr,
+        refinishCr: quote.refinishCr,
+        markCount: quote.markCount,
+        grimeBefore: quote.grime,
+        restoredHull: Math.max(0, (Number(e.hull) || 0) - beforeHull),
+        restoredArmor: Math.max(0, (Number(e.armorHp) || 0) - beforeArmor),
+        stationId,
+        atT: Number(state.simTime) || 0,
+      });
+      this.bus.emit('service:completed', receipt);
+      this.bus.emit('toast', { text: `Showroom rebuild complete (${quote.cost}cr)`, kind: 'success', ttl: 2 });
+      return receipt;
     } else if (type === 'hull_wash') {
       const stationId = (state.ui && state.ui.dockedStationId) || this._lastDockedStation || null;
       const info = stationInfo(state, stationId);

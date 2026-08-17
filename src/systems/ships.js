@@ -1020,6 +1020,8 @@ export const ships = {
       if (!p) return;
       if (p.type === 'repair') {
         this._reduceLivingHull((hull, now) => livingHullWithRepair(hull, p, now), 'heavy_repair');
+      } else if (p.type === 'showroom_rebuild') {
+        this._reduceLivingHull((_hull, now) => defaultLivingHull(now), 'showroom_rebuild');
       } else if (p.type === 'hull_wash') {
         this._reduceLivingHull((hull, now) => livingHullAfterWash(hull, now), 'hull_wash');
       }

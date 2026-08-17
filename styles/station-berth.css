@@ -229,6 +229,12 @@
 .sxb-vital__acts { display: flex; gap: 6px; }
 .sxb-vital__acts .sxb-vital__act { flex: 1 1 auto; }
 .sxb-vital__acts .sxb-vital__act--ghost { flex: 0 0 auto; padding: 0 8px; }
+/* Hull care has three honest choices (field repair, showroom rebuild, wash). Keep all three
+   reachable at the shipped 1600px fascia without widening the station crown. */
+.sxb-vital--hull .sxb-vital__acts { gap: 4px; }
+.sxb-vital--hull .sxb-vital__acts .sxb-vital__act {
+  min-width: 0; padding-inline: 5px; font-size: 8px;
+}
 
 /* The hold is also a door: its head opens the manifest. */
 .sxb-vital--hold .sxb-vital__head {

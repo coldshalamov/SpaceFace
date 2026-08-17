@@ -3,7 +3,11 @@
 // economy/world own the credit charge + the effect (§0.6, §4.4). Read-only over sim state.
 import { COMMODITIES } from '../../data/commodities.js';
 import { FUEL_STACK } from '../../data/fuelStackLandmark.js';
-import { insurancePolicyQuoteForState, SERVICE_PRICES } from '../../systems/economy.js';
+import {
+  insurancePolicyQuoteForState,
+  SERVICE_PRICES,
+  showroomRebuildQuoteForState,
+} from '../../systems/economy.js';
 import { livingHullCyclesSinceWash, livingHullGrimeAt } from '../../core/livingHull.js';
 import { heatLevelFor, heatRestitutionCost } from '../../systems/heat.js';
 import { confirm } from '../confirm.js';
@@ -64,7 +68,8 @@ const PROTECTION_BAD_FRAC = 0.35;
 const SERVICE_ROWS = Object.freeze([
   { type: FUEL_STACK.serviceId, label: 'Stack Fuel', desc: 'Top off at the gas-skimming pressure ring', requires: [FUEL_STACK.serviceId] },
   { type: 'refuel', label: 'Refuel', desc: 'Top off jump fuel', requires: ['refuel'] },
-  { type: 'repair', label: 'Repair Hull', desc: 'Restore hull integrity', requires: ['repair'] },
+  { type: 'repair', label: 'Field Repair', desc: 'Restore integrity; keep tallies, patches, scorch, and marks', requires: ['repair'] },
+  { type: 'showroom_rebuild', label: 'Showroom Rebuild', desc: 'Restore integrity and erase hull history to delivery condition', requires: ['repair'] },
   { type: 'hull_wash', label: 'Hull Wash', desc: 'Clear surface grime without erasing hull history', requires: ['repair'] },
   { type: 'ammo', label: 'Buy Munitions', desc: 'Restock missile/ammo stores', requires: ['trade', 'refuel'] },
   { type: 'restitution', label: 'Pay Restitution', desc: 'Settle the local WANTED notice', requires: [] },
@@ -345,7 +350,7 @@ export function serviceQuote(type, state, entity) {
         amount: missing.total,
         cost,
         detail: hullText + ' · ' + armorText + ' · full repair ' + fmtCr(cost) + ' cr',
-        buttonLabel: 'Repair Hull',
+        buttonLabel: 'Field Repair',
         disabled: true,
         disabledReason: 'need credits',
         chips: [{ text: fmtCr(cost) + ' cr', kind: 'cost' }, { text: 'need credits', kind: 'bad' }],
@@ -365,10 +370,40 @@ export function serviceQuote(type, state, entity) {
     return {
       amount: missing.total,
       cost,
-      detail: hullText + ' · ' + armorText + ' · full repair',
-      buttonLabel: 'Repair Hull',
+      detail: hullText + ' · ' + armorText + ' · full field repair · hull history stays',
+      buttonLabel: 'Field Repair',
       disabled: false,
       chips: [{ text: fmtCr(cost) + ' cr', kind: 'cost' }, afterCreditsChip(credits, cost)],
+    };
+  }
+  if (type === 'showroom_rebuild') {
+    const rebuild = showroomRebuildQuoteForState(state, entity);
+    const hullText = 'Hull ' + Math.round(entity ? entity.hull : 0) + '/' + Math.round(entity ? entity.hullMax : 0);
+    const armorText = 'Armor ' + Math.round(entity ? entity.armorHp || 0 : 0) + '/' + Math.round(entity ? entity.armorMax || 0 : 0);
+    if (!rebuild.available) {
+      return {
+        amount: 0,
+        cost: 0,
+        detail: hullText + ' · ' + armorText + ' · no scars, marks, or grime to erase',
+        buttonLabel: 'Showroom Clean',
+        disabled: true,
+        chips: [{ text: 'delivery condition', kind: 'ok' }],
+      };
+    }
+    const disabled = !rebuild.affordable;
+    return {
+      amount: 1,
+      cost: rebuild.cost,
+      detail: hullText + ' · ' + armorText + ' · ' + rebuild.markCount + ' history mark' + (rebuild.markCount === 1 ? '' : 's')
+        + ' · paint and fitted systems stay',
+      buttonLabel: 'Rebuild Clean',
+      disabled,
+      disabledReason: disabled ? 'need ' + fmtCr(rebuild.cost) + ' cr' : '',
+      chips: [
+        { text: fmtCr(rebuild.cost) + ' cr', kind: 'cost' },
+        { text: 'erases hull history', kind: 'warn' },
+        ...(disabled ? [{ text: 'need credits', kind: 'bad' }] : [afterCreditsChip(credits, rebuild.cost)]),
+      ],
     };
   }
   if (type === 'hull_wash') {
@@ -535,23 +570,23 @@ export function createServicesPanel(ctx) {
     } else if (insuranceTierForService(type)) {
       amount = 1;
     }
-    if ((type === 'refuel' || type === FUEL_STACK.serviceId || type === 'repair' || type === 'hull_wash' || type === 'ammo') && amount <= 0) {
+    if ((type === 'refuel' || type === FUEL_STACK.serviceId || type === 'repair' || type === 'showroom_rebuild' || type === 'hull_wash' || type === 'ammo') && amount <= 0) {
       ctx.bus.emit('audio:cue', { id: 'ui_deny' });
       ctx.bus.emit('toast', { text: type === 'ammo' ? 'No munitions can fit right now' : 'Nothing to ' + type, kind: 'info', ttl: 2 });
       return;
     }
-    if (type === 'refuel' || type === FUEL_STACK.serviceId || type === 'repair' || type === 'hull_wash' || type === 'ammo'
+    if (type === 'refuel' || type === FUEL_STACK.serviceId || type === 'repair' || type === 'showroom_rebuild' || type === 'hull_wash' || type === 'ammo'
       || insuranceTierForService(type)) {
       // Quote → confirm for paid berth verbs (Station OS control grammar).
       const e = state.entities && state.entities.get(state.playerId);
       const quote = serviceQuote(type, state, e);
       if (quote && quote.cost > 0) {
         const ok = await confirm({
-          title: quote.buttonLabel || (type === 'refuel' || type === FUEL_STACK.serviceId ? 'Refuel' : type === 'repair' ? 'Repair' : type === 'hull_wash' ? 'Wash Hull' : 'Buy munitions'),
+          title: quote.buttonLabel || (type === 'refuel' || type === FUEL_STACK.serviceId ? 'Refuel' : type === 'repair' ? 'Field Repair' : type === 'showroom_rebuild' ? 'Showroom Rebuild' : type === 'hull_wash' ? 'Wash Hull' : 'Buy munitions'),
           body: (quote.detail || type) + ' · ' + fmtCr(quote.cost) + ' cr',
           confirmLabel: 'Confirm · ' + fmtCr(quote.cost) + ' cr',
           cancelLabel: 'Cancel',
-          danger: false,
+          danger: type === 'showroom_rebuild',
         });
         if (!ok) {
           ctx.bus.emit('audio:cue', { id: 'ui_deny' });
