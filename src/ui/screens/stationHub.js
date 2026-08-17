@@ -3683,7 +3683,8 @@ button.st-departure-chip:focus-visible { outline: 2px solid var(--st-accent); ou
 .st-fit-node--invalid { border-color: var(--danger); }
 /* J05: holds an inline 16px stroke SVG now, not a Unicode character. inline-flex centres the glyph
    on the row's optical middle; a bare inline <svg> would sit on the text baseline and ride low. The
-   per-type `color` rules below still drive it, because the art strokes with currentColor. */
+   per-type colour rules below still drive it, because the art strokes with currentColor.
+   NOTE: this CSS lives inside a JS template literal — never use backticks in these comments. */
 .st-fit-icon { width: 18px; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; }
 .st-fit-icon svg { display: block; }
 .st-fit-icon--hull { color: var(--accent); }
