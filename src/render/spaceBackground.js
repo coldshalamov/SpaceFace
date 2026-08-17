@@ -39,6 +39,10 @@ import {
   smearStretch,
   streamPhaseStep,
 } from './velocityLanguage.js';
+import {
+  easeSectorTransition,
+  SECTOR_VISUAL_TRANSITION_SECONDS,
+} from './sectorVisualTransition.js';
 
 // ----------------------------------------------------------------------------
 // Seeded PRNG (mulberry32) + string hash — ~15 lines, no deps.
@@ -103,6 +107,7 @@ function paletteEmissionColor(name) {
 // anomaly space goes ion purple. (Class objects are shared references, so identity
 // lookup against SECTOR_PALETTE_CLASSES is reliable.)
 const SECTOR_CLASS_TO_SKY = { core: 'AZURE', belt: 'EMBER', fringe: 'CRIMSON', anomaly: 'ION' };
+const SECTOR_BACKGROUND_TRANSITION_SECONDS = SECTOR_VISUAL_TRANSITION_SECONDS;
 
 function valueNoiseCorner(a, b, seed) {
   let s = ((a * 73856093) ^ (b * 19349663) ^ (seed * 83492791)) >>> 0;
@@ -1111,6 +1116,18 @@ export class SpaceBackground {
     this._tintA = new THREE.Color(1, 1, 1);
     this._tintB = new THREE.Color(1, 1, 1);
     this._starTint = new THREE.Color(1, 1, 1);
+    this._sectorTintStart = new THREE.Color(PALETTES.EMBER.emission);
+    this._sectorTintTarget = new THREE.Color(PALETTES.EMBER.emission);
+    this._sectorTintCurrent = new THREE.Color(PALETTES.EMBER.emission);
+    this._sectorTransition = {
+      active: false,
+      elapsed: SECTOR_BACKGROUND_TRANSITION_SECONDS,
+      startIntensity: 0.75,
+      targetIntensity: 0.75,
+      startNebulaOpacity: 0,
+      targetNebulaOpacity: 0,
+      targetPaletteName: 'EMBER',
+    };
     this._dbs = new THREE.Vector2();
     this._smearFit = { stretch: 1, dim: 1 };
 
@@ -2474,6 +2491,8 @@ export class SpaceBackground {
     const cx = Number.isFinite(camPos.x) ? camPos.x : 0;
     const cz = Number.isFinite(camPos.z) ? camPos.z : 0;
     this.camX = cx; this.camZ = cz;
+    const sectorTransitionActive = this._sectorTransition.active;
+    this._updateSectorVisualTransition(dt);
 
     // lock the rig to the camera (X/Z only; fixed depth)
     this.group.position.set(cx, this.bgY, cz);
@@ -2586,7 +2605,34 @@ export class SpaceBackground {
 
     this._updateRegionTint(cx, cz, dt, vl && vl.region);
     this._updateComet(dt);
-    this._refreshHeroes(false);
+    // A sector seam must not compete with the frame that is easing into it. The existing
+    // world-space hero window still refreshes naturally on the next settled frame, so a jump or
+    // membership change never forces the old synchronous hero rebuild into the boundary frame.
+    if (!sectorTransitionActive) this._refreshHeroes(false);
+  }
+
+  _updateSectorVisualTransition(dt) {
+    const transition = this._sectorTransition;
+    if (!transition || !transition.active) return;
+    transition.elapsed = Math.min(
+      SECTOR_BACKGROUND_TRANSITION_SECONDS,
+      transition.elapsed + (Number.isFinite(dt) ? Math.max(0, dt) : 0),
+    );
+    const rawT = SECTOR_BACKGROUND_TRANSITION_SECONDS > 0
+      ? transition.elapsed / SECTOR_BACKGROUND_TRANSITION_SECONDS
+      : 1;
+    const t = easeSectorTransition(rawT);
+    this.bgIntensity = transition.startIntensity
+      + (transition.targetIntensity - transition.startIntensity) * t;
+    this.nebulaOpacity = transition.startNebulaOpacity
+      + (transition.targetNebulaOpacity - transition.startNebulaOpacity) * t;
+    this._sectorTintCurrent.lerpColors(this._sectorTintStart, this._sectorTintTarget, t);
+    if (rawT >= 1) {
+      transition.active = false;
+      this.bgIntensity = transition.targetIntensity;
+      this.nebulaOpacity = transition.targetNebulaOpacity;
+      this._sectorTintCurrent.copy(this._sectorTintTarget);
+    }
   }
 
   // Region palette drift: a huge-scale world-position noise slides a tint between
@@ -2617,6 +2663,13 @@ export class SpaceBackground {
     this._c0.copy(paletteEmissionColor(names[idx]));
     this._c1.copy(paletteEmissionColor(names[next]));
     this._c0.lerp(this._c1, localT);
+
+    const sectorTransition = this._sectorTransition;
+    if (sectorTransition && sectorTransition.active) {
+      // The old graph remains resident while the new sector identity arrives. Blend the live
+      // palette colour itself, rather than replacing the star/tint graph at the seam.
+      this._c0.lerp(this._sectorTintCurrent, 0.72);
+    }
 
     const locked = this.bgTime < this.regionLockUntil;
     // Ambient crossfade through the crossing. The tint eases toward neutral as the boundary is
@@ -2683,9 +2736,10 @@ export class SpaceBackground {
   // --------------------------------------------------------------------------
   // Public controls (debug API + settings)
   // --------------------------------------------------------------------------
-  // Per-sector sky: derive the generation seed from the sector id and swap to its
-  // palette class. Rebaking the three tiles + stars costs one ~60-150ms frame, spent
-  // during the jump-arrival transition (which is already the heavy moment).
+  // Per-sector sky: update the identity of the continuous map without rebuilding the visible graph
+  // at the membership seam. The old background remains resident while the palette/intensity/nebula
+  // controls ease over 1.5 seconds. Star positions and distant heroes are world presentation, not a
+  // sector-local screen wipe; their ordinary settled refresh path is allowed to run after the seam.
   onSectorEnter(sector, visualProfile = null) {
     const id = sector && sector.id;
     if (!id) return;
@@ -2700,17 +2754,19 @@ export class SpaceBackground {
       this.layers[i].streamV = 0;
     }
     if (id === this._sectorId) return;
+    const initialSector = this._sectorId == null;
     this._sectorId = id;
     this._visualProfile = visualProfile || null;
     this.backgroundComposition = resolveBackgroundComposition(visualProfile);
     this.backgroundStructure = resolveBackgroundStructure(visualProfile);
     this.deepFieldRecipe = resolveDeepFieldStructureRecipe(this.backgroundStructure);
     this._structureCoverage = estimatePhenomenonCoverage(this.backgroundStructure);
-    this.nebulaOpacity = Math.max(0, Math.min(0.45,
+    const targetNebulaOpacity = Math.max(0, Math.min(0.45,
       Number(visualProfile && visualProfile.background && visualProfile.background.nebulaOpacity) || 0));
-    if (visualProfile && visualProfile.background && Number.isFinite(visualProfile.background.intensity)) {
-      this.bgIntensity = Math.max(0.08, Math.min(0.85, visualProfile.background.intensity));
-    }
+    const targetIntensity = visualProfile && visualProfile.background
+      && Number.isFinite(visualProfile.background.intensity)
+      ? Math.max(0.08, Math.min(0.85, visualProfile.background.intensity))
+      : this.bgIntensity;
     this._signatureHeroAnchor = buildSignatureHeroAnchor(
       this.backgroundComposition,
       { x: this.camX, z: this.camZ },
@@ -2731,11 +2787,35 @@ export class SpaceBackground {
       : this._skyPaletteForSector(sector)
       || PALETTE_NAMES[this.skySeed % PALETTE_NAMES.length];
     this.regionPaletteT = PALETTE_NAMES.indexOf(pal);
-    this.regionLockUntil = this.bgTime + 8.0;   // let the new identity land before drift resumes
-    this.bakeAll(pal);
-    this._rebuildStarsAndFlares();
-    this._spawnStructureCard();
-    this._refreshHeroes(true);
+    this.regionLockUntil = 0;
+    this.currentPaletteName = pal;
+
+    if (initialSector) {
+      // Boot is still in the loading route, so admit the authored opening composition before the
+      // first playable frame. This branch is intentionally separate from a live sector seam.
+      this.nebulaOpacity = targetNebulaOpacity;
+      this.bgIntensity = targetIntensity;
+      this._sectorTintCurrent.set(PALETTES[pal].emission);
+      this._sectorTintStart.copy(this._sectorTintCurrent);
+      this._sectorTintTarget.copy(this._sectorTintCurrent);
+      this._sectorTransition.active = false;
+      this.bakeAll(pal);
+      this._rebuildStarsAndFlares();
+      this._spawnStructureCard();
+      this._refreshHeroes(true);
+      return;
+    }
+
+    const transition = this._sectorTransition;
+    transition.startIntensity = this.bgIntensity;
+    transition.targetIntensity = targetIntensity;
+    transition.startNebulaOpacity = this.nebulaOpacity;
+    transition.targetNebulaOpacity = targetNebulaOpacity;
+    transition.elapsed = 0;
+    transition.active = true;
+    transition.targetPaletteName = pal;
+    this._sectorTintStart.copy(this._sectorTintCurrent);
+    this._sectorTintTarget.set(PALETTES[pal].emission);
   }
 
   _skyPaletteForSector(sector) {

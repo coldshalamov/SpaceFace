@@ -164,6 +164,38 @@ test('residency service runs full recovery once, then drains without repeating s
   assert.deepEqual(calls, ['full', 'drain', 'drain', 'poll']);
 });
 
+test('continuous sector handoff defers the seam recovery scan through the visual blend', () => {
+  const calls = [];
+  const owner = {
+    _deferNoncriticalMeshStreaming: false,
+    _renderResidencyPollS: 0,
+    _meshReconcileDirty: true,
+    _sectorHandoffStreamHoldS: 1.5,
+    _sectorHandoffSectorId: 'sector_ceres_belt',
+    _authoredSectorPrewarmPendingId: 'sector_ceres_belt',
+    _authoredSectorPrewarmPending: { active: true },
+    _meshBuildQueue: [],
+    _meshBuildQueueHead: 0,
+    reconcileMeshes() { calls.push('full'); },
+    reconcileMeshResidency() { calls.push('poll'); },
+    _drainPendingMeshBuilds() { calls.push('drain'); },
+  };
+
+  assert.equal(serviceRenderMeshResidency(owner, 0.75), 'deferred');
+  assert.equal(owner._meshReconcileDirty, true);
+  assert.deepEqual(calls, []);
+
+  assert.equal(serviceRenderMeshResidency(owner, 0.75), 'deferred');
+  assert.equal(owner._meshReconcileDirty, false);
+  assert.equal(owner._sectorHandoffSectorId, null);
+  assert.equal(owner._authoredSectorPrewarmPendingId, null);
+  assert.equal(owner._authoredSectorPrewarmPending, null);
+  assert.deepEqual(calls, []);
+
+  assert.equal(serviceRenderMeshResidency(owner, 1 / 60), 'poll');
+  assert.deepEqual(calls, ['poll']);
+});
+
 test('stable 400-entity poll halves collection visits and removes all redundant rebinds', () => {
   const player = entity(1, { type: 'ship', sectorId: 'sector_current' });
   player.isPlayer = true;
