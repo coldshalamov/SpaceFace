@@ -24,6 +24,7 @@ const MAX_CAUSES = 24;
 const WRECK_RADIUS = 9;
 const WRECK_SALVAGE_TIME = 8;
 export const AFTERMATH_FRESH_WINDOW_S = 120;
+export const AFTERMATH_COLD_CLEANUP_S = 20 * 60;
 const COLD_HULK_SALVAGE_TIME = 12;
 export const COLD_DERELICT_CUT_THRESHOLD = 54;
 export const COLD_DERELICT_SURVIVOR_CHANCE_PCT = 45;
@@ -166,6 +167,13 @@ function poolForMarker(marker) {
     marker.salvagePool = initialPoolForMarker(marker);
   }
   return marker.salvagePool;
+}
+
+function salvagePoolTotal(pool) {
+  return Object.values(pool || {}).reduce((sum, qty) => {
+    const amount = Math.floor(Number(qty) || 0);
+    return amount > 0 ? sum + amount : sum;
+  }, 0);
 }
 
 export function aftermathLifecycleForMarker(marker, simTime = 0) {
@@ -1159,12 +1167,60 @@ export const aftermathWrecks = {
   update(_dt, state) {
     if (!state || !this._spawned || (state.tick | 0) % 30 !== 0) return;
     const sectorId = state.world && state.world.currentSectorId;
-    for (const marker of aftermathForSector(state, sectorId)) {
-      this._syncLiveLifecycle(marker);
+    for (const marker of [...aftermathForSector(state, sectorId)]) {
+      const lifecycle = this._syncLiveLifecycle(marker);
+      const wreck = this._resolveBoundWreck(marker && marker.markerId);
+      if (this._coldHulkCleanupEligible(marker, wreck, lifecycle)) {
+        this._scavengeColdHulk(marker, wreck, true);
+        continue;
+      }
       if (marker.playerLoss && ['offered', 'active'].includes(marker.playerLoss.towStatus)) {
         this._tryCompletePlayerTow(marker);
       }
     }
+  },
+
+  _coldHulkCleanupEligible(marker, wreck, lifecycle = aftermathLifecycleForMarker(
+    marker,
+    this.state && this.state.simTime,
+  )) {
+    if (!marker || !wreck || !wreck.data || marker.playerLoss || marker.wreckClass === 'ancient'
+      || wreck.data.uniqueWreckId || wreck.data.authoredWreckId || wreck.data.playerVisitSalvageOnly
+      || lifecycle.stage !== 'cold'
+      || lifecycle.ageS < AFTERMATH_COLD_CLEANUP_S) return false;
+    const boarding = normalizeColdDerelictBoarding(marker.coldDerelictBoarding);
+    if (boarding && (boarding.phase !== 'sealed' || boarding.cutProgress > 0
+      || boarding.stabilizedAt > 0 || boarding.hatchOpenedAt > 0 || boarding.extractedAt > 0
+      || boarding.hatchPlatePayloadId != null || boarding.blackBoxPickupId != null
+      || boarding.podEntityId != null)) return false;
+    if (playerTetheredTo(this.state, wreck.id) || wreck.data.salvorClaimedBy) return false;
+    return true;
+  },
+
+  _scavengeColdHulk(marker, wreck = this._resolveBoundWreck(marker && marker.markerId), announce = true) {
+    if (!marker || !marker.markerId || marker.playerLoss) return false;
+    const pool = marker.salvagePool && typeof marker.salvagePool === 'object'
+      ? marker.salvagePool : {};
+    const removedQty = salvagePoolTotal(pool);
+    for (const commodityId of Object.keys(pool)) delete pool[commodityId];
+    const wreckId = wreck && wreck.id != null ? wreck.id : null;
+    const removed = this._removeMarker(marker, 'cold_hulk_scavenged');
+    if (!removed) return false;
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('aftermathWreck:scavenged', {
+        markerId: marker.markerId,
+        wreckId,
+        sectorId: marker.sectorId,
+        removedQty,
+        reason: 'cold_hulk_scavenged',
+      });
+      if (announce) this.bus.emit('toast', {
+        text: 'Scavengers picked a cold hulk clean.',
+        kind: 'info',
+        ttl: 4,
+      });
+    }
+    return true;
   },
 
   _activePlayerTowAttachment(wreck) {
@@ -1243,6 +1299,10 @@ export const aftermathWrecks = {
   },
 
   _removePlayerLossMarker(marker, reason) {
+    return this._removeMarker(marker, reason);
+  },
+
+  _removeMarker(marker, reason) {
     if (!marker || !marker.markerId) return false;
     const own = ensureAftermathState(this.state);
     const list = own.bySector[marker.sectorId] || [];
