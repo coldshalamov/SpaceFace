@@ -32,8 +32,9 @@ import { world } from '../src/systems/world.js';
 
 const COURSE = CERES_SHIFT_RING;
 const DT = SIM_DT;
+const STARTING_CREDITS = 2_000;
 
-async function boot(t, seed = 5050, course = COURSE) {
+async function boot(t, seed = 5050, course = COURSE, credits = STARTING_CREDITS) {
   const featureSnapshot = snapshotFeatureMaps();
   const planetFlag = PLANET_FLAGS.enabled;
   applyFeatureConfigToMaps(PRODUCTION_FEATURES);
@@ -83,15 +84,15 @@ async function boot(t, seed = 5050, course = COURSE) {
     rot: Math.atan2(first.z - staging.z, first.x - staging.x),
   }));
   state.playerId = player.id;
-  state.player.credits = 0;
+  state.player.credits = credits;
   const events = [];
   for (const name of [
-    'timeTrial:courseAvailable', 'timeTrial:postingRead', 'timeTrial:started',
+    'timeTrial:courseAvailable', 'timeTrial:postingRead', 'timeTrial:started', 'timeTrial:startRejected',
     'timeTrial:gatePassed', 'timeTrial:invalidated', 'timeTrial:completed',
     'timeTrial:slingshotQualified', 'tether:latched', 'tether:cut',
     'tether:latchDenied', 'tether:broke', 'tether:released', 'tether:releaseRated',
     'planet:plungeStage',
-    'economy:grantCredits', 'credits:changed', 'physics:impact', 'toast',
+    'economy:grantCredits', 'economy:chargeCredits', 'credits:changed', 'physics:impact', 'toast',
   ]) bus.on(name, (payload) => events.push({ name, payload: structuredClone(payload) }));
   return { sim, state, bus, player, events, runtime: sim.registry.get('timeTrials'), course };
 }
@@ -172,6 +173,8 @@ test('Plan 50: ordinary Ceres posting leads to physical gate rings and a silver-
   const route = await boot(t);
   route.bus.emit('dock:docked', { stationId: COURSE.postingStationId });
   assert.match(eventOf(route, 'toast')?.payload?.text || '', /SHIFT RING.*gold.*silver.*bronze/i);
+  assert.match(eventOf(route, 'timeTrial:postingRead')?.payload?.text || '', new RegExp(`${COURSE.entryFeeCr} cr entry`, 'i'));
+  assert.equal(route.runtime.localBoard().courses.find(({ id }) => id === COURSE.id)?.entryFeeCr, COURSE.entryFeeCr);
 
   const runtime = route.runtime.getRuntimeState();
   assert.equal(runtime.courseId, COURSE.id);
@@ -187,9 +190,14 @@ test('Plan 50: ordinary Ceres posting leads to physical gate rings and a silver-
   const result = await flyReferenceRun(route);
   assert.ok(result.medal === 'gold' || result.medal === 'silver', `reference medal was ${result.medal}`);
   assert.equal(eventsOf(route, 'timeTrial:gatePassed').length, COURSE.gates.length);
+  assert.equal(eventsOf(route, 'economy:chargeCredits').length, 1);
+  assert.deepEqual(eventOf(route, 'economy:chargeCredits')?.payload, {
+    amount: COURSE.entryFeeCr,
+    reason: `time_trial_entry:${COURSE.id}`,
+  });
   assert.equal(eventsOf(route, 'economy:grantCredits').length, 1);
-  assert.equal(eventsOf(route, 'credits:changed').length, 1);
-  assert.equal(route.state.player.credits, result.creditDelta);
+  assert.equal(eventsOf(route, 'credits:changed').length, 2);
+  assert.equal(route.state.player.credits, STARTING_CREDITS - COURSE.entryFeeCr + result.creditDelta);
   assert.equal(route.state.physicsRuntime.diagnostics.backend, 'rapier-dynamic');
 
   const record = route.state.player.timeTrials.courses[COURSE.id];
@@ -208,8 +216,36 @@ test('Plan 50: ordinary Ceres posting leads to physical gate rings and a silver-
   assert.equal(JSON.stringify(restored.bestReplay), replayBytesBefore,
     'Continue preserves the deterministic input tape byte-for-byte');
   assert.equal(continued.state.player.credits, route.state.player.credits,
-    'Continue restores the economy-owned credit total without another grant');
+    'Continue restores the one economy-owned charge and purse without replaying either');
+  assert.equal(eventsOf(continued, 'economy:chargeCredits').length, 0);
+  assert.equal(eventsOf(continued, 'economy:grantCredits').length, 0);
   assert.equal(continued.runtime.prepareGhostReplay(COURSE.id).replay.frames.length, result.replayFrames);
+});
+
+test('Plan 58: a broke pilot crossing the physical start ring is refused without a charge or run', async (t) => {
+  const route = await boot(t, 5058, COURSE, 0);
+  const startBuoy = [...route.runtime.getRuntimeState().buoyIds]
+    .map((id) => route.state.entities.get(id))
+    .find((entity) => entity?.data?.timeTrialGateIndex === 0);
+  assert.match(startBuoy?.data?.scanLabel || '', new RegExp(`${COURSE.entryFeeCr} cr entry`, 'i'));
+
+  for (let tick = 0; tick < 1_200 && !eventOf(route, 'timeTrial:startRejected'); tick += 1) {
+    setInput(route.state, referenceTimeTrialInput(
+      route.course, route.player, 0, route.state, route.runtime.getRuntimeState(),
+    ));
+    route.sim.step(DT);
+  }
+
+  assert.deepEqual(eventOf(route, 'timeTrial:startRejected')?.payload, {
+    courseId: COURSE.id,
+    reason: 'insufficient_credits',
+    entryFeeCr: COURSE.entryFeeCr,
+    availableCr: 0,
+  });
+  assert.equal(eventOf(route, 'timeTrial:started'), null);
+  assert.equal(eventsOf(route, 'economy:chargeCredits').length, 0);
+  assert.equal(route.runtime.getRuntimeState().run, null);
+  assert.equal(route.state.player.credits, 0);
 });
 
 test('Plan 50: real ordered flight invalidates a missed gate instead of granting coordinate-only completion', async (t) => {

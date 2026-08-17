@@ -340,7 +340,8 @@ function gateCrossing(course, gateIndex, from, to, playerRadiusWU = 0, state = n
 function coursePostingText(course) {
   const seconds = (ticks) => Math.round(ticks / TIME_TRIAL_TICK_RATE);
   const rule = typeof course.postingRule === 'string' ? ` ${course.postingRule}` : '';
-  return `${course.postingLabel}: ${seconds(course.medals.goldTicks)}s gold / ${seconds(course.medals.silverTicks)}s silver / ${seconds(course.medals.bronzeTicks)}s bronze.${rule} Cross Ring 1 outbound to start.`;
+  const entryFeeCr = Math.max(0, Math.trunc(finite(course.entryFeeCr)));
+  return `${course.postingLabel}: ${entryFeeCr} cr entry. ${seconds(course.medals.goldTicks)}s gold / ${seconds(course.medals.silverTicks)}s silver / ${seconds(course.medals.bronzeTicks)}s bronze.${rule} Cross Ring 1 outbound to start.`;
 }
 
 export const timeTrials = {
@@ -416,7 +417,7 @@ export const timeTrials = {
 
     if (!this._run) {
       const crossing = gateCrossing(course, 0, player.prevPos, player.pos, player.radius, state);
-      if (crossing) this._startRun(course, player, crossing);
+      if (crossing) this._tryStartRun(course, player, crossing);
       return;
     }
     if (this._run.invalidated) return;
@@ -569,7 +570,9 @@ export const timeTrials = {
             placeId: course.placeId,
             placeScale: course.ring.placeScale,
             name: `${course.name} / Ring ${gateIndex + 1}`,
-            scanLabel: `${course.name} checkpoint ${gateIndex + 1}`,
+            scanLabel: gateIndex === 0
+              ? `${course.name} start / ${Math.max(0, Math.trunc(finite(course.entryFeeCr)))} cr entry`
+              : `${course.name} checkpoint ${gateIndex + 1}`,
             sectorId: course.sectorId,
             homeSectorId: course.sectorId,
             timeTrialCourseId: course.id,
@@ -694,7 +697,35 @@ export const timeTrials = {
     this.bus?.emit?.('timeTrial:ghostRemoved', { ghostId: id });
   },
 
-  _startRun(course, player, crossing) {
+  _tryStartRun(course, player, crossing) {
+    const entryFeeCr = Math.max(0, Math.trunc(finite(course?.entryFeeCr)));
+    const availableCr = Math.max(0, Math.trunc(finite(this.state.player?.credits)));
+    if (availableCr < entryFeeCr) {
+      this.bus.emit('timeTrial:startRejected', {
+        courseId: course.id,
+        reason: 'insufficient_credits',
+        entryFeeCr,
+        availableCr,
+      });
+      this.bus.emit('toast', {
+        text: `${course.name}: ${entryFeeCr} cr entry; ${availableCr} cr available.`,
+        kind: 'warn',
+        ttl: 5,
+      });
+      return false;
+    }
+    if (entryFeeCr > 0) {
+      this.bus.emit('economy:chargeCredits', {
+        amount: entryFeeCr,
+        reason: `time_trial_entry:${course.id}`,
+      });
+    }
+    this._startRun(course, player, crossing, { entryFeeCr });
+    return true;
+  },
+
+  // Explicit callers (for example a no-fee invitational event) retain the legacy free start seam.
+  _startRun(course, player, crossing, { entryFeeCr = 0 } = {}) {
     this._run = {
       courseId: course.id,
       startedTick: this.state.tick,
@@ -711,6 +742,7 @@ export const timeTrials = {
       courseId: course.id,
       playerId: player.id,
       startedTick: this._run.startedTick,
+      entryFeeCr,
       crossing,
     });
     this.bus.emit('timeTrial:gatePassed', {

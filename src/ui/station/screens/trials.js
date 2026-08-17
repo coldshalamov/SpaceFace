@@ -30,7 +30,7 @@ export function createTrialsScreen(ctx) {
       return `<article class="sx-trial-card">` +
         `<div><span class="sx-trial-card__sector">${escapeHtml(course.sectorId.replace(/^sector_/, '').replace(/_/g, ' '))}</span>` +
         `<h2>${escapeHtml(course.name)}</h2>` +
-        `<p>${course.bestTicks == null ? 'No local finish yet' : `${escapeHtml(course.bestMedal || 'finish')} · ${formatTicks(course.bestTicks)}`}</p></div>` +
+        `<p>${course.entryFeeCr} cr per run · ${course.bestTicks == null ? 'No local finish yet' : `${escapeHtml(course.bestMedal || 'finish')} · ${formatTicks(course.bestTicks)}`}</p></div>` +
         `<button type="button" class="sx-trials__button" data-trial-ghost="${escapeHtml(course.id)}" ` +
         `data-enabled="${course.ghostEnabled ? 'true' : 'false'}"${ghostDisabled}>${ghostLabel}</button>` +
         `</article>`;
