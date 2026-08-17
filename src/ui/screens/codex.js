@@ -16,6 +16,7 @@ import {
 } from '../../data/doubleWreckBlackBoxes.js';
 import { coldDerelictBlackBoxRecords } from '../../data/coldDerelictBlackBoxes.js';
 import { ghostShipBlackBoxRecords } from '../../data/ghostShipBlackBox.js';
+import { volsBlackBoxRecord } from '../../data/volsBlackBox.js';
 import { explorationDiscoveryPlates } from '../../world/explorationJournal.js';
 import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
 import { createShipLedgerPanel } from './shipLedger.js';
@@ -729,10 +730,25 @@ export const codexScreen = {
     const doubleWreckRecords = doubleWreckBlackBoxRecords(story);
     const ghostRecords = ghostShipBlackBoxRecords(story);
     const coldDerelictRecords = coldDerelictBlackBoxRecords(story);
-    if (!doubleWreckRecords.length && !ghostRecords.length && !coldDerelictRecords.length) {
+    const volsRecord = volsBlackBoxRecord(story);
+    if (!doubleWreckRecords.length && !ghostRecords.length && !coldDerelictRecords.length
+      && !volsRecord) {
       this._body.appendChild(el('div', 'sf-codex-empty',
         'No recorders recovered. Scan a wreck before cutting it free.'));
       return;
+    }
+    if (volsRecord) {
+      const entry = el('article', 'sf-codex-entry');
+      entry.dataset.blackBoxCargoId = volsRecord.cargoId;
+      entry.appendChild(el('h3', null, volsRecord.title));
+      const location = volsRecord.sectorId || '';
+      entry.appendChild(el('div', 'sf-codex-meta',
+        `1/1 recorder recovered${location ? ` · ${location}` : ''}`));
+      for (const log of volsRecord.logs) {
+        entry.appendChild(el('div', 'sf-codex-body', `${log.stamp} — ${log.text}`));
+      }
+      entry.appendChild(el('div', 'sf-codex-note', volsRecord.note));
+      this._body.appendChild(entry);
     }
     for (const record of coldDerelictRecords.slice().reverse()) {
       const entry = el('article', 'sf-codex-entry');
