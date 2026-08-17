@@ -347,6 +347,15 @@ body[data-lab="shots"] [data-shot^="state-"]{grid-column:span 2}
 .lab-caps{display:flex;gap:14px}
 .lab-caps .cap{width:280px}
 
+.lab-glyphs{display:grid;grid-template-columns:repeat(4,auto);gap:8px 16px;width:420px}
+.lab-glyph{display:flex;align-items:center;gap:7px}
+.lab-glyph i{font-family:var(--data);font-size:11px;font-style:normal;color:var(--paper);
+  width:16px;text-align:center}
+.lab-glyph b{font-family:var(--data);font-weight:400;font-size:9.5px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--steel)}
+.lab-glyph.is-notdef i{color:#ff5470}
+.lab-glyph.is-notdef b{color:#ff5470}
+
 /* ── Right-dock instruments (J07). Both are pinned to ONE 220px column on purpose: the shipped dock
    staggers .sf-target / .sf-overview / .sf-radar at differing widths, and the overhang is only
    visible when they are stacked at a single width like this. ── */
@@ -964,6 +973,15 @@ body[data-lab="shots"] [data-shot^="state-"]{grid-column:span 2}
     </div>
   </div>
 
+  <!-- SEMANTIC_PALETTE's text channel, rendered in the shipped --mono stack at HUD size.
+       hud.js writes these through textContent, so a codepoint the font lacks becomes a tofu box in
+       live combat — a regression no assertion in this repo would catch. The notdef control at the
+       end is U+E000 (Private Use Area): if any glyph above starts looking like THAT, the font stack
+       lost the character. Hydrated from accessibility.js so the list cannot drift. -->
+  <div class="lab-shot" data-shot="palette-glyphs">
+    <div class="lab-glyphs" id="lab-glyphs"></div>
+  </div>
+
   <div class="lab-shot" data-shot="target-card">
     <div class="lab-dock">
       <div class="lab-tgt">
@@ -1110,6 +1128,20 @@ const SHORT = {
   choir: 'Choir', helix: 'Helix', understory: 'Under', fulfillment: 'Fill', archive: 'Archive',
   pitborn: 'Pit', verge_layers: 'Verge',
 };
+const glyphHost = document.getElementById('lab-glyphs');
+if (glyphHost) {
+  try {
+    const { SEMANTIC_PALETTE } = await import('/src/ui/accessibility.js');
+    glyphHost.innerHTML = Object.entries(SEMANTIC_PALETTE).map(([key, def]) =>
+      `<span class="lab-glyph"><i>${def.icon}</i><b>${key}</b></span>`).join('')
+      + '<span class="lab-glyph is-notdef"><i>&#xE000;</i><b>notdef</b></span>';
+    glyphHost.dataset.hydrated = String(Object.keys(SEMANTIC_PALETTE).length);
+  } catch (err) {
+    glyphHost.dataset.hydrated = 'error';
+    glyphHost.innerHTML = `<b style="color:#ff5470">palette hydration failed: ${String(err && err.message || err)}</b>`;
+  }
+}
+
 const host = document.getElementById('lab-roundels');
 if (host) {
   try {
