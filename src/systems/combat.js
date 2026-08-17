@@ -741,6 +741,10 @@ export const combat = {
     const presentation = buildKillPresentationReceipt(state, t, killerId, lethal);
     bus.emit('entity:killed', {
       id: t.id, killerId, type: t.type, pos: { x: t.pos.x, z: t.pos.z },
+      // Presentation owners need the real physical footprint after the lethal edge. Omitting it
+      // collapsed every ship death to VFX's 6-WU compatibility fallback, so a Mote and Iron Maw
+      // produced the same-sized resident even though Combat still had the authoritative body here.
+      radius: Math.max(0, Number(t.radius) || 0),
       factionId: t.factionId, factionLawful,
       bountyCr: missionOwns || ordinaryRewardsSuppressed ? 0 : (d.bountyCr || 0),
       lootTableId: ordinaryRewardsSuppressed ? null : (d.lootTableId || null),

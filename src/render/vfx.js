@@ -4594,15 +4594,27 @@ export const vfx = {
 
   _onKilled(p) {
     this._emitJuiceCue('combat.damage.kill', p, 2);
-    this._queueExplosion(p, this._isCapitalKill(p) ? 'capital' : 'ordinary');
+    this._queueExplosion(p, this._destructionClassForKill(p));
   },
 
-  _isCapitalKill(p) {
-    if (!p) return false;
-    if (p.capital) return true;
-    if ((p.radius || 0) >= 55) return true;
+  _destructionClassForKill(p) {
+    if (!p) return 'ordinary';
     const cls = String(p.victimClass || p.type || '').toLowerCase();
-    return /capital|flagship|cruiser|gunship|battleship|dread/i.test(cls);
+    if (p.capital || /capital|flagship|battleship|dread/i.test(cls)) return 'capital';
+
+    // The resident VFX pool has three schedules because Heavy's ~3 s presentation is the same
+    // extended breakup cadence used beneath a Capital setpiece; Heavy's staggered physical
+    // cook-off and persistent wreck stack through their own owners. Radius separates ordinary
+    // 18–21 WU gunships/corvettes from the authored 29–34 WU Heavy family without treating every
+    // historical `shipClass: gunship` as a Capital.
+    const radius = Math.max(0, Number(p.radius || p.victimRadius) || 0);
+    if (radius >= 28 || /\bheavy\b/i.test(cls)) return 'capital';
+    if (radius > 0) return radius <= 13 ? 'small' : 'ordinary';
+
+    // Compatibility receipts predating physical radius retain a semantic fallback. Modern Combat
+    // always publishes radius, so these tokens are for tests, old integrations and event replay.
+    if (/drone|fighter|swarmer|mote|wasp|scout|interceptor/i.test(cls)) return 'small';
+    return 'ordinary';
   },
   _onDestroyed(p) {
     // entity:destroyed fires for ALL entities (incl. projectiles/pickups). Only blow up things with
@@ -5122,9 +5134,18 @@ export const vfx = {
     const axisZ = Math.sin(angle);
     const inheritedX = Number.isFinite(entry.targetVelocityX) ? entry.targetVelocityX : 0;
     const inheritedZ = Number.isFinite(entry.targetVelocityZ) ? entry.targetVelocityZ : 0;
-    const breakupSpeed = Math.max(0, Math.min(42, Number(speed) || 0)) * travelScale;
+    // Plan31 size ladder: the caller's class scale clamps at 1.65, so r=8 and r=60 fragment fans
+    // differed by barely 2x and every hull died fighter-sized on the shipped camera (measured:
+    // equal hot-pixel mass across the whole ladder). Fragments are hull debris, so their geometry
+    // and throw scale with the source footprint - linear in radius, capped so a capital read stays
+    // a screen quadrant, not the whole table. Counts, lives and clocks are untouched.
+    const radial = Math.max(0.75, Math.min(4.5, (Number(entry && entry.radius) || 8) / 12));
+    const breakupSpeed = Math.max(0, Math.min(42, Number(speed) || 0)) * travelScale * Math.sqrt(radial);
     return this._spawnProjectileTrailStreak(
-      x, 0.24, z, life, width, length, opacity, color,
+      x, 0.24, z, life,
+      Math.max(0.05, width * (radial ** 0.6)),
+      length * radial,
+      opacity, color,
       inheritedX + axisX * breakupSpeed,
       inheritedZ + axisZ * breakupSpeed,
       axisX, axisZ,

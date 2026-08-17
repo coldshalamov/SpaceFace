@@ -41,6 +41,7 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
+| PR95 Plan 13 Bulwark and Torcher runtime | medium_bulwark_torcher | IMPLEMENTING | `docs/EVENT_ROUTING.md`, `docs/SYSTEM_REGISTRY.md` | Regenerate committed runtime/event indexes after concurrent Corsair inputs publish, atomic docs commit, explicit push |
 
 ## Uncommitted work without a confirmed live thread
 
