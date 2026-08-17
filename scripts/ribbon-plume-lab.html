@@ -83,7 +83,7 @@
       jetLength: 17,
       throatRadius: 1.32,
       spread: 2.6,
-      radiance: 0.85,
+      radiance: 1.12,
       opacity: 0.055,
     };
 
@@ -152,6 +152,11 @@
         const cx = ship.x - fx * 30, cz = ship.z - fz * 30;
         camera.position.set(cx - fz * 52, 16, cz + fx * 52);
         camera.lookAt(cx, 0, cz);
+      } else if (VIEW === 'join') {
+        // Close rear three-quarter on the bells, to judge whether leftover light comes out of the jet.
+        const cx = ship.x - fx * 12, cz = ship.z - fz * 12;
+        camera.position.set(cx - fz * 20, 8, cz + fx * 20);
+        camera.lookAt(ship.x - fx * 5, 0, ship.z - fz * 5);
       } else {
         camera.position.set(ship.x - fx * 46, 8, ship.z - fz * 46 + 4);
         camera.lookAt(ship.x - fx * 10, 0, ship.z - fz * 10);
