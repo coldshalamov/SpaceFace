@@ -499,6 +499,13 @@ export const timeTrials = {
     };
   },
 
+  /** Explicit owner seam for another live activity taking over the player mid-run. */
+  cancelActiveRun(reason = 'cancelled') {
+    if (!this._run) return false;
+    this._invalidate(String(reason || 'cancelled'));
+    return true;
+  },
+
   _enterSector(sectorId) {
     const course = timeTrialCourseForSector(sectorId);
     if (!course) {

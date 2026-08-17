@@ -25,6 +25,8 @@ export const CONTACT_HAIL_ACTION_ABANDON = 'abandon';
 export const CONTACT_HAIL_ACTION_ASSIST = 'assist';
 export const CONTACT_HAIL_ACTION_RIVAL_SALVAGE_RACE = 'rival_salvage_race';
 export const CONTACT_HAIL_ACTION_RIVAL_SALVAGE_OUTBID = 'rival_salvage_outbid';
+export const CONTACT_HAIL_ACTION_RIVAL_FINAL_RACE = 'rival_final_race';
+export const CONTACT_HAIL_ACTION_RIVAL_FINAL_DUEL = 'rival_final_duel';
 const CERES_ACTIVITY_SECTOR_ID = 'sector_ceres_belt';
 const CERES_TENDER_SLOT_ID = 'ceres_refinery_tender';
 const CERES_SEAM_MINER_SLOT_ID = 'ceres_seam_miner';
@@ -421,7 +423,8 @@ export function contactHailAvailability(state) {
   if (!player || player.alive === false) return unavailable('no_player');
   const distance = distanceBetween(player, target);
   if (distance > CONTACT_HAIL_RANGE) return unavailable('out_of_reveal_range');
-  const classification = contactKind(state, target);
+  const rivalFinal = rivalFinalTruth(state, target);
+  const classification = rivalFinal ? { kind: 'rival_final', parley: null } : contactKind(state, target);
   if (!classification.kind) return unavailable('unsupported_contact');
   return {
     enabled: true,
@@ -443,12 +446,23 @@ export function contactHailAvailability(state) {
       && !!traderManifestForTarget(state, target),
     disabledHauler: ceresDisabledHaulerTruth(state, target),
     rivalSalvage: rivalSalvageTruth(state, target),
+    rivalFinal,
   };
 }
 
 export function createContactHailOffer(state, availability, requestId, expiresAt) {
   if (!availability || !availability.enabled || availability.kind === 'toll') return null;
   const name = callsign(availability.entity);
+  if (availability.kind === 'rival_final' && availability.rivalFinal) {
+    return {
+      requestId, targetId: availability.targetId, kind: 'rival_final', expiresAt,
+      lines: [`${name} · LAST LINE`, 'CHOOSE THE FINISH.'],
+      actions: [
+        { id: CONTACT_HAIL_ACTION_RIVAL_FINAL_RACE, label: 'RACE' },
+        { id: CONTACT_HAIL_ACTION_RIVAL_FINAL_DUEL, label: 'DUEL' },
+      ],
+    };
+  }
   if (availability.kind === 'patrol') {
     const actions = [{ id: 'status', label: 'STATUS' }, { id: 'identify', label: 'IDENTIFY' }];
     if (availability.heaveToAvailable) actions.push({ id: CONTACT_HAIL_ACTION_HEAVE_TO, label: 'HEAVE TO' });
@@ -804,6 +818,17 @@ function rivalSalvageTruth(state, target) {
   };
 }
 
+function rivalFinalTruth(state, target) {
+  const data = target && target.data || {};
+  const rival = state && state.aceMemory && state.aceMemory.rival;
+  const active = rival && rival.activeFinal;
+  if (!active || typeof active !== 'object' || active.status !== 'choice'
+    || !target || target.alive === false || target.type !== 'ship'
+    || active.entityId !== target.id || data.rivalAppearance !== 'final'
+    || typeof rival.rivalId !== 'string' || data.namedRivalId !== rival.rivalId) return null;
+  return { courseId: active.courseId, entityId: active.entityId };
+}
+
 function workerStatusText(target, state = null) {
   const data = target && target.data || {};
   const rivalSalvage = rivalSalvageTruth(state, target);
@@ -931,7 +956,8 @@ function priorityCourierStatusText(state, target) {
 }
 
 export function createContactHailResponse(state, offer, choice, authority = {}) {
-  if (!offer || (offer.kind !== 'patrol' && offer.kind !== 'trader' && offer.kind !== 'worker')) {
+  if (!offer || (offer.kind !== 'patrol' && offer.kind !== 'trader' && offer.kind !== 'worker'
+    && offer.kind !== 'rival_final')) {
     return null;
   }
   const target = entityById(state, offer.targetId);
@@ -939,7 +965,23 @@ export function createContactHailResponse(state, offer, choice, authority = {}) 
   const id = String(choice || '').toLowerCase();
   let line = null;
   let rivalSalvageBid = null;
-  if (offer.kind === 'patrol' && id === 'status') {
+  let rivalFinalChoice = null;
+  if (offer.kind === 'rival_final'
+    && (id === CONTACT_HAIL_ACTION_RIVAL_FINAL_RACE || id === CONTACT_HAIL_ACTION_RIVAL_FINAL_DUEL)) {
+    const offered = Array.isArray(offer.actions)
+      && offer.actions.some((action) => action && action.id === id);
+    const final = offered ? rivalFinalTruth(state, target) : null;
+    if (final) {
+      const selected = id === CONTACT_HAIL_ACTION_RIVAL_FINAL_DUEL ? 'duel' : 'race';
+      line = selected === 'duel' ? 'DUEL · WEAPONS LIVE ON YOUR MARK.' : 'RACE · GATES DECIDE IT.';
+      rivalFinalChoice = {
+        accepted: true,
+        choice: selected,
+        courseId: final.courseId,
+        entityId: final.entityId,
+      };
+    }
+  } else if (offer.kind === 'patrol' && id === 'status') {
     line = authority.weaponsAuthorized === true
       ? 'STATUS · WEAPONS AUTHORIZED. HEAVE TO.'
       : 'STATUS · HOLD FIRE. FLY CLEAN.';
@@ -1035,6 +1077,7 @@ export function createContactHailResponse(state, offer, choice, authority = {}) 
     expiresAt: (Number(state.simTime) || 0) + CONTACT_HAIL_RECEIPT_TTL_S,
     lines: [line],
     ...(rivalSalvageBid ? { rivalSalvageBid } : {}),
+    ...(rivalFinalChoice ? { rivalFinalChoice } : {}),
   };
 }
 

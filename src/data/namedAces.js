@@ -356,6 +356,11 @@ export const RECURRING_RIVAL = deepFreeze({
     salvagePlayerWon: 'KEI HALBER: First cut is yours. Clean burn.',
     salvageRivalWon: 'KEI HALBER: Too slow. I have the iron.',
     salvageOutbid: 'KEI HALBER: Your claim. Spend it well.',
+    finalChallenge: 'KEI HALBER: Last line. Hail me: gates or guns.',
+    finalRace: 'KEI HALBER: Gates. No excuses left.',
+    finalDuel: 'KEI HALBER: Guns. Keep it clean.',
+    finalPlayerWon: 'KEI HALBER: Your line. I know it now.',
+    finalRivalWon: 'KEI HALBER: Second line holds.',
   },
 });
 
@@ -383,6 +388,16 @@ export function recurringRivalSalvageReady(state, targetKey = null) {
   const recent = Array.isArray(rival.recentSalvageTargetKeys) ? rival.recentSalvageTargetKeys : [];
   if (targetKey && recent.includes(String(targetKey))) return false;
   return results >= 2 && started < Math.floor(results / 2);
+}
+
+/** Four resolved gate races are enough shared history for Kei's one final challenge. Interrupted
+ * attempts remain retryable; a resolved final is terminal and never grows a second campaign log. */
+export function recurringRivalFinalReady(state) {
+  const rival = state && state.aceMemory && state.aceMemory.rival;
+  if (!rival || rival.unlocked !== true || rival.finalResolved === true || rival.activeFinal) return false;
+  const results = Math.max(0, Math.floor(Number(rival.playerWins) || 0))
+    + Math.max(0, Math.floor(Number(rival.rivalWins) || 0));
+  return results >= 4;
 }
 
 const CAPTAIN_ALIASES = Object.freeze(NAMED_CAPTAINS.map((cap) => Object.freeze({

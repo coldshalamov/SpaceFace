@@ -11,12 +11,14 @@ import {
   aceByName,
   aceFromText,
   newsForAceTransition,
+  recurringRivalFinalReady,
   returnPlanForAce,
 } from '../data/namedAces.js';
 import { timeTrialCourseById } from '../data/timeTrialCourses.js';
 import { planetStatesForSector } from '../data/planetStates.js';
 import { hash32 } from '../core/rng.js';
 import { makeShipEntitySpec } from './ships.js';
+import { makeEnemySpawnSpec } from './combat.js';
 import { resolveTimeTrialPoint } from './timeTrials.js';
 
 export const ACE_MEMORY_VERSION = 3;
@@ -74,6 +76,7 @@ export const aceMemory = {
     this._listen('playerDefeat:podRescued', (p) => this._rivalSavedPlayer(p));
     this._listen('recurringRival:salvageRaceStarted', (p) => this._rivalSalvageStarted(p));
     this._listen('recurringRival:salvageBidDecision', (p) => this._rivalSalvageBidDecision(p));
+    this._listen('contactHail:response', (p) => this._rivalFinalChoice(p));
     this._listen('salvage:completed', (p) => this._rivalPlayerSalvaged(p));
     this._listen('salvage:npcExtraction', (p) => this._rivalNpcSalvaged(p));
     this._listen('save:loaded', () => {
@@ -81,7 +84,11 @@ export const aceMemory = {
       this._rearmPlanetChallengesAfterLoad();
       this._adoptRivalEntity();
     });
-    this._listen('entity:killed', (p) => this._namedAceKilled(p));
+    this._listen('entity:killed', (p) => {
+      this._rivalDuelKilled(p);
+      this._namedAceKilled(p);
+    });
+    this._listen('player:death', (p) => this._rivalDuelPlayerDefeated(p));
     this._listen('law:custodyTransfer', (p) => this._namedAceCustody(p));
     this._listen('massline:tumbled', (p) => this._flung(p));
     this._listen('aceMemory:playerKilled', (p) => this._playerKilled(p));
@@ -563,6 +570,7 @@ export const aceMemory = {
     const course = timeTrialCourseById(payload && payload.courseId);
     const rival = rivalRecordFor(ensureMemory(this.state));
     if (!course || rival.unlocked !== true || rival.activeRace) return false;
+    const isFinal = recurringRivalFinalReady(this.state);
     rival.activeRace = {
       courseId: course.id,
       status: 'running',
@@ -571,26 +579,52 @@ export const aceMemory = {
         ? payload.startedTick : (this.state && this.state.tick) || 0,
       entityId: null,
     };
-    const entity = this._spawnRival(course, 'race', rival);
+    if (isFinal) {
+      rival.activeFinal = {
+        courseId: course.id,
+        entityId: null,
+        status: 'choice',
+        choice: null,
+        startedAt: nowOf(this.state, payload),
+      };
+    }
+    const entity = this._spawnRival(course, isFinal ? 'final' : 'race', rival);
     if (!entity) {
-      rival.lastSpawnFailure = 'race_unavailable';
+      rival.lastSpawnFailure = isFinal ? 'final_unavailable' : 'race_unavailable';
       rival.activeRace = null;
+      rival.activeFinal = null;
       return false;
     }
     rival.racesStarted += 1;
     rival.activeRace.entityId = entity.id;
-    this._speakRival('challenge');
+    if (isFinal) {
+      rival.finalsStarted += 1;
+      rival.activeFinal.entityId = entity.id;
+      this._speakRival('finalChallenge');
+      emit(this.bus, 'recurringRival:finalStarted', {
+        rivalId: RECURRING_RIVAL.id,
+        rivalName: RECURRING_RIVAL.name,
+        courseId: course.id,
+        entityId: entity.id,
+        choices: ['race', 'duel'],
+        physical: true,
+      });
+    } else this._speakRival('challenge');
     emit(this.bus, 'recurringRival:raceStarted', {
       rivalId: RECURRING_RIVAL.id,
       rivalName: RECURRING_RIVAL.name,
       courseId: course.id,
       entityId: entity.id,
+      final: isFinal,
     });
     return true;
   },
 
   _rivalTrialInvalidated(payload) {
     const rival = rivalRecordFor(ensureMemory(this.state));
+    const reason = String(payload && payload.reason || 'invalidated');
+    if (rival.activeFinal && ['save_restoring', 'sector_exit', 'route_unavailable', 'new_game', 'destroy']
+      .includes(reason)) return this._interruptRivalFinal(reason);
     const race = rival.activeRace;
     if (!race || race.status !== 'running' || race.courseId !== (payload && payload.courseId)) return false;
     return this._finishRivalRace('rival', { ...payload, invalidated: true });
@@ -728,6 +762,187 @@ export const aceMemory = {
     return true;
   },
 
+  _rivalFinalChoice(payload) {
+    const selection = payload && payload.rivalFinalChoice;
+    const rival = rivalRecordFor(ensureMemory(this.state));
+    const final = rival.activeFinal;
+    if (!selection || selection.accepted !== true || !final || final.status !== 'choice'
+      || selection.entityId !== final.entityId || selection.courseId !== final.courseId
+      || payload.targetId !== final.entityId
+      || (selection.choice !== 'race' && selection.choice !== 'duel')) return false;
+    if (selection.choice === 'race') {
+      final.choice = 'race';
+      final.status = 'race';
+      final.chosenAt = nowOf(this.state, payload);
+      this._speakRival('finalRace');
+      emit(this.bus, 'recurringRival:finalChoice', {
+        rivalId: RECURRING_RIVAL.id, entityId: final.entityId, courseId: final.courseId, choice: 'race',
+      });
+      return true;
+    }
+    return this._activateRivalDuel(final, payload);
+  },
+
+  _activateRivalDuel(final, payload = {}) {
+    const rival = rivalRecordFor(ensureMemory(this.state));
+    const active = rival.activeFinal;
+    const entity = this._rivalEntity(rival);
+    if (!final || !active || active.status !== 'choice'
+      || active.entityId !== final.entityId || active.courseId !== final.courseId
+      || !entity || entity.id !== active.entityId || entity.alive === false) return false;
+    final = active;
+    const duelSpec = makeEnemySpawnSpec('harrier_kiter', 3, entity.pos, {
+      factionId: RECURRING_RIVAL.factionId,
+      identityKey: `${RIVAL_WORLD_RECORD_ID}:final-duel`,
+      identitySeed: seedOf(this.state),
+      startedTick: (this.state && this.state.tick) || 0,
+      motive: 'sanctioned_rival_duel',
+      engagementTrigger: 'recurring_rival_duel_choice',
+      zoneId: final.courseId,
+      approachTelegraph: 'Kei acknowledges the duel and brings weapons live.',
+      noFireResponseWindowS: 0.35,
+    });
+    if (!duelSpec || !duelSpec.data || !Array.isArray(duelSpec.data.weapons)
+      || duelSpec.data.weapons.length === 0) return false;
+
+    final.choice = 'duel';
+    final.status = 'duel';
+    final.chosenAt = nowOf(this.state, payload);
+    if (rival.activeRace) {
+      rival.lastRace = {
+        ...clonePlain(rival.activeRace), status: 'interrupted', reason: 'recurring_rival_duel',
+      };
+      rival.activeRace = null;
+    }
+    const trials = this.registry && this.registry.get('timeTrials');
+    if (trials && typeof trials.cancelActiveRun === 'function') {
+      trials.cancelActiveRun('recurring_rival_duel');
+    }
+    const jobs = this.helpers && this.helpers.npcJobs;
+    if (entity.data && entity.data.jobId && jobs && typeof jobs.release === 'function') {
+      jobs.release(entity.data.jobId);
+    }
+
+    for (const key of [
+      'hull', 'hullMax', 'armorHp', 'armorMax', 'armorFlat', 'shield', 'shieldMax',
+      'shieldRegenRate', 'shieldRegenDelay', 'cap', 'capMax', 'capRegen', 'maxSpeed',
+      'thrust', 'turnRate', 'drag',
+    ]) {
+      if (Number.isFinite(duelSpec[key])) entity[key] = duelSpec[key];
+    }
+    entity.team = 1;
+    // A mutually chosen duel is not an ordinary faction kill. Combat still owns damage/death while
+    // this explicit suppression keeps bounties, loot, salvage, and faction identity out of the bout.
+    entity.factionId = null;
+    entity.data = {
+      ...(entity.data || {}),
+      ...duelSpec.data,
+      name: RECURRING_RIVAL.name,
+      callsign: RECURRING_RIVAL.name,
+      scanLabel: `${RECURRING_RIVAL.name} / FINAL LINE`,
+      namedRivalId: RECURRING_RIVAL.id,
+      rivalAppearance: 'final_duel',
+      rivalFinalDuel: true,
+      noOrdinaryRewards: true,
+      bountyCr: 0,
+      loot: null,
+      lootTableId: null,
+      encounter: true,
+      intent: {},
+      ai: {
+        ...(duelSpec.data.ai || {}),
+        name: RECURRING_RIVAL.name,
+        passive: false,
+        spawnContext: 'recurring_rival_duel',
+      },
+    };
+    delete entity.data.jobId;
+    delete entity.data.jobKind;
+    this._speakRival('finalDuel');
+    emit(this.bus, 'recurringRival:finalChoice', {
+      rivalId: RECURRING_RIVAL.id, entityId: final.entityId, courseId: final.courseId, choice: 'duel',
+    });
+    emit(this.bus, 'recurringRival:duelStarted', {
+      rivalId: RECURRING_RIVAL.id,
+      rivalName: RECURRING_RIVAL.name,
+      entityId: entity.id,
+      courseId: final.courseId,
+      physical: true,
+      combatOwned: true,
+    });
+    return true;
+  },
+
+  _rivalDuelKilled(payload) {
+    const rival = rivalRecordFor(ensureMemory(this.state));
+    const final = rival.activeFinal;
+    if (!final || final.status !== 'duel' || !payload || payload.id !== final.entityId) return false;
+    if (payload.killerId !== (this.state && this.state.playerId)) {
+      return this._interruptRivalFinal('third_party_kill');
+    }
+    return this._finishRivalFinal('player', 'duel', payload);
+  },
+
+  _rivalDuelPlayerDefeated(payload) {
+    const rival = rivalRecordFor(ensureMemory(this.state));
+    if (!rival.activeFinal || rival.activeFinal.status !== 'duel') return false;
+    return this._finishRivalFinal('rival', 'duel', payload || {});
+  },
+
+  _finishRivalFinal(winner, method, payload = {}) {
+    const rival = rivalRecordFor(ensureMemory(this.state));
+    const final = rival.activeFinal;
+    if (!final || !['choice', 'race', 'duel'].includes(final.status)
+      || (winner !== 'player' && winner !== 'rival') || (method !== 'race' && method !== 'duel')) return false;
+    final.status = 'finished';
+    final.choice = final.choice || method;
+    final.method = method;
+    final.winner = winner;
+    final.finishedAt = nowOf(this.state, payload);
+    final.physical = true;
+    rival.lastFinal = clonePlain(final);
+    rival.activeFinal = null;
+    rival.finalResolved = true;
+    rival.lastSeenAt = final.finishedAt;
+    if (method === 'duel' && winner === 'rival') {
+      const entity = this._rivalEntity(rival);
+      if (entity && entity.data) {
+        entity.team = 2;
+        entity.data.ai = { ...(entity.data.ai || {}), passive: true, roe: 'hold_fire' };
+        rival.retireAt = final.finishedAt + 1;
+      }
+    }
+    this._speakRival(winner === 'player' ? 'finalPlayerWon' : 'finalRivalWon');
+    emit(this.bus, 'recurringRival:finalResolved', {
+      rivalId: RECURRING_RIVAL.id,
+      rivalName: RECURRING_RIVAL.name,
+      entityId: final.entityId,
+      courseId: final.courseId,
+      choice: final.choice,
+      method,
+      winner,
+      physical: true,
+    });
+    return true;
+  },
+
+  _interruptRivalFinal(reason) {
+    const rival = rivalRecordFor(ensureMemory(this.state));
+    const final = rival.activeFinal;
+    if (!final) return false;
+    rival.lastFinal = {
+      ...clonePlain(final), status: 'interrupted', reason: String(reason || 'interrupted').slice(0, 80),
+    };
+    rival.activeFinal = null;
+    if (rival.activeRace && rival.activeRace.status === 'running') {
+      rival.lastRace = {
+        ...clonePlain(rival.activeRace), status: 'interrupted', reason: String(reason || 'interrupted').slice(0, 80),
+      };
+      rival.activeRace = null;
+    }
+    return true;
+  },
+
   _processRival(state) {
     const rival = rivalRecordFor(ensureMemory(state));
     const now = nowOf(state);
@@ -757,7 +972,8 @@ export const aceMemory = {
     const jobs = this.helpers.npcJobs;
     // A fresh race appearance must enter beside Gate 1. Retire the post-finish intro hull through
     // the same job/entity owners instead of teleporting a live Rapier body across the sector.
-    if (context === 'race' && entity && entity.data && entity.data.rivalAppearance !== 'race') {
+    if ((context === 'race' || context === 'final') && entity && entity.data
+      && entity.data.rivalAppearance !== context) {
       if (entity.data.jobId && jobs && typeof jobs.release === 'function') jobs.release(entity.data.jobId);
       this._removeRivalEntity(entity);
       entity = null;
@@ -848,6 +1064,10 @@ export const aceMemory = {
     const rival = rivalRecordFor(ensureMemory(this.state));
     const race = rival.activeRace;
     if (!race || race.status !== 'running' || (winner !== 'player' && winner !== 'rival')) return false;
+    const finalRace = rival.activeFinal
+      && (rival.activeFinal.status === 'choice' || rival.activeFinal.status === 'race')
+      && rival.activeFinal.courseId === race.courseId
+      && rival.activeFinal.entityId === race.entityId;
     race.status = 'finished';
     race.winner = winner;
     race.finishedAt = nowOf(this.state, payload);
@@ -868,6 +1088,7 @@ export const aceMemory = {
       physicalRivalFinish: race.physicalRivalFinish,
       playerInvalidated: race.playerInvalidated,
     });
+    if (finalRace) this._finishRivalFinal(winner, 'race', payload);
     return true;
   },
 
@@ -897,8 +1118,12 @@ export const aceMemory = {
   },
 
   _adoptRivalEntity() {
-    const rival = rivalRecordFor(ensureMemory(this.state));
+    let rival = rivalRecordFor(ensureMemory(this.state));
     const entity = this._rivalEntity(rival);
+    if (rival.activeFinal) {
+      this._interruptRivalFinal('continue');
+      rival = rivalRecordFor(ensureMemory(this.state));
+    }
     if (rival.activeRace && rival.activeRace.status === 'running') {
       rival.lastRace = { ...clonePlain(rival.activeRace), status: 'interrupted', reason: 'continue' };
       rival.activeRace = null;
@@ -915,8 +1140,12 @@ export const aceMemory = {
   },
 
   _retireRival(reason) {
-    const rival = rivalRecordFor(ensureMemory(this.state));
+    let rival = rivalRecordFor(ensureMemory(this.state));
     const entity = this._rivalEntity(rival);
+    if (rival.activeFinal) {
+      this._interruptRivalFinal(reason);
+      rival = rivalRecordFor(ensureMemory(this.state));
+    }
     if (entity && entity.data && entity.data.jobId) {
       const release = this.helpers && this.helpers.npcJobs && this.helpers.npcJobs.release;
       if (typeof release === 'function') release(entity.data.jobId);
@@ -1191,6 +1420,10 @@ function freshRivalRecord() {
     recentSalvageTargetKeys: [],
     activeSalvageRace: null,
     lastSalvageRace: null,
+    finalsStarted: 0,
+    finalResolved: false,
+    activeFinal: null,
+    lastFinal: null,
     activeEntityId: null,
     activeWorldRecordId: null,
     activeRace: null,
@@ -1220,6 +1453,8 @@ function normalizeRivalRecord(input) {
   out.salvageBidsFaced = Math.max(0, Math.floor(Number(input.salvageBidsFaced) || 0));
   out.salvageBidsRaced = Math.max(0, Math.floor(Number(input.salvageBidsRaced) || 0));
   out.salvageBidsOutbid = Math.max(0, Math.floor(Number(input.salvageBidsOutbid) || 0));
+  out.finalsStarted = Math.max(0, Math.floor(Number(input.finalsStarted) || 0));
+  out.finalResolved = input.finalResolved === true;
   out.recentSalvageTargetKeys = Array.from(new Set(
     (Array.isArray(input.recentSalvageTargetKeys) ? input.recentSalvageTargetKeys : [])
       .map(cleanRivalIdentity)
@@ -1241,6 +1476,8 @@ function normalizeRivalRecord(input) {
   out.lastRace = normalizeRivalRace(input.lastRace, true);
   out.activeSalvageRace = normalizeRivalSalvageRace(input.activeSalvageRace);
   out.lastSalvageRace = normalizeRivalSalvageRace(input.lastSalvageRace, true);
+  out.activeFinal = normalizeRivalFinal(input.activeFinal);
+  out.lastFinal = normalizeRivalFinal(input.lastFinal, true);
   out.lastSpawnFailure = typeof input.lastSpawnFailure === 'string' ? input.lastSpawnFailure : null;
   return out;
 }
@@ -1299,6 +1536,27 @@ function normalizeRivalSalvageRace(input, allowTerminal = false) {
   };
 }
 
+function normalizeRivalFinal(input, allowTerminal = false) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)
+    || typeof input.courseId !== 'string') return null;
+  const legalStatus = allowTerminal
+    ? new Set(['choice', 'race', 'duel', 'finished', 'interrupted'])
+    : new Set(['choice', 'race', 'duel']);
+  return {
+    courseId: input.courseId,
+    entityId: input.entityId != null ? input.entityId : null,
+    status: legalStatus.has(input.status) ? input.status : 'choice',
+    choice: input.choice === 'race' || input.choice === 'duel' ? input.choice : null,
+    method: input.method === 'race' || input.method === 'duel' ? input.method : null,
+    winner: input.winner === 'player' || input.winner === 'rival' ? input.winner : null,
+    startedAt: Number.isFinite(input.startedAt) ? input.startedAt : 0,
+    chosenAt: Number.isFinite(input.chosenAt) ? input.chosenAt : null,
+    finishedAt: Number.isFinite(input.finishedAt) ? input.finishedAt : null,
+    physical: input.physical === true,
+    reason: typeof input.reason === 'string' ? input.reason.slice(0, 80) : null,
+  };
+}
+
 function rivalSpawnPosition(course, state, context) {
   const player = state && state.entities && typeof state.entities.get === 'function'
     ? state.entities.get(state.playerId) : null;
@@ -1306,7 +1564,7 @@ function rivalSpawnPosition(course, state, context) {
     ? resolveTimeTrialPoint(course, course.gates[0].center, state) : null;
   const second = course && course.gates && course.gates[1]
     ? resolveTimeTrialPoint(course, course.gates[1].center, state) : null;
-  if (context === 'race' && first && second) {
+  if ((context === 'race' || context === 'final') && first && second) {
     const dx = second.x - first.x;
     const dz = second.z - first.z;
     const length = Math.max(1, Math.hypot(dx, dz));
