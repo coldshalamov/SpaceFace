@@ -3,8 +3,10 @@
 
 export const STATION_SLOGANS = Object.freeze({
   station_helios: 'You Are Leaving.',
+  station_fuel_stack: 'Cheap gas. Mind the cages.',
   station_coalition: 'Clean berth. Clean record.',
   station_ceres: 'Weigh twice. Burn once.',
+  station_cathedral_cloister: 'Pray quietly. Pay in full.',
   station_beltout: 'Ore in. Names out.',
   station_tethys: 'Every cargo has two prices.',
   station_customs: 'Keep your seal visible.',
@@ -22,6 +24,7 @@ export const STATION_SLOGANS = Object.freeze({
   station_hyperion_claim: 'Tag the seam. Mind the cut.',
   station_kepler_scar: 'Favors have weight.',
   station_orcus_shadow: 'Admit the scan. Refuse the name.',
+  station_orcus_anchor: 'The well pulls. Dock anyway.',
   station_rhea_cinder: 'Scorched ore still pays.',
   station_haumea_rift: 'Log it before you believe it.',
   station_eris_margin: 'No names past the hatch.',
@@ -32,6 +35,7 @@ export const STATION_SLOGANS = Object.freeze({
   station_triton: 'Bring data that bites.',
   station_eunomia: 'No fuel. Fewer questions.',
   station_sedna: 'Patch the hull. Keep moving.',
+  station_sedna_last_light: 'One receiver. Nothing answers.',
   station_dione: 'Freight clears when the lane does.',
   station_dione_customs: 'Papers before freight.',
 });
