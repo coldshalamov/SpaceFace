@@ -22,6 +22,7 @@ import { launchAces } from '../../data/namedAces.js';
 import { LISTENING_POST, listeningPostPuzzleState } from '../../data/listeningPost.js';
 import { CODEX_BESTIARY, codexBestiaryPages, mergeCodexBestiaryRows } from '../../data/codexBestiary.js';
 import { CODEX_DEEDS, codexDeedPages } from '../../data/codexDeeds.js';
+import { CODEX_SECRETS, codexSecretPages } from '../../data/codexSecrets.js';
 
 const STYLE_ID = 'sf-codex-style';
 
@@ -123,7 +124,7 @@ function shell(rootEl, title, extraClass) {
   return { panel: rootEl, body };
 }
 
-const TABS = ['Story', 'Aces', 'Bestiary', 'Deeds', 'Verbs', 'Comms', 'Discoveries', 'Black Boxes', 'Graffiti', 'Figures', 'Ship', 'Archive', 'Ledger'];
+const TABS = ['Story', 'Aces', 'Bestiary', 'Deeds', 'Verbs', 'Comms', 'Discoveries', 'Secrets', 'Black Boxes', 'Graffiti', 'Figures', 'Ship', 'Archive', 'Ledger'];
 
 // Signal Archive — the four authored intro cinematics, exposed as recovered transmission stills the
 // player can replay. Posters (C-INTRO-0N.jpg) are clean full-bleed frames; clips are the 6s mp4s.
@@ -324,7 +325,7 @@ function countEncounteredGraffiti(story = {}) {
   return count;
 }
 
-export function codexProgressSummary(story = {}) {
+export function codexProgressSummary(story = {}, state = null) {
   const beat = storyBeatIndex(story);
   let commsTotal = COLD_START.length;
   let commsUnlocked = COLD_START.length;
@@ -342,10 +343,12 @@ export function codexProgressSummary(story = {}) {
   const phase = BEAT_CONTENT[beat] && BEAT_CONTENT[beat].phase || 1;
   const bestiaryComplete = codexBestiaryPages(story).filter((page) => page.complete).length;
   const deedsEarned = codexDeedPages(story).filter((page) => page.earned).length;
+  const secretsFound = codexSecretPages(state && typeof state === 'object' ? state : { story })
+    .filter((page) => page.unlocked).length;
   const unlockedTotal = storyUnlocked + commsUnlocked + figureUnlocked + graffitiUnlocked
-    + endgameUnlocked + bestiaryComplete + deedsEarned;
+    + endgameUnlocked + bestiaryComplete + deedsEarned + secretsFound;
   const codexTotal = BEAT_CONTENT.length + commsTotal + figureTotal + graffitiTotal
-    + ENDGAME_CHOICES.length + CODEX_BESTIARY.length + CODEX_DEEDS.length;
+    + ENDGAME_CHOICES.length + CODEX_BESTIARY.length + CODEX_DEEDS.length + CODEX_SECRETS.length;
   const completionPercent = codexTotal > 0 ? Math.floor((unlockedTotal / codexTotal) * 100) : 0;
   return {
     beat,
@@ -357,6 +360,7 @@ export function codexProgressSummary(story = {}) {
       { key: 'Story', value: storyUnlocked + '/' + BEAT_CONTENT.length + ' beats' },
       { key: 'Bestiary', value: bestiaryComplete + '/' + CODEX_BESTIARY.length + ' field notes' },
       { key: 'Deeds', value: deedsEarned + '/' + CODEX_DEEDS.length + ' reports' },
+      { key: 'Secrets', value: secretsFound + '/' + CODEX_SECRETS.length + ' found' },
       { key: 'Comms', value: commsUnlocked + '/' + commsTotal + ' unlocked' },
       { key: 'Figures', value: figureUnlocked + '/' + figureTotal + ' known' },
       { key: 'Graffiti', value: graffitiUnlocked + '/' + graffitiTotal + ' encountered' },
@@ -570,6 +574,7 @@ export const codexScreen = {
       case 'Verbs':    this._renderVerbs(ctx); break;
       case 'Comms':    this._renderComms(ctx); break;
       case 'Discoveries': this._renderDiscoveries(ctx); break;
+      case 'Secrets':  this._renderSecrets(ctx); break;
       case 'Black Boxes': this._renderBlackBoxes(ctx); break;
       case 'Graffiti': this._renderGraffiti(ctx); break;
       case 'Figures':  this._renderFigures(ctx); break;
@@ -743,8 +748,28 @@ export const codexScreen = {
     }
   },
 
+  _renderSecrets(ctx) {
+    this._body.appendChild(el('div', 'sf-codex-section-h', 'Recovered Secrets'));
+    for (const page of codexSecretPages(ctx && ctx.state)) {
+      const entry = el('article', 'sf-codex-entry' + (page.unlocked ? '' : ' sf-codex-locked'));
+      entry.dataset.secretId = page.id;
+      if (!page.unlocked) {
+        entry.appendChild(el('h3', null, '???'));
+        entry.appendChild(el('div', 'sf-codex-meta', 'signal unresolved'));
+        entry.appendChild(el('div', 'sf-codex-body', page.lockedHint));
+        this._body.appendChild(entry);
+        continue;
+      }
+      entry.appendChild(el('h3', null, page.title));
+      entry.appendChild(el('div', 'sf-codex-meta', page.phase));
+      entry.appendChild(el('div', 'sf-codex-body', page.body));
+      entry.appendChild(el('div', 'sf-codex-note', page.note));
+      this._body.appendChild(entry);
+    }
+  },
+
   _renderStatus(ctx) {
-    const summary = codexProgressSummary(safeStory(ctx));
+    const summary = codexProgressSummary(safeStory(ctx), ctx && ctx.state);
     const box = el('div', 'sf-codex-status');
     box.setAttribute('aria-label', 'Codex unlock status');
     box.appendChild(el('div', 'sf-codex-status-title', 'Codex Unlock Status'));
