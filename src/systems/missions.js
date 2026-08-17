@@ -50,6 +50,10 @@ import {
   SET_PIECE_MISSIONS,
 } from '../data/missions.js';
 import {
+  ATMOSPHERE_RESCUE_DEST_SECTOR_ID,
+  ATMOSPHERE_RESCUE_SITE_ID,
+  ATMOSPHERE_RESCUE_VARIANT_ID,
+  ATMOSPHERE_RESCUE_ZONE_ID,
   DEBRIS_RECOVERY_FOLLOWUP_SOURCE,
   DEBRIS_RECOVERY_VARIANT_ID,
   DISABLE_DONT_KILL_VARIANT_ID,
@@ -58,6 +62,7 @@ import {
   PEST_CONTROL_FOLLOWUP_SOURCE,
   PEST_CONTROL_VARIANT_ID,
   QUIET_DELIVERY_RECOVERY_SOURCE,
+  applyAtmosphereRescueVariant,
   applyDebrisRecoveryVariant,
   applyDisableDontKillVariant,
   applyLoudDeliveryVariant,
@@ -65,9 +70,11 @@ import {
   applyQuietDeliveryVariant,
   applyRockDiversionVariant,
   applyWreckTowVariant,
+  atmosphereRescueFollowupOfferId,
   debrisRecoveryFollowupOfferId,
   disableDontKillFollowupOfferId,
   loudDeliveryFollowupOfferId,
+  isAtmosphereRescue,
   isDebrisRecovery,
   isDebrisRecoveryFollowup,
   isDisableDontKill,
@@ -81,6 +88,7 @@ import {
   pestControlFollowupOfferId,
   quietDeliveryRecoveryOfferId,
   rockDiversionFollowupOfferId,
+  shouldRollAtmosphereRescue,
   shouldRollDebrisRecovery,
   shouldRollDisableDontKill,
   shouldRollLoudDelivery,
@@ -90,6 +98,7 @@ import {
   shouldRollWreckTow,
   wreckTowFollowupOfferId,
 } from '../data/missionVariants.js';
+import { PLANET_SITE } from '../data/planets.js';
 import { factionMissionDoctrineMultiplier } from '../data/factionPlay.js';
 import { settleContractClauses, unsatisfiedRequiredConditions } from '../data/contractClauses.js';
 // Physics-aware contract terms (grammar §9.9.1). The catalog is data; the event half is observed by
@@ -232,6 +241,14 @@ const ROCK_DIVERSION_SHAPE_ID = 'event_falling_rock';
 const ROCK_DIVERSION_SUCCESS_OUTCOMES = new Set([
   'stacked_impulse_charges', 'mass_driver_barrage', 'multi_burn_tow',
 ]);
+const ATMOSPHERE_RESCUE_APPROACH_RADIUS = Math.min(
+  PLANET_SITE.bands.sling,
+  PLANET_SITE.bands.skim + 240,
+);
+const ATMOSPHERE_RESCUE_START_RADIUS = PLANET_SITE.bands.danger
+  + (PLANET_SITE.bands.skim - PLANET_SITE.bands.danger) * 0.3;
+const ATMOSPHERE_RESCUE_INWARD_SPEED = 28;
+const ATMOSPHERE_RESCUE_TANGENTIAL_SPEED = 42;
 
 function bountyTargetPool(riskTier) {
   const risk = Math.max(0, Math.round(Number(riskTier) || 0));
@@ -748,11 +765,14 @@ export const missions = {
     }));
     bus.on('heist:facilityCandidate', (p) => this._heistEach(
       (h) => heistMissionRuntime.onFacilityCandidate(this._heistCtx(), h, p || {})));
-    bus.on('tether:latched', (p) => this._heistEach((h, m) => {
-      if (heistMissionRuntime.onTetherLatched(this._heistCtx(), h, p || {})) {
-        this._refreshTrackedMissionNav(m);
-      }
-    }));
+    bus.on('tether:latched', (p) => {
+      this._onAtmosphereRescueTetherLatched(p || {});
+      this._heistEach((h, m) => {
+        if (heistMissionRuntime.onTetherLatched(this._heistCtx(), h, p || {})) {
+          this._refreshTrackedMissionNav(m);
+        }
+      });
+    });
     for (const releaseEvent of ['tether:released', 'tether:cut', 'tether:broke']) {
       bus.on(releaseEvent, (p) => this._heistEach((h, m) => {
         if (heistMissionRuntime.onTetherReleased(this._heistCtx(), h, p || {})) {
@@ -769,6 +789,9 @@ export const missions = {
       this._onLoudDeliveryScanned(p || {});
       this._onScannedByPatrol(p);
     });
+    // PlanetRuntime is the only atmosphere/burn authority. Missions observes its exact target
+    // stage receipt and never derives heat, depth, or damage independently.
+    bus.on('planet:plungeStage', (p) => this._onAtmosphereRescuePlungeStage(p || {}));
     // Contract clauses are observers only. Their single breach intent returns here so the canonical
     // mission failure path owns collateral, reputation, cleanup, receipts, and SP1 recovery offers.
     bus.on('contract:clauseBroken', (p) => this._onContractClauseBroken(p));
@@ -1634,9 +1657,21 @@ export const missions = {
     // a procedural roll of one would produce an offer with no params and no physical facility.
     if (def.proceduralWeight === 0) return null;
     const cfg = this.state.missions.config || MISSION_TUNING;
+    const id = `mo_${info.id}_${epoch}_${idx}`;
+    const variantHashFn = this.helpers && typeof this.helpers.hash32 === 'function'
+      ? this.helpers.hash32 : hash32;
+    const atmosphereRescue = options.attachConditions !== false
+      && typeId === 'recon_scan'
+      && shouldRollAtmosphereRescue(
+        variantHashFn(this.state.meta.seed, id, 'atmosphere-rescue-variant'),
+      );
 
     // Destination: pick a reachable station (or self for mining/recon-at-home).
-    const dest = this._pickDestination(typeId, info, rng);
+    // Atmosphere Rescue is priced against The Anvil's real sector rather than borrowing a random
+    // recon destination and changing it after reward/deadline math has already run.
+    const dest = atmosphereRescue
+      ? { id: null, name: 'The Anvil', sectorId: ATMOSPHERE_RESCUE_DEST_SECTOR_ID }
+      : this._pickDestination(typeId, info, rng);
     const destStationId = dest ? dest.id : info.id;
     const destSectorId = dest ? dest.sectorId : info.sectorId;
     const distance = sectorDistanceWu(info.sectorId, destSectorId);
@@ -1659,10 +1694,7 @@ export const missions = {
     // Per-type params (quota qty, target strength, scan count, commodity, …) + cargo value.
     // Mission variants draw from an independent hash, never this board RNG, so later slots remain
     // byte-stable when an ordinary cargo offer becomes Quiet Delivery.
-    const id = `mo_${info.id}_${epoch}_${idx}`;
     let params = this._rollParams(typeId, info, dest, riskTier, rng);
-    const variantHashFn = this.helpers && typeof this.helpers.hash32 === 'function'
-      ? this.helpers.hash32 : hash32;
     const quietDelivery = options.attachConditions !== false
       && typeId === 'cargo_delivery' && FRAGILE_LEGAL_TRADE_CMDTYS.length > 0
       && shouldRollQuietDelivery(variantHashFn(this.state.meta.seed, id, 'mission-variant'));
@@ -1683,6 +1715,7 @@ export const missions = {
       && shouldRollWreckTow(variantHashFn(this.state.meta.seed, id, 'wreck-tow-variant'));
     const rockDiversion = options.attachConditions !== false
       && typeId === 'recon_scan'
+      && !atmosphereRescue
       && shouldRollRockDiversion(variantHashFn(this.state.meta.seed, id, 'rock-diversion-variant'));
     const loudDelivery = options.attachConditions !== false
       && typeId === 'smuggling_run'
@@ -1736,6 +1769,7 @@ export const missions = {
       return applyDisableDontKillVariant(offer, dest && dest.name || 'the marked sector');
     }
     if (wreckTow) return applyWreckTowVariant(offer, dest && dest.name || 'the marked recovery yard');
+    if (atmosphereRescue) return applyAtmosphereRescueVariant(offer);
     if (rockDiversion) {
       return applyRockDiversionVariant(offer, dest && dest.name || 'the marked approach');
     }
@@ -2375,6 +2409,7 @@ export const missions = {
   },
 
   _objectiveTarget(typeId, params) {
+    if (params && params.atmosphereRescue) return 1;
     if (params && params.rockDiversion) return 1;
     if (params && params.quietDeliveryRecovery) {
       return Math.max(1, (params.quietDeliveryRecovery.pods || []).length);
@@ -2397,7 +2432,8 @@ export const missions = {
 
   _typeSpawnsTargets(typeId, params = null) {
     return typeId === 'bounty_hunt' || typeId === 'patrol_clear' || typeId === 'escort'
-      || !!(params && (params.poiSignalFollowup || params.quietDeliveryRecovery || params.debrisRecovery));
+      || !!(params && (params.atmosphereRescue || params.poiSignalFollowup
+        || params.quietDeliveryRecovery || params.debrisRecovery));
   },
 
   _chainSeed(offer) {
@@ -2659,6 +2695,33 @@ export const missions = {
           projectPq019FacilitySocket(launcher), PQ019C_HEIST_SECTOR_ID,
         ),
         reason: `Hold station off ${launcher.name} for the launch`,
+      };
+    }
+
+    if (isAtmosphereRescue(m)) {
+      const target = this._firstLiveMissionTarget(m);
+      if (target) {
+        return {
+          ...base,
+          label: 'Tumbling Ship',
+          stationId: null,
+          targetEntityId: target.id,
+          pos: { x: target.pos.x, z: target.pos.z },
+          reason: 'Massline the tumbling ship out of The Anvil burn line',
+        };
+      }
+      const runtime = this.state.planet;
+      const zone = zonesForSector(ATMOSPHERE_RESCUE_DEST_SECTOR_ID)
+        .find((candidate) => candidate && candidate.id === ATMOSPHERE_RESCUE_ZONE_ID);
+      const center = runtime && runtime.active && runtime.siteId === ATMOSPHERE_RESCUE_SITE_ID
+        ? runtime.center
+        : zone && sectorLocalToGlobalForSector(zone.center, ATMOSPHERE_RESCUE_DEST_SECTOR_ID);
+      return {
+        ...base,
+        label: 'The Anvil Burn Line',
+        stationId: null,
+        pos: center ? { x: center.x, z: center.z } : null,
+        reason: 'Reach The Anvil and take the tumbling ship under Massline',
       };
     }
 
@@ -3531,6 +3594,145 @@ export const missions = {
     return offer;
   },
 
+  _onAtmosphereRescueTetherLatched(payload) {
+    if (!payload || payload.targetId == null) return false;
+    for (const mission of this.state.missions.active || []) {
+      const rescue = mission && mission.params && mission.params.atmosphereRescue;
+      if (!mission || mission.status !== 'active' || !isAtmosphereRescue(mission) || !rescue
+        || !(mission.targetEntityIds || []).includes(payload.targetId)) continue;
+      if (rescue.tetherLatched === true) return false;
+      rescue.tetherLatched = true;
+      rescue.latchedAt_s = Number(this.state.simTime) || 0;
+      this.bus.emit('mission:updated', { missionId: mission.id, targetEntityId: payload.targetId });
+      return true;
+    }
+    return false;
+  },
+
+  _captureAtmosphereRescueLoss(mission) {
+    if (!mission || !isAtmosphereRescue(mission)) return null;
+    if (mission._atmosphereRescueLoss) return mission._atmosphereRescueLoss;
+    const rescue = mission.params && mission.params.atmosphereRescue;
+    const target = (mission.targetEntityIds || [])
+      .map((id) => this.state.entities && this.state.entities.get(id))
+      .find(Boolean) || null;
+    mission._atmosphereRescueLoss = {
+      targetEntityId: target && target.id || null,
+      targetName: target && target.data && target.data.name
+        || rescue && rescue.targetName || 'Stricken Hitch',
+      sectorId: this.state.world && this.state.world.currentSectorId || mission.destSectorId,
+      siteId: rescue && rescue.siteId || ATMOSPHERE_RESCUE_SITE_ID,
+      pos: {
+        x: Number(target && target.pos && target.pos.x) || 0,
+        z: Number(target && target.pos && target.pos.z) || 0,
+      },
+      vel: {
+        x: Number(target && target.vel && target.vel.x) || 0,
+        z: Number(target && target.vel && target.vel.z) || 0,
+      },
+    };
+    return mission._atmosphereRescueLoss;
+  },
+
+  /** Settle from PlanetRuntime's exact ship receipt, never from a parallel depth or heat formula. */
+  _onAtmosphereRescuePlungeStage(payload) {
+    if (!payload || payload.id == null || payload.siteId !== ATMOSPHERE_RESCUE_SITE_ID) return false;
+    for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
+      const mission = this.state.missions.active[i];
+      const rescue = mission && mission.params && mission.params.atmosphereRescue;
+      if (!mission || mission.status !== 'active' || !isAtmosphereRescue(mission) || !rescue
+        || !(mission.targetEntityIds || []).includes(payload.id)) continue;
+      if (payload.stage === 'clear' && rescue.tetherLatched === true) {
+        rescue.outcome = 'pulled_clear';
+        rescue.resolvedAt_s = Number(this.state.simTime) || 0;
+        mission.objectiveProgress = mission.objectiveTarget;
+        this._completeMission(mission, i);
+        return true;
+      }
+      if (payload.stage === 'aftermath') {
+        rescue.outcome = 'burned_up';
+        rescue.resolvedAt_s = Number(this.state.simTime) || 0;
+        this._captureAtmosphereRescueLoss(mission);
+        this._failMission(mission, i, 'rescue_ship_burned');
+        return true;
+      }
+      return false;
+    }
+    return false;
+  },
+
+  /** One failed physical rescue leaves one recoverable recorder, never a second rescue hull. */
+  _postAtmosphereRescueBlackBox(mission) {
+    const loss = mission && mission._atmosphereRescueLoss;
+    const offerId = atmosphereRescueFollowupOfferId(mission);
+    if (!mission || !loss || !offerId || !mission.stationId) return null;
+    const duplicateActive = (this.state.missions.active || []).find((candidate) => (
+      candidate && candidate.sourceOfferId === offerId
+    ));
+    if (duplicateActive) return duplicateActive;
+    for (const candidateBoard of Object.values(this.state.missions.boards || {})) {
+      const duplicate = candidateBoard && Array.isArray(candidateBoard.slots)
+        && candidateBoard.slots.find((candidate) => candidate && candidate.id === offerId);
+      if (duplicate) return duplicate;
+    }
+
+    const commodityId = 'cmdty_salvage_electronics';
+    const commodity = CMDTY_BY_ID.get(commodityId);
+    const pods = [{ slot: 0, commodityId, amount: 1 }];
+    const offer = {
+      id: offerId,
+      type: 'salvage_retrieval',
+      stationId: mission.stationId,
+      factionId: mission.factionId,
+      reward_cr: Math.max(100, Math.round((Number(mission.reward_cr) || 0) * 0.35)),
+      time_limit_s: 240,
+      duration_s: 240,
+      collateral_cr: 0,
+      riskTier: Math.max(1, Math.round(Number(mission.riskTier) || 1)),
+      destStationId: null,
+      destSectorId: loss.sectorId || mission.destSectorId,
+      distance: mission.distance,
+      params: {
+        cmdtyId: commodityId,
+        qty: 1,
+        cargoValue: Math.max(0, Number(commodity && commodity.basePrice) || 0),
+        fValue: 1,
+        taskTime: 30,
+        missionVariant: DEBRIS_RECOVERY_VARIANT_ID,
+        debrisRecovery: {
+          fieldName: 'The Anvil burn trail',
+          generation: 1,
+          sourceMissionId: mission.id,
+          pos: { ...loss.pos },
+          vel: { ...loss.vel },
+          pods,
+        },
+      },
+      title: `Black Box Recovery — ${loss.targetName}`,
+      brief: 'The rescue ship burned up. Pull its marked recorder from the atmosphere debris.',
+      expiresAtEpoch: this._epoch() + 2,
+      storyTag: null,
+      variantId: DEBRIS_RECOVERY_VARIANT_ID,
+      source: DEBRIS_RECOVERY_FOLLOWUP_SOURCE,
+      cause: {
+        tag: 'atmosphere_rescue_burn_up',
+        sourceMissionId: mission.id,
+        sourceOfferId: mission.sourceOfferId || null,
+        targetEntityId: loss.targetEntityId,
+        siteId: loss.siteId,
+      },
+    };
+    let board = this.state.missions.boards[mission.stationId];
+    if (!board || typeof board !== 'object') {
+      board = { refreshEpoch: this._epoch(), slots: [] };
+      this.state.missions.boards[mission.stationId] = board;
+    }
+    if (!Array.isArray(board.slots)) board.slots = [];
+    board.slots.push(offer);
+    this.bus.emit('mission:updated', { missionId: null, stationId: mission.stationId });
+    return offer;
+  },
+
   /** A burned Loud drop leaves one moving recorder recovery through the existing pod owner. */
   _postLoudDeliveryRecovery(mission) {
     const loss = mission && mission._loudDeliveryScanLoss;
@@ -3899,7 +4101,7 @@ export const missions = {
       const m = this.state.missions.active[i];
       if (m.status !== 'active' || m.type !== 'recon_scan') continue;
       // This contract is a physics emergency, not a scanner job wearing different copy.
-      if (isRockDiversion(m)) continue;
+      if (isRockDiversion(m) || isAtmosphereRescue(m)) continue;
       if (m.params && m.params.setPieceObjective === 'long_read_rumor_survey') continue;
       // Authored landmark probes settle only from scanner's exact physical signal result below.
       // A generic sector pulse must never finish a job aimed at one named hull.
@@ -4951,6 +5153,9 @@ export const missions = {
     }
     if (isWreckTow(m) && m._wreckTowLoss) this._postWreckTowBlackBox(m);
     if (isRockDiversion(m) && m._rockDiversionLoss) this._postRockDiversionRecovery(m);
+    if (isAtmosphereRescue(m) && m._atmosphereRescueLoss) {
+      this._postAtmosphereRescueBlackBox(m);
+    }
     const setPieceTransition = this._compileSetPieceTransition(m, 'failed', reason || 'failed');
     m.status = 'failed';
     this._clearMissionNav(m.id);
@@ -5191,7 +5396,8 @@ export const missions = {
     ent.data.missionId = m.id;
     ent.data.missionPinned = true;
     const combatTarget = m.type === 'bounty_hunt' || m.type === 'patrol_clear';
-    const slottedTarget = combatTarget || isQuietDeliveryRecovery(m) || isDebrisRecovery(m);
+    const slottedTarget = combatTarget || isAtmosphereRescue(m)
+      || isQuietDeliveryRecovery(m) || isDebrisRecovery(m);
     const durableSlot = slottedTarget
       ? Math.max(0, seq | 0)
       : (missionTargetSlotOf(ent, m.id) ?? Math.max(0, seq | 0));
@@ -5393,6 +5599,87 @@ export const missions = {
         m.targetEntityIds.push(ent.id);
         this.bus.emit('mission:updated', { missionId: m.id, targetEntityId: ent.id });
       }
+      return;
+    }
+
+    const atmosphereRescue = m.params && m.params.atmosphereRescue;
+    if (atmosphereRescue) {
+      if ((m.targetEntityIds || []).length > 0 || atmosphereRescue.outcome) return;
+      const runtime = this.state.planet;
+      if (!runtime || !runtime.active || runtime.siteId !== atmosphereRescue.siteId
+        || !runtime.center) return;
+      if (!player || !player.pos) return;
+      const pdx = player.pos.x - runtime.center.x;
+      const pdz = player.pos.z - runtime.center.z;
+      const playerRadius = Math.hypot(pdx, pdz);
+      if (playerRadius > ATMOSPHERE_RESCUE_APPROACH_RADIUS) return;
+
+      const budget = helpers.spawnBudget;
+      const requester = `mission:${m.id}`;
+      if (budget && typeof budget.request === 'function' && budget.request(1, requester) <= 0) {
+        this._noteMissionSpawnDeferred(m, 1, 0);
+        return;
+      }
+      if (!Number.isFinite(atmosphereRescue.spawnAngle)) {
+        atmosphereRescue.spawnAngle = playerRadius > 1
+          ? Math.atan2(pdz, pdx)
+          : nextRng(0)() * Math.PI * 2;
+      }
+      const angle = atmosphereRescue.spawnAngle;
+      const ox = Math.cos(angle), oz = Math.sin(angle);
+      const tx = -oz, tz = ox;
+      const spec = makeShipEntitySpec(atmosphereRescue.targetDefId || 'ship_kestrel', {
+        team: 0,
+        factionId: m.factionId,
+        pos: {
+          x: runtime.center.x + ox * ATMOSPHERE_RESCUE_START_RADIUS,
+          z: runtime.center.z + oz * ATMOSPHERE_RESCUE_START_RADIUS,
+        },
+        rot: angle + Math.PI / 2,
+        ai: null,
+      });
+      spec.vel = {
+        x: -ox * ATMOSPHERE_RESCUE_INWARD_SPEED + tx * ATMOSPHERE_RESCUE_TANGENTIAL_SPEED,
+        z: -oz * ATMOSPHERE_RESCUE_INWARD_SPEED + tz * ATMOSPHERE_RESCUE_TANGENTIAL_SPEED,
+      };
+      spec.angVel = 2.2;
+      spec.collides = true;
+      spec.hull = 48;
+      spec.hullMax = 48;
+      spec.armorHp = 0;
+      spec.armorMax = 0;
+      spec.armorFlat = 0;
+      spec.shield = 0;
+      spec.shieldMax = 0;
+      spec.thrust = 0;
+      spec.turnRate = 0;
+      spec.maxSpeed = 0;
+      spec.data.name = atmosphereRescue.targetName || 'Stricken Hitch';
+      spec.data.ai = null;
+      spec.data.intent = null;
+      spec.data.weapons = [];
+      spec.data.masslineTetherable = true;
+      spec.data.atmosphereRescue = {
+        missionId: m.id,
+        siteId: atmosphereRescue.siteId,
+      };
+      let ent;
+      try {
+        ent = helpers.spawnEntity(spec);
+      } catch (error) {
+        if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
+        throw error;
+      }
+      if (!ent) {
+        if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
+        return;
+      }
+      if (budget && typeof budget.bindEntity === 'function') budget.bindEntity(ent.id, requester);
+      this._stampMissionTargetIdentity(ent, m, 0);
+      m.targetEntityIds.push(ent.id);
+      atmosphereRescue.spawnedAt_s = Number(this.state.simTime) || 0;
+      if (this._missionBudgetDeferrals) this._missionBudgetDeferrals.delete(String(m.id));
+      this.bus.emit('mission:updated', { missionId: m.id, targetEntityId: ent.id });
       return;
     }
 

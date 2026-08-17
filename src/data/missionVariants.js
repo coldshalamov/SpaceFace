@@ -23,6 +23,11 @@ export const WRECK_TOW_VARIANT_ID = 'wreck_tow';
 export const WRECK_TOW_DRAW_MODULO = 3;
 export const ROCK_DIVERSION_VARIANT_ID = 'rock_diversion';
 export const ROCK_DIVERSION_DRAW_MODULO = 3;
+export const ATMOSPHERE_RESCUE_VARIANT_ID = 'atmosphere_rescue';
+export const ATMOSPHERE_RESCUE_DRAW_MODULO = 3;
+export const ATMOSPHERE_RESCUE_SITE_ID = 'planet_tethys_anvil';
+export const ATMOSPHERE_RESCUE_ZONE_ID = 'zone_tethys_anvil';
+export const ATMOSPHERE_RESCUE_DEST_SECTOR_ID = 'sector_tethys_junction';
 
 /** One in three ordinary cargo-delivery rolls becomes Quiet Delivery, without consuming board RNG. */
 export function shouldRollQuietDelivery(hashValue) {
@@ -294,6 +299,52 @@ export function isRockDiversion(value) {
 export function rockDiversionFollowupOfferId(mission) {
   const sourceId = mission && (mission.sourceOfferId || mission.id);
   return sourceId ? `mo_rock_diversion_recorder_${String(sourceId)}` : null;
+}
+
+/** One in three ordinary recon rolls becomes the physical rescue at The Anvil. */
+export function shouldRollAtmosphereRescue(hashValue) {
+  return (Number(hashValue) >>> 0) % ATMOSPHERE_RESCUE_DRAW_MODULO === 0;
+}
+
+/** Name the tumbling hull and burn line on the ordinary board before acceptance. */
+export function applyAtmosphereRescueVariant(offer) {
+  if (!offer || offer.type !== 'recon_scan') return offer;
+  return {
+    ...offer,
+    destStationId: null,
+    destSectorId: ATMOSPHERE_RESCUE_DEST_SECTOR_ID,
+    title: 'Atmosphere Rescue — Tumbling Ship at The Anvil',
+    brief: "She's tumbling, two minutes from the burn line. Take her under Massline and pull her clear.",
+    // The atmosphere is the hard clock. A second mission-owned timer would duplicate that authority.
+    duration_s: null,
+    variantId: ATMOSPHERE_RESCUE_VARIANT_ID,
+    params: {
+      ...(offer.params || {}),
+      missionVariant: ATMOSPHERE_RESCUE_VARIANT_ID,
+      atmosphereRescue: {
+        generation: 0,
+        siteId: ATMOSPHERE_RESCUE_SITE_ID,
+        zoneId: ATMOSPHERE_RESCUE_ZONE_ID,
+        targetDefId: 'ship_kestrel',
+        targetName: 'Stricken Hitch',
+        tetherLatched: false,
+        outcome: null,
+      },
+    },
+    clauses: [],
+  };
+}
+
+export function isAtmosphereRescue(value) {
+  return !!(value && (
+    value.variantId === ATMOSPHERE_RESCUE_VARIANT_ID
+    || value.params && value.params.missionVariant === ATMOSPHERE_RESCUE_VARIANT_ID
+  ));
+}
+
+export function atmosphereRescueFollowupOfferId(mission) {
+  const sourceId = mission && (mission.sourceOfferId || mission.id);
+  return sourceId ? `mo_atmosphere_black_box_${String(sourceId)}` : null;
 }
 
 /** One in three ordinary smuggling rolls becomes a physical scan-net delivery. */
