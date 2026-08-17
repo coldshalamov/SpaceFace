@@ -34,6 +34,7 @@ function modifierLines(def) {
   if (m.boostTopSpeedPct) out.push('+' + Math.round(m.boostTopSpeedPct * 100) + '% boost');
   if (m.weaponRangePct) out.push('+' + Math.round(m.weaponRangePct * 100) + '% wpn rng');
   if (m.weaponDmgPct) out.push('+' + Math.round(m.weaponDmgPct * 100) + '% wpn dmg');
+  if (m.weaponHeatDissipPct) out.push('+' + Math.round(m.weaponHeatDissipPct * 100) + '% wpn cool');
   if (m.radarRangePct) out.push('+' + Math.round(m.radarRangePct * 100) + '% radar');
   if (Number.isFinite(m.magnetRange) && m.magnetRange > 0) out.push(Math.round(m.magnetRange) + ' wu ore magnet');
   if (m.hullRepairOOC) out.push('+' + m.hullRepairOOC + ' hull/s');

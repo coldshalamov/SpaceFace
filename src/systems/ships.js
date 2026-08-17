@@ -433,7 +433,6 @@ export function getDerivedStats(defId, fittings = [], player = null) {
   const shieldRegenMult = eff.shieldRegenMult || 1;
   const energyRegenMult = eff.energyRegenMult || 1;
   const cargoCapMult = eff.cargoCapMult || 1;
-
   const { equipped, slots } = resolveFittings(shipDef, fittings);
   const droneBayCount = droneBayCountForFittings(defId, fittings);
 
@@ -441,6 +440,7 @@ export function getDerivedStats(defId, fittings = [], player = null) {
   let shieldFlat = 0, shieldRegenFlat = 0, hullFlat = 0, cargoFlat = 0, cargoCapPct = 0;
   let weaponRangePct = 0;
   let weaponDmgPct = 0;
+  let weaponHeatDissipPct = 0;
   let radarRangePct = 0;
   let hullRepairOOC = 0;
   // Every hull has its authored T1 drive. Fitted drive modules can only advance that capability;
@@ -471,6 +471,7 @@ export function getDerivedStats(defId, fittings = [], player = null) {
     if (occupiesCompatibleSlot) {
       weaponRangePct = addFinitePositivePct(weaponRangePct, mods.weaponRangePct);
       weaponDmgPct = addFinitePositivePct(weaponDmgPct, mods.weaponDmgPct);
+      weaponHeatDissipPct = addFinitePositivePct(weaponHeatDissipPct, mods.weaponHeatDissipPct);
       // Radar is a sensory capability: valid compatible modules select the strongest authored
       // coverage rather than stacking duplicate arrays. Reject a finite-but-unrepresentable value
       // here so it cannot discard an earlier usable range during final scaling.
@@ -571,6 +572,7 @@ export function getDerivedStats(defId, fittings = [], player = null) {
   const cargoCap = Math.floor((shipDef.cargo + cargoFlat) * (1 + cargoCapPct) * cargoCapMult);
   const weaponRangeMult = weaponRangePct + 1;
   const weaponDmgMult = weaponDmgPct + 1;
+  const weaponHeatDissipMult = weaponHeatDissipPct + 1;
   const radarRangeMult = radarRangePct + 1;
   const rawRadarRange = BASE_RADAR_RANGE * radarRangeMult;
   const radarRange = Number.isFinite(rawRadarRange) && rawRadarRange > 0
@@ -626,9 +628,11 @@ export function getDerivedStats(defId, fittings = [], player = null) {
     tetherSpoolMult, tetherReelRateMult, masslineHeadId, magnetRange,
     weaponRangePct,
     weaponDmgPct,
+    weaponHeatDissipPct,
     radarRangePct,
     weaponRangeMult,
     weaponDmgMult,
+    weaponHeatDissipMult,
     radarRangeMult,
     radarRange,
     jumpDriveTier: `jump_t${jumpDriveTier}`,
@@ -695,6 +699,7 @@ function makeWeaponRuntime(def, slot, slotIndex, isPlayer = false, derivedStats 
       splashDmg: scaleWeaponRuntimeStat(def.splashDmg, derivedStats && derivedStats.weaponDmgMult),
     } : {}),
     heat: def.heatPerShot || def.heatPerSec || 0, heatMax: def.heatMax || 100,
+    heatDissip: scaleWeaponRuntimeStat(def.heatDissip, derivedStats && derivedStats.weaponHeatDissipMult),
     projSpeed: def.projSpeed, range: scaleWeaponRuntimeStat(def.range, derivedStats && derivedStats.weaponRangeMult), spread: def.spreadDeg || 0,
     tracking, lockTimeS: def.lockTimeS || 0,
     damageType: def.damageType, arc: turretArc ? { turret: turretArc } : (gimbalArc ? { gimbal: gimbalArc } : 'fixed'),

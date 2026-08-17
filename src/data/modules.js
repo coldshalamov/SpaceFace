@@ -240,4 +240,20 @@ export const MODULES = [
     energyDraw: 6,
     mods: { countermeasure: { kind: 'ecm', radius: 520, durationS: 4.0, cooldownS: 12, lockBreakPct: 0.6, turnRateMult: 0.0 } },
   },
+  {
+    id: 'mod_thermal_sink_s', name: 'Thermal Sink S', slotType: 'utility', size: 'S', tier: 1, mass: 2, price: 6500,
+    energyDraw: 1,
+    mods: { weaponHeatDissipPct: 0.25 },
+  },
+  {
+    id: 'mod_thermal_sink_m', name: 'Thermal Sink Booster M', slotType: 'utility', size: 'M', tier: 2, mass: 4, price: 18000, requiresTech: 'tech_beam_focusing',
+    energyDraw: 2,
+    mods: { weaponHeatDissipPct: 0.40 },
+  },
+  {
+    id: 'unique_cryo_shroud_sink', baseId: 'mod_thermal_sink_m', name: 'Cryo-Shroud Sink', slotType: 'utility', size: 'M', tier: 3, mass: 4, price: 0,
+    energyDraw: 3, purchasable: false, unique: true, salvageOnly: true,
+    mods: { weaponHeatDissipPct: 0.65, weaponDmgPct: 0.05 },
+    variantBonuses: { weaponHeatDissipPct: 0.65, weaponDmgPct: 0.05 },
+  },
 ];

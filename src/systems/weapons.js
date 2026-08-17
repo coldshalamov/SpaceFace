@@ -241,7 +241,8 @@ export const weapons = {
       for (const w of ws) {
         const def = this._byId.get(w.defId) || {};
         if (w._cooldown > 0) w._cooldown = Math.max(0, w._cooldown - dt);
-        const dissip = (def.heatDissip != null ? def.heatDissip : (w.heatDissip || 0)) * WEAPON_RECHARGE_MULT;
+        const baseDissip = w.heatDissip != null ? w.heatDissip : (def.heatDissip || 0);
+        const dissip = baseDissip * WEAPON_RECHARGE_MULT;
         if (w._heat > 0 && dissip > 0) w._heat = Math.max(0, w._heat - dissip * dt);
       }
       // Forced-vent lockout (player only) — see WEAPON_VENT_S. Runs after the normal cooldown so a
@@ -533,7 +534,8 @@ export const weapons = {
     if (!canFire) {
       // cool while not firing
       if (!firing) {
-        const dissip = (def.heatDissip != null ? def.heatDissip : (w.heatDissip || 0)) * WEAPON_RECHARGE_MULT;
+        const baseDissip = w.heatDissip != null ? w.heatDissip : (def.heatDissip || 0);
+        const dissip = baseDissip * WEAPON_RECHARGE_MULT;
         if (w._heat > 0 && dissip > 0) w._heat = Math.max(0, w._heat - dissip * dt);
       }
       return capLeft;

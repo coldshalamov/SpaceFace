@@ -315,6 +315,7 @@ export function statSnippet(def) {
     if (m.bombPropulsion) parts.push('aft-drop enabled');
     if (m.weaponRangePct) parts.push('+' + Math.round(m.weaponRangePct * 100) + '% wpn rng');
     if (m.weaponDmgPct) parts.push('+' + Math.round(m.weaponDmgPct * 100) + '% wpn dmg');
+    if (m.weaponHeatDissipPct) parts.push('+' + Math.round(m.weaponHeatDissipPct * 100) + '% wpn cool');
     if (m.radarRangePct) parts.push('+' + Math.round(m.radarRangePct * 100) + '% radar');
     if (m.hullRepairOOC) parts.push('+' + m.hullRepairOOC + ' hull/s');
     if (m.droneBay) parts.push('drone bay');

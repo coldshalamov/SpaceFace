@@ -832,6 +832,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     if (def.slotType === 'cargo') return def.mods && def.mods.hiddenCargoPct ? 'Concealed cargo system' : 'Load-space system';
     if (def.slotType === 'mining') return def.directToCargo ? 'Direct-feed extraction system' : 'Ore extraction system';
     if (def.mods && def.mods.hullRepairOOC) return 'Autonomous repair system';
+    if (def.mods && def.mods.weaponHeatDissipPct) return 'Thermal regulation and weapon heatsink';
     if (def.mods && def.mods.weaponRangePct) return 'Fire-control support system';
     if (def.mods && def.mods.radarRangePct) return 'Long-range sensor system';
     if (def.mods && def.mods.countermeasure) return 'Defensive countermeasure';
