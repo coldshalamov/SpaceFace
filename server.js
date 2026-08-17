@@ -43,6 +43,7 @@ const server = createGameServer({
   root: ROOT,
   async: true,
   devDiagnostics: true,
+  playerStoreDir: process.env.SPACEFACE_PLAYER_STORE_DIR || undefined,
   extraRoutes: [
     { test: (method, url) => method === 'POST' && url.startsWith('/__shot'), handle: handleShot },
   ],

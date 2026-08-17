@@ -31,6 +31,7 @@ assert.match(shared, /if \(stats\.isDirectory\(\)\)\s*\{[\s\S]*?file = path\.joi
 assert.match(shared, /const DEV_FRESHNESS_ROOTS = Object\.freeze\(\['index\.html', 'src', 'styles'\]\)/, 'Dev freshness should watch source/UI roots without scanning large asset/build directories');
 assert.match(shared, /module\.exports\s*=\s*{[\s\S]*MIME[\s\S]*createGameServer/, 'Shared module must export MIME + createGameServer');
 assert.match(shared, /__spaceface_health/, 'Shared server must expose the minimal shell liveness probe on both routes');
+assert.match(shared, /attachPlayerStore/, 'Shared server must attach the Browser/Electron player save store when a directory is configured');
 assert.match(shared, /devDiagnostics\s*=\s*opts\.devDiagnostics\s*!==\s*false/, 'Shared server must make dev diagnostics explicitly disableable');
 assert.match(shared, /if \(devDiagnostics && method === 'GET' && url\.startsWith\('\/__dev_freshness'\)\)/,
   'Dev freshness must be gated off in packaged production');
@@ -51,6 +52,11 @@ assert.match(
   'Electron main must build its server via createGameServer (not inline its own HTTP server)'
 );
 assert.match(electronMain, /const PORT = 41788;/, 'Electron must use the fixed packaged-app port so localStorage saves survive relaunches');
+assert.match(
+  electronMain,
+  /const playerStoreDir = launchConfig\.isolatedEvidence \? null : resolvePlayerSaveDir\(process\.env\);/,
+  'Player Electron must use the shared save directory; isolated evidence must not',
+);
 assert.match(
   electronMain,
   /const launchPort = launchConfig\.isolatedEvidence \? launchConfig\.port : PORT;/,
@@ -117,6 +123,8 @@ const browserLauncherHelper = read('scripts/launch-browser.mjs');
 assert.match(browserLauncherHelper, /probeSpaceFace/, 'Browser launcher helper must probe the route before opening the browser');
 assert.match(browserLauncherHelper, /SpaceFace is already running/, 'Browser launcher helper must reuse an existing healthy SpaceFace server');
 assert.match(browserLauncherHelper, /waitForSpaceFace/, 'Browser launcher helper must wait for readiness after starting the server');
+assert.match(browserLauncherHelper, /SPACEFACE_PLAYER_STORE_DIR/, 'Browser launcher must hand the shared player save directory to the game server');
+assert.match(devServer, /SPACEFACE_PLAYER_STORE_DIR/, 'Browser server must opt into the shared player save store only when the launcher provides a directory');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // RUNTIME — backend defaults, asset mode, save canonicalization, no URL forks.

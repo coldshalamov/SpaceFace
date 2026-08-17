@@ -18,6 +18,12 @@ const {
   resolveElectronLaunchConfig,
   resolveWebRoot,
 } = require('../scripts/lib/electronLaunchProtocol.cjs');
+const {
+  LOCAL_STORAGE_DUMP_SOURCE,
+  PLAYER_STORE_ORIGIN_ROUTE,
+  resolvePlayerSaveDir,
+  writePlayerStoreKeysSync,
+} = require('../scripts/lib/playerSaveStore.cjs');
 
 // WEB ROOT: packaged desktop serves the bundled release output in build/web/. Electron dev serves
 // the project root so `npm run electron` and `node server.js 8123` run the same source route even
@@ -37,6 +43,8 @@ const KTX2_TRANSCODER_WORKER_PATH = 'vendor/addons/libs/basis/basis_transcoder.w
 const ELECTRON_KTX2_WORKER_CONTENT_SECURITY_POLICY = "default-src 'none'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval';";
 const launchConfig = resolveElectronLaunchConfig(process.env);
 const launchPort = launchConfig.isolatedEvidence ? launchConfig.port : PORT;
+const playerStoreDir = launchConfig.isolatedEvidence ? null : resolvePlayerSaveDir(process.env);
+const migratePlayerStore = process.env.SPACEFACE_MIGRATE_PLAYER_STORE === '1';
 // Player windows use normal Chromium throttling. A temporary evidence profile may opt out only
 // through the explicit dual gate; the environment variable alone has no effect on normal play.
 const allowEvidenceBackgroundExecution = launchConfig.isolatedEvidence === true
@@ -119,6 +127,7 @@ function listenGameServer(root, requestedPort) {
       // admission off Electron's main thread so shell lifecycle and the fixed save origin stay live.
       async: true,
       devDiagnostics: !app.isPackaged,
+      playerStoreDir,
       staticHeaders: { 'Content-Security-Policy': ELECTRON_CONTENT_SECURITY_POLICY },
       staticHeadersByPath: {
         [KTX2_TRANSCODER_WORKER_PATH]: {
@@ -433,11 +442,55 @@ function requestGameWindow() {
   return windowCreationPromise;
 }
 
+async function runPlayerStoreMigration() {
+  if (!playerStoreDir) {
+    receipt('player-store-migrated', { keyCount: 0, skipped: 'no-store' });
+    app.quit();
+    return;
+  }
+  const port = await ensureGameServerPort();
+  const originUrl = `http://127.0.0.1:${port}${PLAYER_STORE_ORIGIN_ROUTE}`;
+  const win = new BrowserWindow({
+    show: false,
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      webSecurity: true,
+      backgroundThrottling: true,
+    },
+  });
+  try {
+    await win.loadURL(originUrl);
+    const dumped = await win.webContents.executeJavaScript(LOCAL_STORAGE_DUMP_SOURCE, true);
+    const keys = dumped && typeof dumped === 'object' ? dumped : {};
+    const written = writePlayerStoreKeysSync(playerStoreDir, keys);
+    receipt('player-store-migrated', {
+      keyCount: Object.keys(written || {}).length,
+      port,
+    });
+  } finally {
+    if (!win.isDestroyed()) win.destroy();
+    app.quit();
+  }
+}
+
 // Single-instance lock: a second launch focuses the existing window instead of starting a rival
 // server that would lose the fixed port (and split saves across origins).
 if (!app.requestSingleInstanceLock()) {
   receipt('existing-instance');
   app.quit();
+} else if (migratePlayerStore) {
+  receipt('starting', {
+    port: launchPort,
+    isolatedEvidence: launchConfig.isolatedEvidence,
+    lockNamespace: launchConfig.lockNamespace,
+    migratePlayerStore: true,
+    runtime: collectRuntimeIdentity(),
+  });
+  app.whenReady()
+    .then(() => runPlayerStoreMigration())
+    .catch(handleWindowCreationFailure);
 } else {
   receipt('starting', {
     port: launchPort,
