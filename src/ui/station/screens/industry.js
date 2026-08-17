@@ -7,6 +7,7 @@ import { MODULES } from '../../../data/modules.js';
 import { WEAPONS } from '../../../data/weapons.js';
 import { SHIPS } from '../../../data/ships.js';
 import { SECTORS } from '../../../data/sectors.js';
+import { refineryServiceFeeForBlueprint } from '../../../systems/economy.js';
 import { escapeHtml } from '../../comms.js';
 import { icon } from '../icons.js';
 import {
@@ -46,7 +47,7 @@ function outputComparison(bp, state) {
   }));
 }
 
-function readiness(bp, state, stnType) {
+export function industryBlueprintReadiness(bp, state, stnType) {
   const learned = state && state.crafting && state.crafting.unlockedBlueprints;
   if (bp.unlock && (!Array.isArray(learned) || !learned.includes(bp.id))) {
     return { state: 'blueprint', label: 'Earn blueprint' };
@@ -55,7 +56,11 @@ function readiness(bp, state, stnType) {
   if (bp.stationType && stnType && bp.stationType !== stnType) return { state: 'station', label: `Requires ${facilityName(bp.stationType)}` };
   const it = items(state);
   for (const id in (bp.inputs || {})) if ((it[id] || 0) < bp.inputs[id]) return { state: 'materials', label: 'Missing materials' };
-  return { state: 'ready', label: 'Ready to build' };
+  const feeCr = refineryServiceFeeForBlueprint(bp);
+  if (feeCr > 0 && Math.max(0, Number(state?.player?.credits) || 0) < feeCr) {
+    return { state: 'credits', label: `Need ${feeCr} cr fee`, feeCr };
+  }
+  return { state: 'ready', label: 'Ready to build', feeCr };
 }
 
 export function createIndustryScreen(ctx) {
@@ -81,7 +86,7 @@ export function createIndustryScreen(ctx) {
           return `<section class="sx-ind-process" data-process="${category}">` +
             `<header class="sx-ind-process__head"><span>${icon(CAT_ICON[category], 15)}</span><b>${CAT_LABEL[category]}</b><i>${String(processIndex + 1).padStart(2, '0')}</i></header>` +
             `<div class="sx-ind-process__items">` + blueprints.map((bp) => {
-              const r = readiness(bp, state, stn);
+              const r = industryBlueprintReadiness(bp, state, stn);
               const on = bp.id === selectedId ? ' is-active' : '';
               const tone = r.state === 'ready' ? 'var(--gain)' : r.state === 'materials' ? 'var(--warn)' : '#60757a';
               const output = `${niceName(bp.outputs.id, bp.outputs.kind)}${bp.outputs.qty > 1 ? ' ×' + bp.outputs.qty : ''}`;
@@ -103,6 +108,7 @@ export function createIndustryScreen(ctx) {
     if (!bp) { stageEl.innerHTML = ''; return; }
     const it = items(state);
     const comparison = outputComparison(bp, state);
+    const feeCr = refineryServiceFeeForBlueprint(bp);
     const inputs = Object.keys(bp.inputs || {}).map((id) => {
       const need = bp.inputs[id]; const have = Math.floor(it[id] || 0);
       const ok = have >= need; const frac = Math.max(0, Math.min(1, need ? have / need : 1));
@@ -123,7 +129,7 @@ export function createIndustryScreen(ctx) {
         (bp.desc ? `<p>${escapeHtml(bp.desc)}</p>` : '') + `</header>` +
       `<div class="sx-fab-flow">` +
         `<div class="sx-fab-inputs"><span class="sx-fab-col-k">Inputs</span>${inputs || '<p class="sx-muted">No inputs</p>'}</div>` +
-        `<div class="sx-fab-arrow">${icon('chevron', 22)}<span>${bp.timeS ? bp.timeS + 's' : 'instant'}</span></div>` +
+        `<div class="sx-fab-arrow">${icon('chevron', 22)}<span>${bp.timeS ? bp.timeS + 's' : 'instant'}${feeCr ? ` · ${feeCr} cr service` : ''}</span></div>` +
         `<div class="sx-fab-output"><span class="sx-fab-col-k">Output</span>` +
           `<div class="sx-fab-out-card"${comparison ? ` tabindex="0" title="${escapeHtml(comparison)}" aria-label="${escapeHtml(niceName(bp.outputs.id, bp.outputs.kind))}. ${escapeHtml(comparison)}"` : ''}><span class="sx-fab-out__kind">${bp.outputs.kind}</span>` +
             `<span class="sx-fab-out__name">${escapeHtml(niceName(bp.outputs.id, bp.outputs.kind))}</span>` +
@@ -136,7 +142,8 @@ export function createIndustryScreen(ctx) {
     const bp = BLUEPRINTS.find((b) => b.id === selectedId) || BLUEPRINTS[0];
     if (!bp) { consoleEl.innerHTML = ''; return; }
     const stn = stationType(ctx);
-    const r = readiness(bp, state, stn);
+    const r = industryBlueprintReadiness(bp, state, stn);
+    const feeCr = refineryServiceFeeForBlueprint(bp);
     const tone = r.state === 'ready' ? 'gain' : r.state === 'materials' ? 'warn' : 'loss';
     const sid = state && state.ui && state.ui.dockedStationId;
     const queue = state && state.crafting && state.crafting.queues && sid && state.crafting.queues[sid];
@@ -153,12 +160,18 @@ export function createIndustryScreen(ctx) {
       const matches = !stn || bp.stationType === stn;
       notes.push({ ok: matches, text: matches ? `${facilityName(bp.stationType)} online` : `Required: ${facilityName(bp.stationType)}` });
     }
+    if (feeCr > 0) {
+      notes.push({
+        ok: Math.max(0, Number(state?.player?.credits) || 0) >= feeCr,
+        text: `Refinery service: ${feeCr} cr`,
+      });
+    }
     consoleEl.innerHTML =
       `<div class="sx-panel">` +
         `<div class="sx-fab-status sx-fab-status--${queue ? 'warn' : tone}"><span class="sx-fab-status__dot"></span>${queue ? 'Fabricator occupied' : r.label}</div>` +
         (queue ? `<div class="sx-fab-queue"><span>ACTIVE LINE / ${escapeHtml((queueBp && queueBp.name) || queue.bpId || 'job')}</span><b>${Math.round(progress * 100)}%</b><i><span style="width:${(progress * 100).toFixed(1)}%"></span></i><em>${Math.max(0, Math.ceil((queue.total || 0) - (queue.elapsed || 0)))}s remaining</em></div>` : `<div class="sx-fab-queue is-idle"><span>ACTIVE LINE</span><b>IDLE</b><em>One strategic build slot available</em></div>`) +
         `<div class="sx-fab-notes">${notes.map((n) => `<div class="sx-fab-note${n.ok ? ' is-ok' : ''}">${icon(n.ok ? 'spark' : 'info', 13)}<span>${escapeHtml(n.text)}</span></div>`).join('')}</div>` +
-        `<button type="button" class="sx-btn-primary" data-build="${escapeHtml(bp.id)}" ${r.state === 'ready' && !queue ? '' : 'disabled'}>${queue ? 'Line occupied' : (r.state === 'ready' ? 'Fabricate' : r.label)}</button>` +
+        `<button type="button" class="sx-btn-primary" data-build="${escapeHtml(bp.id)}" ${r.state === 'ready' && !queue ? '' : 'disabled'}>${queue ? 'Line occupied' : (r.state === 'ready' ? (feeCr ? `Refine · ${feeCr} cr` : 'Fabricate') : r.label)}</button>` +
       `</div>`;
   }
 
@@ -202,7 +215,7 @@ export function createIndustryScreen(ctx) {
       const st = (c || ctx).state || {};
       if (!picked) {
         const stn = stationType(ctx);
-        const b = BLUEPRINTS.find((bp) => { const s = readiness(bp, st, stn).state; return s === 'ready' || s === 'materials'; });
+        const b = BLUEPRINTS.find((bp) => { const s = industryBlueprintReadiness(bp, st, stn).state; return s === 'ready' || s === 'materials'; });
         if (b) selectedId = b.id;
         picked = true;
       }

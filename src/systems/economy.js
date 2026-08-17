@@ -142,6 +142,18 @@ const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
 const FIT_BY_ID = new Map([...MODULES, ...WEAPONS].map((fit) => [fit.id, fit]));
 
+const REFINERY_SERVICE_FEE_RATE = 0.06;
+
+/** Dockside refineries charge six percent of the commodity value they create. The calculation is
+ * pure so the Industry screen can quote the exact Economy-owned charge before committing cargo. */
+export function refineryServiceFeeForBlueprint(bp) {
+  if (!bp || bp.stationType !== 'refinery' || bp.outputs?.kind !== 'commodity') return 0;
+  const commodity = CMDTY_BY_ID.get(bp.outputs.id);
+  const qty = Math.max(0, Number(bp.outputs.qty) || 0);
+  const valueCr = Math.max(0, Number(commodity && commodity.basePrice) || 0) * qty;
+  return valueCr > 0 ? Math.max(1, round(valueCr * REFINERY_SERVICE_FEE_RATE)) : 0;
+}
+
 function cloneInsuranceValue(value) {
   return value == null ? value : JSON.parse(JSON.stringify(value));
 }
@@ -2056,6 +2068,34 @@ export const economy = {
     const delta = p.credits - before;          // actual change (may be smaller if it floored at 0)
     this.bus.emit('credits:changed', { delta, reason: reason || 'charge', total: p.credits });
     return p.credits;
+  },
+
+  /** Commit one quoted dockside refinery charge before Crafting consumes any materials. */
+  chargeRefineryServiceFee(bp, stationId) {
+    const feeCr = refineryServiceFeeForBlueprint(bp);
+    if (feeCr <= 0) return { ok: true, feeCr: 0, stationId: stationId || null };
+    const liveStationId = this.dockedStationId();
+    if (!stationId || stationId !== liveStationId) {
+      return { ok: false, reason: 'refinery_berth_required', feeCr, stationId: stationId || null };
+    }
+    const info = stationInfo(this.state, stationId);
+    if (!info || info.type !== 'refinery' || !info.services.includes('refine')) {
+      return { ok: false, reason: 'refinery_service_unavailable', feeCr, stationId };
+    }
+    const credits = Math.max(0, Math.round(Number(this.state.player.credits) || 0));
+    if (credits < feeCr) {
+      return { ok: false, reason: 'insufficient_credits', feeCr, stationId, credits };
+    }
+    this.chargeCredits(feeCr, `service:refinery:${bp.id}`);
+    const receipt = {
+      ok: true,
+      bpId: bp.id,
+      stationId,
+      feeCr,
+      remainingCredits: this.state.player.credits | 0,
+    };
+    this.bus.emit('craft:serviceFeeCharged', receipt);
+    return receipt;
   },
 
   quoteInsurancePolicy(tier) {

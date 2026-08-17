@@ -153,6 +153,7 @@ export const crafting = {
   // Lazy refs to sibling systems (they init before crafting via registry order). Using getters keeps
   // us robust if init order ever shifts.
   get _ships() { return this.ctx.registry.get('ships'); },
+  get _economy() { return this.ctx.registry.get('economy'); },
 
   // Advance in-progress build jobs by dt of GAME-time (the loop passes sim dt, already gated by
   // timeScale/pause, so a paused game doesn't progress production and a save-load catch-up works).
@@ -301,6 +302,20 @@ export const crafting = {
     if (this.buildTime(bp) > 0 && this.isBusy(sid)) {
       this.bus.emit('toast', { text: 'Fab busy — finish the current job first', kind: 'error', ttl: 3 });
       return false;
+    }
+
+    // A station refinery is a business, not a free converter. Economy owns the wallet edge and
+    // validates the real docked berth before Crafting commits a single input. The compact field kit
+    // remains fee-free even when it runs a refinery-shaped survival recipe.
+    if (sid !== FIELD_STATION_ID && bp.stationType === 'refinery') {
+      const charged = this._economy && this._economy.chargeRefineryServiceFee(bp, sid);
+      if (!charged || charged.ok !== true) {
+        const text = charged && charged.reason === 'insufficient_credits'
+          ? `Need ${charged.feeCr} cr refinery fee`
+          : 'Dock at an operating refinery to commit this process';
+        this.bus.emit('toast', { text, kind: 'error', ttl: 3 });
+        return false;
+      }
     }
 
     // 1) consume input materials from cargo NOW (committed up front; you don't get them back on cancel)
