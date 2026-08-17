@@ -7919,7 +7919,7 @@ export const vfx = {
   // implodes rather than scattering — so the eye is pulled to the exact collecting hull.
   _onPickup(p) {
     if (successfulPickupAmount(p) <= 0 || !this._scene || !p.pos) return;
-    const col = p.kind === 'credits' ? '#ffcc44' : oreColor(p.commodityId);
+    const col = (p.kind === 'credits' || p.kind === 'credit_chip') ? '#ffcc44' : oreColor(p.commodityId);
     const collector = p.collectorId == null
       ? (this.helpers && this.helpers.player ? this.helpers.player() : this._ent(this.state.playerId))
       : this._ent(p.collectorId);
@@ -8956,7 +8956,7 @@ export const vfx = {
       drawn++;
 
       const data = e.data || {};
-      const col = data.kind === 'credits' ? '#ffcc44' : oreColor(data.commodityId);
+      const col = (data.kind === 'credits' || data.kind === 'credit_chip') ? '#ffcc44' : oreColor(data.commodityId);
       // Closing hard reads hotter and longer: the trail is a speed gauge you never have to read.
       const rush = Math.min(1, speed / 260);
       const roll = Math.atan2(vz, vx);

@@ -37,6 +37,13 @@ import {
   recordFieldExtraction,
   richSeamOpportunityForEntity,
 } from './fieldDepletion.js';
+import {
+  CREDIT_CHIP_KIND,
+  isCreditChipPickup,
+  KILL_BURST_EJECT_SPEED_MAX,
+  KILL_BURST_EJECT_SPEED_MIN,
+  KILL_BURST_VEL_INHERIT,
+} from '../data/killRewards.js';
 
 export const MAGNET_RANGE = 420; // wu pull radius for Mining 2.0's stronger ore vacuum
 export const MAGNET_ACCEL = 900; // wu/s² authority toward the seek velocity (not absolute thrust)
@@ -940,12 +947,17 @@ export const mining = {
   },
 
   _onPickupCollected(p) {
-    if (!p || !p.commodityId) return;
+    if (!p) return;
     if (p.collectorId !== this.state.playerId) return; // drones manage their own holds
+    if (isCreditChipPickup(p) || isCreditChipPickup(this._pickupDataForEvent(p))) {
+      this._collectCreditChip(p);
+      return;
+    }
+    if (!p.commodityId) return;
     const cargoSys = this.registry && this.registry.get && this.registry.get('cargo');
     if (cargoSys && typeof cargoSys.addCargo === 'function') return; // cargo owns collected pickups
     const kind = p.kind || 'ore';
-    if (kind === 'credits' || kind === 'module') return; // economy/ships own those
+    if (kind === 'credits' || kind === CREDIT_CHIP_KIND || kind === 'module') return; // economy/ships own those
     const requested = finiteWholePickupAmount(p.amount);
     if (requested <= 0) {
       p.acceptedAmount = 0;
@@ -1099,9 +1111,113 @@ export const mining = {
     if (!p) return;
     const pos = p.pos || { x: 0, z: 0 };
     const stub = { pos: { x: pos.x, z: pos.z }, radius: 4 };
+    const inheritX = (Number.isFinite(p.vel && p.vel.x) ? p.vel.x : 0) * KILL_BURST_VEL_INHERIT;
+    const inheritZ = (Number.isFinite(p.vel && p.vel.z) ? p.vel.z : 0) * KILL_BURST_VEL_INHERIT;
+    const burst = p.source === 'kill_burst' || (Array.isArray(p.items) && p.items.some(isCreditChipPickup));
     for (const it of (p.items || [])) {
-      if (it && it.commodityId) this._spawnPickup(stub, it.commodityId, it.qty || 1);
+      if (!it) continue;
+      if (isCreditChipPickup(it)) {
+        const credits = finiteWholePickupAmount(it.credits != null ? it.credits : it.amount);
+        if (credits <= 0) continue;
+        this._spawnLootBurstPickup(stub, {
+          kind: CREDIT_CHIP_KIND,
+          amount: credits,
+          credits,
+          grantReason: typeof it.grantReason === 'string' ? it.grantReason : null,
+          inheritX,
+          inheritZ,
+        });
+        continue;
+      }
+      if (!it.commodityId) continue;
+      if (burst) {
+        this._spawnLootBurstPickup(stub, {
+          kind: 'ore',
+          commodityId: it.commodityId,
+          amount: it.qty || 1,
+          inheritX,
+          inheritZ,
+        });
+      } else {
+        this._spawnPickup(stub, it.commodityId, it.qty || 1);
+      }
     }
+  },
+
+  _spawnLootBurstPickup(srcEnt, opts) {
+    if (!this.helpers || typeof this.helpers.spawnEntity !== 'function') return 0;
+    const amount = finiteWholePickupAmount(opts && opts.amount);
+    if (amount <= 0) return 0;
+    const rng = this.state.rng;
+    const ang = rng() * Math.PI * 2;
+    const r = (srcEnt.radius || 6) + 2 + rng() * 4;
+    const eject = KILL_BURST_EJECT_SPEED_MIN
+      + rng() * (KILL_BURST_EJECT_SPEED_MAX - KILL_BURST_EJECT_SPEED_MIN);
+    const inheritX = Number.isFinite(opts.inheritX) ? opts.inheritX : 0;
+    const inheritZ = Number.isFinite(opts.inheritZ) ? opts.inheritZ : 0;
+    const data = {
+      kind: opts.kind || 'ore',
+      amount,
+      despawnAt: this.state.simTime + PICKUP_TTL,
+    };
+    if (opts.commodityId) data.commodityId = opts.commodityId;
+    if (opts.kind === CREDIT_CHIP_KIND || opts.kind === 'credits') {
+      data.credits = amount;
+      if (opts.grantReason) data.grantReason = opts.grantReason;
+    }
+    this.helpers.spawnEntity({
+      type: 'pickup',
+      pos: { x: srcEnt.pos.x + Math.cos(ang) * r, z: srcEnt.pos.z + Math.sin(ang) * r },
+      vel: {
+        x: inheritX + Math.cos(ang) * eject,
+        z: inheritZ + Math.sin(ang) * eject,
+      },
+      radius: PICKUP_RADIUS, mass: 0.1, collides: true,
+      data,
+    });
+    return amount;
+  },
+
+  _pickupDataForEvent(p) {
+    if (!p || p.pickupId == null) return null;
+    const entity = this.state && this.state.entities && this.state.entities.get
+      ? this.state.entities.get(p.pickupId)
+      : null;
+    return entity && entity.data || null;
+  },
+
+  _collectCreditChip(p) {
+    const pickupData = this._pickupDataForEvent(p) || {};
+    const requested = finiteWholePickupAmount(
+      p.amount != null ? p.amount : (p.credits != null ? p.credits : pickupData.amount),
+    );
+    if (requested <= 0) {
+      p.acceptedAmount = 0;
+      p.rejectedAmount = 0;
+      p.invalidAmount = true;
+      return 0;
+    }
+    if (p.creditGranted === true || pickupData.creditGranted === true) {
+      p.acceptedAmount = requested;
+      p.rejectedAmount = 0;
+      return requested;
+    }
+    const reason = (typeof p.grantReason === 'string' && p.grantReason)
+      || (typeof pickupData.grantReason === 'string' && pickupData.grantReason)
+      || `kill:credit_chip:${p.pickupId != null ? p.pickupId : 'anon'}`;
+    this.bus.emit('economy:grantCredits', {
+      amount: requested,
+      reason,
+      receiptId: reason,
+    });
+    p.acceptedAmount = requested;
+    p.rejectedAmount = 0;
+    p.creditGranted = true;
+    const pickup = p.pickupId != null && this.state.entities && this.state.entities.get
+      ? this.state.entities.get(p.pickupId)
+      : null;
+    if (pickup && pickup.data) pickup.data.creditGranted = true;
+    return requested;
   },
 
   _fractureAsteroid(ast, def, miner) {
@@ -1300,7 +1416,8 @@ export const mining = {
 
   _collectPickupOnBeamLine(pickup, player) {
     const line = this._activeBeamLine;
-    if (!line || !pickup || !pickup.data || !pickup.data.commodityId) return false;
+    if (!line || !pickup || !pickup.data) return false;
+    if (!pickup.data.commodityId && !isCreditChipPickup(pickup.data)) return false;
     if (pointSegmentDistanceSq(pickup.pos.x, pickup.pos.z, line.ax, line.az, line.bx, line.bz) >
       BEAM_PICKUP_DIRECT_RADIUS * BEAM_PICKUP_DIRECT_RADIUS) return false;
     return this._collectPickupViaEvent(pickup, player);
@@ -1333,6 +1450,10 @@ export const mining = {
       amount: requested,
       commodityId: pickup.data.commodityId,
       pos: { x: pickup.pos.x, z: pickup.pos.z },
+      ...(isCreditChipPickup(pickup.data) ? {
+        credits: requested,
+        grantReason: pickup.data.grantReason || null,
+      } : {}),
       ...(pickup.data.richLotSource ? {
         richLotSource: {
           ...pickup.data.richLotSource,

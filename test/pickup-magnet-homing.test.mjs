@@ -8,10 +8,11 @@ import {
   MAGNET_APPROACH_MIN,
   MAGNET_APPROACH_MAX,
 } from '../src/systems/mining.js';
+import { CREDIT_CHIP_KIND } from '../src/data/killRewards.js';
 
 const DT = 1 / 60;
 
-function harness({ playerVelX = 180, pickupX = 120 } = {}) {
+function harness({ playerVelX = 180, pickupX = 120, pickupData = null } = {}) {
   const player = {
     id: 1,
     alive: true,
@@ -30,7 +31,7 @@ function harness({ playerVelX = 180, pickupX = 120 } = {}) {
     radius: 2.2,
     mass: 0.1,
     collides: true,
-    data: { kind: 'ore', commodityId: 'cmdty_scrap_metal', amount: 1 },
+    data: pickupData || { kind: 'ore', commodityId: 'cmdty_scrap_metal', amount: 1 },
   };
   const entities = new Map([[player.id, player], [pickup.id, pickup]]);
   const state = {
@@ -42,17 +43,31 @@ function harness({ playerVelX = 180, pickupX = 120 } = {}) {
       ready: true,
       pickups: [pickup],
     },
-    player: { magnetRange: 0, miningBeam: { tierId: 'beam_mk1' } },
+    player: {
+      magnetRange: 0,
+      miningBeam: { tierId: 'beam_mk1' },
+      cargo: { items: {}, usedVolume: 0, usedMass: 0, capVolume: 40 },
+      credits: 0,
+    },
     mode: 'flight',
     input: { fireGroup: 0 },
     simTime: 0,
     rng: () => 0.5,
   };
   const collected = [];
+  const grants = [];
+  const cargoWrites = [];
+  const listeners = Object.create(null);
   const bus = {
-    on() { return () => {}; },
+    on(type, fn) {
+      (listeners[type] = listeners[type] || []).push(fn);
+      return () => {};
+    },
     emit(type, payload) {
       if (type === 'pickup:collected') collected.push(payload);
+      if (type === 'economy:grantCredits') grants.push(payload);
+      if (type === 'cargo:changed') cargoWrites.push(payload);
+      for (const fn of listeners[type] || []) fn(payload);
     },
   };
   mining.init({
@@ -61,7 +76,7 @@ function harness({ playerVelX = 180, pickupX = 120 } = {}) {
     helpers: {},
     registry: { get: () => null },
   });
-  return { state, player, pickup, collected };
+  return { state, player, pickup, collected, grants, cargoWrites };
 }
 
 test('magnet constants expose a combat-viable relative approach band', () => {
@@ -109,6 +124,34 @@ test('scrap within scoop radius is collected without needing a perfect nose-on h
   assert.equal(collected.length, 1);
   assert.equal(collected[0].commodityId, 'cmdty_scrap_metal');
   assert.equal(collected[0].collectorId, player.id);
+});
+
+test('credit chips scoop without a cargo write and grant through economy once', () => {
+  const { state, pickup, collected, grants, cargoWrites } = harness({
+    playerVelX: 0,
+    pickupX: 18,
+    pickupData: {
+      kind: CREDIT_CHIP_KIND,
+      amount: 75,
+      credits: 75,
+      grantReason: 'kill:credit_chip:wr:test:0',
+    },
+  });
+  state.player.cargo.capVolume = 0;
+  mining.update(DT, state);
+  assert.equal(pickup.alive, false, 'near credit chip should scoop');
+  assert.equal(collected.length, 1);
+  assert.equal(collected[0].kind, CREDIT_CHIP_KIND);
+  assert.equal(collected[0].commodityId, undefined);
+  assert.equal(grants.length, 1);
+  assert.equal(grants[0].amount, 75);
+  assert.equal(grants[0].reason, 'kill:credit_chip:wr:test:0');
+  assert.equal(cargoWrites.length, 0);
+  assert.deepEqual(state.player.cargo.items, {});
+  assert.equal(state.player.credits, 0, 'mining must not write player credits');
+
+  mining.update(DT, state);
+  assert.equal(grants.length, 1, 'a dead chip cannot grant a second time');
 });
 
 test('kill wreck spawn is labeled salvage wreckage (not an anonymous molten ball)', () => {
