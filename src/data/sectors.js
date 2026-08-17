@@ -358,8 +358,9 @@ const CORE_SECTORS = [
     ],
     hazards: [
       {
-        id: 'hazard_ashfall_burn', type: 'radiation', center: { x: 0, z: 0 }, radius: 2000,
+        id: 'hazard_ashfall_burn', type: 'radiation', center: { x: 0, z: 0 }, radius: 720,
         intensity: 0.8, moving: true,
+        motion: { kind: 'orbit', radiusX: 1100, radiusZ: 900, periodS: 24, phaseOffsetS: 0 },
         afterBossDefeat: { poiId: 'poi_boss', intensity: 0.35 },
       },
       { type: 'debris',    center: { x: 400, z: 300 }, radius: 800,  intensity: 0.5 },

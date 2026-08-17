@@ -10,10 +10,13 @@ import {
 } from '../src/core/uniqueWreckComplications.js';
 import {
   UNIQUE_WRECKS,
+  placementForUniqueWreck,
   programSeedFor,
   uniqueWreckById,
 } from '../src/data/uniqueWrecks.js';
 import { FLAVOR_SOURCE_BY_REF } from '../src/data/flavor/index.generated.js';
+import { sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
+import { SECTORS } from '../src/data/sectors.js';
 import {
   RUMOR_EVENT_BY_CHANNEL,
   uniqueWrecks,
@@ -32,6 +35,22 @@ const EXPECTED_NATIVE_EVENTS = Object.freeze({
   bar: 'uniqueWreck:rumorHeard',
 });
 
+function mountAuthoredHazard(state, def) {
+  if (def?.id !== 'wreck_isc_lighthouse') return;
+  const sector = SECTORS.find((entry) => entry.id === def.sectorId);
+  const authored = sector.hazards.find((entry) => entry.id === 'hazard_ashfall_burn');
+  const origin = sectorLocalToGlobalForSector(authored.center, sector.id);
+  state.world.activeSector = {
+    id: sector.id,
+    hazards: [{
+      ...authored,
+      originCenter: { ...origin },
+      center: { ...origin },
+      motion: { ...authored.motion },
+    }],
+  };
+}
+
 function boot(def, seed = 47022, { rewards = false, director = false } = {}) {
   const systems = [
     ...(director ? [encounterDirector] : []),
@@ -42,6 +61,7 @@ function boot(def, seed = 47022, { rewards = false, director = false } = {}) {
   const { state, bus } = sim;
   state.mode = 'flight';
   state.world.currentSectorId = def?.sectorId || 'sector_helios_prime';
+  mountAuthoredHazard(state, def);
   state.player.cargo.capVolume = 1000;
   state.player.cargo.capMass = 1e9;
   const player = sim.spawn({
@@ -338,13 +358,21 @@ test('seeded timers are stable, bounded, order-independent, and label-separated'
   assert.notEqual(otherLabelDelay, cleanerDelay, 'timer purpose participates in the seed key');
 });
 
-test('D3 moving-radiation timing has both a blocked read and a deterministic open window', () => {
+test('D3 reads both blocked and open windows from the authored spatial radiation body', () => {
   const def = uniqueWreckById('wreck_isc_lighthouse');
-  const record = { wreckId: def.id, heardAtS: 0, phase: 'rumored' };
+  const placement = placementForUniqueWreck(programSeedFor(77821), def.id, def.sectorId);
+  const record = {
+    wreckId: def.id,
+    heardAtS: 0,
+    phase: 'rumored',
+    exactPos: { ...placement.exactGlobal },
+  };
+  const state = { simTime: 0, meta: { seed: 77821 }, world: {} };
+  mountAuthoredHazard(state, def);
   let blocked = null;
   let open = null;
   for (let simTime = 0; simTime <= 900 && (!blocked || !open); simTime += 1) {
-    const state = { simTime, meta: { seed: 77821 } };
+    state.simTime = simTime;
     const gate = movingRadiationGate(state, record, def);
     assert.deepEqual(movingRadiationGate(state, record, def), gate, 'same state produces the same gate result');
     if (gate.allowed) open ||= { simTime, gate };

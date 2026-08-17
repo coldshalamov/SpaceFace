@@ -5,21 +5,17 @@
 // a cleaner, radiation window, or encounter hook.
 
 import { hash32, mulberry32 } from './rng.js';
+import {
+  hazardContainsPointAt,
+  hazardMotionPhaseAt,
+  nextHazardClearAt,
+} from './hazardMotion.js';
 
 function finite(value, fallback = 0) {
   return Number.isFinite(Number(value)) ? Number(value) : fallback;
 }
 function rounded(value) {
   return Math.round(finite(value) * 1000) / 1000;
-}
-
-function positive(value, fallback) {
-  const n = finite(value, fallback);
-  return n > 0 ? n : fallback;
-}
-
-function mod(value, divisor) {
-  return ((value % divisor) + divisor) % divisor;
 }
 
 /**
@@ -41,8 +37,8 @@ export function deterministicTimer(programSeed, wreckId, label, timer = {}) {
 }
 
 /**
- * D3's authored moving-radiation approach gate. The existing sector hazard supplies the fiction;
- * this deterministic read window supplies the timing contract without consuming state.rng.
+ * D3's authored moving-radiation approach gate. It reads the world owner's live spatial hazard;
+ * there is no parallel countdown that can disagree with the radiation currently crossing the wreck.
  */
 export function movingRadiationGate(state, record, def) {
   const context = def && def.hazardContext || {};
@@ -51,26 +47,30 @@ export function movingRadiationGate(state, record, def) {
     return Object.freeze({ allowed: true, reason: null, phase: 0, nextOpenAt: null });
   }
 
-  const periodS = positive(context.periodS || context.timingPeriodS, 18);
-  const authoredOpenS = positive(context.openWindowS || context.windowS, periodS * 0.34);
-  const openS = Math.min(periodS * 0.8, authoredOpenS);
   const now = Math.max(0, finite(state && state.simTime, 0));
-  const programSeed = (Number(
-    state && state.player && state.player.uniqueWrecks && state.player.uniqueWrecks.programSeed,
-  ) >>> 0) || (Number(state && state.meta && state.meta.seed) >>> 0) || 1;
-  const phaseOffset = deterministicTimer(programSeed, def && def.id, 'moving-radiation:phase', {
-    minS: 0,
-    maxS: periodS,
-    seedSalt: record && record.wreckId || '',
-  });
-  const phaseTime = mod(now + phaseOffset, periodS);
-  const phase = rounded(phaseTime / periodS);
-  const allowed = phaseTime < openS;
+  const selector = context.hazardSelector || {};
+  const hazards = state && state.world && state.world.activeSector
+    && Array.isArray(state.world.activeSector.hazards)
+    ? state.world.activeSector.hazards
+    : [];
+  const hazard = hazards.find((entry) => entry
+    && (!selector.type || entry.type === selector.type)
+    && (selector.moving !== true || entry.moving === true));
+  const point = record && (record.exactPos || record.fixedPos);
+  if (!hazard || !point) {
+    return Object.freeze({
+      allowed: false,
+      reason: 'moving_radiation_unavailable',
+      phase: 0,
+      nextOpenAt: null,
+    });
+  }
+  const covered = hazardContainsPointAt(hazard, point, now);
   return Object.freeze({
-    allowed,
-    reason: allowed ? null : 'moving_radiation_window',
-    phase,
-    nextOpenAt: allowed ? null : rounded(now + (periodS - phaseTime)),
+    allowed: !covered,
+    reason: covered ? 'moving_radiation_window' : null,
+    phase: rounded(hazardMotionPhaseAt(hazard, now)),
+    nextOpenAt: covered ? nextHazardClearAt(hazard, point, now) : null,
   });
 }
 

@@ -85,6 +85,7 @@ import {
   CERES_ACTIVITY_SECTOR_ID,
 } from '../data/sectorActivityPockets.js';
 import { applyFrameOrigin, deriveFrameOrigin } from '../core/coordinates.js';
+import { hazardCenterAt } from '../core/hazardMotion.js';
 import {
   CORRIDOR_SECTOR_IDS,
   HELIOS_STARTER_PROTECTION_RADIUS_WU,
@@ -2214,8 +2215,9 @@ export const world = {
     return ent;
   },
 
-  // Hazard zones: pure data tags on activeSector (flight/combat/ai read these); no entity needed.
-  // Centers are converted once from sector-local authorship into galactic-global.
+  // Hazard zones are world-owned spatial data (flight/combat/ai read these); no entity needed.
+  // Authored centers become immutable global origins. Moving zones derive their live center from
+  // sim time, so re-entry and Continue resume the same physical sweep without serializing a timer.
   _spawnHazards(sector, active) {
     const discovery = this._discoveryFor(sector.id);
     for (const hz of (sector.hazards || [])) {
@@ -2225,11 +2227,16 @@ export const world = {
       const intensity = bossRecord && bossRecord.bossDefeated === true
         ? aftermath.intensity
         : hz.intensity;
-      active.hazards.push({
+      const live = {
         id: hz.id || null,
-        type: hz.type, center: { x: center.x, z: center.z },
+        type: hz.type,
+        originCenter: { x: center.x, z: center.z },
+        center: { x: center.x, z: center.z },
         radius: hz.radius, intensity, moving: !!hz.moving,
-      });
+        motion: hz.motion && typeof hz.motion === 'object' ? { ...hz.motion } : null,
+      };
+      hazardCenterAt(live, this.state.simTime, live.center);
+      active.hazards.push(live);
     }
   },
 
@@ -3448,6 +3455,7 @@ export const world = {
     nowInside.clear();
     for (let i = 0; i < zones.length; i++) {
       const z = zones[i];
+      hazardCenterAt(z, state.simTime, z.center);
       const dx = player.pos.x - z.center.x, dz = player.pos.z - z.center.z;
       if (dx * dx + dz * dz <= z.radius * z.radius) {
         nowInside.add(i);

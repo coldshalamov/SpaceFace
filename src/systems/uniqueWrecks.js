@@ -1190,12 +1190,18 @@ export const uniqueWrecks = {
     data.provenance = { ...authored.provenance };
     data.name = def.name;
     data.scanLabel = authored.scanLabel;
-    data.scanDescription = record.phase === 'rumored'
-      ? 'Pulse scan inside the charted bearing ring to resolve this named wreck.'
-      : `${def.name}. Recover the wreck, then choose who receives its surviving systems.`;
-    data.interactionPrompt = record.phase === 'rumored'
-      ? 'PULSE SCANNER TO IDENTIFY'
-      : 'SALVAGE TO OPEN RECOVERY CLAIM';
+    const movingRadiation = String(def.hazardContext && def.hazardContext.approachGate || '')
+      .toLowerCase().includes('moving_radiation');
+    data.scanDescription = movingRadiation
+      ? (record.phase === 'rumored'
+        ? 'Ashfall radiation is crossing the bearing. Pulse between sweeps, then keep a retreat line while cutting.'
+        : `${def.name}. The moving burn still crosses this hull; tether and cut between sweeps or break away to wait it out.`)
+      : (record.phase === 'rumored'
+        ? 'Pulse scan inside the charted bearing ring to resolve this named wreck.'
+        : `${def.name}. Recover the wreck, then choose who receives its surviving systems.`);
+    data.interactionPrompt = movingRadiation
+      ? (record.phase === 'rumored' ? 'TIME SCAN BETWEEN RADIATION SWEEPS' : 'SALVAGE BETWEEN RADIATION SWEEPS')
+      : (record.phase === 'rumored' ? 'PULSE SCANNER TO IDENTIFY' : 'SALVAGE TO OPEN RECOVERY CLAIM');
     data.objectiveLabel = record.phase === 'rumored'
       ? `Search for ${def.name}`
       : `Recover ${def.name}`;
@@ -1329,6 +1335,13 @@ export const uniqueWrecks = {
           reason: gate.reason,
           radiationPhase: gate.phase,
           nextOpenAt: gate.nextOpenAt,
+        });
+        this.bus.emit('toast', {
+          text: gate.reason === 'moving_radiation_window'
+            ? `${def.name}: radiation is crossing the hull. Break away and pulse after the sweep.`
+            : `${def.name}: moving-radiation track unavailable. Reacquire the Ashfall field.`,
+          kind: 'warn',
+          ttl: 5,
         });
         continue;
       }
