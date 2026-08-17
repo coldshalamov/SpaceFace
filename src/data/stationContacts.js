@@ -6,7 +6,7 @@ import { normalizeVonnFreightLoss } from './vonnFreightLoss.js';
 export const STATION_CONTACT_MEMORY_VERSION = 1;
 export const STATION_CONTACT_COUNTER_VERSION = 1;
 export const QUARTERMASTER_MEMORY_VERSION = 1;
-export const FIXER_MEMORY_VERSION = 1;
+export const FIXER_MEMORY_VERSION = 2;
 
 // Plan 52 recurring outfitter. This identity is intentionally owned by the existing station-contact
 // memory seam even though her player-facing surface is Shipworks, not the bar. A successful fit at
@@ -113,6 +113,12 @@ export function normalizeFixerMemory(raw = {}) {
     lastPurchaseKind: safeToken(source.lastPurchaseKind) || null,
     lastOutcomeRumorId: safeReference(source.lastOutcomeRumorId),
     lastOutcomeReason: safeToken(source.lastOutcomeReason) || null,
+    privateJobCount: boundedInt(source.privateJobCount, 0, 999),
+    privateJobOutcomeCount: boundedInt(source.privateJobOutcomeCount, 0, 999),
+    activePrivateJobMissionId: safeReference(source.activePrivateJobMissionId),
+    lastPrivateJobMissionId: safeReference(source.lastPrivateJobMissionId),
+    lastPrivateJobOfferId: safeReference(source.lastPrivateJobOfferId),
+    lastPrivateJobOutcome: safeToken(source.lastPrivateJobOutcome) || null,
     openLeadIds,
     unlockedAt: Number.isFinite(source.unlockedAt)
       ? Math.max(0, Math.round(source.unlockedAt * 1000) / 1000)
@@ -219,6 +225,9 @@ export function stationContactMemoryLine(record, fallbackLine = '') {
   if (normalized.fixer) {
     const fixer = normalizeFixerMemory(normalized.fixer);
     const open = fixer.openLeadIds.length;
+    if (fixer.privateJobCount > 0) {
+      return `${fixer.privateJobOutcomeCount}/${fixer.privateJobCount} private jobs settled · ${open} cache lead${open === 1 ? '' : 's'} open.`;
+    }
     if (fixer.outcomeCount > 0) {
       return `${fixer.outcomeCount} cache lead${fixer.outcomeCount === 1 ? '' : 's'} settled · ${open} still open.`;
     }

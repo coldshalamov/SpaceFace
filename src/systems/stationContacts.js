@@ -34,6 +34,7 @@ import {
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((def) => [def.id, def]));
 const MAX_TRAFFIC_RECEIPTS = 8;
 const MAX_PENDING_VONN_RECEIPTS = 8;
+const FIXER_PRIVATE_SOURCE = 'fixerPrivate';
 
 function ensureContactBag(state) {
   const player = state.player || (state.player = {});
@@ -189,6 +190,10 @@ export const stationContacts = {
     on('ship:livingHullChanged', (payload = {}) => this._recordQuartermasterScar(payload));
     on('frontierRumor:acquired', (payload = {}) => this._recordFixerAcquired(payload));
     on('frontierRumor:resolved', (payload = {}) => this._recordFixerResolved(payload));
+    on('mission:accepted', (payload = {}) => this._recordFixerJobAccepted(payload));
+    on('mission:completed', (payload = {}) => this._recordFixerJobOutcome(payload, 'completed'));
+    on('mission:failed', (payload = {}) => this._recordFixerJobOutcome(payload, 'failed'));
+    on('mission:expired', (payload = {}) => this._recordFixerJobOutcome(payload, 'expired'));
     on('stationContact:counterDelta', (payload = {}) => this._recordCounterDelta(payload));
     on('economy:tradeCompleted', (payload = {}) => {
       if (payload.stationId === 'station_beltout' && payload.side === 'buy'
@@ -453,6 +458,57 @@ export const stationContacts = {
     return true;
   },
 
+  _recordFixerJobAccepted(payload) {
+    if (!payload || payload.source !== FIXER_PRIVATE_SOURCE) return false;
+    const missionId = String(payload && payload.missionId || '').trim();
+    const offerId = String(payload && payload.sourceOfferId || '').trim();
+    if (!missionId || !offerId) return false;
+    const bag = ensureContactBag(this.state);
+    const previous = normalizeStationContactRecord(bag[FIXER_CONTACT.id]);
+    const priorMemory = normalizeFixerMemory(previous.fixer);
+    if (!priorMemory.unlocked || priorMemory.activePrivateJobMissionId) return false;
+    const now = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    const memory = normalizeFixerMemory({
+      ...priorMemory,
+      privateJobCount: priorMemory.privateJobCount + 1,
+      activePrivateJobMissionId: missionId,
+      lastPrivateJobMissionId: missionId,
+      lastPrivateJobOfferId: offerId,
+      lastPrivateJobOutcome: 'active',
+      lastSeenAt: now,
+    });
+    this._writeFixer(previous, memory, 'private-job-accepted');
+    this._speakFixer('NERA QUILL: No board. One wreck. Beat the other cutter.', `job:${missionId}`);
+    return true;
+  },
+
+  _recordFixerJobOutcome(payload, outcome) {
+    if (!payload || payload.source !== FIXER_PRIVATE_SOURCE) return false;
+    const missionId = String(payload && payload.missionId || '').trim();
+    if (!missionId) return false;
+    const bag = ensureContactBag(this.state);
+    const previous = normalizeStationContactRecord(bag[FIXER_CONTACT.id]);
+    const priorMemory = normalizeFixerMemory(previous.fixer);
+    if (!priorMemory.unlocked || priorMemory.activePrivateJobMissionId !== missionId) return false;
+    const now = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    const memory = normalizeFixerMemory({
+      ...priorMemory,
+      privateJobOutcomeCount: priorMemory.privateJobOutcomeCount + 1,
+      activePrivateJobMissionId: null,
+      lastPrivateJobMissionId: missionId,
+      lastPrivateJobOutcome: outcome,
+      lastSeenAt: now,
+    });
+    this._writeFixer(previous, memory, 'private-job-settled');
+    this.bus.emit('fixer:jobRemembered', {
+      contactId: FIXER_CONTACT.id,
+      missionId,
+      outcome,
+      privateJobOutcomeCount: memory.privateJobOutcomeCount,
+    });
+    return true;
+  },
+
   _writeFixer(previous, memory, reason) {
     const bag = ensureContactBag(this.state);
     const next = normalizeStationContactRecord({
@@ -461,7 +517,8 @@ export const stationContacts = {
       name: FIXER_CONTACT.name,
       canonicalKey: FIXER_CONTACT.canonicalKey,
       stationId: memory.homeStationId,
-      standing: Math.min(3, Math.floor((memory.purchaseCount + memory.outcomeCount) / 2)),
+      standing: Math.min(3, Math.floor((memory.purchaseCount + memory.outcomeCount
+        + memory.privateJobCount + memory.privateJobOutcomeCount) / 2)),
       fixer: memory,
     });
     bag[FIXER_CONTACT.id] = next;

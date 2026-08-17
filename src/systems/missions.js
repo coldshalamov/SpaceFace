@@ -113,9 +113,12 @@ import {
   contractFailureBlackBoxLotSource,
 } from '../data/contractFailureBlackBoxes.js';
 import { PLANET_SITE } from '../data/planets.js';
+import { FIXER_CONTACT, fixerMemoryFor } from '../data/stationContacts.js';
 import { CERES_ACTIVITY_SECTOR_ID } from '../data/sectorActivityPockets.js';
 import { factionMissionDoctrineMultiplier } from '../data/factionPlay.js';
 import { settleContractClauses, unsatisfiedRequiredConditions } from '../data/contractClauses.js';
+
+export const FIXER_PRIVATE_MISSION_SOURCE = 'fixerPrivate';
 // Physics-aware contract terms (grammar §9.9.1). The catalog is data; the event half is observed by
 // the ONE generic observer in contractClauses.js; the per-tick half is the predicate slot in update().
 import {
@@ -2299,6 +2302,58 @@ export const missions = {
       : { ok: false, reason: 'accepted_instance_missing', offerId: offer.id };
   },
 
+  /** Nera's one-per-board-epoch off-board job. It is priced and played as an ordinary Plan 51
+   * Salvage Race, but is never exposed in the Contracts list: the bar choice atomically posts and
+   * accepts it through this owner. */
+  fixerPrivateOffer(stationId) {
+    const state = this.state;
+    const memory = fixerMemoryFor(state);
+    const liveStationId = state.ui && state.ui.docked && state.ui.dockedStationId;
+    if (!stationId || liveStationId !== stationId
+      || !memory.unlocked || memory.homeStationId !== stationId
+      || memory.activePrivateJobMissionId) return null;
+    const info = STATION_INFO.get(stationId);
+    if (!info) return null;
+    const epoch = this._epoch();
+    const offerId = `mo_fixer_private_${stationId}_${epoch}`;
+    if (memory.lastPrivateJobOfferId === offerId) return null;
+    const helpers = this.helpers || {};
+    const hash = typeof helpers.hash32 === 'function' ? helpers.hash32 : hash32;
+    const mulberry = typeof helpers.mulberry32 === 'function' ? helpers.mulberry32 : mulberryLocal;
+    let base = null;
+    for (let attempt = 0; attempt < 16; attempt++) {
+      const rng = mulberry(hash(state.meta.seed, stationId, epoch, 'fixer-private', attempt));
+      const candidate = this._rollOffer(
+        'salvage_retrieval', info, rng, epoch, `fixer_private_${attempt}`, { attachConditions: false },
+      );
+      if (candidate && candidate.destSectorId !== CERES_ACTIVITY_SECTOR_ID) {
+        base = candidate;
+        break;
+      }
+    }
+    if (!base) return null;
+    const sector = SECTOR_BY_ID.get(base.destSectorId);
+    const race = applySalvageRaceVariant(base, sector && sector.name || 'the marked recovery pocket');
+    return {
+      ...race,
+      id: offerId,
+      title: `Off-Board: ${race.title}`,
+      brief: `Nera has another cutter on the same wreck. ${race.brief}`,
+      source: FIXER_PRIVATE_MISSION_SOURCE,
+      sourceRef: FIXER_CONTACT.id,
+      storyTag: `fixer_private:${offerId}`,
+      expiresAtEpoch: epoch + 1,
+      clauses: [],
+    };
+  },
+
+  acceptFixerPrivateWork(stationId) {
+    const offer = this.fixerPrivateOffer(stationId);
+    if (!offer) return { ok: false, reason: 'no_private_work' };
+    const result = this.postAndAcceptAuthoredOffer(offer);
+    return result.ok ? { ...result, offer } : result;
+  },
+
   _acceptPreflight(offer) {
     if (offer && offer.type === 'bounty_hunt') {
       const access = hunterCareerAccess(this.state);
@@ -2446,7 +2501,8 @@ export const missions = {
       chainNextSeed: (offer.source !== SET_PIECE_MISSION_SOURCE
         && offer.source !== QUIET_DELIVERY_RECOVERY_SOURCE
         && offer.source !== PEST_CONTROL_FOLLOWUP_SOURCE
-        && offer.source !== DEBRIS_RECOVERY_FOLLOWUP_SOURCE && def && def.chainable)
+        && offer.source !== DEBRIS_RECOVERY_FOLLOWUP_SOURCE
+        && offer.source !== FIXER_PRIVATE_MISSION_SOURCE && def && def.chainable)
         ? this._chainSeed(offer) : null,
     };
   },

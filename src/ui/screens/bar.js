@@ -277,6 +277,7 @@ function fixerContactForStation(stationId, state = {}) {
       ? `${memory.purchaseCount} cache lead${memory.purchaseCount === 1 ? '' : 's'} sold. ${openCount} still open.`
       : 'She marked your first paid rumor card. Now she sells the source.';
   const stashed = sellableSmugglingDropCaches(state);
+  const activePrivate = !!memory.activePrivateJobMissionId;
   return {
     ...FIXER_CONTACT,
     line,
@@ -286,6 +287,7 @@ function fixerContactForStation(stationId, state = {}) {
         label: `Sell drop coordinates (${stashed[0].commodityName}, ${stashed[0].remainingQty}u)`,
       }] : []),
       { id: 'cache', label: 'Any cache work?' },
+      { id: 'private_job', label: activePrivate ? 'How is the private job filed?' : 'Any work off the board?' },
       { id: 'history', label: 'How did the last lead settle?' },
       { id: 'bye', label: 'Not today.' },
     ],
@@ -734,6 +736,8 @@ export function barContactIntelTags(contact = {}, state = {}, stationId = '') {
     const fixer = fixerMemoryFor(state);
     add('Open Leads', String(fixer.openLeadIds.length), fixer.openLeadIds.length ? 'warn' : 'ok');
     add('Settled', String(fixer.outcomeCount), fixer.outcomeCount ? 'story' : 'info');
+    add('Private Jobs', `${fixer.privateJobOutcomeCount}/${fixer.privateJobCount}`,
+      fixer.activePrivateJobMissionId ? 'warn' : fixer.privateJobCount ? 'story' : 'info');
   } else if (role === 'merchant') {
     const route = bestTradeRoute(state, stationId);
     if (route) add('Route', commodityName(route.cmdtyId) + ' -> ' + stationName(route.sellStationId) + ' +' + Math.round(route.spread) + '/u', 'ok');
@@ -869,7 +873,28 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
           }
         : { text: 'No clean cache source today. I do not sell repeats.' };
     }
+    if (choiceId === 'private_job') {
+      if (memory.activePrivateJobMissionId) {
+        return { text: 'It is not on the board, but it is still open. Beat the other cutter.' };
+      }
+      const missions = ctx.registry?.get?.('missions') || ctx.missions || null;
+      const result = missions && typeof missions.acceptFixerPrivateWork === 'function'
+        ? missions.acceptFixerPrivateWork(stationId)
+        : null;
+      return result && result.ok
+        ? {
+            text: 'No board, no queue. One wreck, two cutters. Bring me the first-cut receipt.',
+            privateMissionId: result.missionId,
+          }
+        : { text: 'Nothing private survives the paper today. Ask after the board turns.' };
+    }
     if (choiceId === 'history') {
+      if (memory.privateJobCount > 0) {
+        const outcome = String(memory.lastPrivateJobOutcome || 'open').replace(/_/g, ' ');
+        return {
+          text: `${memory.privateJobOutcomeCount}/${memory.privateJobCount} private jobs settled. Last one: ${outcome}.`,
+        };
+      }
       if (memory.outcomeCount > 0) {
         const reason = String(memory.lastOutcomeReason || 'confirmed').replace(/_/g, ' ');
         return {
