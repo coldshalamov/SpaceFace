@@ -358,6 +358,30 @@ new berths given Plan 29 signage, and the 2v2 faction route taught to engage fro
 licensed fit's real range instead of from wherever it coasted to. No golden was re-recorded to hide
 a regression, and no owner decision was consumed: the drift had a named, intended cause each time.
 
+**Where the milestone actually stands (2026-08-17).** Plan 31's explosion-impulse rule is now
+closed: ordinary light and medium deaths shove the bodies standing next to them, scaled off the same
+victim radius the size ladder reads, bounded below both authored cook-offs, impulse-only, and
+declining any death Ember or Heavy already owns. Building it surfaced a defect worth remembering -
+stamping impulse provenance on every body near every death silently reassigns chain-kill credit,
+because `collisionConsequences` resolves collision ownership from the latest impulse record. The
+blast now pushes without claiming. **Plan 31 is still open** for size-x-cause skins, physical debris
+below the Heavy tier, and the human 30 s kill-montage watch.
+
+**Do not read a green `check:arcade-core` as plan completeness.** Those 300 tests prove the routes
+somebody wrote a test for; they say nothing about plan requirements nobody tested. Plan 30 is the
+proof and the standing example: `src/data/codexSecrets.js` ships six secret rows, and four of them -
+Names in the Stars, Unregistered Caches, The Face, The Developer - are permanently locked
+placeholders with **no discovery path at all**. The Face and The Developer have no runtime owner
+anywhere in `src/`; the constellation labels are drawn on the galaxy chart but authored
+`interactive: false` and presentation-only on purpose, so the trigger that would unlock them is a
+design decision rather than a wiring gap, and it is the owner's. Completeness across the other
+plans is **unverified by any artifact in this repo**, and should not be asserted without an audit
+that reads each plan's named production routes against live code.
+
+Owner gates, not agent work: Plan 09's calibration bands, Plan 04's atmosphere burn-up watch, Plan
+31's kill-montage watch, Plan 58's 52-vs-45 commodity cap, and the Plan 30 discovery-route calls
+above.
+
 A prior AC-01–20 outcome, test, receipt, plan, lab,
 or source-level implementation closes a full numbered plan only when every named production route
 and required Layer 1/2/human gate in that plan is terminal. Performance work is excluded from this
