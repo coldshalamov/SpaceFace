@@ -66,7 +66,7 @@
     "audio:cue": 3
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "8c9066351b26ff5e5917ecb8a74198ab2c2ba9fc3b66ac7519f51c474b3dc3ed",
+    "authoritativeHash": "ec31da5fbd36f1e144b43eba8f4d8b419578d42b4b8ff4fa495a301b14ceb236",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -121,6 +121,9 @@
     "Legacy trace changes are projectile:hit/combat:damage 11 -> 9, camera cues 3 -> 2, and the corresponding presentation/audio fanout 4 -> 3 (cue totals 15 -> 12). combat:fire remains 17.",
     "2026-08-16 Plan 06 market-personality re-record: station families now select different curve-family weights while preserving shared durations, factor bands, and deterministic RNG.",
     "The prior authoritativeHash was f65bb81bbd84dce67a367645995e1ae8c48b87af5bd501f4dd4941123068c6d8.",
-    "sim-golden-diff against aee59d7272409664bb36be1a75fc966aa5fb89a1 returned CONTENT_ONLY: all 19,978 changed leaves are under $.economy, with zero entity pos/vel/rot/angVel/prevPos changes and zero trace changes."
+    "sim-golden-diff against aee59d7272409664bb36be1a75fc966aa5fb89a1 returned CONTENT_ONLY: all 19,978 changed leaves are under $.economy, with zero entity pos/vel/rot/angVel/prevPos changes and zero trace changes.",
+    "2026-08-17 merge re-record: master merged into codex/pr95-all. Prior authoritativeHash was 8c9066351b26ff5e5917ecb8a74198ab2c2ba9fc3b66ac7519f51c474b3dc3ed.",
+    "Cause: master's 5826a461 raises player translation authority 15 percent in resolvePropulsionProfile, which both controllers read, so the legacy envelope moves for the same reason the v3 one does.",
+    "Determinism proven before re-recording: check:sim:compare reports hashEqual true and firstDivergentTick null across the reload-at-600 pair, the expected hash is the only diff, no trace-count drift; check:sim passes --repeat 20."
   ]
 }
