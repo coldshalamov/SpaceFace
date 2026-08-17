@@ -1,6 +1,6 @@
 {
   "schema": "spaceface.inferenceMemory.v1",
-  "updated": "2026-08-12",
+  "updated": "2026-08-17",
   "runs": [
     {
       "date": "2026-08-12",
@@ -458,6 +458,32 @@
       "references": [],
       "integration": "live",
       "commit": "2706a7cc",
+      "verification": "focused_green"
+    },
+    {
+      "id": "mission-silent-runner",
+      "date": "2026-08-17",
+      "wf": "WF-08",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "High-risk covert missions now support the silent_runner physical condition rewarding unbroken cloak discipline",
+      "fingerprint": "verb=forbid-cloak-breach,subject=silent-runner,sector=any,domain=wf-08",
+      "references": [],
+      "integration": "live",
+      "commit": "cc96da92",
+      "verification": "focused_green"
+    },
+    {
+      "id": "thermal-sink-module",
+      "date": "2026-08-17",
+      "wf": "WF-07",
+      "mode": "opportunity",
+      "verdict": "implemented",
+      "reason": "Thermal sink booster modules now accelerate weapon heat dissipation in combat and outfitting",
+      "fingerprint": "verb=accelerate-heat-dissip,subject=thermal-sink-module,sector=any,domain=wf-07",
+      "references": [],
+      "integration": "live",
+      "commit": "a5bf1495",
       "verification": "focused_green"
     }
   ],
