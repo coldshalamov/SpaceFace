@@ -291,6 +291,20 @@ export const SOUTH_SECTORS = Object.freeze([
           body: 'Dione’s lane relay is not counting traffic. Two pulse groups repeat around one long carrier pause; the recovered timing belongs in the Codex.',
         }),
       }),
+      Object.freeze({
+        id: 'poi_dione_dead_gate',
+        type: 'anomaly',
+        name: 'The Dead Gate',
+        scannerSignalKind: 'archive',
+        scannerSignalPriority: 97,
+        manualInvestigation: true,
+        landmark: true,
+        visualRadius: 70,
+        discoveryPlate: Object.freeze({
+          title: 'The Gate That Refused',
+          body: 'The ring still holds a destination solution, but every transit term resolves to the same coordinate: here. Its stripped diagnostic cradle contains the last useful hardware.',
+        }),
+      }),
     ]),
   }),
 ]);
@@ -433,6 +447,12 @@ export const SOUTH_ANCHORS = Object.freeze({
         id: 'poi_dione_relay',
         pos: Object.freeze({ x: 320, z: -420 }),
         landmarkGlb: 'place_lane_beacon',
+        landmark: true,
+      }),
+      Object.freeze({
+        id: 'poi_dione_dead_gate',
+        pos: Object.freeze({ x: 1720, z: -1240 }),
+        landmarkGlb: 'place_gate_jump_ring',
         landmark: true,
       }),
     ]),

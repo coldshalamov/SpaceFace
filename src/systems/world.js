@@ -69,6 +69,7 @@ import {
   listeningPostPuzzleState,
   validateListeningPostAttempt,
 } from '../data/listeningPost.js';
+import { DEAD_GATE, normalizeDeadGateState } from '../data/deadGate.js';
 import { isUnsellableCargo } from './cargo.js';
 import {
   COMET_ICE,
@@ -363,6 +364,7 @@ export const world = {
     bus.on('pallasHiddenCache:choose', (p) => this._onPallasHiddenCacheChoice(p || {}));
     bus.on('pickup:collected', (p) => this._onVestaOreCachePickupCollected(p || {}));
     bus.on('pickup:collected', (p) => this._onPallasHiddenCachePickupCollected(p || {}));
+    bus.on('pickup:collected', (p) => this._onDeadGatePickupCollected(p || {}));
     bus.on('cargo:jettisoned', (p) => this._onSmugglingDropCacheJettisoned(p || {}));
     bus.on('cargo:podRecovered', (p) => this._onSmugglingDropCacheRecovered(p || {}));
     bus.on('save:restoring', () => {
@@ -378,6 +380,7 @@ export const world = {
       this._presentVestaOreCacheDecision('save-loaded');
       this._spawnPallasHiddenCachePickup(this.state.world.currentSectorId);
       this._presentPallasHiddenCacheDecision('save-loaded');
+      this._spawnDeadGateRewards(this.state.world.currentSectorId);
       this._spawnSmugglingDropCaches(this.state.world.currentSectorId);
     });
     bus.on('dock:docked', (p) => this._presentPallasHiddenCacheDecision('dock:docked', p && p.stationId));
@@ -660,6 +663,7 @@ export const world = {
     this._presentVestaOreCacheDecision('sector-enter');
     this._spawnPallasHiddenCachePickup(sectorId);
     this._presentPallasHiddenCacheDecision('sector-enter');
+    this._spawnDeadGateRewards(sectorId);
     this._spawnSmugglingDropCaches(sectorId);
     if (!this._hazardSet) this._hazardSet = new Set();
     if (!this._hazardNextSet) this._hazardNextSet = new Set();
@@ -3602,6 +3606,7 @@ export const world = {
     this._onPallasHiddenCacheSignalInvestigated({ ...payload, sectorId, poiId, completedAt: rec.investigatedAt });
     this._contactTethysBlackMarket({ poiId, sectorId, completedAt: rec.investigatedAt });
     this._onListeningPostSignalInvestigated({ ...payload, sectorId, poiId, completedAt: rec.investigatedAt }, rec);
+    this._onDeadGateSignalInvestigated({ ...payload, sectorId, poiId, completedAt: rec.investigatedAt }, rec);
     return true;
   },
 
@@ -3629,6 +3634,126 @@ export const world = {
       text: 'Listening Post cadence filed in Codex',
       kind: 'info',
       ttl: 4,
+    });
+    return true;
+  },
+
+  _deadGateState(discoveryRecord = null) {
+    const rec = discoveryRecord
+      || this._discoveryFor(DEAD_GATE.sectorId).pois[DEAD_GATE.poiId]
+      || (this._discoveryFor(DEAD_GATE.sectorId).pois[DEAD_GATE.poiId] = {
+        discovered: false, identified: false,
+      });
+    rec.deadGate = normalizeDeadGateState(rec.deadGate);
+    return rec.deadGate;
+  },
+
+  _onDeadGateSignalInvestigated(payload, discoveryRecord = null) {
+    if (payload.sectorId !== DEAD_GATE.sectorId || payload.poiId !== DEAD_GATE.poiId) return false;
+    const rec = discoveryRecord
+      || this._discoveryFor(DEAD_GATE.sectorId).pois[DEAD_GATE.poiId];
+    if (!rec || rec.investigated !== true) return false;
+    const own = this._deadGateState(rec);
+    if (own.phase === 'sealed') {
+      own.phase = 'recovered';
+      own.recoveredAt = Math.max(0,
+        Number(payload.completedAt) || Number(this.state.simTime) || 0);
+      this.bus.emit('deadGate:opened', {
+        sectorId: DEAD_GATE.sectorId,
+        poiId: DEAD_GATE.poiId,
+        signalId: DEAD_GATE.signalId,
+        rewardSlotIds: own.rewards.map((reward) => reward.slotId),
+      });
+      this.bus.emit('toast', {
+        text: 'Dead Gate diagnostics released into open space',
+        kind: 'good',
+        ttl: 4,
+      });
+    }
+    this._spawnDeadGateRewards(DEAD_GATE.sectorId);
+    return true;
+  },
+
+  _spawnDeadGateRewards(sectorId = this.state.world.currentSectorId) {
+    if (sectorId !== DEAD_GATE.sectorId || this.state.world.currentSectorId !== sectorId) return [];
+    const rec = this._discoveryFor(DEAD_GATE.sectorId).pois[DEAD_GATE.poiId];
+    if (!rec || rec.investigated !== true) return [];
+    const own = this._deadGateState(rec);
+    if (own.phase === 'sealed' || own.phase === 'exhausted') return [];
+    const gate = (this.state.entityList || []).find((entity) => entity && entity.alive !== false
+      && entity.data && entity.data.poiId === DEAD_GATE.poiId);
+    const base = gate && gate.pos
+      ? gate.pos
+      : sectorLocalToGlobalForSector(DEAD_GATE.fixedLocalPos, DEAD_GATE.sectorId);
+    const spawned = [];
+    for (const slot of own.rewards) {
+      if (!(slot.remainingQty > 0)) continue;
+      const live = (this.state.entityList || []).find((entity) => entity && entity.alive !== false
+        && entity.data && entity.data.deadGateRewardSlotId === slot.slotId);
+      if (live) continue;
+      const authored = DEAD_GATE.rewards.find((reward) => reward.slotId === slot.slotId);
+      if (!authored) continue;
+      const entity = this.helpers.spawnEntity({
+        type: 'pickup',
+        pos: { x: base.x + authored.offset.x, z: base.z + authored.offset.z },
+        vel: { x: 0, z: 0 },
+        radius: 1.7,
+        mass: 0.2,
+        collides: true,
+        ttl: Infinity,
+        data: {
+          kind: 'cargo',
+          commodityId: slot.commodityId,
+          amount: slot.remainingQty,
+          name: authored.name,
+          deadGateRewardSlotId: slot.slotId,
+          deadGateRewardRevision: slot.collectedQty,
+          sourcePoiId: DEAD_GATE.poiId,
+        },
+      });
+      this._stampHomeSector(entity, DEAD_GATE.sectorId);
+      spawned.push(entity);
+      this.bus.emit('deadGate:rewardMaterialized', {
+        sectorId: DEAD_GATE.sectorId,
+        poiId: DEAD_GATE.poiId,
+        slotId: slot.slotId,
+        pickupId: entity.id,
+        commodityId: slot.commodityId,
+        amount: slot.remainingQty,
+        pos: { ...entity.pos },
+      });
+    }
+    return spawned;
+  },
+
+  _onDeadGatePickupCollected(payload) {
+    if (payload.collectorId !== this.state.playerId || !(Number(payload.acceptedAmount) > 0)) return false;
+    const pickup = payload.pickupId != null && this.state.entities && this.state.entities.get
+      ? this.state.entities.get(payload.pickupId) : null;
+    const slotId = pickup && pickup.data && pickup.data.deadGateRewardSlotId;
+    if (!slotId) return false;
+    const rec = this._discoveryFor(DEAD_GATE.sectorId).pois[DEAD_GATE.poiId];
+    if (!rec || rec.investigated !== true) return false;
+    const own = this._deadGateState(rec);
+    const slot = own.rewards.find((reward) => reward.slotId === slotId);
+    if (!slot || pickup.data.commodityId !== slot.commodityId || !(slot.remainingQty > 0)) return false;
+    const revision = Math.max(0, Math.floor(Number(pickup.data.deadGateRewardRevision) || 0));
+    if (revision !== slot.collectedQty) return false;
+    const accepted = Math.max(0, Math.min(slot.remainingQty,
+      Math.floor(Number(payload.acceptedAmount) || 0)));
+    if (!(accepted > 0)) return false;
+    slot.collectedQty += accepted;
+    slot.remainingQty = slot.totalQty - slot.collectedQty;
+    pickup.data.deadGateRewardRevision = slot.collectedQty;
+    own.phase = own.rewards.every((reward) => reward.remainingQty === 0) ? 'exhausted' : 'recovered';
+    this.bus.emit('deadGate:materialRecovered', {
+      sectorId: DEAD_GATE.sectorId,
+      poiId: DEAD_GATE.poiId,
+      slotId,
+      commodityId: slot.commodityId,
+      acceptedQty: accepted,
+      remainingQty: slot.remainingQty,
+      phase: own.phase,
     });
     return true;
   },
