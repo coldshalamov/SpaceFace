@@ -515,7 +515,7 @@ export function createShipPreviewMount(canvas, opts) {
         // The complete authored payload can have very different bounds from its immediate fallback.
         // Reframe and render atomically when it settles; input must never be required to reveal it.
         preparePreviewMaterials(current);
-        applyPreviewAppearance(current, current.userData.previewAppearance, getDefId());
+        applyPreviewAppearance(current, current.userData.previewAppearance, getDefId(), currentPresentationFittings);
         hidePreviewOnlySurfaces(current);
         fitCameraToCurrent();
         renderNow();
@@ -525,6 +525,7 @@ export function createShipPreviewMount(canvas, opts) {
   }
 
   let current = null;     // the displayed THREE.Object3D
+  let currentPresentationFittings = [];
   let dockRoot = null;
   let dockBlueprint = null;
   let dockId = useDock ? opts.dockId : null;
@@ -672,7 +673,7 @@ export function createShipPreviewMount(canvas, opts) {
     }
   }
 
-  function applyPreviewAppearance(mesh, rawAppearance, defId) {
+  function applyPreviewAppearance(mesh, rawAppearance, defId, fittings = null) {
     if (!mesh || typeof mesh.traverse !== 'function') return;
     const appearance = normalizeShipAppearance(rawAppearance, defId);
     mesh.userData.previewAppearance = appearance;
@@ -700,14 +701,14 @@ export function createShipPreviewMount(canvas, opts) {
       radius: Number(def && def.collisionRadius) || 12,
       bank: 0,
       pitch: 0,
-      data: { appearance },
+      data: { appearance, fittings: Array.isArray(fittings) ? fittings : [] },
     });
   }
 
   function setAppearance(rawAppearance) {
     if (!current) return false;
     preparePreviewMaterials(current);
-    applyPreviewAppearance(current, rawAppearance, getDefId());
+    applyPreviewAppearance(current, rawAppearance, getDefId(), currentPresentationFittings);
     renderNow();
     return true;
   }
@@ -1082,6 +1083,9 @@ export function createShipPreviewMount(canvas, opts) {
       return;
     }
     current = mesh;
+    currentPresentationFittings = Array.isArray(loadout && loadout.fittings)
+      ? loadout.fittings.slice()
+      : [];
     // The camera is already offset into a three-quarter view. Adding another +40deg here aligned
     // long hulls almost directly with the camera: capitals became a giant aft cross-section and
     // Hitch became an engine face. Zero yaw is the authored centered composition.
@@ -1091,7 +1095,7 @@ export function createShipPreviewMount(canvas, opts) {
     mesh.rotation.y = yaw;
     scene.add(mesh);
     preparePreviewMaterials(mesh);
-    applyPreviewAppearance(mesh, o.appearance, defId);
+    applyPreviewAppearance(mesh, o.appearance, defId, currentPresentationFittings);
     fitCameraToCurrent();
     renderNow();
     requestCurrentAuthoredUpgrade();

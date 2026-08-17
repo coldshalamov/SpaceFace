@@ -250,16 +250,19 @@ export const MODULES = [
   {
     id: 'mod_overcharge_coil_forbidden', name: 'Overcharge Coil', slotType: 'utility', size: 'M', tier: 5, mass: 8, price: 0,
     energyDraw: 12, legality: 'contraband', purchasable: false, salvageOnly: true,
+    hullPresentation: { signature: 'overcharge_caged_coil', recognition: 'copper open-cage field coils' },
     mods: { fieldRadiusMult: 1.10, fieldStrengthMult: 1.55, emitterChargeCost: 3 },
   },
   {
     id: 'mod_mass_faker_forbidden', name: 'Mass Faker', slotType: 'utility', size: 'S', tier: 5, mass: 2, price: 0,
     energyDraw: 5, legality: 'contraband', purchasable: false, salvageOnly: true,
+    hullPresentation: { signature: 'mass_faker_ballast_fork', recognition: 'asymmetric black ballast fork' },
     mods: { targetPriorityMass: 1200 },
   },
   {
     id: 'mod_deadman_reactor_forbidden', name: 'Dead-Man Reactor', slotType: 'utility', size: 'M', tier: 5, mass: 10, price: 0,
     energyDraw: 0, legality: 'contraband', purchasable: false, salvageOnly: true,
+    hullPresentation: { signature: 'deadman_radial_reactor', recognition: 'hazard-orange radial reactor cage' },
     mods: { deathCookOff: { radiusWu: 130, impulse: 340, maxAffected: 12, provenance: 'dead_man_reactor', cueId: 'swarmer_ember_cook_off' } },
   },
   // Countermeasures (P1-7): chaff breaks missile locks + diverts in-flight missiles to a decoy

@@ -10,6 +10,7 @@ import {
   LIVING_HULL_KILL_TALLY_MAX,
   LIVING_HULL_REPAIR_PATCH_MAX,
 } from '../core/livingHull.js';
+import { createShipHardwarePresentation } from './shipHardwarePresentation.js';
 
 const MARKING_WIDTH = 384;
 const MARKING_HEIGHT = 96;
@@ -322,6 +323,7 @@ export function createLivingHullPresentation() {
   const scorchGeometry = new THREE.CircleGeometry(1, 16);
   const grimeTexture = createGrimeTexture();
   const markingSurface = createMarkingSurface();
+  const fittedHardware = createShipHardwarePresentation();
 
   const tallyMaterial = configureDecalMaterial(new THREE.MeshBasicMaterial({
     color: 0xd8c79e,
@@ -392,6 +394,7 @@ export function createLivingHullPresentation() {
   marking.castShadow = false;
   marking.receiveShadow = false;
   root.add(marking);
+  root.add(fittedHardware.root);
 
   let attachedRoot = null;
   let disposed = false;
@@ -452,6 +455,8 @@ export function createLivingHullPresentation() {
     const line = record && typeof record.graffitiLine === 'string' ? record.graffitiLine : EMPTY_LINE;
     const decalId = typeof appearance.decalId === 'string' ? appearance.decalId : 'none';
     const radius = Math.max(1, finite(entity && entity.radius, 12));
+    const hardwareChanged = fittedHardware.sync(entity && entity.data && entity.data.fittings);
+    if (hardwareChanged) changed = true;
 
     if (tallyCount !== last.tallies) {
       tallies.count = tallyCount;
@@ -495,7 +500,7 @@ export function createLivingHullPresentation() {
     }
     const ready = authoredSurfaceReady(attachedRoot);
     const any = tallyCount > 0 || patchCount > 0 || scorchCount > 0 || grimeAmount > 0
-      || !!line || decalId !== 'none';
+      || !!line || decalId !== 'none' || fittedHardware.hasVisibleHardware();
     if (ready !== last.ready || any !== last.any) {
       last.ready = ready;
       last.any = any;
@@ -517,6 +522,7 @@ export function createLivingHullPresentation() {
       grimeOpacity: grimeMaterial.opacity,
       graffiti: marking.visible,
     };
+    const restoreHardware = fittedHardware.beginGpuWarmup();
     tallies.count = LIVING_HULL_KILL_TALLY_MAX;
     patches.count = LIVING_HULL_REPAIR_PATCH_MAX;
     scorch.count = LIVING_HULL_HEAT_SCORCH_MAX;
@@ -535,6 +541,7 @@ export function createLivingHullPresentation() {
       grime.count = snapshot.grime;
       grimeMaterial.opacity = snapshot.grimeOpacity;
       marking.visible = snapshot.graffiti;
+      restoreHardware();
       applyVisibility();
     };
   }
@@ -555,6 +562,7 @@ export function createLivingHullPresentation() {
       decalId: last.decalId || 'none',
       killMarkGeometry: tallyGeometry.name,
       graffitiTextureUpdates: markingSurface.updates(),
+      fittedHardware: fittedHardware.diagnostics(),
       instanceMatrixVersions: {
         tallies: tallies.instanceMatrix.version,
         patches: patches.instanceMatrix.version,
@@ -594,6 +602,7 @@ export function createLivingHullPresentation() {
     graffitiMaterial.dispose();
     grimeTexture.dispose();
     markingSurface.texture.dispose();
+    fittedHardware.dispose();
     root.clear();
   }
 
