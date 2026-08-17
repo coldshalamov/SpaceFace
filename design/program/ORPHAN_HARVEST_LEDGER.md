@@ -22,7 +22,7 @@ Dispositions and anti-loop rules live in the playbook, not here.
 | A-ac03 | `C:\sf-agents\ac03-kill-rp` | near-done | CHECKPOINT | Routes kills through RP writer; depends on `killRewards`. Leftover clone. | After AC-01 if that merges |
 | A-ac04 | `C:\sf-agents\ac04-readable-tumble` | partial | CHECKPOINT | Tip edits live `tumbleStatus` / `tumbleStates`. Master already has tumble. | Diff tip vs current tumble; keep only unread consequences |
 | A-ac05 | `C:\sf-agents\ac05-juice-discipline` | partial | CHECKPOINT | Leftover clone; 60 src files vs shared fork. | Extract tip-only juice rules; do not merge fork |
-| A-ac06 | `C:\sf-agents\ac06-physics-arsenal` | near-done | CHECKPOINT | 3-file fields patch applies cleanly. Unreviewed vs later field work. | One review panel then MERGE or DROP |
+| A-ac06 | `C:\sf-agents\ac06-physics-arsenal` | done | MERGE 2026-08-17 | Gravity Mark now grabs light hulls; Well/Repulsor use combat mass scale. Review said merge. 31 field tests green. | Keep worktree until pushed |
 | A-ac07 | `C:\sf-agents\ac07-massline-honesty` | superseded | DROP 2026-08-17 | Tip removes the 15% taut-sling flourish. Later master tests/probe/camera require that flourish. Opposing policy, not lost honesty. | Safe to delete worktree after receipt; do not port |
 | A-ac08 | `C:\sf-agents\ac08-kill-causes` | near-done | CHECKPOINT | New `killCause.js` absent on master. Depends on AC-01 rewards. | After AC-01 |
 | A-ac09 | `C:\sf-agents\ac09-death-signatures` | partial | CHECKPOINT | Edits live `vfx.js` / phased explosions. | Review vs current VFX owners; do not overwrite dirty VFX |
