@@ -436,6 +436,26 @@ test('choosing either side creates a real 2v2, and a player kill yields one phys
     }
     assert.ok(flankDistance <= 180, 'the player physically reaches a clear firing angle at the marked front');
 
+    // Close from the flanking angle into the licensed fit's own reach before opening fire, instead
+    // of shooting from wherever the approach happened to coast to. The drive's braking authority is
+    // tunable, so a fixed stopping distance drifts to the edge of range and lets a nearer opponent
+    // soak the burst. Thrust only while roughly pointed at the mark, the way the ship is flown.
+    const engageRange = licensedWeapon().range * 0.6;
+    let victimRange = Infinity;
+    for (let tick = 0; tick < 600 && victimRange > engageRange; tick++) {
+      const dx = victim.pos.x - player.pos.x;
+      const dz = victim.pos.z - player.pos.z;
+      victimRange = Math.hypot(dx, dz);
+      let turnError = Math.atan2(dz, dx) - player.rot;
+      while (turnError > Math.PI) turnError -= Math.PI * 2;
+      while (turnError < -Math.PI) turnError += Math.PI * 2;
+      state.input.turnIntent = Math.max(-1, Math.min(1, turnError / 0.45));
+      state.input.moveZ = victimRange > engageRange && Math.abs(turnError) < 0.3 ? 1 : 0;
+      state.input.brake = victimRange <= engageRange;
+      sim.step(SIM_DT);
+    }
+    assert.ok(victimRange <= engageRange, 'the player closes inside the licensed fit’s reach');
+
     victim.hull = victim.hullMax = 3;
     victim.shield = victim.shieldMax = 0;
     state.input.moveZ = 0;
