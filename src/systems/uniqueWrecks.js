@@ -78,6 +78,15 @@ function ancientLayersFor(def) {
     : [];
 }
 
+function trappedSalvageComplication(def) {
+  return (Array.isArray(def && def.complications) ? def.complications : []).find((complication) => (
+    complication
+    && complication.kind === 'trapped_wreck'
+    && complication.trigger === 'salvage_yield'
+    && (complication.encounterRef || complication.encounterId)
+  )) || null;
+}
+
 function createAncientSalvageProgress(def, phase = 'rumored') {
   const layers = ancientLayersFor(def);
   if (layers.length < 2) return null;
@@ -177,6 +186,9 @@ export function normalizeUniqueWreckState(value, metaSeed) {
         ? clonePlain(record.rewardReceipt)
         : null,
       salvagedAtS: phase === 'salvaged' ? Math.max(0, finite(record.salvagedAtS, 0)) : null,
+      salvageRemaining: record.salvageRemaining && typeof record.salvageRemaining === 'object'
+        ? normalizePool(record.salvageRemaining)
+        : null,
       ancientSalvage: normalizeAncientSalvageProgress(record.ancientSalvage, def, phase),
     };
   }
@@ -536,6 +548,7 @@ export const uniqueWrecks = {
       resolvedAtS: null,
       rewardReceipt: null,
       salvagedAtS: null,
+      salvageRemaining: null,
       ancientSalvage: createAncientSalvageProgress(def, 'rumored'),
     };
     own.bearings[def.id] = record;
@@ -839,7 +852,7 @@ export const uniqueWrecks = {
       wreckId: def.id,
       timerId: null,
       kind: String(kind || 'authored_encounter'),
-      trigger: 'direct_authored_request',
+      trigger: typeof options.trigger === 'string' ? options.trigger : 'direct_authored_request',
       status: 'requested',
       scheduledAt: now,
       dueAt: null,
@@ -952,6 +965,9 @@ export const uniqueWrecks = {
       const def = uniqueWreckById(complication.wreckId);
       if (!def || this._encounterInstanceId(def, complication.encounterId) !== payload.encounterId) continue;
       complication.status = 'completed';
+      const bearing = own.bearings[def.id];
+      const entity = this._findLive(def.id);
+      if (bearing && entity) this._applyTrappedWreckReadout(def, bearing, entity);
       this._receipt('encounter_resolved', def.id);
       this.bus.emit('uniqueWreck:encounterCompleted', {
         wreckId: def.id,
@@ -1184,6 +1200,7 @@ export const uniqueWrecks = {
       ? `Search for ${def.name}`
       : `Recover ${def.name}`;
     data.scanned = record.phase !== 'rumored';
+    this._applyTrappedWreckReadout(def, record, entity);
     const ancient = normalizeAncientSalvageProgress(record.ancientSalvage, def, record.phase);
     const ancientLayers = ancientLayersFor(def);
     const ancientLayer = ancient && ancientLayers[ancient.layerIndex] || null;
@@ -1217,7 +1234,11 @@ export const uniqueWrecks = {
 
     const salvage = this.registry && this.registry.get && this.registry.get('salvageActions');
     const arm = !!(def.reactor && record.phase !== 'rumored');
-    const salvagePool = ancientLayer ? ancient.remainingPool : def.salvagePool;
+    const savedSalvagePool = !ancientLayer && record.salvageRemaining
+      && typeof record.salvageRemaining === 'object'
+      ? normalizePool(record.salvageRemaining)
+      : null;
+    const salvagePool = ancientLayer ? ancient.remainingPool : savedSalvagePool || def.salvagePool;
     if (salvage && typeof salvage.configureAuthoredWreck === 'function') {
       salvage.configureAuthoredWreck(entity, {
         salvagePool,
@@ -1238,11 +1259,52 @@ export const uniqueWrecks = {
         };
       }
     }
+    // Once the player has removed a unit, the bearing record owns the already-legality-normalized
+    // remainder. Do not run that remainder through the military conversion again on Continue.
+    if (savedSalvagePool) {
+      data.authoredSalvagePool = { ...savedSalvagePool };
+      data.salvagePool = { ...savedSalvagePool };
+    }
     if (arm && data.unstableReactor && record.reactorDueAt != null) {
       data.unstableReactor.dueAt = record.reactorDueAt;
       data.unstableReactor.damage = def.reactor.damage;
     }
     return entity;
+  },
+
+  _applyTrappedWreckReadout(def, record, entity) {
+    if (!entity || !entity.data) return null;
+    const data = entity.data;
+    const trappedSalvage = trappedSalvageComplication(def);
+    if (trappedSalvage && trappedSalvage.detectable === true && record.phase !== 'rumored') {
+      const encounterId = trappedSalvage.encounterRef || trappedSalvage.encounterId;
+      const key = `${def.id}:encounter:${encounterId}`;
+      const complication = this._ensureState().complications[key];
+      const status = complication && complication.status || 'armed';
+      if (status === 'completed') {
+        data.scanLabel = `${def.scanLabel} · PIRATE TRIPWIRE CLEARED`;
+        data.scanDescription = 'The passive drive wakes are broken and the ambush channel is silent. Remaining salvage is clear.';
+        data.interactionPrompt = 'SALVAGE (TRIPWIRE CLEARED)';
+      } else if (status === 'active' || status === 'requested') {
+        data.scanLabel = `${def.scanLabel} · PIRATE TRIPWIRE SPRUNG`;
+        data.scanDescription = 'Salvage movement woke the concealed pirate squad. The loose wreck cargo remains physical in the fight.';
+        data.interactionPrompt = 'SALVAGE (PIRATE AMBUSH ACTIVE)';
+      } else {
+        data.scanLabel = `${def.scanLabel} · PIRATE TRIPWIRE DETECTED`;
+        data.scanDescription = String(trappedSalvage.scanWarning
+          || 'Passive pirate drive wakes shadow the wreck. Salvage leaving the hull will spring the trap.');
+        data.interactionPrompt = 'SALVAGE (PIRATE TRIPWIRE DETECTED)';
+      }
+      data.trappedWreckWarning = {
+        id: trappedSalvage.id,
+        kind: trappedSalvage.kind,
+        encounterId,
+        status,
+      };
+    } else {
+      delete data.trappedWreckWarning;
+    }
+    return data.trappedWreckWarning || null;
   },
 
   _onScanPulse(payload) {
@@ -1369,9 +1431,24 @@ export const uniqueWrecks = {
     const def = uniqueWreckById(wreckId);
     const record = def && this._ensureState().bearings[def.id];
     const entity = this.state.entities && this.state.entities.get && this.state.entities.get(entityId);
-    if (!def || !record || record.phase !== 'fixed' || !entity || !entity.data) return null;
+    if (!def || !record || !entity || !entity.data) return null;
+    if (def.wreckClass !== 'ancient' && (record.phase === 'rumored' || record.phase === 'fixed')) {
+      record.salvageRemaining = normalizePool(entity.data.salvagePool);
+    }
+    let trapRecord = null;
+    const trap = trappedSalvageComplication(def);
+    const playerMined = payload && payload.minerId === this.state.playerId && finite(payload.qty, 0) > 0;
+    if (trap && playerMined && (record.phase === 'rumored' || record.phase === 'fixed')) {
+      const encounterId = trap.encounterRef || trap.encounterId;
+      trapRecord = this._requestEncounter(def, encounterId, record, trap.kind, {
+        anchor: entity.pos,
+        trigger: trap.trigger,
+      });
+      this._applyTrappedWreckReadout(def, record, entity);
+    }
+    if (record.phase !== 'fixed') return trapRecord;
     const ancient = normalizeAncientSalvageProgress(record.ancientSalvage, def, record.phase);
-    if (!ancient) return null;
+    if (!ancient) return trapRecord;
     ancient.remainingPool = normalizePool(entity.data.salvagePool);
     record.ancientSalvage = ancient;
     return ancient;

@@ -13,7 +13,7 @@ import { hash32, mulberry32 } from '../core/rng.js';
 import { sectorLocalToGlobalForSector } from './sectorCoordinates.js';
 import { wreckClassById } from './wreckClasses.js';
 
-export const UNIQUE_WRECK_STATE_SCHEMA_VERSION = 3;
+export const UNIQUE_WRECK_STATE_SCHEMA_VERSION = 4;
 export const UNIQUE_WRECK_RECEIPT_LIMIT = 24;
 export const UNIQUE_WRECK_SCAN_RADIUS = 1200;
 
@@ -144,7 +144,15 @@ const RAW_UNIQUE_WRECKS = [
     provenance: { lossId: 'loss_dmc_ironsong', incidentId: 'incident_nyx_cutlane_ironsong', sourceRef: 'comms.ironsing_gun', recordType: 'cutlane_ambush' },
     hazardContext: { label: 'Hyperion Cut Lane ambush zone', anchorType: 'zone', anchorId: 'zone_nyx_cutlane', zoneId: 'zone_nyx_cutlane', hazardTypes: ['ambush_lane'], placementRule: 'inside_zone', approachGate: null },
     salvageLaw: CONCORD_RESTRICTED_SALVAGE,
-    complications: [{ id: 'ironsong_cutlane_ambush', kind: 'ambient_zone', trigger: 'approach', zoneId: 'zone_nyx_cutlane' }],
+    complications: [{
+      id: 'ironsong_cutlane_ambush',
+      kind: 'trapped_wreck',
+      trigger: 'salvage_yield',
+      encounterRef: 'ambush_snare',
+      zoneId: 'zone_nyx_cutlane',
+      detectable: true,
+      scanWarning: 'Passive pirate drive wakes are holding behind the debris. Salvage leaving the hull will spring the tripwire.',
+    }],
     salvagePool: { cmdty_scrap_metal: 2 },
     bonusCargo: [{ commodityId: 'cmdty_salvage_electronics', qty: 2 }],
     placement: { anchorLocal: { x: 1120, z: 760 }, minRadius: 80, maxRadius: 340, bearingRadiusMin: 360, bearingRadiusMax: 620 },
