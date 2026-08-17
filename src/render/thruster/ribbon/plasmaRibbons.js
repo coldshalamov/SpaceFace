@@ -343,10 +343,12 @@ const RIBBON_FRAG = /* glsl */`
     // over the last part of its own length its material thins to literally zero, so it ends on nothing.
     // The plume's tail is then just where a lot of sheets independently happen to run out — a ragged,
     // dissolving front — rather than a plane where the mesh stops (ban B9).
-    float runout = 1.0 - smoothstep(0.42, 1.0, vLife);
+    // Runout stays late on purpose: the last third of the jet still has mass, so the history trail
+    // has a real column to be the ghost of instead of growing out of a pin at the bells.
+    float runout = 1.0 - smoothstep(0.64, 1.0, vLife);
     // And the far end fragments: the tongue term takes over from the smooth body, so the tail breaks
     // into separate wisps that come and go instead of fading as one solid shape.
-    float shred = mix(1.0, vTongue * 1.8, smoothstep(0.2, 0.95, vLife));
+    float shred = mix(1.0, vTongue * 1.8, smoothstep(0.50, 0.98, vLife));
 
     float density = dilute * mflow * (0.55 + vTongue * 0.75) * runout * shred;
 
@@ -447,7 +449,7 @@ export function createPlasmaRibbonMaterial(T, opts = {}) {
       uJetLength: { value: JET_LENGTH_WU },
       uThroatRadius: { value: 1.32 },
       uSpread: { value: 2.3 },
-      uCoherence: { value: 0.24 },
+      uCoherence: { value: 0.30 },
       // Structures per jet length, and how many of them pass a fixed point each second. Together these
       // set the visible flow speed. Too slow reads as a still image; too fast reads as strobing.
       uAxialFreq: { value: 3.2 },
@@ -459,9 +461,9 @@ export function createPlasmaRibbonMaterial(T, opts = {}) {
       // as separate strands, they read as wires: each one becomes a bright line with a gap either side
       // and the plume turns into pen-and-ink. Overlapping sheets build a continuous volume, and what
       // the eye then picks out is the creases where individual sheets turn edge-on.
-      uWidthNear: { value: 0.75 },
-      uWidthFar: { value: 3.2 },
-      uCurve: { value: 1.5 },
+      uWidthNear: { value: 0.88 },
+      uWidthFar: { value: 3.05 },
+      uCurve: { value: 1.55 },
       uDrive: { value: 0 },
       uBoost: { value: 0 },
       uDash: { value: 0 },
@@ -472,10 +474,10 @@ export function createPlasmaRibbonMaterial(T, opts = {}) {
       // Opacity is per-sheet and RIBBON_COUNT sheets overlap additively, so this is roughly a
       // twentieth of what a single-layer effect would use. Set it at single-layer values and the jet
       // saturates to a white sausage before any structure can be seen.
-      uRadiance: { value: 0.85 },
-      uOpacity: { value: 0.028 },
-      uGrazeGain: { value: 4.5 },
-      uGrazeFloor: { value: 0.16 },
+      uRadiance: { value: 1.08 },
+      uOpacity: { value: 0.036 },
+      uGrazeGain: { value: 5.0 },
+      uGrazeFloor: { value: 0.22 },
       uCamPos: { value: new T.Vector3() },
     },
     vertexShader: RIBBON_VERT,

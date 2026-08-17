@@ -389,6 +389,7 @@ Current save version: `13`
 | `$.settings.gameplay.tutorialHints` | boolean | true |
 | `$.settings.keybinds` | object | {} |
 | `$.settings.showDamageNumbers` | boolean | false |
+| `$.settings.showLootHistory` | boolean | false |
 | `$.settings.uiScale` | number | 1 |
 | `$.settings.video` | object | {} |
 | `$.settings.video.bloom` | boolean | true |

@@ -276,6 +276,14 @@ export const mainMenuScreen = {
     setScreenButtonReady(refs.bLoad, ctx, 'saveLoad', 'Load Game');
     setScreenButtonReady(refs.bSettings, ctx, 'settings', 'Settings');
     if (refs.bSandbox) setScreenButtonReady(refs.bSandbox, ctx, 'sandbox', 'Sandbox');
+    const sys = ctx.registry && ctx.registry.get && ctx.registry.get('save');
+    if (sys && typeof sys.isSharedStoreSyncPending === 'function' && sys.isSharedStoreSyncPending()) {
+      refs.bContinue.disabled = true;
+      refs.saveSummary.classList.remove('has-save');
+      refs.saveSummary.textContent = 'Checking saves...';
+      refs.bContinue.title = 'Checking saves';
+      return;
+    }
     const latest = latestSave(readSaveIndex(ctx));
     refs.bContinue.disabled = !latest;
     refs.saveSummary.classList.toggle('has-save', !!latest);

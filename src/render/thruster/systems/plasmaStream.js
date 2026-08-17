@@ -18,6 +18,7 @@ import * as THREE from 'three';
 import { createPathSampler } from './pathSampler.js';
 import { PlasmaRibbonPlume } from '../ribbon/plasmaRibbons.js';
 import { ContrailTrail } from '../ribbon/contrailTrail.js';
+import { DriveForge } from '../ribbon/driveForge.js';
 import {
   EMIT_FLOOR,
   createDriveEnvelope,
@@ -385,12 +386,24 @@ export class PlasmaStreamSystem {
     // Two independent elements, because a jet and a flight history are not the same object.
     //
     //   _ribbons  the PLUME: nozzle-local, ~2 hull lengths, hot, gas flowing through it
-    //   _contrail the SNAKE TRAIL: the positions the nozzle actually occupied, no aft advection
+    //   _trails   leftover thruster light: one ghost per bell, on the positions that bell occupied
     //
     // They were previously one thing, which forced the plume to be two seconds long — hundreds of
     // world units at cruise — so it read as a tail welded to the hull and dragged around.
     this._ribbons = new PlasmaRibbonPlume(this.THREE, {});
-    this._contrail = new ContrailTrail(this.THREE, {});
+    this._trails = [];
+    this._trailNozzles = [];
+    // One forge per line: the mouth each line is drawn out of. Paired with the trail rather than
+    // with the bell, because it has to follow the line's heading, not the hull's.
+    this._forges = [];
+    this._forgeAim = { x: 0, y: 0, z: 0 };
+    for (let i = 0; i < 4; i++) {
+      this._trails.push(new ContrailTrail(this.THREE, {}));
+      this._trailNozzles.push({ x: 0, y: 0, z: 0, aftX: -1, aftZ: 0 });
+      this._forges.push(new DriveForge(this.THREE, {}));
+    }
+    this._contrail = this._trails[0];
+    this._forge = this._forges[0];
     this._env = createDriveEnvelope();
     this._ribbonShape = {};
     this._ribbonNozzle = { x: 0, y: 0, z: 0, aftX: -1, aftZ: 0 };
@@ -400,7 +413,7 @@ export class PlasmaStreamSystem {
       jetLength: rib.jetLength != null ? rib.jetLength : (jet.lengthWU != null ? jet.lengthWU : 17),
       throatRadius: rib.throatRadius != null ? rib.throatRadius : 1.32,
       spread: rib.spread != null ? rib.spread : 2.6,
-      radiance: rib.radiance != null ? rib.radiance : 0.85,
+      radiance: rib.radiance != null ? rib.radiance : 1.12,
       opacity: rib.opacity != null ? rib.opacity : 0.055,
     };
   }
@@ -412,7 +425,7 @@ export class PlasmaStreamSystem {
     this._cam.z = camera.position.z;
     this._camObj = camera;
     if (this._ribbons) this._ribbons.setCamera(camera);
-    if (this._contrail) this._contrail.setCamera(camera);
+    this._setTrailCameras(camera);
   }
 
   setCameraPosition(x, y, z) {
@@ -421,7 +434,26 @@ export class PlasmaStreamSystem {
     this._cam.z = z;
     this._camObj = null;
     if (this._ribbons) this._ribbons.material.uniforms.uCamPos.value.set(x, y, z);
-    if (this._contrail) this._contrail.material.uniforms.uCamPos.value.set(x, y, z);
+    if (this._trails) {
+      for (let i = 0; i < this._trails.length; i++) {
+        this._trails[i].material.uniforms.uCamPos.value.set(x, y, z);
+      }
+    }
+  }
+
+  _setTrailCameras(camera) {
+    if (!this._trails) return;
+    for (let i = 0; i < this._trails.length; i++) this._trails[i].setCamera(camera);
+  }
+
+  _trailLiveCount() {
+    let n = 0;
+    if (!this._trails) return 0;
+    for (let i = 0; i < this._trails.length; i++) {
+      const live = this._trails[i].liveSampleCount();
+      if (live > n) n = live;
+    }
+    return n;
   }
 
   setTrailTint(color = null) {
@@ -434,12 +466,13 @@ export class PlasmaStreamSystem {
     this.group = new T.Group();
     this.group.name = 'sf-liquid-plasma-root';
 
-    // Contrail first, then the plume over it, then the throat quads. Traversals that take the last
+    // Contrails first, then the plume over them, then the throat quads. Traversals that take the last
     // matching mesh therefore keep landing where they used to.
-    this._contrail.attach(this.group);
+    for (let i = 0; i < this._trails.length; i++) this._trails[i].attach(this.group);
+    for (let i = 0; i < this._forges.length; i++) this._forges[i].attach(this.group);
     this._ribbons.attach(this.group);
     if (this._camObj) {
-      this._contrail.setCamera(this._camObj);
+      this._setTrailCameras(this._camObj);
       this._ribbons.setCamera(this._camObj);
     }
 
@@ -503,7 +536,9 @@ export class PlasmaStreamSystem {
     }
     for (let i = 0; i < this._throats.length; i++) this._throats[i].visible = false;
     if (this._ribbons) this._ribbons.reset();
-    if (this._contrail) this._contrail.reset();
+    if (this._trails) {
+      for (let i = 0; i < this._trails.length; i++) this._trails[i].reset();
+    }
     if (this._env) {
       this._env.spool = 0; this._env.boost = 0; this._env.dash = 0; this._env.dashAge = -1;
     }
@@ -515,7 +550,16 @@ export class PlasmaStreamSystem {
     this._disposed = true;
     this.reset();
     if (this._ribbons) { this._ribbons.dispose(); this._ribbons = null; }
-    if (this._contrail) { this._contrail.dispose(); this._contrail = null; }
+    if (this._trails) {
+      for (let i = 0; i < this._trails.length; i++) this._trails[i].dispose();
+      this._trails.length = 0;
+    }
+    if (this._forges) {
+      for (let i = 0; i < this._forges.length; i++) this._forges[i].dispose();
+      this._forges.length = 0;
+    }
+    this._contrail = null;
+    this._forge = null;
     if (this.group && this.group.parent) this.group.parent.remove(this.group);
     for (let i = 0; i < this._layers.length; i++) {
       this._layers[i].geo.dispose();
@@ -851,7 +895,7 @@ export class PlasmaStreamSystem {
     // envelope, because `reset()` zeroes the envelope — gating on the envelope meant a drive spooling up
     // from cold got reset every frame before it could cross the firing threshold, and never lit at all.
     const commanded = Math.max(throttle, drive, boost) > 0.001;
-    if (!commanded && !emitting && !this.sampler.hasLive && !this._contrail.inspect().liveSamples) {
+    if (!commanded && !emitting && !this.sampler.hasLive && this._trailLiveCount() < 2) {
       this.reset();
       return { live: 0, pathPoints: 0, continuous: true };
     }
@@ -926,20 +970,62 @@ export class PlasmaStreamSystem {
     nz2.aftX = ex; nz2.aftZ = ez;
     resolvePlumeShape(this._env, this._ribbonBase, this._ribbonShape);
 
+    // How hard the engine is drawing its line back in. Keyed on what the PILOT asked for, not on the
+    // drive envelope: the envelope holds a lit floor that rises with speed (so a fast ship still
+    // glows with the throttle shut), which means a cold-drive test never fires at exactly the moment
+    // the player let go — the moment they expect the line to come home. Braking or reversing pulls it
+    // in hardest; simply releasing thrust still pulls it in, because a line the engine is no longer
+    // making is a line it is taking back.
+    const commandedThrottle = Math.max(0, Math.min(1, Math.max(throttle, driveInfo && driveInfo.cruise ? 1 : 0)));
+    const hauling = !!(driveInfo && (driveInfo.brake || driveInfo.reverse || driveInfo.retroOnly));
+    this._ribbonShape.reel = hauling ? 1 : 1 - commandedThrottle;
+
     // The jet, standing off the bell. Short by construction.
     this._ribbons.setCamera(this._camObj);
     this._ribbons.update(frameDt, nz2, this._ribbonShape);
 
-    // The flight history, on the flown line only. Fed the same nozzle pose but it never advects along
-    // the exhaust axis, so it cannot put a vertex anywhere the nozzle has not been. The old single
-    // thin `snake` strip it replaces is retired.
-    this._contrail.setCamera(this._camObj);
-    this._contrail.update(frameDt, nz2, this._ribbonShape);
+    // Leftover thruster light, one ghost per live bell, on the flown line only. Never advects along
+    // the exhaust, so it cannot put a vertex anywhere that bell has not been.
+    const nTrail = list ? Math.min(list.length, this._trails.length) : 1;
+    let trailLive = 0;
+    for (let ti = 0; ti < this._trails.length; ti++) {
+      const trail = this._trails[ti];
+      const forge = this._forges[ti];
+      if (ti >= nTrail) {
+        trail.update(frameDt, null, this._ribbonShape);
+        forge.update(null, null, this._ribbonShape, 1);
+        continue;
+      }
+      const sock = list ? list[ti] : this._fallbackNozzle;
+      let sx = Number.isFinite(sock.ax) ? sock.ax : 1;
+      let sz = Number.isFinite(sock.az) ? sock.az : 0;
+      const sl = Math.hypot(sx, sz) || 1;
+      const nz = this._trailNozzles[ti];
+      nz.x = sock.x || 0;
+      nz.y = sock.y || 0;
+      nz.z = sock.z || 0;
+      nz.aftX = -sx / sl;
+      nz.aftZ = -sz / sl;
+      trail.setCamera(this._camObj);
+      trail.update(frameDt, nz, this._ribbonShape);
+      const live = trail.liveSampleCount();
+      if (live > trailLive) trailLive = live;
+
+      // The mouth rides the line's own heading and fires on the line's own pulse, so the flash at
+      // the bell and the band leaving it are one event rather than two effects near each other.
+      forge.setCamera(this._camObj);
+      if (trail.headAftDirection(this._forgeAim)) {
+        forge.update(nz, this._forgeAim, this._ribbonShape, trail.bandFlash(this._ribbonShape.drive));
+      } else {
+        // No line yet — aim the mouth down the bell so a standing start still lights it.
+        this._forgeAim.x = nz.aftX; this._forgeAim.y = 0; this._forgeAim.z = nz.aftZ;
+        forge.update(nz, this._forgeAim, this._ribbonShape, trail.bandFlash(this._ribbonShape.drive));
+      }
+    }
     this._snakeCount = 0;
     this._hideElement('snake');
 
-    const trailInfo = this._contrail.inspect();
-    this._active = emitting || trailInfo.liveSamples >= 2;
+    this._active = emitting || trailLive >= 2;
 
     // Nozzle throat glows — one per live socket, camera-billboarded, depth-tested against hull.
     const throatCfg = this.recipe.throat || {};
@@ -970,7 +1056,7 @@ export class PlasmaStreamSystem {
     }
 
     const ribbonInfo = this._ribbons.inspect();
-    this._pointCount = trailInfo.liveSamples;
+    this._pointCount = trailLive;
     return {
       live: this._pointCount,
       pathPoints: pathN,
@@ -1003,8 +1089,9 @@ export class PlasmaStreamSystem {
       ignition: this._ignition,
       pointCount: this._pointCount,
       snakePoints: this._snakeCount,
-      ribbon: this._ribbons.inspect(),
-      contrail: this._contrail.inspect(),
+      ribbon: this._ribbons ? this._ribbons.inspect() : null,
+      contrail: this._contrail ? this._contrail.inspect() : null,
+      forge: this._forge ? this._forge.inspect() : null,
       envelope: { spool: this._env.spool, boost: this._env.boost, dash: this._env.dash },
       construction: 'swept-ribbon-sheets',
     };

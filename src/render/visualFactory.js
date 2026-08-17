@@ -30,7 +30,7 @@ import { configurePlanarAdditiveMaterial } from './planarAdditivePolicy.js';
 import { buildPlanetSiteVisual } from './planetSiteVisual.js'; // PQ-013 colossal planet-site body
 import { freezeStaticChildMatrices } from './staticChildMatrices.js';
 import {
-  makeNoiseTexture, makeGreebleTexture, makeGradientTexture, makeHullPanelTexture, makeStarTexture,
+  makeNoiseTexture, makeGreebleTexture, makeGradientTexture, makeHullPanelTexture,
   makeHullNormalMap, makeGreebleDetailTexture, makeDecalSheet,
   makeGrimeTexture, makePatchTexture, makeNoseArtTexture, makeStationSloganTexture,
 } from './canvasTextures.js';
@@ -585,20 +585,23 @@ function additiveGlowMaterial(color, opacity = 0.75) {
   }));
 }
 
-// Additive halo sprite material by color (shared texture, per-color material).
-function haloSpriteMaterial(color) {
-  return getMaterial(`halo:${color}`, () => {
-    const tex = getTexture('star:white', () => makeStarTexture({ size: 128, color: '#ffffff', core: 0.1, falloff: 1.1 }));
-    return new THREE.SpriteMaterial({
-      map: tex, color: new THREE.Color(color),
-      blending: THREE.AdditiveBlending, transparent: true, depthWrite: false,
-    });
-  });
-}
-function makeHalo(color, scale) {
-  const s = new THREE.Sprite(haloSpriteMaterial(color));
-  s.scale.set(scale, scale, scale);
-  return s;
+// Hot lamp as a fixture: metal cup + emissive lens. Bloom comes from the surface, not a sprite.
+function lampFixture(color, scale, intensity = 3.2) {
+  const root = new THREE.Group();
+  const cup = new THREE.Mesh(
+    getGeometry('lamp:cup', () => new THREE.CylinderGeometry(0.38, 0.52, 0.28, 8)),
+    getMaterial('lamp:cup', () => new THREE.MeshStandardMaterial({
+      color: 0x16191e, roughness: 0.4, metalness: 0.82,
+    })),
+  );
+  const lens = new THREE.Mesh(
+    getGeometry('lamp:lens', () => new THREE.SphereGeometry(0.34, 12, 10)),
+    emissiveMaterial(color, intensity),
+  );
+  lens.position.y = 0.16;
+  root.add(cup, lens);
+  root.scale.setScalar(scale);
+  return root;
 }
 
 // --- Energy-shader bolt material (the modern replacement for basic-material + sprite-halo bolts) ---
@@ -690,11 +693,6 @@ function engineGlow(pal, x, z, scale) {
   core.position.x = -0.52 * scale;
   core.userData.spacefaceTags = { vfxRole: 'driveCore' };
   g.add(core);
-  // small soft core glow at the nozzle (modest — was scale*2.4, the blob)
-  const halo = makeHalo(pal.thruster, scale * 0.5);
-  halo.position.x = -0.28 * scale;
-  halo.userData.spacefaceTags = { vfxRole: 'driveHalo' };
-  g.add(halo);
   return g;
 }
 
@@ -837,8 +835,13 @@ function weaponProp(wdefId, facing, size, pal, R, tier) {
     }
   }
   g.add(barrel);
-  // a small glow port at the muzzle so the gun reads as armed through bloom
-  const port = makeHalo(pal.accent, s * 0.7); port.position.x = 0.6 * s; g.add(port);
+  const port = new THREE.Mesh(
+    getGeometry('wpn:port', () => new THREE.CylinderGeometry(0.07, 0.05, 0.09, 10).rotateZ(Math.PI / 2)),
+    emissiveMaterial(pal.accent, 2.8),
+  );
+  port.position.x = 0.6 * s;
+  port.scale.setScalar(s);
+  g.add(port);
   // turrets get a rotating head: stash the barrel group so the per-frame driver can sweep it slowly,
   // selling the "tracks its target" read. (Static ships still get a gentle idle sweep.)
   if (isTurret) {
@@ -959,10 +962,9 @@ function addNavBlinkers(g, R, halfWidth, length, blinkers) {
   // the rear center. Sized up so they read as distinct point lights (they'll bloom brightly in-game).
   const z = R * halfWidth * 1.05;
   const xMid = 0;
-  const gr = blinkerSprite('#3dff7a', R * 0.20, 0.0, blinkers); gr.position.set(xMid, R * 0.05, z); g.add(gr);
-  const rd = blinkerSprite('#ff4040', R * 0.20, 0.5, blinkers); rd.position.set(xMid, R * 0.05, -z); g.add(rd);
-  // white stern light at the rear center
-  const stern = blinkerSprite('#eaf2ff', R * 0.16, 0.25, blinkers); stern.position.set(-R * length * 0.48, R * 0.06, 0); g.add(stern);
+  const gr = blinkerFixture('#3dff7a', R * 0.055, 0.0, blinkers); gr.position.set(xMid, R * 0.05, z); g.add(gr);
+  const rd = blinkerFixture('#ff4040', R * 0.055, 0.5, blinkers); rd.position.set(xMid, R * 0.05, -z); g.add(rd);
+  const stern = blinkerFixture('#eaf2ff', R * 0.048, 0.25, blinkers); stern.position.set(-R * length * 0.48, R * 0.06, 0); g.add(stern);
 }
 
 // =============================================================================================
@@ -2116,7 +2118,7 @@ function buildCorsairBlade(ctx) {
     wing.rotation.x = -Math.PI / 2; wing.scale.setScalar(R); g.add(wing);
   }
   for (const dx of [-1, 1]) {
-    const tip = makeHalo('#ff4a3a', R * 0.16);
+    const tip = lampFixture('#ff4a3a', R * 0.055, 3.6);
     tip.position.set(dx * W * R * 0.95, 0, -L * R * 0.22); g.add(tip);
   }
   for (const dx of [-0.18, 0.18]) {
@@ -2135,11 +2137,11 @@ function buildPatrolInterdict(ctx) {
   for (const dx of [-1, 1]) {
     const web = new THREE.Mesh(getGeometry(`edr:web${dx}`, () => new THREE.RingGeometry(0.2, 0.4, 6, 1)), hm);
     web.position.set(dx * W * R * 1.0, 0, -L * R * 0.1); web.scale.setScalar(R); g.add(web);
-    const glow = makeHalo('#3aa0ff', R * 0.2);
+    const glow = lampFixture('#3aa0ff', R * 0.05, 3.2);
     glow.position.set(dx * W * R * 1.0, 0, -L * R * 0.1); g.add(glow);
   }
   for (const dx of [-1, 1]) {
-    const light = makeHalo('#3aa0ff', R * 0.1);
+    const light = lampFixture('#3aa0ff', R * 0.038, 2.8);
     light.position.set(dx * W * R * 0.9, 0, L * R * 0.4); g.add(light);
   }
   for (const dx of [-0.16, 0.16]) {
@@ -3207,7 +3209,8 @@ function buildShipMesh(e, pal) {
       const ant = new THREE.Mesh(getGeometry('ship:antenna', () => new THREE.CylinderGeometry(0.015, 0.025, 0.45, 4)), hm);
       ant.position.set(vis.sensor[0] * R + (rnd() - 0.5) * R * 0.3, vis.sensor[1] * R + rnd() * R * 0.1, (rnd() - 0.5) * R * 0.3);
       ant.scale.setScalar(R); g.add(ant);
-      const tip = makeHalo(pal.accent, R * 0.14); tip.position.set(ant.position.x, vis.sensor[1] * R + R * 0.32, ant.position.z); g.add(tip);
+      const tip = lampFixture(pal.accent, R * 0.032, 2.6);
+      tip.position.set(ant.position.x, vis.sensor[1] * R + R * 0.32, ant.position.z); g.add(tip);
       // a dish on some masts
       if (i % 2 === 0) {
         const dish = new THREE.Mesh(getGeometry('ship:dish', () => new THREE.SphereGeometry(0.12, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2)), hm);
@@ -3247,7 +3250,7 @@ function buildShipMesh(e, pal) {
       for (let i = 0; i < blinkers.length; i++) {
         const bl = blinkers[i], bd = bl.userData.blink;
         const on = ((((t * (bd.hz || 0.6)) + bd.phase) % 1) + 1) % 1 > 0.5 ? 1 : 0.25;
-        bl.material.opacity = 0.3 + 0.7 * on;
+        bl.material.emissiveIntensity = (bd.base || 3.4) * (0.18 + 0.82 * on);
       }
       if (ctx.sensorRing) ctx.sensorRing.rotation.z = t * 0.3;
       // turret heads sweep ±35° seeking a target — sells the "auto-tracking" read even when idle
@@ -3555,7 +3558,8 @@ function astMaterial(typeId, def, tint) {
       ? getReadyRockSurfaceTextures()
       : null;
     const color = tint != null ? new THREE.Color(tint) : new THREE.Color(def.color);
-    const rough = commonSurface || def.variant === 'crystal'
+    const skipRoughNoise = !!commonSurface || def.variant === 'crystal' || def.variant === 'ice';
+    const rough = skipRoughNoise
       ? null
       : getTexture('noise:astrough', () =>
         makeNoiseTexture({ size: 256, seed: 41, octaves: 4, baseCells: 6, contrast: 1.4, brightness: -0.05 }));
@@ -3563,11 +3567,30 @@ function astMaterial(typeId, def, tint) {
     // Procedural surfaces only. (The generated ore_*_hero.jpg assets are LABELLED contact-sheet
     // references — multiple views + caption text — and were being emissive-mapped onto crystals, so
     // valuable rocks literally glowed reference text. Valuable ores still pop via emissive colour +
-    // the crystal shards/halo added in buildAsteroid.)
+    // the crystal shards added in buildAsteroid.)
     let eiBoost = def.ei;
     const t = (typeId || '').toLowerCase();
     if (t.includes('luminite') || t.includes('crystal') || def.variant === 'crystal') eiBoost = Math.max(eiBoost, 0.9);
     else if (t.includes('xenium') || t.includes('exotic') || def.variant === 'exotic') eiBoost = Math.max(eiBoost, 0.75);
+
+    if (def.variant === 'ice') {
+      return new THREE.MeshPhysicalMaterial({
+        color,
+        roughness: 0.06,
+        metalness: 0.0,
+        transmission: 0.78,
+        ior: 1.31,
+        thickness: 2.8,
+        attenuationColor: new THREE.Color('#6eb8d8'),
+        attenuationDistance: 1.6,
+        emissive: new THREE.Color(def.emissive),
+        emissiveIntensity: Math.min(eiBoost, 0.22),
+        clearcoat: 1,
+        clearcoatRoughness: 0.08,
+        envMapIntensity: 1.15,
+        fog: true,
+      });
+    }
 
     const material = new THREE.MeshStandardMaterial({
       color,
@@ -3614,36 +3637,41 @@ function buildAsteroid(e) {
   }
   const lod2Details = [];
 
-  // crystal / exotic / ice get an inner-glow halo for value cue
-  if (def.variant === 'crystal' || def.variant === 'exotic') {
-    const halo = makeHalo(def.variant === 'crystal' ? '#c060ff' : '#a050ff', R * 1.9);
-    g.add(halo);
-    lod2Details.push(halo);
-    // a few protruding crystal shards for crystalline rocks (more shards = richer cluster)
-    if (def.variant === 'crystal') {
-      const rnd = mulberryLite(hashId(e.id));
-      const shardMat = emissiveMaterial('#c878ff', 1.1);
-      for (let i = 0; i < 6; i++) {
-        const shard = new THREE.Mesh(getGeometry('ast:shard', () => new THREE.OctahedronGeometry(0.18, 0)), shardMat);
-        const a = rnd() * Math.PI * 2, e2 = (rnd() - 0.5) * 1.4;
-        shard.position.set(Math.cos(a) * R * 0.7, Math.sin(e2) * R * 0.5, Math.sin(a) * R * 0.7);
-        shard.scale.setScalar(R * (0.5 + rnd() * 0.6));
-        shard.rotation.set(rnd() * 3, rnd() * 3, rnd() * 3);
-        g.add(shard);
-        lod2Details.push(shard);
-      }
+  if (def.variant === 'crystal') {
+    const rnd = mulberryLite(hashId(e.id));
+    const shardMat = emissiveMaterial('#c878ff', 1.1);
+    for (let i = 0; i < 6; i++) {
+      const shard = new THREE.Mesh(getGeometry('ast:shard', () => new THREE.OctahedronGeometry(0.18, 0)), shardMat);
+      const a = rnd() * Math.PI * 2, e2 = (rnd() - 0.5) * 1.4;
+      shard.position.set(Math.cos(a) * R * 0.7, Math.sin(e2) * R * 0.5, Math.sin(a) * R * 0.7);
+      shard.scale.setScalar(R * (0.5 + rnd() * 0.6));
+      shard.rotation.set(rnd() * 3, rnd() * 3, rnd() * 3);
+      g.add(shard);
+      lod2Details.push(shard);
     }
-  } else if (def.variant === 'ice') {
-    const halo = makeHalo('#5fe0ff', R * 1.7);
-    g.add(halo);
-    lod2Details.push(halo);
   } else if (def.variant === 'gas') {
-    // gas: small core rock already added; wrap in a soft additive cloud sprite
-    const cloud = makeHalo('#56ffa0', R * 3.2);
-    cloud.material = cloud.material.clone();
-    cloud.material.opacity = 0.45;
-    g.add(cloud);
-    lod2Details.push(cloud);
+    const hull = new THREE.Mesh(
+      geo,
+      getMaterial('ast:gashull', () => new THREE.MeshPhysicalMaterial({
+        color: new THREE.Color('#2d6a52'),
+        roughness: 0.42,
+        metalness: 0,
+        transmission: 0.88,
+        ior: 1.04,
+        thickness: 3.6,
+        attenuationColor: new THREE.Color('#3dff9a'),
+        attenuationDistance: 2.1,
+        emissive: new THREE.Color('#10a060'),
+        emissiveIntensity: 0.28,
+        transparent: true,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+        fog: true,
+      })),
+    );
+    hull.scale.setScalar(R * 1.22);
+    g.add(hull);
+    lod2Details.push(hull);
   }
 
   // GLOWING ORE VEINS — emissive streaks scattered across the surface for valuable ore types, so a
@@ -3693,13 +3721,26 @@ function shade(hex, mul) {
   return '#' + c.getHexString();
 }
 
-function blinkerSprite(color, scale, phase, blinkers) {
-  const s = makeHalo(color, scale);
-  s.material = s.material.clone();
-  s.userData.blink = { phase: phase || 0, hz: 0.6 + ((phase || 0) % 0.6), base: scale };
-  s.userData.spacefaceTags = { damageRole: 'navLight', vfxRole: 'navBlinker' };
-  if (blinkers) blinkers.push(s);
-  return s;
+function blinkerFixture(color, scale, phase, blinkers) {
+  const root = new THREE.Group();
+  const cup = new THREE.Mesh(
+    getGeometry('nav:cup', () => new THREE.CylinderGeometry(0.46, 0.58, 0.32, 8)),
+    getMaterial('nav:cup', () => new THREE.MeshStandardMaterial({
+      color: 0x171a1f, roughness: 0.42, metalness: 0.78,
+    })),
+  );
+  const lens = new THREE.Mesh(
+    getGeometry('nav:lens', () => new THREE.SphereGeometry(0.36, 12, 10)),
+    emissiveMaterial(color, 3.4).clone(),
+  );
+  lens.position.y = 0.18;
+  lens.userData.blink = { phase: phase || 0, hz: 0.6 + ((phase || 0) % 0.6), base: 3.4 };
+  lens.userData.spacefaceTags = { damageRole: 'navLight', vfxRole: 'navBlinker' };
+  root.add(cup, lens);
+  root.scale.setScalar(scale);
+  root.userData.spacefaceTags = { damageRole: 'navLight', vfxRole: 'navBlinker' };
+  if (blinkers) blinkers.push(lens);
+  return root;
 }
 
 // Attach a self-animating onBeforeRender that spins rings and pulses nav blinkers. The driver MUST
@@ -3715,7 +3756,7 @@ function animateStation(host, blinkers, ring1, portal) {
     for (let i = 0; i < blinkers.length; i++) {
       const b = blinkers[i], bl = b.userData.blink;
       const on = (((t * bl.hz + bl.phase) % 1) + 1) % 1 > 0.5 ? 1 : 0.25; // step(0.5, fract(...))
-      b.material.opacity = 0.3 + 0.7 * on;
+      b.material.emissiveIntensity = bl.base * (0.18 + 0.82 * on);
     }
   };
 }
@@ -3835,13 +3876,10 @@ function buildGate(e, pal) {
   // NAV LIGHTS — 6 blinkers around the rim, alternating accent/green.
   for (let i = 0; i < 6; i++) {
     const a = (i / 6) * Math.PI * 2;
-    const b = blinkerSprite(i % 2 ? pal.accent : '#5fffa0', R * 0.16, i * 0.31, blinkers);
+    const b = blinkerFixture(i % 2 ? pal.accent : '#5fffa0', R * 0.035, i * 0.31, blinkers);
     b.position.set(Math.cos(a) * R * 0.9, Math.sin(a) * R * 0.9, R * 0.08);
     orient.add(b);
   }
-
-  // big soft halo behind the portal for bloom pickup
-  orient.add(makeHalo(isWormhole ? '#a040ff' : pal.emissive, R * 2.2));
 
   // Animate: spin inner ring, swirl portal, pulse blinkers.
   animateGate(outerRing, innerRing, portal, hubGlow, blinkers, R);
@@ -3877,7 +3915,7 @@ function animateGate(host, innerRing, portal, hubGlow, blinkers, R) {
     for (let i = 0; i < blinkers.length; i++) {
       const b = blinkers[i], bl = b.userData.blink;
       const on = (((t * bl.hz + bl.phase) % 1) + 1) % 1 > 0.5 ? 1 : 0.25;
-      b.material.opacity = 0.3 + 0.7 * on;
+      b.material.emissiveIntensity = bl.base * (0.18 + 0.82 * on);
     }
   };
 }
@@ -3935,7 +3973,7 @@ function buildStation(e) {
   const navColor = pal.accent;
   for (let i = 0; i < 6; i++) {
     const a = (i / 6) * Math.PI * 2;
-    const b = blinkerSprite(i % 2 ? navColor : '#5fffa0', R * 0.18, i * 0.31, blinkers);
+    const b = blinkerFixture(i % 2 ? navColor : '#5fffa0', R * 0.04, i * 0.31, blinkers);
     b.position.set(Math.cos(a) * R * 0.82, (i % 2 ? 1 : -1) * R * 0.22, Math.sin(a) * R * 0.82);
     g.add(b);
   }
@@ -4445,7 +4483,6 @@ function buildDrone(e) {
     const arm = new THREE.Mesh(getGeometry('drone:arm', () => new THREE.CylinderGeometry(0.08, 0.08, 0.9, 6).rotateZ(Math.PI / 2)), hullMaterial(pal));
     arm.position.set(0, 0, sgn * R * 0.5); arm.scale.setScalar(R); g.add(arm);
   }
-  g.add(makeHalo(pal.accent, R * 1.6));
   g.userData.kind = 'drone';
   return g;
 }

@@ -21,6 +21,7 @@ const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const path = require('node:path');
 const { resolveStaticCacheHeaders } = require('./staticCachePolicy.cjs');
+const { attachPlayerStore } = require('./playerSaveStore.cjs');
 // Launch-policy contract: mutable documents keep this exact header token.
 const MUTABLE_DOCUMENT_CACHE = { 'Cache-Control': 'no-cache' };
 
@@ -106,12 +107,14 @@ function isInsideRoot(file, resolvedRoot) {
  * @param {boolean} [opts.async=true]   Use async filesystem metadata reads (required by Electron).
  * @param {Array}  [opts.extraRoutes]   Extra route handlers: [{ test(req), handle(req, res, ctx) }].
  *                                      Used by the browser server for /__shot, etc.
+ * @param {string} [opts.playerStoreDir] Shared Browser/Electron save directory. Omitted in tests
+ *                                      and isolated evidence so player slots stay untouched.
  * @returns {http.Server}               An http.Server (not yet listening).
  */
 function createGameServer(opts) {
   const root = path.resolve(opts.root);
   const useAsync = opts.async !== false;
-  const extraRoutes = opts.extraRoutes || [];
+  const extraRoutes = attachPlayerStore(opts);
   const staticHeaders = Object.freeze({ ...(opts.staticHeaders || {}) });
   const staticHeadersByPath = Object.fromEntries(Object.entries(opts.staticHeadersByPath || {})
     .map(([key, headers]) => [String(key).replace(/\\/g, '/').replace(/^\//, ''), Object.freeze({ ...headers })]));

@@ -1,6 +1,7 @@
 // Presentation owner: requestAnimationFrame, interpolation, Browser/Electron lifecycle, and restore.
 // Simulation remains on the main thread, but presentation no longer owns fixed-step advancement.
 import { ensurePerfRuntime, perfNow } from './perfRuntime.js';
+import { createRuntimeWitness, collectRuntimeWitnessSample } from './runtimeWitness.js';
 import { LOOP_FIXED_DT } from './simulationRunner.js';
 import { mustRescheduleAfterFrame } from './frameLiveness.js';
 
@@ -287,6 +288,28 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     frameErrorCount: 0,
   };
 
+  const readWitnessSample = (into) => collectRuntimeWitnessSample(state, {
+    diagnostics,
+    lifecycleState,
+    suspended,
+    into,
+  }, nowMs());
+  const witness = createRuntimeWitness({ nowMs, readSample: readWitnessSample });
+  state.runtimeWitness = witness;
+  if (typeof globalThis.window !== 'undefined') {
+    globalThis.window.__SF_WITNESS__ = witness;
+  }
+  function captureWitness() {
+    try {
+      witness.observe(state, {
+        diagnostics,
+        lifecycleState,
+        suspended,
+        wallMs: nowMs(),
+      });
+    } catch (_) { /* witness must never abort the loop */ }
+  }
+
   simulationRunner.setLifecycleGeneration?.(lifecycleGeneration);
 
   function schedule() {
@@ -313,6 +336,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     destroyed = true;
     diagnostics.destroyed = true;
     diagnostics.stopCount++;
+    witness.stop();
     const errors = [];
 
     const handle = frameHandle;
@@ -743,6 +767,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
         perf.tier1?.sampleRendererFrame(renderedSnapshot ? state.render?.diagnostics?.info : null);
         perf.tier1?.endFrame();
       }
+      captureWitness();
     }
 
     // renderUpdate may synchronously trigger the full terminal closer. Never complete a restore
@@ -777,6 +802,9 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
   if (suspended && diagnostics.suspendCount === 0) {
     setAudioLifecycle('suspendForLifecycle', 'startup');
   }
+  if (typeof globalThis.window !== 'undefined') {
+    witness.startClock(captureWitness, globalThis.window);
+  }
   schedule();
 
   return {
@@ -787,6 +815,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     isSuspended: () => suspended,
     getLifecycleState: () => lifecycleState,
     getPresentationFrame: () => presentationFrame,
+    getWitness: () => witness,
     getDiagnostics: () => ({
       ...diagnostics,
       simulation: simulationRunner.getDiagnostics?.() || null,

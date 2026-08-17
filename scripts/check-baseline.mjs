@@ -100,6 +100,12 @@ const LINKS = [
     why: 'A screen that imports the wrong module boots to a blank panel. Cheapest real gate we have.',
   },
   {
+    id: 'vfx-techniques',
+    costHintMs: 400,
+    command: 'node scripts/check-vfx-techniques.mjs',
+    why: 'A new file cannot pick up the blurry-square / point-sprite cheat without declaring it. Completeness of the soft-card inventory, not a blur ban.',
+  },
+  {
     id: 'pq020-ceres-topology',
     costHintMs: 500,
     script: 'check:pq020:ceres-topology',

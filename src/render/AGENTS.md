@@ -28,7 +28,10 @@ modes: `assets/ships/AGENTS.md` and `docs/COMMON_BUGS.md` §3.
 - `assetLoader.js` — fetch + validate GLB; records a diagnostic and returns `null` on failure.
 - `partsLibrary.js` — composes ships and owns ship/role/archetype asset maps.
 - `vfx.js` — pooled particles + sprites; cosmetic only. `EVENT_LIGHT_POOL_SIZE` is a shader cache
-  key that `precompile.js` must match.
+  key that `precompile.js` must match. Player-facing VFX and fly-through world dressing obey
+  `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`. Do not add `THREE.Points` / `THREE.Sprite` /
+  glow cards as the object itself; distant background stars are the only exception. Live instances:
+  `docs/visual-assets/SOFT_CARD_INVENTORY.json`.
 - `visualFactory.js` — world props/stations and procedural fallback/dressing.
 - `spaceBackground.js` / `starfield.js` / `parallaxLayers.js` — background layers.
 - `bloom.js` — selective bloom. Tune global and per-material response together from representative

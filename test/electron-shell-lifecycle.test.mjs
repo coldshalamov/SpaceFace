@@ -180,6 +180,14 @@ async function loadMain({
       if (specifier === 'http') return { get() { throw new Error('unexpected HTTP probe'); } };
       if (specifier === 'path') return path;
       if (specifier === '../scripts/lib/gameServer.cjs') return { createGameServer };
+      if (specifier === '../scripts/lib/playerSaveStore.cjs') {
+        return {
+          LOCAL_STORAGE_DUMP_SOURCE: '({})',
+          PLAYER_STORE_ORIGIN_ROUTE: '/__spaceface_player_store/origin',
+          resolvePlayerSaveDir() { return path.join(ROOT, '.tmp-player-saves'); },
+          writePlayerStoreKeysSync() { return {}; },
+        };
+      }
       if (specifier === '../scripts/lib/electronLaunchProtocol.cjs') {
         return {
           appendLaunchReceipt(_receiptPath, status, details) { receipts.push({ status, details }); },

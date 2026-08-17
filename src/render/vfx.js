@@ -1279,8 +1279,10 @@ export const vfx = {
     this._socketReferenceForward = new THREE.Vector3(-1, 0, 0);
     this._driveScratch = {
       drive: 0, throttle: 0, speed: 0, speedDrive: 0, boost: 0,
-      cruise: 0, reverse: 0, retroOnly: false, brake: 0,
+      cruise: 0, reverse: 0, retroOnly: false, brake: 0, dashFired: false,
     };
+    // Set by the ship:dash handler, consumed once by _engineDriveFor.
+    this._plumeDashPending = false;
     this._mainDriveDemandScratch = { main: 0, reverse: 0, retroOnly: false };
     this._productionDriveSignals = {
       cruise: 0, reverse: 0, retroOnly: false, brake: 0, speedDrive: 0,
@@ -9514,6 +9516,9 @@ export const vfx = {
   _onDash(p) {
     const e = this._ent(p && p.shipId);
     if (!e || !this._scene) return;
+    // Latch for the plume's one-shot supernova. The drive envelope consumes and clears it on the next
+    // frame it is read, so a dash fires exactly one flare regardless of frame pacing.
+    if (e.id === this.state?.playerId) this._plumeDashPending = true;
     const cf = Math.cos(e.rot), sf = Math.sin(e.rot);
     const sock = this._trailSocketWorldPose(e);
     const exhaustX = sock ? sock.forwardX : -cf;
@@ -11990,6 +11995,7 @@ export const vfx = {
     if (!e) {
       out.drive = 0; out.throttle = 0; out.speed = 0; out.speedDrive = 0; out.boost = 0;
       out.cruise = 0; out.reverse = 0; out.retroOnly = false; out.brake = 0;
+      out.dashFired = false;
       return out;
     }
     const frame = e._flightFrame || {};
@@ -12081,6 +12087,8 @@ export const vfx = {
     out.reverse = reverse;
     out.retroOnly = retroOnly;
     out.brake = brake;
+    out.dashFired = !!this._plumeDashPending;
+    this._plumeDashPending = false;
     return out;
   },
 

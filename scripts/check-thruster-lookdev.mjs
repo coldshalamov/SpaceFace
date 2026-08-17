@@ -71,123 +71,41 @@ function measureStreamGeometry() {
   const info = stream.inspect();
   const liveX = sockets[0].x;
 
-  // The exhaust: a visible raymarch proxy, oriented aft and spanning the plume. Measured from the
-  // proxy's own world transform rather than from inspect(), so a system reporting numbers it does
-  // not actually draw still fails here.
-  const volumeFails = [];
-  let plumeTipX = null;
-  let plumeLen = null;
-  const proxies = [];
-  stream.group.traverse((o) => {
-    if (o.isMesh && o.visible && o.geometry && !o.geometry.attributes.uv) proxies.push(o);
-  });
-  if (!proxies.length) {
-    volumeFails.push('no visible exhaust volume proxy — the plume is not being drawn at all');
+  const fails = [];
+  if (!info.active) fails.push('stream not active under thrust');
+
+  const rib = info.ribbon;
+  if (!rib || rib.element !== 'plume') {
+    fails.push('plume element is missing or not live');
   } else {
-    const proxy = proxies[0];
-    proxy.updateMatrixWorld(true);
-    const root = new THREE.Vector3(0, 0, 0).applyMatrix4(proxy.matrixWorld);
-    const tip = new THREE.Vector3(1, 0, 0).applyMatrix4(proxy.matrixWorld);
-    plumeTipX = tip.x;
-    plumeLen = root.distanceTo(tip);
-    if (!(tip.x < root.x - MIN_PLUME_LEN_WU)) {
-      volumeFails.push(
-        `plume points forward or is a nub: tip x=${tip.x.toFixed(2)} vs bell x=${root.x.toFixed(2)}`,
-      );
-    }
-    if (!(plumeLen >= MIN_PLUME_LEN_WU)) {
-      volumeFails.push(`plume length ${plumeLen.toFixed(2)} WU < ${MIN_PLUME_LEN_WU}`);
-    }
-  }
-  const vol = info.volume;
-  if (!vol || vol.construction !== 'raymarched-volume') {
-    volumeFails.push('exhaust is not the raymarched volume construction');
-  } else {
-    if (!(vol.live >= 1)) volumeFails.push('volume reports no live nozzle under full thrust');
-    if (!(vol.steps >= MIN_VOLUME_STEPS)) {
-      volumeFails.push(`march budget ${vol.steps} < ${MIN_VOLUME_STEPS} at close framing`);
+    if (!rib.visible) fails.push('plume ribbon mesh is not visible under thrust');
+    if (!(rib.jetLength >= MIN_PLUME_LEN_WU)) {
+      fails.push(`plume jetLength ${rib.jetLength.toFixed(2)} WU < ${MIN_PLUME_LEN_WU}`);
     }
   }
 
-  let mesh = null;
-  stream.group.traverse((o) => {
-    if (o.isMesh && o.visible && o.geometry?.attributes?.position && o.geometry?.attributes?.uv) {
-      mesh = o;
+  const con = info.contrail;
+  if (!con || con.element !== 'contrail') {
+    fails.push('contrail element is missing or not live');
+  } else {
+    if (!con.visible) fails.push('contrail trail mesh is not visible under thrust');
+    if (!(con.liveSamples >= 8)) {
+      fails.push(`contrail liveSamples ${con.liveSamples} < 8 (no real wake)`);
     }
-  });
-  if (!mesh) {
-    stream.dispose();
-    return { ok: false, fails: ['no visible strip mesh', ...volumeFails], info, liveX };
+    if (!(con.spanWU >= MIN_AFT_SPAN_WU)) {
+      fails.push(`contrail span ${con.spanWU.toFixed(2)} < ${MIN_AFT_SPAN_WU} WU (trail too short)`);
+    }
   }
 
-  const pos = mesh.geometry.attributes.position.array;
-  const uvs = mesh.geometry.attributes.uv.array;
-  const vCount = pos.length / 3;
-  let rootX = 0;
-  let tipX = 0;
-  let rootN = 0;
-  let tipN = 0;
-  let minX = Infinity;
-  let maxX = -Infinity;
-  for (let i = 0; i < vCount; i++) {
-    const s = uvs[i * 2];
-    const x = pos[i * 3];
-    if (!(Number.isFinite(x) && Number.isFinite(s))) continue;
-    if (x < minX) minX = x;
-    if (x > maxX) maxX = x;
-    if (s < 0.1) {
-      rootX += x;
-      rootN += 1;
-    }
-    if (s > 0.7) {
-      tipX += x;
-      tipN += 1;
-    }
-  }
   stream.dispose();
-
-  const fails = [...volumeFails];
-  if (!(info.active)) fails.push('stream not active under thrust');
-  if (!(info.path && info.path.historyCount >= MIN_HISTORY)) {
-    fails.push(`historyCount ${info.path?.historyCount ?? 0} < ${MIN_HISTORY} (no real wake)`);
-  }
-  if (!(info.pointCount >= MIN_POINT_COUNT)) {
-    fails.push(`pointCount ${info.pointCount} < ${MIN_POINT_COUNT} (trail too short)`);
-  }
-  if (!(rootN > 0 && tipN > 0)) {
-    fails.push('missing root or tip UV bands on strip mesh');
-  } else {
-    rootX /= rootN;
-    tipX /= tipN;
-    // Aft of nozzle under +X flight = smaller X than live nozzle.
-    if (!(tipX < liveX - MIN_AFT_SPAN_WU)) {
-      fails.push(
-        `BACKWARDS or stub: tipX=${tipX.toFixed(2)} not aft of liveX=${liveX.toFixed(2)} by ≥${MIN_AFT_SPAN_WU} WU`,
-      );
-    }
-    if (!(tipX < rootX - MIN_TIP_BEHIND_ROOT_WU)) {
-      fails.push(
-        `tip not behind root: tipX=${tipX.toFixed(2)} rootX=${rootX.toFixed(2)} (need ≥${MIN_TIP_BEHIND_ROOT_WU} WU)`,
-      );
-    }
-  }
-  const span = Number.isFinite(minX) && Number.isFinite(maxX) ? maxX - minX : 0;
-  if (!(span >= MIN_AFT_SPAN_WU)) {
-    fails.push(`mesh X span ${span.toFixed(2)} < ${MIN_AFT_SPAN_WU} (no readable trail length)`);
-  }
 
   return {
     ok: fails.length === 0,
     fails,
     info,
     liveX,
-    rootX: rootN ? rootX : null,
-    tipX: tipN ? tipX : null,
-    span,
-    plumeTipX,
-    plumeLen,
-    volumeSteps: info.volume?.steps ?? 0,
-    volumeLive: info.volume?.live ?? 0,
+    span: con ? con.spanWU : 0,
+    plumeLen: rib ? rib.jetLength : 0,
     recipeId: PLAYER_PLASMA_STREAM_RECIPE.id,
   };
 }

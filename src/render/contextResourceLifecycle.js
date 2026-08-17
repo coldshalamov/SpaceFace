@@ -132,6 +132,7 @@ export function detachStaleWebGlDisposeListeners(roots, provenance) {
   const counts = {
     objects: 0,
     instancedMeshes: 0,
+    batchedMeshes: 0,
     geometries: 0,
     materials: 0,
     textures: 0,
@@ -188,6 +189,14 @@ export function detachStaleWebGlDisposeListeners(roots, provenance) {
     if (object.isInstancedMesh) {
       counts.instancedMeshes++;
       detachExactListeners(object, 'instancedMeshes');
+    }
+    if (object.isBatchedMesh) {
+      counts.batchedMeshes++;
+      // BatchedMesh owns transform/indirect DataTextures outside its material graph. Their old-
+      // context disposal listeners must be detached before the batch is rebuilt and retired.
+      visitResource(object._matricesTexture);
+      visitResource(object._indirectTexture);
+      visitResource(object._colorsTexture);
     }
     visitResource(object.geometry);
     for (const material of Array.isArray(object.material) ? object.material : [object.material]) visitResource(material);

@@ -30,27 +30,30 @@ function injectStyle() {
   if (document.getElementById(STYLE_ID)) return;
   const s = document.createElement('style');
   s.id = STYLE_ID;
-  // Settings-specific control styles only. The shared menu fascia (plate, buttons, headings,
-  // tabs, slot rows, form primitives) lives in styles/menu.css — previously a copy of that
-  // whole block was pasted here and into every other menu screen.
   s.textContent = `
-  .sf-menu input[type=range] { flex:1; accent-color:var(--accent); height:26px; cursor:pointer;
-    touch-action:none; -webkit-appearance:none; appearance:none; background:transparent; }
-  .sf-menu input[type=range]::-webkit-slider-runnable-track { height:6px; border-radius:2px;
-    background:linear-gradient(90deg,var(--accent),var(--panel-edge-2)); }
-  .sf-menu input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; appearance:none;
-    width:20px; height:20px; margin-top:-7px; border-radius:50%; background:var(--accent);
-    border:2px solid #0a0c0d; box-shadow:0 0 8px rgba(219,152,56,.45); cursor:grab; }
-  .sf-menu input[type=range]:active::-webkit-slider-thumb { cursor:grabbing; transform:scale(1.12); }
-  .sf-menu input[type=range]::-moz-range-track { height:6px; border-radius:2px; background:var(--panel-edge-2); }
-  .sf-menu input[type=range]::-moz-range-thumb { width:20px; height:20px; border-radius:50%;
-    background:var(--accent); border:2px solid #0a0c0d; box-shadow:0 0 8px rgba(219,152,56,.45); }
-  .sf-controls-fixed-shortcuts { margin-top:4px; grid-template-columns:1fr 120px 1.5fr !important; }
-  .sf-controls-fixed-shortcuts .k { color:var(--accent); }
-  .sf-bind-btn { font-family:var(--mono) !important; letter-spacing:.04em; text-align:center !important; }
-  .sf-bind-btn--capture { border-color:var(--accent) !important; color:var(--accent) !important;
-    box-shadow:0 0 12px rgba(219,152,56,.4) inset; animation:sf-bind-pulse 1s ease-in-out infinite; }
-  @keyframes sf-bind-pulse { 0%,100%{opacity:1;} 50%{opacity:.55;} }
+  .sf-controls-fixed-shortcuts { margin-top:6px; grid-template-columns:1fr 120px 1.5fr !important; }
+  .sf-controls-fixed-shortcuts .k { color:var(--accent); font-family:var(--mono); font-weight:600; }
+  .sf-bind-btn {
+    font-family:var(--mono) !important;
+    letter-spacing:.04em;
+    text-align:center !important;
+    background:rgba(10,16,24,.8) !important;
+    border:1px solid var(--mf-line-2) !important;
+    border-radius:3px !important;
+    padding:6px 12px !important;
+  }
+  .sf-bind-btn:hover:not(:disabled) {
+    border-color:rgba(78,195,230,.45) !important;
+    background:rgba(16,25,36,.95) !important;
+  }
+  .sf-bind-btn--capture {
+    border-color:var(--accent) !important;
+    color:#04202b !important;
+    background:var(--accent) !important;
+    box-shadow:0 0 14px rgba(78,195,230,.6) !important;
+    animation:sf-bind-pulse 0.9s ease-in-out infinite alternate !important;
+  }
+  @keyframes sf-bind-pulse { 0%{opacity:1; transform:scale(1);} 100%{opacity:.75; transform:scale(0.98);} }
   `;
   document.head.appendChild(s);
 }
@@ -187,7 +190,7 @@ export const settingsScreen = {
     shell(rootEl, 'Settings', 'sf-menu-wide');
 
     const bar = el('div', 'sf-tabbar');
-    const pane = el('div', 'sf-col');
+    const pane = el('div', 'sf-settings-pane');
     bar.setAttribute('role', 'tablist');
     bar.setAttribute('aria-label', 'Settings categories');
     pane.id = 'sf-settings-pane';
@@ -239,6 +242,9 @@ export const settingsScreen = {
       b.tabIndex = active ? 0 : -1;
     });
     refs.pane.setAttribute('aria-labelledby', refs.tabBtns[tab].id);
+    refs.pane.classList.remove('sf-pane-anim');
+    void refs.pane.offsetWidth;
+    refs.pane.classList.add('sf-pane-anim');
     this._render(ctx);
   },
 

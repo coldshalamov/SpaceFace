@@ -17,6 +17,7 @@ import {
   ContrailTrail,
   STRAND_COUNT,
   TRAIL_SECONDS,
+  MAX_SPAN_WU,
   MIN_STEP_WU,
 } from '../src/render/thruster/ribbon/contrailTrail.js';
 import {
@@ -203,27 +204,36 @@ test('the contrail exists only where the nozzle has actually been', () => {
   trail.dispose();
 });
 
-test('the contrail is a tight bright bundle, not an invisible wisp or a wide net', () => {
+test('the contrail is leftover jet sheets with mass at birth, not a pin or a highway', () => {
   const trail = new ContrailTrail(THREE, {});
   const u = trail.material.uniforms;
 
-  assert.equal(TRAIL_SECONDS, 1.0, 'history trail retains half the prior flight history');
-  assert.equal(trail.strands, 21, 'history trail carries 50% more ribbons');
-  assert.equal(trail.strands, STRAND_COUNT, 'geometry and material use the same ribbon count');
-  assert.equal(u.uRadiance.value, 0.682, 'history trail is 10% brighter');
-  assert.equal(u.uWidthHead.value, 0.9, 'fresh history ribbons are 50% thicker');
-  assert.equal(u.uWidthTail.value, 3.3, 'aged history ribbons are 50% thicker');
+  assert.ok(TRAIL_SECONDS >= 1.0 && TRAIL_SECONDS <= 1.4, 'history trail is about half the prior window');
+  assert.ok(MAX_SPAN_WU <= 110, 'high speed cannot restore a screen-spanning highway');
+  assert.equal(trail.strands, STRAND_COUNT, 'geometry and material use the same sheet count');
+  assert.ok(trail.strands >= 10, `overlapping sheets, got ${trail.strands}`);
+  assert.ok(trail.across >= 3, 'sheets need a curved cross-section for grazing');
+  assert.ok(u.uRadiance.value >= 1.0, 'leftover light is bright at birth');
+  assert.ok(u.uRadiusHead.value >= 1.2, 'birth radius matches the exhaust column, not a pin');
+  assert.ok(u.uWidthHead.value >= 1.2, 'birth width has mass');
+  assert.ok(u.uRadiusTail.value > u.uRadiusHead.value, 'leftover plasma still spreads as it cools');
 
   // It shipped invisible once: tuned so faint that half the effect was technically present on the play
   // route and could not be seen. These are floors, not taste.
   assert.ok(u.uOpacity.value >= 0.02, `contrail must be readable, opacity ${u.uOpacity.value}`);
   assert.ok(u.uRadiance.value >= 0.3, `contrail must be readable, radiance ${u.uRadiance.value}`);
+  trail.dispose();
+});
 
-  // And it must stay a bundle. Opening the braid wide spreads the same material over many times the
-  // area, so every strand becomes an individually visible wire and it reads as a wireframe net.
-  assert.ok(u.uTailRadius.value <= 4, `the braid must stay tight, tail radius ${u.uTailRadius.value}`);
-  assert.ok(u.uTailRadius.value > u.uHeadRadius.value, 'condensate still spreads with age');
-  assert.ok(trail.strands >= 10, `a thick rope needs strands, got ${trail.strands}`);
+test('high speed cannot stretch the contrail past the length cap', () => {
+  const trail = new ContrailTrail(THREE, {});
+  const nozzle = { x: 0, y: 0, z: 0 };
+  for (let i = 0; i < 400; i++) {
+    nozzle.x += 3;
+    trail.update(1 / 60, nozzle, { drive: 1, emitFloor: 0.08 });
+  }
+  const info = trail.inspect();
+  assert.ok(info.spanWU <= MAX_SPAN_WU + 4, `span ${info.spanWU.toFixed(1)} WU exceeds cap ${MAX_SPAN_WU}`);
   trail.dispose();
 });
 
@@ -257,9 +267,14 @@ test('the contrail needs real movement, not sub-step jitter', () => {
   trail.dispose();
 });
 
-test('the contrail retires on the clock and drains when the drive goes cold', () => {
+test('the line is never shed: a cold drive reels it in, it does not detach', () => {
   const trail = new ContrailTrail(THREE, {});
   const nozzle = { x: 0, y: 0, z: 0 };
+  const headGap = () => {
+    const s = trail.samplePositions();
+    return s.length ? Math.hypot(nozzle.x - s[0].x, nozzle.y - s[0].y, nozzle.z - s[0].z) : 0;
+  };
+
   for (let i = 0; i < 120; i++) {
     nozzle.x += 2;
     trail.update(1 / 60, nozzle, { drive: 1, emitFloor: 0.08 });
@@ -268,14 +283,32 @@ test('the contrail retires on the clock and drains when the drive goes cold', ()
   for (const s of trail.samplePositions()) {
     assert.ok(s.age < TRAIL_SECONDS, 'samples retire on the clock');
   }
+  assert.ok(headGap() < 1e-3, 'under power the line starts at the nozzle');
 
-  // Cold drive: nothing new is recorded and what is left ages out.
-  for (let i = 0; i < 240; i++) {
+  // THE BUG THIS GUARDS. Recording used to be gated on the drive being lit, so releasing the
+  // throttle froze the head in world space while momentum carried the ship on — a 61 WU gap opened
+  // inside one second and the line hung in space like a shed tail. A history of where the thruster
+  // WAS cannot come unstuck from the thruster. So: still moving, drive cold, and the head must stay
+  // welded to the nozzle while the TAIL is what comes in.
+  const spanBefore = trail.inspect().visibleSpanWU;
+  let worstGap = 0;
+  for (let i = 0; i < 30; i++) {
     nozzle.x += 2;
     trail.update(1 / 60, nozzle, { drive: 0, emitFloor: 0.08 });
+    worstGap = Math.max(worstGap, headGap());
   }
+  assert.ok(worstGap < 1e-3, `coasting must not shed the line, head drifted ${worstGap.toFixed(2)} WU`);
+  assert.ok(
+    trail.inspect().visibleSpanWU < spanBefore - 20,
+    'a cold drive reels the line in from the back',
+  );
+
+  // Stopped and cold: the reel runs the tail all the way onto the head and the line is gone.
+  for (let i = 0; i < 240; i++) trail.update(1 / 60, nozzle, { drive: 0, emitFloor: 0.08 });
   const info = trail.inspect();
-  assert.equal(info.liveSamples, 0, 'the trail drains once the drive is out');
+  // The floor is the shader's, not the trail's: span is clamped off zero so the dissolve cannot
+  // divide by it. Anything at that floor is a line of no length.
+  assert.ok(info.visibleSpanWU <= 0.01, `the line is drawn fully in, ${info.visibleSpanWU} WU left`);
   assert.equal(info.visible, false, 'and stops drawing');
   trail.dispose();
 });
