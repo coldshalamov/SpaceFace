@@ -9,7 +9,7 @@ a dated sprint prompt, an old automation script, or a runtime folder.
 | Blender/glTF/GLB ship, station, place, prop, or VFX-support geometry | `VISUAL_ASSET_PRODUCTION_STANDARD.md`, then `.grok/skills/spaceface-blender-material-truth/SKILL.md` and `ADVANCED_MODEL_TECHNIQUE_CONTRACT.md` for every form or surfacing change. When the activated packet cites `MODEL_ADVERSARIAL_REVIEW_WORKFLOW.md` (including PQ-050), its full-job cycles, still reviews, and cleanup are mandatory. Tier C/D may group a repeated manufactured family |
 | Portrait/contact art | `assets/portraits/AGENTS.md` and its canonical character/capture direction |
 | Concept or generated construction/material reference | `assets/concept/AGENTS.md`; component handoff contract in `AGENT_PROMPTS.md` § E |
-| Cinematic, key art, runtime VFX, compositor, or presentation imagery | `design/graphics-sprints/VISUAL_ITERATION_PROTOCOL.md`, then the owning `src/render/AGENTS.md`, `src/ui/AGENTS.md`, or asset registry |
+| Cinematic, key art, runtime VFX, compositor, or presentation imagery | `VFX_TECHNIQUE_STANDARD.md` first (bans the blurry-square stand-in; distant background stars are the only exception), then `design/graphics-sprints/VISUAL_ITERATION_PROTOCOL.md`, then the owning `src/render/AGENTS.md`, `src/ui/AGENTS.md`, or asset registry. Live cheap-card instances: `SOFT_CARD_INVENTORY.json` |
 | Repository-wide inventory/prioritization | `design/graphics-sprints/VISUAL_ASSET_CATALOG.md` plus live manifests/runtime maps |
 
 Across every class:
