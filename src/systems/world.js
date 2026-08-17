@@ -3757,6 +3757,18 @@ export const world = {
     });
   },
 
+  /**
+   * The POI's LIVE ENTITY position only — no authored-row fallback. Used where a pose is compared
+   * against another entity's pose, so the two can never come from different coordinate frames.
+   */
+  _embodiedPoiPos(poiId) {
+    const active = this.state.world.activeSector;
+    const row = active && (active.pois || []).find((poi) => poi
+      && (poi.poiId === poiId || poi.id === poiId));
+    const entity = row && this.state.entities.get(row.id);
+    return entity && entity.pos ? { x: entity.pos.x, z: entity.pos.z } : null;
+  },
+
   /** Sector-local position of a live POI, or its authored anchor when it is not embodied. */
   _activePoiPos(poiId) {
     const active = this.state.world.activeSector;
@@ -3798,7 +3810,9 @@ export const world = {
       startedTick: this.state.tick,
     });
     if (!spec) return null;
-    spec.team = 0;
+    // Deliberately NOT team 0: that is the player's own team, and an ally the player cannot shoot
+    // would make "if you somehow kill it" impossible rather than very hard. The archetype's own
+    // team stands, so it is an ordinary non-player hull that simply refuses to fight back.
     spec.data = spec.data || {};
     spec.data.theDeveloper = true;
     spec.data.scannerSignalKind = 'archive';
@@ -3901,8 +3915,13 @@ export const world = {
     const own = this.state.world.theFace
       || (this.state.world.theFace = normalizeTheFaceState(null));
     if (own.phase === 'seen') return true;
-    const bodyPos = this._activePoiPos(THE_FACE.poiId);
-    const shipPos = this.state.player && this.state.player.pos;
+    // Both positions must come from LIVE ENTITIES. `state.player` is the credits/cargo/flags record
+    // and carries no position at all, so reading a pose off it produced null every time and made the
+    // arc unreachable; and mixing an entity pose with an authored sector-local row would solve a
+    // bearing across two coordinate frames. The moon has to be embodied for the far side to be a
+    // place you can actually be looking at, which is the honest condition anyway.
+    const bodyPos = this._embodiedPoiPos(THE_FACE.poiId);
+    const shipPos = this._playerGlobalPos();
     const solution = faceApproachSolution(shipPos, bodyPos);
     if (!solution || !solution.resolved) return false;
     own.phase = 'seen';

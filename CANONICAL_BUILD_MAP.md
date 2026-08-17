@@ -391,12 +391,24 @@ and `check:baseline` were green *before* it started, so the after-state comparis
   ring and this ships without one, because the repo already decided that question — the `pressure`
   phase uses broken vapor shears *specifically* to stop the cue rebuilding a ring, and AC-09's
   accepted grammar bans a circular ring for every style. Adding it failed three shipped assertions.
-- **Plan 07 LIVING WORLD — re-audited, no gap found.** Its acceptance route already exists and
-  passes: `arcade-core-living-island-helios-chain` logs the job transitions, crosses ore through a
-  physical pod, opens a real pirate intercept, gets a lawful patrol response, and delivers, all
-  inside ten sim-minutes; `arcade-core-wanted-lifecycle` covers §3's bounded-decay memory rule with
+- **Plan 07 LIVING WORLD — re-audited, no buildable gap found.** Its acceptance route already exists
+  and passes: `arcade-core-living-island-helios-chain` logs the job transitions, crosses ore through
+  a physical pod, opens a real pirate intercept, gets a lawful patrol response, and delivers, all
+  inside ten sim-minutes; `arcade-core-wanted-lifecycle` covers §3's bounded-decay memory test with
   no reputation move. §4's twelve NPC-type seeds are explicitly "handed to content agents ... over
   time" and are not a closure condition.
+  §3 also names a second, separate obligation — *audit `lawSecurity.js`, `dangerModel.js`,
+  `aceMemory.js`, `moralMemory.js` against the four I-7 rules; cap or delete any violating path*.
+  That audit was done **structurally, not line by line**, and the distinction matters: what was read
+  is every escalation, decay, radius and cap path in the four files, not all 4,100 lines. Result, by
+  name: `lawSecurity.js` is heavily locality-gated and its decay is the one the wanted-lifecycle test
+  already proves; `dangerModel.js` carries bounded caps throughout; `aceMemory.js` bounds every
+  accumulating list (`.slice(-8)`) and caps its escalation ladder at `PIRATE_PROMOTION_MAX_TIER`
+  with terminal states (captured / fled); `moralMemory.js` is write-once per individual and cannot
+  escalate at all. The two persistent stores remember **named individuals**, which I-7 permits — its
+  restriction is on faction reputation, and neither writes it. **Nothing was capped or deleted
+  because nothing was found violating.** A line-by-line read of those four files remains unowed but
+  unperformed.
 - **Plan 08 FACTORY LOOP — the missing instrument built.** Custody, raids, both outcomes and their
   save/load resumption were already covered by `arcade-core-claim-carrier` and `claim-defense`. The
   genuine gap was the named economy check, which nothing in the repo implemented; it is now asserted
