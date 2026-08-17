@@ -210,10 +210,22 @@ authority.
 harvests, orphan refs, or a corrupt local clone, start at
 [`design/program/WORKTREE_RECOVERY.md`](./design/program/WORKTREE_RECOVERY.md). Current master,
 accepted receipts, exact manifests, and exact live-path writers outrank the recovered bytes and their
-historical prose. The 2026-08-08 transaction and per-source decisions are durable in
+historical prose. The 2026-08-17 closeout of the external `SpaceFace-archives` parking lot is
+[`SPACEFACE-ARCHIVES-2026-08-17-REPORT.md`](./design/program/roadmap/receipts/SPACEFACE-ARCHIVES-2026-08-17-REPORT.md).
+The 2026-08-08 `_recovery` transaction remains durable in
 [`WORKTREE-RECOVERY-2026-08-08-REPORT.md`](./design/program/roadmap/receipts/WORKTREE-RECOVERY-2026-08-08-REPORT.md).
-Do not treat repeated exports as separate projects, and do not keep a safe disjoint unit idle because
-one exact path has a live writer.
+Do not recreate `SpaceFace-archives`. Do not treat repeated exports as separate projects, and do not
+keep a safe disjoint unit idle because one exact path has a live writer.
+
+That archives folder hid **no new ship or place**. Unfinished look-dev from it is already admitted:
+
+- Ashline dart / lode / rig → `PQ-050.13`–`PQ-050.15` from current factory bodies and `m4_ashline_v2`.
+  Do not restore the rejected July 21 v1 depth polish.
+- Helios lark / cradle / span → `PQ-050.16`–`PQ-050.18`. The civilian family on master already
+  matches the scratch byte-for-byte.
+- Other flyable remasters → remaining `PQ-050` leaves. Hitch stays frozen.
+- Stopped-Lark express liner → `PQ-049` (already tracked; not in that folder).
+- Dock / hulk / debris → the place remaster handoff above.
 
 Recovery effort uses `XS` (up to 30 minutes), `S` (0.5-2 hours), `M` (2-4 hours), `L` (4-8 hours),
 and `XL` (multi-day) only as scheduling metadata. Finish `XS` through `L` in the active recovery

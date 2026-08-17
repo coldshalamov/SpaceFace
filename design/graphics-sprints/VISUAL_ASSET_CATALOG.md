@@ -138,6 +138,15 @@ and independently accepted on its own exact hashes.
 `REC-GROK-KES-SALVAGE` classified every unique Blender/GLB family as DROP and deleted the exact
 path on 2026-08-12. Do not recreate or promote from it.
 
+### Stopped July 2026 external archives
+
+`C:/Users/93rob/Documents/GitHub/SpaceFace-archives` was a parking lot of unregistered
+worktree tarballs, not a live worktree. The 2026-08-17 closeout classified every item
+`DROP` and deleted the folder. Helios civilian in that scratch already matches master.
+The larger Ashline v1 files were a rejected polish of the old silhouette; remaster
+through `PQ-050.13`–`PQ-050.15` from current factory bodies and `m4_ashline_v2`.
+Do not recreate the folder.
+
 ## Standalone and code-native visuals
 
 - 23 authored recurring portraits.
@@ -155,6 +164,7 @@ path on 2026-08-12. Do not recreate or promote from it.
 - Two hostile roles alias the same Ashline Rig; the foundry Corsair/Reaver variants are donor directions, not accepted alternates.
 - The stopped Lark source states are tracked as a non-runtime express-liner donor; accepted courier Lark identity is frozen and the historical refs are no longer production dependencies.
 - The stopped Grok clone was classified DROP and deleted 2026-08-12; current master already owned later versions of the same families.
+- The July 2026 `SpaceFace-archives` parking lot was classified DROP and deleted 2026-08-17; it contained no unique live ship or place.
 - Recent dock, hulk, debris, production Wasp, Gatling, portraits, thruster masks, Cathedral, and trade-hub work should be preserved and reviewed before any reauthoring.
 - icons_atlas, reticle, and menu_background are cleanup/audit candidates; no player-facing upgrade priority is assigned without live reference proof.
 

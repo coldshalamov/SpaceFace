@@ -6,7 +6,10 @@ content, orphan branches, or corrupt local clones. It converts archaeological ma
 production work without treating age, branch names, or raw file counts as evidence of value.
 
 The latest completed transaction is recorded in
-[`roadmap/receipts/WORKTREE-RECOVERY-2026-08-08-REPORT.md`](./roadmap/receipts/WORKTREE-RECOVERY-2026-08-08-REPORT.md).
+[`roadmap/receipts/SPACEFACE-ARCHIVES-2026-08-17-REPORT.md`](./roadmap/receipts/SPACEFACE-ARCHIVES-2026-08-17-REPORT.md).
+That closeout deletes the external `SpaceFace-archives` parking lot. The earlier
+[`roadmap/receipts/WORKTREE-RECOVERY-2026-08-08-REPORT.md`](./roadmap/receipts/WORKTREE-RECOVERY-2026-08-08-REPORT.md)
+transaction remains durable for the 13 harvested `_recovery` sources.
 
 ## Occupancy and coordination
 

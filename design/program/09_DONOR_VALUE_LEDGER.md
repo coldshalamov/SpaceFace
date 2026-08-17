@@ -5,8 +5,10 @@
 **Authority boundary:** `master` is the product authority. This ledger records selective donor value
 and cleanup decisions; it does not make any donor branch current, accepted, or safe to merge whole.
 Dirty-path counts and ahead/behind counts are audit snapshots and must be refreshed before removal.
-`design/program/_review/` was not read or classified; it was moved unread to
-`SpaceFace-archives/primary-review-quarantine-20260719`.
+`design/program/_review/` was not read or classified in the July 21 audit; it was
+moved unread to `SpaceFace-archives/primary-review-quarantine-20260719`. The
+2026-08-17 closeout read those notes, found no remaining player-facing work, and
+deleted that folder with the rest of `SpaceFace-archives`.
 
 ## 1. Rules
 
@@ -26,8 +28,8 @@ Dirty-path counts and ahead/behind counts are audit snapshots and must be refres
 | `SpaceFace` / `master` | Product authority at `54548e09`; HUD `ea698805`; Helios civilian family `54548e09`; PQ-001..PQ-016 integrated. | Sole registered worktree and product authority. | Never remove. |
 | `SpaceFace-graphics-closeout` / `codex/graphics-closeout-20260719` | Physical worktree removed; clean tip `8e860439` is reachable from `master`. | No unique product work. | Complete. |
 | Rejected performance experiment / `archive/performance-pooling-experiment-20260720` | Base tip `99cad5b5` is integrated; evidence hardening is replayed. Physical worktree removed at clean tip `9d626fd8`; rejected implementation preserved by annotated tag and obsolete local branch retired. | Reject post-synthesis range `04805924..9d626fd8`. The measured primitive, merged, corrected exact-key, and BatchedMesh implementations all lost to current ship-local batching on target Intel hardware; the final run measured 250.1/616.8/433.3 ms p95 for 10/25/50 ships and had correctness/PBR blockers. This rejects those implementations, not every possible hybrid design. The bounded hybrid hypothesis is retained in `06_RETAINED_FUTURE_BACKLOG.md` at `1074c078`. | Complete. Never replay the rejected range; retain the tag/evidence for archaeology only. |
-| Former `SpaceFace-graphics-overhaul` / `codex/graphics-overhaul` | Tip `cab2d122`; 241 existing dirty/untracked files plus 3 tracked deletions were inventoried. Complete payload archive: `SpaceFace-archives/graphics-overhaul-donor-20260721/dirty-files-complete.tar.gz`, SHA-256 `D3FC1FD5455DDD3EC575DC063000DEDEF9B959B770A3A3990F22F37EDA28BAA6`; recovery tag `archive/graphics-overhaul-donor-20260721`. | No whole replay. Accepted runtime concepts were already synthesized; the reviewed Helios civilian family was promoted separately at `54548e09`; mixed code/process residue was rejected. | Complete. Physical worktree and obsolete branch removed; use tag/archive only for selective archaeology. |
-| Grok family-depth scratch | Complete scratch repository archived at `SpaceFace-archives/grok-family-depth-20260721/scratch-repository-complete.tar.gz`, SHA-256 `F71C283EA5779C2AE053902E2A5C25BF0DDC47ED5517C3A6835412CEB781FA31`. | Helios civilian accepted and promoted at `54548e09`. Ashline runtime promotion rejected because it polishes the older silhouette family while the stronger Ashline V2 source foundation exists; retain only as treatment reference. | Not a registered worktree. Archive is the recovery authority. |
+| Former `SpaceFace-graphics-overhaul` / `codex/graphics-overhaul` | Tip `cab2d122`; 241 existing dirty/untracked files plus 3 tracked deletions were inventoried. External tarball deleted 2026-08-17 (was SHA-256 `D3FC1FD5455DDD3EC575DC063000DEDEF9B959B770A3A3990F22F37EDA28BAA6`). Recovery tag `archive/graphics-overhaul-donor-20260721` remains. | No whole replay. Accepted runtime concepts were already synthesized; the reviewed Helios civilian family was promoted separately at `54548e09`; mixed code/process residue was rejected. | Complete. Physical worktree, obsolete branch, and external tarball removed; use the git tag only for selective archaeology. |
+| Grok family-depth scratch | Complete scratch repository was archived at `SpaceFace-archives/grok-family-depth-20260721/scratch-repository-complete.tar.gz`, SHA-256 `F71C283EA5779C2AE053902E2A5C25BF0DDC47ED5517C3A6835412CEB781FA31`. External tarball deleted 2026-08-17. | Helios civilian accepted and promoted at `54548e09` and is byte-identical to the scratch. Ashline runtime promotion rejected because it polishes the older silhouette family while the stronger Ashline V2 source foundation exists. Unique rejected hashes are in the 2026-08-17 receipt; they were not copied. | Complete. Not a registered worktree. Do not recreate the scratch. Remaster Ashline via `PQ-050.13`–`PQ-050.15`. |
 | `SpaceFace-oc-helios-golden` / `opencode/helios-golden-station` | Physical worktree removed after a 101-behind / 0-unique / 2.53 GB audit. | Full replacement rejected. The useful builder, precursor receipt, editable blend, three-LOD source, and release asset are on `master`. | Complete. |
 | `SpaceFace-depth-actualization` / `grok/depth-player-route-actualization` | Physical worktree removed. Branch `bf1dfce2` and annotated archive tag remain; 17 raw artifacts are hash-archived externally. | Selective product donor only; the remaining black-box candidate is recorded below. | Complete; never whole-merge the branch. |
 | Four orchestration satellites | Physical worktrees removed after individual dirt/process audits. | Superseded station shell, incorrect Helix faction edit, old natural-route harness, and defective recovery variant rejected. Branch refs remain. | Complete. |
@@ -175,3 +177,16 @@ count is now 0.
 Use `git worktree remove` only after verifying the resolved absolute target and clean/disposition state.
 Do not recursively delete computed paths, prune branches merely because a folder looks stale, or remove a
 worktree while an owner process is active.
+
+## 9. 2026-08-17 closeout — external `SpaceFace-archives`
+
+The July 21 parking lot at `C:\Users\93rob\Documents\GitHub\SpaceFace-archives` is
+classified `DROP` and deleted. Receipt:
+[`roadmap/receipts/SPACEFACE-ARCHIVES-2026-08-17-REPORT.md`](./roadmap/receipts/SPACEFACE-ARCHIVES-2026-08-17-REPORT.md).
+
+This supersedes the "use tag/archive only for selective archaeology" holding pattern
+in §2 for those exact external tarballs. Git tags still keep the committed donor
+tips. The family-depth scratch had no tag; its only unique bytes were a rejected
+Ashline v1 polish of the old silhouette, recorded by hash in the receipt and not
+copied into the product tree. Do not recreate the folder. Remaining polish is
+`PQ-050` / `PQ-049` / the place remaster handoff, not a new donor lane.

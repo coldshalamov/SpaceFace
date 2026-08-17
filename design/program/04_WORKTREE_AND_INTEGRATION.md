@@ -125,8 +125,8 @@ bounded repair tasks rather than restarting a broad harness loop.
 - HUD commit `ea698805` and Helios civilian promotion `54548e09` are on the public browser/Electron
   route. Focused and route checks are listed in `08_GRAPHICS_OVERHAUL_CHECKPOINT.md`.
 - The `SpaceFace-graphics-overhaul` worktree and `codex/graphics-overhaul` branch are removed. Exact
-  committed tip `cab2d122` remains under `archive/graphics-overhaul-donor-20260721`; its complete dirty
-  payload remains in the external SHA-256 archive recorded in `09_DONOR_VALUE_LEDGER.md`.
+  committed tip `cab2d122` remains under `archive/graphics-overhaul-donor-20260721`. The external
+  dirty-payload tarball was deleted in the 2026-08-17 archives closeout.
 
 ## Historical integration checkpoint — 2026-07-20
 
@@ -260,9 +260,11 @@ The bulk checkpoint already exists. These are audit units, not permission to rew
    investigated and rejected; strict headed acceptance remains separate evidence-gated work on
    current master. The tag preserves the rejected code while `1074c078` preserves the hybrid research
    hypothesis.
-6. **RESIDUAL-WIP** — physical Git worktree cleanup is complete. The rejected Ashline scratch and
-   former mixed graphics donor are preserved outside the live checkout by hash-bound archives; use
-   `09_DONOR_VALUE_LEDGER.md` for recovery refs rather than recreating a donor worktree blindly.
+6. **RESIDUAL-WIP** — physical Git worktree cleanup is complete. The 2026-08-17 closeout deleted
+   the external `SpaceFace-archives` parking lot (rejected Ashline scratch + mixed graphics
+   harvest). Use `09_DONOR_VALUE_LEDGER.md` and
+   `roadmap/receipts/SPACEFACE-ARCHIVES-2026-08-17-REPORT.md` rather than recreating those
+   folders. Git tags still keep the committed donor tips.
 
 ## Re-run inventory
 
