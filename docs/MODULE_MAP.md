@@ -27,7 +27,7 @@
 | `index.html` | DOM shell + Three.js importmap. z-layered: canvas (0) < vignette (5) < hud (10) < modal-backdrop (90) < screens (100) < toasts (1000) < alerts (1100). | `#ui-root` is `pointer-events:none`; interactive children opt back in. |
 | `src/main.js` | Boot + bootstrap. **Boots to Main Menu** (`state.mode='menu'`). On `game:new` → save transition deferral → `startNewGame()` → builds world → **hard gate: refuses flight if authored assets not ready** → `state.mode='flight'`. Token creation and startup both wait for any synchronous restore to drain. | Don't weaken the asset-ready gates — they prevent silent procedural-fallback ships. |
 | `server.js` | Zero-dependency static dev server (port 8123). | Browser route is the primary player path. |
-| `electron/main.cjs` | Optional desktop shell. Serves the SAME game route on private port 41788. | Shell-only; must not change gameplay/assets/reachability. `check:launch-policy` enforces. |
+| `electron/main.cjs` | Optional desktop shell. Serves the SAME game route on private port 41788. Player saves also go to the shared loopback store both shells read. | Shell-only; must not change gameplay/assets/reachability. Isolated evidence must not use the player save directory. `check:launch-policy` enforces. |
 | `src/core/gameState.js` | `createGameState(seed)` — the single flat `GameState`, including default backend flags and raw input axes (`actions.*` are added by input.js). | The one state object every system reads/writes. See `AGENTS.md` §6 for single-writer rules. |
 | `src/core/eventBus.js` | The event bus. All cross-system comms. Event names: `domain:verb`, lowercase, `:`-delimited. | ARCHITECTURE §0.3, §4.4. |
 | `src/core/registry.js` 🟢 | System registry: instantiates systems, runs `init(ctx)` in registration order, selects the flight/AI backends, and steps `UPDATE_ORDER`. `get(name)` returns the selected slot winner by name. | Authoritative order; use generated `SYSTEM_REGISTRY.md` as the navigable projection. |
@@ -197,7 +197,7 @@
 
 | File | Role |
 |---|---|
-| `src/save/saveSystem.js` | Versioned saves, autosave, migrations. Destructive restore owns one transient latest-route callback, releases ownership, then drains the winner. A failed superseded outer restore returns stale without publishing its error; only the winner owns failure output. |
+| `src/save/saveSystem.js` | Versioned saves, autosave, migrations. Destructive restore owns one transient latest-route callback, releases ownership, then drains the winner. A failed superseded outer restore returns stale without publishing its error; only the winner owns failure output. Player slots also mirror to the shared loopback store so Browser and Electron Continue see the same campaign. |
 | `src/audio/audioSystem.js` / `synth.js` | Shared Web Audio mix for synthesized and licensed authored sources. AudioContext is created lazily on first gesture. |
 | `src/data/audioRecipes.js` | Synth recipes. |
 | `src/systems/presentationOrchestrator.js` + `presentationAdapters.js` 🟢 | Registered presentation system: produces normalized cues, fans them to camera/audio/UI buses. |

@@ -210,7 +210,7 @@ export const helpScreen = {
     });
     rootEl.appendChild(bar);
 
-    const body = el('div', 'sf-col');
+    const body = el('div', 'sf-settings-pane');
     body.style.overflowY = 'auto';
     body.style.flex = '1';
     body.style.minHeight = '0';

@@ -27,6 +27,7 @@
 8. [The sim/hash check broke after my change](#8-the-simhash-check-broke-after-my-change)
 9. [The Massline breaks during ordinary piloting](#9-the-massline-breaks-during-ordinary-piloting)
 10. [Check-tooling traps: hidden links, fail-fast aggregates, golden churn](#10-check-tooling-traps)
+11. [Chrome Continue is empty after playing in the desktop app](#11-chrome-continue-is-empty-after-playing-in-the-desktop-app)
 
 ---
 
@@ -402,6 +403,24 @@ diffs the snapshots, and answers the only question that matters:
 
 Nine tenths of the churn in that hash is the economy price-cycle table, which is not physics at all,
 so "the hash changed" is never by itself a reason to do anything. The verdict is.
+
+---
+
+## 11. Chrome Continue is empty after playing in the desktop app
+
+**Symptom:** SpaceFace.bat (Chrome) and SpaceFace-Desktop.bat (Electron) are supposed to be the same
+game. Continue / Load in Chrome does not show the desktop campaign.
+
+**Cause:** The game code is shared. The save *drawer* was not. Saves live in `localStorage`, which
+browsers key by app + address. Chrome uses port 8123 in the Chrome profile; Electron uses port 41788
+in Electron's own profile. Those are two locked drawers, not two views of one campaign.
+
+**The live fix:** both player launchers write the same files under the machine's SpaceFace
+`player-saves` folder and expose them on the loopback store. The save system copies that store into
+`localStorage` at boot and writes back on every save. Isolated evidence probes and `node server.js`
+without the launcher env do **not** touch the player drawer.
+
+**Wrong first look:** forking gameplay, ports, or "Chrome vs Electron are different games."
 
 ---
 

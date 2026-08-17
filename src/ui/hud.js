@@ -1315,7 +1315,7 @@ export function createHud(ctx, alerts) {
     // Braking solution (spec §15.3): turn physics from confusion into skill by showing the
     // projected stop point, fastest stop mode, and stop time/distance.
     if (sp > 0.5) {
-      const brake = estimateBrakingSolution(p, resolvePropulsionProfile(p));
+      const brake = estimateBrakingSolution(p, resolvePropulsionProfile(p, state));
       lines.push(`Best stop: ${brake.bestMode.replace('-', ' ')}`);
       lines.push(`Direct: ${brake.directDistance.toFixed(0)} wu / ${brake.directTimeS.toFixed(1)} s`);
       lines.push(`Flip-and-burn: ${brake.flipBurnDistance.toFixed(0)} wu / ${brake.flipBurnTimeS.toFixed(1)} s`);
@@ -3857,7 +3857,7 @@ export function createHud(ctx, alerts) {
 
     const drive = (state.input && state.input.travelDrive) || null;
     const driveState = drive && TRAVEL_DRIVE_STATES.includes(drive.state) ? drive.state : 'off';
-    const profile = resolvePropulsionProfile(p);
+    const profile = resolvePropulsionProfile(p, state);
     // Never re-derive the ceiling here: prefer the value the kernel published, else the exported
     // resolver. One owner for the rule (D5's amendment exists because a second copy drifted).
     const ceiling = (drive && Number.isFinite(drive.ceiling) && drive.ceiling > 0)
