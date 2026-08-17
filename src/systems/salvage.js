@@ -18,6 +18,12 @@
 // draw-order, so interleaving with other sector:enter consumers can't shift our rolls.
 
 import { zonesForSector, VESTA_DERELICT_SALVAGE_SOURCE } from '../data/sectorZones.js';
+import {
+  BONE_YARD,
+  BONE_YARD_SALVAGE_SOURCES,
+  BONE_YARD_SEGMENTS,
+  boneYardSalvageSource,
+} from '../data/boneYardLandmark.js';
 import { pickWreckMission, wreckMissionById } from '../data/wreckMissions.js';
 
 // Tuning (kept conservative so we never blow the ship/entity budget — brief: ≤2 salvage per zone).
@@ -49,6 +55,7 @@ export const salvage = {
     this.helpers = ctx.helpers;
     const state = this.state;
     this._ensureState();
+    this._boneYardArrivalSector = null;
     if (this.helpers) {
       // Source-state API. Mining and traffic can ask this owner to claim/drain/take the authored
       // Vesta wreck, but never write state.salvage or a source-backed wreck pool themselves.
@@ -72,7 +79,9 @@ export const salvage = {
     this.bus.on('save:restoring', () => {
       state.salvage.points = [];
       state.salvage.plannedSectorId = null;
+      this._boneYardArrivalSector = null;
     });
+    this.bus.on('save:loaded', () => this._reconcileBoneYardAfterLoad());
   },
 
   newGame() {
@@ -289,6 +298,11 @@ export const salvage = {
     const spawnEntity = this.helpers && this.helpers.spawnEntity;
 
     for (const zone of zones) {
+      if (zone.boneYardLandmark === BONE_YARD.id) {
+        const points = this._makeBoneYard(sectorId, zone, spawnEntity);
+        state.salvage.points.push(...points);
+        continue;
+      }
       if (zone.salvageCutterSource) {
         const rec = this._makeSourceSalvagePoint(sectorId, zone, zone.salvageCutterSource, spawnEntity);
         if (rec) state.salvage.points.push(rec);
@@ -379,17 +393,21 @@ export const salvage = {
     if (!record || record.extracted || poolTotal(record.remainingPool) <= 0) return null;
 
     const existing = this._entityForPoint(record.salvagePointId, sourceKey);
+    let materialized = existing;
     let entityId = existing ? existing.id : null;
     if (!existing && typeof spawnEntity === 'function') {
       const ent = spawnEntity({
         type: 'wreck',
         pos: { x: descriptor.pos.x, z: descriptor.pos.z },
-        radius: WRECK_RADIUS,
-        mass: WRECK_MASS,
+        rot: Number(descriptor.rot) || 0,
+        radius: Number(descriptor.radius) || WRECK_RADIUS,
+        mass: Number(descriptor.mass) || WRECK_MASS,
         hull: 1,
         hullMax: 1,
+        collides: descriptor.collides === true,
+        physicsBody: descriptor.physicsBody || false,
         data: {
-          parentType: 'freighter',
+          parentType: descriptor.parentType || 'freighter',
           loot: [],
           salvagePool: clonePool(record.remainingPool),
           salvageTimeLeft: WRECK_SALVAGE_TIME,
@@ -397,10 +415,39 @@ export const salvage = {
           salvageSourceKey: sourceKey,
           isCommunicator: false,
           wreckMissionId: null,
-          scanLabel: 'Dead Freighter Drift',
+          scanLabel: descriptor.scanLabel || 'Dead Freighter Drift',
+          name: descriptor.name || descriptor.scanLabel || 'Dead Freighter Drift',
+          ...(descriptor.wildlifeAnchor ? {
+            scavengerWildlifeAnchor: true,
+            scavengerWildlifeMarkerId: `${BONE_YARD.id}:${descriptor.segmentId}`,
+          } : {}),
+          ...(descriptor.competitionRole ? {
+            salvageCompetitionRole: descriptor.competitionRole,
+            salvageCompetitionSiteId: descriptor.competitionSiteId || null,
+          } : {}),
+          ...(descriptor.segmentId ? {
+            boneYardLandmark: descriptor.competitionSiteId === BONE_YARD.id,
+            boneYardSegmentId: descriptor.segmentId,
+          } : {}),
         },
       });
+      materialized = ent || null;
       entityId = ent ? ent.id : null;
+    }
+    // The production entity save may restore a source body before salvage's durable ledger is
+    // replanned. Reapply authored presentation/competition identity to that same body rather than
+    // spawning a duplicate or leaving Continue with a generic freighter label.
+    if (materialized && materialized.data && descriptor.segmentId) {
+      materialized.data.boneYardLandmark = descriptor.competitionSiteId === BONE_YARD.id;
+      materialized.data.boneYardSegmentId = descriptor.segmentId;
+      materialized.data.salvageCompetitionRole = descriptor.competitionRole || null;
+      materialized.data.salvageCompetitionSiteId = descriptor.competitionSiteId || null;
+      materialized.data.scavengerWildlifeAnchor = descriptor.wildlifeAnchor === true;
+      materialized.data.scavengerWildlifeMarkerId = descriptor.wildlifeAnchor
+        ? `${BONE_YARD.id}:${descriptor.segmentId}`
+        : null;
+      materialized.data.name = descriptor.name || materialized.data.name;
+      materialized.data.scanLabel = descriptor.scanLabel || materialized.data.scanLabel;
     }
     return {
       id: record.salvagePointId,
@@ -415,6 +462,111 @@ export const salvage = {
     };
   },
 
+  _makeBoneYard(sectorId, zone, spawnEntity) {
+    if (sectorId !== BONE_YARD.sectorId || zone.id !== BONE_YARD.zoneId
+      || typeof spawnEntity !== 'function') return [];
+    const sourceBySegment = new Map(BONE_YARD_SALVAGE_SOURCES.map((source) => [source.segmentId, source]));
+    const liveSegments = new Set((this.state.entityList || [])
+      .filter((entity) => entity && entity.alive !== false && entity.data?.boneYardSegmentId)
+      .map((entity) => entity.data.boneYardSegmentId));
+    const points = [];
+    for (const segment of BONE_YARD_SEGMENTS) {
+      const source = sourceBySegment.get(segment.id);
+      if (source) {
+        const point = this._makeSourceSalvagePoint(sectorId, zone, {
+          ...source,
+          rot: segment.rot,
+          radius: segment.radius,
+          mass: 5200,
+          collides: true,
+          physicsBody: {
+            schemaVersion: 1,
+            radius: segment.radius,
+            mass: 5200,
+            inertiaY: 0.5 * 5200 * segment.radius * segment.radius,
+            dynamic: true,
+            ccd: false,
+            material: 'debris',
+            revision: 0,
+          },
+          parentType: 'military',
+          name: `${BONE_YARD.name} Open Plate ${points.length + 1}`,
+          scanLabel: 'BONE YARD · OPEN PLATE · CONTESTED SALVAGE',
+          competitionRole: 'claim-jumper',
+          competitionSiteId: BONE_YARD.id,
+        }, spawnEntity);
+        if (point) points.push(point);
+        continue;
+      }
+      if (liveSegments.has(segment.id)) continue;
+      spawnEntity({
+        type: 'wreck',
+        team: 2,
+        factionId: null,
+        pos: { x: segment.pos.x, z: segment.pos.z },
+        vel: { x: 0, z: 0 },
+        rot: segment.rot,
+        radius: segment.radius,
+        mass: 1e9,
+        hull: 1e9,
+        hullMax: 1e9,
+        collides: true,
+        physicsBody: {
+          schemaVersion: 1,
+          radius: segment.radius,
+          mass: 1e9,
+          inertiaY: 1e9,
+          dynamic: false,
+          ccd: false,
+          material: 'station',
+          revision: 0,
+        },
+        data: {
+          parentType: 'military',
+          kind: 'wreck',
+          boneYardLandmark: true,
+          boneYardSegmentId: segment.id,
+          name: `${BONE_YARD.name} Fused Hulk`,
+          scanLabel: 'BONE YARD · FUSED HULL TERRAIN',
+          salvagePool: {},
+          playerVisitSalvageOnly: true,
+          ordinaryRewardsSuppressed: true,
+        },
+      });
+      liveSegments.add(segment.id);
+    }
+    return points;
+  },
+
+  _reconcileBoneYardAfterLoad() {
+    if (!this.state || this.state.world?.currentSectorId !== BONE_YARD.sectorId) return 0;
+    let restored = 0;
+    for (const entity of this.state.entityList || []) {
+      const source = entity && entity.alive !== false && entity.data
+        ? boneYardSalvageSource(entity.data.salvageSourceKey)
+        : null;
+      if (!source) continue;
+      entity.data.boneYardLandmark = true;
+      entity.data.boneYardSegmentId = source.segmentId;
+      entity.data.salvageCompetitionRole = 'claim-jumper';
+      entity.data.salvageCompetitionSiteId = BONE_YARD.id;
+      entity.data.scavengerWildlifeAnchor = source.wildlifeAnchor === true;
+      entity.data.scavengerWildlifeMarkerId = source.wildlifeAnchor
+        ? `${BONE_YARD.id}:${source.segmentId}`
+        : null;
+      entity.data.name = `${BONE_YARD.name} Open Plate`;
+      entity.data.scanLabel = 'BONE YARD · OPEN PLATE · CONTESTED SALVAGE';
+      restored += 1;
+    }
+    // Continue restores saved persistent traffic after the sector:enter plan. Reconcile the fused
+    // terrain once at the finished restore edge, adding only missing authored slots. Extracted
+    // source slots remain honest gaps because _makeSourceSalvagePoint consults the durable ledger.
+    const zone = zonesForSector(BONE_YARD.sectorId)
+      .find((candidate) => candidate && candidate.id === BONE_YARD.zoneId);
+    if (zone) this._makeBoneYard(BONE_YARD.sectorId, zone, this.helpers?.spawnEntity);
+    return restored;
+  },
+
   // =====================================================================================
   // TRIGGER (proximity OR scan) → reveal log + offer mission
   // =====================================================================================
@@ -422,6 +574,7 @@ export const salvage = {
     const list = state.salvage && state.salvage.points;
     if (!list || !list.length) return;             // no salvage → strict no-op (golden-sim safe)
     if (state.mode && state.mode !== 'flight') return;
+    this._resolveBoneYardArrival(state);
     // Any un-offered communicators left? If not, skip the proximity scan entirely.
     let pending = false;
     for (const s of list) { if (s.isCommunicator && !s.offered) { pending = true; break; } }
@@ -435,6 +588,28 @@ export const salvage = {
       const dx = s.pos.x - player.pos.x, dz = s.pos.z - player.pos.z;
       if (dx * dx + dz * dz <= r2) this._offerFromPoint(s);
     }
+  },
+
+  _resolveBoneYardArrival(state) {
+    if (!state || state.world?.currentSectorId !== BONE_YARD.sectorId
+      || this._boneYardArrivalSector === BONE_YARD.sectorId) return false;
+    const player = state.entities && state.entities.get(state.playerId);
+    if (!player || player.alive === false || !player.pos) return false;
+    const dx = player.pos.x - BONE_YARD.globalCenter.x;
+    const dz = player.pos.z - BONE_YARD.globalCenter.z;
+    if (dx * dx + dz * dz > BONE_YARD.revealRadius * BONE_YARD.revealRadius) return false;
+    this._boneYardArrivalSector = BONE_YARD.sectorId;
+    this.bus.emit('poi:discovered', {
+      poiId: BONE_YARD.mapTargetId,
+      sectorId: BONE_YARD.sectorId,
+      type: 'wreck',
+    });
+    this.bus.emit('toast', {
+      text: 'THE BONE YARD · plate claims are live — other cutters are already inbound',
+      kind: 'info',
+      ttl: 5,
+    });
+    return true;
   },
 
   _onScan(p) {
@@ -522,8 +697,10 @@ function freshSalvageState() {
 }
 
 function sourceDescriptor(sourceKey) {
-  if (sourceKey !== VESTA_DERELICT_SALVAGE_SOURCE.sourceKey) return null;
-  return VESTA_DERELICT_SALVAGE_SOURCE;
+  if (sourceKey === VESTA_DERELICT_SALVAGE_SOURCE.sourceKey) {
+    return VESTA_DERELICT_SALVAGE_SOURCE;
+  }
+  return boneYardSalvageSource(sourceKey);
 }
 
 function freshSourceRecord(descriptor) {

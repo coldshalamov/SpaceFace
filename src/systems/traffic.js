@@ -4816,6 +4816,19 @@ export const traffic = {
       }
       pair.entity.data.jobKind = 'salvor';
       pair.entity.data.generalSalvor = true;
+      if (target.data && target.data.salvageCompetitionRole === 'claim-jumper') {
+        pair.entity.data.salvageCompetitionRole = 'claim-jumper';
+        pair.entity.data.salvageCompetitionSiteId = target.data.salvageCompetitionSiteId || null;
+        pair.entity.data.name = 'Bone Yard Claim-Jumper';
+        pair.entity.data.scanLabel = 'CLAIM-JUMPER CUTTER · BONE YARD PLATE CLAIM';
+        pair.entity.data.trafficLabel = 'Claim-Jumper Cutter';
+      } else if (pair.entity.data.salvageCompetitionRole === 'claim-jumper') {
+        delete pair.entity.data.salvageCompetitionRole;
+        delete pair.entity.data.salvageCompetitionSiteId;
+        pair.entity.data.name = TRAFFIC_ROLES.salvor.label;
+        pair.entity.data.scanLabel = TRAFFIC_ROLES.salvor.label;
+        pair.entity.data.trafficLabel = TRAFFIC_ROLES.salvor.label;
+      }
       if (spec.payload && spec.payload.salvageSource) {
         pair.entity.data.salvageSource = spec.payload.salvageSource;
         pair.entity.data.salvagePointId = spec.payload.salvagePointId || null;

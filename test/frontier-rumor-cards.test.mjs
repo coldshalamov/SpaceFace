@@ -10,6 +10,7 @@ import {
   normalizeFrontierRumorState,
 } from '../src/data/frontierRumors.js';
 import { SECTORS } from '../src/data/sectors.js';
+import { zonesForSector } from '../src/data/sectorZones.js';
 import { world } from '../src/systems/world.js';
 import { frontierRumorMapReadouts } from '../src/ui/frontierRumorMapLayer.js';
 
@@ -57,6 +58,9 @@ test('bar rumor rotation covers four real regional target kinds without exposing
     assert.equal(Object.hasOwn(offer, 'targetPos'), false, 'a sold card must not disclose the target point');
     if (offer.kind === 'vein') {
       assert.ok((sector.fields || []).some((field) => field.id === offer.targetId), 'vein card binds a real field');
+    } else if (offer.targetPlaceKind === 'zone') {
+      assert.ok(zonesForSector(offer.sectorId).some((zone) => zone.id === offer.targetId),
+        `${offer.kind} card binds a real authored zone`);
     } else if (offer.kind === 'anomaly' || offer.kind === 'cache') {
       assert.ok((sector.pois || []).some((poi) => poi.id === offer.targetId && poi.type === offer.kind),
         `${offer.kind} card binds a real authored POI`);

@@ -18,7 +18,9 @@
 // THE REGISTRATION PATH THIS DEMONSTRATES is documented in src/data/PLACE_REGISTRATION.md, and the
 // gate that proves a place landed is `npm run check:atlas-integrity`.
 //
-// Determinism: pure data + one pure merge helper. No imports, no RNG, no Date, no side effects.
+// Determinism: pure data + one pure merge helper. No RNG, no Date, no side effects.
+
+import { BONE_YARD } from './boneYardLandmark.js';
 
 /**
  * Driftmark Survey — the worked example for src/data/PLACE_REGISTRATION.md.
@@ -114,11 +116,31 @@ export const ZONE_CERES_THROUGHLINE = Object.freeze({
 });
 
 /**
+ * The Bone Yard — Plan 25's chart identity for the physical Charon wreck ring.
+ *
+ * This remains an ordinary sector-local zone. The data module names the real salvage sources;
+ * salvage materializes them and the fused hull terrain at the same centre.
+ */
+export const ZONE_CHARON_BONE_YARD = Object.freeze({
+  id: BONE_YARD.zoneId,
+  name: BONE_YARD.name,
+  type: 'derelict_field',
+  factionId: 'faction_free',
+  reason: 'A moon-wide ring of welded war losses. Open plates are first-claim salvage; cutters, '
+    + 'wild scavengers, and opportunists all work the same finite hull mass.',
+  center: BONE_YARD.localCenter,
+  radius: BONE_YARD.revealRadius,
+  threat: 3,
+  boneYardLandmark: BONE_YARD.id,
+});
+
+/**
  * sectorId -> additional authored zone records, appended to the per-sector tables.
  * Keyed by sector so the merge stays a pure append and can never shadow an existing sector's list.
  */
 export const AUTHORED_PLACE_ZONES = Object.freeze({
   sector_ceres_belt: Object.freeze([ZONE_CERES_THROUGHLINE]),
+  sector_charon_expanse: Object.freeze([ZONE_CHARON_BONE_YARD]),
   sector_tethys_junction: Object.freeze([ZONE_TETHYS_DRIFTMARK, ZONE_TETHYS_ANVIL]),
 });
 

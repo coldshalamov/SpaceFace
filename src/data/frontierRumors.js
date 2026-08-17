@@ -6,6 +6,7 @@
 
 import { hash32 } from '../core/rng.js';
 import { ORCUS_ANCHOR } from './anchorLandmark.js';
+import { BONE_YARD } from './boneYardLandmark.js';
 import { DEAD_GATE } from './deadGate.js';
 import { LISTENING_POST } from './listeningPost.js';
 import { sectorLocalToGlobalForSector } from './sectorCoordinates.js';
@@ -609,6 +610,42 @@ function orcusAnchorOffer(state, stationSource) {
   };
 }
 
+function charonBoneYardOffer(state, stationSource) {
+  if (!stationSource || stationSource.station.id !== BONE_YARD.sourceStationId) return null;
+  if (frontierRumorOwned(state, BONE_YARD.rumorId)) return null;
+  const sector = SECTOR_BY_ID.get(BONE_YARD.sectorId);
+  if (!sector) return null;
+  const seed = finite(state && state.meta && state.meta.seed, 1) >>> 0;
+  const angle = (hash32(seed, BONE_YARD.rumorId, 'bearing-offset-angle') / 0x100000000) * Math.PI * 2;
+  const offset = 260 + (hash32(seed, BONE_YARD.rumorId, 'bearing-offset-distance') % 181);
+  return {
+    id: BONE_YARD.rumorId,
+    schemaVersion: FRONTIER_RUMOR_SCHEMA_VERSION,
+    source: 'bar',
+    sourceStationId: BONE_YARD.sourceStationId,
+    sourceBodyId: null,
+    sourceSectorId: BONE_YARD.sectorId,
+    dayIndex: dayIndexFor(state),
+    kind: 'cache',
+    kindLabel: 'Bone Yard Plate Claim',
+    targetId: BONE_YARD.mapTargetId,
+    targetPlaceKind: 'zone',
+    targetName: BONE_YARD.name,
+    sectorId: BONE_YARD.sectorId,
+    sectorName: sector.name || sector.id,
+    fieldType: null,
+    coordSpace: 'global_v1',
+    bearingCenter: {
+      x: BONE_YARD.globalCenter.x + Math.cos(angle) * offset,
+      z: BONE_YARD.globalCenter.z + Math.sin(angle) * offset,
+    },
+    radius: BONE_YARD.revealRadius,
+    price: KIND_BY_ID.get('cache').price + Math.max(0, finite(sector.tier, 0)) * 35,
+    phase: 'rumored',
+    text: BONE_YARD.rumorText,
+  };
+}
+
 /**
  * Build the one bar rumor available at a station for the current 10-minute sector-day.
  * The selection is stable and never mutates state. Purchased cards return null until the next day.
@@ -622,6 +659,8 @@ export function frontierRumorOffer(state, stationId) {
   if (quietPatch) return quietPatch;
   const anchor = orcusAnchorOffer(state, stationSource);
   if (anchor) return anchor;
+  const boneYard = charonBoneYardOffer(state, stationSource);
+  if (boneYard) return boneYard;
   const relayMonument = dioneRelayMonumentOffer(state, stationSource);
   if (relayMonument) return relayMonument;
   const deadGate = dioneDeadGateOffer(state, stationSource);

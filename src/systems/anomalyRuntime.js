@@ -335,16 +335,18 @@ export function ionStormLightningReceipt(site, volume, state, pulseWindow) {
 function freshWreckIdentity(state, entity) {
   const data = entity && entity.data;
   const provenance = data && data.provenance;
-  const markerId = data && (data.markerId || provenance && provenance.markerId);
+  const markerId = data && (data.markerId || data.scavengerWildlifeMarkerId
+    || provenance && provenance.markerId);
   const sectorId = provenance && provenance.sectorId
     || state && state.world && state.world.currentSectorId;
-  const freshUntil = Number(data && data.freshUntil);
+  const explicitWildlifeAnchor = data && data.scavengerWildlifeAnchor === true;
+  const freshUntil = explicitWildlifeAnchor ? Infinity : Number(data && data.freshUntil);
   if (!entity || entity.alive === false || entity.type !== 'wreck' || !markerId || !sectorId) return null;
-  if (!provenance || provenance.source !== 'battle-aftermath') return null;
+  if (!explicitWildlifeAnchor && (!provenance || provenance.source !== 'battle-aftermath')) return null;
   if (data.aftermath && data.aftermath.playerLoss || data.ownedPlayerWreck === true) return null;
-  if (!Number.isFinite(freshUntil) || freshUntil <= simTimeOf(state)) return null;
+  if (!explicitWildlifeAnchor && (!Number.isFinite(freshUntil) || freshUntil <= simTimeOf(state))) return null;
   if (poolTotal(data.salvagePool) <= 0) return null;
-  return { markerId: String(markerId), sectorId: String(sectorId), freshUntil };
+  return { markerId: String(markerId), sectorId: String(sectorId), freshUntil, forced: explicitWildlifeAnchor };
 }
 
 function scavengerSlot(markerId, slot, anchor) {
@@ -1193,7 +1195,7 @@ export const anomalyRuntime = {
     if (!identity) return false;
     const currentSectorId = this.state && this.state.world && this.state.world.currentSectorId;
     if (identity.sectorId !== currentSectorId
-      || !scavengerSwarmAdmitted(seedOf(this.state), identity.sectorId)) return false;
+      || (!identity.forced && !scavengerSwarmAdmitted(seedOf(this.state), identity.sectorId))) return false;
     if (this._scavenger && this._scavenger.markerId !== identity.markerId) return false;
     this._scavenger = {
       markerId: identity.markerId,
@@ -1207,7 +1209,10 @@ export const anomalyRuntime = {
 
   _updateScavengerSwarm(activeRoute, state) {
     const sectorId = state && state.world && state.world.currentSectorId;
-    if (!activeRoute || !scavengerSwarmAdmitted(seedOf(state), sectorId)) {
+    const forcedCandidate = (state.entityList || [])
+      .map((entity) => freshWreckIdentity(state, entity))
+      .some((identity) => identity && identity.forced && identity.sectorId === sectorId);
+    if (!activeRoute || (!forcedCandidate && !scavengerSwarmAdmitted(seedOf(state), sectorId))) {
       this._clearScavenger(!activeRoute ? 'inactive_route' : 'inactive_sector');
       return;
     }
