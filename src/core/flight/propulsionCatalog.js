@@ -18,6 +18,38 @@ export const DRIVE_FAMILIES = Object.freeze({
 
 const INF = Number.POSITIVE_INFINITY;
 const DERIVED_RUNTIME_PROFILE_CACHE = new WeakMap();
+const PLAYER_TRANSLATION_PROFILE_CACHE = new WeakMap();
+
+/**
+ * Player-only translation feel. The ship reaches its existing speed ceiling sooner and
+ * kills speed sooner; yaw and top speed stay on the authored drive. Cached per frozen
+ * profile so a flight tick does not allocate.
+ */
+export const PLAYER_TRANSLATION_RESPONSIVENESS = 1.15;
+
+const TRANSLATION_ACCEL_KEYS = Object.freeze([
+  'mainAccel',
+  'reverseAccel',
+  'strafeAccel',
+  'brakeAccel',
+  'brakeStrafeAccel',
+  'maxAccel',
+  'maxBrakeAccel',
+  'rcsForwardAccel',
+  'rcsReverseAccel',
+  'rcsStrafeAccel',
+  'fieldAccel',
+  'trimAccel',
+]);
+
+const ASSIST_HORIZON_KEYS = Object.freeze([
+  'stopHorizonS',
+  'driftStopHorizonS',
+  'governorResponseS',
+  'pilotBrakeHorizonS',
+]);
+
+const DEFAULT_PILOT_BRAKE_HORIZON_S = 0.72;
 
 /**
  * Canonical drive definitions. Values are gameplay-scale world units, not claims
@@ -321,6 +353,10 @@ export function resolvePropulsionProfile(entity, state = null) {
 
   if (!profile) profile = inferProfile(entity);
 
+  if (isPlayerCraft(entity, state)) {
+    profile = withPlayerTranslationFeel(profile);
+  }
+
   // Cruise engagement multipliers (spec2/02 §1): player only.
   if (state && entity && entity.id === state.playerId) {
     const c = state.player && state.player.cruise;
@@ -396,6 +432,41 @@ function freezeProfile(profile) {
   if (normalized.assist) Object.freeze(normalized.assist);
   if (normalized.resources) Object.freeze(normalized.resources);
   return Object.freeze(normalized);
+}
+
+function isPlayerCraft(entity, state) {
+  if (!entity) return false;
+  if (entity.isPlayer === true) return true;
+  return !!(state && entity.id === state.playerId);
+}
+
+function withPlayerTranslationFeel(profile) {
+  if (!profile) return profile;
+  let felt = PLAYER_TRANSLATION_PROFILE_CACHE.get(profile);
+  if (felt) return felt;
+  felt = freezeProfile(applyTranslationResponsiveness(profile));
+  PLAYER_TRANSLATION_PROFILE_CACHE.set(profile, felt);
+  return felt;
+}
+
+/** Scale translation authority and shrink stop horizons by the same factor. */
+export function applyTranslationResponsiveness(profile, scale = PLAYER_TRANSLATION_RESPONSIVENESS) {
+  if (!profile || !(scale > 0) || scale === 1) return profile;
+  const next = { ...profile };
+  for (const key of TRANSLATION_ACCEL_KEYS) {
+    if (Number.isFinite(next[key])) next[key] *= scale;
+  }
+  if (Number.isFinite(next.responseHz)) next.responseHz *= scale;
+  const assist = { ...(profile.assist || {}) };
+  const horizonScale = 1 / scale;
+  for (const key of ASSIST_HORIZON_KEYS) {
+    if (Number.isFinite(assist[key])) assist[key] *= horizonScale;
+  }
+  if (!Number.isFinite(assist.pilotBrakeHorizonS)) {
+    assist.pilotBrakeHorizonS = DEFAULT_PILOT_BRAKE_HORIZON_S * horizonScale;
+  }
+  next.assist = assist;
+  return next;
 }
 
 function finitePositive(value, fallback) {

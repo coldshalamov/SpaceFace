@@ -52,6 +52,7 @@ import { fittingsFromDefaultModules, makeShipEntitySpec } from '../src/systems/s
 import { NEW_GAME } from '../src/data/newGameDefaults.js';
 import { SHIPS } from '../src/data/ships.js';
 import {
+  PLAYER_TRANSLATION_RESPONSIVENESS,
   PROPULSION_PROFILES,
   resolvePropulsionProfile,
 } from '../src/core/flight/propulsionCatalog.js';
@@ -127,6 +128,13 @@ function positive(value, fallback) {
   return Number.isFinite(value) && value > 0 ? value : fallback;
 }
 
+function approxEqual(actual, expected, label) {
+  assert.ok(
+    Math.abs(actual - expected) < 1e-9,
+    `${label}: expected ${expected}, got ${actual}`,
+  );
+}
+
 /** The real player ship, its real profile and its real body — the subject of every test below. */
 function player(shipId, fittings) {
   const entity = spawnPlayerEntity(shipId, fittings);
@@ -187,6 +195,27 @@ test('the default new game spawns a ship that resolves to a REAL catalogue drive
     `the player's drive "${profile.id}" must be a real catalogue entry, not an ad-hoc object`
   );
   assert.ok(profile.combatSpeed > 0, 'the resolved drive must publish a positive governed speed');
+});
+
+test('the player ship accelerates and stops 15% faster than its catalogue drive', () => {
+  const { profile } = player();
+  const catalog = PROPULSION_PROFILES.drive_reaction_m;
+  const scale = PLAYER_TRANSLATION_RESPONSIVENESS;
+  assert.equal(profile.id, catalog.id);
+  assert.equal(profile.combatSpeed, catalog.combatSpeed,
+    'top speed stays on the authored drive; only the time to get there and stop changes');
+  assert.equal(profile.maxYawRate, catalog.maxYawRate, 'yaw ceiling is not part of the translation feel bump');
+  approxEqual(profile.mainAccel, catalog.mainAccel * scale, 'player mainAccel');
+  approxEqual(profile.reverseAccel, catalog.reverseAccel * scale, 'player reverseAccel');
+  approxEqual(profile.strafeAccel, catalog.strafeAccel * scale, 'player strafeAccel');
+  approxEqual(profile.assist.stopHorizonS, catalog.assist.stopHorizonS / scale, 'player stop horizon');
+
+  const npc = resolvePropulsionProfile(
+    { id: 99, isPlayer: false, driveId: 'drive_reaction_m' },
+    { playerId: 1, player: {} },
+  );
+  assert.equal(npc.mainAccel, catalog.mainAccel, 'NPC translation stays on the catalogue drive');
+  assert.equal(npc.reverseAccel, catalog.reverseAccel, 'NPC reverse stays on the catalogue drive');
 });
 
 test('spawned derived propulsion keeps the unbounded solver sentinel out of serializable state', () => {
