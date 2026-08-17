@@ -30,6 +30,50 @@ export const ATMOSPHERE_RESCUE_DRAW_MODULO = 3;
 export const ATMOSPHERE_RESCUE_SITE_ID = 'planet_tethys_anvil';
 export const ATMOSPHERE_RESCUE_ZONE_ID = 'zone_tethys_anvil';
 export const ATMOSPHERE_RESCUE_DEST_SECTOR_ID = 'sector_tethys_junction';
+export const ESCORT_THE_IDIOT_VARIANT_ID = 'escort_the_idiot';
+export const ESCORT_THE_IDIOT_DRAW_MODULO = 3;
+
+/** One in three ordinary escort rolls becomes the scenic-route liner job. */
+export function shouldRollEscortTheIdiot(hashValue) {
+  return (Number(hashValue) >>> 0) % ESCORT_THE_IDIOT_DRAW_MODULO === 0;
+}
+
+/** Name the civilian hull and live raid-zone premise before the player accepts. */
+export function applyEscortTheIdiotVariant(offer, destinationName = 'the destination berth') {
+  if (!offer || offer.type !== 'escort') return offer;
+  return {
+    ...offer,
+    title: `Escort the Idiot — Scenic Liner to ${destinationName}`,
+    brief: 'A tourist liner insists on the scenic route through a live raid zone. Keep her intact; the fare is the collateral.',
+    // The physical liner is the stake. A second mission countdown would duplicate that risk.
+    duration_s: null,
+    variantId: ESCORT_THE_IDIOT_VARIANT_ID,
+    params: {
+      ...(offer.params || {}),
+      missionVariant: ESCORT_THE_IDIOT_VARIANT_ID,
+      escortTheIdiot: {
+        generation: 0,
+        targetDefId: 'ship_mule',
+        targetName: 'Sunward Scenic Liner',
+        encounterId: null,
+        outcome: null,
+      },
+    },
+    clauses: [],
+  };
+}
+
+export function isEscortTheIdiot(value) {
+  return !!(value && (
+    value.variantId === ESCORT_THE_IDIOT_VARIANT_ID
+    || value.params && value.params.missionVariant === ESCORT_THE_IDIOT_VARIANT_ID
+  ));
+}
+
+export function escortTheIdiotFollowupOfferId(mission) {
+  const sourceId = mission && (mission.sourceOfferId || mission.id);
+  return sourceId ? `mo_scenic_liner_black_box_${String(sourceId)}` : null;
+}
 
 /** One in three ordinary cargo-delivery rolls becomes Quiet Delivery, without consuming board RNG. */
 export function shouldRollQuietDelivery(hashValue) {

@@ -57,6 +57,7 @@ import {
   DEBRIS_RECOVERY_FOLLOWUP_SOURCE,
   DEBRIS_RECOVERY_VARIANT_ID,
   DISABLE_DONT_KILL_VARIANT_ID,
+  ESCORT_THE_IDIOT_VARIANT_ID,
   LOUD_DELIVERY_VARIANT_ID,
   PEST_CONTROL_ARCHETYPE_ID,
   PEST_CONTROL_FOLLOWUP_SOURCE,
@@ -66,6 +67,7 @@ import {
   applyAtmosphereRescueVariant,
   applyDebrisRecoveryVariant,
   applyDisableDontKillVariant,
+  applyEscortTheIdiotVariant,
   applyLoudDeliveryVariant,
   applyPestControlVariant,
   applyQuietDeliveryVariant,
@@ -75,11 +77,13 @@ import {
   atmosphereRescueFollowupOfferId,
   debrisRecoveryFollowupOfferId,
   disableDontKillFollowupOfferId,
+  escortTheIdiotFollowupOfferId,
   loudDeliveryFollowupOfferId,
   isAtmosphereRescue,
   isDebrisRecovery,
   isDebrisRecoveryFollowup,
   isDisableDontKill,
+  isEscortTheIdiot,
   isLoudDelivery,
   isPestControl,
   isPestControlFollowup,
@@ -95,6 +99,7 @@ import {
   shouldRollAtmosphereRescue,
   shouldRollDebrisRecovery,
   shouldRollDisableDontKill,
+  shouldRollEscortTheIdiot,
   shouldRollLoudDelivery,
   shouldRollPestControl,
   shouldRollQuietDelivery,
@@ -746,8 +751,11 @@ export const missions = {
     bus.on('entity:destroyed', (p) => this._onEntityDestroyed(p));
     // recon_scan: a scan target (or sector scan) completed.
     bus.on('scan:completed', (p) => this._onScan(p));
-    // Rock Diversion contracts settle only from Plan 20's real falling-rock runtime receipt.
-    bus.on('encounter:resolved', (p) => this._onRockDiversionResolved(p || {}));
+    // Contract variants observe only the exact shipped encounter receipt they requested.
+    bus.on('encounter:resolved', (p) => {
+      this._onRockDiversionResolved(p || {});
+      this._onEscortTheIdiotRaidResolved(p || {});
+    });
     bus.on('signal:scanResults', (p) => {
       this._onLandmarkProbeScan(p || {});
       // A multi-scan landmark may become board-ready on this exact pulse. Reconcile after scanner
@@ -846,6 +854,9 @@ export const missions = {
       if (m.heist) { this._driveHeist(m, i); continue; }
       // Escort: steer the friendly escortee toward the destination each tick.
       if (m.type === 'escort' && m._escorteeId != null) this._steerEscortee(m, state, dt);
+      if (isEscortTheIdiot(m) && m.destSectorId === state.world.currentSectorId) {
+        this._ensureEscortTheIdiotRaid(m);
+      }
       if (isLoudDelivery(m) && m.destSectorId === state.world.currentSectorId) {
         this._ensureLoudDeliveryScanNet(m);
       }
@@ -1735,6 +1746,11 @@ export const missions = {
     const loudDelivery = options.attachConditions !== false
       && typeId === 'smuggling_run'
       && shouldRollLoudDelivery(variantHashFn(this.state.meta.seed, id, 'loud-delivery-variant'));
+    const escortTheIdiot = options.attachConditions !== false
+      && typeId === 'escort'
+      && shouldRollEscortTheIdiot(
+        variantHashFn(this.state.meta.seed, id, 'escort-the-idiot-variant'),
+      );
     if (quietDelivery) {
       const commodityHash = variantHashFn(this.state.meta.seed, id, 'quiet-delivery-cargo') >>> 0;
       const cmdtyId = FRAGILE_LEGAL_TRADE_CMDTYS[commodityHash % FRAGILE_LEGAL_TRADE_CMDTYS.length];
@@ -1793,6 +1809,9 @@ export const missions = {
       return applyRockDiversionVariant(offer, dest && dest.name || 'the marked approach');
     }
     if (loudDelivery) return applyLoudDeliveryVariant(offer);
+    if (escortTheIdiot) {
+      return applyEscortTheIdiotVariant(offer, dest && dest.name || 'the destination berth');
+    }
     // Physics terms are the last thing stamped onto a rolled offer so the reward/deadline family
     // above is untouched: a condition-free offer is byte-identical to the shipped one.
     return options.attachConditions === false ? offer : this._withConditions(offer, epoch);
@@ -2161,6 +2180,7 @@ export const missions = {
     this._ensureMissionTargets(inst);
     this._ensureLoudDeliveryScanNet(inst);
     this._ensureRockDiversionEncounter(inst);
+    this._ensureEscortTheIdiotRaid(inst);
     // Accepting auto-tracks AND speaks the objective through the voiceArbiter objective channel
     // (tier 60) — same one-voice path as a manual Mission Log track. The ambient "Mission accepted"
     // toast below is a separate lane (transaction confirmation), so the two do not contend.
@@ -4074,6 +4094,79 @@ export const missions = {
     return offer;
   },
 
+  /** The dead convoy becomes one physical recovery job, as VISION's failure mutation requires. */
+  _postEscortTheIdiotRecovery(mission) {
+    const loss = mission && mission._escortTheIdiotLoss;
+    const offerId = escortTheIdiotFollowupOfferId(mission);
+    if (!mission || !loss || !offerId || !mission.stationId) return null;
+    const duplicateActive = (this.state.missions.active || []).find((candidate) => (
+      candidate && candidate.sourceOfferId === offerId
+    ));
+    if (duplicateActive) return duplicateActive;
+    for (const candidateBoard of Object.values(this.state.missions.boards || {})) {
+      const duplicate = candidateBoard && Array.isArray(candidateBoard.slots)
+        && candidateBoard.slots.find((candidate) => candidate && candidate.id === offerId);
+      if (duplicate) return duplicate;
+    }
+
+    const commodityId = 'cmdty_salvage_electronics';
+    const commodity = CMDTY_BY_ID.get(commodityId);
+    const pods = [{ slot: 0, commodityId, amount: 1 }];
+    const offer = {
+      id: offerId,
+      type: 'salvage_retrieval',
+      stationId: mission.stationId,
+      factionId: mission.factionId,
+      reward_cr: Math.max(100, Math.round((Number(mission.reward_cr) || 0) * 0.3)),
+      time_limit_s: 240,
+      duration_s: 240,
+      collateral_cr: 0,
+      riskTier: Math.max(1, Math.round(Number(mission.riskTier) || 1)),
+      destStationId: null,
+      destSectorId: loss.sectorId || mission.destSectorId,
+      distance: mission.distance,
+      params: {
+        cmdtyId: commodityId,
+        qty: 1,
+        cargoValue: Math.max(0, Number(commodity && commodity.basePrice) || 0),
+        fValue: 1,
+        taskTime: 30,
+        missionVariant: DEBRIS_RECOVERY_VARIANT_ID,
+        debrisRecovery: {
+          fieldName: 'the scenic-liner wreckage',
+          generation: 1,
+          sourceMissionId: mission.id,
+          pos: { ...loss.pos },
+          vel: { ...loss.vel },
+          pods,
+        },
+      },
+      title: 'Debris Recovery — Scenic Liner Black Box',
+      brief: 'The liner broke apart in the raid zone. Pull its recorder from the wreckage.',
+      expiresAtEpoch: this._epoch() + 2,
+      storyTag: null,
+      variantId: DEBRIS_RECOVERY_VARIANT_ID,
+      source: DEBRIS_RECOVERY_FOLLOWUP_SOURCE,
+      cause: {
+        tag: 'escort_the_idiot_lost',
+        sourceMissionId: mission.id,
+        sourceOfferId: mission.sourceOfferId || null,
+        targetEntityId: loss.targetEntityId,
+        killerId: loss.killerId,
+        encounterId: loss.encounterId,
+      },
+    };
+    let board = this.state.missions.boards[mission.stationId];
+    if (!board || typeof board !== 'object') {
+      board = { refreshEpoch: this._epoch(), slots: [] };
+      this.state.missions.boards[mission.stationId] = board;
+    }
+    if (!Array.isArray(board.slots)) board.slots = [];
+    board.slots.push(offer);
+    this.bus.emit('mission:updated', { missionId: null, stationId: mission.stationId });
+    return offer;
+  },
+
   _captureWreckTowLoss(mission, target = null, killerId = null) {
     if (!mission || !isWreckTow(mission)) return null;
     if (mission._wreckTowLoss) return mission._wreckTowLoss;
@@ -4114,9 +4207,43 @@ export const missions = {
     return false;
   },
 
+  /** Settle escort loss from the canonical kill/destruction edge, before cleanup erases the hull. */
+  _onEscorteeLost(payload) {
+    if (!payload || payload.id == null) return false;
+    for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
+      const mission = this.state.missions.active[i];
+      if (!mission || mission.status !== 'active' || mission.type !== 'escort'
+        || mission._escorteeId == null || mission._escorteeId !== payload.id) continue;
+      if (isEscortTheIdiot(mission) && !mission._escortTheIdiotLoss) {
+        const liner = this.state.entities && this.state.entities.get(payload.id);
+        const scenic = mission.params && mission.params.escortTheIdiot;
+        mission._escortTheIdiotLoss = {
+          targetEntityId: payload.id,
+          targetName: liner && liner.data && liner.data.name
+            || scenic && scenic.targetName || 'Sunward Scenic Liner',
+          sectorId: this.state.world && this.state.world.currentSectorId || mission.destSectorId,
+          pos: {
+            x: Number(liner && liner.pos && liner.pos.x) || 0,
+            z: Number(liner && liner.pos && liner.pos.z) || 0,
+          },
+          vel: {
+            x: Number(liner && liner.vel && liner.vel.x) || 0,
+            z: Number(liner && liner.vel && liner.vel.z) || 0,
+          },
+          killerId: payload.killerId == null ? null : payload.killerId,
+          encounterId: scenic && scenic.encounterId || null,
+        };
+      }
+      this._failMission(mission, i, 'escortee_lost');
+      return true;
+    }
+    return false;
+  },
+
   _onKill(p) {
     if (!p) return;
     if (this._onWreckTowHullLost(p)) return;
+    if (this._onEscorteeLost(p)) return;
     const byPlayer = p.killerId === this.state.playerId;
     if (!byPlayer) return; // mission kills only count for the player
     for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
@@ -4219,14 +4346,7 @@ export const missions = {
     // this listener runs synchronously with the destruction that caused it.
     this._heistEach((h) => heistMissionRuntime.onEntityDestroyed(this._heistCtx(), h, p.id));
     if (this._onWreckTowHullLost(p)) return;
-    // Escort fail: the escortee entity died.
-    for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
-      const m = this.state.missions.active[i];
-      if (m.status !== 'active' || m.type !== 'escort') continue;
-      if (m._escorteeId != null && m._escorteeId === p.id) {
-        this._failMission(m, i, 'escortee_lost');
-      }
-    }
+    this._onEscorteeLost(p);
   },
 
   _onScan(p) {
@@ -5296,6 +5416,9 @@ export const missions = {
       this._postAtmosphereRescueBlackBox(m);
     }
     if (isSalvageRace(m) && m._salvageRaceLoss) this._postSalvageRaceRecovery(m);
+    if (isEscortTheIdiot(m) && m._escortTheIdiotLoss) {
+      this._postEscortTheIdiotRecovery(m);
+    }
     const setPieceTransition = this._compileSetPieceTransition(m, 'failed', reason || 'failed');
     m.status = 'failed';
     this._clearMissionNav(m.id);
@@ -6157,16 +6280,50 @@ export const missions = {
       const rng = nextRng();
       // Real escortee: a friendly (team 0) ship that TRAVELS toward the destination. It needs to
       // survive (mission fails if it dies — _onEntityDestroyed) and arrive (gates completion).
-      const ang = rng() * Math.PI * 2, r = 60 + rng() * 40;
+      const scenic = m.params && m.params.escortTheIdiot;
+      const scenicStation = scenic ? this._liveStation(m.destStationId) : null;
+      const ang = scenicStation && scenicStation.pos
+        ? Math.atan2(scenicStation.pos.z - pz, scenicStation.pos.x - px)
+        : rng() * Math.PI * 2;
+      // Ordinary players enter a sector beside a berth. Put the liner beyond that station's
+      // collision/protection well and on the first scenic leg instead of spawning it parked there.
+      const r = scenic ? 420 + rng() * 80 : 60 + rng() * 40;
       const pos = { x: px + Math.cos(ang) * r, z: pz + Math.sin(ang) * r };
-      const spec = makeEnemySpawnSpec('corsair_raider', Math.round((lvLo + lvHi) / 2), pos, { startedTick: this.state.tick });
-      spec.team = 0; spec.factionId = m.factionId; // player team (won't be auto-attacked by allies)
+      const scenicRot = scenicStation && scenicStation.pos
+        ? Math.atan2(scenicStation.pos.z - pos.z, scenicStation.pos.x - pos.x)
+        : rng() * Math.PI * 2;
+      const spec = scenic
+        ? makeShipEntitySpec(scenic.targetDefId || 'ship_mule', {
+          team: 0,
+          factionId: 'faction_free',
+          pos,
+          // A heavy civilian hull can spend most of the leg slewing from a random opposite
+          // heading. Spawn it on the advertised route; Flight V3 owns every turn after that.
+          rot: scenicRot,
+          ai: null,
+        })
+        : makeEnemySpawnSpec('corsair_raider', Math.round((lvLo + lvHi) / 2), pos, { startedTick: this.state.tick });
+      spec.team = 0;
+      if (!scenic) spec.factionId = m.factionId; // player team (won't be auto-attacked by allies)
+      spec.collides = true;
       spec.data = spec.data || {};
       spec.data.missionTag = m.id; spec.data.escortee = true;
-      // No data.ai → the AI system skips it (it requires data.ai); WE steer it via data.intent in
-      // update() so it heads for the destination instead of dogfighting. Seed a neutral intent.
+      if (scenic) {
+        spec.data.name = scenic.targetName || 'Sunward Scenic Liner';
+        spec.data.scanLabel = 'SCENIC LINER · TOURIST ROUTE · PROTECT';
+        spec.data.weapons = [];
+        spec.data.masslineTetherable = true;
+        spec.data.escortTheIdiot = { missionId: m.id };
+      }
+      // Generic escorts carry no tactical AI. The scenic liner uses an explicit passive marker
+      // below because AI Ports otherwise claims every ship; missions still owns only route intent.
       delete spec.data.ai;
       spec.data.intent = { moveX: 0, moveZ: 0, boost: false, fire: false, fireGroup: null, aimAngle: 0 };
+      if (scenic) {
+        // AI Ports is the tactical maneuver writer. An explicit passive marker keeps it from
+        // replacing this contract's route intent with a neutral combat command each tick.
+        spec.data.ai = { passive: true, lawful: true, fsm: 'escort_route' };
+      }
       let ent;
       try {
         ent = helpers.spawnEntity(spec);
@@ -6236,19 +6393,33 @@ export const missions = {
 
     const dx = target.pos.x - e.pos.x, dz = target.pos.z - e.pos.z;
     const dist = Math.hypot(dx, dz) || 1e-4;
-    const arriveR = (target.type === 'station' ? (target.data && target.data.dockRadius) || 80 : 140) + 40;
+    const scenic = isEscortTheIdiot(m);
+    const arriveR = (target.type === 'station' ? (target.data && target.data.dockRadius) || 80 : 140)
+      + (scenic ? 120 : 40);
     const aim = Math.atan2(dz, dx);
     intent.aimAngle = aim;
     if (dist <= arriveR) {
       // arrived: ease to a hover near the dock and flag arrival (gates player-dock completion)
-      intent.moveZ = 0; intent.moveX = 0; intent.boost = false;
+      intent.moveZ = 0; intent.moveX = 0; intent.boost = false; intent.brake = true;
       if (inDestSector && target.type === 'station') m._escorteeArrived = true;
+    } else if (scenic) {
+      // A heavy liner cannot use the fighter-era "turn, then thrust straight" route without
+      // orbiting the berth for minutes. Express the destination vector in its local thruster frame;
+      // Flight V3 remains the force/torque writer and Rapier remains the motion/contact authority.
+      const nx = dx / dist, nz = dz / dist;
+      const cf = Math.cos(e.rot), sf = Math.sin(e.rot);
+      const power = Math.max(0.25, Math.min(1, (dist - arriveR) / 360));
+      intent.moveZ = (nx * cf + nz * sf) * power;
+      intent.moveX = (nx * -sf + nz * cf) * power;
+      intent.boost = false;
+      intent.brake = dist < arriveR + 180;
     } else {
       // head straight in; boost to close a large gap so it keeps pace with the player
       const off = Math.abs(wrapAngleLocal(aim - e.rot));
       intent.moveZ = off < 1.2 ? 1 : 0.35;   // throttle down while still turning to face the line
       intent.moveX = 0;
       intent.boost = dist > 700 && off < 0.6;
+      intent.brake = false;
     }
   },
 
@@ -6279,6 +6450,62 @@ export const missions = {
     m.targetEntityIds = [];
     m._escorteeId = null;
     if (this._missionBudgetDeferrals) this._missionBudgetDeferrals.delete(String(m.id));
+  },
+
+  /** Put the shipped Reach ambush around the exact scenic liner; encounter owns every attacker. */
+  _ensureEscortTheIdiotRaid(mission) {
+    const scenic = mission && mission.params && mission.params.escortTheIdiot;
+    if (!mission || mission.status !== 'active' || !isEscortTheIdiot(mission) || !scenic
+      || scenic.outcome || this.state.mode !== 'flight'
+      || this.state.world.currentSectorId !== mission.destSectorId
+      || mission._escorteeId == null) return false;
+    const liner = this.state.entities && this.state.entities.get(mission._escorteeId);
+    if (!liner || liner.alive === false || !liner.pos) return false;
+    const director = this.registry && this.registry.get && this.registry.get('encounterDirector');
+    if (!director || typeof director.requestAuthoredEncounter !== 'function') return false;
+    const encounterId = scenic.encounterId || `escort-the-idiot:${mission.id}`;
+    scenic.encounterId = encounterId;
+    const existing = this.state.encounterDirector && this.state.encounterDirector.live
+      && this.state.encounterDirector.live[encounterId];
+    if (existing && existing.phase !== 'done' && !existing.resolved) return true;
+    const tick = this.state.tick | 0;
+    if (Number.isFinite(scenic.nextRequestTick) && tick < scenic.nextRequestTick) return false;
+    const result = director.requestAuthoredEncounter({
+      shapeId: 'ambush_snare',
+      encounterId,
+      sectorId: mission.destSectorId,
+      anchor: { x: liner.pos.x + 260, z: liner.pos.z + 120 },
+      zoneType: 'ambush_lane',
+      zoneRadius: 620,
+      data: { missionId: mission.id, contractVariant: ESCORT_THE_IDIOT_VARIANT_ID },
+      force: true,
+    });
+    if (result && result.ok) {
+      scenic.requestedAt_s = Number(this.state.simTime) || 0;
+      delete scenic.nextRequestTick;
+      this.bus.emit('mission:updated', { missionId: mission.id, encounterId });
+      return true;
+    }
+    scenic.nextRequestTick = tick + 120;
+    return false;
+  },
+
+  _onEscortTheIdiotRaidResolved(payload) {
+    if (!payload || !payload.encounterId) return false;
+    for (const mission of this.state.missions.active || []) {
+      const scenic = mission && mission.params && mission.params.escortTheIdiot;
+      if (!mission || mission.status !== 'active' || !isEscortTheIdiot(mission) || !scenic
+        || scenic.encounterId !== payload.encounterId) continue;
+      scenic.outcome = payload.outcome || 'resolved';
+      scenic.resolvedAt_s = Number(payload.t) || Number(this.state.simTime) || 0;
+      this.bus.emit('mission:updated', {
+        missionId: mission.id,
+        encounterId: scenic.encounterId,
+        raidOutcome: scenic.outcome,
+      });
+      return true;
+    }
+    return false;
   },
 
   /** Request the shipped physical patrol lattice for one active Loud contract. */
