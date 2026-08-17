@@ -300,6 +300,12 @@ export const save = {
     data.economyContracts = this._callSerialize('economyContracts') || {};
     data.factions = this._callSerialize('factions') || {};
     data.world = this._callSerialize('world') || {};
+    const fuelStackState = this._callSerialize('fuelStack') || clonePlain(state.fuelStack || {});
+    // Keep the new landmark save bag sparse until the player has actually changed it. Otherwise a
+    // pristine Fuel Stack would churn every unrelated scenario/save hash despite carrying no
+    // continuation information. Missing data intentionally deserializes to the fresh v1 state.
+    if (fuelStackState.discovered === true || fuelStackState.blown === true
+      || Number(fuelStackState.fuelPurchasedUnits) > 0) data.fuelStack = fuelStackState;
     data.entities = this._serializeEntities();
     data.combat = serializeCombatState(state);
     data.missions = this._callSerialize('missions') || this._serializeMissions();
@@ -2207,6 +2213,9 @@ export const save = {
       this._callDeserialize('economyContracts', data.economyContracts);
       this._callDeserialize('factions', data.factions);
       this._callDeserialize('world', data.world); // sets currentSectorId; does NOT spawn entities
+      // The Fuel Stack's blown state must settle before world re-entry emits sector:enter, otherwise
+      // Continue could briefly remint the four volatile component bodies from an already-spent stack.
+      this._callDeserialize('fuelStack', data.fuelStack);
       // Regional/POI aftermath must restore before enterSector publishes its gameplay inputs.
       this._callDeserialize('regionalEcology', data.regionalEcology);
       this._callDeserialize('livingPoiBehaviors', data.livingPoiBehaviors);

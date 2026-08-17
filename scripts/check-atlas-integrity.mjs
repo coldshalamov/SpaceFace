@@ -60,7 +60,7 @@ const REGISTRATION_DOC = resolve(ROOT, 'src/data/PLACE_REGISTRATION.md');
  * extending it is a deliberate act: add the value here in the same change that authors it.
  */
 const KNOWN_SERVICES = new Set([
-  'black_market', 'missions', 'module_craft', 'ore_buy', 'refine', 'refuel',
+  'black_market', 'fuel_stack_refuel', 'missions', 'module_craft', 'ore_buy', 'refine', 'refuel',
   'repair', 'scan', 'scan_tech', 'shipyard', 'toll', 'trade',
 ]);
 

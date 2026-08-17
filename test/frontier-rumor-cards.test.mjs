@@ -61,6 +61,9 @@ test('bar rumor rotation covers four real regional target kinds without exposing
     } else if (offer.targetPlaceKind === 'zone') {
       assert.ok(zonesForSector(offer.sectorId).some((zone) => zone.id === offer.targetId),
         `${offer.kind} card binds a real authored zone`);
+    } else if (offer.targetPlaceKind === 'station') {
+      assert.ok((sector.stations || []).some((station) => station.id === offer.targetId),
+        `${offer.kind} card binds a real authored station`);
     } else if (offer.kind === 'anomaly' || offer.kind === 'cache') {
       assert.ok((sector.pois || []).some((poi) => poi.id === offer.targetId && poi.type === offer.kind),
         `${offer.kind} card binds a real authored POI`);
@@ -125,11 +128,15 @@ test('bars do not sell coordinates the player has already discovered', () => {
   const offer = offersAcrossDays(state, 40).find((row) => row.kind === 'cache' || row.kind === 'anomaly');
   assert.ok(offer, 'fixture needs a POI rumor');
   state.simTime = offer.dayIndex * FRONTIER_RUMOR_DAY_SECONDS;
-  state.world.discovery[offer.sectorId] = {
-    discovered: true,
-    pois: { [offer.targetId]: { discovered: true, identified: true } },
-    fieldsDepleted: {},
-  };
+  if (offer.targetPlaceKind === 'station') {
+    state.fuelStack = { discovered: true };
+  } else {
+    state.world.discovery[offer.sectorId] = {
+      discovered: true,
+      pois: { [offer.targetId]: { discovered: true, identified: true } },
+      fieldsDepleted: {},
+    };
+  }
   const replacement = frontierRumorOffer(state, offer.sourceStationId);
   assert.ok(!replacement || replacement.targetId !== offer.targetId,
     'an already-known POI must be removed from that day\'s sellable pool');

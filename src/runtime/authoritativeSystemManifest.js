@@ -36,7 +36,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   'masslineImpactDamage', 'lootShards', 'terrainAnchors', 'jettisonImpulse', 'mining',
   'fieldDepletion', 'cargo', 'fragileCargo', 'economy', 'automation', 'asteroidSites',
   'asteroidFormations', 'wingmen', 'intervention', 'lossLedger', 'factionPresence',
-  'spawnBudget', 'world', 'heistFacilities', 'regionalEcology', 'encounterDirector', 'routeFollower',
+  'spawnBudget', 'world', 'fuelStack', 'heistFacilities', 'regionalEcology', 'encounterDirector', 'routeFollower',
   'travelLanes', 'livingPoiBehaviors', 'pirateRumor', 'ambushSignatures', 'bountyHunt',
   'stationSideEventDirector', 'stationContacts', 'stationContactLoadBoundary',
   'gateControlDirector', 'salvage', 'lossInvestigation', 'salvageActions', 'survivorPod',
@@ -53,7 +53,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
 ]);
 
 /**
- * Production sim update order — matches createRegistry UPDATE_ORDER (106 entries).
+ * Production sim update order — matches createRegistry UPDATE_ORDER (107 entries).
  * Excludes pure render-phase systems; includes DOM-guarded HUD systems that no-op under Node.
  */
 export const PRODUCTION_UPDATE_ORDER = Object.freeze([
@@ -67,7 +67,7 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   'custodyConsequences', 'masslineTelemetry', 'masslineThreats', 'masslineImpacts',
   'masslineSnares', 'masslineThrow', 'masslineImpactDamage', 'lootShards', 'terrainAnchors', 'jettisonImpulse',
   'mining', 'fieldDepletion', 'cargo', 'fragileCargo', 'automation', 'asteroidSites',
-  'asteroidFormations', 'wingmen', 'crafting', 'economy', 'intervention', 'world',
+  'asteroidFormations', 'wingmen', 'crafting', 'economy', 'intervention', 'world', 'fuelStack',
   'heistFacilities',
   'regionalEcology', 'encounterDirector', 'routeFollower', 'livingPoiBehaviors', 'pirateRumor',
   'ambushSignatures', 'bountyHunt', 'stationSideEventDirector', 'gateControlDirector',

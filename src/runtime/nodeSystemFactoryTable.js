@@ -75,6 +75,7 @@ import { asteroidSites } from '../systems/asteroidSites.js';
 import { asteroidFormations } from '../systems/asteroidFormations.js';
 import { wingmen } from '../systems/wingmen.js';
 import { world } from '../systems/world.js';
+import { fuelStack } from '../systems/fuelStack.js';
 import { heistFacilities } from '../systems/heistFacilities.js';
 import { routeFollower } from '../systems/routeFollower.js';
 import { travelLanes } from '../systems/travelLanes.js';
@@ -224,6 +225,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['factionPresence', factionPresence],
     ['spawnBudget', spawnBudget],
     ['world', world],
+    ['fuelStack', fuelStack],
     ['heistFacilities', heistFacilities],
     ['regionalEcology', regionalEcology],
     ['encounterDirector', encounterDirector],

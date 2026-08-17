@@ -23,8 +23,8 @@ import { combat } from '../src/systems/combat.js';
 import { weapons } from '../src/systems/weapons.js';
 
 test('production init + update order lengths match the live browser baseline', () => {
-  assert.equal(PRODUCTION_INIT_ORDER.length, 139);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 106);
+  assert.equal(PRODUCTION_INIT_ORDER.length, 140);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 107);
   assert.equal(PRODUCTION_INIT_ORDER[0], 'core');
   assert.ok(PRODUCTION_INIT_ORDER.includes('render'));
   assert.ok(PRODUCTION_INIT_ORDER.includes('save'));
@@ -40,9 +40,11 @@ test('production init + update order lengths match the live browser baseline', (
   assert.ok(PRODUCTION_UPDATE_ORDER.indexOf('anomalyRuntime')
     < PRODUCTION_UPDATE_ORDER.indexOf('fields'));
   const worldIndex = PRODUCTION_UPDATE_ORDER.indexOf('world');
+  const fuelStackIndex = PRODUCTION_UPDATE_ORDER.indexOf('fuelStack');
   const heistFacilitiesIndex = PRODUCTION_UPDATE_ORDER.indexOf('heistFacilities');
   const regionalEcologyIndex = PRODUCTION_UPDATE_ORDER.indexOf('regionalEcology');
-  assert.ok(worldIndex < heistFacilitiesIndex);
+  assert.ok(worldIndex < fuelStackIndex);
+  assert.ok(fuelStackIndex < heistFacilitiesIndex);
   assert.ok(heistFacilitiesIndex < regionalEcologyIndex);
 });
 
@@ -139,7 +141,7 @@ test('browser production system set is unchanged vs production manifest constant
   const registry = createRegistry({ state, bus: createBus(), helpers: {} });
 
   // Full init list length and terminal platform systems preserved.
-  assert.equal(registry.systems.length, 139);
+  assert.equal(registry.systems.length, 140);
   const names = registry.systems.map((s) => s.name);
   assert.ok(names.includes('render') || registry.runtimeManifest.authoritativeSystemIds.includes('render'));
   assert.ok(registry.runtimeManifest.authoritativeSystemIds.includes('ui'));

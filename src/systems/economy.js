@@ -27,6 +27,7 @@ import { MODULES } from '../data/modules.js';
 import { SHIPS } from '../data/ships.js';
 import { WEAPONS } from '../data/weapons.js';
 import { FACTION_BACKROOM } from '../data/factionPlay.js';
+import { FUEL_STACK } from '../data/fuelStackLandmark.js';
 import { SECTORS } from '../data/sectors.js';
 import { CERES_ACTIVITY_SECTOR_ID, CERES_FUEL_TENDER_SERVICE } from '../data/sectorActivityPockets.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
@@ -108,11 +109,13 @@ export const ECONOMY_PRICE_TUNING = Object.freeze({
 
 // service prices — used by ui:service refuel/repair/ammo/hull_wash
 const FUEL_UNIT_CR = 6;            // cr per fuel unit
+const FUEL_STACK_UNIT_CR = FUEL_STACK.fuelCrPerUnit;
 const REPAIR_HP_CR = 0.9;          // cr per hull/armor point restored
 const AMMO_UNIT_CR = 12;           // cr per munition
 const HULL_WASH_CR = 75;           // cosmetic berth service; history survives the wash
 export const SERVICE_PRICES = Object.freeze({
   fuelCrPerUnit: FUEL_UNIT_CR,
+  fuelStackCrPerUnit: FUEL_STACK_UNIT_CR,
   repairCrPerHp: REPAIR_HP_CR,
   ammoCrPerUnit: AMMO_UNIT_CR,
   hullWashCr: HULL_WASH_CR,
@@ -2341,7 +2344,47 @@ export const economy = {
   handleService(p) {
     const state = this.state;
     const type = p.type;
-    if (type === 'refuel') {
+    if (type === FUEL_STACK.serviceId) {
+      if (this.dockedStationId() !== FUEL_STACK.stationId) {
+        this.bus.emit('toast', { text: 'The Fuel Stack berth is required', kind: 'error', ttl: 2 });
+        return { ok: false, reason: 'fuel_stack_berth_required' };
+      }
+      if (state.fuelStack?.blown === true) {
+        this.bus.emit('toast', { text: 'Fuel Stack pressure ring is offline', kind: 'error', ttl: 3 });
+        return { ok: false, reason: 'fuel_stack_offline' };
+      }
+      const fuel = state.fuel || (state.fuel = { current: 0, max: 100 });
+      const want = p.amount != null ? p.amount : (fuel.max - fuel.current);
+      const units = Math.max(0, Math.min(want, fuel.max - fuel.current));
+      if (units <= 0) return { ok: false, reason: 'tank_full' };
+      const credits = state.player.credits | 0;
+      const realUnits = credits < units * FUEL_STACK_UNIT_CR
+        ? Math.max(0, Math.min(units, Math.floor(credits / FUEL_STACK_UNIT_CR))) : units;
+      if (realUnits <= 0) {
+        this.bus.emit('toast', { text: 'Insufficient credits for stack fuel', kind: 'error', ttl: 2 });
+        return { ok: false, reason: 'credits' };
+      }
+      const realCost = round(realUnits * FUEL_STACK_UNIT_CR);
+      this.chargeCredits(realCost, `service:${FUEL_STACK.serviceId}`);
+      fuel.current = Math.min(fuel.max, fuel.current + realUnits);
+      const receipt = Object.freeze({
+        ok: true,
+        serviceId: FUEL_STACK.serviceId,
+        stationId: FUEL_STACK.stationId,
+        units: realUnits,
+        cost: realCost,
+        unitPrice: FUEL_STACK_UNIT_CR,
+        fuelCurrent: fuel.current,
+        fuelMax: fuel.max,
+      });
+      this.bus.emit('fuel:changed', { current: fuel.current, max: fuel.max });
+      this.bus.emit('fuelStack:refueled', receipt);
+      this.bus.emit('toast', {
+        text: `${realUnits < units ? 'Partial stack refuel' : 'Stack refueled'} (${round(realUnits)}u, ${realCost}cr)`,
+        kind: realUnits < units ? 'warn' : 'success', ttl: 2,
+      });
+      return receipt;
+    } else if (type === 'refuel') {
       const fuel = state.fuel || (state.fuel = { current: 0, max: 100 });
       const want = p.amount != null ? p.amount : (fuel.max - fuel.current);
       const units = Math.max(0, Math.min(want, fuel.max - fuel.current));

@@ -9,6 +9,7 @@ import { FRONTIER_CORE_NEIGHBOR_PATCHES, FRONTIER_SECTORS } from './frontierRegi
 import { applyClaimableBodySites } from './claimableBodies.js';
 import { applyPlanetStateAssignments } from './planetStates.js';
 import { appendPq019FacilityPois } from './heistFacilities.js';
+import { FUEL_STACK } from './fuelStackLandmark.js';
 // Per ARCHITECTURE §0.8:
 //   dangerTier(s) = clamp(round((1 - s.security) * 5), 0, 5)
 //   wealthIndex(s) = clamp(0.3 + 0.16*tier + 0.10*(1-security), 0.3, 1.6)
@@ -58,6 +59,11 @@ const CORE_SECTORS = [
         chartNote: "Everything in stock, everything watched. Fair prices, constant questions." },
       { id: 'station_coalition',  name: 'Coalition HQ',    type: 'military',  factionId: 'faction_scn', size: 'M', services: ['missions','repair','refuel'],
         chartNote: "Concord's desk. Clean contracts, and a clean record while you're docked." },
+      {
+        id: FUEL_STACK.stationId, name: FUEL_STACK.name, type: 'refinery', factionId: 'faction_scn', size: 'M',
+        services: [FUEL_STACK.serviceId], pos: FUEL_STACK.localPos,
+        archetypeGlb: 'place_station_refinery', landmark: true, chartNote: FUEL_STACK.chartNote,
+      },
     ],
     // A small safe asteroid claim close to the spawn point so new pilots can learn mining before
     // the wider sector opens up (no hostiles here).

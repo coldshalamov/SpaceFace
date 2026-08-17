@@ -2,6 +2,7 @@
 // Refuel / repair hull / buy ammo / toggle insurance. Each action emits ui:service {type,amount};
 // economy/world own the credit charge + the effect (§0.6, §4.4). Read-only over sim state.
 import { COMMODITIES } from '../../data/commodities.js';
+import { FUEL_STACK } from '../../data/fuelStackLandmark.js';
 import { insurancePolicyQuoteForState, SERVICE_PRICES } from '../../systems/economy.js';
 import { livingHullCyclesSinceWash, livingHullGrimeAt } from '../../core/livingHull.js';
 import { heatLevelFor, heatRestitutionCost } from '../../systems/heat.js';
@@ -61,6 +62,7 @@ const PROTECTION_WARN_FRAC = 0.7;
 const PROTECTION_BAD_FRAC = 0.35;
 
 const SERVICE_ROWS = Object.freeze([
+  { type: FUEL_STACK.serviceId, label: 'Stack Fuel', desc: 'Top off at the gas-skimming pressure ring', requires: [FUEL_STACK.serviceId] },
   { type: 'refuel', label: 'Refuel', desc: 'Top off jump fuel', requires: ['refuel'] },
   { type: 'repair', label: 'Repair Hull', desc: 'Restore hull integrity', requires: ['repair'] },
   { type: 'hull_wash', label: 'Hull Wash', desc: 'Clear surface grime without erasing hull history', requires: ['repair'] },
@@ -174,8 +176,10 @@ export function serviceReadinessRecommendation(state, entity, stationServices = 
 
   const fuelFrac = fuelFraction(state);
   if (fuelMissing(state) > 0 && fuelFrac < FUEL_WARN_FRAC) {
-    const quote = serviceQuote('refuel', state, entity);
-    candidates.push(recommendationCandidate('refuel', quote, stationServices, {
+    const fuelService = Array.isArray(stationServices) && stationServices.includes(FUEL_STACK.serviceId)
+      ? FUEL_STACK.serviceId : 'refuel';
+    const quote = serviceQuote(fuelService, state, entity);
+    candidates.push(recommendationCandidate(fuelService, quote, stationServices, {
       priority: (fuelFrac < FUEL_BAD_FRAC ? 120 : 80) + Math.round((1 - fuelFrac) * 20),
       kind: fuelFrac < FUEL_BAD_FRAC ? 'bad' : 'warn',
       title: fuelFrac < FUEL_BAD_FRAC ? 'Refuel before undock' : 'Top off fuel reserve',
@@ -241,6 +245,49 @@ export function serviceQuote(type, state, entity) {
       chips: [
         { text: `${fmtCr(cost)} cr`, kind: 'cost' },
         ...(disabled ? [{ text: 'insufficient credits', kind: 'bad' }] : [afterCreditsChip(credits, cost)]),
+      ],
+    };
+  }
+  if (type === FUEL_STACK.serviceId) {
+    const fuel = state && state.fuel || { current: 0, max: 0 };
+    const current = Math.round(fuel.current || 0);
+    const max = Math.round(fuel.max || 0);
+    const missing = Math.max(0, (fuel.max || 0) - (fuel.current || 0));
+    const unitPrice = SERVICE_PRICES.fuelStackCrPerUnit;
+    const cost = Math.round(missing * unitPrice);
+    if (state && state.fuelStack && state.fuelStack.blown === true) {
+      return {
+        amount: 0, cost: 0,
+        detail: 'Pressure ring offline · vent cages destroyed',
+        buttonLabel: 'Offline', disabled: true, disabledReason: 'stack offline',
+        chips: [{ text: 'cascade damage', kind: 'bad' }],
+      };
+    }
+    if (missing <= 0) {
+      return { amount: 0, cost: 0, detail: 'Fuel ' + current + '/' + max + ' · full', buttonLabel: 'Full', disabled: true, chips: [{ text: 'full', kind: 'ok' }] };
+    }
+    const affordableUnits = Math.max(0, Math.floor(credits / unitPrice));
+    if (affordableUnits <= 0) {
+      return {
+        amount: 0, cost,
+        detail: 'Fuel ' + current + '/' + max + ' · ' + Math.round(missing) + 'u @ ' + fmtCr(unitPrice) + ' cr/u',
+        buttonLabel: 'Stack Refuel', disabled: true,
+        disabledReason: 'need ' + fmtCr(unitPrice) + ' cr/u',
+        chips: [{ text: fmtCr(cost) + ' cr', kind: 'cost' }, { text: 'cheap gas unavailable', kind: 'bad' }],
+      };
+    }
+    const units = Math.min(missing, affordableUnits);
+    const realCost = Math.round(units * unitPrice);
+    return {
+      amount: units,
+      cost: realCost,
+      detail: 'Fuel ' + current + '/' + max + ' · ' + Math.round(units) + 'u @ ' + fmtCr(unitPrice) + ' cr/u · live pressure cages',
+      buttonLabel: units < missing ? 'Partial Stack Refuel' : 'Stack Refuel',
+      disabled: false,
+      chips: [
+        { text: fmtCr(realCost) + ' cr', kind: 'cost' },
+        { text: `${fmtCr(SERVICE_PRICES.fuelCrPerUnit - unitPrice)} cr/u below berth rate`, kind: 'ok' },
+        afterCreditsChip(credits, realCost),
       ],
     };
   }
@@ -478,7 +525,7 @@ export function createServicesPanel(ctx) {
     let amount = 0;
     if (Number.isFinite(explicitAmount) && explicitAmount >= 0) {
       amount = explicitAmount;
-    } else if (type === 'refuel') {
+    } else if (type === 'refuel' || type === FUEL_STACK.serviceId) {
       amount = Math.max(0, (state.fuel.max || 0) - (state.fuel.current || 0));
     } else if (type === 'repair') {
       const e = state.entities.get(state.playerId);
@@ -488,19 +535,19 @@ export function createServicesPanel(ctx) {
     } else if (insuranceTierForService(type)) {
       amount = 1;
     }
-    if ((type === 'refuel' || type === 'repair' || type === 'hull_wash' || type === 'ammo') && amount <= 0) {
+    if ((type === 'refuel' || type === FUEL_STACK.serviceId || type === 'repair' || type === 'hull_wash' || type === 'ammo') && amount <= 0) {
       ctx.bus.emit('audio:cue', { id: 'ui_deny' });
       ctx.bus.emit('toast', { text: type === 'ammo' ? 'No munitions can fit right now' : 'Nothing to ' + type, kind: 'info', ttl: 2 });
       return;
     }
-    if (type === 'refuel' || type === 'repair' || type === 'hull_wash' || type === 'ammo'
+    if (type === 'refuel' || type === FUEL_STACK.serviceId || type === 'repair' || type === 'hull_wash' || type === 'ammo'
       || insuranceTierForService(type)) {
       // Quote → confirm for paid berth verbs (Station OS control grammar).
       const e = state.entities && state.entities.get(state.playerId);
       const quote = serviceQuote(type, state, e);
       if (quote && quote.cost > 0) {
         const ok = await confirm({
-          title: quote.buttonLabel || (type === 'refuel' ? 'Refuel' : type === 'repair' ? 'Repair' : type === 'hull_wash' ? 'Wash Hull' : 'Buy munitions'),
+          title: quote.buttonLabel || (type === 'refuel' || type === FUEL_STACK.serviceId ? 'Refuel' : type === 'repair' ? 'Repair' : type === 'hull_wash' ? 'Wash Hull' : 'Buy munitions'),
           body: (quote.detail || type) + ' · ' + fmtCr(quote.cost) + ' cr',
           confirmLabel: 'Confirm · ' + fmtCr(quote.cost) + ' cr',
           cancelLabel: 'Cancel',

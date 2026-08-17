@@ -8,6 +8,7 @@ import { hash32 } from '../core/rng.js';
 import { ORCUS_ANCHOR } from './anchorLandmark.js';
 import { BONE_YARD } from './boneYardLandmark.js';
 import { DEAD_GATE } from './deadGate.js';
+import { FUEL_STACK } from './fuelStackLandmark.js';
 import { LISTENING_POST } from './listeningPost.js';
 import { sectorLocalToGlobalForSector } from './sectorCoordinates.js';
 import { SECTORS } from './sectors.js';
@@ -646,6 +647,44 @@ function charonBoneYardOffer(state, stationSource) {
   };
 }
 
+function heliosFuelStackOffer(state, stationSource) {
+  if (!stationSource || stationSource.station.id !== FUEL_STACK.sourceStationId) return null;
+  if (frontierRumorOwned(state, FUEL_STACK.rumorId)) return null;
+  if (state && state.fuelStack && state.fuelStack.discovered === true) return null;
+  const sector = SECTOR_BY_ID.get(FUEL_STACK.sectorId);
+  if (!sector) return null;
+  const seed = finite(state && state.meta && state.meta.seed, 1) >>> 0;
+  const targetGlobal = sectorLocalToGlobalForSector(FUEL_STACK.localPos, sector.id);
+  const angle = (hash32(seed, FUEL_STACK.rumorId, 'bearing-offset-angle') / 0x100000000) * Math.PI * 2;
+  const offset = 220 + (hash32(seed, FUEL_STACK.rumorId, 'bearing-offset-distance') % 141);
+  return {
+    id: FUEL_STACK.rumorId,
+    schemaVersion: FRONTIER_RUMOR_SCHEMA_VERSION,
+    source: 'bar',
+    sourceStationId: FUEL_STACK.sourceStationId,
+    sourceBodyId: null,
+    sourceSectorId: FUEL_STACK.sectorId,
+    dayIndex: dayIndexFor(state),
+    kind: 'cache',
+    kindLabel: 'Fuel Stack Vent Schedule',
+    targetId: FUEL_STACK.stationId,
+    targetPlaceKind: 'station',
+    targetName: FUEL_STACK.name,
+    sectorId: FUEL_STACK.sectorId,
+    sectorName: sector.name || sector.id,
+    fieldType: null,
+    coordSpace: 'global_v1',
+    bearingCenter: {
+      x: targetGlobal.x + Math.cos(angle) * offset,
+      z: targetGlobal.z + Math.sin(angle) * offset,
+    },
+    radius: FUEL_STACK.revealRadius,
+    price: KIND_BY_ID.get('cache').price,
+    phase: 'rumored',
+    text: FUEL_STACK.rumorText,
+  };
+}
+
 /**
  * Build the one bar rumor available at a station for the current 10-minute sector-day.
  * The selection is stable and never mutates state. Purchased cards return null until the next day.
@@ -659,6 +698,8 @@ export function frontierRumorOffer(state, stationId) {
   if (quietPatch) return quietPatch;
   const anchor = orcusAnchorOffer(state, stationSource);
   if (anchor) return anchor;
+  const fuelStack = heliosFuelStackOffer(state, stationSource);
+  if (fuelStack) return fuelStack;
   const boneYard = charonBoneYardOffer(state, stationSource);
   if (boneYard) return boneYard;
   const relayMonument = dioneRelayMonumentOffer(state, stationSource);
