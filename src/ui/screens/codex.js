@@ -21,6 +21,7 @@ import { ARCADE_VERB_BEATS, arcadeVerbStatus } from '../../data/onboardingVerbs.
 import { launchAces } from '../../data/namedAces.js';
 import { LISTENING_POST, listeningPostPuzzleState } from '../../data/listeningPost.js';
 import { CODEX_BESTIARY, codexBestiaryPages, mergeCodexBestiaryRows } from '../../data/codexBestiary.js';
+import { CODEX_DEEDS, codexDeedPages } from '../../data/codexDeeds.js';
 
 const STYLE_ID = 'sf-codex-style';
 
@@ -122,7 +123,7 @@ function shell(rootEl, title, extraClass) {
   return { panel: rootEl, body };
 }
 
-const TABS = ['Story', 'Aces', 'Bestiary', 'Verbs', 'Comms', 'Discoveries', 'Black Boxes', 'Graffiti', 'Figures', 'Ship', 'Archive', 'Ledger'];
+const TABS = ['Story', 'Aces', 'Bestiary', 'Deeds', 'Verbs', 'Comms', 'Discoveries', 'Black Boxes', 'Graffiti', 'Figures', 'Ship', 'Archive', 'Ledger'];
 
 // Signal Archive — the four authored intro cinematics, exposed as recovered transmission stills the
 // player can replay. Posters (C-INTRO-0N.jpg) are clean full-bleed frames; clips are the 6s mp4s.
@@ -340,10 +341,11 @@ export function codexProgressSummary(story = {}) {
   const endgameUnlocked = beat >= 7 ? ENDGAME_CHOICES.length : 0;
   const phase = BEAT_CONTENT[beat] && BEAT_CONTENT[beat].phase || 1;
   const bestiaryComplete = codexBestiaryPages(story).filter((page) => page.complete).length;
+  const deedsEarned = codexDeedPages(story).filter((page) => page.earned).length;
   const unlockedTotal = storyUnlocked + commsUnlocked + figureUnlocked + graffitiUnlocked
-    + endgameUnlocked + bestiaryComplete;
+    + endgameUnlocked + bestiaryComplete + deedsEarned;
   const codexTotal = BEAT_CONTENT.length + commsTotal + figureTotal + graffitiTotal
-    + ENDGAME_CHOICES.length + CODEX_BESTIARY.length;
+    + ENDGAME_CHOICES.length + CODEX_BESTIARY.length + CODEX_DEEDS.length;
   const completionPercent = codexTotal > 0 ? Math.floor((unlockedTotal / codexTotal) * 100) : 0;
   return {
     beat,
@@ -354,6 +356,7 @@ export function codexProgressSummary(story = {}) {
       { key: 'Completion', value: completionPercent + '%' },
       { key: 'Story', value: storyUnlocked + '/' + BEAT_CONTENT.length + ' beats' },
       { key: 'Bestiary', value: bestiaryComplete + '/' + CODEX_BESTIARY.length + ' field notes' },
+      { key: 'Deeds', value: deedsEarned + '/' + CODEX_DEEDS.length + ' reports' },
       { key: 'Comms', value: commsUnlocked + '/' + commsTotal + ' unlocked' },
       { key: 'Figures', value: figureUnlocked + '/' + figureTotal + ' known' },
       { key: 'Graffiti', value: graffitiUnlocked + '/' + graffitiTotal + ' encountered' },
@@ -487,6 +490,7 @@ export const codexScreen = {
     this._unsubs.push(ctx.bus.on('discovery:plateUnlocked', refreshIfVisible));
     this._unsubs.push(ctx.bus.on('codex:blackBoxRecovered', refreshIfVisible));
     this._unsubs.push(ctx.bus.on('codex:bestiaryUpdated', refreshIfVisible));
+    this._unsubs.push(ctx.bus.on('title:earned', refreshIfVisible));
     this._unsubs.push(ctx.bus.on('aceMemory:transition', refreshIfVisible));
     this._unsubs.push(ctx.bus.on('aceMemory:rewardUnlocked', refreshIfVisible));
     this._unsubs.push(ctx.bus.on('secret:listeningPostLogRecovered', refreshIfVisible));
@@ -562,6 +566,7 @@ export const codexScreen = {
       case 'Story':    this._renderStory(ctx); break;
       case 'Aces':     this._renderAces(ctx); break;
       case 'Bestiary': this._renderBestiary(ctx); break;
+      case 'Deeds':    this._renderDeeds(ctx); break;
       case 'Verbs':    this._renderVerbs(ctx); break;
       case 'Comms':    this._renderComms(ctx); break;
       case 'Discoveries': this._renderDiscoveries(ctx); break;
@@ -810,6 +815,26 @@ export const codexScreen = {
       entry.appendChild(el('div', 'sf-codex-note', page.complete
         ? `Counter: ${page.counterplay}`
         : 'Counter note pending. Land a clean hit so the scanner report has something physical to compare.'));
+      this._body.appendChild(entry);
+    }
+  },
+
+  _renderDeeds(ctx) {
+    this._body.appendChild(el('div', 'sf-codex-section-h', 'Filed Deeds'));
+    for (const page of codexDeedPages(safeStory(ctx))) {
+      const entry = el('article', 'sf-codex-entry' + (page.earned ? '' : ' sf-codex-locked'));
+      entry.dataset.deedId = page.id;
+      if (!page.earned) {
+        entry.appendChild(el('h3', null, '???'));
+        entry.appendChild(el('div', 'sf-codex-meta', 'unfiled report'));
+        entry.appendChild(el('div', 'sf-codex-body', 'No verified physical receipt has reached the archive.'));
+        this._body.appendChild(entry);
+        continue;
+      }
+      entry.appendChild(el('h3', null, page.title));
+      entry.appendChild(el('div', 'sf-codex-meta', `${page.headline} · filed tick ${page.earnedTick}`));
+      entry.appendChild(el('div', 'sf-codex-body', page.report));
+      entry.appendChild(el('div', 'sf-codex-note', page.fieldNote));
       this._body.appendChild(entry);
     }
   },
