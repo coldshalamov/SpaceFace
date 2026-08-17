@@ -16,11 +16,16 @@ import { SHIPS } from '../data/ships.js';
 import { WEAPONS } from '../data/weapons.js';
 import { MODULES } from '../data/modules.js';
 import { disposeAuthoredAssetRuntime, loadAuthoredPart } from '../render/assetLoader.js';
-import { preloadAuthoredPartLibrary } from '../render/partsLibrary.js';
+import {
+  applyAuthoredSurfaceTint,
+  authoredSurfaceTintRole,
+  preloadAuthoredPartLibrary,
+} from '../render/partsLibrary.js';
 import { isReleaseAssetMode } from '../render/releaseMode.js';
 import { setEnvMapForShips, createVisualFactory } from '../render/visualFactory.js';
 import { installVisualOverrides } from '../render/visualOverrides.js';
 import { buildKestrelHero } from '../render/ships/kestrelHero.js';
+import { normalizeShipAppearance } from '../core/shipAppearance.js';
 
 const PART_ROOT = 'assets/ships/parts/';
 const PART_RELEASE_ROOT = 'assets/ships/release/parts/';
@@ -184,8 +189,19 @@ function groupFromBlueprint(record) {
   const root = new THREE.Group();
   root.name = 'DockInterior';
   for (const prim of record.primitives) {
-    const mesh = new THREE.Mesh(prim.geometry, prim.material);
+    const material = prim.material && typeof prim.material.clone === 'function'
+      ? prim.material.clone() : prim.material;
+    if (material) {
+      // The dock is a presentation backdrop, not foreground collision. Preview-owned clones draw
+      // before the inspected hull without writing depth, so an authored wall or gantry can never
+      // hide the ship the player is fitting or painting.
+      material.depthTest = false;
+      material.depthWrite = false;
+      material.needsUpdate = true;
+    }
+    const mesh = new THREE.Mesh(prim.geometry, material);
     mesh.name = prim.name;
+    mesh.renderOrder = -100;
     const pos = new THREE.Vector3();
     const quat = new THREE.Quaternion();
     const scl = new THREE.Vector3();
@@ -346,7 +362,7 @@ function buildFastPreviewMesh(defId) {
  * loadout so the pad shows the same ship you fly. Otherwise fill stock demo modules so
  * catalog hull previews still show weapons/engines.
  */
-function makeEntity(defId, seedId, loadout = null) {
+export function makeShipPreviewEntitySpec(defId, seedId, loadout = null) {
   const def = SHIP_BY_ID.get(defId);
   if (!def) return null;
 
@@ -399,14 +415,24 @@ function makeEntity(defId, seedId, loadout = null) {
     isPlayer: !!(loadout && loadout.isPlayer),
     pos: { x: 0, z: 0 }, rot: Math.PI * 0.15, prevPos: { x: 0, z: 0 }, prevRot: 0, bank: 0,
     radius: def.collisionRadius || 14,
-    data: { defId, fittings, weapons, miningBeam: null },
+    data: {
+      defId,
+      fittings,
+      weapons,
+      miningBeam: null,
+      appearance: normalizeShipAppearance(loadout && loadout.appearance, defId),
+    },
   };
 }
 
 function meshCacheKey(defId, loadout) {
   if (!defId) return null;
-  if (!loadout || !Array.isArray(loadout.fittings)) return defId;
-  return defId + '::' + loadout.fittings.map((id) => (id == null ? '-' : String(id))).join('|');
+  if (!loadout) return defId;
+  const fittings = Array.isArray(loadout.fittings) ? loadout.fittings : [];
+  // Paint is a material state on the same authored hull, not a second asset identity. Keeping it
+  // out of the mesh cache prevents a swatch click from compiling another whole GLB while the
+  // already-settled turntable disappears.
+  return defId + '::' + fittings.map((id) => (id == null ? '-' : String(id))).join('|');
 }
 
 /**
@@ -487,6 +513,8 @@ export function createShipPreviewMount(canvas, opts) {
         if (disposed || !current || boundary !== current) return;
         // The complete authored payload can have very different bounds from its immediate fallback.
         // Reframe and render atomically when it settles; input must never be required to reveal it.
+        preparePreviewMaterials(current);
+        applyPreviewAppearance(current, current.userData.previewAppearance, getDefId());
         hidePreviewOnlySurfaces(current);
         fitCameraToCurrent();
         renderNow();
@@ -510,6 +538,20 @@ export function createShipPreviewMount(canvas, opts) {
   let warmupPromise = null;
   const meshCache = new Map(); // defId -> THREE.Object3D, retained to avoid rebuilding on hover.
   const meshCacheOrder = [];
+
+  function removeDockRoot() {
+    if (!dockRoot) return;
+    scene.remove(dockRoot);
+    dockRoot.traverse((object) => {
+      const materials = object && object.material
+        ? (Array.isArray(object.material) ? object.material : [object.material]) : [];
+      for (const material of materials) {
+        if (material && typeof material.dispose === 'function') material.dispose();
+      }
+    });
+    dockRoot = null;
+    dockBlueprint = null;
+  }
 
   function disposePreviewMesh(mesh) {
     if (!mesh) return;
@@ -535,14 +577,33 @@ export function createShipPreviewMount(canvas, opts) {
     if (!mesh) return null;
     mesh.userData.previewDefId = defId;
     mesh.userData.previewCacheId = cacheId;
+    preparePreviewMaterials(mesh);
+    // Warm procedural canvas textures so the first frame isn't black.
+    mesh.traverse((c) => {
+      const m = c.material;
+      if (!m) return;
+      const materials = Array.isArray(m) ? m : [m];
+      for (const material of materials) {
+        if (!material) continue;
+        for (const k in material) {
+          const v = material[k];
+          if (v && v.isTexture && v.image && typeof v.needsUpdate !== 'undefined') v.needsUpdate = true;
+        }
+      }
+    });
+    touchCachedMesh(cacheId, mesh);
+    return mesh;
+  }
+
+  function preparePreviewMaterials(mesh) {
+    if (!mesh || typeof mesh.traverse !== 'function') return;
     // Preview-owned material clones let the hangar use restrained, directional PBR response
     // without mutating the flight scene's shared material pool. Lower ambient light now reveals
-    // authored panel changes instead of flattening the hull into a single clay value.
-    if (!mesh.userData.previewMaterialsPrepared) {
-      const materialClones = new Map();
-      const tuneMaterial = (material) => {
+    // authored panel changes instead of flattening the hull into a single clay value. This runs
+    // again after an authored hot-swap because the settled payload arrives after the boundary.
+    const tuneMaterial = (material, tags) => {
+        if (material && material.userData && material.userData.spacefacePreviewOwned === true) return material;
         if (!material || (!material.isMeshStandardMaterial && !material.isMeshPhysicalMaterial)) return material;
-        if (materialClones.has(material)) return materialClones.get(material);
         const clone = material.clone();
         clone.dithering = true;
         if ('envMapIntensity' in clone) clone.envMapIntensity = Math.max(.72, Number(clone.envMapIntensity) || 0);
@@ -553,29 +614,87 @@ export function createShipPreviewMount(canvas, opts) {
             ? Math.max(.32, Math.min(.58, roughness))
             : Math.max(.48, Math.min(.76, roughness));
         }
+        const sourceName = String(clone.name || '').toLowerCase();
+        let role = authoredSurfaceTintRole(tags || {}, clone);
+        // The authored-code Hitch predates glTF material tags. Preserve its deliberate semantic
+        // palette when the Shipworks preview applies a commission coat.
+        if (sourceName.startsWith('kestrel_')) {
+          if (/(?:graphite|gunmetal)/.test(sourceName)) role = 'dark';
+          else if (/(?:frontier)/.test(sourceName)) role = 'accent';
+          else if (/(?:drive)/.test(sourceName)) role = 'thruster';
+          else if (/(?:warning|repair|canopy|practical|sensor)/.test(sourceName)) role = 'none';
+          else role = 'hull';
+        }
+        clone.userData = {
+          ...(clone.userData || {}),
+          spacefacePreviewOwned: true,
+          spacefacePreviewTintRole: role,
+          spacefacePreviewBaseColor: clone.color ? clone.color.getHex() : null,
+          spacefacePreviewBaseEmissive: clone.emissive ? clone.emissive.getHex() : null,
+          spacefacePreviewBaseRoughness: Number.isFinite(Number(clone.roughness)) ? Number(clone.roughness) : null,
+          spacefacePreviewBaseMetalness: Number.isFinite(Number(clone.metalness)) ? Number(clone.metalness) : null,
+        };
         clone.needsUpdate = true;
-        materialClones.set(material, clone);
         return clone;
       };
-      mesh.traverse((object) => {
-        if (!object || !object.material) return;
-        object.material = Array.isArray(object.material)
-          ? object.material.map(tuneMaterial)
-          : tuneMaterial(object.material);
-      });
-      mesh.userData.previewMaterialsPrepared = true;
+    mesh.traverse((object) => {
+      if (!object || !object.material) return;
+      const tags = object.userData && object.userData.spacefaceTags || {};
+      object.material = Array.isArray(object.material)
+        ? object.material.map((material) => tuneMaterial(material, tags))
+        : tuneMaterial(object.material, tags);
+    });
+    mesh.userData.previewMaterialsPrepared = true;
+  }
+
+  function applyPreviewFinish(material, appearance, role) {
+    if (!material || !appearance || !['hull', 'accent', 'dark'].includes(role)) return;
+    const baseRoughness = material.userData.spacefacePreviewBaseRoughness;
+    const baseMetalness = material.userData.spacefacePreviewBaseMetalness;
+    if (Number.isFinite(baseRoughness)) material.roughness = baseRoughness;
+    if (Number.isFinite(baseMetalness)) material.metalness = baseMetalness;
+    if (!Number.isFinite(Number(material.roughness))) return;
+    const wear = Math.max(0, Math.min(1, Number(appearance.wear) || 0));
+    if (appearance.finish === 'polished') {
+      material.roughness = Math.max(.22, material.roughness * .72 + wear * .06);
+    } else if (appearance.finish === 'worn') {
+      material.roughness = Math.min(1, material.roughness * 1.04 + wear * .05);
+      if (Number.isFinite(Number(material.metalness))) material.metalness *= .97;
+    } else {
+      material.roughness = Math.max(.34, Math.min(.9, material.roughness + wear * .02));
     }
-    // Warm procedural canvas textures so the first frame isn't black.
-    mesh.traverse((c) => {
-      const m = c.material;
-      if (!m) return;
-      for (const k in m) {
-        const v = m[k];
-        if (v && v.isTexture && v.image && typeof v.needsUpdate !== 'undefined') v.needsUpdate = true;
+  }
+
+  function applyPreviewAppearance(mesh, rawAppearance, defId) {
+    if (!mesh || typeof mesh.traverse !== 'function') return;
+    const appearance = normalizeShipAppearance(rawAppearance, defId);
+    mesh.userData.previewAppearance = appearance;
+    mesh.traverse((object) => {
+      if (!object || !object.material) return;
+      const materials = Array.isArray(object.material) ? object.material : [object.material];
+      for (const material of materials) {
+        if (!material || !material.userData || material.userData.spacefacePreviewOwned !== true) continue;
+        const role = material.userData.spacefacePreviewTintRole || 'none';
+        const baseColor = material.userData.spacefacePreviewBaseColor;
+        const baseEmissive = material.userData.spacefacePreviewBaseEmissive;
+        if (material.color && Number.isFinite(baseColor)) material.color.setHex(baseColor);
+        if (material.emissive && Number.isFinite(baseEmissive)) material.emissive.setHex(baseEmissive);
+        applyPreviewFinish(material, appearance, role);
+        const tint = role === 'hull' ? appearance.hullColor
+          : role === 'accent' ? appearance.accentColor
+            : null;
+        if (tint) applyAuthoredSurfaceTint(material, tint, role, true);
+        material.needsUpdate = true;
       }
     });
-    touchCachedMesh(cacheId, mesh);
-    return mesh;
+  }
+
+  function setAppearance(rawAppearance) {
+    if (!current) return false;
+    preparePreviewMaterials(current);
+    applyPreviewAppearance(current, rawAppearance, getDefId());
+    renderNow();
+    return true;
   }
 
   function isGrayFallbackBox(mesh) {
@@ -592,8 +711,31 @@ export function createShipPreviewMount(canvas, opts) {
     const cacheId = (meshCacheKey(defId, loadout) || defId)
       + (loadout && loadout.isPlayer ? '::player' : '');
 
-    const ent = makeEntity(defId, 1, loadout) || makeEntity(defId, 1, { isPlayer: true });
-    if (ent) ent.isPlayer = !!(loadout && loadout.isPlayer) || defId === 'ship_kestrel';
+    const ent = makeShipPreviewEntitySpec(defId, 1, loadout)
+      || makeShipPreviewEntitySpec(defId, 1, { isPlayer: true });
+    if (ent) {
+      ent.isPlayer = !!(loadout && loadout.isPlayer) || defId === 'ship_kestrel';
+      // Build one neutral authored hull per fitting set. The preview-owned material layer applies
+      // the selected commission coat after construction and can reset it without tint stacking.
+      ent.data.appearance = null;
+    }
+
+    // Hitch's designed authored-code hero is the same readable player identity used by flight.
+    // Its resident meshes are immediately paintable; the complete GLB preview boundary currently
+    // reports authored while drawing no surfaces in this isolated renderer, so do not replace the
+    // usable hero with that blank inspection path.
+    if (defId === 'ship_kestrel' && ent) {
+      try {
+        const hero = buildKestrelHero(ent);
+        if (hero && !isGrayFallbackBox(hero)) {
+          hero.userData.authoredAssetState = 'designed-procedural-settled';
+          hero.userData.previewFastLod = false;
+          return tagAndCache(hero, defId, cacheId);
+        }
+      } catch (error) {
+        console.error('[shipPreviewMount] Hitch authored-code hero preview failed', error);
+      }
+    }
 
     // 1) Full visual factory, including the authored whole-ship boundary for Hitch. The procedural
     // hero is an immediate readable fallback, not the permanent settled station model.
@@ -669,11 +811,7 @@ export function createShipPreviewMount(canvas, opts) {
       if (record) break;
     }
     if (!record || gen !== dockLoadGen || disposed) return;
-    if (dockRoot) {
-      scene.remove(dockRoot);
-      dockRoot = null;
-      dockBlueprint = null;
-    }
+    removeDockRoot();
     dockRoot = groupFromBlueprint(record);
     dockBlueprint = record;
     dockRoot.position.y = 1.5;
@@ -799,6 +937,10 @@ export function createShipPreviewMount(canvas, opts) {
         worldRadius: Number(worldRadius.toFixed(3)),
         worldPosition: [worldPosition.x, worldPosition.y, worldPosition.z].map((value) => Number(value.toFixed(3))),
         material: object.material && object.material.name || object.material && object.material.type || '',
+        materialColor: object.material && object.material.color
+          ? `#${object.material.color.getHexString()}` : null,
+        previewTintRole: object.material && object.material.userData
+          && object.material.userData.spacefacePreviewTintRole || null,
         displayed,
         inCurrent: currentObjects.has(object),
         count: Number(object.count || 0),
@@ -898,11 +1040,12 @@ export function createShipPreviewMount(canvas, opts) {
       current = null;
     }
     if (o.rotating != null) rotating = !!o.rotating;
-    const loadout = (Array.isArray(o.fittings) || Array.isArray(o.weapons) || o.isPlayer)
+    const loadout = (Array.isArray(o.fittings) || Array.isArray(o.weapons) || o.isPlayer || o.appearance)
       ? {
         fittings: Array.isArray(o.fittings) ? o.fittings : null,
         weapons: Array.isArray(o.weapons) ? o.weapons : null,
         isPlayer: o.isPlayer === true || defId === 'ship_kestrel',
+        appearance: normalizeShipAppearance(o.appearance, defId),
       }
       : (defId === 'ship_kestrel' ? { fittings: null, weapons: null, isPlayer: true } : null);
     // Player loadouts cache separately from stock demos (hero mesh + real modules).
@@ -932,6 +1075,8 @@ export function createShipPreviewMount(canvas, opts) {
     cam.zoom = zoom;
     mesh.rotation.y = yaw;
     scene.add(mesh);
+    preparePreviewMaterials(mesh);
+    applyPreviewAppearance(mesh, o.appearance, defId);
     fitCameraToCurrent();
     renderNow();
     requestCurrentAuthoredUpgrade();
@@ -978,8 +1123,7 @@ export function createShipPreviewMount(canvas, opts) {
     renderer.setClearColor(dockId ? 0x05070d : 0x000000, dockId ? 1 : 0);
     if (!dockId) {
       dockLoadGen++;
-      if (dockRoot) { scene.remove(dockRoot); dockRoot = null; }
-      dockBlueprint = null;
+      removeDockRoot();
       renderNow();
       return;
     }
@@ -1004,8 +1148,7 @@ export function createShipPreviewMount(canvas, opts) {
     if (rafId) cancelAnimationFrame(rafId);
     rafId = 0;
     dockLoadGen++;
-    if (dockRoot) { scene.remove(dockRoot); dockRoot = null; }
-    dockBlueprint = null;
+    removeDockRoot();
     if (current) { scene.remove(current); current = null; }
     for (const mesh of meshCache.values()) disposePreviewMesh(mesh);
     meshCache.clear();
@@ -1015,7 +1158,7 @@ export function createShipPreviewMount(canvas, opts) {
   }
 
   return {
-    show, setRotating, setYaw, rotateBy, setZoom, zoomBy, getView, setDockId, setActive,
+    show, setAppearance, setRotating, setYaw, rotateBy, setZoom, zoomBy, getView, setDockId, setActive,
     warmAssets, resize, frame, dispose, projectLocalPoint, getDefId, getAssetState, getVisualDiagnostics,
   };
 }

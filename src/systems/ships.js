@@ -1005,7 +1005,7 @@ export const ships = {
     bus.on('ui:deleteLoadoutPreset', withShipworksAccess('outfit', (p) => this.deleteLoadoutPreset(p)));
     bus.on('ui:unlockTech', (p) => this.unlockTech((p && p.nodeId) || null));
     bus.on('ui:respecTech', (p) => this.respecTech(p && p.branch));
-    bus.on('ui:setShipAppearance', (p) => this.setShipAppearance(p || {}));
+    bus.on('ui:setShipAppearance', withShipworksAccess('outfit', (p) => this.setShipAppearance(p || {})));
     this._techProgressionUnsubs = TECH_EVENT_NAMES.map((eventName) => bus.on(eventName, (payload) => {
       this.recordTechProgress(eventName, payload || {});
     }));

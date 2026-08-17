@@ -27,6 +27,12 @@ import {
   quartermasterMemoryFor,
 } from '../../../data/stationContacts.js';
 import { normalizeLivingHull } from '../../../core/livingHull.js';
+import { shipAppearanceSignature } from '../../../core/shipAppearance.js';
+import {
+  paintSchemesForShip,
+  selectedPaintSchemeId,
+  shipPaintAppearance,
+} from '../../../data/shipCustomization.js';
 import { escapeHtml } from '../../comms.js';
 import { confirm, isConfirmOpen } from '../../confirm.js';
 import { describeOutfittingSpendConfirm } from '../../outfittingSpendConfirm.js';
@@ -300,9 +306,10 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     renderSide();
   }
 
-  function writeCanvasPreviewMeta(defId, fittings, meta) {
+  function writeCanvasPreviewMeta(defId, fittings, meta, appearance) {
     canvas.dataset.previewDefId = defId || '';
     canvas.dataset.previewFittings = JSON.stringify(Array.isArray(fittings) ? fittings : []);
+    canvas.dataset.previewAppearance = shipAppearanceSignature(appearance, defId);
     canvas.dataset.fallbackAllowed = 'false';
     if (meta && meta.mode === 'module') {
       canvas.dataset.previewMode = 'module';
@@ -436,21 +443,23 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     return mount;
   }
 
-  function previewShip(defId, fittings, isPlayer, meta) {
+  function previewShip(defId, fittings, isPlayer, meta, appearance = null) {
     ensureMount();
-    writeCanvasPreviewMeta(defId, fittings, meta);
+    writeCanvasPreviewMeta(defId, fittings, meta, appearance);
     expectedPreviewDefId = defId || null;
     const sameHull = mount.getDefId && mount.getDefId() === defId;
+    const key = defId + '|' + (fittings || []).join(',') + '|' + (isPlayer ? 'p' : 's') + '|'
+      + ((meta && meta.mode) || 'base') + '|' + shipAppearanceSignature(appearance, defId);
     // Gate on ASSET READINESS, not hull identity alone. The stage is a shared singleton built for
     // the dock host, so a flight-first F2 open can match the hull id while that hull's GLB is
     // still seconds away on a cold cache. An identity-only gate dismissed the acquiring state
     // immediately and left the player staring at an empty bay with floating slot callouts —
-    // measured at 12s+ before the hull arrived (scripts/probe-ship-polish-audit.mjs).
+    // measured at 12s+ before the hull arrived (scripts/probe-ship-polish-audit.mjs). Paint changes
+    // retint that same settled hull synchronously and therefore do not reacquire the authored asset.
     const assetStableNow = stablePreviewState(mount.getAssetState ? mount.getAssetState() : 'rendered');
     const gated = (!sameHull && !(meta && meta.mode === 'module')) || !assetStableNow;
     stageEl.dataset.revealWasGated = gated ? 'true' : 'false';
     const revealGeneration = beginPreviewReveal(defId, gated);
-    const key = defId + '|' + (fittings || []).join(',') + '|' + (isPlayer ? 'p' : 's') + '|' + ((meta && meta.mode) || 'base');
     if (key === curPreviewKey) {
       mount.setActive(true);
       const state = mount.getAssetState ? mount.getAssetState() : 'rendered';
@@ -463,8 +472,17 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const preserveView = sameHull;
       // Shipworks is direct manipulation: the settled ship does not burn a render loop merely to
       // prove it is alive. Drag, zoom, selection and authored-asset upgrades render on demand.
-      mount.show(defId, { fittings: fittings || [], isPlayer: !!isPlayer, rotating: false, preserveView });
-      if (!preserveView) mount.setZoom(1.68);
+      mount.show(defId, {
+        fittings: fittings || [],
+        isPlayer: !!isPlayer,
+        appearance,
+        rotating: false,
+        preserveView,
+      });
+      // fitCameraToCurrent already frames the authored bounding sphere at the shipped 38-degree
+      // turntable FOV. Magnifying that fitted view again cropped Hitch down to an unrecognizable
+      // hull close-up once its real authored payload arrived.
+      if (!preserveView) mount.setZoom(1);
       mount.setActive(true);
       mount.resize();
       const state = mount.getAssetState ? mount.getAssetState() : 'rendered';
@@ -482,6 +500,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         defId: def.id,
         fittings: Array.isArray(s.fittings) ? s.fittings.slice() : [],
         isPlayer: true,
+        appearance: s.appearance,
         player: ctx.state.player,
         stock: false,
       };
@@ -538,7 +557,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       statsEl.removeAttribute('data-preview-source');
       return;
     }
-    previewShip(ctxPrev.defId, ctxPrev.fittings, ctxPrev.isPlayer, null);
+    previewShip(ctxPrev.defId, ctxPrev.fittings, ctxPrev.isPlayer, null, ctxPrev.appearance);
     const readout = presentDerivedReadout(ctxPrev.defId, ctxPrev.fittings, ctxPrev.player);
     renderDerivedStats(readout, ctxPrev.fittings);
     scheduleSpatialProjection();
@@ -784,7 +803,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const def = s ? SHIP_BY_ID.get(s.defId) : null;
       if (!def) { nameplateEl.innerHTML = ''; statsEl.innerHTML = ''; statsEl.removeAttribute('data-preview-source'); return; }
       const fittings = s.fittings || [];
-      previewShip(def.id, fittings, true, null);
+      previewShip(def.id, fittings, true, null, s.appearance);
       nameplateEl.innerHTML = `<h2>${escapeHtml(def.name)}</h2><span>${escapeHtml(def.role || '')} ship · Tier ${def.tier}</span>`;
       const readout = presentDerivedReadout(def.id, fittings, ctx.state.player);
       renderDerivedStats(readout, fittings);
@@ -887,6 +906,32 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         `<button type="button" class="sx-btn-ghost" data-save-loadout="${inspectedIndex}" ${canPreset ? '' : 'disabled'} aria-label="${escapeHtml(canPreset ? 'Save current loadout preset' : presetReason)}">Save Current</button>` +
       `</div>` +
     `</div>`;
+    const paintSchemes = paintSchemesForShip(def.id);
+    const selectedPaint = selectedPaintSchemeId(def.id, s.appearance);
+    const selectedPaintScheme = paintSchemes.find((scheme) => scheme.id === selectedPaint) || null;
+    const canPaint = host !== 'flight' && availability.outfitEnabled;
+    const paintReason = canPaint
+      ? 'Commission coats are included with hull ownership.'
+      : 'Dock at an outfitting berth to repaint this hull.';
+    const paintRail = `<section class="sx-sw-paint" aria-label="Hull paint booth">` +
+      `<div class="sx-sw-paint__head"><span>PAINT BOOTH</span><b>${escapeHtml(def.name)}</b><em>${escapeHtml(paintReason)}</em></div>` +
+      `<div class="sx-sw-paint__schemes">${paintSchemes.map((scheme) => {
+        const appearance = shipPaintAppearance(def.id, scheme.id, s.appearance);
+        const isSelected = selectedPaint === scheme.id;
+        const hullColor = appearance.hullColor || '#72767a';
+        const accentColor = appearance.accentColor || '#b89b61';
+        return `<button type="button" class="sx-sw-paint__scheme${isSelected ? ' is-selected' : ''}" ` +
+          `data-paint-scheme="${escapeHtml(scheme.id)}" data-ship-index="${inspectedIndex}" ` +
+          `aria-pressed="${isSelected}" aria-label="${escapeHtml(`${scheme.label}. ${scheme.story}`)}" ` +
+          `title="${escapeHtml(scheme.story)}" ${canPaint ? '' : 'disabled'}>` +
+            `<span class="sx-sw-paint__swatch" style="--paint-hull:${escapeHtml(hullColor)};--paint-accent:${escapeHtml(accentColor)}" aria-hidden="true"><i></i></span>` +
+            `<span class="sx-sw-paint__copy"><strong>${escapeHtml(scheme.label)}</strong></span>` +
+            `<span class="sx-sw-paint__state">${isSelected ? 'FITTED' : 'APPLY'}</span>` +
+          `</button>`;
+      }).join('')}</div>` +
+      `<p class="sx-sw-paint__detail"><b>${escapeHtml(selectedPaintScheme?.label || 'Custom Coating')}</b>` +
+        `<span>${escapeHtml(selectedPaintScheme?.story || 'A retained field mix outside this yard’s commission book.')}</span></p>` +
+    `</section>`;
     sideEl.innerHTML =
       (quartermaster
         ? `<section class="sx-panel" data-quartermaster="${escapeHtml(quartermaster.id)}" aria-label="${escapeHtml(`${quartermaster.roleLabel} ${quartermaster.name}`)}">` +
@@ -910,7 +955,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         }).join('')}</div>` +
         `<div class="sx-sw-circuit__instruction"><span>SELECT ON HULL</span><b>Choose a system node to preview compatible hardware.</b>${activeControl}</div>` +
       `</div>` +
-      presetRail;
+      `<div class="sx-sw-tools">${paintRail}${presetRail}</div>`;
   }
 
   function specRow(k, v) { return `<div class="sx-kv"><span>${k}</span><b>${v}</b></div>`; }
@@ -1145,7 +1190,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     previewShip(ghost.defId, ghost.afterFittings, true, {
       mode: 'module',
       moduleId: ghost.moduleId || moduleId,
-    });
+    }, s.appearance);
     const readout = presentDerivedReadout(ghost.defId, ghost.afterFittings, ctx.state.player);
     renderDerivedStats(readout, ghost.afterFittings);
     const changed = (ghost.changedRows || []).filter((row) => row.tone !== 'same').slice(0, 4);
@@ -1218,6 +1263,24 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   });
 
   sideEl.addEventListener('click', (ev) => {
+    const paintScheme = ev.target.closest('[data-paint-scheme]');
+    if (paintScheme && !paintScheme.disabled && ctx.bus && shipworksActionAvailability(ctx.state).outfitEnabled) {
+      const shipIndex = Number(paintScheme.getAttribute('data-ship-index'));
+      const ship = owned()[shipIndex];
+      if (!ship) return;
+      ctx.bus.emit('ui:setShipAppearance', {
+        shipIndex,
+        appearance: shipPaintAppearance(
+          ship.defId,
+          paintScheme.getAttribute('data-paint-scheme'),
+          ship.appearance,
+        ),
+        source: 'shipworks_paint_booth',
+      });
+      ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+      setTimeout(refresh, 60);
+      return;
+    }
     const savePreset = ev.target.closest('[data-save-loadout]');
     if (savePreset && !savePreset.disabled && ctx.bus && shipworksActionAvailability(ctx.state).outfitEnabled) {
       const shipIndex = Number(savePreset.getAttribute('data-save-loadout'));
