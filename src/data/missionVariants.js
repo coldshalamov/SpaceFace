@@ -15,6 +15,8 @@ export const PEST_CONTROL_ARCHETYPE_ID = 'wasp_swarmer';
 export const DEBRIS_RECOVERY_VARIANT_ID = 'debris_recovery';
 export const DEBRIS_RECOVERY_FOLLOWUP_SOURCE = 'debrisRecoveryFollowup';
 export const DEBRIS_RECOVERY_DRAW_MODULO = 3;
+export const SALVAGE_RACE_VARIANT_ID = 'salvage_race';
+export const SALVAGE_RACE_DRAW_MODULO = 3;
 export const DISABLE_DONT_KILL_VARIANT_ID = 'disable_dont_kill';
 export const DISABLE_DONT_KILL_DRAW_MODULO = 3;
 export const LOUD_DELIVERY_VARIANT_ID = 'loud_delivery';
@@ -184,6 +186,48 @@ export function isDebrisRecoveryFollowup(value) {
   return !!(value && value.source === DEBRIS_RECOVERY_FOLLOWUP_SOURCE
     && value.params && value.params.debrisRecovery
     && Number(value.params.debrisRecovery.generation) === 1);
+}
+
+/** One in three remaining ordinary salvage rolls becomes a contested physical wreck. */
+export function shouldRollSalvageRace(hashValue) {
+  return (Number(hashValue) >>> 0) % SALVAGE_RACE_DRAW_MODULO === 0;
+}
+
+/** Put the player and the ambient NPC cutter on the same wreck instead of a dock turn-in. */
+export function applySalvageRaceVariant(offer, locationName = 'the marked recovery pocket') {
+  if (!offer || offer.type !== 'salvage_retrieval') return offer;
+  const qty = Math.max(1, Math.floor(Number(offer.params && offer.params.qty) || 1));
+  return {
+    ...offer,
+    destStationId: null,
+    title: `Salvage Race — First Cut near ${locationName}`,
+    brief: `An NPC scavenger crew has the same wreck and the same clock. Cut its ${qty}u first.`,
+    // The physical cutter is the clock; a second mission-owned countdown would duplicate it.
+    duration_s: null,
+    variantId: SALVAGE_RACE_VARIANT_ID,
+    params: {
+      ...(offer.params || {}),
+      missionVariant: SALVAGE_RACE_VARIANT_ID,
+      salvageRace: {
+        generation: 0,
+        targetName: 'Contested Survey Wreck',
+        outcome: null,
+      },
+    },
+    clauses: [],
+  };
+}
+
+export function isSalvageRace(value) {
+  return !!(value && (
+    value.variantId === SALVAGE_RACE_VARIANT_ID
+    || value.params && value.params.missionVariant === SALVAGE_RACE_VARIANT_ID
+  ));
+}
+
+export function salvageRaceFollowupOfferId(mission) {
+  const sourceId = mission && (mission.sourceOfferId || mission.id);
+  return sourceId ? `mo_salvage_race_wake_${String(sourceId)}` : null;
 }
 
 /** One in three ordinary bounty rolls becomes a nonlethal capture warrant. */

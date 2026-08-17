@@ -62,6 +62,7 @@ import {
   PEST_CONTROL_FOLLOWUP_SOURCE,
   PEST_CONTROL_VARIANT_ID,
   QUIET_DELIVERY_RECOVERY_SOURCE,
+  SALVAGE_RACE_VARIANT_ID,
   applyAtmosphereRescueVariant,
   applyDebrisRecoveryVariant,
   applyDisableDontKillVariant,
@@ -69,6 +70,7 @@ import {
   applyPestControlVariant,
   applyQuietDeliveryVariant,
   applyRockDiversionVariant,
+  applySalvageRaceVariant,
   applyWreckTowVariant,
   atmosphereRescueFollowupOfferId,
   debrisRecoveryFollowupOfferId,
@@ -84,10 +86,12 @@ import {
   isQuietDelivery,
   isQuietDeliveryRecovery,
   isRockDiversion,
+  isSalvageRace,
   isWreckTow,
   pestControlFollowupOfferId,
   quietDeliveryRecoveryOfferId,
   rockDiversionFollowupOfferId,
+  salvageRaceFollowupOfferId,
   shouldRollAtmosphereRescue,
   shouldRollDebrisRecovery,
   shouldRollDisableDontKill,
@@ -95,10 +99,12 @@ import {
   shouldRollPestControl,
   shouldRollQuietDelivery,
   shouldRollRockDiversion,
+  shouldRollSalvageRace,
   shouldRollWreckTow,
   wreckTowFollowupOfferId,
 } from '../data/missionVariants.js';
 import { PLANET_SITE } from '../data/planets.js';
+import { CERES_ACTIVITY_SECTOR_ID } from '../data/sectorActivityPockets.js';
 import { factionMissionDoctrineMultiplier } from '../data/factionPlay.js';
 import { settleContractClauses, unsatisfiedRequiredConditions } from '../data/contractClauses.js';
 // Physics-aware contract terms (grammar §9.9.1). The catalog is data; the event half is observed by
@@ -713,6 +719,9 @@ export const missions = {
     // receipt. It has no synthetic cargo or destination dock: the physical wreck recovery is the
     // objective, and missions remains the settlement authority.
     bus.on('salvage:completed', (p) => this._onSalvageCompleted(p));
+    // Traffic owns the competing crew and extraction. Its completed WORK receipt is the only
+    // contract loss signal; missions never steers the cutter or drains the wreck itself.
+    bus.on('salvage:npcExtraction', (p) => this._onNpcSalvageExtraction(p));
     // bulk_haul: tethered bulk chunks delivered at refinery docks.
     bus.on('mining:bulkHaulDelivered', (p) => this._onBulkHaulDelivered(p));
     // Quiet Delivery observes the canonical fragile-cargo receipt before the clause observer turns
@@ -1704,6 +1713,12 @@ export const missions = {
     const debrisRecovery = options.attachConditions !== false
       && typeId === 'salvage_retrieval'
       && shouldRollDebrisRecovery(variantHashFn(this.state.meta.seed, id, 'debris-recovery-variant'));
+    const salvageRace = options.attachConditions !== false
+      && typeId === 'salvage_retrieval'
+      && !debrisRecovery
+      // Ceres owns a closed authored shift: ambient cutters are intentionally disabled there.
+      && destSectorId !== CERES_ACTIVITY_SECTOR_ID
+      && shouldRollSalvageRace(variantHashFn(this.state.meta.seed, id, 'salvage-race-variant'));
     const disableDontKill = options.attachConditions !== false
       && typeId === 'bounty_hunt'
       && dest && isLawfulStationFaction(dest.factionId)
@@ -1764,6 +1779,10 @@ export const missions = {
     if (debrisRecovery) {
       const podCount = 2 + (variantHashFn(this.state.meta.seed, id, 'debris-recovery-pods') % 2);
       return applyDebrisRecoveryVariant(offer, dest && dest.name || 'the marked field', podCount);
+    }
+    if (salvageRace) {
+      const raceSector = SECTOR_BY_ID.get(destSectorId);
+      return applySalvageRaceVariant(offer, raceSector && raceSector.name || 'the marked recovery pocket');
     }
     if (disableDontKill) {
       return applyDisableDontKillVariant(offer, dest && dest.name || 'the marked sector');
@@ -2433,7 +2452,7 @@ export const missions = {
   _typeSpawnsTargets(typeId, params = null) {
     return typeId === 'bounty_hunt' || typeId === 'patrol_clear' || typeId === 'escort'
       || !!(params && (params.atmosphereRescue || params.poiSignalFollowup
-        || params.quietDeliveryRecovery || params.debrisRecovery));
+        || params.quietDeliveryRecovery || params.debrisRecovery || params.salvageRace));
   },
 
   _chainSeed(offer) {
@@ -3925,6 +3944,16 @@ export const missions = {
     for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
       const m = this.state.missions.active[i];
       if (!m || m.status !== 'active' || m.type !== 'salvage_retrieval') continue;
+      if (isSalvageRace(m) && (m.targetEntityIds || []).includes(p.wreckId)) {
+        const race = m.params && m.params.salvageRace;
+        if (race) {
+          race.outcome = 'player_first_cut';
+          race.resolvedAt_s = Number(this.state.simTime) || 0;
+        }
+        m.objectiveProgress = m.objectiveTarget;
+        this._completeMission(m, i);
+        return true;
+      }
       if (!m.params || m.params.setPieceObjective !== 'investigation_recover_box') continue;
       if (this.state.world.currentSectorId !== m.destSectorId) continue;
       m.params.recoveredWreckId = p.wreckId;
@@ -3933,6 +3962,116 @@ export const missions = {
       return true;
     }
     return false;
+  },
+
+  /** The ambient salvor's real WORK receipt settles the same contested wreck as a player loss. */
+  _onNpcSalvageExtraction(payload) {
+    if (!payload || payload.targetId == null || Math.max(0, Number(payload.totalQty) || 0) <= 0) {
+      return false;
+    }
+    for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
+      const mission = this.state.missions.active[i];
+      if (!mission || mission.status !== 'active' || !isSalvageRace(mission)
+        || !(mission.targetEntityIds || []).includes(payload.targetId)) continue;
+      const target = this.state.entities && this.state.entities.get(payload.targetId);
+      const race = mission.params && mission.params.salvageRace;
+      if (race) {
+        race.outcome = 'npc_first_cut';
+        race.resolvedAt_s = Number(this.state.simTime) || 0;
+        race.salvorId = payload.salvorId == null ? null : payload.salvorId;
+      }
+      mission._salvageRaceLoss = {
+        targetEntityId: payload.targetId,
+        targetName: race && race.targetName || 'Contested Survey Wreck',
+        salvorId: payload.salvorId == null ? null : payload.salvorId,
+        sectorId: payload.sectorId
+          || this.state.world && this.state.world.currentSectorId
+          || mission.destSectorId,
+        pos: {
+          x: Number(target && target.pos && target.pos.x) || 0,
+          z: Number(target && target.pos && target.pos.z) || 0,
+        },
+        vel: {
+          x: Number(target && target.vel && target.vel.x) || 0,
+          z: Number(target && target.vel && target.vel.z) || 0,
+        },
+      };
+      this._failMission(mission, i, 'npc_salvor_won');
+      return true;
+    }
+    return false;
+  },
+
+  /** A lost race leaves one recorder knocked into the cutter's wake, not a duplicate wreck. */
+  _postSalvageRaceRecovery(mission) {
+    const loss = mission && mission._salvageRaceLoss;
+    const offerId = salvageRaceFollowupOfferId(mission);
+    if (!mission || !loss || !offerId || !mission.stationId) return null;
+    const duplicateActive = (this.state.missions.active || []).find((candidate) => (
+      candidate && candidate.sourceOfferId === offerId
+    ));
+    if (duplicateActive) return duplicateActive;
+    for (const candidateBoard of Object.values(this.state.missions.boards || {})) {
+      const duplicate = candidateBoard && Array.isArray(candidateBoard.slots)
+        && candidateBoard.slots.find((candidate) => candidate && candidate.id === offerId);
+      if (duplicate) return duplicate;
+    }
+
+    const commodityId = 'cmdty_salvage_electronics';
+    const commodity = CMDTY_BY_ID.get(commodityId);
+    const pods = [{ slot: 0, commodityId, amount: 1 }];
+    const offer = {
+      id: offerId,
+      type: 'salvage_retrieval',
+      stationId: mission.stationId,
+      factionId: mission.factionId,
+      reward_cr: Math.max(90, Math.round((Number(mission.reward_cr) || 0) * 0.3)),
+      time_limit_s: 240,
+      duration_s: 240,
+      collateral_cr: 0,
+      riskTier: Math.max(1, Math.round(Number(mission.riskTier) || 1)),
+      destStationId: null,
+      destSectorId: loss.sectorId || mission.destSectorId,
+      distance: mission.distance,
+      params: {
+        cmdtyId: commodityId,
+        qty: 1,
+        cargoValue: Math.max(0, Number(commodity && commodity.basePrice) || 0),
+        fValue: 1,
+        taskTime: 30,
+        missionVariant: DEBRIS_RECOVERY_VARIANT_ID,
+        debrisRecovery: {
+          fieldName: 'the scavenger cutter wake',
+          generation: 1,
+          sourceMissionId: mission.id,
+          pos: { ...loss.pos },
+          vel: { ...loss.vel },
+          pods,
+        },
+      },
+      title: 'Debris Recovery — Scavenger Wake Recorder',
+      brief: 'The cutter took the wreck but knocked one recorder loose. Pull it from their wake.',
+      expiresAtEpoch: this._epoch() + 2,
+      storyTag: null,
+      variantId: DEBRIS_RECOVERY_VARIANT_ID,
+      source: DEBRIS_RECOVERY_FOLLOWUP_SOURCE,
+      cause: {
+        tag: 'salvage_race_lost',
+        sourceMissionId: mission.id,
+        sourceOfferId: mission.sourceOfferId || null,
+        targetEntityId: loss.targetEntityId,
+        salvorId: loss.salvorId,
+      },
+    };
+    let board = this.state.missions.boards[mission.stationId];
+    if (!board || typeof board !== 'object') {
+      board = { refreshEpoch: this._epoch(), slots: [] };
+      this.state.missions.boards[mission.stationId] = board;
+    }
+    if (!Array.isArray(board.slots)) board.slots = [];
+    board.slots.push(offer);
+    this.bus.emit('mission:updated', { missionId: null, stationId: mission.stationId });
+    return offer;
   },
 
   _captureWreckTowLoss(mission, target = null, killerId = null) {
@@ -5156,6 +5295,7 @@ export const missions = {
     if (isAtmosphereRescue(m) && m._atmosphereRescueLoss) {
       this._postAtmosphereRescueBlackBox(m);
     }
+    if (isSalvageRace(m) && m._salvageRaceLoss) this._postSalvageRaceRecovery(m);
     const setPieceTransition = this._compileSetPieceTransition(m, 'failed', reason || 'failed');
     m.status = 'failed';
     this._clearMissionNav(m.id);
@@ -5397,7 +5537,7 @@ export const missions = {
     ent.data.missionPinned = true;
     const combatTarget = m.type === 'bounty_hunt' || m.type === 'patrol_clear';
     const slottedTarget = combatTarget || isAtmosphereRescue(m)
-      || isQuietDeliveryRecovery(m) || isDebrisRecovery(m);
+      || isQuietDeliveryRecovery(m) || isDebrisRecovery(m) || isSalvageRace(m);
     const durableSlot = slottedTarget
       ? Math.max(0, seq | 0)
       : (missionTargetSlotOf(ent, m.id) ?? Math.max(0, seq | 0));
@@ -5751,6 +5891,88 @@ export const missions = {
         spawned++;
       }
       if (spawned) this.bus.emit('mission:updated', { missionId: m.id });
+      return;
+    }
+
+    const salvageRace = m.params && m.params.salvageRace;
+    if (salvageRace) {
+      if ((m.targetEntityIds || []).length > 0 || salvageRace.outcome) return;
+      // world:enter may announce before the destination berths have materialized. Wait for the
+      // same ordinary dock list Traffic uses, then put the wreck beside its actual cutter yard.
+      const dockStations = this.state.entityIndex && this.state.entityIndex.dockStations;
+      const home = Array.isArray(dockStations)
+        ? (m.destSectorId === 'sector_helios_prime'
+          ? dockStations.find((station) => station && station.data
+            && station.data.stationId === 'station_helios') || dockStations[0]
+          : dockStations[0])
+        : null;
+      if (!home || !home.pos) return;
+      const budget = helpers.spawnBudget;
+      const requester = `mission:${m.id}`;
+      if (budget && typeof budget.request === 'function' && budget.request(1, requester) <= 0) {
+        this._noteMissionSpawnDeferred(m, 1, 0);
+        return;
+      }
+      const rng = nextRng(0);
+      const angle = rng() * Math.PI * 2;
+      const radius = 180 + rng() * 70;
+      const anchor = home && home.pos || { x: px, z: pz };
+      let ent;
+      try {
+        ent = helpers.spawnEntity({
+          type: 'wreck',
+          team: 2,
+          factionId: null,
+          pos: {
+            x: anchor.x + Math.cos(angle) * radius,
+            z: anchor.z + Math.sin(angle) * radius,
+          },
+          vel: { x: Math.cos(angle + Math.PI / 2) * 2, z: Math.sin(angle + Math.PI / 2) * 2 },
+          rot: rng() * Math.PI * 2,
+          angVel: (rng() - 0.5) * 0.2,
+          radius: 9,
+          mass: 1e6,
+          hull: 1,
+          hullMax: 1,
+          flags: { missionPinned: true, persistent: true, durable: true },
+          data: {
+            parentType: 'ship',
+            kind: 'wreck',
+            label: salvageRace.targetName || 'Contested Survey Wreck',
+            name: salvageRace.targetName || 'Contested Survey Wreck',
+            scanLabel: `${salvageRace.targetName || 'Contested Survey Wreck'} / CUTTER INBOUND`,
+            authoredScanLabel:
+              `${salvageRace.targetName || 'Contested Survey Wreck'} / CUTTER INBOUND`,
+            loot: [],
+            salvagePool: {
+              [m.params.cmdtyId || 'cmdty_scrap_metal']:
+                Math.max(1, Math.floor(Number(m.params.qty) || 1)),
+            },
+            authoredSalvagePool: {
+              [m.params.cmdtyId || 'cmdty_scrap_metal']:
+                Math.max(1, Math.floor(Number(m.params.qty) || 1)),
+            },
+            salvageTimeLeft: 6,
+            salvorNoticeAt: Number(this.state.simTime) || 0,
+            masslineTetherable: true,
+            salvageRaceMission: true,
+          },
+        });
+      } catch (error) {
+        if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
+        throw error;
+      }
+      if (!ent) {
+        if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
+        return;
+      }
+      if (budget && typeof budget.bindEntity === 'function') budget.bindEntity(ent.id, requester);
+      this._stampMissionTargetIdentity(ent, m, 0);
+      m.targetEntityIds.push(ent.id);
+      salvageRace.targetEntityId = ent.id;
+      salvageRace.startedAt_s = Number(this.state.simTime) || 0;
+      if (this._missionBudgetDeferrals) this._missionBudgetDeferrals.delete(String(m.id));
+      this.bus.emit('mission:updated', { missionId: m.id, targetEntityId: ent.id });
       return;
     }
 
