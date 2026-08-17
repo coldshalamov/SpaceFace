@@ -64,6 +64,9 @@ test('bar rumor rotation covers four real regional target kinds without exposing
     } else if (offer.targetPlaceKind === 'station') {
       assert.ok((sector.stations || []).some((station) => station.id === offer.targetId),
         `${offer.kind} card binds a real authored station`);
+    } else if (offer.targetPlaceKind === 'poi') {
+      assert.ok((sector.pois || []).some((poi) => poi.id === offer.targetId),
+        `${offer.kind} card binds a real authored POI carrier`);
     } else if (offer.kind === 'anomaly' || offer.kind === 'cache') {
       assert.ok((sector.pois || []).some((poi) => poi.id === offer.targetId && poi.type === offer.kind),
         `${offer.kind} card binds a real authored POI`);

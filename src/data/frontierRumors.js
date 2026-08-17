@@ -10,6 +10,7 @@ import { BONE_YARD } from './boneYardLandmark.js';
 import { DEAD_GATE } from './deadGate.js';
 import { FUEL_STACK } from './fuelStackLandmark.js';
 import { LISTENING_POST } from './listeningPost.js';
+import { MEMORIAL_FIELD } from './memorialFieldLandmark.js';
 import { sectorLocalToGlobalForSector } from './sectorCoordinates.js';
 import { SECTORS } from './sectors.js';
 import { fixerMemoryFor } from './stationContacts.js';
@@ -685,6 +686,48 @@ function heliosFuelStackOffer(state, stationSource) {
   };
 }
 
+function heliosMemorialFieldOffer(state, stationSource) {
+  if (!stationSource || stationSource.station.id !== MEMORIAL_FIELD.sourceStationId) return null;
+  if (frontierRumorOwned(state, MEMORIAL_FIELD.rumorId)) return null;
+  const sector = SECTOR_BY_ID.get(MEMORIAL_FIELD.sectorId);
+  const poi = sector && (sector.pois || []).find((row) => row && row.id === MEMORIAL_FIELD.poiId);
+  const localPos = finitePoint(poi && poi.pos);
+  if (!sector || !poi || !localPos || !candidateStillUnknown(state, {
+    kind: 'cache', sector, targetId: poi.id,
+  })) return null;
+
+  const seed = finite(state && state.meta && state.meta.seed, 1) >>> 0;
+  const targetGlobal = sectorLocalToGlobalForSector(localPos, sector.id);
+  const angle = (hash32(seed, MEMORIAL_FIELD.rumorId, 'bearing-offset-angle') / 0x100000000) * Math.PI * 2;
+  const offset = 220 + (hash32(seed, MEMORIAL_FIELD.rumorId, 'bearing-offset-distance') % 141);
+  return {
+    id: MEMORIAL_FIELD.rumorId,
+    schemaVersion: FRONTIER_RUMOR_SCHEMA_VERSION,
+    source: 'bar',
+    sourceStationId: MEMORIAL_FIELD.sourceStationId,
+    sourceBodyId: null,
+    sourceSectorId: MEMORIAL_FIELD.sectorId,
+    dayIndex: dayIndexFor(state),
+    kind: 'cache',
+    kindLabel: 'Memorial Watch Log',
+    targetId: MEMORIAL_FIELD.poiId,
+    targetPlaceKind: 'poi',
+    targetName: MEMORIAL_FIELD.name,
+    sectorId: MEMORIAL_FIELD.sectorId,
+    sectorName: sector.name || sector.id,
+    fieldType: null,
+    coordSpace: 'global_v1',
+    bearingCenter: {
+      x: targetGlobal.x + Math.cos(angle) * offset,
+      z: targetGlobal.z + Math.sin(angle) * offset,
+    },
+    radius: MEMORIAL_FIELD.revealRadius,
+    price: KIND_BY_ID.get('cache').price,
+    phase: 'rumored',
+    text: MEMORIAL_FIELD.rumorText,
+  };
+}
+
 /**
  * Build the one bar rumor available at a station for the current 10-minute sector-day.
  * The selection is stable and never mutates state. Purchased cards return null until the next day.
@@ -700,6 +743,8 @@ export function frontierRumorOffer(state, stationId) {
   if (anchor) return anchor;
   const fuelStack = heliosFuelStackOffer(state, stationSource);
   if (fuelStack) return fuelStack;
+  const memorialField = heliosMemorialFieldOffer(state, stationSource);
+  if (memorialField) return memorialField;
   const boneYard = charonBoneYardOffer(state, stationSource);
   if (boneYard) return boneYard;
   const relayMonument = dioneRelayMonumentOffer(state, stationSource);

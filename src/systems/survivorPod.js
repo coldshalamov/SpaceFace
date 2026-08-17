@@ -25,6 +25,7 @@
 
 import { spawnPayloadEntity } from '../combat/industrialBeam.js';
 import { hash32 } from '../core/rng.js';
+import { MEMORIAL_FIELD } from '../data/memorialFieldLandmark.js';
 import { SECTORS } from '../data/sectors.js';
 import { wreckMissionById } from '../data/wreckMissions.js';
 import { protectedStationAt } from '../ai/engagementAuthority.js';
@@ -399,6 +400,7 @@ export const survivorPod = {
 
     // Causal path: re-adopt + settle + TTL.
     this._tickCausal(state, own);
+    this._tickMemorialField(state);
   },
 
   /** Transform the canonical player entity into the survival pod instead of spawning a spectator
@@ -520,6 +522,105 @@ export const survivorPod = {
       sourceMarkerId: markerId,
       memoryId: `survivor:wreck:${markerId}`,
     });
+  },
+
+  /** One authored source can ask the existing causal-pod owner for physical custody without
+   * learning its entity/stamp internals. Stable marker + moral-memory ids make the request
+   * idempotent across sector re-entry and Continue. */
+  spawnAuthoredRumorPod({
+    markerId,
+    memoryId,
+    pos,
+    vel = null,
+    factionId = CONCORD_FACTION_ID,
+    source = 'authored_survivor_rumor',
+    scanLabel = 'Survivor Pod',
+  } = {}) {
+    const state = this._state;
+    if (!state || !markerId || !memoryId || !pos
+      || !Number.isFinite(Number(pos.x)) || !Number.isFinite(Number(pos.z))) return null;
+    const moralDebt = state.story && state.story.moralMemory
+      && state.story.moralMemory.debts && state.story.moralMemory.debts[memoryId];
+    if (moralDebt) return null;
+    const existing = (state.entityList || []).find((entity) => isCausalSurvivorPod(entity)
+      && entity.data && entity.data.survivorPodCausal
+      && entity.data.survivorPodCausal.sourceMarkerId === markerId);
+    if (existing) return existing;
+
+    const sourceEntity = {
+      id: markerId,
+      type: 'ship',
+      pos: { x: Number(pos.x), z: Number(pos.z) },
+      vel: {
+        x: Number.isFinite(Number(vel && vel.x)) ? Number(vel.x) : 0,
+        z: Number.isFinite(Number(vel && vel.z)) ? Number(vel.z) : 0,
+      },
+      factionId,
+      data: { worldRecordId: markerId, factionId },
+    };
+    const entity = this._spawnCausalPod(state, sourceEntity, { pos: sourceEntity.pos, vel: sourceEntity.vel }, {
+      source,
+      sourceMarkerId: markerId,
+      memoryId,
+    });
+    if (entity && entity.data) {
+      entity.data.scanLabel = scanLabel;
+      entity.data.authoredSurvivorRumor = true;
+    }
+    return entity;
+  },
+
+  _tickMemorialField(state) {
+    if (!state || state.mode !== 'flight' || causalSurvivorPodsGatedOut(state)) return null;
+    if (!state.world || state.world.currentSectorId !== MEMORIAL_FIELD.sectorId) return null;
+    const record = state.world.frontierRumors && state.world.frontierRumors.byId
+      && state.world.frontierRumors.byId[MEMORIAL_FIELD.rumorId];
+    if (!record || record.targetId !== MEMORIAL_FIELD.poiId
+      || (record.phase !== 'rumored' && record.phase !== 'resolved')) return null;
+    const moralDebt = state.story && state.story.moralMemory
+      && state.story.moralMemory.debts && state.story.moralMemory.debts[MEMORIAL_FIELD.memoryId];
+    if (moralDebt) return null;
+    const existing = (state.entityList || []).find((entity) => isCausalSurvivorPod(entity)
+      && entity.data && entity.data.survivorPodCausal
+      && entity.data.survivorPodCausal.sourceMarkerId === MEMORIAL_FIELD.podMarkerId);
+    if (existing) return existing;
+
+    const memorial = (state.entityList || []).find((entity) => entity && entity.alive !== false
+      && entity.data && entity.data.poiId === MEMORIAL_FIELD.poiId
+      && entity.data.landmarkGlb === MEMORIAL_FIELD.landmarkGlb);
+    const player = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId)
+      : null;
+    if (!memorial || !player || !player.pos) return null;
+    if (distance2(player.pos, memorial.pos) > MEMORIAL_FIELD.arrivalRadius * MEMORIAL_FIELD.arrivalRadius) {
+      return null;
+    }
+
+    const pod = this.spawnAuthoredRumorPod({
+      markerId: MEMORIAL_FIELD.podMarkerId,
+      memoryId: MEMORIAL_FIELD.memoryId,
+      pos: {
+        x: memorial.pos.x + MEMORIAL_FIELD.podOffset.x,
+        z: memorial.pos.z + MEMORIAL_FIELD.podOffset.z,
+      },
+      vel: MEMORIAL_FIELD.podDrift,
+      factionId: CONCORD_FACTION_ID,
+      source: MEMORIAL_FIELD.podSource,
+      scanLabel: MEMORIAL_FIELD.scanLabel,
+    });
+    if (!pod || !this._bus || typeof this._bus.emit !== 'function') return pod;
+    this._bus.emit('poi:discovered', {
+      poiId: MEMORIAL_FIELD.poiId,
+      sectorId: MEMORIAL_FIELD.sectorId,
+      type: 'beacon',
+      source: MEMORIAL_FIELD.podSource,
+    });
+    this._bus.emit('toast', {
+      text: 'Living transponder confirmed · Massline the pod into lawful protection',
+      kind: 'info',
+      ttl: 4.5,
+    });
+    return pod;
   },
 
   _onEntityKilled(payload) {
