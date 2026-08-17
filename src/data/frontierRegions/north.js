@@ -185,7 +185,19 @@ export const NORTH_SECTORS = Object.freeze([
     ]),
     pois: Object.freeze([
       Object.freeze({ id: 'poi_haumea_fissure', type: 'anomaly', name: 'Ice Fissure Signal' }),
-      Object.freeze({ id: 'poi_haumea_buoy', type: 'beacon', name: 'Rift Range Buoy' }),
+      Object.freeze({
+        id: 'poi_haumea_buoy',
+        type: 'beacon',
+        name: 'Rift Range Buoy',
+        // Plan 30 — carries a fabricator's plate. Investigable hardware, not a chart hook.
+        scannerSignalKind: 'archive',
+        scannerSignalPriority: 40,
+        manualInvestigation: true,
+        discoveryPlate: Object.freeze({
+          title: 'Builder Plate: Rift Range Buoy',
+          body: 'A commissioning plate behind the service hatch, with a small four-point figure added later in the same hand.',
+        }),
+      }),
       Object.freeze({ id: 'poi_haumea_probe', type: 'derelict', name: 'Rift Probe Shell' }),
     ]),
   }),

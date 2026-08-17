@@ -3,9 +3,16 @@
 // the selected hard marking and earned silhouette count into appearance only at the dock press.
 import { defaultShipAppearance, normalizeShipAppearance } from '../core/shipAppearance.js';
 import { normalizeLivingHull } from '../core/livingHull.js';
+import { theFaceSeen } from './theFace.js';
+import { unregisteredCacheOpened } from './unregisteredCaches.js';
 
 function marking(id, label, story) {
   return Object.freeze({ id, label, story });
+}
+
+/** A marking that must be EARNED. `secretUnlock` names the Plan 30 fact that releases it. */
+function secretMarking(id, label, story, secretUnlock) {
+  return Object.freeze({ id, label, story, secretUnlock });
 }
 
 export const SHIP_MARKING_STYLES = Object.freeze([
@@ -14,6 +21,17 @@ export const SHIP_MARKING_STYLES = Object.freeze([
   marking('concord', 'Concord Chevron', 'A restrained lawful-service chevron cut for long-range recognition.'),
   marking('industrial', 'Yard Hex', 'Load-frame geometry used by miners, haulers, and crews paid by the shift.'),
   marking('frontier', 'Frontier Split-Star', 'A pathfinder star divided by one hard outbound course.'),
+  // Plan 30 cosmetics. These are the ONLY markings not included with hull ownership: each is cut
+  // for you once the secret behind it is genuinely found, and each is a pure appearance change.
+  secretMarking('it_was_there_first', 'It Was There First',
+    'The Lacuna far-side crater field, traced as it resolves from one bearing and no other.',
+    'the_face'),
+  secretMarking('quiet_margin', 'Quiet Margin',
+    'The cut-through custody tag a Quiet dead drop used instead of a signature.',
+    'cache:eris_margin_ledger'),
+  secretMarking('below_deck', 'Below Deck',
+    'A compartment outline that appears on no deck plan, machined by someone who meant to come back.',
+    'cache:proteus_below_deck'),
 ]);
 
 function paint(id, label, hullColor, accentColor, finish, wear, story) {
@@ -120,8 +138,22 @@ export function shipPaintAppearance(defId, schemeId, currentAppearance = null) {
   }, defId);
 }
 
-export function markingStylesForShip(_defId) {
-  return SHIP_MARKING_STYLES;
+/**
+ * Fail-closed on purpose: a caller that does not pass `state` gets the included-with-ownership set
+ * only. An earned marking can never appear because someone forgot to thread the save through.
+ */
+export function secretMarkingEarned(secretUnlock, state) {
+  if (!secretUnlock || !state) return false;
+  if (secretUnlock === 'the_face') return theFaceSeen(state);
+  if (secretUnlock.startsWith('cache:')) {
+    return unregisteredCacheOpened(state, secretUnlock.slice('cache:'.length));
+  }
+  return false;
+}
+
+export function markingStylesForShip(_defId, state = null) {
+  return SHIP_MARKING_STYLES.filter((style) => !style.secretUnlock
+    || secretMarkingEarned(style.secretUnlock, state));
 }
 
 /** Shipworks owns the dock interaction; Ships remains the sole appearance writer. The kill count is

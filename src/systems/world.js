@@ -70,6 +70,18 @@ import {
   validateListeningPostAttempt,
 } from '../data/listeningPost.js';
 import { DEAD_GATE, normalizeDeadGateState } from '../data/deadGate.js';
+import {
+  UNREGISTERED_CACHE_BY_POI,
+  normalizeUnregisteredCachesState,
+} from '../data/unregisteredCaches.js';
+import { STAR_SIGNATURE_BY_POI, normalizeStarSignatureState } from '../data/starSignatures.js';
+import { CREDIT_CHIP_KIND } from '../data/killRewards.js';
+import { THE_FACE, faceApproachSolution, normalizeTheFaceState } from '../data/theFace.js';
+import {
+  THE_DEVELOPER,
+  normalizeTheDeveloperState,
+  theDeveloperShouldExist,
+} from '../data/theDeveloper.js';
 import { isUnsellableCargo } from './cargo.js';
 import {
   COMET_ICE,
@@ -307,6 +319,15 @@ export const world = {
     state.world.frontierRumors = normalizeFrontierRumorState(state.world.frontierRumors);
     state.world.vestaOreCache = normalizeVestaOreCacheState(state.world.vestaOreCache);
     state.world.pallasHiddenCache = normalizePallasHiddenCacheState(state.world.pallasHiddenCache);
+    // Plan 30 secrets. Each is a durable record with its own fail-closed normalization; none of
+    // them is keyed into `saveVersion`, so an untouched profile carries empty rows and the 47-A
+    // golden never sees a schema move.
+    state.world.unregisteredCaches = normalizeUnregisteredCachesState(state.world.unregisteredCaches);
+    state.world.starSignatures = normalizeStarSignatureState(state.world.starSignatures);
+    state.world.theFace = normalizeTheFaceState(state.world.theFace);
+    state.world.theDeveloper = normalizeTheDeveloperState(
+      state.world.theDeveloper, state.meta && state.meta.seed,
+    );
     const cometCycle = cometPassAt(state.meta && state.meta.seed || 1, state.simTime).cycle;
     state.world.cometIce = normalizeCometIceState(state.world.cometIce, cometCycle);
     // M2-C2 durable world-entity records (global-space). Runtime residency bags stay separate.
@@ -359,6 +380,8 @@ export const world = {
     bus.on('asteroid:destroyed', (p) => this._onCometIceDestroyed(p || {}));
     bus.on('anomaly:triangulated', (p) => this._onAnomalyTriangulated(p || {}));
     bus.on('signal:investigated', (p) => this._onSignalInvestigated(p || {}));
+    bus.on('signal:investigated', (p) => this._onTheDeveloperScanned(p || {}));
+    bus.on('entity:killed', (p) => this._onTheDeveloperKilled(p || {}));
     bus.on('secret:listeningPostDecodeRequested', (p) => this._onListeningPostDecodeRequested(p || {}));
     bus.on('orrinWitness:ensureEvidence', (p) => this._ensureOrrinWitnessEvidence(p || {}));
     bus.on('vestaOreCache:choose', (p) => this._onVestaOreCacheChoice(p || {}));
@@ -665,6 +688,7 @@ export const world = {
     this._spawnPallasHiddenCachePickup(sectorId);
     this._presentPallasHiddenCacheDecision('sector-enter');
     this._spawnDeadGateRewards(sectorId);
+    this._spawnTheDeveloper(sectorId);
     this._spawnSmugglingDropCaches(sectorId);
     if (!this._hazardSet) this._hazardSet = new Set();
     if (!this._hazardNextSet) this._hazardNextSet = new Set();
@@ -3627,6 +3651,271 @@ export const world = {
     this._contactTethysBlackMarket({ poiId, sectorId, completedAt: rec.investigatedAt });
     this._onListeningPostSignalInvestigated({ ...payload, sectorId, poiId, completedAt: rec.investigatedAt }, rec);
     this._onDeadGateSignalInvestigated({ ...payload, sectorId, poiId, completedAt: rec.investigatedAt }, rec);
+    this._onStarSignaturePlateRead({ sectorId, poiId, completedAt: rec.investigatedAt });
+    this._onUnregisteredCacheInvestigated({ sectorId, poiId, completedAt: rec.investigatedAt });
+    this._onTheFaceInvestigated({ sectorId, poiId, completedAt: rec.investigatedAt });
+    return true;
+  },
+
+  // ---- Plan 30: Names in the Stars ---------------------------------------------------------
+  // A fabricator's plate on real lane hardware. Reading three of them across three regions is the
+  // whole discovery; the chart's constellation labels are never touched and stay non-interactive.
+  _onStarSignaturePlateRead(payload) {
+    const def = STAR_SIGNATURE_BY_POI.get(payload.poiId);
+    if (!def || def.sectorId !== payload.sectorId) return false;
+    const own = this.state.world.starSignatures
+      || (this.state.world.starSignatures = normalizeStarSignatureState(null));
+    if (own.plates[def.poiId]) return true;
+    own.plates[def.poiId] = {
+      readAt: Math.max(0, Number(payload.completedAt) || Number(this.state.simTime) || 0),
+      constellationId: def.constellationId,
+    };
+    this.bus.emit('secret:starSignatureRead', {
+      sectorId: def.sectorId,
+      poiId: def.poiId,
+      handle: def.handle,
+      read: Object.keys(own.plates).length,
+      total: STAR_SIGNATURE_BY_POI.size,
+    });
+    this.bus.emit('toast', { text: `Builder plate filed: ${def.handle}`, kind: 'info', ttl: 4 });
+    return true;
+  },
+
+  // ---- Plan 30: Unregistered Caches --------------------------------------------------------
+  _unregisteredCachesState() {
+    const own = normalizeUnregisteredCachesState(this.state.world.unregisteredCaches);
+    this.state.world.unregisteredCaches = own;
+    return own;
+  },
+
+  /**
+   * Opening a cache is the terminal move. Contents leave through the owners that already exist:
+   * a physical pickup for the lot (the Pallas idiom) and `ships.grantModule` for hardware — the
+   * same writer unique-wreck recovery uses. Nothing here mints credits or writes cargo directly.
+   */
+  _onUnregisteredCacheInvestigated(payload) {
+    const def = UNREGISTERED_CACHE_BY_POI.get(payload.poiId);
+    if (!def || def.sectorId !== payload.sectorId) return false;
+    const own = this._unregisteredCachesState();
+    const row = own.caches[def.id];
+    if (row && row.phase === 'opened') return true;
+    const openedAt = Math.max(0, Number(payload.completedAt) || Number(this.state.simTime) || 0);
+    own.caches[def.id] = {
+      phase: 'opened',
+      cluedAt: row && row.cluedAt != null ? row.cluedAt : null,
+      openedAt,
+      grantedModuleId: null,
+      collectedQty: 0,
+    };
+    this._materializeUnregisteredCacheLot(def, openedAt);
+    if (def.grantModuleId) {
+      const ships = this.registry && this.registry.get && this.registry.get('ships');
+      const granted = !!(ships && typeof ships.grantModule === 'function' && ships.grantModule({
+        defId: def.grantModuleId,
+        reason: `unregistered-cache:${def.id}`,
+      }));
+      if (granted) own.caches[def.id].grantedModuleId = def.grantModuleId;
+    }
+    this.bus.emit('unregisteredCache:opened', {
+      cacheId: def.id,
+      sectorId: def.sectorId,
+      poiId: def.cachePoiId,
+      name: def.name,
+      grantedModuleId: own.caches[def.id].grantedModuleId,
+      cosmeticMarkingId: def.cosmeticMarkingId,
+      forbidden: def.forbidden,
+    });
+    this.bus.emit('toast', { text: `${def.name} opened`, kind: 'good', ttl: 4 });
+    return true;
+  },
+
+  /** One finite physical lot at the cache, spawned once and only once per cache. */
+  _materializeUnregisteredCacheLot(def, openedAt) {
+    const spawnEntity = this.helpers && this.helpers.spawnEntity;
+    if (typeof spawnEntity !== 'function') return null;
+    const existing = [...this.state.entities.values()].find((entity) => entity && entity.type === 'pickup'
+      && entity.data && entity.data.unregisteredCacheLotId === def.lotId);
+    if (existing) return existing;
+    const anchor = this._activePoiPos(def.cachePoiId);
+    if (!anchor) return null;
+    return spawnEntity({
+      type: 'pickup',
+      pos: { x: anchor.x + 14, z: anchor.z - 10 },
+      vel: { x: 0, z: 0 },
+      radius: 6,
+      data: {
+        kind: 'cargo',
+        commodityId: def.cargo.commodityId,
+        amount: def.cargo.qty,
+        name: def.cargo.pickupName,
+        storyPickup: true,
+        unregisteredCacheId: def.id,
+        unregisteredCacheLotId: def.lotId,
+        provenanceId: def.provenanceId,
+        openedAt,
+      },
+    });
+  },
+
+  /** Sector-local position of a live POI, or its authored anchor when it is not embodied. */
+  _activePoiPos(poiId) {
+    const active = this.state.world.activeSector;
+    const row = active && (active.pois || []).find((poi) => poi
+      && (poi.poiId === poiId || poi.id === poiId));
+    if (row) {
+      const entity = this.state.entities.get(row.id);
+      if (entity && entity.pos) return { x: entity.pos.x, z: entity.pos.z };
+      if (row.pos) return { x: row.pos.x, z: row.pos.z };
+    }
+    return null;
+  },
+
+  // ---- Plan 30: The Developer --------------------------------------------------------------
+  _theDeveloperState() {
+    const own = normalizeTheDeveloperState(
+      this.state.world.theDeveloper, this.state.meta && this.state.meta.seed,
+    );
+    this.state.world.theDeveloper = own;
+    return own;
+  },
+
+  /**
+   * One parked hull behind the Dead Gate, built from the ordinary archetype table through the
+   * ordinary spawn spec. It is browser-gated at the data layer, so `sf-sim` and the 47-A tape
+   * never construct it and it cannot move a golden.
+   */
+  _spawnTheDeveloper(sectorId) {
+    if (sectorId !== THE_DEVELOPER.sectorId) return null;
+    if (!theDeveloperShouldExist(this.state)) return null;
+    const spawnEntity = this.helpers && this.helpers.spawnEntity;
+    if (typeof spawnEntity !== 'function') return null;
+    const existing = [...this.state.entities.values()].find((entity) => entity
+      && entity.data && entity.data.theDeveloper === true);
+    if (existing) return existing;
+    const pos = { ...THE_DEVELOPER.fixedLocalPos };
+    const spec = makeEnemySpawnSpec('the_developer', 1, pos, {
+      factionId: 'faction_free',
+      startedTick: this.state.tick,
+    });
+    if (!spec) return null;
+    spec.team = 0;
+    spec.data = spec.data || {};
+    spec.data.theDeveloper = true;
+    spec.data.scannerSignalKind = 'archive';
+    spec.data.repeatableScannerSignal = true;
+    spec.data.ai = spec.data.ai || {};
+    spec.data.ai.passive = true;
+    spec.data.ai.activity = 'transit';
+    spec.data.ai.roe = 'never_fire';
+    spec.data.ai.sectorId = sectorId;
+    return spawnEntity(spec);
+  },
+
+  /**
+   * Sighting is what unlocks the Codex row — scanning it, not killing it. The kill is the deeper
+   * phase and pays the plan's complete chip set through the ordinary physical pickup owner.
+   */
+  _onTheDeveloperScanned(payload) {
+    const entity = payload && payload.entityId != null
+      ? this.state.entities.get(payload.entityId) : null;
+    if (!entity || !entity.data || entity.data.theDeveloper !== true) return false;
+    const own = this._theDeveloperState();
+    if (own.phase !== 'unseen') return true;
+    own.phase = 'seen';
+    own.seenAt = Math.max(0, Number(payload.completedAt) || Number(this.state.simTime) || 0);
+    this.bus.emit('secret:developerSighted', {
+      sectorId: THE_DEVELOPER.sectorId,
+      entityId: entity.id,
+    });
+    return true;
+  },
+
+  _onTheDeveloperKilled(payload) {
+    const entity = payload && payload.id != null ? this.state.entities.get(payload.id) : null;
+    const wasDeveloper = !!(entity && entity.data && entity.data.theDeveloper === true)
+      || payload && payload.theDeveloper === true;
+    if (!wasDeveloper) return false;
+    const own = this._theDeveloperState();
+    if (own.phase === 'killed') return true;
+    const at = Math.max(0, Number(this.state.simTime) || 0);
+    if (own.phase === 'unseen') own.seenAt = at;
+    own.phase = 'killed';
+    own.killedAt = at;
+    own.killedSeed = Number(this.state.meta && this.state.meta.seed) || 0;
+    const pos = payload && payload.pos ? { ...payload.pos } : { ...THE_DEVELOPER.fixedLocalPos };
+    this._spawnDeveloperChipSet(pos);
+    // I-4: one radio line through the shared voice arbiter. Never floating text over the hull.
+    const voice = this.helpers && this.helpers.voice;
+    if (voice && typeof voice.say === 'function') {
+      voice.say({
+        channel: 'bark',
+        text: THE_DEVELOPER.bark,
+        kind: 'theDeveloper',
+        ttl: 5,
+        id: 'theDeveloper:dying',
+      });
+    }
+    this.bus.emit('secret:developerDestroyed', {
+      sectorId: THE_DEVELOPER.sectorId,
+      chipDenominations: [...THE_DEVELOPER.chipDenominations],
+      killedSeed: own.killedSeed,
+    });
+    return true;
+  },
+
+  /** One chip of every denomination the reward ladder mints — a complete set, not a payout roll. */
+  _spawnDeveloperChipSet(pos) {
+    const spawnEntity = this.helpers && this.helpers.spawnEntity;
+    if (typeof spawnEntity !== 'function') return [];
+    const spawned = [];
+    const count = THE_DEVELOPER.chipDenominations.length;
+    for (let index = 0; index < count; index++) {
+      const amount = THE_DEVELOPER.chipDenominations[index];
+      const angle = (index / count) * Math.PI * 2;
+      const entity = spawnEntity({
+        type: 'pickup',
+        pos: { x: pos.x + Math.cos(angle) * 18, z: pos.z + Math.sin(angle) * 18 },
+        vel: { x: Math.cos(angle) * 12, z: Math.sin(angle) * 12 },
+        radius: 4,
+        data: {
+          kind: CREDIT_CHIP_KIND,
+          amount,
+          credits: amount,
+          grantReason: `secret:the_developer:chip:${amount}`,
+          storyPickup: true,
+          theDeveloperChip: true,
+        },
+      });
+      if (entity) spawned.push(entity);
+    }
+    return spawned;
+  },
+
+  // ---- Plan 30: The Face -------------------------------------------------------------------
+  /**
+   * The arc is the secret. A scan from anywhere else returns an ordinary survey and writes nothing,
+   * so the find can only ever be earned by flying the far side.
+   */
+  _onTheFaceInvestigated(payload) {
+    if (payload.sectorId !== THE_FACE.sectorId || payload.poiId !== THE_FACE.poiId) return false;
+    const own = this.state.world.theFace
+      || (this.state.world.theFace = normalizeTheFaceState(null));
+    if (own.phase === 'seen') return true;
+    const bodyPos = this._activePoiPos(THE_FACE.poiId);
+    const shipPos = this.state.player && this.state.player.pos;
+    const solution = faceApproachSolution(shipPos, bodyPos);
+    if (!solution || !solution.resolved) return false;
+    own.phase = 'seen';
+    own.seenAt = Math.max(0, Number(payload.completedAt) || Number(this.state.simTime) || 0);
+    own.bearingDeg = solution.bearingDeg;
+    this.bus.emit('secret:faceResolved', {
+      sectorId: THE_FACE.sectorId,
+      poiId: THE_FACE.poiId,
+      bearingDeg: solution.bearingDeg,
+      distanceWu: solution.distanceWu,
+      markingId: THE_FACE.markingId,
+    });
+    this.bus.emit('toast', { text: THE_FACE.codexTitle, kind: 'good', ttl: 5 });
     return true;
   },
 

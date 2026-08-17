@@ -1,6 +1,23 @@
 // PQ-048.13 — stable data contract for the Pallas black-wake weapons cache.
 // World owns the mutable record; scanner, map, prompt, cargo, law, and ledger consume this
 // identity or receive owner-safe intents/events derived from it.
+//
+// Plan 30: the record grammar this module proved now lives in `hiddenCacheCore.js` and is shared
+// with the Unregistered Caches chain. Pallas keeps its own disposition fork and receipt rules —
+// only the parts that are genuinely common (coercion, evidence/patch/site stamps, lot bookkeeping,
+// phase demotion, signal admissibility) are drawn from the core.
+
+import {
+  cacheSignalAdmissible,
+  demotedDiscoveryPhase,
+  finiteNumber,
+  localPoint,
+  normalizeCacheCargoLot,
+  normalizeCacheEvidence,
+  normalizeCacheSearch,
+  normalizeCacheSite,
+  repairedDiscoveryPhase,
+} from './hiddenCacheCore.js';
 
 export const PALLAS_HIDDEN_CACHE = Object.freeze({
   schemaVersion: 1,
@@ -11,6 +28,7 @@ export const PALLAS_HIDDEN_CACHE = Object.freeze({
   clueSignalId: 'signal:poi:poi_pwreck',
   cacheSignalId: 'signal:poi:poi_hcache',
   evidenceId: 'pallas-black-wake-manifest:v1',
+  clueCarrier: 'physical_pirate_wreck_manifest',
   searchCenterLocal: Object.freeze({ x: -980, z: -760 }),
   searchRadiusWu: 820,
   cacheLocalPos: Object.freeze({ x: -1560, z: -280 }),
@@ -60,15 +78,6 @@ const PHASES = new Set(['unfound', 'searching', 'choice', 'recovered', 'reported
 const TERMINAL_PHASES = new Set(['recovered', 'reported', 'criminal_used']);
 const PHASE_BY_CHOICE = Object.freeze({ recover: 'recovered', report: 'reported', criminal_use: 'criminal_used' });
 
-function finite(value, fallback = 0) {
-  return Number.isFinite(Number(value)) ? Number(value) : fallback;
-}
-
-function point(value) {
-  if (!value || !Number.isFinite(Number(value.x)) || !Number.isFinite(Number(value.z))) return null;
-  return { x: Number(value.x), z: Number(value.z) };
-}
-
 function lotForChoice(choiceId) {
   return PALLAS_HIDDEN_CACHE_LOTS[choiceId] || null;
 }
@@ -93,30 +102,7 @@ function hasValidTerminalReceipt(receipt, phase, choiceId) {
 }
 
 function normalizeCargoLot(value, choiceId) {
-  const def = lotForChoice(choiceId);
-  if (!def || !value || typeof value !== 'object'
-    || value.lotId !== def.lotId || value.provenanceId !== def.provenanceId
-    || value.commodityId !== def.commodityId) return null;
-  const totalQty = def.totalQty;
-  const collectedQty = Math.max(0, Math.min(totalQty, Math.floor(finite(value.collectedQty, 0))));
-  const lostQty = Math.max(0, Math.min(totalQty - collectedQty, Math.floor(finite(value.lostQty, 0))));
-  return {
-    lotId: def.lotId,
-    provenanceId: def.provenanceId,
-    commodityId: def.commodityId,
-    totalQty,
-    collectedQty,
-    lostQty,
-    remainingQty: Math.max(0, totalQty - collectedQty - lostQty),
-    collectionReceipts: Array.isArray(value.collectionReceipts)
-      ? value.collectionReceipts.filter((entry) => entry && typeof entry.id === 'string')
-        .slice(-16).map((entry) => ({
-          id: String(entry.id),
-          acceptedQty: Math.max(0, Math.floor(finite(entry.acceptedQty, 0))),
-          lostQty: Math.max(0, Math.floor(finite(entry.lostQty, 0))),
-        }))
-      : [],
-  };
+  return normalizeCacheCargoLot(value, lotForChoice(choiceId));
 }
 
 export function freshPallasHiddenCacheState() {
@@ -138,31 +124,9 @@ export function normalizePallasHiddenCacheState(value) {
   const source = value && typeof value === 'object' ? value : {};
   const out = freshPallasHiddenCacheState();
   out.phase = PHASES.has(source.phase) ? source.phase : 'unfound';
-  if (source.evidence && source.evidence.evidenceId === PALLAS_HIDDEN_CACHE.evidenceId) {
-    out.evidence = {
-      evidenceId: PALLAS_HIDDEN_CACHE.evidenceId,
-      sourcePoiId: PALLAS_HIDDEN_CACHE.cluePoiId,
-      signalId: PALLAS_HIDDEN_CACHE.clueSignalId,
-      foundAt: Math.max(0, finite(source.evidence.foundAt, 0)),
-      carrier: 'physical_pirate_wreck_manifest',
-    };
-  }
-  const searchCenter = point(source.search && source.search.center);
-  if (searchCenter) {
-    out.search = {
-      center: searchCenter,
-      radius: Math.max(1, finite(source.search.radius, PALLAS_HIDDEN_CACHE.searchRadiusWu)),
-      sourceEvidenceId: PALLAS_HIDDEN_CACHE.evidenceId,
-    };
-  }
-  const fixedPos = point(source.cache && source.cache.fixedPos);
-  if (fixedPos) {
-    out.cache = {
-      poiId: PALLAS_HIDDEN_CACHE.cachePoiId,
-      fixedPos,
-      foundAt: Math.max(0, finite(source.cache.foundAt, 0)),
-    };
-  }
+  out.evidence = normalizeCacheEvidence(source.evidence, PALLAS_HIDDEN_CACHE);
+  out.search = normalizeCacheSearch(source.search, PALLAS_HIDDEN_CACHE);
+  out.cache = normalizeCacheSite(source.cache, PALLAS_HIDDEN_CACHE);
 
   const expectedChoice = Object.entries(PHASE_BY_CHOICE)
     .find(([, phase]) => phase === out.phase)?.[0] || null;
@@ -170,7 +134,7 @@ export function normalizePallasHiddenCacheState(value) {
   if (TERMINAL_PHASES.has(out.phase) && expectedChoice === receiptChoice
     && hasValidTerminalReceipt(source.receipt, out.phase, expectedChoice) && out.cache) {
     out.choiceId = expectedChoice;
-    out.resolvedAt = Math.max(0, finite(
+    out.resolvedAt = Math.max(0, finiteNumber(
       source.resolvedAt == null ? source.receipt.resolvedAt : source.resolvedAt,
       0,
     ));
@@ -198,22 +162,15 @@ export function normalizePallasHiddenCacheState(value) {
     out.cargoLot = normalizeCargoLot(source.cargoLot, expectedChoice);
   } else if (TERMINAL_PHASES.has(out.phase)) {
     // A malformed terminal record never mints a replacement reward or report on Continue.
-    out.phase = out.evidence && out.search
-      ? (out.cache ? 'choice' : 'searching')
-      : 'unfound';
+    out.phase = demotedDiscoveryPhase(out, 'choice');
   }
-  if (out.phase === 'searching' && (!out.evidence || !out.search)) out.phase = 'unfound';
-  if (out.phase === 'choice' && (!out.evidence || !out.search || !out.cache)) {
-    out.phase = out.evidence && out.search ? 'searching' : 'unfound';
-  }
+  out.phase = repairedDiscoveryPhase(out.phase, out, 'choice');
   return out;
 }
 
 export function pallasHiddenCacheSignalAvailable(state, sourceId) {
-  if (sourceId === PALLAS_HIDDEN_CACHE.cluePoiId) return true;
-  if (sourceId !== PALLAS_HIDDEN_CACHE.cachePoiId) return true;
   const phase = normalizePallasHiddenCacheState(state && state.world && state.world.pallasHiddenCache).phase;
-  return phase !== 'unfound';
+  return cacheSignalAdmissible(PALLAS_HIDDEN_CACHE, sourceId, phase);
 }
 
 export function pallasHiddenCacheSignalCopy(sourceId) {

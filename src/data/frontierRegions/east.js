@@ -212,6 +212,14 @@ export const EAST_SECTORS = Object.freeze([
         id: 'poi_proteus_buoy',
         type: 'beacon',
         name: 'Well Range Buoy',
+        // Plan 30 — carries a fabricator's plate. Investigable hardware, not a chart hook.
+        scannerSignalKind: 'archive',
+        scannerSignalPriority: 40,
+        manualInvestigation: true,
+        discoveryPlate: Object.freeze({
+          title: 'Builder Plate: Well Range Buoy',
+          body: 'Riveted inside the buoy skirt, stamped rather than printed. Somebody signed this hull by hand and never expected it read.',
+        }),
       }),
     ]),
   }),

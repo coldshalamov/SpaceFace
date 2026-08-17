@@ -144,7 +144,17 @@ export const CLAIMABLE_BODY_SITES = Object.freeze([
   claimSite('sector_io_reach', 'poi_claim_pallas', 'Pallas Industrial Moon', 'M', 320, 1280, 'place_asteroid_seamed'),
   claimSite('sector_charon_expanse', 'poi_colony', 'Abandoned Mining Colony', 'S', -620, 1420, 'place_conveyor_barge'),
   claimSite('sector_sker_haven', 'poi_claim_morrow', 'Morrow Freehold', 'M', 2100, -1450, 'place_asteroid_rock_b'),
-  claimSite('sector_veil_nebula', 'poi_claim_lacuna', 'Lacuna Survey Moon', 'L', -2300, 1700, 'place_asteroid_rock_c'),
+  // Plan 30 — The Face rides this body. The scan is purely additive: the claim verb, cost, slots
+  // and specializations are untouched, and finding the face neither blocks nor requires claiming it.
+  claimSite('sector_veil_nebula', 'poi_claim_lacuna', 'Lacuna Survey Moon', 'L', -2300, 1700, 'place_asteroid_rock_c', {
+    scannerSignalKind: 'archive',
+    scannerSignalPriority: 35,
+    manualInvestigation: true,
+    discoveryPlate: Object.freeze({
+      title: 'Lacuna Far Side',
+      body: 'An unworked L-class body under a survey charter four generations old. The far-side crater field has never been mapped from the one bearing that would matter.',
+    }),
+  }),
   claimSite('sector_ashfall_reach', 'poi_claim_cinder_crown', 'Cinder Crown', 'L', 2500, -1900, 'place_asteroid_rock_c'),
   claimSite('sector_nyx_march', 'poi_claim_blackglass', 'Blackglass Lease', 'S', -1700, -1500, 'place_asteroid_rock_a'),
   claimSite('sector_hyperion_cut', 'poi_claim_cutwater', 'Cutwater Anchorage', 'M', 1800, -1200, 'place_asteroid_seamed'),
@@ -178,8 +188,14 @@ export function applyClaimableBodySites(sector) {
   return { ...sector, pois };
 }
 
-function claimSite(sectorId, id, name, size, x, z, landmarkGlb) {
+/**
+ * `extras` is an optional authored overlay for a site that carries a second, non-claim meaning
+ * (currently only the Lacuna moon's Plan 30 scan). It may not redefine any claim field: the site
+ * identity is written last so a typo in an overlay can never move a claim's id, cost, or position.
+ */
+function claimSite(sectorId, id, name, size, x, z, landmarkGlb, extras = null) {
   return Object.freeze({
+    ...(extras && typeof extras === 'object' ? extras : {}),
     sectorId,
     id,
     type: 'colony',

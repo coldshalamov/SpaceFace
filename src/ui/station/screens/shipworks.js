@@ -933,7 +933,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const selectedPaintScheme = paintSchemes.find((scheme) => scheme.id === selectedPaint) || null;
     const normalizedAppearance = normalizeShipAppearance(s.appearance, def.id);
     const livingHull = normalizeLivingHull(s.livingHull, ctx.state.simTime || 0);
-    const markingStyles = markingStylesForShip(def.id);
+    const markingStyles = markingStylesForShip(def.id, ctx.state);
     const bakedKillMarks = Number(normalizedAppearance.decalKillMarks) || 0;
     const unbakedKillMarks = Math.max(0, livingHull.killTally - bakedKillMarks);
     const canPaint = host !== 'flight' && availability.outfitEnabled;

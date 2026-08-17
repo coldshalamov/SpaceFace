@@ -485,6 +485,27 @@ export const ENEMY_TYPES = [
       ],
     },
   },
+  // Plan 30 — The Developer. Deliberately built as an ordinary archetype row so it runs on the
+  // shipped AI owner rather than a bespoke behavior: `fleeing_trader` already means "runs, boosts
+  // when threatened, never opens". Strip the weapons and push speed/turn past anything else on the
+  // table and that reads as the plan's "no weapons, infinite dodge" without a second AI.
+  // It is not invulnerable — the physical verbs (tether, wells, terrain) still act honestly on it,
+  // which is the only way "if you somehow kill it" can be true. Ambient traffic can never draw it:
+  // spawn tables pick from explicit `sectorZones.js` presence lists, never from this whole table,
+  // and `world.js` is the only caller that names this id.
+  {
+    id: 'the_developer', name: 'Unregistered Hull', shipId: 'ship_wasp',
+    silhouette: 'trader_haul', factionId: 'faction_free',
+    aiArchetype: 'fleeing_trader', levelRange: [1, 1],
+    combatDoctrineId: null,
+    hull: 60, armor: 0, armorFlat: 0, shield: 40, shieldRegen: 12, cap: 100, capRegen: 20,
+    maxSpeed: 210, accel: 240, turnRate: 7.2, collisionRadius: 5, mass: 40,
+    weapons: [],
+    aiDoctrine: { defaultActivity: 'transit', roe: 'never_fire', preferredRange: 900, leashRadius: 900 },
+    behavior: 'holds station behind the Dead Gate, evades everything, never fires, never leaves',
+    bountyCr: 0, illegalToKill: false, shipClass: 'scout',
+    loot: { creditsRange: [0, 0], drops: [] },
+  },
   {
     id: 'reaver_pirate', name: 'Reaver Pirate', shipId: 'ship_drifter',
     silhouette: 'pirate_swoop', factionId: 'faction_reach',

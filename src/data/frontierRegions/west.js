@@ -303,7 +303,19 @@ const REGION_HYPERION = freezeRegion({
           body: 'The drill mast fell inward through a hollow asteroid. Ordinary probes return without telemetry; the snapped auger is folded against something harder than drill-steel.',
         },
       },
-      { id: 'poi_hyperion_beacon', type: 'beacon', name: 'Cut Lane Beacon' },
+      {
+        id: 'poi_hyperion_beacon',
+        type: 'beacon',
+        name: 'Cut Lane Beacon',
+        // Plan 30 — carries a fabricator's plate. Investigable hardware, not a chart hook.
+        scannerSignalKind: 'archive',
+        scannerSignalPriority: 40,
+        manualInvestigation: true,
+        discoveryPlate: {
+          title: 'Builder Plate: Cut Lane Beacon',
+          body: 'Under the lamp housing, where nobody was meant to look. The rebuild is signed; the original never was.',
+        },
+      },
     ],
   },
   anchors: {
