@@ -531,7 +531,11 @@ test('collision consequence runtime captures weapon setup into one terrain tumbl
 
     const playerImpact = { ...impact, aId: attacker.id, bId: terrain.id, tick: state.tick };
     bus.emit('physics:impact', playerImpact);
-    assert.equal(routed.length, 1, 'physical impacts preserve the existing no-player-hull-damage invariant');
+    assert.equal(routed.length, 2, 'player collision damage crosses the same Combat owner once');
+    assert.equal(routed[1].targetId, attacker.id);
+    assert.ok(routed[1].packet.channels.kinetic > 0);
+    assert.equal(scheduled.length, 1,
+      'player collision damage does not silently add an NPC tumble/control-loss path');
 
     attacker.data.derived.ramDamageDealtMult = 1.8;
     state.tick += 30;
@@ -542,10 +546,10 @@ test('collision consequence runtime captures weapon setup into one terrain tumbl
       tick: state.tick,
       causalActorId: attacker.id,
     });
-    assert.equal(routed.length, 2);
-    assert.equal(routed[1].packet.source.weaponId, 'wpn_railgun_m',
+    assert.equal(routed.length, 4);
+    assert.equal(routed[2].packet.source.weaponId, 'wpn_railgun_m',
       'fresh impulse provenance remains authoritative over an incidental plated contact');
-    assert.equal(routed[1].packet.source.impulseProvenance, 'railgun_penetrator');
+    assert.equal(routed[2].packet.source.impulseProvenance, 'railgun_penetrator');
     attacker.data.derived.ramDamageDealtMult = 0;
 
     impulse.clearImpulseProvenance(target);
@@ -557,13 +561,14 @@ test('collision consequence runtime captures weapon setup into one terrain tumbl
       tick: state.tick,
       playerInvolved: true,
     });
-    assert.equal(routed.length, 3, 'ordinary craft contact routes one baseline damage packet');
-    assert.equal(routed[2].attackerId, null);
-    assert.equal(routed[2].targetId, target.id);
-    assert.equal(routed[2].packet.source.kind, 'collision_craft');
-    assert.equal(routed[2].packet.source.weaponId, null);
-    assert.ok(routed[2].packet.channels.kinetic > 0);
-    const ordinaryCraftDamage = routed[2].packet.channels.kinetic;
+    assert.equal(routed.length, 6, 'ordinary craft contact routes one packet in each physical direction');
+    assert.equal(routed[4].attackerId, null);
+    assert.equal(routed[4].targetId, target.id);
+    assert.equal(routed[4].packet.source.kind, 'collision_craft');
+    assert.equal(routed[4].packet.source.weaponId, null);
+    assert.ok(routed[4].packet.channels.kinetic > 0);
+    assert.equal(routed[5].targetId, attacker.id);
+    const ordinaryCraftDamage = routed[4].packet.channels.kinetic;
 
     state.tick += 30;
     bus.emit('physics:impact', {
@@ -573,12 +578,12 @@ test('collision consequence runtime captures weapon setup into one terrain tumbl
       tick: state.tick,
       causalActorId: attacker.id,
     });
-    assert.equal(routed.length, 4,
-      'an explicit contact actor routes the same ordinary baseline without inventing a weapon');
-    assert.equal(routed[3].attackerId, attacker.id);
-    assert.equal(routed[3].targetId, target.id);
-    assert.equal(routed[3].packet.source.weaponId, null);
-    assert.equal(routed[3].packet.source.impulseProvenance, 'direct_contact');
+    assert.equal(routed.length, 8,
+      'an explicit contact actor routes the same two-way baseline without inventing a weapon');
+    assert.equal(routed[6].attackerId, attacker.id);
+    assert.equal(routed[6].targetId, target.id);
+    assert.equal(routed[6].packet.source.weaponId, null);
+    assert.equal(routed[6].packet.source.impulseProvenance, 'direct_contact');
 
     attacker.data.derived.ramDamageDealtMult = 1.8;
     state.tick += 30;
@@ -589,13 +594,14 @@ test('collision consequence runtime captures weapon setup into one terrain tumbl
       tick: state.tick,
       causalActorId: attacker.id,
     });
-    assert.equal(routed.length, 5, 'a fitted Ram Plate routes one stronger player-driven craft impact');
-    assert.equal(routed[4].attackerId, attacker.id);
-    assert.equal(routed[4].targetId, target.id);
-    assert.equal(routed[4].packet.source.kind, 'collision_craft');
-    assert.equal(routed[4].packet.source.weaponId, 'mod_ram_plate');
-    assert.ok(routed[4].packet.channels.kinetic > ordinaryCraftDamage);
-    assert.ok(routed[4].packet.channels.kinetic <= impulse.COLLISION_CONSEQUENCE_LIMITS.maxDamage);
+    assert.equal(routed.length, 10, 'a fitted Ram Plate routes stronger dealt and protected taken packets');
+    assert.equal(routed[8].attackerId, attacker.id);
+    assert.equal(routed[8].targetId, target.id);
+    assert.equal(routed[8].packet.source.kind, 'collision_craft');
+    assert.equal(routed[8].packet.source.weaponId, 'mod_ram_plate');
+    assert.ok(routed[8].packet.channels.kinetic > ordinaryCraftDamage);
+    assert.ok(routed[8].packet.channels.kinetic <= impulse.COLLISION_CONSEQUENCE_LIMITS.maxDamage);
+    assert.equal(routed[9].targetId, attacker.id);
 
     // Stagger stays this system's own lighter loss of authority: it is not a tumble, so it never
     // enters the shared first-class state and keeps its local bounded control receipt.
@@ -647,7 +653,7 @@ test('collision consequence runtime captures weapon setup into one terrain tumbl
     state.entities.set(target.id, replacementTarget);
     state.entities.set(terrain.id, replacementTerrain);
     bus.emit('physics:impact', { ...impact, tick: state.tick });
-    assert.equal(routed.length, 6,
+    assert.equal(routed.length, 11,
       'game:started must admit the same tick/pair ids when the fresh run reuses entity ids');
   } finally {
     system.destroy();
@@ -779,7 +785,8 @@ test('only an exact solid Massline receipt suppresses its matching craft baselin
     bus.flush();
     assert.deepEqual(routed.map((entry) => [entry.targetId, entry.packet.source.kind]), [
       [thrown.id, 'collision_craft'],
-    ], 'reeling the tracked mass into the player returns ordinary baseline damage to the NPC mass');
+      [player.id, 'collision_craft'],
+    ], 'reeling the tracked mass into the player resolves the ordinary two-way craft contact');
     assert.equal(whipReceipts.length, 0, 'player contact never fabricates a whip ownership receipt');
 
     routed.length = 0;

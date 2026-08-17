@@ -93,6 +93,7 @@ test('Plan45 modules are real fits, tech/recovery reachable, and Outfitting show
   const wrecking = getDerivedStats('ship_drifter', wreckingFit);
   assert.equal(wrecking.couplingResistanceMult, 4);
   assert.equal(wrecking.ramDamageDealtMult, 1.8);
+  assert.equal(wrecking.ramDamageTakenMult, 0.55);
   assert.ok(synergiesForFittings(wreckingFit).some((row) => row.id === 'wrecking_ball'));
 
   const gyro = derived('mod_gyro_dampeners_m');
@@ -113,6 +114,17 @@ test('Plan45 modules are real fits, tech/recovery reachable, and Outfitting show
   assert.equal(preview.ok, true);
   assert.ok(preview.chips.some((chip) => chip.key === 'fieldRadiusMult'));
   assert.ok(preview.chips.some((chip) => chip.key === 'fieldStrengthMult'));
+
+  const ramPreview = presentShopModuleDelta({
+    defId: 'ship_drifter',
+    fittings: fittings(),
+    moduleId: 'mod_ram_plate',
+  });
+  assert.equal(ramPreview.ok, true);
+  assert.ok(ramPreview.chips.some((chip) => chip.key === 'ramDamageDealtMult'
+    && chip.tone === 'better'));
+  assert.ok(ramPreview.chips.some((chip) => chip.key === 'ramDamageTakenMult'
+    && chip.tone === 'better'));
 
   const pd = WEAPONS.find((row) => row.id === 'wpn_flak_turret_s');
   assert.equal(pd?.intercepts, true,

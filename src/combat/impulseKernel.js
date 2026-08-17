@@ -145,16 +145,18 @@ export function resolveCollisionConsequence(input = {}) {
       ? 0
       : SURFACE_DAMAGE_MULTIPLIER.craft * positive(input.craftDamageMultiplier, 1))
     : (SURFACE_DAMAGE_MULTIPLIER[surface] || 0);
+  const damageTakenMultiplier = clamp(positive(input.damageTakenMultiplier, 1), 0.1, 1);
   // Mass-relative ceiling: thin light hulls can crumple under a committed slam; mass-anchored
-  // hulls keep the universal medium-class cap (or lower). The player never consumes this path —
-  // collisionConsequences skips state.playerId before routing impactDamage.
+  // hulls keep the universal medium-class cap (or lower). Player contact uses this same packet;
+  // fitted protection scales the energy result before the shared cap rather than inventing armor.
   const massRelativeCap = COLLISION_CONSEQUENCE_LIMITS.maxDamage * clamp(
     COLLISION_CONSEQUENCE_LIMITS.damageMassRef / mass,
     COLLISION_CONSEQUENCE_LIMITS.maxDamageMassFloor,
     COLLISION_CONSEQUENCE_LIMITS.maxDamageMassBoost,
   );
   const impactDamage = clamp(
-    energyProxy * COLLISION_CONSEQUENCE_LIMITS.energyDamageScale * surfaceDamageMultiplier,
+    energyProxy * COLLISION_CONSEQUENCE_LIMITS.energyDamageScale
+      * surfaceDamageMultiplier * damageTakenMultiplier,
     0,
     massRelativeCap,
   );
@@ -176,6 +178,7 @@ export function resolveCollisionConsequence(input = {}) {
     control,
     staggerTicks,
     impactDamage,
+    damageTakenMultiplier,
     debrisCount,
     pos: freezePoint(input.pos),
     normal: freezeDirection(input.normal),

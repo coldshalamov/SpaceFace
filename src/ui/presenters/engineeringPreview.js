@@ -35,6 +35,8 @@ export const PREVIEW_METRICS = Object.freeze([
   Object.freeze({ key: 'maxSpeed', label: 'Max speed', higherIsBetter: true }),
   Object.freeze({ key: 'turnRate', label: 'Turn rate', higherIsBetter: true }),
   Object.freeze({ key: 'thrust', label: 'Thrust', higherIsBetter: true }),
+  Object.freeze({ key: 'ramDamageDealtMult', label: 'Ram damage', higherIsBetter: true }),
+  Object.freeze({ key: 'ramDamageTakenMult', label: 'Collision damage taken', higherIsBetter: false }),
   Object.freeze({ key: 'thrustResponseMult', label: 'Thrust response', higherIsBetter: true }),
   Object.freeze({ key: 'couplingResistanceMult', label: 'Coupling resistance', higherIsBetter: true }),
   Object.freeze({ key: 'tumbleResistanceMult', label: 'Tumble resistance', higherIsBetter: true }),
@@ -52,13 +54,16 @@ export const PREVIEW_METRICS = Object.freeze([
 
 /** Compact shop-row subset (keeps five-second scan readable). */
 export const SHOP_DELTA_METRICS = Object.freeze([
-  'couplingResistanceMult', 'tumbleResistanceMult', 'gyroRecoveryMult', 'fieldRadiusMult',
+  'ramDamageDealtMult', 'ramDamageTakenMult', 'couplingResistanceMult',
+  'tumbleResistanceMult', 'gyroRecoveryMult', 'fieldRadiusMult',
   'fieldStrengthMult', 'emitterChargeCost', 'fuelScoopRate', 'targetPriorityMass',
   'deathCookOffImpulse', 'shieldMax', 'cargoCap', 'maxSpeed', 'turnRate', 'thrustResponseMult',
   'thrust', 'operationalMass', 'continuousDrain',
 ]);
 
 const NEUTRAL_METRIC_DEFAULTS = Object.freeze({
+  ramDamageDealtMult: 1,
+  ramDamageTakenMult: 1,
   thrustResponseMult: 1,
   couplingResistanceMult: 1,
   tumbleResistanceMult: 1,
@@ -329,6 +334,7 @@ function deltaRow(metric, before, after) {
 
 function readMetric(derived, key) {
   if (!derived) return NaN;
+  if (key === 'ramDamageDealtMult' && !(Number(derived[key]) > 0)) return 1;
   if (key === 'operationalMass') {
     const v = derived.operationalMass != null ? derived.operationalMass : derived.mass;
     return finite(v, NaN);

@@ -160,7 +160,7 @@ export const MODULES = [
   // Role kits (SPEC2/05): data-only hooks for economy/mining/tether progression.
   {
     id: 'mod_ram_plate', name: 'Ram Plate', slotType: 'utility', size: 'S', tier: 1, mass: 4, price: 6000,
-    energyDraw: 0, mods: { ramDamageDealtMult: 1.80 },
+    energyDraw: 0, mods: { ramDamageDealtMult: 1.80, ramDamageTakenMult: 0.55 },
   },
   {
     id: 'mod_anchor_plates_m', name: 'Anchor Plates M', slotType: 'utility', size: 'M', tier: 2, mass: 12, price: 30000, requiresTech: 'tech_tractor_systems',

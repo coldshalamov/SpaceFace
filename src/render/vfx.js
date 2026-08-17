@@ -168,6 +168,7 @@ import {
   replaceDynamicBufferAttribute,
 } from './dynamicBufferRanges.js';
 import { createIonStormLightningSystem } from './anomalies/ionStorm.js';
+import { createRamPlateScarSystem } from './ramPlateScar.js';
 import { resolveRcsFirings, resolveActuatorScale, mainDriveDemand } from './rcsJets.js';
 import { PROPULSION_PROFILES } from '../core/flight/propulsionCatalog.js';
 import { resolveForceNeonScale, resolveTumbleContinuousVfxPlan } from './masslinePresentation.js';
@@ -1249,6 +1250,7 @@ function emptyVfxSubsystemDiag() {
     mediumPresentation: 0, // Plan 13 Bulwark lattices + Torcher owned heat-sheet hazards
     specialistPresentation: 0, // Plan 15 receipt-bound PD clamps + Tender weld geometry
     ionStormLightning: 0, // Plan 19 fixed-pool hard branch geometry
+    ramPlateScar: 0, // Plan 45 pooled opaque bow-contact gouges
   };
 }
 
@@ -1386,6 +1388,7 @@ export const vfx = {
       sourceSeed: 0,
     };
     this._ionStormLightning = null;
+    this._ramPlateScar = null;
     // Renderer prepareFrame calls this on frameOriginSeq change. Local one-shot effects reproject;
     // camera-prominent ribbon history clears and reseeds to avoid bridging coordinate spaces.
     this._vfxReprojectFramePort = (dx, dz) => this.reprojectFrame(dx, dz);
@@ -1598,6 +1601,8 @@ export const vfx = {
     this._specialistWorldTells = null;
     this._ionStormLightning?.dispose();
     this._ionStormLightning = null;
+    this._ramPlateScar?.dispose();
+    this._ramPlateScar = null;
   },
 
   _vfxOwnerRoots() {
@@ -1614,6 +1619,7 @@ export const vfx = {
     add(this._mediumWorldTells && this._mediumWorldTells.group);
     add(this._specialistWorldTells && this._specialistWorldTells.group);
     add(this._ionStormLightning && this._ionStormLightning.group);
+    add(this._ramPlateScar && this._ramPlateScar.group);
     add(this._trailStreakPool && this._trailStreakPool.mesh);
     add(this._spriteBatches && this._spriteBatches.glow.mesh);
     add(this._spriteBatches && this._spriteBatches.ring.mesh);
@@ -1735,6 +1741,7 @@ export const vfx = {
         : null,
       specialistWorldTells: inspectSpecialistWorldTellSystem(this._specialistWorldTells),
       ionStormLightning: this._ionStormLightning ? this._ionStormLightning.inspect() : null,
+      ramPlateScar: this._ramPlateScar ? this._ramPlateScar.inspect() : null,
     };
   },
 
@@ -1750,6 +1757,7 @@ export const vfx = {
     if (!this._ionStormLightning) {
       this._ionStormLightning = createIonStormLightningSystem(scene);
     }
+    if (!this._ramPlateScar) this._ramPlateScar = createRamPlateScarSystem(THREE, scene);
 
     const q = (state.settings.video && state.settings.video.particleQuality) || 'high';
     const cap = PARTICLE_CAP[q] || PARTICLE_CAP.high;
@@ -2159,6 +2167,7 @@ export const vfx = {
       resetMediumWorldTellSystem(this._mediumWorldTells);
       resetSpecialistWorldTellSystem(this._specialistWorldTells);
       this._ionStormLightning?.clear();
+      this._ramPlateScar?.clear();
     });
     add('settings:changed', (p) => {
       if (!p || p.section !== 'video') return;
@@ -2313,6 +2322,7 @@ export const vfx = {
       }
       reprojectSpecialistWorldTellSystem(this._specialistWorldTells, ox, oz);
       this._ionStormLightning?.reproject(ox, oz);
+      this._ramPlateScar?.reproject(ox, oz);
       // The release annulus writes frame-local vertices directly into one shared mesh.
       const releaseArc = this._masslineReleaseArc;
       if (releaseArc && releaseArc.mesh && releaseArc.mesh.visible) {
@@ -8702,6 +8712,19 @@ export const vfx = {
     const axisX = Math.cos(axisAngle), axisZ = Math.sin(axisAngle);
     const tx = -axisZ, tz = axisX;
     const terrain = p.surface === 'terrain';
+    const ramPlateContact = p.provenance && p.provenance.weaponId === 'mod_ram_plate'
+      && this.state && p.otherId === this.state.playerId;
+    if (ramPlateContact && this._ramPlateScar) {
+      const local = this._toLocalXZ(pos.x, pos.z, this._entityLocalXZ);
+      this._ramPlateScar.spawn({
+        x: local.x,
+        z: local.z,
+        axisAngle,
+        magnitude,
+        reducedFlash: reduced,
+        sourceId: p.otherId,
+      });
+    }
     // No signed causal direction exists at this rung. Opposed compression bars and tangent fans
     // present the receipted contact axis without pretending either normal half is outward.
     const puffsPerSide = reduced ? 1 : (hard ? 3 : 2);
@@ -10320,6 +10343,8 @@ export const vfx = {
       + jackalMineWakes > 0 ? 1 : 0;
     sub.ionStormLightning = this._ionStormLightning
       && this._ionStormLightning.update(dt) > 0 ? 1 : 0;
+    sub.ramPlateScar = this._ramPlateScar
+      && this._ramPlateScar.update(dt) > 0 ? 1 : 0;
     sub.trails = this._emitTrails(dt) ? 1 : 0;
     sub.ribbons = this._updateRibbonTrails(dt) ? 1 : 0;
     if (this._projectileTrailsRelevant()) {

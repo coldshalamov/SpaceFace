@@ -542,6 +542,7 @@ export function getDerivedStats(defId, fittings = [], player = null) {
   let moduleMass = 0, continuousDrain = 0;
   let tetherSpoolMult = 1, tetherReelRateMult = 1;
   let ramDamageDealtMult = 0;
+  let ramDamageTakenMult = 1;
   let magnetRange = 0;
   let masslineHeadId = null;
   let couplingResistanceMult = 1, tumbleResistanceMult = 1, gyroRecoveryMult = 1, thrustResponseMult = 1;
@@ -638,6 +639,10 @@ export function getDerivedStats(defId, fittings = [], player = null) {
     }
     if (Number.isFinite(mods.ramDamageDealtMult) && mods.ramDamageDealtMult > 0) {
       ramDamageDealtMult = Math.max(ramDamageDealtMult, mods.ramDamageDealtMult);
+    }
+    if (Number.isFinite(mods.ramDamageTakenMult)
+      && mods.ramDamageTakenMult > 0 && mods.ramDamageTakenMult < 1) {
+      ramDamageTakenMult = Math.min(ramDamageTakenMult, mods.ramDamageTakenMult);
     }
     // Tractor magnet radius is a capability rating (max wins) — mining scoop reads derived.magnetRange.
     if (Number.isFinite(mods.magnetRange) && mods.magnetRange > 0) {
@@ -781,6 +786,7 @@ export function getDerivedStats(defId, fittings = [], player = null) {
     // Optional fit capabilities stay absent on ordinary ships. Consumers already fail to neutral
     // values, so the new modules do not inflate every entity/save snapshot with inert defaults.
     ...(couplingResistanceMult !== 1 ? { couplingResistanceMult } : {}),
+    ...(ramDamageTakenMult !== 1 ? { ramDamageTakenMult } : {}),
     ...(tumbleResistanceMult !== 1 ? { tumbleResistanceMult } : {}),
     ...(gyroRecoveryMult !== 1 ? { gyroRecoveryMult } : {}),
     ...(thrustResponseMult !== 1 ? { thrustResponseMult } : {}),

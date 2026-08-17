@@ -212,7 +212,8 @@ export const collisionConsequences = {
 
   _resolveTarget(target, other, payload, exchangedMomentum, tick, causalProvenance, suppressCraftDamage, preContact) {
     const state = this.state;
-    if (!DAMAGEABLE_MOTION.has(target.type) || target.id === state.playerId) return;
+    if (!DAMAGEABLE_MOTION.has(target.type)) return;
+    const isPlayer = target.id === state.playerId;
     const ramPlate = playerRamPlateImpact(other, state.playerId, tick, causalProvenance);
     // The first ram/contact enters a transient tumble status with its real attacker. When that
     // projectile later meets terrain, the original impulse record may already have aged out; the
@@ -233,6 +234,7 @@ export const collisionConsequences = {
       tick,
       provenance,
       craftDamageMultiplier: ramPlate?.damageMultiplier,
+      damageTakenMultiplier: collisionDamageTakenMultiplier(target),
       suppressCraftDamage,
       pos: payload.pos,
       normal: payload.normal,
@@ -248,7 +250,7 @@ export const collisionConsequences = {
     // Stagger is a local, lighter loss of authority this system still owns outright. A tumble is the
     // canonical first-class state: it enters the shared status/control owner, and only falls back to
     // the local control state when no combat status service exists to hold it.
-    if (receipt.control === 'stagger') this._beginControl(target, receipt);
+    if (!isPlayer && receipt.control === 'stagger') this._beginControl(target, receipt);
     const damageResult = receipt.impactDamage > 0
       ? this._routeImpactDamage(target, other, receipt, preContact, chainLinkDepth)
       : null;
@@ -258,7 +260,9 @@ export const collisionConsequences = {
       this._chainDepths.delete(target);
       if (chainLinkDepth > 0) this._recordChainDepth(other, chainLinkDepth);
     }
-    if (receipt.control === 'tumble' && !this._enterTumble(target, receipt)) this._beginControl(target, receipt);
+    if (!isPlayer && receipt.control === 'tumble' && !this._enterTumble(target, receipt)) {
+      this._beginControl(target, receipt);
+    }
 
     appendCombatTrace(state.combat, tick, 'collision.consequence', {
       actorId: receipt.provenance.actorId,
@@ -270,6 +274,7 @@ export const collisionConsequences = {
       control: receipt.control,
       staggerTicks: receipt.staggerTicks,
       impactDamage: receipt.impactDamage,
+      damageTakenMultiplier: receipt.damageTakenMultiplier,
       damageApplied: damageResult && damageResult.ok === true,
       debrisCount: receipt.debrisCount,
       weaponId: receipt.provenance.weaponId,
@@ -579,6 +584,12 @@ function playerRamPlateImpact(entity, playerId, tick, provenance) {
       appliedTick: tick,
     },
   };
+}
+
+function collisionDamageTakenMultiplier(entity) {
+  const value = Number(entity && entity.data && entity.data.derived
+    && entity.data.derived.ramDamageTakenMult);
+  return Number.isFinite(value) && value > 0 && value < 1 ? value : 1;
 }
 
 function buildCollisionPresentationProvenance(target, other, receipt, preContact, chainLinkDepth) {
