@@ -163,6 +163,22 @@ export const MODULES = [
     energyDraw: 0, mods: { ramDamageDealtMult: 1.80 },
   },
   {
+    id: 'mod_anchor_plates_m', name: 'Anchor Plates M', slotType: 'utility', size: 'M', tier: 2, mass: 12, price: 30000, requiresTech: 'tech_tractor_systems',
+    energyDraw: 0, mods: { couplingResistanceMult: 4.0 },
+  },
+  {
+    id: 'mod_gyro_dampeners_m', name: 'Gyro Dampeners M', slotType: 'utility', size: 'M', tier: 2, mass: 5, price: 26000, requiresTech: 'tech_drive_tuning',
+    energyDraw: 3, mods: { tumbleResistanceMult: 2.5, gyroRecoveryMult: 1.8 },
+  },
+  {
+    id: 'mod_field_amplifier_m', name: 'Field Amplifier M', slotType: 'utility', size: 'M', tier: 3, mass: 6, price: 54000, requiresTech: 'tech_graviton_drives',
+    energyDraw: 7, mods: { fieldRadiusMult: 1.25, fieldStrengthMult: 1.20 },
+  },
+  {
+    id: 'mod_inertial_comp_m', name: 'Inertial Compensator M', slotType: 'utility', size: 'M', tier: 3, mass: 5, price: 48000, requiresTech: 'tech_drive_tuning',
+    energyDraw: 8, mods: { thrustResponseMult: 1.25 },
+  },
+  {
     id: 'mod_winch_hd', name: 'Heavy-Duty Winch', slotType: 'utility', size: 'S', tier: 1, mass: 3, price: 12000,
     energyDraw: 2, mods: { tetherReelRateMult: 1.80, tetherSpoolMult: 1.5 },
   },
@@ -219,6 +235,32 @@ export const MODULES = [
   {
     id: 'mod_smuggler_hold', name: 'Smuggler Hold', slotType: 'cargo', size: 'S', tier: 2, mass: 4, price: 38000,
     energyDraw: 0, legality: 'contraband', mods: { hiddenCargoPct: 0.20, cargoFlat: 8 },
+  },
+  {
+    id: 'mod_fuel_scoop_m', name: 'Fuel Scoop M', slotType: 'utility', size: 'M', tier: 2, mass: 4, price: 28000, requiresTech: 'tech_industrial_mining',
+    energyDraw: 2, mods: { fuelScoop: { range: 90, maxRelativeSpeed: 24, ratePerS: 1.0 } },
+  },
+  {
+    id: 'mod_decoy_launcher_s', name: 'Decoy Launcher S', slotType: 'utility', size: 'S', tier: 2, mass: 2, price: 18000, requiresTech: 'tech_deflector_theory',
+    energyDraw: 1,
+    mods: { countermeasure: { kind: 'decoy', radius: 420, durationS: 4, cooldownS: 10, lockBreakPct: 1.0, divertPct: 1.0 } },
+  },
+  // Forbidden cache hardware is intentionally not sold. Existing physical unique-wreck recovery
+  // grants the instances; each fit carries its downside through the same owner as its benefit.
+  {
+    id: 'mod_overcharge_coil_forbidden', name: 'Overcharge Coil', slotType: 'utility', size: 'M', tier: 5, mass: 8, price: 0,
+    energyDraw: 12, legality: 'contraband', purchasable: false, salvageOnly: true,
+    mods: { fieldRadiusMult: 1.10, fieldStrengthMult: 1.55, emitterChargeCost: 3 },
+  },
+  {
+    id: 'mod_mass_faker_forbidden', name: 'Mass Faker', slotType: 'utility', size: 'S', tier: 5, mass: 2, price: 0,
+    energyDraw: 5, legality: 'contraband', purchasable: false, salvageOnly: true,
+    mods: { targetPriorityMass: 1200 },
+  },
+  {
+    id: 'mod_deadman_reactor_forbidden', name: 'Dead-Man Reactor', slotType: 'utility', size: 'M', tier: 5, mass: 10, price: 0,
+    energyDraw: 0, legality: 'contraband', purchasable: false, salvageOnly: true,
+    mods: { deathCookOff: { radiusWu: 130, impulse: 340, maxAffected: 12, provenance: 'dead_man_reactor', cueId: 'swarmer_ember_cook_off' } },
   },
   // Countermeasures (P1-7): chaff breaks missile locks + diverts in-flight missiles to a decoy
   // cloud; ECM jams homing guidance (turnRate → 0) for a duration. Both use the utility slot, are

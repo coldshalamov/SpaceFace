@@ -127,7 +127,7 @@ export const countermeasures = {
         if (!d || d.kind !== 'missile') continue;
         const dx = p.pos.x - e.pos.x, dz = p.pos.z - e.pos.z;
         if (dx * dx + dz * dz > r2) continue; // outside the effect radius
-        if (cfg.kind === 'chaff') {
+        if (cfg.kind === 'chaff' || cfg.kind === 'decoy') {
           // Divert missiles targeting THIS ship to the decoy cloud (a static point behind the ship).
           // Uses the deterministic sim RNG (state.rng) — the sim must be reproducible for replay
           // verification (sf-sim.mjs --hash --repeat must match across runs). state.rng is always
@@ -176,7 +176,8 @@ export const countermeasures = {
 
     // Spawn the timed effect. Chaff creates a decoy entity id (a static point missiles divert to);
     // ECM just marks the effect active (the per-tick loop jams missiles in radius).
-    const decoyId = cfg.kind === 'chaff' ? ('cm_decoy_' + e.id + '_' + Math.floor(this.state.simTime * 1000)) : null;
+    const isDecoy = cfg.kind === 'chaff' || cfg.kind === 'decoy';
+    const decoyId = isDecoy ? ('cm_decoy_' + e.id + '_' + Math.floor(this.state.simTime * 1000)) : null;
     cm.effect = { cfg, decoyId, originX: e.pos.x, originZ: e.pos.z };
     cm.effectT = cfg.durationS;
     cm.cooldownT = cfg.cooldownS;
@@ -186,9 +187,12 @@ export const countermeasures = {
       shipId: e.id, kind: cfg.kind, x: e.pos.x, z: e.pos.z,
       radius: cfg.radius, durationS: cfg.durationS, decoyId,
     });
-    this.bus.emit('audio:cue', { id: cfg.kind === 'chaff' ? 'cm_chaff' : 'cm_ecm' });
+    this.bus.emit('audio:cue', { id: isDecoy ? 'cm_chaff' : 'cm_ecm' });
     if (e.id === this.state.playerId) {
-      this.bus.emit('toast', { text: cfg.kind === 'chaff' ? 'Chaff deployed' : 'ECM jamming active', kind: 'info', ttl: 2 });
+      const text = cfg.kind === 'decoy'
+        ? 'Decoy launched'
+        : (cfg.kind === 'chaff' ? 'Chaff deployed' : 'ECM jamming active');
+      this.bus.emit('toast', { text, kind: 'info', ttl: 2 });
     }
     return true;
   },

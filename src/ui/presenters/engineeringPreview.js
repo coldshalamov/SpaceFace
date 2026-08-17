@@ -35,6 +35,16 @@ export const PREVIEW_METRICS = Object.freeze([
   Object.freeze({ key: 'maxSpeed', label: 'Max speed', higherIsBetter: true }),
   Object.freeze({ key: 'turnRate', label: 'Turn rate', higherIsBetter: true }),
   Object.freeze({ key: 'thrust', label: 'Thrust', higherIsBetter: true }),
+  Object.freeze({ key: 'thrustResponseMult', label: 'Thrust response', higherIsBetter: true }),
+  Object.freeze({ key: 'couplingResistanceMult', label: 'Coupling resistance', higherIsBetter: true }),
+  Object.freeze({ key: 'tumbleResistanceMult', label: 'Tumble resistance', higherIsBetter: true }),
+  Object.freeze({ key: 'gyroRecoveryMult', label: 'Gyro recovery', higherIsBetter: true }),
+  Object.freeze({ key: 'fieldRadiusMult', label: 'Field radius', higherIsBetter: true }),
+  Object.freeze({ key: 'fieldStrengthMult', label: 'Field strength', higherIsBetter: true }),
+  Object.freeze({ key: 'emitterChargeCost', label: 'Emitter charge cost', higherIsBetter: false }),
+  Object.freeze({ key: 'fuelScoopRate', label: 'Fuel scoop rate', higherIsBetter: true }),
+  Object.freeze({ key: 'targetPriorityMass', label: 'NPC threat mass', higherIsBetter: false }),
+  Object.freeze({ key: 'deathCookOffImpulse', label: 'Death cook-off', higherIsBetter: false }),
   Object.freeze({ key: 'operationalMass', label: 'Op. mass', higherIsBetter: false }),
   Object.freeze({ key: 'continuousDrain', label: 'Power draw', higherIsBetter: false }),
   Object.freeze({ key: 'capMax', label: 'Energy', higherIsBetter: true }),
@@ -42,8 +52,24 @@ export const PREVIEW_METRICS = Object.freeze([
 
 /** Compact shop-row subset (keeps five-second scan readable). */
 export const SHOP_DELTA_METRICS = Object.freeze([
-  'shieldMax', 'cargoCap', 'maxSpeed', 'turnRate', 'thrust', 'operationalMass', 'continuousDrain',
+  'couplingResistanceMult', 'tumbleResistanceMult', 'gyroRecoveryMult', 'fieldRadiusMult',
+  'fieldStrengthMult', 'emitterChargeCost', 'fuelScoopRate', 'targetPriorityMass',
+  'deathCookOffImpulse', 'shieldMax', 'cargoCap', 'maxSpeed', 'turnRate', 'thrustResponseMult',
+  'thrust', 'operationalMass', 'continuousDrain',
 ]);
+
+const NEUTRAL_METRIC_DEFAULTS = Object.freeze({
+  thrustResponseMult: 1,
+  couplingResistanceMult: 1,
+  tumbleResistanceMult: 1,
+  gyroRecoveryMult: 1,
+  fieldRadiusMult: 1,
+  fieldStrengthMult: 1,
+  emitterChargeCost: 1,
+  fuelScoopRate: 0,
+  targetPriorityMass: 0,
+  deathCookOffImpulse: 0,
+});
 
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
 const FITTABLE_BY_ID = new Map();
@@ -254,10 +280,16 @@ export function presentLoadoutDelta(opts = {}) {
   const before = getDerivedStats(shipDef.id, beforeFit, player);
   const after = getDerivedStats(shipDef.id, afterFit, player);
 
-  const keySet = Array.isArray(opts.metricKeys) && opts.metricKeys.length
-    ? new Set(opts.metricKeys)
+  const requestedKeys = Array.isArray(opts.metricKeys) && opts.metricKeys.length
+    ? opts.metricKeys
     : null;
-  const metrics = PREVIEW_METRICS.filter((m) => !keySet || keySet.has(m.key));
+  const metricByKey = new Map(PREVIEW_METRICS.map((metric) => [metric.key, metric]));
+  // Callers such as Outfitting deliberately put the fitted module's distinctive physical effect
+  // before generic mass/handling fallout. Preserve that requested order instead of treating the
+  // list as an unordered filter over the full-hull presentation.
+  const metrics = requestedKeys
+    ? requestedKeys.map((key) => metricByKey.get(key)).filter(Boolean)
+    : PREVIEW_METRICS;
   const rows = metrics.map((m) => deltaRow(m, before, after)).filter(Boolean);
 
   return Object.freeze({
@@ -300,6 +332,9 @@ function readMetric(derived, key) {
   if (key === 'operationalMass') {
     const v = derived.operationalMass != null ? derived.operationalMass : derived.mass;
     return finite(v, NaN);
+  }
+  if (derived[key] == null && Object.prototype.hasOwnProperty.call(NEUTRAL_METRIC_DEFAULTS, key)) {
+    return NEUTRAL_METRIC_DEFAULTS[key];
   }
   return finite(derived[key], NaN);
 }
@@ -531,6 +566,16 @@ const FEEL_COPY = Object.freeze({
   thrust: Object.freeze({ better: 'stronger acceleration', worse: 'weaker acceleration' }),
   operationalMass: Object.freeze({ better: 'lighter handling', worse: 'heavier handling' }),
   continuousDrain: Object.freeze({ better: 'less sustained power draw', worse: 'more sustained power draw' }),
+  thrustResponseMult: Object.freeze({ better: 'quicker thrust response', worse: 'slower thrust response' }),
+  couplingResistanceMult: Object.freeze({ better: 'more coupling resistance', worse: 'less coupling resistance' }),
+  tumbleResistanceMult: Object.freeze({ better: 'more tumble resistance', worse: 'less tumble resistance' }),
+  gyroRecoveryMult: Object.freeze({ better: 'quicker tumble recovery', worse: 'slower tumble recovery' }),
+  fieldRadiusMult: Object.freeze({ better: 'wider deployed fields', worse: 'narrower deployed fields' }),
+  fieldStrengthMult: Object.freeze({ better: 'stronger deployed fields', worse: 'weaker deployed fields' }),
+  emitterChargeCost: Object.freeze({ better: 'fewer emitter charges per reload', worse: 'more emitter charges per reload' }),
+  fuelScoopRate: Object.freeze({ better: 'faster fuel skimming', worse: 'slower fuel skimming' }),
+  targetPriorityMass: Object.freeze({ better: 'less NPC threat draw', worse: 'more NPC threat draw' }),
+  deathCookOffImpulse: Object.freeze({ better: 'smaller death blast', worse: 'larger death blast' }),
 });
 
 function comparisonFeel(rows, fittedName) {

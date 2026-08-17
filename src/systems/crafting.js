@@ -32,6 +32,15 @@ const MODULE_BY_ID = new Map(MODULES.map((m) => [m.id, m]));
 const FIELD_BLUEPRINTS = BLUEPRINTS.filter((bp) => bp.fieldCraftable === true);
 const FIELD_STATION_ID = '__field_fabricator__';
 
+export function fieldSupplyCost(state, commodityId) {
+  if (commodityId !== 'cmdty_field_emitter_charge') return 1;
+  const player = state && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(state.playerId)
+    : null;
+  const cost = player && player.data && player.data.derived && player.data.derived.emitterChargeCost;
+  return Number.isFinite(cost) ? Math.max(1, Math.min(3, Math.floor(cost))) : 1;
+}
+
 function normalizeUnlocked(raw) {
   const known = new Set(FIELD_BLUEPRINTS.map((bp) => bp.id));
   const values = Array.isArray(raw) ? raw : [];
@@ -358,8 +367,9 @@ export const crafting = {
     if (!state || !state.player) return { ok: false, reason: 'unavailable' };
     if (state.mode !== 'flight' && state.mode !== 'paused') return { ok: false, reason: 'not_in_flight' };
     if (state.ui && state.ui.docked === true) return { ok: false, reason: 'docked' };
-    if (((state.player.cargo && state.player.cargo.items) || {})[commodityId] < 1) {
-      return { ok: false, reason: 'missing_supply' };
+    const supplyCost = fieldSupplyCost(state, commodityId);
+    if ((((state.player.cargo && state.player.cargo.items) || {})[commodityId] || 0) < supplyCost) {
+      return { ok: false, reason: 'missing_supply', required: supplyCost };
     }
     let result = null;
     if (commodityId === 'cmdty_jump_fuel_canister') {
@@ -382,8 +392,14 @@ export const crafting = {
       return { ok: false, reason: 'not_field_supply' };
     }
     if (!result || result.ok !== true) return result || { ok: false, reason: 'owner_rejected' };
-    if (removeCargo(state, commodityId, 1) !== 1) return { ok: false, reason: 'consume_failed' };
-    const receipt = { ...result, commodityId, tick: state.tick | 0, t: Number(state.simTime) || 0 };
+    if (removeCargo(state, commodityId, supplyCost) !== supplyCost) return { ok: false, reason: 'consume_failed' };
+    const receipt = {
+      ...result,
+      commodityId,
+      quantityConsumed: supplyCost,
+      tick: state.tick | 0,
+      t: Number(state.simTime) || 0,
+    };
     this.bus.emit('craft:fieldSupplyUsed', receipt);
     this.bus.emit('audio:cue', { id: 'confirm' });
     return receipt;

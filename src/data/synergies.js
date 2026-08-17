@@ -15,6 +15,16 @@ export const SYNERGY_TELLS = Object.freeze([
     validation: { shipId: 'ship_mule' },
   }),
   synergy({
+    id: 'wrecking_ball',
+    label: 'Wrecking Ball',
+    moduleIds: ['mod_ram_plate', 'mod_anchor_plates_m'],
+    buildIdentityId: 'rammer_truck',
+    fantasy: 'A reinforced prow on a hull that refuses to be shoved turns every committed line into a wrecking pass.',
+    benefit: '+ram damage and +coupling resistance',
+    drawback: { stat: 'turnRate', direction: 'down', label: '-turn rate from plated mass' },
+    validation: { shipId: 'ship_drifter' },
+  }),
+  synergy({
     id: 'control_tug',
     label: 'Control-Tug',
     moduleIds: ['mod_winch_hd', 'mod_charge_rack'],

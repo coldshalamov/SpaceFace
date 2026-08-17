@@ -33,7 +33,7 @@ export const TECH_NODES = [
   {
     id: 'tech_deflector_theory', name: 'Deflector Theory', branch: 'ghost', prereqs: [],
     cost: { credits: 12000, rp: 20 },
-    unlocks: { modules: ['mod_shield_capacitor_m', 'mod_shield_hardener_m', 'mod_chaff_dispenser_m'] },
+    unlocks: { modules: ['mod_shield_capacitor_m', 'mod_shield_hardener_m', 'mod_chaff_dispenser_m', 'mod_decoy_launcher_s'] },
   },
   {
     id: 'tech_hardened_deflectors', name: 'Hardened Deflectors', branch: 'ghost', prereqs: ['tech_deflector_theory'],
@@ -82,7 +82,7 @@ export const TECH_NODES = [
   {
     id: 'tech_industrial_mining', name: 'Industrial Mining', branch: 'industry', prereqs: [],
     cost: { credits: 25000, rp: 10 },
-    unlocks: { ships: ['ship_ironback'] },
+    unlocks: { ships: ['ship_ironback'], modules: ['mod_fuel_scoop_m'] },
   },
   {
     id: 'tech_focused_extraction', name: 'Focused Extraction', branch: 'industry', prereqs: ['tech_industrial_mining'],
@@ -109,7 +109,7 @@ export const TECH_NODES = [
   {
     id: 'tech_drive_tuning', name: 'Drive Tuning', branch: 'ghost', prereqs: [],
     cost: { credits: 15000, rp: 20 },
-    unlocks: { modules: ['mod_engine_fusion_m', 'mod_afterburner_m', 'mod_jump_drive_m', 'mod_cloak_mk2'] },
+    unlocks: { modules: ['mod_engine_fusion_m', 'mod_afterburner_m', 'mod_jump_drive_m', 'mod_cloak_mk2', 'mod_gyro_dampeners_m', 'mod_inertial_comp_m'] },
   },
   {
     id: 'tech_impulse_ballistics', name: 'Impulse Ballistics', branch: 'kinesis', prereqs: ['tech_combat_basics'],
@@ -119,7 +119,7 @@ export const TECH_NODES = [
   {
     id: 'tech_graviton_drives', name: 'Graviton Drives', branch: 'kinesis', prereqs: ['tech_impulse_ballistics'],
     cost: { credits: 95000, rp: 22 },
-    unlocks: { modules: ['mod_engine_warp_l', 'wpn_gravity_marker_s', 'wpn_momentum_sink_s', 'wpn_impulse_lance_m'], efficiency: { energyRegenMult: 0.08 } },
+    unlocks: { modules: ['mod_engine_warp_l', 'mod_field_amplifier_m', 'wpn_gravity_marker_s', 'wpn_momentum_sink_s', 'wpn_impulse_lance_m'], efficiency: { energyRegenMult: 0.08 } },
   },
   {
     id: 'tech_long_range_survey', name: 'Far-Side Listening', branch: 'ghost', prereqs: ['tech_drive_tuning'],
@@ -137,7 +137,7 @@ export const TECH_NODES = [
   {
     id: 'tech_tractor_systems', name: 'Tractor Systems', branch: 'bond', prereqs: [],
     cost: { credits: 10000, rp: 20 },
-    unlocks: { modules: ['mod_tractor_beam_m', 'mod_elastic_whip_m', 'mod_frame_coupler_m'] },
+    unlocks: { modules: ['mod_tractor_beam_m', 'mod_elastic_whip_m', 'mod_frame_coupler_m', 'mod_anchor_plates_m'] },
   },
   {
     id: 'tech_drone_control', name: 'Drone Control', branch: 'industry', prereqs: ['tech_industrial_mining'],

@@ -254,7 +254,12 @@ export function createHeavyCookOffRuntime({ state, bus, helpers } = {}) {
  * candidates, and rejected/non-dynamic bodies cannot crowd a real body out of the pulse.
  */
 export function triggerEmberCookOff({ state, bus, helpers, source, killerId = null, lethal = null } = {}) {
-  const authored = source && source.data && source.data.deathCookOff;
+  // Named enemies author this directly; fitted Dead-Man hardware reaches the same bounded combat
+  // owner through ships-derived data. Both routes share the Ember caps and physics receipt.
+  const authored = source && source.data && (
+    source.data.deathCookOff
+    || (source.data.derived && source.data.derived.deathCookOff)
+  );
   if (!state || !source || !authored || !source.pos) return null;
 
   const radiusWu = clampPositive(authored.radiusWu, EMBER_COOK_OFF.radiusWu);

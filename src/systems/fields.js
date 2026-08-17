@@ -50,6 +50,14 @@ function hasPairedWellAuthority(state) {
   return Array.isArray(researched) && researched.includes(PAIRED_WELL_TECH_ID);
 }
 
+function playerFieldTuning(player) {
+  const derived = player && player.data && player.data.derived || {};
+  return {
+    radiusMult: Math.max(0.1, Math.min(2, positive(derived.fieldRadiusMult, 1))),
+    strengthMult: Math.max(0.1, Math.min(2.2, positive(derived.fieldStrengthMult, 1))),
+  };
+}
+
 function deployedOfKind(rt, kind) {
   return Object.values(rt && rt.deployed || {})
     .filter((rec) => rec && rec.kind === kind)
@@ -373,6 +381,9 @@ export const fields = {
     const player = this._player(state);
     if (this._deployBlocked(state, player)) return;
     const def = FIELD_DEFS[kind];
+    const tuning = playerFieldTuning(player);
+    const radius = def.radius * tuning.radiusMult;
+    const strength = def.strength * tuning.strengthMult;
     const now = nowOf(state);
     const cd = this._radialReadyAt(state, rt, kind);
     if (now < cd) {
@@ -428,7 +439,7 @@ export const fields = {
         fieldKind: kind,
         fieldId,
         ownerId: player.id,
-        radius: def.radius,
+        radius,
         expireAt,
       },
     });
@@ -438,8 +449,8 @@ export const fields = {
       id: fieldId,
       kind: def.kind,
       center: { x: cx, z: cz },
-      radius: def.radius,
-      strength: def.strength,
+      radius,
+      strength,
       falloff: def.falloff,
       durationS: def.durationS,
       sourceId: emitter.id,
@@ -457,12 +468,13 @@ export const fields = {
       kind,
       sourceId: emitter.id,
       center: { x: cx, z: cz },
-      radius: def.radius,
+      radius,
+      strength,
       expireAt,
       pairSlot,
       capstoneVerb: kind === 'well' && hasPairedWellAuthority(state) ? 'paired_wells' : null,
     });
-    this._emitDeployCue(kind, cx, cz, def.radius);
+    this._emitDeployCue(kind, cx, cz, radius);
     this.bus.emit('audio:cue', { id: 'confirm' });
   },
 
@@ -478,13 +490,15 @@ export const fields = {
     if (active) {
       if (this._deployBlocked(state, player)) return;
       const def = FIELD_DEFS.cone;
+      const tuning = playerFieldTuning(player);
       const now = nowOf(state);
       const fieldId = `field_cone_${player.id}`;
       const rot = finite(player.rot);
       const dir = { x: Math.cos(rot), z: Math.sin(rot) };
       const center = { x: player.pos.x + dir.x * def.originGap, z: player.pos.z + dir.z * def.originGap };
       this._kernel.register({
-        id: fieldId, kind: def.kind, center, dir, radius: def.radius, strength: def.strength,
+        id: fieldId, kind: def.kind, center, dir,
+        radius: def.radius * tuning.radiusMult, strength: def.strength * tuning.strengthMult,
         falloff: def.falloff, halfAngleRad: def.halfAngleRad, edgeSoftRad: def.edgeSoftRad,
         durationS: Infinity, sourceId: player.id, team: player.team, createdAt: now,
       });

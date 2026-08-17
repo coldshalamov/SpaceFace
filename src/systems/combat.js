@@ -690,6 +690,9 @@ export const combat = {
     if (t.id === state.playerId) {
       if (this._pendingPlayerRecovery || t.alive === false) return;
       const receipt = buildDefeatReceipt(state, t, killerId, lethal);
+      // Forbidden Dead-Man hardware is an actual death tradeoff, not a catalog number. Resolve its
+      // one bounded physical pulse before either recoverable defeat or Ironman ends the live body.
+      triggerEmberCookOff({ state, bus, helpers: this.helpers, source: t, killerId, lethal });
       // Ironman (advertised as "permadeath" in the New Game UI) honors that promise: death ends
       // the run instead of respawning. We still fire player:death so the death banner/VFX play,
       // then emit game:over (a gameOver screen subscribes and shows a run summary). The entity is

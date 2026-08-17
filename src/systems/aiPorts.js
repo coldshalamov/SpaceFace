@@ -1196,7 +1196,9 @@ function buildContactBase(state, other, runtime, attachmentIndex, kind, freeze, 
     exposed: false,
     ownedBySelf: false,
     objectiveValue: objectiveValueFor(other),
-    massClass: Math.max(1, Math.round(Math.log2(positive(other.mass, 1) + 1))),
+    // A fitted Mass Faker changes only the NPC sensor story. Physics, towing, collisions, and the
+    // entity's authored mass keep reading `other.mass`; threat selection sees the forged return.
+    massClass: Math.max(1, Math.round(Math.log2(npcTargetPriorityMass(other) + 1))),
     ...operationalBandsFor(state, other, runtime, attachmentIndex, { tethered, disabled }),
     tags,
   };
@@ -1550,7 +1552,15 @@ function objectiveValueFor(entity) {
 function threatFor(state, self, other, hostile = isHostileForAI(state, self, other)) {
   if (!hostile) return 0;
   const armed = other.data && Array.isArray(other.data.weapons) && other.data.weapons.length ? 0.2 : 0;
-  return clamp(0.45 + armed + positive(other.mass, 1) / 400, 0, 1);
+  return clamp(0.45 + armed + npcTargetPriorityMass(other) / 400, 0, 1);
+}
+
+/** NPC-only perceived mass used for target priority. Never mutate or replace physical mass. */
+export function npcTargetPriorityMass(entity) {
+  const actual = positive(entity && entity.mass, 1);
+  const forged = positive(entity && entity.data && entity.data.derived
+    && entity.data.derived.targetPriorityMass, 0);
+  return Math.max(actual, forged);
 }
 
 function isDisabled(runtime, entity) {

@@ -453,16 +453,24 @@ function engineMods(def) {
   };
 }
 
-/** Build the complete propulsion profile once per derived-stat recompute. The underlying profile is
- * the hull's authored drive, with class/mass retained for legacy fallback. Only Travel Burn V-MAX
- * is tier-scaled, so fitting an engine cannot silently rewrite thrust, handling or drive-family behavior. */
-function buildDerivedPropulsion(shipDef, flightClass, totalMass, engine) {
+/** Build the complete propulsion profile once per derived-stat recompute. Travel Burn V-MAX stays
+ * engine-owned; fitted inertial compensation scales acceleration response only, while gyro damping
+ * scales yaw braking only. Neither module changes a hull's authored speed or turn ceiling. */
+function buildDerivedPropulsion(shipDef, flightClass, totalMass, engine, thrustResponseMult = 1, gyroRecoveryMult = 1) {
   const base = resolvePropulsionProfile({ driveId: shipDef.driveId, flightClass, mass: totalMass });
   const mult = engineMods(engine).travelCeilingMult;
   const derived = {
     ...base,
     travelCeiling: resolveTravelCeiling(base) * mult,
   };
+  const responseKeys = [
+    'mainAccel', 'reverseAccel', 'strafeAccel', 'maxAccel', 'maxBrakeAccel', 'brakeAccel',
+    'brakeStrafeAccel', 'rcsForwardAccel', 'rcsReverseAccel', 'rcsStrafeAccel', 'fieldAccel', 'trimAccel',
+  ];
+  for (const key of responseKeys) {
+    if (Number.isFinite(derived[key])) derived[key] *= thrustResponseMult;
+  }
+  if (Number.isFinite(derived.yawBrake)) derived.yawBrake *= gyroRecoveryMult;
   // Infinity is a runtime solver instruction, not authoritative entity state. Keep finite envelope
   // limits in the descriptor; an omitted limit is hydrated back to Infinity by the profile owner.
   if (!Number.isFinite(derived.solverSpeedLimit)) delete derived.solverSpeedLimit;
@@ -474,7 +482,7 @@ function flightClassForShip(shipDef) {
   return flightClassForHull(shipDef);
 }
 
-function buildFlightModel({ shipDef, flightClass, totalMass, massRatio, handling, thrust, turnRate, maxSpeed, drag, bankFactor }) {
+function buildFlightModel({ shipDef, flightClass, totalMass, massRatio, handling, thrust, turnRate, maxSpeed, drag, bankFactor, gyroRecoveryMult = 1 }) {
   const t = FLIGHT_CLASS_TUNING[flightClass] || FLIGHT_CLASS_TUNING.scout;
   const inertia = Math.max(1, (totalMass / Math.max(0.3, handling)) * t.inertia);
   const maxYawRate = Math.min(turnRate * PLAYER_TURN_RATE_MULT * t.turn, PLAYER_TURN_RATE_CAP);
@@ -486,7 +494,7 @@ function buildFlightModel({ shipDef, flightClass, totalMass, massRatio, handling
     reverseAccel: thrust * FLIGHT_TUNING.reverseThrustScale * t.accel,
     strafeAccel: thrust * t.strafe,
     angularAccel: Math.max(5, turnRate * 8.5 * t.turn / Math.sqrt(Math.max(0.4, massRatio))),
-    angularBrake: Math.max(12, turnRate * 15 * t.brake / Math.pow(Math.max(0.4, massRatio), 0.25)),
+    angularBrake: Math.max(12, turnRate * 15 * t.brake / Math.pow(Math.max(0.4, massRatio), 0.25)) * gyroRecoveryMult,
     maxYawRate,
     linearDrag: drag,
     lateralDrag: drag * 0.42,
@@ -532,6 +540,10 @@ export function getDerivedStats(defId, fittings = [], player = null) {
   let ramDamageDealtMult = 0;
   let magnetRange = 0;
   let masslineHeadId = null;
+  let couplingResistanceMult = 1, tumbleResistanceMult = 1, gyroRecoveryMult = 1, thrustResponseMult = 1;
+  let fieldRadiusMult = 1, fieldStrengthMult = 1, emitterChargeCost = 1;
+  let fuelScoopRate = 0, fuelScoopRange = 0, fuelScoopMaxRelativeSpeed = 0;
+  let targetPriorityMass = 0, deathCookOff = null;
   let hiddenCargoPct = Math.max(0, Math.min(1, Number(eff.hiddenCargoPct) || 0));
   let scannerCloak = Math.max(0, Math.min(1, Number(eff.scannerCloak) || 0));
   let damageReductionMult = 1; // multiplicative stacking of hardeners (§ formulas)
@@ -578,6 +590,40 @@ export function getDerivedStats(defId, fittings = [], player = null) {
         && Number.isFinite(mods.hullRepairOOC)
         && mods.hullRepairOOC > 0) {
         hullRepairOOC = Math.max(hullRepairOOC, mods.hullRepairOOC);
+      }
+      if (Number.isFinite(mods.couplingResistanceMult) && mods.couplingResistanceMult > 1) {
+        couplingResistanceMult = Math.max(couplingResistanceMult, mods.couplingResistanceMult);
+      }
+      if (Number.isFinite(mods.tumbleResistanceMult) && mods.tumbleResistanceMult > 1) {
+        tumbleResistanceMult = Math.max(tumbleResistanceMult, mods.tumbleResistanceMult);
+      }
+      if (Number.isFinite(mods.gyroRecoveryMult) && mods.gyroRecoveryMult > 1) {
+        gyroRecoveryMult = Math.max(gyroRecoveryMult, mods.gyroRecoveryMult);
+      }
+      if (Number.isFinite(mods.thrustResponseMult) && mods.thrustResponseMult > 1) {
+        thrustResponseMult = Math.max(thrustResponseMult, mods.thrustResponseMult);
+      }
+      if (Number.isFinite(mods.fieldRadiusMult) && mods.fieldRadiusMult > 0) {
+        fieldRadiusMult = Math.min(2, fieldRadiusMult * mods.fieldRadiusMult);
+      }
+      if (Number.isFinite(mods.fieldStrengthMult) && mods.fieldStrengthMult > 0) {
+        fieldStrengthMult = Math.min(2.2, fieldStrengthMult * mods.fieldStrengthMult);
+      }
+      if (Number.isFinite(mods.emitterChargeCost) && mods.emitterChargeCost >= 1) {
+        emitterChargeCost = Math.max(emitterChargeCost, Math.floor(mods.emitterChargeCost));
+      }
+      const scoop = mods.fuelScoop;
+      if (scoop && Number.isFinite(scoop.ratePerS) && scoop.ratePerS > fuelScoopRate) {
+        fuelScoopRate = scoop.ratePerS;
+        fuelScoopRange = Math.max(0, Number(scoop.range) || 0);
+        fuelScoopMaxRelativeSpeed = Math.max(0, Number(scoop.maxRelativeSpeed) || 0);
+      }
+      if (Number.isFinite(mods.targetPriorityMass) && mods.targetPriorityMass > targetPriorityMass) {
+        targetPriorityMass = mods.targetPriorityMass;
+      }
+      if (mods.deathCookOff && (!deathCookOff
+        || Number(mods.deathCookOff.impulse) > Number(deathCookOff.impulse))) {
+        deathCookOff = { ...mods.deathCookOff };
       }
     }
     if (Number.isFinite(mods.tetherSpoolMult) && mods.tetherSpoolMult > 0) {
@@ -640,7 +686,7 @@ export function getDerivedStats(defId, fittings = [], player = null) {
   const drag = 1.7 + 0.6 * massRatio;                                   // ~0.4–0.6s time constant
   const cruiseFrac = Math.min(0.85, 0.60 + 0.14 * eng.accelMult);       // 0.72 baseline; better engines cruise faster
   const cruise = maxSpeed * cruiseFrac;
-  const thrust = cruise * drag * THRUST_SCALE * biases.thrustBias;      // terminal velocity ≈ cruise
+  const thrust = cruise * drag * THRUST_SCALE * biases.thrustBias * thrustResponseMult;
   const turnRate = BASE_TURN * eng.turnMult * handling * turnMass * biases.turnBias;
 
   // (4) health / energy / cargo — hull/shield stay catalog-truthful (no fake tank currency).
@@ -663,7 +709,9 @@ export function getDerivedStats(defId, fittings = [], player = null) {
   const bdef = shipDef.boost || {};
   const boostRegen = (bdef.regenRate || 18) * energyRegenMult;
   const flightClass = flightClassForShip(shipDef);
-  const propulsion = buildDerivedPropulsion(shipDef, flightClass, totalMass, engine);
+  const propulsion = buildDerivedPropulsion(
+    shipDef, flightClass, totalMass, engine, thrustResponseMult, gyroRecoveryMult,
+  );
   const flightModel = buildFlightModel({
     shipDef,
     flightClass,
@@ -675,6 +723,7 @@ export function getDerivedStats(defId, fittings = [], player = null) {
     maxSpeed,
     drag,
     bankFactor,
+    gyroRecoveryMult,
   });
 
   const roleIdentity = lattice
@@ -725,6 +774,21 @@ export function getDerivedStats(defId, fittings = [], player = null) {
     },
     // informational extras (read by combat/ui; not part of the flat copy)
     continuousDrain, damageReductionMult, hiddenCargoPct, scannerCloak, ramDamageDealtMult,
+    // Optional fit capabilities stay absent on ordinary ships. Consumers already fail to neutral
+    // values, so the new modules do not inflate every entity/save snapshot with inert defaults.
+    ...(couplingResistanceMult !== 1 ? { couplingResistanceMult } : {}),
+    ...(tumbleResistanceMult !== 1 ? { tumbleResistanceMult } : {}),
+    ...(gyroRecoveryMult !== 1 ? { gyroRecoveryMult } : {}),
+    ...(thrustResponseMult !== 1 ? { thrustResponseMult } : {}),
+    ...(fieldRadiusMult !== 1 ? { fieldRadiusMult } : {}),
+    ...(fieldStrengthMult !== 1 ? { fieldStrengthMult } : {}),
+    ...(emitterChargeCost !== 1 ? { emitterChargeCost } : {}),
+    ...(fuelScoopRate > 0 ? { fuelScoopRate, fuelScoopRange, fuelScoopMaxRelativeSpeed } : {}),
+    ...(targetPriorityMass > 0 ? { targetPriorityMass } : {}),
+    ...(deathCookOff ? {
+      deathCookOff,
+      deathCookOffImpulse: Math.max(0, Number(deathCookOff.impulse) || 0),
+    } : {}),
     // M5 role lattice identity (recomputed; not serialized)
     roleIdentity,
     roleBiases: biases,

@@ -70,6 +70,7 @@ const SPREAD_LO = 0.04, SPREAD_HI = 0.40;
 const FRONTIER_SPREAD_BONUS = 0.06; // low-wealth stations widen the spread up to +6%
 const DRIFT_RATE = 0.0006;         // per-second; half-life ~19 min (was ~11.6): lanes cool between hauls
 const ECON_TICK_S = 5;             // economy ticks every 5s of sim time
+const FUEL_SCOOP_QUANTUM = 0.25;   // bounded event/write cadence while skimming a physical gas body
 const EVENT_INTERVAL_S = 90;       // average seconds between spontaneous economic events (game-wide)
 const EQ_MULT_CLAMP = [0.25, 4.0]; // clamp net event/propagation eq multiplier per (station,cmdty)
 const MAX_EVENTS_PER_STATION = 3;
@@ -743,6 +744,8 @@ export const economy = {
     this._registry = ctx.registry || null;
     this._lastDockedStation = null;
     this._buyBackSession = null; // dock-session-only; intentionally never saved (plan-54 buy-back)
+    this._fuelScoopPending = 0;
+    this._fuelScoopSourceId = null;
     this._syntheticHistoryKeys = new Set();
     economy._instance = this; // so exported quote()/execute() reach the live system
 
@@ -850,6 +853,8 @@ export const economy = {
       // Buy-back is a dock-session convenience, not save data. The system instance survives a
       // restore, so explicitly clear the transient offer instead of relying on serialization.
       this._buyBackSession = null;
+      this._fuelScoopPending = 0;
+      this._fuelScoopSourceId = null;
       this.refreshAllPersistentDemand({ reseedSynthetic: true });
     });
     // Registry listener order places economy before sectorSim. If offline catch-up crosses a
@@ -862,6 +867,7 @@ export const economy = {
   // ECONOMY TICK (5s) — drift, age events, propagate, recompute cached prices, emit economy:tick.
   // -------------------------------------------------------------------------------------------
   update(dt, state) {
+    this.updateFuelScoop(dt, state);
     const clock = state.economy.econClock;
     clock.accumulator += dt;
     // spontaneous event scheduler (game-wide Poisson-ish: ~1 per EVENT_INTERVAL_S)
@@ -870,6 +876,77 @@ export const economy = {
       clock.accumulator -= ECON_TICK_S;
       this.econTick(ECON_TICK_S, state);
     }
+  },
+
+  /** A fitted scoop converts proximity to an actual gas asteroid into economy-owned fuel. The
+   * source remains a physical world body; the scoop requires a slow relative pass and never writes
+   * cargo, asteroid yield, or a second fuel ledger. */
+  updateFuelScoop(dt, state) {
+    if (!(dt > 0) || !state || state.mode !== 'flight' || state.ui?.docked === true) {
+      this._fuelScoopPending = 0;
+      this._fuelScoopSourceId = null;
+      return null;
+    }
+    const player = state.entities?.get?.(state.playerId);
+    const derived = player?.data?.derived;
+    const rate = Math.max(0, Number(derived?.fuelScoopRate) || 0);
+    const range = Math.max(0, Number(derived?.fuelScoopRange) || 0);
+    const maxRelativeSpeed = Math.max(0, Number(derived?.fuelScoopMaxRelativeSpeed) || 0);
+    const fuel = state.fuel || (state.fuel = { current: 0, max: 100 });
+    if (!player || !player.alive || !(rate > 0) || !(range > 0)
+      || !(Number(fuel.current) < Number(fuel.max))) {
+      this._fuelScoopPending = 0;
+      this._fuelScoopSourceId = null;
+      return null;
+    }
+
+    let source = null;
+    let bestSurfaceDistance = Infinity;
+    const candidates = state.entityIndex?.asteroids || state.entityList || [];
+    for (const body of candidates) {
+      if (!body || body.alive === false || body.type !== 'asteroid'
+        || body.data?.typeId !== 'ast_gas_cloud' || !body.pos) continue;
+      const dx = body.pos.x - player.pos.x;
+      const dz = body.pos.z - player.pos.z;
+      const surfaceDistance = Math.max(0, Math.hypot(dx, dz) - (Number(body.radius) || 0) - (Number(player.radius) || 0));
+      if (surfaceDistance > range) continue;
+      const rvx = (Number(player.vel?.x) || 0) - (Number(body.vel?.x) || 0);
+      const rvz = (Number(player.vel?.z) || 0) - (Number(body.vel?.z) || 0);
+      if (Math.hypot(rvx, rvz) > maxRelativeSpeed) continue;
+      if (surfaceDistance < bestSurfaceDistance
+        || (surfaceDistance === bestSurfaceDistance && String(body.id) < String(source?.id))) {
+        source = body;
+        bestSurfaceDistance = surfaceDistance;
+      }
+    }
+    if (!source) {
+      this._fuelScoopPending = 0;
+      this._fuelScoopSourceId = null;
+      return null;
+    }
+
+    this._fuelScoopPending = Math.min(2, this._fuelScoopPending + rate * dt);
+    const available = Math.floor(this._fuelScoopPending / FUEL_SCOOP_QUANTUM) * FUEL_SCOOP_QUANTUM;
+    const missing = Math.max(0, (Number(fuel.max) || 0) - (Number(fuel.current) || 0));
+    const applied = Math.min(available, missing);
+    if (!(applied > 0)) return null;
+    const before = Number(fuel.current) || 0;
+    fuel.current = Math.min(Number(fuel.max) || 0, before + applied);
+    this._fuelScoopPending = Math.max(0, this._fuelScoopPending - applied);
+    this._fuelScoopSourceId = source.id;
+    const receipt = {
+      sourceId: source.id,
+      applied,
+      before,
+      after: fuel.current,
+      max: fuel.max,
+      surfaceDistance: bestSurfaceDistance,
+      tick: state.tick | 0,
+      t: Number(state.simTime) || 0,
+    };
+    this.bus.emit('fuel:changed', { current: fuel.current, max: fuel.max });
+    this.bus.emit('fuel:scooped', receipt);
+    return receipt;
   },
 
   econTick(tickDt, state) {

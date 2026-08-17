@@ -5,6 +5,7 @@
 import { COMMODITIES } from '../../data/commodities.js';
 import { MODULES } from '../../data/modules.js';
 import { WEAPONS } from '../../data/weapons.js';
+import { fieldSupplyCost } from '../../systems/crafting.js';
 import { escapeHtml } from '../comms.js';
 import {
   formatEquippedComparison,
@@ -114,13 +115,15 @@ function render(ctx) {
   const owner = craftingOwner(ctx);
   const state = ctx.state || {};
   const entries = owner && typeof owner.listField === 'function' ? owner.listField() : [];
+  const emitterCost = fieldSupplyCost(state, 'cmdty_field_emitter_charge');
+  const emitterCount = cargoCount(state, 'cmdty_field_emitter_charge');
   mounted.supplies.innerHTML =
     supplyCard('Jump canister', 'cmdty_jump_fuel_canister', 'fuel', 'Load 25u; a station still fills the whole tank.', state) +
     supplyCard('Patch kit', 'cmdty_patch_kit', 'patch', 'Restore up to 18 hull outside hostile contact; armor stays damaged.', state) +
-    `<div class="sf-field-craft__supply"><b>Emitter charge ×${cargoCount(state, 'cmdty_field_emitter_charge')}</b>` +
-      `<span><button class="sf-btn" type="button" data-use="well" ${cargoCount(state, 'cmdty_field_emitter_charge') > 0 ? '' : 'disabled'}>Well</button> ` +
-      `<button class="sf-btn" type="button" data-use="repulsor" ${cargoCount(state, 'cmdty_field_emitter_charge') > 0 ? '' : 'disabled'}>Repulsor</button></span>` +
-      `<small>Clear one live emitter cooldown; a ready emitter consumes nothing.</small></div>`;
+    `<div class="sf-field-craft__supply"><b>Emitter charge ×${emitterCount}</b>` +
+      `<span><button class="sf-btn" type="button" data-use="well" ${emitterCount >= emitterCost ? '' : 'disabled'}>Well ×${emitterCost}</button> ` +
+      `<button class="sf-btn" type="button" data-use="repulsor" ${emitterCount >= emitterCost ? '' : 'disabled'}>Repulsor ×${emitterCost}</button></span>` +
+      `<small>Clear one live emitter cooldown; Overcharge hardware melts three charges per reload.</small></div>`;
 
   mounted.body.innerHTML = CHAIN_ORDER.map((chain) => {
     const rows = entries.filter((entry) => entry.bp.fieldChain === chain);

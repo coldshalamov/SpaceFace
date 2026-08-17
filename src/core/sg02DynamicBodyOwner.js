@@ -993,8 +993,16 @@ export class Sg02DynamicBodyOwner {
   _applyBodyResponse(rec, response) {
     if (!rec || !rec.spec || !rec.spec.dynamic || !rec.body
       || typeof rec.body.setAdditionalMassProperties !== 'function') return false;
-    const massScale = positive(response && response.massScale, 1);
-    const inertiaScale = positive(response && response.inertiaScale, massScale);
+    const derived = rec.entity && rec.entity.data && rec.entity.data.derived || {};
+    // Plan 45 fitted resistance stays inside the same transient body-property owner as Pinned /
+    // Unmoored. Entity mass remains catalogue-truthful; only the solver response changes. Anchor
+    // plates resist linear coupling, while gyro dampeners add angular resistance independently.
+    const anchorScale = clamp(positive(derived.couplingResistanceMult, 1), 1, 8);
+    const gyroScale = clamp(positive(derived.tumbleResistanceMult, 1), 1, 8);
+    const statusMassScale = positive(response && response.massScale, 1);
+    const statusInertiaScale = positive(response && response.inertiaScale, statusMassScale);
+    const massScale = clamp(statusMassScale * anchorScale, 0.25, 8);
+    const inertiaScale = clamp(statusInertiaScale * anchorScale * gyroScale, 0.25, 8);
     if (rec.bodyResponseMassScale === massScale && rec.bodyResponseInertiaScale === inertiaScale) {
       return true;
     }
