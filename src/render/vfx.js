@@ -5445,6 +5445,140 @@ export const vfx = {
   // AC-09: style identity rides the same phased resident, sprite, particle, and streak pools.
   // Motion grammar is the readable cause. Color is a supporting cue only (cyan core on chain,
   // reentry heat on burn-up). Ordinary stays on the accepted size-ladder / causal recipe above.
+  // Plan 31's cause layer is explicitly "the same event, different skin", and the skins are
+  // required to STACK with the size ladder: "a heavy terrain-smash is a cook-off walking toward the
+  // impact point, then the fireball." The shipped style path returned early out of
+  // _emitExplosionPhase, so a styled death replaced the size grammar instead of dressing it — every
+  // terrain-smash, chain, well-collapse and burn-up read the same regardless of what died.
+  //
+  // This is the size tier as a layer. It emits ONLY the elements that carry victim class and are
+  // cause-independent, so it can run under any skin without fighting it:
+  //   small     — two tumbling plates, then a smoke wisp
+  //   ordinary  — a shockwave ring, a tumbling hull section, a fire that outlives the burst
+  //   capital   — the multi-point cook-off walking the hull, plus the ordinary beats at scale
+  //
+  // `walkTowardX/Z` is the plan's own example made real: for a terrain smash the secondaries march
+  // toward the contact point rather than along the hull axis.
+  //
+  // Every element here has an explicit reduced-flash branch. That is a hard requirement, not a
+  // nicety — check-death-vfx-reduced-flash.mjs fails if any element added here lacks one.
+  _emitSizeTierBeats(phase, entry, scale, reduced, walkTowardX = null, walkTowardZ = null) {
+    const x = entry.x;
+    const z = entry.z;
+    const r = entry.radius;
+    const serial = entry.serial;
+    const classId = entry.classId;
+    const isSmall = classId === 'small';
+    const isCapital = classId === 'capital';
+    const accessibility = resolveVfxAccessibilityProfile(this.state && this.state.settings);
+    const opacityScale = accessibility.flashOpacityScale;
+    const axisX = Number.isFinite(entry.dirX) ? entry.dirX : 1;
+    const axisZ = Number.isFinite(entry.dirZ) ? entry.dirZ : 0;
+    const axisAngle = Math.atan2(axisZ, axisX);
+    const tangentX = -axisZ;
+    const tangentZ = axisX;
+
+    // The multi-point cook-off. Capital only: the plan gives 3-6 staggered secondaries walking the
+    // hull, and the three walk phases below carry them.
+    if (isCapital && (phase === 'internal' || phase === 'internal-secondary' || phase === 'breakup')) {
+      const beat = phase === 'internal' ? 0 : (phase === 'internal-secondary' ? 1 : 2);
+      const points = reduced ? 1 : 2;
+      // March from the far end toward the impact point when we have one, otherwise along the hull.
+      const hasTarget = Number.isFinite(walkTowardX) && Number.isFinite(walkTowardZ)
+        && Math.hypot(walkTowardX, walkTowardZ) > 1e-8;
+      const marchX = hasTarget ? walkTowardX : axisX;
+      const marchZ = hasTarget ? walkTowardZ : axisZ;
+      for (let k = 0; k < points; k++) {
+        // Progress runs -0.45 (far end) to +0.45 (impact end) across the three beats.
+        const progress = -0.45 + ((beat * points + k) / Math.max(1, points * 3 - 1)) * 0.9;
+        const across = explosionPatternSigned(serial, phase, k, 40) * r * 0.14;
+        const px = x + marchX * r * progress + tangentX * across;
+        const pz = z + marchZ * r * progress + tangentZ * across;
+        this._spawnSprite(SPR_FLASH, px, 0.30, pz,
+          reduced ? 0.16 : 0.11,
+          r * 0.04 * scale, r * (reduced ? 0.13 : 0.20) * scale,
+          (reduced ? 0.40 : 0.78) * opacityScale, 0, '#fff2cf',
+          marchX * 2, marchZ * 2, 2.6, axisAngle);
+        this._spawnSprite(SPR_COMBUSTION, px, 0.22, pz,
+          (reduced ? 0.34 : 0.52) + explosionPattern01(serial, phase, k, 41) * 0.18,
+          r * 0.05 * scale, r * (reduced ? 0.14 : 0.21) * scale,
+          (reduced ? 0.24 : 0.40) * opacityScale, 0, k % 2 ? '#ff7a2e' : '#ffd7a0',
+          marchX * 3, marchZ * 3, 1.4, axisAngle + 0.3);
+      }
+      if (accessibility.eventLightPeakScale > 0) {
+        this._flashLight({ x: x + marchX * r * 0.2, z: z + marchZ * r * 0.2 },
+          '#ffb268', (reduced ? 4.0 : 6.4) * scale, 8, 90 + r * 2);
+      }
+      return true;
+    }
+
+    // NO SHOCKWAVE RING. Plan 31's Medium row lists one, but this codebase already settled that
+    // question against the plan and did it on purpose: the ordinary `pressure` phase deliberately
+    // emits a BROKEN pair of vapor shears with unequal segments precisely "to prevent the cue from
+    // rebuilding a ring when multiple destruction events overlap", and AC-09's accepted signature
+    // grammar bans a circular ring outright for every style because a shared silhouette is exactly
+    // what makes five causes read as one. The pressure front is therefore already represented, in a
+    // shape that survives overlap. Adding a ring here made three shipped signature assertions fail
+    // and would have been re-introducing a cue this repo removed for a stated reason.
+
+    if (phase === 'debris') {
+      // Tumbling structure. A light hull throws plates; a medium throws a recognisable section
+      // (engine block, wing) that keeps spinning long after the flash is gone.
+      const plates = isSmall ? 2 : (isCapital ? (reduced ? 2 : 4) : (reduced ? 1 : 2));
+      for (let k = 0; k < plates; k++) {
+        const spin = explosionPatternSigned(serial, phase, k, 42);
+        // Narrow throw. The cause layer owns the wide fans, and a chain death in particular must
+        // stay a tight transfer shear — a size element that fanned wide would widen every skin's
+        // silhouette toward the same shape, which is the homogenisation AC-09 exists to prevent.
+        const a = axisAngle + spin * 0.3;
+        const speed = (isSmall ? 16 : 11) + explosionPattern01(serial, phase, k, 43) * (isSmall ? 22 : 16);
+        const plateLength = r * scale * (isSmall ? 0.26 : (isCapital ? 0.68 : 0.46));
+        this._spawnProjectileTrailStreak(
+          x + Math.cos(a) * r * 0.14, 0.26, z + Math.sin(a) * r * 0.14,
+          (reduced ? 0.9 : 1.5) + explosionPattern01(serial, phase, k, 44) * (isSmall ? 0.5 : 1.1),
+          Math.max(0.06, r * 0.028 * scale), plateLength,
+          (reduced ? 0.22 : 0.40) * opacityScale,
+          k % 2 ? '#c9b295' : '#8f7f6d',
+          Math.cos(a) * speed * scale, Math.sin(a) * speed * scale,
+          // The streak AXIS is what the signature grammar measures for silhouette spread, so it
+          // stays on the throw direction. Tumble is carried by the throw angle, not by rotating the
+          // piece off-axis, which would widen a chain shear past its authored discipline.
+          Math.cos(a), Math.sin(a));
+      }
+      return true;
+    }
+
+    if (phase === 'residue') {
+      if (isSmall) {
+        // The smoke wisp: the only thing a light death leaves behind, and it must leave something.
+        this._spawnSprite(SPR_PUFF, x, 0, z,
+          reduced ? 0.9 : 1.4, r * 0.18 * scale, r * 0.62 * scale,
+          (reduced ? 0.10 : 0.17) * opacityScale, 0, '#6e645d',
+          axisX * 2.2, axisZ * 2.2, 1.5, axisAngle);
+        return true;
+      }
+      // Lingering fires on the largest chunk. It rides the inherited velocity so the fire travels
+      // with the piece rather than hanging where the ship used to be.
+      const vx = Number.isFinite(entry.targetVelocityX) ? entry.targetVelocityX : 0;
+      const vz = Number.isFinite(entry.targetVelocityZ) ? entry.targetVelocityZ : 0;
+      const fires = isCapital ? (reduced ? 2 : 3) : 1;
+      for (let k = 0; k < fires; k++) {
+        // Same axis discipline as the plates: the size layer never widens a skin's silhouette.
+        const a = axisAngle + explosionPatternSigned(serial, phase, k, 45) * 0.28;
+        const distance = r * scale * (0.22 + explosionPattern01(serial, phase, k, 46) * 0.3);
+        this._spawnSprite(SPR_COMBUSTION,
+          x + Math.cos(a) * distance, 0.18, z + Math.sin(a) * distance,
+          (reduced ? 1.3 : 2.2) + explosionPattern01(serial, phase, k, 47) * 0.8,
+          r * 0.06 * scale, r * 0.15 * scale,
+          (reduced ? 0.16 : 0.30) * opacityScale, 0, k % 2 ? '#e2661f' : '#ffab52',
+          vx * 0.9 + Math.cos(a) * 2, vz * 0.9 + Math.sin(a) * 2, 0.5, a);
+      }
+      return true;
+    }
+
+    return false;
+  },
+
   _emitStyleExplosionPhase(phase, entry) {
     const styleId = entry.styleId;
     const x = entry.x;
@@ -5523,6 +5657,21 @@ export const vfx = {
     const incomingAngle = Math.atan2(incomingZ, incomingX);
     const contactAngle = Math.atan2(contactZ, contactX);
 
+    // STACK, do not replace. The size tier runs underneath every skin, and a terrain smash walks
+    // its secondaries toward the contact point exactly as the plan describes. This is emitted
+    // before the skin so the skin's own hot elements draw over the class beats rather than under.
+    this._emitSizeTierBeats(phase, entry, scale, reduced,
+      styleId === 'terrain_smash' ? -contactX : axisX,
+      styleId === 'terrain_smash' ? -contactZ : axisZ);
+
+    // Every death is a SHIP dying, whatever killed it: the drive over-runs and dumps one jet, and a
+    // few cinders outlive the flash. Only terrain smash used to get these, so a chain or burn-up
+    // death lost the one beat that made it read as a hull rather than a fireball.
+    if (phase === 'contact-compression' || phase === 'ignition'
+      || phase === 'well-implode' || phase === 'burn-shroud') {
+      this._emitDestructionLightBeats(entry, scale, reduced);
+    }
+
     const spawnCompactCore = (coreX, coreZ, angle, color, alongX, alongZ) => {
       this._spawnSprite(SPR_FLASH, coreX, 0.28, coreZ, flashLife,
         r * 0.05 * scale,
@@ -5542,7 +5691,7 @@ export const vfx = {
         if (accessibility.eventLightPeakScale > 0) {
           this._flashLight({ x, z }, '#ffc080', 6.6 * scale, 12, 100 + r * 3);
         }
-        this._emitDestructionLightBeats(entry, scale, reduced);
+        // The ship-death beats now fire for every style at its own first beat, above.
         return;
       }
       if (phase === 'terrain-spall') {

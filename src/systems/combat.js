@@ -16,7 +16,12 @@ import {
   styleMultiplierOf,
 } from '../combat/killCause.js';
 import { createVictimRewardRng, missionOwnsReward } from '../combat/rewardEligibility.js';
-import { createHeavyCookOffRuntime, triggerDeathBlastImpulse, triggerEmberCookOff } from '../combat/cookOff.js';
+import {
+  createDeathDebrisPool,
+  createHeavyCookOffRuntime,
+  triggerDeathBlastImpulse,
+  triggerEmberCookOff,
+} from '../combat/cookOff.js';
 import { isTumbling } from '../combat/tumbleStatus.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { combatFlag } from '../data/featureFlags.js';
@@ -569,6 +574,9 @@ export const combat = {
       bus: this.bus,
       helpers: this.helpers,
     });
+    // Plan 31: one pool for every sub-Heavy death, because the cap is global and "oldest
+    // evaporates first" only means something against a single ordered list.
+    this._deathDebris = createDeathDebrisPool({ state: this.state, helpers: this.helpers });
     this._playerDefeat = createPlayerDefeatCoordinator(ctx, {
       restorePlayerAtRecoveryDock: (player, plan) => this.restorePlayerAtRecoveryDock(player, plan),
       onSequenceCleared: () => {
@@ -593,6 +601,7 @@ export const combat = {
       if (this._playerDefeat) this._playerDefeat.clear();
       else if (this.state.combat) this.state.combat.lastPlayerDefeat = null;
       this._heavyCookOff?.reset();
+      this._deathDebris?.reset();
     };
     ctx.bus.on('game:started', clearPendingDefeat);
     ctx.bus.on('save:loaded', () => {
@@ -744,7 +753,10 @@ export const combat = {
     // Plan 31 ordinary tier, on the same edge and for the same budget reason: light and medium deaths
     // shoved nothing at all, so a kill-dive through a corpse read as scenery. The blast declines
     // itself whenever Ember or Heavy above already owns this death, so nothing is pushed twice.
-    triggerDeathBlastImpulse({ state, bus, helpers: this.helpers, source: t, killerId, lethal });
+    triggerDeathBlastImpulse({
+      state, bus, helpers: this.helpers, source: t, killerId, lethal,
+      debrisPool: this._deathDebris,
+    });
     const presentation = buildKillPresentationReceipt(state, t, killerId, lethal);
     bus.emit('entity:killed', {
       id: t.id, killerId, type: t.type, pos: { x: t.pos.x, z: t.pos.z },

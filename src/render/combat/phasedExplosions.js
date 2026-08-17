@@ -192,20 +192,41 @@ export const EXPLOSION_STYLE_SCHEDULES = Object.freeze({
 
 const CAUSE_CLASS_TIME_SCALE = Object.freeze({ small: 0.78, ordinary: 1, capital: 1.65 });
 
+// Plan 31's Heavy row is a "multi-point cook-off: 3-6 staggered secondary detonations walk the
+// hull" BEFORE the main burst, and the plan requires it to survive the cause skin — a heavy
+// terrain-smash is the walk toward the impact point, then the fireball. A single inserted `breakup`
+// gave the walk one beat and no stagger, so a capital-class styled death skipped its own signature.
+// These three beats are the walk; the emitter places two detonation points on each, which lands
+// inside the authored 3-6 (4 reduced-flash, 6 otherwise).
+const CAPITAL_WALK_PHASES = Object.freeze(['internal', 'internal-secondary', 'breakup']);
+
+// The walk goes in ahead of the main event. Anchoring it on `rupture` alone silently skipped chain
+// and burn-up, which have no rupture beat at all — so a capital chain death lost its cook-off while
+// three other styles kept theirs. Every style schedule has `debris`, so this anchor always lands.
+const CAPITAL_WALK_ANCHORS = new Set(['rupture', 'debris']);
+
 function scaledCauseSchedule(base, classId) {
   if (classId === 'ordinary') return base;
   const scaleValue = CAUSE_CLASS_TIME_SCALE[classId];
   const events = [];
-  let insertedBreakup = false;
+  let insertedWalk = false;
   for (const event of base.events) {
-    if (classId === 'capital' && !insertedBreakup && event.phase === 'rupture') {
+    if (classId === 'capital' && !insertedWalk && CAPITAL_WALK_ANCHORS.has(event.phase)) {
       const previousAt = events.length ? events[events.length - 1].at : 0;
       const ruptureAt = event.at * scaleValue;
-      events.push({ phase: 'breakup', at: previousAt + (ruptureAt - previousAt) * 0.55 });
-      insertedBreakup = true;
+      const span = ruptureAt - previousAt;
+      // Stagger the walk across the run-up to the rupture. Phases already present in the base
+      // schedule are not duplicated — the walk reuses that beat where the cause already has one.
+      const present = new Set(events.map((row) => row.phase));
+      const pending = CAPITAL_WALK_PHASES.filter((phase) => !present.has(phase));
+      pending.forEach((phase, index) => {
+        events.push({ phase, at: previousAt + span * ((index + 1) / (pending.length + 1)) });
+      });
+      insertedWalk = true;
     }
     events.push({ phase: event.phase, at: event.at * scaleValue });
   }
+  events.sort((a, b) => a.at - b.at);
   return schedule(base.duration * scaleValue, events);
 }
 

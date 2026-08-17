@@ -13,6 +13,7 @@ const EMPTY_AFFECTED = Object.freeze([]);
 const HEAVY_DEBRIS_MASK = Masks.SHIP | Masks.DRONE | Masks.ASTEROID | Masks.STATION
   | Masks.PROJECTILE | Masks.PAYLOAD | Masks.WRECK;
 
+
 // Plan 31 mechanics tier. Presentation may dress these immutable phase receipts later, but Combat
 // owns the physical event: four secondary pressure pulses walk the hull, the main burst shoves live
 // bodies, and six above-threshold chunks enter Rapier as ordinary mass-bearing wreck bodies.
@@ -268,6 +269,167 @@ export const DEATH_BLAST = Object.freeze({
   hullDamage: 0,
 });
 
+// Plan 31 physics rule: "All debris above a size threshold is real: collision, mass, vacuum-immune
+// (it's not loot), and it can chain-kill." The Heavy tier already sheds six real chunks; below it,
+// every light and medium death produced pure presentation - streaks that pass through your hull.
+//
+// This is the same debris grammar one tier down, sized by the size ladder's own authority. The
+// threshold is the point of the rule: a victim smaller than `minSourceRadiusWu` sheds NOTHING
+// physical, because a real body that small is a collision-solver cost with no read. Chunk radius is
+// held at or above Heavy's own physical threshold so nothing here is a sub-threshold pebble.
+export const DEATH_DEBRIS = Object.freeze({
+  /**
+   * The size threshold, and the reason it is high. Plan 31's rule is "all debris ABOVE A SIZE
+   * THRESHOLD is real" — not all debris — and its ladder says so twice: a Light hull throws "debris
+   * chunks + 2 tumbling plates" (dressing), while a Medium throws "a tumbling SECTION (engine block,
+   * wing)". The section is the real body; the plates are the presentation layer in vfx.js.
+   *
+   * Measured, not guessed: making light hulls shed real bodies too put the pacing route's arena
+   * under a permanent litter of small colliding rocks, and completed wings fell from 3.0 to 2.33 per
+   * seed across three tunings (mass, speed and lifetime all failed to recover it) because the bot
+   * lost pursuit speed diving through its own kills. At this threshold the same route measures
+   * exactly its debris-free numbers, and a medium-or-larger hull still sheds a real section.
+   */
+  minSourceRadiusWu: 16,
+  /** One section per death: the plan says "a tumbling section", singular. Heavy owns the fan of six. */
+  sectionCount: 1,
+  /** A section is a real body, so it must clear the same physical size bar Heavy debris does. */
+  chunkRadiusThresholdWu: 4,
+  /** Pool ceiling across every sub-Heavy death at once, well under Heavy's 36. */
+  maxLiveDebris: 6,
+  /** Transient: the aftermath system owns persistent wrecks, this owns a piece that tumbles past. */
+  ttlS: 9,
+  provenance: 'death_debris',
+  kind: 'death_debris',
+});
+
+/**
+ * The shared pool for sub-Heavy debris. Combat owns one instance for the same reason it owns one
+ * Heavy runtime: the cap is global, and "oldest evaporates first" is only meaningful against a
+ * single ordered list. Every spawn crosses `helpers.spawnEntity`; nothing here writes motion.
+ */
+export function createDeathDebrisPool({ state, helpers } = {}) {
+  const liveIds = [];
+
+  return Object.freeze({ spawn, reset, inspect });
+
+  function prune() {
+    for (let index = liveIds.length - 1; index >= 0; index--) {
+      const entity = state && state.entities && state.entities.get(liveIds[index]);
+      if (!entity || entity.alive === false || entity.data?.kind !== DEATH_DEBRIS.kind) {
+        liveIds.splice(index, 1);
+      }
+    }
+  }
+
+  function retireOldest() {
+    const entityId = liveIds.shift();
+    const entity = state && state.entities && state.entities.get(entityId);
+    if (entity && entity.data?.kind === DEATH_DEBRIS.kind) entity.alive = false;
+  }
+
+  function reset() {
+    liveIds.length = 0;
+  }
+
+  function inspect() {
+    prune();
+    return Object.freeze({ live: liveIds.length, cap: DEATH_DEBRIS.maxLiveDebris });
+  }
+
+  function chunkCountFor(sourceRadius) {
+    return sourceRadius >= DEATH_DEBRIS.minSourceRadiusWu ? DEATH_DEBRIS.sectionCount : 0;
+  }
+
+  function spawn(record) {
+    const spawnEntity = helpers && helpers.spawnEntity;
+    if (typeof spawnEntity !== 'function' || !record) return EMPTY_AFFECTED;
+    const count = chunkCountFor(record.sourceRadius);
+    if (count <= 0) return EMPTY_AFFECTED;
+    prune();
+    const spawned = [];
+    for (let index = 0; index < count; index++) {
+      while (liveIds.length >= DEATH_DEBRIS.maxLiveDebris) retireOldest();
+      const variation = hash32(record.sourceId, index, DEATH_DEBRIS.kind) / 0x100000000;
+      const angle = record.sourceRot + index * (Math.PI * 2 / count) + variation * 0.9;
+      const radius = DEATH_DEBRIS.chunkRadiusThresholdWu + variation * 1.4;
+      // Plate-scale, not boulder-scale. The first cut put a chunk at ~1/3 of a gunship's mass and
+      // threw it fast, and because these spawn exactly where the player is already diving, a
+      // kill-dive turned into a wall: the pacing route lost a whole wing per three seeds. Plan 31
+      // wants kill-dives spicy, not stopped, so a chunk is a fraction of the hull it came off.
+      const mass = 3 + record.sourceRadius * 0.15;
+      const speed = 34 + variation * 26;
+      const direction = { x: Math.cos(angle), z: Math.sin(angle) };
+      const offset = record.sourceRadius * 0.62 + radius + 2.5;
+      const entity = spawnEntity({
+        type: 'wreck',
+        team: 2,
+        ownerId: record.sourceId,
+        pos: {
+          x: record.position.x + direction.x * offset,
+          z: record.position.z + direction.z * offset,
+        },
+        vel: {
+          x: record.velocity.x * 0.45 + direction.x * speed,
+          z: record.velocity.z * 0.45 + direction.z * speed,
+        },
+        rot: angle,
+        angVel: (index % 2 ? -1 : 1) * (1.1 + variation * 1.6),
+        radius,
+        mass,
+        hull: 1,
+        hullMax: 1,
+        // Unlike a Heavy wreck this one is not a persistent landmark; the aftermath system owns
+        // those. It is a chunk that tumbles through the fight and then goes away.
+        ttl: DEATH_DEBRIS.ttlS,
+        collides: true,
+        collisionMask: HEAVY_DEBRIS_MASK,
+        physicsBody: {
+          dynamic: true,
+          ccd: true,
+          radius,
+          mass,
+          inertiaY: 0.5 * mass * radius * radius,
+          material: 'debris',
+          shape: 'ball',
+          revision: 1,
+        },
+        data: {
+          kind: DEATH_DEBRIS.kind,
+          parentType: 'ordinary_ship',
+          sourceId: record.sourceId,
+          // Chain-kill detection reads this, exactly as it does for Heavy debris.
+          causalActorId: record.actorId,
+          majorDebris: true,
+          vacuumImmune: true,
+          physicalRadiusThresholdWu: DEATH_DEBRIS.chunkRadiusThresholdWu,
+          debrisIndex: index,
+        },
+      });
+      if (!entity) continue;
+      ensurePhysicsBodySpec(entity);
+      helpers.refreshEntityIndex?.(entity);
+      // Provenance is stamped on the CHUNK, never on bystanders: the chunk is a new body nobody
+      // owns yet, so this cannot reassign an existing collision the way a bystander stamp would.
+      recordImpulseProvenance(entity, {
+        actorId: record.actorId,
+        weaponId: record.weaponId,
+        tag: DEATH_DEBRIS.provenance,
+        appliedTick: nonNegativeTick(state && state.tick),
+        magnitude: mass * speed,
+      });
+      liveIds.push(entity.id);
+      spawned.push(Object.freeze({
+        entityId: entity.id,
+        radiusWu: radius,
+        mass,
+        direction: Object.freeze(direction),
+      }));
+    }
+    return spawned.length ? Object.freeze(spawned) : EMPTY_AFFECTED;
+  }
+}
+
 /**
  * Apply one ordinary death blast.
  *
@@ -275,8 +437,11 @@ export const DEATH_BLAST = Object.freeze({
  * crosses SG-02's combat-physics membrane, exactly as the Ember and Heavy tiers do. Returns null
  * when a richer authored cook-off already owns the shove for this corpse, so no body is ever pushed
  * twice for one death.
+ *
+ * `debrisPool` is optional so every existing caller and test keeps working unchanged; when it is
+ * present the same death also sheds real chunks above the size threshold.
  */
-export function triggerDeathBlastImpulse({ state, bus, helpers, source, killerId = null, lethal = null } = {}) {
+export function triggerDeathBlastImpulse({ state, bus, helpers, source, killerId = null, lethal = null, debrisPool = null } = {}) {
   if (!state || !source || !source.pos) return null;
   if (deathShoveOwnedElsewhere(source)) return null;
 
@@ -333,6 +498,18 @@ export function triggerDeathBlastImpulse({ state, bus, helpers, source, killerId
     }
   }
 
+  const debris = debrisPool && typeof debrisPool.spawn === 'function'
+    ? debrisPool.spawn({
+      sourceId: source.id,
+      sourceRadius,
+      sourceRot: finite(source.rot),
+      position,
+      velocity: { x: finite(source.vel && source.vel.x), z: finite(source.vel && source.vel.z) },
+      actorId,
+      weaponId,
+    })
+    : EMPTY_AFFECTED;
+
   const receipt = Object.freeze({
     schemaVersion: 1,
     tick,
@@ -346,6 +523,7 @@ export function triggerDeathBlastImpulse({ state, bus, helpers, source, killerId
     peakImpulse,
     maxAffected: DEATH_BLAST.maxAffected,
     affected: affected.length ? Object.freeze(affected) : EMPTY_AFFECTED,
+    debris,
   });
 
   // No cue is emitted here on purpose. The death this rides already draws its own explosion through
