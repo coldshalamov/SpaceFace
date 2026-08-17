@@ -108,6 +108,10 @@ import {
   shouldRollWreckTow,
   wreckTowFollowupOfferId,
 } from '../data/missionVariants.js';
+import {
+  contractFailureBlackBoxForCauseTag,
+  contractFailureBlackBoxLotSource,
+} from '../data/contractFailureBlackBoxes.js';
 import { PLANET_SITE } from '../data/planets.js';
 import { CERES_ACTIVITY_SECTOR_ID } from '../data/sectorActivityPockets.js';
 import { factionMissionDoctrineMultiplier } from '../data/factionPlay.js';
@@ -5950,6 +5954,16 @@ export const missions = {
     const debrisRecovery = m.params && m.params.debrisRecovery;
     const physicalRecovery = quietRecovery || debrisRecovery;
     if (physicalRecovery) {
+      const recorder = debrisRecovery
+        ? contractFailureBlackBoxForCauseTag(m.cause && m.cause.tag)
+        : null;
+      const recorderLotSource = recorder
+        ? contractFailureBlackBoxLotSource(
+          recorder,
+          physicalRecovery.sourceMissionId || m.cause && m.cause.sourceMissionId,
+          m.sourceOfferId,
+        )
+        : null;
       const completed = completedMissionTargetSlots(m);
       const occupied = new Set((m.targetEntityIds || []).map((id) => (
         missionTargetSlotOf(this.state.entities.get(id), m.id)
@@ -6003,6 +6017,7 @@ export const missions = {
             masslineTetherable: true,
             ...(quietRecovery ? { quietDeliveryRecovery: true } : {}),
             ...(debrisRecovery ? { debrisRecovery: true } : {}),
+            ...(recorderLotSource ? { lotSource: { ...recorderLotSource } } : {}),
             solidMaterialAfterEmbargo: 'payload',
             pickupEmbargoUntil: 0,
           },

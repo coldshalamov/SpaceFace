@@ -506,6 +506,13 @@ export const PERSISTENT_CARGO = [
   { id: 'codex_wreck_recorder:wm_blackbox_attacker', name: 'BELT-SHADOW FLIGHT RECORDER', mass: 0.02, note: 'PERSONAL EFFECTS — communicator-wreck recorder.' },
   { id: 'codex_wreck_recorder:wm_pd_curtain_blackbox', name: 'CURTAIN ESCORT FLIGHT RECORDER', mass: 0.02, note: 'PERSONAL EFFECTS — communicator-wreck recorder.' },
   { id: 'codex_wreck_recorder:wm_shaft_seven_blackbox', name: 'SHAFT SEVEN FLIGHT RECORDER', mass: 0.02, note: 'PERSONAL EFFECTS — communicator-wreck recorder.' },
+  { id: 'codex_contract_recorder:disable_dont_kill', name: 'QUARRY CUSTODY RECORDER', mass: 0.02, note: 'PERSONAL EFFECTS — recovered contract-failure recorder.' },
+  { id: 'codex_contract_recorder:wreck_tow', name: 'STRIPPED TOW RECORDER', mass: 0.02, note: 'PERSONAL EFFECTS — recovered contract-failure recorder.' },
+  { id: 'codex_contract_recorder:rock_diversion', name: 'ROCK IMPACT RECORDER', mass: 0.02, note: 'PERSONAL EFFECTS — recovered contract-failure recorder.' },
+  { id: 'codex_contract_recorder:atmosphere_rescue', name: 'BURN-LINE RESCUE RECORDER', mass: 0.02, note: 'PERSONAL EFFECTS — recovered contract-failure recorder.' },
+  { id: 'codex_contract_recorder:loud_delivery', name: 'BURNED DROP RECORDER', mass: 0.02, note: 'PERSONAL EFFECTS — recovered contract-failure recorder.' },
+  { id: 'codex_contract_recorder:salvage_race', name: 'LOST-CUT SALVAGE RECORDER', mass: 0.02, note: 'PERSONAL EFFECTS — recovered contract-failure recorder.' },
+  { id: 'codex_contract_recorder:escort_the_idiot', name: 'SCENIC LINER FLIGHT RECORDER', mass: 0.02, note: 'PERSONAL EFFECTS — recovered contract-failure recorder.' },
 ].filter(Boolean);
 
 /** Thread-B fragment present from New Game (PERSONAL EFFECTS). Not the B0 assay sample. */
