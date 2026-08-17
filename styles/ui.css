@@ -1174,7 +1174,7 @@ button:active { translate: 0 1px; }
    dataState's callers supply no progress signal, so a perpetual sweep would encode nothing — it
    would be decoration, and it is exactly the compositor-side `infinite` keyframe that
    check:ui-frame-sleep cannot see because it inspects rAF. The state is carried honestly by the
-   WORKING word, the arc glyph, `aria-busy`, and the skeleton's shape.
+   BUS_OFFLINE word, the arc glyph, `aria-busy`, and the skeleton's shape.
 
    If a caller ever supplies real progress, the bar's WIDTH becomes the encoding and earns a
    `--sf-t-spool` motion token. Until then the correct implementation is the subtraction. */
@@ -1299,4 +1299,14 @@ button:active { translate: 0 1px; }
   .sf-drawerlayer > .sf-drawer { border-inline-start: 1px solid CanvasText; }
   .sf-entity-link { color: LinkText; text-decoration-color: LinkText; }
   .sf-drawer__verb, .sf-drawer__facts .sf-tile { border: 1px solid CanvasText; }
+}
+
+/* Dock refusal on the HUD: compact dataState, vacuum vignette, pointer-events for the verb. */
+.sf-dock-deny {
+  position: absolute; top: 14%; left: 50%; transform: translateX(-50%);
+  z-index: 41; width: min(52ch, 90vw); pointer-events: auto;
+}
+.sf-dock-deny .sf-state {
+  margin: 0; max-width: none;
+  background: radial-gradient(70% 80% at 50% 50%, rgba(5, 8, 14, .92), rgba(5, 8, 14, .55) 70%, transparent);
 }

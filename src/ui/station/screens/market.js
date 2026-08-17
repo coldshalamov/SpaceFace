@@ -5,6 +5,9 @@ import { COMMODITIES } from '../../../data/commodities.js';
 import { SECTORS } from '../../../data/sectors.js';
 import { isUnsellableCargo } from '../../../systems/cargo.js';
 import { escapeHtml } from '../../comms.js';
+import { entitySpanHtml } from '../../entityResolver.js';
+import { MAP_FOCUS, openGalaxyMap } from '../../mapAuthority.js';
+import { mountDataState } from '../../uiPrimitives.js';
 import { icon } from '../icons.js';
 import { renderAdBoardNotice } from '../adBoard.js';
 import { marketQuoteValue, presentMarketDrivers } from '../../marketDriverPresenter.js';
@@ -339,8 +342,25 @@ export function createMarketScreen(ctx) {
       activeChart = null;
       stageEl.removeAttribute('aria-labelledby');
       stageEl.removeAttribute('aria-describedby');
-      stageEl.innerHTML = `<div class="sx-market-empty">${icon('cargo', 34)}<h3>${mode === 'sell' ? 'Your hold is empty' : 'No market at this berth'}</h3>` +
-        `<p>${mode === 'sell' ? 'Buy cargo here or bring material back from mining before opening Sell.' : 'This station has no tradable stock.'}</p></div>`;
+      mountDataState(stageEl, 'empty', {
+        code: mode === 'sell' ? 'HOLD_EMPTY' : 'EXCHANGE_DARK',
+        headline: mode === 'sell' ? 'Your hold is empty.' : 'No market at this berth.',
+        fills: mode === 'sell'
+          ? 'Buy cargo here or bring material back from mining before opening Sell.'
+          : 'This station has no tradable stock. Another berth may still quote.',
+        verb: mode === 'sell'
+          ? {
+            label: 'Switch to Buy',
+            onActivate: () => {
+              openTradeMode('buy', ctx.state || {});
+              renderAll(ctx.state || {});
+            },
+          }
+          : {
+            label: 'Plot another berth',
+            onActivate: () => openGalaxyMap(ctx, { focus: MAP_FOCUS.SYSTEM, source: 'market-empty' }),
+          },
+      });
       return;
     }
     const def = r.def, entry = r.entry;
@@ -362,7 +382,7 @@ export function createMarketScreen(ctx) {
     stageEl.innerHTML =
       (isTracked ? `<div class="sx-mkt-tracked" data-tracked-state="${trackedGuidance.state}">${icon('contracts', 15)}<span><b>Tracked contract</b> — ${escapeHtml(trackedGuidance.text)}</span></div>` : '') +
       `<div class="sx-mkt-head">` +
-        `<div class="sx-mkt-title"><h2>${escapeHtml(def.name)}</h2>` +
+        `<div class="sx-mkt-title"><h2>${entitySpanHtml('commodity:' + r.id, escapeHtml(def.name))}</h2>` +
           `<span class="sx-tag${legalTone ? ' sx-tag--' + (legalTone === 'loss' ? 'bad' : 'warn') : ''}">${LEGAL_LABEL[legal]}</span>` +
           `<span class="sx-mkt-cat-inline">${escapeHtml(def.category || '')}</span></div>` +
         `<div class="sx-mkt-delta ${up ? 'is-up' : 'is-down'}">${up ? '▲' : '▼'} ${Math.abs(pct)}%<span>vs. period open</span></div>` +
@@ -514,7 +534,7 @@ export function createMarketScreen(ctx) {
       return (
         `<div class="sx-route-row">` +
           `<span class="sx-route-row__body">` +
-            `<span class="sx-route-row__t">${escapeHtml(t.cmdtyName || t.cmdtyId)} → ${escapeHtml(dest)}</span>` +
+            `<span class="sx-route-row__t">${entitySpanHtml('commodity:' + t.cmdtyId, escapeHtml(t.cmdtyName || t.cmdtyId))} → ${entitySpanHtml('station:' + t.destStation, escapeHtml(dest))}</span>` +
             `<span class="sx-route-row__s">${profit > 0 ? '+' + fmt(profit) + ' cr' : '—'}${units > 0 ? ' · ' + fmt(units) + 'u run' : ''}${escapeHtml(demandReason)}</span>` +
           `</span>` +
           `<button type="button" class="sx-lead__go" data-course="${escapeHtml(t.cmdtyId)}" data-dest="${escapeHtml(t.destStation)}">Set Course</button>` +

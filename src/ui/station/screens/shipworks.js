@@ -25,6 +25,7 @@ import {
   dockInteriorIdForArchetype,
 } from '../../shipPreviewMount.js';
 import { autoUpdate, computePosition, flip, offset, shift, size } from '@floating-ui/dom';
+import { mountDataState, settleDataState } from '../../uiPrimitives.js';
 import {
   formatPreviewDelta,
   presentDerivedReadout,
@@ -175,7 +176,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         `<div class="sx-sw__slotfield" role="group" aria-label="Ship systems"></div>` +
         `<div class="sx-sw__focusline" aria-hidden="true"></div>` +
         `<div class="sx-sw__delta" aria-live="polite" hidden></div>` +
-        `<div class="sx-sw__acquiring" role="status" aria-live="polite"><span>SHIPYARD OPTICS</span><b>Resolving final hull…</b><i aria-hidden="true"></i></div>` +
+        `<div class="sx-sw__acquiring" data-sf-acquire-host></div>` +
         `<div class="sx-sw__nameplate"></div>` +
         `<div class="sx-sw__camera" aria-label="Ship preview controls">` +
           `<button type="button" data-camera="left" aria-label="Rotate ship left">↶</button>` +
@@ -263,6 +264,24 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     return !!state && !['empty', 'loading', 'procedural-fallback'].includes(state);
   }
 
+  function rememberShipView() {
+    const mem = ctx.screenMemory;
+    if (!mem) return;
+    mem.set('ship', { mode, viewIdx, buyId: String(buyId || '') });
+  }
+
+  function restoreShipView() {
+    const mem = ctx.screenMemory;
+    if (!mem) return;
+    const savedMode = mem.read('ship', 'mode', null);
+    const savedIdx = mem.read('ship', 'viewIdx', null);
+    const savedBuy = mem.read('ship', 'buyId', null);
+    if (host !== 'flight' && (savedMode === 'fleet' || savedMode === 'buy')) mode = savedMode;
+    if (Number.isInteger(savedIdx) && owned()[savedIdx]) viewIdx = savedIdx;
+    if (savedBuy && SHIP_BY_ID.has(savedBuy)) buyId = savedBuy;
+    el.querySelectorAll('.sx-seg__btn').forEach((x) => x.classList.toggle('is-on', x.getAttribute('data-mode') === mode));
+  }
+
   function beginPreviewReveal(defId, gated) {
     previewSettleGeneration++;
     if (previewSettleTimer) clearTimeout(previewSettleTimer);
@@ -274,8 +293,24 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     stageEl.classList.toggle('is-acquiring', gated);
     stageEl.classList.remove('is-revealing');
     if (acquiringEl) {
-      const label = acquiringEl.querySelector('b');
-      if (label) label.textContent = `Resolving ${shipName(defId)} final hull…`;
+      if (gated) {
+        const generation = previewSettleGeneration;
+        mountDataState(acquiringEl, 'loading', {
+          code: 'OPTICS_UNRESOLVED',
+          headline: 'Reading the ' + shipName(defId) + ' hull.',
+          fills: 'Waiting on the shipyard optics to resolve your fitted modules — this finishes when the scan does, not on a timer.',
+          skeleton: [{ w: '58%', h: 14 }, { w: '88%' }, { w: '42%' }],
+          verb: {
+            label: 'Show the hull now',
+            onActivate: () => {
+              const asset = mount && mount.getAssetState ? mount.getAssetState() : 'rendered';
+              settlePreviewReveal(defId, asset, generation);
+            },
+          },
+        });
+      } else {
+        settleDataState(acquiringEl);
+      }
     }
     return previewSettleGeneration;
   }
@@ -291,6 +326,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       canvas.dataset.previewReveal = 'revealing';
       previewRevealPhase = 'revealing';
       stageEl.classList.remove('is-acquiring');
+      if (acquiringEl) settleDataState(acquiringEl);
       stageEl.classList.add('is-revealing');
       stageEl.dataset.revealWasGated = 'false';
       // `previewReady` means visible and settled, not merely that a WebGL root exists. Holding it
@@ -315,6 +351,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     previewRevealPhase = 'idle';
     stageEl.classList.remove('is-acquiring');
     stageEl.classList.remove('is-revealing');
+    if (acquiringEl) settleDataState(acquiringEl);
     stageEl.dataset.revealWasGated = 'false';
     scheduleSpatialProjection();
   }
@@ -714,6 +751,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     if (fleetIndex != null) viewIdx = Number(fleetIndex);
     else buyId = buyShipId;
     selectedSlot = -1;
+    rememberShipView();
     renderRail();
     renderCenter();
     renderSide();
@@ -1099,6 +1137,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     if (!chooserEl.hidden) closeChooser();
     mode = m;
     selectedSlot = -1;
+    rememberShipView();
     el.querySelectorAll('.sx-seg__btn').forEach((x) => x.classList.toggle('is-on', x.getAttribute('data-mode') === mode));
     renderRail(); renderCenter(); renderSide();
     queueRevealSelectedShip();
@@ -1322,7 +1361,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     el,
     setHost,
     get host() { return host; },
-    onShow() { refresh(); if (mount) mount.setActive(true); },
+    onShow() { restoreShipView(); refresh(); if (mount) mount.setActive(true); },
     onHide() {
       if (previewSettleTimer) clearTimeout(previewSettleTimer);
       previewSettleTimer = 0;

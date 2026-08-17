@@ -54,23 +54,27 @@ async function startFreshServer() {
 // The four states, authored the way a real pane would author them.
 const FIXTURES = [
   ['empty', {
+    code: 'BOARD_EMPTY',
     headline: 'No contracts are posted here.',
     fills: 'Boards fill when a station has cargo it cannot move itself. The nearest active board is Ceres, two jumps out.',
     verb: { label: 'Plot a route to Ceres', action: 'probe:route' },
   }],
   ['loading', {
+    code: 'OPTICS_UNRESOLVED',
     headline: 'Reading the hull.',
     fills: 'Waiting on the shipyard optics to resolve your fitted modules — this finishes when the scan does, not on a timer.',
     verb: { label: 'Cancel the scan', action: 'probe:cancel' },
     skeleton: [{ w: '68%', h: 14 }, { w: '92%' }, { w: '46%' }],
   }],
   ['error', {
+    code: 'MARKET_FEED_STALE',
     headline: 'The market feed did not answer.',
     fills: 'Prices here are from your last visit and may have moved. Retrying re-reads the station ledger.',
     detail: 'Last good read: 14 minutes ago.',
     verb: { label: 'Retry the read', key: 'R', action: 'probe:retry' },
   }],
   ['denied', {
+    code: 'DOCKING_CLEARANCE_REVOKED',
     headline: 'You cannot dock at Vesta Yard.',
     fills: 'Your outstanding bounty is 5,400 credits and this station refuses anyone above 5,000. Paying it clears the refusal immediately.',
     verb: { label: 'Pay 5,400 cr bounty', action: 'probe:pay' },

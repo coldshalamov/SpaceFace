@@ -18,6 +18,7 @@ import {
 import { ENDING_IDS, endingDef } from '../../story/endings/endingDefs.js';
 import { escapeHtml } from '../comms.js';
 import { BINDINGS } from '../bindings.js';
+import { entitySpanHtml } from '../entityResolver.js';
 import {
   missionClauseTerms,
   missionConsequenceSummary,
@@ -1934,7 +1935,7 @@ export const missionLogScreen = {
       const risk = m.riskTier != null ? m.riskTier : 0;
       top.innerHTML =
         '<span class="sf-mlog-card-title">' + escapeHtml(missionTitle(m)) + '</span>' +
-        '<span class="sf-mlog-card-type">' + escapeHtml(prettyType(m.type)) + '</span>' +
+        '<span class="sf-mlog-card-type">' + (m.id ? entitySpanHtml('contract:' + m.id, escapeHtml(prettyType(m.type))) : escapeHtml(prettyType(m.type))) + '</span>' +
         '<span class="sf-mlog-card-risk r' + risk + '">R' + risk + '</span>';
       card.appendChild(top);
 
@@ -1967,11 +1968,22 @@ export const missionLogScreen = {
       // Meta row: destination, time, rewards
       const meta = el('div', 'sf-mlog-meta mono');
       const fac = m.factionId ? FACTION_BY_ID.get(m.factionId) : null;
+      const destStn = m.destStationId ? STATION_INFO.get(m.destStationId) : null;
+      const destSec = m.destSectorId ? SECTOR_BY_ID.get(m.destSectorId) : null;
+      const destHtml = destStn
+        ? entitySpanHtml('station:' + m.destStationId, escapeHtml(destStn.name))
+          + (destSec ? ' (' + entitySpanHtml('sector:' + m.destSectorId, escapeHtml(destSec.name)) + ')' : '')
+        : destSec
+          ? entitySpanHtml('sector:' + m.destSectorId, escapeHtml(destSec.name + ' sector'))
+          : escapeHtml(destLabel(m));
+      const facHtml = fac
+        ? entitySpanHtml('faction:' + m.factionId, escapeHtml(fac.short || fac.name))
+        : '';
       meta.innerHTML =
-        '<span class="sf-mlog-dest">' + escapeHtml(destLabel(m)) + '</span>' +
+        '<span class="sf-mlog-dest">' + destHtml + '</span>' +
         (remaining > 0 ? '<span class="sf-mlog-time' + (urgent ? ' urgent' : '') + '">' + fmtTime(remaining) + '</span>' : '') +
         '<span class="sf-mlog-cr">+' + (m.reward_cr || 0).toLocaleString() + ' cr</span>' +
-        (fac ? '<span class="sf-mlog-fac" style="color:' + (fac.color || 'var(--accent-2)') + '">' + escapeHtml(fac.short || fac.name) + '</span>' : '');
+        (facHtml ? '<span class="sf-mlog-fac" style="color:' + (fac.color || 'var(--accent-2)') + '">' + facHtml + '</span>' : '');
       card.appendChild(meta);
       card.insertAdjacentHTML('beforeend', contractTermsHtml(m, state));
 

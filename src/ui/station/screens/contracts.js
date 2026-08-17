@@ -11,6 +11,9 @@ import { FACTION_META } from '../../../data/factions.js';
 import { MISSION_TUNING, MISSION_TYPES, missionMinRepForRisk } from '../../../data/missions.js';
 import { SECTORS } from '../../../data/sectors.js';
 import { escapeHtml } from '../../comms.js';
+import { entitySpanHtml } from '../../entityResolver.js';
+import { MAP_FOCUS, openGalaxyMap } from '../../mapAuthority.js';
+import { mountDataState } from '../../uiPrimitives.js';
 import { icon } from '../icons.js';
 
 const CMDTY = new Map(COMMODITIES.map((c) => [c.id, c]));
@@ -76,6 +79,34 @@ function destName(m) {
   const params = (m && m.params) || {};
   return m.destinationName || m.destName || params.destinationName || params.destName
     || (m.local ? 'Local sector' : (m.destSectorId || params.destSectorId || 'Destination'));
+}
+
+function destEntityHtml(m) {
+  const params = (m && m.params) || {};
+  const stn = m.destStationId || params.destStationId;
+  const sec = m.destSectorId || params.destSectorId;
+  if (stn) {
+    const rec = STATION_DEF.get(stn);
+    return entitySpanHtml('station:' + stn, escapeHtml((rec && rec.name) || destName(m)));
+  }
+  if (sec) return entitySpanHtml('sector:' + sec, escapeHtml(destName(m)));
+  return escapeHtml(destName(m));
+}
+
+function originEntityHtml(state, label) {
+  const id = state && state.ui && state.ui.dockedStationId;
+  return id ? entitySpanHtml('station:' + id, escapeHtml(label)) : escapeHtml(label);
+}
+
+function clientEntityHtml(m) {
+  return m.factionId
+    ? entitySpanHtml('faction:' + m.factionId, escapeHtml(facName(m)))
+    : escapeHtml(facName(m));
+}
+
+function cargoEntityHtml(cargo, cargoName) {
+  if (!cargo || !cargoName) return '';
+  return entitySpanHtml('commodity:' + cargo.commodityId, escapeHtml(cargoName));
 }
 
 function missionRepPreview(m) {
@@ -267,7 +298,15 @@ export function createContractsScreen(ctx) {
       selectedId = String(mid(list[0]));
     }
     if (!list.length) {
-      boardEl.innerHTML = `<div class="sx-empty">${icon('contracts', 30)}<h4>Board is quiet</h4><p>No missions posted at this berth. Try a station with a mission desk or a black-market contact.</p></div>`;
+      mountDataState(boardEl, 'empty', {
+        code: 'BOARD_EMPTY',
+        headline: 'No missions posted at this berth.',
+        fills: 'Boards fill when a station has cargo it cannot move itself. A mission desk or a black-market contact at another berth will have work.',
+        verb: {
+          label: 'Open the Chart',
+          onActivate: () => openGalaxyMap(ctx, { focus: MAP_FOCUS.SYSTEM, source: 'contracts-empty' }),
+        },
+      });
       return;
     }
     boardEl.innerHTML =
@@ -308,7 +347,18 @@ export function createContractsScreen(ctx) {
   function renderDossier(state) {
     const list = sortBoardOffers(offers(state), state, focusId());
     const m = list.find((x) => String(mid(x)) === selectedId) || list[0];
-    if (!m) { dossierEl.innerHTML = `<div class="sx-empty">${icon('contracts', 34)}<h4>No mission selected</h4><p>Pick a job from the board to open its briefing.</p></div>`; return; }
+    if (!m) {
+      mountDataState(dossierEl, 'empty', {
+        code: 'BRIEF_UNSELECTED',
+        headline: 'No mission selected.',
+        fills: 'Pick a job from the board to open its briefing. The dossier is the full brief; the list stays scannable.',
+        verb: {
+          label: 'Open the Chart',
+          onActivate: () => openGalaxyMap(ctx, { focus: MAP_FOCUS.SYSTEM, source: 'contracts-brief' }),
+        },
+      });
+      return;
+    }
     const focusAccept = attention && attention.kind === 'accept'
       && String(attention.focusMissionId) === String(mid(m));
     const filing = finalDispositionPresentation(m);
@@ -352,8 +402,8 @@ export function createContractsScreen(ctx) {
         `<header class="sx-dossier__head">` +
           `<span class="sx-dossier__crest" style="--tint:${tint}">${icon(TYPE_ICON[m.type] || 'contracts', 26)}</span>` +
           `<div class="sx-dossier__id">` +
-            `<span class="sx-dossier__client">${escapeHtml(facName(m))} · ${escapeHtml(typeLabel(m.type))}</span>` +
-            `<h2>${escapeHtml(m.title || typeLabel(m.type))}</h2>` +
+            `<span class="sx-dossier__client">${clientEntityHtml(m)} · ${escapeHtml(typeLabel(m.type))}</span>` +
+            `<h2>${entitySpanHtml('contract:' + String(mid(m)), escapeHtml(m.title || typeLabel(m.type)))}</h2>` +
           `</div>` +
         `</header>` +
         (authoredSummary
@@ -367,16 +417,16 @@ export function createContractsScreen(ctx) {
 
         `<div class="sx-dossier__route" aria-label="Mission operation route">` +
           `<div class="sx-route">` +
-            `<span class="sx-route__node"><i></i>${escapeHtml(origin)}</span>` +
+            `<span class="sx-route__node"><i></i>${originEntityHtml(state, origin)}</span>` +
             `<span class="sx-route__line"><span class="sx-route__jumps">${jumps > 0 ? jumps + ' jump' + (jumps > 1 ? 's' : '') : 'in-sector'}</span></span>` +
             `<span class="sx-route__stage"><i></i><b>PREP</b><em>${cargoName ? `${num(cargo.qty)}u payload` : 'fit + fuel'}</em></span>` +
             `<span class="sx-route__line sx-route__line--short"></span>` +
-            `<span class="sx-route__node sx-route__node--dest"><i></i>${escapeHtml(destName(m))}</span>` +
+            `<span class="sx-route__node sx-route__node--dest"><i></i>${destEntityHtml(m)}</span>` +
           `</div>` +
         `</div>` +
 
         `<div class="sx-dossier__grid">` +
-          (cargoName ? briefCell('cargo', 'Payload', escapeHtml(cargoName), (cargo.qty ? cargo.qty + ' u' : '')) : '') +
+          (cargoName ? briefCell('cargo', 'Payload', cargoEntityHtml(cargo, cargoName), (cargo.qty ? cargo.qty + ' u' : '')) : '') +
           briefCell('clock', 'Time', m.timeLabel || (m.timeLimitMin ? m.timeLimitMin + ' min' : 'Flexible'), '') +
           (collateral(m) ? briefCell('info', 'Collateral', collateral(m).toLocaleString('en-US') + ' cr', 'on failure') : '') +
           (upfront(m) ? briefCell('credits', 'Upfront', upfront(m).toLocaleString('en-US') + ' cr', 'to accept') : '') +

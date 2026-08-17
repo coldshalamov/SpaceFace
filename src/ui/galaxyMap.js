@@ -33,16 +33,7 @@ import {
 import { zonesForSector, zoneTypeMeta, zoneThreat } from '../data/sectorZones.js';
 import { MAP_FOCUS, takeMapOpenIntent, normalizeMapFocus } from './mapAuthority.js';
 import { enhanceSelects, dataStateHtml } from './uiPrimitives.js';
-import { entityExists } from './entityResolver.js';
-
-/** J5 tagging helper: emit `data-entity` ONLY for a ref that actually resolves, so a stale or
- *  runtime-only id renders as plain text instead of a door into an empty room. Returns the class
- *  too, because an entity link must read as one by underline — never by colour alone. */
-function entityAttr(ref) {
-  // `role="link"` is not decoration: a focusable element with no role has no name/role/value to
-  // expose, so a screen-reader user tabs onto something announced as plain text (WCAG 4.1.2).
-  return ref && entityExists(ref) ? ` class="sf-entity-link" role="link" tabindex="0" data-entity="${ref}"` : '';
-}
+import { entityAttr } from './entityResolver.js';
 import { resolveWaypointPresentationPosition } from './navigationWaypoint.js';
 import { sectorLawProfile } from './securityReadout.js';
 import { causeFor } from './causeLedger.js';
@@ -56,7 +47,7 @@ import { sectorExplorationProgress } from '../world/explorationJournal.js';
 import { mapFactionPresenceNodes } from '../data/factionPresence.js';
 import { sectorSignalFor, forecastTransitFor } from '../systems/sectorSim.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
-import { bestKnownSellAtStations, knownStationQuotes } from './marketIntelligence.js';
+import { bestKnownSellAtStations, knownStationQuotes, AGE_HOLLOW_S } from './marketIntelligence.js';
 import { rankTradeRoutes, LocalSpaceIntel, projectTrack } from './navigation/localSpaceMapModel.js';
 // Wave 2 — the chart's camera and its always-present navigation readout, both pure modules.
 // galaxyMap.js consumes them; it never reimplements their maths (ADR D3/D4).
@@ -6049,7 +6040,7 @@ export const galaxyMapScreen = {
           <div class="gm-ins-title">Faction</div>
           <div class="gm-ins-row">
             <span>Authority</span>
-            <span class="gm-ins-row-val" style="color:${color}">${faction}</span>
+            <span class="gm-ins-row-val" style="color:${color}"><span${entityAttr('faction:' + t.factionId)}>${escapeMapHtml(faction)}</span></span>
           </div>
         </div>
 
@@ -6063,7 +6054,7 @@ export const galaxyMapScreen = {
           </div>
           <div class="gm-ins-row">
             <span>Jurisdiction</span>
-            <span class="gm-ins-row-val">${law.authority}</span>
+            <span class="gm-ins-row-val"><span${entityAttr('faction:' + law.factionId)}>${escapeMapHtml(law.authority)}</span></span>
           </div>
           <div class="gm-ins-note" style="margin-top:6px;"><b style="color:var(--ink);">ILLEGAL:</b> ${law.illegal}</div>
           <div class="gm-ins-note" style="margin-top:4px;"><b style="color:var(--ink);">RESPONSE:</b> ${law.response}</div>
@@ -6331,7 +6322,7 @@ export const galaxyMapScreen = {
         <div class="gm-ins-section">
           <div class="gm-ins-title">Object Class</div>
           <div class="gm-ins-row"><span>Type</span><span class="gm-ins-row-val">${t.kind ? t.kind.toUpperCase() : 'UNKNOWN'}</span></div>
-          <div class="gm-ins-row"><span>Faction</span><span class="gm-ins-row-val" style="color:${factionColorOf(t.factionId)}">${contactFaction}</span></div>
+          <div class="gm-ins-row"><span>Faction</span><span class="gm-ins-row-val" style="color:${factionColorOf(t.factionId)}"><span${entityAttr('faction:' + t.factionId)}>${escapeMapHtml(contactFaction)}</span></span></div>
           <div class="gm-ins-row"><span>Hostile</span><span class="gm-ins-row-val" style="color:${t.hostile ? INK.red : INK.good}">${t.hostile ? 'YES' : 'NO'}</span></div>
           <div class="gm-ins-row"><span>Distance</span><span class="gm-ins-row-val">${contactDist != null ? contactDist + ' u' : 'Unknown'}</span></div>
           <div class="gm-ins-row"><span>Speed</span><span class="gm-ins-row-val">${contactSpeed} u/s</span></div>
@@ -6490,11 +6481,13 @@ export const galaxyMapScreen = {
       // name what would fill them AND carry a verb (J3).
       : (state && state.economy && state.economy.marketIntel && Object.keys(state.economy.marketIntel).length)
         ? dataStateHtml('empty', {
+          code: 'LANE_UNPROFITABLE',
           headline: 'No lane in your intel turns a profit yet.',
           fills: 'Ranked lanes appear once you hold fresh quotes at two or more stations trading the same goods.',
           verb: { label: 'Find somewhere to dock', action: 'economy:services' },
         })
         : dataStateHtml('empty', {
+          code: 'INTEL_INCOMPLETE',
           headline: 'You have not priced a market yet.',
           fills: 'Dock anywhere and open its market — the first quote you record starts the ledger this ranks from.',
           verb: { label: 'Find somewhere to dock', action: 'economy:services' },
@@ -6502,12 +6495,22 @@ export const galaxyMapScreen = {
 
     const offers = bestKnownSellOffers(state, this._selectedCommodity, 3);
     const commodityLabel = String(this._selectedCommodity || '').replace('cmdty_', '').replace(/_/g, ' ').toUpperCase();
-    const offersHtml = offers.length
+    const feedStale = offers.length > 0 && offers.every((offer) => Number(offer.ageS) >= AGE_HOLLOW_S);
+    const offersHtml = feedStale
+      ? dataStateHtml('error', {
+        code: 'MARKET_FEED_STALE',
+        headline: 'The market feed did not answer.',
+        fills: 'Every quote on ' + commodityLabel + ' is older than fifteen minutes. Dock at an exchange and the ledger writes a fresh line.',
+        verb: { label: 'Find somewhere to dock', action: 'economy:services' },
+        compact: true,
+      })
+      : offers.length
       ? offers.map((offer) => {
         const tint = memoryTint(offer.ageS);
         return `<div class="gm-bk-row"><span class="gm-bk-station">${escapeMapHtml(offer.stationName)}</span><span class="gm-bk-val ${tint.key}">${offer.sell} cr · ${ageText(offer.ageS)}</span></div>`;
       }).join('')
       : dataStateHtml('empty', {
+        code: 'NO_QUOTES',
         headline: 'Nobody has quoted you a price for ' + commodityLabel + '.',
         fills: 'Dock at a station that buys it and the price you are shown is remembered here, with its age.',
         verb: { label: 'Lens another commodity', action: 'economy:commodity' },
@@ -6552,7 +6555,7 @@ export const galaxyMapScreen = {
         <div class="gm-ins-kind">Threat assessment</div>
         <div class="gm-ins-target-name"><span${entityAttr('sector:' + sectorId)}>${escapeMapHtml(sectorNameOf(state, sectorId))}</span></div>
         <div class="gm-ins-row"><span>Security</span><span class="gm-ins-row-val">${law.level} · ${securityPips(sec)}</span></div>
-        <div class="gm-ins-row"><span>Jurisdiction</span><span class="gm-ins-row-val">${law.authority}</span></div>
+        <div class="gm-ins-row"><span>Jurisdiction</span><span class="gm-ins-row-val"><span${entityAttr('faction:' + law.factionId)}>${escapeMapHtml(law.authority)}</span></span></div>
         <div class="gm-ins-row"><span>Hazards</span><span class="gm-ins-row-val">${hazards}</span></div>
       </div>
       <div class="gm-ins-section">

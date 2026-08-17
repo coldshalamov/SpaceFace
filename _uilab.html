@@ -310,6 +310,86 @@ body[data-focus] section{display:none}
 body[data-focus="hud"] section:nth-of-type(1),
 body[data-focus="tt"]  section:nth-of-type(2),
 body[data-focus="pb"]  section:nth-of-type(3){display:block}
+
+/* ══ J04 SNAPSHOT LAB — isolation board, vacuum, 1:1 chips + HUD ══════════════════════════════
+   `?lab=shots` hides the comparison chrome and mounts component fixtures on #05070c. New shots
+   hold a 12px type floor. CURRENT HUD frames above stay honest at 7–11px. */
+.lab-shots{display:none}
+body[data-lab="shots"]{padding:0;background:#05070c}
+body[data-lab="shots"] .lab-head,
+body[data-lab="shots"] > section,
+body[data-lab="shots"] .legend{display:none !important}
+body[data-lab="shots"] .lab-shots{
+  display:grid;grid-template-columns:repeat(4,minmax(240px,max-content));align-items:start;
+  gap:10px;padding:10px;width:1360px
+}
+body[data-lab="shots"] .lab-shot{padding:10px;overflow:hidden}
+body[data-lab="shots"] .lab-shot:not(.lab-shot--hud) .anchor{
+  position:relative !important;left:auto !important;right:auto !important;
+  top:auto !important;bottom:auto !important;transform:none !important
+}
+body[data-lab="shots"] [data-shot="hud-full"]{grid-column:1/-1}
+body[data-lab="shots"] [data-shot="faction-roundels"]{grid-column:1/-1}
+body[data-lab="shots"] [data-shot="hud-massline"],
+body[data-lab="shots"] [data-shot="tension-gauge"],
+body[data-lab="shots"] [data-shot^="state-"]{grid-column:span 2}
+
+.lab-shot{background:#05070c;color:var(--paper);padding:20px;width:max-content;max-width:100%;overflow:hidden}
+.lab-shot .pro .anchor{position:relative;left:auto;right:auto;top:auto;bottom:auto;transform:none}
+.lab-shot .pro .lbl{font-size:12px}
+.lab-shot .pslot__name{font-size:12px;bottom:-18px}
+
+.lab-shot--hud{width:1280px;height:720px;padding:0;position:relative;overflow:hidden}
+.lab-shot--hud .pro{position:absolute;inset:0}
+.lab-shot--hud .anchor{position:absolute !important}
+
+.lab-powers{display:flex;gap:14px;padding-bottom:22px}
+.lab-caps{display:flex;gap:14px}
+.lab-caps .cap{width:280px}
+
+.lab-roundels{display:flex;flex-wrap:wrap;gap:18px;width:640px}
+.lab-roundel{width:72px;display:flex;flex-direction:column;align-items:center;gap:8px}
+.lab-roundel svg{width:56px;height:56px;stroke:var(--paper);fill:none;stroke-width:1.5;
+  stroke-linecap:round;stroke-linejoin:round}
+.lab-roundel b{font-family:var(--display);font-weight:600;font-size:12px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--steel);text-align:center}
+
+/* Local copy of grammar tokens + sf-state so the lab does not load the whole game stylesheet. */
+.lab-state{
+  --sf-you:#7af7d0;--sf-foe:#ff5470;--sf-goal:#ffb347;--sf-calm:#84a0c8;--sf-paper:#d3e6ff;
+  --sf-edge:#1d3350;--sf-rail-w:2px;--sf-track-micro:.16em;--r-sm:3px;
+  --sf-display-face:"Saira SemiCondensed","Arial Narrow",sans-serif;
+  --sf-subhead-face:"Saira SemiCondensed","Arial Narrow",sans-serif;
+  --sf-body-face:"IBM Plex Sans","Segoe UI",sans-serif;
+  --sf-data-face:"IBM Plex Mono",Consolas,monospace;
+  --sf-t-latch:90ms;--sf-ease:cubic-bezier(.2,.9,.3,1);
+  width:520px;padding:8px
+}
+.lab-state .sf-state{
+  display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;
+  padding:24px 22px;width:100%;max-width:62ch;font-size:14px;color:var(--sf-paper);
+  border-inline-start:var(--sf-rail-w) solid var(--sf-calm)
+}
+.lab-state .sf-state--error,.lab-state .sf-state--denied{border-inline-start-color:var(--sf-foe)}
+.lab-state .sf-state--empty{border-inline-start-style:dashed}
+.lab-state .sf-state--denied{border-inline-start-width:calc(var(--sf-rail-w)*2)}
+.lab-state .sf-state__glyph{flex:none;width:30px;height:30px;color:var(--sf-calm)}
+.lab-state .sf-state--error .sf-state__glyph,.lab-state .sf-state--denied .sf-state__glyph{color:var(--sf-foe)}
+.lab-state .sf-state__glyph svg{width:100%;height:100%;display:block}
+.lab-state .sf-state__body{display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-width:0;flex:1 1 22ch}
+.lab-state .sf-state__word{font-family:var(--sf-subhead-face);font-weight:600;font-size:12px;
+  letter-spacing:var(--sf-track-micro);text-transform:uppercase;color:var(--sf-calm)}
+.lab-state .sf-state--error .sf-state__word,.lab-state .sf-state--denied .sf-state__word{color:var(--sf-foe)}
+.lab-state .sf-state__head{margin:0;font-family:var(--sf-display-face);font-weight:700;
+  font-size:22px;line-height:1.12;color:var(--sf-paper)}
+.lab-state .sf-state__fills{margin:0;font-size:14px;line-height:1.45;color:var(--sf-calm)}
+.lab-state .sf-state__verb{margin-top:4px;display:inline-flex;align-items:center;gap:8px;
+  font:600 15px/1.2 var(--sf-subhead-face);color:var(--sf-goal);background:transparent;
+  border:1px solid color-mix(in srgb,var(--sf-goal) 70%,transparent);border-radius:var(--r-sm);
+  padding:7px 14px;cursor:pointer}
+.lab-state .sf-state__skel{flex:1 0 100%;display:flex;flex-direction:column;gap:8px;margin-bottom:6px}
+.lab-state .sf-state__bar{width:72%;height:12px;border-radius:var(--r-sm);
+  background:color-mix(in srgb,var(--sf-calm) 14%,transparent)}
 </style>
 </head>
 <body data-accent="signal">
@@ -699,6 +779,228 @@ body[data-focus="pb"]  section:nth-of-type(3){display:block}
   </div>
 </div>
 
+<!-- J04 isolation board. Visible only with ?lab=shots. Vacuum #05070c, no cinematic plate. -->
+<div class="lab-shots" id="lab-shots">
+  <div class="lab-shot pro" data-shot="hud-vitals">
+    <div class="anchor vitals">
+      <div class="spdrow"><span class="big">218</span><span class="unit">m/s</span></div>
+      <div class="vstack">
+        <span class="lbl">Hull</span>
+        <div class="vbar"><i style="width:100%;background:var(--paper)"></i></div>
+        <span class="lbl">Shield</span>
+        <div class="vbar"><i style="width:62%;background:var(--hot)"></i></div>
+        <span class="lbl">Heat</span>
+        <div class="vbar"><i style="width:24%;background:var(--obj)"></i></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="lab-shot pro" data-shot="hud-reticle">
+    <div class="anchor centre">
+      <svg class="cross" width="46" height="46" viewBox="0 0 46 46" aria-hidden="true">
+        <g stroke="var(--paper)" stroke-width="1.6" stroke-linecap="round" opacity=".92">
+          <path d="M23 4v9M23 33v9M4 23h9M33 23h9"/></g>
+        <circle cx="23" cy="23" r="2.1" fill="var(--hot)"/>
+      </svg>
+    </div>
+  </div>
+
+  <div class="lab-shot pro" data-shot="hud-massline">
+    <div class="anchor mlbay">
+      <div class="mlhead"><span class="mlname">Massline</span><span class="mlstate">Latched · Hauler</span></div>
+      <div class="mltension"><i style="width:78%"></i><span class="mlredline"></span></div>
+      <div class="mlfoot">
+        <span class="lbl">Tension</span><span class="mlnum">78%</span>
+        <span class="lbl">Line</span><span class="mlnum">240 m</span>
+        <span class="mlrel">Release <b>RMB</b></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="lab-shot pro" data-shot="hud-threat">
+    <div class="anchor threat">
+      <div class="tcount"><span class="lbl">Hostiles</span><b>17</b></div>
+      <div class="tlist">
+        <div class="tpip"><span class="nm">Rook · Interceptor</span><span class="d"></span></div>
+        <div class="tpip"><span class="nm">Vane · Interceptor</span><span class="d"></span></div>
+        <div class="tpip is-far"><span class="nm">Cleat · Skiff</span><span class="d"></span></div>
+      </div>
+      <div class="tmore">+14 on radar</div>
+    </div>
+  </div>
+
+  <div class="lab-shot pro" data-shot="hud-objective">
+    <div class="anchor obj">
+      <div class="o">Swing the hauler wide of <em>Ceres Belt</em><span class="dist">345 WU</span></div>
+    </div>
+  </div>
+
+  <div class="lab-shot lab-shot--hud pro" data-shot="hud-full">
+    <div class="anchor vitals">
+      <div class="spdrow"><span class="big">218</span><span class="unit">m/s</span></div>
+      <div class="vstack">
+        <span class="lbl">Hull</span>
+        <div class="vbar"><i style="width:100%;background:var(--paper)"></i></div>
+        <span class="lbl">Shield</span>
+        <div class="vbar"><i style="width:62%;background:var(--hot)"></i></div>
+        <span class="lbl">Heat</span>
+        <div class="vbar"><i style="width:24%;background:var(--obj)"></i></div>
+      </div>
+    </div>
+    <div class="anchor centre">
+      <svg class="cross" width="46" height="46" viewBox="0 0 46 46" aria-hidden="true">
+        <g stroke="var(--paper)" stroke-width="1.6" stroke-linecap="round" opacity=".92">
+          <path d="M23 4v9M23 33v9M4 23h9M33 23h9"/></g>
+        <circle cx="23" cy="23" r="2.1" fill="var(--hot)"/>
+      </svg>
+    </div>
+    <div class="anchor mlbay">
+      <div class="mlhead"><span class="mlname">Massline</span><span class="mlstate">Latched · Hauler</span></div>
+      <div class="mltension"><i style="width:78%"></i><span class="mlredline"></span></div>
+      <div class="mlfoot">
+        <span class="lbl">Tension</span><span class="mlnum">78%</span>
+        <span class="lbl">Line</span><span class="mlnum">240 m</span>
+        <span class="mlrel">Release <b>RMB</b></span>
+      </div>
+    </div>
+    <div class="anchor threat">
+      <div class="tcount"><span class="lbl">Hostiles</span><b>17</b></div>
+      <div class="tlist">
+        <div class="tpip"><span class="nm">Rook · Interceptor</span><span class="d"></span></div>
+        <div class="tpip"><span class="nm">Vane · Interceptor</span><span class="d"></span></div>
+        <div class="tpip is-far"><span class="nm">Cleat · Skiff</span><span class="d"></span></div>
+      </div>
+      <div class="tmore">+14 on radar</div>
+    </div>
+    <div class="anchor obj">
+      <div class="o">Swing the hauler wide of <em>Ceres Belt</em><span class="dist">345 WU</span></div>
+    </div>
+  </div>
+
+  <div class="lab-shot" data-shot="power-ready">
+    <div class="lab-powers">
+      <div class="pslot pslot--ready"><span class="pslot__key">4</span>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="2.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="6" opacity=".7"/><circle cx="12" cy="12" r="9.4" opacity=".4"/></svg>
+        <span class="pslot__name">Seed</span></div>
+    </div>
+  </div>
+  <div class="lab-shot" data-shot="power-cool">
+    <div class="lab-powers">
+      <div class="pslot pslot--cool"><span class="pslot__key">8</span>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.4 8.6h17.2M3.4 13h17.2" opacity=".45"/><path d="M6.6 18.6c0-5.4 3.6-8.9 9-9.5"/><path d="M15.6 9 18.5 10.4 16 12.6"/></svg>
+        <span class="pcool" style="height:22%"></span>
+        <span class="pslot__name">Skim</span></div>
+    </div>
+  </div>
+  <div class="lab-shot" data-shot="power-armed">
+    <div class="lab-powers">
+      <div class="pslot pslot--armed"><span class="pslot__key">3</span>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 3.2v3M12 17.8v3M3.2 12h3M17.8 12h3M6 6l2 2M16 16l2 2M18 6l-2 2M8 16l-2 2" opacity=".8"/></svg>
+        <span class="pslot__name">Well</span></div>
+    </div>
+  </div>
+  <div class="lab-shot" data-shot="power-empty">
+    <div class="lab-powers">
+      <div class="pslot pslot--empty"><span class="pslot__key">9</span>
+        <span class="pslot__name">Empty</span></div>
+    </div>
+  </div>
+
+  <div class="lab-shot" data-shot="capability-live">
+    <div class="lab-caps">
+      <div class="cap is-live">
+        <div class="ct">Tow &amp; Swing</div>
+        <p class="now">You can tow a <b>40-tonne hauler</b> and swing off anything heavier than you.</p>
+        <p class="next">Next: <em>swing a frigate</em> — spool holds 3× the load before it snaps.</p>
+        <div class="rung"><i class="f"></i><i class="f"></i><i></i><i></i></div>
+      </div>
+    </div>
+  </div>
+  <div class="lab-shot" data-shot="capability-locked">
+    <div class="lab-caps">
+      <div class="cap is-locked">
+        <div class="ct">Bend Space</div>
+        <p class="now">Locked. Gravity fields pull loose bodies into a single point.</p>
+        <p class="next">Opens with: <em>a gravity marker launcher</em>.</p>
+        <div class="rung"><i></i><i></i><i></i><i></i></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="lab-shot pro" data-shot="tension-gauge">
+    <div class="anchor mlbay" style="width:420px">
+      <div class="mlhead"><span class="mlname">Tension</span><span class="mlstate">At redline</span></div>
+      <div class="mltension"><i style="width:88%"></i><span class="mlredline"></span></div>
+      <div class="mlfoot"><span class="lbl">Load</span><span class="mlnum">88%</span><span class="mlrel">Snap <b>warn</b></span></div>
+    </div>
+  </div>
+
+  <div class="lab-shot" data-shot="faction-roundels">
+    <div class="lab-roundels">
+      <div class="lab-roundel" data-faction="scn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.2 20 20.6H4Z"/><path d="M12 8.2v8.4"/></svg><b>SCN</b></div>
+      <div class="lab-roundel" data-faction="mts"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18 12 5l8 13H4Z"/><path d="M8.4 18 12 11.2 15.6 18"/></svg><b>MTS</b></div>
+      <div class="lab-roundel" data-faction="dmc"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.6 19.2 12 12 20.4 4.8 12Z"/><path d="M12 8.2v7.6M8.4 12h7.2"/></svg><b>DMC</b></div>
+      <div class="lab-roundel" data-faction="reach"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 17.6c4.2-8.8 9.8-8.8 14 0"/><path d="M7.2 7.2 12 12.4 16.8 7.2"/></svg><b>Reach</b></div>
+      <div class="lab-roundel" data-faction="quiet"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 5.2a6.8 6.8 0 0 1 6.8 6.8M12 18.8A6.8 6.8 0 0 1 5.2 12"/></svg><b>Quiet</b></div>
+      <div class="lab-roundel" data-faction="vael"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4.2c2.4 3.4 5.8 7.4 5.8 11.2A5.8 5.8 0 0 1 6.2 15.4C6.2 11.6 9.6 7.6 12 4.2Z"/></svg><b>Vael</b></div>
+      <div class="lab-roundel" data-faction="free"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.2"/><path d="M5.6 18.4 18.4 5.6"/></svg><b>Free</b></div>
+      <div class="lab-roundel" data-faction="choir"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="2.2"/><path d="M12 4v3.2M12 16.8V20M4 12h3.2M16.8 12H20M6.4 6.4l2.2 2.2M15.4 15.4l2.2 2.2M17.6 6.4l-2.2 2.2M8.6 15.4l-2.2 2.2"/></svg><b>Choir</b></div>
+      <div class="lab-roundel" data-faction="helix"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4.4c6 3.2 6 12 0 15.2M16 4.4c-6 3.2-6 12 0 15.2"/><path d="M8.6 9.2h6.8M8.6 14.8h6.8"/></svg><b>Helix</b></div>
+      <div class="lab-roundel" data-faction="understory"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20V8.2"/><path d="M12 12.4 6.4 7.2M12 12.4 17.6 7.2"/><path d="M12 8.2c0-3 2.6-4.4 5.2-4"/></svg><b>Under</b></div>
+      <div class="lab-roundel" data-faction="fulfillment"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8.2h14v11.2H5Z"/><path d="M5 8.2 12 4.4 19 8.2"/><path d="M9.2 14.2 11.2 16l4.2-4.4"/></svg><b>Fill</b></div>
+      <div class="lab-roundel" data-faction="archive"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5.2h10v13.6H7Z"/><path d="M9.2 8.4h5.6M9.2 11.6h5.6M9.2 14.8h3.4"/></svg><b>Archive</b></div>
+      <div class="lab-roundel" data-faction="pitborn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 16.8 9.4 5.6l4.2 6.2 5.4-3.2-2.8 11.2H5Z"/></svg><b>Pit</b></div>
+      <div class="lab-roundel" data-faction="verge_layers"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 16.8c2.4-3.6 4.6-5.2 7-5.2s4.6 1.6 7 5.2"/><path d="M6.4 13.2c1.8-2.6 3.4-3.8 5.6-3.8s3.8 1.2 5.6 3.8"/><path d="M8 9.6c1.2-1.8 2.4-2.6 4-2.6s2.8.8 4 2.6"/></svg><b>Verge</b></div>
+    </div>
+  </div>
+
+  <div class="lab-shot lab-state" data-shot="state-empty">
+    <div class="sf-state sf-state--empty" data-sf-state="empty" role="status">
+      <span class="sf-state__glyph" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.2" stroke-dasharray="3 3.4"/></svg></span>
+      <div class="sf-state__body">
+        <span class="sf-state__word">NO_RETURNS</span>
+        <p class="sf-state__head">No contracts are posted here.</p>
+        <p class="sf-state__fills">Boards fill when a station has cargo it cannot move itself.</p>
+        <button type="button" class="sf-state__verb"><span>Plot a route to Ceres</span></button>
+      </div>
+    </div>
+  </div>
+  <div class="lab-shot lab-state" data-shot="state-loading">
+    <div class="sf-state sf-state--loading" data-sf-state="loading" role="status">
+      <div class="sf-state__skel" aria-hidden="true"><div class="sf-state__bar" style="width:58%"></div><div class="sf-state__bar" style="width:88%"></div><div class="sf-state__bar" style="width:42%"></div></div>
+      <span class="sf-state__glyph" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.8a8.2 8.2 0 0 1 8.2 8.2"/><path d="M12 20.2a8.2 8.2 0 0 1-8.2-8.2" opacity=".45"/></svg></span>
+      <div class="sf-state__body">
+        <span class="sf-state__word">BUS_OFFLINE</span>
+        <p class="sf-state__head">Reading the hull.</p>
+        <p class="sf-state__fills">Waiting on the shipyard optics to resolve your fitted modules.</p>
+        <button type="button" class="sf-state__verb"><span>Show the hull now</span></button>
+      </div>
+    </div>
+  </div>
+  <div class="lab-shot lab-state" data-shot="state-error">
+    <div class="sf-state sf-state--error" data-sf-state="error" role="alert">
+      <span class="sf-state__glyph" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4.2 21 19.4H3z"/><path d="M12 10v4.1M12 16.8v.1"/></svg></span>
+      <div class="sf-state__body">
+        <span class="sf-state__word">FEED_FAULT</span>
+        <p class="sf-state__head">The market feed did not answer.</p>
+        <p class="sf-state__fills">Prices here are from your last visit and may have moved.</p>
+        <button type="button" class="sf-state__verb"><span>Retry the read</span></button>
+      </div>
+    </div>
+  </div>
+  <div class="lab-shot lab-state" data-shot="state-denied">
+    <div class="sf-state sf-state--denied" data-sf-state="denied" role="alert">
+      <span class="sf-state__glyph" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.2"/><path d="M6.2 17.8 17.8 6.2"/></svg></span>
+      <div class="sf-state__body">
+        <span class="sf-state__word">DOCKING_CLEARANCE_REVOKED</span>
+        <p class="sf-state__head">You cannot dock at Vesta Yard.</p>
+        <p class="sf-state__fills">Your outstanding bounty is above this station's refusal line.</p>
+        <button type="button" class="sf-state__verb"><span>Plot another berth</span></button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 // Variant toggles. No animation loop, no timers — the page is static at rest by design.
 function setVariant(t, v) {
@@ -723,6 +1025,13 @@ document.addEventListener('click', (ev) => {
 const q = new URLSearchParams(location.search);
 for (const t of ['hud', 'tt', 'accent']) { if (q.has(t)) setVariant(t, q.get(t)); }
 if (q.has('focus')) document.body.dataset.focus = q.get('focus');
+if (q.get('lab') === 'shots') document.body.dataset.lab = 'shots';
+if (q.has('shot')) {
+  const only = q.get('shot');
+  for (const el of document.querySelectorAll('[data-shot]')) {
+    el.hidden = el.getAttribute('data-shot') !== only;
+  }
+}
 </script>
 </body>
 </html>

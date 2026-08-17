@@ -555,6 +555,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     screen.el.classList.add('sx-enter');
     if (typeof screen.onShow === 'function') screen.onShow({ ...ctx, ...options });
     if (ctx && ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tab' });
+    if (ctx && ctx.screenMemory) ctx.screenMemory.set('station', { destination: id });
     closePop();
   }
 
@@ -972,8 +973,9 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   }
 
   renderStatus();
-  // Default desk is Market, then mission attention may immediately re-route to Missions.
-  navigate('market');
+  // Restore the last destination this save left on, unless mission attention immediately re-routes.
+  const remembered = ctx && ctx.screenMemory && ctx.screenMemory.read('station', 'destination', null);
+  navigate(DESTINATIONS.some((d) => d.id === remembered) ? remembered : 'market');
   applyDockAttention({ allowAutoOpen: true });
 
   function activeScreen() {

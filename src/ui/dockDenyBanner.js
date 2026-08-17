@@ -25,9 +25,19 @@
 
 import { dockDenyReason } from '../data/dockDeny.js';
 import { FACTION_META } from '../data/factions.js';
+import { mountDataState, settleDataState } from './uiPrimitives.js';
+import { MAP_FOCUS, openGalaxyMap } from './mapAuthority.js';
 
 const DEBOUNCE_S = 2;        // same station inside this simTime window = one attempt
-const BANNER_TTL_MS = 6000;  // cosmetic DOM auto-hide
+const BANNER_TTL_MS = 12000; // long enough to read the fault and take the verb
+const DENY_CODES = Object.freeze({
+  abandoned: 'STATION_DARK',
+  private: 'BERTH_RESTRICTED',
+  military_only: 'CREDENTIAL_INSUFFICIENT',
+  under_construction: 'BERTH_OFFLINE',
+  quarantine: 'QUARANTINE_SEAL',
+  hostile_rep: 'DOCKING_CLEARANCE_REVOKED',
+});
 
 /** Human label for a station (entity data name, else de-prefixed id). */
 function stationLabel(station, stationId) {
@@ -143,23 +153,24 @@ export const dockDenyBanner = {
 
     const el = document.createElement('div');
     el.id = 'sf-dock-deny';
-    el.setAttribute('role', 'status');
-    el.setAttribute('aria-live', 'polite');
-    el.style.cssText = [
-      'position:absolute', 'top:16%', 'left:50%', 'transform:translateX(-50%)',
-      'padding:8px 14px', 'background:rgba(26,10,12,0.85)', 'border:1px solid rgba(216,51,74,0.5)',
-      'border-radius:4px', 'color:#ffd7dc', 'font:12px/1.5 system-ui,sans-serif',
-      'text-align:center', 'pointer-events:none', 'z-index:41', 'max-width:52ch',
-    ].join(';');
-
-    const head = document.createElement('div');
-    head.style.cssText = 'font-weight:600;letter-spacing:0.08em';
-    head.textContent = `⟢ ${deny.label} — ${String(deny.reason).replace(/_/g, ' ').toUpperCase()}`;
-    el.appendChild(head);
-    const body = document.createElement('div');
-    body.style.cssText = 'opacity:0.85';
-    body.textContent = deny.text;
-    el.appendChild(body);
+    el.className = 'sf-dock-deny';
+    mountDataState(el, 'denied', {
+      code: DENY_CODES[deny.reason] || 'CLEARANCE_DENIED',
+      headline: 'You cannot dock at ' + deny.label + '.',
+      fills: deny.text,
+      compact: true,
+      verb: {
+        label: 'Plot another berth',
+        onActivate: () => {
+          this._hide();
+          openGalaxyMap(this._ctx, {
+            focus: MAP_FOCUS.SYSTEM,
+            source: 'dock-deny',
+            stationId: deny.stationId || undefined,
+          });
+        },
+      },
+    });
 
     host.appendChild(el);
     this._bannerEl = el;
@@ -169,6 +180,7 @@ export const dockDenyBanner = {
   _hide() {
     if (this._hideTimer != null && typeof window !== 'undefined') window.clearTimeout(this._hideTimer);
     this._hideTimer = null;
+    if (this._bannerEl) settleDataState(this._bannerEl);
     if (this._bannerEl && this._bannerEl.parentNode) this._bannerEl.parentNode.removeChild(this._bannerEl);
     this._bannerEl = null;
   },

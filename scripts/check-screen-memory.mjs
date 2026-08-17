@@ -181,6 +181,19 @@ const read = (rel) => readFileSync(join(ROOT, rel), 'utf8');
   notes.push('bag lives on state.ui, which simSnapshot\'s allow-list excludes');
 }
 
+// ── F. named adoption: ship and station reopen where they were left ────────────────────────────
+{
+  const station = read('src/ui/station/stationApp.js');
+  if (!/screenMemory\.set\('station'/.test(station) || !/read\('station',\s*'destination'/.test(station)) {
+    fail('F/station', 'stationApp no longer remembers and restores the last destination');
+  }
+  const ship = read('src/ui/station/screens/shipworks.js');
+  if (!/restoreShipView/.test(ship) || !/rememberShipView/.test(ship)) {
+    fail('F/ship', 'shipworks no longer remembers and restores mode / hull / buy selection');
+  }
+  notes.push('station destination and ship view are remembered');
+}
+
 for (const n of notes) console.log(`  · ${n}`);
 if (failures.length) {
   console.error('\ncheck:screen-memory FAILED');

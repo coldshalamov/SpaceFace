@@ -11,8 +11,27 @@
 import { SHIP, COLD_START, REFS, FIGURES, COMMS, GRAFFITI, BEAT_CONTENT, ENDGAME_CHOICES, KURTZ, PERSISTENT_CARGO } from '../../data/narrative.js';
 import { TETHYS_BLACK_MARKET_DISCOVERY } from '../../data/frontierRumors.js';
 import { explorationDiscoveryPlates, galaxyExplorationSummary } from '../../world/explorationJournal.js';
+import { decorateEntityNode } from '../entityResolver.js';
 import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
 import { createShipLedgerPanel } from './shipLedger.js';
+
+/** Honest org → faction id only. Unknown orgs stay plain text — never invent a door. */
+const FIGURE_FACTION = Object.freeze({
+  vale: 'faction_scn',
+  hale: 'faction_scn',
+  warrant_orrin: 'faction_scn',
+  filecleaver_dorin: 'faction_scn',
+  voss: 'faction_dmc',
+  dustwife_senna: 'faction_dmc',
+  sker_vane: 'faction_reach',
+  clerk_yune: 'faction_quiet',
+  latch_child: 'faction_quiet',
+  wraith_kell: 'faction_quiet',
+  maera_vols: 'faction_quiet',
+  coldburn_rey: 'faction_free',
+  slate: 'faction_pitborn',
+  elroy: 'faction_pitborn',
+});
 
 const STYLE_ID = 'sf-codex-style';
 
@@ -542,7 +561,19 @@ export const codexScreen = {
       entry.dataset.codexDiscoveryId = plate.id;
       if (isRequested) entry.tabIndex = -1;
       entry.appendChild(el('h3', null, plate.title));
-      entry.appendChild(el('div', 'sf-codex-meta', plate.meta));
+      const meta = el('div', 'sf-codex-meta');
+      const cut = String(plate.meta || '').indexOf(' · ');
+      const sectorName = cut >= 0 ? plate.meta.slice(0, cut) : plate.meta;
+      const sectorRest = cut >= 0 ? plate.meta.slice(cut) : '';
+      if (plate.sectorId && sectorName) {
+        const linked = el('span', null, sectorName);
+        decorateEntityNode(linked, 'sector:' + plate.sectorId);
+        meta.appendChild(linked);
+        if (sectorRest) meta.appendChild(document.createTextNode(sectorRest));
+      } else {
+        meta.textContent = plate.meta || '';
+      }
+      entry.appendChild(meta);
       entry.appendChild(el('div', 'sf-codex-body', plate.body));
       entry.appendChild(el('div', 'sf-codex-note', plate.note));
       if (tethysCodexReturnIntent(state, plate)) {
@@ -738,7 +769,17 @@ export const codexScreen = {
       if (!f) return;
       const entry = el('div', 'sf-codex-entry');
       entry.appendChild(el('h3', null, f.name + (key === 'kurtz' ? '' : '')));
-      entry.appendChild(el('div', 'sf-codex-meta', [f.org, f.role].filter(Boolean).join(' · ')));
+      const meta = el('div', 'sf-codex-meta');
+      if (f.org) {
+        const org = el('span', null, f.org);
+        if (FIGURE_FACTION[key]) decorateEntityNode(org, 'faction:' + FIGURE_FACTION[key]);
+        meta.appendChild(org);
+      }
+      if (f.role) {
+        if (f.org) meta.appendChild(document.createTextNode(' · '));
+        meta.appendChild(document.createTextNode(f.role));
+      }
+      entry.appendChild(meta);
       const dossier = FIGURE_DOSSIERS[key];
       if (dossier && dossier.body) entry.appendChild(el('div', 'sf-codex-body', dossier.body));
       if (dossier && dossier.note) entry.appendChild(el('div', 'sf-codex-note', dossier.note));

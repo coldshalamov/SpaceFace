@@ -73,6 +73,33 @@ export function entityExists(ref) {
   }
 }
 
+function escapeAttr(value) {
+  return String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+}
+
+/** Attribute string for an HTML tag, or '' if the ref would resolve to nothing.
+ *  An entity link must read as one by underline — never by colour alone (grammar §4). */
+export function entityAttr(ref) {
+  if (!entityExists(ref)) return '';
+  return ` class="sf-entity-link" role="link" tabindex="0" data-entity="${escapeAttr(ref)}"`;
+}
+
+/** Wrap already-escaped label text in a link, or return the label unchanged when the ref is unknown. */
+export function entitySpanHtml(ref, escapedLabel) {
+  if (!entityExists(ref)) return escapedLabel;
+  return `<span class="sf-entity-link" role="link" tabindex="0" data-entity="${escapeAttr(ref)}">${escapedLabel}</span>`;
+}
+
+/** Stamp an existing DOM node as an entity door. Unknown refs leave the node alone. */
+export function decorateEntityNode(node, ref) {
+  if (!node || !entityExists(ref)) return node;
+  node.classList.add('sf-entity-link');
+  node.setAttribute('role', 'link');
+  node.setAttribute('tabindex', '0');
+  node.setAttribute('data-entity', ref);
+  return node;
+}
+
 /** Display label without building a whole dossier (link text, watch-list rows, find results). */
 export function entityLabel(ref) {
   const parsed = parseEntityRef(ref);

@@ -361,6 +361,8 @@
     "check:data-states": "node scripts/check-data-states.mjs",
     "check:entity-links": "node scripts/check-entity-links.mjs",
     "check:screen-memory": "node scripts/check-screen-memory.mjs",
+    "probe:data-states": "node scripts/probe-data-states.mjs",
+    "probe:frontend-snapshot": "node scripts/probe-frontend-snapshot.mjs",
     "check:ui-a11y": "node scripts/check-ui-a11y.mjs",
     "check:ui-effects": "node scripts/check-ui-effects.mjs",
     "check:command-deck-ui": "node scripts/check-command-deck-ui.mjs",

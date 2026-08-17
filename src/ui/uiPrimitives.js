@@ -393,11 +393,25 @@ export function enhanceSelects(root) {
  *  doing the announcing; on the region itself it can suppress the very announcement the region
  *  exists to make. mountDataState sets and clears it on the host. */
 const DATA_STATES = {
-  empty:   { word: 'NOTHING HERE', role: 'calm', aria: 'status' },
-  loading: { word: 'WORKING',      role: 'calm', aria: 'status' },
-  error:   { word: 'FAULT',        role: 'foe',  aria: 'alert' },
-  denied:  { word: 'BLOCKED',      role: 'foe',  aria: 'alert' },
+  empty:   { word: 'NO_RETURNS',         role: 'calm', aria: 'status' },
+  loading: { word: 'BUS_OFFLINE',        role: 'calm', aria: 'status' },
+  error:   { word: 'FEED_FAULT',         role: 'foe',  aria: 'alert' },
+  denied:  { word: 'CLEARANCE_DENIED',   role: 'foe',  aria: 'alert' },
 };
+
+/** Avionics fault id: A-Z / 0-9 / underscore. Generic web copy ("Loading...", "Error") is rejected
+ *  so every empty/loading/denied/error pane names a specific instrument failure, not a spinner. */
+const STATE_CODE_RE = /^[A-Z][A-Z0-9_]{1,39}$/;
+
+function stateCode(kind, opts) {
+  const fallback = DATA_STATES[kind].word;
+  if (opts.code == null || opts.code === '') return fallback;
+  const raw = String(opts.code).trim().toUpperCase().replace(/[\s-]+/g, '_');
+  if (!STATE_CODE_RE.test(raw)) {
+    throw new TypeError('dataState(' + kind + '): `code` must be an avionics fault id (A-Z/0-9/_), not generic web copy');
+  }
+  return raw;
+}
 
 // 24×24, stroke=currentColor, distinguishable by SILHOUETTE alone (the mirror-pair test): an open
 // socket, a broken arc, a struck triangle, a barred ring.
@@ -417,7 +431,9 @@ function stateGlyph(kind) {
  * dataState(kind, opts) -> HTMLElement (detached).
  *
  * kind: 'empty' | 'loading' | 'error' | 'denied'
- * opts.headline  REQUIRED — what is (or is not) here, in the player's words. Not a status code.
+ * opts.headline  REQUIRED — what is (or is not) here, in the player's words.
+ * opts.code      optional avionics fault id replacing the kind's default word (NO_RETURNS,
+ *                BUS_OFFLINE, FEED_FAULT, CLEARANCE_DENIED). Must be A-Z/0-9/_ — never "Loading…".
  * opts.fills     REQUIRED — what WOULD fill this pane. For LOADING, the real work being awaited
  *                (never a timer). For DENIED, the rule that blocks it.
  * opts.verb      REQUIRED — { label, onActivate? , action? , key? }. The way out. A pane the player
@@ -441,7 +457,7 @@ export function dataState(kind, opts = {}) {
   }
 
   const body = [];
-  body.push(el('span', 'sf-state__word', { text: spec.word }));
+  body.push(el('span', 'sf-state__word', { text: stateCode(kind, opts) }));
   body.push(el('p', 'sf-state__head', { text: String(opts.headline), attrs: { 'data-sf-text': '' } }));
   body.push(el('p', 'sf-state__fills', { text: String(opts.fills), attrs: { 'data-sf-text': '' } }));
   if (opts.detail) body.push(el('p', 'sf-state__detail', { text: String(opts.detail), attrs: { 'data-sf-text': '' } }));

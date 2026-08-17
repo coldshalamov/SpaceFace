@@ -138,7 +138,7 @@ if (/setAttribute\(\s*['"]aria-modal|['"]aria-modal['"]\s*:/.test(links)) {
   fail('C5/tier', `${LINKS} sets aria-modal — a DRAWER must never be a modal-over-modal (grammar §7)`);
 }
 
-// ── D. tagging: every emitted data-entity must be able to resolve ──────────────────────────────
+// ── D. tagging: named surfaces emit doors; every literal ref must resolve ─────────────────────
 function* walk(dir) {
   for (const name of readdirSync(dir)) {
     const p = join(dir, name);
@@ -147,16 +147,27 @@ function* walk(dir) {
     else if (name.endsWith('.js')) yield p;
   }
 }
+
+const NAMED_TAGGING = [
+  ['src/ui/galaxyMap.js', /\bentityAttr\s*\(/, 'Chart jurisdiction / inspector nouns'],
+  ['src/ui/screens/missionLog.js', /\bentitySpanHtml\s*\(/, 'mission-log rows'],
+  ['src/ui/station/screens/market.js', /\bentitySpanHtml\s*\(/, 'station market'],
+  ['src/ui/station/screens/contracts.js', /\bentitySpanHtml\s*\(/, 'station contracts'],
+  ['src/ui/screens/codex.js', /\bdecorateEntityNode\s*\(/, 'codex figures and discoveries'],
+];
+for (const [rel, re, label] of NAMED_TAGGING) {
+  if (!re.test(read(rel))) fail('D/named', `${rel} never tags ${label}`);
+}
+
 let tagged = 0;
 let guarded = 0;
-let callSites = 0;   // includes the helper's own definition; the tagged-noun count subtracts it
+let callSites = 0;
 for (const abs of walk(join(ROOT, 'src'))) {
   const rel = relative(ROOT, abs).replace(/\\/g, '/');
   if (rel === LINKS || rel === 'src/ui/entityResolver.js') continue;
   const src = readFileSync(abs, 'utf8');
-  if (!src.includes('data-entity')) continue;
-  // Literal refs must resolve right now; interpolated ones must be guarded by entityExists so a
-  // runtime-only id degrades to plain text rather than a door into an empty room.
+  // Literal refs must resolve right now; interpolated ones must be guarded so a stale id degrades
+  // to plain text rather than a door into an empty room.
   for (const m of src.matchAll(/data-entity="([^"$`]+)"/g)) {
     tagged++;
     if (!entityExists(m[1])) {
@@ -166,19 +177,17 @@ for (const abs of walk(join(ROOT, 'src'))) {
   }
   for (const _ of src.matchAll(/data-entity="\$\{/g)) {
     tagged++;
-    if (!/entityExists|entityAttr/.test(src)) {
-      fail('D/tag', `${rel} interpolates data-entity without an entityExists guard — a stale id becomes a dead door`);
+    if (!/entityExists|entityAttr|entitySpanHtml|decorateEntityNode/.test(src)) {
+      fail('D/tag', `${rel} interpolates data-entity without an existence guard — a stale id becomes a dead door`);
     } else guarded++;
   }
-  // Count the real adoption surface too. A file can route every tag through one guarded helper, so
-  // counting `data-entity` literals alone under-reports how many nouns actually became doors.
-  for (const _ of src.matchAll(/\bentityAttr\(/g)) callSites++;
+  // Helpers live in entityResolver (skipped above). Counting them here is the real adoption surface.
+  for (const _ of src.matchAll(/\b(entityAttr|entitySpanHtml|decorateEntityNode)\s*\(/g)) callSites++;
 }
-if (tagged === 0) fail('D/adoption', 'no screen emits data-entity — an unadopted resolver proves nothing');
-if (callSites <= 1) {
-  fail('D/adoption', `only ${callSites} tagged noun(s) in screens — the tagging pass has not happened`);
+if (callSites < NAMED_TAGGING.length) {
+  fail('D/adoption', `only ${callSites} tagged-noun helper call(s) in screens — the tagging pass has not happened`);
 }
-notes.push(`${tagged} data-entity emission point(s), ${guarded} guarded; ${callSites - 1} tagged nouns in screens`);
+notes.push(`${tagged} literal data-entity emission(s), ${guarded} guarded interpolations; ${callSites} helper call(s) across screens`);
 
 for (const n of notes) console.log(`  · ${n}`);
 if (failures.length) {

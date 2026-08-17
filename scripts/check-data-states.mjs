@@ -129,6 +129,23 @@ if (siteCount === 0) {
 }
 notes.push(`${siteCount} data-state call site${siteCount === 1 ? '' : 's'} checked`);
 
+// Named minimum adoption set (CANONICAL_BUILD_MAP §11.12 J01). A primitive nobody mounts on the
+// three live failure paths is ceremony.
+const NAMED_ADOPTION = [
+  ['src/ui/galaxyMap.js', /dataStateHtml\(\s*'error'/, 'Chart market-feed ERROR'],
+  ['src/ui/station/screens/shipworks.js', /mountDataState\([^;]*['"]loading['"]/, 'Ship hull-resolve LOADING'],
+  ['src/ui/dockDenyBanner.js', /mountDataState\([^;]*['"]denied['"]/, 'station dock-refusal DENIED'],
+];
+for (const [rel, re, label] of NAMED_ADOPTION) {
+  const src = read(rel);
+  if (!re.test(src)) fail('B/named', `${rel} never mounts ${label}`);
+}
+
+// The state word must stay an avionics fault id, not generic web copy.
+if (!/NO_RETURNS/.test(prim) || !/BUS_OFFLINE/.test(prim) || !/FEED_FAULT/.test(prim) || !/CLEARANCE_DENIED/.test(prim)) {
+  fail('A/codes', `${PRIM} lost its default avionics fault codes`);
+}
+
 // ── C. the LOADING sweep is removed, not hidden ───────────────────────────────────────────────
 if (!/host\.textContent\s*=\s*''/.test(prim)) {
   fail('C/sweep', `${PRIM}: mountDataState no longer clears its host — a hidden sweep keeps running on the compositor`);
