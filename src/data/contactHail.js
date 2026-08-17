@@ -23,6 +23,8 @@ export const CONTACT_HAIL_ACTION_RECOVER = 'recover';
 export const CONTACT_HAIL_ACTION_STEAL = 'steal';
 export const CONTACT_HAIL_ACTION_ABANDON = 'abandon';
 export const CONTACT_HAIL_ACTION_ASSIST = 'assist';
+export const CONTACT_HAIL_ACTION_RIVAL_SALVAGE_RACE = 'rival_salvage_race';
+export const CONTACT_HAIL_ACTION_RIVAL_SALVAGE_OUTBID = 'rival_salvage_outbid';
 const CERES_ACTIVITY_SECTOR_ID = 'sector_ceres_belt';
 const CERES_TENDER_SLOT_ID = 'ceres_refinery_tender';
 const CERES_SEAM_MINER_SLOT_ID = 'ceres_seam_miner';
@@ -440,6 +442,7 @@ export function contactHailAvailability(state) {
       && playerHasFittedCargoScanner(state)
       && !!traderManifestForTarget(state, target),
     disabledHauler: ceresDisabledHaulerTruth(state, target),
+    rivalSalvage: rivalSalvageTruth(state, target),
   };
 }
 
@@ -456,6 +459,18 @@ export function createContactHailOffer(state, availability, requestId, expiresAt
     };
   }
   if (availability.kind === 'worker') {
+    if (availability.rivalSalvage) {
+      const bidCr = availability.rivalSalvage.bidCr;
+      return {
+        requestId, targetId: availability.targetId, kind: 'worker', expiresAt,
+        lines: [`${name} · SALVAGE CLAIM`, `${bidCr} CR OR FIRST CUT.`],
+        actions: [
+          { id: 'status', label: 'STATUS' },
+          { id: CONTACT_HAIL_ACTION_RIVAL_SALVAGE_RACE, label: 'RACE FOR IT' },
+          { id: CONTACT_HAIL_ACTION_RIVAL_SALVAGE_OUTBID, label: `OUTBID ${bidCr} CR` },
+        ],
+      };
+    }
     if (availability.disabledHauler) {
       return {
         requestId, targetId: availability.targetId, kind: 'worker', expiresAt,
@@ -769,8 +784,34 @@ const CAUSAL_MEANS = Object.freeze({
   spilling_the_count: 'STACKING LOOT · HOLD FAT',
 });
 
+function rivalSalvageTruth(state, target) {
+  const data = target && target.data || {};
+  const stamp = data.rivalSalvageRace;
+  const active = state && state.aceMemory && state.aceMemory.rival
+    && state.aceMemory.rival.activeSalvageRace;
+  if (!stamp || typeof stamp !== 'object' || !active || typeof active !== 'object'
+    || data.rivalTrafficOwned !== true || data.rivalAppearance !== 'salvage'
+    || typeof data.namedRivalId !== 'string' || !data.namedRivalId
+    || (stamp.status !== 'open' && stamp.status !== 'racing')
+    || (active.status !== 'open' && active.status !== 'racing')
+    || active.entityId !== target.id || active.targetKey !== stamp.targetKey
+    || !Number.isSafeInteger(stamp.bidCr) || stamp.bidCr <= 0) return null;
+  return {
+    targetKey: stamp.targetKey,
+    targetId: stamp.targetId,
+    bidCr: stamp.bidCr,
+    status: stamp.status,
+  };
+}
+
 function workerStatusText(target, state = null) {
   const data = target && target.data || {};
+  const rivalSalvage = rivalSalvageTruth(state, target);
+  if (rivalSalvage) {
+    return rivalSalvage.status === 'racing'
+      ? 'STATUS · SALVAGE RACE LIVE · FIRST CUT WINS'
+      : `STATUS · SALVAGE CLAIM · ${rivalSalvage.bidCr} CR OR RACE`;
+  }
   const salvorSource = salvorSourceTruth(state, target);
   if (salvorSource && salvorSource.state === 'aboard') return 'STATUS · SALVAGE ABOARD · FORGE INBOUND';
   if (salvorSource && salvorSource.state === 'disputed') return 'STATUS · SALVAGE DISPUTED · WRECK STRIPPED';
@@ -897,6 +938,7 @@ export function createContactHailResponse(state, offer, choice, authority = {}) 
   if (!target) return null;
   const id = String(choice || '').toLowerCase();
   let line = null;
+  let rivalSalvageBid = null;
   if (offer.kind === 'patrol' && id === 'status') {
     line = authority.weaponsAuthorized === true
       ? 'STATUS · WEAPONS AUTHORIZED. HEAVE TO.'
@@ -907,6 +949,33 @@ export function createContactHailResponse(state, offer, choice, authority = {}) 
     line = workerStatusText(target, state);
   } else if (offer.kind === 'worker' && id === 'identify') {
     line = workerIdentifyText(target);
+  } else if (offer.kind === 'worker'
+    && (id === CONTACT_HAIL_ACTION_RIVAL_SALVAGE_RACE
+      || id === CONTACT_HAIL_ACTION_RIVAL_SALVAGE_OUTBID)) {
+    const offered = Array.isArray(offer.actions)
+      && offer.actions.some((action) => action && action.id === id);
+    const salvage = offered ? rivalSalvageTruth(state, target) : null;
+    if (salvage && id === CONTACT_HAIL_ACTION_RIVAL_SALVAGE_RACE) {
+      line = 'RACE · FIRST CUT TAKES THE WRECK.';
+      rivalSalvageBid = {
+        accepted: true,
+        decision: 'race',
+        amountCr: salvage.bidCr,
+        targetKey: salvage.targetKey,
+      };
+    } else if (salvage) {
+      const credits = Math.max(0, Math.floor(Number(state && state.player && state.player.credits) || 0));
+      const accepted = credits >= salvage.bidCr;
+      line = accepted
+        ? `OUTBID · ${salvage.bidCr} CR · CLAIM RELEASED.`
+        : `OUTBID · ${salvage.bidCr} CR · INSUFFICIENT CREDITS.`;
+      rivalSalvageBid = {
+        accepted,
+        decision: 'outbid',
+        amountCr: salvage.bidCr,
+        targetKey: salvage.targetKey,
+      };
+    }
   } else if (offer.kind === 'worker' && id === CONTACT_HAIL_ACTION_HELP) {
     const available = richSeamHelpAvailable(state, target, 'worker');
     const entities = state.entities && typeof state.entities.values === 'function'
@@ -965,6 +1034,7 @@ export function createContactHailResponse(state, offer, choice, authority = {}) 
     choice: id,
     expiresAt: (Number(state.simTime) || 0) + CONTACT_HAIL_RECEIPT_TTL_S,
     lines: [line],
+    ...(rivalSalvageBid ? { rivalSalvageBid } : {}),
   };
 }
 

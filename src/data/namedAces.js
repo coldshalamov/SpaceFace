@@ -341,6 +341,7 @@ export const RECURRING_RIVAL = deepFreeze({
   crew: 'Second Line',
   factionId: 'faction_free',
   shipDefId: 'ship_hornet',
+  salvageBidCr: 480,
   appearance: {
     hullColor: '#223746', accentColor: '#f0b64b', finish: 'satin', wear: 0.26, decalId: 'frontier',
   },
@@ -351,6 +352,10 @@ export const RECURRING_RIVAL = deepFreeze({
     rivalWon: 'KEI HALBER: I left you the wake.',
     invalidated: 'KEI HALBER: Bent line. Run it again.',
     rescue: 'KEI HALBER: Dispatch found me. Hold still.',
+    salvageChallenge: 'KEI HALBER: Dead freight. Outbid me or fly.',
+    salvagePlayerWon: 'KEI HALBER: First cut is yours. Clean burn.',
+    salvageRivalWon: 'KEI HALBER: Too slow. I have the iron.',
+    salvageOutbid: 'KEI HALBER: Your claim. Spend it well.',
   },
 });
 
@@ -365,6 +370,19 @@ export function recurringRivalRescueReady(state, lossId = null) {
   const savedLossIds = Array.isArray(rival.recentSaveLossIds) ? rival.recentSaveLossIds : [];
   if (lossId && savedLossIds.includes(String(lossId))) return false;
   return results > 0 && saves < Math.ceil(results / 2);
+}
+
+/** Two resolved gate races fund one optional salvage encounter. The target key is stable salvage
+ * identity, never a volatile entity id, so Continue cannot make one wreck count twice. */
+export function recurringRivalSalvageReady(state, targetKey = null) {
+  const rival = state && state.aceMemory && state.aceMemory.rival;
+  if (!rival || rival.unlocked !== true || rival.activeSalvageRace) return false;
+  const results = Math.max(0, Math.floor(Number(rival.playerWins) || 0))
+    + Math.max(0, Math.floor(Number(rival.rivalWins) || 0));
+  const started = Math.max(0, Math.floor(Number(rival.salvageRacesStarted) || 0));
+  const recent = Array.isArray(rival.recentSalvageTargetKeys) ? rival.recentSalvageTargetKeys : [];
+  if (targetKey && recent.includes(String(targetKey))) return false;
+  return results >= 2 && started < Math.floor(results / 2);
 }
 
 const CAPTAIN_ALIASES = Object.freeze(NAMED_CAPTAINS.map((cap) => Object.freeze({

@@ -72,6 +72,10 @@ export const aceMemory = {
     this._listen('timeTrial:completed', (p) => this._rivalTrialCompleted(p));
     this._listen('timeTrial:invalidated', (p) => this._rivalTrialInvalidated(p));
     this._listen('playerDefeat:podRescued', (p) => this._rivalSavedPlayer(p));
+    this._listen('recurringRival:salvageRaceStarted', (p) => this._rivalSalvageStarted(p));
+    this._listen('recurringRival:salvageBidDecision', (p) => this._rivalSalvageBidDecision(p));
+    this._listen('salvage:completed', (p) => this._rivalPlayerSalvaged(p));
+    this._listen('salvage:npcExtraction', (p) => this._rivalNpcSalvaged(p));
     this._listen('save:loaded', () => {
       this._rearmCultureIntroAfterLoad();
       this._rearmPlanetChallengesAfterLoad();
@@ -621,6 +625,109 @@ export const aceMemory = {
     return true;
   },
 
+  _rivalSalvageStarted(payload) {
+    const entity = payload && payload.entityId != null && this.state && this.state.entities
+      ? this.state.entities.get(payload.entityId) : null;
+    const data = entity && entity.data || {};
+    const targetKey = cleanRivalIdentity(payload && payload.targetKey);
+    if (!entity || entity.alive === false || entity.type !== 'ship'
+      || data.rivalTrafficOwned !== true || data.namedRivalId !== RECURRING_RIVAL.id
+      || !targetKey || !Number.isSafeInteger(payload.bidCr) || payload.bidCr <= 0) return false;
+    const rival = rivalRecordFor(ensureMemory(this.state));
+    if (!rival.unlocked || rival.activeSalvageRace
+      || rival.recentSalvageTargetKeys.includes(targetKey)) return false;
+    rival.activeSalvageRace = {
+      targetKey,
+      targetId: payload.targetId,
+      entityId: entity.id,
+      entityWorldRecordId: typeof data.worldRecordId === 'string' ? data.worldRecordId : null,
+      bidCr: payload.bidCr,
+      status: 'open',
+      startedAt: nowOf(this.state, payload),
+      bidDecision: null,
+    };
+    rival.salvageRacesStarted += 1;
+    rival.salvageBidsFaced += 1;
+    rival.appearances += 1;
+    rival.lastAppearance = 'salvage';
+    rival.lastSeenAt = rival.activeSalvageRace.startedAt;
+    rival.recentSalvageTargetKeys = [...rival.recentSalvageTargetKeys, targetKey].slice(-8);
+    this._speakRival('salvageChallenge');
+    payload.accepted = true;
+    return true;
+  },
+
+  _rivalSalvageBidDecision(payload) {
+    const rival = rivalRecordFor(ensureMemory(this.state));
+    const race = rival.activeSalvageRace;
+    const targetKey = cleanRivalIdentity(payload && payload.targetKey);
+    if (!race || (race.status !== 'open' && race.status !== 'racing')
+      || !targetKey || race.targetKey !== targetKey || payload.entityId !== race.entityId) return false;
+    if (payload.accepted !== true) {
+      race.lastRejectedBidAt = nowOf(this.state, payload);
+      race.lastRejectedBidReason = String(payload.reason || 'unaffordable').slice(0, 80);
+      return false;
+    }
+    if (payload.decision === 'race') {
+      if (race.bidDecision !== 'race') rival.salvageBidsRaced += 1;
+      race.bidDecision = 'race';
+      race.status = 'racing';
+      return true;
+    }
+    if (payload.decision !== 'outbid') return false;
+    if (race.bidDecision !== 'outbid') rival.salvageBidsOutbid += 1;
+    race.bidDecision = 'outbid';
+    return this._finishRivalSalvage('player', 'outbid', payload);
+  },
+
+  _rivalPlayerSalvaged(payload) {
+    const rival = rivalRecordFor(ensureMemory(this.state));
+    const race = rival.activeSalvageRace;
+    if (!race || (race.status !== 'open' && race.status !== 'racing')
+      || !payload || payload.wreckId !== race.targetId) return false;
+    return this._finishRivalSalvage('player', 'salvage', payload);
+  },
+
+  _rivalNpcSalvaged(payload) {
+    const rival = rivalRecordFor(ensureMemory(this.state));
+    const race = rival.activeSalvageRace;
+    if (!race || (race.status !== 'open' && race.status !== 'racing')
+      || !payload || payload.salvorId !== race.entityId || payload.targetId !== race.targetId
+      || !(Number(payload.totalQty) > 0)) return false;
+    return this._finishRivalSalvage('rival', 'salvage', payload);
+  },
+
+  _finishRivalSalvage(winner, method, payload = {}) {
+    const rival = rivalRecordFor(ensureMemory(this.state));
+    const race = rival.activeSalvageRace;
+    if (!race || (race.status !== 'open' && race.status !== 'racing')
+      || (winner !== 'player' && winner !== 'rival')) return false;
+    race.status = 'finished';
+    race.winner = winner;
+    race.method = method === 'outbid' ? 'outbid' : 'salvage';
+    race.finishedAt = nowOf(this.state, payload);
+    race.physical = true;
+    if (winner === 'player') rival.salvagePlayerWins += 1;
+    else rival.salvageRivalWins += 1;
+    rival.lastSalvageRace = clonePlain(race);
+    rival.activeSalvageRace = null;
+    rival.lastSeenAt = race.finishedAt;
+    this._speakRival(method === 'outbid' ? 'salvageOutbid'
+      : (winner === 'player' ? 'salvagePlayerWon' : 'salvageRivalWon'));
+    emit(this.bus, 'recurringRival:salvageRaceResolved', {
+      rivalId: RECURRING_RIVAL.id,
+      rivalName: RECURRING_RIVAL.name,
+      targetKey: race.targetKey,
+      targetId: race.targetId,
+      entityId: race.entityId,
+      winner,
+      method: race.method,
+      bidCr: race.bidCr,
+      physical: true,
+    });
+    return true;
+  },
+
   _processRival(state) {
     const rival = rivalRecordFor(ensureMemory(state));
     const now = nowOf(state);
@@ -795,6 +902,13 @@ export const aceMemory = {
     if (rival.activeRace && rival.activeRace.status === 'running') {
       rival.lastRace = { ...clonePlain(rival.activeRace), status: 'interrupted', reason: 'continue' };
       rival.activeRace = null;
+    }
+    if (rival.activeSalvageRace
+      && (rival.activeSalvageRace.status === 'open' || rival.activeSalvageRace.status === 'racing')) {
+      rival.lastSalvageRace = {
+        ...clonePlain(rival.activeSalvageRace), status: 'interrupted', reason: 'continue',
+      };
+      rival.activeSalvageRace = null;
     }
     if (entity) rival.retireAt = nowOf(this.state) + 1;
     return entity;
@@ -1068,6 +1182,15 @@ function freshRivalRecord() {
     rivalWins: 0,
     savesCount: 0,
     recentSaveLossIds: [],
+    salvageRacesStarted: 0,
+    salvagePlayerWins: 0,
+    salvageRivalWins: 0,
+    salvageBidsFaced: 0,
+    salvageBidsRaced: 0,
+    salvageBidsOutbid: 0,
+    recentSalvageTargetKeys: [],
+    activeSalvageRace: null,
+    lastSalvageRace: null,
     activeEntityId: null,
     activeWorldRecordId: null,
     activeRace: null,
@@ -1091,6 +1214,17 @@ function normalizeRivalRecord(input) {
       .map((value) => String(value || '').replace(/[^a-zA-Z0-9:_-]+/g, '').slice(0, 160))
       .filter(Boolean),
   )).slice(-8);
+  out.salvageRacesStarted = Math.max(0, Math.floor(Number(input.salvageRacesStarted) || 0));
+  out.salvagePlayerWins = Math.max(0, Math.floor(Number(input.salvagePlayerWins) || 0));
+  out.salvageRivalWins = Math.max(0, Math.floor(Number(input.salvageRivalWins) || 0));
+  out.salvageBidsFaced = Math.max(0, Math.floor(Number(input.salvageBidsFaced) || 0));
+  out.salvageBidsRaced = Math.max(0, Math.floor(Number(input.salvageBidsRaced) || 0));
+  out.salvageBidsOutbid = Math.max(0, Math.floor(Number(input.salvageBidsOutbid) || 0));
+  out.recentSalvageTargetKeys = Array.from(new Set(
+    (Array.isArray(input.recentSalvageTargetKeys) ? input.recentSalvageTargetKeys : [])
+      .map(cleanRivalIdentity)
+      .filter(Boolean),
+  )).slice(-8);
   out.triggerCourseId = typeof input.triggerCourseId === 'string' ? input.triggerCourseId : null;
   out.lastCourseId = typeof input.lastCourseId === 'string' ? input.lastCourseId : null;
   out.lastAppearance = typeof input.lastAppearance === 'string' ? input.lastAppearance : null;
@@ -1105,6 +1239,8 @@ function normalizeRivalRecord(input) {
     ? input.activeWorldRecordId : null;
   out.activeRace = normalizeRivalRace(input.activeRace);
   out.lastRace = normalizeRivalRace(input.lastRace, true);
+  out.activeSalvageRace = normalizeRivalSalvageRace(input.activeSalvageRace);
+  out.lastSalvageRace = normalizeRivalSalvageRace(input.lastSalvageRace, true);
   out.lastSpawnFailure = typeof input.lastSpawnFailure === 'string' ? input.lastSpawnFailure : null;
   return out;
 }
@@ -1127,6 +1263,39 @@ function normalizeRivalRace(input, allowTerminal = false) {
     physicalRivalFinish: input.physicalRivalFinish === true,
     playerInvalidated: input.playerInvalidated === true,
     reason: typeof input.reason === 'string' ? input.reason : null,
+  };
+}
+
+function cleanRivalIdentity(value) {
+  if (typeof value !== 'string') return null;
+  const clean = value.replace(/[^a-zA-Z0-9:._-]+/g, '').slice(0, 180);
+  return clean || null;
+}
+
+function normalizeRivalSalvageRace(input, allowTerminal = false) {
+  const targetKey = cleanRivalIdentity(input && input.targetKey);
+  if (!input || typeof input !== 'object' || Array.isArray(input) || !targetKey) return null;
+  const legalStatus = allowTerminal
+    ? new Set(['open', 'racing', 'finished', 'interrupted'])
+    : new Set(['open', 'racing', 'finished']);
+  return {
+    targetKey,
+    targetId: input.targetId != null ? input.targetId : null,
+    entityId: input.entityId != null ? input.entityId : null,
+    entityWorldRecordId: cleanRivalIdentity(input.entityWorldRecordId),
+    bidCr: Math.max(0, Math.floor(Number(input.bidCr) || 0)),
+    status: legalStatus.has(input.status) ? input.status : 'open',
+    startedAt: Number.isFinite(input.startedAt) ? input.startedAt : 0,
+    bidDecision: input.bidDecision === 'race' || input.bidDecision === 'outbid'
+      ? input.bidDecision : null,
+    winner: input.winner === 'player' || input.winner === 'rival' ? input.winner : null,
+    method: input.method === 'outbid' || input.method === 'salvage' ? input.method : null,
+    finishedAt: Number.isFinite(input.finishedAt) ? input.finishedAt : null,
+    physical: input.physical === true,
+    reason: typeof input.reason === 'string' ? input.reason.slice(0, 80) : null,
+    lastRejectedBidAt: Number.isFinite(input.lastRejectedBidAt) ? input.lastRejectedBidAt : null,
+    lastRejectedBidReason: typeof input.lastRejectedBidReason === 'string'
+      ? input.lastRejectedBidReason.slice(0, 80) : null,
   };
 }
 

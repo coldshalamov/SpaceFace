@@ -46,6 +46,7 @@ import { ordinaryShipIdentity } from '../data/factionNameBanks.js';
 import {
   RECURRING_RIVAL,
   recurringRivalRescueReady,
+  recurringRivalSalvageReady,
 } from '../data/namedAces.js';
 import {
   PRIORITY_COURIER_ITINERARY_KIND,
@@ -72,7 +73,11 @@ import {
   cinderSluicePhase,
   pointInsideCinderSluice,
 } from '../data/environmentalMachinery.js';
-import { ceresDisabledHaulerManifestTruth } from '../data/contactHail.js';
+import {
+  CONTACT_HAIL_ACTION_RIVAL_SALVAGE_OUTBID,
+  CONTACT_HAIL_ACTION_RIVAL_SALVAGE_RACE,
+  ceresDisabledHaulerManifestTruth,
+} from '../data/contactHail.js';
 import {
   CERES_ACTIVITY_POCKETS,
   CERES_ACTIVITY_SECTOR_ID,
@@ -1025,6 +1030,9 @@ export const traffic = {
     // HELP is an explicit player hail intent. Traffic reserves the finite opportunity for the
     // answering seam miner; physical WORK below remains the sole rich-load/depletion writer.
     this.bus.on('contactHail:response', (p) => this._onContactHailResponse(p || {}));
+    this.bus.on('recurringRival:salvageRaceResolved', (p) => {
+      this._onRecurringRivalSalvageResolved(p || {});
+    });
     this.bus.on('surrender:tethered', (p) => this._onCeresDisabledHaulerPlayerClaim(p || {}));
     this.bus.on('surrender:secured', (p) => this._onCeresDisabledHaulerPlayerClaim(p || {}));
     this.bus.on('freight:recovery', (p) => this._onCeresDisabledHaulerRecovery(p || {}));
@@ -4337,6 +4345,37 @@ export const traffic = {
     return this._pocketStation(stations, sectorId) || (stations && stations[0]) || null;
   },
 
+  _rivalSalvageTargetKey(target) {
+    const data = target && target.data || {};
+    if (typeof data.salvageSourceKey === 'string' && data.salvageSourceKey) {
+      return data.salvageSourceKey;
+    }
+    const sectorId = this.state.world && this.state.world.currentSectorId;
+    if (sectorId && typeof data.salvagePointId === 'string' && data.salvagePointId) {
+      return `salvage-point:${sectorId}:${data.salvagePointId}`;
+    }
+    if (typeof data.worldRecordId === 'string' && data.worldRecordId) {
+      return `world-wreck:${data.worldRecordId}`;
+    }
+    if (typeof data.markerId === 'string' && data.markerId) return `wreck-marker:${data.markerId}`;
+    return null;
+  },
+
+  _availableRecurringRivalSalvor(sectorId) {
+    for (const rec of this.state.traffic && this.state.traffic.freighters || []) {
+      if (!rec || rec.role !== 'salvor') continue;
+      const entity = liveEntity(this.state, rec.id);
+      const data = entity && entity.data || {};
+      const entitySectorId = data.homeSectorId || data.sectorId
+        || (this.state.world && this.state.world.currentSectorId) || null;
+      if (!entity || entity.type !== 'ship' || entity.alive === false || data.jobId
+        || data.rivalTrafficOwned !== true || data.namedRivalId !== RECURRING_RIVAL.id
+        || (sectorId && entitySectorId && sectorId !== entitySectorId)) continue;
+      return { entity, rec };
+    }
+    return null;
+  },
+
   _isSalvageableBody(entity) {
     if (!entity || entity.alive === false || !entity.pos) return false;
     const data = entity.data || {};
@@ -4648,14 +4687,14 @@ export const traffic = {
     return true;
   },
 
-  _spawnGeneralSalvorNear(home, sectorId, seq) {
+  _spawnGeneralSalvorNear(home, sectorId, seq, identity = null) {
     if (!this.helpers || typeof this.helpers.spawnEntity !== 'function') return null;
     if (!home || !home.pos) return null;
     const def = TRAFFIC_ROLES.salvor;
     const sector = (this.state.world && this.state.world.sectors)
       ? this.state.world.sectors[sectorId]
       : null;
-    const controllingFaction = (sector && sector.factionId)
+    const controllingFaction = identity && identity.factionId || (sector && sector.factionId)
       || (this.state.world && this.state.world.currentSector && this.state.world.currentSector.factionId)
       || 'faction_free';
     // Deterministic offset from the yard so two concurrent cutters do not stack on one point.
@@ -4663,14 +4702,16 @@ export const traffic = {
       / 0xffffffff) * Math.PI * 2;
     const r = 100 + (seq % 3) * 28;
     const pos = { x: home.pos.x + Math.cos(ang) * r, z: home.pos.z + Math.sin(ang) * r };
-    const spec = makeShipEntitySpec(factionHullFor(def.ship, controllingFaction, () => 0.5), {
+    const spec = makeShipEntitySpec(identity && identity.shipDefId
+      || factionHullFor(def.ship, controllingFaction, () => 0.5), {
       team: def.team,
       factionId: controllingFaction,
       pos,
+      appearance: identity && identity.appearance || null,
       ai: {
         archetype: def.archetype,
         passive: true,
-        spawnContext: 'convoy_civilian',
+        spawnContext: identity ? 'recurring_rival_salvage' : 'convoy_civilian',
       },
     });
     const ent = this.helpers.spawnEntity(spec);
@@ -4680,6 +4721,16 @@ export const traffic = {
     ent.data.role = 'salvor';
     ent.data.trafficLabel = def.label;
     ent.data.generalSalvor = true;
+    if (identity) {
+      ent.data.name = identity.name;
+      ent.data.callsign = identity.name;
+      ent.data.scanLabel = `${identity.name} / SALVAGE LINE`;
+      ent.data.namedRivalId = identity.id;
+      ent.data.rivalAppearance = 'salvage';
+      ent.data.rivalTrafficOwned = true;
+      ent.data.aceTierPeer = true;
+      ent.data.trafficLabel = `${identity.name} / Salvage`;
+    }
     // Persist mid-job cutters + carried cargo across Continue (save only keeps flags.persistent).
     ent.flags = Object.assign({}, ent.flags, { persistent: true });
     // Empty hold on commission — value is claimed from the wreck/payload, never pre-rolled.
@@ -4696,6 +4747,7 @@ export const traffic = {
       dockSeq: 0,
       manifest: empty,
       generalSalvor: true,
+      recurringRival: identity && identity.id || null,
     };
     this.state.traffic.freighters.push(rec);
     return { entity: ent, rec };
@@ -4725,24 +4777,36 @@ export const traffic = {
       const home = this._salvorHomeForTarget(stations, sectorId, target);
       if (!home || !home.pos) continue;
 
+      const targetKey = this._rivalSalvageTargetKey(target);
+      const useRecurringRival = !!targetKey
+        && recurringRivalSalvageReady(this.state, targetKey);
+
       // Prefer an existing idle salvor hull; otherwise spawn one near the yard.
-      let pair = null;
-      for (const rec of this.state.traffic.freighters || []) {
-        if (!rec || rec.role !== 'salvor') continue;
-        const ent = this.state.entities && this.state.entities.get && this.state.entities.get(rec.id);
-        if (!ent || ent.alive === false || !ent.data) continue;
-        if (ent.data.ceresActivityCast === true || ent.data.activityActorSlotId) continue;
-        if (ent.data.jobId) continue;
-        pair = { entity: ent, rec };
-        break;
+      let pair = useRecurringRival ? this._availableRecurringRivalSalvor(sectorId) : null;
+      if (!useRecurringRival) {
+        for (const rec of this.state.traffic.freighters || []) {
+          if (!rec || rec.role !== 'salvor') continue;
+          const ent = this.state.entities && this.state.entities.get && this.state.entities.get(rec.id);
+          if (!ent || ent.alive === false || !ent.data) continue;
+          if (ent.data.ceresActivityCast === true || ent.data.activityActorSlotId
+            || ent.data.rivalTrafficOwned === true || ent.data.jobId) continue;
+          pair = { entity: ent, rec };
+          break;
+        }
       }
       if (!pair) {
-        pair = this._spawnGeneralSalvorNear(home, sectorId, active + dispatched);
+        pair = this._spawnGeneralSalvorNear(
+          home,
+          sectorId,
+          active + dispatched,
+          useRecurringRival ? RECURRING_RIVAL : null,
+        );
         if (!pair) break;
       }
 
       const spec = this._buildSalvorJobSpec(home, target, sectorId);
       if (!spec) continue;
+      if (useRecurringRival) spec.speed = 170;
       // Reserve the body before assign so two cutters cannot claim the same wreck in one tick.
       if (!this._stampSalvorClaim(target, pair.entity.data.worldRecordId)) continue;
       const jobId = assign(pair.entity, spec);
@@ -4761,6 +4825,35 @@ export const traffic = {
       }
       pair.rec.generalSalvor = true;
       pair.rec.role = 'salvor';
+      if (useRecurringRival) {
+        const race = {
+          targetKey,
+          targetId: target.id,
+          bidCr: RECURRING_RIVAL.salvageBidCr,
+          status: 'open',
+        };
+        pair.entity.data.rivalSalvageRace = race;
+        pair.rec.recurringRival = RECURRING_RIVAL.id;
+        const started = {
+          rivalId: RECURRING_RIVAL.id,
+          entityId: pair.entity.id,
+          targetId: target.id,
+          targetKey,
+          bidCr: race.bidCr,
+          jobId,
+          physical: true,
+          accepted: false,
+        };
+        this.bus.emit('recurringRival:salvageRaceStarted', started);
+        if (started.accepted !== true) {
+          const release = this.helpers && this.helpers.npcJobs && this.helpers.npcJobs.release;
+          if (typeof release === 'function') release(jobId);
+          this._clearSalvorClaim(target, pair.entity.data.worldRecordId);
+          delete pair.entity.data.jobId;
+          delete pair.entity.data.rivalSalvageRace;
+          continue;
+        }
+      }
       active += 1;
       dispatched += 1;
     }
@@ -4821,6 +4914,11 @@ export const traffic = {
           ? this.state.entities.get(job.payload.targetId)
           : null;
         if (prior) this._clearSalvorClaim(prior, ent.data.worldRecordId);
+      }
+      const rivalRace = ent.data.rivalSalvageRace;
+      if (rivalRace && ['resolved', 'outbid'].includes(rivalRace.status)) {
+        if (job.payload) job.payload.extracted = hasCargo;
+        continue;
       }
       const next = this._pickUnclaimedSalvageTarget(ent);
       if (next && site) {
@@ -7146,6 +7244,10 @@ export const traffic = {
   _onContactHailResponse(response) {
     if (!response) return false;
     const choice = String(response.choice || '').toLowerCase();
+    if (choice === CONTACT_HAIL_ACTION_RIVAL_SALVAGE_RACE
+      || choice === CONTACT_HAIL_ACTION_RIVAL_SALVAGE_OUTBID) {
+      return this._chooseRecurringRivalSalvage(response, choice);
+    }
     if (choice === 'assist') return this._beginPassengerLinerAssist(response);
     if (choice === 'escort') return this._requestPriorityCourierEscort(response);
     if (choice === 'recover' || choice === 'steal' || choice === 'abandon') {
@@ -7207,6 +7309,92 @@ export const traffic = {
       requestId: response.requestId || null,
       source: 'contact_hail',
     });
+    return true;
+  },
+
+  _chooseRecurringRivalSalvage(response, choice) {
+    const entity = response && response.targetId != null && this.state.entities
+      ? this.state.entities.get(response.targetId) : null;
+    const data = entity && entity.data || {};
+    const stamp = data.rivalSalvageRace;
+    const detail = response && response.rivalSalvageBid;
+    const active = this.state.aceMemory && this.state.aceMemory.rival
+      && this.state.aceMemory.rival.activeSalvageRace;
+    if (!entity || entity.alive === false || entity.type !== 'ship'
+      || data.rivalTrafficOwned !== true || data.namedRivalId !== RECURRING_RIVAL.id
+      || !stamp || !detail || stamp.targetKey !== detail.targetKey
+      || stamp.bidCr !== detail.amountCr || active && active.entityId !== entity.id
+      || !active || active.targetKey !== stamp.targetKey
+      || (stamp.status !== 'open' && stamp.status !== 'racing')) return false;
+    const decision = choice === CONTACT_HAIL_ACTION_RIVAL_SALVAGE_RACE ? 'race' : 'outbid';
+    if (detail.decision !== decision) return false;
+    if (detail.accepted !== true) {
+      this.bus.emit('recurringRival:salvageBidDecision', {
+        entityId: entity.id,
+        targetKey: stamp.targetKey,
+        decision,
+        accepted: false,
+        reason: 'unaffordable',
+      });
+      return false;
+    }
+    if (decision === 'race') {
+      stamp.status = 'racing';
+      this.bus.emit('recurringRival:salvageBidDecision', {
+        entityId: entity.id,
+        targetKey: stamp.targetKey,
+        decision,
+        accepted: true,
+      });
+      return true;
+    }
+
+    const credits = Math.max(0, Math.floor(Number(this.state.player && this.state.player.credits) || 0));
+    const target = stamp.targetId != null && this.state.entities
+      ? this.state.entities.get(stamp.targetId) : null;
+    if (credits < stamp.bidCr || !target || target.alive === false || !this._isSalvageableBody(target)) {
+      this.bus.emit('recurringRival:salvageBidDecision', {
+        entityId: entity.id,
+        targetKey: stamp.targetKey,
+        decision,
+        accepted: false,
+        reason: credits < stamp.bidCr ? 'unaffordable' : 'race_closed',
+      });
+      return false;
+    }
+    this.bus.emit('economy:chargeCredits', {
+      amount: stamp.bidCr,
+      reason: `recurring_rival:salvage_outbid:${stamp.targetKey}`,
+    });
+    const worldRecordId = data.worldRecordId;
+    this._clearSalvorClaim(target, worldRecordId);
+    this._stampSalvorClaim(target, `player-rival-outbid:${stamp.targetKey}`);
+    const release = this.helpers && this.helpers.npcJobs && this.helpers.npcJobs.release;
+    if (typeof release === 'function' && data.jobId) release(data.jobId);
+    delete data.jobId;
+    stamp.status = 'outbid';
+    this.bus.emit('recurringRival:salvageBidDecision', {
+      entityId: entity.id,
+      targetKey: stamp.targetKey,
+      decision,
+      accepted: true,
+      bidCr: stamp.bidCr,
+    });
+    return true;
+  },
+
+  _onRecurringRivalSalvageResolved(payload) {
+    const entity = payload && payload.entityId != null && this.state.entities
+      ? this.state.entities.get(payload.entityId) : null;
+    const data = entity && entity.data || {};
+    const stamp = data.rivalSalvageRace;
+    if (!entity || entity.alive === false || data.rivalTrafficOwned !== true
+      || data.namedRivalId !== RECURRING_RIVAL.id || !stamp
+      || stamp.targetKey !== payload.targetKey || stamp.targetId !== payload.targetId) return false;
+    stamp.status = payload.method === 'outbid' ? 'outbid' : 'resolved';
+    stamp.winner = payload.winner;
+    stamp.method = payload.method;
+    stamp.resolvedAt = Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
     return true;
   },
 
