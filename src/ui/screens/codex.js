@@ -14,6 +14,7 @@ import {
   DOUBLE_WRECK_BLACK_BOXES,
   DOUBLE_WRECK_SHAPE_ID,
 } from '../../data/doubleWreckBlackBoxes.js';
+import { coldDerelictBlackBoxRecords } from '../../data/coldDerelictBlackBoxes.js';
 import { ghostShipBlackBoxRecords } from '../../data/ghostShipBlackBox.js';
 import { explorationDiscoveryPlates } from '../../world/explorationJournal.js';
 import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
@@ -727,10 +728,24 @@ export const codexScreen = {
     const story = safeStory(ctx);
     const doubleWreckRecords = doubleWreckBlackBoxRecords(story);
     const ghostRecords = ghostShipBlackBoxRecords(story);
-    if (!doubleWreckRecords.length && !ghostRecords.length) {
+    const coldDerelictRecords = coldDerelictBlackBoxRecords(story);
+    if (!doubleWreckRecords.length && !ghostRecords.length && !coldDerelictRecords.length) {
       this._body.appendChild(el('div', 'sf-codex-empty',
         'No recorders recovered. Scan a wreck before cutting it free.'));
       return;
+    }
+    for (const record of coldDerelictRecords.slice().reverse()) {
+      const entry = el('article', 'sf-codex-entry');
+      entry.dataset.blackBoxMarkerId = record.markerId;
+      entry.appendChild(el('h3', null, record.title));
+      const location = [record.sectorId, record.zoneName || record.zoneId].filter(Boolean).join(' · ');
+      entry.appendChild(el('div', 'sf-codex-meta',
+        `1/1 recorder recovered${location ? ` · ${location}` : ''}`));
+      for (const log of record.logs) {
+        entry.appendChild(el('div', 'sf-codex-body', `${log.stamp} — ${log.text}`));
+      }
+      entry.appendChild(el('div', 'sf-codex-note', record.note));
+      this._body.appendChild(entry);
     }
     for (const record of ghostRecords.slice().reverse()) {
       const entry = el('article', 'sf-codex-entry');

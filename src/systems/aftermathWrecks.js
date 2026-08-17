@@ -17,7 +17,7 @@ import {
   normalizeCausalAftermath,
 } from '../world/encounterCausality.js';
 
-const STATE_VERSION = 5;
+const STATE_VERSION = 6;
 const MAX_PER_SECTOR = 8;
 const MAX_SPAWNED_PER_SECTOR = 6;
 const MAX_CAUSES = 24;
@@ -330,6 +330,7 @@ function makeMarker(state, payload, entity) {
     lifecycleStage: 'fresh',
     cooledAt: null,
     survivorPodEjected: data.survivorPodEjected === true,
+    coldDerelictScannedAt: null,
     coldDerelictBoarding: null,
   };
   marker.salvagePool = initialPoolForMarker(marker);
@@ -449,6 +450,8 @@ function normalizeMarker(input) {
     lifecycleStage: input.lifecycleStage === 'cold' ? 'cold' : 'fresh',
     cooledAt: Number.isFinite(Number(input.cooledAt)) ? Math.max(0, Number(input.cooledAt)) : null,
     survivorPodEjected: input.survivorPodEjected === true,
+    coldDerelictScannedAt: Number.isFinite(Number(input.coldDerelictScannedAt))
+      ? Math.max(0, Number(input.coldDerelictScannedAt)) : null,
     coldDerelictBoarding: normalizeColdDerelictBoarding(input.coldDerelictBoarding),
     playerLoss: normalizePlayerLoss(input.playerLoss),
   };
@@ -508,6 +511,7 @@ export const aftermathWrecks = {
 
     this._onKilled = (payload) => this._recordKill(payload || {});
     this._onSurvivorPodEjected = (payload) => this._noteSurvivorPodEjected(payload || {});
+    this._onScanCompleted = () => this._rememberColdDerelictScans();
     this._onSectorEnter = (payload) => this._spawnForSector(payload && payload.sectorId);
     this._onSectorExit = (payload) => this._clearLiveRefs(payload && payload.sectorId);
     this._onSalvageCompleted = (payload) => this._completeByEntity(payload || {});
@@ -529,6 +533,7 @@ export const aftermathWrecks = {
     if (this.bus && typeof this.bus.on === 'function') {
       this.bus.on('entity:killed', this._onKilled);
       this.bus.on('survivorPod:ejected', this._onSurvivorPodEjected);
+      this.bus.on('scan:completed', this._onScanCompleted);
       this.bus.on('sector:enter', this._onSectorEnter);
       this.bus.on('sector:exit', this._onSectorExit);
       this.bus.on('salvage:completed', this._onSalvageCompleted);
@@ -576,6 +581,22 @@ export const aftermathWrecks = {
         marker.survivorPodEjected = true;
         changed = true;
       }
+    }
+    return changed;
+  },
+
+  _rememberColdDerelictScans() {
+    if (!this.state || !this._spawned) return 0;
+    let changed = 0;
+    for (const markerId of this._spawned.keys()) {
+      const marker = this._markerById(markerId);
+      const wreck = this._resolveBoundWreck(markerId);
+      const boarding = marker && ensureColdDerelictBoarding(this.state, marker);
+      if (!marker || marker.lifecycleStage !== 'cold' || !boarding || boarding.outcome !== 'black_box'
+        || !wreck || !wreck.data || wreck.data.scanned !== true
+        || marker.coldDerelictScannedAt != null) continue;
+      marker.coldDerelictScannedAt = Number(this.state.simTime) || 0;
+      changed++;
     }
     return changed;
   },
@@ -909,6 +930,10 @@ export const aftermathWrecks = {
         },
         aftermath: clonePlain(marker),
         markerId: marker.markerId,
+        ...(marker.coldDerelictScannedAt != null ? {
+          scanned: true,
+          coldDerelictScannedAt: marker.coldDerelictScannedAt,
+        } : {}),
         encounterFingerprint: marker.encounterFingerprint,
         causeContract: marker.cause ? clonePlain(marker.cause) : null,
         ...(playerLoss ? {
@@ -1316,6 +1341,7 @@ export const aftermathWrecks = {
     if (this.bus && typeof this.bus.off === 'function') {
       if (this._onKilled) this.bus.off('entity:killed', this._onKilled);
       if (this._onSurvivorPodEjected) this.bus.off('survivorPod:ejected', this._onSurvivorPodEjected);
+      if (this._onScanCompleted) this.bus.off('scan:completed', this._onScanCompleted);
       if (this._onSectorEnter) this.bus.off('sector:enter', this._onSectorEnter);
       if (this._onSectorExit) this.bus.off('sector:exit', this._onSectorExit);
       if (this._onSalvageCompleted) this.bus.off('salvage:completed', this._onSalvageCompleted);
@@ -1332,7 +1358,8 @@ export const aftermathWrecks = {
       if (this._onSaveLoaded) this.bus.off('save:loaded', this._onSaveLoaded);
       if (this._onSaveError) this.bus.off('save:error', this._onSaveError);
     }
-    this._onKilled = this._onSurvivorPodEjected = this._onSectorEnter = this._onSectorExit = null;
+    this._onKilled = this._onSurvivorPodEjected = this._onScanCompleted = null;
+    this._onSectorEnter = this._onSectorExit = null;
     this._onSalvageCompleted = this._onEncounterResolved = this._onDocked = null;
     this._onOfferBoarded = this._onMissionAccepted = this._onMissionCompleted = this._onMissionFailed = null;
     this._onNewGame = this._onSaveRestoring = this._onSaveLoaded = this._onSaveError = null;

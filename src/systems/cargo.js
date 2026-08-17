@@ -128,6 +128,9 @@ function emitChanged(cargo) {
 
 function emitLootCollected(bus, payload, amount) {
   if (!bus || !bus.emit || !(amount > 0)) return;
+  const lotSource = payload.lotSource && typeof payload.lotSource === 'object'
+    ? { ...payload.lotSource }
+    : null;
   bus.emit('loot:collected', {
     kind: payload.kind,
     commodityId: payload.commodityId,
@@ -136,6 +139,7 @@ function emitLootCollected(bus, payload, amount) {
     collectorId: payload.collectorId ?? null,
     source: 'pickup',
     simTime: payload.simTime ?? null,
+    ...(lotSource ? { lotSource } : {}),
   });
 }
 
