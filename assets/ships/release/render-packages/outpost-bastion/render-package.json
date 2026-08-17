@@ -335,7 +335,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "2867f12d8d4a12496e49d6e980d59f95f9faf34b22177987b3f0eaac6e36f494",
+  "contentHash": "cb10909f815ccccf9dc0c5376b968540e78990cf2cda778380a38b5301d4972a",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1748,8 +1748,8 @@
       "uri": "place_claim_outpost_bastion.glb"
     },
     "sourceManifest": {
-      "bytes": 57392,
-      "sha256": "f9218f14bbd083ec30bff001e310bf742dffed27e43546393fe96c96c8c5f44b",
+      "bytes": 69666,
+      "sha256": "b320efaf850ef6f26a926eb1a4976cc0ae16f9621cc52f517b25152cd81b69e9",
       "uri": "pilots.json"
     }
   },

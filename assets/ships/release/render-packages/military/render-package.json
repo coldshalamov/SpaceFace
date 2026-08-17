@@ -151,7 +151,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "9602fd47addfdfe95c860eeabac6cdbc8653bae9091230d60c8c83968419c2e5",
+  "contentHash": "94585e3b372984c4527fa509e922b591ee0e8ee78f606f159ae530cf235862fb",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -2834,8 +2834,8 @@
       "uri": "place_station_military.glb"
     },
     "sourceManifest": {
-      "bytes": 57392,
-      "sha256": "f9218f14bbd083ec30bff001e310bf742dffed27e43546393fe96c96c8c5f44b",
+      "bytes": 69666,
+      "sha256": "b320efaf850ef6f26a926eb1a4976cc0ae16f9621cc52f517b25152cd81b69e9",
       "uri": "pilots.json"
     }
   },

@@ -1,0 +1,2264 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.improvised-dock.anchor.socket-berth",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        5.400000095367432,
+        1.5,
+        -12,
+        1
+      ],
+      "nodeName": "SOCKET_Berth",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentNodeId": "sf.render.improvised-dock.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        5.400000095367432,
+        1.5,
+        -12,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.improvised-dock",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "0beb0682ca9e43f116f04d7e795479cafa8d3adfd684edfe7eab391ffb16339d",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          6.099982261657715,
+          2.1497697830200195,
+          1.7000000476837158
+        ],
+        "min": [
+          -3.0599822998046875,
+          -1.5997698307037354,
+          -10.75930118560791
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "887390cbb24f8ead4a83eea20c42010c23a394ac664a8fa1c72ba61dd49ec8f0",
+      "id": "sf.render.improvised-dock.mesh.lod0-merged-material-baresteel.primitive.0",
+      "indexCount": 672,
+      "indexed": true,
+      "materialHash": "2dc0c596a3f1a62a2bd072575fad348e5a162a9276296c174c7530aa32f7ba88",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Merged_Material_BareSteel.002",
+      "nodeId": "sf.render.improvised-dock.mesh.lod0-merged-material-baresteel",
+      "primitiveIndex": 0,
+      "vertexCount": 432
+    },
+    {
+      "bounds": {
+        "max": [
+          5.575032711029053,
+          2.4951868057250977,
+          0.6000000238418579
+        ],
+        "min": [
+          3.0499675273895264,
+          -0.00018666195683181286,
+          -9.975000381469727
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "285374935383aede5f6c423808e29a0669d66fb59c016f8f68b4ffe217ccdf91",
+      "id": "sf.render.improvised-dock.mesh.lod0-merged-material-lighthooded.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "118da36a3503a777f02d55277623418a128e76cf89444beb7a2cceb9a9270bc4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Merged_Material_LightHooded.002",
+      "nodeId": "sf.render.improvised-dock.mesh.lod0-merged-material-lighthooded",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          5.648741245269775,
+          2.699166774749756,
+          -6.013247013092041
+        ],
+        "min": [
+          2.551258087158203,
+          1.8008325099945068,
+          -9.986751556396484
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "72825827373d3f65c0860bc8f22bb31a0c0f562c98ac2335862d75754df3b5ae",
+      "id": "sf.render.improvised-dock.mesh.lod0-merged-material-paintrust.primitive.0",
+      "indexCount": 720,
+      "indexed": true,
+      "materialHash": "76350576cf4345452ad04c3941ae0fcddefa07156d09928549063000751fe730",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Merged_Material_PaintRust.002",
+      "nodeId": "sf.render.improvised-dock.mesh.lod0-merged-material-paintrust",
+      "primitiveIndex": 0,
+      "vertexCount": 432
+    },
+    {
+      "bounds": {
+        "max": [
+          3,
+          1.5002288818359375,
+          1.5002288818359375
+        ],
+        "min": [
+          -3,
+          -1.5002288818359375,
+          -1.5002288818359375
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "aa0673f9f65271952f9d303961da0135bb82dad429c4d9f54839621d7baf81e5",
+      "id": "sf.render.improvised-dock.mesh.lod0-merged-material-paintteal.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "f91b428282b8517694b348004ab71dd36d17388c50a3666f4c33d3a5a4c5a671",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Merged_Material_PaintTeal.002",
+      "nodeId": "sf.render.improvised-dock.mesh.lod0-merged-material-paintteal",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          5.700228214263916,
+          2.650161027908325,
+          1.6299999952316284
+        ],
+        "min": [
+          -3.025228261947632,
+          -1.600160837173462,
+          -10.100000381469727
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "79bebe4c8fc10381801e7314987c8ac05aec3d5465b518f6b1957d9880194b7d",
+      "id": "sf.render.improvised-dock.mesh.lod0-merged-material-struct.primitive.0",
+      "indexCount": 288,
+      "indexed": true,
+      "materialHash": "e36d2c410bb62a6109f290e2afd41561aa69108c3251d089b329e9f8eab4f284",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Merged_Material_Struct.002",
+      "nodeId": "sf.render.improvised-dock.mesh.lod0-merged-material-struct",
+      "primitiveIndex": 0,
+      "vertexCount": 192
+    },
+    {
+      "bounds": {
+        "max": [
+          3.229671001434326,
+          2.852964162826538,
+          -1.0097277164459229
+        ],
+        "min": [
+          -0.4296708405017853,
+          0.9470361471176147,
+          -6.489375591278076
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9775d4ff386c0dff65cf73d4530520d40c8dd527d2ccd038985cda4373bec575",
+      "id": "sf.render.improvised-dock.mesh.lod0-merged-material-truss.primitive.0",
+      "indexCount": 840,
+      "indexed": true,
+      "materialHash": "9fee570e005a70903489578162a1d94129351ab984612940c8ca32e3e57f818b",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Merged_Material_Truss.002",
+      "nodeId": "sf.render.improvised-dock.mesh.lod0-merged-material-truss",
+      "primitiveIndex": 0,
+      "vertexCount": 504
+    },
+    {
+      "bounds": {
+        "max": [
+          5.978296756744385,
+          2.1497697830200195,
+          1.7000000476837158
+        ],
+        "min": [
+          -3.0599913597106934,
+          -1.5997698307037354,
+          -10.75930118560791
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e6c9a59c53a4dc856e1957927ca002d7799a4348c53db18302a5d08bd1305305",
+      "id": "sf.render.improvised-dock.mesh.lod1-merged-material-baresteel.primitive.0",
+      "indexCount": 636,
+      "indexed": true,
+      "materialHash": "2dc0c596a3f1a62a2bd072575fad348e5a162a9276296c174c7530aa32f7ba88",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Merged_Material_BareSteel.002",
+      "nodeId": "sf.render.improvised-dock.mesh.lod1-merged-material-baresteel",
+      "primitiveIndex": 0,
+      "vertexCount": 408
+    },
+    {
+      "bounds": {
+        "max": [
+          5.575032711029053,
+          2.4951868057250977,
+          0.6000000238418579
+        ],
+        "min": [
+          3.0499675273895264,
+          -0.00018666195683181286,
+          -9.975000381469727
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "285374935383aede5f6c423808e29a0669d66fb59c016f8f68b4ffe217ccdf91",
+      "id": "sf.render.improvised-dock.mesh.lod1-merged-material-lighthooded.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "118da36a3503a777f02d55277623418a128e76cf89444beb7a2cceb9a9270bc4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Merged_Material_LightHooded.002",
+      "nodeId": "sf.render.improvised-dock.mesh.lod1-merged-material-lighthooded",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          5.648741245269775,
+          2.699166774749756,
+          -6.013247013092041
+        ],
+        "min": [
+          2.551258087158203,
+          1.8008325099945068,
+          -9.986751556396484
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "72825827373d3f65c0860bc8f22bb31a0c0f562c98ac2335862d75754df3b5ae",
+      "id": "sf.render.improvised-dock.mesh.lod1-merged-material-paintrust.primitive.0",
+      "indexCount": 720,
+      "indexed": true,
+      "materialHash": "76350576cf4345452ad04c3941ae0fcddefa07156d09928549063000751fe730",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Merged_Material_PaintRust.002",
+      "nodeId": "sf.render.improvised-dock.mesh.lod1-merged-material-paintrust",
+      "primitiveIndex": 0,
+      "vertexCount": 432
+    },
+    {
+      "bounds": {
+        "max": [
+          3,
+          1.5002288818359375,
+          1.5002288818359375
+        ],
+        "min": [
+          -3,
+          -1.5002288818359375,
+          -1.5002288818359375
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "aa0673f9f65271952f9d303961da0135bb82dad429c4d9f54839621d7baf81e5",
+      "id": "sf.render.improvised-dock.mesh.lod1-merged-material-paintteal.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "f91b428282b8517694b348004ab71dd36d17388c50a3666f4c33d3a5a4c5a671",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Merged_Material_PaintTeal.002",
+      "nodeId": "sf.render.improvised-dock.mesh.lod1-merged-material-paintteal",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          5.700228214263916,
+          2.650161027908325,
+          1.6299999952316284
+        ],
+        "min": [
+          -3.025228261947632,
+          -1.600160837173462,
+          -10.100000381469727
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b388698b9c651a25e5f76df97ad1b5d0e4655b2634d33bb25dd6e01895079c9a",
+      "id": "sf.render.improvised-dock.mesh.lod1-merged-material-struct.primitive.0",
+      "indexCount": 252,
+      "indexed": true,
+      "materialHash": "e36d2c410bb62a6109f290e2afd41561aa69108c3251d089b329e9f8eab4f284",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Merged_Material_Struct.002",
+      "nodeId": "sf.render.improvised-dock.mesh.lod1-merged-material-struct",
+      "primitiveIndex": 0,
+      "vertexCount": 168
+    },
+    {
+      "bounds": {
+        "max": [
+          3.229671001434326,
+          2.852964162826538,
+          -1.0097277164459229
+        ],
+        "min": [
+          -0.4296708405017853,
+          0.9470361471176147,
+          -6.489375591278076
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9775d4ff386c0dff65cf73d4530520d40c8dd527d2ccd038985cda4373bec575",
+      "id": "sf.render.improvised-dock.mesh.lod1-merged-material-truss.primitive.0",
+      "indexCount": 840,
+      "indexed": true,
+      "materialHash": "9fee570e005a70903489578162a1d94129351ab984612940c8ca32e3e57f818b",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Merged_Material_Truss.002",
+      "nodeId": "sf.render.improvised-dock.mesh.lod1-merged-material-truss",
+      "primitiveIndex": 0,
+      "vertexCount": 504
+    },
+    {
+      "bounds": {
+        "max": [
+          5.978296756744385,
+          2.1497697830200195,
+          1.7000000476837158
+        ],
+        "min": [
+          -3.0599913597106934,
+          -1.5997698307037354,
+          -10.75930118560791
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e6c9a59c53a4dc856e1957927ca002d7799a4348c53db18302a5d08bd1305305",
+      "id": "sf.render.improvised-dock.mesh.lod2-merged-material-baresteel.primitive.0",
+      "indexCount": 636,
+      "indexed": true,
+      "materialHash": "2dc0c596a3f1a62a2bd072575fad348e5a162a9276296c174c7530aa32f7ba88",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Merged_Material_BareSteel.002",
+      "nodeId": "sf.render.improvised-dock.mesh.lod2-merged-material-baresteel",
+      "primitiveIndex": 0,
+      "vertexCount": 408
+    },
+    {
+      "bounds": {
+        "max": [
+          5.575032711029053,
+          2.4951868057250977,
+          0.6000000238418579
+        ],
+        "min": [
+          3.0499675273895264,
+          -0.00018666195683181286,
+          -9.975000381469727
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "285374935383aede5f6c423808e29a0669d66fb59c016f8f68b4ffe217ccdf91",
+      "id": "sf.render.improvised-dock.mesh.lod2-merged-material-lighthooded.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "118da36a3503a777f02d55277623418a128e76cf89444beb7a2cceb9a9270bc4",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Merged_Material_LightHooded.002",
+      "nodeId": "sf.render.improvised-dock.mesh.lod2-merged-material-lighthooded",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          5.648741245269775,
+          2.699166774749756,
+          -6.013247013092041
+        ],
+        "min": [
+          2.551258087158203,
+          1.8008325099945068,
+          -9.986751556396484
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "72825827373d3f65c0860bc8f22bb31a0c0f562c98ac2335862d75754df3b5ae",
+      "id": "sf.render.improvised-dock.mesh.lod2-merged-material-paintrust.primitive.0",
+      "indexCount": 720,
+      "indexed": true,
+      "materialHash": "76350576cf4345452ad04c3941ae0fcddefa07156d09928549063000751fe730",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Merged_Material_PaintRust.002",
+      "nodeId": "sf.render.improvised-dock.mesh.lod2-merged-material-paintrust",
+      "primitiveIndex": 0,
+      "vertexCount": 432
+    },
+    {
+      "bounds": {
+        "max": [
+          3,
+          1.5002288818359375,
+          1.5002288818359375
+        ],
+        "min": [
+          -3,
+          -1.5002288818359375,
+          -1.5002288818359375
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "aa0673f9f65271952f9d303961da0135bb82dad429c4d9f54839621d7baf81e5",
+      "id": "sf.render.improvised-dock.mesh.lod2-merged-material-paintteal.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "f91b428282b8517694b348004ab71dd36d17388c50a3666f4c33d3a5a4c5a671",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Merged_Material_PaintTeal.002",
+      "nodeId": "sf.render.improvised-dock.mesh.lod2-merged-material-paintteal",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          5.700228214263916,
+          2.650161027908325,
+          1.6299999952316284
+        ],
+        "min": [
+          -3.025228261947632,
+          -1.600160837173462,
+          -10.100000381469727
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b388698b9c651a25e5f76df97ad1b5d0e4655b2634d33bb25dd6e01895079c9a",
+      "id": "sf.render.improvised-dock.mesh.lod2-merged-material-struct.primitive.0",
+      "indexCount": 252,
+      "indexed": true,
+      "materialHash": "e36d2c410bb62a6109f290e2afd41561aa69108c3251d089b329e9f8eab4f284",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Merged_Material_Struct.002",
+      "nodeId": "sf.render.improvised-dock.mesh.lod2-merged-material-struct",
+      "primitiveIndex": 0,
+      "vertexCount": 168
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "118da36a3503a777f02d55277623418a128e76cf89444beb7a2cceb9a9270bc4",
+      "id": "material:118da36a3503a777f02d5527",
+      "name": "Material_LightHooded",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_LightHooded_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_LightHooded_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_LightHooded_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_LightHooded_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "2dc0c596a3f1a62a2bd072575fad348e5a162a9276296c174c7530aa32f7ba88",
+      "id": "material:2dc0c596a3f1a62a2bd07257",
+      "name": "Material_BareSteel",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_BareSteel_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_BareSteel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_BareSteel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_BareSteel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "76350576cf4345452ad04c3941ae0fcddefa07156d09928549063000751fe730",
+      "id": "material:76350576cf4345452ad04c39",
+      "name": "Material_PaintRust",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_PaintRust_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_PaintRust_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_PaintRust_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_PaintRust_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "9fee570e005a70903489578162a1d94129351ab984612940c8ca32e3e57f818b",
+      "id": "material:9fee570e005a709034895781",
+      "name": "Material_Truss",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Truss_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Truss_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Truss_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Truss_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "e36d2c410bb62a6109f290e2afd41561aa69108c3251d089b329e9f8eab4f284",
+      "id": "material:e36d2c410bb62a6109f290e2",
+      "name": "Material_Struct",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Struct_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Struct_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Struct_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Struct_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "f91b428282b8517694b348004ab71dd36d17388c50a3666f4c33d3a5a4c5a671",
+      "id": "material:f91b428282b8517694b34800",
+      "name": "Material_PaintTeal",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_PaintTeal_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_PaintTeal_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_PaintTeal_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_PaintTeal_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.improvised-dock.mesh.lod0-merged-material-baresteel",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Merged_Material_BareSteel",
+      "nodeName": "LOD0_Merged_Material_BareSteel",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.improvised-dock.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.improvised-dock.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.improvised-dock.mesh.lod0-merged-material-lighthooded",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Merged_Material_LightHooded",
+      "nodeName": "LOD0_Merged_Material_LightHooded",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.improvised-dock.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.improvised-dock.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.improvised-dock.mesh.lod0-merged-material-paintrust",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Merged_Material_PaintRust",
+      "nodeName": "LOD0_Merged_Material_PaintRust",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.improvised-dock.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.improvised-dock.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.improvised-dock.mesh.lod0-merged-material-paintteal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Merged_Material_PaintTeal",
+      "nodeName": "LOD0_Merged_Material_PaintTeal",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.improvised-dock.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.improvised-dock.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.improvised-dock.mesh.lod0-merged-material-struct",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Merged_Material_Struct",
+      "nodeName": "LOD0_Merged_Material_Struct",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.improvised-dock.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.improvised-dock.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.improvised-dock.mesh.lod0-merged-material-truss",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Merged_Material_Truss",
+      "nodeName": "LOD0_Merged_Material_Truss",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.improvised-dock.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.improvised-dock.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.improvised-dock.mesh.lod1-merged-material-baresteel",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Merged_Material_BareSteel",
+      "nodeName": "LOD1_Merged_Material_BareSteel",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.improvised-dock.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.improvised-dock.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.improvised-dock.mesh.lod1-merged-material-lighthooded",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Merged_Material_LightHooded",
+      "nodeName": "LOD1_Merged_Material_LightHooded",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.improvised-dock.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.improvised-dock.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.improvised-dock.mesh.lod1-merged-material-paintrust",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Merged_Material_PaintRust",
+      "nodeName": "LOD1_Merged_Material_PaintRust",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.improvised-dock.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.improvised-dock.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.improvised-dock.mesh.lod1-merged-material-paintteal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Merged_Material_PaintTeal",
+      "nodeName": "LOD1_Merged_Material_PaintTeal",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.improvised-dock.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.improvised-dock.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.improvised-dock.mesh.lod1-merged-material-struct",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Merged_Material_Struct",
+      "nodeName": "LOD1_Merged_Material_Struct",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.improvised-dock.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.improvised-dock.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.improvised-dock.mesh.lod1-merged-material-truss",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Merged_Material_Truss",
+      "nodeName": "LOD1_Merged_Material_Truss",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.improvised-dock.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.improvised-dock.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.improvised-dock.mesh.lod2-merged-material-baresteel",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Merged_Material_BareSteel",
+      "nodeName": "LOD2_Merged_Material_BareSteel",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.improvised-dock.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.improvised-dock.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.improvised-dock.mesh.lod2-merged-material-lighthooded",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Merged_Material_LightHooded",
+      "nodeName": "LOD2_Merged_Material_LightHooded",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.improvised-dock.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.improvised-dock.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.improvised-dock.mesh.lod2-merged-material-paintrust",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Merged_Material_PaintRust",
+      "nodeName": "LOD2_Merged_Material_PaintRust",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.improvised-dock.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.improvised-dock.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.improvised-dock.mesh.lod2-merged-material-paintteal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Merged_Material_PaintTeal",
+      "nodeName": "LOD2_Merged_Material_PaintTeal",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.improvised-dock.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.improvised-dock.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.improvised-dock.mesh.lod2-merged-material-struct",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Merged_Material_Struct",
+      "nodeName": "LOD2_Merged_Material_Struct",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.improvised-dock.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.improvised-dock.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.improvised-dock.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "place_improvised_dock",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.improvised-dock.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "c03038df1725fe620f3aab7a576349ad1435944e6e4a9cf132f804d398108cc6"
+    },
+    "sourceGlb": {
+      "bytes": 482768,
+      "sha256": "1af62c2398004def62408fe7ec9c514f93a6606715f900923dfcdc8ccc7ef434",
+      "uri": "place_improvised_dock.glb"
+    },
+    "sourceManifest": {
+      "bytes": 69666,
+      "sha256": "b320efaf850ef6f26a926eb1a4976cc0ae16f9621cc52f517b25152cd81b69e9",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 535508,
+    "sha256": "30f35402c09704e29f039c2fe8a65f637bf27aec173a5dd4b6ff7d8cf39ff2dd",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        1.5199954509735107,
+        0.6264016628265381,
+        -4.529650568962097
+      ],
+      "max": [
+        6.099982261657715,
+        2.852964162826538,
+        1.7000000476837158
+      ],
+      "min": [
+        -3.0599913597106934,
+        -1.600160837173462,
+        -10.75930118560791
+      ],
+      "size": [
+        9.159973621368408,
+        4.453125,
+        12.459301233291626
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          5.400000095367432,
+          1.5,
+          -12,
+          1
+        ],
+        "name": "SOCKET_Berth",
+        "planIndex": 20,
+        "tags": {
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Berth",
+          "socket": true,
+          "spaceface": {
+            "socket": true
+          },
+          "spaceface.socket": true,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Berth",
+            "recordIds": [
+              "sf.render.improvised-dock.anchor.socket-berth"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "hull": 17
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 6,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 7,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 8,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 10,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 11,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 12,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 13,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 14,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 15,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 16,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 17,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 18,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 19,
+        "role": "hull"
+      }
+    ],
+    "nodeCount": 21,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Merged_Material_BareSteel",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "tint": "dark"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Merged_Material_LightHooded",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "tint": "accent"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Merged_Material_PaintRust",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "tint": "accent"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Merged_Material_PaintTeal",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "tint": "accent"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Merged_Material_Struct",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "tint": "dark"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Merged_Material_Truss",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "tint": "dark"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Merged_Material_BareSteel",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "tint": "dark"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Merged_Material_LightHooded",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "tint": "accent"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Merged_Material_PaintRust",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "tint": "accent"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Merged_Material_PaintTeal",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "tint": "accent"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Merged_Material_Struct",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "tint": "dark"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Merged_Material_Truss",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "tint": "dark"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Merged_Material_BareSteel",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "tint": "dark"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Merged_Material_LightHooded",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "tint": "accent"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Merged_Material_PaintRust",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "tint": "accent"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Merged_Material_PaintTeal",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "tint": "accent"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Merged_Material_Struct",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "tint": "dark"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_improvised_dock.glb"
+  },
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          6.099982261657715,
+          2.852964162826538,
+          1.7000000476837158
+        ],
+        "min": [
+          -3.0599913597106934,
+          -1.600160837173462,
+          -10.75930118560791
+        ]
+      },
+      "id": "sf.render.improvised-dock.body",
+      "nodeIds": [
+        "sf.render.improvised-dock.mesh.lod0-merged-material-baresteel",
+        "sf.render.improvised-dock.mesh.lod0-merged-material-lighthooded",
+        "sf.render.improvised-dock.mesh.lod0-merged-material-paintrust",
+        "sf.render.improvised-dock.mesh.lod0-merged-material-paintteal",
+        "sf.render.improvised-dock.mesh.lod0-merged-material-struct",
+        "sf.render.improvised-dock.mesh.lod0-merged-material-truss",
+        "sf.render.improvised-dock.mesh.lod1-merged-material-baresteel",
+        "sf.render.improvised-dock.mesh.lod1-merged-material-lighthooded",
+        "sf.render.improvised-dock.mesh.lod1-merged-material-paintrust",
+        "sf.render.improvised-dock.mesh.lod1-merged-material-paintteal",
+        "sf.render.improvised-dock.mesh.lod1-merged-material-struct",
+        "sf.render.improvised-dock.mesh.lod1-merged-material-truss",
+        "sf.render.improvised-dock.mesh.lod2-merged-material-baresteel",
+        "sf.render.improvised-dock.mesh.lod2-merged-material-lighthooded",
+        "sf.render.improvised-dock.mesh.lod2-merged-material-paintrust",
+        "sf.render.improvised-dock.mesh.lod2-merged-material-paintteal",
+        "sf.render.improvised-dock.mesh.lod2-merged-material-struct",
+        "sf.render.improvised-dock.root"
+      ]
+    }
+  ]
+}

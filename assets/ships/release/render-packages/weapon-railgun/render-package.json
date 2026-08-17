@@ -53,7 +53,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "52d9dfee658067bad3fdd90021a01f62c413e69631e049ef5fa2659abd0f7d67",
+  "contentHash": "d8fa0f3cb4780332c36dcd18b18fb1e49c186e91dda18968e38e236623360098",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -465,8 +465,8 @@
       "uri": "weapon_railgun.glb"
     },
     "sourceManifest": {
-      "bytes": 57392,
-      "sha256": "f9218f14bbd083ec30bff001e310bf742dffed27e43546393fe96c96c8c5f44b",
+      "bytes": 69666,
+      "sha256": "b320efaf850ef6f26a926eb1a4976cc0ae16f9621cc52f517b25152cd81b69e9",
       "uri": "pilots.json"
     }
   },

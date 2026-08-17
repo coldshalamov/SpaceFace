@@ -1,0 +1,1693 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.worklight-tower.anchor.socket-head",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        15.100000381469727,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Head",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentNodeId": "sf.render.worklight-tower.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        15.100000381469727,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.worklight-tower",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "8bd6e1ff754bf5fa0420047b5774a21262f8f5e9cad96f9f2edaa1de69a6ca5b",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          0.9900000095367432,
+          1.2999547719955444,
+          0.9900000095367432
+        ],
+        "min": [
+          -0.9900000095367432,
+          0.8000451326370239,
+          -0.9900000095367432
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f2ada30da238fd7a13d639b1fb27f10e06c51be639c1118015a3cbfc8d985b74",
+      "id": "sf.render.worklight-tower.mesh.lod0-merged-material-hazard.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "5bd67da4c6bb87d4ca91161f44edd7861642f9d65e4516868630cf6f7eae7190",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Merged_Material_Hazard.002",
+      "nodeId": "sf.render.worklight-tower.mesh.lod0-merged-material-hazard",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.198073387145996,
+          14.871780395507812,
+          1.226364016532898
+        ],
+        "min": [
+          -1.1821413040161133,
+          14.4801025390625,
+          -0.8534091114997864
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "02bfec893d53b42f52bc1c75ce40888505f4e43d388b0399fc0335cda2aeef57",
+      "id": "sf.render.worklight-tower.mesh.lod0-merged-material-lightflood.primitive.0",
+      "indexCount": 108,
+      "indexed": true,
+      "materialHash": "6aee16fc156849a9fe6a3292d383b15e095764ff9485261f02a204047f155583",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Merged_Material_LightFlood.002",
+      "nodeId": "sf.render.worklight-tower.mesh.lod0-merged-material-lightflood",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          0.20923087000846863,
+          15.820000648498535,
+          0.2200002670288086
+        ],
+        "min": [
+          -0.20923089981079102,
+          15.380000114440918,
+          -0.2200002670288086
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fa941abd73d2ad795482661b63a9a0ba3c876a1ea032714bf988cc3af37e38e0",
+      "id": "sf.render.worklight-tower.mesh.lod0-merged-material-lightsignal.primitive.0",
+      "indexCount": 300,
+      "indexed": true,
+      "materialHash": "e045332c025d533f5945ce532b14b9352f64ff92e90205dce401dc68ce7e60fa",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Merged_Material_LightSignal.002",
+      "nodeId": "sf.render.worklight-tower.mesh.lod0-merged-material-lightsignal",
+      "primitiveIndex": 0,
+      "vertexCount": 220
+    },
+    {
+      "bounds": {
+        "max": [
+          1.4994169473648071,
+          15.145312309265137,
+          1.4994169473648071
+        ],
+        "min": [
+          -1.4994169473648071,
+          0,
+          -1.4994169473648071
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e0fad31bdc901d4f77cc9af495756855d6f41cbb549269e11c76d765b4b3bba4",
+      "id": "sf.render.worklight-tower.mesh.lod0-merged-material-struct.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "e36d2c410bb62a6109f290e2afd41561aa69108c3251d089b329e9f8eab4f284",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Merged_Material_Struct.002",
+      "nodeId": "sf.render.worklight-tower.mesh.lod0-merged-material-struct",
+      "primitiveIndex": 0,
+      "vertexCount": 120
+    },
+    {
+      "bounds": {
+        "max": [
+          0.5021178126335144,
+          14.831151008605957,
+          0.5098426938056946
+        ],
+        "min": [
+          -0.5021178126335144,
+          0.7688488960266113,
+          -0.5098426938056946
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "885556067abdf3301679d336c76473f90dd46593a95cd0574f5f0ec0e0857f24",
+      "id": "sf.render.worklight-tower.mesh.lod0-merged-material-truss.primitive.0",
+      "indexCount": 1680,
+      "indexed": true,
+      "materialHash": "9fee570e005a70903489578162a1d94129351ab984612940c8ca32e3e57f818b",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Merged_Material_Truss.002",
+      "nodeId": "sf.render.worklight-tower.mesh.lod0-merged-material-truss",
+      "primitiveIndex": 0,
+      "vertexCount": 1008
+    },
+    {
+      "bounds": {
+        "max": [
+          0.9900000095367432,
+          1.2999547719955444,
+          0.9900000095367432
+        ],
+        "min": [
+          -0.9900000095367432,
+          0.8000451326370239,
+          -0.9900000095367432
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f2ada30da238fd7a13d639b1fb27f10e06c51be639c1118015a3cbfc8d985b74",
+      "id": "sf.render.worklight-tower.mesh.lod1-merged-material-hazard.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "5bd67da4c6bb87d4ca91161f44edd7861642f9d65e4516868630cf6f7eae7190",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Merged_Material_Hazard.002",
+      "nodeId": "sf.render.worklight-tower.mesh.lod1-merged-material-hazard",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.198073387145996,
+          14.871780395507812,
+          1.226364016532898
+        ],
+        "min": [
+          -1.1821413040161133,
+          14.4801025390625,
+          -0.8534091114997864
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "02bfec893d53b42f52bc1c75ce40888505f4e43d388b0399fc0335cda2aeef57",
+      "id": "sf.render.worklight-tower.mesh.lod1-merged-material-lightflood.primitive.0",
+      "indexCount": 108,
+      "indexed": true,
+      "materialHash": "6aee16fc156849a9fe6a3292d383b15e095764ff9485261f02a204047f155583",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Merged_Material_LightFlood.002",
+      "nodeId": "sf.render.worklight-tower.mesh.lod1-merged-material-lightflood",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          0.20923087000846863,
+          15.820000648498535,
+          0.2200002670288086
+        ],
+        "min": [
+          -0.20923089981079102,
+          15.380000114440918,
+          -0.2200002670288086
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fa941abd73d2ad795482661b63a9a0ba3c876a1ea032714bf988cc3af37e38e0",
+      "id": "sf.render.worklight-tower.mesh.lod1-merged-material-lightsignal.primitive.0",
+      "indexCount": 300,
+      "indexed": true,
+      "materialHash": "e045332c025d533f5945ce532b14b9352f64ff92e90205dce401dc68ce7e60fa",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Merged_Material_LightSignal.002",
+      "nodeId": "sf.render.worklight-tower.mesh.lod1-merged-material-lightsignal",
+      "primitiveIndex": 0,
+      "vertexCount": 220
+    },
+    {
+      "bounds": {
+        "max": [
+          1.4994169473648071,
+          15.145312309265137,
+          1.4994169473648071
+        ],
+        "min": [
+          -1.4994169473648071,
+          0,
+          -1.4994169473648071
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e0fad31bdc901d4f77cc9af495756855d6f41cbb549269e11c76d765b4b3bba4",
+      "id": "sf.render.worklight-tower.mesh.lod1-merged-material-struct.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "e36d2c410bb62a6109f290e2afd41561aa69108c3251d089b329e9f8eab4f284",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Merged_Material_Struct.002",
+      "nodeId": "sf.render.worklight-tower.mesh.lod1-merged-material-struct",
+      "primitiveIndex": 0,
+      "vertexCount": 120
+    },
+    {
+      "bounds": {
+        "max": [
+          0.9900000095367432,
+          1.2999547719955444,
+          0.9900000095367432
+        ],
+        "min": [
+          -0.9900000095367432,
+          0.8000451326370239,
+          -0.9900000095367432
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f2ada30da238fd7a13d639b1fb27f10e06c51be639c1118015a3cbfc8d985b74",
+      "id": "sf.render.worklight-tower.mesh.lod2-merged-material-hazard.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "5bd67da4c6bb87d4ca91161f44edd7861642f9d65e4516868630cf6f7eae7190",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Merged_Material_Hazard.002",
+      "nodeId": "sf.render.worklight-tower.mesh.lod2-merged-material-hazard",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          1.198073387145996,
+          14.871780395507812,
+          1.226364016532898
+        ],
+        "min": [
+          -1.1821413040161133,
+          14.4801025390625,
+          -0.8534091114997864
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "02bfec893d53b42f52bc1c75ce40888505f4e43d388b0399fc0335cda2aeef57",
+      "id": "sf.render.worklight-tower.mesh.lod2-merged-material-lightflood.primitive.0",
+      "indexCount": 108,
+      "indexed": true,
+      "materialHash": "6aee16fc156849a9fe6a3292d383b15e095764ff9485261f02a204047f155583",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Merged_Material_LightFlood.002",
+      "nodeId": "sf.render.worklight-tower.mesh.lod2-merged-material-lightflood",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          1.4994169473648071,
+          15.145312309265137,
+          1.4994169473648071
+        ],
+        "min": [
+          -1.4994169473648071,
+          0,
+          -1.4994169473648071
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e0fad31bdc901d4f77cc9af495756855d6f41cbb549269e11c76d765b4b3bba4",
+      "id": "sf.render.worklight-tower.mesh.lod2-merged-material-struct.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "e36d2c410bb62a6109f290e2afd41561aa69108c3251d089b329e9f8eab4f284",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Merged_Material_Struct.002",
+      "nodeId": "sf.render.worklight-tower.mesh.lod2-merged-material-struct",
+      "primitiveIndex": 0,
+      "vertexCount": 120
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "5bd67da4c6bb87d4ca91161f44edd7861642f9d65e4516868630cf6f7eae7190",
+      "id": "material:5bd67da4c6bb87d4ca91161f",
+      "name": "Material_Hazard",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Hazard_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hazard_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hazard_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hazard_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "6aee16fc156849a9fe6a3292d383b15e095764ff9485261f02a204047f155583",
+      "id": "material:6aee16fc156849a9fe6a3292",
+      "name": "Material_LightFlood",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_LightFlood_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_LightFlood_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_LightFlood_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_LightFlood_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "9fee570e005a70903489578162a1d94129351ab984612940c8ca32e3e57f818b",
+      "id": "material:9fee570e005a709034895781",
+      "name": "Material_Truss",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Truss_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Truss_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Truss_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Truss_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "e045332c025d533f5945ce532b14b9352f64ff92e90205dce401dc68ce7e60fa",
+      "id": "material:e045332c025d533f5945ce53",
+      "name": "Material_LightSignal",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_LightSignal_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_LightSignal_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_LightSignal_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_LightSignal_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "e36d2c410bb62a6109f290e2afd41561aa69108c3251d089b329e9f8eab4f284",
+      "id": "material:e36d2c410bb62a6109f290e2",
+      "name": "Material_Struct",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Struct_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Struct_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Struct_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Struct_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.worklight-tower.mesh.lod0-merged-material-hazard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Merged_Material_Hazard",
+      "nodeName": "LOD0_Merged_Material_Hazard",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.worklight-tower.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.worklight-tower.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.worklight-tower.mesh.lod0-merged-material-lightflood",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Merged_Material_LightFlood",
+      "nodeName": "LOD0_Merged_Material_LightFlood",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.worklight-tower.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.worklight-tower.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.worklight-tower.mesh.lod0-merged-material-lightsignal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Merged_Material_LightSignal",
+      "nodeName": "LOD0_Merged_Material_LightSignal",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.worklight-tower.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.worklight-tower.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.worklight-tower.mesh.lod0-merged-material-struct",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Merged_Material_Struct",
+      "nodeName": "LOD0_Merged_Material_Struct",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.worklight-tower.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.worklight-tower.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.worklight-tower.mesh.lod0-merged-material-truss",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Merged_Material_Truss",
+      "nodeName": "LOD0_Merged_Material_Truss",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.worklight-tower.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.worklight-tower.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.worklight-tower.mesh.lod1-merged-material-hazard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Merged_Material_Hazard",
+      "nodeName": "LOD1_Merged_Material_Hazard",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.worklight-tower.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.worklight-tower.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.worklight-tower.mesh.lod1-merged-material-lightflood",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Merged_Material_LightFlood",
+      "nodeName": "LOD1_Merged_Material_LightFlood",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.worklight-tower.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.worklight-tower.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.worklight-tower.mesh.lod1-merged-material-lightsignal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Merged_Material_LightSignal",
+      "nodeName": "LOD1_Merged_Material_LightSignal",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.worklight-tower.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.worklight-tower.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.worklight-tower.mesh.lod1-merged-material-struct",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Merged_Material_Struct",
+      "nodeName": "LOD1_Merged_Material_Struct",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.worklight-tower.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.worklight-tower.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.worklight-tower.mesh.lod2-merged-material-hazard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Merged_Material_Hazard",
+      "nodeName": "LOD2_Merged_Material_Hazard",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.worklight-tower.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.worklight-tower.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.worklight-tower.mesh.lod2-merged-material-lightflood",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Merged_Material_LightFlood",
+      "nodeName": "LOD2_Merged_Material_LightFlood",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.worklight-tower.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.worklight-tower.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.worklight-tower.mesh.lod2-merged-material-struct",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Merged_Material_Struct",
+      "nodeName": "LOD2_Merged_Material_Struct",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.worklight-tower.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.worklight-tower.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.worklight-tower.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "place_worklight_tower",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.worklight-tower.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "d273667002e089b4d514b2aa2becbe0f92ba930ec7ee2c3e38b87ea6b2e5b45a"
+    },
+    "sourceGlb": {
+      "bytes": 348104,
+      "sha256": "01a32f25f2e10a1a19a359273570cacebcee59196652a2fddd9eafd4c99416d4",
+      "uri": "place_worklight_tower.glb"
+    },
+    "sourceManifest": {
+      "bytes": 69666,
+      "sha256": "b320efaf850ef6f26a926eb1a4976cc0ae16f9621cc52f517b25152cd81b69e9",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 374600,
+    "sha256": "c553c955e7ab3cc24113d043a235814d3e489a9a8e07cd7fa5fc179834561897",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0,
+        7.910000324249268,
+        0
+      ],
+      "max": [
+        1.4994169473648071,
+        15.820000648498535,
+        1.4994169473648071
+      ],
+      "min": [
+        -1.4994169473648071,
+        0,
+        -1.4994169473648071
+      ],
+      "size": [
+        2.9988338947296143,
+        15.820000648498535,
+        2.9988338947296143
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          15.100000381469727,
+          0,
+          1
+        ],
+        "name": "SOCKET_Head",
+        "planIndex": 15,
+        "tags": {
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Head",
+          "socket": true,
+          "spaceface": {
+            "socket": true
+          },
+          "spaceface.socket": true,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Head",
+            "recordIds": [
+              "sf.render.worklight-tower.anchor.socket-head"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "hull": 9,
+      "warning": 3
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 3,
+        "role": "warning"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 6,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 7,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 8,
+        "role": "warning"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 10,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 11,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 12,
+        "role": "warning"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 13,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 14,
+        "role": "hull"
+      }
+    ],
+    "nodeCount": 16,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Merged_Material_Hazard",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Merged_Material_LightFlood",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "tint": "accent"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Merged_Material_LightSignal",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "tint": "accent"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Merged_Material_Struct",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "tint": "dark"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Merged_Material_Truss",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "tint": "dark"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Merged_Material_Hazard",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Merged_Material_LightFlood",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "tint": "accent"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Merged_Material_LightSignal",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "tint": "accent"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Merged_Material_Struct",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "tint": "dark"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Merged_Material_Hazard",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Merged_Material_LightFlood",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "tint": "accent"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Merged_Material_Struct",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "tint": "dark"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_worklight_tower.glb"
+  },
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          1.4994169473648071,
+          15.820000648498535,
+          1.4994169473648071
+        ],
+        "min": [
+          -1.4994169473648071,
+          0,
+          -1.4994169473648071
+        ]
+      },
+      "id": "sf.render.worklight-tower.body",
+      "nodeIds": [
+        "sf.render.worklight-tower.mesh.lod0-merged-material-hazard",
+        "sf.render.worklight-tower.mesh.lod0-merged-material-lightflood",
+        "sf.render.worklight-tower.mesh.lod0-merged-material-lightsignal",
+        "sf.render.worklight-tower.mesh.lod0-merged-material-struct",
+        "sf.render.worklight-tower.mesh.lod0-merged-material-truss",
+        "sf.render.worklight-tower.mesh.lod1-merged-material-hazard",
+        "sf.render.worklight-tower.mesh.lod1-merged-material-lightflood",
+        "sf.render.worklight-tower.mesh.lod1-merged-material-lightsignal",
+        "sf.render.worklight-tower.mesh.lod1-merged-material-struct",
+        "sf.render.worklight-tower.mesh.lod2-merged-material-hazard",
+        "sf.render.worklight-tower.mesh.lod2-merged-material-lightflood",
+        "sf.render.worklight-tower.mesh.lod2-merged-material-struct",
+        "sf.render.worklight-tower.root"
+      ]
+    }
+  ]
+}

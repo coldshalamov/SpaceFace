@@ -1,0 +1,1694 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.radiator-bank.anchor.socket-coolant-in",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        8.600000381469727,
+        0.550000011920929,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Coolant_In",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentNodeId": "sf.render.radiator-bank.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        8.600000381469727,
+        0.550000011920929,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.radiator-bank",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "0a3f8d94e5672fb61ab9abe9555ff3cb8013137bfd42f6d330d06baa94f8dbdb",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          7.650000095367432,
+          5.9999237060546875,
+          0.16996368765830994
+        ],
+        "min": [
+          -7.650000095367432,
+          5.800076484680176,
+          -0.16996368765830994
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4ba01ef00ed40b572678cdb474cecb454488a12506764912e5df1cf10f3a1cbd",
+      "id": "sf.render.radiator-bank.mesh.lod0-merged-material-hazard.primitive.0",
+      "indexCount": 216,
+      "indexed": true,
+      "materialHash": "5bd67da4c6bb87d4ca91161f44edd7861642f9d65e4516868630cf6f7eae7190",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Merged_Material_Hazard.002",
+      "nodeId": "sf.render.radiator-bank.mesh.lod0-merged-material-hazard",
+      "primitiveIndex": 0,
+      "vertexCount": 144
+    },
+    {
+      "bounds": {
+        "max": [
+          7.449999809265137,
+          5.6002702713012695,
+          0.1500595062971115
+        ],
+        "min": [
+          -7.449999809265137,
+          0.799730122089386,
+          -0.1500595062971115
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4750bfb4bc85a1aaa67fb11e03ca14375229a2be5bd83ba132989e347400d8df",
+      "id": "sf.render.radiator-bank.mesh.lod0-merged-material-ore.primitive.0",
+      "indexCount": 216,
+      "indexed": true,
+      "materialHash": "96d3702f66281ccf601402b1c2d46c356ff07f3873a0f844118c475a545d48ce",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Merged_Material_Ore.002",
+      "nodeId": "sf.render.radiator-bank.mesh.lod0-merged-material-ore",
+      "primitiveIndex": 0,
+      "vertexCount": 144
+    },
+    {
+      "bounds": {
+        "max": [
+          8,
+          0.689652681350708,
+          0.47071748971939087
+        ],
+        "min": [
+          -8,
+          0.4103473126888275,
+          -0.47071748971939087
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0215a3086cdc938249e5d5a8a5e548fb2196c72622c2432e06b8f211120ba3ba",
+      "id": "sf.render.radiator-bank.mesh.lod0-merged-material-pipe.primitive.0",
+      "indexCount": 120,
+      "indexed": true,
+      "materialHash": "f32ee0df73125f52526a7986f16fb832cf1ea90a5dfd81df6bd196a750306423",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Merged_Material_Pipe.002",
+      "nodeId": "sf.render.radiator-bank.mesh.lod0-merged-material-pipe",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          8.5,
+          5.799436569213867,
+          0.8000122308731079
+        ],
+        "min": [
+          -8.5,
+          -1.0494362115859985,
+          -0.8000122308731079
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8e35e03648a21de362b3b6ac3250a5dbe7c078699643841862cd477c119b5339",
+      "id": "sf.render.radiator-bank.mesh.lod0-merged-material-struct.primitive.0",
+      "indexCount": 288,
+      "indexed": true,
+      "materialHash": "e36d2c410bb62a6109f290e2afd41561aa69108c3251d089b329e9f8eab4f284",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Merged_Material_Struct.002",
+      "nodeId": "sf.render.radiator-bank.mesh.lod0-merged-material-struct",
+      "primitiveIndex": 0,
+      "vertexCount": 192
+    },
+    {
+      "bounds": {
+        "max": [
+          8.032159805297852,
+          0.5598759055137634,
+          0.5520317554473877
+        ],
+        "min": [
+          -8.032159805297852,
+          -0.5598759055137634,
+          -0.5520317554473877
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "36cbc86606a90f7ad8006a9d366f5753c44fabf80e8c1b22811af63f7065b5aa",
+      "id": "sf.render.radiator-bank.mesh.lod0-merged-material-truss.primitive.0",
+      "indexCount": 1800,
+      "indexed": true,
+      "materialHash": "9fee570e005a70903489578162a1d94129351ab984612940c8ca32e3e57f818b",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Merged_Material_Truss.002",
+      "nodeId": "sf.render.radiator-bank.mesh.lod0-merged-material-truss",
+      "primitiveIndex": 0,
+      "vertexCount": 1080
+    },
+    {
+      "bounds": {
+        "max": [
+          7.650000095367432,
+          5.9999237060546875,
+          0.16996368765830994
+        ],
+        "min": [
+          -7.650000095367432,
+          5.800076484680176,
+          -0.16996368765830994
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4ba01ef00ed40b572678cdb474cecb454488a12506764912e5df1cf10f3a1cbd",
+      "id": "sf.render.radiator-bank.mesh.lod1-merged-material-hazard.primitive.0",
+      "indexCount": 216,
+      "indexed": true,
+      "materialHash": "5bd67da4c6bb87d4ca91161f44edd7861642f9d65e4516868630cf6f7eae7190",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Merged_Material_Hazard.002",
+      "nodeId": "sf.render.radiator-bank.mesh.lod1-merged-material-hazard",
+      "primitiveIndex": 0,
+      "vertexCount": 144
+    },
+    {
+      "bounds": {
+        "max": [
+          7.449999809265137,
+          5.6002702713012695,
+          0.1500595062971115
+        ],
+        "min": [
+          -7.449999809265137,
+          0.799730122089386,
+          -0.1500595062971115
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4750bfb4bc85a1aaa67fb11e03ca14375229a2be5bd83ba132989e347400d8df",
+      "id": "sf.render.radiator-bank.mesh.lod1-merged-material-ore.primitive.0",
+      "indexCount": 216,
+      "indexed": true,
+      "materialHash": "96d3702f66281ccf601402b1c2d46c356ff07f3873a0f844118c475a545d48ce",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Merged_Material_Ore.002",
+      "nodeId": "sf.render.radiator-bank.mesh.lod1-merged-material-ore",
+      "primitiveIndex": 0,
+      "vertexCount": 144
+    },
+    {
+      "bounds": {
+        "max": [
+          8,
+          0.689652681350708,
+          0.47071748971939087
+        ],
+        "min": [
+          -8,
+          0.4103473126888275,
+          -0.47071748971939087
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0215a3086cdc938249e5d5a8a5e548fb2196c72622c2432e06b8f211120ba3ba",
+      "id": "sf.render.radiator-bank.mesh.lod1-merged-material-pipe.primitive.0",
+      "indexCount": 120,
+      "indexed": true,
+      "materialHash": "f32ee0df73125f52526a7986f16fb832cf1ea90a5dfd81df6bd196a750306423",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Merged_Material_Pipe.002",
+      "nodeId": "sf.render.radiator-bank.mesh.lod1-merged-material-pipe",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          8.5,
+          5.799436569213867,
+          0.8000122308731079
+        ],
+        "min": [
+          -8.5,
+          -1.0494362115859985,
+          -0.8000122308731079
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8e35e03648a21de362b3b6ac3250a5dbe7c078699643841862cd477c119b5339",
+      "id": "sf.render.radiator-bank.mesh.lod1-merged-material-struct.primitive.0",
+      "indexCount": 288,
+      "indexed": true,
+      "materialHash": "e36d2c410bb62a6109f290e2afd41561aa69108c3251d089b329e9f8eab4f284",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Merged_Material_Struct.002",
+      "nodeId": "sf.render.radiator-bank.mesh.lod1-merged-material-struct",
+      "primitiveIndex": 0,
+      "vertexCount": 192
+    },
+    {
+      "bounds": {
+        "max": [
+          7.650000095367432,
+          5.9999237060546875,
+          0.16996368765830994
+        ],
+        "min": [
+          -7.650000095367432,
+          5.800076484680176,
+          -0.16996368765830994
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4ba01ef00ed40b572678cdb474cecb454488a12506764912e5df1cf10f3a1cbd",
+      "id": "sf.render.radiator-bank.mesh.lod2-merged-material-hazard.primitive.0",
+      "indexCount": 216,
+      "indexed": true,
+      "materialHash": "5bd67da4c6bb87d4ca91161f44edd7861642f9d65e4516868630cf6f7eae7190",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Merged_Material_Hazard.002",
+      "nodeId": "sf.render.radiator-bank.mesh.lod2-merged-material-hazard",
+      "primitiveIndex": 0,
+      "vertexCount": 144
+    },
+    {
+      "bounds": {
+        "max": [
+          7.449999809265137,
+          5.6002702713012695,
+          0.1500595062971115
+        ],
+        "min": [
+          -7.449999809265137,
+          0.799730122089386,
+          -0.1500595062971115
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4750bfb4bc85a1aaa67fb11e03ca14375229a2be5bd83ba132989e347400d8df",
+      "id": "sf.render.radiator-bank.mesh.lod2-merged-material-ore.primitive.0",
+      "indexCount": 216,
+      "indexed": true,
+      "materialHash": "96d3702f66281ccf601402b1c2d46c356ff07f3873a0f844118c475a545d48ce",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Merged_Material_Ore.002",
+      "nodeId": "sf.render.radiator-bank.mesh.lod2-merged-material-ore",
+      "primitiveIndex": 0,
+      "vertexCount": 144
+    },
+    {
+      "bounds": {
+        "max": [
+          8,
+          0.689652681350708,
+          0.47071748971939087
+        ],
+        "min": [
+          -8,
+          0.4103473126888275,
+          -0.47071748971939087
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0215a3086cdc938249e5d5a8a5e548fb2196c72622c2432e06b8f211120ba3ba",
+      "id": "sf.render.radiator-bank.mesh.lod2-merged-material-pipe.primitive.0",
+      "indexCount": 120,
+      "indexed": true,
+      "materialHash": "f32ee0df73125f52526a7986f16fb832cf1ea90a5dfd81df6bd196a750306423",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Merged_Material_Pipe.002",
+      "nodeId": "sf.render.radiator-bank.mesh.lod2-merged-material-pipe",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "5bd67da4c6bb87d4ca91161f44edd7861642f9d65e4516868630cf6f7eae7190",
+      "id": "material:5bd67da4c6bb87d4ca91161f",
+      "name": "Material_Hazard",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Hazard_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hazard_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hazard_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hazard_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "96d3702f66281ccf601402b1c2d46c356ff07f3873a0f844118c475a545d48ce",
+      "id": "material:96d3702f66281ccf601402b1",
+      "name": "Material_Ore",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Ore_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Ore_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Ore_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Ore_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "9fee570e005a70903489578162a1d94129351ab984612940c8ca32e3e57f818b",
+      "id": "material:9fee570e005a709034895781",
+      "name": "Material_Truss",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Truss_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Truss_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Truss_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Truss_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "e36d2c410bb62a6109f290e2afd41561aa69108c3251d089b329e9f8eab4f284",
+      "id": "material:e36d2c410bb62a6109f290e2",
+      "name": "Material_Struct",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Struct_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Struct_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Struct_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Struct_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "f32ee0df73125f52526a7986f16fb832cf1ea90a5dfd81df6bd196a750306423",
+      "id": "material:f32ee0df73125f52526a7986",
+      "name": "Material_Pipe",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Pipe_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Pipe_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Pipe_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Pipe_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.radiator-bank.mesh.lod0-merged-material-hazard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Merged_Material_Hazard",
+      "nodeName": "LOD0_Merged_Material_Hazard",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.radiator-bank.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.radiator-bank.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.radiator-bank.mesh.lod0-merged-material-ore",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Merged_Material_Ore",
+      "nodeName": "LOD0_Merged_Material_Ore",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.radiator-bank.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.radiator-bank.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.radiator-bank.mesh.lod0-merged-material-pipe",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Merged_Material_Pipe",
+      "nodeName": "LOD0_Merged_Material_Pipe",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.radiator-bank.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.radiator-bank.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.radiator-bank.mesh.lod0-merged-material-struct",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Merged_Material_Struct",
+      "nodeName": "LOD0_Merged_Material_Struct",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.radiator-bank.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.radiator-bank.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.radiator-bank.mesh.lod0-merged-material-truss",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Merged_Material_Truss",
+      "nodeName": "LOD0_Merged_Material_Truss",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.radiator-bank.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.radiator-bank.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.radiator-bank.mesh.lod1-merged-material-hazard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Merged_Material_Hazard",
+      "nodeName": "LOD1_Merged_Material_Hazard",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.radiator-bank.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.radiator-bank.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.radiator-bank.mesh.lod1-merged-material-ore",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Merged_Material_Ore",
+      "nodeName": "LOD1_Merged_Material_Ore",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.radiator-bank.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.radiator-bank.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.radiator-bank.mesh.lod1-merged-material-pipe",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Merged_Material_Pipe",
+      "nodeName": "LOD1_Merged_Material_Pipe",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.radiator-bank.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.radiator-bank.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.radiator-bank.mesh.lod1-merged-material-struct",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Merged_Material_Struct",
+      "nodeName": "LOD1_Merged_Material_Struct",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.radiator-bank.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.radiator-bank.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.radiator-bank.mesh.lod2-merged-material-hazard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Merged_Material_Hazard",
+      "nodeName": "LOD2_Merged_Material_Hazard",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.radiator-bank.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.radiator-bank.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.radiator-bank.mesh.lod2-merged-material-ore",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Merged_Material_Ore",
+      "nodeName": "LOD2_Merged_Material_Ore",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.radiator-bank.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.radiator-bank.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.radiator-bank.mesh.lod2-merged-material-pipe",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Merged_Material_Pipe",
+      "nodeName": "LOD2_Merged_Material_Pipe",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.radiator-bank.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.radiator-bank.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.radiator-bank.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "place_radiator_bank",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.radiator-bank.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "5ab02bdccbcaa47867e290d53203bfc95afef8d1f2faf265df75532f8ac54911"
+    },
+    "sourceGlb": {
+      "bytes": 434388,
+      "sha256": "168c66c7d861c8d4270e710d5f6b938694b026e27377e57066d4d2147052066f",
+      "uri": "place_radiator_bank.glb"
+    },
+    "sourceManifest": {
+      "bytes": 69666,
+      "sha256": "b320efaf850ef6f26a926eb1a4976cc0ae16f9621cc52f517b25152cd81b69e9",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 461912,
+    "sha256": "937ce5c1de7dde1988973d78d47c520791b1d4029e959b66008c0655536b14f5",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0,
+        2.4752437472343445,
+        0
+      ],
+      "max": [
+        8.5,
+        5.9999237060546875,
+        0.8000122308731079
+      ],
+      "min": [
+        -8.5,
+        -1.0494362115859985,
+        -0.8000122308731079
+      ],
+      "size": [
+        17,
+        7.049359917640686,
+        1.6000244617462158
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          8.600000381469727,
+          0.550000011920929,
+          0,
+          1
+        ],
+        "name": "SOCKET_Coolant_In",
+        "planIndex": 15,
+        "tags": {
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Coolant_In",
+          "socket": true,
+          "spaceface": {
+            "socket": true
+          },
+          "spaceface.socket": true,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Coolant_In",
+            "recordIds": [
+              "sf.render.radiator-bank.anchor.socket-coolant-in"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "hull": 6,
+      "mechanical": 3,
+      "warning": 3
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 3,
+        "role": "warning"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 5,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 6,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 7,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 8,
+        "role": "warning"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 10,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 11,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 12,
+        "role": "warning"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 13,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 14,
+        "role": "mechanical"
+      }
+    ],
+    "nodeCount": 16,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Merged_Material_Hazard",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Merged_Material_Ore",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Merged_Material_Pipe",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "tint": "dark"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Merged_Material_Struct",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "tint": "dark"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Merged_Material_Truss",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "tint": "dark"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Merged_Material_Hazard",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Merged_Material_Ore",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Merged_Material_Pipe",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "tint": "dark"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Merged_Material_Struct",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "tint": "dark"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Merged_Material_Hazard",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Merged_Material_Ore",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Merged_Material_Pipe",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "tint": "dark"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_radiator_bank.glb"
+  },
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          8.5,
+          5.9999237060546875,
+          0.8000122308731079
+        ],
+        "min": [
+          -8.5,
+          -1.0494362115859985,
+          -0.8000122308731079
+        ]
+      },
+      "id": "sf.render.radiator-bank.body",
+      "nodeIds": [
+        "sf.render.radiator-bank.mesh.lod0-merged-material-hazard",
+        "sf.render.radiator-bank.mesh.lod0-merged-material-ore",
+        "sf.render.radiator-bank.mesh.lod0-merged-material-pipe",
+        "sf.render.radiator-bank.mesh.lod0-merged-material-struct",
+        "sf.render.radiator-bank.mesh.lod0-merged-material-truss",
+        "sf.render.radiator-bank.mesh.lod1-merged-material-hazard",
+        "sf.render.radiator-bank.mesh.lod1-merged-material-ore",
+        "sf.render.radiator-bank.mesh.lod1-merged-material-pipe",
+        "sf.render.radiator-bank.mesh.lod1-merged-material-struct",
+        "sf.render.radiator-bank.mesh.lod2-merged-material-hazard",
+        "sf.render.radiator-bank.mesh.lod2-merged-material-ore",
+        "sf.render.radiator-bank.mesh.lod2-merged-material-pipe",
+        "sf.render.radiator-bank.root"
+      ]
+    }
+  ]
+}

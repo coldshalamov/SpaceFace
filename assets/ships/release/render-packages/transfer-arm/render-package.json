@@ -1,0 +1,2709 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.transfer-arm.anchor.socket-grapple",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        15.5,
+        4.599999904632568,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Grapple",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentNodeId": "sf.render.transfer-arm.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        15.5,
+        4.599999904632568,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transfer-arm.anchor.socket-slew-base",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Slew_Base",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentNodeId": "sf.render.transfer-arm.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.transfer-arm",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "04df43b854d8411a0db9fb705c37e37b4cc081ff60bf93124bbd9353e900c47d",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          16.399999618530273,
+          6.300107955932617,
+          0.8996612429618835
+        ],
+        "min": [
+          -0.8999999761581421,
+          4.184003829956055,
+          -0.8996612429618835
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6ab06e6de4d33bd40e8add7ab482b300551a19d722f4d5a8f822896e339742ec",
+      "id": "sf.render.transfer-arm.mesh.lod0-merged-material-baresteel.primitive.0",
+      "indexCount": 240,
+      "indexed": true,
+      "materialHash": "2dc0c596a3f1a62a2bd072575fad348e5a162a9276296c174c7530aa32f7ba88",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Merged_Material_BareSteel.002",
+      "nodeId": "sf.render.transfer-arm.mesh.lod0-merged-material-baresteel",
+      "primitiveIndex": 0,
+      "vertexCount": 156
+    },
+    {
+      "bounds": {
+        "max": [
+          2.299999952316284,
+          0.24993132054805756,
+          2.299999952316284
+        ],
+        "min": [
+          -2.299999952316284,
+          -0.04993133246898651,
+          -2.299999952316284
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1651508cda1b39575ca317dbcf5adb14d19f69bb60798f38e0fc1ffd10466653",
+      "id": "sf.render.transfer-arm.mesh.lod0-merged-material-hazard.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "5bd67da4c6bb87d4ca91161f44edd7861642f9d65e4516868630cf6f7eae7190",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Merged_Material_Hazard.002",
+      "nodeId": "sf.render.transfer-arm.mesh.lod0-merged-material-hazard",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          15.711793899536133,
+          10.400205612182617,
+          0.22499457001686096
+        ],
+        "min": [
+          8.309788703918457,
+          5.1932525634765625,
+          -0.22499457001686096
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "407682693ec6efc4eb24cd836a9f782228ee5b0914c67d2f10753fd18535c965",
+      "id": "sf.render.transfer-arm.mesh.lod0-merged-material-lightflood.primitive.0",
+      "indexCount": 372,
+      "indexed": true,
+      "materialHash": "6aee16fc156849a9fe6a3292d383b15e095764ff9485261f02a204047f155583",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Merged_Material_LightFlood.002",
+      "nodeId": "sf.render.transfer-arm.mesh.lod0-merged-material-lightflood",
+      "primitiveIndex": 0,
+      "vertexCount": 268
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.9000000953674316,
+          6.150103569030762,
+          1.00006103515625
+        ],
+        "min": [
+          -3.9000000953674316,
+          4.549896240234375,
+          -1.00006103515625
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ddad8865ff4291918816d9da26a30942a63389661016e68c6076354ab62b9a5e",
+      "id": "sf.render.transfer-arm.mesh.lod0-merged-material-paintteal.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "f91b428282b8517694b348004ab71dd36d17388c50a3666f4c33d3a5a4c5a671",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Merged_Material_PaintTeal.002",
+      "nodeId": "sf.render.transfer-arm.mesh.lod0-merged-material-paintteal",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          12.441649436950684,
+          9.30170726776123,
+          0.5959978699684143
+        ],
+        "min": [
+          1.684478521347046,
+          1.7214256525039673,
+          -0.8248535990715027
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "761833c455af618f088cced1815593ab1075f74cb16dc119da8c7a6a35b74a80",
+      "id": "sf.render.transfer-arm.mesh.lod0-merged-material-pipe.primitive.0",
+      "indexCount": 120,
+      "indexed": true,
+      "materialHash": "f32ee0df73125f52526a7986f16fb832cf1ea90a5dfd81df6bd196a750306423",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Merged_Material_Pipe.002",
+      "nodeId": "sf.render.transfer-arm.mesh.lod0-merged-material-pipe",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          2.1998870372772217,
+          6.099999904632568,
+          2.1998870372772217
+        ],
+        "min": [
+          -2.1998870372772217,
+          0,
+          -2.1998870372772217
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "52b81ac4c74e727e4bc57f4b7e917cf771c1ca5a252434e563759abafe858f2b",
+      "id": "sf.render.transfer-arm.mesh.lod0-merged-material-struct.primitive.0",
+      "indexCount": 420,
+      "indexed": true,
+      "materialHash": "e36d2c410bb62a6109f290e2afd41561aa69108c3251d089b329e9f8eab4f284",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Merged_Material_Struct.002",
+      "nodeId": "sf.render.transfer-arm.mesh.lod0-merged-material-struct",
+      "primitiveIndex": 0,
+      "vertexCount": 228
+    },
+    {
+      "bounds": {
+        "max": [
+          15.677263259887695,
+          10.009188652038574,
+          0.5516117811203003
+        ],
+        "min": [
+          -0.23353338241577148,
+          5.090811729431152,
+          -0.5516118407249451
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "73fe90cdfef237e0e15fd803f9c31f0120e5599ae24948f938063e83aca71b14",
+      "id": "sf.render.transfer-arm.mesh.lod0-merged-material-truss.primitive.0",
+      "indexCount": 2160,
+      "indexed": true,
+      "materialHash": "9fee570e005a70903489578162a1d94129351ab984612940c8ca32e3e57f818b",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Merged_Material_Truss.002",
+      "nodeId": "sf.render.transfer-arm.mesh.lod0-merged-material-truss",
+      "primitiveIndex": 0,
+      "vertexCount": 1296
+    },
+    {
+      "bounds": {
+        "max": [
+          16.399999618530273,
+          6.300107955932617,
+          0.8996612429618835
+        ],
+        "min": [
+          -0.8999999761581421,
+          4.184003829956055,
+          -0.8996612429618835
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6ab06e6de4d33bd40e8add7ab482b300551a19d722f4d5a8f822896e339742ec",
+      "id": "sf.render.transfer-arm.mesh.lod1-merged-material-baresteel.primitive.0",
+      "indexCount": 240,
+      "indexed": true,
+      "materialHash": "2dc0c596a3f1a62a2bd072575fad348e5a162a9276296c174c7530aa32f7ba88",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Merged_Material_BareSteel.002",
+      "nodeId": "sf.render.transfer-arm.mesh.lod1-merged-material-baresteel",
+      "primitiveIndex": 0,
+      "vertexCount": 156
+    },
+    {
+      "bounds": {
+        "max": [
+          2.299999952316284,
+          0.24993132054805756,
+          2.299999952316284
+        ],
+        "min": [
+          -2.299999952316284,
+          -0.04993133246898651,
+          -2.299999952316284
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1651508cda1b39575ca317dbcf5adb14d19f69bb60798f38e0fc1ffd10466653",
+      "id": "sf.render.transfer-arm.mesh.lod1-merged-material-hazard.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "5bd67da4c6bb87d4ca91161f44edd7861642f9d65e4516868630cf6f7eae7190",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Merged_Material_Hazard.002",
+      "nodeId": "sf.render.transfer-arm.mesh.lod1-merged-material-hazard",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          15.711788177490234,
+          5.595170497894287,
+          0.22499999403953552
+        ],
+        "min": [
+          15.288211822509766,
+          5.193456649780273,
+          -0.22499999403953552
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f5b4beb409f8a4577ca3b244687c02abe9bc428678e50538586c8c189d339aaf",
+      "id": "sf.render.transfer-arm.mesh.lod1-merged-material-lightflood.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "6aee16fc156849a9fe6a3292d383b15e095764ff9485261f02a204047f155583",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Merged_Material_LightFlood.002",
+      "nodeId": "sf.render.transfer-arm.mesh.lod1-merged-material-lightflood",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.9000000953674316,
+          6.150103569030762,
+          1.00006103515625
+        ],
+        "min": [
+          -3.9000000953674316,
+          4.549896240234375,
+          -1.00006103515625
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ddad8865ff4291918816d9da26a30942a63389661016e68c6076354ab62b9a5e",
+      "id": "sf.render.transfer-arm.mesh.lod1-merged-material-paintteal.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "f91b428282b8517694b348004ab71dd36d17388c50a3666f4c33d3a5a4c5a671",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Merged_Material_PaintTeal.002",
+      "nodeId": "sf.render.transfer-arm.mesh.lod1-merged-material-paintteal",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          12.441649436950684,
+          9.30170726776123,
+          0.5959978699684143
+        ],
+        "min": [
+          1.684478521347046,
+          1.7214256525039673,
+          -0.8248535990715027
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "761833c455af618f088cced1815593ab1075f74cb16dc119da8c7a6a35b74a80",
+      "id": "sf.render.transfer-arm.mesh.lod1-merged-material-pipe.primitive.0",
+      "indexCount": 120,
+      "indexed": true,
+      "materialHash": "f32ee0df73125f52526a7986f16fb832cf1ea90a5dfd81df6bd196a750306423",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Merged_Material_Pipe.002",
+      "nodeId": "sf.render.transfer-arm.mesh.lod1-merged-material-pipe",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          2.1998870372772217,
+          6.099999904632568,
+          2.1998870372772217
+        ],
+        "min": [
+          -2.1998870372772217,
+          0,
+          -2.1998870372772217
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "52b81ac4c74e727e4bc57f4b7e917cf771c1ca5a252434e563759abafe858f2b",
+      "id": "sf.render.transfer-arm.mesh.lod1-merged-material-struct.primitive.0",
+      "indexCount": 420,
+      "indexed": true,
+      "materialHash": "e36d2c410bb62a6109f290e2afd41561aa69108c3251d089b329e9f8eab4f284",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Merged_Material_Struct.002",
+      "nodeId": "sf.render.transfer-arm.mesh.lod1-merged-material-struct",
+      "primitiveIndex": 0,
+      "vertexCount": 228
+    },
+    {
+      "bounds": {
+        "max": [
+          15.677263259887695,
+          10.009188652038574,
+          0.5516117811203003
+        ],
+        "min": [
+          -0.23353338241577148,
+          5.090811729431152,
+          -0.5516118407249451
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "73fe90cdfef237e0e15fd803f9c31f0120e5599ae24948f938063e83aca71b14",
+      "id": "sf.render.transfer-arm.mesh.lod1-merged-material-truss.primitive.0",
+      "indexCount": 2160,
+      "indexed": true,
+      "materialHash": "9fee570e005a70903489578162a1d94129351ab984612940c8ca32e3e57f818b",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Merged_Material_Truss.002",
+      "nodeId": "sf.render.transfer-arm.mesh.lod1-merged-material-truss",
+      "primitiveIndex": 0,
+      "vertexCount": 1296
+    },
+    {
+      "bounds": {
+        "max": [
+          16.399999618530273,
+          6.300107955932617,
+          0.8996612429618835
+        ],
+        "min": [
+          -0.8999999761581421,
+          4.184003829956055,
+          -0.8996612429618835
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6ab06e6de4d33bd40e8add7ab482b300551a19d722f4d5a8f822896e339742ec",
+      "id": "sf.render.transfer-arm.mesh.lod2-merged-material-baresteel.primitive.0",
+      "indexCount": 240,
+      "indexed": true,
+      "materialHash": "2dc0c596a3f1a62a2bd072575fad348e5a162a9276296c174c7530aa32f7ba88",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Merged_Material_BareSteel.002",
+      "nodeId": "sf.render.transfer-arm.mesh.lod2-merged-material-baresteel",
+      "primitiveIndex": 0,
+      "vertexCount": 156
+    },
+    {
+      "bounds": {
+        "max": [
+          2.299999952316284,
+          0.24993132054805756,
+          2.299999952316284
+        ],
+        "min": [
+          -2.299999952316284,
+          -0.04993133246898651,
+          -2.299999952316284
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1651508cda1b39575ca317dbcf5adb14d19f69bb60798f38e0fc1ffd10466653",
+      "id": "sf.render.transfer-arm.mesh.lod2-merged-material-hazard.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "5bd67da4c6bb87d4ca91161f44edd7861642f9d65e4516868630cf6f7eae7190",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Merged_Material_Hazard.002",
+      "nodeId": "sf.render.transfer-arm.mesh.lod2-merged-material-hazard",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          15.711788177490234,
+          5.595170497894287,
+          0.22499999403953552
+        ],
+        "min": [
+          15.288211822509766,
+          5.193456649780273,
+          -0.22499999403953552
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f5b4beb409f8a4577ca3b244687c02abe9bc428678e50538586c8c189d339aaf",
+      "id": "sf.render.transfer-arm.mesh.lod2-merged-material-lightflood.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "6aee16fc156849a9fe6a3292d383b15e095764ff9485261f02a204047f155583",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Merged_Material_LightFlood.002",
+      "nodeId": "sf.render.transfer-arm.mesh.lod2-merged-material-lightflood",
+      "primitiveIndex": 0,
+      "vertexCount": 48
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.9000000953674316,
+          6.150103569030762,
+          1.00006103515625
+        ],
+        "min": [
+          -3.9000000953674316,
+          4.549896240234375,
+          -1.00006103515625
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ddad8865ff4291918816d9da26a30942a63389661016e68c6076354ab62b9a5e",
+      "id": "sf.render.transfer-arm.mesh.lod2-merged-material-paintteal.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "f91b428282b8517694b348004ab71dd36d17388c50a3666f4c33d3a5a4c5a671",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Merged_Material_PaintTeal.002",
+      "nodeId": "sf.render.transfer-arm.mesh.lod2-merged-material-paintteal",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          12.441649436950684,
+          9.30170726776123,
+          0.5959978699684143
+        ],
+        "min": [
+          1.684478521347046,
+          1.7214256525039673,
+          -0.8248535990715027
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "761833c455af618f088cced1815593ab1075f74cb16dc119da8c7a6a35b74a80",
+      "id": "sf.render.transfer-arm.mesh.lod2-merged-material-pipe.primitive.0",
+      "indexCount": 120,
+      "indexed": true,
+      "materialHash": "f32ee0df73125f52526a7986f16fb832cf1ea90a5dfd81df6bd196a750306423",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Merged_Material_Pipe.002",
+      "nodeId": "sf.render.transfer-arm.mesh.lod2-merged-material-pipe",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          2.1998870372772217,
+          6.099999904632568,
+          2.1998870372772217
+        ],
+        "min": [
+          -2.1998870372772217,
+          0,
+          -2.1998870372772217
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "52b81ac4c74e727e4bc57f4b7e917cf771c1ca5a252434e563759abafe858f2b",
+      "id": "sf.render.transfer-arm.mesh.lod2-merged-material-struct.primitive.0",
+      "indexCount": 420,
+      "indexed": true,
+      "materialHash": "e36d2c410bb62a6109f290e2afd41561aa69108c3251d089b329e9f8eab4f284",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Merged_Material_Struct.002",
+      "nodeId": "sf.render.transfer-arm.mesh.lod2-merged-material-struct",
+      "primitiveIndex": 0,
+      "vertexCount": 228
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "2dc0c596a3f1a62a2bd072575fad348e5a162a9276296c174c7530aa32f7ba88",
+      "id": "material:2dc0c596a3f1a62a2bd07257",
+      "name": "Material_BareSteel",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_BareSteel_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_BareSteel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_BareSteel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_BareSteel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "5bd67da4c6bb87d4ca91161f44edd7861642f9d65e4516868630cf6f7eae7190",
+      "id": "material:5bd67da4c6bb87d4ca91161f",
+      "name": "Material_Hazard",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Hazard_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hazard_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hazard_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hazard_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "6aee16fc156849a9fe6a3292d383b15e095764ff9485261f02a204047f155583",
+      "id": "material:6aee16fc156849a9fe6a3292",
+      "name": "Material_LightFlood",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_LightFlood_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_LightFlood_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_LightFlood_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_LightFlood_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "9fee570e005a70903489578162a1d94129351ab984612940c8ca32e3e57f818b",
+      "id": "material:9fee570e005a709034895781",
+      "name": "Material_Truss",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Truss_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Truss_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Truss_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Truss_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "e36d2c410bb62a6109f290e2afd41561aa69108c3251d089b329e9f8eab4f284",
+      "id": "material:e36d2c410bb62a6109f290e2",
+      "name": "Material_Struct",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Struct_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Struct_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Struct_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Struct_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "f32ee0df73125f52526a7986f16fb832cf1ea90a5dfd81df6bd196a750306423",
+      "id": "material:f32ee0df73125f52526a7986",
+      "name": "Material_Pipe",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Pipe_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Pipe_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Pipe_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Pipe_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "f91b428282b8517694b348004ab71dd36d17388c50a3666f4c33d3a5a4c5a671",
+      "id": "material:f91b428282b8517694b34800",
+      "name": "Material_PaintTeal",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_PaintTeal_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_PaintTeal_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_PaintTeal_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_PaintTeal_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.transfer-arm.mesh.lod0-merged-material-baresteel",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Merged_Material_BareSteel",
+      "nodeName": "LOD0_Merged_Material_BareSteel",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.transfer-arm.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.transfer-arm.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transfer-arm.mesh.lod0-merged-material-hazard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Merged_Material_Hazard",
+      "nodeName": "LOD0_Merged_Material_Hazard",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.transfer-arm.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.transfer-arm.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transfer-arm.mesh.lod0-merged-material-lightflood",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Merged_Material_LightFlood",
+      "nodeName": "LOD0_Merged_Material_LightFlood",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.transfer-arm.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.transfer-arm.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transfer-arm.mesh.lod0-merged-material-paintteal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Merged_Material_PaintTeal",
+      "nodeName": "LOD0_Merged_Material_PaintTeal",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.transfer-arm.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.transfer-arm.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transfer-arm.mesh.lod0-merged-material-pipe",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Merged_Material_Pipe",
+      "nodeName": "LOD0_Merged_Material_Pipe",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.transfer-arm.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.transfer-arm.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transfer-arm.mesh.lod0-merged-material-struct",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Merged_Material_Struct",
+      "nodeName": "LOD0_Merged_Material_Struct",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.transfer-arm.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.transfer-arm.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transfer-arm.mesh.lod0-merged-material-truss",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Merged_Material_Truss",
+      "nodeName": "LOD0_Merged_Material_Truss",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.transfer-arm.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.transfer-arm.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transfer-arm.mesh.lod1-merged-material-baresteel",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Merged_Material_BareSteel",
+      "nodeName": "LOD1_Merged_Material_BareSteel",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.transfer-arm.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.transfer-arm.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transfer-arm.mesh.lod1-merged-material-hazard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Merged_Material_Hazard",
+      "nodeName": "LOD1_Merged_Material_Hazard",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.transfer-arm.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.transfer-arm.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transfer-arm.mesh.lod1-merged-material-lightflood",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Merged_Material_LightFlood",
+      "nodeName": "LOD1_Merged_Material_LightFlood",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.transfer-arm.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.transfer-arm.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transfer-arm.mesh.lod1-merged-material-paintteal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Merged_Material_PaintTeal",
+      "nodeName": "LOD1_Merged_Material_PaintTeal",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.transfer-arm.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.transfer-arm.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transfer-arm.mesh.lod1-merged-material-pipe",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Merged_Material_Pipe",
+      "nodeName": "LOD1_Merged_Material_Pipe",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.transfer-arm.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.transfer-arm.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transfer-arm.mesh.lod1-merged-material-struct",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Merged_Material_Struct",
+      "nodeName": "LOD1_Merged_Material_Struct",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.transfer-arm.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.transfer-arm.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transfer-arm.mesh.lod1-merged-material-truss",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Merged_Material_Truss",
+      "nodeName": "LOD1_Merged_Material_Truss",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.transfer-arm.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.transfer-arm.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transfer-arm.mesh.lod2-merged-material-baresteel",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Merged_Material_BareSteel",
+      "nodeName": "LOD2_Merged_Material_BareSteel",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.transfer-arm.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.transfer-arm.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transfer-arm.mesh.lod2-merged-material-hazard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Merged_Material_Hazard",
+      "nodeName": "LOD2_Merged_Material_Hazard",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.transfer-arm.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.transfer-arm.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transfer-arm.mesh.lod2-merged-material-lightflood",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Merged_Material_LightFlood",
+      "nodeName": "LOD2_Merged_Material_LightFlood",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.transfer-arm.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.transfer-arm.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transfer-arm.mesh.lod2-merged-material-paintteal",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Merged_Material_PaintTeal",
+      "nodeName": "LOD2_Merged_Material_PaintTeal",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.transfer-arm.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.transfer-arm.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transfer-arm.mesh.lod2-merged-material-pipe",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Merged_Material_Pipe",
+      "nodeName": "LOD2_Merged_Material_Pipe",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentId": "sf.render.transfer-arm.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.transfer-arm.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transfer-arm.mesh.lod2-merged-material-struct",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Merged_Material_Struct",
+      "nodeName": "LOD2_Merged_Material_Struct",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentId": "sf.render.transfer-arm.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.transfer-arm.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.transfer-arm.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "place_transfer_arm",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.transfer-arm.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "8313b333c4d28b43474f7c5ec45f370be55e1685f413998b6f488d1e46a25e24"
+    },
+    "sourceGlb": {
+      "bytes": 527856,
+      "sha256": "9d43793dab3a263d8a0ec806b178be1cb9ebf40c5c4c2c2b10a91e1a6124c172",
+      "uri": "place_transfer_arm.glb"
+    },
+    "sourceManifest": {
+      "bytes": 69666,
+      "sha256": "b320efaf850ef6f26a926eb1a4976cc0ae16f9621cc52f517b25152cd81b69e9",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 588628,
+    "sha256": "77973607c6073cf3d6fb07bd5c68ccacf7046cb1a0450085d805a673d9c32907",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        6.249999761581421,
+        5.175137139856815,
+        0
+      ],
+      "max": [
+        16.399999618530273,
+        10.400205612182617,
+        2.299999952316284
+      ],
+      "min": [
+        -3.9000000953674316,
+        -0.04993133246898651,
+        -2.299999952316284
+      ],
+      "size": [
+        20.299999713897705,
+        10.450136944651604,
+        4.599999904632568
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          15.5,
+          4.599999904632568,
+          0,
+          1
+        ],
+        "name": "SOCKET_Grapple",
+        "planIndex": 23,
+        "tags": {
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Grapple",
+          "socket": true,
+          "spaceface": {
+            "socket": true
+          },
+          "spaceface.socket": true,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Grapple",
+            "recordIds": [
+              "sf.render.transfer-arm.anchor.socket-grapple"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "SOCKET_Slew_Base",
+        "planIndex": 24,
+        "tags": {
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Slew_Base",
+          "socket": true,
+          "spaceface": {
+            "socket": true
+          },
+          "spaceface.socket": true,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Slew_Base",
+            "recordIds": [
+              "sf.render.transfer-arm.anchor.socket-slew-base"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "hull": 14,
+      "mechanical": 3,
+      "warning": 3
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 4,
+        "role": "warning"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 6,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 7,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 8,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 10,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 11,
+        "role": "warning"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 12,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 13,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 14,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 15,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 16,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 17,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 18,
+        "role": "warning"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 19,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 20,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 21,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 22,
+        "role": "hull"
+      }
+    ],
+    "nodeCount": 25,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Merged_Material_BareSteel",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "tint": "dark"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Merged_Material_Hazard",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Merged_Material_LightFlood",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "tint": "accent"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Merged_Material_PaintTeal",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "tint": "accent"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Merged_Material_Pipe",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "tint": "dark"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Merged_Material_Struct",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "tint": "dark"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Merged_Material_Truss",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "tint": "dark"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Merged_Material_BareSteel",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "tint": "dark"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Merged_Material_Hazard",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Merged_Material_LightFlood",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "tint": "accent"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Merged_Material_PaintTeal",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "tint": "accent"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Merged_Material_Pipe",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "tint": "dark"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Merged_Material_Struct",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "tint": "dark"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Merged_Material_Truss",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "tint": "dark"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Merged_Material_BareSteel",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "tint": "dark"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Merged_Material_Hazard",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Merged_Material_LightFlood",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "tint": "accent"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Merged_Material_PaintTeal",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "tint": "accent"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Merged_Material_Pipe",
+        "planIndex": 21,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "tint": "dark"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Merged_Material_Struct",
+        "planIndex": 22,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "tint": "dark"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_transfer_arm.glb"
+  },
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          16.399999618530273,
+          10.400205612182617,
+          2.299999952316284
+        ],
+        "min": [
+          -3.9000000953674316,
+          -0.04993133246898651,
+          -2.299999952316284
+        ]
+      },
+      "id": "sf.render.transfer-arm.body",
+      "nodeIds": [
+        "sf.render.transfer-arm.mesh.lod0-merged-material-baresteel",
+        "sf.render.transfer-arm.mesh.lod0-merged-material-hazard",
+        "sf.render.transfer-arm.mesh.lod0-merged-material-lightflood",
+        "sf.render.transfer-arm.mesh.lod0-merged-material-paintteal",
+        "sf.render.transfer-arm.mesh.lod0-merged-material-pipe",
+        "sf.render.transfer-arm.mesh.lod0-merged-material-struct",
+        "sf.render.transfer-arm.mesh.lod0-merged-material-truss",
+        "sf.render.transfer-arm.mesh.lod1-merged-material-baresteel",
+        "sf.render.transfer-arm.mesh.lod1-merged-material-hazard",
+        "sf.render.transfer-arm.mesh.lod1-merged-material-lightflood",
+        "sf.render.transfer-arm.mesh.lod1-merged-material-paintteal",
+        "sf.render.transfer-arm.mesh.lod1-merged-material-pipe",
+        "sf.render.transfer-arm.mesh.lod1-merged-material-struct",
+        "sf.render.transfer-arm.mesh.lod1-merged-material-truss",
+        "sf.render.transfer-arm.mesh.lod2-merged-material-baresteel",
+        "sf.render.transfer-arm.mesh.lod2-merged-material-hazard",
+        "sf.render.transfer-arm.mesh.lod2-merged-material-lightflood",
+        "sf.render.transfer-arm.mesh.lod2-merged-material-paintteal",
+        "sf.render.transfer-arm.mesh.lod2-merged-material-pipe",
+        "sf.render.transfer-arm.mesh.lod2-merged-material-struct",
+        "sf.render.transfer-arm.root"
+      ]
+    }
+  ]
+}

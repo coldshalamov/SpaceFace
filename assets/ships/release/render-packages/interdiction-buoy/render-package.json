@@ -1,0 +1,1693 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.interdiction-buoy.anchor.socket-field-emitter",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Field_Emitter",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentNodeId": "sf.render.interdiction-buoy.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.interdiction-buoy",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "50aff65ceec080d176f5d66831fdd702c26774e5a76ffcf3a9533bb104a3daf8",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          3.700000047683716,
+          0.21996520459651947,
+          3.213999032974243
+        ],
+        "min": [
+          -3.700000047683716,
+          -0.21996520459651947,
+          -3.213999032974243
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a7ec3ba698332e8e1994464cb9b0ed24a6d9bd95b519d20ca4241d8cad0747e7",
+      "id": "sf.render.interdiction-buoy.mesh.lod0-merged-material-baresteel.primitive.0",
+      "indexCount": 648,
+      "indexed": true,
+      "materialHash": "2dc0c596a3f1a62a2bd072575fad348e5a162a9276296c174c7530aa32f7ba88",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Merged_Material_BareSteel.002",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod0-merged-material-baresteel",
+      "primitiveIndex": 0,
+      "vertexCount": 360
+    },
+    {
+      "bounds": {
+        "max": [
+          1.5112109184265137,
+          0.24995268881320953,
+          1.5499999523162842
+        ],
+        "min": [
+          -1.5112109184265137,
+          -0.24995268881320953,
+          -1.5499999523162842
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0a1d3a202769e963091179afb664832e32b62d77d363449b4f42803ea0015a6d",
+      "id": "sf.render.interdiction-buoy.mesh.lod0-merged-material-hazard.primitive.0",
+      "indexCount": 156,
+      "indexed": true,
+      "materialHash": "5bd67da4c6bb87d4ca91161f44edd7861642f9d65e4516868630cf6f7eae7190",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Merged_Material_Hazard.002",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod0-merged-material-hazard",
+      "primitiveIndex": 0,
+      "vertexCount": 84
+    },
+    {
+      "bounds": {
+        "max": [
+          0.2282516062259674,
+          2.740000009536743,
+          0.24000000953674316
+        ],
+        "min": [
+          -0.2282516062259674,
+          2.259999990463257,
+          -0.24000000953674316
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2503870f311f3470b3796bbce1124baeb243a3fdcdbda91249c814fcd8e687da",
+      "id": "sf.render.interdiction-buoy.mesh.lod0-merged-material-lightauthority.primitive.0",
+      "indexCount": 300,
+      "indexed": true,
+      "materialHash": "5a21c6afa7d689489854c7634ac285150bdfa4f65d517ea98b377bb29cb31ebd",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Merged_Material_LightAuthority.002",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod0-merged-material-lightauthority",
+      "primitiveIndex": 0,
+      "vertexCount": 220
+    },
+    {
+      "bounds": {
+        "max": [
+          1.7721691131591797,
+          0.16008852422237396,
+          0.16008852422237396
+        ],
+        "min": [
+          -1.7721691131591797,
+          -0.16008852422237396,
+          -0.16008852422237396
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "cac375a45c9e3e69968bb66dd1fb0593346d8bf5001c3dc7600935a6346e7fb0",
+      "id": "sf.render.interdiction-buoy.mesh.lod0-merged-material-lightnavred.primitive.0",
+      "indexCount": 600,
+      "indexed": true,
+      "materialHash": "9051239f10fdb5348b1937c16dea6a63d892caf2a718052c0361f8ce9a50189e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Merged_Material_LightNavRed.002",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod0-merged-material-lightnavred",
+      "primitiveIndex": 0,
+      "vertexCount": 440
+    },
+    {
+      "bounds": {
+        "max": [
+          1.5000580549240112,
+          2.200000047683716,
+          1.5000580549240112
+        ],
+        "min": [
+          -1.5000580549240112,
+          -2.200000047683716,
+          -1.5000580549240112
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fdb1a9b20b685246aa2c381394a900d822dabd7a432bd8b06afe1ff7ea77631d",
+      "id": "sf.render.interdiction-buoy.mesh.lod0-merged-material-ore.primitive.0",
+      "indexCount": 234,
+      "indexed": true,
+      "materialHash": "96d3702f66281ccf601402b1c2d46c356ff07f3873a0f844118c475a545d48ce",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Merged_Material_Ore.002",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod0-merged-material-ore",
+      "primitiveIndex": 0,
+      "vertexCount": 136
+    },
+    {
+      "bounds": {
+        "max": [
+          1.5112109184265137,
+          0.24995268881320953,
+          1.5499999523162842
+        ],
+        "min": [
+          -1.5112109184265137,
+          -0.24995268881320953,
+          -1.5499999523162842
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0a1d3a202769e963091179afb664832e32b62d77d363449b4f42803ea0015a6d",
+      "id": "sf.render.interdiction-buoy.mesh.lod1-merged-material-hazard.primitive.0",
+      "indexCount": 156,
+      "indexed": true,
+      "materialHash": "5bd67da4c6bb87d4ca91161f44edd7861642f9d65e4516868630cf6f7eae7190",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Merged_Material_Hazard.002",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod1-merged-material-hazard",
+      "primitiveIndex": 0,
+      "vertexCount": 84
+    },
+    {
+      "bounds": {
+        "max": [
+          0.2282516062259674,
+          2.740000009536743,
+          0.24000000953674316
+        ],
+        "min": [
+          -0.2282516062259674,
+          2.259999990463257,
+          -0.24000000953674316
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2503870f311f3470b3796bbce1124baeb243a3fdcdbda91249c814fcd8e687da",
+      "id": "sf.render.interdiction-buoy.mesh.lod1-merged-material-lightauthority.primitive.0",
+      "indexCount": 300,
+      "indexed": true,
+      "materialHash": "5a21c6afa7d689489854c7634ac285150bdfa4f65d517ea98b377bb29cb31ebd",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Merged_Material_LightAuthority.002",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod1-merged-material-lightauthority",
+      "primitiveIndex": 0,
+      "vertexCount": 220
+    },
+    {
+      "bounds": {
+        "max": [
+          1.7721691131591797,
+          0.16008852422237396,
+          0.16008852422237396
+        ],
+        "min": [
+          -1.7721691131591797,
+          -0.16008852422237396,
+          -0.16008852422237396
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "cac375a45c9e3e69968bb66dd1fb0593346d8bf5001c3dc7600935a6346e7fb0",
+      "id": "sf.render.interdiction-buoy.mesh.lod1-merged-material-lightnavred.primitive.0",
+      "indexCount": 600,
+      "indexed": true,
+      "materialHash": "9051239f10fdb5348b1937c16dea6a63d892caf2a718052c0361f8ce9a50189e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Merged_Material_LightNavRed.002",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod1-merged-material-lightnavred",
+      "primitiveIndex": 0,
+      "vertexCount": 440
+    },
+    {
+      "bounds": {
+        "max": [
+          1.5000580549240112,
+          2.200000047683716,
+          1.5000580549240112
+        ],
+        "min": [
+          -1.5000580549240112,
+          -2.200000047683716,
+          -1.5000580549240112
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fdb1a9b20b685246aa2c381394a900d822dabd7a432bd8b06afe1ff7ea77631d",
+      "id": "sf.render.interdiction-buoy.mesh.lod1-merged-material-ore.primitive.0",
+      "indexCount": 234,
+      "indexed": true,
+      "materialHash": "96d3702f66281ccf601402b1c2d46c356ff07f3873a0f844118c475a545d48ce",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Merged_Material_Ore.002",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod1-merged-material-ore",
+      "primitiveIndex": 0,
+      "vertexCount": 136
+    },
+    {
+      "bounds": {
+        "max": [
+          1.5112109184265137,
+          0.24995268881320953,
+          1.5499999523162842
+        ],
+        "min": [
+          -1.5112109184265137,
+          -0.24995268881320953,
+          -1.5499999523162842
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0a1d3a202769e963091179afb664832e32b62d77d363449b4f42803ea0015a6d",
+      "id": "sf.render.interdiction-buoy.mesh.lod2-merged-material-hazard.primitive.0",
+      "indexCount": 156,
+      "indexed": true,
+      "materialHash": "5bd67da4c6bb87d4ca91161f44edd7861642f9d65e4516868630cf6f7eae7190",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Merged_Material_Hazard.002",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod2-merged-material-hazard",
+      "primitiveIndex": 0,
+      "vertexCount": 84
+    },
+    {
+      "bounds": {
+        "max": [
+          0.2282516062259674,
+          2.740000009536743,
+          0.24000000953674316
+        ],
+        "min": [
+          -0.2282516062259674,
+          2.259999990463257,
+          -0.24000000953674316
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2503870f311f3470b3796bbce1124baeb243a3fdcdbda91249c814fcd8e687da",
+      "id": "sf.render.interdiction-buoy.mesh.lod2-merged-material-lightauthority.primitive.0",
+      "indexCount": 300,
+      "indexed": true,
+      "materialHash": "5a21c6afa7d689489854c7634ac285150bdfa4f65d517ea98b377bb29cb31ebd",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Merged_Material_LightAuthority.002",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod2-merged-material-lightauthority",
+      "primitiveIndex": 0,
+      "vertexCount": 220
+    },
+    {
+      "bounds": {
+        "max": [
+          1.5000580549240112,
+          2.200000047683716,
+          1.5000580549240112
+        ],
+        "min": [
+          -1.5000580549240112,
+          -2.200000047683716,
+          -1.5000580549240112
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fdb1a9b20b685246aa2c381394a900d822dabd7a432bd8b06afe1ff7ea77631d",
+      "id": "sf.render.interdiction-buoy.mesh.lod2-merged-material-ore.primitive.0",
+      "indexCount": 234,
+      "indexed": true,
+      "materialHash": "96d3702f66281ccf601402b1c2d46c356ff07f3873a0f844118c475a545d48ce",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Merged_Material_Ore.002",
+      "nodeId": "sf.render.interdiction-buoy.mesh.lod2-merged-material-ore",
+      "primitiveIndex": 0,
+      "vertexCount": 136
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "2dc0c596a3f1a62a2bd072575fad348e5a162a9276296c174c7530aa32f7ba88",
+      "id": "material:2dc0c596a3f1a62a2bd07257",
+      "name": "Material_BareSteel",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_BareSteel_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_BareSteel_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_BareSteel_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_BareSteel_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "5a21c6afa7d689489854c7634ac285150bdfa4f65d517ea98b377bb29cb31ebd",
+      "id": "material:5a21c6afa7d689489854c763",
+      "name": "Material_LightAuthority",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_LightAuthority_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_LightAuthority_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_LightAuthority_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_LightAuthority_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "5bd67da4c6bb87d4ca91161f44edd7861642f9d65e4516868630cf6f7eae7190",
+      "id": "material:5bd67da4c6bb87d4ca91161f",
+      "name": "Material_Hazard",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Hazard_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hazard_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hazard_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hazard_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "9051239f10fdb5348b1937c16dea6a63d892caf2a718052c0361f8ce9a50189e",
+      "id": "material:9051239f10fdb5348b1937c1",
+      "name": "Material_LightNavRed",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_LightNavRed_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_LightNavRed_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_LightNavRed_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_LightNavRed_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "96d3702f66281ccf601402b1c2d46c356ff07f3873a0f844118c475a545d48ce",
+      "id": "material:96d3702f66281ccf601402b1",
+      "name": "Material_Ore",
+      "pipelineKey": "opaque:front",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Ore_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Ore_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Ore_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Ore_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod0-merged-material-baresteel",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Merged_Material_BareSteel",
+      "nodeName": "LOD0_Merged_Material_BareSteel",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.interdiction-buoy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.interdiction-buoy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod0-merged-material-hazard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Merged_Material_Hazard",
+      "nodeName": "LOD0_Merged_Material_Hazard",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.interdiction-buoy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.interdiction-buoy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod0-merged-material-lightauthority",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Merged_Material_LightAuthority",
+      "nodeName": "LOD0_Merged_Material_LightAuthority",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.interdiction-buoy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.interdiction-buoy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod0-merged-material-lightnavred",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Merged_Material_LightNavRed",
+      "nodeName": "LOD0_Merged_Material_LightNavRed",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.interdiction-buoy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.interdiction-buoy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod0-merged-material-ore",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Merged_Material_Ore",
+      "nodeName": "LOD0_Merged_Material_Ore",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.interdiction-buoy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.interdiction-buoy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod1-merged-material-hazard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Merged_Material_Hazard",
+      "nodeName": "LOD1_Merged_Material_Hazard",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.interdiction-buoy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.interdiction-buoy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod1-merged-material-lightauthority",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Merged_Material_LightAuthority",
+      "nodeName": "LOD1_Merged_Material_LightAuthority",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.interdiction-buoy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.interdiction-buoy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod1-merged-material-lightnavred",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Merged_Material_LightNavRed",
+      "nodeName": "LOD1_Merged_Material_LightNavRed",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.interdiction-buoy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.interdiction-buoy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod1-merged-material-ore",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Merged_Material_Ore",
+      "nodeName": "LOD1_Merged_Material_Ore",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.interdiction-buoy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.interdiction-buoy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod2-merged-material-hazard",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Merged_Material_Hazard",
+      "nodeName": "LOD2_Merged_Material_Hazard",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.interdiction-buoy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.interdiction-buoy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod2-merged-material-lightauthority",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Merged_Material_LightAuthority",
+      "nodeName": "LOD2_Merged_Material_LightAuthority",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.interdiction-buoy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.interdiction-buoy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.interdiction-buoy.mesh.lod2-merged-material-ore",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Merged_Material_Ore",
+      "nodeName": "LOD2_Merged_Material_Ore",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.interdiction-buoy.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.interdiction-buoy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.interdiction-buoy.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "place_interdiction_buoy",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.interdiction-buoy.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "5b861fc4172ed5cec0965a13c4971e2828cc1ff6d43725f1e225dc74001b1ac2"
+    },
+    "sourceGlb": {
+      "bytes": 393364,
+      "sha256": "c3bacf85983f5425f8f3532589de384d62035cb701a21d5e2bf95336dd30e7dc",
+      "uri": "place_interdiction_buoy.glb"
+    },
+    "sourceManifest": {
+      "bytes": 69666,
+      "sha256": "b320efaf850ef6f26a926eb1a4976cc0ae16f9621cc52f517b25152cd81b69e9",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 431052,
+    "sha256": "21cbc304d6012542d56e51701e33c8447ad31021fcadeff20caedf42ea89f779",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0,
+        0.26999998092651367,
+        0
+      ],
+      "max": [
+        3.700000047683716,
+        2.740000009536743,
+        3.213999032974243
+      ],
+      "min": [
+        -3.700000047683716,
+        -2.200000047683716,
+        -3.213999032974243
+      ],
+      "size": [
+        7.400000095367432,
+        4.940000057220459,
+        6.427998065948486
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "SOCKET_Field_Emitter",
+        "planIndex": 15,
+        "tags": {
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Field_Emitter",
+          "socket": true,
+          "spaceface": {
+            "socket": true
+          },
+          "spaceface.socket": true,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Field_Emitter",
+            "recordIds": [
+              "sf.render.interdiction-buoy.anchor.socket-field-emitter"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "hull": 9,
+      "warning": 3
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 4,
+        "role": "warning"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 6,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 7,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 8,
+        "role": "warning"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 10,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 11,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 12,
+        "role": "warning"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 13,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 14,
+        "role": "hull"
+      }
+    ],
+    "nodeCount": 16,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Merged_Material_BareSteel",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "tint": "dark"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Merged_Material_Hazard",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Merged_Material_LightAuthority",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "tint": "accent"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Merged_Material_LightNavRed",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "tint": "accent"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Merged_Material_Ore",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Merged_Material_Hazard",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Merged_Material_LightAuthority",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "tint": "accent"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Merged_Material_LightNavRed",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "tint": "accent"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Merged_Material_Ore",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Merged_Material_Hazard",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Merged_Material_LightAuthority",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "tint": "accent"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Merged_Material_Ore",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2",
+          "tint": "hull"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_interdiction_buoy.glb"
+  },
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          3.700000047683716,
+          2.740000009536743,
+          3.213999032974243
+        ],
+        "min": [
+          -3.700000047683716,
+          -2.200000047683716,
+          -3.213999032974243
+        ]
+      },
+      "id": "sf.render.interdiction-buoy.body",
+      "nodeIds": [
+        "sf.render.interdiction-buoy.mesh.lod0-merged-material-baresteel",
+        "sf.render.interdiction-buoy.mesh.lod0-merged-material-hazard",
+        "sf.render.interdiction-buoy.mesh.lod0-merged-material-lightauthority",
+        "sf.render.interdiction-buoy.mesh.lod0-merged-material-lightnavred",
+        "sf.render.interdiction-buoy.mesh.lod0-merged-material-ore",
+        "sf.render.interdiction-buoy.mesh.lod1-merged-material-hazard",
+        "sf.render.interdiction-buoy.mesh.lod1-merged-material-lightauthority",
+        "sf.render.interdiction-buoy.mesh.lod1-merged-material-lightnavred",
+        "sf.render.interdiction-buoy.mesh.lod1-merged-material-ore",
+        "sf.render.interdiction-buoy.mesh.lod2-merged-material-hazard",
+        "sf.render.interdiction-buoy.mesh.lod2-merged-material-lightauthority",
+        "sf.render.interdiction-buoy.mesh.lod2-merged-material-ore",
+        "sf.render.interdiction-buoy.root"
+      ]
+    }
+  ]
+}

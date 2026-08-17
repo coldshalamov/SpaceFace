@@ -1,0 +1,2688 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.ceres-bait-wreck.anchor.socket-blackbox",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.977799892425537,
+        1.5,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_BlackBox",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentNodeId": "sf.render.ceres-bait-wreck.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.977799892425537,
+        1.5,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-bait-wreck.anchor.socket-hazard-core",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -3.022200107574463,
+        1.5,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Hazard_Core",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentNodeId": "sf.render.ceres-bait-wreck.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -3.022200107574463,
+        1.5,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-bait-wreck.anchor.socket-salvage-core",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.022199999541044235,
+        1.5,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Salvage_Core",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentNodeId": "sf.render.ceres-bait-wreck.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -0.022199999541044235,
+        1.5,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.ceres-bait-wreck",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "71c7dc8189b0518ef7bc63a1918fda8391f4c65ae5f74cac821fe1ec92b8a3d6",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          5.206538677215576,
+          3.5006091594696045,
+          0.6449859738349915
+        ],
+        "min": [
+          -5.793461322784424,
+          -3.4988110065460205,
+          -0.5554900765419006
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3297e08a0c58860bb52ab6fc682b9bf046742978d140023004d29ab71d86c078",
+      "id": "sf.render.ceres-bait-wreck.mesh.lod0-place-ceres-bait-wreck-material-armor.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": "24e5c4f4d576d8482ab5a8f627141093b0c7743b6b4df8f3c8dc39abd90c3652",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_place_ceres_bait_wreck_Material_Armor_mesh",
+      "nodeId": "sf.render.ceres-bait-wreck.mesh.lod0-place-ceres-bait-wreck-material-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          20.72108268737793,
+          11.713269233703613,
+          9.607038497924805
+        ],
+        "min": [
+          -20.228918075561523,
+          1.6154264211654663,
+          -12.995634078979492
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bce946c38921c896b18fa014d382e1fe4f6d13cd5dc8a07b4d5449c7f601ab9f",
+      "id": "sf.render.ceres-bait-wreck.mesh.lod0-place-ceres-bait-wreck-material-glass.primitive.0",
+      "indexCount": 288,
+      "indexed": true,
+      "materialHash": "1ec579f28cf3f8d13c7feca8023db9e6955f04035247706575a1fd15a44aded8",
+      "materialPipelineKey": "blend",
+      "meshName": "LOD0_place_ceres_bait_wreck_Material_Glass_mesh",
+      "nodeId": "sf.render.ceres-bait-wreck.mesh.lod0-place-ceres-bait-wreck-material-glass",
+      "primitiveIndex": 0,
+      "vertexCount": 192
+    },
+    {
+      "bounds": {
+        "max": [
+          25.773916244506836,
+          20.016986846923828,
+          11.529653549194336
+        ],
+        "min": [
+          -32.70391845703125,
+          -9.340609550476074,
+          -11.494196891784668
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d49cedac87bada46a22c6d425164a9cb64b4e65b04afcaf5b30a94b48905a2bb",
+      "id": "sf.render.ceres-bait-wreck.mesh.lod0-place-ceres-bait-wreck-material-heat.primitive.0",
+      "indexCount": 1860,
+      "indexed": true,
+      "materialHash": "8ef9abc48d34d6bb9186e0d006b422803f43550c092801abf010efcdd8a8a5e7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_place_ceres_bait_wreck_Material_Heat_mesh",
+      "nodeId": "sf.render.ceres-bait-wreck.mesh.lod0-place-ceres-bait-wreck-material-heat",
+      "primitiveIndex": 0,
+      "vertexCount": 1186
+    },
+    {
+      "bounds": {
+        "max": [
+          34.27108383178711,
+          18.569490432739258,
+          15.232195854187012
+        ],
+        "min": [
+          -12.96213150024414,
+          -10.511075019836426,
+          -15.232195854187012
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8df0fa767bc5939796e836398e1ede439af11b70c0f941745b018ddc658da7cb",
+      "id": "sf.render.ceres-bait-wreck.mesh.lod0-place-ceres-bait-wreck-material-hull.primitive.0",
+      "indexCount": 672,
+      "indexed": true,
+      "materialHash": "ac4380c2740998f988624d23f513846039c8d24cb28d25351b9d47e7cb43a0cf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_place_ceres_bait_wreck_Material_Hull_mesh",
+      "nodeId": "sf.render.ceres-bait-wreck.mesh.lod0-place-ceres-bait-wreck-material-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 408
+    },
+    {
+      "bounds": {
+        "max": [
+          26.441787719726562,
+          24.623136520385742,
+          18.07309913635254
+        ],
+        "min": [
+          -34.31549072265625,
+          -24.62313461303711,
+          -18.07309913635254
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d8202935f0197e5d23ed37cce10ff7b8188806a8445d5af3ac773e54e0ffed45",
+      "id": "sf.render.ceres-bait-wreck.mesh.lod0-place-ceres-bait-wreck-material-insulation.primitive.0",
+      "indexCount": 3288,
+      "indexed": true,
+      "materialHash": "d405a7105bef6f7b733d5dbba53823ce84e3b7a471e4092062c883ca3b104f54",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_place_ceres_bait_wreck_Material_Insulation_mesh",
+      "nodeId": "sf.render.ceres-bait-wreck.mesh.lod0-place-ceres-bait-wreck-material-insulation",
+      "primitiveIndex": 0,
+      "vertexCount": 2238
+    },
+    {
+      "bounds": {
+        "max": [
+          8.930456161499023,
+          21.436328887939453,
+          11.405342102050781
+        ],
+        "min": [
+          -10.545858383178711,
+          1.3291923999786377,
+          -8.088153839111328
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "87c4e1fd025c68ef9a43a1f47ae0b1b8ccf1f22af82b83245c85f74cc9b55e9e",
+      "id": "sf.render.ceres-bait-wreck.mesh.lod0-place-ceres-bait-wreck-material-service.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "6c2040b742ac16a629ba2e54e9881da728982d9d6dddcb4966cb6300aa75059f",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_place_ceres_bait_wreck_Material_Service_mesh",
+      "nodeId": "sf.render.ceres-bait-wreck.mesh.lod0-place-ceres-bait-wreck-material-service",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          14.008846282958984,
+          21.982088088989258,
+          15.891851425170898
+        ],
+        "min": [
+          -14.705804824829102,
+          -4.361903667449951,
+          -15.891851425170898
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ec781cc1f81c942518bf21f11501ce701d2a47518640dc3276409ca674871aa8",
+      "id": "sf.render.ceres-bait-wreck.mesh.lod0-place-ceres-bait-wreck-material-structural.primitive.0",
+      "indexCount": 1020,
+      "indexed": true,
+      "materialHash": "124d57494b8cd5aee7fba8233886d53d6e078c6e1c0b8e0d84a05fefaab9792d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_place_ceres_bait_wreck_Material_Structural_mesh",
+      "nodeId": "sf.render.ceres-bait-wreck.mesh.lod0-place-ceres-bait-wreck-material-structural",
+      "primitiveIndex": 0,
+      "vertexCount": 660
+    },
+    {
+      "bounds": {
+        "max": [
+          5.206538677215576,
+          3.5006091594696045,
+          0.6449859738349915
+        ],
+        "min": [
+          -5.793461322784424,
+          -3.4988110065460205,
+          -0.5554900765419006
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "97704f8a9f28700c5936b90335f0742ededcf912f4af2e571074e6ce93e21fbb",
+      "id": "sf.render.ceres-bait-wreck.mesh.lod1-place-ceres-bait-wreck-material-armor.primitive.0",
+      "indexCount": 15,
+      "indexed": true,
+      "materialHash": "24e5c4f4d576d8482ab5a8f627141093b0c7743b6b4df8f3c8dc39abd90c3652",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_place_ceres_bait_wreck_Material_Armor_mesh",
+      "nodeId": "sf.render.ceres-bait-wreck.mesh.lod1-place-ceres-bait-wreck-material-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 11
+    },
+    {
+      "bounds": {
+        "max": [
+          20.72108268737793,
+          11.713269233703613,
+          9.607038497924805
+        ],
+        "min": [
+          -20.228918075561523,
+          1.6154264211654663,
+          -12.995634078979492
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e297fa0f2c0ebe9f8330418fb4cc0ad74a867f6fcce05f14c3ecce272cb541b1",
+      "id": "sf.render.ceres-bait-wreck.mesh.lod1-place-ceres-bait-wreck-material-glass.primitive.0",
+      "indexCount": 135,
+      "indexed": true,
+      "materialHash": "1ec579f28cf3f8d13c7feca8023db9e6955f04035247706575a1fd15a44aded8",
+      "materialPipelineKey": "blend",
+      "meshName": "LOD1_place_ceres_bait_wreck_Material_Glass_mesh",
+      "nodeId": "sf.render.ceres-bait-wreck.mesh.lod1-place-ceres-bait-wreck-material-glass",
+      "primitiveIndex": 0,
+      "vertexCount": 95
+    },
+    {
+      "bounds": {
+        "max": [
+          25.773916244506836,
+          20.017915725708008,
+          8.106796264648438
+        ],
+        "min": [
+          -30.54391860961914,
+          -9.341538429260254,
+          -11.495391845703125
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fa3933b625ecc616fa4ff47cf4c88adbb316db5c152998190c21814a53239673",
+      "id": "sf.render.ceres-bait-wreck.mesh.lod1-place-ceres-bait-wreck-material-heat.primitive.0",
+      "indexCount": 888,
+      "indexed": true,
+      "materialHash": "8ef9abc48d34d6bb9186e0d006b422803f43550c092801abf010efcdd8a8a5e7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_place_ceres_bait_wreck_Material_Heat_mesh",
+      "nodeId": "sf.render.ceres-bait-wreck.mesh.lod1-place-ceres-bait-wreck-material-heat",
+      "primitiveIndex": 0,
+      "vertexCount": 570
+    },
+    {
+      "bounds": {
+        "max": [
+          34.31549072265625,
+          18.567258834838867,
+          15.232089042663574
+        ],
+        "min": [
+          -12.96213150024414,
+          -11.036985397338867,
+          -15.232089042663574
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6f1c07d36d05951c773ca49dbf871b6812457cec02a30ea2249cddf6aec00eb2",
+      "id": "sf.render.ceres-bait-wreck.mesh.lod1-place-ceres-bait-wreck-material-hull.primitive.0",
+      "indexCount": 318,
+      "indexed": true,
+      "materialHash": "ac4380c2740998f988624d23f513846039c8d24cb28d25351b9d47e7cb43a0cf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_place_ceres_bait_wreck_Material_Hull_mesh",
+      "nodeId": "sf.render.ceres-bait-wreck.mesh.lod1-place-ceres-bait-wreck-material-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 216
+    },
+    {
+      "bounds": {
+        "max": [
+          26.441787719726562,
+          24.622167587280273,
+          17.950719833374023
+        ],
+        "min": [
+          -34.31549072265625,
+          -20.62454605102539,
+          -17.950719833374023
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "21d43fb4f03479e3f08b5aa30e421706ba93ed6d06ecb51a53ba958337048e9d",
+      "id": "sf.render.ceres-bait-wreck.mesh.lod1-place-ceres-bait-wreck-material-insulation.primitive.0",
+      "indexCount": 1575,
+      "indexed": true,
+      "materialHash": "d405a7105bef6f7b733d5dbba53823ce84e3b7a471e4092062c883ca3b104f54",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_place_ceres_bait_wreck_Material_Insulation_mesh",
+      "nodeId": "sf.render.ceres-bait-wreck.mesh.lod1-place-ceres-bait-wreck-material-insulation",
+      "primitiveIndex": 0,
+      "vertexCount": 1131
+    },
+    {
+      "bounds": {
+        "max": [
+          8.930758476257324,
+          20.7757511138916,
+          11.40538215637207
+        ],
+        "min": [
+          -10.546160697937012,
+          1.329768180847168,
+          -8.088193893432617
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d117c3fcd1c55f490b101e6f60043aff99775e032063c586e5d30f0b7b133228",
+      "id": "sf.render.ceres-bait-wreck.mesh.lod1-place-ceres-bait-wreck-material-service.primitive.0",
+      "indexCount": 153,
+      "indexed": true,
+      "materialHash": "6c2040b742ac16a629ba2e54e9881da728982d9d6dddcb4966cb6300aa75059f",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_place_ceres_bait_wreck_Material_Service_mesh",
+      "nodeId": "sf.render.ceres-bait-wreck.mesh.lod1-place-ceres-bait-wreck-material-service",
+      "primitiveIndex": 0,
+      "vertexCount": 107
+    },
+    {
+      "bounds": {
+        "max": [
+          13.338287353515625,
+          19.02706527709961,
+          15.891851425170898
+        ],
+        "min": [
+          -13.62649917602539,
+          -4.363303184509277,
+          -15.891851425170898
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "001fd2561fca674ba6ddfe1c5c5a16ac6509466411be2e684fb8ca8fdc7bc7ff",
+      "id": "sf.render.ceres-bait-wreck.mesh.lod1-place-ceres-bait-wreck-material-structural.primitive.0",
+      "indexCount": 486,
+      "indexed": true,
+      "materialHash": "124d57494b8cd5aee7fba8233886d53d6e078c6e1c0b8e0d84a05fefaab9792d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_place_ceres_bait_wreck_Material_Structural_mesh",
+      "nodeId": "sf.render.ceres-bait-wreck.mesh.lod1-place-ceres-bait-wreck-material-structural",
+      "primitiveIndex": 0,
+      "vertexCount": 332
+    },
+    {
+      "bounds": {
+        "max": [
+          5.206538677215576,
+          3.5006091594696045,
+          0.6449859738349915
+        ],
+        "min": [
+          -5.793461322784424,
+          -3.4988110065460205,
+          -0.5554900765419006
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "807ece2f9d94d07c09b09db016cf11bbfca28564344dc3b7e6a3b4c7e2a5e873",
+      "id": "sf.render.ceres-bait-wreck.mesh.lod2-place-ceres-bait-wreck-material-armor.primitive.0",
+      "indexCount": 6,
+      "indexed": true,
+      "materialHash": "24e5c4f4d576d8482ab5a8f627141093b0c7743b6b4df8f3c8dc39abd90c3652",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_place_ceres_bait_wreck_Material_Armor_mesh",
+      "nodeId": "sf.render.ceres-bait-wreck.mesh.lod2-place-ceres-bait-wreck-material-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 6
+    },
+    {
+      "bounds": {
+        "max": [
+          25.773916244506836,
+          20.016151428222656,
+          8.10650634765625
+        ],
+        "min": [
+          -21.72892189025879,
+          -9.81029987335205,
+          -11.495101928710938
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "70d0e76f1131ea813f1f433ebe5bff8db72d376ecfbb6ae4ac0037966773f3cb",
+      "id": "sf.render.ceres-bait-wreck.mesh.lod2-place-ceres-bait-wreck-material-heat.primitive.0",
+      "indexCount": 366,
+      "indexed": true,
+      "materialHash": "8ef9abc48d34d6bb9186e0d006b422803f43550c092801abf010efcdd8a8a5e7",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_place_ceres_bait_wreck_Material_Heat_mesh",
+      "nodeId": "sf.render.ceres-bait-wreck.mesh.lod2-place-ceres-bait-wreck-material-heat",
+      "primitiveIndex": 0,
+      "vertexCount": 270
+    },
+    {
+      "bounds": {
+        "max": [
+          34.27113342285156,
+          18.567785263061523,
+          15.23221206665039
+        ],
+        "min": [
+          -12.96213150024414,
+          -11.03751277923584,
+          -15.23221206665039
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a32071c8fe503d21abe1e8ad0fe5df0d1a568ff4199078ade085e47384abeb6a",
+      "id": "sf.render.ceres-bait-wreck.mesh.lod2-place-ceres-bait-wreck-material-hull.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "ac4380c2740998f988624d23f513846039c8d24cb28d25351b9d47e7cb43a0cf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_place_ceres_bait_wreck_Material_Hull_mesh",
+      "nodeId": "sf.render.ceres-bait-wreck.mesh.lod2-place-ceres-bait-wreck-material-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 86
+    },
+    {
+      "bounds": {
+        "max": [
+          26.604644775390625,
+          24.623504638671875,
+          17.950496673583984
+        ],
+        "min": [
+          -34.31549072265625,
+          -17.219465255737305,
+          -17.950496673583984
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d23daa98b42a6e8ec2e27003cca9dd3e79d9bb137fad69240770bf5605203070",
+      "id": "sf.render.ceres-bait-wreck.mesh.lod2-place-ceres-bait-wreck-material-insulation.primitive.0",
+      "indexCount": 651,
+      "indexed": true,
+      "materialHash": "d405a7105bef6f7b733d5dbba53823ce84e3b7a471e4092062c883ca3b104f54",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_place_ceres_bait_wreck_Material_Insulation_mesh",
+      "nodeId": "sf.render.ceres-bait-wreck.mesh.lod2-place-ceres-bait-wreck-material-insulation",
+      "primitiveIndex": 0,
+      "vertexCount": 497
+    },
+    {
+      "bounds": {
+        "max": [
+          13.338287353515625,
+          19.02706527709961,
+          15.891851425170898
+        ],
+        "min": [
+          -13.62649917602539,
+          -4.363303184509277,
+          -15.891851425170898
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b35a7d6f41cf04de423a2cd6d708f3404dd76302f3bd4e8016d9ae2d888dc4b6",
+      "id": "sf.render.ceres-bait-wreck.mesh.lod2-place-ceres-bait-wreck-material-structural.primitive.0",
+      "indexCount": 201,
+      "indexed": true,
+      "materialHash": "124d57494b8cd5aee7fba8233886d53d6e078c6e1c0b8e0d84a05fefaab9792d",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_place_ceres_bait_wreck_Material_Structural_mesh",
+      "nodeId": "sf.render.ceres-bait-wreck.mesh.lod2-place-ceres-bait-wreck-material-structural",
+      "primitiveIndex": 0,
+      "vertexCount": 147
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "124d57494b8cd5aee7fba8233886d53d6e078c6e1c0b8e0d84a05fefaab9792d",
+      "id": "material:124d57494b8cd5aee7fba823",
+      "name": "Material_Structural",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "wreck_structural_alloy_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_structural_alloy_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_structural_alloy_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_structural_alloy_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "1ec579f28cf3f8d13c7feca8023db9e6955f04035247706575a1fd15a44aded8",
+      "id": "material:1ec579f28cf3f8d13c7feca8",
+      "name": "Material_Glass",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "wreck_dead_glass_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_dead_glass_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_dead_glass_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_dead_glass_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "24e5c4f4d576d8482ab5a8f627141093b0c7743b6b4df8f3c8dc39abd90c3652",
+      "id": "material:24e5c4f4d576d8482ab5a8f6",
+      "name": "Material_Armor",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "wreck_armor_dark_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_armor_dark_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_armor_dark_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_armor_dark_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "6c2040b742ac16a629ba2e54e9881da728982d9d6dddcb4966cb6300aa75059f",
+      "id": "material:6c2040b742ac16a629ba2e54",
+      "name": "Material_Service",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "wreck_service_trunks_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_service_trunks_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_service_trunks_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_service_trunks_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "8ef9abc48d34d6bb9186e0d006b422803f43550c092801abf010efcdd8a8a5e7",
+      "id": "material:8ef9abc48d34d6bb9186e0d0",
+      "name": "Material_Heat",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "wreck_heat_affected_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_heat_affected_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_heat_affected_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_heat_affected_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "ac4380c2740998f988624d23f513846039c8d24cb28d25351b9d47e7cb43a0cf",
+      "id": "material:ac4380c2740998f988624d23",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "wreck_painted_hull_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_painted_hull_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_painted_hull_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_painted_hull_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "d405a7105bef6f7b733d5dbba53823ce84e3b7a471e4092062c883ca3b104f54",
+      "id": "material:d405a7105bef6f7b733d5dbb",
+      "name": "Material_Insulation",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "wreck_rupture_insulation_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_rupture_insulation_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_rupture_insulation_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "wreck_rupture_insulation_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.ceres-bait-wreck.mesh.lod0-place-ceres-bait-wreck-material-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_place_ceres_bait_wreck_Material_Armor",
+      "nodeName": "LOD0_place_ceres_bait_wreck_Material_Armor",
+      "nodePath": [
+        0,
+        0,
+        0
+      ],
+      "parentId": "sf.render.ceres-bait-wreck.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-bait-wreck.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-bait-wreck.mesh.lod0-place-ceres-bait-wreck-material-glass",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD0_place_ceres_bait_wreck_Material_Glass",
+      "nodeName": "LOD0_place_ceres_bait_wreck_Material_Glass",
+      "nodePath": [
+        0,
+        0,
+        1
+      ],
+      "parentId": "sf.render.ceres-bait-wreck.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-bait-wreck.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-bait-wreck.mesh.lod0-place-ceres-bait-wreck-material-heat",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_place_ceres_bait_wreck_Material_Heat",
+      "nodeName": "LOD0_place_ceres_bait_wreck_Material_Heat",
+      "nodePath": [
+        0,
+        0,
+        2
+      ],
+      "parentId": "sf.render.ceres-bait-wreck.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-bait-wreck.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-bait-wreck.mesh.lod0-place-ceres-bait-wreck-material-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_place_ceres_bait_wreck_Material_Hull",
+      "nodeName": "LOD0_place_ceres_bait_wreck_Material_Hull",
+      "nodePath": [
+        0,
+        0,
+        3
+      ],
+      "parentId": "sf.render.ceres-bait-wreck.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-bait-wreck.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-bait-wreck.mesh.lod0-place-ceres-bait-wreck-material-insulation",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_place_ceres_bait_wreck_Material_Insulation",
+      "nodeName": "LOD0_place_ceres_bait_wreck_Material_Insulation",
+      "nodePath": [
+        0,
+        0,
+        4
+      ],
+      "parentId": "sf.render.ceres-bait-wreck.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-bait-wreck.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-bait-wreck.mesh.lod0-place-ceres-bait-wreck-material-service",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_place_ceres_bait_wreck_Material_Service",
+      "nodeName": "LOD0_place_ceres_bait_wreck_Material_Service",
+      "nodePath": [
+        0,
+        0,
+        5
+      ],
+      "parentId": "sf.render.ceres-bait-wreck.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-bait-wreck.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-bait-wreck.mesh.lod0-place-ceres-bait-wreck-material-structural",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_place_ceres_bait_wreck_Material_Structural",
+      "nodeName": "LOD0_place_ceres_bait_wreck_Material_Structural",
+      "nodePath": [
+        0,
+        0,
+        6
+      ],
+      "parentId": "sf.render.ceres-bait-wreck.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-bait-wreck.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-bait-wreck.mesh.lod1-place-ceres-bait-wreck-material-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_place_ceres_bait_wreck_Material_Armor",
+      "nodeName": "LOD1_place_ceres_bait_wreck_Material_Armor",
+      "nodePath": [
+        0,
+        1,
+        0
+      ],
+      "parentId": "sf.render.ceres-bait-wreck.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-bait-wreck.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-bait-wreck.mesh.lod1-place-ceres-bait-wreck-material-glass",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD1_place_ceres_bait_wreck_Material_Glass",
+      "nodeName": "LOD1_place_ceres_bait_wreck_Material_Glass",
+      "nodePath": [
+        0,
+        1,
+        1
+      ],
+      "parentId": "sf.render.ceres-bait-wreck.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-bait-wreck.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-bait-wreck.mesh.lod1-place-ceres-bait-wreck-material-heat",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_place_ceres_bait_wreck_Material_Heat",
+      "nodeName": "LOD1_place_ceres_bait_wreck_Material_Heat",
+      "nodePath": [
+        0,
+        1,
+        2
+      ],
+      "parentId": "sf.render.ceres-bait-wreck.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-bait-wreck.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-bait-wreck.mesh.lod1-place-ceres-bait-wreck-material-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_place_ceres_bait_wreck_Material_Hull",
+      "nodeName": "LOD1_place_ceres_bait_wreck_Material_Hull",
+      "nodePath": [
+        0,
+        1,
+        3
+      ],
+      "parentId": "sf.render.ceres-bait-wreck.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-bait-wreck.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-bait-wreck.mesh.lod1-place-ceres-bait-wreck-material-insulation",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_place_ceres_bait_wreck_Material_Insulation",
+      "nodeName": "LOD1_place_ceres_bait_wreck_Material_Insulation",
+      "nodePath": [
+        0,
+        1,
+        4
+      ],
+      "parentId": "sf.render.ceres-bait-wreck.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-bait-wreck.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-bait-wreck.mesh.lod1-place-ceres-bait-wreck-material-service",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_place_ceres_bait_wreck_Material_Service",
+      "nodeName": "LOD1_place_ceres_bait_wreck_Material_Service",
+      "nodePath": [
+        0,
+        1,
+        5
+      ],
+      "parentId": "sf.render.ceres-bait-wreck.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-bait-wreck.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-bait-wreck.mesh.lod1-place-ceres-bait-wreck-material-structural",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_place_ceres_bait_wreck_Material_Structural",
+      "nodeName": "LOD1_place_ceres_bait_wreck_Material_Structural",
+      "nodePath": [
+        0,
+        1,
+        6
+      ],
+      "parentId": "sf.render.ceres-bait-wreck.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-bait-wreck.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-bait-wreck.mesh.lod2-place-ceres-bait-wreck-material-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_place_ceres_bait_wreck_Material_Armor",
+      "nodeName": "LOD2_place_ceres_bait_wreck_Material_Armor",
+      "nodePath": [
+        0,
+        2,
+        0
+      ],
+      "parentId": "sf.render.ceres-bait-wreck.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-bait-wreck.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-bait-wreck.mesh.lod2-place-ceres-bait-wreck-material-heat",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_place_ceres_bait_wreck_Material_Heat",
+      "nodeName": "LOD2_place_ceres_bait_wreck_Material_Heat",
+      "nodePath": [
+        0,
+        2,
+        1
+      ],
+      "parentId": "sf.render.ceres-bait-wreck.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-bait-wreck.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-bait-wreck.mesh.lod2-place-ceres-bait-wreck-material-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_place_ceres_bait_wreck_Material_Hull",
+      "nodeName": "LOD2_place_ceres_bait_wreck_Material_Hull",
+      "nodePath": [
+        0,
+        2,
+        2
+      ],
+      "parentId": "sf.render.ceres-bait-wreck.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-bait-wreck.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-bait-wreck.mesh.lod2-place-ceres-bait-wreck-material-insulation",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_place_ceres_bait_wreck_Material_Insulation",
+      "nodeName": "LOD2_place_ceres_bait_wreck_Material_Insulation",
+      "nodePath": [
+        0,
+        2,
+        3
+      ],
+      "parentId": "sf.render.ceres-bait-wreck.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-bait-wreck.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-bait-wreck.mesh.lod2-place-ceres-bait-wreck-material-structural",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_place_ceres_bait_wreck_Material_Structural",
+      "nodeName": "LOD2_place_ceres_bait_wreck_Material_Structural",
+      "nodePath": [
+        0,
+        2,
+        4
+      ],
+      "parentId": "sf.render.ceres-bait-wreck.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-bait-wreck.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.ceres-bait-wreck.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "place_ceres_bait_wreck",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.ceres-bait-wreck.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "30b6c83b0582b24c5f9e4f045efa6f9d50c4b617941d4baf2ecd097cb352e978"
+    },
+    "sourceGlb": {
+      "bytes": 1805264,
+      "sha256": "90d2700c241c21723425d194aae79b7bdfdd6e8c57d3d075741a5232427e8d64",
+      "uri": "place_ceres_bait_wreck.glb"
+    },
+    "sourceManifest": {
+      "bytes": 69666,
+      "sha256": "b320efaf850ef6f26a926eb1a4976cc0ae16f9621cc52f517b25152cd81b69e9",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 1873608,
+    "sha256": "3beddd615c421db83a36d551982b57f6567642deab98b23b237b97c56698da8b",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0,
+        0.0001850128173828125,
+        0
+      ],
+      "max": [
+        34.31549072265625,
+        24.623504638671875,
+        18.07309913635254
+      ],
+      "min": [
+        -34.31549072265625,
+        -24.62313461303711,
+        -18.07309913635254
+      ],
+      "size": [
+        68.6309814453125,
+        49.246639251708984,
+        36.14619827270508
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          2.977799892425537,
+          1.5,
+          0,
+          1
+        ],
+        "name": "SOCKET_BlackBox",
+        "planIndex": 24,
+        "tags": {
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_BlackBox",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_BlackBox",
+            "recordIds": [
+              "sf.render.ceres-bait-wreck.anchor.socket-blackbox"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -3.022200107574463,
+          1.5,
+          0,
+          1
+        ],
+        "name": "SOCKET_Hazard_Core",
+        "planIndex": 25,
+        "tags": {
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Hazard_Core",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Hazard_Core",
+            "recordIds": [
+              "sf.render.ceres-bait-wreck.anchor.socket-hazard-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -0.022199999541044235,
+          1.5,
+          0,
+          1
+        ],
+        "name": "SOCKET_Salvage_Core",
+        "planIndex": 26,
+        "tags": {
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_Salvage_Core",
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Salvage_Core",
+            "recordIds": [
+              "sf.render.ceres-bait-wreck.anchor.socket-salvage-core"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "glass": 2,
+      "hull": 6,
+      "mechanical": 9,
+      "service": 2
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "service"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "service"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 22,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "mechanical"
+      }
+    ],
+    "nodeCount": 27,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_place_ceres_bait_wreck_Material_Armor",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_place_ceres_bait_wreck_Material_Glass",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_place_ceres_bait_wreck_Material_Heat",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_place_ceres_bait_wreck_Material_Hull",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_place_ceres_bait_wreck_Material_Insulation",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_place_ceres_bait_wreck_Material_Service",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_place_ceres_bait_wreck_Material_Structural",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_place_ceres_bait_wreck_Material_Armor",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_place_ceres_bait_wreck_Material_Glass",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_place_ceres_bait_wreck_Material_Heat",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_place_ceres_bait_wreck_Material_Hull",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_place_ceres_bait_wreck_Material_Insulation",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_place_ceres_bait_wreck_Material_Service",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_place_ceres_bait_wreck_Material_Structural",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_place_ceres_bait_wreck_Material_Armor",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_place_ceres_bait_wreck_Material_Heat",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_place_ceres_bait_wreck_Material_Hull",
+        "planIndex": 21,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_place_ceres_bait_wreck_Material_Insulation",
+        "planIndex": 22,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_place_ceres_bait_wreck_Material_Structural",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false,
+          "lod": "lod2"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/place_ceres_bait_wreck.glb"
+  },
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          34.31549072265625,
+          24.623504638671875,
+          18.07309913635254
+        ],
+        "min": [
+          -34.31549072265625,
+          -24.62313461303711,
+          -18.07309913635254
+        ]
+      },
+      "id": "sf.render.ceres-bait-wreck.body",
+      "nodeIds": [
+        "sf.render.ceres-bait-wreck.mesh.lod0-place-ceres-bait-wreck-material-armor",
+        "sf.render.ceres-bait-wreck.mesh.lod0-place-ceres-bait-wreck-material-glass",
+        "sf.render.ceres-bait-wreck.mesh.lod0-place-ceres-bait-wreck-material-heat",
+        "sf.render.ceres-bait-wreck.mesh.lod0-place-ceres-bait-wreck-material-hull",
+        "sf.render.ceres-bait-wreck.mesh.lod0-place-ceres-bait-wreck-material-insulation",
+        "sf.render.ceres-bait-wreck.mesh.lod0-place-ceres-bait-wreck-material-service",
+        "sf.render.ceres-bait-wreck.mesh.lod0-place-ceres-bait-wreck-material-structural",
+        "sf.render.ceres-bait-wreck.mesh.lod1-place-ceres-bait-wreck-material-armor",
+        "sf.render.ceres-bait-wreck.mesh.lod1-place-ceres-bait-wreck-material-glass",
+        "sf.render.ceres-bait-wreck.mesh.lod1-place-ceres-bait-wreck-material-heat",
+        "sf.render.ceres-bait-wreck.mesh.lod1-place-ceres-bait-wreck-material-hull",
+        "sf.render.ceres-bait-wreck.mesh.lod1-place-ceres-bait-wreck-material-insulation",
+        "sf.render.ceres-bait-wreck.mesh.lod1-place-ceres-bait-wreck-material-service",
+        "sf.render.ceres-bait-wreck.mesh.lod1-place-ceres-bait-wreck-material-structural",
+        "sf.render.ceres-bait-wreck.mesh.lod2-place-ceres-bait-wreck-material-armor",
+        "sf.render.ceres-bait-wreck.mesh.lod2-place-ceres-bait-wreck-material-heat",
+        "sf.render.ceres-bait-wreck.mesh.lod2-place-ceres-bait-wreck-material-hull",
+        "sf.render.ceres-bait-wreck.mesh.lod2-place-ceres-bait-wreck-material-insulation",
+        "sf.render.ceres-bait-wreck.mesh.lod2-place-ceres-bait-wreck-material-structural",
+        "sf.render.ceres-bait-wreck.root"
+      ]
+    }
+  ]
+}
