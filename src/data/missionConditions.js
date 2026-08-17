@@ -384,6 +384,31 @@ export const MISSION_CONDITIONS = Object.freeze({
       return !!payload && payload.bulkCore === true && isPlayerOf(payload.minerId, ctx);
     },
   }),
+
+  // ── 13. SILENT RUNNER ───────────────────────────────────────────────────────────────────────
+  // Covert infiltration discipline (Wave M2 §4.2 cloak integration): slip through the lane without
+  // blowing your cloak via forced depletion or combat breach. Emitter verified: src/systems/cloak.js:117
+  // emits cloak:dropped { reason, energy }. A breach reason of 'depleted' (ran out of power) or
+  // 'fired' (broke cloak by firing) voids the silent-runner premium; intentional graceful deactivation
+  // ('toggled') is allowed.
+  silent_runner: Object.freeze({
+    id: 'silent_runner',
+    kind: 'forbid',
+    event: 'cloak:dropped',
+    count: 1,
+    onBreach: 'forfeit',
+    rewardMult: 1.35,
+    requiresFeature: 'cloak',
+    label: 'Silent runner',
+    prose: 'Keep your cloak discipline intact on this run — do not let the cloak blow out or break under fire.',
+    brief: 'Do not blow or break your cloak.',
+    breachText: 'Silent-runner premium lost: your cloak was compromised.',
+    appliesTo: ['smuggling_run', 'recon_scan', 'passenger_transport'],
+    minRisk: 2,
+    match(payload) {
+      return !!payload && (payload.reason === 'depleted' || payload.reason === 'fired');
+    },
+  }),
 });
 
 export const MISSION_CONDITION_IDS = Object.freeze(Object.keys(MISSION_CONDITIONS));

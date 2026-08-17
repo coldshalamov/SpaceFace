@@ -104,6 +104,7 @@ guarded(testAttachIsSeededAndDeterministic);
 guarded(testTermFreeOfferIsUnchanged);
 guarded(testRiskTierIsAVerbModifier);
 testForbidEventTermFailsTheContractThroughTheShippedPath();
+testForbidEventSilentRunnerForfeitsOnCompromisedCloak();
 testTickTermWarnsBeforeItTripsAndOnlyForfeitsThePremium();
 testBlockingRequireTermRefusesTheTurnInThenSettles();
 testMultiCountRequireTermCountsUpAndPaysThePremium();
@@ -234,6 +235,29 @@ function testForbidEventTermFailsTheContractThroughTheShippedPath() {
   const observerWrites = h.of('economy:grantCredits').concat(h.of('economy:chargeCredits'))
     .filter((e) => String(e.p && e.p.reason || '').includes('condition'));
   assert.equal(observerWrites.length, 0, 'the observer never writes credits — one penalty path, never two');
+}
+
+// ── 7b. silent_runner: forbid + forfeit on compromised cloak (depleted/fired) ─────────────────
+function testForbidEventSilentRunnerForfeitsOnCompromisedCloak() {
+  const h = boot();
+  const m = activate(h, { type: 'smuggling_run', conditions: ['silent_runner'], reward: 1200 });
+  h.clear();
+
+  // Voluntary toggle does NOT breach silent runner.
+  h.sim.bus.emit('cloak:dropped', { reason: 'toggled', energy: 0.8 });
+  assert.equal(h.of('mission:conditionBroken').length, 0, 'intentional toggle must not void silent-runner premium');
+  assert.equal(h.state.missions.active.includes(m), true, 'contract remains active');
+
+  // Depletion compromises cloak and forfeits the premium.
+  h.sim.bus.emit('cloak:dropped', { reason: 'depleted', energy: 0.0 });
+  assert.equal(h.of('mission:conditionBroken').length, 1, 'depleted cloak breaches silent_runner');
+  assert.equal(h.of('mission:failed').length, 0, 'a forfeit-grade term must not fail the contract');
+  assert.equal(h.state.missions.active.includes(m), true, 'player keeps contract and can still finish it');
+
+  const settled = settleContractClauses(m);
+  assert.equal(settled.rewardMult, 1, 'forfeited term pays no premium');
+  assert.equal(settled.rewardCr, 1200, 'base reward is preserved');
+  assert.deepEqual([...settled.breached], ['silent_runner'], 'settlement receipt records the breach');
 }
 
 // ── 8. tick term: warned at t=0, trips only after the hold window, premium-only consequence ───
