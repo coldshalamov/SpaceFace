@@ -367,20 +367,68 @@ because `collisionConsequences` resolves collision ownership from the latest imp
 blast now pushes without claiming. **Plan 31 is still open** for size-x-cause skins, physical debris
 below the Heavy tier, and the human 30 s kill-montage watch.
 
+**Milestone movement (2026-08-17), four plans.** Scoped work on `codex/pr95-all`; `check:arcade-core`
+and `check:baseline` were green *before* it started, so the after-state comparison means something.
+
+- **Plan 30 SECRETS — CLOSED.** All four locked placeholders now have a real clue → find →
+  codex-unlock chain. *Names in the Stars* is read off fabricator plates on three lane beacons, one
+  per region — `constellationLabels.js` is untouched, the labels stay `interactive: false`, and the
+  galaxy chart gets no per-label hook, so **the owner's design call was not consumed and is not
+  needed**. *Unregistered Caches* generalizes `pallasHiddenCache.js` into `hiddenCacheCore.js` (Pallas
+  re-expressed on it, its six tests unchanged) and authors nine caches on already-existing hidden
+  cache POIs; contents include the plan's one forbidden item, which was also the only authored source
+  for a module that previously existed with no way to obtain it. *The Face* rides the Lacuna Survey
+  Moon — the graph's only L-class survey moon, already drawn as a cratered rock — behind a real
+  bearing-arc solve, not a flag. *The Developer* parks behind the Dead Gate on its own record, built
+  from an ordinary archetype row so it runs on the shipped AI, browser-gated like `PLANET_FLAGS` so
+  no golden can see it, with its kill remembered against the seed that produced it.
+- **Plan 31 DEATH VFX — CLOSED except the human gate.** Cause skins now stack on the size tier
+  instead of replacing it; capital-class skins all walk the multi-point cook-off (anchoring that walk
+  on `rupture` alone had silently skipped chain and burn-up, which have no rupture beat); medium and
+  larger hulls shed one real, colliding, vacuum-immune, chain-capable section, pooled at six with the
+  oldest evaporating first; and reduced-flash coverage is asserted per element. **Deliberate
+  deviation from the plan text, recorded here on purpose:** Plan 31's Medium row lists a shockwave
+  ring and this ships without one, because the repo already decided that question — the `pressure`
+  phase uses broken vapor shears *specifically* to stop the cue rebuilding a ring, and AC-09's
+  accepted grammar bans a circular ring for every style. Adding it failed three shipped assertions.
+- **Plan 07 LIVING WORLD — re-audited, no gap found.** Its acceptance route already exists and
+  passes: `arcade-core-living-island-helios-chain` logs the job transitions, crosses ore through a
+  physical pod, opens a real pirate intercept, gets a lawful patrol response, and delivers, all
+  inside ten sim-minutes; `arcade-core-wanted-lifecycle` covers §3's bounded-decay memory rule with
+  no reputation move. §4's twelve NPC-type seeds are explicitly "handed to content agents ... over
+  time" and are not a closure condition.
+- **Plan 08 FACTORY LOOP — the missing instrument built.** Custody, raids, both outcomes and their
+  save/load resumption were already covered by `arcade-core-claim-carrier` and `claim-defense`. The
+  genuine gap was the named economy check, which nothing in the repo implemented; it is now asserted
+  from the authored constants rather than by racing two sims, on three independent grounds (no site
+  creates goods from nothing, passive selling realizes strictly less per unit than flying it, upkeep
+  is unconditional) so breaking any one turns it red.
+
+Every check added above was negative-tested — the feature broken, the check confirmed red, the
+feature restored. That found a real defect in one of them: the first reduced-flash check **passed its
+own mutation**, because "reduced appears somewhere in the call arguments" stayed true when the branch
+was stripped off the opacity specifically. It now counts branched applications of the flash budget
+against total applications.
+
+**Still open in these four:** Plan 31's human 30-second kill-montage watch (owner-blocked), and
+Plan 07's and Plan 08's human gates — owner watches an island for five minutes and answers "what are
+these people doing?", and owner watches their own convoy undock and reports whether it felt like
+*theirs*. Those three join the standing owner list below.
+
 **Do not read a green `check:arcade-core` as plan completeness.** Those 300 tests prove the routes
 somebody wrote a test for; they say nothing about plan requirements nobody tested. Plan 30 is the
-proof and the standing example: `src/data/codexSecrets.js` ships six secret rows, and four of them -
-Names in the Stars, Unregistered Caches, The Face, The Developer - are permanently locked
-placeholders with **no discovery path at all**. The Face and The Developer have no runtime owner
-anywhere in `src/`; the constellation labels are drawn on the galaxy chart but authored
-`interactive: false` and presentation-only on purpose, so the trigger that would unlock them is a
-design decision rather than a wiring gap, and it is the owner's. Completeness across the other
-plans is **unverified by any artifact in this repo**, and should not be asserted without an audit
-that reads each plan's named production routes against live code.
+proof and the standing example: `src/data/codexSecrets.js` shipped six secret rows with four of them -
+Names in the Stars, Unregistered Caches, The Face, The Developer - as permanently locked placeholders
+with **no discovery path at all**, alongside 305 passing tests. (Those four are closed above as of
+2026-08-17; the lesson stands, and the numbers are kept as the worked example rather than edited into
+agreement with the fix.) Completeness across the plans NOT named above is **unverified by any
+artifact in this repo**, and should not be asserted without an audit that reads each plan's named
+production routes against live code.
 
 Owner gates, not agent work: Plan 09's calibration bands, Plan 04's atmosphere burn-up watch, Plan
-31's kill-montage watch, Plan 58's 52-vs-45 commodity cap, and the Plan 30 discovery-route calls
-above.
+31's kill-montage watch, Plan 58's 52-vs-45 commodity cap, Plan 07's five-minute island watch, and
+Plan 08's own-convoy watch. The Plan 30 discovery-route call is no longer owner-blocked: the shipped
+routes reach every secret without touching the constellation labels.
 
 A prior AC-01–20 outcome, test, receipt, plan, lab,
 or source-level implementation closes a full numbered plan only when every named production route
