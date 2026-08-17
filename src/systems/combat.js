@@ -16,7 +16,7 @@ import {
   styleMultiplierOf,
 } from '../combat/killCause.js';
 import { createVictimRewardRng, missionOwnsReward } from '../combat/rewardEligibility.js';
-import { createHeavyCookOffRuntime, triggerEmberCookOff } from '../combat/cookOff.js';
+import { createHeavyCookOffRuntime, triggerDeathBlastImpulse, triggerEmberCookOff } from '../combat/cookOff.js';
 import { isTumbling } from '../combat/tumbleStatus.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { combatFlag } from '../data/featureFlags.js';
@@ -693,6 +693,9 @@ export const combat = {
       // Forbidden Dead-Man hardware is an actual death tradeoff, not a catalog number. Resolve its
       // one bounded physical pulse before either recoverable defeat or Ironman ends the live body.
       triggerEmberCookOff({ state, bus, helpers: this.helpers, source: t, killerId, lethal });
+      // The player's hull is a body like any other: dying inside a knot of hostiles shoves them.
+      // Declines itself when the Dead-Man pulse above already owns this death.
+      triggerDeathBlastImpulse({ state, bus, helpers: this.helpers, source: t, killerId, lethal });
       // Ironman (advertised as "permadeath" in the New Game UI) honors that promise: death ends
       // the run instead of respawning. We still fire player:death so the death banner/VFX play,
       // then emit game:over (a gameOver screen subscribes and shows a run summary). The entity is
@@ -738,6 +741,10 @@ export const combat = {
     // reward: later phases only cross SG-02 and spawn bounded physical debris, while the canonical
     // entity:killed notification below continues to own bounty, loot, and aftermath identity.
     this._heavyCookOff?.begin(t, killerId, lethal);
+    // Plan 31 ordinary tier, on the same edge and for the same budget reason: light and medium deaths
+    // shoved nothing at all, so a kill-dive through a corpse read as scenery. The blast declines
+    // itself whenever Ember or Heavy above already owns this death, so nothing is pushed twice.
+    triggerDeathBlastImpulse({ state, bus, helpers: this.helpers, source: t, killerId, lethal });
     const presentation = buildKillPresentationReceipt(state, t, killerId, lethal);
     bus.emit('entity:killed', {
       id: t.id, killerId, type: t.type, pos: { x: t.pos.x, z: t.pos.z },

@@ -246,6 +246,127 @@ export function createHeavyCookOffRuntime({ state, bus, helpers } = {}) {
   }
 }
 
+// Plan 31 physics rule: "Explosion impulses are real: point-blank ships get shoved. Small, honest,
+// and it makes kill-dives spicy." Ember and Heavy already author their own bigger pulses, so this is
+// the ordinary tier - every other death still moves what is standing next to it. Reach and peak both
+// scale off the victim's real radius, the same authority the size ladder reads, so the shove and the
+// spectacle agree by construction. The caps are deliberately below both authored cook-offs: this
+// fires on nearly every kill, where those fire on a chosen few.
+export const DEATH_BLAST = Object.freeze({
+  /** Blast reach = victim radius x this, clamped. Well inside Ember's 130 and Heavy's 132. */
+  reachPerRadius: 3,
+  minReachWu: 30,
+  maxReachWu: 90,
+  /** Peak impulse at the centre, falling linearly to zero at the rim. Below Ember's 340. */
+  impulsePerRadius: 7,
+  minImpulse: 45,
+  maxImpulse: 190,
+  /** Bodies moved by one ordinary death. Below Ember's 12 and Heavy's 8 - this one is common. */
+  maxAffected: 6,
+  provenance: 'death_blast',
+  /** Zero, always. Combat remains the sole health writer; collisionConsequences owns any impact. */
+  hullDamage: 0,
+});
+
+/**
+ * Apply one ordinary death blast.
+ *
+ * Impulse only: this never kills, damages, rewards, or writes motion directly - every physical write
+ * crosses SG-02's combat-physics membrane, exactly as the Ember and Heavy tiers do. Returns null
+ * when a richer authored cook-off already owns the shove for this corpse, so no body is ever pushed
+ * twice for one death.
+ */
+export function triggerDeathBlastImpulse({ state, bus, helpers, source, killerId = null, lethal = null } = {}) {
+  if (!state || !source || !source.pos) return null;
+  if (deathShoveOwnedElsewhere(source)) return null;
+
+  const sourceRadius = Math.max(0, finite(source.radius));
+  if (!(sourceRadius > 0)) return null;
+  const radiusWu = clampRange(
+    sourceRadius * DEATH_BLAST.reachPerRadius, DEATH_BLAST.minReachWu, DEATH_BLAST.maxReachWu,
+  );
+  const peakImpulse = clampRange(
+    sourceRadius * DEATH_BLAST.impulsePerRadius, DEATH_BLAST.minImpulse, DEATH_BLAST.maxImpulse,
+  );
+
+  const tick = nonNegativeTick(state.tick);
+  const position = Object.freeze({ x: finite(source.pos.x), z: finite(source.pos.z) });
+  const actorId = lethalActorId(killerId, lethal);
+  const weaponId = lethalWeaponId(lethal);
+  const physics = helpers && helpers.combatPhysics;
+  const affected = [];
+
+  if (physics && typeof physics.applyImpulse === 'function') {
+    const candidates = collectCandidates(state, source, position, radiusWu);
+    for (const candidate of candidates) {
+      if (affected.length >= DEATH_BLAST.maxAffected) break;
+      const direction = radialDirection(
+        source.id, candidate.entity.id, candidate.dx, candidate.dz, candidate.distance,
+      );
+      const magnitude = peakImpulse * (1 - candidate.distance / radiusWu);
+      if (!(magnitude > 0)) continue;
+      const provenance = {
+        actorId, weaponId, tag: DEATH_BLAST.provenance, appliedTick: tick,
+      };
+      const accepted = physics.applyImpulse({
+        entityId: candidate.entity.id,
+        impulse: { x: direction.x * magnitude, z: direction.z * magnitude },
+        point: null,
+        reason: DEATH_BLAST.provenance,
+        tick,
+        provenance,
+      });
+      if (accepted !== true) continue;
+      recordImpulseProvenance(candidate.entity, { ...provenance, magnitude });
+      affected.push(Object.freeze({
+        entityId: candidate.entity.id,
+        distanceWu: candidate.distance,
+        impulse: magnitude,
+        direction: Object.freeze(direction),
+      }));
+    }
+  }
+
+  const receipt = Object.freeze({
+    schemaVersion: 1,
+    tick,
+    sourceId: source.id,
+    sourceRadius,
+    actorId,
+    weaponId,
+    provenance: DEATH_BLAST.provenance,
+    position,
+    radiusWu,
+    peakImpulse,
+    maxAffected: DEATH_BLAST.maxAffected,
+    affected: affected.length ? Object.freeze(affected) : EMPTY_AFFECTED,
+  });
+
+  // No cue is emitted here on purpose. The death this rides already draws its own explosion through
+  // the size ladder, and 10's flash/particle budget should not be charged twice for one event.
+  if (bus && typeof bus.emit === 'function') bus.emit('combat:deathBlast', receipt);
+  return receipt;
+}
+
+/**
+ * True when a richer authored cook-off already shoves for this death.
+ *
+ * Checked on the victim's identity rather than on whether the other tier's scheduler accepted the
+ * work, so a corpse never gets a second, smaller pulse merely because a concurrency cap was full.
+ */
+function deathShoveOwnedElsewhere(entity) {
+  const data = entity && entity.data;
+  if (!data) return false;
+  if (data.deathCookOff || (data.derived && data.derived.deathCookOff)) return true;
+  return data.killRewardTier === 'heavy' && data.shipClass !== 'capital';
+}
+
+function clampRange(value, low, high) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return low;
+  return Math.min(Math.max(number, low), high);
+}
+
 /**
  * Resolve and apply one Ember death cook-off.
  *
