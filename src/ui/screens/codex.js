@@ -14,6 +14,7 @@ import {
   DOUBLE_WRECK_BLACK_BOXES,
   DOUBLE_WRECK_SHAPE_ID,
 } from '../../data/doubleWreckBlackBoxes.js';
+import { ghostShipBlackBoxRecords } from '../../data/ghostShipBlackBox.js';
 import { explorationDiscoveryPlates } from '../../world/explorationJournal.js';
 import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
 import { createShipLedgerPanel } from './shipLedger.js';
@@ -723,13 +724,28 @@ export const codexScreen = {
 
   _renderBlackBoxes(ctx) {
     this._body.appendChild(el('div', 'sf-codex-section-h', 'Recovered Black Boxes'));
-    const records = doubleWreckBlackBoxRecords(safeStory(ctx));
-    if (!records.length) {
+    const story = safeStory(ctx);
+    const doubleWreckRecords = doubleWreckBlackBoxRecords(story);
+    const ghostRecords = ghostShipBlackBoxRecords(story);
+    if (!doubleWreckRecords.length && !ghostRecords.length) {
       this._body.appendChild(el('div', 'sf-codex-empty',
         'No recorders recovered. Scan a wreck before cutting it free.'));
       return;
     }
-    for (const record of records.slice().reverse()) {
+    for (const record of ghostRecords.slice().reverse()) {
+      const entry = el('article', 'sf-codex-entry');
+      entry.dataset.blackBoxEncounterId = record.encounterId;
+      entry.appendChild(el('h3', null, record.title));
+      const location = [record.sectorId, record.zoneId].filter(Boolean).join(' · ');
+      entry.appendChild(el('div', 'sf-codex-meta',
+        `1/1 recorder recovered${location ? ` · ${location}` : ''}`));
+      for (const log of record.logs) {
+        entry.appendChild(el('div', 'sf-codex-body', `${log.stamp} — ${log.text}`));
+      }
+      entry.appendChild(el('div', 'sf-codex-note', record.note));
+      this._body.appendChild(entry);
+    }
+    for (const record of doubleWreckRecords.slice().reverse()) {
       const entry = el('article', 'sf-codex-entry');
       entry.dataset.blackBoxEncounterId = record.encounterId;
       entry.appendChild(el('h3', null, 'Double Wreck — Opposing Accounts'));

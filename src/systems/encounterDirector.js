@@ -250,6 +250,7 @@ export const encounterDirector = {
       this.bus.on('entity:killed', (p) => this._onEntityKilled(p));
       this.bus.on('combat:subsystemDisabled', (p) => this._routeToScript('convoy', 'subsystemDisabled', p));
       this.bus.on('pickup:collected', (p) => this._routeToScript('convoy', 'pickupCollected', p));
+      this.bus.on('loot:collected', (p) => this._routeToSelfRegistered('lootCollected', p));
       this.bus.on('ai:flee', (p) => this._routeToScript('convoy', 'aiFlee', p));
       this.bus.on('freight:recovery', (p) => this._routeToScript('convoy', 'freightRecovered', p));
       this.bus.on('freight:recoveryAbandoned', (p) => this._routeToScript('convoy', 'freightRecoveryAbandoned', p));

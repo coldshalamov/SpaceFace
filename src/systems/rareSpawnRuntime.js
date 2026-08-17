@@ -3,6 +3,10 @@
 // cast and translate real interaction receipts into durable outcomes.
 import { Masks } from '../core/entity.js';
 import { doubleWreckBlackBox } from '../data/doubleWreckBlackBoxes.js';
+import {
+  GHOST_SHIP_BLACK_BOX,
+  GHOST_SHIP_BLACK_BOX_CARGO_PREFIX,
+} from '../data/ghostShipBlackBox.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec } from './ships.js';
 
 const OFFER_S = 45;
@@ -80,6 +84,31 @@ function rememberDoubleWreckBox(state, live, side, recoveredOrder, wreck) {
   trimRareHistory(ledger);
   addPersistentStoryCargo(state, cargoId);
   return { record, created: true, box };
+}
+
+function rememberGhostShipBox(state, live, pickup) {
+  const ledger = ensureRareLedger(state);
+  const receiptId = `ghost-ship-box:${live.id}`;
+  const existing = ledger.history.find((row) => row && row.receiptId === receiptId);
+  if (existing) return { record: existing, created: false };
+  const cargoId = `${GHOST_SHIP_BLACK_BOX_CARGO_PREFIX}${live.id}`;
+  const record = {
+    kind: 'black_box',
+    receiptId,
+    shapeId: live.shapeId,
+    encounterId: live.id,
+    cargoId,
+    sourceStoryPropKind: GHOST_SHIP_BLACK_BOX.storyPropKind,
+    scanLabel: pickup && pickup.data && pickup.data.scanLabel || GHOST_SHIP_BLACK_BOX.title,
+    sectorId: live.sectorId,
+    zoneId: live.zoneId,
+    tick: state.tick | 0,
+    at: Number(state.simTime) || 0,
+  };
+  ledger.history.push(record);
+  trimRareHistory(ledger);
+  addPersistentStoryCargo(state, cargoId);
+  return { record, created: true };
 }
 
 function finish(d, live, state, outcome, headline) {
@@ -483,18 +512,61 @@ const ghostShip = Object.freeze({
       hailResponse: 'static_loopback',
       scanLabel: 'Cold ghost ship — static hail return',
       storyPropKind: 'rare_ghost_ship',
-      salvagePool: { cmdty_salvage_electronics: 3, cmdty_exotic_xenium: 1 },
+      salvagePool: { cmdty_exotic_xenium: 1 },
     }, 'ghost_ship');
     if (!wreck) return d.abort(live, 'spawn_failed');
     live.data.wreckId = wreck.id;
+    live.data.wreckHandled = false;
+    live.data.blackBoxPickupId = null;
     startOffer(d, live, 'GHOST SHIP REPORTED: a cold hull is answering hails with static');
   },
   tick(d, live, state, now) { timeout(d, live, state, now, chooseGhost); },
   choose: chooseGhost,
   event(d, live, state, name, payload = {}) {
-    if (name !== 'entityGone' || payload.id !== live.data.wreckId) return;
-    addPersistentStoryCargo(state, `rare_black_box:ghost:${live.id}`);
-    finish(d, live, state, 'black_box_recovered', 'GHOST SHIP STRIPPED: one black box and a Xenium trace enter the record');
+    if (name === 'salvageCompleted' && payload.wreckId === live.data.wreckId) {
+      if (live.data.wreckHandled) return;
+      live.data.wreckHandled = true;
+      const wreck = state.entities && state.entities.get && state.entities.get(live.data.wreckId);
+      if (!wreck || !wreck.data || wreck.data.scanned !== true) {
+        finish(d, live, state, 'black_box_unreadable', 'GHOST SHIP STRIPPED: the unscanned recorder leaves no readable account');
+        return;
+      }
+      const pickup = spawnCargoPickup(d, live, {
+        pos: wreck.pos,
+        commodityId: 'cmdty_salvage_electronics',
+        amount: 1,
+        role: 'ghost_black_box',
+        scanLabel: 'Ghost Ship flight recorder',
+      });
+      if (!pickup) return d.abort(live, 'black_box_spawn_failed');
+      live.data.blackBoxPickupId = pickup.id;
+      live.phase = 'recorder_loose';
+      d.say(live, 'info', 'GHOST RECORDER FREE — bring the physical box aboard to archive its account.', null, { literal: true });
+      return;
+    }
+    if (name === 'lootCollected' && payload.pickupId === live.data.blackBoxPickupId
+      && payload.collectorId === state.playerId && Number(payload.amount) > 0) {
+      const pickup = state.entities && state.entities.get && state.entities.get(live.data.blackBoxPickupId);
+      const result = rememberGhostShipBox(state, live, pickup);
+      if (result.created) {
+        d.emit('codex:blackBoxRecovered', {
+          encounterId: live.id,
+          shapeId: live.shapeId,
+          cargoId: result.record.cargoId,
+        });
+      }
+      finish(d, live, state, 'black_box_recovered', 'GHOST SHIP READ: one recorder and one Xenium trace enter the record');
+      return;
+    }
+    if (name !== 'entityGone') return;
+    if (payload.id === live.data.wreckId && !live.data.wreckHandled) {
+      live.data.wreckHandled = true;
+      finish(d, live, state, 'black_box_lost', 'GHOST SHIP BROKEN: destruction erased the recorder before extraction');
+      return;
+    }
+    if (payload.id === live.data.blackBoxPickupId) {
+      finish(d, live, state, 'black_box_lost', 'GHOST RECORDER LOST: the loose box never reached the hold');
+    }
   },
 });
 

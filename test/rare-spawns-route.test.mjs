@@ -230,6 +230,19 @@ test('ghost ship and Double Wreck carry real salvage pools and durable black-box
     assert.equal(wreck.data.hailResponse, 'static_loopback');
     assert.equal(wreck.data.salvagePool.cmdty_exotic_xenium, 1);
     ghost.bus.emit('encounter:choose', { encounterId: live.id, choiceId: 'hail' });
+    ghost.state.input.actions.scanPulse = true;
+    ghost.sim.registry.get('scanner').update(0, ghost.state);
+    assert.equal(wreck.data.scanned, true);
+    ghost.bus.emit('salvage:completed', { wreckId: wreck.id, loot: { cmdty_exotic_xenium: 1 } });
+    const recorder = entitiesByRareRole(ghost, 'ghost_black_box')[0];
+    assert.ok(recorder && recorder.type === 'pickup');
+    ghost.bus.emit('loot:collected', {
+      pickupId: recorder.id,
+      collectorId: ghost.player.id,
+      kind: 'cargo',
+      commodityId: recorder.data.commodityId,
+      amount: recorder.data.amount,
+    });
     wreck.alive = false;
     ghost.bus.emit('entity:destroyed', { id: wreck.id, type: 'wreck' });
     assert.equal(resolution(ghost, live.id).outcome, 'black_box_recovered');
