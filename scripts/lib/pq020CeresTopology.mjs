@@ -64,8 +64,15 @@ export const PQ020_CATHEDRAL_SITE_ID = 'world_site_wreck_cathedral';
 export const PQ020_CATHEDRAL_PLACE_ID = 'place_landmark_wreck_cathedral';
 export const PQ020_CERES_ADDITIVE_WORLD_SITES_SCHEMA =
   'spaceface.pq020-ceres-additive-world-sites.v1';
+// Re-pinned 2026-08-17 for the Bell Cloister berth. The prior digest,
+// b2232d1d891f6d65b2e4420387a23223e0325a0e14971d046bd86ef61ddafc2d, was pinned when this check was
+// written and still verifies on origin/master, so the drift is this branch's own authored content
+// rather than an unexplained cost regression. The whole delta at Ceres is: authored stations 2 -> 3,
+// entities.total 124 -> 126 (asteroid 90 -> 91, station 6 -> 7), collidable/colliders 105 -> 107.
+// The Cathedral itself is untouched - materialized 15, planned 15, 7 interaction and 7 collision
+// proxies, same releaseSha256 - which is what this digest exists to protect.
 export const PQ020_EXPECTED_STRUCTURAL_COST_DIGEST =
-  'b2232d1d891f6d65b2e4420387a23223e0325a0e14971d046bd86ef61ddafc2d';
+  '76677e4866bccbdd6a9fa2857d12f4e058c5d5d61eeab72b3443bb4bdf77c171';
 
 const EXPECTED_ADDITIVE_WORLD_SITE_IDS = Object.freeze([CINDER_SLUICE_SITE_ID]);
 
