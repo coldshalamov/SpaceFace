@@ -832,6 +832,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     if (def.slotType === 'cargo') return def.mods && def.mods.hiddenCargoPct ? 'Concealed cargo system' : 'Load-space system';
     if (def.slotType === 'mining') return def.directToCargo ? 'Direct-feed extraction system' : 'Ore extraction system';
     if (def.mods && def.mods.hullRepairOOC) return 'Autonomous repair system';
+    if (def.mods && def.mods.scannerCloak) return 'Sensor scrambling and stealth system';
     if (def.mods && def.mods.weaponHeatDissipPct) return 'Thermal regulation and weapon heatsink';
     if (def.mods && def.mods.weaponRangePct) return 'Fire-control support system';
     if (def.mods && def.mods.radarRangePct) return 'Long-range sensor system';
@@ -865,6 +866,9 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     } else if (def.slotType === 'cargo') {
       add('CAPACITY', def.mods && def.mods.cargoFlat);
       add('CAP %', def.mods && def.mods.cargoCapPct ? def.mods.cargoCapPct * 100 : null);
+      add('HIDDEN %', def.mods && def.mods.hiddenCargoPct ? def.mods.hiddenCargoPct * 100 : null);
+    } else if (def.slotType === 'utility') {
+      add('CLOAK %', def.mods && def.mods.scannerCloak ? def.mods.scannerCloak * 100 : null);
     }
     add('MASS', def.mass);
     add('DRAW', def.energyDraw != null ? def.energyDraw : def.energyCost);
@@ -876,7 +880,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const suffix = row.label === 'RANGE' ? ' wu'
         : row.label === 'MASS' ? ' t'
           : row.label === 'DRAW' ? ' pwr'
-            : row.label === 'CAP %' ? '%' : '';
+            : (row.label === 'CAP %' || row.label === 'HIDDEN %' || row.label === 'CLOAK %') ? '%' : '';
       const value = Math.abs(row.value) >= 100 ? Math.round(row.value) : Math.round(row.value * 10) / 10;
       return `<span class="sx-modrow__metric"><i>${escapeHtml(row.label)}</i><b>${escapeHtml(String(value) + suffix)}</b></span>`;
     }).join('');

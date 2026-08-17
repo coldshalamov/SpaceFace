@@ -220,6 +220,27 @@ export const MODULES = [
     id: 'mod_smuggler_hold', name: 'Smuggler Hold', slotType: 'cargo', size: 'S', tier: 2, mass: 4, price: 38000,
     energyDraw: 0, legality: 'contraband', mods: { hiddenCargoPct: 0.20, cargoFlat: 8 },
   },
+  {
+    id: 'mod_smuggler_hold_m', name: 'Smuggler Hold M', slotType: 'cargo', size: 'M', tier: 3, mass: 8, price: 92000,
+    requiresTech: 'tech_bulk_logistics', energyDraw: 1, legality: 'contraband',
+    mods: { hiddenCargoPct: 0.35, cargoFlat: 20 },
+  },
+  {
+    id: 'mod_sensor_scrambler_s', name: 'Sensor Scrambler S', slotType: 'utility', size: 'S', tier: 1, mass: 2, price: 16000,
+    energyDraw: 2, legality: 'restricted',
+    mods: { scannerCloak: 0.25 },
+  },
+  {
+    id: 'mod_sensor_scrambler_m', name: 'Sensor Scrambler M', slotType: 'utility', size: 'M', tier: 3, mass: 5, price: 48000,
+    requiresTech: 'tech_drive_tuning', energyDraw: 4, legality: 'contraband',
+    mods: { scannerCloak: 0.50 },
+  },
+  {
+    id: 'unique_phantom_scrambler', baseId: 'mod_sensor_scrambler_m', name: 'Phantom Scrambler', slotType: 'utility', size: 'M', tier: 3, mass: 5, price: 0,
+    energyDraw: 4, purchasable: false, unique: true, salvageOnly: true,
+    mods: { scannerCloak: 0.70 },
+    variantBonuses: { scannerCloakPct: 0.40 },
+  },
   // Countermeasures (P1-7): chaff breaks missile locks + diverts in-flight missiles to a decoy
   // cloud; ECM jams homing guidance (turnRate → 0) for a duration. Both use the utility slot, are
   // cooldown-gated (not consumable ammo — keeps the loop simple), and give missiles real counterplay

@@ -1623,7 +1623,7 @@ export const economy = {
    * efficiency bag remains a migration fallback for older saves/tools. */
   smugglingCapabilities(state) {
     const entity = state.entities && state.entities.get && state.entities.get(state.playerId);
-    const derived = entity && entity.data && entity.data.derived || {};
+    const derived = (entity && entity.data && entity.data.derived) || (state.player && state.player.derived) || {};
     const legacy = state.player && state.player.efficiencyMods || {};
     return {
       hiddenCargoPct: clamp(Number(derived.hiddenCargoPct != null ? derived.hiddenCargoPct : legacy.hiddenCargoPct) || 0, 0, 1),

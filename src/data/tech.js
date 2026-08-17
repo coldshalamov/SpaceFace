@@ -93,7 +93,7 @@ export const TECH_NODES = [
   {
     id: 'tech_bulk_logistics', name: 'Bulk Logistics', branch: 'industry', prereqs: [],
     cost: { credits: 20000, rp: 25 },
-    unlocks: { ships: ['ship_atlas'], modules: ['mod_cargo_expander_l', 'mod_massline_spool_m'] },
+    unlocks: { ships: ['ship_atlas'], modules: ['mod_cargo_expander_l', 'mod_massline_spool_m', 'mod_smuggler_hold_m'] },
   },
   {
     id: 'tech_matter_compression', name: 'Matter Compression', branch: 'industry', prereqs: ['tech_bulk_logistics'],
@@ -105,7 +105,7 @@ export const TECH_NODES = [
   {
     id: 'tech_drive_tuning', name: 'Drive Tuning', branch: 'drives', prereqs: [],
     cost: { credits: 15000, rp: 20 },
-    unlocks: { modules: ['mod_engine_fusion_m', 'mod_afterburner_m', 'mod_jump_drive_m', 'mod_cloak_mk2'] },
+    unlocks: { modules: ['mod_engine_fusion_m', 'mod_afterburner_m', 'mod_jump_drive_m', 'mod_cloak_mk2', 'mod_sensor_scrambler_m'] },
   },
   {
     id: 'tech_impulse_ballistics', name: 'Impulse Ballistics', branch: 'drives', prereqs: ['tech_drive_tuning'],

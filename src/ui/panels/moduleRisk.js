@@ -64,6 +64,7 @@ export function moduleRiskGlyphs(moduleOrId) {
       source: 'module.legality',
       value: moduleDef.legality,
       hiddenCargoPct: finite(mods.hiddenCargoPct, 0),
+      scannerCloak: finite(mods.scannerCloak, 0),
       detail: 'Customs scans can treat this fitting as contraband.',
     }));
   }

@@ -41,6 +41,8 @@ function modifierLines(def) {
   if (m.droneBay) out.push('drone bay');
   if (m.jumpDriveTier) out.push('jump T' + m.jumpDriveTier);
   if (m.revealCargo) out.push('scan cargo');
+  if (m.hiddenCargoPct) out.push('+' + Math.round(m.hiddenCargoPct * 100) + '% hidden hold');
+  if (m.scannerCloak) out.push('+' + Math.round(m.scannerCloak * 100) + '% scan cloak');
   if (m.marketIntel) out.push('market data');
   if (m.countermeasure) out.push(m.countermeasure.kind + ' cm');
   return out;
