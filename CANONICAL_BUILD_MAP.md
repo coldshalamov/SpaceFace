@@ -342,9 +342,23 @@ the plan's "~45 total commodities" cap is exceeded at 52 by concurrent productio
 flagged for the owner rather than silently trimmed. Plans 09 (owner calibration bands), 04
 (atmosphere burn-up human watch), 30 (remaining secrets as honest ??? placeholders), and the
 07/08 factory/living-world re-audit remain explicit owner/agent-open gates from the campaign
-handoff. `check:baseline` is red only on the 47a telemetry envelope - content-only drift per
-`scripts/sim-golden-diff.mjs`, pre-dating the Plan 31 slice; the golden re-record decision is the
-owner's. A prior AC-01–20 outcome, test, receipt, plan, lab,
+handoff.
+
+**Correction (2026-08-17), superseding the baseline claim above it:** the sentence first committed
+here - that `check:baseline` was red *only* on the 47a envelope with content-only drift - was wrong
+on every count, and is corrected rather than deleted because it is exactly the failure mode §3 warns
+about. After origin/master merged in, baseline was red on five things: both 47a envelopes,
+`check:sim`, `check:sim:v3`, and `pq020-ceres-topology`, with `check:arcade-core` separately red on
+two campaign tests. The 47a drift was **MOTION_CHANGED**, not content-only: master's `5826a461`
+raises player translation authority 15 percent, so the fixed input tape carves a different path.
+All five are now green and the evidence sits in the commits - both envelopes re-recorded after
+proving determinism (`hashEqual` true, no divergent tick, `--repeat 20`), the Ceres digest re-pinned
+for the Bell Cloister berth with the full 124 -> 126 entity delta recorded beside the constant, four
+new berths given Plan 29 signage, and the 2v2 faction route taught to engage from inside the
+licensed fit's real range instead of from wherever it coasted to. No golden was re-recorded to hide
+a regression, and no owner decision was consumed: the drift had a named, intended cause each time.
+
+A prior AC-01–20 outcome, test, receipt, plan, lab,
 or source-level implementation closes a full numbered plan only when every named production route
 and required Layer 1/2/human gate in that plan is terminal. Performance work is excluded from this
 campaign and does not count toward its completion.
