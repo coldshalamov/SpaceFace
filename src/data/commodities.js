@@ -8,6 +8,8 @@ export { COMMODITY_MORAL_TAGS, MORAL_TAGS } from './commodityMoralTags.js';
 // basePrice (cr/u): price at equilibrium stock. volatility: event amplitude.
 // elasticity: price curve steepness. legality: 'legal'|'restricted'|'contraband'.
 // volPerU / massPerU: hold footprint. producedBy/consumedBy: station-type roles.
+// legacyNames records deliberate player-facing specialization while the stable id remains the
+// save/cargo/mission authority; it is compatibility metadata, never a second catalog entry.
 // marketTier: minimum sector tier where stations may SELL this naturally occurring resource.
 // Any station may still BUY it from the player, preserving exploration finds and liquidation.
 // Station types: trade_hub, refinery, mining, fab, military, blackmarket, research
@@ -29,7 +31,7 @@ export const COMMODITIES = [
   { id: 'cmdty_gem_emerald',        name: 'Raw Emerald',           category: 'raw ore',   basePrice: 5000, volatility: 0.40, elasticity: 0.60, legality: 'legal',     volPerU: 0.8, massPerU: 0.8, fineMult: 0, marketTier: 3, producedBy: ['mining'],                         consumedBy: ['trade_hub','refinery'] },
   { id: 'cmdty_gem_ruby',           name: 'Raw Ruby',              category: 'raw ore',   basePrice: 20000, volatility: 0.45, elasticity: 0.65, legality: 'legal',    volPerU: 0.8, massPerU: 0.8, fineMult: 0, marketTier: 4, producedBy: ['mining'],                         consumedBy: ['trade_hub','refinery'] },
   { id: 'cmdty_gem_diamond',        name: 'Raw Diamond',           category: 'raw ore',   basePrice: 100000, volatility: 0.50, elasticity: 0.70, legality: 'legal',   volPerU: 0.8, massPerU: 0.8, fineMult: 0, marketTier: 4, producedBy: ['mining'],                         consumedBy: ['trade_hub','refinery'] },
-  { id: 'cmdty_exotic_amazonite',   name: 'Prism Shard',           category: 'raw ore',   basePrice: 500000, volatility: 0.60, elasticity: 0.80, legality: 'legal',   volPerU: 0.8, massPerU: 0.8, fineMult: 0, marketTier: 4, producedBy: ['mining'],                         consumedBy: ['trade_hub','research'] },
+  { id: 'cmdty_exotic_amazonite',   name: 'Storm-Glass',           legacyNames: ['Prism Shard'], category: 'raw ore', basePrice: 500000, volatility: 0.60, elasticity: 0.80, legality: 'legal', volPerU: 0.8, massPerU: 0.8, fineMult: 0, marketTier: 4, producedBy: ['mining','blackmarket'], consumedBy: ['trade_hub','research'] },
 
   // --- GAS ---
   { id: 'cmdty_gas_hydrogen',       name: 'Hydrogen Gas',          category: 'gas',       basePrice: 20,  volatility: 0.20, elasticity: 0.38, legality: 'legal',      volPerU: 2.5, massPerU: 0.1, fineMult: 0, marketTier: 0, producedBy: ['mining'],                         consumedBy: ['refinery','trade_hub'] },
@@ -37,7 +39,7 @@ export const COMMODITIES = [
 
   // --- CRYSTAL ---
   { id: 'cmdty_crystal_silica',     name: 'Silica Crystal',        category: 'crystal',   basePrice: 55,  volatility: 0.24, elasticity: 0.42, legality: 'legal',      volPerU: 1.0, massPerU: 1.1, fineMult: 0, marketTier: 1, producedBy: ['mining'],                         consumedBy: ['fab','research'] },
-  { id: 'cmdty_crystal_lumin',      name: 'Phosphor Crystal',      category: 'crystal',   basePrice: 105, volatility: 0.30, elasticity: 0.46, legality: 'legal',      volPerU: 1.0, massPerU: 1.0, fineMult: 0, marketTier: 2, producedBy: ['mining'],                         consumedBy: ['fab','research'] },
+  { id: 'cmdty_crystal_lumin',      name: 'Emitter Crystal',       legacyNames: ['Phosphor Crystal'], category: 'crystal', basePrice: 105, volatility: 0.30, elasticity: 0.46, legality: 'legal', volPerU: 1.0, massPerU: 1.0, fineMult: 0, marketTier: 2, producedBy: ['mining'], consumedBy: ['fab','research'] },
 
   // --- EXOTIC ---
   { id: 'cmdty_exotic_xenium',      name: 'Xenium',                category: 'exotic',    basePrice: 320, volatility: 0.55, elasticity: 0.55, legality: 'legal',      volPerU: 1.0, massPerU: 1.2, fineMult: 0, marketTier: 4, producedBy: ['mining'],                         consumedBy: ['research','blackmarket'] },
@@ -46,7 +48,7 @@ export const COMMODITIES = [
   { id: 'cmdty_refined_metals',     name: 'Refined Metals',        category: 'refined',   basePrice: 85,  volatility: 0.25, elasticity: 0.45, legality: 'legal',      volPerU: 0.5, massPerU: 0.7, fineMult: 0,   producedBy: ['refinery'],                       consumedBy: ['fab','military'] },
   { id: 'cmdty_alloys',             name: 'Composite Alloys',      category: 'refined',   basePrice: 140, volatility: 0.28, elasticity: 0.42, legality: 'legal',      volPerU: 0.5, massPerU: 0.6, fineMult: 0,   producedBy: ['refinery','fab'],                 consumedBy: ['fab','military'] },
   { id: 'cmdty_polymers',           name: 'Polymers',              category: 'refined',   basePrice: 70,  volatility: 0.24, elasticity: 0.40, legality: 'legal',      volPerU: 1.2, massPerU: 0.7, fineMult: 0,   producedBy: ['refinery'],                       consumedBy: ['fab','trade_hub'] },
-  { id: 'cmdty_fuel_cells',         name: 'Fuel Cells',            category: 'refined',   basePrice: 95,  volatility: 0.26, elasticity: 0.50, legality: 'legal',      volPerU: 0.8, massPerU: 0.6, fineMult: 0,   producedBy: ['refinery'],                       consumedBy: ['trade_hub','military','mining'] },
+  { id: 'cmdty_fuel_cells',         name: 'Refined Fuel Cells',    legacyNames: ['Fuel Cells'], category: 'refined', basePrice: 95, volatility: 0.26, elasticity: 0.50, legality: 'legal', volPerU: 0.8, massPerU: 0.6, fineMult: 0, producedBy: ['refinery'], consumedBy: ['trade_hub','military','mining'] },
 
   // --- SITE INDUSTRY (asteroid-site chain; design/ASTEROID_SITES_BRIEF.md) ---
   { id: 'cmdty_purified_silica',    name: 'Purified Silica',       category: 'refined',   basePrice: 45,  volatility: 0.24, elasticity: 0.42, legality: 'legal',      volPerU: 0.8, massPerU: 0.9, fineMult: 0,   producedBy: ['refinery','fab'],                 consumedBy: ['fab','research'] },
@@ -67,11 +69,11 @@ export const COMMODITIES = [
 
   // --- CONSUMER ---
   { id: 'cmdty_consumer_goods',     name: 'Consumer Goods',        category: 'consumer',  basePrice: 110, volatility: 0.28, elasticity: 0.45, legality: 'legal',      volPerU: 1.0, massPerU: 0.5, fineMult: 0,   producedBy: ['fab','trade_hub'],                consumedBy: ['trade_hub','mining'] },
-  { id: 'cmdty_textiles',           name: 'Textiles',              category: 'consumer',  basePrice: 60,  volatility: 0.22, elasticity: 0.40, legality: 'legal',      volPerU: 1.0, massPerU: 0.6, fineMult: 0,   producedBy: ['fab'],                            consumedBy: ['trade_hub'] },
+  { id: 'cmdty_textiles',           name: 'Drifter-Silk',          legacyNames: ['Textiles'], category: 'consumer', basePrice: 60, volatility: 0.22, elasticity: 0.40, legality: 'legal', volPerU: 1.0, massPerU: 0.6, fineMult: 0, producedBy: ['fab'], consumedBy: ['trade_hub'] },
 
   // --- LUXURY ---
-  { id: 'cmdty_luxury_goods',       name: 'Luxury Goods',          category: 'luxury',    basePrice: 190, volatility: 0.40, elasticity: 0.42, legality: 'legal',      volPerU: 0.9, massPerU: 0.4, fineMult: 0,   producedBy: ['trade_hub','fab'],                consumedBy: ['trade_hub','blackmarket'] },
-  { id: 'cmdty_art',                name: 'Art & Antiques',        category: 'luxury',    basePrice: 300, volatility: 0.45, elasticity: 0.50, legality: 'restricted', volPerU: 0.7, massPerU: 0.3, fineMult: 0.8, producedBy: ['trade_hub'],                      consumedBy: ['trade_hub','blackmarket'] },
+  { id: 'cmdty_luxury_goods',       name: 'Shrine Lanterns',       legacyNames: ['Luxury Goods'], category: 'luxury', basePrice: 190, volatility: 0.40, elasticity: 0.42, legality: 'legal', volPerU: 0.9, massPerU: 0.4, fineMult: 0, producedBy: ['trade_hub','fab'], consumedBy: ['trade_hub','blackmarket'] },
+  { id: 'cmdty_art',                name: 'Pre-Collapse Artifacts', legacyNames: ['Art & Antiques'], category: 'luxury', basePrice: 300, volatility: 0.45, elasticity: 0.50, legality: 'restricted', volPerU: 0.7, massPerU: 0.3, fineMult: 0.8, producedBy: ['trade_hub'], consumedBy: ['trade_hub','blackmarket'] },
 
   // --- FOOD ---
   { id: 'cmdty_food',               name: 'Provisions',            category: 'food',      basePrice: 40,  volatility: 0.20, elasticity: 0.30, legality: 'legal',      volPerU: 1.0, massPerU: 0.7, fineMult: 0,   producedBy: ['trade_hub'],                      consumedBy: ['mining','military','blackmarket'] },
@@ -92,7 +94,7 @@ export const COMMODITIES = [
 
   // --- MILITARY (restricted) ---
   { id: 'cmdty_weapons',            name: 'Weapon Systems',        category: 'military',  basePrice: 280, volatility: 0.40, elasticity: 0.48, legality: 'restricted', volPerU: 0.9, massPerU: 1.5, fineMult: 1.2, producedBy: ['military'],                       consumedBy: ['military','blackmarket'] },
-  { id: 'cmdty_munitions',          name: 'Munitions',             category: 'military',  basePrice: 115, volatility: 0.32, elasticity: 0.48, legality: 'restricted', volPerU: 0.6, massPerU: 1.1, fineMult: 0.8, producedBy: ['military','fab'],                 consumedBy: ['military','blackmarket'] },
+  { id: 'cmdty_munitions',          name: 'Charge-Case Munitions', legacyNames: ['Munitions'], category: 'military', basePrice: 115, volatility: 0.32, elasticity: 0.48, legality: 'restricted', volPerU: 0.6, massPerU: 1.1, fineMult: 0.8, producedBy: ['military','fab'], consumedBy: ['military','blackmarket'] },
   { id: 'cmdty_impulse_charge',     name: 'Impulse Charge',        category: 'military',  basePrice: 180, volatility: 0.25, elasticity: 0.50, legality: 'restricted', volPerU: 2.0, massPerU: 2.0, fineMult: 1.0, producedBy: ['military','fab'],                 consumedBy: ['military','blackmarket'] },
   { id: 'cmdty_jump_fuel_canister', name: 'Jump Fuel Canister',    category: 'military',  basePrice: 235, volatility: 0.30, elasticity: 0.52, legality: 'legal',      volPerU: 1.2, massPerU: 0.9, fineMult: 0,   producedBy: ['refinery','fab'],                 consumedBy: ['trade_hub','mining','military'] },
   { id: 'cmdty_patch_kit',          name: 'Field Patch Kit',       category: 'military',  basePrice: 145, volatility: 0.24, elasticity: 0.45, legality: 'legal',      volPerU: 1.0, massPerU: 1.1, fineMult: 0,   producedBy: ['fab','military'],                 consumedBy: ['trade_hub','mining','military'] },

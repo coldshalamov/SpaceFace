@@ -1,4 +1,4 @@
-// src/data/commodityFlavor.js – trade-terminal flavor for all 44 commodities.
+// src/data/commodityFlavor.js – trade-terminal flavor for the complete commodity catalog.
 // Pure data keyed by cmdty_* id: displayName, desc, lore. No balance fields.
 // Consumed by commodities.js (merge) and scripts/check-commodity-flavor.mjs.
 
@@ -79,9 +79,9 @@ export const COMMODITY_FLAVOR = {
     lore: 'Vael high auctions move single stones. Trade rumors outrun the refinery cutter invoice by a sector.',
   },
   cmdty_exotic_amazonite: {
-    displayName: 'Prism Shard, Reach Lab Auction',
-    desc: 'Iridescent lattice shards that refract in vacuum light.',
-    lore: 'Reach lab auctions license every gram. Research institutes outbid trade desks; miners never see closing price.',
+    displayName: 'Storm-Glass, Ashfall Tempest Export',
+    desc: 'Lightning-fused lattice sheets sealed in floating display frames.',
+    lore: 'Vael cutters harvest it after Ashfall ion fronts. Phoebe and Orcus observatories bid against collectors for intact branching scars.',
   },
   cmdty_gas_hydrogen: {
     displayName: 'Lane Hydrogen, Helios Collectors',
@@ -99,9 +99,9 @@ export const COMMODITY_FLAVOR = {
     lore: 'Ceres vats grow them slow. Fabs cut optics while research benches hoard the clear lots first.',
   },
   cmdty_crystal_lumin: {
-    displayName: 'Lantern Phosphor, Meridian Glow Works',
-    desc: 'Photoactive crystal rods that store ambient charge.',
-    lore: 'Meridian glow works grade by decay curve. Fabs embed them in panels; research wants the unstable cuts.',
+    displayName: 'Emitter Crystal, Nereid Charge Cut',
+    desc: 'Field-tuned crystal rods sleeved against accidental discharge.',
+    lore: 'Reach miners sell raw charge cuts. Meridian fabs tune stable rods while research stations pay more for the volatile grain.',
   },
   cmdty_exotic_xenium: {
     displayName: 'Black Xenium, Vael Fringe Labs',
@@ -124,9 +124,9 @@ export const COMMODITY_FLAVOR = {
     lore: 'Helios yards extrude by the kilometer. Fabs laminate hull seals; trade hubs retail cut lengths at markup.',
   },
   cmdty_fuel_cells: {
-    displayName: 'Cellbank Fuel, Ceres Depot Standard',
-    desc: 'Sealed fusion cells in shock-rated transport crates.',
-    lore: 'Ceres depots refill mining tugs on credit. Military requisitions jump the queue; trade hubs sell the remainder.',
+    displayName: 'Refined Fuel Cells, Ceres Standard',
+    desc: 'Cracked volatiles sealed into shock-rated drive-cell banks.',
+    lore: 'Ceres refineries crack ice volatiles into drive stock. Helios military requisitions jump the queue; mining claims buy the remainder.',
   },
   cmdty_comp_hullplate: {
     displayName: 'Ironweave Hull Plate, Concord Shipyards',
@@ -174,19 +174,19 @@ export const COMMODITY_FLAVOR = {
     lore: 'Meridian retail kits stock trade hubs first. Mining camps buy them marked up before the next convoy.',
   },
   cmdty_textiles: {
-    displayName: 'Driftweave Textiles, Ceres Loomworks',
-    desc: 'Synthetic fabric bolts rated for vacuum hab cycles.',
-    lore: 'Ceres loomworks dye by contract number. Trade hubs move bolts; miners patch suits from offcut bins.',
+    displayName: 'Drifter-Silk, Pallas Loom Lots',
+    desc: 'Vacuum-spun fabric bolts with provenance tags cut away.',
+    lore: 'Ceres fabs weave it from recovered polymer. Pallas drifters finish the cloth; Meridian salons resell it without asking whose loom vanished.',
   },
   cmdty_luxury_goods: {
-    displayName: 'Velvet Lot Luxury, Helios Promenade',
-    desc: 'Curated status goods in tamper-evident gift cases.',
-    lore: 'Helios promenade shops invoice by provenance story. Trade desks resell; Vael runners skim what customs misses.',
+    displayName: 'Shrine Lanterns, Phoebe Pilgrim Lots',
+    desc: 'Hand-folded memorial lamps in crush-proof pilgrimage cases.',
+    lore: 'Helios merchants commission the shells. Phoebe pilgrims name each flame; Vael bazaars pay extra when the dedication plate remains attached.',
   },
   cmdty_art: {
-    displayName: 'Vaulted Antiques, Meridian Collector Circuit',
-    desc: 'Authenticated artworks with chain-of-custody manifests attached.',
-    lore: 'Meridian collector circuit tracks every transfer. Trade halls display openly; Vael lockers pay cash, no questions.',
+    displayName: 'Pre-Collapse Artifacts, Meridian Vault Lots',
+    desc: 'Authenticated Earthwork fragments with contested custody records.',
+    lore: 'Meridian vaults certify every fragment. Helios museums display the lawful lots; Vael lockers buy the pieces whose evacuation manifests disappeared.',
   },
   cmdty_food: {
     displayName: 'Hardtack Provisions, Ceres Galley Standard',
@@ -229,13 +229,38 @@ export const COMMODITY_FLAVOR = {
     lore: 'Concord armories log every crate by hull ID. Military docks clear allotments; Vael brokers quote what fell off the manifest.',
   },
   cmdty_munitions: {
-    displayName: 'Casehard Munitions, Helios Arsenal Lots',
-    desc: 'Guided warheads and belted ammunition in sealed magazines.',
-    lore: 'Helios arsenal lots move under escort schedules. Military buyers take allocation; blackmarket strips what convoys lose.',
+    displayName: 'Charge-Case Munitions, Helios Arsenal Lots',
+    desc: 'Pressed casings and guided rounds in sealed magazines.',
+    lore: 'Helios arsenals stamp every charge case. Concord buyers take allocation; Vael fences strip the lot marks from convoys that miss arrival.',
   },
   cmdty_impulse_charge: {
     displayName: 'Spike Impulse Charge, Meridian Ordnance',
     desc: 'High-yield breaching charges in mag-safe foam cradles.',
     lore: 'Meridian ordnance fills military racks first. Blackmarket charges match serials to wrecks nobody reports missing.',
+  },
+  cmdty_explosive_compound: {
+    displayName: 'Breach Compound, Vesta Press Lots',
+    desc: 'Stabilized explosive slurry in armored mixing tins.',
+    lore: 'Vesta fabs mill it behind blast doors. Concord arsenals press charge cases; Vael fences buy tins with the batch numbers burned off.',
+  },
+  cmdty_tether_cable: {
+    displayName: 'Massline Cable, Ceres Load Standard',
+    desc: 'Braided alloy tether with live load-history filaments.',
+    lore: 'Ceres fabs certify every spool by failure load. Reach claims buy the scarred surplus for winches that cannot wait on a clean manifest.',
+  },
+  cmdty_field_emitter_charge: {
+    displayName: 'Emitter Charge, Veil Bench-Tuned',
+    desc: 'Reload canisters tuned for wells and repulsor plates.',
+    lore: 'Reach researchers tune the field curve. Concord ships reserve matched pairs; Veil benches sell odd charges to pilots between ports.',
+  },
+  cmdty_jump_fuel_canister: {
+    displayName: 'Jump Canister, Ceres Field Seal',
+    desc: 'One disposable tank of refined emergency drive fuel.',
+    lore: 'Ceres refineries seal them for stranded tugs. Reach pilots call them boost tanks and save one for the return burn.',
+  },
+  cmdty_patch_kit: {
+    displayName: 'Field Patch Kit, Concord Damage-Control Pack',
+    desc: 'Folded hull patches, sealant, and one-use bracing clamps.',
+    lore: 'Concord packs restore pressure, not pride. Ceres crews carry them until a repair berth can keep the scar or erase it.',
   },
 };

@@ -80,7 +80,7 @@ export const REGIONAL_ECONOMY_PROFILES = Object.freeze([
     consumes: [
       { commodityId: 'cmdty_fuel_cells', weight: 0.85 },
       { commodityId: 'cmdty_munitions', weight: 0.65 },
-      { commodityId: 'cmdty_medical', weight: 0.50 },
+      { commodityId: 'cmdty_classified_salvage', weight: 0.50 },
     ],
   }),
   profile({
@@ -93,7 +93,7 @@ export const REGIONAL_ECONOMY_PROFILES = Object.freeze([
       { commodityId: 'cmdty_ore_iron', weight: 0.95 },
       { commodityId: 'cmdty_refined_metals', weight: 0.90 },
       { commodityId: 'cmdty_fuel_cells', weight: 0.75 },
-      { commodityId: 'cmdty_ore_copper', weight: 0.60 },
+      { commodityId: 'cmdty_jump_fuel_canister', weight: 0.60 },
     ],
     consumes: [
       { commodityId: 'cmdty_food', weight: 0.80 },
@@ -126,8 +126,8 @@ export const REGIONAL_ECONOMY_PROFILES = Object.freeze([
     produces: [
       { commodityId: 'cmdty_comp_hullplate', weight: 0.95 },
       { commodityId: 'cmdty_comp_circuitry', weight: 0.85 },
-      { commodityId: 'cmdty_electronics', weight: 0.75 },
-      { commodityId: 'cmdty_ore_titanium', weight: 0.55 },
+      { commodityId: 'cmdty_explosive_compound', weight: 0.75 },
+      { commodityId: 'cmdty_textiles', weight: 0.55 },
     ],
     consumes: [
       { commodityId: 'cmdty_refined_metals', weight: 0.90 },
@@ -143,13 +143,13 @@ export const REGIONAL_ECONOMY_PROFILES = Object.freeze([
     pressureBias: 0.60,
     produces: [
       { commodityId: 'cmdty_luxury_goods', weight: 0.80 },
-      { commodityId: 'cmdty_narcotics', weight: 0.70 },
       { commodityId: 'cmdty_art', weight: 0.50 },
     ],
     consumes: [
       { commodityId: 'cmdty_food', weight: 0.75 },
       { commodityId: 'cmdty_stolen_goods', weight: 0.55 },
       { commodityId: 'cmdty_ice_water', weight: 0.45 },
+      { commodityId: 'cmdty_textiles', weight: 0.40 },
     ],
   }),
   profile({
@@ -166,7 +166,7 @@ export const REGIONAL_ECONOMY_PROFILES = Object.freeze([
       { commodityId: 'cmdty_medical', weight: 0.85 },
       { commodityId: 'cmdty_fuel_cells', weight: 0.70 },
       { commodityId: 'cmdty_ice_water', weight: 0.55 },
-      { commodityId: 'cmdty_microchips', weight: 0.40 },
+      { commodityId: 'cmdty_jump_fuel_canister', weight: 0.40 },
     ],
   }),
   profile({
@@ -195,11 +195,10 @@ export const REGIONAL_ECONOMY_PROFILES = Object.freeze([
     pressureBias: 0.68,
     produces: [
       { commodityId: 'cmdty_narcotics', weight: 0.95 },
-      { commodityId: 'cmdty_stolen_goods', weight: 0.80 },
       { commodityId: 'cmdty_classified_salvage', weight: 0.60 },
     ],
     consumes: [
-      { commodityId: 'cmdty_food', weight: 0.85 },
+      { commodityId: 'cmdty_stolen_goods', weight: 0.85 },
       { commodityId: 'cmdty_weapons', weight: 0.70 },
       { commodityId: 'cmdty_luxury_goods', weight: 0.50 },
     ],
@@ -230,10 +229,11 @@ export const REGIONAL_ECONOMY_PROFILES = Object.freeze([
     produces: [
       { commodityId: 'cmdty_classified_salvage', weight: 0.95 },
       { commodityId: 'cmdty_stolen_goods', weight: 0.70 },
+      { commodityId: 'cmdty_exotic_amazonite', weight: 0.55 },
     ],
     consumes: [
       { commodityId: 'cmdty_munitions', weight: 0.90 },
-      { commodityId: 'cmdty_food', weight: 0.75 },
+      { commodityId: 'cmdty_explosive_compound', weight: 0.75 },
       { commodityId: 'cmdty_impulse_charge', weight: 0.55 },
     ],
   }),
@@ -280,12 +280,11 @@ export const REGIONAL_ECONOMY_PROFILES = Object.freeze([
     pressureBias: 0.59,
     produces: [
       { commodityId: 'cmdty_stolen_goods', weight: 0.95 },
-      { commodityId: 'cmdty_narcotics', weight: 0.50 },
     ],
     consumes: [
       { commodityId: 'cmdty_luxury_goods', weight: 0.80 },
       { commodityId: 'cmdty_art', weight: 0.65 },
-      { commodityId: 'cmdty_food', weight: 0.45 },
+      { commodityId: 'cmdty_narcotics', weight: 0.45 },
     ],
   }),
   profile({
@@ -382,7 +381,7 @@ export const REGIONAL_ECONOMY_PROFILES = Object.freeze([
     produces: [
       { commodityId: 'cmdty_ore_copper', weight: 0.85 },
       { commodityId: 'cmdty_ice_water', weight: 0.80 },
-      { commodityId: 'cmdty_consumer_goods', weight: 0.60 },
+      { commodityId: 'cmdty_crystal_lumin', weight: 0.60 },
       { commodityId: 'cmdty_volatiles', weight: 0.50 },
     ],
     consumes: [
@@ -404,7 +403,7 @@ export const REGIONAL_ECONOMY_PROFILES = Object.freeze([
     consumes: [
       { commodityId: 'cmdty_luxury_goods', weight: 0.75 },
       { commodityId: 'cmdty_impulse_charge', weight: 0.55 },
-      { commodityId: 'cmdty_food', weight: 0.50 },
+      { commodityId: 'cmdty_narcotics', weight: 0.50 },
     ],
   }),
   profile({
