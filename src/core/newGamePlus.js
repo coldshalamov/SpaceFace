@@ -8,6 +8,7 @@ import { ENDGAME_CHOICES } from '../data/narrative.js';
 import { PIRATE_PROMOTION_MAX_TIER, aceById } from '../data/namedAces.js';
 import { WEAPONS } from '../data/weapons.js';
 import { normalizeShipAppearance } from './shipAppearance.js';
+import { CODEX_BESTIARY } from '../data/codexBestiary.js';
 
 export const NEW_GAME_PLUS_SCHEMA = 'spaceface.newGamePlus.v1';
 
@@ -135,6 +136,7 @@ function projectCodex(story) {
     endgameChoice: completedEndingChoiceFromStory(story),
     persistentCargo: story.persistentCargo,
     rareSpawns: story.flags && story.flags.rareSpawns,
+    codexLore: story.flags && story.flags.codexLore,
   });
 }
 
@@ -148,7 +150,28 @@ function normalizeCodexProjection(input) {
     endgameChoice: ENDING_BY_ID.has(ending) ? ending : null,
     persistentCargo: cleanList(source.persistentCargo, 64),
     rareSpawns: normalizeRareSpawnCodex(source.rareSpawns),
+    codexLore: normalizeCodexLore(source.codexLore),
   };
+}
+
+function normalizeCodexLore(input) {
+  const source = input && typeof input === 'object' && !Array.isArray(input) ? input : {};
+  const rows = source.bestiary && typeof source.bestiary === 'object' && !Array.isArray(source.bestiary)
+    ? source.bestiary
+    : {};
+  const bestiary = {};
+  for (const entry of CODEX_BESTIARY) {
+    const row = rows[entry.id];
+    if (!row || typeof row !== 'object' || Array.isArray(row)) continue;
+    const normalized = {};
+    if (Number.isFinite(row.scannedAt)) normalized.scannedAt = Math.max(0, Number(row.scannedAt));
+    if (Number.isFinite(row.engagedAt)) normalized.engagedAt = Math.max(0, Number(row.engagedAt));
+    if (Number.isFinite(row.defeatedAt)) normalized.defeatedAt = Math.max(0, Number(row.defeatedAt));
+    const defeats = clampInt(row.defeats, 0, 999);
+    if (defeats > 0) normalized.defeats = defeats;
+    if (Object.keys(normalized).length) bestiary[entry.id] = normalized;
+  }
+  return { bestiary };
 }
 
 function normalizeRareSpawnCodex(input) {

@@ -20,6 +20,7 @@ import { createShipLedgerPanel } from './shipLedger.js';
 import { ARCADE_VERB_BEATS, arcadeVerbStatus } from '../../data/onboardingVerbs.js';
 import { launchAces } from '../../data/namedAces.js';
 import { LISTENING_POST, listeningPostPuzzleState } from '../../data/listeningPost.js';
+import { CODEX_BESTIARY, codexBestiaryPages, mergeCodexBestiaryRows } from '../../data/codexBestiary.js';
 
 const STYLE_ID = 'sf-codex-style';
 
@@ -121,7 +122,7 @@ function shell(rootEl, title, extraClass) {
   return { panel: rootEl, body };
 }
 
-const TABS = ['Story', 'Aces', 'Verbs', 'Comms', 'Discoveries', 'Black Boxes', 'Graffiti', 'Figures', 'Ship', 'Archive', 'Ledger'];
+const TABS = ['Story', 'Aces', 'Bestiary', 'Verbs', 'Comms', 'Discoveries', 'Black Boxes', 'Graffiti', 'Figures', 'Ship', 'Archive', 'Ledger'];
 
 // Signal Archive — the four authored intro cinematics, exposed as recovered transmission stills the
 // player can replay. Posters (C-INTRO-0N.jpg) are clean full-bleed frames; clips are the 6s mp4s.
@@ -283,6 +284,15 @@ function safeStory(ctx) {
         ...currentRare,
         history: [...(legacyRare.history || []), ...(currentRare.history || [])].slice(-64),
       },
+      codexLore: {
+        ...((legacy.codexLore && typeof legacy.codexLore === 'object') ? legacy.codexLore : {}),
+        ...((current.flags && current.flags.codexLore && typeof current.flags.codexLore === 'object')
+          ? current.flags.codexLore : {}),
+        bestiary: mergeCodexBestiaryRows(
+          legacy.codexLore && legacy.codexLore.bestiary,
+          current.flags && current.flags.codexLore && current.flags.codexLore.bestiary,
+        ),
+      },
     },
   };
 }
@@ -329,12 +339,21 @@ export function codexProgressSummary(story = {}) {
   const storyUnlocked = Math.min(BEAT_CONTENT.length, beat + 1);
   const endgameUnlocked = beat >= 7 ? ENDGAME_CHOICES.length : 0;
   const phase = BEAT_CONTENT[beat] && BEAT_CONTENT[beat].phase || 1;
+  const bestiaryComplete = codexBestiaryPages(story).filter((page) => page.complete).length;
+  const unlockedTotal = storyUnlocked + commsUnlocked + figureUnlocked + graffitiUnlocked
+    + endgameUnlocked + bestiaryComplete;
+  const codexTotal = BEAT_CONTENT.length + commsTotal + figureTotal + graffitiTotal
+    + ENDGAME_CHOICES.length + CODEX_BESTIARY.length;
+  const completionPercent = codexTotal > 0 ? Math.floor((unlockedTotal / codexTotal) * 100) : 0;
   return {
     beat,
     phase,
+    completionPercent,
     note: 'Locked counts mean future entries are intentionally hidden until story progress, encounter flags, or conditional signal triggers reveal them.',
     items: [
+      { key: 'Completion', value: completionPercent + '%' },
       { key: 'Story', value: storyUnlocked + '/' + BEAT_CONTENT.length + ' beats' },
+      { key: 'Bestiary', value: bestiaryComplete + '/' + CODEX_BESTIARY.length + ' field notes' },
       { key: 'Comms', value: commsUnlocked + '/' + commsTotal + ' unlocked' },
       { key: 'Figures', value: figureUnlocked + '/' + figureTotal + ' known' },
       { key: 'Graffiti', value: graffitiUnlocked + '/' + graffitiTotal + ' encountered' },
@@ -467,6 +486,7 @@ export const codexScreen = {
     this._unsubs.push(ctx.bus.on('graffiti:show', refreshIfVisible));
     this._unsubs.push(ctx.bus.on('discovery:plateUnlocked', refreshIfVisible));
     this._unsubs.push(ctx.bus.on('codex:blackBoxRecovered', refreshIfVisible));
+    this._unsubs.push(ctx.bus.on('codex:bestiaryUpdated', refreshIfVisible));
     this._unsubs.push(ctx.bus.on('aceMemory:transition', refreshIfVisible));
     this._unsubs.push(ctx.bus.on('aceMemory:rewardUnlocked', refreshIfVisible));
     this._unsubs.push(ctx.bus.on('secret:listeningPostLogRecovered', refreshIfVisible));
@@ -541,6 +561,7 @@ export const codexScreen = {
     switch (this._activeTab) {
       case 'Story':    this._renderStory(ctx); break;
       case 'Aces':     this._renderAces(ctx); break;
+      case 'Bestiary': this._renderBestiary(ctx); break;
       case 'Verbs':    this._renderVerbs(ctx); break;
       case 'Comms':    this._renderComms(ctx); break;
       case 'Discoveries': this._renderDiscoveries(ctx); break;
@@ -764,6 +785,31 @@ export const codexScreen = {
       entry.appendChild(el('div', 'sf-codex-note', rec.rewardClaimed
         ? `Claimed: ${reward.physicalLabel}; ${reward.bountyCr} Cr bounty; ${reward.techLabel} (+${reward.researchPoints} RP).`
         : `On defeat: ${reward.physicalLabel}; ${reward.bountyCr} Cr bounty; ${reward.techLabel} (+${reward.researchPoints} RP).`));
+      this._body.appendChild(entry);
+    }
+  },
+
+  _renderBestiary(ctx) {
+    this._body.appendChild(el('div', 'sf-codex-section-h', 'Field Bestiary'));
+    const pages = codexBestiaryPages(safeStory(ctx));
+    for (const page of pages) {
+      const entry = el('article', 'sf-codex-entry' + (page.scanned ? '' : ' sf-codex-locked'));
+      entry.dataset.bestiaryId = page.id;
+      if (!page.scanned) {
+        entry.appendChild(el('h3', null, '???'));
+        entry.appendChild(el('div', 'sf-codex-meta', `${page.family} · unscanned contact`));
+        entry.appendChild(el('div', 'sf-codex-body', 'Pulse the scanner close enough to resolve this hull.'));
+        this._body.appendChild(entry);
+        continue;
+      }
+      entry.appendChild(el('h3', null, page.title));
+      const defeats = page.progress && page.progress.defeats || 0;
+      entry.appendChild(el('div', 'sf-codex-meta',
+        `${page.family} · ${page.complete ? 'field note complete' : 'scan on file'}${defeats ? ` · ${defeats} defeated` : ''}`));
+      entry.appendChild(el('div', 'sf-codex-body', page.fieldRead));
+      entry.appendChild(el('div', 'sf-codex-note', page.complete
+        ? `Counter: ${page.counterplay}`
+        : 'Counter note pending. Land a clean hit so the scanner report has something physical to compare.'));
       this._body.appendChild(entry);
     }
   },
