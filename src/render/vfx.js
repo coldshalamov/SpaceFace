@@ -38,6 +38,11 @@ import {
   initTrailStreakPool,
   updateTrailStreakInstance,
 } from './engineTrailSurfaces.js';
+import {
+  createMotionReadabilityVfx,
+  disposeMotionReadabilityVfx,
+  updateMotionReadabilityVfx,
+} from './motionReadabilityVfx.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
 import { successfulPickupAmount } from '../core/pickupAcceptance.js';
 import { pickupPresentationFor } from '../data/pickupPresentation.js';
@@ -492,7 +497,7 @@ const VFX_LOOT_MAGNET_HZ = 24;
 // real and dim. The tractor cap is player-centered; the glass cull uses the live look-at.
 const _lootMagnetFocusScratch = { x: 0, z: 0 };
 const _tableLookAtScratch = { x: 0, z: 0 };
-const LOOT_MAGNET_MAX_TRAILED = 24;      // hard cap on simultaneously trailed drops
+export const LOOT_MAGNET_MAX_TRAILED = 24;      // hard cap on simultaneously trailed drops
 const PICKUP_STREAM_SEGMENTS = 16;       // bounded history per drop: a short curved wake, not a cable
 const PICKUP_STREAM_WIDTH = 1.15;
 const PICKUP_STREAM_SPACING_WU = 2.2;    // history sample spacing along the real flown path
@@ -531,7 +536,7 @@ const NPC_JOB_CUT_BEAM_MAX_REACH = 110;
 // (≤ ~10 per field per emission, ≤ FIELD_FLOW_MAX_FIELDS fields).
 const VFX_FIELD_FLOW_HZ = 30;
 const FIELD_FLOW_GOLDEN = 2.399963229728653; // golden angle — even, deterministic spawn distribution
-const FIELD_FLOW_MAX_FIELDS = 6;
+export const FIELD_FLOW_MAX_FIELDS = 6;
 
 // AC-12 swarmer presentation uses bounded hard geometry. Dart history records the entity's actual
 // world path; Skitter and Ember events use opaque instanced fragments. None of these substrates is
@@ -1594,6 +1599,8 @@ export const vfx = {
     if (this._combatBeams && typeof this._combatBeams.dispose === 'function') this._combatBeams.dispose();
     this._combatBeams = null;
     this._disposePickupStreams();
+    disposeMotionReadabilityVfx(this._motionReadability);
+    this._motionReadability = null;
     disposeSwarmerPresentationGeometry(this._dartActualTrails, this._swarmerEventGeometry);
     this._dartActualTrails = null;
     this._swarmerEventGeometry = null;
@@ -10116,18 +10123,18 @@ export const vfx = {
           vol.position.set(cx, 0, cz);
           vol.scale.setScalar(1.5);
           vol.visible = true;
-          updateEnergyMaterial(vol.userData.energyCore, {
+          updateEnergyMaterial(vol.userData.energyCore.material, {
             time: this._t,
             colorA: pal ? pal.filament : '#39d0ff',
-            colorB: pal ? pal.core : '#a6f0ff',
+            colorB: pal ? (engaged && pal.coreHot ? pal.coreHot : pal.core) : '#a6f0ff',
             intensity: flashReduce ? 2.0 : (engaged ? 4.8 : 3.0),
             opacity: baseOpacity,
             pulse: engaged ? 0.2 : 0,
           });
-          updateEnergyMaterial(vol.userData.energyHalo, {
+          updateEnergyMaterial(vol.userData.energyHalo.material, {
             time: this._t,
             colorA: pal ? pal.filament : '#39d0ff',
-            colorB: pal ? pal.core : '#a6f0ff',
+            colorB: pal ? (engaged && pal.coreHot ? pal.coreHot : pal.core) : '#a6f0ff',
             intensity: flashReduce ? 1.0 : 1.5,
             opacity: baseOpacity * 0.4,
           });
@@ -10199,7 +10206,7 @@ export const vfx = {
           vol.position.set(cx, 0, cz);
           vol.scale.setScalar(1.5);
           vol.visible = true;
-          updateEnergyMaterial(vol.userData.energyCore, {
+          updateEnergyMaterial(vol.userData.energyCore.material, {
             time: this._t,
             colorA: pal ? pal.coreWarm : '#ffb35c',
             colorB: pal ? pal.rib : '#ffc878',
@@ -10207,7 +10214,7 @@ export const vfx = {
             opacity: baseOpacity,
             pulse: engaged ? 0.15 : 0,
           });
-          updateEnergyMaterial(vol.userData.energyHalo, {
+          updateEnergyMaterial(vol.userData.energyHalo.material, {
             time: this._t,
             colorA: pal ? pal.berm : '#39d0ff',
             colorB: pal ? pal.coreWarm : '#ffb35c',
@@ -10276,14 +10283,14 @@ export const vfx = {
           vol.position.set(cx, 0, cz);
           vol.scale.setScalar(1.5);
           vol.visible = true;
-          updateEnergyMaterial(vol.userData.energyCore, {
+          updateEnergyMaterial(vol.userData.energyCore.material, {
             time: this._t,
             colorA: pal ? pal.bank : '#39d0ff',
             colorB: pal ? pal.pulse : '#a6f0ff',
             intensity: flashReduce ? 2.0 : (engaged ? 4.5 : 2.8),
             opacity: baseOpacity,
           });
-          updateEnergyMaterial(vol.userData.energyHalo, {
+          updateEnergyMaterial(vol.userData.energyHalo.material, {
             time: this._t,
             colorA: pal ? pal.bank : '#39d0ff',
             colorB: pal ? pal.bank : '#39d0ff',
@@ -10449,7 +10456,7 @@ export const vfx = {
     const speed = (150 + 120 * (1 - r01)) * speedScale;
     const vx = -ca * speed + (-sa) * speed * 0.45, vz = -sa * speed + (ca) * speed * 0.45; // inward + tangential swirl
     const c0 = this._hexRgb(pal ? pal.filament : '#39d0ff');
-    const c1 = this._hexRgb(pal ? pal.core : '#39d0ff');
+    const c1 = this._hexRgb(pal ? (pal.coreHot || pal.core) : '#eaffff');
     const life = Math.max(0.2, (rad / Math.max(30, speed)) * 1.05);
     this._spawnParticle(px, pz, vx, vz, life, 1.5 * sizeScale, 0.4 * sizeScale, c0, c1, 0.2, 0, 0, Math.atan2(vz, vx), stretch);
     return true;
@@ -10555,6 +10562,7 @@ export const vfx = {
     }
     // Massline UVP: continuous tumble thrash puffs + spin ribbons while status_tumbling / drifting.
     this._updateTumbleBodyLanguageVfx(dt);
+    this._updateMotionReadabilityVfx(dt);
     // M1 doctrine telegraphs — sustain FLYBY/TETHER/CHARGE cues across the pre-fire window.
     if (this._doctrineTellActive > 0) this._updateDoctrineTells(dt);
     if (this._arcPreviewActive()) {
@@ -12248,6 +12256,12 @@ export const vfx = {
       flashReduce: !!(settings.accessibility && settings.accessibility.flashReduce),
       ...extra,
     };
+  },
+
+  _updateMotionReadabilityVfx(dt) {
+    if (!this._scene || !this.state || this.state.mode !== 'flight') return;
+    if (!this._motionReadability) this._motionReadability = createMotionReadabilityVfx(this._scene);
+    updateMotionReadabilityVfx(this, dt);
   },
 
   /**

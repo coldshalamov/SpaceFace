@@ -9,6 +9,7 @@ import {
   resolveTumbleBodyLanguage,
   resolveTumbleRecoverPose,
 } from './masslinePresentation.js';
+import { shipDriftTell } from './driftTell.js';
 
 const THROWN_TRAIL_INPUT = {
   mode: 'idle',
@@ -60,6 +61,33 @@ function flightPitchTarget(entity) {
   }
   return target;
 }
+
+function writeDriftPresentation(pres, tell) {
+  let drift = pres.drift;
+  if (!drift) {
+    drift = pres.drift = {
+      active: false,
+      intensity: 0,
+      trailX: 0,
+      trailZ: 0,
+      heading: 0,
+    };
+  }
+  drift.active = !!(tell && tell.active);
+  drift.intensity = tell && Number.isFinite(tell.intensity) ? tell.intensity : 0;
+  drift.trailX = tell && Number.isFinite(tell.trailX) ? tell.trailX : 0;
+  drift.trailZ = tell && Number.isFinite(tell.trailZ) ? tell.trailZ : 0;
+  drift.heading = tell && Number.isFinite(tell.heading) ? tell.heading : 0;
+  return drift;
+}
+
+const DRIFT_TELL_SCRATCH = {
+  active: false,
+  intensity: 0,
+  trailX: 0,
+  trailZ: 0,
+  heading: 0,
+};
 
 function ensurePresentation(entity) {
   if (!entity.presentation || typeof entity.presentation !== 'object') {
@@ -137,6 +165,7 @@ export function updateShipPitchPresentation(state, frameDt) {
       entity.pitch = body.pitch;
       pres.tumble = body;
       if (!body.recovering) delete pres.tumbleRecover;
+      writeDriftPresentation(pres, shipDriftTell(entity, DRIFT_TELL_SCRATCH));
       updated++;
       continue;
     }
@@ -166,6 +195,9 @@ export function updateShipPitchPresentation(state, frameDt) {
       pres.tumble = body;
       if (loss.mode === 'tumbling') {
         pres.wasTumbling = true;
+        writeDriftPresentation(pres, null);
+      } else {
+        writeDriftPresentation(pres, shipDriftTell(entity, DRIFT_TELL_SCRATCH));
       }
       updated++;
       continue;
@@ -191,6 +223,7 @@ export function updateShipPitchPresentation(state, frameDt) {
       entity.bank = body.bank;
       entity.pitch = body.pitch;
       pres.tumble = body;
+      writeDriftPresentation(pres, shipDriftTell(entity, DRIFT_TELL_SCRATCH));
       updated++;
       continue;
     }
@@ -201,6 +234,7 @@ export function updateShipPitchPresentation(state, frameDt) {
     if (pres.tumble) {
       pres.tumble = resolveTumbleBodyLanguage({ mode: 'idle', flightBank: entity.bank, flightPitch: entity.pitch });
     }
+    writeDriftPresentation(pres, shipDriftTell(entity, DRIFT_TELL_SCRATCH));
     updated++;
   }
 

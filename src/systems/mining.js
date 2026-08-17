@@ -48,6 +48,7 @@ import {
   KILL_BURST_EJECT_SPEED_MAX,
   KILL_BURST_EJECT_SPEED_MIN,
   KILL_BURST_VEL_INHERIT,
+  killBurstBloomUntil,
 } from '../data/killRewards.js';
 import { PLANET_REWARD_SCATTER_KIND, PLANET_SITE } from '../data/planets.js';
 import {
@@ -1235,6 +1236,7 @@ export const mining = {
       if (dist <= collectRadius) {
         // Already inside the scoop: nothing left to schedule, so attraction and collection both run
         // now. A rejected acceptance keeps being pulled rather than stalling on the hull.
+        // Kill-burst bloom delays the magnet only — an overlapping scoop still collects immediately.
         if (applyPickupAttraction(e, player, dt, magnet, collectRadius, dx, dz, dist)) {
           this._diag.pickupsMagnetized++;
         }
@@ -1243,6 +1245,8 @@ export const mining = {
         if (acceptance.accepted > 0 || acceptance.legacyFullConsume) this._diag.pickupsCollected++;
         continue;
       }
+      const vacuumReadyAt = Number(pickupData.vacuumReadyAt);
+      if (Number.isFinite(vacuumReadyAt) && state.simTime < vacuumReadyAt) continue;
       if (dist > magnet) continue;
       seen.add(e.id);
       if (!wave.entries.has(e.id)) {
@@ -1592,6 +1596,7 @@ export const mining = {
       kind: opts.kind || 'ore',
       amount,
       despawnAt: this.state.simTime + PICKUP_TTL,
+      vacuumReadyAt: killBurstBloomUntil(this.state.simTime, rng),
     };
     if (opts.commodityId) data.commodityId = opts.commodityId;
     if (opts.kind === CREDIT_CHIP_KIND || opts.kind === 'credits') {

@@ -460,7 +460,7 @@ export function audioNearbyHostileCount(state, player, range = 1200, scratch = [
 
 // Weapon-id / kind -> SFX recipe id. Player & NPC weapon defIds are 'wpn_*'; the combat:fire
 // payload carries weaponId. We classify by substring so any catalog id resolves.
-function recipeForWeapon(weaponId) {
+export function recipeForWeapon(weaponId) {
   const id = (weaponId || '').toLowerCase();
   if (id.includes('beam')) return 'sfx_wpn_beam_laser';
   // AC-33 family identity: order the authored specialists before broad catalog substrings
@@ -474,6 +474,8 @@ function recipeForWeapon(weaponId) {
     return 'sfx_wpn_emp';
   }
   if (id.includes('concussion')) return 'sfx_wpn_concussion';
+  // Launch thunk. Detonation stays `sfx_vector_mine` via audio:cue — a different recipe.
+  if (id.includes('vector_mine')) return 'sfx_wpn_vector_mine';
   if (id.includes('cannon') || id.includes('gatling') || id.includes('auto')) return 'sfx_wpn_autocannon';
   // pulse / laser / blaster / default
   return 'sfx_wpn_pulse_laser';

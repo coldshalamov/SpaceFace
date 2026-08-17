@@ -422,10 +422,51 @@ own mutation**, because "reduced appears somewhere in the call arguments" stayed
 was stripped off the opacity specifically. It now counts branched applications of the flash budget
 against total applications.
 
-**Still open in these four:** Plan 31's human 30-second kill-montage watch (owner-blocked), and
-Plan 07's and Plan 08's human gates — owner watches an island for five minutes and answers "what are
-these people doing?", and owner watches their own convoy undock and reports whether it felt like
-*theirs*. Those three join the standing owner list below.
+**Milestone movement (2026-08-17), Wave 2 batch two — Plans 32–35.** Scoped work on `codex/pr95-all`.
+Large slices were already live (AC-12 inhale, AC-17 field/tether language, weapon recipes, ribbon
+trails). This batch built the remaining production delta and the measurement that makes an owner
+verdict meaningful. **None of 33/34/35 is closed.** Plan 32's agent metric is closed; its human
+inhale rating is not.
+
+Every check added in this batch was negative-tested — the feature broken, the check confirmed red,
+the feature restored. Stripping the bloom skip let the vacuum claim a still-blooming cloud;
+stripping the vector-mine launch branch collapsed it back to pulse-laser; handing the well core the
+mesh instead of the material left the hot sink at the idle colour; commenting the drift writes left
+presentation without a tell.
+
+- **Plan 32 PICKUP & VACUUM VFX — agent metric CLOSED; human gate OPEN.** Kill-burst pickups now
+  bloom for 0.3–0.6 s before the vacuum may claim them. Overlap scoop still collects immediately, so
+  a chip already on the hull is not held hostage by the scatter beat. A live 20-mote cloud plus one
+  ace ribbon is scheduled nearest-first at 40 ms and the intake pool stays at 24. Color/shape
+  identity was already the pickup presentation map. **Deviation:** RP motes are not spawned on the
+  kill route. RP is an AC-03 grant, not a pickup; the violet `rare` identity still exists for kind
+  `rp` if a pickup ever carries it.
+- **Plan 33 WEAPON VFX IDENTITY — production delta + measurement built; human gates OPEN.** Vector-mine
+  launch had collapsed to the pulse-laser voice; it now has its own short low thunk, distinct from
+  the detonation crack. A live `combat:fire` route covers the named families, and the event-light
+  plus weapon-light object count does not change mid-fight. **Deviation from the plan table,
+  recorded here on purpose:** no circular ring was added for rail muzzle, missile airburst,
+  concussion dust, or mine shockwave. AC-09's accepted grammar bans a circular ring for every death
+  style, Plan 31 already refused a shockwave ring for the same reason, and three shipped assertions
+  fail if that cue is rebuilt.
+- **Plan 34 FIELD & TETHER VFX — measurement built; human gate OPEN.** Well / repulsor / cone /
+  hostile-snare language and the cyan→amber→red tether were already AC-17. Driving them showed the
+  well's kill-depth core never received its palette: the energy update was handed the mesh instead of
+  the material, so intensity and color writes were silent no-ops. That write now lands, and an
+  engaged well uses `coreHot`. Hostile snare stays the amber well, not the player palette. Field
+  flow is capped at 6, matching the kernel.
+- **Plan 35 TRAILS & MOTION — drift tell built; human gate OPEN.** Thrust-scaled plumes, boost vs
+  cruise, and tumble body language were already live. The missing Newtonian tell is a trailing-edge
+  skid ribbon when velocity is sideways to the nose, plus a pooled helix ribbon on tumbling NPCs.
+  **Deviation:** no new near-field dust particle stack. Absolute speed already has a reference in
+  the velocity-language grain layer. Industrial engines already read heavier than vector by slower
+  wider plumes; brightness was not retuned.
+
+**Still open in these four:** Plan 32's mote-cloud inhale rating (owner-blocked), Plan 33's muted
+weapon-ID capture and blind weapon-ID capture (owner-blocked), Plan 34's muted force-narration watch
+(owner-blocked), and Plan 35's muted drift/boost/tumble motion-state watch (owner-blocked). The
+previous batch's Plan 31 kill-montage, Plan 07 five-minute island, and Plan 08 own-convoy watches
+remain owner-blocked as well. All of those join the standing owner list below.
 
 **Do not read a green `check:arcade-core` as plan completeness.** Those 300 tests prove the routes
 somebody wrote a test for; they say nothing about plan requirements nobody tested. Plan 30 is the
@@ -438,9 +479,11 @@ artifact in this repo**, and should not be asserted without an audit that reads 
 production routes against live code.
 
 Owner gates, not agent work: Plan 09's calibration bands, Plan 04's atmosphere burn-up watch, Plan
-31's kill-montage watch, Plan 58's 52-vs-45 commodity cap, Plan 07's five-minute island watch, and
-Plan 08's own-convoy watch. The Plan 30 discovery-route call is no longer owner-blocked: the shipped
-routes reach every secret without touching the constellation labels.
+31's kill-montage watch, Plan 58's 52-vs-45 commodity cap, Plan 07's five-minute island watch, Plan
+08's own-convoy watch, Plan 32's mote-cloud inhale rating, Plan 33's muted weapon-ID capture, Plan
+33's blind weapon-ID capture, Plan 34's muted force-narration watch, and Plan 35's muted
+drift/boost/tumble motion-state watch. The Plan 30 discovery-route call is no longer owner-blocked:
+the shipped routes reach every secret without touching the constellation labels.
 
 A prior AC-01–20 outcome, test, receipt, plan, lab,
 or source-level implementation closes a full numbered plan only when every named production route

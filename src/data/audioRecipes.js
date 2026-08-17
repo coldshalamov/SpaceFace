@@ -127,6 +127,17 @@ export const RECIPES = [
     pitchRange: [0.97, 1.02],
   },
   {
+    // Vector-mine *launch* thunk. Detonation is `sfx_vector_mine` (bandpass crack at 1700 Hz).
+    // This voice is a short low pink shove so the lob is identifiable without borrowing pulse laser.
+    id: 'sfx_wpn_vector_mine',
+    category: 'weapon',
+    type: 'noise_filtered',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.01, sustain: 0.02, release: 0.14 },
+    filterType: 'lowpass', filterFreq: 280, filterQ: 0.85,
+    pitchRange: [0.94, 1.04],
+  },
+  {
     id: 'sfx_wpn_siege_coil',
     category: 'weapon',
     type: 'oscillator',

@@ -16,6 +16,18 @@ export const CREDIT_CHIP_KIND = 'credit_chip';
 export const KILL_BURST_VEL_INHERIT = 0.4;
 export const KILL_BURST_EJECT_SPEED_MIN = 16;
 export const KILL_BURST_EJECT_SPEED_MAX = 38;
+/** Scatter bloom before the vacuum may claim a kill-burst pickup. Overlap scoop stays immediate. */
+export const KILL_BURST_BLOOM_MIN_S = 0.3;
+export const KILL_BURST_BLOOM_MAX_S = 0.6;
+
+/** Deterministic sim-time when a kill-burst pickup becomes vacuum-eligible. Uses `state.rng`. */
+export function killBurstBloomUntil(simTime, rng) {
+  const t = Number.isFinite(simTime) ? simTime : 0;
+  const span = KILL_BURST_BLOOM_MAX_S - KILL_BURST_BLOOM_MIN_S;
+  const raw = typeof rng === 'function' ? rng() : 0.5;
+  const unit = Number.isFinite(raw) ? Math.max(0, Math.min(1, raw)) : 0.5;
+  return t + KILL_BURST_BLOOM_MIN_S + span * unit;
+}
 
 export const KILL_REWARD_TIER_IDS = Object.freeze([
   'mote', 'swarmer_wasp', 'swarmer_dart', 'swarmer_flea', 'swarmer_skitter', 'swarmer_ember',
