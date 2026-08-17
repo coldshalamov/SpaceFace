@@ -42,6 +42,9 @@ export const PLAYER_DEEDS = Object.freeze([
   deed('deed_undertow', 'Undertow', 'Slung one tumbling hull through another.', {
     event: 'entity:killed', killCause: 'chain',
   }),
+  deed('deed_three_deep', 'Three-Deep', 'Carried one tumbling hull through a three-kill chain.', {
+    event: 'entity:killed', condition: 'player_chain_depth_3',
+  }),
   deed('deed_wellhand', 'Wellhand', 'Put a hostile into a collapsing gravity well.', {
     event: 'entity:killed', killCause: 'well_collapse',
   }),
@@ -54,6 +57,9 @@ export const PLAYER_DEEDS = Object.freeze([
   deed('deed_linehauler', 'Linehauler', 'Put a stripped heavy hull on the Massline.', {
     event: 'tether:latched', condition: 'player_heavy_tow',
   }),
+  deed('deed_keelbreaker', 'Keelbreaker', 'Put a capital hull into the loss ledger.', {
+    event: 'entity:killed', condition: 'player_capital_kill',
+  }),
 ]);
 
 export const PLAYER_DEED_BY_ID = Object.freeze(Object.fromEntries(
@@ -62,7 +68,7 @@ export const PLAYER_DEED_BY_ID = Object.freeze(Object.fromEntries(
 
 export const PLAYER_DEED_BY_KILL_CAUSE = Object.freeze(Object.fromEntries(
   PLAYER_DEEDS
-    .filter((entry) => entry.trigger.event === 'entity:killed')
+    .filter((entry) => entry.trigger.event === 'entity:killed' && entry.trigger.killCause)
     .map((entry) => [entry.trigger.killCause, entry]),
 ));
 

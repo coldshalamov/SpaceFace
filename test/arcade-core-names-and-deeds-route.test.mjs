@@ -83,11 +83,12 @@ function titleHarness(story = {}) {
   return { state, bus, system, player, heavy };
 }
 
-function kill(bus, state, cause, victimId) {
+function kill(bus, state, cause, victimId, overrides = {}) {
   const payload = {
     id: victimId,
     killerId: state.playerId,
-    presentation: { style: { id: cause } },
+    victimClass: overrides.victimClass,
+    presentation: { style: { id: cause, ...(overrides.style || {}) } },
   };
   bus.emit('entity:killed', payload);
   bus.emit('entity:killed', payload);
@@ -153,7 +154,7 @@ test('canonical physical receipts earn each player deed exactly once and survive
   assert.equal(PLAYER_DEEDS.find((entry) => entry.id === 'deed_linehauler')?.title, 'Linehauler');
   const { state, bus, player, heavy } = titleHarness();
   kill(bus, state, 'terrain_smash', 101);
-  kill(bus, state, 'chain', 102);
+  kill(bus, state, 'chain', 102, { style: { chainDepth: 3 } });
   kill(bus, state, 'well_collapse', 103);
   kill(bus, state, 'burn_up', 104);
 
@@ -167,6 +168,7 @@ test('canonical physical receipts earn each player deed exactly once and survive
   bus.emit('heavyPart:detached', strip);
   bus.emit('tether:latched', { targetId: heavy.id, type: 'tether_standard' });
   bus.emit('tether:latched', { targetId: heavy.id, type: 'tether_standard' });
+  kill(bus, state, 'ordinary', 105, { victimClass: 'capital' });
 
   const own = state.story.titles.playerDeeds;
   assert.deepEqual(own.order, PLAYER_DEEDS.map((entry) => entry.id));
@@ -178,7 +180,7 @@ test('canonical physical receipts earn each player deed exactly once and survive
   assert.equal(state.story.titlesSeen.filter((entry) => entry.holderKey === 'player').length,
     PLAYER_DEEDS.length, 'the existing Ship Ledger source receives every deed');
   assert.deepEqual(player.data.deedTitleIds, PLAYER_DEEDS.map((entry) => entry.id));
-  assert.equal(player.data.deedTitleName, 'Linehauler');
+  assert.equal(player.data.deedTitleName, 'Keelbreaker');
 
   const savedStory = structuredClone(state.story);
   const continued = titleHarness();
@@ -187,7 +189,7 @@ test('canonical physical receipts earn each player deed exactly once and survive
   continued.bus.emit('save:loaded', {});
   assert.deepEqual(continued.state.story.titles.playerDeeds, savedStory.titles.playerDeeds);
   assert.deepEqual(continued.player.data.deedTitleIds, PLAYER_DEEDS.map((entry) => entry.id));
-  assert.equal(continued.player.data.deedTitleName, 'Linehauler');
+  assert.equal(continued.player.data.deedTitleName, 'Keelbreaker');
   assert.equal(continued.bus.emitted('title:earned').length, 0,
     'Continue rebinds deed presentation without re-awarding it');
   assert.equal(continued.bus.emissions.length, emittedBeforeLoad + 1,

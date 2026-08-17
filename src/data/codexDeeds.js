@@ -29,6 +29,12 @@ export const CODEX_DEEDS = Object.freeze([
     'Working note: a moving hull is mass you already own. Keep the Massline clear before release.',
   ),
   deedPage(
+    'deed_three_deep',
+    'THREE LOSSES FOLLOW ONE MOVING HULL',
+    'One tumbling hull stayed useful through a third loss. Nobody on the lane called the later contacts accidental.',
+    'Working note: preserve the source hull\'s speed and line; every correction spends the next impact.',
+  ),
+  deedPage(
     'deed_wellhand',
     'GRAVITY WELL CLOSES WITH A HULL INSIDE',
     'A hostile entered a collapsing well and did not leave it. Recovery crews logged the field as the weapon.',
@@ -51,6 +57,12 @@ export const CODEX_DEEDS = Object.freeze([
     'STRIPPED HEAVY MOVES UNDER MASSLINE',
     'A disabled heavy crossed the ledger as cargo while its living hull remained intact. The line did the hauling.',
     'Working note: settle the barge before taking load, then keep the tow out of cross-traffic.',
+  ),
+  deedPage(
+    'deed_keelbreaker',
+    'CAPITAL HULL ENTERS THE LOSS LEDGER',
+    'A capital-class hull stopped answering under player fire. The wreck crews needed a wider approach than the battle did.',
+    'Working note: remove the working parts first; the parent hull carries more danger after the guns go quiet.',
   ),
 ]);
 

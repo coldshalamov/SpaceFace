@@ -729,12 +729,35 @@ export function createTitlesSystem() {
       if (!payload || payload.killerId !== (this.state && this.state.playerId)) return null;
       const killCause = cleanText(payload.presentation && payload.presentation.style
         && payload.presentation.style.id);
-      const deed = PLAYER_DEED_BY_KILL_CAUSE[killCause];
-      if (!deed) return null;
       const victimId = payload.id != null ? payload.id : payload.entityId;
-      const receiptId = cleanText(payload.receiptId,
-        `deed:kill:${finiteInteger(this.state && this.state.tick)}:${victimId}:${killCause}`);
-      return this._awardPlayerDeed(deed, receiptId, `kill:${killCause}`);
+      const tick = finiteInteger(this.state && this.state.tick);
+      const events = [];
+      const deed = PLAYER_DEED_BY_KILL_CAUSE[killCause];
+      if (deed) {
+        const receiptId = cleanText(payload.receiptId,
+          `deed:kill:${tick}:${victimId}:${killCause}`);
+        const event = this._awardPlayerDeed(deed, receiptId, `kill:${killCause}`);
+        if (event) events.push(event);
+      }
+      const chainDepth = finiteInteger(payload.presentation && payload.presentation.style
+        && payload.presentation.style.chainDepth);
+      if (killCause === 'chain' && chainDepth >= 3) {
+        const event = this._awardPlayerDeed(
+          PLAYER_DEED_BY_ID.deed_three_deep,
+          `deed:kill:${tick}:${victimId}:chain-3`,
+          'kill:chain_depth_3',
+        );
+        if (event) events.push(event);
+      }
+      if (cleanText(payload.victimClass) === 'capital') {
+        const event = this._awardPlayerDeed(
+          PLAYER_DEED_BY_ID.deed_keelbreaker,
+          `deed:kill:${tick}:${victimId}:capital`,
+          'kill:capital',
+        );
+        if (event) events.push(event);
+      }
+      return events[0] || null;
     },
 
     _onHeavyPartDetachedReceipt(payload) {
