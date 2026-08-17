@@ -36,6 +36,7 @@ import { resolveWaypointPresentationPosition } from './navigationWaypoint.js';
 import { contactThreatTier, contactStateWord, isHostileToPlayer, isWreckLike, wreckScanned } from '../systems/scanner.js';
 import { verbAcceptsType } from '../data/interactionDescriptorCatalog.js';
 import { weaponHeatSummary } from './weaponHeat.js';
+import { createPowerRail, readRailModel } from './powerRail.js';
 import { computeLeadPipOverlay, leadSolution, primaryProjSpeed, hasBallisticWeapon } from '../ai/gunnery.js';
 import { confirm } from './confirm.js';
 import { bestKnownSellFor, applyTradeNavigation } from './screens/market.js';
@@ -1404,6 +1405,16 @@ export function createHud(ctx, alerts) {
   const radar = createRadar(ctx);
   rightDock.append(targetPanel.el, elOverview, radar.el);
   root.appendChild(rightDock);
+
+  // J06 The Power Rail. Digit4-8 have fired five real physics verbs for a long time with no HUD
+  // surface at all — clearingCone and skimCollector had zero references anywhere in src/ui/. This
+  // mounts the shelf; powerRail.js owns the band contract, the slot-claim protocol and the
+  // CSS-driven cooldown sweep (no rAF — see check:ui-frame-sleep).
+  const powerRail = createPowerRail({ bindings: (INPUT_DEFAULTS && INPUT_DEFAULTS.BINDINGS) || null });
+  root.appendChild(powerRail.el);
+  // Prompts borrow the number row rather than racing the rail for it.
+  const offSlotClaim = ctx.bus ? ctx.bus.on('hud:slotClaim', (p) => powerRail.claim(p)) : null;
+  const offSlotRelease = ctx.bus ? ctx.bus.on('hud:slotRelease', (p) => powerRail.release(p && p.claimId)) : null;
   // Sector law is created with comms before the HUD. Moving the same live node avoids a second card
   // competing with toasts in the upper-right corner while preserving all presenter state/listeners.
   const existingSectorLaw = document.getElementById('sf-sector-law');
@@ -3954,6 +3965,11 @@ export function createHud(ctx, alerts) {
     resolveReticle();
     updateDoctrineTells(frameDt);
 
+    // J06: gated on the slow clock, and `update` is a no-op when the slot signature is unchanged.
+    // The cooldown sweep is a CSS animation, so a cooling slot needs no per-frame work either —
+    // the rail genuinely stops costing anything once the numbers settle.
+    if (slow) powerRail.update(readRailModel(state, state.simTime || 0), Date.now());
+
     // --- schematic + arcs + micro-bars (every frame, transform/stroke only) ---
     if (p) {
       const hullFrac = p.hullMax ? clamp01(p.hull / p.hullMax) : 0;
@@ -4406,6 +4422,11 @@ export function createHud(ctx, alerts) {
 
   return {
     frame, tickHidden, forceRefresh, setVisible, refreshCredits, refreshCargo, refreshObjectives,
-    destroy() { objectiveHudDrag.destroy(); },
+    destroy() {
+      objectiveHudDrag.destroy();
+      if (offSlotClaim) offSlotClaim();
+      if (offSlotRelease) offSlotRelease();
+      powerRail.destroy();
+    },
   };
 }

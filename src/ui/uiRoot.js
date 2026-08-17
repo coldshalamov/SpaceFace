@@ -2153,6 +2153,74 @@ function injectHudCss() {
   /* Passive text recedes; strong cyan is reserved for actionable state, which keeps its own rules. */
   .sf-contacts .sf-contact__meta, .sf-cargo-empty { opacity:.82; }
 
+  /* ══ J06 THE POWER RAIL ════════════════════════════════════════════════════════════════════
+     Bottom-centre 1-9 rank in three bands. See src/ui/powerRail.js for the band contract.
+
+     The cooldown sweep is a CSS animation on stroke-dashoffset, with its duration written once
+     by JS when the cooldown starts. This is deliberate: check:ui-frame-sleep asserts the UI stops
+     doing frame work at rest, and nine slots repainting a radial every frame is precisely what
+     that check exists to prevent. Nothing here needs a rAF.  */
+  @keyframes sf-pslot-sweep { from { stroke-dashoffset:0; } to { stroke-dashoffset:81.68; } }
+
+  /* The rail is the permanent floor of the HUD, so it owns the bottom strip and .sf-command-deck
+     sits above it (see the bottom:88px override below). padding-bottom reserves room for the slot
+     name labels, which hang 11px BELOW their slot box — without it they render past the viewport
+     edge and every slot ships unlabelled. */
+  .sf-prail { position:absolute; left:50%; bottom:10px; transform:translateX(-50%);
+    display:flex; gap:14px; align-items:flex-end; pointer-events:none; z-index:6;
+    padding-bottom:14px; }
+  .sf-prail__band { display:flex; flex-direction:column; align-items:center; gap:3px; }
+  .sf-prail__label { font-family:var(--hud-display); font-size:7.5px; letter-spacing:.18em;
+    color:var(--hud-steel); opacity:.7; }
+  .sf-prail__slots { display:flex; gap:4px; }
+
+  .sf-pslot { position:relative; width:38px; height:38px; padding:0; border:1px solid var(--hud-edge);
+    background:rgba(4,10,18,.55); color:var(--hud-paper); display:flex; flex-direction:column;
+    align-items:center; justify-content:center; cursor:default; }
+  .sf-pslot__key { position:absolute; top:1px; left:3px; font-family:var(--hud-data); font-size:8px;
+    line-height:1; color:var(--hud-steel); }
+  .sf-pslot__art { display:flex; align-items:center; justify-content:center; }
+  .sf-pslot__art svg { display:block; }
+  .sf-pslot__name { position:absolute; bottom:-11px; font-family:var(--hud-data); font-size:7.5px;
+    letter-spacing:.06em; color:var(--hud-steel); white-space:nowrap; }
+  .sf-pslot__sweep { position:absolute; inset:3px; width:calc(100% - 6px); height:calc(100% - 6px);
+    transform:rotate(-90deg); pointer-events:none; }
+  .sf-pslot__sweep circle { fill:none; stroke:var(--hud-amber); stroke-width:1.6; opacity:0; }
+
+  /* Slot states. Colour is never the only channel — border weight and the name label move too, so
+     a locked slot and a ready slot differ under every colourblind mode. */
+  .sf-pslot[data-state="ready"] { border-color:var(--hud-edge); }
+  .sf-pslot[data-state="armed"] { border-color:var(--hud-amber); box-shadow:inset 0 0 0 1px var(--hud-amber); }
+  .sf-pslot[data-state="cooling"] { opacity:.72; }
+  .sf-pslot[data-state="cooling"] .sf-pslot__sweep circle { opacity:.95; }
+  .sf-pslot[data-state="unaffordable"] { opacity:.5; border-style:dashed; }
+  .sf-pslot[data-state="locked"] { opacity:.42; border-style:dotted; }
+  .sf-pslot[data-state="locked"] .sf-pslot__art { opacity:.5; }
+  /* An empty socket stays VISIBLE. A gap the player can see reads as "this fills in later";
+     a hidden gap reads as "there is nothing here", which is the lie J06 exists to correct. */
+  .sf-pslot[data-state="empty"] { border-style:dashed; border-color:var(--hud-edge);
+    opacity:.34; background:none; }
+  .sf-pslot[data-state="empty"] .sf-pslot__art { opacity:.35; }
+
+  /* Under a FULL claim the rail is answering a prompt, so it stops advertising powers. */
+  .sf-prail[data-claimed="FULL"] .sf-prail__label { opacity:.3; }
+  .sf-prail[data-claimed] .sf-pslot__name { color:var(--hud-amber); }
+
+  /* Lift the instrument deck clear of the rail. Measured, not guessed: the rail occupies 10-77px
+     from the viewport floor at 1280x720, and .sf-command-deck previously sat at bottom:12px — so
+     the two overlapped exactly and both became unreadable. This override must stay AFTER the
+     .sf-command-deck rule above it; this stylesheet resolves several selectors by source order. */
+  .sf-command-deck { bottom:88px; }
+
+  @media (max-width:1180px) {
+    .sf-pslot { width:32px; height:32px; }
+    .sf-prail { gap:10px; }
+    .sf-command-deck { bottom:80px; }
+  }
+  @media (max-width:900px), (max-height:650px) {
+    .sf-command-deck { bottom:76px; }
+  }
+
   `;
   document.head.appendChild(s);
 }
