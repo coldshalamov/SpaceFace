@@ -17,6 +17,7 @@ import { AI_CONTRACT_VERSION } from '../ai/contracts.js';
 import { mulberry32, mulberry32FromContinuation } from '../core/rng.js';
 import { NEW_GAME } from '../data/newGameDefaults.js';
 import { STORY_BEATS } from '../data/missions.js';
+import { shipRegistryIdentity } from '../data/shipRegistry.js';
 import { restoreCombatState, serializeCombatState } from '../combat/persistence.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec, normalizeLoadoutPresets } from '../systems/ships.js';
 import { createTimeEffects } from '../core/timeEffects.js';
@@ -848,7 +849,7 @@ export const save = {
       const state = this.state;
       const sectorId = state.world.currentSectorId;
       const sector = sectorId && state.world.sectors[sectorId];
-      const shipDef = (state.player.ownedShips[state.player.activeShipIndex] || {}).defId || null;
+      const activeShip = state.player.ownedShips[state.player.activeShipIndex] || null;
       const navSummary = navObjectiveSummary(state.nav);
       const missionSummary = missionObjectiveSummary(state.missions, state.ui && state.ui.trackedMissionId);
       const storySummary = storyObjectiveSummary(state.story);
@@ -858,7 +859,9 @@ export const save = {
         playtimeS: envelope.playtimeS,
         credits: state.player.credits,
         sectorName: (sector && sector.name) || sectorId || '',
-        shipName: shipDef || '',
+        shipName: activeShip
+          ? (shipRegistryIdentity(activeShip).registryName || activeShip.defId || '')
+          : '',
         navObjectiveSummary: navSummary,
         missionSummary,
         storySummary,
@@ -3468,7 +3471,9 @@ function slotMetaFromEnvelope(slot, env) {
     playtimeS: Number.isFinite(playtimeS) ? playtimeS : 0,
     credits: Number.isFinite(player.credits) ? player.credits : undefined,
     sectorName: (sector && (sector.name || sector.id)) || sectorId || '',
-    shipName: activeShip.defId || '',
+    shipName: activeShip.defId
+      ? (shipRegistryIdentity(activeShip).registryName || activeShip.defId)
+      : '',
     navObjectiveSummary: navSummary,
     missionSummary,
     storySummary,

@@ -660,6 +660,11 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   subscribe('module:equipped', () => showReceipt('SHIPWORKS', 'FIT COMMITTED', 'LOADOUT RECALCULATED'));
   subscribe('module:unequipped', () => showReceipt('SHIPWORKS', 'MODULE RETURNED', 'INVENTORY UPDATED'));
   subscribe('ship:purchased', (p = {}) => showReceipt('SHIPWORKS', 'SHIP ACQUIRED', p.price ? `−${fmtCr(p.price)} cr` : 'FABRICATION COMPLETE'));
+  subscribe('ship:registryFiled', (p = {}) => {
+    showReceipt('REGISTRY FILED', p.displayName || p.hullName || 'VESSEL',
+      p.restoredDefault ? 'YARD NAME RESTORED' : `HULL · ${p.hullName || 'VESSEL'}`);
+    refresh();
+  });
   subscribe('mission:accepted', () => showReceipt('MISSION BOUND', 'ROUTE ADDED TO NAVIGATION', 'STAGE 01 ACTIVE'));
   subscribe('mission:completed', (p = {}) => {
     const reward = Number(p.rewardCr);

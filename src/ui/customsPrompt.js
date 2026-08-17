@@ -29,6 +29,7 @@
 
 import { COMMODITIES } from '../data/commodities.js';
 import { FACTION_META } from '../data/factions.js';
+import { activePlayerShipRegistryName } from '../data/shipRegistry.js';
 
 const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
@@ -157,7 +158,7 @@ export const customsPrompt = {
 
     // ONE customs hail, through the arbiter — never a raw toast, never two lines at once.
     const helpers = (this._ctx && this._ctx.helpers) || {};
-    const hail = `${decision.factionShort} patrol is scanning your hold.`;
+    const hail = `${decision.factionShort} patrol to ${activePlayerShipRegistryName(state)}: scanning your hold.`;
     if (helpers.voice && typeof helpers.voice.say === 'function') {
       const said = helpers.voice.say({ channel: 'comms', text: hail, kind: 'customs' });
       if (!said && this._bus && this._bus.emit) this._bus.emit('toast', { text: hail, kind: 'info', ttl: 3 });

@@ -23,6 +23,10 @@ import { MODULES } from '../../../data/modules.js';
 import { WEAPONS } from '../../../data/weapons.js';
 import { TECH_NODES } from '../../../data/tech.js';
 import {
+  SHIP_REGISTRY_NAME_MAX,
+  shipRegistryIdentity,
+} from '../../../data/shipRegistry.js';
+import {
   QUARTERMASTER_CONTACT,
   quartermasterMemoryFor,
 } from '../../../data/stationContacts.js';
@@ -752,13 +756,14 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const activeIdx = (ctx.state.player && ctx.state.player.activeShipIndex) || 0;
       railListEl.innerHTML = o.length ? o.map((s, i) => {
         const def = SHIP_BY_ID.get(s.defId) || {};
+        const registry = shipRegistryIdentity(s);
         const on = i === viewIdx ? ' is-active' : '';
         const isActive = i === activeIdx;
         return (
-          `<button type="button" class="sx-sw-row${on}" data-fleet="${i}" title="${escapeHtml(def.name || s.defId)}" aria-label="Inspect ${escapeHtml(def.name || s.defId)}" aria-pressed="${i === viewIdx}">` +
+          `<button type="button" class="sx-sw-row${on}" data-fleet="${i}" title="${escapeHtml(`${registry.displayName} · ${registry.hullName}`)}" aria-label="Inspect ${escapeHtml(registry.displayName)}, ${escapeHtml(registry.hullName)} hull" aria-pressed="${i === viewIdx}">` +
             `<span class="sx-sw-row__ic">${shipSilhouette(def)}</span>` +
-            `<span class="sx-sw-row__body"><span class="sx-sw-row__name">${escapeHtml(def.name || s.defId)}</span>` +
-              `<span class="sx-sw-row__sub">${escapeHtml((def.role || 'ship'))} · T${def.tier != null ? def.tier : '?'}</span></span>` +
+            `<span class="sx-sw-row__body"><span class="sx-sw-row__name">${escapeHtml(registry.displayName)}</span>` +
+              `<span class="sx-sw-row__sub">${registry.isNamed ? `${escapeHtml(registry.hullName)} · ` : ''}${escapeHtml((def.role || 'ship'))} · T${def.tier != null ? def.tier : '?'}</span></span>` +
             (isActive ? `<span class="sx-sw-row__flag">Active</span>` : '') +
           `</button>`
         );
@@ -803,8 +808,9 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const def = s ? SHIP_BY_ID.get(s.defId) : null;
       if (!def) { nameplateEl.innerHTML = ''; statsEl.innerHTML = ''; statsEl.removeAttribute('data-preview-source'); return; }
       const fittings = s.fittings || [];
+      const registry = shipRegistryIdentity(s);
       previewShip(def.id, fittings, true, null, s.appearance);
-      nameplateEl.innerHTML = `<h2>${escapeHtml(def.name)}</h2><span>${escapeHtml(def.role || '')} ship · Tier ${def.tier}</span>`;
+      nameplateEl.innerHTML = `<h2>${escapeHtml(registry.displayName)}</h2><span>${registry.isNamed ? `${escapeHtml(registry.hullName)} hull · ` : ''}${escapeHtml(def.role || '')} ship · Tier ${def.tier}</span>`;
       const readout = presentDerivedReadout(def.id, fittings, ctx.state.player);
       renderDerivedStats(readout, fittings);
       renderSpatialSlots();
@@ -867,6 +873,20 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const activeIndex = Number(ctx.state.player && ctx.state.player.activeShipIndex) || 0;
     const inspectedIndex = owned().indexOf(s);
     const availability = shipworksActionAvailability(ctx.state);
+    const registry = shipRegistryIdentity(s);
+    const canFileRegistry = host !== 'flight' && availability.outfitEnabled;
+    const registryReason = canFileRegistry
+      ? `File a vessel name. Clear the field to restore ${registry.hullName}.`
+      : 'Dock at an outfitting berth to file a vessel name.';
+    const registryForm = `<form class="sx-sw-registry" data-ship-registry-form data-ship-index="${inspectedIndex}">` +
+      `<label><span>SHIP REGISTRY</span><span class="sx-sw-registry__line">` +
+        `<input type="text" data-ship-registry-name maxlength="${SHIP_REGISTRY_NAME_MAX}" ` +
+          `value="${escapeHtml(registry.registryName || '')}" placeholder="${escapeHtml(registry.hullName)}" ` +
+          `aria-label="Registered vessel name" title="${escapeHtml(registryReason)}" ${canFileRegistry ? '' : 'disabled'}>` +
+        `<button type="submit" ${canFileRegistry ? '' : 'disabled'}>FILE</button>` +
+      `</span></label>` +
+      `<em>${escapeHtml(registry.isNamed ? `${registry.hullName} hull · ${equippedDefs.length}/${slots.length} systems` : `${equippedDefs.length}/${slots.length} systems fitted · ${fmt(moduleMass)}t modules`)}</em>` +
+    `</form>`;
     const quartermaster = host !== 'flight' && availability.outfitEnabled
       ? quartermasterShipworksComment(ctx.state, s) : null;
     // MAKE ACTIVE is a berth verb — it never renders on the flight host (SCREENS_B §1.2). While
@@ -941,7 +961,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
           `</section>`
         : '') +
       `<div class="sx-sw-circuit">` +
-        `<div class="sx-sw-circuit__identity"><span>BUILD IDENTITY</span><strong>${escapeHtml((def.role || 'ship').toUpperCase())}</strong><em>${equippedDefs.length}/${slots.length} systems fitted · ${fmt(moduleMass)}t modules</em></div>` +
+        `<div class="sx-sw-circuit__identity">${registryForm}</div>` +
         `<div class="sx-sw-circuit__core"><i aria-hidden="true"></i><span>ENERGY CORE</span><b>${fmt(def.energyCap || 0)}</b><em>${fmt(totalDraw)} continuous draw</em></div>` +
         `<div class="sx-sw-circuit__bus" aria-hidden="true"></div>` +
         `<div class="sx-sw-circuit__flows">${flows.map(([type, draw]) => {
@@ -1260,6 +1280,21 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
 
   railListEl.addEventListener('click', (ev) => {
     selectRailButton(ev.target.closest('[data-fleet], [data-buy]'));
+  });
+
+  sideEl.addEventListener('submit', (ev) => {
+    const form = ev.target.closest('[data-ship-registry-form]');
+    if (!form) return;
+    ev.preventDefault();
+    if (!ctx.bus || !shipworksActionAvailability(ctx.state).outfitEnabled) return;
+    const input = form.querySelector('[data-ship-registry-name]');
+    ctx.bus.emit('ui:setShipRegistryName', {
+      shipIndex: Number(form.getAttribute('data-ship-index')),
+      name: input ? input.value : '',
+      source: 'shipworks_registry',
+    });
+    ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+    setTimeout(refresh, 60);
   });
 
   sideEl.addEventListener('click', (ev) => {

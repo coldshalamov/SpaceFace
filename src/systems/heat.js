@@ -20,6 +20,8 @@
 //
 // Tunables kept conservative so a casual smuggler isn't perma-hunted, but a murderous pirate feels
 // real consequences. All clamp at 1.
+import { activePlayerShipRegistryName } from '../data/shipRegistry.js';
+
 const HEAT_MAX = 1;
 const KILL_NONHOSTILE = 0.28;      // piracy kill of a clean ship
 // Combat emits `victimClass: t.data.shipClass || t.type`. Civilian traffic commonly has no
@@ -496,15 +498,17 @@ export const heat = {
     zone.noticeElapsedS = WANTED_NOTICE_GRACE_S;
     zone.bountyPosted = true;
     zone.bountyPostedAt = Number(this.state.simTime) || 0;
+    const shipName = activePlayerShipRegistryName(this.state);
     this._emitChanged('restitution notice ignored; bounty posted', true, this.state.player.heat);
     this.bus.emit('law:bountyPosted', {
       level: zone.level,
       zone: heatZoneSnapshot(zone),
       heat: this.state.player.heat,
+      shipName,
       t: zone.bountyPostedAt,
     });
     this.bus.emit('toast', {
-      text: 'BOUNTY POSTED - lawful berths closed; hunter traffic inbound.',
+      text: `BOUNTY POSTED ON ${shipName.toUpperCase()} - lawful berths closed; hunter traffic inbound.`,
       kind: 'error',
       ttl: 6,
     });

@@ -7,6 +7,10 @@
 // getDerivedStats() and makeShipEntitySpec() are exported as pure-ish builders so other systems
 // (save/newGame, render previews, UI stat readouts) can call them without going through the bus.
 import { SHIPS } from '../data/ships.js';
+import {
+  normalizeShipRegistryName,
+  shipRegistryIdentity,
+} from '../data/shipRegistry.js';
 import { FLIGHT_TUNING } from '../data/flightTuning.js';
 import { WEAPONS } from '../data/weapons.js';
 import { MODULES } from '../data/modules.js';
@@ -897,11 +901,17 @@ function buildMiningBeam(shipDef, fittings, isPlayer) {
  * makeShipEntitySpec(defId, opts) -> a spawnEntity spec (type:'ship') with the derived stat fields
  * copied onto the top level AND a full data block per the shared shape (§3.4.1).
  */
-export function makeShipEntitySpec(defId, { team = 0, factionId = null, fittings = [], appearance = null, livingHull = null, isPlayer = false, player = null, pos = null, rot = 0, ai = null } = {}) {
+export function makeShipEntitySpec(defId, { team = 0, factionId = null, fittings = [], appearance = null, livingHull = null, registryName = null, isPlayer = false, player = null, pos = null, rot = 0, ai = null } = {}) {
   const shipDef = SHIP_BY_ID.get(defId) || SHIP_BY_ID.get('ship_kestrel');
   const derived = getDerivedStats(shipDef.id, fittings, player);
   const weapons = buildWeaponList(shipDef, fittings, isPlayer, derived || null);
   const miningBeam = buildMiningBeam(shipDef, fittings, isPlayer);
+  const activeOwned = isPlayer && player && Array.isArray(player.ownedShips)
+    ? player.ownedShips[Number.isInteger(player.activeShipIndex) ? player.activeShipIndex : 0]
+    : null;
+  const filedRegistryName = isPlayer
+    ? normalizeShipRegistryName(registryName != null ? registryName : activeOwned && activeOwned.registryName)
+    : null;
 
   return {
     type: 'ship', factionId, team, isPlayer: !!isPlayer,
@@ -933,6 +943,7 @@ export function makeShipEntitySpec(defId, { team = 0, factionId = null, fittings
       fittings: fittingsForView(shipDef, fittings, weapons),
       appearance: appearance ? normalizeShipAppearance(appearance, shipDef.id) : null,
       livingHull: isPlayer ? normalizeLivingHull(livingHull, 0) : null,
+      ...(filedRegistryName ? { registryName: filedRegistryName, shipName: filedRegistryName } : {}),
       combat: { targetId: null, lockTarget: null, lockProgress: 0 },
       intent: null,
       ai,
@@ -970,6 +981,7 @@ export const ships = {
       }
       this.flushCargoMassRefresh();
       this.reconcileLivingHull({ announce: true });
+      this.reconcileShipRegistry();
       // Role identity is derived from the restored active hull. Publish once per Continue so the
       // presentation adapter can surface a one-time briefing without serializing lattice copy.
       this.publishActiveRoleContext({ source: 'save_loaded', announce: true });
@@ -1006,6 +1018,7 @@ export const ships = {
     bus.on('ui:unlockTech', (p) => this.unlockTech((p && p.nodeId) || null));
     bus.on('ui:respecTech', (p) => this.respecTech(p && p.branch));
     bus.on('ui:setShipAppearance', withShipworksAccess('outfit', (p) => this.setShipAppearance(p || {})));
+    bus.on('ui:setShipRegistryName', withShipworksAccess('outfit', (p) => this.setShipRegistryName(p || {})));
     this._techProgressionUnsubs = TECH_EVENT_NAMES.map((eventName) => bus.on(eventName, (payload) => {
       this.recordTechProgress(eventName, payload || {});
     }));
@@ -1036,7 +1049,10 @@ export const ships = {
         this._reduceLivingHull((hull, now) => livingHullWithGraffiti(hull, p, now), 'bulkhead_graffiti');
       }
     });
-    bus.on('game:started', () => this.reconcileLivingHull({ announce: false }));
+    bus.on('game:started', () => {
+      this.reconcileLivingHull({ announce: false });
+      this.reconcileShipRegistry();
+    });
   },
 
   // Event-only system. Cargo owns the registered per-tick coalescing boundary and emits one
@@ -1063,13 +1079,14 @@ export const ships = {
     const entity = this.state && this.state.entities && this.state.entities.get
       ? this.state.entities.get(this.state.playerId) : null;
     if (!owned || !lossId || !entity || entity.type !== 'ship') return null;
-    const def = SHIP_BY_ID.get(owned.defId);
+    const identity = shipRegistryIdentity(owned);
     return {
       schemaVersion: 1,
       lossId: String(lossId),
       shipIndex: this.state.player.activeShipIndex | 0,
       defId: owned.defId,
-      shipName: def && def.name || owned.defId,
+      shipName: identity.displayName,
+      ...(identity.registryName ? { registryName: identity.registryName } : {}),
       fittings: Array.isArray(owned.fittings) ? owned.fittings.slice() : [],
       appearance: cloneOwnedShip(owned.appearance),
       livingHull: cloneOwnedShip(owned.livingHull),
@@ -1091,11 +1108,13 @@ export const ships = {
     const index = Number.isInteger(shipSnapshot.shipIndex) ? shipSnapshot.shipIndex : p.activeShipIndex | 0;
     let owned;
     if (tier === 'full' || tier === 'loyalty') {
+      const registryName = normalizeShipRegistryName(shipSnapshot.registryName);
       owned = {
         defId: shipSnapshot.defId,
         fittings: Array.isArray(shipSnapshot.fittings) ? shipSnapshot.fittings.slice() : [],
         appearance: cloneOwnedShip(shipSnapshot.appearance),
         livingHull: cloneOwnedShip(shipSnapshot.livingHull),
+        ...(registryName ? { registryName } : {}),
       };
     } else if (tier === 'basic') {
       const def = SHIP_BY_ID.get(shipSnapshot.defId) || SHIP_BY_ID.get(NEW_GAME.shipId);
@@ -1135,11 +1154,13 @@ export const ships = {
       return { ok: true, idempotent: true, shipId: active.defId, shipIndex: p.activeShipIndex };
     }
     const index = p.activeShipIndex | 0;
+    const registryName = normalizeShipRegistryName(shipSnapshot.registryName);
     const owned = {
       defId: shipSnapshot.defId,
       fittings: Array.isArray(shipSnapshot.fittings) ? shipSnapshot.fittings.slice() : [],
       appearance: cloneOwnedShip(shipSnapshot.appearance),
       livingHull: cloneOwnedShip(shipSnapshot.livingHull),
+      ...(registryName ? { registryName } : {}),
       recoveredFromLoss: lossId,
     };
     p.ownedShips[index] = owned;
@@ -1164,6 +1185,7 @@ export const ships = {
       fittings: owned.fittings || [],
       appearance: owned.appearance,
       livingHull: owned.livingHull,
+      registryName: owned.registryName,
       isPlayer: true,
       player: this.state.player,
       pos: entity.pos,
@@ -1210,6 +1232,35 @@ export const ships = {
       });
     }
     return owned.livingHull;
+  },
+
+  _syncActiveShipRegistry(owned = this.ownedShip()) {
+    if (!owned) return null;
+    const identity = shipRegistryIdentity(owned);
+    const entity = this.activeShipEntity();
+    if (entity && entity.data) {
+      if (identity.registryName) {
+        entity.data.registryName = identity.registryName;
+        entity.data.shipName = identity.registryName;
+      } else {
+        delete entity.data.registryName;
+        delete entity.data.shipName;
+      }
+    }
+    return identity;
+  },
+
+  /** Normalize old/manual save input and project the active filed name onto the live player entity. */
+  reconcileShipRegistry() {
+    const player = this.state && this.state.player;
+    if (!player || !Array.isArray(player.ownedShips)) return null;
+    for (const owned of player.ownedShips) {
+      if (!owned) continue;
+      const registryName = normalizeShipRegistryName(owned.registryName);
+      if (registryName) owned.registryName = registryName;
+      else delete owned.registryName;
+    }
+    return this._syncActiveShipRegistry();
   },
 
   _reduceLivingHull(reducer, source) {
@@ -1700,6 +1751,7 @@ export const ships = {
       e.data.defId = owned.defId;
       e.data.appearance = normalizeShipAppearance(owned.appearance, owned.defId);
       e.data.livingHull = normalizeLivingHull(owned.livingHull, this.state.simTime || 0);
+      this._syncActiveShipRegistry(owned);
       this.recomputeEntity(e.id, owned.fittings);
     }
     if (isTransition) {
@@ -1726,6 +1778,30 @@ export const ships = {
       if (entity) this.bus.emit('ship:appearanceChanged', { id: entity.id, appearance: normalized });
     }
     this.bus.emit('ship:appearanceSaved', { shipIndex: index, appearance: normalized });
+    return true;
+  },
+
+  setShipRegistryName({ shipIndex = null, name = null, registryName = null } = {}) {
+    const index = shipIndex == null ? this.state.player.activeShipIndex : Number(shipIndex);
+    if (!Number.isInteger(index) || index < 0) return false;
+    const owned = this.ownedShip(index);
+    if (!owned) return false;
+    const filedName = normalizeShipRegistryName(registryName != null ? registryName : name);
+    const before = normalizeShipRegistryName(owned.registryName);
+    if (filedName === before) return true;
+    if (filedName) owned.registryName = filedName;
+    else delete owned.registryName;
+    const identity = index === this.state.player.activeShipIndex
+      ? this._syncActiveShipRegistry(owned)
+      : shipRegistryIdentity(owned);
+    this.bus.emit('ship:registryFiled', {
+      shipIndex: index,
+      defId: owned.defId,
+      registryName: identity.registryName,
+      displayName: identity.displayName,
+      hullName: identity.hullName,
+      restoredDefault: !identity.registryName,
+    });
     return true;
   },
 
