@@ -308,7 +308,16 @@ export class GLTFLoader {
       scene.userData.sourceUrl = sourceUrl;
       return { scene, scenes, parser: { json } };
     } finally {
-      // Textures are fully uploaded by TextureLoader before its promise resolves; object URLs can go.
+      // Every texture promise must SETTLE before its blob is revoked. Revoking a URL whose image
+      // request is still in flight cancels that request, and THREE reports it as
+      // "Couldn't load texture blob:..." with an untextured material left behind.
+      //
+      // The happy path already awaits each texture inside createMaterials, so this is normally a
+      // no-op. It stops mattering being a matter of luck when the load is torn down early -- an
+      // aborted material pass leaves promises pending, and this finally would then revoke out from
+      // under them. allSettled, never all: a texture that legitimately failed must not stop the
+      // rest of the blobs being released.
+      try { await Promise.allSettled([...textureCache.values()]); } catch (_) {}
       for (const url of objectUrls) URL.revokeObjectURL(url);
     }
   }
