@@ -15,48 +15,290 @@
    ============================================================================ */
 
 /* ---- 1. Boot console ---------------------------------------------------------
-   Cold-start POST. Black field, small registry line, restrained wordmark, one
-   hairline of progress with a bright tip, and a blinking block cursor. */
+   High-density retro-futuristic CRT dot-matrix & 3D vector wireframe terminal.
+   Cold-start POST telemetry, rotating phosphor vessel schematics, real-time
+   oscilloscope carrier wave, and streaming diagnostics. */
 
 #boot-overlay {
+  position: fixed;
   inset: 0;
   z-index: 2000;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #04060a;
+  background: #020407;
+  background: radial-gradient(ellipse at center, rgba(8, 18, 30, 0.90) 0%, rgba(2, 4, 7, 0.99) 85%);
   transition: opacity .8s ease;
+  overflow: hidden;
+  padding: 10px;
+  box-sizing: border-box;
 }
 #boot-overlay.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
 
-.boot-inner {
+@keyframes sf-boot-frame-poweron {
+  0% {
+    opacity: 0;
+    transform: scale(0.97) translateY(6px);
+    filter: brightness(2.2) contrast(1.6);
+  }
+  35% {
+    opacity: 0.85;
+    filter: brightness(1.4) contrast(1.2);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: brightness(1) contrast(1);
+  }
+}
+
+.boot-terminal-frame {
+  position: relative;
+  width: min(98vw, 1600px);
+  height: min(96vh, 980px);
+  max-height: 98vh;
+  display: flex;
+  flex-direction: column;
+  background: rgba(3, 6, 11, 0.95);
+  border: 1px solid rgba(78, 195, 230, 0.32);
+  border-radius: 4px;
+  box-shadow: 0 0 60px rgba(0, 0, 0, 0.95), inset 0 0 40px rgba(78, 195, 230, 0.04);
+  padding: 14px 18px;
+  font-family: "IBM Plex Mono", "Consolas", ui-monospace, monospace;
+  color: #a9b8c4;
+  overflow: hidden;
+  box-sizing: border-box;
+  animation: sf-boot-frame-poweron 0.65s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.boot-term-scanlines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0.12) 1px, transparent 1px, transparent 2px);
+  opacity: 0.7;
+  z-index: 10;
+}
+
+/* Header */
+.boot-term-header {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(78, 195, 230, 0.2);
+  padding-bottom: 8px;
+  font-size: 9.5px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+.boot-term-tag {
+  display: flex;
+  align-items: center;
+  color: #8296a4;
+}
+.boot-status-pill {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #7af7d0;
+  box-shadow: 0 0 8px #7af7d0;
+  margin-right: 8px;
+  animation: sf-intro-blink 1.2s steps(2, end) infinite;
+}
+.boot-registry {
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: .25em;
+  color: #a9b8c4;
+}
+.boot-term-meta {
+  display: flex;
+  gap: 16px;
+  color: #54646f;
+}
+.boot-term-stat {
+  display: inline-flex;
+  gap: 4px;
+}
+.boot-stat-val {
+  color: #4ec3e6;
+  font-weight: 500;
+}
+
+/* Body / Columns */
+.boot-term-body {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: 240px 1fr 240px;
+  gap: 16px;
+  align-items: stretch;
+  margin: 10px 0;
+  flex: 1;
+  min-height: 0;
+}
+
+.boot-term-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 10px;
+  background: rgba(3, 6, 11, 0.6);
+  border: 1px solid rgba(148, 178, 205, 0.15);
+  border-radius: 3px;
+  padding: 10px;
+  box-sizing: border-box;
+}
+
+.boot-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(148, 178, 205, 0.15);
+  padding-bottom: 4px;
+  color: #74879a;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  font-size: 8.5px;
+}
+.boot-panel-title {
+  color: #a9b8c4;
+  font-weight: 600;
+}
+.boot-panel-sub {
+  color: #54646f;
+}
+
+/* Diagnostics Stream */
+.boot-diag-stream {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 220px;
+  overflow: hidden;
+  font-size: 9px;
+  line-height: 1.45;
+}
+.boot-diag-line {
+  color: #687885;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  transition: color .2s ease;
+}
+.boot-diag-line.is-done {
+  color: #a9b8c4;
+}
+.boot-diag-line.is-latest {
+  color: #e9eff4;
+  text-shadow: 0 0 8px rgba(122, 247, 208, 0.55);
+}
+.diag-tag {
+  color: #7af7d0;
+  font-weight: 600;
+  margin-right: 4px;
+}
+.boot-diag-line.is-pending .diag-tag {
+  color: #4ec3e6;
+}
+
+/* Hex Dump */
+.boot-hex-panel {
+  margin-top: auto;
+  background: rgba(2, 4, 8, 0.7);
+  border: 1px solid rgba(78, 195, 230, 0.15);
+  padding: 8px;
+  border-radius: 2px;
+}
+.boot-hex-header {
+  font-size: 8px;
+  color: #54646f;
+  letter-spacing: 0.15em;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+.boot-hex-dump {
+  font-size: 8.5px;
+  color: #4ec3e6;
+  letter-spacing: 0.05em;
+  line-height: 1.4;
+  font-family: inherit;
+}
+
+/* Center Stage */
+.boot-term-center {
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-width: min(76vw, 400px);
-  font-family: "IBM Plex Mono", "Consolas", ui-monospace, monospace;
+  justify-content: center;
+  position: relative;
+  min-height: 0;
 }
-.boot-registry {
-  margin-bottom: 20px;
-  font-size: 9px;
-  font-weight: 500;
-  letter-spacing: .34em;
-  text-indent: .34em; /* optically re-centers tracked type */
-  text-transform: uppercase;
-  color: #54646f;
+.boot-canvas-wrapper {
+  position: relative;
+  width: 100%;
+  flex: 1;
+  min-height: 380px;
+  background: rgba(2, 4, 8, 0.85);
+  border: 1px solid rgba(78, 195, 230, 0.28);
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  cursor: crosshair;
+}
+.boot-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.boot-corner-bracket {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-color: #4ec3e6;
+  border-style: solid;
+  pointer-events: none;
+  z-index: 4;
+}
+.boot-cb-tl { top: 6px; left: 6px; border-width: 1px 0 0 1px; }
+.boot-cb-tr { top: 6px; right: 6px; border-width: 1px 1px 0 0; }
+.boot-cb-bl { bottom: 6px; left: 6px; border-width: 0 0 1px 1px; }
+.boot-cb-br { bottom: 6px; right: 6px; border-width: 0 1px 1px 0; }
+
+.boot-watermark {
+  position: absolute;
+  bottom: 8px;
+  right: 12px;
+  font-size: 8.5px;
+  letter-spacing: 0.2em;
+  color: rgba(78, 195, 230, 0.4);
+  pointer-events: none;
+  z-index: 4;
+}
+
+.boot-title-lockup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 10px;
+  text-align: center;
 }
 .boot-title {
-  margin-bottom: 30px;
+  margin-bottom: 3px;
   font-family: "Saira SemiCondensed", "Segoe UI", system-ui, sans-serif;
   font-weight: 600;
-  font-size: 30px;
+  font-size: 24px;
   letter-spacing: .4em;
   text-indent: .4em;
   color: #e9eff4;
-  text-shadow: none;
+  text-shadow: 0 0 16px rgba(78, 195, 230, 0.4);
 }
 .boot-sub {
-  font-size: 11px;
+  font-size: 10px;
   letter-spacing: .22em;
   text-indent: .22em;
   text-transform: uppercase;
@@ -64,22 +306,109 @@
   text-shadow: none;
 }
 .boot-detail {
-  min-height: 1.5em;
-  margin-top: 9px;
-  font-size: 10px;
-  line-height: 1.5;
+  min-height: 1.4em;
+  margin-top: 2px;
+  font-size: 9px;
+  line-height: 1.4;
   letter-spacing: .1em;
   color: #687885;
   text-align: center;
   text-shadow: none;
 }
+
+/* Subsystems Column */
+.boot-subsys-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 9px;
+}
+.boot-subsys-row {
+  display: flex;
+  align-items: center;
+  color: #8296a4;
+}
+.subsys-name {
+  width: 62px;
+  color: #a9b8c4;
+  font-weight: 500;
+  font-size: 8.5px;
+}
+.subsys-led-bar {
+  flex: 1;
+  margin: 0 8px;
+  height: 6px;
+  display: flex;
+  gap: 2px;
+  background: rgba(4, 8, 14, 0.8);
+  padding: 1px;
+  border-radius: 1px;
+  border: 1px solid rgba(78, 195, 230, 0.2);
+}
+.subsys-seg {
+  flex: 1;
+  background: rgba(78, 195, 230, 0.12);
+  border-radius: 0.5px;
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+.subsys-seg.active {
+  background: #4ec3e6;
+  box-shadow: 0 0 4px rgba(78, 195, 230, 0.8);
+}
+.subsys-val {
+  width: 32px;
+  text-align: right;
+  color: #7af7d0;
+  font-size: 8.5px;
+}
+
+.boot-waveform-container {
+  background: rgba(2, 4, 8, 0.7);
+  border: 1px solid rgba(78, 195, 230, 0.15);
+  padding: 4px;
+  border-radius: 2px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.boot-waveform-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.boot-telemetry-metrics {
+  margin-top: auto;
+  font-size: 8.5px;
+  color: #61737f;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  letter-spacing: 0.1em;
+}
+
+/* Footer / Progress */
+.boot-term-footer {
+  position: relative;
+  z-index: 2;
+  border-top: 1px solid rgba(78, 195, 230, 0.2);
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.boot-progress-bar-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
 .boot-progress {
   position: relative;
   display: block;
-  width: min(72vw, 320px);
-  height: 1px;
-  margin-top: 26px;
+  width: 100%;
+  height: 2px;
   background: rgba(148, 178, 205, .18);
+  border-radius: 1px;
 }
 .boot-progress > span {
   position: absolute;
@@ -89,25 +418,51 @@
   width: 0;
   height: 100%;
   background: #4ec3e6;
-  box-shadow: 0 0 8px rgba(78, 195, 230, .5);
+  box-shadow: 0 0 8px rgba(78, 195, 230, .6);
   transition: width .25s ease-out;
 }
-.boot-progress > span::after { /* bright leading tip */
+.boot-progress > span::after {
   content: "";
   position: absolute;
   right: -2px;
   top: -2px;
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
   background: #c4efff;
-  box-shadow: 0 0 10px rgba(140, 220, 250, .85);
+  box-shadow: 0 0 10px rgba(140, 220, 250, .9);
+}
+.boot-progress-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9px;
+  color: #74879a;
+  letter-spacing: 0.1em;
+}
+.boot-progress-pct {
+  color: #7af7d0;
+  font-weight: 600;
+}
+.boot-prompt-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 9.5px;
+  color: #687885;
+  letter-spacing: 0.12em;
+}
+.boot-prompt-prefix {
+  color: #7af7d0;
+  font-weight: 600;
+}
+.boot-prompt-cmd {
+  color: #e9eff4;
 }
 .boot-cursor {
-  margin-top: 18px;
-  width: 7px;
-  height: 13px;
+  width: 6px;
+  height: 11px;
   background: rgba(78, 195, 230, .8);
   animation: sf-intro-blink 1.15s steps(2, end) infinite;
+  display: inline-block;
 }
 @keyframes sf-intro-blink { 50% { opacity: .12; } }
 
@@ -120,6 +475,20 @@
   white-space: pre-wrap;
   text-align: left;
   text-shadow: none;
+}
+
+/* Responsive Collapse for Narrow Screens */
+@media (max-width: 860px) {
+  .boot-term-body {
+    grid-template-columns: 1fr;
+    min-height: auto;
+  }
+  .boot-term-col {
+    display: none;
+  }
+  .boot-canvas-wrapper {
+    height: 240px;
+  }
 }
 
 /* ---- 2. Cinematic title ------------------------------------------------------
@@ -338,14 +707,18 @@
 
 @media (prefers-reduced-motion: reduce) {
   #boot-overlay, .boot-progress > span, #cinematic-splash { transition: none; }
+  .boot-terminal-frame,
   .boot-cursor,
+  .boot-status-pill,
   .cine-contract::before,
   .cine-signal__k::before { animation: none; }
   .cine-bg { animation: none; opacity: .94; transform: none; }
   .cine-tag, .cine-eyebrow, .cine-title, .cine-rule,
   .cine-contract, .cine-begin, .cine-signal { animation: none; opacity: 1; transform: none; }
 }
+html.sf-reduce-motion .boot-terminal-frame,
 html.sf-reduce-motion .boot-cursor,
+html.sf-reduce-motion .boot-status-pill,
 html.sf-reduce-motion .cine-contract::before,
 html.sf-reduce-motion .cine-signal__k::before { animation: none !important; }
 html.sf-reduce-motion .cine-bg { animation: none !important; opacity: .94; transform: none; }
@@ -356,3 +729,5 @@ html.sf-reduce-motion .cine-rule,
 html.sf-reduce-motion .cine-contract,
 html.sf-reduce-motion .cine-begin,
 html.sf-reduce-motion .cine-signal { animation: none !important; opacity: 1 !important; transform: none !important; }
+
+

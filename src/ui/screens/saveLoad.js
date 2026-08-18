@@ -17,29 +17,85 @@ function getManager(ctx) {
   if (ui && ui.manager) return ui.manager;
   return null;
 }
+
 function nav(ctx, method, arg) {
   const mgr = getManager(ctx);
   if (mgr && typeof mgr[method] === 'function') { mgr[method](arg); return; }
   ctx.bus.emit('ui:' + method, { id: arg });
 }
+
 function injectStyle() {
   if (document.getElementById(STYLE_ID)) return;
   const s = document.createElement('style');
   s.id = STYLE_ID;
-  // Save/Load–specific slot anatomy only. The shared menu fascia (plate, buttons, headings,
-  // slot rows, form primitives) lives in styles/menu.css — previously a copy of that whole
-  // block was pasted here and into every other menu screen.
   s.textContent = `
-  .sf-slot .sf-slot-head { display:flex; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:2px; }
+  .sf-slot-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .screen.sf-menu .sf-slot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 16px;
+    background: rgba(9, 13, 18, .75);
+    border: 1px solid var(--mf-line-2);
+    border-radius: 4px;
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 56px;
+    transition: background-color .15s ease, border-color .15s ease;
+  }
+  .screen.sf-menu .sf-slot:hover {
+    background: rgba(13, 19, 27, .9);
+    border-color: var(--mf-line-3);
+  }
+  .screen.sf-menu .sf-slot.empty {
+    background: rgba(9, 13, 18, .35);
+    border-style: dashed;
+    border-color: var(--mf-line-1);
+  }
+  .screen.sf-menu .sf-slot.empty:hover {
+    background: rgba(13, 19, 27, .5);
+    border-color: var(--mf-line-2);
+  }
+  .screen.sf-menu .sf-slot.sel {
+    border-color: rgba(78, 195, 230, .45);
+    background: rgba(14, 22, 32, .85);
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+  .sf-slot .sf-slot-main {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .sf-slot .sf-slot-head { display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:3px; }
+  .sf-slot .sf-slot-name { font-size:14px; font-weight:600; color:var(--ink); }
+  .sf-slot.empty .sf-slot-name { font-weight:normal; color:var(--ink-mute); font-style:italic; }
   .sf-slot .sf-slot-badge { font-family:var(--mono); font-size:9px; letter-spacing:.08em; text-transform:uppercase;
-    color:var(--accent); border:1px solid rgba(219,152,56,.45); border-radius:2px; padding:1px 5px;
-    background:rgba(219,152,56,.08); }
-  .sf-slot .sf-slot-context { font-size:12px; color:var(--ink-dim); margin-top:2px; overflow-wrap:anywhere; }
-  .sf-slot .sf-slot-detail { font-size:11px; color:var(--ink-mute); font-family:var(--mono); margin-top:2px;
-    overflow-wrap:anywhere; }
+    color:var(--accent); border:1px solid rgba(78,195,230,.35); border-radius:2px; padding:1px 6px;
+    background:rgba(78,195,230,.08); }
+  .sf-slot .sf-slot-context { font-size:12.5px; color:var(--ink-dim); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .sf-slot.empty .sf-slot-context { color:var(--ink-mute); }
+  .sf-slot .sf-slot-detail { font-size:11px; color:var(--ink-mute); font-family:var(--mono); margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .sf-slot .sf-slot-actions { display:flex; align-items:center; gap:8px; flex-shrink:0; }
+  .sf-slot .sf-slot-actions button.sf-tab { min-width:68px; padding:6px 14px; cursor:pointer; }
+  .sf-slot .sf-slot-actions button.sf-tab--primary {
+    color: #04202b;
+    background: linear-gradient(180deg, #77d5ef, #45b7db);
+    border-color: #77d5ef;
+    font-weight: 600;
+  }
+  .sf-slot .sf-slot-actions button.sf-tab--primary:hover:not(:disabled) {
+    background: linear-gradient(180deg, #9ae2f5, #5ac6e6);
+    border-color: #9ae2f5;
+    color: #02121a;
+  }
   `;
   document.head.appendChild(s);
 }
+
 function shell(rootEl, title, extraClass) {
   rootEl.innerHTML = '';
   rootEl.classList.add('panel', 'sf-menu');
@@ -49,6 +105,7 @@ function shell(rootEl, title, extraClass) {
   const h = document.createElement('h1'); h.textContent = title; rootEl.appendChild(h);
   return rootEl;
 }
+
 function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
 
 /** Read the save index. Prefer the save system's API; fall back to localStorage scan. */
@@ -92,6 +149,7 @@ function slotLabel(id) {
   if (id === 'quick' || id === 'autosave' || id === 'auto') return id[0].toUpperCase() + id.slice(1);
   return 'Slot ' + id;
 }
+
 export function fmtPlaytime(playtimeS) {
   const s = Number(playtimeS);
   if (!Number.isFinite(s) || s < 0) return '';
@@ -99,18 +157,22 @@ export function fmtPlaytime(playtimeS) {
   const h = Math.floor(m / 60);
   return h > 0 ? (h + 'h ' + (m % 60) + 'm played') : (m + 'm played');
 }
+
 export function fmtCredits(value) {
   const n = Number(value);
   if (!Number.isFinite(n)) return '';
   return Math.round(n).toLocaleString('en-US') + ' CR';
 }
+
 function titleCaseWords(s) {
   return String(s).split(/[\s_]+/).filter(Boolean).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 }
+
 export function shipLabel(id) {
   if (!id) return '';
   return titleCaseWords(String(id).replace(/^ship_/, ''));
 }
+
 function fmtSavedAt(meta) {
   const when = meta.savedAt || meta.lastSavedAt;
   if (!when) return '';
@@ -118,6 +180,7 @@ function fmtSavedAt(meta) {
   if (!Number.isFinite(d.getTime())) return '';
   return 'saved ' + d.toLocaleString();
 }
+
 export function slotSummaryLines(meta) {
   if (!isOccupied(meta)) return { context: 'Empty slot', detail: 'No save data yet' };
   const context = [
@@ -132,6 +195,7 @@ export function slotSummaryLines(meta) {
   ].filter(Boolean).join(' - ') || 'Saved';
   return { context, detail };
 }
+
 export function slotConfirmSummary(meta) {
   if (!isOccupied(meta)) return 'Empty slot';
   const summary = slotSummaryLines(meta);
@@ -139,20 +203,25 @@ export function slotConfirmSummary(meta) {
     .filter((text) => text && text !== 'Empty slot' && text !== 'No save data yet' && text !== 'Saved')
     .join(' - ') || 'Saved game';
 }
+
 function loadConfirmBody(id, meta) {
   return 'Loading will replace your current game with ' + slotLabel(id) + ': ' + slotConfirmSummary(meta) + '. Unsaved progress is lost.';
 }
+
 function overwriteConfirmBody(id, meta) {
   return 'This will replace the existing save in ' + slotLabel(id) + ': ' + slotConfirmSummary(meta) + '. This cannot be undone.';
 }
+
 export function importConfirmBody(file) {
   const name = (typeof file === 'string' ? file : (file && file.name)) || 'selected save file';
   return 'Importing ' + name + ' will validate and load that save immediately. Unsaved progress is lost.';
 }
+
 export function slotObjectiveSummary(meta) {
   if (!meta) return '';
   return meta.objectiveSummary || meta.navObjectiveSummary || meta.missionSummary || meta.storySummary || '';
 }
+
 export function slotBadges(id, meta, currentSlot, latestSlot) {
   if (!isOccupied(meta)) return [];
   const badges = [];
@@ -162,15 +231,18 @@ export function slotBadges(id, meta, currentSlot, latestSlot) {
   if (meta && meta.version != null) badges.push('v' + meta.version);
   return badges;
 }
+
 function isOccupied(meta) {
   return !!meta && (meta.savedAt || meta.lastSavedAt || meta.playtimeS != null);
 }
+
 function slotMetaScore(meta) {
   const savedAtScore = Date.parse((meta && (meta.savedAt || meta.lastSavedAt)) || '') || 0;
   if (savedAtScore) return savedAtScore;
   const playtimeS = Number(meta && meta.playtimeS);
   return Number.isFinite(playtimeS) ? playtimeS : 0;
 }
+
 export function latestOccupiedSlot(slots) {
   let best = null;
   let bestT = -1;
@@ -182,6 +254,7 @@ export function latestOccupiedSlot(slots) {
   });
   return best;
 }
+
 function exportSlotChoice(ctx, slots) {
   const selected = refs && refs.selected;
   if (selected && isOccupied(slots[selected])) return selected;
@@ -211,7 +284,7 @@ export const saveLoadScreen = {
     injectStyle();
     shell(rootEl, 'Save / Load', 'sf-menu-wide');
 
-    const list = el('div', 'sf-col');
+    const list = el('div', 'sf-slot-list');
     rootEl.appendChild(list);
 
     const ioRow = el('div', 'sf-foot');
@@ -268,52 +341,73 @@ export const saveLoadScreen = {
       main.appendChild(el('div', 'sf-slot-detail', summary.detail));
       row.appendChild(main);
 
-      const bSave = el('button', 'sf-tab', 'Save'); bSave.style.minWidth = '64px';
-      bSave.disabled = !saveAllowed;
-      bSave.title = saveAllowed ? 'Save to ' + slotLabel(id) : 'Start or load a game before saving';
-      bSave.addEventListener('click', async () => {
-        if (!canSave(ctx)) {
-          ctx.bus.emit('toast', { text: 'Start or load a game before saving', kind: 'warn', ttl: 2500 });
-          this._render(ctx);
-          return;
-        }
-        // Overwrite confirmation if the slot is already occupied (UX-2) — saving clobbers the
-        // previous save irreversibly. Empty slots save without a prompt.
-        if (occupied) {
+      const actions = el('div', 'sf-slot-actions');
+
+      if (occupied) {
+        const bSave = el('button', 'sf-tab', 'Save');
+        bSave.disabled = !saveAllowed;
+        bSave.title = saveAllowed ? 'Save to ' + slotLabel(id) : 'Start or load a game before saving';
+        bSave.addEventListener('click', async () => {
+          if (!canSave(ctx)) {
+            ctx.bus.emit('toast', { text: 'Start or load a game before saving', kind: 'warn', ttl: 2500 });
+            this._render(ctx);
+            return;
+          }
+          // Overwrite confirmation if the slot is already occupied (UX-2) — saving clobbers the
+          // previous save irreversibly. Empty slots save without a prompt.
+          if (occupied) {
+            const ok = await confirm({
+              title: 'Overwrite save?',
+              body: overwriteConfirmBody(id, meta),
+              confirmLabel: 'Overwrite', danger: true,
+            });
+            if (!ok) return;
+          }
+          refs.selected = id;
+          ctx.bus.emit('game:save', { slot: id });
+          setTimeout(() => this._render(ctx), 120);
+        });
+
+        const bLoad = el('button', 'sf-tab sf-tab--primary', 'Load');
+        bLoad.title = 'Load ' + slotLabel(id);
+        bLoad.addEventListener('click', async () => {
           const ok = await confirm({
-            title: 'Overwrite save?',
-            body: overwriteConfirmBody(id, meta),
-            confirmLabel: 'Overwrite', danger: true,
+            title: 'Load this save?',
+            body: loadConfirmBody(id, meta),
+            confirmLabel: 'Load', danger: true,
           });
           if (!ok) return;
-        }
-        refs.selected = id;
-        ctx.bus.emit('game:save', { slot: id });
-        setTimeout(() => this._render(ctx), 120);
-      });
-      const bLoad = el('button', 'sf-tab', 'Load'); bLoad.style.minWidth = '64px';
-      bLoad.disabled = !occupied;
-      // Loading discards the current session — confirm first (UX-2).
-      bLoad.addEventListener('click', async () => {
-        const ok = await confirm({
-          title: 'Load this save?',
-          body: loadConfirmBody(id, meta),
-          confirmLabel: 'Load', danger: true,
+          refs.selected = id;
+          ctx.bus.emit('game:load', { slot: id });
         });
-        if (!ok) return;
-        refs.selected = id;
-        ctx.bus.emit('game:load', { slot: id });
-      });
 
-      row.appendChild(bSave);
-      row.appendChild(bLoad);
-      // Empty slots offer a direct "New Game" only from the title/no-active-run flow, so the player
-      // is not forced back to the main menu. Live Save/Load stays a preservation surface.
-      if (shouldOfferNewGameShortcut(meta, saveAllowed)) {
-        const bNew = el('button', 'sf-btn sf-btn--primary', 'New Game');
-        bNew.addEventListener('click', () => { refs.selected = id; this._render(ctx); nav(ctx, 'pushScreen', 'newGame'); });
-        row.appendChild(bNew);
+        actions.appendChild(bSave);
+        actions.appendChild(bLoad);
+      } else {
+        if (saveAllowed) {
+          const bSave = el('button', 'sf-tab sf-tab--primary', 'Save');
+          bSave.title = 'Save to ' + slotLabel(id);
+          bSave.addEventListener('click', async () => {
+            if (!canSave(ctx)) {
+              ctx.bus.emit('toast', { text: 'Start or load a game before saving', kind: 'warn', ttl: 2500 });
+              this._render(ctx);
+              return;
+            }
+            refs.selected = id;
+            ctx.bus.emit('game:save', { slot: id });
+            setTimeout(() => this._render(ctx), 120);
+          });
+          actions.appendChild(bSave);
+        } else if (shouldOfferNewGameShortcut(meta, saveAllowed)) {
+          const bNew = el('button', 'sf-tab sf-tab--primary', 'New Game');
+          bNew.style.minWidth = '90px';
+          bNew.title = 'Start a new game in ' + slotLabel(id);
+          bNew.addEventListener('click', () => { refs.selected = id; this._render(ctx); nav(ctx, 'pushScreen', 'newGame'); });
+          actions.appendChild(bNew);
+        }
       }
+
+      row.appendChild(actions);
       refs.list.appendChild(row);
     });
   },

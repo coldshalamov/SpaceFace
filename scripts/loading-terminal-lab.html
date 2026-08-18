@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>SpaceFace · Loading Terminal Lab</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #02040a; overflow: hidden; }
+  #wrap {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: 8px;
+    font-family: "IBM Plex Mono", "Consolas", monospace;
+  }
+  #stage {
+    position: relative;
+    width: min(96vw, 1120px);
+    height: min(74vh, 700px);
+    background: #03060c;
+    border: 1px solid rgba(78, 195, 230, 0.3);
+    display: flex; align-items: center; justify-content: center;
+    cursor: crosshair;
+  }
+  #boot-terminal-canvas { width: 100%; height: 100%; display: block; }
+  #hud { color: #74879a; font-size: 11px; letter-spacing: 0.15em; user-select: none; }
+  #hud b { color: #7af7d0; }
+  #hud .warn { color: #e3a52c; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="stage"><canvas id="boot-terminal-canvas" width="1120" height="640"></canvas></div>
+  <div id="hud">
+    <b>LOADING TERMINAL LAB</b> ·
+    keys: <b>1-5</b> pin act · <b>0</b> auto loop · <b>space</b> freeze/unfreeze ·
+    <b>[ ]</b> scrub ±0.25s · <b>p</b> progress 0/50/100% · <b>r</b> reduced-motion ·
+    <b>mouse</b> parallax · status: <span id="status">auto</span>
+  </div>
+</div>
+<script type="module">
+  import { createTerminalArtwork } from '../src/ui/loadingTerminalArt.js';
+
+  const params = new URLSearchParams(location.search);
+  const canvas = document.getElementById('boot-terminal-canvas');
+  const overlay = document.getElementById('stage');
+  const statusEl = document.getElementById('status');
+
+  const art = createTerminalArtwork({ canvas, overlay, force2D: params.get('gl') === '0', document: window.document });
+  art.start();
+  statusEl.dataset.path = params.get('gl') === '0' ? '2D' : 'GL-auto';
+
+  let act = params.has('act') ? Number(params.get('act')) : -1;
+  let freeze = params.has('freeze');
+  let t0 = params.has('t') ? Number(params.get('t')) : 2.5;
+
+  function apply() {
+    if (act >= 0) art.__engine?.receive?.({ type: 'lab', act, freeze, t: t0 });
+    statusEl.textContent = (act >= 0 ? 'act ' + (act + 1) : 'auto') + (freeze ? ' · frozen' : '') + ' · t=' + t0.toFixed(2) + 's';
+  }
+
+  // The lab drives the engine through the same public artwork instance; reach
+  // the engine via the debug hook the factory exposes when a lab query is set.
+  // (createTerminalArtwork forwards lab messages when __lab is enabled.)
+  if (act >= 0 || freeze || params.has('t')) {
+    art.updateProgress({ progress: params.has('p') ? Number(params.get('p')) : 0.7 });
+  }
+
+  window.addEventListener('keydown', (e) => {
+    if (e.key >= '1' && e.key <= '5') { act = Number(e.key) - 1; freeze = true; apply(); }
+    else if (e.key === '0') { act = -1; freeze = false; apply(); }
+    else if (e.key === ' ') { freeze = !freeze; apply(); e.preventDefault(); }
+    else if (e.key === '[') { t0 = Math.max(0, t0 - 0.25); freeze = true; apply(); }
+    else if (e.key === ']') { t0 += 0.25; freeze = true; apply(); }
+    else if (e.key.toLowerCase() === 'p') { art.updateProgress({ progress: Math.random() }); }
+    else if (e.key.toLowerCase() === 'r') { art.__engine?.receive?.({ type: 'lab', reduced: true }); }
+  });
+
+  // expose for URL-driven screenshots
+  window.__lab = { art, set: (a, f, t) => { act = a; freeze = f; t0 = t; apply(); } };
+  apply();
+</script>
+</body>
+</html>
