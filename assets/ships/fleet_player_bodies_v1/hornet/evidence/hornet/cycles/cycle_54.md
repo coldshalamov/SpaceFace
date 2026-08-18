@@ -57,9 +57,12 @@ Named failures to carry into cycle 55, highest value first:
    real work.
 4. **The wing is still a card** — uniform thickness root to tip, no root fillet, no slot, no flap,
    blank underside, and a visible crack at the root in clay.
-5. **Stray geometry at wrong scale.** Per-mesh bounds show objects reaching y 10.34 and z −6.78
-   against a hull that is 1.33 tall and 7.4 across. These are the "long dark bar floating above the
-   glass apex" and the "thin sliver blades at the lower nose" the reviewer saw.
+5. **Loose slivers near the nose and a detached bar above the canopy** — reviewer observation, not
+   yet reproduced by measurement. I tried to corroborate it from the exported mesh bounds (the
+   merged ceramic group reports a local extent 10.3 units tall against a hull 1.33 tall) but the
+   starboard still shows no such mast, so the bounds figure is more likely an artefact of how the
+   material groups merge than evidence of a stray object. **Treat the reviewer's sighting as the
+   claim and confirm it in Blender before acting** — do not cite the bounds number.
 6. **A slab kit still sits on the dorsal spine** — the contract's named forbidden read.
 7. **Accents are four flat colour chips**, mirrored left/right, with hard vector edges and no
    recess. MTX-60 authored asymmetry and MTX-42 sprayed-stencil both fail.
