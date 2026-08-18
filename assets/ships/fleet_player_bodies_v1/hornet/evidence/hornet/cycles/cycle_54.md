@@ -106,6 +106,26 @@ MTX-02 (authored cross-section loft) **passes** on the profile view. The rod is 
 Off the same starboard camera: **bbox ≥240 px tall against ≤1050 px wide**, **at least three openings
 with visible rims**, and a **drive bell ≥95 px**. Re-shoot and re-measure.
 
+### Machine-measured baseline for cycle 56
+
+Reproduced with `node scripts/measure-ship-still.mjs`, so the next cycle can be judged without
+re-arguing. These are the numbers to beat, on the same cameras:
+
+```
+cycle_54/starboard.png
+  silhouette   1019 x 157 px  (6.49 : 1)          -> need >=240 tall, <=1050 wide
+  enclosed bg  0 region(s) >=20px                 -> hold at 0
+  values       dark 4.9%  mid 91.5%  hot 3.7%     -> A-list ~15 / 60 / 8
+
+cycle_54/drive_rear.png  --region=900,600,90
+  region       inside 82 vs casing 73             -> need inside <30, casing 120-150
+               NOT darker than casing - reads as a cap
+```
+
+The drive line is the independent confirmation that matters: the script reached the reviewer's
+conclusion from the pixels alone, by a different route and with different constants (82 vs 73 here,
+72 vs 76 and 96 vs 70 in the review). Two methods, one verdict — the aperture is not a throat.
+
 ### A gap in the controller's brief, recorded so it is not repeated
 
 The form-restart brief specified length : **span** (~1.45 : 1, met exactly) and never specified
