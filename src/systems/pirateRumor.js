@@ -29,10 +29,7 @@ const PIRATE_ENCOUNTER_KINDS = new Set([
   'claim_threat',
 ]);
 
-const CIVILIAN_TRAFFIC_ROLES = new Set([
-  'hauler', 'courier', 'miner', 'rescue', 'trader',
-  'tanker', 'prospector', 'sweeper', 'tug', 'shuttle', 'ore_carrier',
-]);
+const CIVILIAN_TRAFFIC_ROLES = new Set(['hauler', 'courier', 'miner', 'rescue', 'trader']);
 const PIRATE_BASE_VECTOR_KINDS = new Set(['ambush_snare', 'pirate_toll', 'named_hunter']);
 const PIRATE_CAPABLE_ZONE_TYPES = new Set(['ambush_lane', 'outlaw_zone', 'derelict_field']);
 

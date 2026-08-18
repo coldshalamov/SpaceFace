@@ -119,24 +119,6 @@ const PLACE_FILES = Object.freeze([
   'places/place_ceres_grave_shard.glb',
   'places/place_conveyor_barge.glb',
   'places/place_mining_drone.glb',
-  // PQ-045 everyday production yard props: already released + packaged, but
-  // omitted from PLACE_FILES so placeFileForEntity returned null.
-  'places/place_cargo_pod_standard.glb',
-  'places/place_container_rack.glb',
-  'places/place_conveyor_truss.glb',
-  'places/place_drill_platform.glb',
-  'places/place_extraction_mast.glb',
-  'places/place_freight_platform.glb',
-  'places/place_improvised_dock.glb',
-  'places/place_interdiction_buoy.glb',
-  'places/place_maintenance_gantry.glb',
-  'places/place_radiator_bank.glb',
-  'places/place_scrap_cage.glb',
-  'places/place_sensor_mast.glb',
-  'places/place_slurry_tank.glb',
-  'places/place_transfer_arm.glb',
-  'places/place_transponder_gate.glb',
-  'places/place_worklight_tower.glb',
   'places/place_asteroid_rock_a.glb',
   'places/place_asteroid_rock_b.glb',
   'places/place_asteroid_rock_c.glb',
@@ -999,14 +981,12 @@ const WHOLE_SHIP_FILE_BY_HOSTILE_ID = Object.freeze({
   bruiser_brawler: 'wholeships/ashline_lode_production_v1.glb',
   reaver_pirate: 'wholeships/ashline_rig_production_v1.glb',
   corsair_raider: 'wholeships/ashline_rig_production_v1.glb',
-  customs_cutter: 'wholeships/inspection_cutter.glb',
 });
 const WHOLE_SHIP_ASSET_ID_BY_HOSTILE_ID = Object.freeze({
   wasp_swarmer: 'SF_ASHLINE_DART_V1',
   bruiser_brawler: 'SF_ASHLINE_LODE_V1',
   reaver_pirate: 'SF_ASHLINE_RIG_V1',
   corsair_raider: 'SF_ASHLINE_RIG_V1',
-  customs_cutter: 'SF_WHOLESHIP_INSPECTION_CUTTER',
 });
 // Ambient civilian traffic owns a durable presentation role independent of ship-def gameplay
 // stats. This keeps role silhouettes stable across rematerialization and prevents courier traffic
@@ -1033,12 +1013,6 @@ const WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE = Object.freeze({
   tender: 'wholeships/repair_tender.glb',
   salvor: 'wholeships/salvage_cutter.glb',
   surveyor: 'wholeships/survey_pin.glb',
-  rescue: 'wholeships/rescue_lifter.glb',
-  tanker: 'wholeships/volatiles_tanker.glb',
-  prospector: 'wholeships/prospector_skiff.glb',
-  sweeper: 'wholeships/scrap_sweeper.glb',
-  tug: 'wholeships/yard_tug.glb',
-  shuttle: 'wholeships/apron_shuttle.glb',
 });
 const WHOLE_SHIP_ASSET_ID_BY_TRAFFIC_ROLE = Object.freeze({
   // Must match the asset identity embedded in each packaged traffic body above; the record
@@ -1050,12 +1024,6 @@ const WHOLE_SHIP_ASSET_ID_BY_TRAFFIC_ROLE = Object.freeze({
   tender: 'SF_WHOLESHIP_REPAIR_TENDER',
   salvor: 'SF_WHOLESHIP_SALVAGE_CUTTER',
   surveyor: 'SF_WHOLESHIP_SURVEY_PIN',
-  rescue: 'SF_WHOLESHIP_RESCUE_LIFTER',
-  tanker: 'SF_WHOLESHIP_VOLATILES_TANKER',
-  prospector: 'SF_WHOLESHIP_PROSPECTOR_SKIFF',
-  sweeper: 'SF_WHOLESHIP_SCRAP_SWEEPER',
-  tug: 'SF_WHOLESHIP_YARD_TUG',
-  shuttle: 'SF_WHOLESHIP_APRON_SHUTTLE',
 });
 const WHOLE_SHIP_URLS = Object.freeze([
   ...Object.values(WHOLE_SHIP_FILE_BY_DEF_ID),

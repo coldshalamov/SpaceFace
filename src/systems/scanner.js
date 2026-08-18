@@ -1486,11 +1486,6 @@ export function contactStateWord(e, playerTeam, state) {
   if (trafficRole === 'hauler' || trafficRole === 'freighter') return 'HAULER';
   if (trafficRole === 'smuggler') return 'SMUGGLER';
   if (trafficRole === 'rescue') return 'RESCUE';
-  if (trafficRole === 'tanker') return 'TANKER';
-  if (trafficRole === 'prospector') return 'PROSPECTOR';
-  if (trafficRole === 'sweeper') return 'SWEEPER';
-  if (trafficRole === 'tug') return 'TUG';
-  if (trafficRole === 'shuttle') return 'SHUTTLE';
   if (trafficRole === 'surveyor') return 'SURVEY';
   if (trafficRole === 'salvor') return 'SALVOR';
   if (trafficRole === 'tender') return 'TENDER';

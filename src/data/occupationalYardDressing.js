@@ -1,8 +1,7 @@
-// Occupational yard dressing — packaged everyday-space props that already have
-// release identity + render packages but were never admitted to PLACE_FILES or
-// placed on a live route. Positions are sector-local. World.js instances them
-// through the ordinary _spawnPlaceProp path. This is not a second registry:
-// placeFileForEntity still owns visual selection.
+// Occupational yard dressing — packaged everyday-space props kept on disk.
+// A 2026-08-18 still panel left blocking toy / open-cage / LEGO notes, so
+// these IDs stay out of PLACE_FILES and world.js does not spawn them.
+// Authored Ceres offsets remain here as a plan, not a live dump.
 
 export const LANE_FURNITURE_PLACE_IDS = Object.freeze([
   'place_lane_pin',
@@ -95,10 +94,6 @@ export const OCCUPATIONAL_YARD_BY_SECTOR = Object.freeze({
     // Abandoned Driller — crooked salvage, keep the live hulk as the noun.
     prop('place_scrap_cage', 258, -1168, 0.3, 'Driller Scrap Cage'),
     prop('place_improvised_dock', 224, -1196, -0.38, 'Stolen Berth'),
-  ]),
-  sector_tethys_junction: Object.freeze([
-    prop('place_interdiction_buoy', -680, -1140, 0.2, 'Customs Interdiction Buoy'),
-    prop('place_interdiction_buoy', -600, -1220, -0.2, 'Approach Interdiction Buoy'),
   ]),
 });
 
