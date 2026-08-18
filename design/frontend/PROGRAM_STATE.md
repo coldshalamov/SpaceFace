@@ -90,8 +90,24 @@ fallback that called `getContext('2d')` on a canvas it had already given away.
 Now gated by **`npm run check:playable`** (`scripts/check-game-playable.mjs`) — boots the real game,
 asserts menu / flight / pilot / hull mesh / world / controls / no-throw / no-404. It caught this on
 its first run. **Run it before reporting done.** Also `npm run check:boot-resilience`, which pins the
-three specific defects deterministically because the boot failure is racy and a boot check alone is
-not a reliable gate for it.
+three specific defects deterministically in milliseconds.
+
+**It is NOT racy on the dev route.** Module scripts execute in document order, so the inline
+bootstrap always wins the transfer and the presenter always throws. The apparent intermittency was
+*which of the two uncommitted edits were present at the time* — `index.html` and
+`loadingPresenter.js` were authored days apart. `build/web/index.html` (the packaged Electron route)
+has no boot canvas at all and was never affected; only `npm start` / `npm run electron` hang.
+
+That distinction matters practically: an early mutation test of `check:playable` came back green and
+looked like the gate was decorative. It was not — the mutation had reverted only two of the three
+guards, and the third (`__sfTransferred`) alone is enough to prevent the fatal call. Reverting all
+three turns the gate red, 7 of 8. **When a mutation test says your check is decorative, first check
+that the mutation actually restored the bug.**
+
+Also fixed while here: `loadScenarioContract` (`main.js`) and `fetchSharedPlayerStore` were the only
+unguarded awaits upstream of the handoff — no timeout, so a response that never settles hangs the
+loading screen (or pins Continue at "Checking saves...") with no console output. Both now carry
+`AbortSignal.timeout`.
 
 The fixes are in the working tree only — the whole loading-terminal feature is another lane's
 uncommitted work-in-progress and is not in `HEAD`. If that lane rewrites those files, re-apply:
