@@ -1,6 +1,7 @@
 // Occupational yard dressing — packaged everyday-space props kept on disk.
 // A 2026-08-18 still panel left blocking toy / open-cage / LEGO notes, so
-// these IDs stay out of PLACE_FILES and world.js does not spawn them.
+// the sixteen yard IDs stay out of PLACE_FILES and world.js does not spawn them.
+// Helios lane furniture was repaired and admitted after a later 2–3 still panel.
 // Authored Ceres offsets remain here as a plan, not a live dump.
 
 export const LANE_FURNITURE_PLACE_IDS = Object.freeze([

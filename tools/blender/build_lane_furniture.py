@@ -51,6 +51,7 @@ ROOT = Path(__file__).resolve().parents[2]
 FAMILY_SCALE = 3.4
 OUT_SOURCE = ROOT / 'assets' / 'places' / 'lane_furniture' / 'source'
 OUT_EVIDENCE = ROOT / 'assets' / 'places' / 'lane_furniture' / 'evidence'
+PARTS_OUT = ROOT / 'assets' / 'ships' / 'parts' / 'places'
 
 # Material roles, named the way the rest of the asset pipeline names them so a later promotion
 # does not have to invent a mapping.
@@ -82,7 +83,12 @@ def material(role):
     bsdf.inputs['Base Color'].default_value = (r, g, b, 1.0)
     bsdf.inputs['Roughness'].default_value = rough
     if 'Metallic' in bsdf.inputs:
-        bsdf.inputs['Metallic'].default_value = 0.0 if role == 'furniture_signal_lens' else 0.85
+        if role == 'furniture_signal_lens':
+            bsdf.inputs['Metallic'].default_value = 0.0
+        elif role == 'furniture_painted_shell':
+            bsdf.inputs['Metallic'].default_value = 0.22
+        else:
+            bsdf.inputs['Metallic'].default_value = 0.85
     if role == 'furniture_signal_lens' and 'Emission Color' in bsdf.inputs:
         bsdf.inputs['Emission Color'].default_value = (1.0, 0.70, 0.28, 1.0)
         bsdf.inputs['Emission Strength'].default_value = 3.2
@@ -94,6 +100,18 @@ def put(obj, role, parent=None):
     obj.data.materials.append(material(role))
     if parent is not None:
         obj.parent = parent
+    bpy.context.view_layer.objects.active = obj
+    faceted = any(tag in obj.name for tag in (
+        '_plate', '_vane', '_pad', '_deck', '_token', '_boot', '_petal',
+        '_plaque', '_chevron', '_streamer', '_grate', '_crumple',
+    ))
+    if faceted:
+        bpy.ops.object.shade_flat()
+    else:
+        try:
+            bpy.ops.object.shade_smooth_by_angle(angle=math.radians(28))
+        except Exception:
+            bpy.ops.object.shade_smooth()
     return obj
 
 
@@ -133,6 +151,18 @@ def beam(name, a, b, radius, verts=6):
         ln = 1e-3
     o = cyl(name, radius, ln, tuple((a + b) * 0.5), verts=verts)
     o.rotation_euler = d.to_track_quat('Z', 'Y').to_euler()
+    return o
+
+
+def ribbon(name, a, b, width, thick, role, parent):
+    """Flat heat-cloth / plate spanning two world points so a flag cannot float."""
+    a = Vector(a)
+    b = Vector(b)
+    d = b - a
+    ln = max(d.length, 1e-3)
+    o = box(name, (ln, thick, width), tuple((a + b) * 0.5))
+    o.rotation_euler = d.to_track_quat('X', 'Z').to_euler()
+    put(o, role, parent)
     return o
 
 
@@ -254,13 +284,10 @@ def build_claim_mark():
     put(cyl('claim_spare_puck', 0.040, 0.04, (0.26, -0.10, 0.09), rot=(math.pi / 2, 0, 0), verts=8),
         'furniture_signal_lens', r)
     put(box('claim_puck_tape', (0.11, 0.09, 0.01), (0.26, -0.10, 0.13)), 'furniture_painted_shell', r)
-    # Faded flag streamer of heat-cloth, hung off the ring with a mid-bend so it is not a flat card.
-    st_a = put(box('claim_streamer_a', (0.40, 0.012, 0.12), (0.30, -tip * 2.2, 2.52)),
-               'furniture_painted_shell', r)
-    st_a.rotation_euler = (0, math.radians(-16), math.radians(9))
-    st_b = put(box('claim_streamer_b', (0.36, 0.012, 0.10), (0.62, -tip * 2.0, 2.36)),
-               'furniture_painted_shell', r)
-    st_b.rotation_euler = (0, math.radians(-38), math.radians(-14))
+    # Streamer stays ON the crushed ring as a single short tab. A two-card hang
+    # read as detached bricks in the still panel.
+    put(box('claim_streamer_tab', (0.22, 0.012, 0.08), (0.22, -tip * 2.38, 2.62),
+            rot=(0, math.radians(-18), 0)), 'furniture_painted_shell', r)
     # Scarred tether loop for suit handholds.
     bpy.ops.mesh.primitive_torus_add(major_radius=0.13, minor_radius=0.016,
                                      location=(0.13, -0.02, 0.62), rotation=(math.pi / 2, 0, 0),
@@ -290,18 +317,23 @@ def build_lane_pin():
     # Ballasted, not driven: Concord marks a corridor, it does not stake a claim it has no title to.
     embed_root('pin', r, r, kind='ballast', radius=0.60)
     put(cyl('pin_mast', 0.11, 9.0, (0, 0, 4.80), verts=10), 'furniture_painted_shell', r)
-    # Vanes at TWO stations, 4.0 m and 7.5 m. At each station the third position is a bare
-    # unpainted repair plate rather than a fin — Concord fixes what it can reach.
+    # Vanes at TWO stations, 4.0 m and 7.5 m. Each station has a collar so the fins grow
+    # out of the mast instead of hovering as cardboard cards.
     for station, (z, twist) in enumerate(((4.0, 0.0), (7.5, math.radians(30)))):
+        put(cyl(f'pin_vane_collar_{station}', 0.18, 0.16, (0, 0, z), verts=10),
+            'furniture_structural_alloy', r)
         for i in range(3):
             a = i * (2 * math.pi / 3)
             is_repair = (i == 2)
-            v = box(f'pin_vane_{station}_{i}', (1.60, 0.05, 0.40),
-                    (math.cos(a) * 0.90, math.sin(a) * 0.90, z), rot=(0, 0, a))
+            # Center sits on the collar so the inner edge overlaps the mast.
+            v = box(f'pin_vane_{station}_{i}', (1.46, 0.08, 0.40),
+                    (math.cos(a) * 0.72, math.sin(a) * 0.72, z), rot=(0, 0, a))
             put(v, 'furniture_bare_steel' if is_repair else 'furniture_structural_alloy', r)
-            # The upper station's first vane is twisted 30 degrees — a strike nobody straightened.
-            if station == 1 and i == 0:
-                v.rotation_euler = (twist, 0, a)
+            put(box(f'pin_vane_root_{station}_{i}', (0.20, 0.14, 0.22),
+                    (math.cos(a) * 0.18, math.sin(a) * 0.18, z), rot=(0, 0, a)),
+                'furniture_bare_steel' if is_repair else 'furniture_structural_alloy', r)
+            # Do not post-rotate a vane around its own centre — that is what made
+            # the upper fin read as a flying card. The repair plate already names the damage.
     # Pass-side chevron housing: tells you which side to go by, and it is one-sided by definition.
     put(box('pin_chevron_housing', (0.50, 0.15, 0.35), (0.42, 0, 5.60)), 'furniture_painted_shell', r)
     put(box('pin_chevron_lens', (0.34, 0.04, 0.22), (0.62, 0, 5.60)), 'furniture_signal_lens', r)
@@ -348,17 +380,19 @@ def build_tally_post():
     # The boom: 3.2 m, one side only, drooping 8 degrees. This is the whole silhouette.
     droop = math.radians(-8.0)
     boom = put(box('tally_boom', (3.2, 0.18, 0.22), (1.72, 0, 3.50)), 'furniture_structural_alloy', r)
+    # Yoke lives in BOOM local space so the droop cannot leave the pads behind.
+    put(box('tally_yoke_hub', (0.28, 0.28, 0.20), (1.58, 0, 0)), 'furniture_structural_alloy', boom)
+    put(box('tally_tong_a', (0.36, 0.08, 0.08), (1.72, 0.22, -0.02), rot=(0, 0, math.radians(28))),
+        'furniture_structural_alloy', boom)
+    put(box('tally_tong_b', (0.36, 0.08, 0.08), (1.72, -0.22, -0.02), rot=(0, 0, math.radians(-28))),
+        'furniture_structural_alloy', boom)
+    put(box('tally_yoke_pad_worn', (0.35, 0.25, 0.12), (1.88, 0.38, -0.04)),
+        'furniture_painted_shell', boom)
+    put(cyl('tally_yoke_wear_cup', 0.11, 0.06, (1.88, 0.38, 0.04), verts=10),
+        'furniture_scorch', boom)
+    put(box('tally_yoke_pad_replacement', (0.35, 0.25, 0.02), (1.88, -0.38, -0.04)),
+        'furniture_bare_steel', boom)
     boom.rotation_euler = (0, droop, 0)
-    tip_x = 3.28
-    tip_z = 3.50 + math.sin(droop) * 1.6
-    # Yoke: two pads like blunt tongs. Pad A is WORN CONCAVE, pad B is a flat unpainted
-    # replacement plate — mismatched, because one of them has been changed and the other has not.
-    put(box('tally_yoke_pad_worn', (0.35, 0.25, 0.12), (tip_x, 0.30, tip_z)),
-        'furniture_painted_shell', r)
-    put(cyl('tally_yoke_wear_cup', 0.11, 0.06, (tip_x, 0.30, tip_z + 0.07), verts=10),
-        'furniture_scorch', r)
-    put(box('tally_yoke_pad_replacement', (0.35, 0.25, 0.02), (tip_x, -0.30, tip_z)),
-        'furniture_bare_steel', r)
     # Thermal hood over the house crown, and the gold invoice pulse on the mast.
     put(cyl('tally_thermal_hood', 0.66, 0.18, (0, 0, 4.34), verts=6), 'furniture_structural_alloy', r)
     put(cyl('tally_mast', 0.07, 1.5, (0, 0, 5.10), verts=8), 'furniture_structural_alloy', r)
@@ -432,6 +466,7 @@ def build_whistle():
                   'furniture_bare_steel', r)
         rod.rotation_euler = (tilt, tilt * 0.6, 0)
     # Lamp cluster in a basket of wire — an open frame, not a housing. Three lamp blobs inside it.
+    put(cyl('whistle_basket_ring', 0.20, 0.03, (0, 0, 3.32), verts=8), 'furniture_bare_steel', r)
     for i, (ox, oy) in enumerate(((0.17, 0), (-0.17, 0), (0, 0.17), (0, -0.17))):
         put(box(f'whistle_basket_bar_{i}', (0.03, 0.03, 0.30), (ox, oy, 3.18)),
             'furniture_bare_steel', r)
@@ -476,36 +511,52 @@ def build_cold_locker():
     bays = int(SPINE / BAY)
     put(cyl('locker_root_clamp', 0.34, 0.42, (0, 0, 0.21), verts=8), 'furniture_bare_steel', r)
     embed_root('locker', r, r, kind='rock', radius=0.40)  # clipped to a rock, per the fiction
-    # Lattice truss: two rails plus alternating diagonals. ONE mid bay is crushed inward.
+    # Four-longeron lattice, not a flat ladder. ONE mid bay is crushed inward.
     crushed = bays // 2 + 1
-    for side in (-1, 1):
-        put(cyl(f'locker_rail_{side}', 0.045, SPINE, (side * 0.22, 0, SPINE * 0.5 + 0.4), verts=6),
+    longerons = ((-1, -1), (-1, 1), (1, -1), (1, 1))
+    for sx, sy in longerons:
+        put(cyl(f'locker_rail_{sx}_{sy}', 0.040, SPINE,
+                (sx * 0.20, sy * 0.20, SPINE * 0.5 + 0.4), verts=6),
             'furniture_structural_alloy', r)
-    # Rungs, not diagonals. The first attempt rotated each brace about Y after parenting and the
-    # bays scattered across an 11 m spread on a 9 m spine — visible immediately in the render as two
-    # diverging dashed lines. A horizontal rung between the rails cannot do that, still reads as a
-    # truss at distance, and leaves the crushed bay legible as the one rung that does not span.
     for i in range(bays):
         z = 0.55 + i * BAY
-        span = 0.30 if i == crushed else 0.44
-        put(box(f'locker_rung_{i}', (span, 0.045, 0.045), (0, 0, z)),
-            'furniture_bare_steel' if i == crushed else 'furniture_structural_alloy', r)
+        span = 0.26 if i == crushed else 0.40
+        role = 'furniture_bare_steel' if i == crushed else 'furniture_structural_alloy'
+        put(box(f'locker_rung_x_{i}', (span, 0.040, 0.040), (0, 0.20 if i != crushed else 0.10, z)),
+            role, r)
+        put(box(f'locker_rung_y_{i}', (0.040, span, 0.040), (0.20 if i != crushed else 0.10, 0, z)),
+            role, r)
+        if i == crushed:
+            continue
+        a0 = ((-0.20, -0.20, z), (0.20, 0.20, z + BAY))
+        a1 = ((0.20, -0.20, z), (-0.20, 0.20, z + BAY))
+        if i % 2:
+            a0, a1 = a1, a0
+        beam(f'locker_diag_a_{i}', a0[0], a0[1], 0.022)
+        put(bpy.context.active_object, 'furniture_structural_alloy', r)
+        beam(f'locker_diag_b_{i}', a1[0], a1[1], 0.022)
+        put(bpy.context.active_object, 'furniture_structural_alloy', r)
     # The drum: hexagonal, 1.8 m across flats, hung at MID-spine so the mass is off-centre.
-    put(cyl('locker_drum', 0.90, 2.05, (0, 0, SPINE * 0.5 + 0.4), verts=6),
-        'furniture_painted_shell', r)
+    mid = SPINE * 0.5 + 0.4
+    drum = put(cyl('locker_drum', 0.90, 2.05, (0, 0, mid), verts=6),
+               'furniture_painted_shell', r)
+    put(cyl('locker_hoop_lo', 0.93, 0.08, (0, 0, -0.72), verts=6),
+        'furniture_structural_alloy', drum)
+    put(cyl('locker_hoop_hi', 0.93, 0.08, (0, 0, 0.72), verts=6),
+        'furniture_structural_alloy', drum)
     # Hatch face with THREE dogs — one of them a welded scrap bar rather than a proper lever.
-    put(cyl('locker_hatch', 0.62, 0.10, (0, -0.92, SPINE * 0.5 + 0.4), rot=(math.pi / 2, 0, 0),
+    put(cyl('locker_hatch', 0.62, 0.10, (0, -0.78, SPINE * 0.5 + 0.4), rot=(math.pi / 2, 0, 0),
             verts=10), 'furniture_structural_alloy', r)
     for i, a in enumerate((0.6, 2.7, 4.7)):
         role = 'furniture_bare_steel' if i == 2 else 'furniture_structural_alloy'
         size = (0.36, 0.06, 0.06) if i == 2 else (0.26, 0.05, 0.05)
         dg = put(box(f'locker_dog_{i}', size,
-                     (math.cos(a) * 0.42, -0.99, SPINE * 0.5 + 0.4 + math.sin(a) * 0.42)),
+                     (math.cos(a) * 0.42, -0.86, SPINE * 0.5 + 0.4 + math.sin(a) * 0.42)),
                  role, r)
         dg.rotation_euler = (0, 0, a if i != 2 else a + 0.5)
     # Bond lamp ring around the hatch — the bit a pilot actually reads.
     bpy.ops.mesh.primitive_torus_add(major_radius=0.72, minor_radius=0.035,
-                                     location=(0, -0.95, SPINE * 0.5 + 0.4),
+                                     location=(0, -0.84, SPINE * 0.5 + 0.4),
                                      rotation=(math.pi / 2, 0, 0),
                                      major_segments=14, minor_segments=5)
     ring = bpy.context.active_object
@@ -531,11 +582,11 @@ def build_cold_locker():
     beam('locker_shear_cable', (bx, by, 0.30), (0, 0, 1.85), 0.016, verts=4)
     put(bpy.context.active_object, 'furniture_bare_steel', r)
 
-    # Solar / trickle petals on the drum crown. ONE is bent.
+    # Solar / trickle petals sit on the drum crown in drum-local space. ONE is bent.
     for i, a in enumerate((0.0, 2.09, 4.19)):
         pet = put(box(f'locker_petal_{i}', (0.40, 0.15, 0.02),
-                      (math.cos(a) * 0.78, math.sin(a) * 0.78, SPINE * 0.5 + 1.52)),
-                  'furniture_structural_alloy', r)
+                      (math.cos(a) * 0.70, math.sin(a) * 0.70, 1.08)),
+                  'furniture_structural_alloy', drum)
         pet.rotation_euler = (math.radians(25) if i == 1 else 0, 0, a)
     return r
 
@@ -561,27 +612,18 @@ def build_ash_pin():
     # A cut spar, 3.5 m, slender. It is a piece of the dead hull, not a monument someone ordered.
     spar = put(cyl('ash_spar', 0.07, 3.50, (0, 0, 1.95), verts=8), 'furniture_bare_steel', r)
     spar.rotation_euler = (LEAN, 0, 0)
-    # The cut end is ragged: a short offset stub where the torch wandered.
-    stub = put(box('ash_spar_cut_end', (0.11, 0.09, 0.22),
-                   (0.03, -math.sin(LEAN) * 1.75 - 0.05, 3.62)), 'furniture_bare_steel', r)
-    stub.rotation_euler = (LEAN + 0.22, 0, math.radians(11))
-    # Name plate, 0.5 x 0.3 m, bolted mid-spar — the only cared-for surface on the whole object.
-    plate_y = -math.sin(LEAN) * 0.55
-    put(box('ash_name_plate', (0.50, 0.03, 0.30), (0, plate_y - 0.09, 1.72)),
-        'furniture_identity_plate', r)
-    # ONE CORNER HALF-MELTED. Modelled as a small canted wedge eating into the plate corner, so the
-    # silhouette of the plate is no longer a clean rectangle.
-    melt = put(box('ash_plate_melt_corner', (0.14, 0.04, 0.14), (0.20, plate_y - 0.10, 1.85)),
-               'furniture_scorch', r)
+    # Plate, melt, and empty cage live in SPAR LOCAL space. The old cut-end stub
+    # was a floating brick; the spar tip itself is the ragged end.
+    put(box('ash_name_plate', (0.50, 0.03, 0.30), (0.0, -0.10, -0.23)),
+        'furniture_identity_plate', spar)
+    melt = put(box('ash_plate_melt_corner', (0.14, 0.04, 0.14), (0.20, -0.11, -0.08)),
+               'furniture_scorch', spar)
     melt.rotation_euler = (0, 0, math.radians(38))
-    # Lamp cage — EMPTY. Four thin bars and no lens. The absence is the signal: the pin does not
-    # advertise, it remembers, and nobody has replaced the cell in years.
-    cage_y = -math.sin(LEAN) * 1.15
     for i, (ox, oy) in enumerate(((0.055, 0), (-0.055, 0), (0, 0.055), (0, -0.055))):
-        put(box(f'ash_cage_bar_{i}', (0.016, 0.016, 0.20), (ox, cage_y + oy, 2.62)),
-            'furniture_structural_alloy', r)
-    put(cyl('ash_cage_ring', 0.075, 0.018, (0, cage_y, 2.72), verts=8),
-        'furniture_structural_alloy', r)
+        put(box(f'ash_cage_bar_{i}', (0.016, 0.016, 0.20), (ox, -0.09 + oy, 0.68)),
+            'furniture_structural_alloy', spar)
+    put(cyl('ash_cage_ring', 0.075, 0.018, (0, -0.09, 0.80), verts=8),
+        'furniture_structural_alloy', spar)
     # Ballast chain from the foot. ONE LINK IS THE WRONG ALLOY — thicker, and a different material.
     for k in range(5):
         wrong = (k == 2)
@@ -590,9 +632,9 @@ def build_ash_pin():
                 rot=(math.radians(90 if k % 2 else 0), 0, math.radians(24)), verts=5),
             'furniture_bare_steel' if wrong else 'furniture_structural_alloy', r)
     # Tokens left by passing crews, at the foot, at three angles.
-    for i, (x, y, sz, a) in enumerate(((0.22, 0.20, 0.11, 0.4), (-0.28, 0.11, 0.08, 1.9),
-                                       (0.05, -0.26, 0.09, 3.1))):
-        t = put(box(f'ash_token_{i}', (sz, sz, sz * 0.35), (x, y, 0.30)),
+    for i, (x, y, sz, a) in enumerate(((0.18, 0.16, 0.11, 0.4), (-0.20, 0.12, 0.08, 1.9),
+                                       (0.04, -0.18, 0.09, 3.1))):
+        t = put(box(f'ash_token_{i}', (sz, sz, sz * 0.35), (x, y, 0.28)),
                 'furniture_painted_shell', r)
         t.rotation_euler = (0, 0, a)
     return r
@@ -622,8 +664,14 @@ def export_glb(root, path):
     bpy.ops.export_scene.gltf(
         filepath=str(path), export_format='GLB', use_selection=True,
         export_apply=True, export_yup=True,
+        export_texcoords=False,
     )
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    PARTS_OUT.mkdir(parents=True, exist_ok=True)
+    parts_path = PARTS_OUT / path.name
+    if parts_path.resolve() != path.resolve():
+        parts_path.write_bytes(path.read_bytes())
+    return digest
 
 
 def tri_count(root):

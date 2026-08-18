@@ -1,6 +1,7 @@
 // Checkpoint proof: leftover occupational hulls and yard props stay on disk
 // but do not enter live traffic, hostile, or place selectors until a still
-// panel leaves no blocking toy / missing-hull defect.
+// panel leaves no blocking toy / missing-hull defect. Helios lane furniture
+// is the admitted leftover place family after a later construction repair.
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -98,18 +99,31 @@ test('checkpointed occupational hulls stay on disk but do not enter live selecto
   );
 });
 
-test('Helios lane furniture stays checkpointed until it has a release contract', () => {
+test('Helios lane furniture is admitted with a release GLB and Helios spawn', () => {
   const helios = SECTOR_ANCHORS.sector_helios_prime;
   const furniture = (helios.pois || []).filter((poi) => LANE_FURNITURE_PLACE_IDS.includes(poi.landmarkGlb));
   assert.equal(furniture.length, LANE_FURNITURE_PLACE_IDS.length,
     'Helios must keep one POI per leftover lane-furniture body');
   for (const poi of furniture) {
+    const placeId = poi.landmarkGlb;
+    const file = `places/${placeId}.glb`;
     assert.equal(
-      resolvePlaceFileForEntity({ type: 'fx', data: { landmarkGlb: poi.landmarkGlb } }),
-      null,
-      `${poi.landmarkGlb} must not be admitted without a release GLB`,
+      resolvePlaceFileForEntity({ type: 'fx', data: { landmarkGlb: placeId } }),
+      file,
+      `${placeId} must resolve through PLACE_FILES`,
     );
-    assert.ok(existsSync(resolve(ROOT, 'assets/ships/parts/places', `${poi.landmarkGlb}.glb`)));
+    const sourceAbs = resolve(ROOT, 'assets/ships/parts', file);
+    const releaseAbs = resolve(ROOT, 'assets/ships/release/parts', file);
+    assert.ok(existsSync(sourceAbs), `keep ${file} on disk`);
+    assert.ok(existsSync(releaseAbs), `${placeId} must have a release GLB`);
+    const sourceTris = triangleCount(parseGlbJson(sourceAbs));
+    const releaseTris = triangleCount(parseGlbJson(releaseAbs));
+    assert.ok(sourceTris > 200, `${placeId} source is a stub (${sourceTris} tris)`);
+    assert.ok(releaseTris > 200, `${placeId} release is a stub (${releaseTris} tris)`);
+  }
+  const spawned = spawnSector('sector_helios_prime');
+  for (const placeId of LANE_FURNITURE_PLACE_IDS) {
+    assert.ok(spawned.includes(placeId), `Helios must spawn ${placeId}`);
   }
 });
 

@@ -4477,8 +4477,8 @@
       "category": "places",
       "priority": "P2",
       "file": "places/place_claim_mark.glb",
-      "tris": 868,
-      "bytes": 78700,
+      "tris": 856,
+      "bytes": 58356,
       "textureSize": 0,
       "tintable": {
         "accent": "furniture_signal_lens"
@@ -4490,8 +4490,8 @@
       "category": "places",
       "priority": "P2",
       "file": "places/place_lane_pin.glb",
-      "tris": 440,
-      "bytes": 46208,
+      "tris": 584,
+      "bytes": 50704,
       "textureSize": 0,
       "tintable": {
         "accent": "furniture_signal_lens"
@@ -4503,8 +4503,8 @@
       "category": "places",
       "priority": "P2",
       "file": "places/place_tally_post.glb",
-      "tris": 460,
-      "bytes": 49552,
+      "tris": 496,
+      "bytes": 46364,
       "textureSize": 0,
       "tintable": {
         "accent": "furniture_signal_lens"
@@ -4516,8 +4516,8 @@
       "category": "places",
       "priority": "P2",
       "file": "places/place_whistle.glb",
-      "tris": 776,
-      "bytes": 84120,
+      "tris": 804,
+      "bytes": 68636,
       "textureSize": 0,
       "tintable": {
         "accent": "furniture_signal_lens"
@@ -4529,8 +4529,8 @@
       "category": "places",
       "priority": "P2",
       "file": "places/place_cold_locker.glb",
-      "tris": 736,
-      "bytes": 80856,
+      "tris": 1712,
+      "bytes": 141852,
       "textureSize": 0,
       "tintable": {
         "accent": "furniture_signal_lens"
@@ -4542,8 +4542,8 @@
       "category": "places",
       "priority": "P2",
       "file": "places/place_ash_pin.glb",
-      "tris": 432,
-      "bytes": 48804,
+      "tris": 420,
+      "bytes": 40944,
       "textureSize": 0,
       "tintable": {
         "accent": "furniture_signal_lens"
@@ -5712,6 +5712,12 @@
       "places/place_dead_hulk.glb",
       "places/place_conveyor_barge.glb",
       "places/place_mining_drone.glb",
+      "places/place_lane_pin.glb",
+      "places/place_tally_post.glb",
+      "places/place_claim_mark.glb",
+      "places/place_cold_locker.glb",
+      "places/place_ash_pin.glb",
+      "places/place_whistle.glb",
       "places/place_asteroid_rock_a.glb",
       "places/place_asteroid_rock_b.glb",
       "places/place_asteroid_rock_c.glb",

@@ -3,111 +3,75 @@
   "assets": [
     {
       "id": "place_claim_mark",
-      "triangles": 868,
+      "triangles": 856,
       "sizeM": [
-        5.371,
+        2.525,
         2.631,
         10.47
       ],
-      "parts": 30,
-      "bytes": 78700,
-      "sha256": "8b3712431c82c5d1adbc76d8b9c9e0e428418c1d5f7939a0215d9ece19361b41",
-      "render": "assets/places/lane_furniture/evidence/place_claim_mark.png",
-      "distanceViews": [
-        20,
-        60,
-        140
-      ]
+      "parts": 29,
+      "bytes": 54592,
+      "sha256": "134c9a60784b288ccf40876fbdebe88952586ee5365d44c9e8f6748a852732a4"
     },
     {
       "id": "place_lane_pin",
-      "triangles": 440,
+      "triangles": 584,
       "sizeM": [
-        8.744,
-        18.212,
+        7.789,
+        8.675,
         31.62
       ],
-      "parts": 24,
-      "bytes": 46208,
-      "sha256": "5dac576385c5e44c283b154995ea7db57db1a6eb377ae3583d4b6d314bbbf148",
-      "render": "assets/places/lane_furniture/evidence/place_lane_pin.png",
-      "distanceViews": [
-        20,
-        60,
-        140
-      ]
+      "parts": 32,
+      "bytes": 46984,
+      "sha256": "5617576f98e3b4ed7310e369eee8c748904b6e71587e88107adf29236ab6644e"
     },
     {
       "id": "place_tally_post",
-      "triangles": 460,
+      "triangles": 496,
       "sizeM": [
-        17.542,
+        15.369,
         11.385,
         20.771
       ],
-      "parts": 27,
-      "bytes": 49552,
-      "sha256": "2abf7cb8f5e62cdf60d942ff0aedf480283f09eaa97ffe81b553a5954452fe05",
-      "render": "assets/places/lane_furniture/evidence/place_tally_post.png",
-      "distanceViews": [
-        20,
-        60,
-        140
-      ]
+      "parts": 30,
+      "bytes": 42600,
+      "sha256": "4b54f82262c5a795116e500d6a355feb4a6cc782ecca0657f3567ca3c9b42dbd"
     },
     {
       "id": "place_whistle",
-      "triangles": 776,
+      "triangles": 804,
       "sizeM": [
         5.587,
         4.724,
         11.732
       ],
-      "parts": 46,
-      "bytes": 84120,
-      "sha256": "4ef348288c22fd8b295d27d07ebf799cd2edd09f23da99cc29ed037ca642e577",
-      "render": "assets/places/lane_furniture/evidence/place_whistle.png",
-      "distanceViews": [
-        20,
-        60,
-        140
-      ]
+      "parts": 47,
+      "bytes": 64940,
+      "sha256": "ea5aa87143b9494385b04060d2568faab398a94aaa78a5d9e450448b1ab5b171"
     },
     {
       "id": "place_cold_locker",
-      "triangles": 736,
+      "triangles": 1712,
       "sizeM": [
-        10.261,
-        6.432,
-        32.744
+        6.028,
+        6.443,
+        33.31
       ],
-      "parts": 43,
-      "bytes": 80856,
-      "sha256": "6193515caddcf225c5c0a9174d87fb1345f039be5defa49520d71b63a28b72d8",
-      "render": "assets/places/lane_furniture/evidence/place_cold_locker.png",
-      "distanceViews": [
-        20,
-        60,
-        140
-      ]
+      "parts": 99,
+      "bytes": 138060,
+      "sha256": "1234671a59d90997d2b54f56995c724e0269972c813a6a85e594ffbf1a089f94"
     },
     {
       "id": "place_ash_pin",
-      "triangles": 432,
+      "triangles": 420,
       "sizeM": [
         4.935,
-        9.232,
+        4.731,
         12.481
       ],
-      "parts": 27,
-      "bytes": 48804,
-      "sha256": "f76cfba24e323a64e12f53910e4dab2f24ff84e5697ab2eb8d1fb408e9921828",
-      "render": "assets/places/lane_furniture/evidence/place_ash_pin.png",
-      "distanceViews": [
-        20,
-        60,
-        140
-      ]
+      "parts": 26,
+      "bytes": 37244,
+      "sha256": "4cce3749f0b1bdddbad49a2830df59047067b193825ca1b3a59b20ab41df5d12"
     }
   ]
 }
