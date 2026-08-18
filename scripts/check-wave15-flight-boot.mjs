@@ -77,9 +77,19 @@ try {
   });
 
   await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus && window.SF.ctx, null, { timeout: 15000 });
+  // Boot measures 5.8s warm and 10-12s cold on this machine, so a 15s gate is a race the check set
+  // up against itself: it went red for timing, not for a defect, and a permanently-red check is
+  // how a suite teaches everyone to ignore red. Use the check's own budget.
+  await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus && window.SF.ctx, null, { timeout: EVAL_TIMEOUT_MS });
   await waitForBootOverlayGone(page);
 
+  // The menu needs a few more seconds after SF exists before its buttons are enabled. Asserting the
+  // click without waiting for the button turned the second failure mode into "New Game button",
+  // which reads like the button is missing rather than not ready yet.
+  await page.waitForFunction(() => {
+    const norm = (t) => String(t || '').replace(/\s+/g, ' ').trim();
+    return [...document.querySelectorAll('button')].some((b) => !b.disabled && norm(b.textContent).includes('New Game'));
+  }, null, { timeout: EVAL_TIMEOUT_MS });
   assert.equal(await clickButton(page, 'New Game'), true, 'New Game button');
   await waitForVisible(page, '[data-screen="newGame"]', 10000, 'new game screen');
   assert.equal(await clickButton(page, 'Launch'), true, 'Launch button');
