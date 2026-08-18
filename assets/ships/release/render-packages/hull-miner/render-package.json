@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "2278176a2ec324fe4cb290972ccc8f50826bc9abe5174fc0c2378a09216c4552",
+  "contentHash": "8688476b11caaad962b46ff2a172970487377149d4f9ae34780a4350e8d7780b",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1078,8 +1078,8 @@
       "uri": "hull_miner.glb"
     },
     "sourceManifest": {
-      "bytes": 74713,
-      "sha256": "8b3fb79c63eeb80904eb9647de6491042e79af5e1c246df51631d32cc6c4f573",
+      "bytes": 76590,
+      "sha256": "8ba4982f6c2f892e5db93e36155681813d7ca0c75780b2103007ecf1900a111a",
       "uri": "pilots.json"
     }
   },

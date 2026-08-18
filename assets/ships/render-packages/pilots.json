@@ -1687,6 +1687,51 @@
       ],
       "outputDir": "assets/ships/release/render-packages/apron-shuttle",
       "metadataUrl": "assets/ships/release/render-packages/apron-shuttle/render-package.json"
+    },
+    {
+      "key": "lane-pin",
+      "assetId": "sf.render.lane-pin",
+      "runtimeAssetId": "SF_PLACE_LANE_PIN",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "place_lane_pin",
+      "sourceUrl": "assets/ships/release/parts/places/place_lane_pin.glb",
+      "releaseSha256": "c94e53f749dfd743d8cf9dd069936d5ce0aa2ee244251c54ab0e222d7d7a3a45",
+      "releaseBytes": 27896,
+      "rootNode": "place_lane_pin",
+      "dynamicNameIncludes": [],
+      "outputDir": "assets/ships/release/render-packages/lane-pin",
+      "metadataUrl": "assets/ships/release/render-packages/lane-pin/render-package.json"
+    },
+    {
+      "key": "mark",
+      "assetId": "sf.render.mark",
+      "runtimeAssetId": "SF_PLACE_CLAIM_MARK",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "place_claim_mark",
+      "sourceUrl": "assets/ships/release/parts/places/place_claim_mark.glb",
+      "releaseSha256": "2eddb266ccec8dffd8df52d919f4b446f78701f2627982ce521478245c9b8fb3",
+      "releaseBytes": 34900,
+      "rootNode": "place_claim_mark",
+      "dynamicNameIncludes": [],
+      "outputDir": "assets/ships/release/render-packages/mark",
+      "metadataUrl": "assets/ships/release/render-packages/mark/render-package.json"
+    },
+    {
+      "key": "whistle",
+      "assetId": "sf.render.whistle",
+      "runtimeAssetId": "SF_PLACE_WHISTLE",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "place_whistle",
+      "sourceUrl": "assets/ships/release/parts/places/place_whistle.glb",
+      "releaseSha256": "1cfdaa1808da4ce3ca8fe4103352f2457d65cb352caa69a0b03b1a05df6d1071",
+      "releaseBytes": 41508,
+      "rootNode": "place_whistle",
+      "dynamicNameIncludes": [],
+      "outputDir": "assets/ships/release/render-packages/whistle",
+      "metadataUrl": "assets/ships/release/render-packages/whistle/render-package.json"
     }
   ]
 }
