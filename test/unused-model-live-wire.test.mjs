@@ -90,6 +90,12 @@ test('checkpointed occupational hulls stay on disk but do not enter live selecto
   assert.notEqual(hornet.file, 'wholeships/inspection_cutter.glb');
   assert.equal(wholeShipVisualForEntity({ data: { trafficRole: 'hauler' } }).file, 'wholeships/helios_span.glb');
   assert.equal(wholeShipVisualForEntity({ data: { trafficRole: 'miner' } }).file, 'wholeships/helios_cradle.glb');
+  assert.equal(wholeShipVisualForEntity({ data: { trafficRole: 'courier' } }).file, 'wholeships/helios_lark.glb');
+  assert.notEqual(
+    wholeShipVisualForEntity({ data: { trafficRole: 'courier' } }).file,
+    'wholeships/helios_lark_production_v1.glb',
+    'factory Lark remaster stays off the live courier slot',
+  );
 });
 
 test('Helios lane furniture stays checkpointed until it has a release contract', () => {
