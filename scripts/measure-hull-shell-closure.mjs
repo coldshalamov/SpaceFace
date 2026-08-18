@@ -18,6 +18,16 @@
 // touch. So the number that matters for "is this one hull or a cage" is the SHELL COUNT: how many
 // disconnected pieces a mesh is made of. A continuous fuselage is 1. Four disjoint gloves are 4.
 //
+// CALIBRATE BEFORE YOU BELIEVE IT. Run against the live player ship, which every reviewer rates
+// far above the factory bodies:
+//   assets/ships/parts/wholeships/kestrel.glb -> 1160 shells, 3292 boundary edges
+//   Hornet cycle 53                           ->  292 shells,  192 boundary edges
+// The ship that looks BETTER is four times more fragmented. So "fewer shells" is emphatically NOT
+// the quality signal, and turning this into a threshold gate would fail the good ship and pass the
+// bad one. What these numbers are good for is answering a specific question about ONE body — "is
+// this fuselage continuous, or is it segments with air between them" — where the before/after on
+// the same ship is meaningful. Cross-ship comparison is not.
+//
 // This is a MEASUREMENT, not a pass/fail gate. Authored ships legitimately carry open surfaces and
 // separate bodies — folded sheets, canopies, control surfaces. Reporting the numbers is what makes
 // the form conversation concrete: "the hull mesh is 37 disconnected pieces" is a fact you can drive
