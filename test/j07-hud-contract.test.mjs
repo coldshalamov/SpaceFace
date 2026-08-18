@@ -105,6 +105,42 @@ test('--sf-dock-w is declared for every breakpoint that repositions the dock', (
   for (const w of declared) assert.ok(w >= 150 && w <= 320, `implausible dock width ${w}px`);
 });
 
+test('the threat badge styles the tier values scanner.js actually emits', () => {
+  // contactThreatTier returns a NUMBER 0..3 keyed off mass. A rule written as
+  // [data-tier="high"] matches nothing, renders as an unstyled badge, and no check can see it --
+  // this exact mistake was written and caught by hand during J07. Pin both ends of the pair.
+  const scanner = readFileSync(root('src/systems/scanner.js'), 'utf8');
+  const tiers = /const THREAT_MASS_TIERS = \[([^\]]*)\]/.exec(scanner);
+  assert.ok(tiers, 'scanner.js no longer declares THREAT_MASS_TIERS');
+  const maxTier = tiers[1].split(',').filter((x) => x.trim()).length;   // tier 1..N
+  const selectors = [...uiRootSrc.matchAll(/\.sf-target__threat\[data-tier="([^"]+)"\]/g)].map((m) => m[1]);
+  assert.ok(selectors.length > 0, 'the threat badge has no tier styling at all');
+  for (const sel of selectors) {
+    assert.match(sel, /^\d+$/, `[data-tier="${sel}"] is not a number; contactThreatTier emits 0..${maxTier}`);
+    const n = Number(sel);
+    assert.ok(n >= 1 && n <= maxTier, `[data-tier="${sel}"] is outside the 1..${maxTier} range scanner.js can produce`);
+  }
+  // And the word map must cover every tier the scanner can emit, or a real capital ship shows a
+  // fallback label.
+  const panel = readFileSync(root('src/ui/targetPanel.js'), 'utf8');
+  const words = /const THREAT_TIER_WORD = \[([^\]]*)\]/.exec(panel);
+  assert.ok(words, 'targetPanel.js no longer declares THREAT_TIER_WORD');
+  assert.equal(words[1].split(',').length, maxTier + 1, 'THREAT_TIER_WORD must have one entry per tier, including 0');
+});
+
+test('the target card does not duplicate health that the world already draws', () => {
+  // J07 moved shield/armour/hull onto the in-world arcs. Putting the bars back on the card spends
+  // the whole card width re-answering a question the reticle already answers.
+  const panel = readFileSync(root('src/ui/targetPanel.js'), 'utf8');
+  assert.ok(!/sf-bar--segmented/.test(panel), 'the segmented health bars are back on the target card');
+  assert.match(panel, /sf-target__threat/, 'the threat badge that replaced them is missing');
+  // Assert the element AND its wiring. Matching one class name once is too weak: the mutation
+  // that deleted half the range bar left this green, which is exactly the "passed for the wrong
+  // reason" failure this suite exists to avoid.
+  assert.match(panel, /class="sf-target__rangebar"/, 'the range bar element is missing from the card');
+  assert.match(panel, /elRangeFill\.style\.transform = rangeScale/, 'the range bar is never driven by distance');
+});
+
 test('the swarm threshold has exactly one owner', () => {
   // SCREENS_A §6.1 caps behaviour at 8 hostiles. If a second surface re-derives that number with a
   // literal, the roster and the radar can disagree about when a fight is a swarm.

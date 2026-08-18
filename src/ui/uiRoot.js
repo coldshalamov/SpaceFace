@@ -2091,6 +2091,33 @@ function injectHudCss() {
   .sf-target__meta { color:#b9c8d8; }
   .sf-overview-row__name, .sf-target__name { color:#f2f7fc; }
   .sf-target__head, .sf-target__meta { justify-content:space-between; }
+  /* J07 threat badge: the card's identity used to be a 2px red plate edge, which said "target" but
+     never said "how bad". Tier is carried by the WORD and by the pip count, with colour third, so it
+     survives forced-colors and colour-blind play unchanged. */
+  .sf-target__threat { display:flex; align-items:center; gap:7px; padding:2px 0 3px; }
+  .sf-target__threat[hidden] { display:none !important; }
+  .sf-target__threat-pips { font-family:var(--hud-data); font-size:12px; letter-spacing:.16em; color:var(--hud-muted); }
+  .sf-target__threat-word {
+    font-family:var(--hud-display); font-size:12px; font-weight:700; letter-spacing:.14em;
+    color:var(--hud-paper); text-shadow:var(--sf-ink);
+  }
+  .sf-target__threat[data-tier]::before {
+    content:''; width:3px; align-self:stretch; background:var(--hud-muted);
+  }
+  /* Tiers are the NUMBERS scanner.js emits (1/2/3), not adjectives. Selecting on words here would
+     have matched nothing while looking entirely correct -- pinned by check:hud-j07. */
+  .sf-target__threat[data-tier="3"]::before { background:var(--hud-red, #e0665f); }
+  .sf-target__threat[data-tier="3"] .sf-target__threat-pips { color:var(--hud-red, #e0665f); }
+  .sf-target__threat[data-tier="2"]::before { background:var(--hud-amber, #dfa04e); }
+  .sf-target__threat[data-tier="2"] .sf-target__threat-pips { color:var(--hud-amber, #dfa04e); }
+  /* Range as a length. The numeral stays for precision; the bar is what you read at a glance. */
+  .sf-target__rangerow { display:flex; align-items:center; gap:8px; }
+  .sf-target__rangebar { position:relative; flex:1; height:3px; background:rgba(164,181,197,.16); overflow:hidden; }
+  .sf-target__rangefill {
+    display:block; height:100%; width:100%; transform-origin:left center; transform:scaleX(0);
+    background:var(--hud-cyan, #4ec3e6);
+  }
+  .sf-target__dist { font-family:var(--hud-data); font-size:11px; color:var(--hud-paper); text-shadow:var(--sf-ink); }
   .sf-target__name { font-family:var(--hud-display); font-size:12px; font-weight:700; letter-spacing:.045em; color:var(--hud-paper); }
   .sf-target__faction, .sf-target__meta, .sf-target__identity, .sf-target__intent { font-family:var(--hud-data); }
   .sf-target__meta { font-size:9px; color:var(--hud-muted); }

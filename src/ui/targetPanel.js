@@ -22,7 +22,7 @@ import { FACTION_META } from '../data/factions.js';
 import { SHIPS } from '../data/ships.js';
 import { DAMAGE_MODEL } from '../data/combatDefs.js';
 import { ceresDisabledHaulerTruth, livingWorkStatusText } from '../data/contactHail.js';
-import { contactThreatTier, contactStateWord, isHostileToPlayer } from '../systems/scanner.js';
+import { contactThreatTier, contactStateWord, isHostileToPlayer, SCANNER_CONTACT_RANGE } from '../systems/scanner.js';
 import { LANE_GIMMICK_LABELS } from '../data/laneContacts.js';
 import { interactionDisplayName, interactionProfileForEntity } from '../data/entityInteractionProfiles.js';
 import { listSelectableComponents } from '../systems/interactionDescriptors.js';
@@ -191,6 +191,10 @@ export function lawfulInspectionStatusText(target, state) {
   }
 }
 
+// Tier 0 is "not a threat" and shows no badge at all. The words are the ship-scale language the
+// rest of the build already uses, so the badge teaches nothing new -- it just says it sooner.
+const THREAT_TIER_WORD = ['', 'LIGHT', 'HEAVY', 'CAPITAL'];
+
 function entityClass(e) {
   if (!e) return '';
   if (e.type === 'ship') {
@@ -338,17 +342,24 @@ export function createTargetPanel(ctx) {
       <span class="sf-target__name">—</span>
       <span class="sf-target__faction"></span>
     </div>
-    <div class="sf-target__bars">
-      <div class="sf-bar sf-bar--segmented sf-bar--shield" title="Shield"><div class="sf-bar__fill"></div></div>
-      <div class="sf-bar sf-bar--segmented sf-bar--armor" title="Armor"><div class="sf-bar__fill"></div></div>
-      <div class="sf-bar sf-bar--segmented sf-bar--hull" title="Hull"><div class="sf-bar__fill"></div></div>
+    <!-- J07: the three health bars are GONE. Shield/armour/hull are drawn as arcs around the
+         target in the world (hud.js .sf-target-arcs), which is where you are already looking during
+         a fight. Duplicating them on a card in the corner spent the card's whole width on a number
+         you had to look away to read. What replaces them is the thing the card can say and the world
+         mark cannot: how dangerous this contact is, and how far away it is. -->
+    <div class="sf-target__threat" data-tier="" hidden>
+      <span class="sf-target__threat-pips" aria-hidden="true"></span>
+      <span class="sf-target__threat-word"></span>
+    </div>
+    <div class="sf-target__rangerow">
+      <span class="sf-target__rangebar" aria-hidden="true"><i class="sf-target__rangefill"></i></span>
+      <span class="sf-target__dist mono">0 wu</span>
     </div>
     <div class="sf-target__engaged mono" role="status" aria-live="polite" aria-atomic="true"
       style="display:none;margin-top:2px;font-size:10px;line-height:1.3;letter-spacing:.05em;color:var(--visor-amber);"></div>
     <div class="sf-target__identity mono" style="display:none"></div>
     <div class="sf-target__intent mono" style="display:none;margin-top:3px;font-size:10px;line-height:1.3;letter-spacing:.04em;color:var(--text-primary);"></div>
     <div class="sf-target__meta">
-      <span class="sf-target__dist mono">0 wu</span>
       <span class="sf-target__range mono" style="color:var(--visor-amber);"></span>
       <span class="sf-target__closing mono"></span>
     </div>
@@ -366,9 +377,10 @@ export function createTargetPanel(ctx) {
 
   const elName = el.querySelector('.sf-target__name');
   const elFac = el.querySelector('.sf-target__faction');
-  const fillHull = el.querySelector('.sf-bar--hull .sf-bar__fill');
-  const fillArmor = el.querySelector('.sf-bar--armor .sf-bar__fill');
-  const fillShield = el.querySelector('.sf-bar--shield .sf-bar__fill');
+  const elThreat = el.querySelector('.sf-target__threat');
+  const elThreatPips = el.querySelector('.sf-target__threat-pips');
+  const elThreatWord = el.querySelector('.sf-target__threat-word');
+  const elRangeFill = el.querySelector('.sf-target__rangefill');
   const elDist = el.querySelector('.sf-target__dist');
   const elClose = el.querySelector('.sf-target__closing');
   const elGimmick = el.querySelector('.sf-target__gimmick');
@@ -407,10 +419,9 @@ export function createTargetPanel(ctx) {
   let lastName = null;
   let lastClass = null;
   let lastFactionId = null;
-  let lastHullScale = '';
-  let lastArmorScale = '';
-  let lastShieldScale = '';
   let lastDistText = '';
+  let lastThreatKey = '';
+  let lastRangeScale = '';
   let lastCloseText = '';
   let lastCloseColor = '';
   let tickN = 0;
@@ -475,17 +486,7 @@ export function createTargetPanel(ctx) {
       }
     }
 
-    const hullFrac = t.hullMax ? Math.max(0, Math.min(1, t.hull / t.hullMax)) : 0;
-    const armorFrac = t.armorMax ? Math.max(0, Math.min(1, t.armorHp / t.armorMax)) : 0;
-    const shieldFrac = t.shieldMax ? Math.max(0, Math.min(1, t.shield / t.shieldMax)) : 0;
-    
-    const hullScale = `scaleX(${hullFrac})`;
-    const armorScale = `scaleX(${armorFrac})`;
-    const shieldScale = `scaleX(${shieldFrac})`;
-    
-    if (hullScale !== lastHullScale) { fillHull.style.transform = hullScale; lastHullScale = hullScale; }
-    if (armorScale !== lastArmorScale) { fillArmor.style.transform = armorScale; lastArmorScale = armorScale; }
-    if (shieldScale !== lastShieldScale) { fillShield.style.transform = shieldScale; lastShieldScale = shieldScale; }
+    // Health is drawn in the world (.sf-target-arcs), not here. See the DOM note above.
 
     // Identity is stable; live intent/motive/threat is a separate tactical receipt below it.
     if (t.type === 'ship' || t.type === 'drone') {
@@ -591,7 +592,10 @@ export function createTargetPanel(ctx) {
         lastIntelKey = intelKey;
         const workBit = intel.workStatus ? ` · ${intel.workStatus}` : '';
         const recoveryBit = intel.recoveryPrompt ? ` · ${intel.recoveryPrompt}` : '';
-        setText(elIntent, `INTENT ${intel.intent} · MOTIVE ${intel.motive} · THREAT ${intel.threatPips}${workBit}${recoveryBit}`);
+        // J07: threat leaves the paragraph and becomes a badge. Spelling out INTENT/MOTIVE/THREAT
+        // was eight words to answer one question you ask constantly in a fight. The badge answers
+        // it as a shape; the sentence keeps only what a shape cannot carry.
+        setText(elIntent, `${intel.intent} · ${intel.motive}${workBit}${recoveryBit}`);
         setText(elRange, intel.rangeBand);
         if (elIntent.style.display !== 'block') elIntent.style.display = 'block';
         const aria = `Current target: ${nextName}, ${nextClass || 'contact'}, intent ${intel.intent}, motive ${intel.motive}, threat ${intel.threatTier}, ${intel.rangeBand}${intel.workStatus ? `, ${intel.workStatus}` : ''}${intel.recoveryPrompt ? `, ${intel.recoveryPrompt}` : ''}`;
@@ -604,6 +608,31 @@ export function createTargetPanel(ctx) {
         if (elIntent.style.display !== 'none') elIntent.style.display = 'none';
         setText(elRange, targetRangeBand(dist, p));
       }
+      // Threat badge. Tier drives a data attribute so colour AND the printed word both carry it --
+      // never colour alone (grammar: no state may be colour-only).
+      // contactThreatTier returns a NUMBER 0..3 keyed off mass (scanner.js THREAT_MASS_TIERS),
+      // not a word. Styling on [data-tier="high"] would have been dead CSS that looked correct.
+      const tierNum = intel ? (intel.threatTier | 0) : 0;
+      const tier = tierNum > 0 ? String(tierNum) : '';
+      const threatKey = tier + '|' + (intel ? intel.threatPips : '');
+      if (threatKey !== lastThreatKey) {
+        lastThreatKey = threatKey;
+        if (intel && tier) {
+          setText(elThreatPips, String(intel.threatPips || ''));
+          setText(elThreatWord, THREAT_TIER_WORD[tierNum] || 'THREAT');
+          if (elThreat.dataset.tier !== tier) elThreat.dataset.tier = tier;
+          if (elThreat.hidden) elThreat.hidden = false;
+        } else if (!elThreat.hidden) {
+          elThreat.hidden = true;
+          // `dataset.x = ''` still matches [data-x]; delete is the only way to clear the selector.
+          delete elThreat.dataset.tier;
+        }
+      }
+      // Range bar: distance as a proportion of scanner range, so "far" reads as a length instead of
+      // a number you must compare against another number you do not remember.
+      const rangeFrac = Math.max(0, Math.min(1, 1 - dist / SCANNER_CONTACT_RANGE));
+      const rangeScale = 'scaleX(' + rangeFrac.toFixed(3) + ')';
+      if (rangeScale !== lastRangeScale) { elRangeFill.style.transform = rangeScale; lastRangeScale = rangeScale; }
       const distText = dist > 1000 ? (dist / 1000).toFixed(1) + 'k wu' : Math.round(dist) + ' wu';
       if (distText !== lastDistText) { elDist.textContent = distText; lastDistText = distText; }
       // closing speed = -dot(relVel, normalize(relPos)); positive = approaching
