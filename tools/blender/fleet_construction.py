@@ -845,13 +845,15 @@ def boolean_union(host, donor):
         mod.solver = "EXACT"
     except Exception:
         pass
+    # Same freed-pointer rule as the cutters below: capture the name before applying.
+    mod_name = mod.name
     try:
-        result = bpy.ops.object.modifier_apply(modifier=mod.name)
-        if result != {"FINISHED"} or host.modifiers.get(mod.name) is not None:
+        result = bpy.ops.object.modifier_apply(modifier=mod_name)
+        if result != {"FINISHED"} or host.modifiers.get(mod_name) is not None:
             raise RuntimeError("union apply did not finish")
     except Exception as exc:
         print(f"boolean_union keep-separate {host.name}+{donor.name}: {exc}")
-        remaining = host.modifiers.get(mod.name)
+        remaining = host.modifiers.get(mod_name)
         if remaining is not None:
             host.modifiers.remove(remaining)
         host.select_set(False)
@@ -878,13 +880,18 @@ def boolean_cut_box(host, name, loc, scale, rot=(0, 0, 0)):
         mod.solver = "EXACT"
     except Exception:
         pass
+    # Read the modifier's name into Python BEFORE applying it. `modifier_apply` frees the
+    # modifier, and on Blender 5.1 reading `mod.name` afterwards decodes freed memory and raises
+    # UnicodeDecodeError, which aborted every Hornet build. apply_modifiers() above already does
+    # it this way; these three cutters did not.
+    mod_name = mod.name
     try:
-        result = bpy.ops.object.modifier_apply(modifier=mod.name)
-        if result != {"FINISHED"} or host.modifiers.get(mod.name) is not None:
+        result = bpy.ops.object.modifier_apply(modifier=mod_name)
+        if result != {"FINISHED"} or host.modifiers.get(mod_name) is not None:
             raise RuntimeError("cut apply did not finish")
     except Exception as exc:
         print(f"boolean_cut_box skip {name}: {exc}")
-        remaining = host.modifiers.get(mod.name)
+        remaining = host.modifiers.get(mod_name)
         if remaining is not None:
             host.modifiers.remove(remaining)
     host.select_set(False)
@@ -908,13 +915,18 @@ def boolean_cut_cylinder(host, name, loc, radius, depth, rot=(0, math.pi / 2, 0)
         mod.solver = "EXACT"
     except Exception:
         pass
+    # Read the modifier's name into Python BEFORE applying it. `modifier_apply` frees the
+    # modifier, and on Blender 5.1 reading `mod.name` afterwards decodes freed memory and raises
+    # UnicodeDecodeError, which aborted every Hornet build. apply_modifiers() above already does
+    # it this way; these three cutters did not.
+    mod_name = mod.name
     try:
-        result = bpy.ops.object.modifier_apply(modifier=mod.name)
-        if result != {"FINISHED"} or host.modifiers.get(mod.name) is not None:
+        result = bpy.ops.object.modifier_apply(modifier=mod_name)
+        if result != {"FINISHED"} or host.modifiers.get(mod_name) is not None:
             raise RuntimeError("cut apply did not finish")
     except Exception as exc:
         print(f"boolean_cut_cylinder skip {name}: {exc}")
-        remaining = host.modifiers.get(mod.name)
+        remaining = host.modifiers.get(mod_name)
         if remaining is not None:
             host.modifiers.remove(remaining)
     host.select_set(False)
