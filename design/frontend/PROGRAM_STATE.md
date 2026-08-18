@@ -42,9 +42,27 @@ were invisible to every automated check and appeared only on screen or in a meas
    unrotated and outside its box. Only `getBoundingClientRect` on the path showed it. The
    rotation is a CSS transform with an explicit `transform-box` now, so it has one owner.
 
-Still open, deliberately outside J07's scope: the right dock runs ~700px tall against a 210px
-reserved rectangle (the sector-law receipt drives most of it), and ~100 elements on the flight
-layer sit under the 12px type floor — including the Power Rail's own 7.5px labels from J06.
+**Also cleared this session** (all were “clearly broken, so fix it”):
+
+- Flight layer raised to its 12px type floor: ~105 sub-12px elements down to 7. Raising type
+  alone broke three layouts (rail labels ran together, law headline wrapped into the band pill,
+  target range numeral collided with its band word) — content gives way, type does not.
+  Two passes were needed: five offenders live in their own modules' stylesheets, so re-measuring
+  the rendered layer is the only thing that found them.
+- `kestrel.glb` in the RELEASE tree had been overwritten by a 34 MB unprocessed build — no
+  `spacefaceAsset` identity, no KTX2, no meshopt, 2.15x the manifest size. Restored the real
+  16 MB artifact from HEAD; `check:bundle` and `check:render-package-pilots` are green
+  (103 packages fresh). The source tree was never touched, so a real remaster still promotes.
+- `check:wave15-flight-boot` was failing a race it set up against itself (15s gate against a
+  10-12s cold boot, then clicking a not-yet-enabled button). Green.
+- `server.js` left the shared player store unmounted, so `npm start` and the launcher saw
+  DIFFERENT SAVE SETS and nothing said so. Defaults to the real save dir now.
+- `GLTFLoader` revoked texture blob URLs before their loads settled, producing untextured
+  materials whenever a load was torn down early.
+
+**Still open, deliberately outside J07's scope:** the right dock runs ~700px tall against a
+210px reserved rectangle — the sector-law receipt drives most of it, and shrinking it is a
+content decision, not a layout one.
 
 ---|---|
 | Right dock -> one 220px column | **DONE** |
