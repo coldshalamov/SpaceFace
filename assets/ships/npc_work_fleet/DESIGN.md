@@ -11,17 +11,24 @@ the LODs the donors lacked. Nothing is copied from donor geometry.
 
 | Family | Traffic `presentationRole` | Ship def (stats) | Label | Where it appears |
 |---|---|---|---|---|
-| `ore_barge` | `ore_carrier` (NEW) | `ship_ironback` | Ore Barge | ambient mix; boosted in declared mining/refinery sectors |
+| `ore_barge` | `ore_carrier` | `ship_ironback` | Ore Barge | ambient mix; boosted in declared mining/refinery sectors |
 | `repair_tender` | `tender` | `ship_drifter` | Repair Tender | ambient mix + Ceres refinery cast slot |
 | `salvage_cutter` | `salvor` | `ship_pelican` | Salvage Cutter | ambient mix + Ceres cathedral cast slot |
 | `survey_pin` | `surveyor` | `ship_ranger` | Survey Rig | ambient mix + Ceres seam cast slot |
-| `rescue_lifter` | `rescue` (existing) | `ship_drifter` | Rescue Craft | ambient mix; replaces the unmarked Drifter stand-in |
-| `volatiles_tanker` | `tanker` (NEW) | `ship_atlas` | Volatiles Tanker | ambient mix; boosted in mining/refinery. Never `hauler`. |
-| `prospector_skiff` | `prospector` (NEW) | `ship_pelican` | Prospector Skiff | ambient mix; boosted on rock sectors. Never `miner`. |
-| `scrap_sweeper` | `sweeper` (NEW) | `ship_pelican` | Scrap Sweeper | rare ambient civic cleanup |
-| `yard_tug` | `tug` (NEW) | `ship_mule` | Yard Tug | high-security apron traffic |
-| `inspection_cutter` | enemy `customs_cutter` | `ship_hornet` stats | Customs Cutter | hostile presentation map only; patrol stays Wasp |
-| `apron_shuttle` | `shuttle` (NEW) | `ship_drifter` | Apron Shuttle | short berth-to-site people boat. Not `express`. |
+
+Live `rescue` still uses the old Drifter stand-in. The following re-authored
+bodies exist on disk and stay **off** traffic and hostile maps after a 2026-08-18
+still panel left blocking missing-hull / LEGO notes:
+
+| Family | Not live as | Why |
+|---|---|---|
+| `rescue_lifter` | `rescue` | Held; rescue role keeps the old Drifter |
+| `volatiles_tanker` | `tanker` | Missing-hull / LEGO. No tanker role. |
+| `prospector_skiff` | `prospector` | Held. No prospector role. |
+| `scrap_sweeper` | `sweeper` | Held. No sweeper role. |
+| `yard_tug` | `tug` | Missing-hull / LEGO. No tug role. |
+| `inspection_cutter` | enemy `customs_cutter` | Held. Customs hostiles stay Hornet. |
+| `apron_shuttle` | `shuttle` | Held. No shuttle role. Not `express`. |
 
 `customs_cutter` is deliberately excluded (its id collides with a live hostile
 encounter archetype). The ore barge is NOT wired under `hauler`: `hauler` is the

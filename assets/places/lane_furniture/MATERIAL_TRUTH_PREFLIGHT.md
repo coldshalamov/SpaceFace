@@ -14,4 +14,10 @@ and not a whole-asset G1/G2/G4 close.
   - retained_reviewed: role-named untextured shells (paint / alloy / bare steel / plate / lens)
   - blocked: none this pass
 - **Forbidden reads:** levitating bricks, cardboard fins with no root, crate-on-ladder locker, LEGO tokens in mid-air
-- **Gates:** G1/G2/G4 remain open until a hash-bound still panel leaves no blocking toy / float notes
+- **2026-08-18 construction-repair panel (exact wired bytes):**
+  - A: WIRE `place_lane_pin`, `place_cold_locker`; CHECKPOINT the other four (LEGO feet / scatter)
+  - B: WIRE_ALL (no floats)
+  - C: WIRE_ALL (no floats)
+  - Synthesis: admit only the unanimous pair. Tally / claim / ash / whistle stay released on disk.
+  - Wired release SHA-256: lane pin `c94e53f749dfd743d8cf9dd069936d5ce0aa2ee244251c54ab0e222d7d7a3a45`; cold locker `fcc05abb5d27ada70146cef9aeab5af23d179253a610da8f38af842473f84d25`
+- **Gates:** G1/G2/G4 remain OPEN for the whole family. A selector admit is not a closed surfacing pass.

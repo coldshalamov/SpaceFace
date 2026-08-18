@@ -3,6 +3,7 @@
 // panel leaves no blocking toy / missing-hull defect. Helios lane furniture
 // is the admitted leftover place family after a later construction repair.
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -10,6 +11,8 @@ import test from 'node:test';
 
 import { createSimulation } from '../src/core/sim.js';
 import {
+  ADMITTED_LANE_FURNITURE_PLACE_IDS,
+  CHECKPOINTED_LANE_FURNITURE_PLACE_IDS,
   LANE_FURNITURE_PLACE_IDS,
   OCCUPATIONAL_YARD_PLACE_IDS,
   occupationalYardDressingForSector,
@@ -20,6 +23,11 @@ import { TRAFFIC_ROLES } from '../src/systems/traffic.js';
 import { world } from '../src/systems/world.js';
 
 const ROOT = resolve(fileURLToPath(new URL('../', import.meta.url)));
+
+const WIRED_LANE_FURNITURE_RELEASE_SHA256 = Object.freeze({
+  place_lane_pin: 'c94e53f749dfd743d8cf9dd069936d5ce0aa2ee244251c54ab0e222d7d7a3a45',
+  place_cold_locker: 'fcc05abb5d27ada70146cef9aeab5af23d179253a610da8f38af842473f84d25',
+});
 
 const CHECKPOINTED_HULLS = Object.freeze([
   { id: 'rescue_lifter', role: 'rescue', file: 'wholeships/rescue_lifter.glb' },
@@ -99,13 +107,13 @@ test('checkpointed occupational hulls stay on disk but do not enter live selecto
   );
 });
 
-test('Helios lane furniture is admitted with a release GLB and Helios spawn', () => {
+test('Helios lane furniture admits only the bodies every still reviewer cleared', () => {
   const helios = SECTOR_ANCHORS.sector_helios_prime;
   const furniture = (helios.pois || []).filter((poi) => LANE_FURNITURE_PLACE_IDS.includes(poi.landmarkGlb));
   assert.equal(furniture.length, LANE_FURNITURE_PLACE_IDS.length,
     'Helios must keep one POI per leftover lane-furniture body');
-  for (const poi of furniture) {
-    const placeId = poi.landmarkGlb;
+  assert.deepEqual([...ADMITTED_LANE_FURNITURE_PLACE_IDS], ['place_lane_pin', 'place_cold_locker']);
+  for (const placeId of ADMITTED_LANE_FURNITURE_PLACE_IDS) {
     const file = `places/${placeId}.glb`;
     assert.equal(
       resolvePlaceFileForEntity({ type: 'fx', data: { landmarkGlb: placeId } }),
@@ -120,10 +128,24 @@ test('Helios lane furniture is admitted with a release GLB and Helios spawn', ()
     const releaseTris = triangleCount(parseGlbJson(releaseAbs));
     assert.ok(sourceTris > 200, `${placeId} source is a stub (${sourceTris} tris)`);
     assert.ok(releaseTris > 200, `${placeId} release is a stub (${releaseTris} tris)`);
+    assert.equal(
+      createHash('sha256').update(readFileSync(releaseAbs)).digest('hex'),
+      WIRED_LANE_FURNITURE_RELEASE_SHA256[placeId],
+      `${placeId} must stay the exact release bytes the still panel judged`,
+    );
+  }
+  for (const placeId of CHECKPOINTED_LANE_FURNITURE_PLACE_IDS) {
+    assert.equal(
+      resolvePlaceFileForEntity({ type: 'fx', data: { landmarkGlb: placeId } }),
+      null,
+      `${placeId} stays out of PLACE_FILES after a blocking LEGO-foot note`,
+    );
+    assert.ok(existsSync(resolve(ROOT, 'assets/ships/parts/places', `${placeId}.glb`)));
+    assert.ok(existsSync(resolve(ROOT, 'assets/ships/release/parts/places', `${placeId}.glb`)));
   }
   const spawned = spawnSector('sector_helios_prime');
   for (const placeId of LANE_FURNITURE_PLACE_IDS) {
-    assert.ok(spawned.includes(placeId), `Helios must spawn ${placeId}`);
+    assert.ok(spawned.includes(placeId), `Helios must keep the ${placeId} POI`);
   }
 });
 
