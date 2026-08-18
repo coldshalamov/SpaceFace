@@ -67,7 +67,18 @@ TEX_DIR = FAMILY / "source" / "textures"
 # still-render pass.
 #
 # Do not lower these to chase that crash. Take the stills on a fresh GPU state.
-TEX_BY_LOD = {0: 2048, 1: 1024, 2: 512}
+# LOD0 is 1024, and the reason is repository weight, not looks.
+#
+# 2048 gives about 191 px/m on a 10.7 m ship, the closest any setting here gets to MTX-17's
+# 256 px/m floor. It also produces a 65.8 MB source GLB, which GitHub rejects as oversized
+# (>50 MB) and which, across the 22 ships in this campaign, would add roughly 1.4 GB of permanent
+# history. 1024 lands about 96 px/m in a ~33 MB file: triple the old 512, and affordable.
+#
+# So the contract's density target is not reachable through committed source at fleet scale, and
+# that is a pipeline problem rather than an authoring one. The fix, when someone takes it, is to
+# keep high maps out of git — bake at 2048 into the release artifact only, or stream them — not to
+# quietly accept 34 px/m and keep asking reviewers why the hulls look like plastic.
+TEX_BY_LOD = {0: 1024, 1: 512, 2: 512}
 TEX = TEX_BY_LOD[0]
 CYCLE = 1
 for i, tok in enumerate(sys.argv):
