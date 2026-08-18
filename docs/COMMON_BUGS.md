@@ -449,15 +449,36 @@ Helios must finish authored admission on the live route:
 `authoredAssetState` at all. Both stations that use `place_station_trade_hub` are affected, and
 that is the first station all three careers dock at.
 
-**What is known:** the artifact is present at both source and release
-(`assets/ships/{parts,release/parts}/places/place_station_trade_hub.glb`) and is unchanged across
-`c8cdb6b7`, `bd8b2e0b` and current `HEAD`, so this is not a recent regression. It is **79 MB**
-source and **79 MB** release — a release that saved 0.8% — which makes a decode or admission
-failure the first hypothesis rather than a missing file.
+**Narrowed, 2026-08-18.** It is not a missing file, not a stale render package, and not a
+compression failure:
 
-**Not yet confirmed:** whether the station is actually invisible to a player. The probe screenshot
-`.devshots/authored-assets-live.jpg` frames open space, not a station, so it neither proves nor
-disproves it. Confirming needs a station-facing frame.
+- The artifact is present at source and release and unchanged across `c8cdb6b7`, `bd8b2e0b` and
+  current `HEAD`. Not a recent regression.
+- It has a render package (`helios-trade-hub`) and two pilot bindings, and it still fails after the
+  whole package set was regenerated.
+- Its textures **are** KTX2 — 30 compressed images. Not an uncompressed export.
+- The probe reads `entity.mesh` and gets **null**. That is not a stalled admission carrying a
+  pending state; it is no visual root having been created at all.
+
+**The one number that stands out.** Ranked across all 164 release part GLBs:
+
+```
+  75.4 MB  places/place_station_trade_hub.glb
+  20.3 MB  places/place_asteroid_seamed.glb
+  19.7 MB  places/place_asteroid_graffiti.glb
+  15.3 MB  wholeships/kestrel.glb
+```
+
+It is **3.7x the next largest asset** and **15.5% of all 485 MB** of release parts, in one file.
+For scale, the live player ship carries 32 KTX2 images in 15.3 MB; this carries 30 in 75.4 MB, so
+its images are roughly five times larger each. A single asset that big failing to publish a root
+points at admission or decode budget — the class `PQ-055` and `PQ-085` are reserved for ("large
+places decode a table-visible shell first").
+
+**Still not confirmed:** whether a player actually sees an empty station. The probe's own screenshot
+`.devshots/authored-assets-live.jpg` frames open space, not a station. Driving the game to a
+station-facing frame through the browser was attempted and did not reach flight mode; that is the
+next step, not a conclusion.
 
 **Wrong first look:** treating the failure as the documented dirty-tree condition and moving on.
 That is how this one stayed invisible.
