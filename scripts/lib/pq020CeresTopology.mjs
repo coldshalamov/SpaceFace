@@ -64,8 +64,13 @@ export const PQ020_CATHEDRAL_SITE_ID = 'world_site_wreck_cathedral';
 export const PQ020_CATHEDRAL_PLACE_ID = 'place_landmark_wreck_cathedral';
 export const PQ020_CERES_ADDITIVE_WORLD_SITES_SCHEMA =
   'spaceface.pq020-ceres-additive-world-sites.v1';
+// Re-pinned 2026-08-18. The only input that moved is worldSite.releaseSha256: the Cathedral
+// binding had been carrying the pre-rebuild hash, so this digest was green against a value
+// no file on disk produced. Nothing structural changed -- entity, collider, proxy, operation
+// and spatial counts are identical either side of the correction. Prior digest was
+// b2232d1d891f6d65b2e4420387a23223e0325a0e14971d046bd86ef61ddafc2d.
 export const PQ020_EXPECTED_STRUCTURAL_COST_DIGEST =
-  'b2232d1d891f6d65b2e4420387a23223e0325a0e14971d046bd86ef61ddafc2d';
+  'a6ea5a9622566ddfd9894b857eb34495fcdd7ad81dd4004ce3d2eaac5a070c83';
 
 const EXPECTED_ADDITIVE_WORLD_SITE_IDS = Object.freeze([CINDER_SLUICE_SITE_ID]);
 

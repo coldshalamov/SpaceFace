@@ -10,7 +10,7 @@ import {
 const SITE_ID = 'world_site_wreck_cathedral';
 const PLACE_ID = 'place_landmark_wreck_cathedral';
 const EXPECTED_STRUCTURAL_COST_DIGEST =
-  'b2232d1d891f6d65b2e4420387a23223e0325a0e14971d046bd86ef61ddafc2d';
+  'a6ea5a9622566ddfd9894b857eb34495fcdd7ad81dd4004ce3d2eaac5a070c83';
 
 function pocket(receipt, id) {
   const value = receipt.topology.pockets.find((candidate) => candidate.id === id);
