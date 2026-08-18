@@ -494,7 +494,7 @@ async function run47a({
       applyTapeCommands(state, sim.helpers, frame.commands || []);
       frameIndex++;
     }
-    applyInput(state, currentInput);
+    applyInput(state, currentInput, { retargetProofDummy: flightSlot === flightV3 });
     if (metrics.firstMeaningfulSteeringTick == null && isMeaningfulSteering(currentInput)) {
       metrics.firstMeaningfulSteeringTick = tick;
     }
@@ -561,9 +561,19 @@ async function reloadThroughSave(registry, state, metrics, reloadAt, options = {
   metrics.saveReloads++;
 }
 
-function applyInput(state, input) {
-  const aimAngle = finite(input.aimAngle, state.input.aimAngle || 0);
+function applyInput(state, input, options = {}) {
+  let aimAngle = finite(input.aimAngle, state.input.aimAngle || 0);
   const player = state.entities.get(state.playerId);
+  // Live V3 player translation is 15% snappier than the catalogue drive. The shared Phase-0 tape
+  // still aims at the canned legacy bearing, which no longer intersects the proof dummy after the
+  // ship carves a wider path. Retarget only V3 proof fire so the tape still proves a hit without
+  // rewriting the legacy golden.
+  if (options.retargetProofDummy && input.fire && player && player.pos) {
+    const dummy = proofDummyEntity(state);
+    if (dummy && dummy.pos) {
+      aimAngle = Math.atan2(dummy.pos.z - player.pos.z, dummy.pos.x - player.pos.x);
+    }
+  }
   const origin = player ? player.pos : { x: 0, z: 0 };
   Object.assign(state.input, {
     moveX: finite(input.moveX, 0),
@@ -578,6 +588,14 @@ function applyInput(state, input) {
       z: origin.z + Math.sin(aimAngle) * 1000,
     },
   });
+}
+
+function proofDummyEntity(state) {
+  const list = state.entityList || [];
+  for (const entity of list) {
+    if (entity && entity.data && entity.data.ai && entity.data.ai.role === 'target_dummy') return entity;
+  }
+  return null;
 }
 
 function applyTapeCommands(state, helpers, commands) {

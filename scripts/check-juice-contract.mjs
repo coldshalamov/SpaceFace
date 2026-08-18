@@ -369,10 +369,11 @@ await check('flightDynamics: cruising multipliers', () => {
 });
 
 await check('propulsionCatalog: cruising multipliers', () => {
+  const idle = makeState();
   const state = makeState();
   state.player.cruise.phase = 'cruising';
   const entity = { id: 1, flightClass: 'fighter', mass: 18, driveId: 'drive_reaction_s' };
-  const base = resolvePropulsionProfile(entity, null);
+  const base = resolvePropulsionProfile(entity, idle);
   const p = resolvePropulsionProfile(entity, state);
   approx(p.maxSpeed, (base.maxSpeed || 0) * 4, 0.01, 'catalog maxSpeed ×4');
   approx(p.mainAccel, base.mainAccel * 2.5, 0.01, 'catalog mainAccel ×2.5');
