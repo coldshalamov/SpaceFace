@@ -5,6 +5,7 @@
 import { FACTION_META } from '../data/factions.js';
 import { SECTORS } from '../data/sectors.js';
 import { sectorLawProfile } from './securityReadout.js';
+import { deboxCss, INK_SHADOW } from './hudBrackets.js';
 
 const STYLE_ID = 'sf-sector-law-style';
 const ENTRY_TTL_S = 5;
@@ -251,11 +252,12 @@ function injectStyle() {
   const style = document.createElement('style');
   style.id = STYLE_ID;
   style.textContent = `
+  /* J07 de-box: this was an opaque plate stacked directly above the contact dock, and two
+     plates in a column read as a wall. Open telemetry with corner brackets; the headline keeps
+     its own colour so the receipt is still the loudest thing in the dock when it arrives. */
   #sf-sector-law { position:relative; width:100%; z-index:1070;
     box-sizing:border-box; padding:9px 11px 10px; pointer-events:none; contain:layout paint style;
-    background:linear-gradient(112deg, rgba(18,27,39,.94), rgba(7,12,20,.82));
-    border:1px solid rgba(147,174,195,.28); border-top:2px solid rgba(131,206,216,.62); border-radius:2px;
-    box-shadow:0 12px 28px rgba(0,0,0,.26); color:#e7edf5;
+    ${deboxCss()} color:#e7edf5; text-shadow:${INK_SHADOW};
     font-family:var(--hud-body,"IBM Plex Sans","Segoe UI",sans-serif); transition:opacity .16s ease-out, transform .16s ease-out; }
   #ui-root > #sf-sector-law { position:absolute; top:112px; right:20px; width:min(340px, calc(100vw - 40px)); }
   #sf-sector-law[hidden] { display:none !important; }

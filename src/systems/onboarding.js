@@ -24,6 +24,7 @@ import { drawSeeded, hash32 } from '../core/rng.js';
 import { successfulPickupAmount } from '../core/pickupAcceptance.js';
 import { Masks } from '../core/entity.js';
 import { firstUseLine, resolveFirstUseEntityId } from '../ui/hudAttention.js';
+import { deboxCss, INK_SHADOW } from '../ui/hudBrackets.js';
 import { makeEnemySpawnSpec } from './combat.js';
 import { ONBOARDING_CHOICE_SOURCE } from './missions.js';
 import { massline2Flag } from '../data/featureFlags.js';
@@ -1083,10 +1084,10 @@ export const onboarding = {
     #${PANEL_ID} { position:relative; width:100%; z-index:60; pointer-events:none;
       font-family:var(--hud-body, "IBM Plex Sans", "Segoe UI", system-ui, sans-serif); }
     #ui-root > #${PANEL_ID} { position:absolute; left:20px; top:150px; width:340px; }
+    /* J07 de-box (NEXT_JOBS J07 "ink on vacuum"): the onboarding status card was the topmost
+       plate in the left stack. Brackets + a per-glyph scrim read the same and spend far less ink. */
     #${PANEL_ID} .sf-ob-card { padding:8px 10px 9px;
-      background:linear-gradient(108deg, rgba(17,25,36,.91), rgba(7,12,20,.78));
-      border:1px solid rgba(147,174,195,.24); border-top:2px solid rgba(131,206,216,.62); border-radius:2px;
-      box-shadow:0 10px 24px rgba(0,0,0,.22); }
+      ${deboxCss()} text-shadow:${INK_SHADOW}; }
     #${PANEL_ID} .sf-ob-kicker { font:700 9px var(--hud-display,"Saira SemiCondensed",sans-serif); letter-spacing:.12em;
       text-transform:uppercase; color:var(--hud-cyan,#83ced8); margin-bottom:4px; display:flex; justify-content:space-between;
       text-shadow:none; }

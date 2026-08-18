@@ -16,6 +16,7 @@ import { createUiInput } from './input.js';
 import { initPriceHistory } from './priceHistory.js';
 import { isConfirmOpen } from './confirm.js';
 import { setPromptScheme } from './controlPrompts.js';
+import { bracketCss, INK_SHADOW } from './hudBrackets.js';
 import { isHostileToPlayer, SCANNER_CONTACT_RANGE } from '../systems/scanner.js';
 import { presentationAllowsPlayerFacingAction } from '../core/presentationAdmission.js';
 import { verbAcceptsType, stableEntityKey } from '../data/interactionDescriptorCatalog.js';
@@ -1289,6 +1290,8 @@ function targetLabel(e) {
   return e.type || 'Contact';
 }
 
+// J07: the bracket recipe is shared with comms.js / sectorLawPresenter.js / onboarding.js.
+// See src/ui/hudBrackets.js for why it is a string and not a class.
 function injectHudCss() {
   if (document.getElementById(HUD_STYLE_ID)) return;
   const s = document.createElement('style');
@@ -1445,17 +1448,17 @@ function injectHudCss() {
   .sf-rightdock { position:absolute; right:22px; bottom:22px; display:flex; flex-direction:column; align-items:flex-end; gap:8px;
     contain:layout paint style; }
   .sf-radar-wrap { display:flex; flex-direction:column; align-items:center; gap:6px; contain:layout paint style; }
-  .sf-radar { position:relative; width:180px; height:180px; border-radius:50%; overflow:hidden; cursor:pointer;
+  .sf-radar { position:relative; width:var(--sf-radar-size, 220px); height:var(--sf-radar-size, 220px); border-radius:50%; overflow:hidden; cursor:pointer;
     contain:layout paint style; }
   .sf-radar--expanded { width:340px !important; height:340px !important; }
   /* Canvas is centered so compact/expanded size changes stay anchored on the player marker. */
   .sf-radar canvas { display:block; position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); }
-  .sf-radar-objective-key { width:220px; text-align:center; color:var(--visor-amber);
+  .sf-radar-objective-key { width:100%; text-align:center; color:var(--visor-amber);
     font-family:var(--mono); font-size:9px; font-weight:700; letter-spacing:.1em;
     text-transform:uppercase; text-shadow:none; }
   /* HUD sub-panel surface — now chromeless. Legibility comes from hard text-shadow on the content. */
   .sf-hudpanel { background:none; border:none; box-shadow:none; }
-  .sf-target { width:220px; display:flex; flex-direction:column; gap:5px; text-align:right; contain:layout paint style;
+  .sf-target { width:100%; display:flex; flex-direction:column; gap:5px; text-align:right; contain:layout paint style;
     background:rgba(4,10,18,.20); padding:2px 0; }
   .sf-target__head { display:flex; align-items:baseline; justify-content:flex-end; gap:8px; }
   .sf-target__name { font-family:var(--mono); font-size:12px; color:var(--text-primary); letter-spacing:.06em;
@@ -1711,14 +1714,13 @@ function injectHudCss() {
     .sf-barrow__num { width:26px; font-size:9px; }
     .sf-bar { width:78px; }
 
+    #hud { --sf-dock-w:150px; --sf-radar-size:132px; }
     .sf-rightdock { right:8px; bottom:96px; gap:5px; }
-    .sf-target { width:150px; }
     .sf-target__name { font-size:11px; }
     .sf-target__meta { font-size:10px; }
     .sf-radar-wrap { gap:4px; }
-    .sf-radar { width:132px; height:132px; }
     .sf-radar canvas { width:132px !important; height:132px !important; }
-    .sf-radar-objective-key { width:150px; font-size:8px; letter-spacing:.06em; line-height:1.25; }
+    .sf-radar-objective-key { font-size:8px; letter-spacing:.06em; line-height:1.25; }
 
     .sf-cluster { left:50%; right:auto; width:min(420px, calc(100vw - 16px)); bottom:8px;
       transform:translateX(-50%); display:flex; flex-wrap:wrap;
@@ -2008,11 +2010,18 @@ function injectHudCss() {
     white-space:normal; text-align:center;
   }
 
+  /* J07 de-box: the left contextual column was three stacked opaque plates. Open telemetry with
+     corner brackets and a per-glyph scrim reads at the same distance and spends a fraction of the
+     ink budget (SCREENS_A §1.3). Content, hierarchy and padding are unchanged — only the plate. */
   .sf-mission-tracker, .sf-nav-readout, .sf-obj {
-    width:100%; max-width:none; border:1px solid var(--hud-line); border-radius:var(--hud-radius);
-    background:var(--hud-solid); box-shadow:var(--hud-shadow) !important;
+    width:100%; max-width:none; border:none; border-radius:0;
+    background:none; box-shadow:none !important; text-shadow:var(--sf-ink);
   }
-  .sf-mission-tracker { padding:8px 10px 9px; border-top:2px solid rgba(223,160,78,.7); border-left:1px solid var(--hud-line); }
+  .sf-mission-tracker, .sf-nav-readout { ${bracketCss()} }
+  /* The tracker used a 2px amber top border to say "this is the mission". De-boxed, that job goes
+     to a single amber rule under the title — one stroke, still the loudest thing in the column. */
+  .sf-mission-tracker { padding:8px 10px 9px; }
+  .sf-mt-title { border-bottom:1px solid rgba(223,160,78,.55); padding-bottom:3px; }
   .sf-mt-title {
     font-family:var(--hud-display) !important; font-size:9px; font-weight:700; letter-spacing:.12em;
     color:var(--hud-amber); margin-bottom:4px;
@@ -2023,13 +2032,27 @@ function injectHudCss() {
   .sf-nav-label { font-family:var(--hud-display); font-size:10px; font-weight:700; letter-spacing:.08em; color:var(--hud-cyan); }
   .sf-nav-meta { font-family:var(--hud-data); font-size:8.5px; letter-spacing:.035em; color:var(--hud-muted); }
 
-  .sf-rightdock { right:12px; bottom:12px; width:232px; align-items:stretch; gap:5px; }
-  .sf-rightdock > * { flex:0 0 auto; }
+  /* ===== J07 · Ink on Vacuum — the right dock is ONE column, not three widths =====
+     Every surface in the dock is width:100% against a single owner (--sf-dock-w). Before J07
+     the roster and target card were hard-coded 232px while the radar was 180px and right-aligned,
+     which is what read on screen as a staggered overhang; and .sf-target__bars was a fixed 220px
+     inside a 212px content box, so it overhung the card by 9px at every viewport. One number now
+     decides the column, and --sf-radar-size is pinned to radar.js COMPACT_SIZE by
+     test/j07-hud-contract.test.mjs so the canvas can never drift from its dial again. */
+  #hud {
+    --sf-dock-w: 220px;
+    --sf-radar-size: 220px;
+    --sf-brk-col: rgba(148,178,205,.42);
+    /* Chromeless text needs a per-glyph scrim, not a card. Same idiom as .sf-firstuse. */
+    --sf-ink: ${INK_SHADOW};
+  }
+  .sf-rightdock { right:12px; bottom:12px; width:var(--sf-dock-w); align-items:stretch; gap:9px; }
+  .sf-rightdock > * { flex:0 0 auto; width:100%; }
   .sf-overview {
-    width:232px; gap:0; padding:3px 0;
-    background:var(--hud-solid);
-    border:1px solid var(--hud-line); border-top-color:var(--hud-line-strong); border-radius:var(--hud-radius);
-    font-family:var(--hud-data); font-size:10px; box-shadow:var(--hud-shadow) !important; overflow:hidden;
+    width:100%; gap:0; padding:3px 0;
+    background:none; border:none; border-radius:0; box-shadow:none !important;
+    font-family:var(--hud-data); font-size:10px; overflow:hidden;
+    ${bracketCss()}
   }
   .sf-overview::before {
     content:'LOCAL CONTACTS'; display:block; padding:3px 10px 6px; color:var(--hud-muted);
@@ -2049,19 +2072,36 @@ function injectHudCss() {
   .sf-overview-row__detail { color:var(--hud-muted); padding-left:14px; }
   .sf-overview-footer { background:transparent; color:var(--hud-muted); }
   .sf-target {
-    width:232px; padding:8px 10px 9px; text-align:left; gap:5px;
-    background:var(--hud-solid);
-    border:1px solid var(--hud-line); border-top:2px solid rgba(224,102,95,.6); border-radius:var(--hud-radius);
-    box-shadow:var(--hud-shadow) !important;
+    width:100%; padding:8px 10px 9px; text-align:left; gap:5px;
+    background:none; border:none; border-radius:0; box-shadow:none !important;
+    ${bracketCss()}
   }
+  /* The card's identity was a 2px red top border on an opaque plate. De-boxed, that identity moves
+     to the threat badge (targetPanel.js) — a shape, not a plate edge. */
+  .sf-overview, .sf-target, .sf-radar-objective-key { text-shadow:var(--sf-ink); }
+  .sf-overview-row__name, .sf-overview-row__right, .sf-overview-row__detail,
+  .sf-overview-row__state, .sf-overview-row__tier, .sf-overview-footer,
+  .sf-target__name, .sf-target__meta, .sf-target__faction { text-shadow:var(--sf-ink); }
+  /* Muted grey was a legible "secondary" against an opaque plate. Against the actual render — a
+     lit gas giant fills this corner in the reference sector — it disappears. Captured, not
+     assumed: the range readout was unreadable over the planet limb at 1440x900. De-boxing raises
+     the floor for every muted token in the dock. */
+  .sf-overview::before, .sf-overview-row__right, .sf-overview-row__detail,
+  .sf-overview-row__state, .sf-overview-row__tier, .sf-overview-footer,
+  .sf-target__meta { color:#b9c8d8; }
+  .sf-overview-row__name, .sf-target__name { color:#f2f7fc; }
   .sf-target__head, .sf-target__meta { justify-content:space-between; }
   .sf-target__name { font-family:var(--hud-display); font-size:12px; font-weight:700; letter-spacing:.045em; color:var(--hud-paper); }
   .sf-target__faction, .sf-target__meta, .sf-target__identity, .sf-target__intent { font-family:var(--hud-data); }
   .sf-target__meta { font-size:9px; color:var(--hud-muted); }
   .sf-target .sf-bar--sm, .sf-target .sf-bar { height:3px; background:rgba(164,181,197,.13); }
-  .sf-radar-wrap { align-items:flex-end; }
-  .sf-radar { border:1px solid rgba(148,178,205,.3); box-shadow:0 8px 20px rgba(0,0,0,.4); }
-  .sf-radar-objective-key { width:232px; color:var(--hud-amber); font-family:var(--hud-display); font-weight:700; font-size:8px; letter-spacing:.14em; }
+  /* The radar was 180px and right-aligned inside a 232px column, leaving a 52px notch down the
+     left of the dock — the actual visible stagger. It is now the full column width and centred,
+     so the dock reads as one edge. */
+  .sf-radar-wrap { align-items:center; }
+  .sf-radar { width:var(--sf-radar-size); height:var(--sf-radar-size);
+    border:1px solid rgba(148,178,205,.22); box-shadow:none; background:none; }
+  .sf-radar-objective-key { width:100%; color:var(--hud-amber); font-family:var(--hud-display); font-weight:700; font-size:8px; letter-spacing:.14em; }
 
   .sf-toast {
     width:100%; padding:2px 0; border:none; background:none; box-shadow:none;
@@ -2103,8 +2143,13 @@ function injectHudCss() {
     .sf-sch-ship-wrap { width:50px; height:60px; }
     .sf-sch-ship { width:50px; height:60px; }
     .sf-sch-ship--fill { width:50px; height:60px; }
-    .sf-rightdock { right:10px; bottom:72px; width:200px; }
-    .sf-overview, .sf-target { width:200px; }
+    /* One number still owns the column at every breakpoint — the children stay width:100%.
+       The canvas is always drawn at COMPACT_SIZE, so any breakpoint that narrows the dial MUST
+       scale the canvas with it or the drawing is clipped by the dial's overflow:hidden. Pinned by
+       test/j07-hud-contract.test.mjs, which caught exactly that when this rule was first written. */
+    #hud { --sf-dock-w:200px; --sf-radar-size:200px; }
+    .sf-radar canvas { width:200px !important; height:200px !important; }
+    .sf-rightdock { right:10px; bottom:72px; }
     .sf-overview-row__name { max-width:64px; }
     .sf-command-deck { bottom:8px; width:min(360px, calc(100vw - 24px)); min-width:0; }
     .sf-cluster { position:relative; left:auto; bottom:auto; width:auto; transform:none; }
@@ -2139,12 +2184,13 @@ function injectHudCss() {
      because those tokens are global and the station screens depend on them. Layout, sizes, positions
      and the authored "holographic-bleak" character are untouched — this only changes how hard the
      surfaces sit on top of the render. Every rule is scoped to a HUD class. */
-  .sf-mission-tracker, .sf-cargo-panel, .sf-contacts, .sf-weapon-panel, .sf-shipcond {
+  .sf-cargo-panel, .sf-contacts, .sf-weapon-panel, .sf-shipcond {
     backdrop-filter: blur(2px);
   }
   /* Panel fills: the render now carries a lifted black floor, so a near-opaque panel reads as a hole
-     punched in the frame. Dropping toward half opacity lets the scene sit behind the glass. */
-  .sf-mission-tracker { background:rgba(5,9,18,.58); }
+     punched in the frame. Dropping toward half opacity lets the scene sit behind the glass.
+     J07: the mission tracker left this set — it is de-boxed above and this trailing rule was
+     silently re-plating it. Three stylesheets set that selector; only the last one was visible. */
   .sf-cargo-panel, .sf-contacts { background:rgba(6,10,20,.55); }
   /* Borders: keep the edge legible but stop it drawing a hard rectangle around every element. */
   .sf-cargo-panel, .sf-contacts, .sf-weapon-panel {

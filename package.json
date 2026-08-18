@@ -367,6 +367,7 @@
     "check:ui-effects": "node scripts/check-ui-effects.mjs",
     "check:command-deck-ui": "node scripts/check-command-deck-ui.mjs",
     "check:wcag-contrast": "node scripts/check-wcag-contrast.mjs",
+    "check:hud-j07": "node --test test/j07-hud-contract.test.mjs",
     "check:ui-identity": "node scripts/check-ui-identity.mjs",
     "check:ui:perf": "npm run check:perf-budget && npm run check:spatial-hash && npm run check:perf:spatial-cache && npm run check:perf-summary && npm run check:vfx-sleep && node scripts/check-ui-frame-sleep.mjs && npm run check:radar:perf && npm run check:ui-identity",
     "check:bar:narrative": "node scripts/check-bar-canonical-contacts.mjs && node --test test/portrait-registry.test.mjs",

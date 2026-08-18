@@ -573,7 +573,9 @@ button:active { translate: 0 1px; }
   display: flex;
   gap: 4px;
   margin: 6px 0;
-  width: 220px;
+  /* J07: was a hard 220px inside a 212px content box - a 9px overhang at every
+     viewport, which is the stagger the dock actually showed. The column owns the width now. */
+  width: 100%;
   justify-content: space-between;
   contain: layout paint style;
 }
@@ -647,7 +649,7 @@ button:active { translate: 0 1px; }
 
 /* Overview Strip */
 .sf-overview {
-  width: 188px;
+  width: 100%;   /* J07: the right dock column owns this number (--sf-dock-w). */
   display: flex;
   flex-direction: column;
   gap: 3px;
@@ -786,7 +788,7 @@ button:active { translate: 0 1px; }
 .sf-cs--neutral { color: var(--ink-dim); }
 
 @media (max-width: 900px), (max-height: 650px) {
-  .sf-overview { width: 150px; gap: 2px; font-size: 9px; }
+  .sf-overview { width: 100%; gap: 2px; font-size: 9px; }
   .sf-overview-row { padding: 3px 5px; }
   .sf-overview-row__name { max-width: 54px; }
   .sf-overview-row__right { gap: 3px; }

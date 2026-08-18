@@ -23,13 +23,26 @@ import { semanticColor, semanticShape, SEMANTIC_PALETTE } from './accessibility.
 import { solveIntercept } from '../core/flight/flightTelemetry.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
 import { resolveWaypointPresentationPosition } from './navigationWaypoint.js';
+import { SHIPS } from '../data/ships.js';
+// Canvas cannot answer a CSS media query, so the radar has to ask in JS or the threat pulse
+// keeps animating for players who asked it not to.
+import { prefersReducedMotion } from './effects/effectRuntime.js';
 
 // ── dimensions ──────────────────────────────────────────────────────────────────────────────
 // Compact flight uses a true compact canvas. Expanded tactical mode switches to the larger canvas
 // only while open, avoiding a permanently composited 340px HiDPI surface during normal flight.
-const COMPACT_SIZE = 180;
+// J07: 180 -> 220. COMPACT_R is NOT derived from COMPACT_SIZE, so it has to move with it or the
+// ring floats inside a canvas with a dead margin. The 15px inset (110 - 105) is the same
+// proportional breathing room the old 180/86 pair had.
+// styles: `--sf-radar-size` in uiRoot.injectHudCss must equal COMPACT_SIZE. Pinned by
+// test/j07-hud-contract.test.mjs, because a comment has never prevented that drift here.
+const COMPACT_SIZE = 220;
 const COMPACT_C    = COMPACT_SIZE / 2;
-const COMPACT_R    = 86;
+const COMPACT_R    = 105;
+// SCREENS_A 6.1: the hostile count at which the dial stops shouting. Exported so the swarm law
+// has one owner rather than a literal in every surface that has to obey it.
+export const SWARM_DENSITY_THRESHOLD = 8;
+
 const EXPAND_SIZE  = 340;
 const EXPAND_C     = EXPAND_SIZE / 2;
 const EXPAND_R     = 165;
@@ -118,6 +131,90 @@ function drawShipShape(g, x, y, shape, scale = 1) {
   } else {
     g.fillRect(x - 2 * s, y - 2 * s, 4 * s, 4 * s);
   }
+}
+
+// ── J07 contact marks ───────────────────────────────────────────────────────────────────────
+// A 4px dot says "a thing is there". A chevron says "a thing is there and it is coming at you",
+// which is the only version of that fact worth radar space in a fight. Heading uses the same
+// `Math.PI + rot` convention as the player marker below, so a contact pointing at the centre of
+// the dial really is pointing at you on screen.
+
+// Capital = the hulls whose arrival changes the shape of a fight. Derived from the ship table
+// rather than an id list, so a new tier-4 hull is a capital the day it is authored.
+const CAPITAL_ROLES = new Set(['battlecruiser', 'flagship', 'gunship', 'carrier', 'dreadnought']);
+const CAPITAL_DEFS = new Set(
+  SHIPS.filter((s) => (s.tier != null && s.tier >= 4) || CAPITAL_ROLES.has(s.role)).map((s) => s.id),
+);
+function isCapitalContact(e) {
+  const d = e && e.data;
+  if (!d) return false;
+  if (d.defId && CAPITAL_DEFS.has(d.defId)) return true;
+  return CAPITAL_ROLES.has(String(d.trafficRole || d.role || '').toLowerCase());
+}
+
+function entityHeading(e) {
+  if (e && Number.isFinite(e.rot)) return e.rot;
+  // Fall back to course over ground; a drifting contact with no rotation still has a direction.
+  const v = e && e.vel;
+  if (v && (Math.abs(v.x) > 1e-4 || Math.abs(v.z) > 1e-4)) return Math.atan2(v.x, v.z);
+  return null;
+}
+
+// Open heading chevron. Stroked, not filled, so a dense swarm reads as outlines (SCREENS_A §6.1.4
+// spends --sf-foe on the selected target only) while the selected contact still fills.
+function drawHeadingChevron(g, x, y, heading, col, { scale = 1, filled = false } = {}) {
+  const s = scale > 0 ? scale : 1;
+  g.save();
+  g.translate(x, y);
+  if (heading != null) g.rotate(Math.PI + heading);
+  g.beginPath();
+  g.moveTo(0, -4.2 * s);
+  g.lineTo(3.4 * s, 3.2 * s);
+  g.lineTo(0, 1.3 * s);
+  g.lineTo(-3.4 * s, 3.2 * s);
+  g.closePath();
+  if (filled) { g.fillStyle = col; g.fill(); }
+  else { g.strokeStyle = col; g.lineWidth = 1.4; g.stroke(); }
+  g.restore();
+}
+
+// Double-stroke elongated hull. The second, inset outline is the whole point: at radar scale a
+// capital must be distinguishable from a fighter by WEIGHT, not by being 2px bigger.
+function drawCapitalSilhouette(g, x, y, heading, col, scale = 1) {
+  const s = scale > 0 ? scale : 1;
+  g.save();
+  g.translate(x, y);
+  if (heading != null) g.rotate(Math.PI + heading);
+  g.strokeStyle = col;
+  for (const [k, w, a] of [[1, 1.6, 1], [0.55, 1, 0.7]]) {
+    g.globalAlpha = a;
+    g.lineWidth = w;
+    g.beginPath();
+    g.moveTo(0, -7.5 * s * k);
+    g.lineTo(3.6 * s * k, -1.5 * s * k);
+    g.lineTo(3.0 * s * k, 6.0 * s * k);
+    g.lineTo(-3.0 * s * k, 6.0 * s * k);
+    g.lineTo(-3.6 * s * k, -1.5 * s * k);
+    g.closePath();
+    g.stroke();
+  }
+  g.globalAlpha = 1;
+  g.restore();
+}
+
+// High-threat pulsation. Reduced motion keeps the ring and drops the animation — the ring is the
+// information, the pulse is only the emphasis, so nothing is lost by freezing it.
+function drawThreatRing(g, x, y, col, now, reduced) {
+  const phase = reduced ? 0.5 : 0.5 + 0.5 * Math.sin(now * 0.0045);
+  g.save();
+  g.strokeStyle = col;
+  g.globalAlpha = reduced ? 0.5 : 0.28 + 0.42 * phase;
+  g.lineWidth = 1;
+  g.beginPath();
+  g.arc(x, y, 7.5 + (reduced ? 1.5 : 3 * phase), 0, Math.PI * 2);
+  g.stroke();
+  g.globalAlpha = 1;
+  g.restore();
 }
 
 // ── glow helpers ────────────────────────────────────────────────────────────────────────────
@@ -716,6 +813,18 @@ export function createRadar(ctx) {
     // Two-pass draw: ships/pickups/wrecks first, then stations on top so docks never hide under traffic.
     let trailUpdates = 0;
     const stationPass = [];
+    // SCREENS_A 6.1: at or above SWARM_DENSITY_THRESHOLD hostiles, threat rings collapse onto the
+    // selected target alone. Twenty pulsing rings is twenty things with equal priority.
+    let hostilesInRange = 0;
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
+      if (!e.alive || e === p || e.type === 'station') continue;
+      const ddx = e.pos.x - px, ddz = e.pos.z - pz;
+      if (ddx * ddx + ddz * ddz > rangeSq) continue;
+      if (isHostileToPlayer(e, playerTeam, state)) hostilesInRange++;
+    }
+    const swarmQuiet = hostilesInRange >= SWARM_DENSITY_THRESHOLD;
+    const reducedMotion = prefersReducedMotion();
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
       if (!e.alive || e === p) continue;
@@ -785,7 +894,16 @@ export function createRadar(ctx) {
         const glowBlur  = isHostile ? (expanded ? 7 + 3 * Math.sin(now * 0.004) : 4) : (expanded ? 5 : 2.5);
         glow(g, col, glowBlur);
         const named = !!(e.data && e.data.namedLaneContactId);
-        drawShipShape(g, bx, by, contactBlipShape(e, playerTeam, state), named ? 1.35 : 1);
+        // J07: heading chevrons replace the dot. The SELECTED contact fills; everything else is an
+        // outline, so twenty hostiles do not read as twenty equal priorities (SCREENS_A §6.1.4).
+        const selected = e.id === targetId;
+        const heading = entityHeading(e);
+        if (isCapitalContact(e)) {
+          drawCapitalSilhouette(g, bx, by, heading, col, named ? 1.15 : 1);
+        } else {
+          drawHeadingChevron(g, bx, by, heading, col, { scale: named ? 1.35 : 1, filled: selected });
+        }
+        if (isHostile && (selected || swarmQuiet === false)) drawThreatRing(g, bx, by, col, now, reducedMotion);
         // Named contact: thin outer ring (identity, not text spam).
         if (named && !isHostile) {
           g.strokeStyle = col;
