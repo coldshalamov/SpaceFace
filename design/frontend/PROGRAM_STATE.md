@@ -18,7 +18,7 @@ Program spec: `CANONICAL_BUILD_MAP.md` §11.12 and `design/frontend/NEXT_JOBS.md
 | 1 | J04 snapshot lab, J01 data-state adoption | **DONE** |
 | 2 | J05 iconography + 14 faction crests | **DONE** |
 | 3 | J06 Power Rail | **DONE** |
-| 3 | J07 HUD overhaul | **IN PROGRESS** — 4 of 6 bullets landed (`ad4764b5`) |
+| 3 | J07 HUD overhaul | **DONE** - all 6 bullets |
 | 4 | J08 combat reticle + threat halo | NOT STARTED |
 | 5 | J09–J13 strategic screens | NOT STARTED |
 | 6 | J14–J15 haptics, comms, hail radial | NOT STARTED |
@@ -26,10 +26,27 @@ Program spec: `CANONICAL_BUILD_MAP.md` §11.12 and `design/frontend/NEXT_JOBS.md
 
 Landed: `e23a9ba9` `f1cbaf04` `6e0e4037` `79e56c06` `ad4764b5` `7f9f87cf`.
 
-### J07 progress (as of `ad4764b5`)
+### J07 — all six bullets landed
 
-| Bullet | State |
-|---|---|
+`ad4764b5` column lock + de-box + radar · `e22a5305` target card · `2eb41dbe` hull mark + comms tape
+
+Verified in captured, measured frames at 1440x900 and 1280x720, not by check alone. Three defects
+were invisible to every automated check and appeared only on screen or in a measured rect:
+
+1. The "232px staggered card overhang" was really `.sf-target__bars` at a fixed 220px inside a
+   212px content box. Chasing the packet's literal wording would have left it in place.
+2. `.sf-schematic svg { height:100% }` out-specifies a plain class and never applied to the old
+   `<img>` marks. It applies to an `<svg>`, and squashed the fill layer to the crop height,
+   deforming the hull as damage came off.
+3. The SVG `transform` ATTRIBUTE did not take effect on the hull group at all — it drew
+   unrotated and outside its box. Only `getBoundingClientRect` on the path showed it. The
+   rotation is a CSS transform with an explicit `transform-box` now, so it has one owner.
+
+Still open, deliberately outside J07's scope: the right dock runs ~700px tall against a 210px
+reserved rectangle (the sector-law receipt drives most of it), and ~100 elements on the flight
+layer sit under the 12px type floor — including the Power Rail's own 7.5px labels from J06.
+
+---|---|
 | Right dock -> one 220px column | **DONE** |
 | De-box to hairline corner brackets | **DONE** |
 | Radar 180 -> 220, chevrons, capitals, threat rings | **DONE** |
