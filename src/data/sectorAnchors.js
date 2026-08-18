@@ -72,7 +72,7 @@ const CORE_SECTOR_ANCHORS = {
     ],
     pois: [
       { id: 'poi_driller', pos: { x: 240, z: -1180 }, landmarkGlb: 'place_dead_hulk', landmark: true },
-      { id: 'poi_survey', pos: { x: -1240, z: -320 }, landmarkGlb: 'place_debris_chunk' },
+      { id: 'poi_survey', pos: { x: -1240, z: -320 }, landmarkGlb: 'place_sensor_mast', visualRadius: 14 },
       {
         id: 'poi_ceres_throughline',
         pos: CERES_THROUGHLINE_BEACON_LOCAL_POS,
@@ -99,8 +99,8 @@ const CORE_SECTOR_ANCHORS = {
     ],
     pois: [
       { id: 'poi_blackmkt', pos: { x: -1380, z: 420 }, landmarkGlb: 'place_nav_buoy' },
-      { id: 'poi_tethys_weigh', pos: { x: 720, z: -980 }, landmarkGlb: 'place_lane_beacon' },
-      { id: 'poi_tethys_customs_log', pos: { x: -920, z: -640 }, landmarkGlb: 'place_nav_buoy' },
+      { id: 'poi_tethys_weigh', pos: { x: 720, z: -980 }, landmarkGlb: 'place_transponder_gate', visualRadius: 24 },
+      { id: 'poi_tethys_customs_log', pos: { x: -920, z: -640 }, landmarkGlb: 'place_sensor_mast', visualRadius: 12 },
       ...PQ019_FACILITY_ANCHORS,
     ],
   },

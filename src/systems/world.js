@@ -62,6 +62,10 @@ import {
   CERES_ACTIVITY_POCKETS,
   CERES_ACTIVITY_SECTOR_ID,
 } from '../data/sectorActivityPockets.js';
+import {
+  OCCUPATIONAL_PLACE_RADIUS,
+  occupationalYardDressingForSector,
+} from '../data/occupationalYardDressing.js';
 import { applyFrameOrigin, deriveFrameOrigin } from '../core/coordinates.js';
 import {
   CORRIDOR_SECTOR_IDS,
@@ -199,6 +203,7 @@ const DRESSING_RADIUS = Object.freeze({
   place_asteroid_rock_b: 18,
   place_asteroid_rock_c: 10,
   place_asteroid_graffiti: 16,
+  ...OCCUPATIONAL_PLACE_RADIUS,
 });
 function authoredGeologyPlaceForField(fieldDef) {
   if (!fieldDef) return null;
@@ -1777,6 +1782,22 @@ export const world = {
         paletteClass,
         rot: bearingToward(station.pos, pos),
         name: `${station.stationId || 'Station'} Billboard`,
+        placeScale: 1,
+      });
+    }
+    this._spawnOccupationalYardDressing(sector, active, paletteClass);
+  },
+
+  _spawnOccupationalYardDressing(sector, active, paletteClass) {
+    // Core sectors only. Ceres yard offsets stay authored but unwired so the
+    // pinned belt pocket budget (13 fx) does not grow.
+    const rows = occupationalYardDressingForSector(sector.id);
+    for (const row of rows) {
+      const pos = this._toGlobal(row.localPos, sector.id);
+      this._spawnPlaceProp(active, sector, row.placeId, pos, {
+        paletteClass,
+        rot: row.rot,
+        name: row.name,
         placeScale: 1,
       });
     }

@@ -1029,6 +1029,76 @@ const PILOTS = [
     "slot": "place",
     "sourceSha256": "8667acf58dd4e628591e5cacb53d6ceeb4c231283e179eff7efbbb4ed6adc8a8",
     "sourceUrl": "assets/ships/release/parts/places/place_maintenance_gantry.glb"
+  },
+  {
+    "assetId": "sf.render.rescue-lifter",
+    "expectedContentHash": "080c1e93bfe31a2bebfc2ae513b865c55b174d079682c8d39e9e154125bf84f0",
+    "key": "rescue-lifter",
+    "metadataUrl": "assets/ships/release/render-packages/rescue-lifter/render-package.json",
+    "runtimeAssetId": "SF_WHOLESHIP_RESCUE_LIFTER",
+    "slot": "hull",
+    "sourceSha256": "9fc0f41bafcbc234facf5e45d3a4b719adf7645de3fb81d009b4f677e6b4e632",
+    "sourceUrl": "assets/ships/release/parts/wholeships/rescue_lifter.glb"
+  },
+  {
+    "assetId": "sf.render.volatiles-tanker",
+    "expectedContentHash": "159b7800141547243487f47ad339dc469a51dfa0fc287c4a63f0dc160a28ac65",
+    "key": "volatiles-tanker",
+    "metadataUrl": "assets/ships/release/render-packages/volatiles-tanker/render-package.json",
+    "runtimeAssetId": "SF_WHOLESHIP_VOLATILES_TANKER",
+    "slot": "hull",
+    "sourceSha256": "7e7e905132c5f6c114eceed630f6e9c14d32610e374f56413b559b168bc32a29",
+    "sourceUrl": "assets/ships/release/parts/wholeships/volatiles_tanker.glb"
+  },
+  {
+    "assetId": "sf.render.prospector-skiff",
+    "expectedContentHash": "148cfbdb02ac75c2db9080a067ec2299ce124edc777c0cb15be75f1ef0fe6bc7",
+    "key": "prospector-skiff",
+    "metadataUrl": "assets/ships/release/render-packages/prospector-skiff/render-package.json",
+    "runtimeAssetId": "SF_WHOLESHIP_PROSPECTOR_SKIFF",
+    "slot": "hull",
+    "sourceSha256": "2ca6bd3fab779e660f53fb8f788122bb52a3cbb82391204e5cad66ad5d42468b",
+    "sourceUrl": "assets/ships/release/parts/wholeships/prospector_skiff.glb"
+  },
+  {
+    "assetId": "sf.render.scrap-sweeper",
+    "expectedContentHash": "d6b4f6dbb06018f461f8a811930b4bb0fb1d3f586ff715bc669b9e5ce6ead30c",
+    "key": "scrap-sweeper",
+    "metadataUrl": "assets/ships/release/render-packages/scrap-sweeper/render-package.json",
+    "runtimeAssetId": "SF_WHOLESHIP_SCRAP_SWEEPER",
+    "slot": "hull",
+    "sourceSha256": "717833e1250ed6950846c32366a06267b7b2c64b84244abfd409899884a6f51b",
+    "sourceUrl": "assets/ships/release/parts/wholeships/scrap_sweeper.glb"
+  },
+  {
+    "assetId": "sf.render.yard-tug",
+    "expectedContentHash": "39dfc2d075d3fe4a80bd7833d73ca9ab4ea6bcae37b4b9a18bbc0936288da74e",
+    "key": "yard-tug",
+    "metadataUrl": "assets/ships/release/render-packages/yard-tug/render-package.json",
+    "runtimeAssetId": "SF_WHOLESHIP_YARD_TUG",
+    "slot": "hull",
+    "sourceSha256": "3eb9d11172a6ba04a017d8ddc9bbf1ff35f37dcc293a9dfd865783afb8893f45",
+    "sourceUrl": "assets/ships/release/parts/wholeships/yard_tug.glb"
+  },
+  {
+    "assetId": "sf.render.inspection-cutter",
+    "expectedContentHash": "70fa66077227607f0450704b8c25d6dda0f680c53f33ae5fa7a71e914f7d0c41",
+    "key": "inspection-cutter",
+    "metadataUrl": "assets/ships/release/render-packages/inspection-cutter/render-package.json",
+    "runtimeAssetId": "SF_WHOLESHIP_INSPECTION_CUTTER",
+    "slot": "hull",
+    "sourceSha256": "509cb3660deee8ad8c649d86e34fd83d3c89e7b93f4f1a51d46a688d610622aa",
+    "sourceUrl": "assets/ships/release/parts/wholeships/inspection_cutter.glb"
+  },
+  {
+    "assetId": "sf.render.apron-shuttle",
+    "expectedContentHash": "58e6d646faa2e8841cc794c02b17a44bae6f0bf202e5591af0d8906387602c0f",
+    "key": "apron-shuttle",
+    "metadataUrl": "assets/ships/release/render-packages/apron-shuttle/render-package.json",
+    "runtimeAssetId": "SF_WHOLESHIP_APRON_SHUTTLE",
+    "slot": "hull",
+    "sourceSha256": "cb770e46a9115973b43f699b08d843de024fcfb5bfa8291ae91e94499e84c5a2",
+    "sourceUrl": "assets/ships/release/parts/wholeships/apron_shuttle.glb"
   }
 ];
 

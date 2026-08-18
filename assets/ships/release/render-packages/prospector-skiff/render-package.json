@@ -1,0 +1,3160 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.prospector-skiff.anchor.socket-camera-focus",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.4,
+        0.5,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentNodeId": "sf.render.prospector-skiff.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.4,
+        0.5,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.prospector-skiff.anchor.socket-engine-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7.6,
+        0.15,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Engine_Main",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentNodeId": "sf.render.prospector-skiff.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -7.6,
+        0.15,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.prospector-skiff.anchor.socket-scan-pin",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        7.4,
+        0.35,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Scan_Pin",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentNodeId": "sf.render.prospector-skiff.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        7.4,
+        0.35,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.prospector-skiff.anchor.socket-trail-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.1,
+        0.15,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Main",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentNodeId": "sf.render.prospector-skiff.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -8.1,
+        0.15,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.prospector-skiff.anchor.socket-work-boom",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.4,
+        0.4,
+        -2.2,
+        1
+      ],
+      "nodeName": "SOCKET_Work_Boom",
+      "nodePath": [
+        0,
+        24
+      ],
+      "parentNodeId": "sf.render.prospector-skiff.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        2.4,
+        0.4,
+        -2.2,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.prospector-skiff",
+  "collisions": [
+    {
+      "id": "sf.render.prospector-skiff.collision",
+      "nodeId": "sf.render.prospector-skiff.mesh.collision-hull",
+      "reference": "COLLISION_HULL"
+    }
+  ],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "148cfbdb02ac75c2db9080a067ec2299ce124edc777c0cb15be75f1ef0fe6bc7",
+  "dynamicGroups": [
+    {
+      "id": "sf.render.prospector-skiff.mesh.lod0-hook-drive-core.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.prospector-skiff.mesh.lod0-hook-drive-core"
+    },
+    {
+      "id": "sf.render.prospector-skiff.mesh.lod0-hook-drive-fan.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.prospector-skiff.mesh.lod0-hook-drive-fan"
+    },
+    {
+      "id": "sf.render.prospector-skiff.mesh.lod1-hook-drive-core.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.prospector-skiff.mesh.lod1-hook-drive-core"
+    },
+    {
+      "id": "sf.render.prospector-skiff.mesh.lod1-hook-drive-fan.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.prospector-skiff.mesh.lod1-hook-drive-fan"
+    },
+    {
+      "id": "sf.render.prospector-skiff.mesh.lod2-hook-drive-core.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.prospector-skiff.mesh.lod2-hook-drive-core"
+    },
+    {
+      "id": "sf.render.prospector-skiff.mesh.lod2-hook-drive-fan.dynamic",
+      "kind": "dynamic-surface",
+      "nodeId": "sf.render.prospector-skiff.mesh.lod2-hook-drive-fan"
+    }
+  ],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          8.746400833129883,
+          1.6065768003463745,
+          2.124878406524658
+        ],
+        "min": [
+          -7.206399917602539,
+          -1.8014132976531982,
+          -2.469578981399536
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "925a9d5d2cf63192cb0f9104808dafdc1097b8adfb9e4b6448ee2fe593c6d9cc",
+      "id": "sf.render.prospector-skiff.mesh.collision-hull.primitive.0",
+      "indexCount": 36,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "non-render",
+      "meshName": "Cube",
+      "nodeId": "sf.render.prospector-skiff.mesh.collision-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 24
+    },
+    {
+      "bounds": {
+        "max": [
+          -7.650028121596192,
+          0.9624000191688538,
+          0.6624000072479248
+        ],
+        "min": [
+          -7.86997233616748,
+          -0.36239999532699585,
+          -0.6624000072479248
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d4ab1f94aede2d10ccb6bb6c6cd9c57e326d90786c9c25f919202b54b6a51fed",
+      "id": "sf.render.prospector-skiff.mesh.lod0-hook-drive-core.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "f8837a41c4e3b29cc6907e7beec2323891c0e8a5bce12f1d88698370aa0682e3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_DRIVE_CORE",
+      "nodeId": "sf.render.prospector-skiff.mesh.lod0-hook-drive-core",
+      "primitiveIndex": 0,
+      "vertexCount": 72
+    },
+    {
+      "bounds": {
+        "max": [
+          -5.8499469137895375,
+          1.3856000900268555,
+          1.0856000483036041
+        ],
+        "min": [
+          -7.360053124357435,
+          -0.7856000065803528,
+          -1.0856000483036041
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6d174c47b4578a618eddf33c576fac39457b0d4924891a6e911d754e59c52969",
+      "id": "sf.render.prospector-skiff.mesh.lod0-hook-drive-fan.primitive.0",
+      "indexCount": 360,
+      "indexed": true,
+      "materialHash": "a9c0f1569d0d5917e18ea3f01fd9109b34925a8c85910d08627031cae469042e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_HOOK_DRIVE_FAN",
+      "nodeId": "sf.render.prospector-skiff.mesh.lod0-hook-drive-fan",
+      "primitiveIndex": 0,
+      "vertexCount": 144
+    },
+    {
+      "bounds": {
+        "max": [
+          9.4399995803833,
+          0.6100000143051147,
+          0.1600000113248825
+        ],
+        "min": [
+          9.160000801086426,
+          0.28999999165534973,
+          -0.1600000113248825
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0162f2a56df282217d778f9d254ad92c4d726356da378f82717c778168806a00",
+      "id": "sf.render.prospector-skiff.mesh.lod0-merged-material-cyan.primitive.0",
+      "indexCount": 84,
+      "indexed": true,
+      "materialHash": "f8837a41c4e3b29cc6907e7beec2323891c0e8a5bce12f1d88698370aa0682e3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Merged_Material_Cyan",
+      "nodeId": "sf.render.prospector-skiff.mesh.lod0-merged-material-cyan",
+      "primitiveIndex": 0,
+      "vertexCount": 38
+    },
+    {
+      "bounds": {
+        "max": [
+          4.150000095367432,
+          1.4749641418457031,
+          0.6000320911407471
+        ],
+        "min": [
+          2.6500000953674316,
+          0.9250358939170837,
+          -0.6000320911407471
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "addfa59d701e5b076f8e62890af3443f6f8a02fbcbf3451ca18996b7414c15bd",
+      "id": "sf.render.prospector-skiff.mesh.lod0-merged-material-glass.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "a0d8ee82d649ef7245e3fc0d3a274417133ad8360c01579a01846c47c18e156c",
+      "materialPipelineKey": "blend",
+      "meshName": "LOD0_Merged_Material_Glass",
+      "nodeId": "sf.render.prospector-skiff.mesh.lod0-merged-material-glass",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          7.799999713897705,
+          1.7541475296020508,
+          1.9999266862869263
+        ],
+        "min": [
+          -5.799999713897705,
+          -1.2541472911834717,
+          -1.9999266862869263
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e943bdb5044e2edada01a4622a97a46785cd7da6451798887b1dd98a6aa91901",
+      "id": "sf.render.prospector-skiff.mesh.lod0-merged-material-hull.primitive.0",
+      "indexCount": 648,
+      "indexed": true,
+      "materialHash": "2c37d87500caaa70babb7ae3376ef8ec6b6aa567db65fb3b56c951fb82b8fd53",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Merged_Material_Hull",
+      "nodeId": "sf.render.prospector-skiff.mesh.lod0-merged-material-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 192
+    },
+    {
+      "bounds": {
+        "max": [
+          9.300000190734863,
+          1.4998081922531128,
+          2.3254735469818115
+        ],
+        "min": [
+          -7.899999618530273,
+          -1.609808087348938,
+          -2.6701741218566895
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b13180a1c905d2c382b8428bbf3a17a59da5f0d8263d13cc115755022fa33d41",
+      "id": "sf.render.prospector-skiff.mesh.lod0-merged-material-mechanical.primitive.0",
+      "indexCount": 5376,
+      "indexed": true,
+      "materialHash": "a9c0f1569d0d5917e18ea3f01fd9109b34925a8c85910d08627031cae469042e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Merged_Material_Mechanical",
+      "nodeId": "sf.render.prospector-skiff.mesh.lod0-merged-material-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 1628
+    },
+    {
+      "bounds": {
+        "max": [
+          4.9606218338012695,
+          1.3998228311538696,
+          2.120192050933838
+        ],
+        "min": [
+          -6.149999618530273,
+          -1.9492665529251099,
+          -0.42019224166870117
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2b284cd2c2380c357eb31791fd9c6e5c3b86062d58d1b86ae411ac1efd2d0c27",
+      "id": "sf.render.prospector-skiff.mesh.lod0-merged-material-warm.primitive.0",
+      "indexCount": 936,
+      "indexed": true,
+      "materialHash": "13fdb96b072c0dff7bab6c6ceec2126561e864d28f9f032ca5d3cb21e1f6cdbe",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_Merged_Material_Warm",
+      "nodeId": "sf.render.prospector-skiff.mesh.lod0-merged-material-warm",
+      "primitiveIndex": 0,
+      "vertexCount": 384
+    },
+    {
+      "bounds": {
+        "max": [
+          -7.649994232476524,
+          0.9917454257610643,
+          0.7123664617538452
+        ],
+        "min": [
+          -7.870006702124306,
+          -0.3550700381401384,
+          -0.7123664617538452
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9f75f3ee513166f5302a2e6c4a0372fe47326f0d5cd20a8ed821d9f760f66442",
+      "id": "sf.render.prospector-skiff.mesh.lod1-hook-drive-core.primitive.0",
+      "indexCount": 54,
+      "indexed": true,
+      "materialHash": "f8837a41c4e3b29cc6907e7beec2323891c0e8a5bce12f1d88698370aa0682e3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_HOOK_DRIVE_CORE",
+      "nodeId": "sf.render.prospector-skiff.mesh.lod1-hook-drive-core",
+      "primitiveIndex": 0,
+      "vertexCount": 28
+    },
+    {
+      "bounds": {
+        "max": [
+          -5.849999466315506,
+          1.373640113369926,
+          1.1674895286560059
+        ],
+        "min": [
+          -7.360000571831467,
+          -0.8675606780214153,
+          -1.1674895286560059
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "255a25b8a6347826a4e530437ca10e8083526947059e496869f52ec5627ce764",
+      "id": "sf.render.prospector-skiff.mesh.lod1-hook-drive-fan.primitive.0",
+      "indexCount": 108,
+      "indexed": true,
+      "materialHash": "a9c0f1569d0d5917e18ea3f01fd9109b34925a8c85910d08627031cae469042e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_HOOK_DRIVE_FAN",
+      "nodeId": "sf.render.prospector-skiff.mesh.lod1-hook-drive-fan",
+      "primitiveIndex": 0,
+      "vertexCount": 60
+    },
+    {
+      "bounds": {
+        "max": [
+          4.1370158195495605,
+          1.4620555639266968,
+          0.5870324373245239
+        ],
+        "min": [
+          2.6500000953674316,
+          0.9379445314407349,
+          -0.5870323777198792
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "81fde8f85f2e8388e1d5a2bdd1a38ae7b94d69399768b69d376ec93f25d031ef",
+      "id": "sf.render.prospector-skiff.mesh.lod1-merged-material-glass.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "a0d8ee82d649ef7245e3fc0d3a274417133ad8360c01579a01846c47c18e156c",
+      "materialPipelineKey": "blend",
+      "meshName": "LOD1_Merged_Material_Glass",
+      "nodeId": "sf.render.prospector-skiff.mesh.lod1-merged-material-glass",
+      "primitiveIndex": 0,
+      "vertexCount": 54
+    },
+    {
+      "bounds": {
+        "max": [
+          7.788913249969482,
+          1.757068395614624,
+          1.999955177307129
+        ],
+        "min": [
+          -5.799999713897705,
+          -1.2570682764053345,
+          -1.999955177307129
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9aeafdca793328e50baf12d6bebf16c1217dd76b4ae975777a36a3ac506287de",
+      "id": "sf.render.prospector-skiff.mesh.lod1-merged-material-hull.primitive.0",
+      "indexCount": 270,
+      "indexed": true,
+      "materialHash": "2c37d87500caaa70babb7ae3376ef8ec6b6aa567db65fb3b56c951fb82b8fd53",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Merged_Material_Hull",
+      "nodeId": "sf.render.prospector-skiff.mesh.lod1-merged-material-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 104
+    },
+    {
+      "bounds": {
+        "max": [
+          9.300000190734863,
+          1.5003132820129395,
+          2.3143725395202637
+        ],
+        "min": [
+          -7.899999618530273,
+          -1.493821144104004,
+          -2.664477825164795
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "805bd753df5e04dcefd6fe1175ee5e11ced6c72a8c5888d5a63de02dc8e5c710",
+      "id": "sf.render.prospector-skiff.mesh.lod1-merged-material-mechanical.primitive.0",
+      "indexCount": 756,
+      "indexed": true,
+      "materialHash": "a9c0f1569d0d5917e18ea3f01fd9109b34925a8c85910d08627031cae469042e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Merged_Material_Mechanical",
+      "nodeId": "sf.render.prospector-skiff.mesh.lod1-merged-material-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 318
+    },
+    {
+      "bounds": {
+        "max": [
+          2.9750001430511475,
+          -1.214890480041504,
+          0.41982483863830566
+        ],
+        "min": [
+          -2.9750001430511475,
+          -1.9172617197036743,
+          -0.41982483863830566
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a4100c22684842ba63fc1d8947d324c95667426bda6201cbef794878356ea4e6",
+      "id": "sf.render.prospector-skiff.mesh.lod1-merged-material-warm.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "13fdb96b072c0dff7bab6c6ceec2126561e864d28f9f032ca5d3cb21e1f6cdbe",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD1_Merged_Material_Warm",
+      "nodeId": "sf.render.prospector-skiff.mesh.lod1-merged-material-warm",
+      "primitiveIndex": 0,
+      "vertexCount": 108
+    },
+    {
+      "bounds": {
+        "max": [
+          -7.650050940586954,
+          0.9938459396362305,
+          0.6958963897041825
+        ],
+        "min": [
+          -7.869949994013876,
+          -0.41236644983291626,
+          -0.6958963897041825
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ed3bbdc22300c406473cb04f7486879894346b00099599e32ea95e4638df653d",
+      "id": "sf.render.prospector-skiff.mesh.lod2-hook-drive-core.primitive.0",
+      "indexCount": 24,
+      "indexed": true,
+      "materialHash": "f8837a41c4e3b29cc6907e7beec2323891c0e8a5bce12f1d88698370aa0682e3",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_HOOK_DRIVE_CORE",
+      "nodeId": "sf.render.prospector-skiff.mesh.lod2-hook-drive-core",
+      "primitiveIndex": 0,
+      "vertexCount": 12
+    },
+    {
+      "bounds": {
+        "max": [
+          -5.8499309089246605,
+          1.527839183807373,
+          1.1519611701230583
+        ],
+        "min": [
+          -7.360069129222312,
+          -0.8674894571304321,
+          -1.1831315383176384
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f7ea2e2ce35584d295f157100cff91a983be66cb7c3959b27b92b410357d2d4b",
+      "id": "sf.render.prospector-skiff.mesh.lod2-hook-drive-fan.primitive.0",
+      "indexCount": 48,
+      "indexed": true,
+      "materialHash": "a9c0f1569d0d5917e18ea3f01fd9109b34925a8c85910d08627031cae469042e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_HOOK_DRIVE_FAN",
+      "nodeId": "sf.render.prospector-skiff.mesh.lod2-hook-drive-fan",
+      "primitiveIndex": 0,
+      "vertexCount": 36
+    },
+    {
+      "bounds": {
+        "max": [
+          4.11800479888916,
+          1.453647255897522,
+          0.5745349526405334
+        ],
+        "min": [
+          2.6811892986297607,
+          0.9463527798652649,
+          -0.5786621570587158
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a2964b9ac66a6d8f70246667d97b5bb985c7b07e8e9ec53adfc2886d29a7390a",
+      "id": "sf.render.prospector-skiff.mesh.lod2-merged-material-glass.primitive.0",
+      "indexCount": 54,
+      "indexed": true,
+      "materialHash": "a0d8ee82d649ef7245e3fc0d3a274417133ad8360c01579a01846c47c18e156c",
+      "materialPipelineKey": "blend",
+      "meshName": "LOD2_Merged_Material_Glass",
+      "nodeId": "sf.render.prospector-skiff.mesh.lod2-merged-material-glass",
+      "primitiveIndex": 0,
+      "vertexCount": 30
+    },
+    {
+      "bounds": {
+        "max": [
+          7.782408714294434,
+          1.7613325119018555,
+          1.9702342748641968
+        ],
+        "min": [
+          -5.7818217277526855,
+          -1.2605761289596558,
+          -1.9644564390182495
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9570375a10516a423d505f74ccaf5d19af5ac97c8d90ebe52c371920ea95fad1",
+      "id": "sf.render.prospector-skiff.mesh.lod2-merged-material-hull.primitive.0",
+      "indexCount": 114,
+      "indexed": true,
+      "materialHash": "2c37d87500caaa70babb7ae3376ef8ec6b6aa567db65fb3b56c951fb82b8fd53",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Merged_Material_Hull",
+      "nodeId": "sf.render.prospector-skiff.mesh.lod2-merged-material-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 56
+    },
+    {
+      "bounds": {
+        "max": [
+          9.30000114440918,
+          1.4775598049163818,
+          2.3114213943481445
+        ],
+        "min": [
+          -7.887015342712402,
+          -1.482843041419983,
+          -2.6615726947784424
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d94df1379df7706c7e53ae110bfc4fb60feb79ec6d17445766661d9e5648da08",
+      "id": "sf.render.prospector-skiff.mesh.lod2-merged-material-mechanical.primitive.0",
+      "indexCount": 324,
+      "indexed": true,
+      "materialHash": "a9c0f1569d0d5917e18ea3f01fd9109b34925a8c85910d08627031cae469042e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Merged_Material_Mechanical",
+      "nodeId": "sf.render.prospector-skiff.mesh.lod2-merged-material-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 192
+    },
+    {
+      "bounds": {
+        "max": [
+          2.9750001430511475,
+          -1.0978044271469116,
+          0.39549243450164795
+        ],
+        "min": [
+          -2.9750001430511475,
+          -2.034057378768921,
+          -0.39549243450164795
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "787838a947216870fbbc0efe7fabd378e689921332b84c6db104a9eecff257ad",
+      "id": "sf.render.prospector-skiff.mesh.lod2-merged-material-warm.primitive.0",
+      "indexCount": 72,
+      "indexed": true,
+      "materialHash": "13fdb96b072c0dff7bab6c6ceec2126561e864d28f9f032ca5d3cb21e1f6cdbe",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD2_Merged_Material_Warm",
+      "nodeId": "sf.render.prospector-skiff.mesh.lod2-merged-material-warm",
+      "primitiveIndex": 0,
+      "vertexCount": 52
+    }
+  ],
+  "hlods": [],
+  "kind": "ship",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "13fdb96b072c0dff7bab6c6ceec2126561e864d28f9f032ca5d3cb21e1f6cdbe",
+      "id": "material:13fdb96b072c0dff7bab6c6c",
+      "name": "Material_Warm",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Warm_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Warm_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Warm_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Warm_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "2c37d87500caaa70babb7ae3376ef8ec6b6aa567db65fb3b56c951fb82b8fd53",
+      "id": "material:2c37d87500caaa70babb7ae3",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Hull_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Hull_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "a0d8ee82d649ef7245e3fc0d3a274417133ad8360c01579a01846c47c18e156c",
+      "id": "material:a0d8ee82d649ef7245e3fc0d",
+      "name": "Material_Glass",
+      "pipelineKey": "blend:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Glass_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Glass_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Glass_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Glass_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "a9c0f1569d0d5917e18ea3f01fd9109b34925a8c85910d08627031cae469042e",
+      "id": "material:a9c0f1569d0d5917e18ea3f0",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Mechanical_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "f8837a41c4e3b29cc6907e7beec2323891c0e8a5bce12f1d88698370aa0682e3",
+      "id": "material:f8837a41c4e3b29cc6907e7b",
+      "name": "Material_Cyan",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Cyan_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Cyan_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Cyan_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Cyan_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.prospector-skiff.mesh.collision-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "non-render",
+      "mergeBoundary": "COLLISION_HULL",
+      "nodeName": "COLLISION_HULL",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.prospector-skiff.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.prospector-skiff.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.prospector-skiff.mesh.lod0-hook-drive-core",
+      "localTransform": [
+        0.6624000072479248,
+        0,
+        0,
+        0,
+        0,
+        0.6624000072479248,
+        0,
+        0,
+        0,
+        0,
+        0.6624000072479248,
+        0,
+        -7.760000228881836,
+        0.30000001192092896,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_DRIVE_CORE",
+      "nodeName": "LOD0_HOOK_DRIVE_CORE",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.prospector-skiff.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.prospector-skiff.body",
+      "worldTransform": [
+        0.6624000072479248,
+        0,
+        0,
+        0,
+        0,
+        0.6624000072479248,
+        0,
+        0,
+        0,
+        0,
+        0.6624000072479248,
+        0,
+        -7.760000228881836,
+        0.30000001192092896,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.prospector-skiff.mesh.lod0-hook-drive-fan",
+      "localTransform": [
+        1.0856000483036041,
+        0,
+        0,
+        0,
+        0,
+        1.0856000483036041,
+        0,
+        0,
+        0,
+        0,
+        1.0856000483036041,
+        0,
+        -6.605000019073486,
+        0.30000004172325134,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_HOOK_DRIVE_FAN",
+      "nodeName": "LOD0_HOOK_DRIVE_FAN",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.prospector-skiff.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.prospector-skiff.body",
+      "worldTransform": [
+        1.0856000483036041,
+        0,
+        0,
+        0,
+        0,
+        1.0856000483036041,
+        0,
+        0,
+        0,
+        0,
+        1.0856000483036041,
+        0,
+        -6.605000019073486,
+        0.30000004172325134,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.prospector-skiff.mesh.lod0-merged-material-cyan",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Merged_Material_Cyan",
+      "nodeName": "LOD0_Merged_Material_Cyan",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.prospector-skiff.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.prospector-skiff.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.prospector-skiff.mesh.lod0-merged-material-glass",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD0_Merged_Material_Glass",
+      "nodeName": "LOD0_Merged_Material_Glass",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.prospector-skiff.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.prospector-skiff.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.prospector-skiff.mesh.lod0-merged-material-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Merged_Material_Hull",
+      "nodeName": "LOD0_Merged_Material_Hull",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.prospector-skiff.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.prospector-skiff.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.prospector-skiff.mesh.lod0-merged-material-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Merged_Material_Mechanical",
+      "nodeName": "LOD0_Merged_Material_Mechanical",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.prospector-skiff.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.prospector-skiff.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.prospector-skiff.mesh.lod0-merged-material-warm",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Merged_Material_Warm",
+      "nodeName": "LOD0_Merged_Material_Warm",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.prospector-skiff.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.prospector-skiff.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.prospector-skiff.mesh.lod1-hook-drive-core",
+      "localTransform": [
+        0.7123664617538452,
+        0,
+        0,
+        0,
+        0,
+        0.7123664617538452,
+        0,
+        0,
+        0,
+        0,
+        0.7123664617538452,
+        0,
+        -7.760000467300415,
+        0.31833769381046295,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_HOOK_DRIVE_CORE",
+      "nodeName": "LOD1_HOOK_DRIVE_CORE",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.prospector-skiff.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.prospector-skiff.body",
+      "worldTransform": [
+        0.7123664617538452,
+        0,
+        0,
+        0,
+        0,
+        0.7123664617538452,
+        0,
+        0,
+        0,
+        0,
+        0.7123664617538452,
+        0,
+        -7.760000467300415,
+        0.31833769381046295,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.prospector-skiff.mesh.lod1-hook-drive-fan",
+      "localTransform": [
+        1.1674895286560059,
+        0,
+        0,
+        0,
+        0,
+        1.1674895286560059,
+        0,
+        0,
+        0,
+        0,
+        1.1674895286560059,
+        0,
+        -6.605000019073486,
+        0.25303971767425537,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_HOOK_DRIVE_FAN",
+      "nodeName": "LOD1_HOOK_DRIVE_FAN",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.prospector-skiff.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.prospector-skiff.body",
+      "worldTransform": [
+        1.1674895286560059,
+        0,
+        0,
+        0,
+        0,
+        1.1674895286560059,
+        0,
+        0,
+        0,
+        0,
+        1.1674895286560059,
+        0,
+        -6.605000019073486,
+        0.25303971767425537,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.prospector-skiff.mesh.lod1-merged-material-glass",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD1_Merged_Material_Glass",
+      "nodeName": "LOD1_Merged_Material_Glass",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.prospector-skiff.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.prospector-skiff.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.prospector-skiff.mesh.lod1-merged-material-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Merged_Material_Hull",
+      "nodeName": "LOD1_Merged_Material_Hull",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.prospector-skiff.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.prospector-skiff.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.prospector-skiff.mesh.lod1-merged-material-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Merged_Material_Mechanical",
+      "nodeName": "LOD1_Merged_Material_Mechanical",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.prospector-skiff.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.prospector-skiff.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.prospector-skiff.mesh.lod1-merged-material-warm",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD1_Merged_Material_Warm",
+      "nodeName": "LOD1_Merged_Material_Warm",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.prospector-skiff.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.prospector-skiff.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.prospector-skiff.mesh.lod2-hook-drive-core",
+      "localTransform": [
+        0.7031061947345734,
+        0,
+        0,
+        0,
+        0,
+        0.7031061947345734,
+        0,
+        0,
+        0,
+        0,
+        0.7031061947345734,
+        0,
+        -7.760000467300415,
+        0.2907397449016571,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_HOOK_DRIVE_CORE",
+      "nodeName": "LOD2_HOOK_DRIVE_CORE",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.prospector-skiff.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.prospector-skiff.body",
+      "worldTransform": [
+        0.7031061947345734,
+        0,
+        0,
+        0,
+        0,
+        0.7031061947345734,
+        0,
+        0,
+        0,
+        0,
+        0.7031061947345734,
+        0,
+        -7.760000467300415,
+        0.2907397449016571,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.prospector-skiff.mesh.lod2-hook-drive-fan",
+      "localTransform": [
+        1.1976643204689026,
+        0,
+        0,
+        0,
+        0,
+        1.1976643204689026,
+        0,
+        0,
+        0,
+        0,
+        1.1976643204689026,
+        0,
+        -6.605000019073486,
+        0.33017486333847046,
+        -0.015585184097290039,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_HOOK_DRIVE_FAN",
+      "nodeName": "LOD2_HOOK_DRIVE_FAN",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.prospector-skiff.root",
+      "role": "dynamic",
+      "spatialClusterId": "sf.render.prospector-skiff.body",
+      "worldTransform": [
+        1.1976643204689026,
+        0,
+        0,
+        0,
+        0,
+        1.1976643204689026,
+        0,
+        0,
+        0,
+        0,
+        1.1976643204689026,
+        0,
+        -6.605000019073486,
+        0.33017486333847046,
+        -0.015585184097290039,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.prospector-skiff.mesh.lod2-merged-material-glass",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD2_Merged_Material_Glass",
+      "nodeName": "LOD2_Merged_Material_Glass",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.prospector-skiff.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.prospector-skiff.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.prospector-skiff.mesh.lod2-merged-material-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Merged_Material_Hull",
+      "nodeName": "LOD2_Merged_Material_Hull",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.prospector-skiff.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.prospector-skiff.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.prospector-skiff.mesh.lod2-merged-material-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Merged_Material_Mechanical",
+      "nodeName": "LOD2_Merged_Material_Mechanical",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.prospector-skiff.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.prospector-skiff.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.prospector-skiff.mesh.lod2-merged-material-warm",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD2_Merged_Material_Warm",
+      "nodeName": "LOD2_Merged_Material_Warm",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentId": "sf.render.prospector-skiff.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.prospector-skiff.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.prospector-skiff.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "SF_NPCWORK_PROSPECTOR_SKIFF_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.prospector-skiff.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "0d627474ee96317bd3a413676b79152a6d1785d9639faaab6493fd16a1e11de3"
+    },
+    "sourceGlb": {
+      "bytes": 2661760,
+      "sha256": "2ca6bd3fab779e660f53fb8f788122bb52a3cbb82391204e5cad66ad5d42468b",
+      "uri": "prospector_skiff.glb"
+    },
+    "sourceManifest": {
+      "bytes": 74711,
+      "sha256": "de96fd94e2a2fb852fd1cc726c714f4d5ba32f2d199b1478447121c5b7c171ce",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 2735804,
+    "sha256": "3eecb7738188d2201a602254f098acbe933b67622ba9e886e2924e12a171e2a1",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        0.7699999809265137,
+        -0.13636243343353271,
+        -0.17235028743743896
+      ],
+      "max": [
+        9.4399995803833,
+        1.7613325119018555,
+        2.3254735469818115
+      ],
+      "min": [
+        -7.899999618530273,
+        -2.034057378768921,
+        -2.6701741218566895
+      ],
+      "size": [
+        17.339999198913574,
+        3.7953898906707764,
+        4.995647668838501
+      ]
+    },
+    "hidden": [
+      2
+    ],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.4,
+          0.5,
+          0,
+          1
+        ],
+        "name": "SOCKET_Camera_Focus",
+        "planIndex": 22,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "camera"
+        },
+        "userData": {
+          "forward": [
+            1,
+            0,
+            0
+          ],
+          "name": "SOCKET_Camera_Focus",
+          "role": "camera",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "camera",
+            "socket": true
+          },
+          "spaceface.socket": true,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Camera_Focus",
+            "recordIds": [
+              "sf.render.prospector-skiff.anchor.socket-camera-focus"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -7.6,
+          0.15,
+          0,
+          1
+        ],
+        "name": "SOCKET_Engine_Main",
+        "planIndex": 23,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "engine"
+        },
+        "userData": {
+          "forward": [
+            -1,
+            0,
+            0
+          ],
+          "name": "SOCKET_Engine_Main",
+          "role": "engine",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "engine",
+            "socket": true
+          },
+          "spaceface.socket": true,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Engine_Main",
+            "recordIds": [
+              "sf.render.prospector-skiff.anchor.socket-engine-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          7.4,
+          0.35,
+          0,
+          1
+        ],
+        "name": "SOCKET_Scan_Pin",
+        "planIndex": 24,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            1,
+            0,
+            0
+          ],
+          "socketRole": "sensor"
+        },
+        "userData": {
+          "forward": [
+            1,
+            0,
+            0
+          ],
+          "name": "SOCKET_Scan_Pin",
+          "role": "sensor",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "role": "sensor",
+            "socket": true
+          },
+          "spaceface.socket": true,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Scan_Pin",
+            "recordIds": [
+              "sf.render.prospector-skiff.anchor.socket-scan-pin"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -8.1,
+          0.15,
+          0,
+          1
+        ],
+        "name": "SOCKET_Trail_Main",
+        "planIndex": 25,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            -1,
+            0,
+            0
+          ],
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "forward": [
+            -1,
+            0,
+            0
+          ],
+          "name": "SOCKET_Trail_Main",
+          "role": "vfx",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              -1,
+              0,
+              0
+            ],
+            "role": "vfx",
+            "socket": true
+          },
+          "spaceface.socket": true,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Main",
+            "recordIds": [
+              "sf.render.prospector-skiff.anchor.socket-trail-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          2.4,
+          0.4,
+          -2.2,
+          1
+        ],
+        "name": "SOCKET_Work_Boom",
+        "planIndex": 26,
+        "tags": {
+          "socket": true,
+          "socketForward": [
+            0,
+            0,
+            -1
+          ],
+          "socketRole": "utility"
+        },
+        "userData": {
+          "forward": [
+            0,
+            0,
+            -1
+          ],
+          "name": "SOCKET_Work_Boom",
+          "role": "utility",
+          "socket": true,
+          "spaceface": {
+            "forward": [
+              0,
+              0,
+              -1
+            ],
+            "role": "utility",
+            "socket": true
+          },
+          "spaceface.socket": true,
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Work_Boom",
+            "recordIds": [
+              "sf.render.prospector-skiff.anchor.socket-work-boom"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "glass": 3,
+      "hull": 11,
+      "mechanical": 6
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "hull"
+      }
+    ],
+    "nodeCount": 27,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          0.6624000072479248,
+          0,
+          0,
+          0,
+          0,
+          0.6624000072479248,
+          0,
+          0,
+          0,
+          0,
+          0.6624000072479248,
+          0,
+          -7.760000228881836,
+          0.30000001192092896,
+          0,
+          1
+        ],
+        "name": "LOD0_HOOK_DRIVE_CORE",
+        "planIndex": 3,
+        "tags": {
+          "bevelRadiusM": 0.025,
+          "canopy": false,
+          "chamfered": true,
+          "drive": "core",
+          "driveAnchorMatrix": [
+            0.6624000072479248,
+            0,
+            0,
+            0,
+            0,
+            0.6624000072479248,
+            0,
+            0,
+            0,
+            0,
+            0.6624000072479248,
+            0,
+            -7.760000228881836,
+            0.30000001192092896,
+            0,
+            1
+          ],
+          "instance": false,
+          "lod": "lod0",
+          "tint": "accent"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.0856000483036041,
+          0,
+          0,
+          0,
+          0,
+          1.0856000483036041,
+          0,
+          0,
+          0,
+          0,
+          1.0856000483036041,
+          0,
+          -6.605000019073486,
+          0.30000004172325134,
+          0,
+          1
+        ],
+        "name": "LOD0_HOOK_DRIVE_FAN",
+        "planIndex": 4,
+        "tags": {
+          "bevelRadiusM": 0.025,
+          "canopy": false,
+          "chamfered": true,
+          "drive": "fan",
+          "driveAnchorMatrix": [
+            1.0856000483036041,
+            0,
+            0,
+            0,
+            0,
+            1.0856000483036041,
+            0,
+            0,
+            0,
+            0,
+            1.0856000483036041,
+            0,
+            -6.605000019073486,
+            0.30000004172325134,
+            0,
+            1
+          ],
+          "instance": false,
+          "lod": "lod0",
+          "tint": "dark"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Merged_Material_Cyan",
+        "planIndex": 5,
+        "tags": {
+          "bevelRadiusM": 0.025,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "accent"
+        }
+      },
+      {
+        "canopy": true,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Merged_Material_Glass",
+        "planIndex": 6,
+        "tags": {
+          "bevelRadiusM": 0.025,
+          "canopy": true,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "none"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Merged_Material_Hull",
+        "planIndex": 7,
+        "tags": {
+          "bevelRadiusM": 0.025,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Merged_Material_Mechanical",
+        "planIndex": 8,
+        "tags": {
+          "bevelRadiusM": 0.025,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "dark"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Merged_Material_Warm",
+        "planIndex": 9,
+        "tags": {
+          "bevelRadiusM": 0.025,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "accent"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.7123664617538452,
+          0,
+          0,
+          0,
+          0,
+          0.7123664617538452,
+          0,
+          0,
+          0,
+          0,
+          0.7123664617538452,
+          0,
+          -7.760000467300415,
+          0.31833769381046295,
+          0,
+          1
+        ],
+        "name": "LOD1_HOOK_DRIVE_CORE",
+        "planIndex": 10,
+        "tags": {
+          "bevelRadiusM": 0.025,
+          "canopy": false,
+          "chamfered": true,
+          "drive": "core",
+          "driveAnchorMatrix": [
+            0.7123664617538452,
+            0,
+            0,
+            0,
+            0,
+            0.7123664617538452,
+            0,
+            0,
+            0,
+            0,
+            0.7123664617538452,
+            0,
+            -7.760000467300415,
+            0.31833769381046295,
+            0,
+            1
+          ],
+          "instance": false,
+          "lod": "lod1",
+          "tint": "accent"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.1674895286560059,
+          0,
+          0,
+          0,
+          0,
+          1.1674895286560059,
+          0,
+          0,
+          0,
+          0,
+          1.1674895286560059,
+          0,
+          -6.605000019073486,
+          0.25303971767425537,
+          0,
+          1
+        ],
+        "name": "LOD1_HOOK_DRIVE_FAN",
+        "planIndex": 11,
+        "tags": {
+          "bevelRadiusM": 0.025,
+          "canopy": false,
+          "chamfered": true,
+          "drive": "fan",
+          "driveAnchorMatrix": [
+            1.1674895286560059,
+            0,
+            0,
+            0,
+            0,
+            1.1674895286560059,
+            0,
+            0,
+            0,
+            0,
+            1.1674895286560059,
+            0,
+            -6.605000019073486,
+            0.25303971767425537,
+            0,
+            1
+          ],
+          "instance": false,
+          "lod": "lod1",
+          "tint": "dark"
+        }
+      },
+      {
+        "canopy": true,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Merged_Material_Glass",
+        "planIndex": 12,
+        "tags": {
+          "bevelRadiusM": 0.025,
+          "canopy": true,
+          "chamfered": true,
+          "lod": "lod1",
+          "tint": "none"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Merged_Material_Hull",
+        "planIndex": 13,
+        "tags": {
+          "bevelRadiusM": 0.025,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod1",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Merged_Material_Mechanical",
+        "planIndex": 14,
+        "tags": {
+          "bevelRadiusM": 0.025,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod1",
+          "tint": "dark"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD1_Merged_Material_Warm",
+        "planIndex": 15,
+        "tags": {
+          "bevelRadiusM": 0.025,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod1",
+          "tint": "accent"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          0.7031061947345734,
+          0,
+          0,
+          0,
+          0,
+          0.7031061947345734,
+          0,
+          0,
+          0,
+          0,
+          0.7031061947345734,
+          0,
+          -7.760000467300415,
+          0.2907397449016571,
+          0,
+          1
+        ],
+        "name": "LOD2_HOOK_DRIVE_CORE",
+        "planIndex": 16,
+        "tags": {
+          "bevelRadiusM": 0.025,
+          "canopy": false,
+          "chamfered": true,
+          "drive": "core",
+          "driveAnchorMatrix": [
+            0.7031061947345734,
+            0,
+            0,
+            0,
+            0,
+            0.7031061947345734,
+            0,
+            0,
+            0,
+            0,
+            0.7031061947345734,
+            0,
+            -7.760000467300415,
+            0.2907397449016571,
+            0,
+            1
+          ],
+          "instance": false,
+          "lod": "lod2",
+          "tint": "accent"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1.1976643204689026,
+          0,
+          0,
+          0,
+          0,
+          1.1976643204689026,
+          0,
+          0,
+          0,
+          0,
+          1.1976643204689026,
+          0,
+          -6.605000019073486,
+          0.33017486333847046,
+          -0.015585184097290039,
+          1
+        ],
+        "name": "LOD2_HOOK_DRIVE_FAN",
+        "planIndex": 17,
+        "tags": {
+          "bevelRadiusM": 0.025,
+          "canopy": false,
+          "chamfered": true,
+          "drive": "fan",
+          "driveAnchorMatrix": [
+            1.1976643204689026,
+            0,
+            0,
+            0,
+            0,
+            1.1976643204689026,
+            0,
+            0,
+            0,
+            0,
+            1.1976643204689026,
+            0,
+            -6.605000019073486,
+            0.33017486333847046,
+            -0.015585184097290039,
+            1
+          ],
+          "instance": false,
+          "lod": "lod2",
+          "tint": "dark"
+        }
+      },
+      {
+        "canopy": true,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Merged_Material_Glass",
+        "planIndex": 18,
+        "tags": {
+          "bevelRadiusM": 0.025,
+          "canopy": true,
+          "chamfered": true,
+          "lod": "lod2",
+          "tint": "none"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Merged_Material_Hull",
+        "planIndex": 19,
+        "tags": {
+          "bevelRadiusM": 0.025,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod2",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Merged_Material_Mechanical",
+        "planIndex": 20,
+        "tags": {
+          "bevelRadiusM": 0.025,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod2",
+          "tint": "dark"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD2_Merged_Material_Warm",
+        "planIndex": 21,
+        "tags": {
+          "bevelRadiusM": 0.025,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod2",
+          "tint": "accent"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "hull",
+    "url": "assets/ships/release/parts/wholeships/prospector_skiff.glb"
+  },
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          9.4399995803833,
+          1.7613325119018555,
+          2.3254735469818115
+        ],
+        "min": [
+          -7.899999618530273,
+          -2.034057378768921,
+          -2.6701741218566895
+        ]
+      },
+      "id": "sf.render.prospector-skiff.body",
+      "nodeIds": [
+        "sf.render.prospector-skiff.mesh.collision-hull",
+        "sf.render.prospector-skiff.mesh.lod0-hook-drive-core",
+        "sf.render.prospector-skiff.mesh.lod0-hook-drive-fan",
+        "sf.render.prospector-skiff.mesh.lod0-merged-material-cyan",
+        "sf.render.prospector-skiff.mesh.lod0-merged-material-glass",
+        "sf.render.prospector-skiff.mesh.lod0-merged-material-hull",
+        "sf.render.prospector-skiff.mesh.lod0-merged-material-mechanical",
+        "sf.render.prospector-skiff.mesh.lod0-merged-material-warm",
+        "sf.render.prospector-skiff.mesh.lod1-hook-drive-core",
+        "sf.render.prospector-skiff.mesh.lod1-hook-drive-fan",
+        "sf.render.prospector-skiff.mesh.lod1-merged-material-glass",
+        "sf.render.prospector-skiff.mesh.lod1-merged-material-hull",
+        "sf.render.prospector-skiff.mesh.lod1-merged-material-mechanical",
+        "sf.render.prospector-skiff.mesh.lod1-merged-material-warm",
+        "sf.render.prospector-skiff.mesh.lod2-hook-drive-core",
+        "sf.render.prospector-skiff.mesh.lod2-hook-drive-fan",
+        "sf.render.prospector-skiff.mesh.lod2-merged-material-glass",
+        "sf.render.prospector-skiff.mesh.lod2-merged-material-hull",
+        "sf.render.prospector-skiff.mesh.lod2-merged-material-mechanical",
+        "sf.render.prospector-skiff.mesh.lod2-merged-material-warm",
+        "sf.render.prospector-skiff.root"
+      ]
+    }
+  ]
+}

@@ -4,7 +4,7 @@
   "family": "npc_work_fleet",
   "blender": "5.1.2",
   "builder": "tools/blender/build_npc_work_fleet.py",
-  "builderSha256": "54592c2f6039f55745691d26135ae0cbdbcf0aac6a579038b65b9bacc8a3c564",
+  "builderSha256": "e84c14f05afe58b81bf5da55b53416334a8d8189cf07ca55ffa63bf4595cbe76",
   "donorPack": "assets/incubator/npc_activity_pack/",
   "donorReview": "assets/incubator/npc_activity_pack/evidence/REVIEW-independent-2026-08-08.md",
   "ships": [
@@ -1153,6 +1153,1776 @@
         ]
       },
       "buildSeconds": 4.7
+    },
+    {
+      "id": "rescue_lifter",
+      "assetId": "SF_WHOLESHIP_RESCUE_LIFTER",
+      "partId": "wholeship_rescue_lifter",
+      "trafficRole": "rescue",
+      "file": "assets/ships/npc_work_fleet/source/wholeships/rescue_lifter.glb",
+      "sha256": "9b6d49379d9a7c7afbc1a0dd7c883f2a545eb00eb86fdc95ff9a4c9d6a5775f1",
+      "bytes": 3669208,
+      "sourceParts": 53,
+      "fictionLengthM": 28.0,
+      "lodStats": [
+        {
+          "lod": "lod0",
+          "decimate_ratio": 1.0,
+          "mesh_count": 6,
+          "triangles": 4692,
+          "meshes": [
+            {
+              "name": "LOD0_Merged_Material_Hull",
+              "tris": 900,
+              "materials": [
+                "Material_Hull"
+              ]
+            },
+            {
+              "name": "LOD0_Merged_Material_Warm",
+              "tris": 576,
+              "materials": [
+                "Material_Warm"
+              ]
+            },
+            {
+              "name": "LOD0_Merged_Material_Mechanical",
+              "tris": 2532,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD0_Merged_Material_Glass",
+              "tris": 324,
+              "materials": [
+                "Material_Glass"
+              ]
+            },
+            {
+              "name": "LOD0_HOOK_DRIVE_FAN",
+              "tris": 240,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD0_HOOK_DRIVE_CORE",
+              "tris": 120,
+              "materials": [
+                "Material_Cyan"
+              ]
+            }
+          ],
+          "removed_close_only": [],
+          "draw_estimate": 6
+        },
+        {
+          "lod": "lod1",
+          "decimate_ratio": 0.42,
+          "mesh_count": 6,
+          "triangles": 684,
+          "meshes": [
+            {
+              "name": "LOD1_Merged_Material_Hull",
+              "tris": 286,
+              "materials": [
+                "Material_Hull"
+              ]
+            },
+            {
+              "name": "LOD1_Merged_Material_Warm",
+              "tris": 90,
+              "materials": [
+                "Material_Warm"
+              ]
+            },
+            {
+              "name": "LOD1_Merged_Material_Mechanical",
+              "tris": 154,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD1_Merged_Material_Glass",
+              "tris": 44,
+              "materials": [
+                "Material_Glass"
+              ]
+            },
+            {
+              "name": "LOD1_HOOK_DRIVE_FAN",
+              "tris": 74,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD1_HOOK_DRIVE_CORE",
+              "tris": 36,
+              "materials": [
+                "Material_Cyan"
+              ]
+            }
+          ],
+          "removed_close_only": [
+            "RescueMid_frame_0_-1",
+            "RescueMid_frame_0_1",
+            "RescueMid_frame_1_-1",
+            "RescueMid_frame_1_1",
+            "RescueMid_frame_2_-1",
+            "RescueMid_frame_2_1",
+            "RescueMid_frame_3_-1",
+            "RescueMid_frame_3_1",
+            "RescueMid_frame_4_-1",
+            "RescueMid_frame_4_1",
+            "RescueMid_frame_5_-1",
+            "RescueMid_frame_5_1",
+            "RescueMid_stringer_-1",
+            "RescueMid_stringer_1",
+            "Rescue_BarRed_-1",
+            "Rescue_BarWhite_-1",
+            "Rescue_BarRed_1",
+            "Rescue_BarWhite_1",
+            "Rescue_BasketRail",
+            "Rescue_Flood_0_mast",
+            "Rescue_Flood_0_hood",
+            "Rescue_Flood_0_lens",
+            "Rescue_Flood_1_mast",
+            "Rescue_Flood_1_hood",
+            "Rescue_Flood_1_lens",
+            "Rescue_Flood_2_mast",
+            "Rescue_Flood_2_hood",
+            "Rescue_Flood_2_lens",
+            "Rescue_Flood_3_mast",
+            "Rescue_Flood_3_hood",
+            "Rescue_Flood_3_lens",
+            "Rescue_PodGlass_0",
+            "Rescue_PodGlass_1"
+          ],
+          "draw_estimate": 6
+        },
+        {
+          "lod": "lod2",
+          "decimate_ratio": 0.18,
+          "mesh_count": 6,
+          "triangles": 292,
+          "meshes": [
+            {
+              "name": "LOD2_Merged_Material_Hull",
+              "tris": 122,
+              "materials": [
+                "Material_Hull"
+              ]
+            },
+            {
+              "name": "LOD2_Merged_Material_Warm",
+              "tris": 38,
+              "materials": [
+                "Material_Warm"
+              ]
+            },
+            {
+              "name": "LOD2_Merged_Material_Mechanical",
+              "tris": 66,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD2_Merged_Material_Glass",
+              "tris": 18,
+              "materials": [
+                "Material_Glass"
+              ]
+            },
+            {
+              "name": "LOD2_HOOK_DRIVE_FAN",
+              "tris": 32,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD2_HOOK_DRIVE_CORE",
+              "tris": 16,
+              "materials": [
+                "Material_Cyan"
+              ]
+            }
+          ],
+          "removed_close_only": [
+            "RescueMid_frame_0_-1",
+            "RescueMid_frame_0_1",
+            "RescueMid_frame_1_-1",
+            "RescueMid_frame_1_1",
+            "RescueMid_frame_2_-1",
+            "RescueMid_frame_2_1",
+            "RescueMid_frame_3_-1",
+            "RescueMid_frame_3_1",
+            "RescueMid_frame_4_-1",
+            "RescueMid_frame_4_1",
+            "RescueMid_frame_5_-1",
+            "RescueMid_frame_5_1",
+            "RescueMid_stringer_-1",
+            "RescueMid_stringer_1",
+            "Rescue_BarRed_-1",
+            "Rescue_BarWhite_-1",
+            "Rescue_BarRed_1",
+            "Rescue_BarWhite_1",
+            "Rescue_BasketRail",
+            "Rescue_Flood_0_mast",
+            "Rescue_Flood_0_hood",
+            "Rescue_Flood_0_lens",
+            "Rescue_Flood_1_mast",
+            "Rescue_Flood_1_hood",
+            "Rescue_Flood_1_lens",
+            "Rescue_Flood_2_mast",
+            "Rescue_Flood_2_hood",
+            "Rescue_Flood_2_lens",
+            "Rescue_Flood_3_mast",
+            "Rescue_Flood_3_hood",
+            "Rescue_Flood_3_lens",
+            "Rescue_PodGlass_0",
+            "Rescue_PodGlass_1"
+          ],
+          "draw_estimate": 6
+        }
+      ],
+      "glb": {
+        "triangles": 5680,
+        "sockets": [
+          "SOCKET_Bay_Front",
+          "SOCKET_Camera_Focus",
+          "SOCKET_Engine_Main",
+          "SOCKET_Hoist_Main",
+          "SOCKET_Trail_Main"
+        ],
+        "lod0Aabb": {
+          "min": [
+            -14.200000762939453,
+            -2.7250001430511475,
+            -3.679999828338623
+          ],
+          "max": [
+            15.09999942779541,
+            4.329999923706055,
+            3.679999828338623
+          ]
+        },
+        "collisionBounds": {
+          "min": [
+            -13.477999687194824,
+            -3.24530029296875,
+            -3.3855998516082764
+          ],
+          "max": [
+            13.477999687194824,
+            3.24530029296875,
+            3.3855998516082764
+          ],
+          "size": [
+            26.95599937438965,
+            6.4906005859375,
+            6.771199703216553
+          ]
+        },
+        "materials": [
+          "Material_Cyan",
+          "Material_Mechanical",
+          "Material_Glass",
+          "Material_Hull",
+          "Material_Warm"
+        ]
+      },
+      "buildSeconds": 5.82
+    },
+    {
+      "id": "volatiles_tanker",
+      "assetId": "SF_WHOLESHIP_VOLATILES_TANKER",
+      "partId": "wholeship_volatiles_tanker",
+      "trafficRole": "tanker",
+      "file": "assets/ships/npc_work_fleet/source/wholeships/volatiles_tanker.glb",
+      "sha256": "a90e32adab253b54dc6de3391a2f91b07228254712e67c0cf4abf242d5478fb3",
+      "bytes": 3590388,
+      "sourceParts": 33,
+      "fictionLengthM": 36.0,
+      "lodStats": [
+        {
+          "lod": "lod0",
+          "decimate_ratio": 1.0,
+          "mesh_count": 6,
+          "triangles": 2972,
+          "meshes": [
+            {
+              "name": "LOD0_Merged_Material_Mechanical",
+              "tris": 1616,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD0_Merged_Material_Hull",
+              "tris": 672,
+              "materials": [
+                "Material_Hull"
+              ]
+            },
+            {
+              "name": "LOD0_Merged_Material_Warm",
+              "tris": 216,
+              "materials": [
+                "Material_Warm"
+              ]
+            },
+            {
+              "name": "LOD0_Merged_Material_Glass",
+              "tris": 108,
+              "materials": [
+                "Material_Glass"
+              ]
+            },
+            {
+              "name": "LOD0_HOOK_DRIVE_FAN",
+              "tris": 240,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD0_HOOK_DRIVE_CORE",
+              "tris": 120,
+              "materials": [
+                "Material_Cyan"
+              ]
+            }
+          ],
+          "removed_close_only": [],
+          "draw_estimate": 6
+        },
+        {
+          "lod": "lod1",
+          "decimate_ratio": 0.42,
+          "mesh_count": 6,
+          "triangles": 820,
+          "meshes": [
+            {
+              "name": "LOD1_Merged_Material_Mechanical",
+              "tris": 370,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD1_Merged_Material_Hull",
+              "tris": 282,
+              "materials": [
+                "Material_Hull"
+              ]
+            },
+            {
+              "name": "LOD1_Merged_Material_Warm",
+              "tris": 14,
+              "materials": [
+                "Material_Warm"
+              ]
+            },
+            {
+              "name": "LOD1_Merged_Material_Glass",
+              "tris": 44,
+              "materials": [
+                "Material_Glass"
+              ]
+            },
+            {
+              "name": "LOD1_HOOK_DRIVE_FAN",
+              "tris": 74,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD1_HOOK_DRIVE_CORE",
+              "tris": 36,
+              "materials": [
+                "Material_Cyan"
+              ]
+            }
+          ],
+          "removed_close_only": [
+            "Tanker_Band_0",
+            "Tanker_Stay_0_-1",
+            "Tanker_Stay_0_1",
+            "Tanker_Band_1",
+            "Tanker_Stay_1_-1",
+            "Tanker_Stay_1_1",
+            "Tanker_Band_2",
+            "Tanker_Stay_2_-1",
+            "Tanker_Stay_2_1",
+            "Tanker_Riser_-8.4",
+            "Tanker_Riser_0.2",
+            "Tanker_Riser_8.8"
+          ],
+          "draw_estimate": 6
+        },
+        {
+          "lod": "lod2",
+          "decimate_ratio": 0.18,
+          "mesh_count": 6,
+          "triangles": 350,
+          "meshes": [
+            {
+              "name": "LOD2_Merged_Material_Mechanical",
+              "tris": 158,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD2_Merged_Material_Hull",
+              "tris": 120,
+              "materials": [
+                "Material_Hull"
+              ]
+            },
+            {
+              "name": "LOD2_Merged_Material_Warm",
+              "tris": 6,
+              "materials": [
+                "Material_Warm"
+              ]
+            },
+            {
+              "name": "LOD2_Merged_Material_Glass",
+              "tris": 18,
+              "materials": [
+                "Material_Glass"
+              ]
+            },
+            {
+              "name": "LOD2_HOOK_DRIVE_FAN",
+              "tris": 32,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD2_HOOK_DRIVE_CORE",
+              "tris": 16,
+              "materials": [
+                "Material_Cyan"
+              ]
+            }
+          ],
+          "removed_close_only": [
+            "Tanker_Band_0",
+            "Tanker_Stay_0_-1",
+            "Tanker_Stay_0_1",
+            "Tanker_Band_1",
+            "Tanker_Stay_1_-1",
+            "Tanker_Stay_1_1",
+            "Tanker_Band_2",
+            "Tanker_Stay_2_-1",
+            "Tanker_Stay_2_1",
+            "Tanker_Riser_-8.4",
+            "Tanker_Riser_0.2",
+            "Tanker_Riser_8.8"
+          ],
+          "draw_estimate": 6
+        }
+      ],
+      "glb": {
+        "triangles": 4154,
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Dorsal",
+          "SOCKET_Coupling_Front",
+          "SOCKET_Engine_Main",
+          "SOCKET_Trail_Main"
+        ],
+        "lod0Aabb": {
+          "min": [
+            -17.600000381469727,
+            -1.0499999523162842,
+            -2.619999885559082
+          ],
+          "max": [
+            17.899999618530273,
+            4.899999618530273,
+            2.619999885559082
+          ]
+        },
+        "collisionBounds": {
+          "min": [
+            -16.329999923706055,
+            -2.736999988555908,
+            -2.410399913787842
+          ],
+          "max": [
+            16.329999923706055,
+            2.736999988555908,
+            2.410399913787842
+          ],
+          "size": [
+            32.65999984741211,
+            5.473999977111816,
+            4.820799827575684
+          ]
+        },
+        "materials": [
+          "Material_Cyan",
+          "Material_Mechanical",
+          "Material_Glass",
+          "Material_Hull",
+          "Material_Warm"
+        ]
+      },
+      "buildSeconds": 5.42
+    },
+    {
+      "id": "prospector_skiff",
+      "assetId": "SF_WHOLESHIP_PROSPECTOR_SKIFF",
+      "partId": "wholeship_prospector_skiff",
+      "trafficRole": "prospector",
+      "file": "assets/ships/npc_work_fleet/source/wholeships/prospector_skiff.glb",
+      "sha256": "df47ce7a606fda30bbd8da7470226cb235954563e91ea3eb102e620bdccf65ba",
+      "bytes": 3549800,
+      "sourceParts": 33,
+      "fictionLengthM": 16.0,
+      "lodStats": [
+        {
+          "lod": "lod0",
+          "decimate_ratio": 1.0,
+          "mesh_count": 7,
+          "triangles": 2636,
+          "meshes": [
+            {
+              "name": "LOD0_Merged_Material_Hull",
+              "tris": 216,
+              "materials": [
+                "Material_Hull"
+              ]
+            },
+            {
+              "name": "LOD0_Merged_Material_Mechanical",
+              "tris": 1792,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD0_Merged_Material_Cyan",
+              "tris": 28,
+              "materials": [
+                "Material_Cyan"
+              ]
+            },
+            {
+              "name": "LOD0_Merged_Material_Warm",
+              "tris": 312,
+              "materials": [
+                "Material_Warm"
+              ]
+            },
+            {
+              "name": "LOD0_Merged_Material_Glass",
+              "tris": 108,
+              "materials": [
+                "Material_Glass"
+              ]
+            },
+            {
+              "name": "LOD0_HOOK_DRIVE_FAN",
+              "tris": 120,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD0_HOOK_DRIVE_CORE",
+              "tris": 60,
+              "materials": [
+                "Material_Cyan"
+              ]
+            }
+          ],
+          "removed_close_only": [],
+          "draw_estimate": 7
+        },
+        {
+          "lod": "lod1",
+          "decimate_ratio": 0.42,
+          "mesh_count": 6,
+          "triangles": 500,
+          "meshes": [
+            {
+              "name": "LOD1_Merged_Material_Hull",
+              "tris": 90,
+              "materials": [
+                "Material_Hull"
+              ]
+            },
+            {
+              "name": "LOD1_Merged_Material_Mechanical",
+              "tris": 252,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD1_Merged_Material_Warm",
+              "tris": 60,
+              "materials": [
+                "Material_Warm"
+              ]
+            },
+            {
+              "name": "LOD1_Merged_Material_Glass",
+              "tris": 44,
+              "materials": [
+                "Material_Glass"
+              ]
+            },
+            {
+              "name": "LOD1_HOOK_DRIVE_FAN",
+              "tris": 36,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD1_HOOK_DRIVE_CORE",
+              "tris": 18,
+              "materials": [
+                "Material_Cyan"
+              ]
+            }
+          ],
+          "removed_close_only": [
+            "SkiffMid_frame_0_-1",
+            "SkiffMid_frame_0_1",
+            "SkiffMid_frame_1_-1",
+            "SkiffMid_frame_1_1",
+            "SkiffMid_frame_2_-1",
+            "SkiffMid_frame_2_1",
+            "SkiffMid_frame_3_-1",
+            "SkiffMid_frame_3_1",
+            "SkiffMid_stringer_-1",
+            "SkiffMid_stringer_1",
+            "Skiff_WandTip",
+            "Skiff_Stake_0",
+            "Skiff_Stake_1",
+            "Skiff_Stake_2",
+            "Skiff_DrumRail",
+            "Skiff_Chevron"
+          ],
+          "draw_estimate": 6
+        },
+        {
+          "lod": "lod2",
+          "decimate_ratio": 0.18,
+          "mesh_count": 6,
+          "triangles": 212,
+          "meshes": [
+            {
+              "name": "LOD2_Merged_Material_Hull",
+              "tris": 38,
+              "materials": [
+                "Material_Hull"
+              ]
+            },
+            {
+              "name": "LOD2_Merged_Material_Mechanical",
+              "tris": 108,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD2_Merged_Material_Warm",
+              "tris": 24,
+              "materials": [
+                "Material_Warm"
+              ]
+            },
+            {
+              "name": "LOD2_Merged_Material_Glass",
+              "tris": 18,
+              "materials": [
+                "Material_Glass"
+              ]
+            },
+            {
+              "name": "LOD2_HOOK_DRIVE_FAN",
+              "tris": 16,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD2_HOOK_DRIVE_CORE",
+              "tris": 8,
+              "materials": [
+                "Material_Cyan"
+              ]
+            }
+          ],
+          "removed_close_only": [
+            "SkiffMid_frame_0_-1",
+            "SkiffMid_frame_0_1",
+            "SkiffMid_frame_1_-1",
+            "SkiffMid_frame_1_1",
+            "SkiffMid_frame_2_-1",
+            "SkiffMid_frame_2_1",
+            "SkiffMid_frame_3_-1",
+            "SkiffMid_frame_3_1",
+            "SkiffMid_stringer_-1",
+            "SkiffMid_stringer_1",
+            "Skiff_WandTip",
+            "Skiff_Stake_0",
+            "Skiff_Stake_1",
+            "Skiff_Stake_2",
+            "Skiff_DrumRail",
+            "Skiff_Chevron"
+          ],
+          "draw_estimate": 6
+        }
+      ],
+      "glb": {
+        "triangles": 3360,
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Engine_Main",
+          "SOCKET_Scan_Pin",
+          "SOCKET_Trail_Main",
+          "SOCKET_Work_Boom"
+        ],
+        "lod0Aabb": {
+          "min": [
+            -7.899999618530273,
+            -1.9494436979293823,
+            -2.6697006225585938
+          ],
+          "max": [
+            9.440000534057617,
+            1.7546072006225586,
+            2.325000047683716
+          ]
+        },
+        "collisionBounds": {
+          "min": [
+            -7.976400375366211,
+            -1.703863501548767,
+            -2.2975621223449707
+          ],
+          "max": [
+            7.976400375366211,
+            1.703863501548767,
+            2.2975621223449707
+          ],
+          "size": [
+            15.952800750732422,
+            3.407727003097534,
+            4.595124244689941
+          ]
+        },
+        "materials": [
+          "Material_Cyan",
+          "Material_Mechanical",
+          "Material_Glass",
+          "Material_Hull",
+          "Material_Warm"
+        ]
+      },
+      "buildSeconds": 5.46
+    },
+    {
+      "id": "scrap_sweeper",
+      "assetId": "SF_WHOLESHIP_SCRAP_SWEEPER",
+      "partId": "wholeship_scrap_sweeper",
+      "trafficRole": "sweeper",
+      "file": "assets/ships/npc_work_fleet/source/wholeships/scrap_sweeper.glb",
+      "sha256": "34b5630482135bc78c794564137ba2ba9376b1b63329894d5b8daf47fda2c325",
+      "bytes": 3606140,
+      "sourceParts": 38,
+      "fictionLengthM": 20.0,
+      "lodStats": [
+        {
+          "lod": "lod0",
+          "decimate_ratio": 1.0,
+          "mesh_count": 6,
+          "triangles": 3520,
+          "meshes": [
+            {
+              "name": "LOD0_Merged_Material_Hull",
+              "tris": 468,
+              "materials": [
+                "Material_Hull"
+              ]
+            },
+            {
+              "name": "LOD0_Merged_Material_Mechanical",
+              "tris": 2296,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD0_Merged_Material_Warm",
+              "tris": 288,
+              "materials": [
+                "Material_Warm"
+              ]
+            },
+            {
+              "name": "LOD0_Merged_Material_Glass",
+              "tris": 108,
+              "materials": [
+                "Material_Glass"
+              ]
+            },
+            {
+              "name": "LOD0_HOOK_DRIVE_FAN",
+              "tris": 240,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD0_HOOK_DRIVE_CORE",
+              "tris": 120,
+              "materials": [
+                "Material_Cyan"
+              ]
+            }
+          ],
+          "removed_close_only": [],
+          "draw_estimate": 6
+        },
+        {
+          "lod": "lod1",
+          "decimate_ratio": 0.42,
+          "mesh_count": 6,
+          "triangles": 678,
+          "meshes": [
+            {
+              "name": "LOD1_Merged_Material_Hull",
+              "tris": 196,
+              "materials": [
+                "Material_Hull"
+              ]
+            },
+            {
+              "name": "LOD1_Merged_Material_Mechanical",
+              "tris": 238,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD1_Merged_Material_Warm",
+              "tris": 90,
+              "materials": [
+                "Material_Warm"
+              ]
+            },
+            {
+              "name": "LOD1_Merged_Material_Glass",
+              "tris": 44,
+              "materials": [
+                "Material_Glass"
+              ]
+            },
+            {
+              "name": "LOD1_HOOK_DRIVE_FAN",
+              "tris": 74,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD1_HOOK_DRIVE_CORE",
+              "tris": 36,
+              "materials": [
+                "Material_Cyan"
+              ]
+            }
+          ],
+          "removed_close_only": [
+            "SweepMid_frame_0_-1",
+            "SweepMid_frame_0_1",
+            "SweepMid_frame_1_-1",
+            "SweepMid_frame_1_1",
+            "SweepMid_frame_2_-1",
+            "SweepMid_frame_2_1",
+            "SweepMid_frame_3_-1",
+            "SweepMid_frame_3_1",
+            "SweepMid_stringer_-1",
+            "SweepMid_stringer_1",
+            "Sweep_Throat",
+            "Sweep_Magnet",
+            "Sweep_Bar_-1_0",
+            "Sweep_Bar_-1_1",
+            "Sweep_Bar_-1_2",
+            "Sweep_Bar_1_0",
+            "Sweep_Bar_1_1",
+            "Sweep_Bar_1_2"
+          ],
+          "draw_estimate": 6
+        },
+        {
+          "lod": "lod2",
+          "decimate_ratio": 0.18,
+          "mesh_count": 6,
+          "triangles": 290,
+          "meshes": [
+            {
+              "name": "LOD2_Merged_Material_Hull",
+              "tris": 84,
+              "materials": [
+                "Material_Hull"
+              ]
+            },
+            {
+              "name": "LOD2_Merged_Material_Mechanical",
+              "tris": 102,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD2_Merged_Material_Warm",
+              "tris": 38,
+              "materials": [
+                "Material_Warm"
+              ]
+            },
+            {
+              "name": "LOD2_Merged_Material_Glass",
+              "tris": 18,
+              "materials": [
+                "Material_Glass"
+              ]
+            },
+            {
+              "name": "LOD2_HOOK_DRIVE_FAN",
+              "tris": 32,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD2_HOOK_DRIVE_CORE",
+              "tris": 16,
+              "materials": [
+                "Material_Cyan"
+              ]
+            }
+          ],
+          "removed_close_only": [
+            "SweepMid_frame_0_-1",
+            "SweepMid_frame_0_1",
+            "SweepMid_frame_1_-1",
+            "SweepMid_frame_1_1",
+            "SweepMid_frame_2_-1",
+            "SweepMid_frame_2_1",
+            "SweepMid_frame_3_-1",
+            "SweepMid_frame_3_1",
+            "SweepMid_stringer_-1",
+            "SweepMid_stringer_1",
+            "Sweep_Throat",
+            "Sweep_Magnet",
+            "Sweep_Bar_-1_0",
+            "Sweep_Bar_-1_1",
+            "Sweep_Bar_-1_2",
+            "Sweep_Bar_1_0",
+            "Sweep_Bar_1_1",
+            "Sweep_Bar_1_2"
+          ],
+          "draw_estimate": 6
+        }
+      ],
+      "glb": {
+        "triangles": 4500,
+        "sockets": [
+          "SOCKET_Bay_Front",
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Aft",
+          "SOCKET_Engine_Main",
+          "SOCKET_Trail_Main"
+        ],
+        "lod0Aabb": {
+          "min": [
+            -9.5,
+            -2.5944864749908447,
+            -3.3821213245391846
+          ],
+          "max": [
+            9.600000381469727,
+            3.5,
+            3.3821213245391846
+          ]
+        },
+        "collisionBounds": {
+          "min": [
+            -8.78600025177002,
+            -2.8034636974334717,
+            -3.1115517616271973
+          ],
+          "max": [
+            8.78600025177002,
+            2.8034636974334717,
+            3.1115517616271973
+          ],
+          "size": [
+            17.57200050354004,
+            5.606927394866943,
+            6.2231035232543945
+          ]
+        },
+        "materials": [
+          "Material_Cyan",
+          "Material_Mechanical",
+          "Material_Glass",
+          "Material_Hull",
+          "Material_Warm"
+        ]
+      },
+      "buildSeconds": 5.34
+    },
+    {
+      "id": "yard_tug",
+      "assetId": "SF_WHOLESHIP_YARD_TUG",
+      "partId": "wholeship_yard_tug",
+      "trafficRole": "tug",
+      "file": "assets/ships/npc_work_fleet/source/wholeships/yard_tug.glb",
+      "sha256": "9fe5c58ff63fac28428aa0aabd4300de6ead454fdd3522002f76e9611de9766e",
+      "bytes": 3549092,
+      "sourceParts": 24,
+      "fictionLengthM": 26.0,
+      "lodStats": [
+        {
+          "lod": "lod0",
+          "decimate_ratio": 1.0,
+          "mesh_count": 6,
+          "triangles": 2240,
+          "meshes": [
+            {
+              "name": "LOD0_Merged_Material_Hull",
+              "tris": 324,
+              "materials": [
+                "Material_Hull"
+              ]
+            },
+            {
+              "name": "LOD0_Merged_Material_Mechanical",
+              "tris": 908,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD0_Merged_Material_Warm",
+              "tris": 540,
+              "materials": [
+                "Material_Warm"
+              ]
+            },
+            {
+              "name": "LOD0_Merged_Material_Glass",
+              "tris": 108,
+              "materials": [
+                "Material_Glass"
+              ]
+            },
+            {
+              "name": "LOD0_HOOK_DRIVE_FAN",
+              "tris": 240,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD0_HOOK_DRIVE_CORE",
+              "tris": 120,
+              "materials": [
+                "Material_Cyan"
+              ]
+            }
+          ],
+          "removed_close_only": [],
+          "draw_estimate": 6
+        },
+        {
+          "lod": "lod1",
+          "decimate_ratio": 0.42,
+          "mesh_count": 6,
+          "triangles": 760,
+          "meshes": [
+            {
+              "name": "LOD1_Merged_Material_Hull",
+              "tris": 136,
+              "materials": [
+                "Material_Hull"
+              ]
+            },
+            {
+              "name": "LOD1_Merged_Material_Mechanical",
+              "tris": 380,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD1_Merged_Material_Warm",
+              "tris": 90,
+              "materials": [
+                "Material_Warm"
+              ]
+            },
+            {
+              "name": "LOD1_Merged_Material_Glass",
+              "tris": 44,
+              "materials": [
+                "Material_Glass"
+              ]
+            },
+            {
+              "name": "LOD1_HOOK_DRIVE_FAN",
+              "tris": 74,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD1_HOOK_DRIVE_CORE",
+              "tris": 36,
+              "materials": [
+                "Material_Cyan"
+              ]
+            }
+          ],
+          "removed_close_only": [
+            "Tug_Shoe_-1",
+            "Tug_Shoe_1",
+            "Tug_CapPlate"
+          ],
+          "draw_estimate": 6
+        },
+        {
+          "lod": "lod2",
+          "decimate_ratio": 0.18,
+          "mesh_count": 6,
+          "triangles": 324,
+          "meshes": [
+            {
+              "name": "LOD2_Merged_Material_Hull",
+              "tris": 58,
+              "materials": [
+                "Material_Hull"
+              ]
+            },
+            {
+              "name": "LOD2_Merged_Material_Mechanical",
+              "tris": 162,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD2_Merged_Material_Warm",
+              "tris": 38,
+              "materials": [
+                "Material_Warm"
+              ]
+            },
+            {
+              "name": "LOD2_Merged_Material_Glass",
+              "tris": 18,
+              "materials": [
+                "Material_Glass"
+              ]
+            },
+            {
+              "name": "LOD2_HOOK_DRIVE_FAN",
+              "tris": 32,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD2_HOOK_DRIVE_CORE",
+              "tris": 16,
+              "materials": [
+                "Material_Cyan"
+              ]
+            }
+          ],
+          "removed_close_only": [
+            "Tug_Shoe_-1",
+            "Tug_Shoe_1",
+            "Tug_CapPlate"
+          ],
+          "draw_estimate": 6
+        }
+      ],
+      "glb": {
+        "triangles": 3336,
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Engine_Main",
+          "SOCKET_Push_Front",
+          "SOCKET_Trail_Main",
+          "SOCKET_Utility_Dorsal"
+        ],
+        "lod0Aabb": {
+          "min": [
+            -12,
+            -1.100000023841858,
+            -3.8000001907348633
+          ],
+          "max": [
+            12.399999618530273,
+            4.900000095367432,
+            3.8000001907348633
+          ]
+        },
+        "collisionBounds": {
+          "min": [
+            -11.223999977111816,
+            -2.759999990463257,
+            -3.496000289916992
+          ],
+          "max": [
+            11.223999977111816,
+            2.759999990463257,
+            3.496000289916992
+          ],
+          "size": [
+            22.447999954223633,
+            5.519999980926514,
+            6.992000579833984
+          ]
+        },
+        "materials": [
+          "Material_Cyan",
+          "Material_Mechanical",
+          "Material_Glass",
+          "Material_Hull",
+          "Material_Warm"
+        ]
+      },
+      "buildSeconds": 4.93
+    },
+    {
+      "id": "inspection_cutter",
+      "assetId": "SF_WHOLESHIP_INSPECTION_CUTTER",
+      "partId": "wholeship_inspection_cutter",
+      "trafficRole": "customs",
+      "file": "assets/ships/npc_work_fleet/source/wholeships/inspection_cutter.glb",
+      "sha256": "ec45f283a4e17a9a07b1826a39dffc6a49e6f130e9b61238b6cce6625ef1d30e",
+      "bytes": 3585160,
+      "sourceParts": 34,
+      "fictionLengthM": 24.0,
+      "lodStats": [
+        {
+          "lod": "lod0",
+          "decimate_ratio": 1.0,
+          "mesh_count": 7,
+          "triangles": 3320,
+          "meshes": [
+            {
+              "name": "LOD0_Merged_Material_Hull",
+              "tris": 432,
+              "materials": [
+                "Material_Hull"
+              ]
+            },
+            {
+              "name": "LOD0_Merged_Material_Mechanical",
+              "tris": 1772,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD0_Merged_Material_Cyan",
+              "tris": 432,
+              "materials": [
+                "Material_Cyan"
+              ]
+            },
+            {
+              "name": "LOD0_Merged_Material_Warm",
+              "tris": 216,
+              "materials": [
+                "Material_Warm"
+              ]
+            },
+            {
+              "name": "LOD0_Merged_Material_Glass",
+              "tris": 108,
+              "materials": [
+                "Material_Glass"
+              ]
+            },
+            {
+              "name": "LOD0_HOOK_DRIVE_FAN",
+              "tris": 240,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD0_HOOK_DRIVE_CORE",
+              "tris": 120,
+              "materials": [
+                "Material_Cyan"
+              ]
+            }
+          ],
+          "removed_close_only": [],
+          "draw_estimate": 7
+        },
+        {
+          "lod": "lod1",
+          "decimate_ratio": 0.42,
+          "mesh_count": 6,
+          "triangles": 578,
+          "meshes": [
+            {
+              "name": "LOD1_Merged_Material_Hull",
+              "tris": 180,
+              "materials": [
+                "Material_Hull"
+              ]
+            },
+            {
+              "name": "LOD1_Merged_Material_Mechanical",
+              "tris": 108,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD1_Merged_Material_Cyan",
+              "tris": 136,
+              "materials": [
+                "Material_Cyan"
+              ]
+            },
+            {
+              "name": "LOD1_Merged_Material_Glass",
+              "tris": 44,
+              "materials": [
+                "Material_Glass"
+              ]
+            },
+            {
+              "name": "LOD1_HOOK_DRIVE_FAN",
+              "tris": 74,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD1_HOOK_DRIVE_CORE",
+              "tris": 36,
+              "materials": [
+                "Material_Cyan"
+              ]
+            }
+          ],
+          "removed_close_only": [
+            "CutLawMid_frame_0_-1",
+            "CutLawMid_frame_0_1",
+            "CutLawMid_frame_1_-1",
+            "CutLawMid_frame_1_1",
+            "CutLawMid_frame_2_-1",
+            "CutLawMid_frame_2_1",
+            "CutLawMid_frame_3_-1",
+            "CutLawMid_frame_3_1",
+            "CutLawMid_frame_4_-1",
+            "CutLawMid_frame_4_1",
+            "CutLawMid_stringer_-1",
+            "CutLawMid_stringer_1",
+            "CutLaw_FinArray",
+            "CutLaw_Fairing_-1",
+            "CutLaw_Plate_-1",
+            "CutLaw_Fairing_1",
+            "CutLaw_Plate_1"
+          ],
+          "draw_estimate": 6
+        },
+        {
+          "lod": "lod2",
+          "decimate_ratio": 0.18,
+          "mesh_count": 6,
+          "triangles": 246,
+          "meshes": [
+            {
+              "name": "LOD2_Merged_Material_Hull",
+              "tris": 76,
+              "materials": [
+                "Material_Hull"
+              ]
+            },
+            {
+              "name": "LOD2_Merged_Material_Mechanical",
+              "tris": 46,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD2_Merged_Material_Cyan",
+              "tris": 58,
+              "materials": [
+                "Material_Cyan"
+              ]
+            },
+            {
+              "name": "LOD2_Merged_Material_Glass",
+              "tris": 18,
+              "materials": [
+                "Material_Glass"
+              ]
+            },
+            {
+              "name": "LOD2_HOOK_DRIVE_FAN",
+              "tris": 32,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD2_HOOK_DRIVE_CORE",
+              "tris": 16,
+              "materials": [
+                "Material_Cyan"
+              ]
+            }
+          ],
+          "removed_close_only": [
+            "CutLawMid_frame_0_-1",
+            "CutLawMid_frame_0_1",
+            "CutLawMid_frame_1_-1",
+            "CutLawMid_frame_1_1",
+            "CutLawMid_frame_2_-1",
+            "CutLawMid_frame_2_1",
+            "CutLawMid_frame_3_-1",
+            "CutLawMid_frame_3_1",
+            "CutLawMid_frame_4_-1",
+            "CutLawMid_frame_4_1",
+            "CutLawMid_stringer_-1",
+            "CutLawMid_stringer_1",
+            "CutLaw_FinArray",
+            "CutLaw_Fairing_-1",
+            "CutLaw_Plate_-1",
+            "CutLaw_Fairing_1",
+            "CutLaw_Plate_1"
+          ],
+          "draw_estimate": 6
+        }
+      ],
+      "glb": {
+        "triangles": 4156,
+        "sockets": [
+          "SOCKET_Camera_Focus",
+          "SOCKET_Engine_Main",
+          "SOCKET_Inspection_Front",
+          "SOCKET_Sensor_Dorsal",
+          "SOCKET_Trail_Main"
+        ],
+        "lod0Aabb": {
+          "min": [
+            -11.699999809265137,
+            -2.0999999046325684,
+            -2.924999952316284
+          ],
+          "max": [
+            11.199999809265137,
+            3.549999952316284,
+            2.924999952316284
+          ]
+        },
+        "collisionBounds": {
+          "min": [
+            -10.534000396728516,
+            -2.5989999771118164,
+            -2.690999984741211
+          ],
+          "max": [
+            10.534000396728516,
+            2.5989999771118164,
+            2.690999984741211
+          ],
+          "size": [
+            21.06800079345703,
+            5.197999954223633,
+            5.381999969482422
+          ]
+        },
+        "materials": [
+          "Material_Cyan",
+          "Material_Mechanical",
+          "Material_Glass",
+          "Material_Hull",
+          "Material_Warm"
+        ]
+      },
+      "buildSeconds": 5.37
+    },
+    {
+      "id": "apron_shuttle",
+      "assetId": "SF_WHOLESHIP_APRON_SHUTTLE",
+      "partId": "wholeship_apron_shuttle",
+      "trafficRole": "shuttle",
+      "file": "assets/ships/npc_work_fleet/source/wholeships/apron_shuttle.glb",
+      "sha256": "6f250e104831c0b1d003f8449a0976b373f5b0505fac92176d88cc982319556b",
+      "bytes": 3568092,
+      "sourceParts": 34,
+      "fictionLengthM": 18.0,
+      "lodStats": [
+        {
+          "lod": "lod0",
+          "decimate_ratio": 1.0,
+          "mesh_count": 6,
+          "triangles": 3456,
+          "meshes": [
+            {
+              "name": "LOD0_Merged_Material_Hull",
+              "tris": 488,
+              "materials": [
+                "Material_Hull"
+              ]
+            },
+            {
+              "name": "LOD0_Merged_Material_Mechanical",
+              "tris": 1556,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD0_Merged_Material_Glass",
+              "tris": 1188,
+              "materials": [
+                "Material_Glass"
+              ]
+            },
+            {
+              "name": "LOD0_Merged_Material_Warm",
+              "tris": 44,
+              "materials": [
+                "Material_Warm"
+              ]
+            },
+            {
+              "name": "LOD0_HOOK_DRIVE_FAN",
+              "tris": 120,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD0_HOOK_DRIVE_CORE",
+              "tris": 60,
+              "materials": [
+                "Material_Cyan"
+              ]
+            }
+          ],
+          "removed_close_only": [],
+          "draw_estimate": 6
+        },
+        {
+          "lod": "lod1",
+          "decimate_ratio": 0.42,
+          "mesh_count": 5,
+          "triangles": 410,
+          "meshes": [
+            {
+              "name": "LOD1_Merged_Material_Hull",
+              "tris": 204,
+              "materials": [
+                "Material_Hull"
+              ]
+            },
+            {
+              "name": "LOD1_Merged_Material_Mechanical",
+              "tris": 108,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD1_Merged_Material_Glass",
+              "tris": 44,
+              "materials": [
+                "Material_Glass"
+              ]
+            },
+            {
+              "name": "LOD1_HOOK_DRIVE_FAN",
+              "tris": 36,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD1_HOOK_DRIVE_CORE",
+              "tris": 18,
+              "materials": [
+                "Material_Cyan"
+              ]
+            }
+          ],
+          "removed_close_only": [
+            "ShuttleMid_frame_0_-1",
+            "ShuttleMid_frame_0_1",
+            "ShuttleMid_frame_1_-1",
+            "ShuttleMid_frame_1_1",
+            "ShuttleMid_frame_2_-1",
+            "ShuttleMid_frame_2_1",
+            "ShuttleMid_frame_3_-1",
+            "ShuttleMid_frame_3_1",
+            "ShuttleMid_frame_4_-1",
+            "ShuttleMid_frame_4_1",
+            "ShuttleMid_stringer_-1",
+            "ShuttleMid_stringer_1",
+            "Shuttle_Window_0",
+            "Shuttle_WindowP_0",
+            "Shuttle_Window_1",
+            "Shuttle_WindowP_1",
+            "Shuttle_Window_2",
+            "Shuttle_WindowP_2",
+            "Shuttle_Window_3",
+            "Shuttle_WindowP_3",
+            "Shuttle_Window_4",
+            "Shuttle_WindowP_4",
+            "Shuttle_CollarPad"
+          ],
+          "draw_estimate": 5
+        },
+        {
+          "lod": "lod2",
+          "decimate_ratio": 0.18,
+          "mesh_count": 5,
+          "triangles": 174,
+          "meshes": [
+            {
+              "name": "LOD2_Merged_Material_Hull",
+              "tris": 86,
+              "materials": [
+                "Material_Hull"
+              ]
+            },
+            {
+              "name": "LOD2_Merged_Material_Mechanical",
+              "tris": 46,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD2_Merged_Material_Glass",
+              "tris": 18,
+              "materials": [
+                "Material_Glass"
+              ]
+            },
+            {
+              "name": "LOD2_HOOK_DRIVE_FAN",
+              "tris": 16,
+              "materials": [
+                "Material_Mechanical"
+              ]
+            },
+            {
+              "name": "LOD2_HOOK_DRIVE_CORE",
+              "tris": 8,
+              "materials": [
+                "Material_Cyan"
+              ]
+            }
+          ],
+          "removed_close_only": [
+            "ShuttleMid_frame_0_-1",
+            "ShuttleMid_frame_0_1",
+            "ShuttleMid_frame_1_-1",
+            "ShuttleMid_frame_1_1",
+            "ShuttleMid_frame_2_-1",
+            "ShuttleMid_frame_2_1",
+            "ShuttleMid_frame_3_-1",
+            "ShuttleMid_frame_3_1",
+            "ShuttleMid_frame_4_-1",
+            "ShuttleMid_frame_4_1",
+            "ShuttleMid_stringer_-1",
+            "ShuttleMid_stringer_1",
+            "Shuttle_Window_0",
+            "Shuttle_WindowP_0",
+            "Shuttle_Window_1",
+            "Shuttle_WindowP_1",
+            "Shuttle_Window_2",
+            "Shuttle_WindowP_2",
+            "Shuttle_Window_3",
+            "Shuttle_WindowP_3",
+            "Shuttle_Window_4",
+            "Shuttle_WindowP_4",
+            "Shuttle_CollarPad"
+          ],
+          "draw_estimate": 5
+        }
+      ],
+      "glb": {
+        "triangles": 4052,
+        "sockets": [
+          "SOCKET_Bay_Front",
+          "SOCKET_Camera_Focus",
+          "SOCKET_Cargo_Ventral",
+          "SOCKET_Engine_Main",
+          "SOCKET_Trail_Main"
+        ],
+        "lod0Aabb": {
+          "min": [
+            -9.300000190734863,
+            -2.2249999046325684,
+            -2.1599998474121094
+          ],
+          "max": [
+            8.699999809265137,
+            1.7470378875732422,
+            2.1599998474121094
+          ]
+        },
+        "collisionBounds": {
+          "min": [
+            -8.279999732971191,
+            -1.8271374702453613,
+            -1.9871999025344849
+          ],
+          "max": [
+            8.279999732971191,
+            1.8271374702453613,
+            1.9871999025344849
+          ],
+          "size": [
+            16.559999465942383,
+            3.6542749404907227,
+            3.9743998050689697
+          ]
+        },
+        "materials": [
+          "Material_Cyan",
+          "Material_Mechanical",
+          "Material_Glass",
+          "Material_Hull",
+          "Material_Warm"
+        ]
+      },
+      "buildSeconds": 4.95
     }
   ]
 }

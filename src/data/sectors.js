@@ -121,7 +121,7 @@ const CORE_SECTORS = [
     hazards: [ { type: 'dense_asteroid', center: { x: 600, z: -400 }, radius: 700, intensity: 0.5 } ],
     pois: [
       { id: 'poi_driller', type: 'derelict', name: 'Abandoned Driller' },
-      { id: 'poi_survey',  type: 'cache',    name: 'Survey Cache' },
+      { id: 'poi_survey',  type: 'cache',    name: 'Survey Sensor Mast' },
       {
         id: 'poi_ceres_throughline',
         type: 'beacon',
@@ -158,8 +158,8 @@ const CORE_SECTORS = [
         factionId: 'faction_quiet', requiresActiveScan: true, scannerSignalKind: 'ambush',
         manualInvestigation: true,
       },
-      { id: 'poi_tethys_weigh', type: 'beacon', name: 'Weigh-Slip Buoy', factionId: 'faction_mts' },
-      { id: 'poi_tethys_customs_log', type: 'beacon', name: 'Customs Log Relay', factionId: 'faction_scn' },
+      { id: 'poi_tethys_weigh', type: 'beacon', name: 'Weigh-Slip Gate', factionId: 'faction_mts' },
+      { id: 'poi_tethys_customs_log', type: 'beacon', name: 'Customs Sensor Mast', factionId: 'faction_scn' },
     ],
   },
   {

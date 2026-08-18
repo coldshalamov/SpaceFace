@@ -268,6 +268,16 @@ const TRAFFIC_ROLES = {
   // and settles it through freight/economy ownership.
   ore_carrier: { ship: 'ship_ironback', team: 2, speed: 22, archetype: 'fleeing_trader', weight: 4,
               label: 'Ore Barge', docks: true, trades: true, seeks: 'asteroid' },
+  tanker:     { ship: 'ship_atlas',    team: 2, speed: 24, archetype: 'fleeing_trader', weight: 5,
+              label: 'Volatiles Tanker', docks: true, trades: true },
+  prospector: { ship: 'ship_pelican',  team: 2, speed: 38, archetype: 'fleeing_trader', weight: 7,
+              label: 'Prospector Skiff', docks: true, trades: true, seeks: 'asteroid' },
+  sweeper:    { ship: 'ship_pelican',  team: 2, speed: 28, archetype: 'fleeing_trader', weight: 2,
+              label: 'Scrap Sweeper', docks: true, trades: true },
+  tug:        { ship: 'ship_mule',     team: 2, speed: 20, archetype: 'passive', weight: 4,
+              label: 'Yard Tug', docks: true, trades: false },
+  shuttle:    { ship: 'ship_drifter',  team: 2, speed: 42, archetype: 'fleeing_trader', weight: 3,
+              label: 'Apron Shuttle', docks: true, trades: false },
 };
 
 // Exported for the PQ-045 identity contract test (distinct hull + label per occupational role);
@@ -285,6 +295,11 @@ const HEAVE_TO_COMPLIANT_ROLES = new Set([
   'salvor',
   'tender',
   'ore_carrier',
+  'tanker',
+  'prospector',
+  'sweeper',
+  'tug',
+  'shuttle',
   'patrol',
   'escort',
 ]);
@@ -800,7 +815,10 @@ export function trafficRoleMixForSector(sector, state = null) {
   // Industrial (mining/refinery) sectors: more miners + haulers. The ore barge plies the same
   // declared extraction economy (it is the heavy logistics end of the miner's trade, not a
   // contents-derived read — a sector that merely HAS rocks does not attract bulk carriers).
-  if (sec.industries && (sec.industries.mining || sec.industries.refinery)) { out.miner *= 2.5; out.hauler *= 1.5; out.ore_carrier *= 2.5; }
+  if (sec.industries && (sec.industries.mining || sec.industries.refinery)) {
+    out.miner *= 2.5; out.hauler *= 1.5; out.ore_carrier *= 2.5;
+    out.tanker *= 2.0; out.prospector *= 1.4;
+  }
   // A sector with authored ROCK is a sector somebody cuts, whether or not an `industries` flag was
   // ever set on it. Read the contents, not only the label.
   //
@@ -816,6 +834,7 @@ export function trafficRoleMixForSector(sector, state = null) {
   // declared mining economy should still out-mine a core sector that merely happens to have rocks.
   else if (Array.isArray(sec.fields) && sec.fields.some((f) => f && (f.count | 0) > 0)) {
     out.miner *= 1.7;
+    out.prospector *= 1.7;
   }
   // Hostile/danger sectors: more suspicious raiders, fewer civilians.
   const threat = sec.threat || sec.danger;
@@ -834,6 +853,13 @@ export function trafficRoleMixForSector(sector, state = null) {
     out.hauler *= 1.4;
     out.courier *= 1.2;
     out.patrol *= 1.6;
+    // New occupational hulls stay off the first-hour Helios mix so the starter
+    // golden stream is unchanged; they appear in industrial / ordinary sectors.
+    out.tanker = 0;
+    out.prospector = 0;
+    out.sweeper = 0;
+    out.tug = 0;
+    out.shuttle = 0;
   }
   // Call-time gate: headless/golden and explicit flag-off sessions retain the exact prior role mix.
   if (!massline2Flag('hitchhiking')) out.express = 0;

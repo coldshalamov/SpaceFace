@@ -30,6 +30,12 @@ const FAMILIES = Object.freeze([
   Object.freeze({ role: 'tender', label: 'Repair Tender', file: 'wholeships/repair_tender.glb', assetId: 'SF_WHOLESHIP_REPAIR_TENDER', ship: 'ship_drifter' }),
   Object.freeze({ role: 'salvor', label: 'Salvage Cutter', file: 'wholeships/salvage_cutter.glb', assetId: 'SF_WHOLESHIP_SALVAGE_CUTTER', ship: 'ship_pelican' }),
   Object.freeze({ role: 'surveyor', label: 'Survey Rig', file: 'wholeships/survey_pin.glb', assetId: 'SF_WHOLESHIP_SURVEY_PIN', ship: 'ship_ranger' }),
+  Object.freeze({ role: 'rescue', label: 'Rescue Craft', file: 'wholeships/rescue_lifter.glb', assetId: 'SF_WHOLESHIP_RESCUE_LIFTER', ship: 'ship_drifter' }),
+  Object.freeze({ role: 'tanker', label: 'Volatiles Tanker', file: 'wholeships/volatiles_tanker.glb', assetId: 'SF_WHOLESHIP_VOLATILES_TANKER', ship: 'ship_atlas' }),
+  Object.freeze({ role: 'prospector', label: 'Prospector Skiff', file: 'wholeships/prospector_skiff.glb', assetId: 'SF_WHOLESHIP_PROSPECTOR_SKIFF', ship: 'ship_pelican' }),
+  Object.freeze({ role: 'sweeper', label: 'Scrap Sweeper', file: 'wholeships/scrap_sweeper.glb', assetId: 'SF_WHOLESHIP_SCRAP_SWEEPER', ship: 'ship_pelican' }),
+  Object.freeze({ role: 'tug', label: 'Yard Tug', file: 'wholeships/yard_tug.glb', assetId: 'SF_WHOLESHIP_YARD_TUG', ship: 'ship_mule' }),
+  Object.freeze({ role: 'shuttle', label: 'Apron Shuttle', file: 'wholeships/apron_shuttle.glb', assetId: 'SF_WHOLESHIP_APRON_SHUTTLE', ship: 'ship_drifter' }),
 ]);
 
 function readGlbAssetId(path) {

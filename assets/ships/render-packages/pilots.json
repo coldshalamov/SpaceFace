@@ -1568,6 +1568,125 @@
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/maintenance-gantry",
       "metadataUrl": "assets/ships/release/render-packages/maintenance-gantry/render-package.json"
+    },
+    {
+      "key": "rescue-lifter",
+      "assetId": "sf.render.rescue-lifter",
+      "runtimeAssetId": "SF_WHOLESHIP_RESCUE_LIFTER",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_rescue_lifter",
+      "sourceUrl": "assets/ships/release/parts/wholeships/rescue_lifter.glb",
+      "releaseSha256": "9fc0f41bafcbc234facf5e45d3a4b719adf7645de3fb81d009b4f677e6b4e632",
+      "releaseBytes": 2686484,
+      "rootNode": "SF_NPCWORK_RESCUE_LIFTER_ROOT",
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE"
+      ],
+      "outputDir": "assets/ships/release/render-packages/rescue-lifter",
+      "metadataUrl": "assets/ships/release/render-packages/rescue-lifter/render-package.json"
+    },
+    {
+      "key": "volatiles-tanker",
+      "assetId": "sf.render.volatiles-tanker",
+      "runtimeAssetId": "SF_WHOLESHIP_VOLATILES_TANKER",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_volatiles_tanker",
+      "sourceUrl": "assets/ships/release/parts/wholeships/volatiles_tanker.glb",
+      "releaseSha256": "7e7e905132c5f6c114eceed630f6e9c14d32610e374f56413b559b168bc32a29",
+      "releaseBytes": 2670824,
+      "rootNode": "SF_NPCWORK_VOLATILES_TANKER_ROOT",
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE"
+      ],
+      "outputDir": "assets/ships/release/render-packages/volatiles-tanker",
+      "metadataUrl": "assets/ships/release/render-packages/volatiles-tanker/render-package.json"
+    },
+    {
+      "key": "prospector-skiff",
+      "assetId": "sf.render.prospector-skiff",
+      "runtimeAssetId": "SF_WHOLESHIP_PROSPECTOR_SKIFF",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_prospector_skiff",
+      "sourceUrl": "assets/ships/release/parts/wholeships/prospector_skiff.glb",
+      "releaseSha256": "2ca6bd3fab779e660f53fb8f788122bb52a3cbb82391204e5cad66ad5d42468b",
+      "releaseBytes": 2661760,
+      "rootNode": "SF_NPCWORK_PROSPECTOR_SKIFF_ROOT",
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE"
+      ],
+      "outputDir": "assets/ships/release/render-packages/prospector-skiff",
+      "metadataUrl": "assets/ships/release/render-packages/prospector-skiff/render-package.json"
+    },
+    {
+      "key": "scrap-sweeper",
+      "assetId": "sf.render.scrap-sweeper",
+      "runtimeAssetId": "SF_WHOLESHIP_SCRAP_SWEEPER",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_scrap_sweeper",
+      "sourceUrl": "assets/ships/release/parts/wholeships/scrap_sweeper.glb",
+      "releaseSha256": "717833e1250ed6950846c32366a06267b7b2c64b84244abfd409899884a6f51b",
+      "releaseBytes": 2672920,
+      "rootNode": "SF_NPCWORK_SCRAP_SWEEPER_ROOT",
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE"
+      ],
+      "outputDir": "assets/ships/release/render-packages/scrap-sweeper",
+      "metadataUrl": "assets/ships/release/render-packages/scrap-sweeper/render-package.json"
+    },
+    {
+      "key": "yard-tug",
+      "assetId": "sf.render.yard-tug",
+      "runtimeAssetId": "SF_WHOLESHIP_YARD_TUG",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_yard_tug",
+      "sourceUrl": "assets/ships/release/parts/wholeships/yard_tug.glb",
+      "releaseSha256": "3eb9d11172a6ba04a017d8ddc9bbf1ff35f37dcc293a9dfd865783afb8893f45",
+      "releaseBytes": 2660528,
+      "rootNode": "SF_NPCWORK_YARD_TUG_ROOT",
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE"
+      ],
+      "outputDir": "assets/ships/release/render-packages/yard-tug",
+      "metadataUrl": "assets/ships/release/render-packages/yard-tug/render-package.json"
+    },
+    {
+      "key": "inspection-cutter",
+      "assetId": "sf.render.inspection-cutter",
+      "runtimeAssetId": "SF_WHOLESHIP_INSPECTION_CUTTER",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_inspection_cutter",
+      "sourceUrl": "assets/ships/release/parts/wholeships/inspection_cutter.glb",
+      "releaseSha256": "509cb3660deee8ad8c649d86e34fd83d3c89e7b93f4f1a51d46a688d610622aa",
+      "releaseBytes": 2669800,
+      "rootNode": "SF_NPCWORK_INSPECTION_CUTTER_ROOT",
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE"
+      ],
+      "outputDir": "assets/ships/release/render-packages/inspection-cutter",
+      "metadataUrl": "assets/ships/release/render-packages/inspection-cutter/render-package.json"
+    },
+    {
+      "key": "apron-shuttle",
+      "assetId": "sf.render.apron-shuttle",
+      "runtimeAssetId": "SF_WHOLESHIP_APRON_SHUTTLE",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_apron_shuttle",
+      "sourceUrl": "assets/ships/release/parts/wholeships/apron_shuttle.glb",
+      "releaseSha256": "cb770e46a9115973b43f699b08d843de024fcfb5bfa8291ae91e94499e84c5a2",
+      "releaseBytes": 2659432,
+      "rootNode": "SF_NPCWORK_APRON_SHUTTLE_ROOT",
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE"
+      ],
+      "outputDir": "assets/ships/release/render-packages/apron-shuttle",
+      "metadataUrl": "assets/ships/release/render-packages/apron-shuttle/render-package.json"
     }
   ]
 }

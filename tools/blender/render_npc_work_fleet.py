@@ -31,6 +31,13 @@ SHIP_IDS = {
     'repair_tender': 'repair_tender',
     'salvage_cutter': 'salvage_cutter',
     'survey_pin': 'survey_pin',
+    'rescue_lifter': 'rescue_lifter',
+    'volatiles_tanker': 'volatiles_tanker',
+    'prospector_skiff': 'prospector_skiff',
+    'scrap_sweeper': 'scrap_sweeper',
+    'yard_tug': 'yard_tug',
+    'inspection_cutter': 'inspection_cutter',
+    'apron_shuttle': 'apron_shuttle',
 }
 
 

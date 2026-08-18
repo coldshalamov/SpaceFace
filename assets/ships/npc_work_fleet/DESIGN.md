@@ -15,6 +15,13 @@ the LODs the donors lacked. Nothing is copied from donor geometry.
 | `repair_tender` | `tender` | `ship_drifter` | Repair Tender | ambient mix + Ceres refinery cast slot |
 | `salvage_cutter` | `salvor` | `ship_pelican` | Salvage Cutter | ambient mix + Ceres cathedral cast slot |
 | `survey_pin` | `surveyor` | `ship_ranger` | Survey Rig | ambient mix + Ceres seam cast slot |
+| `rescue_lifter` | `rescue` (existing) | `ship_drifter` | Rescue Craft | ambient mix; replaces the unmarked Drifter stand-in |
+| `volatiles_tanker` | `tanker` (NEW) | `ship_atlas` | Volatiles Tanker | ambient mix; boosted in mining/refinery. Never `hauler`. |
+| `prospector_skiff` | `prospector` (NEW) | `ship_pelican` | Prospector Skiff | ambient mix; boosted on rock sectors. Never `miner`. |
+| `scrap_sweeper` | `sweeper` (NEW) | `ship_pelican` | Scrap Sweeper | rare ambient civic cleanup |
+| `yard_tug` | `tug` (NEW) | `ship_mule` | Yard Tug | high-security apron traffic |
+| `inspection_cutter` | enemy `customs_cutter` | `ship_hornet` stats | Customs Cutter | hostile presentation map only; patrol stays Wasp |
+| `apron_shuttle` | `shuttle` (NEW) | `ship_drifter` | Apron Shuttle | short berth-to-site people boat. Not `express`. |
 
 `customs_cutter` is deliberately excluded (its id collides with a live hostile
 encounter archetype). The ore barge is NOT wired under `hauler`: `hauler` is the

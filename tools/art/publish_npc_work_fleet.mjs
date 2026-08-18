@@ -36,6 +36,13 @@ const SHIPS = Object.freeze([
   Object.freeze({ id: 'repair_tender', title: 'Repair Tender', trafficRole: 'tender', role: 'civilian_repair_tender' }),
   Object.freeze({ id: 'salvage_cutter', title: 'Salvage Cutter', trafficRole: 'salvor', role: 'civilian_salvage_cutter' }),
   Object.freeze({ id: 'survey_pin', title: 'Survey Pin', trafficRole: 'surveyor', role: 'civilian_survey_pin' }),
+  Object.freeze({ id: 'rescue_lifter', title: 'Rescue Lifter', trafficRole: 'rescue', role: 'civilian_rescue_lifter' }),
+  Object.freeze({ id: 'volatiles_tanker', title: 'Volatiles Tanker', trafficRole: 'tanker', role: 'civilian_volatiles_tanker' }),
+  Object.freeze({ id: 'prospector_skiff', title: 'Prospector Skiff', trafficRole: 'prospector', role: 'civilian_prospector_skiff' }),
+  Object.freeze({ id: 'scrap_sweeper', title: 'Scrap Sweeper', trafficRole: 'sweeper', role: 'civilian_scrap_sweeper' }),
+  Object.freeze({ id: 'yard_tug', title: 'Yard Tug', trafficRole: 'tug', role: 'civilian_yard_tug' }),
+  Object.freeze({ id: 'inspection_cutter', title: 'Inspection Cutter', trafficRole: 'customs', role: 'law_inspection_cutter' }),
+  Object.freeze({ id: 'apron_shuttle', title: 'Apron Shuttle', trafficRole: 'shuttle', role: 'civilian_apron_shuttle' }),
 ]);
 
 function json(path) { return JSON.parse(readFileSync(path, 'utf8')); }
@@ -137,8 +144,16 @@ if (!Array.isArray(manifest.parts) || !manifest.runtimeSlots || !Array.isArray(m
   throw new Error('parts manifest shape is not compatible with NPC work fleet publication');
 }
 
+const onlyArg = process.argv.includes('--only')
+  ? String(process.argv[process.argv.indexOf('--only') + 1] || '').split(',').map((s) => s.trim()).filter(Boolean)
+  : null;
+const selected = onlyArg ? SHIPS.filter((ship) => onlyArg.includes(ship.id)) : SHIPS;
+if (onlyArg && selected.length !== onlyArg.length) {
+  throw new Error(`unknown --only id; expected one of ${SHIPS.map((s) => s.id).join(',')}`);
+}
+
 const promoted = [];
-for (const ship of SHIPS) {
+for (const ship of selected) {
   const source = resolve(FAMILY, 'source/wholeships', `${ship.id}.glb`);
   const report = reportById.get(ship.id);
   if (!existsSync(source) || !report) throw new Error(`${ship.id}: source GLB or build report row missing`);

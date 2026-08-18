@@ -182,6 +182,125 @@ SHIP_SPECS: dict[str, dict[str, Any]] = {
             ('SOCKET_Camera_Focus', (0.0, 0.6, 0.0), 'camera', [1.0, 0.0, 0.0]),
         ],
     },
+    'rescue_lifter': {
+        'id': 'rescue_lifter',
+        'assetId': 'SF_WHOLESHIP_RESCUE_LIFTER',
+        'partId': 'wholeship_rescue_lifter',
+        'role': 'civilian_rescue_lifter',
+        'title': 'Rescue Lifter',
+        'trafficRole': 'rescue',
+        'rootName': 'SF_NPCWORK_RESCUE_LIFTER_ROOT',
+        'fictionLengthM': 28.0,
+        'sockets': [
+            ('SOCKET_Engine_Main', (-13.4, 0.2, 0.0), 'engine', [-1.0, 0.0, 0.0]),
+            ('SOCKET_Trail_Main', (-13.9, 0.2, 0.0), 'vfx', [-1.0, 0.0, 0.0]),
+            ('SOCKET_Bay_Front', (10.4, 0.2, 0.0), 'utility', [1.0, 0.0, 0.0]),
+            ('SOCKET_Hoist_Main', (3.6, 3.4, 0.0), 'utility', [0.0, 1.0, 0.0]),
+            ('SOCKET_Camera_Focus', (0.2, 0.8, 0.0), 'camera', [1.0, 0.0, 0.0]),
+        ],
+    },
+    'volatiles_tanker': {
+        'id': 'volatiles_tanker',
+        'assetId': 'SF_WHOLESHIP_VOLATILES_TANKER',
+        'partId': 'wholeship_volatiles_tanker',
+        'role': 'civilian_volatiles_tanker',
+        'title': 'Volatiles Tanker',
+        'trafficRole': 'tanker',
+        'rootName': 'SF_NPCWORK_VOLATILES_TANKER_ROOT',
+        'fictionLengthM': 36.0,
+        'sockets': [
+            ('SOCKET_Engine_Main', (-16.6, 0.4, 0.0), 'engine', [-1.0, 0.0, 0.0]),
+            ('SOCKET_Trail_Main', (-17.1, 0.4, 0.0), 'vfx', [-1.0, 0.0, 0.0]),
+            ('SOCKET_Coupling_Front', (16.4, 0.6, 0.0), 'utility', [1.0, 0.0, 0.0]),
+            ('SOCKET_Cargo_Dorsal', (0.0, 3.4, 0.0), 'cargo', [0.0, 1.0, 0.0]),
+            ('SOCKET_Camera_Focus', (-10.4, 1.2, 0.0), 'camera', [1.0, 0.0, 0.0]),
+        ],
+    },
+    'prospector_skiff': {
+        'id': 'prospector_skiff',
+        'assetId': 'SF_WHOLESHIP_PROSPECTOR_SKIFF',
+        'partId': 'wholeship_prospector_skiff',
+        'role': 'civilian_prospector_skiff',
+        'title': 'Prospector Skiff',
+        'trafficRole': 'prospector',
+        'rootName': 'SF_NPCWORK_PROSPECTOR_SKIFF_ROOT',
+        'fictionLengthM': 16.0,
+        'sockets': [
+            ('SOCKET_Engine_Main', (-7.6, 0.15, 0.0), 'engine', [-1.0, 0.0, 0.0]),
+            ('SOCKET_Trail_Main', (-8.1, 0.15, 0.0), 'vfx', [-1.0, 0.0, 0.0]),
+            ('SOCKET_Scan_Pin', (7.4, 0.35, 0.0), 'sensor', [1.0, 0.0, 0.0]),
+            ('SOCKET_Work_Boom', (2.4, 0.4, -2.2), 'utility', [0.0, 0.0, -1.0]),
+            ('SOCKET_Camera_Focus', (0.4, 0.5, 0.0), 'camera', [1.0, 0.0, 0.0]),
+        ],
+    },
+    'scrap_sweeper': {
+        'id': 'scrap_sweeper',
+        'assetId': 'SF_WHOLESHIP_SCRAP_SWEEPER',
+        'partId': 'wholeship_scrap_sweeper',
+        'role': 'civilian_scrap_sweeper',
+        'title': 'Scrap Sweeper',
+        'trafficRole': 'sweeper',
+        'rootName': 'SF_NPCWORK_SCRAP_SWEEPER_ROOT',
+        'fictionLengthM': 20.0,
+        'sockets': [
+            ('SOCKET_Engine_Main', (-8.8, -0.2, 0.0), 'engine', [-1.0, 0.0, 0.0]),
+            ('SOCKET_Trail_Main', (-9.3, -0.2, 0.0), 'vfx', [-1.0, 0.0, 0.0]),
+            ('SOCKET_Bay_Front', (8.6, 0.2, 0.0), 'utility', [1.0, 0.0, 0.0]),
+            ('SOCKET_Cargo_Aft', (-4.2, 1.6, 0.0), 'cargo', [0.0, 1.0, 0.0]),
+            ('SOCKET_Camera_Focus', (0.2, 0.6, 0.0), 'camera', [1.0, 0.0, 0.0]),
+        ],
+    },
+    'yard_tug': {
+        'id': 'yard_tug',
+        'assetId': 'SF_WHOLESHIP_YARD_TUG',
+        'partId': 'wholeship_yard_tug',
+        'role': 'civilian_yard_tug',
+        'title': 'Yard Tug',
+        'trafficRole': 'tug',
+        'rootName': 'SF_NPCWORK_YARD_TUG_ROOT',
+        'fictionLengthM': 26.0,
+        'sockets': [
+            ('SOCKET_Engine_Main', (-11.6, 0.6, 0.0), 'engine', [-1.0, 0.0, 0.0]),
+            ('SOCKET_Trail_Main', (-12.2, 0.6, 0.0), 'vfx', [-1.0, 0.0, 0.0]),
+            ('SOCKET_Push_Front', (10.6, 0.4, 0.0), 'utility', [1.0, 0.0, 0.0]),
+            ('SOCKET_Utility_Dorsal', (-6.4, 3.6, 0.0), 'utility', [0.0, 1.0, 0.0]),
+            ('SOCKET_Camera_Focus', (1.2, 1.4, 0.0), 'camera', [1.0, 0.0, 0.0]),
+        ],
+    },
+    'inspection_cutter': {
+        'id': 'inspection_cutter',
+        'assetId': 'SF_WHOLESHIP_INSPECTION_CUTTER',
+        'partId': 'wholeship_inspection_cutter',
+        'role': 'law_inspection_cutter',
+        'title': 'Inspection Cutter',
+        'trafficRole': 'customs',
+        'rootName': 'SF_NPCWORK_INSPECTION_CUTTER_ROOT',
+        'fictionLengthM': 24.0,
+        'sockets': [
+            ('SOCKET_Engine_Main', (-11.2, 0.2, 0.0), 'engine', [-1.0, 0.0, 0.0]),
+            ('SOCKET_Trail_Main', (-11.7, 0.2, 0.0), 'vfx', [-1.0, 0.0, 0.0]),
+            ('SOCKET_Inspection_Front', (10.6, 0.4, 0.0), 'sensor', [1.0, 0.0, 0.0]),
+            ('SOCKET_Sensor_Dorsal', (1.4, 2.8, 0.0), 'sensor', [0.0, 1.0, 0.0]),
+            ('SOCKET_Camera_Focus', (0.4, 0.6, 0.0), 'camera', [1.0, 0.0, 0.0]),
+        ],
+    },
+    'apron_shuttle': {
+        'id': 'apron_shuttle',
+        'assetId': 'SF_WHOLESHIP_APRON_SHUTTLE',
+        'partId': 'wholeship_apron_shuttle',
+        'role': 'civilian_apron_shuttle',
+        'title': 'Apron Shuttle',
+        'trafficRole': 'shuttle',
+        'rootName': 'SF_NPCWORK_APRON_SHUTTLE_ROOT',
+        'fictionLengthM': 18.0,
+        'sockets': [
+            ('SOCKET_Engine_Main', (-8.4, 0.15, 0.0), 'engine', [-1.0, 0.0, 0.0]),
+            ('SOCKET_Trail_Main', (-8.9, 0.15, 0.0), 'vfx', [-1.0, 0.0, 0.0]),
+            ('SOCKET_Bay_Front', (7.6, 0.2, 0.0), 'utility', [1.0, 0.0, 0.0]),
+            ('SOCKET_Cargo_Ventral', (0.2, -1.6, 0.0), 'cargo', [0.0, -1.0, 0.0]),
+            ('SOCKET_Camera_Focus', (1.0, 0.5, 0.0), 'camera', [1.0, 0.0, 0.0]),
+        ],
+    },
 }
 
 
@@ -1090,11 +1209,324 @@ def build_survey_pin_parts(coll: bpy.types.Collection, mats: dict[str, bpy.types
     return parts
 
 
+def build_rescue_lifter_parts(coll: bpy.types.Collection, mats: dict[str, bpy.types.Material]) -> list[bpy.types.Object]:
+    """Fiction §11: half hospital, half crane. Forward casualty bay, dorsal grapple,
+    red-white flank bars, mast floods, underslung triage pods."""
+    H = mats['Material_Hull']
+    M = mats['Material_Mechanical']
+    C = mats['Material_Cyan']
+    W = mats['Material_Warm']
+    G = mats['Material_Glass']
+    parts: list[bpy.types.Object] = []
+
+    parts.append(make_box('Rescue_HullMid', (14.6, 3.4, 7.2), (-1.4, 0.35, 0.0), H, coll, bevel=0.16))
+    parts.append(make_box('Rescue_HullAft', (5.8, 3.0, 6.2), (-10.6, 0.25, 0.0), H, coll, bevel=0.14))
+    parts.append(make_box('Rescue_BayBox', (6.4, 3.6, 6.8), (8.8, 0.4, 0.0), H, coll, bevel=0.18))
+    parts.append(make_cone('Rescue_BayMouth', 2.9, 1.7, 3.4, (13.4, 0.35, 0.0), H, coll,
+                           rot=ROT_ALONG_X, verts=6, fill='NOTHING', bevel=0.06))
+    parts.append(make_box('Rescue_BayPad', (1.6, 2.4, 5.4), (11.6, 0.2, 0.0), W, coll, bevel=0.08,
+                          component='utility'))
+    parts.append(make_box('Rescue_Keel', (18.0, 1.05, 2.8), (-0.6, -1.7, 0.0), M, coll, bevel=0.06))
+    _panel_seams(parts, coll, mats, 'RescueMid', -8.4, 6.2, 0.35, 3.6, 3.4, count=6)
+
+    # Red-white identity bars — the paint IS the signal.
+    for side in (-1, 1):
+        parts.append(make_box(f'Rescue_BarRed_{side}', (18.4, 0.22, 0.12), (-0.4, 1.15, side * 3.62),
+                              W, coll, bevel=0.02, close=True))
+        parts.append(make_box(f'Rescue_BarWhite_{side}', (18.4, 0.22, 0.12), (-0.4, 0.78, side * 3.62),
+                              H, coll, bevel=0.02, close=True))
+
+    # Dorsal grapple boom + stretcher basket.
+    parts.append(make_cylinder('Rescue_GrapplePost', 0.28, 3.2, (3.6, 2.7, 0.0), M, coll,
+                               rot=(0.0, 0.0, 0.0), verts=12))
+    parts.append(make_box('Rescue_GrappleArm', (6.4, 0.36, 0.42), (6.6, 4.15, 0.0), M, coll,
+                          rot=(0.0, 0.0, math.radians(-8)), bevel=0.05, component='utility'))
+    parts.append(make_box('Rescue_Basket', (2.2, 0.7, 1.5), (10.0, 3.55, 0.0), W, coll,
+                          bevel=0.06, component='utility'))
+    parts.append(make_box('Rescue_BasketRail', (2.2, 0.12, 1.5), (10.0, 3.95, 0.0), M, coll,
+                          bevel=0.02, close=True))
+
+    # Four mast floods.
+    for i, (fx, fz) in enumerate(((6.4, -3.2), (6.4, 3.2), (-4.8, -3.0), (-4.8, 3.0))):
+        _flood_fixture(parts, coll, mats, (fx, 1.7, fz), f'Rescue_Flood_{i}',
+                       tilt=math.radians(16) * (1 if fz < 0 else -1))
+
+    # Underslung triage pods — universal container footprint.
+    for i, px in enumerate((-2.4, 1.6)):
+        parts.append(make_box(f'Rescue_Pod_{i}', (3.1, 1.15, 1.7), (px, -2.15, 0.0), H, coll,
+                              bevel=0.08, component='cargo'))
+        parts.append(make_box(f'Rescue_PodGlass_{i}', (1.4, 0.35, 1.2), (px + 0.6, -1.55, 0.0),
+                              G, coll, bevel=0.04, close=True, component='canopy'))
+
+    parts.append(make_box('Rescue_Bridge', (2.8, 1.2, 2.4), (-8.4, 2.35, 0.0), H, coll, bevel=0.12))
+    parts.append(make_box('Rescue_Canopy', (1.8, 0.55, 1.8), (-8.0, 2.95, 0.0), G, coll,
+                          bevel=0.12, component='canopy'))
+    parts.append(make_box('Rescue_DriveCowl', (3.2, 2.4, 4.8), (-12.6, 0.5, 0.0), M, coll, bevel=0.1))
+    _drive_cluster(parts, coll, mats, -13.6, 0.5, [-1.25, 1.25], 0.78, 'Rescue')
+    return parts
+
+
+def build_volatiles_tanker_parts(coll: bpy.types.Collection, mats: dict[str, bpy.types.Material]) -> list[bpy.types.Object]:
+    """Fiction §3: three pressure spheres in a stand-off truss. Cargo IS the ship.
+    Red equator bands, dorsal piping, bow coupling cage, aft cab behind a blast wall."""
+    H = mats['Material_Hull']
+    M = mats['Material_Mechanical']
+    W = mats['Material_Warm']
+    G = mats['Material_Glass']
+    parts: list[bpy.types.Object] = []
+
+    parts.append(make_box('Tanker_Spine', (28.0, 1.15, 1.7), (-1.2, 0.55, 0.0), M, coll, bevel=0.08))
+    parts.append(make_box('Tanker_Keel', (22.0, 0.7, 1.2), (-2.0, -0.7, 0.0), M, coll, bevel=0.05))
+    for i, px in enumerate((-8.4, 0.2, 8.8)):
+        sphere = make_cone(f'Tanker_Tank_{i}', 2.55, 2.55, 5.1, (px, 2.35, 0.0), H, coll,
+                           rot=(0.0, 0.0, 0.0), verts=16, bevel=0.08, component='cargo')
+        parts.append(sphere)
+        parts.append(make_cylinder(f'Tanker_Band_{i}', 2.62, 0.28, (px, 2.35, 0.0), W, coll,
+                                   rot=(0.0, 0.0, 0.0), verts=16, close=True))
+        parts.append(make_box(f'Tanker_Saddle_{i}', (2.2, 0.55, 2.4), (px, 0.85, 0.0), M, coll,
+                              bevel=0.05))
+        for side in (-1, 1):
+            parts.append(make_box(f'Tanker_Stay_{i}_{side}', (0.22, 2.4, 0.22),
+                                  (px, 1.7, side * 2.15), M, coll, bevel=0.03, close=True))
+    parts.append(make_box('Tanker_Pipe', (22.0, 0.22, 0.22), (0.2, 4.55, 0.0), M, coll, bevel=0.03))
+    for px in (-8.4, 0.2, 8.8):
+        parts.append(make_cylinder(f'Tanker_Riser_{px}', 0.12, 1.6, (px, 3.85, 0.0), M, coll,
+                                   rot=(0.0, 0.0, 0.0), verts=8, close=True))
+
+    parts.append(make_cone('Tanker_CouplingCage', 1.15, 1.05, 2.2, (15.6, 0.7, 0.0), M, coll,
+                           rot=ROT_ALONG_X, verts=10, fill='NOTHING'))
+    parts.append(make_cylinder('Tanker_Probe', 0.28, 2.6, (16.6, 0.7, 0.0), W, coll,
+                               rot=ROT_ALONG_X, verts=10, component='utility'))
+    parts.append(make_box('Tanker_BlastWall', (0.45, 3.4, 5.2), (-12.4, 1.0, 0.0), M, coll, bevel=0.06))
+    parts.append(make_box('Tanker_Cab', (4.6, 2.6, 3.8), (-14.8, 0.7, 0.0), H, coll, bevel=0.14))
+    parts.append(make_box('Tanker_Canopy', (1.7, 0.55, 2.2), (-13.6, 1.85, 0.0), G, coll,
+                          bevel=0.1, component='canopy'))
+    parts.append(make_box('Tanker_DriveCowl', (2.8, 2.2, 3.6), (-16.2, 0.55, 0.0), M, coll, bevel=0.1))
+    _drive_cluster(parts, coll, mats, -16.9, 0.55, [-0.95, 0.95], 0.7, 'Tanker')
+    return parts
+
+
+def build_prospector_skiff_parts(coll: bpy.types.Collection, mats: dict[str, bpy.types.Material]) -> list[bpy.types.Object]:
+    """Fiction §1: half tool-bench. Short wand, port arms, starboard stake rack,
+    four belly drums, one oversized engine, dead-diode chevron."""
+    H = mats['Material_Hull']
+    M = mats['Material_Mechanical']
+    C = mats['Material_Cyan']
+    W = mats['Material_Warm']
+    G = mats['Material_Glass']
+    parts: list[bpy.types.Object] = []
+
+    parts.append(make_box('Skiff_Hull', (10.4, 2.2, 4.0), (-0.6, 0.2, 0.0), H, coll, bevel=0.14))
+    parts.append(make_cone('Skiff_Nose', 1.55, 0.38, 3.2, (6.2, 0.25, 0.0), H, coll,
+                           rot=ROT_ALONG_X, verts=4, bevel=0.06))
+    parts.append(make_box('Skiff_Keel', (9.2, 0.7, 1.5), (-0.4, -1.15, 0.0), M, coll, bevel=0.05))
+    _panel_seams(parts, coll, mats, 'SkiffMid', -5.2, 4.0, 0.2, 2.0, 2.2, count=4)
+
+    parts.append(make_cylinder('Skiff_Wand', 0.09, 3.4, (7.6, 0.45, 0.0), M, coll,
+                               rot=ROT_ALONG_X, verts=8, component='sensor'))
+    parts.append(make_cylinder('Skiff_WandTip', 0.16, 0.28, (9.3, 0.45, 0.0), C, coll,
+                               rot=ROT_ALONG_X, verts=8, close=True, component='sensor'))
+
+    parts.append(make_cylinder('Skiff_ArmShoulder', 0.28, 0.7, (1.6, 0.35, -2.05), M, coll,
+                               rot=ROT_ALONG_Y_PORT, verts=10))
+    parts.append(make_box('Skiff_ArmA', (2.8, 0.28, 0.28), (3.2, 0.2, -2.25), M, coll,
+                          rot=(0.0, 0.0, math.radians(-12)), bevel=0.04, component='utility'))
+    parts.append(make_box('Skiff_ArmB', (2.2, 0.24, 0.24), (5.2, -0.15, -2.15), M, coll,
+                          rot=(0.0, 0.0, math.radians(18)), bevel=0.03, component='utility'))
+    parts.append(make_box('Skiff_StakeRack', (1.6, 0.7, 0.55), (4.6, 0.55, 2.05), M, coll,
+                          bevel=0.04, component='utility'))
+    for i in range(3):
+        parts.append(make_cylinder(f'Skiff_Stake_{i}', 0.07, 1.4, (4.2 + i * 0.35, 0.7, 2.05),
+                                   W, coll, rot=(0.0, 0.0, 0.0), verts=6, close=True))
+
+    for i, px in enumerate((-2.4, -0.8, 0.8, 2.4)):
+        parts.append(make_cylinder(f'Skiff_Drum_{i}', 0.42, 1.15, (px, -1.55, 0.0), W, coll,
+                                   rot=ROT_ALONG_X, verts=10, component='cargo'))
+    parts.append(make_box('Skiff_DrumRail', (6.2, 0.12, 0.7), (0.0, -1.55, 0.0), M, coll,
+                          bevel=0.02, close=True))
+
+    parts.append(make_box('Skiff_Chevron', (0.9, 0.7, 0.12), (-5.7, 0.55, 0.0), W, coll,
+                          bevel=0.02, close=True))
+    parts.append(make_box('Skiff_Canopy', (1.5, 0.55, 1.2), (3.4, 1.2, 0.0), G, coll,
+                          bevel=0.1, component='canopy'))
+    parts.append(make_box('Skiff_DriveCowl', (2.6, 2.4, 3.2), (-6.6, 0.3, 0.0), M, coll, bevel=0.1))
+    _drive_cluster(parts, coll, mats, -7.7, 0.3, [0.0], 0.92, 'Skiff')
+    return parts
+
+
+def build_scrap_sweeper_parts(coll: bpy.types.Collection, mats: dict[str, bpy.types.Material]) -> list[bpy.types.Object]:
+    """Fiction §4: twenty metres of which the front five are mouth. Scoop, throat,
+    magnet boom, open lattice cage, stubby wide-set drives. Collects, never cuts."""
+    H = mats['Material_Hull']
+    M = mats['Material_Mechanical']
+    W = mats['Material_Warm']
+    G = mats['Material_Glass']
+    parts: list[bpy.types.Object] = []
+
+    parts.append(make_box('Sweep_Hull', (10.2, 2.6, 5.6), (-1.4, 0.25, 0.0), H, coll, bevel=0.14))
+    parts.append(make_box('Sweep_Keel', (9.0, 0.8, 2.0), (-1.6, -1.25, 0.0), M, coll, bevel=0.05))
+    _panel_seams(parts, coll, mats, 'SweepMid', -5.8, 3.4, 0.25, 2.8, 2.6, count=4)
+
+    parts.append(make_cone('Sweep_Scoop', 3.4, 1.5, 4.8, (7.2, 0.35, 0.0), H, coll,
+                           rot=ROT_ALONG_X, verts=6, fill='NOTHING', bevel=0.06))
+    parts.append(make_box('Sweep_LipA', (0.4, 0.35, 6.4), (9.4, 1.55, 0.0), W, coll, bevel=0.04))
+    parts.append(make_box('Sweep_LipB', (0.4, 0.35, 6.4), (9.4, -0.85, 0.0), W, coll, bevel=0.04))
+    parts.append(make_cylinder('Sweep_Throat', 1.15, 1.6, (5.6, 0.3, 0.0), W, coll,
+                               rot=ROT_ALONG_X, verts=10, close=True, component='utility'))
+
+    parts.append(make_cylinder('Sweep_BoomPost', 0.16, 2.6, (1.4, 2.2, 0.0), M, coll,
+                               rot=(0.0, 0.0, 0.0), verts=8))
+    parts.append(make_box('Sweep_BoomArm', (4.6, 0.28, 0.28), (3.6, 3.35, 0.0), M, coll,
+                          rot=(0.0, 0.0, math.radians(-16)), bevel=0.04, component='utility'))
+    parts.append(make_cylinder('Sweep_Magnet', 0.55, 0.4, (5.8, 2.7, 0.0), W, coll,
+                               rot=(0.0, 0.0, 0.0), verts=10, close=True))
+
+    parts.append(make_box('Sweep_CageFloor', (4.4, 0.22, 4.2), (-5.2, 0.15, 0.0), M, coll, bevel=0.04))
+    for side in (-1, 1):
+        parts.append(make_box(f'Sweep_CageRail_{side}', (4.4, 1.8, 0.16), (-5.2, 1.05, side * 2.05),
+                              H, coll, bevel=0.03))
+        for i, px in enumerate((-6.8, -5.2, -3.6)):
+            parts.append(make_box(f'Sweep_Bar_{side}_{i}', (0.12, 1.8, 0.12), (px, 1.05, side * 2.05),
+                                  M, coll, bevel=0.02, close=True))
+    parts.append(make_box('Sweep_CageAft', (0.16, 1.8, 4.2), (-7.4, 1.05, 0.0), H, coll, bevel=0.03))
+
+    parts.append(make_box('Sweep_Canopy', (1.6, 0.55, 1.3), (2.6, 1.45, 0.0), G, coll,
+                          bevel=0.1, component='canopy'))
+    parts.append(make_box('Sweep_DriveCowlL', (2.2, 1.5, 1.7), (-8.4, -0.15, -1.7), M, coll, bevel=0.08))
+    parts.append(make_box('Sweep_DriveCowlR', (2.2, 1.5, 1.7), (-8.4, -0.15, 1.7), M, coll, bevel=0.08))
+    _drive_cluster(parts, coll, mats, -9.2, -0.15, [-1.7, 1.7], 0.58, 'Sweep')
+    return parts
+
+
+def build_yard_tug_parts(coll: bpy.types.Collection, mats: dict[str, bpy.types.Material]) -> list[bpy.types.Object]:
+    """Fiction §6: twenty-six metres of which eleven are engine. Push-cradle,
+    hip nudge-keels, aft winch tower, high bridge looking down the client."""
+    H = mats['Material_Hull']
+    M = mats['Material_Mechanical']
+    W = mats['Material_Warm']
+    G = mats['Material_Glass']
+    parts: list[bpy.types.Object] = []
+
+    parts.append(make_box('Tug_Spine', (16.5, 1.6, 2.4), (-1.4, 0.4, 0.0), H, coll, bevel=0.12))
+    parts.append(make_box('Tug_Keel', (14.0, 0.8, 1.6), (-1.8, -0.7, 0.0), M, coll, bevel=0.05))
+    parts.append(make_box('Tug_DriveBlockL', (6.4, 3.6, 2.8), (-8.8, 0.7, -2.4), M, coll, bevel=0.12))
+    parts.append(make_box('Tug_DriveBlockR', (6.4, 3.6, 2.8), (-8.8, 0.7, 2.4), M, coll, bevel=0.12))
+    _drive_cluster(parts, coll, mats, -11.8, 0.7, [-2.4, 2.4], 1.05, 'Tug')
+
+    parts.append(make_box('Tug_CradleYoke', (1.2, 2.8, 6.4), (8.4, 0.5, 0.0), M, coll, bevel=0.08))
+    for side in (-1, 1):
+        parts.append(make_box(f'Tug_CradleArm_{side}', (3.6, 0.55, 0.7), (10.4, 0.35, side * 2.4),
+                              M, coll, bevel=0.05, component='utility'))
+        parts.append(make_box(f'Tug_Pad_{side}', (2.4, 0.85, 0.35), (11.2, 0.35, side * 2.75),
+                              W, coll, bevel=0.06, component='utility'))
+        parts.append(make_box(f'Tug_Nudge_{side}', (3.2, 0.7, 0.55), (1.2, -0.55, side * 2.15),
+                              M, coll, bevel=0.05))
+        parts.append(make_box(f'Tug_Shoe_{side}', (2.4, 0.28, 0.4), (1.2, -0.95, side * 2.35),
+                              W, coll, bevel=0.03, close=True))
+
+    parts.append(make_box('Tug_WinchTower', (1.6, 4.2, 1.6), (-5.6, 2.6, 0.0), H, coll, bevel=0.1))
+    parts.append(make_cylinder('Tug_Drum', 0.7, 1.4, (-5.6, 3.6, 0.0), M, coll,
+                               rot=ROT_ALONG_Y_PORT, verts=12, component='utility'))
+    parts.append(make_box('Tug_CapPlate', (0.7, 0.7, 0.08), (-5.6, 4.55, 0.85), W, coll,
+                          bevel=0.02, close=True))
+
+    parts.append(make_box('Tug_Bridge', (3.2, 1.6, 2.8), (2.4, 2.35, 0.0), H, coll, bevel=0.12))
+    parts.append(make_box('Tug_Canopy', (2.2, 0.6, 2.2), (2.8, 3.15, 0.0), G, coll,
+                          bevel=0.12, component='canopy'))
+    return parts
+
+
+def build_inspection_cutter_parts(coll: bpy.types.Collection, mats: dict[str, bpy.types.Material]) -> list[bpy.types.Object]:
+    """Fiction §10: authority wedge, dorsal fin, bow inspection frame (judge's collar),
+    ventral boarding collar, flush hardpoints, always-lit registry plates."""
+    H = mats['Material_Hull']
+    M = mats['Material_Mechanical']
+    C = mats['Material_Cyan']
+    W = mats['Material_Warm']
+    G = mats['Material_Glass']
+    parts: list[bpy.types.Object] = []
+
+    parts.append(make_box('CutLaw_HullMid', (12.4, 2.5, 5.4), (-1.0, 0.2, 0.0), H, coll, bevel=0.16))
+    parts.append(make_cone('CutLaw_Wedge', 2.35, 0.45, 6.4, (8.0, 0.25, 0.0), H, coll,
+                           rot=ROT_ALONG_X, verts=4, bevel=0.08))
+    parts.append(make_box('CutLaw_Aft', (4.6, 2.3, 4.8), (-8.4, 0.15, 0.0), H, coll, bevel=0.14))
+    parts.append(make_box('CutLaw_Keel', (14.0, 0.75, 1.8), (-0.8, -1.25, 0.0), M, coll, bevel=0.05))
+    _panel_seams(parts, coll, mats, 'CutLawMid', -6.8, 4.6, 0.2, 2.7, 2.5, count=5)
+
+    parts.append(make_box('CutLaw_Fin', (4.8, 2.4, 0.28), (1.2, 2.35, 0.0), H, coll, bevel=0.05,
+                          component='sensor'))
+    parts.append(make_box('CutLaw_FinArray', (3.4, 0.12, 0.18), (1.2, 3.45, 0.0), C, coll,
+                          bevel=0.02, close=True, component='sensor'))
+    parts.append(make_box('CutLaw_CollarA', (0.28, 2.0, 3.6), (10.5, 0.4, 0.0), C, coll,
+                          bevel=0.03, component='sensor'))
+    parts.append(make_box('CutLaw_CollarB', (2.2, 0.22, 3.6), (9.6, 1.35, 0.0), C, coll,
+                          bevel=0.03, component='sensor'))
+    parts.append(make_box('CutLaw_CollarC', (2.2, 0.22, 3.6), (9.6, -0.55, 0.0), C, coll,
+                          bevel=0.03, component='sensor'))
+
+    parts.append(make_cylinder('CutLaw_Board', 0.85, 1.1, (2.2, -1.55, 0.0), M, coll,
+                               rot=(0.0, 0.0, 0.0), verts=12, component='utility'))
+    for side in (-1, 1):
+        parts.append(make_box(f'CutLaw_Fairing_{side}', (3.6, 0.55, 0.35), (1.6, 0.15, side * 2.75),
+                              M, coll, bevel=0.04, close=True))
+        parts.append(make_box(f'CutLaw_Plate_{side}', (1.1, 0.45, 0.08), (-4.8, 0.75, side * 2.72),
+                              W, coll, bevel=0.02, close=True))
+
+    parts.append(make_box('CutLaw_Canopy', (2.0, 0.55, 1.5), (4.6, 1.35, 0.0), G, coll,
+                          bevel=0.12, component='canopy'))
+    parts.append(make_box('CutLaw_DriveCowl', (2.6, 2.0, 3.8), (-10.4, 0.3, 0.0), M, coll, bevel=0.1))
+    _drive_cluster(parts, coll, mats, -11.3, 0.3, [-0.95, 0.95], 0.68, 'CutLaw')
+    return parts
+
+
+def build_apron_shuttle_parts(coll: bpy.types.Collection, mats: dict[str, bpy.types.Material]) -> list[bpy.types.Object]:
+    """Remade leftover liner_shuttle: short berth-to-worksite people boat.
+    Stubby cabin, short window row, docking collar, underslung pannier. Not the civic liner."""
+    H = mats['Material_Hull']
+    M = mats['Material_Mechanical']
+    C = mats['Material_Cyan']
+    W = mats['Material_Warm']
+    G = mats['Material_Glass']
+    parts: list[bpy.types.Object] = []
+
+    parts.append(make_box('Shuttle_Fuselage', (12.4, 2.4, 4.2), (-0.6, 0.25, 0.0), H, coll, bevel=0.18))
+    parts.append(make_cone('Shuttle_Bow', 1.7, 0.55, 3.0, (7.2, 0.3, 0.0), H, coll,
+                           rot=ROT_ALONG_X, verts=6, bevel=0.08))
+    parts.append(make_box('Shuttle_Keel', (11.0, 0.7, 1.6), (-0.8, -1.15, 0.0), M, coll, bevel=0.05))
+    _panel_seams(parts, coll, mats, 'ShuttleMid', -6.2, 4.8, 0.25, 2.1, 2.4, count=5)
+
+    for i, px in enumerate((-3.6, -1.8, 0.0, 1.8, 3.6)):
+        parts.append(make_box(f'Shuttle_Window_{i}', (1.15, 0.45, 0.08), (px, 0.85, 2.12),
+                              G, coll, bevel=0.03, close=True, component='canopy'))
+        parts.append(make_box(f'Shuttle_WindowP_{i}', (1.15, 0.45, 0.08), (px, 0.85, -2.12),
+                              G, coll, bevel=0.03, close=True, component='canopy'))
+
+    parts.append(make_cylinder('Shuttle_Collar', 1.05, 0.7, (7.8, 0.2, 0.0), M, coll,
+                               rot=ROT_ALONG_X, verts=12, component='utility'))
+    parts.append(make_cylinder('Shuttle_CollarPad', 1.15, 0.18, (8.2, 0.2, 0.0), W, coll,
+                               rot=ROT_ALONG_X, verts=12, close=True))
+    parts.append(make_box('Shuttle_Pannier', (5.4, 1.05, 2.4), (-0.4, -1.7, 0.0), H, coll,
+                          bevel=0.08, component='cargo'))
+    parts.append(make_box('Shuttle_Canopy', (1.8, 0.5, 1.4), (4.6, 1.4, 0.0), G, coll,
+                          bevel=0.1, component='canopy'))
+    parts.append(make_box('Shuttle_TailFair', (2.8, 2.0, 3.2), (-7.4, 0.25, 0.0), H, coll, bevel=0.14))
+    parts.append(make_box('Shuttle_DriveCowl', (2.2, 1.6, 2.6), (-8.2, 0.2, 0.0), M, coll, bevel=0.09))
+    _drive_cluster(parts, coll, mats, -8.7, 0.2, [0.0], 0.6, 'Shuttle')
+    return parts
+
+
 SHIP_BUILDERS = {
     'ore_barge': build_ore_barge_parts,
     'repair_tender': build_repair_tender_parts,
     'salvage_cutter': build_salvage_cutter_parts,
     'survey_pin': build_survey_pin_parts,
+    'rescue_lifter': build_rescue_lifter_parts,
+    'volatiles_tanker': build_volatiles_tanker_parts,
+    'prospector_skiff': build_prospector_skiff_parts,
+    'scrap_sweeper': build_scrap_sweeper_parts,
+    'yard_tug': build_yard_tug_parts,
+    'inspection_cutter': build_inspection_cutter_parts,
+    'apron_shuttle': build_apron_shuttle_parts,
 }
 
 

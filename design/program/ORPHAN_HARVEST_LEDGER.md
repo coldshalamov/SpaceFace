@@ -68,6 +68,9 @@ loses a folder. Do not delete a row; mark `DROP` and date it.
 | B-ceres-props | Ceres render packages | near-done | CHECKPOINT 2026-08-17 | Packages exist in the generated manifest; not placed in world data. Main tree already dirty on those packages. | Place via place registration after that writer finishes; do not steal |
 | B-liner | `assets/ships/massline_express_liner_v1` | partial | CHECKPOINT 2026-08-17 | Brief + donor only. No body. | PQ-049. Do not invent a liner to close this row |
 | B-blocked-acc | `wholeships/pelican.glb`, `wasp.glb` | junk | DROP 2026-08-17 | Accessory-only, no hull. Already unwired on purpose. | Never wire |
+| B-yard-16 | everyday production places ×16 | done-unwired → half-wired | ADAPT 2026-08-18 | Admitted to PLACE_FILES. Remapped existing Ceres/Tethys POIs + two Tethys buoys. Full Ceres yard dump withheld: pocket budget + still reviews. | Remaster fittings, then spawn authored offsets in occupationalYardDressing.js |
+| B-lane-furniture | 6 Helios corridor props | near-done | CHECKPOINT 2026-08-18 | Helios POIs exist. Release build fails: no spacefaceAsset contract. | Stamp contract + release, then add to PLACE_FILES |
+| B-work-remainder | 7 occupational hulls | done | MERGE 2026-08-18 | Re-authored rescue/tanker/prospector/sweeper/tug/inspection cutter/apron shuttle. Rescue reuses existing role. Customs cutter enemy wears inspection hull. Express/hauler/miner/Hornet untouched. | Keep G1/G2/G4 open |
 
 ## Closeout
 
