@@ -2,8 +2,8 @@
 # NOW — threads changing the shared checkout
 
 ```yaml
-refreshed: 2026-08-12
-baseCommit: 23c40507c6d9004b3faa49e0a21225b55f0fe826
+refreshed: 2026-08-18
+baseCommit: d12999f813d752f9bb3a6840cf97d58456867ef8
 expiresAfterCommits: 10
 expiresAfterDays: 2
 ```
@@ -41,6 +41,7 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
+| Build-map campaign (adopt stale tree, then PQ-050) | claude campaign | implementing | `assets/ships/fleet_player_bodies_v1/hornet/`, `tools/blender/`, `design/program/` | close or honestly park the first PQ-050 leaf |
 
 ## Uncommitted work without a confirmed live thread
 

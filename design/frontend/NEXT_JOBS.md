@@ -32,110 +32,151 @@ here — and why several fixes are assembly rather than invention.
 
 ---
 
-## 2. The jobs
+## 2. The jobs (Sequenced J01 – J16)
 
 Each job names the A-list pattern it borrows, what the player gets, and what it costs to build.
 
-### Short term — days each, highest leverage
+### Phase 0: Foundational Properties & Shared Tooling (Do First)
 
-**J1 · The Power Rail.**
-*Pattern:* the MMO/looter action bar (WoW, Destiny) — permanent, numbered, and it fills as you grow.
-*Player gets:* "I can see what I can do, and I can see it growing." The single most direct answer to
-*"I can't look at the HUD and see the big game."*
-*Cost:* a HUD component plus the `hud:slotClaim` contract — **four in-flight prompts already grab
-digit keys in the capture phase**, one of them all nine, so the Rail must render a claim it cannot
-revoke. Icons: 16 prompt files are already written; generate, then author to 24×24 stroke SVG.
-*Prerequisite:* none. Spec is complete in `SCREENS_A_FLIGHT.md`.
-
-**J2 · Ship bands 2–3: handling and power.**
-*Pattern:* Elite Dangerous' outfitting comparison and Warframe's ghost-preview on hover.
-*Player gets:* the answer to *"why does my ship fly like this"*, and a power budget with a capacity
-to draw against.
-*Cost:* **mostly assembly** — `panels/handlingProfile.js` and `panels/massDelta.js` are finished
-renderers sitting behind a dead import chain. Mount them, add the beam encoding (dash velocity ∝
-headroom, reversing on overdraw).
-*Prerequisite:* none. This is the natural continuation of build step 1.
-
-**J3 · The four states, as a shared primitive.**
+**J01 · The four data states, as a shared primitive.** *(Adoption owed)*
 *Pattern:* the skeleton/empty-state discipline every shipped consumer app has.
 *Player gets:* never a blank screen that is technically correct.
-*Cost:* one shared component plus an audit pass. I fixed one instance by hand this session; the
-point is to make it structural so the next screen inherits it.
-*Prerequisite:* none — and doing it **before** J5–J7 avoids repeating the fix per screen.
+*Cost:* one shared component (`mountDataState` landed `09111881`). Finish adoption across Chart market-feed (ERROR), Ship hull-resolve gate (LOADING), and station dock-refusal (DENIED).
+*Prerequisite:* none. Doing it **before** later screens avoids repeating the fix per screen.
 
-**J4 · Screen state memory.**
+**J02 · Screen state memory.** *(Adoption)*
 *Pattern:* universal; invisible when present, infuriating when absent.
-*Player gets:* the map, ship and station open where they left them.
-*Cost:* small — a per-screen state bag in the save, restored on show. Exclude anything dangerous to
-restore (a pending destructive confirm).
+*Player gets:* the map, ship, and station open where they were left.
+*Cost:* small — a per-screen state bag in the save, restored on show (landed `16067c5e`).
 
-### Medium term — weeks each
-
-**J5 · Everything is a link.**
+**J03 · Everything is a link.** *(Tagging pass owed)*
 *Pattern:* EVE Online's "Show Info" and Destiny's inspect — every noun is a door.
-*Player gets:* twelve menus stop being twelve menus. Read a contract naming a company → click →
-their standing, doctrine, territory, your history → click a sector → the chart opens there.
-*Cost:* one entity resolver (id → label + dossier + route), one drawer, and a tagging pass.
-**Do this early** — the resolver is shared with the watch list and global find, and retrofitting tags
-into finished screens costs several times more than emitting them as you build.
+*Player gets:* twelve menus stop being twelve menus. Read a contract naming a company → click → their standing, doctrine, territory, history → click sector → chart opens focused there.
+*Cost:* one entity resolver + drawer (landed `61497eab`). Finish the tagging pass across jurisdiction values, mission logs, market rows, and codex.
 
-**J6 · THE FOOTPRINT.**
-*Pattern:* Red Dead 2's wanted system plus Crusader Kings' "why does this person hate me" causal
-chain.
-*Player gets:* the world visibly remembers. A hostile patrol becomes traceable back to the collision
-that caused it.
-*Cost:* an append-only ledger that **only listens to events already emitted** — `law:incidentReceipt`,
-`faction:repChanged{reason}`, `faction:repSpillover{srcFaction}` all carry what is needed. Plus a
-three-pane screen and a save key with a declared cap.
+**J04 · Fast Component Snapshot & Visual Iteration Lab (`probe-frontend-snapshot.mjs`).**
+*Pattern:* Storybook / Component isolation testbed with instant headless visual capture.
+*Player / Developer gets:* agents and developers can iterate on frontend styling, icons, and cards with sub-second visual feedback without booting full 60 FPS Three.js gameplay.
+*Cost:* create `scripts/probe-frontend-snapshot.mjs` and wire `package.json` (`npm run probe:frontend-snapshot`). Extend `_uilab.html` with component isolation fixtures for HUD anchors, cards, gauges, and faction roundels. Output clean `.devshots/frontend/<component>.png` and side-by-side visual diffs.
+*Prerequisite:* none. Stands up first to empower rapid visual capture for all subsequent visual jobs.
 
-**J7 · THE RANGE.**
+### Phase 1: Unified Vector Iconography & Flight HUD Overhaul
+
+**J05 · Unified Vector Iconography, Faction Crests & Asset Purge.**
+*Pattern:* Homeworld / Wipeout precision aerospace vector standard (`currentColor` 24×24 stroke SVG).
+*Player gets:* zero cartoonish OS emojis; distinct heraldic vector crests for all 14 galactic factions; unified aerospace symbols across station, outfitting, and flight.
+*Cost:*
+- Eradicate Unicode emoji symbols (`fitTree.js` ⛴, `accessibility.js` 🛡, ⚡, ♨, ⛔) in favor of 24×24 stroke SVG line art.
+- Author 14 distinct geometric vector heraldic crests/roundels for factions (SCN, MTS, DMC, Reach, Quiet Choir, Vael, etc.) to replace `<rect><text>S</text></svg>`.
+- Consolidate competing metaphors (`uiPrimitives.js` balance scale, coffee mug, knight shield) into `src/ui/station/icons.js`.
+- Purge unreferenced raster reference sheets (`assets/ui/icons_atlas.jpg`, `assets/ui/reticle.jpg`).
+*Prerequisite:* J04 (uses snapshot probe to verify icons).
+
+**J06 · The Power Rail.**
+*Pattern:* the MMO/looter action bar (WoW, Destiny) — permanent, numbered, and it fills as you grow.
+*Player gets:* "I can see what I can do, and I can see it growing." The single most direct answer to *"I can't look at the HUD and see the big game."*
+*Cost:* a HUD component plus the `hud:slotClaim` contract — four in-flight prompts already grab digit keys in the capture phase, so the Rail must render a claim it cannot revoke. Icons: 16 prompt files committed; author to 24×24 stroke SVG.
+*Prerequisite:* J05 (vector icons). Spec is complete in `SCREENS_A_FLIGHT.md`.
+
+**J07 · Tactical HUD Overhaul — "Ink on Vacuum", Column Grid & Wireframe Ship Condition.**
+*Pattern:* DCS / Elite Dangerous high-glancability non-diegetic HUD telemetry.
+*Player gets:* instantaneous combat parsing without reading text paragraphs; no misaligned staggered cards; dynamic ship damage wireframes matching the active hull.
+*Cost:*
+- Lock Right Dock (`.sf-target`, `.sf-overview`, `.sf-radar`) to a unified 220px column width, eliminating the 232px staggered card overhang.
+- De-box the UI: replace opaque/semi-transparent cards and 2px borders with "ink on vacuum" open telemetry with hairline corner brackets.
+- Streamline Target Panel: move combat hull/shield health into 3D in-world reticle arcs around the enemy target; condense the 8-line monospace paragraph into a compact visual threat badge + range bar.
+- Enlarge & upgrade Radar: expand compact diameter from 180px to 220px; replace 4px dots with directional heading chevrons, double-stroke capital ship silhouettes, and high-threat pulsation rings.
+- Dynamic Vector Ship Condition: replace static Scout PNG with dynamic SVG wireframes of the active player hull (`SHIP_SILHOUETTES`) with localized damage flash.
+- Comms Ribbon: reposition the floating top-left comms button into a quiet, integrated frequency tape above the left contextual stack.
+*Prerequisite:* J05, J06. Aligned with `design/HUD_FLIGHT_ATTENTION.md`.
+
+**J08 · Dynamic Combat Reticle & 3D Off-Screen Threat Halo.**
+*Pattern:* Ace Combat / Project Wingman dynamic targeting reticle and spatial threat awareness.
+*Player gets:* fluid dogfighting without looking away from the crosshair; intuitive reaction to flanking hostiles and incoming missile locks.
+*Cost:*
+- Dynamic reticle: ballistic lead calculation pips, projectile convergence arcs, and weapon lock-on bloom.
+- 360° off-screen threat halo: subtle screen-edge arc showing incoming missiles, flanking interceptors, and high-threat attack vectors.
+*Prerequisite:* J07.
+
+### Phase 2: Strategic Pausing Screens & Simulation Surfacing
+
+**J09 · Ship bands 2–3: handling, power, condition, capability.**
+*Pattern:* Elite Dangerous' outfitting comparison and Warframe's ghost-preview on hover.
+*Player gets:* the answer to *"why does my ship fly like this"*, and a power budget with a capacity to draw against.
+*Cost:* mostly assembly — mount `panels/handlingProfile.js` and `panels/massDelta.js`. Mount living-hull scar projections and capability sentences.
+*Prerequisite:* J07.
+
+**J10 · THE FOOTPRINT.**
+*Pattern:* Red Dead 2's wanted system plus Crusader Kings' "why does this person hate me" causal chain.
+*Player gets:* the world visibly remembers. A hostile patrol becomes traceable back to the collision that caused it.
+*Cost:* an append-only ledger that only listens to events already emitted (`law:incidentReceipt`, `faction:repChanged{reason}`, `faction:repSpillover{srcFaction}`). Plus a three-pane screen (Rap sheet, Standing with spillover edges, Log with 12 named aces).
+*Prerequisite:* J07, J09.
+
+**J11 · THE RANGE.**
 *Pattern:* Titanfall 2's gauntlet, Hitman's training, Deep Rock's tutorial bays — teaching by doing.
 *Player gets:* learns the physics toolkit by flying it, and can come back to the lesson.
-*Cost:* reuse the `screens/drill.js` pattern (an existing 3,154-line playable pausing screen). Three
-drills first, not thirty: Massline swing, mass-vs-turn slalom, energy-budget hold.
+*Cost:* reuse `screens/drill.js` pattern (playable pausing minigame). Three drills first: Massline swing, mass-vs-turn slalom, energy-budget hold. Then weak-point bestiary pass.
+*Prerequisite:* J07.
 
-### Long term — months each
-
-**J8 · THE CHART as a dispatch console.**
+**J12 · THE CHART as a dispatch console.**
 *Pattern:* X4's map, Total War's campaign layer, Death Stranding's route planning.
-*Player gets:* answers *"where should I take this cargo, and is that route survivable?"* in seconds,
-and can act on the answer without leaving the map.
-*Cost:* surgical edits to a 10,109-line file — **never a rewrite**. Replace adjacency-as-trade-lanes
-with an economic pressure model (the pure functions already exist), feed the risk estimator that
-currently returns `0`, add the traffic layer from the existing pure `trafficRoleMixForSector`, draw
-live conflict zones, and make holdings inspectable.
+*Player gets:* answers *"where should I take this cargo, and is that route survivable?"* in seconds, and can act on the answer without leaving the map.
+*Cost:* surgical edits to `src/ui/galaxyMap.js` — economic pressure model, risk estimator, live traffic layer, live conflict zones, and holdings inspection.
+*Prerequisite:* J07, J10.
 
-**J9 · Loadout presets and build identity.**
+**J13 · Loadout presets and build identity.**
 *Pattern:* Destiny loadouts, Monster Hunter equipment sets.
-*Player gets:* *"different kinds of gameplay"* becomes real, because switching is cheap enough to
-experiment with. Each preset is labelled by playstyle — *"Tow & Swing"* — never by stats.
+*Player gets:* *"different kinds of gameplay"* becomes real, because switching is cheap enough to experiment with. Each preset is labelled by playstyle — *"Tow & Swing"* — never by stats.
 *Cost:* save schema, a preset rail in the ship's apron, and capability-sentence labelling.
-*Prerequisite:* J2, so a preset can show what it changes about how the ship flies.
+*Prerequisite:* J09.
 
-**J10 · Visual regression in CI.**
+### Phase 3: Sensory Polish, Dynamic Diplomacy & Continuous CI
+
+**J14 · Atmospheric Audio-Visual Feedback & Haptic Micro-Animations.**
+*Pattern:* Alien: Isolation / Dead Space analog-tactile interface feel.
+*Player gets:* physical, living instruments with inertial needle settling, CRT phosphor decay on capacitor discharge, sound-synced frequency visualizers on comms, and tactile click audio.
+*Cost:* physics-based gauge easing, sound-synced comms waveform visualizer, and tactile mechanical switch audio.
+*Prerequisite:* J07, J08.
+
+**J15 · Contextual Quick-Comms Radial & Tactical Hail Deck.**
+*Pattern:* Mass Effect / Star Wars Squadrons tactical comms and faction diplomacy wheel.
+*Player gets:* in-flight dynamic interaction with NPC traffic (demanding surrender, paying bribes, requesting docking clearance) without breaking flight flow.
+*Cost:* non-pausing tactical hail radial (`Alt` or `H` key), holographic frequency visualizers, and faction-crested pilot badges.
+*Prerequisite:* J05, J07, J08.
+
+**J16 · Visual regression in CI.**
 *Pattern:* standard practice at every A-list studio — reference frames diffed automatically.
 *Player gets:* nothing silently regresses.
-*Cost:* extend the two probes already in `scripts/` into a capture matrix — default /
-reduced-motion / `forced-colors` / pseudo-localized, at 2560×1080 / 1920×1080 / 1280×720 — and diff
-against committed references.
-*Why it matters here:* this session alone produced three cases where a green check coexisted with a
-visibly broken screen. **Until frames are diffed, "a green check is not proof" stays permanently
-true.**
+*Cost:* extend the probes into a capture matrix — default / reduced-motion / `forced-colors` / pseudo-localized, at 2560×1080 / 1920×1080 / 1280×720 — and diff against committed references. Runs continuously alongside all jobs.
+*Prerequisite:* J04 (uses the snapshot lab harness).
 
 ---
 
-## 3. Ordering
+## 3. Sequential Execution Order (J01 ➔ J16)
 
 ```
-J3 ─┐                      (do the shared primitives before the screens that need them)
-J4 ─┼─► J1 ──► J2 ──► J9
-J5 ─┘        └─► J6 ──► J8
-             └─► J7
-                          J10 runs alongside everything from J1 onward
+PHASE 0: FOUNDATIONS & LAB TOOLING
+  J01 (Four Data States) ──┐
+  J02 (State Memory)     ──┼─► J04 (Visual Snapshot Lab) ──► J05 (Vector Icons & Crests)
+  J03 (Entity Links)     ──┘
+
+PHASE 1: FLIGHT HUD & TELEMETRY
+  J05 (Icons) ──► J06 (Power Rail) ──► J07 (Tactical HUD Overhaul) ──► J08 (Combat Reticle & Threat Halo)
+
+PHASE 2: STRATEGIC SCREENS
+  J07 (HUD) ──► J09 (Ship Bands) ──► J10 (The Footprint) ──► J12 (The Chart)
+                                └──► J11 (The Range)
+                                └──► J13 (Loadout Presets)
+
+PHASE 3: POLISH, DIPLOMACY & CI
+  J08 (Reticle) & J09 (Ship) ──► J14 (Tactile Haptics & Audio)
+                             └──► J15 (Quick-Comms Radial)
+
+  J16 (Visual Regression in CI) diffs reference frames continuously from J06 onward.
 ```
 
-**The two scheduling rules that matter:**
-1. **J3, J4 and J5 are properties, not features.** Every screen built after them inherits them free;
-   every screen built before them needs revisiting.
-2. **J10 should start as soon as J1 lands**, because its value is proportional to how many screens
-   exist to protect.
+**Key Execution Rules:**
+1. **J01–J03 (Properties) & J04 (Visual Lab) come first**: every screen built after them inherits state safety, linking, and instant visual verification without rework.
+2. **J05 & J06–J08 deliver the immediate high-visibility flight upgrade**: eliminating emojis, de-boxing the HUD, and establishing combat glancability.
+3. **J09–J13 reveal the deep simulation**: surfacing ship handling, crime history, gauntlet drills, economic flows, and playstyle fits.
+4. **J14–J16 finish sensory feedback, diplomacy, and automated regression safety**.

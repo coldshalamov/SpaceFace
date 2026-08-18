@@ -10,6 +10,7 @@ workflow; it does not replace original plans.
 | Task | Start here |
 |---|---|
 | Program map, "next N", check-off, plan routing | **`CANONICAL_BUILD_MAP.md`** (then `design/program/NOW.md` + queue) |
+| Every same-picture performance option, investigation, or large port later | **`CANONICAL_BUILD_MAP.md` §8.2** → [`design/PERF_OPTION_SPACE.md`](./design/PERF_OPTION_SPACE.md) |
 | What is active or occupied now? | `design/program/NOW.md` → `design/program/README.md` |
 | Choose work across several plans / "do the next N" | `CANONICAL_BUILD_MAP.md` → `design/program/roadmap/program-queue.json` |
 | Claim a multi-week roadmap packet | `design/program/roadmap/README.md` → `design/program/roadmap/00_EXECUTION_PROTOCOL.md` |
@@ -21,6 +22,7 @@ workflow; it does not replace original plans.
 | Ship, station, place, prop, or other Blender/GLB form or surfacing work | `assets/ships/AGENTS.md` **and** `.grok/skills/spaceface-blender-material-truth/SKILL.md`; Tier C/D may group a repeated manufactured family, but no changed visible zone may inherit a DCC default |
 | Resolve the current starter/player ship before graphics work | `src/data/newGameDefaults.js` -> exact ship/root maps in `src/render/partsLibrary.js`; do not infer identity from a screenshot or legacy filename |
 | Resume dock/hulk/debris place remaster (Blender/EEVEE) | **`assets/ships/parts/places/REMASTER_HANDOFF_dock_hulk_debris.md`** (also linked from `CANONICAL_BUILD_MAP.md` §1) |
+| Harvest leftover worktrees / unused models into the live game | **`design/program/ORPHAN_HARVEST_GOAL.txt`** → [`design/program/ORPHAN_HARVEST_PLAYBOOK.md`](./design/program/ORPHAN_HARVEST_PLAYBOOK.md) + [`ORPHAN_HARVEST_LEDGER.md`](./design/program/ORPHAN_HARVEST_LEDGER.md) |
 | Resume non-Hitch flyable ship remaster (not Hitch) | **`CANONICAL_BUILD_MAP.md`** campaign door → `PQ-050` / [`design/program/roadmap/active/PQ-050.md`](./design/program/roadmap/active/PQ-050.md). Overnight or “non-INFERENCE work in the map” keeps going through every remaining ship. |
 | Add a map-visible place (planet, station, route, region) | `src/data/PLACE_REGISTRATION.md` — **a new place is not done until `npm run check:atlas-integrity` is green** |
 | UI/HUD | `src/ui/AGENTS.md` and `styles/AGENTS.md` |
@@ -110,7 +112,11 @@ them casually. Confirm selection in `src/core/registry.js` and defaults in `src/
 - **Assets:** exact manifests, release metadata, and runtime maps outrank prose inventories. Honor a
   currently active lock/authoring signal, but historical lane documents are not permanent ownership.
 - **Visual craft:** all player-facing graphics work starts at `docs/visual-assets/README.md` and
-  obeys `docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md`.
+  obeys `docs/visual-assets/VISUAL_ASSET_PRODUCTION_STANDARD.md`. Player-facing VFX and world
+  dressing also obey `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`. A camera-facing soft square or
+  disc (soft-particle billboard, point sprite, radial-gradient glow card) is not an accepted stand-in
+  for a designed object. Distant background stars are the only exception, and only while they stay
+  tiny, bright, and at sky depth. If the player can fly past it, it is not a star.
   Any Blender/GLB form or surfacing work must complete the proportional fiction/material preflight in
   `.grok/skills/spaceface-blender-material-truth/SKILL.md`; Tier A/B uses component-level records and
   Tier C/D may group a repeated manufactured family. Do not wait for a reviewer to name the
@@ -144,6 +150,7 @@ escalate only when it justifies the cost; don't loop on verification rituals.
 | You want | Run |
 |---|---|
 | Fast gate, before and after an edit | `npm run check:baseline` (~15s) |
+| What the running game is actually doing (freeze, hitch, "why is it slow") | `npm run probe:runtime-witness`, then read `.devshots/runtime-witness/report.md` |
 | Broad sweep | `npm run check:all` (not `check` — that's a fail-fast chain that hides failures) |
 | Middle tier | `npm run check:all:smoke` |
 
@@ -158,6 +165,8 @@ escalate only when it justifies the cost; don't loop on verification rituals.
   relevant rather than carrying them every turn.
 - Visual, accessibility, and performance claims need current player-facing evidence, but decide
   proportionately in the moment how much. Don't run headed acceptance as a ritual.
+- Before freeze or performance work, run the runtime witness. A moving sim clock is not a live 3D
+  picture. Do not tune code until that report names the stuck latch or the top frame-time bucket.
 - Never rerun the same command against the same candidate/harness/environment after the same failure
   fingerprint without a relevant change. That is a validation loop: retain the evidence, reduce it
   to an owner-level regression or switch to another safe production unit. A long build or soak is
@@ -187,8 +196,18 @@ instruction layer.
 - When a plan is authorized, drive it through without stop-and-go “continue?” pauses.
 - For graphics and VFX, do not hype work as A-list; place each technique honestly against modern
   games (name it, when it was current, what it would take to go further). Do not treat the existing
-  implementation primitive as the design and silently fatten or tweak it—present the real option
-  space before implementing.
+  implementation primitive as the design and silently fatten or tweak it—ground the effect in how
+  the real thing behaves, present the real option space before implementing, then implement that
+  technique rather than a cheap stand-in (solid cones, spark sprays, billboard smoke, blurry
+  squares, transparency ramps, CSS glows, or a still image stretched and bolted to the ship) that
+  only technically satisfies the brief. Never satisfy a player-facing visual brief with a
+  camera-facing soft square or disc except distant background stars. If the player can fly past it,
+  it is not a star.
+- When the player reports a freeze or other play-blocking bug, find the actual cause on the real
+  play path and verify that freeze is gone before claiming it fixed; do not paper it over with
+  catch-and-continue or scatter unrelated nearby changes.
+- Browser and Electron are shells of the same game; they must share player saves and must not drift
+  as separate copies.
 
 ## Learned Workspace Facts
 
