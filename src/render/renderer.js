@@ -6,6 +6,10 @@ import { applyMasslineReleaseCameraCue, createChaseCamera, shakeDistanceAttenuat
 import { createSpaceBackground } from './spaceBackground.js';
 import * as parallaxLayers from './parallaxLayers.js';
 import {
+  easeSectorTransition,
+  SECTOR_VISUAL_TRANSITION_SECONDS,
+} from './sectorVisualTransition.js';
+import {
   createSpaceReflectionEnvironment,
   SPACE_REFLECTION_PMREM_SIGMA_RADIANS,
 } from './spaceReflectionEnvironment.js';
@@ -93,7 +97,6 @@ import {
 } from './shadowCasterPolicy.js';
 import { updateShipPitchPresentation } from './shipPitchPresentation.js';
 import { createLivingHullPresentation } from './livingHullPresentation.js';
-import { configurePlanarAdditiveMaterial } from './planarAdditivePolicy.js';
 import { createRenderFrameMembrane } from './frameCoordinates.js';
 import { projectileSkipsVisualFactoryMesh } from './weapons/recipes.js';
 import { readShieldContacts, SHIELD_HIT_SLOTS } from './weapons/shieldContacts.js';
@@ -292,7 +295,22 @@ export function isEntityAuthoredUpgradeRelevant(entity, state, radius = AUTHORED
  */
 export function serviceRenderMeshResidency(owner, frameDt) {
   if (!owner || owner._deferNoncriticalMeshStreaming) return 'deferred';
-  owner._renderResidencyPollS -= Number.isFinite(frameDt) ? Math.max(0, frameDt) : 0;
+  const dt = Number.isFinite(frameDt) ? Math.max(0, frameDt) : 0;
+  if (owner._sectorHandoffStreamHoldS > 0) {
+    owner._sectorHandoffStreamHoldS = Math.max(0, owner._sectorHandoffStreamHoldS - dt);
+    if (owner._sectorHandoffStreamHoldS === 0) {
+      // The seam's dirty flag requests a whole-world recovery scan. Once the visual blend has
+      // finished, discard that seam-only request and let the ordinary spatial poll self-heal.
+      owner._meshReconcileDirty = false;
+      if (owner._authoredSectorPrewarmPendingId === owner._sectorHandoffSectorId) {
+        owner._authoredSectorPrewarmPendingId = null;
+        owner._authoredSectorPrewarmPending = null;
+      }
+      owner._sectorHandoffSectorId = null;
+    }
+    return 'deferred';
+  }
+  owner._renderResidencyPollS -= dt;
   let pollDue = false;
   if (owner._renderResidencyPollS <= 0) {
     owner._renderResidencyPollS = RENDER_RESIDENCY_POLL_SECONDS;
@@ -2131,6 +2149,45 @@ export const render = {
     this._sectorPaletteTarget = corePalette;
     this._sectorLightingTarget = null; // no authored rig applied yet; see _beginSectorPaletteTransition
     this._sectorPost = null;           // authored per-sector grade; see setSectorPostProfile
+    this._sectorPostTarget = null;
+    this._sectorPostApplied = false;
+    this._sectorPostTransition = {
+      active: false,
+      elapsed: SECTOR_VISUAL_TRANSITION_SECONDS,
+      targetProfile: null,
+      startExposure: 1,
+      targetExposure: 1,
+      startBloomStrength: 0,
+      targetBloomStrength: 0,
+      startBloomThreshold: 1,
+      targetBloomThreshold: 1,
+      startNorm: null,
+      targetNorm: null,
+      options: {
+        bloom: true,
+        bloomStrength: 0,
+        strength: 0,
+        threshold: 1,
+        bloomThreshold: 1,
+        exposure: 1,
+        acesToneMapping: true,
+        grade: 0,
+        vignette: 0,
+        toe: 0,
+        grain: 0,
+      },
+      graphOptions: {
+        bloom: true,
+        bloomStrength: 0,
+        bloomThreshold: 1,
+        exposure: 1,
+        acesToneMapping: true,
+        grade: 0,
+        vignette: 0,
+        toe: 0,
+        grain: 0,
+      },
+    };
     state.render.sectorPalette = corePalette;
     this._keyLight = key; // retained while disabled so current→max→current can reconcile live
     this._shadowSettingOn = shadowsOn;
@@ -2412,6 +2469,8 @@ export const render = {
     this._meshReconcileDirty = true;
     this._initialMeshReconcileComplete = false;
     this._renderResidencyPollS = 0;
+    this._sectorHandoffStreamHoldS = 0;
+    this._sectorHandoffSectorId = null;
     // Renderer diagnostics: window.__THREE_GAME_DIAGNOSTICS__ (draw calls/tris/memory + frame timing).
     try {
       this.diag = installDiagnostics(renderer, {
@@ -3193,13 +3252,18 @@ export const render = {
     };
     bus.on('sector:enter', ({ sectorId, sector, continuous } = {}) => {
       const exactSectorId = String(sectorId || sector && sector.id || '');
+      if (continuous !== true) {
+        this._sectorHandoffStreamHoldS = 0;
+        this._sectorHandoffSectorId = null;
+      }
       this._meshReconcileDirty = true;
       if (cam.snapToPlayer) cam.snapToPlayer();
       const sectorVisualProfile = resolveSectorVisualProfile(sector);
       this._beginSectorPaletteTransition(sector, sectorVisualProfile);
       this.setSectorPostProfile(sectorVisualProfile && sectorVisualProfile.post);
-      // Per-sector sky: rebake the deep-field background with this sector's seed +
-      // palette class (no-op when re-entering the same sector).
+      // The continuous map presentation eases its palette, post, and background identity at the
+      // boundary. Its resident graph is not rebaked here; continuous authored work stays on the
+      // spatial runway so a whole-sector decode/shader batch cannot compete with the crossing frame.
       //
       // The visual profile MUST be passed. onSectorEnter's second parameter defaults to null, and
       // until now both live call sites omitted it, so every authored sector profile — signature
@@ -3232,7 +3296,12 @@ export const render = {
             console.warn('[render] opening pipeline precompile failed', error);
             return null;
           }))
-        : compileSectorPipelines(sector);
+        : continuous === true
+          ? Promise.resolve({
+            skipped: true,
+            reason: 'continuous-sector-handoff-defers-pipeline-precompile',
+          })
+          : compileSectorPipelines(sector);
 
       if (state.mode === 'loading' || !exactSectorId) {
         // Run reset/New Game can publish its loading-sector enter without a preceding sector:exit.
@@ -3247,6 +3316,27 @@ export const render = {
         this._currentSectorPrewarm = null;
         this._authoredSectorPrewarmPending = null;
         this._authoredSectorPrewarmPendingId = null;
+        if (this._assetResidency && exactSectorId) this._assetResidency.rotateSector(exactSectorId);
+        state.render.pipelinePrecompileReady = pipelinePrecompile;
+        this._publishAssetResidencyDiagnostics();
+        return;
+      }
+
+      if (continuous === true) {
+        // Continuous free-flight is already covered by the resident procedural graph and the
+        // normal spatial authored-upgrade runway. Do not assemble a whole-sector decode/GPU batch
+        // at the seam; that batch is exactly the admission spike the visual transition is meant to
+        // hide. Intentional jumps retain the prepare-then-publish contract below.
+        if (this._incomingSectorPrewarm) {
+          releaseSectorPrewarm(this._incomingSectorPrewarm, 'continuous-sector-entry-uses-spatial-runway');
+          this._incomingSectorPrewarm = null;
+        }
+        this._authoredSectorPrewarmPendingId = null;
+        this._authoredSectorPrewarmPending = null;
+        this._sectorHandoffSectorId = exactSectorId || null;
+        this._sectorHandoffStreamHoldS = exactSectorId
+          ? SECTOR_VISUAL_TRANSITION_SECONDS
+          : 0;
         if (this._assetResidency && exactSectorId) this._assetResidency.rotateSector(exactSectorId);
         state.render.pipelinePrecompileReady = pipelinePrecompile;
         this._publishAssetResidencyDiagnostics();
@@ -3421,10 +3511,10 @@ export const render = {
   // settings rather than replacing them: the slider still means what the player set, the sector
   // decides how much bloom that sector's material palette can carry and where its black floor sits.
   // These fields existed in five sector profiles with zero consumers before this.
-  _applySectorPost(norm) {
+  _applySectorPost(norm, postProfile = this._sectorPost) {
     // The cinematic grade/vignette apply on every route, so an unprofiled sector still gets them;
     // a sector profile only overrides the amounts.
-    const post = this._sectorPost || {};
+    const post = postProfile || {};
     return resolveEffectiveSectorPost(norm, post, {
       // The composite's authored cinematic grade (teal-weighted shadows, amber-weighted highlights,
       // slight saturation lift) and vignette ship at 0 on the live route — bloom.js's
@@ -3446,10 +3536,124 @@ export const render = {
 
   setSectorPostProfile(post) {
     const next = post || null;
-    if (next === this._sectorPost) return;
-    this._sectorPost = next;
+    if (this._sectorPostApplied && next === this._sectorPostTarget) return;
+    const wasApplied = this._sectorPostApplied;
+    const video = (this.state && this.state.settings && this.state.settings.video) || {};
+    const videoNorm = this._normalizePostVideo(video);
+    const activeTransition = this._sectorPostTransition && this._sectorPostTransition.active
+      ? this._sectorPostTransition.options
+      : null;
+    const startNorm = activeTransition
+      ? {
+        bloom: activeTransition.bloom,
+        bloomStrength: activeTransition.bloomStrength,
+        bloomThreshold: activeTransition.bloomThreshold,
+        exposure: activeTransition.exposure,
+        acesToneMapping: activeTransition.acesToneMapping,
+        grade: activeTransition.grade,
+        vignette: activeTransition.vignette,
+        toe: activeTransition.toe,
+        grain: activeTransition.grain,
+      }
+      : this._applySectorPost(videoNorm, this._sectorPost);
+    const targetNorm = this._applySectorPost(videoNorm, next);
+    this._sectorPostTarget = next;
+    this._sectorPostApplied = true;
+
+    // Boot/reset happens behind the loading screen. Apply its first authored profile directly so
+    // the first playable frame is already correct; live flight uses the same 1.5s seam as lighting.
+    if (!wasApplied || this.state.mode === 'loading') {
+      this._sectorPost = next;
+      this._sectorPostTransition.active = false;
+      this._sectorPostTransition.elapsed = SECTOR_VISUAL_TRANSITION_SECONDS;
+      this._invalidatePostOptionsCache();
+      this._syncPostOptions();
+      return;
+    }
+
+    const transition = this._sectorPostTransition;
+    // The current profile remains authoritative until the first interpolated frame is ready.
+    // This prevents the event handler itself from changing exposure/bloom on the crossing frame.
     this._invalidatePostOptionsCache();
     this._syncPostOptions();
+    transition.startNorm = startNorm;
+    transition.targetNorm = targetNorm;
+    transition.targetProfile = next;
+    transition.startExposure = startNorm.exposure;
+    transition.targetExposure = targetNorm.exposure;
+    transition.startBloomStrength = startNorm.bloomStrength;
+    transition.targetBloomStrength = targetNorm.bloomStrength;
+    transition.startBloomThreshold = startNorm.bloomThreshold;
+    transition.targetBloomThreshold = targetNorm.bloomThreshold;
+    transition.elapsed = 0;
+    transition.active = true;
+  },
+
+  _applySectorPostTransitionOptions(options) {
+    if (!options) return;
+    if (this.bloom) this.bloom.setOptions(options);
+    if (this.renderer) {
+      this.renderer.toneMappingExposure = Number.isFinite(options.exposure) ? options.exposure : 1;
+      this.renderer.toneMapping = options.acesToneMapping === false
+        ? THREE.NoToneMapping
+        : THREE.ACESFilmicToneMapping;
+    }
+    if (this._renderGraph) {
+      const graphOptions = this._sectorPostTransition.graphOptions;
+      graphOptions.bloom = options.bloom !== false;
+      graphOptions.bloomStrength = options.bloomStrength;
+      graphOptions.bloomThreshold = options.bloomThreshold;
+      graphOptions.exposure = options.exposure;
+      graphOptions.acesToneMapping = options.acesToneMapping;
+      graphOptions.grade = options.grade;
+      graphOptions.vignette = options.vignette;
+      graphOptions.toe = options.toe;
+      graphOptions.grain = options.grain;
+      const video = (this.state && this.state.settings && this.state.settings.video) || {};
+      if (video.renderGraph === true) {
+        graphOptions.ao = video.ao !== false;
+        graphOptions.renderScale = Math.min(1, finiteInRange(video.renderScale, 0.5, 2, 1));
+      }
+      this._renderGraph.setOptions(graphOptions);
+    }
+  },
+
+  _updateSectorPostTransition(frameDt) {
+    const transition = this._sectorPostTransition;
+    if (!transition || !transition.active) return;
+    transition.elapsed = Math.min(
+      SECTOR_VISUAL_TRANSITION_SECONDS,
+      transition.elapsed + (Number.isFinite(frameDt) ? Math.max(0, frameDt) : 0),
+    );
+    const rawT = SECTOR_VISUAL_TRANSITION_SECONDS > 0
+      ? transition.elapsed / SECTOR_VISUAL_TRANSITION_SECONDS
+      : 1;
+    const t = easeSectorTransition(rawT);
+    const start = transition.startNorm;
+    const target = transition.targetNorm;
+    const options = transition.options;
+    options.bloom = t < 1 ? start.bloom : target.bloom;
+    options.bloomStrength = transition.startBloomStrength
+      + (transition.targetBloomStrength - transition.startBloomStrength) * t;
+    options.strength = options.bloomStrength;
+    options.bloomThreshold = transition.startBloomThreshold
+      + (transition.targetBloomThreshold - transition.startBloomThreshold) * t;
+    options.threshold = options.bloomThreshold;
+    options.exposure = transition.startExposure
+      + (transition.targetExposure - transition.startExposure) * t;
+    options.acesToneMapping = t < 1 ? start.acesToneMapping : target.acesToneMapping;
+    options.grade = start.grade + (target.grade - start.grade) * t;
+    options.vignette = start.vignette + (target.vignette - start.vignette) * t;
+    options.toe = start.toe + (target.toe - start.toe) * t;
+    options.grain = start.grain + (target.grain - start.grain) * t;
+    this._applySectorPostTransitionOptions(options);
+
+    if (rawT >= 1) {
+      transition.active = false;
+      this._sectorPost = transition.targetProfile;
+      this._invalidatePostOptionsCache();
+      this._syncPostOptions();
+    }
   },
 
   _syncPostOptions(force = false) {
@@ -4124,98 +4328,13 @@ export const render = {
     }
   },
 
-  // --------------- hazard zone visuals ------------------------------------------------
-  // Create a radial gradient CanvasTexture: bright center color fading to transparent edge.
-  _makeHazardTexture(hexColor, centerAlpha, edgeAlpha) {
-    const size = 256;
-    const c = document.createElement('canvas'); c.width = c.height = size;
-    const ctx = c.getContext('2d');
-    const half = size / 2;
-    const g = ctx.createRadialGradient(half, half, 0, half, half, half);
-    // Parse hex to r,g,b
-    const r = parseInt(hexColor.slice(1, 3), 16);
-    const gr = parseInt(hexColor.slice(3, 5), 16);
-    const b = parseInt(hexColor.slice(5, 7), 16);
-    g.addColorStop(0.0, `rgba(${r},${gr},${b},${centerAlpha})`);
-    g.addColorStop(0.5, `rgba(${r},${gr},${b},${centerAlpha * 0.6})`);
-    g.addColorStop(0.85, `rgba(${r},${gr},${b},${edgeAlpha * 0.5})`);
-    g.addColorStop(1.0, `rgba(${r},${gr},${b},${edgeAlpha})`);
-    ctx.fillStyle = g; ctx.fillRect(0, 0, size, size);
-    const tex = new THREE.CanvasTexture(c);
-    tex.needsUpdate = true;
-    return tex;
-  },
-
-  _updateHazardVisuals(sector) {
-    // Dispose previous hazard visuals
+  // Hazard identity is the place itself — rocks, lighting, fog — not a stained-glass floor disc.
+  _updateHazardVisuals() {
     for (const obj of this._hazardVisuals) {
       this.scene.remove(obj);
       disposeObject(obj);
     }
     this._hazardVisuals = [];
-
-    if (!sector || !sector.hazards || sector.hazards.length === 0) return;
-
-    // Color/opacity config per hazard type
-    const hazardStyles = {
-      radiation:       { color: '#66ff44', centerAlpha: 0.18, edgeAlpha: 0.04, ring: true,  ringColor: 0x44ff22 },
-      nebula:          { color: '#7744ff', centerAlpha: 0.15, edgeAlpha: 0.03, ring: false, ringColor: 0x7744ff },
-      dense_asteroid:  { color: '#aa7744', centerAlpha: 0.10, edgeAlpha: 0.02, ring: false, ringColor: 0xaa7744 },
-      debris:          { color: '#778899', centerAlpha: 0.12, edgeAlpha: 0.03, ring: false, ringColor: 0x778899 },
-    };
-
-    const membrane = this._frameMembrane;
-    for (const hz of sector.hazards) {
-      const style = hazardStyles[hz.type] || hazardStyles.debris;
-      const intensityScale = hz.intensity != null ? hz.intensity : 0.5;
-      // Hazard centers are galactic-global world data; Three.js placement is frame-local.
-      const center = hz.center || { x: 0, z: 0 };
-      const local = membrane
-        ? membrane.toLocal(center, _meshLocalXZ)
-        : { x: center.x || 0, z: center.z || 0 };
-
-      // --- Main disc ---
-      const discGeo = new THREE.CircleGeometry(hz.radius, 64);
-      const tex = this._makeHazardTexture(style.color, style.centerAlpha * intensityScale, style.edgeAlpha * intensityScale);
-      const discMat = new THREE.MeshBasicMaterial({
-        map: tex,
-        transparent: true,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false,
-        side: THREE.DoubleSide,
-      });
-      configurePlanarAdditiveMaterial(discMat);
-      const disc = new THREE.Mesh(discGeo, discMat);
-      disc.rotation.x = -Math.PI / 2;
-      disc.position.set(local.x, -0.5, local.z);
-      disc.renderOrder = -3; // below contact shadows
-      disc.frustumCulled = false;
-      this.scene.add(disc);
-      this._hazardVisuals.push(disc);
-
-      // --- Boundary ring (radiation zones get a visible edge ring) ---
-      if (style.ring) {
-        const ringInner = hz.radius - 4;
-        const ringOuter = hz.radius + 4;
-        const ringGeo = new THREE.RingGeometry(ringInner, ringOuter, 64);
-        const ringMat = new THREE.MeshBasicMaterial({
-          color: style.ringColor,
-          transparent: true,
-          opacity: 0.25 * intensityScale,
-          blending: THREE.AdditiveBlending,
-          depthWrite: false,
-          side: THREE.DoubleSide,
-        });
-        configurePlanarAdditiveMaterial(ringMat);
-        const ring = new THREE.Mesh(ringGeo, ringMat);
-        ring.rotation.x = -Math.PI / 2;
-        ring.position.set(local.x, -0.4, local.z);
-        ring.renderOrder = -2;
-        ring.frustumCulled = false;
-        this.scene.add(ring);
-        this._hazardVisuals.push(ring);
-      }
-    }
   },
 
   _beginSectorPaletteTransition(sector, profile = null) {
@@ -4344,6 +4463,7 @@ export const render = {
     // Background-clock for distant animation (planet cloud drift, hero-star twinkle). Integrates real
     // frame dt scaled by state.timeScale so the cosmos respects hit-stop/pause — a death freeze
     // momentarily stills the clouds too, keeping the backdrop in the same time model as the action.
+    this._updateSectorPostTransition(frameDt);
     this._updateSectorPaletteTransition(frameDt);
     const ts = (this.state.timeScale != null) ? this.state.timeScale : 1;
     this._bgTime = (this._bgTime || 0) + frameDt * ts;
