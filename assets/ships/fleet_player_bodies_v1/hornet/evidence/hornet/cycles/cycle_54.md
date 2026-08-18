@@ -37,7 +37,45 @@ shows bow, stern and most of the body. Extras: `clay_three_quarter`, `grazing_cl
 ## Reviews
 
 Three independent read-only reviewers, one still each, given the §4 prompt and told explicitly that
-"better than last cycle" is not the bar.
+"better than last cycle" is not the bar. **All three returned REVISE. None returned REVERT** — each
+said so explicitly, on the grounds that reverting would reinstate the cage.
+
+### The headline number, from the rear reviewer
+
+Daylight enclosed by the ship's own silhouette, same test as cycle 53 (backdrop-matched pixels,
+connected-component labelled, edge-touching components discarded):
+
+| | cycle 53 | cycle 54 |
+|---|---:|---:|
+| Enclosed background regions | 74 | **1** |
+| Share of silhouette | 4.1% | **0.05%** |
+| Through the wings | yes, both | **solid** |
+| Through the engine collar | yes | **solid** |
+
+The one remaining hole is a 24 × 13 px wedge on the port dorsal shoulder at the wing root. Two open
+slivers on the port wing are additionally reported but are not counted by that test, because it only
+catches fully enclosed background.
+
+### The drive fails MTX-08 by measurement, not opinion
+
+A throat reads darker than its own casing. This one does not:
+
+| | aperture median luminance | casing median luminance |
+|---|---:|---:|
+| Near drive | **72** | 76 |
+| Far drive | **96** | 70 |
+
+The far aperture is *brighter* than the casing around it — the inverse of a throat. Only 5.6% of the
+near aperture is below luminance 30. The target to verify next cycle is arithmetic: aperture interior
+median below 30 with the casing at 120–150.
+
+### The plume cones are transparent
+
+You can see the render backdrop through them; 7.9% of the near aperture disc in `drive_rear.png` is
+literally backdrop. This is what the three-quarter reviewer independently described as "a fuzzy
+semi-transparent ball" at the stern — the same defect seen from two angles, and it is the largest
+element in the rear frame. Either delete them from the lookdev model or make them opaque; a thrust
+plume must never appear in a hardware still.
 
 ### Measured, from the starboard reviewer
 
