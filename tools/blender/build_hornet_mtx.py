@@ -33,7 +33,20 @@ from fleet_construction import (  # noqa: E402
 
 FAMILY = ROOT / "assets" / "ships" / "fleet_player_bodies_v1" / "hornet"
 TEX_DIR = FAMILY / "source" / "textures"
-TEX = 512
+# Texture size per LOD, not one size for every level.
+#
+# 512 everywhere is far under the contract floor: MTX-17 wants 256-512 px/m at LOD0 and a 512 map
+# on a 10.7 m ship is about 34 px/m at best, which is why every reviewer reads the surface as
+# unpainted plastic. But raising it to a flat 2048 (cycle 56) inflated all three levels together to
+# 64.6 / 64.5 / 63.1 MB - roughly 192 MB for one ship, against 15.3 MB for the entire live player
+# ship release, with LOD2 (the level that exists to be cheap) the same size as LOD0. A ship that
+# large would hit the same admission failure place_station_trade_hub already demonstrates at 75 MB
+# (docs/COMMON_BUGS.md 12).
+#
+# So: LOD0 carries the density the contract asks for, and the levels a player only ever sees small
+# carry less.
+TEX_BY_LOD = {0: 2048, 1: 1024, 2: 512}
+TEX = TEX_BY_LOD[0]
 CYCLE = 1
 for i, tok in enumerate(sys.argv):
     if tok.startswith("--mtx-cycle="):
@@ -81,7 +94,10 @@ def write_pixels(name, pixels, size, colorspace="sRGB"):
     return img
 
 
-def role_maps(role, rgb, size=TEX, prefix=None):
+def role_maps(role, rgb, size=None, prefix=None):
+    # size=None, not size=TEX: a default argument is evaluated once when the function is defined,
+    # so size=TEX would freeze LOD0's map size and silently ignore the ladder.
+    size = TEX if size is None else size
     """Unique Hornet maps. Not a tint of the shared fleet sheet."""
     prefix = prefix or role
     br, bg, bb = rgb
@@ -817,7 +833,8 @@ def shade_and_uv(obj):
     obj.select_set(False)
 
 
-def bake_ao_into_albedo(obj, samples=12, size=TEX):
+def bake_ao_into_albedo(obj, samples=12, size=None):
+    size = TEX if size is None else size  # see role_maps: resolve at call time, not def time
     if obj.type != "MESH" or not obj.data.polygons or not obj.data.uv_layers.active:
         return
     scene = bpy.context.scene
@@ -1244,12 +1261,18 @@ def render_cycle(collection):
 
 
 def main():
+    # `global` must precede every use of the name in this function.
+    global TEX
     FAMILY.mkdir(parents=True, exist_ok=True)
     reset_scene()
-    mats = create_materials()
+    print(f"hornet cycle {CYCLE}: map ladder {TEX_BY_LOD}")
     reports = []
     collections = []
     for lod in (0, 1, 2):
+        # Rebuild the material set at this LOD's map size. Sharing one set across all three levels
+        # is what made every level carry LOD0's textures.
+        TEX = TEX_BY_LOD[lod]
+        mats = create_materials()
         collection, report = build_lod(lod, mats)
         output = export_lod(collection, lod)
         report.update({"path": str(output.relative_to(FAMILY)).replace("\\", "/"), "bytes": output.stat().st_size, "sha256": sha256(output)})
