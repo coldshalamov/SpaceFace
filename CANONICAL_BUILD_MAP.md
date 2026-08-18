@@ -66,7 +66,7 @@ disjoint files. No coordinator, task-long reservation, or worktree is required.
   leaves that need a human or a headed machine you do not have may be recorded `unproven` and
   skipped; do not stall the campaign on them.
 
-**PQ-050 campaign checkpoint (2026-08-14, plate-skin rebuild):** loft-as-hull
+**PQ-050 campaign checkpoint (2026-08-18, form restart owed):** loft-as-hull
 is dead as the visible Hornet silhouette. Live factory wholeships are still
 unwired. Stay off INFERENCE, the dock/hulk remaster, and the expansion-research
 brief.
@@ -81,6 +81,10 @@ brief.
   Do not overwrite KTX2 release files with uncompressed source.
 - **Do not** wire a remaster that still loses to Hitch.
 - **Do not** mark the campaign exhausted while Hitch still wins.
+- **Do not** run a garnish cycle 53 on the C52 plate cage. The recorded verdicts reject that
+  silhouette, not its finish, so more surface work on it cannot close the leaf. Only a complete
+  full-job cycle toward a closed interceptor form is advancement, and one leaf is several
+  focused sessions. See `active/PQ-050.md` § Honest current state.
 
 **Graphics / place-asset remaster (resume):** if the task is continuing the interrupted remaster of
 `place_dock_interior`, `place_dead_hulk`, and/or `place_debris_chunk` (Blender/EEVEE form work, not a
