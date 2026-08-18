@@ -390,7 +390,9 @@ try {
   await page.screenshot({ path: OUT + '05-leftstack-crop.png', clip: left });
   const sch = await page.evaluate(() => { const e = document.querySelector('.sf-schematic'); const r = e.getBoundingClientRect(); return { x: Math.max(0, r.x - 8), y: Math.max(0, r.y - 8), width: r.width + 16, height: r.height + 16 }; });
   await page.screenshot({ path: OUT + '06-schematic.png', clip: sch, scale: 'device' });
-  console.log('captured 04-dock-crop, 05-leftstack-crop, 06-schematic');
+  const deck = await page.evaluate(() => { const e = document.querySelector('.sf-prail'); const r = e.getBoundingClientRect(); return { x: Math.max(0, r.x - 10), y: Math.max(0, r.y - 26), width: r.width + 20, height: r.height + 40 }; });
+  await page.screenshot({ path: OUT + '07-rail.png', clip: deck });
+  console.log('captured 04-dock-crop, 05-leftstack-crop, 06-schematic, 07-rail');
 
   writeFileSync(OUT + 'report.json', JSON.stringify(report, null, 2));
   console.log('\nreport →', OUT + 'report.json');

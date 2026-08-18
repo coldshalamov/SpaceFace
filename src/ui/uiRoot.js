@@ -2190,7 +2190,54 @@ function injectHudCss() {
     display:block; height:100%; width:100%; transform-origin:left center; transform:scaleX(0);
     background:var(--hud-cyan, #4ec3e6);
   }
-  .sf-target__dist { font-family:var(--hud-data); font-size:11px; color:var(--hud-paper); text-shadow:var(--sf-ink); }
+  .sf-target__dist { font-family:var(--hud-data); font-size:12px; color:var(--hud-paper); text-shadow:var(--sf-ink); }
+
+  /* ===== J07 type floor: nothing on the flight layer below 12px (SCREENS_A 14.2) =====
+     The layer was carrying ~100 elements under the floor, bottoming out at 7.5px -- small enough
+     that the Power Rail's own slot names were unreadable at arm's length on the very surface whose
+     job is to say "here is what you can do". The rule is TYPE NEVER SHRINKS; content is dropped
+     instead, so nothing here reflows by making labels smaller.
+     Declared last so it beats the three earlier cascade layers that set these sizes, and scoped to
+     #hud so station screens (which have their own density budget) are untouched. */
+  #hud .sf-barrow__label, #hud .sf-barrow__num,
+  #hud .sf-prail__label, #hud .sf-pslot__name, #hud .sf-pslot__key,
+  #hud .sf-condition-metrics, #hud .sf-cond-stat, #hud .sf-cond-hull-val, #hud .sf-cond-shd-val,
+  #hud .sf-stat__k, #hud .sf-radar-objective-key,
+  #hud .sf-comm__tag, #hud .sf-comm__sender,
+  #hud .sf-ob-kicker, #hud .sf-ob-count,
+  #hud .sf-law__head, #hud .sf-law__meta, #hud .sf-law__jurisdiction,
+  #hud .sf-target__meta, #hud .sf-target__range, #hud .sf-target__closing,
+  #hud .sf-overview, #hud .sf-overview::before, #hud .sf-overview-row,
+  #hud .sf-overview-row__left, #hud .sf-overview-row__name, #hud .sf-overview-row__right,
+  #hud .sf-overview-row__state, #hud .sf-overview-row__tier, #hud .sf-overview-row__detail,
+  #hud .sf-overview-footer,
+  #hud .sf-mt-title, #hud .sf-mt-time, #hud .sf-nav-label, #hud .sf-nav-meta,
+  #hud .sf-tri__k, #hud .sf-tchip__hint, #hud .sf-wpn-heat__name {
+    font-size:12px;
+  }
+  /* The label columns were sized for 7.5-8.5px glyphs and clip at 12px. Widen them to fit the type
+     rather than shrink the type to fit them -- measured at 1440x900 and 1280x720. */
+  #hud .sf-barrow__label { width:52px; }
+  #hud .sf-barrow__num { width:46px; }
+  #hud .sf-overview-row__name { max-width:104px; }
+  /* Second pass, from a re-measure: these six survived because they are set in their own modules'
+     stylesheets rather than in this file. Measuring the rendered layer is the only way to find
+     them -- reading any single stylesheet would have declared the job done at the first pass. */
+  #hud .sf-ob-kicker, #hud .sf-band-hud__button, #hud .ml2-preview,
+  #hud .sf-law__detail, #hud .sf-condition-head { font-size:12px; }
+
+  /* Raising the type is only half the rule. SCREENS_A: TYPE NEVER SHRINKS, CONTENT IS DROPPED --
+     so where 12px no longer fits, the CONTENT gives way. Captured at 1440x900: without these three
+     the rail labels ran into each other ("ORDNANCE ORDNANCE ORDNANCE"), the law receipt's headline
+     wrapped into the band pill, and the target card's range numeral collided with its band word. */
+  #hud .sf-pslot__name {
+    max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:center;
+  }
+  #hud .sf-prail__label { white-space:nowrap; }
+  #hud .sf-law__head { flex-wrap:wrap; row-gap:2px; }
+  #hud .sf-law__headline { line-height:1.25; }
+  #hud .sf-target__meta { gap:10px; margin-top:2px; }
+  #hud .sf-target__range { white-space:nowrap; }
   .sf-target__name { font-family:var(--hud-display); font-size:12px; font-weight:700; letter-spacing:.045em; color:var(--hud-paper); }
   .sf-target__faction, .sf-target__meta, .sf-target__identity, .sf-target__intent { font-family:var(--hud-data); }
   .sf-target__meta { font-size:9px; color:var(--hud-muted); }
