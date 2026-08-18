@@ -19,7 +19,7 @@ function series(overrides = {}, count = 8) {
     posX: index * 4,
     posZ: 0,
     speed: 40,
-    timeScale: 1,
+    simTimeScale: 1,
     mode: 'flight',
     suspended: false,
     documentHidden: false,

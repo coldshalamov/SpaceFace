@@ -67,7 +67,7 @@ function copySample(dst, src) {
   dst.simTime = src.simTime;
   dst.tick = src.tick;
   dst.mode = src.mode;
-  dst.timeScale = src.timeScale;
+  dst.simTimeScale = src.simTimeScale;
   dst.posX = src.posX;
   dst.posZ = src.posZ;
   dst.hasPos = src.hasPos;
@@ -103,7 +103,7 @@ function emptySample() {
     simTime: 0,
     tick: 0,
     mode: null,
-    timeScale: 1,
+    simTimeScale: 1,
     posX: 0,
     posZ: 0,
     hasPos: false,
@@ -152,7 +152,7 @@ export function collectRuntimeWitnessSample(state, extras = {}, wallMs = Date.no
   sample.simTime = finite(state?.simTime);
   sample.tick = finite(state?.tick);
   sample.mode = state?.mode || null;
-  sample.timeScale = finite(state?.timeScale, 1);
+  sample.simTimeScale = finite(state?.timeScale, 1);
   sample.hasPos = !!(pos && Number.isFinite(pos.x) && Number.isFinite(pos.z));
   sample.posX = sample.hasPos ? finite(pos.x) : 0;
   sample.posZ = sample.hasPos ? finite(pos.z) : 0;
@@ -232,7 +232,7 @@ export function classifyRuntimeWitness(samples, { canvasHashes = [] } = {}) {
     canvasHashCount: hashes.length,
     hitchCount,
     mode: last.mode,
-    timeScale: last.timeScale,
+    simTimeScale: last.simTimeScale,
     lifecycle: last.lifecycle,
     suspended: last.suspended,
     documentHidden: last.documentHidden,
@@ -274,7 +274,7 @@ export function classifyRuntimeWitness(samples, { canvasHashes = [] } = {}) {
     };
   }
 
-  if (last.timeScale === 0 && simDelta < 0.25) {
+  if (last.simTimeScale === 0 && simDelta < 0.25) {
     return {
       ok: false,
       kind: 'time-paused',
@@ -404,7 +404,7 @@ export function formatRuntimeWitnessReport({
     '## Live',
     `- mode: ${last?.mode ?? 'n/a'}`,
     `- simTime: ${last ? finite(last.simTime).toFixed(2) : 'n/a'}`,
-    `- timeScale: ${last?.timeScale ?? 'n/a'}`,
+    `- timeScale: ${last?.simTimeScale ?? 'n/a'}`,
     `- lifecycle: ${last?.lifecycle ?? 'n/a'}`,
     `- suspended: ${last?.suspended === true}`,
     `- documentHidden: ${last?.documentHidden === true}`,

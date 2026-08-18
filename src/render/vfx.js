@@ -665,8 +665,10 @@ export const vfx = {
     this._socketReferenceForward = new THREE.Vector3(-1, 0, 0);
     this._driveScratch = {
       drive: 0, throttle: 0, speed: 0, speedDrive: 0, boost: 0,
-      cruise: 0, reverse: 0, retroOnly: false, brake: 0,
+      cruise: 0, reverse: 0, retroOnly: false, brake: 0, dashFired: false,
     };
+    // Set by the ship:dash handler, consumed once by _engineDriveFor.
+    this._plumeDashPending = false;
     this._mainDriveDemandScratch = { main: 0, reverse: 0, retroOnly: false };
     this._productionDriveSignals = {
       cruise: 0, reverse: 0, retroOnly: false, brake: 0, speedDrive: 0,
@@ -2235,9 +2237,41 @@ export const vfx = {
         childCount,
         port: root.getObjectByName('SOCKET_RCS_Port') || null,
         starboard: root.getObjectByName('SOCKET_RCS_Starboard') || null,
+        retroPort: root.getObjectByName('SOCKET_Retro_Port') || root.getObjectByName('SOCKET_Retro_Left') || null,
+        retroStarboard: root.getObjectByName('SOCKET_Retro_Starboard') || root.getObjectByName('SOCKET_Retro_Right') || null,
       };
     }
     return cache;
+  },
+
+  _writeRetroSocketPose(socket, sock) {
+    if (!socket || !sock) return false;
+    socket.updateWorldMatrix(true, false);
+    socket.matrixWorld.decompose(this._socketWorldPos, this._socketWorldQuat, this._socketWorldScale);
+    const f = socket.userData && socket.userData.forward;
+    const arrayForward = Array.isArray(f);
+    const fx = arrayForward ? f[0] : (f && f.x);
+    const fy = arrayForward ? f[1] : (f && f.y);
+    const fz = arrayForward ? f[2] : (f && f.z);
+    this._socketForward.set(
+      Number.isFinite(fx) ? fx : 1,
+      Number.isFinite(fy) ? fy : 0,
+      Number.isFinite(fz) ? fz : 0,
+    );
+    if (this._socketForward.lengthSq() < 1e-8) return false;
+    this._socketForward.normalize().applyQuaternion(this._socketWorldQuat).normalize();
+    const globalXZ = this._entityLocalXZ;
+    globalXZ.x = this._socketWorldPos.x;
+    globalXZ.z = this._socketWorldPos.z;
+    if (this._frameMembrane) this._frameMembrane.toGlobal(globalXZ, globalXZ);
+    const local = this._toLocalXZ(globalXZ.x, globalXZ.z, this._spawnLocalXZ);
+    sock.x = local.x;
+    sock.y = 0;
+    sock.z = local.z;
+    sock.ax = -this._socketForward.x;
+    sock.ay = 0;
+    sock.az = -this._socketForward.z;
+    return true;
   },
 
   _writeRcsSocketPose(socket, origin, axis) {
@@ -7881,6 +7915,9 @@ export const vfx = {
   _onDash(p) {
     const e = this._ent(p && p.shipId);
     if (!e || !this._scene) return;
+    // Latch for the plume's one-shot supernova. The drive envelope consumes and clears it on the next
+    // frame it is read, so a dash fires exactly one flare regardless of frame pacing.
+    if (e.id === this.state?.playerId) this._plumeDashPending = true;
     const cf = Math.cos(e.rot), sf = Math.sin(e.rot);
     const sock = this._trailSocketWorldPose(e);
     const exhaustX = sock ? sock.forwardX : -cf;
@@ -9327,7 +9364,7 @@ export const vfx = {
         ? this.state.input.moveZ
         : 0;
       const driveInfo = this._engineDriveFor(player);
-      if (driveInfo.drive > 0.03 || driveInfo.boost > 0 || turn > 0.2 || pilotForward > 0.05) {
+      if (driveInfo.drive > 0.03 || driveInfo.boost > 0 || turn > 0.2 || pilotForward > 0.05 || driveInfo.speedDrive > 0.15 || driveInfo.brake > 0.1) {
         return true;
       }
     }
@@ -9736,7 +9773,7 @@ export const vfx = {
         const driveInfo = this._engineDriveFor(player);
         if (energy.plasmaStream) {
           fleet.setShipSockets(ship, this._plasmaEmptySockets || [], 0);
-          fleet.setShipDrive(ship, this._plasmaIdleDrive || driveInfo);
+          fleet.setShipDrive(ship, driveInfo);
           const a11y = this._productionThrusterA11y || {};
           const cam = this.state.render && this.state.render.camera;
           if (cam && typeof energy.plasmaStream.setCamera === 'function') energy.plasmaStream.setCamera(cam);
@@ -10038,20 +10075,30 @@ export const vfx = {
     const view = this._retroSocketView;
     view.length = 0;
     let peak = 0;
+    const authoredSockets = this._rcsSocketObjects(player);
     if (firings) {
       for (let i = 0; i < firings.length && view.length < this._retroSockets.length; i++) {
         const jet = firings[i];
         if (jet.role !== 'reverse-left' && jet.role !== 'reverse-right') continue;
         if (!(jet.intensity > 0.001)) continue;
         const sock = this._retroSockets[view.length];
-        const local = this._toLocalXZ(jet.x, jet.z, this._spawnLocalXZ);
-        sock.x = local.x;
-        sock.y = 0;
-        sock.z = local.z;
-        // Socket convention: `a` points opposite the exhaust, and the plume grows along -a.
-        sock.ax = -jet.dirX;
-        sock.ay = 0;
-        sock.az = -jet.dirZ;
+        const authoredSocket = jet.role === 'reverse-left'
+          ? (authoredSockets && authoredSockets.retroPort)
+          : (authoredSockets && authoredSockets.retroStarboard);
+        let usedAuthored = false;
+        if (authoredSocket) {
+          usedAuthored = this._writeRetroSocketPose(authoredSocket, sock);
+        }
+        if (!usedAuthored) {
+          const local = this._toLocalXZ(jet.x, jet.z, this._spawnLocalXZ);
+          sock.x = local.x;
+          sock.y = 0;
+          sock.z = local.z;
+          // Socket convention: `a` points opposite the exhaust, and the plume grows along -a.
+          sock.ax = -jet.dirX;
+          sock.ay = 0;
+          sock.az = -jet.dirZ;
+        }
         view.push(sock);
         if (jet.intensity > peak) peak = jet.intensity;
       }
@@ -10065,7 +10112,7 @@ export const vfx = {
     const p = this._retroParams;
     const flashScale = a11y && a11y.reducedFlash ? 0.72 : 1;
     p.drive = peak;
-    p.timeScale = a11y && a11y.reducedMotion ? 0.12 : 1;
+    p.animRate = a11y && a11y.reducedMotion ? 0.12 : 1;
     // A braking jet is short and hard: it grows a little with demand but never becomes a cruise
     // plume, so length tracks demand only weakly.
     p.lengthWU = PLAYER_RETRO_VOLUME_RECIPE.lengthWU * (0.55 + peak * 0.5);
@@ -10220,6 +10267,7 @@ export const vfx = {
     if (!e) {
       out.drive = 0; out.throttle = 0; out.speed = 0; out.speedDrive = 0; out.boost = 0;
       out.cruise = 0; out.reverse = 0; out.retroOnly = false; out.brake = 0;
+      out.dashFired = false;
       return out;
     }
     const frame = e._flightFrame || {};
@@ -10311,6 +10359,8 @@ export const vfx = {
     out.reverse = reverse;
     out.retroOnly = retroOnly;
     out.brake = brake;
+    out.dashFired = !!this._plumeDashPending;
+    this._plumeDashPending = false;
     return out;
   },
 

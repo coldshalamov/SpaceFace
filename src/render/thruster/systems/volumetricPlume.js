@@ -204,7 +204,7 @@ export class VolumetricPlumeSystem {
   update(dt, sockets, p) {
     if (this._disposed || !this.group) return { live: 0 };
     const frameDt = Number.isFinite(dt) ? Math.max(0, Math.min(0.1, dt)) : 0;
-    this._time += frameDt * (p && p.timeScale != null ? p.timeScale : 1);
+    this._time += frameDt * (p && p.animRate != null ? p.animRate : 1);
 
     const count = sockets && sockets.length
       ? Math.min(sockets.length, this.maxNozzles)
