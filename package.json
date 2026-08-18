@@ -369,6 +369,8 @@
     "check:wcag-contrast": "node scripts/check-wcag-contrast.mjs",
     "check:boot-resilience": "node --test test/loading-boot-resilience.test.mjs",
     "check:playable": "node scripts/check-game-playable.mjs",
+    "check:playable:desktop": "node scripts/check-game-playable.mjs --electron",
+    "check:playable:saves": "node scripts/check-game-playable.mjs --electron --real-saves",
     "check:hud-j07": "node --test test/j07-hud-contract.test.mjs",
     "check:ui-identity": "node scripts/check-ui-identity.mjs",
     "check:ui:perf": "npm run check:perf-budget && npm run check:spatial-hash && npm run check:perf:spatial-cache && npm run check:perf-summary && npm run check:vfx-sleep && node scripts/check-ui-frame-sleep.mjs && npm run check:radar:perf && npm run check:ui-identity",
