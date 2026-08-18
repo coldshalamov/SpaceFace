@@ -31,4 +31,6 @@
 | 43 | yes | see json | pending | easier AO. Tan remained (warm rim) |
 | 44 | yes | see json | REJECT/REVISE | gray steel. Foam dart, card wings |
 
+| 53 | **no** | see json | (baseline) | toolchain repair only. Blender 5.1 crashed every build in `boolean_cut_box`; fixed and re-ran. Output is byte-identical to C52, so this is NOT an authoring cycle and does not count. Stills exist only as the review baseline for the form restart. |
+
 Hitch-plus / A-list: not met. Do not promote. Do not self-accept.
