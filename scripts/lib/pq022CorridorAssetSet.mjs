@@ -178,13 +178,77 @@ const PLACE_ROWS = [
     ],
   }),
   row({
-    assetId: 'place_station_billboard',
+    assetId: 'place_memorial_array',
     family: 'place-infrastructure',
     horizon: 30,
-    status: 'never-touched',
+    status: 'focused-green',
     derivations: [
       d('sector-anchor-poi', 'SECTOR_ANCHORS.sector_helios_prime.pois', 'poi_memorial'),
     ],
+    ownerLane: 'PQ-022 navigation-infrastructure',
+    note: 'Replaced place_station_billboard at poi_memorial. Material-truth V2 keep; live G1/G2/G4 not claimed as accepted.',
+  }),
+  row({
+    assetId: 'place_lane_pin',
+    family: 'place-infrastructure',
+    horizon: 30,
+    status: 'focused-green',
+    derivations: [
+      d('sector-anchor-poi', 'SECTOR_ANCHORS.sector_helios_prime.pois', 'poi_helios_lane_pin'),
+    ],
+    ownerLane: 'Helios lane furniture still panel (2026-08-18)',
+    note: 'A/B/C WIRE. Routed through PLACE_FILES. G1/G2/G4 stay OPEN.',
+  }),
+  row({
+    assetId: 'place_tally_post',
+    family: 'place-infrastructure',
+    status: 'awaiting-re-authoring',
+    derivations: [
+      d('sector-anchor-poi', 'SECTOR_ANCHORS.sector_helios_prime.pois', 'poi_helios_tally'),
+    ],
+    ownerLane: 'Helios lane furniture still panel (2026-08-18)',
+    note: 'A: LEGO slats/cubes at the deck. Released on disk; deliberately not in PLACE_FILES.',
+  }),
+  row({
+    assetId: 'place_claim_mark',
+    family: 'place-infrastructure',
+    status: 'awaiting-re-authoring',
+    derivations: [
+      d('sector-anchor-poi', 'SECTOR_ANCHORS.sector_helios_prime.pois', 'poi_helios_claim_mark'),
+    ],
+    ownerLane: 'Helios lane furniture still panel (2026-08-18)',
+    note: 'A: brick-rubble foot. Released on disk; deliberately not in PLACE_FILES.',
+  }),
+  row({
+    assetId: 'place_cold_locker',
+    family: 'place-infrastructure',
+    horizon: 30,
+    status: 'focused-green',
+    derivations: [
+      d('sector-anchor-poi', 'SECTOR_ANCHORS.sector_helios_prime.pois', 'poi_helios_locker'),
+    ],
+    ownerLane: 'Helios lane furniture still panel (2026-08-18)',
+    note: 'A/B/C WIRE. Routed through PLACE_FILES. G1/G2/G4 stay OPEN.',
+  }),
+  row({
+    assetId: 'place_ash_pin',
+    family: 'place-infrastructure',
+    status: 'awaiting-re-authoring',
+    derivations: [
+      d('sector-anchor-poi', 'SECTOR_ANCHORS.sector_helios_prime.pois', 'poi_helios_ash_pin'),
+    ],
+    ownerLane: 'Helios lane furniture still panel (2026-08-18)',
+    note: 'A: plaque cubes + pad scatter. Released on disk; deliberately not in PLACE_FILES.',
+  }),
+  row({
+    assetId: 'place_whistle',
+    family: 'place-infrastructure',
+    status: 'awaiting-re-authoring',
+    derivations: [
+      d('sector-anchor-poi', 'SECTOR_ANCHORS.sector_helios_prime.pois', 'poi_helios_whistle'),
+    ],
+    ownerLane: 'Helios lane furniture still panel (2026-08-18)',
+    note: 'A: stray foot brick + cube lantern. Released on disk; deliberately not in PLACE_FILES.',
   }),
   row({
     assetId: 'place_debris_chunk',
@@ -547,6 +611,13 @@ export const EXCLUDED_WITH_REASON = Object.freeze([
   Object.freeze({
     assetId: 'place_station_blackmarket',
     reason: 'No corridor station anchor uses it; poi_blackmkt resolves to place_nav_buoy.',
+  }),
+  Object.freeze({
+    assetId: 'place_station_billboard',
+    reason: 'Previously the poi_memorial landmark; that POI now routes place_memorial_array. '
+      + 'No corridor sector-anchor, field, or world site selects the billboard. '
+      + 'Still resolvable in PLACE_FILES and still used as core-station dressing in world.js, '
+      + 'which this gate does not count as corridor routing.',
   }),
   Object.freeze({
     assetId: 'place_station_fab',

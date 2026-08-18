@@ -16,16 +16,20 @@ const JSON_CHUNK = 0x4e4f534a;
 const SITE_ID = 'world_site_helios_relay';
 const CATHEDRAL_PART_ID = 'place_landmark_wreck_cathedral';
 const CATHEDRAL_ASSET_ID = 'SF_LANDMARK_PLACE_LANDMARK_WRECK_CATHEDRAL';
+// Refreshed 2026-08-18 to the rebuilt Cathedral. The prior pair (source f335935f/11155156,
+// release dc5510f8/6160084) described a body that no longer exists on disk, so this test was the
+// last stale authority of four: release_manifest.json, src/data/worldSiteAssetBindings.js and the
+// PQ-018 admission test all pin the values below. Recomputed from the bytes, not copied.
 const CATHEDRAL_CONTRACT = Object.freeze({
   source: Object.freeze({
     path: 'assets/ships/parts/places/place_landmark_wreck_cathedral.glb',
-    sha256: 'f335935f9658bad0e721aceb5d66bb4c2f0457fe411442819b4a3455a00af704',
-    bytes: 11155156,
+    sha256: '7c2f3fcd82235b8a44463320b83d3ee18d377049fe63995d8ebf7b896733ee0e',
+    bytes: 18890576,
   }),
   release: Object.freeze({
     path: 'assets/ships/release/parts/places/place_landmark_wreck_cathedral.glb',
-    sha256: 'dc5510f88b128d9a40e427700fe4b0b212987db152f60757ef5035bda270a49a',
-    bytes: 6160084,
+    sha256: '32094bcd6df7671e9e2d93ae491a6aab33aa1ca9bd2a32cc3548cb7532eedcca',
+    bytes: 7563260,
   }),
 });
 const CATHEDRAL_SEMANTIC_NODES = Object.freeze({

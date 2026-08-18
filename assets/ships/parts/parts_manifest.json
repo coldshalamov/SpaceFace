@@ -3613,8 +3613,13 @@
       "category": "wholeships",
       "priority": "P0",
       "file": "wholeships/kestrel.glb",
+      "lodFamily": {
+        "lod0": "wholeships/kestrel.glb",
+        "lod1": "wholeships/kestrel_lod1.glb",
+        "lod2": "wholeships/kestrel_lod2.glb"
+      },
       "tris": 36902,
-      "bytes": 53067412,
+      "bytes": 53203580,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -3660,6 +3665,28 @@
         ]
       },
       "note": "Hitch V7 polish live promotion — same boat, manufactured drive/sensor/shoulders/radiators, DIE LAUGHING spray stencil, role-mapped PBR, nine sockets, no baked plume."
+    },
+    {
+      "id": "wholeship_kestrel_lod1",
+      "category": "wholeships",
+      "priority": "P0",
+      "file": "wholeships/kestrel_lod1.glb",
+      "tris": 16323,
+      "bytes": 38606700,
+      "textureSize": 1024,
+      "mount": "origin",
+      "note": "Kestrel LOD1 family member. Source bytes/identity refreshed from on-disk GLB; lodFamily (partsLibrary) has no runtime consumer, so LOD0 is canonical live truth."
+    },
+    {
+      "id": "wholeship_kestrel_lod2",
+      "category": "wholeships",
+      "priority": "P0",
+      "file": "wholeships/kestrel_lod2.glb",
+      "tris": 9878,
+      "bytes": 32971740,
+      "textureSize": 1024,
+      "mount": "origin",
+      "note": "Kestrel LOD2 family member. Source bytes/identity refreshed from on-disk GLB; lodFamily (partsLibrary) has no runtime consumer, so LOD0 is canonical live truth."
     },
     {
       "id": "wholeship_pelican",
