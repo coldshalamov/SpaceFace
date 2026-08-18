@@ -39,4 +39,10 @@
 
 | 56 | yes | see json | see cycle_56.md | **every gate number hit and the ship got worse.** Height 157->244, bell 50->125px, openings 0->3, bore 82/73 (cap) -> 15/61 (throat), all met. But the canopy became a black tent, the drive a flat washer with no vanes, panel detail flattened, and hull triangles fell 77% to a torn loft. Two metrics were satisfied by shapes that defeat their purpose. C54 is the better ship overall and is recoverable at a7a41d90. |
 
+| 56 review | - | - | **REVERT** | independent A/B against C54. "C54 is a ship with problems; C56 is a problem that stopped being a ship." Also corrected the premise: C56 did NOT hit every number - it failed the value split, the one row that could not be satisfied by bolting on geometry. |
+
+| 57 | **no** | see json | (none) | ladder proof only, built on the C56 form. Proved the per-LOD texture ladder works: 64.6/64.5/63.1 MB became 64.6/20.2/7.6. Does not count as an authoring cycle. |
+
+| 58 | **no** | see json | (none) | C54 form restored per the REVERT, carrying only the re-seated sockets and the texture ladder. Not a new form attempt, so it does not count. First attempt crashed Blender in igc64.dll during render setup after the LODs exported cleanly; retried. |
+
 Hitch-plus / A-list: not met. Do not promote. Do not self-accept.
