@@ -39,6 +39,42 @@ shows bow, stern and most of the body. Extras: `clay_three_quarter`, `grazing_cl
 Three independent read-only reviewers, one still each, given the §4 prompt and told explicitly that
 "better than last cycle" is not the bar.
 
+### Measured, from the starboard reviewer
+
+**Confirmed fixed, with numbers:**
+
+| | cycle 53 | cycle 54 |
+|---|---:|---:|
+| Length : height, profile | 13.6 : 1 | 6.36 : 1 |
+| Length within ±10% of median section | 77% | **28.1%** |
+| Section reversals along the body | 0 | **5** |
+| Deepest waist, as % of max section | — | **65%** |
+| Silhouette | snapped in two at mid-body | **one connected component**, no cliff |
+
+MTX-02 (authored cross-section loft) **passes** on the profile view. The rod is gone.
+
+**Still failing, with numbers:**
+
+| Axis | A-list | cycle 54 |
+|---|---|---|
+| Profile proportion | 2.5–4 : 1 | **6.36 : 1** — a 59% overshoot |
+| Value split (dark / mid / hot) | ~15 / 60 / 8 | **3.4 / 76.8 / 2.8** |
+| Drive bell as % of stern section | 60–70% | **36%**, on a 27 px neck |
+| Readable openings with rims | several | **zero** |
+| Accent coverage | one controlled beat | **0.23%**, three stuck-on bars |
+
+### The gate for cycle 55 is arithmetic, not opinion
+
+Off the same starboard camera: **bbox ≥240 px tall against ≤1050 px wide**, **at least three openings
+with visible rims**, and a **drive bell ≥95 px**. Re-shoot and re-measure.
+
+### A gap in the controller's brief, recorded so it is not repeated
+
+The form-restart brief specified length : **span** (~1.45 : 1, met exactly) and never specified
+length : **height**. That is why the ship came back correct from above and 59% too low in profile —
+the reviewer's word for it is "a submarine or a missile". Raise section rather than shorten length:
+length is what makes it read fast.
+
 **Verdict so far: REVISE.** The reviewed defect from cycle 53 — "an open plate cage, not a closed
 interceptor" — is confirmed **fixed**. The hull is a closed formed shell with a chine and a waist
 and reads as an interceptor rather than a scaffold. It is nowhere near `keep`: the reviewer's phrase
