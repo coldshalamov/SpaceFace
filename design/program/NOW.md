@@ -3,7 +3,7 @@
 
 ```yaml
 refreshed: 2026-08-18
-baseCommit: 0b36fd1a8871fe412aae6e959f299d7f009ab943
+baseCommit: e12828431f26a029b8121a653b4a602f030ca7d5
 expiresAfterCommits: 10
 expiresAfterDays: 2
 ```
@@ -41,7 +41,6 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| Build-map campaign (adopt stale tree, then PQ-050) | claude campaign | implementing | `assets/ships/fleet_player_bodies_v1/hornet/`, `tools/blender/`, `design/program/` | close or honestly park the first PQ-050 leaf |
 
 ## Uncommitted work without a confirmed live thread
 
