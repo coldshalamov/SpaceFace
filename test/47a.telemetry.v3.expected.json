@@ -68,7 +68,7 @@
     "audio:cue": 4
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "986e476077b712e204f66bc3cc1f9f6f5a724b0bd69a840822bea52a9a4fadf0",
+    "authoritativeHash": "4ad1a0507ba1a797c518dd681606f6778a72d1a5739b11ac4656b73eb49ec422",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -116,6 +116,10 @@
     "VERDICT: MOTION_CHANGED. The player ship follows a wider carve under the same tape, so entity motion moved. This is the requested handling change, not a silent physics regression.",
     "The shared Phase-0 input tape is unchanged so the legacy envelope stays bit-identical. V3 proof fire retargets the target dummy for the fire window so the tape still lands projectile hits after the path shift.",
     "Trace counts that moved: tether:broken 0->1 (tick 188, evidence spindle extreme_overload); camera/presentation cue fanout 2/3/9 -> 3/4/10. combat:fire stays 17, projectile:hit and combat:damage stay 6.",
-    "Prior authoritativeHash was 9d765e1dcdb30d62b330800a9d2635ba43422be184936c3e3867fb9bf08e8717."
+    "Prior authoritativeHash was 9d765e1dcdb30d62b330800a9d2635ba43422be184936c3e3867fb9bf08e8717.",
+    "2026-08-18 hash-only correction to 4ad1a0507ba1a797c518dd681606f6778a72d1a5739b11ac4656b73eb49ec422.",
+    "The 986e4760 value was recorded at 95291623 and never committed; commits landed in between, so the stored hash described no tree that exists. check:sim:v3 had been red against it.",
+    "Every trace count and acceptance criterion here already matched the live run and is unchanged. Only the hash moved.",
+    "Read on the clean merge commit across the full 20-run repeat. check:sim:v3:compare cannot see this class of drift: it does not read the hash."
   ]
 }
