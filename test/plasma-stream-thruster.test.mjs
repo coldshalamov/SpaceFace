@@ -267,7 +267,7 @@ test('the contrail needs real movement, not sub-step jitter', () => {
   trail.dispose();
 });
 
-test('the wake is left in world space: when drive is cut, wake stays in space and ages out', () => {
+test('the line is never shed: a cold drive reels it in, it does not detach', () => {
   const trail = new ContrailTrail(THREE, {});
   const nozzle = { x: 0, y: 0, z: 0 };
   const headGap = () => {
@@ -285,22 +285,30 @@ test('the wake is left in world space: when drive is cut, wake stays in space an
   }
   assert.ok(headGap() < 1e-3, 'under power the line starts at the nozzle');
 
-  // When thrust cuts, no new samples are added to the head; the existing samples stay fixed in world space.
-  const lastSampleBeforeCut = trail.samplePositions()[0];
+  // THE BUG THIS GUARDS. Recording used to be gated on the drive being lit, so releasing the
+  // throttle froze the head in world space while momentum carried the ship on — a 61 WU gap opened
+  // inside one second and the line hung in space like a shed tail. A history of where the thruster
+  // WAS cannot come unstuck from the thruster. So: still moving, drive cold, and the head must stay
+  // welded to the nozzle while the TAIL is what comes in.
+  const spanBefore = trail.inspect().visibleSpanWU;
+  let worstGap = 0;
   for (let i = 0; i < 30; i++) {
     nozzle.x += 2;
     trail.update(1 / 60, nozzle, { drive: 0, emitFloor: 0.08 });
+    worstGap = Math.max(worstGap, headGap());
   }
-  const samplesAfterCoast = trail.samplePositions();
-  if (samplesAfterCoast.length > 0) {
-    // The head sample must remain where it was deposited when thrust was cut, not pulled with the ship
-    assert.equal(samplesAfterCoast[0].x, lastSampleBeforeCut.x, 'head sample remains where it was deposited');
-  }
+  assert.ok(worstGap < 1e-3, `coasting must not shed the line, head drifted ${worstGap.toFixed(2)} WU`);
+  assert.ok(
+    trail.inspect().visibleSpanWU < spanBefore - 20,
+    'a cold drive reels the line in from the back',
+  );
 
-  // After sufficient time, all samples naturally age out and trail stops drawing
-  for (let i = 0; i < 120; i++) trail.update(1 / 60, nozzle, { drive: 0, emitFloor: 0.08 });
+  // Stopped and cold: the reel runs the tail all the way onto the head and the line is gone.
+  for (let i = 0; i < 240; i++) trail.update(1 / 60, nozzle, { drive: 0, emitFloor: 0.08 });
   const info = trail.inspect();
-  assert.equal(info.liveSamples, 0, 'all samples age out');
+  // The floor is the shader's, not the trail's: span is clamped off zero so the dissolve cannot
+  // divide by it. Anything at that floor is a line of no length.
+  assert.ok(info.visibleSpanWU <= 0.01, `the line is drawn fully in, ${info.visibleSpanWU} WU left`);
   assert.equal(info.visible, false, 'and stops drawing');
   trail.dispose();
 });

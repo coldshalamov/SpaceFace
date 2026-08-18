@@ -1,4 +1,11 @@
 import { createPerfCounters } from './perfCounters.js';
+import {
+  accumulateHitch,
+  classifyHitchFrame,
+  createHitchHistogram,
+  hitchHistogramReport,
+  isHitchFrame,
+} from '../render/hitchClassifier.js';
 
 const RING_N = 180;
 const BACKGROUND_JOB_RING_N = 128;
@@ -275,6 +282,9 @@ export function ensurePerfRuntime(state) {
   // Opt-in CPU render-work attribution. Default OFF so production frames never pay
   // performance.now() + ring sample cost. Measurement probes enable for a window only.
   let renderWorkEnabled = false;
+  // Opt-in hitch owner ring. Default off so ordinary frames pay no classifier work.
+  let hitchAttributionEnabled = false;
+  const hitchHistogram = createHitchHistogram();
   // Background-job evidence is opt-in. The live queue pays one branch at job boundaries while
   // ordinary frames pay nothing; enabled captures use a fixed-capacity record ring.
   let backgroundJobTrackingEnabled = false;
@@ -442,6 +452,14 @@ export function ensurePerfRuntime(state) {
       renderWorkEnabled = !!on;
       return renderWorkEnabled;
     },
+    get hitchAttributionEnabled() { return hitchAttributionEnabled; },
+    setHitchAttributionEnabled(on) {
+      hitchAttributionEnabled = !!on;
+      return hitchAttributionEnabled;
+    },
+    getHitchHistogram() {
+      return hitchHistogramReport(hitchHistogram);
+    },
     get backgroundJobTrackingEnabled() { return backgroundJobTrackingEnabled; },
     isBackgroundJobTrackingEnabled() { return backgroundJobTrackingEnabled === true; },
     setBackgroundJobTrackingEnabled(on) {
@@ -566,6 +584,22 @@ export function ensurePerfRuntime(state) {
       }
       displayFrameId++;
       const ms = Number.isFinite(frameDt) ? frameDt * 1000 : 0;
+      // lastFrameDtMs is the interval that just ended. framePhaseMs still holds that
+      // interval's work until we reset it below.
+      if (hitchAttributionEnabled) {
+        if (isHitchFrame(ms)) {
+          accumulateHitch(hitchHistogram, classifyHitchFrame({
+            frameMs: ms,
+            simMs: framePhaseMs.sim,
+            presentMs: framePhaseMs.render,
+            uiMs: framePhaseMs.ui,
+            vfxMs: framePhaseMs.vfx,
+            admissionMs: pendingAdmissionMs,
+          }));
+        } else {
+          accumulateHitch(hitchHistogram, null);
+        }
+      }
       previousCallbackMs = frameCallbackStats.last;
       previousSimFrameMs = framePhaseMs.simFrame;
       previousPresentationMs = framePhaseMs.presentation;
@@ -818,6 +852,11 @@ export function ensurePerfRuntime(state) {
       if (autosave) saveStats.autosaveLast = plain;
     },
     reset() {
+      hitchHistogram.frames = 0;
+      hitchHistogram.hitches = 0;
+      hitchHistogram.named = 0;
+      hitchHistogram.unknown = 0;
+      for (const owner of Object.keys(hitchHistogram.counts)) hitchHistogram.counts[owner] = 0;
       resetBackgroundJobRecords();
       resetStat(frameStats);
       resetStat(frameCallbackStats);
@@ -924,6 +963,7 @@ export function ensurePerfRuntime(state) {
       const renderWork = {};
       for (const name of Object.keys(renderWorkStats)) renderWork[name] = reportStat(renderWorkStats[name]);
       return {
+        hitchAttribution: hitchHistogramReport(hitchHistogram),
         systemTimingEnabled,
         systemTimingSampling: {
           schema: 'spaceface.systemTimingSampling.v1',

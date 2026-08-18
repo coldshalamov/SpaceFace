@@ -7,10 +7,11 @@ It does **not** admit work, claim completion, or hold a queue snapshot.
 Companion to [`PERF_BUDGET.md`](./PERF_BUDGET.md),
 [`PERF_SYSTEMATIC_PROGRAM.md`](./PERF_SYSTEMATIC_PROGRAM.md) when that file is present,
 [`PERFORMANCE_OPTIMIZATION_CONSTELLATION.md`](./PERFORMANCE_OPTIMIZATION_CONSTELLATION.md),
-and [`CANONICAL_BUILD_MAP.md`](../CANONICAL_BUILD_MAP.md) §8 / §8.1 / §8.2.
+and [`CANONICAL_BUILD_MAP.md`](../CANONICAL_BUILD_MAP.md) §8 / §8.1 / §8.2 / **§8.3
+(exhaustive technique inventory)**.
 
 Existing identities `PQ-034`–`PQ-044` and `PQ-051`–`PQ-060` stay authoritative for their
-scopes. Identities `PQ-061`–`PQ-118` below are reserved so later campaigns can admit
+scopes. Identities `PQ-061`–`PQ-128` below are reserved so later campaigns can admit
 leaves without inventing overlapping outcomes.
 
 ## 1. Picture and behavior contract
@@ -223,10 +224,20 @@ Each still starts as INV unless a prior census already named that owner.
 | **`PQ-112` / `PERF-72-THERMAL-NOISE`** | Standing | A/B pairs that are GPU-clock or thermal noise are discarded, not averaged. | Detect clocks/thermals; require interleaved pairs. | Saturated pairs cannot pass a leaf. |
 | **`PQ-113` / `PERF-73-PROD-PROBES-OFF`** | Near INV→IMPL | Production default does not leave hitch rings, GPU timers, or debug traversals on. | Census default-on probes. Keep them opt-in. | Default fly does not pay debug tax. |
 | **`PQ-114` / `PERF-74-IDLE-ADMISSION`** | Mid INV→IMPL | Compile/upload of the *next* contact happens in true idle, not on rAF. | `scheduler.yield` / idle callback **after** present, never `setTimeout(0)` stacked on the next rAF (already shown to floor 30 Hz). | Next-contact warm without stealing vsync. |
-| **`PQ-115` / `PERF-75-VFX-ONGLASS`** | Mid INV→IMPL | Trails, sparks, lights, and flipbooks exist only for on-glass + short runway. | After `PQ-061`. Pixel-floor already exists for some FX; extend to pools. | VFX draw/CPU scale with the table. |
+| **`PQ-115` / `PERF-75-VFX-ONGLASS`** | Mid INV→IMPL | Trails, sparks, lights, and flipbooks exist only for on-glass + short runway. Loot-magnet trails follow the live table and keep a 580 WU tractor inner-band cap when the table is wider. Glass origin is `tableLookAtDelta` for seams, station lamps, NPC signatures, and loot-magnet. | After `PQ-061`. Pixel-floor already exists for some FX; extend to pools. | VFX draw/CPU scale with the table. |
 | **`PQ-116` / `PERF-76-HDR-BUFFER-FORMAT`** | Mid INV→IMPL | Scene/bloom targets use the cheapest format that keeps the default halo. | HalfFloat vs R11G11B10 vs RGBM; Intel-specific. Feeds `PQ-097`. | Present/fill down; stills keep. |
 | **`PQ-117` / `PERF-77-HIDDEN-SYSTEM-SKIP`** | Near INV→IMPL | Registry systems do not full-tick when the 3D world is not on screen. | Pause, map, station shell, loading. Input/save stay alive. | Hidden-screen CPU/GPU drop; resume hashes hold. |
 | **`PQ-118` / `PERF-78-REPLAY-PERF-BISECT`** | Mid INV | A hitch can be bisected with a deterministic replay instead of folklore. | Record input+seed; replay; classify (`PQ-062`). | A named hitch is reproducible offline. |
+| **`PQ-119` / `PERF-79-TABLE-MAP-SPEC`** | Near IMPL | Off-table contacts stay map/radar facts. | After `PQ-061`/`PQ-071`. No live mesh for stations or traffic that cannot enter the glass this second. | Census shows beyond-band roots are not resident; map still names them. |
+| **`PQ-120` / `PERF-80-TABLE-READABLE-REMASTER`** | Near INV→IMPL | Starter and other camera-prominent ships spend remaster budget on mid-scale openings that read at default zoom 144 (drive barrels you can look down, hat-section wells, framed canopy), not stacked micro-greebles. | Learned from Hitch cycles 01–06: adding primitives raised clay toy-read and did not beat live V9 at tabletop size. Cut/hide donor slabs and iris shutters; boolean or replace sealed housings. | Clay is manufactured form; rear camera sees into the drive; sponson is not a sealed board. |
+| **`PQ-121` / `PERF-81-VFX-FOCUS-ORIGIN`** | Near IMPL | Cosmetic VFX glass culls use the live look-at, not the player pin. | Combat/tether camera shove must not drop on-glass lights. Tractor cap stays player-centered. | On-glass VFX survives a shove; off-glass stays dim. |
+| **`PQ-122` / `PERF-82-TABLE-ASPECT-CLAMP`** | Near INV | Ultrawide windows do not grow sim authority back into a horizon. | Letterbox to three 16:9 panes or accept sleeping side-edge civilians. | Far side-edge traffic stays a map fact. |
+| **`PQ-123` / `PERF-83-INSTANCE-FAR-CULL`** | Near IMPL | Instance far cull follows the live camera table, not a leftover 9000 WU horizon. | Submit already drops off-table roots. Keep the 420 WU owner-sphere pad. Default covers 90° / 330 WU 16:9 as 3D camera distance. | No horizon instance tax; on-glass batches stay. |
+| **`PQ-124` / `PERF-84-HAIL-HUD-HORIZON`** | Near INV | Hail and the HUD overview still name a leftover 5200 WU range. | Census first. Hail/scan range is gameplay. Overview at 5 Hz is radar/map awareness (`PQ-119`), not a 3D submit box. Do not shrink who the player can hail. Admit only if the list is a named hitch; then keep hail and drop only 3D/VFX work. | Hail still works at authored range; 3D cost stays on the table. |
+| **`PQ-125` / `PERF-85-REGION-CROSSFADE`** | Near INV | Region sky/ambient still fades across a 1500 WU sector boundary. | That number is the authored entry for the next region, not a 3D submit box. Do not shrink the fade. Admit only if the fade math is a named hitch. | Region volumes still read; 3D cost stays on the table. |
+| **`PQ-126` / `PERF-86-NPC-TRAIL-TABLE`** | Near IMPL | NPC engine trails still named leftover 2200/3600/2800 player-camera horizons. | Player and current target stay full. Other ribbons use `tableNpcTrailTier` + look-at. Do not keep off-glass ally/hostile ribbons as a courtesy. | On-glass trails stay; off-glass ribbons stop. |
+| **`PQ-127` / `PERF-87-NON-SUBMIT-HORIZONS`** | Near INV | Several leftover large numbers are not 3D submit. | Camera shake 1200, director compose 600, pair-frame 280, and planet/sun sky dressing at 2800–6000 are feel or painted sky. The 300 NPC-signature constant is leftover comment; live draw uses the table. Do not shrink. | No fake-visible mesh tax; shake, director, and sky stay. |
+| **`PQ-128` / `PERF-88-HEADLESS-VFX-TABLE`** | Near IMPL | Headless VFX on-screen fallbacks still used leftover 900 WU. | Doctrine-tell `_doctrineTellOnScreen` with no camera now uses `TABLE_HEARING_FAR_WU`. Live play still projects. Do not shrink hail, missile-threat, or faction 900s. | Headless tests stay table-sized; on-table tells still fire. |
 
 ## 6. Investigation protocols (scaffolds this catalog may build)
 

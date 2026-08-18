@@ -11,32 +11,69 @@ function stationVisualRadius(entity) {
   return 72;
 }
 
+export function isFarDetailSurface(object) {
+  if (!object || object.isMesh !== true) return false;
+  const tags = (object.userData && object.userData.spacefaceTags) || {};
+  if (tags.greeble || tags.decal || tags.navLight || tags.fan || tags.antenna) return true;
+  const name = String(object.name || '');
+  return /greeble|decal|navlight|nav_light|antenna|antennae|pennant|bunting/i.test(name);
+}
+
+/** Hide authored flourishes at LOD2 without swapping the station/place identity. */
+export function applyProjectedDetailLod(root, level) {
+  if (!root || typeof root.traverse !== 'function') return 0;
+  const hide = level === 'lod2';
+  let changed = 0;
+  root.traverse((object) => {
+    if (!isFarDetailSurface(object)) return;
+    if (object.userData._hlodBaseVisible === undefined) {
+      object.userData._hlodBaseVisible = object.visible !== false;
+    }
+    const next = hide ? false : object.userData._hlodBaseVisible !== false;
+    if (object.visible !== next) {
+      object.visible = next;
+      changed += 1;
+    }
+  });
+  return changed;
+}
+
 /**
- * Keep one authored station root through every LOD request. A future station-specific lower LOD may
- * replace meshes inside that authored identity, but a generic silhouette proxy must not swap bodies.
+ * Keep one authored station/place root through every LOD request. Far LOD hides greebles, decals,
+ * and nav lights so triangle/submit cost scales with projected size. A generic silhouette proxy
+ * must not swap bodies.
  */
 export function attachStationHlod(root, entity) {
-  if (!root || !root.isObject3D || !entity || entity.type !== 'station') return root;
+  if (!root || !root.isObject3D || !entity) return root;
+  if (entity.type !== 'station' && entity.type !== 'fx' && entity.type !== 'planet') return root;
   if (root.userData && root.userData.hlodAttached) return root;
 
   const radius = stationVisualRadius(entity);
   const innerUpdateLod = root.userData && root.userData.updateLod;
   root.userData = root.userData || {};
-  root.userData.kind = 'station';
+  root.userData.kind = entity.type === 'station' ? 'station' : 'place';
   root.userData.hlodAttached = true;
   root.userData.hlod = {
-    target: 'station',
+    target: entity.type === 'station' ? 'station' : 'place',
     visualRadius: radius,
     detailedVisible: 1,
     proxyVisible: 0,
     swapped: false,
+    farDetailHidden: 0,
     proxyDisabledReason: 'stable-authored-identity',
   };
   root.userData.updateLod = function updateStationStableLod(level) {
     if (typeof innerUpdateLod === 'function') innerUpdateLod(level);
+    const hidden = applyProjectedDetailLod(root, level);
+    root.userData.hlod.farDetailHidden = hidden;
+    root.userData.hlod.detailedVisible = level === 'lod2' ? 0 : 1;
   };
   attachLodState(root);
   return root;
+}
+
+export function attachPlaceHlod(root, entity) {
+  return attachStationHlod(root, entity);
 }
 
 /** Headless contract probe: station LOD requests preserve one stable detailed identity. */
@@ -57,15 +94,24 @@ export function runStationHlodContractProbe(THREE_NS = THREE) {
   const rootUuid = wrapped.uuid;
   const beforeMeshCount = countMeshes(wrapped);
   wrapped.userData.updateLod('lod2');
+  const afterVisible = countVisibleMeshes(wrapped);
   return {
     hasLodState: !!(wrapped.userData.lod && typeof wrapped.userData.lod.resolve === 'function'),
     rootStableAtLod2: wrapped.uuid === rootUuid,
     detailedVisibleAtLod2: wrapped.visible !== false,
     detailedMeshCount: countMeshes(wrapped),
+    visibleMeshCountAtLod2: afterVisible,
     beforeMeshCount,
     proxyMeshCount: countNamed(wrapped, 'HLOD_StationProxy'),
+    farDetailHidden: Number(wrapped.userData.hlod && wrapped.userData.hlod.farDetailHidden) || 0,
     diagnostics: { ...(wrapped.userData.hlod || {}) },
   };
+}
+
+function countVisibleMeshes(root) {
+  let count = 0;
+  root.traverse((object) => { if (object.isMesh && object.visible !== false) count++; });
+  return count;
 }
 
 function countMeshes(root) {

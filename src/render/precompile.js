@@ -513,10 +513,6 @@ async function warmResidentSceneWithShadowPipelines(
     scene.add(shadowRoot);
   }
   try {
-    // compileAsync cannot exercise WebGLShadowMap's renderer-owned depth materials. The existing
-    // hidden resident render receives only the four exact retained casters, under the production
-    // directional-shadow state, so Three itself owns their final depth programs. No broad synthetic
-    // VFX/canopy root is drawn and no probe survives into a player-visible frame.
     return await warmResidentSceneGpuBuffers(renderer, scene, camera, options, yieldToMain);
   } finally {
     restoreShadowState();

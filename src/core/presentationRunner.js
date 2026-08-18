@@ -3,6 +3,7 @@
 import { ensurePerfRuntime, perfNow } from './perfRuntime.js';
 import { createRuntimeWitness, collectRuntimeWitnessSample } from './runtimeWitness.js';
 import { LOOP_FIXED_DT } from './simulationRunner.js';
+import { mustRescheduleAfterFrame } from './frameLiveness.js';
 
 export const LOOP_LIFECYCLE_STATES = Object.freeze({
   FOREGROUND_VISIBLE: 'foreground-visible',
@@ -722,6 +723,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
         const alpha = simulationRunner.interpolationAlpha();
         presentationFrame.sequence++;
         presentationFrame.frameDt = frameDt;
+        if (state && state.render) state.render.lastPresentDtMs = frameDt * 1000;
         presentationFrame.alpha = alpha;
         presentationFrame.lifecycleState = lifecycleState;
         presentationFrame.lifecycleGeneration = lifecycleGeneration;
@@ -770,6 +772,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
 
     // renderUpdate may synchronously trigger the full terminal closer. Never complete a restore
     // transition after its audio/listener/transport owners have already been destroyed.
+    if (!mustRescheduleAfterFrame({ destroyed })) return;
     if (destroyed) return;
     if (restoring && renderedSnapshot && lifecycleState === LOOP_LIFECYCLE_STATES.RESTORING) {
       diagnostics.restoreFrameCount++;

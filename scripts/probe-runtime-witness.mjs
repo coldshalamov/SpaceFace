@@ -51,7 +51,7 @@ function readWitnessInPage() {
     mode: s?.mode || null,
     simTime: Number(s?.simTime) || 0,
     tick: Number(s?.tick) || 0,
-    timeScale: Number(s?.simTimeScale) || 0,
+    timeScale: Number(s?.timeScale) || 0,
     hasPos: !!(p?.pos),
     posX: Number(p?.pos?.x) || 0,
     posZ: Number(p?.pos?.z) || 0,

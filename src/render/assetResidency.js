@@ -4,6 +4,8 @@
 // renderer/scene boundary owners and sector labels solely so decoded Three.js resources can be
 // reclaimed without lowering visual quality or racing an in-flight GLB decode.
 
+import { createResourceGovernor } from './resourceGovernor.js';
+
 const PROTECTED_RESOURCE = Symbol('spaceface.protectedGpuResource');
 const registriesByRenderer = new WeakMap();
 const DEFAULT_EVENT_HISTORY = 256;
@@ -53,6 +55,10 @@ export function createAssetResidencyRegistry(options = {}) {
   let disposedResources = 0;
   let abandonedResources = 0;
   let evictedAssets = 0;
+  const governor = createResourceGovernor({
+    maxCpuBytes: options.maxCpuBytes,
+    maxGpuBytes: options.maxGpuBytes,
+  });
 
   function emit(type, detail = {}) {
     const event = Object.freeze({ sequence: ++eventSequence, type, atMs: now(), ...detail });
@@ -495,6 +501,30 @@ export function createAssetResidencyRegistry(options = {}) {
     return !!entry && entry.state === 'resident';
   }
 
+  function enforceBudget(kind = 'gpu') {
+    const snap = diagnostics({ includeEvents: false });
+    const entries = (snap.assets || []).map((row) => ({
+      key: row.key,
+      bytes: row.bytes,
+      roles: row.roles,
+    }));
+    const plan = governor.plan(entries, kind);
+    const evicted = [];
+    for (const key of plan.evict) {
+      const entry = assets.get(String(key || ''));
+      if (!entry) continue;
+      for (const [owner, metadata] of [...entry.owners]) {
+        const role = metadata && metadata.role;
+        if (role === 'warm-previous-sector' || role === 'unused') {
+          release(entry.key, owner, 'governor-budget');
+        }
+      }
+      evictIfUnowned(entry, 'governor-budget');
+      if (!assets.has(String(key))) evicted.push(key);
+    }
+    return Object.freeze({ ...plan, evicted: Object.freeze(evicted) });
+  }
+
   return Object.freeze({
     registerAsset,
     retain,
@@ -509,9 +539,21 @@ export function createAssetResidencyRegistry(options = {}) {
     handleContextRestored,
     disposeAll,
     has,
+    enforceBudget,
     diagnostics,
     canonicalDiagnostics,
   });
+}
+
+export function applySectorExitResidency(residency, sectorId, options = {}) {
+  if (!residency) return null;
+  if (typeof residency.prepareSectorExit === 'function') {
+    residency.prepareSectorExit(sectorId, options);
+  }
+  if (typeof residency.enforceBudget === 'function') {
+    return residency.enforceBudget(options.kind || 'gpu');
+  }
+  return null;
 }
 
 export function getAssetResidency(renderer, options = {}) {

@@ -194,6 +194,79 @@ function fireTell(bus, kind, extra = {}) {
   assert.equal(last.entityId, 2, 'offscreen cue still bound to the real enemy id');
 }
 
+// ── Headless cutoff follows the configured table, not a leftover 900 pin ───
+{
+  const defaultTable = makeHarness({ enemyX: 1000 });
+  fireTell(defaultTable.bus, 'engine_flare', { doctrineId: 'interceptor_flyby' });
+  assert.equal(defaultTable.system.inspect().doctrineTells.last.offscreen, true,
+    '1000 WU is off the default 144/50 table');
+
+  const wide = makeHarness({ enemyX: 1000 });
+  wide.state.camera = { zoom: 330, fov: 90, aspect: 16 / 9, tilt: 60 };
+  fireTell(wide.bus, 'engine_flare', { doctrineId: 'interceptor_flyby' });
+  assert.equal(wide.system.inspect().doctrineTells.last.offscreen, false,
+    '1000 WU is on a 330/90 table even without a projectable camera');
+}
+
+// ── Live camera uses NDC project, not the headless table radius ────────────
+{
+  const live = makeHarness({ enemyX: 1000 });
+  const tilt = Math.PI / 3;
+  const distance = 144;
+  const cam = new THREE.PerspectiveCamera(50, 16 / 9, 1, 4000);
+  cam.position.set(0, distance * Math.sin(tilt), -distance * Math.cos(tilt));
+  cam.lookAt(0, 0, 0);
+  cam.updateMatrixWorld();
+  cam.updateProjectionMatrix();
+  live.state.render.camera = cam;
+  live.state.camera = { zoom: 330, fov: 90, aspect: 16 / 9, tilt: 60 };
+  fireTell(live.bus, 'engine_flare', { doctrineId: 'interceptor_flyby' });
+  assert.equal(live.system.inspect().doctrineTells.last.offscreen, true,
+    'a 1000 WU enemy stays off-screen on a real camera even at a wide table envelope');
+
+  const near = makeHarness({ enemyX: 80 });
+  near.state.render.camera = cam;
+  fireTell(near.bus, 'engine_flare', { doctrineId: 'interceptor_flyby' });
+  assert.equal(near.system.inspect().doctrineTells.last.offscreen, false,
+    'a near enemy still projects on-screen through a real camera');
+}
+
+// ── Close-zoom rear cues stay inside the live frustum ──────────────────────
+{
+  const close = makeHarness({ enemyX: 0, enemyZ: -80 });
+  const tilt = Math.PI / 3;
+  const distance = 45;
+  const cam = new THREE.PerspectiveCamera(50, 16 / 9, 1, 4000);
+  cam.position.set(0, distance * Math.sin(tilt), -distance * Math.cos(tilt));
+  cam.lookAt(0, 0, 0);
+  cam.updateMatrixWorld();
+  cam.updateProjectionMatrix();
+  close.state.render.camera = cam;
+  close.state.camera = { zoom: 45, fov: 50, aspect: 16 / 9, tilt: 60 };
+  const cue = close.system._doctrineTellOffscreenPoint({ x: 0, z: 0 }, 0, -1);
+  const ndc = new THREE.Vector3(cue.x, 0, cue.z).project(cam);
+  assert.ok(Math.abs(ndc.x) <= 0.85 && Math.abs(ndc.y) <= 0.85,
+    `rear close-zoom cue NDC (${ndc.x.toFixed(2)}, ${ndc.y.toFixed(2)}) must stay on-screen`);
+}
+
+// ── Narrow low-FOV close zoom cannot seed an 8 WU off-screen pin ───────────
+{
+  const narrow = makeHarness({ enemyX: 80, enemyZ: 0 });
+  const tilt = Math.PI / 3;
+  const distance = 45;
+  const cam = new THREE.PerspectiveCamera(35, 0.5, 1, 4000);
+  cam.position.set(0, distance * Math.sin(tilt), -distance * Math.cos(tilt));
+  cam.lookAt(0, 0, 0);
+  cam.updateMatrixWorld();
+  cam.updateProjectionMatrix();
+  narrow.state.render.camera = cam;
+  narrow.state.camera = { zoom: 45, fov: 35, aspect: 0.5, tilt: 60 };
+  const cue = narrow.system._doctrineTellOffscreenPoint({ x: 0, z: 0 }, 1, 0);
+  const ndc = new THREE.Vector3(cue.x, 0, cue.z).project(cam);
+  assert.ok(Math.abs(ndc.x) <= 0.85 && Math.abs(ndc.y) <= 0.85,
+    `narrow 35°/0.5 cue NDC (${ndc.x.toFixed(2)}, ${ndc.y.toFixed(2)}) must stay on-screen`);
+}
+
 // ── Duration floor: payload below 30 is raised to 30 ────────────────────────
 {
   const { bus, system } = makeHarness();
@@ -208,6 +281,6 @@ function fireTell(bus, kind, extra = {}) {
 console.log(JSON.stringify({
   schema: 'spaceface.m1.doctrine_vfx.v1',
   ok: true,
-  cases: ['flyby', 'tether', 'charge', 'reduced', 'offscreen', 'duration_floor', 'pause_tick', 'headless_fallback'],
+  cases: ['flyby', 'tether', 'charge', 'reduced', 'offscreen', 'duration_floor', 'pause_tick', 'headless_fallback', 'headless_table', 'live_project', 'close_rear_cue', 'narrow_low_fov'],
   doctrineTelegraphTicks: DOCTRINE_TELEGRAPH_TICKS,
 }, null, 2));

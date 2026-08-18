@@ -1,0 +1,537 @@
+// Tabletop render policy for a tilted top-down chase camera.
+//
+// SpaceFace is a table, not a horizon flight sim. Default glass is ~170x100 WU;
+// maximum zoom-out is still only a few hundred units across. Submit, residency,
+// and shadows follow glass + a short measured approach runway (fast-ship travel
+// in a fraction of a second), never a multi-thousand-unit fake-visible box.
+//
+// Pure functions only. The renderer and probes share these numbers so tests can
+// drive the same policy the live path uses.
+
+import { viewHalfExtents } from './entityViewSyncBand.js';
+
+/** Typical live maxSpeed (engine.topSpeed * SPEED_SCALE) used when state has no ship. */
+export const TABLE_REFERENCE_SPEED_WU = 160;
+
+/** How far ahead a submitted root may sit so a fast crosser cannot pop. */
+export const TABLE_SUBMIT_APPROACH_SECONDS = 0.75;
+
+/** Mesh decode/build runway. Long enough for the two-build/frame drain. */
+export const TABLE_RESIDENCY_PREFETCH_SECONDS = 2.0;
+
+/** Evict a little past prefetch so a ship oscillating on the lip does not thrash. */
+export const TABLE_RESIDENCY_EVICT_SECONDS = 2.5;
+
+/** Authored GLB decode may take a couple of seconds; start before the mesh runway. */
+export const TABLE_AUTHORED_DECODE_SECONDS = 4.0;
+
+/** Immediate authored radius: already next to the glass. */
+export const TABLE_AUTHORED_IMMEDIATE_SECONDS = 1.25;
+
+/** Off-screen doctrine-tell cue sits this far from the player when the glass is wide enough. */
+export const TABLE_DOCTRINE_TELL_CUE_WU = 58;
+
+/**
+ * Keep the off-screen tell marker on the glass. At close zoom the old
+ * 58 WU pin sits outside the frustum, so the warning never appears.
+ */
+export function tableDoctrineTellCueWu(state) {
+  const camera = state && state.camera || {};
+  const video = state && state.settings && state.settings.video || {};
+  const live = Number.isFinite(camera.liveZoom) ? camera.liveZoom : NaN;
+  const requested = Number.isFinite(camera.zoom) ? camera.zoom : NaN;
+  const zoom = Number.isFinite(live) ? live : (Number.isFinite(requested) ? requested : 144);
+  const fov = Number.isFinite(camera.fov) ? camera.fov
+    : (Number.isFinite(video.fov) ? video.fov : 50);
+  const aspect = Number.isFinite(camera.aspect) && camera.aspect > 0 ? camera.aspect : 16 / 9;
+  const tilt = Number.isFinite(camera.tilt) ? camera.tilt : 60;
+  const glass = glassHalfExtents(zoom, fov, aspect, tilt);
+  const inner = Math.min(glass.halfX, glass.halfZ) * 0.7;
+  return Math.max(18, Math.min(TABLE_DOCTRINE_TELL_CUE_WU, inner));
+}
+
+/** Extra world units around the glass that can still throw a readable key-light shadow. */
+export const TABLE_SHADOW_SKIRT_WU = 80;
+
+export const TABLE_HEARING_PAN_WU = 200;
+
+/** Hearing follows the max-zoom table box, not a 900 WU horizon. */
+export function tableHearingFarWu(
+  zoom = 330,
+  fovDeg = 50,
+  aspect = 16 / 9,
+  tiltDeg = 60,
+  speed = TABLE_REFERENCE_SPEED_WU,
+) {
+  const extents = submitCullHalfExtents(zoom, fovDeg, aspect, speed, tiltDeg);
+  return Math.hypot(extents.halfX, extents.halfZ);
+}
+
+export const TABLE_HEARING_FAR_WU = tableHearingFarWu();
+
+/**
+ * Last-resort instance far cull, as a 3D camera distance. Submit already
+ * drops off-table roots. This only stops a leaked chunk from paying a
+ * leftover 9000 WU horizon. Defaults cover the supported 90° / 330 WU
+ * 16:9 table; live callers must pass the actual camera envelope.
+ */
+const _instanceFarCullCache = { key: '', value: 0 };
+
+export function tableInstanceFarCullWu(
+  zoom = 330,
+  fovDeg = 90,
+  aspect = 16 / 9,
+  tiltDeg = 60,
+) {
+  const distance = Number.isFinite(zoom) ? zoom : 330;
+  const fov = Number.isFinite(fovDeg) ? fovDeg : 90;
+  const aspectValue = Number.isFinite(aspect) && aspect > 0 ? aspect : 16 / 9;
+  const tilt = Number.isFinite(tiltDeg) ? tiltDeg : 60;
+  const key = `${distance}|${fov}|${aspectValue}|${tilt}`;
+  if (_instanceFarCullCache.key === key) return _instanceFarCullCache.value;
+  const xz = tableHearingFarWu(distance, fov, aspectValue, tilt);
+  const camY = distance * Math.sin(tilt * Math.PI / 180);
+  const value = Math.hypot(xz, camY);
+  _instanceFarCullCache.key = key;
+  _instanceFarCullCache.value = value;
+  return value;
+}
+
+/**
+ * Passive AI/traffic may sleep beyond the largest table a player can open.
+ * Hostiles and the player stay awake regardless of this number.
+ */
+export function tableAiAuthorityWu(
+  zoom = 330,
+  fovDeg = 50,
+  aspect = 16 / 9,
+  tiltDeg = 60,
+  speed = TABLE_REFERENCE_SPEED_WU,
+) {
+  return tableHearingFarWu(zoom, fovDeg, aspect, tiltDeg, speed);
+}
+
+export const TABLE_AI_AUTHORITY_WU = tableAiAuthorityWu();
+
+/**
+ * Worst-case deterministic aspect for sim cadence. The live camera uses the
+ * raw window ratio with no clamp, so 32:9 under-covers a triple-wide desktop.
+ * 48:9 is three 16:9 panes. Still a table at default zoom. Not a live viewport.
+ */
+export const TABLE_SIM_ASPECT = 48 / 9;
+
+/** Live table envelope. Prefetch uses the wider of live and requested zoom. */
+export function tableCameraEnvelope(state) {
+  const camera = state && state.camera || {};
+  const video = state && state.settings && state.settings.video || {};
+  const live = Number.isFinite(camera.liveZoom) ? camera.liveZoom : NaN;
+  const requested = Number.isFinite(camera.zoom) ? camera.zoom : NaN;
+  const zoom = Math.max(
+    Number.isFinite(live) ? live : 0,
+    Number.isFinite(requested) ? requested : 0,
+  ) || 144;
+  const fov = Number.isFinite(camera.fov) ? camera.fov
+    : (Number.isFinite(video.fov) ? video.fov : 50);
+  const aspect = Number.isFinite(camera.aspect) && camera.aspect > 0 ? camera.aspect : 16 / 9;
+  const tilt = Number.isFinite(camera.tilt) ? camera.tilt : 60;
+  return { zoom, fov, aspect, tilt };
+}
+
+export function tableAiAuthorityWuFromState(state) {
+  const cam = tableCameraEnvelope(state);
+  return tableAiAuthorityWu(cam.zoom, cam.fov, cam.aspect, cam.tilt);
+}
+
+/**
+ * Sim-side table envelope. Traffic and bark may not read liveZoom / renderer
+ * fov / viewport aspect — those are presentation and would make seeded runs
+ * depend on refresh rate and window size.
+ */
+export function tableSimAuthorityWuFromState(state) {
+  const camera = state && state.camera || {};
+  const video = state && state.settings && state.settings.video || {};
+  const zoom = Number.isFinite(camera.zoom) ? camera.zoom : 144;
+  const fov = Number.isFinite(video.fov) ? video.fov : 50;
+  const tilt = Number.isFinite(camera.tilt) ? camera.tilt : 60;
+  return tableAiAuthorityWu(zoom, fov, TABLE_SIM_ASPECT, tilt);
+}
+
+/**
+ * Cosmetic VFX follow the same live table as hearing/AI. Off-table trails and
+ * station-side lights stay map facts; on-glass VFX is unchanged.
+ */
+const _vfxDrawCache = { zoom: NaN, fov: NaN, aspect: NaN, tilt: NaN, value: 0 };
+
+export function tableVfxDrawWuFromState(state) {
+  const camera = state && state.camera || {};
+  const video = state && state.settings && state.settings.video || {};
+  const live = Number.isFinite(camera.liveZoom) ? camera.liveZoom : NaN;
+  const requested = Number.isFinite(camera.zoom) ? camera.zoom : NaN;
+  const zoom = Number.isFinite(live) ? live : (Number.isFinite(requested) ? requested : 144);
+  const fov = Number.isFinite(camera.fov) ? camera.fov
+    : (Number.isFinite(video.fov) ? video.fov : 50);
+  const aspect = Number.isFinite(camera.aspect) && camera.aspect > 0 ? camera.aspect : 16 / 9;
+  const tilt = Number.isFinite(camera.tilt) ? camera.tilt : 60;
+  if (
+    _vfxDrawCache.zoom === zoom
+    && _vfxDrawCache.fov === fov
+    && _vfxDrawCache.aspect === aspect
+    && _vfxDrawCache.tilt === tilt
+  ) {
+    return _vfxDrawCache.value;
+  }
+  const value = tableHearingFarWu(zoom, fov, aspect, tilt);
+  _vfxDrawCache.zoom = zoom;
+  _vfxDrawCache.fov = fov;
+  _vfxDrawCache.aspect = aspect;
+  _vfxDrawCache.tilt = tilt;
+  _vfxDrawCache.value = value;
+  return value;
+}
+
+export function shouldDrawTableVfx(dx, dz, drawWu) {
+  const limit = Number.isFinite(drawWu) && drawWu > 0 ? drawWu : TABLE_HEARING_FAR_WU;
+  const x = Number(dx) || 0;
+  const z = Number(dz) || 0;
+  return (x * x + z * z) <= limit * limit;
+}
+
+/** Fitted-tractor inner band. Player-centered; never mixed into the glass radius. */
+export const TABLE_LOOT_MAGNET_CAP_WU = 580;
+
+/**
+ * Loot-magnet trails need two origins. The tractor cap is the player; the
+ * glass cull is the live look-at. Mixing them into one min() drops on-glass
+ * trails when combat/tether shoves the camera.
+ */
+export function shouldDrawLootMagnetTrail(playerDx, playerDz, focusDx, focusDz, tableWu) {
+  if (!shouldDrawTableVfx(playerDx, playerDz, TABLE_LOOT_MAGNET_CAP_WU)) return false;
+  return shouldDrawTableVfx(focusDx, focusDz, tableWu);
+}
+
+/**
+ * Focus is frame-local. World positions stay galactic-global. Convert focus
+ * to global with world.frameOrigin before subtracting, or a rebase culls
+ * every on-glass light when the camera is shoved.
+ */
+export function tableLookAtDelta(state, fallbackPos, entityPos, out) {
+  const target = out || { x: 0, z: 0 };
+  const focus = state && state.camera && state.camera.focus;
+  const hasFocus = Number.isFinite(focus && focus.x) && Number.isFinite(focus && focus.z);
+  let originX;
+  let originZ;
+  if (hasFocus) {
+    const frame = state && state.world && state.world.frameOrigin;
+    originX = focus.x + (Number.isFinite(frame && frame.x) ? frame.x : 0);
+    originZ = focus.z + (Number.isFinite(frame && frame.z) ? frame.z : 0);
+  } else {
+    originX = Number.isFinite(fallbackPos && fallbackPos.x) ? fallbackPos.x : 0;
+    originZ = Number.isFinite(fallbackPos && fallbackPos.z) ? fallbackPos.z : 0;
+  }
+  target.x = (Number.isFinite(entityPos && entityPos.x) ? entityPos.x : 0) - originX;
+  target.z = (Number.isFinite(entityPos && entityPos.z) ? entityPos.z : 0) - originZ;
+  return target;
+}
+
+/** Loot-magnet alias. Glass origin is the look-at; tractor cap stays on the player. */
+export function lootMagnetFocusDelta(state, playerPos, entityPos, out) {
+  return tableLookAtDelta(state, playerPos, entityPos, out);
+}
+
+/**
+ * NPC engine trails used leftover 2200/3600 player-camera horizons.
+ * Player and current target stay full. Everyone else follows the live
+ * look-at table. Off-glass trails are map facts, not 3D ribbons.
+ */
+export const TABLE_TRAIL_TIER = Object.freeze({
+  FULL: 'full',
+  NORMAL: 'normal',
+  SKIP: 'skip',
+});
+
+export function tableNpcTrailTier(state, entity, playerId, targetId, fallbackPos, out, tableWu) {
+  if (!entity || entity.alive === false) return TABLE_TRAIL_TIER.SKIP;
+  if (entity.id === playerId) return TABLE_TRAIL_TIER.FULL;
+  if (targetId != null && entity.id === targetId) return TABLE_TRAIL_TIER.FULL;
+  const drawWu = Number.isFinite(tableWu) && tableWu > 0 ? tableWu : tableVfxDrawWuFromState(state);
+  const delta = tableLookAtDelta(state, fallbackPos, entity.pos, out);
+  if (shouldDrawTableVfx(delta.x, delta.z, drawWu)) return TABLE_TRAIL_TIER.NORMAL;
+  return TABLE_TRAIL_TIER.SKIP;
+}
+
+export const TABLE_BAND = Object.freeze({
+  GLASS: 'glass',
+  RUNWAY: 'runway',
+  BEYOND: 'beyond',
+});
+
+export function approachDistanceWu(seconds, speed = TABLE_REFERENCE_SPEED_WU) {
+  const time = Math.max(0, Number(seconds) || 0);
+  const travel = Math.max(0, Number(speed) || 0);
+  return time * (travel > 0 ? travel : TABLE_REFERENCE_SPEED_WU);
+}
+
+export function tableTravelSpeed(state) {
+  const player = state && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(state.playerId)
+    : null;
+  const vel = player && player.vel;
+  const live = vel
+    ? Math.hypot(Number(vel.x) || 0, Number(vel.z) || 0)
+    : 0;
+  const maxSpeed = Number(player && player.maxSpeed) || 0;
+  return Math.max(TABLE_REFERENCE_SPEED_WU, live, maxSpeed);
+}
+
+/**
+ * Ground-plane half extents of the tilted chase camera. The old 0.72 sync-band
+ * helper under-counted the far corners of a 60° look-down frustum.
+ */
+export function glassHalfExtents(zoom, fovDeg, aspect, tiltDeg = 60) {
+  const distance = Number.isFinite(zoom) ? zoom : 88;
+  const fov = Number.isFinite(fovDeg) ? fovDeg : 50;
+  const aspectValue = Number.isFinite(aspect) && aspect > 0 ? aspect : 16 / 9;
+  const tilt = (Number.isFinite(tiltDeg) ? tiltDeg : 60) * Math.PI / 180;
+  const camY = distance * Math.sin(tilt);
+  const camZ = -distance * Math.cos(tilt);
+  const flen = Math.hypot(camY, -camZ) || 1;
+  const fwx = 0;
+  const fwy = -camY / flen;
+  const fwz = -camZ / flen;
+  let rx = fwz;
+  let ry = 0;
+  let rz = -fwx;
+  const rlen = Math.hypot(rx, ry, rz) || 1;
+  rx /= rlen;
+  ry /= rlen;
+  rz /= rlen;
+  const ux = ry * fwz - rz * fwy;
+  const uy = rz * fwx - rx * fwz;
+  const uz = rx * fwy - ry * fwx;
+  const tanHalf = Math.tan((fov * Math.PI / 180) * 0.5);
+  let maxX = 0;
+  let maxZ = 0;
+  const corners = [[-1, -1], [1, -1], [-1, 1], [1, 1]];
+  for (const [ndcX, ndcY] of corners) {
+    const dx = fwx + rx * ndcX * tanHalf * aspectValue + ux * ndcY * tanHalf;
+    const dy = fwy + ry * ndcX * tanHalf * aspectValue + uy * ndcY * tanHalf;
+    const dz = fwz + rz * ndcX * tanHalf * aspectValue + uz * ndcY * tanHalf;
+    if (!(dy < -1e-6)) continue;
+    const hit = -camY / dy;
+    if (!(hit > 0)) continue;
+    maxX = Math.max(maxX, Math.abs(dx * hit));
+    maxZ = Math.max(maxZ, Math.abs(camZ + dz * hit));
+  }
+  if (!(maxX > 0 && maxZ > 0)) return viewHalfExtents(distance, fov, aspectValue, 1);
+  return { halfX: maxX, halfZ: maxZ };
+}
+
+export function submitRunwayWu(speed = TABLE_REFERENCE_SPEED_WU) {
+  return approachDistanceWu(TABLE_SUBMIT_APPROACH_SECONDS, speed);
+}
+
+export function glassCornerWu(zoom, fovDeg, aspect, tiltDeg = 60) {
+  const glass = glassHalfExtents(zoom, fovDeg, aspect, tiltDeg);
+  return Math.hypot(glass.halfX, glass.halfZ);
+}
+
+export function residencyPrefetchRadius(
+  speed = TABLE_REFERENCE_SPEED_WU,
+  zoom = 144,
+  fovDeg = 50,
+  aspect = 16 / 9,
+  tiltDeg = 60,
+) {
+  return glassCornerWu(zoom, fovDeg, aspect, tiltDeg)
+    + approachDistanceWu(TABLE_RESIDENCY_PREFETCH_SECONDS, speed);
+}
+
+export function residencyEvictRadius(
+  speed = TABLE_REFERENCE_SPEED_WU,
+  zoom = 144,
+  fovDeg = 50,
+  aspect = 16 / 9,
+  tiltDeg = 60,
+) {
+  return glassCornerWu(zoom, fovDeg, aspect, tiltDeg)
+    + approachDistanceWu(TABLE_RESIDENCY_EVICT_SECONDS, speed);
+}
+
+export function authoredPrefetchRadius(speed = TABLE_REFERENCE_SPEED_WU) {
+  return approachDistanceWu(TABLE_AUTHORED_DECODE_SECONDS, speed);
+}
+
+export function authoredImmediateRadius(speed = TABLE_REFERENCE_SPEED_WU) {
+  return approachDistanceWu(TABLE_AUTHORED_IMMEDIATE_SECONDS, speed);
+}
+
+/**
+ * Loading-time compose radius. Glass plus the immediate authored runway.
+ * Replaces the leftover 2400 WU ship horizon. Critical starting hubs are
+ * a separate exception in the caller, not a reason to grow this number.
+ */
+const _openingComposeScratch = { key: '', radius: 0 };
+
+export function tableOpeningCompositionWu(state) {
+  const camera = state && state.camera || {};
+  const video = state && state.settings && state.settings.video || {};
+  const live = Number.isFinite(camera.liveZoom) ? camera.liveZoom : NaN;
+  const requested = Number.isFinite(camera.zoom) ? camera.zoom : NaN;
+  const zoom = Math.max(
+    Number.isFinite(live) ? live : 0,
+    Number.isFinite(requested) ? requested : 0,
+  ) || 144;
+  const fov = Number.isFinite(camera.fov) ? camera.fov
+    : (Number.isFinite(video.fov) ? video.fov : 50);
+  const aspect = Number.isFinite(camera.aspect) && camera.aspect > 0 ? camera.aspect : 16 / 9;
+  const tilt = Number.isFinite(camera.tilt) ? camera.tilt : 60;
+  const travel = tableTravelSpeed(state);
+  const key = `${zoom}|${fov}|${aspect}|${tilt}|${travel}`;
+  if (key === _openingComposeScratch.key) return _openingComposeScratch.radius;
+  const radius = glassCornerWu(zoom, fov, aspect, tilt) + authoredImmediateRadius(travel);
+  _openingComposeScratch.key = key;
+  _openingComposeScratch.radius = radius;
+  return radius;
+}
+
+/**
+ * 47-A cold-start holding ships sit 1.7–2.3 km out and must still compose
+ * during the Helios loading screen. The safety flag is permanent, so later
+ * Continues must not treat those ships as opening identities.
+ */
+export function isOpeningStoryActor(entity, state) {
+  const data = entity && entity.data;
+  const ai = data && data.ai;
+  if (!ai || ai.liveColdStartSafe !== true) return false;
+  if (data._liveColdStartActivated === true) return false;
+  if (!state || state.mode !== 'loading') return false;
+  const sector = state.world && state.world.currentSectorId;
+  if (sector && sector !== 'sector_helios_prime') return false;
+  return true;
+}
+
+export function authoredLookaheadSeconds() {
+  return TABLE_AUTHORED_DECODE_SECONDS;
+}
+
+/**
+ * Hidden/submit box: the readable glass plus a short approach runway.
+ * Replaces the old max(900, zoom*8) fake-visible margin.
+ */
+export function submitCullHalfExtents(
+  zoom,
+  fovDeg,
+  aspect,
+  speed = TABLE_REFERENCE_SPEED_WU,
+  tiltDeg = 60,
+) {
+  const glass = glassHalfExtents(zoom, fovDeg, aspect, tiltDeg);
+  const runway = submitRunwayWu(speed);
+  return {
+    glass,
+    runway,
+    halfX: glass.halfX + runway,
+    halfZ: glass.halfZ + runway,
+  };
+}
+
+export function tableShadowCastRadius(zoom, fovDeg, aspect, tiltDeg = 60) {
+  const glass = glassHalfExtents(zoom, fovDeg, aspect, tiltDeg);
+  return Math.max(glass.halfX, glass.halfZ) + TABLE_SHADOW_SKIRT_WU;
+}
+
+/**
+ * Caster band must fit inside the key-light ortho. A larger number would flip
+ * far hulls to castShadow even though they sit outside the ±300 light box.
+ */
+export function tableShadowCasterRadius(
+  zoom,
+  fovDeg,
+  aspect,
+  tiltDeg = 60,
+  cap = 300,
+) {
+  const radius = tableShadowCastRadius(zoom, fovDeg, aspect, tiltDeg);
+  const limit = Number.isFinite(Number(cap)) && Number(cap) > 0 ? Number(cap) : 300;
+  return Math.min(limit, Math.max(80, radius));
+}
+
+export function classifyTableBand(options = {}) {
+  const radius = Math.max(0, Number(options.radius) || 0);
+  const absDx = Math.max(0, Math.abs(Number(options.dx) || 0) - radius);
+  const absDz = Math.max(0, Math.abs(Number(options.dz) || 0) - radius);
+  const glassX = Number.isFinite(Number(options.glassHalfX)) ? Number(options.glassHalfX) : 0;
+  const glassZ = Number.isFinite(Number(options.glassHalfZ)) ? Number(options.glassHalfZ) : 0;
+  const runway = Math.max(0, Number(options.runwayWu) || 0);
+  if (absDx <= glassX && absDz <= glassZ) return TABLE_BAND.GLASS;
+  if (absDx <= glassX + runway && absDz <= glassZ + runway) return TABLE_BAND.RUNWAY;
+  return TABLE_BAND.BEYOND;
+}
+
+/**
+ * Persistent landmarks (stations, planets, fx) are map facts until they can
+ * enter the table. The Helios opening hub is still a loading-time exception
+ * via authored admission, not a whole-sector mesh keep-alive.
+ */
+export function isCriticalStartingHub(entity) {
+  if (!entity || entity.type !== 'station') return false;
+  const data = entity.data || {};
+  if (entity.id === 'station_helios' || data.stationId === 'station_helios') return true;
+  const token = String(data.archetypeGlb || data.placeId || '')
+    .replace(/^places\//, '')
+    .replace(/\.glb$/, '');
+  return token === 'place_station_trade_hub' && data.sectorId === 'sector_helios_prime';
+}
+
+export function shouldKeepPersistentLandmarkResident(entity, options = {}) {
+  if (!entity) return false;
+  if (options.forceRender === true || options.neverCull === true) return true;
+  if (options.withinResidency === true) return true;
+  if (options.mode === 'loading' && isCriticalStartingHub(entity)) return true;
+  return false;
+}
+
+export function emptyTableCensus() {
+  return {
+    glass: 0,
+    runway: 0,
+    beyond: 0,
+    resident: 0,
+    submitted: 0,
+    landmarks: 0,
+  };
+}
+
+/**
+ * Count live entities into glass / runway / beyond. `submitted` is glass+runway
+ * plus forced roots. Used by PQ-061 probes and renderer diagnostics.
+ */
+export function censusTableBands(entities, options = {}) {
+  const counts = emptyTableCensus();
+  const list = Array.isArray(entities) ? entities : [];
+  const glassHalfX = Number(options.glassHalfX) || 0;
+  const glassHalfZ = Number(options.glassHalfZ) || 0;
+  const runwayWu = Number(options.runwayWu) || 0;
+  const originX = Number(options.originX) || 0;
+  const originZ = Number(options.originZ) || 0;
+  const playerId = options.playerId;
+  for (const entity of list) {
+    if (!entity || entity.alive === false) continue;
+    const type = entity.type;
+    if (type === 'station' || type === 'planet' || type === 'fx') counts.landmarks += 1;
+    const forced = entity.id === playerId
+      || entity.isPlayer === true
+      || !!(entity.flags && (entity.flags.forceRender || entity.flags.neverCull));
+    const pos = entity.pos;
+    const dx = pos && Number.isFinite(pos.x) ? pos.x - originX : 0;
+    const dz = pos && Number.isFinite(pos.z) ? pos.z - originZ : 0;
+    const radius = Math.max(0, Number(entity.radius) || 0);
+    const band = forced
+      ? TABLE_BAND.GLASS
+      : classifyTableBand({ dx, dz, glassHalfX, glassHalfZ, runwayWu, radius });
+    counts[band] += 1;
+    if (band === TABLE_BAND.GLASS || band === TABLE_BAND.RUNWAY) counts.submitted += 1;
+    if (options.residentIds && options.residentIds.has(entity.id)) counts.resident += 1;
+  }
+  return counts;
+}

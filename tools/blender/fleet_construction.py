@@ -230,6 +230,23 @@ def add_stepped_wrap(tag, stations, material, collection, thick=0.030, zc=0.08):
     return objects
 
 
+def add_tile_bank(prefix, x0, x1, y, z, count, sx, sy, sz, material, collection, stagger=0.06):
+    """Small overlapping armor tiles along X. Hitch-density language, not decals."""
+    objects = []
+    if count < 1:
+        return objects
+    step = (x1 - x0) / count
+    for i in range(count):
+        x = x0 + step * (i + 0.5)
+        yo = y + (stagger if i % 2 else -stagger * 0.45)
+        zo = z + (0.010 if i % 3 == 0 else 0.0)
+        objects.append(add_overlap_plate(
+            f"{prefix}_{i}", (x, yo, zo), (abs(step) * 0.42 + sx * 0.35, sy, sz),
+            material, collection, 0.004,
+        ))
+    return objects
+
+
 def cover_loft_with_plates(tag, stations, hull, armor, collection, thick=0.034):
     """Visible telescoping plate skin over a pressure loft.
 

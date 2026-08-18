@@ -19,7 +19,7 @@ function series(overrides = {}, count = 8) {
     posX: index * 4,
     posZ: 0,
     speed: 40,
-    simTimeScale: 1,
+    clockScale: 1,
     mode: 'flight',
     suspended: false,
     documentHidden: false,
@@ -99,7 +99,7 @@ test('collect reads player pose and renderer frame without throwing', () => {
     mode: 'flight',
     simTime: 12,
     tick: 720,
-    timeScale: 1,
+    clockScale: 1,
     playerId: 1,
     entities: new Map([[1, { pos: { x: 3, z: 4 }, vel: { x: 10, z: 0 } }]]),
     render: {

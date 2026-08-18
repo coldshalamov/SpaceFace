@@ -2,9 +2,19 @@
 // Keep this module free of Three.js and browser globals so focused contract tests can exercise the
 // same prediction used by the live renderer.
 
-export const AUTHORED_ASSET_PREFETCH_RADIUS = 2400;
-export const AUTHORED_ASSET_IMMEDIATE_RADIUS = 1000;
-export const AUTHORED_ASSET_LOOKAHEAD_SECONDS = 10;
+import {
+  authoredImmediateRadius,
+  authoredLookaheadSeconds,
+  authoredPrefetchRadius,
+  glassCornerWu,
+  isCriticalStartingHub,
+  tableTravelSpeed,
+} from './tabletopPolicy.js';
+
+export const AUTHORED_ASSET_PREFETCH_RADIUS = authoredPrefetchRadius();
+export const AUTHORED_ASSET_IMMEDIATE_RADIUS = authoredImmediateRadius();
+export const AUTHORED_ASSET_LOOKAHEAD_SECONDS = authoredLookaheadSeconds();
+export { isCriticalStartingHub };
 
 /**
  * True when an entity is already eligible for authored admission, or will become eligible inside
@@ -12,7 +22,7 @@ export const AUTHORED_ASSET_LOOKAHEAD_SECONDS = 10;
  * its upcoming sample duration so an inbound boundary cannot begin decoding inside measurement.
  */
 export function willEntityEnterAuthoredUpgradeRunway(entity, state, {
-  radius = AUTHORED_ASSET_PREFETCH_RADIUS,
+  radius = null,
   horizonSeconds = 0,
 } = {}) {
   if (!entity || entity.alive === false) return false;
@@ -27,11 +37,38 @@ export function willEntityEnterAuthoredUpgradeRunway(entity, state, {
   if (isCriticalStartingHub(entity)) return true;
   if (!player?.pos || !entity.pos) return false;
 
+  const travel = tableTravelSpeed(state);
+  const numericRadius = Number(radius);
+  const prefetch = radius == null || !Number.isFinite(numericRadius)
+    ? authoredPrefetchRadius(travel)
+    : numericRadius;
+  const immediate = authoredImmediateRadius(travel);
+  const lookahead = authoredLookaheadSeconds();
+
   const dx = Number(entity.pos.x) - Number(player.pos.x);
   const dz = Number(entity.pos.z) - Number(player.pos.z);
   const distance = Math.hypot(dx, dz);
   if (!Number.isFinite(distance)) return false;
-  if (distance <= AUTHORED_ASSET_IMMEDIATE_RADIUS) return true;
+  const visual = Math.max(0, Number(entity.radius) || 0);
+  const surface = Math.max(0, distance - visual);
+  if (surface <= immediate) return true;
+  const camera = state && state.camera || {};
+  const video = state && state.settings && state.settings.video || {};
+  const requested = Number(camera.zoom);
+  const live = Number(camera.liveZoom);
+  const zoom = Math.max(
+    Number.isFinite(live) ? live : 0,
+    Number.isFinite(requested) ? requested : 0,
+  ) || 144;
+  const tilt = Number.isFinite(Number(camera.tilt)) ? Number(camera.tilt) : 60;
+  const fov = Number.isFinite(Number(camera.fov))
+    ? Number(camera.fov)
+    : (Number.isFinite(Number(video.fov)) ? Number(video.fov) : 50);
+  const aspect = Number.isFinite(Number(camera.aspect)) && Number(camera.aspect) > 0
+    ? Number(camera.aspect)
+    : 16 / 9;
+  const glass = glassCornerWu(zoom, fov, aspect, tilt);
+  if (surface <= glass) return true;
   if (distance <= 0) return false;
 
   const relativeX = (Number(player.vel?.x) || 0) - (Number(entity.vel?.x) || 0);
@@ -41,9 +78,8 @@ export function willEntityEnterAuthoredUpgradeRunway(entity, state, {
 
   const horizon = Math.max(0, Number(horizonSeconds) || 0);
   const futureDistance = Math.max(0, distance - closingSpeed * horizon);
-  return futureDistance <= radius
-    && futureDistance - closingSpeed * AUTHORED_ASSET_LOOKAHEAD_SECONDS
-      <= AUTHORED_ASSET_IMMEDIATE_RADIUS;
+  return futureDistance <= prefetch
+    && futureDistance - closingSpeed * lookahead <= immediate;
 }
 
 function playerEntity(state) {
@@ -54,12 +90,4 @@ function playerEntity(state) {
   return (state?.entityList || []).find((candidate) => candidate?.id === state?.playerId) || null;
 }
 
-function isCriticalStartingHub(entity) {
-  if (!entity || entity.type !== 'station') return false;
-  const data = entity.data || {};
-  if (entity.id === 'station_helios' || data.stationId === 'station_helios') return true;
-  const token = String(data.archetypeGlb || data.placeId || '')
-    .replace(/^places\//, '')
-    .replace(/\.glb$/, '');
-  return token === 'place_station_trade_hub' && data.sectorId === 'sector_helios_prime';
-}
+

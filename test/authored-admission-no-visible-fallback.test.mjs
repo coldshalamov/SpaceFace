@@ -952,11 +952,16 @@ test('the default Helios relay settles inside the loading-time authored runway',
     id: 'world_site_helios_relay',
     alive: true,
     type: 'fx',
-    pos: { x: 760, z: -620 },
+    pos: { x: 120, z: 40 },
     data: {
       placeId: 'place_claim_outpost_relay',
       sectorId: 'sector_helios_prime',
     },
+  };
+  const leftoverHorizon = {
+    ...relay,
+    id: 'world_site_leftover_2400',
+    pos: { x: 2400, z: 0 },
   };
   const outsideImmediateRunway = {
     ...relay,
@@ -968,10 +973,39 @@ test('the default Helios relay settles inside the loading-time authored runway',
     playerId: player.id,
     entities: new Map([[player.id, player], [relay.id, relay]]),
     world: { currentSectorId: 'sector_helios_prime' },
+    camera: { zoom: 144 },
   };
 
   assert.equal(isInitialAuthoredCompositionEntity(relay, state), true,
-    'the default-route relay must decode, compose, upload, and link before flight is exposed');
+    'an on-table opening relay must decode, compose, upload, and link before flight is exposed');
   assert.equal(isInitialAuthoredCompositionEntity(outsideImmediateRunway, state), false,
-    'loading must not widen beyond the ordinary immediate-admission runway');
+    'loading must not widen beyond the table opening runway');
+  assert.equal(isInitialAuthoredCompositionEntity(leftoverHorizon, state), false,
+    'loading must not keep the leftover 2400 WU ship horizon');
+
+  const interceptor = {
+    id: 7,
+    alive: true,
+    type: 'ship',
+    pos: { x: 1760, z: 260 },
+    data: { ai: { liveColdStartSafe: true } },
+  };
+  const stray = {
+    id: 8,
+    alive: true,
+    type: 'ship',
+    pos: { x: 1760, z: 260 },
+    data: { ai: {} },
+  };
+  assert.equal(isInitialAuthoredCompositionEntity(interceptor, state), true,
+    '47-A cold-start holding ships still compose at Helios load');
+  assert.equal(isInitialAuthoredCompositionEntity(stray, state), false,
+    'an ordinary ship at that hold is not an opening actor');
+  const later = {
+    ...state,
+    mode: 'loading',
+    world: { currentSectorId: 'sector_ceres_belt' },
+  };
+  assert.equal(isInitialAuthoredCompositionEntity(interceptor, later), false,
+    'a later Continue does not keep composing far story ships');
 });

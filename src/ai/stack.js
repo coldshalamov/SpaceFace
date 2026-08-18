@@ -15,6 +15,8 @@ import { ExplainabilityTrace } from './trace.js';
 import { CombatDoctrineRuntime, normalizeCombatDoctrineId, overrideDirectiveForCombatDoctrine } from './combatDoctrine.js';
 import { overrideDirectiveForWingOrder, perceptionForWingOrderCombatDoctrine } from './doctrine.js';
 import { normalizeFactionBehaviorProfile } from './factionBehavior.js';
+import { shouldOwnerThink } from '../core/activityScheduler.js';
+import { TABLE_AI_AUTHORITY_WU } from '../render/tabletopPolicy.js';
 
 const NORMALIZED_ROSTER_FLAG = '__spacefaceNormalizedAIRoster';
 const ROSTER_SIGNATURE_FLAG = '__spacefaceRosterSignature';
@@ -256,17 +258,50 @@ export class TacticalAIStack {
       if (phase === this.memberBatchSpreadTicks - 1) {
         this.memberCursor = (this.memberCursor + batchSize) % count;
       }
-      return selected;
+      return this._sleepInactiveMembers(selected, orderedMembers, tick);
     }
     if (batchSize >= count) {
       this.memberCursor = 0;
       for (const member of orderedMembers) selected.add(member.id);
-      return selected;
+      return this._sleepInactiveMembers(selected, orderedMembers, tick);
     }
     for (let offset = 0; offset < batchSize; offset++) {
       selected.add(orderedMembers[(this.memberCursor + offset) % count].id);
     }
     this.memberCursor = (this.memberCursor + batchSize) % count;
+    this._sleepInactiveMembers(selected, orderedMembers, tick);
+    return selected;
+  }
+
+  _sleepInactiveMembers(selected, orderedMembers, tick) {
+    const player = this.ports && this.ports.world && typeof this.ports.world.player === 'function'
+      ? this.ports.world.player()
+      : null;
+    const origin = player && player.pos ? player.pos : null;
+    const playerId = player && player.id;
+    const playerTeam = player && player.team;
+    for (const member of orderedMembers) {
+      if (!selected.has(member.id)) continue;
+      if (normalizeCombatDoctrineId(member.combatDoctrineId) != null) continue;
+      const owner = {
+        id: member.id,
+        isPlayer: member.id === playerId,
+        team: member.team,
+        alive: member.alive !== false,
+        pos: member.pos || (member.self && member.self.pos) || null,
+        ai: { combatant: !!member.combatDoctrineId, passive: member.passive === true },
+      };
+      if (!shouldOwnerThink(tick, owner, {
+        playerId,
+        playerTeam,
+        origin,
+        authorityRadius: TABLE_AI_AUTHORITY_WU,
+        sleepPeriodTicks: 8,
+        activePeriodTicks: 1,
+      })) {
+        selected.delete(member.id);
+      }
+    }
     return selected;
   }
 

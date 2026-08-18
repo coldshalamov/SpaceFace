@@ -13,11 +13,40 @@ import { WEAPONS } from '../data/weapons.js';
 import { invalidateFailedAuthoredAssets, loadAuthoredPart } from './assetLoader.js';
 import { getAssetResidency } from './assetResidency.js';
 import { configureRealtimeCanopyMaterials } from './canopyMaterialPolicy.js';
-import { AUTHORED_ASSET_IMMEDIATE_RADIUS } from './authoredAdmissionPolicy.js';
+import {
+  isCriticalStartingHub as isTableCriticalStartingHub,
+  isOpeningStoryActor,
+  tableInstanceFarCullWu,
+  tableOpeningCompositionWu,
+} from './tabletopPolicy.js';
 import { isReleaseAssetMode } from './releaseMode.js';
 import * as kit from './ships/shipKit.js';
-import { attachStationHlod } from './hlod.js';
+import { attachPlaceHlod, attachStationHlod } from './hlod.js';
+import { freezeStaticChildMatrices } from './staticChildMatrices.js';
+import { optimizeStaticBatchesForRoot } from './visualFactory.js';
 import { attachLodState } from './lod.js';
+import { canInstallWholeShipLodFamily, selectSpawnLodLevel } from './wholeShipLodPolicy.js';
+import {
+  instancePoolIdentity,
+  packageBatchPoolKeyFromMaterial,
+  stampGeometryBatchKey,
+} from './materialBatchKey.js';
+import {
+  canBatchRenderPackageOwner,
+  isRigidOpaqueBatchableSurface,
+} from './rigidOpaqueBatchPolicy.js';
+import { authoredUpgradeConcurrencyLimit as resolveAuthoredUpgradeConcurrency } from './authoredUpgradePolicy.js';
+import { shouldStartHeavyAdmissionEventually } from './admissionSliceBudget.js';
+import { applyInstanceChunkSubmitPolicy } from './instanceChunkSubmitPolicy.js';
+import {
+  createOpaqueMaterialBatchState,
+  syncOpaqueMaterialBatches,
+} from './opaqueMaterialBatch.js';
+import {
+  rememberStaticBatchGeometry,
+  staticBatchGeometryCacheKey,
+  takeCachedStaticBatchGeometry,
+} from './staticBatchGeometryCache.js';
 import { configureTransparentSinglePassSurfaces } from './transparentSinglePassPolicy.js';
 import { installWorldSitePresentation } from './worldSitePresentation.js';
 import {
@@ -56,11 +85,8 @@ const WRECK_CATHEDRAL_CLOSED_MATERIAL_ROLES = new Set([
 ]);
 const KESTREL_HERO_ASSET_ID = 'SF_K0_KESTREL_BORROWED_TIME';
 const INSTANCE_CHUNK_SIZE = 64;
-const PACKAGE_BATCH_MAX_INSTANCES = 64;
-const PACKAGE_BATCH_VERTEX_RESERVE = 32768;
-const PACKAGE_BATCH_INDEX_RESERVE = 98304;
 const AUTHORED_INSTANCE_MATRIX = 0;
-const INSTANCE_FAR_CULL_RADIUS = 9000;
+const INSTANCE_FAR_CULL_RADIUS = tableInstanceFarCullWu();
 const INSTANCE_FRUSTUM_PAD = 420;
 const ZERO_MATRIX = new THREE.Matrix4().makeScale(0, 0, 0);
 const EMPTY_ARRAY = Object.freeze([]);
@@ -119,8 +145,6 @@ const PLACE_FILES = Object.freeze([
   'places/place_ceres_grave_shard.glb',
   'places/place_conveyor_barge.glb',
   'places/place_mining_drone.glb',
-  'places/place_lane_pin.glb',
-  'places/place_cold_locker.glb',
   'places/place_asteroid_rock_a.glb',
   'places/place_asteroid_rock_b.glb',
   'places/place_asteroid_rock_c.glb',
@@ -376,10 +400,10 @@ export function endAuthoredInstanceMeshDisposeRegistrationProbe(receipt) {
 
 /**
  * Detached package-pool targets are not reachable from the live scene while a sector boundary is
- * being prepared. Three attaches disposal listeners to InstancedMesh objects and to the geometry /
- * texture resources owned by BatchedMesh. Function names are not stable in the minified bundle, so
- * the renderer captures exact callback identities with a private probe. Detach only those proven
- * old-context identities; foreign listeners remain untouched for the restored renderer generation.
+ * being prepared. Three attaches one object-level disposal listener when an InstancedMesh reaches
+ * an actual render. Its Function.name is not stable in the shipped minified bundle, so the renderer
+ * captures the exact callback identity with a private probe. Detach only that proven old-context
+ * identity; foreign listeners remain untouched and the first restored draw captures the successor.
  */
 export function prepareAuthoredInstancePoolsForContextLoss(scene, renderer) {
   const state = scene && sceneStates.get(scene);
@@ -494,6 +518,10 @@ export function getAuthoredInstancePoolDiagnostics(scene) {
     hiddenInstanceSlots: 0,
     avgPoolOccupancy: 0,
     tinyPools: 0,
+    shadowCastingInstanceChunks: 0,
+    opaqueBatches: 0,
+    opaqueBatchInstances: 0,
+    opaqueBatchHiddenChunks: 0,
     matrixUploads: 0,
     matrixReuses: 0,
     frameBounded: false,
@@ -605,8 +633,6 @@ const AUTHORED_BOOTSTRAP_PLAN = Object.freeze({
 // Gate the same spatial runway used by live authored prefetch so its initial decode/composition and
 // associated garbage collection finish behind loading. Distant authored-only boundaries remain
 // hidden and continue to stream on demand.
-const INITIAL_SHIP_COMPOSITION_RADIUS = 2400;
-const INITIAL_PLACE_COMPOSITION_RADIUS = AUTHORED_ASSET_IMMEDIATE_RADIUS;
 const REGULAR_HULL_FILES = Object.freeze(
   PART_LIBRARY_CONTRACT.slots.hull.filter((file) => !String(file).startsWith('wholeships/')),
 );
@@ -619,19 +645,18 @@ export function authoredBootstrapPreloadPlan() {
 export function isInitialAuthoredCompositionEntity(entity, state) {
   if (!entity || entity.alive === false || !state) return false;
   if (entity.id === state.playerId || entity.isPlayer === true) return true;
-  const criticalHub = isCriticalStartingHub(entity);
+  if (isTableCriticalStartingHub(entity) || isCriticalStartingHub(entity)) return true;
+  if (isOpeningStoryActor(entity, state)) return true;
   const player = state.entities && typeof state.entities.get === 'function'
     ? state.entities.get(state.playerId)
     : (state.entityList || []).find((candidate) => candidate && candidate.id === state.playerId);
-  if (!player || !player.pos || !entity.pos) return criticalHub;
+  if (!player || !player.pos || !entity.pos) return false;
   const dx = Number(entity.pos.x) - Number(player.pos.x);
   const dz = Number(entity.pos.z) - Number(player.pos.z);
   if (!Number.isFinite(dx) || !Number.isFinite(dz)) return false;
-  const radius = entity.type === 'ship'
-    ? INITIAL_SHIP_COMPOSITION_RADIUS
-    : ((entity.type === 'station' || entity.type === 'fx') && placeFileForEntity(entity)
-      ? INITIAL_PLACE_COMPOSITION_RADIUS
-      : 0);
+  const isPlace = (entity.type === 'station' || entity.type === 'fx') && placeFileForEntity(entity);
+  if (entity.type !== 'ship' && !isPlace) return false;
+  const radius = tableOpeningCompositionWu(state);
   return radius > 0 && dx * dx + dz * dz <= radius * radius;
 }
 
@@ -640,7 +665,13 @@ export function isInitialAuthoredCompositionEntity(entity, state) {
 export function authoredPreloadPlanForEntity(entity, options = {}) {
   if (!entity || entity.type !== 'ship') return {};
   const whole = wholeShipVisualForEntity(entity, options);
-  if (whole && whole.file) return { hull: [whole.file] };
+  if (whole && whole.file) {
+    const file = options.forceWholeShipFile
+      || (options.lodLevel
+        ? wholeShipLodFileForEntity(entity, options.lodLevel, options)
+        : whole.file);
+    return { hull: [file] };
+  }
 
   const defId = entity.data && entity.data.defId;
   const seed = hashString(`${entity.id}|${defId}|${entity.factionId || ''}`);
@@ -773,8 +804,18 @@ export function authoredPrewarmRequestsForEntities(entities, options = {}) {
 
     let plan = {};
     if (entity.type === 'ship') {
+      let lodLevel = options.lodLevel;
+      if (!lodLevel && options.playerPos && entity.pos && entity.isPlayer !== true) {
+        const dx = Number(entity.pos.x) - Number(options.playerPos.x);
+        const dz = Number(entity.pos.z) - Number(options.playerPos.z);
+        const dist = Math.hypot(dx, dz);
+        const radius = Number(entity.radius) || 8;
+        const px = (radius / Math.max(dist, 0.001)) * (Number(options.viewportHeight) || 800);
+        lodLevel = selectSpawnLodLevel(px);
+      }
       plan = authoredPreloadPlanForEntity(entity, {
         ...options,
+        lodLevel,
         requiredWholeShip: options.requiredWholeShip === true
           || requiresProductionWholeShipForEntity(entity),
       });
@@ -1002,30 +1043,22 @@ const WHOLE_SHIP_ASSET_ID_BY_HOSTILE_ID = Object.freeze({
 // gates on the separate `slot.jobKind`, never on presentationRole, so Ceres freight slots keep
 // their hauler jobs intact.
 const WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE = Object.freeze({
-  // Traffic bodies point at the declared, packaged wholeship releases. The remaster rewired these
-  // roles to *_production_v1 re-releases that were never declared in release_manifest.json nor
-  // given render packages or embedded asset identity, so assetLoader failed closed on every load
-  // and courier/hauler/surveyor/miner/ore_carrier/tender/salvor traffic rendered as invisible
-  // zero-draw boundaries. Re-point each role here once its production body completes the release
-  // pipeline (parts_manifest row + sg04 release build + pilot package).
-  courier: 'wholeships/helios_lark.glb',
-  miner: 'wholeships/helios_cradle.glb',
-  hauler: 'wholeships/helios_span.glb',
-  ore_carrier: 'wholeships/ore_barge.glb',
-  tender: 'wholeships/repair_tender.glb',
-  salvor: 'wholeships/salvage_cutter.glb',
-  surveyor: 'wholeships/survey_pin.glb',
+  courier: 'wholeships/helios_lark_production_v1.glb',
+  miner: 'wholeships/helios_cradle_production_v1.glb',
+  hauler: 'wholeships/helios_span_production_v1.glb',
+  ore_carrier: 'wholeships/ore_barge_production_v1.glb',
+  tender: 'wholeships/repair_tender_production_v1.glb',
+  salvor: 'wholeships/salvage_cutter_production_v1.glb',
+  surveyor: 'wholeships/survey_pin_production_v1.glb',
 });
 const WHOLE_SHIP_ASSET_ID_BY_TRAFFIC_ROLE = Object.freeze({
-  // Must match the asset identity embedded in each packaged traffic body above; the record
-  // resolver rejects a whole-ship load whose assetId differs from the selected role identity.
-  courier: 'SF_WHOLESHIP_HELIOS_LARK',
-  miner: 'SF_WHOLESHIP_HELIOS_CRADLE',
-  hauler: 'SF_WHOLESHIP_HELIOS_SPAN',
-  ore_carrier: 'SF_WHOLESHIP_ORE_BARGE',
-  tender: 'SF_WHOLESHIP_REPAIR_TENDER',
-  salvor: 'SF_WHOLESHIP_SALVAGE_CUTTER',
-  surveyor: 'SF_WHOLESHIP_SURVEY_PIN',
+  courier: 'SF_HELIOS_LARK_V1',
+  miner: 'SF_HELIOS_CRADLE_V1',
+  hauler: 'SF_HELIOS_SPAN_V1',
+  ore_carrier: 'SF_ORE_BARGE_V1',
+  tender: 'SF_REPAIR_TENDER_V1',
+  salvor: 'SF_SALVAGE_CUTTER_V1',
+  surveyor: 'SF_SURVEY_PIN_V1',
 });
 const WHOLE_SHIP_URLS = Object.freeze([
   ...Object.values(WHOLE_SHIP_FILE_BY_DEF_ID),
@@ -1213,14 +1246,6 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
     return completion;
   };
   boundary.userData.requestAuthoredUpgrade = startAuthoredUpgrade;
-  // A gated live-compose attempt on a zero-draw direct-mount substrate must be retryable: the
-  // flight-compose gate clears the cached promise before calling this so the sector-prepared
-  // admission path can start a fresh attempt with its allowlisted role.
-  boundary.userData.rearmAuthoredUpgrade = () => {
-    if (boundary.userData.authoredUpgradePromise) return false;
-    armed = true;
-    return true;
-  };
   if (trigger) {
     trigger.onBeforeRender = function authoredAssetTrigger(renderer, scene, ...rest) {
       if (typeof previousBeforeRender === 'function') previousBeforeRender.call(this, renderer, scene, ...rest);
@@ -1782,7 +1807,10 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
     };
   }
 
-  return attachStationHlod(boundary, entity);
+  const stationed = attachStationHlod(boundary, entity);
+  optimizeStaticBatchesForRoot(stationed);
+  freezeStaticChildMatrices(stationed);
+  return stationed;
 }
 
 function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options = {}) {
@@ -1876,7 +1904,10 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
     };
   }
 
-  return boundary;
+  const placed = attachPlaceHlod(boundary, entity);
+  optimizeStaticBatchesForRoot(placed);
+  freezeStaticChildMatrices(placed);
+  return placed;
 }
 
 function authoredAdmissionStarted(state) {
@@ -2062,6 +2093,8 @@ function commitAuthoredPlaceBoundary(
   // in play, so there is no placeholder frame or blue-clay-to-authored identity swap.
   boundary.remove(fallbackRoot);
   boundary.add(authored.root);
+  optimizeStaticBatchesForRoot(authored.root);
+  freezeStaticChildMatrices(authored.root);
   unregisterPreparedAuthoredAdmission(authored);
   setActive(authored.root);
   boundary.userData.authoredReadableFallbackRetained = false;
@@ -2814,6 +2847,7 @@ function upgradeQueueState(scene) {
       running: false,
       inFlight: 0,
       frameScheduled: false,
+      lateSkips: 0,
       byBoundary: new Map(),
       byKey: new Map(),
       nextSequence: 0,
@@ -2915,18 +2949,6 @@ export function mayComposeAuthoredShipLive(options = {}, liveState = authoredRun
  * Unhide an existing substrate when live composition is gated. Does not invent a substitute ship —
  * empty direct-admission roots stay empty; the real authored body is the only identity.
  */
-function boundaryCarriesRenderables(root) {
-  if (!root) return false;
-  let carries = false;
-  root.traverse((object) => {
-    if (carries || !object) return;
-    // Promoted pool proxies (isMesh suppressed) draw through their scene-level batch, not through
-    // this subtree; only direct drawables count as an unhidable substrate.
-    if (object.isMesh || object.isLine || object.isPoints || object.isSprite) carries = true;
-  });
-  return carries;
-}
-
 export function settleAuthoredShipToProceduralFallback(
   boundary,
   fallbackRoot,
@@ -2975,6 +2997,11 @@ function residencyOptionsForBoundary(entity, boundary, renderer) {
         })
       : null,
     overlapAuthoredPipelineCompile: !!(liveState && liveState.mode !== 'flight'),
+    yieldBetweenGpuStages: !!(liveState && liveState.mode === 'flight'),
+    yieldToNextPresent: liveState && liveState.render
+      && typeof liveState.render.yieldToNextPresent === 'function'
+      ? () => liveState.render.yieldToNextPresent()
+      : null,
   };
 }
 
@@ -3070,6 +3097,9 @@ function settleUpgradeJob(job, status, result = null, error = null) {
 }
 
 function scheduleUpgradeFrame(callback) {
+  // Stay on the display callback. Parking a 40–150 ms compose on setTimeout(0) between
+  // frames made every rAF late while the queue was full. The merge cache is what makes
+  // the job cheaper; the scheduler must not turn some hitches into a 30 fps floor.
   const raf = globalThis && typeof globalThis.requestAnimationFrame === 'function'
     ? globalThis.requestAnimationFrame.bind(globalThis)
     : null;
@@ -3096,6 +3126,18 @@ function scheduleNextUpgradeFrame(state) {
 
 function admitNextUpgradeJob(state) {
   state.frameScheduled = false;
+  const live = authoredRuntimeState();
+  if (live && live.mode === 'flight') {
+    const gate = shouldStartHeavyAdmissionEventually(
+      live.render && live.render.lastPresentDtMs,
+      state.lateSkips,
+    );
+    state.lateSkips = gate.skippedCount;
+    if (!gate.start) {
+      scheduleNextUpgradeFrame(state);
+      return;
+    }
+  }
   state.jobs.sort((a, b) => {
     const priorityDelta = authoredUpgradePriority(a) - authoredUpgradePriority(b);
     return priorityDelta || a.sequence - b.sequence;
@@ -3172,7 +3214,18 @@ function admitNextUpgradeJob(state) {
 }
 
 function authoredUpgradeConcurrencyLimit() {
-  return 1;
+  const live = authoredRuntimeState() || {};
+  const render = live.render || {};
+  const nowMs = typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now()
+    : Date.now();
+  return resolveAuthoredUpgradeConcurrency({
+    mode: live.mode,
+    opening: render.deferNoncriticalMeshStreaming === true,
+    deferNoncriticalMeshStreaming: render.deferNoncriticalMeshStreaming === true,
+    firstPlayableFrameAt: render.firstPlayableFrameAt,
+    nowMs,
+  });
 }
 
 function primeNextAuthoredAssetPlan(state) {
@@ -3485,6 +3538,10 @@ export async function prepareAuthoredVisualPipelines(root, options = {}) {
     ? await preparePipelines(root)
     : { skipped: true, reason: 'pipeline compiler unavailable' };
   assertAuthoredVisualPreparationActive(options, 'after-pipeline-compile');
+  if (options.yieldBetweenGpuStages === true && typeof options.yieldToNextPresent === 'function') {
+    await options.yieldToNextPresent();
+    assertAuthoredVisualPreparationActive(options, 'after-present-yield');
+  }
   const gpuResidency = typeof prepareResidency === 'function'
     ? await prepareResidency(root, {
         isResidencyOwnerActive: options.isResidencyOwnerActive,
@@ -3547,26 +3604,13 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
   let authored = null;
   try {
     if (!mayComposeAuthoredShipLive(options)) {
-      if (boundaryCarriesRenderables(fallbackRoot)) {
-        settleAuthoredShipToProceduralFallback(
-          boundary,
-          fallbackRoot,
-          entity,
-          setActive,
-          'flight-compose-gated',
-        );
-      } else {
-        // A direct-mount substrate has no procedural body to unhide: "settling" it would strand an
-        // invisible ship forever (the attempt is one-shot once the cached promise exists). Restore
-        // the awaiting state and re-arm so the sector-prepared admission that IS allowed to compose
-        // live can claim the boundary with its allowlisted role.
-        boundary.userData.authoredAssetState = 'awaiting-authored-admission';
-        boundary.userData.authoredVisualRoot = 'none-pending-admission';
-        delete boundary.userData.authoredUpgradePromise;
-        if (typeof boundary.userData.rearmAuthoredUpgrade === 'function') {
-          boundary.userData.rearmAuthoredUpgrade();
-        }
-      }
+      settleAuthoredShipToProceduralFallback(
+        boundary,
+        fallbackRoot,
+        entity,
+        setActive,
+        'flight-compose-gated',
+      );
       releaseBoundaryResidency(renderer, boundary, 'flight-compose-gated');
       const tier1 = tier1CausalCounters();
       if (tier1) tier1.countAuthoredAdmissionJob('flight-compose-gated');
@@ -3776,7 +3820,7 @@ function installWholeShipLodFamilyController(boundary, entity, setActive, option
   if (!boundary || !entity || entity.isPlayer === true) return false;
   const selection = wholeShipVisualForEntity(entity, { ...options, requiredWholeShip: true });
   const family = selection && selection.lodFamily;
-  if (!family || selection.roleId !== 'ship_wasp') return false;
+  if (!canInstallWholeShipLodFamily(entity, selection)) return false;
   if (boundary.userData.wholeShipLodFamilyInstalled) return false;
 
   const roots = Object.create(null);
@@ -3879,24 +3923,13 @@ async function commitAuthoredBoundary(
   );
   if (!authored) {
     if (!preparedAuthored && !mayComposeAuthoredShipLive(options)) {
-      if (boundaryCarriesRenderables(fallbackRoot)) {
-        settleAuthoredShipToProceduralFallback(
-          boundary,
-          fallbackRoot,
-          entity,
-          setActive,
-          'flight-compose-gated-commit',
-        );
-      } else {
-        // Same stranding risk as the pre-compose gate: a zero-draw substrate has nothing to settle
-        // onto. Restore the awaiting state and re-arm for the allowlisted admission path.
-        boundary.userData.authoredAssetState = 'awaiting-authored-admission';
-        boundary.userData.authoredVisualRoot = 'none-pending-admission';
-        delete boundary.userData.authoredUpgradePromise;
-        if (typeof boundary.userData.rearmAuthoredUpgrade === 'function') {
-          boundary.userData.rearmAuthoredUpgrade();
-        }
-      }
+      settleAuthoredShipToProceduralFallback(
+        boundary,
+        fallbackRoot,
+        entity,
+        setActive,
+        'flight-compose-gated-commit',
+      );
       return false;
     }
     boundary.userData.authoredAssetState = 'unavailable';
@@ -4197,37 +4230,15 @@ function finishDecodeAdmission(renderer, entry) {
 }
 
 function libraryHasPreloadPlan(library, plan) {
-  return missingPreloadPlanEntries(library, plan).length === 0;
-}
-
-// Which entries are missing, not merely whether any are. "Authored canonical library is incomplete
-// for its required preload plan" names nothing, so a player-facing hard stop -- the game refuses to
-// enter flight rather than fly procedural placeholders -- arrived with no way to tell WHICH asset
-// was absent. That turned a one-line asset problem into hours of bisecting.
-function missingPreloadPlanEntries(library, plan) {
-  if (!(library instanceof Map)) return ['<library is not a Map>'];
-  const missing = [];
+  if (!(library instanceof Map)) return false;
   for (const [slot, files] of Object.entries(plan || {})) {
     const records = library.get(slot);
-    if (!Array.isArray(records)) {
-      missing.push(`${slot}: <slot absent from library>`);
-      continue;
-    }
+    if (!Array.isArray(records)) return false;
     for (const file of files || []) {
-      if (!records.some((record) => recordUrlEndsWith(record, file))) {
-        // Distinguish "never loaded" from "loaded but not resident" -- they have different fixes.
-        const known = records.some((record) => typeof record?.url === 'string'
-          && normalizeRecordUrl(record.url).endsWith(file));
-        missing.push(`${slot}/${file}${known ? ' (present but not resident)' : ' (absent)'}`);
-      }
+      if (!records.some((record) => recordUrlEndsWith(record, file))) return false;
     }
   }
-  return missing;
-}
-
-// One normalisation rule for both callers: backslashes to forward slashes, query/hash removed.
-function normalizeRecordUrl(url) {
-  return String(url || '').split('\\').join('/').split(/[?#]/, 1)[0];
+  return true;
 }
 
 function recordUrlEndsWith(record, file) {
@@ -4322,13 +4333,8 @@ function libraryCacheKey(partRoot, options = {}, bootstrapPlan = bootstrapPlanFo
 }
 
 function assertLibraryPlanUsable(library, plan, scope = 'canonical') {
-  const missing = missingPreloadPlanEntries(library, plan);
-  if (missing.length) {
-    throw new Error(
-      `Authored ${scope || 'canonical'} library is incomplete for its required preload plan. `
-      + `Missing ${missing.length}: ${missing.slice(0, 12).join('; ')}`
-      + (missing.length > 12 ? ` (+${missing.length - 12} more)` : ''),
-    );
+  if (!libraryHasPreloadPlan(library, plan)) {
+    throw new Error(`Authored ${scope || 'canonical'} library is incomplete for its required preload plan.`);
   }
   return library;
 }
@@ -5202,6 +5208,9 @@ function flushStaticBatchGroup(parent, bindings, buckets, options = {}) {
 }
 
 function buildStaticBatchGeometry(bucket, options = {}) {
+  const cacheKey = staticBatchGeometryCacheKey(bucket);
+  const cached = takeCachedStaticBatchGeometry(cacheKey);
+  if (cached) return cached;
   const tier1Geometry = tier1CausalCounters();
   const geometries = normalizeStaticBatchGeometries(bucket.entries.map((entry) => {
     const geometry = entry.primitive.geometry.clone();
@@ -5223,7 +5232,11 @@ function buildStaticBatchGeometry(bucket, options = {}) {
       geometry.dispose();
     }
   }
-  return merged || null;
+  if (merged) {
+    rememberStaticBatchGeometry(cacheKey, merged);
+    return typeof merged.clone === 'function' ? merged.clone() : merged;
+  }
+  return null;
 }
 
 // KHR_mesh_quantization commonly stores POSITION as normalized Int16. BufferGeometry.applyMatrix4()
@@ -5482,6 +5495,7 @@ function instantiatePart(record, parent, placement, palette, scene, owner, bindi
         `${record.url}|${placement.label}|${primitive.key}`
       );
       object = new THREE.Mesh(primitive.geometry, material);
+      stampGeometryBatchKey(object.geometry, `${record.url}|${primitive.name || primitive.key}`);
       if (primitive.tags && primitive.tags.driveAnchorMatrix) {
         BATCH_INVERSE.copy(anchorMatrix).invert();
         BATCH_LOCAL.multiplyMatrices(BATCH_INVERSE, primitive.matrix);
@@ -5549,7 +5563,7 @@ function instantiateRenderPackagePart(record, parent, placement, palette, scene,
     ...(record.primitives || []).map((primitive) => [primitive.name, primitive.tags]),
     ...(record.markers || []).map((marker) => [marker.name, marker.tags]),
   ]);
-  const createNode = owner?.userData?.kind === 'ship' && scene?.isScene
+  const createNode = canBatchRenderPackageOwner(owner?.userData?.kind) && scene?.isScene
     ? createRenderPackageShipNodeFactory({
         scene,
       owner,
@@ -5603,6 +5617,7 @@ function instantiateRenderPackagePart(record, parent, placement, palette, scene,
     // meant "skip this node". In the flat loop the same word would abandon the whole instance.
     if (object.isMesh) {
       if (object.visible === false) continue;
+      stampGeometryBatchKey(object.geometry, `${record.assetId || record.url}|${object.name}`);
       const primitive = { material: object.material, tags };
       if (object.userData?.spacefacePackageMaterialPrepared !== true) {
         object.material = requiresPerShipMesh(primitive)
@@ -5647,6 +5662,7 @@ function createRenderPackageShipNodeFactory({
 
     const material = sharedMaterialFor(source.material, tags, palette);
     const object = source.clone(false);
+    stampGeometryBatchKey(object.geometry, `${record.assetId || 'PackageShip'}|${source.name || 'Mesh'}`);
     object.material = material;
     object.userData = {
       ...(object.userData || {}),
@@ -5665,16 +5681,9 @@ function createRenderPackageShipNodeFactory({
 }
 
 function canPoolRenderPackageShipMesh(source, tags = {}) {
-  if (!source?.isMesh || source.isInstancedMesh || source.isSkinnedMesh) return false;
-  if (source.visible === false || !source.geometry || !source.material || Array.isArray(source.material)) return false;
-  if (tags.damageRole) return false;
-  if (source.material.visible === false || requiresPerShipMesh({ material: source.material, tags })) return false;
-  if (source.layers?.mask !== 1 || Number(source.renderOrder) !== 0) return false;
-  if (source.customDepthMaterial || source.customDistanceMaterial) return false;
+  if (!isRigidOpaqueBatchableSurface(source, tags, { requiresPerShipMesh })) return false;
   if (source.onBeforeRender !== THREE.Object3D.prototype.onBeforeRender
     || source.onAfterRender !== THREE.Object3D.prototype.onAfterRender) return false;
-  if (source.morphTargetInfluences != null || source.morphTargetDictionary != null) return false;
-  if (Object.keys(source.geometry.morphAttributes || {}).length > 0) return false;
   return true;
 }
 
@@ -5682,60 +5691,45 @@ function admitRenderPackageShipPoolCandidate(
   scene, owner, object, geometry, material, label, poolAdmissions,
 ) {
   const state = sceneState(scene);
-  // BatchedMesh can retain heterogeneous geometry behind one exact material/program identity. The
-  // material-only key is the point of this lane: tiny one-geometry InstancedMesh pools made the
-  // crowded route pay one draw for nearly every rigid authored primitive.
-  const key = packageBatchPoolKey(material);
+  const key = instancePoolKey(geometry, material);
   const pool = state.pools.get(key) || null;
   const hasPackageSlots = packagePoolSlots(pool).length > 0;
-  const candidates = state.packageCandidates.get(key) || null;
-  const pending = candidates ? [...candidates] : EMPTY_ARRAY;
+  const first = state.packageCandidates.get(key) || null;
   const nextCandidate = createPackagePoolCandidate(key, owner, object, geometry, material, label);
 
-  if (!hasPackageSlots && !pending.length) {
+  if (!hasPackageSlots && !first) {
     installPackagePoolCandidate(state, nextCandidate);
     return object;
   }
 
-  // Retain every eligible singleton on the first owner. Once another stable ship boundary proves
-  // the material lane is useful, all of these direct surfaces transfer together rather than leaving
-  // the first ship's heterogeneous geometry behind as permanent singleton draws.
-  if (!hasPackageSlots && pending.every((candidate) => candidate.owner === owner)) {
-    installPackagePoolCandidate(state, nextCandidate);
-    return object;
-  }
+  // Repetition inside one authored root is not the cross-root batching contract. Keep those meshes
+  // direct until another stable ship boundary proves that this resource identity really repeats.
+  if (!hasPackageSlots && first?.owner === owner) return object;
 
+  const live = authoredRuntimeState();
+  const deferNewChunkPublication = !live || live.mode === 'loading';
   const allocations = [];
   try {
-    const seedGeometries = !hasPackageSlots
-      ? [...pending.map((candidate) => candidate.geometry), geometry]
-      : [geometry];
-    if (!hasPackageSlots) {
-      for (const candidate of pending) {
-        allocations.push(allocatePackageBatchInstance(
-          scene,
-          candidate.owner,
-          candidate.object,
-          candidate.geometry,
-          candidate.object.material || candidate.material,
-          candidate.label,
-          {
-            poolKey: key,
-            seedGeometries,
-            deferNewChunkPublication: true,
-            initializeVisibleMatrix: true,
-            deferProxyActivation: true,
-            activateProxy: () => promoteRenderPackageMeshToPoolProxy(candidate.object, key),
-            packageCandidate: candidate,
-          },
-        ));
-      }
+    if (!hasPackageSlots && first) {
+      allocations.push(allocateInstance(
+        scene,
+        first.owner,
+        first.object,
+        first.geometry,
+        first.object.material || first.material,
+        first.label,
+        {
+          deferNewChunkPublication,
+          initializeVisibleMatrix: true,
+          deferProxyActivation: deferNewChunkPublication,
+          activateProxy: () => promoteRenderPackageMeshToPoolProxy(first.object, key),
+          packageCandidate: first,
+        },
+      ));
     }
-    allocations.push(allocatePackageBatchInstance(scene, owner, object, geometry, material, label, {
-      poolKey: key,
-      seedGeometries,
-      deferNewChunkPublication: true,
-      deferProxyActivation: true,
+    allocations.push(allocateInstance(scene, owner, object, geometry, material, label, {
+      deferNewChunkPublication,
+      deferProxyActivation: deferNewChunkPublication,
       activateProxy: () => promoteRenderPackageMeshToPoolProxy(object, key),
       packageCandidate: nextCandidate,
     }));
@@ -5755,13 +5749,13 @@ function admitRenderPackageShipPoolCandidate(
       restoreDirectPackageMesh(allocation.slot.proxy, false);
       allocation.rollback();
     }
-    for (const candidate of pending) installPackagePoolCandidate(state, candidate);
+    if (first) installPackagePoolCandidate(state, first);
     throw error;
   }
 
   // Candidate retirement is the transaction commit: every required slot exists and any already-
   // admitted chunk transfer succeeded, while new chunks remain direct until exact GPU admission.
-  state.packageCandidates.delete(key);
+  if (first && state.packageCandidates.get(key) === first) state.packageCandidates.delete(key);
 
   for (const allocation of allocations) {
     if (allocation?.admission) poolAdmissions?.add(allocation.admission);
@@ -5775,18 +5769,15 @@ function createPackagePoolCandidate(key, owner, object, geometry, material, labe
 
 function installPackagePoolCandidate(state, candidate) {
   if (!state || !candidate) return false;
-  let candidates = state.packageCandidates.get(candidate.key);
-  if (!candidates) state.packageCandidates.set(candidate.key, candidates = new Set());
-  candidates.add(candidate);
+  state.packageCandidates.set(candidate.key, candidate);
   restoreDirectPackageMesh(candidate.object, true);
   candidate.object.userData.spacefaceInstancePoolKey = candidate.key;
   if (candidate.releaseRegistered !== true) {
     candidate.releaseRegistered = true;
     registerOwnerRelease(candidate.owner, () => {
-      const current = state.packageCandidates.get(candidate.key);
-      if (!current) return;
-      current.delete(candidate);
-      if (!current.size) state.packageCandidates.delete(candidate.key);
+      if (state.packageCandidates.get(candidate.key) === candidate) {
+        state.packageCandidates.delete(candidate.key);
+      }
     });
   }
   return true;
@@ -5795,7 +5786,7 @@ function installPackagePoolCandidate(state, candidate) {
 function promoteRenderPackageMeshToPoolProxy(object, key) {
   // Keep visibility true: pool visibility follows this exact object's ancestor/LOD chain. Suppress
   // only direct Mesh submission so the same object can remain in planNodes/nodes/anchors maps while
-  // the scene-level batch owns the draw. Geometry/material stay attached for bounds,
+  // the scene-level InstancedMesh owns the draw. Geometry/material stay attached for bounds,
   // texture-residency collection, diagnostics, and semantic inspection.
   object.isMesh = false;
   object.userData = {
@@ -5854,8 +5845,8 @@ function activateRenderPackagePoolAdmission(admission) {
     return false;
   }
 
-  // The exact BatchedMesh has completed both existing admission gates while detached with every
-  // instance hidden. Commit visible matrices first, then transfer renderer identity and publication
+  // The exact InstancedMesh has completed both existing admission gates while detached and at zero
+  // count. Commit every visible matrix first, then transfer renderer identity and scene publication
   // under one rollback guard so the accepted direct surface can never disappear on an exception.
   activatePackageSlotsTransaction(chunk, liveSlots, { publishTarget: true });
   for (const slot of liveSlots) slot.admission = null;
@@ -5869,7 +5860,7 @@ function activateRenderPackagePoolAdmission(admission) {
 function activatePackageSlotsTransaction(chunk, slots, options = {}) {
   const liveSlots = slots.filter((slot) => slot && !slot.released);
   if (!liveSlots.length) return false;
-  const priorCount = chunk.packageBatched ? null : chunk.mesh.count;
+  const priorCount = chunk.mesh.count;
   const priorVisible = chunk.mesh.visible;
   const matrixSnapshots = liveSlots.map((slot) => ({
     slot,
@@ -5888,10 +5879,10 @@ function activatePackageSlotsTransaction(chunk, slots, options = {}) {
         chunk.visibleIndices.add(slot.index);
         if (!slot.lastSubmitted) slot.ownerState.submittedCount++;
         slot.lastSubmitted = true;
-        setInstanceSlotVisibility(chunk, slot.index, true);
       }
     }
-    refreshInstanceChunkDrawState(chunk);
+    chunk.mesh.count = highestSubmittedIndex(chunk) + 1;
+    chunk.mesh.visible = chunk.mesh.count > 0;
     commitInstanceChunkMatrix(chunk);
   } catch (error) {
     rollbackPackageSlotMatrices(chunk, matrixSnapshots, priorCount, priorVisible);
@@ -5933,16 +5924,14 @@ function rollbackPackageSlotMatrices(chunk, snapshots, priorCount, priorVisible)
     slot.ownerState.submittedCount = snapshot.ownerSubmittedCount;
     if (snapshot.visibleIndex) chunk.visibleIndices.add(slot.index);
     else chunk.visibleIndices.delete(slot.index);
-    setInstanceSlotVisibility(chunk, slot.index, snapshot.visibleIndex);
     try {
       writeInstanceChunkMatrix(chunk, slot.index, snapshot.matrixInitialized
         ? new THREE.Matrix4().fromArray(snapshot.matrixElements)
         : ZERO_MATRIX);
     } catch { /* detached/rolled-back target remains non-rendering even if the injected write fails */ }
   }
-  if (!chunk.packageBatched) chunk.mesh.count = priorCount;
+  chunk.mesh.count = priorCount;
   chunk.mesh.visible = priorVisible;
-  chunk.mesh.userData.spacefaceVisibleInstanceCount = chunk.visibleIndices.size;
   try { commitInstanceChunkMatrix(chunk); }
   catch { /* preserve the original activation failure */ }
 }
@@ -6123,125 +6112,6 @@ function closestAvailableLod(requested, available) {
 // Scene-level instance pools. A ship owns transform proxies; pools own the draw calls. Removal of the
 // stable ship root releases all of its slots immediately, so hot reload/rebuild cannot leave ghosts.
 // -------------------------------------------------------------------------------------------------
-function allocatePackageBatchInstance(scene, owner, proxy, geometry, material, label, options = {}) {
-  const state = sceneState(scene);
-  const key = options.poolKey || packageBatchPoolKey(material);
-  let pool = state.pools.get(key);
-  const poolIsNew = !pool;
-  if (!pool) {
-    pool = { chunks: [], material, label, key, scene, packageBatched: true };
-  }
-
-  let chunk = pool.chunks.find((candidate) => canAllocatePackageBatchGeometry(candidate, geometry));
-  if (!chunk) {
-    try {
-      chunk = createPackageBatchChunk(scene, pool, pool.chunks.length, [geometry, ...(options.seedGeometries || EMPTY_ARRAY)], {
-        deferScenePublication: options.deferNewChunkPublication === true,
-      });
-    } catch (error) {
-      if (poolIsNew) state.pools.delete(key);
-      throw error;
-    }
-    pool.chunks.push(chunk);
-  }
-  if (poolIsNew) state.pools.set(key, pool);
-
-  let geometryId;
-  let index;
-  try {
-    geometryId = ensurePackageBatchGeometry(chunk, geometry);
-    index = chunk.mesh.addInstance(geometryId);
-    chunk.mesh.setVisibleAt(index, false);
-  } catch (error) {
-    if (poolIsNew && !chunk.slots.size) {
-      try { finalizeRetiredInstanceChunk(state, pool, chunk, chunk.packageAdmission); }
-      catch { /* preserve the allocation failure */ }
-      state.pools.delete(key);
-    }
-    throw error;
-  }
-
-  const admission = chunk.packageAdmission || null;
-  const slot = {
-    proxy,
-    owner,
-    chunk,
-    index,
-    geometry,
-    geometryId,
-    released: false,
-    lastSubmitted: false,
-    matrixInitialized: false,
-    matrixElements: new Float32Array(16),
-    admission,
-    activateProxy: typeof options.activateProxy === 'function' ? options.activateProxy : null,
-    packageCandidate: options.packageCandidate || null,
-    ownerState: null,
-  };
-  try {
-    chunk.slots.set(index, slot);
-    chunk.geometryUseCounts.set(geometry, (chunk.geometryUseCounts.get(geometry) || 0) + 1);
-    let ownerState = state.ownerSlots.get(owner);
-    if (!ownerState) {
-      ownerState = { slots: new Set(), submittedCount: 0, dirty: true };
-      state.ownerSlots.set(owner, ownerState);
-    }
-    ownerState.slots.add(slot);
-    slot.ownerState = ownerState;
-    proxy.userData = {
-      ...(proxy.userData || {}),
-      spacefaceInstancePoolKey: key,
-      spacefaceInstancePoolChunk: chunk.ordinal,
-      spacefaceInstancePoolSlot: index,
-    };
-    writeInstanceChunkMatrix(chunk, index, ZERO_MATRIX);
-    if (admission) {
-      admission.slots.add(slot);
-    } else {
-      if (slot.activateProxy && options.deferProxyActivation !== true) {
-        slot.activateProxy();
-        slot.activateProxy = null;
-      }
-      if (options.initializeVisibleMatrix === true && visibleProxyChainReachesOwner(proxy, owner)) {
-        owner.updateWorldMatrix(true, true);
-        if (setInstanceMatrixIfChanged(chunk, index, slot, proxy.matrixWorld)) {
-          chunk.visibleIndices.add(index);
-          ownerState.submittedCount++;
-          slot.lastSubmitted = true;
-          setInstanceSlotVisibility(chunk, index, true);
-        }
-      }
-      refreshInstanceChunkDrawState(chunk);
-    }
-    commitInstanceChunkMatrix(chunk);
-  } catch (error) {
-    releaseInstanceSlot(state, pool, slot);
-    throw error;
-  }
-
-  const release = () => {
-    const retirements = [];
-    if (slot.released) {
-      if (!chunk.retired && state.retiringChunks.has(chunk)) {
-        retirements.push(scheduleRetiredInstanceChunkFinalization(
-          state, pool, chunk, chunk.packageAdmission, null,
-        ));
-      }
-    } else {
-      releaseInstanceSlot(state, pool, slot, { retirements });
-    }
-    return retirements.length ? Promise.all(retirements) : true;
-  };
-  const rollback = () => releaseInstanceSlot(state, pool, slot, { skipPackageCollapse: true });
-  try {
-    registerOwnerRelease(owner, release);
-  } catch (error) {
-    release();
-    throw error;
-  }
-  return { release, rollback, admission, slot };
-}
-
 function allocateInstance(scene, owner, proxy, geometry, material, label, options = {}) {
   const state = sceneState(scene);
   const key = instancePoolKey(geometry, material);
@@ -6359,18 +6229,11 @@ function releaseInstanceSlot(state, pool, slot, options = {}) {
     state.ownerSlots.delete(owner);
     state.activeFrameOwners.delete(owner);
   }
-  if (chunk.packageBatched) {
-    setInstanceSlotVisibility(chunk, index, false);
-    chunk.mesh.deleteInstance(index);
-    const remaining = Math.max(0, (chunk.geometryUseCounts.get(slot.geometry) || 1) - 1);
-    if (remaining > 0) chunk.geometryUseCounts.set(slot.geometry, remaining);
-    else chunk.geometryUseCounts.delete(slot.geometry);
-  } else {
-    chunk.free.push(index);
-  }
+  chunk.free.push(index);
   try {
-    if (!chunk.packageBatched) writeInstanceChunkMatrix(chunk, index, ZERO_MATRIX);
-    refreshInstanceChunkDrawState(chunk);
+    writeInstanceChunkMatrix(chunk, index, ZERO_MATRIX);
+    chunk.mesh.count = highestSubmittedIndex(chunk) + 1;
+    chunk.mesh.visible = chunk.mesh.count > 0;
     commitInstanceChunkMatrix(chunk);
   } finally {
     const collapsed = options.skipPackageCollapse !== true && collapsePackagePoolIfUnique(state, pool, options);
@@ -6386,136 +6249,6 @@ function visibleProxyChainReachesOwner(proxy, owner) {
     if (current === owner) return true;
   }
   return false;
-}
-
-function createPackageBatchChunk(scene, pool, ordinal, seedGeometries, options = {}) {
-  const seeds = uniqueCompatibleGeometries(seedGeometries);
-  const first = seeds[0];
-  if (!first) throw new Error('Render-package BatchedMesh requires at least one source geometry.');
-  const indexed = !!first.index;
-  const vertexCounts = seeds.map(packageGeometryVertexCount);
-  const indexCounts = seeds.map(packageGeometryIndexCount);
-  const requiredVertices = vertexCounts.reduce((sum, count) => sum + count, 0);
-  const requiredIndices = indexCounts.reduce((sum, count) => sum + count, 0);
-  const largestVertices = Math.max(...vertexCounts, 1);
-  const largestIndices = Math.max(...indexCounts, 0);
-  const vertexReserve = Math.min(
-    PACKAGE_BATCH_VERTEX_RESERVE,
-    Math.max(2048, largestVertices * 4),
-  );
-  const indexReserve = indexed
-    ? Math.min(PACKAGE_BATCH_INDEX_RESERVE, Math.max(4096, largestIndices * 4))
-    : 0;
-  const mesh = new THREE.BatchedMesh(
-    PACKAGE_BATCH_MAX_INSTANCES,
-    Math.max(1, requiredVertices + vertexReserve),
-    indexed ? Math.max(1, requiredIndices + indexReserve) : 0,
-    pool.material,
-  );
-  mesh.name = `GLTFKit_PackageBatch_${pool.label}_${ordinal}`;
-  mesh.frustumCulled = false; // world positions span the scene; source-geometry bounds are meaningless
-  mesh.perObjectFrustumCulled = false; // the authored-owner cull pass already supplies visibility
-  mesh.sortObjects = false; // exact-material opaque surfaces need no per-object draw sorting
-  mesh.castShadow = !pool.material.transparent && pool.material.depthWrite !== false;
-  mesh.receiveShadow = !pool.material.transparent;
-  mesh.visible = false;
-  mesh.userData.spacefaceInstancePool = true;
-  mesh.userData.spacefaceInstancePoolKind = 'batched-rigid-package';
-  mesh.userData.spacefaceInstancePoolKey = pool.key;
-  mesh.userData.spacefaceInstancePoolLabel = pool.label;
-  mesh.userData.spacefaceInstancePoolChunk = ordinal;
-  mesh.userData.spacefaceVisibleInstanceCount = 0;
-  const chunk = {
-    mesh,
-    pool,
-    slots: new Map(),
-    visibleIndices: new Set(),
-    geometries: new Map(),
-    geometryUseCounts: new Map(),
-    geometryLayout: packageGeometryLayoutKey(first),
-    vertexCapacity: mesh.unusedVertexCount,
-    indexCapacity: mesh.unusedIndexCount,
-    dynamicBufferOwner: null,
-    ordinal,
-    scene,
-    packageAdmission: null,
-    packageBatched: true,
-  };
-  if (options.deferScenePublication === true) {
-    chunk.packageAdmission = {
-      target: mesh,
-      chunk,
-      slots: new Set(),
-      preparation: null,
-      prepared: false,
-      activated: false,
-      cancelled: false,
-    };
-    mesh.userData.spacefacePackageAdmissionPending = true;
-  } else {
-    scene.add(mesh);
-  }
-  return chunk;
-}
-
-function uniqueCompatibleGeometries(geometries) {
-  const unique = [];
-  const seen = new Set();
-  let layout = null;
-  for (const geometry of geometries || EMPTY_ARRAY) {
-    if (!geometry || seen.has(geometry)) continue;
-    const currentLayout = packageGeometryLayoutKey(geometry);
-    if (layout == null) layout = currentLayout;
-    if (currentLayout !== layout) continue;
-    seen.add(geometry);
-    unique.push(geometry);
-  }
-  return unique;
-}
-
-function packageGeometryLayoutKey(geometry) {
-  if (!geometry) return 'missing';
-  const attributes = Object.entries(geometry.attributes || {})
-    .sort(([left], [right]) => left.localeCompare(right))
-    .map(([name, attribute]) => [
-      name,
-      Number(attribute?.itemSize) || 0,
-      attribute?.normalized === true ? 1 : 0,
-      attribute?.array?.constructor?.name || 'unknown',
-      Number(attribute?.gpuType) || 0,
-    ].join(':'));
-  return `${geometry.index ? 'indexed' : 'plain'}|${attributes.join('|')}`;
-}
-
-function packageGeometryVertexCount(geometry) {
-  return Math.max(0, Number(geometry?.attributes?.position?.count) || 0);
-}
-
-function packageGeometryIndexCount(geometry) {
-  return Math.max(0, Number(geometry?.index?.count) || 0);
-}
-
-function canAllocatePackageBatchGeometry(chunk, geometry) {
-  if (!chunk?.packageBatched || chunk.retired || chunk.slots.size >= PACKAGE_BATCH_MAX_INSTANCES) return false;
-  if (chunk.geometries.has(geometry)) return true;
-  // A published BatchedMesh never absorbs a new geometry: doing that would upload new vertex/index
-  // buffers on the flight frame. New geometry receives a detached chunk and the normal pipeline /
-  // residency admission barrier before any direct proxy is suppressed.
-  if (!chunk.packageAdmission || chunk.packageAdmission.activated) return false;
-  if (chunk.geometryLayout !== packageGeometryLayoutKey(geometry)) return false;
-  return chunk.mesh.unusedVertexCount >= packageGeometryVertexCount(geometry)
-    && chunk.mesh.unusedIndexCount >= packageGeometryIndexCount(geometry);
-}
-
-function ensurePackageBatchGeometry(chunk, geometry) {
-  const existing = chunk.geometries.get(geometry);
-  if (existing != null) return existing;
-  if (!canAllocatePackageBatchGeometry(chunk, geometry)) {
-    throw new Error(`Render-package batch ${chunk.mesh?.name || chunk.ordinal} cannot admit source geometry.`);
-  }
-  const geometryId = chunk.mesh.addGeometry(geometry);
-  chunk.geometries.set(geometry, geometryId);
-  return geometryId;
 }
 
 function createInstanceChunk(scene, pool, ordinal, options = {}) {
@@ -6578,17 +6311,15 @@ function packagePoolSlots(pool) {
 function collapsePackagePoolIfUnique(state, pool, options = {}) {
   const slots = packagePoolSlots(pool);
   if (!slots.length || new Set(slots.map((slot) => slot.owner)).size >= 2) return false;
+  const candidate = slots[0].packageCandidate;
   for (const slot of slots) restoreDirectPackageMesh(slot.proxy, false);
-  const candidates = slots.map((slot) => slot.packageCandidate).filter(Boolean);
   for (const slot of slots) {
     releaseInstanceSlot(state, pool, slot, {
       skipPackageCollapse: true,
       retirements: options.retirements,
     });
   }
-  for (const candidate of candidates) {
-    if (candidate.owner?.parent) installPackagePoolCandidate(state, candidate);
-  }
+  if (candidate?.owner?.parent) installPackagePoolCandidate(state, candidate);
   return true;
 }
 
@@ -6690,28 +6421,19 @@ function finalizeRetiredInstanceChunk(state, pool, chunk, admission) {
   state.retiringChunks.delete(chunk);
   chunk.slots.clear();
   chunk.visibleIndices.clear();
-  if (chunk.free) chunk.free.length = 0;
-  chunk.geometries?.clear();
-  chunk.geometryUseCounts?.clear();
+  chunk.free.length = 0;
   const index = pool.chunks.indexOf(chunk);
   if (index >= 0) pool.chunks.splice(index, 1);
   return chunk;
 }
 
 function writeInstanceChunkMatrix(chunk, index, matrix) {
-  if (chunk.packageBatched) {
-    chunk.mesh.setMatrixAt(index, matrix);
-    return;
-  }
   assertDynamicBufferOwnerWritable(chunk.dynamicBufferOwner);
   chunk.mesh.setMatrixAt(index, matrix);
   markDynamicBufferItems(chunk.dynamicBufferOwner, AUTHORED_INSTANCE_MATRIX, index);
 }
 
 function commitInstanceChunkMatrix(chunk) {
-  // BatchedMesh stores transforms in its own DataTexture; setMatrixAt marks that texture dirty and
-  // Three owns its upload. The dynamic BufferAttribute coordinator remains the InstancedMesh path.
-  if (chunk.packageBatched) return;
   if (chunk.dynamicBufferOwner) {
     commitDynamicBufferOwner(chunk.dynamicBufferOwner, chunk.mesh.count);
   } else {
@@ -6761,11 +6483,13 @@ function syncSceneStateFromFrame(state, context, stats) {
     if (ownerState) syncOwnerSlots(ownerState, context, stats, affectedChunks, true);
   }
 
-  for (const chunk of affectedChunks) finalizeInstanceChunk(chunk, true, stats);
+  for (const chunk of affectedChunks) finalizeInstanceChunk(chunk, true, stats, context);
   const previousOwners = state.activeFrameOwners;
   state.activeFrameOwners = nextOwners;
   state.nextFrameOwners = previousOwners;
   state.nextFrameOwners.clear();
+  applyInstanceChunkPolicies(state, context);
+  consolidateOpaqueInstanceChunks(state, context);
 }
 
 function syncSceneStateFallback(state, context, stats) {
@@ -6773,6 +6497,7 @@ function syncSceneStateFallback(state, context, stats) {
     for (const chunk of pool.chunks) syncInstanceChunk(chunk, context, stats);
   }
   state.activeFrameOwners.clear();
+  consolidateOpaqueInstanceChunks(state, context);
 }
 
 function syncInstanceChunk(chunk, context, stats) {
@@ -6782,7 +6507,7 @@ function syncInstanceChunk(chunk, context, stats) {
     stats.slotsVisited++;
     if (syncInstanceSlot(slot, context, stats, false)) dirty = true;
   }
-  finalizeInstanceChunk(chunk, dirty, stats);
+  finalizeInstanceChunk(chunk, dirty, stats, context);
 }
 
 function syncOwnerSlots(ownerState, context, stats, affectedChunks, forceHidden) {
@@ -6803,8 +6528,7 @@ function syncInstanceSlot(slot, context, stats, forceHidden) {
   const visible = !forceHidden && isVisibleToOwner(slot.proxy, slot.owner, context, stats, record);
   if (!visible) {
     if (!slot.lastSubmitted) return false;
-    if (chunk.packageBatched) setInstanceSlotVisibility(chunk, index, false);
-    else writeInstanceChunkMatrix(chunk, index, ZERO_MATRIX);
+    writeInstanceChunkMatrix(chunk, index, ZERO_MATRIX);
     chunk.visibleIndices.delete(index);
     slot.ownerState.submittedCount = Math.max(0, slot.ownerState.submittedCount - 1);
     slot.matrixInitialized = false;
@@ -6818,28 +6542,63 @@ function syncInstanceSlot(slot, context, stats, forceHidden) {
   if (!slot.lastSubmitted) {
     chunk.visibleIndices.add(index);
     slot.ownerState.submittedCount++;
-    setInstanceSlotVisibility(chunk, index, true);
     dirty = true;
   }
   slot.lastSubmitted = true;
   return dirty;
 }
 
-function finalizeInstanceChunk(chunk, dirty, stats) {
-  if (chunk.packageBatched) {
-    const nextVisible = chunk.visibleIndices.size;
-    if (chunk.mesh.userData.spacefaceVisibleInstanceCount !== nextVisible) dirty = true;
-  } else {
-    const nextCount = highestSubmittedIndex(chunk) + 1;
-    if (chunk.mesh.count !== nextCount) {
-      chunk.mesh.count = nextCount;
-      dirty = true;
-    }
+function finalizeInstanceChunk(chunk, dirty, stats, context = null) {
+  const nextCount = highestSubmittedIndex(chunk) + 1;
+  if (chunk.mesh.count !== nextCount) {
+    chunk.mesh.count = nextCount;
+    dirty = true;
   }
-  refreshInstanceChunkDrawState(chunk);
+  chunk.mesh.visible = nextCount > 0;
   if (dirty) {
     stats.dirtyChunks++;
     commitInstanceChunkMatrix(chunk);
+  }
+  applyInstanceChunkSubmitPolicy(chunk, {
+    count: nextCount,
+    playerX: context && context.playerX,
+    playerZ: context && context.playerZ,
+    castRadiusSq: context && context.castRadiusSq,
+    castRadius: context && context.castRadius,
+    refreshBounds: dirty || !!(context && context.cameraDirty),
+  });
+}
+
+function applyInstanceChunkPolicies(state, context) {
+  for (const pool of state.pools.values()) {
+    for (const chunk of pool.chunks) {
+      applyInstanceChunkSubmitPolicy(chunk, {
+        count: chunk.mesh ? chunk.mesh.count : 0,
+        playerX: context && context.playerX,
+        playerZ: context && context.playerZ,
+        castRadiusSq: context && context.castRadiusSq,
+        castRadius: context && context.castRadius,
+        refreshBounds: false,
+      });
+    }
+  }
+}
+
+function consolidateOpaqueInstanceChunks(state, context) {
+  if (!state.opaqueBatch) state.opaqueBatch = createOpaqueMaterialBatchState();
+  const batchStats = syncOpaqueMaterialBatches(state.opaqueBatch, state.pools, {
+    enabled: !!(context && context.consolidateOpaqueBatches),
+    scene: state.scene,
+    playerX: context && context.playerX,
+    playerZ: context && context.playerZ,
+    castRadiusSq: context && context.castRadiusSq,
+    castRadius: context && context.castRadius,
+    refreshBounds: !!(context && context.cameraDirty),
+  });
+  if (state.stats) {
+    state.stats.opaqueBatches = batchStats.batches;
+    state.stats.opaqueBatchInstances = batchStats.instances;
+    state.stats.opaqueBatchHiddenChunks = batchStats.hiddenChunks;
   }
 }
 
@@ -6847,22 +6606,6 @@ function highestSubmittedIndex(chunk) {
   let highest = -1;
   for (const index of chunk.visibleIndices) if (index > highest) highest = index;
   return highest;
-}
-
-function setInstanceSlotVisibility(chunk, index, visible) {
-  if (!chunk?.packageBatched) return;
-  chunk.mesh.setVisibleAt(index, visible === true);
-}
-
-function refreshInstanceChunkDrawState(chunk) {
-  if (chunk.packageBatched) {
-    const visibleCount = chunk.visibleIndices.size;
-    chunk.mesh.userData.spacefaceVisibleInstanceCount = visibleCount;
-    chunk.mesh.visible = visibleCount > 0;
-    return;
-  }
-  chunk.mesh.count = highestSubmittedIndex(chunk) + 1;
-  chunk.mesh.visible = chunk.mesh.count > 0;
 }
 
 function isVisibleToOwner(object, owner, context, stats, record = null) {
@@ -6939,6 +6682,8 @@ function sceneState(scene) {
       cullContext: createInstanceCullContext(),
       cameraState: { initialized: false, present: false, values: new Float64Array(32) },
       syncFrame: 0,
+      opaqueBatch: createOpaqueMaterialBatchState(),
+      scene,
     };
     sceneStates.set(scene, state);
   }
@@ -6946,17 +6691,7 @@ function sceneState(scene) {
 }
 
 function instancePoolKey(geometry, material) {
-  const geometryKey = geometry.userData && geometry.userData.spacefaceBatchKey || geometry.uuid;
-  const materialKey = material.userData && material.userData.spacefaceBatchKey || material.uuid;
-  return `${geometryKey}|${materialKey}`;
-}
-
-function packageBatchPoolKey(material) {
-  // Shader-family strings are diagnostic identities, not render-state authority. Two material
-  // objects may share a program while carrying different uniforms, so only the exact material UUID
-  // is safe for one BatchedMesh draw.
-  const materialKey = material?.uuid || 'missing-material';
-  return `package-batched|${materialKey}`;
+  return instancePoolIdentity(geometry, material);
 }
 
 function createPoolStats() {
@@ -7046,6 +6781,10 @@ function resetPoolStats(state) {
   stats.hiddenInstanceSlots = 0;
   stats.avgPoolOccupancy = 0;
   stats.tinyPools = 0;
+  stats.shadowCastingInstanceChunks = 0;
+  stats.opaqueBatches = 0;
+  stats.opaqueBatchInstances = 0;
+  stats.opaqueBatchHiddenChunks = 0;
   stats.dirtyChunks = 0;
   stats.matrixUploads = 0;
   stats.matrixReuses = 0;
@@ -7078,8 +6817,28 @@ function finalizePoolStats(state, stats) {
     stats.submittedInstanceSlots += submitted;
     if (submitted > 0) stats.visibleInstancePools++;
     else if (poolSlots > 0) stats.offscreenInstancePools++;
+    for (const chunk of pool.chunks) {
+      if (chunk.mesh && chunk.mesh.visible && chunk.mesh.castShadow) stats.shadowCastingInstanceChunks++;
+    }
   }
   stats.avgPoolOccupancy = stats.pools > 0 ? stats.pooledInstanceSlots / stats.pools : 0;
+}
+
+function instanceFarCullWuFromOpts(opts, camera) {
+  const zoomOpt = Number(opts && (opts.liveZoom ?? opts.zoom));
+  const tiltOpt = Number(opts && opts.tilt);
+  const fovOpt = Number(opts && opts.fov);
+  const aspectOpt = Number(opts && opts.aspect);
+  const fov = Number.isFinite(fovOpt) ? fovOpt
+    : (camera && Number.isFinite(camera.fov) ? camera.fov : 90);
+  const aspect = Number.isFinite(aspectOpt) && aspectOpt > 0 ? aspectOpt
+    : (camera && Number.isFinite(camera.aspect) && camera.aspect > 0 ? camera.aspect : 16 / 9);
+  return tableInstanceFarCullWu(
+    Number.isFinite(zoomOpt) ? zoomOpt : 330,
+    Number.isFinite(fov) ? fov : 90,
+    Number.isFinite(aspect) && aspect > 0 ? aspect : 16 / 9,
+    Number.isFinite(tiltOpt) && tiltOpt > 5 ? tiltOpt : 60,
+  );
 }
 
 function buildInstanceCullContext(state, opts) {
@@ -7098,6 +6857,16 @@ function buildInstanceCullContext(state, opts) {
   context.frameBounded = frameBounded;
   context.authoredRecords = authoredRecords || EMPTY_ARRAY;
   context.recordsByOwner = recordsByOwner;
+  context.playerX = Number.isFinite(Number(opts && opts.playerX)) ? Number(opts.playerX) : 0;
+  context.playerZ = Number.isFinite(Number(opts && opts.playerZ)) ? Number(opts.playerZ) : 0;
+  context.castRadiusSq = Number.isFinite(Number(opts && opts.castRadiusSq))
+    ? Number(opts.castRadiusSq)
+    : null;
+  context.castRadius = Number.isFinite(Number(opts && opts.castRadius))
+    ? Number(opts.castRadius)
+    : null;
+  context.consolidateOpaqueBatches = opts && opts.consolidateOpaqueBatches === true;
+  context.farCullWu = instanceFarCullWuFromOpts(opts, camera);
   if (!camera || !camera.projectionMatrix || !camera.matrixWorldInverse) {
     state.stats.frameBounded = frameBounded;
     context.cameraDirty = captureCullCameraState(null, state.cameraState);
@@ -7129,6 +6898,12 @@ function createInstanceCullContext() {
     camera: null,
     frustum: null,
     cameraPosition: null,
+    playerX: 0,
+    playerZ: 0,
+    castRadiusSq: null,
+    castRadius: null,
+    consolidateOpaqueBatches: false,
+    farCullWu: INSTANCE_FAR_CULL_RADIUS,
   };
 }
 
@@ -7160,7 +6935,8 @@ function isOwnerInCullContext(owner, context, stats) {
   const dx = CULL_SPHERE.center.x - context.cameraPosition.x;
   const dy = CULL_SPHERE.center.y - context.cameraPosition.y;
   const dz = CULL_SPHERE.center.z - context.cameraPosition.z;
-  const far = INSTANCE_FAR_CULL_RADIUS + CULL_SPHERE.radius;
+  const far = (Number.isFinite(context.farCullWu) ? context.farCullWu : INSTANCE_FAR_CULL_RADIUS)
+    + CULL_SPHERE.radius;
   const visible = (dx * dx + dy * dy + dz * dz <= far * far) && context.frustum.intersectsSphere(CULL_SPHERE);
   if (!visible && stats) stats.culledInstanceSlots++;
   return visible;
@@ -7996,10 +7772,6 @@ function ensureStandardSockets(hull) {
     ['SOCKET_Mining_Front', [0.82, -0.08, 0], 'mining', [1, 0, 0]],
     ['SOCKET_Engine_Main', [-0.82, -0.04, 0], 'engine', [-1, 0, 0]],
     ['SOCKET_Trail_Main', [-0.88, -0.04, 0], 'vfx', [-1, 0, 0]],
-    ['SOCKET_Retro_Port', [0.45, 0.0, -0.22], 'rcs', [0.94, 0, -0.34]],
-    ['SOCKET_Retro_Starboard', [0.45, 0.0, 0.22], 'rcs', [0.94, 0, 0.34]],
-    ['SOCKET_RCS_Port', [0.0, 0.0, -0.45], 'rcs', [0, 0, -1]],
-    ['SOCKET_RCS_Starboard', [0.0, 0.0, 0.45], 'rcs', [0, 0, 1]],
     ['SOCKET_Utility_Dorsal', [0.0, 0.32, 0], 'utility', [0, 1, 0]],
     ['SOCKET_Cargo_Ventral', [-0.08, -0.30, 0], 'cargo', [0, -1, 0]],
     ['SOCKET_Camera_Focus', [0.08, 0.08, 0], 'camera', [1, 0, 0]],

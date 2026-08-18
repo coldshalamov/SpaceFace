@@ -966,7 +966,15 @@ export class PlasmaStreamSystem {
     nz2.aftX = ex; nz2.aftZ = ez;
     resolvePlumeShape(this._env, this._ribbonBase, this._ribbonShape);
 
-    this._ribbonShape.reel = 0;
+    // How hard the engine is drawing its line back in. Keyed on what the PILOT asked for, not on the
+    // drive envelope: the envelope holds a lit floor that rises with speed (so a fast ship still
+    // glows with the throttle shut), which means a cold-drive test never fires at exactly the moment
+    // the player let go — the moment they expect the line to come home. Braking or reversing pulls it
+    // in hardest; simply releasing thrust still pulls it in, because a line the engine is no longer
+    // making is a line it is taking back.
+    const commandedThrottle = Math.max(0, Math.min(1, Math.max(throttle, driveInfo && driveInfo.cruise ? 1 : 0)));
+    const hauling = !!(driveInfo && (driveInfo.brake || driveInfo.reverse || driveInfo.retroOnly));
+    this._ribbonShape.reel = hauling ? 1 : 1 - commandedThrottle;
 
     // The jet, standing off the bell. Short by construction.
     this._ribbons.setCamera(this._camObj);

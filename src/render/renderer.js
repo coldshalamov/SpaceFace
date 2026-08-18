@@ -70,6 +70,12 @@ import { createPresentationPublisher } from './presentationPublisher.js';
 import { createPresentationQueries } from './presentationQueries.js';
 import { shieldBubbleGeometry } from './ships/shipKit.js';
 import { projectedWidthPx } from './lod.js';
+import { resolveWebGlRendererFlags } from './presentPath.js';
+import {
+  createOpeningAdmissionCohort,
+  openingSubjectIdentity,
+  shouldAdmitOpeningSubject,
+} from './openingAdmission.js';
 import { createCollisionDebug } from './collisionDebug.js';
 import { installDiagnostics } from './diagnostics.js';
 import {
@@ -92,7 +98,9 @@ import { installDomInstrumentation } from '../ui/domInstrumentation.js';
 import {
   allowRealtimeShadowCast,
   invalidateShadowCasterPolicy,
-  shadowCastDistanceSq,
+  SHADOW_MAP_SIZE,
+  SHADOW_ORTHO_EXTENT,
+  shadowCastAxisDistance,
   syncShadowCasterPolicy,
 } from './shadowCasterPolicy.js';
 import { updateShipPitchPresentation } from './shipPitchPresentation.js';
@@ -103,7 +111,29 @@ import { readShieldContacts, SHIELD_HIT_SLOTS } from './weapons/shieldContacts.j
 import { SECTOR_PALETTE_CLASSES } from '../data/sectors.js';
 import { resolveSectorVisualProfile } from '../data/sectorVisualProfiles.js';
 import { SHIPS } from '../data/ships.js';
-import { getAssetResidency } from './assetResidency.js';
+import { applySectorExitResidency, getAssetResidency } from './assetResidency.js';
+import {
+  shouldContinueAdmissionSlice,
+  shouldStartHeavyAdmissionEventually,
+} from './admissionSliceBudget.js';
+import {
+  INNER_VIEW_BAND_SCALE,
+  classifyEntityViewBand,
+  shouldRunEntityClosures,
+  viewHalfExtents,
+} from './entityViewSyncBand.js';
+import { createShadowReceiverTally, noteShadowPolicyChanged } from './shadowReceiverTally.js';
+import {
+  applyEntityMeshVisibility,
+  shouldSubmitEntityMesh,
+} from './entityMeshVisibility.js';
+import { supportsOpaqueMaterialBatch } from './opaqueMaterialBatch.js';
+import { shouldRefreshRealtimeShadowMap } from './shadowPresentCadence.js';
+import {
+  collectCompileSubjects,
+  compileSubjectsAcrossPresents,
+  shouldSliceCompileAcrossPresents,
+} from './compilePresentSlice.js';
 import { preloadRockSurfaceLibrary } from './rockSurfaceLibrary.js';
 import {
   createGpuResidencyAdmissionTracker,
@@ -113,6 +143,7 @@ import {
   collectStartupTextures,
   prepareStartupGpuResidency,
   yieldToBrowser,
+  yieldToNextPresent,
 } from './startupGpuResidency.js';
 import {
   collectContextLossRoots,
@@ -132,6 +163,14 @@ import {
   AUTHORED_ASSET_PREFETCH_RADIUS,
   willEntityEnterAuthoredUpgradeRunway,
 } from './authoredAdmissionPolicy.js';
+import {
+  censusTableBands,
+  residencyEvictRadius,
+  residencyPrefetchRadius,
+  submitCullHalfExtents,
+  tableShadowCasterRadius,
+  tableTravelSpeed,
+} from './tabletopPolicy.js';
 
 // M2 floating-origin scratch for mesh pose projection (no per-entity allocation).
 const _meshLocalXZ = { x: 0, z: 0 };
@@ -145,14 +184,11 @@ const _worldSiteA11y = { reducedMotion: false, reducedFlash: false };
 const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
 const SECTOR_PALETTE_LERP_SECONDS = 1.5;
 const SECTOR_LIGHT_INTENSITIES = { ambient: 0.85, key: 1.7, rim: 0.7, fill: 0.35 };
-const ENTITY_VIEW_CULL_MIN_MARGIN = 900;
-const ENTITY_VIEW_CULL_ZOOM_MARGIN = 8;
-// World simulation deliberately keeps the current corridor sector plus reduced neighbours alive.
-// Render residency is narrower: build the whole active sector, and only admit neighbour-sector
-// meshes once they enter a generous travel runway. This keeps seamless approach quality without
-// constructing, traversing, or decoding another sector while it is still ~15k world units away.
-const RENDER_STREAM_PREFETCH_RADIUS = 5200;
-const RENDER_STREAM_EVICT_RADIUS = 6400;
+// World simulation keeps the corridor sector plus reduced neighbours alive.
+// Render residency is the table plus a measured approach runway (fast-ship
+// travel in a couple of seconds), not a multi-thousand-unit fake-visible box.
+const RENDER_STREAM_PREFETCH_RADIUS = residencyPrefetchRadius();
+const RENDER_STREAM_EVICT_RADIUS = residencyEvictRadius();
 // Start authored decode well before the normal camera can see the boundary. At the fastest early
 // ship speeds this provides several seconds of runway, while current-sector objects farther away
 // remain dormant instead of replacing procedural placeholders during unrelated play.
@@ -267,22 +303,55 @@ function entityWithinPlayerRadius(entity, state, radius) {
   if (!player || !player.pos || !Number.isFinite(player.pos.x) || !Number.isFinite(player.pos.z)) return false;
   const dx = entity.pos.x - player.pos.x;
   const dz = entity.pos.z - player.pos.z;
-  return dx * dx + dz * dz <= radius * radius;
+  const visual = entityVisualCullRadius(entity);
+  const reach = Math.max(0, Number(radius) || 0) + visual;
+  return dx * dx + dz * dz <= reach * reach;
+}
+
+function liveTableCamera(state) {
+  const camera = state && state.camera || {};
+  const video = state && state.settings && state.settings.video || {};
+  const requested = Number.isFinite(camera.zoom) ? camera.zoom : NaN;
+  const live = Number.isFinite(camera.liveZoom) ? camera.liveZoom : NaN;
+  const zoom = Number.isFinite(live) ? live : (Number.isFinite(requested) ? requested : 144);
+  const prefetchZoom = Math.max(
+    Number.isFinite(live) ? live : 0,
+    Number.isFinite(requested) ? requested : 0,
+  ) || zoom;
+  const fov = Number.isFinite(camera.fov) ? camera.fov
+    : (Number.isFinite(video.fov) ? video.fov : 50);
+  const tilt = Number.isFinite(camera.tilt) ? camera.tilt : 60;
+  const aspect = Number.isFinite(camera.aspect) && camera.aspect > 0 ? camera.aspect : 16 / 9;
+  return { zoom, prefetchZoom, fov, tilt, aspect };
+}
+
+function liveShadowCastRadius(state) {
+  const cam = liveTableCamera(state);
+  return tableShadowCasterRadius(cam.zoom, cam.fov, cam.aspect, cam.tilt, SHADOW_ORTHO_EXTENT);
+}
+
+function renderResidencyRadius(state, kind = 'prefetch') {
+  const speed = tableTravelSpeed(state);
+  const cam = liveTableCamera(state);
+  return kind === 'evict'
+    ? residencyEvictRadius(speed, cam.zoom, cam.fov, cam.aspect, cam.tilt)
+    : residencyPrefetchRadius(speed, cam.prefetchZoom, cam.fov, cam.aspect, cam.tilt);
 }
 
 /** Pure render-streaming policy used by reconciliation and focused tests. */
-export function isEntityRenderRelevant(entity, state, radius = RENDER_STREAM_PREFETCH_RADIUS) {
+export function isEntityRenderRelevant(entity, state, radius = null) {
   if (!entity || entity.alive === false || entity._noMesh) return false;
   if (state && state.mode === 'loading') return isInitialAuthoredCompositionEntity(entity, state);
   if (entityIsExplicitRenderFocus(entity, state)) return true;
-  const sectorId = entitySectorId(entity);
-  const currentSectorId = state && state.world && state.world.currentSectorId;
-  if (sectorId && currentSectorId && sectorId === currentSectorId) return true;
-  return entityWithinPlayerRadius(entity, state, radius);
+  const numericRadius = Number(radius);
+  const limit = radius == null || !Number.isFinite(numericRadius)
+    ? renderResidencyRadius(state, 'prefetch')
+    : numericRadius;
+  return entityWithinPlayerRadius(entity, state, limit);
 }
 
 /** Pure authored-admission policy: spatial runway, explicit focus, never whole-sector eagerness. */
-export function isEntityAuthoredUpgradeRelevant(entity, state, radius = AUTHORED_ASSET_PREFETCH_RADIUS) {
+export function isEntityAuthoredUpgradeRelevant(entity, state, radius = null) {
   if (!entity || entity.alive === false) return false;
   if (state && state.mode === 'loading') return isInitialAuthoredCompositionEntity(entity, state);
   return willEntityEnterAuthoredUpgradeRunway(entity, state, { radius });
@@ -371,6 +440,17 @@ function restoreObjectHome(home) {
 }
 
 /** Keep every draw/readiness boundary closed until a restored context finishes rebuilding. */
+export const CONTEXT_RESTORE_MAX_RETRIES = 8;
+
+export function receiptReportsContextLost(receipt) {
+  if (!receipt) return false;
+  if (receipt.contextLost === true) return true;
+  if (Array.isArray(receipt)) {
+    return receipt.some((item) => item && item.contextLost === true);
+  }
+  return false;
+}
+
 export async function runWebGlContextRestoreRebuild(owner, recovery, rebuild) {
   if (!owner || !recovery || typeof rebuild !== 'function') {
     throw new TypeError('context restore rebuild requires owner, recovery state, and rebuild callback');
@@ -379,19 +459,44 @@ export async function runWebGlContextRestoreRebuild(owner, recovery, rebuild) {
   recovery.pending = true;
   try {
     const receipt = await rebuild();
-    if (receipt && receipt.contextLost === true) {
-      throw new Error(receipt.reason || 'context lost during restored GPU rebuild');
+    if (receiptReportsContextLost(receipt)) {
+      const lost = Array.isArray(receipt)
+        ? receipt.find((item) => item && item.contextLost === true)
+        : receipt;
+      throw new Error((lost && lost.reason) || 'context lost during restored GPU rebuild');
     }
   } catch (error) {
     owner._contextLost = true;
-    recovery.pending = true;
     recovery.lastError = String(error && error.message ? error.message : error);
-    return { ok: false, error };
+    const retries = Number(recovery.retryCount) || 0;
+    const canRetry = retries < CONTEXT_RESTORE_MAX_RETRIES
+      && typeof recovery.scheduleRetry === 'function';
+    if (canRetry) {
+      recovery.retryCount = retries + 1;
+      recovery.pending = true;
+      recovery.scheduleRetry();
+      return { ok: false, error, retryScheduled: true };
+    }
+    if (typeof recovery.forceNewContext === 'function' && recovery.forcedNewContext !== true) {
+      recovery.forcedNewContext = true;
+      recovery.retryCount = 0;
+      recovery.pending = true;
+      recovery.forceNewContext();
+      return { ok: false, error, retryScheduled: true, forcedNewContext: true };
+    }
+    // No retry hook and no force-new-context hook: stay draw-gated so tests can prove
+    // half-restored resources stay closed. The live renderer supplies both hooks.
+    recovery.pending = true;
+    recovery.terminal = true;
+    return { ok: false, error, retryScheduled: false, terminal: true };
   }
   recovery.restores = (Number(recovery.restores) || 0) + 1;
   recovery.generation = (Number(recovery.generation) || 0) + 1;
   recovery.pending = false;
   recovery.lastError = null;
+  recovery.retryCount = 0;
+  recovery.forcedNewContext = false;
+  recovery.terminal = false;
   owner._contextLost = false;
   return { ok: true };
 }
@@ -1805,6 +1910,22 @@ export async function disposePreparedSectorBoundary(record, options = {}) {
   return true;
 }
 
+function noteShadowMeshAdded(owner, root) {
+  if (owner && typeof owner._noteShadowMeshAdded === 'function') {
+    owner._noteShadowMeshAdded(root);
+    return;
+  }
+  if (owner) owner._shadowReceiversDirty = true;
+}
+
+function noteShadowMeshRemoved(owner, root) {
+  if (owner && typeof owner._noteShadowMeshRemoved === 'function') {
+    owner._noteShadowMeshRemoved(root);
+    return;
+  }
+  if (owner) owner._shadowReceiversDirty = true;
+}
+
 function requestAuthoredUpgrade(mesh, renderer, scene, options = {}) {
   const request = mesh && mesh.userData && mesh.userData.requestAuthoredUpgrade;
   if (typeof request !== 'function') return Promise.resolve({ status: 'no-authored-upgrade' });
@@ -1852,7 +1973,29 @@ export const render = {
     // during normal dev and perf probes avoids a readback-friendly WebGL path that players never use.
     const query = typeof location !== 'undefined' ? new URLSearchParams(location.search) : null;
     const devShot = !!(query && query.get('dev') === 'shipshot');
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: devShot });
+    const glFlags = resolveWebGlRendererFlags({
+      video: state.settings && state.settings.video,
+      preserveDrawingBuffer: devShot,
+    });
+    const renderer = new THREE.WebGLRenderer({
+      canvas,
+      antialias: glFlags.antialias,
+      alpha: glFlags.alpha === true,
+      powerPreference: glFlags.powerPreference,
+      preserveDrawingBuffer: glFlags.preserveDrawingBuffer,
+    });
+    // Opaque order is depth-tested. Skipping the default painter sort saves a
+    // full scene comparison on the iGPU thread; transparent objects still sort.
+    if (typeof renderer.setOpaqueSort === 'function') {
+      renderer.setOpaqueSort(() => 0);
+    }
+    this._opaqueBatchEnabled = false;
+    try {
+      const gl = renderer.getContext && renderer.getContext();
+      this._opaqueBatchEnabled = supportsOpaqueMaterialBatch(gl);
+    } catch (_) {
+      this._opaqueBatchEnabled = false;
+    }
     // ACES on the renderer covers the DIRECT-to-canvas draws; bloom.js's composite covers the bloom
     // path. Both are needed and they do not overlap, which is the fix for a real divergence:
     //
@@ -2055,7 +2198,48 @@ export const render = {
         // application-owned resources against the settled renderer context.
         this._contextRestoreReceipt = deferWebGlContextRestore(() => {
           if (typeof console !== 'undefined') console.warn('[render] WebGL context restored — rebuilding GPU resources');
-          void runWebGlContextRestoreRebuild(this, this._contextRecovery, async () => {
+          this._contextRecovery.retryCount = 0;
+          this._contextRecovery.forceNewContext = () => {
+            try {
+              const gl = this.renderer && typeof this.renderer.getContext === 'function'
+                ? this.renderer.getContext()
+                : null;
+              const ext = gl && typeof gl.getExtension === 'function'
+                ? gl.getExtension('WEBGL_lose_context')
+                : null;
+              if (ext && typeof ext.loseContext === 'function') {
+                ext.loseContext();
+                const restore = () => {
+                  try { if (typeof ext.restoreContext === 'function') ext.restoreContext(); } catch { /* next event */ }
+                };
+                if (typeof setTimeout === 'function') setTimeout(restore, 50);
+                else restore();
+                return;
+              }
+            } catch { /* fall through to a scheduled retry */ }
+            if (typeof this._contextRecovery.scheduleRetry === 'function') this._contextRecovery.scheduleRetry();
+          };
+          this._contextRecovery.scheduleRetry = () => {
+            const retry = () => {
+              if (this.renderer && typeof this.renderer.getContext === 'function') {
+                try {
+                  const gl = this.renderer.getContext();
+                  if (gl && typeof gl.isContextLost === 'function' && gl.isContextLost()) return;
+                } catch { /* retry against the current context anyway */ }
+              }
+              this._contextRestoreReceipt = deferWebGlContextRestore(() => {
+                void runWebGlContextRestoreRebuild(this, this._contextRecovery, this._rebuildRestoredGpuResources)
+                  .then((restored) => {
+                    if (!restored.ok) return;
+                    this._publishAssetResidencyDiagnostics();
+                    bus.emit('toast', { text: 'Graphics recovered.', kind: 'good', ttl: 3 });
+                  });
+              });
+            };
+            if (typeof requestAnimationFrame === 'function') requestAnimationFrame(retry);
+            else setTimeout(retry, 16);
+          };
+          this._rebuildRestoredGpuResources = async () => {
             dynamicBuffers.handleContextRestored();
             // Re-apply renderer config that the new context defaults lose.
             this.renderer.setClearColor(0x060912, 1);
@@ -2092,8 +2276,11 @@ export const render = {
               incremental: true,
               preparePipelines: async (subjects) => {
                 const receipt = await compileForCurrentTarget(subjects, restoredPostRoute);
-                if (receipt && receipt.contextLost === true) {
-                  throw new Error(receipt.reason || 'context lost during restored pipeline compile');
+                if (receiptReportsContextLost(receipt)) {
+                  const lost = Array.isArray(receipt)
+                    ? receipt.find((item) => item && item.contextLost === true)
+                    : receipt;
+                  throw new Error((lost && lost.reason) || 'context lost during restored pipeline compile');
                 }
                 return receipt;
               },
@@ -2102,16 +2289,18 @@ export const render = {
             });
             state.render.pipelinePrecompileReady = restoredPipelines;
             return await restoredPipelines;
-          }).then((restored) => {
-            if (!restored.ok) {
-              if (typeof console !== 'undefined') {
-                console.error('[render] context-restore rebuild failed', restored.error);
+          };
+          void runWebGlContextRestoreRebuild(this, this._contextRecovery, this._rebuildRestoredGpuResources)
+            .then((restored) => {
+              if (!restored.ok) {
+                if (typeof console !== 'undefined') {
+                  console.error('[render] context-restore rebuild failed', restored.error);
+                }
+                return;
               }
-              return;
-            }
-            this._publishAssetResidencyDiagnostics();
-            bus.emit('toast', { text: 'Graphics recovered.', kind: 'good', ttl: 3 });
-          });
+              this._publishAssetResidencyDiagnostics();
+              bus.emit('toast', { text: 'Graphics recovered.', kind: 'good', ttl: 3 });
+            });
         });
       }, false);
     }
@@ -2193,6 +2382,7 @@ export const render = {
     this._shadowSettingOn = shadowsOn;
     this._shadowReceiversDirty = true;
     this._shadowReceiverCount = 0;
+    this._shadowReceiverTally = createShadowReceiverTally();
     this._w2sCamCache = null; // see _syncProjectionCamera(): decomposed chase-camera transform
     this._ensureKeyLightShadows();
     this._contactShadowPool = createContactShadowPool(scene);
@@ -2364,6 +2554,7 @@ export const render = {
       built: 0,
     };
     this._deferNoncriticalMeshStreaming = false;
+    state.render.deferNoncriticalMeshStreaming = false;
     this._incomingSectorPrewarm = null;
     this._currentSectorPrewarm = null;
     this._authoredSectorPrewarmPendingId = null;
@@ -2438,7 +2629,7 @@ export const render = {
             registerAsteroidBaseLeaf(this._asteroidInstancePool, entity, boundary)
           ),
           releaseAsteroid: (id) => releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id),
-          markShadowReceiversDirty: () => { this._shadowReceiversDirty = true; },
+          markShadowReceiversDirty: () => { this._markShadowReceiversDirty(); },
         });
       },
       disposeBoundary: (record) => disposePreparedSectorBoundary(record, {
@@ -2448,7 +2639,7 @@ export const render = {
         removeBoundary: (boundary) => { if (boundary.parent === scene) scene.remove(boundary); },
         disposePreparedBoundary: disposePreparedAuthoredBoundary,
         disposeBoundaryObject: disposeObject,
-        markShadowReceiversDirty: () => { this._shadowReceiversDirty = true; },
+        markShadowReceiversDirty: () => { this._markShadowReceiversDirty(); },
       }),
       restoreEntity: (record) => {
         const entity = record.entity;
@@ -2601,6 +2792,17 @@ export const render = {
       const batch = Array.isArray(subjects) ? subjects.filter(Boolean) : [subjects].filter(Boolean);
       if (batch.length === 0) return Promise.resolve({ skipped: true, reason: 'empty pipeline batch' });
       const route = requestedRoute || this._selectPostRoute();
+      if (shouldSliceCompileAcrossPresents({
+        mode: state.mode,
+        firstPlayable: Number.isFinite(state.render && state.render.firstPlayableFrameAt),
+      })) {
+        const sliced = batch.flatMap((root) => collectCompileSubjects(root));
+        return compileSubjectsAcrossPresents(
+          sliced,
+          (subject) => this._compilePostRoute(route, subject, cam.obj, scene),
+          yieldToNextPresent,
+        );
+      }
       if (batch.length === 1) {
         return Promise.resolve(this._compilePostRoute(
           route, batch[0], cam.obj, scene,
@@ -2635,11 +2837,16 @@ export const render = {
     const pipelineAdmissions = createPipelineAdmissionTracker(compileForCurrentTarget, {
       deferAutoFlush: () => state.mode === 'loading',
       onBlockingSlice: recordAuthoredAdmissionBlockingSlice,
+      getLastPresentDtMs: () => state.render && state.render.lastPresentDtMs,
     });
     const gpuResidencyAdmissions = createGpuResidencyAdmissionTracker((subject, admissionOptions = {}) => (
       prepareStartupGpuResidency(renderer, subject, {
         yieldToMain: async () => {
-          await yieldToBrowser();
+          if (state.mode === 'flight' && Number.isFinite(state.render && state.render.firstPlayableFrameAt)) {
+            await yieldToNextPresent();
+          } else {
+            await yieldToBrowser();
+          }
           if (typeof admissionOptions.isActive === 'function' && admissionOptions.isActive() !== true) {
             throw new Error('Authored GPU residency owner became inactive before texture upload');
           }
@@ -2647,12 +2854,39 @@ export const render = {
         onBlockingSlice: recordAuthoredAdmissionBlockingSlice,
       })
     ));
-    state.render.compileObjectPipelines = (subject) => pipelineAdmissions.compile(subject);
-    state.render.prepareAuthoredGpuResidency = (subject, options = {}) => gpuResidencyAdmissions.prepare(subject, {
-      isActive: options.isActive,
-    });
+    const openingCohort = createOpeningAdmissionCohort();
+    const openingStillBlocking = () => (
+      state.mode === 'loading' || !Number.isFinite(state.render && state.render.firstPlayableFrameAt)
+    );
+    state.render.compileObjectPipelines = (subject) => {
+      if (openingCohort.frozen && openingStillBlocking() && !shouldAdmitOpeningSubject(openingCohort, subject)) {
+        return Promise.resolve({ skipped: true, reason: 'late-opening-root' });
+      }
+      if (!openingCohort.frozen) openingCohort.extendBlocked(openingSubjectIdentity(subject));
+      return pipelineAdmissions.compile(subject);
+    };
+    state.render.prepareAuthoredGpuResidency = (subject, options = {}) => {
+      if (openingCohort.frozen && openingStillBlocking() && !shouldAdmitOpeningSubject(openingCohort, subject)) {
+        return Promise.resolve({ skipped: true, reason: 'late-opening-root' });
+      }
+      if (!openingCohort.frozen) openingCohort.extendBlocked(openingSubjectIdentity(subject));
+      return gpuResidencyAdmissions.prepare(subject, {
+        isActive: options.isActive,
+      });
+    };
     state.render.pendingAuthoredGpuResidency = () => gpuResidencyAdmissions.pendingCount;
-    state.render.captureOpeningPipelinePlan = () => pipelineAdmissions.capturePending();
+    state.render.yieldToNextPresent = yieldToNextPresent;
+    state.render.openingAdmission = openingCohort;
+    state.render.captureOpeningPipelinePlan = () => {
+      const plan = pipelineAdmissions.capturePending();
+      let subjects = [];
+      try { subjects = pipelineAdmissions.subjectsForCaptured(plan) || []; } catch { subjects = []; }
+      const identities = subjects.map((subject) => openingSubjectIdentity(subject)).filter(Boolean);
+      if (state.playerId != null) identities.push(`entity:${state.playerId}`);
+      openingCohort.capture(identities);
+      state.render.openingAdmissionCohort = openingCohort.snapshot();
+      return plan;
+    };
     state.render.drainOpeningPipelinePlan = (plan) => pipelineAdmissions.waitForCaptured(plan);
     state.render.captureOpeningGpuResidencyPlan = (pipelinePlan) => gpuResidencyAdmissions.captureSubjects(
       pipelineAdmissions.subjectsForCaptured(pipelinePlan)
@@ -2748,7 +2982,7 @@ export const render = {
       if (m) {
         this._unbindPresentationMesh(id, m);
         scene.remove(m); disposeObject(m); this._meshes.delete(id);
-        this._shadowReceiversDirty = true;
+        this._noteShadowMeshRemoved(m);
         this._publishAssetResidencyDiagnostics();
       }
     });
@@ -2814,7 +3048,7 @@ export const render = {
       this._syncPostOptions();
       if (p.key === 'shadows' || p.key == null) {
         this._shadowSettingOn = vd.shadows !== false;
-        this._shadowReceiversDirty = true;
+        this._markShadowReceiversDirty();
         this._ensureKeyLightShadows();
         this._syncShadowMapEnabled();
       }
@@ -2850,10 +3084,15 @@ export const render = {
       }
       this._publishAssetResidencyDiagnostics();
     });
-    const sectorPrewarmRequests = (sectorId) => authoredPrewarmRequestsForEntities(state.entityList, {
-      sectorId,
-      playerId: state.playerId,
-    });
+    const sectorPrewarmRequests = (sectorId) => {
+      const player = state.entities && state.entities.get(state.playerId);
+      return authoredPrewarmRequestsForEntities(state.entityList, {
+        sectorId,
+        playerId: state.playerId,
+        playerPos: player && player.pos,
+        viewportHeight: this.viewport && this.viewport.height,
+      });
+    };
     const reviseSectorPrewarmPopulation = (record, count = 1) => {
       if (!record || count <= 0) return;
       record.boundaryRevision = (Number(record.boundaryRevision) || 0) + count;
@@ -3217,7 +3456,9 @@ export const render = {
       stageSectorPrewarmBoundaries(pending);
     });
     bus.on('sector:exit', ({ sectorId } = {}) => {
-      if (this._assetResidency) this._assetResidency.prepareSectorExit(sectorId);
+      if (this._assetResidency) {
+        applySectorExitResidency(this._assetResidency, sectorId);
+      }
       const exactSectorId = sectorId == null ? null : String(sectorId);
       if (this._currentSectorPrewarm && this._currentSectorPrewarm.sectorId === exactSectorId) {
         releaseSectorPrewarm(this._currentSectorPrewarm, 'sector-prewarm-exited');
@@ -3458,12 +3699,14 @@ export const render = {
       if (mode === 'loading') {
         state.render.firstPlayableFrameAt = null;
         this._deferNoncriticalMeshStreaming = false;
+        state.render.deferNoncriticalMeshStreaming = false;
         this._firstPlayablePaintScheduled = false;
       }
       if (mode !== 'flight') return;
       // The first visible flight draw contains only the already-resident opening composition.
       // Bulk sector roots resume at the normal two-per-frame budget after that draw completes.
       this._deferNoncriticalMeshStreaming = true;
+      state.render.deferNoncriticalMeshStreaming = true;
     });
     bus.on('jump:arrive', ({ sectorId } = {}) => {
       const sector = sectorId && state.world && state.world.sectors ? state.world.sectors[sectorId] : null;
@@ -3778,6 +4021,7 @@ export const render = {
       this.scene.remove(m); disposeObject(m); this._meshes.delete(id);
     }
     this._presentationQueries?.reset?.();
+    this._markShadowReceiversDirty();
     this._meshBuildQueue.length = 0;
     this._meshBuildQueueHead = 0;
     this._meshBuildQueuedIds.clear();
@@ -3842,10 +4086,10 @@ export const render = {
     // untouched; only the render-owned Object3D boundary and its authored residency are released.
     for (const [id, m] of this._meshes) {
       const e = state.entities.get(id);
-      if (!e || e.alive === false || !isEntityRenderRelevant(e, state, RENDER_STREAM_EVICT_RADIUS)) {
+      if (!e || e.alive === false || !isEntityRenderRelevant(e, state, renderResidencyRadius(state, 'evict'))) {
         this._unbindPresentationMesh(id, m);
         releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
-        this.scene.remove(m); disposeObject(m); this._meshes.delete(id); this._shadowReceiversDirty = true;
+        this.scene.remove(m); disposeObject(m); this._meshes.delete(id); noteShadowMeshRemoved(this, m);
         clearEntityMeshReference(e, m);
       }
     }
@@ -3902,13 +4146,13 @@ export const render = {
       stats.meshVisits++;
       const entity = state.entities.get(id);
       if (!entity || entity.alive === false
-          || !isEntityRenderRelevant(entity, state, RENDER_STREAM_EVICT_RADIUS)) {
+          || !isEntityRenderRelevant(entity, state, renderResidencyRadius(state, 'evict'))) {
         this._unbindPresentationMesh(id, mesh);
         releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
         this.scene.remove(mesh);
         disposeObject(mesh);
         this._meshes.delete(id);
-        this._shadowReceiversDirty = true;
+        noteShadowMeshRemoved(this, mesh);
         clearEntityMeshReference(entity, mesh);
         stats.evicted++;
         continue;
@@ -3964,7 +4208,27 @@ export const render = {
 
   _drainMeshBuildQueue(buildBudget) {
     let built = 0;
+    if (buildBudget !== Infinity && this._initialMeshReconcileComplete) {
+      const gate = shouldStartHeavyAdmissionEventually(
+        this.state && this.state.render && this.state.render.lastPresentDtMs,
+        this._meshBuildLateSkips,
+      );
+      this._meshBuildLateSkips = gate.skippedCount;
+      if (!gate.start) return 0;
+    }
+    const startedAtMs = typeof performance !== 'undefined' && typeof performance.now === 'function'
+      ? performance.now()
+      : Date.now();
+    const now = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
+      ? performance.now()
+      : Date.now());
     while (this._meshBuildQueueHead < this._meshBuildQueue.length && built < buildBudget) {
+      if (!shouldContinueAdmissionSlice({
+        buildBudget,
+        startedAtMs,
+        nowMs: now(),
+        itemsDone: built,
+      })) break;
       const id = this._meshBuildQueue[this._meshBuildQueueHead++];
       this._meshBuildQueuedIds.delete(id);
       const e = this.state.entities.get(id);
@@ -3989,7 +4253,7 @@ export const render = {
       if (canRequestAuthoredUpgrade(e, this.state, this._authoredSectorPrewarmPendingId)) {
         requestAuthoredUpgrade(m, this.renderer, this.scene);
       }
-      this._shadowReceiversDirty = true;
+      noteShadowMeshAdded(this, m);
       built++;
     }
     if (this._meshBuildQueueHead >= this._meshBuildQueue.length) {
@@ -4021,7 +4285,7 @@ export const render = {
       this.scene.remove(old);
       disposeObject(old);
       this._meshes.delete(id);
-      this._shadowReceiversDirty = true;
+      noteShadowMeshRemoved(this, old);
     }
     const m = this.vf.build(e);
     if (!m) return;
@@ -4044,7 +4308,7 @@ export const render = {
     if (canRequestAuthoredUpgrade(e, this.state, this._authoredSectorPrewarmPendingId)) {
       requestAuthoredUpgrade(m, this.renderer, this.scene);
     }
-    this._shadowReceiversDirty = true;
+    noteShadowMeshAdded(this, m);
   },
 
 
@@ -4053,24 +4317,38 @@ export const render = {
     const cameraState = this.state && this.state.camera || {};
     // Camera focus is frame-local after the M2 chase camera membrane.
     const focus = cameraState.focus || (camObj && camObj.position) || { x: 0, z: 0 };
-    const zoom = Number.isFinite(cameraState.zoom)
-      ? cameraState.zoom
-      : Math.max(80, camObj && Number.isFinite(camObj.position && camObj.position.y) ? Math.abs(camObj.position.y) : 88);
+    const composition = this.cam && typeof this.cam.composition === 'function'
+      ? this.cam.composition()
+      : null;
+    const liveZoom = composition && Number.isFinite(composition.zoom) ? composition.zoom : NaN;
+    const zoom = Number.isFinite(liveZoom)
+      ? liveZoom
+      : (Number.isFinite(cameraState.zoom)
+        ? cameraState.zoom
+        : Math.max(80, camObj && Number.isFinite(camObj.position && camObj.position.y) ? Math.abs(camObj.position.y) : 88));
+    const tilt = Number.isFinite(cameraState.tilt) ? cameraState.tilt : 60;
     const fov = camObj && Number.isFinite(camObj.fov)
       ? camObj.fov
       : (this.state.settings && this.state.settings.video && this.state.settings.video.fov) || 50;
     const aspect = Math.max(0.45, camObj && Number.isFinite(camObj.aspect)
       ? camObj.aspect
       : (this.viewport && this.viewport.height ? this.viewport.width / this.viewport.height : 16 / 9));
-    const halfV = Math.tan((fov * Math.PI / 180) * 0.5) * zoom * 0.72;
-    const halfH = halfV * aspect;
-    const margin = Math.max(ENTITY_VIEW_CULL_MIN_MARGIN, zoom * ENTITY_VIEW_CULL_ZOOM_MARGIN);
+    if (this.state && this.state.camera) {
+      this.state.camera.liveZoom = zoom;
+      this.state.camera.fov = fov;
+      this.state.camera.aspect = aspect;
+    }
+    const speed = tableTravelSpeed(this.state);
+    const extents = submitCullHalfExtents(zoom, fov, aspect, speed, tilt);
     const bounds = this._entityViewBounds;
     bounds.x = Number.isFinite(focus.x) ? focus.x : 0;
     bounds.z = Number.isFinite(focus.z) ? focus.z : 0;
-    bounds.halfX = halfH + margin;
-    bounds.halfZ = halfV + margin;
-    bounds.margin = margin;
+    bounds.halfX = extents.halfX;
+    bounds.halfZ = extents.halfZ;
+    bounds.margin = extents.runway;
+    bounds.glassHalfX = extents.glass.halfX;
+    bounds.glassHalfZ = extents.glass.halfZ;
+    bounds.runway = extents.runway;
     return bounds;
   },
 
@@ -4162,6 +4440,7 @@ export const render = {
 
     const world = this._presentationWorld;
     const bounds = this._entityViewCullBounds();
+    this._frameShadowCastRadius = liveShadowCastRadius(this.state);
     const queryOptions = this._presentationQueryOptions;
     queryOptions.bounds = bounds;
     queryOptions.origin = this._frameMembrane.origin;
@@ -4191,12 +4470,25 @@ export const render = {
         world.refreshVisibleEntity(slot, entity, entityVisualCullRadius(entity, mesh));
       }
       this._applyPresentationPose(slot, mesh, alpha, true);
+      applyEntityMeshVisibility(mesh, shouldSubmitEntityMesh({
+        isPlayer: entity && entity.id === this.state.playerId,
+        forceRender: !!(entity && entity.flags && entity.flags.forceRender),
+        neverCull: !!(entity && entity.flags && entity.flags.neverCull),
+        hidden: true,
+      }));
       if (mesh.userData && mesh.userData.asteroidInstanceBody) {
         mesh.userData.asteroidInstanceViewCulled = true;
       }
       world.clearDirty(slot);
       transformed++;
     }
+
+    const innerView = viewHalfExtents(
+      this.state.camera && this.state.camera.zoom,
+      this.cam && this.cam.obj && this.cam.obj.fov,
+      this.cam && this.cam.obj && this.cam.obj.aspect,
+      INNER_VIEW_BAND_SCALE,
+    );
 
     for (let index = 0; index < query.visibleCount; index++) {
       const slot = query.visibleSlots[index];
@@ -4220,15 +4512,24 @@ export const render = {
 
       // Projected-screen-size LOD (spec §12.4): visible roots resolve detail from projected pixel
       // width with hysteresis. Newly visible roots are fully posed above before this decision.
+      const viewBand = classifyEntityViewBand({
+        isPlayer: entity.id === this.state.playerId,
+        dx: mesh.position.x - bounds.x,
+        dz: mesh.position.z - bounds.z,
+        innerHalfX: innerView.halfX,
+        innerHalfZ: innerView.halfZ,
+        forceInner: !!(entity.flags && (entity.flags.forceRender || entity.flags.neverCull)),
+      });
+      const runClosures = shouldRunEntityClosures(viewBand, this.state.tick, slot);
       let lodLevel = userData.lod ? userData.lod.level : null;
+      const hlodVisualRadius = userData.hlod && Number(userData.hlod.visualRadius);
+      const lodRadius = Number.isFinite(hlodVisualRadius) && hlodVisualRadius > 0
+        ? hlodVisualRadius
+        : entity.radius;
+      const projectedPx = projectedWidthPx(mesh.position, lodRadius, this.cam.obj, this.viewport);
       if (userData.lod && userData.updateLod) {
         lodChecked++;
-        const hlodVisualRadius = userData.hlod && Number(userData.hlod.visualRadius);
-        const lodRadius = Number.isFinite(hlodVisualRadius) && hlodVisualRadius > 0
-          ? hlodVisualRadius
-          : entity.radius;
-        const px = projectedWidthPx(mesh.position, lodRadius, this.cam.obj, this.viewport);
-        lodLevel = entity.id === this.state.playerId ? 'lod0' : userData.lod.resolve(px);
+        lodLevel = entity.id === this.state.playerId ? 'lod0' : userData.lod.resolve(projectedPx);
         userData.updateLod(lodLevel);
       }
       // Local shadow-map caster membership: only nearby LOD0 (and the player) enter the
@@ -4236,14 +4537,30 @@ export const render = {
       if (entity.type === 'ship' || entity.type === 'station') {
         if (syncShadowCasterPolicy(mesh, lodLevel, this._shadowPolicyOptions(entity, mesh))) {
           shadowPolicyRefreshes++;
+          noteShadowPolicyChanged(this._shadowReceiverTally, true);
+          this._markShadowReceiversDirty();
         }
       }
+
+      applyEntityMeshVisibility(mesh, shouldSubmitEntityMesh({
+        isPlayer: entity.id === this.state.playerId,
+        forceRender: !!(entity.flags && entity.flags.forceRender),
+        neverCull: !!(entity.flags && entity.flags.neverCull),
+        hidden: false,
+        middleBand: viewBand === 'middle',
+        type: entity.type,
+        projectedPx,
+        allowShadowCast: false,
+      }));
 
       classifyRenderEntity(this._entityFrame, entity, mesh, false);
       fullSynced++;
 
       // Visible interactive and hero roots retain their authored per-frame presentation closures.
-      if (userData.updateRuntimeState) userData.updateRuntimeState(entity, now);
+      // Distant LOD2 traffic is a speck: runtime/damage closures cannot change a readable pixel.
+      // Off-screen runway (middle band) keeps poses every frame but refreshes closures on cadence.
+      const farSpeck = lodLevel === 'lod2' && entity.id !== this.state.playerId;
+      if (runClosures && !farSpeck && userData.updateRuntimeState) userData.updateRuntimeState(entity, now);
       if (entity.id === this.state.playerId && this._livingHullPresentation) {
         this._livingHullPresentation.sync(
           entity.data && entity.data.livingHull,
@@ -4251,11 +4568,17 @@ export const render = {
           entity,
         );
       }
-      if (userData.updateWorldSitePresentation) {
+      if (runClosures && !farSpeck && userData.updateWorldSitePresentation) {
         userData.updateWorldSitePresentation(entity, this.state.simTime, _worldSiteA11y);
       }
-      if (userData.updateDamageState) userData.updateDamageState(entity, now);
-      if (userData.updateDriveState) userData.updateDriveState(entity, now);
+      if (runClosures && userData.updateDamageState) {
+        const stamp = `${entity.hull}|${entity.shield}|${entity.alive}`;
+        if (stamp !== userData._damageVisualStamp) {
+          userData._damageVisualStamp = stamp;
+          userData.updateDamageState(entity, now);
+        }
+      }
+      if (runClosures && userData.updateDriveState) userData.updateDriveState(entity, now);
 
       // Shield geometry is an impact response, not a permanent bubble. The flash decays each visible
       // frame and is punched up whenever the entity's shield value drops.
@@ -4305,6 +4628,34 @@ export const render = {
     diagnostics.lodChecked = lodChecked;
     diagnostics.cullHalfX = Math.round(bounds.halfX);
     diagnostics.cullHalfZ = Math.round(bounds.halfZ);
+    diagnostics.glassHalfX = Math.round(bounds.glassHalfX || 0);
+    diagnostics.glassHalfZ = Math.round(bounds.glassHalfZ || 0);
+    diagnostics.runwayWu = Math.round(bounds.runway || 0);
+    diagnostics.prefetchRadius = Math.round(renderResidencyRadius(this.state, 'prefetch'));
+    diagnostics.evictRadius = Math.round(renderResidencyRadius(this.state, 'evict'));
+    const probeOn = !!(this.state.perfRuntime
+      && (this.state.perfRuntime.hitchAttributionEnabled
+        || this.state.perfRuntime.renderWorkEnabled));
+    if (probeOn) {
+      const tableCensus = censusTableBands(this.state.entityList, {
+        glassHalfX: bounds.glassHalfX,
+        glassHalfZ: bounds.glassHalfZ,
+        runwayWu: bounds.runway,
+        originX: this._frameMembrane && this._frameMembrane.origin
+          ? this._frameMembrane.origin.x + bounds.x
+          : bounds.x,
+        originZ: this._frameMembrane && this._frameMembrane.origin
+          ? this._frameMembrane.origin.z + bounds.z
+          : bounds.z,
+        playerId: this.state.playerId,
+        residentIds: this._meshes,
+      });
+      diagnostics.tableGlass = tableCensus.glass;
+      diagnostics.tableRunway = tableCensus.runway;
+      diagnostics.tableBeyond = tableCensus.beyond;
+      diagnostics.tableSubmitted = tableCensus.submitted;
+      diagnostics.tableResident = tableCensus.resident;
+    }
     this.state.render.entityViewSync = diagnostics;
 
     const hlodDiagnostics = this._hlodDiagnostics;
@@ -4459,6 +4810,33 @@ export const render = {
     authoredSyncOptions.camera = this.cam.obj;
     authoredSyncOptions.entityFrame = this._entityFrame;
     authoredSyncOptions.authoredRecords = this._entityFrame.authored;
+    authoredSyncOptions.playerX = 0;
+    authoredSyncOptions.playerZ = 0;
+    const shadowRadius = Number.isFinite(this._frameShadowCastRadius)
+      ? this._frameShadowCastRadius
+      : liveShadowCastRadius(this.state);
+    this._frameShadowCastRadius = shadowRadius;
+    authoredSyncOptions.castRadiusSq = shadowRadius * shadowRadius;
+    authoredSyncOptions.castRadius = shadowRadius;
+    authoredSyncOptions.consolidateOpaqueBatches = this._opaqueBatchEnabled === true;
+    const camState = this.state && this.state.camera || {};
+    const camObj = this.cam && this.cam.obj;
+    authoredSyncOptions.liveZoom = Number.isFinite(camState.liveZoom) ? camState.liveZoom : NaN;
+    authoredSyncOptions.zoom = Number.isFinite(camState.zoom) ? camState.zoom : NaN;
+    authoredSyncOptions.tilt = Number.isFinite(camState.tilt) ? camState.tilt : 60;
+    authoredSyncOptions.fov = camObj && Number.isFinite(camObj.fov) ? camObj.fov
+      : (Number.isFinite(camState.fov) ? camState.fov : 90);
+    authoredSyncOptions.aspect = camObj && Number.isFinite(camObj.aspect) && camObj.aspect > 0
+      ? camObj.aspect
+      : 16 / 9;
+    const player = this.state.playerId
+      ? (this.state.entities && this.state.entities.get(this.state.playerId))
+      : null;
+    if (player && player.pos && this._frameMembrane) {
+      const local = this._frameMembrane.toLocal(player.pos, _shadowLocalXZ);
+      authoredSyncOptions.playerX = local.x;
+      authoredSyncOptions.playerZ = local.z;
+    }
     syncAuthoredInstancePools(this.scene, authoredSyncOptions);
     // Background-clock for distant animation (planet cloud drift, hero-star twinkle). Integrates real
     // frame dt scaled by state.timeScale so the cosmos respects hit-stop/pause — a death freeze
@@ -4470,6 +4848,16 @@ export const render = {
     if (this.spaceBg && this.spaceBg.update) this.spaceBg.update(frameDt, this._bgTime, this.cam.obj.position);
     parallaxLayers.update(frameDt);
     this._syncShadowMapEnabled();
+    this._syncKeyLightShadowFrustum(shadowRadius);
+    if (this._keyLight && this._keyLight.shadow && this.renderer && this.renderer.shadowMap) {
+      const refreshShadow = shouldRefreshRealtimeShadowMap({
+        lastPresentDtMs: this.state && this.state.render && this.state.render.lastPresentDtMs,
+        skippedLast: this._shadowPresentSkipped === true,
+      });
+      this._keyLight.shadow.autoUpdate = refreshShadow;
+      this._keyLight.shadow.needsUpdate = refreshShadow;
+      this._shadowPresentSkipped = !refreshShadow;
+    }
     // Shadow follow (graphics spec G): keep the key light's shadow frustum centered on the player
     // so the tight 1400-unit ortho box always covers the local action. DirectionalLight position is
     // an offset from its target; we move both together. No-op unless the shadow map will render.
@@ -4553,14 +4941,17 @@ export const render = {
         && !this._firstPlayablePaintScheduled) {
       this._firstPlayablePaintScheduled = true;
       afterBrowserPaint(() => {
-        if (this.state.mode !== 'flight') return;
-        this.state.render.firstPlayableFrameAt = typeof performance !== 'undefined'
-          ? performance.now()
-          : Date.now();
-        this._deferNoncriticalMeshStreaming = false;
-        this._meshReconcileDirty = true;
-        if (typeof this.state.render.resumeDeferredPipelineAdmissions === 'function') {
-          void this.state.render.resumeDeferredPipelineAdmissions();
+        try {
+          if (this.state.mode === 'flight') {
+            this.state.render.firstPlayableFrameAt = typeof performance !== 'undefined'
+              ? performance.now()
+              : Date.now();
+          }
+        } finally {
+          releaseOpeningMeshDefer(this, this.state.mode);
+          if (typeof this.state.render.resumeDeferredPipelineAdmissions === 'function') {
+            void this.state.render.resumeDeferredPipelineAdmissions();
+          }
         }
       });
     }
@@ -4590,11 +4981,13 @@ export const render = {
     // so shadow-follow preserves the landmark-derived light direction instead of forcing the old
     // literal back every frame. Falls back to the original constant when nothing is authored.
     const off = this._keyLightOffset;
-    this._keyLight.position.set(
-      px + (off ? off.x : 60),
-      off ? off.y : 140,
-      pz + (off ? off.z : 40),
-    );
+    const ox = off ? off.x : 60;
+    const oy = off ? off.y : 140;
+    const oz = off ? off.z : 40;
+    const followKey = `${px.toFixed(2)}|${pz.toFixed(2)}|${ox}|${oy}|${oz}`;
+    if (this._shadowFollowKey === followKey) return;
+    this._shadowFollowKey = followKey;
+    this._keyLight.position.set(px + ox, oy, pz + oz);
     this._keyLight.target.position.set(px, 0, pz);
   },
 
@@ -4619,14 +5012,37 @@ export const render = {
       playerLocalX = local.x;
       playerLocalZ = local.z;
     }
-    const distanceSq = shadowCastDistanceSq(
+    const axisDistance = shadowCastAxisDistance(
       mesh && mesh.position,
       playerLocalX,
       playerLocalZ,
     );
+    const castRadius = Number.isFinite(this._frameShadowCastRadius)
+      ? this._frameShadowCastRadius
+      : liveShadowCastRadius(this.state);
     return {
-      allowCast: allowRealtimeShadowCast({ isPlayer, lodLevel, distanceSq }),
+      allowCast: allowRealtimeShadowCast({
+        isPlayer,
+        lodLevel,
+        axisDistance,
+        castRadius,
+      }),
     };
+  },
+
+  _noteShadowMeshAdded(root) {
+    if (this._shadowReceiverTally) this._shadowReceiverTally.noteAdded(root);
+    else this._shadowReceiversDirty = true;
+  },
+
+  _noteShadowMeshRemoved(root) {
+    if (this._shadowReceiverTally) this._shadowReceiverTally.noteRemoved(root);
+    else this._shadowReceiversDirty = true;
+  },
+
+  _markShadowReceiversDirty() {
+    this._shadowReceiversDirty = true;
+    if (this._shadowReceiverTally) this._shadowReceiverTally.markDirty();
   },
 
   _syncShadowMapEnabled() {
@@ -4636,7 +5052,16 @@ export const render = {
       this._keyLight.castShadow = false;
       return;
     }
-    if (this._shadowReceiversDirty) {
+    if (this._shadowReceiverTally) {
+      if (this._shadowReceiversDirty || this._shadowReceiverTally.dirty) {
+        this._shadowReceiverCount = this._shadowReceiverTally.resolve(this.scene, {
+          force: this._shadowReceiversDirty === true,
+        });
+        this._shadowReceiversDirty = false;
+      } else {
+        this._shadowReceiverCount = this._shadowReceiverTally.count;
+      }
+    } else if (this._shadowReceiversDirty) {
       let receivers = 0;
       this.scene.traverse((o) => { if (o && o.receiveShadow) receivers++; });
       this._shadowReceiverCount = receivers;
@@ -4647,6 +5072,25 @@ export const render = {
     this._keyLight.castShadow = enabled;
   },
 
+  _syncKeyLightShadowFrustum(radius) {
+    const key = this._keyLight;
+    if (!key || !key.shadow || !key.shadow.camera) return false;
+    const numeric = Number(radius);
+    const extent = Math.max(
+      80,
+      Math.min(SHADOW_ORTHO_EXTENT, Math.round(Number.isFinite(numeric) ? numeric : SHADOW_ORTHO_EXTENT)),
+    );
+    if (this._shadowOrthoExtent === extent) return false;
+    const camera = key.shadow.camera;
+    camera.left = -extent;
+    camera.right = extent;
+    camera.top = extent;
+    camera.bottom = -extent;
+    camera.updateProjectionMatrix();
+    this._shadowOrthoExtent = extent;
+    return true;
+  },
+
   _ensureKeyLightShadows() {
     const key = this._keyLight;
     const renderer = this.renderer;
@@ -4654,15 +5098,17 @@ export const render = {
     renderer.shadowMap.type = THREE.PCFShadowMap;
     if (!key.userData.spacefaceShadowConfigured) {
       key.castShadow = false;
-      key.shadow.mapSize.set(1024, 1024);
+      key.shadow.mapSize.set(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
       const camera = key.shadow.camera;
       camera.near = 10; camera.far = 600;
-      camera.left = -700; camera.right = 700; camera.top = 700; camera.bottom = -700;
+      camera.left = -SHADOW_ORTHO_EXTENT; camera.right = SHADOW_ORTHO_EXTENT;
+      camera.top = SHADOW_ORTHO_EXTENT; camera.bottom = -SHADOW_ORTHO_EXTENT;
       camera.updateProjectionMatrix();
       key.shadow.bias = -0.0008;
       key.shadow.normalBias = 0.04;
       if (key.target && !key.target.parent && this.scene) this.scene.add(key.target);
       key.userData.spacefaceShadowConfigured = true;
+      this._shadowOrthoExtent = SHADOW_ORTHO_EXTENT;
     }
     if (!this._shadowSettingOn) {
       renderer.shadowMap.enabled = false;
@@ -5053,6 +5499,16 @@ export const render = {
     }
   },
 };
+
+/** Opening defer must clear even if the first painted frame is no longer flight. */
+export function releaseOpeningMeshDefer(owner, mode) {
+  if (!owner) return owner;
+  owner._deferNoncriticalMeshStreaming = false;
+  if (owner.state && owner.state.render) owner.state.render.deferNoncriticalMeshStreaming = false;
+  owner._meshReconcileDirty = true;
+  owner._firstPlayablePaintScheduled = mode === 'flight';
+  return owner;
+}
 
 function afterBrowserPaint(callback) {
   if (typeof requestAnimationFrame !== 'function') {

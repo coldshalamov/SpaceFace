@@ -57,6 +57,17 @@ import {
 import { createRenderFrameMembrane } from './frameCoordinates.js';
 import { readOwnedExceptionalSpeed } from './velocityLanguage.js';
 import { fieldFalloff } from '../core/fields/fieldKernel.js'; // PQ-012: VFX density mirrors the kernel falloff (gauges must not lie)
+import {
+  lootMagnetFocusDelta,
+  shouldDrawLootMagnetTrail,
+  shouldDrawTableVfx,
+  TABLE_HEARING_FAR_WU,
+  TABLE_LOOT_MAGNET_CAP_WU,
+  tableDoctrineTellCueWu,
+  tableLookAtDelta,
+  tableNpcTrailTier,
+  tableVfxDrawWuFromState,
+} from './tabletopPolicy.js';
 import { applyFlashAccessibility, resolveVfxAccessibilityProfile } from './vfxAccessibility.js';
 import {
   createStationSideEventVfxFrameScratch,
@@ -69,7 +80,6 @@ import {
   resolveNpcJobSignaturePreferCue,
   writeNpcJobSignatureFrame,
   NPC_JOB_SIGNATURE_CAPACITY,
-  NPC_JOB_SIGNATURE_DRAW_RANGE,
   deployFraction,
   resolveNpcJobReaction,
   NPC_JOB_REACTION,
@@ -148,6 +158,7 @@ import {
 import { resolveRcsFirings, resolveActuatorScale, mainDriveDemand } from './rcsJets.js';
 import { PROPULSION_PROFILES } from '../core/flight/propulsionCatalog.js';
 import { resolveForceNeonScale, resolveTumbleContinuousVfxPlan } from './masslinePresentation.js';
+import { INACTIVE_TUMBLE_VFX_PLAN, tumbleVfxLooksActive } from './inactiveVfxPlan.js';
 import {
   MASSLINE_RELEASE_ARC_SEGMENT_CAPACITY,
   createMasslineReleaseArcScratch,
@@ -427,12 +438,10 @@ const TETHER_SPARK_LOAD = 0.72;
 // how far PAST it the line is, so a merely-captured line is quiet and a worked one is not.
 const TETHER_CAPTURE_FLOOR = 0.35;
 
-// Engine-trail relevance gating (quality-preserving: far/offscreen NPCs emit less; player/target stay full).
+// Engine-trail relevance gating. Player/target stay full. NPC ribbons follow
+// the live table (tableNpcTrailTier). Leftover 2200/3600/2800 horizons retired.
 const TRAIL_TIER = Object.freeze({ FULL: 'full', NORMAL: 'normal', REDUCED: 'reduced', SKIP: 'skip' });
-const TRAIL_NORMAL_PLAYER_DIST = 2200;
-const TRAIL_CAMERA_NORMAL_DIST = 1300;
-const TRAIL_SKIP_PLAYER_DIST = 3600;
-const TRAIL_CAMERA_SKIP_DIST = 2800;
+const _trailFallbackPos = { x: 0, z: 0 };
 const TRAIL_SCREEN_CHECK_MAX = 8;
 const TRAIL_REDUCED_CADENCE = 3;
 const TRAIL_REDUCED_EMIT_CAP = 18;
@@ -452,7 +461,7 @@ const DOCTRINE_TELL_KIND = Object.freeze({
 // 30 ticks @ 60 Hz = 0.5s; floor keeps a readable window even if payload omits durationTicks.
 const DOCTRINE_TELL_MIN_LIFE = 0.5;
 const DOCTRINE_TELL_PULSE = 0.11;
-const DOCTRINE_TELL_OFFSCREEN_R = 58;
+
 
 // Optional subsystem cadence (Hz) — runs at the stated Hz when active, slept when inactive.
 // The player Hitch continuous plume is intentionally NOT cadence-gated: it is ship-attached
@@ -463,9 +472,12 @@ const VFX_SEAM_MARKERS_HZ = 20;
 // like a small drifting rock, so the single most repeated reward in the game read as nothing. This
 // draws it as light. Cadence-gated and fully asleep when nothing is homing.
 const VFX_LOOT_MAGNET_HZ = 24;
-// Slightly beyond bare MAGNET_RANGE (420); fitted tractors (560/780) still get trails in the
-// inner band. Outer-band pull beyond this is real but dim — avoid a permanent huge draw budget.
-const LOOT_MAGNET_DRAW_RANGE = 580;
+// Tractor physics still reaches 420–780 WU. Trails only paint on the live table, and never
+// farther than TABLE_LOOT_MAGNET_CAP_WU even on a zoomed-out wide lens. Off-table pull stays
+// real and dim. The tractor cap is player-centered; the glass cull uses the live look-at.
+const LOOT_MAGNET_DRAW_RANGE = TABLE_LOOT_MAGNET_CAP_WU;
+const _lootMagnetFocusScratch = { x: 0, z: 0 };
+const _tableLookAtScratch = { x: 0, z: 0 };
 const LOOT_MAGNET_MIN_SPEED = 26;        // wu/s; below this a drop is drifting, not being pulled
 const LOOT_MAGNET_MAX_TRAILED = 24;      // hard cap on simultaneously trailed drops
 const VFX_RIBBON_TRAILS_HZ = 30;
@@ -478,11 +490,10 @@ const RIBBON_DISCONTINUITY_FLOOR_WU = 160;
 export const RIBBON_DISCONTINUITY_MAX_WU = 640;
 export const RIBBON_NPC_OWNER_CAP = 8;
 const VFX_PROJECTILE_TRAILS_HZ = 45;
-const VFX_SEAM_DRAW_RANGE = 640;
+// Seam and station-side draw range follow the live table (tableVfxDrawWuFromState).
 // Ambient station movers are event-driven, pooled VFX. Twelve pose writes per second is enough for
 // their slow docking/orbit paths and leaves the ordinary frame asleep when no side-event is active.
 const VFX_STATION_SIDE_EVENTS_HZ = 12;
-const VFX_STATION_SIDE_EVENT_DRAW_RANGE = 1500;
 // NPC work signatures ("The Working Light"). Same 12 Hz as the station movers: the underlying job
 // phases change on the order of seconds, so a faster pose write would buy nothing, and the shared
 // cadence keeps the two ambient layers from beating against each other. Slept entirely when no live
@@ -690,6 +701,7 @@ export const vfx = {
       cameraZ: 0,
       camera: null,
       state: null,
+      tableWu: 0,
     };
     this._trailScreenCheckScratch = { remaining: TRAIL_SCREEN_CHECK_MAX };
     this._cFaction = new THREE.Color('#88aaff');
@@ -4486,7 +4498,7 @@ export const vfx = {
     const player = this.helpers && this.helpers.player
       ? this.helpers.player()
       : this._ent(this.state.playerId);
-    const drawRange2 = VFX_STATION_SIDE_EVENT_DRAW_RANGE * VFX_STATION_SIDE_EVENT_DRAW_RANGE;
+    const drawWu = this._tableVfxDrawWu || tableVfxDrawWuFromState(this.state);
     let emitted = 0;
 
     for (let i = 0; i < slots.length; i++) {
@@ -4506,11 +4518,6 @@ export const vfx = {
         || slot.profile.trajectory === 'docking-orbit') {
         this._retireStationSideEvent(slot);
         continue;
-      }
-      if (player && player.pos) {
-        const playerDx = slot.centerX - player.pos.x;
-        const playerDz = slot.centerZ - player.pos.z;
-        if (playerDx * playerDx + playerDz * playerDz > drawRange2) continue;
       }
       const frame = writeStationSideEventVfxFrame(
         slot.profile,
@@ -4551,6 +4558,10 @@ export const vfx = {
         frame.dirZ = dz / length;
         frame.normalX = -frame.dirZ;
         frame.normalZ = frame.dirX;
+      }
+      if (player && player.pos) {
+        const look = tableLookAtDelta(this.state, player.pos, frame, _tableLookAtScratch);
+        if (!shouldDrawTableVfx(look.x, look.z, drawWu)) continue;
       }
 
       if (frame.emitStep === slot.lastEmitStep) continue;
@@ -5140,7 +5151,7 @@ export const vfx = {
     const player = this.helpers && this.helpers.player
       ? this.helpers.player()
       : this._ent(this.state.playerId);
-    const drawRange2 = NPC_JOB_SIGNATURE_DRAW_RANGE * NPC_JOB_SIGNATURE_DRAW_RANGE;
+    const drawWu = this._tableVfxDrawWu || tableVfxDrawWuFromState(this.state);
 
     // Generation stamp: slots claimed this tick are off-limits for reuse, so two jobs can never
     // fight over one slot within a single pass and produce a strobing half-drawn code.
@@ -5163,9 +5174,8 @@ export const vfx = {
       if (!ent || ent.alive === false || !ent.pos) continue;
 
       if (player && player.pos) {
-        const dx = ent.pos.x - player.pos.x;
-        const dz = ent.pos.z - player.pos.z;
-        if (dx * dx + dz * dz > drawRange2) continue;
+        const look = tableLookAtDelta(this.state, player.pos, ent.pos, _tableLookAtScratch);
+        if (!shouldDrawTableVfx(look.x, look.z, drawWu)) continue;
       }
 
       // D3: prefer entity.data.ceresCausalCue when present; fall back to job phase.
@@ -6738,6 +6748,7 @@ export const vfx = {
     assertDynamicBufferOwnerWritable(sm.dynamicBufferOwner);
     const simTime = state.simTime || 0;
     const pulse = 0.82 + 0.18 * Math.sin(this._t * 4.2);
+    const drawWu = this._tableVfxDrawWu || tableVfxDrawWuFromState(state);
     let n = 0;
     const list = state.entityList || [];
     for (let i = 0; i < list.length && n < sm.CAP; i++) {
@@ -6745,9 +6756,10 @@ export const vfx = {
       if (!e || !e.alive || e.type !== 'asteroid') continue;
       const seams = e.data && e.data.seams;
       if (!seams || !seams.length) continue;
-      // Range cull stays galactic-global (origin-invariant); instance matrices are frame-local.
-      const dx = e.pos.x - player.pos.x, dz = e.pos.z - player.pos.z;
-      if (dx * dx + dz * dz > 640 * 640) continue;      // draw range
+      // Glass cull uses the live look-at (frame-local focus + frameOrigin).
+      // Instance matrices stay frame-local.
+      const look = tableLookAtDelta(state, player.pos, e.pos, _tableLookAtScratch);
+      if (!shouldDrawTableVfx(look.x, look.z, drawWu)) continue;
       const scanned = (e.data.scanHighlightUntil || 0) > simTime;
       const seamLocked = e.id === this._miningSeamPulseId && simTime <= this._miningSeamPulseUntil;
       const cr = Math.cos(e.rot || 0), sr = Math.sin(e.rot || 0);
@@ -7447,11 +7459,19 @@ export const vfx = {
   _doctrineTellOnScreen(entity) {
     if (!entity || !entity.pos) return false;
     const camera = this.state && this.state.render && this.state.render.camera;
-    if (!camera || typeof camera.project !== 'function') {
-      // Headless / no camera: treat as on-screen if near the player so link cues still fire.
+    const canProject = !!(
+      camera
+      && camera.isCamera
+      && camera.projectionMatrix
+      && typeof camera.updateMatrixWorld === 'function'
+    );
+    if (!canProject) {
+      // Headless / no projectable camera: treat as on-screen if inside the live table.
       const pp = this._playerPos();
       const d = Math.hypot((entity.pos.x || 0) - (pp.x || 0), (entity.pos.z || 0) - (pp.z || 0));
-      return d < 900;
+      const tableWu = tableVfxDrawWuFromState(this.state);
+      const limit = Number.isFinite(tableWu) && tableWu > 0 ? tableWu : TABLE_HEARING_FAR_WU;
+      return d < limit;
     }
     const scratch = this._doctrineTellScreenScratch || this._trailScreenScratch;
     const local = this._toLocalXZ(
@@ -7503,9 +7523,8 @@ export const vfx = {
       const uz = dz / len;
       slot._lastDx = dx;
       slot._lastDz = dz;
-      const cx = (origin.x || 0) + ux * DOCTRINE_TELL_OFFSCREEN_R;
-      const cz = (origin.z || 0) + uz * DOCTRINE_TELL_OFFSCREEN_R;
-      this._spawnDoctrineTellOffscreenCue(slot, style, cx, cz, ux, uz, isStart);
+      const cue = this._doctrineTellOffscreenPoint(origin, ux, uz);
+      this._spawnDoctrineTellOffscreenCue(slot, style, cue.x, cue.z, ux, uz, isStart);
       return;
     }
 
@@ -7608,6 +7627,44 @@ export const vfx = {
       3.0, reduced ? 8.0 : 6.0,
       style.linkOp * 0.9, 0.0, style.color0, 0, 0,
     );
+  },
+
+  _doctrineTellOffscreenPoint(origin, ux, uz) {
+    const ox = Number(origin && origin.x) || 0;
+    const oz = Number(origin && origin.z) || 0;
+    const fallbackR = tableDoctrineTellCueWu(this.state);
+    const camera = this.state && this.state.render && this.state.render.camera;
+    const canProject = !!(
+      camera
+      && camera.isCamera
+      && camera.projectionMatrix
+      && typeof camera.updateMatrixWorld === 'function'
+    );
+    if (!canProject) {
+      return { x: ox + ux * fallbackR, z: oz + uz * fallbackR };
+    }
+    const scratch = this._doctrineTellScreenScratch || this._trailScreenScratch;
+    const pad = 0.78;
+    let lo = 0;
+    let hi = Math.max(fallbackR, 8);
+    let best = 0;
+    for (let i = 0; i < 10; i++) {
+      const mid = (lo + hi) * 0.5;
+      const local = this._toLocalXZ(ox + ux * mid, oz + uz * mid, this._entityLocalXZ);
+      scratch.set(local.x, 0, local.z);
+      scratch.project(camera);
+      const inside = Math.abs(scratch.x) <= pad
+        && Math.abs(scratch.y) <= pad
+        && scratch.z >= -1
+        && scratch.z <= 1;
+      if (inside) {
+        best = mid;
+        lo = mid;
+      } else {
+        hi = mid;
+      }
+    }
+    return { x: ox + ux * best, z: oz + uz * best };
   },
 
   _spawnDoctrineTellOffscreenCue(slot, style, cx, cz, ux, uz, isStart) {
@@ -8742,6 +8799,7 @@ export const vfx = {
     if (!(dt > 0)) return;
     if (dt > 0.1) dt = 0.1; // clamp pauses/tab-switches so particles don't teleport
     this._t += dt;
+    this._tableVfxDrawWu = tableVfxDrawWuFromState(this.state);
     if (this._weaponPresenter) {
       const render = this.state && this.state.render;
       const activeGraph = activeWeaponRenderGraph(this.state);
@@ -8961,12 +9019,13 @@ export const vfx = {
     if (!player || !player.alive || !player.pos) return false;
     const list = state.entityList;
     if (!list || !list.length) return false;
-    const r2 = LOOT_MAGNET_DRAW_RANGE * LOOT_MAGNET_DRAW_RANGE;
+    const tableWu = this._tableVfxDrawWu || tableVfxDrawWuFromState(state);
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
       if (!e || !e.alive || e.type !== 'pickup' || !e.pos) continue;
-      const dx = e.pos.x - player.pos.x, dz = e.pos.z - player.pos.z;
-      if (dx * dx + dz * dz > r2) continue;
+      const pdx = e.pos.x - player.pos.x, pdz = e.pos.z - player.pos.z;
+      const focus = lootMagnetFocusDelta(state, player.pos, e.pos, _lootMagnetFocusScratch);
+      if (!shouldDrawLootMagnetTrail(pdx, pdz, focus.x, focus.z, tableWu)) continue;
       const vx = (e.vel && e.vel.x) || 0, vz = (e.vel && e.vel.z) || 0;
       if (vx * vx + vz * vz >= LOOT_MAGNET_MIN_SPEED * LOOT_MAGNET_MIN_SPEED) return true;
     }
@@ -8978,15 +9037,15 @@ export const vfx = {
     const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(state.playerId);
     if (!player || !player.pos) { this._lootMagnetLive = 0; return 0; }
     const list = state.entityList || [];
-    const r2 = LOOT_MAGNET_DRAW_RANGE * LOOT_MAGNET_DRAW_RANGE;
+    const tableWu = this._tableVfxDrawWu || tableVfxDrawWuFromState(state);
     const burst = this._burst || 1;
     let drawn = 0;
     for (let i = 0; i < list.length && drawn < LOOT_MAGNET_MAX_TRAILED; i++) {
       const e = list[i];
       if (!e || !e.alive || e.type !== 'pickup' || !e.pos) continue;
-      const dx = e.pos.x - player.pos.x, dz = e.pos.z - player.pos.z;
-      const dist2 = dx * dx + dz * dz;
-      if (dist2 > r2) continue;
+      const pdx = e.pos.x - player.pos.x, pdz = e.pos.z - player.pos.z;
+      const focus = lootMagnetFocusDelta(state, player.pos, e.pos, _lootMagnetFocusScratch);
+      if (!shouldDrawLootMagnetTrail(pdx, pdz, focus.x, focus.z, tableWu)) continue;
       const vx = (e.vel && e.vel.x) || 0, vz = (e.vel && e.vel.z) || 0;
       const speed = Math.hypot(vx, vz);
       if (speed < LOOT_MAGNET_MIN_SPEED) continue;
@@ -9283,7 +9342,8 @@ export const vfx = {
     if (!player || !player.pos) return false;
     const px = player.pos.x || 0;
     const pz = player.pos.z || 0;
-    const range2 = VFX_SEAM_DRAW_RANGE * VFX_SEAM_DRAW_RANGE;
+    const drawWu = this._tableVfxDrawWu || tableVfxDrawWuFromState(state);
+    const range2 = drawWu * drawWu;
     const list = state.entityList || [];
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
@@ -10399,7 +10459,12 @@ export const vfx = {
       }
       const tumble = e.presentation && e.presentation.tumble;
       const thrownTrail = e.presentation && e.presentation.thrownTrail;
-      const plan = resolveTumbleContinuousVfxPlan(tumble || {});
+      if (!tumbleVfxLooksActive(tumble, thrownTrail)) {
+        if (e.id != null) cd.delete(e.id);
+        cd.delete(e);
+        continue;
+      }
+      const plan = resolveTumbleContinuousVfxPlan(tumble || INACTIVE_TUMBLE_VFX_PLAN);
       const thrownActive = !!(thrownTrail && thrownTrail.active);
       const recovering = !!(tumble && tumble.recovering);
       const angularActive = !!(plan.active
@@ -10776,6 +10841,7 @@ export const vfx = {
     ctx.cameraZ = camPos && Number.isFinite(camPos.z) ? camPos.z : playerPos.z || 0;
     ctx.camera = camera;
     ctx.state = state;
+    ctx.tableWu = this._tableVfxDrawWu || tableVfxDrawWuFromState(state);
     return ctx;
   },
 
@@ -10823,43 +10889,17 @@ export const vfx = {
   },
 
   _trailTierFor(e, ctx) {
-    if (!e || !e.alive) return TRAIL_TIER.SKIP;
-    if (e.id === ctx.playerId) return TRAIL_TIER.FULL;
-    if (ctx.targetId != null && e.id === ctx.targetId) return TRAIL_TIER.FULL;
-
-    const px = e.pos && Number.isFinite(e.pos.x) ? e.pos.x : 0;
-    const pz = e.pos && Number.isFinite(e.pos.z) ? e.pos.z : 0;
-    // playerX/Z are galactic-global; cameraX/Z are frame-local (Three camera).
-    const distPlayer = Math.hypot(px - ctx.playerX, pz - ctx.playerZ);
-    const local = this._toLocalXZ(px, pz, this._entityLocalXZ);
-    const distCamera = Math.hypot(local.x - ctx.cameraX, local.z - ctx.cameraZ);
-    const data = e.data || {};
-
-    if (data.wingmanOf || data.isWingman) return TRAIL_TIER.NORMAL;
-    if (ctx.playerTeam != null && e.team === ctx.playerTeam) return TRAIL_TIER.NORMAL;
-    if (isHostileToPlayer(e, ctx.playerTeam, ctx.state) && distPlayer <= TRAIL_NORMAL_PLAYER_DIST) {
-      return TRAIL_TIER.NORMAL;
-    }
-    if (distPlayer <= TRAIL_NORMAL_PLAYER_DIST && distCamera <= TRAIL_CAMERA_NORMAL_DIST) {
-      return TRAIL_TIER.NORMAL;
-    }
-    if (
-      isHostileToPlayer(e, ctx.playerTeam, ctx.state)
-      && distPlayer <= ctx.radarRange
-      && distCamera <= TRAIL_CAMERA_NORMAL_DIST * 1.35
-    ) {
-      return TRAIL_TIER.NORMAL;
-    }
-    if (distPlayer > ctx.radarRange) return TRAIL_TIER.SKIP;
-    if (distCamera > TRAIL_CAMERA_SKIP_DIST && distPlayer > TRAIL_SKIP_PLAYER_DIST) return TRAIL_TIER.SKIP;
-    if (
-      distCamera > TRAIL_CAMERA_NORMAL_DIST * 1.15
-      && distPlayer > TRAIL_NORMAL_PLAYER_DIST
-      && ctx.camera
-    ) {
-      return 'screen-check';
-    }
-    return TRAIL_TIER.REDUCED;
+    _trailFallbackPos.x = ctx.playerX;
+    _trailFallbackPos.z = ctx.playerZ;
+    return tableNpcTrailTier(
+      ctx.state,
+      e,
+      ctx.playerId,
+      ctx.targetId,
+      _trailFallbackPos,
+      _tableLookAtScratch,
+      ctx.tableWu,
+    );
   },
 
   _trailOnScreen(e, ctx) {

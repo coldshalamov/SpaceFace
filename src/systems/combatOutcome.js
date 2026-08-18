@@ -3,6 +3,7 @@
 // Observer-only combat receipts. Records one terminal outcome per hostile and emits seams that
 // future economy/rep systems can consume; it never writes credits, cargo, rep, AI, or combat state.
 import { isHostileToPlayer } from './scanner.js';
+import { shouldRunOnTick } from '../core/activityScheduler.js';
 
 const STATE_VERSION = 1;
 const MAX_OUTCOMES = 64;
@@ -107,6 +108,9 @@ export const combatOutcome = {
   },
 
   update(_dt, state) {
+    if (state && state.ui && state.ui.docked === true) return;
+    if (state && state.mode && state.mode !== 'flight') return;
+    if (!shouldRunOnTick(state && state.tick, 'combatOutcome:scan', 4)) return;
     const own = ensureState(state);
     const list = Array.isArray(state.entityList) ? state.entityList : [];
     for (const entity of list) {

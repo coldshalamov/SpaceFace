@@ -16,24 +16,42 @@
  * A vertex may only exist at a position the nozzle actually occupied. Nothing is pushed backwards
  * along the exhaust, because anything pushed backwards would be somewhere the ship has never been.
  *
- * THE LINE IS LEFT IN SPACE
- * -----------------------
- * This is a WORLDLINE wake: the curve the nozzle's position swept through space while firing.
- * While thrusting, new points are deposited at the nozzle's exact world position.
- * Points stay fixed at their world coordinates and age naturally over `TRAIL_SECONDS`.
- * When thrust is released, no new points are deposited; the existing wake stays in world space
- * and dissolves in place where it was left.
+ * THE LINE IS NEVER SHED
+ * ----------------------
+ * This is a WORLDLINE: the curve the nozzle's position sweeps through space. Its head is wherever
+ * the nozzle is right now — always, under power or not. Recording used to be gated on the drive
+ * being lit, which meant releasing the throttle froze the head in space while momentum carried the
+ * ship onward: measured at 120 WU/s, a 61 WU gap opened between the ship and its own trail inside
+ * one second, and the line hung there like a shed lizard's tail. A history of where the thruster
+ * was cannot detach from the thruster.
+ *
+ * So the path records on MOVEMENT, never on throttle, and the drive level is a brightness channel
+ * instead of an on/off switch. What the throttle controls is the other end: a cold engine REELS THE
+ * LINE IN, advancing a tail cursor along the flown path toward the head, so the line shortens from
+ * the back and the last of it is drawn into the bell. Let off the throttle and your line whips back
+ * into the engine; open it again and the line is spun back out of the same place. Its length is a
+ * readout of the throttle, which is the whole reason the effect is worth having.
  */
 import * as THREE from 'three';
 
-/** Seconds of leftover light retained. */
+/** Seconds of leftover light retained. Half the prior 2.5 s window. */
 export const TRAIL_SECONDS = 1.2;
 /**
  * Hard cap on retained path length, so high speed cannot restore a screen-spanning highway.
+ *
+ * The last DISSOLVE_WU of this is feather, not trail: the bright section still ends around 60 WU,
+ * well inside the 88 WU this was cut back to when it WAS a highway. What the extra span buys is
+ * somewhere for the exhaust to come apart, rather than a place for it to stop.
  */
 export const MAX_SPAN_WU = 104;
 /**
  * World units over which the far end comes apart into wisps.
+ *
+ * This is in world units, not a fraction, because the terminator it has to land on is in world
+ * units. Anything normalised — sample index, fraction of span — rescales every vertex's fade the
+ * moment the live sample count changes, and the sample count swings from ~72 when crawling to ~34
+ * at cruise. That would drag the dissolve boundary up and down the trail every time you touch the
+ * throttle. Floored against short trails in `update()`.
  */
 export const DISSOLVE_WU = 34;
 /** Path samples retained along the flown history. */
@@ -46,6 +64,15 @@ export const STRAND_COUNT = SHEET_COUNT;
 export const STRAND_ACROSS = 5;
 /** Minimum nozzle movement between recorded history samples, in world units. */
 export const MIN_STEP_WU = 0.12;
+/**
+ * How fast a cold engine draws its own line back in, in world units per second.
+ *
+ * Sized so a full-length line is swallowed in well under a second — fast enough to read as suction
+ * rather than as fading, slow enough that the tail is visibly travelling rather than snapping. The
+ * cursor is what moves; samples are only dropped once they are already behind it and invisible, so
+ * this can never retire a batch in one frame the way shortening the retention clock would.
+ */
+export const REEL_WU_PER_S = 190;
 /**
  * Pulses the engine sheds per second. Band spacing is speed / RING_HZ, so this is really a choice
  * about how much distance one band should stand for: at cruise it wants to be a handful of bands
@@ -535,6 +562,7 @@ export class ContrailTrail {
   reset() {
     this._live = 0;
     this._isEmitting = false;
+    this._tailArc = 0;
     this._speed = 0;
     this.mesh.visible = false;
   }
@@ -568,14 +596,19 @@ export class ContrailTrail {
     this._live = kept;
   }
 
-  /** Drops samples that exceed the max history length cap. */
-  _trimToSpan() {
+  /**
+   * Drops samples that now sit behind the tail cursor.
+   *
+   * Retirement follows the cursor rather than driving it. The cursor is a continuous world-space
+   * position that the shader fades to, so a sample is only discarded once it is already fully
+   * invisible — which is what keeps a fast reel-in smooth instead of stepping a chunk of trail out
+   * of existence per frame.
+   */
+  _trimToTail() {
     if (this._live < 2) return;
-    const headArc = this._state[1];
-    const minArc = headArc - this.maxSpanWU;
     while (this._live > 2) {
       const last = (this._live - 1) * 4;
-      if (this._state[last + 1] >= minArc) break;
+      if (this._state[last + 1] >= this._tailArc) break;
       this._live -= 1;
     }
   }
@@ -609,20 +642,22 @@ export class ContrailTrail {
     const floor = env && env.emitFloor != null ? env.emitFloor : 0.02;
     const boost = Math.max(0, (env && env.boost) || 0);
     const dash = Math.max(0, (env && env.dash) || 0);
-    // When emitting, new wake samples are deposited at the nozzle.
+    // Lit or not is a brightness question now, not an existence one. The path is recorded either way.
     const isEmitting = !!(nozzle && drive > floor);
     this._isEmitting = isEmitting;
 
     const u = this.material.uniforms;
 
     let stepDist = 0;
-    if (nozzle && isEmitting) {
-      // The head is the live nozzle while firing.
+    if (nozzle) {
+      // The head is the nozzle, always. This is the join: there is no frame in which the line
+      // begins anywhere other than where the engine currently is.
       u.uLiveNozzlePos.value.set(nozzle.x, nozzle.y, nozzle.z);
       u.uIsEmitting.value = 1.0;
 
       if (this._live === 0) {
         this._push(nozzle.x, nozzle.y, nozzle.z, drive, 0, boost, dash);
+        this._tailArc = 0;
       } else {
         const dx = nozzle.x - this._path[0];
         const dy = nozzle.y - this._path[1];
@@ -632,6 +667,7 @@ export class ContrailTrail {
         if (dist > DISCONTINUITY_WU) {
           this._live = 0;
           this._push(nozzle.x, nozzle.y, nozzle.z, drive, 0, boost, dash);
+          this._tailArc = 0;
         } else if (dist >= MIN_STEP_WU) {
           this._push(nozzle.x, nozzle.y, nozzle.z, drive, this._state[1] + dist, boost, dash);
         } else {
@@ -645,7 +681,6 @@ export class ContrailTrail {
         }
       }
     } else {
-      // When thrust is off, stop emitting. The existing wake samples stay where they were deposited in space.
       u.uIsEmitting.value = 0.0;
     }
 
@@ -656,7 +691,26 @@ export class ContrailTrail {
     const gain = Math.max(0, Math.min(1, t));
     u.uRingGain.value = gain * gain * (3 - 2 * gain);
 
-    this._trimToSpan();
+    const headArc = this._live > 0 ? this._state[1] : 0;
+
+    // Reel-in. The engine pulls its line back through the bell whenever it is no longer making it.
+    //
+    // `env.reel` is the pilot's command, and it is what this keys on when supplied. Falling back to
+    // the drive level alone would be wrong in the exact case that matters: the envelope keeps a lit
+    // floor that rises with speed, so a fast ship coasting with the throttle shut still reads as
+    // "drive on" and the line would never come home — which is what let it look shed in the first
+    // place. Ramped, not switched, so easing off winds the line in rather than snapping it.
+    const cold = floor > 1e-6 ? Math.max(0, Math.min(1, 1 - drive / floor)) : (drive > 0 ? 0 : 1);
+    const reel = env && env.reel != null ? Math.max(0, Math.min(1, env.reel)) : cold;
+    if (reel > 0) this._tailArc += REEL_WU_PER_S * reel * d;
+
+    // The length cap still wins: it can only ever pull the tail FORWARD, never hand back line the
+    // reel has already taken in.
+    const cappedTail = headArc - this.maxSpanWU;
+    if (this._tailArc < cappedTail) this._tailArc = cappedTail;
+    if (this._tailArc > headArc) this._tailArc = headArc;
+
+    this._trimToTail();
 
     if (this._live < 2) {
       this.mesh.visible = false;
@@ -682,9 +736,16 @@ export class ContrailTrail {
     u.uLive.value = this._live;
     u.uTime.value = this._time % 3600;
 
-    const headArc = this._state[1];
+    // The dissolve is measured back from the nozzle along the flown path, so it lands on the real end
+    // of the line whichever terminator produced it — clock, length cap, or the reel. Floored against
+    // short trails: crawling, the whole retained path can be ~24 WU, and a fixed 34 WU dissolve would
+    // erase nearly all of it.
+    //
+    // The end is whichever comes first: the cursor the reel is dragging forward, or the oldest sample
+    // still on the clock. Taking the cursor alone would put the fade past where geometry exists.
     const oldestArc = this._state[(this._live - 1) * 4 + 1];
-    const spanArc = Math.max(headArc - oldestArc, 0.001);
+    const visibleTail = Math.max(this._tailArc, oldestArc);
+    const spanArc = Math.max(headArc - visibleTail, 0.001);
     u.uHeadArc.value = headArc;
     u.uSpanWU.value = spanArc;
     u.uDissolveWU.value = Math.min(DISSOLVE_WU, spanArc * 0.45);
@@ -709,6 +770,10 @@ export class ContrailTrail {
   /**
    * Unit direction the line runs back from the head, written into `out`. False when there is not
    * enough path to have a direction yet.
+   *
+   * Averaged over a few samples rather than taken from the newest pair: the head slot tracks the
+   * live nozzle every frame, so a single-step difference is mostly sub-step jitter and would make
+   * anything aimed along it shiver.
    */
   headAftDirection(out) {
     if (!out || this._live < 2) return false;
@@ -725,7 +790,12 @@ export class ContrailTrail {
   }
 
   /**
-   * The shed-band pulse at the head.
+   * The shed-band pulse at the head, right now.
+   *
+   * Mirrors the fragment shader's band term evaluated at age 0. Anything that wants to fire on the
+   * same event as the line — the forge at the mouth — reads it here rather than keeping its own
+   * clock, because two clocks at the same nominal rate drift and the whole point is that the flash
+   * at the mouth and the band leaving it are one event.
    */
   bandFlash(drive = 1) {
     const rp = (this._time * RING_HZ) % 1;
@@ -767,7 +837,7 @@ export class ContrailTrail {
       // chord and reads short on a hard turn, so it cannot stand in for it.
       visibleSpanWU: this.material.uniforms.uSpanWU.value,
       headArc: this.material.uniforms.uHeadArc.value,
-      tailArc: this._live > 0 ? this._state[(this._live - 1) * 4 + 1] : 0,
+      tailArc: this._tailArc,
       advectsAft: false,
       grazing: true,
       visible: !!this.mesh.visible,

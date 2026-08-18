@@ -282,13 +282,8 @@ test('global precompile retains the directional-shadow program family without ch
     ['shadow-depth-map-instanced', 'shadow-depth-map-mesh', 'shadow-depth-solid-mesh'],
     'the shadow admission pass must retain every exact depth layout observed after boot',
   );
-  assert.deepEqual(warmRenderState, {
-    shadowMapEnabled: true,
-    keyCastsShadow: true,
-    depthOwners: ['shadow-depth-map-instanced', 'shadow-depth-map-mesh', 'shadow-depth-solid-mesh'],
-    canopyAttached: false,
-    shadowRootAttached: true,
-  }, 'the resident warm must isolate the exact casters under temporary production shadow state');
+  assert.equal(warmRenderState, null,
+    'precompile no longer renders the resident scene; opening GPU admission owns that draw');
   assert.equal(renderer.shadowMap.enabled, false, 'restore the player renderer setting');
   assert.equal(key.castShadow, false, 'restore the live key-light state');
   invalidatePrecompileState(renderer);
@@ -333,9 +328,8 @@ test('global precompile admits late depth owners when directional shadows are al
     [],
     ['shadow-depth-map-instanced', 'shadow-depth-map-mesh', 'shadow-depth-solid-mesh'],
   ], 'new depth owners require one exact-target compile even when the shadow state needs no toggle');
-  assert.deepEqual(warmRenderDepthOwners,
-    ['shadow-depth-map-instanced', 'shadow-depth-map-mesh', 'shadow-depth-solid-mesh'],
-    'the hidden resident warm must exercise Three.js own shadow-depth material path');
+  assert.deepEqual(warmRenderDepthOwners, [],
+    'precompile must not draw the live scene to warm depth programs');
   assert.equal(scene.getObjectByName('SF_Precompile_Canopy_KeepAlive'), undefined,
     'retained program owners must leave the live scene immediately after the hidden warm');
   assert.equal(renderer.shadowMap.enabled, true);

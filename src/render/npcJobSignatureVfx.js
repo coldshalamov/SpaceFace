@@ -73,6 +73,7 @@ export const NPC_JOB_SIGNATURE_CAPACITY = 12;
  * headroom for tall hulls whose upper hardware clears the horizon. Anything past that spends pool
  * slots on geometry no player can ever see.
  */
+/** Leftover close-camera cap. Live draw uses tableVfxDrawWuFromState. */
 export const NPC_JOB_SIGNATURE_DRAW_RANGE = 300;
 
 // ─── The signals ──────────────────────────────────────────────────────────────────────────────────

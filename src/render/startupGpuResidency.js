@@ -83,6 +83,17 @@ export function yieldToBrowser() {
   return new Promise((resolve) => setTimeout(resolve, 0));
 }
 
+/** Wait for the next displayed frame so a texture upload cannot stack on the present rAF. */
+export function yieldToNextPresent() {
+  return new Promise((resolve) => {
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(() => resolve());
+      return;
+    }
+    setTimeout(resolve, 16);
+  });
+}
+
 function clockNow() {
   return typeof performance !== 'undefined' && typeof performance.now === 'function'
     ? performance.now()

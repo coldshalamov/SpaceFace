@@ -682,7 +682,7 @@ test('renderer wires startup to captured authored admissions, never the installe
   const source = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
   const readiness = await readFile(new URL('../src/render/pipelineReadiness.js', import.meta.url), 'utf8');
   assert.match(source,
-    /captureOpeningPipelinePlan\s*=\s*\(\)\s*=>\s*pipelineAdmissions\.capturePending\(\)/);
+    /captureOpeningPipelinePlan\s*=\s*\(\)\s*=>\s*\{[\s\S]*pipelineAdmissions\.capturePending\(\)/);
   assert.match(source,
     /drainOpeningPipelinePlan\s*=\s*\(plan\)\s*=>\s*pipelineAdmissions\.waitForCaptured\(plan\)/);
   assert.match(source,

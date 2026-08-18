@@ -11,13 +11,13 @@ import assert from 'node:assert/strict';
 import {
   NPC_JOB_SIGNATURE_PROFILES,
   NPC_JOB_SIGNATURE_CAPACITY,
-  NPC_JOB_SIGNATURE_DRAW_RANGE,
   resolveNpcJobSignature,
   resolveNpcJobSignaturePreferCue,
   createNpcJobSignatureFrameScratch,
   writeNpcJobSignatureFrame,
 } from '../src/render/npcJobSignatureVfx.js';
 import { NPC_JOB_KIND, NPC_JOB_PHASE } from '../src/systems/npcJobs.js';
+import { tableVfxDrawWuFromState } from '../src/render/tabletopPolicy.js';
 
 const KINDS = Object.values(NPC_JOB_KIND);
 // `complete` is terminal — the job is over and the hull reverts to ordinary traffic, so showing
@@ -284,16 +284,11 @@ test('pool capacity covers a saturated sector; draw range matches what the camer
   assert.ok(NPC_JOB_SIGNATURE_CAPACITY >= 8,
     'the pool must cover a fully-populated sector or hulls silently go dark');
 
-  // The draw range is bounded by the CAMERA, not by the research's 500-2000 wu read band — that band
-  // comes from games with free or cockpit views. Measured on the live chase camera (FOV 50, 54.9 up /
-  // 31.7 back): a ground-plane point at z=45 lands at screen y=14, and z=60 is already off-screen at
-  // y=-105. The visible bubble is ~100 wu across, ~280 at maximum manual zoom-out.
-  //
-  // This test exists because the value was wrong twice by reasoning from the research instead of from
-  // the camera, and both times the counters still reported the signals as "drawn" while they sat
-  // hundreds of pixels above the top of the frame.
-  assert.ok(NPC_JOB_SIGNATURE_DRAW_RANGE >= 200,
-    'must cover the bubble at maximum zoom-out (CAMERA_ZOOM_MAX 330)');
-  assert.ok(NPC_JOB_SIGNATURE_DRAW_RANGE <= 600,
-    'must not spend pool slots on hulls that project above the top of the screen');
+  // Live draw follows the tilted table (tableVfxDrawWuFromState), not the leftover 300 WU constant.
+  // The old 300 WU cap was measured against a close chase camera and misses the max-zoom glass.
+  const defaultDraw = tableVfxDrawWuFromState({ camera: { zoom: 144, fov: 50, aspect: 16 / 9 } });
+  const maxDraw = tableVfxDrawWuFromState({ camera: { zoom: 330, fov: 50, aspect: 16 / 9 } });
+  assert.ok(defaultDraw > 200 && defaultDraw < 800, `default table VFX ${defaultDraw} stays on the table`);
+  assert.ok(maxDraw > defaultDraw, 'zooming out must keep on-glass job lamps');
+  assert.ok(maxDraw < 1400, `max-zoom table VFX ${maxDraw} is not the old 1400 horizon`);
 });

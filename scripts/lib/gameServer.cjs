@@ -20,7 +20,10 @@ const http = require('node:http');
 const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const path = require('node:path');
+const { resolveStaticCacheHeaders } = require('./staticCachePolicy.cjs');
 const { attachPlayerStore } = require('./playerSaveStore.cjs');
+// Launch-policy contract: mutable documents keep this exact header token.
+const MUTABLE_DOCUMENT_CACHE = { 'Cache-Control': 'no-cache' };
 
 // MIME types — ONE table for browser + Electron + every asset the game ships.
 // If you add a new asset format (texture, font, model), add it HERE only.
@@ -166,30 +169,21 @@ function createGameServer(opts) {
       if (!isInsideRoot(file, root)) { res.writeHead(403); res.end('Forbidden'); return; }
 
       const relativePath = path.relative(root, file).split(path.sep).join('/');
-      // `no-cache` alone told the cache to revalidate but gave it NOTHING to revalidate against --
-      // no ETag, no Last-Modified. A cache entry with no validator cannot be checked, so a bad or
-      // truncated body (an aborted 16 MB GLB, say) becomes permanent: every relaunch is served the
-      // same broken copy, no code change can dislodge it, and the game reports a missing asset
-      // forever. That is exactly how one player's desktop app stayed unplayable for days across
-      // three separate fixes.
-      //
-      // A size+mtime ETag makes revalidation real: unchanged files answer 304 (so boots stay fast)
-      // and any changed or previously-poisoned entry is replaced with the bytes on disk.
-      const etag = `"${stats.size.toString(16)}-${Math.floor(stats.mtimeMs).toString(16)}"`;
-      if (req.headers['if-none-match'] === etag) {
-        res.writeHead(304, { ETag: etag, 'Cache-Control': 'no-cache' });
+      const requestHeaders = req.headers || {};
+      const cache = resolveStaticCacheHeaders(relativePath, stats, requestHeaders);
+      const headers = {
+        ...staticHeaders,
+        ...(staticHeadersByPath[relativePath] || {}),
+        ...cache.headers,
+        'Content-Type': MIME[path.extname(file).toLowerCase()] || 'application/octet-stream',
+      };
+      if (cache.notModified) {
+        res.writeHead(304, headers);
         res.end();
         return;
       }
-      res.writeHead(200, {
-        ...staticHeaders,
-        ...(staticHeadersByPath[relativePath] || {}),
-        'Content-Type': MIME[path.extname(file).toLowerCase()] || 'application/octet-stream',
-        'Content-Length': stats.size,
-        'Cache-Control': 'no-cache',
-        ETag: etag,
-        'Last-Modified': new Date(stats.mtimeMs).toUTCString(),
-      });
+      headers['Content-Length'] = stats.size;
+      res.writeHead(200, headers);
       // GLBs routinely carry tens of megabytes of embedded KTX2 data. A whole-file read stages a
       // second copy in the server heap and, in packaged Electron, synchronously blocks the main
       // process while ASAR materializes it. Stream the identical bytes so transport can overlap

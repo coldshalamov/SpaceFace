@@ -70,6 +70,38 @@ test('core publishes presentation identity, visual, transform, destroy, and run 
   }
 });
 
+test('docked flight stops transform publication and rebuilds on undock', () => {
+  const state = createGameState(22222);
+  const bus = createBus();
+  const presentationJournal = createPresentationJournal(16);
+  const helpers = {};
+  core.init({ state, bus, helpers, presentationJournal });
+
+  try {
+    const ship = helpers.spawnEntity({
+      type: 'ship',
+      pos: { x: 0, z: 0 },
+      ttl: Infinity,
+      data: {},
+    });
+    const afterSpawn = presentationJournal.getWriteSequence();
+    state.ui.docked = true;
+    core.preStep(LOOP_FIXED_DT, state);
+    ship.pos.x = 40;
+    core.lifetimeSweep(LOOP_FIXED_DT, state);
+    assert.equal(presentationJournal.getWriteSequence(), afterSpawn);
+    assert.equal(presentationJournal.needsRebuild(), false);
+
+    state.ui.docked = false;
+    core.preStep(LOOP_FIXED_DT, state);
+    core.lifetimeSweep(LOOP_FIXED_DT, state);
+    assert.equal(presentationJournal.needsRebuild(), true);
+    assert.equal(presentationJournal.getDiagnostics().rebuildReason, 'undock-resume');
+  } finally {
+    core.destroy();
+  }
+});
+
 test('core detaches every journal producer before terminal close', () => {
   const state = createGameState(54321);
   const bus = createBus();

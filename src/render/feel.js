@@ -28,6 +28,8 @@ import {
   velocityLanguageFlag,
 } from './velocityLanguage.js';
 import { resolveMasslineFeelPunch } from './masslinePresentation.js';
+import { shouldRedrawAfterLatePresent } from './admissionSliceBudget.js';
+import { fillSpeedLineStreak, speedLineRgba } from './speedLineStrokeCache.js';
 
 // Weapon recoil weight lookup (built once). The player's own gun firing produces zero camera
 // response today — that inertness is the #1 "combat feels flat" tell. We scale the recoil kick by
@@ -429,8 +431,16 @@ export const feel = {
     if (this._slOpacity <= 0.01 && this._slGrain <= 0.002) {
       if (this._streaks) this._streaks.length = 0;   // reset so streaks re-seed on next burst
       if (cvs.style.opacity !== '0') cvs.style.opacity = '0';
+      this._slSkippedLast = false;
       return;
     }
+
+    const lastPresent = this.state && this.state.render && this.state.render.lastPresentDtMs;
+    if (!shouldRedrawAfterLatePresent(lastPresent, this._slSkippedLast === true)) {
+      this._slSkippedLast = true;
+      return;
+    }
+    this._slSkippedLast = false;
 
     // Sync canvas size to window (only on change to avoid clearing needlessly)
     const w = window.innerWidth;
@@ -454,7 +464,7 @@ export const feel = {
 
     if (!this._streaks) this._streaks = [];
     const want = drive.count;
-    while (this._streaks.length < want) this._streaks.push(this._newStreak(false, span));
+    while (this._streaks.length < want) this._streaks.push(fillSpeedLineStreak({}, false, span, w, h));
     if (this._streaks.length > want) this._streaks.length = want;
 
     const flowSpeed = drive.flowSpeed;
@@ -485,7 +495,7 @@ export const feel = {
       // We keep a generous margin so streaks can start well ahead of the player and finish well behind.
       if (s.uv > span * 1.35 || s.uv < -span * 1.35 ||
           s.p < -span * 1.35 || s.p > span * 1.35) {
-        Object.assign(s, this._newStreak(true, span));
+        fillSpeedLineStreak(s, true, span, w, h);
       }
 
       // Streak endpoints in screen space.
@@ -515,14 +525,14 @@ export const feel = {
         // Saturated ion sheath into a white-hot filament head. Screen compositing preserves the
         // colored body while allowing overlaps to read as emitted light.
         const B = VL_COLOR.body, H = VL_COLOR.head;
-        grad.addColorStop(0, `rgba(${B.r},${B.g},${B.b},0)`);
-        grad.addColorStop(0.42, `rgba(${B.r},${B.g},${B.b},${(a * 0.42).toFixed(3)})`);
-        grad.addColorStop(0.78, `rgba(${B.r},${B.g},${B.b},${(a * 0.82).toFixed(3)})`);
-        grad.addColorStop(1, `rgba(${H.r},${H.g},${H.b},${a.toFixed(3)})`);
+        grad.addColorStop(0, speedLineRgba(B.r, B.g, B.b, 0));
+        grad.addColorStop(0.42, speedLineRgba(B.r, B.g, B.b, a * 0.42));
+        grad.addColorStop(0.78, speedLineRgba(B.r, B.g, B.b, a * 0.82));
+        grad.addColorStop(1, speedLineRgba(H.r, H.g, H.b, a));
       } else {
-        grad.addColorStop(0, 'rgba(160,205,255,0)');
-        grad.addColorStop(0.55, `rgba(195,230,255,${(a * 0.45).toFixed(3)})`);
-        grad.addColorStop(1, `rgba(232,248,255,${a.toFixed(3)})`);
+        grad.addColorStop(0, speedLineRgba(160, 205, 255, 0));
+        grad.addColorStop(0.55, speedLineRgba(195, 230, 255, a * 0.45));
+        grad.addColorStop(1, speedLineRgba(232, 248, 255, a));
       }
       ctx.strokeStyle = grad;
       ctx.lineWidth = s.w * widthMul;

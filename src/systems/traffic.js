@@ -20,6 +20,8 @@
 //   - Single-writer: traffic owns only its own spawned entities (tracked in state.traffic); it
 //     never touches player state. Economy impact is via the event bus.
 
+import { shouldAmbientHaulerPlan, shouldRunOnTick } from '../core/activityScheduler.js';
+import { tableSimAuthorityWuFromState } from '../render/tabletopPolicy.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec } from './ships.js';
 import { CombatDoctrineId } from '../ai/combatDoctrine.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
@@ -3142,6 +3144,14 @@ export const traffic = {
       if (role.seeks === 'asteroid') { this._stepMiner(e, rec, stations, state); continue; } // miner
       if (role.escorts) { this._stepEscort(e, rec, list, state); continue; }       // convoy escort
 
+      const player = state.playerId != null ? state.entities.get(state.playerId) : null;
+      if (!shouldAmbientHaulerPlan(state.tick, e, {
+        playerId: state.playerId,
+        playerTeam: player && player.team,
+        authorityRadius: tableSimAuthorityWuFromState(state),
+        origin: player && player.pos,
+      })) continue;
+
       // resolve current target (it may have despawned)
       let target = state.entities.get(rec.targetId);
       if (!target || !target.alive) {
@@ -3588,6 +3598,13 @@ export const traffic = {
   },
 
   _listSalvageTargets() {
+    const tick = this.state && Number.isInteger(this.state.tick) ? this.state.tick : 0;
+    if (this._salvageTargetCache
+        && this._salvageTargetCacheTick != null
+        && tick - this._salvageTargetCacheTick < 4
+        && !shouldRunOnTick(tick, 'traffic:salvageList', 4)) {
+      return this._salvageTargetCache;
+    }
     const out = [];
     for (const e of this.state.entityList || []) {
       if (this._isSalvageableBody(e)) out.push(e);
@@ -3599,6 +3616,8 @@ export const traffic = {
       if (ta !== tb) return ta - tb;
       return String(a.id).localeCompare(String(b.id), 'en');
     });
+    this._salvageTargetCache = out;
+    this._salvageTargetCacheTick = tick;
     return out;
   },
 

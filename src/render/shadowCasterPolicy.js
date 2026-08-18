@@ -3,12 +3,15 @@ import { configureRealtimeCanopyMaterials } from './canopyMaterialPolicy.js';
 
 const POLICY_STATE = '__spacefaceShadowCasterPolicyV1';
 
-// Key-light shadow ortho is ±700 around the player (renderer._ensureKeyLightShadows). Casters
-// outside that box cannot affect the local shadow map, but Three still walks every castShadow
-// mesh into the shadow pass. Gate membership to the box (+margin) so far traffic keeps lighting
-// and contact shadows without paying realtime depth-map cost.
-export const SHADOW_CAST_RADIUS = 800;
+// Key-light shadow ortho is ±300 around the player (renderer._ensureKeyLightShadows). That is
+// the on-screen neighborhood plus a short runway. Casters farther away cannot throw a readable
+// directional shadow into the picture; they keep lighting and contact shadows.
+export const SHADOW_CAST_RADIUS = 280;
 export const SHADOW_CAST_RADIUS_SQ = SHADOW_CAST_RADIUS * SHADOW_CAST_RADIUS;
+export const SHADOW_ORTHO_EXTENT = 300;
+// Old map was 1024 over ±700 (0.73 px/WU). 512 over ±300 is 0.85 px/WU — same or better
+// nearby density, a quarter of the depth-pass fill on the iGPU.
+export const SHADOW_MAP_SIZE = 512;
 
 function normalizeLodLevel(level) {
   return level === 'lod0' || level === 'lod1' || level === 'lod2' ? level : null;
@@ -33,11 +36,17 @@ export function allowRealtimeShadowCast({
   isPlayer = false,
   lodLevel = 'lod0',
   distanceSq = 0,
+  axisDistance = null,
+  castRadius = SHADOW_CAST_RADIUS,
 } = {}) {
   if (isPlayer) return true;
   const level = normalizeLodLevel(lodLevel) || 'lod0';
   if (level === 'lod1' || level === 'lod2') return false;
-  return Number.isFinite(distanceSq) && distanceSq <= SHADOW_CAST_RADIUS_SQ;
+  const radius = Number(castRadius);
+  const limit = Number.isFinite(radius) && radius > 0 ? radius : SHADOW_CAST_RADIUS;
+  const axis = Number(axisDistance);
+  if (axisDistance != null && Number.isFinite(axis)) return axis <= limit;
+  return Number.isFinite(distanceSq) && distanceSq <= limit * limit;
 }
 
 /** Squared XZ distance between a mesh local pose and the player local pose. */
@@ -46,6 +55,15 @@ export function shadowCastDistanceSq(meshPos, playerLocalX, playerLocalZ) {
   const dx = meshPos.x - playerLocalX;
   const dz = meshPos.z - playerLocalZ;
   return dx * dx + dz * dz;
+}
+
+/** Chebyshev XZ distance — matches the square key-light ortho, not a circle. */
+export function shadowCastAxisDistance(meshPos, playerLocalX, playerLocalZ) {
+  if (!meshPos) return Infinity;
+  return Math.max(
+    Math.abs(meshPos.x - playerLocalX),
+    Math.abs(meshPos.z - playerLocalZ),
+  );
 }
 
 /** Mark a changed hierarchy/material set for one shadow-policy refresh at its current LOD. */
