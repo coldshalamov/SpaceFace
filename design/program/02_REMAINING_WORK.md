@@ -101,7 +101,14 @@ agent should invent a blocker or stop unrelated work.
 
 The full cross-program list remains in
 [`roadmap/program-queue.json`](./roadmap/program-queue.json). The table above accounts for every
-unfinished dispatch leaf currently represented there. Broader Alpha/Depth outcomes below remain
+unfinished dispatch leaf currently represented there.
+
+### Verified-open findings not yet queue-represented
+
+| Status | Finding | Exact next action |
+|---|---|---|
+| `TODO` | **Mining-prop stragglers (verify-open 2026-08-18).** `place_mining_drone` and `place_conveyor_barge` are the only live world-dressing props still on the 2026-07-05 bevel pass; every neighboring prop was re-authored by `PQ-045.prop-promotion` (sixteen props, `done`). Measured against the release GLBs the game loads: the drone is 580 triangles / 4 meshes / one real texture with a 4 KB flat normal map, and the barge is a 73 m industrial object at 1,144 triangles with 4 KB stub normal/ORM maps, spawned as `world.js` dressing (~48 barges, ~8 drones per cluster) and named as the "Abandoned Mining Colony" landmark (`src/data/claimableBodies.js`, `src/data/sectorAnchors.js`). Render-package compilers expose the same low-detail mesh. Next owner: admit one dispatch unit modeled on the `PQ-022.refinery-reauthor`/PQ-045 prop pattern (material-truth V2 reauthor through the Blender pipeline, then h1/review/h3). | Admit the unit into `roadmap/program-queue.json` and run the standard `docs/visual-assets/README.md` route. Verification captures of the current release assets are under `.devshots/peripheral-audit/` (untracked evidence). |
+ Broader Alpha/Depth outcomes below remain
 planned scope where they have not yet been decomposed into leaves.
 
 ### Planned scope not yet decomposed into exact leaves
