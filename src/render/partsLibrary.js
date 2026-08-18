@@ -1062,13 +1062,16 @@ const WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE = Object.freeze({
   surveyor: 'wholeships/survey_pin.glb',
 });
 const WHOLE_SHIP_ASSET_ID_BY_TRAFFIC_ROLE = Object.freeze({
-  courier: 'SF_HELIOS_LARK_V1',
-  miner: 'SF_HELIOS_CRADLE_V1',
-  hauler: 'SF_HELIOS_SPAN_V1',
-  ore_carrier: 'SF_ORE_BARGE_V1',
-  tender: 'SF_REPAIR_TENDER_V1',
-  salvor: 'SF_SALVAGE_CUTTER_V1',
-  surveyor: 'SF_SURVEY_PIN_V1',
+  // Must match the asset identity embedded in each packaged traffic body above; the record
+  // resolver rejects a whole-ship load whose assetId differs from the selected role identity.
+  // Verified against asset.extras.spacefaceAsset.assetId in each release GLB.
+  courier: 'SF_WHOLESHIP_HELIOS_LARK',
+  miner: 'SF_WHOLESHIP_HELIOS_CRADLE',
+  hauler: 'SF_WHOLESHIP_HELIOS_SPAN',
+  ore_carrier: 'SF_WHOLESHIP_ORE_BARGE',
+  tender: 'SF_WHOLESHIP_REPAIR_TENDER',
+  salvor: 'SF_WHOLESHIP_SALVAGE_CUTTER',
+  surveyor: 'SF_WHOLESHIP_SURVEY_PIN',
 });
 const WHOLE_SHIP_URLS = Object.freeze([
   ...Object.values(WHOLE_SHIP_FILE_BY_DEF_ID),
