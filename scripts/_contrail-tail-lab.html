@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<!--
+  Look-dev rig for the drive worldline.
+
+  Two things the shipped gates cannot answer. (1) The thruster lookdev gate frames a blown-out
+  close-up of the nozzle, so the far end of the line is off screen and it stays green with a blunt
+  tail. (2) Retraction is TEMPORAL - whether the line reels into the engine or is shed behind it
+  cannot be read off a single frame at all, which is how a 61 WU detachment survived review.
+
+  So this drives ContrailTrail directly with a known path at a known speed and renders a FILMSTRIP:
+  the camera is locked to the nozzle, the way the chase cam holds the ship, so across panels the
+  ship stays put and the only thing that changes is the line.
+
+    ?strip=reel     thrust -> release -> coast -> stop -> thrust again
+    ?strip=cruise   one panel, steady cruise, for judging the tail
+-->
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>html,body{margin:0;background:#05070d;overflow:hidden}canvas{display:block}</style>
+  <script type="importmap">
+    { "imports": { "three": "/vendor/three.module.js", "three/addons/": "/vendor/addons/" } }
+  </script>
+</head>
+<body>
+<script type="module">
+import * as THREE from 'three';
+
+const params = new URLSearchParams(location.search);
+// The WHOLE system, not the trail alone. Plume, line, forge and throat have to be judged composited
+// or you tune one element against a background the player never sees.
+const { PlasmaStreamSystem } = await import('/src/render/thruster/systems/plasmaStream.js');
+const { PLAYER_PLASMA_STREAM_RECIPE } = await import('/src/render/thruster/recipes/plasmaStreamRecipe.js');
+
+const SPEED = Number(params.get('speed') || 150);
+const TURN = Number(params.get('turn') || 0.5);
+const STRIP = params.get('strip') || 'reel';
+const PW = 640, PH = 360;          // panel size
+const REACH = Number(params.get('reach') || 132);
+const VIEW = params.get('view') || (params.get('strip') === 'forge' ? 'close' : 'top');
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1);
+renderer.setSize(PW, PH, false);
+renderer.setClearColor(0x05070d, 1);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(55, PW / PH, 0.1, 5000);
+const stream = new PlasmaStreamSystem(THREE, PLAYER_PLASMA_STREAM_RECIPE);
+stream.attach(scene);
+const owner = { id: 'lab' };
+const sockets = [{ x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0 }];
+const trail = { inspect: () => stream.inspect().contrail, samplePositions: () => stream._contrail.samplePositions() };
+
+// Stand-in for the ship, so "is the line still attached to the engine?" is answerable by eye. Two
+// crossed rings at the nozzle - deliberately NOT a glow, so it cannot be mistaken for the effect.
+const ship = new THREE.Group();
+const ringMat = new THREE.MeshBasicMaterial({ color: 0xff7043, wireframe: true, transparent: true, opacity: 0.85 });
+const r1 = new THREE.Mesh(new THREE.TorusGeometry(2.4, 0.22, 6, 20), ringMat);
+const r2 = new THREE.Mesh(new THREE.TorusGeometry(2.4, 0.22, 6, 20), ringMat);
+r2.rotation.y = Math.PI / 2;
+ship.add(r1); ship.add(r2);
+scene.add(ship);
+
+const dt = 1 / 60;
+let heading = 0;
+let lastDrive = 1;
+const nozzle = { x: 0, y: 0, z: 0 };
+
+function step(speed, drive) {
+  heading += TURN * dt;
+  nozzle.x += Math.cos(heading) * speed * dt;
+  nozzle.z += Math.sin(heading) * speed * dt;
+  lastDrive = drive;
+  sockets[0].x = nozzle.x;
+  sockets[0].y = nozzle.y;
+  sockets[0].z = nozzle.z;
+  // ax/az is the hull's FORWARD axis; the system derives the bell direction from it. Held to the
+  // flight heading here, which is what a ship flying its own velocity vector looks like.
+  sockets[0].ax = Math.cos(heading);
+  sockets[0].az = Math.sin(heading);
+  if (stream.setCamera) stream.setCamera(camera);
+  stream.update(dt, sockets, {
+    drive, throttle: drive, boost: 0, speed, speedDrive: Math.min(1, speed / 180),
+  }, { reducedMotion: false }, owner);
+}
+
+// Camera rides the nozzle on a FIXED world-axis offset. Not look-at-the-path: if the framing chased
+// the line's bounds it would rescale per panel and the length change - the whole point - would be
+// hidden by the zoom.
+function renderPanel() {
+  ship.position.set(nozzle.x, nozzle.y, nozzle.z);
+  if (VIEW === 'close') {
+    // Over-the-shoulder on the bell, so the mouth and the first few WU of line fill the frame. The
+    // top-down strip proves the line's LENGTH behaves; only this can show what its start looks like.
+    const fx = Math.cos(heading), fz = Math.sin(heading);
+    camera.up.set(0, 1, 0);
+    camera.position.set(nozzle.x + fx * 15 - fz * 13, nozzle.y + 7.5, nozzle.z + fz * 15 + fx * 13);
+    camera.lookAt(nozzle.x - fx * 7, nozzle.y, nozzle.z - fz * 7);
+  } else {
+    camera.position.set(nozzle.x - 34, nozzle.y + REACH, nozzle.z - 16);
+    camera.up.set(0, 0, -1);
+    camera.lookAt(nozzle.x - 34, nozzle.y, nozzle.z - 16);
+  }
+  camera.updateMatrixWorld();
+  renderer.render(scene, camera);
+}
+
+const panels = [];
+function capture(label) {
+  renderPanel();
+  const c = document.createElement('canvas');
+  c.width = PW; c.height = PH;
+  c.getContext('2d').drawImage(renderer.domElement, 0, 0);
+  const i = trail.inspect();
+  const f = stream.inspect().forge;
+  panels.push({ label, img: c, span: i.visibleSpanWU, live: i.liveSamples, drive: lastDrive, forge: !!(f && f.visible) });
+}
+
+function gap() {
+  const s = trail.samplePositions();
+  return s.length ? Math.hypot(nozzle.x - s[0].x, nozzle.y - s[0].y, nozzle.z - s[0].z) : 0;
+}
+
+const gaps = [];
+// speedFn returns a FRACTION of cruise speed, not an absolute — passing it straight to step() left
+// the ship crawling at 1 WU/s, under the movement threshold, so the path never recorded.
+function run(seconds, speedFn, drive, capturesAt = []) {
+  const n = Math.round(seconds / dt);
+  const marks = new Set(capturesAt.map((s) => Math.round(s / dt)));
+  for (let i = 0; i < n; i++) {
+    step(SPEED * speedFn(i / n), drive);
+    gaps.push(gap());
+    if (marks.has(i)) capture(`${drive > 0.5 ? 'THRUST' : 'COLD'}  t+${((i + 1) * dt).toFixed(2)}s`);
+  }
+}
+
+if (STRIP === 'cruise') {
+  run(6, () => 1, 1, [5.98]);
+} else if (STRIP === 'forge') {
+  // Straight, then hard into a turn: the turn is where the line and the hull's aft axis diverge,
+  // which is the attitude the mouth exists to hold together.
+  run(2.2, () => 1, 1, [1.0, 2.18]);
+  run(1.6, () => 1, 1, [0.5, 1.55]);
+} else {
+  // Open the throttle and fly a turn until the line is at full length.
+  run(3, () => 1, 1, [2.98]);
+  // Let off. Ship coasts down under its own momentum - the exact case that used to shed the line.
+  run(1.2, (u) => Math.max(0, 1 - u), 0, [0.2, 0.45, 0.7, 1.15]);
+  // Back on the throttle: the line is spun out of the same place it went in.
+  run(1.2, (u) => u, 1, [0.35, 1.18]);
+}
+
+// Compose the contact sheet.
+const cols = Math.min(4, panels.length);
+const rows = Math.ceil(panels.length / cols);
+const sheet = document.createElement('canvas');
+sheet.width = cols * PW; sheet.height = rows * PH;
+const g = sheet.getContext('2d');
+g.fillStyle = '#05070d'; g.fillRect(0, 0, sheet.width, sheet.height);
+panels.forEach((p, i) => {
+  const x = (i % cols) * PW, y = Math.floor(i / cols) * PH;
+  g.drawImage(p.img, x, y);
+  g.strokeStyle = 'rgba(255,255,255,0.16)'; g.strokeRect(x + 0.5, y + 0.5, PW - 1, PH - 1);
+  g.font = 'bold 19px monospace'; g.fillStyle = '#fff';
+  g.fillText(p.label, x + 14, y + 30);
+  g.font = '16px monospace'; g.fillStyle = '#7fd4ff';
+  g.fillText(`line ${p.span.toFixed(1)} WU`, x + 14, y + 54);
+});
+document.body.appendChild(sheet);
+sheet.style.width = '100%';
+
+window.__LAB__ = {
+  strip: STRIP,
+  speed: SPEED,
+  panels: panels.map((p) => ({ label: p.label, spanWU: +p.span.toFixed(1), live: p.live, forgeVisible: p.forge })),
+  // The headline number: how far the line's start ever drifted from the engine, across every frame.
+  worstHeadGapWU: +Math.max(...gaps).toFixed(3),
+  sheet: { w: sheet.width, h: sheet.height },
+  ready: true,
+};
+</script>
+</body>
+</html>

@@ -189,10 +189,11 @@ test('braking lights BOTH bow retros, exhausting along the nose', () => {
     assert.equal(retros.length, 2, `${driveId}: braking must fire the symmetric bow pair`);
     assert.deepEqual(retros.map((j) => j.side).sort(), [-1, 1], `${driveId}: one retro per hull`);
     for (const j of retros) {
-      assert.ok(j.dirX > 0.999, `${driveId}: retro exhaust must leave along the nose (+X at rot 0), got ${j.dirX}`);
+      assert.ok(j.dirX > 0.85, `${driveId}: retro exhaust must leave forward (+X hemisphere at rot 0), got ${j.dirX}`);
       assert.ok(j.x > 0, `${driveId}: retros must be mounted forward of the CoM, got x=${j.x}`);
     }
     assert.ok(Math.abs(retros[0].intensity - retros[1].intensity) < 1e-9, `${driveId}: retro pair must be balanced`);
+    assert.ok(Math.abs(retros[0].dirZ + retros[1].dirZ) < 1e-9, `${driveId}: retro pair must splay symmetrically`);
   }
 });
 

@@ -58,9 +58,9 @@ export function shipAxes(rot) {
 // because that is where they read from a chase camera; the stern pair stays inboard of the main
 // nozzle so it never reads as a second engine.
 export const RCS_GEOMETRY = Object.freeze({
-  bowLong: 0.62,
+  bowLong: 0.46,
   sternLong: 0.42,
-  side: 0.40,
+  side: 0.22,
 });
 
 // Below this fraction of available authority a jet is not worth drawing: it would be a one-pixel
@@ -178,15 +178,18 @@ export function resolveRcsFirings(actuators, pose, scale, out = []) {
   count = emitLateral(out, records, count, 'stern', sternLat, -RCS_GEOMETRY.sternLong,
     fx, fz, rx, rz, px, pz, radius, lat, yaw);
 
-  // Aft push at the bow: the retro pair, symmetric so it produces no yaw. Kept as its own case
-  // rather than folded into the lateral solver because a longitudinal push has no side to be
-  // opposite of — it legitimately lights BOTH bow jets, and that is the one time it should.
+  // Aft push at the bow: the retro pair, symmetric so it produces no yaw.
+  // Splay the exhaust outward (~20 degrees) so the jets visibly clear the nose and flanks.
   if (rev > RCS_DEADBAND) {
+    const splay = 0.349;
+    const cosSplay = Math.cos(splay);
+    const sinSplay = Math.sin(splay);
     for (let side = -1; side <= 1; side += 2) {
+      const ex = fx * cosSplay + rx * (side * sinSplay);
+      const ez = fz * cosSplay + rz * (side * sinSplay);
       writeFiring(out, records, count++, 'bow', side, side < 0 ? 'reverse-left' : 'reverse-right',
         RCS_GEOMETRY.bowLong,
-        // Ship pushed aft (-nose); exhaust therefore leaves along the nose.
-        -fx, -fz, rev, CHANNELS_REVERSE,
+        -ex, -ez, rev, CHANNELS_REVERSE,
         fx, fz, rx, rz, px, pz, radius);
     }
   }

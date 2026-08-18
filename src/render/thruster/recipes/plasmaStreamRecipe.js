@@ -185,37 +185,40 @@ export const PLAYER_PLASMA_STREAM_RECIPE = freezeDeep({
  * impulsive attitude pops (strafe, yaw) stay on the burst system, where that model is correct.
  */
 export const PLAYER_RETRO_VOLUME_RECIPE = freezeDeep({
-  id: 'player_retro_volume_v1',
-  lengthWU: 5.2,
-  exitRadiusWU: 0.44,
-  tailFlare: 2.6,
-  spread: 0.5,
-  fadeStart: 0.34,
+  id: 'player_retro_volume_v2',
+  lengthWU: 4.8,
+  exitRadiusWU: 0.18,
+  tailFlare: 1.75,
+  spread: 0.75,
+  fadeStart: 0.42,
 
-  // Shorter and stubbier than the main drive, so the structure has to be correspondingly finer or
-  // a single eddy fills the whole jet.
-  noiseScale: 0.45,
-  stretch: 2.2,
-  threshold: 0.46,
-  sigma: 0.62,
-  veil: 0.05,
-  coherence: 0.2,
-  coreDensity: 0.55,
-  radialTight: 2.1,
+  // Fine-grained supersonic needle filaments with high axial stretch
+  noiseScale: 0.22,
+  stretch: 7.5,
+  threshold: 0.58,
+  sigma: 0.85,
+  veil: 0.01,
+  coherence: 0.35,
+  coreDensity: 0.88,
+  radialTight: 3.8,
 
-  warpAmp: 0.9,
-  warpScale: 0.5,
-  warpGrowth: 2.2,
-  flowSpeed: 7.5,
+  warpAmp: 0.45,
+  warpScale: 0.35,
+  warpGrowth: 1.2,
+  flowSpeed: 22.0,
 
-  shockAmp: 0.0,
-  radiance: 2.0,
-  // A cooler, whiter cast than the main drive: cold gas thrusters, not the fusion core.
-  coreColor: [0.96, 0.99, 1.0],
-  midColor: [0.30, 0.72, 1.0],
-  edgeColor: [0.05, 0.18, 0.78],
+  // Supersonic shock diamond train
+  shockAmp: 0.55,
+  shockPitch: 0.95,
+  shockDecay: 3.2,
+  radiance: 3.8,
 
-  // Retro jets are small on screen, so they never need the main drive's marching budget.
-  minSteps: 8,
-  maxSteps: 26,
+  // High-intensity white-hot core with electric cyan mid and deep sapphire boundary
+  coreColor: [1.0, 1.0, 1.0],
+  midColor: [0.65, 0.92, 1.0],
+  edgeColor: [0.08, 0.35, 0.95],
+
+  // Sharp raymarching steps for crisp needle silhouette without banding
+  minSteps: 16,
+  maxSteps: 40,
 });
