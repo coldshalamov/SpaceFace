@@ -1,0 +1,110 @@
+{
+  "schema": "spaceface.softCardInventory.v1",
+  "title": "Soft-card / blurry-square inventory",
+  "rule": "A camera-facing soft square or disc may not stand in for a designed object. Distant background stars are the only exception, and only while they stay tiny, bright, and at sky depth. If the player can fly past it, it is not a star.",
+  "exceptionIds": ["bg-l3-stars", "bg-l4-flares"],
+  "scanRoots": ["src/render", "src/vfxnext", "src/ui/asteroid"],
+  "scanPatterns": [
+    "new THREE\\.Points\\b",
+    "new THREE\\.Sprite\\b",
+    "new THREE\\.SpriteMaterial\\b",
+    "new THREE\\.PointsMaterial\\b",
+    "makeHalo\\(",
+    "makeGlowTexture\\(",
+    "makeStarTexture\\(",
+    "gl_PointSize",
+    "billboardGeometry\\(",
+    "_makeHazardTexture",
+    "createInstancedSpriteBuckets\\("
+  ],
+  "entries": [
+    {
+      "id": "bg-l3-stars",
+      "status": "exception",
+      "playerSees": "Tiny bright stars with depth in the sky",
+      "technique": "Point sprites with round falloff, at sky depth",
+      "whyListed": "This is the one place the cheap card reads as the real thing: small, bright, far away.",
+      "files": ["src/render/spaceBackground.js"]
+    },
+    {
+      "id": "bg-l4-flares",
+      "status": "exception",
+      "playerSees": "A few brighter star flares in the same sky",
+      "technique": "Distant camera-facing flare cards at sky depth",
+      "whyListed": "Same exception as the star field: they stay in the sky, not in the flight path.",
+      "files": ["src/render/spaceBackground.js"]
+    },
+    {
+      "id": "bg-planet-impostors",
+      "status": "distant-impostor",
+      "playerSees": "Distant planets as round discs in the sky",
+      "technique": "Textured camera-facing sprites of an authored planet bake",
+      "whyListed": "Allowed only as a far-sky stand-in for a designed planet. Not a license to sprite a field of rocks.",
+      "files": ["src/render/spaceBackground.js"]
+    },
+    {
+      "id": "bg-comet",
+      "status": "banned-live",
+      "playerSees": "A rare smeared streak across the sky",
+      "technique": "Camera-facing sprite painted with a CSS-style gradient",
+      "whyListed": "A designed comet is a head plus an ion tail with structure, not a translucent rectangle.",
+      "files": ["src/render/spaceBackground.js"]
+    },
+    {
+      "id": "vfx-particle-points",
+      "status": "banned-live",
+      "playerSees": "Sparks, mining chips, and trail dots as round glows",
+      "technique": "GPU point sprites with gaussian falloff",
+      "whyListed": "Confetti standing in for fragments, embers, and exhaust.",
+      "files": ["src/render/vfx.js", "src/render/engineTrailSurfaces.js", "src/render/trailTexture.js"]
+    },
+    {
+      "id": "vfx-sprite-puffs",
+      "status": "banned-live",
+      "playerSees": "Flashes, smoke puffs, and shock rings as translucent cards",
+      "technique": "Instanced camera-facing quads with radial-gradient / noise-blob textures",
+      "whyListed": "Explosions, muzzle, and dust as Super Mario clouds.",
+      "files": ["src/render/vfx.js", "src/render/combat/instancedSpritePool.js"]
+    },
+    {
+      "id": "star-texture-factory",
+      "status": "factory",
+      "playerSees": "Not on screen by itself",
+      "technique": "Shared radial-gradient texture used by stars and by every halo sprite",
+      "whyListed": "The factory that makes the blurry square. Stars may keep using it. World objects may not.",
+      "files": ["src/render/canvasTextures.js"]
+    },
+    {
+      "id": "legacy-starfield",
+      "status": "unused",
+      "playerSees": "Nothing on the live route (spaceBackground replaced this)",
+      "technique": "Point sprites with a round texture",
+      "whyListed": "Dead path. Do not revive it as a world-object renderer.",
+      "files": ["src/render/starfield.js"]
+    },
+    {
+      "id": "graphics-lab-sprites",
+      "status": "lab-only",
+      "playerSees": "Lab demos, not the game",
+      "technique": "Sprite plumes and halos used as teaching examples",
+      "whyListed": "The lab still teaches the banned cheat as if it were the production method.",
+      "files": ["src/render/graphicsLab.js"]
+    },
+    {
+      "id": "asteroid-tier-badges",
+      "status": "ui-overlay",
+      "playerSees": "Small tier icons floating on scanned rocks in the mining UI",
+      "technique": "Camera-facing sprites with an authored badge texture",
+      "whyListed": "UI chrome, not the rock. Keep off the world-object list.",
+      "files": ["src/ui/asteroid/asteroidRenderer3d.js"]
+    },
+    {
+      "id": "vfxnext-billboards",
+      "status": "library-unwired",
+      "playerSees": "Nothing on the live route yet",
+      "technique": "Camera-facing billboard sparks, flashes, and smoke",
+      "whyListed": "The next VFX library still builds sparks and smoke from the same cards. Do not promote it as-is.",
+      "files": ["src/vfxnext/core/gpuAged.js"]
+    }
+  ]
+}
