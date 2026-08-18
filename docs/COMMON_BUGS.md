@@ -28,6 +28,7 @@
 9. [The Massline breaks during ordinary piloting](#9-the-massline-breaks-during-ordinary-piloting)
 10. [Check-tooling traps: hidden links, fail-fast aggregates, golden churn](#10-check-tooling-traps)
 11. [Chrome Continue is empty after playing in the desktop app](#11-chrome-continue-is-empty-after-playing-in-the-desktop-app)
+12. ["check:assets:live is just red" — sometimes it is not](#12-checkassetslive-is-just-red--sometimes-it-is-not)
 
 ---
 
@@ -421,6 +422,45 @@ in Electron's own profile. Those are two locked drawers, not two views of one ca
 without the launcher env do **not** touch the player drawer.
 
 **Wrong first look:** forking gameplay, ports, or "Chrome vs Electron are different games."
+
+---
+
+## 12. "check:assets:live is just red" — sometimes it is not
+
+**Symptom:** `npm run check:assets:live` fails and the reflex is to skip it, because the working
+agreement lists it as red whenever the tree is dirty or `HEAD` is ahead of `origin/master`.
+
+**Why that reflex is dangerous:** those two conditions are *guards the probe checks first*. It
+refuses to run at all and says so, naming the dirty paths or the two commits. If it gets past them
+it has actually booted the game, and anything it reports after that is a real observation about the
+live route. Read which assertion failed before dismissing it.
+
+**Observed 2026-08-18 on a clean tree with `HEAD == origin/master`:**
+
+```
+Helios must finish authored admission on the live route:
+[{"stationId":"station_helios","archetypeGlb":"place_station_trade_hub",
+  "assetState":"missing-mesh","presented":false},
+ {"stationId":"station_tethys","archetypeGlb":"place_station_trade_hub",
+  "assetState":"missing-mesh","presented":false}]
+```
+
+`missing-mesh` is not "still loading" — it is the fallback used when the station root carries no
+`authoredAssetState` at all. Both stations that use `place_station_trade_hub` are affected, and
+that is the first station all three careers dock at.
+
+**What is known:** the artifact is present at both source and release
+(`assets/ships/{parts,release/parts}/places/place_station_trade_hub.glb`) and is unchanged across
+`c8cdb6b7`, `bd8b2e0b` and current `HEAD`, so this is not a recent regression. It is **79 MB**
+source and **79 MB** release — a release that saved 0.8% — which makes a decode or admission
+failure the first hypothesis rather than a missing file.
+
+**Not yet confirmed:** whether the station is actually invisible to a player. The probe screenshot
+`.devshots/authored-assets-live.jpg` frames open space, not a station, so it neither proves nor
+disproves it. Confirming needs a station-facing frame.
+
+**Wrong first look:** treating the failure as the documented dirty-tree condition and moving on.
+That is how this one stayed invisible.
 
 ---
 
