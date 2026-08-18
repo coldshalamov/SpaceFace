@@ -343,6 +343,36 @@ try {
     }
     return out;
   });
+  report.hullMark = await page.evaluate(() => {
+    const out = {};
+    for (const sel of ['.sf-schematic', '.sf-sch-ship-wrap', '.sf-sch-ship--empty', '.sf-sch-ship-fill-crop', '.sf-sch-ship--fill']) {
+      const el = document.querySelector(sel);
+      if (!el) { out[sel] = null; continue; }
+      const r = el.getBoundingClientRect();
+      const cs = getComputedStyle(el);
+      out[sel] = { x: +r.x.toFixed(1), y: +r.y.toFixed(1), w: +r.width.toFixed(1), h: +r.height.toFixed(1),
+                   pos: cs.position, left: cs.left, bottom: cs.bottom, top: cs.top, disp: cs.display };
+    }
+    const g = document.querySelector('.sf-sch-ship--empty .sf-sch-hull');
+    if (g) { try { const bb = g.getBBox(); out.hullBBox = { x: +bb.x.toFixed(1), y: +bb.y.toFixed(1), w: +bb.width.toFixed(1), h: +bb.height.toFixed(1) }; } catch (e) { out.hullBBox = 'err ' + e.message; } }
+    const svg = document.querySelector('.sf-sch-ship--empty');
+    if (svg) {
+      out.svgViewBox = svg.getAttribute('viewBox');
+      const scs = getComputedStyle(svg);
+      out.svgPaint = { display: scs.display, opacity: scs.opacity, visibility: scs.visibility, overflow: scs.overflow, zIndex: scs.zIndex, filter: scs.filter, transform: scs.transform };
+      out.svgHtml = svg.outerHTML.slice(0, 240);
+    }
+    const path = document.querySelector('.sf-sch-ship--empty .sf-sch-hull path');
+    if (path) {
+      const pcs = getComputedStyle(path);
+      out.pathPaint = { stroke: pcs.stroke, strokeWidth: pcs.strokeWidth, fill: pcs.fill, opacity: pcs.opacity, display: pcs.display, visibility: pcs.visibility };
+      const pr = path.getBoundingClientRect();
+      out.pathRect = { x: +pr.x.toFixed(1), y: +pr.y.toFixed(1), w: +pr.width.toFixed(1), h: +pr.height.toFixed(1) };
+    } else { out.pathPaint = 'NO PATH FOUND'; }
+    return out;
+  });
+  console.log('--- hull mark geometry ---');
+  console.log(JSON.stringify(report.hullMark, null, 1));
   console.log('--- still plated ---');
   for (const p of report.plates) console.log(`  [${p.host}] ${p.cls}  ${p.w}x${p.h}  bg=${p.bg}${p.grad ? '+grad' : ''} border=${p.border}`);
   await shot(page, '02-fight-1440');
@@ -358,7 +388,9 @@ try {
   await page.screenshot({ path: OUT + '04-dock-crop.png', clip: dock });
   const left = await page.evaluate(() => { const e = document.querySelector('.sf-leftstack'); const r = e.getBoundingClientRect(); return { x: Math.max(0, r.x - 14), y: Math.max(0, r.y - 14), width: r.width + 28, height: r.height + 28 }; });
   await page.screenshot({ path: OUT + '05-leftstack-crop.png', clip: left });
-  console.log('captured 04-dock-crop, 05-leftstack-crop');
+  const sch = await page.evaluate(() => { const e = document.querySelector('.sf-schematic'); const r = e.getBoundingClientRect(); return { x: Math.max(0, r.x - 8), y: Math.max(0, r.y - 8), width: r.width + 16, height: r.height + 16 }; });
+  await page.screenshot({ path: OUT + '06-schematic.png', clip: sch, scale: 'device' });
+  console.log('captured 04-dock-crop, 05-leftstack-crop, 06-schematic');
 
   writeFileSync(OUT + 'report.json', JSON.stringify(report, null, 2));
   console.log('\nreport →', OUT + 'report.json');

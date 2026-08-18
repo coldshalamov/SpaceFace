@@ -37,6 +37,7 @@ import { contactThreatTier, contactStateWord, isHostileToPlayer, isWreckLike, wr
 import { verbAcceptsType } from '../data/interactionDescriptorCatalog.js';
 import { weaponHeatSummary } from './weaponHeat.js';
 import { createPowerRail, readRailModel } from './powerRail.js';
+import { SHIP_SILHOUETTES } from '../data/shipSilhouettes.js';
 import { computeLeadPipOverlay, leadSolution, primaryProjSpeed, hasBallisticWeapon } from '../ai/gunnery.js';
 import { confirm } from './confirm.js';
 import { bestKnownSellFor, applyTradeNavigation } from './screens/market.js';
@@ -1066,6 +1067,32 @@ export function createHud(ctx, alerts) {
     '</div>';
   bars.appendChild(conditionHead);
 
+  // J07: the ship-condition mark was a static PNG of a Scout, so the instrument showed a hull the
+  // player had very likely never flown. It is now a vector silhouette of the ACTIVE hull, drawn
+  // from the same table the shipyard uses (src/data/shipSilhouettes.js).
+  //
+  // The DOM shape is unchanged on purpose: an "empty" mark, a fill mark inside .sf-sch-ship-fill-crop
+  // (whose height is the --hull-pct var), and the fill line. Swapping <img> for <svg> inside those
+  // wrappers keeps the existing flask-fill mechanic working untouched.
+  //
+  // The silhouettes are authored nose-RIGHT in a 48x28 box; this instrument reads top-down with the
+  // nose UP. The quarter turn is applied in CSS (.sf-sch-hull), NOT as an SVG transform attribute:
+  // measured in the running game, the attribute did not take effect here and the hull drew
+  // unrotated and outside its own box. CSS transform on an SVG element wins over the attribute, so
+  // driving it from one place removes the ambiguity entirely.
+  function hullMarkSvg(cls, defId) {
+    const body = SHIP_SILHOUETTES[defId] || SHIP_SILHOUETTES.ship_kestrel;
+    return '<svg class="sf-sch-ship ' + cls + '" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" '
+      + 'aria-hidden="true" preserveAspectRatio="xMidYMid meet">'
+      + '<g class="sf-sch-hull">' + body + '</g>'
+      + '</svg>';
+  }
+  function playerHullId(entity) {
+    const d = entity && entity.data;
+    return (d && (d.defId || d.shipId)) || 'ship_kestrel';
+  }
+  let schematicHullId = playerHullId(state.entities.get(state.playerId));
+
   const schematic = document.createElement('div');
   schematic.className = 'sf-schematic';
   schematic.innerHTML =
@@ -1074,9 +1101,9 @@ export function createHud(ctx, alerts) {
       '<circle class="sf-sch-shield" cx="50" cy="50" r="46" transform="rotate(-90 50 50)"/>' +
     '</svg>' +
     '<div class="sf-sch-ship-wrap">' +
-      '<img class="sf-sch-ship sf-sch-ship--empty" src="./assets/ui/hud/ship-condition-scout.png" alt="" draggable="false">' +
+      hullMarkSvg('sf-sch-ship--empty', schematicHullId) +
       '<div class="sf-sch-ship-fill-crop">' +
-        '<img class="sf-sch-ship sf-sch-ship--fill" src="./assets/ui/hud/ship-condition-scout.png" alt="" draggable="false">' +
+        hullMarkSvg('sf-sch-ship--fill', schematicHullId) +
       '</div>' +
       '<div class="sf-sch-fill-line"></div>' +
     '</div>';
@@ -1119,6 +1146,32 @@ export function createHud(ctx, alerts) {
   // context rail now that its stable home exists; the module keeps an absolute fallback for boot.
   const existingComms = document.getElementById('sf-comms');
   if (existingComms) leftContext.prepend(existingComms);
+  // J07 comms ribbon. The FEED was already adopted into this column; the two floating chrome
+  // buttons were not -- .sf-comm-backlog-btn sat at (20,20) and #sf-contact-hail at (85,20), a
+  // detached pair of boxes in the top-left corner with nothing around them.
+  //
+  // They are adopted into a quiet frequency tape at the head of the contextual column: one row,
+  // a channel label, and the two live nodes re-parented rather than rebuilt. Re-parenting is the
+  // same trick the feed above uses, and it keeps every listener those modules installed.
+  const commsTape = document.createElement('div');
+  commsTape.className = 'sf-commtape';
+  commsTape.innerHTML = '<span class="sf-commtape__band">BAND</span>'
+    + '<span class="sf-commtape__slots"></span>';
+  const commsTapeSlots = commsTape.querySelector('.sf-commtape__slots');
+  // Both modules mount into #ui-root during boot. If either has not arrived yet, adopt it on the
+  // next frame rather than leaving an empty housing behind (SCREENS_A 1.4: contextual surfaces
+  // never leave an empty housing).
+  const adoptCommsChrome = () => {
+    for (const id of ['sf-comm-backlog-btn', 'sf-contact-hail']) {
+      const node = document.getElementById(id) || document.querySelector('.' + id);
+      if (node && node.parentNode !== commsTapeSlots) commsTapeSlots.appendChild(node);
+    }
+    if (!commsTapeSlots.childElementCount) commsTape.setAttribute('hidden', '');
+    else commsTape.removeAttribute('hidden');
+  };
+  adoptCommsChrome();
+  const _commsAdoptFrame = requestAnimationFrame(adoptCommsChrome);
+  leftContext.prepend(commsTape);
   // Shield ring: dasharray = full circumference, dashoffset grows as shields drop (erasing the ring).
   // Measured after mount so getTotalLength() reads the live geometry (the fallback equals 2πr anyway).
   const SHIELD_RING_LEN = (() => { try { return schShield.getTotalLength() || 2 * Math.PI * 46; } catch (e) { return 2 * Math.PI * 46; } })();
@@ -3982,6 +4035,16 @@ export function createHud(ctx, alerts) {
       // Use a resolved percentage token rather than CSS multiplication. The latter is not
       // consistently accepted by the Chromium versions used by browser and Electron builds,
       // which can leave the damage fill stuck at its fallback height.
+      // Re-cut the silhouette when the player changes hull. Cheap: a string compare per frame, and
+      // the innerHTML write only happens on an actual swap (shipyard purchase, save load).
+      const liveHullId = playerHullId(p);
+      if (liveHullId !== schematicHullId) {
+        schematicHullId = liveHullId;
+        const emptyMark = schematic.querySelector('.sf-sch-ship--empty');
+        const fillMark = schematic.querySelector('.sf-sch-ship--fill');
+        if (emptyMark) emptyMark.outerHTML = hullMarkSvg('sf-sch-ship--empty', liveHullId);
+        if (fillMark) fillMark.outerHTML = hullMarkSvg('sf-sch-ship--fill', liveHullId);
+      }
       setCssVar(schematic, '--hull-pct', `${(hullFrac * 100).toFixed(1)}%`);
       setStyle(schShield, 'strokeDashoffset', (SHIELD_RING_LEN * (1 - shieldFrac)).toFixed(1));
       setClass(schematic, 'sf-sch-critical', hullFrac < 0.25);

@@ -1892,7 +1892,8 @@ function injectHudCss() {
   }
   .sf-sch-ship--empty {
     position:absolute; inset:0; z-index:1;
-    filter:grayscale(90%) brightness(0.22) contrast(1.1) opacity(0.5);
+    /* No grayscale/brightness crush: that filter existed to dim a full-colour raster. Applied to a
+       vector outline it erases it. The outline is dimmed by its own stroke colour instead. */
     transition:filter .22s ease;
   }
   .sf-sch-ship-fill-crop {
@@ -1905,6 +1906,45 @@ function injectHudCss() {
     position:absolute; left:0; bottom:0; width:62px; height:74px; max-width:none;
     filter:drop-shadow(0 0 6px rgba(78, 195, 230, 0.4)) saturate(1.25) brightness(1.2);
     transition:filter .22s ease;
+  }
+  /* J07: the mark is a vector hull now, not a raster Scout. The empty layer is the outline you are
+     losing; the fill layer is the hull you still have. Both are the SAME geometry, so the fill line
+     reads as a waterline across one shape rather than a seam between two images. */
+  /* Both layers must be the SAME box, bottom-anchored, or the waterline cuts across a shape that
+     has shifted relative to the outline behind it. The old raster pair shared one aspect ratio by
+     accident; the vector pair has to be told.
+     .sf-schematic svg { height:100% } sits above this file at (0,1,1) and never applied to the old
+     <img> marks. It applies to these, and it squashed the fill layer to the crop's height so the
+     hull deformed as damage came off. Matching that specificity is the fix; measuring the rendered
+     boxes in the running game is the only reason it was found. */
+  .sf-schematic .sf-sch-ship--empty, .sf-schematic .sf-sch-ship--fill {
+    position:absolute; left:0; bottom:0; top:auto; width:62px; height:74px; max-width:none;
+  }
+  /* The quarter turn. transform-box:view-box pins the origin to the 48x48 viewBox rather than the
+     group's own bbox, so the maths is stable whatever hull is loaded: centre the 48x28 body in the
+     square (translate 10 down), then rotate about the square's centre. Reading right to left, CSS
+     applies the translate first. */
+  .sf-schematic .sf-sch-hull {
+    transform-box:view-box; transform-origin:24px 24px;
+    transform:rotate(-90deg) translate(0px, 10px);
+  }
+  .sf-sch-ship--empty .sf-sch-hull { fill:none; stroke:var(--hud-muted, #718298); stroke-width:1.1; }
+  .sf-sch-ship--empty .sf-sch-hull .sx-shipmark__cut,
+  .sf-sch-ship--empty .sf-sch-hull .sx-shipmark__battery { stroke-opacity:.45; }
+  .sf-sch-ship--fill .sf-sch-hull {
+    fill:color-mix(in srgb, var(--hud-cyan, #4ec3e6) 22%, transparent);
+    stroke:var(--hud-cyan, #4ec3e6); stroke-width:1.2;
+  }
+  .sf-sch-ship--fill .sf-sch-hull .sx-shipmark__cut { fill:none; stroke-opacity:.7; }
+  .sf-sch-ship--fill .sf-sch-hull .sx-shipmark__battery { fill:var(--hud-cyan, #4ec3e6); stroke:none; }
+  .sf-sch-ship--fill .sf-sch-hull .sx-shipmark__sensor { fill:var(--hud-paper, #e7edf5); stroke:none; }
+  /* Damage state is carried by the stroke colour of the hull you have left, not by a wash over the
+     whole instrument -- the word CRITICAL is already printed alongside for forced-colors. */
+  .sf-schematic.sf-sch-warning .sf-sch-ship--fill .sf-sch-hull {
+    stroke:var(--hud-amber, #dfa04e); fill:color-mix(in srgb, var(--hud-amber, #dfa04e) 20%, transparent);
+  }
+  .sf-schematic.sf-sch-critical .sf-sch-ship--fill .sf-sch-hull {
+    stroke:var(--hud-red, #e0665f); fill:color-mix(in srgb, var(--hud-red, #e0665f) 24%, transparent);
   }
   .sf-sch-fill-line {
     position:absolute; left:6%; right:6%; bottom:var(--hull-pct, 100%);
@@ -2018,6 +2058,39 @@ function injectHudCss() {
     background:none; box-shadow:none !important; text-shadow:var(--sf-ink);
   }
   .sf-mission-tracker, .sf-nav-readout { ${bracketCss()} }
+  /* J07 comms ribbon: a quiet frequency tape at the head of the left contextual column, replacing
+     two detached boxes floating in the top-left corner. The adopted nodes keep their own listeners;
+     only their positioning is neutralised, because both were authored as position:absolute chrome
+     and would otherwise still be pinned to the viewport corner inside their new parent. */
+  .sf-commtape {
+    display:flex; align-items:center; gap:9px; width:100%; padding:2px 0 4px;
+    border-bottom:1px solid rgba(148,178,205,.16);
+  }
+  .sf-commtape[hidden] { display:none !important; }
+  .sf-commtape__band {
+    font-family:var(--hud-display); font-size:12px; font-weight:700; letter-spacing:.2em;
+    color:var(--hud-muted); text-shadow:var(--sf-ink);
+  }
+  .sf-commtape__slots { display:flex; align-items:center; gap:7px; pointer-events:auto; }
+  .sf-commtape .sf-comm-backlog-btn,
+  .sf-commtape #sf-contact-hail {
+    position:static !important; left:auto !important; top:auto !important; z-index:auto !important;
+    width:auto !important; height:auto !important; margin:0 !important;
+  }
+  .sf-commtape .sf-comm-backlog-btn {
+    padding:2px 8px; background:none; border:none; box-shadow:none;
+    font-family:var(--hud-display); font-size:12px; font-weight:700; letter-spacing:.14em;
+    color:var(--hud-cyan); text-shadow:var(--sf-ink); cursor:pointer;
+  }
+  .sf-commtape .sf-comm-backlog-btn:hover { color:var(--hud-paper); }
+  .sf-commtape .sf-contact-hail__button {
+    padding:2px 8px; background:none; border:none; box-shadow:none;
+    font-family:var(--hud-display); font-size:12px; font-weight:700; letter-spacing:.14em;
+    color:var(--hud-paper); text-shadow:var(--sf-ink);
+  }
+  .sf-commtape .sf-contact-hail__button[disabled] { color:var(--hud-muted); }
+  /* The hail panel is a popover off the button; keep it anchored to the tape, not the old corner. */
+  .sf-commtape .sf-contact-hail__panel { left:0 !important; top:30px !important; }
   /* The tracker used a 2px amber top border to say "this is the mission". De-boxed, that job goes
      to a single amber rule under the title — one stroke, still the loudest thing in the column. */
   .sf-mission-tracker { padding:8px 10px 9px; }

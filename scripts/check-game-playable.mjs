@@ -451,7 +451,15 @@ try {
   // SPACEFACE_PLAYER_STORE_DIR is set. Reporting a designed-optional 404 as a failure is how a
   // check earns a reputation for crying wolf and stops being run at all.
   const OPTIONAL_ROUTES = [/__spaceface_player_store/];
-  const assets = [...new Set(missingAssets)].filter((a) => !OPTIONAL_ROUTES.some((re) => re.test(a)));
+  // ERR_ABORTED is not a missing asset. The streaming/LOD layer cancels requests it no longer needs,
+  // and the harness's own reload cancels whatever was in flight. Neither is the game being broken,
+  // and reporting them as such is how a check earns a reputation for crying wolf. What actually
+  // matters -- "is the player's ship there" -- is asserted directly by HULL, which cannot be
+  // satisfied by a cancelled request. Aborts are still printed, just not fatal.
+  const all = [...new Set(missingAssets)].filter((a) => !OPTIONAL_ROUTES.some((re) => re.test(a)));
+  const aborted = all.filter((a) => /ERR_ABORTED/.test(a));
+  const assets = all.filter((a) => !/ERR_ABORTED/.test(a));
+  if (aborted.length) console.log('  note   ' + aborted.length + ' cancelled request(s) (not a failure):' + NLPAD + aborted.slice(0, 5).join(NLPAD));
   record('ASSETS', assets.length === 0, assets.length === 0
     ? 'every request served'
     : assets.length + ' failed request(s):' + NLPAD + assets.slice(0, 10).join(NLPAD));
