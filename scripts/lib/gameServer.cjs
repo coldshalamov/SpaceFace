@@ -20,6 +20,7 @@ const http = require('node:http');
 const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const path = require('node:path');
+const { attachPlayerStore } = require('./playerSaveStore.cjs');
 
 // MIME types — ONE table for browser + Electron + every asset the game ships.
 // If you add a new asset format (texture, font, model), add it HERE only.
@@ -103,12 +104,14 @@ function isInsideRoot(file, resolvedRoot) {
  * @param {boolean} [opts.async=true]   Use async filesystem metadata reads (required by Electron).
  * @param {Array}  [opts.extraRoutes]   Extra route handlers: [{ test(req), handle(req, res, ctx) }].
  *                                      Used by the browser server for /__shot, etc.
+ * @param {string} [opts.playerStoreDir] Shared Browser/Electron save directory. Omitted in tests
+ *                                      and isolated evidence so player slots stay untouched.
  * @returns {http.Server}               An http.Server (not yet listening).
  */
 function createGameServer(opts) {
   const root = path.resolve(opts.root);
   const useAsync = opts.async !== false;
-  const extraRoutes = opts.extraRoutes || [];
+  const extraRoutes = attachPlayerStore(opts);
   const staticHeaders = Object.freeze({ ...(opts.staticHeaders || {}) });
   const staticHeadersByPath = Object.fromEntries(Object.entries(opts.staticHeadersByPath || {})
     .map(([key, headers]) => [String(key).replace(/\\/g, '/').replace(/^\//, ''), Object.freeze({ ...headers })]));
@@ -163,12 +166,29 @@ function createGameServer(opts) {
       if (!isInsideRoot(file, root)) { res.writeHead(403); res.end('Forbidden'); return; }
 
       const relativePath = path.relative(root, file).split(path.sep).join('/');
+      // `no-cache` alone told the cache to revalidate but gave it NOTHING to revalidate against --
+      // no ETag, no Last-Modified. A cache entry with no validator cannot be checked, so a bad or
+      // truncated body (an aborted 16 MB GLB, say) becomes permanent: every relaunch is served the
+      // same broken copy, no code change can dislodge it, and the game reports a missing asset
+      // forever. That is exactly how one player's desktop app stayed unplayable for days across
+      // three separate fixes.
+      //
+      // A size+mtime ETag makes revalidation real: unchanged files answer 304 (so boots stay fast)
+      // and any changed or previously-poisoned entry is replaced with the bytes on disk.
+      const etag = `"${stats.size.toString(16)}-${Math.floor(stats.mtimeMs).toString(16)}"`;
+      if (req.headers['if-none-match'] === etag) {
+        res.writeHead(304, { ETag: etag, 'Cache-Control': 'no-cache' });
+        res.end();
+        return;
+      }
       res.writeHead(200, {
         ...staticHeaders,
         ...(staticHeadersByPath[relativePath] || {}),
         'Content-Type': MIME[path.extname(file).toLowerCase()] || 'application/octet-stream',
         'Content-Length': stats.size,
         'Cache-Control': 'no-cache',
+        ETag: etag,
+        'Last-Modified': new Date(stats.mtimeMs).toUTCString(),
       });
       // GLBs routinely carry tens of megabytes of embedded KTX2 data. A whole-file read stages a
       // second copy in the server heap and, in packaged Electron, synchronously blocks the main

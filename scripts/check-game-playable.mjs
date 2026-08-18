@@ -50,6 +50,12 @@ const ELECTRON = process.argv.includes('--electron');
 // says nothing about a save written by an OLDER build, which is the case that broke. Saves are
 // READ ONLY here: they are copied into a throwaway profile, never opened for writing.
 const REAL_SAVES = process.argv.includes('--real-saves');
+// --player-profile launches Electron EXACTLY as SpaceFace-Desktop.bat does: the canonical port
+// 41788, the player's own user-data directory, their real settings profile and their real GPU
+// state. The isolated evidence profile differs in every one of those, so a green isolated run is
+// not evidence about the app the player actually launches. Back up the save directory before using
+// this: the running game autosaves into it.
+const PLAYER_PROFILE = process.argv.includes('--player-profile');
 const SLOT_ARG = (() => { const i = process.argv.indexOf('--slot'); return i > 0 ? process.argv[i + 1] : null; })();
 const pw = await loadPlaywright();
 const { chromium } = pw;
@@ -67,6 +73,7 @@ let report_realSaves = null;
 let phase = 'startup';
 const pageErrors = [];
 const missingAssets = [];
+const diagnostics = [];
 
 function record(step, ok, detail) {
   results.push({ step, ok, detail });
@@ -152,19 +159,34 @@ async function openElectronRoute() {
   if (!electron) throw new Error('this Playwright build has no _electron; cannot drive the desktop route');
   // Isolated evidence profile: a second NON-isolated Electron shares the player's real save
   // directory and can autosave over their game. Never point this check at the live profile.
-  electronLaunch = createIsolatedElectronLaunch({
-    root: ROOT,
-    taskId: 'playable',
-    timeout: 180_000,
-    baseEnv: { ...process.env, SPACEFACE_EVIDENCE_ALLOW_BACKGROUND_EXECUTION: '1' },
-  });
+  if (PLAYER_PROFILE) {
+    const env = { ...process.env };
+    for (const key of ['SPACEFACE_ELECTRON_TEST_MODE', 'SPACEFACE_ELECTRON_TEST_PORT',
+      'SPACEFACE_ELECTRON_TEST_USER_DATA', 'SPACEFACE_EVIDENCE_ALLOW_BACKGROUND_EXECUTION']) delete env[key];
+    electronLaunch = { options: { args: ['.'], cwd: ROOT, timeout: 180_000, env }, cleanup: () => true };
+  } else {
+    electronLaunch = createIsolatedElectronLaunch({
+      root: ROOT,
+      taskId: 'playable',
+      timeout: 180_000,
+      baseEnv: { ...process.env, SPACEFACE_EVIDENCE_ALLOW_BACKGROUND_EXECUTION: '1' },
+    });
+  }
   electronApp = await electron.launch(electronLaunch.options);
   const page = await electronApp.firstWindow({ timeout: 180_000 });
   // Electron's CSP blocks Playwright's default injected polling, so waitForFunction never
   // resolves without it. That timeout would look exactly like a game hang and be a harness bug.
   installCspSafePlaywrightPolling(page);
+  // Foreground the window. A backgrounded Chromium throttles timers and rAF, which can blow an
+  // asset-preload budget and look exactly like a real load failure -- the harness must not
+  // manufacture the bug it is hunting.
+  try {
+    const bw = await electronApp.browserWindow(page);
+    await bw.evaluate((win) => { win.show(); win.focus(); if (win.moveTop) win.moveTop(); });
+  } catch (_) {}
+  await page.bringToFront().catch(() => {});
   await page.waitForLoadState('domcontentloaded', { timeout: 180_000 });
-  assertIsolatedElectronRootUrl(page.url());
+  if (!PLAYER_PROFILE) assertIsolatedElectronRootUrl(page.url());
   return { page, baseUrl: new URL(page.url()).origin + '/' };
 }
 
@@ -181,6 +203,14 @@ try {
     const text = m.text();
     if (/Failed to load resource/i.test(text)) return;
     pageErrors.push('console.error: ' + text.slice(0, 300));
+  });
+  // Warnings carry the diagnosis for asset-preload failures ("authored part library was not
+  // preloaded", KTX2/decoder complaints). They are not failures, but without them a preload timeout
+  // is a symptom with no cause attached.
+  page.on('console', (m) => {
+    if (m.type() !== 'warning') return;
+    const t = m.text();
+    if (/authored|part library|asset|ktx|basis|decoder|preload|GPU|WebGL/i.test(t)) diagnostics.push('warn: ' + t.slice(0, 260));
   });
   page.on('response', (res) => {
     if (res.status() >= 400) missingAssets.push('[' + phase + '] ' + res.status() + ' ' + res.url().replace(routeBaseUrl, '/'));
@@ -463,6 +493,8 @@ try {
   record('ASSETS', assets.length === 0, assets.length === 0
     ? 'every request served'
     : assets.length + ' failed request(s):' + NLPAD + assets.slice(0, 10).join(NLPAD));
+
+  if (diagnostics.length) console.log('  diagnostics:' + NLPAD + [...new Set(diagnostics)].slice(0, 12).join(NLPAD));
 
   const failed = results.filter((r) => !r.ok);
   console.log('');
