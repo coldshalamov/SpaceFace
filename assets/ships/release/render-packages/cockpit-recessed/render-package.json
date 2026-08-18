@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "68952b33e5e19b08fdfb5ae78f4e990f68fc8fc18791f8983ec2301c5c26441a",
+  "contentHash": "057db0f0f65e3bbfee4e9216ee9be626fd6c53f39431de241a6bab000f0272e5",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1470,8 +1470,8 @@
       "uri": "cockpit_recessed.glb"
     },
     "sourceManifest": {
-      "bytes": 69666,
-      "sha256": "b320efaf850ef6f26a926eb1a4976cc0ae16f9621cc52f517b25152cd81b69e9",
+      "bytes": 74713,
+      "sha256": "8b3fb79c63eeb80904eb9647de6491042e79af5e1c246df51631d32cc6c4f573",
       "uri": "pilots.json"
     }
   },

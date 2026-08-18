@@ -1,0 +1,421 @@
+{
+  "schema": "spaceface.openingMiningDroneRemaster.v1",
+  "status": "candidate-not-promoted",
+  "source": {
+    "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\blender\\place_mining_drone_authored.blend",
+    "sha256": "7C92DD51251F423A11C037CF38A760DCC1DC7C7B21D4DEB0EDFAFC42DEA80695"
+  },
+  "surfaceManifest": {
+    "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\opening_route_props\\textures\\opening_infra_v1\\surface-map-build.json",
+    "sha256": "D8CE32840D4FC05F4CB0ED6F3BFDD8FBAF325E7A9EDDD04E9D5377D2C4B8ABC2"
+  },
+  "outputs": {
+    "blend": {
+      "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\opening_route_props\\blender\\source\\mining_drone_v1\\place_mining_drone.blend",
+      "sha256": "9F55EEE95DF52FBC141B029C378B25E37217F281D97E628B5652B2A712C0E9E8"
+    },
+    "glb": {
+      "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\opening_route_props\\source_candidates\\mining_drone_v1\\places\\place_mining_drone.glb",
+      "sha256": "92C05DE0048B9ADFAF34604777FB734DA6D343E34FE52F4BF6B82EEE07C0C56C"
+    },
+    "familyUpdate": {
+      "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\opening_route_props\\reports\\mining_drone_v1\\opening-route-industrial-prop-family-update.json",
+      "sha256": "7893CB652D2894C4ABC9B01029B5B6FC26BB51D7841E2CE0DC1D8FF12E8F7A48"
+    }
+  },
+  "preservedContract": {
+    "sourceBounds": {
+      "min": [
+        -0.39999998,
+        -1.20000005,
+        -0.05000001
+      ],
+      "max": [
+        4.5999999,
+        1.20000005,
+        1.27750003
+      ],
+      "size": [
+        4.99999988,
+        2.4000001,
+        1.32750005
+      ]
+    },
+    "candidateBounds": {
+      "min": [
+        -0.4000000059604645,
+        -1.1950000524520874,
+        -0.050000011920928955
+      ],
+      "max": [
+        4.599999904632568,
+        1.1949999332427979,
+        1.2750000953674316
+      ],
+      "size": [
+        4.999999910593033,
+        2.3899999856948853,
+        1.3250001072883606
+      ]
+    },
+    "relativeSizeDrift": [
+      6.118606746005755e-09,
+      0.004166714120184802,
+      0.001883195945370734
+    ],
+    "minimumCornerDriftM": [
+      2.5960464500318636e-08,
+      0.0049999975479126935,
+      1.920928957566126e-09
+    ],
+    "markers": {
+      "Drone_Sensor_Brow": {
+        "location": [
+          2.4000000953674316,
+          0.0,
+          1.0499999523162842
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "parent": "place_mining_drone"
+      },
+      "HOOK_Emissive": {
+        "location": [
+          3.200000047683716,
+          0.0,
+          0.44999998807907104
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "parent": "place_mining_drone"
+      },
+      "HOOK_Spin": {
+        "location": [
+          2.799999952316284,
+          0.0,
+          0.44999998807907104
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "parent": "place_mining_drone"
+      },
+      "place_mining_drone": {
+        "location": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "parent": null
+      },
+      "place_mining_drone_Bolt_1": {
+        "location": [
+          -0.3400000035762787,
+          0.7523999810218811,
+          1.25
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "parent": "place_mining_drone"
+      },
+      "place_mining_drone_Bolt_2": {
+        "location": [
+          1.4656000137329102,
+          -0.6384000182151794,
+          1.25
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "parent": "place_mining_drone"
+      },
+      "SOCKET_Mining_Front": {
+        "location": [
+          3.4000000953674316,
+          0.0,
+          0.44999998807907104
+        ],
+        "rotation": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ],
+        "parent": "place_mining_drone"
+      }
+    },
+    "meshHierarchy": {
+      "LOD0_Drone_Material_Accent": "HOOK_Emissive",
+      "LOD0_Drone_Material_Cable": "place_mining_drone",
+      "LOD0_Drone_Material_Hull": "place_mining_drone",
+      "LOD0_Drone_Material_Mechanical": "place_mining_drone",
+      "LOD0_Drone_Material_Radiator": "place_mining_drone",
+      "LOD0_Drone_Material_Safety": "place_mining_drone",
+      "LOD0_Drone_Material_Tool": "HOOK_Spin",
+      "LOD1_Drone_Material_Accent": "HOOK_Emissive",
+      "LOD1_Drone_Material_Cable": "place_mining_drone",
+      "LOD1_Drone_Material_Hull": "place_mining_drone",
+      "LOD1_Drone_Material_Mechanical": "place_mining_drone",
+      "LOD1_Drone_Material_Radiator": "place_mining_drone",
+      "LOD1_Drone_Material_Safety": "place_mining_drone",
+      "LOD1_Drone_Material_Tool": "HOOK_Spin",
+      "LOD2_Drone_Material_Accent": "HOOK_Emissive",
+      "LOD2_Drone_Material_Hull": "place_mining_drone",
+      "LOD2_Drone_Material_Mechanical": "place_mining_drone",
+      "LOD2_Drone_Material_Radiator": "place_mining_drone",
+      "LOD2_Drone_Material_Safety": "place_mining_drone",
+      "LOD2_Drone_Material_Tool": "HOOK_Spin"
+    }
+  },
+  "materials": [
+    {
+      "name": "Material_Hull",
+      "textureRole": "drone_painted_armor"
+    },
+    {
+      "name": "Material_Mechanical",
+      "textureRole": "drone_structural_alloy"
+    },
+    {
+      "name": "Material_Tool",
+      "textureRole": "drone_cutter_carbide"
+    },
+    {
+      "name": "Material_Accent",
+      "textureRole": "drone_sensor_optic"
+    },
+    {
+      "name": "Material_Radiator",
+      "textureRole": "drone_radiator"
+    },
+    {
+      "name": "Material_Cable",
+      "textureRole": "drone_cable_polymer"
+    },
+    {
+      "name": "Material_Safety",
+      "textureRole": "drone_safety_surface"
+    }
+  ],
+  "lod": {
+    "lod0": {
+      "triangles": 13160,
+      "drawGroups": 7,
+      "objects": [
+        "LOD0_Drone_Material_Accent",
+        "LOD0_Drone_Material_Cable",
+        "LOD0_Drone_Material_Hull",
+        "LOD0_Drone_Material_Mechanical",
+        "LOD0_Drone_Material_Radiator",
+        "LOD0_Drone_Material_Safety",
+        "LOD0_Drone_Material_Tool"
+      ]
+    },
+    "lod1": {
+      "triangles": 4776,
+      "drawGroups": 7,
+      "objects": [
+        "LOD1_Drone_Material_Accent",
+        "LOD1_Drone_Material_Cable",
+        "LOD1_Drone_Material_Hull",
+        "LOD1_Drone_Material_Mechanical",
+        "LOD1_Drone_Material_Radiator",
+        "LOD1_Drone_Material_Safety",
+        "LOD1_Drone_Material_Tool"
+      ]
+    },
+    "lod2": {
+      "triangles": 1724,
+      "drawGroups": 6,
+      "objects": [
+        "LOD2_Drone_Material_Accent",
+        "LOD2_Drone_Material_Hull",
+        "LOD2_Drone_Material_Mechanical",
+        "LOD2_Drone_Material_Radiator",
+        "LOD2_Drone_Material_Safety",
+        "LOD2_Drone_Material_Tool"
+      ]
+    }
+  },
+  "modifierOrUvFailures": [],
+  "tangents": [
+    {
+      "object": "LOD0_Drone_Material_Accent",
+      "valid": true,
+      "error": null,
+      "loops": 564
+    },
+    {
+      "object": "LOD0_Drone_Material_Cable",
+      "valid": true,
+      "error": null,
+      "loops": 2256
+    },
+    {
+      "object": "LOD0_Drone_Material_Hull",
+      "valid": true,
+      "error": null,
+      "loops": 1692
+    },
+    {
+      "object": "LOD0_Drone_Material_Mechanical",
+      "valid": true,
+      "error": null,
+      "loops": 18192
+    },
+    {
+      "object": "LOD0_Drone_Material_Radiator",
+      "valid": true,
+      "error": null,
+      "loops": 2820
+    },
+    {
+      "object": "LOD0_Drone_Material_Safety",
+      "valid": true,
+      "error": null,
+      "loops": 4896
+    },
+    {
+      "object": "LOD0_Drone_Material_Tool",
+      "valid": true,
+      "error": null,
+      "loops": 9060
+    },
+    {
+      "object": "LOD1_Drone_Material_Accent",
+      "valid": true,
+      "error": null,
+      "loops": 324
+    },
+    {
+      "object": "LOD1_Drone_Material_Cable",
+      "valid": true,
+      "error": null,
+      "loops": 648
+    },
+    {
+      "object": "LOD1_Drone_Material_Hull",
+      "valid": true,
+      "error": null,
+      "loops": 972
+    },
+    {
+      "object": "LOD1_Drone_Material_Mechanical",
+      "valid": true,
+      "error": null,
+      "loops": 3888
+    },
+    {
+      "object": "LOD1_Drone_Material_Radiator",
+      "valid": true,
+      "error": null,
+      "loops": 972
+    },
+    {
+      "object": "LOD1_Drone_Material_Safety",
+      "valid": true,
+      "error": null,
+      "loops": 3936
+    },
+    {
+      "object": "LOD1_Drone_Material_Tool",
+      "valid": true,
+      "error": null,
+      "loops": 3588
+    },
+    {
+      "object": "LOD2_Drone_Material_Accent",
+      "valid": true,
+      "error": null,
+      "loops": 132
+    },
+    {
+      "object": "LOD2_Drone_Material_Hull",
+      "valid": true,
+      "error": null,
+      "loops": 396
+    },
+    {
+      "object": "LOD2_Drone_Material_Mechanical",
+      "valid": true,
+      "error": null,
+      "loops": 1584
+    },
+    {
+      "object": "LOD2_Drone_Material_Radiator",
+      "valid": true,
+      "error": null,
+      "loops": 264
+    },
+    {
+      "object": "LOD2_Drone_Material_Safety",
+      "valid": true,
+      "error": null,
+      "loops": 1368
+    },
+    {
+      "object": "LOD2_Drone_Material_Tool",
+      "valid": true,
+      "error": null,
+      "loops": 1428
+    }
+  ],
+  "knownDefects": [
+    "Candidate has not been promoted or inspected on the live player route.",
+    "Mining/drilling behavior was intentionally not changed and must be validated by the owning gameplay lane after visual promotion.",
+    "Runtime spin, optic intensity, tool alignment and mining-laser origin require live checks against the preserved hooks/socket.",
+    "KTX2 binding, release optimization, collision and LOD thresholds remain controller-owned integration work."
+  ]
+}

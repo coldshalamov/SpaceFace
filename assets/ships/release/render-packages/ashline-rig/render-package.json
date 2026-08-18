@@ -473,7 +473,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "76287d2a85edb8035864057fdf776eb9fd7516c44f19485015e1c1a1c025bff4",
+  "contentHash": "e31a3497ddb4a219983cdd2a8db8e65724ff8ee2ec943ef20582dbc231c16cd4",
   "dynamicGroups": [
     {
       "id": "sf.render.ashline-rig.mesh.lod0-hook-drive-core.dynamic",
@@ -2672,8 +2672,8 @@
       "uri": "ashline_rig.glb"
     },
     "sourceManifest": {
-      "bytes": 69666,
-      "sha256": "b320efaf850ef6f26a926eb1a4976cc0ae16f9621cc52f517b25152cd81b69e9",
+      "bytes": 74713,
+      "sha256": "8b3fb79c63eeb80904eb9647de6491042e79af5e1c246df51631d32cc6c4f573",
       "uri": "pilots.json"
     }
   },

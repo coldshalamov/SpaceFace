@@ -2862,8 +2862,8 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_conveyor_barge.glb",
-      "tris": 19500,
-      "bytes": 12970264,
+      "tris": 37332,
+      "bytes": 12970868,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -2900,17 +2900,17 @@
         "min": [
           -2.57,
           -2,
-          -9.05
+          -9.0775
         ],
         "max": [
           70.275,
           8.025,
-          9.05
+          9.0775
         ],
         "dimensionsM": [
           72.845,
           10.025,
-          18.1014
+          18.155
         ]
       }
     },
@@ -2919,8 +2919,8 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_mining_drone.glb",
-      "tris": 8716,
-      "bytes": 4035040,
+      "tris": 17924,
+      "bytes": 4035648,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",

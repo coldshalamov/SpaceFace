@@ -99,7 +99,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "be33df06b07500742dc23eb6338de6319af7c36eb8db5508ecef4c0d16d46132",
+  "contentHash": "d91079e30cbceb923744e416add8dfd7d45951cb2577bdf30a5a357b03b1951d",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1078,8 +1078,8 @@
       "uri": "hull_freighter.glb"
     },
     "sourceManifest": {
-      "bytes": 69666,
-      "sha256": "b320efaf850ef6f26a926eb1a4976cc0ae16f9621cc52f517b25152cd81b69e9",
+      "bytes": 74713,
+      "sha256": "8b3fb79c63eeb80904eb9647de6491042e79af5e1c246df51631d32cc6c4f573",
       "uri": "pilots.json"
     }
   },

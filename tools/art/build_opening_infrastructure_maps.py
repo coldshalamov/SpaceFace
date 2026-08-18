@@ -83,10 +83,19 @@ ROLES = {
     "drone_painted_armor": Role((0.39, 0.205, 0.047), 0.49, 0.045, 0.025, 0.10, 0.060, (0.24, 150.0), 7103),
     "drone_structural_alloy": Role((0.095, 0.116, 0.126), 0.37, 0.036, 0.86, 0.095, 0.045, (0.10, 68.0), 7211, True),
     "drone_cutter_carbide": Role((0.145, 0.158, 0.164), 0.34, 0.040, 0.76, 0.11, 0.050, (0.12, 55.0), 7321, True),
-    "drone_sensor_optic": Role((0.014, 0.045, 0.061), 0.18, 0.018, 0.05, 0.045, 0.022, (0.06, 18.0), 7433, True, (0.08, 0.54, 0.82)),
+    "drone_sensor_optic": Role((0.014, 0.045, 0.061), 0.18, 0.018, 0.05, 0.045, 0.022, (0.06, 18.0), 7433, True, (0.08, 0.62, 0.95)),
     "drone_radiator": Role((0.036, 0.054, 0.065), 0.51, 0.037, 0.45, 0.095, 0.050, (0.16, 86.0), 7541, True),
     "drone_cable_polymer": Role((0.024, 0.030, 0.034), 0.64, 0.041, 0.02, 0.085, 0.045, (0.12, 34.0), 7657),
     "drone_safety_surface": Role((0.68, 0.29, 0.035), 0.53, 0.032, 0.045, 0.07, 0.040, (0.18, 72.0), 7759),
+    "barge_painted_hull": Role((0.312, 0.246, 0.143), 0.53, 0.050, 0.015, 0.10, 0.060, (0.30, 280.0), 8101),
+    "barge_structural_alloy": Role((0.093, 0.113, 0.123), 0.38, 0.030, 0.84, 0.10, 0.045, (0.12, 85.0), 8209, True),
+    "barge_deck_grip": Role((0.151, 0.143, 0.118), 0.66, 0.055, 0.04, 0.11, 0.050, (0.42, 210.0), 8317),
+    "barge_machine_casing": Role((0.133, 0.148, 0.154), 0.44, 0.035, 0.78, 0.09, 0.045, (0.12, 75.0), 8423, True),
+    "barge_bridge_glass": Role((0.020, 0.050, 0.066), 0.18, 0.020, 0.05, 0.06, 0.022, (0.08, 24.0), 8531, True, (0.020, 0.100, 0.163)),
+    "barge_radiator": Role((0.042, 0.058, 0.067), 0.50, 0.040, 0.50, 0.10, 0.050, (0.16, 90.0), 8641, True),
+    "barge_safety_marking": Role((0.64, 0.270, 0.040), 0.52, 0.035, 0.06, 0.10, 0.045, (0.22, 110.0), 8747),
+    "barge_container_shell": Role((0.505, 0.278, 0.104), 0.56, 0.050, 0.04, 0.11, 0.050, (0.30, 190.0), 8857),
+    "barge_nav_optic": Role((0.097, 0.062, 0.022), 0.24, 0.018, 0.12, 0.05, 0.022, (0.06, 18.0), 8961, True, (0.90, 0.40, 0.085)),
 }
 ROLE_RESOLUTION_SCALE = {
     "gate_painted_armor": 1.0,
@@ -125,6 +134,15 @@ ROLE_RESOLUTION_SCALE = {
     "drone_radiator": 0.25,
     "drone_cable_polymer": 0.25,
     "drone_safety_surface": 0.25,
+    "barge_painted_hull": 1.0,
+    "barge_structural_alloy": 1.0,
+    "barge_deck_grip": 0.5,
+    "barge_machine_casing": 0.5,
+    "barge_bridge_glass": 0.25,
+    "barge_radiator": 0.5,
+    "barge_safety_marking": 0.25,
+    "barge_container_shell": 0.5,
+    "barge_nav_optic": 0.25,
 }
 
 CONSTRUCTION_USE = {
@@ -157,6 +175,15 @@ CONSTRUCTION_USE = {
     "hulk_service_trunks": "bounded power, coolant and data trunks severed by the rupture",
     "hulk_dead_glass": "cold command-house glazing with no active emissive promise",
     "hulk_heat_affected": "localized rupture lips and drive-adjacent thermal damage",
+    "barge_painted_hull": "industrial coated main hull plates, bow sheath and command-tower skins",
+    "barge_structural_alloy": "continuous keel, transverse ribs, cradle frames and prong backbone",
+    "barge_deck_grip": "walkable deck plating and conveyor cross-members between cargo bays",
+    "barge_machine_casing": "drive block, pump housings, thruster cases and service covers",
+    "barge_bridge_glass": "command-tower glazed band with restrained interior backlight",
+    "barge_radiator": "directional drive and converter heat-rejection fins",
+    "barge_safety_marking": "dock approach, conveyor kick-plate and service-exclusion chevron zones",
+    "barge_container_shell": "corrugated cargo-box shells in the three deck cradles",
+    "barge_nav_optic": "bounded port and starboard forward status optics",
     "drone_painted_armor": "industrial nonmetallic battery, avionics and actuator service covers",
     "drone_structural_alloy": "compact load frame, cutter yoke, hardpoints and replaceable rails",
     "drone_cutter_carbide": "rotating cutter drum and mechanically indexed teeth",
@@ -201,7 +228,7 @@ def role_maps(role_name: str, role: Role, size: int) -> dict[str, np.ndarray]:
     # directional and sparse, not isotropic noise pasted over every surface.
     process = periodic_lines(size, count=41 if role.brushed else 13, width=0.038 if role.brushed else 0.020,
                              phase=(role.seed % 29) / 29.0)
-    if role_name in {"gate_exposed_alloy", "gate_radiator", "beacon_structural_alloy", "beacon_solar_coldplate", "debris_structural_alloy", "debris_radiator", "hulk_armor_dark", "hulk_structural_alloy", "hulk_service_trunks", "hulk_dead_glass", "drone_structural_alloy", "drone_cutter_carbide", "drone_radiator"}:
+    if role_name in {"gate_exposed_alloy", "gate_radiator", "beacon_structural_alloy", "beacon_solar_coldplate", "debris_structural_alloy", "debris_radiator", "hulk_armor_dark", "hulk_structural_alloy", "hulk_service_trunks", "hulk_dead_glass", "drone_structural_alloy", "drone_cutter_carbide", "drone_radiator", "barge_structural_alloy", "barge_machine_casing", "barge_radiator"}:
         height = normalized(height * 0.76 + process * 0.24)
         rough_field = normalized(rough_field * 0.82 + process * 0.18)
     elif role_name in {"gate_thermal_ceramic", "beacon_signal_ceramic", "debris_heat_affected", "hulk_heat_affected"}:
@@ -217,7 +244,7 @@ def role_maps(role_name: str, role: Role, size: int) -> dict[str, np.ndarray]:
     # this channel only adds shallow material-scale occlusion.
     ao = np.clip(0.965 - np.maximum(0.0, detail) * 0.035 - process * 0.018, 0.84, 1.0)
 
-    if role_name in {"gate_safety_surface", "beacon_safety_surface", "drone_safety_surface"}:
+    if role_name in {"gate_safety_surface", "beacon_safety_surface", "drone_safety_surface", "barge_safety_marking"}:
         u = np.arange(size, dtype=np.float32)[None, :] / size
         v = np.arange(size, dtype=np.float32)[:, None] / size
         chevron = (np.mod((u + v * 0.72) * 8.0, 1.0) > 0.52).astype(np.float32)

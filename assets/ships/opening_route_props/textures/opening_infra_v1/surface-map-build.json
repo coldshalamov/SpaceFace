@@ -1,0 +1,454 @@
+{
+  "schema": "spaceface.openingInfrastructureSurfaceBuild.v1",
+  "generator": "tools/art/build_opening_infrastructure_maps.py",
+  "deterministic": true,
+  "baseSize": 1024,
+  "ormChannels": "R=AO,G=Roughness,B=Metallic",
+  "normalConvention": "OpenGL tangent space",
+  "roles": {
+    "barge_painted_hull": {
+      "baseRgb": [
+        0.312,
+        0.246,
+        0.143
+      ],
+      "roughnessCenter": 0.53,
+      "roughnessVariation": 0.05,
+      "metallicCenter": 0.015,
+      "featureScaleMm": [
+        0.3,
+        280.0
+      ],
+      "textureSize": 1024,
+      "constructionUse": "industrial coated main hull plates, bow sheath and command-tower skins"
+    },
+    "barge_structural_alloy": {
+      "baseRgb": [
+        0.093,
+        0.113,
+        0.123
+      ],
+      "roughnessCenter": 0.38,
+      "roughnessVariation": 0.03,
+      "metallicCenter": 0.84,
+      "featureScaleMm": [
+        0.12,
+        85.0
+      ],
+      "textureSize": 1024,
+      "constructionUse": "continuous keel, transverse ribs, cradle frames and prong backbone"
+    },
+    "barge_deck_grip": {
+      "baseRgb": [
+        0.151,
+        0.143,
+        0.118
+      ],
+      "roughnessCenter": 0.66,
+      "roughnessVariation": 0.055,
+      "metallicCenter": 0.04,
+      "featureScaleMm": [
+        0.42,
+        210.0
+      ],
+      "textureSize": 512,
+      "constructionUse": "walkable deck plating and conveyor cross-members between cargo bays"
+    },
+    "barge_machine_casing": {
+      "baseRgb": [
+        0.133,
+        0.148,
+        0.154
+      ],
+      "roughnessCenter": 0.44,
+      "roughnessVariation": 0.035,
+      "metallicCenter": 0.78,
+      "featureScaleMm": [
+        0.12,
+        75.0
+      ],
+      "textureSize": 512,
+      "constructionUse": "drive block, pump housings, thruster cases and service covers"
+    },
+    "barge_bridge_glass": {
+      "baseRgb": [
+        0.02,
+        0.05,
+        0.066
+      ],
+      "roughnessCenter": 0.18,
+      "roughnessVariation": 0.02,
+      "metallicCenter": 0.05,
+      "featureScaleMm": [
+        0.08,
+        24.0
+      ],
+      "textureSize": 256,
+      "constructionUse": "command-tower glazed band with restrained interior backlight"
+    },
+    "barge_radiator": {
+      "baseRgb": [
+        0.042,
+        0.058,
+        0.067
+      ],
+      "roughnessCenter": 0.5,
+      "roughnessVariation": 0.04,
+      "metallicCenter": 0.5,
+      "featureScaleMm": [
+        0.16,
+        90.0
+      ],
+      "textureSize": 512,
+      "constructionUse": "directional drive and converter heat-rejection fins"
+    },
+    "barge_safety_marking": {
+      "baseRgb": [
+        0.64,
+        0.27,
+        0.04
+      ],
+      "roughnessCenter": 0.52,
+      "roughnessVariation": 0.035,
+      "metallicCenter": 0.06,
+      "featureScaleMm": [
+        0.22,
+        110.0
+      ],
+      "textureSize": 256,
+      "constructionUse": "dock approach, conveyor kick-plate and service-exclusion chevron zones"
+    },
+    "barge_container_shell": {
+      "baseRgb": [
+        0.505,
+        0.278,
+        0.104
+      ],
+      "roughnessCenter": 0.56,
+      "roughnessVariation": 0.05,
+      "metallicCenter": 0.04,
+      "featureScaleMm": [
+        0.3,
+        190.0
+      ],
+      "textureSize": 512,
+      "constructionUse": "corrugated cargo-box shells in the three deck cradles"
+    },
+    "barge_nav_optic": {
+      "baseRgb": [
+        0.097,
+        0.062,
+        0.022
+      ],
+      "roughnessCenter": 0.24,
+      "roughnessVariation": 0.018,
+      "metallicCenter": 0.12,
+      "featureScaleMm": [
+        0.06,
+        18.0
+      ],
+      "textureSize": 256,
+      "constructionUse": "bounded port and starboard forward status optics"
+    }
+  },
+  "artifacts": [
+    {
+      "role": "barge_painted_hull",
+      "channel": "basecolor",
+      "path": "barge_painted_hull_basecolor.png",
+      "sha256": "918DCD6EFE90B5073548F4DFD8861CA4EB3512E17B5F58AA893456428AC9EAE9",
+      "dimensions": [
+        1024,
+        1024
+      ]
+    },
+    {
+      "role": "barge_painted_hull",
+      "channel": "normal",
+      "path": "barge_painted_hull_normal.png",
+      "sha256": "3337AEE96D1375CBFE404CF7A4893A5815612FA9709974C0372859812DB1C647",
+      "dimensions": [
+        1024,
+        1024
+      ]
+    },
+    {
+      "role": "barge_painted_hull",
+      "channel": "orm",
+      "path": "barge_painted_hull_orm.png",
+      "sha256": "FF9F61489F43A829EF5656456C7146F3835FBBA6E90FBF04230292393276FDB4",
+      "dimensions": [
+        1024,
+        1024
+      ]
+    },
+    {
+      "role": "barge_structural_alloy",
+      "channel": "basecolor",
+      "path": "barge_structural_alloy_basecolor.png",
+      "sha256": "C5BF876B186221DDDA33EAAFFF84FB603C134122596DED5D47A7B443B7A6FB4B",
+      "dimensions": [
+        1024,
+        1024
+      ]
+    },
+    {
+      "role": "barge_structural_alloy",
+      "channel": "normal",
+      "path": "barge_structural_alloy_normal.png",
+      "sha256": "86AD8A6E5C7ED0CA640B6ABC6A3809FF1FEF1D30B19DA31B668E8169570A03C9",
+      "dimensions": [
+        1024,
+        1024
+      ]
+    },
+    {
+      "role": "barge_structural_alloy",
+      "channel": "orm",
+      "path": "barge_structural_alloy_orm.png",
+      "sha256": "0D3AA3DB4936F4341A9EAD8DDEFCC72C5B8AC1DDD0704FB5968E67E4A5639537",
+      "dimensions": [
+        1024,
+        1024
+      ]
+    },
+    {
+      "role": "barge_deck_grip",
+      "channel": "basecolor",
+      "path": "barge_deck_grip_basecolor.png",
+      "sha256": "F77A7255419E4393EB40C817E6A3DB358F1CE2E6E3D0D74F0FB39251789564A9",
+      "dimensions": [
+        512,
+        512
+      ]
+    },
+    {
+      "role": "barge_deck_grip",
+      "channel": "normal",
+      "path": "barge_deck_grip_normal.png",
+      "sha256": "032C0F7836FFC1B4A77E675795AA62DE181AF4B5622FDC7FBAFD3678127B10B8",
+      "dimensions": [
+        512,
+        512
+      ]
+    },
+    {
+      "role": "barge_deck_grip",
+      "channel": "orm",
+      "path": "barge_deck_grip_orm.png",
+      "sha256": "C2DD1028B45AAAC2FD82EF8B6E7C9E0DAB14E47DCB8071AB3D8057667675DE4B",
+      "dimensions": [
+        512,
+        512
+      ]
+    },
+    {
+      "role": "barge_machine_casing",
+      "channel": "basecolor",
+      "path": "barge_machine_casing_basecolor.png",
+      "sha256": "3F1A3DEC79F47869132EF8B4B35023EA50445801F8BEECDDC99D24698FBEC160",
+      "dimensions": [
+        512,
+        512
+      ]
+    },
+    {
+      "role": "barge_machine_casing",
+      "channel": "normal",
+      "path": "barge_machine_casing_normal.png",
+      "sha256": "A56C504831CF930E07A00B9F71896BDB7B5A5174CFAF037DFEDFA456B3D28098",
+      "dimensions": [
+        512,
+        512
+      ]
+    },
+    {
+      "role": "barge_machine_casing",
+      "channel": "orm",
+      "path": "barge_machine_casing_orm.png",
+      "sha256": "F9D170104019B8C12FE02754ECD972C58A0D2FCD70779E8406A8A36198200C5D",
+      "dimensions": [
+        512,
+        512
+      ]
+    },
+    {
+      "role": "barge_bridge_glass",
+      "channel": "basecolor",
+      "path": "barge_bridge_glass_basecolor.png",
+      "sha256": "45C369DDF67A7CDBBDF285789C44D23C26FA426C3182BFD10378FD275801AB30",
+      "dimensions": [
+        256,
+        256
+      ]
+    },
+    {
+      "role": "barge_bridge_glass",
+      "channel": "normal",
+      "path": "barge_bridge_glass_normal.png",
+      "sha256": "3FE449E09E0A64CE2D9727BE591F0E0E5D8E686B26EB0D7C83A586A3D8DC6ACC",
+      "dimensions": [
+        256,
+        256
+      ]
+    },
+    {
+      "role": "barge_bridge_glass",
+      "channel": "orm",
+      "path": "barge_bridge_glass_orm.png",
+      "sha256": "3720CAC51AEB7BF235564589D10DFE817F7B27DEC4F4980EA2F59B4FC7AEBD6D",
+      "dimensions": [
+        256,
+        256
+      ]
+    },
+    {
+      "role": "barge_bridge_glass",
+      "channel": "emissive",
+      "path": "barge_bridge_glass_emissive.png",
+      "sha256": "927FF11127BB4804460FA4E89AF5C0817CA6B628C8671933E2ACFA169E2195F2",
+      "dimensions": [
+        256,
+        256
+      ]
+    },
+    {
+      "role": "barge_radiator",
+      "channel": "basecolor",
+      "path": "barge_radiator_basecolor.png",
+      "sha256": "A7882C3DB150E425A62602227FC1E6585D457072C391E6DE9D26481FE4395F67",
+      "dimensions": [
+        512,
+        512
+      ]
+    },
+    {
+      "role": "barge_radiator",
+      "channel": "normal",
+      "path": "barge_radiator_normal.png",
+      "sha256": "A9542836E8FC5671C4AE318C3D448E3B1BB68311A10DCA9156979527295288F3",
+      "dimensions": [
+        512,
+        512
+      ]
+    },
+    {
+      "role": "barge_radiator",
+      "channel": "orm",
+      "path": "barge_radiator_orm.png",
+      "sha256": "95657AE56A2290A487D83B239B9C1F5995C39ABB894C5D90E9AEEE81F97238A5",
+      "dimensions": [
+        512,
+        512
+      ]
+    },
+    {
+      "role": "barge_safety_marking",
+      "channel": "basecolor",
+      "path": "barge_safety_marking_basecolor.png",
+      "sha256": "764E42DDC78FD0C0E6881D01962A2B50ADB89A656E9241D12897DEA6D4315A61",
+      "dimensions": [
+        256,
+        256
+      ]
+    },
+    {
+      "role": "barge_safety_marking",
+      "channel": "normal",
+      "path": "barge_safety_marking_normal.png",
+      "sha256": "1DE8D2768284C6ADFB77BF3A741A407A69E7C9DDF1E7D9C974BD327BB8876B4E",
+      "dimensions": [
+        256,
+        256
+      ]
+    },
+    {
+      "role": "barge_safety_marking",
+      "channel": "orm",
+      "path": "barge_safety_marking_orm.png",
+      "sha256": "BDEFBCA2DD7D1980C1518112EE525AEC7AF164920A7F0D8B5EF7B9078DD41CD4",
+      "dimensions": [
+        256,
+        256
+      ]
+    },
+    {
+      "role": "barge_container_shell",
+      "channel": "basecolor",
+      "path": "barge_container_shell_basecolor.png",
+      "sha256": "F09D890D069371FA37F47E3C7DABA951423460740C68A0F5EF6706F5295D92E2",
+      "dimensions": [
+        512,
+        512
+      ]
+    },
+    {
+      "role": "barge_container_shell",
+      "channel": "normal",
+      "path": "barge_container_shell_normal.png",
+      "sha256": "191059B646793EB251AFABA3860670F83027CAC164DEF3779662473EFF4B7043",
+      "dimensions": [
+        512,
+        512
+      ]
+    },
+    {
+      "role": "barge_container_shell",
+      "channel": "orm",
+      "path": "barge_container_shell_orm.png",
+      "sha256": "E98F86DFFE27BC1BC16232DD076D107AC1DD85011140858B5187B6C32B24258A",
+      "dimensions": [
+        512,
+        512
+      ]
+    },
+    {
+      "role": "barge_nav_optic",
+      "channel": "basecolor",
+      "path": "barge_nav_optic_basecolor.png",
+      "sha256": "70DC72F9D57D101D03B0A432B76CDDECE4721997EB7C4C8121679FFAC01B0CFC",
+      "dimensions": [
+        256,
+        256
+      ]
+    },
+    {
+      "role": "barge_nav_optic",
+      "channel": "normal",
+      "path": "barge_nav_optic_normal.png",
+      "sha256": "B42531A6EF89DDBF0A72CF54885E803ACEC5195C7645DAFEE211300C6C48AC29",
+      "dimensions": [
+        256,
+        256
+      ]
+    },
+    {
+      "role": "barge_nav_optic",
+      "channel": "orm",
+      "path": "barge_nav_optic_orm.png",
+      "sha256": "3342E587897FE1F98B7E4C4E472626B5F4AA0D5551A509E66091E54358A8B958",
+      "dimensions": [
+        256,
+        256
+      ]
+    },
+    {
+      "role": "barge_nav_optic",
+      "channel": "emissive",
+      "path": "barge_nav_optic_emissive.png",
+      "sha256": "D8D8C28FA6C413EFDEADC8B602A677D5F8F4640835D8BD88C0FAC69D13C0955D",
+      "dimensions": [
+        256,
+        256
+      ]
+    }
+  ],
+  "ktx2Artifacts": [],
+  "ktx2Recipe": {
+    "tool": "KTX-Software toktx",
+    "arguments": "--t2 --encode uastc --uastc_quality 2 --zcmp 8 --genmipmap --filter lanczos4",
+    "baseColorAndEmissiveOetf": "srgb",
+    "normalAndOrmOetf": "linear",
+    "runtimeStatus": "candidate-only; controller must wire loader/transcoder and release manifest"
+  }
+}

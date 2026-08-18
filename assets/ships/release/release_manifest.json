@@ -702,28 +702,38 @@
       "kind": "part:places",
       "source": "assets/ships/parts/places/place_conveyor_barge.glb",
       "release": "assets/ships/release/parts/places/place_conveyor_barge.glb",
-      "sourceSha256": "caf4efcb88589583563bdac54229c0531267e4a52361558e722485185a95236f",
-      "releaseSha256": "f304e55850309a53bd490525c53469337ea80ae87b0bf688e88b2455aab2d47e",
-      "sourceBytes": 191884,
-      "releaseBytes": 218704,
-      "textures": 3,
-      "ktx2Textures": 3,
-      "meshoptBufferViews": 21,
-      "contractNodeCount": 3
+      "sourceSha256": "4880514e6f09f6b4a0fa20c873d7f00e10c1b3386a1d05442286a82ecb0496bc",
+      "releaseSha256": "73e832008e376acadf54f74fd46cd258ca15286e2f65945ee75300b9b1d93683",
+      "sourceBytes": 12970868,
+      "releaseBytes": 4988468,
+      "textures": 29,
+      "ktx2Textures": 29,
+      "meshoptBufferViews": 105,
+      "contractNodeCount": 30,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     },
     {
       "id": "place_mining_drone",
       "kind": "part:places",
       "source": "assets/ships/parts/places/place_mining_drone.glb",
       "release": "assets/ships/release/parts/places/place_mining_drone.glb",
-      "sourceSha256": "6f2ee1a53bd866d1eae52fefec016f9c07a942cef97a056f4e1fd2de392c75d5",
-      "releaseSha256": "fb620e782299be6a3d1e459d36f4c31897a5e46723e0718ec1c81b2e994be5ae",
-      "sourceBytes": 189216,
-      "releaseBytes": 369212,
-      "textures": 3,
-      "ktx2Textures": 3,
-      "meshoptBufferViews": 13,
-      "contractNodeCount": 3
+      "sourceSha256": "052bd45517392d19bfca93bed5bcc1b40aa8a2b97dbd2bff4747163985d52c1a",
+      "releaseSha256": "79cffc2f9e03eff1168eaa6d2896aa700d44f5af4399b03adee19f07ff185661",
+      "sourceBytes": 4035648,
+      "releaseBytes": 1465028,
+      "textures": 22,
+      "ktx2Textures": 22,
+      "meshoptBufferViews": 85,
+      "contractNodeCount": 24,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     },
     {
       "id": "place_dock_interior",

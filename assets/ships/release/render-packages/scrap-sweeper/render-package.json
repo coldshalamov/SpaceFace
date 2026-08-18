@@ -243,7 +243,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "d6b4f6dbb06018f461f8a811930b4bb0fb1d3f586ff715bc669b9e5ce6ead30c",
+  "contentHash": "bddbf91bdce08dc88c9c713f9041f9208e49dda4dcaf168c8b64f716d74e424e",
   "dynamicGroups": [
     {
       "id": "sf.render.scrap-sweeper.mesh.lod0-hook-drive-core.dynamic",
@@ -1909,8 +1909,8 @@
       "uri": "scrap_sweeper.glb"
     },
     "sourceManifest": {
-      "bytes": 74711,
-      "sha256": "de96fd94e2a2fb852fd1cc726c714f4d5ba32f2d199b1478447121c5b7c171ce",
+      "bytes": 74713,
+      "sha256": "8b3fb79c63eeb80904eb9647de6491042e79af5e1c246df51631d32cc6c4f573",
       "uri": "pilots.json"
     }
   },

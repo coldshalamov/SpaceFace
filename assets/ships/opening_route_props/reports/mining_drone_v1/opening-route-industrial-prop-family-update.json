@@ -1,0 +1,34 @@
+{
+  "schema": "spaceface.openingRouteIndustrialPropFamily.v1",
+  "status": "candidate-not-promoted",
+  "surfaceManifest": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\opening_route_props\\textures\\opening_infra_v1\\surface-map-build.json",
+  "place_mining_drone": {
+    "candidateState": "implemented-not-promoted",
+    "identity": "compact autonomous rotary cutter drone",
+    "functionalZones": [
+      "battery cassette",
+      "motor controller",
+      "reaction frame",
+      "paired actuators",
+      "rotary carbide cutter",
+      "ranging optic",
+      "radiator",
+      "service harnesses"
+    ]
+  },
+  "sharedRules": {
+    "paint": "industrial coated service covers, never whole-object metal",
+    "structure": "dark alloy load paths remain visible",
+    "tools": "separate material and animation hierarchy",
+    "signals": "finite optics only",
+    "safety": "pinch points and service releases only",
+    "scale": "fastener and cable sizes remain plausible at five-metre asset scale"
+  },
+  "nonGoals": [
+    "mining gameplay changes",
+    "generic glowing box",
+    "single-material plastic",
+    "decorative random greeble",
+    "tool identity by color alone"
+  ]
+}

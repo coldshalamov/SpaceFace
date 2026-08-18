@@ -243,7 +243,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "159b7800141547243487f47ad339dc469a51dfa0fc287c4a63f0dc160a28ac65",
+  "contentHash": "db3eb31e4d26412e781700858d89f2f5baf46315a929931375d2039d83c078d8",
   "dynamicGroups": [
     {
       "id": "sf.render.volatiles-tanker.mesh.lod0-hook-drive-core.dynamic",
@@ -1909,8 +1909,8 @@
       "uri": "volatiles_tanker.glb"
     },
     "sourceManifest": {
-      "bytes": 74711,
-      "sha256": "de96fd94e2a2fb852fd1cc726c714f4d5ba32f2d199b1478447121c5b7c171ce",
+      "bytes": 74713,
+      "sha256": "8b3fb79c63eeb80904eb9647de6491042e79af5e1c246df51631d32cc6c4f573",
       "uri": "pilots.json"
     }
   },
