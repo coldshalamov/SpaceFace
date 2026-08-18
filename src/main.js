@@ -769,7 +769,10 @@ function showBootError(err) {
 }
 
 async function loadScenarioContract(url, path) {
-  const response = await fetch(url, { cache: 'no-cache' });
+  // This await sits at main.js:108, upstream of startLoop and hideBootOverlay. With no timeout, a
+  // response that never settles freezes the loading screen forever and prints nothing. Failing
+  // loudly after 15s is strictly better than hanging silently: the caller already handles a throw.
+  const response = await fetch(url, { cache: 'no-cache', signal: AbortSignal.timeout(15000) });
   if (!response.ok) throw new Error(`Unable to load scenario contract ${path}: HTTP ${response.status}`);
   const document = await response.json();
   return {

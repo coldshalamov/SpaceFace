@@ -94,6 +94,9 @@ async function loadMain({
       minimized: false,
       focused: false,
       destroyed: false,
+      fullscreen: options?.fullscreen === true,
+      isFullScreen() { return this.fullscreen; },
+      setFullScreen(val) { this.fullscreen = !!val; },
       removeMenu() {},
       isDestroyed() { return this.destroyed; },
       isVisible() { return this.visible; },
@@ -180,6 +183,14 @@ async function loadMain({
       if (specifier === 'http') return { get() { throw new Error('unexpected HTTP probe'); } };
       if (specifier === 'path') return path;
       if (specifier === '../scripts/lib/gameServer.cjs') return { createGameServer };
+      if (specifier === '../scripts/lib/playerSaveStore.cjs') {
+        return {
+          LOCAL_STORAGE_DUMP_SOURCE: '({})',
+          PLAYER_STORE_ORIGIN_ROUTE: '/__spaceface_player_store/origin',
+          resolvePlayerSaveDir() { return path.join(ROOT, '.tmp-player-saves'); },
+          writePlayerStoreKeysSync() { return {}; },
+        };
+      }
       if (specifier === '../scripts/lib/electronLaunchProtocol.cjs') {
         return {
           appendLaunchReceipt(_receiptPath, status, details) { receipts.push({ status, details }); },
@@ -250,8 +261,9 @@ function plain(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-test('normal player window restores Chromium background throttling', async () => {
+test('normal player window restores Chromium background throttling and starts in fullscreen', async () => {
   const h = await loadMain({ allowBackgroundExecution: true });
+  assert.equal(h.win.options.fullscreen, true, 'player desktop window should start in fullscreen');
   assert.equal(h.win.options.webPreferences.contextIsolation, true);
   assert.equal(h.win.options.webPreferences.nodeIntegration, false);
   assert.equal(h.win.options.webPreferences.sandbox, true);
@@ -261,6 +273,23 @@ test('normal player window restores Chromium background throttling', async () =>
   assert.equal(h.win.options.webPreferences.backgroundThrottling, true,
     'the evidence env var alone must not disable player throttling');
   assert.equal(h.win.options.webPreferences.preload, PRELOAD_PATH);
+
+  // Test F11 toggle
+  let defaultPrevented = false;
+  const preventDefault = () => { defaultPrevented = true; };
+  h.win.webContents.emit('before-input-event', { preventDefault }, { type: 'keyDown', key: 'F11' });
+  assert.equal(h.win.isFullScreen(), false);
+  assert.equal(defaultPrevented, true);
+
+  defaultPrevented = false;
+  h.win.webContents.emit('before-input-event', { preventDefault }, { type: 'keyDown', key: 'Enter', alt: true });
+  assert.equal(h.win.isFullScreen(), true);
+  assert.equal(defaultPrevented, true);
+});
+
+test('isolated evidence window does not force fullscreen', async () => {
+  const h = await loadMain({ isolatedEvidence: true });
+  assert.equal(h.win.options.fullscreen, false, 'isolated evidence window should not force fullscreen');
 });
 
 test('desktop shell denies popups, foreign navigation, and every permission except owned pointer lock', async () => {

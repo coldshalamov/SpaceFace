@@ -114,7 +114,10 @@ export function applySharedStoreKeys(keys, storage = globalThis.localStorage) {
 export async function fetchSharedPlayerStore() {
   if (!sharedPlayerStoreAvailable() || typeof fetch !== 'function') return null;
   try {
-    const response = await fetch(SHARED_PLAYER_STORE_PATH, { cache: 'no-store' });
+    // No timeout here means isSharedStoreSyncPending() can stay true forever, which pins the main
+    // menu's Continue button at "Checking saves..." with no way out. This module's own header says
+    // an absent store must never break anything — a stalled one must not either.
+    const response = await fetch(SHARED_PLAYER_STORE_PATH, { cache: 'no-store', signal: AbortSignal.timeout(10000) });
     if (!response.ok) return null;
     const body = await response.json();
     if (!body || typeof body.keys !== 'object' || body.keys == null) return null;
