@@ -31,6 +31,21 @@ Working scene: headless `tools/blender/build_hornet_mtx.py`. Supported cameras i
 
 C52 implements 1 + 3.
 
+## C56 construction (section + openings + drive)
+
+Shape-grammar failure being repaired: C54 closed loft traded the cage for a blank —
+no hole, no throat, a 6.36:1 dart.
+
+Assembly sequence this cycle:
+- same continuous loft; station rings scaled on Z about each ring median
+  (×1.45 canopy, ×1.55 mid, ×1.60 drive; bow left alone)
+- three skin-breaking Exact booleans (canopy tub, port avionics, starboard radiator)
+  plus a starboard shoulder bay so the profile camera can count rims
+- five-wall tubs, framed near-black glass (transmission 0, coat 1.0), no liner plug
+- spun bells on a full transom bulkhead; closed dark bore; no plume
+- dorsal/flank plates cut into the skin; one unmirrored repair plate
+- maps at 2048
+
 ## C49 construction (form rebuild)
 
 Shape-grammar failure being repaired: tip-to-transom `Pressure_Hull` loft still read as a foam dart after C41–C48 garnish.
