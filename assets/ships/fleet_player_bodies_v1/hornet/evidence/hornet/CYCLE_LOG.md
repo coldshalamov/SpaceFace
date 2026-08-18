@@ -33,4 +33,6 @@
 
 | 53 | **no** | see json | (baseline) | toolchain repair only. Blender 5.1 crashed every build in `boolean_cut_box`; fixed and re-ran. Output is byte-identical to C52, so this is NOT an authoring cycle and does not count. Stills exist only as the review baseline for the form restart. |
 
+| 54 | yes | 1069a507 | REVISE/REVISE/pending | **form restart.** Four disjoint gloves and the outside plate cage replaced by one continuous loft. 15.3x2.5 needle -> 10.7x7.4 interceptor. Cage defect CONFIRMED FIXED by review; "traded a cage for a blank". Canopy is a frame on unbroken skin, no openings anywhere, wing still a card. Sockets were left at the old needle coordinates (gun 1.45u in front of the nose) and were re-seated by the controller. |
+
 Hitch-plus / A-list: not met. Do not promote. Do not self-accept.
