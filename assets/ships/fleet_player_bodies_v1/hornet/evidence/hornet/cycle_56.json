@@ -1,0 +1,269 @@
+{
+  "schema": "spaceface.hornetMtx.cycle.v1",
+  "shipId": "hornet",
+  "cycle": 56,
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 43155,
+      "hullTriangles": 4951,
+      "draws": 11,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Repair",
+        "Material_Thruster",
+        "Material_Warning",
+        "Material_Well"
+      ],
+      "bounds": {
+        "xmin": -5.718,
+        "xmax": 5.6,
+        "ymin": -3.644,
+        "ymax": 3.644,
+        "zmin": -0.946,
+        "zmax": 1.814
+      },
+      "sockets": {
+        "SOCKET_Weapon_Front": [
+          5.32,
+          0.0,
+          0.344
+        ],
+        "SOCKET_Mining_Front": [
+          5.46,
+          0.0,
+          0.144
+        ],
+        "SOCKET_Engine_Main": [
+          -5.498,
+          0.0,
+          0.304
+        ],
+        "SOCKET_Trail_Main": [
+          -5.678,
+          0.0,
+          0.304
+        ],
+        "SOCKET_Trail_Port": [
+          -5.598,
+          -0.68,
+          0.304
+        ],
+        "SOCKET_Trail_Starboard": [
+          -5.598,
+          0.68,
+          0.304
+        ],
+        "SOCKET_Utility_Dorsal": [
+          0.55,
+          0.0,
+          1.734
+        ],
+        "SOCKET_Cargo_Ventral": [
+          -0.4,
+          0.0,
+          -0.886
+        ],
+        "SOCKET_Camera_Focus": [
+          0.8,
+          0.0,
+          0.404
+        ],
+        "SOCKET_RCS_Port": [
+          -1.2,
+          -2.2,
+          0.304
+        ],
+        "SOCKET_RCS_Starboard": [
+          -1.2,
+          2.2,
+          0.304
+        ]
+      },
+      "path": "source/wholeships/hornet_production_v1_lod0.glb",
+      "bytes": 67770120,
+      "sha256": "CF5B899CF0397C98232F4AE0BDAF6B9A6418C10209B5A63439279A54F12DB127"
+    },
+    {
+      "lod": 1,
+      "triangles": 42332,
+      "hullTriangles": 4560,
+      "draws": 11,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Repair",
+        "Material_Thruster",
+        "Material_Warning",
+        "Material_Well"
+      ],
+      "bounds": {
+        "xmin": -5.718,
+        "xmax": 5.6,
+        "ymin": -3.644,
+        "ymax": 3.644,
+        "zmin": -0.946,
+        "zmax": 1.814
+      },
+      "sockets": {
+        "SOCKET_Weapon_Front": [
+          5.32,
+          0.0,
+          0.344
+        ],
+        "SOCKET_Mining_Front": [
+          5.46,
+          0.0,
+          0.144
+        ],
+        "SOCKET_Engine_Main": [
+          -5.498,
+          0.0,
+          0.304
+        ],
+        "SOCKET_Trail_Main": [
+          -5.678,
+          0.0,
+          0.304
+        ],
+        "SOCKET_Trail_Port": [
+          -5.598,
+          -0.68,
+          0.304
+        ],
+        "SOCKET_Trail_Starboard": [
+          -5.598,
+          0.68,
+          0.304
+        ],
+        "SOCKET_Utility_Dorsal": [
+          0.55,
+          0.0,
+          1.734
+        ],
+        "SOCKET_Cargo_Ventral": [
+          -0.4,
+          0.0,
+          -0.886
+        ],
+        "SOCKET_Camera_Focus": [
+          0.8,
+          0.0,
+          0.404
+        ],
+        "SOCKET_RCS_Port": [
+          -1.2,
+          -2.2,
+          0.304
+        ],
+        "SOCKET_RCS_Starboard": [
+          -1.2,
+          2.2,
+          0.304
+        ]
+      },
+      "path": "source/wholeships/hornet_production_v1_lod1.glb",
+      "bytes": 67677404,
+      "sha256": "24914790933A400A3A17FC2E6574968E6B1A6A09B74416B082D68EA0EB104223"
+    },
+    {
+      "lod": 2,
+      "triangles": 27996,
+      "hullTriangles": 4560,
+      "draws": 11,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Repair",
+        "Material_Thruster",
+        "Material_Warning",
+        "Material_Well"
+      ],
+      "bounds": {
+        "xmin": -5.718,
+        "xmax": 5.6,
+        "ymin": -3.644,
+        "ymax": 3.644,
+        "zmin": -0.946,
+        "zmax": 1.814
+      },
+      "sockets": {
+        "SOCKET_Weapon_Front": [
+          5.32,
+          0.0,
+          0.344
+        ],
+        "SOCKET_Mining_Front": [
+          5.46,
+          0.0,
+          0.144
+        ],
+        "SOCKET_Engine_Main": [
+          -5.498,
+          0.0,
+          0.304
+        ],
+        "SOCKET_Trail_Main": [
+          -5.678,
+          0.0,
+          0.304
+        ],
+        "SOCKET_Trail_Port": [
+          -5.598,
+          -0.68,
+          0.304
+        ],
+        "SOCKET_Trail_Starboard": [
+          -5.598,
+          0.68,
+          0.304
+        ],
+        "SOCKET_Utility_Dorsal": [
+          0.55,
+          0.0,
+          1.734
+        ],
+        "SOCKET_Cargo_Ventral": [
+          -0.4,
+          0.0,
+          -0.886
+        ],
+        "SOCKET_Camera_Focus": [
+          0.8,
+          0.0,
+          0.404
+        ],
+        "SOCKET_RCS_Port": [
+          -1.2,
+          -2.2,
+          0.304
+        ],
+        "SOCKET_RCS_Starboard": [
+          -1.2,
+          2.2,
+          0.304
+        ]
+      },
+      "path": "source/wholeships/hornet_production_v1_lod2.glb",
+      "bytes": 66168148,
+      "sha256": "AB302BB80B8A216CFC2EB8A6B3FBAAFC8D9189FF79FE07B432D3A448BC5E49C0"
+    }
+  ],
+  "stills": "evidence/hornet/cycles/cycle_56"
+}

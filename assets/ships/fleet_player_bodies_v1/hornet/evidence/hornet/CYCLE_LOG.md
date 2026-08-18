@@ -35,4 +35,8 @@
 
 | 54 | yes | 1069a507 | REVISE/REVISE/REVISE | **form restart.** Four disjoint gloves and the outside plate cage replaced by one continuous loft. 15.3x2.5 needle -> 10.7x7.4 interceptor. Cage defect CONFIRMED FIXED by review; "traded a cage for a blank". Canopy is a frame on unbroken skin, no openings anywhere, wing still a card. Daylight through the hull 74 regions/4.1% -> 1/0.05%; wings and engine collar now solid. Sockets were left at the old needle coordinates (gun 1.45u in front of the nose) and were re-seated by the controller. |
 
+| 55 | **no** | see json | (none) | socket re-seat rebuild only, no form change. Does not count. |
+
+| 56 | yes | see json | see cycle_56.md | **every gate number hit and the ship got worse.** Height 157->244, bell 50->125px, openings 0->3, bore 82/73 (cap) -> 15/61 (throat), all met. But the canopy became a black tent, the drive a flat washer with no vanes, panel detail flattened, and hull triangles fell 77% to a torn loft. Two metrics were satisfied by shapes that defeat their purpose. C54 is the better ship overall and is recoverable at a7a41d90. |
+
 Hitch-plus / A-list: not met. Do not promote. Do not self-accept.
