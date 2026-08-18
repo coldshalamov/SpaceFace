@@ -74,6 +74,36 @@ test('context loss covers render-target attachments once and ignores unrelated o
   assert.equal(receipt.listenersDetached, 3);
 });
 
+test('context loss detaches BatchedMesh-owned matrix and indirect textures', () => {
+  const provenance = completeProvenance();
+  const exactTexture = [...provenance.textures][0];
+  const matrices = resource({ isTexture: true }, [exactTexture]);
+  const indirect = resource({ isTexture: true }, [exactTexture]);
+  const colors = resource({ isTexture: true }, [exactTexture]);
+  const geometry = resource({ isBufferGeometry: true }, []);
+  const material = resource({ isMaterial: true }, []);
+  const batch = {
+    isBatchedMesh: true,
+    geometry,
+    material,
+    _matricesTexture: matrices,
+    _indirectTexture: indirect,
+    _colorsTexture: colors,
+  };
+  const root = { traverse(visitor) { visitor(batch); } };
+
+  const receipt = detachStaleWebGlDisposeListeners(root, provenance);
+
+  assert.equal(receipt.objects, 1);
+  assert.equal(receipt.batchedMeshes, 1);
+  assert.equal(receipt.instancedMeshes, 0);
+  assert.equal(receipt.textures, 3);
+  assert.equal(receipt.listenersDetached, 3);
+  assert.deepEqual(matrices._listeners.dispose, []);
+  assert.deepEqual(indirect._listeners.dispose, []);
+  assert.deepEqual(colors._listeners.dispose, []);
+});
+
 test('incomplete provenance fails closed without name or source-text fallback', () => {
   const namedButUnproven = function onGeometryDispose() {};
   const sameNameForeign = function onGeometryDispose() {};
