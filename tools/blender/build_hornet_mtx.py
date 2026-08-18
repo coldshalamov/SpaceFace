@@ -45,6 +45,28 @@ TEX_DIR = FAMILY / "source" / "textures"
 #
 # So: LOD0 carries the density the contract asks for, and the levels a player only ever sees small
 # carry less.
+# LOD0 is 1024, not 2048, and that is a hardware finding rather than an art choice.
+#
+# 2048 renders fine on the sparse cycle-56 body (4,951 hull triangles) but crashes Blender in
+# igc64.dll -- the Intel graphics compiler -- during render setup on the cycle-54 body (21,240 hull
+# triangles). Reproduced twice in a row at the same point, after all three LODs had already
+# exported cleanly, so it is the render step and not the export.
+#
+# 1024 gives about 96 px/m on a 10.7 m ship. That is triple the old 512 and still below MTX-17's
+# 256 px/m floor, which needs roughly a 2740 px map. So the contract's density target is not
+# reachable on this machine through this render path, and that limit belongs in the record rather
+# than in a build that dies. Raise it on a machine that survives 2048, or split the bake out of
+# the still-render pass.
+# Restored to the intended ladder after a control run settled what the render crash is NOT.
+#
+# 2048 exports and renders cleanly (cycle 57). Later the same day 2048 crashed Blender in
+# igc64.dll during render setup; so did 1024; and so did a control at 512 — cycle 54's exact
+# configuration, which had rendered without complaint a few hours earlier. A configuration that
+# worked and then stopped working, with nothing between, is the machine and not the build. Every
+# one of those runs exported all three LODs correctly first, so the fault is confined to the
+# still-render pass.
+#
+# Do not lower these to chase that crash. Take the stills on a fresh GPU state.
 TEX_BY_LOD = {0: 2048, 1: 1024, 2: 512}
 TEX = TEX_BY_LOD[0]
 CYCLE = 1
