@@ -57,6 +57,26 @@ Therefore:
 - Do not stop to reconcile, refresh, or audit the board unless that is the actual assigned task.
 - If you do need to claim something, add your row and keep working. Do not wait for anything.
 
+## Before you stop: prove the game still runs
+
+```
+npm run check:playable
+```
+
+It boots the real game and asserts eight things: the menu appears, flight starts, the player has a
+hull and a gun, the ship mesh is in the scene, the sector has entities, a thrust key moves the ship,
+nothing threw, and every request was served. ~90 seconds.
+
+**Run it before you report done. A red result means you broke the game, whatever else is green.**
+
+This exists because the game was unplayable for two days — frozen on the loading screen, or loading
+to a dead frame with no ship and no controls — while the whole check suite stayed green. Roughly 400
+checks here inspect modules in isolation; not one of them booted the game and asked whether a person
+could play it. One uncaught exception in boot was invisible to all of them.
+
+If `check:playable` is red and you did not cause it, say so plainly and name what you found. Do not
+"fix" it by loosening it, and do not build a second one — extend this one.
+
 ## A green check is not proof
 
 Several checks here pass because they inspect a convenient stand-in rather than the real thing —

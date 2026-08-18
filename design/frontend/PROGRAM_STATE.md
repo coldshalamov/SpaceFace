@@ -18,13 +18,27 @@ Program spec: `CANONICAL_BUILD_MAP.md` §11.12 and `design/frontend/NEXT_JOBS.md
 | 1 | J04 snapshot lab, J01 data-state adoption | **DONE** |
 | 2 | J05 iconography + 14 faction crests | **DONE** |
 | 3 | J06 Power Rail | **DONE** |
-| 3 | J07 HUD overhaul | **NOT STARTED** |
+| 3 | J07 HUD overhaul | **IN PROGRESS** — 4 of 6 bullets landed (`ad4764b5`) |
 | 4 | J08 combat reticle + threat halo | NOT STARTED |
 | 5 | J09–J13 strategic screens | NOT STARTED |
 | 6 | J14–J15 haptics, comms, hail radial | NOT STARTED |
 | 7 | J16 visual regression matrix | NOT STARTED — **must go last** |
 
-Landed: `e23a9ba9` `f1cbaf04` `6e0e4037` `79e56c06`.
+Landed: `e23a9ba9` `f1cbaf04` `6e0e4037` `79e56c06` `ad4764b5` `7f9f87cf`.
+
+### J07 progress (as of `ad4764b5`)
+
+| Bullet | State |
+|---|---|
+| Right dock -> one 220px column | **DONE** |
+| De-box to hairline corner brackets | **DONE** |
+| Radar 180 -> 220, chevrons, capitals, threat rings | **DONE** |
+| Comms button -> integrated frequency tape | **NOT DONE** — needs `hud.js` |
+| Target panel -> threat badge + range bar | **NOT DONE** |
+| Ship condition PNG -> dynamic hull wireframe | **NOT DONE** — needs `hud.js` |
+
+The two remaining bullets both land on `src/ui/hud.js`, which carries the concurrent lane's two
+`resolvePropulsionProfile(p, state)` hunks. Use the `git show HEAD:` / `hash-object` recipe.
 
 **Packet 7 goes last.** It commits golden reference images. Taken before packets 3–6 change the UI,
 every one of them needs re-baselining. Note `.devshots/` is git-ignored — committing references
@@ -61,6 +75,32 @@ to kill it — that means replacing those two `<img>` tags with vector hull art,
 
 ---
 
+## THE GAME WAS UNPLAYABLE AND EVERY CHECK WAS GREEN
+
+2026-08-17. The owner reported the game frozen on the loading screen, or loading to a frame with no
+ship, all vitals at 0, an empty roster and dead controls. Two days. Full check suite green.
+
+**One throw at `src/main.js:107` caused both symptoms.** `startLoop` is at 215 and
+`hideBootOverlay` at 228, so a single exception at 107 means no simulation tick AND no dismissed
+overlay. The throw came from `createTerminalArtwork` initialising the boot canvas twice — once from
+the inline module at `index.html:143`, once from `loadingPresenter.js`.
+`transferControlToOffscreen()` is **irreversible**, so the second pass fell into a "graceful"
+fallback that called `getContext('2d')` on a canvas it had already given away.
+
+Now gated by **`npm run check:playable`** (`scripts/check-game-playable.mjs`) — boots the real game,
+asserts menu / flight / pilot / hull mesh / world / controls / no-throw / no-404. It caught this on
+its first run. **Run it before reporting done.** Also `npm run check:boot-resilience`, which pins the
+three specific defects deterministically because the boot failure is racy and a boot check alone is
+not a reliable gate for it.
+
+The fixes are in the working tree only — the whole loading-terminal feature is another lane's
+uncommitted work-in-progress and is not in `HEAD`. If that lane rewrites those files, re-apply:
+per-canvas idempotence in `createTerminalArtwork`, a `__sfTransferred` flag so nothing calls
+`getContext` after a transfer, and a try/catch in `createLoadingPresenter` so decoration can never
+stop boot.
+
+---
+
 ## Traps this program has already paid for
 
 1. **`SEMANTIC_PALETTE` has two icon channels.** `.icon` is PLAIN TEXT — `hud.js` writes it via
@@ -86,7 +126,23 @@ to kill it — that means replacing those two `<img>` tags with vector hull art,
 8. **Cross-file constants drift.** A CSS keyframe duplicating a JS constant must be pinned by a test
    that reads both. A comment has never prevented that drift here.
 9. **Mutation-test your checks.** Break the code deliberately and confirm the check goes red. Two
-   assertions written this session passed against correct code for the wrong reason.
+   assertions written this session passed against correct code for the wrong reason. Every
+   assertion added by J07 was mutation-verified; doing so caught a real clipping defect that had
+   already been written and would otherwise have shipped.
+10. **`radar.js` is LF at HEAD but the Edit tool wrote CRLF into it**, turning a 121-line change
+    into a 1159-line diff. Check `git diff --numstat` against the line count you expect before
+    staging, and compare to `git show HEAD:<path>`. `targetPanel.js` is genuinely CRLF at HEAD —
+    preserve it.
+11. **The target card is suppressed while a nav route is active** unless the target is hostile or an
+    asteroid (`hud.js:4188`). A fresh save always has a route, so a probe that merely selects a
+    contact measures a hidden card. Both halves of that gate are sim-owned and rewritten every
+    tick — the AI restores `ai.passive`, nav re-derives `state.nav.waypoint` — so forcing them from
+    a probe loses the race. Target an **asteroid**: `miningRelevant` is a bare type test nothing
+    rewrites.
+12. **Three cascade layers set the same HUD selector.** `injectHudCss`'s early block, its late
+    override block ~600 lines below, and `styles/ui.css` — plus media queries. `.sf-mission-tracker`
+    was de-boxed in one and silently re-plated by a trailing rule in another. Do not read one
+    stylesheet and conclude anything; measure `getComputedStyle` in the running game.
 
 ---
 
