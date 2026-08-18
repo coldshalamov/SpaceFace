@@ -81,10 +81,18 @@ test('scene metrics count actual visible instances, surfaces, semantic roles, an
     material: { name: 'Hull', transparent: false, blending: 1 },
     userData: { spacefaceInstancePool: true },
   });
+  const rigidPackageBatch = node({
+    isBatchedMesh: true,
+    isMesh: true,
+    instanceCount: 8,
+    maxInstanceCount: 64,
+    material: { name: 'Hull', transparent: false, blending: 1 },
+    userData: { spacefaceInstancePool: true, spacefaceVisibleInstanceCount: 6 },
+  });
   const stationMesh = node({ isMesh: true, material: { name: 'Station', transparent: false } });
   const shipRoot = node({ userData: { authoredAssetState: 'authored' } }, [canopy, plume]);
   const stationRoot = node({}, [stationMesh]);
-  const scene = node({}, [shipRoot, stationRoot, hull]);
+  const scene = node({}, [shipRoot, stationRoot, hull, rigidPackageBatch]);
   const ship = { type: 'ship', alive: true, mesh: shipRoot, data: {} };
   const station = { type: 'station', alive: true, mesh: stationRoot, data: { stationId: 'station_test' } };
   const state = {
@@ -95,9 +103,9 @@ test('scene metrics count actual visible instances, surfaces, semantic roles, an
     state,
     diagnostics: { memory: { geometries: 7, textures: 8, programs: 9 }, post: { renderTargetCount: 5 } },
   });
-  assert.equal(result.visibleMeshes, 4);
-  assert.equal(result.visibleInstances, 13);
-  assert.deepEqual(result.surfaces, { opaque: 2, transparent: 2 });
+  assert.equal(result.visibleMeshes, 5);
+  assert.equal(result.visibleInstances, 19);
+  assert.deepEqual(result.surfaces, { opaque: 3, transparent: 2 });
   assert.equal(result.roles.canopy, 1);
   assert.equal(result.roles.plume, 1);
   assert.equal(result.roles.shadowCaster, 1);
@@ -109,8 +117,12 @@ test('scene metrics count actual visible instances, surfaces, semantic roles, an
     missingMesh: 0,
     ignoredNonresident: 0,
   });
-  assert.equal(result.authoredPools.visibleChunks, 1);
-  assert.equal(result.authoredPools.visibleInstances, 10);
+  assert.equal(result.instancedMeshes, 1);
+  assert.equal(result.batchedMeshes, 1);
+  assert.equal(result.authoredPools.visibleChunks, 2);
+  assert.equal(result.authoredPools.visibleInstances, 16);
+  assert.equal(result.authoredPools.batchedRigidChunks, 1);
+  assert.equal(result.authoredPools.instancedChunks, 1);
   assert.equal(result.stationPlaceHlod.stationEntities, 1);
   assert.equal(result.stationPlaceHlod.stationVisibleMeshes, 1);
   assert.equal(result.stationPlaceHlod.proxyVisible, 3);

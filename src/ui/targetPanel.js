@@ -70,6 +70,9 @@ const ROLE_LABEL = {
   // Ambient traffic roles (traffic.js TRAFFIC_ROLES) — short, scannable.
   hauler: 'Hauler', courier: 'Courier', miner: 'Miner', patrol: 'Patrol',
   escort: 'Escort', smuggler: 'Smuggler', pirate: 'Raider', rescue: 'Rescue',
+  tanker: 'Tanker', prospector: 'Prospector', sweeper: 'Sweeper', tug: 'Tug',
+  shuttle: 'Shuttle', surveyor: 'Survey', salvor: 'Salvor', tender: 'Tender',
+  ore_carrier: 'Ore Barge', express: 'Liner',
 };
 
 const GIMMICK_LABELS = {

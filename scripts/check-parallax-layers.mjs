@@ -9,18 +9,17 @@ const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const MODULE_PATH = fileURLToPath(new URL('../src/render/parallaxLayers.js', import.meta.url));
 
 execFileSync(process.execPath, ['--check', MODULE_PATH], { cwd: ROOT, stdio: 'pipe' });
-installCanvasStub();
 
 const parallaxLayers = await import(pathToFileURL(MODULE_PATH).href);
 assert.equal(typeof parallaxLayers.init, 'function', 'parallaxLayers.init export missing');
 assert.equal(typeof parallaxLayers.update, 'function', 'parallaxLayers.update export missing');
 assert.equal(typeof parallaxLayers.dispose, 'function', 'parallaxLayers.dispose export missing');
 
-checkStack({ particleQuality: 'medium', motionReduce: false }, { far: 2, mid: 1400, near: 700 });
-checkStack({ particleQuality: 'low', motionReduce: false }, { far: 1, mid: 700, near: 350 });
-checkStack({ particleQuality: 'low', motionReduce: true }, { far: 1, mid: 700, near: 175 });
+checkStack({ particleQuality: 'medium', motionReduce: false }, { far: 80, mid: 1400, near: 96 });
+checkStack({ particleQuality: 'low', motionReduce: false }, { far: 40, mid: 700, near: 48 });
+checkStack({ particleQuality: 'low', motionReduce: true }, { far: 40, mid: 700, near: 24 });
 
-console.log('Parallax layers OK: exports, 3 groups, quality counts, static GPU debris spin, reduced-motion mote cap');
+console.log('Parallax layers OK: opaque instanced chips, quality counts, GPU spin, no point sprites');
 
 function checkStack(video, expected) {
   const scene = new THREE.Scene();
@@ -35,12 +34,22 @@ function checkStack(video, expected) {
   const near = stack.groups.find((group) => group.userData.layer === 'nearSpeedMotes');
   assert.ok(far, 'far dust group missing');
   assert.ok(mid, 'mid debris group missing');
-  assert.ok(near, 'near speed-motes group missing');
+  assert.ok(near, 'near debris group missing');
 
   assert.equal(far.userData.activeCount, expected.far, `${video.particleQuality}: far count`);
-  assert.equal(far.children.filter((child) => child.visible).length, expected.far, `${video.particleQuality}: far visible planes`);
   assert.equal(mid.userData.activeCount, expected.mid, `${video.particleQuality}: mid count`);
-  assert.equal(mid.children[0].isInstancedMesh, true, `${video.particleQuality}: mid layer should be instanced`);
+  assert.equal(near.userData.activeCount, expected.near, `${video.particleQuality}: near count`);
+
+  for (const [label, group] of [['far', far], ['mid', mid], ['near', near]]) {
+    const mesh = group.children[0];
+    assert.equal(mesh.isInstancedMesh, true, `${video.particleQuality}: ${label} must be instanced meshes`);
+    assert.equal(!!mesh.isPoints, false, `${video.particleQuality}: ${label} must not be point sprites`);
+    assert.equal(mesh.material.transparent, false, `${video.particleQuality}: ${label} must be opaque matter`);
+    assert.equal(mesh.material.depthWrite, true, `${video.particleQuality}: ${label} must occlude`);
+    assert.notEqual(mesh.material.blending, THREE.AdditiveBlending,
+      `${video.particleQuality}: ${label} must not be an additive glow card`);
+  }
+
   assert.equal(mid.children[0].count, expected.mid, `${video.particleQuality}: mid mesh count`);
   assert.equal(mid.children[0].instanceMatrix.usage, THREE.StaticDrawUsage,
     `${video.particleQuality}: mid matrices should be static`);
@@ -50,9 +59,6 @@ function checkStack(video, expected) {
   const spinParams = mid.children[0].geometry.getAttribute('aParallaxSpinParams');
   assert.equal(spinAxis?.count, 1400, `${video.particleQuality}: spin axes should cover authored capacity`);
   assert.equal(spinParams?.count, 1400, `${video.particleQuality}: spin parameters should cover authored capacity`);
-  assert.equal(near.userData.activeCount, expected.near, `${video.particleQuality}: near count`);
-  assert.equal(near.children[0].isPoints, true, `${video.particleQuality}: near layer should be points`);
-  assert.equal(near.children[0].geometry.drawRange.count, expected.near, `${video.particleQuality}: near draw range`);
 
   const matrixVersion = mid.children[0].instanceMatrix.version;
   const matrixBytes = mid.children[0].instanceMatrix.array.slice();
@@ -67,11 +73,6 @@ function checkStack(video, expected) {
     `${video.particleQuality}: visible primary debris clock should advance`);
   assert.equal(spinUniforms.tailTime.value, expected.mid === 1400 ? 1 / 60 : 0,
     `${video.particleQuality}: hidden upper-half debris clock should pause`);
-  if (video.motionReduce) {
-    assert.equal(near.children[0].material.uniforms.uStretch.value, 1, 'reduced motion disables boost stretch');
-  } else {
-    assert.ok(near.children[0].material.uniforms.uStretch.value > 1, 'boost/high speed should stretch motes');
-  }
 
   parallaxLayers.dispose();
   assert.equal(scene.children.length, 0, `${video.particleQuality}: dispose should remove groups`);
@@ -90,31 +91,5 @@ function makeState(video) {
     camera: { focus: { x: 320, y: 0, z: -180 } },
     playerId: 1,
     entities: new Map([[1, player]]),
-  };
-}
-
-function installCanvasStub() {
-  const gradient = { addColorStop() {} };
-  const ctx = {
-    fillStyle: null,
-    globalCompositeOperation: 'source-over',
-    clearRect() {},
-    createRadialGradient() { return gradient; },
-    beginPath() {},
-    arc() {},
-    fill() {},
-  };
-  globalThis.document = {
-    createElement(tag) {
-      assert.equal(tag, 'canvas', 'parallax texture helper should only create canvas elements');
-      return {
-        width: 0,
-        height: 0,
-        getContext(type) {
-          assert.equal(type, '2d', 'parallax texture helper should request a 2d canvas');
-          return ctx;
-        },
-      };
-    },
   };
 }
