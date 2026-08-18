@@ -145,6 +145,10 @@ const PLACE_FILES = Object.freeze([
   'places/place_ceres_grave_shard.glb',
   'places/place_conveyor_barge.glb',
   'places/place_mining_drone.glb',
+  // Only the two lane-furniture bodies every still reviewer cleared. The other four stay released
+  // on disk and unrouted until their blocking notes are answered (assets/places/lane_furniture/VISUAL_REVIEW.md).
+  'places/place_lane_pin.glb',
+  'places/place_cold_locker.glb',
   'places/place_asteroid_rock_a.glb',
   'places/place_asteroid_rock_b.glb',
   'places/place_asteroid_rock_c.glb',
@@ -1043,13 +1047,19 @@ const WHOLE_SHIP_ASSET_ID_BY_HOSTILE_ID = Object.freeze({
 // gates on the separate `slot.jobKind`, never on presentationRole, so Ceres freight slots keep
 // their hauler jobs intact.
 const WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE = Object.freeze({
-  courier: 'wholeships/helios_lark_production_v1.glb',
-  miner: 'wholeships/helios_cradle_production_v1.glb',
-  hauler: 'wholeships/helios_span_production_v1.glb',
-  ore_carrier: 'wholeships/ore_barge_production_v1.glb',
-  tender: 'wholeships/repair_tender_production_v1.glb',
-  salvor: 'wholeships/salvage_cutter_production_v1.glb',
-  surveyor: 'wholeships/survey_pin_production_v1.glb',
+  // Traffic bodies point at the declared, packaged wholeship releases. The remaster rewired these
+  // roles to *_production_v1 re-releases that were never declared in release_manifest.json nor
+  // given render packages or embedded asset identity, so assetLoader failed closed on every load
+  // and courier/hauler/surveyor/miner/ore_carrier/tender/salvor traffic rendered as invisible
+  // zero-draw boundaries. Re-point each role here once its production body completes the release
+  // pipeline (parts_manifest row + sg04 release build + pilot package).
+  courier: 'wholeships/helios_lark.glb',
+  miner: 'wholeships/helios_cradle.glb',
+  hauler: 'wholeships/helios_span.glb',
+  ore_carrier: 'wholeships/ore_barge.glb',
+  tender: 'wholeships/repair_tender.glb',
+  salvor: 'wholeships/salvage_cutter.glb',
+  surveyor: 'wholeships/survey_pin.glb',
 });
 const WHOLE_SHIP_ASSET_ID_BY_TRAFFIC_ROLE = Object.freeze({
   courier: 'SF_HELIOS_LARK_V1',

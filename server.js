@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
 const { createGameServer } = require('./scripts/lib/gameServer.cjs');
+const { resolvePlayerSaveDir } = require('./scripts/lib/playerSaveStore.cjs');
 
 const ROOT = fileURLToPath(new URL('.', import.meta.url));
 const PORT = Number(process.argv[2] || process.env.PORT || 8123);
@@ -43,7 +44,12 @@ const server = createGameServer({
   root: ROOT,
   async: true,
   devDiagnostics: true,
-  playerStoreDir: process.env.SPACEFACE_PLAYER_STORE_DIR || undefined,
+  // Default to the real save directory rather than leaving the store unmounted. Previously only
+  // launch-browser.mjs set SPACEFACE_PLAYER_STORE_DIR, so `npm start` served no store: every
+  // /__spaceface_player_store request 404'd and saves silently fell back to origin-scoped
+  // localStorage. That fails soft, which is worse than failing loud -- the two launch paths saw
+  // DIFFERENT SAVE SETS and nothing said so. The env var still overrides for isolated harnesses.
+  playerStoreDir: process.env.SPACEFACE_PLAYER_STORE_DIR || resolvePlayerSaveDir(process.env),
   extraRoutes: [
     { test: (method, url) => method === 'POST' && url.startsWith('/__shot'), handle: handleShot },
   ],
