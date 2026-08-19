@@ -91,7 +91,7 @@ Remaining PQ-050 leaves (one ship at a time; Hitch/Kestrel frozen):
 | Leaf | Ship | This campaign |
 |---|---|---|
 | `.01` | Hornet | wired candidate, **not quality-closed** (ledger incomplete, C85 unreviewed) |
-| `.02` | Drifter | three of seven, cycle 20 live, remaining cycles + polish still owed |
+| `.02` | Drifter | seven form attempts this campaign (C18–24). Three volumes + ringed throats in candidate. C20 still live. **Not quality-closed.** |
 | `.03` | Ranger | not started |
 | `.04` | Ironback | not started |
 | `.05` | Bastion | not started |
