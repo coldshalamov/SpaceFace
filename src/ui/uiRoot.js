@@ -2139,6 +2139,18 @@ function injectHudCss() {
     color:var(--hud-muted); text-shadow:var(--sf-ink);
   }
   .sf-commtape__slots { display:flex; align-items:center; gap:7px; pointer-events:auto; }
+  .sf-commtape__tracehost { display:flex; align-items:center; }
+  .sf-commtape .sf-fx-comms-trace {
+    min-width:118px; padding-left:7px;
+    border-inline-start:1px solid rgba(148,178,205,.18);
+    --sf-comms-amp:0;
+    --sf-comms-density:0;
+  }
+  .sf-commtape .sf-fx-comms-trace__crest { color:var(--hud-cyan); }
+  .sf-commtape .sf-fx-comms-trace__wave {
+    font-family:var(--hud-data); font-size:12px; letter-spacing:.08em;
+    color:var(--hud-cyan); text-shadow:0 0 8px rgba(78,195,230,.45), 0 1px 2px rgba(0,0,0,.72);
+  }
   .sf-commtape .sf-comm-backlog-btn,
   .sf-commtape #sf-contact-hail {
     position:static !important; left:auto !important; top:auto !important; z-index:auto !important;

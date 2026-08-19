@@ -30,6 +30,7 @@ import {
 import { autoUpdate, computePosition, flip, offset, shift, size } from '@floating-ui/dom';
 import { createCircularGauge, createRouteBeam } from '../../effects/index.js';
 import { prefersReducedMotion } from '../../effects/effectRuntime.js';
+import { planGaugeSettle } from '../../effects/gaugeSettle.js';
 import { mountDataState, settleDataState } from '../../uiPrimitives.js';
 import {
   formatPreviewDelta,
@@ -68,6 +69,8 @@ const SLOT_LABEL = { weapon: 'Weapon', shield: 'Shield', engine: 'Engine', cargo
 const fmt = (n) => Math.round(Number(n) || 0).toLocaleString('en-US');
 const shipName = (id) => { const s = SHIP_BY_ID.get(id); return s ? s.name : id; };
 const GAUGE_DEFS = SHIP_ENGINEERING_GAUGE_DEFS.slice();
+const UI_SWITCH_DETENT_CUE = 'sfx_ui_switch_detent';
+const UI_DRAWER_LATCH_CUE = 'sfx_ui_drawer_latch';
 
 function finite(value, fallback = 0) {
   const number = Number(value);
@@ -295,6 +298,10 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     return prefersReducedMotion({ motionReduce });
   }
 
+  function emitUiCue(id) {
+    if (ctx.bus) ctx.bus.emit('audio:cue', { id });
+  }
+
   function ensureGaugeRack() {
     if (gaugeReady) return;
     gaugeRackEl.innerHTML = '';
@@ -313,9 +320,48 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         tile,
         valueEl: tile.querySelector('[data-gauge-value]'),
         fx: createCircularGauge(dial, { size: 48, stroke: 4, kind: def.kind }),
+        settleValue: 0,
+        settleTimer: 0,
+        settleReady: false,
       };
     }
     gaugeReady = true;
+  }
+
+  function clearGaugeSettle(row) {
+    if (!row) return;
+    if (row.settleTimer) clearTimeout(row.settleTimer);
+    row.settleTimer = 0;
+  }
+
+  function clearAllGaugeSettles() {
+    for (const key of Object.keys(gaugeByKey)) clearGaugeSettle(gaugeByKey[key]);
+  }
+
+  function setGaugeTransition(fx, ms, overshoot) {
+    const arc = fx && fx.svg && fx.svg.querySelector ? fx.svg.querySelector('.sf-fx-gauge__arc') : null;
+    if (!arc) return;
+    const eased = overshoot ? 'cubic-bezier(.24,1.26,.34,1)' : 'cubic-bezier(.19,.9,.29,1)';
+    arc.style.transition = `stroke-dashoffset ${Math.max(1, Math.round(ms))}ms ${eased}, stroke 160ms var(--ease, ease-out)`;
+  }
+
+  function applyGaugeSettle(row, nextValue, settleMeta, effectMeta) {
+    if (!row || !row.fx) return;
+    clearGaugeSettle(row);
+    const plan = planGaugeSettle(row.settleValue, nextValue, settleMeta);
+    row.settleValue = plan.targetValue;
+    if (plan.immediate) {
+      setGaugeTransition(row.fx, 1, false);
+      row.fx.setValue(plan.targetValue, effectMeta);
+      return;
+    }
+    setGaugeTransition(row.fx, plan.upMs, true);
+    row.fx.setValue(plan.peakValue, effectMeta);
+    row.settleTimer = setTimeout(() => {
+      setGaugeTransition(row.fx, plan.downMs, false);
+      row.fx.setValue(plan.targetValue, effectMeta);
+      row.settleTimer = 0;
+    }, plan.upMs);
   }
 
   function owned() { return (ctx.state.player && ctx.state.player.ownedShips) || []; }
@@ -326,7 +372,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     host = next;
     // Flight entry: inspect-only. Buy mode and MAKE ACTIVE belong to a station berth.
     el.classList.toggle('sx-sw--flight', host === 'flight');
-    if (!chooserEl.hidden) closeChooser();
+    if (!chooserEl.hidden) closeChooser({ silent: true });
     if (host === 'flight') {
       mode = 'fleet';
       selectedSlot = -1;
@@ -751,7 +797,11 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
 
   function syncGaugeValues(model) {
     ensureGaugeRack();
-    if (!model || !model.derived) return;
+    if (!model || !model.derived) {
+      currentGaugeStats = null;
+      clearAllGaugeSettles();
+      return;
+    }
     currentGaugeStats = {
       mass: finite(model.derived.mass, 0),
       capMax: finite(model.derived.capMax, 0),
@@ -761,12 +811,26 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       maxSpeed: finite(model.derived.maxSpeed, 0),
       continuousDrain: finite(model.derived.continuousDrain, 0),
     };
+    const settleMeta = {
+      reducedMotion: isReducedMotion(),
+      shieldRegenRate: finite(model.derived.shieldRegenRate, 0),
+      inertia: finite(model.derived.flightModel && model.derived.flightModel.inertia, 1),
+      massRatio: finite(model.handling && model.handling.massRatio, 1),
+    };
     for (const def of GAUGE_DEFS) {
       const row = gaugeByKey[def.key];
       if (!row) continue;
       const raw = currentGaugeStats[def.key];
       const norm = gaugeNorm(def.key, raw, currentGaugeStats);
-      row.fx.setValue(norm, { kind: def.kind, label: `${def.label}: ${fmt(raw)}${def.suffix}` });
+      const gaugeMeta = { kind: def.kind, label: `${def.label}: ${fmt(raw)}${def.suffix}` };
+      if (!row.settleReady) {
+        row.settleReady = true;
+        row.settleValue = norm;
+        setGaugeTransition(row.fx, 1, false);
+        row.fx.setValue(norm, gaugeMeta);
+      } else {
+        applyGaugeSettle(row, norm, settleMeta, gaugeMeta);
+      }
       row.valueEl.textContent = `${fmt(raw)}${def.suffix}`;
       row.tile.setAttribute('data-why', `${def.label}: ${fmt(raw)}${def.suffix}`);
     }
@@ -1597,7 +1661,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     }).catch(() => {});
   }
 
-  function openChooser(slotIndex, anchorEl) {
+  function openChooser(slotIndex, anchorEl, opts = {}) {
     const s = viewedShip(); const def = s ? SHIP_BY_ID.get(s.defId) : null;
     if (!def) return;
     if (selectedPresetIdForHull(def.id)) {
@@ -1605,6 +1669,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       restoreCurrentPreview();
     }
     const slots = buildSlotList(def); const slot = slots[slotIndex]; if (!slot) return;
+    if (!opts.silent) emitUiCue(UI_SWITCH_DETENT_CUE);
     const fittings = s.fittings || [];
     const fittedId = fittings[slotIndex];
     const credits = (ctx.state.player && ctx.state.player.credits) || 0;
@@ -1682,7 +1747,10 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     });
   }
 
-  function closeChooser() {
+  function closeChooser(opts = {}) {
+    if (chooserEl.hidden && !chooserEl.classList.contains('is-open')) return;
+    if (chooserCloseTimer) { clearTimeout(chooserCloseTimer); chooserCloseTimer = 0; }
+    if (!opts.silent) emitUiCue(UI_DRAWER_LATCH_CUE);
     const returnFocus = chooserAnchor;
     stopChooserFloating();
     restoreCurrentPreview();
@@ -1811,7 +1879,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       applySelectedPreset();
       return;
     }
-    if (!chooserEl.hidden) closeChooser();
+    if (!chooserEl.hidden) closeChooser({ silent: true });
     selectedSlot = -1;
     slotfieldEl.classList.remove('is-focusing');
     setSelectedPresetIdForHull(ship.defId, presetId, { remember: true });
@@ -1897,7 +1965,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   el.querySelector('.sx-seg').addEventListener('click', (ev) => {
     const b = ev.target.closest('[data-mode]'); if (!b) return;
     const m = b.getAttribute('data-mode'); if (m === mode) return;
-    if (!chooserEl.hidden) closeChooser();
+    if (!chooserEl.hidden) closeChooser({ silent: true });
     mode = m;
     selectedSlot = -1;
     rememberShipView();
@@ -1951,7 +2019,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
 
   sideEl.addEventListener('click', (ev) => {
     const slot = ev.target.closest('[data-slot]');
-    if (slot) { openChooser(Number(slot.getAttribute('data-slot'))); if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_click' }); return; }
+    if (slot) { openChooser(Number(slot.getAttribute('data-slot'))); return; }
     const buy = ev.target.closest('[data-buyship]');
     if (buy && !buy.disabled && shipworksActionAvailability(ctx.state).hullEnabled) { if (ctx.bus) { ctx.bus.emit('ui:buyShip', { defId: buy.getAttribute('data-buyship') }); ctx.bus.emit('audio:cue', { id: 'ui_accept' }); } setTimeout(refresh, 60); }
     const activate = ev.target.closest('[data-activate-ship]');
@@ -2024,7 +2092,6 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       }
       const anchor = slotfieldEl.querySelector(`[data-spatial-slot="${selectedSlot}"]`);
       openChooser(selectedSlot, anchor || null);
-      if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_click' });
       return;
     }
     if (action === 'activate') {
@@ -2045,7 +2112,6 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const node = ev.target.closest('[data-spatial-slot]');
     if (!node) return;
     openChooser(Number(node.getAttribute('data-spatial-slot')), node);
-    if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_click' });
   });
 
   // Direct manipulation camera. Rendering and projection are event-bound; no idle frame loop.
@@ -2139,11 +2205,11 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
           return;
         }
       }
-      if (ctx.bus) { ctx.bus.emit('ui:buyModule', { defId, fitSlotIndex: slotIndex }); ctx.bus.emit('audio:cue', { id: 'ui_click' }); }
+      if (ctx.bus) { ctx.bus.emit('ui:buyModule', { defId, fitSlotIndex: slotIndex }); ctx.bus.emit('audio:cue', { id: UI_SWITCH_DETENT_CUE }); }
       closeChooser(); setTimeout(refresh, 70); return;
     }
     const uf = ev.target.closest('[data-unfit]');
-    if (uf && !uf.disabled && shipworksActionAvailability(ctx.state).outfitEnabled) { if (ctx.bus) { ctx.bus.emit('ui:unfitModule', { slotIndex: Number(uf.getAttribute('data-unfit')) }); ctx.bus.emit('audio:cue', { id: 'ui_click' }); } closeChooser(); setTimeout(refresh, 70); }
+    if (uf && !uf.disabled && shipworksActionAvailability(ctx.state).outfitEnabled) { if (ctx.bus) { ctx.bus.emit('ui:unfitModule', { slotIndex: Number(uf.getAttribute('data-unfit')) }); ctx.bus.emit('audio:cue', { id: UI_SWITCH_DETENT_CUE }); } closeChooser(); setTimeout(refresh, 70); }
   });
 
   // Hover/focus: ghost afterFittings geometry + derived stats; leave restores current loadout.
@@ -2216,6 +2282,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       previewSettleTimer = 0;
       if (mount) mount.setActive(false);
       powerBeam.setActive(false);
+      clearAllGaugeSettles();
       for (const key of Object.keys(gaugeByKey)) gaugeByKey[key].fx.setActive(false);
     }, // stop the render loop when leaving (perf)
     refresh,
@@ -2227,6 +2294,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       if (stageResizeObserver) stageResizeObserver.disconnect();
       if (typeof rangeIntentUnsub === 'function') { try { rangeIntentUnsub(); } catch (_) {} }
       rangeIntentUnsub = null;
+      clearAllGaugeSettles();
       try { powerBeam.dispose(); } catch (_) {}
       for (const key of Object.keys(gaugeByKey)) {
         try { gaugeByKey[key].fx.dispose(); } catch (_) {}

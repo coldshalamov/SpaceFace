@@ -2005,3 +2005,38 @@ button:active { translate: 0 1px; }
   margin: 0; max-width: none;
   background: radial-gradient(70% 80% at 50% 50%, rgba(5, 8, 14, .92), rgba(5, 8, 14, .55) 70%, transparent);
 }
+
+/* Comms tape frequency trace (audio-state driven; parked when no transmission is live). */
+.sf-fx-comms-trace {
+  --sf-comms-amp: 0;
+  --sf-comms-density: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 128px;
+  padding: 1px 0 1px 6px;
+  border-inline-start: 1px solid color-mix(in srgb, var(--sf-calm) 42%, transparent);
+  color: var(--sf-you);
+  opacity: calc(.45 + var(--sf-comms-amp) * .55);
+}
+.sf-fx-comms-trace[hidden] { display: none !important; }
+.sf-fx-comms-trace__crest {
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: color-mix(in srgb, var(--sf-you) 88%, var(--sf-paper));
+}
+.sf-fx-comms-trace__wave {
+  min-width: 102px;
+  display: inline-flex;
+  font-family: var(--sf-data-face);
+  font-size: 12px;
+  letter-spacing: .1em;
+  line-height: 1;
+  color: var(--sf-you);
+  opacity: calc(.52 + var(--sf-comms-density) * .38);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--sf-you) 45%, transparent);
+}
+.sf-fx-comms-trace__wave .sf-fx-morph { min-width: 102px; }

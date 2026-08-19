@@ -18,6 +18,7 @@ import { createGlyphMatrix, CUE as GLYPH_MATRIX_CUE } from './glyphMatrix.js';
 import { createDockRail, CUE as DOCK_RAIL_CUE } from './dockRail.js';
 import { createMorphLabel, CUE as MORPH_LABEL_CUE } from './morphLabel.js';
 import { createSupplyTree, CUE as SUPPLY_TREE_CUE } from './supplyTree.js';
+import { createCommsTrace, CUE as COMMS_TRACE_CUE } from './commsTrace.js';
 
 export { createFlickerGrid } from './flickerGrid.js';
 export { createRippleField } from './rippleField.js';
@@ -28,6 +29,7 @@ export { createGlyphMatrix } from './glyphMatrix.js';
 export { createDockRail } from './dockRail.js';
 export { createMorphLabel } from './morphLabel.js';
 export { createSupplyTree } from './supplyTree.js';
+export { createCommsTrace } from './commsTrace.js';
 
 // Shared, view-only helpers (deterministic RNG, token resolution, rAF driver, reduced-motion, CSS
 // injection). Re-exported so screens/effects share one source of truth.
@@ -48,6 +50,7 @@ export const EFFECTS = Object.freeze([
   { name: 'dockRail', create: createDockRail, cue: DOCK_RAIL_CUE },
   { name: 'morphLabel', create: createMorphLabel, cue: MORPH_LABEL_CUE },
   { name: 'supplyTree', create: createSupplyTree, cue: SUPPLY_TREE_CUE },
+  { name: 'commsTrace', create: createCommsTrace, cue: COMMS_TRACE_CUE },
 ]);
 
 // The lint table (effect → allowed screens / triggers / max duration). Mirrors src/data/vfxCues for

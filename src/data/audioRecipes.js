@@ -467,6 +467,27 @@ export const RECIPES = [
     gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.06 },
     filterType: 'highpass', filterFreq: 440,
   },
+  // --- Switch detent: short mechanical notch for slot presses/fit toggles. ---
+  {
+    id: 'sfx_ui_switch_detent',
+    category: 'ui',
+    type: 'oscillator',
+    wave: 'square',
+    baseFreq: 760, freqSweep: [760, 520], sweepTimeS: 0.035,
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.05 },
+    filterType: 'bandpass', filterFreq: 980, filterQ: 1.8,
+    gainMult: 0.62,
+  },
+  // --- Drawer latch: muted close thump when the module drawer parks shut. ---
+  {
+    id: 'sfx_ui_drawer_latch',
+    category: 'ui',
+    type: 'noise_burst',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.07 },
+    filterType: 'bandpass', filterFreq: 340, filterQ: 1.5,
+    gainMult: 0.58,
+  },
   {
     id: 'sfx_ui_confirm',
     category: 'ui',

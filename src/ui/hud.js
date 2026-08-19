@@ -43,6 +43,7 @@ import { computeLeadPipOverlay, leadSolution, primaryProjSpeed, hasBallisticWeap
 import { confirm } from './confirm.js';
 import { bestKnownSellFor, applyTradeNavigation } from './screens/market.js';
 import { createFlickerGrid, createHexPattern, createRouteBeam, createCircularGauge, createSupplyTree } from './effects/index.js';
+import { createGaugeSettleSpring, planGaugeSettle } from './effects/gaugeSettle.js';
 import { DEFAULTS as INPUT_DEFAULTS } from '../systems/input.js';
 import { createHudDragController } from './hudLayout.js';
 import {
@@ -833,9 +834,13 @@ export function resolveDoctrineTellPlacement(width, height, projected, slotIndex
 }
 
 function setText(el, text) { if (el && el.textContent !== text) el.textContent = text; }
-function setScaleX(el, value) {
+function setScaleX(el, value, opts = null) {
   if (!el) return;
-  const next = Math.round(clamp01(value) * 1000) / 1000;
+  const min = opts && Number.isFinite(opts.min) ? opts.min : 0;
+  const max = opts && Number.isFinite(opts.max) ? opts.max : 1;
+  const raw = Number.isFinite(value) ? value : 0;
+  const bounded = raw < min ? min : raw > max ? max : raw;
+  const next = Math.round(bounded * 1000) / 1000;
   if (el._sfScaleX === next) return;
   el._sfScaleX = next;
   el.style.transform = `scaleX(${next})`;
@@ -1177,7 +1182,7 @@ export function createHud(ctx, alerts) {
   // next frame rather than leaving an empty housing behind (SCREENS_A 1.4: contextual surfaces
   // never leave an empty housing).
   const adoptCommsChrome = () => {
-    for (const id of ['sf-comm-backlog-btn', 'sf-contact-hail']) {
+    for (const id of ['sf-comm-backlog-btn', 'sf-contact-hail', 'sf-comm-trace-host']) {
       const node = document.getElementById(id) || document.querySelector('.' + id);
       if (node && node.parentNode !== commsTapeSlots) commsTapeSlots.appendChild(node);
     }
@@ -1192,6 +1197,16 @@ export function createHud(ctx, alerts) {
   const SHIELD_RING_LEN = (() => { try { return schShield.getTotalLength() || 2 * Math.PI * 46; } catch (e) { return 2 * Math.PI * 46; } })();
   schShield.style.strokeDasharray = String(SHIELD_RING_LEN);
   schShield.style.strokeDashoffset = '0';
+  // SETTLE is JS-driven from bound state rows; disable CSS tweening on the live instrument tracks.
+  setStyle(schShield, 'transition', 'none');
+  const shieldSettle = createGaugeSettleSpring(1);
+  const energySettle = createGaugeSettleSpring(1);
+  const heatSettle = createGaugeSettleSpring(0);
+  const boostSettle = createGaugeSettleSpring(0);
+  const fuelSettle = createGaugeSettleSpring(1);
+  for (const key of ['energy', 'heat', 'boost', 'fuel']) {
+    if (fillEls[key]) setStyle(fillEls[key], 'transition', 'none');
+  }
 
   // (The center framing arcs were removed — a wide "visor projection" around the crosshair reads as a
   //  first-person cockpit/windshield motif, which is wrong for this third-person chase-cam game.
@@ -2663,6 +2678,39 @@ export function createHud(ctx, alerts) {
 
   const gaugeRiskEl = cargoPanel.querySelector('#sf-gauge-risk');
   const gaugeRiskFx = createCircularGauge(gaugeRiskEl, { size: 36, stroke: 4, kind: 'danger' });
+  const cargoGaugeSettle = {
+    used: { value: 0, peakTimer: 0 },
+    risk: { value: 0, peakTimer: 0 },
+  };
+  function clearCargoGaugeSettle(slot) {
+    if (!slot) return;
+    if (slot.peakTimer) clearTimeout(slot.peakTimer);
+    slot.peakTimer = 0;
+  }
+  function setCircularGaugeTransition(fx, ms, overshoot) {
+    const arc = fx && fx.svg && fx.svg.querySelector ? fx.svg.querySelector('.sf-fx-gauge__arc') : null;
+    if (!arc) return;
+    const eased = overshoot ? 'cubic-bezier(.24,1.26,.34,1)' : 'cubic-bezier(.19,.9,.29,1)';
+    arc.style.transition = `stroke-dashoffset ${Math.max(1, Math.round(ms))}ms ${eased}, stroke 160ms var(--ease, ease-out)`;
+  }
+  function applySettledCircularGauge(slot, fx, nextValue, settleMeta, effectMeta) {
+    if (!slot || !fx) return;
+    clearCargoGaugeSettle(slot);
+    const plan = planGaugeSettle(slot.value, nextValue, settleMeta);
+    slot.value = plan.targetValue;
+    if (plan.immediate) {
+      setCircularGaugeTransition(fx, 1, false);
+      fx.setValue(plan.targetValue, effectMeta);
+      return;
+    }
+    setCircularGaugeTransition(fx, plan.upMs, true);
+    fx.setValue(plan.peakValue, effectMeta);
+    slot.peakTimer = setTimeout(() => {
+      setCircularGaugeTransition(fx, plan.downMs, false);
+      fx.setValue(plan.targetValue, effectMeta);
+      slot.peakTimer = 0;
+    }, plan.upMs);
+  }
 
   const supplyTreeEl = cargoPanel.querySelector('.sf-cargo-supply-tree');
   const supplyTreeTitle = document.createElement('div');
@@ -2870,11 +2918,17 @@ export function createHud(ctx, alerts) {
     buildCmdtyMap();
 
     const c = (state.player || {}).cargo || {};
+    const playerEntity = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+    const settleMeta = {
+      reducedMotion: getMotionReduced(),
+      shieldRegenRate: playerEntity && playerEntity.shieldRegenRate,
+      inertia: playerEntity && playerEntity.flightModel && playerEntity.flightModel.inertia,
+    };
     const items = c.items || {};
     const used = Math.round(c.usedVolume || 0);
     const cap = Math.round(c.capVolume || 40);
 
-    gaugeUsedFx.setValue(cap > 0 ? used / cap : 0, { label: `${used}/${cap} u` });
+    applySettledCircularGauge(cargoGaugeSettle.used, gaugeUsedFx, cap > 0 ? used / cap : 0, settleMeta, { label: `${used}/${cap} u` });
     cargoPanel.querySelector('.sf-cargo-summary-used').textContent = `${used} / ${cap} u`;
 
     let hasContraband = false;
@@ -2884,7 +2938,7 @@ export function createHud(ctx, alerts) {
         if (def && def.legality === 'contraband') hasContraband = true;
       }
     }
-    gaugeRiskFx.setValue(hasContraband ? 0.75 : 0, { label: hasContraband ? '75%' : '0%' });
+    applySettledCircularGauge(cargoGaugeSettle.risk, gaugeRiskFx, hasContraband ? 0.75 : 0, settleMeta, { label: hasContraband ? '75%' : '0%' });
     cargoPanel.querySelector('.sf-cargo-summary-risk').textContent = hasContraband ? '75%' : '0%';
 
     const schematicEl = cargoPanel.querySelector('.sf-cargo-schematic');
@@ -3118,6 +3172,8 @@ export function createHud(ctx, alerts) {
         durationMs: 400
       });
     } else {
+      clearCargoGaugeSettle(cargoGaugeSettle.used);
+      clearCargoGaugeSettle(cargoGaugeSettle.risk);
       beamFx.setPath([], { active: false });
     }
     ctx.bus.emit('audio:cue', { id: cargoPanelOpen ? 'ui_open' : 'ui_back' });
@@ -3135,6 +3191,8 @@ export function createHud(ctx, alerts) {
     beamFx.setActive(false);
     gaugeUsedFx.setActive(false);
     gaugeRiskFx.setActive(false);
+    clearCargoGaugeSettle(cargoGaugeSettle.used);
+    clearCargoGaugeSettle(cargoGaugeSettle.risk);
     beamFx.setPath([], { active: false });
 
     ctx.bus.emit('audio:cue', { id: 'ui_back' });
@@ -4085,6 +4143,17 @@ export function createHud(ctx, alerts) {
       const capFrac = p.capMax ? clamp01(p.cap / p.capMax) : 0;
       const wpnHeat = weaponHeatSummary(p.data && p.data.weapons, weaponHeatScratch);
       const heatFrac = wpnHeat.frac;
+      const settleMotion = {
+        reducedMotion: getMotionReduced(),
+        shieldRegenRate: p.shieldRegenRate,
+        inertia: p.flightModel && p.flightModel.inertia,
+      };
+      const shieldVisual = shieldSettle.step(shieldFrac, frameDt, settleMotion);
+      const capVisual = energySettle.step(capFrac, frameDt, settleMotion);
+      const heatVisual = heatSettle.step(heatFrac, frameDt, settleMotion);
+      const fuelState = state.fuel || { current: 100, max: 100 };
+      const fuelFrac = fuelState.max > 0 ? clamp01(fuelState.current / fuelState.max) : 1;
+      const fuelVisual = fuelSettle.step(fuelFrac, frameDt, settleMotion);
 
       // Ship schematic (dual-color flask fill level + shield ring via stroke-dashoffset).
       // Use a resolved percentage token rather than CSS multiplication. The latter is not
@@ -4101,15 +4170,16 @@ export function createHud(ctx, alerts) {
         if (fillMark) fillMark.outerHTML = hullMarkSvg('sf-sch-ship--fill', liveHullId);
       }
       setCssVar(schematic, '--hull-pct', `${(hullFrac * 100).toFixed(1)}%`);
-      setStyle(schShield, 'strokeDashoffset', (SHIELD_RING_LEN * (1 - shieldFrac)).toFixed(1));
+      setStyle(schShield, 'strokeDashoffset', (SHIELD_RING_LEN * (1 - shieldVisual)).toFixed(1));
       setClass(schematic, 'sf-sch-critical', hullFrac < 0.25);
       setClass(schematic, 'sf-sch-warning', hullFrac >= 0.25 && hullFrac < 0.55);
       setClass(schematic, 'sf-sch-shield-low', shieldFrac < 0.25);
       setClass(bars, 'sf-condition-critical', hullFrac < 0.25);
       setClass(bars, 'sf-condition-shield-low', shieldFrac < 0.25 && hullFrac >= 0.25);
 
-      setScaleX(fillEls.energy, capFrac);
-      setScaleX(fillEls.heat, heatFrac);
+      setScaleX(fillEls.energy, capVisual, { min: -0.04, max: 1.08 });
+      setScaleX(fillEls.heat, heatVisual, { min: -0.04, max: 1.08 });
+      if (fillEls.fuel) setScaleX(fillEls.fuel, fuelVisual, { min: -0.04, max: 1.08 });
 
       // Phase 3 boost micro-bar: energy fraction; the row is hidden entirely if the ship can't boost.
       // When a dash is ready (cooldown elapsed + enough energy) the bar gets a 'ready' glow.
@@ -4118,7 +4188,8 @@ export function createHud(ctx, alerts) {
       if (boost && boost.max > 0 && boostRow) {
         setStyle(boostRow, 'display', '');
         const bf = clamp01(boost.energy / boost.max);
-        setScaleX(fillEls.boost, bf);
+        const boostVisual = boostSettle.step(bf, frameDt, settleMotion);
+        setScaleX(fillEls.boost, boostVisual, { min: -0.04, max: 1.08 });
         const dashCost = Number.isFinite(boost.dashCost) ? boost.dashCost : 28;
         const dashReady = boost.dashImpulse > 0 && boost.dashCdT <= 0 && boost.energy >= dashCost;
         setClass(fillEls.boost && fillEls.boost.parentElement, 'sf-bar--ready', dashReady);
@@ -4131,6 +4202,7 @@ export function createHud(ctx, alerts) {
         setClass(fillEls.boost && fillEls.boost.parentElement, 'sf-bar--burn', burning);
         if (slow) setText(numEls.boost, Math.round(bf * 100) + (burning ? ' ⟫' : (dashReady ? ' ▸' : '%')));
       } else if (boostRow) {
+        boostSettle.snap(0);
         setStyle(boostRow, 'display', 'none');   // no boost capacity (e.g. a stripped hull) — hide the row
       }
 
@@ -4155,9 +4227,6 @@ export function createHud(ctx, alerts) {
         setText(numEls.energy, Math.max(0, Math.round(p.cap)) + '');
         setText(numEls.heat, wpnHeat.pct + '%');
         // Phase 4 fuel gauge: low fuel flashes a warning.
-        const fuel = state.fuel || { current: 100, max: 100 };
-        const fuelFrac = fuel.max > 0 ? clamp01(fuel.current / fuel.max) : 1;
-        if (fillEls.fuel) setScaleX(fillEls.fuel, fuelFrac);
         if (numEls.fuel) setText(numEls.fuel, Math.round(fuelFrac * 100) + '%');
         if (rowEls.fuel) setClass(rowEls.fuel, 'sf-fuel--low', fuelFrac < 0.25);
       }
@@ -4544,6 +4613,8 @@ export function createHud(ctx, alerts) {
       objectiveHudDrag.destroy();
       if (offSlotClaim) offSlotClaim();
       if (offSlotRelease) offSlotRelease();
+      clearCargoGaugeSettle(cargoGaugeSettle.used);
+      clearCargoGaugeSettle(cargoGaugeSettle.risk);
       powerRail.destroy();
       threatHalo.destroy();
     },

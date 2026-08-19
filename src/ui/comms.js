@@ -23,6 +23,7 @@ import { createSignalInvestigationPrompt } from './signalInvestigationPrompt.js'
 import { createRecoveryEncounterPrompt } from './recoveryEncounterPrompt.js';
 import { createContactHailPrompt } from './contactHailPrompt.js';
 import { createEndingEpilogue } from './endingEpilogue.js';
+import { createCommsTrace } from './effects/commsTrace.js';
 
 const COMMS_STYLE_ID = 'sf-comms-style';
 
@@ -102,6 +103,15 @@ export function createComms(ctx) {
   const live = [];        // { el, rec, born, ttl, persist }
   const backlog = [];     // full history for the backlog view
   let nextSweepAt = Infinity;
+  const traceHost = document.createElement('div');
+  traceHost.id = 'sf-comm-trace-host';
+  traceHost.className = 'sf-commtape__tracehost';
+  traceHost.setAttribute('aria-hidden', 'true');
+  (document.getElementById('ui-root') || feed).appendChild(traceHost);
+  const commsTrace = createCommsTrace(traceHost);
+  let traceFactionId = resolveCommsFactionId(null, state, 'faction_scn');
+  let traceHoldUntilMs = 0;
+  let traceAmpCarry = 0;
 
   // ── One-voice gate (GDD §8.1, minimal pass) ──────────────────────────────────────────────
   // While tutorial or an actionable route owns attention, non-critical chatter queues instead of
@@ -133,6 +143,8 @@ export function createComms(ctx) {
 
   function pushComms(p, delivery = null) {
     if (!p || !p.text) return;
+    traceHoldUntilMs = Math.max(traceHoldUntilMs, nowMs() + 320);
+    traceFactionId = resolveCommsFactionId(p, state, traceFactionId);
     const fromQueue = delivery === true || !!(delivery && delivery.fromQueue);
     const bypassAttentionGate = !!(delivery && delivery.bypassAttentionGate);
     // One-voice (spec2/06): a player-addressed line already surfaced by the arbiter as the top-center
@@ -235,7 +247,30 @@ export function createComms(ctx) {
     }
   }
 
-  listen('comms:popup', pushComms);
+  function updateCommsTrace() {
+    const sample = sampleCommsTraceState({
+      ctx,
+      state,
+      now: nowMs(),
+      holdUntilMs: traceHoldUntilMs,
+      ampCarry: traceAmpCarry,
+      fallbackFactionId: traceFactionId,
+    });
+    traceAmpCarry = sample.ampCarry;
+    if (sample.factionId) traceFactionId = sample.factionId;
+    commsTrace.update({
+      live: sample.live,
+      amplitude: sample.amplitude,
+      density: sample.density,
+      factionId: traceFactionId,
+      phaseStep: sample.phaseStep,
+    });
+  }
+
+  listen('comms:popup', (payload) => {
+    traceFactionId = resolveCommsFactionId(payload, state, traceFactionId);
+    pushComms(payload);
+  });
   listen('scenario:dialogueLine', (payload) => {
     const comms = scenarioDialogueCommsPayload(payload || {});
     if (comms) pushComms(comms, { bypassAttentionGate: true });
@@ -481,6 +516,7 @@ export function createComms(ctx) {
     if (signalInvestigationPrompt && signalInvestigationPrompt.tick) signalInvestigationPrompt.tick();
     if (recoveryEncounterPrompt && recoveryEncounterPrompt.tick) recoveryEncounterPrompt.tick();
     if (contactHailPrompt && contactHailPrompt.tick) contactHailPrompt.tick();
+    updateCommsTrace();
     tickHeldComms();
     sweep();
   }
@@ -489,6 +525,8 @@ export function createComms(ctx) {
   function setFlightVisibility(visible) {
     feed.style.display = visible ? 'flex' : 'none';
     bulkhead.style.display = visible ? 'block' : 'none';
+    traceHost.style.display = visible ? '' : 'none';
+    if (!visible) commsTrace.update({ live: false });
     if (!visible) closeBacklog();
   }
   listen('mode:changed', () => {
@@ -532,6 +570,8 @@ export function createComms(ctx) {
     backlog.length = 0;
     choiceModalOpen = false;
     feed.remove();
+    commsTrace.dispose();
+    traceHost.remove();
     backlogBtn.remove();
     backlogView.remove();
     bulkhead.remove();
@@ -553,6 +593,109 @@ function cleanLifecycleText(value) {
 export function escapeHtml(s) {
   return String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function finite(value, fallback = 0) {
+  return Number.isFinite(value) ? value : fallback;
+}
+
+function clamp01(value) {
+  const n = finite(value, 0);
+  return n < 0 ? 0 : n > 1 ? 1 : n;
+}
+
+function nowMs() {
+  return (typeof performance !== 'undefined' && typeof performance.now === 'function')
+    ? performance.now()
+    : Date.now();
+}
+
+function resolveCommsFactionId(payload, state, fallback = 'faction_scn') {
+  const candidates = [
+    payload && payload.factionId,
+    payload && payload.faction,
+    payload && payload.senderFactionId,
+    payload && payload.senderFaction,
+    state && state.player && state.player.factionId,
+    fallback,
+    'faction_scn',
+  ];
+  for (const value of candidates) {
+    if (typeof value !== 'string') continue;
+    const trimmed = value.trim();
+    if (trimmed) return trimmed;
+  }
+  return 'faction_scn';
+}
+
+function isLiveCommsVoice(voice, audioNow) {
+  if (!voice || voice._stopped) return false;
+  if (Number.isFinite(voice.stopAt) && voice.stopAt <= audioNow) return false;
+  if (voice.busName === 'comms') return true;
+  const recipe = voice.recipe || null;
+  const recipeId = recipe && recipe.id ? String(recipe.id) : '';
+  if (recipeId.includes('comms') || recipeId.includes('squelch')) return true;
+  return recipe && recipe.category === 'comms';
+}
+
+function sampleCommsTraceState({
+  ctx,
+  state,
+  now,
+  holdUntilMs,
+  ampCarry,
+  fallbackFactionId,
+}) {
+  const registry = ctx && ctx.registry;
+  const audio = registry && typeof registry.get === 'function' ? registry.get('audio') : null;
+  const rt = audio && audio.rt;
+  const priorityBus = rt && rt._priorityBus;
+  const envelope = priorityBus && typeof priorityBus.activeEnvelope === 'function'
+    ? priorityBus.activeEnvelope(now)
+    : null;
+  const cueId = String(envelope && (envelope.cueId || envelope.id || '') || '');
+  const envelopeIsComms = !!(envelope && /^comms\./.test(cueId));
+  const durationMs = Math.max(1, finite(envelope && envelope.durationMs, 250));
+  const envelopeAmp = envelopeIsComms
+    ? clamp01((finite(envelope.endMs, now) - now) / durationMs)
+    : 0;
+
+  let voiceUnits = 0;
+  const voices = rt && Array.isArray(rt.voices) ? rt.voices : [];
+  const audioNow = rt && rt.ctx && Number.isFinite(rt.ctx.currentTime) ? rt.ctx.currentTime : 0;
+  for (const voice of voices) {
+    if (!isLiveCommsVoice(voice, audioNow)) continue;
+    const units = Array.isArray(voice.subVoices) && voice.subVoices.length ? voice.subVoices.length : 1;
+    voiceUnits += units;
+  }
+  const density = clamp01(voiceUnits / 6);
+
+  let nextAmpCarry = clamp01(ampCarry);
+  if (envelopeIsComms) nextAmpCarry = envelopeAmp;
+  else if (voiceUnits > 0) nextAmpCarry = Math.max(nextAmpCarry * 0.82, Math.min(0.34, density * 0.56));
+  else nextAmpCarry *= 0.7;
+
+  const eventLive = now < holdUntilMs;
+  const live = voiceUnits > 0 || envelopeIsComms || eventLive;
+  if (!live || nextAmpCarry < 0.01) {
+    return {
+      live: false,
+      amplitude: 0,
+      density: 0,
+      ampCarry: nextAmpCarry,
+      phaseStep: 0.42,
+      factionId: resolveCommsFactionId(null, state, fallbackFactionId),
+    };
+  }
+
+  return {
+    live: true,
+    amplitude: clamp01(nextAmpCarry),
+    density: clamp01(Math.max(density, eventLive ? 0.2 : 0.08)),
+    ampCarry: nextAmpCarry,
+    phaseStep: 0.34 + density * 0.48,
+    factionId: resolveCommsFactionId(null, state, fallbackFactionId),
+  };
 }
 
 // ── CSS (injected once; matches the HUD's industrial cyan/purple language) ──────────────────

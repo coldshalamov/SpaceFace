@@ -180,6 +180,7 @@ const DRIVERS = {
   dockRail: { rAF: false, trigger: (h) => { h.setItems([{ id: 'refuel', label: 'Refuel', icon: 'F', readiness: { state: 'good', label: 'OK' } }, { id: 'repair', label: 'Repair', icon: 'R' }]); h.setFocus('refuel'); }, rootOf: (h) => h.root },
   morphLabel: { rAF: false, trigger: (h) => { h.set('100'); h.set('120'); }, rootOf: (h) => h.root },
   supplyTree: { rAF: false, trigger: (h) => h.setNodes([{ id: 'mining', label: 'Mining', role: 'produce', flow: true }, { id: 'hub', label: 'Iron Ore', role: 'hub' }, { id: 'refinery', label: 'Refinery', role: 'consume' }]), rootOf: (h) => h.svg },
+  commsTrace: { rAF: false, trigger: (h) => h.update({ live: true, amplitude: 0.74, density: 0.62, factionId: 'faction_scn', phaseStep: 0.5 }), rootOf: (h) => h.root },
 };
 
 // ───────────────────────────────────────────────────────────────────────────
