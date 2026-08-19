@@ -29,6 +29,7 @@
 10. [Check-tooling traps: hidden links, fail-fast aggregates, golden churn](#10-check-tooling-traps)
 11. [Chrome Continue is empty after playing in the desktop app](#11-chrome-continue-is-empty-after-playing-in-the-desktop-app)
 12. ["check:assets:live is just red" — sometimes it is not](#12-checkassetslive-is-just-red--sometimes-it-is-not)
+13. [NPC and enemy ships are empty space that targeting still locks](#13-npc-and-enemy-ships-are-empty-space-that-targeting-still-locks)
 
 ---
 
@@ -563,5 +564,42 @@ Both were verified identical with the residency fix reverted, so do not attribut
   stayed invisible.
 - Theorising from the one number that stands out before dumping the unfiltered set.
 - Reading a probe's *filtered* output as a statement about the whole class it appears to describe.
+
+---
+
+## 13. NPC and enemy ships are empty space that targeting still locks
+
+**Symptom:** The targeting card, reticle, or lock ring sits on blank space. The player ship and some
+world props render. Flying toward the lock never reveals a hull.
+
+**There are two stacked causes. Check both.**
+
+### Cause A — the live slot points at an unpackaged remaster file
+`wholeShipVisualForEntity` always selects a complete body for hostile `lootTableId` and traffic
+`trafficRole`. Live play mounts a **zero-draw** admission substrate (`directAuthoredMount: true`)
+and fails closed if that body cannot load. A remaster `*_production_v1.glb` that exists on disk
+but has **no render package** is rejected by `assetLoader` (`released part has no render package`).
+The empty group stays in the scene, so targeting still works.
+
+Traffic was remapped to the packaged names (`helios_lark.glb`, not `helios_lark_production_v1.glb`).
+Hostiles must follow the same rule: `ashline_dart.glb` / `ashline_lode.glb` / `ashline_rig.glb`
+with `SF_WHOLESHIP_ASHLINE_*` identities that match `assets/ships/render-packages/pilots.json`.
+
+Do not "fix" this by showing a junk procedural hull. Point the live map at a packaged body.
+
+### Cause B — flight blocks composition of the empty slot
+`mayComposeAuthoredShipLive` refuses ordinary `current-sector` composition in flight so a readable
+procedural ship is not rebuilt on the playable thread. Live NPC/enemy ships no longer have that
+procedural ship: they are the same empty ownership slot as the player. The player was exempted;
+everyone else was settled as `procedural-settled` with **zero drawables**. Mid-fight spawns and
+any ship the sector prewarm did not publish therefore stayed invisible.
+
+Empty `authoredAdmissionSubstrate` roots must compose in flight. A real procedural substrate may
+still be gated.
+
+**Owning path:** `src/render/partsLibrary.js` (`WHOLE_SHIP_FILE_BY_HOSTILE_ID`,
+`mayComposeAuthoredShipLive`, `settleAuthoredShipToProceduralFallback`) and
+`src/render/visualOverrides.js` (`directAuthoredMount`). Proof:
+`test/fleet-npc-wholeship-routing.test.mjs`, `test/flight-compose-gate.test.mjs`.
 
 *Found a bug that took multiple prompts to diagnose? Add a section here so the next agent doesn't repeat the hunt. Verify claims against the working tree (`git diff`) before writing them — HEAD drifts behind.*

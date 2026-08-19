@@ -37,14 +37,14 @@ test('wasp LOD family selects distinct files without expanding cold-start plan',
 
 test('sector prewarm requests include spawnable hostile and traffic archetype hulls', () => {
   const urls = spawnableShipArchetypePrewarmUrls();
-  assert.ok(urls.includes('wholeships/ashline_dart_production_v1.glb'));
-  assert.ok(urls.includes('wholeships/helios_lark_production_v1.glb'));
+  assert.ok(urls.includes('wholeships/ashline_dart.glb'));
+  assert.ok(urls.includes('wholeships/helios_lark.glb'));
   assert.ok(urls.includes('wholeships/wasp_production_v1.glb'));
 
   const requests = authoredPrewarmRequestsForEntities([], { sectorId: 'test' });
   const hullUrls = requests.filter((r) => r.slot === 'hull').map((r) => r.url);
-  assert.ok(hullUrls.some((url) => url.endsWith('wholeships/ashline_dart_production_v1.glb')));
-  assert.ok(hullUrls.some((url) => url.endsWith('wholeships/helios_span_production_v1.glb')));
+  assert.ok(hullUrls.some((url) => url.endsWith('wholeships/ashline_dart.glb')));
+  assert.ok(hullUrls.some((url) => url.endsWith('wholeships/helios_span.glb')));
 });
 
 test('distant live ships prewarm the cheaper LOD sibling instead of LOD0', () => {

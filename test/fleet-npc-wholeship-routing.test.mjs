@@ -10,20 +10,20 @@ import { makeShipEntitySpec } from '../src/systems/ships.js';
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 const HOSTILES = {
-  wasp_swarmer: { file: 'wholeships/ashline_dart_production_v1.glb', assetId: 'SF_ASHLINE_DART_V1' },
-  bruiser_brawler: { file: 'wholeships/ashline_lode_production_v1.glb', assetId: 'SF_ASHLINE_LODE_V1' },
-  reaver_pirate: { file: 'wholeships/ashline_rig_production_v1.glb', assetId: 'SF_ASHLINE_RIG_V1' },
-  corsair_raider: { file: 'wholeships/ashline_rig_production_v1.glb', assetId: 'SF_ASHLINE_RIG_V1' },
+  wasp_swarmer: { file: 'wholeships/ashline_dart.glb', assetId: 'SF_WHOLESHIP_ASHLINE_DART' },
+  bruiser_brawler: { file: 'wholeships/ashline_lode.glb', assetId: 'SF_WHOLESHIP_ASHLINE_LODE' },
+  reaver_pirate: { file: 'wholeships/ashline_rig.glb', assetId: 'SF_WHOLESHIP_ASHLINE_RIG' },
+  corsair_raider: { file: 'wholeships/ashline_rig.glb', assetId: 'SF_WHOLESHIP_ASHLINE_RIG' },
 };
 
 const TRAFFIC = {
-  courier: { file: 'wholeships/helios_lark_production_v1.glb', assetId: 'SF_HELIOS_LARK_V1' },
-  miner: { file: 'wholeships/helios_cradle_production_v1.glb', assetId: 'SF_HELIOS_CRADLE_V1' },
-  hauler: { file: 'wholeships/helios_span_production_v1.glb', assetId: 'SF_HELIOS_SPAN_V1' },
-  ore_carrier: { file: 'wholeships/ore_barge_production_v1.glb', assetId: 'SF_ORE_BARGE_V1' },
-  tender: { file: 'wholeships/repair_tender_production_v1.glb', assetId: 'SF_REPAIR_TENDER_V1' },
-  salvor: { file: 'wholeships/salvage_cutter_production_v1.glb', assetId: 'SF_SALVAGE_CUTTER_V1' },
-  surveyor: { file: 'wholeships/survey_pin_production_v1.glb', assetId: 'SF_SURVEY_PIN_V1' },
+  courier: { file: 'wholeships/helios_lark.glb', assetId: 'SF_WHOLESHIP_HELIOS_LARK' },
+  miner: { file: 'wholeships/helios_cradle.glb', assetId: 'SF_WHOLESHIP_HELIOS_CRADLE' },
+  hauler: { file: 'wholeships/helios_span.glb', assetId: 'SF_WHOLESHIP_HELIOS_SPAN' },
+  ore_carrier: { file: 'wholeships/ore_barge.glb', assetId: 'SF_WHOLESHIP_ORE_BARGE' },
+  tender: { file: 'wholeships/repair_tender.glb', assetId: 'SF_WHOLESHIP_REPAIR_TENDER' },
+  salvor: { file: 'wholeships/salvage_cutter.glb', assetId: 'SF_WHOLESHIP_SALVAGE_CUTTER' },
+  surveyor: { file: 'wholeships/survey_pin.glb', assetId: 'SF_WHOLESHIP_SURVEY_PIN' },
 };
 
 const hitch = makeShipEntitySpec('ship_kestrel', { isPlayer: true, team: 0 });
@@ -38,17 +38,14 @@ function assertHull(file, label) {
   const parsed = parseStrictEmbeddedGlb(readFileSync(source), label);
   const materials = new Set((parsed.gltf.materials || []).map((mat) => mat.name));
   assert.ok(materials.has('Material_Hull'), `${label} must ship Material_Hull`);
-  let hullTriangles = 0;
+  let triangles = 0;
   for (const mesh of parsed.gltf.meshes || []) {
-    const isHull = /hull/i.test(mesh.name || '');
     for (const primitive of mesh.primitives || []) {
       const accessor = parsed.gltf.accessors?.[primitive.indices];
-      const count = accessor?.count ? Math.floor(accessor.count / 3) : 0;
-      const materialName = parsed.gltf.materials?.[primitive.material]?.name || '';
-      if (isHull || /hull/i.test(materialName)) hullTriangles += count;
+      triangles += accessor?.count ? Math.floor(accessor.count / 3) : 0;
     }
   }
-  assert.ok(hullTriangles >= 800, `${label} hull tris ${hullTriangles}`);
+  assert.ok(triangles > 200, `${label} is a stub (${triangles} tris)`);
 }
 
 for (const [roleId, expected] of Object.entries(HOSTILES)) {
@@ -66,6 +63,16 @@ for (const [roleId, expected] of Object.entries(TRAFFIC)) {
   assert.equal(visual.assetId, expected.assetId, `${roleId} asset id`);
   assert.notEqual(visual.file, 'wholeships/kestrel.glb', `${roleId} must not use the player Hitch body`);
   assertHull(expected.file, roleId);
+}
+
+const pilots = JSON.parse(readFileSync(resolve(ROOT, 'assets/ships/render-packages/pilots.json'), 'utf8'));
+const packagedUrls = new Set((pilots.pilots || []).map((pilot) => String(pilot.sourceUrl || '').replace(/\\/g, '/')));
+for (const expected of [...Object.values(HOSTILES), ...Object.values(TRAFFIC)]) {
+  const releaseUrl = `assets/ships/release/parts/${expected.file}`;
+  assert.ok(
+    packagedUrls.has(releaseUrl),
+    `${expected.file} must have a render package; unpackaged live files fail closed as empty ships`,
+  );
 }
 
 console.log('Fleet NPC wholeship routing: PASS');

@@ -1024,16 +1024,19 @@ const WHOLE_SHIP_LOD_FAMILY_BY_DEF_ID = Object.freeze({
 // enemy roles intentionally share player-facing chassis stats while requiring different combat
 // silhouettes. This presentation map changes no doctrine, hostility, movement, or damage data.
 const WHOLE_SHIP_FILE_BY_HOSTILE_ID = Object.freeze({
-  wasp_swarmer: 'wholeships/ashline_dart_production_v1.glb',
-  bruiser_brawler: 'wholeships/ashline_lode_production_v1.glb',
-  reaver_pirate: 'wholeships/ashline_rig_production_v1.glb',
-  corsair_raider: 'wholeships/ashline_rig_production_v1.glb',
+  // Same rule as traffic: only packaged complete bodies may occupy a live required slot.
+  // The remaster `*_production_v1` re-releases have no render packages, so assetLoader
+  // fails closed and the empty admission substrate stays a targeting ring around blank space.
+  wasp_swarmer: 'wholeships/ashline_dart.glb',
+  bruiser_brawler: 'wholeships/ashline_lode.glb',
+  reaver_pirate: 'wholeships/ashline_rig.glb',
+  corsair_raider: 'wholeships/ashline_rig.glb',
 });
 const WHOLE_SHIP_ASSET_ID_BY_HOSTILE_ID = Object.freeze({
-  wasp_swarmer: 'SF_ASHLINE_DART_V1',
-  bruiser_brawler: 'SF_ASHLINE_LODE_V1',
-  reaver_pirate: 'SF_ASHLINE_RIG_V1',
-  corsair_raider: 'SF_ASHLINE_RIG_V1',
+  wasp_swarmer: 'SF_WHOLESHIP_ASHLINE_DART',
+  bruiser_brawler: 'SF_WHOLESHIP_ASHLINE_LODE',
+  reaver_pirate: 'SF_WHOLESHIP_ASHLINE_RIG',
+  corsair_raider: 'SF_WHOLESHIP_ASHLINE_RIG',
 });
 // Ambient civilian traffic owns a durable presentation role independent of ship-def gameplay
 // stats. This keeps role silhouettes stable across rematerialization and prevents courier traffic
@@ -2942,6 +2945,10 @@ export function shouldAutoTriggerAuthoredUpgrade(entity, scene, liveState = auth
  * their boundary is a zero-draw ownership slot until the real authored body commits, so mid-flight
  * player composition must stay allowed on the async queue. No junk stand-in is substituted.
  */
+function isEmptyAdmissionSubstrate(root) {
+  return !!(root && root.userData && root.userData.authoredAdmissionSubstrate);
+}
+
 export function mayComposeAuthoredShipLive(options = {}, liveState = authoredRuntimeState()) {
   if (options && options.deferBoundaryPublication === true) return true;
   const role = String((options && options.residencyRole) || '');
@@ -2952,6 +2959,12 @@ export function mayComposeAuthoredShipLive(options = {}, liveState = authoredRun
     || role === 'sector-prepared-live-boundary'
     || role === 'whole-ship-lod-family'
   ) {
+    return true;
+  }
+  // Live ships mount a zero-draw ownership slot. The player exception exists because that slot
+  // is not a readable hull. NPC/enemy ships use the same substrate; blocking them leaves a
+  // targeting lock on empty space until an authored body commits.
+  if (options.emptyAdmissionSubstrate === true || isEmptyAdmissionSubstrate(options.fallbackRoot)) {
     return true;
   }
   if (!liveState || liveState.mode !== 'flight') return true;
@@ -2970,6 +2983,7 @@ export function settleAuthoredShipToProceduralFallback(
   reason = 'flight-compose-gated',
 ) {
   if (!boundary || !fallbackRoot) return false;
+  if (isEmptyAdmissionSubstrate(fallbackRoot)) return false;
   fallbackRoot.visible = true;
   if (typeof setActive === 'function') setActive(fallbackRoot);
   boundary.userData.authoredAssetState = 'procedural-settled';
@@ -3616,7 +3630,11 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
   let swapped = false;
   let authored = null;
   try {
-    if (!mayComposeAuthoredShipLive(options)) {
+    if (!mayComposeAuthoredShipLive({
+      ...options,
+      fallbackRoot,
+      emptyAdmissionSubstrate: isEmptyAdmissionSubstrate(fallbackRoot),
+    })) {
       settleAuthoredShipToProceduralFallback(
         boundary,
         fallbackRoot,
@@ -3929,13 +3947,18 @@ async function commitAuthoredBoundary(
     return false; // destroyed while assets or GPU programs were in flight
   }
 
+  const liveComposeOptions = {
+    ...options,
+    fallbackRoot,
+    emptyAdmissionSubstrate: isEmptyAdmissionSubstrate(fallbackRoot),
+  };
   const authored = preparedAuthored || (
-    mayComposeAuthoredShipLive(options)
+    mayComposeAuthoredShipLive(liveComposeOptions)
       ? buildComposedShip(entity, library, scene, boundary, options)
       : null
   );
   if (!authored) {
-    if (!preparedAuthored && !mayComposeAuthoredShipLive(options)) {
+    if (!preparedAuthored && !mayComposeAuthoredShipLive(liveComposeOptions)) {
       settleAuthoredShipToProceduralFallback(
         boundary,
         fallbackRoot,
