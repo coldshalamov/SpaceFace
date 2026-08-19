@@ -34,20 +34,19 @@ Three-quarter enclosed dropped from 23% to 1.74%. Rear still blows out (60.6% ho
 
 ## Reviews
 
-Subagents pending at write.
+Subagents: `d2499a8b` three-quarter, `f6dd1071` starboard, `d5eb30ba` rear.
 
 | Angle | Verdict | Headline |
 |---|---|---|
-| three-quarter | pending | |
-| starboard | pending | |
-| rear | pending | |
+| three-quarter | **REVISE** | Gray dart, black spine, card wings, box on the roof, cone on the tail. |
+| starboard | **REVISE** | Clay forebody, plate-lattice tail. Shallow pockets did not make a hull. |
+| rear | **REVISE** | Gray brick with two paper-cup nozzles. 60% hot blow. |
 
-## Author next
+Enclosed daylight got better. Clay is still primitives. Hitch still wins.
 
-1. Restore hull triangles without punching: subdivide the thick shell once, or inset with depth 0 and more faces (lower min_area).
-2. Kill remaining starboard hole (~4908 px).
-3. Rear lighting: less blow; keep fill from the back.
-4. Wings still cards. Canopy still a brick.
+## Author extras
+
+Triangle dump (13,050) is from groove-only inset. Next: subdivide the thick shell once. Do not put inset depth back. Fill the remaining aft starboard hole. Add rear fill so the transom does not blow white.
 
 ## Not claimed
 
