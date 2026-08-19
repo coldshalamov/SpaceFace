@@ -1022,13 +1022,12 @@ def build_lod(lod, mats):
     ], hull, collection, 0.012, cap=True)
     thicken_shell(hull_obj, 0.10)
     report_shells(hull_obj, "hull after solidify")
-    inset_large_faces(hull_obj, thickness=0.022, depth=0.012, min_area=0.10)
+    inset_large_faces(hull_obj, thickness=0.018, depth=0.0, min_area=0.14)
     report_shells(hull_obj, "hull after inset")
 
-    boolean_cut_box(hull_obj, "Cut_Cockpit", (3.22, 0.0, 1.42), (0.46, 0.16, 0.24))
-    boolean_cut_box(hull_obj, "Cut_Avionics", (0.85, -1.50, 0.22), (0.30, 0.14, 0.14))
-    boolean_cut_box(hull_obj, "Cut_Radiator", (-3.05, 1.50, 0.16), (0.38, 0.14, 0.14))
-    recalc_mesh(hull_obj)
+    boolean_cut_box(hull_obj, "Cut_Cockpit", (3.22, 0.0, 1.50), (0.40, 0.14, 0.055))
+    boolean_cut_box(hull_obj, "Cut_Avionics", (0.85, -1.44, 0.22), (0.28, 0.055, 0.12))
+    boolean_cut_box(hull_obj, "Cut_Radiator", (-3.05, 1.44, 0.16), (0.34, 0.055, 0.12))
     report_shells(hull_obj, "hull after pocket cuts")
     bevel = hull_obj.modifiers.new("HullBevel", "BEVEL")
     bevel.width = 0.018
