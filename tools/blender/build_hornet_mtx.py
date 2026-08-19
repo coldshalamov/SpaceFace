@@ -574,14 +574,43 @@ def delete_faces_in_box(obj, x0, x1, y0, y1, z0, z1, normal=None, normal_min=0.3
     return obj
 
 
+def delete_faces_in_cylinder(obj, x0, x1, yc, zc, radius, normal="x-", normal_min=0.18):
+    """Circular throat in a transom. Does not empty the whole house."""
+    apply_modifiers(obj)
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    bm.faces.ensure_lookup_table()
+    bm.normal_update()
+    r2 = float(radius) * float(radius)
+    victims = []
+    for face in bm.faces:
+        center = face.calc_center_median()
+        if not (x0 <= center.x <= x1):
+            continue
+        if (center.y - yc) ** 2 + (center.z - zc) ** 2 > r2:
+            continue
+        if normal == "x-" and face.normal.x > -normal_min:
+            continue
+        victims.append(face)
+    print(f"delete_faces_in_cylinder {len(victims)} faces")
+    if victims:
+        bmesh.ops.delete(bm, geom=victims, context="FACES")
+        bmesh.ops.remove_doubles(bm, verts=list(bm.verts), dist=0.0005)
+    bm.to_mesh(obj.data)
+    bm.free()
+    obj.data.update()
+    return obj
+
+
 def add_interior_vane(tag, cx, cy, cz, angle, s, material, collection):
     """Refractory vane rooted at the throat, running toward the mouth inside the liner."""
     half = math.radians(6.8)
     a0, a1 = angle - half, angle + half
+    # Wall-rooted stator, not a ceiling fan. Inner radius stays open.
     sections = (
-        (-0.25 * s, 0.07 * s, 0.22 * s),
-        (-0.85 * s, 0.11 * s, 0.42 * s),
-        (-1.55 * s, 0.14 * s, 0.70 * s),
+        (-0.25 * s, 0.18 * s, 0.26 * s),
+        (-0.85 * s, 0.24 * s, 0.48 * s),
+        (-1.55 * s, 0.30 * s, 0.74 * s),
     )
     verts = []
     for xo, inner, outer in sections:
@@ -653,11 +682,10 @@ def add_hollow_bell(tag, x, y, z, scale, mats, collection):
         xi = x - 0.04 * s - t * 1.55 * s
         liner_rings.append(ellipse_ring(xi, y, z, r * s, r * s, 28))
     loft_from_rings(f"BellLiner_{tag}", liner_rings, thruster, collection, 0.002, cap=False)
-    add_cylinder(f"BellBore_{tag}", (x - 0.22 * s, y, z), 0.075 * s, 0.08 * s, thruster, collection, 16, 0.001)
+    add_cylinder(f"BellBore_{tag}", (x - 0.22 * s, y, z), 0.055 * s, 0.06 * s, thruster, collection, 16, 0.001)
     add_cylinder(f"BellCollar_{tag}", (x + 0.02 * s, y, z), 0.34 * s, 0.14 * s, ceramic, collection, 24, 0.003)
     add_cylinder(f"BellClamp_{tag}", (x + 0.14 * s, y, z), 0.40 * s, 0.05 * s, armor, collection, 24, 0.002)
     add_cylinder(f"BellFlange_{tag}", (x + 0.28 * s, y, z), 0.48 * s, 0.07 * s, mech, collection, 24, 0.003)
-    add_cylinder(f"BellHub_{tag}", (x - 0.36 * s, y, z), 0.060 * s, 0.12 * s, mech, collection, 12, 0.002)
     for index in range(10):
         ang = math.tau * index / 10
         add_cylinder(
@@ -665,8 +693,8 @@ def add_hollow_bell(tag, x, y, z, scale, mats, collection):
             (x + 0.28 * s, y + math.cos(ang) * 0.42 * s, z + math.sin(ang) * 0.42 * s),
             0.016 * s, 0.050 * s, mech, collection, 8, 0.001,
         )
-    for index in range(10):
-        ang = math.tau * index / 10
+    for index in range(8):
+        ang = math.tau * index / 8
         add_interior_vane(f"BellVane_{tag}_{index}", x, y, z, ang, s, ceramic, collection)
     return outer
 
@@ -844,16 +872,16 @@ def add_blended_interceptor_wing(name, sign, hull, armor, collection):
     s = float(sign)
     # Fat inboard fillet so three-quarter and starboard can count thickness.
     main = (
-        (1.10, 1.68, 1.65, 0.92),
-        (1.55, 1.82, 2.00, 0.66),
-        (2.05, 1.40, 1.88, 0.38),
-        (2.55, 0.90, 1.72, 0.22),
-        (3.05, 0.45, 1.55, 0.13),
-        (3.55, 0.08, 1.45, 0.08),
+        (1.10, 1.68, 1.65, 0.92, 0.22),
+        (1.55, 1.82, 2.00, 0.66, 0.14),
+        (2.05, 1.40, 1.88, 0.38, 0.06),
+        (2.55, 0.90, 1.72, 0.22, -0.02),
+        (3.05, 0.45, 1.55, 0.13, -0.08),
+        (3.55, 0.08, 1.45, 0.08, -0.14),
     )
     rings = [
-        densify_ring(diamond_airfoil(le, y * s, 0.06, chord, thick), 2)
-        for y, le, chord, thick in main
+        densify_ring(diamond_airfoil(le, y * s, z, chord, thick), 2)
+        for y, le, chord, thick, z in main
     ]
     wing = loft_from_rings(name, rings, hull, collection, 0.008, cap=True)
     # Do not inset the wing loft: C78 crumpled the starboard shading into a black void.
@@ -1212,20 +1240,26 @@ def build_lod(lod, mats):
         (-0.20, 1.68, 0.80, 0.06, 0.06, 0.82, 0.16),
         (-1.55, 1.50, 0.84, 0.06, 0.06, 0.86, 0.10),
     ), hull, collection, 0.12)
+    # C88: house still rectangular, but it grows out of the waist instead of
+    # sitting on it as a taller crate.
+    # C90: house height matches the waist so starboard is one interceptor, not a crate tail.
     drive = loft_volume("Drive_House", (
-        (-1.40, 1.08, 1.18, 0.10, 0.04, 0.96, 0.04),
-        (-2.80, 1.08, 1.18, 0.10, 0.04, 0.96, 0.04),
-        (-4.20, 1.08, 1.18, 0.10, 0.04, 0.96, 0.04),
-        (-4.95, 1.08, 1.18, 0.10, 0.02, 0.98, 0.02),
+        (-1.40, 1.42, 0.86, 0.08, 0.08, 0.80, 0.12),
+        (-2.60, 1.32, 0.88, 0.08, 0.06, 0.86, 0.08),
+        (-3.80, 1.22, 0.90, 0.08, 0.04, 0.90, 0.06),
+        (-4.95, 1.18, 0.90, 0.08, 0.02, 0.92, 0.04),
     ), hull, collection, 0.14)
     # C85 Transom loft was a solid cap — rear read as two dark disks on a hex lid.
     subdivide_mesh(cabin, 1)
-    subdivide_mesh(drive, 1)
+    subdivide_mesh(waist, 1)
+    subdivide_mesh(drive, 2)
     delete_faces_in_box(cabin, 2.95, 4.20, -0.62, 0.62, 0.48, 1.35)
     delete_faces_in_box(waist, 0.50, 1.50, -1.95, -1.40, -0.15, 0.55, normal="y-", normal_min=0.15)
-    delete_faces_in_box(drive, -3.50, -2.50, 0.95, 1.25, 0.20, 1.20, normal="z", normal_min=0.15)
-    # Whole aft face: one n-gon cap lives at y=0 and missed the two small boxes.
-    delete_faces_in_box(drive, -5.25, -4.60, -1.20, 1.20, -1.25, 1.45, normal="x-", normal_min=0.18)
+    delete_faces_in_box(waist, -0.70, -0.10, 0.05, 0.52, 0.68, 1.25, normal="z", normal_min=0.15)
+    delete_faces_in_box(drive, -3.50, -2.50, 0.95, 1.20, 0.20, 1.15, normal="z", normal_min=0.15)
+    # Two circular throats. Do not empty the house (C87/C88 cave from 3Q).
+    delete_faces_in_cylinder(drive, -5.20, -4.65, 0.48, 0.10, 0.46)
+    delete_faces_in_cylinder(drive, -5.20, -4.65, -0.48, 0.10, 0.46)
     report_shells(cabin, "cabin after well")
     report_shells(drive, "drive after throats")
     for obj in (cabin, waist, drive):
@@ -1237,16 +1271,16 @@ def build_lod(lod, mats):
         wn = obj.modifiers.new("HullWN", "WEIGHTED_NORMAL")
         wn.keep_sharp = True
         apply_modifiers(obj)
-    add_station_hoop("Hoop_CabinWaist", 2.60, 1.72, 0.70, 0.08, 0.12, 0.72, 0.28, armor, collection, stand=0.045, half=0.050)
-    add_station_hoop("Hoop_WaistDrive", -1.48, 1.52, 0.90, 0.08, 0.06, 0.88, 0.08, armor, collection, stand=0.045, half=0.050)
-    add_station_hoop("Hoop_Transom", -4.88, 1.14, 1.24, 0.10, 0.02, 0.98, 0.02, armor, collection, stand=0.040, half=0.045)
+    add_station_hoop("Hoop_CabinWaist", 2.60, 1.72, 0.70, 0.08, 0.12, 0.72, 0.28, armor, collection, stand=0.070, half=0.060)
+    add_station_hoop("Hoop_WaistDrive", -1.48, 1.42, 0.92, 0.08, 0.08, 0.84, 0.10, armor, collection, stand=0.070, half=0.060)
+    add_station_hoop("Hoop_Transom", -4.88, 1.14, 1.12, 0.10, 0.02, 0.96, 0.02, armor, collection, stand=0.055, half=0.050)
 
-    add_five_wall_tub("CockpitTub", (3.55, 0.0, 0.58), (0.28, 0.16, 0.08), 0.028, hull, collection)
-    add_box("Cockpit_Seat", (3.48, 0.0, 0.56), (0.12, 0.08, 0.022), hull, collection, 0.003)
-    add_box("Cockpit_Back", (3.34, 0.0, 0.64), (0.022, 0.08, 0.07), hull, collection, 0.002)
-    add_box("Cockpit_Console", (3.72, 0.0, 0.60), (0.07, 0.10, 0.014), armor, collection, 0.002)
-    add_box("Cockpit_Coaming", (3.55, 0.0, 0.84), (0.36, 0.20, 0.008), armor, collection, 0.002)
-    add_thin_canopy("Canopy", 3.55, 0.0, 0.82, 0.78, 0.30, 0.14, mats, collection)
+    add_five_wall_tub("CockpitTub", (3.55, 0.0, 0.52), (0.32, 0.18, 0.10), 0.028, hull, collection)
+    add_box("Cockpit_Seat", (3.46, 0.0, 0.50), (0.14, 0.10, 0.040), hull, collection, 0.003)
+    add_box("Cockpit_Back", (3.30, 0.0, 0.60), (0.028, 0.10, 0.08), hull, collection, 0.002)
+    add_box("Cockpit_Console", (3.74, 0.0, 0.54), (0.08, 0.12, 0.022), armor, collection, 0.002)
+    add_box("Cockpit_Coaming", (3.55, 0.0, 0.78), (0.40, 0.22, 0.010), armor, collection, 0.002)
+    add_thin_canopy("Canopy", 3.62, 0.0, 0.78, 0.58, 0.28, 0.12, mats, collection)
 
     add_five_wall_tub("AvionicsTub", (0.85, -1.18, 0.22), (0.24, 0.10, 0.11), 0.040, mech, collection)
     add_box("AvionicsRack", (0.85, -1.18, 0.16), (0.16, 0.032, 0.05), armor, collection, 0.002)
@@ -1274,8 +1308,10 @@ def build_lod(lod, mats):
     add_overlap_plate("Armor_CheekS", (1.20, 1.80, 0.16), (0.42, 0.034, 0.16), armor, collection, 0.006)
     add_overlap_plate("Armor_NoseP", (5.00, -0.22, 0.28), (0.28, 0.022, 0.12), armor, collection, 0.004)
     add_overlap_plate("Armor_NoseS", (5.00, 0.22, 0.28), (0.28, 0.022, 0.12), armor, collection, 0.004)
-    add_overlap_plate("Armor_HouseP", (-3.10, -1.08, 0.28), (0.50, 0.030, 0.18), armor, collection, 0.005)
-    add_overlap_plate("Armor_HouseS", (-3.10, 1.08, 0.28), (0.50, 0.030, 0.18), armor, collection, 0.005)
+    add_overlap_plate("Armor_HouseP", (-3.20, -1.12, 0.22), (0.62, 0.042, 0.22), armor, collection, 0.005)
+    add_overlap_plate("Armor_HouseS", (-3.20, 1.12, 0.22), (0.62, 0.042, 0.22), armor, collection, 0.005)
+    add_overlap_plate("Armor_JointP", (-1.45, -1.40, 0.18), (0.28, 0.040, 0.16), armor, collection, 0.004)
+    add_overlap_plate("Armor_JointS", (-1.45, 1.40, 0.18), (0.28, 0.040, 0.16), armor, collection, 0.004)
     add_overlap_plate("Armor_KeelFore", (1.20, 0.00, -0.68), (0.50, 0.14, 0.024), hull, collection, 0.004)
     add_overlap_plate("Armor_KeelAft", (-0.80, 0.00, -0.88), (0.46, 0.12, 0.022), hull, collection, 0.004)
     add_box("Accent_WaistP", (0.15, -1.40, 0.18), (0.28, 0.010, 0.04), accent, collection, 0.002)
@@ -1322,8 +1358,8 @@ def build_lod(lod, mats):
     if lod <= 1:
         add_radiator_cassette("PortFlank", (-3.00, -1.10, 0.20), lod, mats, collection, length=0.72, height=0.16, yaw=0.0)
         add_radiator_cassette("StbdFlank", (-3.00, 1.10, 0.20), lod, mats, collection, length=0.72, height=0.16, yaw=0.0)
-    add_sensor_dish("Dorsal", (-0.20, 0.18, 0.92), mats, collection)
-    add_service_hatch("Dorsal", (-0.40, 0.28, 0.88), mats, collection, sx=0.32, sy=0.22)
+    add_sensor_dish("Dorsal", (-0.20, 0.18, 0.78), mats, collection)
+    add_service_hatch("Dorsal", (-0.40, 0.28, 0.72), mats, collection, sx=0.28, sy=0.18)
     add_overlap_plate("Repair_Patch", (1.10, -0.50, 0.82), (0.22, 0.10, 0.010), warning, collection, 0.002)
     if lod == 0:
         add_curve_hose(
@@ -1543,7 +1579,7 @@ def render_cycle(collection):
         "rear": ((-12.8, -5.4, 3.2), (-0.40, 0, 0.14), 32),
         "clay_three_quarter": ((10.8, -9.8, 6.4), (0.25, 0, 0.22), 36),
         "grazing_close": ((6.6, -5.4, 2.0), (1.15, 0, 0.35), 48),
-        "bay_interior": ((3.52, 0.00, 0.70), (3.46, 0.0, 0.54), 22),
+        "bay_interior": ((3.88, -0.78, 0.70), (3.48, 0.0, 0.50), 32),
         "drive_rear": ((-7.6, -1.5, 0.55), (-4.95, 0.48, 0.10), 46),
         "play_size": ((36, -32, 16), (0.20, 0, 0.16), 48),
         "orm_isolation": ((10.8, -9.8, 6.4), (0.25, 0, 0.22), 36),

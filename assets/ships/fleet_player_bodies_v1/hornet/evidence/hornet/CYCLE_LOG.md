@@ -66,5 +66,8 @@
 | 85 | yes | FDC3636B | 3Q REVISE / starboard REVISE / rear REVISE | Bells recessed. Live LOD0/1/2 copied. Rear still two dark disks on a hex lid. Not quality-closed. |
 | 86 | yes | see json | author REVISE | Transom cap removed. Solid cylinders as “clamps” still read as disks. Cabin well 264 boundary. Not wired. |
 | 87 | yes | B62E48BD | 3Q REVISE / starboard REVISE / rear REVISE | Whole aft face opened. Ringed throats with vanes. Reviewers still REVISE. Not wired. |
+| 88 | yes | see json | 3Q REVISE / starboard REVISE / rear REVISE | House faired out of the waist. Open house read as a cave from 3Q. Not wired. |
+| 89 | yes | see json | 3Q REVISE / starboard REVISE / rear REVISE | 3Q counted three volumes and thick wings. Starboard still crate tail. Rear vanes + hub plug. Not wired. |
+| 90 | yes | see json | pending | House height matches waist. Hub plug off; dark open bore. Not wired. |
 
 Hitch-plus / A-list: not met. C85 remains the live game body. Do not mark PQ-050.01 done. Do not self-accept.
