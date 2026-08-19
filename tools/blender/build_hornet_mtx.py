@@ -26,7 +26,6 @@ from fleet_construction import (  # noqa: E402
     add_tapered_vane,
     add_tile_bank,
     apply_modifiers,
-    boolean_cut_box,
     densify_ring,
     loft_shell,
     station_ring,
@@ -285,7 +284,7 @@ def wire_maps(material, bsdf, maps, coat=0.0, emission=None):
 
 def create_materials():
     specs = {
-        "Material_Hull": ((0.28, 0.30, 0.32), 0.08, 0.42, "hull", 0.45, None),
+        "Material_Hull": ((0.40, 0.42, 0.44), 0.06, 0.46, "hull", 0.55, None),
         "Material_Armor": ((0.14, 0.16, 0.17), 0.42, 0.34, "armor", 0.10, None),
         "Material_Mechanical": ((0.44, 0.46, 0.48), 0.88, 0.22, "mechanical", 0.0, None),
         "Material_Accent": ((0.04, 0.40, 0.50), 0.10, 0.34, "accent", 0.2, None),
@@ -424,6 +423,34 @@ def add_five_wall_tub(tag, loc, inner, wall, material, collection):
     add_box(f"{tag}_Stbd", (x, y + hy - t * 0.5, z), (hx - t, t * 0.5, hz), material, collection, 0.003)
 
 
+def delete_faces_in_box(obj, x0, x1, y0, y1, z0, z1, normal=None, normal_min=0.35):
+    """Open a well by deleting faces. Does not Exact-boolean the whole loft."""
+    apply_modifiers(obj)
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    bm.faces.ensure_lookup_table()
+    bm.normal_update()
+    victims = []
+    for face in bm.faces:
+        center = face.calc_center_median()
+        if not (x0 <= center.x <= x1 and y0 <= center.y <= y1 and z0 <= center.z <= z1):
+            continue
+        if normal == "z" and face.normal.z < normal_min:
+            continue
+        if normal == "y+" and face.normal.y < normal_min:
+            continue
+        if normal == "y-" and face.normal.y > -normal_min:
+            continue
+        victims.append(face)
+    if victims:
+        bmesh.ops.delete(bm, geom=victims, context="FACES")
+        bmesh.ops.remove_doubles(bm, verts=list(bm.verts), dist=0.0005)
+    bm.to_mesh(obj.data)
+    bm.free()
+    obj.data.update()
+    return obj
+
+
 def add_hollow_bell(tag, x, y, z, scale, mats, collection):
     """Spun bottle: lofted outer, boolean throat, opaque dark plug, rooted vanes."""
     s = scale
@@ -431,23 +458,22 @@ def add_hollow_bell(tag, x, y, z, scale, mats, collection):
         mats["Material_Ceramic"], mats["Material_Thruster"],
         mats["Material_Mechanical"], mats["Material_Armor"],
     )
-    # Rocket bell: throat at the transom, flare OPEN toward aft (-X). Bore is wide
-    # enough to read as a cavity (>=25% of mouth area), closed by an opaque plug.
+    # Longer bottle: mouth aft, plug deep inboard so the rear camera sees a bore, not a lid.
     rings = []
     for t, r, rz in (
-        (0.00, 0.30, 0.30),
-        (0.18, 0.34, 0.34),
-        (0.42, 0.46, 0.46),
-        (0.70, 0.62, 0.62),
-        (1.00, 0.76, 0.76),
+        (0.00, 0.28, 0.28),
+        (0.22, 0.34, 0.34),
+        (0.48, 0.48, 0.48),
+        (0.74, 0.66, 0.66),
+        (1.00, 0.84, 0.84),
     ):
-        xi = x - 0.06 * s - t * 1.18 * s
+        xi = x - 0.08 * s - t * 1.55 * s
         rings.append(ellipse_ring(xi, y, z, r * s, rz * s, 40))
     outer = loft_from_rings(f"Bell_{tag}", rings, mech, collection, 0.005, cap=False)
     apply_modifiers(outer)
     bpy.ops.mesh.primitive_cone_add(
-        vertices=24, radius1=0.24 * s, radius2=0.68 * s, depth=1.28 * s,
-        location=(x - 0.68 * s, y, z), rotation=(0, math.pi / 2, 0),
+        vertices=24, radius1=0.22 * s, radius2=0.76 * s, depth=1.60 * s,
+        location=(x - 0.86 * s, y, z), rotation=(0, math.pi / 2, 0),
     )
     inner = bpy.context.object
     inner.name = f"BellCutter_{tag}"
@@ -464,14 +490,20 @@ def add_hollow_bell(tag, x, y, z, scale, mats, collection):
     bpy.ops.object.modifier_apply(modifier=mod_name)
     outer.select_set(False)
     bpy.data.objects.remove(inner, do_unlink=True)
-    add_cylinder(f"BellPlug_{tag}", (x - 0.16 * s, y, z), 0.26 * s, 0.06 * s, thruster, collection, 18, 0.002)
-    add_cylinder(f"BellCollar_{tag}", (x - 0.04 * s, y, z), 0.34 * s, 0.12 * s, ceramic, collection, 22, 0.004)
-    add_cylinder(f"BellClamp_{tag}", (x + 0.10 * s, y, z), 0.40 * s, 0.06 * s, armor, collection, 22, 0.003)
-    add_cylinder(f"BellFlange_{tag}", (x + 0.20 * s, y, z), 0.44 * s, 0.07 * s, mech, collection, 22, 0.003)
-    add_cylinder(f"BellHub_{tag}", (x - 0.48 * s, y, z), 0.09 * s, 0.22 * s, mech, collection, 12, 0.002)
+    add_cylinder(f"BellPlug_{tag}", (x - 0.22 * s, y, z), 0.20 * s, 0.05 * s, thruster, collection, 18, 0.002)
+    add_cylinder(f"BellCollar_{tag}", (x - 0.02 * s, y, z), 0.36 * s, 0.14 * s, ceramic, collection, 22, 0.004)
+    add_cylinder(f"BellClamp_{tag}", (x + 0.12 * s, y, z), 0.42 * s, 0.06 * s, armor, collection, 22, 0.003)
+    add_cylinder(f"BellFlange_{tag}", (x + 0.24 * s, y, z), 0.48 * s, 0.08 * s, mech, collection, 22, 0.003)
+    add_cylinder(f"BellHub_{tag}", (x - 0.40 * s, y, z), 0.10 * s, 0.18 * s, mech, collection, 12, 0.002)
     for index in range(10):
         ang = math.tau * index / 10
-        add_tapered_vane(f"BellVane_{tag}_{index}", (x - 0.58 * s, y, z), armor, collection, ang, scale=s * 0.92)
+        add_tapered_vane(f"BellVane_{tag}_{index}", (x - 0.72 * s, y, z), armor, collection, ang, scale=s * 1.05)
+        add_box(
+            f"BellRoot_{tag}_{index}",
+            (x - 0.38 * s, y + math.cos(ang) * 0.16 * s, z + math.sin(ang) * 0.16 * s),
+            (0.06 * s, 0.028 * s, 0.022 * s),
+            mech, collection, 0.002, (ang, 0, 0),
+        )
     return outer
 
 
@@ -628,12 +660,6 @@ def add_blended_interceptor_wing(name, sign, hull, armor, collection):
         (1.22, 1.20 * s, 0.22), (-0.18, 3.40 * s, 0.04),
         (-0.32, 3.40 * s, -0.08), (1.08, 1.20 * s, -0.08),
         0.060, hull, collection, 0.004,
-    )
-    add_folded_sheet(
-        f"{name}_UnderRib",
-        (0.40, 1.40 * s, -0.18), (-1.10, 2.80 * s, -0.16),
-        (-1.00, 2.80 * s, -0.04), (0.52, 1.40 * s, -0.04),
-        0.028, armor, collection, 0.003,
     )
     add_folded_sheet(
         f"{name}_TipCap",
@@ -954,23 +980,21 @@ def build_lod(lod, mats):
     ], hull, collection, 0.012, cap=True)
     apply_modifiers(hull_obj)
 
-    # Skin-breaking wells. Cutter starts outside the skin. Tubs sit below it.
-    # Canopy: dorsal-fore depression, not a tent on unbroken paint.
-    boolean_cut_box(hull_obj, "CanopyCutter", (3.22, 0.0, 1.02), (0.58, 0.20, 0.36))
-    add_five_wall_tub("CockpitTub", (3.22, 0.0, 0.92), (0.50, 0.16, 0.28), 0.055, mech, collection)
-    add_box("Cockpit_Seat", (3.10, 0.0, 0.72), (0.14, 0.09, 0.05), mech, collection, 0.003)
-    add_box("Cockpit_Back", (2.92, 0.0, 0.82), (0.028, 0.09, 0.08), armor, collection, 0.002)
-    add_box("Cockpit_Console", (3.48, 0.0, 0.80), (0.09, 0.12, 0.020), armor, collection, 0.002)
-    add_thin_canopy("Canopy", 3.22, 0.0, 1.08, 1.05, 0.32, 0.16, mats, collection)
+    # Openings without Exact-boolean on the loft (C59 shredded it into 26 shells).
+    delete_faces_in_box(hull_obj, 2.70, 3.74, -0.20, 0.20, 0.72, 2.40, normal="z", normal_min=0.25)
+    add_five_wall_tub("CockpitTub", (3.22, 0.0, 0.88), (0.48, 0.16, 0.26), 0.055, mech, collection)
+    add_box("Cockpit_Seat", (3.10, 0.0, 0.70), (0.14, 0.09, 0.05), mech, collection, 0.003)
+    add_box("Cockpit_Back", (2.92, 0.0, 0.80), (0.028, 0.09, 0.08), armor, collection, 0.002)
+    add_box("Cockpit_Console", (3.48, 0.0, 0.78), (0.09, 0.12, 0.020), armor, collection, 0.002)
+    add_thin_canopy("Canopy", 3.22, 0.0, 1.04, 1.05, 0.32, 0.16, mats, collection)
 
-    # Port avionics well + starboard radiator well. Aperture plane below the skin.
-    boolean_cut_box(hull_obj, "AvionicsCutter", (0.85, -1.22, 0.28), (0.38, 0.16, 0.18))
+    delete_faces_in_box(hull_obj, 0.50, 1.20, -1.45, -0.95, 0.05, 0.55, normal="y-", normal_min=0.25)
     add_five_wall_tub("AvionicsTub", (0.85, -1.18, 0.22), (0.32, 0.10, 0.14), 0.045, mech, collection)
     add_box("AvionicsRack", (0.85, -1.18, 0.16), (0.20, 0.04, 0.06), armor, collection, 0.002)
-    boolean_cut_box(hull_obj, "RadiatorCutter", (-3.05, 1.10, 0.22), (0.48, 0.16, 0.20))
+    delete_faces_in_box(hull_obj, -3.50, -2.60, 0.92, 1.42, 0.00, 0.55, normal="y+", normal_min=0.25)
     add_five_wall_tub("RadiatorTub", (-3.05, 1.06, 0.16), (0.40, 0.10, 0.14), 0.045, mech, collection)
 
-    inset_large_faces(hull_obj, thickness=0.022, depth=0.009, min_area=0.045)
+    inset_large_faces(hull_obj, thickness=0.018, depth=0.007, min_area=0.12)
 
     add_folded_sheet(
         "Chine_P",
@@ -1174,7 +1198,7 @@ def setup_studio():
     scene.render.resolution_y = 900
     scene.render.image_settings.file_format = "PNG"
     scene.view_settings.look = "AgX - Medium High Contrast"
-    scene.view_settings.exposure = 1.22
+    scene.view_settings.exposure = 1.38
     world = scene.world
     world.use_nodes = True
     bg = world.node_tree.nodes.get("Background")
@@ -1185,10 +1209,10 @@ def setup_studio():
     scene.collection.objects.link(camera)
     scene.camera = camera
     for name, loc, energy, color, size in (
-        ("Key", (16, -18, 12), 7800, (0.88, 0.92, 1), 10),
-        ("Fill", (4, 16, 8), 3200, (0.55, 0.62, 0.72), 8),
-        ("Rim", (-14, -5, 7), 4000, (0.72, 0.80, 0.92), 7),
-        ("Kick", (-6, 10, -4), 1800, (0.7, 0.75, 0.85), 6),
+        ("Key", (16, -18, 12), 5600, (0.88, 0.92, 1), 12),
+        ("Fill", (4, 16, 8), 5600, (0.62, 0.68, 0.76), 10),
+        ("Rim", (-14, -5, 7), 2800, (0.72, 0.80, 0.92), 8),
+        ("Kick", (-6, 10, -4), 1400, (0.7, 0.75, 0.85), 7),
     ):
         data = bpy.data.lights.new(name, "AREA")
         data.energy = energy
