@@ -296,8 +296,8 @@ def create_materials():
         "Material_Armor": ((0.34, 0.36, 0.38), 0.38, 0.36, "armor", 0.05, None),
         "Material_Mechanical": ((0.50, 0.48, 0.44), 0.90, 0.22, "mechanical", 0.0, None),
         "Material_Accent": ((0.04, 0.40, 0.50), 0.10, 0.34, "accent", 0.2, None),
-        "Material_Warning": ((0.98, 0.20, 0.015), 0.02, 0.28, "warning", 0.0, ((1.00, 0.14, 0.00), 9.0)),
-        "Material_Ceramic": ((0.46, 0.30, 0.14), 0.0, 0.70, "ceramic", 0.0, None),
+        "Material_Warning": ((1.00, 0.12, 0.00), 0.02, 0.22, "warning", 0.0, ((1.00, 0.06, 0.00), 12.0)),
+        "Material_Ceramic": ((0.22, 0.14, 0.07), 0.0, 0.86, "ceramic", 0.0, None),
         "Material_Radiator": ((0.12, 0.10, 0.08), 0.62, 0.62, "mechanical", 0.0, None),
         "Material_Canopy": ((0.04, 0.05, 0.055), 0.00, 0.06, "glass", 0.12, None),
         "Material_Thruster": ((0.08, 0.08, 0.09), 0.55, 0.28, "thruster", 0.0, None),
@@ -324,8 +324,8 @@ def create_materials():
                 bsdf.inputs["Transmission"].default_value = 0.55
             if "IOR" in bsdf.inputs:
                 bsdf.inputs["IOR"].default_value = 1.45
-            bsdf.inputs["Base Color"].default_value = (0.04, 0.05, 0.055, 1)
-            bsdf.inputs["Alpha"].default_value = 0.34
+            bsdf.inputs["Base Color"].default_value = (0.02, 0.025, 0.03, 1)
+            bsdf.inputs["Alpha"].default_value = 0.42
             if hasattr(material, "blend_method"):
                 try:
                     material.blend_method = "HASHED"
@@ -709,12 +709,11 @@ def add_hollow_bell(tag, x, y, z, scale, mats, collection):
         ellipse_ring(mouth_x - 0.06 * s, y, z, 0.86 * s, 0.86 * s, 40),
     ], soot, collection, 0.003, cap=False)
     # Tan collar on the inner lip so rear names ceramic, not a chalk hoop.
-    collar = loft_from_rings(f"BellLipCeramic_{tag}", [
-        ellipse_ring(mouth_x + 0.04 * s, y, z, 0.84 * s, 0.84 * s, 40),
-        ellipse_ring(mouth_x - 0.02 * s, y, z, 0.78 * s, 0.78 * s, 40),
-        ellipse_ring(mouth_x - 0.06 * s, y, z, 0.72 * s, 0.72 * s, 40),
+    # Thin dry-tan insert. Thicken + bright ceramic photographed as a white hoop.
+    loft_from_rings(f"BellLipCeramic_{tag}", [
+        ellipse_ring(mouth_x + 0.02 * s, y, z, 0.80 * s, 0.80 * s, 40),
+        ellipse_ring(mouth_x - 0.04 * s, y, z, 0.74 * s, 0.74 * s, 40),
     ], ceramic, collection, 0.002, cap=False)
-    thicken_shell(collar, 0.018 * s)
     liner_rings = []
     for t, r in (
         (0.10, 0.22),
@@ -955,7 +954,7 @@ def add_blended_interceptor_wing(name, sign, hull, armor, collection):
         for y, le, chord, thick, z in main
     ]
     # Armor, not hull: hull photographed the wing as an ink-black slab.
-    wing = loft_from_rings(name, rings, armor, collection, 0.008, cap=True)
+    wing = loft_from_rings(name, rings, hull, collection, 0.008, cap=True)
     flap = (
         (2.10, -0.55, 0.68, 0.12),
         (2.58, -0.78, 0.58, 0.09),
@@ -965,7 +964,7 @@ def add_blended_interceptor_wing(name, sign, hull, armor, collection):
     loft_from_rings(f"{name}_Flap", [
         densify_ring(teardrop_airfoil(le, y * s, 0.02, chord, thick), 3)
         for y, le, chord, thick in flap
-    ], armor, collection, 0.005, cap=True)
+    ], hull, collection, 0.005, cap=True)
     for i, yb in enumerate((2.05, 2.65, 3.22)):
         add_cylinder(
             f"{name}_Hinge_{i}",
@@ -977,7 +976,7 @@ def add_blended_interceptor_wing(name, sign, hull, armor, collection):
         densify_ring(teardrop_airfoil(1.08, 1.32 * s, 0.12, 1.55, 0.58), 4),
         densify_ring(teardrop_airfoil(1.16, 1.42 * s, 0.12, 1.72, 0.66), 4),
         densify_ring(teardrop_airfoil(1.22, 1.52 * s, 0.12, 1.90, 0.74), 4),
-    ], armor, collection, 0.008, cap=True)
+    ], hull, collection, 0.008, cap=True)
     return wing
 
 
@@ -1314,7 +1313,9 @@ def build_lod(lod, mats):
     add_station_hoop("Hoop_Wing", 0.70, 1.94, 0.74, 0.12, 0.10, 0.74, 0.18, armor, collection, stand=0.042, half=0.038)
     add_station_hoop("Hoop_Transom", -3.18, 0.98, 0.38, 0.14, 0.03, 0.92, 0.06, armor, collection, stand=0.042, half=0.034)
 
-    add_five_wall_tub("CockpitTub", (3.85, 0.0, 0.48), (0.58, 0.42, 0.24), 0.030, mech, collection)
+    # Floor + short aft only. Five-wall tub sides were the C108/C109 mouth-filling slab.
+    add_box("Cockpit_Floor", (3.85, 0.0, 0.30), (0.48, 0.34, 0.012), mech, collection, 0.002)
+    add_box("Cockpit_AftWall", (3.42, 0.0, 0.46), (0.014, 0.22, 0.12), armor, collection, 0.002)
     # Inset seat. C102–C106 furniture filled the mouth and photographed peach.
     # Raised into CockpitFill. C107 sat on the floor and vanished from 3Q.
     add_box("Cockpit_Seat", (3.90, 0.0, 0.58), (0.22, 0.13, 0.035), warning, collection, 0.003)
@@ -1325,8 +1326,8 @@ def build_lod(lod, mats):
     add_box("Cockpit_RailS", (3.90, 0.14, 0.68), (0.16, 0.012, 0.06), mech, collection, 0.001)
     add_box("Cockpit_HarnessP", (3.80, -0.05, 0.80), (0.012, 0.010, 0.10), warning, collection, 0.001)
     add_box("Cockpit_HarnessS", (3.80, 0.05, 0.80), (0.012, 0.010, 0.10), warning, collection, 0.001)
-    add_box("Cockpit_Console", (4.24, 0.0, 0.58), (0.09, 0.12, 0.024), armor, collection, 0.002)
-    add_box("Cockpit_Bulkhead", (3.36, 0.0, 0.62), (0.018, 0.28, 0.16), armor, collection, 0.002)
+    add_box("Cockpit_Console", (4.24, 0.0, 0.58), (0.07, 0.09, 0.018), armor, collection, 0.002)
+    # C108 bulkhead filled the mouth in the bay crop. Aft wall stays the tub.
     canopy = mats["Material_Canopy"]
     # Dark 2 cm panes in metal frames. No roof lid.
     add_folded_sheet(
@@ -1351,7 +1352,7 @@ def build_lod(lod, mats):
     add_box("Frame_SillA", (3.50, 0.0, 0.70), (0.016, 0.32, 0.012), armor, collection, 0.002)
     add_box("Frame_SillP", (3.97, -0.36, 0.70), (0.44, 0.016, 0.012), armor, collection, 0.002)
     add_box("Frame_SillS", (3.97, 0.36, 0.70), (0.44, 0.016, 0.012), armor, collection, 0.002)
-    add_box("Frame_Brow", (4.16, 0.0, 1.00), (0.08, 0.12, 0.010), armor, collection, 0.002)
+    # Frame_Brow was a lid brick over the well. Sills and pillars stay.
     add_box("Frame_PillarP", (3.95, -0.38, 0.84), (0.34, 0.012, 0.10), armor, collection, 0.002)
     add_box("Frame_PillarS", (3.95, 0.38, 0.84), (0.34, 0.012, 0.10), armor, collection, 0.002)
 
@@ -1585,6 +1586,7 @@ def setup_studio():
         ("AftFill", (-10, -12, 8), 900, (0.80, 0.84, 0.90), 16),
         ("CockpitFill", (4.0, -0.2, 1.70), 1800, (1.00, 0.88, 0.70), 2.0),
         ("CockpitKey", (3.8, 0.6, 1.35), 700, (1.00, 0.80, 0.55), 1.4),
+        ("StbdFill", (0.5, 12.0, 3.5), 1100, (0.88, 0.90, 0.94), 18),
     ):
         data = bpy.data.lights.new(name, "AREA")
         data.energy = energy
