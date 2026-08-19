@@ -25,7 +25,11 @@ import { attachPlaceHlod, attachStationHlod } from './hlod.js';
 import { freezeStaticChildMatrices } from './staticChildMatrices.js';
 import { optimizeStaticBatchesForRoot } from './visualFactory.js';
 import { attachLodState } from './lod.js';
-import { canInstallWholeShipLodFamily, selectSpawnLodLevel } from './wholeShipLodPolicy.js';
+import {
+  canInstallWholeShipLodFamily,
+  lodFileFromFamily,
+  selectSpawnLodLevel,
+} from './wholeShipLodPolicy.js';
 import {
   instancePoolIdentity,
   packageBatchPoolKeyFromMaterial,
@@ -1023,20 +1027,95 @@ const WHOLE_SHIP_LOD_FAMILY_BY_DEF_ID = Object.freeze({
 // Reach hostiles are selected by their authoritative combat archetype, not by ship def: several
 // enemy roles intentionally share player-facing chassis stats while requiring different combat
 // silhouettes. This presentation map changes no doctrine, hostility, movement, or damage data.
+// Only files that already have a render-package pilot may be requested on the live
+// empty-admission path. A remaster sibling that exists on disk but is not packaged
+// fails closed and leaves a targeting lock on blank space.
+const PACKAGED_LIVE_WHOLE_SHIP_FILES = Object.freeze(new Set([
+  'wholeships/kestrel.glb',
+  'wholeships/kestrel_lod1.glb',
+  'wholeships/kestrel_lod2.glb',
+  'wholeships/wasp_production_v1.glb',
+  'wholeships/ashline_dart.glb',
+  'wholeships/ashline_lode.glb',
+  'wholeships/ashline_rig.glb',
+  'wholeships/helios_lark.glb',
+  'wholeships/helios_cradle.glb',
+  'wholeships/helios_span.glb',
+  'wholeships/ore_barge.glb',
+  'wholeships/repair_tender.glb',
+  'wholeships/salvage_cutter.glb',
+  'wholeships/survey_pin.glb',
+]));
+
+export function isPackagedLiveWholeShipFile(file) {
+  const token = String(file || '').replace(/\\/g, '/');
+  const marker = '/wholeships/';
+  const idx = token.lastIndexOf(marker);
+  const relative = idx >= 0 ? token.slice(idx + 1) : token;
+  return PACKAGED_LIVE_WHOLE_SHIP_FILES.has(relative);
+}
+
+function packagedLiveWholeShipFile(file) {
+  const token = String(file || '').replace(/\\/g, '/');
+  const marker = '/wholeships/';
+  const idx = token.lastIndexOf(marker);
+  const relative = idx >= 0 ? token.slice(idx + 1) : token;
+  return PACKAGED_LIVE_WHOLE_SHIP_FILES.has(relative) ? relative : null;
+}
+
 const WHOLE_SHIP_FILE_BY_HOSTILE_ID = Object.freeze({
-  // Same rule as traffic: only packaged complete bodies may occupy a live required slot.
-  // The remaster `*_production_v1` re-releases have no render packages, so assetLoader
-  // fails closed and the empty admission substrate stays a targeting ring around blank space.
   wasp_swarmer: 'wholeships/ashline_dart.glb',
+  choir_zealot: 'wholeships/ashline_dart.glb',
+  lancer_sniper: 'wholeships/wasp_production_v1.glb',
+  quiet_ghost: 'wholeships/wasp_production_v1.glb',
   bruiser_brawler: 'wholeships/ashline_lode.glb',
+  pd_screen_escort: 'wholeships/ashline_lode.glb',
+  field_anchor_controller: 'wholeships/ashline_lode.glb',
   reaver_pirate: 'wholeships/ashline_rig.glb',
+  mine_layer_jackal: 'wholeships/ashline_rig.glb',
   corsair_raider: 'wholeships/ashline_rig.glb',
+  tether_control_raider: 'wholeships/ashline_rig.glb',
+  mule_trader: 'wholeships/helios_span.glb',
 });
 const WHOLE_SHIP_ASSET_ID_BY_HOSTILE_ID = Object.freeze({
   wasp_swarmer: 'SF_WHOLESHIP_ASHLINE_DART',
+  choir_zealot: 'SF_WHOLESHIP_ASHLINE_DART',
+  lancer_sniper: 'SF_WASP_PRODUCTION_V1',
+  quiet_ghost: 'SF_WASP_PRODUCTION_V1',
   bruiser_brawler: 'SF_WHOLESHIP_ASHLINE_LODE',
+  pd_screen_escort: 'SF_WHOLESHIP_ASHLINE_LODE',
+  field_anchor_controller: 'SF_WHOLESHIP_ASHLINE_LODE',
   reaver_pirate: 'SF_WHOLESHIP_ASHLINE_RIG',
+  mine_layer_jackal: 'SF_WHOLESHIP_ASHLINE_RIG',
   corsair_raider: 'SF_WHOLESHIP_ASHLINE_RIG',
+  tether_control_raider: 'SF_WHOLESHIP_ASHLINE_RIG',
+  mule_trader: 'SF_WHOLESHIP_HELIOS_SPAN',
+});
+const WHOLE_SHIP_FILE_BY_SILHOUETTE = Object.freeze({
+  drone_swarm: 'wholeships/ashline_dart.glb',
+  sniper_lance: 'wholeships/wasp_production_v1.glb',
+  bruiser_armor: 'wholeships/ashline_lode.glb',
+  pirate_swoop: 'wholeships/ashline_rig.glb',
+  corsair_blade: 'wholeships/ashline_rig.glb',
+  trader_haul: 'wholeships/helios_span.glb',
+});
+const WHOLE_SHIP_ASSET_ID_BY_SILHOUETTE = Object.freeze({
+  drone_swarm: 'SF_WHOLESHIP_ASHLINE_DART',
+  sniper_lance: 'SF_WASP_PRODUCTION_V1',
+  bruiser_armor: 'SF_WHOLESHIP_ASHLINE_LODE',
+  pirate_swoop: 'SF_WHOLESHIP_ASHLINE_RIG',
+  corsair_blade: 'SF_WHOLESHIP_ASHLINE_RIG',
+  trader_haul: 'SF_WHOLESHIP_HELIOS_SPAN',
+});
+const WHOLE_SHIP_FILE_BY_ASSET_REF = Object.freeze({
+  enemy_reaver_interceptor: 'wholeships/ashline_rig.glb',
+  enemy_reaver_skirmisher: 'wholeships/ashline_rig.glb',
+  enemy_reaver_tug: 'wholeships/ashline_rig.glb',
+});
+const WHOLE_SHIP_ASSET_ID_BY_ASSET_REF = Object.freeze({
+  enemy_reaver_interceptor: 'SF_WHOLESHIP_ASHLINE_RIG',
+  enemy_reaver_skirmisher: 'SF_WHOLESHIP_ASHLINE_RIG',
+  enemy_reaver_tug: 'SF_WHOLESHIP_ASHLINE_RIG',
 });
 // Ambient civilian traffic owns a durable presentation role independent of ship-def gameplay
 // stats. This keeps role silhouettes stable across rematerialization and prevents courier traffic
@@ -1100,49 +1179,72 @@ export function shipArchetypesForPrecompile() {
   return PRECOMPILE_SHIP_ARCHETYPES;
 }
 
+function wholeShipSelection(file, assetId, roleId, lodFamily = null) {
+  return Object.freeze({
+    file,
+    assetId,
+    roleId,
+    required: true,
+    ...(lodFamily ? { lodFamily } : {}),
+  });
+}
+
 /** Pure presentation selection hook used by composition and focused asset checks. */
 export function wholeShipVisualForEntity(entity, options = {}) {
   const data = entity && entity.data || {};
   const hostileId = String(data.lootTableId || '');
   const hostileFile = WHOLE_SHIP_FILE_BY_HOSTILE_ID[hostileId];
   if (hostileFile) {
-    return Object.freeze({
-      file: hostileFile,
-      assetId: WHOLE_SHIP_ASSET_ID_BY_HOSTILE_ID[hostileId],
-      roleId: hostileId,
-      required: true,
-    });
+    return wholeShipSelection(hostileFile, WHOLE_SHIP_ASSET_ID_BY_HOSTILE_ID[hostileId], hostileId);
+  }
+  const silhouette = String(data.silhouette || '');
+  const silhouetteFile = WHOLE_SHIP_FILE_BY_SILHOUETTE[silhouette];
+  if (silhouetteFile) {
+    return wholeShipSelection(
+      silhouetteFile,
+      WHOLE_SHIP_ASSET_ID_BY_SILHOUETTE[silhouette],
+      silhouette,
+    );
+  }
+  const assetRef = String(data.assetRef || '');
+  const assetRefFile = WHOLE_SHIP_FILE_BY_ASSET_REF[assetRef];
+  if (assetRefFile) {
+    return wholeShipSelection(
+      assetRefFile,
+      WHOLE_SHIP_ASSET_ID_BY_ASSET_REF[assetRef],
+      assetRef,
+    );
   }
   const trafficRole = String(data.trafficRole || '');
   const trafficFile = WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE[trafficRole];
   if (trafficFile) {
-    return Object.freeze({
-      file: trafficFile,
-      assetId: WHOLE_SHIP_ASSET_ID_BY_TRAFFIC_ROLE[trafficRole],
-      roleId: trafficRole,
-      required: true,
-    });
+    return wholeShipSelection(
+      trafficFile,
+      WHOLE_SHIP_ASSET_ID_BY_TRAFFIC_ROLE[trafficRole],
+      trafficRole,
+    );
   }
   if (options.requiredWholeShip !== true) return null;
   const defId = data.defId;
   const file = WHOLE_SHIP_FILE_BY_DEF_ID[defId];
-  return file ? Object.freeze({
+  return file ? wholeShipSelection(
     file,
-    assetId: WHOLE_SHIP_ASSET_ID_BY_DEF_ID[defId],
-    lodFamily: WHOLE_SHIP_LOD_FAMILY_BY_DEF_ID[defId] || null,
-    roleId: defId,
-    required: true,
-  }) : null;
+    WHOLE_SHIP_ASSET_ID_BY_DEF_ID[defId],
+    defId,
+    WHOLE_SHIP_LOD_FAMILY_BY_DEF_ID[defId] || null,
+  ) : null;
 }
 
-/** LOD0 stays the cold-start admit file. LOD1/2 are selected on demotion only. */
+/** LOD0 stays the cold-start admit file. Unpackaged remaster siblings never leave the live path. */
 export function wholeShipLodFileForEntity(entity, level, options = {}) {
   const selection = wholeShipVisualForEntity(entity, { ...options, requiredWholeShip: true });
   if (!selection) return null;
   const family = selection.lodFamily;
-  if (!family) return selection.file;
-  const key = level === 'lod1' || level === 'lod2' ? level : 'lod0';
-  return family[key] || family.lod0 || selection.file;
+  const wanted = lodFileFromFamily(family, level, selection.file);
+  return packagedLiveWholeShipFile(wanted)
+    || packagedLiveWholeShipFile(family && family.lod0)
+    || packagedLiveWholeShipFile(selection.file)
+    || selection.file;
 }
 
 export function authoredPreloadPlanForEntityAtLod(entity, level, options = {}) {
@@ -3902,7 +4004,7 @@ function installWholeShipLodFamilyController(boundary, entity, setActive, option
     const scene = options.scene || (boundary.parent);
     if (!renderer || !scene) return;
     pendingLevel = requested;
-    const file = family[requested];
+    const file = packagedLiveWholeShipFile(family[requested]);
     if (!file) {
       pendingLevel = null;
       return;

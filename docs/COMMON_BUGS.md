@@ -587,6 +587,12 @@ with `SF_WHOLESHIP_ASHLINE_*` identities that match `assets/ships/render-package
 
 Do not "fix" this by showing a junk procedural hull. Point the live map at a packaged body.
 
+A later sweep mapped every remaining combat silhouette the same way (`drone_swarm` → Dart,
+`sniper_lance` → packaged Wasp, `bruiser_armor` → Lode, `pirate_swoop`/`corsair_blade` → Rig,
+`trader_haul` → Span). Patrol and the dreadnought stay modular because those modular parts are
+packaged. Distant Wasp LOD1/2 files are catalogued but unpackaged — live admission must keep LOD0
+instead of requesting them. `test/live-ship-visual-package-coverage.test.mjs` is the lock.
+
 ### Cause B — flight blocks composition of the empty slot
 `mayComposeAuthoredShipLive` refuses ordinary `current-sector` composition in flight so a readable
 procedural ship is not rebuilt on the playable thread. Live NPC/enemy ships no longer have that

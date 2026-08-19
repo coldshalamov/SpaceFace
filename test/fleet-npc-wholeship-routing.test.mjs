@@ -11,9 +11,17 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 const HOSTILES = {
   wasp_swarmer: { file: 'wholeships/ashline_dart.glb', assetId: 'SF_WHOLESHIP_ASHLINE_DART' },
+  choir_zealot: { file: 'wholeships/ashline_dart.glb', assetId: 'SF_WHOLESHIP_ASHLINE_DART' },
+  lancer_sniper: { file: 'wholeships/wasp_production_v1.glb', assetId: 'SF_WASP_PRODUCTION_V1' },
+  quiet_ghost: { file: 'wholeships/wasp_production_v1.glb', assetId: 'SF_WASP_PRODUCTION_V1' },
   bruiser_brawler: { file: 'wholeships/ashline_lode.glb', assetId: 'SF_WHOLESHIP_ASHLINE_LODE' },
+  pd_screen_escort: { file: 'wholeships/ashline_lode.glb', assetId: 'SF_WHOLESHIP_ASHLINE_LODE' },
+  field_anchor_controller: { file: 'wholeships/ashline_lode.glb', assetId: 'SF_WHOLESHIP_ASHLINE_LODE' },
   reaver_pirate: { file: 'wholeships/ashline_rig.glb', assetId: 'SF_WHOLESHIP_ASHLINE_RIG' },
+  mine_layer_jackal: { file: 'wholeships/ashline_rig.glb', assetId: 'SF_WHOLESHIP_ASHLINE_RIG' },
   corsair_raider: { file: 'wholeships/ashline_rig.glb', assetId: 'SF_WHOLESHIP_ASHLINE_RIG' },
+  tether_control_raider: { file: 'wholeships/ashline_rig.glb', assetId: 'SF_WHOLESHIP_ASHLINE_RIG' },
+  mule_trader: { file: 'wholeships/helios_span.glb', assetId: 'SF_WHOLESHIP_HELIOS_SPAN' },
 };
 
 const TRAFFIC = {

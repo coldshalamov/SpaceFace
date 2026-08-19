@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import { LOD_THRESHOLDS } from '../src/render/lod.js';
 import {
+  isPackagedLiveWholeShipFile,
   wholeShipLodFileForEntity,
   wholeShipVisualForEntity,
 } from '../src/render/partsLibrary.js';
@@ -24,11 +25,19 @@ test('every catalogued whole-ship family except the player is installable', () =
     const selection = wholeShipVisualForEntity(npc, { requiredWholeShip: true });
     assert.equal(hasWholeShipLodFamily(selection), true, defId);
     assert.equal(canInstallWholeShipLodFamily(npc, selection), true, defId);
-    assert.notEqual(
-      wholeShipLodFileForEntity(npc, 'lod2', { requiredWholeShip: true }),
-      wholeShipLodFileForEntity(npc, 'lod0', { requiredWholeShip: true }),
-      defId,
-    );
+  }
+});
+
+test('live lod admission never leaves a packaged lod0 for an unpackaged sibling', () => {
+  for (const defId of FAMILY_DEF_IDS) {
+    const npc = { type: 'ship', isPlayer: false, data: { defId } };
+    const lod0 = wholeShipLodFileForEntity(npc, 'lod0', { requiredWholeShip: true });
+    const lod2 = wholeShipLodFileForEntity(npc, 'lod2', { requiredWholeShip: true });
+    if (isPackagedLiveWholeShipFile(lod0) && !isPackagedLiveWholeShipFile(
+      wholeShipVisualForEntity(npc, { requiredWholeShip: true }).lodFamily.lod2,
+    )) {
+      assert.equal(lod2, lod0, `${defId} must keep packaged LOD0 instead of an unpackaged remaster sibling`);
+    }
   }
 });
 

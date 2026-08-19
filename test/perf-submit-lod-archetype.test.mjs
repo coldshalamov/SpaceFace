@@ -17,21 +17,21 @@ test('tintable hull variants with different base albedo still share after palett
   assert.equal(probe.hullProgramFamilyShared, true);
 });
 
-test('wasp LOD family selects distinct files without expanding cold-start plan', () => {
+test('wasp LOD family keeps packaged LOD0 on the live demand plan', () => {
   const entity = { type: 'ship', data: { defId: 'ship_wasp' } };
   const cold = authoredPreloadPlanForEntity(entity, { requiredWholeShip: true });
   assert.deepEqual(cold.hull, ['wholeships/wasp_production_v1.glb']);
   assert.equal(
     wholeShipLodFileForEntity(entity, 'lod1', { requiredWholeShip: true }),
-    'wholeships/wasp_production_v1_lod1.glb',
+    'wholeships/wasp_production_v1.glb',
   );
   assert.equal(
     wholeShipLodFileForEntity(entity, 'lod2', { requiredWholeShip: true }),
-    'wholeships/wasp_production_v1_lod2.glb',
+    'wholeships/wasp_production_v1.glb',
   );
   assert.deepEqual(
     authoredPreloadPlanForEntityAtLod(entity, 'lod1', { requiredWholeShip: true }).hull,
-    ['wholeships/wasp_production_v1_lod1.glb'],
+    ['wholeships/wasp_production_v1.glb'],
   );
 });
 
@@ -47,7 +47,7 @@ test('sector prewarm requests include spawnable hostile and traffic archetype hu
   assert.ok(hullUrls.some((url) => url.endsWith('wholeships/helios_span.glb')));
 });
 
-test('distant live ships prewarm the cheaper LOD sibling instead of LOD0', () => {
+test('distant live ships keep a packaged LOD0 instead of an unpackaged remaster sibling', () => {
   const far = {
     type: 'ship',
     id: 9,
@@ -61,8 +61,13 @@ test('distant live ships prewarm the cheaper LOD sibling instead of LOD0', () =>
     playerPos: { x: 0, z: 0 },
     viewportHeight: 800,
     includeSpawnableArchetypes: false,
+    requiredWholeShip: true,
   });
   const hullUrls = requests.filter((r) => r.slot === 'hull').map((r) => r.url);
-  assert.ok(hullUrls.some((url) => url.endsWith('wholeships/wasp_production_v1_lod2.glb')));
-  assert.equal(hullUrls.some((url) => url.endsWith('wholeships/wasp_production_v1.glb')), false);
+  assert.ok(hullUrls.some((url) => url.endsWith('wholeships/wasp_production_v1.glb')));
+  assert.equal(
+    hullUrls.some((url) => url.endsWith('wholeships/wasp_production_v1_lod2.glb')),
+    false,
+    'unpackaged Wasp LOD2 must never enter the live demand plan',
+  );
 });
