@@ -78,5 +78,7 @@
 | 97 | yes | see json | author REVISE | Roof-only well (52 boundary). Nose closed. Headrest poked out as a tower. Not wired. |
 | 98 | yes | see json | 3Q REVISE / starboard REVISE / rear REVISE | Medium well. Belly plates confirmed gone. Joint still called a triangle. Not wired. |
 | 99 | yes | see json | 3Q REVISE / rear REVISE / starboard author REVISE | One continuous hull. Large well. Open cans. Still not KEEP. Not wired. |
+| 100 | yes | see json | 3Q REVISE / starboard REVISE / rear REVISE | Raised seat, flipped liner, thicker wing. Glass yes; seat not named at 3Q. Not wired. |
+| 101 | yes | see json | author REVISE | Teardrop wing, orange seat, dark cans. Still not KEEP. Not wired. |
 
 Hitch-plus / A-list: not met. C85 remains the live game body. Do not mark PQ-050.01 done. Do not self-accept.
