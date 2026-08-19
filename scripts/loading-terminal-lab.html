@@ -31,9 +31,9 @@
   <div id="stage"><canvas id="boot-terminal-canvas" width="1120" height="640"></canvas></div>
   <div id="hud">
     <b>LOADING TERMINAL LAB</b> ·
-    keys: <b>1-5</b> pin act · <b>0</b> auto loop · <b>space</b> freeze/unfreeze ·
-    <b>[ ]</b> scrub ±0.25s · <b>p</b> progress 0/50/100% · <b>r</b> reduced-motion ·
-    <b>mouse</b> parallax · status: <span id="status">auto</span>
+    keys: <b>1-5</b> pin phase · <b>0</b> auto loop · <b>space</b> freeze/unfreeze ·
+    <b>[ ]</b> scrub ±0.25s (frozen pins converge to the steady state at t) · <b>p</b> progress 0/50/100% · <b>r</b> reduced-motion ·
+    <b>mouse</b> flow bias · status: <span id="status">auto</span>
   </div>
 </div>
 <script type="module">
@@ -56,6 +56,14 @@
     if (act >= 0) art.__engine?.receive?.({ type: 'lab', act, freeze, t: t0 });
     statusEl.textContent = (act >= 0 ? 'act ' + (act + 1) : 'auto') + (freeze ? ' · frozen' : '') + ' · t=' + t0.toFixed(2) + 's';
   }
+  setInterval(() => {
+    const st = typeof art.__status === 'function' ? art.__status() : '?';
+    if (!statusEl.textContent.includes('engine:')) {
+      statusEl.textContent += ' · engine: ' + st;
+    } else {
+      statusEl.textContent = statusEl.textContent.replace(/engine: [^·]*/, 'engine: ' + st);
+    }
+  }, 500);
 
   // The lab drives the engine through the same public artwork instance; reach
   // the engine via the debug hook the factory exposes when a lab query is set.
