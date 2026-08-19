@@ -428,6 +428,19 @@ def recalc_mesh(obj):
     return obj
 
 
+def subdivide_mesh(obj, cuts=1):
+    apply_modifiers(obj)
+    bpy.ops.object.select_all(action="DESELECT")
+    obj.select_set(True)
+    bpy.context.view_layer.objects.active = obj
+    bpy.ops.object.mode_set(mode="EDIT")
+    bpy.ops.mesh.select_all(action="SELECT")
+    bpy.ops.mesh.subdivide(number_cuts=int(cuts))
+    bpy.ops.object.mode_set(mode="OBJECT")
+    obj.data.update()
+    return obj
+
+
 def thicken_shell(obj, thickness=0.10):
     """Give a paper loft a wall so later cuts are pockets, not tunnels."""
     apply_modifiers(obj)
@@ -1021,6 +1034,7 @@ def build_lod(lod, mats):
         densify_ring(station_ring(-4.90, 0, 0.16, 0.90, 0.80, flat=0.08, box=0.92, keel=0.06), 3),
     ], hull, collection, 0.012, cap=True)
     thicken_shell(hull_obj, 0.10)
+    subdivide_mesh(hull_obj, 1)
     report_shells(hull_obj, "hull after solidify")
     inset_large_faces(hull_obj, thickness=0.018, depth=0.0, min_area=0.14)
     report_shells(hull_obj, "hull after inset")
@@ -1264,6 +1278,7 @@ def setup_studio():
         ("Fill", (4, 16, 8), 2200, (0.76, 0.80, 0.84), 20),
         ("Rim", (-14, -5, 7), 700, (0.78, 0.84, 0.92), 14),
         ("Kick", (-6, 10, -4), 400, (0.74, 0.78, 0.84), 12),
+        ("AftFill", (-18, -2, 6), 900, (0.80, 0.84, 0.88), 16),
     ):
         data = bpy.data.lights.new(name, "AREA")
         data.energy = energy
