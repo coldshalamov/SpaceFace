@@ -84,6 +84,8 @@
 | 103 | yes | see json | 3Q REVISE / starboard REVISE / rear REVISE | 1 shell, 172 boundary. Named peach seat in an open crate. Chimney from starboard. Wing lost thickness. Not wired. |
 | 104 | yes | see json | 3Q REVISE / starboard REVISE / rear REVISE | Seat through glass lid. Chimney gone. Fat dark wing slab. Cans still pale and close. Clay still a crate. Not wired. |
 | 105 | yes | see json | author REVISE pending | Raked glass, split cans, dark vanes. 3Q still a crate. Not wired. |
-| 106 | yes | see json | author REVISE pending | Coaming off. Open well, named peach seat, split dark-lip cans. Wing still a slab. Not wired. |
+| 106 | yes | see json | 3Q REVISE / starboard pending / rear pending | Coaming off. Open well, named peach seat, split dark-lip cans. Wing still a slab. Not wired. |
+| 107 | yes | see json | author REVISE | Gray hull, armor wings, dark soot throats. Seat too low, vanished. White rims. Not wired. |
+| 108 | yes | see json | author pending | Raised coral seat named at 3Q. Dark split throats. Gray teardrop wing. Not wired. |
 
 Hitch-plus / A-list: not met. C85 remains the live game body. Do not mark PQ-050.01 done. Do not self-accept.
