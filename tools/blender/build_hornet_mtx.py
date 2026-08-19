@@ -709,11 +709,7 @@ def add_hollow_bell(tag, x, y, z, scale, mats, collection):
         ellipse_ring(mouth_x - 0.06 * s, y, z, 0.86 * s, 0.86 * s, 40),
     ], soot, collection, 0.003, cap=False)
     # Tan collar on the inner lip so rear names ceramic, not a chalk hoop.
-    # Thin dry-tan insert. Thicken + bright ceramic photographed as a white hoop.
-    loft_from_rings(f"BellLipCeramic_{tag}", [
-        ellipse_ring(mouth_x + 0.02 * s, y, z, 0.80 * s, 0.80 * s, 40),
-        ellipse_ring(mouth_x - 0.04 * s, y, z, 0.74 * s, 0.74 * s, 40),
-    ], ceramic, collection, 0.002, cap=False)
+    # Ceramic stays on the casing OD, not the mouth. Mouth hoop flashed white.
     liner_rings = []
     for t, r in (
         (0.10, 0.22),
@@ -1330,31 +1326,15 @@ def build_lod(lod, mats):
     # C108 bulkhead filled the mouth in the bay crop. Aft wall stays the tub.
     canopy = mats["Material_Canopy"]
     # Dark 2 cm panes in metal frames. No roof lid.
+    # Windscreen only. Side panes + sill crate photographed as a greenhouse lid.
     add_folded_sheet(
         "Canopy_Screen",
-        (4.52, -0.32, 0.68), (4.52, 0.32, 0.68),
-        (4.12, 0.12, 1.02), (4.12, -0.12, 1.02),
+        (4.52, -0.28, 0.64), (4.52, 0.28, 0.64),
+        (4.18, 0.10, 0.96), (4.18, -0.10, 0.96),
         0.016, canopy, collection, 0.002,
     )
-    add_folded_sheet(
-        "Canopy_SideP",
-        (4.46, -0.40, 0.66), (3.48, -0.34, 0.64),
-        (3.52, -0.14, 0.96), (4.14, -0.12, 1.02),
-        0.016, canopy, collection, 0.002,
-    )
-    add_folded_sheet(
-        "Canopy_SideS",
-        (4.46, 0.40, 0.66), (4.14, 0.12, 1.02),
-        (3.52, 0.14, 0.96), (3.48, 0.34, 0.64),
-        0.016, canopy, collection, 0.002,
-    )
-    add_box("Frame_SillF", (4.44, 0.0, 0.70), (0.016, 0.32, 0.012), armor, collection, 0.002)
-    add_box("Frame_SillA", (3.50, 0.0, 0.70), (0.016, 0.32, 0.012), armor, collection, 0.002)
-    add_box("Frame_SillP", (3.97, -0.36, 0.70), (0.44, 0.016, 0.012), armor, collection, 0.002)
-    add_box("Frame_SillS", (3.97, 0.36, 0.70), (0.44, 0.016, 0.012), armor, collection, 0.002)
-    # Frame_Brow was a lid brick over the well. Sills and pillars stay.
-    add_box("Frame_PillarP", (3.95, -0.38, 0.84), (0.34, 0.012, 0.10), armor, collection, 0.002)
-    add_box("Frame_PillarS", (3.95, 0.38, 0.84), (0.34, 0.012, 0.10), armor, collection, 0.002)
+    add_box("Frame_SillF", (4.44, 0.0, 0.66), (0.016, 0.28, 0.010), armor, collection, 0.002)
+    add_box("Frame_Brow", (4.22, 0.0, 0.94), (0.06, 0.10, 0.010), armor, collection, 0.002)
 
     add_five_wall_tub("AvionicsTub", (0.85, -1.18, 0.22), (0.24, 0.10, 0.11), 0.040, mech, collection)
     add_box("AvionicsRack", (0.85, -1.18, 0.16), (0.16, 0.032, 0.05), armor, collection, 0.002)
