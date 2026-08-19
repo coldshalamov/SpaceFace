@@ -285,7 +285,7 @@ def wire_maps(material, bsdf, maps, coat=0.0, emission=None):
 
 def create_materials():
     specs = {
-        "Material_Hull": ((0.24, 0.30, 0.36), 0.04, 0.50, "hull", 0.40, None),
+        "Material_Hull": ((0.38, 0.40, 0.42), 0.03, 0.54, "hull", 0.12, None),
         "Material_Armor": ((0.10, 0.11, 0.12), 0.58, 0.30, "armor", 0.08, None),
         "Material_Mechanical": ((0.50, 0.48, 0.44), 0.90, 0.22, "mechanical", 0.0, None),
         "Material_Accent": ((0.04, 0.40, 0.50), 0.10, 0.34, "accent", 0.2, None),
@@ -522,9 +522,9 @@ def add_hollow_bell(tag, x, y, z, scale, mats, collection):
         (1.00, 0.90, 0.90),
     ):
         xi = x - 0.10 * s - t * 1.70 * s
-        rings.append(ellipse_ring(xi, y, z, r * s, rz * s, 36))
-    outer = loft_from_rings(f"Bell_{tag}", rings, mech, collection, 0.008, cap=False)
-    thicken_shell(outer, 0.055 * s)
+        rings.append(ellipse_ring(xi, y, z, r * s, rz * s, 48))
+    outer = loft_from_rings(f"Bell_{tag}", rings, mech, collection, 0.010, cap=False)
+    thicken_shell(outer, 0.080 * s)
     add_cylinder(f"BellBack_{tag}", (x - 0.22 * s, y, z), 0.13 * s, 0.04 * s, thruster, collection, 16, 0.002)
     add_cylinder(f"BellCollar_{tag}", (x - 0.02 * s, y, z), 0.38 * s, 0.14 * s, ceramic, collection, 22, 0.004)
     add_cylinder(f"BellClamp_{tag}", (x + 0.12 * s, y, z), 0.44 * s, 0.06 * s, armor, collection, 22, 0.003)
@@ -686,11 +686,11 @@ def add_blended_interceptor_wing(name, sign, hull, armor, collection):
         return airfoil_ring(le - chord * 0.42, y_abs * s, z, chord, thick)
 
     rings = [
-        station(1.20, 1.28, 3.85, 0.62, 0.14),
-        station(1.82, 0.98, 3.25, 0.38, 0.08),
-        station(2.48, 0.42, 2.62, 0.22, 0.02),
-        station(3.12, -0.12, 2.18, 0.12, -0.04),
-        station(3.66, -0.50, 1.88, 0.09, -0.08),
+        station(1.18, 1.28, 3.90, 0.78, 0.16),
+        station(1.82, 0.95, 3.28, 0.46, 0.10),
+        station(2.48, 0.40, 2.65, 0.26, 0.04),
+        station(3.12, -0.12, 2.20, 0.14, -0.02),
+        station(3.66, -0.50, 1.90, 0.10, -0.06),
     ]
     wing = loft_from_rings(name, rings, hull, collection, 0.014, cap=True)
     loft_from_rings(f"{name}_Flap", [
@@ -1002,10 +1002,10 @@ def build_lod(lod, mats):
     # C61: C59 raised stations, then a real wall, then pocket cuts. Paper loft + face-delete
     # and paper loft + Exact boolean both became cages. Do not inset a zero-thickness shell.
     hull_obj = loft_from_rings("Pressure_Hull", [
-        densify_ring(station_ring(5.60, 0, 0.12, 0.12, 0.12, flat=0.06, box=0.08, keel=0.92), 3),
-        densify_ring(station_ring(5.22, 0, 0.16, 0.38, 0.38, flat=0.18, box=0.18, keel=0.78), 3),
-        densify_ring(station_ring(4.72, 0, 0.22, 0.62, 0.62, flat=0.32, box=0.28, keel=0.62), 3),
-        densify_ring(station_ring(4.18, 0, 0.28, 0.80, 0.82, flat=0.55, box=0.34, keel=0.50), 3),
+        densify_ring(station_ring(5.60, 0, 0.16, 0.22, 0.32, flat=0.10, box=0.12, keel=0.88), 3),
+        densify_ring(station_ring(5.22, 0, 0.20, 0.52, 0.58, flat=0.22, box=0.22, keel=0.72), 3),
+        densify_ring(station_ring(4.72, 0, 0.24, 0.74, 0.80, flat=0.36, box=0.30, keel=0.58), 3),
+        densify_ring(station_ring(4.18, 0, 0.28, 0.88, 0.92, flat=0.55, box=0.34, keel=0.50), 3),
         densify_ring(station_ring(3.68, 0, 0.32, 0.90, 1.05, flat=0.86, box=0.38, keel=0.42), 3),
         densify_ring(station_ring(3.15, 0, 0.30, 1.00, 1.12, flat=0.88, box=0.42, keel=0.40), 3),
         densify_ring(station_ring(2.55, 0, 0.22, 1.12, 1.00, flat=0.58, box=0.52, keel=0.36), 3),
@@ -1022,10 +1022,12 @@ def build_lod(lod, mats):
     ], hull, collection, 0.012, cap=True)
     thicken_shell(hull_obj, 0.10)
     report_shells(hull_obj, "hull after solidify")
+    inset_large_faces(hull_obj, thickness=0.022, depth=0.012, min_area=0.10)
+    report_shells(hull_obj, "hull after inset")
 
-    boolean_cut_box(hull_obj, "Cut_Cockpit", (3.22, 0.0, 1.38), (0.50, 0.18, 0.28))
-    boolean_cut_box(hull_obj, "Cut_Avionics", (0.85, -1.48, 0.22), (0.34, 0.16, 0.16))
-    boolean_cut_box(hull_obj, "Cut_Radiator", (-3.05, 1.48, 0.16), (0.42, 0.16, 0.16))
+    boolean_cut_box(hull_obj, "Cut_Cockpit", (3.22, 0.0, 1.42), (0.46, 0.16, 0.24))
+    boolean_cut_box(hull_obj, "Cut_Avionics", (0.85, -1.50, 0.22), (0.30, 0.14, 0.14))
+    boolean_cut_box(hull_obj, "Cut_Radiator", (-3.05, 1.50, 0.16), (0.38, 0.14, 0.14))
     recalc_mesh(hull_obj)
     report_shells(hull_obj, "hull after pocket cuts")
     bevel = hull_obj.modifiers.new("HullBevel", "BEVEL")
@@ -1041,7 +1043,7 @@ def build_lod(lod, mats):
     add_box("Cockpit_Seat", (3.10, 0.0, 0.88), (0.14, 0.09, 0.05), mech, collection, 0.003)
     add_box("Cockpit_Back", (2.92, 0.0, 0.98), (0.028, 0.09, 0.08), armor, collection, 0.002)
     add_box("Cockpit_Console", (3.48, 0.0, 0.96), (0.09, 0.12, 0.020), armor, collection, 0.002)
-    add_greenhouse("Canopy", 3.22, 0.0, 1.18, 1.05, 0.34, 0.22, mats, collection)
+    add_greenhouse("Canopy", 3.22, 0.0, 1.22, 1.10, 0.38, 0.28, mats, collection)
 
     add_five_wall_tub("AvionicsTub", (0.85, -1.28, 0.22), (0.30, 0.12, 0.14), 0.050, mech, collection)
     add_box("AvionicsRack", (0.85, -1.28, 0.16), (0.20, 0.04, 0.06), armor, collection, 0.002)
@@ -1073,13 +1075,15 @@ def build_lod(lod, mats):
     add_overlap_plate("Armor_HouseS", (-3.40, 1.02, 0.28), (0.55, 0.030, 0.20), armor, collection, 0.005)
     add_overlap_plate("Armor_KeelFore", (1.20, 0.00, -0.96), (0.50, 0.14, 0.024), hull, collection, 0.004)
     add_overlap_plate("Armor_KeelAft", (-1.10, 0.00, -0.90), (0.46, 0.12, 0.022), hull, collection, 0.004)
-    add_box("Accent_WaistP", (0.15, -1.38, 0.18), (0.42, 0.012, 0.06), accent, collection, 0.002)
-    add_box("Accent_WaistS", (0.15, 1.38, 0.18), (0.42, 0.012, 0.06), accent, collection, 0.002)
+    add_box("Accent_WaistP", (0.15, -1.38, 0.18), (0.28, 0.010, 0.04), accent, collection, 0.002)
+    add_box("Accent_WaistS", (0.15, 1.38, 0.18), (0.28, 0.010, 0.04), accent, collection, 0.002)
+    add_box("TransomBulkhead", (-4.72, 0.0, 0.16), (0.060, 0.90, 0.76), hull, collection, 0.006)
+    add_box("AftBulkhead", (-3.35, 0.0, 0.14), (0.045, 1.00, 0.80), hull, collection, 0.005)
     add_box("TransomPlate", (-4.92, 0.0, 0.14), (0.018, 0.32, 0.16), hull, collection, 0.003)
 
-    add_tile_bank("FlankTiles_P", 1.40, -1.60, -1.32, 0.22, 5, 0.14, 0.022, 0.08, armor, collection, 0.03)
-    add_tile_bank("FlankTiles_S", 1.40, -1.60, 1.32, 0.22, 5, 0.14, 0.022, 0.08, armor, collection, 0.03)
-    add_tile_bank("KeelTiles", 1.40, -1.70, 0.00, -0.94, 5, 0.16, 0.09, 0.014, hull, collection, 0.03)
+    add_tile_bank("FlankTiles_P", 1.40, -1.60, -1.32, 0.22, 3, 0.14, 0.022, 0.08, armor, collection, 0.03)
+    add_tile_bank("FlankTiles_S", 1.40, -1.60, 1.32, 0.22, 3, 0.14, 0.022, 0.08, armor, collection, 0.03)
+    add_tile_bank("KeelTiles", 1.40, -1.70, 0.00, -0.94, 3, 0.16, 0.09, 0.014, hull, collection, 0.03)
 
     for sign, side in ((-1, "Port"), (1, "Starboard")):
         add_blended_interceptor_wing(f"Wing_{side}", sign, hull, armor, collection)
@@ -1246,7 +1250,7 @@ def setup_studio():
         scene.view_settings.look = "AgX - Medium Contrast"
     except TypeError:
         scene.view_settings.look = "AgX - Medium High Contrast"
-    scene.view_settings.exposure = 1.05
+    scene.view_settings.exposure = 0.95
     world = scene.world
     world.use_nodes = True
     bg = world.node_tree.nodes.get("Background")
@@ -1257,10 +1261,10 @@ def setup_studio():
     scene.collection.objects.link(camera)
     scene.camera = camera
     for name, loc, energy, color, size in (
-        ("Key", (16, -18, 12), 2200, (0.92, 0.94, 1), 18),
-        ("Fill", (4, 16, 8), 1600, (0.72, 0.76, 0.82), 16),
-        ("Rim", (-14, -5, 7), 1100, (0.76, 0.82, 0.92), 12),
-        ("Kick", (-6, 10, -4), 700, (0.72, 0.76, 0.84), 10),
+        ("Key", (16, -18, 12), 1400, (0.94, 0.96, 1), 22),
+        ("Fill", (4, 16, 8), 2200, (0.76, 0.80, 0.84), 20),
+        ("Rim", (-14, -5, 7), 700, (0.78, 0.84, 0.92), 14),
+        ("Kick", (-6, 10, -4), 400, (0.74, 0.78, 0.84), 12),
     ):
         data = bpy.data.lights.new(name, "AREA")
         data.energy = energy
