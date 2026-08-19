@@ -10,6 +10,7 @@ import {
   buildSlotList,
   findMasslineHeadConflict,
   fits,
+  getDerivedStats,
   shipworksStationAccess,
 } from '../../../systems/ships.js';
 import { SHIPS } from '../../../data/ships.js';
@@ -26,14 +27,24 @@ import {
   dockInteriorIdForArchetype,
 } from '../../shipPreviewMount.js';
 import { autoUpdate, computePosition, flip, offset, shift, size } from '@floating-ui/dom';
+import { createCircularGauge, createRouteBeam } from '../../effects/index.js';
+import { prefersReducedMotion } from '../../effects/effectRuntime.js';
 import { mountDataState, settleDataState } from '../../uiPrimitives.js';
 import {
   formatPreviewDelta,
-  presentDerivedReadout,
   presentModuleFitPreview,
   presentShopModuleDelta,
   stockPreviewPlayer,
 } from '../../presenters/engineeringPreview.js';
+import { buildMassDelta } from '../../panels/massDelta.js';
+import { handlingProfileDomain } from '../../panels/handlingProfile.js';
+import { SHIP_ENGINEERING_GAUGE_DEFS } from '../../shipEngineeringStage.js';
+import {
+  capabilityBandModel,
+  conditionFromEntity,
+  handlingBandModel,
+  scarCalloutsForHull,
+} from '../../ship/shipBandModels.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
 const STATION_ARCHETYPE_BY_ID = new Map();
@@ -51,6 +62,53 @@ const SLOT_LABEL = { weapon: 'Weapon', shield: 'Shield', engine: 'Engine', cargo
 
 const fmt = (n) => Math.round(Number(n) || 0).toLocaleString('en-US');
 const shipName = (id) => { const s = SHIP_BY_ID.get(id); return s ? s.name : id; };
+const GAUGE_DEFS = SHIP_ENGINEERING_GAUGE_DEFS.slice();
+
+function finite(value, fallback = 0) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+}
+
+function clamp01(value) {
+  return value < 0 ? 0 : value > 1 ? 1 : value;
+}
+
+function withCargoMass(player, usedMass) {
+  const source = player && typeof player === 'object' ? player : {};
+  return {
+    ...source,
+    cargo: {
+      ...(source.cargo && typeof source.cargo === 'object' ? source.cargo : {}),
+      usedMass: Math.max(0, finite(usedMass, 0)),
+    },
+  };
+}
+
+function plusMinus(value, digits = 1) {
+  const scale = Math.pow(10, digits);
+  const rounded = Math.round(finite(value, 0) * scale) / scale;
+  if (!Number.isFinite(rounded) || Object.is(rounded, -0)) return '0';
+  const text = Number.isInteger(rounded) ? String(rounded) : String(rounded.toFixed(digits));
+  return rounded > 0 ? `+${text}` : text;
+}
+
+function whyAttr(text) {
+  if (!text || !String(text).trim()) return '';
+  return ` data-why="${escapeHtml(String(text))}"`;
+}
+
+function gaugeNorm(key, raw, stats) {
+  if (key === 'mass') return clamp01(finite(raw, 0) / 250);
+  if (key === 'capMax') return clamp01(finite(raw, 0) / 600);
+  if (key === 'shieldMax') return clamp01(finite(raw, 0) / 800);
+  if (key === 'cargoCap') return clamp01(finite(raw, 0) / 400);
+  if (key === 'maxSpeed') return clamp01(finite(raw, 0) / 350);
+  if (key === 'continuousDrain') {
+    const regen = Math.max(1, finite(stats && stats.capRegen, 1) * 1.5);
+    return clamp01(finite(raw, 0) / regen);
+  }
+  return 0;
+}
 
 export function shipworksDockIdForState(state) {
   const stationId = state && state.ui && state.ui.dockedStationId;
@@ -82,17 +140,6 @@ function researched(state) {
   return new Set(Array.isArray(r) ? r : []);
 }
 function moduleLocked(d, state) { return !!(d.requiresTech && !researched(state).has(d.requiresTech)); }
-
-/** Sum catalog DPS from real fitted weapons only (not mining beams, not invented flats). */
-function fittedWeaponDps(fittings) {
-  let dps = 0;
-  for (const id of fittings || []) {
-    if (!id) continue;
-    const d = FITTABLE_BY_ID.get(id);
-    if (d && d.slotType === 'weapon' && Number.isFinite(d.dps)) dps += d.dps;
-  }
-  return dps;
-}
 
 function fittedIdentityLine(def) {
   if (!def) return '';
@@ -156,14 +203,17 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       `</div>` +
     `</nav>` +
     `<section class="sx-sw__main">` +
-      `<div class="sx-sw__stage">` +
+      `<div class="sx-sw__stage sf-stage">` +
         `<canvas class="sx-sw__canvas" tabindex="0" aria-label="Interactive ship preview. Drag or scroll horizontally to orbit; scroll vertically or pinch to zoom."></canvas>` +
         `<div class="sx-sw__baylines" aria-hidden="true"><span></span><span></span><span></span></div>` +
+        `<div class="sx-sw__power" aria-hidden="true"></div>` +
+        `<div class="sx-sw__gauges sf-housing" role="group" aria-label="Ship gauges"></div>` +
         `<div class="sx-sw__slotfield" role="group" aria-label="Ship systems"></div>` +
+        `<div class="sx-sw__scarfield" role="group" aria-label="Living hull condition markers"></div>` +
         `<div class="sx-sw__focusline" aria-hidden="true"></div>` +
         `<div class="sx-sw__delta" aria-live="polite" hidden></div>` +
         `<div class="sx-sw__acquiring" data-sf-acquire-host></div>` +
-        `<div class="sx-sw__nameplate"></div>` +
+        `<div class="sx-sw__nameplate sf-crest"></div>` +
         `<div class="sx-sw__camera" aria-label="Ship preview controls">` +
           `<button type="button" data-camera="left" aria-label="Rotate ship left">↶</button>` +
           `<button type="button" data-camera="reset" aria-label="Reset ship view">CENTER</button>` +
@@ -171,7 +221,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         `</div>` +
         `<span class="sx-sw__dragcue" aria-hidden="true">DRAG / TWO-FINGER HORIZONTAL TO ORBIT · VERTICAL / PINCH TO ZOOM</span>` +
       `</div>` +
-      `<div class="sx-sw__stats"></div>` +
+      `<div class="sx-sw__stats sf-apron"></div>` +
     `</section>` +
     `<aside class="sx-sw__side" aria-label="Shipworks operation controls"></aside>` +
     `<div class="sx-sw__chooser" hidden></div>`;
@@ -187,6 +237,9 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   const chooserEl = el.querySelector('.sx-sw__chooser');
   const stageEl = el.querySelector('.sx-sw__stage');
   const slotfieldEl = el.querySelector('.sx-sw__slotfield');
+  const scarfieldEl = el.querySelector('.sx-sw__scarfield');
+  const powerOverlayEl = el.querySelector('.sx-sw__power');
+  const gaugeRackEl = el.querySelector('.sx-sw__gauges');
   const deltaEl = el.querySelector('.sx-sw__delta');
   const acquiringEl = el.querySelector('.sx-sw__acquiring');
 
@@ -211,6 +264,50 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   let previewSettleTimer = 0;
   let previewSettleGeneration = 0;
   let previewRevealPhase = 'idle';
+  let activeBandModel = null;
+  let ghostBandModel = null;
+  let ghostMassDelta = null;
+  let recordOpen = false;
+  let rangeIntentUnsub = null;
+  const handlingDomain = handlingProfileDomain();
+  const powerBeam = createRouteBeam(powerOverlayEl, { width: 400, height: 240 });
+  const gaugeByKey = {};
+  let gaugeReady = false;
+  let currentGaugeStats = null;
+  let currentPowerHeadroom = 0;
+  let currentPowerCapMax = 0;
+  let currentPowerSlotIndices = [];
+
+  function isReducedMotion() {
+    const settings = ctx && ctx.state && ctx.state.settings && ctx.state.settings.video;
+    const motionReduce = settings && typeof settings.motionReduce === 'boolean'
+      ? settings.motionReduce
+      : undefined;
+    return prefersReducedMotion({ motionReduce });
+  }
+
+  function ensureGaugeRack() {
+    if (gaugeReady) return;
+    gaugeRackEl.innerHTML = '';
+    for (const def of GAUGE_DEFS) {
+      const tile = document.createElement('div');
+      tile.className = 'sx-sw-gauge';
+      tile.setAttribute('data-gauge', def.key);
+      tile.innerHTML =
+        `<div class="sx-sw-gauge__dial"></div>` +
+        `<span class="sx-sw-gauge__k">${escapeHtml(def.label)}</span>` +
+        `<span class="sx-sw-gauge__v" data-gauge-value></span>`;
+      gaugeRackEl.appendChild(tile);
+      const dial = tile.querySelector('.sx-sw-gauge__dial');
+      gaugeByKey[def.key] = {
+        def,
+        tile,
+        valueEl: tile.querySelector('[data-gauge-value]'),
+        fx: createCircularGauge(dial, { size: 48, stroke: 4, kind: def.kind }),
+      };
+    }
+    gaugeReady = true;
+  }
 
   function owned() { return (ctx.state.player && ctx.state.player.ownedShips) || []; }
   function viewedShip() { const o = owned(); return o[viewIdx] || o[ctx.state.player && ctx.state.player.activeShipIndex] || o[0] || null; }
@@ -233,6 +330,22 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     renderSide();
   }
 
+  function ensureRangeIntentHandler() {
+    if (rangeIntentUnsub || !ctx.bus || typeof ctx.bus.on !== 'function') return;
+    rangeIntentUnsub = ctx.bus.on('ui:ship:range', (payload = {}) => {
+      if (!payload || payload.source !== 'ship-stage') return;
+      if (ctx.state && ctx.state.ui) {
+        ctx.state.ui.rangeSubject = {
+          shipId: payload.shipId || null,
+          fittings: Array.isArray(payload.fittings) ? payload.fittings.slice() : [],
+        };
+      }
+      const manager = ctx && ctx.screenManager;
+      if (!manager || typeof manager.pushScreen !== 'function') return;
+      try { manager.pushScreen('range'); } catch (_) {}
+    });
+  }
+
   function writeCanvasPreviewMeta(defId, fittings, meta) {
     canvas.dataset.previewDefId = defId || '';
     canvas.dataset.previewFittings = JSON.stringify(Array.isArray(fittings) ? fittings : []);
@@ -253,7 +366,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   function rememberShipView() {
     const mem = ctx.screenMemory;
     if (!mem) return;
-    mem.set('ship', { mode, viewIdx, buyId: String(buyId || '') });
+    mem.set('ship', { mode, viewIdx, buyId: String(buyId || ''), recordOpen: !!recordOpen });
   }
 
   function restoreShipView() {
@@ -262,9 +375,11 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const savedMode = mem.read('ship', 'mode', null);
     const savedIdx = mem.read('ship', 'viewIdx', null);
     const savedBuy = mem.read('ship', 'buyId', null);
+    const savedRecordOpen = mem.read('ship', 'recordOpen', null);
     if (host !== 'flight' && (savedMode === 'fleet' || savedMode === 'buy')) mode = savedMode;
     if (Number.isInteger(savedIdx) && owned()[savedIdx]) viewIdx = savedIdx;
     if (savedBuy && SHIP_BY_ID.has(savedBuy)) buyId = savedBuy;
+    if (typeof savedRecordOpen === 'boolean') recordOpen = savedRecordOpen;
     el.querySelectorAll('.sx-seg__btn').forEach((x) => x.classList.toggle('is-on', x.getAttribute('data-mode') === mode));
   }
 
@@ -466,55 +581,311 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     };
   }
 
-  function renderDerivedStats(readout, fittingsForDps) {
-    if (!readout || !readout.ok || !readout.derived) {
-      statsEl.innerHTML = '';
-      statsEl.removeAttribute('data-preview-source');
+  function activeFleetIndex() {
+    return Number(ctx.state && ctx.state.player && ctx.state.player.activeShipIndex) || 0;
+  }
+
+  function viewedEntityForModel() {
+    if (mode !== 'fleet') return null;
+    if (viewIdx !== activeFleetIndex()) return null;
+    const entities = ctx.state && ctx.state.entities;
+    const playerId = ctx.state && ctx.state.playerId;
+    if (!entities || !playerId || typeof entities.get !== 'function') return null;
+    return entities.get(playerId) || null;
+  }
+
+  function viewedLivingHullForModel() {
+    if (mode !== 'fleet') return null;
+    const ship = viewedShip();
+    return ship && ship.livingHull ? ship.livingHull : null;
+  }
+
+  function slotHasContinuousDraw(moduleDef) {
+    if (!moduleDef) return false;
+    if (Number(moduleDef.energyDraw) > 0) return true;
+    return !!(moduleDef.continuous && Number(moduleDef.energyCost) > 0);
+  }
+
+  function barValueText(axis) {
+    if (!axis) return '0';
+    if (axis.id === 'inertia') return `${Math.round(finite(axis.raw, 0))}`;
+    if (axis.id === 'agility' || axis.id === 'brake') return `${Math.round(finite(axis.raw, 0) * 100) / 100}`;
+    if (axis.id === 'topSpeed') return `${Math.round(finite(axis.raw, 0))}`;
+    return `${Math.round(finite(axis.raw, 0))}`;
+  }
+
+  function massDeltaChipText(metric) {
+    if (!metric) return '';
+    if (metric.id === 'turn' || metric.id === 'topSpeed') return `${metric.label} ${plusMinus(metric.pct)}%`;
+    if (metric.id === 'stopDistance') return `${metric.label} ${plusMinus(metric.delta, 0)}m`;
+    if (metric.id === 'bank') return `${metric.label} ${plusMinus(metric.delta, 2)}`;
+    return `${metric.label} ${plusMinus(metric.delta, 1)}`;
+  }
+
+  function recordRowsHtml(model) {
+    if (!model || !model.derived) return '';
+    const d = model.derived;
+    const entries = [
+      ['Hull max', `${fmt(d.hullMax)}`],
+      ['Shield max', `${fmt(d.shieldMax)}`],
+      ['Cap max', `${fmt(d.capMax)}`],
+      ['Cap regen', `${Math.round(finite(d.capRegen, 0) * 10) / 10}/s`],
+      ['Continuous drain', `${Math.round(finite(d.continuousDrain, 0) * 10) / 10}/s`],
+      ['Cargo cap', `${fmt(d.cargoCap)} u`],
+      ['Operational mass', `${fmt(d.operationalMass)} t`],
+      ['Turn rate', `${Math.round(finite(d.turnRate, 0) * 100) / 100}`],
+      ['Thrust', `${fmt(d.thrust)}`],
+      ['Top speed', `${fmt(d.maxSpeed)}`],
+    ];
+    return entries.map(([k, v]) =>
+      `<div class="sx-sw-record__row"><span>${escapeHtml(k)}</span><b>${escapeHtml(String(v))}</b></div>`
+    ).join('');
+  }
+
+  function deriveBandModel(previewCtx) {
+    if (!previewCtx) return null;
+    const def = SHIP_BY_ID.get(previewCtx.defId);
+    if (!def) return null;
+    const fittings = Array.isArray(previewCtx.fittings) ? previewCtx.fittings.slice() : [];
+    const player = previewCtx.player || null;
+    const derived = getDerivedStats(def.id, fittings, player);
+    const handling = handlingBandModel({
+      shipId: def.id,
+      fittings,
+      player,
+      domain: handlingDomain,
+    });
+    const capability = capabilityBandModel({
+      derived,
+      state: ctx.state,
+    });
+    const condition = conditionFromEntity(viewedEntityForModel());
+    const scars = scarCalloutsForHull({
+      shipId: def.id,
+      livingHull: viewedLivingHullForModel(),
+      simTime: finite(ctx.state && ctx.state.simTime, 0),
+    });
+    const availability = shipworksActionAvailability(ctx.state);
+    const slots = buildSlotList(def);
+    const fittedDefs = fittings.map((id) => id && FITTABLE_BY_ID.get(id)).filter(Boolean);
+    const poweredSlotIndices = [];
+    slots.forEach((slot, index) => {
+      const fitted = fittings[index] && FITTABLE_BY_ID.get(fittings[index]);
+      if (slotHasContinuousDraw(fitted)) poweredSlotIndices.push(index);
+    });
+    return {
+      def,
+      fittings,
+      player,
+      derived,
+      handling,
+      capability,
+      condition,
+      scars,
+      slots,
+      fittedDefs,
+      poweredSlotIndices,
+      availability,
+    };
+  }
+
+  function syncGaugeValues(model) {
+    ensureGaugeRack();
+    if (!model || !model.derived) return;
+    currentGaugeStats = {
+      mass: finite(model.derived.mass, 0),
+      capMax: finite(model.derived.capMax, 0),
+      capRegen: finite(model.derived.capRegen, 0),
+      shieldMax: finite(model.derived.shieldMax, 0),
+      cargoCap: finite(model.derived.cargoCap, 0),
+      maxSpeed: finite(model.derived.maxSpeed, 0),
+      continuousDrain: finite(model.derived.continuousDrain, 0),
+    };
+    for (const def of GAUGE_DEFS) {
+      const row = gaugeByKey[def.key];
+      if (!row) continue;
+      const raw = currentGaugeStats[def.key];
+      const norm = gaugeNorm(def.key, raw, currentGaugeStats);
+      row.fx.setValue(norm, { kind: def.kind, label: `${def.label}: ${fmt(raw)}${def.suffix}` });
+      row.valueEl.textContent = `${fmt(raw)}${def.suffix}`;
+      row.tile.setAttribute('data-why', `${def.label}: ${fmt(raw)}${def.suffix}`);
+    }
+  }
+
+  function syncPowerBand(model) {
+    if (!model || !model.derived) {
+      currentPowerHeadroom = 0;
+      currentPowerCapMax = 0;
+      currentPowerSlotIndices = [];
+      powerBeam.setPath([], { active: false });
       return;
     }
-    const d = readout.derived;
-    const fit = fittingsForDps != null ? fittingsForDps : readout.fittings;
-    const firepower = fittedWeaponDps(fit);
-    const mass = Number.isFinite(d.operationalMass) ? d.operationalMass : d.mass;
-    const cells = [
-      { metric: 'firepower', k: 'Firepower', value: firepower, show: firepower > 0 ? Math.round(firepower) : '—', u: 'dps' },
-      { metric: 'shieldMax', k: 'Shield', value: d.shieldMax, show: fmt(d.shieldMax), u: '' },
-      { metric: 'hullMax', k: 'Hull', value: d.hullMax, show: fmt(d.hullMax), u: '' },
-      { metric: 'cargoCap', k: 'Cargo', value: d.cargoCap, show: fmt(d.cargoCap), u: 'u' },
-      { metric: 'maxSpeed', k: 'Top speed', value: d.maxSpeed, show: d.maxSpeed ? fmt(d.maxSpeed) : '—', u: '' },
-      { metric: 'operationalMass', k: 'Mass', value: mass, show: fmt(mass), u: 't' },
-    ];
-    statsEl.setAttribute('data-preview-source', 'ships.getDerivedStats');
-    statsEl.innerHTML = cells.map((c) => {
-      const num = Number.isFinite(Number(c.value)) ? String(Number(c.value)) : '';
+    currentPowerHeadroom = finite(model.derived.capRegen, 0) - finite(model.derived.continuousDrain, 0);
+    currentPowerCapMax = Math.max(1, finite(model.derived.capMax, 0));
+    currentPowerSlotIndices = model.poweredSlotIndices.slice();
+  }
+
+  function renderCrest(model) {
+    if (!model || !model.def) {
+      nameplateEl.innerHTML = '';
+      return;
+    }
+    const conditionClass = model.condition && model.condition.tone
+      ? ` sx-sw__condition--${escapeHtml(model.condition.tone)}`
+      : '';
+    const percent = model.condition && model.condition.percentText
+      ? `<span class="sx-sw__conditionPct">${escapeHtml(model.condition.percentText)}</span>`
+      : '';
+    const verb = model.condition ? model.condition.verb : 'STOWED';
+    const sentence = model.handling && model.handling.crestSentence ? model.handling.crestSentence : '';
+    nameplateEl.innerHTML =
+      `<div class="sx-sw__crestLine">` +
+        `<h2 class="sf-crest__title">${escapeHtml(model.def.name)}</h2>` +
+        `<span class="sx-sw__condition${conditionClass}"${whyAttr(model.condition && model.condition.why)}>` +
+          `<span class="sx-sw__conditionVerb">${escapeHtml(verb)}</span>${percent}` +
+        `</span>` +
+      `</div>` +
+      `<p class="sf-crest__line">${escapeHtml(sentence || fittedIdentityLine(model.def) || model.def.role || '')}</p>`;
+  }
+
+  function renderCapabilityChips(model) {
+    if (!model || !model.capability) return '';
+    const chips = model.capability.chips || [];
+    const next = model.capability.next;
+    const chipHtml = chips.map((chip) => {
+      const tone = chip.tone || 'calm';
       return (
-        `<div class="sx-stat" data-metric="${escapeHtml(c.metric)}" data-value="${escapeHtml(num)}">` +
-          `<span class="sx-stat__k">${c.k}</span>` +
-          `<span class="sx-stat__v">${c.show}${c.u ? `<i>${c.u}</i>` : ''}</span>` +
+        `<button type="button" class="sx-sw-chip sf-tile sx-sw-chip--${escapeHtml(tone)}" data-cap-chip="${escapeHtml(chip.id)}"${whyAttr(chip.why)}>` +
+          `<span class="sx-sw-chip__dot" aria-hidden="true">●</span>` +
+          `<span class="sx-sw-chip__verb">${escapeHtml(chip.verb)}</span>` +
+          `<span class="sx-sw-chip__sub">${escapeHtml(chip.sub || '')}</span>` +
+        `</button>`
+      );
+    }).join('');
+    const nextHtml = next
+      ? (
+        `<button type="button" class="sx-sw-chip sf-tile sx-sw-chip--goal sx-sw-chip--next" data-cap-chip="${escapeHtml(next.id)}"${whyAttr(next.why)}>` +
+          `<span class="sx-sw-chip__dot" aria-hidden="true">○</span>` +
+          `<span class="sx-sw-chip__verb">${escapeHtml(next.verb)}</span>` +
+          `<span class="sx-sw-chip__sub">NEXT</span>` +
+        `</button>`
+      )
+      : '';
+    return chipHtml + nextHtml;
+  }
+
+  function renderApron(model) {
+    if (!model || !model.def || !model.derived) {
+      statsEl.innerHTML = '';
+      return;
+    }
+    const bars = model.handling && Array.isArray(model.handling.bars) ? model.handling.bars : [];
+    const barRows = bars.map((bar) => {
+      const ghost = ghostBandModel && ghostBandModel.handling && Array.isArray(ghostBandModel.handling.bars)
+        ? ghostBandModel.handling.bars.find((row) => row.id === bar.id)
+        : null;
+      const showGhost = !!(ghost && !isReducedMotion());
+      const barPct = showGhost ? ghost.bar : bar.bar;
+      return (
+        `<div class="sx-sw-bar"${whyAttr(bar.why)}>` +
+          `<span class="sx-sw-bar__k">${escapeHtml(bar.label)}</span>` +
+          `<span class="sx-sw-bar__track"><i class="sx-sw-bar__fill${showGhost ? ' is-ghost' : ''}" style="width:${Math.max(0, Math.min(100, barPct))}%"></i></span>` +
+          `<span class="sx-sw-bar__v">${escapeHtml(barValueText(showGhost ? ghost : bar))}</span>` +
         `</div>`
       );
     }).join('');
+    const ghostMetrics = ghostMassDelta && ghostMassDelta.ok && Array.isArray(ghostMassDelta.metrics)
+      ? ghostMassDelta.metrics.filter((metric) => ['turn', 'topSpeed', 'stopDistance', 'bank'].includes(metric.id))
+      : [];
+    const ghostText = isReducedMotion() && ghostMetrics.length
+      ? ghostMetrics.slice(0, 4).map((metric) => `<span>${escapeHtml(massDeltaChipText(metric))}</span>`).join('')
+      : '';
+    const headroom = finite(model.derived.capRegen, 0) - finite(model.derived.continuousDrain, 0);
+    const headroomLabel = headroom < 0
+      ? `OVER BUDGET ${plusMinus(headroom, 1)}/s`
+      : `POWER ${plusMinus(headroom, 1)}/s`;
+    const powerClass = headroom < 0 ? ' sx-sw-power__state--foe' : ' sx-sw-power__state--you';
+    const fitEnabled = model.availability && model.availability.outfitEnabled && selectedSlot >= 0;
+    const fitLabel = fitEnabled
+      ? 'FIT'
+      : (selectedSlot >= 0
+        ? (model.availability && model.availability.outfitEnabled ? 'SELECT A MODULE' : model.availability.outfitLabel || 'DOCK TO FIT')
+        : 'SELECT A SLOT');
+    const makeActiveVisible = host === 'dock' && mode === 'fleet' && viewIdx !== activeFleetIndex();
+    const makeActiveEnabled = makeActiveVisible && model.availability && model.availability.hullEnabled;
+    const makeActiveLabel = makeActiveEnabled
+      ? 'MAKE ACTIVE'
+      : (model.availability && model.availability.hullLabel ? model.availability.hullLabel.toUpperCase() : 'MAKE ACTIVE');
+    statsEl.innerHTML =
+      `<section class="sx-sw-band sx-sw-band--handling sf-deck">` +
+        `<header class="sx-sw-band__head">` +
+          `<span class="sf-deck__label">HANDLING</span>` +
+          `<span class="sx-sw-band__meta">${escapeHtml((model.handling && model.handling.profile && model.handling.profile.flightClass) || '')} · ${escapeHtml((model.handling && model.handling.profile && model.handling.profile.driveLabel) || '')}</span>` +
+        `</header>` +
+        `<div class="sx-sw-bars">${barRows}</div>` +
+        `<div class="sx-sw-ghost">${ghostText}</div>` +
+      `</section>` +
+      `<section class="sx-sw-band sx-sw-band--power sf-deck">` +
+        `<header class="sx-sw-band__head">` +
+          `<span class="sf-deck__label">POWER</span>` +
+          `<span class="sx-sw-power__caps">CAP ${fmt(model.derived.capMax)} · REGEN ${Math.round(finite(model.derived.capRegen, 0) * 10) / 10}/s · DRAW ${Math.round(finite(model.derived.continuousDrain, 0) * 10) / 10}/s</span>` +
+        `</header>` +
+        `<div class="sx-sw-power__state${powerClass}"${whyAttr(headroomLabel)}>${escapeHtml(headroomLabel)}</div>` +
+      `</section>` +
+      `<section class="sx-sw-band sx-sw-band--condition sf-deck">` +
+        `<header class="sx-sw-band__head">` +
+          `<span class="sf-deck__label">CONDITION</span>` +
+          `<span class="sx-sw-condition__verb">${escapeHtml(model.condition ? model.condition.verb : 'STOWED')}</span>` +
+        `</header>` +
+        `<div class="sx-sw-condition__rows"${whyAttr(model.condition && model.condition.why)}>` +
+          `<span>${escapeHtml((model.scars || []).length ? `${(model.scars || []).length} hull marks recorded` : 'No living-hull marks yet')}</span>` +
+        `</div>` +
+      `</section>` +
+      `<section class="sx-sw-band sx-sw-band--capability sf-deck">` +
+        `<header class="sx-sw-band__head">` +
+          `<span class="sf-deck__label">WHAT YOU CAN DO NOW</span>` +
+        `</header>` +
+        `<div class="sx-sw-chiprow">${renderCapabilityChips(model)}</div>` +
+      `</section>` +
+      `<section class="sx-sw-verbs">` +
+        `<button type="button" class="sx-sw-verb" data-verb="range">TAKE IT TO THE RANGE</button>` +
+        `<button type="button" class="sx-sw-verb" data-verb="record">RECORD</button>` +
+        `<button type="button" class="sx-sw-verb" data-verb="fit"${fitEnabled ? '' : ` disabled aria-label="${escapeHtml(fitLabel)}"`}>${escapeHtml(fitLabel)}</button>` +
+        (makeActiveVisible
+          ? `<button type="button" class="sx-sw-verb" data-verb="activate"${makeActiveEnabled ? '' : ` disabled aria-label="${escapeHtml(makeActiveLabel)}"`}>${escapeHtml(makeActiveLabel)}</button>`
+          : '') +
+      `</section>` +
+      (recordOpen
+        ? `<section class="sx-sw-record"><header><span class="sf-deck__label">RECORD</span></header><div class="sx-sw-record__grid">${recordRowsHtml(model)}</div></section>`
+        : '');
   }
 
   function restoreCurrentPreview() {
     ghostActive = false;
+    ghostBandModel = null;
+    ghostMassDelta = null;
     deltaEl.hidden = true;
     deltaEl.innerHTML = '';
     const ctxPrev = currentPreviewContext();
     if (!ctxPrev) {
       nameplateEl.innerHTML = '';
       statsEl.innerHTML = '';
-      statsEl.removeAttribute('data-preview-source');
+      scarfieldEl.innerHTML = '';
       return;
     }
     previewShip(ctxPrev.defId, ctxPrev.fittings, ctxPrev.isPlayer, null);
-    const readout = presentDerivedReadout(ctxPrev.defId, ctxPrev.fittings, ctxPrev.player);
-    renderDerivedStats(readout, ctxPrev.fittings);
+    activeBandModel = deriveBandModel(ctxPrev);
+    renderCrest(activeBandModel);
+    renderApron(activeBandModel);
+    syncGaugeValues(activeBandModel);
+    syncPowerBand(activeBandModel);
+    renderScarCallouts(activeBandModel);
     scheduleSpatialProjection();
   }
 
   // ---------- object-centric system projection ----------
   let spatialAnchors = new Map();
+  let scarAnchors = new Map();
 
   function typeOrdinal(slots, slotIndex) {
     const type = slots[slotIndex] && slots[slotIndex].type;
@@ -566,6 +937,31 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     };
   }
 
+  function renderScarCallouts(model) {
+    scarAnchors = new Map();
+    if (!model || !model.def || !Array.isArray(model.scars) || !model.scars.length) {
+      scarfieldEl.innerHTML = '';
+      return;
+    }
+    const radius = Math.max(5, Number(model.def.collisionRadius) || 12);
+    scarfieldEl.innerHTML = model.scars.map((scar, index) => {
+      const pos = Array.isArray(scar.local) ? scar.local : [0, 0, 0];
+      scarAnchors.set(scar.id, {
+        x: finite(pos[0], 0) * radius,
+        y: finite(pos[1], 0) * radius,
+        z: finite(pos[2], 0) * radius,
+      });
+      const kind = scar.kind === 'approx' ? 'approx' : 'authored';
+      const sub = scar.sub || (kind === 'approx' ? 'APPROX' : 'AUTHORED');
+      return (
+        `<button type="button" class="sf-anchor sf-scar sx-sw-scar" data-scar-id="${escapeHtml(scar.id)}" data-anchor-kind="${kind}" tabindex="0"${whyAttr(scar.why)} aria-label="${escapeHtml(`${scar.label}. ${sub}`)}">` +
+          `<span class="sx-sw-scar__dot" aria-hidden="true"></span>` +
+          `<span class="sx-sw-scar__copy"><b>${escapeHtml(scar.label)}</b><em>${escapeHtml(sub)}</em></span>` +
+        `</button>`
+      );
+    }).join('');
+  }
+
   function renderSpatialSlots() {
     spatialAnchors = new Map();
     if (mode !== 'fleet') { slotfieldEl.innerHTML = ''; return; }
@@ -606,9 +1002,52 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     });
   }
 
+  function syncPowerBeamProjection(stageRect) {
+    if (!mount || !stageRect) return;
+    powerBeam.resize(stageRect.width, stageRect.height);
+    if (!Array.isArray(currentPowerSlotIndices) || !currentPowerSlotIndices.length) {
+      powerBeam.setPath([], { active: false });
+      return;
+    }
+    const points = [];
+    const reactor = { x: stageRect.width * 0.5, y: stageRect.height * 0.62 };
+    points.push(reactor);
+    for (const slotIndex of currentPowerSlotIndices) {
+      const local = spatialAnchors.get(slotIndex);
+      if (!local) continue;
+      const projected = mount.projectLocalPoint(local);
+      if (!projected) continue;
+      points.push({
+        x: projected.x - stageRect.left,
+        y: projected.y - stageRect.top,
+      });
+    }
+    if (points.length < 2) {
+      powerBeam.setPath([], { active: false });
+      return;
+    }
+    const reversed = currentPowerHeadroom < 0;
+    const reduced = isReducedMotion();
+    powerBeam.setPath(points, {
+      active: !reduced,
+      kind: reversed ? 'danger' : 'energy',
+      direction: reversed ? 'from' : 'to',
+    });
+    const path = powerBeam && powerBeam.svg && powerBeam.svg.querySelector
+      ? powerBeam.svg.querySelector('.sf-fx-beam__path')
+      : null;
+    if (path) {
+      const ratio = Math.min(2, Math.abs(currentPowerHeadroom) / Math.max(1, currentPowerCapMax));
+      const duration = Math.max(220, Math.min(1600, 900 - ratio * 520));
+      path.style.animationDuration = `${Math.round(duration)}ms`;
+    }
+  }
+
   function updateSpatialProjection() {
-    if (!mount || mode !== 'fleet' || !stageEl.isConnected) return;
+    if (!mount || !stageEl.isConnected) return;
     const stageRect = stageEl.getBoundingClientRect();
+    const focusLine = el.querySelector('.sx-sw__focusline');
+    if (focusLine && selectedSlot < 0) focusLine.classList.remove('is-on');
     const nodes = [...slotfieldEl.querySelectorAll('[data-spatial-slot]')];
     const rows = Math.max(1, Math.ceil(nodes.length / 2));
     const nodeRadius = 17;
@@ -645,20 +1084,34 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       node.style.setProperty('--callout-x', `${calloutX}px`);
       node.style.setProperty('--callout-y', `${calloutY}px`);
       if (index === selectedSlot) {
-        const line = el.querySelector('.sx-sw__focusline');
         const cx = stageRect.width / 2;
         const cy = stageRect.height / 2;
         const dx = x - cx;
         const dy = y - cy;
-        line.style.left = `${cx}px`;
-        line.style.top = `${cy}px`;
-        line.style.width = `${Math.hypot(dx, dy)}px`;
-        line.style.transform = `rotate(${Math.atan2(dy, dx)}rad)`;
-        line.classList.add('is-on');
+        if (focusLine) {
+          focusLine.style.left = `${cx}px`;
+          focusLine.style.top = `${cy}px`;
+          focusLine.style.width = `${Math.hypot(dx, dy)}px`;
+          focusLine.style.transform = `rotate(${Math.atan2(dy, dx)}rad)`;
+          focusLine.classList.add('is-on');
+        }
         deltaEl.style.left = `${Math.max(16, Math.min(stageRect.width - 270, x + 24))}px`;
         deltaEl.style.top = `${Math.max(70, Math.min(stageRect.height - 130, y - 18))}px`;
       }
     });
+    const scars = [...scarfieldEl.querySelectorAll('[data-scar-id]')];
+    scars.forEach((node, order) => {
+      const scarId = node.getAttribute('data-scar-id');
+      const local = scarAnchors.get(scarId);
+      const projected = local && mount.projectLocalPoint(local);
+      if (!projected) return;
+      const x = Math.max(28, Math.min(stageRect.width - 28, projected.x - stageRect.left));
+      const y = Math.max(30, Math.min(stageRect.height - 30, projected.y - stageRect.top));
+      node.style.left = `${x}px`;
+      node.style.top = `${y}px`;
+      node.style.zIndex = String(70 - order);
+    });
+    syncPowerBeamProjection(stageRect);
   }
 
   // ---------- left rail ----------
@@ -749,25 +1202,24 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   // ---------- center: preview + stats ----------
   function renderCenter() {
     ghostActive = false;
-    if (mode === 'fleet') {
-      const s = viewedShip();
-      const def = s ? SHIP_BY_ID.get(s.defId) : null;
-      if (!def) { nameplateEl.innerHTML = ''; statsEl.innerHTML = ''; statsEl.removeAttribute('data-preview-source'); return; }
-      const fittings = s.fittings || [];
-      previewShip(def.id, fittings, true, null);
-      nameplateEl.innerHTML = `<h2>${escapeHtml(def.name)}</h2><span>${escapeHtml(def.role || '')} ship · Tier ${def.tier}</span>`;
-      const readout = presentDerivedReadout(def.id, fittings, ctx.state.player);
-      renderDerivedStats(readout, fittings);
-      renderSpatialSlots();
-    } else {
-      const def = SHIP_BY_ID.get(buyId);
-      if (!def) return;
-      previewShip(def.id, [], def.id === 'ship_kestrel', null);
-      nameplateEl.innerHTML = `<h2>${escapeHtml(def.name)}</h2><span>${escapeHtml(def.role || '')} ship · Tier ${def.tier}</span>`;
-      const readout = presentDerivedReadout(def.id, [], stockPreviewPlayer(ctx.state.player));
-      renderDerivedStats(readout, []);
-      renderSpatialSlots();
+    ghostBandModel = null;
+    ghostMassDelta = null;
+    const previewCtx = currentPreviewContext();
+    if (!previewCtx) {
+      nameplateEl.innerHTML = '';
+      statsEl.innerHTML = '';
+      scarfieldEl.innerHTML = '';
+      activeBandModel = null;
+      return;
     }
+    previewShip(previewCtx.defId, previewCtx.fittings, previewCtx.isPlayer, null);
+    activeBandModel = deriveBandModel(previewCtx);
+    renderCrest(activeBandModel);
+    renderApron(activeBandModel);
+    syncGaugeValues(activeBandModel);
+    syncPowerBand(activeBandModel);
+    renderScarCallouts(activeBandModel);
+    renderSpatialSlots();
   }
 
   // ---------- right: slots (fleet) or spec+buy (buy) ----------
@@ -1100,8 +1552,23 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       mode: 'module',
       moduleId: ghost.moduleId || moduleId,
     });
-    const readout = presentDerivedReadout(ghost.defId, ghost.afterFittings, ctx.state.player);
-    renderDerivedStats(readout, ghost.afterFittings);
+    ghostBandModel = deriveBandModel({
+      defId: ghost.defId,
+      fittings: ghost.afterFittings,
+      isPlayer: true,
+      player: ctx.state.player,
+      stock: false,
+    });
+    ghostMassDelta = buildMassDelta(def.id, {
+      beforeFittings: s.fittings || [],
+      afterFittings: ghost.afterFittings,
+      player: ctx.state.player,
+    });
+    if (activeBandModel) renderApron(activeBandModel);
+    if (ghostBandModel) {
+      syncGaugeValues(ghostBandModel);
+      syncPowerBand(ghostBandModel);
+    }
     const changed = (ghost.changedRows || []).filter((row) => row.tone !== 'same').slice(0, 4);
     if (changed.length) {
       deltaEl.hidden = false;
@@ -1114,6 +1581,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       deltaEl.hidden = true;
       deltaEl.innerHTML = '';
     }
+    scheduleSpatialProjection();
   }
 
   // ---------- events ----------
@@ -1181,6 +1649,56 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     if (activate && !activate.disabled && ctx.bus && shipworksActionAvailability(ctx.state).hullEnabled) {
       ctx.bus.emit('ui:setActiveShip', { index: Number(activate.getAttribute('data-activate-ship')) });
       ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+      setTimeout(refresh, 60);
+    }
+  });
+
+  statsEl.addEventListener('click', (ev) => {
+    const verb = ev.target.closest('[data-verb]');
+    if (!verb) return;
+    const action = verb.getAttribute('data-verb');
+    if (action === 'range') {
+      const previewCtx = currentPreviewContext();
+      if (previewCtx && ctx.bus) {
+        ctx.bus.emit('ui:ship:range', {
+          source: 'ship-stage',
+          shipId: previewCtx.defId,
+          fittings: Array.isArray(previewCtx.fittings) ? previewCtx.fittings.slice() : [],
+        });
+      } else if (ctx && ctx.screenManager && typeof ctx.screenManager.pushScreen === 'function') {
+        try { ctx.screenManager.pushScreen('range'); } catch (_) {}
+      }
+      if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_open' });
+      return;
+    }
+    if (action === 'record') {
+      recordOpen = !recordOpen;
+      rememberShipView();
+      if (activeBandModel) renderApron(activeBandModel);
+      if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_click' });
+      return;
+    }
+    if (action === 'fit') {
+      const availability = shipworksActionAvailability(ctx.state);
+      if (!(availability.outfitEnabled && selectedSlot >= 0)) {
+        if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_deny' });
+        return;
+      }
+      const anchor = slotfieldEl.querySelector(`[data-spatial-slot="${selectedSlot}"]`);
+      openChooser(selectedSlot, anchor || null);
+      if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_click' });
+      return;
+    }
+    if (action === 'activate') {
+      const availability = shipworksActionAvailability(ctx.state);
+      if (host !== 'dock' || mode !== 'fleet' || !availability.hullEnabled) {
+        if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_deny' });
+        return;
+      }
+      if (ctx.bus) {
+        ctx.bus.emit('ui:setActiveShip', { index: viewIdx });
+        ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+      }
       setTimeout(refresh, 60);
     }
   });
@@ -1347,11 +1865,20 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     el,
     setHost,
     get host() { return host; },
-    onShow() { restoreShipView(); refresh(); if (mount) mount.setActive(true); },
+    onShow() {
+      restoreShipView();
+      ensureRangeIntentHandler();
+      refresh();
+      if (mount) mount.setActive(true);
+      powerBeam.setActive(true);
+      for (const key of Object.keys(gaugeByKey)) gaugeByKey[key].fx.setActive(true);
+    },
     onHide() {
       if (previewSettleTimer) clearTimeout(previewSettleTimer);
       previewSettleTimer = 0;
       if (mount) mount.setActive(false);
+      powerBeam.setActive(false);
+      for (const key of Object.keys(gaugeByKey)) gaugeByKey[key].fx.setActive(false);
     }, // stop the render loop when leaving (perf)
     refresh,
     dispose() {
@@ -1360,6 +1887,12 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       if (previewSettleTimer) clearTimeout(previewSettleTimer);
       if (projectionFrame) cancelAnimationFrame(projectionFrame);
       if (stageResizeObserver) stageResizeObserver.disconnect();
+      if (typeof rangeIntentUnsub === 'function') { try { rangeIntentUnsub(); } catch (_) {} }
+      rangeIntentUnsub = null;
+      try { powerBeam.dispose(); } catch (_) {}
+      for (const key of Object.keys(gaugeByKey)) {
+        try { gaugeByKey[key].fx.dispose(); } catch (_) {}
+      }
       if (mount) { try { mount.dispose(); } catch (_) {} mount = null; }
       try { delete canvas.__sfPreviewDiagnostics; } catch (_) {}
     },

@@ -1,8 +1,9 @@
 // Diagnostic probe for THE SHIP polish pass (frontend program §11; INSTRUMENT_GRAMMAR §12).
-// Measures the three defects found in the build-step-1 review instead of eyeballing frames:
+// Measures the four defects found in the build-step review instead of eyeballing frames:
 //   D1  asset readiness vs previewReady, and whether a LOADING state is authored (A_LIST_GAPS #2)
 //   D2  content clipped past the screen's own bottom edge (the Mission Log defect class)
 //   D3  computed font sizes below the grammar's 12px floor on the promoted surface
+//   D4  ship bands/verbs/gauge tier-2 wiring present on the shared stage
 // Read-only: boots the real route, opens F2, measures, writes a report. Changes nothing.
 import { spawn } from 'node:child_process';
 import { createServer as createNetServer } from 'node:net';
@@ -94,6 +95,17 @@ const MEASURE = () => {
   // D1 — asset readiness truth + whether any loading affordance is authored.
   const canvas = host.querySelector('canvas');
   const stage = host.querySelector('.sx-sw__stage');
+  const bands = [...host.querySelectorAll('.sx-sw-band')];
+  const bandKinds = new Set(
+    bands.flatMap((node) => [...node.classList].filter((cls) => cls.startsWith('sx-sw-band--')).map((cls) => cls.replace('sx-sw-band--', '')))
+  );
+  const requiredBands = ['handling', 'power', 'condition', 'capability'];
+  const missingBands = requiredBands.filter((kind) => !bandKinds.has(kind));
+  const verbs = [...host.querySelectorAll('.sx-sw-verbs [data-verb]')].map((node) => (node.textContent || '').trim().toUpperCase());
+  const hasRangeVerb = verbs.some((label) => label === 'TAKE IT TO THE RANGE');
+  const hasRecordVerb = verbs.some((label) => label === 'RECORD');
+  const gaugeWhyCount = host.querySelectorAll('.sx-sw-gauge[data-why]').length;
+  const scarCount = host.querySelectorAll('.sx-sw-scar').length;
   return {
     host: { w: Math.round(hostRect.width), h: Math.round(hostRect.height) },
     d1: {
@@ -105,6 +117,13 @@ const MEASURE = () => {
     },
     d2: { clippedCount: clipped.length, worst: clipped.sort((a, b) => b.px - a.px).slice(0, 8) },
     d3: { belowFloor: Object.values(small).reduce((n, v) => n + v.count, 0), bySize: small },
+    d4: {
+      missingBands,
+      hasRangeVerb,
+      hasRecordVerb,
+      gaugeWhyCount,
+      scarCount,
+    },
   };
 };
 

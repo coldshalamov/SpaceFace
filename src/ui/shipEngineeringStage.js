@@ -20,14 +20,14 @@ const SLOT_KIND = {
   utility: 'accent-3',
 };
 
-const GAUGE_DEFS = [
+export const SHIP_ENGINEERING_GAUGE_DEFS = Object.freeze([
   { key: 'mass', label: 'Mass', kind: 'warn', suffix: 't' },
   { key: 'capMax', label: 'Energy', kind: 'energy', suffix: '' },
   { key: 'shieldMax', label: 'Shield', kind: 'shield', suffix: '' },
   { key: 'cargoCap', label: 'Cargo', kind: 'cargo', suffix: 'u' },
   { key: 'maxSpeed', label: 'Thrust', kind: 'accent', suffix: '' },
   { key: 'continuousDrain', label: 'Heat', kind: 'heat', suffix: '' },
-];
+]);
 
 function fmt(n) { return Number.isFinite(n) ? Math.round(n).toLocaleString('en-US') : '—'; }
 function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
@@ -105,7 +105,7 @@ export function createShipEngineeringStage(container, opts = {}) {
   const beam = createRouteBeam(overlay, { width: 400, height: 300 });
   const ping = createRippleField(overlay, { width: 400, height: 300 });
   const gauges = {};
-  for (const g of GAUGE_DEFS) {
+  for (const g of SHIP_ENGINEERING_GAUGE_DEFS) {
     const mount = document.createElement('div');
     mount.className = 'st-eng-gauge st-eng-gauge--' + g.key;
     mount.title = g.label;
@@ -118,6 +118,9 @@ export function createShipEngineeringStage(container, opts = {}) {
   let currentSlots = [];
   let currentTypeIndices = [];
   let beamSpec = [];          // [{slotIndex, kind, active}]
+  let beamHeadroom = 0;
+  let beamCapMax = 0;
+  let beamReducedMotion = false;
   let highlightedSlot = null; // slotIndex
 
   function fitKey(defId, fittings, isPlayer) {
@@ -170,10 +173,21 @@ export function createShipEngineeringStage(container, opts = {}) {
       return;
     }
     // Average endpoints into one polyline for the beam primitive; color by the dominant kind.
-    const dominant = pts[0].kind;
+    const dominant = beamHeadroom < 0 ? 'danger' : (pts[0].kind || 'energy');
     const poly = [reactor];
     for (const p of pts) poly.push(p.to);
-    beam.setPath(poly, { active: true, kind: dominant });
+    const direction = beamHeadroom < 0 ? 'from' : 'to';
+    const active = !beamReducedMotion;
+    beam.setPath(poly, { active, kind: dominant, direction });
+    const path = beam && beam.svg && beam.svg.querySelector
+      ? beam.svg.querySelector('.sf-fx-beam__path')
+      : null;
+    if (path) {
+      const capNorm = Math.max(1, Number.isFinite(beamCapMax) ? beamCapMax : 1);
+      const ratio = Math.min(2, Math.abs(beamHeadroom) / capNorm);
+      const duration = Math.max(220, Math.min(1600, 900 - ratio * 520));
+      path.style.animationDuration = `${Math.round(duration)}ms`;
+    }
   }
 
   function syncPing() {
@@ -233,8 +247,23 @@ export function createShipEngineeringStage(container, opts = {}) {
   /**
    * @param {Array<{slotIndex:number, kind?:string, active?:boolean}>} specs
    */
-  function setPowerFlow(specs) {
-    beamSpec = Array.isArray(specs) ? specs.slice() : [];
+  function setPowerFlow(specsOrOptions) {
+    if (Array.isArray(specsOrOptions)) {
+      beamSpec = specsOrOptions.slice();
+      beamHeadroom = 0;
+      beamCapMax = 0;
+      beamReducedMotion = false;
+    } else if (specsOrOptions && typeof specsOrOptions === 'object') {
+      beamSpec = Array.isArray(specsOrOptions.specs) ? specsOrOptions.specs.slice() : [];
+      beamHeadroom = Number.isFinite(Number(specsOrOptions.headroom)) ? Number(specsOrOptions.headroom) : 0;
+      beamCapMax = Number.isFinite(Number(specsOrOptions.capMax)) ? Number(specsOrOptions.capMax) : 0;
+      beamReducedMotion = !!specsOrOptions.reducedMotion;
+    } else {
+      beamSpec = [];
+      beamHeadroom = 0;
+      beamCapMax = 0;
+      beamReducedMotion = false;
+    }
     syncBeams();
   }
 
@@ -244,7 +273,7 @@ export function createShipEngineeringStage(container, opts = {}) {
   }
 
   function setGauges(stats = {}) {
-    for (const g of GAUGE_DEFS) {
+    for (const g of SHIP_ENGINEERING_GAUGE_DEFS) {
       const raw = stats[g.key];
       let v = 0;
       if (g.key === 'mass') {
