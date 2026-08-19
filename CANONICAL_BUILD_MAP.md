@@ -94,7 +94,7 @@ Remaining PQ-050 leaves (one ship at a time; Hitch/Kestrel frozen):
 
 | Leaf | Ship | This campaign |
 |---|---|---|
-| `.01` | Hornet | cycles 67–69 closed-hull in progress, not quality-closed, not wired |
+| `.01` | Hornet | cycles 67–72 closed-hull in progress, not quality-closed, not wired |
 | `.02` | Drifter | three of seven, cycle 20 live, four passes + polish still owed |
 | `.03` | Ranger | not started |
 | `.04` | Ironback | not started |
