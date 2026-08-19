@@ -28,11 +28,17 @@ import { installSandboxGameStartedHook } from './sandbox/sandboxSetup.js';
 
 // Clean inline UI art (replaces the captioned reference-sheet .jpg assets that rendered text).
 const RETICLE_SVG = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;overflow:visible">
-  <g fill="none" stroke="#39d0ff" stroke-width="2" stroke-linecap="round" style="filter:drop-shadow(0 0 3px #39d0ff)">
+  <g class="sf-reticle-shape sf-reticle-shape--open" fill="none" stroke="#39d0ff" stroke-width="2" stroke-linecap="round" style="filter:drop-shadow(0 0 3px #39d0ff)">
     <circle cx="50" cy="50" r="30" opacity="0.85"/>
     <circle cx="50" cy="50" r="40" opacity="0.18"/>
     <line x1="50" y1="6" x2="50" y2="20"/><line x1="50" y1="80" x2="50" y2="94"/>
     <line x1="6" y1="50" x2="20" y2="50"/><line x1="80" y1="50" x2="94" y2="50"/>
+  </g>
+  <g class="sf-reticle-shape sf-reticle-shape--bracket" fill="none" stroke="#39d0ff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 3px #39d0ff)">
+    <line x1="50" y1="34" x2="50" y2="42"/><line x1="50" y1="58" x2="50" y2="66"/>
+    <line x1="34" y1="50" x2="42" y2="50"/><line x1="58" y1="50" x2="66" y2="50"/>
+    <path d="M26 34h12V22"/><path d="M74 34H62V22"/>
+    <path d="M26 66h12v12"/><path d="M74 66H62v12"/>
   </g>
   <circle cx="50" cy="50" r="3" fill="#39d0ff" style="filter:drop-shadow(0 0 4px #39d0ff)"/>
 </svg>`;
@@ -445,6 +451,7 @@ export const ui = {
     // Software-cursor aiming reticle (clean SVG crosshair).
     const reticle = document.createElement('div');
     reticle.id = 'aim-reticle';
+    reticle.dataset.mode = 'manual';
     reticle.innerHTML = RETICLE_SVG;
     const hudRoot = document.getElementById('hud');
     hudRoot.appendChild(reticle);
@@ -460,6 +467,7 @@ export const ui = {
     let lastReticleY = NaN;
     let lastFlightPathPoints = '';
     let lastReticleDisplay = null;
+    let lastReticleMode = null;
     let lastFlightPathDisplay = null;
     let lastFlightPathOpacity = null;
     let lastEndpointCx = null;
@@ -486,10 +494,15 @@ export const ui = {
       const reticleEl = document.getElementById('aim-reticle') || reticle;
       // reticleAlive keeps the aim marker readable under live (non-pausing) overlays while the
       // cursor-hiding flight mode stays off (FRONTEND_DIRECTION §3.5: reticle + alerts survive).
-      const nextReticleDisplay = reticleAlive && !autoTarget ? 'block' : 'none';
+      const nextReticleDisplay = reticleAlive ? 'block' : 'none';
       if (lastReticleDisplay !== nextReticleDisplay) {
         lastReticleDisplay = nextReticleDisplay;
         reticleEl.style.display = nextReticleDisplay;
+      }
+      const nextReticleMode = autoTarget ? 'auto' : 'manual';
+      if (lastReticleMode !== nextReticleMode) {
+        lastReticleMode = nextReticleMode;
+        reticleEl.dataset.mode = nextReticleMode;
       }
       const nextFlightPathDisplay = autoTarget ? 'block' : 'none';
       if (lastFlightPathDisplay !== nextFlightPathDisplay) {
@@ -504,6 +517,18 @@ export const ui = {
       if (!visible) return;
       const fallbackX = typeof innerWidth === 'number' ? innerWidth * 0.5 : 0;
       const fallbackY = typeof innerHeight === 'number' ? innerHeight * 0.5 : 0;
+      const x = active && Number.isFinite(pointer.x) ? pointer.x : fallbackX;
+      const y = active && Number.isFinite(pointer.y) ? pointer.y : fallbackY;
+      if (!Number.isFinite(lastReticleX) || Math.abs(x - lastReticleX) > 0.1
+        || !Number.isFinite(lastReticleY) || Math.abs(y - lastReticleY) > 0.1) {
+        const next = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0) translate(-50%,-50%)`;
+        if (reticleEl._sfHudTransform !== next) {
+          reticleEl._sfHudTransform = next;
+          reticleEl.style.transform = next;
+        }
+        lastReticleX = x;
+        lastReticleY = y;
+      }
       if (autoTarget) {
         if (!pathActive || !this.helpers || typeof this.helpers.worldToScreen !== 'function') return;
         const projectedPoints = [];
@@ -546,18 +571,6 @@ export const ui = {
           autoTargetFlightPath.classList.toggle('is-drawing', drawing);
         }
         return;
-      }
-      let x = active && Number.isFinite(pointer.x) ? pointer.x : fallbackX;
-      let y = active && Number.isFinite(pointer.y) ? pointer.y : fallbackY;
-      if (!Number.isFinite(lastReticleX) || Math.abs(x - lastReticleX) > 0.1
-        || !Number.isFinite(lastReticleY) || Math.abs(y - lastReticleY) > 0.1) {
-        const next = `translate3d(${x.toFixed(1)}px,${y.toFixed(1)}px,0) translate(-50%,-50%)`;
-        if (reticleEl._sfHudTransform !== next) {
-          reticleEl._sfHudTransform = next;
-          reticleEl.style.transform = next;
-        }
-        lastReticleX = x;
-        lastReticleY = y;
       }
     };
     this._syncFlightCursor = syncFlightCursor;
@@ -1310,6 +1323,9 @@ function injectHudCss() {
      cyan when the pilot aims/fires manually (Phase 2). */
   #aim-reticle { transition: none; }
   #aim-reticle svg * { filter:none !important; }
+  #aim-reticle .sf-reticle-shape--bracket { display:none; }
+  #aim-reticle[data-mode="auto"] .sf-reticle-shape--open { display:none; }
+  #aim-reticle[data-mode="auto"] .sf-reticle-shape--bracket { display:block; }
   #aim-reticle.autofire { filter: hue-rotate(150deg) saturate(1.3) brightness(1.05);
   }
   #aim-reticle.autofire > svg { animation: sf-reticlepulse 1.4s ease-in-out infinite alternate; }
@@ -1570,10 +1586,12 @@ function injectHudCss() {
 
   /* Lock-on progress arc — circular SVG indicator near reticle center */
   .sf-lockring { display:none; position:absolute; left:50%; top:50%; width:72px; height:72px;
-    transform:translate(-50%,-50%); pointer-events:none; z-index:14; opacity:0;
+    transform:translate(-50%,-50%) scale(1); transform-origin:50% 50%;
+    pointer-events:none; z-index:14; opacity:0;
     transition:opacity .15s ease; filter:drop-shadow(0 0 6px var(--accent)); }
   .sf-lockring.active { display:block; opacity:1; }
   .sf-lockring.locked { filter:drop-shadow(0 0 10px var(--danger)); }
+  .sf-lockring.sf-lockring--latch { animation:sf-lockring-latch 160ms cubic-bezier(.2,.7,.2,1) 1; }
   .sf-lockring .sf-lockring__track { fill:none; stroke:var(--panel-edge); stroke-width:2.5; }
   .sf-lockring .sf-lockring__fill { fill:none; stroke:var(--accent); stroke-width:3;
     stroke-linecap:round; transition:stroke .15s ease; }
@@ -1582,6 +1600,11 @@ function injectHudCss() {
     font-family:var(--mono); font-size:9px; letter-spacing:.14em; color:var(--accent);
     text-transform:uppercase; white-space:nowrap; text-shadow:0 0 6px rgba(57,208,255,.6); }
   .sf-lockring.locked .sf-lockring__label { color:var(--danger); text-shadow:0 0 6px rgba(255,84,112,.6); }
+  @keyframes sf-lockring-latch {
+    0% { transform:translate(-50%,-50%) scale(1); }
+    50% { transform:translate(-50%,-50%) scale(1.16); }
+    100% { transform:translate(-50%,-50%) scale(1); }
+  }
 
   /* Weapon heat bars — chromeless, anchored above the schematic (left:22px matches .sf-bars) */
   .sf-wpn-heats { position:absolute; left:22px;
@@ -1666,13 +1689,54 @@ function injectHudCss() {
     --pip-glow:255,196,84; }
   .sf-leadpip.visible { display:block; opacity:.92; }
   .sf-leadpip.on-solution { --pip-glow:120,240,150; }
-  .sf-leadpip__ring { position:absolute; inset:0; border-radius:50%;
-    border:1.5px solid rgba(var(--pip-glow),.95);
-    box-shadow:0 0 7px rgba(var(--pip-glow),.5), inset 0 0 5px rgba(var(--pip-glow),.25); }
-  .sf-leadpip__ring::before, .sf-leadpip__ring::after {
-    content:''; position:absolute; background:rgba(var(--pip-glow),.9); }
-  .sf-leadpip__ring::before { left:50%; top:-4px; width:1.5px; height:4px; transform:translateX(-50%); }
-  .sf-leadpip__ring::after { top:50%; left:-4px; height:1.5px; width:4px; transform:translateY(-50%); }
+  .sf-leadpip__svg { width:100%; height:100%; overflow:visible;
+    filter:drop-shadow(0 0 7px rgba(var(--pip-glow),.5)); }
+  .sf-leadpip__full, .sf-leadpip__arc {
+    fill:none; stroke:rgba(var(--pip-glow),.95); stroke-width:1.6; vector-effect:non-scaling-stroke; }
+  .sf-leadpip__arc { stroke-linecap:round; }
+  .sf-leadpip.on-solution .sf-leadpip__full { opacity:1; }
+  .sf-leadpip.on-solution .sf-leadpip__arc { opacity:0; }
+  .sf-leadpip:not(.on-solution) .sf-leadpip__full { opacity:0; }
+  .sf-leadpip:not(.on-solution) .sf-leadpip__arc { opacity:1; }
+  .sf-leadpip__tick { stroke:rgba(var(--pip-glow),.9); stroke-width:1.5; stroke-linecap:round; }
+
+  .sf-threat-halo { display:none; position:absolute; inset:0; pointer-events:none; z-index:13; }
+  .sf-threat-halo__slot { display:none; position:absolute; left:0; top:0; opacity:.55; }
+  .sf-threat-halo__slot--arc .sf-threat-halo__arc {
+    width:54px; height:18px; box-sizing:border-box;
+    border:2px solid var(--sf-foe, var(--danger));
+  }
+  .sf-threat-halo__slot--arc[data-edge="top"] .sf-threat-halo__arc {
+    border-bottom:none; border-radius:16px 16px 0 0;
+  }
+  .sf-threat-halo__slot--arc[data-edge="bottom"] .sf-threat-halo__arc {
+    border-top:none; border-radius:0 0 16px 16px;
+  }
+  .sf-threat-halo__slot--arc[data-edge="left"] .sf-threat-halo__arc {
+    width:18px; height:54px; border-right:none; border-radius:16px 0 0 16px;
+  }
+  .sf-threat-halo__slot--arc[data-edge="right"] .sf-threat-halo__arc {
+    width:18px; height:54px; border-left:none; border-radius:0 16px 16px 0;
+  }
+  .sf-threat-halo__slot--missile .sf-threat-halo__chev {
+    width:22px; height:22px; display:block; color:var(--sf-foe, var(--danger));
+  }
+  .sf-threat-halo__slot--missile .sf-threat-halo__chev path {
+    fill:none; stroke:currentColor; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round;
+  }
+  .sf-threat-halo__slot--missile[data-edge="right"] .sf-threat-halo__chev { transform:rotate(90deg); }
+  .sf-threat-halo__slot--missile[data-edge="bottom"] .sf-threat-halo__chev { transform:rotate(180deg); }
+  .sf-threat-halo__slot--missile[data-edge="left"] .sf-threat-halo__chev { transform:rotate(-90deg); }
+  @media (forced-colors: active) {
+    .sf-leadpip__svg { filter:none; }
+    .sf-leadpip__full, .sf-leadpip__arc, .sf-leadpip__tick { stroke:CanvasText; }
+    .sf-threat-halo__slot--arc .sf-threat-halo__arc {
+      border-color:CanvasText; forced-color-adjust:none;
+    }
+    .sf-threat-halo__slot--missile .sf-threat-halo__chev path {
+      stroke:CanvasText; forced-color-adjust:none;
+    }
+  }
 
   /* Capacitor readout near weapon area */
   .sf-cap-readout { position:absolute; left:18px; bottom:18px; pointer-events:none;
@@ -2310,6 +2374,7 @@ function injectHudCss() {
     .sf-schematic.sf-sch-critical .sf-sch-ship--fill,
     .sf-schematic.sf-sch-hit .sf-sch-ship-wrap,
     .sf-gravity-mark__ring { animation:none; }
+    .sf-lockring.sf-lockring--latch { animation:none; }
     .sf-sch-ship-fill-crop, .sf-sch-fill-line, .sf-sch-shield { transition:none; }
   }
 

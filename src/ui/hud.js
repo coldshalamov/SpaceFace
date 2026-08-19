@@ -37,6 +37,7 @@ import { contactThreatTier, contactStateWord, isHostileToPlayer, isWreckLike, wr
 import { verbAcceptsType } from '../data/interactionDescriptorCatalog.js';
 import { weaponHeatSummary } from './weaponHeat.js';
 import { createPowerRail, readRailModel } from './powerRail.js';
+import { createThreatHalo } from './threatHalo.js';
 import { SHIP_SILHOUETTES } from '../data/shipSilhouettes.js';
 import { computeLeadPipOverlay, leadSolution, primaryProjSpeed, hasBallisticWeapon } from '../ai/gunnery.js';
 import { confirm } from './confirm.js';
@@ -722,6 +723,11 @@ const DEFAULT_TELEGRAPH_TICKS = 30;
 const TELL_VISUAL_WIDTH = 240;
 const TELL_VISUAL_HEIGHT = 30;
 const TELL_LAYOUT_GAP = 8;
+const LEAD_PIP_RADIUS = 8.5;
+const LEAD_PIP_CIRCUMFERENCE = Math.PI * 2 * LEAD_PIP_RADIUS;
+const LEAD_PIP_ARC_FRACTION = 0.72;
+const LEAD_PIP_ARC_LENGTH = LEAD_PIP_CIRCUMFERENCE * LEAD_PIP_ARC_FRACTION;
+const LEAD_PIP_GAP_CENTER_OFFSET = (LEAD_PIP_ARC_FRACTION + (1 - LEAD_PIP_ARC_FRACTION) * 0.5) * (Math.PI * 2);
 
 export function doctrineTellKind(payload) {
   if (!payload) return null;
@@ -1581,6 +1587,9 @@ export function createHud(ctx, alerts) {
   const lockFill = lockRing.querySelector('.sf-lockring__fill');
   const lockLabel = lockRing.querySelector('.sf-lockring__label');
   let _wasLocked = false;   // rising-edge tracker for the lock-acquired audio cue
+  lockRing.addEventListener('animationend', () => {
+    lockRing.classList.remove('sf-lockring--latch');
+  });
 
   // FR-1: prograde (velocity-vector) tick. An always-on, unlabeled read of where inertia carries
   // the ship if thrust cuts now — projected through the authoritative worldToScreen, never a magic
@@ -1768,8 +1777,17 @@ export function createHud(ctx, alerts) {
   // target. Player-only HUD; solved via the same lead model the guns use (src/ai/gunnery.js).
   const leadPip = document.createElement('div');
   leadPip.className = 'sf-leadpip';
-  leadPip.innerHTML = '<div class="sf-leadpip__ring"></div>';
+  leadPip.innerHTML =
+    `<svg class="sf-leadpip__svg" viewBox="0 0 22 22" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">` +
+      `<circle class="sf-leadpip__full" cx="11" cy="11" r="${LEAD_PIP_RADIUS}"/>` +
+      `<circle class="sf-leadpip__arc" cx="11" cy="11" r="${LEAD_PIP_RADIUS}" ` +
+        `stroke-dasharray="${LEAD_PIP_ARC_LENGTH.toFixed(2)} ${LEAD_PIP_CIRCUMFERENCE.toFixed(2)}"/>` +
+      `<line class="sf-leadpip__tick" x1="11" y1="2.2" x2="11" y2="5.4"/>` +
+      `<line class="sf-leadpip__tick" x1="2.2" y1="11" x2="5.4" y2="11"/>` +
+    `</svg>`;
   root.appendChild(leadPip);
+  const leadPipArc = leadPip.querySelector('.sf-leadpip__arc');
+  const threatHalo = createThreatHalo(root);
 
   // ---- death / respawn feedback banner ----
   injectDeathStyle();
@@ -3262,11 +3280,13 @@ export function createHud(ctx, alerts) {
     if (!p) {
       setClass(lockRing, 'active', false);
       setClass(lockRing, 'locked', false);
+      setClass(lockRing, 'sf-lockring--latch', false);
       setClass(lockDiamond, 'visible', false);
       setClass(leadPip, 'visible', false);
       setStyle(wpnHeatsWrap, 'display', 'none');
       updateGravityMarkOverlays(null);
       updateMomentumSinkOverlays(null);
+      threatHalo.update(null, null, null);
       return;
     }
 
@@ -3292,7 +3312,18 @@ export function createHud(ctx, alerts) {
     }
     // Lock-acquired tone: fire a two-note ascending cue on the rising edge (not-locked → locked).
     // Locking a missile target was visually indicated but sonically silent — a clear cue closes that.
-    if (isLocked && !_wasLocked) ctx.bus.emit('audio:cue', { id: 'lock_acquired' });
+    if (isLocked && !_wasLocked) {
+      ctx.bus.emit('audio:cue', { id: 'lock_acquired' });
+      if (!getMotionReduced()) {
+        lockRing.classList.remove('sf-lockring--latch');
+        void lockRing.offsetWidth;
+        lockRing.classList.add('sf-lockring--latch');
+      } else {
+        lockRing.classList.remove('sf-lockring--latch');
+      }
+    } else if (!isLocked) {
+      lockRing.classList.remove('sf-lockring--latch');
+    }
     _wasLocked = isLocked;
 
     // ---- Per-weapon heat bars ----
@@ -3355,9 +3386,24 @@ export function createHud(ctx, alerts) {
       setClass(leadPip, 'visible', true);
       setHudScreenTransform(leadPip, pipOverlay.x, pipOverlay.y);
       setClass(leadPip, 'on-solution', pipOverlay.onSolution);
+      if (leadPipArc && !pipOverlay.onSolution) {
+        const pointer = state.input && state.input.pointerScreen;
+        const fallbackX = ((typeof window !== 'undefined' && Number.isFinite(window.innerWidth))
+          ? window.innerWidth
+          : 1280) * 0.5;
+        const fallbackY = ((typeof window !== 'undefined' && Number.isFinite(window.innerHeight))
+          ? window.innerHeight
+          : 720) * 0.5;
+        const reticleX = pointer && pointer.active && Number.isFinite(pointer.x) ? pointer.x : fallbackX;
+        const reticleY = pointer && pointer.active && Number.isFinite(pointer.y) ? pointer.y : fallbackY;
+        const angleRad = Math.atan2(reticleY - pipOverlay.y, reticleX - pipOverlay.x);
+        const rotateDeg = ((angleRad - LEAD_PIP_GAP_CENTER_OFFSET) * 180 / Math.PI).toFixed(2);
+        setSvgAttr(leadPipArc, 'transform', `rotate(${rotateDeg} 11 11)`);
+      }
     } else {
       setClass(leadPip, 'visible', false);
     }
+    threatHalo.update(p, state, helpers.worldToScreen);
   }
 
   // ---------------------------------------------------------------------------
@@ -4490,6 +4536,7 @@ export function createHud(ctx, alerts) {
       if (offSlotClaim) offSlotClaim();
       if (offSlotRelease) offSlotRelease();
       powerRail.destroy();
+      threatHalo.destroy();
     },
   };
 }

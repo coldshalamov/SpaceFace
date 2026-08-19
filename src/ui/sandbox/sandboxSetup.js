@@ -476,7 +476,15 @@ function spawnEnemies(ctx, specs) {
       const x = px + Math.cos(a) * dist;
       const z = pz + Math.sin(a) * dist;
       const entitySpec = makeEnemySpawnSpec(enemyType, 1, { x, z });
-      if (entitySpec) helpers.spawnEntity(entitySpec);
+      if (entitySpec) {
+        // Live-squad lever, verbatim from the encounter director (encounterDirector.js stamps
+        // ai.spawnContext = sh.context; encounterScripts.js documents it as the sanctioned way to
+        // make a spawned squad engage). Without it these swarmers can NEVER turn hostile — the
+        // engagement authority denies fire on anything isHostileToPlayer rejects — so every
+        // "hostile swarmers inbound" sandbox card was peacefully neutered.
+        entitySpec.data.ai.spawnContext = 'encounter';
+        helpers.spawnEntity(entitySpec);
+      }
     }
   }
 }

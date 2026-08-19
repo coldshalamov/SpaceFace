@@ -56,15 +56,17 @@ const checks = [
   },
 
   // ---- §3: Target Panel v2 ------------------------------------------------
+  // J07 condensed the 8-line card to a threat badge + range bar; hp moved to the in-world
+  // target arcs (asserted separately below). The segmented sf-bar--* classes are gone by design.
   {
     path: 'src/ui/targetPanel.js',
-    label: 'Target panel v2 — segmented bars (shield/armor/hull), distance, closing speed, gimmick tag',
+    label: 'Target panel v2 — threat badge, range bar, distance, closing speed, gimmick tag',
     needs: [
-      'sf-bar--shield',
-      'sf-bar--armor',
-      'sf-bar--hull',
-      'dist',
-      'closing',
+      'sf-target__threat',
+      'sf-target__rangebar',
+      'sf-target__rangefill',
+      'sf-target__dist',
+      'sf-target__closing',
       'gimmick',
     ],
   },
