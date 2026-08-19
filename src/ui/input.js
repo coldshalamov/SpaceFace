@@ -268,6 +268,12 @@ export function createUiInput(ctx, screenManager) {
         screenManager.pushScreen('footprint');
         bus.emit('audio:cue', { id: 'ui_open' });
         return;
+      case 'F4':
+        // THE RANGE (grammar §10.5 / SCREENS_B §2): pausing playable teaching box.
+        ev.preventDefault();
+        screenManager.pushScreen('range');
+        bus.emit('audio:cue', { id: 'ui_open' });
+        return;
       case 'F7': {
         // Collision / socket / landing-contact debug overlay toggle (graphics spec §12.5).
         ev.preventDefault();
