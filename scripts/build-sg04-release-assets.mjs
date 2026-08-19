@@ -71,7 +71,16 @@ const packageJson = JSON.parse(readFileSync(resolve(ROOT, 'package.json'), 'utf8
 // Kestrel V4 ships LOD0 through the canonical player path. Its independently authored LOD1/LOD2
 // family members remain release-built and hash-bound for a future separate-file residency selector;
 // the current runtime deliberately decodes only LOD0 rather than tripling starter-ship residency.
-const WHOLE_SHIP_FILES = ['kestrel.glb', 'kestrel_lod1.glb', 'kestrel_lod2.glb', 'pelican.glb', 'wasp.glb'];
+const WHOLE_SHIP_FILES = [
+  'kestrel.glb',
+  'kestrel_lod1.glb',
+  'kestrel_lod2.glb',
+  'pelican.glb',
+  'wasp.glb',
+  'drifter_production_v1.glb',
+  'drifter_production_v1_lod1.glb',
+  'drifter_production_v1_lod2.glb',
+];
 const manifestPartFiles = new Set((partManifest.parts || []).map((part) => part.file));
 const allAssets = [
   {

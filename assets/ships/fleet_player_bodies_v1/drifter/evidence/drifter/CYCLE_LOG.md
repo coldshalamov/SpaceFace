@@ -15,5 +15,6 @@
 | 11–17 | prior | REVISE | factory garnish. Not this campaign's seven. |
 | 18 | yes | 3Q REVISE / starboard REVISE / rear REVISE | campaign pass 1 of 7. Closed shell. Stick waist, fan bells. Not wired. |
 | 19 | yes | 3Q REVISE / starboard REVISE / rear REVISE | campaign pass 2 of 7. Gap closed. Still a pancake dart. Not wired. |
+| 20 | checkpoint | reviews not finished | campaign pass 3 of 7. Taller hull. Wired as a playable candidate 2026-08-19. |
 
-Seven-pass treatment: 2/7. Do not promote. Do not self-accept.
+Seven-pass treatment: 3/7 then owner checkpoint. Clay still unfinished. Wired so the game has this body. Do not self-accept.

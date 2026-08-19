@@ -66,25 +66,50 @@ disjoint files. No coordinator, task-long reservation, or worktree is required.
   leaves that need a human or a headed machine you do not have may be recorded `unproven` and
   skipped; do not stall the campaign on them.
 
-**PQ-050 campaign checkpoint (2026-08-18, form restart owed):** loft-as-hull
-is dead as the visible Hornet silhouette. Live factory wholeships are still
-unwired. Stay off INFERENCE, the dock/hulk remaster, and the expansion-research
-brief.
+**PQ-050 campaign checkpoint (2026-08-19, playable handoff):** owner asked to
+checkpoint, wire the next ship, and keep the game playable even if bodies are
+still sub-optimal. Hitch/Kestrel stays frozen. Stay off INFERENCE, the
+dock/hulk remaster, and the expansion-research brief.
 
-- **Hornet is on cycle 52.** Tip-to-transom loft replaced by short gloves plus
-  telescoping plate bands, plated slab wings, hoop-framed drive house. Clay is
-  no longer a foam dart. Hitch still wins. Not wired.
-- **Remaining remasters** are getting the same plate-skin cover
-  (`cover_loft_with_plates`). Candidates only. None wired.
-- **Hitch V8 is live.** V9 extra polish (antenna farm, cable trays, airlock,
-  heat skirts) is staged so Hitch stays ~20% above the plate-skinned fleet.
-  Do not overwrite KTX2 release files with uncompressed source.
-- **Do not** wire a remaster that still loses to Hitch.
-- **Do not** mark the campaign exhausted while Hitch still wins.
-- **Do not** run a garnish cycle 53 on the C52 plate cage. The recorded verdicts reject that
-  silhouette, not its finish, so more surface work on it cannot close the leaf. Only a complete
-  full-job cycle toward a closed interceptor form is advancement, and one leaf is several
-  focused sessions. See `active/PQ-050.md` § Honest current state.
+- **Hornet (`PQ-050.01`)** received its seven counted campaign passes (cycles
+  59–65). Closed-shell restart, not the old plate cage. Still a gray
+  interceptor that would lose a store-still against Hitch. **Not wired.**
+- **Drifter (`PQ-050.02`)** received three of seven campaign passes (cycles
+  18–20). Cycle 20 is the live candidate. **Wired** to
+  `wholeships/drifter_production_v1.glb` (+ LOD1/LOD2) so the game loads this
+  body. Reviews still said pancake dart / card winglets / empty cones. Not
+  accepted art.
+- **Remaining ships** have not had this campaign's seven-pass treatment.
+  Resume at Ranger (`PQ-050.03`) and continue the ordered leaf list through
+  Survey pin (`PQ-050.22`). One ship at a time. Hitch stays untouched.
+- Quality remaining on every unwired/unfinished leaf, including Hornet and a
+  later Drifter return: closed walkable hull, openings you can see into,
+  lofted wings/nacelles, manufactured drive throats, unique surfaces, then
+  wire only that ship. A factory loft with boxes still does not close a leaf.
+- Do not run the all-fleet promote script. Do not overwrite Hitch.
+
+Remaining PQ-050 leaves (one ship at a time; Hitch/Kestrel frozen):
+
+| Leaf | Ship | This campaign |
+|---|---|---|
+| `.01` | Hornet | seven passes done, not wired |
+| `.02` | Drifter | three of seven, cycle 20 live, four passes + polish still owed |
+| `.03` | Ranger | not started |
+| `.04` | Ironback | not started |
+| `.05` | Bastion | not started |
+| `.06` | Atlas | not started |
+| `.07` | Warden | not started |
+| `.08` | Colossus | not started |
+| `.09` | Leviathan | not started |
+| `.10` | Pelican | not started |
+| `.11` | Mule | not started |
+| `.12` | Wasp | not started (live production body is already mapped; it still fails the authored loader) |
+| `.13`–`.15` | Ashline dart / lode / rig | not started |
+| `.16`–`.18` | Helios lark / cradle / span | not started |
+| `.19` | Ore barge | not started |
+| `.20` | Repair tender | not started |
+| `.21` | Salvage cutter | not started |
+| `.22` | Survey pin | not started |
 
 **Graphics / place-asset remaster (resume):** if the task is continuing the interrupted remaster of
 `place_dock_interior`, `place_dead_hulk`, and/or `place_debris_chunk` (Blender/EEVEE form work, not a
@@ -120,7 +145,8 @@ ship except Hitch/Kestrel honestly better than live Hitch is admitted as `PQ-050
 one ship: apply [`docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md`](./docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md)
 (form, unique UVs, mesh bakes, authored surfaces, LOD), fill that ship’s technique ledger, then
 wire only that ship. A factory loft with boxes or a tinted shared sheet does not close a leaf.
-First ready ship is Hornet. Do not touch Hitch.
+2026-08-19 handoff: Hornet’s seven passes are done and unwired; Drifter cycle 20 is live and
+unfinished. Next leaf is Ranger. Do not touch Hitch.
 
 **Graphics / expansion research (A-list parity):** when planning work that spans graphics,
 animation, VFX, variety, or world density — as opposed to one admitted asset packet — the durable

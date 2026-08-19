@@ -1906,6 +1906,48 @@
       "ktx2Textures": 20,
       "meshoptBufferViews": 69,
       "contractNodeCount": 21
+    },
+    {
+      "id": "wholeship_drifter_production_v1",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/drifter_production_v1.glb",
+      "release": "assets/ships/release/parts/wholeships/drifter_production_v1.glb",
+      "sourceSha256": "7d4b598b7b2f6817db31f1eac40608c2e351777e3a8026c3877d3fbfbbee31b4",
+      "releaseSha256": "c3d11f93dd9a8f703e4774555917e7e53c43a45f4bb2393ff12236b752d93193",
+      "sourceBytes": 21748892,
+      "releaseBytes": 13611432,
+      "textures": 36,
+      "ktx2Textures": 36,
+      "meshoptBufferViews": 48,
+      "contractNodeCount": 20
+    },
+    {
+      "id": "wholeship_drifter_production_v1_lod1",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/drifter_production_v1_lod1.glb",
+      "release": "assets/ships/release/parts/wholeships/drifter_production_v1_lod1.glb",
+      "sourceSha256": "6e6113a6c1255b48fc64b1e0e3770157ea4565907f6a96ea15c518e1cacf91db",
+      "releaseSha256": "b336d976f07e753cb0fa73959b6b87f24c479f305f8529e5460b26d2324f440f",
+      "sourceBytes": 10740744,
+      "releaseBytes": 4916652,
+      "textures": 36,
+      "ktx2Textures": 36,
+      "meshoptBufferViews": 48,
+      "contractNodeCount": 20
+    },
+    {
+      "id": "wholeship_drifter_production_v1_lod2",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/drifter_production_v1_lod2.glb",
+      "release": "assets/ships/release/parts/wholeships/drifter_production_v1_lod2.glb",
+      "sourceSha256": "7c40b075998bacc3ed404c05d8d692889777aaf3f6947ae3e2769b1251b68e45",
+      "releaseSha256": "61696483540d02b187b19ca86d9bf61df24e7ca6d26adf34eefd09b3055a2a68",
+      "sourceBytes": 9795272,
+      "releaseBytes": 4419744,
+      "textures": 32,
+      "ktx2Textures": 32,
+      "meshoptBufferViews": 43,
+      "contractNodeCount": 19
     }
   ]
 }

@@ -224,6 +224,8 @@ def wire_maps(material, bsdf, maps, coat=0.0, emission=None):
     links.new(tex_a.outputs["Color"], bsdf.inputs["Base Color"])
     links.new(sep.outputs["Green"], bsdf.inputs["Roughness"])
     links.new(sep.outputs["Blue"], bsdf.inputs["Metallic"])
+    if "Ambient Occlusion" in bsdf.inputs:
+        links.new(sep.outputs["Red"], bsdf.inputs["Ambient Occlusion"])
     nmap = nodes.new("ShaderNodeNormalMap")
     nmap.space = "TANGENT"
     nmap.inputs["Strength"].default_value = 0.85
@@ -239,7 +241,7 @@ def wire_maps(material, bsdf, maps, coat=0.0, emission=None):
 
 def create_materials():
     specs = {
-        "Material_Hull": ((0.20, 0.26, 0.28), 0.08, 0.46, "hull", 0.45, None),
+        "Material_Hull": ((0.22, 0.28, 0.30), 0.03, 0.56, "hull", 0.10, None),
         "Material_Armor": ((0.07, 0.10, 0.11), 0.38, 0.38, "armor", 0.12, None),
         "Material_Mechanical": ((0.30, 0.31, 0.32), 0.84, 0.26, "mechanical", 0.0, None),
         "Material_Accent": ((0.08, 0.36, 0.38), 0.10, 0.36, "accent", 0.2, None),
@@ -446,7 +448,7 @@ def add_hollow_bell(tag, x, y, z, scale, mats, collection):
         xi = x - 0.08 * s - t * 1.60 * s
         rings.append(ellipse_ring(xi, y, z, r * s, r * s, 40))
     outer = loft_from_rings(f"Bell_{tag}", rings, mech, collection, 0.008, cap=False)
-    thicken_shell(outer, 0.085 * s)
+    thicken_shell(outer, 0.12 * s)
     liner_rings = []
     for t, r in ((0.08, 0.16), (0.42, 0.30), (0.82, 0.46)):
         xi = x - 0.22 * s - t * 1.20 * s
@@ -466,7 +468,7 @@ def add_hollow_bell(tag, x, y, z, scale, mats, collection):
         )
     for index in range(10):
         ang = math.tau * index / 10
-        add_tapered_vane(f"BellVane_{tag}_{index}", (x - 1.00 * s, y, z), armor, collection, ang, scale=s * 0.82)
+        add_tapered_vane(f"BellVane_{tag}_{index}", (x - 0.52 * s, y, z), armor, collection, ang, scale=s * 0.42)
         add_box(
             f"BellRoot_{tag}_{index}",
             (x - 0.48 * s, y + math.cos(ang) * 0.14 * s, z + math.sin(ang) * 0.14 * s),
@@ -752,24 +754,34 @@ def build_lod(lod, mats):
     half = 8.0
     root = add_empty(f"DRIFTER_LOD{lod}_ROOT", (0, 0, 0), collection)
     root["spacefaceAsset"] = {
-        "assetId": "SF_DRIFTER_PRODUCTION_V1", "partId": "drifter_production_v1",
-        "lod": f"lod{lod}", "slot": "hull", "category": "wholeships",
-        "forward": "+X", "embeddedPlume": False,
+        "contractVersion": 2,
+        "assetId": "SF_DRIFTER_PRODUCTION_V1",
+        "partId": "drifter_production_v1",
+        "lod": f"lod{lod}",
+        "slot": "hull",
+        "category": "wholeships",
+        "forward": "+X",
+        "up": "+Y",
+        "starboard": "+Z",
+        "unit": "metre",
+        "normalConvention": "OpenGL",
+        "ormChannels": "R=AO,G=Roughness,B=Metallic",
+        "textureCompression": "PNG-source",
+        "embeddedPlume": False,
     }
-    # C18: closed utility shell first. Distinct stations, then wall, then pockets.
-    # Do not Exact-boolean or face-delete a paper loft. Do not stack overlapping shells as hull.
+    # C20: walkable workshop. Cabin/mid stay tall. Transom is a wall, not a knife.
     hull_obj = loft_from_rings("Pressure_Hull", [
-        densify_ring(station_ring(8.00, 0, 0.10, 0.48, 0.28, flat=0.42, box=0.38, keel=0.62), 3),
-        densify_ring(station_ring(6.70, 0, 0.16, 0.88, 0.52, flat=0.58, box=0.42, keel=0.52), 3),
-        densify_ring(station_ring(5.20, 0, 0.22, 1.08, 0.72, flat=0.72, box=0.46, keel=0.46), 3),
-        densify_ring(station_ring(3.90, 0, 0.38, 1.12, 1.08, flat=0.92, box=0.48, keel=0.40), 3),
-        densify_ring(station_ring(2.40, 0, 0.18, 1.32, 0.78, flat=0.38, box=0.68, keel=0.44), 3),
-        densify_ring(station_ring(0.60, 0, 0.08, 1.52, 0.58, flat=0.16, box=0.88, keel=0.42), 3),
-        densify_ring(station_ring(-1.20, 0, 0.04, 1.18, 0.46, flat=0.10, box=0.62, keel=0.40), 3),
-        densify_ring(station_ring(-2.80, 0, 0.08, 0.92, 0.50, flat=0.12, box=0.58, keel=0.36), 3),
-        densify_ring(station_ring(-4.40, 0, 0.16, 1.12, 0.72, flat=0.20, box=0.86, keel=0.22), 3),
-        densify_ring(station_ring(-6.00, 0, 0.14, 0.98, 0.62, flat=0.16, box=0.90, keel=0.14), 3),
-        densify_ring(station_ring(-7.40, 0, 0.10, 0.72, 0.46, flat=0.12, box=0.90, keel=0.10), 3),
+        densify_ring(station_ring(8.00, 0, 0.18, 0.62, 0.48, flat=0.52, box=0.44, keel=0.50), 3),
+        densify_ring(station_ring(6.40, 0, 0.28, 1.18, 0.82, flat=0.68, box=0.50, keel=0.42), 3),
+        densify_ring(station_ring(4.70, 0, 0.46, 1.38, 1.28, flat=0.88, box=0.56, keel=0.32), 3),
+        densify_ring(station_ring(3.40, 0, 0.52, 1.46, 1.42, flat=0.92, box=0.58, keel=0.28), 3),
+        densify_ring(station_ring(1.80, 0, 0.36, 1.58, 1.18, flat=0.48, box=0.76, keel=0.34), 3),
+        densify_ring(station_ring(0.20, 0, 0.28, 1.68, 1.08, flat=0.28, box=0.86, keel=0.36), 3),
+        densify_ring(station_ring(-1.60, 0, 0.26, 1.58, 1.02, flat=0.24, box=0.82, keel=0.34), 3),
+        densify_ring(station_ring(-3.20, 0, 0.28, 1.48, 1.00, flat=0.22, box=0.80, keel=0.28), 3),
+        densify_ring(station_ring(-4.80, 0, 0.30, 1.52, 1.08, flat=0.24, box=0.84, keel=0.20), 3),
+        densify_ring(station_ring(-6.20, 0, 0.28, 1.38, 0.98, flat=0.20, box=0.88, keel=0.14), 3),
+        densify_ring(station_ring(-7.50, 0, 0.24, 1.22, 0.82, flat=0.16, box=0.90, keel=0.12), 3),
     ], hull, collection, 0.014, cap=True)
     thicken_shell(hull_obj, 0.10)
     subdivide_mesh(hull_obj, 1)
@@ -777,10 +789,10 @@ def build_lod(lod, mats):
     inset_large_faces(hull_obj, thickness=0.018, depth=0.0, min_area=0.16)
     report_shells(hull_obj, "hull after inset")
 
-    boolean_cut_box(hull_obj, "Cut_Cockpit", (3.90, 0.0, 1.42), (0.52, 0.18, 0.055))
-    boolean_cut_box(hull_obj, "Cut_PortWell", (0.20, -1.62, 0.10), (0.55, 0.055, 0.16))
-    boolean_cut_box(hull_obj, "Cut_StbdWell", (0.20, 1.62, 0.10), (0.55, 0.055, 0.16))
-    boolean_cut_box(hull_obj, "Cut_Cargo", (-0.20, 0.0, -0.68), (0.55, 0.28, 0.050))
+    boolean_cut_box(hull_obj, "Cut_Cockpit", (3.40, 0.0, 1.88), (0.70, 0.26, 0.060))
+    boolean_cut_box(hull_obj, "Cut_PortWell", (0.20, -1.80, 0.22), (0.62, 0.055, 0.22))
+    boolean_cut_box(hull_obj, "Cut_StbdWell", (0.20, 1.80, 0.22), (0.62, 0.055, 0.22))
+    boolean_cut_box(hull_obj, "Cut_Cargo", (-0.20, 0.0, -0.92), (0.70, 0.40, 0.055))
     report_shells(hull_obj, "hull after pocket cuts")
     bevel = hull_obj.modifiers.new("HullBevel", "BEVEL")
     bevel.width = 0.016
@@ -791,77 +803,69 @@ def build_lod(lod, mats):
     wn.keep_sharp = True
     apply_modifiers(hull_obj)
 
-    add_five_wall_tub("CockpitTub", (3.90, 0.0, 1.02), (0.56, 0.20, 0.32), 0.060, mech, collection)
-    add_box("Cockpit_Seat", (3.72, 0.0, 0.82), (0.16, 0.11, 0.06), mech, collection, 0.003)
-    add_box("Cockpit_Back", (3.52, 0.0, 0.94), (0.032, 0.11, 0.10), armor, collection, 0.002)
-    add_box("Cockpit_Console", (4.22, 0.0, 0.92), (0.10, 0.16, 0.022), armor, collection, 0.002)
-    add_greenhouse("Canopy", 3.90, 0.0, 1.18, 1.35, 0.42, 0.30, mats, collection)
+    add_five_wall_tub("CockpitTub", (3.40, 0.0, 1.28), (0.74, 0.28, 0.42), 0.060, mech, collection)
+    add_box("Cockpit_Seat", (3.20, 0.0, 1.02), (0.20, 0.14, 0.07), mech, collection, 0.003)
+    add_box("Cockpit_Back", (2.96, 0.0, 1.18), (0.036, 0.14, 0.14), armor, collection, 0.002)
+    add_box("Cockpit_Console", (3.82, 0.0, 1.16), (0.14, 0.20, 0.028), armor, collection, 0.002)
+    add_greenhouse("Canopy", 3.40, 0.0, 1.48, 1.85, 0.62, 0.48, mats, collection)
 
-    add_five_wall_tub("PortWell", (0.20, -1.42, 0.10), (0.58, 0.14, 0.18), 0.050, mech, collection)
-    add_five_wall_tub("StbdWell", (0.20, 1.42, 0.10), (0.58, 0.14, 0.18), 0.050, mech, collection)
-    add_five_wall_tub("CargoWell", (-0.20, 0.0, -0.52), (0.58, 0.30, 0.16), 0.050, mech, collection)
+    add_five_wall_tub("PortWell", (0.20, -1.58, 0.22), (0.66, 0.18, 0.24), 0.050, mech, collection)
+    add_five_wall_tub("StbdWell", (0.20, 1.58, 0.22), (0.66, 0.18, 0.24), 0.050, mech, collection)
+    add_five_wall_tub("CargoWell", (-0.20, 0.0, -0.70), (0.72, 0.42, 0.22), 0.050, mech, collection)
     add_box("CargoRail_P", (-0.20, -0.18, -0.58), (0.42, 0.018, 0.012), armor, collection, 0.002)
     add_box("CargoRail_S", (-0.20, 0.18, -0.58), (0.42, 0.018, 0.012), armor, collection, 0.002)
     add_box("CargoCassette", (-0.20, 0.0, -0.60), (0.28, 0.14, 0.040), armor, collection, 0.003)
 
     add_folded_sheet(
-        "Chine_P",
-        (3.20, -1.22, 0.08), (-2.40, -1.28, 0.06),
-        (-2.40, -1.12, 0.32), (3.20, -1.06, 0.36),
-        0.028, hull, collection, 0.004,
-    )
-    add_folded_sheet(
-        "Chine_S",
-        (3.20, 1.22, 0.08), (3.20, 1.06, 0.36),
-        (-2.40, 1.12, 0.32), (-2.40, 1.28, 0.06),
-        0.028, hull, collection, 0.004,
-    )
-    add_folded_sheet(
         "Keel_Spine",
-        (2.40, -0.14, -0.72), (-2.20, -0.14, -0.62),
-        (-2.20, 0.14, -0.62), (2.40, 0.14, -0.72),
-        0.040, hull, collection, 0.004,
+        (2.40, -0.16, -0.92), (-2.20, -0.16, -0.78),
+        (-2.20, 0.16, -0.78), (2.40, 0.16, -0.92),
+        0.044, hull, collection, 0.004,
     )
-    add_overlap_plate("Armor_Dorsal", (1.20, 0.00, 0.62), (0.90, 0.40, 0.032), armor, collection, 0.006)
-    add_overlap_plate("Armor_Cabin", (4.00, 0.00, 1.22), (0.70, 0.34, 0.028), armor, collection, 0.005)
-    add_hoop_frame("DrifterHouse_Fore", -4.40, 1.10, 0.70, 0.16, armor, collection, thick=0.030, half_w=0.050)
-    add_hoop_frame("DrifterHouse_Aft", -6.40, 0.82, 0.52, 0.12, armor, collection, thick=0.028, half_w=0.045)
-    add_box("TransomBulkhead", (-7.10, 0.0, 0.12), (0.055, 0.68, 0.42), hull, collection, 0.005)
-    add_box("AftBulkhead", (-5.40, 0.0, 0.12), (0.045, 0.92, 0.58), hull, collection, 0.004)
-    add_box("MidBulkhead", (-1.40, 0.0, 0.08), (0.040, 1.00, 0.42), hull, collection, 0.004)
-    add_tile_bank("FlankTiles_P", 2.20, -1.80, -1.38, 0.18, 4, 0.16, 0.022, 0.08, armor, collection, 0.04)
-    add_tile_bank("FlankTiles_S", 2.20, -1.80, 1.38, 0.18, 4, 0.16, 0.022, 0.08, armor, collection, 0.04)
+    add_overlap_plate("Armor_Cabin", (3.70, 0.00, 1.36), (0.55, 0.28, 0.024), armor, collection, 0.005)
+    add_box("TransomBulkhead", (-7.22, 0.0, 0.24), (0.070, 1.10, 0.72), hull, collection, 0.006)
+    add_box("AftBulkhead", (-5.40, 0.0, 0.26), (0.055, 1.28, 0.88), hull, collection, 0.005)
+    add_box("MidBulkhead", (-1.50, 0.0, 0.24), (0.050, 1.38, 0.78), hull, collection, 0.004)
+    add_tile_bank("FlankTiles_P", 2.40, -1.60, -1.52, 0.22, 4, 0.18, 0.024, 0.10, armor, collection, 0.04)
+    add_tile_bank("FlankTiles_S", 2.40, -1.60, 1.52, 0.22, 4, 0.18, 0.024, 0.10, armor, collection, 0.04)
+    add_box("Accent_WaistP", (0.20, -1.62, 0.22), (0.42, 0.012, 0.05), accent, collection, 0.002)
+    add_box("Accent_WaistS", (0.20, 1.62, 0.22), (0.42, 0.012, 0.05), accent, collection, 0.002)
 
     for sign, side in ((-1, "Port"), (1, "Starboard")):
         y = 1.55 * sign
         nacelle = loft_from_rings(f"Nacelle_{side}", [
-            densify_ring(station_ring(-3.10, y, 0.08, 0.42, 0.38, flat=0.22, box=0.70, keel=0.22)),
-            densify_ring(station_ring(-4.40, y, 0.10, 0.50, 0.46, flat=0.18, box=0.82, keel=0.16)),
-            densify_ring(station_ring(-5.70, y, 0.10, 0.46, 0.44, flat=0.14, box=0.88, keel=0.12)),
-            densify_ring(station_ring(-6.90, y, 0.10, 0.38, 0.38, flat=0.10, box=0.90, keel=0.10)),
+            densify_ring(station_ring(-3.10, y, 0.22, 0.46, 0.44, flat=0.22, box=0.70, keel=0.22)),
+            densify_ring(station_ring(-4.40, y, 0.24, 0.54, 0.52, flat=0.18, box=0.82, keel=0.16)),
+            densify_ring(station_ring(-5.70, y, 0.24, 0.50, 0.50, flat=0.14, box=0.88, keel=0.12)),
+            densify_ring(station_ring(-6.90, y, 0.24, 0.42, 0.44, flat=0.10, box=0.90, keel=0.10)),
         ], hull, collection, 0.010)
-        thicken_shell(nacelle, 0.08)
+        thicken_shell(nacelle, 0.10)
         loft_shell(f"NacelleSaddle_{side}", [
-            (-3.40, 0.70 * sign, 1.22 * sign, -0.06, 0.24),
-            (-5.00, 1.05 * sign, 1.48 * sign, -0.08, 0.26),
-            (-6.40, 1.28 * sign, 1.52 * sign, -0.06, 0.22),
-        ], mech, collection, 0.006)
-        add_hollow_bell(side, -6.95, y, 0.10, 0.92, mats, collection)
+            (-3.20, 0.90 * sign, 1.42 * sign, 0.02, 0.48),
+            (-4.80, 1.18 * sign, 1.54 * sign, 0.00, 0.50),
+            (-6.40, 1.32 * sign, 1.58 * sign, 0.04, 0.42),
+        ], hull, collection, 0.008)
+        loft_shell(f"NacelleFill_{side}", [
+            (-3.40, 0.58 * sign, 0.98 * sign, -0.08, 0.52),
+            (-5.20, 0.74 * sign, 1.24 * sign, -0.10, 0.54),
+            (-6.60, 0.90 * sign, 1.34 * sign, -0.04, 0.46),
+        ], hull, collection, 0.008)
+        add_hollow_bell(side, -6.95, y, 0.24, 1.05, mats, collection)
         loft_from_rings(f"Winglet_{side}", [
-            airfoil_ring(-0.55, 1.18 * sign, 0.12, 1.70, 0.42),
-            airfoil_ring(-0.95, 1.78 * sign, 0.18, 1.35, 0.26),
-            airfoil_ring(-1.40, 2.38 * sign, 0.26, 0.95, 0.14),
-            airfoil_ring(-1.85, 2.92 * sign, 0.34, 0.52, 0.08),
-        ], hull, collection, 0.008, cap=True)
+            airfoil_ring(-0.40, 1.28 * sign, 0.14, 1.85, 0.58),
+            airfoil_ring(-0.85, 1.88 * sign, 0.18, 1.45, 0.36),
+            airfoil_ring(-1.30, 2.42 * sign, 0.24, 1.02, 0.20),
+            airfoil_ring(-1.75, 2.88 * sign, 0.28, 0.58, 0.12),
+        ], hull, collection, 0.010, cap=True)
         loft_from_rings(f"Flap_{side}", [
-            airfoil_ring(-1.55, 1.55 * sign, 0.08, 0.55, 0.12),
-            airfoil_ring(-1.95, 2.55 * sign, 0.18, 0.38, 0.07),
+            airfoil_ring(-1.45, 1.62 * sign, 0.10, 0.62, 0.16),
+            airfoil_ring(-1.85, 2.52 * sign, 0.18, 0.42, 0.09),
         ], armor, collection, 0.004)
         add_folded_sheet(
             f"Pylon_{side}",
-            (-0.50, 1.16 * sign, -0.06), (-1.50, 1.52 * sign, -0.08),
-            (-1.50, 1.52 * sign, 0.20), (-0.50, 1.16 * sign, 0.22),
-            0.050, hull, collection, 0.004,
+            (-0.35, 1.22 * sign, -0.08), (-1.40, 1.62 * sign, -0.10),
+            (-1.40, 1.62 * sign, 0.26), (-0.35, 1.22 * sign, 0.28),
+            0.070, hull, collection, 0.004,
         )
         add_folded_sheet(
             f"BowCheek_{side}",
@@ -869,20 +873,14 @@ def build_lod(lod, mats):
             (4.90, 0.88 * sign, 0.32), (6.60, 0.32 * sign, 0.26),
             0.032, hull, collection, 0.004,
         )
-        add_cylinder(f"GunHouse_{side}", (5.55, 0.42 * sign, -0.06), 0.08, 0.95, mech, collection, vertices=10, bevel=0.005)
-        add_cylinder(f"GunBarrel_{side}", (6.40, 0.42 * sign, -0.06), 0.032, 0.70, armor, collection, vertices=8, bevel=0.003)
-        add_cylinder(f"RearGun_{side}", (-6.10, 0.55 * sign, 0.42), 0.04, 0.55, mech, collection, vertices=8, bevel=0.003)
+        add_cylinder(f"GunHouse_{side}", (5.70, 0.52 * sign, -0.04), 0.10, 1.10, mech, collection, vertices=10, bevel=0.005)
+        add_cylinder(f"GunBarrel_{side}", (6.70, 0.52 * sign, -0.04), 0.040, 0.90, armor, collection, vertices=8, bevel=0.003)
+        add_cylinder(f"RearGun_{side}", (-6.20, 0.68 * sign, 0.38), 0.048, 0.70, mech, collection, vertices=8, bevel=0.003)
         add_rcs_cluster(side, (-1.6, 1.72 * sign, 0.18), mats, collection, sign=sign)
         if lod <= 1:
             add_radiator_cassette(f"{side}House", (-4.40, 1.28 * sign, 0.46), lod, mats, collection, length=0.95, height=0.18, yaw=0.0)
 
-    add_folded_sheet(
-        "Cabin_Shoulder",
-        (4.40, -0.55, 1.08), (2.50, -0.55, 0.72),
-        (2.50, 0.55, 0.72), (4.40, 0.55, 1.08),
-        0.030, hull, collection, 0.004,
-    )
-    add_box("Repair_Patch", (1.15, -0.55, 0.68), (0.32, 0.16, 0.012), warning, collection, 0.002)
+    add_box("Repair_Patch", (1.15, -0.62, 0.78), (0.32, 0.16, 0.012), warning, collection, 0.002)
     add_sensor_dish("Dorsal", (1.35, 0.28, 0.92), mats, collection)
     add_cylinder("Comm_Mast", (-0.35, 0.0, 0.98), 0.035, 0.55, mech, collection, vertices=8, bevel=0.003, rot=(0, 0, 0))
     add_folded_sheet(
