@@ -66,7 +66,7 @@
     "audio:cue": 4
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "5e8f34fb3784dfb12835feeb20e64b4d439ae35c2324be5a1e381a89658d0d25",
+    "authoritativeHash": "8bc6b28158340d57822740b3cc04123e10a37e24c2d39d5f7aec80e622548ff7",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
