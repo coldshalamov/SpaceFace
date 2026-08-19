@@ -31,6 +31,16 @@ Working scene: headless `tools/blender/build_hornet_mtx.py`. Supported cameras i
 
 C52 implements 1 + 3.
 
+## C59 construction (closed interceptor, real openings)
+
+Shape-grammar failure being repaired: C54 closed loft was a blank dart (no hole,
+no throat, 6.36:1 missile). C56 hit the height/opening numbers with a black tent
+and a washer and got worse. This cycle raises the *hull stations* (~1.8x mid
+section), cuts three wells that start outside the skin, lines them with five-wall
+tubs, puts a low framed glass shell on the canopy rim, and gives each drive one
+spun bell with an opaque dark plug and rooted vanes. Dorsal slab kit removed.
+Texture ladder unchanged (1024/512/512).
+
 ## C56 construction (section + openings + drive)
 
 Shape-grammar failure being repaired: C54 closed loft traded the cage for a blank —

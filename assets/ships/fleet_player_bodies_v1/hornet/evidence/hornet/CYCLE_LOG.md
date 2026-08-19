@@ -45,4 +45,6 @@
 
 | 58 | **no** | see json | (none) | C54 form restored per the REVERT, carrying only the re-seated sockets and the texture ladder. Not a new form attempt, so it does not count. First attempt crashed Blender in igc64.dll during render setup after the LODs exported cleanly; retried. |
 
+| 59 | yes | 0CF06831 | REVERT/REVISE/REVISE | Raised C54 loft + Exact booleans. Hull 21,966 tris (held). Profile 5.02:1. Exact cuts shredded the loft into 26 shells; starboard is a plate cage again (20% enclosed). Bells read as washers. Not wired. |
+
 Hitch-plus / A-list: not met. Do not promote. Do not self-accept.
