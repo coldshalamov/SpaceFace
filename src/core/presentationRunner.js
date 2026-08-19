@@ -5,6 +5,10 @@ import { createRuntimeWitness, collectRuntimeWitnessSample } from './runtimeWitn
 import { LOOP_FIXED_DT } from './simulationRunner.js';
 import { mustRescheduleAfterFrame } from './frameLiveness.js';
 
+// Consecutive failing frames before the loop calls the picture dead. 30 is half a second at 60 Hz:
+// long enough that a single hitch, a context blip or one bad entity cannot trip it, short enough
+// that a player who is looking at a frozen world has not been looking at it for long.
+const PRESENTATION_STALL_FRAMES = 30;
 export const LOOP_LIFECYCLE_STATES = Object.freeze({
   FOREGROUND_VISIBLE: 'foreground-visible',
   FOREGROUND_OCCLUDED: 'foreground-occluded',
@@ -286,6 +290,13 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     lastTeardownErrorMessage: null,
     lastFrameError: null,
     frameErrorCount: 0,
+    // frameErrorCount is cumulative history: it answers "did this session ever throw".
+    // consecutiveFrameErrors is state: it answers "is the canvas dead right now". Those are
+    // different questions and one counter cannot carry both, which is why a renderer that threw
+    // on every frame for ten minutes used to be indistinguishable from one that hiccupped once.
+    consecutiveFrameErrors: 0,
+    presentationStalled: false,
+    presentationStallCount: 0,
   };
 
   const readWitnessSample = (into) => collectRuntimeWitnessSample(state, {
@@ -739,6 +750,16 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
         }
         diagnostics.renderUpdates++;
         renderedSnapshot = true;
+        // A frame reached the canvas, so whatever was wrong is not wrong now. Clear the run and
+        // the stall; leave the cumulative count alone, because it is the record that it happened.
+        diagnostics.consecutiveFrameErrors = 0;
+        if (diagnostics.presentationStalled) {
+          diagnostics.presentationStalled = false;
+          console.warn('[loop] presentation recovered after '
+            + `${diagnostics.presentationStallFrames || 0} frozen frame(s)`);
+          diagnostics.presentationStallFrames = 0;
+          frame._errs = 0;
+        }
         if (presentationJournal?.isClosed?.() === true) resetPendingJournal();
         else if (presentationAccepted) acknowledgePresentedJournal();
         else if (hasPendingJournal) diagnostics.journalRetainedFrameCount++;
@@ -751,8 +772,25 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       diagnostics.lastFrameError = err && typeof err.message === 'string' && err.message
         ? err.message.slice(0, 240)
         : String(err).slice(0, 240);
+      diagnostics.consecutiveFrameErrors = (diagnostics.consecutiveFrameErrors || 0) + 1;
+      diagnostics.presentationStallFrames = diagnostics.consecutiveFrameErrors;
       if (frame._errs <= 20) console.error('[loop] frame error:', err);
       else if (frame._errs === 21) console.error('[loop] further frame errors suppressed');
+      // Half a second of consecutive failures at 60 Hz. Below this it is a blip and suppressing the
+      // log is right; at or above it the 3D picture is frozen while the HUD keeps animating, and
+      // silence is the bug. Report the transition once, loudly, and keep the flag readable so the
+      // owner that can actually repair the latch — context restore, presentation scheduling — can
+      // see it. Never stop the loop and never skip work to keep the HUD alive: that hides the
+      // freeze instead of fixing it.
+      if (!diagnostics.presentationStalled
+        && diagnostics.consecutiveFrameErrors >= PRESENTATION_STALL_FRAMES) {
+        diagnostics.presentationStalled = true;
+        diagnostics.presentationStallCount++;
+        console.error('[loop] PRESENTATION STALLED: '
+          + `${diagnostics.consecutiveFrameErrors} consecutive frame errors — the 3D canvas is `
+          + 'frozen while the loop and HUD keep running. Last error: '
+          + `${diagnostics.lastFrameError}`);
+      }
     } finally {
       if (perf && typeof perf.recordFrameCallback === 'function') {
         perf.recordFrameCallback(measureNow() - callbackStart);
