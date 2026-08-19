@@ -142,6 +142,10 @@ export const factions = {
     bus.on('faction:repDelta', ({ factionId, delta, reason }) => {
       this.applyRep(factionId, delta, reason || 'event');
     });
+    bus.on('faction:bribe', (p) => {
+      const payload = (p && typeof p === 'object') ? p : {};
+      payload.result = this.bribeStanding(payload);
+    });
 
     // Killing a ship: lower rep with the victim's faction (if witnessed), raise rep a little with
     // that faction's enemies. Only the player's own kills move the player's standing.
@@ -242,6 +246,41 @@ export const factions = {
     }
     this._applySpillover(factionId, soft, reason);
     return soft;
+  },
+
+  bribeStanding(payload = {}) {
+    const state = this.state || _state;
+    const factionId = payload && typeof payload.factionId === 'string' ? payload.factionId : null;
+    if (!state || !factionId || !META_BY_ID[factionId]) {
+      return { ok: false, reason: 'unknown_faction', factionId, cost: 0, shortfall: 0 };
+    }
+    const cost = bribeCost(factionId);
+    if (!Number.isFinite(cost)) {
+      return { ok: false, reason: 'too_hated', factionId, cost: Infinity, shortfall: 0 };
+    }
+    if (cost <= 0) {
+      return { ok: false, reason: 'not_hostile', factionId, cost: 0, shortfall: 0 };
+    }
+    const credits = Math.max(0, state.player && state.player.credits | 0);
+    if (credits < cost) {
+      return { ok: false, reason: 'short', factionId, cost, shortfall: cost - credits };
+    }
+
+    this.bus.emit('economy:chargeCredits', { amount: cost, reason: 'bribe:standing' });
+    const rec = ensureFaction(state, factionId);
+    const toFloor = -29 - rec.rep;
+    const applied = toFloor > 0 ? this.applyRep(factionId, toFloor, 'bribe_standing') : 0;
+    rec.bribesPaid = (rec.bribesPaid | 0) + 1;
+    return {
+      ok: true,
+      reason: 'paid',
+      factionId,
+      cost,
+      shortfall: 0,
+      applied,
+      newRep: rec.rep,
+      newTier: rec.tier,
+    };
   },
 
   /** One round of cross-faction spillover (never recurses). Allies of a helped faction gain a

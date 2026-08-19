@@ -127,6 +127,7 @@ import { priceForecastSystem } from '../ui/priceForecast.js';          // PRICE_
 import { contractClausesSystem } from '../systems/contractClauses.js'; // COLLATERAL_AND_CLAUSES: clause breach → contract:clauseBroken (one penalty path)
 import { moralTrapSystem } from '../systems/moralTrap.js';             // MORAL_TRAP_CONTRACTS: mid-run reveal + binary choice → distinct shipped consequences
 import { lossLedger } from '../systems/lossLedger.js';                 // BP-01.1 WRECK_PROVENANCE: event-sourced loss recorder (assetLost/outpostRaided → ring buffer + wreck tag)
+import { provenanceLedger } from '../systems/provenanceLedger.js';     // J10 Footprint: event-sourced act→incident→standing consequence chains
 import { factionPresence } from '../systems/factionPresence.js';       // Depth Program K1: five additive faction presences + service/boarding seams
 import { bandRadio } from '../systems/bandRadio.js';                   // Depth Program A1: deterministic in-flight radio/ticker state
 import { v2FlavorRuntime } from '../systems/v2FlavorRuntime.js';       // Depth Program V2 physical-carrier flavor reachability
@@ -223,6 +224,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['wingmen', wingmen],
     ['intervention', intervention],
     ['lossLedger', lossLedger],
+    ['provenanceLedger', provenanceLedger],
     ['factionPresence', factionPresence],
     ['spawnBudget', spawnBudget],
     ['world', world],

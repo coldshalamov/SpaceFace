@@ -589,6 +589,10 @@ export const economy = {
     // ---- SOLE credits writer (§0.6) -------------------------------------------------------
     bus.on('economy:grantCredits', (p) => this.grantCredits((p && p.amount) || 0, p && p.reason));
     bus.on('economy:chargeCredits', (p) => this.chargeCredits((p && p.amount) || 0, p && p.reason));
+    bus.on('economy:payBounty', (p) => {
+      const payload = (p && typeof p === 'object') ? p : {};
+      payload.result = this.payBounty(payload);
+    });
 
     // ---- trade intents from UI ------------------------------------------------------------
     bus.on('ui:buy', (p) => { if (p) this.handleTrade(p.commodityId, 'buy', p.qty); });
@@ -1496,6 +1500,23 @@ export const economy = {
     const delta = p.credits - before;          // actual change (may be smaller if it floored at 0)
     this.bus.emit('credits:changed', { delta, reason: reason || 'charge', total: p.credits });
     return p.credits;
+  },
+
+  payBounty(payload = {}) {
+    const state = this.state;
+    const bounty = Math.max(0, Math.round(state.player && state.player.bounty || 0));
+    if (bounty <= 0) return { ok: false, reason: 'none', amount: 0, shortfall: 0 };
+    const credits = Math.max(0, state.player && state.player.credits | 0);
+    if (credits < bounty) {
+      return { ok: false, reason: 'short', amount: bounty, shortfall: bounty - credits };
+    }
+    this.chargeCredits(bounty, 'bounty:paid');
+    state.player.bounty = 0;
+    this.bus.emit('bounty:cleared', {
+      amount: bounty,
+      source: (payload && payload.source) || 'economy:payBounty',
+    });
+    return { ok: true, reason: 'paid', amount: bounty, shortfall: 0 };
   },
 
   // -------------------------------------------------------------------------------------------

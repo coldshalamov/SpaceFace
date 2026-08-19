@@ -5,6 +5,7 @@
 import { FACTION_META } from '../../data/factions.js';
 import { MISSION_STANDING_LADDER } from '../../data/missions.js';
 import { NEW_GAME } from '../../data/newGameDefaults.js';
+import { REP_REASON_LABELS } from '../../data/repReasons.js';
 import { shouldHideOwnRepDelta } from '../../story/endings/publicIdentity.js';
 import { escapeHtml } from '../comms.js';
 
@@ -25,22 +26,9 @@ const AGGRO_THRESHOLD = -150;
 const REP_CAP = 1000;
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 
-const REP_REASON_LABELS = {
-  init: 'new-save baseline',
-  complete_faction_mission: 'completed faction mission',
-  fail_faction_mission: 'failed or expired mission',
-  trade_at_faction_station: 'station trade',
-  caught_contraband: 'contraband scan',
-  rescue_faction_distress: 'distress rescue',
-  kill_faction_ship: 'faction ship kill',
-  kill_faction_enemy_ship: 'rival kill bounty',
-  war_won: 'war outcome support',
-  war_lost: 'war outcome loss',
-  decay: 'reputation decay',
-};
-
 export const FACTION_TIERS = TIERS;
 export const FACTION_AGGRO_THRESHOLD = AGGRO_THRESHOLD;
+export { REP_REASON_LABELS } from '../../data/repReasons.js';
 
 function safeRep(rep) {
   const n = Number(rep);

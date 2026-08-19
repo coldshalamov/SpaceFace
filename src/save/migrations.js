@@ -289,6 +289,21 @@ export const MIGRATIONS = [
       }
     },
   },
+  // v14: J10 Footprint provenance ledger persists append-only causal chains under data.provenance.
+  // Older saves have no rap-sheet history; seed an empty, normalized ledger shape.
+  {
+    from: 13,
+    to: 14,
+    fn(data) {
+      if (!data || typeof data !== 'object' || Array.isArray(data)) return;
+      const p = data.provenance;
+      const valid = p && typeof p === 'object' && !Array.isArray(p)
+        && Array.isArray(p.chains)
+        && p.openIncidents && typeof p.openIncidents === 'object' && !Array.isArray(p.openIncidents)
+        && Number.isFinite(Number(p.nextSeq));
+      if (!valid) data.provenance = { v: 1, chains: [], openIncidents: {}, nextSeq: 0 };
+    },
+  },
 ];
 
 /**

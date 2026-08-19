@@ -35,7 +35,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   'masslineTelemetry', 'masslineThreats', 'masslineImpacts', 'masslineSnares', 'masslineThrow',
   'masslineImpactDamage', 'lootShards', 'terrainAnchors', 'jettisonImpulse', 'mining',
   'fieldDepletion', 'cargo', 'fragileCargo', 'economy', 'automation', 'asteroidSites',
-  'asteroidFormations', 'wingmen', 'intervention', 'lossLedger', 'factionPresence',
+  'asteroidFormations', 'wingmen', 'intervention', 'lossLedger', 'provenanceLedger', 'factionPresence',
   'spawnBudget', 'world', 'heistFacilities', 'regionalEcology', 'encounterDirector', 'routeFollower',
   'travelLanes', 'livingPoiBehaviors', 'pirateRumor', 'ambushSignatures', 'bountyHunt',
   'stationSideEventDirector', 'stationContacts', 'stationContactLoadBoundary',

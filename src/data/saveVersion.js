@@ -11,4 +11,5 @@
 // v12: PQ-014/SF-15/W06 live NPC job runtime persists under data.npcJobs (miner/hauler/patrol jobs).
 // v13: J4 screen state memory — per-screen UI bags (tab/filter/layer/zoom/selection/scroll) under
 //      data.uiScreenMemory, so the map, ship and station open where the player left them.
-export const CURRENT_VERSION = 13;
+// v14: append-only crime/standing provenance chains persist under data.provenance (Footprint).
+export const CURRENT_VERSION = 14;

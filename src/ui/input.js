@@ -262,6 +262,12 @@ export function createUiInput(ctx, screenManager) {
         screenManager.pushScreen('ship');
         bus.emit('audio:cue', { id: 'ui_open' });
         return;
+      case 'F3':
+        // THE FOOTPRINT (grammar §10.5; build map §11.12 J10). Pausing instrument, same ruling.
+        ev.preventDefault();
+        screenManager.pushScreen('footprint');
+        bus.emit('audio:cue', { id: 'ui_open' });
+        return;
       case 'F7': {
         // Collision / socket / landing-contact debug overlay toggle (graphics spec §12.5).
         ev.preventDefault();

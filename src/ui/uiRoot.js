@@ -68,6 +68,8 @@ const SCREEN_MODULES = [
   // THE SHIP (frontend program §11.3 / SCREENS_B): the promoted shipworks stage, one shared
   // instance with the dock's shipworks destination (§0.5 — one WebGL mount, two hosts).
   { path: './ship/shipScreen.js', load: () => import('./ship/shipScreen.js'), name: 'shipScreen' },
+  // THE FOOTPRINT (frontend program §11.12 J10 / SCREENS_C §2): the board you trace (F3).
+  { path: './screens/footprint.js', load: () => import('./screens/footprint.js'), name: 'footprintScreen' },
   { path: './screens/starmap.js', load: () => import('./screens/starmap.js'), name: 'starmapScreen' },
   { path: './screens/localmap.js', load: () => import('./screens/localmap.js'), name: 'localmapScreen' },
   { path: './screens/techTree.js', load: () => import('./screens/techTree.js'), name: 'techTreeScreen' },

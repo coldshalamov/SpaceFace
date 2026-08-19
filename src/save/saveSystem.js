@@ -269,6 +269,7 @@ export const save = {
       ['formations', () => this._callSerialize('asteroidFormations') || clonePlain(state.formations || {})],
       ['aceMemory', () => this._callSerialize('aceMemory') || clonePlain(state.aceMemory || {})],
       ['lossLedger', () => this._callSerialize('lossLedger') || clonePlain(state.lossLedger || {})],
+      ['provenance', () => this._callSerialize('provenanceLedger') || clonePlain(state.provenance || {})],
       ['factionPresence', () => this._callSerialize('factionPresence') || clonePlain(state.factionPresence || {})],
       ['bandRadio', () => this._callSerialize('bandRadio') || clonePlain(state.bandRadio || {})],
       ['v2Flavor', () => this._callSerialize('v2Flavor') || clonePlain(state.v2Flavor || {})],
@@ -316,6 +317,7 @@ export const save = {
     data.formations = this._callSerialize('asteroidFormations') || clonePlain(state.formations || {});
     data.aceMemory = this._callSerialize('aceMemory') || clonePlain(state.aceMemory || {});
     data.lossLedger = this._callSerialize('lossLedger') || clonePlain(state.lossLedger || {});
+    data.provenance = this._callSerialize('provenanceLedger') || clonePlain(state.provenance || {});
     data.factionPresence = this._callSerialize('factionPresence') || clonePlain(state.factionPresence || {});
     data.bandRadio = this._callSerialize('bandRadio') || clonePlain(state.bandRadio || {});
     data.v2Flavor = this._callSerialize('v2Flavor') || clonePlain(state.v2Flavor || {});
@@ -2306,6 +2308,7 @@ export const save = {
       this._callDeserialize('asteroidFormations', data.formations);
       this._callDeserialize('aceMemory', data.aceMemory);
       this._callDeserialize('lossLedger', data.lossLedger);
+      this._callDeserialize('provenanceLedger', data.provenance);
       this._callDeserialize('aftermathWrecks', data.aftermathWrecks);
       this._callDeserialize('fieldDepletion', data.fieldDepletion);
       // Campaign-director durable state. Staged here so the director's save:loaded handler can
