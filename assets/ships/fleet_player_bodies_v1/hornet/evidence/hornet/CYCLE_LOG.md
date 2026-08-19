@@ -50,6 +50,9 @@
 | 67 | yes | see json | REVISE/REVISE/REVISE | Closed hull again. Dark liners. Canopy still a brick on skin. Clay still primitives. Not wired. |
 | 68 | yes | see json | REVISE | Deep loft well pinched the nose. Worse than 67. Well reverted. |
 | 69 | yes | see json | REVISE | Shallow saddle. Silhouette restored. Clay still primitives. Not wired. |
-| 70 | yes | see json | pending | Brighter hull, thicker wings. Best closed still this session. Clay still primitives. Not wired. |
+| 70 | yes | see json | REVISE/REVISE/REVISE | Brighter hull. Clay still faceted dart with card wings. Not wired. |
+| 73 | yes | see json | REVISE | FLOAT boolean merged inner/outer, 0 boundary. Thick slab wings. |
+| 74 | yes | see json | REVISE/REVISE/REVISE | Face pockets: 81 faces, 92 boundary, 2 shells. First visible cockpit well. Keep the well. |
+| 75 | yes | see json | pending | Seat on pocket floor. Well kept. Clay still a dart. Not wired. |
 
 Hitch-plus / A-list: not met. Do not promote. Do not self-accept.

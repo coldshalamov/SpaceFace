@@ -308,9 +308,9 @@ def create_materials():
             # Thin-shell dark dielectric. A solid tent with transmission reads as a hole
             # to the backdrop; a 1–2 cm shell with a little transmission shows the tub.
             if "Transmission Weight" in bsdf.inputs:
-                bsdf.inputs["Transmission Weight"].default_value = 0.18
+                bsdf.inputs["Transmission Weight"].default_value = 0.32
             elif "Transmission" in bsdf.inputs:
-                bsdf.inputs["Transmission"].default_value = 0.18
+                bsdf.inputs["Transmission"].default_value = 0.32
             if "IOR" in bsdf.inputs:
                 bsdf.inputs["IOR"].default_value = 1.45
             bsdf.inputs["Alpha"].default_value = 1.0
@@ -441,6 +441,54 @@ def subdivide_mesh(obj, cuts=1):
     return obj
 
 
+def safe_boolean_cut(host, name, loc, scale, rot=(0, 0, 0)):
+    """FAST/FLOAT difference with a mesh backup. Exact deleted the C66 hull."""
+    apply_modifiers(host)
+    backup = host.data.copy()
+    n0 = len(host.data.vertices)
+    bpy.ops.mesh.primitive_cube_add(location=loc, rotation=rot)
+    cutter = bpy.context.object
+    cutter.name = name
+    cutter.scale = scale
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    bpy.context.view_layer.objects.active = host
+    host.select_set(True)
+    mod = host.modifiers.new(name, "BOOLEAN")
+    mod.operation = "DIFFERENCE"
+    mod.object = cutter
+    solver_name = "DEFAULT"
+    for solver in ("FLOAT", "FAST"):
+        try:
+            mod.solver = solver
+            solver_name = solver
+            break
+        except Exception:
+            continue
+    mod_name = mod.name
+    try:
+        result = bpy.ops.object.modifier_apply(modifier=mod_name)
+        if result != {"FINISHED"} or host.modifiers.get(mod_name) is not None:
+            raise RuntimeError("cut apply did not finish")
+    except Exception as exc:
+        print(f"safe_boolean_cut skip {name}: {exc}")
+        remaining = host.modifiers.get(mod_name)
+        if remaining is not None:
+            host.modifiers.remove(remaining)
+        host.data = backup
+        bpy.data.objects.remove(cutter, do_unlink=True)
+        return False
+    n1 = len(host.data.vertices)
+    print(f"safe_boolean_cut {name}: {n0} -> {n1} verts solver={solver_name}")
+    if n1 < max(400, int(n0 * 0.50)) or n1 == 0:
+        print(f"safe_boolean_cut revert {name}: hull collapsed")
+        host.data = backup
+        bpy.data.objects.remove(cutter, do_unlink=True)
+        return False
+    bpy.data.objects.remove(cutter, do_unlink=True)
+    recalc_mesh(host)
+    return True
+
+
 def thicken_shell(obj, thickness=0.10):
     """Give a paper loft a wall so later cuts are pockets, not tunnels."""
     apply_modifiers(obj)
@@ -510,6 +558,7 @@ def delete_faces_in_box(obj, x0, x1, y0, y1, z0, z1, normal=None, normal_min=0.3
         if normal == "y-" and face.normal.y > -normal_min:
             continue
         victims.append(face)
+    print(f"delete_faces_in_box {len(victims)} faces")
     if victims:
         bmesh.ops.delete(bm, geom=victims, context="FACES")
         bmesh.ops.remove_doubles(bm, verts=list(bm.verts), dist=0.0005)
@@ -706,32 +755,40 @@ def add_manufactured_delta(name, sign, material, collection):
 
 
 def add_blended_interceptor_wing(name, sign, hull, armor, collection):
-    """Swept delta. Thick root buried in the beam, thin tip, separate flap with a slot.
-
-    No leading-edge card sheet: the airfoil loft is the wing. Two overlapping
-    plates read as service tiles, not a black second skin.
-    """
+    """Solid delta you can read from starboard: thick root, thinner tip, flap slot."""
     s = float(sign)
-    rings = [
-        densify_ring(airfoil_ring(1.05, 1.18 * s, 0.16, 3.45, 0.68), 2),
-        densify_ring(airfoil_ring(0.62, 1.88 * s, 0.10, 2.95, 0.44), 2),
-        densify_ring(airfoil_ring(0.12, 2.58 * s, 0.04, 2.35, 0.28), 2),
-        densify_ring(airfoil_ring(-0.38, 3.18 * s, -0.02, 1.85, 0.18), 2),
-        densify_ring(airfoil_ring(-0.78, 3.64 * s, -0.06, 1.48, 0.12), 2),
+    verts = [
+        (1.40, 1.18 * s, 0.34),
+        (-1.60, 1.18 * s, 0.24),
+        (-2.15, 3.52 * s, 0.10),
+        (0.10, 3.52 * s, 0.12),
+        (1.40, 1.18 * s, -0.26),
+        (-1.60, 1.18 * s, -0.20),
+        (-2.15, 3.52 * s, -0.06),
+        (0.10, 3.52 * s, -0.04),
     ]
-    wing = loft_from_rings(name, rings, hull, collection, 0.012, cap=True)
+    faces = [
+        (0, 1, 2, 3), (4, 7, 6, 5),
+        (0, 3, 7, 4), (1, 5, 6, 2),
+        (0, 4, 5, 1), (3, 2, 6, 7),
+    ]
+    mesh = bpy.data.meshes.new(f"{name}_Mesh")
+    mesh.from_pydata(verts, [], faces)
+    mesh.update()
+    wing = bpy.data.objects.new(name, mesh)
+    collection.objects.link(wing)
+    finish_mesh(wing, hull, 0.018)
     loft_from_rings(f"{name}_Flap", [
-        densify_ring(airfoil_ring(-1.62, 1.72 * s, 0.00, 0.70, 0.13), 2),
-        densify_ring(airfoil_ring(-2.28, 3.22 * s, -0.06, 0.48, 0.08), 2),
-    ], hull, collection, 0.005)
+        densify_ring(airfoil_ring(-1.72, 1.70 * s, -0.02, 0.62, 0.16), 2),
+        densify_ring(airfoil_ring(-2.30, 3.20 * s, -0.06, 0.44, 0.10), 2),
+    ], hull, collection, 0.006)
     add_folded_sheet(
         f"{name}_RootFillet",
-        (1.20, 1.08 * s, 0.34), (-0.10, 1.52 * s, 0.22),
-        (-0.10, 1.52 * s, -0.12), (1.20, 1.08 * s, -0.16),
-        0.070, hull, collection, 0.006,
+        (1.35, 1.05 * s, 0.38), (-0.15, 1.55 * s, 0.24),
+        (-0.15, 1.55 * s, -0.16), (1.35, 1.05 * s, -0.22),
+        0.080, hull, collection, 0.006,
     )
-    add_overlap_plate(f"{name}_TileA", (0.18, 1.72 * s, 0.22), (0.26, 0.13, 0.014), armor, collection, 0.003)
-    add_overlap_plate(f"{name}_TileB", (-0.55, 2.55 * s, 0.08), (0.20, 0.11, 0.012), armor, collection, 0.003)
+    add_overlap_plate(f"{name}_TileA", (0.15, 1.70 * s, 0.30), (0.28, 0.16, 0.018), armor, collection, 0.003)
     return wing
 
 
@@ -1046,6 +1103,14 @@ def build_lod(lod, mats):
     subdivide_mesh(hull_obj, 1)
     thicken_shell(hull_obj, 0.10)
     report_shells(hull_obj, "hull after solidify")
+    verts0 = len(hull_obj.data.vertices)
+    print(f"hull verts after solidify: {verts0}")
+    # Do not FLOAT/Exact the solidified hull: C66 emptied it, C73 merged the
+    # two shells and left 0 boundary. Pocket the outer skin only.
+    delete_faces_in_box(hull_obj, 2.70, 3.70, -0.36, 0.36, 0.78, 1.20, normal="z", normal_min=0.25)
+    delete_faces_in_box(hull_obj, 0.50, 1.20, -1.55, -1.05, 0.00, 0.48, normal="y-", normal_min=0.25)
+    delete_faces_in_box(hull_obj, -3.45, -2.65, 1.00, 1.50, 0.00, 0.42, normal="y+", normal_min=0.25)
+    report_shells(hull_obj, "hull after face pockets")
     bevel = hull_obj.modifiers.new("HullBevel", "BEVEL")
     bevel.width = 0.014
     bevel.segments = 2
@@ -1055,16 +1120,16 @@ def build_lod(lod, mats):
     wn.keep_sharp = True
     apply_modifiers(hull_obj)
 
-    add_five_wall_tub("CockpitTub", (3.18, 0.0, 0.72), (0.40, 0.18, 0.16), 0.040, mech, collection)
-    add_box("Cockpit_Seat", (3.10, 0.0, 0.62), (0.11, 0.07, 0.040), mech, collection, 0.003)
-    add_box("Cockpit_Back", (2.92, 0.0, 0.74), (0.022, 0.07, 0.07), armor, collection, 0.002)
-    add_box("Cockpit_Console", (3.42, 0.0, 0.70), (0.07, 0.10, 0.016), armor, collection, 0.002)
-    add_box("Cockpit_Coaming", (3.18, 0.0, 0.98), (0.48, 0.22, 0.014), armor, collection, 0.003)
-    add_thin_canopy("Canopy", 3.18, 0.0, 0.96, 0.95, 0.32, 0.22, mats, collection)
+    add_five_wall_tub("CockpitTub", (3.18, 0.0, 0.84), (0.34, 0.14, 0.08), 0.030, mech, collection)
+    add_box("Cockpit_Seat", (3.10, 0.0, 0.80), (0.10, 0.06, 0.035), mech, collection, 0.003)
+    add_box("Cockpit_Back", (2.96, 0.0, 0.88), (0.020, 0.06, 0.06), armor, collection, 0.002)
+    add_box("Cockpit_Console", (3.38, 0.0, 0.84), (0.06, 0.09, 0.014), armor, collection, 0.002)
+    add_box("Cockpit_Coaming", (3.18, 0.0, 0.96), (0.40, 0.18, 0.014), armor, collection, 0.003)
+    add_thin_canopy("Canopy", 3.18, 0.0, 0.92, 0.82, 0.28, 0.20, mats, collection)
 
-    add_five_wall_tub("AvionicsTub", (0.85, -1.16, 0.22), (0.28, 0.12, 0.12), 0.045, mech, collection)
-    add_box("AvionicsRack", (0.85, -1.16, 0.16), (0.18, 0.035, 0.05), armor, collection, 0.002)
-    add_five_wall_tub("RadiatorTub", (-3.05, 0.96, 0.18), (0.34, 0.12, 0.12), 0.045, mech, collection)
+    add_five_wall_tub("AvionicsTub", (0.85, -1.18, 0.22), (0.24, 0.10, 0.11), 0.040, mech, collection)
+    add_box("AvionicsRack", (0.85, -1.18, 0.16), (0.16, 0.032, 0.05), armor, collection, 0.002)
+    add_five_wall_tub("RadiatorTub", (-3.05, 0.98, 0.18), (0.28, 0.10, 0.11), 0.040, mech, collection)
 
     add_folded_sheet(
         "Chine_P",
@@ -1110,8 +1175,9 @@ def build_lod(lod, mats):
         )
         add_merged_nacelle(side, sign, lod, mats, collection)
         loft_from_rings(f"Canard_{side}", [
-            airfoil_ring(4.55, 0.50 * sign, 0.10, 0.72, 0.16),
-            airfoil_ring(4.22, 0.96 * sign, 0.08, 0.42, 0.08),
+            densify_ring(airfoil_ring(4.55, 0.42 * sign, 0.08, 0.82, 0.20), 2),
+            densify_ring(airfoil_ring(4.38, 0.72 * sign, 0.06, 0.58, 0.14), 2),
+            densify_ring(airfoil_ring(4.22, 0.98 * sign, 0.04, 0.38, 0.08), 2),
         ], hull, collection, 0.005)
         add_folded_sheet(
             f"GunCheek_{side}",
@@ -1123,8 +1189,7 @@ def build_lod(lod, mats):
         add_cylinder(f"BarrelJacket_{side}", (5.15, 0.40 * sign, -0.02), 0.032, 0.52, ceramic, collection, vertices=10, bevel=0.002)
         add_cylinder(f"BarrelIsolator_{side}", (5.48, 0.40 * sign, -0.02), 0.024, 0.12, mech, collection, vertices=8, bevel=0.002)
         add_rcs_cluster(side, (-1.15, 2.55 * sign, 0.10), mats, collection, sign=sign)
-        add_overlap_plate(f"WarnTip_{side}", (-1.35, 3.35 * sign, 0.02), (0.18, 0.08, 0.012), warning, collection, 0.002)
-        add_overlap_plate(f"AccentWing_{side}", (-0.35, 2.20 * sign, 0.12), (0.55, 0.06, 0.010), accent, collection, 0.002)
+        add_overlap_plate(f"WarnTip_{side}", (-1.35, 3.35 * sign, 0.02), (0.14, 0.06, 0.010), warning, collection, 0.002)
 
     if lod <= 1:
         add_radiator_cassette("PortFlank", (-3.05, -1.08, 0.16), lod, mats, collection, length=0.72, height=0.16, yaw=0.0)
@@ -1349,7 +1414,7 @@ def render_cycle(collection):
         "rear": ((-11.6, -4.6, 3.6), (-0.50, 0, 0.16), 36),
         "clay_three_quarter": ((10.8, -9.8, 5.2), (0.25, 0, 0.22), 36),
         "grazing_close": ((6.6, -5.4, 2.0), (1.15, 0, 0.35), 48),
-        "bay_interior": ((4.10, -1.20, 1.35), (3.18, 0.0, 0.78), 40),
+        "bay_interior": ((3.85, -0.85, 1.35), (3.18, 0.0, 0.82), 42),
         "drive_rear": ((-8.6, -2.2, 1.4), (-4.90, 0.72, 0.12), 50),
         "play_size": ((36, -32, 16), (0.20, 0, 0.16), 48),
         "orm_isolation": ((10.8, -9.8, 5.2), (0.25, 0, 0.22), 36),
