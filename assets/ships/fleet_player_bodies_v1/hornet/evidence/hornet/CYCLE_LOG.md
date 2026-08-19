@@ -63,6 +63,8 @@
 | 82 | yes | see json | (well missed) | Three volumes. Cabin well deleted 0 faces. |
 | 83 | yes | see json | REVISE/REVISE/REVISE | Three volumes + cabin well (196 boundary). Reviewers still read a dart. Not wired. |
 | 84 | yes | see json | KEEP/REVISE/REVISE | Wide waist + rectangular house. Clay KEEP on three volumes. Bells still balls. |
-| 85 | yes | FDC3636B | (unreviewed, wired candidate) | Bells recessed into transom as apertures. Live LOD0/1/2 copied. Ledger still six form rows. Three subagent reviews never written. Not quality-closed. Hitch untouched. |
+| 85 | yes | FDC3636B | 3Q REVISE / starboard REVISE / rear REVISE | Bells recessed. Live LOD0/1/2 copied. Rear still two dark disks on a hex lid. Not quality-closed. |
+| 86 | yes | see json | author REVISE | Transom cap removed. Solid cylinders as “clamps” still read as disks. Cabin well 264 boundary. Not wired. |
+| 87 | yes | B62E48BD | 3Q REVISE / starboard REVISE / rear REVISE | Whole aft face opened. Ringed throats with vanes. Reviewers still REVISE. Not wired. |
 
-Hitch-plus / A-list: not met. Wired candidate only. Do not mark PQ-050.01 done. Do not self-accept.
+Hitch-plus / A-list: not met. C85 remains the live game body. Do not mark PQ-050.01 done. Do not self-accept.

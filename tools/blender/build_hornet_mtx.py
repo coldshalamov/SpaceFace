@@ -553,9 +553,15 @@ def delete_faces_in_box(obj, x0, x1, y0, y1, z0, z1, normal=None, normal_min=0.3
             continue
         if normal == "z" and face.normal.z < normal_min:
             continue
+        if normal == "z-" and face.normal.z > -normal_min:
+            continue
         if normal == "y+" and face.normal.y < normal_min:
             continue
         if normal == "y-" and face.normal.y > -normal_min:
+            continue
+        if normal == "x-" and face.normal.x > -normal_min:
+            continue
+        if normal == "x+" and face.normal.x < normal_min:
             continue
         victims.append(face)
     print(f"delete_faces_in_box {len(victims)} faces")
@@ -573,9 +579,9 @@ def add_interior_vane(tag, cx, cy, cz, angle, s, material, collection):
     half = math.radians(6.8)
     a0, a1 = angle - half, angle + half
     sections = (
-        (-0.20 * s, 0.07 * s, 0.21 * s),
-        (-0.58 * s, 0.10 * s, 0.40 * s),
-        (-1.00 * s, 0.13 * s, 0.62 * s),
+        (-0.25 * s, 0.07 * s, 0.22 * s),
+        (-0.85 * s, 0.11 * s, 0.42 * s),
+        (-1.55 * s, 0.14 * s, 0.70 * s),
     )
     verts = []
     for xo, inner, outer in sections:
@@ -824,7 +830,7 @@ def add_station_hoop(tag, x, hw, hh, zc, flat, box, keel, material, collection, 
 def loft_volume(name, specs, material, collection, thick=0.12):
     """One manufactured hull volume. specs are (x, hw, hh, zc, flat, box, keel)."""
     rings = [
-        densify_ring(station_ring(x, 0, zc, hw, hh, flat=flat, box=box, keel=keel), 3)
+        densify_ring(station_ring(x, 0, zc, hw, hh, flat=flat, box=box, keel=keel), 5)
         for x, hw, hh, zc, flat, box, keel in specs
     ]
     obj = loft_from_rings(name, rings, material, collection, 0.010, cap=True)
@@ -1212,15 +1218,16 @@ def build_lod(lod, mats):
         (-4.20, 1.08, 1.18, 0.10, 0.04, 0.96, 0.04),
         (-4.95, 1.08, 1.18, 0.10, 0.02, 0.98, 0.02),
     ), hull, collection, 0.14)
-    loft_volume("Transom", (
-        (-4.82, 1.12, 1.22, 0.10, 0.02, 0.98, 0.02),
-        (-4.95, 1.12, 1.22, 0.10, 0.02, 0.98, 0.02),
-    ), hull, collection, 0.08)
+    # C85 Transom loft was a solid cap — rear read as two dark disks on a hex lid.
     subdivide_mesh(cabin, 1)
-    delete_faces_in_box(cabin, 3.10, 4.05, -0.55, 0.55, 0.55, 1.25)
+    subdivide_mesh(drive, 1)
+    delete_faces_in_box(cabin, 2.95, 4.20, -0.62, 0.62, 0.48, 1.35)
     delete_faces_in_box(waist, 0.50, 1.50, -1.95, -1.40, -0.15, 0.55, normal="y-", normal_min=0.15)
     delete_faces_in_box(drive, -3.50, -2.50, 0.95, 1.25, 0.20, 1.20, normal="z", normal_min=0.15)
+    # Whole aft face: one n-gon cap lives at y=0 and missed the two small boxes.
+    delete_faces_in_box(drive, -5.25, -4.60, -1.20, 1.20, -1.25, 1.45, normal="x-", normal_min=0.18)
     report_shells(cabin, "cabin after well")
+    report_shells(drive, "drive after throats")
     for obj in (cabin, waist, drive):
         bevel = obj.modifiers.new("HullBevel", "BEVEL")
         bevel.width = 0.012
@@ -1285,6 +1292,16 @@ def build_lod(lod, mats):
             0.036, hull, collection, 0.004,
         )
         add_hollow_bell(side, -4.16, 0.48 * sign, 0.10, 0.52, mats, collection)
+        ring = loft_from_rings(f"ThroatRing_{side}", [
+            ellipse_ring(-4.88, 0.48 * sign, 0.10, 0.46, 0.46, 32),
+            ellipse_ring(-5.02, 0.48 * sign, 0.10, 0.44, 0.44, 32),
+        ], armor, collection, 0.003, cap=False)
+        thicken_shell(ring, 0.028)
+        liner = loft_from_rings(f"ThroatLiner_{side}", [
+            ellipse_ring(-4.90, 0.48 * sign, 0.10, 0.34, 0.34, 28),
+            ellipse_ring(-5.06, 0.48 * sign, 0.10, 0.30, 0.30, 28),
+        ], ceramic, collection, 0.002, cap=False)
+        thicken_shell(liner, 0.018)
         loft_from_rings(f"Canard_{side}", [
             densify_ring(diamond_airfoil(4.96, 0.42 * sign, 0.08, 0.88, 0.24), 2),
             densify_ring(diamond_airfoil(4.68, 0.72 * sign, 0.06, 0.62, 0.15), 2),
@@ -1523,11 +1540,11 @@ def render_cycle(collection):
     views = {
         "three_quarter": ((10.8, -9.8, 6.4), (0.25, 0, 0.22), 36),
         "starboard": ((0.35, 14.6, 3.4), (0.35, 0, 0.18), 32),
-        "rear": ((-11.6, -4.6, 3.6), (-0.50, 0, 0.16), 36),
+        "rear": ((-12.8, -5.4, 3.2), (-0.40, 0, 0.14), 32),
         "clay_three_quarter": ((10.8, -9.8, 6.4), (0.25, 0, 0.22), 36),
         "grazing_close": ((6.6, -5.4, 2.0), (1.15, 0, 0.35), 48),
-        "bay_interior": ((4.20, -1.00, 1.55), (3.55, 0.0, 0.62), 38),
-        "drive_rear": ((-8.2, -1.8, 1.2), (-4.95, 0.48, 0.10), 48),
+        "bay_interior": ((3.52, 0.00, 0.70), (3.46, 0.0, 0.54), 22),
+        "drive_rear": ((-7.6, -1.5, 0.55), (-4.95, 0.48, 0.10), 46),
         "play_size": ((36, -32, 16), (0.20, 0, 0.16), 48),
         "orm_isolation": ((10.8, -9.8, 6.4), (0.25, 0, 0.22), 36),
         "normal_isolation": ((10.8, -9.8, 6.4), (0.25, 0, 0.22), 36),
