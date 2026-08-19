@@ -449,37 +449,46 @@ export function resolveObjectiveHudLayout(width, height) {
   const w = Math.max(320, Number(width) || 1280);
   const h = Math.max(240, Number(height) || 720);
   const compact = w <= 760 || h <= 620;
+  // Ultrawide safe frame (A_LIST_GAPS §4 / design/frontend/RESPONSIVE_STRATEGY.md): anchored
+  // instruments clamp to a centred 16:9-ish box so a 21:9 player is not asked to read the far
+  // corners. At ≤16:9 the inset is exactly 0 and every coordinate is unchanged. World
+  // projections still use the FULL viewport — only anchored readouts rebase.
+  const safeInsetX = Math.max(0, (w - h * 16 / 9) / 2);
+  const safeLeft = safeInsetX;
+  const safeRight = w - safeInsetX;
+  const safeWidth = safeRight - safeLeft;
   const edge = compact ? 8 : 12;
   const bottom = compact ? 96 : 12;
-  const objectiveWidth = Math.min(compact ? 300 : 272, w - edge * 2);
+  const objectiveWidth = Math.min(compact ? 300 : 272, safeWidth - edge * 2);
   const objectiveHeight = compact ? 68 : 84;
   const vitalsWidth = compact ? 152 : 272;
   const vitalsHeight = compact ? 124 : 170;
   const stackGap = 8;
   const rightWidth = compact ? 150 : 232;
   const rightHeight = compact ? 320 : 472;
-  const actionWidth = Math.min(compact ? 420 : 520, w - edge * 2);
+  const actionWidth = Math.min(compact ? 420 : 520, safeWidth - edge * 2);
   const actionHeight = compact ? 64 : 76;
   const layout = {
     viewport: { x: 0, y: 0, width: w, height: h },
+    safe: { insetX: safeInsetX, left: safeLeft, right: safeRight, width: safeWidth },
     objective: {
-      x: edge,
+      x: safeLeft + edge,
       y: Math.max(edge, h - bottom - vitalsHeight - stackGap - objectiveHeight),
       width: objectiveWidth,
       height: objectiveHeight,
     },
-    vitals: { x: edge, y: h - bottom - vitalsHeight, width: vitalsWidth, height: vitalsHeight },
-    action: { x: (w - actionWidth) / 2, y: h - (compact ? 72 : 88), width: actionWidth, height: actionHeight },
+    vitals: { x: safeLeft + edge, y: h - bottom - vitalsHeight, width: vitalsWidth, height: vitalsHeight },
+    action: { x: safeLeft + (safeWidth - actionWidth) / 2, y: h - (compact ? 72 : 88), width: actionWidth, height: actionHeight },
     rightDock: {
-      x: w - edge - rightWidth,
+      x: safeRight - edge - rightWidth,
       y: Math.max(edge, h - bottom - rightHeight),
       width: rightWidth,
       height: rightHeight,
     },
     centerSafe: {
-      x: Math.max(objectiveWidth + edge + 32, w * 0.28),
+      x: safeLeft + Math.max(objectiveWidth + edge + 32, safeWidth * 0.28),
       y: Math.max(72, h * 0.14),
-      width: Math.max(0, w - Math.max(objectiveWidth + edge + 32, w * 0.28) - Math.max(rightWidth + edge + 32, w * 0.2)),
+      width: Math.max(0, safeWidth - Math.max(objectiveWidth + edge + 32, safeWidth * 0.28) - Math.max(rightWidth + edge + 32, safeWidth * 0.2)),
       height: Math.max(0, h * 0.56),
     },
   };

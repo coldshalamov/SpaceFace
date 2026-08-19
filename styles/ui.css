@@ -11,6 +11,10 @@
   --font: "Segoe UI", system-ui, -apple-system, sans-serif;
   --mono: "Consolas", "SFMono-Regular", ui-monospace, monospace;
   --ui-scale: 1;
+  /* Responsive policy (A_LIST_GAPS §4): ultrawide anchors clamp to a centered safe frame. */
+  --sf-safe-inset-x: max(0px, calc((100vw - 100vh * 16 / 9) / 2));
+  /* Shared max content stage width for full-screen instruments; backdrops stay full-bleed. */
+  --sf-stage-max: 2200px;
 
   /* ===== Instrument grammar role tokens (design/frontend/INSTRUMENT_GRAMMAR.md §4, binding) =====
      Colour is assigned by MEANING, not by palette, so a screen cannot be restyled into
@@ -117,8 +121,8 @@ body.sf-flight-cursor #hud { cursor: none; }
   opacity: 0; transition: opacity 0.4s ease-in-out; }
 #sf-dock-overlay[hidden] { display: none !important; }
 #sf-dock-overlay.active { opacity: 1; }
-#toasts { left: 50%; bottom: 96px; top: auto; right: auto; z-index: 11; display: flex; flex-direction: column; gap: 4px; align-items: center; transform: translateX(-50%); pointer-events: none; }
-#alerts { left: 50%; top: 13%; transform: translateX(-50%); z-index: 1100; display: flex; flex-direction: column; gap: 6px; align-items: center; }
+#toasts { left: calc(50% + (var(--sf-safe-inset-x, 0px) * 0)); bottom: 96px; top: auto; right: auto; z-index: 11; display: flex; flex-direction: column; gap: 4px; align-items: center; transform: translateX(-50%); pointer-events: none; }
+#alerts { left: var(--sf-safe-inset-x, 0px); right: var(--sf-safe-inset-x, 0px); top: 13%; transform: none; z-index: 1100; display: flex; flex-direction: column; gap: 6px; align-items: center; }
 
 body.ui-modal-open #hud { opacity: 0; pointer-events: none; }
 body.ui-modal-open #modal-backdrop { display: block; opacity: 1; visibility: visible; pointer-events: auto; }
@@ -1058,8 +1062,15 @@ button:active { translate: 0 1px; }
    Every instrument uses the same three zones so muscle memory transfers between screens even
    though the centerpieces differ completely. Proportions per screen spec (12/58/30 etc. via
    grid-template-rows on .sf-instrument). The APRON always holds ≥1 verb; the STAGE is the
-   manipulable centerpiece. Class vocabulary follows grammar §8 (no banned substrings). */
+   manipulable centerpiece. Class vocabulary follows grammar §8 (no banned substrings).
+   J10+ screens: keep backdrop layers full-bleed and clamp reading zones to --sf-stage-max. */
 .sf-instrument { display: grid; grid-template-rows: 12fr 58fr 30fr; width: 100%; height: 100%; min-height: 0; }
+.sf-instrument > .sf-crest,
+.sf-instrument > .sf-stage,
+.sf-instrument > .sf-apron {
+  width: min(100%, var(--sf-stage-max));
+  margin-inline: auto;
+}
 .sf-crest { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 14px 22px 10px; }
 .sf-crest__title { font-family: var(--sf-display-face); font-weight: 700; font-size: 40px; line-height: 1.04; color: var(--sf-paper); }
 .sf-crest__line { font-family: var(--sf-subhead-face); font-weight: 600; font-size: 22px; line-height: 1.25; color: var(--sf-calm); }
@@ -1093,9 +1104,15 @@ button:active { translate: 0 1px; }
    child can still end up content-sized and clipped (vision-review blocker, frame 04). The flight
    host hides commerce: no Fleet/Buy segment (fleet rail stays, inspect-only). */
 .sf-ship { position: absolute; inset: 0; width: 100%; height: 100%; background: linear-gradient(160deg, #070c16 0%, #0b1220 100%); }
-.sf-ship .sx-sw { width: 100%; }
+.sf-ship .sx-sw { width: min(100%, var(--sf-stage-max)); margin-inline: auto; }
 .sf-ship .sx-sw--flight .sx-seg { display: none; }
 .sf-ship .sx-sw--flight .sx-sw__railstep { display: none; }
+/* Keep map backdrops full-bleed while clamping the reading columns on ultrawide. */
+#screens #sf-galaxymap .gm-head,
+#screens #sf-galaxymap .gm-body-container {
+  width: min(100%, var(--sf-stage-max));
+  margin-inline: auto;
+}
 
 /* 13 ─ sf-state : the four required data states (J3; uiPrimitives.dataState) --------------------
    EMPTY / LOADING / ERROR / DENIED. Each names what would fill it and carries a verb — a

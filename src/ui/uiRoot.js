@@ -1336,7 +1336,7 @@ function injectHudCss() {
   /* Bottom-left anchor is ONE flex column (SPEC3-36 three-anchor law): a contextual sub-column
      (.sf-leftcontext — mission tracker + objectives + nav readout, relocated from the old top
      stragglers) sits ABOVE the schematic + vitals (.sf-bars). Compositor-cheap: no shadow/transition. */
-  .sf-leftstack { position:absolute; left:22px; bottom:22px; display:flex; flex-direction:column;
+  .sf-leftstack { position:absolute; left:calc(22px + var(--sf-safe-inset-x, 0px)); bottom:22px; display:flex; flex-direction:column;
     gap:12px; align-items:flex-start; max-width:340px; }
   .sf-leftcontext { display:flex; flex-direction:column; gap:8px; align-items:flex-start; max-width:300px; }
   .sf-leftcontext:empty { display:none; }   /* collapses when every contextual readout is hidden */
@@ -1461,7 +1461,7 @@ function injectHudCss() {
   /* ===== bottom-right: tactical node map (radar) + target readout (§3D) ===== */
   /* Borderless: the radar reads as a raw projection. The canvas uses compact size in normal
      flight and switches to the larger tactical surface only while expanded. */
-  .sf-rightdock { position:absolute; right:22px; bottom:22px; display:flex; flex-direction:column; align-items:flex-end; gap:8px;
+  .sf-rightdock { position:absolute; right:calc(22px + var(--sf-safe-inset-x, 0px)); bottom:22px; display:flex; flex-direction:column; align-items:flex-end; gap:8px;
     contain:layout paint style; }
   .sf-radar-wrap { display:flex; flex-direction:column; align-items:center; gap:6px; contain:layout paint style; }
   .sf-radar { position:relative; width:var(--sf-radar-size, 220px); height:var(--sf-radar-size, 220px); border-radius:50%; overflow:hidden; cursor:pointer;
@@ -1744,9 +1744,9 @@ function injectHudCss() {
 
   @media (max-width: 760px), (max-height: 620px) {
     #pilot-portrait { width:54px; height:54px; top:10px; right:10px; }
-    #toasts { left:12px; right:12px; width:auto; transform:none; }
+    #toasts { left:calc(12px + var(--sf-safe-inset-x, 0px)); right:calc(12px + var(--sf-safe-inset-x, 0px)); width:auto; transform:none; }
     .sf-toast { width:auto; max-width:none; font-size:12px; padding:8px 10px; }
-    #alerts { top:84px; width:calc(100vw - 20px); }
+    #alerts { left:calc(10px + var(--sf-safe-inset-x, 0px)); right:calc(10px + var(--sf-safe-inset-x, 0px)); top:84px; width:auto; }
     .sf-alert { max-width:100%; font-size:10px; letter-spacing:.08em; white-space:normal; text-align:center; justify-content:center; }
 
     #action-bar { display:none !important; }
@@ -1769,7 +1769,7 @@ function injectHudCss() {
     .sf-ob-intro h1 { font-size:20px; }
     .sf-ob-intro p { font-size:13px; }
 
-    .sf-leftstack { left:8px; bottom:96px; max-width:calc(100vw - 16px); }
+    .sf-leftstack { left:calc(8px + var(--sf-safe-inset-x, 0px)); bottom:96px; max-width:calc(100vw - 16px); }
     .sf-bars { gap:7px; }
     .sf-schematic { width:64px; height:64px; }
     .sf-sch-hull { font-size:12px; }
@@ -1779,7 +1779,7 @@ function injectHudCss() {
     .sf-bar { width:78px; }
 
     #hud { --sf-dock-w:150px; --sf-radar-size:132px; }
-    .sf-rightdock { right:8px; bottom:96px; gap:5px; }
+    .sf-rightdock { right:calc(8px + var(--sf-safe-inset-x, 0px)); bottom:96px; gap:5px; }
     .sf-target__name { font-size:11px; }
     .sf-target__meta { font-size:10px; }
     .sf-radar-wrap { gap:4px; }
@@ -1892,7 +1892,7 @@ function injectHudCss() {
   }
 
   .sf-leftstack {
-    left:12px; bottom:12px; width:272px; max-width:calc(100vw - 24px); gap:8px;
+    left:calc(12px + var(--sf-safe-inset-x, 0px)); bottom:12px; width:272px; max-width:calc(100vw - 24px); gap:8px;
     align-items:stretch;
   }
   .sf-leftcontext {
@@ -2072,7 +2072,7 @@ function injectHudCss() {
   /* Slim instrument deck: speed/weapons + contextual chips. Permanent binding→action
      keycaps were removed — general keys live in Settings → Controls / Help. */
   .sf-command-deck {
-    position:absolute; left:50%; bottom:12px; transform:translateX(-50%); width:min(360px, calc(100vw - 640px));
+    position:absolute; left:calc(50% + (var(--sf-safe-inset-x, 0px) * 0)); bottom:12px; transform:translateX(-50%); width:min(360px, calc(100vw - 640px));
     min-width:220px; padding:4px 8px 2px;
     background:none; border:none; box-shadow:none !important;
   }
@@ -2183,7 +2183,7 @@ function injectHudCss() {
     /* Chromeless text needs a per-glyph scrim, not a card. Same idiom as .sf-firstuse. */
     --sf-ink: ${INK_SHADOW};
   }
-  .sf-rightdock { right:12px; bottom:12px; width:var(--sf-dock-w); align-items:stretch; gap:9px; }
+  .sf-rightdock { right:calc(12px + var(--sf-safe-inset-x, 0px)); bottom:12px; width:var(--sf-dock-w); align-items:stretch; gap:9px; }
   .sf-rightdock > * { flex:0 0 auto; width:100%; }
   .sf-overview {
     width:100%; gap:0; padding:3px 0;
@@ -2347,7 +2347,7 @@ function injectHudCss() {
     .sf-command-deck { width:min(320px, calc(100vw - 560px)); min-width:200px; }
   }
   @media (max-width:900px), (max-height:650px) {
-    .sf-leftstack { left:10px; bottom:72px; width:236px; }
+    .sf-leftstack { left:calc(10px + var(--sf-safe-inset-x, 0px)); bottom:72px; width:236px; }
     .sf-bars { width:236px; grid-template-columns:80px minmax(0, 1fr); padding:8px 9px 9px; }
     .sf-schematic { width:72px; height:72px; }
     .sf-schematic .sf-sch-ring { inset:0; width:72px; height:72px; }
@@ -2360,7 +2360,7 @@ function injectHudCss() {
        test/j07-hud-contract.test.mjs, which caught exactly that when this rule was first written. */
     #hud { --sf-dock-w:200px; --sf-radar-size:200px; }
     .sf-radar canvas { width:200px !important; height:200px !important; }
-    .sf-rightdock { right:10px; bottom:72px; }
+    .sf-rightdock { right:calc(10px + var(--sf-safe-inset-x, 0px)); bottom:72px; }
     .sf-overview-row__name { max-width:64px; }
     .sf-command-deck { bottom:8px; width:min(360px, calc(100vw - 24px)); min-width:0; }
     .sf-cluster { position:relative; left:auto; bottom:auto; width:auto; transform:none; }
@@ -2424,7 +2424,7 @@ function injectHudCss() {
      sits above it (see the bottom:88px override below). padding-bottom reserves room for the slot
      name labels, which hang 11px BELOW their slot box — without it they render past the viewport
      edge and every slot ships unlabelled. */
-  .sf-prail { position:absolute; left:50%; bottom:10px; transform:translateX(-50%);
+  .sf-prail { position:absolute; left:calc(50% + (var(--sf-safe-inset-x, 0px) * 0)); bottom:10px; transform:translateX(-50%);
     display:flex; gap:14px; align-items:flex-end; pointer-events:none; z-index:6;
     padding-bottom:14px; }
   .sf-prail__band { display:flex; flex-direction:column; align-items:center; gap:3px; }
