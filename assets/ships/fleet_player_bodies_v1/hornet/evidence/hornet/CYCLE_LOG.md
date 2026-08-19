@@ -80,5 +80,10 @@
 | 99 | yes | see json | 3Q REVISE / rear REVISE / starboard author REVISE | One continuous hull. Large well. Open cans. Still not KEEP. Not wired. |
 | 100 | yes | see json | 3Q REVISE / starboard REVISE / rear REVISE | Raised seat, flipped liner, thicker wing. Glass yes; seat not named at 3Q. Not wired. |
 | 101 | yes | see json | author REVISE | Teardrop wing, orange seat, dark cans. Still not KEEP. Not wired. |
+| 102 | yes | B429FF51 | 3Q REVISE / starboard REVISE / rear REVISE | Boolean hit; inner-shell greenhouse stayed closed. Coaming was a lid. Kite wing. Open cans, pale lips. Not wired. |
+| 103 | yes | see json | 3Q REVISE / starboard REVISE / rear REVISE | 1 shell, 172 boundary. Named peach seat in an open crate. Chimney from starboard. Wing lost thickness. Not wired. |
+| 104 | yes | see json | 3Q REVISE / starboard REVISE / rear REVISE | Seat through glass lid. Chimney gone. Fat dark wing slab. Cans still pale and close. Clay still a crate. Not wired. |
+| 105 | yes | see json | author REVISE pending | Raked glass, split cans, dark vanes. 3Q still a crate. Not wired. |
+| 106 | yes | see json | author REVISE pending | Coaming off. Open well, named peach seat, split dark-lip cans. Wing still a slab. Not wired. |
 
 Hitch-plus / A-list: not met. C85 remains the live game body. Do not mark PQ-050.01 done. Do not self-accept.
