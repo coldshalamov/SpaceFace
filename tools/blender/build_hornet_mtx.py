@@ -838,7 +838,7 @@ def add_blended_interceptor_wing(name, sign, hull, armor, collection):
         for y, le, chord, thick in main
     ]
     wing = loft_from_rings(name, rings, hull, collection, 0.008, cap=True)
-    inset_large_faces(wing, thickness=0.045, depth=0.012, min_area=0.14)
+    # Do not inset the wing loft: C78 crumpled the starboard shading into a black void.
     # Separate flap, dropped so the slot is a dark line from three-quarter.
     flap = (
         (1.42, -0.78, 0.80, 0.16),
@@ -866,9 +866,18 @@ def add_blended_interceptor_wing(name, sign, hull, armor, collection):
             0.016, 0.09, hull, collection, 8, 0.001,
             rot=(math.pi / 2, 0, 0),
         )
-    add_overlap_plate(f"{name}_TileA", (0.20, 1.65 * s, 0.30), (0.26, 0.14, 0.014), armor, collection, 0.003)
-    add_overlap_plate(f"{name}_TileB", (-0.30, 2.30 * s, 0.18), (0.22, 0.12, 0.012), armor, collection, 0.003)
-    add_overlap_plate(f"{name}_TileC", (-0.70, 2.95 * s, 0.11), (0.18, 0.10, 0.011), armor, collection, 0.003)
+    add_overlap_plate(f"{name}_TileA", (0.20, 1.65 * s, 0.32), (0.26, 0.14, 0.022), armor, collection, 0.003)
+    add_overlap_plate(f"{name}_TileB", (-0.30, 2.30 * s, 0.20), (0.22, 0.12, 0.020), armor, collection, 0.003)
+    add_overlap_plate(f"{name}_TileC", (-0.70, 2.95 * s, 0.13), (0.18, 0.10, 0.018), armor, collection, 0.003)
+    add_overlap_plate(f"{name}_TileD", (0.55, 1.45 * s, 0.34), (0.20, 0.10, 0.018), armor, collection, 0.003)
+    add_folded_sheet(
+        f"{name}_UnderSpar",
+        (0.40, 1.40 * s, -0.18),
+        (-1.10, 3.10 * s, -0.08),
+        (-1.00, 3.10 * s, -0.02),
+        (0.50, 1.40 * s, -0.08),
+        0.028, hull, collection, 0.003,
+    )
     return wing
 
 
