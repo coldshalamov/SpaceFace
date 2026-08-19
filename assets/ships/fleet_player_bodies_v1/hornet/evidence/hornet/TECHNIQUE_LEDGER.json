@@ -3,7 +3,7 @@
   "shipId": "hornet",
   "candidateHash": "FDC3636BFC74FA0204D96AE0CE49A4F1D713AB040C74563CB07037B64EB37682",
   "cycle": 85,
-  "notes": "Form close for PQ-050.01 wire. Surface rows stay open. Hitch-plus not claimed.",
+  "notes": "C85 live candidate, not quality-closed. Only six form rows of the player-flyable mandate. C85 unreviewed. Hitch-plus not claimed.",
   "rows": [
     {"id": "MTX-02", "state": "implemented", "still": "assets/ships/fleet_player_bodies_v1/hornet/evidence/hornet/cycles/cycle_85/clay_three_quarter.png", "clayConfirm": "pass", "forbiddenFakeAbsent": true, "notes": "Three volumes: needle cabin, wide waist, constant rectangular drive house."},
     {"id": "MTX-03", "state": "implemented", "still": "assets/ships/fleet_player_bodies_v1/hornet/evidence/hornet/cycles/cycle_85/three_quarter.png", "clayConfirm": "pass", "forbiddenFakeAbsent": true, "notes": "Cabin deck face-delete well, 176 boundary, 2 shells."},

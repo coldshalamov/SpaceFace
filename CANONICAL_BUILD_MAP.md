@@ -66,36 +66,32 @@ disjoint files. No coordinator, task-long reservation, or worktree is required.
   leaves that need a human or a headed machine you do not have may be recorded `unproven` and
   skipped; do not stall the campaign on them.
 
-**PQ-050 campaign checkpoint (2026-08-19, playable handoff):** owner asked to
-checkpoint, wire the next ship, and keep the game playable even if bodies are
-still sub-optimal. Hitch/Kestrel stays frozen. Stay off INFERENCE, the
-dock/hulk remaster, and the expansion-research brief.
+**PQ-050 campaign checkpoint (2026-08-19, honesty pass):** Hitch/Kestrel stays
+frozen. Stay off INFERENCE, the dock/hulk remaster, and the expansion-research
+brief. A live copy is not a quality-close.
 
-- **Hornet (`PQ-050.01`)** cycle 85 is live. Clay reads as three assembled
-  volumes (needle cabin, wide waist, rectangular drive house) with a cabin
-  well, lofted wings, and throats set into the transom. **Wired** to
-  `wholeships/hornet_production_v1.glb` (+ LOD1/LOD2). Hitch/Kestrel stays
-  frozen. Surface still faceted; not Hitch-plus art.
+- **Hornet (`PQ-050.01`)** cycle 85 is a **wired candidate, not quality-closed**.
+  Ledger has six form rows (MTX-02/03/04/06/07/08) against a ~50-row
+  player-flyable mandate. Cycle 85 stills exist; three subagent reviews were
+  never written. Hitch-plus is not met. Live files stay so the game has a body.
 - **Drifter (`PQ-050.02`)** received three of seven campaign passes (cycles
-  18–20). Cycle 20 is the live candidate. **Wired** to
-  `wholeships/drifter_production_v1.glb` (+ LOD1/LOD2) so the game loads this
-  body. Reviews still said pancake dart / card winglets / empty cones. Not
-  accepted art.
+  18–20). Cycle 20 is the live candidate. Clay still reads as a pancake dart
+  with card winglets and empty cones. **Not accepted art.** Resume here.
 - **Remaining ships** have not had this campaign's seven-pass treatment.
-  Resume at Ranger (`PQ-050.03`) and continue the ordered leaf list through
-  Survey pin (`PQ-050.22`). One ship at a time. Hitch stays untouched.
-- Quality remaining on every unwired/unfinished leaf, including a later
-  Drifter return: closed walkable hull, openings you can see into,
-  lofted wings/nacelles, manufactured drive throats, unique surfaces, then
-  wire only that ship. A factory loft with boxes still does not close a leaf.
+  After Drifter closes, Ranger (`PQ-050.03`) through Survey pin (`PQ-050.22`).
+  One ship at a time. Hitch stays untouched.
+- Quality remaining on every unfinished leaf: closed walkable hull, openings
+  you can see into, lofted wings/nacelles, manufactured drive throats, unique
+  surfaces, MTX ledger bound to the close hash, five valid reviewed cycles,
+  then wire only that ship. A factory loft with boxes still does not close a leaf.
 - Do not run the all-fleet promote script. Do not overwrite Hitch.
 
 Remaining PQ-050 leaves (one ship at a time; Hitch/Kestrel frozen):
 
 | Leaf | Ship | This campaign |
 |---|---|---|
-| `.01` | Hornet | **done + wired** (cycle 85). Three volumes, cabin well, lofted wings, transom throats. |
-| `.02` | Drifter | three of seven, cycle 20 live, four passes + polish still owed |
+| `.01` | Hornet | wired candidate, **not quality-closed** (ledger incomplete, C85 unreviewed) |
+| `.02` | Drifter | three of seven, cycle 20 live, remaining cycles + polish still owed |
 | `.03` | Ranger | not started |
 | `.04` | Ironback | not started |
 | `.05` | Bastion | not started |

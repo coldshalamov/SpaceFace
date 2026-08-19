@@ -6396,7 +6396,7 @@
       "priority": 305,
       "title": "Finish and wire Hornet (player interceptor)",
       "kind": "implementation",
-      "state": "done",
+      "state": "implemented",
       "dependsOn": [],
       "mutexes": [
         "blender",
@@ -6414,7 +6414,7 @@
         "npm run check:baseline"
       ],
       "receiptRefs": [],
-      "brief": "Finish Hornet only. Full MTX contract including raised-bar MTX-55–67. At least five full-job cycles with three valid full-model stills and three subagent reviews each (MODEL_ADVERSARIAL_REVIEW_WORKFLOW.md). Implement every revise each cycle. Delete leftover iter stills. Then copy only Hornet's three LODs. Zoomed gray crops and factory lofts do not close this leaf. Hitch stays untouched."
+      "brief": "Hornet C85 is a wired candidate, not a quality-close: ledger has MTX-02/03/04/06/07/08 only, C85 has no three subagent reviews, Hitch-plus unmet. Remaining: complete the player-flyable MTX ledger bound to the close hash, five valid reviewed cycles, then recopy only Hornet LOD0/1/2 if the body changes. Zoomed gray crops and factory lofts do not close this leaf. Hitch stays untouched."
     },
     {
       "id": "PQ-050.02",
@@ -6442,7 +6442,7 @@
         "npm run check:baseline"
       ],
       "receiptRefs": [],
-      "brief": "Polish Drifter only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
+      "brief": "Drifter C20 is a wired pancake-dart candidate, not a quality-close. Remaining: three workboat volumes (cabin / walkable hold / rectangular drive house), face-delete wells, lofted fat-root winglets, nacelle throats recessed in transoms, unique surfaces, MTX ledger bound to the close hash, five valid reviewed cycles. Recopy only this ship's three LODs if the body closes. Hitch stays untouched. Do not copy Hornet's needle."
     },
     {
       "id": "PQ-050.03",

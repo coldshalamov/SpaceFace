@@ -63,6 +63,6 @@
 | 82 | yes | see json | (well missed) | Three volumes. Cabin well deleted 0 faces. |
 | 83 | yes | see json | REVISE/REVISE/REVISE | Three volumes + cabin well (196 boundary). Reviewers still read a dart. Not wired. |
 | 84 | yes | see json | KEEP/REVISE/REVISE | Wide waist + rectangular house. Clay KEEP on three volumes. Bells still balls. |
-| 85 | yes | FDC3636B | (wired) | Bells recessed into transom as apertures. Wired LOD0/1/2. Hitch untouched. |
+| 85 | yes | FDC3636B | (unreviewed, wired candidate) | Bells recessed into transom as apertures. Live LOD0/1/2 copied. Ledger still six form rows. Three subagent reviews never written. Not quality-closed. Hitch untouched. |
 
-Hitch-plus / A-list: not met. Do not promote. Do not self-accept.
+Hitch-plus / A-list: not met. Wired candidate only. Do not mark PQ-050.01 done. Do not self-accept.
