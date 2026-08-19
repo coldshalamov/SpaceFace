@@ -98,6 +98,10 @@ class El {
 
   get id() { return this._attrs.get('id') || ''; }
   set id(v) { this._attrs.set('id', String(v)); }
+  get attributes() {
+    return Array.from(this._attrs.entries()).map(([name, value]) => ({ name, value }));
+  }
+  get parentNode() { return this.parent; }
 
   get textContent() {
     // Text and elements interleave, so text has to live IN the child list in document order. An
@@ -134,6 +138,30 @@ class El {
     }
   }
   appendChild(c) { c.parent = this; this.children.push(c); return c; }
+  replaceChild(next, prev) {
+    const idx = this.children.indexOf(prev);
+    if (idx < 0) throw new Error('harness: replaceChild missing old child');
+    next.parent = this;
+    this.children[idx] = next;
+    if (prev && typeof prev === 'object') prev.parent = null;
+    return prev;
+  }
+  insertAdjacentHTML(position, html) {
+    const where = String(position || '').toLowerCase();
+    const nodes = parseHTML(String(html == null ? '' : html));
+    if (where === 'beforeend') {
+      for (const node of nodes) { node.parent = this; this.children.push(node); }
+      return;
+    }
+    if (where === 'afterbegin') {
+      for (let i = nodes.length - 1; i >= 0; i -= 1) {
+        nodes[i].parent = this;
+        this.children.unshift(nodes[i]);
+      }
+      return;
+    }
+    throw new Error(`harness: unsupported insertAdjacentHTML position ${position}`);
+  }
   focus() { globalThis.document.activeElement = this; }
   getBoundingClientRect() { return { left: 0, top: 0, width: this.clientWidth, height: this.clientHeight }; }
   getContext() { return this._ctx || (this._ctx = createRecordingContext()); }
@@ -700,6 +728,10 @@ function mountWith(state, { busEvents = [] } = {}) {
   assert.equal(avail.history.available, false,
     'History must stay unavailable without a selected World Site ledger');
   assert.equal(avail.travel.available, false, 'with no route there is nothing to show under Travel');
+  assert.match(avail.economy.reason, /memory and model beacons/i,
+    'Economy reason should describe dual-source beacon lanes');
+  assert.match(avail.threat.reason, /events, holdings and regional dossiers/i,
+    'Threat reason should reflect the expanded dossier scope');
 
   const { root } = mountWith(state);
   galaxyMapScreen._setTab('history');

@@ -30,7 +30,7 @@ import {
   sectorGlobalOrigin,
   SECTOR_ORIGIN_LATTICE_WU,
 } from '../data/sectorCoordinates.js';
-import { zonesForSector, zoneTypeMeta, zoneThreat } from '../data/sectorZones.js';
+import { zonesForSector, zoneTypeMeta, zoneThreat, zoneAt } from '../data/sectorZones.js';
 import { MAP_FOCUS, takeMapOpenIntent, normalizeMapFocus } from './mapAuthority.js';
 import { enhanceSelects, dataStateHtml } from './uiPrimitives.js';
 import { entityAttr } from './entityResolver.js';
@@ -47,8 +47,16 @@ import { sectorExplorationProgress } from '../world/explorationJournal.js';
 import { mapFactionPresenceNodes } from '../data/factionPresence.js';
 import { sectorSignalFor, forecastTransitFor } from '../systems/sectorSim.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
+import { conflictPairsForSector } from '../data/conflictZones.js';
+import { isPlayerWanted, heatLevelFor, heatClearSecondsForLevel } from '../systems/heat.js';
+import { regionalEcologyReadout } from '../systems/regionalEcology.js';
+import { REGIONAL_ECONOMY_PROFILES } from '../data/regionalEconomyProfiles.js';
+import { claimDefenseRating } from '../systems/claims.js';
 import { bestKnownSellAtStations, knownStationQuotes, AGE_HOLLOW_S } from './marketIntelligence.js';
-import { rankTradeRoutes, LocalSpaceIntel, projectTrack } from './navigation/localSpaceMapModel.js';
+import { LocalSpaceIntel, projectTrack } from './navigation/localSpaceMapModel.js';
+import { buildTradeLanesModel as buildCargoDeckTradeLanesModel } from './navigation/cargoDeck.js';
+
+export { buildCargoDeckTradeLanesModel as buildTradeLanesModel };
 // Wave 2 — the chart's camera and its always-present navigation readout, both pure modules.
 // galaxyMap.js consumes them; it never reimplements their maths (ADR D3/D4).
 import {
@@ -2170,6 +2178,7 @@ const CSS = `
   --mf-line-3: #66645d;
   --mf-stamp: #8a857a;
   --mf-worklight-dim: rgba(219, 152, 56, .12);
+  --gm-apron-h: clamp(168px, 26vh, 232px);
 
   position: absolute;
   inset: 0;
@@ -2395,6 +2404,65 @@ const CSS = `
 }
 #sf-galaxymap .gm-level b { color: var(--accent); font-weight: 500; }
 
+#sf-galaxymap .gm-weather {
+  min-width: 182px;
+  max-width: 300px;
+  display: grid;
+  gap: 3px;
+  align-self: center;
+}
+#sf-galaxymap .gm-weather-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+#sf-galaxymap .gm-weather-word {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--accent-3);
+}
+#sf-galaxymap .gm-weather[data-weather-level="quiet"] .gm-weather-word { color: var(--accent-2); }
+#sf-galaxymap .gm-weather[data-weather-level="working"] .gm-weather-word { color: var(--warn); }
+#sf-galaxymap .gm-weather[data-weather-level="hot"] .gm-weather-word { color: var(--danger); }
+#sf-galaxymap .gm-weather-data {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: .08em;
+  color: var(--ink-dim);
+}
+#sf-galaxymap .gm-weather-bar {
+  position: relative;
+  height: 5px;
+  border: 1px solid var(--mf-line-2);
+  background: #0f1214;
+  overflow: hidden;
+}
+#sf-galaxymap .gm-weather-seg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+}
+#sf-galaxymap .gm-weather-seg--combat {
+  background: linear-gradient(90deg, rgba(237, 105, 97, .9), rgba(227, 161, 61, .92));
+}
+#sf-galaxymap .gm-weather-seg--civil {
+  background: linear-gradient(90deg, rgba(86, 187, 178, .52), rgba(86, 187, 178, .18));
+  mix-blend-mode: screen;
+}
+#sf-galaxymap .gm-weather-terms {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: .04em;
+  color: var(--ink-mute);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 #sf-galaxymap .gm-hint-btn {
   flex: 0 0 auto;
   width: 24px;
@@ -2502,6 +2570,9 @@ const CSS = `
   display: flex;
   flex: 1;
   min-height: 0;
+  width: 100%;
+  max-width: var(--sf-stage-max, 1680px);
+  margin: 0 auto;
 }
 
 /* ---- Left rail: overlays + market intel ----------------------------------------------------- */
@@ -2538,7 +2609,21 @@ const CSS = `
 #sf-galaxymap .gm-layer-buttons {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 8px;
+}
+#sf-galaxymap .gm-layer-bank {
+  border: 1px solid var(--mf-line-1);
+  background: linear-gradient(180deg, rgba(255, 255, 255, .012), rgba(255, 255, 255, 0));
+  padding: 7px 7px 6px;
+}
+#sf-galaxymap .gm-layer-bank-title {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+  margin-bottom: 6px;
+  opacity: .95;
 }
 #sf-galaxymap .gm-layer-btn {
   display: grid;
@@ -2591,18 +2676,22 @@ const CSS = `
 #sf-galaxymap .gm-layer-btn[data-layer="route"] .gm-layer-state    { border-color: #e8a33d; }
 #sf-galaxymap .gm-layer-btn[data-layer="mission"] .gm-layer-state  { border-color: #ffc064; }
 #sf-galaxymap .gm-layer-btn[data-layer="market"] .gm-layer-state   { border-color: #58c98a; }
+#sf-galaxymap .gm-layer-btn[data-layer="events"] .gm-layer-state   { border-color: #d184ea; }
 #sf-galaxymap .gm-layer-btn[data-layer="security"] .gm-layer-state { border-color: #ed6961; }
 #sf-galaxymap .gm-layer-btn[data-layer="faction"] .gm-layer-state  { border-color: #b092e8; }
 #sf-galaxymap .gm-layer-btn[data-layer="hazard"] .gm-layer-state   { border-color: #e0763d; }
 #sf-galaxymap .gm-layer-btn[data-layer="services"] .gm-layer-state { border-color: #56bbb2; }
+#sf-galaxymap .gm-layer-btn[data-layer="holdings"] .gm-layer-state { border-color: #8ec47a; }
 #sf-galaxymap .gm-layer-btn[data-layer="discovery"] .gm-layer-state{ border-color: #8ea6c8; }
 #sf-galaxymap .gm-layer-btn[data-layer="route"].active .gm-layer-state    { background: #e8a33d; }
 #sf-galaxymap .gm-layer-btn[data-layer="mission"].active .gm-layer-state  { background: #ffc064; }
 #sf-galaxymap .gm-layer-btn[data-layer="market"].active .gm-layer-state   { background: #58c98a; }
+#sf-galaxymap .gm-layer-btn[data-layer="events"].active .gm-layer-state   { background: #d184ea; }
 #sf-galaxymap .gm-layer-btn[data-layer="security"].active .gm-layer-state { background: #ed6961; }
 #sf-galaxymap .gm-layer-btn[data-layer="faction"].active .gm-layer-state  { background: #b092e8; }
 #sf-galaxymap .gm-layer-btn[data-layer="hazard"].active .gm-layer-state   { background: #e0763d; }
 #sf-galaxymap .gm-layer-btn[data-layer="services"].active .gm-layer-state { background: #56bbb2; }
+#sf-galaxymap .gm-layer-btn[data-layer="holdings"].active .gm-layer-state { background: #8ec47a; }
 #sf-galaxymap .gm-layer-btn[data-layer="discovery"].active .gm-layer-state{ background: #8ea6c8; }
 
 #sf-galaxymap .gm-rail-commodity {
@@ -3179,6 +3268,8 @@ const CSS = `
 #sf-galaxymap[data-layout="compact"] .gm-title { font-size: 13px; }
 #sf-galaxymap[data-layout="compact"] .gm-stamp { display: none; }
 #sf-galaxymap[data-layout="compact"] .gm-search-container { max-width: 220px; }
+#sf-galaxymap[data-layout="compact"] .gm-weather { min-width: 146px; max-width: 200px; }
+#sf-galaxymap[data-layout="compact"] .gm-weather-terms { display: none; }
 #sf-galaxymap[data-layout="compact"] .gm-rail-track { display: none; }
 #sf-galaxymap[data-layout="compact"] .gm-level { display: none; }
 #sf-galaxymap[data-layout="compact"] .gm-body-container {
@@ -3205,8 +3296,21 @@ const CSS = `
   min-width: 0;
   flex: 1 1 auto;
   flex-direction: row;
+  align-items: stretch;
+  gap: 6px;
   overflow-x: auto;
   scrollbar-width: thin;
+}
+#sf-galaxymap[data-layout="compact"] .gm-layer-bank {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 6px;
+  flex: 0 0 auto;
+}
+#sf-galaxymap[data-layout="compact"] .gm-layer-bank-title {
+  margin: 0 4px 0 0;
+  font-size: 12px;
 }
 #sf-galaxymap[data-layout="compact"] .gm-layer-btn { min-width: 96px; padding: 6px 8px; }
 #sf-galaxymap[data-layout="compact"] .gm-rail-commodity { margin: 0; min-width: 132px; }
@@ -3234,6 +3338,12 @@ const CSS = `
 #sf-galaxymap[data-layout="narrow"] .gm-stamp { display: none; }
 #sf-galaxymap[data-layout="narrow"] .gm-rail { order: 3; }
 #sf-galaxymap[data-layout="narrow"] .gm-rail-track { display: none; }
+#sf-galaxymap[data-layout="narrow"] .gm-weather {
+  order: 5;
+  flex: 1 1 100%;
+  max-width: none;
+}
+#sf-galaxymap[data-layout="narrow"] .gm-weather-terms { display: none; }
 #sf-galaxymap[data-layout="narrow"] .gm-hint-btn { order: 2; }
 #sf-galaxymap[data-layout="narrow"] .gm-close { order: 2; }
 #sf-galaxymap[data-layout="narrow"] .gm-search-container { order: 4; flex-basis: 100%; max-width: none; }
@@ -3263,8 +3373,18 @@ const CSS = `
   min-width: 0;
   flex: 1;
   flex-direction: row;
+  align-items: stretch;
+  gap: 6px;
   overflow-x: auto;
 }
+#sf-galaxymap[data-layout="narrow"] .gm-layer-bank {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 6px;
+  flex: 0 0 auto;
+}
+#sf-galaxymap[data-layout="narrow"] .gm-layer-bank-title { display: none; }
 #sf-galaxymap[data-layout="narrow"] .gm-layer-btn { min-width: 94px; padding: 6px 8px; }
 #sf-galaxymap[data-layout="narrow"] .gm-viewport { grid-row: 2; }
 #sf-galaxymap[data-layout="narrow"] .gm-right-inspector {
@@ -3471,13 +3591,25 @@ html.sf-dyslexia #sf-galaxymap {
   border-style: dashed; /* shape, not just opacity */
 }
 
-/* ---- Route ribbon: a CONTEXTUAL overlay, never a permanent panel ----------------------------- */
+/* ---- APRON: route ribbon + cargo deck -------------------------------------------------------- */
+#sf-galaxymap .gm-apron {
+  flex: 0 0 auto;
+  min-height: var(--gm-apron-h, 188px);
+  border-top: 1px solid var(--mf-line-2);
+  background:
+    repeating-linear-gradient(112deg, rgba(255, 255, 255, .005) 0 1px, transparent 1px 7px),
+    linear-gradient(180deg, #15191d 0%, #111417 100%);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 8px;
+  padding: 9px 14px 10px;
+  box-sizing: border-box;
+}
+#sf-galaxymap .gm-apron-ribbon {
+  min-height: 0;
+}
 #sf-galaxymap .gm-ribbon {
-  position: absolute;
-  left: 14px;
-  right: 14px;
-  bottom: 12px;
-  z-index: 4;
+  position: relative;
   display: grid;
   grid-template-columns: 1fr auto;
   grid-template-areas: "main actions" "reason reason";
@@ -3489,8 +3621,8 @@ html.sf-dyslexia #sf-galaxymap {
   background: linear-gradient(180deg, rgba(24, 28, 31, .96), rgba(16, 19, 21, .97));
   border: 1px solid var(--mf-line-2);
   border-top: 1px solid var(--mf-line-3);
-  border-radius: 3px;
-  box-shadow: 0 6px 22px rgba(0, 0, 0, .5);
+  border-radius: 2px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, .36);
   animation: gm-ribbon-in .18s ease-out;
 }
 #sf-galaxymap .gm-ribbon[hidden] { display: none; }
@@ -3603,6 +3735,110 @@ html.sf-dyslexia #sf-galaxymap {
 }
 #sf-galaxymap .gm-ribbon-reason:empty { display: none; }
 
+#sf-galaxymap .gm-deck {
+  border: 1px solid var(--mf-line-1);
+  background: linear-gradient(180deg, rgba(0, 0, 0, .22), rgba(0, 0, 0, .1));
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+#sf-galaxymap .gm-deck-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 9px;
+  border-bottom: 1px solid var(--mf-line-1);
+}
+#sf-galaxymap .gm-deck-title {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--ink-mute);
+}
+#sf-galaxymap .gm-deck-sort {
+  border: 1px solid var(--mf-line-2);
+  background: #121519;
+  color: var(--ink-dim);
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  cursor: pointer;
+}
+#sf-galaxymap .gm-deck-sort:hover { border-color: var(--accent); color: var(--ink); }
+#sf-galaxymap .gm-deck-sort:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+#sf-galaxymap .gm-deck-table {
+  overflow: auto;
+  display: grid;
+  gap: 4px;
+  padding: 6px;
+}
+#sf-galaxymap .gm-deck-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(108px, 1.2fr) minmax(180px, 2fr) minmax(160px, 1.55fr) minmax(76px, .9fr);
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  border: 1px solid var(--mf-line-1);
+  background: linear-gradient(180deg, rgba(255, 255, 255, .017), rgba(255, 255, 255, .004));
+  color: var(--ink-dim);
+  padding: 6px 8px;
+  font-family: var(--mono);
+  font-size: 12px;
+  cursor: pointer;
+}
+#sf-galaxymap .gm-deck-row:hover {
+  border-color: #8a6a3c;
+  color: var(--ink);
+}
+#sf-galaxymap .gm-deck-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+#sf-galaxymap .gm-deck-commodity {
+  color: var(--ink);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+#sf-galaxymap .gm-deck-lane {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-dim);
+}
+#sf-galaxymap .gm-deck-metric {
+  color: var(--ink);
+  font-weight: 600;
+}
+#sf-galaxymap .gm-deck-risk { text-transform: uppercase; letter-spacing: .06em; }
+#sf-galaxymap .gm-deck-risk[data-risk="calm"] { color: var(--good); }
+#sf-galaxymap .gm-deck-risk[data-risk="watched"] { color: var(--warn); }
+#sf-galaxymap .gm-deck-risk[data-risk="hot"] { color: var(--danger); }
+#sf-galaxymap .gm-deck-empty {
+  padding: 9px;
+  border: 1px dashed var(--mf-line-1);
+  color: var(--ink-mute);
+}
+#sf-galaxymap .gm-deck-empty-title {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  margin-bottom: 4px;
+}
+#sf-galaxymap .gm-deck-empty-body {
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 /* ---- Services chips ------------------------------------------------------------------------- */
 #sf-galaxymap .gm-svc-row { display: flex; flex-wrap: wrap; gap: 5px; }
 #sf-galaxymap .gm-svc-chip {
@@ -3617,15 +3853,25 @@ html.sf-dyslexia #sf-galaxymap {
   text-transform: capitalize;
 }
 
-/* ---- Narrow layouts: the ribbon stacks rather than crushing the action row ------------------- */
+/* ---- Narrow layouts: keep the apron readable ------------------------------------------------ */
+@media (max-width: 1100px) {
+  #sf-galaxymap .gm-deck-row {
+    grid-template-columns: minmax(96px, 1fr) minmax(132px, 1.4fr) minmax(120px, 1.2fr) 72px;
+    font-size: 12px;
+  }
+}
 @media (max-width: 900px) {
+  #sf-galaxymap .gm-apron { padding: 8px; gap: 7px; }
   #sf-galaxymap .gm-ribbon {
     grid-template-columns: 1fr;
     grid-template-areas: "main" "actions" "reason";
-    left: 8px;
-    right: 8px;
   }
   #sf-galaxymap .gm-ribbon-actions { flex-wrap: wrap; }
+  #sf-galaxymap .gm-deck-row {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+  #sf-galaxymap .gm-weather { max-width: 220px; }
 }
 
 /* ---- Reduced motion: suppress the ANIMATION, never the INFORMATION -------------------------- */
@@ -3642,6 +3888,8 @@ html.sf-dyslexia #sf-galaxymap {
 @media (forced-colors: active) {
   #sf-galaxymap .gm-ribbon,
   #sf-galaxymap .gm-ribbon-leg,
+  #sf-galaxymap .gm-deck,
+  #sf-galaxymap .gm-deck-row,
   #sf-galaxymap .gm-rail-item,
   #sf-galaxymap .gm-svc-chip { border: 1px solid CanvasText; box-shadow: none; }
   #sf-galaxymap .gm-tab[aria-selected="true"] { border: 2px solid Highlight; }
@@ -3670,12 +3918,20 @@ function injectStyle() {
 const LAYER_DEFS = Object.freeze([
   { id: 'route', name: 'Route', icon: '<path d="M4 19 L10 12 L15 15 L20 5"/><circle cx="4" cy="19" r="1.8"/><circle cx="20" cy="5" r="1.8"/>' },
   { id: 'mission', name: 'Mission', icon: '<path d="M12 3 L21 12 L12 21 L3 12 Z"/><circle cx="12" cy="12" r="2"/>' },
-  { id: 'market', name: 'Market', icon: '<path d="M4 20h16"/><path d="M7.5 16v-5M12 16V7M16.5 16v-8"/>' },
+  { id: 'market', name: 'Pressure', icon: '<path d="M4 20h16"/><path d="M7.5 16v-5M12 16V7M16.5 16v-8"/>' },
+  { id: 'events', name: 'Events', icon: '<circle cx="12" cy="12" r="8"/><path d="M6 12h12M12 6v12"/>' },
   { id: 'security', name: 'Security', icon: '<path d="M12 3 L19 6 V11 C19 16 15.5 19.5 12 21 C8.5 19.5 5 16 5 11 V6 Z"/>' },
   { id: 'faction', name: 'Faction', icon: '<path d="M6 21V4"/><path d="M6 4h11l-3 4 3 4H6"/>' },
   { id: 'hazard', name: 'Hazard', icon: '<path d="M12 4 L21 20 H3 Z"/><path d="M12 10v4.5M12 17.4v.4"/>' },
   { id: 'services', name: 'Services', icon: '<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M6.2 6.2l2 2M15.8 15.8l2 2M17.8 6.2l-2 2M8.2 15.8l-2 2"/>' },
+  { id: 'holdings', name: 'Holdings', icon: '<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9Z"/><path d="M4 7.5l8 4.5 8-4.5"/>' },
   { id: 'discovery', name: 'Discovery', icon: '<circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>' },
+]);
+
+const LAYER_BANKS = Object.freeze([
+  { id: 'place', label: 'PLACE', layers: Object.freeze(['services', 'holdings', 'discovery']) },
+  { id: 'flow', label: 'FLOW', layers: Object.freeze(['route', 'mission', 'market']) },
+  { id: 'trouble', label: 'TROUBLE', layers: Object.freeze(['events', 'security', 'faction', 'hazard']) },
 ]);
 
 const SERVICE_ICON_PATHS = Object.freeze({
@@ -3795,9 +4051,9 @@ export function resolveInspectorTabAvailability(state, target) {
     hasRoute || executor ? 'Route legs, cost, hazards and arrival' : 'No route plotted — set a course to a sector first');
   set('missions', liveMissions.length > 0,
     liveMissions.length ? `${liveMissions.length} active` : 'No active missions');
-  set('economy', true, 'Trade lanes and remembered quotes');
+  set('economy', true, 'Trade lanes from memory and model beacons');
   set('threat', !!(target || currentSectorId(state)),
-    target ? 'Security and hostility for the selection' : 'Security for your current sector');
+    target ? 'Security, events, holdings and regional dossiers for the selection' : 'Security, events, holdings and regional dossiers for your current sector');
   set('services', kind === 'station' || kind === 'sector',
     (kind === 'station' || kind === 'sector') ? 'Docking services' : 'Select a station or sector to list services');
   set('discovery', true, 'Survey confidence and charted status');
@@ -3945,63 +4201,66 @@ function stationNameById(state, stationId) {
 }
 
 const COMMODITY_NAME_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c.name]));
+const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
+const REGIONAL_ECONOMY_PROFILE_BY_SECTOR = new Map(
+  REGIONAL_ECONOMY_PROFILES.map((profile) => [profile && profile.sectorId, profile]),
+);
 
-/**
- * Ranked trade lanes from remembered market intel (pure, headless-safe). Mirrors the legacy
- * localmap beacon model: quotes the pilot actually scanned/docked, reliability-decayed with age,
- * straight-line travel estimate at cruise speed. Returns top lanes with display names resolved.
- */
-export function buildTradeLanesModel(state, limit = 5) {
-  const economy = state && state.economy;
-  const intel = economy && economy.marketIntel;
-  if (!intel || typeof intel !== 'object') return [];
-  const beacons = [];
-  for (const stationId of Object.keys(intel)) {
-    const entry = intel[stationId];
-    if (!entry || !entry.snapshot) continue;
-    const quotes = {};
-    for (const cid of Object.keys(entry.snapshot)) {
-      const q = entry.snapshot[cid] || {};
-      quotes[cid] = {
-        buy: q.buy || q.mid || 0,
-        sell: q.sell || q.mid || 0,
-        stock: q.stock || 0,
-        demand: q.role === 'consume' ? 100 : 0,
-      };
-    }
-    beacons.push({ stationId, quotes, capturedAtS: entry.seenAtT || 0, reliability: 1.0 });
+function pairFactionLabel(pairKey) {
+  const [a, b] = String(pairKey || '').split(':');
+  if (!a || !b) return String(pairKey || '');
+  return `${factionNameOf(a)} / ${factionNameOf(b)}`;
+}
+
+function sectorConflictSignal(state, sectorId) {
+  const pairs = conflictPairsForSector(sectorId);
+  if (!pairs.length) return { wars: 0, tense: 0, total: 0, labels: [] };
+  let wars = 0;
+  let tense = 0;
+  const labels = [];
+  for (const pairKey of pairs) {
+    const rec = state && state.conflicts && state.conflicts[pairKey];
+    const tension = Number(rec && rec.tension) || 0;
+    const stance = String(rec && rec.state || 'cold').toLowerCase();
+    if (stance === 'war' || tension >= 75) wars += 1;
+    else if (stance === 'tense' || tension >= 40) tense += 1;
+    if ((wars + tense) < 4) labels.push(pairFactionLabel(pairKey));
   }
-  if (beacons.length < 2) return [];
-  const player = playerEntity(state);
-  const cargoState = state.player && state.player.cargo;
-  const cargo = Math.max(1, Number(cargoState && cargoState.capVolume)
-    || (player && player.data && player.data.cargoCap) || 40);
-  const speed = Math.max(50, (player && player.maxSpeed) || 200);
-  const travelEstimator = (a, b) => {
-    const pa = stationPositionById(state, a);
-    const pb = stationPositionById(state, b);
-    const dist = (pa && pb) ? Math.hypot(pa.x - pb.x, pa.z - pb.z) : 1000;
-    return { timeS: dist / speed, fuel: dist * 0.01 };
+  return { wars, tense, total: pairs.length, labels };
+}
+
+function sectorHoldingsSignal(state, sectorId) {
+  const allBodies = (state && state.claims && state.claims.bodies) || [];
+  const bodies = allBodies.filter((body) => body && body.sectorId === sectorId);
+  if (!bodies.length) return { count: 0, active: 0, moduleCount: 0, defenseAvg: 0 };
+  const active = bodies.filter((body) => body.spec && body.spec.status === 'active').length;
+  const moduleCount = bodies.reduce((sum, body) => {
+    const modules = Array.isArray(body.modules) ? body.modules.filter(Boolean).length : 0;
+    return sum + modules;
+  }, 0);
+  const defenseSum = bodies.reduce((sum, body) => sum + Math.max(0, Number(claimDefenseRating(body, allBodies)) || 0), 0);
+  return {
+    count: bodies.length,
+    active,
+    moduleCount,
+    defenseAvg: defenseSum / Math.max(1, bodies.length),
   };
-  let routes = [];
-  try {
-    routes = rankTradeRoutes({
-      beacons,
-      cargoCapacity: cargo,
-      travelEstimator,
-      riskEstimator: () => 0,
-      nowS: Math.max(0, Number(state && state.simTime) || 0),
-    }) || [];
-  } catch (_) {
-    routes = [];
-  }
-  return routes.slice(0, Math.max(1, limit)).map((route) => ({
-    ...route,
-    originName: stationNameById(state, route.originId),
-    destinationName: stationNameById(state, route.destinationId),
-    commodityName: COMMODITY_NAME_BY_ID.get(route.commodityId) || route.commodityId,
-    destSectorId: stationSectorIdById(state, route.destinationId),
-  }));
+}
+
+function weightedCommodityLabel(lines = []) {
+  const top = Array.from(lines)
+    .filter((line) => line && line.commodityId)
+    .sort((a, b) => (Number(b.weight) || 0) - (Number(a.weight) || 0))
+    .slice(0, 2)
+    .map((line) => {
+      const name = COMMODITY_NAME_BY_ID.get(line.commodityId) || line.commodityId;
+      return `${name} ${Math.round((Number(line.weight) || 0) * 100)}%`;
+    });
+  return top.length ? top.join(' · ') : 'No dominant lines';
+}
+
+function clamp01(value) {
+  return Math.max(0, Math.min(1, Number(value) || 0));
 }
 
 /** Resolve a trade-lane destination station into a click-target for the course intents. */
@@ -4579,6 +4838,18 @@ export const galaxyMapScreen = {
   // the Disengage button mid-transit. See the note in _updateRibbon.
   _lastRibbonActionKey: null,
   _ribbonHandler: null,
+  _weatherEl: null,
+  _lastWeatherKey: null,
+  _deckEl: null,
+  _deckTableEl: null,
+  _deckSortBtn: null,
+  _deckSortMode: 'best',
+  _deckRoutes: [],
+  _lastDeckKey: null,
+  _deckHandler: null,
+  _busUnsubs: [],
+  _scanSweepUntil: 0,
+  _localLiveContacts: 0,
 
   _claimsSystem() {
     const registry = this._ctx && this._ctx.registry;
@@ -4830,10 +5101,12 @@ export const galaxyMapScreen = {
     route: true,
     mission: true,
     market: true,
+    events: true,
     security: true,
     faction: true,
     hazard: true,
     services: true,
+    holdings: true,
     discovery: true
   },
   _cams: {
@@ -4867,12 +5140,20 @@ export const galaxyMapScreen = {
     if (!HAS_DOC || !rootEl) return this;
 
     rootEl.id = 'sf-galaxymap';
-    const layerButtonsHtml = LAYER_DEFS.map((layer) => `
+    if (rootEl.style && typeof rootEl.style.setProperty === 'function') {
+      rootEl.style.setProperty('--gm-apron-h', 'clamp(168px, 26vh, 232px)');
+    }
+    const layerButtonById = new Map(LAYER_DEFS.map((layer) => [layer.id, `
             <button class="gm-layer-btn${this._layers[layer.id] ? ' active' : ''}" type="button" data-layer="${layer.id}" aria-pressed="${this._layers[layer.id] ? 'true' : 'false'}">
               <span class="gm-layer-ico" aria-hidden="true">${strokeSvg(layer.icon)}</span>
               <span class="gm-layer-name">${layer.name}</span>
               <span class="gm-layer-state" aria-hidden="true"></span>
-            </button>`).join('');
+            </button>`]));
+    const layerButtonsHtml = LAYER_BANKS.map((bank) => `
+              <div class="gm-layer-bank" data-layer-bank="${bank.id}">
+                <div class="gm-layer-bank-title">${bank.label}</div>
+                ${bank.layers.map((layerId) => layerButtonById.get(layerId) || '').join('')}
+              </div>`).join('');
     const legendHtml = LEGEND_SERVICES.map((svc) => `
             <div class="gm-legend-row">
               <span class="gm-legend-ico" aria-hidden="true">${serviceIconSvg(svc)}</span>
@@ -4905,6 +5186,7 @@ export const galaxyMapScreen = {
           </div>
           <span class="gm-level">Scale <b data-level>GALAXY</b></span>
         </div>
+        <div class="gm-weather" id="gm-crest-weather" role="status" aria-live="polite"></div>
         <button class="gm-hint-btn" type="button" aria-label="Map controls" aria-expanded="false">?</button>
         <button class="gm-close" type="button" aria-label="Close Map">Close</button>
         <div class="gm-hints" hidden>
@@ -4968,30 +5250,8 @@ export const galaxyMapScreen = {
         </div>
 
         <!-- Viewport -->
-        <div class="gm-viewport" style="flex: 1; position: relative;">
+        <div class="gm-viewport">
           <canvas aria-label="Galaxy navigation map"></canvas>
-          <!-- ═══ ROUTE RIBBON ═══════════════════════════════════════════════════════════════
-               CONTEXTUAL, NOT PERMANENT. Ships with the hidden attribute set and is revealed only
-               while a route exists (ADR D9.9, and the D5 Amendment-2 ruling that an instrument may
-               appear exactly when its information becomes load-bearing).
-
-               It is an ABSOLUTE OVERLAY inside the viewport rather than a flex child on purpose:
-               a flex child would resize the canvas every time a route armed, which fires the
-               ResizeObserver and re-projects the chart. A chart that jumps when you plot a route
-               reads as a bug — and at Tethys, where the frames are 12,288 WU apart, it would be
-               indistinguishable from a projection defect. -->
-          <div class="gm-ribbon" id="gm-route-ribbon" role="region" aria-label="Route" hidden>
-            <div class="gm-ribbon-main">
-              <div class="gm-ribbon-head">
-                <span class="gm-ribbon-status" id="gm-ribbon-status"></span>
-                <span class="gm-ribbon-arrival" id="gm-ribbon-arrival"></span>
-              </div>
-              <ol class="gm-ribbon-legs" id="gm-ribbon-legs"></ol>
-              <div class="gm-ribbon-meta" id="gm-ribbon-meta"></div>
-            </div>
-            <div class="gm-ribbon-actions" id="gm-ribbon-actions" role="group" aria-label="Route control"></div>
-            <div class="gm-ribbon-reason" id="gm-ribbon-reason" aria-live="polite"></div>
-          </div>
         </div>
 
         <!-- ═══ RIGHT INSPECTOR ═════════════════════════════════════════════════════════════════
@@ -5035,6 +5295,31 @@ export const galaxyMapScreen = {
                  state and ships disabled-with-a-reason when it has no consumer. -->
             <div class="gm-place-actions" id="gm-place-actions" role="group" aria-label="Place actions"></div>
           </div>
+        </div>
+      </div>
+      <div class="gm-apron" id="gm-apron">
+        <div class="gm-apron-ribbon">
+          <div class="gm-ribbon" id="gm-route-ribbon" role="region" aria-label="Route" hidden>
+            <div class="gm-ribbon-main">
+              <div class="gm-ribbon-head">
+                <span class="gm-ribbon-status" id="gm-ribbon-status"></span>
+                <span class="gm-ribbon-arrival" id="gm-ribbon-arrival"></span>
+              </div>
+              <ol class="gm-ribbon-legs" id="gm-ribbon-legs"></ol>
+              <div class="gm-ribbon-meta" id="gm-ribbon-meta"></div>
+            </div>
+            <div class="gm-ribbon-actions" id="gm-ribbon-actions" role="group" aria-label="Route control"></div>
+            <div class="gm-ribbon-reason" id="gm-ribbon-reason" aria-live="polite"></div>
+          </div>
+        </div>
+        <div class="gm-deck" id="gm-cargo-deck" aria-label="Cargo deck">
+          <div class="gm-deck-head">
+            <div class="gm-deck-title">Cargo deck</div>
+            <button class="gm-deck-sort" id="gm-deck-sort" type="button" aria-label="Sort cargo deck routes">
+              Sort · best
+            </button>
+          </div>
+          <div class="gm-deck-table" id="gm-deck-table" role="list"></div>
         </div>
       </div>
     `;
@@ -5171,6 +5456,10 @@ export const galaxyMapScreen = {
     this._tabPanel = rootEl.querySelector('#gm-tabpanel');
     this._placeActionsEl = rootEl.querySelector('#gm-place-actions');
     this._ribbonEl = rootEl.querySelector('#gm-route-ribbon');
+    this._weatherEl = rootEl.querySelector('#gm-crest-weather');
+    this._deckEl = rootEl.querySelector('#gm-cargo-deck');
+    this._deckTableEl = rootEl.querySelector('#gm-deck-table');
+    this._deckSortBtn = rootEl.querySelector('#gm-deck-sort');
     this._tabButtons = [];
     // The screen object is a singleton, so every render cache MUST be cleared on mount: the new
     // root's DOM is empty while the cached key still says "already rendered". Leaving these set
@@ -5178,8 +5467,11 @@ export const galaxyMapScreen = {
     // simply be missing, with no error anywhere to say why.
     this._lastRibbonKey = null;
     this._lastRibbonActionKey = null;
+    this._lastWeatherKey = null;
+    this._lastDeckKey = null;
     this._lastPlaceActionsHtml = null;
     this._lastTabHtml = null;
+    this._deckRoutes = [];
     this._renderTabs(this._ctx && this._ctx.state);
 
     // Route control. Delegated on the ribbon so re-rendering the action row never strands it.
@@ -5189,6 +5481,23 @@ export const galaxyMapScreen = {
           ? ev.target.closest('[data-ribbon-action]') : null;
         if (!el) return;
         galaxyMapScreen._activateRibbonAction(el.getAttribute('data-ribbon-action'));
+      });
+    }
+
+    if (this._deckSortBtn && typeof this._deckSortBtn.addEventListener === 'function') {
+      this._deckSortBtn.addEventListener('click', () => {
+        galaxyMapScreen._deckSortMode = galaxyMapScreen._deckSortMode === 'best' ? 'safest' : 'best';
+        galaxyMapScreen._lastDeckKey = null;
+        galaxyMapScreen._updateCargoDeck(galaxyMapScreen._ctx && galaxyMapScreen._ctx.state);
+        galaxyMapScreen._wake();
+      });
+    }
+    if (this._deckTableEl && typeof this._deckTableEl.addEventListener === 'function') {
+      this._deckTableEl.addEventListener('click', (ev) => {
+        const row = ev && ev.target && typeof ev.target.closest === 'function'
+          ? ev.target.closest('[data-deck-route]') : null;
+        if (!row) return;
+        galaxyMapScreen._activateDeckRoute(Number(row.getAttribute('data-deck-route')));
       });
     }
 
@@ -5491,55 +5800,8 @@ export const galaxyMapScreen = {
     // would run against controls that do not exist yet.
     this._syncRestoredControls(state);
 
-    if (typeof requestAnimationFrame === 'undefined') return;
-
-    const loop = () => {
-      if (!galaxyMapScreen._visible) return;
-      const now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
-      const dtSec = Math.max(0, (now - galaxyMapScreen._lastTime) / 1000);
-      // Cosmetic clock for dash/bead/iris motion. Monotonic per show; never read by sim code.
-      galaxyMapScreen._animT = (galaxyMapScreen._animT || 0) + dtSec;
-      let zoomChanged = false;
-      if (Math.abs(galaxyMapScreen._zoom - galaxyMapScreen._targetZoom) > 0.0005) {
-        const alpha = 1 - Math.exp(-dtSec / 0.10);
-        galaxyMapScreen._zoom += (galaxyMapScreen._targetZoom - galaxyMapScreen._zoom) * Math.min(1, alpha);
-        zoomChanged = true;
-      }
-      galaxyMapScreen._lastTime = now;
-
-      // Update scan rings
-      if (galaxyMapScreen._scanRings.length > 0) {
-        galaxyMapScreen._scanRings = galaxyMapScreen._scanRings.filter(ring => {
-          ring.t++;
-          ring.r = (ring.t / ring.maxT) * ring.maxR;
-          return ring.t < ring.maxT;
-        });
-        zoomChanged = true; // Force redraw to animate ring
-      }
-
-      // Advance the level-transition iris
-      if (galaxyMapScreen._iris) {
-        galaxyMapScreen._iris.t += 1;
-        if (galaxyMapScreen._iris.t >= galaxyMapScreen._iris.maxT) galaxyMapScreen._iris = null;
-        zoomChanged = true;
-      }
-
-      // Advance local scan sweep phase
-      if (levelForZoom(galaxyMapScreen._zoom) === 'local') {
-        galaxyMapScreen._scanPhase = (galaxyMapScreen._scanPhase || 0) + 0.02;
-        zoomChanged = true;
-      }
-
-      const refreshTick = now - galaxyMapScreen._lastDrawTime >= 64;
-      if (refreshTick) {
-        galaxyMapScreen._lastDrawTime = now;
-        galaxyMapScreen._resize();
-      }
-      if (refreshTick || zoomChanged) { galaxyMapScreen._draw(); galaxyMapScreen._updateInspector(); }
-
-      galaxyMapScreen._animFrame = requestAnimationFrame(loop);
-    };
-    loop();
+    this.refresh();
+    this._wake();
   },
 
   onHide() {
@@ -5550,6 +5812,7 @@ export const galaxyMapScreen = {
     this._animFrame = null;
     this._unsubscribeKills();
     this._rememberScreenState();
+    this._localLiveContacts = 0;
   },
 
   // ── J4 screen state memory (build map §11.12) ───────────────────────────────────────────────
@@ -5665,24 +5928,44 @@ export const galaxyMapScreen = {
     this._unsubscribeKills();
     const bus = this._ctx && this._ctx.bus;
     if (!bus || typeof bus.on !== 'function') return;
-    const handler = (payload) => {
+    this._busUnsubs = [];
+    const on = (event, handler) => {
+      const off = bus.on(event, handler);
+      const disposer = typeof off === 'function'
+        ? off
+        : (typeof bus.off === 'function' ? () => bus.off(event, handler) : null);
+      if (typeof disposer === 'function') this._busUnsubs.push(disposer);
+    };
+    on('entity:killed', (payload) => {
       const id = payload && payload.id;
       const intel = galaxyMapScreen._localIntel;
-      if (id == null || !intel || !intel.tracks) return;
-      intel.tracks.delete(String(id));
+      if (id != null && intel && intel.tracks) intel.tracks.delete(String(id));
+      galaxyMapScreen._wake();
+    });
+    const wake = () => {
+      galaxyMapScreen._lastRibbonKey = null;
+      galaxyMapScreen._lastDeckKey = null;
+      galaxyMapScreen._lastWeatherKey = null;
+      galaxyMapScreen.refresh();
+      galaxyMapScreen._wake();
     };
-    const off = bus.on('entity:killed', handler);
-    // Bus implementations differ on whether `on` returns a disposer; keep whichever we got so the
-    // release path works either way rather than assuming one shape.
-    this._killUnsub = typeof off === 'function'
-      ? off
-      : (typeof bus.off === 'function' ? () => bus.off('entity:killed', handler) : null);
+    for (const event of [
+      'nav:routeChanged',
+      'nav:executorChanged',
+      'sector:enter',
+      'encounter:fired',
+      'claim:raidWarning',
+      'faction:aggro',
+    ]) {
+      on(event, wake);
+    }
   },
 
   _unsubscribeKills() {
-    if (typeof this._killUnsub === 'function') {
-      try { this._killUnsub(); } catch (_) { /* a disposed bus is not an error on the way out */ }
+    for (const off of this._busUnsubs || []) {
+      try { off(); } catch (_) { /* disposed bus during shutdown */ }
     }
+    this._busUnsubs = [];
     this._killUnsub = null;
   },
 
@@ -5716,6 +5999,7 @@ export const galaxyMapScreen = {
     if (animate && levelForZoom(this._zoom) !== before) this._triggerIris(levelForZoom(this._zoom));
     this._syncScaleButtons();
     if (draw && HAS_DOC) this._draw();
+    this._wake();
     return levelForZoom(this._zoom);
   },
 
@@ -5780,6 +6064,7 @@ export const galaxyMapScreen = {
     if (!HAS_DOC) return;
     if (this._reduceMotion) return;
     this._iris = { t: 0, maxT: 26, label: String(level || '').toUpperCase() };
+    this._wake();
   },
 
   _applyResponsiveLayout(width, height) {
@@ -5794,6 +6079,77 @@ export const galaxyMapScreen = {
       style.setProperty('--gm-inspector-h', `${layout.inspector.height}px`);
     }
     return layout;
+  },
+
+  _nowMs() {
+    return (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  },
+
+  _animationActive(now = this._nowMs()) {
+    if (Math.abs(this._zoom - this._targetZoom) > 0.0005) return true;
+    if (this._scanRings && this._scanRings.length > 0) return true;
+    if (this._iris) return true;
+    const localLiveContacts = levelForZoom(this._zoom) === 'local' && (this._localLiveContacts || 0) > 0;
+    if (localLiveContacts) return true;
+    return !this._reduceMotion
+      && levelForZoom(this._zoom) === 'local'
+      && now < (this._scanSweepUntil || 0);
+  },
+
+  _stepAnimation(now) {
+    const dtSec = Math.max(0, (now - this._lastTime) / 1000);
+    this._lastTime = now;
+    this._animT = (this._animT || 0) + dtSec;
+    let changed = false;
+    if (Math.abs(this._zoom - this._targetZoom) > 0.0005) {
+      const alpha = 1 - Math.exp(-dtSec / 0.10);
+      this._zoom += (this._targetZoom - this._zoom) * Math.min(1, alpha);
+      changed = true;
+    }
+    if (this._scanRings.length > 0) {
+      this._scanRings = this._scanRings.filter((ring) => {
+        ring.t += 1;
+        ring.r = (ring.t / ring.maxT) * ring.maxR;
+        return ring.t < ring.maxT;
+      });
+      changed = true;
+    }
+    if (this._iris) {
+      this._iris.t += 1;
+      if (this._iris.t >= this._iris.maxT) this._iris = null;
+      changed = true;
+    }
+    const localLevel = levelForZoom(this._zoom) === 'local';
+    const liveContacts = localLevel && (this._localLiveContacts || 0) > 0;
+    if (localLevel && (liveContacts || (!this._reduceMotion && now < (this._scanSweepUntil || 0)))) {
+      this._scanPhase = (this._scanPhase || 0) + (dtSec * (liveContacts ? 0.65 : 1.25));
+      changed = true;
+    }
+    if (changed) {
+      this._draw();
+      this._updateInspector();
+    }
+    return this._animationActive(now);
+  },
+
+  _wake() {
+    if (!this._visible || typeof requestAnimationFrame === 'undefined') return;
+    const now = this._nowMs();
+    if (!this._reduceMotion && levelForZoom(this._zoom) === 'local') {
+      this._scanSweepUntil = Math.max(this._scanSweepUntil || 0, now + 1200);
+    }
+    if (this._animFrame != null) return;
+    this._lastTime = now;
+    const frame = () => {
+      if (!galaxyMapScreen._visible) {
+        galaxyMapScreen._animFrame = null;
+        return;
+      }
+      const keepAlive = galaxyMapScreen._stepAnimation(galaxyMapScreen._nowMs());
+      if (keepAlive) galaxyMapScreen._animFrame = requestAnimationFrame(frame);
+      else galaxyMapScreen._animFrame = null;
+    };
+    this._animFrame = requestAnimationFrame(frame);
   },
 
   onKey(event, ctx) {
@@ -5865,6 +6221,9 @@ export const galaxyMapScreen = {
       galaxyMapScreen._draw();
       galaxyMapScreen._updateInspector();
       galaxyMapScreen._syncScaleButtons();
+      galaxyMapScreen._updateHeaderWeather(galaxyMapScreen._ctx && galaxyMapScreen._ctx.state);
+      galaxyMapScreen._updateCargoDeck(galaxyMapScreen._ctx && galaxyMapScreen._ctx.state);
+      galaxyMapScreen._wake();
     }
   },
 
@@ -5872,6 +6231,7 @@ export const galaxyMapScreen = {
     this._scanRings.push({
       x, y, r: 0, maxR: 120, t: 0, maxT: 35, color
     });
+    this._wake();
   },
 
   _activeLevel() {
@@ -6473,17 +6833,29 @@ export const galaxyMapScreen = {
 
   /** ECONOMY — the old always-on no-selection dump, now behind a tab where it belongs. */
   _economyTabHtml(state) {
-    const lanes = buildTradeLanesModel(state, 5);
+    const lanes = buildCargoDeckTradeLanesModel(state, 5);
     const lanesHtml = lanes.length
       ? lanes.map((lane) => {
         const reliability = Number.isFinite(Number(lane.reliability)) ? Number(lane.reliability) : 1;
         const relColor = reliability >= 0.8 ? INK.good : reliability >= 0.5 ? INK.warn : INK.ink2;
-        const profit = Math.max(0, Math.round(Number(lane.expectedProfit) || 0)).toLocaleString('en-US');
+        const modelish = lane.source === 'MODEL';
+        const profitRaw = Math.max(0, Math.round(Number(lane.expectedProfit) || 0));
+        const profitRounded = modelish ? Math.round(profitRaw / 10) * 10 : profitRaw;
+        const profit = profitRounded.toLocaleString('en-US');
         const perMin = Math.max(0, Math.round(Number(lane.profitPerMinute) || 0));
+        const riskPct = Math.round(clamp01(lane.risk) * 100);
+        const sourceGlyph = lane.source === 'MEMORY' ? '●' : lane.source === 'HERE' ? '⌂' : '◌';
+        const lanePath = lane.source === 'HERE'
+          ? `→ ${lane.destinationName}`
+          : `${lane.originName} → ${lane.destinationName}`;
+        const ageLabel = lane.source === 'MEMORY' ? ` · ${Math.max(1, Math.round((Number(lane.ageS) || 0) / 60))}m` : '';
+        const modelDelta = Number.isFinite(Number(lane.modelDeltaPct))
+          ? ` · MODEL ${(lane.modelDeltaPct >= 0 ? '+' : '')}${Math.round(lane.modelDeltaPct)}%`
+          : '';
         return `
         <button class="gm-tl-row" type="button" data-gm-lane="${escapeMapHtml(lane.destinationId)}">
-          <span class="gm-tl-head"><span>${escapeMapHtml(lane.commodityName)}</span><span class="gm-tl-profit" style="color:${relColor}">+${profit} cr</span></span>
-          <span class="gm-tl-sub">${escapeMapHtml(lane.originName)} → ${escapeMapHtml(lane.destinationName)} · ${Math.max(0, Math.floor(lane.units))}u · ${perMin}/min</span>
+          <span class="gm-tl-head"><span>${sourceGlyph} ${escapeMapHtml(lane.commodityName)}</span><span class="gm-tl-profit" style="color:${relColor}">${modelish ? '~' : ''}+${profit} cr</span></span>
+          <span class="gm-tl-sub">${escapeMapHtml(lanePath)} · ${Math.max(0, Math.floor(lane.units))}u · ${perMin}/min · risk ${riskPct}%${ageLabel}${modelDelta}</span>
         </button>`;
       }).join('')
       // The build map's named live symptom (§11.11 #8): this pane was correct-but-blank until two
@@ -6556,10 +6928,32 @@ export const galaxyMapScreen = {
     const player = playerEntity(state);
     const hull = player && player.hull != null ? Math.round(player.hull) : 0;
     const hullMax = player && player.hullMax != null ? Math.round(player.hullMax) : 0;
-    const heat = state.player && state.player.heat ? Math.round(state.player.heat * 100) : 0;
+    const heatValue = Number(state.player && state.player.heat) || 0;
+    const heat = Math.round(heatValue * 100);
+    const heatLevel = heatLevelFor(heatValue);
+    const heatClearS = heatClearSecondsForLevel(heatLevel);
+    const wanted = isPlayerWanted(state);
     const hazards = (record && record.hazards && record.hazards.length)
       ? record.hazards.map((h) => `${hazardTypeGlyph(h.type)} ${escapeMapHtml(String(h.type))}`).join(' · ')
       : 'None recorded';
+    const conflict = sectorConflictSignal(state, sectorId);
+    const holdings = sectorHoldingsSignal(state, sectorId);
+    const ecology = regionalEcologyReadout(state, sectorId);
+    const economyProfile = REGIONAL_ECONOMY_PROFILE_BY_SECTOR.get(sectorId) || null;
+    const conflictLine = conflict.wars > 0
+      ? `${conflict.wars} war${conflict.wars > 1 ? 's' : ''}${conflict.tense > 0 ? ` · ${conflict.tense} tense` : ''}`
+      : conflict.tense > 0
+        ? `${conflict.tense} tense pairing${conflict.tense > 1 ? 's' : ''}`
+        : 'quiet';
+    const holdingsLine = holdings.count
+      ? `${holdings.count} claims · ${holdings.active} active · defense ${Math.round(holdings.defenseAvg)}`
+      : 'none';
+    const ecologyHazards = ecology && ecology.hazards && ecology.hazards.types && ecology.hazards.types.length
+      ? ecology.hazards.types.join(', ')
+      : 'clear';
+    const profileRole = economyProfile
+      ? [economyProfile.primaryRole].concat(economyProfile.secondaryRoles || []).join(' / ')
+      : 'none';
     return `
       <div class="gm-ins-section">
         <div class="gm-ins-kind">Threat assessment</div>
@@ -6567,12 +6961,28 @@ export const galaxyMapScreen = {
         <div class="gm-ins-row"><span>Security</span><span class="gm-ins-row-val">${law.level} · ${securityPips(sec)}</span></div>
         <div class="gm-ins-row"><span>Jurisdiction</span><span class="gm-ins-row-val"><span${entityAttr('faction:' + law.factionId)}>${escapeMapHtml(law.authority)}</span></span></div>
         <div class="gm-ins-row"><span>Hazards</span><span class="gm-ins-row-val">${hazards}</span></div>
+        <div class="gm-ins-row"><span>Events</span><span class="gm-ins-row-val">${escapeMapHtml(conflictLine)}</span></div>
+        <div class="gm-ins-row"><span>Holdings</span><span class="gm-ins-row-val">${escapeMapHtml(holdingsLine)}</span></div>
       </div>
       <div class="gm-ins-section">
         <div class="gm-ins-title">Your readiness</div>
         <div class="gm-ins-row"><span>Hull</span><span class="gm-ins-row-val">${hull}/${hullMax}</span></div>
-        <div class="gm-ins-row"><span>Heat</span><span class="gm-ins-row-val">${heat}%</span></div>
+        <div class="gm-ins-row"><span>Heat</span><span class="gm-ins-row-val">${heat}% · level ${heatLevel}${wanted ? ' · WANTED' : ''}</span></div>
+        <div class="gm-ins-row"><span>Clear ETA</span><span class="gm-ins-row-val">${heatClearS > 0 ? `${Math.ceil(heatClearS)}s` : 'clear'}</span></div>
         <div class="gm-ins-note"><b style="color:var(--ink);">RESPONSE:</b> ${law.response}</div>
+      </div>
+      <div class="gm-ins-section">
+        <div class="gm-ins-title">Regional ecology dossier</div>
+        <div class="gm-ins-row"><span>Family</span><span class="gm-ins-row-val">${escapeMapHtml(ecology ? ecology.familyLabel : 'Unknown')}</span></div>
+        <div class="gm-ins-row"><span>Danger drift</span><span class="gm-ins-row-val">${ecology ? `${Math.round(ecology.danger.effective * 100)}% (base ${Math.round(ecology.danger.baseline * 100)}%)` : 'Unknown'}</span></div>
+        <div class="gm-ins-row"><span>Hazard mix</span><span class="gm-ins-row-val">${escapeMapHtml(ecologyHazards)}</span></div>
+      </div>
+      <div class="gm-ins-section">
+        <div class="gm-ins-title">Regional economy dossier</div>
+        <div class="gm-ins-row"><span>Identity</span><span class="gm-ins-row-val">${escapeMapHtml(economyProfile ? economyProfile.identityKey : 'Unknown')}</span></div>
+        <div class="gm-ins-row"><span>Role stack</span><span class="gm-ins-row-val">${escapeMapHtml(profileRole)}</span></div>
+        <div class="gm-ins-row"><span>Produces</span><span class="gm-ins-row-val">${escapeMapHtml(weightedCommodityLabel(economyProfile && economyProfile.produces))}</span></div>
+        <div class="gm-ins-row"><span>Consumes</span><span class="gm-ins-row-val">${escapeMapHtml(weightedCommodityLabel(economyProfile && economyProfile.consumes))}</span></div>
       </div>`;
   },
 
@@ -6882,6 +7292,174 @@ export const galaxyMapScreen = {
     });
   },
 
+  _weatherSnapshot(state) {
+    if (!state) return null;
+    const dir = state.encounterDirector || {};
+    const pressureCombat = Math.max(0, Math.min(140, Number(dir.pressure && dir.pressure.combat) || 0));
+    const pressureCivil = Math.max(0, Math.min(140, Number(dir.pressure && dir.pressure.civilian) || 0));
+    const pool = Math.round(Math.max(pressureCombat, pressureCivil));
+    const level = pool >= 84 ? 'HOT' : pool >= 36 ? 'WORKING' : 'QUIET';
+
+    const player = playerEntity(state);
+    const sectorId = currentSectorId(state);
+    const sector = sectorRecordById(state, sectorId);
+    const sec = Number.isFinite(Number(sector && sector.security)) ? Number(sector.security) : 0.5;
+    const local = player && player.pos ? globalToSectorLocalForSector(player.pos, sectorId) : null;
+    const zone = local ? zoneAt(sectorId, local.x, local.z) : null;
+    const ecology = regionalEcologyReadout(state, sectorId);
+    const ecologyDanger = ecology && ecology.danger
+      ? Math.max(0, Number(ecology.danger.effective) - Number(ecology.danger.baseline || 0))
+      : 0;
+    const cargoItems = state.player && state.player.cargo && state.player.cargo.items || {};
+    let cargoValue = 0;
+    for (const [commodityId, qtyRaw] of Object.entries(cargoItems)) {
+      const qty = Math.max(0, Number(qtyRaw) || 0);
+      const def = COMMODITY_BY_ID.get(commodityId);
+      cargoValue += qty * Math.max(1, Number(def && def.basePrice) || 1);
+    }
+    const cargoBand = Math.min(1, cargoValue / 2000);
+    const wanted = isPlayerWanted(state);
+    const miningNoise = Math.min(1, Math.max(0, Number(dir.noise && dir.noise.mining) || 0));
+    const bounty = ((state.player && state.player.bounty) | 0) > 0 ? 0.25 : 0;
+    const terms = [
+      { id: 'zone', value: 0.22 * zoneThreat(zone) },
+      { id: 'insecure', value: (1 - sec) * 0.5 },
+      { id: 'cargo', value: cargoBand * 0.35 },
+      { id: 'wanted', value: wanted ? 0.6 : 0 },
+      { id: 'noise', value: miningNoise * 0.5 },
+      { id: 'bounty', value: bounty },
+      { id: 'ecology', value: ecologyDanger * 0.45 },
+    ].filter((term) => term.value > 0.01);
+    return {
+      pressureCombat,
+      pressureCivil,
+      pool,
+      level,
+      terms,
+    };
+  },
+
+  _updateHeaderWeather(state) {
+    if (!HAS_DOC || !this._weatherEl) return;
+    const snap = this._weatherSnapshot(state);
+    if (!snap) return;
+    const termText = snap.terms.length
+      ? snap.terms.map((term) => `${term.id} +${term.value.toFixed(2)}`).join(' · ')
+      : 'baseline only';
+    const key = [
+      Math.round(snap.pressureCombat),
+      Math.round(snap.pressureCivil),
+      snap.level,
+      termText,
+    ].join('#');
+    if (this._lastWeatherKey === key) return;
+    this._lastWeatherKey = key;
+    const combatPct = Math.round((snap.pressureCombat / 140) * 100);
+    const civilPct = Math.round((snap.pressureCivil / 140) * 100);
+    this._weatherEl.setAttribute('data-weather-level', String(snap.level || '').toLowerCase());
+    this._weatherEl.innerHTML = `
+      <div class="gm-weather-head">
+        <span class="gm-weather-word">${snap.level}</span>
+        <span class="gm-weather-data">${snap.pool} / 140</span>
+      </div>
+      <div class="gm-weather-bar" role="img" aria-label="Encounter pressure ${snap.pool} of 140">
+        <i class="gm-weather-seg gm-weather-seg--combat" style="width:${combatPct}%"></i>
+        <i class="gm-weather-seg gm-weather-seg--civil" style="width:${civilPct}%"></i>
+      </div>
+      <div class="gm-weather-terms">${escapeMapHtml(termText)}</div>
+    `;
+  },
+
+  _updateCargoDeck(state) {
+    if (!HAS_DOC || !this._deckTableEl) return;
+    if (!state) {
+      this._deckTableEl.innerHTML = '';
+      return;
+    }
+    if (this._deckSortBtn) {
+      this._deckSortBtn.textContent = `Sort · ${this._deckSortMode}`;
+    }
+    const nowBucket = Math.floor((Number(state.simTime) || 0) / 5);
+    const holdItems = state.player && state.player.cargo && state.player.cargo.items || {};
+    const holdKey = Object.entries(holdItems)
+      .filter(([, qty]) => (Number(qty) || 0) > 0)
+      .sort((a, b) => String(a[0]).localeCompare(String(b[0])))
+      .map(([id, qty]) => `${id}:${Math.floor(Number(qty) || 0)}`)
+      .join('|') || '-';
+    const intel = state.economy && state.economy.marketIntel || {};
+    let seenStamp = 0;
+    for (const stationId of Object.keys(intel)) seenStamp += Number(intel[stationId] && intel[stationId].seenAtT) || 0;
+    const key = `${nowBucket}|${this._deckSortMode}|${holdKey}|${Object.keys(intel).length}:${Math.round(seenStamp)}`;
+    if (this._lastDeckKey === key) return;
+    this._lastDeckKey = key;
+    this._deckRoutes = buildCargoDeckTradeLanesModel(state, 14, {
+      includeHeldCargo: true,
+      sortBy: this._deckSortMode,
+    });
+    if (!this._deckRoutes.length) {
+      this._deckTableEl.innerHTML = `
+        <div class="gm-deck-empty">
+          <div class="gm-deck-empty-title">No viable deck route</div>
+          <div class="gm-deck-empty-body">Dock and scan markets, or carry cargo to seed HERE liquidation lanes.</div>
+        </div>`;
+      return;
+    }
+    this._deckTableEl.innerHTML = this._deckRoutes.slice(0, 12).map((route, index) => {
+      const source = route.source || 'MODEL';
+      const sourceGlyph = source === 'MEMORY' ? '◍' : source === 'HERE' ? '⌂' : '◇';
+      const riskPct = Math.round(clamp01(route.risk) * 100);
+      const spread = Math.max(0, Math.round(route.expectedProfit || 0)).toLocaleString('en-US');
+      const ppm = Math.max(0, Math.round(route.profitPerMinute || 0));
+      const units = Math.max(0, Math.floor(route.units || 0));
+      const marginRaw = Math.max(0, Math.round(route.unitProfit || 0));
+      const marginDisplay = source === 'MODEL'
+        ? `~${Math.max(0, Math.round(marginRaw / 10) * 10)}`
+        : String(marginRaw);
+      const riskBand = riskPct >= 68 ? 'hot' : riskPct >= 36 ? 'watched' : 'calm';
+      const laneText = source === 'HERE'
+        ? `to ${route.destinationName}`
+        : `${route.originName} → ${route.destinationName}`;
+      const modelDelta = Number.isFinite(Number(route.modelDeltaPct))
+        ? ` · MODEL ${(route.modelDeltaPct >= 0 ? '+' : '')}${Math.round(route.modelDeltaPct)}%`
+        : '';
+      return `
+        <button class="gm-deck-row" type="button" data-deck-route="${index}" role="listitem"
+                aria-label="Plot ${escapeMapHtml(route.commodityName)} from ${escapeMapHtml(route.originName)} to ${escapeMapHtml(route.destinationName)}">
+          <span class="gm-deck-commodity">${sourceGlyph} ${escapeMapHtml(route.commodityName)}</span>
+          <span class="gm-deck-lane">${escapeMapHtml(laneText)}</span>
+          <span class="gm-deck-metric">margin ${marginDisplay}/u · +${spread} cr · ${ppm}/m · ${units}u${modelDelta}</span>
+          <span class="gm-deck-risk" data-risk="${riskBand}">risk ${riskPct}%</span>
+        </button>`;
+    }).join('');
+  },
+
+  _activateDeckRoute(index) {
+    const state = this._ctx && this._ctx.state;
+    const bus = this._ctx && this._ctx.bus;
+    if (!state || !bus) return false;
+    const route = this._deckRoutes && this._deckRoutes[index];
+    if (!route) return false;
+    const target = tradeLaneTarget(state, route.destinationId);
+    if (!target) return false;
+    const plot = resolveGalaxyMapPlotAction(state, target);
+    if (!plot.available || !emitGalaxyMapPrimaryAction(bus, plot)) return false;
+    this._selectedTarget = target;
+    const player = playerEntity(state);
+    if (player && player.pos && Number.isFinite(target.x) && Number.isFinite(target.z)) {
+      const dist = Math.hypot(target.x - player.pos.x, target.z - player.pos.z);
+      const spanWU = Math.max(MAP_PRESET_SPAN_WU.system, Math.min(MAP_SPAN_MAX_WU, dist * 2.3));
+      this._setCameraFraming({
+        focusGlobal: { x: (target.x + player.pos.x) * 0.5, z: (target.z + player.pos.z) * 0.5 },
+        spanWU,
+      }, { draw: false });
+    }
+    const w = this._canvas ? this._canvas.width / this._dpr : 0;
+    const h = this._canvas ? this._canvas.height / this._dpr : 0;
+    if (w > 0 && h > 0) this.triggerScanRing(w * 0.5, h * 0.5, INK.amberHot);
+    this.refresh();
+    return true;
+  },
+
   /**
    * Reveal / hide / refresh the ribbon.
    *
@@ -6901,7 +7479,9 @@ export const galaxyMapScreen = {
       this._lastRibbonActionKey = null;
       return ribbon;
     }
-    if (el.hidden) el.hidden = false;
+    if (el.hidden) {
+      el.hidden = false;
+    }
 
     // Cheap change key — the ribbon is refreshed from `_draw`, which runs at display refresh at
     // LOCAL scale. Re-writing identical innerHTML 60 times a second would blow away focus inside
@@ -7531,6 +8111,7 @@ export const galaxyMapScreen = {
           this._camera = panBy(this._dragStart.camera, { x: -dx / pxPerWU, z: -dy / pxPerWU });
           this._syncLegacyFromCamera();
           this._draw();
+          this._wake();
           return;
         }
       }
@@ -7540,6 +8121,7 @@ export const galaxyMapScreen = {
       cam.cx = this._dragStart.cx + dx / (baseScale * this._zoom);
       cam.cy = this._dragStart.cy + dy / (baseScale * this._zoom);
       this._draw();
+      this._wake();
       return;
     }
 
@@ -7548,6 +8130,7 @@ export const galaxyMapScreen = {
     if (best !== this._hoverTarget) {
       this._hoverTarget = best;
       this._draw();
+      this._wake();
     }
     this._canvas.style.cursor = best ? 'pointer' : 'crosshair';
   },
@@ -7562,6 +8145,7 @@ export const galaxyMapScreen = {
     this._dragStart = null;
     this._hoverTarget = null;
     this._draw();
+    this._wake();
   },
 
   _onWheel(ev) {
@@ -7595,6 +8179,7 @@ export const galaxyMapScreen = {
       // change of DETAIL, not a change of place — which is the whole point of ADR D3.
       if (oldLevel !== newLevel) this._triggerIris(newLevel);
       this._draw();
+      this._wake();
       return;
     }
 
@@ -7632,6 +8217,7 @@ export const galaxyMapScreen = {
     }
 
     this._draw();
+    this._wake();
   },
 
   _onCanvasClick(ev) {
@@ -7820,6 +8406,8 @@ export const galaxyMapScreen = {
     // so being called every frame does not mean re-rendering every frame.
     this._updateRibbon(state);
     this._updateRailSections(state);
+    this._updateHeaderWeather(state);
+    this._updateCargoDeck(state);
 
     // Hover pre-selection. Resolved against THIS frame's click targets rather than the coordinates
     // captured when the pointer last moved, so the ring cannot lag a pan or a zoom by a frame.
@@ -8121,11 +8709,26 @@ export const galaxyMapScreen = {
         continue;
       }
 
+      const eventSignal = this._layers.events ? sectorConflictSignal(state, n.id) : null;
+      const holdingsSignal = this._layers.holdings ? sectorHoldingsSignal(state, n.id) : null;
+      const eventDetail = eventSignal
+        ? (eventSignal.wars > 0
+          ? `${eventSignal.wars} war${eventSignal.wars > 1 ? 's' : ''}${eventSignal.tense > 0 ? `, ${eventSignal.tense} tense` : ''}`
+          : eventSignal.tense > 0
+            ? `${eventSignal.tense} tense`
+            : 'quiet')
+        : 'off';
+      const holdingsDetail = holdingsSignal && holdingsSignal.count > 0
+        ? `${holdingsSignal.count} claim${holdingsSignal.count > 1 ? 's' : ''}`
+        : 'none';
+
       this._clickTargets.push({
         sx: x, sy: y, radiusPx: r + 8, kind: 'sector', id: n.id, sectorId: n.id, name: n.name,
         factionId: n.factionId, security: n.security, x: n.x, y: n.y,
         presence: n.presence, searchText: n.searchText,
-        detail: `Sector · ${factionNameOf(n.factionId)} · Sec: ${n.security ? n.security.toFixed(2) : '0.00'}`
+        events: eventSignal,
+        holdings: holdingsSignal,
+        detail: `Sector · ${factionNameOf(n.factionId)} · Sec: ${n.security ? n.security.toFixed(2) : '0.00'} · Events: ${eventDetail} · Holdings: ${holdingsDetail}`
       });
 
       // Territory wash (faction layer): the live owner underlays the node as a broad soft ring.
@@ -8134,6 +8737,55 @@ export const galaxyMapScreen = {
         g.strokeStyle = hexToRgba(factionColorOf(n.ownerId), 0.30);
         g.lineWidth = 4;
         g.beginPath(); g.arc(x, y, r + 6, 0, Math.PI * 2); g.stroke();
+        g.restore();
+      }
+
+      if (this._layers.events && eventSignal && (eventSignal.wars > 0 || eventSignal.tense > 0)) {
+        const intensity = Math.max(1, eventSignal.wars * 2 + eventSignal.tense);
+        g.save();
+        g.strokeStyle = eventSignal.wars > 0
+          ? hexToRgba(INK.red, 0.74)
+          : 'rgba(177, 132, 228, 0.76)';
+        g.lineWidth = 1.3 + Math.min(1.2, intensity * 0.22);
+        g.setLineDash(eventSignal.wars > 0 ? [2.4, 2.6] : [4.2, 4.5]);
+        g.beginPath(); g.arc(x, y, r + 10.5, 0, Math.PI * 2); g.stroke();
+        g.setLineDash([]);
+        const badge = String(eventSignal.wars + eventSignal.tense);
+        g.font = FONT_MONO(700, 8.5);
+        const bw = Math.max(11, g.measureText(badge).width + 5);
+        const bx = x - r - 7;
+        const by = y - r - 9;
+        g.fillStyle = INK.plateHard;
+        g.strokeStyle = eventSignal.wars > 0 ? INK.red : '#b092e8';
+        g.lineWidth = 1;
+        g.beginPath(); g.rect(bx, by, bw, 11); g.fill(); g.stroke();
+        g.fillStyle = eventSignal.wars > 0 ? INK.red : '#d8c6ff';
+        g.textAlign = 'center';
+        g.textBaseline = 'middle';
+        g.fillText(badge, bx + bw / 2, by + 5.5);
+        g.restore();
+      }
+
+      if (this._layers.holdings && holdingsSignal && holdingsSignal.count > 0) {
+        g.save();
+        const stable = holdingsSignal.defenseAvg >= 26;
+        const color = stable ? '#8ec47a' : '#d7a86e';
+        const hx = x + r + 8;
+        const hy = y + r - 1;
+        g.strokeStyle = color;
+        g.lineWidth = 1.2;
+        g.beginPath();
+        g.moveTo(hx, hy - 5);
+        g.lineTo(hx + 5, hy);
+        g.lineTo(hx, hy + 5);
+        g.lineTo(hx - 5, hy);
+        g.closePath();
+        g.stroke();
+        g.font = FONT_MONO(700, 8);
+        g.textAlign = 'center';
+        g.textBaseline = 'middle';
+        g.fillStyle = color;
+        g.fillText(String(Math.min(9, holdingsSignal.count)), hx, hy + 0.2);
         g.restore();
       }
 
@@ -8371,8 +9023,10 @@ export const galaxyMapScreen = {
     // so a single global position mixed in here drags the fit out by that sector's whole origin
     // offset (12,288 WU at Tethys) and squeezes the real furniture into a dot.
     for (const p of model.points) if (p.drawPos) pts.push({ x: p.drawPos.x, z: p.drawPos.z, r: 0 });
-    for (const marker of model.ownership) {
-      if (marker.drawPos) pts.push({ x: marker.drawPos.x, z: marker.drawPos.z, r: 0 });
+    if (this._layers.holdings) {
+      for (const marker of model.ownership) {
+        if (marker.drawPos) pts.push({ x: marker.drawPos.x, z: marker.drawPos.z, r: 0 });
+      }
     }
     for (const bearing of model.bearings) {
       const point = bearing.drawFixedPos || bearing.drawCenter;
@@ -8413,7 +9067,7 @@ export const galaxyMapScreen = {
     const sx = (x) => w / 2 + (x - cam.cx) * pxPerWU;
     const sz = (z) => h / 2 + (z - cam.cy) * pxPerWU;
     const labelCandidates = [];
-    setMapCanvasAriaLabel(this._canvas, 'system', model.ownership);
+    setMapCanvasAriaLabel(this._canvas, 'system', this._layers.holdings ? model.ownership : []);
 
     // Header sector plate: brass index tick + Saira name, quiet and machined.
     g.save();
@@ -8692,48 +9346,50 @@ export const galaxyMapScreen = {
     }
 
     // Player-owned bases: permanent operating landmarks, visually distinct from neutral POIs.
-    for (const marker of model.ownership) {
-      const draw = marker.drawPos;
-      if (!draw || !Number.isFinite(draw.x) || !Number.isFinite(draw.z)) continue;
-      const x = sx(draw.x), y = sz(draw.z);
-      const selected = !!(this._selectedTarget && this._selectedTarget.id === marker.id);
-      const target = {
-        ...marker,
-        sx: x,
-        sy: y,
-        radiusPx: 22,
-        kind: 'claim',
-        entityId: marker.targetEntityId,
-        sectorId: model.sectorId,
-        detail: `Owned base · ${marker.statusLine}`,
-      };
-      this._clickTargets.push(target);
+    if (this._layers.holdings) {
+      for (const marker of model.ownership) {
+        const draw = marker.drawPos;
+        if (!draw || !Number.isFinite(draw.x) || !Number.isFinite(draw.z)) continue;
+        const x = sx(draw.x), y = sz(draw.z);
+        const selected = !!(this._selectedTarget && this._selectedTarget.id === marker.id);
+        const target = {
+          ...marker,
+          sx: x,
+          sy: y,
+          radiusPx: 22,
+          kind: 'claim',
+          entityId: marker.targetEntityId,
+          sectorId: model.sectorId,
+          detail: `Owned base · ${marker.statusLine}`,
+        };
+        this._clickTargets.push(target);
 
-      g.save();
-      g.strokeStyle = marker.color;
-      g.fillStyle = marker.color;
-      g.lineWidth = selected ? 2.5 : 1.5;
-      g.beginPath();
-      g.arc(x, y, selected ? 13 : 11, 0, Math.PI * 2);
-      g.stroke();
-      g.font = FONT_MONO(700, 15);
-      g.textAlign = 'center';
-      g.textBaseline = 'middle';
-      g.fillText(marker.glyph, x, y);
-      g.restore();
+        g.save();
+        g.strokeStyle = marker.color;
+        g.fillStyle = marker.color;
+        g.lineWidth = selected ? 2.5 : 1.5;
+        g.beginPath();
+        g.arc(x, y, selected ? 13 : 11, 0, Math.PI * 2);
+        g.stroke();
+        g.font = FONT_MONO(700, 15);
+        g.textAlign = 'center';
+        g.textBaseline = 'middle';
+        g.fillText(marker.glyph, x, y);
+        g.restore();
 
-      labelCandidates.push(makeMapLabelCandidate(g, {
-        id: `claim:${marker.id || marker.claimId}`,
-        kind: 'claim',
-        text: marker.name,
-        lines: [marker.name, marker.statusLine],
-        x,
-        y,
-        anchorRadius: 14,
-        color: marker.color,
-        selected,
-        named: true,
-      }));
+        labelCandidates.push(makeMapLabelCandidate(g, {
+          id: `claim:${marker.id || marker.claimId}`,
+          kind: 'claim',
+          text: marker.name,
+          lines: [marker.name, marker.statusLine],
+          x,
+          y,
+          anchorRadius: 14,
+          color: marker.color,
+          selected,
+          named: true,
+        }));
+      }
     }
 
     let objectivePlacement = null;
@@ -8791,6 +9447,9 @@ export const galaxyMapScreen = {
     // Fed by _draw before dispatch, so memory survives a trip out to SYSTEM and back.
     const intel = this._localIntel;
     const model = buildLocalModel(state, this._isHostile, { claimsSystem: this._claimsSystem(), intel });
+    this._localLiveContacts = model.contacts
+      ? model.contacts.filter((contact) => contact && !contact.remembered).length
+      : 0;
     const cam = this._cams.local;
     const wp = state.nav && state.nav.waypoint;
     const wpPos = resolveWaypointPresentationPosition(state, wp);
@@ -8829,7 +9488,9 @@ export const galaxyMapScreen = {
       if (c.remembered || c.foreign || c.kind === 'asteroid') continue;
       fitSpans.push(Math.hypot(c.x - px, c.z - pz));
     }
-    for (const marker of model.ownership) fitSpans.push(Math.hypot(marker.x - px, marker.z - pz));
+    if (this._layers.holdings) {
+      for (const marker of model.ownership) fitSpans.push(Math.hypot(marker.x - px, marker.z - pz));
+    }
     for (const bearing of model.bearings) {
       const point = bearing.fixedPos || bearing.center;
       if (!point) continue;
@@ -8853,7 +9514,7 @@ export const galaxyMapScreen = {
     const sz = (z) => h / 2 - (z - cam.cy) * baseScale * cam.zoom;
     const labelCandidates = [];
     const edgeTicks = [];
-    setMapCanvasAriaLabel(this._canvas, 'local', model.ownership);
+    setMapCanvasAriaLabel(this._canvas, 'local', this._layers.holdings ? model.ownership : []);
 
     const offView = (x, y) => x < 20 || y < 20 || x > w - 20 || y > h - 20;
     const pushEdgeTick = (x, y, color, shape, target) => {
@@ -9171,7 +9832,8 @@ export const galaxyMapScreen = {
     // faded chevron on an otherwise empty table reads as memory rather than as a rendering fault.
     const liveContacts = model.contacts.reduce((n, c) => (c.remembered ? n : n + 1), 0);
     const rememberedContacts = model.contacts.length - liveContacts;
-    if (liveContacts === 0 && model.ownership.length === 0 && model.bearings.length === 0) {
+    const holdingCount = this._layers.holdings ? model.ownership.length : 0;
+    if (liveContacts === 0 && holdingCount === 0 && model.bearings.length === 0) {
       g.save();
       g.fillStyle = 'rgba(142, 134, 117, 0.6)';
       g.font = FONT_UI(500, 11);
@@ -9186,55 +9848,57 @@ export const galaxyMapScreen = {
     }
 
     // Player-owned bases remain labeled at local scale and can arm autopilot with a pointer action.
-    for (const marker of model.ownership) {
-      const x = sx(marker.x), y = sz(marker.z);
-      if (offView(x, y)) {
-        pushEdgeTick(x, y, marker.color, 'claim', {
+    if (this._layers.holdings) {
+      for (const marker of model.ownership) {
+        const x = sx(marker.x), y = sz(marker.z);
+        if (offView(x, y)) {
+          pushEdgeTick(x, y, marker.color, 'claim', {
+            ...marker,
+            kind: 'claim',
+            entityId: marker.targetEntityId,
+            sectorId: model.sectorId,
+            detail: `Owned base · off-view · ${marker.statusLine}`,
+          });
+          continue;
+        }
+        const selected = !!(this._selectedTarget && this._selectedTarget.id === marker.id);
+        this._clickTargets.push({
           ...marker,
+          sx: x,
+          sy: y,
+          radiusPx: 22,
           kind: 'claim',
           entityId: marker.targetEntityId,
           sectorId: model.sectorId,
-          detail: `Owned base · off-view · ${marker.statusLine}`,
+          detail: `Owned base · ${marker.statusLine}`,
         });
-        continue;
+
+        g.save();
+        g.strokeStyle = marker.color;
+        g.fillStyle = marker.color;
+        g.lineWidth = selected ? 2.5 : 1.5;
+        g.beginPath();
+        g.arc(x, y, selected ? 13 : 11, 0, Math.PI * 2);
+        g.stroke();
+        g.font = FONT_MONO(700, 15);
+        g.textAlign = 'center';
+        g.textBaseline = 'middle';
+        g.fillText(marker.glyph, x, y);
+        g.restore();
+
+        labelCandidates.push(makeMapLabelCandidate(g, {
+          id: `claim:${marker.id || marker.claimId}`,
+          kind: 'claim',
+          text: marker.name,
+          lines: [marker.name, marker.statusLine],
+          x,
+          y,
+          anchorRadius: 14,
+          color: marker.color,
+          selected,
+          named: true,
+        }));
       }
-      const selected = !!(this._selectedTarget && this._selectedTarget.id === marker.id);
-      this._clickTargets.push({
-        ...marker,
-        sx: x,
-        sy: y,
-        radiusPx: 22,
-        kind: 'claim',
-        entityId: marker.targetEntityId,
-        sectorId: model.sectorId,
-        detail: `Owned base · ${marker.statusLine}`,
-      });
-
-      g.save();
-      g.strokeStyle = marker.color;
-      g.fillStyle = marker.color;
-      g.lineWidth = selected ? 2.5 : 1.5;
-      g.beginPath();
-      g.arc(x, y, selected ? 13 : 11, 0, Math.PI * 2);
-      g.stroke();
-      g.font = FONT_MONO(700, 15);
-      g.textAlign = 'center';
-      g.textBaseline = 'middle';
-      g.fillText(marker.glyph, x, y);
-      g.restore();
-
-      labelCandidates.push(makeMapLabelCandidate(g, {
-        id: `claim:${marker.id || marker.claimId}`,
-        kind: 'claim',
-        text: marker.name,
-        lines: [marker.name, marker.statusLine],
-        x,
-        y,
-        anchorRadius: 14,
-        color: marker.color,
-        selected,
-        named: true,
-      }));
     }
 
     // The waypoint's edge tick rides even the off-frame goal so the objective never vanishes.

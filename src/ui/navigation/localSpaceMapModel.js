@@ -228,11 +228,51 @@ export class LocalSpaceIntel {
   }
 }
 
-export function rankTradeRoutes({ beacons, cargoCapacity, currentStationId = null, travelEstimator, riskEstimator, nowS = 0 } = {}) {
+export function rankTradeRoutes({
+  beacons,
+  cargoCapacity,
+  currentStationId = null,
+  travelEstimator,
+  riskEstimator,
+  nowS = 0,
+  heldCargo = null,
+  sortBy = 'best',
+} = {}) {
   const list = beacons instanceof Map ? Array.from(beacons.values()) : Array.from(beacons || []);
+  const holdLots = heldCargo && Array.isArray(heldCargo.lots) ? heldCargo.lots : [];
+  if (holdLots.length) {
+    const holdQuotes = {};
+    for (const lot of holdLots) {
+      if (!lot || !lot.commodityId) continue;
+      const units = Math.max(0, finite(lot.units, 0));
+      if (!(units > 0)) continue;
+      holdQuotes[String(lot.commodityId)] = {
+        // Cost basis can be unknown; zero is a valid "liquidate what you have" floor.
+        buy: Math.max(0, finite(lot.costBasis, 0)),
+        sell: Math.max(0, finite(lot.sellHint, finite(lot.costBasis, 0))),
+        stock: units,
+        demand: units,
+        source: 'held',
+      };
+    }
+    if (Object.keys(holdQuotes).length) {
+      list.push({
+        stationId: String(heldCargo.stationId || '__hold_here__'),
+        quotes: holdQuotes,
+        capturedAtS: finite(heldCargo.capturedAtS, nowS),
+        reliability: clamp(finite(heldCargo.reliability, 1), 0, 1),
+        source: 'held',
+        synthetic: true,
+      });
+    }
+  }
   const routes = [];
   for (const origin of list) {
-    if (currentStationId && String(origin.stationId) !== String(currentStationId)) continue;
+    if (currentStationId
+      && !origin.synthetic
+      && String(origin.stationId) !== String(currentStationId)) {
+      continue;
+    }
     for (const destination of list) {
       if (origin === destination || origin.stationId === destination.stationId) continue;
       for (const [commodityId, sourceQuote] of Object.entries(origin.quotes || {})) {
@@ -250,6 +290,10 @@ export function rankTradeRoutes({ beacons, cargoCapacity, currentStationId = nul
         const reliability = Math.min(origin.reliability ?? 1, destination.reliability ?? 1) * Math.exp(-ageS / 1800);
         const gross = unitProfit * units;
         const expected = gross * reliability * (1 - risk * 0.65);
+        const modelSell = Number(sourceQuote && sourceQuote.modelSell);
+        const modelDeltaPct = Number.isFinite(modelSell) && modelSell > 0
+          ? ((Number(sourceQuote.sell) - modelSell) / modelSell) * 100
+          : null;
         routes.push({
           originId: origin.stationId,
           destinationId: destination.stationId,
@@ -263,11 +307,24 @@ export function rankTradeRoutes({ beacons, cargoCapacity, currentStationId = nul
           risk,
           ageS,
           reliability,
+          originSynthetic: !!origin.synthetic,
+          source: origin.source || sourceQuote.source || 'memory',
+          modelApprox: !!sourceQuote.approx,
+          modelBandPct: Math.max(0, Number(sourceQuote.modelBandPct) || 0),
+          modelDeltaPct,
         });
       }
     }
   }
-  routes.sort((a,b) => b.profitPerMinute - a.profitPerMinute || b.expectedProfit - a.expectedProfit);
+  if (String(sortBy) === 'safest') {
+    routes.sort((a, b) => a.risk - b.risk
+      || b.expectedProfit - a.expectedProfit
+      || b.profitPerMinute - a.profitPerMinute);
+  } else {
+    routes.sort((a, b) => b.profitPerMinute - a.profitPerMinute
+      || b.expectedProfit - a.expectedProfit
+      || a.risk - b.risk);
+  }
   return routes;
 }
 

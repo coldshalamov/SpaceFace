@@ -18,6 +18,7 @@ import { SECTORS } from '../../data/sectors.js';
 import { BINDINGS } from '../bindings.js';
 import { applyTradeNavigation } from './market.js';
 import { isHostileToPlayer } from '../../systems/scanner.js';
+import { sectorSignalFor, effectiveDangerTierFor } from '../../systems/sectorSim.js';
 import { resolveWaypointPresentationPosition } from '../navigationWaypoint.js';
 
 // Friendly commodity/station names for the route panel (single source: the data catalogs).
@@ -291,7 +292,13 @@ export const localmapScreen = {
       return { timeS: dist / Math.max(50, speed), fuel: dist * 0.01 };
     };
     try {
-      this._routes = rankTradeRoutes({ beacons, cargoCapacity: cargo, travelEstimator, riskEstimator: () => 0, nowS: now }) || [];
+      this._routes = rankTradeRoutes({
+        beacons,
+        cargoCapacity: cargo,
+        travelEstimator,
+        riskEstimator: buildStationRiskEstimator(state),
+        nowS: now,
+      }) || [];
     } catch (_) { this._routes = EMPTY_ROUTES; }
     this._renderRoutes();
   },
@@ -830,6 +837,52 @@ function stationNameForRoute(state, stationId) {
     }
   }
   return stationId;
+}
+
+function stationSectorIdForRoute(state, stationId) {
+  if (!state || !stationId) return null;
+  const sectors = Object.values((state.world && state.world.sectors) || {});
+  for (const sector of sectors) {
+    for (const station of sector.stations || []) {
+      if (station && station.id === stationId) return sector.id || null;
+    }
+  }
+  return null;
+}
+
+function clamp01(value) {
+  return Math.max(0, Math.min(1, Number(value) || 0));
+}
+
+function buildStationRiskEstimator(state) {
+  const sectorByStation = new Map();
+  const sectors = Object.values((state && state.world && state.world.sectors) || {});
+  for (const sector of sectors) {
+    for (const station of (sector && sector.stations) || []) {
+      if (!station || !station.id) continue;
+      sectorByStation.set(station.id, sector.id || null);
+    }
+  }
+  const byPair = new Map();
+  return (originStationId, destinationStationId) => {
+    const originSectorId = sectorByStation.get(originStationId) || stationSectorIdForRoute(state, originStationId);
+    const destinationSectorId = sectorByStation.get(destinationStationId) || stationSectorIdForRoute(state, destinationStationId);
+    if (!originSectorId || !destinationSectorId) return 0.18;
+    const key = originSectorId < destinationSectorId
+      ? `${originSectorId}|${destinationSectorId}`
+      : `${destinationSectorId}|${originSectorId}`;
+    if (byPair.has(key)) return byPair.get(key);
+    const originSignal = sectorSignalFor(state, originSectorId);
+    const destinationSignal = sectorSignalFor(state, destinationSectorId);
+    const originDanger = clamp01(originSignal && originSignal.danger);
+    const destinationDanger = clamp01(destinationSignal && destinationSignal.danger);
+    const originTier = Math.max(0, Number(effectiveDangerTierFor(state, originSectorId)) || 0);
+    const destinationTier = Math.max(0, Number(effectiveDangerTierFor(state, destinationSectorId)) || 0);
+    const tierRisk = clamp01(Math.max(originTier, destinationTier) / 4);
+    const risk = clamp01(((originDanger + destinationDanger) * 0.5 * 0.74) + (tierRisk * 0.26));
+    byPair.set(key, risk);
+    return risk;
+  };
 }
 
 function escapeHtml(value) {
