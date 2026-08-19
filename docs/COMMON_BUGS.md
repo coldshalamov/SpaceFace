@@ -518,16 +518,43 @@ Three Helios lane-furniture places — `place_cold_locker`, `place_ash_pin`, `pl
 unpackageable, so the runtime loader rejects them. `poi_helios_tally` sits at `(120, 180)`, about
 216 WU from spawn, so the starting sector requests one of them immediately.
 
-The cause is in the release build, not the authoring: **the source GLBs have every node named; the
-release GLBs have exactly one extra, nameless node** (`place_tally_post`: 31 source nodes, all
-named → 32 release nodes, index 31 unnamed, carrying a mesh, a scale and a translation). Every
-place that packages cleanly has zero unnamed nodes. `generate-render-package-pilots.mjs` then skips
-them — `semantic node names must be non-empty and unique (unnamed)` — and reports
-`all 113 release assets packaged`, because a skipped asset is not counted as missing. That is the
-same "green check encodes a false claim" shape as the filter above.
+The cause is in the release build, not the authoring. Node counts, source vs release:
+
+```
+place_station_trade_hub    source  33 / 0 unnamed     release  33 / 0 unnamed
+place_station_refinery     source  20 / 0 unnamed     release  20 / 0 unnamed
+place_gate_jump_ring       source  20 / 0 unnamed     release  20 / 0 unnamed
+place_dead_hulk            source  24 / 0 unnamed     release  24 / 0 unnamed
+place_nav_buoy             source  18 / 0 unnamed     release  18 / 0 unnamed
+place_cold_locker          source 100 / 0 unnamed     release 101 / 1 unnamed   <-- blocked
+place_ash_pin              source  27 / 0 unnamed     release  28 / 1 unnamed   <-- blocked
+place_tally_post           source  31 / 0 unnamed     release  32 / 1 unnamed   <-- blocked
+```
+
+Every place that packages cleanly round-trips its node count exactly. The three blocked ones each
+**gain** one node in the release build, and the gained node is the nameless one — it carries a mesh,
+a scale and a translation. The only structural transform in `build-sg04-release-assets.mjs` is
+`meshopt`, so that is where to look. **Re-running the release build will not fix this**, scoped with
+`--only <ids> --no-clean` or otherwise: the builder is what introduces the node, so a rebuild
+reproduces it. The builder needs to name what it creates.
+
+`generate-render-package-pilots.mjs` then skips them — `semantic node names must be non-empty and
+unique (unnamed)` — and reports `all 113 release assets packaged`, because a skipped asset is not
+counted as missing. That is the same "green check encodes a false claim" shape as the filter above.
 
 This predates the station fix and was simply masked by it: assertions run in order, and the Helios
 one is earlier in the file.
+
+**Two more checks are red from the same missing-package family, and are not the station either.**
+Both were verified identical with the residency fix reverted, so do not attribute them to it:
+
+- `scripts/check-sector-prewarm.mjs` — "sector archetypes derive from real entity selectors", whose
+  failing URL list is exactly the unpackaged set (`wasp_production_v1`, the `ashline_*` and
+  `helios_*` bodies).
+- `npm run check:authored-place-runtime` — "shared fallback geometry remains valid for failure
+  controls".
+
+`npm run check:playable` is green (14/14), and `check:station-archetype-wiring` is green (199 ok).
 
 ### Wrong first looks, ranked
 
