@@ -1229,56 +1229,40 @@ def build_lod(lod, mats):
         "lod": f"lod{lod}", "slot": "hull", "category": "wholeships",
         "forward": "+X", "embeddedPlume": False,
     }
-    # C93: large open well with a seat that silhouettes from 3Q.
-    # Dramatic wing-carry hump. Longer cans. No transom gouge.
-    cabin = loft_volume("Cabin", (
+    # C99: one hull so cabin-waist cannot be a hard triangle of two volumes.
+    body = loft_volume("Hull", (
         (5.55, 0.22, 0.26, 0.16, 0.10, 0.12, 0.90),
-        (4.70, 0.50, 0.62, 0.34, 0.58, 0.20, 0.46),
-        (3.70, 0.92, 1.10, 0.38, 0.90, 0.20, 0.24),
-        (2.80, 1.38, 0.70, 0.22, 0.28, 0.50, 0.26),
-        (2.46, 1.60, 0.56, 0.16, 0.14, 0.70, 0.24),
-    ), hull, collection, 0.11)
-    waist = loft_volume("Waist", (
-        (2.50, 1.62, 0.56, 0.16, 0.12, 0.72, 0.24),
-        (1.90, 1.78, 0.80, 0.08, 0.10, 0.72, 0.20),
-        (1.30, 1.96, 1.08, 0.02, 0.10, 0.70, 0.16),
-        (0.55, 1.86, 0.86, 0.06, 0.08, 0.76, 0.16),
-        (-0.20, 1.72, 0.64, 0.10, 0.06, 0.82, 0.14),
-        (-0.70, 1.50, 0.46, 0.16, 0.06, 0.86, 0.12),
-    ), hull, collection, 0.11)
-    drive = loft_volume("Drive_House", (
-        (-0.60, 1.48, 0.44, 0.16, 0.06, 0.86, 0.12),
-        (-1.55, 1.22, 0.48, 0.14, 0.05, 0.90, 0.08),
-        (-2.45, 1.04, 0.42, 0.14, 0.04, 0.92, 0.06),
+        (4.70, 0.50, 0.56, 0.32, 0.52, 0.20, 0.50),
+        (3.80, 0.88, 1.02, 0.42, 0.84, 0.22, 0.26),
+        (2.90, 1.36, 0.78, 0.24, 0.30, 0.52, 0.26),
+        (1.80, 1.80, 0.74, 0.14, 0.12, 0.68, 0.22),
+        (0.70, 1.94, 0.72, 0.12, 0.10, 0.74, 0.18),
+        (-0.40, 1.58, 0.56, 0.16, 0.08, 0.82, 0.14),
+        (-1.50, 1.22, 0.46, 0.16, 0.06, 0.88, 0.10),
+        (-2.40, 1.04, 0.40, 0.14, 0.04, 0.90, 0.08),
         (-3.20, 0.96, 0.36, 0.14, 0.03, 0.92, 0.06),
-    ), hull, collection, 0.12)
-    subdivide_mesh(cabin, 1)
-    subdivide_mesh(waist, 1)
-    subdivide_mesh(drive, 1)
-    # Large roof well — C91 clay proved this reads from 3Q. No filling glass.
-    delete_faces_in_box(cabin, 3.20, 4.42, -0.52, 0.52, 0.78, 2.20)
-    delete_faces_in_box(waist, 0.50, 1.50, -2.05, -1.48, -0.15, 0.55, normal="y-", normal_min=0.15)
-    delete_faces_in_box(waist, -0.70, -0.10, 0.05, 0.52, 0.68, 1.40, normal="z", normal_min=0.15)
-    delete_faces_in_box(drive, -2.10, -1.50, 0.70, 0.98, 0.14, 0.72, normal="z", normal_min=0.15)
-    report_shells(cabin, "cabin after well")
-    report_shells(drive, "drive after throats")
-    for obj in (cabin, waist, drive):
-        bevel = obj.modifiers.new("HullBevel", "BEVEL")
-        bevel.width = 0.012
-        bevel.segments = 2
-        bevel.limit_method = "ANGLE"
-        bevel.angle_limit = math.radians(32)
-        wn = obj.modifiers.new("HullWN", "WEIGHTED_NORMAL")
-        wn.keep_sharp = True
-        apply_modifiers(obj)
-    add_station_hoop("Hoop_CabinWaist", 2.48, 1.60, 0.56, 0.16, 0.14, 0.70, 0.24, armor, collection, stand=0.048, half=0.042)
-    add_station_hoop("Hoop_WaistDrive", -0.65, 1.48, 0.44, 0.16, 0.06, 0.86, 0.12, armor, collection, stand=0.048, half=0.042)
+    ), hull, collection, 0.11)
+    subdivide_mesh(body, 1)
+    delete_faces_in_box(body, 3.32, 4.28, -0.42, 0.42, 0.90, 2.10)
+    delete_faces_in_box(body, 0.50, 1.50, -2.05, -1.48, -0.15, 0.55, normal="y-", normal_min=0.15)
+    delete_faces_in_box(body, -0.70, -0.10, 0.05, 0.52, 0.68, 1.40, normal="z", normal_min=0.15)
+    report_shells(body, "hull after wells")
+    bevel = body.modifiers.new("HullBevel", "BEVEL")
+    bevel.width = 0.012
+    bevel.segments = 2
+    bevel.limit_method = "ANGLE"
+    bevel.angle_limit = math.radians(32)
+    wn = body.modifiers.new("HullWN", "WEIGHTED_NORMAL")
+    wn.keep_sharp = True
+    apply_modifiers(body)
+    add_station_hoop("Hoop_Canopy", 3.80, 0.90, 1.00, 0.42, 0.80, 0.24, 0.26, armor, collection, stand=0.040, half=0.036)
+    add_station_hoop("Hoop_Wing", 0.70, 1.94, 0.74, 0.12, 0.10, 0.74, 0.18, armor, collection, stand=0.042, half=0.038)
     add_station_hoop("Hoop_Transom", -3.18, 0.98, 0.38, 0.14, 0.03, 0.92, 0.06, armor, collection, stand=0.042, half=0.034)
 
     add_five_wall_tub("CockpitTub", (3.75, 0.0, 0.52), (0.44, 0.24, 0.20), 0.022, mech, collection)
-    add_box("Cockpit_Seat", (3.70, 0.0, 0.68), (0.18, 0.13, 0.055), mech, collection, 0.003)
-    add_box("Cockpit_Back", (3.48, 0.0, 1.02), (0.032, 0.13, 0.28), armor, collection, 0.002)
-    add_box("Cockpit_Headrest", (3.46, 0.0, 1.36), (0.040, 0.14, 0.10), warning, collection, 0.002)
+    add_box("Cockpit_Seat", (3.70, 0.0, 0.70), (0.20, 0.14, 0.06), mech, collection, 0.003)
+    add_box("Cockpit_Back", (3.48, 0.0, 1.00), (0.036, 0.14, 0.24), armor, collection, 0.002)
+    add_box("Cockpit_Headrest", (3.46, 0.0, 1.20), (0.045, 0.14, 0.08), warning, collection, 0.002)
     add_box("Cockpit_Console", (4.06, 0.0, 0.66), (0.11, 0.15, 0.030), armor, collection, 0.002)
     add_box("Cockpit_Coaming", (3.78, 0.0, 1.06), (0.48, 0.28, 0.008), armor, collection, 0.002)
     add_folded_sheet(
@@ -1306,21 +1290,21 @@ def build_lod(lod, mats):
     )
     add_folded_sheet(
         "Keel_Spine",
-        (1.40, -0.14, -0.68), (-1.00, -0.14, -0.90),
-        (-1.00, 0.14, -0.90), (1.40, 0.14, -0.68),
-        0.040, hull, collection, 0.004,
+        (1.40, -0.14, -0.46), (-0.40, -0.14, -0.42),
+        (-0.40, 0.14, -0.42), (1.40, 0.14, -0.46),
+        0.032, hull, collection, 0.004,
     )
     add_folded_sheet(
         "Fair_CabinWaistP",
-        (2.80, -1.22, -0.16), (2.28, -1.64, -0.20),
-        (2.28, -1.54, 0.52), (2.80, -1.16, 0.58),
-        0.032, hull, collection, 0.004,
+        (2.85, -1.20, -0.10), (2.30, -1.58, -0.12),
+        (2.30, -1.50, 0.62), (2.85, -1.14, 0.68),
+        0.030, hull, collection, 0.004,
     )
     add_folded_sheet(
         "Fair_CabinWaistS",
-        (2.80, 1.22, -0.16), (2.80, 1.16, 0.58),
-        (2.28, 1.54, 0.52), (2.28, 1.64, -0.20),
-        0.032, hull, collection, 0.004,
+        (2.85, 1.20, -0.10), (2.85, 1.14, 0.68),
+        (2.30, 1.50, 0.62), (2.30, 1.58, -0.12),
+        0.030, hull, collection, 0.004,
     )
     add_folded_sheet(
         "Fair_WaistDriveP",
@@ -1342,8 +1326,7 @@ def build_lod(lod, mats):
     add_overlap_plate("Armor_HouseS", (-1.90, 1.08, 0.20), (0.50, 0.042, 0.20), armor, collection, 0.005)
     add_overlap_plate("Armor_JointP", (-0.40, -1.40, 0.18), (0.28, 0.040, 0.16), armor, collection, 0.004)
     add_overlap_plate("Armor_JointS", (-0.40, 1.40, 0.18), (0.28, 0.040, 0.16), armor, collection, 0.004)
-    add_overlap_plate("Armor_KeelFore", (1.20, 0.00, -0.68), (0.50, 0.14, 0.024), hull, collection, 0.004)
-    add_overlap_plate("Armor_KeelAft", (-0.80, 0.00, -0.88), (0.46, 0.12, 0.022), hull, collection, 0.004)
+    add_overlap_plate("Armor_KeelFore", (1.20, 0.00, -0.44), (0.40, 0.12, 0.018), hull, collection, 0.003)
     add_box("Accent_WaistP", (0.15, -1.40, 0.18), (0.28, 0.010, 0.04), accent, collection, 0.002)
     add_box("Accent_WaistS", (0.15, 1.40, 0.18), (0.28, 0.010, 0.04), accent, collection, 0.002)
 

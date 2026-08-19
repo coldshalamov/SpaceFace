@@ -74,5 +74,9 @@
 | 93 | yes | 880FF4FB | 3Q REVISE / starboard REVISE / rear REVISE | Long 3D cans you can look into. Interiors chrome. Greenhouse still a crate. Not wired. |
 | 94 | yes | see json | author REVISE | Dark bowls. Rails off. Bay crop shows seat + glass. Starboard still a boom. Not wired. |
 | 95 | yes | see json | author REVISE | Boom shortened. Floating keel tiles removed from the script. Cabin-waist still a hard step. Not wired. |
+| 96 | yes | see json | author REVISE | Width-carry waist. Keel plates off. Well punch split the cabin (ghosted nose). Not wired. |
+| 97 | yes | see json | author REVISE | Roof-only well (52 boundary). Nose closed. Headrest poked out as a tower. Not wired. |
+| 98 | yes | see json | 3Q REVISE / starboard REVISE / rear REVISE | Medium well. Belly plates confirmed gone. Joint still called a triangle. Not wired. |
+| 99 | yes | see json | 3Q REVISE / rear REVISE / starboard author REVISE | One continuous hull. Large well. Open cans. Still not KEEP. Not wired. |
 
 Hitch-plus / A-list: not met. C85 remains the live game body. Do not mark PQ-050.01 done. Do not self-accept.
