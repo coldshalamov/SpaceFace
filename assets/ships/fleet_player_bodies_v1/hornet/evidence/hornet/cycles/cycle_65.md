@@ -30,13 +30,15 @@ Starboard enclosed rose vs C64. Thicker wings opened new gaps.
 
 ## Reviews
 
-Subagents pending at write.
+Subagents: `7552f122` three-quarter, `869adc73` starboard, `b0b546b6` rear.
 
 | Angle | Verdict | Headline |
 |---|---|---|
-| three-quarter | pending | |
-| starboard | pending | |
-| rear | pending | |
+| three-quarter | **REVISE** | Two-tone dart, paper wings, cone nozzles. Gray tube with plates. |
+| starboard | **REVISE** | Gray needle with plates. Backdrop through the centerline. |
+| rear | **REVISE** | Apertures are **caps** in this frame. Lit discs with a sunburst of vanes. |
+
+Seventh pass still loses. Clay is still primitives. Hitch still wins.
 
 ## Not claimed
 
