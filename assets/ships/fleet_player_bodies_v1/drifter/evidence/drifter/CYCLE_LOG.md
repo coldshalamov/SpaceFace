@@ -14,5 +14,6 @@
 | 10 | yes | REVISE | mast yard. Ten-cycle cap |
 | 11–17 | prior | REVISE | factory garnish. Not this campaign's seven. |
 | 18 | yes | 3Q REVISE / starboard REVISE / rear REVISE | campaign pass 1 of 7. Closed shell. Stick waist, fan bells. Not wired. |
+| 19 | yes | 3Q REVISE / starboard REVISE / rear REVISE | campaign pass 2 of 7. Gap closed. Still a pancake dart. Not wired. |
 
-Seven-pass treatment: 1/7. Do not promote. Do not self-accept.
+Seven-pass treatment: 2/7. Do not promote. Do not self-accept.
