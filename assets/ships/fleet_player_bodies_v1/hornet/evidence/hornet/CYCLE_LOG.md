@@ -46,5 +46,10 @@
 | 58 | **no** | see json | (none) | C54 form restored per the REVERT, carrying only the re-seated sockets and the texture ladder. Not a new form attempt, so it does not count. First attempt crashed Blender in igc64.dll during render setup after the LODs exported cleanly; retried. |
 
 | 59 | yes | 0CF06831 | REVERT/REVISE/REVISE | Raised C54 loft + Exact booleans. Hull 21,966 tris (held). Profile 5.02:1. Exact cuts shredded the loft into 26 shells; starboard is a plate cage again (20% enclosed). Bells read as washers. Not wired. |
+| 66 | **no** | — | (none) | Exact pocket cuts emptied the pressure hull. Not counted. |
+| 67 | yes | see json | REVISE/REVISE/REVISE | Closed hull again. Dark liners. Canopy still a brick on skin. Clay still primitives. Not wired. |
+| 68 | yes | see json | REVISE | Deep loft well pinched the nose. Worse than 67. Well reverted. |
+| 69 | yes | see json | REVISE | Shallow saddle. Silhouette restored. Clay still primitives. Not wired. |
+| 70 | yes | see json | pending | Brighter hull, thicker wings. Best closed still this session. Clay still primitives. Not wired. |
 
 Hitch-plus / A-list: not met. Do not promote. Do not self-accept.

@@ -31,6 +31,27 @@ Working scene: headless `tools/blender/build_hornet_mtx.py`. Supported cameras i
 
 C52 implements 1 + 3.
 
+## C67 construction (face wells, no Exact boolean)
+
+C66 is **not counted**. Exact booleans on the solidified loft deleted the
+pressure hull (0 shells). C67 opens roof/flank wells by deleting faces and
+aborts if hull verts collapse. Dark liners, thin canopy, airfoil wings stay.
+
+## C66 construction (cutters actually hit the skin)
+
+Shape-grammar failure being repaired: C65 canopy sat on unbroken skin (roof
+cutter was above the loft), side wells missed the beam, join-then-AO-bake
+blacked the upper half, and bells inherited light mechanical albedo so the
+throats read as white cones.
+
+This cycle:
+- roof / flank cutters start outside the 10 cm wall and eat inward
+- thin framed canopy over a lined tub; seat/console below the rim
+- dark inner liner + ceramic vanes in each bell
+- airfoil wing without leading-edge cards
+- shade after triangulate; no overlapping-mesh AO bake
+- armor is darker gray metal, not black
+
 ## C59 construction (closed interceptor, real openings)
 
 Shape-grammar failure being repaired: C54 closed loft was a blank dart (no hole,

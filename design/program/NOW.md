@@ -41,6 +41,8 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
+| PQ-050.01 Hornet closed-interceptor cycle 66 | grok-pq050 | mutating | `tools/blender/build_hornet_mtx.py`, `assets/ships/fleet_player_bodies_v1/hornet/` | rebuild Hornet cycle 66, review stills |
+| Drill playfield visual rebuild (Motherload-3D legibility) | opencode-kimi | mutating | `src/render/asteroidInteriorPreview.js`, `src/ui/asteroid/asteroidRenderer3d.js`, `src/ui/asteroid/asteroidScreen.js` | capture-drill-3d evidence + baseline checks |
 
 ## Uncommitted work without a confirmed live thread
 
