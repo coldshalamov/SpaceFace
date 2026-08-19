@@ -2,11 +2,11 @@
 
 **Counted:** yes. Full-job attempt: form, UV, bake, surface, LOD, three valid stills, three subagent reviews.
 
-**LOD0 sha256:** see `cycle_62.json`
+**LOD0 sha256:** `D07162C1E5482B18…`
 
 | LOD | Hull triangles | Total | Bytes |
 |---:|---:|---:|---:|
-| 0 | 40,297 | 73,677 | (see json) |
+| 0 | 40,297 | 73,677 | 27.0 MB |
 
 Hull triangles rose above C59's 21,966. Inset on the thick shell restored density. It also opened the cage again: starboard enclosed 29.91%.
 
