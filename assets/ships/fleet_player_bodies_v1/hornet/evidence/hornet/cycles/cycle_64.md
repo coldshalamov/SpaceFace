@@ -32,13 +32,15 @@ Starboard enclosed is the lowest of this campaign. Rear enclosed rose; hot still
 
 ## Reviews
 
-Subagents pending at write.
+Subagents: `8b2f3e06` three-quarter, `94242720` starboard, `c9491ef5` rear.
 
 | Angle | Verdict | Headline |
 |---|---|---|
-| three-quarter | pending | |
-| starboard | pending | |
-| rear | pending | |
+| three-quarter | **REVISE** | Faceted gray dart, paper wings, box on the roof, cone bells. |
+| starboard | **REVISE** | Gray needle with paper tail plates. |
+| rear | **REVISE** | Apertures are **caps** again. Aft fill lit the plugs into white discs. |
+
+Starboard enclosed is the best of the campaign. Rear throats regressed. Do not keep the aft fill as a blown disc.
 
 ## Not claimed
 
