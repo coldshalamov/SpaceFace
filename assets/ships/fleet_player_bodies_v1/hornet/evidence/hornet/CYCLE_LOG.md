@@ -62,5 +62,7 @@
 | 81 | yes | see json | pending | Glass tent off. Seat visible. Clay still a dart. Not wired. |
 | 82 | yes | see json | (well missed) | Three volumes. Cabin well deleted 0 faces. |
 | 83 | yes | see json | REVISE/REVISE/REVISE | Three volumes + cabin well (196 boundary). Reviewers still read a dart. Not wired. |
+| 84 | yes | see json | KEEP/REVISE/REVISE | Wide waist + rectangular house. Clay KEEP on three volumes. Bells still balls. |
+| 85 | yes | FDC3636B | (wired) | Bells recessed into transom as apertures. Wired LOD0/1/2. Hitch untouched. |
 
 Hitch-plus / A-list: not met. Do not promote. Do not self-accept.

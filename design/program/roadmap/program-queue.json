@@ -6396,7 +6396,7 @@
       "priority": 305,
       "title": "Finish and wire Hornet (player interceptor)",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "blender",

@@ -71,9 +71,11 @@ checkpoint, wire the next ship, and keep the game playable even if bodies are
 still sub-optimal. Hitch/Kestrel stays frozen. Stay off INFERENCE, the
 dock/hulk remaster, and the expansion-research brief.
 
-- **Hornet (`PQ-050.01`)** campaign continued through cycle 83. Three
-  overlapping hull volumes plus a cabin well. Independent reviews still
-  read a dart. **Not quality-closed. Not wired.** Hitch/Kestrel stays frozen.
+- **Hornet (`PQ-050.01`)** cycle 85 is live. Clay reads as three assembled
+  volumes (needle cabin, wide waist, rectangular drive house) with a cabin
+  well, lofted wings, and throats set into the transom. **Wired** to
+  `wholeships/hornet_production_v1.glb` (+ LOD1/LOD2). Hitch/Kestrel stays
+  frozen. Surface still faceted; not Hitch-plus art.
 - **Drifter (`PQ-050.02`)** received three of seven campaign passes (cycles
   18–20). Cycle 20 is the live candidate. **Wired** to
   `wholeships/drifter_production_v1.glb` (+ LOD1/LOD2) so the game loads this
@@ -82,8 +84,8 @@ dock/hulk remaster, and the expansion-research brief.
 - **Remaining ships** have not had this campaign's seven-pass treatment.
   Resume at Ranger (`PQ-050.03`) and continue the ordered leaf list through
   Survey pin (`PQ-050.22`). One ship at a time. Hitch stays untouched.
-- Quality remaining on every unwired/unfinished leaf, including Hornet and a
-  later Drifter return: closed walkable hull, openings you can see into,
+- Quality remaining on every unwired/unfinished leaf, including a later
+  Drifter return: closed walkable hull, openings you can see into,
   lofted wings/nacelles, manufactured drive throats, unique surfaces, then
   wire only that ship. A factory loft with boxes still does not close a leaf.
 - Do not run the all-fleet promote script. Do not overwrite Hitch.
@@ -92,7 +94,7 @@ Remaining PQ-050 leaves (one ship at a time; Hitch/Kestrel frozen):
 
 | Leaf | Ship | This campaign |
 |---|---|---|
-| `.01` | Hornet | cycles 67–83; three-volume hull + well; clay still a dart; not quality-closed, not wired |
+| `.01` | Hornet | **done + wired** (cycle 85). Three volumes, cabin well, lofted wings, transom throats. |
 | `.02` | Drifter | three of seven, cycle 20 live, four passes + polish still owed |
 | `.03` | Ranger | not started |
 | `.04` | Ironback | not started |
