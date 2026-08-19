@@ -821,26 +821,16 @@ def add_station_hoop(tag, x, hw, hh, zc, flat, box, keel, material, collection, 
     return loft_from_rings(tag, rings, material, collection, 0.003, cap=True)
 
 
-def interceptor_hull_rings():
-    """Six manufactured sections. Each pair is a constant-section course.
-
-    Mid is not a scaled bow: needle diamond, greenhouse deck, hard-chine wing
-    carry, taller waist, vertical drive house, flat transom.
-    """
-    courses = (
-        # x_fore, x_aft, hw, hh, zc, flat, box, keel
-        (5.55, 5.22, 0.24, 0.34, 0.18, 0.04, 0.08, 0.96),
-        (3.85, 3.10, 0.90, 0.68, 0.34, 0.96, 0.20, 0.50),
-        (1.55, 0.85, 1.48, 0.80, 0.10, 0.10, 0.55, 0.40),
-        (-0.35, -1.15, 1.20, 1.00, 0.08, 0.08, 0.80, 0.16),
-        (-2.70, -3.55, 1.10, 0.88, 0.12, 0.06, 0.92, 0.08),
-        (-4.55, -4.95, 0.86, 0.74, 0.14, 0.04, 0.96, 0.04),
-    )
-    rings = []
-    for x0, x1, hw, hh, zc, flat, box, keel in courses:
-        rings.append(densify_ring(station_ring(x0, 0, zc, hw, hh, flat=flat, box=box, keel=keel), 3))
-        rings.append(densify_ring(station_ring(x1, 0, zc, hw, hh, flat=flat, box=box, keel=keel), 3))
-    return rings
+def loft_volume(name, specs, material, collection, thick=0.12):
+    """One manufactured hull volume. specs are (x, hw, hh, zc, flat, box, keel)."""
+    rings = [
+        densify_ring(station_ring(x, 0, zc, hw, hh, flat=flat, box=box, keel=keel), 3)
+        for x, hw, hh, zc, flat, box, keel in specs
+    ]
+    obj = loft_from_rings(name, rings, material, collection, 0.010, cap=True)
+    thicken_shell(obj, thick)
+    report_shells(obj, name)
+    return obj
 
 
 def add_blended_interceptor_wing(name, sign, hull, armor, collection):
@@ -848,9 +838,9 @@ def add_blended_interceptor_wing(name, sign, hull, armor, collection):
     s = float(sign)
     # Fat inboard fillet so three-quarter and starboard can count thickness.
     main = (
-        (1.22, 1.38, 1.70, 0.88),
-        (1.50, 1.52, 2.05, 0.62),
-        (1.95, 1.20, 1.92, 0.38),
+        (1.18, 1.46, 1.70, 0.90),
+        (1.52, 1.58, 2.05, 0.64),
+        (1.95, 1.22, 1.92, 0.38),
         (2.45, 0.82, 1.78, 0.22),
         (2.95, 0.42, 1.62, 0.13),
         (3.52, 0.08, 1.52, 0.08),
@@ -906,14 +896,14 @@ def add_blended_interceptor_wing(name, sign, hull, armor, collection):
 def add_merged_nacelle(tag, sign, lod, mats, collection):
     """Drive house grown out of the aft body. One bell per side, no stacked second drive."""
     hull = mats["Material_Hull"]
-    y = 0.78 * sign
+    y = 0.70 * sign
     nacelle = loft_from_rings(f"Nacelle_{tag}", [
-        densify_ring(station_ring(-2.70, y, 0.10, 0.44, 0.50, flat=0.16, box=0.80, keel=0.14)),
-        densify_ring(station_ring(-3.40, y, 0.12, 0.46, 0.52, flat=0.12, box=0.88, keel=0.10)),
-        densify_ring(station_ring(-4.20, y, 0.14, 0.42, 0.48, flat=0.08, box=0.92, keel=0.08)),
-        densify_ring(station_ring(-4.92, y, 0.14, 0.36, 0.44, flat=0.06, box=0.94, keel=0.06)),
+        densify_ring(station_ring(-2.90, y, 0.12, 0.40, 0.46, flat=0.14, box=0.84, keel=0.12)),
+        densify_ring(station_ring(-3.60, y, 0.13, 0.42, 0.48, flat=0.10, box=0.90, keel=0.08)),
+        densify_ring(station_ring(-4.30, y, 0.14, 0.38, 0.44, flat=0.06, box=0.94, keel=0.06)),
+        densify_ring(station_ring(-4.72, y, 0.14, 0.34, 0.40, flat=0.04, box=0.96, keel=0.04)),
     ], hull, collection, 0.010)
-    add_hollow_bell(tag, -4.92, y, 0.14, 0.78, mats, collection)
+    add_hollow_bell(tag, -4.72, y, 0.14, 0.78, mats, collection)
     return nacelle
 
 
@@ -1121,7 +1111,7 @@ def shade_and_uv(obj):
     obj.select_set(True)
     apply_modifiers(obj)
     try:
-        bpy.ops.object.shade_smooth_by_angle(angle=math.radians(24))
+        bpy.ops.object.shade_smooth_by_angle(angle=math.radians(22))
     except Exception:
         for poly in obj.data.polygons:
             poly.use_smooth = True
@@ -1201,25 +1191,47 @@ def build_lod(lod, mats):
         "lod": f"lod{lod}", "slot": "hull", "category": "wholeships",
         "forward": "+X", "embeddedPlume": False,
     }
-    # C80: six changing courses, not a 17-ring dart. Do not subdivide — that
-    # turned hard chines into a sausage. Do not Exact-cut the solidified hull.
-    hull_obj = loft_from_rings("Pressure_Hull", interceptor_hull_rings(), hull, collection, 0.010, cap=True)
-    thicken_shell(hull_obj, 0.12)
-    report_shells(hull_obj, "hull after solidify")
-    verts0 = len(hull_obj.data.vertices)
-    print(f"hull verts after solidify: {verts0}")
-    delete_faces_in_box(hull_obj, 3.05, 3.90, -0.52, 0.52, 0.70, 1.20, normal="z", normal_min=0.15)
-    delete_faces_in_box(hull_obj, 0.60, 1.40, -1.62, -1.12, -0.05, 0.50, normal="y-", normal_min=0.20)
-    delete_faces_in_box(hull_obj, -3.50, -2.70, 1.00, 1.50, -0.05, 0.50, normal="y+", normal_min=0.20)
-    report_shells(hull_obj, "hull after face pockets")
-    bevel = hull_obj.modifiers.new("HullBevel", "BEVEL")
-    bevel.width = 0.012
-    bevel.segments = 2
-    bevel.limit_method = "ANGLE"
-    bevel.angle_limit = math.radians(32)
-    wn = hull_obj.modifiers.new("HullWN", "WEIGHTED_NORMAL")
-    wn.keep_sharp = True
-    apply_modifiers(hull_obj)
+    # C82: three overlapping volumes, not one lofted sausage. C80's six
+    # courses still interpolated into a dart. Do not Exact-cut solidified hulls.
+    cabin = loft_volume("Cabin", (
+        (5.55, 0.22, 0.32, 0.18, 0.04, 0.08, 0.96),
+        (4.40, 0.52, 0.50, 0.24, 0.40, 0.15, 0.70),
+        (3.50, 0.92, 0.70, 0.34, 0.96, 0.22, 0.48),
+        (2.20, 1.08, 0.72, 0.20, 0.40, 0.35, 0.42),
+    ), hull, collection, 0.12)
+    waist = loft_volume("Waist", (
+        (2.35, 1.22, 0.76, 0.12, 0.18, 0.48, 0.38),
+        (1.20, 1.52, 0.82, 0.10, 0.10, 0.58, 0.36),
+        (0.00, 1.36, 0.94, 0.08, 0.08, 0.74, 0.20),
+        (-1.35, 1.18, 1.00, 0.08, 0.08, 0.84, 0.12),
+    ), hull, collection, 0.12)
+    drive = loft_volume("Drive_House", (
+        (-1.20, 1.00, 1.05, 0.10, 0.04, 0.95, 0.06),
+        (-2.80, 1.12, 0.90, 0.12, 0.06, 0.94, 0.06),
+        (-4.20, 1.02, 0.84, 0.14, 0.04, 0.96, 0.04),
+        (-4.95, 0.92, 0.78, 0.14, 0.02, 0.98, 0.02),
+    ), hull, collection, 0.12)
+    loft_volume("Transom", (
+        (-4.82, 0.96, 0.82, 0.14, 0.02, 0.98, 0.02),
+        (-4.95, 0.96, 0.82, 0.14, 0.02, 0.98, 0.02),
+    ), hull, collection, 0.08)
+    subdivide_mesh(cabin, 1)
+    delete_faces_in_box(cabin, 2.70, 4.30, -0.75, 0.75, 0.45, 1.40)
+    delete_faces_in_box(waist, 0.50, 1.50, -1.75, -1.10, -0.15, 0.60, normal="y-", normal_min=0.15)
+    delete_faces_in_box(drive, -3.60, -2.60, 0.95, 1.55, -0.15, 0.60, normal="y+", normal_min=0.15)
+    report_shells(cabin, "cabin after well")
+    for obj in (cabin, waist, drive):
+        bevel = obj.modifiers.new("HullBevel", "BEVEL")
+        bevel.width = 0.012
+        bevel.segments = 2
+        bevel.limit_method = "ANGLE"
+        bevel.angle_limit = math.radians(32)
+        wn = obj.modifiers.new("HullWN", "WEIGHTED_NORMAL")
+        wn.keep_sharp = True
+        apply_modifiers(obj)
+    add_station_hoop("Hoop_CabinWaist", 2.28, 1.26, 0.78, 0.14, 0.20, 0.45, 0.38, armor, collection)
+    add_station_hoop("Hoop_WaistDrive", -1.28, 1.20, 0.98, 0.10, 0.08, 0.88, 0.10, armor, collection)
+    add_station_hoop("Hoop_Transom", -4.88, 0.98, 0.84, 0.14, 0.02, 0.98, 0.02, armor, collection, stand=0.040, half=0.045)
 
     add_five_wall_tub("CockpitTub", (3.48, 0.0, 0.78), (0.38, 0.22, 0.12), 0.034, hull, collection)
     add_box("Cockpit_Seat", (3.40, 0.0, 0.76), (0.16, 0.10, 0.028), hull, collection, 0.003)
@@ -1236,14 +1248,14 @@ def build_lod(lod, mats):
 
     add_folded_sheet(
         "Chine_P",
-        (1.50, -1.42, 0.02), (-1.10, -1.18, 0.00),
-        (-1.10, -1.08, 0.38), (1.50, -1.28, 0.42),
+        (1.50, -1.50, 0.02), (-1.10, -1.16, 0.00),
+        (-1.10, -1.06, 0.38), (1.50, -1.36, 0.42),
         0.032, hull, collection, 0.004,
     )
     add_folded_sheet(
         "Chine_S",
-        (1.50, 1.42, 0.02), (1.50, 1.28, 0.42),
-        (-1.10, 1.08, 0.38), (-1.10, 1.18, 0.00),
+        (1.50, 1.50, 0.02), (1.50, 1.36, 0.42),
+        (-1.10, 1.06, 0.38), (-1.10, 1.16, 0.00),
         0.032, hull, collection, 0.004,
     )
     add_folded_sheet(
@@ -1252,19 +1264,16 @@ def build_lod(lod, mats):
         (-1.00, 0.14, -0.90), (1.40, 0.14, -0.68),
         0.040, hull, collection, 0.004,
     )
-    add_overlap_plate("Armor_CheekP", (1.20, -1.46, 0.18), (0.42, 0.034, 0.18), armor, collection, 0.006)
-    add_overlap_plate("Armor_CheekS", (1.20, 1.46, 0.18), (0.42, 0.034, 0.18), armor, collection, 0.006)
+    add_overlap_plate("Armor_CheekP", (1.20, -1.52, 0.18), (0.42, 0.034, 0.18), armor, collection, 0.006)
+    add_overlap_plate("Armor_CheekS", (1.20, 1.52, 0.18), (0.42, 0.034, 0.18), armor, collection, 0.006)
     add_overlap_plate("Armor_NoseP", (5.00, -0.22, 0.28), (0.28, 0.022, 0.12), armor, collection, 0.004)
     add_overlap_plate("Armor_NoseS", (5.00, 0.22, 0.28), (0.28, 0.022, 0.12), armor, collection, 0.004)
     add_overlap_plate("Armor_HouseP", (-3.10, -1.08, 0.28), (0.50, 0.030, 0.18), armor, collection, 0.005)
     add_overlap_plate("Armor_HouseS", (-3.10, 1.08, 0.28), (0.50, 0.030, 0.18), armor, collection, 0.005)
     add_overlap_plate("Armor_KeelFore", (1.20, 0.00, -0.68), (0.50, 0.14, 0.024), hull, collection, 0.004)
     add_overlap_plate("Armor_KeelAft", (-0.80, 0.00, -0.88), (0.46, 0.12, 0.022), hull, collection, 0.004)
-    add_box("Accent_WaistP", (0.15, -1.38, 0.18), (0.28, 0.010, 0.04), accent, collection, 0.002)
-    add_box("Accent_WaistS", (0.15, 1.38, 0.18), (0.28, 0.010, 0.04), accent, collection, 0.002)
-    add_box("TransomBulkhead", (-4.72, 0.0, 0.16), (0.060, 0.90, 0.76), hull, collection, 0.006)
-    add_box("AftBulkhead", (-3.35, 0.0, 0.14), (0.045, 1.00, 0.80), hull, collection, 0.005)
-    add_box("TransomPlate", (-4.92, 0.0, 0.14), (0.018, 0.32, 0.16), hull, collection, 0.003)
+    add_box("Accent_WaistP", (0.15, -1.40, 0.18), (0.28, 0.010, 0.04), accent, collection, 0.002)
+    add_box("Accent_WaistS", (0.15, 1.40, 0.18), (0.28, 0.010, 0.04), accent, collection, 0.002)
 
     add_tile_bank("KeelTiles", 1.40, -1.70, 0.00, -0.94, 2, 0.16, 0.09, 0.014, hull, collection, 0.04)
 
@@ -1272,8 +1281,8 @@ def build_lod(lod, mats):
         add_blended_interceptor_wing(f"Wing_{side}", sign, hull, armor, collection)
         add_folded_sheet(
             f"GloveCheek_{side}",
-            (1.50, 1.40 * sign, -0.08), (0.70, 1.48 * sign, -0.10),
-            (0.70, 1.48 * sign, 0.30), (1.50, 1.40 * sign, 0.34),
+            (1.50, 1.48 * sign, -0.08), (0.70, 1.54 * sign, -0.10),
+            (0.70, 1.54 * sign, 0.30), (1.50, 1.48 * sign, 0.34),
             0.036, hull, collection, 0.004,
         )
         add_merged_nacelle(side, sign, lod, mats, collection)
@@ -1519,7 +1528,7 @@ def render_cycle(collection):
         "clay_three_quarter": ((10.8, -9.8, 6.4), (0.25, 0, 0.22), 36),
         "grazing_close": ((6.6, -5.4, 2.0), (1.15, 0, 0.35), 48),
         "bay_interior": ((4.15, -1.05, 1.48), (3.48, 0.0, 0.84), 40),
-        "drive_rear": ((-8.6, -2.2, 1.4), (-4.92, 0.78, 0.14), 50),
+        "drive_rear": ((-8.6, -2.2, 1.4), (-4.72, 0.70, 0.14), 50),
         "play_size": ((36, -32, 16), (0.20, 0, 0.16), 48),
         "orm_isolation": ((10.8, -9.8, 6.4), (0.25, 0, 0.22), 36),
         "normal_isolation": ((10.8, -9.8, 6.4), (0.25, 0, 0.22), 36),

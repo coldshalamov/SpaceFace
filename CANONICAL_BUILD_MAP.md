@@ -71,8 +71,8 @@ checkpoint, wire the next ship, and keep the game playable even if bodies are
 still sub-optimal. Hitch/Kestrel stays frozen. Stay off INFERENCE, the
 dock/hulk remaster, and the expansion-research brief.
 
-- **Hornet (`PQ-050.01`)** campaign continued through cycle 81. Six-station
-  hull rebuild (C80) plus an open cockpit well. Independent reviews still
+- **Hornet (`PQ-050.01`)** campaign continued through cycle 83. Three
+  overlapping hull volumes plus a cabin well. Independent reviews still
   read a dart. **Not quality-closed. Not wired.** Hitch/Kestrel stays frozen.
 - **Drifter (`PQ-050.02`)** received three of seven campaign passes (cycles
   18–20). Cycle 20 is the live candidate. **Wired** to
@@ -92,7 +92,7 @@ Remaining PQ-050 leaves (one ship at a time; Hitch/Kestrel frozen):
 
 | Leaf | Ship | This campaign |
 |---|---|---|
-| `.01` | Hornet | cycles 67–81; six-station hull + well; clay still a dart; not quality-closed, not wired |
+| `.01` | Hornet | cycles 67–83; three-volume hull + well; clay still a dart; not quality-closed, not wired |
 | `.02` | Drifter | three of seven, cycle 20 live, four passes + polish still owed |
 | `.03` | Ranger | not started |
 | `.04` | Ironback | not started |

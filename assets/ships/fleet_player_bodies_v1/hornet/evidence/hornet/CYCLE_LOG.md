@@ -60,5 +60,7 @@
 | 79 | yes | see json | pending | Dropped wing inset (C78 crumpled). Underside spar. Starboard lights the airfoil. Clay still a dart. Not wired. |
 | 80 | yes | see json | REVISE/REVISE/REVISE | Six-station hull. Reviewers still read a dart. Glass tent hid the seat. Not wired. |
 | 81 | yes | see json | pending | Glass tent off. Seat visible. Clay still a dart. Not wired. |
+| 82 | yes | see json | (well missed) | Three volumes. Cabin well deleted 0 faces. |
+| 83 | yes | see json | REVISE/REVISE/REVISE | Three volumes + cabin well (196 boundary). Reviewers still read a dart. Not wired. |
 
 Hitch-plus / A-list: not met. Do not promote. Do not self-accept.
