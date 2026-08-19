@@ -54,5 +54,8 @@
 | 73 | yes | see json | REVISE | FLOAT boolean merged inner/outer, 0 boundary. Thick slab wings. |
 | 74 | yes | see json | REVISE/REVISE/REVISE | Face pockets: 81 faces, 92 boundary, 2 shells. First visible cockpit well. Keep the well. |
 | 75 | yes | see json | pending | Seat on pocket floor. Well kept. Clay still a dart. Not wired. |
+| 76 | yes | see json | REVISE (author) | Lofted wings + interior vanes. Rectangular hoop cage. Chrome raytrace. Do not keep the hoops. |
+| 77 | yes | 5FF2CE0A | REVISE/REVISE/REVISE | Cage gone. Airfoil loft + visible seat in bay crop. Required stills still read dart/cards/fan. Not wired. |
+| 78 | yes | see json | REVISE/REVISE/REVISE | Larger well (156 boundary). Fat wing root. Station-following hoops. Starboard shows airfoil thickness. Clay still a dart. Not wired. |
 
 Hitch-plus / A-list: not met. Do not promote. Do not self-accept.
