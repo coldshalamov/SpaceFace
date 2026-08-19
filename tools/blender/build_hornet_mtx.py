@@ -296,11 +296,11 @@ def create_materials():
         "Material_Armor": ((0.34, 0.36, 0.38), 0.38, 0.36, "armor", 0.05, None),
         "Material_Mechanical": ((0.50, 0.48, 0.44), 0.90, 0.22, "mechanical", 0.0, None),
         "Material_Accent": ((0.04, 0.40, 0.50), 0.10, 0.34, "accent", 0.2, None),
-        "Material_Warning": ((1.00, 0.12, 0.00), 0.02, 0.22, "warning", 0.0, ((1.00, 0.06, 0.00), 12.0)),
+        "Material_Warning": ((0.86, 0.28, 0.04), 0.04, 0.42, "warning", 0.0, None),
         "Material_Ceramic": ((0.22, 0.14, 0.07), 0.0, 0.86, "ceramic", 0.0, None),
         "Material_Radiator": ((0.12, 0.10, 0.08), 0.62, 0.62, "mechanical", 0.0, None),
         "Material_Canopy": ((0.04, 0.05, 0.055), 0.00, 0.06, "glass", 0.12, None),
-        "Material_Thruster": ((0.08, 0.08, 0.09), 0.55, 0.28, "thruster", 0.0, None),
+        "Material_Thruster": ((0.06, 0.06, 0.07), 0.18, 0.38, "thruster", 0.0, None),
     }
     mats = {}
     for name, (rgb, metal, rough, role, coat, emit) in specs.items():
@@ -704,9 +704,8 @@ def add_hollow_bell(tag, x, y, z, scale, mats, collection):
     mouth_x = x - 0.04 * s - bell_len
     # Dark rolled lip. C102/C103 ceramic lip photographed as a chalk hoop.
     loft_from_rings(f"BellLip_{tag}", [
-        ellipse_ring(mouth_x + 0.03 * s, y, z, 0.90 * s, 0.90 * s, 40),
-        ellipse_ring(mouth_x - 0.02 * s, y, z, 0.98 * s, 0.98 * s, 40),
-        ellipse_ring(mouth_x - 0.06 * s, y, z, 0.86 * s, 0.86 * s, 40),
+        ellipse_ring(mouth_x + 0.02 * s, y, z, 0.92 * s, 0.92 * s, 40),
+        ellipse_ring(mouth_x - 0.04 * s, y, z, 0.96 * s, 0.96 * s, 40),
     ], soot, collection, 0.003, cap=False)
     # Tan collar on the inner lip so rear names ceramic, not a chalk hoop.
     # Ceramic stays on the casing OD, not the mouth. Mouth hoop flashed white.
@@ -936,14 +935,14 @@ def loft_volume(name, specs, material, collection, thick=0.12):
 def add_blended_interceptor_wing(name, sign, hull, armor, collection):
     """Lofted teardrop: thick root grown from the hull, round LE, thinner tip, flap slot."""
     s = float(sign)
-    # Fat rounded root so starboard counts thickness. C103 0.58 vanished edge-on.
+    # Little sweep so starboard sees one airfoil section, not a swept diamond kite.
     main = (
-        (1.52, 1.22, 1.90, 0.74, 0.12),
-        (1.88, 1.12, 1.72, 0.54, 0.11),
-        (2.28, 0.98, 1.50, 0.36, 0.10),
-        (2.70, 0.74, 1.24, 0.22, 0.08),
-        (3.10, 0.46, 0.98, 0.13, 0.06),
-        (3.46, 0.16, 0.72, 0.07, 0.04),
+        (1.42, 1.28, 2.10, 0.78, 0.16),
+        (1.82, 1.26, 1.95, 0.62, 0.15),
+        (2.28, 1.18, 1.70, 0.44, 0.13),
+        (2.78, 1.00, 1.38, 0.28, 0.11),
+        (3.24, 0.70, 1.05, 0.16, 0.08),
+        (3.58, 0.32, 0.72, 0.08, 0.05),
     )
     rings = [
         densify_ring(teardrop_airfoil(le, y * s, z, chord, thick), 4)
@@ -969,9 +968,9 @@ def add_blended_interceptor_wing(name, sign, hull, armor, collection):
             rot=(math.pi / 2, 0, 0),
         )
     loft_from_rings(f"{name}_Fillet", [
-        densify_ring(teardrop_airfoil(1.08, 1.32 * s, 0.12, 1.55, 0.58), 4),
-        densify_ring(teardrop_airfoil(1.16, 1.42 * s, 0.12, 1.72, 0.66), 4),
-        densify_ring(teardrop_airfoil(1.22, 1.52 * s, 0.12, 1.90, 0.74), 4),
+        densify_ring(teardrop_airfoil(1.18, 1.18 * s, 0.14, 1.70, 0.58), 4),
+        densify_ring(teardrop_airfoil(1.24, 1.30 * s, 0.15, 1.90, 0.68), 4),
+        densify_ring(teardrop_airfoil(1.28, 1.42 * s, 0.16, 2.10, 0.78), 4),
     ], hull, collection, 0.008, cap=True)
     return wing
 
@@ -1309,32 +1308,37 @@ def build_lod(lod, mats):
     add_station_hoop("Hoop_Wing", 0.70, 1.94, 0.74, 0.12, 0.10, 0.74, 0.18, armor, collection, stand=0.042, half=0.038)
     add_station_hoop("Hoop_Transom", -3.18, 0.98, 0.38, 0.14, 0.03, 0.92, 0.06, armor, collection, stand=0.042, half=0.034)
 
-    # Floor + short aft only. Five-wall tub sides were the C108/C109 mouth-filling slab.
-    add_box("Cockpit_Floor", (3.85, 0.0, 0.30), (0.48, 0.34, 0.012), mech, collection, 0.002)
-    add_box("Cockpit_AftWall", (3.42, 0.0, 0.46), (0.014, 0.22, 0.12), armor, collection, 0.002)
-    # Inset seat. C102–C106 furniture filled the mouth and photographed peach.
-    # Raised into CockpitFill. C107 sat on the floor and vanished from 3Q.
-    add_box("Cockpit_Seat", (3.90, 0.0, 0.58), (0.22, 0.13, 0.035), warning, collection, 0.003)
-    add_box("Cockpit_Cushion", (3.91, 0.0, 0.63), (0.19, 0.11, 0.022), warning, collection, 0.002)
-    add_box("Cockpit_Back", (3.70, 0.0, 0.76), (0.032, 0.12, 0.16), warning, collection, 0.002)
-    add_box("Cockpit_Headrest", (3.69, 0.0, 0.92), (0.028, 0.09, 0.045), warning, collection, 0.002)
-    add_box("Cockpit_RailP", (3.90, -0.14, 0.68), (0.16, 0.012, 0.06), mech, collection, 0.001)
-    add_box("Cockpit_RailS", (3.90, 0.14, 0.68), (0.16, 0.012, 0.06), mech, collection, 0.001)
-    add_box("Cockpit_HarnessP", (3.80, -0.05, 0.80), (0.012, 0.010, 0.10), warning, collection, 0.001)
-    add_box("Cockpit_HarnessS", (3.80, 0.05, 0.80), (0.012, 0.010, 0.10), warning, collection, 0.001)
-    add_box("Cockpit_Console", (4.24, 0.0, 0.58), (0.07, 0.09, 0.018), armor, collection, 0.002)
-    # C108 bulkhead filled the mouth in the bay crop. Aft wall stays the tub.
+    # Floor and a short aft bulkhead. Tall tub walls were a mouth-filling slab.
+    add_box("Cockpit_Floor", (3.85, 0.0, 0.32), (0.42, 0.28, 0.014), mech, collection, 0.002)
+    add_box("Cockpit_AftWall", (3.48, 0.0, 0.48), (0.016, 0.20, 0.10), armor, collection, 0.002)
+    # 8 cm lip so the mouth has wall thickness. Do not make a crate lid.
+    add_box("WellLip_F", (4.36, 0.0, 0.70), (0.040, 0.32, 0.040), armor, collection, 0.002)
+    add_box("WellLip_A", (3.34, 0.0, 0.70), (0.040, 0.32, 0.040), armor, collection, 0.002)
+    add_box("WellLip_P", (3.85, -0.36, 0.70), (0.48, 0.040, 0.040), armor, collection, 0.002)
+    add_box("WellLip_S", (3.85, 0.36, 0.70), (0.48, 0.040, 0.040), armor, collection, 0.002)
+    # Non-emissive orange seat, smaller than the mouth. C111 glow read as a lamp.
+    add_box("Cockpit_Seat", (3.88, 0.0, 0.40), (0.16, 0.10, 0.028), warning, collection, 0.003)
+    add_box("Cockpit_Cushion", (3.89, 0.0, 0.44), (0.14, 0.085, 0.016), warning, collection, 0.002)
+    add_box("Cockpit_Back", (3.74, 0.0, 0.56), (0.028, 0.09, 0.12), warning, collection, 0.002)
+    add_box("Cockpit_Headrest", (3.73, 0.0, 0.70), (0.022, 0.07, 0.032), warning, collection, 0.002)
+    add_box("Cockpit_RailP", (3.88, -0.11, 0.50), (0.12, 0.010, 0.045), mech, collection, 0.001)
+    add_box("Cockpit_RailS", (3.88, 0.11, 0.50), (0.12, 0.010, 0.045), mech, collection, 0.001)
+    add_box("Cockpit_BeltP", (3.82, -0.04, 0.58), (0.008, 0.006, 0.07), mech, collection, 0.001)
+    add_box("Cockpit_BeltS", (3.82, 0.04, 0.58), (0.008, 0.006, 0.07), mech, collection, 0.001)
+    add_box("Cockpit_Console", (4.16, 0.0, 0.42), (0.08, 0.08, 0.020), armor, collection, 0.002)
+    add_box("Cockpit_Stick", (4.08, 0.04, 0.50), (0.012, 0.012, 0.06), mech, collection, 0.001)
     canopy = mats["Material_Canopy"]
-    # Dark 2 cm panes in metal frames. No roof lid.
-    # Windscreen only. Side panes + sill crate photographed as a greenhouse lid.
+    # Thin framed brow on the rim. No side/roof panes (those became a greenhouse).
     add_folded_sheet(
         "Canopy_Screen",
-        (4.52, -0.28, 0.64), (4.52, 0.28, 0.64),
-        (4.18, 0.10, 0.96), (4.18, -0.10, 0.96),
-        0.016, canopy, collection, 0.002,
+        (4.42, -0.24, 0.72), (4.42, 0.24, 0.72),
+        (4.16, 0.10, 0.98), (4.16, -0.10, 0.98),
+        0.018, canopy, collection, 0.002,
     )
-    add_box("Frame_SillF", (4.44, 0.0, 0.66), (0.016, 0.28, 0.010), armor, collection, 0.002)
-    add_box("Frame_Brow", (4.22, 0.0, 0.94), (0.06, 0.10, 0.010), armor, collection, 0.002)
+    add_box("Frame_SillF", (4.40, 0.0, 0.72), (0.018, 0.26, 0.014), armor, collection, 0.002)
+    add_box("Frame_Brow", (4.18, 0.0, 0.96), (0.050, 0.12, 0.014), armor, collection, 0.002)
+    add_box("Frame_PillarP", (4.28, -0.24, 0.84), (0.12, 0.014, 0.10), armor, collection, 0.002)
+    add_box("Frame_PillarS", (4.28, 0.24, 0.84), (0.12, 0.014, 0.10), armor, collection, 0.002)
 
     add_five_wall_tub("AvionicsTub", (0.85, -1.18, 0.22), (0.24, 0.10, 0.11), 0.040, mech, collection)
     add_box("AvionicsRack", (0.85, -1.18, 0.16), (0.16, 0.032, 0.05), armor, collection, 0.002)
@@ -1628,7 +1632,7 @@ def render_cycle(collection):
     out.mkdir(parents=True, exist_ok=True)
     views = {
         "three_quarter": ((8.8, -7.4, 5.6), (3.10, 0, 0.80), 36),
-        "starboard": ((0.50, 13.6, 0.55), (0.50, 0, 0.20), 34),
+        "starboard": ((0.50, 13.4, 0.90), (0.50, 0, 0.22), 34),
         "rear": ((-10.2, -7.2, 2.5), (-3.20, 0.10, 0.10), 34),
         "clay_three_quarter": ((8.8, -7.4, 5.6), (3.10, 0, 0.80), 36),
         "grazing_close": ((6.6, -5.4, 2.0), (1.15, 0, 0.35), 48),

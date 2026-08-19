@@ -1,6 +1,6 @@
 # Hornet cycle 111 — open well, L-chair, dark lips
 
-**Counted:** yes. Author pending subagent.
+**Counted:** yes. Verdicts REVISE / REVISE / REVISE.
 **Framing (author):** bow, stern, span, height on all three.
 
 Three-quarter and starboard show an L-shaped chair in a punched hole, no greenhouse lid.
