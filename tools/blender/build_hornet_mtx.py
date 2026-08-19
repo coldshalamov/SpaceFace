@@ -538,7 +538,7 @@ def add_hollow_bell(tag, x, y, z, scale, mats, collection):
         rings.append(ellipse_ring(xi, y, z, r * s, rz * s, 48))
     outer = loft_from_rings(f"Bell_{tag}", rings, mech, collection, 0.010, cap=False)
     thicken_shell(outer, 0.080 * s)
-    add_cylinder(f"BellBack_{tag}", (x - 0.22 * s, y, z), 0.13 * s, 0.04 * s, thruster, collection, 16, 0.002)
+    add_cylinder(f"BellBack_{tag}", (x - 0.22 * s, y, z), 0.11 * s, 0.04 * s, thruster, collection, 16, 0.002)
     add_cylinder(f"BellCollar_{tag}", (x - 0.02 * s, y, z), 0.38 * s, 0.14 * s, ceramic, collection, 22, 0.004)
     add_cylinder(f"BellClamp_{tag}", (x + 0.12 * s, y, z), 0.44 * s, 0.06 * s, armor, collection, 22, 0.003)
     add_cylinder(f"BellFlange_{tag}", (x + 0.26 * s, y, z), 0.50 * s, 0.08 * s, mech, collection, 22, 0.003)
@@ -699,11 +699,11 @@ def add_blended_interceptor_wing(name, sign, hull, armor, collection):
         return airfoil_ring(le - chord * 0.42, y_abs * s, z, chord, thick)
 
     rings = [
-        station(1.18, 1.28, 3.90, 0.78, 0.16),
-        station(1.82, 0.95, 3.28, 0.46, 0.10),
-        station(2.48, 0.40, 2.65, 0.26, 0.04),
-        station(3.12, -0.12, 2.20, 0.14, -0.02),
-        station(3.66, -0.50, 1.90, 0.10, -0.06),
+        station(1.16, 1.26, 3.95, 0.92, 0.18),
+        station(1.78, 0.92, 3.30, 0.54, 0.12),
+        station(2.45, 0.38, 2.68, 0.32, 0.06),
+        station(3.10, -0.14, 2.22, 0.18, 0.00),
+        station(3.64, -0.52, 1.92, 0.12, -0.04),
     ]
     wing = loft_from_rings(name, rings, hull, collection, 0.014, cap=True)
     loft_from_rings(f"{name}_Flap", [
@@ -1278,7 +1278,6 @@ def setup_studio():
         ("Fill", (4, 16, 8), 2200, (0.76, 0.80, 0.84), 20),
         ("Rim", (-14, -5, 7), 700, (0.78, 0.84, 0.92), 14),
         ("Kick", (-6, 10, -4), 400, (0.74, 0.78, 0.84), 12),
-        ("AftFill", (-18, -2, 6), 900, (0.80, 0.84, 0.88), 16),
     ):
         data = bpy.data.lights.new(name, "AREA")
         data.energy = energy
