@@ -27,6 +27,7 @@ import {
   isCriticalStartingHub,
   residencyEvictRadius,
   residencyPrefetchRadius,
+  isPersistentLandmark,
   shouldKeepPersistentLandmarkResident,
   submitCullHalfExtents,
   submitRunwayWu,
@@ -199,6 +200,27 @@ test('far current-sector landmarks are map facts until they can enter the table'
   assert.equal(isCriticalStartingHub(helios), true);
   assert.equal(shouldKeepPersistentLandmarkResident(helios, { mode: 'flight' }), false);
   assert.equal(shouldKeepPersistentLandmarkResident(helios, { mode: 'loading' }), true);
+
+  // An admitted landmark is a different question from a far one. The opening hub finishes authored
+  // admission behind the loading screen while the player is 1347 WU away; the first flight reconcile
+  // used to apply the distance rule alone and throw that decode away at tick 16, leaving a dock
+  // prompt over empty space. Keep what was already paid for, in this sector only.
+  assert.equal(shouldKeepPersistentLandmarkResident(helios, {
+    mode: 'flight', currentSectorId: 'sector_helios_prime', authoredResident: true,
+  }), true, 'an authored landmark in the live sector is not re-decoded on approach');
+  assert.equal(shouldKeepPersistentLandmarkResident(helios, {
+    mode: 'flight', currentSectorId: 'sector_ceres_belt', authoredResident: true,
+  }), false, 'leaving the sector still drops the landmark');
+  assert.equal(shouldKeepPersistentLandmarkResident(currentFar, {
+    mode: 'flight', currentSectorId: 'sector_helios_prime', authoredResident: true,
+  }), false, 'an ordinary far station is still a map fact, landmark flag absent');
+  assert.equal(shouldKeepPersistentLandmarkResident(helios, {
+    mode: 'flight', currentSectorId: 'sector_helios_prime',
+  }), false, 'a landmark that never finished authored admission earns no residency');
+  assert.equal(isPersistentLandmark({
+    type: 'station', data: { landmark: true, sectorId: 'sector_tethys_junction' },
+  }), true, 'the authored landmark flag the sector table already carries is the signal');
+  assert.equal(isPersistentLandmark({ type: 'ship', data: { landmark: true } }), false);
 });
 
 test('opening compose follows the table, not a 2400 WU leftover horizon', () => {

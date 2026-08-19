@@ -483,12 +483,40 @@ export function isCriticalStartingHub(entity) {
   return token === 'place_station_trade_hub' && data.sectorId === 'sector_helios_prime';
 }
 
+export function isPersistentLandmark(entity) {
+  if (!entity || entity.alive === false) return false;
+  if (entity.type !== 'station' && entity.type !== 'planet') return false;
+  const data = entity.data || {};
+  return data.landmark === true || isCriticalStartingHub(entity);
+}
+
+/**
+ * A landmark the player has NOT arrived at is still only a map fact — building it across the sector
+ * is the whole-sector eagerness this policy exists to refuse.
+ *
+ * One admitted landmark is a different question, and getting it wrong is what put a dock prompt
+ * over empty space at Helios. The opening hub is decoded to `authored` during loading (the flight
+ * gate in `authoredCriticalVisualReadiness` waits for it) while the player is 1347 WU away, and
+ * `willEntityEnterAuthoredUpgradeRunway` holds it relevant for authored upgrade at any distance.
+ * Then the first flight reconcile applied the distance rule alone and threw it away at tick 16 —
+ * the boot paid the entire cost and kept nothing. Re-admitting it on approach costs the decode a
+ * second time and leaves the station a bare marker until it lands.
+ *
+ * So: never build a far landmark, but never evict one already standing in the sector the player is
+ * in. Leaving the sector still drops it, because the sector ids stop matching.
+ */
 export function shouldKeepPersistentLandmarkResident(entity, options = {}) {
   if (!entity) return false;
   if (options.forceRender === true || options.neverCull === true) return true;
   if (options.withinResidency === true) return true;
   if (options.mode === 'loading' && isCriticalStartingHub(entity)) return true;
-  return false;
+  if (options.authoredResident !== true) return false;
+  if (!isPersistentLandmark(entity)) return false;
+  const currentSectorId = options.currentSectorId ? String(options.currentSectorId) : '';
+  if (!currentSectorId) return false;
+  const data = entity.data || {};
+  const sectorId = entity.homeSectorId || data.homeSectorId || data.sectorId || null;
+  return !!sectorId && String(sectorId) === currentSectorId;
 }
 
 export function emptyTableCensus() {

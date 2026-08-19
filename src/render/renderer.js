@@ -167,6 +167,7 @@ import {
   censusTableBands,
   residencyEvictRadius,
   residencyPrefetchRadius,
+  shouldKeepPersistentLandmarkResident,
   submitCullHalfExtents,
   tableShadowCasterRadius,
   tableTravelSpeed,
@@ -338,11 +339,28 @@ function renderResidencyRadius(state, kind = 'prefetch') {
     : residencyPrefetchRadius(speed, cam.prefetchZoom, cam.fov, cam.aspect, cam.tilt);
 }
 
+/** True once an entity's visual root carries a finished authored identity — i.e. the decode and
+ * composition were already paid for. Distinct from "has a mesh": a procedural fallback boundary is
+ * cheap to rebuild and must not pin residency. */
+function entityHasAuthoredResidentRoot(entity) {
+  const root = entity && (entity.mesh || (entity.view && entity.view.root)) || null;
+  const authoredState = root && root.userData ? root.userData.authoredAssetState : null;
+  return typeof authoredState === 'string' && authoredState.startsWith('authored');
+}
+
 /** Pure render-streaming policy used by reconciliation and focused tests. */
 export function isEntityRenderRelevant(entity, state, radius = null) {
   if (!entity || entity.alive === false || entity._noMesh) return false;
   if (state && state.mode === 'loading') return isInitialAuthoredCompositionEntity(entity, state);
   if (entityIsExplicitRenderFocus(entity, state)) return true;
+  // An already-authored landmark in the player's own sector is kept, never rebuilt from scratch.
+  // Without this the opening hub was decoded behind the loading screen and evicted one second into
+  // flight, so the sector's one guaranteed fixed point had to re-decode on approach.
+  if (shouldKeepPersistentLandmarkResident(entity, {
+    mode: state && state.mode,
+    currentSectorId: state && state.world && state.world.currentSectorId,
+    authoredResident: entityHasAuthoredResidentRoot(entity),
+  })) return true;
   const numericRadius = Number(radius);
   const limit = radius == null || !Number.isFinite(numericRadius)
     ? renderResidencyRadius(state, 'prefetch')
@@ -1071,6 +1089,9 @@ function getPooledNavLightSources(root) {
   return sources;
 }
 
+/** How many retired-with-cause boundary records to keep readable after disposal erases them. */
+export const SECTOR_BOUNDARY_FAILURE_TAIL = 24;
+
 export const SECTOR_BOUNDARY_PREPARATION_STATE = Object.freeze({
   reserved: 'RESERVED',
   mountedHidden: 'MOUNTED_HIDDEN',
@@ -1613,6 +1634,31 @@ export function createSectorBoundaryGenerationManager(options = {}) {
   const pendingStarts = [];
   let pendingStartHead = 0;
   let startTurnScheduled = false;
+  // A record that fails during prepare is caught in startRecord, stored on the record, and then
+  // DELETED from `records` by disposeRecord. One frame later there is no trace of it: the entity
+  // simply has no mesh and nothing anywhere says why. That is exactly how a station failing to
+  // admit reads as "no visual root was ever created" instead of "the root was built and thrown
+  // away because X". Retain a bounded tail of retired-with-cause records so the reason survives
+  // the disposal that erases the record itself.
+  const failures = [];
+
+  const retainFailure = (record) => {
+    if (!record) return;
+    const cause = record.error || record.cleanupError || record.restoreError || null;
+    if (!cause && !record.abortReason) return;
+    failures.push({
+      id: record.id,
+      sectorId: record.sectorId,
+      generation: record.generation,
+      state: record.state,
+      abortReason: record.abortReason || null,
+      error: cause ? String(cause && cause.message || cause) : null,
+      authoredAssetState: record.boundary && record.boundary.userData
+        ? record.boundary.userData.authoredAssetState || null : null,
+      cleanupBlocked: record.cleanupBlocked === true,
+    });
+    if (failures.length > SECTOR_BOUNDARY_FAILURE_TAIL) failures.shift();
+  };
 
   const disposeRecord = (record) => {
     if (!record || record.state === states.live) return Promise.resolve(record);
@@ -1633,6 +1679,7 @@ export function createSectorBoundaryGenerationManager(options = {}) {
       }
       if (records.get(record.id) === record) records.delete(record.id);
       record.state = states.disposed;
+      retainFailure(record);
       return record;
     })();
     return record.cleanupPromise;
@@ -1811,7 +1858,13 @@ export function createSectorBoundaryGenerationManager(options = {}) {
         generation: record.generation,
         state: record.state,
         active: record.active,
+        abortReason: record.abortReason || null,
+        error: record.error ? String(record.error.message || record.error) : null,
       }));
+    },
+    /** Retired boundaries that gave up, with the cause the record carried when it was deleted. */
+    inspectFailures() {
+      return failures.map((entry) => ({ ...entry }));
     },
   };
 }
@@ -2654,6 +2707,7 @@ export const render = {
     });
     state.render.sectorBoundaryPrewarm = {
       inspect: () => this._sectorBoundaryPreparations.inspect(),
+      failures: () => this._sectorBoundaryPreparations.inspectFailures(),
     };
     this._firstPlayablePaintScheduled = false;
     this._hazardVisuals = []; // hazard zone visual meshes for the current sector
