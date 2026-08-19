@@ -38,6 +38,7 @@ import {
   normalizeLivingHull,
   sameLivingHull,
 } from '../core/livingHull.js';
+import { hash32 } from '../core/rng.js';
 
 // ---- catalog lookup tables (built once at module load) ------------------------------------
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
@@ -132,6 +133,84 @@ function fmtCr(value) {
 function purchaseFundingText(def, price, credits) {
   const missing = Math.max(0, (Number(price) || 0) - (Number(credits) || 0));
   return 'Need ' + fmtCr(missing) + ' more cr for ' + ((def && def.name) || 'this purchase');
+}
+
+const LOADOUT_PRESET_CAP_PER_HULL = 6;
+const LOADOUT_PRESET_LABEL_KEYS = new Set([
+  'tow_and_swing',
+  'spring_and_release',
+  'coupled_pair',
+  'line_cutter',
+  'snare',
+  'twin_bridle',
+  'quiet_approach',
+  'prospector',
+  'hauler',
+  'long_reach',
+  'knife_fight',
+  'wrangler',
+  'support',
+  'brawler',
+  'role',
+]);
+const CONTROL_GUN_TOKEN_RE = /(gravity_marker|momentum_sink|concussion|rcs_disruptor|vector_mine)/;
+
+function isLoadoutPresetLabelKey(value) {
+  return typeof value === 'string' && LOADOUT_PRESET_LABEL_KEYS.has(value);
+}
+
+function normalizeLoadoutPresetLabelKey(value) {
+  return isLoadoutPresetLabelKey(value) ? value : 'role';
+}
+
+function asDefId(value) {
+  return typeof value === 'string' && value ? value : null;
+}
+
+function asFittingsArray(value, slotCount = null) {
+  const source = Array.isArray(value) ? value : [];
+  const out = source.map((entry) => asDefId(entry));
+  if (!Number.isInteger(slotCount) || slotCount < 0) return out;
+  if (out.length > slotCount) {
+    const extra = out.slice(slotCount);
+    if (extra.some((entry) => entry)) return null;
+    return out.slice(0, slotCount);
+  }
+  while (out.length < slotCount) out.push(null);
+  return out;
+}
+
+function countDefIds(fittings) {
+  const counts = new Map();
+  const source = Array.isArray(fittings) ? fittings : [];
+  for (const entry of source) {
+    const defId = asDefId(entry);
+    if (!defId) continue;
+    counts.set(defId, (counts.get(defId) || 0) + 1);
+  }
+  return counts;
+}
+
+function countInventoryDefIds(moduleInventory) {
+  const counts = new Map();
+  const source = Array.isArray(moduleInventory) ? moduleInventory : [];
+  for (const item of source) {
+    const defId = asDefId(item && item.defId);
+    if (!defId) continue;
+    counts.set(defId, (counts.get(defId) || 0) + 1);
+  }
+  return counts;
+}
+
+function missingModulesText(missingCount) {
+  const count = Math.max(1, Math.round(Number(missingCount) || 0));
+  return `${count} module${count === 1 ? '' : 's'} not in hold`;
+}
+
+function createLoadoutPresetId(defId, fittings, createdAt, seed = 0) {
+  const safeFittings = asFittingsArray(fittings) || [];
+  const digest = hash32('loadout-preset', defId, Math.round(Number(createdAt) || 0), safeFittings.join(','), seed);
+  return `lp_${digest.toString(16).padStart(8, '0')}`;
 }
 
 // Legacy fallback for pre-explicit-loadout saves. NEW_GAME now fits this weapon directly; the
@@ -262,6 +341,100 @@ export function outfitBudgetBlocker(shipDefOrId, fittings = []) {
     };
   }
   return null;
+}
+
+/**
+ * Dry-run one whole loadout preset against a ship and module hold.
+ * Returns an apply plan on success; otherwise returns an enumerated blocker.
+ */
+export function dryRunLoadoutPresetApply({
+  shipDefId,
+  currentFittings = [],
+  targetFittings = [],
+  moduleInventory = [],
+  player = null,
+  enforceCargo = true,
+  isUnlockedFn = null,
+} = {}) {
+  const shipDef = SHIP_BY_ID.get(shipDefId);
+  if (!shipDef) return { ok: false, reason: 'missing_fit_target', text: null };
+  const slots = buildSlotList(shipDef);
+  const afterFittings = asFittingsArray(targetFittings, slots.length);
+  if (!afterFittings) {
+    return { ok: false, reason: 'invalid_preset', text: 'Preset does not match this hull layout' };
+  }
+  for (let slotIndex = 0; slotIndex < slots.length; slotIndex += 1) {
+    const defId = afterFittings[slotIndex];
+    if (!defId) continue;
+    const def = defById(defId);
+    if (!def) return { ok: false, reason: 'unknown_module', text: 'Preset contains unknown hardware' };
+    if (!fits(slots[slotIndex], def)) {
+      return { ok: false, reason: 'incompatible_slot', text: def.name + ' does not fit this slot' };
+    }
+    const unlocked = typeof isUnlockedFn === 'function'
+      ? !!isUnlockedFn(def)
+      : !(def.requiresTech && !(player && Array.isArray(player.researchedNodes)
+        && player.researchedNodes.includes(def.requiresTech)));
+    if (!unlocked) {
+      return { ok: false, reason: 'research_required', text: 'Research required: ' + techDisplayName(def.requiresTech) };
+    }
+    const conflictingDef = findMasslineHeadConflict(afterFittings, slotIndex, def);
+    if (conflictingDef) {
+      return {
+        ok: false,
+        reason: 'massline_head_conflict',
+        text: 'Unfit ' + conflictingDef.name + ' before fitting another head',
+      };
+    }
+  }
+  const budgetBlocker = outfitBudgetBlocker(shipDef, afterFittings);
+  if (budgetBlocker) return { ok: false, ...budgetBlocker };
+  if (enforceCargo) {
+    const usedVolume = Math.max(0, Number(player && player.cargo && player.cargo.usedVolume) || 0);
+    const targetDerived = getDerivedStats(shipDef.id, afterFittings, player);
+    if (usedVolume > targetDerived.cargoCap) {
+      return { ok: false, reason: 'cargo_overflow', text: 'Cargo would overflow — jettison first' };
+    }
+  }
+  const currentCounts = countDefIds(asFittingsArray(currentFittings, slots.length) || []);
+  const targetCounts = countDefIds(afterFittings);
+  const inventoryCounts = countInventoryDefIds(moduleInventory);
+  const takeByDefId = new Map();
+  const returnByDefId = new Map();
+  let missingCount = 0;
+  for (const [defId, targetCount] of targetCounts.entries()) {
+    const keepCount = Math.min(targetCount, currentCounts.get(defId) || 0);
+    const needCount = Math.max(0, targetCount - keepCount);
+    if (needCount <= 0) continue;
+    takeByDefId.set(defId, needCount);
+    const availableCount = inventoryCounts.get(defId) || 0;
+    if (availableCount < needCount) missingCount += (needCount - availableCount);
+  }
+  for (const [defId, currentCount] of currentCounts.entries()) {
+    const keepCount = Math.min(currentCount, targetCounts.get(defId) || 0);
+    const returnCount = Math.max(0, currentCount - keepCount);
+    if (returnCount > 0) returnByDefId.set(defId, returnCount);
+  }
+  if (missingCount > 0) {
+    return {
+      ok: false,
+      reason: 'missing_modules',
+      missingCount,
+      text: missingModulesText(missingCount),
+      afterFittings,
+      takeByDefId,
+      returnByDefId,
+    };
+  }
+  return {
+    ok: true,
+    reason: null,
+    text: '',
+    missingCount: 0,
+    afterFittings,
+    takeByDefId,
+    returnByDefId,
+  };
 }
 
 /** Resolve a fittings array (defIds | null, parallel to slots) into the equipped defs per slot. */
@@ -451,9 +624,14 @@ export function getDerivedStats(defId, fittings = [], player = null) {
   let ramDamageDealtMult = 0;
   let magnetRange = 0;
   let masslineHeadId = null;
+  let controlWeaponCount = 0;
+  let chaffCount = 0;
+  let ecmCount = 0;
   let hiddenCargoPct = Math.max(0, Math.min(1, Number(eff.hiddenCargoPct) || 0));
   let scannerCloak = Math.max(0, Math.min(1, Number(eff.scannerCloak) || 0));
   let damageReductionMult = 1; // multiplicative stacking of hardeners (§ formulas)
+  const miningSlotsTotal = slots.reduce((count, slot) => count + (slot.type === 'mining' ? 1 : 0), 0);
+  let miningSlotsFilled = 0;
   for (let index = 0, length = equipped.length; index < length; index += 1) {
     const d = equipped[index] || null;
     if (!d) continue;
@@ -469,6 +647,10 @@ export function getDerivedStats(defId, fittings = [], player = null) {
     // compatible fitted slot may contribute, so malformed hand-authored arrays cannot grant it.
     const occupiesCompatibleSlot = fits(slots[index], d);
     if (occupiesCompatibleSlot) {
+      if (slots[index].type === 'mining') miningSlotsFilled += 1;
+      if (slots[index].type === 'weapon' && CONTROL_GUN_TOKEN_RE.test(d.id || '')) {
+        controlWeaponCount += 1;
+      }
       weaponRangePct = addFinitePositivePct(weaponRangePct, mods.weaponRangePct);
       weaponDmgPct = addFinitePositivePct(weaponDmgPct, mods.weaponDmgPct);
       weaponHeatDissipPct = addFinitePositivePct(weaponHeatDissipPct, mods.weaponHeatDissipPct);
@@ -499,6 +681,9 @@ export function getDerivedStats(defId, fittings = [], player = null) {
         && mods.hullRepairOOC > 0) {
         hullRepairOOC = Math.max(hullRepairOOC, mods.hullRepairOOC);
       }
+      const countermeasureKind = mods && mods.countermeasure && mods.countermeasure.kind;
+      if (countermeasureKind === 'chaff') chaffCount += 1;
+      else if (countermeasureKind === 'ecm') ecmCount += 1;
     }
     if (Number.isFinite(mods.tetherSpoolMult) && mods.tetherSpoolMult > 0) {
       tetherSpoolMult = Math.max(tetherSpoolMult, mods.tetherSpoolMult);
@@ -574,6 +759,13 @@ export function getDerivedStats(defId, fittings = [], player = null) {
   const weaponDmgMult = weaponDmgPct + 1;
   const weaponHeatDissipMult = weaponHeatDissipPct + 1;
   const radarRangeMult = radarRangePct + 1;
+  let maxWeaponRange = 0;
+  for (let index = 0; index < equipped.length; index += 1) {
+    const def = equipped[index];
+    if (!def || def.slotType !== 'weapon' || !fits(slots[index], def)) continue;
+    const runtimeRange = scaleWeaponRuntimeStat(def.range, weaponRangeMult);
+    if (runtimeRange > maxWeaponRange) maxWeaponRange = runtimeRange;
+  }
   const rawRadarRange = BASE_RADAR_RANGE * radarRangeMult;
   const radarRange = Number.isFinite(rawRadarRange) && rawRadarRange > 0
     ? rawRadarRange
@@ -639,6 +831,12 @@ export function getDerivedStats(defId, fittings = [], player = null) {
     hullRepairOOC,
     droneBayCount,
     cargoCap,
+    maxWeaponRange,
+    controlWeaponCount,
+    chaffCount,
+    ecmCount,
+    miningSlotsFilled,
+    miningSlotsTotal,
     boost: {
       max: bdef.max || 0,
       drainRate: bdef.drainRate || 40,
@@ -848,6 +1046,12 @@ export const ships = {
     bus.on('ui:buyModule', withShipworksAccess('outfit', (p) => this.buyModule(p)));
     bus.on('ui:fitModule', withShipworksAccess('outfit', (p) => this.fitModule(p)));
     bus.on('ui:unfitModule', withShipworksAccess('outfit', (p) => this.unfitModule(p)));
+    // Saving a preset snapshots the CURRENT fit — it mutates only the preset store, not the
+    // ship, so it needs no station service and works on the flight host too (J13 packet).
+    // Apply and delete DO change the fit / preset ownership: they stay behind the outfit gate.
+    bus.on('ui:saveLoadoutPreset', (p) => this.saveLoadoutPreset(p));
+    bus.on('ui:applyLoadoutPreset', withShipworksAccess('outfit', (p) => this.applyLoadoutPreset(p)));
+    bus.on('ui:deleteLoadoutPreset', withShipworksAccess('outfit', (p) => this.deleteLoadoutPreset(p)));
     bus.on('ui:unlockTech', (p) => this.unlockTech((p && p.nodeId) || null));
     bus.on('ui:setShipAppearance', (p) => this.setShipAppearance(p || {}));
     // Canonical gameplay receipts feed a small per-owned-ship history record. Presentation gets a
@@ -1384,6 +1588,147 @@ export const ships = {
     return true;
   },
 
+  loadoutPresets() {
+    const p = this.state.player;
+    if (!Array.isArray(p.loadoutPresets)) p.loadoutPresets = [];
+    return p.loadoutPresets;
+  },
+
+  saveLoadoutPreset({ shipIndex, presetId = null, labelKey = 'role', createdAt = null } = {}) {
+    const owned = this.ownedShip(shipIndex);
+    if (!owned) return false;
+    const shipDef = SHIP_BY_ID.get(owned.defId);
+    if (!shipDef) return false;
+    const presets = this.loadoutPresets();
+    const hullPresetCount = presets.reduce((count, row) => (
+      row && row.hullDefId === owned.defId ? count + 1 : count
+    ), 0);
+    if (hullPresetCount >= LOADOUT_PRESET_CAP_PER_HULL) {
+      this.bus.emit('toast', {
+        text: `${LOADOUT_PRESET_CAP_PER_HULL} of ${LOADOUT_PRESET_CAP_PER_HULL} builds on this hull`,
+        kind: 'error',
+        ttl: 3,
+      });
+      return false;
+    }
+    const slots = buildSlotList(shipDef);
+    const fittings = asFittingsArray(owned.fittings, slots.length);
+    if (!fittings) return false;
+    const stampedAt = Math.max(0, Math.round(
+      Number.isFinite(createdAt) ? Number(createdAt) : Number(this.state.simTime) || 0,
+    ));
+    let id = (typeof presetId === 'string' && presetId) ? presetId : createLoadoutPresetId(shipDef.id, fittings, stampedAt);
+    let seed = 1;
+    while (presets.some((row) => row && row.id === id)) {
+      id = createLoadoutPresetId(shipDef.id, fittings, stampedAt, seed++);
+    }
+    const preset = {
+      id,
+      hullDefId: shipDef.id,
+      fittings: fittings.slice(),
+      labelKey: normalizeLoadoutPresetLabelKey(labelKey),
+      createdAt: stampedAt,
+    };
+    presets.push(preset);
+    this.bus.emit('ship:loadoutPresetSaved', {
+      presetId: preset.id,
+      hullDefId: preset.hullDefId,
+      labelKey: preset.labelKey,
+      createdAt: preset.createdAt,
+    });
+    this.bus.emit('toast', { text: 'Build saved', kind: 'success', ttl: 2.5 });
+    return true;
+  },
+
+  deleteLoadoutPreset({ shipIndex, presetId } = {}) {
+    if (typeof presetId !== 'string' || !presetId) return false;
+    const owned = this.ownedShip(shipIndex);
+    if (!owned) return false;
+    const presets = this.loadoutPresets();
+    const index = presets.findIndex((row) => row && row.id === presetId && row.hullDefId === owned.defId);
+    if (index < 0) {
+      this.bus.emit('toast', { text: 'Build not found on this hull', kind: 'error', ttl: 3 });
+      return false;
+    }
+    const [removed] = presets.splice(index, 1);
+    this.bus.emit('ship:loadoutPresetDeleted', {
+      presetId: removed.id,
+      hullDefId: removed.hullDefId,
+    });
+    this.bus.emit('toast', { text: 'Build deleted', kind: 'info', ttl: 2.5 });
+    return true;
+  },
+
+  applyLoadoutPreset({ shipIndex, presetId } = {}) {
+    if (typeof presetId !== 'string' || !presetId) return false;
+    const p = this.state.player;
+    const owned = this.ownedShip(shipIndex);
+    if (!owned) return false;
+    const shipDef = SHIP_BY_ID.get(owned.defId);
+    if (!shipDef) return false;
+    const preset = this.loadoutPresets().find((row) => row && row.id === presetId);
+    if (!preset) {
+      this.bus.emit('toast', { text: 'Build not found', kind: 'error', ttl: 3 });
+      return false;
+    }
+    if (preset.hullDefId !== shipDef.id) {
+      this.bus.emit('toast', { text: 'Build belongs to another hull', kind: 'error', ttl: 3 });
+      return false;
+    }
+    const slots = buildSlotList(shipDef);
+    const targetFittings = asFittingsArray(preset.fittings, slots.length);
+    if (!targetFittings) {
+      this.bus.emit('toast', { text: 'Preset does not match this hull layout', kind: 'error', ttl: 3 });
+      return false;
+    }
+    const dryRun = dryRunLoadoutPresetApply({
+      shipDefId: shipDef.id,
+      currentFittings: owned.fittings,
+      targetFittings,
+      moduleInventory: p.moduleInventory,
+      player: p,
+      enforceCargo: owned === this.ownedShip(),
+      isUnlockedFn: (def) => this.isUnlocked(def),
+    });
+    if (!dryRun.ok) {
+      if (dryRun.text) this.bus.emit('toast', { text: dryRun.text, kind: 'error', ttl: 3 });
+      this.bus.emit('ship:loadoutPresetApplyRejected', {
+        presetId,
+        hullDefId: shipDef.id,
+        reason: dryRun.reason || 'invalid_preset',
+      });
+      return false;
+    }
+    const inventory = Array.isArray(p.moduleInventory) ? p.moduleInventory.slice() : [];
+    for (const [defId, takeCount] of dryRun.takeByDefId.entries()) {
+      let remaining = takeCount;
+      for (let i = inventory.length - 1; i >= 0 && remaining > 0; i -= 1) {
+        if (!inventory[i] || inventory[i].defId !== defId) continue;
+        inventory.splice(i, 1);
+        remaining -= 1;
+      }
+      if (remaining > 0) {
+        this.bus.emit('toast', { text: missingModulesText(remaining), kind: 'error', ttl: 3 });
+        return false;
+      }
+    }
+    for (const [defId, returnCount] of dryRun.returnByDefId.entries()) {
+      for (let i = 0; i < returnCount; i += 1) {
+        inventory.push({ instanceId: this.nextInstanceId(), defId });
+      }
+    }
+    p.moduleInventory = inventory;
+    owned.fittings = dryRun.afterFittings.slice();
+    this.bus.emit('ship:loadoutPresetApplied', {
+      presetId,
+      hullDefId: shipDef.id,
+      slotCount: dryRun.afterFittings.length,
+    });
+    this.bus.emit('toast', { text: 'Build applied', kind: 'success', ttl: 2.5 });
+    this.recomputeIfActive(shipIndex, owned.fittings);
+    return true;
+  },
+
   /** Would the given owned ship's cargo capacity drop below currently-used volume? (active only) */
   wouldOverflowCargo(owned) {
     if (owned !== this.ownedShip()) return false; // only the flown ship holds cargo
@@ -1426,6 +1771,7 @@ export const ships = {
     }];
     p.activeShipIndex = 0;
     p.moduleInventory = [];
+    p.loadoutPresets = [];
     p.researchedNodes = (NEW_GAME.researchedNodes || []).slice();
     p.researchPoints = NEW_GAME.researchPoints || 0;
     p.droneTierCap = 0;

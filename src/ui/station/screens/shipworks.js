@@ -8,6 +8,7 @@
 // Never invent simplified fittings/geometry or raw module.mods key diffs as flight stats.
 import {
   buildSlotList,
+  dryRunLoadoutPresetApply,
   findMasslineHeadConflict,
   fits,
   getDerivedStats,
@@ -45,6 +46,10 @@ import {
   handlingBandModel,
   scarCalloutsForHull,
 } from '../../ship/shipBandModels.js';
+import {
+  buildLoadoutPresetRailModel,
+  sanitizePresetSelectionMap,
+} from '../../ship/loadoutPresets.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
 const STATION_ARCHETYPE_BY_ID = new Map();
@@ -256,6 +261,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   let curPreviewKey = '';
   let expectedPreviewDefId = null;
   let ghostActive = false;
+  let ghostSource = null;
   let selectedSlot = -1;
   let chooserAnchor = null;
   let stopChooserPositioning = null;
@@ -267,6 +273,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   let activeBandModel = null;
   let ghostBandModel = null;
   let ghostMassDelta = null;
+  let activePresetRailModel = null;
+  let presetSelectionByHull = {};
   let recordOpen = false;
   let rangeIntentUnsub = null;
   const handlingDomain = handlingProfileDomain();
@@ -277,6 +285,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   let currentPowerHeadroom = 0;
   let currentPowerCapMax = 0;
   let currentPowerSlotIndices = [];
+  let presetDeleteBusy = false;
 
   function isReducedMotion() {
     const settings = ctx && ctx.state && ctx.state.settings && ctx.state.settings.video;
@@ -363,10 +372,35 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     return !!state && !['empty', 'loading', 'procedural-fallback'].includes(state);
   }
 
+  function selectedPresetIdForHull(hullDefId) {
+    if (!hullDefId || !presetSelectionByHull || typeof presetSelectionByHull !== 'object') return null;
+    return presetSelectionByHull[hullDefId] || null;
+  }
+
+  function setSelectedPresetIdForHull(hullDefId, presetId, { remember = true } = {}) {
+    if (!hullDefId) return;
+    if (!presetSelectionByHull || typeof presetSelectionByHull !== 'object') presetSelectionByHull = {};
+    if (typeof presetId === 'string' && presetId) presetSelectionByHull[hullDefId] = presetId;
+    else delete presetSelectionByHull[hullDefId];
+    if (remember) rememberShipView();
+  }
+
+  function clearPresetSelectionForViewedHull(options = {}) {
+    const ship = viewedShip();
+    if (!ship || !ship.defId) return;
+    setSelectedPresetIdForHull(ship.defId, null, options);
+  }
+
   function rememberShipView() {
     const mem = ctx.screenMemory;
     if (!mem) return;
-    mem.set('ship', { mode, viewIdx, buyId: String(buyId || ''), recordOpen: !!recordOpen });
+    mem.set('ship', {
+      mode,
+      viewIdx,
+      buyId: String(buyId || ''),
+      recordOpen: !!recordOpen,
+      presetSelectionByHull: sanitizePresetSelectionMap(presetSelectionByHull),
+    });
   }
 
   function restoreShipView() {
@@ -376,10 +410,12 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const savedIdx = mem.read('ship', 'viewIdx', null);
     const savedBuy = mem.read('ship', 'buyId', null);
     const savedRecordOpen = mem.read('ship', 'recordOpen', null);
+    const savedPresetSelection = mem.read('ship', 'presetSelectionByHull', null);
     if (host !== 'flight' && (savedMode === 'fleet' || savedMode === 'buy')) mode = savedMode;
     if (Number.isInteger(savedIdx) && owned()[savedIdx]) viewIdx = savedIdx;
     if (savedBuy && SHIP_BY_ID.has(savedBuy)) buyId = savedBuy;
     if (typeof savedRecordOpen === 'boolean') recordOpen = savedRecordOpen;
+    presetSelectionByHull = sanitizePresetSelectionMap(savedPresetSelection);
     el.querySelectorAll('.sx-seg__btn').forEach((x) => x.classList.toggle('is-on', x.getAttribute('data-mode') === mode));
   }
 
@@ -689,6 +725,30 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     };
   }
 
+  function derivePresetRailModel(model) {
+    if (!model || !model.def || mode !== 'fleet') return null;
+    const canRefit = !!(model.availability && model.availability.outfitEnabled);
+    const refitWhy = (model.availability && model.availability.outfitLabel) || 'Dock to refit';
+    const enforceCargo = viewIdx === activeFleetIndex();
+    return buildLoadoutPresetRailModel({
+      player: ctx.state.player,
+      hullDefId: model.def.id,
+      currentFittings: model.fittings,
+      selectedPresetId: selectedPresetIdForHull(model.def.id),
+      canRefit,
+      refitWhy,
+      simTime: finite(ctx.state && ctx.state.simTime, 0),
+      dryRunApply: (preset) => dryRunLoadoutPresetApply({
+        shipDefId: model.def.id,
+        currentFittings: model.fittings,
+        targetFittings: preset && preset.fittings,
+        moduleInventory: ctx.state && ctx.state.player && ctx.state.player.moduleInventory,
+        player: ctx.state.player,
+        enforceCargo,
+      }),
+    });
+  }
+
   function syncGaugeValues(model) {
     ensureGaugeRack();
     if (!model || !model.derived) return;
@@ -774,10 +834,89 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     return chipHtml + nextHtml;
   }
 
+  function renderPresetRail(model, railModel) {
+    if (!model || !railModel) return '';
+    const presets = Array.isArray(railModel.presets) ? railModel.presets : [];
+    const saveSlot = railModel.saveSlot || null;
+    const presetRows = presets.map((preset) => {
+      const classes = [
+        'sx-sw-preset',
+        preset.selected ? 'is-selected' : '',
+        preset.applyState && !preset.applyState.ok ? 'is-dim' : '',
+      ].filter(Boolean).join(' ');
+      const why = preset.applyState && !preset.applyState.ok ? preset.applyState.text : '';
+      const aria = `${preset.label || 'Build'}. ${preset.subtitle || 'Preset'}. ${
+        preset.applyState && preset.applyState.ok
+          ? 'Select this build. Press again or use APPLY to commit.'
+          : (preset.applyState && preset.applyState.text) || 'Cannot apply right now'
+      }`;
+      return (
+        `<button type="button" class="${classes}" data-loadout-preset-id="${escapeHtml(preset.id)}" aria-pressed="${preset.selected ? 'true' : 'false'}"${whyAttr(why)} aria-label="${escapeHtml(aria)}">` +
+          `<span class="sx-sw-preset__label">${escapeHtml(preset.label || 'Build')}</span>` +
+          `<span class="sx-sw-preset__sub">${escapeHtml(preset.subtitle || 'Preset')}</span>` +
+        `</button>`
+      );
+    }).join('');
+    const saveDisabled = !saveSlot || !saveSlot.canSave;
+    const saveWhy = saveDisabled ? (saveSlot && saveSlot.reasonText) || 'Cannot save right now' : '';
+    const saveLabel = saveSlot ? `SAVE CURRENT FIT AS ${saveSlot.label}` : 'SAVE CURRENT FIT AS...';
+    const countText = saveSlot ? `${saveSlot.count}/${saveSlot.cap}` : '';
+    const saveButton = (
+      `<button type="button" class="sx-sw-preset sx-sw-preset--save${saveDisabled ? ' is-dim' : ''}" data-loadout-preset-save="1"${saveSlot ? ` data-loadout-preset-id="${escapeHtml(saveSlot.presetId)}" data-loadout-label-key="${escapeHtml(saveSlot.labelKey)}" data-loadout-created-at="${saveSlot.createdAt}"` : ''}${saveDisabled ? ' disabled' : ''}${whyAttr(saveWhy)} aria-label="${escapeHtml(saveLabel)}">` +
+        `<span class="sx-sw-preset__label">+</span>` +
+        `<span class="sx-sw-preset__sub">${escapeHtml(countText)}</span>` +
+      `</button>`
+    );
+    return (
+      `<section class="sx-sw-band sx-sw-band--presets sf-deck">` +
+        `<header class="sx-sw-band__head">` +
+          `<span class="sf-deck__label">LOADOUT PRESETS</span>` +
+          `<span class="sx-sw-preset__meta">Select to preview. Second gesture applies.</span>` +
+        `</header>` +
+        `<div class="sx-sw-presetrow">` +
+          presetRows +
+          saveButton +
+        `</div>` +
+      `</section>`
+    );
+  }
+
+  function renderPresetDrawer(railModel) {
+    const selectedPreset = railModel && railModel.selectedPreset ? railModel.selectedPreset : null;
+    if (!selectedPreset) return '';
+    const verbs = Array.isArray(selectedPreset.capabilityVerbs) ? selectedPreset.capabilityVerbs.slice(0, 5) : [];
+    const verbsHtml = verbs.length
+      ? verbs.map((verb) => `<span class="sx-sw-presetverb">${escapeHtml(verb)}</span>`).join('')
+      : '<span class="sx-sw-presetverb is-empty">No capability verb available</span>';
+    const applyText = selectedPreset.applyState && selectedPreset.applyState.ok
+      ? 'READY TO APPLY'
+      : ((selectedPreset.applyState && selectedPreset.applyState.text) || 'Cannot apply right now');
+    return (
+      `<section class="sx-sw-record sx-sw-record--preset">` +
+        `<header><span class="sf-deck__label">BUILD RECORD</span></header>` +
+        `<div class="sx-sw-presetdrawer">` +
+          `<div class="sx-sw-presetdrawer__row"><span>LABEL</span><b>${escapeHtml(selectedPreset.label || 'Build')}</b></div>` +
+          `<div class="sx-sw-presetdrawer__row"><span>CREATED CYCLE</span><b>${escapeHtml(String(Math.max(0, Math.round(finite(selectedPreset.createdAt, 0)))))}</b></div>` +
+          `<div class="sx-sw-presetdrawer__row"><span>APPLY STATE</span><b${whyAttr(applyText)}>${escapeHtml(applyText)}</b></div>` +
+          `<div class="sx-sw-presetdrawer__verbs"><span>CAPABILITY VERBS</span><div>${verbsHtml}</div></div>` +
+          `<div class="sx-sw-presetdrawer__actions">` +
+            `<button type="button" class="sx-sw-verb sx-sw-verb--danger" data-loadout-preset-delete="${escapeHtml(selectedPreset.id)}">DELETE BUILD</button>` +
+          `</div>` +
+        `</div>` +
+      `</section>`
+    );
+  }
+
   function renderApron(model) {
     if (!model || !model.def || !model.derived) {
       statsEl.innerHTML = '';
+      activePresetRailModel = null;
       return;
+    }
+    activePresetRailModel = derivePresetRailModel(model);
+    if (activePresetRailModel && selectedPresetIdForHull(model.def.id) && !activePresetRailModel.selectedPreset) {
+      setSelectedPresetIdForHull(model.def.id, null, { remember: false });
+      activePresetRailModel = derivePresetRailModel(model);
     }
     const bars = model.handling && Array.isArray(model.handling.bars) ? model.handling.bars : [];
     const barRows = bars.map((bar) => {
@@ -805,12 +944,25 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       ? `OVER BUDGET ${plusMinus(headroom, 1)}/s`
       : `POWER ${plusMinus(headroom, 1)}/s`;
     const powerClass = headroom < 0 ? ' sx-sw-power__state--foe' : ' sx-sw-power__state--you';
-    const fitEnabled = model.availability && model.availability.outfitEnabled && selectedSlot >= 0;
-    const fitLabel = fitEnabled
-      ? 'FIT'
-      : (selectedSlot >= 0
-        ? (model.availability && model.availability.outfitEnabled ? 'SELECT A MODULE' : model.availability.outfitLabel || 'DOCK TO FIT')
-        : 'SELECT A SLOT');
+    const selectedPreset = activePresetRailModel && activePresetRailModel.selectedPreset
+      ? activePresetRailModel.selectedPreset
+      : null;
+    const fitAction = selectedPreset ? 'apply-preset' : 'fit-slot';
+    const fitEnabled = selectedPreset
+      ? !!(selectedPreset.applyState && selectedPreset.applyState.ok)
+      : !!(model.availability && model.availability.outfitEnabled && selectedSlot >= 0);
+    const fitLabel = selectedPreset
+      ? `APPLY ${selectedPreset.label || 'BUILD'}`
+      : (
+        fitEnabled
+          ? 'FIT'
+          : (selectedSlot >= 0
+            ? (model.availability && model.availability.outfitEnabled ? 'SELECT A MODULE' : model.availability.outfitLabel || 'DOCK TO FIT')
+            : 'SELECT A SLOT')
+      );
+    const fitBlockedText = selectedPreset
+      ? (((selectedPreset.applyState && selectedPreset.applyState.text) || 'Cannot apply this build'))
+      : fitLabel;
     const makeActiveVisible = host === 'dock' && mode === 'fleet' && viewIdx !== activeFleetIndex();
     const makeActiveEnabled = makeActiveVisible && model.availability && model.availability.hullEnabled;
     const makeActiveLabel = makeActiveEnabled
@@ -847,14 +999,16 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         `</header>` +
         `<div class="sx-sw-chiprow">${renderCapabilityChips(model)}</div>` +
       `</section>` +
+      renderPresetRail(model, activePresetRailModel) +
       `<section class="sx-sw-verbs">` +
         `<button type="button" class="sx-sw-verb" data-verb="range">TAKE IT TO THE RANGE</button>` +
         `<button type="button" class="sx-sw-verb" data-verb="record">RECORD</button>` +
-        `<button type="button" class="sx-sw-verb" data-verb="fit"${fitEnabled ? '' : ` disabled aria-label="${escapeHtml(fitLabel)}"`}>${escapeHtml(fitLabel)}</button>` +
+        `<button type="button" class="sx-sw-verb" data-verb="fit" data-fit-action="${escapeHtml(fitAction)}"${selectedPreset ? ` data-loadout-preset-id="${escapeHtml(selectedPreset.id)}"` : ''}${fitEnabled ? '' : ` disabled aria-label="${escapeHtml(fitBlockedText)}"`}>${escapeHtml(fitLabel)}</button>` +
         (makeActiveVisible
           ? `<button type="button" class="sx-sw-verb" data-verb="activate"${makeActiveEnabled ? '' : ` disabled aria-label="${escapeHtml(makeActiveLabel)}"`}>${escapeHtml(makeActiveLabel)}</button>`
           : '') +
       `</section>` +
+      renderPresetDrawer(activePresetRailModel) +
       (recordOpen
         ? `<section class="sx-sw-record"><header><span class="sf-deck__label">RECORD</span></header><div class="sx-sw-record__grid">${recordRowsHtml(model)}</div></section>`
         : '');
@@ -862,6 +1016,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
 
   function restoreCurrentPreview() {
     ghostActive = false;
+    ghostSource = null;
     ghostBandModel = null;
     ghostMassDelta = null;
     deltaEl.hidden = true;
@@ -880,6 +1035,10 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     syncGaugeValues(activeBandModel);
     syncPowerBand(activeBandModel);
     renderScarCallouts(activeBandModel);
+    if (activePresetRailModel && activePresetRailModel.selectedPreset) {
+      applyPresetGhost(activePresetRailModel.selectedPreset);
+      return;
+    }
     scheduleSpatialProjection();
   }
 
@@ -1202,6 +1361,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   // ---------- center: preview + stats ----------
   function renderCenter() {
     ghostActive = false;
+    ghostSource = null;
     ghostBandModel = null;
     ghostMassDelta = null;
     const previewCtx = currentPreviewContext();
@@ -1220,6 +1380,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     syncPowerBand(activeBandModel);
     renderScarCallouts(activeBandModel);
     renderSpatialSlots();
+    if (activePresetRailModel && activePresetRailModel.selectedPreset) applyPresetGhost(activePresetRailModel.selectedPreset);
   }
 
   // ---------- right: slots (fleet) or spec+buy (buy) ----------
@@ -1439,6 +1600,10 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   function openChooser(slotIndex, anchorEl) {
     const s = viewedShip(); const def = s ? SHIP_BY_ID.get(s.defId) : null;
     if (!def) return;
+    if (selectedPresetIdForHull(def.id)) {
+      setSelectedPresetIdForHull(def.id, null, { remember: true });
+      restoreCurrentPreview();
+    }
     const slots = buildSlotList(def); const slot = slots[slotIndex]; if (!slot) return;
     const fittings = s.fittings || [];
     const fittedId = fittings[slotIndex];
@@ -1548,6 +1713,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     });
     if (!ghost.ok || !Array.isArray(ghost.afterFittings)) return;
     ghostActive = true;
+    ghostSource = 'module';
     previewShip(ghost.defId, ghost.afterFittings, true, {
       mode: 'module',
       moduleId: ghost.moduleId || moduleId,
@@ -1582,6 +1748,149 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       deltaEl.innerHTML = '';
     }
     scheduleSpatialProjection();
+  }
+
+  function applyPresetGhost(preset) {
+    const s = viewedShip();
+    const def = s ? SHIP_BY_ID.get(s.defId) : null;
+    if (!def || !preset || !Array.isArray(preset.fittings)) return;
+    ghostActive = true;
+    ghostSource = 'preset';
+    previewShip(def.id, preset.fittings, true, {
+      mode: 'preset',
+      moduleId: null,
+    });
+    ghostBandModel = deriveBandModel({
+      defId: def.id,
+      fittings: preset.fittings,
+      isPlayer: true,
+      player: ctx.state.player,
+      stock: false,
+    });
+    ghostMassDelta = buildMassDelta(def.id, {
+      beforeFittings: s.fittings || [],
+      afterFittings: preset.fittings,
+      player: ctx.state.player,
+    });
+    if (activeBandModel) renderApron(activeBandModel);
+    if (ghostBandModel) {
+      syncGaugeValues(ghostBandModel);
+      syncPowerBand(ghostBandModel);
+    }
+    const summary = ghostMassDelta && ghostMassDelta.ok ? ghostMassDelta.summary : '';
+    if (summary) {
+      deltaEl.hidden = false;
+      deltaEl.innerHTML = `<span>PRESET PREVIEW</span><b>${escapeHtml(summary)}</b>`;
+    } else {
+      deltaEl.hidden = true;
+      deltaEl.innerHTML = '';
+    }
+    scheduleSpatialProjection();
+  }
+
+  function refreshPresetSelectionPreview() {
+    if (!activeBandModel || mode !== 'fleet') return;
+    const selectedPreset = activePresetRailModel && activePresetRailModel.selectedPreset
+      ? activePresetRailModel.selectedPreset
+      : null;
+    if (!selectedPreset) {
+      restoreCurrentPreview();
+      renderSpatialSlots();
+      return;
+    }
+    applyPresetGhost(selectedPreset);
+    renderSpatialSlots();
+  }
+
+  function selectPresetForViewedHull(presetId) {
+    if (mode !== 'fleet') return;
+    const ship = viewedShip();
+    if (!ship || !ship.defId) return;
+    const alreadySelected = selectedPresetIdForHull(ship.defId) === presetId;
+    if (alreadySelected) {
+      applySelectedPreset();
+      return;
+    }
+    if (!chooserEl.hidden) closeChooser();
+    selectedSlot = -1;
+    slotfieldEl.classList.remove('is-focusing');
+    setSelectedPresetIdForHull(ship.defId, presetId, { remember: true });
+    if (activeBandModel) renderApron(activeBandModel);
+    refreshPresetSelectionPreview();
+    if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_click' });
+  }
+
+  function saveCurrentFitAsPreset(attrs = {}) {
+    const ship = viewedShip();
+    if (!ship || mode !== 'fleet') return;
+    const presetId = attrs.presetId || null;
+    const labelKey = attrs.labelKey || 'role';
+    const createdAt = finite(attrs.createdAt, ctx.state && ctx.state.simTime);
+    if (!ctx.bus) return;
+    ctx.bus.emit('ui:saveLoadoutPreset', {
+      shipIndex: viewIdx,
+      presetId,
+      labelKey,
+      createdAt,
+    });
+    if (presetId) setSelectedPresetIdForHull(ship.defId, presetId, { remember: true });
+    if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+    setTimeout(refresh, 70);
+  }
+
+  function applySelectedPreset() {
+    if (mode !== 'fleet') return;
+    const ship = viewedShip();
+    if (!ship || !ship.defId) return;
+    const selectedPresetId = selectedPresetIdForHull(ship.defId);
+    const selectedPreset = activePresetRailModel && activePresetRailModel.presets
+      ? activePresetRailModel.presets.find((row) => row.id === selectedPresetId) || null
+      : null;
+    if (!selectedPreset) {
+      if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_deny' });
+      return;
+    }
+    if (!(selectedPreset.applyState && selectedPreset.applyState.ok)) {
+      if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_deny' });
+      return;
+    }
+    if (!ctx.bus) return;
+    ctx.bus.emit('ui:applyLoadoutPreset', { shipIndex: viewIdx, presetId: selectedPreset.id });
+    ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+    setTimeout(refresh, 80);
+  }
+
+  async function deleteSelectedPreset() {
+    if (presetDeleteBusy || isConfirmOpen() || mode !== 'fleet') return;
+    const ship = viewedShip();
+    if (!ship || !ship.defId) return;
+    const selectedPresetId = selectedPresetIdForHull(ship.defId);
+    const selectedPreset = activePresetRailModel && activePresetRailModel.presets
+      ? activePresetRailModel.presets.find((row) => row.id === selectedPresetId) || null
+      : null;
+    if (!selectedPreset || !ctx.bus) return;
+    presetDeleteBusy = true;
+    let ok = false;
+    try {
+      ok = await confirm({
+        title: 'Delete build?',
+        body: `${selectedPreset.label || 'This build'} will be removed from this hull.`,
+        confirmLabel: 'Delete',
+        cancelLabel: 'Keep',
+        danger: true,
+      });
+    } finally {
+      presetDeleteBusy = false;
+    }
+    if (!ok) {
+      ctx.bus.emit('audio:cue', { id: 'ui_deny' });
+      return;
+    }
+    ctx.bus.emit('ui:deleteLoadoutPreset', { shipIndex: viewIdx, presetId: selectedPreset.id });
+    clearPresetSelectionForViewedHull({ remember: true });
+    restoreCurrentPreview();
+    ctx.bus.emit('audio:cue', { id: 'ui_accept' });
+    setTimeout(refresh, 80);
   }
 
   // ---------- events ----------
@@ -1653,7 +1962,31 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     }
   });
 
-  statsEl.addEventListener('click', (ev) => {
+  statsEl.addEventListener('click', async (ev) => {
+    const savePreset = ev.target.closest('[data-loadout-preset-save]');
+    if (savePreset) {
+      if (savePreset.disabled) {
+        if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_deny' });
+        return;
+      }
+      saveCurrentFitAsPreset({
+        presetId: savePreset.getAttribute('data-loadout-preset-id') || null,
+        labelKey: savePreset.getAttribute('data-loadout-label-key') || 'role',
+        createdAt: Number(savePreset.getAttribute('data-loadout-created-at')),
+      });
+      return;
+    }
+    const presetNode = ev.target.closest('[data-loadout-preset-id]');
+    if (presetNode) {
+      const presetId = presetNode.getAttribute('data-loadout-preset-id');
+      if (presetId) selectPresetForViewedHull(presetId);
+      return;
+    }
+    const deletePreset = ev.target.closest('[data-loadout-preset-delete]');
+    if (deletePreset) {
+      await deleteSelectedPreset();
+      return;
+    }
     const verb = ev.target.closest('[data-verb]');
     if (!verb) return;
     const action = verb.getAttribute('data-verb');
@@ -1679,6 +2012,11 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       return;
     }
     if (action === 'fit') {
+      const fitAction = verb.getAttribute('data-fit-action') || 'fit-slot';
+      if (fitAction === 'apply-preset') {
+        applySelectedPreset();
+        return;
+      }
       const availability = shipworksActionAvailability(ctx.state);
       if (!(availability.outfitEnabled && selectedSlot >= 0)) {
         if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_deny' });
@@ -1857,7 +2195,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     if (periodicCtx === ctx) return;
     renderRail();
     // Periodic station refreshes must not erase a pointer/focus after-fittings preview.
-    if (!ghostActive) renderCenter();
+    if (!(ghostActive && ghostSource === 'module')) renderCenter();
     if (chooserEl.hidden) renderSide();
   }
 

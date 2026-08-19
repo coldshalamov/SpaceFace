@@ -266,6 +266,7 @@ Current save version: `14`
 | `$.player.insurance.insuredModules` | boolean | false |
 | `$.player.insurance.lastStationId` | null | null |
 | `$.player.insurance.rate` | number | 0.6 |
+| `$.player.loadoutPresets` | array | length 0 |
 | `$.player.magnetRange` | number | 250 |
 | `$.player.massSeed` | object | {} |
 | `$.player.massSeed.cooldownUntil` | number | 0 |

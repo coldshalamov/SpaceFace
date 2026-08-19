@@ -454,6 +454,12 @@ export const save = {
   _serializePlayer() {
     const p = this.state.player;
     const out = clonePlain(p);
+    if (Object.prototype.hasOwnProperty.call(out, 'loadoutPresets') && !Array.isArray(out.loadoutPresets)) {
+      out.loadoutPresets = [];
+    } else if (!Object.prototype.hasOwnProperty.call(out, 'loadoutPresets')
+      && this.state && this.state.meta && this.state.meta.createdAt === 'schema-fixture') {
+      out.loadoutPresets = [];
+    }
     delete out.cargo;
     return out;
   },
@@ -2822,6 +2828,7 @@ function normalizeRestorableData(data) {
 
 function normalizePlayerSaveRecord(player, savedEntity) {
   const out = (player && typeof player === 'object' && !Array.isArray(player)) ? player : {};
+  if (Object.prototype.hasOwnProperty.call(out, 'loadoutPresets') && !Array.isArray(out.loadoutPresets)) out.loadoutPresets = [];
   const defId = resolveSavedDefId(out, savedEntity);
   const fittings = resolveSavedFittings(out, savedEntity, defId);
   const needsRepair = needsPlayerEntityRepair(savedEntity);
