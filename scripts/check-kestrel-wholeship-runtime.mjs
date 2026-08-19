@@ -149,6 +149,7 @@ for (const member of FAMILY) {
 
 const partsLibrary = readFileSync(resolve(ROOT, 'src/render/partsLibrary.js'), 'utf8');
 const assetLoader = readFileSync(resolve(ROOT, 'src/render/assetLoader.js'), 'utf8');
+const renderPackageLoader = readFileSync(resolve(ROOT, 'src/render/renderPackageLoader.js'), 'utf8');
 assert.match(partsLibrary, /'ship_kestrel'\s*:\s*'wholeships\/kestrel\.glb'/,
   'default starter must map to V4 LOD0 through the canonical player whole-ship path');
 assert.match(partsLibrary, /'ship_kestrel'\s*:\s*'SF_K0_KESTREL_BORROWED_TIME_V4'/,
@@ -172,6 +173,12 @@ assert.match(assetLoader,
   'whole-ship validation must retain a production fetch default and an injectable test seam');
 assert.match(assetLoader, /fetchImpl\(url,\s*\{\s*cache:\s*['"]no-cache['"]\s*\}\)/,
   'whole-ship validation must revalidate current on-disk GLBs through the injected fetch seam');
+assert.doesNotMatch(renderPackageLoader, /cache:\s*['"]force-cache['"]/,
+  'Hitch production packages must not pin a stale Electron cache entry');
+assert.match(renderPackageLoader, /cache:\s*['"]no-cache['"]/,
+  'Hitch production packages must revalidate the current on-disk render package');
+assert.match(renderPackageLoader, /cache:\s*['"]reload['"]/,
+  'Hitch production packages must bypass a poisoned immutable cache after a hash mismatch');
 
 console.log('Kestrel Borrowed Time V4 live whole-ship family: PASS');
 console.log(JSON.stringify({

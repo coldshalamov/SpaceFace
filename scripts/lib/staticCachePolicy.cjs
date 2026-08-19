@@ -34,6 +34,9 @@ function isSaveOrMutableDocument(relativePath) {
 
 function isImmutableReleaseAsset(relativePath) {
   const p = normalizePath(relativePath);
+  // Hash manifests and package JSON keep a stable URL while the bytes change whenever a
+  // ship is rebuilt. Pinning them immutable leaves the desktop app on a stale Hitch forever.
+  if (extname(p) === '.json') return false;
   if (p.startsWith('assets/ships/release/')) return true;
   if (p.startsWith('assets/fonts/') || p.startsWith('styles/fonts/')) return true;
   if (p.startsWith('vendor/')) {

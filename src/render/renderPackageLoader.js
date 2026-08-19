@@ -56,12 +56,17 @@ export function createRenderPackageLoader(options = {}) {
 
   async function load(metadataOrUrl, loadOptions = {}) {
     if (disposed) throw new Error('Render package loader has been disposed.');
-    const resolved = await resolveMetadata(metadataOrUrl, loadOptions, fetchImpl);
-    return loadResolved(
-      resolved.metadata,
-      resolved.baseUrl,
-      loadOptions.expectedContentHash ?? options.expectedContentHash ?? null,
-    );
+    const expectedContentHash = loadOptions.expectedContentHash ?? options.expectedContentHash ?? null;
+    const resolved = await resolveMetadata(metadataOrUrl, loadOptions, fetchImpl, 'no-cache');
+    try {
+      return await loadResolved(resolved.metadata, resolved.baseUrl, expectedContentHash);
+    } catch (error) {
+      // Desktop Electron keeps a stable origin so saves persist. A previous immutable cache
+      // entry for this same URL can still win once; bypass it and load the on-disk package.
+      if (!isStalePackageCacheError(error) || typeof metadataOrUrl !== 'string') throw error;
+      const reloaded = await resolveMetadata(metadataOrUrl, loadOptions, fetchImpl, 'reload');
+      return loadResolved(reloaded.metadata, reloaded.baseUrl, expectedContentHash);
+    }
   }
 
   async function loadResolved(metadataValue, baseUrl, expectedContentHash) {
@@ -667,7 +672,7 @@ function runtimePackageSignature(metadata) {
   return stableJsonStringify(renderPackageContentIdentity(metadata));
 }
 
-async function resolveMetadata(metadataOrUrl, options, fetchImpl) {
+async function resolveMetadata(metadataOrUrl, options, fetchImpl, cacheMode = 'no-cache') {
   if (metadataOrUrl && typeof metadataOrUrl === 'object') {
     return { metadata: metadataOrUrl, baseUrl: options.baseUrl || '' };
   }
@@ -675,7 +680,7 @@ async function resolveMetadata(metadataOrUrl, options, fetchImpl) {
     throw new Error('Render package loader requires metadata or a render-package.json URL.');
   }
   if (typeof fetchImpl !== 'function') throw new Error('Render package loader requires fetch to load metadata URLs.');
-  const response = await fetchImpl(metadataOrUrl, { cache: 'force-cache' });
+  const response = await fetchImpl(metadataOrUrl, { cache: cacheMode });
   if (!response.ok) throw new Error(`Render package metadata fetch failed: HTTP ${response.status} ${metadataOrUrl}`);
   const metadata = await response.json();
   const responseUrl = typeof response.url === 'string' && response.url
@@ -684,19 +689,37 @@ async function resolveMetadata(metadataOrUrl, options, fetchImpl) {
   return { metadata, baseUrl: resourceBaseUrl(responseUrl) };
 }
 
+function isStalePackageCacheError(error) {
+  const message = String(error && error.message || error);
+  return /trust-anchor mismatch|content hash mismatch|SHA-256 mismatch|byte length mismatch/i.test(message);
+}
+
+async function fetchVerifiedRenderBytes(fetchImpl, url, metadata) {
+  const read = async (cache) => {
+    const response = await fetchImpl(url, { cache });
+    if (!response.ok) throw new Error(`Render package GLB fetch failed: HTTP ${response.status} ${url}`);
+    return new Uint8Array(await response.arrayBuffer());
+  };
+  const matches = async (bytes) => (
+    bytes.byteLength === metadata.render.bytes
+    && (await sha256Hex(bytes)) === metadata.render.sha256
+  );
+  let bytes = await read('no-cache');
+  if (!await matches(bytes)) bytes = await read('reload');
+  if (bytes.byteLength !== metadata.render.bytes) {
+    throw new Error(`Render package byte length mismatch for ${metadata.assetId}: ${bytes.byteLength} != ${metadata.render.bytes}.`);
+  }
+  const digest = await sha256Hex(bytes);
+  if (digest !== metadata.render.sha256) {
+    throw new Error(`Render package SHA-256 mismatch for ${metadata.assetId}: ${digest} != ${metadata.render.sha256}.`);
+  }
+  return bytes;
+}
+
 function createDefaultGlbDecoder({ fetchImpl, configureGltfLoader }) {
   return async (url, metadata) => {
     if (typeof fetchImpl !== 'function') throw new Error('Render package loader requires fetch to load render.glb.');
-    const response = await fetchImpl(url, { cache: 'force-cache' });
-    if (!response.ok) throw new Error(`Render package GLB fetch failed: HTTP ${response.status} ${url}`);
-    const bytes = new Uint8Array(await response.arrayBuffer());
-    if (bytes.byteLength !== metadata.render.bytes) {
-      throw new Error(`Render package byte length mismatch for ${metadata.assetId}: ${bytes.byteLength} != ${metadata.render.bytes}.`);
-    }
-    const digest = await sha256Hex(bytes);
-    if (digest !== metadata.render.sha256) {
-      throw new Error(`Render package SHA-256 mismatch for ${metadata.assetId}: ${digest} != ${metadata.render.sha256}.`);
-    }
+    const bytes = await fetchVerifiedRenderBytes(fetchImpl, url, metadata);
 
     defaultDecoderModules ||= Promise.all([
       import('three/addons/loaders/GLTFLoader.js'),

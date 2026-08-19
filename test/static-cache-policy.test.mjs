@@ -20,6 +20,15 @@ test('release assets are immutable; documents and saves stay no-cache', () => {
   assert.equal(resolveStaticCacheControl('index.html'), 'no-cache');
   assert.equal(resolveStaticCacheControl('src/main.js'), 'no-cache');
   assert.equal(resolveStaticCacheControl('saves/slot1.json'), 'no-cache');
+  assert.equal(
+    resolveStaticCacheControl('assets/ships/release/render-packages/kestrel/render-package.json'),
+    'no-cache',
+    'Hitch package JSON keeps a stable URL and must revalidate when the ship is rebuilt',
+  );
+  assert.equal(
+    isImmutableReleaseAsset('assets/ships/release/render-packages/kestrel/render-package.json'),
+    false,
+  );
 });
 
 test('game server 304s a warm immutable release asset without restaging bytes', async (t) => {

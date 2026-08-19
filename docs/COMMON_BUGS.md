@@ -189,6 +189,7 @@ whole-body routing; inspect the exact `defId` in both maps before assuming which
    classification, framing, and normal-route validation; otherwise retain the modular route.
 6. **Missing `ships.js` defId mapping** — a new ship id with no partsLibrary entry gets a seed-pick hull.
 7. **Texture/contract violations** — wrong normal convention (OpenGL green-up), wrong ORM order (R=AO, G=Roughness, B=Metallic), un-chamfered hard edges. All silently rejected.
+8. **Desktop Hitch is a stale cached package, not a missing GLB.** Electron keeps origin `127.0.0.1:41788` so saves persist. Hitch loads through the render-package path, not `loadGltfDocument`. If New Game Launch stays grey, Continue has no ship/controls, and isolated Electron is fine, the player Chromium cache still has an old `render-package.json` / `render.glb` under the same URL. The live loader must revalidate (`no-cache` / `reload` on hash mismatch). Do not "fix" this by weakening the authored-asset gate.
 
 ### To add a new modular part that renders in ONE pass
 

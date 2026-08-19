@@ -471,6 +471,36 @@ test('loader preserves absolute, rooted, protocol-relative, and parent-relative 
   }
 });
 
+test('loader revalidates package URLs so a stale Electron cache cannot pin Hitch', async () => {
+  const decoded = decodedFixture();
+  const current = packageMetadata();
+  const stale = packageMetadata();
+  stale.render.sha256 = '9'.repeat(64);
+  stale.contentHash = createHash('sha256')
+    .update(stableJsonStringify(renderPackageContentIdentity(stale)))
+    .digest('hex');
+
+  const fetches = [];
+  const loader = createRenderPackageLoader({
+    fetchImpl: async (url, options) => {
+      fetches.push({ url, cache: options && options.cache });
+      assert.equal(url, 'assets/ships/release/render-packages/kestrel/render-package.json');
+      return {
+        ok: true,
+        json: async () => (options && options.cache === 'reload' ? current : stale),
+      };
+    },
+    loadGlb: async () => ({ scene: decoded.scene }),
+  });
+
+  const loaded = await loader.load(
+    'assets/ships/release/render-packages/kestrel/render-package.json',
+    { expectedContentHash: current.contentHash },
+  );
+  assert.equal(loaded.metadata.contentHash, current.contentHash);
+  assert.deepEqual(fetches.map((entry) => entry.cache), ['no-cache', 'reload']);
+});
+
 test('loader preserves parent traversal when metadata itself is loaded by relative URL', async () => {
   const decoded = decodedFixture();
   const metadata = packageMetadata();
