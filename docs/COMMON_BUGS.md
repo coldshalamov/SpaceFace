@@ -435,54 +435,105 @@ refuses to run at all and says so, naming the dirty paths or the two commits. If
 it has actually booted the game, and anything it reports after that is a real observation about the
 live route. Read which assertion failed before dismissing it.
 
-**Observed 2026-08-18 on a clean tree with `HEAD == origin/master`:**
+**RESOLVED 2026-08-18** (`2f8553e9`). Kept here because the first two diagnoses were both wrong in
+instructive ways, and because the shape of the mistake recurs.
+
+### What it actually was: a correct eviction of something the boot had just paid for
+
+Traced frame by frame on the live route, the whole sequence is four rows:
 
 ```
-Helios must finish authored admission on the live route:
-[{"stationId":"station_helios","archetypeGlb":"place_station_trade_hub",
-  "assetState":"missing-mesh","presented":false},
- {"stationId":"station_tethys","archetypeGlb":"place_station_trade_hub",
-  "assetState":"missing-mesh","presented":false}]
+t= 5900  tick 0   loading  dist 1347  mesh false  admission pending  state null
+t= 6794  tick 0   loading  dist 1347  mesh TRUE   admission pending  state loading
+t= 9451  tick 0   loading  dist 1347  mesh true   admission READY    state AUTHORED
+t=14567  tick 16  FLIGHT   dist 1347  mesh FALSE  admission ready    state null
 ```
 
-`missing-mesh` is not "still loading" — it is the fallback used when the station root carries no
-`authoredAssetState` at all. Both stations that use `place_station_trade_hub` are affected, and
-that is the first station all three careers dock at.
+The player spawns at `(0, 0)`. Helios sits at `(1280, -420)` — **1347 WU away**, roughly nine
+screens off the table at default zoom. Admission never failed. `isCriticalStartingHub` makes the
+opening hub unconditionally relevant while `mode === 'loading'`, so the full asset decodes and
+reaches `authored` behind the loading screen, and `authoredCriticalVisualReadiness` holds flight
+until it does. Then flight starts, the mode-gated exception ends, `isEntityRenderRelevant` applies
+the distance rule alone, and the first reconcile evicts it at **tick 16 — about one second in**.
+The boot paid for the entire decode and kept nothing.
 
-**Narrowed, 2026-08-18.** It is not a missing file, not a stale render package, and not a
-compression failure:
+Two policies were disagreeing about the same entity, in the same repo:
 
-- The artifact is present at source and release and unchanged across `c8cdb6b7`, `bd8b2e0b` and
-  current `HEAD`. Not a recent regression.
-- It has a render package (`helios-trade-hub`) and two pilot bindings, and it still fails after the
-  whole package set was regenerated.
-- Its textures **are** KTX2 — 30 compressed images. Not an uncompressed export.
-- The probe reads `entity.mesh` and gets **null**. That is not a stalled admission carrying a
-  pending state; it is no visual root having been created at all.
+- `willEntityEnterAuthoredUpgradeRunway` → `if (isCriticalStartingHub(entity)) return true` at any distance.
+- `isEntityRenderRelevant` → that exception exists only while `mode === 'loading'`.
 
-**The one number that stands out.** Ranked across all 164 release part GLBs:
+One said always worth authoring; the other said not worth keeping.
+
+`shouldKeepPersistentLandmarkResident` in `tabletopPolicy.js` already existed for exactly this,
+exported and unit-tested, **with no production consumer** — and its test asserted the buggy
+behaviour (`{ mode: 'flight' }` → `false`). The fix wires it in and extends it: never build a far
+landmark, but never evict one already standing in the sector the player is in. Residency keys on
+`authoredAssetState`, not on merely having a mesh, so a procedural fallback cannot pin anything;
+leaving the sector still drops it, because the sector ids stop matching.
+
+### What a player saw
+
+The frame is the finding. At 70 WU the HUD offered `[E] DOCK AT STATION` and a target card reading
+`Helios Station · TOW · 73% · READY`, over a dock ring drawn around **empty space**. The player
+ship, traffic and the planet all rendered. The first station all three careers dock at was a marker.
+
+### Three wrong turns, and what each cost
+
+1. **"It never admits."** The probe reads `entity.mesh` and gets null, so the note concluded no
+   root was ever created. A root *was* created, reached `authored`, and was then disposed. Reading
+   a null at one instant does not distinguish "never built" from "built and thrown away"; only a
+   trace across the `loading → flight` transition does.
+2. **"It is the 75 MB."** The asset is 3.7x the next largest release part, which is true and was
+   irrelevant. There is no size, texture-budget, or decode ceiling anywhere in the admission or
+   residency path — grep for one and you get nothing. A 5.7 MB station and a 7.7 MB gate ring evict
+   by exactly the same rule. The size correlated with nothing; it just made the waste expensive.
+3. **"Only the trade hub is affected."** The probe filters stations to
+   `stationId === 'station_helios' || archetypeGlb === 'place_station_trade_hub'`. **Every other
+   station is invisible to it.** "The refinery admits fine" was never measured — it was an artifact
+   of that filter. Dumping all 19 stations unfiltered was the single step that decided the
+   diagnosis, and it took one boot. Do it before theorising.
+
+### The instrument that was missing
+
+A boundary that gives up during prepare is caught in `startRecord`, stored on the record, and then
+**deleted from the records map** by `disposeRecord`. A frame later the entity just has no mesh and
+nothing anywhere says why — and `inspect()` omitted both fields that carry the cause. It now
+reports `error` and `abortReason`, and `state.render.sectorBoundaryPrewarm.failures()` retains a
+bounded tail of retired records so the reason survives the disposal that erases them.
+
+(In this particular bug that tail came back empty, which was itself informative: stations never
+enter the prepared-boundary path at all. They are built by `_drainMeshBuildQueue`.)
+
+### Still red, for an unrelated reason — do not re-diagnose this as the station
+
+With the station fixed the probe now runs past the Helios assertion and stops later, at
+`loaderDiagnostics.available`:
 
 ```
-  75.4 MB  places/place_station_trade_hub.glb
-  20.3 MB  places/place_asteroid_seamed.glb
-  19.7 MB  places/place_asteroid_graffiti.glb
-  15.3 MB  wholeships/kestrel.glb
+assets/ships/release/parts/places/place_cold_locker.glb violates the authored-part contract:
+- released part has no render package, and the source route is development-only.
 ```
 
-It is **3.7x the next largest asset** and **15.5% of all 485 MB** of release parts, in one file.
-For scale, the live player ship carries 32 KTX2 images in 15.3 MB; this carries 30 in 75.4 MB, so
-its images are roughly five times larger each. A single asset that big failing to publish a root
-points at admission or decode budget — the class `PQ-055` and `PQ-085` are reserved for ("large
-places decode a table-visible shell first").
+Three Helios lane-furniture places — `place_cold_locker`, `place_ash_pin`, `place_tally_post` — are
+unpackageable, so the runtime loader rejects them. `poi_helios_tally` sits at `(120, 180)`, about
+216 WU from spawn, so the starting sector requests one of them immediately.
 
-**Still not confirmed:** whether a player actually sees an empty station. The probe's own screenshot
-`.devshots/authored-assets-live.jpg` frames open space, not a station. Driving the game to a
-station-facing frame through the browser was attempted and did not reach flight mode; that is the
-next step, not a conclusion.
+The cause is in the release build, not the authoring: **the source GLBs have every node named; the
+release GLBs have exactly one extra, nameless node** (`place_tally_post`: 31 source nodes, all
+named → 32 release nodes, index 31 unnamed, carrying a mesh, a scale and a translation). Every
+place that packages cleanly has zero unnamed nodes. `generate-render-package-pilots.mjs` then skips
+them — `semantic node names must be non-empty and unique (unnamed)` — and reports
+`all 113 release assets packaged`, because a skipped asset is not counted as missing. That is the
+same "green check encodes a false claim" shape as the filter above.
 
-**Wrong first look:** treating the failure as the documented dirty-tree condition and moving on.
-That is how this one stayed invisible.
+This predates the station fix and was simply masked by it: assertions run in order, and the Helios
+one is earlier in the file.
 
----
+### Wrong first looks, ranked
+
+- Treating the failure as the documented dirty-tree condition and moving on. That is how this
+  stayed invisible.
+- Theorising from the one number that stands out before dumping the unfiltered set.
+- Reading a probe's *filtered* output as a statement about the whole class it appears to describe.
 
 *Found a bug that took multiple prompts to diagnose? Add a section here so the next agent doesn't repeat the hunt. Verify claims against the working tree (`git diff`) before writing them — HEAD drifts behind.*
