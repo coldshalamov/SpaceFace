@@ -90,7 +90,7 @@ Remaining PQ-050 leaves (one ship at a time; Hitch/Kestrel frozen):
 
 | Leaf | Ship | This campaign |
 |---|---|---|
-| `.01` | Hornet | wired candidate C85, **not quality-closed**. C90 candidate: faired house, open-bore throats. Reviews still REVISE. Ledger incomplete. |
+| `.01` | Hornet | wired candidate C85, **not quality-closed**. C95 candidate: standing-off cans, roof well, dark bowls. 3Q/starboard still REVISE (crate cabin, hard joints). Ledger incomplete. |
 | `.02` | Drifter | seven form attempts this campaign (C18–24). Three volumes + ringed throats in candidate. C20 still live. **Not quality-closed.** |
 | `.03` | Ranger | not started |
 | `.04` | Ironback | not started |

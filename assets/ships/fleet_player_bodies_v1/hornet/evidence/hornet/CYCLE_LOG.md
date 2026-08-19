@@ -69,5 +69,10 @@
 | 88 | yes | see json | 3Q REVISE / starboard REVISE / rear REVISE | House faired out of the waist. Open house read as a cave from 3Q. Not wired. |
 | 89 | yes | see json | 3Q REVISE / starboard REVISE / rear REVISE | 3Q counted three volumes and thick wings. Starboard still crate tail. Rear vanes + hub plug. Not wired. |
 | 90 | yes | see json | pending | House height matches waist. Hub plug off; dark open bore. Not wired. |
+| 91 | yes | 6C8B11ED | 3Q REVISE / starboard REVISE / rear REVISE | Cans stand off. Roof well is an empty crate. Transom gouge blacked the aft. Not wired. |
+| 92 | yes | see json | author REVISE | Smaller well, no transom gouge. Glass roof hid the seat. Rear still impeller-in-a-hoop. Not wired. |
+| 93 | yes | 880FF4FB | 3Q REVISE / starboard REVISE / rear REVISE | Long 3D cans you can look into. Interiors chrome. Greenhouse still a crate. Not wired. |
+| 94 | yes | see json | author REVISE | Dark bowls. Rails off. Bay crop shows seat + glass. Starboard still a boom. Not wired. |
+| 95 | yes | see json | author REVISE | Boom shortened. Floating keel tiles removed from the script. Cabin-waist still a hard step. Not wired. |
 
 Hitch-plus / A-list: not met. C85 remains the live game body. Do not mark PQ-050.01 done. Do not self-accept.
