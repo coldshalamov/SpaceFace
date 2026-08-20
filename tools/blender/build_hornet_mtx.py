@@ -312,7 +312,7 @@ def create_materials():
         bsdf.inputs["Roughness"].default_value = rough
         # Warning maps washed the seat to peach. Canopy maps turned the pane into a gray slab.
         # Hull/armor maps photographed chrome-black (C118). Cool unmapped dielectric paint.
-        if name not in ("Material_Warning", "Material_Canopy", "Material_Hull", "Material_Armor"):
+        if name not in ("Material_Warning", "Material_Canopy", "Material_Hull", "Material_Armor", "Material_Ceramic"):
             maps = role_maps(role, rgb, prefix=name.replace("Material_", "").lower())
             wire_maps(material, bsdf, maps, coat=coat, emission=emit)
         elif emit:
@@ -328,10 +328,10 @@ def create_materials():
                 bsdf.inputs["IOR"].default_value = 1.52
             if "Coat Weight" in bsdf.inputs:
                 bsdf.inputs["Coat Weight"].default_value = 0.0
-            bsdf.inputs["Base Color"].default_value = (0.015, 0.02, 0.025, 1)
+            bsdf.inputs["Base Color"].default_value = (0.012, 0.016, 0.020, 1)
             bsdf.inputs["Metallic"].default_value = 0.0
-            bsdf.inputs["Roughness"].default_value = 0.08
-            bsdf.inputs["Alpha"].default_value = 0.28
+            bsdf.inputs["Roughness"].default_value = 0.10
+            bsdf.inputs["Alpha"].default_value = 0.52
             if hasattr(material, "blend_method"):
                 try:
                     material.blend_method = "HASHED"
@@ -706,21 +706,17 @@ def add_hollow_bell(tag, x, y, z, scale, mats, collection):
         mats["Material_Mechanical"], mats["Material_Armor"],
         mats["Material_Soot"],
     )
-    # Longer barrel so starboard/rear 3/4 can count a can, not a hoop.
     bell_len = 2.05 * s
+    # Ceramic casing so 3Q names a tan can, not a rubber cone. Soot is the nozzle only.
+    case_rings = []
+    for t, r in ((0.00, 0.28), (0.20, 0.28), (0.38, 0.36)):
+        xi = x - 0.04 * s - t * bell_len
+        case_rings.append(ellipse_ring(xi, y, z, r * s, r * s, 40))
+    loft_from_rings(f"BellCase_{tag}", case_rings, ceramic, collection, 0.0, cap=False)
     outer_rings = []
-    for t, r in (
-        (0.00, 0.28),
-        (0.18, 0.28),
-        (0.36, 0.34),
-        (0.56, 0.50),
-        (0.78, 0.72),
-        (1.00, 0.94),
-    ):
+    for t, r in ((0.38, 0.36), (0.56, 0.50), (0.78, 0.72), (1.00, 0.94)):
         xi = x - 0.04 * s - t * bell_len
         outer_rings.append(ellipse_ring(xi, y, z, r * s, r * s, 40))
-    # C114: soot outer, no bevel. Thruster maps + mouth bevel photographed a chalk inner hoop.
-    # Ceramic stays on the casing OD (collar), never the mouth.
     outer = loft_from_rings(f"Bell_{tag}", outer_rings, soot, collection, 0.0, cap=False)
     liner_rings = []
     for t, r in (
@@ -735,13 +731,18 @@ def add_hollow_bell(tag, x, y, z, scale, mats, collection):
     ):
         xi = x - 0.04 * s - t * bell_len
         liner_rings.append(ellipse_ring(xi, y, z, r * s, r * s, 32))
-    # Liner past the mouth and past outer r=0.94 so no inner annulus of the casing is visible.
     liner = loft_from_rings(f"BellLiner_{tag}", liner_rings, soot, collection, 0.0, cap=False)
     flip_normals(liner)
     add_cylinder(f"BellBore_{tag}", (x - 0.12 * s, y, z), 0.16 * s, 0.020 * s, soot, collection, 24, 0.001)
+    # Ceramic collar on the flare OD — 3Q-readable. Mech flange photographed as chrome jewelry.
+    add_cylinder(
+        f"BellHeat_{tag}",
+        (x - 0.04 * s - 0.58 * bell_len, y, z),
+        0.58 * s, 0.10 * s, ceramic, collection, 28, 0.002,
+    )
     add_cylinder(f"BellCollar_{tag}", (x + 0.02 * s, y, z), 0.34 * s, 0.14 * s, ceramic, collection, 24, 0.003)
     add_cylinder(f"BellClamp_{tag}", (x + 0.14 * s, y, z), 0.40 * s, 0.05 * s, armor, collection, 24, 0.002)
-    add_cylinder(f"BellFlange_{tag}", (x + 0.28 * s, y, z), 0.48 * s, 0.07 * s, mech, collection, 24, 0.003)
+    add_cylinder(f"BellFlange_{tag}", (x + 0.28 * s, y, z), 0.48 * s, 0.07 * s, ceramic, collection, 24, 0.003)
     for index in range(10):
         ang = math.tau * index / 10
         add_cylinder(
@@ -1329,10 +1330,13 @@ def build_lod(lod, mats):
     add_station_hoop("Hoop_Wing", 0.70, 1.94, 0.74, 0.12, 0.10, 0.74, 0.18, armor, collection, stand=0.042, half=0.038)
     add_station_hoop("Hoop_Transom", -3.18, 0.98, 0.38, 0.14, 0.03, 0.92, 0.06, armor, collection, stand=0.042, half=0.034)
 
-    # Floor and a short aft bulkhead. Tall tub walls were a mouth-filling slab.
-    add_box("Cockpit_Floor", (3.85, 0.0, 0.32), (0.42, 0.28, 0.014), mech, collection, 0.002)
-    add_box("Cockpit_AftWall", (3.48, 0.0, 0.48), (0.016, 0.20, 0.10), armor, collection, 0.002)
-    # 12 mm coaming. 8 cm bars photographed as a chrome picture-frame crate.
+    soot = mats["Material_Soot"]
+    # Dark-lined tub. Walls stay below the rim so they do not fill the mouth.
+    add_box("Tub_Floor", (3.85, 0.0, 0.30), (0.40, 0.26, 0.012), soot, collection, 0.002)
+    add_box("Tub_Aft", (3.42, 0.0, 0.54), (0.014, 0.28, 0.22), soot, collection, 0.002)
+    add_box("Tub_Port", (3.85, -0.30, 0.50), (0.38, 0.012, 0.18), soot, collection, 0.002)
+    add_box("Tub_Stbd", (3.85, 0.30, 0.50), (0.38, 0.012, 0.18), soot, collection, 0.002)
+    add_box("Cockpit_AftWall", (3.48, 0.0, 0.52), (0.014, 0.18, 0.12), armor, collection, 0.002)
     add_box("WellLip_F", (4.36, 0.0, 0.70), (0.012, 0.30, 0.012), armor, collection, 0.001)
     add_box("WellLip_A", (3.34, 0.0, 0.70), (0.012, 0.30, 0.012), armor, collection, 0.001)
     add_box("WellLip_P", (3.85, -0.34, 0.70), (0.46, 0.012, 0.012), armor, collection, 0.001)
@@ -1349,17 +1353,17 @@ def build_lod(lod, mats):
     add_box("Cockpit_Console", (4.16, 0.0, 0.42), (0.08, 0.08, 0.020), armor, collection, 0.002)
     add_box("Cockpit_Stick", (4.08, 0.04, 0.50), (0.012, 0.012, 0.06), mech, collection, 0.001)
     canopy = mats["Material_Canopy"]
-    # 8 mm dark pane in a 10 mm metal lip. No side/roof panes (those became a greenhouse).
+    # 16 mm dark pane in a 12 mm metal lip. Front windscreen only — no greenhouse.
     add_folded_sheet(
         "Canopy_Screen",
-        (4.44, -0.30, 0.66), (4.44, 0.30, 0.66),
-        (3.92, 0.16, 1.08), (3.92, -0.16, 1.08),
-        0.008, canopy, collection, 0.001,
+        (4.50, -0.30, 0.70), (4.50, 0.30, 0.70),
+        (4.18, 0.16, 1.18), (4.18, -0.16, 1.18),
+        0.016, canopy, collection, 0.001,
     )
-    add_box("Frame_SillF", (4.44, 0.0, 0.66), (0.008, 0.28, 0.008), armor, collection, 0.001)
-    add_box("Frame_Brow", (3.94, 0.0, 1.06), (0.010, 0.14, 0.008), armor, collection, 0.001)
-    add_box("Frame_PillarP", (4.18, -0.26, 0.86), (0.14, 0.008, 0.12), armor, collection, 0.001)
-    add_box("Frame_PillarS", (4.18, 0.26, 0.86), (0.14, 0.008, 0.12), armor, collection, 0.001)
+    add_box("Frame_SillF", (4.50, 0.0, 0.70), (0.012, 0.30, 0.012), armor, collection, 0.001)
+    add_box("Frame_Brow", (4.18, 0.0, 1.16), (0.012, 0.14, 0.012), armor, collection, 0.001)
+    add_box("Frame_PillarP", (4.34, -0.28, 0.92), (0.14, 0.010, 0.16), armor, collection, 0.001)
+    add_box("Frame_PillarS", (4.34, 0.28, 0.92), (0.14, 0.010, 0.16), armor, collection, 0.001)
 
     add_five_wall_tub("AvionicsTub", (0.85, -1.18, 0.22), (0.24, 0.10, 0.11), 0.040, mech, collection)
     add_box("AvionicsRack", (0.85, -1.18, 0.16), (0.16, 0.032, 0.05), armor, collection, 0.002)
@@ -1394,11 +1398,15 @@ def build_lod(lod, mats):
     add_overlap_plate("Armor_JointP", (-0.40, -1.40, 0.18), (0.28, 0.040, 0.16), armor, collection, 0.004)
     add_overlap_plate("Armor_JointS", (-0.40, 1.40, 0.18), (0.28, 0.040, 0.16), armor, collection, 0.004)
     add_overlap_plate("Armor_KeelFore", (1.20, 0.00, -0.44), (0.40, 0.12, 0.018), hull, collection, 0.003)
-    add_overlap_plate("Armor_DorsalA", (2.40, 0.00, 0.78), (0.34, 0.16, 0.010), armor, collection, 0.003)
-    add_overlap_plate("Armor_DorsalB", (0.90, 0.00, 0.80), (0.38, 0.20, 0.010), armor, collection, 0.003)
-    add_overlap_plate("Armor_DorsalC", (-1.10, 0.00, 0.58), (0.34, 0.14, 0.010), armor, collection, 0.003)
+    add_overlap_plate("Armor_DorsalA", (2.40, 0.00, 0.80), (0.28, 0.14, 0.018), armor, collection, 0.003)
+    add_overlap_plate("Armor_DorsalB", (0.90, 0.00, 0.82), (0.30, 0.16, 0.018), armor, collection, 0.003)
+    add_overlap_plate("Armor_DorsalC", (-1.10, 0.00, 0.60), (0.28, 0.12, 0.018), armor, collection, 0.003)
     add_overlap_plate("Armor_WaistP", (0.20, -1.72, 0.18), (0.32, 0.028, 0.12), armor, collection, 0.004)
     add_overlap_plate("Armor_WaistS", (0.20, 1.72, 0.18), (0.32, 0.028, 0.12), armor, collection, 0.004)
+    # Plate courses with 3–4 cm gaps. Decal-thin tiles photographed as hull paint.
+    add_tile_bank("Course_Dorsal", 2.55, 0.15, 0.0, 0.88, 5, 0.06, 0.16, 0.020, armor, collection, stagger=0.08)
+    add_tile_bank("Course_FlankP", 1.55, -1.35, -1.78, 0.24, 6, 0.05, 0.020, 0.09, armor, collection, stagger=0.03)
+    add_tile_bank("Course_FlankS", 1.55, -1.35, 1.78, 0.24, 6, 0.05, 0.020, 0.09, armor, collection, stagger=0.03)
     add_box("Accent_WaistP", (0.15, -1.40, 0.18), (0.28, 0.010, 0.04), accent, collection, 0.002)
     add_box("Accent_WaistS", (0.15, 1.40, 0.18), (0.28, 0.010, 0.04), accent, collection, 0.002)
 

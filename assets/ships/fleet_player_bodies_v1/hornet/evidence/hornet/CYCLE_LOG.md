@@ -98,5 +98,6 @@
 | 119 | yes | B1550A4D | 3Q REVISE / starboard REVISE (wing KEEP) / rear REVISE (throats KEEP) | Cool gray still photographed foam-white at 3Q. Not wired. |
 | 120 | yes | 32380193 | 3Q REVISE / starboard REVISE (wing KEEP) / rear REVISE (throats KEEP) | Gray paint, sausage wing, dark cans. Whole-still still REVISE. Not wired. |
 | 121 | yes | 9C5E2FB6 | 3Q REVISE / starboard REVISE (wing KEEP) / rear REVISE (throats KEEP) | Ceramic cans readable at 3Q. Pane still empty air. Plates read as stamps. Not wired. |
+| 122 | yes | EAF9C4CD | 3Q REVISE / starboard REVISE (wing KEEP) / rear REVISE (throats KEEP) | Upright pane counts as glass from starboard, not from 3Q. Not wired. |
 
 Hitch-plus / A-list: not met. C85 remains the live game body. Do not mark PQ-050.01 done. Do not self-accept.

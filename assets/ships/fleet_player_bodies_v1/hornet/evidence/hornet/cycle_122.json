@@ -1,0 +1,73 @@
+{
+  "schema": "spaceface.hornetMtx.cycle.v1",
+  "shipId": "hornet",
+  "cycle": 122,
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 62115,
+      "hullTriangles": 21319,
+      "draws": 11,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Soot",
+        "Material_Thruster",
+        "Material_Warning",
+        "Material_Wing"
+      ],
+      "path": "source/wholeships/hornet_production_v1_lod0.glb",
+      "bytes": 15502116,
+      "sha256": "EAF9C4CD3AD7E4128C2441C94B4987DD1B4A5C581674A06132AEF1D2C5B0F232"
+    },
+    {
+      "lod": 1,
+      "triangles": 56499,
+      "hullTriangles": 21319,
+      "draws": 11,
+      "materials": [
+        "Material_Accent.001",
+        "Material_Armor.001",
+        "Material_Canopy.001",
+        "Material_Ceramic.001",
+        "Material_Hull.001",
+        "Material_Mechanical.001",
+        "Material_Radiator.001",
+        "Material_Soot.001",
+        "Material_Thruster.001",
+        "Material_Warning.001",
+        "Material_Wing.001"
+      ],
+      "path": "source/wholeships/hornet_production_v1_lod1.glb",
+      "bytes": 10267780,
+      "sha256": "831AB51A46ACAB27C3BA78427A9D75B16BC33087F522384376AAA5757502467D"
+    },
+    {
+      "lod": 2,
+      "triangles": 54307,
+      "hullTriangles": 21319,
+      "draws": 10,
+      "materials": [
+        "Material_Accent.002",
+        "Material_Armor.002",
+        "Material_Canopy.002",
+        "Material_Ceramic.002",
+        "Material_Hull.002",
+        "Material_Mechanical.002",
+        "Material_Soot.002",
+        "Material_Thruster.002",
+        "Material_Warning.002",
+        "Material_Wing.002"
+      ],
+      "path": "source/wholeships/hornet_production_v1_lod2.glb",
+      "bytes": 9369468,
+      "sha256": "A51BEC5EA4E1AFD470FDC90A16FA692B7E37BC4F5CF7D03CAB002E7E0787395C"
+    }
+  ],
+  "stills": "evidence/hornet/cycles/cycle_122"
+}
