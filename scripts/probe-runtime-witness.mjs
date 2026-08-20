@@ -48,6 +48,7 @@ let probeInstrumentation = null;
 let finalHitchAttribution = null;
 let finalRenderWork = null;
 let finalSystemTiming = null;
+let openingRenderWork = null;
 let opaqueBatchDiagnostic = null;
 
 function log(line) {
@@ -139,6 +140,15 @@ function formatBloomPhaseSection(phases) {
   return lines.join('\n');
 }
 
+function formatOpeningRenderWorkSection(renderWork) {
+  const lines = ['', '## Opening frame render subphases'];
+  for (const label of BLOOM_PHASE_LABELS) {
+    const stat = renderWork?.[label];
+    lines.push(`- ${label}: samples ${stat?.samples ?? 0}; p95 ${(Number(stat?.p95) || 0).toFixed(1)} ms; avg ${(Number(stat?.avg) || 0).toFixed(1)} ms; max ${(Number(stat?.max) || 0).toFixed(1)} ms`);
+  }
+  return lines.join('\n');
+}
+
 function formatSystemTimingSection(systems) {
   const ranked = Object.entries(systems || {})
     .filter(([, stat]) => Number(stat?.samples) > 0)
@@ -213,6 +223,41 @@ async function installLoadingReadinessWitness(targetPage) {
     }
     window.__SF_LOADING_READINESS_WITNESS__ = trace;
   });
+}
+
+async function armProbeInstrumentation(targetPage) {
+  const instrumentation = await targetPage.evaluate(() => {
+    const perf = window.SF?.state?.perfRuntime;
+    const previousRenderWorkEnabled = perf?.renderWorkEnabled === true;
+    const previousHitchAttributionEnabled = perf?.hitchAttributionEnabled === true;
+    const previousSystemTimingEnabled = perf?.systemTimingEnabled === true;
+    const available = typeof perf?.setRenderWorkEnabled === 'function'
+      && typeof perf?.setHitchAttributionEnabled === 'function'
+      && typeof perf?.setSystemTimingEnabled === 'function'
+      && typeof perf?.reset === 'function'
+      && typeof perf?.getHitchHistogram === 'function';
+    if (available) {
+      perf.reset();
+      perf.setRenderWorkEnabled(true);
+      perf.setHitchAttributionEnabled(true);
+      perf.setSystemTimingEnabled(true);
+    }
+    return {
+      available,
+      previousRenderWorkEnabled,
+      previousHitchAttributionEnabled,
+      previousSystemTimingEnabled,
+      renderWorkEnabled: perf?.renderWorkEnabled === true,
+      hitchAttributionEnabled: perf?.hitchAttributionEnabled === true,
+      systemTimingEnabled: perf?.systemTimingEnabled === true,
+    };
+  });
+  if (instrumentation?.renderWorkEnabled !== true
+      || instrumentation?.hitchAttributionEnabled !== true
+      || instrumentation?.systemTimingEnabled !== true) {
+    throw new Error('Runtime witness could not enable bounded census and hitch attribution');
+  }
+  return instrumentation;
 }
 
 function readWitnessInPage() {
@@ -554,17 +599,23 @@ try {
     await page.waitForFunction(() => window.SF?.state && window.SF?.bus, null, { timeout: 90_000 });
     await dismissCinematic(page);
     await installLoadingReadinessWitness(page);
+    probeInstrumentation = await armProbeInstrumentation(page);
     log(`continue from read-only player save slots=${save.slots.join(',')}`);
     await page.getByRole('button', { name: 'Continue', exact: true }).click({ timeout: 30_000 });
     entered = await waitUntilFlight(page, 'Continue');
   } else {
     log('new game');
     await installLoadingReadinessWitness(page);
+    probeInstrumentation = await armProbeInstrumentation(page);
     await page.getByRole('button', { name: 'New Game', exact: true }).click({ timeout: 30_000 });
     await page.fill('#sf-ng-seed', String(FIXED_SEED));
     entered = await launchUntilFlight(page);
   }
   log(`entered flight ${JSON.stringify({ mode: entered.mode, simTime: entered.simTime })}`);
+  openingRenderWork = await page.evaluate(() => (
+    window.SF?.state?.perfRuntime?.getReport?.().renderWork || null
+  ));
+  await page.evaluate(() => window.SF?.state?.perfRuntime?.reset?.());
 
   if (OPAQUE_BATCH_OFF_DIAGNOSTIC) {
     opaqueBatchDiagnostic = await page.evaluate(() => {
@@ -587,37 +638,6 @@ try {
     log('diagnostic only: live opaque material batching disabled inside isolated profile');
   }
 
-  probeInstrumentation = await page.evaluate(() => {
-    const perf = window.SF?.state?.perfRuntime;
-    const previousRenderWorkEnabled = perf?.renderWorkEnabled === true;
-    const previousHitchAttributionEnabled = perf?.hitchAttributionEnabled === true;
-    const previousSystemTimingEnabled = perf?.systemTimingEnabled === true;
-    const available = typeof perf?.setRenderWorkEnabled === 'function'
-      && typeof perf?.setHitchAttributionEnabled === 'function'
-      && typeof perf?.setSystemTimingEnabled === 'function'
-      && typeof perf?.reset === 'function'
-      && typeof perf?.getHitchHistogram === 'function';
-    if (available) {
-      perf.reset();
-      perf.setRenderWorkEnabled(true);
-      perf.setHitchAttributionEnabled(true);
-      perf.setSystemTimingEnabled(true);
-    }
-    return {
-      available,
-      previousRenderWorkEnabled,
-      previousHitchAttributionEnabled,
-      previousSystemTimingEnabled,
-      renderWorkEnabled: perf?.renderWorkEnabled === true,
-      hitchAttributionEnabled: perf?.hitchAttributionEnabled === true,
-      systemTimingEnabled: perf?.systemTimingEnabled === true,
-    };
-  });
-  if (probeInstrumentation?.renderWorkEnabled !== true
-      || probeInstrumentation?.hitchAttributionEnabled !== true
-      || probeInstrumentation?.systemTimingEnabled !== true) {
-    throw new Error('Runtime witness could not enable bounded census and hitch attribution');
-  }
   await page.waitForTimeout(250);
 
   await page.locator('#gl-canvas').click({ timeout: 10_000 }).catch(() => {});
@@ -799,7 +819,7 @@ const markdown = `${formatRuntimeWitnessReport({
   consoleHits,
   pageErrors,
   gpu,
-})}${formatLoadingReadinessSection(loadingProgressEvents, loadingReadinessSamples)}${formatTableCensusSection(tableCensus, route)}${formatHitchAttributionSection(hitchAttribution, route)}${formatBloomPhaseSection(bloomPhases)}${formatSystemTimingSection(finalSystemTiming)}\n`;
+})}${formatLoadingReadinessSection(loadingProgressEvents, loadingReadinessSamples)}${formatOpeningRenderWorkSection(openingRenderWork)}${formatTableCensusSection(tableCensus, route)}${formatHitchAttributionSection(hitchAttribution, route)}${formatBloomPhaseSection(bloomPhases)}${formatSystemTimingSection(finalSystemTiming)}\n`;
 const report = {
   schema: 'spaceface.runtimeWitness.probe.v1',
   verdict,
@@ -816,6 +836,7 @@ const report = {
     events: loadingProgressEvents,
     samples: loadingReadinessSamples,
   },
+  openingRenderWork,
   tableCensus,
   hitchAttribution,
   bloomPhases,
