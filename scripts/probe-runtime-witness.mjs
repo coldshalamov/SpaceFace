@@ -50,6 +50,7 @@ let finalRenderWork = null;
 let finalSystemTiming = null;
 let openingRenderWork = null;
 let opaqueBatchDiagnostic = null;
+let sectorTransitionTrace = null;
 
 function log(line) {
   const text = `[${new Date().toISOString()}] ${line}`;
@@ -129,6 +130,64 @@ function formatHitchAttributionSection(histogram, route) {
     `- named coverage: ${(Number(histogram?.coverage) || 0).toFixed(3)}`,
     `- owner counts: ${namedCounts || 'none'}`,
   ].join('\n');
+}
+
+function formatSectorTransitionSection(trace) {
+  const events = Array.isArray(trace?.events) ? trace.events : [];
+  const stages = Array.isArray(trace?.stages) ? trace.stages : [];
+  const lines = ['', '## Sector-transition phase ledger'];
+  if (events.length < 2) {
+    lines.push('- unavailable: no armed public jump event sequence was observed');
+    return lines.join('\n');
+  }
+  for (let index = 1; index < events.length; index++) {
+    const previous = events[index - 1];
+    const current = events[index];
+    const previousHitches = Number(previous?.hitch?.hitches) || 0;
+    const currentHitches = Number(current?.hitch?.hitches) || 0;
+    const ownerDeltas = [];
+    const owners = new Set([
+      ...Object.keys(previous?.hitch?.counts || {}),
+      ...Object.keys(current?.hitch?.counts || {}),
+    ]);
+    for (const owner of owners) {
+      const delta = (Number(current?.hitch?.counts?.[owner]) || 0)
+        - (Number(previous?.hitch?.counts?.[owner]) || 0);
+      if (delta > 0) ownerDeltas.push(`${owner} ${delta}`);
+    }
+    const elapsedMs = Math.max(0,
+      (Number(current?.elapsedMs) || 0) - (Number(previous?.elapsedMs) || 0));
+    lines.push(
+      `- ${previous.label} -> ${current.label}: ${elapsedMs.toFixed(1)} ms; hitches +${Math.max(0, currentHitches - previousHitches)}; owners ${ownerDeltas.join(', ') || 'none'}; tick ${current.tick}; sim ${Number(current.simTime || 0).toFixed(2)}; sector ${current.sectorId || 'none'}; jump ${current.jumpState || 'none'}`,
+    );
+  }
+  const settled = events[events.length - 1];
+  lines.push(
+    `- settled frame: dt ${(Number(settled?.frame?.frameDtMs) || 0).toFixed(1)} ms; simFrame ${(Number(settled?.frame?.simFrameMs) || 0).toFixed(1)} ms; presentation ${(Number(settled?.frame?.presentationMs) || 0).toFixed(1)} ms; steps ${Number(settled?.frame?.stepsThisFrame) || 0}; shed frames ${Number(settled?.frame?.shedBacklogFrames) || 0}`,
+  );
+  const stageTotals = new Map();
+  for (const stage of stages) {
+    const durationMs = Number(stage?.durationMs) || 0;
+    if (durationMs <= 0) continue;
+    const current = stageTotals.get(stage.label) || { count: 0, totalMs: 0, maxMs: 0 };
+    current.count++;
+    current.totalMs += durationMs;
+    current.maxMs = Math.max(current.maxMs, durationMs);
+    stageTotals.set(stage.label, current);
+  }
+  const rankedStages = [...stageTotals.entries()]
+    .sort((a, b) => b[1].totalMs - a[1].totalMs)
+    .slice(0, 12);
+  if (rankedStages.length > 0) {
+    lines.push(`- synchronous owner stages: ${rankedStages.map(([label, stat]) => `${label} ${stat.totalMs.toFixed(1)} ms total/${stat.maxMs.toFixed(1)} ms max (${stat.count})`).join('; ')}`);
+  }
+  const listenerMetadata = Array.isArray(trace?.listenerMetadata) ? trace.listenerMetadata : [];
+  const topListener = rankedStages.find(([label]) => label.startsWith('listener.sector:enter['));
+  if (topListener) {
+    const metadata = listenerMetadata.find((row) => row.label === topListener[0]);
+    if (metadata?.sourceHint) lines.push(`- top sector:enter listener source: ${metadata.sourceHint}`);
+  }
+  return lines.join('\n');
 }
 
 function formatBloomPhaseSection(phases) {
@@ -262,6 +321,161 @@ async function armProbeInstrumentation(targetPage) {
     throw new Error('Runtime witness could not enable bounded census and hitch attribution');
   }
   return instrumentation;
+}
+
+async function installSectorTransitionWitness(targetPage) {
+  await targetPage.evaluate(() => {
+    const prior = window.__SF_SECTOR_TRANSITION_WITNESS__;
+    if (prior && Array.isArray(prior.unsubscribers)) {
+      for (const unsubscribe of prior.unsubscribers) {
+        if (typeof unsubscribe === 'function') unsubscribe();
+      }
+    }
+    const sf = window.SF;
+    const perf = sf?.state?.perfRuntime;
+    const trace = {
+      armed: false,
+      startedPerformanceMs: 0,
+      events: [],
+      stages: [],
+      listenerMetadata: [],
+      unsubscribers: [],
+      restorers: [],
+      capture(label) {
+        if (!trace.armed) return;
+        const state = sf?.state;
+        const now = performance.now();
+        trace.events.push({
+          label,
+          elapsedMs: Math.max(0, now - trace.startedPerformanceMs),
+          tick: Number(state?.tick) || 0,
+          simTime: Number(state?.simTime) || 0,
+          sectorId: String(state?.world?.currentSectorId || ''),
+          jumpState: String(state?.jump?.state || ''),
+          hitch: typeof perf?.getHitchHistogram === 'function'
+            ? perf.getHitchHistogram()
+            : null,
+          frame: typeof perf?.readFrameSample === 'function'
+            ? perf.readFrameSample({})
+            : null,
+        });
+      },
+      arm() {
+        perf?.reset?.();
+        trace.events.length = 0;
+        trace.stages.length = 0;
+        trace.startedPerformanceMs = performance.now();
+        trace.armed = true;
+        const world = sf?.registry?.get?.('world');
+        for (const methodName of [
+          'enterSector',
+          '_applyResidencyPlan',
+          '_placePlayer',
+          '_resolveShipModules',
+          '_flushPendingSpawns',
+        ]) {
+          const original = world?.[methodName];
+          if (typeof original !== 'function') continue;
+          world[methodName] = function timedSectorTransitionMethod(...args) {
+            const started = performance.now();
+            try {
+              return original.apply(this, args);
+            } finally {
+              trace.stages.push({
+                label: `world.${methodName}`,
+                durationMs: performance.now() - started,
+              });
+            }
+          };
+          trace.restorers.push(() => { world[methodName] = original; });
+        }
+        const originalEmit = bus?.emit;
+        if (typeof originalEmit === 'function') {
+          const timedEvents = new Set(['sector:exit', 'world:membership', 'sector:enter']);
+          bus.emit = function timedSectorTransitionEmit(eventName, ...args) {
+            if (!timedEvents.has(eventName)) return originalEmit.call(this, eventName, ...args);
+            const started = performance.now();
+            try {
+              return originalEmit.call(this, eventName, ...args);
+            } finally {
+              trace.stages.push({
+                label: `bus.${eventName}`,
+                durationMs: performance.now() - started,
+              });
+            }
+          };
+          trace.restorers.push(() => { bus.emit = originalEmit; });
+        }
+        const listenerMap = bus?._listeners;
+        const originalSectorEnterListeners = listenerMap?.get?.('sector:enter');
+        if (originalSectorEnterListeners instanceof Set) {
+          const wrappedSectorEnterListeners = new Set();
+          let listenerIndex = 0;
+          for (const listener of originalSectorEnterListeners) {
+            const label = `listener.sector:enter[${listenerIndex}] ${listener.name || 'anonymous'}`;
+            trace.listenerMetadata.push({
+              label,
+              sourceHint: String(listener).replace(/\s+/g, ' ').slice(0, 180),
+            });
+            wrappedSectorEnterListeners.add(function timedSectorEnterListener(...args) {
+              const started = performance.now();
+              try {
+                return listener.apply(this, args);
+              } finally {
+                trace.stages.push({ label, durationMs: performance.now() - started });
+              }
+            });
+            listenerIndex++;
+          }
+          listenerMap.set('sector:enter', wrappedSectorEnterListeners);
+          trace.restorers.push(() => { listenerMap.set('sector:enter', originalSectorEnterListeners); });
+        }
+        trace.capture('probe:armed');
+      },
+      restore() {
+        while (trace.restorers.length > 0) trace.restorers.pop()();
+        trace.armed = false;
+      },
+    };
+    const bus = sf?.bus;
+    if (bus && typeof bus.on === 'function') {
+      for (const eventName of [
+        'jump:chargeStart',
+        'jump:start',
+        'sector:exit',
+        'sector:enter',
+        'jump:arrive',
+      ]) {
+        trace.unsubscribers.push(bus.on(eventName, () => trace.capture(eventName)));
+      }
+    }
+    window.__SF_SECTOR_TRANSITION_WITNESS__ = trace;
+  });
+}
+
+async function armSectorTransitionWitness(targetPage) {
+  const armed = await targetPage.evaluate(() => {
+    const trace = window.__SF_SECTOR_TRANSITION_WITNESS__;
+    if (!trace || typeof trace.arm !== 'function') return false;
+    trace.arm();
+    return trace.armed === true;
+  });
+  if (!armed) throw new Error('Runtime witness could not arm the sector-transition phase ledger');
+}
+
+async function collectSectorTransitionWitness(targetPage) {
+  return targetPage.evaluate(() => {
+    const trace = window.__SF_SECTOR_TRANSITION_WITNESS__;
+    trace?.capture?.('post-entry+1500ms');
+    const result = {
+      startedPerformanceMs: Number(trace?.startedPerformanceMs) || 0,
+      events: Array.isArray(trace?.events) ? trace.events : [],
+      stages: Array.isArray(trace?.stages) ? trace.stages : [],
+      listenerMetadata: Array.isArray(trace?.listenerMetadata) ? trace.listenerMetadata : [],
+    };
+    trace?.restore?.();
+    return result;
+  });
 }
 
 function readWitnessInPage() {
@@ -655,8 +869,13 @@ try {
 
   await page.locator('#gl-canvas').click({ timeout: 10_000 }).catch(() => {});
   if (SECTOR_ENTRY_ROUTE) {
+    await installSectorTransitionWitness(page);
+    await armSectorTransitionWitness(page);
     log('public sector entry to Ceres Belt with hitch attribution armed');
     await jumpToCeres(page);
+    await page.waitForTimeout(1500);
+    sectorTransitionTrace = await collectSectorTransitionWitness(page);
+    await page.evaluate(() => window.SF?.state?.perfRuntime?.reset?.());
     routeInfo.label += ' -> public Ceres Belt sector entry';
     routeInfo.sectorEntry = 'sector_ceres_belt';
   } else {
@@ -832,7 +1051,7 @@ const markdown = `${formatRuntimeWitnessReport({
   consoleHits,
   pageErrors,
   gpu,
-})}${formatLoadingReadinessSection(loadingProgressEvents, loadingReadinessSamples)}${formatOpeningRenderWorkSection(openingRenderWork)}${formatTableCensusSection(tableCensus, route)}${formatHitchAttributionSection(hitchAttribution, route)}${formatBloomPhaseSection(bloomPhases)}${formatSystemTimingSection(finalSystemTiming)}\n`;
+  })}${formatLoadingReadinessSection(loadingProgressEvents, loadingReadinessSamples)}${formatOpeningRenderWorkSection(openingRenderWork)}${formatTableCensusSection(tableCensus, route)}${formatSectorTransitionSection(sectorTransitionTrace)}${formatHitchAttributionSection(hitchAttribution, route)}${formatBloomPhaseSection(bloomPhases)}${formatSystemTimingSection(finalSystemTiming)}\n`;
 const report = {
   schema: 'spaceface.runtimeWitness.probe.v1',
   verdict,
@@ -850,6 +1069,7 @@ const report = {
     samples: loadingReadinessSamples,
   },
   openingRenderWork,
+  sectorTransition: sectorTransitionTrace,
   tableCensus,
   hitchAttribution,
   bloomPhases,
