@@ -286,6 +286,8 @@ export const save = {
       // J4 screen state memory (build map §11.12). UI-only: state.ui is NOT in
       // core/simSnapshot.js's allow-list, so this cannot drift the 47a replay hashes.
       ['uiScreenMemory', () => this._serializeScreenMemory()],
+      // Worker autosave must include continuation; omitting it reseeds on Continue.
+      ['entropy', () => this._serializeEntropy()],
     ];
   },
 
@@ -575,9 +577,11 @@ export const save = {
     const state = this.state;
     const out = [];
     for (const e of state.entityList) {
-      if (!e.alive) continue;
-      if (e.id !== state.playerId && !(e.flags && e.flags.persistent)) continue;
-      out.push(plainEntity(e, e.id === state.playerId));
+      const isPlayer = e.id === state.playerId;
+      // A defeated wreck must still serialize. Skipping it writes player:null and poisons the slot.
+      if (!isPlayer && !e.alive) continue;
+      if (!isPlayer && !(e.flags && e.flags.persistent)) continue;
+      out.push(plainEntity(e, isPlayer));
     }
     return {
       player: out.find((x) => x._isPlayer) || null,
@@ -2120,8 +2124,9 @@ export const save = {
   _prepareEnvelope(env) {
     try {
       if (!env || env.fmt !== FMT) return { ok: false, reason: 'bad_format' };
-      const ver = env.version | 0;
-      if (ver > CURRENT_VERSION) return { ok: false, reason: 'newer_version' };
+      const versionRead = readSaveVersion(env.version);
+      if (!versionRead.ok) return versionRead;
+      const ver = versionRead.version;
       if (!env.data || typeof env.data !== 'object') return { ok: false, reason: 'no_data' };
 
       // Checksum is over the stored (pre-migration) data shape; verify before migrating.
@@ -2199,6 +2204,9 @@ export const save = {
     try {
       // 1. meta (seed/version/playtime) first — enterSector & rng depend on meta.seed.
       this._restoreMeta(data.meta);
+      // Clock must land before spawn/enterSector. Leaving the outgoing run's simTime in place
+      // expires freshly rematerialized TTL entities, and a late overwrite cannot un-do that.
+      this._restoreSimClock(data);
 
       // 2. Drop live-run mission runtime before restore events fire. entity:destroyed/sector:enter
       // listeners must not fail or spawn targets for missions from the pre-load game.
@@ -2336,11 +2344,8 @@ export const save = {
       this._restoreScreenMemory(data.uiScreenMemory);
       this._reconcileFlightReadyAfterLoad();
 
-      // 14. restore sim clock + rebuild master RNG from serialized CONTINUATION (H9), not seed alone.
-      if (data.entities) {
-        if (typeof data.entities.simTime === 'number') state.simTime = data.entities.simTime;
-        if (typeof data.entities.tick === 'number') state.tick = data.entities.tick;
-      }
+      // 14. rebuild master RNG from serialized CONTINUATION (H9), not seed alone.
+      // simTime/tick were restored before spawn so sector rebuild sees the saved clock.
       this._restoreEntropy(data.entropy);
 
       // 15. finalize.
@@ -2430,6 +2435,17 @@ export const save = {
     meta.version = CURRENT_VERSION;
   },
 
+  _restoreSimClock(data) {
+    const state = this.state;
+    const entities = data && data.entities;
+    const simTime = entities && entities.simTime;
+    const tick = entities && entities.tick;
+    state.simTime = Number.isFinite(simTime) && simTime >= 0 ? simTime : 0;
+    state.tick = Number.isFinite(tick) && tick >= 0 ? Math.floor(tick) : 0;
+    state.accumulator = 0;
+    state.days = Math.max(0, Math.floor(state.simTime / 600));
+  },
+
   // Reconstruction (not live play): assign credits/cargo directly — routing through
   // economy:grantCredits / faction:repDelta would double-count (advisor #7).
   _restorePlayer(p) {
@@ -2438,7 +2454,17 @@ export const save = {
     const cargo = player.cargo; // preserved; restored separately (§4.5 cargo key)
     for (const k in p) {
       if (k === 'cargo') continue;
-      player[k] = p[k];
+      const incoming = p[k];
+      const live = player[k];
+      // Shallow-merge nested bags so an older save cannot drop newer default keys (hints, massSeed).
+      if (
+        incoming && typeof incoming === 'object' && !Array.isArray(incoming)
+        && live && typeof live === 'object' && !Array.isArray(live)
+      ) {
+        player[k] = Object.assign({}, live, incoming);
+        continue;
+      }
+      player[k] = incoming;
     }
     player.cargo = cargo;
   },
@@ -2791,6 +2817,15 @@ function roundSaveMs(value) {
   return Number.isFinite(value) ? Math.round(value * 1000) / 1000 : 0;
 }
 
+function readSaveVersion(version, currentVersion = CURRENT_VERSION) {
+  // `| 0` of 1e308/2^32 is 0, which used to look like a missing version and skip every migration.
+  if (!Number.isFinite(version)) return { ok: false, reason: 'bad_format' };
+  if (Number.isFinite(currentVersion) && version > currentVersion) return { ok: false, reason: 'newer_version' };
+  const ver = version | 0;
+  if (ver < 1 || ver !== version) return { ok: false, reason: 'bad_format' };
+  return { ok: true, version: ver };
+}
+
 // Run the ordered migration chain from `fromVer` up to CURRENT_VERSION, mutating `data` in place.
 // Returns false if a migration throws (caller aborts the load without touching live state).
 function runMigrations(data, fromVer) {
@@ -2939,7 +2974,7 @@ function normalizeVitals(out, base) {
   out.capMax = positiveNumber(out.capMax, base.capMax);
   out.armorMax = nonNegativeNumber(out.armorMax, base.armorMax);
   out.armorFlat = nonNegativeNumber(out.armorFlat, base.armorFlat);
-  out.hull = boundedVital(out.hull, out.hullMax, base.hull);
+  out.hull = boundedVital(out.hull, out.hullMax, base.hull, true);
   out.shield = boundedVital(out.shield, out.shieldMax, base.shield, true);
   out.cap = boundedVital(out.cap, out.capMax, base.cap, true);
   out.armorHp = boundedVital(out.armorHp, out.armorMax, base.armorHp, true);
@@ -3360,8 +3395,8 @@ function slotMetaScore(meta) {
 
 function slotMetaFromEnvelope(slot, env) {
   if (!env || typeof env !== 'object' || env.fmt !== FMT) return null;
-  const version = env.version | 0;
-  if (version > CURRENT_VERSION) return null;
+  const versionRead = readSaveVersion(env.version);
+  if (!versionRead.ok) return null;
   const data = env.data;
   if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
   if (env.checksum) {

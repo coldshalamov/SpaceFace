@@ -10,14 +10,23 @@ export function encodeSavePayload({ descriptor, data } = {}) {
   return { json: JSON.stringify(envelope), checksum };
 }
 
+function readSaveVersion(version, currentVersion) {
+  if (!Number.isFinite(version)) return { ok: false, reason: 'bad_format' };
+  if (Number.isFinite(currentVersion) && version > currentVersion) return { ok: false, reason: 'newer_version' };
+  const ver = version | 0;
+  if (ver < 1 || ver !== version) return { ok: false, reason: 'bad_format' };
+  return { ok: true, version: ver };
+}
+
 export function validateSaveJson(raw, currentVersion) {
   if (!raw) return { ok: false, reason: 'no_save' };
   let envelope;
   try { envelope = JSON.parse(raw); }
   catch (error) { return { ok: false, reason: 'parse_failed' }; }
   if (!envelope || envelope.fmt !== 'spaceface-save') return { ok: false, reason: 'bad_format' };
-  const version = envelope.version | 0;
-  if (Number.isFinite(currentVersion) && version > currentVersion) return { ok: false, reason: 'newer_version' };
+  const versionRead = readSaveVersion(envelope.version, currentVersion);
+  if (!versionRead.ok) return versionRead;
+  const version = versionRead.version;
   if (!envelope.data || typeof envelope.data !== 'object') return { ok: false, reason: 'no_data' };
   if (envelope.checksum && fnv1a(JSON.stringify(envelope.data)) !== envelope.checksum) {
     return { ok: false, reason: 'checksum' };
@@ -123,13 +132,21 @@ function encodeSavePayload(input) {
   const checksum = fnv1a(dataJson);
   return { json: JSON.stringify(Object.assign({}, descriptor || {}, { checksum, data })), checksum };
 }
+function readSaveVersion(version, currentVersion) {
+  if (!Number.isFinite(version)) return { ok: false, reason: 'bad_format' };
+  if (Number.isFinite(currentVersion) && version > currentVersion) return { ok: false, reason: 'newer_version' };
+  const ver = version | 0;
+  if (ver < 1 || ver !== version) return { ok: false, reason: 'bad_format' };
+  return { ok: true, version: ver };
+}
 function validateSaveJson(raw, currentVersion) {
   if (!raw) return { ok: false, reason: 'no_save' };
   let envelope;
   try { envelope = JSON.parse(raw); } catch (error) { return { ok: false, reason: 'parse_failed' }; }
   if (!envelope || envelope.fmt !== 'spaceface-save') return { ok: false, reason: 'bad_format' };
-  const version = envelope.version | 0;
-  if (Number.isFinite(currentVersion) && version > currentVersion) return { ok: false, reason: 'newer_version' };
+  const versionRead = readSaveVersion(envelope.version, currentVersion);
+  if (!versionRead.ok) return versionRead;
+  const version = versionRead.version;
   if (!envelope.data || typeof envelope.data !== 'object') return { ok: false, reason: 'no_data' };
   if (envelope.checksum && fnv1a(JSON.stringify(envelope.data)) !== envelope.checksum) {
     return { ok: false, reason: 'checksum' };

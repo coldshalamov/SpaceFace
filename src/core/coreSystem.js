@@ -194,6 +194,14 @@ export const core = {
     if (tier1 && tier1.isEnabled()) tier1.countEntityVisits(list.length, 'lifetime-sweep');
     for (let i = list.length - 1; i >= 0; i--) {
       const e = list[i];
+      // Defeat leaves the current player dead on purpose (wreck / recovery latch). Recycle would
+      // hand that id to the next projectile and make helpers.player() return the wrong object.
+      if (e && e.id === state.playerId) {
+        if (e.alive && !this._presentationPausedForDock && isMovableEntity(e)) {
+          this._publishPresentation?.('recordTransformIfChanged', e);
+        }
+        continue;
+      }
       if (e.alive && e.ttl !== Infinity) { e.ttl -= dt; if (e.ttl <= 0) e.alive = false; }
       if (e.alive && e.data && e.data.despawnAt != null && state.simTime >= e.data.despawnAt) e.alive = false;
       if (e.alive) {
