@@ -368,6 +368,8 @@
     "check:entity-links": "node scripts/check-entity-links.mjs",
     "check:screen-memory": "node scripts/check-screen-memory.mjs",
     "probe:data-states": "node scripts/probe-data-states.mjs",
+    "capture:ui-matrix": "node scripts/capture-ui-matrix.mjs",
+    "check:visual-regression": "node scripts/check-visual-regression.mjs",
     "probe:frontend-snapshot": "node scripts/probe-frontend-snapshot.mjs",
     "check:ui-a11y": "node scripts/check-ui-a11y.mjs",
     "check:ui-effects": "node scripts/check-ui-effects.mjs",
