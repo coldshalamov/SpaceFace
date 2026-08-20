@@ -293,7 +293,7 @@ def wire_maps(material, bsdf, maps, coat=0.0, emission=None, metallic_from_map=T
 
 def create_materials():
     specs = {
-        "Material_Hull": ((0.16, 0.17, 0.19), 0.02, 0.56, "hull", 0.0, None),
+        "Material_Hull": ((0.12, 0.13, 0.145), 0.02, 0.60, "hull", 0.0, None),
         "Material_Armor": ((0.08, 0.09, 0.10), 0.08, 0.48, "armor", 0.0, None),
         "Material_Mechanical": ((0.50, 0.48, 0.44), 0.90, 0.22, "mechanical", 0.0, None),
         "Material_Accent": ((0.04, 0.40, 0.50), 0.10, 0.34, "accent", 0.2, None),
@@ -319,22 +319,29 @@ def create_materials():
             bsdf.inputs["Emission Color"].default_value = (*emit[0], 1)
             bsdf.inputs["Emission Strength"].default_value = emit[1]
         if name == "Material_Canopy":
-            # Dark hashed pane. High alpha photographed as a frost lid; too low as empty air.
+            # MTX-07/36: dark dielectric shell, coat, no volume transmission.
+            # Hashed transmission photographed as a milky slab (C123 bay) or vanished (3Q).
             if "Transmission Weight" in bsdf.inputs:
-                bsdf.inputs["Transmission Weight"].default_value = 0.70
+                bsdf.inputs["Transmission Weight"].default_value = 0.0
             elif "Transmission" in bsdf.inputs:
-                bsdf.inputs["Transmission"].default_value = 0.70
+                bsdf.inputs["Transmission"].default_value = 0.0
             if "IOR" in bsdf.inputs:
                 bsdf.inputs["IOR"].default_value = 1.52
             if "Coat Weight" in bsdf.inputs:
-                bsdf.inputs["Coat Weight"].default_value = 0.0
-            bsdf.inputs["Base Color"].default_value = (0.018, 0.022, 0.028, 1)
+                bsdf.inputs["Coat Weight"].default_value = 0.85
+                bsdf.inputs["Coat Roughness"].default_value = 0.05
+            bsdf.inputs["Base Color"].default_value = (0.012, 0.016, 0.020, 1)
             bsdf.inputs["Metallic"].default_value = 0.0
-            bsdf.inputs["Roughness"].default_value = 0.08
-            bsdf.inputs["Alpha"].default_value = 0.38
+            bsdf.inputs["Roughness"].default_value = 0.06
+            bsdf.inputs["Alpha"].default_value = 0.50
             if hasattr(material, "blend_method"):
                 try:
-                    material.blend_method = "HASHED"
+                    material.blend_method = "BLEND"
+                except TypeError:
+                    pass
+            if hasattr(material, "surface_render_method"):
+                try:
+                    material.surface_render_method = "BLENDED"
                 except TypeError:
                     pass
             if hasattr(material, "shadow_method"):
@@ -345,7 +352,7 @@ def create_materials():
             if hasattr(material, "use_backface_culling"):
                 material.use_backface_culling = True
             if hasattr(material, "use_screen_refraction"):
-                material.use_screen_refraction = True
+                material.use_screen_refraction = False
         material["spacefaceRole"] = role
         mats[name] = material
     soot = bpy.data.materials.new("Material_Soot")
@@ -1352,10 +1359,10 @@ def build_lod(lod, mats):
     add_box("Tub_Port", (3.85, -0.30, 0.50), (0.38, 0.012, 0.18), soot, collection, 0.002)
     add_box("Tub_Stbd", (3.85, 0.30, 0.50), (0.38, 0.012, 0.18), soot, collection, 0.002)
     add_box("Cockpit_AftWall", (3.48, 0.0, 0.52), (0.014, 0.18, 0.12), armor, collection, 0.002)
-    add_box("WellLip_F", (4.36, 0.0, 0.70), (0.012, 0.30, 0.012), armor, collection, 0.001)
-    add_box("WellLip_A", (3.34, 0.0, 0.70), (0.012, 0.30, 0.012), armor, collection, 0.001)
-    add_box("WellLip_P", (3.85, -0.34, 0.70), (0.46, 0.012, 0.012), armor, collection, 0.001)
-    add_box("WellLip_S", (3.85, 0.34, 0.70), (0.46, 0.012, 0.012), armor, collection, 0.001)
+    add_box("WellLip_F", (4.40, 0.0, 0.72), (0.014, 0.42, 0.012), armor, collection, 0.001)
+    add_box("WellLip_A", (3.38, 0.0, 0.72), (0.014, 0.38, 0.012), armor, collection, 0.001)
+    add_box("WellLip_P", (3.88, -0.42, 0.72), (0.50, 0.012, 0.012), armor, collection, 0.001)
+    add_box("WellLip_S", (3.88, 0.42, 0.72), (0.50, 0.012, 0.012), armor, collection, 0.001)
     # Non-emissive orange seat, smaller than the mouth. C111 glow read as a lamp.
     add_box("Cockpit_Seat", (3.88, 0.0, 0.40), (0.20, 0.12, 0.032), warning, collection, 0.003)
     add_box("Cockpit_Cushion", (3.89, 0.0, 0.44), (0.18, 0.10, 0.018), warning, collection, 0.002)
@@ -1368,18 +1375,40 @@ def build_lod(lod, mats):
     add_box("Cockpit_Console", (4.16, 0.0, 0.42), (0.08, 0.08, 0.020), armor, collection, 0.002)
     add_box("Cockpit_Stick", (4.08, 0.04, 0.50), (0.012, 0.012, 0.06), mech, collection, 0.001)
     canopy = mats["Material_Canopy"]
-    # Raked 16 mm pane in the 3Q line of sight. A lip-only pane read as empty air.
-    # Aft of x=3.70 the well stays open — not a greenhouse lid.
+    # C124: 18 mm dark shell OVER the well so 3Q looks down through glass at the
+    # orange seat. C123's front-only rake sat on the forward wall; 3Q looked over it.
+    # Aft of x=3.38 the well stays open — not a sealed crate.
     add_folded_sheet(
         "Canopy_Screen",
-        (4.48, -0.28, 0.68), (4.48, 0.28, 0.68),
-        (3.70, 0.10, 1.00), (3.70, -0.10, 1.00),
+        (4.48, -0.42, 0.72), (4.48, 0.42, 0.72),
+        (4.30, 0.40, 0.96), (4.30, -0.40, 0.96),
+        0.018, canopy, collection, 0.001,
+    )
+    add_folded_sheet(
+        "Canopy_Roof",
+        (4.30, -0.40, 0.96), (4.30, 0.40, 0.96),
+        (3.38, 0.36, 1.18), (3.38, -0.36, 1.18),
+        0.018, canopy, collection, 0.001,
+    )
+    add_folded_sheet(
+        "Canopy_Port",
+        (4.48, -0.42, 0.72), (4.30, -0.40, 0.96),
+        (3.38, -0.36, 1.18), (3.40, -0.42, 0.72),
         0.016, canopy, collection, 0.001,
     )
-    add_box("Frame_SillF", (4.48, 0.0, 0.68), (0.012, 0.28, 0.012), armor, collection, 0.001)
-    add_box("Frame_Brow", (3.72, 0.0, 0.99), (0.012, 0.12, 0.012), armor, collection, 0.001)
-    add_box("Frame_PillarP", (4.10, -0.20, 0.84), (0.22, 0.010, 0.12), armor, collection, 0.001)
-    add_box("Frame_PillarS", (4.10, 0.20, 0.84), (0.22, 0.010, 0.12), armor, collection, 0.001)
+    add_folded_sheet(
+        "Canopy_Stbd",
+        (4.48, 0.42, 0.72), (3.40, 0.42, 0.72),
+        (3.38, 0.36, 1.18), (4.30, 0.40, 0.96),
+        0.016, canopy, collection, 0.001,
+    )
+    add_box("Frame_SillF", (4.48, 0.0, 0.72), (0.012, 0.42, 0.012), armor, collection, 0.001)
+    add_box("Frame_Brow", (3.38, 0.0, 1.18), (0.012, 0.36, 0.012), armor, collection, 0.001)
+    add_box("Frame_Ridge", (4.30, 0.0, 0.96), (0.012, 0.40, 0.012), armor, collection, 0.001)
+    add_box("Frame_LongeronP", (3.90, -0.39, 0.98), (0.48, 0.010, 0.010), armor, collection, 0.001)
+    add_box("Frame_LongeronS", (3.90, 0.39, 0.98), (0.48, 0.010, 0.010), armor, collection, 0.001)
+    add_box("Frame_PillarP", (4.38, -0.41, 0.84), (0.08, 0.010, 0.12), armor, collection, 0.001)
+    add_box("Frame_PillarS", (4.38, 0.41, 0.84), (0.08, 0.010, 0.12), armor, collection, 0.001)
 
     add_five_wall_tub("AvionicsTub", (0.85, -1.18, 0.22), (0.24, 0.10, 0.11), 0.040, mech, collection)
     add_box("AvionicsRack", (0.85, -1.18, 0.16), (0.16, 0.032, 0.05), armor, collection, 0.002)
@@ -1416,10 +1445,15 @@ def build_lod(lod, mats):
     add_overlap_plate("Armor_KeelFore", (1.20, 0.00, -0.44), (0.40, 0.12, 0.018), hull, collection, 0.003)
     add_overlap_plate("Armor_WaistP", (0.20, -1.72, 0.18), (0.32, 0.028, 0.12), armor, collection, 0.004)
     add_overlap_plate("Armor_WaistS", (0.20, 1.72, 0.18), (0.32, 0.028, 0.12), armor, collection, 0.004)
-    # Hung plates: 4 cm thick, 5 cm channels of hull between them. Flush tiles read as stamps.
-    add_hung_plates("Hang_Dorsal", 2.50, 0.20, 0.0, 0.94, 4, 0.13, 0.022, 0.055, armor, collection)
-    add_hung_plates("Hang_FlankP", 1.50, -1.20, -1.96, 0.22, 5, 0.018, 0.07, 0.050, armor, collection)
-    add_hung_plates("Hang_FlankS", 1.50, -1.20, 1.96, 0.22, 5, 0.018, 0.07, 0.050, armor, collection)
+    # Hung plates: 4–5 cm thick, 5 cm channels of hull. C123 dorsal gaps read;
+    # the 3Q cream cabin flank was still one loft face.
+    add_hung_plates("Hang_Dorsal", 2.60, 0.15, 0.0, 0.96, 3, 0.20, 0.026, 0.058, armor, collection)
+    add_hung_plates("Hang_CrownP", 2.30, 0.20, -0.52, 0.84, 3, 0.12, 0.022, 0.052, armor, collection)
+    add_hung_plates("Hang_CrownS", 2.30, 0.20, 0.52, 0.84, 3, 0.12, 0.022, 0.052, armor, collection)
+    add_hung_plates("Hang_CabinP", 2.70, 0.35, -1.18, 0.40, 4, 0.016, 0.10, 0.050, armor, collection)
+    add_hung_plates("Hang_CabinS", 2.70, 0.35, 1.18, 0.40, 4, 0.016, 0.10, 0.050, armor, collection)
+    add_hung_plates("Hang_FlankP", 1.40, -1.20, -1.72, 0.22, 4, 0.018, 0.08, 0.050, armor, collection)
+    add_hung_plates("Hang_FlankS", 1.40, -1.20, 1.72, 0.22, 4, 0.018, 0.08, 0.050, armor, collection)
     add_box("Accent_WaistP", (0.15, -1.40, 0.18), (0.28, 0.010, 0.04), accent, collection, 0.002)
     add_box("Accent_WaistS", (0.15, 1.40, 0.18), (0.28, 0.010, 0.04), accent, collection, 0.002)
 
@@ -1612,15 +1646,15 @@ def setup_studio():
     scene.collection.objects.link(camera)
     scene.camera = camera
     for name, loc, energy, color, size in (
-        ("Key", (16, -18, 12), 720, (0.94, 0.96, 1), 22),
-        ("Fill", (4, 16, 8), 900, (0.76, 0.80, 0.84), 20),
-        ("Top", (2, 2, 16), 640, (0.88, 0.90, 0.94), 18),
-        ("Rim", (-14, -5, 7), 700, (0.78, 0.84, 0.92), 14),
-        ("Kick", (-6, 10, -4), 280, (0.74, 0.78, 0.84), 12),
-        ("AftFill", (-10, -12, 8), 480, (0.80, 0.84, 0.90), 16),
-        ("CockpitFill", (4.0, -0.2, 1.70), 520, (1.00, 0.88, 0.70), 2.0),
-        ("CockpitKey", (3.8, 0.6, 1.35), 280, (1.00, 0.80, 0.55), 1.4),
-        ("StbdFill", (0.9, 12.0, 3.8), 640, (0.88, 0.90, 0.94), 18),
+        ("Key", (16, -18, 12), 560, (0.94, 0.96, 1), 22),
+        ("Fill", (4, 16, 8), 720, (0.76, 0.80, 0.84), 20),
+        ("Top", (2, 2, 16), 460, (0.88, 0.90, 0.94), 18),
+        ("Rim", (-14, -5, 7), 620, (0.78, 0.84, 0.92), 14),
+        ("Kick", (-6, 10, -4), 260, (0.74, 0.78, 0.84), 12),
+        ("AftFill", (-10, -12, 8), 420, (0.80, 0.84, 0.90), 16),
+        ("CockpitFill", (3.88, 0.0, 0.58), 380, (1.00, 0.88, 0.70), 0.8),
+        ("CockpitKey", (4.10, 0.15, 0.62), 220, (1.00, 0.80, 0.55), 0.6),
+        ("StbdFill", (0.9, 12.0, 3.8), 520, (0.88, 0.90, 0.94), 18),
     ):
         data = bpy.data.lights.new(name, "AREA")
         data.energy = energy
