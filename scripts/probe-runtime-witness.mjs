@@ -190,6 +190,10 @@ function formatLoadingReadinessSection(events, samples) {
     if (gpu) {
       lines.push(`- opening GPU receipt: ${gpu.textures ?? 'unknown'} textures (${gpu.uploadMs == null ? 'unknown' : gpu.uploadMs.toFixed(1)} ms blocking upload); opening frame ${gpu.openingFrame?.durationMs == null ? 'unknown' : gpu.openingFrame.durationMs.toFixed(1)} ms; roots ${gpu.openingCompositionRoots ?? 'unknown'} + VFX ${gpu.vfxRoots ?? 'unknown'}`);
     }
+    const beforeOpening = [...samples].reverse().find((sample) => sample !== last);
+    if (beforeOpening) {
+      lines.push(`- opening scene delta: programs ${beforeOpening.programCount ?? 'unknown'} -> ${last.programCount ?? 'unknown'}; geometries ${beforeOpening.geometryCount ?? 'unknown'} -> ${last.geometryCount ?? 'unknown'}; renderer textures ${beforeOpening.rendererTextureCount ?? 'unknown'} -> ${last.rendererTextureCount ?? 'unknown'}`);
+    }
   }
   return lines.join('\n');
 }
@@ -367,6 +371,15 @@ function readWitnessInPage() {
         : null,
       pendingAuthoredGpuResidency: typeof render.pendingAuthoredGpuResidency === 'function'
         ? render.pendingAuthoredGpuResidency()
+        : null,
+      programCount: Array.isArray(render.renderer?.info?.programs)
+        ? render.renderer.info.programs.length
+        : null,
+      geometryCount: Number.isFinite(render.renderer?.info?.memory?.geometries)
+        ? render.renderer.info.memory.geometries
+        : null,
+      rendererTextureCount: Number.isFinite(render.renderer?.info?.memory?.textures)
+        ? render.renderer.info.memory.textures
         : null,
       promiseStates: { ...loadingTrace.promiseStates },
       startupGpuResidency: summarizeReadinessResult(render.startupGpuResidency),
