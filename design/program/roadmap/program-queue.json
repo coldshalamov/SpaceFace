@@ -7153,7 +7153,7 @@
       "priority": 331,
       "title": "Warm next-contact hulls before they hit the glass",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-129.04"
       ],
@@ -7168,7 +7168,9 @@
       "checks": [
         "npm run check:playable"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-129-05-next-contact-warm-reject-REPORT.md"
+      ],
       "brief": "Reserved PQ-075. Prepare authored combat/traffic hulls on the approach runway so a fight does not start compose on-glass. Do not warm the whole sector. Do not move the stall into Continue."
     },
     {
