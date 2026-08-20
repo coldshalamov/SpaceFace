@@ -109,5 +109,10 @@
 | 130 | yes | 0C879215 | 3Q REVISE (courses KEEP) / starboard REVISE (wing KEEP) / rear REVISE (throats KEEP) | Eight large courses, not a waffle. Hood still a crate from 3Q. Cans closed from 3Q, open from rear. Not wired. |
 | 131 | yes | 806D677F | 3Q REVISE / starboard REVISE (wing+hood KEEP) / rear REVISE (throats KEEP) | Low dark hood, 3Q open rims, gap paint. Gap shader blacked a flank. Not wired. |
 | 132 | yes | 7555D869 | 3Q REVISE / starboard REVISE (wing KEEP) / rear REVISE (throats KEEP) | Gap paint only on channel walls. Whole still still REVISE. Not wired. |
+| 133 | yes | E5CF028D | 3Q REVISE / starboard REVISE / rear REVISE (throats KEEP) | Ceramic liner/vane tips, plate rims, flap slot, L-kit. 3Q still black cups; flap hidden in tip; cockpit still a brick. Not wired. |
+| 134 | yes | DE4D5394 | author REVISE | 3Q camera found the mouth ellipse, then a solid lip capped it. Orange chimney through the hood. Not wired. |
+| 135 | yes | D783F6E0 | 3Q REVISE / starboard REVISE / rear REVISE | Lid and chimney gone. Rear throats open. 3Q still black cups; flap not readable from starboard. Not wired. |
+| 136 | yes | E4B76565 | author REVISE | More-aft 3Q. Flap hung as a black box under the wing. Not wired. |
+| 137 | yes | 2225E7D1 | 3Q REVISE / starboard REVISE / rear REVISE | Flap tucked. Ceramic vane tips at the mouth. Whole still still REVISE. Not wired. |
 
 Hitch-plus / A-list: not met. C85 remains the live game body. Do not mark PQ-050.01 done. Do not self-accept.
