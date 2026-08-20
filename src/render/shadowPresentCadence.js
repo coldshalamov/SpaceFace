@@ -5,6 +5,8 @@
 export const SHADOW_PRESENT_LATE_MS = 22;
 
 export function shouldRefreshRealtimeShadowMap(options = {}) {
+  const dirty = options.dirty !== false;
+  if (!dirty && options.skippedLast !== true) return false;
   const last = Number(options.lastPresentDtMs);
   if (!Number.isFinite(last)) return true;
   if (last > SHADOW_PRESENT_LATE_MS && options.skippedLast !== true) return false;

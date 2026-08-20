@@ -4,6 +4,8 @@ import test from 'node:test';
 import * as THREE from 'three';
 import {
   invalidateShadowCasterPolicy,
+  noteRealtimeShadowCasterPose,
+  SHADOW_TEXEL_WORLD_SIZE,
   syncShadowCasterPolicy,
 } from '../src/render/shadowCasterPolicy.js';
 
@@ -103,4 +105,43 @@ test('allowCast false drops casters but keeps opaque receivers', () => {
   assert.equal(syncShadowCasterPolicy(root, 'lod0', { allowCast: false }), true);
   assert.equal(opaque.castShadow, false);
   assert.equal(opaque.receiveShadow, true);
+});
+
+test('realtime caster pose invalidation accumulates one-shadow-texel movement', () => {
+  const root = new THREE.Group();
+  root.add(opaqueMesh());
+  assert.equal(syncShadowCasterPolicy(root, 'lod0', { allowCast: true }), true);
+  assert.equal(noteRealtimeShadowCasterPose(root, { visualRadius: 10 }), true,
+    'the first casting pose initializes the map');
+
+  root.position.x += SHADOW_TEXEL_WORLD_SIZE * 0.45;
+  assert.equal(noteRealtimeShadowCasterPose(root, { visualRadius: 10 }), false);
+  root.position.x += SHADOW_TEXEL_WORLD_SIZE * 0.60;
+  assert.equal(noteRealtimeShadowCasterPose(root, { visualRadius: 10 }), true,
+    'sub-texel motion accumulates against the last rendered pose');
+  assert.equal(noteRealtimeShadowCasterPose(root, { visualRadius: 10 }), false);
+});
+
+test('realtime caster pose invalidation covers silhouette rotation, scale, visibility, and cast band', () => {
+  const root = new THREE.Group();
+  root.add(opaqueMesh());
+  syncShadowCasterPolicy(root, 'lod0', { allowCast: true });
+  assert.equal(noteRealtimeShadowCasterPose(root, { visualRadius: 20 }), true);
+
+  root.rotation.y = (SHADOW_TEXEL_WORLD_SIZE / 20) * 0.5;
+  assert.equal(noteRealtimeShadowCasterPose(root, { visualRadius: 20 }), false);
+  root.rotation.y = (SHADOW_TEXEL_WORLD_SIZE / 20) * 1.1;
+  assert.equal(noteRealtimeShadowCasterPose(root, { visualRadius: 20 }), true);
+
+  root.scale.x += (SHADOW_TEXEL_WORLD_SIZE / 20) * 1.1;
+  assert.equal(noteRealtimeShadowCasterPose(root, { visualRadius: 20 }), true);
+  root.visible = false;
+  assert.equal(noteRealtimeShadowCasterPose(root, { visualRadius: 20 }), true);
+
+  syncShadowCasterPolicy(root, 'lod0', { allowCast: false });
+  assert.equal(noteRealtimeShadowCasterPose(root, { visualRadius: 20 }), false,
+    'non-casting roots do not keep the shadow map dirty');
+  syncShadowCasterPolicy(root, 'lod0', { allowCast: true });
+  assert.equal(noteRealtimeShadowCasterPose(root, { visualRadius: 20 }), true,
+    're-entering the caster band initializes a fresh rendered pose');
 });

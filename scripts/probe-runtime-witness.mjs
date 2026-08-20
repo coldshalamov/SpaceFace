@@ -32,6 +32,7 @@ const SAMPLE_EVERY_MS = 500;
 const FIXED_SEED = 47;
 const CONTINUE_ROUTE = process.argv.includes('--continue');
 const SECTOR_ENTRY_ROUTE = process.argv.includes('--sector-entry');
+const SHADOWS_OFF_DIAGNOSTIC = process.argv.includes('--shadows-off-diagnostic');
 
 await mkdir(OUT, { recursive: true });
 
@@ -294,6 +295,7 @@ let primaryError = null;
 let cleanupReport = null;
 let cleanupError = null;
 let gpu = null;
+let shadowDiagnostic = null;
 let routeInfo = {
   kind: 'new-game',
   label: `New Game seed ${FIXED_SEED}`,
@@ -421,6 +423,30 @@ try {
   } else {
     await page.evaluate(() => window.SF.state.perfRuntime.reset());
   }
+  if (SHADOWS_OFF_DIAGNOSTIC) {
+    shadowDiagnostic = await page.evaluate(() => {
+      const sf = window.SF;
+      const video = sf?.state?.settings?.video;
+      if (!sf?.bus || !video) return { applied: false, previous: null };
+      const previous = video.shadows;
+      video.shadows = false;
+      sf.bus.emit('settings:changed', {
+        section: 'video',
+        key: 'shadows',
+        value: false,
+        diagnostic: true,
+      });
+      return { applied: video.shadows === false, previous };
+    });
+    if (shadowDiagnostic?.applied !== true) {
+      throw new Error('Runtime witness could not apply the isolated shadows-off diagnostic');
+    }
+    routeInfo.label += ' [diagnostic: shadows off]';
+    routeInfo.shadowsOffDiagnostic = true;
+    log('diagnostic only: live shadows disabled inside isolated profile');
+    await page.waitForTimeout(250);
+    await page.evaluate(() => window.SF.state.perfRuntime.reset());
+  }
   await page.keyboard.down('KeyW');
   const started = Date.now();
   let shotIndex = 0;
@@ -449,6 +475,25 @@ try {
   log(`probe failed: ${error && error.stack ? error.stack : error}`);
 } finally {
   await page?.keyboard.up('KeyW').catch(() => {});
+  if (page && shadowDiagnostic?.applied === true) {
+    const restored = await page.evaluate((previous) => {
+      const sf = window.SF;
+      const video = sf?.state?.settings?.video;
+      if (!sf?.bus || !video) return false;
+      video.shadows = previous;
+      sf.bus.emit('settings:changed', {
+        section: 'video',
+        key: 'shadows',
+        value: previous,
+        diagnostic: true,
+      });
+      return video.shadows === previous;
+    }, shadowDiagnostic.previous).catch(() => false);
+    shadowDiagnostic.restored = restored === true;
+    if (!shadowDiagnostic.restored && !cleanupError) {
+      cleanupError = new Error('Runtime witness failed to restore isolated shadow settings');
+    }
+  }
   if (page && probeInstrumentation?.available === true) {
     const restoredState = await page.evaluate((previous) => {
       const perf = window.SF?.state?.perfRuntime;
@@ -514,6 +559,7 @@ const bloomPhases = Object.fromEntries(BLOOM_PHASE_LABELS.map((label) => [
 ]));
 const route = {
   ...routeInfo,
+  shadowDiagnostic,
   seed: FIXED_SEED,
   sampleMs: SAMPLE_MS,
   sampleEveryMs: SAMPLE_EVERY_MS,

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { prepareActiveShadowCamera, render } from '../src/render/renderer.js';
+import { SHADOW_TEXEL_WORLD_SIZE } from '../src/render/shadowCasterPolicy.js';
 
 // The thesis under test is that the RENDERER'S shadow-map state, not the user's shadows setting, is
 // what gates per-frame shadow work: the setting can stay on while zero receivers disable the map.
@@ -122,8 +123,10 @@ test('an active shadow map follows the local player and prepares each matrix exa
 
   assert.equal(harness.renderer.shadowMap.enabled, true);
   assert.equal(harness.keyLight.castShadow, true);
-  assert.deepEqual(harness.positions.light, [340, 140, -140], 'key offset remains +60/+140/+40');
-  assert.deepEqual(harness.positions.target, [280, 0, -180], 'target remains at local player XZ');
+  assert.deepEqual(harness.positions.light, [340.078125, 140, -140.46875],
+    'key offset remains +60/+140/+40 on the stable shadow-texel grid');
+  assert.deepEqual(harness.positions.target, [280.078125, 0, -180.46875],
+    'target follows the local player at shadow-texel resolution');
   assert.equal(shadowCamera, harness.shadowCamera, 'the prepared camera reaches asteroid culling');
   assert.deepEqual(harness.matrixCalls, [['light', true], ['target', true], ['shadow', true]],
     'light and target matrices update once each, before shadow.updateMatrices');
@@ -133,7 +136,7 @@ test('re-enabling shadows re-follows the moved player before the culling camera 
   const harness = createShadowHarness({ shadowSetting: true, receivers: 2 });
 
   assert.equal(harness.frame(), harness.shadowCamera, 'baseline frame renders shadows');
-  assert.deepEqual(harness.positions.light, [340, 140, -140]);
+  assert.deepEqual(harness.positions.light, [340.078125, 140, -140.46875]);
 
   // Every receiver disappears. The follow now early-returns, so the key light FREEZES where it was.
   harness.setReceivers(0);
@@ -150,8 +153,27 @@ test('re-enabling shadows re-follows the moved player before the culling camera 
   const shadowCamera = harness.frame();
 
   assert.equal(shadowCamera, harness.shadowCamera);
-  assert.deepEqual(harness.positions.light, [160, 140, 140], 'the rig re-followed to the NEW position');
-  assert.deepEqual(harness.positions.target, [100, 0, 100]);
+  assert.deepEqual(harness.positions.light, [159.609375, 140, 139.609375],
+    'the rig re-followed to the NEW quantized position');
+  assert.deepEqual(harness.positions.target, [99.609375, 0, 99.609375]);
   assert.deepEqual(harness.matrixCalls, [['light', true], ['target', true], ['shadow', true]],
     'the re-enabled frame refreshes the matrices before publishing the camera');
+});
+
+test('shadow follow stays stable within one texel and defers a crossing until commit', () => {
+  const harness = createShadowHarness({ shadowSetting: true, receivers: 1 });
+  assert.equal(harness.frame(), harness.shadowCamera);
+  const firstLight = [...harness.positions.light];
+  const firstTarget = [...harness.positions.target];
+
+  harness.player.pos.x += SHADOW_TEXEL_WORLD_SIZE * 0.25;
+  assert.equal(render._updateShadowFollow.call(harness, false), false);
+  assert.deepEqual(harness.positions.light, firstLight);
+  assert.deepEqual(harness.positions.target, firstTarget);
+
+  harness.player.pos.x += SHADOW_TEXEL_WORLD_SIZE;
+  assert.equal(render._updateShadowFollow.call(harness, false), true);
+  assert.deepEqual(harness.positions.light, firstLight, 'a scheduled refresh owns the light move');
+  assert.equal(render._updateShadowFollow.call(harness, true), true);
+  assert.notDeepEqual(harness.positions.light, firstLight);
 });

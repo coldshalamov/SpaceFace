@@ -98,9 +98,11 @@ import { installDomInstrumentation } from '../ui/domInstrumentation.js';
 import {
   allowRealtimeShadowCast,
   invalidateShadowCasterPolicy,
+  noteRealtimeShadowCasterPose,
   SHADOW_MAP_SIZE,
   SHADOW_ORTHO_EXTENT,
   shadowCastAxisDistance,
+  shadowTexelWorldSize,
   syncShadowCasterPolicy,
 } from './shadowCasterPolicy.js';
 import { updateShipPitchPresentation } from './shipPitchPresentation.js';
@@ -2297,6 +2299,9 @@ export const render = {
             // Re-apply renderer config that the new context defaults lose.
             this.renderer.setClearColor(0x060912, 1);
             if (this._shadowSettingOn && this._keyLight) this.renderer.shadowMap.enabled = false; // re-gated by _syncShadowMapEnabled on next frame
+            this._shadowMapDirty = true;
+            this._shadowRefreshScheduled = false;
+            this._activeShadowCamera = null;
             // Refill context-derived background/planet render targets in place. Their visible mesh and
             // texture identities stay stable; no old-context object is disposed through the new GL.
             if (this.spaceBg && typeof this.spaceBg.onContextRestore === 'function') this.spaceBg.onContextRestore();
@@ -4606,6 +4611,14 @@ export const render = {
         projectedPx,
         allowShadowCast: false,
       }));
+      if ((entity.type === 'ship' || entity.type === 'station')
+          && noteRealtimeShadowCasterPose(mesh, {
+            visualRadius: lodRadius,
+            extent: this._shadowOrthoExtent,
+            mapSize: this._keyLight?.shadow?.mapSize?.x,
+          })) {
+        this._shadowMapDirty = true;
+      }
 
       classifyRenderEntity(this._entityFrame, entity, mesh, false);
       fullSynced++;
@@ -4797,6 +4810,7 @@ export const render = {
     // frame so the shadow ortho box tracks the player, and it used to do that with a literal
     // (60,140,40). Writing the position here alone was silently reverted on the next frame.
     this._keyLightOffset = { x: nx * KEY_DIST, y: KEY_HEIGHT, z: -ny * KEY_DIST };
+    this._shadowMapDirty = true;
     rig.lights.key.position.set(nx * KEY_DIST, KEY_HEIGHT, -ny * KEY_DIST);
     // Rim sits opposite and lower, so hulls get a cool separating edge away from the key.
     rig.lights.rim.position.set(-nx * KEY_DIST * 0.9, KEY_HEIGHT * 0.45, ny * KEY_DIST * 0.9);
@@ -4902,27 +4916,43 @@ export const render = {
     if (this.spaceBg && this.spaceBg.update) this.spaceBg.update(frameDt, this._bgTime, this.cam.obj.position);
     parallaxLayers.update(frameDt);
     this._syncShadowMapEnabled();
-    this._syncKeyLightShadowFrustum(shadowRadius);
+    if (this._syncKeyLightShadowFrustum(shadowRadius)) this._shadowMapDirty = true;
+    const shadowFollowChanged = this._updateShadowFollow(false);
     if (this._keyLight && this._keyLight.shadow && this.renderer && this.renderer.shadowMap) {
+      const refreshWasPending = this._shadowRefreshScheduled === true;
+      const shadowMapActive = this.renderer.shadowMap.enabled === true
+        && this._keyLight.castShadow === true;
+      const dirty = shadowMapActive && (
+        this._shadowMapDirty !== false
+        || shadowFollowChanged
+        || this._shadowRefreshScheduled === true
+      );
       const refreshShadow = shouldRefreshRealtimeShadowMap({
         lastPresentDtMs: this.state && this.state.render && this.state.render.lastPresentDtMs,
-        skippedLast: this._shadowPresentSkipped === true,
+        skippedLast: this._shadowPresentSkipped === true || refreshWasPending,
+        dirty,
       });
-      this._keyLight.shadow.autoUpdate = refreshShadow;
-      this._keyLight.shadow.needsUpdate = refreshShadow;
-      this._shadowPresentSkipped = !refreshShadow;
+      this._keyLight.shadow.autoUpdate = false;
+      this._keyLight.shadow.needsUpdate = shadowMapActive && refreshShadow;
+      this._shadowRefreshScheduled = shadowMapActive && refreshShadow;
+      this._shadowPresentSkipped = dirty && !refreshShadow;
+      if (this._shadowRefreshScheduled) this._updateShadowFollow(true);
+      if (!shadowMapActive) this._activeShadowCamera = null;
     }
     // Shadow follow (graphics spec G): keep the key light's shadow frustum centered on the player
     // so the tight 1400-unit ortho box always covers the local action. DirectionalLight position is
     // an offset from its target; we move both together. No-op unless the shadow map will render.
-    this._updateShadowFollow();
-    const shadowCamera = prepareActiveShadowCamera(this.renderer, this._keyLight);
+    if (this._shadowRefreshScheduled) {
+      this._activeShadowCamera = prepareActiveShadowCamera(this.renderer, this._keyLight);
+    }
+    const shadowCamera = this._activeShadowCamera || null;
     const asteroidSyncOptions = this._asteroidInstanceSyncOptions;
     asteroidSyncOptions.camera = this.cam.obj;
     asteroidSyncOptions.shadowCamera = shadowCamera;
     asteroidSyncOptions.records = this._entityFrame.asteroids;
     asteroidSyncOptions.recordsDirty = this._presentationWorld.consumeAsteroidDirty();
     this.state.render.asteroidInstancePool = syncAsteroidInstancePool(this._asteroidInstancePool, asteroidSyncOptions);
+    if (this.state.render.asteroidInstancePool?.matrixUploads > 0) this._shadowMapDirty = true;
     // Collision/socket/landing debug overlay (spec §12.5). Repositions pooled markers over the live
     // meshes once per frame; a cheap no-op when off (the group is hidden + nothing iterates).
       if (this.collisionDebug && this.collisionDebug.on) this.collisionDebug.update();
@@ -4981,6 +5011,10 @@ export const render = {
         && !!(useGpu && gpu.begin('drawPreparedFrame', gpuOrigin));
       try {
         this._renderPostRoute(postRoute, this.scene, this.cam.obj, this._bgTime || 0);
+        if (this._shadowRefreshScheduled === true) {
+          this._shadowMapDirty = false;
+          this._shadowRefreshScheduled = false;
+        }
       } finally {
         if (gpuQueryBegan) gpu.end();
       }
@@ -5020,9 +5054,9 @@ export const render = {
   // Center the key light + its shadow camera on the player each frame. The light direction stays
   // fixed (60,140,40 offset); only the origin translates so shadows track the player across the
   // sector instead of being pinned to world (0,0,0) and clipping at the frustum edge.
-  _updateShadowFollow() {
-    if (!this._keyLight) return;
-    if (!this.renderer.shadowMap || !this.renderer.shadowMap.enabled) return;
+  _updateShadowFollow(commit = true) {
+    if (!this._keyLight) return false;
+    if (!this.renderer.shadowMap || !this.renderer.shadowMap.enabled) return false;
     const p = this.state.playerId ? (this.state.entities && this.state.entities.get(this.state.playerId)) : null;
     let px = 0;
     let pz = 0;
@@ -5038,11 +5072,19 @@ export const render = {
     const ox = off ? off.x : 60;
     const oy = off ? off.y : 140;
     const oz = off ? off.z : 40;
-    const followKey = `${px.toFixed(2)}|${pz.toFixed(2)}|${ox}|${oy}|${oz}`;
-    if (this._shadowFollowKey === followKey) return;
+    const texel = shadowTexelWorldSize(
+      this._shadowOrthoExtent,
+      this._keyLight.shadow?.mapSize?.x,
+    );
+    px = Math.round(px / texel) * texel;
+    pz = Math.round(pz / texel) * texel;
+    const followKey = `${px}|${pz}|${ox}|${oy}|${oz}`;
+    if (this._shadowFollowKey === followKey) return false;
+    if (commit !== true) return true;
     this._shadowFollowKey = followKey;
     this._keyLight.position.set(px + ox, oy, pz + oz);
     this._keyLight.target.position.set(px, 0, pz);
+    return true;
   },
 
   /**
@@ -5096,6 +5138,7 @@ export const render = {
 
   _markShadowReceiversDirty() {
     this._shadowReceiversDirty = true;
+    this._shadowMapDirty = true;
     if (this._shadowReceiverTally) this._shadowReceiverTally.markDirty();
   },
 
@@ -5163,6 +5206,7 @@ export const render = {
       if (key.target && !key.target.parent && this.scene) this.scene.add(key.target);
       key.userData.spacefaceShadowConfigured = true;
       this._shadowOrthoExtent = SHADOW_ORTHO_EXTENT;
+      this._shadowMapDirty = true;
     }
     if (!this._shadowSettingOn) {
       renderer.shadowMap.enabled = false;
