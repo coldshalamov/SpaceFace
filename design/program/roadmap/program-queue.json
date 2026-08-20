@@ -7126,7 +7126,7 @@
       "priority": 330,
       "title": "Slice authored ship compose off the present beat",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-129.03"
       ],
@@ -7142,7 +7142,9 @@
         "node --test test/flight-compose-gate.test.mjs",
         "npm run check:playable"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-129-04-compose-reject-REPORT.md"
+      ],
       "brief": "Reserved PQ-073. Close the empty-slot hole that still runs sync buildComposedShip in flight. Yield between parts or publish prepared hulls; never start unsliced compose on a late present. Invalidate with a reject receipt if PQ-129.02 does not name compose/admission. Headed combat fly required; the unit gate is not smoothness proof."
     },
     {
