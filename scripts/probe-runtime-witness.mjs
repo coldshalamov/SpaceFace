@@ -45,6 +45,7 @@ const canvasFrames = [];
 let probeInstrumentation = null;
 let finalHitchAttribution = null;
 let finalRenderWork = null;
+let finalSystemTiming = null;
 let opaqueBatchDiagnostic = null;
 
 function log(line) {
@@ -132,6 +133,22 @@ function formatBloomPhaseSection(phases) {
   for (const label of BLOOM_PHASE_LABELS) {
     const stat = phases?.[label];
     lines.push(`- ${label}: samples ${stat?.samples ?? 0}; p95 ${(Number(stat?.p95) || 0).toFixed(1)} ms; avg ${(Number(stat?.avg) || 0).toFixed(1)} ms; max ${(Number(stat?.max) || 0).toFixed(1)} ms`);
+  }
+  return lines.join('\n');
+}
+
+function formatSystemTimingSection(systems) {
+  const ranked = Object.entries(systems || {})
+    .filter(([, stat]) => Number(stat?.samples) > 0)
+    .sort((a, b) => (Number(b[1]?.p95) || 0) - (Number(a[1]?.p95) || 0))
+    .slice(0, 12);
+  const lines = ['', '## Sampled simulation systems'];
+  if (!ranked.length) {
+    lines.push('- unavailable: the bounded per-system sampler produced no samples');
+    return lines.join('\n');
+  }
+  for (const [name, stat] of ranked) {
+    lines.push(`- ${name}: samples ${stat.samples}; p95 ${(Number(stat.p95) || 0).toFixed(2)} ms; avg ${(Number(stat.avg) || 0).toFixed(2)} ms; max ${(Number(stat.max) || 0).toFixed(2)} ms`);
   }
   return lines.join('\n');
 }
@@ -415,25 +432,31 @@ try {
     const perf = window.SF?.state?.perfRuntime;
     const previousRenderWorkEnabled = perf?.renderWorkEnabled === true;
     const previousHitchAttributionEnabled = perf?.hitchAttributionEnabled === true;
+    const previousSystemTimingEnabled = perf?.systemTimingEnabled === true;
     const available = typeof perf?.setRenderWorkEnabled === 'function'
       && typeof perf?.setHitchAttributionEnabled === 'function'
+      && typeof perf?.setSystemTimingEnabled === 'function'
       && typeof perf?.reset === 'function'
       && typeof perf?.getHitchHistogram === 'function';
     if (available) {
       perf.reset();
       perf.setRenderWorkEnabled(true);
       perf.setHitchAttributionEnabled(true);
+      perf.setSystemTimingEnabled(true);
     }
     return {
       available,
       previousRenderWorkEnabled,
       previousHitchAttributionEnabled,
+      previousSystemTimingEnabled,
       renderWorkEnabled: perf?.renderWorkEnabled === true,
       hitchAttributionEnabled: perf?.hitchAttributionEnabled === true,
+      systemTimingEnabled: perf?.systemTimingEnabled === true,
     };
   });
   if (probeInstrumentation?.renderWorkEnabled !== true
-      || probeInstrumentation?.hitchAttributionEnabled !== true) {
+      || probeInstrumentation?.hitchAttributionEnabled !== true
+      || probeInstrumentation?.systemTimingEnabled !== true) {
     throw new Error('Runtime witness could not enable bounded census and hitch attribution');
   }
   await page.waitForTimeout(250);
@@ -489,8 +512,10 @@ try {
     }
     await page.waitForTimeout(SAMPLE_EVERY_MS);
   }
-  finalHitchAttribution = await page.evaluate(() => window.SF.state.perfRuntime.getHitchHistogram());
-  finalRenderWork = await page.evaluate(() => window.SF.state.perfRuntime.getReport().renderWork);
+  const finalPerfReport = await page.evaluate(() => window.SF.state.perfRuntime.getReport());
+  finalHitchAttribution = finalPerfReport.hitchAttribution;
+  finalRenderWork = finalPerfReport.renderWork;
+  finalSystemTiming = finalPerfReport.systems;
   await page.keyboard.up('KeyW').catch(() => {});
   const finalShot = path.join(OUT, 't-final.png');
   await captureCanvasFrame(page, finalShot, Date.now() - started).catch(() => {});
@@ -535,17 +560,21 @@ try {
       const perf = window.SF?.state?.perfRuntime;
       perf?.setRenderWorkEnabled?.(previous.renderWorkEnabled === true);
       perf?.setHitchAttributionEnabled?.(previous.hitchAttributionEnabled === true);
+      perf?.setSystemTimingEnabled?.(previous.systemTimingEnabled === true);
       return {
         renderWorkEnabled: perf?.renderWorkEnabled === true,
         hitchAttributionEnabled: perf?.hitchAttributionEnabled === true,
+        systemTimingEnabled: perf?.systemTimingEnabled === true,
       };
     }, {
       renderWorkEnabled: probeInstrumentation.previousRenderWorkEnabled,
       hitchAttributionEnabled: probeInstrumentation.previousHitchAttributionEnabled,
+      systemTimingEnabled: probeInstrumentation.previousSystemTimingEnabled,
     }).catch(() => null);
     probeInstrumentation.restored = !!restoredState
       && restoredState.renderWorkEnabled === probeInstrumentation.previousRenderWorkEnabled
-      && restoredState.hitchAttributionEnabled === probeInstrumentation.previousHitchAttributionEnabled;
+      && restoredState.hitchAttributionEnabled === probeInstrumentation.previousHitchAttributionEnabled
+      && restoredState.systemTimingEnabled === probeInstrumentation.previousSystemTimingEnabled;
     if (probeInstrumentation.restored !== true && !cleanupError) {
       cleanupError = new Error('Runtime witness failed to restore bounded performance instrumentation');
     }
@@ -611,7 +640,7 @@ const markdown = `${formatRuntimeWitnessReport({
   consoleHits,
   pageErrors,
   gpu,
-})}${formatTableCensusSection(tableCensus, route)}${formatHitchAttributionSection(hitchAttribution, route)}${formatBloomPhaseSection(bloomPhases)}\n`;
+})}${formatTableCensusSection(tableCensus, route)}${formatHitchAttributionSection(hitchAttribution, route)}${formatBloomPhaseSection(bloomPhases)}${formatSystemTimingSection(finalSystemTiming)}\n`;
 const report = {
   schema: 'spaceface.runtimeWitness.probe.v1',
   verdict,
@@ -627,6 +656,7 @@ const report = {
   tableCensus,
   hitchAttribution,
   bloomPhases,
+  systemTiming: finalSystemTiming,
   error: primaryError ? String(primaryError && primaryError.stack || primaryError) : null,
   cleanupError: cleanupError ? String(cleanupError && cleanupError.stack || cleanupError) : null,
 };
