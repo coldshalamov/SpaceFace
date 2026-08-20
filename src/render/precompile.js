@@ -282,26 +282,58 @@ export function invalidatePrecompileState(renderer, options = {}) {
 
 export function getPrecompileKeepAliveDiagnostics(renderer) {
   const root = renderer && pipelineKeepAliveByRenderer.get(renderer);
-  if (!root) return { retainedCanopyVariants: 0, variants: [], retainedPipelines: [] };
+  if (!root) return {
+    retainedCanopyVariants: 0,
+    variants: [],
+    retainedPipelines: [],
+    programs: [],
+  };
   const variants = [];
+  const programs = [];
   root.traverse((object) => {
-    if (!object.userData || !object.userData.precompileCanopyVariant) return;
-    const material = object.material;
-    const properties = renderer.properties && typeof renderer.properties.get === 'function'
-      ? renderer.properties.get(material)
-      : null;
-    variants.push({
-      id: object.userData.precompileCanopyVariant,
-      programKey: properties && properties.currentProgram
-        ? String(properties.currentProgram.cacheKey || properties.currentProgram.id)
-        : null,
-    });
+    const materials = Array.isArray(object.material)
+      ? object.material
+      : object.material ? [object.material] : [];
+    const owner = retainedPipelineOwner(object, root);
+    for (let index = 0; index < materials.length; index++) {
+      const material = materials[index];
+      const properties = renderer.properties && typeof renderer.properties.get === 'function'
+        ? renderer.properties.get(material)
+        : null;
+      const programKey = properties && properties.currentProgram
+        ? String(properties.currentProgram.cacheKey || '') || null
+        : null;
+      programs.push({
+        owner,
+        object: String(object.name || object.type || ''),
+        material: String(material && (material.name || material.type) || ''),
+        materialIndex: index,
+        programKey,
+      });
+      if (object.userData && object.userData.precompileCanopyVariant) {
+        variants.push({ id: object.userData.precompileCanopyVariant, programKey });
+      }
+    }
   });
   return {
     retainedCanopyVariants: variants.length,
     variants,
     retainedPipelines: retainedPipelineIds(root),
+    programs,
   };
+}
+
+function retainedPipelineOwner(object, root) {
+  let cursor = object;
+  while (cursor && cursor !== root.parent) {
+    const pipeline = cursor.userData && cursor.userData.precompileRetainedPipeline;
+    if (pipeline) return String(pipeline);
+    const canopy = cursor.userData && cursor.userData.precompileCanopyVariant;
+    if (canopy) return `canopy:${canopy}`;
+    if (cursor === root) break;
+    cursor = cursor.parent;
+  }
+  return String(object && (object.name || object.type) || 'unowned');
 }
 
 function yieldToBrowser() {

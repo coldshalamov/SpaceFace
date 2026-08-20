@@ -7177,7 +7177,7 @@
       "priority": 332,
       "title": "Census live shader program keys",
       "kind": "performance",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-129.03"
       ],
@@ -7191,7 +7191,9 @@
       "checks": [
         "npm run check:shader-compile"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-129-06-shader-key-census-REPORT.md"
+      ],
       "brief": "Reserved PQ-064. Traverse opening + first combat + traffic and diff live Three program keys against precompile keep-alives. Shader warnings during the 2026-08-20 witness mean first-use still links in flight."
     },
     {

@@ -50,6 +50,7 @@ const QUIESCENCE_FRAMES = Number(argv.quiescence || 60);
 const IDLE_FRAMES = Number(argv['idle-frames'] || 600);
 const STIMULUS_FRAMES = Number(argv['stimulus-frames'] || 600);
 const HEADED = !!(argv.headed || argv.headless === 'false');
+const ROUTE = String(argv.route || 'throughline');
 // Same vacuity floor as check:shader-compile: a boot that compiled almost nothing means the render
 // graph never came up, and every "0 post-boot compiles" claim built on it would be meaningless.
 const MIN_BOOT_RAMP_PROGRAMS = 8;
@@ -117,6 +118,18 @@ try {
 
     const events = [];
     const seen = new Set();
+    const coverage = {
+      trafficSeen: 0,
+      hostileSeen: 0,
+      targetedHostile: false,
+      firedAtHostile: false,
+      hostilityClassifierReady: false,
+    };
+    let isHostileToPlayer = null;
+    import('/src/systems/scanner.js').then((module) => {
+      isHostileToPlayer = module.isHostileToPlayer;
+      coverage.hostilityClassifierReady = typeof isHostileToPlayer === 'function';
+    }).catch(() => {});
     let frame = 0;
     let flightFrame = -1;
 
@@ -154,6 +167,26 @@ try {
       const state = window.SF && window.SF.state;
       if (state && state.mode === 'flight') flightFrame = flightFrame < 0 ? 0 : flightFrame + 1;
 
+      const entities = state && Array.isArray(state.entityList) ? state.entityList : [];
+      let traffic = 0;
+      let hostiles = 0;
+      let targetedHostile = false;
+      const targetId = state && state.player && state.player.targetId;
+      for (const entity of entities) {
+        if (!entity || entity.alive === false || entity.isPlayer) continue;
+        if (entity.data && entity.data.trafficRole) traffic++;
+        const player = state?.entities?.get?.(state.playerId);
+        const hostile = entity.type === 'ship' && typeof isHostileToPlayer === 'function'
+          ? isHostileToPlayer(entity, player?.team || 0, state)
+          : false;
+        if (hostile) hostiles++;
+        if (hostile && entity.id === targetId) targetedHostile = true;
+      }
+      coverage.trafficSeen = Math.max(coverage.trafficSeen, traffic);
+      coverage.hostileSeen = Math.max(coverage.hostileSeen, hostiles);
+      coverage.targetedHostile ||= targetedHostile;
+      coverage.firedAtHostile ||= targetedHostile && state?.input?.fire === true;
+
       const renderer = state && state.render && state.render.renderer;
       const programs = renderer && renderer.info && renderer.info.programs;
       if (programs) {
@@ -161,7 +194,9 @@ try {
           const program = programs[i];
           // THREE reuses a cached program when the cacheKey matches, incrementing usedTimes rather
           // than linking again. A genuinely NEW entry is therefore exactly one compile+link.
-          const identity = program.id != null ? `id:${program.id}` : `key:${program.cacheKey}`;
+          const cacheKey = String(program.cacheKey || '');
+          if (!cacheKey) continue;
+          const identity = `key:${cacheKey}`;
           if (seen.has(identity)) continue;
           seen.add(identity);
           events.push({
@@ -184,6 +219,7 @@ try {
       get frame() { return frame; },
       get flightFrame() { return flightFrame; },
       get linkCount() { return linkEvents.length; },
+      coverage,
     };
   });
 
@@ -214,6 +250,7 @@ try {
     productionBoundaryFrame: window.__SPACEFACE_PERF__?.tier1?.markBootBoundary?.() ?? null,
     productionLinksAtBoundary: window.__SPACEFACE_PERF__?.getCounterSnapshot?.().totals.shaderLinks ?? null,
   }));
+  const openingCensus = await captureProgramCensus(page);
 
   // --- Phase 1: idle flight (no input) --------------------------------------------------------
   enterStage('idle-flight');
@@ -223,17 +260,27 @@ try {
     eventCount: window.__SF_PROGRAM_TIMELINE__.events.length,
     linkCount: window.__SF_PROGRAM_TIMELINE__.linkCount,
   }));
+  const idleCensus = await captureProgramCensus(page);
 
   // --- Phase 2: scripted stimulus -------------------------------------------------------------
   // Idle flight never exercises weapons, boost plumes or countermeasures, so a program that only
   // compiles when the player first fires would read as 0 in an idle-only run. This phase makes the
   // idle number honest about what it does and does not cover.
+  if (ROUTE === 'throughline') {
+    enterStage('public-jump-to-ceres');
+    await jumpToCeres(page);
+    enterStage('public-throughline-approach');
+    await trackThroughline(page);
+    await waitFlightFrames(page, 120);
+  }
+  enterStage('first-combat-traffic-stimulus');
   await applyStimulus(page, STIMULUS_FRAMES);
   const afterStimulus = await page.evaluate(() => ({
     flightFrame: window.__SF_PROGRAM_TIMELINE__.flightFrame,
     eventCount: window.__SF_PROGRAM_TIMELINE__.events.length,
     linkCount: window.__SF_PROGRAM_TIMELINE__.linkCount,
   }));
+  const contactCensus = await captureProgramCensus(page);
 
   const timeline = await page.evaluate(() => window.__SF_PROGRAM_TIMELINE__.events);
   const environment = await page.evaluate(() => {
@@ -260,8 +307,9 @@ try {
     window.__SPACEFACE_PERF__?.getCounterSnapshot?.() ?? null));
 
   const report = {
-    schema: 'spaceface.shaderCompileTimeline.v1',
+    schema: 'spaceface.shaderCompileTimeline.v2',
     tier: 1,
+    route: ROUTE,
     // Deliberately absent: every duration. See the header note on the two-tier evidence model.
     environment,
     boundary: {
@@ -291,6 +339,20 @@ try {
       postBootLinkProgramCalls: postBootLinks.length,
       linkProgramCallsTotal: linkEvents.length,
     },
+    keyCensus: {
+      keepAlivePrograms: openingCensus.keepAlive.programs,
+      keepAliveKeys: uniqueKeys(openingCensus.keepAlive.programs.map((entry) => entry.programKey)),
+      opening: openingCensus,
+      idle: idleCensus,
+      firstCombatTraffic: contactCensus,
+      idleAddedKeys: addedKeys(openingCensus.liveKeys, idleCensus.liveKeys),
+      contactAddedKeys: addedKeys(idleCensus.liveKeys, contactCensus.liveKeys),
+      missingKeepAliveKeys: addedKeys(
+        openingCensus.liveKeys,
+        uniqueKeys(openingCensus.keepAlive.programs.map((entry) => entry.programKey)),
+      ),
+      coverage: contactCensus.coverage,
+    },
     postBootLinks,
     bootRamp,
     // The production seam's own view of the same run. Two instruments, one context.
@@ -305,6 +367,8 @@ try {
   // --- Report --------------------------------------------------------------------------------
   console.log(`[shader-timeline] gpu: ${environment.unmaskedRenderer || '(masked)'} tier=${environment.gpuTier || '?'} software=${environment.software}`);
   console.log(`[shader-timeline] boot ramp: ${bootRamp.length} programs, quiescent at flight frame ${boundary.flightFrame}`);
+  console.log(`[shader-timeline] retained keep-alive keys: ${report.keyCensus.keepAliveKeys.length}; missing from opening cache: ${report.keyCensus.missingKeepAliveKeys.length}`);
+  console.log(`[shader-timeline] route coverage: traffic=${contactCensus.coverage.trafficSeen} hostile=${contactCensus.coverage.hostileSeen} targetedHostile=${contactCensus.coverage.targetedHostile} firedAtHostile=${contactCensus.coverage.firedAtHostile}`);
   console.log('');
   console.log(`[shader-timeline] POST-BOOT SHADER COMPILES, idle-flight (${report.phases.idleFlight.frames} frames): ${idleCompiles.length}`);
   console.log(`[shader-timeline] POST-BOOT SHADER COMPILES, stimulus  (${report.phases.stimulus.frames} frames): ${stimulusCompiles.length}`);
@@ -449,6 +513,7 @@ async function applyStimulus(page, frames) {
   await page.keyboard.down('KeyW');
   await waitFlightFrames(page, quarter);
   await page.keyboard.down('ShiftLeft');
+  await page.keyboard.press('Tab');
   await page.keyboard.press('KeyG');       // autoFire — brings weapon/bolt programs in
   await waitFlightFrames(page, quarter);
   await page.keyboard.press('KeyX');       // countermeasure
@@ -472,9 +537,22 @@ async function bootToFlight(page) {
   const splash = page.locator('#cinematic-splash');
   if (await splash.isVisible().catch(() => false)) await page.keyboard.press('Space');
   await page.locator('[data-screen="mainMenu"]').waitFor({ state: 'visible', timeout: 60_000 });
+  if (ROUTE === 'combat-sandbox') {
+    await page.getByRole('button', { name: 'Sandbox', exact: true }).click();
+    enterStage('boot:combat-sandbox');
+    await page.locator('[data-screen="sandbox"]').waitFor({ state: 'visible', timeout: 30_000 });
+    await page.getByRole('button', { name: /Combat Range/i }).click();
+    await page.waitForFunction(() => {
+      const state = window.SF?.state;
+      const player = state?.entities?.get?.(state.playerId);
+      return state?.mode === 'flight' && player?.alive !== false && Number(player?.hull) > 0;
+    }, null, { timeout: 180_000 });
+    return;
+  }
   await page.getByRole('button', { name: 'New Game', exact: true }).click();
   enterStage('boot:new-game');
   await page.locator('[data-screen="newGame"]').waitFor({ state: 'visible', timeout: 30_000 });
+  await page.locator('#sf-ng-seed').fill('47');
   await page.getByRole('button', { name: 'Launch', exact: true }).click();
   enterStage('boot:await-flight');
   await page.waitForFunction(() => {
@@ -494,6 +572,124 @@ function classifyLink(stack) {
   if (/renderBufferDirect|setProgram/.test(stack)) return 'DRAW-TIME-MISS';
   if (/prepareMaterial/.test(stack)) return 'precompile';
   return 'unclassified';
+}
+
+async function jumpToCeres(page) {
+  await page.keyboard.press('KeyN');
+  const map = page.locator('[data-screen="galaxyMap"]').first();
+  await map.waitFor({ state: 'visible', timeout: 30_000 });
+  await page.keyboard.press('/');
+  const search = page.locator('.gm-search-input');
+  await search.waitFor({ state: 'visible', timeout: 10_000 });
+  await search.fill('Ceres Belt');
+  const names = page.locator('.gm-search-item-name');
+  await names.first().waitFor({ state: 'visible', timeout: 15_000 });
+  const labels = (await names.allTextContents()).map((value) => String(value || '').trim());
+  const index = labels.findIndex((label) => label.toLowerCase() === 'ceres belt');
+  if (index < 0) throw new Error(`public map search did not expose Ceres Belt: ${labels.join(' | ')}`);
+  await page.locator('.gm-search-item').nth(index).click();
+  const action = page.locator('#gm-set-course-btn');
+  await action.waitFor({ state: 'visible', timeout: 15_000 });
+  const actionLabel = String(await action.textContent() || '').replace(/\s+/g, ' ').trim();
+  if (actionLabel !== 'Set Course & Jump') {
+    throw new Error(`Ceres Belt exposed '${actionLabel}' instead of Set Course & Jump`);
+  }
+  await action.click();
+  await map.waitFor({ state: 'hidden', timeout: 30_000 });
+  await page.waitForFunction(() => {
+    const state = window.SF?.state;
+    const player = state?.entities?.get?.(state.playerId);
+    return state?.world?.currentSectorId === 'sector_ceres_belt'
+      && state?.jump?.state === 'IDLE'
+      && player?.alive !== false;
+  }, null, { timeout: 180_000 });
+}
+
+async function trackThroughline(page) {
+  await page.keyboard.press('KeyN');
+  const map = page.locator('[data-screen="galaxyMap"]').first();
+  await map.waitFor({ state: 'visible', timeout: 30_000 });
+  await page.keyboard.press('/');
+  const search = page.locator('.gm-search-input');
+  await search.waitFor({ state: 'visible', timeout: 10_000 });
+  await search.fill('Throughline Weigh Beacon');
+  const names = page.locator('.gm-search-item-name');
+  await names.first().waitFor({ state: 'visible', timeout: 15_000 });
+  const labels = (await names.allTextContents()).map((value) => String(value || '').trim());
+  const index = labels.findIndex((label) => label.toLowerCase() === 'throughline weigh beacon');
+  if (index < 0) {
+    throw new Error(`public map search did not expose Throughline Weigh Beacon: ${labels.join(' | ')}`);
+  }
+  await page.locator('.gm-search-item').nth(index).click();
+  const action = page.locator('#gm-set-course-btn');
+  await action.waitFor({ state: 'visible', timeout: 15_000 });
+  const actionLabel = String(await action.textContent() || '').replace(/\s+/g, ' ').trim();
+  if (actionLabel !== 'Track Target') {
+    throw new Error(`Throughline Weigh Beacon exposed '${actionLabel}' instead of Track Target`);
+  }
+  await action.click();
+  await map.waitFor({ state: 'hidden', timeout: 30_000 });
+  await page.waitForFunction(() => {
+    const autopilot = window.SF?.state?.nav?.autopilot;
+    return autopilot?.label === 'Throughline Weigh Beacon' && autopilot.active === true;
+  }, null, { timeout: 30_000 });
+  await page.waitForFunction(() => {
+    const state = window.SF?.state;
+    const player = state?.entities?.get?.(state.playerId);
+    const autopilot = state?.nav?.autopilot;
+    if (player?.alive === false || Number(player?.hull) <= 0) {
+      throw new Error('player died during public Throughline approach');
+    }
+    return autopilot?.label === 'Throughline Weigh Beacon'
+      && autopilot.active === false
+      && autopilot.status === 'arrived';
+  }, null, { timeout: 240_000 });
+}
+
+async function captureProgramCensus(page) {
+  return page.evaluate(async () => {
+    const state = window.SF?.state || null;
+    const renderer = state?.render?.renderer || null;
+    const scene = state?.render?.scene || null;
+    const { getPrecompileKeepAliveDiagnostics } = await import('/src/render/precompile.js');
+    const livePrograms = Array.isArray(renderer?.info?.programs) ? renderer.info.programs : [];
+    const live = livePrograms.map((program) => ({
+      cacheKey: String(program?.cacheKey || ''),
+      name: String(program?.name || ''),
+    })).filter((program) => program.cacheKey);
+    const owners = [];
+    scene?.traverse?.((object) => {
+      const materials = Array.isArray(object.material)
+        ? object.material
+        : object.material ? [object.material] : [];
+      for (const material of materials) {
+        const current = renderer?.properties?.get?.(material)?.currentProgram;
+        const cacheKey = String(current?.cacheKey || '');
+        if (!cacheKey) continue;
+        owners.push({
+          cacheKey,
+          object: String(object.name || object.type || ''),
+          material: String(material.name || material.type || ''),
+        });
+      }
+    });
+    return {
+      liveKeys: [...new Set(live.map((program) => program.cacheKey))].sort(),
+      livePrograms: live,
+      liveOwners: owners,
+      keepAlive: getPrecompileKeepAliveDiagnostics(renderer),
+      coverage: { ...window.__SF_PROGRAM_TIMELINE__.coverage },
+    };
+  });
+}
+
+function uniqueKeys(keys) {
+  return [...new Set(keys.filter((key) => typeof key === 'string' && key))].sort();
+}
+
+function addedKeys(before, after) {
+  const previous = new Set(before || []);
+  return uniqueKeys(after || []).filter((key) => !previous.has(key));
 }
 
 function parseArgs(args) {

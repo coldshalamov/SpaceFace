@@ -67,6 +67,11 @@ test('synthetic shader precompile creates zero authored asset residency demand',
   const renderer = {
     compileAsync: async () => { legacyCompileCalls++; },
     info: { programs: [] },
+    properties: {
+      get(material) {
+        return { currentProgram: { cacheKey: `test-key:${material?.name || material?.type}` } };
+      },
+    },
   };
   const scene = new THREE.Scene();
   createShipAuxPool(scene);
@@ -193,6 +198,12 @@ test('synthetic shader precompile creates zero authored asset residency demand',
       'ship-shield-bubble', 'vfx-salvo',
     ],
   );
+  const retainedPrograms = getPrecompileKeepAliveDiagnostics(renderer).programs;
+  assert.ok(retainedPrograms.length > 10, 'diagnostics must enumerate every retained material owner');
+  assert.ok(retainedPrograms.every((entry) => entry.owner && entry.programKey?.startsWith('test-key:')),
+    'each retained material must expose its owner and exact renderer program key');
+  assert.ok(retainedPrograms.some((entry) => entry.owner === 'vfx-salvo'));
+  assert.ok(retainedPrograms.some((entry) => entry.owner === 'authored-opaque-standard'));
   assert.deepEqual(canopyVariants, [
     {
       id: 'surface', map: false, normalMap: false, aoMap: false,
