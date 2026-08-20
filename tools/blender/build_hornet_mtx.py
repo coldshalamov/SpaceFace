@@ -293,8 +293,8 @@ def wire_maps(material, bsdf, maps, coat=0.0, emission=None, metallic_from_map=T
 
 def create_materials():
     specs = {
-        "Material_Hull": ((0.56, 0.58, 0.60), 0.04, 0.48, "hull", 0.0, None),
-        "Material_Armor": ((0.34, 0.36, 0.38), 0.38, 0.36, "armor", 0.05, None),
+        "Material_Hull": ((0.16, 0.17, 0.19), 0.02, 0.56, "hull", 0.0, None),
+        "Material_Armor": ((0.08, 0.09, 0.10), 0.08, 0.48, "armor", 0.0, None),
         "Material_Mechanical": ((0.50, 0.48, 0.44), 0.90, 0.22, "mechanical", 0.0, None),
         "Material_Accent": ((0.04, 0.40, 0.50), 0.10, 0.34, "accent", 0.2, None),
         "Material_Warning": ((0.98, 0.14, 0.02), 0.04, 0.38, "warning", 0.0, None),
@@ -311,8 +311,8 @@ def create_materials():
         bsdf.inputs["Metallic"].default_value = metal
         bsdf.inputs["Roughness"].default_value = rough
         # Warning maps washed the seat to peach. Canopy maps turned the pane into a gray slab.
-        # Hull maps photographed chrome-black from starboard (C118). Keep hull unmapped paint.
-        if name not in ("Material_Warning", "Material_Canopy", "Material_Hull"):
+        # Hull/armor maps photographed chrome-black (C118). Cool unmapped dielectric paint.
+        if name not in ("Material_Warning", "Material_Canopy", "Material_Hull", "Material_Armor"):
             maps = role_maps(role, rgb, prefix=name.replace("Material_", "").lower())
             wire_maps(material, bsdf, maps, coat=coat, emission=emit)
         elif emit:
@@ -328,10 +328,10 @@ def create_materials():
                 bsdf.inputs["IOR"].default_value = 1.52
             if "Coat Weight" in bsdf.inputs:
                 bsdf.inputs["Coat Weight"].default_value = 0.0
-            bsdf.inputs["Base Color"].default_value = (0.02, 0.025, 0.03, 1)
+            bsdf.inputs["Base Color"].default_value = (0.015, 0.02, 0.025, 1)
             bsdf.inputs["Metallic"].default_value = 0.0
-            bsdf.inputs["Roughness"].default_value = 0.04
-            bsdf.inputs["Alpha"].default_value = 0.10
+            bsdf.inputs["Roughness"].default_value = 0.08
+            bsdf.inputs["Alpha"].default_value = 0.28
             if hasattr(material, "blend_method"):
                 try:
                     material.blend_method = "HASHED"
@@ -1212,7 +1212,7 @@ def shade_and_uv(obj):
     obj.select_set(True)
     apply_modifiers(obj)
     try:
-        bpy.ops.object.shade_smooth_by_angle(angle=math.radians(40))
+        bpy.ops.object.shade_smooth_by_angle(angle=math.radians(28))
     except Exception:
         for poly in obj.data.polygons:
             poly.use_smooth = True
@@ -1316,14 +1316,16 @@ def build_lod(lod, mats):
     delete_faces_in_box(body, -0.70, -0.10, 0.05, 0.52, 0.68, 1.40, normal="z", normal_min=0.15)
     report_shells(body, "hull after wells")
     bevel = body.modifiers.new("HullBevel", "BEVEL")
-    bevel.width = 0.012
+    bevel.width = 0.016
     bevel.segments = 2
     bevel.limit_method = "ANGLE"
-    bevel.angle_limit = math.radians(32)
+    bevel.angle_limit = math.radians(28)
     wn = body.modifiers.new("HullWN", "WEIGHTED_NORMAL")
     wn.keep_sharp = True
     apply_modifiers(body)
-    # Sill only. A full hoop made the C103/C104 glass crate.
+    inset_large_faces(body, 0.028, 0.010, 0.22)
+    add_station_hoop("Hoop_Cabin", 2.90, 1.40, 0.70, 0.20, 0.26, 0.50, 0.24, armor, collection, stand=0.038, half=0.032)
+    add_station_hoop("Hoop_Shoulder", 1.80, 1.80, 0.72, 0.14, 0.12, 0.68, 0.22, armor, collection, stand=0.040, half=0.034)
     add_station_hoop("Hoop_Wing", 0.70, 1.94, 0.74, 0.12, 0.10, 0.74, 0.18, armor, collection, stand=0.042, half=0.038)
     add_station_hoop("Hoop_Transom", -3.18, 0.98, 0.38, 0.14, 0.03, 0.92, 0.06, armor, collection, stand=0.042, half=0.034)
 
@@ -1350,14 +1352,14 @@ def build_lod(lod, mats):
     # 8 mm dark pane in a 10 mm metal lip. No side/roof panes (those became a greenhouse).
     add_folded_sheet(
         "Canopy_Screen",
-        (4.40, -0.22, 0.72), (4.40, 0.22, 0.72),
-        (4.18, 0.09, 0.94), (4.18, -0.09, 0.94),
+        (4.44, -0.30, 0.66), (4.44, 0.30, 0.66),
+        (3.92, 0.16, 1.08), (3.92, -0.16, 1.08),
         0.008, canopy, collection, 0.001,
     )
-    add_box("Frame_SillF", (4.40, 0.0, 0.71), (0.008, 0.24, 0.008), armor, collection, 0.001)
-    add_box("Frame_Brow", (4.18, 0.0, 0.94), (0.010, 0.10, 0.008), armor, collection, 0.001)
-    add_box("Frame_PillarP", (4.28, -0.22, 0.82), (0.10, 0.008, 0.08), armor, collection, 0.001)
-    add_box("Frame_PillarS", (4.28, 0.22, 0.82), (0.10, 0.008, 0.08), armor, collection, 0.001)
+    add_box("Frame_SillF", (4.44, 0.0, 0.66), (0.008, 0.28, 0.008), armor, collection, 0.001)
+    add_box("Frame_Brow", (3.94, 0.0, 1.06), (0.010, 0.14, 0.008), armor, collection, 0.001)
+    add_box("Frame_PillarP", (4.18, -0.26, 0.86), (0.14, 0.008, 0.12), armor, collection, 0.001)
+    add_box("Frame_PillarS", (4.18, 0.26, 0.86), (0.14, 0.008, 0.12), armor, collection, 0.001)
 
     add_five_wall_tub("AvionicsTub", (0.85, -1.18, 0.22), (0.24, 0.10, 0.11), 0.040, mech, collection)
     add_box("AvionicsRack", (0.85, -1.18, 0.16), (0.16, 0.032, 0.05), armor, collection, 0.002)
@@ -1392,6 +1394,11 @@ def build_lod(lod, mats):
     add_overlap_plate("Armor_JointP", (-0.40, -1.40, 0.18), (0.28, 0.040, 0.16), armor, collection, 0.004)
     add_overlap_plate("Armor_JointS", (-0.40, 1.40, 0.18), (0.28, 0.040, 0.16), armor, collection, 0.004)
     add_overlap_plate("Armor_KeelFore", (1.20, 0.00, -0.44), (0.40, 0.12, 0.018), hull, collection, 0.003)
+    add_overlap_plate("Armor_DorsalA", (2.40, 0.00, 0.78), (0.34, 0.16, 0.010), armor, collection, 0.003)
+    add_overlap_plate("Armor_DorsalB", (0.90, 0.00, 0.80), (0.38, 0.20, 0.010), armor, collection, 0.003)
+    add_overlap_plate("Armor_DorsalC", (-1.10, 0.00, 0.58), (0.34, 0.14, 0.010), armor, collection, 0.003)
+    add_overlap_plate("Armor_WaistP", (0.20, -1.72, 0.18), (0.32, 0.028, 0.12), armor, collection, 0.004)
+    add_overlap_plate("Armor_WaistS", (0.20, 1.72, 0.18), (0.32, 0.028, 0.12), armor, collection, 0.004)
     add_box("Accent_WaistP", (0.15, -1.40, 0.18), (0.28, 0.010, 0.04), accent, collection, 0.002)
     add_box("Accent_WaistS", (0.15, 1.40, 0.18), (0.28, 0.010, 0.04), accent, collection, 0.002)
 
@@ -1560,7 +1567,7 @@ def setup_studio():
         scene.view_settings.look = "AgX - Medium Contrast"
     except TypeError:
         scene.view_settings.look = "AgX - Medium High Contrast"
-    scene.view_settings.exposure = 1.00
+    scene.view_settings.exposure = 0.55
     eevee = getattr(scene, "eevee", None)
     if eevee:
         for attr, val in (
@@ -1584,15 +1591,15 @@ def setup_studio():
     scene.collection.objects.link(camera)
     scene.camera = camera
     for name, loc, energy, color, size in (
-        ("Key", (16, -18, 12), 1500, (0.94, 0.96, 1), 22),
-        ("Fill", (4, 16, 8), 2200, (0.76, 0.80, 0.84), 20),
-        ("Top", (2, 2, 16), 1600, (0.88, 0.90, 0.94), 18),
-        ("Rim", (-14, -5, 7), 1400, (0.78, 0.84, 0.92), 14),
-        ("Kick", (-6, 10, -4), 420, (0.74, 0.78, 0.84), 12),
-        ("AftFill", (-10, -12, 8), 900, (0.80, 0.84, 0.90), 16),
-        ("CockpitFill", (4.0, -0.2, 1.70), 900, (1.00, 0.88, 0.70), 2.0),
-        ("CockpitKey", (3.8, 0.6, 1.35), 480, (1.00, 0.80, 0.55), 1.4),
-        ("StbdFill", (0.9, 12.0, 3.8), 1100, (0.88, 0.90, 0.94), 18),
+        ("Key", (16, -18, 12), 720, (0.94, 0.96, 1), 22),
+        ("Fill", (4, 16, 8), 900, (0.76, 0.80, 0.84), 20),
+        ("Top", (2, 2, 16), 640, (0.88, 0.90, 0.94), 18),
+        ("Rim", (-14, -5, 7), 700, (0.78, 0.84, 0.92), 14),
+        ("Kick", (-6, 10, -4), 280, (0.74, 0.78, 0.84), 12),
+        ("AftFill", (-10, -12, 8), 480, (0.80, 0.84, 0.90), 16),
+        ("CockpitFill", (4.0, -0.2, 1.70), 520, (1.00, 0.88, 0.70), 2.0),
+        ("CockpitKey", (3.8, 0.6, 1.35), 280, (1.00, 0.80, 0.55), 1.4),
+        ("StbdFill", (0.9, 12.0, 3.8), 640, (0.88, 0.90, 0.94), 18),
     ):
         data = bpy.data.lights.new(name, "AREA")
         data.energy = energy
