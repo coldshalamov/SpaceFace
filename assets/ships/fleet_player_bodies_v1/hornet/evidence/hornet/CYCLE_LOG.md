@@ -90,6 +90,7 @@
 | 111 | yes | see json | 3Q REVISE / starboard REVISE / rear REVISE | Open well, L-chair, dark lips. Chair glowed. Wing still a slab. Not wired. |
 | 112 | yes | see json | 3Q REVISE / starboard REVISE / rear REVISE | Painted seat, framed brow. Starboard still a kite. White inner hoop. Not wired. |
 | 113 | yes | see json | author REVISE | LE tube reads as a pipe. Not wired. |
-| 114 | yes | 660FDF4D | author REVISE (starboard) | Pipe gone. Open well + orange seat + thin lip. Dark cans, no mouth hoop. Starboard still a black diamond. Not wired. |
+| 114 | yes | 660FDF4D | 3Q REVISE / starboard REVISE / rear REVISE | Pipe gone. Open well + orange seat + thin lip. Dark cans. Starboard still a black diamond. Not wired. |
+| 115 | yes | 92DE7D72 | author REVISE (starboard) | Armor wing, flat anhedral, level camera. Thickness real; side silhouette still a diamond. Not wired. |
 
 Hitch-plus / A-list: not met. C85 remains the live game body. Do not mark PQ-050.01 done. Do not self-accept.
