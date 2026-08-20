@@ -42,6 +42,8 @@ const consoleHits = [];
 const pageErrors = [];
 const snapshots = [];
 const canvasFrames = [];
+const loadingReadinessSamples = [];
+let loadingProgressEvents = [];
 let probeInstrumentation = null;
 let finalHitchAttribution = null;
 let finalRenderWork = null;
@@ -153,6 +155,58 @@ function formatSystemTimingSection(systems) {
   return lines.join('\n');
 }
 
+function formatLoadingReadinessSection(events, samples) {
+  const lines = ['', '## Continue loading readiness'];
+  if (!events.length) {
+    lines.push('- unavailable: no `game:loadingProgress` events were observed');
+    return lines.join('\n');
+  }
+  for (let index = 0; index < events.length; index++) {
+    const event = events[index];
+    const next = events[index + 1];
+    const durationMs = next ? next.elapsedMs - event.elapsedMs : null;
+    lines.push(`- ${(event.elapsedMs / 1000).toFixed(2)} s: ${event.id || 'unknown'}${durationMs == null ? '' : ` (${(durationMs / 1000).toFixed(2)} s until next stage)`}`);
+  }
+  const last = samples[samples.length - 1];
+  if (last) {
+    lines.push(
+      `- last loading snapshot: stage ${last.stageId || 'unknown'}; player ${last.authored?.playerStatus || 'unknown'}; opening pending ${last.authored?.openingPending ?? 'unknown'}; pipeline pending ${last.authored?.openingPipelinePending ?? 'unknown'}; pipeline admissions ${last.pendingPipelineAdmissions ?? 'unknown'}; GPU admissions ${last.pendingAuthoredGpuResidency ?? 'unknown'}`,
+    );
+  }
+  return lines.join('\n');
+}
+
+async function installLoadingReadinessWitness(targetPage) {
+  await targetPage.evaluate(() => {
+    const prior = window.__SF_LOADING_READINESS_WITNESS__;
+    if (prior && typeof prior.unsubscribe === 'function') prior.unsubscribe();
+    const startedWallMs = Date.now();
+    const trace = {
+      startedWallMs,
+      events: [],
+      promiseRefs: {},
+      promiseStates: {},
+      unsubscribe: null,
+    };
+    const bus = window.SF?.bus;
+    if (bus && typeof bus.on === 'function') {
+      trace.unsubscribe = bus.on('game:loadingProgress', (payload = {}) => {
+        const wallMs = Date.now();
+        trace.events.push({
+          wallMs,
+          elapsedMs: wallMs - startedWallMs,
+          id: String(payload.id || ''),
+          progress: Number(payload.progress) || 0,
+          label: String(payload.label || ''),
+          detail: String(payload.detail || ''),
+          transition: String(payload.transition || ''),
+        });
+      });
+    }
+    window.__SF_LOADING_READINESS_WITNESS__ = trace;
+  });
+}
+
 function readWitnessInPage() {
   const witness = window.__SF_WITNESS__;
   const s = window.SF?.state;
@@ -186,6 +240,59 @@ function readWitnessInPage() {
     hitch: false,
     costs: [],
   };
+  const loadingTrace = window.__SF_LOADING_READINESS_WITNESS__;
+  if (loadingTrace) {
+    const render = s?.render || {};
+    const promiseNames = [
+      'pipelinePrecompileReady',
+      'exactPipelineWarmupReady',
+      'authoredGpuAdmissionReady',
+      'openingGpuResidencyReady',
+    ];
+    for (const name of promiseNames) {
+      const value = render[name];
+      if (value && typeof value.then === 'function' && loadingTrace.promiseRefs[name] !== value) {
+        loadingTrace.promiseRefs[name] = value;
+        loadingTrace.promiseStates[name] = { status: 'pending', observedWallMs: Date.now() };
+        Promise.resolve(value).then(
+          () => { loadingTrace.promiseStates[name] = { status: 'fulfilled', settledWallMs: Date.now() }; },
+          (error) => { loadingTrace.promiseStates[name] = { status: 'rejected', settledWallMs: Date.now(), error: String(error) }; },
+        );
+      }
+    }
+    let authored = null;
+    try { authored = window.SF?.authoredVisualReadiness?.() || null; } catch (_) {}
+    const lastProgress = loadingTrace.events[loadingTrace.events.length - 1] || null;
+    sample.loadingReadiness = {
+      wallMs: Date.now(),
+      elapsedMs: Date.now() - loadingTrace.startedWallMs,
+      stageId: lastProgress?.id || null,
+      authored: authored ? {
+        ready: authored.ready === true,
+        pipelineReady: authored.pipelineReady === true,
+        playerStatus: authored.playerStatus || null,
+        startingHubStatus: authored.startingHubStatus || null,
+        openingPending: Array.isArray(authored.openingPending) ? authored.openingPending.length : null,
+        openingPipelinePending: Array.isArray(authored.openingPipelinePending)
+          ? authored.openingPipelinePending.length
+          : null,
+      } : null,
+      pendingPipelineAdmissions: typeof render.pendingPipelineAdmissions === 'function'
+        ? render.pendingPipelineAdmissions()
+        : null,
+      pendingAuthoredGpuResidency: typeof render.pendingAuthoredGpuResidency === 'function'
+        ? render.pendingAuthoredGpuResidency()
+        : null,
+      promiseStates: { ...loadingTrace.promiseStates },
+      partLoads: Array.isArray(s?.diagnostics?.partLoads)
+        ? s.diagnostics.partLoads.slice(-5).map((entry) => ({
+            id: entry?.id ?? entry?.partId ?? null,
+            status: entry?.status ?? entry?.state ?? null,
+            error: entry?.error ? String(entry.error) : null,
+          }))
+        : [],
+    };
+  }
   const table = s?.render?.entityViewSync || null;
   const landmarkCount = Array.isArray(s?.entityList)
     ? s.entityList.reduce((count, entity) => (
@@ -246,8 +353,16 @@ async function waitUntilFlight(targetPage, routeLabel, timeoutMs = 120_000) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     const status = await targetPage.evaluate(readWitnessInPage).catch((error) => ({ dumpError: String(error) }));
-    if (status.mode === 'flight') return status;
-    if (status.mode === 'loading') log(`loading sim=${status.simTime} frames=${status.executedFrames}`);
+    if (status.mode === 'flight') {
+      loadingProgressEvents = await targetPage.evaluate(() => (
+        window.__SF_LOADING_READINESS_WITNESS__?.events || []
+      )).catch(() => []);
+      return status;
+    }
+    if (status.mode === 'loading') {
+      if (status.loadingReadiness) loadingReadinessSamples.push(status.loadingReadiness);
+      log(`loading stage=${status.loadingReadiness?.stageId || 'unknown'} sim=${status.simTime} frames=${status.executedFrames}`);
+    }
     await targetPage.waitForTimeout(1000);
   }
   throw new Error(`${routeLabel} never entered flight`);
@@ -396,11 +511,13 @@ try {
     await page.reload({ waitUntil: 'domcontentloaded', timeout: 180_000 });
     await page.waitForFunction(() => window.SF?.state && window.SF?.bus, null, { timeout: 90_000 });
     await dismissCinematic(page);
+    await installLoadingReadinessWitness(page);
     log(`continue from read-only player save slots=${save.slots.join(',')}`);
     await page.getByRole('button', { name: 'Continue', exact: true }).click({ timeout: 30_000 });
     entered = await waitUntilFlight(page, 'Continue');
   } else {
     log('new game');
+    await installLoadingReadinessWitness(page);
     await page.getByRole('button', { name: 'New Game', exact: true }).click({ timeout: 30_000 });
     await page.fill('#sf-ng-seed', String(FIXED_SEED));
     entered = await launchUntilFlight(page);
@@ -640,7 +757,7 @@ const markdown = `${formatRuntimeWitnessReport({
   consoleHits,
   pageErrors,
   gpu,
-})}${formatTableCensusSection(tableCensus, route)}${formatHitchAttributionSection(hitchAttribution, route)}${formatBloomPhaseSection(bloomPhases)}${formatSystemTimingSection(finalSystemTiming)}\n`;
+})}${formatLoadingReadinessSection(loadingProgressEvents, loadingReadinessSamples)}${formatTableCensusSection(tableCensus, route)}${formatHitchAttributionSection(hitchAttribution, route)}${formatBloomPhaseSection(bloomPhases)}${formatSystemTimingSection(finalSystemTiming)}\n`;
 const report = {
   schema: 'spaceface.runtimeWitness.probe.v1',
   verdict,
@@ -653,6 +770,10 @@ const report = {
   logs,
   gpu,
   route,
+  loadingReadiness: {
+    events: loadingProgressEvents,
+    samples: loadingReadinessSamples,
+  },
   tableCensus,
   hitchAttribution,
   bloomPhases,
