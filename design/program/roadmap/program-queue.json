@@ -7099,7 +7099,7 @@
       "priority": 329,
       "title": "Honest bloom-path phase timers",
       "kind": "performance",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-129.02"
       ],
@@ -7109,12 +7109,15 @@
       "paths": [
         "src/core/perfRuntime.js",
         "src/render/bloom.js",
-        "src/core/renderUpdatePhase.js"
+        "src/core/renderUpdatePhase.js",
+        "scripts/probe-runtime-witness.mjs"
       ],
       "checks": [
         "npm run probe:runtime-witness"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-129-03-bloom-phase-timers-REPORT.md"
+      ],
       "brief": "Reserved PQ-063. Wire or repair CPU/GPU phase clocks on the real bloom present path so A/B can name sim vs prep vs submit vs present. Do not change the picture."
     },
     {

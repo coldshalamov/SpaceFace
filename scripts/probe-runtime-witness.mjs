@@ -34,6 +34,7 @@ const snapshots = [];
 const canvasFrames = [];
 let probeInstrumentation = null;
 let finalHitchAttribution = null;
+let finalRenderWork = null;
 
 function log(line) {
   const text = `[${new Date().toISOString()}] ${line}`;
@@ -48,6 +49,11 @@ const TABLE_CENSUS_FIELDS = Object.freeze([
   'submitted',
   'resident',
   'landmarks',
+]);
+const BLOOM_PHASE_LABELS = Object.freeze([
+  'bloomScene',
+  'bloomDownsample',
+  'bloomComposite',
 ]);
 
 function summarizeTableCensus(samples) {
@@ -107,6 +113,15 @@ function formatHitchAttributionSection(histogram, route) {
     `- named coverage: ${(Number(histogram?.coverage) || 0).toFixed(3)}`,
     `- owner counts: ${namedCounts || 'none'}`,
   ].join('\n');
+}
+
+function formatBloomPhaseSection(phases) {
+  const lines = ['', '## Bloom subphases (PQ-129.03)'];
+  for (const label of BLOOM_PHASE_LABELS) {
+    const stat = phases?.[label];
+    lines.push(`- ${label}: samples ${stat?.samples ?? 0}; p95 ${(Number(stat?.p95) || 0).toFixed(1)} ms; avg ${(Number(stat?.avg) || 0).toFixed(1)} ms; max ${(Number(stat?.max) || 0).toFixed(1)} ms`);
+  }
+  return lines.join('\n');
 }
 
 function readWitnessInPage() {
@@ -328,6 +343,7 @@ try {
     await page.waitForTimeout(SAMPLE_EVERY_MS);
   }
   finalHitchAttribution = await page.evaluate(() => window.SF.state.perfRuntime.getHitchHistogram());
+  finalRenderWork = await page.evaluate(() => window.SF.state.perfRuntime.getReport().renderWork);
   await page.keyboard.up('KeyW').catch(() => {});
   const finalShot = path.join(OUT, 't-final.png');
   await captureCanvasFrame(page, finalShot, Date.now() - started).catch(() => {});
@@ -392,6 +408,10 @@ const hitchAttribution = finalHitchAttribution || {
   coverage: 0,
   counts: {},
 };
+const bloomPhases = Object.fromEntries(BLOOM_PHASE_LABELS.map((label) => [
+  label,
+  finalRenderWork?.[label] || null,
+]));
 const route = {
   seed: FIXED_SEED,
   sampleMs: SAMPLE_MS,
@@ -407,7 +427,7 @@ const markdown = `${formatRuntimeWitnessReport({
   consoleHits,
   pageErrors,
   gpu,
-})}${formatTableCensusSection(tableCensus, route)}${formatHitchAttributionSection(hitchAttribution, route)}\n`;
+})}${formatTableCensusSection(tableCensus, route)}${formatHitchAttributionSection(hitchAttribution, route)}${formatBloomPhaseSection(bloomPhases)}\n`;
 const report = {
   schema: 'spaceface.runtimeWitness.probe.v1',
   verdict,
@@ -422,6 +442,7 @@ const report = {
   route,
   tableCensus,
   hitchAttribution,
+  bloomPhases,
   error: primaryError ? String(primaryError && primaryError.stack || primaryError) : null,
   cleanupError: cleanupError ? String(cleanupError && cleanupError.stack || cleanupError) : null,
 };
