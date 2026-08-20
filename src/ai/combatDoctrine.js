@@ -411,8 +411,14 @@ function snapshot(record, target, directive, factionBehavior = null) {
     } else if (phase === 'reform') {
       maneuverKind = ManeuverKind.FORMATION;
       maneuverTargetId = null;
+    } else if (brawler && phase === 'commit') {
+      // Commit is a sticky knife-fight, not a flyby intercept pass. Keep the nose on the target
+      // and orbit inside gun range until the authored hold expires.
+      maneuverKind = ManeuverKind.ORBIT;
+      faceTarget = true;
     } else maneuverKind = ManeuverKind.INTERCEPT;
-    preferredRange = phase === 'extend' || phase === 'breakaway' ? 620 : (brawler ? 190 : 150);
+    preferredRange = phase === 'extend' || phase === 'breakaway' ? 620
+      : (brawler && phase === 'commit' ? 140 : (brawler ? 190 : 150));
     if (phase === 'strike' || phase === 'commit') allowedActionId = 'action_burst';
   } else if (doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER) {
     formationLocked = phase === 'reform';

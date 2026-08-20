@@ -136,6 +136,10 @@ export const countermeasures = {
           if (d.targetId === e.id && rng && rng() < cfg.divertPct) {
             d.targetId = cm.effect.decoyId;
             d.diverted = true;
+            d.divertPos = {
+              x: cm.effect.originX,
+              z: cm.effect.originZ,
+            };
           }
         } else if (cfg.kind === 'ecm') {
           // Jam guidance: zero the turnRate so the missile flies straight (weapons._steerHoming reads
@@ -174,10 +178,17 @@ export const countermeasures = {
       }
     }
 
-    // Spawn the timed effect. Chaff creates a decoy entity id (a static point missiles divert to);
-    // ECM just marks the effect active (the per-tick loop jams missiles in radius).
+    // Spawn the timed effect. Chaff creates a decoy point missiles divert to (not a live entity —
+    // weapons._steerHoming homes on divertPos). ECM just marks the effect active (the per-tick
+    // loop jams missiles in radius).
     const decoyId = cfg.kind === 'chaff' ? ('cm_decoy_' + e.id + '_' + Math.floor(this.state.simTime * 1000)) : null;
-    cm.effect = { cfg, decoyId, originX: e.pos.x, originZ: e.pos.z };
+    const decoy = cfg.kind === 'chaff' ? chaffDecoyPoint(e) : null;
+    cm.effect = {
+      cfg,
+      decoyId,
+      originX: decoy ? decoy.x : e.pos.x,
+      originZ: decoy ? decoy.z : e.pos.z,
+    };
     cm.effectT = cfg.durationS;
     cm.cooldownT = cfg.cooldownS;
 
@@ -234,6 +245,23 @@ function resetCountermeasureDiagnostics(diag) {
   diag.threatSpatialQueries = 0;
   diag.effectSpatialQueries = 0;
   diag.projectileCandidates = 0;
+}
+
+// One chaff cloud per deploy: behind and to starboard of the hull so inbound seekers turn off
+// the ship's centerline instead of flying through it toward a point sitting on the nose.
+const CHAFF_DECOY_BACK = 70;
+const CHAFF_DECOY_SIDE = 90;
+
+function chaffDecoyPoint(e) {
+  const rot = Number.isFinite(e && e.rot) ? e.rot : 0;
+  const px = e && e.pos && Number.isFinite(e.pos.x) ? e.pos.x : 0;
+  const pz = e && e.pos && Number.isFinite(e.pos.z) ? e.pos.z : 0;
+  const back = rot + Math.PI;
+  const side = rot + Math.PI * 0.5;
+  return {
+    x: px + Math.cos(back) * CHAFF_DECOY_BACK + Math.cos(side) * CHAFF_DECOY_SIDE,
+    z: pz + Math.sin(back) * CHAFF_DECOY_BACK + Math.sin(side) * CHAFF_DECOY_SIDE,
+  };
 }
 
 function ensureCountermeasureRuntime(host) {

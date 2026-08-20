@@ -268,6 +268,7 @@ export const heat = {
 
   _onKill(p) {
     if (!p || p.killerId !== this.state.playerId) return;
+    if (!isWantedHeatVictim(this.state, p, p.id)) return;
     // Lawful victims (patrol_lawman / factionLawful) are ALWAYS piracy — killing a cop is the
     // clearest criminal act even if you're already hostile to their faction.
     if (p.factionLawful) {
@@ -282,6 +283,7 @@ export const heat = {
 
   _onDamage(p) {
     if (!p || p.attackerId !== this.state.playerId) return; // only the player's own attacks
+    if (!isWantedHeatVictim(this.state, p, p.targetId)) return;
     if (p.factionLawful || !this._receiptTargetIsHostile(p)) {
       const now = this.state.simTime;
       if (now - this._lastHitT < 1.0) {
@@ -437,6 +439,26 @@ export function heatClearSecondsForLevel(level) {
   return HEAT_CLEAR_SECONDS_BY_LEVEL[i] || 0;
 }
 export const THRESHOLD = WANTED_THRESHOLD;
+
+// WANTED heat is a crime ledger for attacking people and places, not for shooting your own
+// plates, mines, mass-seeds, or other deployed devices. Self-hits (impulse charges, whip recoil)
+// also must not mint a WANTED incident.
+const WANTED_HEAT_VICTIM_TYPES = new Set(['ship', 'drone', 'station']);
+
+function isWantedHeatVictim(state, payload, victimId) {
+  if (victimId != null && state && victimId === state.playerId) return false;
+  const type = wantedHeatVictimType(state, payload, victimId);
+  if (type && !WANTED_HEAT_VICTIM_TYPES.has(type)) return false;
+  return true;
+}
+
+function wantedHeatVictimType(state, payload, victimId) {
+  if (payload && typeof payload.type === 'string' && payload.type) return payload.type;
+  const entity = victimId != null && state && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(victimId)
+    : null;
+  return entity && entity.type || null;
+}
 // PQ-019B: exported so the owner-invariant suite prices heat from the implementation rather than
 // from a copy of it, and so tuning has one home.
 export const INCIDENT_HEAT = Object.freeze({

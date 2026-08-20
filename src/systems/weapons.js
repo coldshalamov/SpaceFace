@@ -397,13 +397,17 @@ export const weapons = {
       const d = p.data;
       if (!d || d.kind !== 'missile') continue;
       if (!d.armed) { d.armed = true; }
-      const tgt = d.targetId != null ? this.helpers.getEntity(d.targetId) : null;
+      const decoy = missileDecoyAim(d);
+      const tgt = decoy ? null : (d.targetId != null ? this.helpers.getEntity(d.targetId) : null);
+      const aim = decoy || (tgt && tgt.pos);
       const turnRate = d.turnRate || 0;
       const speedMax = d.projSpeed || Math.hypot(p.vel.x, p.vel.z) || 1;
       let cur = Math.atan2(p.vel.z, p.vel.x);
 
-      // Base guidance condition (legacy behavior when the flag is off — byte-identical to before).
-      let guiding = !!(tgt && tgt.alive && turnRate > 0);
+      // Base guidance: a live target, or a chaff decoy point written by countermeasures. The decoy
+      // is not a real entity — looking it up used to drop guidance and fly the round straight into
+      // the ship it was already tracking.
+      let guiding = !!(aim && turnRate > 0 && (decoy || (tgt && tgt.alive)));
       let motorOn = true;
       if (missileV2) {
         // Fuel: burn for MISSILE_FUEL_S, then the motor dies and the missile coasts (no guidance).
@@ -414,16 +418,16 @@ export const weapons = {
         } else if (guiding) {
           // Seeker line-of-sight: hold the solution only while the target stays in the forward cone
           // and within seeker range. Break line of sight (juke behind it) and it flies straight.
-          const toT = Math.atan2(tgt.pos.z - p.pos.z, tgt.pos.x - p.pos.x);
+          const toT = Math.atan2(aim.z - p.pos.z, aim.x - p.pos.x);
           const off = Math.abs(wrapAngle(toT - cur));
-          const dx = tgt.pos.x - p.pos.x, dz = tgt.pos.z - p.pos.z;
+          const dx = aim.x - p.pos.x, dz = aim.z - p.pos.z;
           const inRange = (dx * dx + dz * dz) <= MISSILE_SEEKER_RANGE * MISSILE_SEEKER_RANGE;
           if (off > MISSILE_SEEKER_CONE || !inRange) guiding = false;
         }
       }
 
       if (guiding) {
-        const desired = Math.atan2(tgt.pos.z - p.pos.z, tgt.pos.x - p.pos.x);
+        const desired = Math.atan2(aim.z - p.pos.z, aim.x - p.pos.x);
         const diff = wrapAngle(desired - cur);
         const step = Math.max(-turnRate * dt, Math.min(turnRate * dt, diff));
         cur = wrapAngle(cur + step);
@@ -1140,6 +1144,14 @@ export function solveLeadAngle(shooter, tgt, projSpeed) {
   const aimx = px + tv.x * t;
   const aimz = pz + tv.z * t;
   return Math.atan2(aimz, aimx);
+}
+
+function missileDecoyAim(d) {
+  if (!d || d.diverted !== true || !d.divertPos) return null;
+  const x = d.divertPos.x;
+  const z = d.divertPos.z;
+  if (!Number.isFinite(x) || !Number.isFinite(z)) return null;
+  return d.divertPos;
 }
 
 function npcFireTargetVisibleOnPlayerRadar(e, state) {

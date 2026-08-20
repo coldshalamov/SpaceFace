@@ -28,6 +28,10 @@ const LAWFUL_STATION_FACTIONS = new Set([
 ]);
 const DOCTRINE_FIRE_PHASES = Object.freeze({
   interceptor_flyby: new Set(['strike', 'commit']),
+  // Bruiser Brawler ordinary fights use this doctrine id, not interceptor_flyby. `commit` is the
+  // advertised gun window (combatDoctrine enter() sets fireWindow on the same phase). Missing this
+  // key fail-closed every live brawler shot even while the snapshot said the guns were hot.
+  brawler_commit: new Set(['commit']),
   ranged_disengager: new Set(['fire_window']),
   tether_control_raider: new Set(),
   // The anchor's guns are live only while it is committed to its drag-field hold. Its authored
@@ -35,6 +39,8 @@ const DOCTRINE_FIRE_PHASES = Object.freeze({
   // resolved like a passive hauler and the whole fight fell to the escorts. The 30-tick
   // field_spool telegraph always precedes this phase.
   field_anchor_controller: new Set(['anchor_hold']),
+  // Iron Maw / capital hulls telegraph on broadside_charge, then fire on broadside_fire.
+  capital_broadside: new Set(['broadside_fire']),
 });
 const ROBBERY_ESCALATION_TRIGGERS = new Set(['explicit_refusal', 'ignored_demand', 'player_attack']);
 const SCENARIO_47A_SCAVENGERS = new Map([
@@ -421,7 +427,12 @@ export function protectedStationAt(state, entity) {
   }
   for (const station of stations) {
     if (!station || station.alive === false || !station.pos) continue;
-    const stationId = station.data && station.data.stationId || station.stationId || station.id;
+    // Jump-gate proxies are type=station with a lawful faction, but they are transit
+    // infrastructure. Falling through to the numeric entity id minted a 600-WU sanctuary
+    // around every gate.
+    if (station.data && station.data.isGate) continue;
+    const stationId = station.data && station.data.stationId || station.stationId || null;
+    if (typeof stationId !== 'string' || !stationId) continue;
     const factionId = station.factionId || station.data && station.data.factionId || null;
     if (stationId !== 'station_helios' && !LAWFUL_STATION_FACTIONS.has(factionId)) continue;
     const rings = bubblesFor(station);

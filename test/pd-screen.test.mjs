@@ -378,6 +378,8 @@ function pdDecision(entityId, targetId) {
         reason: 'combat_doctrine:interceptor_flyby:strike',
       },
     },
+    // Visible fire stays closed until SG-03 admits the strike action (aiFireIntent admittedFireWindow).
+    action: { actionId: 'action_burst' },
     combatDoctrine: { fireWindow: true, doctrineId: 'interceptor_flyby', phase: 'strike' },
   };
 }

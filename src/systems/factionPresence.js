@@ -420,7 +420,10 @@ export const factionPresence = {
     // Reconcile against the live entity set rather than consuming combat-death events here. This
     // keeps the Understory strictly downstream of lossLedger:recorded while still promoting a
     // surviving Concord patrol for Pitborn on the next deterministic simulation tick.
-    if (shouldRunOnTick(this.state.tick, 'factionPresence:pitbornBind', 8)) {
+    if (
+      shouldRunOnTick(this.state.tick, 'factionPresence:pitbornBind', 8)
+      || this._boundPitbornConcordIsGone()
+    ) {
       this._bindPitbornConcordTargets();
     }
     this._updateFulfillmentRoutes();
@@ -566,6 +569,21 @@ export const factionPresence = {
       : null);
     if (!entity || !['faction_scn', 'faction_pitborn'].includes(entity.factionId)) return;
     this._bindPitbornConcordTargets();
+  },
+
+  _boundPitbornConcordIsGone() {
+    for (const entity of this.state.entityList || []) {
+      if (!entity || entity.alive === false) continue;
+      const marker = entity.data && entity.data.factionPresence;
+      const ai = entity.data && entity.data.ai;
+      if (!marker || marker.factionId !== 'faction_pitborn' || !ai || ai.passive) continue;
+      if (ai.retaliationTargetId == null) continue;
+      const target = this.state.entities && this.state.entities.get
+        ? this.state.entities.get(ai.retaliationTargetId)
+        : null;
+      if (!target || target.alive === false) return true;
+    }
+    return false;
   },
 
   _bindPitbornConcordTargets() {
