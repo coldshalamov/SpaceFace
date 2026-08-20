@@ -46,6 +46,11 @@ test('a named phase that owns the excess is the hitch owner', () => {
   assert.equal(unknown.attributed, false);
 });
 
+test('a nearly coextensive detailed phase outranks its broad container, but a sliver does not', () => {
+  assert.equal(classifyHitchFrame({ frameMs: 60, compileMs: 40, presentMs: 45 }).owner, 'compile');
+  assert.equal(classifyHitchFrame({ frameMs: 60, compileMs: 10, simMs: 40 }).owner, 'sim');
+});
+
 test('histogram coverage is the share of named hitch owners', () => {
   const histogram = createHitchHistogram();
   accumulateHitch(histogram, null);
@@ -67,6 +72,21 @@ test('vfx-owned hitches are named vfx', () => {
   const classified = classifyHitchFrame({ frameMs: 50, vfxMs: 30, simMs: 2 });
   assert.equal(classified.owner, 'vfx');
   assert.equal(classified.attributed, true);
+});
+
+test('an external callback gap is named scheduling only when it owns the frame', () => {
+  const scheduled = classifyHitchFrame({ frameMs: 50, scheduleMs: 38, presentMs: 4 });
+  assert.equal(scheduled.owner, 'externalScheduling');
+  assert.equal(scheduled.attributed, true);
+
+  const sliver = classifyHitchFrame({ frameMs: 36, scheduleMs: 6, presentMs: 5 });
+  assert.equal(sliver.owner, 'unknown');
+  assert.equal(sliver.attributed, false);
+});
+
+test('untracked callback and feel work remain distinct owners', () => {
+  assert.equal(classifyHitchFrame({ frameMs: 70, untrackedMs: 45 }).owner, 'callbackUntracked');
+  assert.equal(classifyHitchFrame({ frameMs: 50, feelMs: 30 }).owner, 'feel');
 });
 
 test('a one-vsync hitch is unknown unless one phase owns the frame', () => {
@@ -91,12 +111,83 @@ test('live hitch attribution pairs the interval with the previous frame phases',
   const perf = ensurePerfRuntime(state);
   perf.setHitchAttributionEnabled(true);
   perf.beginFrame(0.016);
-  perf.recordPhase('sim', 60);
+  perf.recordSimFrame(60);
   perf.recordFrameCallback(60);
   perf.beginFrame(0.062);
   const report = perf.getHitchHistogram();
   assert.equal(report.hitches, 1);
   assert.equal(report.counts.sim, 1);
+});
+
+test('live sim attribution uses total sim-frame work, not only the final fixed step', () => {
+  const state = { entityList: [], settings: { video: {} } };
+  const perf = ensurePerfRuntime(state);
+  perf.setHitchAttributionEnabled(true);
+  perf.beginFrame(0.016, 0, 0);
+  perf.recordStepTotal(5);
+  perf.recordSimFrame(40);
+  perf.recordFrameCallback(45);
+  perf.beginFrame(0.05, 50, 50);
+  const report = perf.getHitchHistogram();
+  assert.equal(report.counts.sim, 1);
+});
+
+test('live callback-untracked attribution uses the preceding callback remainder', () => {
+  const state = { entityList: [], settings: { video: {} } };
+  const perf = ensurePerfRuntime(state);
+  perf.setHitchAttributionEnabled(true);
+  perf.beginFrame(0.016, 0, 0);
+  perf.recordFrameCallback(40);
+  perf.beginFrame(0.05, 50, 50);
+  const report = perf.getHitchHistogram();
+  assert.equal(report.counts.callbackUntracked, 1);
+});
+
+test('live hitch attribution uses the callback gap for the interval that just ended', () => {
+  const state = { entityList: [], settings: { video: {} } };
+  const perf = ensurePerfRuntime(state);
+  perf.setHitchAttributionEnabled(true);
+  perf.beginFrame(0.016, 0, 0);
+  perf.recordFrameCallback(5);
+  perf.beginFrame(0.05, 50, 50);
+  const report = perf.getHitchHistogram();
+  assert.equal(report.hitches, 1);
+  assert.equal(report.counts.externalScheduling, 1);
+  assert.equal(report.unknown, 0);
+});
+
+test('live hitch attribution joins detailed render work to the exact frame', () => {
+  for (const [label, owner] of [
+    ['pipelineAdmissionSync', 'compile'],
+    ['gpuResidencyUpload', 'upload'],
+    ['compose', 'compose'],
+    ['bloomScene', 'bloom'],
+  ]) {
+    const state = { entityList: [], settings: { video: {} } };
+    const perf = ensurePerfRuntime(state);
+    perf.setRenderWorkEnabled(true);
+    perf.setHitchAttributionEnabled(true);
+    perf.beginFrame(0.016, 0, 0);
+    perf.recordPhase('render', 45);
+    perf.recordRenderWork(label, 35);
+    perf.recordFrameCallback(50);
+    perf.beginFrame(0.05, 50, 50);
+    const report = perf.getHitchHistogram();
+    assert.equal(report.counts[owner], 1, `${label} should map to ${owner}`);
+    assert.equal(report.counts.present, 0, `${label} should be removed from the present residual`);
+  }
+});
+
+test('completed autosave blocking work is available to the next hitch interval', () => {
+  const state = { entityList: [], settings: { video: {} } };
+  const perf = ensurePerfRuntime(state);
+  perf.setHitchAttributionEnabled(true);
+  perf.beginFrame(0.016, 0, 0);
+  perf.recordSave({ autosave: true, totalMs: 45, totalBlockingMs: 40, ok: true });
+  perf.recordFrameCallback(45);
+  perf.beginFrame(0.05, 50, 50);
+  const report = perf.getHitchHistogram();
+  assert.equal(report.counts.autosave, 1);
 });
 
 test('live hitch attribution is off by default and reset clears the ring', () => {

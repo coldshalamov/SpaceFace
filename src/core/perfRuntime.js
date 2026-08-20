@@ -10,6 +10,27 @@ import {
 const RING_N = 180;
 const BACKGROUND_JOB_RING_N = 128;
 const MAX_QUALIFICATION_INTERVAL_SAMPLES = 2_000_000;
+const FRAME_HITCH_DETAIL_OWNERS = Object.freeze([
+  'compile',
+  'upload',
+  'compose',
+  'meshBuild',
+  'shadow',
+  'speedLines',
+  'bloom',
+  'gc',
+  'restore',
+  'autosave',
+]);
+const RENDER_WORK_HITCH_OWNER = Object.freeze({
+  pipelineAdmissionSync: 'compile',
+  gpuResidencyUpload: 'upload',
+  composition: 'compose',
+  compose: 'compose',
+  bloomScene: 'bloom',
+  bloomDownsample: 'bloom',
+  bloomComposite: 'bloom',
+});
 // Detailed per-system timing is an attribution sampler, not an always-on trace. A prime-length
 // schedule avoids locking onto common 2/3/4/5/6/10/12/15-tick owner cadences while retaining
 // 8 representative ticks per 31-tick cycle. A five-second 60 Hz window still yields about 77
@@ -29,6 +50,23 @@ function nowMs() {
   return (typeof performance !== 'undefined' && performance && typeof performance.now === 'function')
     ? performance.now()
     : Date.now();
+}
+
+function createFrameHitchOwnerTotals() {
+  const totals = Object.create(null);
+  for (const owner of FRAME_HITCH_DETAIL_OWNERS) totals[owner] = 0;
+  return totals;
+}
+
+function resetFrameHitchOwnerTotals(totals) {
+  for (const owner of FRAME_HITCH_DETAIL_OWNERS) totals[owner] = 0;
+}
+
+function renderWorkHitchOwner(name) {
+  if (Object.prototype.hasOwnProperty.call(RENDER_WORK_HITCH_OWNER, name)) {
+    return RENDER_WORK_HITCH_OWNER[name];
+  }
+  return FRAME_HITCH_DETAIL_OWNERS.includes(name) ? name : null;
 }
 
 function createStat() {
@@ -285,6 +323,8 @@ export function ensurePerfRuntime(state) {
   // Opt-in hitch owner ring. Default off so ordinary frames pay no classifier work.
   let hitchAttributionEnabled = false;
   const hitchHistogram = createHitchHistogram();
+  const frameHitchOwnerMs = createFrameHitchOwnerTotals();
+  const frameNestedPresentationMs = createFrameHitchOwnerTotals();
   // Background-job evidence is opt-in. The live queue pays one branch at job boundaries while
   // ordinary frames pay nothing; enabled captures use a fixed-capacity record ring.
   let backgroundJobTrackingEnabled = false;
@@ -584,21 +624,52 @@ export function ensurePerfRuntime(state) {
       }
       displayFrameId++;
       const ms = Number.isFinite(frameDt) ? frameDt * 1000 : 0;
+      const nextCallbackStartMs = Number.isFinite(callbackStartMs) ? callbackStartMs : null;
+      const nextCallbackIntervalMs = nextCallbackStartMs !== null && previousCallbackStartMs !== null
+        ? Math.max(0, nextCallbackStartMs - previousCallbackStartMs)
+        : 0;
+      const rawCallbackGapMs = nextCallbackStartMs !== null && previousCallbackEndMs !== null
+        ? Math.max(0, nextCallbackStartMs - previousCallbackEndMs)
+        : 0;
+      const nextExternalCallbackGapMs = Math.max(0, rawCallbackGapMs - pendingExternalAdmissionMs);
+      const nextCallbackDispatchLagMs = nextCallbackStartMs !== null
+        && Number.isFinite(callbackTimestampMs)
+        ? Math.max(0, nextCallbackStartMs - callbackTimestampMs)
+        : 0;
       // lastFrameDtMs is the interval that just ended. framePhaseMs still holds that
       // interval's work until we reset it below.
       if (hitchAttributionEnabled) {
+        let nestedPresentationMs = 0;
+        for (const owner of FRAME_HITCH_DETAIL_OWNERS) {
+          nestedPresentationMs += frameNestedPresentationMs[owner];
+        }
         if (isHitchFrame(ms)) {
           accumulateHitch(hitchHistogram, classifyHitchFrame({
             frameMs: ms,
-            simMs: framePhaseMs.sim,
-            presentMs: framePhaseMs.render,
+            simMs: framePhaseMs.simFrame,
+            presentMs: Math.max(0, framePhaseMs.render - nestedPresentationMs),
             uiMs: framePhaseMs.ui,
             vfxMs: framePhaseMs.vfx,
+            feelMs: framePhaseMs.feel,
+            untrackedMs: frameUntrackedStats.last,
             admissionMs: pendingAdmissionMs,
+            scheduleMs: Math.max(nextExternalCallbackGapMs, nextCallbackDispatchLagMs),
+            compileMs: frameHitchOwnerMs.compile,
+            uploadMs: frameHitchOwnerMs.upload,
+            composeMs: frameHitchOwnerMs.compose,
+            meshBuildMs: frameHitchOwnerMs.meshBuild,
+            shadowMs: frameHitchOwnerMs.shadow,
+            speedLinesMs: frameHitchOwnerMs.speedLines,
+            bloomMs: frameHitchOwnerMs.bloom,
+            gcMs: frameHitchOwnerMs.gc,
+            restoreMs: frameHitchOwnerMs.restore,
+            autosaveMs: frameHitchOwnerMs.autosave,
           }));
         } else {
           accumulateHitch(hitchHistogram, null);
         }
+        resetFrameHitchOwnerTotals(frameHitchOwnerMs);
+        resetFrameHitchOwnerTotals(frameNestedPresentationMs);
       }
       previousCallbackMs = frameCallbackStats.last;
       previousSimFrameMs = framePhaseMs.simFrame;
@@ -614,12 +685,10 @@ export function ensurePerfRuntime(state) {
       fixedFrameBudgetMs = Number.isFinite(frameBudgetMs) && frameBudgetMs > 0
         ? frameBudgetMs
         : 1000 / 60;
-      currentCallbackStartMs = Number.isFinite(callbackStartMs) ? callbackStartMs : null;
+      currentCallbackStartMs = nextCallbackStartMs;
       callbackOpen = true;
       loop.lastFrameDtMs = ms;
-      loop.callbackIntervalMs = currentCallbackStartMs !== null && previousCallbackStartMs !== null
-        ? Math.max(0, currentCallbackStartMs - previousCallbackStartMs)
-        : 0;
+      loop.callbackIntervalMs = nextCallbackIntervalMs;
       if (currentCallbackStartMs !== null && previousCallbackStartMs !== null) {
         sample(frameCallbackIntervalStats, loop.callbackIntervalMs);
         if (displayIntervalMs !== null) {
@@ -643,14 +712,8 @@ export function ensurePerfRuntime(state) {
       pendingAdmissionMs = 0;
       pendingExternalAdmissionMs = 0;
       loop.admissionMs = frameAdmissionMs;
-      const rawCallbackGapMs = currentCallbackStartMs !== null && previousCallbackEndMs !== null
-        ? Math.max(0, currentCallbackStartMs - previousCallbackEndMs)
-        : 0;
-      loop.externalCallbackGapMs = Math.max(0, rawCallbackGapMs - frameExternalAdmissionMs);
-      loop.callbackDispatchLagMs = currentCallbackStartMs !== null
-        && Number.isFinite(callbackTimestampMs)
-        ? Math.max(0, currentCallbackStartMs - callbackTimestampMs)
-        : 0;
+      loop.externalCallbackGapMs = nextExternalCallbackGapMs;
+      loop.callbackDispatchLagMs = nextCallbackDispatchLagMs;
       loop.backlogCause = 'none';
       frameAccountedMs = 0;
       sample(frameStats, ms);
@@ -719,6 +782,11 @@ export function ensurePerfRuntime(state) {
       // Defense-in-depth: no ring write when measurement is disabled.
       if (!renderWorkEnabled) return;
       sample(statForRenderWork(name), ms);
+      if (!hitchAttributionEnabled || !Number.isFinite(ms) || ms <= 0) return;
+      const owner = renderWorkHitchOwner(name);
+      if (!owner) return;
+      frameHitchOwnerMs[owner] += ms;
+      if (callbackOpen) frameNestedPresentationMs[owner] += ms;
     },
     recordPhase(name, ms) {
       const stat = phaseStats[name];
@@ -825,6 +893,12 @@ export function ensurePerfRuntime(state) {
         sample(saveStats.all, totalMs);
         if (autosave) sample(saveStats.autosave, totalMs);
       }
+      if (hitchAttributionEnabled && autosave) {
+        const blockingMs = Number(timing.totalBlockingMs);
+        if (Number.isFinite(blockingMs) && blockingMs > 0) {
+          frameHitchOwnerMs.autosave += blockingMs;
+        }
+      }
       for (const [field, stat] of [
         ['elapsedMs', saveStats.elapsed],
         ['totalCpuMs', saveStats.totalCpu],
@@ -857,6 +931,8 @@ export function ensurePerfRuntime(state) {
       hitchHistogram.named = 0;
       hitchHistogram.unknown = 0;
       for (const owner of Object.keys(hitchHistogram.counts)) hitchHistogram.counts[owner] = 0;
+      resetFrameHitchOwnerTotals(frameHitchOwnerMs);
+      resetFrameHitchOwnerTotals(frameNestedPresentationMs);
       resetBackgroundJobRecords();
       resetStat(frameStats);
       resetStat(frameCallbackStats);

@@ -3386,11 +3386,15 @@ function monotonicNow() {
     : Date.now();
 }
 
-function recordAdmissionSlice(startedAtMs) {
+function recordAdmissionSlice(startedAtMs, hitchOwner = null) {
   const elapsedMs = monotonicNow() - startedAtMs;
   const perf = authoredRuntimeState()?.perfRuntime;
   if (perf && typeof perf.recordAdmissionWork === 'function') {
     perf.recordAdmissionWork(elapsedMs);
+  }
+  if (hitchOwner && perf?.renderWorkEnabled === true
+      && typeof perf.recordRenderWork === 'function') {
+    perf.recordRenderWork(hitchOwner, elapsedMs);
   }
 }
 
@@ -3754,7 +3758,7 @@ async function upgradeBoundary(boundary, fallbackRoot, entity, renderer, scene, 
     try {
       authored = buildComposedShip(entity, library, scene, boundary, options);
     } finally {
-      recordAdmissionSlice(compositionStartedAtMs);
+      recordAdmissionSlice(compositionStartedAtMs, 'compose');
       const tier1 = tier1CausalCounters();
       if (tier1) tier1.countAuthoredAdmissionJob('composition');
     }

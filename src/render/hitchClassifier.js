@@ -22,6 +22,9 @@ export const HITCH_OWNERS = Object.freeze([
   'ui',
   'admission',
   'vfx',
+  'feel',
+  'callbackUntracked',
+  'externalScheduling',
   'unknown',
 ]);
 
@@ -41,9 +44,25 @@ const PHASE_TO_OWNER = Object.freeze({
   uiMs: 'ui',
   admissionMs: 'admission',
   vfxMs: 'vfx',
+  feelMs: 'feel',
+  untrackedMs: 'callbackUntracked',
+  scheduleMs: 'externalScheduling',
   renderMs: 'present',
   presentationMs: 'present',
 });
+
+const DETAILED_HITCH_OWNERS = new Set([
+  'compile',
+  'upload',
+  'compose',
+  'meshBuild',
+  'shadow',
+  'speedLines',
+  'bloom',
+  'gc',
+  'restore',
+  'autosave',
+]);
 
 export function isHitchFrame(frameMs, thresholdMs = HITCH_THRESHOLD_MS) {
   return Number.isFinite(Number(frameMs)) && Number(frameMs) > thresholdMs;
@@ -64,6 +83,8 @@ export function classifyHitchFrame(sample = {}, options = {}) {
   const excess = frameMs - thresholdMs;
   let bestOwner = 'unknown';
   let bestMs = 0;
+  let bestDetailedOwner = 'unknown';
+  let bestDetailedMs = 0;
   const phases = {};
 
   for (const [key, owner] of Object.entries(PHASE_TO_OWNER)) {
@@ -74,6 +95,18 @@ export function classifyHitchFrame(sample = {}, options = {}) {
       bestMs = phases[owner];
       bestOwner = owner;
     }
+    if (DETAILED_HITCH_OWNERS.has(owner) && phases[owner] > bestDetailedMs) {
+      bestDetailedMs = phases[owner];
+      bestDetailedOwner = owner;
+    }
+  }
+
+  // Exact work (compile/upload/compose/etc.) can be nested inside a broader measured container.
+  // Prefer it only when it explains nearly all of that container; a small detailed slice must not
+  // steal a frame genuinely dominated by simulation, presentation, or scheduling.
+  if (bestDetailedMs > 0 && bestDetailedMs >= bestMs * 0.75) {
+    bestMs = bestDetailedMs;
+    bestOwner = bestDetailedOwner;
   }
 
   // Blame a phase only if it owns a real share of the *frame*, not a sliver of

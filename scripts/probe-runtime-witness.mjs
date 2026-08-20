@@ -32,7 +32,8 @@ const consoleHits = [];
 const pageErrors = [];
 const snapshots = [];
 const canvasFrames = [];
-let censusInstrumentation = null;
+let probeInstrumentation = null;
+let finalHitchAttribution = null;
 
 function log(line) {
   const text = `[${new Date().toISOString()}] ${line}`;
@@ -90,6 +91,22 @@ function formatTableCensusSection(summary, route) {
     '- submitted is the tabletop policy population (glass + runway + forced roots), not WebGL draw calls.',
   );
   return lines.join('\n');
+}
+
+function formatHitchAttributionSection(histogram, route) {
+  const counts = histogram && histogram.counts ? histogram.counts : {};
+  const namedCounts = Object.entries(counts)
+    .filter(([, count]) => Number(count) > 0)
+    .map(([owner, count]) => `${owner} ${count}`)
+    .join('; ');
+  return [
+    '',
+    '## Live hitch attribution (PQ-129.02)',
+    `- bounded instrumentation: classifier ${route.instrumentation?.previousHitchAttributionEnabled === true ? 'already on' : 'enabled for this probe only'}; prior state restored before shutdown: ${route.instrumentation?.restored === true}`,
+    `- observed frames: ${histogram?.frames ?? 0}; hitches: ${histogram?.hitches ?? 0}; named: ${histogram?.named ?? 0}; unknown: ${histogram?.unknown ?? 0}`,
+    `- named coverage: ${(Number(histogram?.coverage) || 0).toFixed(3)}`,
+    `- owner counts: ${namedCounts || 'none'}`,
+  ].join('\n');
 }
 
 function readWitnessInPage() {
@@ -155,6 +172,9 @@ function readWitnessInPage() {
     renderWorkEnabled: s?.perfRuntime?.renderWorkEnabled === true,
     hitchAttributionEnabled: s?.perfRuntime?.hitchAttributionEnabled === true,
   };
+  sample.hitchAttribution = typeof s?.perfRuntime?.getHitchHistogram === 'function'
+    ? s.perfRuntime.getHitchHistogram()
+    : null;
   return sample;
 }
 
@@ -260,23 +280,35 @@ try {
   const entered = await launchUntilFlight(page);
   log(`entered flight ${JSON.stringify({ mode: entered.mode, simTime: entered.simTime })}`);
 
-  censusInstrumentation = await page.evaluate(() => {
+  probeInstrumentation = await page.evaluate(() => {
     const perf = window.SF?.state?.perfRuntime;
     const previousRenderWorkEnabled = perf?.renderWorkEnabled === true;
-    const available = typeof perf?.setRenderWorkEnabled === 'function';
-    if (available) perf.setRenderWorkEnabled(true);
+    const previousHitchAttributionEnabled = perf?.hitchAttributionEnabled === true;
+    const available = typeof perf?.setRenderWorkEnabled === 'function'
+      && typeof perf?.setHitchAttributionEnabled === 'function'
+      && typeof perf?.reset === 'function'
+      && typeof perf?.getHitchHistogram === 'function';
+    if (available) {
+      perf.reset();
+      perf.setRenderWorkEnabled(true);
+      perf.setHitchAttributionEnabled(true);
+    }
     return {
       available,
       previousRenderWorkEnabled,
+      previousHitchAttributionEnabled,
       renderWorkEnabled: perf?.renderWorkEnabled === true,
+      hitchAttributionEnabled: perf?.hitchAttributionEnabled === true,
     };
   });
-  if (censusInstrumentation?.renderWorkEnabled !== true) {
-    throw new Error('Runtime witness could not enable the bounded tabletop census gate');
+  if (probeInstrumentation?.renderWorkEnabled !== true
+      || probeInstrumentation?.hitchAttributionEnabled !== true) {
+    throw new Error('Runtime witness could not enable bounded census and hitch attribution');
   }
   await page.waitForTimeout(250);
 
   await page.locator('#gl-canvas').click({ timeout: 10_000 }).catch(() => {});
+  await page.evaluate(() => window.SF.state.perfRuntime.reset());
   await page.keyboard.down('KeyW');
   const started = Date.now();
   let shotIndex = 0;
@@ -295,6 +327,7 @@ try {
     }
     await page.waitForTimeout(SAMPLE_EVERY_MS);
   }
+  finalHitchAttribution = await page.evaluate(() => window.SF.state.perfRuntime.getHitchHistogram());
   await page.keyboard.up('KeyW').catch(() => {});
   const finalShot = path.join(OUT, 't-final.png');
   await captureCanvasFrame(page, finalShot, Date.now() - started).catch(() => {});
@@ -303,13 +336,25 @@ try {
   log(`probe failed: ${error && error.stack ? error.stack : error}`);
 } finally {
   await page?.keyboard.up('KeyW').catch(() => {});
-  if (page && censusInstrumentation?.available === true) {
-    const restoredState = await page.evaluate((previousRenderWorkEnabled) => {
+  if (page && probeInstrumentation?.available === true) {
+    const restoredState = await page.evaluate((previous) => {
       const perf = window.SF?.state?.perfRuntime;
-      perf?.setRenderWorkEnabled?.(previousRenderWorkEnabled === true);
-      return perf?.renderWorkEnabled === true;
-    }, censusInstrumentation.previousRenderWorkEnabled).catch(() => null);
-    censusInstrumentation.restored = restoredState === censusInstrumentation.previousRenderWorkEnabled;
+      perf?.setRenderWorkEnabled?.(previous.renderWorkEnabled === true);
+      perf?.setHitchAttributionEnabled?.(previous.hitchAttributionEnabled === true);
+      return {
+        renderWorkEnabled: perf?.renderWorkEnabled === true,
+        hitchAttributionEnabled: perf?.hitchAttributionEnabled === true,
+      };
+    }, {
+      renderWorkEnabled: probeInstrumentation.previousRenderWorkEnabled,
+      hitchAttributionEnabled: probeInstrumentation.previousHitchAttributionEnabled,
+    }).catch(() => null);
+    probeInstrumentation.restored = !!restoredState
+      && restoredState.renderWorkEnabled === probeInstrumentation.previousRenderWorkEnabled
+      && restoredState.hitchAttributionEnabled === probeInstrumentation.previousHitchAttributionEnabled;
+    if (probeInstrumentation.restored !== true && !cleanupError) {
+      cleanupError = new Error('Runtime witness failed to restore bounded performance instrumentation');
+    }
   }
   if (app) {
     try {
@@ -339,13 +384,21 @@ const verdict = classifyRuntimeWitness(moving, { canvasHashes });
 const tableCensus = summarizeTableCensus(moving);
 const firstMoving = moving[0] || null;
 const lastMoving = moving[moving.length - 1] || null;
+const hitchAttribution = finalHitchAttribution || {
+  frames: 0,
+  hitches: 0,
+  named: 0,
+  unknown: 0,
+  coverage: 0,
+  counts: {},
+};
 const route = {
   seed: FIXED_SEED,
   sampleMs: SAMPLE_MS,
   sampleEveryMs: SAMPLE_EVERY_MS,
   simDelta: (Number(lastMoving?.simTime) || 0) - (Number(firstMoving?.simTime) || 0),
   executedFrameDelta: (Number(lastMoving?.executedFrames) || 0) - (Number(firstMoving?.executedFrames) || 0),
-  instrumentation: censusInstrumentation,
+  instrumentation: probeInstrumentation,
 };
 const markdown = `${formatRuntimeWitnessReport({
   verdict,
@@ -354,7 +407,7 @@ const markdown = `${formatRuntimeWitnessReport({
   consoleHits,
   pageErrors,
   gpu,
-})}${formatTableCensusSection(tableCensus, route)}\n`;
+})}${formatTableCensusSection(tableCensus, route)}${formatHitchAttributionSection(hitchAttribution, route)}\n`;
 const report = {
   schema: 'spaceface.runtimeWitness.probe.v1',
   verdict,
@@ -368,6 +421,7 @@ const report = {
   gpu,
   route,
   tableCensus,
+  hitchAttribution,
   error: primaryError ? String(primaryError && primaryError.stack || primaryError) : null,
   cleanupError: cleanupError ? String(cleanupError && cleanupError.stack || cleanupError) : null,
 };

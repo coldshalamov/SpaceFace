@@ -7069,7 +7069,7 @@
       "priority": 328,
       "title": "Live hitch classifier on the player path",
       "kind": "performance",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-129.01"
       ],
@@ -7080,13 +7080,17 @@
         "src/render/hitchClassifier.js",
         "src/core/perfRuntime.js",
         "src/core/presentationRunner.js",
+        "src/render/partsLibrary.js",
+        "scripts/probe-runtime-witness.mjs",
         "test/hitch-classifier.test.mjs"
       ],
       "checks": [
         "node --test test/hitch-classifier.test.mjs",
         "npm run probe:runtime-witness"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-129-02-live-hitch-classifier-REPORT.md"
+      ],
       "brief": "Reserved PQ-062. Enable hitch attribution for a headed window only so compose, compile, upload, autosave, and present are distinct on frames >32 ms. Production default stays off. A 2026-08-20 witness named presentation/admission lumps; this leaf splits them."
     },
     {
