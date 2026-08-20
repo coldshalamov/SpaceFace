@@ -217,6 +217,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
   let pendingJournalFullRebuild = false;
   let pendingJournalRebuildGeneration = 0;
   let postRestoreFramePending = false;
+  let previousPresentationOverrun = false;
   let acknowledgedJournalSequence = presentationJournal
     && presentationJournal.getPendingCount?.() > 0
     && presentationJournal.getOldestSequence?.() > 0
@@ -270,6 +271,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     stepsThisFrame: 0,
     maxStepsObserved: 0,
     shedBacklogFrames: 0,
+    recoveryCappedFrameCount: 0,
     journalAvailable: presentationJournal !== null,
     journalRangeMergeCount: 0,
     journalRangeErrorCount: 0,
@@ -660,6 +662,8 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
 
     diagnostics.executedFrames++;
     const restoring = lifecycleState === LOOP_LIFECYCLE_STATES.RESTORING;
+    const recoverFromPresentationOverrun = !restoring && previousPresentationOverrun;
+    previousPresentationOverrun = false;
     const callbackStart = measureNow();
     let perf = null;
     let renderedSnapshot = false;
@@ -688,9 +692,16 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
         (Number.isFinite(simulationRunner.fixedDt) ? simulationRunner.fixedDt : LOOP_FIXED_DT) * 1000,
       );
       const simFrameStart = measureNow();
+      const fixedDt = Number.isFinite(simulationRunner.fixedDt)
+        ? simulationRunner.fixedDt
+        : LOOP_FIXED_DT;
+      const recoveryStepCap = recoverFromPresentationOverrun && frameDt > fixedDt * 2
+        ? 1
+        : undefined;
       const stepResult = restoring
         ? simulationRunner.prepareWithoutAdvance()
-        : simulationRunner.advance(frameDt, state.timeScale);
+        : simulationRunner.advance(frameDt, state.timeScale, recoveryStepCap);
+      if (recoveryStepCap === 1) diagnostics.recoveryCappedFrameCount++;
 
       if (!restoring && postRestoreFramePending) {
         diagnostics.postRestoreFrameCount++;
@@ -746,7 +757,9 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
         try {
           presentationAccepted = registry.renderUpdate(alpha, frameDt, presentationFrame) !== false;
         } finally {
-          perf.recordPresentationFrame?.(measureNow() - presentationStart);
+          const presentationMs = measureNow() - presentationStart;
+          perf.recordPresentationFrame?.(presentationMs);
+          previousPresentationOverrun = !restoring && presentationMs > fixedDt * 2000;
         }
         diagnostics.renderUpdates++;
         renderedSnapshot = true;

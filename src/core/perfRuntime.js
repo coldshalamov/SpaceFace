@@ -930,6 +930,11 @@ export function ensurePerfRuntime(state) {
       hitchHistogram.hitches = 0;
       hitchHistogram.named = 0;
       hitchHistogram.unknown = 0;
+      hitchHistogram.firstHitches = 0;
+      hitchHistogram.echoHitches = 0;
+      hitchHistogram.currentStreak = 0;
+      hitchHistogram.longestStreak = 0;
+      hitchHistogram.previousWasHitch = false;
       for (const owner of Object.keys(hitchHistogram.counts)) hitchHistogram.counts[owner] = 0;
       resetFrameHitchOwnerTotals(frameHitchOwnerMs);
       resetFrameHitchOwnerTotals(frameNestedPresentationMs);

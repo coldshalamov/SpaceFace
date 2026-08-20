@@ -137,6 +137,8 @@ export function createSimulationRunner(state, registry, deps = {}) {
   let lastInputObserverError = null;
   let committedJournalSequence = 0;
   let journalCursorAlignmentCount = 0;
+  let recoveryCappedAdvanceCount = 0;
+  let lastAdvanceStepCap = maxSteps;
   let closed = false;
   let closeComplete = false;
   let closeCount = 0;
@@ -345,8 +347,14 @@ export function createSimulationRunner(state, registry, deps = {}) {
   return {
     fixedDt,
     maxSteps,
-    advance(frameDt, timeScale = state.timeScale) {
+    advance(frameDt, timeScale = state.timeScale, perCallStepCap = maxSteps) {
       assertOpen();
+      const requestedStepCap = Number.isFinite(perCallStepCap)
+        ? Math.floor(perCallStepCap)
+        : maxSteps;
+      const effectiveStepCap = Math.max(1, Math.min(maxSteps, requestedStepCap));
+      lastAdvanceStepCap = effectiveStepCap;
+      if (effectiveStepCap < maxSteps) recoveryCappedAdvanceCount++;
       advanceFixedTimestep(
         state.accumulator,
         frameDt,
@@ -354,8 +362,9 @@ export function createSimulationRunner(state, registry, deps = {}) {
         stepSimulation,
         advanceResult,
         fixedDt,
-        maxSteps,
+        effectiveStepCap,
       );
+      advanceResult.stepCap = effectiveStepCap;
       state.accumulator = advanceResult.accumulator;
       return advanceResult;
     },
@@ -441,6 +450,8 @@ export function createSimulationRunner(state, registry, deps = {}) {
         lifecycleGeneration,
         committedJournalSequence,
         journalCursorAlignmentCount,
+        recoveryCappedAdvanceCount,
+        lastAdvanceStepCap,
       };
     },
   };

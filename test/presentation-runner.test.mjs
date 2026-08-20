@@ -27,6 +27,57 @@ function createRaf() {
   };
 }
 
+test('a presentation overrun arms exactly one recovery-capped late callback', () => {
+  const raf = createRaf();
+  const state = {
+    accumulator: 0,
+    timeScale: 1,
+    tick: 0,
+    simTime: 0,
+    input: { actions: {} },
+  };
+  const caps = [];
+  const simulationRunner = {
+    fixedDt: LOOP_FIXED_DT,
+    advance(frameDt, timeScale, cap) {
+      caps.push(cap);
+      return { steps: 0, shedBacklog: false, shedSteps: 0, accumulator: 0 };
+    },
+    prepareWithoutAdvance() {
+      return { steps: 0, shedBacklog: false, shedSteps: 0, accumulator: 0 };
+    },
+    consumeLatestCompletedTick() { return 0; },
+    interpolationAlpha() { return 0; },
+    setLifecycleGeneration() {},
+    close() { return true; },
+    getDiagnostics() { return {}; },
+  };
+  let clockMs = 0;
+  const presentationCosts = [40, 0, 0];
+  const registry = {
+    renderUpdate() { clockMs += presentationCosts.shift() || 0; },
+    get() { return null; },
+  };
+  const controller = startLoop(state, registry, {
+    simulationRunner,
+    requestFrame: raf.requestFrame,
+    cancelFrame: raf.cancelFrame,
+    nowMs: () => 1000,
+    perfNow: () => clockMs,
+    visibilityTarget: null,
+    lifecyclePort: null,
+  });
+
+  raf.flushOne(1000 + LOOP_FIXED_DT * 1000);
+  raf.flushOne(1000 + LOOP_FIXED_DT * 1000 + 50);
+  raf.flushOne(1000 + LOOP_FIXED_DT * 1000 + 100);
+
+  assert.deepEqual(caps, [undefined, 1, undefined],
+    'external lateness alone cannot keep the recovery fuse armed');
+  assert.equal(controller.getDiagnostics().recoveryCappedFrameCount, 1);
+  controller.destroy();
+});
+
 test('PresentationRunner consumes completed ticks without owning simulation order', () => {
   const raf = createRaf();
   const state = {

@@ -110,6 +110,7 @@ function formatHitchAttributionSection(histogram, route) {
     '## Live hitch attribution (PQ-129.02)',
     `- bounded instrumentation: classifier ${route.instrumentation?.previousHitchAttributionEnabled === true ? 'already on' : 'enabled for this probe only'}; prior state restored before shutdown: ${route.instrumentation?.restored === true}`,
     `- observed frames: ${histogram?.frames ?? 0}; hitches: ${histogram?.hitches ?? 0}; named: ${histogram?.named ?? 0}; unknown: ${histogram?.unknown ?? 0}`,
+    `- hitch runs: first ${histogram?.firstHitches ?? 0}; echoes ${histogram?.echoHitches ?? 0}; longest streak ${histogram?.longestStreak ?? 0}`,
     `- named coverage: ${(Number(histogram?.coverage) || 0).toFixed(3)}`,
     `- owner counts: ${namedCounts || 'none'}`,
   ].join('\n');
@@ -405,6 +406,9 @@ const hitchAttribution = finalHitchAttribution || {
   hitches: 0,
   named: 0,
   unknown: 0,
+  firstHitches: 0,
+  echoHitches: 0,
+  longestStreak: 0,
   coverage: 0,
   counts: {},
 };

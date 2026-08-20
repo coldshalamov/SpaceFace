@@ -131,6 +131,11 @@ export function createHitchHistogram() {
     hitches: 0,
     named: 0,
     unknown: 0,
+    firstHitches: 0,
+    echoHitches: 0,
+    currentStreak: 0,
+    longestStreak: 0,
+    previousWasHitch: false,
     counts,
   };
 }
@@ -138,8 +143,17 @@ export function createHitchHistogram() {
 export function accumulateHitch(histogram, classification) {
   if (!histogram) return histogram;
   histogram.frames += 1;
-  if (!classification) return histogram;
+  if (!classification) {
+    histogram.currentStreak = 0;
+    histogram.previousWasHitch = false;
+    return histogram;
+  }
   histogram.hitches += 1;
+  if (histogram.previousWasHitch) histogram.echoHitches += 1;
+  else histogram.firstHitches += 1;
+  histogram.currentStreak += 1;
+  histogram.longestStreak = Math.max(histogram.longestStreak, histogram.currentStreak);
+  histogram.previousWasHitch = true;
   const owner = HITCH_OWNERS.includes(classification.owner)
     ? classification.owner
     : 'unknown';
@@ -160,6 +174,9 @@ export function hitchHistogramReport(histogram) {
     hitches: histogram ? histogram.hitches : 0,
     named: histogram ? histogram.named : 0,
     unknown: histogram ? histogram.unknown : 0,
+    firstHitches: histogram ? histogram.firstHitches : 0,
+    echoHitches: histogram ? histogram.echoHitches : 0,
+    longestStreak: histogram ? histogram.longestStreak : 0,
     coverage: hitchCoverage(histogram),
     counts: { ...(histogram && histogram.counts) },
   };

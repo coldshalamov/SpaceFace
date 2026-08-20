@@ -7271,7 +7271,7 @@
       "priority": 336,
       "title": "Stop hitch catch-up from becoming three misses",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-129.04"
       ],
@@ -7280,13 +7280,21 @@
       ],
       "paths": [
         "src/core/simulationRunner.js",
-        "src/core/presentationRunner.js"
+        "src/core/presentationRunner.js",
+        "src/core/perfRuntime.js",
+        "src/render/hitchClassifier.js",
+        "scripts/probe-runtime-witness.mjs",
+        "test/simulation-runner.test.mjs",
+        "test/presentation-runner.test.mjs",
+        "test/hitch-classifier.test.mjs"
       ],
       "checks": [
         "node --test test/simulation-runner.test.mjs",
         "npm run check:playable"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-129-10-catchup-echo-REPORT.md"
+      ],
       "brief": "Reserved PQ-101. Cap and shed already exist. Change recovery only after PQ-129.02 splits first miss from echo misses. Do not zero the accumulator. Do not raise MAX_CATCHUP_STEPS. Hashes must hold."
     },
     {

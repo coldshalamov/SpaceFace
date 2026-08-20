@@ -65,7 +65,22 @@ test('histogram coverage is the share of named hitch owners', () => {
   assert.ok(hitchCoverage(histogram) > 0.6);
   assert.equal(report.counts.compile, 1);
   assert.equal(report.counts.upload, 1);
+  assert.equal(report.firstHitches, 1);
+  assert.equal(report.echoHitches, 2);
+  assert.equal(report.longestStreak, 3);
   assert.ok(HITCH_THRESHOLD_MS > 16);
+});
+
+test('hitch run accounting separates first misses from echo misses', () => {
+  const histogram = createHitchHistogram();
+  accumulateHitch(histogram, classifyHitchFrame({ frameMs: 50, simMs: 40 }));
+  accumulateHitch(histogram, classifyHitchFrame({ frameMs: 55, simMs: 42 }));
+  accumulateHitch(histogram, null);
+  accumulateHitch(histogram, classifyHitchFrame({ frameMs: 60, presentMs: 45 }));
+  const report = hitchHistogramReport(histogram);
+  assert.equal(report.firstHitches, 2);
+  assert.equal(report.echoHitches, 1);
+  assert.equal(report.longestStreak, 2);
 });
 
 test('vfx-owned hitches are named vfx', () => {

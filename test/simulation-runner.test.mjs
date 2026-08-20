@@ -177,6 +177,29 @@ test('prepareWithoutAdvance and interpolationAlpha retain the existing accumulat
   assert.equal(state.tick, 0);
 });
 
+test('per-call recovery cap executes one step, sheds whole debt, and preserves phase', () => {
+  const state = createState();
+  state.accumulator = LOOP_FIXED_DT * 0.25;
+  const runner = createSimulationRunner(state, createRegistry(state));
+
+  const recovered = runner.advance(LOOP_FIXED_DT * 10.25, 1, 1);
+  assert.equal(recovered.stepCap, 1);
+  assert.equal(recovered.steps, 1);
+  assert.equal(recovered.shedBacklog, true);
+  assert.equal(recovered.shedSteps, 9);
+  assert.ok(Math.abs(recovered.accumulator - LOOP_FIXED_DT * 0.5) < 1e-12);
+
+  state.accumulator = 0;
+  const clamped = runner.advance(LOOP_FIXED_DT * 4.5, 1, 99);
+  assert.equal(clamped.stepCap, 4, 'a per-call override cannot raise the configured cap');
+  assert.equal(clamped.steps, 4);
+  assert.equal(clamped.shedBacklog, false);
+  assert.ok(Math.abs(clamped.accumulator - LOOP_FIXED_DT * 0.5) < 1e-12);
+  const diagnostics = runner.getDiagnostics();
+  assert.equal(diagnostics.recoveryCappedAdvanceCount, 1);
+  assert.equal(diagnostics.lastAdvanceStepCap, 4);
+});
+
 test('SimulationRunner terminal close drains bounded work and rejects every late operation', () => {
   const state = createState();
   const runner = createSimulationRunner(state, createRegistry(state));
