@@ -28,7 +28,10 @@ function ids(coll) {
 }
 
 const reg = {
-  ship_: ids(SHIPS), wpn_: ids(WEAPONS), mod_: ids(MODULES), tech_: ids(TECH_NODES),
+  ship_: ids(SHIPS), wpn_: ids(WEAPONS),
+  // Claim-body fittings share the mod_ prefix with ship modules by design (distinct catalogs).
+  mod_: new Set([...ids(MODULES), ...ids(BODY_MODULES)]),
+  tech_: ids(TECH_NODES),
   cmdty_: ids(COMMODITIES), beam_: ids(BEAMS), faction_: ids(FACTION_META), sector_: ids(SECTORS),
 };
 const prefixes = Object.keys(reg);
@@ -36,8 +39,17 @@ const problems = [];
 
 function walk(val, path) {
   if (typeof val === 'string') {
-    for (const pre of prefixes) {
-      if (val.startsWith(pre)) { if (!reg[pre].has(val)) problems.push(`${path} = "${val}" — not in ${pre}* registry`); break; }
+    // Pair keys such as dispatchConflictKey "faction_dmc:faction_mts" are two ids, not one.
+    const tokens = val.includes(':') ? val.split(':') : [val];
+    for (const token of tokens) {
+      for (const pre of prefixes) {
+        if (token.startsWith(pre)) {
+          if (!reg[pre].has(token)) {
+            problems.push(`${path} = "${val}" — not in ${pre}* registry`);
+          }
+          break;
+        }
+      }
     }
   } else if (Array.isArray(val)) {
     val.forEach((v, i) => walk(v, `${path}[${i}]`));
