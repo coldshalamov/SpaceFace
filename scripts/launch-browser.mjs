@@ -31,11 +31,11 @@ try {
   if (existing.ok) {
     const store = await probePlayerStore(GAME_URL);
     if (!store.ok) {
-      console.log('SpaceFace is already running, but that server cannot share desktop saves.');
-      console.log('Close the other SpaceFace launcher window and run this again.');
-    } else {
-      console.log(`SpaceFace is already running -> ${GAME_URL}`);
+      console.error('SpaceFace is already running, but that server cannot share desktop saves.');
+      console.error('Close the other SpaceFace launcher window and run this again.');
+      process.exit(1);
     }
+    console.log(`SpaceFace is already running -> ${GAME_URL}`);
     openUrl(GAME_URL);
     process.exit(0);
   }

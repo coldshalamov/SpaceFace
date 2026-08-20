@@ -52,6 +52,22 @@ function resolvePlayerSaveDir(env = process.env) {
   return path.join(dataHome, APP_FOLDER, PLAYER_STORE_REL);
 }
 
+function envHasOwn(env, key) {
+  if (!env) return false;
+  try { return Object.prototype.hasOwnProperty.call(env, key); }
+  catch { return Object.keys(env).includes(key); }
+}
+
+// Empty SPACEFACE_PLAYER_STORE_DIR is an explicit unmount (isolated harnesses).
+// An unset variable still uses the machine player drawer so `npm start` matches the launchers.
+function resolveMountedPlayerStoreDir(env = process.env) {
+  if (envHasOwn(env, 'SPACEFACE_PLAYER_STORE_DIR')) {
+    const override = String(env.SPACEFACE_PLAYER_STORE_DIR || '').trim();
+    return override ? path.resolve(override) : '';
+  }
+  return resolvePlayerSaveDir(env);
+}
+
 function fileNameForKey(key) {
   if (!isAllowedPlayerStoreKey(key)) return null;
   return `${key}.json`;
@@ -169,7 +185,13 @@ function isPlayerStoreUrl(urlPath) {
 async function handlePlayerStoreRequest(req, res, dir) {
   const method = req.method || 'GET';
   const url = req.url || '/';
-  const urlPath = decodeURIComponent(String(url).split('?')[0]);
+  let urlPath;
+  try {
+    urlPath = decodeURIComponent(String(url).split('?')[0]);
+  } catch {
+    sendJson(res, 400, { ok: false, error: 'bad_url' });
+    return;
+  }
 
   if (method === 'GET' && urlPath === PLAYER_STORE_ORIGIN_ROUTE) {
     const body = originDocument();
@@ -213,7 +235,16 @@ async function handlePlayerStoreRequest(req, res, dir) {
       const keys = writePlayerStoreKeysSync(dir, patch);
       sendJson(res, 200, { ok: true, keys });
     } catch (error) {
-      sendJson(res, 400, { ok: false, error: error && error.message ? error.message : 'write_failed' });
+      const message = error && error.message ? String(error.message) : '';
+      if (message.includes('too many keys')) {
+        sendJson(res, 400, { ok: false, error: 'too_many_keys' });
+        return;
+      }
+      if (message.includes('too large')) {
+        sendJson(res, 400, { ok: false, error: 'value_too_large' });
+        return;
+      }
+      sendJson(res, 400, { ok: false, error: 'write_failed' });
     }
     return;
   }
@@ -228,7 +259,12 @@ function attachPlayerStore(createOpts = {}) {
   if (!dir) return extraRoutes;
   extraRoutes.unshift({
     test(method, url) {
-      const urlPath = decodeURIComponent(String(url || '/').split('?')[0]);
+      let urlPath;
+      try {
+        urlPath = decodeURIComponent(String(url || '/').split('?')[0]);
+      } catch {
+        return false;
+      }
       return isPlayerStoreUrl(urlPath) && (method === 'GET' || method === 'PUT' || method === 'DELETE');
     },
     handle(req, res) {
@@ -244,6 +280,7 @@ module.exports = {
   LOCAL_STORAGE_DUMP_SOURCE,
   isAllowedPlayerStoreKey,
   resolvePlayerSaveDir,
+  resolveMountedPlayerStoreDir,
   readPlayerStoreKeysSync,
   writePlayerStoreKeysSync,
   playerStoreHasSaves,

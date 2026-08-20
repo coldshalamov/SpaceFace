@@ -62,6 +62,8 @@ assert.deepEqual(packagedFiles, [
   'electron/preload.cjs',
   'scripts/lib/gameServer.cjs',
   'scripts/lib/electronLaunchProtocol.cjs',
+  'scripts/lib/playerSaveStore.cjs',
+  'scripts/lib/staticCachePolicy.cjs',
   'package.json',
 ], 'the packaged shell must include only production Electron entry points and their shared main-process modules');
 

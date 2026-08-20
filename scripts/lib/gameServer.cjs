@@ -43,6 +43,8 @@ const MIME = Object.freeze({
   '.ktx2': 'image/ktx2',
   '.glb':  'model/gltf-binary',
   '.gltf': 'model/gltf+json; charset=utf-8',
+  '.mp4':  'video/mp4',
+  '.webm': 'video/webm',
   '.wasm': 'application/wasm',
   '.woff': 'font/woff',
   '.woff2':'font/woff2',
@@ -96,7 +98,51 @@ function makeFreshnessTracker(root, { async = true } = {}) {
 
 function isInsideRoot(file, resolvedRoot) {
   const resolved = path.resolve(file);
-  return resolved === resolvedRoot || resolved.startsWith(resolvedRoot + path.sep);
+  const rel = path.relative(resolvedRoot, resolved);
+  if (rel === '') return true;
+  // Other-drive Windows paths come back absolute; parent escapes start with `..`.
+  if (path.isAbsolute(rel)) return false;
+  return rel !== '..' && !rel.startsWith(`..${path.sep}`);
+}
+
+function isAllowedLoopbackHost(hostHeader) {
+  const raw = String(hostHeader || '').trim().toLowerCase();
+  if (!raw) return false;
+  let host = raw;
+  if (host.startsWith('[')) {
+    const close = host.indexOf(']');
+    if (close < 0) return false;
+    host = host.slice(1, close);
+  } else {
+    const colon = host.lastIndexOf(':');
+    if (colon > -1 && host.indexOf(':') === colon) host = host.slice(0, colon);
+  }
+  return host === '127.0.0.1' || host === 'localhost' || host === '::1';
+}
+
+function decodeRequestPath(url) {
+  try {
+    const decoded = decodeURIComponent(String(url || '/').split('?')[0]);
+    if (decoded.includes('\0')) return null;
+    return decoded;
+  } catch {
+    return null;
+  }
+}
+
+function resolveContainedFile(root, decodedPath) {
+  let urlPath = String(decodedPath || '/').replace(/\\/g, '/');
+  if (urlPath === '/' || urlPath === '') urlPath = '/index.html';
+  const normalized = path.posix.normalize(urlPath);
+  if (normalized === '..' || normalized.startsWith('../')) return null;
+  const relative = normalized.replace(/^\/+/, '');
+  if (!relative) return path.join(root, 'index.html');
+  const first = relative.split('/')[0];
+  // A drive-shaped first segment (`C:` / `C:/Windows`) makes path.resolve retarget the volume.
+  if (/^[a-zA-Z]:/.test(first)) return null;
+  const file = path.join(root, relative);
+  if (!isInsideRoot(file, root)) return null;
+  return file;
 }
 
 /**
@@ -126,6 +172,22 @@ function createGameServer(opts) {
       const method = req.method || 'GET';
       const url = req.url || '/';
 
+      // DNS-rebinding defense for the loopback save store and source tree.
+      if (!isAllowedLoopbackHost(req.headers && req.headers.host)) {
+        res.writeHead(403, { 'Content-Type': 'text/plain' });
+        res.end('Forbidden');
+        return;
+      }
+
+      // Malformed percent-encoding is a bad request, not an internal error. A 500 here
+      // leaked `URI malformed` (and any later throw message) through the outer catch.
+      const decodedPath = decodeRequestPath(url);
+      if (decodedPath == null) {
+        res.writeHead(400, { 'Content-Type': 'text/plain' });
+        res.end('400 Bad Request');
+        return;
+      }
+
       // Extra routes first (e.g. browser /__shot screenshot sink).
       for (const route of extraRoutes) {
         if (route.test && route.test(method, url)) {
@@ -150,23 +212,21 @@ function createGameServer(opts) {
         return;
       }
 
-      // Static file serving.
-      let urlPath = decodeURIComponent(url.split('?')[0]);
-      if (urlPath === '/' || urlPath === '') urlPath = '/index.html';
-      const safe = path.normalize(urlPath).replace(/^(\.\.[/\\])+/, '');
-      let file = path.join(root, safe);
-      if (!isInsideRoot(file, root)) { res.writeHead(403); res.end('Forbidden'); return; }
+      // Static file serving. URL paths are POSIX; Windows must not treat `\` or `C:` as roots.
+      let file = resolveContainedFile(root, decodedPath);
+      if (!file) { res.writeHead(403, { 'Content-Type': 'text/plain' }); res.end('Forbidden'); return; }
 
       let stats;
       try { stats = useAsync ? await fsp.stat(file) : fs.statSync(file); }
-      catch { res.writeHead(404, { 'Content-Type': 'text/plain' }); res.end('404 Not Found: ' + safe); return; }
+      catch { res.writeHead(404, { 'Content-Type': 'text/plain' }); res.end('404 Not Found'); return; }
 
       if (stats.isDirectory()) {
         file = path.join(file, 'index.html');
+        if (!isInsideRoot(file, root)) { res.writeHead(403, { 'Content-Type': 'text/plain' }); res.end('Forbidden'); return; }
         try { stats = useAsync ? await fsp.stat(file) : fs.statSync(file); }
-        catch { res.writeHead(404, { 'Content-Type': 'text/plain' }); res.end('404 Not Found: ' + safe); return; }
+        catch { res.writeHead(404, { 'Content-Type': 'text/plain' }); res.end('404 Not Found'); return; }
       }
-      if (!isInsideRoot(file, root)) { res.writeHead(403); res.end('Forbidden'); return; }
+      if (!isInsideRoot(file, root)) { res.writeHead(403, { 'Content-Type': 'text/plain' }); res.end('Forbidden'); return; }
 
       const relativePath = path.relative(root, file).split(path.sep).join('/');
       const requestHeaders = req.headers || {};
@@ -190,8 +250,11 @@ function createGameServer(opts) {
       // decode and neither launcher creates an avoidable admission/GC spike.
       fs.createReadStream(file).on('error', (error) => res.destroy(error)).pipe(res);
     } catch (err) {
-      try { res.writeHead(500, { 'Content-Type': 'text/plain' }); res.end('500 ' + (err && err.message ? err.message : err)); }
-      catch { /* response already sent */ }
+      const badUrl = err instanceof URIError || (err && err.code === 'ERR_UNESCAPED_CHARACTERS');
+      try {
+        res.writeHead(badUrl ? 400 : 500, { 'Content-Type': 'text/plain' });
+        res.end(badUrl ? '400 Bad Request' : '500');
+      } catch { /* response already sent */ }
     }
   });
 
@@ -203,6 +266,9 @@ module.exports = {
   DEV_FRESHNESS_ROOTS,
   createGameServer,
   isInsideRoot,
+  isAllowedLoopbackHost,
+  decodeRequestPath,
+  resolveContainedFile,
   maxMtimeMsSync,
   maxMtimeMsAsync,
 };

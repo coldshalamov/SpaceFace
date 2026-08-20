@@ -232,6 +232,8 @@ assert.match(batch, /installed\.version===project\.devDependencies\.electron/,
 assert.doesNotMatch(batch, /node_modules\\\.bin\\electron\.cmd/);
 assert.doesNotMatch(batch, /npm run electron/);
 assert.match(launcher, /provisionElectronRuntime/);
+assert.match(launcher, /SPACEFACE_PLAYER_STORE_DIR/,
+  'desktop launcher must hand the shared player save directory to Electron');
 assert.doesNotMatch(launcher, /require\(['"]electron['"]\)/,
   'executable discovery must not execute Electron index.js and trigger a hidden download');
 assert.equal(packageJson.scripts.electron, 'node scripts/launch-electron.mjs');
@@ -244,7 +246,12 @@ assert.match(main, /startup-failed/);
 assert.match(main, /asset-preload-failed/);
 assert.doesNotMatch(batch + main, /taskkill|Stop-Process|process\.kill/i,
   'the player launcher must never terminate ambient or existing game processes');
-for (const requiredMainModule of ['scripts/lib/gameServer.cjs', 'scripts/lib/electronLaunchProtocol.cjs']) {
+for (const requiredMainModule of [
+  'scripts/lib/gameServer.cjs',
+  'scripts/lib/electronLaunchProtocol.cjs',
+  'scripts/lib/playerSaveStore.cjs',
+  'scripts/lib/staticCachePolicy.cjs',
+]) {
   assert(packageJson.build.files.includes(requiredMainModule),
     `packaged Electron must include main-process module ${requiredMainModule}`);
 }

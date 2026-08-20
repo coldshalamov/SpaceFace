@@ -20,6 +20,7 @@ const {
   isAllowedPlayerStoreKey,
   playerStoreHasSaves,
   readPlayerStoreKeysSync,
+  resolveMountedPlayerStoreDir,
   resolvePlayerSaveDir,
   writePlayerStoreKeysSync,
 } = require('../scripts/lib/playerSaveStore.cjs');
@@ -43,6 +44,18 @@ test('player store directory honors the launcher override', () => {
   const override = path.join(tmpdir(), 'spaceface-player-store-override');
   const dir = resolvePlayerSaveDir({ SPACEFACE_PLAYER_STORE_DIR: override });
   assert.equal(dir, path.resolve(override));
+});
+
+test('an explicit empty player-store override unmounts instead of falling through to AppData', () => {
+  assert.equal(resolveMountedPlayerStoreDir({ SPACEFACE_PLAYER_STORE_DIR: '' }), '');
+  assert.equal(resolveMountedPlayerStoreDir({ SPACEFACE_PLAYER_STORE_DIR: '   ' }), '');
+  const override = path.join(tmpdir(), 'spaceface-player-store-mounted');
+  assert.equal(
+    resolveMountedPlayerStoreDir({ SPACEFACE_PLAYER_STORE_DIR: override }),
+    path.resolve(override),
+  );
+  const fallback = resolveMountedPlayerStoreDir({ APPDATA: path.join(tmpdir(), 'appdata') });
+  assert.match(fallback.replace(/\\/g, '/'), /SpaceFace\/player-saves$/);
 });
 
 test('allowed keys are the live save, recovery, and profile slots', () => {

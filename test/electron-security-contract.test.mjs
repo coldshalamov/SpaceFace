@@ -40,9 +40,34 @@ test('packaged Electron includes only production shell entry points', () => {
     'electron/preload.cjs',
     'scripts/lib/gameServer.cjs',
     'scripts/lib/electronLaunchProtocol.cjs',
+    'scripts/lib/playerSaveStore.cjs',
+    'scripts/lib/staticCachePolicy.cjs',
     'package.json',
   ]);
   assert.equal(packageJson.build.files.includes('electron/**'), false);
+});
+
+test('packaged Electron ships the relative require closure of main.cjs', () => {
+  const packageJson = JSON.parse(read('package.json'));
+  const files = new Set(packageJson.build.files);
+  const queue = ['electron/main.cjs'];
+  const seen = new Set();
+  const requireRe = /require\((['"])(\.\.?\/[^'"]+)\1\)/g;
+  while (queue.length) {
+    const rel = queue.pop().replace(/\\/g, '/');
+    if (seen.has(rel)) continue;
+    seen.add(rel);
+    assert.equal(files.has(rel), true, `packaged files must include ${rel}`);
+    if (!/\.(cjs|js)$/.test(rel)) continue;
+    const source = read(rel);
+    requireRe.lastIndex = 0;
+    let match;
+    while ((match = requireRe.exec(source))) {
+      const next = path.posix.normalize(path.posix.join(path.posix.dirname(rel), match[2]));
+      if (next.startsWith('..')) continue;
+      queue.push(next);
+    }
+  }
 });
 
 test('sandboxed preload remains a one-way lifecycle subscription', () => {

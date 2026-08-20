@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
 const { createGameServer } = require('./scripts/lib/gameServer.cjs');
-const { resolvePlayerSaveDir } = require('./scripts/lib/playerSaveStore.cjs');
+const { resolveMountedPlayerStoreDir } = require('./scripts/lib/playerSaveStore.cjs');
 
 const ROOT = fileURLToPath(new URL('.', import.meta.url));
 const PORT = Number(process.argv[2] || process.env.PORT || 8123);
@@ -29,14 +29,21 @@ async function handleShot(req, res, { root }) {
       const m = /^data:image\/(png|jpe?g);base64,(.+)$/s.exec(raw.trim());
       if (!m) { res.writeHead(400); res.end('bad data url'); return; }
       const ext = m[1] === 'png' ? 'png' : 'jpg';
-      const name = (new URL(req.url, 'http://x').searchParams.get('name') || 'shot').replace(/[^a-z0-9_-]/gi, '');
+      let name = 'shot';
+      try {
+        name = (new URL(req.url, 'http://127.0.0.1').searchParams.get('name') || 'shot').replace(/[^a-z0-9_-]/gi, '');
+      } catch {
+        res.writeHead(400);
+        res.end('bad url');
+        return;
+      }
       const dir = join(root, '.devshots');
       await mkdir(dir, { recursive: true });
       const file = join(dir, `${name}.${ext}`);
       await writeFile(file, Buffer.from(m[2], 'base64'));
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ ok: true, file }));
-    } catch (err) { res.writeHead(500); res.end('500 ' + err.message); }
+    } catch { res.writeHead(500); res.end('500'); }
   });
 }
 
@@ -49,7 +56,7 @@ const server = createGameServer({
   // /__spaceface_player_store request 404'd and saves silently fell back to origin-scoped
   // localStorage. That fails soft, which is worse than failing loud -- the two launch paths saw
   // DIFFERENT SAVE SETS and nothing said so. The env var still overrides for isolated harnesses.
-  playerStoreDir: process.env.SPACEFACE_PLAYER_STORE_DIR || resolvePlayerSaveDir(process.env),
+  playerStoreDir: resolveMountedPlayerStoreDir(process.env) || undefined,
   extraRoutes: [
     { test: (method, url) => method === 'POST' && url.startsWith('/__shot'), handle: handleShot },
   ],
@@ -64,6 +71,6 @@ server.on('error', (error) => {
   throw error;
 });
 
-server.listen(PORT, () => {
-  console.log(`SpaceFace dev server running -> http://localhost:${PORT}/`);
+server.listen(PORT, '127.0.0.1', () => {
+  console.log(`SpaceFace dev server running -> http://127.0.0.1:${PORT}/`);
 });

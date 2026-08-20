@@ -15,6 +15,7 @@ const {
   parseLaunchReceipts,
   tailDiagnosticText,
 } = require('./lib/electronLaunchProtocol.cjs');
+const { resolvePlayerSaveDir } = require('./lib/playerSaveStore.cjs');
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const launchRoot = path.join(os.tmpdir(), 'spaceface-launcher');
@@ -53,6 +54,7 @@ async function launchElectron() {
         ...process.env,
         SPACEFACE_LAUNCH_RECEIPT: receiptPath,
         SPACEFACE_LAUNCH_LOG: logPath,
+        SPACEFACE_PLAYER_STORE_DIR: resolvePlayerSaveDir(process.env),
       },
     });
   } catch (error) {

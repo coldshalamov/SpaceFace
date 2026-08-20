@@ -569,6 +569,8 @@
       "electron/preload.cjs",
       "scripts/lib/gameServer.cjs",
       "scripts/lib/electronLaunchProtocol.cjs",
+      "scripts/lib/playerSaveStore.cjs",
+      "scripts/lib/staticCachePolicy.cjs",
       "package.json"
     ],
     "win": {
