@@ -7229,7 +7229,7 @@
       "priority": 334,
       "title": "Move first GPU uploads off the present beat",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-129.07"
       ],
@@ -7243,7 +7243,9 @@
       "checks": [
         "npm run check:playable"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-129-08-upload-after-present-reject-REPORT.md"
+      ],
       "brief": "Reserved PQ-074. One texture/buffer after present; skip mipgen when the image already has mips. Invalidate if PQ-129.02 does not name upload."
     },
     {
