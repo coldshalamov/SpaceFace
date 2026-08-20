@@ -302,11 +302,13 @@ export class GpuAgedSubstrate {
    *  which is the correct outcome — a dropped low-value spawn beats a stolen high-value one. */
   _claim(now, priority) {
     const cap = this.capacity;
+    const t = Number.isFinite(now) ? now : 0;
     let worst = -1, worstPriority = priority;
     for (let n = 0; n < cap; n++) {
       const i = this._cursor;
       this._cursor = (this._cursor + 1) % cap;
-      if (this._expiry[i] <= now) { return i; }
+      const expiry = this._expiry[i];
+      if (!Number.isFinite(expiry) || expiry <= t) { return i; }
       if (this._priority[i] < worstPriority) { worstPriority = this._priority[i]; worst = i; }
     }
     return worst;
@@ -320,6 +322,8 @@ export class GpuAgedSubstrate {
     kind = KIND_FLASH, seed = 0, spin = 0, drag = 0, priority = 0,
     axisX = 0, axisY = 1, axisZ = 0,
   }) {
+    if (!Number.isFinite(now) || !Number.isFinite(life) || !(life > 0)) return -1;
+    if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) return -1;
     const i = this._claim(now, priority);
     if (i < 0) return -1;
 

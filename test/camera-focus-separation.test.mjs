@@ -1313,4 +1313,45 @@ test('Flyby Focus remains authoritative over simultaneous gate autopilot', () =>
   assert.ok(controlFrame.nearPlane > 30, 'control: the gate shot really does take the camera');
 });
 
+test('chase camera stays finite after death, missing player, or poisoned focus', () => {
+  globalThis.window = { innerWidth: 1600, innerHeight: 900 };
+  const player = entity(1, 40, -12, 7, {
+    team: 0,
+    vel: { x: 8, z: 0 },
+    maxSpeed: 120,
+  });
+  const state = stateFor(player, []);
+  state.settings = { video: { fov: FOV } };
+  state.camera = { zoom: TACTICAL_ZOOM, tilt: TILT, lookAhead: 18, lerp: 6, trauma: 0 };
+  state.input = { aimWorld: null };
+
+  const camera = createChaseCamera(state);
+  camera.snapToPlayer();
+  camera.follow(DT);
+  assert.ok(Number.isFinite(camera.obj.position.x));
+  assert.ok(Number.isFinite(state.camera.focus.x));
+
+  player.alive = false;
+  player.pos = null;
+  camera.follow(DT);
+  assert.ok(Number.isFinite(camera.obj.position.x), 'death with a missing pos must not NaN the chase camera');
+  assert.ok(Number.isFinite(state.camera.focus.x));
+
+  state.camera.focus.x = NaN;
+  state.camera.focus.z = NaN;
+  camera.obj.position.set(NaN, NaN, NaN);
+  camera.follow(DT);
+  assert.ok(Number.isFinite(state.camera.focus.x), 'a poisoned focus must recover');
+  assert.ok(Number.isFinite(camera.obj.position.x), 'camera pose must recover from NaN');
+
+  state.entities.delete(player.id);
+  assert.doesNotThrow(() => camera.follow(DT));
+  assert.ok(Number.isFinite(camera.obj.position.x));
+
+  state.entities = null;
+  assert.doesNotThrow(() => camera.follow(DT));
+  assert.equal(camera.snapToPlayer(), false, 'snap after the player map is gone is a no-op, not a throw');
+  assert.ok(Number.isFinite(camera.obj.position.x));
+});
+
 console.log('camera-focus-separation tests loaded');

@@ -203,3 +203,42 @@ test('the guard reproduces the unconditional-refresh result on a moving camera p
   assert.ok(guarded.counter.refreshes < i, `guard must skip work: ${guarded.counter.refreshes} of ${i}`);
   assert.equal(guarded.counter.refreshes, 3, 'one refresh per distinct camera pose (3 of 5 are repeats)');
 });
+
+test('worldToScreen does not throw without a camera and reports off-screen', () => {
+  installWindowShim();
+  const host = Object.assign(Object.create(render), {
+    cam: null,
+    _frameMembrane: null,
+    _w2sCamCache: null,
+  });
+  const missing = render.worldToScreen.call(host, POINT);
+  assert.equal(missing.onScreen, false);
+  assert.ok(Number.isFinite(missing.x) && Number.isFinite(missing.y));
+
+  host.cam = { obj: null };
+  const sink = { x: 9, y: 9, onScreen: true, marker: 'reused' };
+  const written = render.worldToScreen.call(host, POINT, sink);
+  assert.equal(written, sink);
+  assert.equal(sink.onScreen, false);
+  assert.equal(sink.x, 0);
+  assert.equal(sink.y, 0);
+  assert.equal(sink.marker, 'reused');
+
+  const ray = render.raycastToPlane.call(host, { x: 0, y: 0 });
+  assert.equal(ray.x, 0);
+  assert.equal(ray.z, 0);
+});
+
+test('worldToScreen does not throw on a missing or non-finite world point', () => {
+  const { host } = makeHarness();
+  const none = render.worldToScreen.call(host, null);
+  assert.equal(none.onScreen, false);
+  assert.ok(Number.isFinite(none.x) && Number.isFinite(none.y));
+
+  const nanY = render.worldToScreen.call(host, { x: POINT.x, y: NaN, z: POINT.z });
+  const zeroY = render.worldToScreen.call(host, { x: POINT.x, y: 0, z: POINT.z });
+  assert.ok(Number.isFinite(nanY.x) && Number.isFinite(nanY.y));
+  assert.strictEqual(nanY.x, zeroY.x);
+  assert.strictEqual(nanY.y, zeroY.y);
+  assert.strictEqual(nanY.onScreen, zeroY.onScreen);
+});

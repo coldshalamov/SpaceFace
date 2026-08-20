@@ -167,7 +167,7 @@ export function createStage(scene, opts = {}) {
       smoke.update(now);
       debris.update(now);
       fronts.update(now);
-      ribbons.update(dt, camera.position);
+      ribbons.update(dt, camera && camera.position);
       // Push the reduced-flash scale BEFORE update() so this frame's light values already carry it.
       // Without this the dial dimmed every particle substrate to nothing and left the four dynamic
       // PointLights — the brightest, most flash-sensitive element — at full peak.

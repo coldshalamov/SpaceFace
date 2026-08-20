@@ -181,6 +181,16 @@ const _cullLocalXZ = { x: 0, z: 0 };
 const _shadowLocalXZ = { x: 0, z: 0 };
 const _w2sLocalXZ = { x: 0, z: 0 };
 const _rayGlobalXZ = { x: 0, z: 0 };
+
+function writeScreenProjection(out, x, y, onScreen) {
+  if (out && typeof out === 'object') {
+    out.x = x;
+    out.y = y;
+    out.onScreen = onScreen;
+    return out;
+  }
+  return { x, y, onScreen };
+}
 const _socketGlobalXZ = { x: 0, z: 0 };
 const _worldSiteA11y = { reducedMotion: false, reducedFlash: false };
 
@@ -4462,8 +4472,10 @@ export const render = {
   },
 
   _applyPresentationPose(slot, mesh, alpha, currentOnly = false) {
+    if (!mesh || !mesh.position) return;
     const world = this._presentationWorld;
-    const origin = this._frameMembrane.origin;
+    const origin = this._frameMembrane && this._frameMembrane.origin;
+    if (!world || !origin) return;
     const noInterpolation = currentOnly
       || (world.flags[slot] & PRESENTATION_FLAGS.NO_INTERPOLATION) !== 0;
     let x = world.x[slot];
@@ -4591,7 +4603,12 @@ export const render = {
       const lodRadius = Number.isFinite(hlodVisualRadius) && hlodVisualRadius > 0
         ? hlodVisualRadius
         : entity.radius;
-      const projectedPx = projectedWidthPx(mesh.position, lodRadius, this.cam.obj, this.viewport);
+      const projectedPx = projectedWidthPx(
+        mesh.position,
+        lodRadius,
+        this.cam && this.cam.obj,
+        this.viewport,
+      );
       if (userData.lod && userData.updateLod) {
         lodChecked++;
         lodLevel = entity.id === this.state.playerId ? 'lod0' : userData.lod.resolve(projectedPx);
@@ -4877,7 +4894,7 @@ export const render = {
     updateShipPitchPresentation(this.state, frameDt);
     this.syncEntityViews(alpha);
     if (this.state && this.state.render) this.state.render.interpolationAlpha = alpha;
-    this.cam.follow(frameDt);
+    if (this.cam && typeof this.cam.follow === 'function') this.cam.follow(frameDt);
     syncContactShadowPool(this._contactShadowPool, this._entityFrame);
     syncShipAuxPools(this._shipAuxPool, this._entityFrame);
     const authoredSyncOptions = this._authoredInstanceSyncOptions;
@@ -5254,7 +5271,8 @@ export const render = {
   // position/lookAt), and renderer.render() recomposes it from P/Q/S each frame anyway, so this cannot
   // change any projection here.
   _syncProjectionCamera() {
-    const cam = this.cam.obj;
+    const cam = this.cam && this.cam.obj;
+    if (!cam || !cam.position || !cam.quaternion || !cam.scale) return null;
     const pos = cam.position;
     const quat = cam.quaternion;
     const scale = cam.scale;
@@ -5291,28 +5309,33 @@ export const render = {
   // allocation; it is written in place and returned. Omitting it allocates, exactly as before.
   worldToScreen(v, out) {
     const cam = this._syncProjectionCamera();
+    if (!cam) return writeScreenProjection(out, 0, 0, false);
+    if (!v || !Number.isFinite(Number(v.x)) || !Number.isFinite(Number(v.z))) {
+      return writeScreenProjection(out, 0, 0, false);
+    }
     const membrane = this._frameMembrane;
     const local = membrane
       ? membrane.toLocal(v, _w2sLocalXZ)
-      : { x: v && v.x, z: v && v.z };
-    _pt.set(local.x, (v && v.y) || 0, local.z).project(cam);
-    const x = (_pt.x * 0.5 + 0.5) * window.innerWidth;
-    const y = (-_pt.y * 0.5 + 0.5) * window.innerHeight;
-    const onScreen = _pt.z < 1 && Math.abs(_pt.x) <= 1 && Math.abs(_pt.y) <= 1;
-    // typeof-guarded so a stray second argument (a .map() index, say) can never be written through.
-    if (out && typeof out === 'object') {
-      out.x = x;
-      out.y = y;
-      out.onScreen = onScreen;
-      return out;
+      : { x: v.x, z: v.z };
+    const yWorld = Number.isFinite(v.y) ? v.y : 0;
+    _pt.set(local.x, yWorld, local.z).project(cam);
+    if (!Number.isFinite(_pt.x) || !Number.isFinite(_pt.y) || !Number.isFinite(_pt.z)) {
+      return writeScreenProjection(out, 0, 0, false);
     }
-    return { x, y, onScreen };
+    const width = typeof window !== 'undefined' && Number.isFinite(window.innerWidth) ? window.innerWidth : 0;
+    const height = typeof window !== 'undefined' && Number.isFinite(window.innerHeight) ? window.innerHeight : 0;
+    const x = (_pt.x * 0.5 + 0.5) * width;
+    const y = (-_pt.y * 0.5 + 0.5) * height;
+    const onScreen = _pt.z < 1 && Math.abs(_pt.x) <= 1 && Math.abs(_pt.y) <= 1;
+    return writeScreenProjection(out, x, y, onScreen);
   },
 
   // Plane pick returns authoritative galactic-global XZ (input systems keep global aimWorld).
   raycastToPlane(ndc) {
+    const cam = this.cam && this.cam.obj;
+    if (!cam || !ndc || !Number.isFinite(ndc.x) || !Number.isFinite(ndc.y)) return { x: 0, z: 0 };
     _v2.set(ndc.x, ndc.y);
-    _ray.setFromCamera(_v2, this.cam.obj);
+    _ray.setFromCamera(_v2, cam);
     const hit = _ray.ray.intersectPlane(_plane, _pt);
     if (!hit) return { x: 0, z: 0 };
     const membrane = this._frameMembrane;
@@ -5756,21 +5779,29 @@ function replaceSceneEnvMap(scene, previousEnvMap, nextEnvMap) {
 }
 
 function disposeObject(obj) {
+  if (!obj || typeof obj.traverse !== 'function') return;
   obj.traverse((c) => {
+    if (!c) return;
     const disposePresentation = c.userData && c.userData.disposeWorldSitePresentation;
     if (typeof disposePresentation === 'function') disposePresentation();
     const releaseResidency = c.userData && c.userData.releaseAuthoredAssetResidency;
     if (typeof releaseResidency === 'function') releaseResidency('render-boundary-disposed');
     if ((c.isBatchedMesh || c.isInstancedMesh) && typeof c.dispose === 'function'
         && !isBorrowedAsteroidInstanceResource(c)) c.dispose();
-    const shared = !!(c.userData && (c.userData.sharedContactShadow || c.userData.sharedShieldGeo))
+    const shared = !!(c.userData && (c.userData.sharedContactShadow || c.userData.sharedShieldGeo
+      || c.userData.spacefaceSharedAsset || c.userData.borrowedGeometryMaterial))
       || isBorrowedAsteroidInstanceResource(c);
     if (!c.isBatchedMesh && c.geometry && !shared) {
-      c.geometry.dispose();
+      const geoShared = c.geometry.userData && c.geometry.userData.spacefaceSharedAsset;
+      if (!geoShared && typeof c.geometry.dispose === 'function') c.geometry.dispose();
     }
     if (c.material && !shared) {
       const mm = Array.isArray(c.material) ? c.material : [c.material];
-      mm.forEach((m) => m.dispose());
+      for (const material of mm) {
+        if (!material || typeof material.dispose !== 'function') continue;
+        if (material.userData && material.userData.spacefaceSharedAsset) continue;
+        material.dispose();
+      }
     }
   });
 }

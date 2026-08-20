@@ -271,7 +271,9 @@ export class RibbonSubstrate {
   _writeVertices(cameraPos) {
     const seg = this.segments;
     const pos = this.position, col = this.color, al = this.alpha;
-    const camX = cameraPos.x, camY = cameraPos.y, camZ = cameraPos.z;
+    const camX = cameraPos && Number.isFinite(cameraPos.x) ? cameraPos.x : 0;
+    const camY = cameraPos && Number.isFinite(cameraPos.y) ? cameraPos.y : 12;
+    const camZ = cameraPos && Number.isFinite(cameraPos.z) ? cameraPos.z : 0;
 
     for (let i = 0; i < this.capacity; i++) {
       const vb = i * seg * 2;

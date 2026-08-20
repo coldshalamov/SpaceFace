@@ -44,7 +44,7 @@ import { FACTION_META } from '../data/factions.js';
 import { configureMaterialLibrary } from './materialLibrary.js';
 import { createEnergyMaterial } from './energy/energyMaterials.js';
 import * as kit from './ships/shipKit.js';
-import { attachStationHlod, isFarDetailSurface } from './hlod.js';
+import { applyProjectedDetailLod, attachStationHlod, isFarDetailSurface } from './hlod.js';
 import { attachLodState } from './lod.js';
 import { interactionProfileForEntity } from '../data/entityInteractionProfiles.js';
 import { resolveWeaponPresentationFamily } from './vfxProfiles.js';
@@ -373,6 +373,9 @@ function optimizeStaticBatches(root) {
       mergedMesh.name = 'sf-static-merge';
       mergedMesh.renderOrder = rec.renderOrder;
       mergedMesh.userData.staticMerge = true;
+      if (rec.meshes.some((mesh) => isFarDetailSurface(mesh))) {
+        mergedMesh.userData.spacefaceTags = { greeble: true };
+      }
       // GR-2: preserve shadow intent across the merge. If ANY source mesh was a shadow caster or
       // receiver, the merged mesh inherits it — otherwise optimizeStaticBatches would silently strip
       // the per-mesh receiveShadow/castShadow flags set by the builders (station pads, asteroid rock).
@@ -455,7 +458,8 @@ function batchKey(obj, parent) {
     return `${name}:${a.itemSize}:${a.normalized ? 1 : 0}:${a.array.constructor.name}`;
   }).join('|');
   const idx = g.index ? `idx:${g.index.array.constructor.name}` : 'noidx';
-  return `${parent.uuid}|${obj.material.uuid}|${obj.renderOrder || 0}|${idx}|${attrs}`;
+  const far = isFarDetailSurface(obj) ? 'far' : 'body';
+  return `${parent.uuid}|${far}|${obj.material.uuid}|${obj.renderOrder || 0}|${idx}|${attrs}`;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -2157,8 +2161,6 @@ function buildAsteroid(e) {
     mesh.userData.asteroidInstanceVariant = variantIdx;
     g.userData.asteroidInstanceBody = mesh;
   }
-  const lod2Details = [];
-
   if (def.variant === 'crystal') {
     const rnd = mulberryLite(hashId(e.id));
     const shardMat = emissiveMaterial('#c878ff', 1.1);
@@ -2168,8 +2170,8 @@ function buildAsteroid(e) {
       shard.position.set(Math.cos(a) * R * 0.7, Math.sin(e2) * R * 0.5, Math.sin(a) * R * 0.7);
       shard.scale.setScalar(R * (0.5 + rnd() * 0.6));
       shard.rotation.set(rnd() * 3, rnd() * 3, rnd() * 3);
+      shard.userData.spacefaceTags = { greeble: true };
       g.add(shard);
-      lod2Details.push(shard);
     }
   } else if (def.variant === 'gas') {
     const hull = new THREE.Mesh(
@@ -2192,8 +2194,8 @@ function buildAsteroid(e) {
       })),
     );
     hull.scale.setScalar(R * 1.22);
+    hull.userData.spacefaceTags = { greeble: true };
     g.add(hull);
-    lod2Details.push(hull);
   }
 
   // GLOWING ORE VEINS — emissive streaks scattered across the surface for valuable ore types, so a
@@ -2210,16 +2212,13 @@ function buildAsteroid(e) {
       vein.position.set(Math.cos(a) * R * 0.85, Math.sin(e2) * R * 0.6, Math.sin(a) * R * 0.85);
       vein.rotation.set(rnd() * 3, rnd() * 3, rnd() * 3);
       vein.scale.setScalar(R * (0.6 + rnd() * 0.8));
+      vein.userData.spacefaceTags = { greeble: true };
       g.add(vein);
-      lod2Details.push(vein);
     }
   }
   g.userData.kind = 'asteroid';
   g.userData.updateLod = function updateAsteroidLod(level) {
-    const showDetail = level !== 'lod2';
-    for (const detail of lod2Details) {
-      if (detail.visible !== showDetail) detail.visible = showDetail;
-    }
+    applyProjectedDetailLod(g, level);
   };
   attachLodState(g);
   return g;

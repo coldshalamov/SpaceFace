@@ -44,6 +44,10 @@ function finite(v, fb = 0) {
   return Number.isFinite(v) ? v : fb;
 }
 
+function hasFinitePos(ent) {
+  return !!(ent && ent.pos && Number.isFinite(ent.pos.x) && Number.isFinite(ent.pos.z));
+}
+
 function freshFocus() {
   return {
     active: false,
@@ -78,7 +82,7 @@ function playerEntity(state) {
 }
 
 function isHostileShip(state, ent, player) {
-  if (!ent || !ent.alive || !ent.pos) return false;
+  if (!ent || !ent.alive || !hasFinitePos(ent)) return false;
   if (ent.type !== 'ship' && ent.type !== 'drone') return false;
   if (ent.id === player.id) return false;
   return isHostileToPlayer(ent, player.team, state);
@@ -93,7 +97,7 @@ function masslineRefusesTarget(ent) {
 }
 
 function isTrainingFocusTarget(ent, player) {
-  if (!ent || !ent.alive || !ent.pos || ent.id === player.id) return false;
+  if (!ent || !ent.alive || !hasFinitePos(ent) || ent.id === player.id) return false;
   if (ent.type !== 'ship' && ent.type !== 'drone') return false;
   return ent.data?.onboardingTraining === true && ent.data?.trainingFocusEligible === true;
 }
@@ -154,7 +158,7 @@ function beatsBest(
  *   a second, genuinely new attacker on the same pass can still open a window.
  */
 export function pickFlybyTarget(state, player, list, isCoolingDown = null) {
-  if (!player || !player.pos) return null;
+  if (!player || player.alive === false || !hasFinitePos(player)) return null;
   const cooling = typeof isCoolingDown === 'function' ? isCoolingDown : null;
   const px = player.pos.x;
   const pz = player.pos.z;
@@ -228,8 +232,9 @@ function activeTargetInvalidReason(state, player, targetId) {
   const target = targetId == null || !state.entities || !state.entities.get
     ? null
     : state.entities.get(targetId);
-  if (!target || target.alive === false || !target.pos) return 'target-lost';
+  if (!target || target.alive === false || !hasFinitePos(target)) return 'target-lost';
   if (!isFocusEligibleShip(state, target, player)) return 'not-hostile';
+  if (!hasFinitePos(player)) return 'target-lost';
   const distance = Math.hypot(target.pos.x - player.pos.x, target.pos.z - player.pos.z);
   if (!Number.isFinite(distance) || distance > MAX_HOLD_RANGE) return 'out-of-range';
   return null;
@@ -337,8 +342,12 @@ export const flybyFocus = {
     }
     const now = Number.isFinite(st.simTime) ? st.simTime : 0;
     const player = playerEntity(st);
-    if (!player || (player.flags && player.flags.docked)) {
-      if (focus.active) this._finish(player ? 'docked' : 'target-lost', false, true);
+    if (!player || player.alive === false || !hasFinitePos(player)) {
+      if (focus.active) this._finish(player ? 'death' : 'target-lost', false, true);
+      return;
+    }
+    if (player.flags && player.flags.docked) {
+      if (focus.active) this._finish('docked', false, true);
       return;
     }
 

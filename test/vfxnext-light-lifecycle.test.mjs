@@ -128,3 +128,20 @@ test('stage.intensity drives the light pool scale', () => {
 
   stage.dispose();
 });
+
+test('stage.update without a camera does not throw', () => {
+  const scene = new THREE.Scene();
+  const stage = createStage(scene, { budgets: { lights: 2, ribbons: 2 } });
+  assert.doesNotThrow(() => stage.update(1 / 60, null));
+  assert.doesNotThrow(() => stage.update(1 / 60));
+  stage.dispose();
+});
+
+test('NaN-lived lights are refused so a dead slot cannot leak intensity', () => {
+  const pool = new LightPool({ capacity: 2 });
+  assert.equal(pool.spawn({ x: 0, y: 0, z: 0, peak: 40, life: Number.NaN }), -1);
+  assert.equal(pool.spawn({ x: Number.NaN, y: 0, z: 0, peak: 40, life: 1 }), -1);
+  const slot = pool.spawn({ x: 0, y: 0, z: 0, peak: 40, life: 1 });
+  assert.ok(slot >= 0);
+  assert.equal(pool.lights[slot].intensity, 40);
+});

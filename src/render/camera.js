@@ -139,6 +139,12 @@ function finiteOr(value, fallback) {
   return Number.isFinite(value) ? value : fallback;
 }
 
+function readPlayerEntity(state) {
+  const entities = state && state.entities;
+  if (!entities || typeof entities.get !== 'function') return null;
+  return entities.get(state.playerId) || null;
+}
+
 function clamp01(value) {
   return Math.max(0, Math.min(1, finiteOr(value, 0)));
 }
@@ -761,8 +767,7 @@ export function createChaseCamera(state) {
     },
     setZoom(z) { c.zoom = Math.max(CAMERA_ZOOM_MIN, Math.min(CAMERA_ZOOM_MAX, finiteOr(z, c.zoom || DEFAULT_ZOOM))); },
     snapToPlayer() {
-      const p = state.entities.get(state.playerId);
-      return snapToEntity(p);
+      return snapToEntity(readPlayerEntity(state));
     },
     // M2: on frameOriginSeq change, reproject local focus/camera so the frame does not one-frame jump.
     // Composition biases are relative and stay valid; director absolute focus is shifted by the same delta.
@@ -816,7 +821,7 @@ export function createChaseCamera(state) {
     },
     follow(dt) {
       const frameDt = Number.isFinite(dt) && dt > 0 ? Math.min(dt, 1 / 15) : 0;
-      const p = state.entities.get(state.playerId);
+      const p = readPlayerEntity(state);
       let fx = finiteOr(c.focus.x, 0), fz = finiteOr(c.focus.z, 0);
       let bankForLean = 0;
       let playerSpeed = 0;
@@ -952,13 +957,18 @@ export function createChaseCamera(state) {
         bankForLean = (Number.isFinite(p.bank) ? p.bank : 0) * 0.068;
       }
       const followLerp = finiteOr(c.lerp, 6);
+      fx = finiteOr(fx, finiteOr(c.focus.x, 0));
+      fz = finiteOr(fz, finiteOr(c.focus.z, 0));
       if (directorOwnsComposition) {
         c.focus.x = fx;
         c.focus.z = fz;
       } else {
-        c.focus.x = damp(c.focus.x, fx, followLerp, frameDt);
-        c.focus.z = damp(c.focus.z, fz, followLerp, frameDt);
+        // damp() propagates NaN. A poisoned focus (death/corrupt pos) must recover, not stick.
+        c.focus.x = damp(finiteOr(c.focus.x, fx), fx, followLerp, frameDt);
+        c.focus.z = damp(finiteOr(c.focus.z, fz), fz, followLerp, frameDt);
       }
+      if (!Number.isFinite(c.focus.x)) c.focus.x = fx;
+      if (!Number.isFinite(c.focus.z)) c.focus.z = fz;
 
       // --- dynamic zoom ---
       // chaseClose forces a tighter accessibility/profile choice; otherwise honor the exact c.zoom

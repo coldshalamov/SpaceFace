@@ -28,7 +28,10 @@ import { attachLodState } from './lod.js';
 import {
   canInstallWholeShipLodFamily,
   lodFileFromFamily,
+  normalizeRequestedLod,
+  resolveWholeShipLodTransition,
   selectSpawnLodLevel,
+  shouldCommitWholeShipLodLoad,
 } from './wholeShipLodPolicy.js';
 import {
   instancePoolIdentity,
@@ -3998,16 +4001,23 @@ function installWholeShipLodFamilyController(boundary, entity, setActive, option
   boundary.userData.updateLod = (level) => {
     const requested = normalizeRequestedLod(level);
     if (typeof baseUpdate === 'function') baseUpdate(requested);
-    if (requested === activeLevel) return;
-    if (roots[requested]) {
-      swapTo(requested);
+    const transition = resolveWholeShipLodTransition(activeLevel, requested, {
+      residentReady: !!roots[requested],
+      pendingLevel,
+      attached: !!boundary.parent,
+    });
+    pendingLevel = transition.pendingLevel;
+    if (transition.action === 'swap') {
+      swapTo(transition.level);
       return;
     }
-    if (pendingLevel === requested) return;
+    if (transition.action !== 'load') return;
     const renderer = options.renderer;
-    const scene = options.scene || (boundary.parent);
-    if (!renderer || !scene) return;
-    pendingLevel = requested;
+    const scene = options.scene || boundary.parent;
+    if (!renderer || !scene) {
+      pendingLevel = null;
+      return;
+    }
     const file = packagedLiveWholeShipFile(family[requested]);
     if (!file) {
       pendingLevel = null;
@@ -4022,7 +4032,7 @@ function installWholeShipLodFamilyController(boundary, entity, setActive, option
           bootstrapPlan: authoredPreloadPlanForEntityAtLod(entity, requested, options),
           residencyRole: 'whole-ship-lod-family',
         });
-        if (pendingLevel !== requested || !boundary.parent) return;
+        if (!shouldCommitWholeShipLodLoad(pendingLevel, requested, !!boundary.parent)) return;
         const composed = buildComposedShip(entity, library, scene, boundary, {
           ...options,
           requiredWholeShip: true,
@@ -4032,7 +4042,7 @@ function installWholeShipLodFamilyController(boundary, entity, setActive, option
         if (!composed || !composed.root) return;
         composed.root.visible = false;
         roots[requested] = composed.root;
-        if (pendingLevel === requested) swapTo(requested);
+        if (shouldCommitWholeShipLodLoad(pendingLevel, requested, !!boundary.parent)) swapTo(requested);
       } catch (error) {
         console.warn('[partsLibrary] whole-ship LOD demotion failed; keeping active level', error);
       } finally {
@@ -6235,11 +6245,6 @@ function installAuthoredLod(root, bindings, safetyCore, authoredHullLevels, whol
 
 function lodPartKey(object) {
   return object && object.userData && object.userData.spacefacePartUrl || (object && object.uuid) || 'unknown';
-}
-
-function normalizeRequestedLod(level) {
-  if (level === 'lod1' || level === 'lod2') return level;
-  return 'lod0';
 }
 
 function closestAvailableLod(requested, available) {

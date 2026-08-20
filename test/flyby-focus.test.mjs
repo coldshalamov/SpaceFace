@@ -387,6 +387,48 @@ for (const event of ['save:restoring', 'save:loaded', 'game:started', 'dock:dock
   assert.equal(f.state.timeScale, 1, 'destroy releases the Focus request');
 }
 
+// A corpse that never fires player:death must not keep or re-open Focus / slow-time.
+{
+  const target = hostile(2);
+  const f = runtimeFor([target]);
+  f.system.update(DT, f.state);
+  assert.equal(f.state.player.flybyFocus.active, true, 'fixture activates before death');
+  f.p.alive = false;
+  f.state.simTime = DT;
+  f.system.update(DT, f.state);
+  assert.equal(f.state.player.flybyFocus.active, false, 'dead player releases Focus without waiting for player:death');
+  assert.equal(f.state.player.flybyFocus.targetId, null);
+  assert.equal(f.state.timeScale, 1, 'dead player clears slow-time');
+  f.state.simTime = 5;
+  f.system.update(DT, f.state);
+  assert.equal(f.state.player.flybyFocus.active, false, 'dead player cannot re-open Focus');
+  assert.equal(f.state.timeScale, 1);
+  f.system.destroy();
+}
+
+// player:death resets cooldown; update() must still refuse to lease a new window on a corpse.
+{
+  const target = hostile(2);
+  const f = runtimeFor([target]);
+  f.system.update(DT, f.state);
+  f.bus.emit('player:death', {});
+  f.p.alive = false;
+  f.state.simTime = 0.25;
+  f.system.update(DT, f.state);
+  assert.equal(f.state.player.flybyFocus.active, false, 'Focus stays dark after death even though cooldown was reset');
+  assert.equal(f.state.timeScale, 1);
+  f.system.destroy();
+}
+
+{
+  const p = player();
+  const nanTarget = hostile(2, { pos: { x: Number.NaN, z: 0 } });
+  const state = stateWith([], { player: p }).state;
+  assert.equal(pickFlybyTarget(state, p, [nanTarget]), null, 'NaN-position contacts are not eligible');
+  p.alive = false;
+  assert.equal(pickFlybyTarget(state, p, [hostile(3)]), null, 'a dead player cannot acquire Focus');
+}
+
 // Registry/test re-init must finish the lease through the OLD state/time authority before the
 // singleton object adopts new references. The new bus must not receive an end event for old state.
 {

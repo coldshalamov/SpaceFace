@@ -59,6 +59,7 @@ const STEM_WEIGHTS = {
 };
 
 export const MAX_AUDIO_VOICES = 12;
+const SILENT_LISTENER_POS = Object.freeze({ x: 0, z: 0 });
 
 // Propulsion is a gameplay contract, but its *voice* is presentation-only. Each family keeps the
 // spec's tier fundamentals (55/78/110/65 Hz) while changing harmonic weight, air and sub response.
@@ -1319,6 +1320,7 @@ export const audio = {
 
     let att = 1, pan = 0, rate = opts.rate || 1;
     if (opts.position) {
+      if (!Number.isFinite(opts.position.x) || !Number.isFinite(opts.position.z)) return null;
       const p = this._playerPos();
       const d = Math.hypot(opts.position.x - p.x, opts.position.z - p.z);
       if (d > D_FAR) return null; // cull distant sounds
@@ -1396,8 +1398,14 @@ export const audio = {
   },
 
   _playerPos() {
-    const e = this.state.entities.get(this.state.playerId);
-    return e ? e.pos : { x: 0, z: 0 };
+    const st = this.state;
+    const entities = st && st.entities;
+    const e = entities && typeof entities.get === 'function' && st.playerId != null
+      ? entities.get(st.playerId)
+      : null;
+    const pos = e && e.pos;
+    if (pos && Number.isFinite(pos.x) && Number.isFinite(pos.z)) return pos;
+    return SILENT_LISTENER_POS;
   },
 
   // ---- event handlers ----
@@ -1682,6 +1690,7 @@ export const audio = {
     if (!recipe) return null;
     let att = 1, pan = 0;
     if (position) {
+      if (!Number.isFinite(position.x) || !Number.isFinite(position.z)) return null;
       const pp = this._playerPos();
       const d = Math.hypot(position.x - pp.x, position.z - pp.z);
       att = clamp(1 - (d - D_NEAR) / (D_FAR - D_NEAR), 0, 1); att *= att;
@@ -2523,11 +2532,13 @@ export const audio = {
   // Track positional loop voices (beam/mining) toward their target's current position.
   _updateLoopPositions(now) {
     const rt = this.rt;
+    const entities = this.state && this.state.entities;
+    if (!entities || typeof entities.get !== 'function') return;
     const pp = this._playerPos();
     const apply = (v) => {
       if (!v || v.trackId == null) return;
-      const e = this.state.entities.get(v.trackId);
-      if (!e) return;
+      const e = entities.get(v.trackId);
+      if (!e || !e.pos || !Number.isFinite(e.pos.x) || !Number.isFinite(e.pos.z)) return;
       const d = Math.hypot(e.pos.x - pp.x, e.pos.z - pp.z);
       let att = clamp(1 - (d - D_NEAR) / (D_FAR - D_NEAR), 0, 1); att *= att;
       const pan = clamp((e.pos.x - pp.x) / PAN_SPAN, -1, 1);

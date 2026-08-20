@@ -261,7 +261,8 @@ export const tetherGameplay = {
       // Liveness belt-and-braces on the gameplay side: if the target vanished this tick and the
       // service sweep hasn't caught it yet, force the cut ourselves rather than orbit a ghost.
       const target = state.entities.get(this._active.targetId);
-      if (!target || target.alive === false) {
+      if (!target || target.alive === false || !target.pos
+          || !Number.isFinite(target.pos.x) || !Number.isFinite(target.pos.z)) {
         this._cancelDrillApproach('target_lost');
         attachments.cut(this._active.attachmentId, player.id, 'target_lost');
         this.bus.emit('tether:broke', { targetId: this._active.targetId });
@@ -934,6 +935,11 @@ export const tetherGameplay = {
     const owned = attachments.listForEntity(state.playerId, true);
     for (const attachment of owned) {
       if (attachment.ownerId !== state.playerId) continue;
+      const target = state.entities && state.entities.get
+        ? state.entities.get(attachment.targetId)
+        : null;
+      if (!target || target.alive === false || !target.pos
+          || !Number.isFinite(target.pos.x) || !Number.isFinite(target.pos.z)) continue;
       this._active = {
         attachmentId: attachment.id,
         targetId: attachment.targetId,

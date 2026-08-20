@@ -40,16 +40,23 @@ const _camPos = new THREE.Vector3();
  * @returns {number} projected width in pixels (>=0)
  */
 export function projectedWidthPx(pos, radius, camera, viewport) {
-  if (!camera || !viewport || !radius) return 0;
+  if (!pos || !camera || !camera.position || !viewport || !radius) return 0;
+  const px = Number(pos.x);
+  const pz = Number(pos.z);
+  if (!Number.isFinite(px) || !Number.isFinite(pz)) return 0;
   _camPos.copy(camera.position);
-  _v.set(pos.x, 0, pos.z);
+  if (!Number.isFinite(_camPos.x) || !Number.isFinite(_camPos.y) || !Number.isFinite(_camPos.z)) return 0;
+  _v.set(px, 0, pz);
   const dist = _camPos.distanceTo(_v);
-  if (dist <= 0.0001) return viewport.height; // inside the object — treat as filling the screen
+  if (!Number.isFinite(dist)) return 0;
+  if (dist <= 0.0001) return Number(viewport.height) || 0; // inside the object — treat as filling the screen
   // vertical fov from the projection matrix; fall back to a sensible default if unavailable.
   const fovY = camera.fov != null ? THREE.MathUtils.degToRad(camera.fov) : Math.PI / 3;
   const screenHalfH = Math.tan(fovY * 0.5) * dist; // half viewport height at the entity's depth (world units)
-  if (screenHalfH <= 0) return 0;
-  return Math.max(0, (radius / screenHalfH) * (viewport.height * 0.5));
+  if (!Number.isFinite(screenHalfH) || screenHalfH <= 0) return 0;
+  const height = Number(viewport.height);
+  if (!Number.isFinite(height) || height <= 0) return 0;
+  return Math.max(0, (radius / screenHalfH) * (height * 0.5));
 }
 
 /**
@@ -66,16 +73,18 @@ export function createLodState() {
     get level() { return level; },
     get lastPx() { return lastPx; },
     resolve(px) {
+      const width = Number(px);
+      if (!Number.isFinite(width)) return level;
       // Hysteresis: only change level when px moves HYSTERESIS_PX past the current level's boundary.
       if (level === 'lod0') {
-        if (px < LOD_THRESHOLDS.LOD0_ABOVE - HYSTERESIS_PX) level = 'lod1';
+        if (width < LOD_THRESHOLDS.LOD0_ABOVE - HYSTERESIS_PX) level = 'lod1';
       } else if (level === 'lod1') {
-        if (px > LOD_THRESHOLDS.LOD1_BELOW + HYSTERESIS_PX) level = 'lod0';
-        else if (px < LOD_THRESHOLDS.LOD2_BELOW - HYSTERESIS_PX) level = 'lod2';
+        if (width > LOD_THRESHOLDS.LOD1_BELOW + HYSTERESIS_PX) level = 'lod0';
+        else if (width < LOD_THRESHOLDS.LOD2_BELOW - HYSTERESIS_PX) level = 'lod2';
       } else { // lod2
-        if (px > LOD_THRESHOLDS.LOD2_BELOW + HYSTERESIS_PX) level = 'lod1';
+        if (width > LOD_THRESHOLDS.LOD2_BELOW + HYSTERESIS_PX) level = 'lod1';
       }
-      lastPx = px;
+      lastPx = width;
       return level;
     },
   };
@@ -83,6 +92,8 @@ export function createLodState() {
 
 // Attach a per-entity LOD state to a mesh, keyed so the renderer can find it. Idempotent.
 export function attachLodState(mesh) {
+  if (!mesh) return mesh;
+  if (!mesh.userData) mesh.userData = {};
   if (!mesh.userData.lod) mesh.userData.lod = createLodState();
   return mesh;
 }

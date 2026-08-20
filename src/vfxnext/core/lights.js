@@ -74,6 +74,8 @@ export class LightPool {
    *  then eases — a burning secondary or a sustained plume. Choosing the wrong one is why some
    *  explosions look like a lamp being switched on. */
   spawn({ x, y, z, color = 0xffb060, peak = 40, life = 0.25, distance = 120, priority = 0, falloff = 'flash' }) {
+    if (!Number.isFinite(life) || !(life > 0)) return -1;
+    if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) return -1;
     const i = this._claim(priority);
     if (i < 0) return -1;
     const l = this.lights[i];

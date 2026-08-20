@@ -1168,3 +1168,21 @@ test('PQ-003 normalized quick cut executes in the same tether tick', () => {
   assert.equal(h.events.released.length, 1);
   assert.equal(h.state.player.tether.active, false);
 });
+
+test('a latched target with non-finite position is cut as target_lost', () => {
+  const rock = asteroid(801, { pos: { x: 120, z: 0 } });
+  const h = buildHarness([rock], { aimWorld: { x: 120, z: 0 }, tetherMode: 'nearest' });
+  fireLatch(h);
+  assert.ok(h.system._active, `latch should succeed, denied=${JSON.stringify(h.events.denied)}`);
+  h.state.tick += 1;
+  h.state.simTime += DT;
+  h.system.update(DT, h.state);
+  assert.equal(h.state.player.tether.active, true, 'next tick mirrors the live line');
+  rock.pos.x = Number.NaN;
+  h.state.tick += 1;
+  h.state.simTime += DT;
+  h.system.update(DT, h.state);
+  assert.equal(h.system._active, null, 'NaN-position target must drop the line');
+  assert.equal(h.state.player.tether.active, false);
+  assert.equal(h.events.broke.at(-1)?.targetId, rock.id);
+});

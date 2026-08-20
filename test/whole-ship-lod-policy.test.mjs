@@ -11,7 +11,9 @@ import {
   canInstallWholeShipLodFamily,
   hasWholeShipLodFamily,
   lodFileFromFamily,
+  resolveWholeShipLodTransition,
   selectSpawnLodLevel,
+  shouldCommitWholeShipLodLoad,
 } from '../src/render/wholeShipLodPolicy.js';
 
 const FAMILY_DEF_IDS = [
@@ -58,4 +60,41 @@ test('distant spawn projected size selects cheaper resident files without touchi
   ).lodFamily;
   assert.equal(lodFileFromFamily(family, selectSpawnLodLevel(20)), family.lod2);
   assert.equal(lodFileFromFamily(family, selectSpawnLodLevel(200)), family.lod0);
+});
+
+test('in-flight lod2 demotion is cancelled when the ship is already back on resident lod0', () => {
+  const far = resolveWholeShipLodTransition('lod0', 'lod2', { pendingLevel: null, residentReady: false });
+  assert.equal(far.action, 'load');
+  assert.equal(far.pendingLevel, 'lod2');
+
+  const stillFar = resolveWholeShipLodTransition('lod0', 'lod2', {
+    pendingLevel: 'lod2',
+    residentReady: false,
+  });
+  assert.equal(stillFar.action, 'wait');
+  assert.equal(stillFar.pendingLevel, 'lod2');
+
+  const backClose = resolveWholeShipLodTransition('lod0', 'lod0', {
+    pendingLevel: 'lod2',
+    residentReady: true,
+  });
+  assert.equal(backClose.action, 'keep');
+  assert.equal(backClose.pendingLevel, null, 'returning to the live level must cancel the pending swap');
+  assert.equal(shouldCommitWholeShipLodLoad(backClose.pendingLevel, 'lod2', true), false);
+
+  const swapResident = resolveWholeShipLodTransition('lod2', 'lod0', {
+    pendingLevel: 'lod1',
+    residentReady: true,
+  });
+  assert.equal(swapResident.action, 'swap');
+  assert.equal(swapResident.pendingLevel, null);
+  assert.equal(shouldCommitWholeShipLodLoad(null, 'lod1', true), false);
+});
+
+test('detached whole-ship lod loads never commit onto a disposed boundary', () => {
+  const detached = resolveWholeShipLodTransition('lod0', 'lod2', { attached: false, pendingLevel: 'lod2' });
+  assert.equal(detached.action, 'drop');
+  assert.equal(detached.pendingLevel, null);
+  assert.equal(shouldCommitWholeShipLodLoad('lod2', 'lod2', false), false);
+  assert.equal(shouldCommitWholeShipLodLoad('lod2', 'lod2', true), true);
 });

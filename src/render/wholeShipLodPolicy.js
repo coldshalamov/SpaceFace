@@ -30,6 +30,35 @@ export function lodFileFromFamily(family, level, fallback = null) {
   return family[key] || family.lod0 || fallback;
 }
 
+/**
+ * Separate-file LOD family swap. An in-flight demotion must not commit after the ship has already
+ * returned to a resident level (close pass after a distant lod2 request).
+ */
+export function resolveWholeShipLodTransition(activeLevel, requestedLevel, options = {}) {
+  const requested = normalizeRequestedLod(requestedLevel);
+  const active = normalizeRequestedLod(activeLevel);
+  if (options.attached === false) {
+    return { action: 'drop', level: active, pendingLevel: null };
+  }
+  if (requested === active) {
+    return { action: 'keep', level: active, pendingLevel: null };
+  }
+  if (options.residentReady === true) {
+    return { action: 'swap', level: requested, pendingLevel: null };
+  }
+  const pending = options.pendingLevel == null ? null : normalizeRequestedLod(options.pendingLevel);
+  if (pending === requested) {
+    return { action: 'wait', level: requested, pendingLevel: pending };
+  }
+  return { action: 'load', level: requested, pendingLevel: requested };
+}
+
+export function shouldCommitWholeShipLodLoad(pendingLevel, requestedLevel, attached) {
+  return attached === true
+    && pendingLevel != null
+    && normalizeRequestedLod(pendingLevel) === normalizeRequestedLod(requestedLevel);
+}
+
 /** One-shot spawn/resident pick. Near contacts stay LOD0 so close quality does not change. */
 export function selectSpawnLodLevel(projectedPx, thresholds = LOD_THRESHOLDS) {
   const px = Number(projectedPx);
