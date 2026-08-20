@@ -114,5 +114,9 @@
 | 135 | yes | D783F6E0 | 3Q REVISE / starboard REVISE / rear REVISE | Lid and chimney gone. Rear throats open. 3Q still black cups; flap not readable from starboard. Not wired. |
 | 136 | yes | E4B76565 | author REVISE | More-aft 3Q. Flap hung as a black box under the wing. Not wired. |
 | 137 | yes | 2225E7D1 | 3Q REVISE / starboard REVISE / rear REVISE | Flap tucked. Ceramic vane tips at the mouth. Whole still still REVISE. Not wired. |
+| 138 | yes | 2DD483E4 | author REVISE | First 3Q that looks into open throats. Slot cube hung as a black bar. Not wired. |
+| 139 | yes | 41C7D57B | 3Q REVISE / starboard REVISE / rear REVISE | 3Q looks into mouths; vane star still read as a black plug. Flap slot a dark strip. Not wired. |
+| 140 | yes | see json | author REVISE | Eight thinner vanes. 3Q still a black star in the cup. Not wired. |
+| 141 | yes | ED357768 | author REVISE | Ceramic interior in the close crop. 3Q at play size still black cups. Not wired. |
 
 Hitch-plus / A-list: not met. C85 remains the live game body. Do not mark PQ-050.01 done. Do not self-accept.

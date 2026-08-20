@@ -333,7 +333,7 @@ def create_materials():
             bsdf.inputs["Base Color"].default_value = (0.004, 0.007, 0.010, 1)
             bsdf.inputs["Metallic"].default_value = 0.0
             bsdf.inputs["Roughness"].default_value = 0.12
-            bsdf.inputs["Alpha"].default_value = 0.56
+            bsdf.inputs["Alpha"].default_value = 0.48
             if hasattr(material, "blend_method"):
                 try:
                     material.blend_method = "BLEND"
@@ -675,7 +675,7 @@ def flip_normals(obj):
 
 def add_interior_vane(tag, cx, cy, cz, angle, s, material, collection, outboard=0.0, cant_y=0.55, cant_z=0.28):
     """Thin tapered vane. Fat 6.8° slabs photographed as a plus-sign of boxes."""
-    half = math.radians(3.1)
+    half = math.radians(2.0)
     a0, a1 = angle - half, angle + half
     # C130: vanes reach the mouth so 3Q can count them in the rim.
     sections = (
@@ -726,8 +726,8 @@ def add_hollow_bell(tag, x, y, z, scale, mats, collection):
     )
     bell_len = 1.72 * s
     outboard = 1.0 if y >= 0.0 else -1.0
-    # C136: more outboard cant so the 3Q mouth is an open ellipse, not a side-on black cup.
-    cant_y, cant_z = 0.78, 0.34
+    # C138: modest cant. 3Q sits aft of the mouths so it looks into the throat; splay is not the lever.
+    cant_y, cant_z = 0.48, 0.22
     def ring_at(t, r, sides=40):
         xi = x - 0.04 * s - t * bell_len
         yo = y + outboard * cant_y * t * s
@@ -742,17 +742,16 @@ def add_hollow_bell(tag, x, y, z, scale, mats, collection):
         ring_at(t, r, 32)
         for t, r in (
             (0.08, 0.18),
-            (0.24, 0.22),
-            (0.44, 0.32),
-            (0.64, 0.50),
+            (0.22, 0.22),
+            (0.36, 0.30),
         )
     ]
     liner = loft_from_rings(f"BellLiner_{tag}", liner_rings, soot, collection, 0.0, cap=False)
     flip_normals(liner)
-    # C133/C134: ceramic throat liner at the mouth so 3Q reads tan inside the cup, not a black lid.
+    # C141: ceramic wall is most of the visible interior so 3Q looking in sees tan, not a black plus-plug.
     ceramic_liner = loft_from_rings(
         f"BellThroat_{tag}",
-        [ring_at(t, r, 32) for t, r in ((0.68, 0.58), (0.84, 0.82), (0.96, 0.98), (1.06, 1.06))],
+        [ring_at(t, r, 32) for t, r in ((0.38, 0.32), (0.58, 0.50), (0.78, 0.74), (0.94, 0.94), (1.06, 1.06))],
         ceramic, collection, 0.0, cap=False,
     )
     flip_normals(ceramic_liner)
@@ -782,22 +781,32 @@ def add_hollow_bell(tag, x, y, z, scale, mats, collection):
             (x + 0.28 * s, y + math.cos(ang) * 0.42 * s, z + math.sin(ang) * 0.42 * s),
             0.016 * s, 0.050 * s, mech, collection, 8, 0.001,
         )
-    add_cylinder(f"BellHub_{tag}", (x - 0.18 * s, y, z), 0.10 * s, 0.12 * s, soot, collection, 20, 0.001)
-    for index in range(10):
-        ang = math.tau * index / 10
+    hub_t = 0.32
+    add_cylinder(
+        f"BellHub_{tag}",
+        (
+            x - 0.04 * s - hub_t * bell_len,
+            y + outboard * cant_y * hub_t * s,
+            z + cant_z * hub_t * s,
+        ),
+        0.11 * s, 0.16 * s, soot, collection, 20, 0.001,
+        rot=(0.0, math.pi / 2 - pitch_up, yaw),
+    )
+    for index in range(8):
+        ang = math.tau * index / 8
         add_interior_vane(
             f"BellVane_{tag}_{index}", x, y, z, ang, s, soot, collection,
             outboard=outboard, cant_y=cant_y, cant_z=cant_z,
         )
-        # Ceramic vane tips at the mouth — 3Q counts tan wedges in the rim.
+        # Small ceramic tips at the mouth rim. C137 0.14/0.18 boxes read as LEGO from rear.
         tip_t = 0.94
         xi = x - 0.04 * s - tip_t * bell_len
         yo = y + outboard * cant_y * tip_t * s
         zo = z + cant_z * tip_t * s
         add_box(
             f"BellVaneTip_{tag}_{index}",
-            (xi, yo + math.cos(ang) * 0.78 * s, zo + math.sin(ang) * 0.78 * s),
-            (0.14 * s, 0.016 * s, 0.18 * s),
+            (xi, yo + math.cos(ang) * 0.80 * s, zo + math.sin(ang) * 0.80 * s),
+            (0.055 * s, 0.010 * s, 0.070 * s),
             ceramic, collection, 0.001,
             rot=(math.cos(ang) * 0.35, 0.0, ang),
         )
@@ -1139,27 +1148,29 @@ def add_blended_interceptor_wing(name, sign, skin, armor, collection, soot=None)
         for y, le, chord, thick, z in main
     ]
     wing = loft_from_rings(name, rings, skin, collection, 0.008, cap=True)
+    # C138: every flap station shares the same aft TE so the starboard union shows
+    # a second body behind the root sausage, not a tip flap hidden inside it.
     flap = (
-        (1.40, -0.20, 0.58, 0.22),
-        (2.20, -0.14, 0.50, 0.18),
-        (3.00, 0.38, 0.38, 0.14),
+        (1.35, -0.26, 0.64, 0.24),
+        (2.15, -0.26, 0.64, 0.20),
+        (2.95, -0.26, 0.64, 0.16),
     )
     loft_from_rings(f"{name}_Flap", [
-        densify_ring(teardrop_airfoil(le, y * s, 0.06, chord, thick), 3)
+        densify_ring(teardrop_airfoil(le, y * s, 0.12, chord, thick), 3)
         for y, le, chord, thick in flap
     ], armor, collection, 0.005, cap=True)
-    add_box(
+    # C138 soot cube photographed as a hanging bar from 3Q. Thin sheet in the TE gap only.
+    add_folded_sheet(
         f"{name}_Slot",
-        (-0.12, 2.20 * s, 0.08),
-        (0.09, 0.85, 0.09),
-        soot if soot is not None else armor,
-        collection, 0.001,
+        (-0.06, 1.32 * s, 0.22), (-0.24, 1.32 * s, 0.22),
+        (-0.24, 2.98 * s, 0.22), (-0.06, 2.98 * s, 0.22),
+        0.018, soot if soot is not None else armor, collection, 0.001,
     )
-    for i, yb in enumerate((1.50, 2.20, 2.90)):
+    for i, yb in enumerate((1.40, 2.15, 2.90)):
         add_cylinder(
             f"{name}_Hinge_{i}",
-            (-0.12, yb * s, 0.08),
-            0.018, 0.10, armor, collection, 8, 0.001,
+            (-0.15, yb * s, 0.12),
+            0.016, 0.10, armor, collection, 8, 0.001,
             rot=(math.pi / 2, 0, 0),
         )
     loft_from_rings(f"{name}_Fillet", [
@@ -1532,15 +1543,15 @@ def build_lod(lod, mats):
     # C134: L-seat as folded sheets so 3Q reads pan+back, not a brick stack.
     add_folded_sheet(
         "Cockpit_Pan",
-        (4.18, -0.18, 0.38), (4.18, 0.18, 0.38),
-        (3.58, 0.17, 0.42), (3.58, -0.17, 0.42),
-        0.030, warning, collection, 0.002,
+        (4.22, -0.20, 0.38), (4.22, 0.20, 0.38),
+        (3.56, 0.18, 0.42), (3.56, -0.18, 0.42),
+        0.032, warning, collection, 0.002,
     )
     add_folded_sheet(
         "Cockpit_BackSheet",
-        (3.60, -0.16, 0.42), (3.60, 0.16, 0.42),
-        (3.56, 0.14, 0.68), (3.56, -0.14, 0.68),
-        0.032, warning, collection, 0.002,
+        (3.58, -0.17, 0.42), (3.58, 0.17, 0.42),
+        (3.54, 0.15, 0.70), (3.54, -0.15, 0.70),
+        0.034, warning, collection, 0.002,
     )
     add_box("Cockpit_Headrest", (3.56, 0.0, 0.66), (0.036, 0.09, 0.036), warning, collection, 0.002)
     add_folded_sheet(
@@ -1621,48 +1632,48 @@ def build_lod(lod, mats):
     add_overlap_plate("Armor_KeelFore", (1.20, 0.00, -0.44), (0.40, 0.12, 0.018), hull, collection, 0.003)
     add_overlap_plate("Armor_WaistP", (0.20, -1.72, 0.18), (0.32, 0.028, 0.12), armor, collection, 0.004)
     add_overlap_plate("Armor_WaistS", (0.20, 1.72, 0.18), (0.32, 0.028, 0.12), armor, collection, 0.004)
-    # C134: overlapping 5.5 cm armor rims, staggered 1.5 cm so 3Q reads lap not grooves.
+    # C138: non-overlapping 5 cm rims with 5 cm channels. C134-137 laps photographed as crashing lids.
     add_folded_sheet(
         "PlateRim_D0",
-        (2.45, -0.36, 0.96), (1.15, -0.40, 0.92),
-        (1.15, 0.40, 0.92), (2.45, 0.36, 0.96),
-        0.055, armor, collection, 0.004,
+        (2.52, -0.34, 0.94), (1.48, -0.36, 0.90),
+        (1.48, 0.36, 0.90), (2.52, 0.34, 0.94),
+        0.050, armor, collection, 0.004,
     )
     add_folded_sheet(
         "PlateRim_D1",
-        (1.38, -0.34, 0.94), (0.10, -0.32, 0.88),
-        (0.10, 0.32, 0.88), (1.38, 0.34, 0.94),
-        0.055, armor, collection, 0.004,
+        (1.40, -0.32, 0.88), (0.28, -0.30, 0.84),
+        (0.28, 0.30, 0.84), (1.40, 0.32, 0.88),
+        0.050, armor, collection, 0.004,
     )
     add_folded_sheet(
         "PlateRim_D2",
-        (0.22, -0.30, 0.88), (-1.10, -0.28, 0.80),
-        (-1.10, 0.28, 0.80), (0.22, 0.30, 0.88),
-        0.052, armor, collection, 0.004,
+        (0.20, -0.28, 0.82), (-1.12, -0.26, 0.76),
+        (-1.12, 0.26, 0.76), (0.20, 0.28, 0.82),
+        0.048, armor, collection, 0.004,
     )
     add_folded_sheet(
         "PlateRim_S0",
-        (2.30, 1.22, 0.60), (0.80, 1.38, 0.54),
-        (0.80, 1.42, 0.18), (2.30, 1.26, 0.22),
-        0.050, armor, collection, 0.004,
+        (2.28, 1.20, 0.58), (1.05, 1.34, 0.52),
+        (1.05, 1.38, 0.18), (2.28, 1.24, 0.22),
+        0.048, armor, collection, 0.004,
     )
     add_folded_sheet(
         "PlateRim_S1",
-        (0.90, 1.30, 0.54), (-0.40, 1.18, 0.48),
-        (-0.40, 1.22, 0.16), (0.90, 1.34, 0.20),
-        0.048, armor, collection, 0.004,
+        (0.96, 1.28, 0.50), (-0.38, 1.16, 0.44),
+        (-0.38, 1.20, 0.16), (0.96, 1.32, 0.18),
+        0.046, armor, collection, 0.004,
     )
     add_folded_sheet(
         "PlateRim_P0",
-        (2.30, -1.22, 0.60), (2.30, -1.26, 0.22),
-        (0.80, -1.42, 0.18), (0.80, -1.38, 0.54),
-        0.050, armor, collection, 0.004,
+        (2.28, -1.20, 0.58), (2.28, -1.24, 0.22),
+        (1.05, -1.38, 0.18), (1.05, -1.34, 0.52),
+        0.048, armor, collection, 0.004,
     )
     add_folded_sheet(
         "PlateRim_P1",
-        (0.90, -1.30, 0.54), (0.90, -1.34, 0.20),
-        (-0.40, -1.22, 0.16), (-0.40, -1.18, 0.48),
-        0.048, armor, collection, 0.004,
+        (0.96, -1.28, 0.50), (0.96, -1.32, 0.18),
+        (-0.38, -1.20, 0.16), (-0.38, -1.16, 0.44),
+        0.046, armor, collection, 0.004,
     )
     add_box("Accent_WaistP", (0.15, -1.40, 0.18), (0.28, 0.010, 0.04), accent, collection, 0.002)
     add_box("Accent_WaistS", (0.15, 1.40, 0.18), (0.28, 0.010, 0.04), accent, collection, 0.002)
@@ -1878,7 +1889,7 @@ def setup_studio():
         ("Rim", (-14, -5, 7), 620, (0.78, 0.84, 0.92), 14),
         ("Kick", (-6, 10, -4), 260, (0.74, 0.78, 0.84), 12),
         ("AftFill", (-10, -12, 8), 420, (0.80, 0.84, 0.90), 16),
-        ("CockpitFill", (3.88, 0.0, 0.46), 11, (1.00, 0.86, 0.68), 0.30),
+        ("CockpitFill", (3.88, 0.0, 0.46), 14, (1.00, 0.86, 0.68), 0.30),
         ("StbdFill", (0.9, 12.0, 3.8), 520, (0.88, 0.90, 0.94), 18),
     ):
         data = bpy.data.lights.new(name, "AREA")
@@ -1940,18 +1951,18 @@ def render_cycle(collection):
     out = FAMILY / "evidence" / "hornet" / "cycles" / f"cycle_{CYCLE:02d}"
     out.mkdir(parents=True, exist_ok=True)
     views = {
-        "three_quarter": ((-0.4, -12.2, 2.70), (0.55, 0, 0.18), 28),
-        "starboard": ((0.90, 12.4, 0.16), (0.90, 0, 0.16), 32),
+        "three_quarter": ((-6.2, -9.6, 3.35), (1.10, 0, 0.22), 26),
+        "starboard": ((0.70, 11.6, 0.16), (0.70, 0, 0.16), 30),
         "rear": ((-10.2, -7.2, 2.5), (-3.20, 0.10, 0.10), 34),
-        "clay_three_quarter": ((-0.4, -12.2, 2.70), (0.55, 0, 0.18), 28),
+        "clay_three_quarter": ((-6.2, -9.6, 3.35), (1.10, 0, 0.22), 26),
         "grazing_close": ((6.6, -5.4, 2.0), (1.15, 0, 0.35), 48),
         "bay_interior": ((4.55, -1.10, 1.15), (3.90, 0.0, 0.62), 32),
         "drive_rear": ((-6.6, -1.8, 0.55), (-3.90, 0.90, 0.12), 46),
         "play_size": ((36, -32, 16), (0.20, 0, 0.16), 48),
-        "orm_isolation": ((-0.4, -12.2, 2.70), (0.55, 0, 0.18), 28),
-        "normal_isolation": ((-0.4, -12.2, 2.70), (0.55, 0, 0.18), 28),
-        "id_or_material_id": ((-0.4, -12.2, 2.70), (0.55, 0, 0.18), 28),
-        "material_three_quarter": ((-0.4, -12.2, 2.70), (0.55, 0, 0.18), 28),
+        "orm_isolation": ((-6.2, -9.6, 3.35), (1.10, 0, 0.22), 26),
+        "normal_isolation": ((-6.2, -9.6, 3.35), (1.10, 0, 0.22), 26),
+        "id_or_material_id": ((-6.2, -9.6, 3.35), (1.10, 0, 0.22), 26),
+        "material_three_quarter": ((-6.2, -9.6, 3.35), (1.10, 0, 0.22), 26),
     }
     meshes = [obj for obj in collection.objects if obj.type == "MESH" and not obj.get("collision")]
     for name in ("three_quarter", "starboard", "rear", "material_three_quarter", "grazing_close", "bay_interior", "drive_rear", "play_size"):
