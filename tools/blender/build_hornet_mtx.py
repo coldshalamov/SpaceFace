@@ -972,6 +972,64 @@ def add_sheet_course(prefix, x0, x1, y0, y1, z0, z1, n, gap, thick, material, co
         )
 
 
+def knife_inset_courses(obj, x0, x1, y0, y1, z0, z1, nx, ny, channel, depth, normal="z", normal_min=0.28):
+    """Seat a few large plate courses into the hull. C127 inset every face and became a waffle."""
+    apply_modifiers(obj)
+    backup = obj.data.copy()
+    n0 = len(obj.data.vertices)
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    axis = {"x": 0, "y": 1, "z": 2, "y-": 1, "z-": 2}[normal]
+    sign = -1.0 if str(normal).endswith("-") else 1.0
+    xa, xb = (min(x0, x1), max(x0, x1))
+    ya, yb = (min(y0, y1), max(y0, y1))
+    za, zb = (min(z0, z1), max(z0, z1))
+    gap = max(float(channel), 0.012)
+    total = 0
+    for i in range(max(int(nx), 1)):
+        for j in range(max(int(ny), 1)):
+            bm.faces.ensure_lookup_table()
+            bm.normal_update()
+            fx0 = xa + (xb - xa) * i / max(int(nx), 1)
+            fx1 = xa + (xb - xa) * (i + 1) / max(int(nx), 1)
+            fy0 = ya + (yb - ya) * j / max(int(ny), 1)
+            fy1 = ya + (yb - ya) * (j + 1) / max(int(ny), 1)
+            band = []
+            for face in bm.faces:
+                center = face.calc_center_median()
+                if not (fx0 + gap <= center.x <= fx1 - gap and fy0 + gap <= center.y <= fy1 - gap):
+                    continue
+                if not (za <= center.z <= zb):
+                    continue
+                if face.normal[axis] * sign < normal_min:
+                    continue
+                band.append(face)
+            if len(band) < 2:
+                continue
+            try:
+                bmesh.ops.inset_region(
+                    bm,
+                    faces=band,
+                    thickness=float(channel),
+                    depth=float(depth),
+                    use_boundary=True,
+                    use_even_offset=True,
+                )
+                total += 1
+            except Exception as exc:
+                print(f"inset_region skip: {exc}")
+    print(f"hull_courses bands={total} ch={channel:.3f} d={depth:.3f} {normal}")
+    bmesh.ops.remove_doubles(bm, verts=list(bm.verts), dist=0.0004)
+    bm.to_mesh(obj.data)
+    bm.free()
+    obj.data.update()
+    if len(obj.data.vertices) < n0 * 0.55:
+        print("hull_courses collapsed — restore")
+        obj.data = backup
+    else:
+        bpy.data.meshes.remove(backup)
+
+
 def add_station_hoop(tag, x, hw, hh, zc, flat, box, keel, material, collection, stand=0.030, half=0.036):
     """Thin hoop that follows the hull station. Not a rectangular cage."""
     rings = [
@@ -1365,7 +1423,17 @@ def build_lod(lod, mats):
     wn = body.modifiers.new("HullWN", "WEIGHTED_NORMAL")
     wn.keep_sharp = True
     apply_modifiers(body)
-    inset_large_faces(body, 0.038, 0.016, 0.18)
+    # C128: a few large inset courses, not C127's per-face waffle.
+    # Channel 1.6 cm, plate step 4.4 cm (MTX-05 2-6 cm).
+    knife_inset_courses(body, 2.55, 0.15, -0.95, 0.95, 0.40, 1.20, 3, 2, 0.016, 0.044, "z", 0.28)
+    knife_inset_courses(body, 2.50, -1.10, 1.05, 1.90, -0.02, 0.75, 3, 1, 0.016, 0.040, "y", 0.40)
+    knife_inset_courses(body, 2.50, -1.10, -1.90, -1.05, -0.02, 0.75, 3, 1, 0.016, 0.040, "y-", 0.40)
+    # C129: same language through the blank mid-aft barrel C128 starboard named.
+    knife_inset_courses(body, 0.20, -2.35, -0.72, 0.72, 0.18, 0.92, 3, 1, 0.016, 0.040, "z", 0.25)
+    knife_inset_courses(body, 0.15, -2.20, 0.72, 1.35, -0.04, 0.62, 3, 1, 0.016, 0.038, "y", 0.35)
+    knife_inset_courses(body, 0.15, -2.20, -1.35, -0.72, -0.04, 0.62, 3, 1, 0.016, 0.038, "y-", 0.35)
+    inset_large_faces(body, 0.018, 0.006, 0.42)
+    report_shells(body, "hull after plate courses")
     add_station_hoop("Hoop_Cabin", 2.90, 1.40, 0.70, 0.20, 0.26, 0.50, 0.24, armor, collection, stand=0.038, half=0.032)
     add_station_hoop("Hoop_Shoulder", 1.80, 1.80, 0.72, 0.14, 0.12, 0.68, 0.22, armor, collection, stand=0.040, half=0.034)
     add_station_hoop("Hoop_Wing", 0.70, 1.94, 0.74, 0.12, 0.10, 0.74, 0.18, armor, collection, stand=0.042, half=0.038)
@@ -1457,22 +1525,11 @@ def build_lod(lod, mats):
     add_overlap_plate("Armor_CheekS", (1.20, 1.80, 0.16), (0.42, 0.034, 0.16), armor, collection, 0.006)
     add_overlap_plate("Armor_NoseP", (5.00, -0.22, 0.28), (0.28, 0.022, 0.12), armor, collection, 0.004)
     add_overlap_plate("Armor_NoseS", (5.00, 0.22, 0.28), (0.28, 0.022, 0.12), armor, collection, 0.004)
-    add_overlap_plate("Armor_HouseP", (-1.90, -1.08, 0.20), (0.50, 0.042, 0.20), armor, collection, 0.005)
-    add_overlap_plate("Armor_HouseS", (-1.90, 1.08, 0.20), (0.50, 0.042, 0.20), armor, collection, 0.005)
-    add_overlap_plate("Armor_JointP", (-0.40, -1.40, 0.18), (0.28, 0.040, 0.16), armor, collection, 0.004)
-    add_overlap_plate("Armor_JointS", (-0.40, 1.40, 0.18), (0.28, 0.040, 0.16), armor, collection, 0.004)
+    # C129: House/Joint boxes photographed as leftover spine kit. Courses cover aft.
     add_overlap_plate("Armor_KeelFore", (1.20, 0.00, -0.44), (0.40, 0.12, 0.018), hull, collection, 0.003)
     add_overlap_plate("Armor_WaistP", (0.20, -1.72, 0.18), (0.32, 0.028, 0.12), armor, collection, 0.004)
     add_overlap_plate("Armor_WaistS", (0.20, 1.72, 0.18), (0.32, 0.028, 0.12), armor, collection, 0.004)
-    # C126: 3 cm off the skin, 3 cm thick. C125 dorsal sat 12 cm proud and
-    # photographed as boxes from starboard.
-    add_sheet_course("Plate_Dorsal", 2.55, 0.20, -0.26, 0.26, 0.89, 0.86, 3, 0.055, 0.030, armor, collection)
-    add_sheet_course("Plate_CrownP", 2.40, 0.25, -0.30, -0.88, 0.86, 0.50, 3, 0.050, 0.028, armor, collection)
-    add_sheet_course("Plate_CrownS", 2.40, 0.25, 0.30, 0.88, 0.86, 0.50, 3, 0.050, 0.028, armor, collection)
-    add_sheet_course("Plate_CabinP", 2.65, 0.40, -1.10, -1.30, 0.52, 0.16, 3, 0.048, 0.028, armor, collection)
-    add_sheet_course("Plate_CabinS", 2.65, 0.40, 1.10, 1.30, 0.52, 0.16, 3, 0.048, 0.028, armor, collection)
-    add_sheet_course("Plate_FlankP", 1.35, -1.15, -1.64, -1.80, 0.34, 0.08, 3, 0.048, 0.026, armor, collection)
-    add_sheet_course("Plate_FlankS", 1.35, -1.15, 1.64, 1.80, 0.34, 0.08, 3, 0.048, 0.026, armor, collection)
+    # C127: dorsal kit is inset into the hull. Do not put sheet boxes back.
     add_box("Accent_WaistP", (0.15, -1.40, 0.18), (0.28, 0.010, 0.04), accent, collection, 0.002)
     add_box("Accent_WaistS", (0.15, 1.40, 0.18), (0.28, 0.010, 0.04), accent, collection, 0.002)
 
