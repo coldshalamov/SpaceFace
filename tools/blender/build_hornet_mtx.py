@@ -256,7 +256,7 @@ def principled(material):
     return bsdf
 
 
-def wire_maps(material, bsdf, maps, coat=0.0, emission=None):
+def wire_maps(material, bsdf, maps, coat=0.0, emission=None, metallic_from_map=True):
     nodes = material.node_tree.nodes
     links = material.node_tree.links
     uv0 = nodes.new("ShaderNodeUVMap")
@@ -276,7 +276,8 @@ def wire_maps(material, bsdf, maps, coat=0.0, emission=None):
     links.new(tex_o.outputs["Color"], sep.inputs["Color"])
     links.new(tex_a.outputs["Color"], bsdf.inputs["Base Color"])
     links.new(sep.outputs["Green"], bsdf.inputs["Roughness"])
-    links.new(sep.outputs["Blue"], bsdf.inputs["Metallic"])
+    if metallic_from_map:
+        links.new(sep.outputs["Blue"], bsdf.inputs["Metallic"])
     nmap = nodes.new("ShaderNodeNormalMap")
     nmap.space = "TANGENT"
     nmap.inputs["Strength"].default_value = 0.85
@@ -310,7 +311,7 @@ def create_materials():
         bsdf.inputs["Metallic"].default_value = metal
         bsdf.inputs["Roughness"].default_value = rough
         # Warning maps washed the seat to peach. Canopy maps turned the pane into a gray slab.
-        # Hull maps photographed chrome-black and hid the wing section.
+        # Hull maps photographed chrome-black from starboard (C118). Keep hull unmapped paint.
         if name not in ("Material_Warning", "Material_Canopy", "Material_Hull"):
             maps = role_maps(role, rgb, prefix=name.replace("Material_", "").lower())
             wire_maps(material, bsdf, maps, coat=coat, emission=emit)
@@ -1335,10 +1336,10 @@ def build_lod(lod, mats):
     add_box("WellLip_P", (3.85, -0.34, 0.70), (0.46, 0.012, 0.012), armor, collection, 0.001)
     add_box("WellLip_S", (3.85, 0.34, 0.70), (0.46, 0.012, 0.012), armor, collection, 0.001)
     # Non-emissive orange seat, smaller than the mouth. C111 glow read as a lamp.
-    add_box("Cockpit_Seat", (3.88, 0.0, 0.40), (0.16, 0.10, 0.028), warning, collection, 0.003)
-    add_box("Cockpit_Cushion", (3.89, 0.0, 0.44), (0.14, 0.085, 0.016), warning, collection, 0.002)
-    add_box("Cockpit_Back", (3.74, 0.0, 0.56), (0.028, 0.09, 0.12), warning, collection, 0.002)
-    add_box("Cockpit_Headrest", (3.73, 0.0, 0.70), (0.022, 0.07, 0.032), warning, collection, 0.002)
+    add_box("Cockpit_Seat", (3.88, 0.0, 0.40), (0.20, 0.12, 0.032), warning, collection, 0.003)
+    add_box("Cockpit_Cushion", (3.89, 0.0, 0.44), (0.18, 0.10, 0.018), warning, collection, 0.002)
+    add_box("Cockpit_Back", (3.74, 0.0, 0.58), (0.032, 0.11, 0.14), warning, collection, 0.002)
+    add_box("Cockpit_Headrest", (3.73, 0.0, 0.72), (0.026, 0.08, 0.036), warning, collection, 0.002)
     add_box("Cockpit_RailP", (3.88, -0.11, 0.50), (0.12, 0.010, 0.045), mech, collection, 0.001)
     add_box("Cockpit_RailS", (3.88, 0.11, 0.50), (0.12, 0.010, 0.045), mech, collection, 0.001)
     add_box("Cockpit_BeltP", (3.82, -0.04, 0.58), (0.008, 0.006, 0.07), mech, collection, 0.001)
