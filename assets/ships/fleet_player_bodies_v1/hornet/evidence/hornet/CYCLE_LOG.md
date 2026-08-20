@@ -93,5 +93,6 @@
 | 114 | yes | 660FDF4D | 3Q REVISE / starboard REVISE / rear REVISE | Pipe gone. Open well + orange seat + thin lip. Dark cans. Starboard still a black diamond. Not wired. |
 | 115 | yes | 92DE7D72 | 3Q REVISE / starboard REVISE / rear REVISE | Armor wing, flat anhedral, level camera. Thickness real; side silhouette still a diamond. Not wired. |
 | 116 | yes | 568463CD | 3Q REVISE / starboard REVISE / rear REVISE (throats KEEP) | Fat unswept gray wing. Starboard still called a kite. Not wired. |
+| 117 | yes | 3100978A | pending | Round-nose sausage wing, unmapped painted hull. Not wired until KEEP x3. |
 
 Hitch-plus / A-list: not met. C85 remains the live game body. Do not mark PQ-050.01 done. Do not self-accept.

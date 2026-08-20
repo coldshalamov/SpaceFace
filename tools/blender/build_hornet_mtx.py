@@ -292,7 +292,7 @@ def wire_maps(material, bsdf, maps, coat=0.0, emission=None):
 
 def create_materials():
     specs = {
-        "Material_Hull": ((0.64, 0.66, 0.68), 0.04, 0.42, "hull", 0.03, None),
+        "Material_Hull": ((0.56, 0.58, 0.60), 0.04, 0.48, "hull", 0.0, None),
         "Material_Armor": ((0.34, 0.36, 0.38), 0.38, 0.36, "armor", 0.05, None),
         "Material_Mechanical": ((0.50, 0.48, 0.44), 0.90, 0.22, "mechanical", 0.0, None),
         "Material_Accent": ((0.04, 0.40, 0.50), 0.10, 0.34, "accent", 0.2, None),
@@ -310,7 +310,8 @@ def create_materials():
         bsdf.inputs["Metallic"].default_value = metal
         bsdf.inputs["Roughness"].default_value = rough
         # Warning maps washed the seat to peach. Canopy maps turned the pane into a gray slab.
-        if name not in ("Material_Warning", "Material_Canopy"):
+        # Hull maps photographed chrome-black and hid the wing section.
+        if name not in ("Material_Warning", "Material_Canopy", "Material_Hull"):
             maps = role_maps(role, rgb, prefix=name.replace("Material_", "").lower())
             wire_maps(material, bsdf, maps, coat=coat, emission=emit)
         elif emit:
@@ -353,6 +354,14 @@ def create_materials():
     sbsdf.inputs["Roughness"].default_value = 0.78
     soot["spacefaceRole"] = "thruster"
     mats["Material_Soot"] = soot
+    # Unmapped mid-gray so the airfoil section can shade. Mapped armor photographed as an ink kite.
+    wing = bpy.data.materials.new("Material_Wing")
+    wbsdf = principled(wing)
+    wbsdf.inputs["Base Color"].default_value = (0.46, 0.48, 0.50, 1)
+    wbsdf.inputs["Metallic"].default_value = 0.06
+    wbsdf.inputs["Roughness"].default_value = 0.46
+    wing["spacefaceRole"] = "armor"
+    mats["Material_Wing"] = wing
     return mats
 
 
@@ -876,10 +885,9 @@ def add_manufactured_delta(name, sign, material, collection):
 
 
 def teardrop_airfoil(x_le, y, z, chord, thick):
-    """Circular nose, sharp tail. Side view must read a sausage, not a kite chine."""
-    radius = min(max(thick * 0.46, 0.028), chord * 0.20)
+    """Full-radius circular nose, sharp tail. Side view must read a sausage."""
+    radius = min(max(thick * 0.50, 0.04), chord * 0.28)
     cx = x_le - radius
-    ht, hb = thick * 0.54, thick * 0.38
 
     def le(deg):
         ang = math.radians(deg)
@@ -887,21 +895,21 @@ def teardrop_airfoil(x_le, y, z, chord, thick):
 
     return [
         le(0),
-        le(28),
-        le(55),
-        le(82),
-        (x_le - chord * 0.22, y, z + ht),
-        (x_le - chord * 0.42, y, z + ht * 0.72),
-        (x_le - chord * 0.64, y, z + ht * 0.36),
-        (x_le - chord * 0.84, y, z + ht * 0.10),
+        le(22),
+        le(45),
+        le(70),
+        le(90),
+        (x_le - chord * 0.28, y, z + radius * 0.92),
+        (x_le - chord * 0.50, y, z + radius * 0.62),
+        (x_le - chord * 0.72, y, z + radius * 0.28),
         (x_le - chord, y, z),
-        (x_le - chord * 0.84, y, z - hb * 0.12),
-        (x_le - chord * 0.62, y, z - hb * 0.48),
-        (x_le - chord * 0.40, y, z - hb * 0.78),
-        (x_le - chord * 0.22, y, z - hb * 0.88),
-        le(-82),
-        le(-55),
-        le(-28),
+        (x_le - chord * 0.72, y, z - radius * 0.28),
+        (x_le - chord * 0.50, y, z - radius * 0.62),
+        (x_le - chord * 0.28, y, z - radius * 0.92),
+        le(-90),
+        le(-70),
+        le(-45),
+        le(-22),
     ]
 
 
@@ -944,46 +952,44 @@ def loft_volume(name, specs, material, collection, thick=0.12):
     return obj
 
 
-def add_blended_interceptor_wing(name, sign, hull, armor, collection):
-    """Lofted teardrop: unswept circular LE, thick root, anhedral tip. No bolted pipe."""
+def add_blended_interceptor_wing(name, sign, skin, armor, collection):
+    """Lofted teardrop: unswept circular LE, fat section all the way to the tip."""
     s = float(sign)
-    # C114: LE X is almost constant. Swept LE was the kite. Tip drops so the root
-    # sausage is not hidden behind a thin card when looking along -Y.
+    # C116: keep thickness out to the tip. Tapering 1.04→0.13 made the side
+    # silhouette a diamond even with an unswept circular LE.
     main = (
-        (1.20, 1.52, 2.40, 1.02, 0.24),
-        (1.62, 1.51, 2.18, 0.84, 0.16),
-        (2.08, 1.50, 1.86, 0.62, 0.06),
-        (2.58, 1.48, 1.48, 0.40, -0.04),
-        (3.06, 1.46, 1.08, 0.22, -0.12),
-        (3.48, 1.44, 0.74, 0.11, -0.18),
+        (1.18, 1.50, 2.10, 0.88, 0.16),
+        (1.70, 1.50, 1.95, 0.82, 0.16),
+        (2.20, 1.49, 1.70, 0.74, 0.16),
+        (2.65, 1.48, 1.40, 0.66, 0.16),
+        (3.00, 1.47, 1.10, 0.56, 0.16),
     )
     rings = [
         densify_ring(teardrop_airfoil(le, y * s, z, chord, thick), 4)
         for y, le, chord, thick, z in main
     ]
-    wing = loft_from_rings(name, rings, hull, collection, 0.008, cap=True)
+    wing = loft_from_rings(name, rings, skin, collection, 0.008, cap=True)
     flap = (
-        (2.10, -0.28, 0.58, 0.11),
-        (2.55, 0.04, 0.48, 0.08),
-        (3.00, 0.40, 0.38, 0.06),
-        (3.32, 0.62, 0.28, 0.04),
+        (2.00, -0.12, 0.52, 0.14),
+        (2.35, 0.12, 0.44, 0.12),
+        (2.70, 0.36, 0.36, 0.10),
     )
     loft_from_rings(f"{name}_Flap", [
-        densify_ring(teardrop_airfoil(le, y * s, -0.06, chord, thick), 3)
+        densify_ring(teardrop_airfoil(le, y * s, 0.16, chord, thick), 3)
         for y, le, chord, thick in flap
-    ], hull, collection, 0.005, cap=True)
-    for i, yb in enumerate((2.10, 2.55, 3.05)):
+    ], skin, collection, 0.005, cap=True)
+    for i, yb in enumerate((2.00, 2.35, 2.70)):
         add_cylinder(
             f"{name}_Hinge_{i}",
-            (-0.20, yb * s, -0.04),
+            (-0.10, yb * s, 0.16),
             0.016, 0.09, armor, collection, 8, 0.001,
             rot=(math.pi / 2, 0, 0),
         )
     loft_from_rings(f"{name}_Fillet", [
-        densify_ring(teardrop_airfoil(1.50, 1.08 * s, 0.22, 2.10, 0.82), 4),
-        densify_ring(teardrop_airfoil(1.51, 1.16 * s, 0.23, 2.28, 0.94), 4),
-        densify_ring(teardrop_airfoil(1.52, 1.22 * s, 0.24, 2.40, 1.02), 4),
-    ], hull, collection, 0.008, cap=True)
+        densify_ring(teardrop_airfoil(1.48, 1.06 * s, 0.16, 1.85, 0.72), 4),
+        densify_ring(teardrop_airfoil(1.49, 1.12 * s, 0.16, 2.00, 0.82), 4),
+        densify_ring(teardrop_airfoil(1.50, 1.18 * s, 0.16, 2.10, 0.88), 4),
+    ], skin, collection, 0.008, cap=True)
     return wing
 
 
@@ -1205,7 +1211,7 @@ def shade_and_uv(obj):
     obj.select_set(True)
     apply_modifiers(obj)
     try:
-        bpy.ops.object.shade_smooth_by_angle(angle=math.radians(28))
+        bpy.ops.object.shade_smooth_by_angle(angle=math.radians(40))
     except Exception:
         for poly in obj.data.polygons:
             poly.use_smooth = True
@@ -1391,7 +1397,7 @@ def build_lod(lod, mats):
     # C93/C94 keel tiles floated under the belly in starboard. Do not put them back.
 
     for sign, side in ((-1, "Port"), (1, "Starboard")):
-        add_blended_interceptor_wing(f"Wing_{side}", sign, hull, armor, collection)
+        add_blended_interceptor_wing(f"Wing_{side}", sign, mats["Material_Wing"], armor, collection)
         add_hollow_bell(side, -3.10, 0.90 * sign, 0.12, 0.66, mats, collection)
         loft_from_rings(f"Canard_{side}", [
             densify_ring(diamond_airfoil(4.96, 0.42 * sign, 0.08, 0.88, 0.24), 2),
@@ -1407,8 +1413,8 @@ def build_lod(lod, mats):
         add_overlap_plate(f"GunTrunnion_{side}", (4.55, 0.40 * sign, 0.00), (0.22, 0.08, 0.07), mech, collection, 0.004)
         add_cylinder(f"BarrelJacket_{side}", (5.15, 0.40 * sign, -0.02), 0.032, 0.52, ceramic, collection, vertices=10, bevel=0.002)
         add_cylinder(f"BarrelIsolator_{side}", (5.48, 0.40 * sign, -0.02), 0.024, 0.12, mech, collection, vertices=8, bevel=0.002)
-        add_rcs_cluster(side, (0.05, 2.45 * sign, -0.02), mats, collection, sign=sign)
-        add_overlap_plate(f"WarnTip_{side}", (1.05, 3.40 * sign, -0.16), (0.12, 0.05, 0.010), warning, collection, 0.002)
+        add_rcs_cluster(side, (0.05, 2.45 * sign, 0.10), mats, collection, sign=sign)
+        add_overlap_plate(f"WarnTip_{side}", (1.05, 2.95 * sign, 0.16), (0.12, 0.05, 0.010), warning, collection, 0.002)
 
     if lod <= 1:
         add_radiator_cassette("PortFlank", (-1.70, -1.10, 0.20), lod, mats, collection, length=0.72, height=0.16, yaw=0.0)
@@ -1647,7 +1653,7 @@ def render_cycle(collection):
     out.mkdir(parents=True, exist_ok=True)
     views = {
         "three_quarter": ((8.8, -7.4, 5.6), (3.10, 0, 0.80), 36),
-        "starboard": ((0.90, 13.0, 1.55), (0.90, 0, 0.18), 34),
+        "starboard": ((0.90, 13.4, 0.16), (0.90, 0, 0.16), 34),
         "rear": ((-10.2, -7.2, 2.5), (-3.20, 0.10, 0.10), 34),
         "clay_three_quarter": ((8.8, -7.4, 5.6), (3.10, 0, 0.80), 36),
         "grazing_close": ((6.6, -5.4, 2.0), (1.15, 0, 0.35), 48),
