@@ -1,6 +1,8 @@
 /* SpaceFace — UI theme + layout. Existing tokens preserve runtime compatibility with older screens.
    They are not an art-direction mandate. New UI must not automatically inherit the old cyan/purple,
    glass, rounded-card, visor, or console vocabulary; choose a deliberate surface-specific direction. */
+@import "./commsradial.css";
+
 :root {
   --bg: #05070d;
   --panel: #0b1220; --panel-2: #111d30; --panel-edge: #1d3350; --panel-edge-2: #2b4a72;

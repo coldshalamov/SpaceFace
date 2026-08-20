@@ -22,6 +22,7 @@ import { createSectorLawPresenter } from './sectorLawPresenter.js';
 import { createSignalInvestigationPrompt } from './signalInvestigationPrompt.js';
 import { createRecoveryEncounterPrompt } from './recoveryEncounterPrompt.js';
 import { createContactHailPrompt } from './contactHailPrompt.js';
+import { createCommsRadial } from './commsRadial.js';
 import { createEndingEpilogue } from './endingEpilogue.js';
 import { createCommsTrace } from './effects/commsTrace.js';
 
@@ -87,6 +88,7 @@ export function createComms(ctx) {
   const signalInvestigationPrompt = createSignalInvestigationPrompt(ctx);
   const recoveryEncounterPrompt = createRecoveryEncounterPrompt(ctx);
   const contactHailPrompt = createContactHailPrompt(ctx);
+  const commsRadial = createCommsRadial(ctx);
   const endingEpilogue = createEndingEpilogue({
     ...ctx,
     isBlocked: () => choiceModalOpen,
@@ -516,6 +518,7 @@ export function createComms(ctx) {
     if (signalInvestigationPrompt && signalInvestigationPrompt.tick) signalInvestigationPrompt.tick();
     if (recoveryEncounterPrompt && recoveryEncounterPrompt.tick) recoveryEncounterPrompt.tick();
     if (contactHailPrompt && contactHailPrompt.tick) contactHailPrompt.tick();
+    if (commsRadial && commsRadial.tick) commsRadial.tick();
     updateCommsTrace();
     tickHeldComms();
     sweep();
@@ -560,6 +563,7 @@ export function createComms(ctx) {
       signalInvestigationPrompt,
       recoveryEncounterPrompt,
       contactHailPrompt,
+      commsRadial,
     ]) {
       try { if (child && typeof child.destroy === 'function') child.destroy(); } catch (_) {}
     }
@@ -577,7 +581,7 @@ export function createComms(ctx) {
     bulkhead.remove();
   }
 
-  return { tick, pushComms, openBacklog, closeBacklog, isModalOpen, destroy, endingEpilogue, pirateParleyPrompt, sectorLawPresenter, signalInvestigationPrompt, recoveryEncounterPrompt, contactHailPrompt };
+  return { tick, pushComms, openBacklog, closeBacklog, isModalOpen, destroy, endingEpilogue, pirateParleyPrompt, sectorLawPresenter, signalInvestigationPrompt, recoveryEncounterPrompt, contactHailPrompt, commsRadial };
 }
 
 function normalizeTtlMs(ttl) {

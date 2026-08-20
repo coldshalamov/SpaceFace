@@ -45,6 +45,37 @@ function flightActionLabel(state, action) {
   }).filter(Boolean).join('/');
 }
 
+// Controller focus follows the composed screen, not incidental DOM order. A directional move ranks
+// only candidates that are physically in that direction, then prefers the shortest travel with a
+// penalty for cross-axis drift.
+export function spatialFocusTarget(items, active, dir) {
+  if (!active || !items.includes(active) || typeof active.getBoundingClientRect !== 'function') return null;
+  const origin = active.getBoundingClientRect();
+  const ox = origin.left + origin.width / 2;
+  const oy = origin.top + origin.height / 2;
+  const horizontal = dir === 'left' || dir === 'right';
+  const sign = dir === 'left' || dir === 'up' ? -1 : 1;
+  let best = null;
+  let bestScore = Infinity;
+  for (const candidate of items) {
+    if (candidate === active || typeof candidate.getBoundingClientRect !== 'function') continue;
+    const rect = candidate.getBoundingClientRect();
+    if (!(rect.width > 0 && rect.height > 0)) continue;
+    const dx = rect.left + rect.width / 2 - ox;
+    const dy = rect.top + rect.height / 2 - oy;
+    const primary = (horizontal ? dx : dy) * sign;
+    if (primary <= 1) continue;
+    const cross = Math.abs(horizontal ? dy : dx);
+    const overlap = horizontal
+      ? Math.max(0, Math.min(origin.bottom, rect.bottom) - Math.max(origin.top, rect.top))
+      : Math.max(0, Math.min(origin.right, rect.right) - Math.max(origin.left, rect.left));
+    const overlapBonus = overlap > 0 ? Math.min(42, overlap * 0.7) : 0;
+    const score = primary + cross * 2.35 - overlapBonus;
+    if (score < bestScore) { best = candidate; bestScore = score; }
+  }
+  return best;
+}
+
 export function createUiInput(ctx, screenManager) {
   const { state, bus } = ctx;
   const gp = ctx.gamepad;
@@ -604,38 +635,6 @@ export function createUiInput(ctx, screenManager) {
       }
       return true;
     });
-  }
-
-  // Controller focus follows the composed screen, not incidental DOM order. A directional move
-  // ranks only candidates that are physically in that direction, then prefers the shortest travel
-  // with a penalty for cross-axis drift. This keeps the command dock, hardpoints, manifests, and
-  // contextual trays behaving like spatial game controls even when their markup is progressive.
-  function spatialFocusTarget(items, active, dir) {
-    if (!active || !items.includes(active) || typeof active.getBoundingClientRect !== 'function') return null;
-    const origin = active.getBoundingClientRect();
-    const ox = origin.left + origin.width / 2;
-    const oy = origin.top + origin.height / 2;
-    const horizontal = dir === 'left' || dir === 'right';
-    const sign = dir === 'left' || dir === 'up' ? -1 : 1;
-    let best = null;
-    let bestScore = Infinity;
-    for (const candidate of items) {
-      if (candidate === active || typeof candidate.getBoundingClientRect !== 'function') continue;
-      const rect = candidate.getBoundingClientRect();
-      if (!(rect.width > 0 && rect.height > 0)) continue;
-      const dx = rect.left + rect.width / 2 - ox;
-      const dy = rect.top + rect.height / 2 - oy;
-      const primary = (horizontal ? dx : dy) * sign;
-      if (primary <= 1) continue;
-      const cross = Math.abs(horizontal ? dy : dx);
-      const overlap = horizontal
-        ? Math.max(0, Math.min(origin.bottom, rect.bottom) - Math.max(origin.top, rect.top))
-        : Math.max(0, Math.min(origin.right, rect.right) - Math.max(origin.left, rect.left));
-      const overlapBonus = overlap > 0 ? Math.min(42, overlap * 0.7) : 0;
-      const score = primary + cross * 2.35 - overlapBonus;
-      if (score < bestScore) { best = candidate; bestScore = score; }
-    }
-    return best;
   }
 
   function clickStationTab(btn) {
