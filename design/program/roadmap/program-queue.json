@@ -7254,7 +7254,7 @@
       "priority": 335,
       "title": "Bound leftover Continue and sector admission",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-129.05"
       ],
@@ -7270,7 +7270,9 @@
         "npm run check:playable",
         "npm run probe:runtime-witness"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-129-09-continue-admission-reject-REPORT.md"
+      ],
       "brief": "Reserved PQ-054 leftovers. Opening cohort exists; first-flight still showed a seconds-scale present and a 2 s admission max on 2026-08-20. Wire or finish prepareSectorEntry so late roots cannot extend the opening watermark. Do not skip shaders or raise timeouts."
     },
     {

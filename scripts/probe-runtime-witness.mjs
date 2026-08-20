@@ -2,6 +2,7 @@
 // Headed Electron runtime witness: fly a few seconds and write what actually happened.
 // Agents should read .devshots/runtime-witness/report.md instead of guessing from source.
 import { createHash } from 'node:crypto';
+import { createRequire } from 'node:module';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -20,10 +21,17 @@ import { loadPlaywright } from './lib/load-playwright.mjs';
 import { installCspSafePlaywrightPolling } from './lib/playwrightCspPolling.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
+const requireCjs = createRequire(import.meta.url);
+const {
+  readPlayerStoreKeysSync,
+  resolvePlayerSaveDir,
+} = requireCjs('./lib/playerSaveStore.cjs');
 const OUT = path.join(ROOT, '.devshots', 'runtime-witness');
 const SAMPLE_MS = Number(process.env.SPACEFACE_WITNESS_MS || 20_000);
 const SAMPLE_EVERY_MS = 500;
 const FIXED_SEED = 47;
+const CONTINUE_ROUTE = process.argv.includes('--continue');
+const SECTOR_ENTRY_ROUTE = process.argv.includes('--sector-entry');
 
 await mkdir(OUT, { recursive: true });
 
@@ -81,7 +89,7 @@ function formatTableCensusSection(summary, route) {
   const lines = [
     '',
     '## Tabletop census (PQ-129.01)',
-    `- route: New Game seed ${route.seed}, held thrust, ${route.sampleMs} ms at ${route.sampleEveryMs} ms cadence`,
+    `- route: ${route.label}, held thrust, ${route.sampleMs} ms at ${route.sampleEveryMs} ms cadence`,
     `- sim delta: ${route.simDelta.toFixed(2)} s; executed-frame delta: ${route.executedFrameDelta}`,
     `- bounded instrumentation: renderWork ${route.instrumentation?.previousRenderWorkEnabled === true ? 'already on' : 'enabled for this probe only'}; prior state restored before shutdown: ${route.instrumentation?.restored === true}`,
   ];
@@ -213,8 +221,7 @@ async function dismissCinematic(targetPage) {
   }
 }
 
-async function launchUntilFlight(targetPage, timeoutMs = 120_000) {
-  await targetPage.getByRole('button', { name: /^Launch$/i }).click({ timeout: 30_000 });
+async function waitUntilFlight(targetPage, routeLabel, timeoutMs = 120_000) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     const status = await targetPage.evaluate(readWitnessInPage).catch((error) => ({ dumpError: String(error) }));
@@ -222,7 +229,58 @@ async function launchUntilFlight(targetPage, timeoutMs = 120_000) {
     if (status.mode === 'loading') log(`loading sim=${status.simTime} frames=${status.executedFrames}`);
     await targetPage.waitForTimeout(1000);
   }
-  throw new Error('New Game never entered flight');
+  throw new Error(`${routeLabel} never entered flight`);
+}
+
+async function launchUntilFlight(targetPage, timeoutMs = 120_000) {
+  await targetPage.getByRole('button', { name: /^Launch$/i }).click({ timeout: 30_000 });
+  return waitUntilFlight(targetPage, 'New Game', timeoutMs);
+}
+
+function readContinueSaveSnapshot() {
+  const dir = resolvePlayerSaveDir(process.env);
+  const all = readPlayerStoreKeysSync(dir);
+  const pairs = Object.fromEntries(Object.entries(all).filter(([key]) => key.startsWith('sf.save.')));
+  const slots = Object.keys(pairs)
+    .filter((key) => key !== 'sf.save.index')
+    .map((key) => key.slice('sf.save.'.length))
+    .sort();
+  if (slots.length === 0 || !pairs['sf.save.index']) {
+    throw new Error(`Continue witness found no indexed player save in ${dir}`);
+  }
+  return { dir, pairs, slots };
+}
+
+async function jumpToCeres(targetPage) {
+  await targetPage.keyboard.press('KeyN');
+  const map = targetPage.locator('[data-screen="galaxyMap"]').first();
+  await map.waitFor({ state: 'visible', timeout: 30_000 });
+  await targetPage.keyboard.press('/');
+  const search = targetPage.locator('.gm-search-input');
+  await search.waitFor({ state: 'visible', timeout: 10_000 });
+  await search.fill('Ceres Belt');
+  const names = targetPage.locator('.gm-search-item-name');
+  await names.first().waitFor({ state: 'visible', timeout: 15_000 });
+  const labels = (await names.allTextContents()).map((value) => String(value || '').trim());
+  const index = labels.findIndex((label) => label.toLowerCase() === 'ceres belt');
+  if (index < 0) throw new Error(`public map search did not expose Ceres Belt: ${labels.join(' | ')}`);
+  await targetPage.locator('.gm-search-item').nth(index).click();
+  const action = targetPage.locator('#gm-set-course-btn');
+  await action.waitFor({ state: 'visible', timeout: 15_000 });
+  const actionLabel = String(await action.textContent() || '').replace(/\s+/g, ' ').trim();
+  if (actionLabel !== 'Set Course & Jump') {
+    throw new Error(`Ceres Belt exposed '${actionLabel}' instead of Set Course & Jump`);
+  }
+  await action.click();
+  await map.waitFor({ state: 'hidden', timeout: 30_000 });
+  await targetPage.waitForFunction(() => {
+    const state = window.SF?.state;
+    const player = state?.entities?.get?.(state.playerId);
+    return state?.world?.currentSectorId === 'sector_ceres_belt'
+      && state?.jump?.state === 'IDLE'
+      && state?.mode === 'flight'
+      && player?.alive !== false;
+  }, null, { timeout: 180_000 });
 }
 
 let app = null;
@@ -236,6 +294,12 @@ let primaryError = null;
 let cleanupReport = null;
 let cleanupError = null;
 let gpu = null;
+let routeInfo = {
+  kind: 'new-game',
+  label: `New Game seed ${FIXED_SEED}`,
+  saveDir: null,
+  saveSlots: [],
+};
 
 try {
   const { _electron: electron } = await loadPlaywright();
@@ -290,10 +354,35 @@ try {
     ? { renderer: window.SF.state.render.gpu.renderer, tier: window.SF.state.render.gpu.tier }
     : null);
 
-  log('new game');
-  await page.getByRole('button', { name: 'New Game', exact: true }).click({ timeout: 30_000 });
-  await page.fill('#sf-ng-seed', String(FIXED_SEED));
-  const entered = await launchUntilFlight(page);
+  let entered;
+  if (CONTINUE_ROUTE) {
+    const save = readContinueSaveSnapshot();
+    routeInfo = {
+      kind: 'continue',
+      label: `Continue from read-only player save (${save.slots.join(', ')})`,
+      saveDir: save.dir,
+      saveSlots: save.slots,
+    };
+    await page.addInitScript((pairs) => {
+      try {
+        for (const [key, value] of Object.entries(pairs)) localStorage.setItem(key, value);
+      } catch (_) {}
+    }, save.pairs);
+    await page.evaluate((pairs) => {
+      for (const [key, value] of Object.entries(pairs)) localStorage.setItem(key, value);
+    }, save.pairs);
+    await page.reload({ waitUntil: 'domcontentloaded', timeout: 180_000 });
+    await page.waitForFunction(() => window.SF?.state && window.SF?.bus, null, { timeout: 90_000 });
+    await dismissCinematic(page);
+    log(`continue from read-only player save slots=${save.slots.join(',')}`);
+    await page.getByRole('button', { name: 'Continue', exact: true }).click({ timeout: 30_000 });
+    entered = await waitUntilFlight(page, 'Continue');
+  } else {
+    log('new game');
+    await page.getByRole('button', { name: 'New Game', exact: true }).click({ timeout: 30_000 });
+    await page.fill('#sf-ng-seed', String(FIXED_SEED));
+    entered = await launchUntilFlight(page);
+  }
   log(`entered flight ${JSON.stringify({ mode: entered.mode, simTime: entered.simTime })}`);
 
   probeInstrumentation = await page.evaluate(() => {
@@ -324,7 +413,14 @@ try {
   await page.waitForTimeout(250);
 
   await page.locator('#gl-canvas').click({ timeout: 10_000 }).catch(() => {});
-  await page.evaluate(() => window.SF.state.perfRuntime.reset());
+  if (SECTOR_ENTRY_ROUTE) {
+    log('public sector entry to Ceres Belt with hitch attribution armed');
+    await jumpToCeres(page);
+    routeInfo.label += ' -> public Ceres Belt sector entry';
+    routeInfo.sectorEntry = 'sector_ceres_belt';
+  } else {
+    await page.evaluate(() => window.SF.state.perfRuntime.reset());
+  }
   await page.keyboard.down('KeyW');
   const started = Date.now();
   let shotIndex = 0;
@@ -417,6 +513,7 @@ const bloomPhases = Object.fromEntries(BLOOM_PHASE_LABELS.map((label) => [
   finalRenderWork?.[label] || null,
 ]));
 const route = {
+  ...routeInfo,
   seed: FIXED_SEED,
   sampleMs: SAMPLE_MS,
   sampleEveryMs: SAMPLE_EVERY_MS,
