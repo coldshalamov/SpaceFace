@@ -7202,7 +7202,7 @@
       "priority": 333,
       "title": "Prewarm exact live shader keys",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-129.06"
       ],
@@ -7216,7 +7216,9 @@
         "npm run check:shader-compile",
         "npm run check:playable"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-129-07-exact-key-prewarm-reject-REPORT.md"
+      ],
       "brief": "Reserved PQ-072. Tiny dummies that match live keys (lights, HDR, batching, shadows). Revert if the fly worsens. Continue must not absorb the stall."
     },
     {
