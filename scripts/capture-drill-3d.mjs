@@ -102,6 +102,11 @@ try {
   await shot('02-boring-live.png');
   await page.waitForTimeout(1400);
   await page.keyboard.up('ArrowDown');
+
+  // Survey pulse: photograph the reveal beat — veins and gas tells lighting up around the rig.
+  await page.keyboard.press('KeyC');
+  await page.waitForTimeout(1000);
+  await shot('02b-survey-pulse.png');
   const bored = await page.evaluate(() => {
     const d = window.SF.state.drill;
     return { row: d.avatar.row, col: d.avatar.col, cleared: d.cableTrail.length };
@@ -173,14 +178,26 @@ try {
     const astId = d.asteroidId;
     const out = [];
     const move = (c, r) => { d.avatar.col = c; d.avatar.row = r; d.avatar.fromCol = c; d.avatar.fromRow = r; };
+    // The gas-tap approach cell is field-dependent and can legitimately land on a fixed install
+    // cell; fall back to a carved neighbour so the capture remains about the visuals.
+    const tryInstall = (defId, c, r) => {
+      let res = sites.installMachine({ asteroidId: astId, defId, col: c, row: r });
+      if (!res.ok && res.reason === 'occupied') {
+        for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1]]) {
+          res = sites.installMachine({ asteroidId: astId, defId, col: c + dc, row: r + dr });
+          if (res.ok) break;
+        }
+      }
+      return res;
+    };
     move(14, 2);
-    out.push(['extractor', sites.installMachine({ asteroidId: astId, defId: 'sm_extractor', col: 13, row: 2 })]);
+    out.push(['extractor', tryInstall('sm_extractor', 13, 2)]);
     move(14, 2);
-    out.push(['core', sites.installMachine({ asteroidId: astId, defId: 'sm_massline_core', col: 14, row: 1 })]);
-    out.push(['gastap', sites.installMachine({ asteroidId: astId, defId: 'sm_gas_tap', col: tap[0], row: tap[1] })]);
-    out.push(['refinery', sites.installMachine({ asteroidId: astId, defId: 'sm_refinery', col: 13, row: 3 })]);
-    out.push(['fab', sites.installMachine({ asteroidId: astId, defId: 'sm_fabricator', col: 13, row: 4 })]);
-    out.push(['port', sites.installMachine({ asteroidId: astId, defId: 'sm_cargo_port', col: 14, row: 4 })]);
+    out.push(['core', tryInstall('sm_massline_core', 14, 1)]);
+    out.push(['gastap', tryInstall('sm_gas_tap', tap[0], tap[1])]);
+    out.push(['refinery', tryInstall('sm_refinery', 13, 3)]);
+    out.push(['fab', tryInstall('sm_fabricator', 13, 4)]);
+    out.push(['port', tryInstall('sm_cargo_port', 14, 4)]);
     const siteId = out[0][1].siteId;
     const site = sites.getSite(siteId);
     const machineCells = new Set(site.machines.map((m) => `${m.col}:${m.row}`));
