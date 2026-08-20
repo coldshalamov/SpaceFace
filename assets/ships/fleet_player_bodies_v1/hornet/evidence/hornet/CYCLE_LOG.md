@@ -101,5 +101,7 @@
 | 122 | yes | EAF9C4CD | 3Q REVISE / starboard REVISE (wing KEEP) / rear REVISE (throats KEEP) | Upright pane counts as glass from starboard, not from 3Q. Not wired. |
 | 123 | yes | 1E454820 | 3Q REVISE / starboard REVISE (wing KEEP) / rear REVISE (throats KEEP) | Raked front pane still empty air from 3Q. Hung plates have gaps; cabin flank still a cream slab. Not wired. |
 | 124 | yes | 439EB0FD | 3Q REVISE (glass KEEP) / starboard REVISE (wing KEEP) / rear REVISE (throats KEEP) | First 3Q seat-through-glass. Spine plates still LEGO boxes. One pane blows white. Not wired. |
+| 125 | yes | 0547F958 | 3Q REVISE (glass KEEP) / starboard REVISE (wing KEEP) / rear REVISE (throats KEEP) | Hood + sheet courses. Seat through glass held. Dorsal sheets still 12 cm proud, read as boxes. Not wired. |
+| 126 | yes | CBF71EF8 | 3Q REVISE (glass KEEP) / starboard REVISE (wing KEEP) / rear REVISE (throats KEEP) | Flush 3 cm plates, flap slot, lower hood. Whole still still a gray tube. Not wired. |
 
 Hitch-plus / A-list: not met. C85 remains the live game body. Do not mark PQ-050.01 done. Do not self-accept.
