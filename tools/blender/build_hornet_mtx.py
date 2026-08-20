@@ -293,8 +293,8 @@ def wire_maps(material, bsdf, maps, coat=0.0, emission=None, metallic_from_map=T
 
 def create_materials():
     specs = {
-        "Material_Hull": ((0.12, 0.13, 0.145), 0.02, 0.60, "hull", 0.0, None),
-        "Material_Armor": ((0.08, 0.09, 0.10), 0.08, 0.48, "armor", 0.0, None),
+        "Material_Hull": ((0.14, 0.15, 0.165), 0.02, 0.58, "hull", 0.0, None),
+        "Material_Armor": ((0.07, 0.075, 0.085), 0.06, 0.52, "armor", 0.0, None),
         "Material_Mechanical": ((0.50, 0.48, 0.44), 0.90, 0.22, "mechanical", 0.0, None),
         "Material_Accent": ((0.04, 0.40, 0.50), 0.10, 0.34, "accent", 0.2, None),
         "Material_Warning": ((0.98, 0.14, 0.02), 0.04, 0.38, "warning", 0.0, None),
@@ -328,12 +328,12 @@ def create_materials():
             if "IOR" in bsdf.inputs:
                 bsdf.inputs["IOR"].default_value = 1.52
             if "Coat Weight" in bsdf.inputs:
-                bsdf.inputs["Coat Weight"].default_value = 0.22
-                bsdf.inputs["Coat Roughness"].default_value = 0.10
-            bsdf.inputs["Base Color"].default_value = (0.006, 0.010, 0.014, 1)
+                bsdf.inputs["Coat Weight"].default_value = 0.18
+                bsdf.inputs["Coat Roughness"].default_value = 0.12
+            bsdf.inputs["Base Color"].default_value = (0.004, 0.007, 0.010, 1)
             bsdf.inputs["Metallic"].default_value = 0.0
-            bsdf.inputs["Roughness"].default_value = 0.10
-            bsdf.inputs["Alpha"].default_value = 0.64
+            bsdf.inputs["Roughness"].default_value = 0.12
+            bsdf.inputs["Alpha"].default_value = 0.76
             if hasattr(material, "blend_method"):
                 try:
                     material.blend_method = "BLEND"
@@ -362,6 +362,13 @@ def create_materials():
     sbsdf.inputs["Roughness"].default_value = 0.78
     soot["spacefaceRole"] = "thruster"
     mats["Material_Soot"] = soot
+    gap = bpy.data.materials.new("Material_Gap")
+    gbsdf = principled(gap)
+    gbsdf.inputs["Base Color"].default_value = (0.035, 0.036, 0.040, 1)
+    gbsdf.inputs["Metallic"].default_value = 0.0
+    gbsdf.inputs["Roughness"].default_value = 0.72
+    gap["spacefaceRole"] = "armor"
+    mats["Material_Gap"] = gap
     # Unmapped mid-gray so the airfoil section can shade. Mapped armor photographed as an ink kite.
     wing = bpy.data.materials.new("Material_Wing")
     wbsdf = principled(wing)
@@ -680,8 +687,8 @@ def add_interior_vane(tag, cx, cy, cz, angle, s, material, collection, outboard=
     verts = []
     for xo, inner, outer in sections:
         t = abs(xo) / max(2.00 * s, 1e-4)
-        yo = cy + outboard * 0.22 * t * s
-        zo = cz + 0.12 * t * s
+        yo = cy + outboard * 0.38 * t * s
+        zo = cz + 0.22 * t * s
         for radius in (inner, outer):
             for ang in (a0, a1):
                 verts.append((
@@ -722,8 +729,8 @@ def add_hollow_bell(tag, x, y, z, scale, mats, collection):
     # C130: cant the mouth outboard and up so 3Q sees into the throat, not a closed cup.
     def ring_at(t, r, sides=40):
         xi = x - 0.04 * s - t * bell_len
-        yo = y + outboard * 0.22 * t * s
-        zo = z + 0.12 * t * s
+        yo = y + outboard * 0.38 * t * s
+        zo = z + 0.22 * t * s
         return ellipse_ring(xi, yo, zo, r * s, r * s, sides)
 
     case_rings = [ring_at(t, r) for t, r in ((0.00, 0.28), (0.18, 0.28), (0.34, 0.34))]
@@ -752,8 +759,8 @@ def add_hollow_bell(tag, x, y, z, scale, mats, collection):
         f"BellHeat_{tag}",
         (
             x - 0.04 * s - heat_t * bell_len,
-            y + outboard * 0.22 * heat_t * s,
-            z + 0.12 * heat_t * s,
+            y + outboard * 0.38 * heat_t * s,
+            z + 0.22 * heat_t * s,
         ),
         0.62 * s, 0.10 * s, ceramic, collection, 28, 0.002,
     )
@@ -921,7 +928,8 @@ def teardrop_airfoil(x_le, y, z, chord, thick):
         (x_le - chord * 0.28, y, z + radius * 0.92),
         (x_le - chord * 0.50, y, z + radius * 0.62),
         (x_le - chord * 0.72, y, z + radius * 0.28),
-        (x_le - chord, y, z),
+        (x_le - chord, y, z + 0.028),
+        (x_le - chord, y, z - 0.028),
         (x_le - chord * 0.72, y, z - radius * 0.28),
         (x_le - chord * 0.50, y, z - radius * 0.62),
         (x_le - chord * 0.28, y, z - radius * 0.92),
@@ -1040,6 +1048,35 @@ def knife_inset_courses(obj, x0, x1, y0, y1, z0, z1, nx, ny, channel, depth, nor
         bpy.data.meshes.remove(backup)
 
 
+def paint_gap_faces(obj, material, x0, x1, y0, y1, z0, z1):
+    """Darker coating on inset channel walls so gaps are not the hull shader."""
+    apply_modifiers(obj)
+    if material.name not in [slot.name for slot in obj.data.materials]:
+        obj.data.materials.append(material)
+    slot = obj.data.materials.find(material.name)
+    xa, xb = min(x0, x1), max(x0, x1)
+    ya, yb = min(y0, y1), max(y0, y1)
+    za, zb = min(z0, z1), max(z0, z1)
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    bm.faces.ensure_lookup_table()
+    n = 0
+    for face in bm.faces:
+        center = face.calc_center_median()
+        if not (xa <= center.x <= xb and ya <= center.y <= yb and za <= center.z <= zb):
+            continue
+        if face.calc_area() > 0.018:
+            continue
+        if abs(face.normal.z) > 0.38:
+            continue
+        face.material_index = slot
+        n += 1
+    bm.to_mesh(obj.data)
+    bm.free()
+    obj.data.update()
+    print(f"gap faces {n}")
+
+
 def add_station_hoop(tag, x, hw, hh, zc, flat, box, keel, material, collection, stand=0.030, half=0.036):
     """Thin hoop that follows the hull station. Not a rectangular cage."""
     rings = [
@@ -1097,8 +1134,8 @@ def add_blended_interceptor_wing(name, sign, skin, armor, collection):
             rot=(math.pi / 2, 0, 0),
         )
     loft_from_rings(f"{name}_Fillet", [
-        densify_ring(teardrop_airfoil(1.48, 1.06 * s, 0.16, 1.85, 0.72), 4),
-        densify_ring(teardrop_airfoil(1.49, 1.12 * s, 0.16, 2.00, 0.82), 4),
+        densify_ring(teardrop_airfoil(1.46, 1.02 * s, 0.16, 1.92, 0.80), 4),
+        densify_ring(teardrop_airfoil(1.48, 1.10 * s, 0.16, 2.02, 0.86), 4),
         densify_ring(teardrop_airfoil(1.50, 1.18 * s, 0.16, 2.10, 0.88), 4),
     ], skin, collection, 0.008, cap=True)
     return wing
@@ -1438,6 +1475,7 @@ def build_lod(lod, mats):
     knife_inset_courses(body, 0.05, -2.30, -0.70, 0.70, 0.18, 0.90, 2, 1, 0.018, 0.044, "z", 0.24)
     knife_inset_courses(body, 2.40, -1.80, 1.08, 1.82, -0.02, 0.70, 2, 1, 0.016, 0.040, "y", 0.38)
     knife_inset_courses(body, 2.40, -1.80, -1.82, -1.08, -0.02, 0.70, 2, 1, 0.016, 0.040, "y-", 0.38)
+    paint_gap_faces(body, mats["Material_Gap"], 2.60, -2.40, -1.90, 1.90, -0.10, 1.20)
     report_shells(body, "hull after plate courses")
     add_station_hoop("Hoop_Cabin", 2.90, 1.40, 0.70, 0.20, 0.26, 0.50, 0.24, armor, collection, stand=0.038, half=0.032)
     add_station_hoop("Hoop_Shoulder", 1.80, 1.80, 0.72, 0.14, 0.12, 0.68, 0.22, armor, collection, stand=0.040, half=0.034)
@@ -1447,9 +1485,9 @@ def build_lod(lod, mats):
     soot = mats["Material_Soot"]
     # Dark-lined tub. Walls stay below the rim so they do not fill the mouth.
     add_box("Tub_Floor", (3.85, 0.0, 0.30), (0.40, 0.26, 0.012), soot, collection, 0.002)
-    add_box("Tub_Aft", (3.42, 0.0, 0.54), (0.014, 0.28, 0.22), soot, collection, 0.002)
-    add_box("Tub_Port", (3.85, -0.30, 0.50), (0.38, 0.012, 0.18), soot, collection, 0.002)
-    add_box("Tub_Stbd", (3.85, 0.30, 0.50), (0.38, 0.012, 0.18), soot, collection, 0.002)
+    add_box("Tub_Aft", (3.42, 0.0, 0.50), (0.014, 0.30, 0.20), soot, collection, 0.002)
+    add_box("Tub_Port", (3.85, -0.32, 0.50), (0.40, 0.012, 0.20), soot, collection, 0.002)
+    add_box("Tub_Stbd", (3.85, 0.32, 0.50), (0.40, 0.012, 0.20), soot, collection, 0.002)
     add_box("Cockpit_AftWall", (3.48, 0.0, 0.52), (0.014, 0.18, 0.12), armor, collection, 0.002)
     add_box("WellLip_F", (4.40, 0.0, 0.72), (0.014, 0.42, 0.012), armor, collection, 0.001)
     add_box("WellLip_A", (3.38, 0.0, 0.72), (0.014, 0.38, 0.012), armor, collection, 0.001)
@@ -1467,18 +1505,17 @@ def build_lod(lod, mats):
     add_box("Cockpit_Console", (4.16, 0.0, 0.42), (0.08, 0.08, 0.020), armor, collection, 0.002)
     add_box("Cockpit_Stick", (4.08, 0.04, 0.50), (0.012, 0.012, 0.06), mech, collection, 0.001)
     canopy = mats["Material_Canopy"]
-    # C130: one faired 24 mm dark hood over the well. Four vertical panes
-    # photographed as a greenhouse crate. Wide enough that 3Q looks through it.
+    # C131: low dark hood faired onto the nose deck, not a greenhouse crate.
     add_folded_sheet(
         "Canopy_Hood",
-        (4.52, -0.70, 0.70), (4.52, 0.70, 0.70),
-        (3.36, 0.52, 1.00), (3.36, -0.52, 1.00),
-        0.024, canopy, collection, 0.001,
+        (4.62, -0.48, 0.62), (4.62, 0.48, 0.62),
+        (3.52, 0.36, 0.80), (3.52, -0.36, 0.80),
+        0.022, canopy, collection, 0.001,
     )
-    add_box("Frame_SillF", (4.52, 0.0, 0.70), (0.014, 0.70, 0.012), armor, collection, 0.001)
-    add_box("Frame_Brow", (3.36, 0.0, 1.00), (0.014, 0.52, 0.012), armor, collection, 0.001)
-    add_box("Frame_LongeronP", (3.94, -0.62, 0.85), (0.56, 0.010, 0.010), armor, collection, 0.001)
-    add_box("Frame_LongeronS", (3.94, 0.62, 0.85), (0.56, 0.010, 0.010), armor, collection, 0.001)
+    add_box("Frame_SillF", (4.62, 0.0, 0.62), (0.012, 0.48, 0.010), armor, collection, 0.001)
+    add_box("Frame_Brow", (3.52, 0.0, 0.80), (0.012, 0.36, 0.010), armor, collection, 0.001)
+    add_box("Frame_LongeronP", (4.06, -0.42, 0.71), (0.52, 0.008, 0.008), armor, collection, 0.001)
+    add_box("Frame_LongeronS", (4.06, 0.42, 0.71), (0.52, 0.008, 0.008), armor, collection, 0.001)
 
     add_five_wall_tub("AvionicsTub", (0.85, -1.18, 0.22), (0.24, 0.10, 0.11), 0.040, mech, collection)
     add_box("AvionicsRack", (0.85, -1.18, 0.16), (0.16, 0.032, 0.05), armor, collection, 0.002)
@@ -1711,8 +1748,7 @@ def setup_studio():
         ("Rim", (-14, -5, 7), 620, (0.78, 0.84, 0.92), 14),
         ("Kick", (-6, 10, -4), 260, (0.74, 0.78, 0.84), 12),
         ("AftFill", (-10, -12, 8), 420, (0.80, 0.84, 0.90), 16),
-        ("CockpitFill", (3.88, 0.0, 0.48), 90, (1.00, 0.88, 0.70), 0.45),
-        ("CockpitKey", (4.12, 0.12, 0.50), 60, (1.00, 0.80, 0.55), 0.35),
+        ("CockpitFill", (3.88, 0.0, 0.46), 18, (1.00, 0.86, 0.68), 0.30),
         ("StbdFill", (0.9, 12.0, 3.8), 520, (0.88, 0.90, 0.94), 18),
     ):
         data = bpy.data.lights.new(name, "AREA")
@@ -1774,18 +1810,18 @@ def render_cycle(collection):
     out = FAMILY / "evidence" / "hornet" / "cycles" / f"cycle_{CYCLE:02d}"
     out.mkdir(parents=True, exist_ok=True)
     views = {
-        "three_quarter": ((10.2, -8.6, 4.6), (2.40, 0, 0.62), 34),
+        "three_quarter": ((7.2, -11.2, 3.4), (0.70, 0, 0.28), 32),
         "starboard": ((0.90, 13.4, 0.16), (0.90, 0, 0.16), 34),
         "rear": ((-10.2, -7.2, 2.5), (-3.20, 0.10, 0.10), 34),
-        "clay_three_quarter": ((10.2, -8.6, 4.6), (2.40, 0, 0.62), 34),
+        "clay_three_quarter": ((7.2, -11.2, 3.4), (0.70, 0, 0.28), 32),
         "grazing_close": ((6.6, -5.4, 2.0), (1.15, 0, 0.35), 48),
         "bay_interior": ((4.50, -1.05, 1.20), (3.85, 0.0, 0.70), 34),
         "drive_rear": ((-6.6, -1.8, 0.55), (-3.90, 0.90, 0.12), 46),
         "play_size": ((36, -32, 16), (0.20, 0, 0.16), 48),
-        "orm_isolation": ((10.2, -8.6, 4.6), (2.40, 0, 0.62), 34),
-        "normal_isolation": ((10.2, -8.6, 4.6), (2.40, 0, 0.62), 34),
-        "id_or_material_id": ((10.2, -8.6, 4.6), (2.40, 0, 0.62), 34),
-        "material_three_quarter": ((10.2, -8.6, 4.6), (2.40, 0, 0.62), 34),
+        "orm_isolation": ((7.2, -11.2, 3.4), (0.70, 0, 0.28), 32),
+        "normal_isolation": ((7.2, -11.2, 3.4), (0.70, 0, 0.28), 32),
+        "id_or_material_id": ((7.2, -11.2, 3.4), (0.70, 0, 0.28), 32),
+        "material_three_quarter": ((7.2, -11.2, 3.4), (0.70, 0, 0.28), 32),
     }
     meshes = [obj for obj in collection.objects if obj.type == "MESH" and not obj.get("collision")]
     for name in ("three_quarter", "starboard", "rear", "material_three_quarter", "grazing_close", "bay_interior", "drive_rear", "play_size"):

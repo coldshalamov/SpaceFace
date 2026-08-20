@@ -107,5 +107,7 @@
 | 128 | yes | BA751AF9 | 3Q REVISE (courses started) / starboard REVISE (wing KEEP) / rear REVISE (throats KEEP) | Inset courses in the hull, not boxes. Aft barrel still blank. Not wired. |
 | 129 | yes | A0F4D7F5 | 3Q REVISE / starboard REVISE (wing KEEP, aft courses) / rear REVISE (throats KEEP) | Courses through the aft barrel. Whole still still REVISE. Not wired. |
 | 130 | yes | 0C879215 | 3Q REVISE (courses KEEP) / starboard REVISE (wing KEEP) / rear REVISE (throats KEEP) | Eight large courses, not a waffle. Hood still a crate from 3Q. Cans closed from 3Q, open from rear. Not wired. |
+| 131 | yes | 806D677F | 3Q REVISE / starboard REVISE (wing+hood KEEP) / rear REVISE (throats KEEP) | Low dark hood, 3Q open rims, gap paint. Gap shader blacked a flank. Not wired. |
+| 132 | yes | 7555D869 | 3Q REVISE / starboard REVISE (wing KEEP) / rear REVISE (throats KEEP) | Gap paint only on channel walls. Whole still still REVISE. Not wired. |
 
 Hitch-plus / A-list: not met. C85 remains the live game body. Do not mark PQ-050.01 done. Do not self-accept.
