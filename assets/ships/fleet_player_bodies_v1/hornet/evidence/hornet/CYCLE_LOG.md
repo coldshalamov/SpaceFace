@@ -86,6 +86,9 @@
 | 105 | yes | see json | author REVISE pending | Raked glass, split cans, dark vanes. 3Q still a crate. Not wired. |
 | 106 | yes | see json | 3Q REVISE / starboard pending / rear pending | Coaming off. Open well, named peach seat, split dark-lip cans. Wing still a slab. Not wired. |
 | 107 | yes | see json | author REVISE | Gray hull, armor wings, dark soot throats. Seat too low, vanished. White rims. Not wired. |
-| 108 | yes | see json | author pending | Raised coral seat named at 3Q. Dark split throats. Gray teardrop wing. Not wired. |
+| 108 | yes | see json | 3Q REVISE / starboard REVISE / rear REVISE | Raised coral seat named at 3Q. Dark split throats. Gray teardrop wing. Not wired. |
+| 111 | yes | see json | 3Q REVISE / starboard REVISE / rear REVISE | Open well, L-chair, dark lips. Chair glowed. Wing still a slab. Not wired. |
+| 112 | yes | see json | 3Q REVISE / starboard REVISE / rear REVISE | Painted seat, framed brow. Starboard still a kite. White inner hoop. Not wired. |
+| 113 | yes | see json | author REVISE | LE tube reads as a pipe. Not wired. |
 
 Hitch-plus / A-list: not met. C85 remains the live game body. Do not mark PQ-050.01 done. Do not self-accept.

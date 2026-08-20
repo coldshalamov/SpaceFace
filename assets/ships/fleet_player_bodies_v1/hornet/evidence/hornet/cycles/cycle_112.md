@@ -1,6 +1,6 @@
 # Hornet cycle 112 — painted seat, framed brow, unswept teardrop
 
-**Counted:** yes. Author pending subagent.
+**Counted:** yes. Verdicts REVISE / REVISE / REVISE.
 **Framing (author):** bow, stern, span, height on all three.
 
 Chair emission is off. Well is open with a metal lip and a front windscreen.

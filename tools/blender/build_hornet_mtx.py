@@ -296,7 +296,7 @@ def create_materials():
         "Material_Armor": ((0.34, 0.36, 0.38), 0.38, 0.36, "armor", 0.05, None),
         "Material_Mechanical": ((0.50, 0.48, 0.44), 0.90, 0.22, "mechanical", 0.0, None),
         "Material_Accent": ((0.04, 0.40, 0.50), 0.10, 0.34, "accent", 0.2, None),
-        "Material_Warning": ((0.86, 0.28, 0.04), 0.04, 0.42, "warning", 0.0, None),
+        "Material_Warning": ((0.90, 0.32, 0.05), 0.04, 0.40, "warning", 0.0, None),
         "Material_Ceramic": ((0.22, 0.14, 0.07), 0.0, 0.86, "ceramic", 0.0, None),
         "Material_Radiator": ((0.12, 0.10, 0.08), 0.62, 0.62, "mechanical", 0.0, None),
         "Material_Canopy": ((0.04, 0.05, 0.055), 0.00, 0.06, "glass", 0.12, None),
@@ -324,8 +324,8 @@ def create_materials():
                 bsdf.inputs["Transmission"].default_value = 0.55
             if "IOR" in bsdf.inputs:
                 bsdf.inputs["IOR"].default_value = 1.45
-            bsdf.inputs["Base Color"].default_value = (0.02, 0.025, 0.03, 1)
-            bsdf.inputs["Alpha"].default_value = 0.42
+            bsdf.inputs["Base Color"].default_value = (0.05, 0.06, 0.07, 1)
+            bsdf.inputs["Alpha"].default_value = 0.22
             if hasattr(material, "blend_method"):
                 try:
                     material.blend_method = "HASHED"
@@ -715,8 +715,8 @@ def add_hollow_bell(tag, x, y, z, scale, mats, collection):
         (0.28, 0.22),
         (0.48, 0.30),
         (0.68, 0.46),
-        (0.86, 0.68),
-        (0.97, 0.86),
+        (0.86, 0.72),
+        (0.97, 0.90),
     ):
         xi = x - 0.04 * s - t * bell_len
         liner_rings.append(ellipse_ring(xi, y, z, r * s, r * s, 28))
@@ -972,6 +972,13 @@ def add_blended_interceptor_wing(name, sign, hull, armor, collection):
         densify_ring(teardrop_airfoil(1.24, 1.30 * s, 0.15, 1.90, 0.68), 4),
         densify_ring(teardrop_airfoil(1.28, 1.42 * s, 0.16, 2.10, 0.78), 4),
     ], hull, collection, 0.008, cap=True)
+    # Round LE tube so starboard counts a nose, not a kite chine.
+    add_cylinder(
+        f"{name}_LE",
+        (1.22, 2.20 * s, 0.16),
+        0.16, 1.70, hull, collection, 16, 0.002,
+        rot=(math.pi / 2, 0, 0),
+    )
     return wing
 
 
