@@ -33,6 +33,7 @@ const FIXED_SEED = 47;
 const CONTINUE_ROUTE = process.argv.includes('--continue');
 const SECTOR_ENTRY_ROUTE = process.argv.includes('--sector-entry');
 const SHADOWS_OFF_DIAGNOSTIC = process.argv.includes('--shadows-off-diagnostic');
+const OPAQUE_BATCH_OFF_DIAGNOSTIC = process.argv.includes('--opaque-batch-off-diagnostic');
 
 await mkdir(OUT, { recursive: true });
 
@@ -44,6 +45,7 @@ const canvasFrames = [];
 let probeInstrumentation = null;
 let finalHitchAttribution = null;
 let finalRenderWork = null;
+let opaqueBatchDiagnostic = null;
 
 function log(line) {
   const text = `[${new Date().toISOString()}] ${line}`;
@@ -388,6 +390,27 @@ try {
   }
   log(`entered flight ${JSON.stringify({ mode: entered.mode, simTime: entered.simTime })}`);
 
+  if (OPAQUE_BATCH_OFF_DIAGNOSTIC) {
+    opaqueBatchDiagnostic = await page.evaluate(() => {
+      const renderSystem = window.SF?.registry?.get?.('render');
+      if (!renderSystem || typeof renderSystem._opaqueBatchEnabled !== 'boolean') {
+        return { applied: false, previous: null };
+      }
+      const previous = renderSystem._opaqueBatchEnabled;
+      renderSystem._opaqueBatchEnabled = false;
+      return {
+        applied: renderSystem._opaqueBatchEnabled === false,
+        previous,
+      };
+    });
+    if (opaqueBatchDiagnostic?.applied !== true) {
+      throw new Error('Runtime witness could not apply the isolated opaque-batch-off diagnostic');
+    }
+    routeInfo.label += ' [diagnostic: opaque batch off]';
+    routeInfo.opaqueBatchOffDiagnostic = true;
+    log('diagnostic only: live opaque material batching disabled inside isolated profile');
+  }
+
   probeInstrumentation = await page.evaluate(() => {
     const perf = window.SF?.state?.perfRuntime;
     const previousRenderWorkEnabled = perf?.renderWorkEnabled === true;
@@ -476,6 +499,18 @@ try {
   log(`probe failed: ${error && error.stack ? error.stack : error}`);
 } finally {
   await page?.keyboard.up('KeyW').catch(() => {});
+  if (page && opaqueBatchDiagnostic?.applied === true) {
+    const restored = await page.evaluate((previous) => {
+      const renderSystem = window.SF?.registry?.get?.('render');
+      if (!renderSystem || typeof renderSystem._opaqueBatchEnabled !== 'boolean') return false;
+      renderSystem._opaqueBatchEnabled = previous;
+      return renderSystem._opaqueBatchEnabled === previous;
+    }, opaqueBatchDiagnostic.previous).catch(() => false);
+    opaqueBatchDiagnostic.restored = restored === true;
+    if (!opaqueBatchDiagnostic.restored && !cleanupError) {
+      cleanupError = new Error('Runtime witness failed to restore the opaque batch diagnostic');
+    }
+  }
   if (page && shadowDiagnostic?.applied === true) {
     const restored = await page.evaluate((previous) => {
       const sf = window.SF;
@@ -560,6 +595,7 @@ const bloomPhases = Object.fromEntries(BLOOM_PHASE_LABELS.map((label) => [
 ]));
 const route = {
   ...routeInfo,
+  opaqueBatchDiagnostic,
   shadowDiagnostic,
   seed: FIXED_SEED,
   sampleMs: SAMPLE_MS,
