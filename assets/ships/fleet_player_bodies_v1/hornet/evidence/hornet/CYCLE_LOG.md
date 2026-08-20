@@ -121,5 +121,9 @@
 | 142 | yes | see json | author REVISE | Open ceramic bowls from 3Q; vanes too deep, gone from rear. Not wired. |
 | 143 | yes | B3693D54 | 3Q REVISE / starboard REVISE / rear REVISE | Tan bowls + vanes in the crop. Reviewers still called black cups and hanging flap. Not wired. |
 | 144 | yes | 046DF132 | author notes | Flap raised into the wing plane. 3Q hanging slab reduced. Not wired. |
+| 145 | **no** | D7F734BB | INVALID 3Q/rear | Brighter ceramic, 8 vanes, diamond flap, DriveFair. 3Q clipped bells; rear clipped bow. Recapture only. Not wired. |
+| 146 | yes | 4C524834 | 3Q REVISE / starboard REVISE / rear REVISE | Valid recapture of C145. Rear open tan bowls with vane star. Whole still grey tube with plates. 3Q cockpit a fleck; flap a hanging card. Not wired. |
+| 147 | **no** | 7C717791 | INVALID 3Q | Ceramic outer flare + throat lights blew bowls white; 3Q clipped a bell. Starboard flap became a second sausage. Not wired. |
+| 148 | yes | 9DF4CBC9 | author stop | Soot vanes restored, no throat lights, no slot sheet, lower hood. Grind stopped; Hitch-plus not met. Not wired. |
 
 Hitch-plus / A-list: not met. C85 remains the live game body. Do not mark PQ-050.01 done. Do not self-accept.
