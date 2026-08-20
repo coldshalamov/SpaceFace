@@ -16,6 +16,7 @@ import {
   publishSectorBoundaryRecordSnapshot,
   publishPreparedSectorBoundary,
   reconcileSettledSectorBoundaryRecords,
+  sectorPrewarmPopulationNeedsSynchronousRefresh,
   sectorPrewarmCertificationIsCurrent,
   settleLiveSectorBoundaryAdmissions,
   settleSectorPrewarmPopulationFixpoint,
@@ -38,6 +39,22 @@ function deferred() {
   });
   return { promise, resolve, reject };
 }
+
+test('sector prewarm repeats the synchronous census only for an unseeded or dirty active record', () => {
+  assert.equal(sectorPrewarmPopulationNeedsSynchronousRefresh(null), false);
+  assert.equal(sectorPrewarmPopulationNeedsSynchronousRefresh({ active: false }), false);
+  assert.equal(sectorPrewarmPopulationNeedsSynchronousRefresh({ active: true }), true);
+  assert.equal(sectorPrewarmPopulationNeedsSynchronousRefresh({
+    active: true,
+    populationSeeded: true,
+    populationCoverageDirty: false,
+  }), false);
+  assert.equal(sectorPrewarmPopulationNeedsSynchronousRefresh({
+    active: true,
+    populationSeeded: true,
+    populationCoverageDirty: true,
+  }), true);
+});
 
 function cargoCapsuleFixtureRecord() {
   const geometry = new THREE.BoxGeometry(5.2, 2.25, 3);

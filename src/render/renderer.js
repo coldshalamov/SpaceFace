@@ -293,6 +293,11 @@ function entitySectorId(entity) {
   return entity && entity.homeSectorId || data.homeSectorId || data.sectorId || null;
 }
 
+export function sectorPrewarmPopulationNeedsSynchronousRefresh(record) {
+  return record?.active === true
+    && (record.populationSeeded !== true || record.populationCoverageDirty === true);
+}
+
 function playerEntityForRenderState(state) {
   return state && state.entities && typeof state.entities.get === 'function'
     ? state.entities.get(state.playerId)
@@ -3338,8 +3343,7 @@ export const render = {
           )
           && this._contextLost !== true,
         refreshPopulation: () => {
-          appendSectorPrewarmRequests(record, sectorPrewarmRequests(record.sectorId));
-          if (record.stageBoundaries !== false) stageSectorPrewarmBoundaries(record);
+          refreshSectorPrewarmPopulation(record);
         },
         settlePrefetch: options.includePrefetch === true
           ? async (pending) => {
@@ -3443,17 +3447,33 @@ export const render = {
       });
       return record.promise;
     };
+    const refreshSectorPrewarmPopulation = (record) => {
+      if (!record || record.active !== true) return record;
+      appendSectorPrewarmRequests(record, sectorPrewarmRequests(record.sectorId));
+      if (record.stageBoundaries !== false) stageSectorPrewarmBoundaries(record);
+      record.populationSeeded = true;
+      record.populationCoverageDirty = false;
+      return record;
+    };
     const beginIncomingSectorPrewarm = (sectorId, options = {}) => {
       const exactSectorId = sectorId == null ? null : String(sectorId);
       if (!exactSectorId) return null;
       const stageBoundaries = options.stageBoundaries !== false;
       const existing = this._incomingSectorPrewarm;
       if (existing && existing.active === true && existing.sectorId === exactSectorId) {
+        if (existing.stageBoundaries !== stageBoundaries) {
+          existing.populationCoverageDirty = true;
+        }
         existing.stageBoundaries = stageBoundaries;
-        appendSectorPrewarmRequests(existing, sectorPrewarmRequests(exactSectorId));
         if (stageBoundaries) {
-          stageSectorPrewarmBoundaries(existing);
-        } else if (existing.boundaryRecords?.size) {
+          if (sectorPrewarmPopulationNeedsSynchronousRefresh(existing)) {
+            refreshSectorPrewarmPopulation(existing);
+          }
+        } else {
+          if (sectorPrewarmPopulationNeedsSynchronousRefresh(existing)) {
+            refreshSectorPrewarmPopulation(existing);
+          }
+          if (!existing.boundaryRecords?.size) return existing;
           const retiredCount = existing.boundaryRecords.size;
           existing.boundaryAbort = this._sectorBoundaryPreparations.abortRecords(
             existing.boundaryRecords,
@@ -3489,10 +3509,11 @@ export const render = {
         liveBoundaryPromises: new Map(),
         certification: null,
         rotationCertificationRequired: false,
+        populationSeeded: false,
+        populationCoverageDirty: true,
       };
       this._incomingSectorPrewarm = record;
-      appendSectorPrewarmRequests(record, sectorPrewarmRequests(exactSectorId));
-      if (stageBoundaries) stageSectorPrewarmBoundaries(record);
+      refreshSectorPrewarmPopulation(record);
       return record;
     };
     const settleSectorPrewarmRequests = (record) => settleSectorBoundaryPreparations(record, {
@@ -3527,8 +3548,9 @@ export const render = {
       const pending = this._authoredSectorPrewarmPending;
       const exactSectorId = sectorId == null ? null : String(sectorId);
       if (!pending || pending.active !== true || pending.sectorId !== exactSectorId) return;
-      appendSectorPrewarmRequests(pending, sectorPrewarmRequests(exactSectorId));
-      stageSectorPrewarmBoundaries(pending);
+      if (sectorPrewarmPopulationNeedsSynchronousRefresh(pending)) {
+        refreshSectorPrewarmPopulation(pending);
+      }
     });
     bus.on('sector:exit', ({ sectorId } = {}) => {
       if (this._assetResidency) {
@@ -3671,8 +3693,12 @@ export const render = {
           stageBoundaries: stageExactBoundaries,
         });
       }
-      appendSectorPrewarmRequests(prewarm, sectorPrewarmRequests(exactSectorId));
-      if (stageExactBoundaries) stageSectorPrewarmBoundaries(prewarm);
+      if (sectorPrewarmPopulationNeedsSynchronousRefresh(prewarm)) {
+        refreshSectorPrewarmPopulation(prewarm);
+      }
+      // A charge-owned record was fully seeded once and receives exact entity:spawned additions.
+      // The settle fixpoint below still performs the authoritative full census before publication;
+      // avoid repeating that same O(population) work synchronously inside the arrival event.
       // Exact hidden boundaries suppress ordinary authored upgrades only on intentional charge
       // entries. Continuous crossings keep the established spatial runway + two-build drain live.
       this._authoredSectorPrewarmPendingId = stageExactBoundaries ? exactSectorId : null;
