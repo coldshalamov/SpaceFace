@@ -94,6 +94,7 @@ evidence triggers are proved.
 | [`PQ-048.md`](../retired/PQ-048.md) | deliver twenty new inference-to-convergence player outcome packages in four composed tranches | integrated and retired through 20 exact leaf receipts and four composed tranches at focused-green scope; ordinary headed portfolio route remains unproven |
 | [`PQ-049.md`](./PQ-049.md) | build and accept a distinct civic Massline express-liner through DCC, release, render-package, runtime-map, and natural-route leaves | new express-only identity; first DCC candidate leaf is ready, later leaves are dependency-gated; parent remains unproven |
 | [`PQ-050.md`](./PQ-050.md) | remaster every live flyable ship except Hitch, one ship per leaf, under the MTX technique contract | Hitch frozen; ledger required; factory loft+boxes cannot close a leaf; first ready is Hornet |
+| [`PQ-129.md`](./PQ-129.md) | name every hitch on the live path, then remove compose/compile/upload/admission bricks without quality cuts | `--id PQ-129`; Wave A measure; Wave B ready after the classifier; Wave C planned |
 
 PQ-043 and PQ-044 are admitted queue identities but remain deferred and packet-less until their
 conditional triggers are proved.
@@ -113,6 +114,11 @@ express-mapping, and route/G7 leaves dependency-gated behind it.
 PQ-050 is active for `GFX-FLEET-REMASTER-HITCHPLUS`. Its parent is `ready` / `unproven`; only
 `PQ-050.01` (Hornet) is dispatchable. Each later leaf is the next single ship, gated on the
 previous ship being finished and wired. Hitch stays frozen.
+
+PQ-129 is active for `PERF-HITCH-CAMPAIGN`. Its parent is `ready` / `unproven` / `leaf_required`.
+Ordinary `--next` still returns fleet remaster. Hitching work is `node scripts/program-dispatch.mjs --id PQ-129`.
+Wave A (`.01`–`.03`) names every >32 ms frame. Wave B (`.04`–`.10`) is ready after the classifier.
+Wave C (`.11`–`.18`) stays `planned` until hitch count is halved.
 
 PQ-032 (five endings/continuing universe) and PQ-033 (release closeout) are also deferred and
 unfinished. They are stored under `../retired/` only to keep them out of current execution; that

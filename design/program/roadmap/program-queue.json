@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-08-13",
+  "updatedAt": "2026-08-20",
   "purpose": "Canonical cross-plan priority and dispatch queue. Product completion remains authoritative in design/program/03_LIVE_ACCEPTANCE_MATRIX.md.",
   "stateContract": {
     "allowed": [
@@ -79,7 +79,8 @@
         "PQ-044",
         "PQ-045",
         "PQ-046",
-        "PQ-050"
+        "PQ-050",
+        "PQ-129"
       ]
     },
     {
@@ -2370,6 +2371,42 @@
         "independent-visual-review"
       ],
       "brief": "Bring every live flyable player and NPC ship except Hitch/Kestrel to 2026 A-list construction. One leaf is one ship under ADVANCED_MODEL_TECHNIQUE_CONTRACT.md and MODEL_ADVERSARIAL_REVIEW_WORKFLOW.md: five-plus full-job cycles, three valid full-model stills, three subagent reviews that list obvious defects, implement all revises, cleanup old stills, then wire only that ship. A factory loft, tinted shared sheet, or zoomed gray crop cannot close a leaf. Hitch stays untouched."
+    },
+    {
+      "id": "PQ-129",
+      "priority": 51,
+      "title": "Hitch smoothness campaign",
+      "state": "ready",
+      "canonical": [
+        "PERF-HITCH-CAMPAIGN"
+      ],
+      "aliases": [
+        "PERF-HITCH",
+        "HITCH-SMOOTHNESS"
+      ],
+      "dependsOn": [],
+      "mutexes": [
+        "performance-hitch"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/program/PERF_HITCH_CAMPAIGN.md",
+        "design/PERF_OPTION_SPACE.md",
+        "design/PERF_BUDGET.md",
+        "design/program/roadmap/active/PQ-129.md"
+      ],
+      "checks": [
+        "npm run probe:runtime-witness",
+        "npm run check:playable",
+        "node scripts/check-program-docs.mjs"
+      ],
+      "evidence": [
+        "headed-witness",
+        "hitch-classifier",
+        "playable",
+        "same-picture"
+      ],
+      "brief": "Name every >32 ms frame on the live player path, then remove the named compose/compile/upload/admission bricks without lowering default quality. Wave A measures. Wave B kills hitch owners. Wave C crowded 60 fps waits until hitch count is halved. Dispatch with --id PQ-129; --next still returns fleet remaster."
     }
   ],
   "dispatchUnits": [
@@ -7000,6 +7037,434 @@
       ],
       "receiptRefs": [],
       "brief": "Polish Survey pin only until Hitch no longer wins on matched stills, then copy only this ship's three LODs into live parts/release. Do not rebuild or promote any other ship. Hitch stays untouched."
+    },
+    {
+      "id": "PQ-129.01",
+      "parentId": "PQ-129",
+      "priority": 327,
+      "title": "Tabletop glass/runway/beyond census",
+      "kind": "performance",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "performance-hitch"
+      ],
+      "paths": [
+        "src/render/tabletopPolicy.js",
+        "src/render/diagnostics.js",
+        "scripts/probe-runtime-witness.mjs"
+      ],
+      "checks": [
+        "npm run probe:runtime-witness",
+        "node scripts/check-program-docs.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Reserved PQ-061. Headed fixed-seed fly writing glass vs runway vs beyond submit/residency/sim counts. No product mutation required. Do not guess the IMPL leaf until this census exists."
+    },
+    {
+      "id": "PQ-129.02",
+      "parentId": "PQ-129",
+      "priority": 328,
+      "title": "Live hitch classifier on the player path",
+      "kind": "performance",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-129.01"
+      ],
+      "mutexes": [
+        "performance-hitch"
+      ],
+      "paths": [
+        "src/render/hitchClassifier.js",
+        "src/core/perfRuntime.js",
+        "src/core/presentationRunner.js",
+        "test/hitch-classifier.test.mjs"
+      ],
+      "checks": [
+        "node --test test/hitch-classifier.test.mjs",
+        "npm run probe:runtime-witness"
+      ],
+      "receiptRefs": [],
+      "brief": "Reserved PQ-062. Enable hitch attribution for a headed window only so compose, compile, upload, autosave, and present are distinct on frames >32 ms. Production default stays off. A 2026-08-20 witness named presentation/admission lumps; this leaf splits them."
+    },
+    {
+      "id": "PQ-129.03",
+      "parentId": "PQ-129",
+      "priority": 329,
+      "title": "Honest bloom-path phase timers",
+      "kind": "performance",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-129.02"
+      ],
+      "mutexes": [
+        "performance-hitch"
+      ],
+      "paths": [
+        "src/core/perfRuntime.js",
+        "src/render/bloom.js",
+        "src/core/renderUpdatePhase.js"
+      ],
+      "checks": [
+        "npm run probe:runtime-witness"
+      ],
+      "receiptRefs": [],
+      "brief": "Reserved PQ-063. Wire or repair CPU/GPU phase clocks on the real bloom present path so A/B can name sim vs prep vs submit vs present. Do not change the picture."
+    },
+    {
+      "id": "PQ-129.04",
+      "parentId": "PQ-129",
+      "priority": 330,
+      "title": "Slice authored ship compose off the present beat",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-129.03"
+      ],
+      "mutexes": [
+        "performance-hitch"
+      ],
+      "paths": [
+        "src/render/partsLibrary.js",
+        "src/render/renderer.js",
+        "test/flight-compose-gate.test.mjs"
+      ],
+      "checks": [
+        "node --test test/flight-compose-gate.test.mjs",
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "Reserved PQ-073. Close the empty-slot hole that still runs sync buildComposedShip in flight. Yield between parts or publish prepared hulls; never start unsliced compose on a late present. Invalidate with a reject receipt if PQ-129.02 does not name compose/admission. Headed combat fly required; the unit gate is not smoothness proof."
+    },
+    {
+      "id": "PQ-129.05",
+      "parentId": "PQ-129",
+      "priority": 331,
+      "title": "Warm next-contact hulls before they hit the glass",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-129.04"
+      ],
+      "mutexes": [
+        "performance-hitch"
+      ],
+      "paths": [
+        "src/render/partsLibrary.js",
+        "src/render/renderer.js",
+        "src/render/tabletopPolicy.js"
+      ],
+      "checks": [
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "Reserved PQ-075. Prepare authored combat/traffic hulls on the approach runway so a fight does not start compose on-glass. Do not warm the whole sector. Do not move the stall into Continue."
+    },
+    {
+      "id": "PQ-129.06",
+      "parentId": "PQ-129",
+      "priority": 332,
+      "title": "Census live shader program keys",
+      "kind": "performance",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-129.03"
+      ],
+      "mutexes": [
+        "performance-hitch"
+      ],
+      "paths": [
+        "src/render/precompile.js",
+        "src/render/renderer.js"
+      ],
+      "checks": [
+        "npm run check:shader-compile"
+      ],
+      "receiptRefs": [],
+      "brief": "Reserved PQ-064. Traverse opening + first combat + traffic and diff live Three program keys against precompile keep-alives. Shader warnings during the 2026-08-20 witness mean first-use still links in flight."
+    },
+    {
+      "id": "PQ-129.07",
+      "parentId": "PQ-129",
+      "priority": 333,
+      "title": "Prewarm exact live shader keys",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-129.06"
+      ],
+      "mutexes": [
+        "performance-hitch"
+      ],
+      "paths": [
+        "src/render/precompile.js"
+      ],
+      "checks": [
+        "npm run check:shader-compile",
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "Reserved PQ-072. Tiny dummies that match live keys (lights, HDR, batching, shadows). Revert if the fly worsens. Continue must not absorb the stall."
+    },
+    {
+      "id": "PQ-129.08",
+      "parentId": "PQ-129",
+      "priority": 334,
+      "title": "Move first GPU uploads off the present beat",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-129.07"
+      ],
+      "mutexes": [
+        "performance-hitch"
+      ],
+      "paths": [
+        "src/render/renderer.js",
+        "src/render/precompile.js"
+      ],
+      "checks": [
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "Reserved PQ-074. One texture/buffer after present; skip mipgen when the image already has mips. Invalidate if PQ-129.02 does not name upload."
+    },
+    {
+      "id": "PQ-129.09",
+      "parentId": "PQ-129",
+      "priority": 335,
+      "title": "Bound leftover Continue and sector admission",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-129.05"
+      ],
+      "mutexes": [
+        "performance-hitch"
+      ],
+      "paths": [
+        "src/render/renderer.js",
+        "src/render/precompile.js",
+        "src/core/presentationRunner.js"
+      ],
+      "checks": [
+        "npm run check:playable",
+        "npm run probe:runtime-witness"
+      ],
+      "receiptRefs": [],
+      "brief": "Reserved PQ-054 leftovers. Opening cohort exists; first-flight still showed a seconds-scale present and a 2 s admission max on 2026-08-20. Wire or finish prepareSectorEntry so late roots cannot extend the opening watermark. Do not skip shaders or raise timeouts."
+    },
+    {
+      "id": "PQ-129.10",
+      "parentId": "PQ-129",
+      "priority": 336,
+      "title": "Stop hitch catch-up from becoming three misses",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-129.04"
+      ],
+      "mutexes": [
+        "performance-hitch"
+      ],
+      "paths": [
+        "src/core/simulationRunner.js",
+        "src/core/presentationRunner.js"
+      ],
+      "checks": [
+        "node --test test/simulation-runner.test.mjs",
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "Reserved PQ-101. Cap and shed already exist. Change recovery only after PQ-129.02 splits first miss from echo misses. Do not zero the accumulator. Do not raise MAX_CATCHUP_STEPS. Hashes must hold."
+    },
+    {
+      "id": "PQ-129.11",
+      "parentId": "PQ-129",
+      "priority": 337,
+      "title": "Tighten glass-runway submit after hitch count halves",
+      "kind": "implementation",
+      "state": "planned",
+      "dependsOn": [
+        "PQ-129.01",
+        "PQ-129.10"
+      ],
+      "mutexes": [
+        "performance-hitch"
+      ],
+      "paths": [
+        "src/render/tabletopPolicy.js",
+        "src/render/renderer.js"
+      ],
+      "checks": [
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "Reserved PQ-068. Promote to ready only when hitch count is halved or the classifier names runway submit. Off-glass roots already hide. Do not pop on-glass ships. Do not shrink hail 5200."
+    },
+    {
+      "id": "PQ-129.12",
+      "parentId": "PQ-129",
+      "priority": 338,
+      "title": "Finish rigid opaque batching for unique hulls",
+      "kind": "implementation",
+      "state": "planned",
+      "dependsOn": [
+        "PQ-129.11"
+      ],
+      "mutexes": [
+        "performance-hitch"
+      ],
+      "paths": [
+        "src/render/renderer.js"
+      ],
+      "checks": [
+        "npm run check:perf-packets",
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "Reserved PQ-052. Instance+BatchedMesh is partial. Unique on-glass hulls still pay many opaque draws. Replaying the rejected heterogeneous candidate that lost 250-616 ms p95 is forbidden. Same-picture A/B required."
+    },
+    {
+      "id": "PQ-129.13",
+      "parentId": "PQ-129",
+      "priority": 339,
+      "title": "Collapse on-glass canopy and plume lanes",
+      "kind": "implementation",
+      "state": "planned",
+      "dependsOn": [
+        "PQ-129.12"
+      ],
+      "mutexes": [
+        "performance-hitch"
+      ],
+      "paths": [
+        "src/render/renderer.js",
+        "src/render/vfx.js"
+      ],
+      "checks": [
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "Reserved PQ-076. Keep canopies and plumes out of the rigid opaque batch. Collapse shared programs only if pixels match."
+    },
+    {
+      "id": "PQ-129.14",
+      "parentId": "PQ-129",
+      "priority": 340,
+      "title": "Cheap LOD for tiny on-glass fighters",
+      "kind": "implementation",
+      "state": "planned",
+      "dependsOn": [
+        "PQ-129.11"
+      ],
+      "mutexes": [
+        "performance-hitch"
+      ],
+      "paths": [
+        "src/render/lod.js",
+        "src/render/renderer.js"
+      ],
+      "checks": [
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "Reserved PQ-108. A 30-pixel on-glass fighter is cheap; close ships stay full. Selector exists; prove crowded flight with a pixel histogram. Not a far-world impostor."
+    },
+    {
+      "id": "PQ-129.15",
+      "parentId": "PQ-129",
+      "priority": 341,
+      "title": "Sleep off-table AI and traffic; keep the fight at 60 Hz",
+      "kind": "implementation",
+      "state": "planned",
+      "dependsOn": [
+        "PQ-129.10"
+      ],
+      "mutexes": [
+        "performance-hitch"
+      ],
+      "paths": [
+        "src/systems/tacticalAI.js",
+        "src/systems/traffic.js",
+        "src/core/activityScheduler.js"
+      ],
+      "checks": [
+        "npm run check:sim:v3",
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "Reserved PQ-080 after PQ-066 when required. Only when sim is the pole and GPU present is already cheap. Input/flight/weapons/collisions stay 60 Hz. Hostiles stay awake. Do not start a sim Worker."
+    },
+    {
+      "id": "PQ-129.16",
+      "parentId": "PQ-129",
+      "priority": 342,
+      "title": "Cheaper bloom/HDR only if present is the remaining pole",
+      "kind": "implementation",
+      "state": "planned",
+      "dependsOn": [
+        "PQ-129.12"
+      ],
+      "mutexes": [
+        "performance-hitch"
+      ],
+      "paths": [
+        "src/render/bloom.js",
+        "src/render/renderer.js"
+      ],
+      "checks": [
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "Reserved PQ-097 / PQ-078. July 2026 bloom-off did not save crowded p95. Close no-mutation if submit is still the pole. Stills must keep the default halo. Never disable bloom to pass a gate."
+    },
+    {
+      "id": "PQ-129.17",
+      "parentId": "PQ-129",
+      "priority": 343,
+      "title": "Keep autosave off the display callback",
+      "kind": "implementation",
+      "state": "planned",
+      "dependsOn": [
+        "PQ-129.02"
+      ],
+      "mutexes": [
+        "performance-hitch"
+      ],
+      "paths": [
+        "src/save/saveSystem.js",
+        "src/render/hitchClassifier.js"
+      ],
+      "checks": [
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "Reserved PQ-087. Capture is already sliced to 8/12 ms between rAFs. Wire autosave into the hitch classifier and yield after capture before Worker construction if .02 names it. Do not weaken transactional save."
+    },
+    {
+      "id": "PQ-129.18",
+      "parentId": "PQ-129",
+      "priority": 344,
+      "title": "Pole sweep; mint missing reserved leaves",
+      "kind": "program_control",
+      "state": "planned",
+      "dependsOn": [
+        "PQ-129.03"
+      ],
+      "mutexes": [
+        "performance-hitch"
+      ],
+      "paths": [
+        "design/PERF_OPTION_SPACE.md",
+        "design/program/PERF_HITCH_CAMPAIGN.md",
+        "CANONICAL_BUILD_MAP.md"
+      ],
+      "checks": [
+        "node scripts/check-program-docs.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Reserved PQ-094. Recurring: if a live pole has no leaf, mint one in PERF_OPTION_SPACE and admit a PQ-129 leaf. If a leaf is disproved, keep the reject receipt. Never done forever."
     }
   ]
 }

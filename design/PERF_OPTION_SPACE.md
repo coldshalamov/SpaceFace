@@ -14,6 +14,11 @@ Existing identities `PQ-034`–`PQ-044` and `PQ-051`–`PQ-060` stay authoritati
 scopes. Identities `PQ-061`–`PQ-128` below are reserved so later campaigns can admit
 leaves without inventing overlapping outcomes.
 
+The admitted hitch campaign that **executes** those reserved identities is
+[`PERF_HITCH_CAMPAIGN.md`](./program/PERF_HITCH_CAMPAIGN.md) / `PQ-129`.
+Do not duplicate those leaves under a new PQ number. Invalidate a `PQ-129` leaf
+when a census shows it is not the pole.
+
 ## 1. Picture and behavior contract
 
 A plan in this catalog is legal only if the player-facing game is unchanged:

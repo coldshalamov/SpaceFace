@@ -37,7 +37,15 @@ const QUEUE_STATES = [
 ];
 const CHECKED_OFF_STATES = ['integrated', 'historical'];
 const INTEGRATION_FIELDS = ['integratedCommit', 'acceptanceRef', 'receipt'];
-const DISPATCH_UNIT_STATES = new Set(['ready', 'claimed', 'blocked', 'done', 'deferred']);
+const DISPATCH_UNIT_STATES = new Set([
+  'planned',
+  'ready',
+  'claimed',
+  'implemented',
+  'blocked',
+  'done',
+  'deferred',
+]);
 const DISPATCH_UNIT_KINDS = new Set([
   'program_control',
   'implementation',

@@ -59,3 +59,7 @@ Each cycle: measure the live pole → pick one row from the tradeoff board →
 implement with shipped tests of the real functions → matched A/B that keeps
 on-screen submit counts honest → keep or revert the slice. Do not stack a
 second approach until the first has a same-route receipt.
+
+When the owner names hitching, execute through admitted [`PQ-129`](../program/roadmap/active/PQ-129.md)
+and [`PERF_HITCH_CAMPAIGN.md`](../program/PERF_HITCH_CAMPAIGN.md). That campaign consumes
+reserved `PQ-061`–`PQ-128` identities. It does not replace this file's picture contract.

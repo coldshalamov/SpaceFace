@@ -68,6 +68,25 @@ do the whole ship again. Zoomed gray plates do not count. Clean up old stills be
 commit. Wire only that ship, then the next. Do not stop after one ship. Do not touch Hitch.
 ```
 
+## Prompt A0-P — hitching / “make the game play smoothly”
+
+```text
+This is a campaign, not one task. The game is hitching. Start at
+CANONICAL_BUILD_MAP.md §8.4 and design/program/PERF_HITCH_CAMPAIGN.md.
+Do not use INFERENCE. Do not take PQ-050. Do not lower default quality.
+
+Run node scripts/program-dispatch.mjs --id PQ-129 and take the first
+claimable leaf. Wave A names every >32 ms frame. Wave B removes the
+named compose/compile/upload/admission brick. Wave C crowded 60 fps
+waits until hitch count is halved.
+
+One leaf at a time. Headed Electron or headed Chrome on the real GPU.
+flight-compose-gate.test.mjs is not smoothness proof. Run check:playable
+after every implementation leaf. If the classifier names a different
+owner than the claimed leaf, write a reject receipt and take the named
+owner. Keep going until the campaign stop condition is met.
+```
+
 ## Prompt A — find and finish the next task
 
 ```text

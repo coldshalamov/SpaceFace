@@ -26,6 +26,7 @@ This is a plan-family catalog, not a current dispatch list. Current leases live 
 | `design/vision/` | long-horizon product direction | not automatic implementation authority |
 | `design/production/` | optional production-controller workflow | applies only when explicitly activated |
 | `design/PERFORMANCE_MODERNIZATION_EXECUTION_PLAN.md` plus its constellation appendix | performance modernization source plan and option/research context | executable only through PQ-034–PQ-044; queue/packet/lease evidence owns live state |
+| [`PERF_HITCH_CAMPAIGN.md`](./PERF_HITCH_CAMPAIGN.md) | owner-visible hitching / smoothness campaign | admitted as `PQ-129`; consumes reserved `PQ-061`–`PQ-128` identities; not a quality-cut plan |
 | `design/_ARCHIVE/` and review history | archaeology | never current dispatch authority |
 
 ## How a plan becomes executable

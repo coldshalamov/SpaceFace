@@ -11,6 +11,7 @@ workflow; it does not replace original plans.
 |---|---|
 | Program map, "next N", check-off, plan routing | **`CANONICAL_BUILD_MAP.md`** (then `design/program/NOW.md` + queue) |
 | Every same-picture performance option, investigation, or large port later | **`CANONICAL_BUILD_MAP.md` §8.2** → [`design/PERF_OPTION_SPACE.md`](./design/PERF_OPTION_SPACE.md) |
+| The game is hitching / stuttering / not playing smoothly | **`CANONICAL_BUILD_MAP.md` §8.4** → [`design/program/PERF_HITCH_CAMPAIGN.md`](./design/program/PERF_HITCH_CAMPAIGN.md) → `PQ-129` (`--id PQ-129`). Measure first. Do not cut quality |
 | What is active or occupied now? | `design/program/NOW.md` → `design/program/README.md` |
 | Choose work across several plans / "do the next N" | `CANONICAL_BUILD_MAP.md` → `design/program/roadmap/program-queue.json` |
 | Claim a multi-week roadmap packet | `design/program/roadmap/README.md` → `design/program/roadmap/00_EXECUTION_PROTOCOL.md` |

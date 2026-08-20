@@ -41,6 +41,11 @@ disjoint files. No coordinator, task-long reservation, or worktree is required.
 [`design/program/INFERENCE_LANES.md`](./design/program/INFERENCE_LANES.md):
 
 - `NEXT` → one admitted queue unit, then stop. Use `program-dispatch --next/--ready/--id`.
+  Ordinary `--next` still prefers fleet remaster (`PQ-050`). Hitching is not that door.
+- **The game is hitching / stuttering / unplayable-smooth** → §8.4 and
+  [`design/program/PERF_HITCH_CAMPAIGN.md`](./design/program/PERF_HITCH_CAMPAIGN.md).
+  Dispatch `node scripts/program-dispatch.mjs --id PQ-129`. Measure first. Do not skip to
+  Worker/WebGPU/quality cuts.
 - **Any 2D / HUD / menu / screen work** → §11 below, then
   [`design/frontend/INSTRUMENT_GRAMMAR.md`](./design/frontend/INSTRUMENT_GRAMMAR.md) **before you
   design or build anything.** The grammar is binding; per-screen specs live beside it in
@@ -127,6 +132,16 @@ This campaign may rebuild the live Hitch *release* from the later polish that ne
 the compressed file; it still must not overwrite KTX2 with uncompressed source, and it must
 not dump factory remasters that lose to Hitch. It is not INFERENCE and not a default PQ-050
 overnight.
+
+**Performance hitch campaign:** if the owner reports hitching, stutter, or the game not playing
+smoothly, start at
+[`design/program/PERF_HITCH_CAMPAIGN.md`](./design/program/PERF_HITCH_CAMPAIGN.md)
+and the admitted packet
+[`design/program/roadmap/active/PQ-129.md`](./design/program/roadmap/active/PQ-129.md).
+This is not INFERENCE and not `PQ-050`. Reserved identities `PQ-061`–`PQ-128` stay the catalog;
+`PQ-129` is the executor that finally admits them as leaves. Wave A names every >32 ms frame.
+Wave B removes compose/compile/upload/admission bricks. Wave C crowded 60 fps waits until hitch
+count is halved. Default quality stays on.
 
 **Flight HUD attention pass:** if the task is the windshield-keys / toast-over-HUD / ship-instrument
 work the owner authorized, start at
@@ -773,6 +788,34 @@ saves → else implement the smallest leaf → tests of real functions → match
 
 A line with no parent yet is minted under `PQ-094` rather than invented ad hoc. Investigation-first
 is the default. Implementation is only what a census selected and an A/B kept.
+
+### 8.4 Hitch campaign (`PQ-129`) — admitted execution order
+
+`PQ-051`–`PQ-128` remain reserved catalog identities. They do not dispatch until a campaign
+admits them. **`PQ-129` is that campaign** for the owner-visible hitching problem.
+
+Law: [`design/program/PERF_HITCH_CAMPAIGN.md`](./design/program/PERF_HITCH_CAMPAIGN.md).
+Packet: [`design/program/roadmap/active/PQ-129.md`](./design/program/roadmap/active/PQ-129.md).
+Dispatch: `node scripts/program-dispatch.mjs --id PQ-129`. `--next` still returns `PQ-050`.
+
+**2026-08-20 headed Electron witness (Intel iGPU, real GPU, not SwiftShader):** Continue/new-game
+flight verdict was hitching. Eight of the last eight samples were hitches. Biggest bucket
+presentation (tail p95 ~99 ms, max ~515 ms). First-flight admission max ~2 s; one present max
+~13 s. Shader programs still linked during the fly. Lifecycle reported `foreground-occluded`
+(probe confounder for steady time, not for multi-second bricks). Live reviews the same day:
+sync `buildComposedShip` still runs in flight via the empty-slot exception; hitch classifier is
+default-off; off-glass 3D horizons are mostly retired; crowded p95 is still GPU submit once
+bricks die; sim is not the hitch owner.
+
+| Wave | Leaves | Reserved work | Player outcome |
+|---|---|---|---|
+| **A · name it** | `.01`–`.03` | `PQ-061` census, `PQ-062` live hitch classifier, `PQ-063` phase timers | Every >32 ms frame has a named owner on the real present path |
+| **B · kill bricks** | `.04`–`.10` | `PQ-073` compose slice, `PQ-075` next-contact, `PQ-064`/`PQ-072` shader keys, `PQ-074` upload, `PQ-054` leftover admission, `PQ-101` catch-up | First hostile and Continue no longer drop 40–250+ ms bricks |
+| **C · crowded 60 fps** | `.11`–`.18` planned | `PQ-068` submit, `PQ-052` batching, `PQ-076` lanes, `PQ-108` tiny LOD, `PQ-080` cadence, `PQ-097` bloom-if-pole, `PQ-087` autosave, `PQ-094` sweep | Promote only after hitch count is halved or the classifier names that owner |
+
+Illegal here: default quality cuts, headless hitch-budget as acceptance, replaying the rejected
+BatchedMesh candidate, starting Worker/WebGPU because Wave B is hard, shrinking hail 5200 as a
+cull.
 
 ## 9. Documentation and instruction hygiene
 
