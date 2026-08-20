@@ -58,14 +58,17 @@ const SPRING_TUNES = Object.freeze({
 // on ball colliders is what converted every bump into huge yaw spin (tangential impulse × body
 // radius over the yaw inertia) and then converted that spin back into linear velocity. Zero
 // friction removes both failure modes at the source; hulls scrape and slide instead.
-// restitution stays low so plating crunches and sheds energy rather than bouncing like diamond;
-// rock keeps the hardest edge. angularDamping models RCS auto-stabilization on powered craft
-// (a bumped ship visibly steadies itself over ~2.5 s); debris and wrecks keep tumbling.
+// Craft restitution is 0 with a Min combine rule so a ship glancing a rock scrapes instead of
+// bouncing onto a new heading. Offset capsule contacts still try to yaw the hull; structural
+// give strips leftover contact yaw so the nose stays where the pilot/AI pointed it. Weapon and
+// Massline torque still land because they are queued before the contact baseline is captured.
+// Rock keeps a harder edge for debris-on-debris. angularDamping models RCS on leftover spin
+// from authored combat impulses; debris and wrecks keep tumbling.
 // `ghost` colliders join no contact pairs at all: projectiles do their damage through the
 // swept-segment tests in physics.js — a solver contact on top of that double-hit every target
 // with real momentum (~20 wu/s per bullet), which is why combat shoved ships around at random.
 const CONTACT_MATERIALS = Object.freeze({
-  ship:       Object.freeze({ friction: 0, restitution: 0.12, angularDamping: 0.4, ghost: false }),
+  ship:       Object.freeze({ friction: 0, restitution: 0,    angularDamping: 0.4, ghost: false, restitutionCombine: 'min' }),
   projectile: Object.freeze({ friction: 0, restitution: 0,    angularDamping: 0,    ghost: true }),
   rock:       Object.freeze({ friction: 0, restitution: 0.22, angularDamping: 0.02, ghost: false }),
   station:    Object.freeze({ friction: 0, restitution: 0.06, angularDamping: 0,    ghost: false }),
@@ -85,8 +88,10 @@ const CONTACT_MATERIALS = Object.freeze({
 // continuous forces integrate inside world.step), so player/tether/AI physics pass through
 // untouched — the clamp bites solver contact response alone.
 const MAX_CONTACT_DV = 40;       // wu/s of contact-sourced linear delta-v per tick
-const MAX_CONTACT_DW = 2.0;      // rad/s of contact-sourced yaw-rate delta per tick
+const MAX_CONTACT_DW = 2.0;      // rad/s of contact-sourced yaw-rate delta per tick (debris/rocks)
+const CRAFT_CONTACT_YAW_EPS = 0.05;     // leftover contact spin; above damping/solver noise
 const SANE_MAX_YAW_RATE = 6.0;   // absolute yaw-rate ceiling, above every legit tether clamp
+const HELM_LOCKED_TYPES = new Set(['ship', 'drone']);
 
 // Rank-1 CCD gate (physics-spike diagnosis): CCD on every craft × dense static fields makes
 // Rapier TOI work bursty/super-linear. Reserve CCD for genuine fast movers — projectiles
@@ -585,15 +590,22 @@ export class Sg02DynamicBodyOwner {
     const v = rec.body.linvel();
     const w = rec.body.angvel();
     const e = rec.expected || (rec.expected = { vx: 0, vz: 0, wy: 0 });
-    e.vx = finite(v.x) + rec.controlForce.x / positive(rec.effectiveMass, rec.spec.mass) * this.fixedDt;
-    e.vz = finite(v.z) + rec.controlForce.z / positive(rec.effectiveMass, rec.spec.mass) * this.fixedDt;
-    e.wy = finite(w.y) + rec.controlTorque.y / positive(rec.effectiveInertiaY, rec.spec.inertiaY) * this.fixedDt;
+    const dt = this.fixedDt;
+    e.vx = finite(v.x) + rec.controlForce.x / positive(rec.effectiveMass, rec.spec.mass) * dt;
+    e.vz = finite(v.z) + rec.controlForce.z / positive(rec.effectiveMass, rec.spec.mass) * dt;
+    const wyUndamped = finite(w.y)
+      + rec.controlTorque.y / positive(rec.effectiveInertiaY, rec.spec.inertiaY) * dt;
+    const damping = contactAngularDamping(rec);
+    e.wy = damping > 0 ? wyUndamped / (1 + damping * dt) : wyUndamped;
   }
 
   // Clamp the solver-contact contribution to this tick's velocity change (see MAX_CONTACT_DV).
   // Angular damping also lands in the "excess" term but at ≤0.7% of the rate per tick it never
   // approaches the clamp. The absolute yaw ceiling is the final sanity net: nothing in the game
   // may leave a body spinning faster than SANE_MAX_YAW_RATE, contacts or otherwise.
+  // Powered craft keep their helm: contact may shove them off a rock, but leftover contact
+  // yaw is stripped so the nose stays on the pilot/AI heading. Combat/Massline torque is
+  // already inside expected.wy, so authored tumbles still spin.
   _applyStructuralGive(rec) {
     const e = rec.expected;
     if (!e) return;
@@ -613,8 +625,10 @@ export class Sg02DynamicBodyOwner {
       touched = true;
     }
     const dw = wy - e.wy;
-    if (Math.abs(dw) > MAX_CONTACT_DW) {
-      wy = e.wy + Math.sign(dw) * MAX_CONTACT_DW;
+    const helmLocked = craftKeepsHelmThroughContact(rec);
+    const yawCap = helmLocked ? 0 : MAX_CONTACT_DW;
+    if (Math.abs(dw) > (helmLocked ? CRAFT_CONTACT_YAW_EPS : yawCap)) {
+      wy = e.wy + Math.sign(dw) * yawCap;
       touched = true;
     }
     if (Math.abs(wy) > SANE_MAX_YAW_RATE) {
@@ -634,7 +648,7 @@ export class Sg02DynamicBodyOwner {
     const globalX = finite(entity.pos && entity.pos.x);
     const globalZ = finite(entity.pos && entity.pos.z);
     const vel = vector3(entity.vel);
-    const material = CONTACT_MATERIALS[spec.material] || CONTACT_MATERIALS.default;
+    const material = contactMaterialFor(entity, spec);
     const desc = (spec.dynamic ? R.RigidBodyDesc.dynamic() : R.RigidBodyDesc.fixed())
       .setTranslation(posX, 0, posZ)
       .setRotation(quatFromYaw(finite(entity.rot)))
@@ -1684,6 +1698,38 @@ function setZero3(value) {
   return value;
 }
 
+function contactMaterialFor(entity, spec) {
+  const base = CONTACT_MATERIALS[(spec && spec.material) || 'default'] || CONTACT_MATERIALS.default;
+  // Pickup collection is a JS overlap test. A solver contact on a crate spawned inside a hull
+  // launches both bodies; ghosting keeps the pickup in the world without knocking the ship.
+  if (entity && entity.type === 'pickup' && !base.ghost) {
+    return Object.freeze({ ...base, ghost: true });
+  }
+  return base;
+}
+
+function craftKeepsHelmThroughContact(rec) {
+  const type = rec && rec.entity && rec.entity.type;
+  return HELM_LOCKED_TYPES.has(type);
+}
+
+function contactAngularDamping(rec) {
+  const material = CONTACT_MATERIALS[(rec && rec.spec && rec.spec.material) || 'default']
+    || CONTACT_MATERIALS.default;
+  return Math.max(0, finite(material.angularDamping));
+}
+
+function applyColliderContactMaterial(R, colliderDesc, material) {
+  if (!colliderDesc || !material) return colliderDesc;
+  if (typeof colliderDesc.setFriction === 'function') colliderDesc.setFriction(material.friction);
+  if (typeof colliderDesc.setRestitution === 'function') colliderDesc.setRestitution(material.restitution);
+  if (material.restitutionCombine === 'min' && typeof colliderDesc.setRestitutionCombineRule === 'function') {
+    const rule = R && R.CoefficientCombineRule && R.CoefficientCombineRule.Min;
+    if (rule != null) colliderDesc.setRestitutionCombineRule(rule);
+  }
+  return colliderDesc;
+}
+
 function quatFromYaw(yaw) {
   return { x: 0, y: Math.sin(yaw / 2), z: 0, w: Math.cos(yaw / 2) };
 }
@@ -1785,9 +1831,8 @@ function buildCraftCapsuleColliderDesc(R, entity, spec, material, captureContact
   const colliderDesc = R.ColliderDesc.capsule(halfHeight, capRadius)
     .setTranslation(comX, 0, comZ)
     .setRotation(capsulePlanarQuat(1, 0))
-    .setDensity(0)
-    .setFriction(material.friction)
-    .setRestitution(material.restitution);
+    .setDensity(0);
+  applyColliderContactMaterial(R, colliderDesc, material);
 
   if (material.ghost && typeof colliderDesc.setCollisionGroups === 'function') {
     colliderDesc.setCollisionGroups(0);
@@ -1797,10 +1842,8 @@ function buildCraftCapsuleColliderDesc(R, entity, spec, material, captureContact
 }
 
 function buildBallColliderDesc(R, spec, material, captureContactImpacts = true) {
-  const colliderDesc = R.ColliderDesc.ball(spec.radius)
-    .setDensity(0)
-    .setFriction(material.friction)
-    .setRestitution(material.restitution);
+  const colliderDesc = R.ColliderDesc.ball(spec.radius).setDensity(0);
+  applyColliderContactMaterial(R, colliderDesc, material);
   if (material.ghost && typeof colliderDesc.setCollisionGroups === 'function') {
     colliderDesc.setCollisionGroups(0);   // member of nothing, filters nothing → zero contacts
   }
@@ -1844,7 +1887,8 @@ function buildCompoundProxyColliderDescs(R, entity, manifest, material, spec, ca
         .setRotation(quatFromYaw(finite(primitive.angleDeg) * (Math.PI / 180)));
     }
     if (!desc) continue;
-    desc.setDensity(0).setFriction(material.friction).setRestitution(material.restitution);
+    desc.setDensity(0);
+    applyColliderContactMaterial(R, desc, material);
     if (captureContactImpacts) configureContactEvents(R, desc, material);
     descs.push(desc);
   }

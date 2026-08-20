@@ -11,6 +11,10 @@ const IMPULSE_PROVENANCE_HISTORY_LIMIT = 16;
 
 export const IMPULSE_PROVENANCE_MAX_AGE_TICKS = 180;
 
+// Ordinary flight bumps (player/NPC vs rock, two ships clipping) must not steal the helm.
+// Combat-driven tags — weapons, ram plate, Massline — still stagger/tumble at the Δv floors.
+const HELM_NEUTRAL_COLLISION_TAGS = Object.freeze(new Set(['environment', 'direct_contact']));
+
 export const COLLISION_CONSEQUENCE_LIMITS = Object.freeze({
   minMomentum: 1,
   staggerDeltaV: 3,
@@ -127,9 +131,11 @@ export function resolveCollisionConsequence(input = {}) {
   const mass = positive(target.mass, 1);
   const deltaV = exchangedMomentum / mass;
   const surface = collisionSurface(other);
-  const control = deltaV >= COLLISION_CONSEQUENCE_LIMITS.tumbleDeltaV
+  const provenance = normalizeProvenance(input.provenance, input.tick);
+  let control = deltaV >= COLLISION_CONSEQUENCE_LIMITS.tumbleDeltaV
     ? 'tumble'
     : deltaV >= COLLISION_CONSEQUENCE_LIMITS.staggerDeltaV ? 'stagger' : 'none';
+  if (!collisionAllowsHelmLoss(provenance)) control = 'none';
   const staggerRange = COLLISION_CONSEQUENCE_LIMITS.tumbleDeltaV - COLLISION_CONSEQUENCE_LIMITS.staggerDeltaV;
   const stagger01 = clamp((deltaV - COLLISION_CONSEQUENCE_LIMITS.staggerDeltaV) / staggerRange, 0, 1);
   const staggerTicks = control === 'none'
@@ -163,7 +169,6 @@ export function resolveCollisionConsequence(input = {}) {
   const debrisCount = impactDamage > 0
     ? clamp(Math.ceil(3 + damage01 * (COLLISION_CONSEQUENCE_LIMITS.maxDebris - 3)), 0, COLLISION_CONSEQUENCE_LIMITS.maxDebris)
     : 0;
-  const provenance = normalizeProvenance(input.provenance, input.tick);
 
   return Object.freeze({
     schemaVersion: 1,
@@ -185,6 +190,11 @@ export function resolveCollisionConsequence(input = {}) {
 
 function isConsequenceTarget(entity) {
   return entity.type === 'ship' || entity.type === 'drone';
+}
+
+function collisionAllowsHelmLoss(provenance) {
+  const tag = provenance && provenance.tag;
+  return !!tag && !HELM_NEUTRAL_COLLISION_TAGS.has(tag);
 }
 
 function collisionSurface(entity) {

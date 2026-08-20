@@ -54,8 +54,8 @@
     "tether:attached": 1,
     "tether:broken": 1,
     "combat:fire": 17,
-    "projectile:hit": 6,
-    "combat:damage": 6,
+    "projectile:hit": 9,
+    "combat:damage": 9,
     "economy:tick": 2,
     "camera:shake": 3,
     "presentation:cameraCue": 3,
@@ -63,12 +63,12 @@
     "presentation:audioCue": 4,
     "presentation:uiCue": 4,
     "presentation:caption": 4,
-    "presentation:cueApplied": 10,
-    "presentation:cue": 10,
+    "presentation:cueApplied": 13,
+    "presentation:cue": 13,
     "audio:cue": 4
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "8c7c22f4aa02ff47441a81b9cf0d762f8dcbfcfb56744ba8171155c805edde85",
+    "authoritativeHash": "30e4dbd1a66950f5d1d827c686c7e8209b9738fe33f8af9ca521491b4dec1350",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -120,6 +120,9 @@
     "2026-08-18 hash-only correction to 4ad1a0507ba1a797c518dd681606f6778a72d1a5739b11ac4656b73eb49ec422.",
     "The 986e4760 value was recorded at 95291623 and never committed; commits landed in between, so the stored hash described no tree that exists. check:sim:v3 had been red against it.",
     "Every trace count and acceptance criterion here already matched the live run and is unchanged. Only the hash moved.",
-    "Read on the clean merge commit across the full 20-run repeat. check:sim:v3:compare cannot see this class of drift: it does not read the hash."
+    "Read on the clean merge commit across the full 20-run repeat. check:sim:v3:compare cannot see this class of drift: it does not read the hash.",
+    "2026-08-19 deliberate re-record. Ordinary collisions no longer yaw ships or stagger NPCs. Ships scrape instead of bounce; pickups no longer knock hulls. Combat-driven tumble is unchanged.",
+    "sim-golden-diff --flight-system v3: VERDICT MOTION_CHANGED, 10 entity motion fields. Player path stays on heading. projectile:hit and combat:damage 6->9; cue fanout 10->13. combat:fire stays 17.",
+    "Prior authoritativeHash was 8c7c22f4aa02ff47441a81b9cf0d762f8dcbfcfb56744ba8171155c805edde85."
   ]
 }

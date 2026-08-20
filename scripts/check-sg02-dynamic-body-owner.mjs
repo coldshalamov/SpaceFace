@@ -15,6 +15,7 @@ import {
   SG02_DYNAMIC_BODY_OWNER_SCHEMA_VERSION,
   createSg02CombatPhysicsPort,
   createSg02DynamicBodyOwner,
+  resolveCraftProportions,
 } from '../src/core/sg02DynamicBodyOwner.js';
 
 const first = await runScenario();
@@ -386,7 +387,7 @@ async function runContactForceEventFloorScenario() {
 async function runContactPressureScenario(forceN) {
   const ship = makeShip(1001, 0);
   ship.flags = {};
-  const asteroid = makeAsteroid(1002, ship.radius + 10);
+  const asteroid = makeAsteroid(1002, craftForwardExtent(ship) + 10);
   const owner = await createSg02DynamicBodyOwner({ fixedDt: 1 / 60, quantum: 1e-5 });
   let receipts = 0;
   let totalImpulse = 0;
@@ -441,6 +442,15 @@ function makeProjectile(id, pos, vel) {
     flags: {},
     data: {},
   };
+}
+
+function craftForwardExtent(entity) {
+  const proportions = resolveCraftProportions(entity);
+  return Math.max(0.1, positive(proportions && proportions.length, 1.35) * positive(entity && entity.radius, 12) * 0.5);
+}
+
+function positive(value, fallback) {
+  return Number.isFinite(value) && value > 0 ? value : fallback;
 }
 
 function makeShip(id = 47, x = 0) {

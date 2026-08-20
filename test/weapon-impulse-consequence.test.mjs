@@ -124,6 +124,16 @@ test('collision consequence kernel turns exchanged momentum into bounded mass-aw
     'heavy impact stays within the medium-class universal damage ceiling');
   assert.ok(light.debrisCount > 0 && light.debrisCount <= limits.maxDebris);
   assert.ok(['stagger', 'tumble'].includes(light.control));
+  const scrape = kernel.resolveCollisionConsequence({
+    ...common,
+    provenance: undefined,
+    other: { id: 91, type: 'asteroid', mass: 1_000_000, radius: 40 },
+    target: { id: 7, type: 'ship', mass: 20, radius: 6 },
+  });
+  assert.equal(scrape.control, 'none',
+    'ordinary environment bumps must not tumble or stagger the helm');
+  assert.equal(scrape.staggerTicks, 0);
+  assert.ok(scrape.impactDamage > 0, 'a hard slam can still damage without turning the ship');
   const ordinaryCraft = kernel.resolveCollisionConsequence({
     ...common,
     target: { id: 4, type: 'ship', mass: 20, radius: 6 },
@@ -286,8 +296,11 @@ test('SG-02 reports deterministic bounded contact momentum for default-route con
       'dynamic owner must expose contact receipts to the physics/event membrane');
     owner.step(1 / 60);
     assert.ok(Math.abs(ship.angVel) > 0, 'the SG-02 owner physically applies the angular impulse');
-    owner.step(1 / 60);
-    const contacts = owner.drainContactImpacts();
+    let contacts = owner.drainContactImpacts();
+    for (let step = 0; step < 6 && contacts.length === 0; step++) {
+      owner.step(1 / 60);
+      contacts = owner.drainContactImpacts();
+    }
     assert.equal(contacts.length, 1, 'one body pair produces one merged contact receipt');
     assert.deepEqual(new Set([contacts[0].aId, contacts[0].bId]), new Set([ship.id, station.id]));
     assert.ok(contacts[0].impulse > 0 && contacts[0].impulse <= ship.mass * 40 + 1e-9,
