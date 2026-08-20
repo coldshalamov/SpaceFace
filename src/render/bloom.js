@@ -735,10 +735,16 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   // closures every display frame. Explicit arguments preserve timePassGroup's local/finally
   // semantics without retaining mutable per-frame scene or camera state between renders.
   function renderScenePass(scene, camera, tier1) {
-    renderer.setRenderTarget(rtScene);
-    renderer.clear();
-    renderer.render(scene, camera);
-    if (tier1) tier1.countRenderPassPixels(rtScene.width * rtScene.height, 'bloom-scene');
+    const prevAutoClear = renderer.autoClear;
+    renderer.autoClear = false;
+    try {
+      renderer.setRenderTarget(rtScene);
+      renderer.clear();
+      renderer.render(scene, camera);
+      if (tier1) tier1.countRenderPassPixels(rtScene.width * rtScene.height, 'bloom-scene');
+    } finally {
+      renderer.autoClear = prevAutoClear;
+    }
   }
 
   function renderDownsamplePass(tier1) {

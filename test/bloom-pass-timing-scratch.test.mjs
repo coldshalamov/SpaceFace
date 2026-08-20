@@ -22,6 +22,7 @@ function rendererHarness(options = {}) {
     getRenderTarget() { return activeTarget; },
     clear() { events.push(`clear:${targetName(activeTarget)}`); },
     render(scene) {
+      if (renderer.autoClear) renderer.clear();
       renderCount += 1;
       events.push(`render:${scene && scene.kind || 'quad'}:${targetName(activeTarget)}`);
       if (renderCount === options.throwOnRenderCall) throw new Error('injected bloom draw failure');
@@ -107,6 +108,11 @@ test('bloom keeps exact pass order and instrumentation without per-frame timing 
     assert.deepEqual(
       timingEvents(harness.events),
       [...TIMED_FRAME_EVENTS, ...TIMED_FRAME_EVENTS],
+    );
+    assert.deepEqual(
+      harness.events.filter((event) => event.startsWith('clear:')),
+      ['clear:640x360', 'clear:640x360'],
+      'each HDR scene pass clears its full-resolution target exactly once',
     );
     assert.deepEqual(
       harness.events.filter((event) => event.startsWith('pixels:')),
