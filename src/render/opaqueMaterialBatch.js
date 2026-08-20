@@ -70,6 +70,7 @@ export function shouldConsolidateInstanceChunk(chunk) {
 export function createOpaqueMaterialBatchState() {
   return {
     batches: new Map(),
+    consolidatedChunks: new Set(),
     stats: createBatchStats(),
   };
 }
@@ -90,17 +91,18 @@ export function syncOpaqueMaterialBatches(state, pools, options = {}) {
   stats.hiddenChunks = 0;
   stats.skippedChunks = 0;
   if (state) state.stats = stats;
-  if (!state || options.enabled !== true || !options.scene || !pools) return stats;
+  if (!state) return stats;
+  if (options.enabled !== true || !options.scene || !pools) {
+    disableOpaqueMaterialBatches(state);
+    return stats;
+  }
 
   for (const batch of state.batches.values()) batch.used = 0;
 
   for (const pool of pools.values()) {
     for (const chunk of pool.chunks) {
       if (!shouldConsolidateInstanceChunk(chunk)) {
-        if (chunk && chunk.mesh && chunk.consolidated === true) {
-          chunk.consolidated = false;
-          chunk.mesh.visible = (chunk.mesh.count || 0) > 0;
-        }
+        restoreConsolidatedChunk(state, chunk);
         if (chunk && chunk.visibleIndices && chunk.visibleIndices.size) stats.skippedChunks++;
         continue;
       }
@@ -152,8 +154,7 @@ function consolidateChunk(state, chunk, options) {
     const reservation = reserveBatchInstance(state, chunk, item.lane, options.scene);
     if (!reservation) {
       for (const undo of reservations) undo.batch.used = Math.max(0, undo.batch.used - 1);
-      chunk.consolidated = false;
-      chunk.mesh.visible = true;
+      restoreConsolidatedChunk(state, chunk);
       return false;
     }
     reservations.push(reservation);
@@ -170,10 +171,31 @@ function consolidateChunk(state, chunk, options) {
       reservation.batch.mesh.setColorAt(reservation.instanceId, _color);
     }
   }
+  if (chunk.consolidated !== true) chunk.unconsolidatedCastShadow = chunk.mesh.castShadow === true;
   chunk.consolidated = true;
+  state.consolidatedChunks.add(chunk);
   chunk.mesh.visible = false;
   chunk.mesh.castShadow = false;
   return true;
+}
+
+function restoreConsolidatedChunk(state, chunk) {
+  if (!chunk || !chunk.mesh || chunk.consolidated !== true) return false;
+  chunk.consolidated = false;
+  chunk.mesh.visible = (chunk.mesh.count || 0) > 0;
+  chunk.mesh.castShadow = chunk.unconsolidatedCastShadow === true;
+  delete chunk.unconsolidatedCastShadow;
+  state?.consolidatedChunks?.delete(chunk);
+  return true;
+}
+
+function disableOpaqueMaterialBatches(state) {
+  for (const chunk of state.consolidatedChunks || []) restoreConsolidatedChunk(state, chunk);
+  for (const batch of state.batches.values()) {
+    batch.used = 0;
+    hideUnusedInstances(batch);
+    batch.mesh.visible = false;
+  }
 }
 
 function reserveBatchInstance(state, chunk, lane, scene) {

@@ -81,6 +81,31 @@ test('two unique plates that share a material become one hidden-source batch', (
   assert.equal(live.every((batch) => !!(batch.mesh.boundingSphere)), true);
 });
 
+test('disabling after consolidation restores source chunks and hides retained batches', () => {
+  const material = new THREE.MeshStandardMaterial({ color: 0x445566 });
+  const chunk = makeChunk(4, 0, { material, key: 'togglePlate' });
+  const scene = new THREE.Scene();
+  const pools = new Map([['toggle', { chunks: [chunk] }]]);
+  const state = createOpaqueMaterialBatchState();
+  syncOpaqueMaterialBatches(state, pools, {
+    enabled: true,
+    scene,
+    playerX: 0,
+    playerZ: 0,
+  });
+  assert.equal(chunk.mesh.visible, false);
+  assert.equal(chunk.mesh.castShadow, false);
+  assert.ok([...state.batches.values()].some((batch) => batch.mesh.visible));
+
+  const stats = syncOpaqueMaterialBatches(state, pools, { enabled: false, scene });
+  assert.equal(stats.batches, 0);
+  assert.equal(stats.instances, 0);
+  assert.equal(chunk.mesh.visible, true);
+  assert.equal(chunk.mesh.castShadow, true);
+  assert.equal(chunk.consolidated, false);
+  assert.equal([...state.batches.values()].every((batch) => batch.mesh.visible === false), true);
+});
+
 test('batch world bounds follow instance matrices after a large origin shift', () => {
   const material = new THREE.MeshStandardMaterial({ color: 0x334455 });
   const near = makeChunk(4, 0, { material, key: 'nearPlate' });

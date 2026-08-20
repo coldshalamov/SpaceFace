@@ -2044,13 +2044,19 @@ export const render = {
     if (typeof renderer.setOpaqueSort === 'function') {
       renderer.setOpaqueSort(() => 0);
     }
-    this._opaqueBatchEnabled = false;
+    this._opaqueBatchSupported = false;
     try {
       const gl = renderer.getContext && renderer.getContext();
-      this._opaqueBatchEnabled = supportsOpaqueMaterialBatch(gl);
+      this._opaqueBatchSupported = supportsOpaqueMaterialBatch(gl);
     } catch (_) {
-      this._opaqueBatchEnabled = false;
+      this._opaqueBatchSupported = false;
     }
+    // The current BatchedMesh bridge repacks every visible slot and rewrites its matrix/color
+    // textures every frame. On the target Intel route, disabling it kept the identical authored
+    // chunks visible while cutting bloomScene p95 from 114.5 ms to 11.0 ms and removing the tail
+    // hitches, despite issuing more draws. Keep capability detection for the retained-slot rewrite,
+    // but never auto-enable the regressing per-frame implementation in shipping flight.
+    this._opaqueBatchEnabled = false;
     // ACES on the renderer covers the DIRECT-to-canvas draws; bloom.js's composite covers the bloom
     // path. Both are needed and they do not overlap, which is the fix for a real divergence:
     //
