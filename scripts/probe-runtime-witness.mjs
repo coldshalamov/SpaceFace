@@ -172,6 +172,14 @@ function formatLoadingReadinessSection(events, samples) {
     lines.push(
       `- last loading snapshot: stage ${last.stageId || 'unknown'}; player ${last.authored?.playerStatus || 'unknown'}; opening pending ${last.authored?.openingPending ?? 'unknown'}; pipeline pending ${last.authored?.openingPipelinePending ?? 'unknown'}; pipeline admissions ${last.pendingPipelineAdmissions ?? 'unknown'}; GPU admissions ${last.pendingAuthoredGpuResidency ?? 'unknown'}`,
     );
+    const exact = last.promiseStates?.exactPipelineWarmupReady?.result;
+    if (exact) {
+      lines.push(`- captured pipeline receipt: ${exact.capturedCount ?? 'unknown'} completed; ${exact.remainingCount ?? 'unknown'} remaining`);
+    }
+    const gpu = last.startupGpuResidency;
+    if (gpu) {
+      lines.push(`- opening GPU receipt: ${gpu.textures ?? 'unknown'} textures (${gpu.uploadMs == null ? 'unknown' : gpu.uploadMs.toFixed(1)} ms blocking upload); opening frame ${gpu.openingFrame?.durationMs == null ? 'unknown' : gpu.openingFrame.durationMs.toFixed(1)} ms; roots ${gpu.openingCompositionRoots ?? 'unknown'} + VFX ${gpu.vfxRoots ?? 'unknown'}`);
+    }
   }
   return lines.join('\n');
 }
@@ -243,6 +251,32 @@ function readWitnessInPage() {
   const loadingTrace = window.__SF_LOADING_READINESS_WITNESS__;
   if (loadingTrace) {
     const render = s?.render || {};
+    const summarizeReadinessResult = (value) => {
+      if (!value || typeof value !== 'object') return value ?? null;
+      return {
+        skipped: value.skipped === true,
+        reason: value.reason || null,
+        watermark: Number.isFinite(value.watermark) ? value.watermark : null,
+        capturedCount: Number.isFinite(value.capturedCount) ? value.capturedCount : null,
+        remainingCount: Number.isFinite(value.remainingCount) ? value.remainingCount : null,
+        textures: Number.isFinite(value.textures) ? value.textures : null,
+        uploads: Array.isArray(value.uploads) ? value.uploads.length : null,
+        uploadMs: Array.isArray(value.uploads)
+          ? value.uploads.reduce((total, upload) => total + (Number(upload?.durationMs) || 0), 0)
+          : null,
+        openingCompositionRoots: Number.isFinite(value.openingCompositionRoots)
+          ? value.openingCompositionRoots
+          : null,
+        vfxRoots: Number.isFinite(value.vfxRoots) ? value.vfxRoots : null,
+        vfxTextures: Number.isFinite(value.vfxTextures) ? value.vfxTextures : null,
+        openingFrame: value.openingFrame && typeof value.openingFrame === 'object'
+          ? {
+              durationMs: Number(value.openingFrame.durationMs) || 0,
+              roots: Number(value.openingFrame.roots) || 0,
+            }
+          : null,
+      };
+    };
     const promiseNames = [
       'pipelinePrecompileReady',
       'exactPipelineWarmupReady',
@@ -255,7 +289,13 @@ function readWitnessInPage() {
         loadingTrace.promiseRefs[name] = value;
         loadingTrace.promiseStates[name] = { status: 'pending', observedWallMs: Date.now() };
         Promise.resolve(value).then(
-          () => { loadingTrace.promiseStates[name] = { status: 'fulfilled', settledWallMs: Date.now() }; },
+          (result) => {
+            loadingTrace.promiseStates[name] = {
+              status: 'fulfilled',
+              settledWallMs: Date.now(),
+              result: summarizeReadinessResult(result),
+            };
+          },
           (error) => { loadingTrace.promiseStates[name] = { status: 'rejected', settledWallMs: Date.now(), error: String(error) }; },
         );
       }
@@ -284,6 +324,7 @@ function readWitnessInPage() {
         ? render.pendingAuthoredGpuResidency()
         : null,
       promiseStates: { ...loadingTrace.promiseStates },
+      startupGpuResidency: summarizeReadinessResult(render.startupGpuResidency),
       partLoads: Array.isArray(s?.diagnostics?.partLoads)
         ? s.diagnostics.partLoads.slice(-5).map((entry) => ({
             id: entry?.id ?? entry?.partId ?? null,
@@ -354,6 +395,7 @@ async function waitUntilFlight(targetPage, routeLabel, timeoutMs = 120_000) {
   while (Date.now() < deadline) {
     const status = await targetPage.evaluate(readWitnessInPage).catch((error) => ({ dumpError: String(error) }));
     if (status.mode === 'flight') {
+      if (status.loadingReadiness) loadingReadinessSamples.push(status.loadingReadiness);
       loadingProgressEvents = await targetPage.evaluate(() => (
         window.__SF_LOADING_READINESS_WITNESS__?.events || []
       )).catch(() => []);
