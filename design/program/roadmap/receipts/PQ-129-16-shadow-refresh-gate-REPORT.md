@@ -44,6 +44,11 @@ The simpler Continue route also exited green with `bloomScene` p95 7.4 ms and pr
 13.3 ms. Original-resolution witness frames retained the lit hulls, asteroids, HDR halo, and sector
 composition; no shadow-off diagnostic was active in either result-bearing production run.
 
+The final default New Game seed-47 route also exited green, covering first shadow-map initialization:
+presentation p95 12.6 ms, `bloomScene` p95 8.2 ms, one final-tail hitch, and three changing canvas
+hashes. Its report SHA-256 is
+`00FD4C75C238C87A788BCD31C1B7E3CA3807894C405F29420A7CABE5287109E5`.
+
 Report SHA-256: `B6EA1D04EB353288C8433F69C8F06C9A0FF68E5946543FC0FBDD8340A1B393F2`
 for `.devshots/runtime-witness/report.json`.
 
@@ -53,6 +58,7 @@ for `.devshots/runtime-witness/report.json`.
 - `node --check scripts/probe-runtime-witness.mjs` — pass.
 - `npm run probe:runtime-witness -- --continue` — green `presenting` candidate.
 - `npm run probe:runtime-witness -- --continue --sector-entry` — green result-bearing route above.
+- `npm run probe:runtime-witness` — green default New Game route above.
 - `test/asteroid-instance-structure.test.mjs` and `test/shadow-receiver-tally.test.mjs` pass. The
   separately invoked `renderer-settings-runtime-truth` static source test retains its pre-existing
   failure because it requires a literal `_shadowReceiversDirty = true` inside the settings handler,
