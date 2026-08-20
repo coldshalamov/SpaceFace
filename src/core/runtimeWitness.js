@@ -142,7 +142,11 @@ export function collectRuntimeWitnessSample(state, extras = {}, wallMs = Date.no
   const pos = player?.pos;
   const vel = player?.vel;
   const renderer = state?.render?.renderer;
-  const renderInfo = renderer?.info?.render || state?.render?.diagnostics?.info?.render || null;
+  const rendererInfo = renderer?.info?.render || null;
+  // diagnostics.info is the completed-frame mirror captured immediately before Three's live
+  // renderer.info counters are reset. Sampling renderer.info later sees the next frame's empty
+  // counters and falsely reports zero draws on a healthy multi-pass frame.
+  const completedRenderInfo = state?.render?.diagnostics?.info || null;
   const frameSample = state?.perfRuntime?.readFrameSample?.() || null;
   const costs = extras.costs || rankPhases(state);
   const top = costs[0] || null;
@@ -164,10 +168,10 @@ export function collectRuntimeWitnessSample(state, extras = {}, wallMs = Date.no
     || (typeof document !== 'undefined' ? document.visibilityState : null);
   sample.executedFrames = finite(diagnostics.executedFrames);
   sample.renderUpdates = finite(diagnostics.renderUpdates);
-  const rendererFrame = Number(renderInfo?.frame);
+  const rendererFrame = Number(rendererInfo?.frame);
   sample.rendererFrameObserved = Number.isFinite(rendererFrame);
   sample.rendererFrame = sample.rendererFrameObserved ? rendererFrame : 0;
-  sample.drawCalls = finite(renderInfo?.calls);
+  sample.drawCalls = finite(completedRenderInfo?.calls, finite(rendererInfo?.calls));
   sample.contextLost = readContextLost(state);
   sample.lastFrameError = errorText(diagnostics.lastFrameError);
   sample.frameErrorCount = finite(diagnostics.frameErrorCount);

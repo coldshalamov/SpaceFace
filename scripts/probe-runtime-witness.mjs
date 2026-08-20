@@ -142,6 +142,7 @@ function readWitnessInPage() {
   const d = window.SF?.loop?.getDiagnostics?.() || {};
   const p = s?.entities?.get?.(s.playerId);
   const info = s?.render?.renderer?.info?.render || null;
+  const completedInfo = s?.render?.diagnostics?.info || null;
   if (!sample) sample = {
     wallMs: Date.now(),
     mode: s?.mode || null,
@@ -159,7 +160,7 @@ function readWitnessInPage() {
     renderUpdates: d.renderUpdates || 0,
     rendererFrame: Number(info?.frame),
     rendererFrameObserved: Number.isFinite(Number(info?.frame)),
-    drawCalls: Number(info?.calls) || 0,
+    drawCalls: Number(completedInfo?.calls) || Number(info?.calls) || 0,
     contextLost: s?.render?.contextLost === true,
     lastFrameError: d.lastFrameError || null,
     frameErrorCount: d.frameErrorCount || 0,

@@ -117,6 +117,20 @@ test('collect reads player pose and renderer frame without throwing', () => {
   assert.equal(sample.drawCalls, 120);
 });
 
+test('collect uses the completed-frame diagnostics mirror after renderer counters reset', () => {
+  const state = {
+    playerId: 1,
+    entities: new Map([[1, { pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 } }]]),
+    render: {
+      renderer: { info: { render: { frame: 45, calls: 0 } } },
+      diagnostics: { info: { calls: 87, triangles: 14000 } },
+    },
+  };
+  const sample = collectRuntimeWitnessSample(state);
+  assert.equal(sample.rendererFrame, 45);
+  assert.equal(sample.drawCalls, 87);
+});
+
 test('witness ring throttles to one sample per period', () => {
   const witness = createRuntimeWitness({ nowMs: () => 1000 });
   const state = { simTime: 1, mode: 'flight', timeScale: 1 };
