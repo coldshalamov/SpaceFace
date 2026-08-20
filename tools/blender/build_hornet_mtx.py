@@ -328,12 +328,12 @@ def create_materials():
             if "IOR" in bsdf.inputs:
                 bsdf.inputs["IOR"].default_value = 1.52
             if "Coat Weight" in bsdf.inputs:
-                bsdf.inputs["Coat Weight"].default_value = 0.28
-                bsdf.inputs["Coat Roughness"].default_value = 0.12
-            bsdf.inputs["Base Color"].default_value = (0.010, 0.014, 0.018, 1)
+                bsdf.inputs["Coat Weight"].default_value = 0.22
+                bsdf.inputs["Coat Roughness"].default_value = 0.10
+            bsdf.inputs["Base Color"].default_value = (0.006, 0.010, 0.014, 1)
             bsdf.inputs["Metallic"].default_value = 0.0
-            bsdf.inputs["Roughness"].default_value = 0.14
-            bsdf.inputs["Alpha"].default_value = 0.56
+            bsdf.inputs["Roughness"].default_value = 0.10
+            bsdf.inputs["Alpha"].default_value = 0.64
             if hasattr(material, "blend_method"):
                 try:
                     material.blend_method = "BLEND"
@@ -666,31 +666,35 @@ def flip_normals(obj):
     return obj
 
 
-def add_interior_vane(tag, cx, cy, cz, angle, s, material, collection):
+def add_interior_vane(tag, cx, cy, cz, angle, s, material, collection, outboard=0.0):
     """Thin tapered vane. Fat 6.8° slabs photographed as a plus-sign of boxes."""
     half = math.radians(3.1)
     a0, a1 = angle - half, angle + half
-    # Stop short of the lip so the rear still counts a dark bowl between blades.
+    # C130: vanes reach the mouth so 3Q can count them in the rim.
     sections = (
-        (-0.52 * s, 0.12 * s, 0.22 * s),
-        (-1.05 * s, 0.18 * s, 0.38 * s),
-        (-1.58 * s, 0.24 * s, 0.58 * s),
+        (-0.48 * s, 0.12 * s, 0.22 * s),
+        (-1.10 * s, 0.20 * s, 0.42 * s),
+        (-1.48 * s, 0.28 * s, 0.68 * s),
+        (-1.68 * s, 0.32 * s, 0.86 * s),
     )
     verts = []
     for xo, inner, outer in sections:
+        t = abs(xo) / max(2.00 * s, 1e-4)
+        yo = cy + outboard * 0.22 * t * s
+        zo = cz + 0.12 * t * s
         for radius in (inner, outer):
             for ang in (a0, a1):
                 verts.append((
                     cx + xo,
-                    cy + math.cos(ang) * radius,
-                    cz + math.sin(ang) * radius,
+                    yo + math.cos(ang) * radius,
+                    zo + math.sin(ang) * radius,
                 ))
     faces = [
-        (0, 1, 3, 2), (4, 6, 7, 5), (8, 9, 11, 10),
-        (0, 4, 5, 1), (4, 8, 9, 5),
-        (2, 3, 7, 6), (6, 7, 11, 10),
-        (0, 2, 6, 4), (4, 6, 10, 8),
-        (1, 5, 7, 3), (5, 9, 11, 7),
+        (0, 1, 3, 2), (4, 6, 7, 5), (8, 9, 11, 10), (12, 13, 15, 14),
+        (0, 4, 5, 1), (4, 8, 9, 5), (8, 12, 13, 9),
+        (2, 3, 7, 6), (6, 7, 11, 10), (10, 11, 15, 14),
+        (0, 2, 6, 4), (4, 6, 10, 8), (8, 10, 14, 12),
+        (1, 5, 7, 3), (5, 9, 11, 7), (9, 13, 15, 11),
     ]
     mesh = bpy.data.meshes.new(f"{tag}_Mesh")
     mesh.from_pydata(verts, [], faces)
@@ -713,39 +717,45 @@ def add_hollow_bell(tag, x, y, z, scale, mats, collection):
         mats["Material_Mechanical"], mats["Material_Armor"],
         mats["Material_Soot"],
     )
-    bell_len = 2.05 * s
-    # Ceramic casing so 3Q names a tan can, not a rubber cone. Soot is the nozzle only.
-    case_rings = []
-    for t, r in ((0.00, 0.28), (0.20, 0.28), (0.38, 0.36)):
+    bell_len = 1.72 * s
+    outboard = 1.0 if y >= 0.0 else -1.0
+    # C130: cant the mouth outboard and up so 3Q sees into the throat, not a closed cup.
+    def ring_at(t, r, sides=40):
         xi = x - 0.04 * s - t * bell_len
-        case_rings.append(ellipse_ring(xi, y, z, r * s, r * s, 40))
+        yo = y + outboard * 0.22 * t * s
+        zo = z + 0.12 * t * s
+        return ellipse_ring(xi, yo, zo, r * s, r * s, sides)
+
+    case_rings = [ring_at(t, r) for t, r in ((0.00, 0.28), (0.18, 0.28), (0.34, 0.34))]
     loft_from_rings(f"BellCase_{tag}", case_rings, ceramic, collection, 0.0, cap=False)
-    outer_rings = []
-    for t, r in ((0.38, 0.36), (0.56, 0.50), (0.78, 0.72), (1.00, 0.94)):
-        xi = x - 0.04 * s - t * bell_len
-        outer_rings.append(ellipse_ring(xi, y, z, r * s, r * s, 40))
+    outer_rings = [ring_at(t, r) for t, r in ((0.34, 0.34), (0.52, 0.52), (0.74, 0.78), (1.00, 1.02))]
     outer = loft_from_rings(f"Bell_{tag}", outer_rings, soot, collection, 0.0, cap=False)
-    liner_rings = []
-    for t, r in (
-        (0.08, 0.20),
-        (0.26, 0.22),
-        (0.48, 0.30),
-        (0.68, 0.48),
-        (0.86, 0.74),
-        (0.97, 0.93),
-        (1.00, 0.96),
-        (1.03, 0.98),
-    ):
-        xi = x - 0.04 * s - t * bell_len
-        liner_rings.append(ellipse_ring(xi, y, z, r * s, r * s, 32))
+    liner_rings = [
+        ring_at(t, r, 32)
+        for t, r in (
+            (0.08, 0.18),
+            (0.24, 0.22),
+            (0.44, 0.32),
+            (0.64, 0.54),
+            (0.82, 0.80),
+            (0.96, 0.98),
+            (1.00, 1.04),
+            (1.04, 1.06),
+        )
+    ]
     liner = loft_from_rings(f"BellLiner_{tag}", liner_rings, soot, collection, 0.0, cap=False)
     flip_normals(liner)
     add_cylinder(f"BellBore_{tag}", (x - 0.12 * s, y, z), 0.16 * s, 0.020 * s, soot, collection, 24, 0.001)
     # Ceramic collar on the flare OD — 3Q-readable. Mech flange photographed as chrome jewelry.
+    heat_t = 0.58
     add_cylinder(
         f"BellHeat_{tag}",
-        (x - 0.04 * s - 0.58 * bell_len, y, z),
-        0.58 * s, 0.10 * s, ceramic, collection, 28, 0.002,
+        (
+            x - 0.04 * s - heat_t * bell_len,
+            y + outboard * 0.22 * heat_t * s,
+            z + 0.12 * heat_t * s,
+        ),
+        0.62 * s, 0.10 * s, ceramic, collection, 28, 0.002,
     )
     add_cylinder(f"BellCollar_{tag}", (x + 0.02 * s, y, z), 0.34 * s, 0.14 * s, ceramic, collection, 24, 0.003)
     add_cylinder(f"BellClamp_{tag}", (x + 0.14 * s, y, z), 0.40 * s, 0.05 * s, armor, collection, 24, 0.002)
@@ -760,7 +770,7 @@ def add_hollow_bell(tag, x, y, z, scale, mats, collection):
     add_cylinder(f"BellHub_{tag}", (x - 0.18 * s, y, z), 0.10 * s, 0.12 * s, soot, collection, 20, 0.001)
     for index in range(10):
         ang = math.tau * index / 10
-        add_interior_vane(f"BellVane_{tag}_{index}", x, y, z, ang, s, soot, collection)
+        add_interior_vane(f"BellVane_{tag}_{index}", x, y, z, ang, s, soot, collection, outboard=outboard)
     return outer
 
 
@@ -1423,16 +1433,11 @@ def build_lod(lod, mats):
     wn = body.modifiers.new("HullWN", "WEIGHTED_NORMAL")
     wn.keep_sharp = True
     apply_modifiers(body)
-    # C128: a few large inset courses, not C127's per-face waffle.
-    # Channel 1.6 cm, plate step 4.4 cm (MTX-05 2-6 cm).
-    knife_inset_courses(body, 2.55, 0.15, -0.95, 0.95, 0.40, 1.20, 3, 2, 0.016, 0.044, "z", 0.28)
-    knife_inset_courses(body, 2.50, -1.10, 1.05, 1.90, -0.02, 0.75, 3, 1, 0.016, 0.040, "y", 0.40)
-    knife_inset_courses(body, 2.50, -1.10, -1.90, -1.05, -0.02, 0.75, 3, 1, 0.016, 0.040, "y-", 0.40)
-    # C129: same language through the blank mid-aft barrel C128 starboard named.
-    knife_inset_courses(body, 0.20, -2.35, -0.72, 0.72, 0.18, 0.92, 3, 1, 0.016, 0.040, "z", 0.25)
-    knife_inset_courses(body, 0.15, -2.20, 0.72, 1.35, -0.04, 0.62, 3, 1, 0.016, 0.038, "y", 0.35)
-    knife_inset_courses(body, 0.15, -2.20, -1.35, -0.72, -0.04, 0.62, 3, 1, 0.016, 0.038, "y-", 0.35)
-    inset_large_faces(body, 0.018, 0.006, 0.42)
+    # C130: a few LARGE courses. C129's 21 bands photographed as a waffle.
+    knife_inset_courses(body, 2.55, 0.10, -0.88, 0.88, 0.42, 1.18, 2, 1, 0.018, 0.048, "z", 0.30)
+    knife_inset_courses(body, 0.05, -2.30, -0.70, 0.70, 0.18, 0.90, 2, 1, 0.018, 0.044, "z", 0.24)
+    knife_inset_courses(body, 2.40, -1.80, 1.08, 1.82, -0.02, 0.70, 2, 1, 0.016, 0.040, "y", 0.38)
+    knife_inset_courses(body, 2.40, -1.80, -1.82, -1.08, -0.02, 0.70, 2, 1, 0.016, 0.040, "y-", 0.38)
     report_shells(body, "hull after plate courses")
     add_station_hoop("Hoop_Cabin", 2.90, 1.40, 0.70, 0.20, 0.26, 0.50, 0.24, armor, collection, stand=0.038, half=0.032)
     add_station_hoop("Hoop_Shoulder", 1.80, 1.80, 0.72, 0.14, 0.12, 0.68, 0.22, armor, collection, stand=0.040, half=0.034)
@@ -1462,40 +1467,18 @@ def build_lod(lod, mats):
     add_box("Cockpit_Console", (4.16, 0.0, 0.42), (0.08, 0.08, 0.020), armor, collection, 0.002)
     add_box("Cockpit_Stick", (4.08, 0.04, 0.50), (0.012, 0.012, 0.06), mech, collection, 0.001)
     canopy = mats["Material_Canopy"]
-    # C125: keep the four-pane shell (C124 3Q first saw the seat through glass)
-    # but lower the brow and widen to the well rim so it reads as a hood, not a
-    # fish-tank crate. Port pane stays — 3Q's ray is on the port lip.
+    # C130: one faired 24 mm dark hood over the well. Four vertical panes
+    # photographed as a greenhouse crate. Wide enough that 3Q looks through it.
     add_folded_sheet(
-        "Canopy_Screen",
-        (4.50, -0.58, 0.72), (4.50, 0.58, 0.72),
-        (4.28, 0.52, 0.90), (4.28, -0.52, 0.90),
-        0.018, canopy, collection, 0.001,
+        "Canopy_Hood",
+        (4.52, -0.70, 0.70), (4.52, 0.70, 0.70),
+        (3.36, 0.52, 1.00), (3.36, -0.52, 1.00),
+        0.024, canopy, collection, 0.001,
     )
-    add_folded_sheet(
-        "Canopy_Roof",
-        (4.28, -0.52, 0.88), (4.28, 0.52, 0.88),
-        (3.40, 0.48, 0.96), (3.40, -0.48, 0.96),
-        0.018, canopy, collection, 0.001,
-    )
-    add_folded_sheet(
-        "Canopy_Port",
-        (4.50, -0.58, 0.72), (4.28, -0.52, 0.88),
-        (3.40, -0.48, 0.96), (3.42, -0.56, 0.72),
-        0.016, canopy, collection, 0.001,
-    )
-    add_folded_sheet(
-        "Canopy_Stbd",
-        (4.50, 0.58, 0.72), (3.42, 0.56, 0.72),
-        (3.40, 0.48, 0.96), (4.28, 0.52, 0.88),
-        0.016, canopy, collection, 0.001,
-    )
-    add_box("Frame_SillF", (4.50, 0.0, 0.72), (0.012, 0.58, 0.012), armor, collection, 0.001)
-    add_box("Frame_Brow", (3.40, 0.0, 0.96), (0.012, 0.48, 0.012), armor, collection, 0.001)
-    add_box("Frame_Ridge", (4.28, 0.0, 0.88), (0.012, 0.52, 0.012), armor, collection, 0.001)
-    add_box("Frame_LongeronP", (3.95, -0.54, 0.84), (0.52, 0.010, 0.010), armor, collection, 0.001)
-    add_box("Frame_LongeronS", (3.95, 0.54, 0.84), (0.52, 0.010, 0.010), armor, collection, 0.001)
-    add_box("Frame_PillarP", (4.40, -0.56, 0.80), (0.08, 0.010, 0.08), armor, collection, 0.001)
-    add_box("Frame_PillarS", (4.40, 0.56, 0.80), (0.08, 0.010, 0.08), armor, collection, 0.001)
+    add_box("Frame_SillF", (4.52, 0.0, 0.70), (0.014, 0.70, 0.012), armor, collection, 0.001)
+    add_box("Frame_Brow", (3.36, 0.0, 1.00), (0.014, 0.52, 0.012), armor, collection, 0.001)
+    add_box("Frame_LongeronP", (3.94, -0.62, 0.85), (0.56, 0.010, 0.010), armor, collection, 0.001)
+    add_box("Frame_LongeronS", (3.94, 0.62, 0.85), (0.56, 0.010, 0.010), armor, collection, 0.001)
 
     add_five_wall_tub("AvionicsTub", (0.85, -1.18, 0.22), (0.24, 0.10, 0.11), 0.040, mech, collection)
     add_box("AvionicsRack", (0.85, -1.18, 0.16), (0.16, 0.032, 0.05), armor, collection, 0.002)
