@@ -118,5 +118,8 @@
 | 139 | yes | 41C7D57B | 3Q REVISE / starboard REVISE / rear REVISE | 3Q looks into mouths; vane star still read as a black plug. Flap slot a dark strip. Not wired. |
 | 140 | yes | see json | author REVISE | Eight thinner vanes. 3Q still a black star in the cup. Not wired. |
 | 141 | yes | ED357768 | author REVISE | Ceramic interior in the close crop. 3Q at play size still black cups. Not wired. |
+| 142 | yes | see json | author REVISE | Open ceramic bowls from 3Q; vanes too deep, gone from rear. Not wired. |
+| 143 | yes | B3693D54 | 3Q REVISE / starboard REVISE / rear REVISE | Tan bowls + vanes in the crop. Reviewers still called black cups and hanging flap. Not wired. |
+| 144 | yes | 046DF132 | author notes | Flap raised into the wing plane. 3Q hanging slab reduced. Not wired. |
 
 Hitch-plus / A-list: not met. C85 remains the live game body. Do not mark PQ-050.01 done. Do not self-accept.

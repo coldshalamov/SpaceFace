@@ -333,7 +333,7 @@ def create_materials():
             bsdf.inputs["Base Color"].default_value = (0.004, 0.007, 0.010, 1)
             bsdf.inputs["Metallic"].default_value = 0.0
             bsdf.inputs["Roughness"].default_value = 0.12
-            bsdf.inputs["Alpha"].default_value = 0.48
+            bsdf.inputs["Alpha"].default_value = 0.40
             if hasattr(material, "blend_method"):
                 try:
                     material.blend_method = "BLEND"
@@ -677,12 +677,13 @@ def add_interior_vane(tag, cx, cy, cz, angle, s, material, collection, outboard=
     """Thin tapered vane. Fat 6.8° slabs photographed as a plus-sign of boxes."""
     half = math.radians(2.0)
     a0, a1 = angle - half, angle + half
-    # C130: vanes reach the mouth so 3Q can count them in the rim.
+    # C143: vanes sit in the ceramic bowl, ~15 cm short of the rim. C142 hid them
+    # in the bore (empty tan cups). Reaching the rim photographed as a black plus.
     sections = (
-        (-0.48 * s, 0.12 * s, 0.22 * s),
-        (-1.10 * s, 0.20 * s, 0.42 * s),
-        (-1.48 * s, 0.28 * s, 0.68 * s),
-        (-1.68 * s, 0.32 * s, 0.86 * s),
+        (-0.50 * s, 0.10 * s, 0.20 * s),
+        (-0.85 * s, 0.16 * s, 0.40 * s),
+        (-1.15 * s, 0.22 * s, 0.58 * s),
+        (-1.40 * s, 0.26 * s, 0.74 * s),
     )
     verts = []
     for xo, inner, outer in sections:
@@ -781,7 +782,7 @@ def add_hollow_bell(tag, x, y, z, scale, mats, collection):
             (x + 0.28 * s, y + math.cos(ang) * 0.42 * s, z + math.sin(ang) * 0.42 * s),
             0.016 * s, 0.050 * s, mech, collection, 8, 0.001,
         )
-    hub_t = 0.32
+    hub_t = 0.28
     add_cylinder(
         f"BellHub_{tag}",
         (
@@ -789,26 +790,14 @@ def add_hollow_bell(tag, x, y, z, scale, mats, collection):
             y + outboard * cant_y * hub_t * s,
             z + cant_z * hub_t * s,
         ),
-        0.11 * s, 0.16 * s, soot, collection, 20, 0.001,
+        0.12 * s, 0.18 * s, soot, collection, 20, 0.001,
         rot=(0.0, math.pi / 2 - pitch_up, yaw),
     )
-    for index in range(8):
-        ang = math.tau * index / 8
+    for index in range(6):
+        ang = math.tau * index / 6
         add_interior_vane(
             f"BellVane_{tag}_{index}", x, y, z, ang, s, soot, collection,
             outboard=outboard, cant_y=cant_y, cant_z=cant_z,
-        )
-        # Small ceramic tips at the mouth rim. C137 0.14/0.18 boxes read as LEGO from rear.
-        tip_t = 0.94
-        xi = x - 0.04 * s - tip_t * bell_len
-        yo = y + outboard * cant_y * tip_t * s
-        zo = z + cant_z * tip_t * s
-        add_box(
-            f"BellVaneTip_{tag}_{index}",
-            (xi, yo + math.cos(ang) * 0.80 * s, zo + math.sin(ang) * 0.80 * s),
-            (0.055 * s, 0.010 * s, 0.070 * s),
-            ceramic, collection, 0.001,
-            rot=(math.cos(ang) * 0.35, 0.0, ang),
         )
     return outer
 
@@ -1148,28 +1137,27 @@ def add_blended_interceptor_wing(name, sign, skin, armor, collection, soot=None)
         for y, le, chord, thick, z in main
     ]
     wing = loft_from_rings(name, rings, skin, collection, 0.008, cap=True)
-    # C138: every flap station shares the same aft TE so the starboard union shows
-    # a second body behind the root sausage, not a tip flap hidden inside it.
+    # C142: 12 cm empty gap then a separate armor flap. Same aft TE at every station
+    # so starboard counts two bodies, not a dark strip on one sausage.
     flap = (
-        (1.35, -0.26, 0.64, 0.24),
-        (2.15, -0.26, 0.64, 0.20),
-        (2.95, -0.26, 0.64, 0.16),
+        (1.30, -0.40, 0.58, 0.28),
+        (2.10, -0.40, 0.58, 0.24),
+        (2.90, -0.40, 0.58, 0.20),
     )
     loft_from_rings(f"{name}_Flap", [
-        densify_ring(teardrop_airfoil(le, y * s, 0.12, chord, thick), 3)
+        densify_ring(teardrop_airfoil(le, y * s, 0.14, chord, thick), 3)
         for y, le, chord, thick in flap
     ], armor, collection, 0.005, cap=True)
-    # C138 soot cube photographed as a hanging bar from 3Q. Thin sheet in the TE gap only.
     add_folded_sheet(
         f"{name}_Slot",
-        (-0.06, 1.32 * s, 0.22), (-0.24, 1.32 * s, 0.22),
-        (-0.24, 2.98 * s, 0.22), (-0.06, 2.98 * s, 0.22),
-        0.018, soot if soot is not None else armor, collection, 0.001,
+        (-0.08, 1.28 * s, 0.18), (-0.38, 1.28 * s, 0.18),
+        (-0.38, 2.95 * s, 0.18), (-0.08, 2.95 * s, 0.18),
+        0.016, soot if soot is not None else armor, collection, 0.001,
     )
-    for i, yb in enumerate((1.40, 2.15, 2.90)):
+    for i, yb in enumerate((1.40, 2.10, 2.85)):
         add_cylinder(
             f"{name}_Hinge_{i}",
-            (-0.15, yb * s, 0.12),
+            (-0.24, yb * s, 0.14),
             0.016, 0.10, armor, collection, 8, 0.001,
             rot=(math.pi / 2, 0, 0),
         )
@@ -1543,15 +1531,15 @@ def build_lod(lod, mats):
     # C134: L-seat as folded sheets so 3Q reads pan+back, not a brick stack.
     add_folded_sheet(
         "Cockpit_Pan",
-        (4.22, -0.20, 0.38), (4.22, 0.20, 0.38),
-        (3.56, 0.18, 0.42), (3.56, -0.18, 0.42),
-        0.032, warning, collection, 0.002,
+        (4.28, -0.22, 0.38), (4.28, 0.22, 0.38),
+        (3.54, 0.20, 0.42), (3.54, -0.20, 0.42),
+        0.034, warning, collection, 0.002,
     )
     add_folded_sheet(
         "Cockpit_BackSheet",
-        (3.58, -0.17, 0.42), (3.58, 0.17, 0.42),
-        (3.54, 0.15, 0.70), (3.54, -0.15, 0.70),
-        0.034, warning, collection, 0.002,
+        (3.56, -0.18, 0.42), (3.56, 0.18, 0.42),
+        (3.52, 0.16, 0.72), (3.52, -0.16, 0.72),
+        0.036, warning, collection, 0.002,
     )
     add_box("Cockpit_Headrest", (3.56, 0.0, 0.66), (0.036, 0.09, 0.036), warning, collection, 0.002)
     add_folded_sheet(
@@ -1889,7 +1877,7 @@ def setup_studio():
         ("Rim", (-14, -5, 7), 620, (0.78, 0.84, 0.92), 14),
         ("Kick", (-6, 10, -4), 260, (0.74, 0.78, 0.84), 12),
         ("AftFill", (-10, -12, 8), 420, (0.80, 0.84, 0.90), 16),
-        ("CockpitFill", (3.88, 0.0, 0.46), 14, (1.00, 0.86, 0.68), 0.30),
+        ("CockpitFill", (3.88, 0.0, 0.48), 16, (1.00, 0.78, 0.52), 0.30),
         ("StbdFill", (0.9, 12.0, 3.8), 520, (0.88, 0.90, 0.94), 18),
     ):
         data = bpy.data.lights.new(name, "AREA")
@@ -1951,18 +1939,18 @@ def render_cycle(collection):
     out = FAMILY / "evidence" / "hornet" / "cycles" / f"cycle_{CYCLE:02d}"
     out.mkdir(parents=True, exist_ok=True)
     views = {
-        "three_quarter": ((-6.2, -9.6, 3.35), (1.10, 0, 0.22), 26),
-        "starboard": ((0.70, 11.6, 0.16), (0.70, 0, 0.16), 30),
+        "three_quarter": ((-5.6, -8.2, 3.05), (0.80, 0, 0.28), 28),
+        "starboard": ((0.70, 11.2, 0.16), (0.70, 0, 0.16), 30),
         "rear": ((-10.2, -7.2, 2.5), (-3.20, 0.10, 0.10), 34),
-        "clay_three_quarter": ((-6.2, -9.6, 3.35), (1.10, 0, 0.22), 26),
+        "clay_three_quarter": ((-5.6, -8.2, 3.05), (0.80, 0, 0.28), 28),
         "grazing_close": ((6.6, -5.4, 2.0), (1.15, 0, 0.35), 48),
         "bay_interior": ((4.55, -1.10, 1.15), (3.90, 0.0, 0.62), 32),
         "drive_rear": ((-6.6, -1.8, 0.55), (-3.90, 0.90, 0.12), 46),
         "play_size": ((36, -32, 16), (0.20, 0, 0.16), 48),
-        "orm_isolation": ((-6.2, -9.6, 3.35), (1.10, 0, 0.22), 26),
-        "normal_isolation": ((-6.2, -9.6, 3.35), (1.10, 0, 0.22), 26),
-        "id_or_material_id": ((-6.2, -9.6, 3.35), (1.10, 0, 0.22), 26),
-        "material_three_quarter": ((-6.2, -9.6, 3.35), (1.10, 0, 0.22), 26),
+        "orm_isolation": ((-5.6, -8.2, 3.05), (0.80, 0, 0.28), 28),
+        "normal_isolation": ((-5.6, -8.2, 3.05), (0.80, 0, 0.28), 28),
+        "id_or_material_id": ((-5.6, -8.2, 3.05), (0.80, 0, 0.28), 28),
+        "material_three_quarter": ((-5.6, -8.2, 3.05), (0.80, 0, 0.28), 28),
     }
     meshes = [obj for obj in collection.objects if obj.type == "MESH" and not obj.get("collision")]
     for name in ("three_quarter", "starboard", "rear", "material_three_quarter", "grazing_close", "bay_interior", "drive_rear", "play_size"):
