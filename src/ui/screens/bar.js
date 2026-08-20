@@ -1258,12 +1258,15 @@ export function createBarPanel(ctx) {
     // Mission accept button
     const acceptBtn = ev.target.closest('[data-accept-mission]');
     if (acceptBtn) {
+      if (acceptBtn.disabled) return;
       const missionId = acceptBtn.getAttribute('data-accept-mission');
+      acceptBtn.disabled = true;
       const wasAvailable = missionOfferAvailable(ctx, missionId);
       ctx.bus.emit('ui:acceptMission', { missionId });
       ctx.bus.emit('audio:cue', { id: 'ui_click' });
       const accepted = wasAvailable && !missionOfferAvailable(ctx, missionId);
-      const replyEl = acceptBtn.closest('.st-bar-card').querySelector('.st-bar-reply');
+      const card = acceptBtn.closest('.st-bar-card');
+      const replyEl = card && card.querySelector('.st-bar-reply');
       const offerEl = acceptBtn.closest('.st-bar-offer');
       if (accepted) {
         if (replyEl) {
@@ -1290,6 +1293,8 @@ export function createBarPanel(ctx) {
           acceptBtn.textContent = 'No Longer Available';
           acceptBtn.title = 'This bar offer is no longer available.';
           acceptBtn.setAttribute('aria-label', acceptBtn.title);
+        } else {
+          acceptBtn.disabled = false;
         }
       }
       return;

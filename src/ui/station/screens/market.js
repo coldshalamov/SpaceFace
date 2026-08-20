@@ -147,6 +147,7 @@ export function createMarketScreen(ctx) {
   const listEl = el.querySelector('.sx-mkt__list');
   const stageEl = el.querySelector('.sx-mkt__stage');
   const consoleEl = el.querySelector('.sx-mkt__console');
+  let tradeBusy = false;
   const tradeEl = el.querySelector('.sx-mkt__trade');
   const routesEl = el.querySelector('.sx-mkt__routes');
   stageEl.id = 'sx-market-instrument';
@@ -694,11 +695,16 @@ export function createMarketScreen(ctx) {
     }
     const go = ev.target.closest('[data-go]');
     if (go && !go.disabled) {
+      if (tradeBusy) return;
+      const tradeQty = Math.max(0, Math.floor(Number(qty) || 0));
+      if (tradeQty <= 0) return;
+      tradeBusy = true;
+      go.disabled = true;
       if (ctx.bus) {
-        ctx.bus.emit(mode === 'buy' ? 'ui:buy' : 'ui:sell', { commodityId: selectedId, qty });
+        ctx.bus.emit(mode === 'buy' ? 'ui:buy' : 'ui:sell', { commodityId: selectedId, qty: tradeQty });
         ctx.bus.emit('audio:cue', { id: 'ui_click' });
       }
-      setTimeout(() => renderAll(ctx.state || {}), 60);
+      setTimeout(() => { tradeBusy = false; renderAll(ctx.state || {}); }, 80);
     }
   });
 

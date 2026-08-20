@@ -582,8 +582,10 @@ export function createTargetPanel(ctx) {
       if (elGimmick.style.display !== 'none') elGimmick.style.display = 'none';
     }
 
-    const p = state.entities.get(state.playerId);
-    if (p && (targetChanged || options.slow || (tickN % 6) === 0)) {
+    const p = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId)
+      : null;
+    if (p && p.pos && t.pos && (targetChanged || options.slow || (tickN % 6) === 0)) {
       const dx = t.pos.x - p.pos.x, dz = t.pos.z - p.pos.z;
       const dist = Math.hypot(dx, dz);
       const tacticalTarget = t.type === 'ship' || t.type === 'drone';

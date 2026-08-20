@@ -74,7 +74,23 @@ export function createTouch(ctx) {
       if (on && !this._overlay) this._buildOverlay();
       else if (!on && this._overlay) { this._overlay.remove(); this._overlay = null; }
       this.active = on && !!this._overlay;
+      if (!this.active) this._clearTouchState();
       if (bus && bus.emit) bus.emit(on ? 'touch:enabled' : 'touch:disabled', {});
+    },
+
+    _clearTouchState() {
+      this.axes.leftX = 0;
+      this.axes.leftY = 0;
+      this.axes.rightX = 0;
+      this.axes.rightY = 0;
+      this._sticks = {};
+      this._btns = {};
+      this._btnHeld = {};
+      this._btnPulse = {};
+      this._activityPending = false;
+      for (const action in this.actions) {
+        this.actions[action] = { held: false, pressed: false, released: false, value: 0 };
+      }
     },
 
     // Auto-detect: enable on touch devices with a usable screen. Called once on init + on resize

@@ -9,7 +9,7 @@
 // (ESC always = back). Otherwise translate UI-owned keys into intent events / screen pushes.
 // The UI never mutates sim state; docking sets ui.docked + emits dock:docked + pushes 'station'.
 
-import { isConfirmOpen } from './confirm.js';
+import { isConfirmOpen, confirmGamepadAccept, confirmGamepadCancel } from './confirm.js';
 import { BINDINGS } from './bindings.js';
 import { DEFAULTS as INPUT_DEFAULTS, selectedWorldSiteTarget } from '../systems/input.js';
 import { MAP_FOCUS, openGalaxyMap, isMapScreenId } from './mapAuthority.js';
@@ -98,6 +98,7 @@ export function createUiInput(ctx, screenManager) {
     dockStationId = inRange ? stationId : null;
     // PQ-003 contextual A/Cross arbitration: UI owns docking when the prompt is live; the flight
     // input owner reads this UI-owned fact so the same press cannot also latch the Massline.
+    if (!state.ui) state.ui = {};
     state.ui.dockInRange = dockInRange;
   }));
   unsubscribers.push(bus.on('dock:undocked', () => { /* HUD restoration handled in uiRoot */ }));
@@ -105,12 +106,13 @@ export function createUiInput(ctx, screenManager) {
   // Emit the dock intent; uiRoot's dock:docked handler owns setting ui.docked + pushing the
   // station hub (single owner of the flight→dock transition, avoids a double-push).
   function doDock() {
-    if (isUiInteractionFenced(state) || !dockInRange || state.ui.docked) return;
+    if (isUiInteractionFenced(state) || !dockInRange || (state.ui && state.ui.docked)) return;
     const attempt = { stationId: dockStationId };
     // Publish the attempt before deciding so the existing faction-voiced denial surface can explain
     // a refusal. The same pure selector is the command gate; a banner can never be the authority.
     bus.emit('dock:attempt', attempt);
     if (resolveDockDeny(state, dockStationId)) return;
+    if (!state.ui) state.ui = {};
     state.ui.activeStationTab = state.ui.activeStationTab || 'market';
     bus.emit('dock:docked', attempt);
     bus.emit('audio:cue', { id: 'ui_dock' });
@@ -175,7 +177,9 @@ export function createUiInput(ctx, screenManager) {
         && isMapScreenId(def.id)
         && (matchesBinding(ev, BINDINGS.starmap) || matchesBinding(ev, BINDINGS.localmap))
       );
-      if (textEntry && !mapToggleWhileTyping) return;
+      // F1 is not a text character; keep Help toggleable even from a search field.
+      const helpToggleWhileTyping = !!(textEntry && def && def.id === 'help' && key === 'F1');
+      if (textEntry && !mapToggleWhileTyping && !helpToggleWhileTyping) return;
       // Mirror the live interact binding while docked: E docks from flight and undocks from the
       // station hub, preserving one airlock muscle-memory action. Leave Enter alone here so focused
       // station buttons and rail tabs keep normal keyboard activation.
@@ -188,6 +192,23 @@ export function createUiInput(ctx, screenManager) {
       if (def && typeof def.onKey === 'function') {
         try { if (def.onKey(ev, ctx) === true) { ev.preventDefault(); return; } }
         catch (e) { console.error('[uiInput] screen onKey error:', e); }
+      }
+      // Repeat the open binding to close the same instrument (mission log already does this in
+      // onKey; maps do it above). Without this, T/K/F1 open a screen they cannot close.
+      if (def && def.id === 'techTree' && matchesBinding(ev, BINDINGS.techTree)) {
+        ev.preventDefault();
+        closeActiveModal(def);
+        return;
+      }
+      if (def && def.id === 'codex' && matchesBinding(ev, BINDINGS.codex)) {
+        ev.preventDefault();
+        closeActiveModal(def);
+        return;
+      }
+      if (def && def.id === 'help' && (key === 'F1' || key === 'h' || key === 'H')) {
+        ev.preventDefault();
+        closeActiveModal(def);
+        return;
       }
       // The Pause menu labels Mission Log with the live binding. Keep that promise there and in
       // the station hub, without teaching root/title/setup modals to open an in-run objective log.
@@ -393,7 +414,7 @@ export function createUiInput(ctx, screenManager) {
     let astId = null;
     let activeTether = activeAsteroidDrillTether();
     if (activeTether) {
-      const t = state.entities.get(activeTether.targetId);
+      const t = state.entities && state.entities.get ? state.entities.get(activeTether.targetId) : null;
       if (t && t.type === 'asteroid' && t.alive) astId = t.id;
     }
 
@@ -420,16 +441,16 @@ export function createUiInput(ctx, screenManager) {
       return;
     }
 
-    const tid = state.player.targetId;
+    const tid = state.player && state.player.targetId;
     if (astId == null && tid != null) {
-      const t = state.entities.get(tid);
+      const t = state.entities && state.entities.get ? state.entities.get(tid) : null;
       if (t && t.type === 'asteroid' && t.alive) astId = t.id;
     }
     if (astId == null) {
       // fall back to the mining system's soft-lock
       const mining = ctx.registry && ctx.registry.get('mining');
       if (mining && mining._lockTargetId) {
-        const t = state.entities.get(mining._lockTargetId);
+        const t = state.entities && state.entities.get ? state.entities.get(mining._lockTargetId) : null;
         if (t && t.type === 'asteroid' && t.alive) astId = t.id;
       }
     }
@@ -438,9 +459,9 @@ export function createUiInput(ctx, screenManager) {
       return;
     }
 
-    const player = state.entities.get(state.playerId);
-    const ast = state.entities.get(astId);
-    if (player && ast) {
+    const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+    const ast = state.entities && state.entities.get ? state.entities.get(astId) : null;
+    if (player && player.pos && ast && ast.pos) {
       const dx = ast.pos.x - player.pos.x;
       const dz = ast.pos.z - player.pos.z;
       const dist = Math.hypot(dx, dz);
@@ -479,9 +500,9 @@ export function createUiInput(ctx, screenManager) {
   }
 
   function drillGuidanceWreck() {
-    const tid = state.player.targetId;
+    const tid = state.player && state.player.targetId;
     if (tid != null) {
-      const selected = state.entities.get(tid);
+      const selected = state.entities && state.entities.get ? state.entities.get(tid) : null;
       if (selected && selected.alive) {
         const interaction = interactionProfileForEntity(selected);
         if (interaction.salvageable) return selected;
@@ -491,7 +512,7 @@ export function createUiInput(ctx, screenManager) {
     for (const attachment of Object.values(state.combat?.attachments?.byId || {})) {
       if (!attachment || attachment.state !== 'active' || attachment.ownerId !== state.playerId
         || !DRILL_MASSLINE_DEF_IDS.has(attachment.defId)) continue;
-      const attached = state.entities.get(attachment.targetId);
+      const attached = state.entities && state.entities.get ? state.entities.get(attachment.targetId) : null;
       if (attached && attached.alive && interactionProfileForEntity(attached).salvageable) return attached;
     }
     return null;
@@ -500,7 +521,7 @@ export function createUiInput(ctx, screenManager) {
   function activeAsteroidDrillTether() {
     return Object.values(state.combat?.attachments?.byId || {}).find((att) => {
       if (!att || att.state !== 'active' || att.ownerId !== state.playerId || !DRILL_MASSLINE_DEF_IDS.has(att.defId)) return false;
-      const target = state.entities.get(att.targetId);
+      const target = state.entities && state.entities.get ? state.entities.get(att.targetId) : null;
       return !!(target && target.type === 'asteroid' && target.alive);
     }) || null;
   }
@@ -527,13 +548,13 @@ export function createUiInput(ctx, screenManager) {
   function claimOrOpenBase() {
     const claimsSys = ctx.registry && ctx.registry.get('claims');
     if (!claimsSys) return false;
-    const player = state.entities.get(state.playerId);
-    if (!player) return false;
+    const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+    if (!player || !player.pos) return false;
     const RANGE = 220;
     // find claimable POI entities in range
     let nearest = null, bestD = RANGE * RANGE;
-    for (const e of state.entityList) {
-      if (!e.alive || !e.data || !e.data.poi || !e.data.claimable) continue;
+    for (const e of state.entityList || []) {
+      if (!e || !e.alive || !e.data || !e.data.poi || !e.data.claimable || !e.pos) continue;
       const d = (e.pos.x - player.pos.x) ** 2 + (e.pos.z - player.pos.z) ** 2;
       if (d < bestD) { bestD = d; nearest = e; }
     }
@@ -559,7 +580,7 @@ export function createUiInput(ctx, screenManager) {
   // the station hub (single owner of the dock→HUD transition, avoids a double-pop).
   function undock() {
     if (isUiInteractionFenced(state)) return;
-    if (!state.ui.docked) { screenManager.popScreen(); return; }
+    if (!(state.ui && state.ui.docked)) { screenManager.popScreen(); return; }
     bus.emit('dock:undocked', {});
   }
 
@@ -568,7 +589,7 @@ export function createUiInput(ctx, screenManager) {
     // Chrome reports a trackpad pinch as a Ctrl/Cmd-modified wheel. Cancel the browser's page-zoom
     // default before the mode gates so the DOM HUD stays at its fixed viewport scale.
     if ((ev.ctrlKey || ev.metaKey) && typeof ev.preventDefault === 'function') ev.preventDefault();
-    if (isUiInteractionFenced(state) || screenManager.isOpen() || state.ui.docked || state.mode !== 'flight') return;
+    if (isUiInteractionFenced(state) || screenManager.isOpen() || (state.ui && state.ui.docked) || state.mode !== 'flight') return;
     bus.emit('camera:zoom', { delta: Math.sign(ev.deltaY) * 8 });
   }
 
@@ -712,7 +733,7 @@ export function createUiInput(ctx, screenManager) {
   }
 
   function handleTouchUi() {
-    if (isUiInteractionFenced(state) || isConfirmOpen() || screenManager.isOpen() || state.mode !== 'flight') return;
+    if (isUiInteractionFenced(state) || isConfirmOpen()) return;
     if (touchActionPressed('dock')) { routeTouchUiAction('dock'); return; }
     if (touchActionPressed('missionLog')) { routeTouchUiAction('missionLog'); return; }
     if (touchActionPressed('localmap')) { routeTouchUiAction('localmap'); return; }
@@ -721,7 +742,22 @@ export function createUiInput(ctx, screenManager) {
   }
 
   function routeTouchUiAction(action) {
-    if (isUiInteractionFenced(state) || isConfirmOpen() || screenManager.isOpen() || state.mode !== 'flight') return false;
+    if (isUiInteractionFenced(state) || isConfirmOpen()) return false;
+    const top = screenManager.top ? screenManager.top() : null;
+    if (screenManager.isOpen()) {
+      if (action === 'pause' && top === 'pause') {
+        screenManager.popScreen();
+        bus.emit('audio:cue', { id: 'ui_back' });
+        return true;
+      }
+      if ((action === 'starmap' || action === 'localmap') && isMapScreenId(top)) {
+        screenManager.popScreen();
+        bus.emit('audio:cue', { id: 'ui_back' });
+        return true;
+      }
+      return false;
+    }
+    if (state.mode !== 'flight') return false;
     if (action === 'dock') {
       if (dockInRange && !state.ui.docked) {
         doDock();
@@ -746,6 +782,12 @@ export function createUiInput(ctx, screenManager) {
       _nav.up = _nav.down = _nav.left = _nav.right = false;
       _nav.holdT = 0;
       _nav.repeatT = 0;
+      return;
+    }
+
+    if (isConfirmOpen()) {
+      if (gp.actions.accept && gp.actions.accept.pressed) confirmGamepadAccept();
+      if (gp.actions.cancel && gp.actions.cancel.pressed) confirmGamepadCancel();
       return;
     }
 
@@ -774,8 +816,6 @@ export function createUiInput(ctx, screenManager) {
     }
 
     if (modalOpen) {
-      if (isConfirmOpen()) return; // confirm dialog traps all keys/buttons
-
       const def = screenManager.getActiveScreenDef && screenManager.getActiveScreenDef();
       if (def && def.id === 'station') {
         if (gp.actions.tabPrev && gp.actions.tabPrev.pressed && cycleStationTab(-1)) {

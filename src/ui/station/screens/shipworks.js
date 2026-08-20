@@ -2021,7 +2021,11 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const slot = ev.target.closest('[data-slot]');
     if (slot) { openChooser(Number(slot.getAttribute('data-slot'))); return; }
     const buy = ev.target.closest('[data-buyship]');
-    if (buy && !buy.disabled && shipworksActionAvailability(ctx.state).hullEnabled) { if (ctx.bus) { ctx.bus.emit('ui:buyShip', { defId: buy.getAttribute('data-buyship') }); ctx.bus.emit('audio:cue', { id: 'ui_accept' }); } setTimeout(refresh, 60); }
+    if (buy && !buy.disabled && shipworksActionAvailability(ctx.state).hullEnabled) {
+      buy.disabled = true;
+      if (ctx.bus) { ctx.bus.emit('ui:buyShip', { defId: buy.getAttribute('data-buyship') }); ctx.bus.emit('audio:cue', { id: 'ui_accept' }); }
+      setTimeout(refresh, 60);
+    }
     const activate = ev.target.closest('[data-activate-ship]');
     if (activate && !activate.disabled && ctx.bus && shipworksActionAvailability(ctx.state).hullEnabled) {
       ctx.bus.emit('ui:setActiveShip', { index: Number(activate.getAttribute('data-activate-ship')) });

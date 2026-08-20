@@ -1140,10 +1140,13 @@ export const input = {
     // logic + AI auto-deploy in one place.
     this._updateCountermeasureHold(this._held(state, 'countermeasure') || gpCountermeasure, inp);
 
-    const p = state.entities.get(state.playerId);
+    const p = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId)
+      : null;
     const gpOrTouchAim = gpAimActive || tpAimActive;
     const aimAxes = tpAimActive ? tp.axes : (gpAimActive ? gp.axes : null);
-    if (aimAxes && !kbmRecent && p) {
+    const aimWorld = inp.aimWorld || (inp.aimWorld = { x: 0, z: 0 });
+    if (aimAxes && !kbmRecent && p && p.pos) {
       inp.aimIntentActive = true;
       // Right-stick / right-touch aim is independent of the ship nose, like the mouse.
       const ax = aimAxes.rightX;
@@ -1151,17 +1154,20 @@ export const input = {
       const angle = Math.atan2(ay, ax);
       const dist = 300;
       inp.aimAngle = angle;
-      inp.aimWorld.x = p.pos.x + Math.cos(angle) * dist;
-      inp.aimWorld.z = p.pos.z + Math.sin(angle) * dist;
+      aimWorld.x = p.pos.x + Math.cos(angle) * dist;
+      aimWorld.z = p.pos.z + Math.sin(angle) * dist;
       inp.mouseNdc.x = ax;
       inp.mouseNdc.y = ay;
       const controllerDrawToFly = inp.autoFire && gpAimActive && !tpAimActive && !kbmRecent;
       writeAutoTargetVector(inp, ax, ay, controllerDrawToFly);
     } else {
       // Mouse aim is INDEPENDENT of the nose: weapons gimbal toward the cursor (Phase 2).
-      const w = this.helpers.raycastToPlane ? this.helpers.raycastToPlane(this._ndc) : { x: 0, z: 0 };
-      inp.aimWorld.x = w.x; inp.aimWorld.z = w.z;
-      if (p) inp.aimAngle = Math.atan2(w.z - p.pos.z, w.x - p.pos.x);
+      const hit = this.helpers && this.helpers.raycastToPlane
+        ? this.helpers.raycastToPlane(this._ndc)
+        : null;
+      const w = hit && Number.isFinite(hit.x) && Number.isFinite(hit.z) ? hit : { x: 0, z: 0 };
+      aimWorld.x = w.x; aimWorld.z = w.z;
+      if (p && p.pos) inp.aimAngle = Math.atan2(w.z - p.pos.z, w.x - p.pos.x);
       inp.mouseNdc.x = this._ndc.x; inp.mouseNdc.y = this._ndc.y;
       const pointerScreen = inp.pointerScreen || (inp.pointerScreen = { x: 0, y: 0, active: false });
       pointerScreen.x = this._screen.x;

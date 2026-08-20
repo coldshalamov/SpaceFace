@@ -2814,7 +2814,7 @@ export function createHud(ctx, alerts) {
     contentEl.style.display = 'flex';
 
     const def = CMDTY_MAP.get(commodityId);
-    const qty = (state.player.cargo.items || {})[commodityId] || 0;
+    const qty = (state.player && state.player.cargo && state.player.cargo.items || {})[commodityId] || 0;
     const vol = def ? (def.volPerU || 1) * qty : qty;
     const name = cargoDisplayName(commodityId);
 
@@ -3687,6 +3687,7 @@ export function createHud(ctx, alerts) {
     // Bound ONCE for the life of the row. Re-binding a fresh closure per sample was part of the
     // teardown cost this rewrite removes; the record carries the live name so the toast stays current.
     el.addEventListener('click', () => {
+      if (!state.player) state.player = {};
       state.player.targetId = rec.id;
       ctx.bus.emit('toast', { text: `Selected target: ${rec.name}`, kind: 'info', ttl: 2 });
       updateOverview();
@@ -3714,8 +3715,8 @@ export function createHud(ctx, alerts) {
       detail = scannedWreck ? `${manifestSummary(e)} · WEAK ${e.data.weakPoint || '—'}` : '??? UNSCANNED';
     }
 
-    const rvx = e.vel.x - player.vel.x;
-    const rvz = e.vel.z - player.vel.z;
+    const rvx = ((e.vel && e.vel.x) || 0) - ((player.vel && player.vel.x) || 0);
+    const rvz = ((e.vel && e.vel.z) || 0) - ((player.vel && player.vel.z) || 0);
     const closingSpeed = -((rvx * c.dx + rvz * c.dz) / (c.dist || 1));
     const speedIcon = closingSpeed >= 0.5 ? '▸' : (closingSpeed <= -0.5 ? '▹' : '');
     const speedText = Math.abs(closingSpeed) >= 0.5 ? `${speedIcon}${Math.round(Math.abs(closingSpeed))}` : '';
@@ -3760,8 +3761,10 @@ export function createHud(ctx, alerts) {
   }
 
   function updateOverview() {
-    const player = state.entities.get(state.playerId);
-    if (!player) {
+    const player = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId)
+      : null;
+    if (!player || !player.pos) {
       setDisplay(elOverview, false);
       return;
     }
@@ -3775,6 +3778,7 @@ export function createHud(ctx, alerts) {
       const isShip = verbAcceptsType('target', e.type); // PQ-015: shared ship|drone membership
       const isWreck = isWreckLike(e);
       if (!isShip && !isWreck) continue;
+      if (!e.pos) continue;
 
       const dx = e.pos.x - player.pos.x;
       const dz = e.pos.z - player.pos.z;
@@ -3805,7 +3809,7 @@ export function createHud(ctx, alerts) {
     _overviewIdScratch = _knownContactIds;
     _knownContactIds = curIds;
 
-    const pinned = !!state.settings.ui.overviewOpen;
+    const pinned = !!(state.settings && state.settings.ui && state.settings.ui.overviewOpen);
     const visible = contactRosterVisible({
       eligibleContactCount: contacts.length,
       pinned,
@@ -3929,8 +3933,10 @@ export function createHud(ctx, alerts) {
   }
 
   function updateTargetArcs() {
-    const tid = state.player.targetId;
-    const tgt = tid != null ? state.entities.get(tid) : null;
+    const tid = state.player && state.player.targetId;
+    const tgt = tid != null && state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(tid)
+      : null;
     
     if (!tgt || !tgt.alive) {
       setClass(targetArcs, 'visible', false);
@@ -4127,7 +4133,9 @@ export function createHud(ctx, alerts) {
     const overlayTick = overlayDt > 0;
     const radarTick = radarDt > 0;
 
-    const p = state.entities.get(state.playerId);
+    const p = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId)
+      : null;
     resolveReticle();
     updateDoctrineTells(frameDt);
 
@@ -4238,7 +4246,7 @@ export function createHud(ctx, alerts) {
         const spd = vel ? Math.hypot(vel.x, vel.z) : 0;
         const wantA = spd > 2 ? 0.9 : 0;
         _proAlpha += (wantA - _proAlpha) * (1 - Math.exp(-6 * frameDt));
-        if (_proAlpha <= 0.02 || !helpers.worldToScreen) {
+        if (_proAlpha <= 0.02 || !helpers.worldToScreen || !p.pos) {
           setOpacity(proTick, '0');
         } else {
           const k = (p.radius || 6) * 3;

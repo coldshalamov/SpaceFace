@@ -220,8 +220,8 @@ export function createManufacturePanel(ctx) {
   function refresh() {
     const crafting = ctx.crafting || (ctx.registry && ctx.registry.get('crafting'));
     const state = ctx.state;
-    const p = state.player;
-    const items = p.cargo.items || {};
+    const p = (state && state.player) || {};
+    const items = (p.cargo && p.cargo.items) || {};
     const sid = ctx.state.ui && ctx.state.ui.dockedStationId;
     const busy = crafting && crafting.isBusy && crafting.isBusy(sid);
     const inProgress = busy && crafting.progress && crafting._currentJobName

@@ -1140,11 +1140,13 @@ export const ui = {
 };
 
 function cycleTarget(state, dir, bus) {
+  if (!state || !state.entities || typeof state.entities.get !== 'function') return;
   const player = state.entities.get(state.playerId);
-  if (!player) return;
+  if (!player || !player.pos) return;
+  if (!state.player) state.player = {};
   const contacts = [];
-  for (const e of state.entityList) {
-    if (e.alive === false || e === player) continue;
+  for (const e of state.entityList || []) {
+    if (!e || e.alive === false || e === player || !e.pos) continue;
     const explicitWorldSiteTarget = !!(e.data && e.data.worldSiteTargetable === true);
     if (explicitWorldSiteTarget && !presentationAllowsPlayerFacingAction(e, state)) continue;
     if (!explicitWorldSiteTarget && !verbAcceptsType('target', e.type)) continue; // PQ-015 membership + explicit site exception

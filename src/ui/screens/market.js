@@ -20,6 +20,12 @@ import { summarizeDemandDrivers } from '../demandDriverSummary.js';
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const STEP_PRESETS = [1, 10, 100];
 
+/** Safe hold quantity. Empty cargo / missing player is 0, never a throw. */
+export function cargoQty(state, cmdtyId) {
+  const items = state && state.player && state.player.cargo && state.player.cargo.items;
+  return Math.max(0, Math.floor(Number(items && items[cmdtyId]) || 0));
+}
+
 /** Look up the live MarketEntry for a station+commodity, or null. */
 function marketEntry(state, stationId, cmdtyId) {
   const markets = state.economy && state.economy.markets;
@@ -266,7 +272,7 @@ function trackedMarketMission(state, stationId) {
   const target = Math.max(1, Number(mission.objectiveTarget || mission.params.qty || 1) || 1);
   const progress = Math.max(0, Number(mission.objectiveProgress) || 0);
   const remaining = Math.max(0, target - progress);
-  const owned = Math.max(0, Number(state.player && state.player.cargo && state.player.cargo.items && state.player.cargo.items[cmdtyId]) || 0);
+  const owned = cargoQty(state, cmdtyId);
   const atDestination = !!(mission.destStationId && mission.destStationId === stationId);
   return {
     mission,
@@ -377,7 +383,7 @@ async function confirmMarketPurchase(ctx, stationId, cmdtyId, qty, opts = {}) {
   const state = ctx.state;
   const unit = unitPrice(ctx, stationId, cmdtyId, 'buy') || 0;
   const total = unit * qty;
-  const credits = state.player.credits || 0;
+  const credits = Math.max(0, Number(state && state.player && state.player.credits) || 0);
   const bigShare = credits > 0 && total >= credits * 0.5;
   const bigAbs = total >= 25000;
   if (!bigShare && !bigAbs) return true;
@@ -418,6 +424,7 @@ export function createMarketPanel(ctx) {
   const qtyState = Object.create(null);
   let pendingLoadNav = null;
   let activeCategory = 'all';
+  let tradeBusy = false;
 
   // --- header: credits + cargo summary ---
   const header = document.createElement('div');
@@ -447,7 +454,7 @@ export function createMarketPanel(ctx) {
     const btn = ev.target.closest('[data-act="route-sell"]');
     if (!btn) return;
     const cmdtyId = btn.getAttribute('data-cmdty');
-    const owned = Math.max(0, Math.floor(Number(ctx.state.player && ctx.state.player.cargo && ctx.state.player.cargo.items && ctx.state.player.cargo.items[cmdtyId]) || 0));
+    const owned = cargoQty(ctx.state, cmdtyId);
     if (owned <= 0) { ctx.bus.emit('audio:cue', { id: 'ui_deny' }); return; }
     ctx.bus.emit('ui:sell', { commodityId: cmdtyId, qty: owned });
     ctx.bus.emit('audio:cue', { id: 'ui_click' });
@@ -759,7 +766,7 @@ export function createMarketPanel(ctx) {
     const cmdtyId = rowEl.getAttribute('data-cmdty');
     const state = ctx.state;
     const stationId = panel.stationId;
-    const owned = (state.player.cargo.items[cmdtyId]) || 0;
+    const owned = cargoQty(state, cmdtyId);
 
     // Background clicks select the persistent inline intelligence stage. The explicit expand action
     // below owns the fullscreen chart so an ordinary row selection never covers the comparison view.
@@ -785,20 +792,23 @@ export function createMarketPanel(ctx) {
     }
 
     if (act === 'buy' || act === 'sell') {
+      if (tradeBusy) return;
       let qty = qtyState[cmdtyId] || 1;
       if (qty === 'max') {
         qty = act === 'buy' ? maxBuyable(ctx, stationId, cmdtyId) : owned;
       }
       qty = Math.max(0, Math.floor(qty));
       if (qty <= 0) { ctx.bus.emit('audio:cue', { id: 'ui_deny' }); return; }
+      tradeBusy = true;
       if (act === 'buy') {
         const ok = await confirmMarketPurchase(ctx, stationId, cmdtyId, qty);
-        if (!ok) return;
+        if (!ok) { tradeBusy = false; return; }
       }
       ctx.bus.emit(act === 'buy' ? 'ui:buy' : 'ui:sell', { commodityId: cmdtyId, qty });
       ctx.bus.emit('audio:cue', { id: 'ui_click' });
       footer.querySelector('.st-foot-msg').textContent =
         (act === 'buy' ? 'Buying ' : 'Selling ') + formatCargoUnits(qty) + ' ' + (COMMODITY_BY_ID.get(cmdtyId) || {}).name + '...';
+      setTimeout(() => { tradeBusy = false; }, 80);
       return;
     }
 
@@ -829,7 +839,7 @@ export function createMarketPanel(ctx) {
       // Category filter
       if (activeCategory !== 'all' && c.category !== activeCategory) continue;
       // Trade-mode param: Selling = in your hold; Buying = the market has stock to sell.
-      if (tradeMode === 'sell' && !((state.player.cargo.items || {})[c.id] > 0)) continue;
+      if (tradeMode === 'sell' && !(cargoQty(state, c.id) > 0)) continue;
       if (tradeMode === 'buy') {
         const mkts = state.economy && state.economy.markets;
         const entry = mkts && mkts[stationId] && mkts[stationId][c.id];
@@ -845,7 +855,7 @@ export function createMarketPanel(ctx) {
     const byName = (a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0;
     switch (_sort.key) {
       case 'name': out.sort((a, b) => dir * byName(a, b)); break;
-      case 'owned': out.sort((a, b) => dir * ((state.player.cargo.items[a.id] || 0) - (state.player.cargo.items[b.id] || 0)) || byName(a, b)); break;
+      case 'owned': out.sort((a, b) => dir * (cargoQty(state, a.id) - cargoQty(state, b.id)) || byName(a, b)); break;
       case 'buy': out.sort((a, b) => dir * ((unitPrice(ctx, stationId, a.id, 'buy') || 0) - (unitPrice(ctx, stationId, b.id, 'buy') || 0)) || byName(a, b)); break;
       case 'sell': out.sort((a, b) => dir * ((unitPrice(ctx, stationId, a.id, 'sell') || 0) - (unitPrice(ctx, stationId, b.id, 'sell') || 0)) || byName(a, b)); break;
       default: out.sort((a, b) => dir * ((a.category < b.category ? -1 : a.category > b.category ? 1 : byName(a, b)))); break;
@@ -1225,10 +1235,11 @@ export function createMarketPanel(ctx) {
   function refreshValues() {
     const state = ctx.state;
     const stationId = panel.stationId;
-    const p = state.player;
+    const p = (state && state.player) || {};
+    const cargo = p.cargo || {};
     header.querySelector('.st-credits').textContent = fmtCr(p.credits);
-    const cap = p.cargo.capVolume || 0;
-    header.querySelector('.st-cargo').textContent = formatCargoUnits(p.cargo.usedVolume || 0) + ' / ' + formatCargoUnits(cap) + ' u';
+    const cap = cargo.capVolume || 0;
+    header.querySelector('.st-cargo').textContent = formatCargoUnits(cargo.usedVolume || 0) + ' / ' + formatCargoUnits(cap) + ' u';
     const purposeText = purpose.querySelector('.st-market-purpose-text');
     if (purposeText) purposeText.textContent = stationMarketPurpose(state, stationId);
     const waiver = purpose.querySelector('.st-market-waiver');
@@ -1253,7 +1264,7 @@ export function createMarketPanel(ctx) {
         missionLine.textContent = missionMatch ? trackedMarketActionText(missionInfo) : '';
         missionLine.hidden = !missionMatch;
       }
-      const owned = (p.cargo.items[cmdtyId]) || 0;
+      const owned = cargoQty(state, cmdtyId);
       const buyP = unitPrice(ctx, stationId, cmdtyId, 'buy');
       const sellP = unitPrice(ctx, stationId, cmdtyId, 'sell');
       // Market intel strip: presenter-driven chips + best-known route (the "knowledge layer").

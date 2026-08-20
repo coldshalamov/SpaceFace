@@ -6,7 +6,7 @@
 // Catalog source: static SHIPS data plus the ships system for unlock checks / sell.
 import { SHIPS } from '../../data/ships.js';
 import { TECH_NODES } from '../../data/tech.js';
-import { confirm } from '../confirm.js';
+import { confirm, isConfirmOpen } from '../confirm.js';
 import { createListControls, buildSortHeader, sortHeaderAria } from '../listControls.js';
 import { SECTORS } from '../../data/sectors.js';
 import { dockInteriorIdForArchetype } from '../shipPreviewMount.js';
@@ -825,14 +825,16 @@ export function createShipyardPanel(ctx) {
     if (!card) return;
     const btn = ev.target.closest('[data-act="buy"]');
     if (btn) {
+      if (isConfirmOpen()) return;
       const defId = card.getAttribute('data-ship');
       const def = SHIP_BY_ID.get(defId);
       if (def && (def.price || 0) > 0) {
+        const credits = Math.max(0, Number(ctx.state && ctx.state.player && ctx.state.player.credits) || 0);
         const ok = await confirm({
           title: 'Buy ' + def.name + '?',
           body: hullPurpose(def) + '\n\nCost: ' + fmtCr(def.price || 0) + ' CR. ' + hullNextStep(def),
           confirmLabel: 'Buy',
-          danger: (ctx.state.player.credits || 0) > 0 && (def.price || 0) >= (ctx.state.player.credits || 0) * 0.5,
+          danger: credits > 0 && (def.price || 0) >= credits * 0.5,
         });
         if (!ok) return;
       }
@@ -846,15 +848,16 @@ export function createShipyardPanel(ctx) {
 
   requirements.addEventListener('click', async (ev) => {
     const btn = ev.target.closest('[data-act="buy"]');
-    if (!btn || btn.disabled) return;
+    if (!btn || btn.disabled || isConfirmOpen()) return;
     const def = SHIP_BY_ID.get(selectedDefId);
     if (!def) return;
     if (def.price > 0) {
+      const credits = Math.max(0, Number(ctx.state && ctx.state.player && ctx.state.player.credits) || 0);
       const ok = await confirm({
         title: 'Buy ' + def.name + '?',
         body: hullPurpose(def) + '\n\nCost: ' + fmtCr(def.price || 0) + ' CR. ' + hullNextStep(def),
         confirmLabel: 'Buy',
-        danger: (ctx.state.player.credits || 0) > 0 && (def.price || 0) >= (ctx.state.player.credits || 0) * 0.5,
+        danger: credits > 0 && (def.price || 0) >= credits * 0.5,
       });
       if (!ok) return;
     }

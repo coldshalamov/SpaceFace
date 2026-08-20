@@ -9,6 +9,7 @@ import { TECH_NODES } from '../../data/tech.js';
 import { SHIPS } from '../../data/ships.js';
 import { MODULES } from '../../data/modules.js';
 import { WEAPONS } from '../../data/weapons.js';
+import { BODY_MODULES } from '../../data/claimableBodies.js';
 import { escapeHtml } from '../comms.js';
 
 // Branch -> column index and accent colour. The DAG is laid out as columns by branch,
@@ -23,7 +24,9 @@ const BRANCH_INDEX = {};
 BRANCHES.forEach((b, i) => { BRANCH_INDEX[b.id] = i; });
 const BRANCH_COLOR = {};
 BRANCHES.forEach((b) => { BRANCH_COLOR[b.id] = b.color; });
-const UNLOCK_NAME_BY_ID = new Map([...SHIPS, ...MODULES, ...WEAPONS].map((entry) => [entry.id, entry.name]));
+const UNLOCK_NAME_BY_ID = new Map(
+  [...SHIPS, ...MODULES, ...WEAPONS, ...BODY_MODULES].map((entry) => [entry.id, entry.name]),
+);
 
 const NODE_W = 150, NODE_H = 58, COL_GAP = 26, ROW_GAP = 30, PAD_X = 28, PAD_Y = 54;
 

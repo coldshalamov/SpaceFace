@@ -83,7 +83,7 @@ function applyDeadzone(v, d) {
 
 function readButton(pad, name) {
   const idx = STD[name];
-  if (idx == null) return null;
+  if (idx == null || !pad || !pad.buttons) return null;
   const b = pad.buttons[idx];
   if (!b) return null;
   const value = typeof b.value === 'number' ? b.value : (b.pressed ? 1 : 0);
@@ -262,6 +262,8 @@ export function createGamepad(ctx) {
         actions[action] = { held: false, pressed: false, released: false, value: 0 };
       }
       this.actions = actions;
+      this._prev = {};
+      this._wasActive = false;
     },
   };
 

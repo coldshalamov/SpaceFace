@@ -626,6 +626,7 @@ export function createRadar(ctx) {
   function refreshContacts(player) {
     if (indexedRadarContacts()) return;
     const list = state.entityList;
+    if (!Array.isArray(list)) return;
     if (!contactsDirty && cachedEntityList === list && cachedLength === list.length && cachedPlayerId === state.playerId) {
       return;
     }
@@ -677,11 +678,13 @@ export function createRadar(ctx) {
 
   // ── draw ──────────────────────────────────────────────────────────────────────────────────
   function draw() {
-    const p = state.entities.get(state.playerId);
+    const p = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId)
+      : null;
     if (expanded) configureCanvas(EXPAND_SIZE, EXPAND_C, EXPAND_R);
     else configureCanvas(COMPACT_SIZE, COMPACT_C, COMPACT_R);
     activeGlowScale = expanded ? 1 : 0.35;
-    const baseRange = state.ui.radarRange || 4000;
+    const baseRange = (state.ui && state.ui.radarRange) || 4000;
     const range     = expanded ? baseRange * 2 : baseRange;
     const rangeSq   = range * range;
     const C = configuredC, R = configuredR, SIZE = configuredSize;
@@ -735,11 +738,11 @@ export function createRadar(ctx) {
       g.restore();
     }
 
-    if (!p) return;
+    if (!p || !p.pos) return;
     const px = p.pos.x, pz = p.pos.z;
-    const targetId   = state.player.targetId;
+    const targetId   = state.player && state.player.targetId;
     const playerTeam = p.team;
-    const cbMode     = (state.settings.accessibility && state.settings.accessibility.colorblindMode) || 'none';
+    const cbMode     = (state.settings && state.settings.accessibility && state.settings.accessibility.colorblindMode) || 'none';
 
     drawHeatZone(g, state.player && state.player.heatZone, px, pz, radarScale, C, R);
 
@@ -778,7 +781,7 @@ export function createRadar(ctx) {
     noGlow(g);
     for (let i = 0; i < asteroidSource.length; i++) {
       const e = asteroidSource[i];
-      if (!e.alive || e === p || e.type !== 'asteroid' || state.entities.get(e.id) !== e) continue;
+      if (!e || !e.pos || !e.alive || e === p || e.type !== 'asteroid' || (state.entities && state.entities.get && state.entities.get(e.id) !== e)) continue;
       const dx = e.pos.x - px, dz = e.pos.z - pz;
       const distSq = dx * dx + dz * dz;
       if (distSq > rangeSq) continue;
@@ -798,7 +801,7 @@ export function createRadar(ctx) {
     let minHostileDistSq = Infinity;
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
-      if (!e.alive || e === p) continue;
+      if (!e || !e.pos || !e.alive || e === p) continue;
       const dx = e.pos.x - px, dz = e.pos.z - pz;
       const distSq = dx * dx + dz * dz;
       if (distSq > rangeSq) {
@@ -818,7 +821,7 @@ export function createRadar(ctx) {
     let hostilesInRange = 0;
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
-      if (!e.alive || e === p || e.type === 'station') continue;
+      if (!e || !e.pos || !e.alive || e === p || e.type === 'station') continue;
       const ddx = e.pos.x - px, ddz = e.pos.z - pz;
       if (ddx * ddx + ddz * ddz > rangeSq) continue;
       if (isHostileToPlayer(e, playerTeam, state)) hostilesInRange++;
@@ -827,7 +830,7 @@ export function createRadar(ctx) {
     const reducedMotion = prefersReducedMotion();
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
-      if (!e.alive || e === p) continue;
+      if (!e || !e.pos || !e.alive || e === p) continue;
       if (e.type === 'station') {
         stationPass.push(e);
         continue;
@@ -924,6 +927,7 @@ export function createRadar(ctx) {
     // Stations last: distinctive cyan hex / violet gate ring, including off-range edge markers.
     for (let i = 0; i < stationPass.length; i++) {
       const e = stationPass[i];
+      if (!e || !e.pos) continue;
       const dx = e.pos.x - px, dz = e.pos.z - pz;
       const distSq = dx * dx + dz * dz;
       const isGate = !!(e.data && e.data.isGate);
@@ -984,7 +988,7 @@ export function createRadar(ctx) {
       }
       for (let i = 0; i < list.length; i++) {
         const e = list[i];
-        if (!e.alive || e === p) continue;
+        if (!e || !e.pos || !e.alive || e === p) continue;
         if (e.data && e.data.pingedUntil > (state.simTime || 0)) {
           const dx = e.pos.x - px, dz = e.pos.z - pz;
           const distSq = dx * dx + dz * dz;

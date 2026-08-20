@@ -521,7 +521,12 @@ export function createContractsScreen(ctx) {
 
   el.addEventListener('click', (ev) => {
     const acc = ev.target.closest('[data-accept]');
-    if (acc && !acc.disabled) { if (ctx.bus) { ctx.bus.emit('ui:acceptMission', { missionId: acc.getAttribute('data-accept') }); ctx.bus.emit('audio:cue', { id: 'ui_accept' }); } setTimeout(() => renderAll(ctx.state || {}), 60); return; }
+    if (acc && !acc.disabled) {
+      acc.disabled = true;
+      if (ctx.bus) { ctx.bus.emit('ui:acceptMission', { missionId: acc.getAttribute('data-accept') }); ctx.bus.emit('audio:cue', { id: 'ui_accept' }); }
+      setTimeout(() => renderAll(ctx.state || {}), 60);
+      return;
+    }
     const trk = ev.target.closest('[data-track]');
     if (trk) {
       const id = trk.getAttribute('data-track');

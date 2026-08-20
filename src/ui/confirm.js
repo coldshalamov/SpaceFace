@@ -258,3 +258,31 @@ export function confirm(opts) {
 export function isConfirmOpen() {
   return !!_openResolver;
 }
+
+function confirmRoot() {
+  return typeof document !== 'undefined' ? document.getElementById('sf-confirm-root') : null;
+}
+
+/** Gamepad A/Cross: activate the focused confirm control, else Confirm. */
+export function confirmGamepadAccept() {
+  if (!_openResolver) return false;
+  const root = confirmRoot();
+  if (!root) return false;
+  const active = typeof document !== 'undefined' ? document.activeElement : null;
+  if (active && root.contains(active) && typeof active.click === 'function') {
+    active.click();
+    return true;
+  }
+  const ok = root.querySelector('.sf-confirm__ok');
+  if (ok && typeof ok.click === 'function') { ok.click(); return true; }
+  return false;
+}
+
+/** Gamepad B/Circle: Cancel. */
+export function confirmGamepadCancel() {
+  if (!_openResolver) return false;
+  const root = confirmRoot();
+  const cancel = root && root.querySelector('.sf-confirm__cancel');
+  if (cancel && typeof cancel.click === 'function') { cancel.click(); return true; }
+  return false;
+}

@@ -1981,6 +1981,8 @@ export const stationHub = {
       const missionId = actionEl.getAttribute('data-mid');
       const act = actionEl.getAttribute('data-act');
       if (act === 'accept') {
+        if (actionEl.disabled) return;
+        actionEl.disabled = true;
         if (missionId) this._selectContract(missionId);
         ctx.bus.emit('ui:acceptMission', { missionId });
       } else if (act === 'plotRoute') {
