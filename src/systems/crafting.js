@@ -61,6 +61,35 @@ function buildDuration(bp) {
   return DEFAULT_TIME_S[bp.category] || 0;
 }
 
+function commodityVolume(id) {
+  const def = COMMODITY_BY_ID.get(id);
+  return def && def.volPerU > 0 ? def.volPerU : 1;
+}
+
+/** True when the hold can take `qty` of `commodityId` without exceeding capVolume. */
+function cargoCanFit(state, commodityId, qty) {
+  const cargo = state && state.player && state.player.cargo;
+  if (!cargo) return false;
+  const need = Math.max(0, Math.floor(Number(qty) || 0));
+  if (need <= 0) return true;
+  const free = (Number(cargo.capVolume) || 0) - (Number(cargo.usedVolume) || 0);
+  return Math.floor(free / commodityVolume(commodityId)) >= need;
+}
+
+/** Instant refine consumes inputs first. Net volume after that swap must still fit. */
+function cargoCanFitBlueprintSwap(state, bp) {
+  const out = bp && bp.outputs;
+  if (!out || out.kind !== 'commodity') return true;
+  const cargo = state && state.player && state.player.cargo;
+  if (!cargo) return false;
+  let used = Number(cargo.usedVolume) || 0;
+  for (const id of Object.keys(bp.inputs || {})) {
+    used -= (Number(bp.inputs[id]) || 0) * commodityVolume(id);
+  }
+  used += (Number(out.qty) || 0) * commodityVolume(out.id);
+  return used <= (Number(cargo.capVolume) || 0) + 1e-9;
+}
+
 function normalizeQueues(raw) {
   const queues = {};
   if (!raw || typeof raw !== 'object') return queues;
@@ -113,7 +142,18 @@ export const crafting = {
       if (!job || job.done) continue;
       job.elapsed += dt;
       if (job.elapsed >= job.total) {
-        this._grantProduct(job);
+        if (!this._grantProduct(job)) {
+          job.elapsed = job.total;
+          if (!job.waitingForHold) {
+            job.waitingForHold = true;
+            this.bus.emit('toast', {
+              text: 'Hold full — fabrication waiting to unload',
+              kind: 'warn',
+              ttl: 3,
+            });
+          }
+          continue;
+        }
         job.done = true;
         queues[stationId] = null;
         changed = true;
@@ -203,6 +243,10 @@ export const crafting = {
       this.bus.emit('toast', { text: 'Fab busy — finish the current job first', kind: 'error', ttl: 3 });
       return false;
     }
+    if (bp.outputs && bp.outputs.kind === 'commodity' && !cargoCanFitBlueprintSwap(this.state, bp)) {
+      this.bus.emit('toast', { text: 'Cargo hold cannot take the finished goods', kind: 'error', ttl: 3 });
+      return false;
+    }
 
     // 1) consume input materials from cargo NOW (committed up front; you don't get them back on cancel)
     for (const id in bp.inputs) {
@@ -216,7 +260,10 @@ export const crafting = {
     const total = this.buildTime(bp);
     if (total <= 0) {
       // instant path (basic refining): grant immediately, same as before
-      this._grantProduct({ bp });
+      if (!this._grantProduct({ bp })) {
+        this.bus.emit('toast', { text: 'Cargo hold cannot take the finished goods', kind: 'error', ttl: 3 });
+        return false;
+      }
       this.bus.emit('craft:complete', { bpId, productId: bp.outputs.id, kind: bp.outputs.kind, qty: bp.outputs.qty });
       this.bus.emit('audio:cue', { id: 'confirm' });
       this.bus.emit('toast', { text: 'Manufactured: ' + bp.name, kind: 'info', ttl: 2.5 });
@@ -234,14 +281,20 @@ export const crafting = {
   },
 
   // Grant the product for an instant build or a completed queued job.
+  // Returns false when a commodity product cannot fit — caller must not consume the job.
   _grantProduct(job) {
     const bp = job.bp || BLUEPRINT_BY_ID.get(job.bpId);
-    if (!bp) return;
+    if (!bp) return false;
     const ships = this._ships;
     const out = bp.outputs;
     let grantMsg = '';
     if (out.kind === 'commodity') {
-      addCargo(this.state, out.id, out.qty);
+      if (!cargoCanFit(this.state, out.id, out.qty)) return false;
+      const added = addCargo(this.state, out.id, out.qty);
+      if (added < (out.qty || 0)) {
+        if (added > 0) removeCargo(this.state, out.id, added);
+        return false;
+      }
       grantMsg = '+' + out.qty + ' ' + out.id;
     } else if (out.kind === 'module' || out.kind === 'weapon') {
       for (let i = 0; i < (out.qty || 1); i++) {
@@ -258,6 +311,7 @@ export const crafting = {
       this.bus.emit('toast', { text: '✓ Fabrication complete: ' + bp.name, kind: 'good', ttl: 3.5 });
       this.bus.emit('craft:queueChanged', {});
     }
+    return true;
   },
 
   /** Count instances of a module def in inventory + currently fitted across owned ships. */

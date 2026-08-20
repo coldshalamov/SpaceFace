@@ -796,7 +796,14 @@ export const mining = {
         ? Math.min(qty, asteroidData._richBonusPending)
         : 0;
       if (direct) {
-        if (qty > richQty) this._giveCargo(commodityId, qty - richQty, miner.id);
+        // Direct-feed still has to honor the hold cap. Overflow becomes magnet pickups — the
+        // same spill the rich-bonus path already used — so a full hold cannot vanish extracted ore.
+        const ordinaryQty = qty - richQty;
+        if (ordinaryQty > 0) {
+          const acceptedOrdinary = this._giveCargo(commodityId, ordinaryQty, miner.id);
+          const rejectedOrdinary = Math.max(0, ordinaryQty - acceptedOrdinary);
+          if (rejectedOrdinary > 0) this._spawnPickup(ast, commodityId, rejectedOrdinary);
+        }
         let materializedRich = 0;
         if (richQty > 0) {
           const acceptedRich = this._giveCargo(commodityId, richQty, miner.id, { ...richLotSource, richQty });

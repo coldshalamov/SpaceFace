@@ -196,8 +196,8 @@ export const factions = {
       if (!p || !p.found || !p.factionId) return;
       const rec = ensureFaction(state, p.factionId);
       rec.knownContrabandStrikes++;
-      const escalation = 1 + 0.5 * (rec.knownContrabandStrikes - 1); // repeats hurt more (spec ×1.5-ish)
-      this.applyRep(p.factionId, -40 * escalation, 'caught_contraband');
+      // Standing for the bust is already applied from economy's faction:repDelta. This
+      // handler only owns the strike ledger so repeats escalate the next scan.
     });
 
     // Rescuing a faction distress call → standing gain (spec +20). Credits handled by economy.

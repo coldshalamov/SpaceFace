@@ -683,20 +683,29 @@ export const automation = {
 
   // Mine into the PLAYER'S cargo at the authored rate (capped by free cargo volume). This is the
   // real-cargo grant path — the drone is now earning actual ore the player can use or sell.
+  // Whole units only enter the hold, so sub-unit progress lives on a per-group carry. Using
+  // max(1, floor(rate*dt)) used to grant one unit every sim tick (~60u/s vs the 0.8u/s table).
   _programMineIntoCargo(g, def, dt) {
     const cargo = this.state.player.cargo;
     if (!cargo) return;
     const free = cargo.capVolume - cargo.usedVolume;
-    if (free <= 0) return;
-    // convert authored ore-units/sec rate into cargo volume (iron ≈ 1 vol/u for the baseline)
-    const rate = (def.mineRate || 0.8) * (g.count || 1);
-    const want = Math.max(1, Math.floor(Math.min(rate * dt, free)));
+    if (!(free > 0)) {
+      g._programMineCarry = 0;
+      return;
+    }
+    const rate = Math.max(0, (def.mineRate || 0.8) * Math.max(1, Number(g.count) || 1));
+    g._programMineCarry = (Number(g._programMineCarry) || 0) + rate * Math.max(0, Number(dt) || 0);
+    const want = Math.floor(g._programMineCarry + 1e-9);
+    if (want <= 0) return;
     const added = addCargo(this.state, g.oreType || DRONE_ORE_ID, want);
     if (added > 0) {
+      g._programMineCarry = Math.max(0, g._programMineCarry - added);
       // cosmetic mining-tick feedback so the player SEES the drone working
       const rock = this._nearestAsteroid(this._playerPos(), 600);
       this.bus.emit('mining:tick', { contactPos: rock ? rock.pos : this._playerPos(), oreType: g.oreType || DRONE_ORE_ID });
+      return;
     }
+    g._programMineCarry = Math.min(g._programMineCarry, 1);
   },
 
   // Sell the player's mined ore at the depot station for real credits, through the passive funnel

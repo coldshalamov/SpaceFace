@@ -72,7 +72,6 @@ const HISTORY_REGIME_AGE_MAX_S = HISTORY_SPAN_S + HISTORY_SAMPLE_S * 18;
 const BASE_SCAN = 0.25;            // p_scan = clamp(BASE_SCAN*(1+security) - cloak, 0.02, 0.95)
 const SCAN_LO = 0.02, SCAN_HI = 0.95;
 const FINE_MULT = { legal: 0, restricted: 0.8, illegal: 1.2, contraband: 1.5 };
-const REP_HIT_LO = 2, REP_HIT_HI = 25;
 const BRIBE_FRAC = 0.30;
 export const TRADE_LEDGER_MAX = 10;
 const SALVAGE_INTAKE_RECEIPT_CAP = 256;
@@ -1686,7 +1685,9 @@ export const economy = {
   },
 
   /** Run a scan check against any contraband in the hold. Emits player:scannedByPatrol + (if found)
-   *  contraband:scanned + faction:repDelta. Fines via chargeCredits; confiscates cargo. */
+   *  contraband:scanned + faction:repDelta. Fines via chargeCredits; confiscates cargo. Standing
+   *  still funnels through factions.applyRep (the faction:repDelta listener). The scanned event
+   *  is the incident/strike ledger; it must not apply a second reputation hit. */
   runScan(p) {
     const state = this.state;
     const illicit = this.illicitCargo(state);
@@ -1744,9 +1745,13 @@ export const economy = {
       state.player.debt = (state.player.debt || 0) + unpaid;
       state.player.bounty = (state.player.bounty || 0) + round(unpaid * 0.5);
     }
-    // reputation hit with the scanning faction
-    const repHit = -clamp(fine / 2000, REP_HIT_LO, REP_HIT_HI);
-    if (factionId) this.bus.emit('faction:repDelta', { factionId, delta: round(repHit), reason: 'contraband' });
+    // Spec caught_contraband is -40 × (1 + 0.5 × prior strikes). Emit that once through
+    // faction:repDelta; factions owns applyRep and increments the strike counter from the
+    // scanned incident without applying a second delta.
+    const rec = factionId && state.factions ? state.factions[factionId] : null;
+    const priorStrikes = rec ? (rec.knownContrabandStrikes | 0) : 0;
+    const repHit = -round(40 * (1 + 0.5 * priorStrikes));
+    if (factionId) this.bus.emit('faction:repDelta', { factionId, delta: repHit, reason: 'contraband' });
     const contrabandPayload = {
       stationId: p.stationId || null, patrolId: p.patrolId || null,
       found: true, fine, confiscated, factionId: factionId || null, units,
