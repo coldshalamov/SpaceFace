@@ -32,6 +32,7 @@ const consoleHits = [];
 const pageErrors = [];
 const snapshots = [];
 const canvasFrames = [];
+let censusInstrumentation = null;
 
 function log(line) {
   const text = `[${new Date().toISOString()}] ${line}`;
@@ -39,14 +40,67 @@ function log(line) {
   console.log(text);
 }
 
+const TABLE_CENSUS_FIELDS = Object.freeze([
+  'glass',
+  'runway',
+  'beyond',
+  'submitted',
+  'resident',
+  'landmarks',
+]);
+
+function summarizeTableCensus(samples) {
+  const rows = samples
+    .map((sample) => sample && sample.tableCensus)
+    .filter((row) => row && row.available === true);
+  if (rows.length === 0) return { available: false, sampleCount: 0 };
+  const ranges = {};
+  for (const field of TABLE_CENSUS_FIELDS) {
+    const values = rows.map((row) => Number(row[field])).filter(Number.isFinite);
+    ranges[field] = values.length > 0
+      ? { min: Math.min(...values), max: Math.max(...values) }
+      : { min: null, max: null };
+  }
+  return {
+    available: true,
+    sampleCount: rows.length,
+    first: rows[0],
+    last: rows[rows.length - 1],
+    ranges,
+  };
+}
+
+function formatTableCensusSection(summary, route) {
+  const lines = [
+    '',
+    '## Tabletop census (PQ-129.01)',
+    `- route: New Game seed ${route.seed}, held thrust, ${route.sampleMs} ms at ${route.sampleEveryMs} ms cadence`,
+    `- sim delta: ${route.simDelta.toFixed(2)} s; executed-frame delta: ${route.executedFrameDelta}`,
+    `- bounded instrumentation: renderWork ${route.instrumentation?.previousRenderWorkEnabled === true ? 'already on' : 'enabled for this probe only'}; prior state restored before shutdown: ${route.instrumentation?.restored === true}`,
+  ];
+  if (!summary.available) {
+    lines.push('- census unavailable: the live renderer did not publish a probe-gated table sample');
+    return lines.join('\n');
+  }
+  const last = summary.last;
+  lines.push(
+    `- last population: glass ${last.glass}, runway ${last.runway}, beyond ${last.beyond}, submitted ${last.submitted}, resident ${last.resident}, landmarks ${last.landmarks}`,
+    `- policy envelope: glass half-extents ${last.glassHalfX} x ${last.glassHalfZ} WU; runway ${last.runwayWu} WU`,
+    `- observed ranges: ${TABLE_CENSUS_FIELDS.map((field) => `${field} ${summary.ranges[field].min}–${summary.ranges[field].max}`).join('; ')}`,
+    '- submitted is the tabletop policy population (glass + runway + forced roots), not WebGL draw calls.',
+  );
+  return lines.join('\n');
+}
+
 function readWitnessInPage() {
   const witness = window.__SF_WITNESS__;
-  if (witness && typeof witness.snapshot === 'function') return witness.snapshot();
   const s = window.SF?.state;
+  let sample = null;
+  if (witness && typeof witness.snapshot === 'function') sample = witness.snapshot();
   const d = window.SF?.loop?.getDiagnostics?.() || {};
   const p = s?.entities?.get?.(s.playerId);
   const info = s?.render?.renderer?.info?.render || null;
-  return {
+  if (!sample) sample = {
     wallMs: Date.now(),
     mode: s?.mode || null,
     simTime: Number(s?.simTime) || 0,
@@ -70,6 +124,38 @@ function readWitnessInPage() {
     hitch: false,
     costs: [],
   };
+  const table = s?.render?.entityViewSync || null;
+  const landmarkCount = Array.isArray(s?.entityList)
+    ? s.entityList.reduce((count, entity) => (
+      entity
+        && entity.alive !== false
+        && (entity.type === 'station' || entity.type === 'planet' || entity.type === 'fx')
+        ? count + 1
+        : count
+    ), 0)
+    : null;
+  const numberOrNull = (value) => {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  };
+  sample.tableCensus = {
+    available: !!table
+      && Number.isFinite(Number(table.tableGlass))
+      && Number.isFinite(Number(table.tableRunway))
+      && Number.isFinite(Number(table.tableBeyond)),
+    glass: numberOrNull(table?.tableGlass),
+    runway: numberOrNull(table?.tableRunway),
+    beyond: numberOrNull(table?.tableBeyond),
+    submitted: numberOrNull(table?.tableSubmitted),
+    resident: numberOrNull(table?.tableResident),
+    landmarks: numberOrNull(table?.tableLandmarks ?? landmarkCount),
+    glassHalfX: numberOrNull(table?.glassHalfX),
+    glassHalfZ: numberOrNull(table?.glassHalfZ),
+    runwayWu: numberOrNull(table?.runwayWu),
+    renderWorkEnabled: s?.perfRuntime?.renderWorkEnabled === true,
+    hitchAttributionEnabled: s?.perfRuntime?.hitchAttributionEnabled === true,
+  };
+  return sample;
 }
 
 async function captureCanvasFrame(targetPage, shotPath, elapsedMs) {
@@ -174,6 +260,22 @@ try {
   const entered = await launchUntilFlight(page);
   log(`entered flight ${JSON.stringify({ mode: entered.mode, simTime: entered.simTime })}`);
 
+  censusInstrumentation = await page.evaluate(() => {
+    const perf = window.SF?.state?.perfRuntime;
+    const previousRenderWorkEnabled = perf?.renderWorkEnabled === true;
+    const available = typeof perf?.setRenderWorkEnabled === 'function';
+    if (available) perf.setRenderWorkEnabled(true);
+    return {
+      available,
+      previousRenderWorkEnabled,
+      renderWorkEnabled: perf?.renderWorkEnabled === true,
+    };
+  });
+  if (censusInstrumentation?.renderWorkEnabled !== true) {
+    throw new Error('Runtime witness could not enable the bounded tabletop census gate');
+  }
+  await page.waitForTimeout(250);
+
   await page.locator('#gl-canvas').click({ timeout: 10_000 }).catch(() => {});
   await page.keyboard.down('KeyW');
   const started = Date.now();
@@ -201,6 +303,14 @@ try {
   log(`probe failed: ${error && error.stack ? error.stack : error}`);
 } finally {
   await page?.keyboard.up('KeyW').catch(() => {});
+  if (page && censusInstrumentation?.available === true) {
+    const restoredState = await page.evaluate((previousRenderWorkEnabled) => {
+      const perf = window.SF?.state?.perfRuntime;
+      perf?.setRenderWorkEnabled?.(previousRenderWorkEnabled === true);
+      return perf?.renderWorkEnabled === true;
+    }, censusInstrumentation.previousRenderWorkEnabled).catch(() => null);
+    censusInstrumentation.restored = restoredState === censusInstrumentation.previousRenderWorkEnabled;
+  }
   if (app) {
     try {
       cleanupReport = await closeOwnedElectronRuntime({
@@ -226,14 +336,25 @@ try {
 const moving = snapshots.filter((row) => !row.evaluateError);
 const canvasHashes = canvasFrames.map((frame) => frame.hash);
 const verdict = classifyRuntimeWitness(moving, { canvasHashes });
-const markdown = formatRuntimeWitnessReport({
+const tableCensus = summarizeTableCensus(moving);
+const firstMoving = moving[0] || null;
+const lastMoving = moving[moving.length - 1] || null;
+const route = {
+  seed: FIXED_SEED,
+  sampleMs: SAMPLE_MS,
+  sampleEveryMs: SAMPLE_EVERY_MS,
+  simDelta: (Number(lastMoving?.simTime) || 0) - (Number(firstMoving?.simTime) || 0),
+  executedFrameDelta: (Number(lastMoving?.executedFrames) || 0) - (Number(firstMoving?.executedFrames) || 0),
+  instrumentation: censusInstrumentation,
+};
+const markdown = `${formatRuntimeWitnessReport({
   verdict,
   samples: moving,
   canvasHashes,
   consoleHits,
   pageErrors,
   gpu,
-});
+})}${formatTableCensusSection(tableCensus, route)}\n`;
 const report = {
   schema: 'spaceface.runtimeWitness.probe.v1',
   verdict,
@@ -245,6 +366,8 @@ const report = {
   consoleHits,
   logs,
   gpu,
+  route,
+  tableCensus,
   error: primaryError ? String(primaryError && primaryError.stack || primaryError) : null,
   cleanupError: cleanupError ? String(cleanupError && cleanupError.stack || cleanupError) : null,
 };

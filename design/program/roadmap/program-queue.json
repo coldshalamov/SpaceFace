@@ -7044,7 +7044,7 @@
       "priority": 327,
       "title": "Tabletop glass/runway/beyond census",
       "kind": "performance",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "performance-hitch"
@@ -7058,7 +7058,9 @@
         "npm run probe:runtime-witness",
         "node scripts/check-program-docs.mjs"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-129-01-tabletop-census-REPORT.md"
+      ],
       "brief": "Reserved PQ-061. Headed fixed-seed fly writing glass vs runway vs beyond submit/residency/sim counts. No product mutation required. Do not guess the IMPL leaf until this census exists."
     },
     {
