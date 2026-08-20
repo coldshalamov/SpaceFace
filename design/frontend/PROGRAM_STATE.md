@@ -19,12 +19,37 @@ Program spec: `CANONICAL_BUILD_MAP.md` §11.12 and `design/frontend/NEXT_JOBS.md
 | 2 | J05 iconography + 14 faction crests | **DONE** |
 | 3 | J06 Power Rail | **DONE** |
 | 3 | J07 HUD overhaul | **DONE** - all 6 bullets |
-| 4 | J08 combat reticle + threat halo | NOT STARTED |
-| 5 | J09–J13 strategic screens | NOT STARTED |
-| 6 | J14–J15 haptics, comms, hail radial | NOT STARTED |
-| 7 | J16 visual regression matrix | NOT STARTED — **must go last** |
+| 4 | J08 combat reticle + threat halo | **DONE `bea90b47`** — reticle shape modes, lock bloom, lead-pip convergence, `src/ui/threatHalo.js`; real-boot capture with live engagement. Drive-bys: stale `check-ui-identity` targetPanel rule repinned; sandbox `spawnEnemies` stamps `ai.spawnContext='encounter'` (combat cards were permanently neutered). |
+| R | responsive / ultrawide (Phase-0 debt) | **DONE `0996a2e4`** — `--sf-safe-inset-x` + anchor rebase in all 3 cascade layers + `resolveObjectiveHudLayout` safe frame + `check:responsive` + `RESPONSIVE_STRATEGY.md`. Verified 320px inset at 2560×1080; 0 at ≤16:9. |
+| 5a | J09 ship bands | **DONE `0f503607`** — handling/power/condition/capability on the F2 stage (`src/ui/ship/shipBandModels.js`); captured live. |
+| 5b | J10 FOOTPRINT | **DONE `583f7893`** + goldens `ad8f5b0a` — provenance ledger (v14), phrase pin, board (F3), producers (economy:payBounty, faction:bribe), CLEAN/MARKED/WANTED. Advisor join-key corrections adopted (victim-id ACT↔INCIDENT, same-tick ACT↔STANDING, contraband merge). |
+| 5c | J11 RANGE | **DONE `9d242df7`** — teaching integrator + 4 rungs (F4); toy verified flying under real input; TAKE IT TO THE RANGE door works. |
+| 5d | J12 CHART | **DONE `06a8161c`** — real risk + sector-pair memo, model beacons, cargo deck (HERE hold-keyed), single-FILL channel law, events/holdings layers, WEATHER, rAF park, chart now PAUSES (ruling). Traffic layer DEFERRED (J12b). Review fixes: CRLF normalize localmap, 11 new sub-12px → 12px, null-market guard in buildModelBeacon (deck never rendered before it). |
+| 5e | J13 loadout presets | **DONE `4dbd0257`** — one dry-run apply intent (free-grant path avoided), derived-stat label bank, per-hull cap 6, NO save bump (normalizer line; goldens untouched). Review fix: SAVE ungated for the flight host. Captured: save→'prospector' label→4 ghost bars→drawer DELETE. |
+| 6a | J14 tactile feedback | **DONE `f85507a9`** — gaugeSettle (shieldRegenRate/inertia-bound), commsTrace (priority-envelope-driven, self-parking), two detent recipes via audio:cue. Review fix: 8.5px→12px. |
+| 6b | J15 quick-comms radial | **DONE `6cd90065`** — Alt-held non-pausing fan (#sf-commsfan), offer-enumerated wedges, boolean-derived reason bank (first run correctly stopped on missing per-action reasons), hail deck drawer, prompt badge. Captured on a real fleeing-trader target. |
+| 7 | J16 visual regression matrix | **DONE `06a45d31`** — capture:ui-matrix + check:visual-regression + 60 committed reference frames (test/ui-frame-references/, 18 MB). Full green check pass pending a quieter machine (concurrent-lane CPU starvation killed boots; every boot passes standalone). |
 
-Landed: `e23a9ba9` `f1cbaf04` `6e0e4037` `79e56c06` `ad4764b5` `7f9f87cf`.
+Landed this session: `bea90b47` `0f503607` `0996a2e4` `583f7893` `ad8f5b0a` `9d242df7` `06a8161c` `4dbd0257` `f85507a9` `6cd90065` `06a45d31`.
+
+**PROGRAM COMPLETE (J08–J16 + responsive strategy), 2026-08-20.**
+
+**Controller-loop notes for resuming threads:** worker = cursor-agent with the packet ON DISK at
+`.devshots/packets/<job>.md` (8191-char command-line limit — never inline). Controller re-runs
+every check, boots the real game for captures (no blind centre-click prologue on the browser
+route — it hits a menu button; no `page.waitForFunction` timeouts without `.catch` + record),
+pathspec-commits exactly its files (`git commit -- <paths>` — concurrent lanes stage into the
+shared index), pushes master by name. **NEVER run `git checkout -- .`** — a mid-session one
+destroyed the J10 worker's uncommitted tracked edits (recovered exactly from the cursor session
+DB at `~/.cursor/chats/<dir>/<chat>/store.db` via ApplyPatch args) AND wiped a concurrent
+loading lane's uncommitted work. Also: workers' `git add -N` (intent-to-add) turns a
+checkout -- . into ZERO-BYTE files.
+
+**Known follow-ups (not blockers):** chart still carries ~80 pre-existing sub-12px leaf nodes
+(pre-J12 debt; needs its own measured-rect type-floor pass like J07's); sim goldens now pin v14
+hashes (any future save bump re-drifts them by construction — re-record from a clean git archive
+per `ad8f5b0a`); `check:baseline` wall budget can exceed 90s purely under concurrent-lane CPU
+load while staying 12/12 green.
 
 ### J07 — all six bullets landed
 
