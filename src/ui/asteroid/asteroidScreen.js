@@ -666,7 +666,7 @@ export const asteroidScreen = {
       const rows = [
         [MATERIALS.matrix.base, MATERIALS.matrix.name],
         [MATERIALS.basalt.base, MATERIALS.basalt.name],
-        [MATERIALS.gas.glow, 'Gas pocket — tap it, never breach it'],
+        ['#ffc23e', 'Gas pocket — tap it, never breach it'],
       ];
       const d = state.drill;
       const seen = new Set();
@@ -958,6 +958,12 @@ export const asteroidScreen = {
       projDirty = true;
       refreshProjection();
       seedLedgerFromSite();
+      // Fresh rock: teach the loop on the manifest tape. The scene shows it (rig on a tether,
+      // veins erupt when surveyed or approached, pockets hiss when close) — these name it.
+      if ((state.drill.tilesCleared || 0) <= 1) {
+        pushLedgerLine('info', 'Rig tethered to the surface winch — hold a direction to drive, keep holding to bore through rock.');
+        pushLedgerLine('info', 'Bright crystal clusters are ore veins: bore them to collect. Cracked cells seeping vapor are gas pockets — tap them with a Gas Tap, never the drill.');
+      }
       // One renderer (one WebGL context) per mounted screen; each session rebuilds its scene
       // from the live field.
       if (!renderer3d) {
