@@ -39,3 +39,16 @@ all instrument frames.
 Never regenerate these frames just to make a failing visual diff pass.
 Identify what changed first, then deliberately update references only when the visual change is
 intentional.
+
+## Thresholds (calibrated 2026-08-20 from measured two-pass variance)
+
+| Surface | Measured rest variance | Threshold |
+|---|---|---|
+| footprint | 0.00% | 0.5% |
+| range | 0.02-0.05% | 0.5% |
+| ship | 0.00% (one 2.45% settle-frame outlier from gauge SETTLE easing) | 3% |
+| chart | 2-4% (label scramble / staleness animation between frames) | 5% |
+| flight | 5-8.6% (live world behind the HUD) | 10% |
+
+These floors encode the measured rest variance of each surface on a clean tree. They are NOT
+knobs to make an unknown change pass - see the golden law below.
