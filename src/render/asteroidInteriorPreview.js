@@ -10,6 +10,7 @@
 // environment are the SAME ones the flight world uses, and real geometry means real normals — so
 // lighting does the depth work that no amount of 2D hand-painting can fake.
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
@@ -105,10 +106,10 @@ const ORE_TINT = {
 export function makeRockMaterials(envMap) {
   const bump = makeRockBumpTexture(256);
   return {
-    matrix: new THREE.MeshStandardMaterial({ color: 0x554a3c, roughness: 0.96, metalness: 0.05,
-      bumpMap: bump, bumpScale: 1.15, envMap: envMap || null, envMapIntensity: 0.3 }),
-    basalt: new THREE.MeshStandardMaterial({ color: 0x2c2f38, roughness: 0.82, metalness: 0.12,
-      bumpMap: bump, bumpScale: 1.2, envMap: envMap || null, envMapIntensity: 0.4 }),
+    matrix: new THREE.MeshStandardMaterial({ color: 0x8a7357, roughness: 0.96, metalness: 0.05,
+      bumpMap: bump, bumpScale: 0.75, envMap: envMap || null, envMapIntensity: 0.3 }),
+    basalt: new THREE.MeshStandardMaterial({ color: 0x454a58, roughness: 0.82, metalness: 0.12,
+      bumpMap: bump, bumpScale: 0.9, envMap: envMap || null, envMapIntensity: 0.4 }),
   };
 }
 
@@ -366,53 +367,321 @@ export function makeMachine(kind, S, envMap) {
   return { group: g, pulses, dyn };
 }
 
-// The drilling rover, congruent with the machine language: dark treads, slate hull, cyan canopy,
-// warm headlamp block, and a faceted auger mast out the +x nose (flat-shaded 5-sided cone so spin
-// actually reads). Built facing +x at cell scale; the live renderer rotates the group per faceDir
-// and spins dyn.auger while boring. Returns { group, pulses, dyn: { auger, lampAnchor } }.
+// ---------------------------------------------------------------- Motherload-3D cell kit
+// The works playfield reads as a cut rock face: every solid cell is the SAME block — a full-footprint
+// unit with a beveled front pad, so the grid reads as masonry joints without any overlay lines. All
+// variation lives INSIDE the face (relief, tint, bump); the footprint never lies about the sim grid.
+// Local space: footprint x/y in [-0.5, 0.5], front pad at z=0, body extends to z=-1.
+
+function pushQuad(pos, nrm, uv, a, b, c, d, uvs) {
+  // two triangles a-b-c, a-c-d
+  pos.push(...a, ...b, ...c, ...a, ...c, ...d);
+  const [ua, ub, uc, ud] = uvs;
+  uv.push(...ua, ...ub, ...uc, ...ua, ...uc, ...ud);
+  for (let i = 0; i < 6; i++) nrm.push(0, 0, 0); // computeVertexNormals gives flat facets
+}
+
+// 3 block variants: identical silhouette, different bevel depth / pad relief. Deterministic per cell.
+export function makeCellBlockGeos() {
+  const variants = [
+    { bev: 0.055, lift: 0.05, bulge: 0.02 },
+    { bev: 0.08, lift: 0.025, bulge: 0.055 },
+    { bev: 0.1, lift: 0.065, bulge: -0.014 },
+  ];
+  return variants.map((v) => {
+    const pos = [], nrm = [], uv = [];
+    const p = 0.5 - v.bev;                    // pad half-extent
+    const zF = v.lift;                        // pad plane (proud of z=0)
+    const zB = -v.bev * 1.7;                  // full footprint resumes here
+    const pad = {
+      pp: [p, p, zF], pn: [p, -p, zF], np: [-p, p, zF], nn: [-p, -p, zF], cc: [0, 0, zF + v.bulge],
+    };
+    // pad cap: 4 triangles fanned to the relief centre (wound CCW seen from +z)
+    const fan = [[pad.pp, pad.pn], [pad.pn, pad.nn], [pad.nn, pad.np], [pad.np, pad.pp]];
+    for (const [a, b] of fan) {
+      pos.push(...b, ...a, ...pad.cc);
+      nrm.push(0, 0, 0, 0, 0, 0, 0, 0, 0);
+      uv.push(b[0] + 0.5, b[1] + 0.5, a[0] + 0.5, a[1] + 0.5, 0.5, 0.5);
+    }
+    // bevel ring (pad edge → full footprint at zB), wound outward
+    const out = { pp: [0.5, 0.5, zB], pn: [0.5, -0.5, zB], np: [-0.5, 0.5, zB], nn: [-0.5, -0.5, zB] };
+    pushQuad(pos, nrm, uv, pad.pn, out.pn, out.pp, pad.pp, [[1, 0], [1, 0.04], [1, 0.96], [1, 1]]);
+    pushQuad(pos, nrm, uv, pad.nn, out.nn, out.pn, pad.pn, [[0, 0], [0, 0.04], [1, 0.04], [1, 0]]);
+    pushQuad(pos, nrm, uv, pad.np, out.np, out.nn, pad.nn, [[0, 1], [0, 0.96], [0, 0.04], [0, 0]]);
+    pushQuad(pos, nrm, uv, pad.pp, out.pp, out.np, pad.np, [[1, 1], [1, 0.96], [0, 0.96], [0, 1]]);
+    // side walls (zB → z=-1)
+    const bak = { pp: [0.5, 0.5, -1], pn: [0.5, -0.5, -1], np: [-0.5, 0.5, -1], nn: [-0.5, -0.5, -1] };
+    pushQuad(pos, nrm, uv, out.pn, bak.pn, bak.pp, out.pp, [[0, 0], [1, 0], [1, 1], [0, 1]]);
+    pushQuad(pos, nrm, uv, out.nn, bak.nn, bak.pn, out.pn, [[0, 0], [1, 0], [1, 1], [0, 1]]);
+    pushQuad(pos, nrm, uv, out.np, bak.np, bak.nn, out.nn, [[0, 0], [1, 0], [1, 1], [0, 1]]);
+    pushQuad(pos, nrm, uv, out.pp, bak.pp, bak.np, out.np, [[0, 0], [1, 0], [1, 1], [0, 1]]);
+    // back cap
+    pushQuad(pos, nrm, uv, bak.pp, bak.pn, bak.nn, bak.np, [[1, 1], [1, 0], [0, 0], [0, 1]]);
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    geo.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    geo.computeVertexNormals();
+    return geo;
+  });
+}
+
+// A mineral cluster erupting from the rock face: a crust knob + a fan of flat-shaded crystal shards.
+// Local space: base sits on the face plane (z≈0), crystals grow toward +z, footprint ~1 across.
+// Merge once; instance per vein cell with in-plane rotation / scale for variety.
+export function makeOreClusterGeo(variant = 0) {
+  const parts = [];
+  const rnd = (i, salt) => hash2(i * 7 + variant * 31 + 5, salt * 13 + variant + 3);
+  // tight crust knob the shards erupt from
+  const crust = new THREE.DodecahedronGeometry(0.17, 0);
+  crust.scale(1.05, 0.85, 0.4);
+  crust.translate(0, 0, 0.03);
+  parts.push(crust);
+  const n = variant % 2 === 0 ? 5 : 4;
+  const base = new THREE.Matrix4().makeRotationX(Math.PI / 2); // cone +y → +z (out of the face)
+  for (let i = 0; i < n; i++) {
+    const h = 0.16 + rnd(i, 1) * 0.12;
+    const r = 0.05 + rnd(i, 2) * 0.028;
+    const shard = new THREE.ConeGeometry(r, h, 5);
+    shard.translate(0, h / 2, 0);
+    const a = (i / n) * Math.PI * 2 + rnd(i, 3) * 0.9;
+    const tilt = i === 0 ? 0.06 : 0.24 + rnd(i, 4) * 0.3;
+    const tiltAxis = new THREE.Vector3(Math.cos(a + Math.PI / 2), Math.sin(a + Math.PI / 2), 0).normalize();
+    const m = new THREE.Matrix4().makeRotationZ(a)
+      .multiply(new THREE.Matrix4().makeRotationAxis(tiltAxis, tilt))
+      .multiply(base);
+    shard.applyMatrix4(m);
+    shard.translate(Math.cos(a) * (0.03 + rnd(i, 6) * 0.09), Math.sin(a) * (0.03 + rnd(i, 6) * 0.09),
+      0.03 + rnd(i, 7) * 0.03);
+    parts.push(shard);
+  }
+  // mergeGeometries refuses mixed indexed/non-indexed inputs (cones are indexed, the crust is
+  // not) — normalize everything to non-indexed first.
+  return mergeGeometries(parts.map((g) => (g.index ? g.toNonIndexed() : g)), false);
+}
+
+// Pocket of pressurized vapor: three hash-displaced lobes merged into one churning mass.
+// Compact — it seethes INSIDE the cell, cradled by the block's bevel. Geometry carries the
+// structure (faceted, lit, occluding); no alpha-gradient stand-ins.
+export function makeGasVaporGeo() {
+  const lobes = [
+    { p: [-0.1, 0.06, 0.08], s: [0.2, 0.17, 0.14] },
+    { p: [0.11, -0.08, 0.07], s: [0.18, 0.16, 0.13] },
+    { p: [0.01, 0.02, 0.13], s: [0.24, 0.2, 0.17] },
+  ];
+  const parts = lobes.map((L, li) => {
+    const geo = new THREE.IcosahedronGeometry(1, 1);
+    const pos = geo.attributes.position;
+    const v = new THREE.Vector3();
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i);
+      const j = 1 + (hash2(i * 3 + li * 17, li * 5 + 1) - 0.5) * 0.55;
+      pos.setXYZ(i, v.x * j, v.y * j, v.z * j);
+    }
+    geo.computeVertexNormals();
+    geo.scale(L.s[0], L.s[1], L.s[2]);
+    geo.translate(L.p[0], L.p[1], L.p[2]);
+    return geo;
+  });
+  return mergeGeometries(parts.map((g) => (g.index ? g.toNonIndexed() : g)), false);
+}
+
+// Jagged crack strips that lie on a block face (z≈0): the "this cell is unstable" fissure language.
+export function makeCrackGeos() {
+  const geos = [];
+  for (let v = 0; v < 3; v++) {
+    const pos = [], nrm = [], uv = [];
+    const pts = [];
+    let y = (hash2(v, 1) - 0.5) * 0.34;
+    for (let i = 0; i <= 4; i++) {
+      pts.push([-0.32 + (i / 4) * 0.64, y]);
+      y += (hash2(v * 9 + i, 2) - 0.5) * 0.3;
+      y = Math.max(-0.3, Math.min(0.3, y));
+    }
+    // one branch off the middle segment (null = pen-stroke break)
+    const [bx, by] = pts[2];
+    pts.push(null);
+    pts.push([bx, by]);
+    pts.push([bx + (hash2(v, 5) - 0.5) * 0.22, by + 0.14 + hash2(v, 6) * 0.12]);
+    const w = 0.024;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const a = pts[i], b = pts[i + 1];
+      if (!a || !b) continue;
+      const dx = b[0] - a[0], dy = b[1] - a[1];
+      const len = Math.hypot(dx, dy) || 1;
+      const nx = (-dy / len) * w, ny = (dx / len) * w;
+      pushQuad(pos, nrm, uv,
+        [a[0] + nx, a[1] + ny, 0], [a[0] - nx, a[1] - ny, 0],
+        [b[0] - nx, b[1] - ny, 0], [b[0] + nx, b[1] + ny, 0],
+        [[0, 0], [1, 0], [1, 1], [0, 1]]);
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    geo.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
+    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    geos.push(geo);
+  }
+  return geos;
+}
+
+// The drilling rover, rebuilt to read as a vehicle at table scale: hazard-yellow track guard over
+// treads with spinning road wheels, gunmetal hull, warm cabin window, blinking roof beacon, rear
+// cable socket (the umbilical lands there), headlamp bar, and an articulated drill arm whose auger
+// extends and spins while boring. Built facing +x at cell scale; the live renderer flips the body
+// for left travel, aims dyn.arm at the dig direction, spins dyn.auger, and bobs dyn.body.
+// Returns { group, pulses, dyn: { body, wheels, beacon, arm, auger, augerSlide, lampAnchor, socket } }.
 export function makeRover(S, envMap) {
   const g = new THREE.Group();
   const pulses = [];
-  const dyn = {};
-  // Tread base + road wheels (cylinders across z so they read in the top-down view).
-  const tread = new THREE.Mesh(new THREE.BoxGeometry(S * 0.68, S * 0.2, S * 0.36), metalMat(0x0c111c, envMap));
-  tread.position.y = -S * 0.22; tread.castShadow = true; g.add(tread);
-  const wheelGeo = new THREE.CylinderGeometry(S * 0.095, S * 0.095, S * 0.42, 10);
-  const wheelMat = metalMat(0x1b2434, envMap);
-  for (const wx of [-0.24, 0, 0.24]) {
-    const w = new THREE.Mesh(wheelGeo, wheelMat);
+  const dyn = { wheels: [] };
+  const frame = metalMat(0x11161f, envMap);
+  const hullMat = metalMat(0x2c3648, envMap);
+  const paint = metalMat(0xc98f2e, envMap);
+  paint.roughness = 0.52;
+
+  const body = new THREE.Group();
+  body.position.y = -S * 0.06; // treads ride near the tunnel floor
+  g.add(body);
+  dyn.body = body;
+
+  // tread pod + hazard track guard
+  const tread = new THREE.Mesh(new THREE.BoxGeometry(S * 0.78, S * 0.2, S * 0.36), frame);
+  tread.position.y = -S * 0.24; tread.castShadow = true; body.add(tread);
+  const guard = new THREE.Mesh(new THREE.BoxGeometry(S * 0.82, S * 0.05, S * 0.4), paint);
+  guard.position.y = -S * 0.115; guard.castShadow = true; body.add(guard);
+  // road wheels (groups so rotation.z spins the disc + spoke in screen plane)
+  const wheelGeo = new THREE.CylinderGeometry(S * 0.082, S * 0.082, S * 0.05, 12);
+  for (const wx of [-0.26, 0, 0.26]) {
+    const wg = new THREE.Group();
+    wg.position.set(S * wx, -S * 0.24, S * 0.19);
+    const w = new THREE.Mesh(wheelGeo, metalMat(0x39445c, envMap));
     w.rotation.x = Math.PI / 2;
-    w.position.set(S * wx, -S * 0.26, 0);
     w.castShadow = true;
-    g.add(w);
+    const spoke = new THREE.Mesh(new THREE.BoxGeometry(S * 0.13, S * 0.026, S * 0.056), frame);
+    wg.add(w, spoke);
+    body.add(wg);
+    dyn.wheels.push(wg);
   }
-  // Hull + sloped nose.
-  const hull = new THREE.Mesh(new THREE.BoxGeometry(S * 0.58, S * 0.26, S * 0.32), metalMat(0x26324a, envMap));
-  hull.position.y = -S * 0.02; hull.castShadow = true; g.add(hull);
-  const nose = new THREE.Mesh(new THREE.BoxGeometry(S * 0.2, S * 0.2, S * 0.28), metalMat(0x26324a, envMap));
-  nose.position.set(S * 0.32, -S * 0.06, 0); nose.rotation.z = -0.3; nose.castShadow = true; g.add(nose);
-  // Canopy — the pilot light.
-  const canopyMat = emissiveMat(0x39d0ff, 1.1); pulses.push({ mat: canopyMat, base: 1.1, amp: 0.25 });
-  const canopy = new THREE.Mesh(new THREE.BoxGeometry(S * 0.2, S * 0.13, S * 0.24), canopyMat);
-  canopy.position.set(-S * 0.06, S * 0.17, 0); g.add(canopy);
-  // Headlamp emitter block: the live renderer parents its SpotLight here.
-  const lamp = new THREE.Mesh(new THREE.BoxGeometry(S * 0.07, S * 0.09, S * 0.14), emissiveMat(0xffe5a4, 1.7));
-  lamp.position.set(S * 0.34, S * 0.05, 0); g.add(lamp);
-  dyn.lampAnchor = lamp;
-  // Auger mast in a holder so it can spin about its own long axis (+x after the holder turn).
+  // hull + sloped nose plate
+  const hull = new THREE.Mesh(new THREE.BoxGeometry(S * 0.6, S * 0.26, S * 0.4), hullMat);
+  hull.position.set(-S * 0.04, S * 0.04, 0); hull.castShadow = true; body.add(hull);
+  const nose = new THREE.Mesh(new THREE.BoxGeometry(S * 0.2, S * 0.22, S * 0.36), paint);
+  nose.position.set(S * 0.3, S * 0.02, 0); nose.rotation.z = -0.32; nose.castShadow = true; body.add(nose);
+  // cabin + warm window slit
+  const cab = new THREE.Mesh(new THREE.BoxGeometry(S * 0.22, S * 0.2, S * 0.32), hullMat);
+  cab.position.set(-S * 0.2, S * 0.24, 0); cab.castShadow = true; body.add(cab);
+  const winMat = emissiveMat(0xffd9a0, 1.0);
+  pulses.push({ mat: winMat, base: 1.0, amp: 0.12 });
+  const win = new THREE.Mesh(new THREE.BoxGeometry(S * 0.1, S * 0.09, S * 0.33), winMat);
+  win.position.set(-S * 0.13, S * 0.25, 0); body.add(win);
+  // roof beacon (blinks while driving, strobes while boring)
+  const beaconMat = emissiveMat(0xffb23e, 0.5);
+  const mast = new THREE.Mesh(new THREE.CylinderGeometry(S * 0.015, S * 0.02, S * 0.09, 6), frame);
+  mast.position.set(-S * 0.2, S * 0.38, 0); body.add(mast);
+  const beacon = new THREE.Mesh(new THREE.SphereGeometry(S * 0.045, 8, 6), beaconMat);
+  beacon.position.set(-S * 0.2, S * 0.43, 0); body.add(beacon);
+  dyn.beacon = beaconMat;
+
+  // rear cable socket — the umbilical's landing collar
+  const socket = new THREE.Mesh(new THREE.CylinderGeometry(S * 0.06, S * 0.075, S * 0.1, 10), frame);
+  socket.rotation.z = Math.PI / 2; socket.position.set(-S * 0.36, S * 0.1, 0); body.add(socket);
+  const collarMat = emissiveMat(0x0ea5e9, 1.2);
+  pulses.push({ mat: collarMat, base: 1.2, amp: 0.3 });
+  const collar = new THREE.Mesh(new THREE.TorusGeometry(S * 0.065, S * 0.018, 8, 16), collarMat);
+  collar.rotation.y = Math.PI / 2; collar.position.set(-S * 0.4, S * 0.1, 0); body.add(collar);
+  dyn.socket = socket;
+
+  // headlamp bar — lampAnchor keeps the SpotLight parenting contract
+  const lampBar = new THREE.Group();
+  lampBar.position.set(S * 0.3, S * 0.16, 0); body.add(lampBar);
+  const lampMat = emissiveMat(0xffe5a4, 1.7);
+  for (const lz of [-0.1, 0.1]) {
+    const lamp = new THREE.Mesh(new THREE.CylinderGeometry(S * 0.035, S * 0.045, S * 0.05, 8), lampMat);
+    lamp.rotation.z = -Math.PI / 2; lamp.position.set(0, 0, S * lz); lampBar.add(lamp);
+  }
+  dyn.lampAnchor = lampBar;
+
+  // articulated drill arm: shoulder at the nose, aims at the dig direction
+  const arm = new THREE.Group();
+  arm.position.set(S * 0.34, S * 0.02, 0);
+  body.add(arm);
+  dyn.arm = arm;
+  const armSeg = new THREE.Mesh(new THREE.BoxGeometry(S * 0.3, S * 0.07, S * 0.09), paint);
+  armSeg.position.x = S * 0.15; armSeg.castShadow = true; arm.add(armSeg);
+  const piston = new THREE.Mesh(new THREE.CylinderGeometry(S * 0.025, S * 0.025, S * 0.26, 8), frame);
+  piston.rotation.z = Math.PI / 2; piston.position.set(S * 0.12, -S * 0.055, 0); arm.add(piston);
+  // slide the auger rides on — extends while boring so the bit visibly bites the wall
+  const slide = new THREE.Group();
+  slide.position.x = S * 0.3;
+  arm.add(slide);
+  dyn.augerSlide = slide;
   const holder = new THREE.Group();
-  holder.position.set(S * 0.55, -S * 0.04, 0);
-  holder.rotation.z = -Math.PI / 2;
-  g.add(holder);
+  holder.rotation.z = -Math.PI / 2; // child +y points along arm +x
+  slide.add(holder);
   const augerMat = new THREE.MeshStandardMaterial({
-    color: 0x8b97ad, roughness: 0.35, metalness: 0.85, envMap: envMap || null, flatShading: true,
+    color: 0x9aa4b8, roughness: 0.32, metalness: 0.88, envMap: envMap || null, flatShading: true,
   });
-  const auger = new THREE.Mesh(new THREE.ConeGeometry(S * 0.13, S * 0.44, 5), augerMat);
+  const auger = new THREE.Mesh(new THREE.ConeGeometry(S * 0.13, S * 0.46, 6), augerMat);
   auger.castShadow = true;
   holder.add(auger);
-  const tip = new THREE.Mesh(new THREE.SphereGeometry(S * 0.05, 8, 6), emissiveMat(0x39d0ff, 1.5));
-  tip.position.y = S * 0.22; auger.add(tip);
+  // welded spiral fins so the spin reads at distance
+  for (let i = 0; i < 3; i++) {
+    const a = i * (Math.PI * 2 / 3);
+    const fin = new THREE.Mesh(new THREE.BoxGeometry(S * 0.2, S * 0.018, S * 0.045), frame);
+    fin.position.set(Math.cos(a) * S * 0.05, 0, Math.sin(a) * S * 0.05);
+    fin.rotation.y = -a;
+    fin.rotation.z = 0.45;
+    auger.add(fin);
+  }
+  const tip = new THREE.Mesh(new THREE.ConeGeometry(S * 0.045, S * 0.12, 5), emissiveMat(0x39d0ff, 1.4));
+  tip.position.y = S * 0.27; auger.add(tip);
   dyn.auger = auger;
+
+  g.userData.dyn = dyn;
+  return { group: g, pulses, dyn };
+}
+
+// The surface winch derrick the tether spools from: two A-legs straddling the entry shaft, a
+// hazard-painted crossbeam, a winch drum with lit collars, and a slow beacon. Group origin sits at
+// the plateau top over the shaft; the cable hangs from dyn.drum.
+export function makeDerrick(S, envMap) {
+  const g = new THREE.Group();
+  const pulses = [];
+  const dyn = {};
+  const frame = metalMat(0x1a2130, envMap);
+  const paint = metalMat(0xc98f2e, envMap);
+  paint.roughness = 0.55;
+  for (const sx of [-1, 1]) {
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(S * 0.09, S * 1.5, S * 0.12), frame);
+    leg.position.set(sx * S * 0.5, S * 0.6, 0);
+    leg.rotation.z = -sx * 0.22;
+    leg.castShadow = true;
+    g.add(leg);
+    const foot = new THREE.Mesh(new THREE.BoxGeometry(S * 0.26, S * 0.07, S * 0.3), paint);
+    foot.position.set(sx * S * 0.66, -S * 0.08, 0);
+    g.add(foot);
+    // cross brace
+    const brace = new THREE.Mesh(new THREE.BoxGeometry(S * 1.1, S * 0.05, S * 0.06), frame);
+    brace.position.set(0, S * 0.45, 0);
+    g.add(brace);
+  }
+  const beam = new THREE.Mesh(new THREE.BoxGeometry(S * 1.35, S * 0.1, S * 0.14), paint);
+  beam.position.y = S * 1.32; beam.castShadow = true; g.add(beam);
+  const drum = new THREE.Mesh(new THREE.CylinderGeometry(S * 0.13, S * 0.13, S * 0.3, 14),
+    metalMat(0x39445c, envMap));
+  drum.rotation.x = Math.PI / 2; drum.position.set(0, S * 1.14, 0); drum.castShadow = true; g.add(drum);
+  const drumRingMat = emissiveMat(0x0ea5e9, 1.1);
+  pulses.push({ mat: drumRingMat, base: 1.1, amp: 0.35 });
+  for (const dz of [-0.14, 0.14]) {
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(S * 0.135, S * 0.02, 8, 20), drumRingMat);
+    ring.position.set(0, S * 1.14, S * dz); g.add(ring);
+  }
+  dyn.drum = drum;
+  const beaconMat = emissiveMat(0xffb23e, 0.8);
+  pulses.push({ mat: beaconMat, base: 0.8, amp: 0.5 });
+  const beacon = new THREE.Mesh(new THREE.SphereGeometry(S * 0.05, 8, 6), beaconMat);
+  beacon.position.set(S * 0.6, S * 1.42, 0); g.add(beacon);
+  dyn.beacon = beaconMat;
   g.userData.dyn = dyn;
   return { group: g, pulses, dyn };
 }

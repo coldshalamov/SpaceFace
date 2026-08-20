@@ -1,19 +1,25 @@
-// Asteroid works 3D renderer — the drill playfield drawn in the game's own engine.
-// Replaces asteroidRenderer2d's canvas painting with a dedicated Three.js scene: instanced rock
-// carved live from the REAL drill field, per-ore nodule clusters that respect survey + tier gates,
-// machines/conduits mirrored from the durable site record, and a lit rover with a working
-// headlight. Same grid, same sim, same inputs — only the pixels changed.
+// Asteroid works 3D renderer — the drill playfield drawn in the game's own engine, rebuilt as a
+// Motherload-style cutaway in real 3D. The legibility laws this pass enforces:
+//   - ONE CELL = ONE BLOCK. Every solid cell is the same beveled block, footprint-aligned to the
+//     sim grid; joints read as masonry seams, never overlay lines. Variation lives inside the
+//     face (relief, tint, bump), never across the cell boundary.
+//   - CARVED = HONEST CAVITY. A dug cell opens a real recess: cavity floor plus the side walls of
+//     the blocks around it. What you see is what the sim has.
+//   - VEINS ARE TREASURE. Surveyed (or approached) veins erupt as crystal clusters tinted by ore,
+//     on a mineral stain — you can see what a cell holds before you spend it.
+//   - GAS IS DANGER, NOT LOOT. Pockets stay hidden until their tell (nearby digging or a survey),
+//     then read as a cracked cell seeping sickly vapor — never a glowing pickup.
+//   - THE RIG IS A VEHICLE. Treads, beacon, cabin light, articulated auger arm that bites the wall,
+//     on a lit umbilical spooling down from the surface derrick you entered through.
 //
 // Contract with the screen shell (asteroidScreen.js):
 //   - read-only over game state: draws state.drill / the site record, never mutates either;
 //   - the shell owns the rAF loop, DOM panels, bus subscriptions and input; it calls
 //     render(dt, timeS, ui) every frame and forwards drill/site events through notify();
-//   - pickCell(clientX, clientY) replaces the 2D canvas' linear pixel→cell math (raycast
-//     against the rock-face plane, so the tilted camera stays pixel-honest for building).
+//   - pickCell(clientX, clientY) raycasts the cut plane so the tilted camera stays pixel-honest.
 //
-// Determinism note: like the 2D painter, all *layout* variation derives from hash32(col,row) —
-// the same rock always looks the same. Math.random only feathers cosmetic particle bursts,
-// exactly as the shipped 2D screen did.
+// Determinism note: all layout variation derives from hash32(col,row) — the same rock always looks
+// the same. Math.random only feathers cosmetic particle bursts, as the shipped 2D screen did.
 import * as THREE from 'three';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -24,29 +30,40 @@ import { DRILL_CONST, tileIndex, avatarDrawPos, drillTierReqForOre } from '../..
 import { connectivityMask } from '../../systems/siteLogistics.js';
 import { spawnParticleBurst, stepParticles, drillGasShakeOffset } from '../screens/drill.js';
 import { ORE_TINTS, STATUS_COLORS } from './asteroidRenderer2d.js';
-import { makeRockMaterials, makeMachine, makeRover, metalMat, emissiveMat } from '../../render/asteroidInteriorPreview.js';
+import {
+  makeRockMaterials, makeMachine, makeRover, makeDerrick, metalMat, emissiveMat,
+  makeCellBlockGeos, makeOreClusterGeo, makeGasVaporGeo, makeCrackGeos,
+} from '../../render/asteroidInteriorPreview.js';
 
 const { COLS, ROWS, SCAN_RADIUS, SCAN_ACTIVE_S } = DRILL_CONST;
 export const VIEW_ROWS = 18;
 
 const TILE = 40;              // px-space kept for parity with the shipped particle/shake helpers
 const S = 2.2;                // world units per cell — the astlab-proven scale for these builders
-const DEPTH = S * 1.5;        // rock slab depth basis (blocks jitter around it)
-// Camera tilt — THE one aesthetic number the plan reserved for taste. Small on purpose: enough
-// for block sides + machine height to read, small enough that the grid stays a precision surface.
+const DEPTH = S * 1.5;        // block body depth; the cavity recess carved cells reveal
+// Camera tilt — small on purpose: enough for block sides + cavity floors to read, small enough
+// that the grid stays a precision surface.
 const CAM_YAW = 0.10;
 const CAM_PITCH = 0.15;
 const CAM_DIST = 260;
 
-// Depth layering (camera looks down -z; rock front faces land around z ≈ DEPTH * 0.7).
+// Depth layering (camera looks down -z). The cut plane is the law: every solid block's front pad
+// lands exactly at ROCK_FACE; carved cells recess to Z.back. Block pads protrude up to ~0.22
+// proud of the plane (bevel relief), so face overlays sit at +0.24 and beyond.
+const ROCK_FACE = DEPTH;
 const Z = {
-  back: -DEPTH * 1.1,
-  overlay: 0.18,              // conduits hug the cavity floor
-  rover: DEPTH * 0.34,
-  ore: DEPTH * 0.5,
-  particles: DEPTH * 0.66,
-  face: DEPTH * 0.72,         // cursor / ring / pick plane — the "glass" over the rock face
+  back: -0.55,                // cavity floor
+  overlay: 0.14,              // conduits hug the cavity floor
+  rover: 0.62,                // the rig rides inside the tunnel
+  stain: ROCK_FACE + 0.24,    // mineral stains / murk sit on the cut face
+  ore: ROCK_FACE + 0.27,      // crystal bases
+  gas: ROCK_FACE + 0.42,      // seeping vapor, proud of the face
+  particles: ROCK_FACE + 0.5,
+  face: ROCK_FACE + 0.42,     // cursor / ring / pick plane — just proud of everything
+  surface: ROCK_FACE * 0.45,  // derrick stands in the slice plane
 };
+
+const ENTRY_COL = Math.floor(COLS / 2);
 
 const MACHINE_KIND = {
   sm_massline_core: 'core',
@@ -99,6 +116,46 @@ function bakeEnvMap(renderer) {
   return rt;
 }
 
+// Crack decal canvases for the block being bored: three stages of spread, drawn once.
+// Deterministic LCG — the overlay is static content, not a per-frame random.
+function makeCrackDecalTexture(stage) {
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = 256;
+  const g = cv.getContext('2d');
+  let seed = (9151 + stage * 733) >>> 0;
+  const rr = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+  g.strokeStyle = 'rgba(10,7,4,0.92)';
+  g.lineCap = 'round';
+  const branches = 4 + stage * 2;
+  for (let b = 0; b < branches; b++) {
+    let x = 128 + (rr() - 0.5) * 30;
+    let y = 128 + (rr() - 0.5) * 30;
+    let a = (b / branches) * Math.PI * 2 + rr() * 0.7;
+    const segs = 3 + Math.floor(rr() * 3) + stage;
+    g.lineWidth = 4.5 - stage * 0.4 - rr();
+    g.beginPath();
+    g.moveTo(x, y);
+    for (let i = 0; i < segs; i++) {
+      a += (rr() - 0.5) * 1.1;
+      const len = 14 + rr() * 26;
+      x += Math.cos(a) * len;
+      y += Math.sin(a) * len;
+      g.lineTo(x, y);
+    }
+    g.stroke();
+  }
+  // chip specks around the impact point
+  g.fillStyle = 'rgba(10,7,4,0.85)';
+  const specks = 4 + stage * 5;
+  for (let i = 0; i < specks; i++) {
+    const a = rr() * Math.PI * 2;
+    const r = 8 + rr() * (30 + stage * 22);
+    g.fillRect(128 + Math.cos(a) * r, 128 + Math.sin(a) * r, 2.5, 2.5);
+  }
+  const tex = new THREE.CanvasTexture(cv);
+  return tex;
+}
+
 export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, getSite, getProjection }) {
   injectOverlayStyle();
 
@@ -107,7 +164,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.1;
+  renderer.toneMappingExposure = 1.25;
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x05080f);
@@ -118,7 +175,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
 
   const composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
-  const bloom = new UnrealBloomPass(new THREE.Vector2(1120, 720), 0.85, 0.55, 0.4);
+  const bloom = new UnrealBloomPass(new THREE.Vector2(1120, 720), 0.7, 0.55, 0.55);
   composer.addPass(bloom);
   composer.addPass(new OutputPass());
 
@@ -129,7 +186,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   // ---------------------------------------------------------------- lights
   const lightRig = new THREE.Group();
   scene.add(lightRig);
-  const key = new THREE.DirectionalLight(0xfff0dc, 3.4);
+  const key = new THREE.DirectionalLight(0xfff0dc, 4.2);
   key.castShadow = true;
   key.shadow.mapSize.set(2048, 2048);
   key.shadow.bias = -0.0004;
@@ -143,47 +200,66 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   const rim = new THREE.DirectionalLight(0x6a86ff, 0.55);
   rim.position.set(COLS * S * 0.5, -VIEW_ROWS * S, DEPTH * 3);
   lightRig.add(rim, rim.target);
-  const fill = new THREE.DirectionalLight(0xbfd0ff, 0.22);
+  // The cut face is flat-on to the camera: the fill is what lights the pads. It must be strong
+  // enough that unsurveyed mass reads as solid rock, not void.
+  const fill = new THREE.DirectionalLight(0xcfd8ea, 1.7);
   fill.position.set(0, 0, 300);
   lightRig.add(fill, fill.target);
-  scene.add(new THREE.AmbientLight(0x27303f, 0.34));
+  scene.add(new THREE.AmbientLight(0x2a3342, 0.85));
 
   // ---------------------------------------------------------------- session containers
-  const rockGroup = new THREE.Group();      // instanced rock + backing wall
-  const oreRoot = new THREE.Group();        // per-cell nodule clusters
-  const gasRoot = new THREE.Group();        // per-cell gas blobs
+  const rockGroup = new THREE.Group();      // instanced blocks + plateau + backing wall
+  const oreRoot = new THREE.Group();        // instanced crystal clusters + stains + badges
+  const gasRoot = new THREE.Group();        // per-cell gas pocket groups
   const siteRoot = new THREE.Group();       // machines
   const overlayRoot = new THREE.Group();    // merged conduit meshes
-  const fxRoot = new THREE.Group();         // particles / rings / cursor / scan
+  const fxRoot = new THREE.Group();         // particles / rings / cursor / scan / crack decal
   scene.add(rockGroup, oreRoot, gasRoot, siteRoot, overlayRoot, fxRoot);
 
   const rockMats = makeRockMaterials(envMap);
 
-  // gas — one breathing material shared by every pocket (bloom does the halo work)
-  const gasMat = new THREE.MeshStandardMaterial({
-    color: 0x1c8f74, emissive: 0x18d69a, emissiveIntensity: 1.05,
-    roughness: 1, metalness: 0, transparent: true, opacity: 0.5, depthWrite: false,
-  });
-  const gasGeo = new THREE.IcosahedronGeometry(S * 0.62, 1);
+  // Shared cell-kit geometry (never disposed per cell — see sharedGeos)
+  const blockGeos = makeCellBlockGeos();
+  const clusterGeos = [makeOreClusterGeo(0), makeOreClusterGeo(1)];
+  const gasVaporGeo = makeGasVaporGeo();
+  const crackGeos = makeCrackGeos();
+  const cellQuad = new THREE.PlaneGeometry(S, S);
 
-  // ore — cached materials per (oreId, locked) + shared nodule geometry
-  const oreGeo = new THREE.IcosahedronGeometry(S * 0.15, 0);
+  // gas pocket language — a sickly vapor mass seething inside the cell + amber warning fissures
+  // on the face. Reads as "cracked containment", never as a pickup.
+  const gasMat = new THREE.MeshStandardMaterial({
+    color: 0x6b7416, emissive: 0x464e08, emissiveIntensity: 0.4,
+    roughness: 0.9, metalness: 0.05, flatShading: true,
+  });
+  const gasCrackBase = new THREE.Color(0xffc23e);
+  const gasCrackMat = new THREE.MeshBasicMaterial({ color: 0xffc23e, transparent: true, opacity: 0.9, depthWrite: false });
+  const gasCrackHotMat = new THREE.MeshBasicMaterial({ color: 0xffe27a, transparent: true, opacity: 1, depthWrite: false });
+
+  // ore — cached materials per (oreId, locked); clusters instanced per bucket
   const oreMats = new Map();
   function oreMaterial(oreId, locked) {
     const key2 = `${oreId}:${locked ? 1 : 0}`;
     let m = oreMats.get(key2);
     if (m) return m;
     const tint = ORE_TINTS[oreId] || ORE_TINTS.cmdty_silicate;
+    // Crystals must read against shadowed rock at gameplay zoom: bright base leaning toward the
+    // glint, a touch of self-emission in the vein hue so the colour survives the dark, modest
+    // metalness so the env doesn't drag them black.
     const col = new THREE.Color(tint.vein);
+    if (tint.glint) col.lerp(new THREE.Color(tint.glint), 0.3);
     if (locked) col.multiplyScalar(0.42);
     m = new THREE.MeshStandardMaterial({
-      color: col, roughness: 0.32, metalness: 0.65, flatShading: true, envMap,
-      emissive: !locked && tint.glow ? new THREE.Color(tint.glow) : new THREE.Color(0x000000),
-      emissiveIntensity: !locked && tint.glow ? 0.85 : 0,
+      color: col, roughness: 0.3, metalness: 0.35, flatShading: true, envMap,
+      emissive: locked ? new THREE.Color(0x000000) : new THREE.Color(tint.glow || tint.vein),
+      emissiveIntensity: locked ? 0 : (tint.glow ? 0.85 : 0.3),
     });
     oreMats.set(key2, m);
     return m;
   }
+  // mineral stain: one instanced quad for every revealed vein, tinted per cell — a dark
+  // mineralised blotch the cluster sits in
+  const stainMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.34, depthWrite: false });
+
   const badgeTextures = new Map();
   // Shared badge sprite materials, one per tier: disposeGroup() frees per-cell (_own) materials,
   // and a disposed sprite material releases the shared sprite GL program once its last user dies —
@@ -231,7 +307,6 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   const ringEmptyMat = new THREE.MeshBasicMaterial({ color: 0x5a7aa0, transparent: true, opacity: 0.08, depthTest: false });
   const padOkMat = new THREE.MeshBasicMaterial({ color: 0x62e08a, transparent: true, opacity: 0.13, depthTest: false });
   const padBadMat = new THREE.MeshBasicMaterial({ color: 0xff5c5c, transparent: true, opacity: 0.16, depthTest: false });
-  const cellQuad = new THREE.PlaneGeometry(S, S);
   const cursorGroup = new THREE.Group();
   {
     const bar = new THREE.BoxGeometry(S, S * 0.06, S * 0.02);
@@ -283,7 +358,15 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     p.mesh.visible = true;
   }
 
-  // particles — px-space sim (the shipped helpers), instanced additive chips on screen
+  // crack decal on the block being bored — stage textures swapped as the bit sinks
+  const crackTexs = [makeCrackDecalTexture(0), makeCrackDecalTexture(1), makeCrackDecalTexture(2)];
+  const crackDecalMat = new THREE.MeshBasicMaterial({ map: crackTexs[0], transparent: true, depthWrite: false });
+  const crackDecal = new THREE.Mesh(new THREE.PlaneGeometry(S, S), crackDecalMat);
+  crackDecal.visible = false;
+  crackDecal.renderOrder = 25;
+  fxRoot.add(crackDecal);
+
+  // particles — px-space sim (the shipped helpers), instanced additive chips on screen…
   const PARTICLE_CAP = 200;
   const partGeo = new THREE.BoxGeometry(1, 1, 1);
   const partMat = new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
@@ -291,7 +374,17 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   partMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   partMesh.count = 0;
   partMesh.renderOrder = 26;
+  partMesh.frustumCulled = false;
   fxRoot.add(partMesh);
+  // …plus opaque tumbling rock chunks (real debris, not glow confetti)
+  const CHUNK_CAP = 72;
+  const chunkGeo = new THREE.BoxGeometry(1, 1, 1);
+  const chunkMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.92, metalness: 0.05, envMap, envMapIntensity: 0.3 });
+  const chunkMesh = new THREE.InstancedMesh(chunkGeo, chunkMat, CHUNK_CAP);
+  chunkMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  chunkMesh.count = 0;
+  chunkMesh.frustumCulled = false;
+  fxRoot.add(chunkMesh);
   let particles = [];
   const burst = (opts) => {
     const before = particles.length;
@@ -300,8 +393,25 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       particles[i]._c3 = new THREE.Color(particles[i].color);
     }
   };
+  // Rock-colored tumbling chunks with real gravity — the crumble when a block lets go.
+  function spawnChunks(px, py, colorHex, count) {
+    for (let i = 0; i < count; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = 26 + Math.random() * 85;
+      const life = 0.75 + Math.random() * 0.4;
+      particles.push({
+        x: px + (Math.random() - 0.5) * 9, y: py + (Math.random() - 0.5) * 9,
+        vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 40,
+        color: colorHex, _c3: new THREE.Color(colorHex).multiplyScalar(0.65 + Math.random() * 0.5),
+        size: 3.6 + Math.random() * 3.4,
+        life, maxLife: life,
+        gravity: 190, kind: 'chunk', isChunk: true,
+        rot: Math.random() * Math.PI, spin: (Math.random() - 0.5) * 11,
+      });
+    }
+  }
 
-  // rover
+  // rover — a vehicle, not a dot
   const roverBuilt = makeRover(S, envMap);
   const rover = roverBuilt.group;
   rover.visible = false;
@@ -312,30 +422,62 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   headTarget.position.set(S * 3.2, 0, 0);
   rover.add(headlight, headTarget);
   headlight.target = headTarget;
-  const roverGlow = new THREE.PointLight(0x39d0ff, 3.4, S * 3.6, 2);
+  // a small warm work light — not the blue orb that read as "you are this dot"
+  const roverGlow = new THREE.PointLight(0xffd9a8, 2.6, S * 3.4, 2);
   roverGlow.position.set(0, S * 0.3, S * 0.4);
   rover.add(roverGlow);
+  // the headlamp cone lights the face the rig is working
+  const headSpot = new THREE.SpotLight(0xffe0b0, 30, S * 5, 0.7, 0.6, 1.5);
+  headSpot.position.copy(roverBuilt.dyn.lampAnchor.position);
+  rover.add(headSpot);
+  headSpot.target = headTarget;
+  const roverAnim = { flipY: 0, armAim: -Math.PI / 2, bite: 0, wheelSpin: 0, lean: 0, bob: 0 };
+
+  // surface derrick (the umbilical winch) — built per session over the entry shaft
+  let derrickBuilt = null;
+  let derrickBaseY = 0;
 
   // umbilical
   let umbilical = null;      // { casing, core }
   let umbilicalKey = '';
+  let umbilicalTimer = 0;
+  const umbCasingMat = metalMat(0x232c3c, envMap);
+  umbCasingMat.roughness = 0.62;
+  const umbCoreMat = emissiveMat(0x0ea5e9, 2.4);
 
   // ---------------------------------------------------------------- per-session state
   let motionReduce = false;
   let field = null;
+  let timeSNow = 0;
   const cellRock = new Map();   // idx -> { mesh, i, carved, c, r }
-  let rockInst = { matrix: [], basalt: [] };   // one InstancedMesh per chunk variant
+  let rockInst = { matrix: [], basalt: [] };   // one InstancedMesh per (bucket, block variant)
+  let plateauInst = null;
   let backWall = null;
-  const oreByCell = new Map();  // idx -> Group
-  const gasByCell = new Map();  // idx -> Mesh
-  const machines = new Map();   // machineId -> { group, defId, dyn, pulses, col, row, geoSig }
+  let oreBuckets = new Map();   // `${ore}:${locked}` -> { key, mesh, cap, n, cells: Map<idx, i> }
+  let oreCaps = new Map();      // oreId -> vein count in the field (survey can only reveal, never add)
+  let oreCellIndex = new Map(); // idx -> { bucket, i, idx }
+  const oreWakes = [];          // reveal pop-in animations
+  let stainMesh = null;         // InstancedMesh — one mineral stain quad per revealed vein
+  let stainCells = new Map();   // idx -> stain slot
+  let stainCellsCap = 0;
+  let stainN = 0;
+  const badges = new Map();     // idx -> Sprite (tier-locked veins)
+  const gasByCell = new Map();  // idx -> { group, vapor, cracks, phase, baseScale, hot }
+  const machines = new Map();   // machineId -> { group, defId, dyn, col, row, geoSig, arms, pulses }
   let ghost = null;             // { defId, group }
   let overlaySig = '';
   let lookY = null;
   let drillTheta = 0;
+  let digCell = null;           // { c, r, idx } — block currently taking the bit
+  let digGasHot = null;         // gas entry currently screaming under the bit
+  let dustTimer = 0;
+  let lastRevealCell = { col: -1, row: -1 };
   const gasShake = { t: 0, elapsed: 0 };
   const timers = { gasFlash: 0, cargoFlash: 0 };
-  let pulseEntries = [];        // [{mat, base, amp}] — machines + rover + gas
+  let pulseEntries = [];        // [{mat, base, amp}] — rover + derrick
+
+  // shared geometry that must survive per-cell group disposal
+  const sharedGeos = new Set([...blockGeos, ...clusterGeos, gasVaporGeo, ...crackGeos, cellQuad, partGeo, chunkGeo]);
 
   // DOM overlay — spatial annotations only (depth ruler / floaters / alarm washes); rig vitals
   // are deck instruments now (ASTEROID_OPS_UI_BRIEF: the scene stays sovereign).
@@ -382,71 +524,48 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   if (ro) ro.observe(wrapEl);
 
   // ---------------------------------------------------------------- rock
-  // Craggy chunk variants instead of clean boxes: a segmented unit box with its vertices pushed
-  // by a position-keyed hash (coincident verts move together, so faces stay stitched while the
-  // silhouette breaks), then flat re-normal'd for faceted stone. Three variants, hash-assigned
-  // per cell — the wall stops reading as tiles.
-  const ROCK_VARIANTS = 3;
-  function makeChunkGeo(salt) {
-    const geo = new THREE.BoxGeometry(1, 1, 1, 2, 2, 2);
-    const pos = geo.attributes.position;
-    const v = new THREE.Vector3();
-    for (let i = 0; i < pos.count; i++) {
-      v.fromBufferAttribute(pos, i);
-      const qx = Math.round((v.x + 0.5) * 2);
-      const qy = Math.round((v.y + 0.5) * 2);
-      const qz = Math.round((v.z + 0.5) * 2);
-      const j = (axis) => ((hash32(qx * 7 + qz, qy * 13 + qz, `${salt}${axis}`) % 1000) / 1000 - 0.5);
-      pos.setXYZ(i, v.x + j('x') * 0.2, v.y + j('y') * 0.2, v.z + j('z') * 0.24);
-    }
-    pos.needsUpdate = true;
-    geo.computeVertexNormals();
-    return geo;
-  }
-  const chunkGeos = Array.from({ length: ROCK_VARIANTS }, (_, i) => makeChunkGeo(`ck${i}`));
+  // One cell = one block, footprint-aligned, front pad flush with the cut plane. The grid reads
+  // through the bevel joints; tint + bump + three relief variants carry the stone. Never jitter
+  // position/rotation/scale across the boundary — the sim grid and the picture are the same thing.
   const dummy = new THREE.Object3D();
   const colScratch = new THREE.Color();
 
   function bucketFor(tile) {
-    if (!tile || tile.type === 'empty' || tile.type === 'gas') return null;
+    if (!tile || tile.type === 'empty') return null;
     return tile.type === 'rock' ? 'basalt' : 'matrix';
   }
 
-  function rockInstanceColor(c, r, surveyed, out) {
-    const tint = 0.72 + rnd01(c + 13, r + 5, 'rt') * 0.52;
-    const warm = (rnd01(c + 6, r + 8, 'rw') - 0.32) * 0.2;
+  function rockInstanceColor(c, r, bucket, surveyed, out) {
+    const depthT = r / ROWS;
+    const tintBase = (0.82 + rnd01(c + 13, r + 5, 'rt') * 0.4) * (1.08 - depthT * 0.3);
+    let tint = tintBase;
+    let warm = (rnd01(c + 6, r + 8, 'rw') - 0.32) * 0.2;
+    if (depthT < 0.09) warm += 0.1;    // sun-warmed regolith near the surface
+    else warm -= depthT * 0.05;        // cooler with depth
+    if (bucket === 'basalt') tint *= 0.8;
     if (surveyed) {
+      // Surveyed: full warmth — the survey "identifies", it does not switch the lights on.
       out.setRGB(Math.min(1.35, tint + warm), tint, Math.max(0, tint - warm * 1.15));
     } else {
-      // Unsurveyed mass still reads as SOLID ROCK, but noticeably darker + cooler — the survey
-      // is fog-of-war, and warmth spreading around the bore is the reveal reward. (The faceted
-      // chunk normals brightened everything, so the unknown side leans harder into the dark.)
-      const g = tint * 0.36;
-      out.setRGB(g * 0.92, g * 1.02, g * 1.3);
+      // Unsurveyed mass reads as the SAME ROCK, cooled and slightly dimmed — fog hides identity
+      // (ore/gas veins), never substance. The field must be legible before the first pulse.
+      const g = tint * 0.8;
+      out.setRGB(g * 0.88 + warm * 0.2, g * 0.97, Math.min(1.35, g * 1.12));
     }
     return out;
   }
 
-  function setRockMatrix(c, r, carved) {
+  function setRockMatrix(c, r, carved, dig = 0) {
     if (carved) {
       dummy.position.set(0, 0, 0);
       dummy.rotation.set(0, 0, 0);
       dummy.scale.set(0, 0, 0);
     } else {
-      const jx = (rnd01(c, r, 'jx') - 0.5) * S * 0.26;
-      const jy = (rnd01(c + 9, r + 3, 'jy') - 0.5) * S * 0.26;
-      const jz = -DEPTH * 0.12 + rnd01(c + 5, r + 7, 'jz') * DEPTH * 0.62;
-      dummy.position.set(worldX(c) + jx, worldY(r) + jy, jz);
-      dummy.rotation.set(
-        (rnd01(c + 4, r + 6, 'rx') - 0.5) * 0.3,
-        (rnd01(c + 7, r + 1, 'ry') - 0.5) * 0.3,
-        (rnd01(c + 3, r + 9, 'rz') - 0.5) * 0.55,
-      );
-      dummy.scale.set(
-        S * (1.05 + rnd01(c + 2, r + 8, 'sx') * 0.42),
-        S * (1.05 + rnd01(c + 11, r + 2, 'sy') * 0.42),
-        DEPTH * (0.9 + rnd01(c, r + 1, 'sd') * 0.75),
-      );
+      // dig: the block being bored cracks loose — sinks into the face and shrinks in its socket
+      const shrink = 1 - dig * 0.12;
+      dummy.position.set(worldX(c), worldY(r), ROCK_FACE - dig * S * 0.2);
+      dummy.rotation.set(0, 0, 0);
+      dummy.scale.set(S * shrink, S * shrink, DEPTH);
     }
     dummy.updateMatrix();
   }
@@ -460,26 +579,27 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       rockInst[bucket] = [];
     }
     cellRock.clear();
-    // Bucket by material AND chunk variant — one InstancedMesh per (bucket, variant).
+    // Bucket by material AND block variant — one InstancedMesh per (bucket, variant).
     const lists = { matrix: [], basalt: [] };
-    for (let v = 0; v < ROCK_VARIANTS; v++) { lists.matrix.push([]); lists.basalt.push([]); }
+    for (let v = 0; v < blockGeos.length; v++) { lists.matrix.push([]); lists.basalt.push([]); }
     for (let c = 0; c < COLS; c++) {
       for (let r = 0; r < ROWS; r++) {
         const bucket = bucketFor(field[c][r]);
-        if (bucket) lists[bucket][hash32(c, r, 'ckv') % ROCK_VARIANTS].push({ c, r });
+        if (bucket) lists[bucket][hash32(c, r, 'ckv') % blockGeos.length].push({ c, r });
       }
     }
     for (const bucket of ['matrix', 'basalt']) {
-      for (let v = 0; v < ROCK_VARIANTS; v++) {
+      for (let v = 0; v < blockGeos.length; v++) {
         const list = lists[bucket][v];
-        const inst = new THREE.InstancedMesh(chunkGeos[v], rockMats[bucket], Math.max(1, list.length));
+        const inst = new THREE.InstancedMesh(blockGeos[v], rockMats[bucket], Math.max(1, list.length));
         inst.castShadow = true;
         inst.receiveShadow = true;
+        inst.frustumCulled = false;
         list.forEach((cell, i) => {
           const surveyed = drillSys.isTileSurveyed(cell.c, cell.r);
           setRockMatrix(cell.c, cell.r, false);
           inst.setMatrixAt(i, dummy.matrix);
-          inst.setColorAt(i, rockInstanceColor(cell.c, cell.r, surveyed, colScratch));
+          inst.setColorAt(i, rockInstanceColor(cell.c, cell.r, bucket, surveyed, colScratch));
           cellRock.set(tileIndex(cell.c, cell.r), { mesh: inst, i, carved: false, c: cell.c, r: cell.r });
         });
         inst.count = list.length;
@@ -500,6 +620,51 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     }
   }
 
+  // The surface strip: a jagged plateau row above the field + the winch derrick over the entry
+  // shaft. This is where you came in — the umbilical spools down from the drum.
+  function buildSurface() {
+    if (plateauInst) {
+      rockGroup.remove(plateauInst);
+      plateauInst.dispose();
+      plateauInst = null;
+    }
+    if (derrickBuilt) {
+      scene.remove(derrickBuilt.group);
+      disposeGroup(derrickBuilt.group);
+      derrickBuilt = null;
+    }
+    plateauInst = new THREE.InstancedMesh(blockGeos[0], rockMats.matrix, COLS + 2);
+    plateauInst.castShadow = true;
+    plateauInst.receiveShadow = true;
+    plateauInst.frustumCulled = false;
+    for (let i = 0; i < COLS + 2; i++) {
+      const c = i - 1;
+      const h = rnd01(c, 77, 'ph');
+      dummy.position.set(worldX(c), worldY(-1), 0);
+      dummy.rotation.set(0, 0, 0);
+      dummy.scale.set(S * 1.02, S * (0.55 + h * 0.8), DEPTH);
+      dummy.updateMatrix();
+      plateauInst.setMatrixAt(i, dummy.matrix);
+      const t = 0.62 + rnd01(c, 78, 'pt') * 0.3;
+      plateauInst.setColorAt(i, colScratch.setRGB(t * 1.08, t, t * 0.94));
+    }
+    plateauInst.instanceMatrix.needsUpdate = true;
+    if (plateauInst.instanceColor) plateauInst.instanceColor.needsUpdate = true;
+    rockGroup.add(plateauInst);
+
+    derrickBuilt = makeDerrick(S, envMap);
+    // per-session build: tag materials so disposeGroup frees them with the next begin()/dispose()
+    derrickBuilt.group.traverse((o) => {
+      if (o.isMesh) {
+        const mats = Array.isArray(o.material) ? o.material : [o.material];
+        for (const mt of mats) mt._own = true;
+      }
+    });
+    derrickBaseY = worldY(-1) + (S * (0.55 + rnd01(ENTRY_COL, 77, 'ph') * 0.8)) / 2;
+    derrickBuilt.group.position.set(worldX(ENTRY_COL), derrickBaseY, Z.surface);
+    scene.add(derrickBuilt.group);
+  }
+
   function carveCell(c, r) {
     const rec = cellRock.get(tileIndex(c, r));
     if (rec && !rec.carved) {
@@ -516,7 +681,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   function disposeGroup(group) {
     group.traverse((o) => {
       if (o.isMesh || o.isSprite) {
-        if (o.geometry && o.geometry !== oreGeo && o.geometry !== gasGeo && o.geometry !== cellQuad) o.geometry.dispose();
+        if (o.geometry && !sharedGeos.has(o.geometry)) o.geometry.dispose();
         // Materials here are either shared caches (ore/gas/frame) or per-build (machines/ghosts):
         // per-build ones are tagged _own at creation.
         const mats = Array.isArray(o.material) ? o.material : [o.material];
@@ -525,76 +690,168 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     });
   }
 
-  function removeOreAt(c, r) {
-    const idx = tileIndex(c, r);
-    const g = oreByCell.get(idx);
-    if (!g) return;
-    oreRoot.remove(g);
-    disposeGroup(g);
-    oreByCell.delete(idx);
+  function addStain(idx, c, r, oreId) {
+    if (!stainMesh || stainCells.has(idx) || stainN >= stainCellsCap) return;
+    const i = stainN++;
+    const tint = (ORE_TINTS[oreId] || {}).vein || '#9aa4b8';
+    dummy.position.set(worldX(c), worldY(r), Z.stain);
+    dummy.rotation.set(0, 0, rnd01(c, r, 'sr') * Math.PI * 2);
+    dummy.scale.setScalar(S * (0.88 + rnd01(c, r, 'ss') * 0.14));
+    dummy.updateMatrix();
+    stainMesh.setMatrixAt(i, dummy.matrix);
+    stainMesh.setColorAt(i, colScratch.set(tint).multiplyScalar(0.22));
+    stainMesh.count = stainN;
+    stainMesh.instanceMatrix.needsUpdate = true;
+    if (stainMesh.instanceColor) stainMesh.instanceColor.needsUpdate = true;
+    stainCells.set(idx, i);
   }
 
-  function removeGasAt(c, r) {
-    const idx = tileIndex(c, r);
-    const m = gasByCell.get(idx);
-    if (!m) return;
-    gasRoot.remove(m);
-    gasByCell.delete(idx);
+  function removeStain(idx) {
+    const i = stainCells.get(idx);
+    if (i == null || !stainMesh) return;
+    dummy.position.set(0, 0, 0);
+    dummy.rotation.set(0, 0, 0);
+    dummy.scale.set(0, 0, 0);
+    dummy.updateMatrix();
+    stainMesh.setMatrixAt(i, dummy.matrix);
+    stainMesh.instanceMatrix.needsUpdate = true;
+    stainCells.delete(idx);
   }
 
-  function ensureGasAt(c, r) {
-    const idx = tileIndex(c, r);
-    if (gasByCell.has(idx)) return;
-    const m = new THREE.Mesh(gasGeo, gasMat);
-    m.position.set(
-      worldX(c) + (rnd01(c, r, 'gx') - 0.5) * S * 0.2,
-      worldY(r) + (rnd01(c, r, 'gy') - 0.5) * S * 0.2,
-      DEPTH * 0.34,
-    );
-    m.scale.set(1.12 + rnd01(c, r, 'gs') * 0.25, 0.95 + rnd01(c, r, 'gt') * 0.25, 0.85);
-    gasRoot.add(m);
-    gasByCell.set(idx, m);
+  function addBadge(idx, c, r, tier) {
+    if (badges.has(idx)) return;
+    const sMat = badgeSpriteMaterial(tier); // shared per tier — cache-owned, disposeGroup leaves it alone
+    const badge = new THREE.Sprite(sMat);
+    badge.scale.set(S * 0.3, S * 0.15, 1);
+    badge.position.set(worldX(c) + S * 0.28, worldY(r) + S * 0.28, Z.face);
+    badge.renderOrder = 25;
+    oreRoot.add(badge);
+    badges.set(idx, badge);
   }
 
-  // Surveyed veins grow their nodule cluster; tier-locked ones sit dull under an MK badge.
+  function removeBadge(idx) {
+    const badge = badges.get(idx);
+    if (!badge) return;
+    oreRoot.remove(badge);
+    badges.delete(idx);
+  }
+
+  function oreBucketFor(oreId, locked) {
+    const key2 = `${oreId}:${locked ? 1 : 0}`;
+    let b = oreBuckets.get(key2);
+    if (b) return b;
+    const cap = Math.max(1, oreCaps.get(oreId) || 1);
+    const mesh = new THREE.InstancedMesh(clusterGeos[(oreId.length + (locked ? 1 : 0)) % clusterGeos.length], oreMaterial(oreId, locked), cap);
+    mesh.castShadow = true;
+    mesh.frustumCulled = false;
+    mesh.count = 0;
+    mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    oreRoot.add(mesh);
+    b = { key: key2, mesh, cap, n: 0, cells: new Map() };
+    oreBuckets.set(key2, b);
+    return b;
+  }
+
+  function killOreInstance(entry) {
+    if (!entry) return;
+    dummy.position.set(0, 0, 0);
+    dummy.rotation.set(0, 0, 0);
+    dummy.scale.set(0, 0, 0);
+    dummy.updateMatrix();
+    entry.bucket.mesh.setMatrixAt(entry.i, dummy.matrix);
+    entry.bucket.mesh.instanceMatrix.needsUpdate = true;
+    entry.bucket.cells.delete(entry.idx);
+    oreCellIndex.delete(entry.idx);
+  }
+
+  // Surveyed veins erupt their crystal cluster on a mineral stain; tier-locked ones sit dull
+  // under an MK badge. Cluster scale-pops on reveal — the survey's reward beat.
   function syncOreAt(c, r) {
     const tile = field[c] && field[c][r];
     const idx = tileIndex(c, r);
     const wanted = tile && tile.type === 'vein' && tile.ore && drillSys.isTileSurveyed(c, r);
-    if (!wanted) { removeOreAt(c, r); return; }
+    const existing = oreCellIndex.get(idx);
+    if (!wanted) {
+      if (existing) killOreInstance(existing);
+      removeBadge(idx);
+      removeStain(idx);
+      return;
+    }
     const req = tile.tierReq || drillTierReqForOre(tile.ore);
     const locked = drillSys.getDrillTier() < req;
-    const existing = oreByCell.get(idx);
-    if (existing && existing.userData.ore === tile.ore && existing.userData.locked === locked) return;
-    removeOreAt(c, r);
-    const g = new THREE.Group();
-    g.userData.ore = tile.ore;
-    g.userData.locked = locked;
-    const mat = oreMaterial(tile.ore, locked);
-    const n = 3 + (hash32(c, r, 'on') % 3);
-    const a0 = rnd01(c, r, 'oa') * Math.PI;
-    for (let i = 0; i < n; i++) {
-      const m = new THREE.Mesh(oreGeo, mat);
-      const t = (i / Math.max(1, n - 1)) - 0.5;
-      m.position.set(
-        worldX(c) + Math.cos(a0) * t * S * 0.5 + (rnd01(c + i, r, 'ox') - 0.5) * S * 0.22,
-        worldY(r) + Math.sin(a0) * t * S * 0.5 + (rnd01(c, r + i, 'oy') - 0.5) * S * 0.22,
-        Z.ore + rnd01(c + i, r + i, 'oz') * S * 0.16,
-      );
-      m.scale.setScalar(0.65 + rnd01(i + 1, c + r, 'os') * 0.8);
-      m.castShadow = true;
-      g.add(m);
+    const key2 = `${tile.ore}:${locked ? 1 : 0}`;
+    if (existing && existing.bucket.key === key2) return;
+    if (existing) killOreInstance(existing);
+    const b = oreBucketFor(tile.ore, locked);
+    if (b.n >= b.cap) return; // cap = vein count of this ore in the field; cannot overflow honestly
+    const i = b.n++;
+    const rotZ = rnd01(c, r, 'or') * Math.PI * 2;
+    const scale = S * (1.12 + rnd01(c, r, 'os') * 0.2);
+    dummy.position.set(worldX(c), worldY(r), Z.ore);
+    dummy.rotation.set(0, 0, rotZ);
+    dummy.scale.setScalar(scale);
+    dummy.updateMatrix();
+    b.mesh.setMatrixAt(i, dummy.matrix);
+    b.mesh.count = b.n;
+    b.mesh.instanceMatrix.needsUpdate = true;
+    b.cells.set(idx, i);
+    const entry = { bucket: b, i, idx };
+    oreCellIndex.set(idx, entry);
+    oreWakes.push({ entry, x: worldX(c), y: worldY(r), rotZ, scale, t0: timeSNow });
+    addStain(idx, c, r, tile.ore);
+    if (locked) addBadge(idx, c, r, req);
+    else removeBadge(idx);
+  }
+
+  function removeOreAt(c, r) {
+    const idx = tileIndex(c, r);
+    const existing = oreCellIndex.get(idx);
+    if (existing) killOreInstance(existing);
+    removeBadge(idx);
+    removeStain(idx);
+  }
+
+  function removeGasAt(c, r) {
+    const idx = tileIndex(c, r);
+    const rec = gasByCell.get(idx);
+    if (!rec) return;
+    gasRoot.remove(rec.group);
+    gasByCell.delete(idx);
+    if (digGasHot === rec) digGasHot = null;
+  }
+
+  // Gas stays hidden until its tell (digging nearby, or a survey pulse) — then the cell reads as
+  // cracked rock venting sickly vapor. It must never read as a collectible.
+  function syncGasAt(c, r) {
+    const idx = tileIndex(c, r);
+    const tile = field[c] && field[c][r];
+    const revealed = !!(tile && tile.type === 'gas' && (tile.surveyed || drillSys.isHazardRevealed(c, r)));
+    const existing = gasByCell.get(idx);
+    if (!revealed) {
+      if (existing) removeGasAt(c, r);
+      return;
     }
-    if (locked) {
-      const sMat = badgeSpriteMaterial(req); // shared per tier — cache-owned, disposeGroup leaves it alone
-      const badge = new THREE.Sprite(sMat);
-      badge.scale.set(S * 0.7, S * 0.35, 1);
-      badge.position.set(worldX(c), worldY(r), Z.face);
-      badge.renderOrder = 25;
-      g.add(badge);
+    if (existing) return;
+    const group = new THREE.Group();
+    group.position.set(worldX(c), worldY(r), 0);
+    const vapor = new THREE.Mesh(gasVaporGeo, gasMat);
+    vapor.position.z = Z.gas;
+    vapor.rotation.z = rnd01(c, r, 'gv') * Math.PI * 2;
+    const baseScale = S * (0.55 + rnd01(c, r, 'gs') * 0.15);
+    vapor.scale.setScalar(baseScale);
+    group.add(vapor);
+    const cracks = [];
+    const nCracks = 2 + (hash32(c, r, 'gc') % 2);
+    for (let i = 0; i < nCracks; i++) {
+      const cm = new THREE.Mesh(crackGeos[hash32(c + i * 3, r, 'gcr') % crackGeos.length], gasCrackMat);
+      cm.position.z = Z.stain + 0.03 + i * 0.006;
+      cm.rotation.z = rnd01(c + i, r, 'gcz') * Math.PI * 2;
+      cm.scale.setScalar(S);
+      group.add(cm);
+      cracks.push(cm);
     }
-    oreRoot.add(g);
-    oreByCell.set(idx, g);
+    gasRoot.add(group);
+    gasByCell.set(idx, { group, vapor, cracks, phase: rnd01(c, r, 'gp') * Math.PI * 2, baseScale, hot: false });
   }
 
   function refreshCells(cells) {
@@ -610,10 +867,10 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         carveCell(col, row);
         continue;
       }
-      if (tile.type === 'gas') { ensureGasAt(col, row); continue; }
+      if (tile.type === 'gas') syncGasAt(col, row);
       if (rec && !rec.carved) {
         const surveyed = drillSys.isTileSurveyed(col, row);
-        rec.mesh.setColorAt(rec.i, rockInstanceColor(col, row, surveyed, colScratch));
+        rec.mesh.setColorAt(rec.i, rockInstanceColor(col, row, tile.type === 'rock' ? 'basalt' : 'matrix', surveyed, colScratch));
         touchedColor = true;
       }
       syncOreAt(col, row);
@@ -666,7 +923,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   // Contact arms — the §1 ring made visible: one clamp bar per worked face, tinted by what
   // that face feeds on (parity with the 2D painter, now with real depth).
   function armTint(cell) {
-    if (cell.kind === 'gas') return 0x2fd4a5;
+    if (cell.kind === 'gas') return 0xd8b93a;
     if (cell.kind === 'ore') return new THREE.Color((ORE_TINTS[cell.ore] || {}).vein || '#9aa4b8').getHex();
     if (cell.kind === 'matrix') return 0x8a7a62;
     return 0x7a8698;
@@ -841,9 +1098,8 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     }
   }
 
-  // Minimal merge (positions/normals/uv discarded where absent) — avoids importing the utils addon
-  // for what is a handful of boxes: we bake each source geometry's transform in above, so a simple
-  // attribute concat suffices.
+  // Minimal merge (positions/normals/uv discarded where absent) — a handful of boxes baked with
+  // their transforms above, so a simple attribute concat suffices.
   function mergeBufferGeometriesCompat(geos) {
     try {
       const out = new THREE.BufferGeometry();
@@ -881,32 +1137,39 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   }
 
   // ---------------------------------------------------------------- umbilical
-  function syncUmbilical(d, roverX, roverY, moving) {
+  // The tether is the way home: a lit-core cable spooling off the surface derrick's winch drum,
+  // down the entry shaft, along every cell the rig has visited, to the socket on its back.
+  function syncUmbilical(d, roverX, roverY, moving, dt) {
+    umbilicalTimer -= dt;
     const trail = d.cableTrail || [];
     const cellKey = `${trail.length}:${d.avatar.col}:${d.avatar.row}`;
-    if (!moving && cellKey === umbilicalKey && umbilical) return;
+    if (umbilical && cellKey === umbilicalKey && !(moving && umbilicalTimer <= 0)) return;
     umbilicalKey = cellKey;
+    umbilicalTimer = 0.09;
     if (umbilical) {
       scene.remove(umbilical.casing, umbilical.core);
       umbilical.casing.geometry.dispose();
       umbilical.core.geometry.dispose();
       umbilical = null;
     }
-    const pts = [new THREE.Vector3(worldX(Math.floor(COLS / 2)), worldY(0) + S * 1.6, Z.rover - 0.3)];
-    for (const p of trail) pts.push(new THREE.Vector3(worldX(p.col), worldY(p.row), Z.rover - 0.3));
-    pts.push(new THREE.Vector3(roverX, roverY + S * 0.1, Z.rover - 0.15));
+    const drumY = derrickBaseY + S * 1.14;
+    const pts = [
+      new THREE.Vector3(worldX(ENTRY_COL), drumY, Z.surface),
+      new THREE.Vector3(worldX(ENTRY_COL), worldY(0) + S * 0.6, Z.rover - 0.15),
+    ];
+    for (const p of trail) pts.push(new THREE.Vector3(worldX(p.col), worldY(p.row), Z.rover - 0.1));
+    pts.push(new THREE.Vector3(
+      roverX - (roverAnim.flipY > Math.PI / 2 ? -1 : 1) * S * 0.38, roverY + S * 0.1, Z.rover - 0.05,
+    ));
     if (pts.length < 2) return;
     const curve = new THREE.CatmullRomCurve3(pts, false, 'catmullrom', 0.12);
     const segs = Math.min(240, pts.length * 7);
-    const casing = new THREE.Mesh(new THREE.TubeGeometry(curve, segs, S * 0.075, 6, false), umbCasingMat);
+    const casing = new THREE.Mesh(new THREE.TubeGeometry(curve, segs, S * 0.13, 7, false), umbCasingMat);
     casing.castShadow = true;
-    const core = new THREE.Mesh(new THREE.TubeGeometry(curve, segs, S * 0.032, 5, false), umbCoreMat);
+    const core = new THREE.Mesh(new THREE.TubeGeometry(curve, segs, S * 0.088, 5, false), umbCoreMat);
     scene.add(casing, core);
     umbilical = { casing, core };
   }
-  const umbCasingMat = metalMat(0x0f1722, envMap);
-  umbCasingMat.roughness = 0.62;
-  const umbCoreMat = emissiveMat(0x0ea5e9, 0.85);
 
   // ---------------------------------------------------------------- ghost
   function ensureGhost(defId) {
@@ -948,7 +1211,9 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     const drawPos = avatarDrawPos(d.avatar, TILE);
     const target = pxToWorldY(drawPos.y + TILE / 2);
     const minY = worldY(ROWS - 1) - S / 2 + (VIEW_ROWS / 2) * S;
-    const maxY = worldY(0) + S / 2 - (VIEW_ROWS / 2) * S;
+    // Relaxed top clamp: at the surface the frame includes the plateau, the derrick, and a slice
+    // of sky — "you came in from up there" — then follows the bore down.
+    const maxY = worldY(0) + S / 2 - (VIEW_ROWS / 2) * S + S * 3.2;
     const clamped = Math.max(minY, Math.min(maxY, target));
     if (lookY == null || Number.isNaN(lookY)) lookY = clamped;
     else {
@@ -971,7 +1236,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     camera.lookAt(cx, cy, 0);
     camera.updateMatrixWorld();
     // Key light + shadow volume track the view so texel density stays where the player looks.
-    // Deliberately raking (lateral+above, shallow z) so block sides light and cavities shadow.
+    // Deliberately raking (lateral+above, shallow z) so block bevels light and cavities shadow.
     key.position.set(cx - COLS * S * 0.5, cy + VIEW_ROWS * S * 0.72, DEPTH * 5 + 22);
     key.target.position.set(cx, cy, 0);
     rim.target.position.set(cx, cy, 0);
@@ -1057,6 +1322,83 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     scanMat.opacity = motionReduce ? 0.28 : Math.max(0.08, 0.48 * (1 - progress));
   }
 
+  // ---------------------------------------------------------------- dig progress
+  // The block under the bit cracks, sinks, and sheds dust before it lets go — the physics of
+  // "how much longer" read straight off the rock, no instrument required.
+  function syncDigTarget(d, dt) {
+    const tgt = d.avatar.isDrilling ? d.avatar.drillTarget : null;
+    const tile = tgt && field[tgt.col] && field[tgt.col][tgt.row];
+    if (!tgt || !tile || tile.type === 'empty') {
+      if (digCell) {
+        restoreDigBlock();
+        digCell = null;
+      }
+      crackDecal.visible = false;
+      if (digGasHot) { setGasHot(digGasHot, false); digGasHot = null; }
+      return;
+    }
+    const idx = tileIndex(tgt.col, tgt.row);
+    if (!digCell || digCell.idx !== idx) {
+      if (digCell) restoreDigBlock();
+      digCell = { c: tgt.col, r: tgt.row, idx };
+    }
+    const prog = Math.max(0, Math.min(1, 1 - (Math.max(0, tile.hp) / (tile.maxHp || 1))));
+    const rec = cellRock.get(idx);
+    if (rec && !rec.carved) {
+      setRockMatrix(tgt.col, tgt.row, false, prog);
+      rec.mesh.setMatrixAt(rec.i, dummy.matrix);
+      rec.mesh.instanceMatrix.needsUpdate = true;
+    }
+    crackDecal.visible = true;
+    crackDecal.position.set(worldX(tgt.col), worldY(tgt.row), Z.stain + 0.015);
+    const stage = Math.min(2, Math.floor(prog * 3));
+    if (crackDecalMat.map !== crackTexs[stage]) {
+      crackDecalMat.map = crackTexs[stage];
+      crackDecalMat.needsUpdate = true;
+    }
+    crackDecal.scale.setScalar(0.68 + prog * 0.32);
+    // a gas pocket under the bit screams: fissures run hot, vapor churns hard
+    if (tile.type === 'gas') {
+      const g = gasByCell.get(idx);
+      if (g && digGasHot !== g) {
+        if (digGasHot) setGasHot(digGasHot, false);
+        setGasHot(g, true);
+        digGasHot = g;
+      }
+    } else if (digGasHot) {
+      setGasHot(digGasHot, false);
+      digGasHot = null;
+    }
+    // dust + chips dribbling off the contact face
+    dustTimer -= dt;
+    if (dustTimer <= 0) {
+      dustTimer = motionReduce ? 0.22 : 0.09;
+      const px = tgt.col * TILE + TILE / 2 - (tgt.col - d.avatar.col) * TILE * 0.5;
+      const py = tgt.row * TILE + TILE / 2 - (tgt.row - d.avatar.row) * TILE * 0.5;
+      const dustColor = tile.type === 'rock' ? '#59606e' : (tile.type === 'gas' ? '#8a9426' : '#8a715a');
+      burst({
+        x: px, y: py, count: 2, color: dustColor, life: 0.5, size: 2.6,
+        speed: 22, gravity: 30, kind: 'dust', cone: 1.6,
+        angle: Math.atan2(d.avatar.row - tgt.row, d.avatar.col - tgt.col),
+      });
+      if (!motionReduce && tile.hp > 0) spawnChunks(px, py, dustColor, 1);
+    }
+  }
+
+  function restoreDigBlock() {
+    const rec = digCell && cellRock.get(digCell.idx);
+    if (rec && !rec.carved) {
+      setRockMatrix(digCell.c, digCell.r, false);
+      rec.mesh.setMatrixAt(rec.i, dummy.matrix);
+      rec.mesh.instanceMatrix.needsUpdate = true;
+    }
+  }
+
+  function setGasHot(rec, hot) {
+    rec.hot = hot;
+    for (const cm of rec.cracks) cm.material = hot ? gasCrackHotMat : gasCrackMat;
+  }
+
   // ---------------------------------------------------------------- particles + floaters
   function stepFx(dt) {
     particles = stepParticles(particles, dt);
@@ -1065,14 +1407,28 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       particles.length = PARTICLE_CAP;
     }
     let n = 0;
+    let nc = 0;
     for (const p of particles) {
       if (p.isFloater) continue;
-      if (n >= PARTICLE_CAP) break;
       const alpha = Math.max(0, p.life / (p.maxLife || 0.001));
+      if (p.isChunk) {
+        // opaque tumbling debris: gravity falls, screen-plane spin, shrinks as it crumbles
+        if (nc >= CHUNK_CAP) continue;
+        p.rot += p.spin * dt;
+        dummy.position.set(pxToWorldX(p.x), pxToWorldY(p.y), Z.particles);
+        dummy.rotation.set(0, 0, p.rot);
+        dummy.scale.setScalar(Math.max(0.001, (p.size / TILE) * S * (0.35 + 0.65 * alpha)));
+        dummy.updateMatrix();
+        chunkMesh.setMatrixAt(nc, dummy.matrix);
+        chunkMesh.setColorAt(nc, p._c3 || colScratch.set(0x8a715a));
+        nc++;
+        continue;
+      }
+      if (n >= PARTICLE_CAP) continue;
       const sizeW = (p.size / TILE) * S * (p.isDust || p.isSteam ? (1 + (1 - alpha) * 2) : 1);
       dummy.position.set(pxToWorldX(p.x), pxToWorldY(p.y), Z.particles);
       dummy.rotation.set(0, 0, (p.x + p.y) * 0.1);
-      dummy.scale.setScalar(Math.max(0.001, sizeW));
+      dummy.scale.setScalar(Math.max(0.001, sizeW * alpha));
       dummy.updateMatrix();
       partMesh.setMatrixAt(n, dummy.matrix);
       colScratch.copy(p._c3 || colScratch.set(0xffffff)).multiplyScalar(alpha);
@@ -1083,6 +1439,11 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     if (n) {
       partMesh.instanceMatrix.needsUpdate = true;
       if (partMesh.instanceColor) partMesh.instanceColor.needsUpdate = true;
+    }
+    chunkMesh.count = nc;
+    if (nc) {
+      chunkMesh.instanceMatrix.needsUpdate = true;
+      if (chunkMesh.instanceColor) chunkMesh.instanceColor.needsUpdate = true;
     }
     for (const p of pulseRings) {
       if (p.t <= 0) continue;
@@ -1147,8 +1508,13 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     if (evt === 'break') {
       carveCell(p.col, p.row);
       refreshCells(neighborhood(p.col, p.row, 1));
+      if (digCell && digCell.idx === tileIndex(p.col, p.row)) digCell = null;
+      crackDecal.visible = false;
       const { x, y } = centerPx(p.col, p.row);
-      burst({ x, y, count: motionReduce ? 5 : 12, color: '#a78262', life: 0.45, size: 2.8, speed: 60, kind: 'spark', gravity: 55, cone: Math.PI * 2 });
+      const rockColor = p.wasGas ? '#8a9426'
+        : (p.type === 'rock' ? '#4a5162' : '#7a6650');
+      spawnChunks(x, y, rockColor, motionReduce ? 4 : 8);
+      burst({ x, y, count: motionReduce ? 5 : 10, color: '#a78262', life: 0.45, size: 2.8, speed: 60, kind: 'dust', gravity: 55, cone: Math.PI * 2 });
       firePulseRing(p.col, p.row, 0x39d0ff, 0.3);
       return;
     }
@@ -1164,7 +1530,9 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       gasShake.t = 0.42;
       gasShake.elapsed = 0;
       const { x, y } = centerPx(p.col, p.row);
-      burst({ x, y, count: motionReduce ? 4 : 14, color: '#8d66ff', life: 0.55, size: 3, speed: 70, kind: 'spark', cone: Math.PI * 2 });
+      spawnChunks(x, y, '#8a9426', motionReduce ? 5 : 12);
+      burst({ x, y, count: motionReduce ? 5 : 16, color: '#ffc23e', life: 0.6, size: 3, speed: 85, kind: 'spark', cone: Math.PI * 2 });
+      burst({ x, y, count: motionReduce ? 4 : 10, color: '#5f6d12', life: 0.8, size: 3.4, speed: 45, kind: 'steam', cone: Math.PI * 2 });
       return;
     }
     if (evt === 'spark') {
@@ -1176,7 +1544,8 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       else if (dir === 'left') cx = p.col * TILE + TILE;
       else if (dir === 'down') cy = p.row * TILE;
       else if (dir === 'up') cy = p.row * TILE + TILE;
-      const tint = p.type === 'vein' && p.ore ? ((ORE_TINTS[p.ore] || {}).vein || '#ffb35c') : '#a78262';
+      const tint = p.type === 'vein' && p.ore ? ((ORE_TINTS[p.ore] || {}).vein || '#ffb35c')
+        : (p.type === 'rock' ? '#59606e' : (p.type === 'gas' ? '#ffc23e' : '#a78262'));
       burst({ x: cx, y: cy, count: 3, color: tint, life: 0.28, size: 1.8, speed: 45, kind: 'spark', cone: 1.1, gravity: 20 });
       return;
     }
@@ -1203,14 +1572,22 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     buildDomOverlay();
     resize();
     // clear per-session content
-    for (const [, g] of oreByCell) { oreRoot.remove(g); disposeGroup(g); }
-    oreByCell.clear();
-    for (const [, m] of gasByCell) gasRoot.remove(m);
+    for (const [, b] of oreBuckets) { oreRoot.remove(b.mesh); b.mesh.dispose(); }
+    oreBuckets = new Map();
+    oreCellIndex = new Map();
+    oreWakes.length = 0;
+    for (const [, badge] of badges) oreRoot.remove(badge);
+    badges.clear();
+    if (stainMesh) { oreRoot.remove(stainMesh); stainMesh.dispose(); stainMesh = null; }
+    stainCells = new Map();
+    stainN = 0;
+    for (const [, m] of gasByCell) gasRoot.remove(m.group);
     gasByCell.clear();
     for (const id of [...machines.keys()]) removeMachine(id);
     overlaySig = '';
     rebuildOverlays(null);
     umbilicalKey = '';
+    umbilicalTimer = 0;
     if (umbilical) {
       scene.remove(umbilical.casing, umbilical.core);
       umbilical.casing.geometry.dispose();
@@ -1219,6 +1596,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     }
     particles.length = 0;
     partMesh.count = 0;
+    chunkMesh.count = 0;
     for (const f of dom.floaters) f.el.remove();
     dom.floaters.length = 0;
     timers.gasFlash = 0;
@@ -1226,20 +1604,49 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     gasShake.t = 0;
     drillTheta = 0;
     lookY = null;
+    digCell = null;
+    digGasHot = null;
+    crackDecal.visible = false;
+    dustTimer = 0;
+    lastRevealCell = { col: -1, row: -1 };
+    // surface dressing is per-session (plateau tint/derrick position are field-stable but cheap)
+    if (plateauInst) { rockGroup.remove(plateauInst); plateauInst.dispose(); plateauInst = null; }
+    if (derrickBuilt) { scene.remove(derrickBuilt.group); disposeGroup(derrickBuilt.group); derrickBuilt = null; }
     if (!field) { rover.visible = false; return; }
+
+    // ore capacity: survey can only reveal what the field already holds
+    oreCaps = new Map();
+    let veinTotal = 0;
+    for (let c = 0; c < COLS; c++) {
+      for (let r = 0; r < ROWS; r++) {
+        const tile = field[c][r];
+        if (tile && tile.type === 'vein' && tile.ore) {
+          oreCaps.set(tile.ore, (oreCaps.get(tile.ore) || 0) + 1);
+          veinTotal++;
+        }
+      }
+    }
+    stainCellsCap = Math.max(1, veinTotal);
+    stainMesh = new THREE.InstancedMesh(cellQuad, stainMat, stainCellsCap);
+    stainMesh.frustumCulled = false;
+    stainMesh.count = 0;
+    stainMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    oreRoot.add(stainMesh);
+
     buildRock();
+    buildSurface();
     // seed ore / gas for the already-known parts of the field
     for (let c = 0; c < COLS; c++) {
       for (let r = 0; r < ROWS; r++) {
         const tile = field[c][r];
-        if (tile.type === 'gas') ensureGasAt(c, r);
+        if (tile.type === 'gas') syncGasAt(c, r);
         else if (tile.type === 'vein') syncOreAt(c, r);
       }
     }
     rover.visible = true;
     pulseEntries = [
       ...roverBuilt.pulses,
-      { mat: gasMat, base: 0.7, amp: 0.32 },
+      ...(derrickBuilt ? derrickBuilt.pulses : []),
     ];
   }
 
@@ -1247,6 +1654,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   function render(dt, timeS, ui) {
     const d = getDrill();
     if (!d || !field) return;
+    timeSNow = timeS;
     const site = getSite ? getSite() : null;
     const projection = getProjection ? getProjection() : null;
 
@@ -1259,13 +1667,20 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     const centerY = cameraCenterY(d, dt);
     poseCamera(centerY, (shakePx.x / TILE) * S, (-shakePx.y / TILE) * S);
 
-    // rover
+    // reveal-on-approach: crossing a cell boundary re-surveys what the rig's lamps touch
+    if (d.avatar.col !== lastRevealCell.col || d.avatar.row !== lastRevealCell.row) {
+      lastRevealCell = { col: d.avatar.col, row: d.avatar.row };
+      refreshCells(neighborhood(d.avatar.col, d.avatar.row, 3));
+    }
+
+    // ---------------------------------------------------------------- rover
     const drawPos = avatarDrawPos(d.avatar, TILE);
     const rx = pxToWorldX(drawPos.x + TILE / 2);
     const ry = pxToWorldY(drawPos.y + TILE / 2);
     const moving = (d.avatar.moveDuration > 0 && d.avatar.moveElapsed < d.avatar.moveDuration);
+    const drilling = !!d.avatar.isDrilling;
     let shakeLX = 0, shakeLY = 0;
-    if (d.avatar.isDrilling) {
+    if (drilling) {
       drillTheta += 42 * (1 + (d.drillTemp || 0) / 120) * dt;
       if (!motionReduce) {
         const amp = (1.2 + (d.drillTemp || 0) / 80) * 0.6 * (S / TILE);
@@ -1274,10 +1689,42 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       }
     }
     rover.position.set(rx + shakeLX, ry + shakeLY, Z.rover);
-    const dirRot = { right: [0, 0, 0], left: [0, Math.PI, 0], down: [0, 0, -Math.PI / 2], up: [0, 0, Math.PI / 2] };
-    const rot = dirRot[d.avatar.faceDir || 'down'] || dirRot.down;
-    rover.rotation.set(rot[0], rot[1], rot[2]);
+    // body flips for left travel; the articulated arm aims at the dig face instead of
+    // somersaulting the whole vehicle
+    const faceDir = d.avatar.faceDir || 'down';
+    const flipTarget = faceDir === 'left' ? Math.PI : 0;
+    roverAnim.flipY += (flipTarget - roverAnim.flipY) * Math.min(1, 12 * dt);
+    if (Math.abs(roverAnim.flipY - flipTarget) < 0.002) roverAnim.flipY = flipTarget;
+    rover.rotation.set(0, roverAnim.flipY, 0);
+    const aimTarget = faceDir === 'down' ? -Math.PI / 2 : (faceDir === 'up' ? Math.PI / 2 : 0);
+    roverAnim.armAim += (aimTarget - roverAnim.armAim) * Math.min(1, 10 * dt);
+    roverBuilt.dyn.arm.rotation.z = roverAnim.armAim;
+    // the auger bites: fast attack, slow retract (asymmetric envelope)
+    const biteTarget = drilling ? 1 : 0;
+    const biteRate = biteTarget > roverAnim.bite ? 9 : 3.5;
+    roverAnim.bite += (biteTarget - roverAnim.bite) * Math.min(1, biteRate * dt);
+    roverBuilt.dyn.augerSlide.position.x = S * (0.3 + 0.3 * roverAnim.bite);
     roverBuilt.dyn.auger.rotation.y = drillTheta;
+    // wheels, lean, bob
+    const leanTarget = (moving && (faceDir === 'left' || faceDir === 'right')) ? -0.05 : 0;
+    if (moving && !motionReduce) {
+      roverAnim.wheelSpin -= (TILE / (d.avatar.moveDuration || 0.1)) * dt * 0.09;
+      roverAnim.bob = Math.sin(timeS * 11) * S * 0.012;
+    } else {
+      roverAnim.bob *= Math.max(0, 1 - 6 * dt);
+    }
+    roverAnim.lean += (leanTarget - roverAnim.lean) * Math.min(1, 8 * dt);
+    roverBuilt.dyn.body.position.y = -S * 0.06 + roverAnim.bob;
+    roverBuilt.dyn.body.rotation.z = roverAnim.lean;
+    for (const w of roverBuilt.dyn.wheels) w.rotation.z = roverAnim.wheelSpin;
+    // beacon: idle pulse, brisk blink rolling, strobe under the bit
+    const beaconBusy = drilling ? 9 : (moving ? 5 : 0);
+    roverBuilt.dyn.beacon.emissiveIntensity = motionReduce
+      ? (drilling || moving ? 1.2 : 0.5)
+      : (beaconBusy ? (Math.sin(timeS * beaconBusy) > 0 ? 2.3 : 0.15) : 0.5);
+    // headlight points where the work is (left/right ride the body flip)
+    const ht = faceDir === 'down' ? [0, -S * 3.2] : (faceDir === 'up' ? [0, S * 3.2] : [S * 3.2, 0]);
+    headTarget.position.set(ht[0], ht[1], S * 0.3);
     headlight.intensity = d.energyDepleted ? 10 : 46;
 
     // site: machines + overlays + umbilical
@@ -1294,53 +1741,108 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     laneCoreMat.emissiveIntensity = flowing
       ? (motionReduce ? 0.9 : 0.75 + 0.35 * Math.sin(timeS * 4.2)) : 0.3;
     powerCoreMat.emissiveIntensity = worstRatio >= 1 ? 1.0 : 0.25 + worstRatio * 0.55;
-    syncUmbilical(d, rx, ry, moving);
+    syncUmbilical(d, rx, ry, moving, dt);
 
-    // fx + ui chrome
+    // dig progress: crack + sink the target block, dribble dust off the face
+    syncDigTarget(d, dt);
+
+    // gas pockets churn; fissures breathe with heat
+    for (const [, g] of gasByCell) {
+      if (!motionReduce) {
+        g.vapor.rotation.z = g.phase + timeS * (g.hot ? 0.85 : 0.18);
+        const br = 1 + Math.sin(timeS * (g.hot ? 3.4 : 0.8) + g.phase) * (g.hot ? 0.09 : 0.04);
+        g.vapor.scale.setScalar(g.baseScale * br);
+      }
+      g.vapor.material.emissiveIntensity = g.hot ? 1.15 : 0.55;
+    }
+    if (!motionReduce) {
+      gasCrackMat.color.copy(gasCrackBase).multiplyScalar(1 + 0.28 * Math.sin(timeS * 1.3));
+      gasCrackHotMat.color.setHex(0xffe27a).multiplyScalar(1 + 0.4 * Math.sin(timeS * 7));
+    }
+
+    // ore wake pops (the survey's reward beat)
+    for (let i = oreWakes.length - 1; i >= 0; i--) {
+      const w = oreWakes[i];
+      // the vein may have been drilled out mid-pop — never resurrect a killed instance
+      if (!w.entry.bucket.cells.has(w.entry.idx)) { oreWakes.splice(i, 1); continue; }
+      const t = motionReduce ? 1 : (timeS - w.t0) / 0.24;
+      const k = t >= 1 ? 1 : (1 - Math.pow(1 - Math.max(0, t), 2));
+      const overshoot = t < 1 && !motionReduce ? 1 + Math.sin(Math.min(1, t) * Math.PI) * 0.14 : 1;
+      dummy.position.set(w.x, w.y, Z.ore);
+      dummy.rotation.set(0, 0, w.rotZ);
+      dummy.scale.setScalar(w.scale * (0.25 + 0.75 * k) * overshoot);
+      dummy.updateMatrix();
+      w.entry.bucket.mesh.setMatrixAt(w.entry.i, dummy.matrix);
+      w.entry.bucket.mesh.instanceMatrix.needsUpdate = true;
+      if (t >= 1) oreWakes.splice(i, 1);
+    }
+
+    for (const e of pulseEntries) {
+      e.mat.emissiveIntensity = e.base + Math.sin(timeS * 1.6) * e.amp;
+    }
+
     syncCursor(ui);
     syncScanRing(d, rx, ry);
     stepFx(dt);
-    if (!motionReduce) {
-      for (const p of pulseEntries) p.mat.emissiveIntensity = p.base + Math.sin(timeS * 1.6 + p.base * 3) * p.amp;
-      for (const [, rec] of machines) {
-        for (const p of rec.pulses) p.mat.emissiveIntensity = p.base + Math.sin(timeS * 1.6 + p.base * 3) * p.amp;
-      }
-    }
     stepDom(d, dt);
-
     composer.render();
   }
 
   // ---------------------------------------------------------------- teardown
   function dispose() {
-    if (ro) ro.disconnect();
-    for (const [, g] of oreByCell) disposeGroup(g);
-    oreByCell.clear();
+    for (const [, b] of oreBuckets) { oreRoot.remove(b.mesh); b.mesh.dispose(); }
+    oreBuckets.clear();
+    for (const [, badge] of badges) oreRoot.remove(badge);
+    badges.clear();
+    if (stainMesh) { oreRoot.remove(stainMesh); stainMesh.dispose(); stainMesh = null; }
+    for (const [, g] of gasByCell) gasRoot.remove(g.group);
+    gasByCell.clear();
     for (const id of [...machines.keys()]) removeMachine(id);
-    if (ghost) disposeGroup(ghost.group);
+    if (ghost) { fxRoot.remove(ghost.group); disposeGroup(ghost.group); ghost = null; }
     if (umbilical) {
+      scene.remove(umbilical.casing, umbilical.core);
       umbilical.casing.geometry.dispose();
       umbilical.core.geometry.dispose();
+      umbilical = null;
     }
     rebuildOverlays(null);
     for (const bucket of ['matrix', 'basalt']) {
       for (const inst of rockInst[bucket]) inst.dispose();
       rockInst[bucket] = [];
     }
-    for (const [, t] of badgeTextures) t.dispose();
-    for (const [, m] of badgeMats) THREE.Material.prototype.dispose.call(m);
-    badgeMats.clear();
-    for (const [, m] of oreMats) m.dispose();
-    for (const m of [gasMat, laneCoreMat, powerCoreMat, casingMat, umbCasingMat, umbCoreMat,
-      frameMat, ringSolidMat, ringEmptyMat, padOkMat, padBadMat, scanMat, partMat,
-      rockMats.matrix, rockMats.basalt]) m.dispose();
-    for (const g of [oreGeo, gasGeo, cellQuad, partGeo, ...chunkGeos]) g.dispose();
-    if (backWall) backWall.geometry.dispose();
+    cellRock.clear();
+    if (plateauInst) { rockGroup.remove(plateauInst); plateauInst.dispose(); plateauInst = null; }
+    if (derrickBuilt) { scene.remove(derrickBuilt.group); disposeGroup(derrickBuilt.group); derrickBuilt = null; }
+    if (backWall) { backWall.geometry.dispose(); backWall.material.dispose(); backWall = null; }
+    if (ro) ro.disconnect();
+    for (const m of oreMats.values()) m.dispose();
+    for (const m of badgeMats.values()) m.dispose();
+    for (const t of badgeTextures.values()) t.dispose();
+    laneCoreMat.dispose(); powerCoreMat.dispose(); casingMat.dispose();
+    gasMat.dispose(); gasCrackMat.dispose(); gasCrackHotMat.dispose();
+    stainMat.dispose();
+    frameMat.dispose(); ringSolidMat.dispose(); ringEmptyMat.dispose(); padOkMat.dispose(); padBadMat.dispose();
+    scanMat.dispose(); scanRing.geometry.dispose();
+    crackDecalMat.dispose(); crackDecal.geometry.dispose();
+    for (const t of crackTexs) t.dispose();
+    for (const p of pulseRings) { p.mat.dispose(); p.mesh.geometry.dispose(); }
+    umbCasingMat.dispose(); umbCoreMat.dispose();
+    partGeo.dispose(); partMat.dispose(); chunkGeo.dispose(); chunkMat.dispose();
+    for (const g of sharedGeos) {
+      if (g === cellQuad || g === partGeo || g === chunkGeo) continue; // already disposed above
+      g.dispose();
+    }
+    cellQuad.dispose(); // belt + suspenders: not in the sharedGeos loop above
     disposeGroup(rover);
+    key.shadow.map && key.shadow.map.dispose();
+    rim.shadow && rim.shadow.map && rim.shadow.map.dispose();
+    scene.environment = null;
     envRT.dispose();
-    if (dom.root) dom.root.remove();
-    try { composer.dispose && composer.dispose(); } catch (_) { /* pass chain best-effort */ }
     renderer.dispose();
+    renderer.forceContextLoss();
+    renderer.setSize(0, 0, false);
+    composer.setSize(0, 0);
+    if (dom.root) dom.root.remove();
   }
 
   return { begin, render, notify, refreshCells, pickCell, dispose };
