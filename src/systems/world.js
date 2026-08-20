@@ -875,13 +875,14 @@ export const world = {
     const state = this.state;
     const active = state.world.sectorContents[sectorId];
     if (!active) return;
-    // Capture durable combat/convoy outcomes before stripping live extras.
-    this._captureSectorDurableRecords(sectorId, { reason: 'strip_full' });
     // Remove enemies + dressing only; keep stations/gates/fields/pois/hazards.
     const kill = new Set();
     for (const id of (active.enemies || [])) kill.add(id);
     for (const d of (active.dressing || [])) if (d && d.id != null) kill.add(d.id);
-    this._despawnEntityIds(kill, sectorId);
+    // Capture every durable sector record and collect the exact extras for removal in the same
+    // entity-list walk. Sector entry used to scan the full population twice here (capture, then
+    // despawn), making outgoing retirement a measurable arrival-frame cost.
+    this._captureSectorDurableRecords(sectorId, { reason: 'strip_full', despawnIds: kill });
     active.enemies = [];
     active.dressing = [];
     if (active.boss) delete active.boss;
@@ -913,6 +914,8 @@ export const world = {
     const tick = state.tick | 0;
     const seed = (state.meta && state.meta.seed) || 1;
     const list = state.entityList || [];
+    const despawnIds = opts.despawnIds instanceof Set ? opts.despawnIds : null;
+    const despawnIndexes = despawnIds && despawnIds.size ? [] : null;
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
       if (!e) continue;
@@ -920,6 +923,11 @@ export const world = {
       const dataSector = e.data && e.data.sectorId;
       // Require explicit sector ownership — never attach homeless traffic to the wrong bag.
       const ownedHere = home === sectorId || dataSector === sectorId;
+      if (despawnIndexes && despawnIds.has(e.id)
+          && !this._isProtectedFromResidency(e)
+          && (!home || home === sectorId)) {
+        despawnIndexes.push(i);
+      }
       if (!ownedHere) continue;
       if (!entityIsDurableCandidate(e, state.playerId)) continue;
       // Protected mission-pinned still get a durable record for Continue rematerialize,
@@ -935,6 +943,12 @@ export const world = {
       if (!captured) continue;
       upsertRecord(bag, captured);
       if (e.data) e.data.worldRecordId = captured.recordId;
+    }
+    // Match _despawnEntityIds' reverse walk and swap-pop ordering without a second population scan.
+    if (despawnIndexes) {
+      for (let i = despawnIndexes.length - 1; i >= 0; i--) {
+        this._destroyEntityAtIndex(despawnIndexes[i]);
+      }
     }
   },
 
