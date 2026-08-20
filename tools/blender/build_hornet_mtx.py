@@ -319,19 +319,19 @@ def create_materials():
             bsdf.inputs["Emission Color"].default_value = (*emit[0], 1)
             bsdf.inputs["Emission Strength"].default_value = emit[1]
         if name == "Material_Canopy":
-            # Unmapped dark dielectric. Mapped hashed glass photographed as a frost lid.
+            # Dark hashed pane. High alpha photographed as a frost lid; too low as empty air.
             if "Transmission Weight" in bsdf.inputs:
-                bsdf.inputs["Transmission Weight"].default_value = 0.88
+                bsdf.inputs["Transmission Weight"].default_value = 0.70
             elif "Transmission" in bsdf.inputs:
-                bsdf.inputs["Transmission"].default_value = 0.88
+                bsdf.inputs["Transmission"].default_value = 0.70
             if "IOR" in bsdf.inputs:
                 bsdf.inputs["IOR"].default_value = 1.52
             if "Coat Weight" in bsdf.inputs:
                 bsdf.inputs["Coat Weight"].default_value = 0.0
-            bsdf.inputs["Base Color"].default_value = (0.012, 0.016, 0.020, 1)
+            bsdf.inputs["Base Color"].default_value = (0.018, 0.022, 0.028, 1)
             bsdf.inputs["Metallic"].default_value = 0.0
-            bsdf.inputs["Roughness"].default_value = 0.10
-            bsdf.inputs["Alpha"].default_value = 0.52
+            bsdf.inputs["Roughness"].default_value = 0.08
+            bsdf.inputs["Alpha"].default_value = 0.38
             if hasattr(material, "blend_method"):
                 try:
                     material.blend_method = "HASHED"
@@ -933,6 +933,21 @@ def diamond_airfoil(x_le, y, z, chord, thick):
     ]
 
 
+def add_hung_plates(prefix, x0, x1, y, z, n, half_y, half_z, gap, material, collection):
+    """Armor hung off the skin. Gap is a real channel of hull, not a scored line."""
+    span = abs(x1 - x0)
+    plate = (span - gap * max(n - 1, 0)) / max(n, 1)
+    direction = 1.0 if x1 >= x0 else -1.0
+    for i in range(n):
+        cx = x0 + direction * (plate * 0.50 + i * (plate + gap))
+        add_overlap_plate(
+            f"{prefix}_{i}",
+            (cx, y, z),
+            (plate * 0.46, half_y, half_z),
+            material, collection, 0.004,
+        )
+
+
 def add_station_hoop(tag, x, hw, hh, zc, flat, box, keel, material, collection, stand=0.030, half=0.036):
     """Thin hoop that follows the hull station. Not a rectangular cage."""
     rings = [
@@ -1353,17 +1368,18 @@ def build_lod(lod, mats):
     add_box("Cockpit_Console", (4.16, 0.0, 0.42), (0.08, 0.08, 0.020), armor, collection, 0.002)
     add_box("Cockpit_Stick", (4.08, 0.04, 0.50), (0.012, 0.012, 0.06), mech, collection, 0.001)
     canopy = mats["Material_Canopy"]
-    # 16 mm dark pane in a 12 mm metal lip. Front windscreen only — no greenhouse.
+    # Raked 16 mm pane in the 3Q line of sight. A lip-only pane read as empty air.
+    # Aft of x=3.70 the well stays open — not a greenhouse lid.
     add_folded_sheet(
         "Canopy_Screen",
-        (4.50, -0.30, 0.70), (4.50, 0.30, 0.70),
-        (4.18, 0.16, 1.18), (4.18, -0.16, 1.18),
+        (4.48, -0.28, 0.68), (4.48, 0.28, 0.68),
+        (3.70, 0.10, 1.00), (3.70, -0.10, 1.00),
         0.016, canopy, collection, 0.001,
     )
-    add_box("Frame_SillF", (4.50, 0.0, 0.70), (0.012, 0.30, 0.012), armor, collection, 0.001)
-    add_box("Frame_Brow", (4.18, 0.0, 1.16), (0.012, 0.14, 0.012), armor, collection, 0.001)
-    add_box("Frame_PillarP", (4.34, -0.28, 0.92), (0.14, 0.010, 0.16), armor, collection, 0.001)
-    add_box("Frame_PillarS", (4.34, 0.28, 0.92), (0.14, 0.010, 0.16), armor, collection, 0.001)
+    add_box("Frame_SillF", (4.48, 0.0, 0.68), (0.012, 0.28, 0.012), armor, collection, 0.001)
+    add_box("Frame_Brow", (3.72, 0.0, 0.99), (0.012, 0.12, 0.012), armor, collection, 0.001)
+    add_box("Frame_PillarP", (4.10, -0.20, 0.84), (0.22, 0.010, 0.12), armor, collection, 0.001)
+    add_box("Frame_PillarS", (4.10, 0.20, 0.84), (0.22, 0.010, 0.12), armor, collection, 0.001)
 
     add_five_wall_tub("AvionicsTub", (0.85, -1.18, 0.22), (0.24, 0.10, 0.11), 0.040, mech, collection)
     add_box("AvionicsRack", (0.85, -1.18, 0.16), (0.16, 0.032, 0.05), armor, collection, 0.002)
@@ -1398,15 +1414,12 @@ def build_lod(lod, mats):
     add_overlap_plate("Armor_JointP", (-0.40, -1.40, 0.18), (0.28, 0.040, 0.16), armor, collection, 0.004)
     add_overlap_plate("Armor_JointS", (-0.40, 1.40, 0.18), (0.28, 0.040, 0.16), armor, collection, 0.004)
     add_overlap_plate("Armor_KeelFore", (1.20, 0.00, -0.44), (0.40, 0.12, 0.018), hull, collection, 0.003)
-    add_overlap_plate("Armor_DorsalA", (2.40, 0.00, 0.80), (0.28, 0.14, 0.018), armor, collection, 0.003)
-    add_overlap_plate("Armor_DorsalB", (0.90, 0.00, 0.82), (0.30, 0.16, 0.018), armor, collection, 0.003)
-    add_overlap_plate("Armor_DorsalC", (-1.10, 0.00, 0.60), (0.28, 0.12, 0.018), armor, collection, 0.003)
     add_overlap_plate("Armor_WaistP", (0.20, -1.72, 0.18), (0.32, 0.028, 0.12), armor, collection, 0.004)
     add_overlap_plate("Armor_WaistS", (0.20, 1.72, 0.18), (0.32, 0.028, 0.12), armor, collection, 0.004)
-    # Plate courses with 3–4 cm gaps. Decal-thin tiles photographed as hull paint.
-    add_tile_bank("Course_Dorsal", 2.55, 0.15, 0.0, 0.88, 5, 0.06, 0.16, 0.020, armor, collection, stagger=0.08)
-    add_tile_bank("Course_FlankP", 1.55, -1.35, -1.78, 0.24, 6, 0.05, 0.020, 0.09, armor, collection, stagger=0.03)
-    add_tile_bank("Course_FlankS", 1.55, -1.35, 1.78, 0.24, 6, 0.05, 0.020, 0.09, armor, collection, stagger=0.03)
+    # Hung plates: 4 cm thick, 5 cm channels of hull between them. Flush tiles read as stamps.
+    add_hung_plates("Hang_Dorsal", 2.50, 0.20, 0.0, 0.94, 4, 0.13, 0.022, 0.055, armor, collection)
+    add_hung_plates("Hang_FlankP", 1.50, -1.20, -1.96, 0.22, 5, 0.018, 0.07, 0.050, armor, collection)
+    add_hung_plates("Hang_FlankS", 1.50, -1.20, 1.96, 0.22, 5, 0.018, 0.07, 0.050, armor, collection)
     add_box("Accent_WaistP", (0.15, -1.40, 0.18), (0.28, 0.010, 0.04), accent, collection, 0.002)
     add_box("Accent_WaistS", (0.15, 1.40, 0.18), (0.28, 0.010, 0.04), accent, collection, 0.002)
 
@@ -1668,18 +1681,18 @@ def render_cycle(collection):
     out = FAMILY / "evidence" / "hornet" / "cycles" / f"cycle_{CYCLE:02d}"
     out.mkdir(parents=True, exist_ok=True)
     views = {
-        "three_quarter": ((8.8, -7.4, 5.6), (3.10, 0, 0.80), 36),
+        "three_quarter": ((10.2, -8.6, 4.6), (2.40, 0, 0.62), 34),
         "starboard": ((0.90, 13.4, 0.16), (0.90, 0, 0.16), 34),
         "rear": ((-10.2, -7.2, 2.5), (-3.20, 0.10, 0.10), 34),
-        "clay_three_quarter": ((8.8, -7.4, 5.6), (3.10, 0, 0.80), 36),
+        "clay_three_quarter": ((10.2, -8.6, 4.6), (2.40, 0, 0.62), 34),
         "grazing_close": ((6.6, -5.4, 2.0), (1.15, 0, 0.35), 48),
         "bay_interior": ((4.50, -1.05, 1.20), (3.85, 0.0, 0.70), 34),
         "drive_rear": ((-6.6, -1.8, 0.55), (-3.90, 0.90, 0.12), 46),
         "play_size": ((36, -32, 16), (0.20, 0, 0.16), 48),
-        "orm_isolation": ((8.8, -7.4, 5.6), (3.10, 0, 0.80), 36),
-        "normal_isolation": ((8.8, -7.4, 5.6), (3.10, 0, 0.80), 36),
-        "id_or_material_id": ((8.8, -7.4, 5.6), (3.10, 0, 0.80), 36),
-        "material_three_quarter": ((8.8, -7.4, 5.6), (3.10, 0, 0.80), 36),
+        "orm_isolation": ((10.2, -8.6, 4.6), (2.40, 0, 0.62), 34),
+        "normal_isolation": ((10.2, -8.6, 4.6), (2.40, 0, 0.62), 34),
+        "id_or_material_id": ((10.2, -8.6, 4.6), (2.40, 0, 0.62), 34),
+        "material_three_quarter": ((10.2, -8.6, 4.6), (2.40, 0, 0.62), 34),
     }
     meshes = [obj for obj in collection.objects if obj.type == "MESH" and not obj.get("collision")]
     for name in ("three_quarter", "starboard", "rear", "material_three_quarter", "grazing_close", "bay_interior", "drive_rear", "play_size"):
