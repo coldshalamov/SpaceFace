@@ -370,6 +370,11 @@ async function installSectorTransitionWitness(targetPage) {
         for (const methodName of [
           'enterSector',
           '_applyResidencyPlan',
+          '_stripSectorFullExtras',
+          '_ensureSectorMaterialized',
+          '_syncSectorTierContent',
+          '_promoteSectorToFull',
+          '_demoteSectorToRecordOnly',
           '_placePlayer',
           '_resolveShipModules',
           '_flushPendingSpawns',
@@ -388,6 +393,32 @@ async function installSectorTransitionWitness(targetPage) {
             }
           };
           trace.restorers.push(() => { world[methodName] = original; });
+        }
+        const traffic = sf?.registry?.get?.('traffic');
+        for (const methodName of [
+          '_cleanup',
+          '_pruneDead',
+          '_retireLegacyCeresTraffic',
+          '_materializeCeresActivityCast',
+          '_ensureNamedLaneContact',
+          '_applyWorldSiteTrafficHooks',
+          '_ensureCeresCausalChain',
+          '_rebaseCeresCausalPhaseEnds',
+        ]) {
+          const original = traffic?.[methodName];
+          if (typeof original !== 'function') continue;
+          traffic[methodName] = function timedTrafficSectorEntryMethod(...args) {
+            const started = performance.now();
+            try {
+              return original.apply(this, args);
+            } finally {
+              trace.stages.push({
+                label: `traffic.${methodName}`,
+                durationMs: performance.now() - started,
+              });
+            }
+          };
+          trace.restorers.push(() => { traffic[methodName] = original; });
         }
         const originalEmit = bus?.emit;
         if (typeof originalEmit === 'function') {
