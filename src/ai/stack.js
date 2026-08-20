@@ -277,12 +277,14 @@ export class TacticalAIStack {
     const player = this.ports && this.ports.world && typeof this.ports.world.player === 'function'
       ? this.ports.world.player()
       : null;
-    const origin = player && player.pos ? player.pos : null;
-    const playerId = player && player.id;
-    const playerTeam = player && player.team;
+    const fallbackOrigin = player && player.pos ? player.pos : null;
+    const fallbackPlayerId = player && player.id;
+    const fallbackPlayerTeam = player && player.team;
     for (const member of orderedMembers) {
       if (!selected.has(member.id)) continue;
       if (normalizeCombatDoctrineId(member.combatDoctrineId) != null) continue;
+      const playerId = member.playerId ?? fallbackPlayerId;
+      const playerTeam = member.playerTeam ?? fallbackPlayerTeam;
       const owner = {
         id: member.id,
         isPlayer: member.id === playerId,
@@ -294,8 +296,8 @@ export class TacticalAIStack {
       if (!shouldOwnerThink(tick, owner, {
         playerId,
         playerTeam,
-        origin,
-        authorityRadius: TABLE_AI_AUTHORITY_WU,
+        origin: member.authorityOrigin || fallbackOrigin,
+        authorityRadius: finitePositive(member.authorityRadius, TABLE_AI_AUTHORITY_WU),
         sleepPeriodTicks: 8,
         activePeriodTicks: 1,
       })) {
@@ -390,6 +392,14 @@ function normalizeRoster(value, freezeResults = true) {
         capabilities: freeze(Array.isArray(normalized.capabilities) ? [...new Set(normalized.capabilities)].sort() : []),
         combatDoctrineId: normalizeCombatDoctrineId(normalized.combatDoctrineId),
         factionBehavior: normalizeFactionBehaviorProfile(normalized.factionBehavior),
+        team: normalized.team,
+        alive: normalized.alive !== false,
+        pos: normalized.pos || null,
+        passive: normalized.passive === true,
+        playerId: normalized.playerId,
+        playerTeam: normalized.playerTeam,
+        authorityOrigin: normalized.authorityOrigin || null,
+        authorityRadius: finitePositive(normalized.authorityRadius, TABLE_AI_AUTHORITY_WU),
       });
     });
     return freeze({

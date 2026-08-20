@@ -6,6 +6,7 @@ import { ObjectiveKind } from '../src/ai/contracts.js';
 import { normalizeActivity } from '../src/ai/doctrine.js';
 import { createGameState } from '../src/core/gameState.js';
 import { createBus } from '../src/core/eventBus.js';
+import { tableSimAuthorityWuFromState } from '../src/render/tabletopPolicy.js';
 import { aiPorts } from '../src/systems/aiPorts.js';
 import { applyAIFiringIntent } from '../src/systems/aiFireIntent.js';
 
@@ -32,6 +33,25 @@ test('actual SG06 sensor and roster ports allocate two light targets without a f
   for (let seed = 1; seed <= 100; seed++) {
     assert.deepEqual(assignmentSummary(command(roster[0], frames, seed)), assignments,
       `seed ${seed} does not chatter deterministic fire assignments`);
+  }
+});
+
+test('production roster carries deterministic activity metadata into tactical cadence', () => {
+  const h = squadHarness();
+  const roster = h.helpers.aiRoster.liveListSquads(60);
+  const authorityRadius = tableSimAuthorityWuFromState(h.state);
+  const byId = new Map(h.attackers.map((entity) => [entity.id, entity]));
+  for (const member of roster[0].members) {
+    const entity = byId.get(member.id);
+    assert.ok(entity);
+    assert.equal(member.team, entity.team);
+    assert.equal(member.alive, true);
+    assert.equal(member.pos, entity.pos);
+    assert.equal(member.passive, false);
+    assert.equal(member.playerId, h.targetA.id);
+    assert.equal(member.playerTeam, h.targetA.team);
+    assert.equal(member.authorityOrigin, h.targetA.pos);
+    assert.equal(member.authorityRadius, authorityRadius);
   }
 });
 

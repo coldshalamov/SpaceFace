@@ -16,6 +16,7 @@ import { authorizeAIEngagement, isHostileForAI } from '../ai/engagementAuthority
 import { measureThrusterAuthority, writePhysicsControl } from '../core/physicsAuthority.js';
 import { resolveFlightProfile } from '../core/flightDynamics.js';
 import { massline2Flag } from '../data/featureFlags.js';
+import { tableSimAuthorityWuFromState } from '../render/tabletopPolicy.js';
 import {
   CERES_ACTIVITY_POCKETS,
   CERES_ACTIVITY_SECTOR_ID,
@@ -419,6 +420,11 @@ export const aiPorts = {
       ? index.aiShips
       : (Array.isArray(state.entityList) ? state.entityList : []);
     const candidates = this._rosterCandidateScratch || (this._rosterCandidateScratch = []);
+    const authorityRadius = tableSimAuthorityWuFromState(state);
+    const player = getEntity(state, state && state.playerId);
+    const playerId = player ? player.id : state && state.playerId;
+    const playerTeam = player && player.team;
+    const authorityOrigin = player && player.pos || null;
     candidates.length = 0;
     for (const entity of source) {
       if (!isLiveCraft(entity) || entity.id === state.playerId) continue;
@@ -455,6 +461,14 @@ export const aiPorts = {
         capabilities: this._capabilitiesFor(entity, tick),
         combatDoctrineId: normalizeCombatDoctrineId(ai.combatDoctrineId),
         factionBehavior,
+        team: entity.team,
+        alive: entity.alive !== false,
+        pos: entity.pos || null,
+        passive: ai.passive === true,
+        playerId,
+        playerTeam,
+        authorityOrigin,
+        authorityRadius,
       }));
     }
 
