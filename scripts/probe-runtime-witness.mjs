@@ -36,6 +36,7 @@ const SHADOWS_OFF_DIAGNOSTIC = process.argv.includes('--shadows-off-diagnostic')
 const OPAQUE_BATCH_OFF_DIAGNOSTIC = process.argv.includes('--opaque-batch-off-diagnostic');
 const OPENING_FIRST_TOUCH_OWNER_DIAGNOSTIC = process.argv.includes('--opening-first-touch-owner');
 const OPENING_EXACT_OWNER_TOUCH_DIAGNOSTIC = process.argv.includes('--opening-exact-owner-touch');
+const NO_SUBMIT_DIAGNOSTIC = process.argv.includes('--no-submit-diagnostic');
 
 if (OPENING_FIRST_TOUCH_OWNER_DIAGNOSTIC && OPENING_EXACT_OWNER_TOUCH_DIAGNOSTIC) {
   throw new Error('Opening first-touch owner and exact-owner touch diagnostics are mutually exclusive');
@@ -58,6 +59,7 @@ let openingRenderWork = null;
 let openingFirstTouchOwner = null;
 let openingExactOwnerTouch = null;
 let opaqueBatchDiagnostic = null;
+let noSubmitDiagnostic = null;
 let sectorTransitionTrace = null;
 
 function log(line) {
@@ -280,6 +282,24 @@ function formatOpeningExactOwnerTouchSection(diagnostic) {
   );
   const errors = Array.isArray(diagnostic.errors) ? diagnostic.errors : [];
   if (errors.length > 0) lines.push(`- fail-closed errors: ${errors.slice(0, 6).join(' | ')}`);
+  return lines.join('\n');
+}
+
+function formatNoSubmitDiagnosticSection(diagnostic, hitchAttribution) {
+  const lines = ['', '## No-submit scheduler A/B'];
+  if (!diagnostic?.applied) {
+    lines.push('- disabled: pass `--no-submit-diagnostic` to replace scene submission with a constant clear');
+    return lines.join('\n');
+  }
+  const metric = (value) => `${value?.samples ?? 0} samples; p95 ${Number(value?.p95 || 0).toFixed(1)} ms; max ${Number(value?.max || 0).toFixed(1)} ms`;
+  lines.push(
+    `- hook restoration: ${diagnostic.restored === true ? 'pass' : 'fail'}`,
+    `- rAF callback-entry interval: ${metric(diagnostic.callbackEntryInterval)}`,
+    `- callback CPU duration: ${metric(diagnostic.callbackCpu)}`,
+    `- constant clear submission: ${metric(diagnostic.drawSubmit)}`,
+    `- long tasks: ${diagnostic.longTasks?.count ?? 0}; total ${Number(diagnostic.longTasks?.totalMs || 0).toFixed(1)} ms; max ${Number(diagnostic.longTasks?.maxMs || 0).toFixed(1)} ms`,
+    `- externalScheduling hitches: ${hitchAttribution?.counts?.externalScheduling ?? 0}`,
+  );
   return lines.join('\n');
 }
 
@@ -2020,6 +2040,102 @@ async function dismissCinematic(targetPage) {
   }
 }
 
+async function installNoSubmitDiagnostic(targetPage) {
+  return targetPage.evaluate(() => {
+    const renderSystem = window.SF?.registry?.get?.('render');
+    if (!renderSystem?.renderer
+      || typeof renderSystem.drawPreparedFrame !== 'function'
+      || typeof renderSystem._renderOpeningPostFrame !== 'function') {
+      return { applied: false, reason: 'render-system-unavailable' };
+    }
+    const trace = {
+      callbackIntervals: [],
+      callbackCpu: [],
+      drawSubmit: [],
+      longTasks: [],
+      previousDraw: renderSystem.drawPreparedFrame,
+      previousOpening: renderSystem._renderOpeningPostFrame,
+      previousRaf: window.requestAnimationFrame,
+      observer: null,
+    };
+    let lastCallbackAt = null;
+    window.requestAnimationFrame = function noSubmitMeasuredRaf(callback) {
+      return trace.previousRaf.call(window, (timestamp) => {
+        const enteredAt = performance.now();
+        if (lastCallbackAt !== null) trace.callbackIntervals.push(enteredAt - lastCallbackAt);
+        lastCallbackAt = enteredAt;
+        try {
+          return callback(timestamp);
+        } finally {
+          trace.callbackCpu.push(performance.now() - enteredAt);
+        }
+      });
+    };
+    const constantSubmit = function constantSubmit() {
+      const startedAt = performance.now();
+      this.renderer.setRenderTarget(null);
+      this.renderer.clear(true, true, true);
+      trace.drawSubmit.push(performance.now() - startedAt);
+      if (this.state?.mode === 'flight' && !Number.isFinite(this.state?.render?.firstPlayableFrameAt)) {
+        this.state.render.firstPlayableFrameAt = performance.now();
+      }
+      return true;
+    };
+    renderSystem.drawPreparedFrame = constantSubmit;
+    renderSystem._renderOpeningPostFrame = constantSubmit;
+    try {
+      trace.observer = new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          trace.longTasks.push({ startTime: entry.startTime, duration: entry.duration });
+        }
+      });
+      trace.observer.observe({ entryTypes: ['longtask'] });
+    } catch (_) {
+      trace.observer = null;
+    }
+    window.__SF_NO_SUBMIT_DIAGNOSTIC__ = trace;
+    return { applied: true };
+  });
+}
+
+async function restoreNoSubmitDiagnostic(targetPage) {
+  return targetPage.evaluate(() => {
+    const trace = window.__SF_NO_SUBMIT_DIAGNOSTIC__;
+    const renderSystem = window.SF?.registry?.get?.('render');
+    if (!trace || !renderSystem) return { applied: false, restored: false };
+    const summarize = (values) => {
+      const sorted = values.filter(Number.isFinite).sort((a, b) => a - b);
+      const at = (q) => sorted.length ? sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * q))] : 0;
+      return {
+        samples: sorted.length,
+        p95: at(0.95),
+        max: sorted.length ? sorted[sorted.length - 1] : 0,
+      };
+    };
+    renderSystem.drawPreparedFrame = trace.previousDraw;
+    renderSystem._renderOpeningPostFrame = trace.previousOpening;
+    window.requestAnimationFrame = trace.previousRaf;
+    try { trace.observer?.disconnect?.(); } catch (_) {}
+    const restored = renderSystem.drawPreparedFrame === trace.previousDraw
+      && renderSystem._renderOpeningPostFrame === trace.previousOpening
+      && window.requestAnimationFrame === trace.previousRaf;
+    const result = {
+      applied: true,
+      restored,
+      callbackEntryInterval: summarize(trace.callbackIntervals),
+      callbackCpu: summarize(trace.callbackCpu),
+      drawSubmit: summarize(trace.drawSubmit),
+      longTasks: {
+        count: trace.longTasks.length,
+        totalMs: trace.longTasks.reduce((sum, entry) => sum + Number(entry.duration || 0), 0),
+        maxMs: trace.longTasks.reduce((max, entry) => Math.max(max, Number(entry.duration || 0)), 0),
+      },
+    };
+    delete window.__SF_NO_SUBMIT_DIAGNOSTIC__;
+    return result;
+  });
+}
+
 async function waitUntilFlight(targetPage, routeLabel, timeoutMs = 120_000) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
@@ -2198,6 +2314,11 @@ try {
       }
     }
     probeInstrumentation = await armProbeInstrumentation(page);
+    if (NO_SUBMIT_DIAGNOSTIC) {
+      noSubmitDiagnostic = await installNoSubmitDiagnostic(page);
+      if (noSubmitDiagnostic?.applied !== true) throw new Error('No-submit diagnostic could not install before Continue');
+      routeInfo.label += ' [diagnostic: no scene submit]';
+    }
     log(`continue from read-only player save slots=${save.slots.join(',')}`);
     await page.getByRole('button', { name: 'Continue', exact: true }).click({ timeout: 30_000 });
     entered = await waitUntilFlight(page, 'Continue');
@@ -2218,6 +2339,11 @@ try {
       }
     }
     probeInstrumentation = await armProbeInstrumentation(page);
+    if (NO_SUBMIT_DIAGNOSTIC) {
+      noSubmitDiagnostic = await installNoSubmitDiagnostic(page);
+      if (noSubmitDiagnostic?.applied !== true) throw new Error('No-submit diagnostic could not install before New Game');
+      routeInfo.label += ' [diagnostic: no scene submit]';
+    }
     await page.getByRole('button', { name: 'New Game', exact: true }).click({ timeout: 30_000 });
     await page.fill('#sf-ng-seed', String(FIXED_SEED));
     entered = await launchUntilFlight(page);
@@ -2408,6 +2534,13 @@ try {
       cleanupError = new Error('Runtime witness failed to restore the opaque batch diagnostic');
     }
   }
+  if (page && NO_SUBMIT_DIAGNOSTIC && noSubmitDiagnostic?.applied === true) {
+    const restored = await restoreNoSubmitDiagnostic(page).catch(() => null);
+    noSubmitDiagnostic = restored || { applied: true, restored: false };
+    if (noSubmitDiagnostic.restored !== true && !cleanupError) {
+      cleanupError = new Error('Runtime witness failed to restore the no-submit diagnostic');
+    }
+  }
   if (page && shadowDiagnostic?.applied === true) {
     const restored = await page.evaluate((previous) => {
       const sf = window.SF;
@@ -2523,6 +2656,7 @@ const bloomPhases = Object.fromEntries(BLOOM_PHASE_LABELS.map((label) => [
 const route = {
   ...routeInfo,
   opaqueBatchDiagnostic,
+  noSubmitDiagnostic,
   shadowDiagnostic,
   seed: FIXED_SEED,
   sampleMs: SAMPLE_MS,
@@ -2538,7 +2672,7 @@ const markdown = `${formatRuntimeWitnessReport({
   consoleHits,
   pageErrors,
   gpu,
-  })}${formatLoadingReadinessSection(loadingProgressEvents, loadingReadinessSamples)}${formatOpeningRenderWorkSection(openingRenderWork)}${formatOpeningFirstTouchOwnerSection(openingFirstTouchOwner)}${formatOpeningExactOwnerTouchSection(openingExactOwnerTouch)}${formatTableCensusSection(tableCensus, route)}${formatSectorTransitionSection(sectorTransitionTrace)}${formatHitchAttributionSection(hitchAttribution, route)}${formatBloomPhaseSection(bloomPhases)}${formatSystemTimingSection(finalSystemTiming)}\n`;
+  })}${formatLoadingReadinessSection(loadingProgressEvents, loadingReadinessSamples)}${formatOpeningRenderWorkSection(openingRenderWork)}${formatOpeningFirstTouchOwnerSection(openingFirstTouchOwner)}${formatOpeningExactOwnerTouchSection(openingExactOwnerTouch)}${formatNoSubmitDiagnosticSection(noSubmitDiagnostic, hitchAttribution)}${formatTableCensusSection(tableCensus, route)}${formatSectorTransitionSection(sectorTransitionTrace)}${formatHitchAttributionSection(hitchAttribution, route)}${formatBloomPhaseSection(bloomPhases)}${formatSystemTimingSection(finalSystemTiming)}\n`;
 const report = {
   schema: 'spaceface.runtimeWitness.probe.v1',
   verdict,
@@ -2558,6 +2692,7 @@ const report = {
   openingRenderWork,
   openingFirstTouchOwner,
   openingExactOwnerTouch,
+  noSubmitDiagnostic,
   sectorTransition: sectorTransitionTrace,
   tableCensus,
   hitchAttribution,

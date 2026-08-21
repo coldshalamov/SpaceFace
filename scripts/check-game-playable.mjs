@@ -33,6 +33,7 @@ import { fileURLToPath } from 'node:url';
 import { loadPlaywright } from './lib/load-playwright.mjs';
 import { createIsolatedElectronLaunch, assertIsolatedElectronRootUrl } from './lib/electronTestIsolation.mjs';
 import { installCspSafePlaywrightPolling } from './lib/playwrightCspPolling.mjs';
+import { isExpectedNavigationTextureAbort } from './lib/browser-issues.mjs';
 import { readFileSync, readdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
 const requireCjs = createRequire(import.meta.url);
@@ -202,6 +203,11 @@ try {
     if (m.type() !== 'error') return;
     const text = m.text();
     if (/Failed to load resource/i.test(text)) return;
+    // Chromium aborts embedded GLB image requests when this harness deliberately destroys the
+    // outgoing document. GLTFLoader logs those navigation cancellations before rejecting them;
+    // the request listener below retains the matching ERR_ABORTED receipt. They are not errors in
+    // the replacement game instance and must not contaminate its CLEAN result.
+    if (isExpectedNavigationTextureAbort(text, phase)) return;
     pageErrors.push('console.error: ' + text.slice(0, 300));
   });
   // Warnings carry the diagnosis for asset-preload failures ("authored part library was not
@@ -433,23 +439,27 @@ try {
     if (roundTrip && saved) {
       let loaded = false;
       try {
+        phase = 'harness-reload';
         await page.reload({ waitUntil: 'domcontentloaded' });
         await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 60000 });
         await page.waitForFunction(() => {
           const el = document.querySelector('[data-screen="mainMenu"]');
           return el && getComputedStyle(el).display !== 'none';
         }, null, { timeout: 60000 });
+        phase = 'menu';
         // Press the real Continue button. mainMenu.js:254 reads the save index and emits
         // game:load with the latest slot; firing the event directly would skip the index lookup,
         // which is itself a place this can break.
         const clicked = await clickButton(page, 'Continue');
         if (!clicked) throw new Error('Continue button absent or disabled after saving');
+        phase = 'launch';
         await page.waitForFunction(() => {
           const st = window.SF.state;
           const p = st && st.entities && st.entities.get(st.playerId);
           return !!(st && st.mode === 'flight' && p && p.alive);
         }, null, { timeout: 120000 });
         await page.waitForTimeout(3000);
+        phase = 'flight';
         loaded = true;
         record('CONTINUE', true, 'loaded the save back into flight');
       } catch (err) {

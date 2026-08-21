@@ -4,6 +4,7 @@ import { EventEmitter } from 'node:events';
 
 import {
   collectPageIssues,
+  isExpectedNavigationTextureAbort,
   isNavigationCancelledRequest,
 } from '../scripts/lib/browser-issues.mjs';
 
@@ -78,4 +79,11 @@ test('navigation-cancellation classification is exact', () => {
   assert.equal(isNavigationCancelledRequest({ errorText: 'NET::err_aborted' }), true);
   assert.equal(isNavigationCancelledRequest({ errorText: 'net::ERR_FAILED' }), false);
   assert.equal(isNavigationCancelledRequest(null), false);
+});
+
+test('GLTF blob errors are ignored only during the harness-owned reload', () => {
+  const blobError = "THREE.GLTFLoader: Couldn't load texture blob:http://game.test/texture";
+  assert.equal(isExpectedNavigationTextureAbort(blobError, 'harness-reload'), true);
+  assert.equal(isExpectedNavigationTextureAbort(blobError, 'flight'), false);
+  assert.equal(isExpectedNavigationTextureAbort('unrelated texture failure', 'harness-reload'), false);
 });

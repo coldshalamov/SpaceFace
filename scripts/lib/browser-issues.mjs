@@ -87,6 +87,11 @@ export function isNavigationCancelledRequest(failure) {
   return /^net::ERR_ABORTED$/i.test(String(failure && failure.errorText || '').trim());
 }
 
+export function isExpectedNavigationTextureAbort(text, phase) {
+  return String(phase || '') === 'harness-reload'
+    && /^THREE\.GLTFLoader: Couldn't load texture blob:/i.test(String(text || '').trim());
+}
+
 export function isGenericResourceLoadConsoleError(issue) {
   if (!issue || issue.type !== 'error') return false;
   return /^Failed to load resource: the server responded with a status of \d+ \([^)]+\)$/i
