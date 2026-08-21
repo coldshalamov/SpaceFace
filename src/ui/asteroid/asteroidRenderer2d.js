@@ -57,10 +57,12 @@ export const STATUS_COLORS = {
   backlogged: '#ffb35c',
   'fleet-full': '#84a0c8',
   staged: '#62e08a',
-  'no-power': '#ff5c5c',
+  // PQ-130.10b: the three fault hues align to --aw-coral (#ff6242, law §3.2 'danger, damage,
+  // cost-you-can't-pay'). #ff5c5c was the old console red and it read pink beside the mint lamps.
+  'no-power': '#ff6242',
   'no-pods': '#ffb35c',
-  'no-network': '#ff5c5c',
-  'no-geology': '#ff5c5c',
+  'no-network': '#ff6242',
+  'no-geology': '#ff6242',
   stalled: '#ffb35c',
   idle: '#5a7aa0',
 };

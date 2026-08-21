@@ -17,6 +17,14 @@
 //   §6.4  cursor lens    — hovering a seam cell raises a .aw-lens of ≤ 2 text lines, ≤ 14 words,
 //                          ≤ 5 chips all drawn from the enumerated bank, and it is GONE once the
 //                          pointer moves onto chrome (PQ-130.06)
+//   §7    networks      — a built spine draws one run per SIM component; a lane with stock carries
+//                          flow dots; a lane bolted to nothing goes dim AND desaturated (both
+//                          directions asserted); the port's crate pile tracks the export buffer at
+//                          two different stages; site zoom sheds the armour for clean lines
+//   §6.5  lens cycle    — V walks none → Faces → Network → Plan → none through the SHIPPED key, and
+//                          the Network lens measurably brightens the run it names
+//   §6.7  build board   — mint seats appear with a ghost, and gridline strengthening rises entering
+//                          build mode and returns to zero on the way out (PQ-130.10b)
 // §11.1 and §11.6 read the renderer's own canvas.__ast3d hook (PQ-130.04) rather than
 // re-deriving the projection or the material table here — see the block below.
 import { createServer as createNetServer } from 'node:net';
@@ -835,6 +843,314 @@ try {
       }
 
       await page.keyboard.press('Escape');
+    }
+
+    // ---------------------------------------------------------------- PQ-130.10b "the site reads"
+    // Law §7/§6.5/§6.7. Everything below is measured off `canvas.__ast3d` — the LIVE objects the
+    // renderer is drawing this frame, not a re-derivation — and every rule is asserted in BOTH
+    // directions, because a rule that only ever checks the interesting half passes its own mutation.
+    if (coreInstall.ok) {
+      // Build a real site: a bored corridor, a port at one end, a machine at the other, one shared
+      // power+lane spine between them — and, deliberately, a SECOND lane cell bolted to nothing so
+      // the island drawing has a real island to find.
+      const wired = await page.evaluate((seat) => {
+        const sf = window.SF;
+        const st = sf.state;
+        const sites = sf.registry.get('asteroidSites');
+        const d = st.drill;
+        const astId = d.asteroidId;
+        const cargo = st.player.cargo;
+        cargo.capVolume = Math.max(cargo.capVolume || 0, 900);
+        for (const [k, q] of Object.entries({
+          cmdty_regocrete: 40, cmdty_control_unit: 8, cmdty_electronics: 8,
+          cmdty_refined_metals: 20, cmdty_purified_silica: 20,
+        })) cargo.items[k] = (cargo.items[k] || 0) + q;
+        const ent = st.entities.get(astId);
+        const EMPTY = () => ({ type: 'empty', hp: 0, maxHp: 0, ore: null, hazard: false, tierReq: 1, hardness: 0 });
+        const hollow = (c, r) => {
+          if (c < 0 || c > 27 || r < 1 || r > 44) return false;
+          if (d.field[c][r].type === 'empty') return true;
+          d.field[c][r] = EMPTY();
+          if (ent && ent.data) {
+            if (!Array.isArray(ent.data.drillCleared)) ent.data.drillCleared = [];
+            const idx = r * 28 + c;
+            if (!ent.data.drillCleared.includes(idx)) ent.data.drillCleared.push(idx);
+          }
+          sf.bus.emit('drill:break', { col: c, row: r, type: 'matrix', ore: null, wasVein: false, wasGas: false });
+          return true;
+        };
+        const row = Math.min(40, Math.max(3, seat.row + 2));
+        const c0 = Math.max(1, Math.min(20, seat.col - 2));
+        const spine = [];
+        for (let i = 0; i < 6; i++) { if (hollow(c0 + i, row)) spine.push([c0 + i, row]); }
+        if (spine.length < 5) return { ok: false, reason: 'no corridor' };
+        const portAt = spine[spine.length - 1];
+        const machAt = spine[0];
+        const port = sites.installMachine({ asteroidId: astId, defId: 'sm_cargo_port', col: portAt[0], row: portAt[1] });
+        const mach = sites.installMachine({ asteroidId: astId, defId: 'sm_extractor', col: machAt[0], row: machAt[1] });
+        const siteId = (port.siteId || mach.siteId
+          || (sites.siteForAsteroid(astId) && sites.siteForAsteroid(astId).id));
+        for (const [c, r] of spine.slice(1, spine.length - 1)) {
+          sites.setOverlay(siteId, 'power', c, r, true);
+          sites.setOverlay(siteId, 'lane', c, r, true);
+        }
+        // THE ISLAND: a painted lane cell four rows down, touching nothing. Nobody delivers here.
+        let island = null;
+        for (let dr = 4; dr <= 8 && !island; dr++) {
+          const c = c0 + 2;
+          const r = row + dr;
+          if (hollow(c, r)) { sites.setOverlay(siteId, 'lane', c, r, true); island = [c, r]; }
+        }
+        const site = sites.getSite(siteId);
+        sites._runtime(site);
+        // Stock on the spine so its lane has a buffer to carry; the island stays empty by design.
+        for (const ls of site.laneStores) {
+          if ((ls.cells || []).includes(portAt[1] * 28 + portAt[0])) ls.store.cmdty_silicate = 40;
+        }
+        for (let i = 0; i < 40; i++) { st.simTime += 1; sites.update(1, st); }
+        return {
+          ok: !!siteId, siteId, island, portAt, machAt, spine,
+          installs: { port: [port.ok, port.reason], mach: [mach.ok, mach.reason] },
+        };
+      }, coreInstall.seat).catch((e) => ({ ok: false, reason: String((e && e.message) || e) }));
+
+      if (!wired.ok) {
+        failures.push(`${label}: §7 could not wire a test network (${wired.reason}) — every network assertion below would be vacuous`);
+      } else {
+        await page.waitForTimeout(700);
+        const readNet = () => page.evaluate(() => {
+          const h = document.querySelector('.ast-canvas').__ast3d;
+          return { net: h.networks(), lens: h.lens(), crates: h.crates(), faces: h.faces() };
+        });
+        const n0 = await readNet();
+        notes.push(`${label}: §7 networks — ${n0.net.runs.length} runs `
+          + `[${n0.net.runs.map((r) => `${r.kind}:${r.key}:${r.live ? 'live' : 'dark'}@${r.emissive}`).join(', ')}]`
+          + ` · ${n0.net.flowDots} dots on ${n0.net.flowRoutes} routes`
+          + ` · lanes ${JSON.stringify(n0.net.lanes)}`);
+        if (n0.net.runs.length < 2) {
+          failures.push(`${label}: §7 the built spine drew ${n0.net.runs.length} network runs (expected a lane and a cable at least)`);
+        }
+        // ---- islands, BOTH directions. A live run and a dark one must differ in colour AND in
+        // emissive, or "dim and desaturated" is a claim nothing on the glass is making.
+        const lives = n0.net.runs.filter((r) => r.live);
+        const darks = n0.net.runs.filter((r) => !r.live);
+        if (!lives.length) failures.push(`${label}: §7 no run reads live — the island test would pass vacuously`);
+        if (!darks.length) {
+          failures.push(`${label}: §7 the disconnected lane cell drew no dark run — islands are not being dimmed`);
+        }
+        if (lives.length && darks.length) {
+          const liveLane = lives.find((r) => r.kind === 'lane') || lives[0];
+          const darkLane = darks.find((r) => r.kind === 'lane') || darks[0];
+          if (darkLane.emissive >= liveLane.emissive) {
+            failures.push(`${label}: §7 the dark island is not dimmer than the live run (${darkLane.emissive} vs ${liveLane.emissive})`);
+          }
+          if (darkLane.kind === liveLane.kind && darkLane.hex === liveLane.hex) {
+            failures.push(`${label}: §7 the dark island wears the live jacket colour (${darkLane.hex}) — nothing is desaturated`);
+          }
+        }
+        // ---- flow: stock on a lane puts dots on the glass; an empty lane puts none.
+        if (!(n0.net.flowDots > 0)) {
+          failures.push(`${label}: §7 a lane holding ${JSON.stringify(n0.net.lanes.map((l) => l.stored))} carried no flow dots`);
+        }
+        // §7 "the buffer reads as dot density" — measured in BOTH directions on the same topology,
+        // because a fixed number of dots satisfies "there are dots" forever. A lane still in use with
+        // an empty buffer keeps a trickle by design (goods consumed the tick they arrive), so the
+        // law being asserted here is the SLOPE, plus the idle floor when nothing is moving at all.
+        const setStock = async (units) => {
+          await page.evaluate((arg) => {
+            const site = window.SF.registry.get('asteroidSites').getSite(arg.siteId);
+            for (const ls of site.laneStores) {
+              for (const k of Object.keys(ls.store)) delete ls.store[k];
+              if (arg.units > 0 && (ls.cells || []).length > 1) ls.store.cmdty_silicate = arg.units;
+            }
+            site.exportBuffer = {};
+          }, { siteId: wired.siteId, units });
+          await page.waitForTimeout(400);
+          return readNet();
+        };
+        const nEmpty = await setStock(0);
+        const nFull = await setStock(240);
+        notes.push(`${label}: §7 flow density — empty ${nEmpty.net.flowDots} dots, full ${nFull.net.flowDots} dots`);
+        if (!(nFull.net.flowDots > nEmpty.net.flowDots)) {
+          failures.push(`${label}: §7 filling the lane did not add flow dots (${nEmpty.net.flowDots} -> ${nFull.net.flowDots}) — density is not the buffer`);
+        }
+        if (!nEmpty.net.lanes.some((l) => l.active) && nEmpty.net.flowDots !== 0) {
+          failures.push(`${label}: §7 an empty, idle lane still carries ${nEmpty.net.flowDots} flow dots`);
+        }
+        // ---- the port stacks crates, keyed to the buffer at two different fills.
+        const crateAt = async (units) => page.evaluate((arg) => {
+          const sf = window.SF;
+          const site = sf.registry.get('asteroidSites').getSite(arg.siteId);
+          site.exportBuffer = arg.units > 0 ? { cmdty_silicate: arg.units } : {};
+          return true;
+        }, { siteId: wired.siteId, units }).then(() => page.waitForTimeout(300))
+          .then(() => page.evaluate(() => document.querySelector('.ast-canvas').__ast3d.crates()));
+        const cEmpty = await crateAt(0);
+        const cLow = await crateAt(2);
+        const cHigh = await crateAt(30);
+        notes.push(`${label}: §7 port crates — buffer 0 -> stage ${cEmpty.stage}, 2 -> ${cLow.stage}, 30 -> ${cHigh.stage}`);
+        if (cEmpty.stage !== 0 || cEmpty.visible) failures.push(`${label}: §7 an empty port still shows a crate pile (stage ${cEmpty.stage})`);
+        if (!(cLow.stage > 0)) failures.push(`${label}: §7 a stocked port shows no crates (stage ${cLow.stage})`);
+        if (!(cHigh.stage > cLow.stage)) {
+          failures.push(`${label}: §7 the crate pile does not grow with the buffer (${cLow.stage} -> ${cHigh.stage})`);
+        }
+        if (!cHigh.visible) failures.push(`${label}: §7 the crate pile is not on the glass at stage ${cHigh.stage}`);
+
+        // ---- §6.5 the lens cycle, through the SHIPPED KEY. Four presses, four states, home again.
+        const lensNow = () => page.evaluate(() => document.querySelector('.ast-canvas').__ast3d.lens().active);
+        const seen = [await lensNow()];
+        for (let i = 0; i < 4; i++) {
+          await page.keyboard.press('KeyV');
+          await page.waitForTimeout(140);
+          seen.push(await lensNow());
+        }
+        notes.push(`${label}: §6.5 V cycle — [${seen.map((v) => v || 'none').join(' -> ')}]`);
+        if (seen[0] !== null) failures.push(`${label}: §6.5 the default drive view already had a lens up (${seen[0]})`);
+        if (seen[1] !== 'faces' || seen[2] !== 'network' || seen[3] !== 'plan') {
+          failures.push(`${label}: §6.5 V did not walk Faces/Network/Plan — got [${seen.join(', ')}] (a dead key reads [null, null, ...])`);
+        }
+        if (seen[4] !== null) failures.push(`${label}: §6.5 the fourth V did not return to no lens (${seen[4]})`);
+
+        // ---- the Network lens must MOVE something, not merely set a flag.
+        await page.evaluate((siteId) => {
+          const site = window.SF.registry.get('asteroidSites').getSite(siteId);
+          site.exportBuffer = { cmdty_silicate: 18 };
+          for (const ls of site.laneStores) if ((ls.cells || []).length > 1) ls.store.cmdty_silicate = 40;
+        }, wired.siteId);
+        await page.waitForTimeout(300);
+        const offNet = await readNet();
+        await page.keyboard.press('KeyV');
+        await page.keyboard.press('KeyV');
+        await page.waitForTimeout(300);
+        const onNet = await readNet();
+        const brightest = (r) => r.net.runs.reduce((m, x) => Math.max(m, x.emissive), 0);
+        if (await lensNow() !== 'network') {
+          failures.push(`${label}: §6.5 two V presses did not land on the Network lens`);
+        } else if (!(brightest(onNet) > brightest(offNet))) {
+          failures.push(`${label}: §6.5 the Network lens changed no run's emissive (${brightest(offNet)} -> ${brightest(onNet)})`);
+        } else {
+          notes.push(`${label}: §6.5 Network lens brightens runs ${brightest(offNet)} -> ${brightest(onNet)}`);
+        }
+
+        // ---- §7 the site register simplifies: the armour comes off, the runs stay, the seam
+        // outlines go thin so the rover's yellow wins its margin back (PQ-130.05's recorded defect).
+        const work = await readNet();
+        await page.keyboard.press('KeyZ');
+        await page.waitForTimeout(700);
+        const siteReg = await readNet();
+        notes.push(`${label}: §7 register work(armour ${work.net.casings}, lane ${work.net.laneWidthPx}px,`
+          + ` seam α ${work.lens.seamAlpha}) -> site(armour ${siteReg.net.casings},`
+          + ` lane ${siteReg.net.laneWidthPx}px, seam α ${siteReg.lens.seamAlpha})`);
+        if (siteReg.net.register !== 'site') failures.push(`${label}: §7 Z did not reach the site register`);
+        // OWNER RULING 2026-08-21: a run is a PHYSICAL conduit at both registers. An earlier build
+        // shed the armour at site zoom and the network became flat coloured lines drawn on the rock.
+        if (!(work.net.casings > 0)) failures.push(`${label}: §7 the work-zoom runs wear no armour at all`);
+        if (!(siteReg.net.casings > 0)) {
+          failures.push(`${label}: §7 the site register drew ${siteReg.net.casings} armour meshes — the runs are flat lines there`);
+        }
+        if (!(siteReg.net.laneWidthPx >= 6)) {
+          failures.push(`${label}: §7 the lane run is ${siteReg.net.laneWidthPx}px across at the site register — a hairline, not a conveyor`);
+        }
+        if (!(siteReg.net.runs.length > 0)) failures.push(`${label}: §7 the site register drew no network runs at all`);
+        if (!(siteReg.lens.seamAlpha < work.lens.seamAlpha)) {
+          failures.push(`${label}: §7 seam outlines did not thin at the site register (${work.lens.seamAlpha} -> ${siteReg.lens.seamAlpha})`);
+        }
+        await page.keyboard.press('KeyZ');
+        await page.waitForTimeout(600);
+        await page.evaluate(() => document.querySelector('.ast-canvas').__ast3d.setLens(null));
+
+        // ---- §6.5 the Plan lens must MOVE the board, not just take a name in the cycle. Its seam
+        // weight is the deterministic half (the count/rate chips need a producing site, which the
+        // capture stages and photographs); assert it here in both directions.
+        {
+          const off = await page.evaluate(() => document.querySelector('.ast-canvas').__ast3d.lens());
+          await page.evaluate(() => document.querySelector('.ast-canvas').__ast3d.setLens('plan'));
+          await page.waitForTimeout(300);
+          const on = await page.evaluate(() => document.querySelector('.ast-canvas').__ast3d.lens());
+          notes.push(`${label}: §6.5 Plan lens seam weight ${off.seamAlpha} -> ${on.seamAlpha}`
+            + ` · chips ${off.chips} -> ${on.chips}`);
+          if (on.active !== 'plan') failures.push(`${label}: §6.5 setLens('plan') did not take`);
+          if (!(on.seamAlpha > off.seamAlpha)) {
+            failures.push(`${label}: §6.5 the Plan lens left the seam outlines at ${on.seamAlpha} — it drew nothing`);
+          }
+          await page.evaluate(() => document.querySelector('.ast-canvas').__ast3d.setLens(null));
+          await page.waitForTimeout(300);
+          const back = await page.evaluate(() => document.querySelector('.ast-canvas').__ast3d.lens());
+          if (back.seamAlpha !== off.seamAlpha) {
+            failures.push(`${label}: §6.5 the Plan lens leaked its seam weight after it closed (${back.seamAlpha})`);
+          }
+        }
+
+        // ---- §6.7 the board in build mode: mint seats under a ghost, and gridline strengthening
+        // that rises AND falls. PQ-130.09's lesson was state leaking out of build mode.
+        const driveFaces = await page.evaluate(() => document.querySelector('.ast-canvas').__ast3d.faces());
+        await page.keyboard.press('KeyB');
+        await page.waitForTimeout(500);
+        const buildFaces = await page.evaluate(() => document.querySelector('.ast-canvas').__ast3d.faces());
+        notes.push(`${label}: §6.7 grid strength drive ${driveFaces.gridStrength} -> build ${buildFaces.gridStrength}`
+          + ` · mint seats ${buildFaces.seats} · why-glyphs ${buildFaces.whyGlyphs}`);
+        if (driveFaces.gridStrength !== 0) {
+          failures.push(`${label}: §6.7 the drive board already carries ${driveFaces.gridStrength} of gridline strengthening`);
+        }
+        if (!(buildFaces.gridStrength > 0.1 && buildFaces.gridStrength <= 0.2)) {
+          failures.push(`${label}: §6.7 build mode strengthened the gridlines by ${buildFaces.gridStrength} (law says ~15%)`);
+        }
+        if (!(buildFaces.seats > 0)) {
+          failures.push(`${label}: §6.7 a live ghost lit no valid machine seats on the board`);
+        }
+        // ---- the WHY-GLYPHS, exercised for real. The extractor is affordable and the site is
+        // anchored, so nothing it can refuse produces a plate — every blocked cell near the cursor
+        // is `occupied` or `rover-here`, which the board already answers with a visible object. The
+        // gas tap does: `needs-gas-contact` refuses every seat that is not against a pocket, which
+        // is deterministic, needs no cargo fiddling, and is exactly the invisible cause a plate is
+        // for. Without this the whole glyph bank ships unexercised.
+        {
+          const at = await page.evaluate((cell) => {
+            const canvas = document.querySelector('.ast-canvas');
+            const quad = canvas.__ast3d.projectCell(cell[0], cell[1]);
+            if (!quad) return null;
+            const r = canvas.getBoundingClientRect();
+            return { x: r.left + (quad[0].x + quad[2].x) / 2, y: r.top + (quad[0].y + quad[2].y) / 2 };
+          }, wired.spine[2]);
+          if (!at) {
+            failures.push(`${label}: §6.7 the spine cell used to aim the why-glyph test is off glass`);
+          } else {
+            await page.mouse.move(at.x, at.y);
+            await page.keyboard.press('Digit2');       // the gas tap: refuses any seat off a pocket
+            await page.waitForTimeout(600);
+            const why = await page.evaluate(() => document.querySelector('.ast-canvas').__ast3d.faces());
+            notes.push(`${label}: §6.7 gas tap armed — ${why.whyGlyphs} why-glyph plate(s),`
+              + ` reasons [${[...new Set(why.reasons)].join(', ')}], ${why.seats} seats`);
+            if (!(why.whyGlyphs > 0)) {
+              failures.push(`${label}: §6.7 a machine that cannot be seated anywhere drew no why-glyph`
+                + ` (reasons seen: ${[...new Set(why.reasons)].join(', ') || 'none'})`);
+            }
+            if (why.whyGlyphs > 6) {
+              failures.push(`${label}: §6.7 ${why.whyGlyphs} why-glyph plates on the board at once — the cap is not holding`);
+            }
+            await page.keyboard.press('Digit1');       // back to the extractor for the exit assertions
+            await page.waitForTimeout(300);
+          }
+        }
+        // OWNER RULING 2026-08-21 — "NO solid cell fills, ever, for any lens or build feedback."
+        // A seat mark is corner brackets on the block's bevel ring: this is the drawn ink as a
+        // fraction of the cell, and a painted face would report an order of magnitude more.
+        if (!(buildFaces.seatInkFrac > 0 && buildFaces.seatInkFrac < 0.2)) {
+          failures.push(`${label}: §6.7 a seat mark covers ${(buildFaces.seatInkFrac * 100).toFixed(1)}% of its cell`
+            + ' — that is a painted face, not an edge treatment');
+        }
+        notes.push(`${label}: §6.7 seat mark ink ${(buildFaces.seatInkFrac * 100).toFixed(1)}% of a cell`
+          + ` · ${buildFaces.seatMarks} marks drawn`);
+        await page.keyboard.press('Escape');
+        await page.waitForTimeout(500);
+        const backFaces = await page.evaluate(() => document.querySelector('.ast-canvas').__ast3d.faces());
+        if (backFaces.gridStrength !== 0) {
+          failures.push(`${label}: §6.7 gridline strengthening leaked out of build mode (${backFaces.gridStrength})`);
+        }
+        if (backFaces.seats !== 0) {
+          failures.push(`${label}: §6.7 ${backFaces.seats} mint seats are still lit in the drive view`);
+        }
+      }
     }
 
     await page.close();

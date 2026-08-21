@@ -1727,3 +1727,163 @@ export async function runAsteroidInteriorLab(SF) {
   try { window.__astlab = handle; } catch (_) {}
   return handle;
 }
+
+// ---------------------------------------------------------------- PQ-130.10b network bodies
+// Law §7 asks the networks to be OBJECTS on the board, not a painted diagram: a crate is a crate,
+// a flow dot is a puck riding the lane floor, a junction is a bolted box where two runs meet. Each
+// geometry below is authored in CELL SPACE (1.0 = one cell) so the works renderer scales it by its
+// own `S` and nothing here has to know the world scale. Everything is real relief that the scene's
+// raking key light can carve — §2.7 bans a flat fill or a halo standing in for an object.
+
+/**
+ * The port's output pile: 1–5 stages of stacked shipping crates, keyed to the port buffer.
+ * Stage 1 is a single crate on the floor; stage 5 is a two-high six-crate pallet. Each crate is a
+ * boxed body with two raised bands, so the pile reads as freight even at the site register where a
+ * crate is four pixels across — a plain cube at that size is a smudge.
+ */
+export function makeCrateStackGeo(stage = 1) {
+  const n = Math.max(1, Math.min(5, Math.round(stage)));
+  const C = 0.225;                    // crate edge, in cells — freight, not pebbles
+  const GAP = 0.052;                  // wide enough that individual boxes separate from straight down
+  const P = C + GAP;
+  // Deterministic pile plans: [x, y, z] crate centres in cell space, floor at z = 0.
+  // The camera looks STRAIGHT DOWN, so a pile that grows only in x reads as a bar and a pile that
+  // grows only in z reads as one crate. Every stage therefore spreads its FOOTPRINT first: the plan
+  // view is the picture, and the second layer is the bonus.
+  const PLANS = [
+    [[0, 0, 0]],
+    [[-P / 2, -P / 2, 0], [P / 2, P / 2, 0]],
+    [[-P / 2, -P / 2, 0], [P / 2, -P / 2, 0], [-P / 2, P / 2, 0]],
+    [[-P / 2, -P / 2, 0], [P / 2, -P / 2, 0], [-P / 2, P / 2, 0], [P / 2, P / 2, 0]],
+    [[-P / 2, -P / 2, 0], [P / 2, -P / 2, 0], [-P / 2, P / 2, 0], [P / 2, P / 2, 0],
+      [-P / 2, 0, P], [P / 2, 0, P]],
+  ];
+  const specs = [];
+  // A stacked pile leans a little; the yaw is per-slot and fixed, so a crate never jitters between
+  // frames and the pile is the same pile every time the same stage is drawn.
+  const YAW = [0.04, -0.07, 0.11, -0.03, 0.08, -0.1];
+  PLANS[n - 1].forEach(([x, y, z], i) => {
+    const rz = YAW[i % YAW.length];
+    specs.push({ w: C, h: C, d: C, x, y, z: z + C / 2, rz });
+    // Two banding rings proud of the body: seen from an angle they are straps, and seen from
+    // straight down their 4% overhang throws the edge shadow that separates one box from the next.
+    specs.push({ w: C * 1.045, h: C * 1.045, d: C * 0.06, x, y, z: z + C * 0.26, rz });
+    specs.push({ w: C * 1.045, h: C * 1.045, d: C * 0.06, x, y, z: z + C * 0.75, rz });
+    // THE LID CROSS. This camera looks straight down, so the only face of a crate anyone ever sees
+    // is its top — a bare cube up there is a brown square. Two raised straps across the lid are what
+    // make the pile read as freight rather than as a painted patch.
+    specs.push({ w: C * 1.0, h: C * 0.13, d: C * 0.07, x, y, z: z + C + C * 0.03, rz });
+    specs.push({ w: C * 0.13, h: C * 1.0, d: C * 0.07, x, y, z: z + C + C * 0.03, rz });
+  });
+  return boxSetGeo(specs);
+}
+
+/**
+ * One material flow dot: a low domed puck that rides the lane floor. Direction-agnostic on
+ * purpose — a lane turns four ways and a dot must never have to be re-oriented mid-run.
+ */
+export function makeFlowDotGeo() {
+  const parts = [];
+  const body = new THREE.CylinderGeometry(0.052, 0.058, 0.03, 10, 1);
+  body.rotateX(Math.PI / 2);
+  parts.push(body);
+  const dome = new THREE.SphereGeometry(0.05, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2);
+  dome.scale(1, 1, 0.52);
+  dome.rotateX(Math.PI / 2);
+  dome.translate(0, 0, 0.015);
+  parts.push(dome);
+  return mergeGeometries(parts.map((g) => (g.index ? g.toNonIndexed() : g)), false);
+}
+
+/**
+ * A cable junction: the bolted node where three or more runs meet. Slightly proud of the run so a
+ * branch is legible as a fitting rather than a crossing of two painted lines.
+ */
+export function makeJunctionNodeGeo() {
+  const parts = [];
+  const body = new THREE.CylinderGeometry(0.1, 0.115, 0.075, 8, 1);
+  body.rotateX(Math.PI / 2);
+  parts.push(body);
+  const cap = new THREE.CylinderGeometry(0.068, 0.068, 0.03, 8, 1);
+  cap.rotateX(Math.PI / 2);
+  cap.translate(0, 0, 0.05);
+  parts.push(cap);
+  for (let i = 0; i < 4; i++) {
+    const a = i * Math.PI / 2 + Math.PI / 4;
+    const bolt = new THREE.CylinderGeometry(0.014, 0.014, 0.02, 5, 1);
+    bolt.rotateX(Math.PI / 2);
+    bolt.translate(Math.cos(a) * 0.082, Math.sin(a) * 0.082, 0.045);
+    parts.push(bolt);
+  }
+  return mergeGeometries(parts.map((g) => (g.index ? g.toNonIndexed() : g)), false);
+}
+
+/**
+ * The why-glyph plate (law §6.7): a rounded plate that carries ONE drawn symbol — never a word —
+ * on a blocked machine seat. Unit square in x/y with uv 0..1 across the whole plate, so the caller
+ * paints the symbol into a canvas texture the way the §5 want chips already do.
+ */
+export function makeWhyGlyphPlateGeo(radius = 0.22, segsPerCorner = 5) {
+  const r = Math.max(0.01, Math.min(0.5, radius));
+  const pts = [];
+  const corners = [[0.5 - r, 0.5 - r, 0], [-0.5 + r, 0.5 - r, Math.PI / 2],
+    [-0.5 + r, -0.5 + r, Math.PI], [0.5 - r, -0.5 + r, -Math.PI / 2]];
+  for (const [cx, cy, a0] of corners) {
+    for (let i = 0; i <= segsPerCorner; i++) {
+      const a = a0 + (i / segsPerCorner) * (Math.PI / 2);
+      pts.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]);
+    }
+  }
+  const pos = [], nor = [], uv = [];
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[i];
+    const b = pts[(i + 1) % pts.length];
+    // fan from the plate centre
+    for (const [px, py] of [[0, 0], a, b]) {
+      pos.push(px, py, 0);
+      nor.push(0, 0, 1);
+      uv.push(px + 0.5, py + 0.5);
+    }
+  }
+  const out = new THREE.BufferGeometry();
+  out.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  out.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  out.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  out.computeBoundingSphere();
+  return out;
+}
+
+/**
+ * Seat brackets (law §6.7, owner ruling 2026-08-21: "NO solid cell fills, ever"). Four corner Ls
+ * inset at the cell's bevel ring — a surveyor's mark on the block, not a painted face. Unit cell in
+ * x/y; `thickness` and `arm` are cell fractions so the caller can solve a constant SCREEN width.
+ */
+export function makeSeatBracketGeo(thickness = 0.03, arm = 0.3) {
+  const t = Math.max(0.004, thickness);
+  const a = Math.max(t * 2, arm);
+  const h = 0.5 - t * 0.5 - 0.025;         // sit just inside the bevel, off the groove
+  const pos = [], nor = [], uv = [];
+  const rect = (cx, cy, w, hh) => {
+    const x0 = cx - w / 2, x1 = cx + w / 2, y0 = cy - hh / 2, y1 = cy + hh / 2;
+    for (const [x, y] of [[x0, y0], [x1, y0], [x1, y1], [x0, y0], [x1, y1], [x0, y1]]) {
+      pos.push(x, y, 0);
+      nor.push(0, 0, 1);
+      uv.push(x + 0.5, y + 0.5);
+    }
+  };
+  for (const sx of [-1, 1]) {
+    for (const sy of [-1, 1]) {
+      rect(sx * (h - a / 2 + t / 2), sy * h, a, t);   // the arm running along x
+      rect(sx * h, sy * (h - a / 2 + t / 2), t, a);   // the arm running along y
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.computeBoundingSphere();
+  // Drawn ink as a fraction of the cell: 8 bars, minus the four corner overlaps. The works renderer
+  // publishes this so a check can assert the seat mark never becomes a fill again.
+  g.userData.inkFrac = 8 * a * t - 4 * t * t;
+  return g;
+}

@@ -2484,6 +2484,41 @@
         "playable"
       ],
       "brief": "Owner verdict 2026-08-21 on the live mine: 'the rover is like this 8-bit NES model inside this 3d world ... you're intentionally cutting corners.' Every object in the mine is a procedural box stack; procedural stand-ins are scaffolding, never acceptance. Replace rover, six machines, derrick, conduit kit, crates/pod and inclusions with authored PBR assets through the release pipeline (KTX2 + LOD via build-hull-release-assets.mjs), loaded by a works-context loader (.00), reviewed through the works camera beside a flight still, three reviews per asset. PQ-130 acceptance is blocked on units .00-.06. Dispatch --id PQ-131."
+    },
+    {
+      "id": "PQ-132",
+      "priority": 54,
+      "title": "Geology that means something: formation generator for the mine",
+      "state": "planned",
+      "canonical": [
+        "ASTEROID-WORKS-GEOLOGY"
+      ],
+      "aliases": [
+        "MINE-FORMATIONS",
+        "SEAMS-NOT-CONFETTI"
+      ],
+      "dependsOn": [],
+      "mutexes": [
+        "asteroid-works-geology"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/ASTEROID_WORKS_DESIGN_LAW.md",
+        "design/ASTEROID_OPS_VISION.md",
+        "src/systems/asteroidFormationModel.js",
+        "src/systems/asteroidFormations.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:asteroid-theater",
+        "npm run check:playable"
+      ],
+      "evidence": [
+        "seam-size-histogram",
+        "site-register-still",
+        "golden-telemetry-unchanged-or-rebased"
+      ],
+      "brief": "The strata generator in src/systems/drill.js rolls every cell's material independently, so a fresh rock is confetti: 189 seam bodies with the biggest at 3 cells (measured 2026-08-21), and at the site register the whole body reads as scatter. The four-laws game (mine-once/farm-forever, feed through faces, geology is the tech tree, tunnels are streets) needs real geology: contiguous veins with a grain, strata bands by depth, gas pockets as sealed bodies of 2-6 cells, ice lenses, a rare exotic core, and plain matrix as the majority. Design the generator as a seeded multi-octave field with anisotropic vein growth (random walks with branching), depth-banded strata, and pocket placement with sealed margins; keep per-asteroid family identity; expose formations through the already-wired asteroidFormationModel; preserve or explicitly rebase the 47a golden telemetry; tune so a 28x45 field has roughly 6-12 metal seams of 4-14 cells, 3-6 gas pockets, 1-3 exotic bodies deep, basalt bands, and matrix everywhere else. Presentation needs no change: seam outlines, counts and split previews already read bodies. Admit as a packet when PQ-131 .00-.01 are on master; do not start from this row."
     }
   ],
   "dispatchUnits": [
@@ -7845,7 +7880,7 @@
       "priority": 354,
       "title": "The site reads: networks, lamps, port, courier on the board",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-130.07",
         "PQ-130.09"
@@ -7865,7 +7900,9 @@
         "npm run check:asteroid-theater",
         "node scripts/check-program-docs.mjs"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-130-10-the-site-reads-REPORT.md"
+      ],
       "brief": "Design law §7 + §6.5 + §9: cables as warm gold lines along tunnel walls with junction nodes; lanes as floor flow-dots toward the port (buffer reads as dot density); machine lamps mint when running, dark + gold want-chip when starved; port stacks visible crates; couriers visibly slide up the shaft and launch. Faces + Network overlay lenses (one at a time, <=35% alpha over a board that never lies). Returning to a producing site opens at site zoom. Presentation only — read siteLogistics/siteProduction state, change no sim law. Illegal: a production report panel instead of the picture."
     },
     {

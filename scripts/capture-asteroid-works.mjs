@@ -512,6 +512,59 @@ try {
     }
   }
 
+  // ---------------------------------------------------------------- PQ-130.10b law §7 the port ships
+  // "The port stacks visible crates as output accumulates." The pile is keyed to
+  // `projection.exportBuffer` — the stock the port has staged for the next pod — so photograph what
+  // the twelve minutes above actually produced. SITE_BALANCE.exportDefaultOff holds every
+  // build-chain intermediate, so only raw extractor output can reach the buffer on its own; if the
+  // run left it empty, stage a shipment explicitly rather than photograph an empty floor and call
+  // the crates shipped. Which of the two happened is printed, so the still is never oversold.
+  {
+    const before = await page.evaluate(() => {
+      const proj = window.SF.ctx.asteroidSites.projection('site_1');
+      const hook = document.querySelector('.ast-canvas').__ast3d;
+      return { buffer: { ...(proj ? proj.exportBuffer : {}) }, crates: hook.crates(), net: hook.networks() };
+    });
+    console.log(`11c-port-crates.png: export buffer after 12 min ${JSON.stringify(before.buffer)}`
+      + ` -> crate stage ${before.crates.stage}`);
+    let staged = false;
+    if (!before.crates.stage) {
+      staged = true;
+      await page.evaluate(() => {
+        const site = window.SF.ctx.asteroidSites.getSite('site_1');
+        site.exportBuffer.cmdty_silicate = 14;   // one pod-load (12u) plus change: a full pile
+      });
+      console.log('11c-port-crates.png: the run shipped nothing exportable — staging 14u so the pile is photographable');
+    }
+    // Park the rig beside the port so the pile is on glass under the camera leash.
+    const parked = await page.evaluate(() => {
+      const sf = window.SF;
+      const d = sf.state.drill;
+      const site = sf.ctx.asteroidSites.getSite('site_1');
+      const port = site.machines.find((m) => m.defId === 'sm_cargo_port');
+      if (!port) return null;
+      for (const [dc, dr] of [[0, -1], [-1, 0], [1, 0], [0, 1]]) {
+        const c = port.col + dc, r = port.row + dr;
+        const t = d.field[c] && d.field[c][r];
+        if (!t || t.type !== 'empty') continue;
+        if (site.machines.some((m) => m.col === c && m.row === r)) continue;
+        d.avatar.col = c; d.avatar.row = r;
+        d.avatar.fromCol = c; d.avatar.fromRow = r;
+        d.avatar.moveDuration = 0; d.avatar.moveElapsed = 0;
+        d.avatar.faceDir = 'down';
+        return { port: [port.col, port.row], rig: [c, r] };
+      }
+      return { port: [port.col, port.row], rig: null };
+    });
+    await page.waitForTimeout(3400);            // camera leash eases at <= 6 cells/s
+    const crates = await page.evaluate(() => document.querySelector('.ast-canvas').__ast3d.crates());
+    await shot('11c-port-crates.png');
+    console.log(`11c-port-crates.png: port ${parked && parked.port} · rig ${parked && parked.rig}`
+      + ` · stage ${crates.stage}${staged ? ' (staged)' : ' (earned)'} · visible ${crates.visible}`
+      + ` · standing on ${crates.onFloor ? `cell ${crates.cell}` : "the port's own plinth"}`);
+    if (!crates.visible) failures.push('11c-port-crates.png: the port shows no crates at all');
+  }
+
   // The same instrument over a MACHINE: status lamp + one cause line + the 3x3 contact ring
   // inside the card (law §6.4), instead of a swatch and consequence chips. The camera leash eases
   // at <= 6 cells/s and the deep frame parked the rover ~30 rows away, so give it time to arrive
@@ -582,6 +635,39 @@ try {
     await shot('09b-ghost-blocked.png');
     if (!blocked) failures.push('09b-ghost-blocked.png: the ghost card never appeared on the blocked cell');
     else console.log(`09b-ghost-blocked.png: "${blocked.name}" chips [${blocked.chips.join(', ')}] body "${blocked.body}"`);
+
+    // ---------------------------------------------------------------- PQ-130.10b law §6.5/§6.7
+    // The board's own answer to "where may this go, and why not here". With a ghost live the Faces
+    // lens is AUTO-ON: every legal seat glows mint, the blocked cells near the cursor carry one
+    // why-glyph plate each (a symbol, never a word), and the gridlines have strengthened ~15%.
+    {
+      const faces = await page.evaluate(() => document.querySelector('.ast-canvas').__ast3d.faces());
+      await shot('11b-faces-lens.png');
+      console.log(`11b-faces-lens.png: ${faces.seats} mint seats · ${faces.whyGlyphs} why-glyphs`
+        + ` [${[...new Set(faces.reasons)].join(', ')}] · gridlines +${(faces.gridStrength * 100).toFixed(0)}%`);
+      if (!(faces.seats > 0)) failures.push('11b-faces-lens.png: no valid machine seat glowed mint');
+      if (!(faces.gridStrength > 0.1)) {
+        failures.push(`11b-faces-lens.png: build mode did not strengthen the gridlines (${faces.gridStrength})`);
+      }
+    }
+
+    // The WHY-GLYPH, photographed. `occupied` and `rover-here` are suppressed by design — the board
+    // already answers those with a visible machine or a visible rig — so the extractor above draws
+    // no plates at all. The gas tap does: it refuses every seat that is not against a sealed pocket,
+    // which is precisely the invisible cause a plate exists to carry. Arm it and look.
+    {
+      await page.keyboard.press('Digit2');
+      await page.waitForTimeout(700);
+      const why = await page.evaluate(() => document.querySelector('.ast-canvas').__ast3d.faces());
+      await shot('11d-why-glyphs.png');
+      console.log(`11d-why-glyphs.png: gas tap armed — ${why.seats} seats, ${why.whyGlyphs} plates`
+        + ` [${[...new Set(why.reasons)].join(', ')}]`);
+      if (!(why.whyGlyphs > 0)) {
+        failures.push('11d-why-glyphs.png: a machine that can be seated almost nowhere drew no why-glyph');
+      }
+      await page.keyboard.press('Digit1');
+      await page.waitForTimeout(300);
+    }
 
     // The third key state (law §6.3 "unaffordable": flat --aw-surface, ink-3 glyph, hover shows the
     // short amount in coral) never appears in a capture stocked with a full haul — so empty one
@@ -810,6 +896,66 @@ try {
   await page.keyboard.press('KeyZ');
   await page.waitForTimeout(600);
   await shot('05-site-register.png');
+
+  // ---------------------------------------------------------------- PQ-130.10b law §7 + §6.5
+  // THE ONE-SECOND TEST. Same whole-body register, Network lens up: cables bright, lanes carrying
+  // their stock as flow dots, disconnected islands dimmed, machine lamps mint or dark. A stranger
+  // should be able to answer "what's running, what's starved, what's flowing, what shipped" off
+  // this frame without hovering anything. `V` is pressed for real — the canvas owns the listener,
+  // so a still taken by calling setLens() would prove the drawing and not the key.
+  {
+    const before = await page.evaluate(() => document.querySelector('.ast-canvas').__ast3d.lens().active);
+    await page.keyboard.press('KeyV');          // none -> Faces
+    await page.waitForTimeout(160);
+    await page.keyboard.press('KeyV');          // Faces -> Network
+    await page.waitForTimeout(700);
+    const st = await page.evaluate(() => {
+      const h = document.querySelector('.ast-canvas').__ast3d;
+      const proj = window.SF.ctx.asteroidSites.projection('site_1');
+      return {
+        lens: h.lens(),
+        net: h.networks(),
+        crates: h.crates(),
+        states: proj ? proj.machines.map((m) => `${m.defId}:${(m.status && m.status.state) || '?'}`) : [],
+      };
+    });
+    await shot('11-site-network.png');
+    console.log(`11-site-network.png: lens ${before || 'none'} -> ${st.lens.active} · register ${st.net.register}`
+      + ` · ${st.net.runs.length} runs (${st.net.islands} dark) · ${st.net.flowDots} flow dots`
+      + ` · crate stage ${st.crates.stage} · armour ${st.net.casings} meshes,`
+      + ` lane ${st.net.laneWidthPx}px / cable ${st.net.cableWidthPx}px across`
+      + ` · machines [${st.states.join(', ')}]`);
+    // The PLAN lens, on the same producing site: mono numerals for what each working machine earns
+    // and one port income chip. Chips are meshes, so they cost nothing against the §11.3 word budget
+    // — but they have to actually land, and only a site that is producing can prove it.
+    {
+      const planOff = await page.evaluate(() => document.querySelector('.ast-canvas').__ast3d.lens());
+      await page.keyboard.press('KeyV');        // Network -> Plan
+      await page.waitForTimeout(600);
+      const planOn = await page.evaluate(() => {
+        const h = document.querySelector('.ast-canvas').__ast3d;
+        const proj = window.SF.ctx.asteroidSites.projection('site_1');
+        return { lens: h.lens(), income: proj ? proj.exportRatePerMin : 0 };
+      });
+      console.log(`11-site-network.png: Plan lens chips ${planOff.chips} -> ${planOn.lens.chips}`
+        + ` · port income ${planOn.income}/min · seam α ${planOff.seamAlpha} -> ${planOn.lens.seamAlpha}`);
+      if (planOn.lens.active !== 'plan') failures.push('11-site-network.png: the third V did not reach the Plan lens');
+      else if (!(planOn.lens.chips > planOff.chips)) {
+        failures.push(`11-site-network.png: the Plan lens added no numerals to a producing site (${planOff.chips} -> ${planOn.lens.chips})`);
+      }
+      await page.keyboard.press('KeyV');        // Plan -> none
+      await page.waitForTimeout(200);
+    }
+    if (st.lens.active !== 'network') failures.push(`11-site-network.png: V did not reach the Network lens (${st.lens.active})`);
+    if (st.net.register !== 'site') failures.push('11-site-network.png: the camera is not at the site register');
+    if (!st.net.runs.length) failures.push('11-site-network.png: the site drew no network runs at all');
+    if (!(st.net.casings > 0)) failures.push('11-site-network.png: the runs shed their armour at site zoom — flat lines on the rock');
+    if (!(st.net.laneWidthPx >= 6)) {
+      failures.push(`11-site-network.png: the lane is ${st.net.laneWidthPx}px across at the site register — a hairline, not a conveyor`);
+    }
+    await page.evaluate(() => document.querySelector('.ast-canvas').__ast3d.setLens(null));
+    await page.waitForTimeout(200);
+  }
   await page.keyboard.press('KeyZ');
   await page.waitForTimeout(400);
 

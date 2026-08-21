@@ -35,7 +35,11 @@
 import * as THREE from 'three';
 import { hash32 } from '../../core/rng.js';
 import { DRILL_CONST, tileIndex, avatarDrawPos, drillTierReqForOre } from '../../systems/drill.js';
-import { connectivityMask } from '../../systems/siteLogistics.js';
+import { connectivityMask, storeTotal } from '../../systems/siteLogistics.js';
+// PQ-130.10b: the Faces lens asks the SIM whether a seat is legal — canInstall is the same answer
+// asteroidScreen's ghost gets, so a mint cell can never disagree with the refusal the click earns.
+// `asteroidSites` is the module singleton the registry hands to ctx, so this is the live system.
+import { asteroidSites } from '../../systems/asteroidSites.js';
 import { spawnParticleBurst, stepParticles } from '../screens/drill.js';
 import { ORE_TINTS, STATUS_COLORS } from './asteroidRenderer2d.js';
 import { createBloom } from '../../render/bloom.js';
@@ -48,6 +52,7 @@ import {
   makeMetalVeinGeo, makeIceSheenGeo, makeExoticLatticeGeo, makeRadialCrackGeos,
   makeGasCoreGeo, makeVentedScarGeo, makeBasaltBandGeo, makeMkStampGeo,
   makeVaporPuffGeo, makeScorchPlateGeo, makeCourierPodGeo,
+  makeCrateStackGeo, makeFlowDotGeo, makeJunctionNodeGeo, makeWhyGlyphPlateGeo, makeSeatBracketGeo,
 } from '../../render/asteroidInteriorPreview.js';
 
 const { COLS, ROWS, SCAN_RADIUS, SCAN_ACTIVE_S } = DRILL_CONST;
@@ -225,6 +230,133 @@ function bakeEnvMap(renderer) {
 
 // Crack decal canvases for the block being bored: three stages of spread, drawn once.
 // Deterministic LCG — the overlay is static content, not a per-frame random.
+// PQ-130.10b, law §6.7: build mode strengthens the gridlines ~15%. The grid on this board is CUT
+// (grooves between pads), so the strengthening is a SHADOW GATHER in the groove — a dark warm band
+// hugging each cell edge, transparent everywhere else — not a drawn wireframe laid over the rock.
+// One repeat is exactly one cell, so the band lands in the joint the geometry already has.
+function makeGridGrooveTexture() {
+  const N = 128;
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = N;
+  const g = cv.getContext('2d');
+  g.clearRect(0, 0, N, N);
+  // 2px of a 128px cell each side => a ~3% joint once two neighbours meet: at a 110px work-zoom
+  // cell that is a 3.4px groove, which is the joint's real width.
+  const band = 2;
+  const grad = g.createLinearGradient(0, 0, 0, band * 2);
+  grad.addColorStop(0, 'rgba(9,6,3,0.95)');
+  grad.addColorStop(1, 'rgba(9,6,3,0)');
+  for (const [x, y, w, h] of [[0, 0, N, band * 2], [0, N - band * 2, N, band * 2]]) {
+    g.save();
+    g.translate(x, y === 0 ? 0 : N);
+    if (y !== 0) g.scale(1, -1);
+    g.fillStyle = grad;
+    g.fillRect(0, 0, w, h);
+    g.restore();
+  }
+  const gradV = g.createLinearGradient(0, 0, band * 2, 0);
+  gradV.addColorStop(0, 'rgba(9,6,3,0.95)');
+  gradV.addColorStop(1, 'rgba(9,6,3,0)');
+  for (const left of [true, false]) {
+    g.save();
+    g.translate(left ? 0 : N, 0);
+    if (!left) g.scale(-1, 1);
+    g.fillStyle = gradV;
+    g.fillRect(0, 0, band * 2, N);
+    g.restore();
+  }
+  const tex = new THREE.CanvasTexture(cv);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(COLS, ROWS);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+// The why-glyph bank (law §6.7): one drawn SYMBOL per refusal, never a word. The reason strings are
+// the sim's own (`asteroidSites.canInstall().reason`), so the plate can never name a rule the click
+// would not enforce. Gold = you can fix this where you stand; coral = not this cell, ever; ink-3 =
+// something is already there. Anything unmapped falls to a plain bar, which is honest about the
+// renderer not having a symbol rather than inventing a meaning.
+const WHY_GLYPH = {
+  materials: { hue: '#ffb648', shape: 'stack' },
+  'rover-not-adjacent': { hue: '#ffb648', shape: 'rover' },
+  'rover-here': { hue: '#ffb648', shape: 'rover' },
+  occupied: { hue: '#8a7a66', shape: 'filled' },
+  'needs-gas-contact': { hue: '#ff6242', shape: 'pocket' },
+  unique: { hue: '#ff6242', shape: 'single' },
+  'survey-stale': { hue: '#ff6242', shape: 'broken' },
+};
+
+function makeWhyGlyphTexture(reason) {
+  const spec = WHY_GLYPH[reason] || { hue: '#8a7a66', shape: 'bar' };
+  const SS = 3;
+  const N = 34 * SS;
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = N;
+  const g = cv.getContext('2d');
+  g.fillStyle = 'rgba(34,28,21,0.93)';           // --aw-surface: the plate body
+  g.fillRect(0, 0, N, N);
+  g.strokeStyle = spec.hue;
+  g.lineWidth = 1.6 * SS;
+  g.strokeRect(g.lineWidth / 2, g.lineWidth / 2, N - g.lineWidth, N - g.lineWidth);
+  const c = N / 2;
+  const u = 3.1 * SS;                            // one glyph unit
+  g.strokeStyle = spec.hue;
+  g.fillStyle = spec.hue;
+  g.lineWidth = 1.5 * SS;
+  g.lineCap = 'round';
+  g.lineJoin = 'round';
+  if (spec.shape === 'stack') {
+    // a short stack of goods with the top course missing: the cost you have not got
+    g.fillRect(c - u * 1.7, c + u * 0.5, u * 3.4, u * 0.9);
+    g.fillRect(c - u * 1.7, c - u * 0.7, u * 2.1, u * 0.9);
+    g.strokeRect(c - u * 1.7 + g.lineWidth / 2, c - u * 2.0, u * 3.4 - g.lineWidth, u * 0.95);
+  } else if (spec.shape === 'rover') {
+    // the rig, seen from the side: hull + two road wheels. It has to come here first.
+    g.fillRect(c - u * 1.6, c - u * 0.9, u * 3.2, u * 1.3);
+    g.beginPath();
+    g.arc(c - u * 0.9, c + u * 0.9, u * 0.55, 0, Math.PI * 2);
+    g.arc(c + u * 0.9, c + u * 0.9, u * 0.55, 0, Math.PI * 2);
+    g.fill();
+  } else if (spec.shape === 'filled') {
+    // a full socket
+    g.fillRect(c - u * 1.5, c - u * 1.5, u * 3, u * 3);
+  } else if (spec.shape === 'pocket') {
+    // a sealed pocket with its fissures: this machine wants gas contact and there is none
+    g.beginPath();
+    g.arc(c, c, u * 1.5, 0, Math.PI * 2);
+    g.stroke();
+    for (let i = 0; i < 3; i++) {
+      const a = i * 2.1 + 0.4;
+      g.beginPath();
+      g.moveTo(c + Math.cos(a) * u * 0.4, c + Math.sin(a) * u * 0.4);
+      g.lineTo(c + Math.cos(a) * u * 1.5, c + Math.sin(a) * u * 1.5);
+      g.stroke();
+    }
+  } else if (spec.shape === 'single') {
+    // one, and only one, on this rock
+    g.beginPath();
+    g.arc(c, c, u * 1.5, 0, Math.PI * 2);
+    g.stroke();
+    g.beginPath();
+    g.arc(c, c, u * 0.55, 0, Math.PI * 2);
+    g.fill();
+  } else if (spec.shape === 'broken') {
+    // a survey that no longer joins up
+    for (const dx of [-1, 1]) {
+      g.beginPath();
+      g.moveTo(c + dx * u * 0.5, c);
+      g.lineTo(c + dx * u * 1.7, c);
+      g.stroke();
+    }
+  } else {
+    g.fillRect(c - u * 1.6, c - u * 0.35, u * 3.2, u * 0.7);
+  }
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
 function makeCrackDecalTexture(stage) {
   const cv = document.createElement('canvas');
   cv.width = cv.height = 256;
@@ -668,6 +800,96 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   const casingMat = metalMat(0x1c1814, envMap);
   casingMat.roughness = 0.66;
 
+  // ------------------------------------------------------- PQ-130.10b: the site reads (law §7)
+  // The two run materials above are TEMPLATES from here on. Nothing renders with them directly:
+  // rebuildOverlays clones one per connected network so a dead island can go dark on its own while
+  // the live spine beside it keeps its floor. These are the two ends of that range.
+  const CABLE_LIVE = new THREE.Color(0xb8863a);   // powered armour under the warm key
+  const CABLE_DEAD = new THREE.Color(0x5f574c);   // no generator on this net: bare, desaturated metal
+  const LANE_LIVE = new THREE.Color(0x7d97ab);    // a lane with stock in it — pale steel jacket
+  const LANE_DEAD = new THREE.Color(0x5b5b5c);    // track bolted to nothing
+  const overlayParts = [];       // { kind, key, mat, mesh } — one per NETWORK, state-driven
+  const overlayCasings = [];     // shared dark armour, state-free
+  const laneFlows = [];          // { key, routes:[{pts,cum,len}], phase }
+  const netState = { power: new Map(), lane: new Map() };
+  const overlayWidth = { lane: 0, power: 0 };    // cell fractions of the last build, for §7 checks
+  const RUNNING_STATES = new Set(['running', 'limited', 'throttled', 'building', 'staged']);
+  // A LAMP THAT MEANS "BROKEN", NOT "HUNGRY". Law §5 gave starved/unpowered a DARK housing plus a
+  // gold want chip (PQ-130.07) and that stays. These two are different in kind: a machine seated
+  // against the wrong rock, or bolted to no lane at all, will never resolve on its own — nobody is
+  // bringing it anything. That earns the coral lamp §3.2 reserves for "cost you cannot pay".
+  const CORAL_FAULTS = new Set(['no-geology', 'no-network']);
+
+  // Flow dots (law §7: slow dots on the tunnel floor, moving toward the port, ~1/s at work zoom).
+  // SPEED IS CONSTANT and SPACING carries the buffer. Scaling speed with the buffer would make a
+  // full lane read as a FAST lane, which is a lie about the throughput cap the sim actually runs.
+  const FLOW_DOT_MAX = 56;
+  const FLOW_SPEED_WU = S * 1.55;         // world units per second ≈ 1.55 cells/s
+  const FLOW_GAP_EMPTY = S * 4.0;         // a nearly-empty lane: one dot every four cells
+  const FLOW_GAP_FULL = S * 1.35;         // a full lane: a queue nose to tail
+  const flowDotGeo = makeFlowDotGeo();
+  const flowDotMat = new THREE.MeshStandardMaterial({
+    color: 0x4a7f99, emissive: 0x5cc8f2, emissiveIntensity: 0.42,
+    roughness: 0.36, metalness: 0.5, envMap,
+  });
+  const flowDots = new THREE.InstancedMesh(flowDotGeo, flowDotMat, FLOW_DOT_MAX);
+  flowDots.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  flowDots.frustumCulled = false;
+  flowDots.count = 0;
+  overlayRoot.add(flowDots);
+  const junctionNodeGeo = makeJunctionNodeGeo();
+  // The lane's lid. OWNER RULING 2026-08-21: the flow is dots INSIDE a translucent tray, not a line
+  // drawn on the rock — so the run is a covered conveyor and the dots are freight under glass.
+  const trayMat = new THREE.MeshStandardMaterial({
+    // Dark glass, not white plastic: at 0.2 opacity over a lit channel the pale tint read as chalk
+    // and put a flat grey bar down the shaft. Low albedo + a tight specular is what glass over a
+    // lamp actually looks like.
+    color: 0x55636d, roughness: 0.07, metalness: 0.1, envMap, envMapIntensity: 1.5,
+    transparent: true, opacity: 0.16, depthWrite: false,
+  });
+
+  // The port's pile. Crates are the thing a drone or a laser flyby would take, so they are real
+  // freight standing on the tunnel floor beside the port — not a gauge painted on the housing.
+  const crateMat = new THREE.MeshStandardMaterial({
+    color: 0x8a6a42, roughness: 0.76, metalness: 0.16, envMap,
+  });
+  const crateGeos = [];        // lazily built, indexed by stage 1..5
+  let crateMesh = null;
+  let crateStageNow = 0;
+  let crateCell = null;        // the tunnel cell the pile stands on, or null = on the port itself
+
+  // ---- overlay lenses (law §6.5). One at a time; V cycles; Tab belongs to the drawers (§6.6).
+  // Heat is a FUTURE law (§12 stages 5-7 park `siteThermalModel`), so it is deliberately absent
+  // from the cycle rather than stubbed as a lens that shows nothing.
+  const LENS_ORDER = ['faces', 'network', 'plan'];
+  let lensName = null;
+
+  // ---- build-mode board feedback (law §6.7) ----
+  const facesCache = { sig: '', t: -1e9, seats: [], blocked: [] };
+  let facesShown = 0;
+  // The two refusals the board already answers with an object you can see.
+  const SELF_EVIDENT_REFUSALS = new Set(['occupied', 'rover-here']);
+  const WHY_MAX = 6;
+  const whyPlateGeo = makeWhyGlyphPlateGeo(0.26);
+  const whyTextures = new Map();
+  const whyPool = [];
+  let whyUsed = 0;
+
+  // Gridline strengthening (law §6.7: "~15%" while placing). The board's grid is CUT INTO THE ROCK
+  // — grooves between pads, not painted lines — so strengthening it means the grooves gather more
+  // shadow, which is what a deeper masonry joint looks like. Zero in drive: the drive board is
+  // exactly the board .03 lit, untouched.
+  const GRID_BUILD_K = 0.15;
+  let gridK = 0;
+  const gridMat = new THREE.MeshBasicMaterial({
+    map: makeGridGrooveTexture(), transparent: true, opacity: 0, depthWrite: false, depthTest: false,
+  });
+  const gridPlane = new THREE.Mesh(new THREE.PlaneGeometry(COLS * S, ROWS * S), gridMat);
+  gridPlane.position.set(0, 0, ROCK_FACE + 0.30);
+  gridPlane.renderOrder = 22;
+  gridPlane.visible = false;
+  fxRoot.add(gridPlane);
+
   // cursor / ghost / ring shared bits
   // Aim/build affordances. These are the only drawn overlays left on the board, and they wear the
   // chrome palette (§3.2 gold / mint / coral) — never the old console cyan.
@@ -680,10 +902,12 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   const HOVER_ALPHA = 0.55;
   const HOVER_PX = 1.5;
   const frameMat = new THREE.MeshBasicMaterial({ color: HOVER_INK, transparent: true, opacity: HOVER_ALPHA, depthTest: false });
-  const ringSolidMat = new THREE.MeshBasicMaterial({ color: 0x7cd9a2, transparent: true, opacity: 0.15, depthTest: false });
-  const ringEmptyMat = new THREE.MeshBasicMaterial({ color: 0x8a7a66, transparent: true, opacity: 0.07, depthTest: false });
-  const padOkMat = new THREE.MeshBasicMaterial({ color: 0x7cd9a2, transparent: true, opacity: 0.12, depthTest: false });
-  const padBadMat = new THREE.MeshBasicMaterial({ color: 0xff6242, transparent: true, opacity: 0.15, depthTest: false });
+  // OWNER RULING 2026-08-21 — "NO solid cell fills, ever, for any lens or build feedback." The four
+  // full-cell wash quads that used to live here (mint pad, coral pad, mint contact ring, grey empty
+  // ring) painted flat rectangles over a 3D board; in the owner's own screenshot the valid seats
+  // read as solid green blocks and a blocked cell as a solid red box. They are DELETED. Every seat,
+  // contact and refusal verdict is now drawn as corner brackets on the block's own bevel ring —
+  // 1.8 screen px of ink, under 12% of the cell's area, colour by meaning. See seatBrackets below.
   const cursorGroup = new THREE.Group();
   const cursorBars = [];
   const CURSOR_BAR_H = S * 0.06;   // the geometry's own thickness; scale.y solves the live pixels
@@ -711,18 +935,62 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     cursorGroup.renderOrder = 30;
     fxRoot.add(cursorGroup);
   }
-  const ringQuads = [];
-  for (let i = 0; i < 8; i++) {
-    const q = new THREE.Mesh(cellQuad, ringEmptyMat);
-    q.visible = false;
-    q.renderOrder = 28;
-    fxRoot.add(q);
-    ringQuads.push(q);
+  // ---- seat brackets: the ONE marking language for seats, contacts and refusals (owner ruling) --
+  // One InstancedMesh, per-instance colour, held at a constant SCREEN thickness by rebuilding the
+  // (tiny) geometry whenever the zoom actually changes. Mint = a seat this machine may take; dim
+  // mint = a face that would feed it; bone = a face that is hollow and feeds nothing; coral = the
+  // cursor's own cell, refused.
+  const SEAT_MAX = 160;
+  const SEAT_PX = 1.8;                 // the law's 1.5-2px edge
+  const seatMat = new THREE.MeshBasicMaterial({
+    color: 0xffffff, transparent: true, opacity: 0.55, depthTest: false, depthWrite: false,
+  });
+  let seatGeo = makeSeatBracketGeo(0.03, 0.3);
+  let seatGeoKey = '';
+  const seatBrackets = new THREE.InstancedMesh(seatGeo, seatMat, SEAT_MAX);
+  seatBrackets.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  seatBrackets.frustumCulled = false;
+  seatBrackets.renderOrder = 28;
+  seatBrackets.count = 0;
+  seatBrackets.visible = false;
+  fxRoot.add(seatBrackets);
+  const SEAT_TINT = {
+    seat: new THREE.Color(0x7cd9a2),      // --aw-mint: a legal seat
+    contact: new THREE.Color(0x5fae82),   // a face that would feed the machine
+    hollow: new THREE.Color(0x6f6252),    // a face that is already hollow: feeds nothing, ever
+    refused: new THREE.Color(0xff6242),   // --aw-coral: this cell, refused
+  };
+  let seatsUsed = 0;
+  function seatGeometryForZoom() {
+    // Thickness is solved against the LIVE camera so the mark is the same weight at both registers;
+    // the key quantises it so a 180ms zoom ease does not rebuild a geometry sixty times.
+    const t = Math.max(0.012, Math.min(0.07, SEAT_PX / Math.max(1, S * pxPerWorldUnit())));
+    const key = t.toFixed(3);
+    if (key === seatGeoKey) return;
+    seatGeoKey = key;
+    const next = makeSeatBracketGeo(t, Math.max(0.22, Math.min(0.34, t * 9)));
+    seatBrackets.geometry = next;
+    seatGeo.dispose();
+    seatGeo = next;
   }
-  const padQuad = new THREE.Mesh(cellQuad, padOkMat);
-  padQuad.visible = false;
-  padQuad.renderOrder = 29;
-  fxRoot.add(padQuad);
+  function markSeat(col, row, tint) {
+    if (seatsUsed >= SEAT_MAX) return;
+    dummy.position.set(worldX(col), worldY(row), Z.face - 0.04);
+    dummy.rotation.set(0, 0, 0);
+    dummy.scale.setScalar(S);
+    dummy.updateMatrix();
+    seatBrackets.setMatrixAt(seatsUsed, dummy.matrix);
+    seatBrackets.setColorAt(seatsUsed, SEAT_TINT[tint] || SEAT_TINT.seat);
+    seatsUsed++;
+  }
+  function flushSeats() {
+    seatBrackets.count = seatsUsed;
+    seatBrackets.visible = seatsUsed > 0;
+    if (seatsUsed) {
+      seatBrackets.instanceMatrix.needsUpdate = true;
+      if (seatBrackets.instanceColor) seatBrackets.instanceColor.needsUpdate = true;
+    }
+  }
 
   // scan pulse ring
   const scanMat = new THREE.MeshBasicMaterial({ color: 0xffb648, transparent: true, opacity: 0, side: THREE.DoubleSide, depthTest: false });
@@ -1932,10 +2200,22 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
           // stalled housing is exactly the console voice §2.4 deletes. During the settle the lamp
           // lights mint whatever the projection says, because the projection has not run yet.
           const fault = FAULT_STATES.has(state);
+          // PQ-130.10b: FAULTED IS NOT STARVED. A machine seated against the wrong rock, or bolted
+          // to no lane at all, is not waiting for a delivery — nothing is coming, and the gold want
+          // chip has nothing to ask for. That one keeps a lit CORAL lamp (§3.2 "cost you can't
+          // pay"). Hungry machines keep .07's dark housing exactly as shipped.
+          const coral = !settling && CORAL_FAULTS.has(state);
           const hex = settling ? 0x7cd9a2 : statusColorHex(status);
           rec.dyn.lamp.color.setHex(hex);
           rec.dyn.lamp.emissive.setHex(hex);
-          rec.dyn.lamp.emissiveIntensity = settling ? 1.2 : (fault ? 0.06 : 0.9);
+          rec.dyn.lamp.emissiveIntensity = settling ? 1.2 : (coral ? 0.62 : (fault ? 0.06 : 0.9));
+        }
+        if (rec.dyn.lampAnchor) {
+          // Law §7: at the site register the same drawing simplifies to "lines, lamps, flows". A
+          // lamp built for a 110px cell is 2px on a 19px one — not a lamp, a speck. The fixture
+          // holds a 5px floor so mint-vs-dark is still the first thing the whole body says.
+          const lampPx = S * 0.11 * pxPerWorldUnit();
+          rec.dyn.lampAnchor.scale.setScalar(Math.max(1, 5 / Math.max(0.001, lampPx)));
         }
         const running = state === 'running' || state === 'throttled' || state === 'limited';
         rec.lightRunning = running;
@@ -2019,29 +2299,117 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   }
 
   // ---------------------------------------------------------------- overlays (conduits)
-  function overlaySignature(site) {
-    if (!site) return 'none';
+  // PQ-130.10b, law §7. The runs rebuild on TOPOLOGY ONLY — which cells carry which overlay, where
+  // the machines are, and which zoom register is drawing (site zoom sheds the armour so a 19px cell
+  // gets a clean line instead of moire). Everything that MOVES — powered vs dark, island vs live, a
+  // lane's flow — is a per-frame material read in syncNetworks(); a state change must never cost a
+  // geometry rebuild.
+  function overlaySignature(site, projection = null) {
+    if (!site) return `none|${zoomRegister}`;
     let h = 17;
     for (const i of site.overlays.power) h = (h * 31 + i + 1) | 0;
     h = (h * 37 + 7) | 0;
     for (const i of site.overlays.lane) h = (h * 31 + i + 1) | 0;
     h = (h * 37 + site.machines.length) | 0;
     for (const m of site.machines) h = (h * 31 + tileIndex(m.col, m.row)) | 0;
-    return String(h);
+    // THE COMPONENT PARTITION IS PART OF THE TOPOLOGY. The runs are bucketed by the projection's own
+    // components, and the screen hands the renderer a CACHED projection — so on the frame a newly
+    // painted cell changes `site.overlays`, `getProjection()` can still be the answer computed
+    // before it, whose components know nothing about the new cell. Hashing the partition itself
+    // means the runs re-bucket the moment the sim's answer catches up, instead of being stranded in
+    // an unknown bucket forever (measured: every run came back keyed `_` and drew dead).
+    let ph = 5;
+    if (projection) {
+      for (const comp of projection.power) ph = (((ph * 31) ^ hash32(comp.cells.length, comp.cells[0] || 0, 11)) | 0);
+      for (const comp of projection.lanes) ph = (((ph * 33) ^ hash32(comp.cells.length, comp.cells[0] || 0, 12)) | 0);
+    } else ph = 0;
+    // The solved run width depends on the canvas, so a resize is a topology change for this layer.
+    return `${h}|${zoomRegister}|${ph}|${Math.round(registerPxPerWu(zoomRegister))}`;
   }
 
-  function rebuildOverlays(site) {
-    for (const child of [...overlayRoot.children]) {
-      overlayRoot.remove(child);
-      if (child.geometry) child.geometry.dispose();
+  function disposeOverlayParts() {
+    for (const part of overlayParts) {
+      overlayRoot.remove(part.mesh);
+      part.mesh.geometry.dispose();
+      part.mat.dispose();
     }
+    overlayParts.length = 0;
+    for (const mesh of overlayCasings) {
+      overlayRoot.remove(mesh);
+      mesh.geometry.dispose();
+    }
+    overlayCasings.length = 0;
+    laneFlows.length = 0;
+    flowDots.count = 0;
+  }
+
+  // mergeBufferGeometriesCompat needs an index on every input; the authored network bodies come
+  // back non-indexed from mergeGeometries. A sequential index costs nothing and keeps one merge
+  // path instead of two.
+  function ensureIndexed(g) {
+    if (g.index) return g;
+    const n = g.attributes.position.count;
+    const arr = n > 65535 ? new Uint32Array(n) : new Uint16Array(n);
+    for (let i = 0; i < n; i++) arr[i] = i;
+    g.setIndex(new THREE.BufferAttribute(arr, 1));
+    return g;
+  }
+
+  const popcount4 = (m) => (m & 1) + ((m >> 1) & 1) + ((m >> 2) & 1) + ((m >> 3) & 1);
+
+  // Screen pixels per world unit at a register's SETTLED zoom. Deliberately not pxPerWorldUnit():
+  // that reads the live eased camera, and any geometry keyed to it would rebuild on every frame of
+  // a 180ms zoom detent.
+  function registerPxPerWu(reg) {
+    const k = reg === 'site' ? siteZoomK() : 1;
+    const halfW = workHalfW() / Math.max(0.001, k);
+    return (canvas.clientHeight || 1) / (2 * (halfW / canvasAspect()));
+  }
+
+  function rebuildOverlays(site, projection = null) {
+    disposeOverlayParts();
     if (!site) return;
+    const siteReg = zoomRegister === 'site';
     const machineCells = new Set(site.machines.map((m) => tileIndex(m.col, m.row)));
+    // WHERE THE ISLANDS COME FROM: the projection's own connected components, not a second flood
+    // fill in the renderer. A drawn island that disagrees with the economy's island is worse than
+    // no island drawing at all. No projection yet -> one unknown bucket that draws dead, which is
+    // the honest picture of "the sim has not answered".
+    const compOf = { lane: new Map(), power: new Map() };
+    if (projection) {
+      for (const comp of projection.power) for (const idx of comp.cells) compOf.power.set(idx, comp.key);
+      for (const comp of projection.lanes) for (const idx of comp.cells) compOf.lane.set(idx, comp.key);
+    }
+    // WIDTHS ARE PER REGISTER, THE BODIES ARE NOT. An earlier build stripped the armour at site zoom
+    // to avoid moire and the runs became flat coloured lines drawn on the rock — the owner's exact
+    // complaint. The armour, the tray, the clamps and the junction boxes are present at BOTH
+    // registers; what changes is the CROSS SECTION, widened at whole-body zoom so a real conduit
+    // survives a 19px cell instead of collapsing into a hairline.
+    // At the site register the cell can be anywhere from 19px (1920x1080) down to the law's 12px
+    // floor (1280x720), so a FIXED cell fraction is a conveyor on one screen and a hairline on the
+    // other — measured: 8.3px at 1080p, 5.4px at 720p. The width is solved against the register's
+    // own nominal scale instead, and clamped so it can never eat the cell either.
+    const regPxPerCell = S * registerPxPerWu(zoomRegister);
+    const solve = (minFrac, maxFrac, wantPx) => (siteReg
+      ? Math.min(maxFrac, Math.max(minFrac, wantPx / Math.max(1, regPxPerCell)))
+      : minFrac);
+    const laneW = solve(0.34, 0.54, 7.2);
+    const powerW = solve(0.2, 0.34, 4.6);
+    const offW = siteReg ? S * Math.max(0.26, (laneW + powerW) / 2 * 1.12) : S * 0.17;
     const kinds = [
-      { name: 'lane', cells: new Set(site.overlays.lane), coreMat: laneCoreMat, w: 0.3 },
-      { name: 'power', cells: new Set(site.overlays.power), coreMat: powerCoreMat, w: 0.18 },
+      {
+        name: 'lane', cells: new Set(site.overlays.lane), coreMat: laneCoreMat, tray: true,
+        w: laneW, coreK: 0.34, off: offW,
+      },
+      {
+        name: 'power', cells: new Set(site.overlays.power), coreMat: powerCoreMat, tray: false,
+        w: powerW, coreK: 0.36, off: offW,
+      },
     ];
+    const trayGeos = [];
     const shared = new Set([...kinds[0].cells].filter((i) => kinds[1].cells.has(i)));
+    for (const kind of kinds) overlayWidth[kind.name] = kind.w;
+    overlayWidth.regPxPerCell = regPxPerCell;
     for (const kind of kinds) {
       const has = (c, r) => {
         if (c < 0 || c >= COLS || r < 0 || r >= ROWS) return false;
@@ -2049,15 +2417,24 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         return kind.cells.has(idx) || machineCells.has(idx);
       };
       const casingGeos = [];
-      const coreGeos = [];
+      const coreByComp = new Map();
+      const pushCore = (key, g) => {
+        let list = coreByComp.get(key);
+        if (!list) { list = []; coreByComp.set(key, list); }
+        list.push(g);
+      };
+      const W = S * kind.w;
       const arms = [[1, 0, -1], [2, 1, 0], [4, 0, 1], [8, -1, 0]];
+      // One armed section of run, built in the arm's own frame and then rotated into place.
+      const place = (g, ang, x, y, z) => { g.rotateZ(ang); g.translate(x, y, z); return g; };
       for (const idx of kind.cells) {
         const c = idx % COLS;
         const r = Math.floor(idx / COLS);
         // Shared cells split off the centreline so the two systems read in parallel (2D §2 rule).
-        const off = shared.has(idx) ? (kind.name === 'lane' ? -S * 0.16 : S * 0.16) : 0;
+        const off = shared.has(idx) ? (kind.name === 'lane' ? -kind.off : kind.off) : 0;
         const cx = worldX(c);
         const cy = worldY(r) + off;
+        const key = compOf[kind.name].get(idx) || '_';
         const mask = connectivityMask(has, c, r);
         let any = false;
         for (const [bit, dc, dr] of arms) {
@@ -2065,38 +2442,163 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
           any = true;
           const dx = dc, dy = -dr;
           const len = S * 0.5 + S * 0.06;
-          const cg = new THREE.BoxGeometry(len, S * kind.w, S * 0.1);
-          cg.rotateZ(Math.atan2(dy, dx));
-          cg.translate(cx + dx * len / 2, cy + dy * len / 2, Z.overlay);
-          casingGeos.push(cg);
-          const eg = new THREE.BoxGeometry(len, S * kind.w * 0.36, S * 0.12);
-          eg.rotateZ(Math.atan2(dy, dx));
-          eg.translate(cx + dx * len / 2, cy + dy * len / 2, Z.overlay + 0.05);
-          coreGeos.push(eg);
+          const ang = Math.atan2(dy, dx);
+          const mx = cx + dx * len / 2;
+          const my = cy + dy * len / 2;
+          if (kind.tray) {
+            // A COVERED CONVEYOR: bolted floor plate, two side rails, a narrow lit channel down the
+            // middle and a glass lid. The flow dots ride between the rails, under the lid.
+            casingGeos.push(place(new THREE.BoxGeometry(len, W, S * 0.05), ang, mx, my, Z.overlay));
+            for (const sy of [-1, 1]) {
+              const rail = new THREE.BoxGeometry(len, W * 0.15, S * 0.2);
+              rail.translate(0, sy * (W / 2 - W * 0.075), 0);
+              casingGeos.push(place(rail, ang, mx, my, Z.overlay + 0.1));
+            }
+            pushCore(key, place(new THREE.BoxGeometry(len, W * kind.coreK, S * 0.05), ang, mx, my, Z.overlay + 0.04));
+            trayGeos.push(place(new THREE.BoxGeometry(len, W * 0.92, S * 0.035), ang, mx, my, Z.overlay + 0.21));
+          } else {
+            // ARMOURED CABLE: a dark casing bolted to the floor with the conductor lit inside it.
+            casingGeos.push(place(new THREE.BoxGeometry(len, W, S * 0.14), ang, mx, my, Z.overlay + 0.02));
+            pushCore(key, place(new THREE.BoxGeometry(len, W * kind.coreK, S * 0.16), ang, mx, my, Z.overlay + 0.06));
+          }
         }
-        const puck = new THREE.CylinderGeometry(S * kind.w * 0.62, S * kind.w * 0.62, S * 0.12, 10);
-        puck.rotateX(Math.PI / 2);
-        puck.translate(cx, cy, Z.overlay + 0.05);
-        casingGeos.push(puck);
+        // Per-cell fitting: a saddle clamp on the cable, a cross strap over the tray. Present at
+        // BOTH registers — this is the hardware that stops a run reading as a drawn line.
+        if (kind.tray) {
+          const strap = new THREE.BoxGeometry(S * 0.1, W * 1.06, S * 0.07);
+          strap.translate(cx, cy, Z.overlay + 0.25);
+          casingGeos.push(strap);
+        } else {
+          const clamp = new THREE.CylinderGeometry(W * 0.62, W * 0.7, S * 0.16, 10);
+          clamp.rotateX(Math.PI / 2);
+          clamp.translate(cx, cy, Z.overlay + 0.04);
+          casingGeos.push(clamp);
+        }
+        // A JUNCTION IS A FITTING. Three or more runs meeting gets a bolted box, so a branch is an
+        // object you can see rather than two painted lines crossing. It carries its network's own
+        // colour, so a node on a dead island goes dead with it.
+        if (popcount4(mask) >= 3) {
+          const jg = ensureIndexed(junctionNodeGeo.clone());
+          const k = S * (kind.tray ? 1.25 : 1);
+          jg.scale(k, k, k);
+          jg.translate(cx, cy, Z.overlay + (kind.tray ? 0.16 : 0.06));
+          pushCore(key, jg);
+        }
         if (!any) {
-          // Isolated cell — a lit stub so a lone painted tile still reads as live conduit.
-          const dot = new THREE.CylinderGeometry(S * kind.w * 0.4, S * kind.w * 0.4, S * 0.14, 10);
+          // Isolated cell — a lit stub so a lone painted tile still reads as live hardware.
+          const dot = new THREE.CylinderGeometry(W * 0.4, W * 0.4, S * 0.18, 10);
           dot.rotateX(Math.PI / 2);
           dot.translate(cx, cy, Z.overlay + 0.08);
-          coreGeos.push(dot);
+          pushCore(key, dot);
         }
       }
-      const merge = (geos, mat, shadow) => {
-        if (!geos.length) return;
+      if (casingGeos.length) {
+        const mergedGeo = mergeBufferGeometriesCompat(casingGeos);
+        if (mergedGeo) {
+          const mesh = new THREE.Mesh(mergedGeo, casingMat);
+          // IT HAS TO THROW A SHADOW OR IT IS A PAINTED LINE. Straight down at a 0.2-deep run you
+          // see no side wall, so the ONLY thing that says "this is a body bolted to the floor" is
+          // the raking key's shadow off the rails and clamps. Without castShadow the conduits read
+          // exactly as the owner called them: flat yellow and blue lines drawn on the rock.
+          mesh.castShadow = true;
+          mesh.receiveShadow = true;
+          overlayRoot.add(mesh);
+          overlayCasings.push(mesh);
+        }
+        for (const g of casingGeos) g.dispose();
+      }
+      for (const [key, geos] of coreByComp) {
         const mergedGeo = mergeBufferGeometriesCompat(geos);
-        if (!mergedGeo) return;
+        for (const g of geos) g.dispose();
+        if (!mergedGeo) continue;
+        // One material per NETWORK, cloned off the kind's template. Same defines, same program —
+        // only color/emissiveIntensity ever move — so per-island state costs no shader recompile.
+        const mat = kind.coreMat.clone();
         const mesh = new THREE.Mesh(mergedGeo, mat);
-        mesh.receiveShadow = shadow;
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
         overlayRoot.add(mesh);
-      };
-      merge(casingGeos, casingMat, true);
-      merge(coreGeos, kind.coreMat, false);
-      for (const g of [...casingGeos, ...coreGeos]) g.dispose();
+        overlayParts.push({ kind: kind.name, key, mat, mesh });
+      }
+    }
+    if (trayGeos.length) {
+      const trayGeo = mergeBufferGeometriesCompat(trayGeos);
+      if (trayGeo) {
+        const mesh = new THREE.Mesh(trayGeo, trayMat);
+        mesh.renderOrder = 3;    // after the dots inside it
+        overlayRoot.add(mesh);
+        overlayCasings.push(mesh);
+      }
+      for (const g of trayGeos) g.dispose();
+    }
+    // The flow rides the lane's OWN centreline, so it takes the offset this build actually used —
+    // recomputing it here is how the dots ended up beside the tray instead of inside it.
+    rebuildLaneFlows(site, projection, shared, kinds[0].off);
+  }
+
+  // ---- lane flow routes (law §7: dots move TOWARD THE PORT) ------------------------------------
+  // A route is a leaf-to-sink walk of one lane network, cached as a polyline with cumulative arc
+  // length. The sink is the cargo port; with no port on that network the goods are heading for the
+  // entry shaft, which is the only other way off this rock. Dots then ride arc length, so the
+  // direction on the glass is the direction the economy actually moves stock.
+  function rebuildLaneFlows(site, projection, shared, laneOff) {
+    laneFlows.length = 0;
+    if (!site || !projection) return;
+    const portCells = new Set();
+    for (const m of site.machines) {
+      if (m.defId === 'sm_cargo_port') portCells.add(tileIndex(m.col, m.row));
+    }
+    const py = (idx) => worldY(Math.floor(idx / COLS)) - (shared.has(idx) ? laneOff : 0);
+    for (const comp of projection.lanes) {
+      const cells = new Set(comp.cells);
+      let sink = -1;
+      for (const idx of comp.cells) { if (portCells.has(idx)) { sink = idx; break; } }
+      if (sink < 0) {
+        let best = Infinity;
+        for (const idx of comp.cells) {
+          const score = Math.floor(idx / COLS) * 4 + Math.abs((idx % COLS) - ENTRY_COL);
+          if (score < best) { best = score; sink = idx; }
+        }
+      }
+      if (sink < 0) continue;
+      const parent = new Map([[sink, -1]]);
+      const order = [sink];
+      for (let qi = 0; qi < order.length; qi++) {
+        const idx = order[qi];
+        const c = idx % COLS;
+        const r = Math.floor(idx / COLS);
+        for (const [dc, dr] of NBR4) {
+          const nc = c + dc, nr = r + dr;
+          if (nc < 0 || nc >= COLS || nr < 0 || nr >= ROWS) continue;
+          const ni = tileIndex(nc, nr);
+          if (!cells.has(ni) || parent.has(ni)) continue;
+          parent.set(ni, idx);
+          order.push(ni);
+        }
+      }
+      const hasChild = new Set();
+      for (const [, par] of parent) if (par >= 0) hasChild.add(par);
+      const routes = [];
+      for (const idx of order) {
+        if (idx === sink || hasChild.has(idx)) continue;   // only a dead end starts a run
+        const pts = [];
+        let cur = idx;
+        for (let guard = 0; cur >= 0 && guard < 4096; guard++) {
+          pts.push([worldX(cur % COLS), py(cur)]);
+          cur = parent.has(cur) ? parent.get(cur) : -1;
+        }
+        if (pts.length < 2) continue;
+        const cum = [0];
+        let len = 0;
+        for (let i = 1; i < pts.length; i++) {
+          len += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+          cum.push(len);
+        }
+        routes.push({ pts, cum, len });
+      }
+      routes.sort((a, b) => b.len - a.len);
+      if (routes.length > 4) routes.length = 4;
+      if (routes.length) laneFlows.push({ key: comp.key, routes, phase: 0 });
     }
   }
 
@@ -2137,6 +2639,358 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       return null;
     }
   }
+
+  // ---------------------------------------------------------------- networks, live (law §7)
+  // Read the projection once, publish per-network state, then drive the jackets, the flow and the
+  // port pile off it. NOTHING here rebuilds geometry: state moves every frame, topology does not.
+  function syncNetworks(site, projection, dt, timeS) {
+    netState.power.clear();
+    netState.lane.clear();
+    if (projection) {
+      const running = new Set();
+      for (const pm of projection.machines) {
+        if (pm.status && RUNNING_STATES.has(pm.status.state)) running.add(pm.id);
+      }
+      for (const comp of projection.power) {
+        // AN ISLAND IS A NET WITH NO GENERATOR ON IT. Cable bolted to rock, carrying nothing.
+        netState.power.set(comp.key, {
+          live: comp.gen > 0, ratio: comp.ratio, gen: comp.gen, draw: comp.draw,
+        });
+      }
+      for (const comp of projection.lanes) {
+        const active = comp.machineIds.some((id) => running.has(id));
+        // `stored` may legally exceed capacity (the A10 over-capacity ruling), so the DISPLAY
+        // density clamps — the dots must never claim a spacing tighter than a full lane's.
+        const density = comp.capacity > 0 ? Math.min(1, comp.stored / comp.capacity) : 0;
+        netState.lane.set(comp.key, {
+          live: comp.machineIds.length > 0 && (comp.stored > 0 || active),
+          active, density, stored: comp.stored, capacity: comp.capacity,
+        });
+      }
+    }
+    // The Network lens brightens what the base board already draws; it never invents a state.
+    const lensK = lensName === 'network' ? 2.2 : 1;
+    for (const part of overlayParts) {
+      if (part.kind === 'power') {
+        const st = netState.power.get(part.key);
+        const live = !!(st && st.live);
+        part.mat.color.copy(live ? CABLE_LIVE : CABLE_DEAD);
+        // Ceiling pulled down from .03's 0.36: with the armour, clamps and cast shadow doing the
+        // work, a hotter conductor only flattens the run back into a painted stripe.
+        const base = live ? (st.ratio >= 1 ? 0.24 : 0.04 + st.ratio * 0.15) : 0.02;
+        part.mat.emissiveIntensity = Math.min(0.9, base * lensK);
+      } else {
+        const st = netState.lane.get(part.key);
+        const live = !!(st && st.live);
+        part.mat.color.copy(live ? LANE_LIVE : LANE_DEAD);
+        let base = 0.04;
+        if (live) {
+          base = st.active
+            ? (motionReduce ? 0.22 : 0.17 + 0.08 * Math.sin(timeS * 4.2))
+            : 0.1;    // stock parked on a stalled lane: lit, but not breathing
+        }
+        part.mat.emissiveIntensity = Math.min(0.9, base * lensK);
+      }
+    }
+    syncFlowDots(dt, lensK);
+  }
+
+  // Dots on the lane floor. Constant speed; the BUFFER sets the spacing, so a full lane reads as a
+  // dense queue and a nearly-empty one as a trickle. A STALLED LANE'S DOTS STOP where they stand —
+  // frozen stock on the track is exactly what a backlog looks like.
+  function syncFlowDots(dt, lensK) {
+    let used = 0;
+    const pxPerWu = pxPerWorldUnit();
+    // At the site register a work-zoom dot is under two pixels, which is the moire the law warns
+    // about. Hold a 3.6px floor so the flow is still a legible row of beads on a 19px cell.
+    const dotScale = Math.max(1, 3.6 / (0.115 * S * pxPerWu));
+    for (const flow of laneFlows) {
+      const st = netState.lane.get(flow.key);
+      // A RUNNING LANE FLOWS EVEN WITH AN EMPTY BUFFER. Measured on the capture's producing site:
+      // the extractor throttles, the refinery starves, and the network's stock sits at zero because
+      // everything produced is consumed the same tick — a lane in continuous use. Gating the dots on
+      // the buffer drew that as a DEAD lane, which is the opposite of the truth. Stock sets the
+      // spacing (§7 "the buffer reads as dot density"); ACTIVITY decides whether anything moves.
+      if (!st || (!st.active && st.stored <= 0)) continue;
+      const moving = st.active && !motionReduce;
+      flow.phase += moving ? FLOW_SPEED_WU * dt : 0;
+      const gap = FLOW_GAP_EMPTY + (FLOW_GAP_FULL - FLOW_GAP_EMPTY) * st.density;
+      for (const route of flow.routes) {
+        const n = Math.max(1, Math.min(14, Math.floor(route.len / gap) + 1));
+        for (let i = 0; i < n; i++) {
+          if (used >= FLOW_DOT_MAX) break;
+          const arc = (flow.phase + i * gap) % route.len;
+          const pt = pointOnRoute(route, arc);
+          dummy.position.set(pt[0], pt[1], Z.overlay + 0.115);   // on the tray floor, under the lid
+          dummy.rotation.set(0, 0, 0);
+          dummy.scale.setScalar(S * dotScale);
+          dummy.updateMatrix();
+          flowDots.setMatrixAt(used++, dummy.matrix);
+        }
+      }
+    }
+    flowDots.count = used;
+    if (used) flowDots.instanceMatrix.needsUpdate = true;
+    flowDots.visible = used > 0;
+    flowDotMat.emissiveIntensity = Math.min(0.95, 0.42 * lensK);
+  }
+
+  function pointOnRoute(route, arc) {
+    const { pts, cum } = route;
+    let hi = 1;
+    while (hi < cum.length - 1 && cum[hi] < arc) hi++;
+    const lo = hi - 1;
+    const span = cum[hi] - cum[lo];
+    const t = span > 1e-6 ? (arc - cum[lo]) / span : 0;
+    return [pts[lo][0] + (pts[hi][0] - pts[lo][0]) * t, pts[lo][1] + (pts[hi][1] - pts[lo][1]) * t];
+  }
+
+  // ---- the port stacks crates (law §7) -------------------------------------------------------
+  // Five stages keyed to what the PORT is actually holding: `projection.exportBuffer` is the stock
+  // the port has staged for the next pod, so the pile is the shipment waiting on the floor.
+  function crateStageFor(total) {
+    if (!(total > 0)) return 0;
+    if (total < 3) return 1;
+    if (total < 6) return 2;
+    if (total < 12) return 3;    // one pod-load (SITE_BALANCE.podCapacity)
+    if (total < 24) return 4;
+    return 5;
+  }
+
+  function syncCrates(site, projection) {
+    const port = site ? site.machines.find((m) => m.defId === 'sm_cargo_port') : null;
+    const total = projection ? storeTotal(projection.exportBuffer) : 0;
+    const stage = port ? crateStageFor(total) : 0;
+    crateStageNow = stage;
+    if (!stage) { crateCell = null; if (crateMesh) crateMesh.visible = false; return; }
+    if (!crateGeos[stage]) crateGeos[stage] = makeCrateStackGeo(stage);
+    if (!crateMesh) {
+      crateMesh = new THREE.Mesh(crateGeos[stage], crateMat);
+      crateMesh.castShadow = true;
+      crateMesh.receiveShadow = true;
+      siteRoot.add(crateMesh);
+    }
+    if (crateMesh.geometry !== crateGeos[stage]) crateMesh.geometry = crateGeos[stage];
+    // The pile stands on the tunnel floor BESIDE the port: freight a loader could drive up to.
+    // MEASURED DEFECT, fixed here: the first build fell back to the port's OWN cell at floor height
+    // whenever the four neighbours were taken — and the machine plinth is 0.94 cells wide and 0.14
+    // deep, so the whole pile rendered inside it. `crateMesh.visible` was true, the check was green,
+    // and the still showed no crates at all. The search now walks the eight neighbours and then a
+    // ring further out, and the on-cell fallback stands the pile ON TOP of the plinth where it can
+    // still be seen. `cell` is published so a check can tell a placed pile from a buried one.
+    const blocked = (c, r) => {
+      const tile = field && field[c] && field[c][r];
+      if (!tile || tile.type !== 'empty') return true;
+      if (site.machines.some((m) => m.col === c && m.row === r)) return true;
+      const d = getDrill ? getDrill() : null;
+      return !!(d && d.avatar && d.avatar.col === c && d.avatar.row === r);
+    };
+    // ADJACENT OR ON THE PORT — never further. A pile two cells up the shaft reads as the rover's
+    // ore, not as the port's shipment; the whole point of the crates is whose output they are.
+    let cell = null;
+    for (const [dc, dr] of [[0, 1], [1, 0], [-1, 0], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]]) {
+      const c = port.col + dc;
+      const r = port.row + dr;
+      if (blocked(c, r)) continue;
+      cell = [c, r];
+      break;
+    }
+    // The on-port fallback stands the pile on the port's LOADING DECK, not on the floor beside it:
+    // the cargo port's collar is 0.53 cells across and a pile at floor height simply hid behind it
+    // (measured — one crate corner survived). From a straight-down camera "on top of" and "beside"
+    // read the same, and only one of them is actually visible.
+    crateMesh.scale.setScalar(cell ? S : S * 0.88);
+    crateMesh.position.set(
+      cell ? worldX(cell[0]) : worldX(port.col) - S * 0.2,
+      (cell ? worldY(cell[1]) : worldY(port.row)) - (cell ? S * 0.26 : S * 0.24),
+      cell ? Z.overlay - 0.03 : S * 0.72,
+    );
+    crateCell = cell;
+    crateMesh.visible = true;
+  }
+
+  // ---- Faces: which seats a machine can take (law §6.5 / §6.7) --------------------------------
+  // WHAT MINT MEANS, in the two contexts it can appear:
+  //   • a placement ghost is up  -> mint = asteroidSites.canInstall(THAT machine).ok. The sim's own
+  //     answer, so a mint cell can never disagree with the refusal the click would earn; a seat
+  //     that fails gets one why-glyph plate carrying the sim's reason.
+  //   • the Faces lens with nothing selected -> mint = GEOMETRIC SEATABILITY: hollow, in bounds,
+  //     unoccupied, not the rover's cell, and touching at least one solid face (law §1.2 — a
+  //     machine in a hollowed hall works nothing, so it is not a seat). Cost, adjacency and
+  //     uniqueness are machine-specific and unknowable with nothing in hand, so they are NOT
+  //     applied and nothing is glyphed as blocked.
+  function facesFor(d, defId, timeS) {
+    const sig = `${defId || ''}|${overlaySig}|${d.avatar.col},${d.avatar.row}`;
+    // The signature covers topology and the rig; affordability moves on its own as production
+    // runs, so a coarse clock re-asks anyway. Without it a mint seat could outlive the materials.
+    if (sig === facesCache.sig && timeS - facesCache.t < 0.4) return facesCache;
+    facesCache.sig = sig;
+    facesCache.t = timeS;
+    const seats = [];
+    const blocked = [];
+    const site = getSite ? getSite() : null;
+    const taken = new Set(site ? site.machines.map((m) => tileIndex(m.col, m.row)) : []);
+    const astId = d.asteroidId;
+    for (let c = 0; c < COLS; c++) {
+      for (let r = 0; r < ROWS; r++) {
+        const tile = field[c] && field[c][r];
+        if (!tile || tile.type !== 'empty') continue;   // solid rock is not a seat, and needs no plate
+        let contact = 0;
+        for (const [dc, dr] of NBR4) {
+          const nc = c + dc, nr = r + dr;
+          if (nc < 0 || nc >= COLS || nr < 0 || nr >= ROWS) continue;
+          const nt = field[nc][nr];
+          if (nt && nt.type !== 'empty') contact++;
+        }
+        if (!contact) continue;
+        const idx = tileIndex(c, r);
+        if (taken.has(idx)) { if (defId) blocked.push({ c, r, reason: 'occupied' }); continue; }
+        if (d.avatar.col === c && d.avatar.row === r) {
+          if (defId) blocked.push({ c, r, reason: 'rover-here' });
+          continue;
+        }
+        if (!defId) { seats.push({ c, r }); continue; }
+        let check = null;
+        try {
+          check = asteroidSites.canInstall({ asteroidId: astId, defId, col: c, row: r });
+        } catch (_) { check = null; }
+        if (check && check.ok) seats.push({ c, r });
+        else blocked.push({ c, r, reason: (check && check.reason) || 'blocked' });
+      }
+    }
+    facesCache.seats = seats;
+    facesCache.blocked = blocked;
+    return facesCache;
+  }
+
+  function whyPlate(reason, wx, wy) {
+    let plate = whyPool[whyUsed];
+    if (!plate) {
+      const mat = new THREE.MeshBasicMaterial({ transparent: true, depthTest: false, depthWrite: false });
+      const mesh = new THREE.Mesh(whyPlateGeo, mat);
+      mesh.renderOrder = 28;
+      mesh.frustumCulled = false;
+      fxRoot.add(mesh);
+      plate = { mesh, mat };
+      whyPool.push(plate);
+    }
+    whyUsed++;
+    let tex = whyTextures.get(reason);
+    if (!tex) { tex = makeWhyGlyphTexture(reason); whyTextures.set(reason, tex); }
+    plate.mat.map = tex;
+    plate.mat.needsUpdate = true;
+    // A CORNER STAMP, NOT A COVER. Centred and cell-sized the plate hid whatever it was explaining;
+    // pinned small to the cell's top-left it reads as a tag on the block.
+    plate.mesh.position.set(wx - S * 0.28, wy + S * 0.28, Z.face + 0.07);
+    plate.mesh.scale.setScalar(S * 0.32);
+    plate.mesh.visible = true;
+  }
+
+  // Auto-on while a ghost is live (law §6.5), otherwise only under the Faces lens. Seats are marked
+  // with corner brackets on the block — never a painted face (owner ruling 2026-08-21).
+  function syncFaces(d, ui, timeS) {
+    const ghosting = !!(ui && ui.mode === 'build' && ui.buildKind === 'machine' && ui.buildDefId);
+    const on = ghosting || lensName === 'faces';
+    whyUsed = 0;
+    facesShown = 0;
+    if (!on || !field) {
+      for (const plate of whyPool) plate.mesh.visible = false;
+      return;
+    }
+    const res = facesFor(d, ghosting ? ui.buildDefId : null, timeS);
+    for (const seat of res.seats) {
+      if (facesShown >= 96) break;
+      markSeat(seat.c, seat.r, 'seat');
+      facesShown++;
+    }
+    // WHY-GLYPHS ARE LOCAL, AND ONLY WHERE THE BOARD DOES NOT ALREADY ANSWER. A plate reading
+    // "a machine sits here" stacked on a visible machine, or "the rover is here" on the visible
+    // rover, is clutter restating what the object under it already says — those two refusals get
+    // the coral bracket and nothing else. The plates carry the causes you CANNOT see: an unpaid
+    // cost, a rig too far away, a missing gas contact, a rule you have already spent.
+    if (ghosting && ui.cursor) {
+      const near = res.blocked
+        .filter((b) => !SELF_EVIDENT_REFUSALS.has(b.reason))
+        .map((b) => ({ ...b, d2: (b.c - ui.cursor.col) ** 2 + (b.r - ui.cursor.row) ** 2 }))
+        .filter((b) => b.d2 <= 9)
+        .sort((a, b) => a.d2 - b.d2)
+        .slice(0, WHY_MAX);
+      for (const b of near) whyPlate(b.reason, worldX(b.c), worldY(b.r));
+    }
+    for (let i = whyUsed; i < whyPool.length; i++) whyPool[i].mesh.visible = false;
+  }
+
+  function syncGrid(ui, dt) {
+    const want = ui && ui.mode === 'build' ? GRID_BUILD_K : 0;
+    gridK += (want - gridK) * Math.min(1, 9 * dt);
+    if (Math.abs(gridK - want) < 0.0015) gridK = want;
+    gridMat.opacity = gridK;
+    gridPlane.visible = gridK > 0.004;
+  }
+
+  // ---- Plan lens numerals (law §6.5) ---------------------------------------------------------
+  // Mono numerals only: a per-machine rate under every working housing and one port income chip.
+  // Zero words, so the §11.3 budget is untouched and a lens can never turn the board into a table.
+  function emitPlanChips(site, projection, workZoom) {
+    if (!projection) return;
+    if (workZoom) {
+      for (const pm of projection.machines) {
+        const st = pm.status;
+        if (!st || !RUNNING_STATES.has(st.state)) continue;
+        let rate = 0;
+        for (const good of Object.keys(st.ratePerMin || {})) {
+          rate += Math.max(0, Number(st.ratePerMin[good]) || 0);
+        }
+        if (!(rate > 0)) continue;
+        emitChip(`${rate.toFixed(1)}/m`, worldX(pm.col), worldY(pm.row) - S * 0.56);
+      }
+    }
+    const income = Number(projection.exportRatePerMin) || 0;
+    if (income > 0) {
+      const port = site ? site.machines.find((m) => m.defId === 'sm_cargo_port') : null;
+      emitChip(
+        `+${income.toFixed(1)}/m`,   // a leading + is the income tell; every mono face has it
+        port ? worldX(port.col) : worldX(ENTRY_COL),
+        (port ? worldY(port.row) : worldY(0)) + S * 0.66,
+      );
+    }
+  }
+
+  // ---- the lens cycle (law §6.5: V cycles, one at a time, Tab belongs to the drawers) ---------
+  function setLens(name) {
+    const next = LENS_ORDER.includes(name) ? name : null;
+    if (next === lensName) return lensName;
+    lensName = next;
+    facesCache.sig = '';                 // a fresh lens re-asks the sim instead of showing a cache
+    splitSig = '';                       // seam outlines carry the lens weight, so re-bake them
+    if (lensName === 'network') pulseStarvedOnce();
+    return lensName;
+  }
+
+  function cycleLens() {
+    const at = lensName ? LENS_ORDER.indexOf(lensName) : -1;
+    return setLens(at + 1 >= LENS_ORDER.length ? null : LENS_ORDER[at + 1]);
+  }
+
+  // "starved machines pulse gold ONCE" (law §6.5). One ring per fault at lens-on, not a heartbeat:
+  // §3.4 forbids anything blinking at idle.
+  function pulseStarvedOnce() {
+    const projection = getProjection ? getProjection() : null;
+    if (!projection) return;
+    let n = 0;
+    for (const pm of projection.machines) {
+      if (!pm.status || !FAULT_STATES.has(pm.status.state)) continue;
+      firePulseRing(pm.col, pm.row, 0xffb648, 0.9);
+      if (++n >= 4) break;
+    }
+  }
+
+  const onLensKey = (ev) => {
+    if (ev.code !== 'KeyV' || ev.repeat || ev.altKey || ev.ctrlKey || ev.metaKey) return;
+    cycleLens();
+    ev.preventDefault();
+  };
+  canvas.addEventListener('keydown', onLensKey);
 
   // ---------------------------------------------------------------- umbilical
   // The tether is the way home: a lit-core cable spooling off the surface derrick's winch drum,
@@ -2455,12 +3309,38 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     }
   }
 
-  function seamOutlineColour(ore) {
+  function seamOutlineColour(ore, siteReg = false) {
     // "a BRIGHTENED perimeter outline, the material's detail color" — the vein hue carried halfway
     // to its glint. The raw glint alone is near-white on the pale ores, and a white box around a
     // cell is a UI selection marker, not a seam.
     const t = ORE_TINTS[ore] || ORE_TINTS.cmdty_silicate;
+    // At the site register the lift comes OFF: the glint on iron is a warm gold and at 19px cells
+    // it competes with the rover for the same hue. Back on the material's own detail colour, and
+    // a shade under it, the yellow rig wins its margin again (PQ-130.05's recorded defect).
+    if (siteReg) return new THREE.Color(t.vein).multiplyScalar(0.82);
     return new THREE.Color(t.vein).lerp(new THREE.Color(t.glint || t.vein), 0.35);
+  }
+
+  // The inclusions themselves stop sparkling at the site register. Nineteen-pixel cells turn a
+  // faceted crystal cluster into per-frame speckle — the moire the law names — so the ore drops its
+  // specular and reads as one swatch of its own hue, which is all the body scale can carry anyway.
+  let oreRegisterSig = '';
+  function syncOreRegister() {
+    const siteReg = zoomRegister !== 'work' || zoomKCur <= 0.82;
+    const sig = `${siteReg ? 's' : 'w'}|${oreMats.size}`;
+    if (sig === oreRegisterSig) return;
+    oreRegisterSig = sig;
+    for (const m of oreMats.values()) {
+      if (m._awRough === undefined) {
+        m._awRough = m.roughness;
+        m._awMetal = m.metalness;
+        m._awEnv = m.envMapIntensity;
+      }
+      // uniforms only — no defines move, so nothing here recompiles a shader
+      m.roughness = siteReg ? Math.min(1, m._awRough + 0.3) : m._awRough;
+      m.metalness = siteReg ? m._awMetal * 0.4 : m._awMetal;
+      m.envMapIntensity = siteReg ? m._awEnv * 0.25 : m._awEnv;
+    }
   }
 
   function setLines(existing, pos, col, mat) {
@@ -2773,22 +3653,31 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   }
 
   // Everything the seam layer draws, once per frame.
-  function syncSeamAnnotations(d) {
+  function syncSeamAnnotations(d, site = null, projection = null) {
     if (seamsDirty) rebuildSeams();
     // Chips are a WORK-ZOOM instrument (law §3.5). At site zoom a 13px pill over a 16px cell is
     // noise, so the bodies keep their outlines and drop their counts.
     const workZoom = zoomRegister === 'work' && zoomKCur > 0.82;
+    const siteReg = !workZoom;
+    // PQ-130.10b site-register legibility. PQ-130.05 recorded the defect plainly: at the site
+    // register the rover's safety-yellow margin over the gold seam outlines is thin, because the
+    // brightened outline hue and the ore palette crowd the same part of the wheel at 19px cells.
+    // Two fixes, both here: the outlines go THIN AND DIM at site zoom, and they drop the halfway
+    // lift toward the glint so they sit back on the material's own detail colour instead of gold.
+    seamLineMat.opacity = siteReg ? 0.2 : (lensName === 'plan' ? 0.78 : 0.56);
 
     const aim = aimCell(d);
     const aimIdx = aim ? tileIndex(aim.col, aim.row) : -1;
     const aimBody = aim ? seamOfCell.get(aimIdx) : null;
-    const sig = `${seamSerial}|${aimBody ? aimBody.id : -1}|${aimIdx}`;
+    const sig = `${seamSerial}|${aimBody ? aimBody.id : -1}|${aimIdx}|${siteReg ? 's' : 'w'}`;
     if (sig !== splitSig) {
       splitSig = sig;
-      rebuildSeamLines(aimBody, aimIdx);
+      rebuildSeamLines(aimBody, aimIdx, siteReg);
     }
 
     chipsUsed = 0;
+    // The Plan lens keeps the seam counts up at work zoom and adds the rates beside them.
+    if (lensName === 'plan') emitPlanChips(site, projection, workZoom);
     if (workZoom) {
       for (const b of splitBodies) emitChip(`${ORE_SYMBOL[b.ore] || '··'} ${b.count}`, b.wx, b.wy);
       for (const b of seamBodies) {
@@ -2802,14 +3691,14 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
 
   // Rebuild both line layers. When the rig is aimed at a seam cell the parent body's outline is
   // withheld and the sub-bodies the cut would leave are drawn in its place — that IS the preview.
-  function rebuildSeamLines(aimBody, aimIdx) {
+  function rebuildSeamLines(aimBody, aimIdx, siteReg = false) {
     const pos = [], col = [];
     const inset = S * 0.022;
     for (const b of seamBodies) {
       if (aimBody && b.id === aimBody.id) continue;
       if (b.count < SEAM_MIN_BODY) continue;
       const set = new Set(b.cells.map((cell) => cell.idx));
-      perimeterInto(set, b.cells, inset, seamOutlineColour(b.ore), pos, col);
+      perimeterInto(set, b.cells, inset, seamOutlineColour(b.ore, siteReg), pos, col);
     }
     seamOutline = setLines(seamOutline, pos, col, seamLineMat);
 
@@ -2998,6 +3887,85 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         mkStamp: mkStampT,
       };
     },
+    // ---- law §7 / §6.5 / §6.7 "The site reads" (PQ-130.10b) ----
+    // What the NETWORK LAYER is drawing this frame, read off the live objects: which run belongs to
+    // which of the sim's own components, the jacket colour and emissive it is actually wearing, the
+    // dots on the glass, the crate stage, the lens, and the build-mode board feedback. A check can
+    // therefore assert that a state CHANGED SOMETHING, not merely that a flag flipped.
+    networks() {
+      const runs = overlayParts.map((part) => ({
+        kind: part.kind,
+        key: part.key,
+        hex: `#${part.mat.color.getHexString()}`,
+        emissive: Number(part.mat.emissiveIntensity.toFixed(3)),
+        live: part.kind === 'power'
+          ? !!(netState.power.get(part.key) || {}).live
+          : !!(netState.lane.get(part.key) || {}).live,
+      }));
+      const lanes = [];
+      for (const [key, st] of netState.lane) {
+        lanes.push({
+          key, live: st.live, active: st.active,
+          density: Number(st.density.toFixed(3)), stored: st.stored, capacity: st.capacity,
+        });
+      }
+      const power = [];
+      for (const [key, st] of netState.power) {
+        power.push({ key, live: st.live, ratio: st.ratio, gen: st.gen, draw: st.draw });
+      }
+      return {
+        runs,
+        lanes,
+        power,
+        islands: runs.filter((r) => !r.live).length,
+        flowDots: flowDots.count,
+        flowRoutes: laneFlows.reduce((n, f) => n + f.routes.length, 0),
+        casings: overlayCasings.length,
+        // The run's drawn CROSS SECTION in screen pixels. §7 asks the same drawing to stay legible
+        // at the site register; a run that thinned to a hairline there would be a painted line, so
+        // this is the number the check holds a floor against.
+        laneWidthPx: Number((overlayWidth.lane * (overlayWidth.regPxPerCell || S * pxPerWorldUnit())).toFixed(2)),
+        cableWidthPx: Number((overlayWidth.power * (overlayWidth.regPxPerCell || S * pxPerWorldUnit())).toFixed(2)),
+        cellPx: Number((overlayWidth.regPxPerCell || 0).toFixed(2)),
+        register: zoomRegister,
+      };
+    },
+    // The port pile: 0 = nothing shipped yet, 1..5 = the stages the export buffer has earned.
+    crates() {
+      return {
+        stage: crateStageNow,
+        visible: !!(crateMesh && crateMesh.visible),
+        // Where the pile actually stands. `onFloor` false means every neighbour was taken and the
+        // pile is sitting on the port's own plinth — legible, but the tighter fallback.
+        cell: crateCell ? crateCell.slice() : null,
+        onFloor: !!crateCell,
+      };
+    },
+    // The lens cycle, and the two things a lens is allowed to move on the board.
+    lens() {
+      return {
+        active: lensName,
+        order: LENS_ORDER.slice(),
+        seamAlpha: Number(seamLineMat.opacity.toFixed(3)),
+        chips: chipsUsed,
+      };
+    },
+    // Build-mode board feedback (law §6.7): mint seats drawn, why-glyph plates drawn, and the
+    // gridline strengthening actually applied to the grooves this frame.
+    faces() {
+      return {
+        seats: facesShown,
+        whyGlyphs: whyUsed,
+        reasons: facesCache.blocked.slice(0, 24).map((b) => b.reason),
+        gridStrength: Number(gridK.toFixed(4)),
+        // OWNER RULING 2026-08-21: seats are marked with brackets, never a painted face. This is
+        // the DRAWN INK of one seat mark as a fraction of its cell — a solid fill would report ~1.
+        seatInkFrac: Number((seatGeo.userData.inkFrac || 0).toFixed(4)),
+        seatMarks: seatsUsed,
+      };
+    },
+    setLens,
+    cycleLens,
     // The hover box, as drawn (law §3.2: cyan is material FLOW only, so the cursor may not be it).
     hoverFrame() {
       return {
@@ -3010,12 +3978,13 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   };
 
   // ---------------------------------------------------------------- cursor / ghost / ring sync
+  // The cursor and the ghost's contact preview. NOTHING here paints a cell face any more: the
+  // verdict is the hairline frame's colour, the contacts are corner brackets on the neighbours'
+  // own bevel rings, and the ghost machine itself is the object you are placing.
   function syncCursor(ui) {
     const cursor = ui && ui.cursor;
     const showGhost = !!(cursor && ui.mode === 'build' && ui.buildKind === 'machine' && ui.buildDefId);
     cursorGroup.visible = !!cursor;
-    padQuad.visible = false;
-    for (const q of ringQuads) q.visible = false;
     // 1.5px, solved against the live camera EVERY frame — before the no-cursor early return, so a
     // reading taken with the pointer off the board still reports the hairline the board will draw
     // rather than the geometry's unscaled 7px slab.
@@ -3031,13 +4000,10 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         g.group.visible = true;
         g.group.position.set(cx, cy, 0.02);
       }
-      frameMat.color.setHex(ui.canOk ? 0x62e08a : 0xff5c5c);
+      frameMat.color.setHex(ui.canOk ? 0x7cd9a2 : 0xff6242);   // --aw-mint / --aw-coral
       frameMat.opacity = 0.85;   // shared material: the build verdict must not leak into drive
-      padQuad.visible = true;
-      padQuad.material = ui.canOk ? padOkMat : padBadMat;
-      padQuad.position.set(cx, cy, Z.face - 0.02);
-      // Contact-ring preview: what the machine would read, solid = feedable.
-      let qi = 0;
+      // Contact-ring preview: which of the eight neighbours would feed this machine. Brackets, not
+      // a wash — a face that feeds gets a mint mark, a face already hollow gets a bone one.
       for (let dc = -1; dc <= 1; dc++) {
         for (let dr = -1; dr <= 1; dr++) {
           if (!dc && !dr) continue;
@@ -3045,13 +4011,11 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
           const rr = cursor.row + dr;
           if (cc < 0 || cc >= COLS || rr < 0 || rr >= ROWS) continue;
           const tile = field[cc] && field[cc][rr];
-          const solid = tile && tile.type !== 'empty';
-          const q = ringQuads[qi++];
-          q.visible = true;
-          q.material = solid ? ringSolidMat : ringEmptyMat;
-          q.position.set(worldX(cc), worldY(rr), Z.face - 0.04);
+          markSeat(cc, rr, tile && tile.type !== 'empty' ? 'contact' : 'hollow');
         }
       }
+      // The refused verdict is the hairline frame's coral, and that is ALL it is: a bracket in the
+      // same cell doubles the ink and starts reading as a filled box again.
     } else {
       if (ghost) ghost.group.visible = false;
       frameMat.color.setHex(HOVER_INK);
@@ -3610,6 +4574,29 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     for (const id of [...machines.keys()]) removeMachine(id);
     overlaySig = '';
     rebuildOverlays(null);
+    // PQ-130.10b — the networks layer resets with the session. A lens is a per-visit choice, not a
+    // setting: law §2.5 counts the DEFAULT drive view and a lens left on from the last rock would
+    // spend it. The crate pile and the grid come back at zero for the same reason.
+    lensName = null;
+    gridK = 0;
+    gridMat.opacity = 0;
+    gridPlane.visible = false;
+    facesCache.sig = '';
+    facesCache.t = -1e9;
+    facesCache.seats = [];
+    facesCache.blocked = [];
+    seatsUsed = 0;
+    facesShown = 0;
+    seatBrackets.count = 0;
+    seatBrackets.visible = false;
+    whyUsed = 0;
+    for (const plate of whyPool) plate.mesh.visible = false;
+    crateStageNow = 0;
+    crateCell = null;
+    if (crateMesh) crateMesh.visible = false;
+    netState.power.clear();
+    netState.lane.clear();
+    oreRegisterSig = '';
     umbilicalKey = '';
     umbilicalTimer = 0;
     if (umbilical) {
@@ -3851,20 +4838,17 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
 
     // site: machines + overlays + umbilical
     syncMachines(site, projection, timeS);
-    const sig = overlaySignature(site);
+    const sig = overlaySignature(site, projection);
     if (sig !== overlaySig) {
       overlaySig = sig;
-      rebuildOverlays(site);
+      rebuildOverlays(site, projection);
     }
-    const flowing = !!(projection && projection.machines && projection.machines.some((m) => m.status
-      && (m.status.state === 'running' || m.status.state === 'limited' || m.status.state === 'throttled')));
-    const worstRatio = projection && projection.power.length
-      ? projection.power.reduce((w, p) => Math.min(w, p.ratio), 1) : 1;
-    // A live run brightens its jacket a little; a dead one goes to bare metal. Ceiling stays low
-    // so a cable never out-shouts a real lamp or blooms.
-    laneCoreMat.emissiveIntensity = flowing
-      ? (motionReduce ? 0.34 : 0.26 + 0.13 * Math.sin(timeS * 4.2)) : 0.06;
-    powerCoreMat.emissiveIntensity = worstRatio >= 1 ? 0.36 : 0.05 + worstRatio * 0.22;
+    // PQ-130.10b: a live run brightens its own jacket, a dead island goes to bare desaturated
+    // metal, and the lanes carry their stock as moving dots. All of it per NETWORK now — the two
+    // global emissive writes this replaced painted every cable on the rock with the worst net's
+    // news, so one brownout in a corner dimmed a spine that was running fine.
+    syncNetworks(site, projection, dt, timeS);
+    syncCrates(site, projection);
     syncUmbilical(d, rx, ry, moving, dt);
 
     // dig progress: crack + sink the target block, dribble dust off the face
@@ -3908,8 +4892,16 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       e.mat.emissiveIntensity = e.base + Math.sin(timeS * 1.6) * e.amp;
     }
 
+    // One bracket pool serves the cursor's contact ring AND the Faces seats, so the frame's marks
+    // are opened here and flushed once both have had their say.
+    seatsUsed = 0;
+    seatGeometryForZoom();
     syncCursor(ui);
-    syncSeamAnnotations(d);
+    syncFaces(d, ui, timeS);
+    flushSeats();
+    syncGrid(ui, dt);
+    syncOreRegister();
+    syncSeamAnnotations(d, site, projection);
     syncMkStamp(d, dt);
     syncScanRing(d, rx, ry);
     layoutWantChips();
@@ -3934,6 +4926,32 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       umbilical = null;
     }
     rebuildOverlays(null);
+    // PQ-130.10b teardown. rebuildOverlays(null) already released every per-network material and
+    // merged run through disposeOverlayParts; what is left is the layer's own shared kit.
+    canvas.removeEventListener('keydown', onLensKey);
+    overlayRoot.remove(flowDots);
+    flowDots.dispose();
+    flowDotGeo.dispose();
+    flowDotMat.dispose();
+    junctionNodeGeo.dispose();
+    if (crateMesh) { siteRoot.remove(crateMesh); crateMesh = null; }
+    for (const g of crateGeos) { if (g) g.dispose(); }
+    crateGeos.length = 0;
+    crateMat.dispose();
+    fxRoot.remove(seatBrackets);
+    seatBrackets.dispose();
+    seatGeo.dispose();
+    seatMat.dispose();
+    trayMat.dispose();
+    for (const plate of whyPool) { fxRoot.remove(plate.mesh); plate.mat.dispose(); }
+    whyPool.length = 0;
+    for (const tex of whyTextures.values()) tex.dispose();
+    whyTextures.clear();
+    whyPlateGeo.dispose();
+    fxRoot.remove(gridPlane);
+    gridPlane.geometry.dispose();
+    if (gridMat.map) gridMat.map.dispose();
+    gridMat.dispose();
     for (const bucket of ROCK_BUCKETS) {
       for (const inst of rockInst[bucket]) inst.dispose();
       rockInst[bucket] = [];
@@ -3978,7 +4996,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     canvas.__ast3d = null;
     laneCoreMat.dispose(); powerCoreMat.dispose(); casingMat.dispose();
     gasMat.dispose(); gasCrackMat.dispose(); gasCrackHotMat.dispose();
-    frameMat.dispose(); ringSolidMat.dispose(); ringEmptyMat.dispose(); padOkMat.dispose(); padBadMat.dispose();
+    frameMat.dispose();
     scanMat.dispose(); scanRing.geometry.dispose();
     crackDecalMat.dispose(); crackDecal.geometry.dispose();
     for (const m of crackStageMeshes) { fxRoot.remove(m); m.geometry.dispose(); m.material.dispose(); m.dispose(); }
@@ -4007,5 +5025,11 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     if (dom.root) dom.root.remove();
   }
 
-  return { begin, render, notify, refreshCells, pickCell, inputZoom, setZoomRegister, toggleZoomRegister, dispose };
+  return {
+    begin, render, notify, refreshCells, pickCell, inputZoom, setZoomRegister, toggleZoomRegister,
+    // PQ-130.10b — the lens cycle is owned here (the canvas listener below `V` is the shipped path)
+    // and exported so the screen can mount §6.5's chip row against the same state later.
+    setLens, cycleLens, getLens: () => lensName,
+    dispose,
+  };
 }
