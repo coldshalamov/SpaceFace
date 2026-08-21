@@ -201,6 +201,11 @@ export const presentationOrchestrator = {
       this.bus.on('drill:break', (payload) => this._onMiningDrillBreak(payload || {})),
       this.bus.on('drill:yield', (payload) => this._onMiningDrillYield(payload || {})),
       this.bus.on('drill:gasHit', (payload) => this._onMiningDrillGas(payload || {})),
+      // PQ-130.08 / law §5 "Hopper full". drill.js raises its own `drill:cargoFull` receipt, but
+      // nothing consumed it: the only path to `mining.cargo.full` was `cargo:full` (surface mining)
+      // plus a text classifier keyed on 'Cargo holds are full!', a string that appears nowhere in
+      // src/. The refusal was therefore expressionless AND silent in the mine.
+      this.bus.on('drill:cargoFull', (payload) => this._onDrillCargoFull(payload || {})),
       this.bus.on('drill:end', (payload) => this._onMiningDrillEnd(payload || {})),
       this.bus.on('drill:retry', (payload) => this._onMiningDrillRetry(payload || {})),
       this.bus.on('sector:enter', (payload) => {
@@ -1127,10 +1132,46 @@ export const presentationOrchestrator = {
     });
   },
 
+  /**
+   * drill.js raises `drill:gasHit` immediately after a gas break — but only when there is a hull
+   * to damage (`player && player.hullMax > 0`). Mirror exactly that predicate so the break handler
+   * can tell whether the hazard cue is really coming.
+   */
+  _gasHitWillFollow() {
+    const entities = this.state && this.state.entities;
+    const player = entities && typeof entities.get === 'function' && this.state.playerId != null
+      ? entities.get(this.state.playerId)
+      : null;
+    return !!(player && Number(player.hullMax) > 0);
+  },
+
+  _onDrillCargoFull(payload) {
+    this._emitCue('mining.cargo.full', payload, {
+      sourceEvent: 'drill:cargoFull',
+      sourceId: this.state.playerId,
+      targetId: this.state.drill && this.state.drill.asteroidId,
+      material: 'cargo',
+      sequence: payload.commodityId || 'hold',
+      tags: ['drill', payload.commodityId, 'full'].filter(Boolean),
+    });
+  },
+
   _onMiningDrillBreak(payload) {
     this._drillContactBand = null;
-    if (payload.wasGas || payload.wasVein) return;
-    this._emitCue('mining.drill.break', payload, {
+    // The old blanket `if (wasGas || wasVein) return` assumed a follow-up cue always claimed those
+    // breaks. Neither follow-up is guaranteed: `drill:gasHit` needs a hull to damage, and
+    // `drill:yield` does not fire when the rock budget is spent or the holds reject the unit — so
+    // a breached pocket and a played-out vein could both break in complete silence.
+    if (payload.wasGas) {
+      if (this._gasHitWillFollow()) return true;
+      // Pocket breached with nothing to damage. The hazard still happened; voice it as the hazard.
+      return this._onMiningDrillGas({ ...payload, dmg: 0, pos: { col: payload.col, row: payload.row } });
+    }
+    // A vein break is no longer suppressed. The cell giving way and the ore registering in the
+    // hopper are two different mechanical facts with two different sounds in law §5 (a break, then
+    // the mineral tick); layering them is correct, and it closes the silent-vein-break hole in
+    // every branch — paid, depleted, or holds-full.
+    return this._emitCue('mining.drill.break', payload, {
       sourceEvent: 'drill:break',
       sourceId: this.state.playerId,
       targetId: this.state.drill && this.state.drill.asteroidId,

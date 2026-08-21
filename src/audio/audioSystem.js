@@ -562,6 +562,316 @@ export function drillGrindMix(drillState, out = {}) {
   return out;
 }
 
+// ---------------------------------------------------------------------------
+// The mine's voice — PQ-130.08 / ASTEROID_WORKS_DESIGN_LAW.md §5, §8, §11.9
+// ---------------------------------------------------------------------------
+// What was actually wrong (measured 2026-08-21, not inherited from the 2026-08-07 note):
+//   • `_onPause(true)` zeroes ONLY the music bus. `ambientBus`, `sfxBus`, `uiBus` and `combatBus`
+//     stay live, `_onCue` is not pause-gated, and `_updateDrillGrind()` runs outside the
+//     `if (!rt._paused)` block in `_frame()`. So one-shots and the grind loop were never muted.
+//   • A silent music bus inside the rock is not the bug — it is the law: §8 says "the flight score
+//     does not continue inside". Nothing below un-zeroes it.
+//   • The real hole is that nothing was ever authored to take the score's place, and several §5
+//     rows had no reachable cue at all. §11.9's live invariant ("the music/AMBIENCE bus gain is
+//     > 0 while screen `drill` is active") is satisfied by the bed below, on the ambient bus.
+export const MINE_SCREEN_ID = 'drill';
+
+/** 'front' = the mine owns the glass; 'behind' = a pause/settings screen sits on top of it. */
+export function mineScreenPresence(screenStack) {
+  if (!Array.isArray(screenStack) || screenStack.length === 0) return 'none';
+  if (screenStack[screenStack.length - 1] === MINE_SCREEN_ID) return 'front';
+  return screenStack.includes(MINE_SCREEN_ID) ? 'behind' : 'none';
+}
+
+// A pause menu opened over the mine ducks the bed rather than killing it: you are still in the
+// rock, the room tone just steps back so the menu reads.
+export const MINE_BED_DUCK_BEHIND = 0.3;
+
+// Law §8/§9 envelope: fade in on enter (<= 600 ms), fade out on retract.
+export const MINE_BED_FADE_IN_S = 0.55;
+export const MINE_BED_FADE_OUT_S = 0.45;
+export const MINE_BUS_PEAK = 1;
+// Sub-fader peaks under the mine bus, referred to the AMBIENT bus input so they can be compared
+// against what already ships there: the station hum enters at 0.038–0.045 and a `sfx_mining_*`
+// one-shot at audioRecipeBasePeak('mining') 0.3 x the 0.8 cue gain = 0.24.
+//   • bed: two unity room oscillators x roomGain 0.5, plus air at 0.20 => 1.2 into this fader, so
+//     0.10 lands the room tone at ~0.12 — about 3x the station hum. Present, not a hangar.
+//   • grind: a unity noise layer plus its oscillator bed (<= 1.42) x the mix gain (<= 0.76), so
+//     0.22 lands the loudest possible bore at ~0.24 — level with a foreground mining one-shot,
+//     which is right for the primary action sound of the screen and no hotter.
+// test/asteroid-sound-routing.test.mjs §7 MEASURES both off the live graph rather than trusting
+// this arithmetic, and pins them against those two shipped references.
+export const MINE_BED_PEAK = 0.10;
+export const MINE_GRIND_PEAK = 0.22;
+
+/**
+ * The whole pause-path decision for the mine, as one pure function of (screen stack, paused,
+ * muted). `_onPause` and `_applySettings` both call it so the rule cannot drift between them,
+ * and test/asteroid-sound-routing.test.mjs enumerates the real PAUSING_SCREENS set against it.
+ *
+ * For every pausing screen that is NOT `drill` this returns exactly the legacy behaviour:
+ * bed off, and `musicSilenced === paused`.
+ */
+export function resolveMineAudioIntent(input = {}, out = {}) {
+  const presence = mineScreenPresence(input.screenStack);
+  const paused = !!input.paused;
+  const muted = !!input.muted;
+  const mineActive = presence !== 'none' && !muted;
+  out.presence = presence;
+  out.mineActive = mineActive;
+  out.bedActive = mineActive;
+  out.bedDuck = mineActive ? (presence === 'front' ? 1 : MINE_BED_DUCK_BEHIND) : 0;
+  // Legacy rule (`muted || paused`) plus the §8 clause: the score never plays inside the rock.
+  out.musicSilenced = muted || paused || mineActive;
+  // While the mine owns the ear it also owns the drill cue voices, so the flight-mix recipes
+  // routed through presentation do not double the synthesized mine cue.
+  out.cuesOwnedByMine = mineActive;
+  return out;
+}
+
+// ---- grind: three hardness layers, crossfaded by the target cell's material ----
+export const MINE_GRIND_LAYERS = Object.freeze(['matrix', 'basalt', 'locked']);
+
+// Centres in `materialHardness()` units (src/systems/drill.js): regolith/dirt sits at 0.75, plain
+// and deep rock climb 1.15 -> 2.0 (the generator's hardest plain rock is 1.15 + 0.85), and the
+// locked centre is deliberately parked ABOVE that ceiling so no ungated cell is ever mistaken for
+// a locked one — the tier gate, not the hardness, is what selects the metallic skate. The test
+// pins these against the live materialHardness() so the two tables cannot drift apart.
+export const MINE_GRIND_CENTRES = Object.freeze({ matrix: 0.75, basalt: 1.5, locked: 2.6 });
+
+/** Local mirror of drill.js `materialHardness` — audio must not import the sim. */
+export function mineTileHardness(tile) {
+  if (!tile || tile.type === 'empty') return 0;
+  if (Number.isFinite(tile.hardness)) return Math.max(0.35, tile.hardness);
+  if (tile.type === 'gas') return 0.5;
+  if (tile.type === 'dirt') return 0.75;
+  if (tile.type === 'vein') return 1.15;
+  return 1.45;
+}
+
+/**
+ * Pure mix target for the three-layer grind. Selection is a function of the TARGET CELL only
+ * (type, hardness, tier gate); bore progress and heat drive intensity, never layer choice.
+ * `boring: false` returns a silent, layer-less result — the law's "silent when not boring".
+ */
+export function mineGrindLayers(tile, opts = {}, out = null) {
+  const c = MINE_GRIND_CENTRES;
+  const hardness = mineTileHardness(tile);
+  const gated = Math.max(1, Math.trunc(Number(tile && tile.tierReq) || 1)) > 1
+    || String((tile && tile.type) || '') === 'exotic';
+  const bore = clamp(Number(opts.bore) || 0, 0, 1);
+  const heat = clamp(Number(opts.heat) || 0, 0, 1);
+  const energy = clamp(opts.energy == null ? 1 : Number(opts.energy), 0, 1);
+  const weights = (out && out.weights) || { matrix: 0, basalt: 0, locked: 0 };
+  weights.matrix = 0; weights.basalt = 0; weights.locked = 0;
+  if (gated) {
+    // A cell the bit is not rated for reads as the locked layer no matter how soft the stone is:
+    // that metallic skate IS the information.
+    weights.locked = 1;
+    weights.basalt = clamp((hardness - c.matrix) / (c.locked - c.matrix), 0, 1) * 0.35;
+  } else if (hardness <= c.matrix) {
+    weights.matrix = 1;
+  } else if (hardness >= c.locked) {
+    weights.locked = 1;
+  } else if (hardness <= c.basalt) {
+    const t = (hardness - c.matrix) / (c.basalt - c.matrix);
+    weights.matrix = 1 - t; weights.basalt = t;
+  } else {
+    const t = (hardness - c.basalt) / (c.locked - c.basalt);
+    weights.basalt = 1 - t; weights.locked = t;
+  }
+  const sum = weights.matrix + weights.basalt + weights.locked || 1;
+  weights.matrix /= sum; weights.basalt /= sum; weights.locked /= sum;
+  let layer = 'matrix';
+  if (weights.basalt > weights[layer]) layer = 'basalt';
+  if (weights.locked > weights[layer]) layer = 'locked';
+  const active = !!opts.boring && hardness > 0;
+  const res = out || {};
+  res.active = active;
+  res.layer = active ? layer : null;
+  res.hardness = hardness;
+  res.gated = gated;
+  res.bore = bore;
+  res.weights = weights;
+  // Rises with bore progress (law §5 "Bore progress"), sags on a flat capacitor.
+  res.gain = active ? clamp(0.34 + bore * 0.34 + heat * 0.08 - (1 - energy) * 0.10, 0, 1) : 0;
+  res.rate = clamp(0.92 + heat * 0.24 - (1 - energy) * 0.12, 0.78, 1.24);
+  res.filterHz = clamp(1180 - hardness * 300 + bore * 220 + heat * 180, 240, 1500);
+  return res;
+}
+
+// ---- cue table: one row per law §5 "what you hear" column ----
+// Mix priority is a rank, not a volume: hazard > payoff > machine state > ambience.
+export const MINE_CUE_CLASS_RANK = Object.freeze({ ambience: 0, machine: 1, payoff: 2, hazard: 3 });
+export const MINE_PRIORITY_DUCK = 0.45;       // a lower-rank voice under a live alert
+export const MINE_BED_ALERT_DUCK = 0.35;      // the room tone under a live alert
+export const MINE_GRIND_ALERT_DUCK = 0.5;     // the grind under a live alert
+export const MINE_REFUSAL_SUPPRESS_MS = 5000; // law §5: identical refusals within 5s do not replay
+
+function mineCue(klass, priority, extra = {}) {
+  return Object.freeze({
+    klass,
+    priority,
+    minGapMs: extra.minGapMs || 0,
+    repeatSuppressMs: extra.repeatSuppressMs || 0,
+    peak: extra.peak == null ? 0.3 : extra.peak,
+    alert: !!extra.alert,
+    holdMs: extra.holdMs || 0,
+  });
+}
+
+// Peaks are referred to the AMBIENT bus input, where a shipped `sfx_mining_*` one-shot enters at
+// 0.24. Each branch in `_synthMineCue` layers 1-3 partials, so the SUM is the voice, not the row —
+// the routing test measures those sums off the live graph and holds them in that window, with the
+// gas breach the one cue allowed to dominate the room.
+export const MINE_CUES = Object.freeze({
+  // payoff
+  oreTick: mineCue('payoff', 0.62, { minGapMs: 55, peak: 0.20 }),
+  courierLaunch: mineCue('payoff', 0.60, { minGapMs: 250, peak: 0.26 }),
+  // hazard (alert class — one voice at a time)
+  gasBreach: mineCue('hazard', 0.98, { minGapMs: 260, peak: 0.38, alert: true, holdMs: 900 }),
+  heatCritical: mineCue('hazard', 0.88, { repeatSuppressMs: MINE_REFUSAL_SUPPRESS_MS, peak: 0.30, alert: true, holdMs: 700 }),
+  // machine state
+  boreBite: mineCue('machine', 0.38, { minGapMs: 70, peak: 0.18 }),
+  rockBreak: mineCue('machine', 0.46, { minGapMs: 60, peak: 0.20 }),
+  lockRefusal: mineCue('machine', 0.55, { repeatSuppressMs: MINE_REFUSAL_SUPPRESS_MS, peak: 0.24 }),
+  hopperFull: mineCue('machine', 0.60, { repeatSuppressMs: MINE_REFUSAL_SUPPRESS_MS, peak: 0.24 }),
+  rockDepleted: mineCue('machine', 0.52, { repeatSuppressMs: MINE_REFUSAL_SUPPRESS_MS, peak: 0.20 }),
+  ventRelief: mineCue('machine', 0.58, { minGapMs: 400, peak: 0.22 }),
+  machinePlaced: mineCue('machine', 0.55, { minGapMs: 120, peak: 0.26 }),
+  machineStarved: mineCue('machine', 0.50, { repeatSuppressMs: MINE_REFUSAL_SUPPRESS_MS, peak: 0.18 }),
+  // ambience
+  assayPing: mineCue('ambience', 0.30, { minGapMs: 500, peak: 0.15 }),
+});
+
+// Sim event (or derived edge) -> cue key. `drill:warn` splits on its `reason` field, because the
+// text-matching classifier in presentation/miningChoreography.js never matches the deep drill's
+// live strings (verified: 'DRILL OVERHEATED!', 'Drill system cooled.' and 'Cargo holds are full!'
+// appear nowhere in src/).
+export const MINE_EVENT_CUE_MAP = Object.freeze({
+  'drill:yield': 'oreTick',
+  'drill:spark': 'boreBite',
+  'drill:break': 'rockBreak',
+  'drill:gasHit': 'gasBreach',
+  'drill:cargoFull': 'hopperFull',
+  'drill:rockDepleted': 'rockDepleted',
+  'drill:scanPulse': 'assayPing',
+  'drill:warn/tier': 'lockRefusal',
+  'drill:warn/structure': 'lockRefusal',
+  'drill:warn/cargoFull': 'hopperFull',
+  'drill:warn/depleted': 'rockDepleted',
+  'heat:critical': 'heatCritical',
+  'heat:vented': 'ventRelief',
+  'site:machineInstalled': 'machinePlaced',
+  'site:machineStatus': 'machineStarved',
+  'site:courierLaunched': 'courierLaunch',
+});
+
+// The law §5 table, transcribed, so the test can assert coverage row by row instead of trusting
+// that the map above happens to be complete.
+export const MINE_LAW_EVENT_ROWS = Object.freeze([
+  Object.freeze({ row: 'Ore extracted', heard: 'soft mineral tick, pitch up with value', cue: 'oreTick', source: 'drill:yield' }),
+  Object.freeze({ row: 'Bore progress (bite)', heard: 'a bite is a heavier strike', cue: 'boreBite', source: 'drill:spark' }),
+  Object.freeze({ row: 'Bore progress (grind)', heard: 'grind loop, 3 layers crossfaded by hardness', cue: null, source: 'state.drill (continuous bed)' }),
+  Object.freeze({ row: 'Gas pocket breached', heard: 'sharp hiss-boom, then fading hiss', cue: 'gasBreach', source: 'drill:gasHit' }),
+  Object.freeze({ row: 'Locked material (MK gate)', heard: 'dull clank', cue: 'lockRefusal', source: 'drill:warn/tier' }),
+  Object.freeze({ row: 'Hopper full', heard: 'wooden thock', cue: 'hopperFull', source: 'drill:cargoFull' }),
+  Object.freeze({ row: 'Heat critical', heard: 'rising whine', cue: 'heatCritical', source: 'state.drill.drillTemp' }),
+  Object.freeze({ row: 'Heat relief on vent', heard: 'relief hiss', cue: 'ventRelief', source: 'state.drill.drillTemp' }),
+  Object.freeze({ row: 'Machine placed', heard: 'firm mechanical seat', cue: 'machinePlaced', source: 'site:machineInstalled' }),
+  Object.freeze({ row: 'Machine starved/unpowered', heard: 'single soft chime, once', cue: 'machineStarved', source: 'site:machineStatus' }),
+  Object.freeze({ row: 'Courier launch', heard: 'soft launch thump', cue: 'courierLaunch', source: 'site:courierLaunched' }),
+  Object.freeze({ row: 'Survey / assay ping', heard: 'quiet sonar blip', cue: 'assayPing', source: 'drill:scanPulse' }),
+]);
+
+// Presentation cue ids whose physical voice the mine takes over while screen `drill` is up. The
+// semantic bus keeps emitting them (captions, floaters, `.07`'s board expressions); only the
+// flight-mix recipe playback is skipped, so nothing double-hits.
+export const MINE_OWNED_PRESENTATION_CUES = Object.freeze(new Set([
+  'mining.drill.contact',
+  'mining.drill.break',
+  'mining.drill.yield',
+  'mining.drill.gas_hazard',
+  'mining.drill.seismic_pulse',
+  'mining.cargo.full',
+  'mining.heat.overheated',
+  'mining.vent.ready',
+  'mining.field.aftermath',
+  // Deliberately NOT here: `mining.drill.aborted` and `mining.drill.retry`. Those two bracket the
+  // session rather than happen inside it — an abort fires as you leave and a retry as you come
+  // back — so they keep the shipped flight-mix recipe that the rest of the game answers with. Add
+  // them only if the mine ever grows its own enter/leave stingers.
+]));
+
+/**
+ * One-voice arbiter for the mine, modelled on the flight HUD's voiceArbiter idea but local and
+ * pure so the test can drive it without Web Audio. Rules:
+ *   • repeat suppression (5 s for refusals) and per-cue minimum gap;
+ *   • ALERT-class cues hold the ear: while one is holding, another alert of equal or lower rank
+ *     is refused outright (law §8 "one voice at a time for alert-class sounds");
+ *   • non-alert cues are never refused by a hold, they duck under it.
+ */
+export function createMineVoiceArbiter(table = MINE_CUES) {
+  const lastAt = Object.create(null);
+  let hold = null;
+  const duckOut = { bed: 1, grind: 1, heldBy: null };
+  const liveHold = (t) => (hold && t < hold.untilMs ? hold : null);
+  return {
+    admit(key, nowMs) {
+      const spec = table[key];
+      if (!spec) return { ok: false, reason: 'unknown_cue', key };
+      const t = Number(nowMs) || 0;
+      const prev = lastAt[key];
+      if (Number.isFinite(prev)) {
+        if (spec.repeatSuppressMs > 0 && t - prev < spec.repeatSuppressMs) {
+          return { ok: false, reason: 'repeat_suppressed', key, retryInMs: spec.repeatSuppressMs - (t - prev) };
+        }
+        if (spec.minGapMs > 0 && t - prev < spec.minGapMs) {
+          return { ok: false, reason: 'rate_limited', key };
+        }
+      }
+      const rank = MINE_CUE_CLASS_RANK[spec.klass];
+      const held = liveHold(t);
+      // Class rank first, then the cue's own priority as the intra-class tie-break: a gas breach
+      // (0.98) cuts through a heat whine (0.88), never the other way round.
+      const outranks = rank > held?.rank || (rank === held?.rank && spec.priority > held?.priority);
+      if (held && held.key !== key && spec.alert && !outranks) {
+        return { ok: false, reason: 'alert_voice_busy', key, heldBy: held.key };
+      }
+      lastAt[key] = t;
+      const duck = held && held.key !== key && !outranks && rank < held.rank ? MINE_PRIORITY_DUCK : 1;
+      if (spec.alert) hold = { key, rank, priority: spec.priority, untilMs: t + spec.holdMs };
+      return { ok: true, key, klass: spec.klass, rank, spec, duck, gain: spec.peak * duck };
+    },
+    /** Bed/grind duck while an alert owns the ear. Reuses one record — read it, do not keep it. */
+    ambienceDuck(nowMs) {
+      const held = liveHold(Number(nowMs) || 0);
+      duckOut.bed = held ? MINE_BED_ALERT_DUCK : 1;
+      duckOut.grind = held ? MINE_GRIND_ALERT_DUCK : 1;
+      duckOut.heldBy = held ? held.key : null;
+      return duckOut;
+    },
+    heldBy(nowMs) { const h = liveHold(Number(nowMs) || 0); return h ? h.key : null; },
+    reset() { hold = null; for (const k of Object.keys(lastAt)) delete lastAt[k]; },
+  };
+}
+
+// Heat thresholds for the derived critical/vent edges (drill.js clamps drillTemp to 0..100 and
+// latches `overheated` at 100).
+export const MINE_HEAT_CRITICAL = 78;
+export const MINE_HEAT_RELIEF = 46;
+
+/** Value -> pitch for the ore tick: richer units read higher. Pure so the test can pin it. */
+export function mineOreTickRate(qty, commodityId) {
+  const q = Math.max(1, Math.trunc(Number(qty) || 1));
+  const id = String(commodityId || '');
+  let tier = 0;
+  if (id.includes('gem_') || id.includes('exotic')) tier = 3;
+  else if (id.includes('einsteinium') || id.includes('platinium') || id.includes('goldium')) tier = 2;
+  else if (id.includes('silverium') || id.includes('copper') || id.includes('bronzium')) tier = 1;
+  return clamp(1 + tier * 0.16 + Math.min(6, q - 1) * 0.045, 0.85, 1.9);
+}
+
 export const audio = {
   name: 'audio',
 
@@ -604,6 +914,19 @@ export const audio = {
     rt._wantMining = null;        // { minerId, targetId } desired mining loop
     rt._wantDrillGrind = false;   // state-derived deep-drill bed (survives AudioContext resume)
     rt._drillGrindMix = { active: false, gain: 0, rate: 1, filterHz: 560 };
+    // --- the mine's voice (PQ-130.08) — desired state survives an AudioContext resume ---
+    rt._mineIntent = resolveMineAudioIntent({ screenStack: null, paused: false, muted: true });
+    rt._mineIntentInput = null;   // reusable input record for the per-frame intent recompute
+    rt._mineGrindOpts = null;     // reusable opts record for the per-frame grind mix
+    rt._wantMineBed = false;      // room tone + settling creaks while screen `drill` is up
+    rt._mineBus = null; rt._mineBedGain = null; rt._mineGrindGain = null; rt._mineCueGain = null;
+    rt._mineBed = null;           // { nodes, gain, sources, creakAt, rngState }
+    rt._mineGrind = null;         // { layers: { matrix, basalt, locked }, nodes, ... }
+    rt._mineGrindMix = { active: false, layer: null, weights: { matrix: 0, basalt: 0, locked: 0 }, gain: 0, rate: 1, filterHz: 700 };
+    rt._mineArbiter = createMineVoiceArbiter();
+    rt._mineHeatCritical = false; // latched so the whine/relief fire once per transition
+    rt._mineMachineState = Object.create(null); // machineId -> last starved-ness (once per transition)
+    rt._mineVoices = [];          // synthesized mine one-shots awaiting GC
     rt._musicDirty = true;
     rt._nextMusicScan = 0;
     rt._loopPositionDirty = true;
@@ -797,6 +1120,38 @@ export const audio = {
     bus.on('sim:pause', () => this._onPause(true));
     bus.on('sim:resume', () => this._onPause(false));
 
+    // ---- the mine's voice (PQ-130.08, law §5/§8) ----
+    // Every row of the law's §5 table, wired to the sim event that actually fires. All of these
+    // are gated on the mine owning the ear (`_mineOwnsEar()`), so nothing leaks into flight.
+    bus.on('drill:yield', (p) => this._onMineCue('oreTick', p, {
+      rate: mineOreTickRate(p && p.qty, p && p.commodityId),
+    }));
+    bus.on('drill:spark', (p) => { if (p && p.bite) this._onMineCue('boreBite', p); });
+    bus.on('drill:break', (p) => this._onMineCue('rockBreak', p));
+    bus.on('drill:gasHit', (p) => this._onMineCue('gasBreach', p));
+    bus.on('drill:cargoFull', (p) => this._onMineCue('hopperFull', p));
+    bus.on('drill:rockDepleted', (p) => this._onMineCue('rockDepleted', p));
+    bus.on('drill:scanPulse', (p) => this._onMineCue('assayPing', p));
+    bus.on('drill:warn', (p) => {
+      const key = MINE_EVENT_CUE_MAP[`drill:warn/${(p && p.reason) || ''}`];
+      if (key) this._onMineCue(key, p);
+    });
+    bus.on('drill:start', () => { this._resetMineRuntime(); });
+    bus.on('drill:end', () => { this._resetMineRuntime(); });
+    bus.on('site:machineInstalled', (p) => this._onMineCue('machinePlaced', p));
+    bus.on('site:courierLaunched', (p) => this._onMineCue('courierLaunch', p));
+    // GAP (documented in the .08 report): no sim owner emits a per-machine status transition.
+    // asteroidSites.js keeps `status.state` in a private `_rt` Map and publishes it only through
+    // `projection()`. The contract below is wired and tested; the emit belongs to `.10`'s owner.
+    bus.on('site:machineStatus', (p) => {
+      if (!p || !p.machineId) return;
+      const starved = p.state === 'no-power' || p.state === 'no-geology'
+        || p.state === 'no-network' || p.state === 'starved';
+      const prev = rt._mineMachineState[p.machineId];
+      rt._mineMachineState[p.machineId] = starved;
+      if (starved && prev !== true) this._onMineCue('machineStarved', p); // once per transition
+    });
+
     // UI namespaced cue events (DOM UI may emit these directly).
     bus.on('ui:click', () => this._onCue('click'));
     bus.on('ui:hover', () => this._onCue('hover'));
@@ -834,6 +1189,7 @@ export const audio = {
       window.removeEventListener('keydown', this._gestureHandler);
     }
     this._gestureHandler = null;
+    this._teardownMine();
     if (rt.bandBed && typeof rt.bandBed.destroy === 'function') rt.bandBed.destroy();
     rt.bandBed = null;
     if (rt.ctx && rt.ctx.state !== 'closed' && typeof rt.ctx.close === 'function') {
@@ -1081,6 +1437,25 @@ export const audio = {
     rt.masterGain = master; rt.limiter = limiter; rt.sfxBus = sfxBus; rt.musicBus = musicBus;
     rt.engineBus = engineBus; rt.ambientBus = ambientBus; rt.combatBus = combatBus;
     rt.uiBus = uiBus; rt.commsBus = commsBus;
+    // The mine hangs off the AMBIENT bus on purpose: ambient is the one bus the pause path never
+    // touches (see `_onPause` / `_silenceContinuousSources`), it already carries the sfx+ambient
+    // sliders and the sidechain, and `getBusForRecipe` already routes every mining recipe there.
+    // One `mineBus` fader lets the whole soundscape fade in on enter and out on retract (§9).
+    const mineBus = ctx.createGain();
+    mineBus.gain.value = 0.0001;
+    const mineBedGain = ctx.createGain();
+    const mineGrindGain = ctx.createGain();
+    const mineCueGain = ctx.createGain();
+    mineBedGain.gain.value = 0.0001;
+    mineGrindGain.gain.value = 0.0001;
+    mineCueGain.gain.value = 1;
+    mineBedGain.connect(mineBus);
+    mineGrindGain.connect(mineBus);
+    mineCueGain.connect(mineBus);
+    mineBus.connect(ambientBus);
+    rt._mineBus = mineBus; rt._mineBedGain = mineBedGain;
+    rt._mineGrindGain = mineGrindGain; rt._mineCueGain = mineCueGain;
+    rt._mineBed = null; rt._mineGrind = null; rt._mineVoices = [];
     // Fresh graph: every cached "already written" target belongs to nodes that no longer exist.
     rt._busGainCache = null;
     rt._bedTargetCache = null;
@@ -1163,6 +1538,10 @@ export const audio = {
     if (rt.bandBed) {
       rt.bandBed.setIntent(paused ? { active: false, reason: 'pause' } : rt._bandBedIntent);
     }
+    // Screen `drill` reaches here as an ordinary pausing screen. Nothing below changes for it —
+    // the music bus SHOULD go to zero inside the rock (law §8) — but the mine's own bed lives on
+    // `ambientBus`, which neither branch touches, so it plays straight through the pause.
+    const mine = this._refreshMineIntent();
     const ctx = rt.ctx;
     if (!ctx) return;
     if (paused) {
@@ -1177,14 +1556,16 @@ export const audio = {
       } catch (_) {}
       this._silenceContinuousSources();
     } else {
-      // restore to the configured music base
+      // restore to the configured music base — unless the mine still owns the ear, in which case
+      // the score stays out of the rock (law §8) and `_applySettings` keeps the bus at zero.
       try {
         const t = ctx.currentTime;
         invalidateBusGainCache(rt, 'music');
         rt.musicBus.gain.cancelScheduledValues(t);
         rt.musicBus.gain.setValueAtTime(Math.max(0.0001, rt.musicBus.gain.value), t);
         rt.musicBus.gain.linearRampToValueAtTime(
-          Math.max(0.0001, (rt._musicBase || 0.5) * (rt._bulletTimeMusicMult || 1)), t + 0.4);
+          mine.musicSilenced ? 0.0001 : Math.max(0.0001, (rt._musicBase || 0.5) * (rt._bulletTimeMusicMult || 1)),
+          t + 0.4);
       } catch (_) {}
       // Flight beds may not exist yet if the first unlock was on the main menu.
       this._ensureContinuousSources();
@@ -1295,10 +1676,15 @@ export const audio = {
     const musicVal = a.music == null ? 0.32 : a.music;
     rt._musicBase = linearGain(musicVal) * 0.05012 * sidechain;
     // Pause/main-menu must keep music bus silent even though _frame re-applies settings every tick.
-    const musicTarget = (muted || rt._paused)
-      ? 0
-      : rt._musicBase * (rt._bulletTimeMusicMult || 1);
-    ramp('music', rt.musicBus.gain, musicTarget, muted || rt._paused);
+    // The mine adds one clause on top of that legacy rule (law §8: the flight score does not
+    // continue inside the rock) — `resolveMineAudioIntent` owns both so they cannot drift.
+    const mine = this._refreshMineIntent();
+    const musicSilenced = mine.musicSilenced;
+    const musicTarget = musicSilenced ? 0 : rt._musicBase * (rt._bulletTimeMusicMult || 1);
+    ramp('music', rt.musicBus.gain, musicTarget, musicSilenced);
+    // The mine bus is NOT ramped here: its envelope is the law's enter/retract fade (§9, ≤600 ms
+    // in), owned by `_updateMine`. It still inherits master + sfx/ambient sliders through
+    // `ambientBus`, so a muted or slider-zeroed game silences it exactly like everything else.
   },
 
   // ---- one-shot SFX API ----
@@ -1617,6 +2003,513 @@ export const audio = {
     }, 250);
   },
 
+  // =========================================================================
+  // The mine's voice — runtime (PQ-130.08, law §5/§8/§9/§11.9)
+  // =========================================================================
+
+  /** Recompute + cache the pause/bed decision. One call site for the whole rule. */
+  _refreshMineIntent() {
+    const rt = this.rt;
+    const ui = this.state && this.state.ui;
+    const scratch = rt && (rt._mineIntentInput || (rt._mineIntentInput = {}));
+    const input = scratch || {};
+    input.screenStack = ui && ui.screenStack;
+    input.paused = !!(rt && rt._paused);
+    input.muted = this._isMuted();
+    const intent = resolveMineAudioIntent(input, rt ? rt._mineIntent : undefined);
+    if (rt) { rt._mineIntent = intent; rt._wantMineBed = intent.bedActive; }
+    return intent;
+  },
+
+  /** True while screen `drill` owns the soundscape (front or behind a menu). */
+  _mineOwnsEar() {
+    const rt = this.rt;
+    if (!rt) return false;
+    return this._refreshMineIntent().mineActive;
+  },
+
+  _resetMineRuntime() {
+    const rt = this.rt;
+    if (!rt) return;
+    if (rt._mineArbiter) rt._mineArbiter.reset();
+    rt._mineHeatCritical = false;
+    rt._mineMachineState = Object.create(null);
+  },
+
+  /**
+   * Per-frame driver. Runs OUTSIDE the paused gate in `_frame` because the mine screen pauses the
+   * world sim and its soundscape is precisely what must survive that pause.
+   */
+  _updateMine(dt, now) {
+    const rt = this.rt;
+    if (!rt) return;
+    const intent = this._refreshMineIntent();
+    const ctx = rt.ctx;
+    if (!ctx || ctx.state !== 'running') return;
+    const t = now == null ? ctx.currentTime : now;
+
+    if (!intent.bedActive) {
+      if (rt._mineBed || rt._mineGrind) this._stopMine(t);
+      this._gcMineVoices(t);
+      return;
+    }
+
+    this._ensureMineBed(t);
+    this._ensureMineGrind();
+
+    const duck = rt._mineArbiter ? rt._mineArbiter.ambienceDuck(this._wallClockMs()) : { bed: 1, grind: 1 };
+
+    // --- mine bus envelope: the enter fade (<= 600 ms) and the live duck ---
+    const busTarget = MINE_BUS_PEAK * intent.bedDuck;
+    const bed = rt._mineBed;
+    if (bed && !bed.faded) {
+      bed.faded = true;
+      try {
+        rt._mineBus.gain.cancelScheduledValues(t);
+        rt._mineBus.gain.setValueAtTime(0.0001, t);
+        rt._mineBus.gain.linearRampToValueAtTime(Math.max(0.0001, busTarget), t + MINE_BED_FADE_IN_S);
+        rt._mineBus.gain._mineLast = Math.max(0.0001, busTarget);
+      } catch (_) {}
+    } else if (rt._mineBus) {
+      this._mineParam(rt._mineBus.gain, Math.max(0.0001, busTarget), t, 0.12);
+    }
+    if (rt._mineBedGain) {
+      this._mineParam(rt._mineBedGain.gain, Math.max(0.0001, MINE_BED_PEAK * duck.bed), t, 0.09);
+    }
+
+    // --- distant settling creaks ---
+    if (bed && t >= bed.creakAt) {
+      this._mineCreak(t);
+      bed.creakAt = t + 5.5 + this._mineRand() * 8.5;
+    }
+
+    // --- three-layer grind, crossfaded by the target cell's material ---
+    const d = this.state && this.state.drill;
+    const avatar = d && d.avatar;
+    const target = avatar && avatar.drillTarget;
+    const tile = target && d.field && d.field[target.col] && d.field[target.col][target.row];
+    const gopts = rt._mineGrindOpts || (rt._mineGrindOpts = {});
+    gopts.boring = !!(d && d.active && avatar && avatar.isDrilling && !avatar.drillBlocked);
+    gopts.bore = tile && tile.maxHp > 0 ? 1 - (Number(tile.hp) || 0) / tile.maxHp : 0;
+    gopts.heat = clamp((Number(d && d.drillTemp) || 0) / 100, 0, 1);
+    gopts.energy = clamp((Number(d && d.drillEnergy) || 0) / 100, 0, 1);
+    const mix = mineGrindLayers(tile, gopts, rt._mineGrindMix);
+    rt._mineGrindMix = mix;
+    this._applyMineGrind(mix, duck.grind, t);
+
+    // --- derived heat edges: the whine on the way up, the relief hiss on the vent ---
+    this._updateMineHeat(d);
+    this._gcMineVoices(t);
+  },
+
+  /**
+   * Write a mine AudioParam only when its target actually moved. `setTargetAtTime` is memoryless —
+   * it is an exponential approach to a target, not a re-anchored ramp — so skipping an identical
+   * re-issue is provably a no-op on the audible signal (unlike the linear glide in `_applySettings`,
+   * which has to re-apply inside its window). Without this the bed + grind would insert nine
+   * automation events per frame for the whole time the player is in the rock.
+   */
+  _mineParam(param, target, t, tc) {
+    if (!param) return;
+    const last = param._mineLast;
+    if (last !== undefined && Math.abs(last - target) < 1e-4) return;
+    param._mineLast = target;
+    try { param.setTargetAtTime(target, t, tc); } catch (_) {}
+  },
+
+  /** Deterministic-enough presentation RNG (LCG). Never touches sim state. */
+  _mineRand() {
+    const rt = this.rt;
+    const bed = rt && rt._mineBed;
+    if (!bed) return 0.5;
+    bed.rngState = (bed.rngState * 1664525 + 1013904223) >>> 0;
+    return bed.rngState / 4294967296;
+  },
+
+  _ensureMineBed(t) {
+    const rt = this.rt, ctx = rt.ctx;
+    if (rt._mineBed || !ctx || !rt._mineBedGain) return;
+    // Low interior room tone: two detuned sub voices through a heavy lowpass, plus a slow band of
+    // moving air. Muffled and close — you are inside a rock, not in a hangar.
+    const roomA = ctx.createOscillator();
+    roomA.type = 'triangle';
+    roomA.frequency.value = 41;
+    const roomB = ctx.createOscillator();
+    roomB.type = 'sine';
+    roomB.frequency.value = 61.5;
+    const roomLp = ctx.createBiquadFilter();
+    roomLp.type = 'lowpass';
+    roomLp.frequency.value = 168;
+    roomLp.Q.value = 0.8;
+    const roomGain = ctx.createGain();
+    roomGain.gain.value = 0.5;
+    roomA.connect(roomLp); roomB.connect(roomLp);
+    roomLp.connect(roomGain); roomGain.connect(rt._mineBedGain);
+
+    const airSrc = ctx.createBufferSource();
+    airSrc.buffer = getNoiseBuffer(ctx, rt._caches);
+    airSrc.loop = true;
+    airSrc.playbackRate.value = 0.62;
+    const airLp = ctx.createBiquadFilter();
+    airLp.type = 'lowpass';
+    airLp.frequency.value = 296;
+    airLp.Q.value = 0.4;
+    const airGain = ctx.createGain();
+    airGain.gain.value = 0.20;
+    airSrc.connect(airLp); airLp.connect(airGain); airGain.connect(rt._mineBedGain);
+
+    try { roomA.start(t); roomB.start(t); airSrc.start(t); } catch (_) {}
+    let seed = 0x9e3779b9;
+    const rockId = String((this.state && this.state.drill && this.state.drill.asteroidId) || 'rock');
+    for (let i = 0; i < rockId.length; i++) seed = ((seed * 31) + rockId.charCodeAt(i)) >>> 0;
+    rt._mineBed = {
+      nodes: [roomA, roomB, airSrc, roomLp, roomGain, airLp, airGain],
+      sources: [roomA, roomB, airSrc],
+      creakAt: t + 2.4,
+      rngState: seed || 1,
+      faded: false,
+    };
+    try {
+      rt._mineBedGain.gain.cancelScheduledValues(t);
+      rt._mineBedGain.gain.setValueAtTime(0.0001, t);
+      rt._mineBedGain.gain.linearRampToValueAtTime(MINE_BED_PEAK, t + MINE_BED_FADE_IN_S);
+    } catch (_) {}
+  },
+
+  /** One distant settling creak: a resonant band swept downward through the rock. */
+  _mineCreak(t) {
+    const rt = this.rt, ctx = rt.ctx;
+    if (!ctx || !rt._mineBedGain) return;
+    const dur = 0.7 + this._mineRand() * 0.8;
+    const top = 190 + this._mineRand() * 90;
+    const src = ctx.createBufferSource();
+    src.buffer = getNoiseBuffer(ctx, rt._caches);
+    src.loop = true;
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.Q.value = 7.5;
+    const g = ctx.createGain();
+    try {
+      bp.frequency.setValueAtTime(top, t);
+      bp.frequency.exponentialRampToValueAtTime(Math.max(60, top * 0.62), t + dur);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(0.09, t + dur * 0.28);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    } catch (_) {}
+    src.connect(bp); bp.connect(g); g.connect(rt._mineBedGain);
+    try { src.start(t); src.stop(t + dur + 0.05); } catch (_) {}
+    rt._mineVoices.push({ nodes: [src, bp, g], stopAt: t + dur + 0.15 });
+  },
+
+  _ensureMineGrind() {
+    const rt = this.rt, ctx = rt.ctx;
+    if (rt._mineGrind || !ctx || !rt._mineGrindGain) return;
+    const layer = (build) => {
+      const g = ctx.createGain();
+      g.gain.value = 0.0001;
+      g.connect(rt._mineGrindGain);
+      return build(g);
+    };
+    const noiseSrc = (rate) => {
+      const s = ctx.createBufferSource();
+      s.buffer = getNoiseBuffer(ctx, rt._caches);
+      s.loop = true;
+      s.playbackRate.value = rate;
+      return s;
+    };
+    // matrix — soft regolith: granular mid noise over a light rumble.
+    const matrix = layer((g) => {
+      const n = noiseSrc(1);
+      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 760; bp.Q.value = 0.75;
+      const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = 72;
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 190;
+      const og = ctx.createGain(); og.gain.value = 0.35;
+      n.connect(bp); bp.connect(g); o.connect(lp); lp.connect(og); og.connect(g);
+      return { gain: g, sources: [n, o], rateNodes: [n], filter: bp, nodes: [n, bp, o, lp, og, g] };
+    });
+    // basalt — dense stone: heavy low churn, the mid scooped out.
+    const basalt = layer((g) => {
+      const n = noiseSrc(0.72);
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 360; lp.Q.value = 1.1;
+      const o = ctx.createOscillator(); o.type = 'square'; o.frequency.value = 46;
+      const olp = ctx.createBiquadFilter(); olp.type = 'lowpass'; olp.frequency.value = 130;
+      const og = ctx.createGain(); og.gain.value = 0.42;
+      n.connect(lp); lp.connect(g); o.connect(olp); olp.connect(og); og.connect(g);
+      return { gain: g, sources: [n, o], rateNodes: [n], filter: lp, nodes: [n, lp, o, olp, og, g] };
+    });
+    // locked / exotic — the bit skating: bright metallic ring, no bite.
+    const locked = layer((g) => {
+      const n = noiseSrc(1.35);
+      const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 1750; hp.Q.value = 0.7;
+      const o1 = ctx.createOscillator(); o1.type = 'sawtooth'; o1.frequency.value = 322;
+      const o2 = ctx.createOscillator(); o2.type = 'sawtooth'; o2.frequency.value = 478;
+      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2100; bp.Q.value = 5.5;
+      const og = ctx.createGain(); og.gain.value = 0.22;
+      n.connect(hp); hp.connect(g);
+      o1.connect(bp); o2.connect(bp); bp.connect(og); og.connect(g);
+      return { gain: g, sources: [n, o1, o2], rateNodes: [n], filter: hp, nodes: [n, hp, o1, o2, bp, og, g] };
+    });
+    const t = ctx.currentTime;
+    for (const l of [matrix, basalt, locked]) for (const s of l.sources) { try { s.start(t); } catch (_) {} }
+    rt._mineGrind = { matrix, basalt, locked };
+    try {
+      rt._mineGrindGain.gain.cancelScheduledValues(t);
+      rt._mineGrindGain.gain.setValueAtTime(MINE_GRIND_PEAK, t);
+    } catch (_) {}
+  },
+
+  _applyMineGrind(mix, grindDuck, t) {
+    const rt = this.rt;
+    const grind = rt._mineGrind;
+    if (!grind) return;
+    const duck = grindDuck == null ? 1 : grindDuck;
+    for (const name of MINE_GRIND_LAYERS) {
+      const l = grind[name];
+      if (!l) continue;
+      const target = mix.active ? Math.max(0.0001, mix.gain * mix.weights[name] * duck) : 0.0001;
+      this._mineParam(l.gain.gain, target, t, 0.055);
+      if (l.filter) this._mineParam(l.filter.frequency, mix.filterHz, t, 0.05);
+      for (const s of l.rateNodes || []) {
+        if (!s.playbackRate) continue;
+        this._mineParam(s.playbackRate, mix.rate, t, 0.06);
+      }
+    }
+  },
+
+  /**
+   * Heat is continuous, not an event: drill.js emits no "critical" receipt and the text-matching
+   * warn classifier never matches its live strings. Derive the two edges the law names.
+   */
+  _updateMineHeat(d) {
+    const rt = this.rt;
+    if (!d) { rt._mineHeatCritical = false; return; }
+    const temp = Number(d.drillTemp) || 0;
+    if (!rt._mineHeatCritical && (temp >= MINE_HEAT_CRITICAL || d.overheated)) {
+      rt._mineHeatCritical = true;
+      this._onMineCue('heatCritical', { temp });
+    } else if (rt._mineHeatCritical && !d.overheated && temp <= MINE_HEAT_RELIEF) {
+      rt._mineHeatCritical = false;
+      this._onMineCue('ventRelief', { temp });
+    }
+  },
+
+  /** Cue entry point: arbitration first, then one synthesized voice. */
+  _onMineCue(key, payload, opts) {
+    const rt = this.rt;
+    if (!rt || !rt._mineArbiter) return null;
+    if (!this._mineOwnsEar()) return null;
+    // Arbitrate only once the graph can actually speak, or a refusal raised while audio is still
+    // locked would burn its 5 s window and silence the first one the player could have heard.
+    const ctx = rt.ctx;
+    if (!ctx || ctx.state !== 'running' || !rt._mineCueGain) return null;
+    const verdict = rt._mineArbiter.admit(key, this._wallClockMs());
+    if (!verdict.ok) return verdict;
+    const t = ctx.currentTime;
+    this._synthMineCue(key, t, verdict.gain, { ...(opts || {}), payload: payload || {} });
+    return verdict;
+  },
+
+  // --- synthesis helpers (all voices land on rt._mineCueGain -> mineBus -> ambientBus) ---
+  _mineTone(t0, spec) {
+    const rt = this.rt, ctx = rt.ctx;
+    const o = ctx.createOscillator();
+    o.type = spec.type || 'sine';
+    const g = ctx.createGain();
+    const dur = spec.dur || 0.2;
+    const attack = spec.attack == null ? 0.006 : spec.attack;
+    const dest = rt._mineCueGain;
+    const nodes = [o, g];
+    if (spec.filter) {
+      const f = ctx.createBiquadFilter();
+      f.type = spec.filter;
+      f.frequency.value = spec.filterHz || 800;
+      f.Q.value = spec.filterQ == null ? 1 : spec.filterQ;
+      g.connect(f); f.connect(dest); nodes.push(f);
+    } else {
+      g.connect(rt._mineCueGain);
+    }
+    o.connect(g);
+    try {
+      o.frequency.setValueAtTime(spec.f0, t0);
+      if (spec.f1 && spec.f1 !== spec.f0) o.frequency.exponentialRampToValueAtTime(Math.max(12, spec.f1), t0 + dur);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.linearRampToValueAtTime(Math.max(0.0002, spec.peak), t0 + attack);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    } catch (_) {}
+    try { o.start(t0); o.stop(t0 + dur + 0.02); } catch (_) {}
+    rt._mineVoices.push({ nodes, stopAt: t0 + dur + 0.08 });
+  },
+
+  _mineNoise(t0, spec) {
+    const rt = this.rt, ctx = rt.ctx;
+    const s = ctx.createBufferSource();
+    s.buffer = getNoiseBuffer(ctx, rt._caches);
+    s.loop = true;
+    if (spec.rate) s.playbackRate.value = spec.rate;
+    const f = ctx.createBiquadFilter();
+    f.type = spec.filter || 'bandpass';
+    f.Q.value = spec.Q == null ? 1 : spec.Q;
+    const g = ctx.createGain();
+    const dur = spec.dur || 0.2;
+    const attack = spec.attack == null ? 0.005 : spec.attack;
+    s.connect(f); f.connect(g); g.connect(rt._mineCueGain);
+    try {
+      f.frequency.setValueAtTime(spec.f0, t0);
+      if (spec.f1 && spec.f1 !== spec.f0) f.frequency.exponentialRampToValueAtTime(Math.max(40, spec.f1), t0 + dur);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.linearRampToValueAtTime(Math.max(0.0002, spec.peak), t0 + attack);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    } catch (_) {}
+    try { s.start(t0); s.stop(t0 + dur + 0.02); } catch (_) {}
+    rt._mineVoices.push({ nodes: [s, f, g], stopAt: t0 + dur + 0.08 });
+  },
+
+  /**
+   * One branch per law §5 "what you hear" phrase. Everything is procedural: no sample files, no
+   * manifest entry, no licensing. Peaks are the cue table's, already ducked by the arbiter, and
+   * they land on the ambient bus, so they sit in the same window as the shipped mining recipes.
+   */
+  _synthMineCue(key, t, gain, opts) {
+    const p = (opts && opts.payload) || {};
+    const rate = Number(opts && opts.rate) || 1;
+    switch (key) {
+      case 'oreTick': // soft mineral tick, pitch up with value
+        this._mineTone(t, { type: 'sine', f0: 1180 * rate, dur: 0.10, peak: gain, attack: 0.004 });
+        this._mineTone(t + 0.004, { type: 'sine', f0: 1772 * rate, dur: 0.07, peak: gain * 0.42, attack: 0.003 });
+        this._mineNoise(t, { filter: 'bandpass', f0: 2700 * rate, Q: 4, dur: 0.045, peak: gain * 0.3 });
+        break;
+      case 'boreBite': // a bite is a heavier strike than the grind
+        this._mineTone(t, { type: 'triangle', f0: 118, f1: 58, dur: 0.16, peak: gain, attack: 0.003 });
+        this._mineNoise(t, { filter: 'bandpass', f0: 940, f1: 380, Q: 1.2, dur: 0.085, peak: gain * 0.7 });
+        break;
+      case 'rockBreak': // the cell gives way
+        this._mineNoise(t, { filter: 'lowpass', f0: 900, f1: 220, Q: 0.8, dur: 0.34, peak: gain });
+        this._mineTone(t, { type: 'sine', f0: 74, f1: 44, dur: 0.28, peak: gain * 0.8, attack: 0.004 });
+        break;
+      case 'gasBreach': // sharp hiss-boom, then fading hiss
+        this._mineNoise(t, { filter: 'highpass', f0: 1250, Q: 0.7, dur: 0.19, peak: gain, attack: 0.004 });
+        this._mineTone(t + 0.02, { type: 'sine', f0: 62, f1: 33, dur: 0.46, peak: gain * 0.95, attack: 0.006 });
+        this._mineNoise(t + 0.14, { filter: 'bandpass', f0: 2300, f1: 900, Q: 1.4, dur: 1.7, peak: gain * 0.42, attack: 0.05 });
+        break;
+      case 'lockRefusal': // dull clank — damped, no ring
+        this._mineTone(t, { type: 'square', f0: 188, f1: 168, dur: 0.24, peak: gain, attack: 0.004, filter: 'lowpass', filterHz: 520, filterQ: 0.9 });
+        this._mineNoise(t, { filter: 'bandpass', f0: 620, Q: 2.2, dur: 0.07, peak: gain * 0.55 });
+        break;
+      case 'hopperFull': // wooden thock
+        this._mineTone(t, { type: 'triangle', f0: 226, f1: 196, dur: 0.17, peak: gain, attack: 0.002, filter: 'bandpass', filterHz: 400, filterQ: 3 });
+        this._mineNoise(t, { filter: 'bandpass', f0: 1150, Q: 3, dur: 0.035, peak: gain * 0.45 });
+        break;
+      case 'heatCritical': // rising whine
+        this._mineTone(t, { type: 'sawtooth', f0: 610, f1: 1460, dur: 0.95, peak: gain, attack: 0.16, filter: 'bandpass', filterHz: 1500, filterQ: 4.5 });
+        break;
+      case 'ventRelief': // relief hiss
+        this._mineNoise(t, { filter: 'bandpass', f0: 3000, f1: 720, Q: 1.1, dur: 0.95, peak: gain, attack: 0.02 });
+        break;
+      case 'machinePlaced': // firm mechanical seat
+        this._mineTone(t, { type: 'triangle', f0: 132, f1: 96, dur: 0.16, peak: gain, attack: 0.003 });
+        this._mineNoise(t + 0.075, { filter: 'bandpass', f0: 1650, Q: 4.5, dur: 0.075, peak: gain * 0.6 });
+        break;
+      case 'machineStarved': // single soft chime, once per transition
+        this._mineTone(t, { type: 'sine', f0: 662, dur: 0.72, peak: gain, attack: 0.022 });
+        this._mineTone(t + 0.012, { type: 'sine', f0: 992, dur: 0.5, peak: gain * 0.36, attack: 0.02 });
+        break;
+      case 'courierLaunch': // soft launch thump
+        this._mineTone(t, { type: 'sine', f0: 46, f1: 92, dur: 0.3, peak: gain, attack: 0.012 });
+        this._mineNoise(t + 0.03, { filter: 'bandpass', f0: 320, f1: 1450, Q: 0.9, dur: 0.55, peak: gain * 0.45, attack: 0.06 });
+        break;
+      case 'assayPing': // quiet sonar blip
+        this._mineTone(t, { type: 'sine', f0: 1324, dur: 0.28, peak: gain, attack: 0.005 });
+        this._mineTone(t + 0.006, { type: 'sine', f0: 1986, dur: 0.16, peak: gain * 0.36, attack: 0.004 });
+        break;
+      case 'rockDepleted': // two dull descending thuds — this rock is done paying
+        this._mineTone(t, { type: 'sine', f0: 152, f1: 128, dur: 0.2, peak: gain, attack: 0.005, filter: 'lowpass', filterHz: 400 });
+        this._mineTone(t + 0.16, { type: 'sine', f0: 112, f1: 92, dur: 0.26, peak: gain * 0.7, attack: 0.005, filter: 'lowpass', filterHz: 340 });
+        break;
+      default:
+        // Unknown key: stay silent rather than guess. The routing test enumerates every law row
+        // against this switch, so a missing branch is a red check, never a mystery beep.
+        return false;
+    }
+    if (p && p.critical) this._applyPriorityCue({ id: `mine.${key}`, importance: 0.9, playerRelevance: 1 });
+    return true;
+  },
+
+  _gcMineVoices(now) {
+    const rt = this.rt;
+    const list = rt._mineVoices;
+    if (!list || list.length === 0) return;
+    let w = 0;
+    for (let i = 0; i < list.length; i++) {
+      const v = list[i];
+      if (v.stopAt > now) { list[w++] = v; continue; }
+      for (const n of v.nodes) { try { n.disconnect(); } catch (_) {} }
+    }
+    list.length = w;
+  },
+
+  /** Retract: fade the whole soundscape out (law §9) and drop the graph. */
+  _stopMine(t) {
+    const rt = this.rt, ctx = rt.ctx;
+    if (!ctx) { this._teardownMine(); return; }
+    const at = t == null ? ctx.currentTime : t;
+    if (rt._mineBus) {
+      try {
+        rt._mineBus.gain.cancelScheduledValues(at);
+        rt._mineBus.gain.setValueAtTime(Math.max(0.0001, rt._mineBus.gain.value), at);
+        rt._mineBus.gain.exponentialRampToValueAtTime(0.0001, at + MINE_BED_FADE_OUT_S);
+      } catch (_) {}
+    }
+    const bed = rt._mineBed;
+    const grind = rt._mineGrind;
+    // Forget the cached param targets while the layer nodes are still reachable, so a re-entered
+    // mine re-asserts its whole mix instead of skipping writes that "already match".
+    this._forgetMineParamCache();
+    rt._mineBed = null;
+    rt._mineGrind = null;
+    const stopAt = at + MINE_BED_FADE_OUT_S + 0.05;
+    const collect = [];
+    if (bed) { for (const s of bed.sources) { try { s.stop(stopAt); } catch (_) {} } collect.push(...bed.nodes); }
+    if (grind) {
+      for (const name of MINE_GRIND_LAYERS) {
+        const l = grind[name];
+        if (!l) continue;
+        for (const s of l.sources) { try { s.stop(stopAt); } catch (_) {} }
+        collect.push(...l.nodes);
+      }
+    }
+    if (collect.length) rt._mineVoices.push({ nodes: collect, stopAt: stopAt + 0.1 });
+    this._resetMineRuntime();
+  },
+
+  /** Forget every cached param target so a re-entered mine re-asserts its whole mix. */
+  _forgetMineParamCache() {
+    const rt = this.rt;
+    if (!rt) return;
+    const forget = (n) => { if (n && n.gain) delete n.gain._mineLast; };
+    forget(rt._mineBus); forget(rt._mineBedGain); forget(rt._mineGrindGain); forget(rt._mineCueGain);
+    if (rt._mineGrind) {
+      for (const name of MINE_GRIND_LAYERS) {
+        const l = rt._mineGrind[name];
+        if (!l) continue;
+        forget(l.gain);
+        if (l.filter && l.filter.frequency) delete l.filter.frequency._mineLast;
+        for (const s of l.rateNodes || []) { if (s.playbackRate) delete s.playbackRate._mineLast; }
+      }
+    }
+  },
+
+  _teardownMine() {
+    const rt = this.rt;
+    if (!rt) return;
+    const drop = (nodes) => { for (const n of nodes || []) { try { n.stop(); } catch (_) {} try { n.disconnect(); } catch (_) {} } };
+    if (rt._mineBed) drop(rt._mineBed.nodes);
+    if (rt._mineGrind) for (const name of MINE_GRIND_LAYERS) drop(rt._mineGrind[name] && rt._mineGrind[name].nodes);
+    for (const v of rt._mineVoices || []) drop(v.nodes);
+    rt._mineBed = null; rt._mineGrind = null; rt._mineVoices = [];
+    rt._wantMineBed = false;
+    this._resetMineRuntime();
+  },
+
   _onMiningStart(p) {
     const rt = this.rt;
     if (!p) return;
@@ -1650,6 +2543,10 @@ export const audio = {
   _updateDrillGrind() {
     const rt = this.rt;
     const mix = drillGrindMix(this.state && this.state.drill, rt._drillGrindMix);
+    // PQ-130.08: inside the mine the three-layer grind bed (`_updateMine`) owns this voice. This
+    // single-recipe loop stands down there so the two can never stack. It stays the grind for any
+    // future non-mine deep-drill session.
+    if (mix.active && this._mineOwnsEar()) mix.active = false;
     rt._wantDrillGrind = mix.active;
 
     if (!mix.active) {
@@ -1837,6 +2734,10 @@ export const audio = {
     if (!id) { this.play('sfx_ui_click', { gain: 0.7 }); return; }
     const rid = resolveAudioCueRecipeId(id);
     const opts = (cue && typeof cue === 'object') ? cue : {};
+    // While the mine owns the ear its own synthesized voice replaces the flight-mix recipe for
+    // these receipts. The semantic cue still travels the bus (captions, `.07` board expressions);
+    // only the second, wrong-room playback is dropped.
+    if (opts.cueId && MINE_OWNED_PRESENTATION_CUES.has(opts.cueId) && this._mineOwnsEar()) return null;
     const signature = resolveFirstHourAudioSignature(id);
     const nowS = this.rt && this.rt.ctx
       ? this.rt.ctx.currentTime
@@ -2495,6 +3396,9 @@ export const audio = {
     this._updateBrakeHiss(dt);
     this._updateTetherHum();
     this._updateDrillGrind();
+    // Outside the `if (!rt._paused)` block below on purpose: the mine screen pauses the world sim,
+    // and its soundscape is exactly what must keep running through that pause (law §8).
+    this._updateMine(dt, now);
     this._updateSectorCues(now);
     this._updateStationMurmur(now);
     this._updatePlaceContext(now);

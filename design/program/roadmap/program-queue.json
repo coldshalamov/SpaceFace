@@ -7738,7 +7738,7 @@
       "priority": 352,
       "title": "The mine's voice: own soundscape, bus not zeroed",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-130.01"
       ],
@@ -7756,7 +7756,9 @@
         "npm run check:asteroid-theater",
         "node scripts/check-program-docs.mjs"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-130-08-mines-voice-REPORT.md"
+      ],
       "brief": "Design law §8: the mine gets its own muffled industrial bed (the flight score does not continue inside); drill grind in 3 hardness layers crossfaded by target material; every §5 event cue wired through the existing cue pipeline (the drill-break hook currently returns early); mix priority hazard > payoff > machine state > ambience. The pause path currently zeroes the music bus on screen 'drill' — exempt this screen or route its own bus. Prove: bus gain > 0 while drilling; grind audible during a bore."
     },
     {
