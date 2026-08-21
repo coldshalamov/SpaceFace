@@ -8,6 +8,7 @@ import {
   refreshFirstSessionAttackerOwnership,
   resetFirstSessionAttackerOwnership,
 } from '../ai/engagementAuthority.js';
+import { ensureActivityClassified, entityNeedsAiThink } from '../world/activityRuntime.js';
 
 const OWNERSHIP_REFRESH_TICKS = 3;
 
@@ -92,10 +93,16 @@ export function createTacticalAISystem({
     resetFirstSessionAttackerOwnership(ctxRef && ctxRef.state);
   }
 
-  function replayLastManeuvers(liveStack, tick) {
+  function replayLastManeuvers(liveStack, tick, state) {
     const maneuverPort = liveStack && liveStack.ports && liveStack.ports.maneuver;
     if (!maneuverPort || typeof maneuverPort.request !== 'function') return;
+    const entities = state && state.entities;
     for (const request of lastManeuverRequests) {
+      const id = request && request.entityId;
+      const entity = entities && id != null && typeof entities.get === 'function'
+        ? entities.get(id)
+        : null;
+      if (entity && entityNeedsAiThink(entity) === false) continue;
       maneuverPort.request(retickManeuverRequest(request, tick));
     }
   }
@@ -116,11 +123,12 @@ export function createTacticalAISystem({
     },
 
     update(_dt, state) {
+      ensureActivityClassified(state);
       const liveStack = ensureStack(state);
       const tick = Number.isInteger(state && state.tick) ? state.tick : liveStack.lastTick + 1;
       if (tick - lastDecisionTick < decisionIntervalTicks) {
         maintainFirstSessionAttackerOwnership(state);
-        if (lastManeuverRequests.length) replayLastManeuvers(liveStack, tick);
+        if (lastManeuverRequests.length) replayLastManeuvers(liveStack, tick, state);
         revalidateCachedAIFiringIntents(liveStack, state);
         return;
       }
@@ -189,7 +197,14 @@ export function createTacticalAISystem({
 export function revalidateCachedAIFiringIntents(liveStack, state) {
   const decisions = liveStack && liveStack.lastResult && liveStack.lastResult.decisions;
   if (!Array.isArray(decisions)) return 0;
-  for (const decision of decisions) applyAIFiringIntent(decision, state);
+  for (const decision of decisions) {
+    const id = decision && decision.entityId;
+    const entity = state && state.entities && id != null && typeof state.entities.get === 'function'
+      ? state.entities.get(id)
+      : null;
+    if (entity && entityNeedsAiThink(entity) === false) continue;
+    applyAIFiringIntent(decision, state);
+  }
   return decisions.length;
 }
 

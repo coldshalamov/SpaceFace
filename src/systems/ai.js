@@ -6,6 +6,7 @@
 // Deterministic: uses state.rng for any randomness (never Math.random in sim logic, §0.5).
 import { wrapAngle } from '../core/rng.js';
 import { makeEnemySpawnSpec } from './combat.js';
+import { ensureActivityClassified, entityNeedsAiThink } from '../world/activityRuntime.js';
 
 // FSM states.
 const S = { IDLE: 'idle', PATROL: 'patrol', PURSUE: 'pursue', ATTACK: 'attack', STRAFE: 'strafe', FLEE: 'flee' };
@@ -104,6 +105,7 @@ export const ai = {
 
   update(dt, state) {
     if (state.mode !== 'flight') return;
+    ensureActivityClassified(state);
     const list = (state.entityIndex && state.entityIndex.aiShips) || state.entityList;
     const player = state.entities.get(state.playerId) || null;
     this._updateFormationRuntime(state, list);
@@ -146,6 +148,7 @@ export const ai = {
       // traffic system — skip the combat FSM so they never acquire/attack/strafe. They can still be
       // attacked (piracy -> heat), they just don't initiate.
       if (data.ai.passive) continue;
+      if (entityNeedsAiThink(e) === false) continue;
       this._think(e, data, state, player, dt);
     }
   },

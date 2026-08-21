@@ -93,6 +93,13 @@ test('hysteresis keeps exact until exit radius and grace elapse', () => {
 test('mission pin is explicit data not a guessed radius', () => {
   const pins = resolvePins({ id: 5, data: { missionId: 'm1' }, pos: { x: 9999, z: 0 } }, { playerId: 1 });
   assert.ok(pins.includes(PIN_REASON.MISSION_CRITICAL));
+  const job = resolvePins({ id: 6, data: { jobId: 'job_1' }, pos: { x: 9999, z: 0 } }, { playerId: 1 });
+  assert.ok(job.includes(PIN_REASON.MISSION_CRITICAL));
+});
+
+test('tether flag on the entity is an explicit pin', () => {
+  const pins = resolvePins({ id: 7, data: {}, flags: { tethered: true }, pos: { x: 9999, z: 0 } }, {});
+  assert.ok(pins.includes(PIN_REASON.TETHER_OR_ATTACHMENT_COMPONENT));
 });
 
 test('physics reach uses look-ahead not camera size alone', () => {

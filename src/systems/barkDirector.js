@@ -9,6 +9,7 @@ import { hash32 } from '../core/rng.js';
 import { isHostileToPlayer } from './scanner.js';
 import { shouldOwnerThink } from '../core/activityScheduler.js';
 import { tableSimAuthorityWuFromState } from '../render/tabletopPolicy.js';
+import { ensureActivityClassified } from '../world/activityRuntime.js';
 
 const BARK_SET = new Set(BARK_SITUATIONS);
 const VOICE_TTL_S = 1.2;
@@ -48,6 +49,7 @@ export const barkDirector = {
 
   update(_dt, state) {
     if (state.mode && state.mode !== 'flight') return;
+    ensureActivityClassified(state);
     ensureState(state);
     const player = state.entities && state.entities.get && state.entities.get(state.playerId);
     const thinkOpts = {

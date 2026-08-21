@@ -22,6 +22,7 @@
 
 import { shouldAmbientHaulerPlan, shouldRunOnTick } from '../core/activityScheduler.js';
 import { tableSimAuthorityWuFromState } from '../render/tabletopPolicy.js';
+import { ensureActivityClassified, entityNeedsAiThink } from '../world/activityRuntime.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec } from './ships.js';
 import { CombatDoctrineId } from '../ai/combatDoctrine.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
@@ -3084,6 +3085,7 @@ export const traffic = {
 
   update(dt, state) {
     if (state.mode !== 'flight') return;
+    ensureActivityClassified(state);
     this._ensureState();
     const list = state.traffic.freighters;
     const stations = this._sectorStations();
@@ -3130,6 +3132,7 @@ export const traffic = {
         if (!e.data.jobId) this._assignCeresActivityJob(e, activityEntry);
         continue;
       }
+      if (entityNeedsAiThink(e) === false) continue;
       // One authored recurring passenger liner owns the existing express hull and V3 boost route.
       // Its passenger itinerary must consume the tick before the generic express/freight branch.
       if (this._stepPassengerLinerService(e, rec, stations, dt)) continue;

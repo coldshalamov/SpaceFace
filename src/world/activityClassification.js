@@ -1,5 +1,6 @@
-// Deterministic activity classification. Pure. Does not deactivate bodies or
-// strip AI — Phase 1 only names pins and tiers so later deactivation is legal.
+// Deterministic activity classification. Pure. Names pins and tiers.
+// activityRuntime applies them to the Rapier/AI active set; this file does not
+// mutate entities or bodies.
 
 export const SIM_TIER = Object.freeze({
   S0_EXACT: 'S0_EXACT',
@@ -98,6 +99,7 @@ export function resolvePins(entity, context = {}) {
   if (context.playerMiningTarget === true) pins.push(PIN_REASON.PLAYER_MINING_TARGET);
   if (context.playerScannedAndTracked === true) pins.push(PIN_REASON.PLAYER_SCANNED_AND_TRACKED);
   if (context.imminentCollision === true) pins.push(PIN_REASON.IMMINENT_COLLISION);
+  if (context.missionCritical === true) pins.push(PIN_REASON.MISSION_CRITICAL);
   const now = finite(context.simTime);
   const damagedByPlayerUntil = finite(context.damagedByPlayerUntilT, -1);
   const damagedPlayerUntil = finite(context.damagedPlayerUntilT, -1);
@@ -109,9 +111,11 @@ export function resolvePins(entity, context = {}) {
   }
   const d = entity.data || {};
   const flags = entity.flags || {};
-  if (flags.missionPinned || d.missionPinned || d.missionId || d.missionTag) {
+  if (flags.missionPinned || d.missionPinned || d.missionId || d.missionTag || d.jobId
+    || d.activityActorSlotId) {
     pins.push(PIN_REASON.MISSION_CRITICAL);
   }
+  if (flags.tethered || d.tethered) pins.push(PIN_REASON.TETHER_OR_ATTACHMENT_COMPONENT);
   return normalizePinReasons(pins);
 }
 

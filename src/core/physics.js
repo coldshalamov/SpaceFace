@@ -16,6 +16,7 @@ import {
   setPickupAcceptanceRetry,
 } from './pickupAcceptance.js';
 import { combatFlag } from '../data/featureFlags.js';
+import { ensureActivityClassified } from '../world/activityRuntime.js';
 import {
   resolveBerthWorld,
   resolveCollisionProxyManifest,
@@ -96,6 +97,11 @@ export const physics = {
       pickupPairChecks: 0,
       pickupSpatialQueries: 0,
       tickMs: 0,
+      activityS0: 0,
+      activityS1: 0,
+      activityS2: 0,
+      activityS3: 0,
+      activityPhysicsBodies: 0,
     };
   },
 
@@ -413,16 +419,20 @@ export const physics = {
   },
 
   _syncSg02DynamicAuthorityEntities(state) {
-    const index = state && state.entityIndex;
-    if (this._sg02 && typeof this._sg02.syncFromEntityLayers === 'function' &&
-      index && index.__spacefaceEntityIndexV1 && index.ready &&
-      Array.isArray(index.physicsStatics) &&
-      Array.isArray(index.physicsDynamics)) {
+    const activity = ensureActivityClassified(state);
+    if (activity && this._diag) {
+      this._diag.activityS0 = activity.counts.s0;
+      this._diag.activityS1 = activity.counts.s1;
+      this._diag.activityS2 = activity.counts.s2;
+      this._diag.activityS3 = activity.counts.s3;
+      this._diag.activityPhysicsBodies = activity.counts.physics;
+    }
+    if (this._sg02 && typeof this._sg02.syncFromEntityLayers === 'function' && activity) {
       this._sg02.syncFromEntityLayers(
-        index.physicsStatics,
-        index.physicsDynamics,
-        index.physicsStaticVersion || 0,
-        Array.isArray(index.physicsBodies) ? index.physicsBodies : null,
+        activity.physicsStatics,
+        activity.physicsDynamics,
+        activity.physicsStaticVersion || 0,
+        null,
       );
       return;
     }

@@ -5,6 +5,9 @@
 // remote economy/story, and similar owners can wake on a stable phase without touching RNG.
 //
 // Parity contract: period 1 always returns true. Phase is a hash of the owner key, not wall time.
+// When world activityRuntime has stamped simTier, S2/S3/S4 owners do no per-tick think.
+
+import { SIM_TIER } from '../world/activityClassification.js';
 
 const FNV_OFFSET = 2166136261;
 const FNV_PRIME = 16777619;
@@ -96,6 +99,16 @@ export function shouldAmbientHaulerPlan(tick, owner, options = {}) {
 }
 
 export function shouldOwnerThink(tick, owner, options = {}) {
+  const activity = owner && owner.activity;
+  const tier = activity && activity.simTier;
+  if (tier === SIM_TIER.S2_ABSTRACT || tier === SIM_TIER.S3_DORMANT || tier === SIM_TIER.S4_AGGREGATE) {
+    if (!(activity && activity.pinnedExact)) return false;
+  }
+  if (tier === SIM_TIER.S1_NEAR && !(activity && activity.pinnedExact)) {
+    const period = Math.max(1, Math.floor(Number(options.nearPeriodTicks) || Number(options.activePeriodTicks) || 2));
+    const key = owner && (owner.id != null ? `near:${owner.id}` : `near:${options.ownerKey || 'anon'}`);
+    return shouldRunOnTick(tick, key, period);
+  }
   if (!isActiveOwner(owner, options)) {
     const period = Math.max(1, Math.floor(Number(options.sleepPeriodTicks) || 8));
     const key = owner && (owner.id != null ? `sleep:${owner.id}` : `sleep:${options.ownerKey || 'anon'}`);

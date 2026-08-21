@@ -22,6 +22,7 @@ import {
   CERES_ACTIVITY_SECTOR_ID,
 } from '../data/sectorActivityPockets.js';
 import { RECORD_KIND, stableRecordId } from '../world/worldRecords.js';
+import { ensureActivityClassified, entityNeedsAiThink } from '../world/activityRuntime.js';
 
 const DEFAULT_SENSOR_RANGE = 1600;
 const DEFAULT_FORMATION_SPACING = 72;
@@ -412,6 +413,7 @@ export const aiPorts = {
 
   _listSquads(tick, options = {}) {
     const state = this.state;
+    ensureActivityClassified(state);
     const freeze = options.freezeResults === false ? identity : Object.freeze;
     const squads = this._rosterSquadsScratch || (this._rosterSquadsScratch = new Map());
     squads.clear();
@@ -431,6 +433,7 @@ export const aiPorts = {
       const ai = entity.data && entity.data.ai;
       const factionBehavior = normalizeFactionBehaviorProfile(ai && ai.factionPresenceDoctrine);
       if (!ai || (ai.passive && !(ai.allowPassiveManeuver === true && factionBehavior))) continue;
+      if (entityNeedsAiThink(entity) === false) continue;
       candidates.push(entity);
     }
     candidates.sort((a, b) => compareIds(a && a.id, b && b.id));
@@ -469,6 +472,7 @@ export const aiPorts = {
         playerTeam,
         authorityOrigin,
         authorityRadius,
+        activity: entity.activity || null,
       }));
     }
 

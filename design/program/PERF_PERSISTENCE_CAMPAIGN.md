@@ -38,8 +38,16 @@ runtime per-triangle interior occlusion; LOD meshes for unsubmitted entities.
 2. Far AI/traffic dormancy + Rapier active set.
 3. Shell-first station/startup readiness.
 
-Phase 1 (this slice) lands (1) only: records, catch-up kernels, pins/tiers.
-It does **not** deactivate Rapier or strip AI yet.
+Phase 1 landed the records, catch-up kernels, and pin/tier names.
+
+Phase 2 applies those tiers on the live tick: far AI/traffic do zero per-tick
+work, and Rapier only keeps the causal active set. Actors are not deleted.
+Hostiles chasing the player, tethers, jobs, stations, and on-glass bodies
+stay exact. Catch-up uses lastExactT + ballistic drift on rematerialize.
+Activity stamps are runtime-only (non-enumerable, skipped by save).
+
+Headed p95 A/B is still required before calling crowded flight done.
+47-A uninterrupted telemetry hash is unchanged (on-table fight stays exact).
 
 ## Persistence invariants (short)
 

@@ -79,6 +79,7 @@ const TRANSIENT_ENTITY_SAVE_KEYS = new Set([
   'prevRot',
   'bank',
   'bankVel',
+  'activity',
 ]);
 const TRANSIENT_ENTITY_FLAGS = new Set(['boosting', 'noInterp', 'docked']);
 const TRANSIENT_PLAYER_FLAGS = new Set(['invuln']);

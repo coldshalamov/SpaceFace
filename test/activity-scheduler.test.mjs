@@ -41,6 +41,22 @@ test('quantized owners fire exactly once per period on their phase', () => {
   assert.equal(nextRunTick(hits[0] + 1, 'story:remote', 4), hits[1]);
 });
 
+test('stamped abstract/dormant owners do not wake on the old eight-tick sleep', () => {
+  const hauler = {
+    id: 'h-stamped',
+    team: 2,
+    ai: { passive: true },
+    pos: { x: 4000, z: 0 },
+    activity: { simTier: 'S3_DORMANT', pinnedExact: false },
+  };
+  const opts = { playerId: 'p', playerTeam: 0, origin: { x: 0, z: 0 }, authorityRadius: 120 };
+  let hits = 0;
+  for (let tick = 0; tick < 24; tick++) {
+    if (shouldOwnerThink(tick, hauler, { ...opts, sleepPeriodTicks: 8 })) hits++;
+  }
+  assert.equal(hits, 0);
+});
+
 test('combatants and the player stay awake; far passive traffic may sleep', () => {
   const player = { id: 'p', isPlayer: true, pos: { x: 0, z: 0 } };
   const foe = { id: 'e', team: 1, ai: { combatant: true, passive: false }, pos: { x: 400, z: 0 } };

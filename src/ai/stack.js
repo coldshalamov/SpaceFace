@@ -282,7 +282,6 @@ export class TacticalAIStack {
     const fallbackPlayerTeam = player && player.team;
     for (const member of orderedMembers) {
       if (!selected.has(member.id)) continue;
-      if (normalizeCombatDoctrineId(member.combatDoctrineId) != null) continue;
       const playerId = member.playerId ?? fallbackPlayerId;
       const playerTeam = member.playerTeam ?? fallbackPlayerTeam;
       const owner = {
@@ -292,6 +291,7 @@ export class TacticalAIStack {
         alive: member.alive !== false,
         pos: member.pos || (member.self && member.self.pos) || null,
         ai: { combatant: !!member.combatDoctrineId, passive: member.passive === true },
+        activity: member.activity || null,
       };
       if (!shouldOwnerThink(tick, owner, {
         playerId,
@@ -400,6 +400,7 @@ function normalizeRoster(value, freezeResults = true) {
         playerTeam: normalized.playerTeam,
         authorityOrigin: normalized.authorityOrigin || null,
         authorityRadius: finitePositive(normalized.authorityRadius, TABLE_AI_AUTHORITY_WU),
+        activity: normalized.activity || null,
       });
     });
     return freeze({
