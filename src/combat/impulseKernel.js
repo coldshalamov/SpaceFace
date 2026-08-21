@@ -12,7 +12,11 @@ const IMPULSE_PROVENANCE_HISTORY_LIMIT = 16;
 export const IMPULSE_PROVENANCE_MAX_AGE_TICKS = 180;
 
 // Ordinary flight bumps (player/NPC vs rock, two ships clipping) must not steal the helm.
-// Combat-driven tags — weapons, ram plate, Massline — still stagger/tumble at the Δv floors.
+// Helm loss additionally requires a CRAFT surface: a rock/station/debris slam never staggers or
+// tumbles, even when the victim carries a fresh weapon-impulse record — that stale tag must not
+// convert every post-shot asteroid graze into a stagger. The concussive payoff stays where it is
+// authored: direct weapon torque (damage.js), concussion/RCS control windows (weapons.js), and
+// hard craft-on-craft contact below.
 const HELM_NEUTRAL_COLLISION_TAGS = Object.freeze(new Set(['environment', 'direct_contact']));
 
 export const COLLISION_CONSEQUENCE_LIMITS = Object.freeze({
@@ -135,7 +139,7 @@ export function resolveCollisionConsequence(input = {}) {
   let control = deltaV >= COLLISION_CONSEQUENCE_LIMITS.tumbleDeltaV
     ? 'tumble'
     : deltaV >= COLLISION_CONSEQUENCE_LIMITS.staggerDeltaV ? 'stagger' : 'none';
-  if (!collisionAllowsHelmLoss(provenance)) control = 'none';
+  if (!collisionAllowsHelmLoss(surface, provenance)) control = 'none';
   const staggerRange = COLLISION_CONSEQUENCE_LIMITS.tumbleDeltaV - COLLISION_CONSEQUENCE_LIMITS.staggerDeltaV;
   const stagger01 = clamp((deltaV - COLLISION_CONSEQUENCE_LIMITS.staggerDeltaV) / staggerRange, 0, 1);
   const staggerTicks = control === 'none'
@@ -192,7 +196,8 @@ function isConsequenceTarget(entity) {
   return entity.type === 'ship' || entity.type === 'drone';
 }
 
-function collisionAllowsHelmLoss(provenance) {
+function collisionAllowsHelmLoss(surface, provenance) {
+  if (surface !== 'craft') return false;
   const tag = provenance && provenance.tag;
   return !!tag && !HELM_NEUTRAL_COLLISION_TAGS.has(tag);
 }

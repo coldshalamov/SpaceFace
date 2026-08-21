@@ -185,9 +185,16 @@ function assertCollisionConsequenceContract() {
   };
   const terrain = resolveCollisionConsequence({ ...common, other: { id: 3, type: 'asteroid' } });
   const craft = resolveCollisionConsequence({ ...common, other: { id: 4, type: 'ship' } });
-  assert.equal(terrain.control, 'tumble');
+  // 2026-08-21 deliberate gameplay change: environment surfaces never steal the helm, even with
+  // fresh weapon provenance — a post-shot rock graze must read as a scrape, not a concussion.
+  // The bounded damage/debris payoff stays; helm loss requires hard craft-on-craft contact.
+  assert.equal(terrain.control, 'none',
+    'terrain contact must not stagger or tumble, even when the victim was just shot');
+  assert.equal(terrain.staggerTicks, 0);
   assert.ok(terrain.impactDamage > 0 && terrain.debrisCount > 0,
     'high-momentum terrain contact must produce bounded damage/debris payoff');
+  assert.ok(['stagger', 'tumble'].includes(craft.control),
+    'combat-attributed craft contact still takes the helm at the Δv floors');
   assert.ok(craft.impactDamage > 0,
     'high-momentum craft contact must produce the authored baseline hull damage');
   assert.ok(craft.impactDamage < terrain.impactDamage,
