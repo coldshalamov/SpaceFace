@@ -48,6 +48,43 @@ test('sector exit calls the live governor instead of leaving warmth forever', ()
   assert.deepEqual(receipt.evict, ['old-ceres']);
 });
 
+test('sector exit reclaims cache-only packages but leaves mixed presentation assets pinned', () => {
+  const registry = createAssetResidencyRegistry({ maxGpuBytes: 384 * 1024 * 1024 });
+  const cacheResource = { dispose() {}, userData: {}, byteSize: 200 };
+  const mixedResource = { dispose() {}, userData: {}, byteSize: 200 };
+  registry.registerAsset('cache-only-package', [cacheResource]);
+  registry.registerAsset('mixed-package', [mixedResource]);
+  registry.retain('cache-only-package', {}, { role: 'render-package-cache' });
+  const mixedCacheOwner = {};
+  const mixedLiveOwner = {};
+  registry.retain('mixed-package', mixedCacheOwner, { role: 'render-package-cache' });
+  registry.retain('mixed-package', mixedLiveOwner, { role: 'sector-prewarm', sectorId: 'helios' });
+
+  const receipt = applySectorExitResidency(registry, 'helios');
+  assert.deepEqual(receipt.cacheEvicted, ['cache-only-package']);
+  assert.equal(registry.has('cache-only-package'), false);
+  assert.equal(registry.has('mixed-package'), true);
+  assert.equal(receipt.cacheCleanup.releasedOwners, 1);
+});
+
+test('sector-exit post-dispatch cleanup catches a presentation release after the boundary event', async () => {
+  const registry = createAssetResidencyRegistry({ maxGpuBytes: 384 * 1024 * 1024 });
+  let disposals = 0;
+  const resource = { dispose() { disposals++; }, userData: {}, byteSize: 200 };
+  registry.registerAsset('post-dispatch-package', [resource]);
+  const cacheOwner = {};
+  const presentationOwner = {};
+  registry.retain('post-dispatch-package', cacheOwner, { role: 'render-package-cache' });
+  registry.retain('post-dispatch-package', presentationOwner, { role: 'preview', sectorId: 'other' });
+
+  const receipt = applySectorExitResidency(registry, 'helios');
+  assert.deepEqual(receipt.cacheEvicted, []);
+  registry.releaseOwner(presentationOwner, 'preview-closed-after-sector-exit');
+  await Promise.resolve();
+  assert.equal(registry.has('post-dispatch-package'), false);
+  assert.equal(disposals, 1);
+});
+
 test('live residency registry evicts previous-sector warmth when over budget', () => {
   const registry = createAssetResidencyRegistry({ maxGpuBytes: 40 });
   const playerRes = { dispose() {}, userData: {}, byteSize: 16 };

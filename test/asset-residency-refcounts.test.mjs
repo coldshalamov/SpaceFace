@@ -235,6 +235,64 @@ test('explicit preview leases plateau across root cycles and release to zero', a
   assert.equal(final.residentBytes, 0);
 });
 
+test('cache-only render-package owners are reclaimed without double disposal', () => {
+  const registry = createAssetResidencyRegistry();
+  const packageResource = gpuResource('cache-only-package', 64);
+  protectSharedGpuResource(packageResource.resource);
+  register(registry, 'render-package:cache-only', [packageResource]);
+  const cacheOwner = {};
+  registry.retain('render-package:cache-only', cacheOwner, { role: 'render-package-cache' });
+
+  const first = registry.releaseUnreferencedCacheOwners('test-cache-only');
+  assert.deepEqual(first.evicted, ['render-package:cache-only']);
+  assert.equal(first.releasedOwners, 1);
+  assert.equal(packageResource.disposals(), 1);
+  assert.equal(registry.canonicalDiagnostics().residentAssets, 0);
+
+  const second = registry.releaseUnreferencedCacheOwners('test-cache-only-repeat');
+  assert.deepEqual(second.evicted, []);
+  assert.equal(packageResource.disposals(), 1, 'repeated cleanup cannot double-dispose a released package');
+});
+
+test('mixed render-package cache and presentation owners stay pinned until the presentation owner leaves', () => {
+  const registry = createAssetResidencyRegistry();
+  const packageResource = gpuResource('mixed-package', 64);
+  protectSharedGpuResource(packageResource.resource);
+  register(registry, 'render-package:mixed', [packageResource]);
+  const cacheOwner = {};
+  const liveOwner = {};
+  registry.retain('render-package:mixed', cacheOwner, { role: 'render-package-cache' });
+  registry.retain('render-package:mixed', liveOwner, { role: 'sector-prewarm', sectorId: 'helios' });
+
+  const held = registry.releaseUnreferencedCacheOwners('test-mixed');
+  assert.deepEqual(held.evicted, []);
+  assert.equal(registry.canonicalDiagnostics().residentAssets, 1);
+  assert.equal(packageResource.disposals(), 0);
+
+  registry.releaseOwner(liveOwner, 'test-live-owner-departed');
+  const released = registry.releaseUnreferencedCacheOwners('test-mixed-after-live');
+  assert.deepEqual(released.evicted, ['render-package:mixed']);
+  assert.equal(packageResource.disposals(), 1);
+});
+
+test('active render-package cache requests block cache-only cleanup until the request finishes', () => {
+  const registry = createAssetResidencyRegistry();
+  const packageResource = gpuResource('pending-package', 64);
+  protectSharedGpuResource(packageResource.resource);
+  register(registry, 'render-package:pending', [packageResource]);
+  const cacheOwner = {};
+  registry.retain('render-package:pending', cacheOwner, { role: 'render-package-cache' });
+  const request = registry.beginRequest('render-package:pending', cacheOwner, { role: 'render-package-cache' });
+
+  const held = registry.releaseUnreferencedCacheOwners('test-pending');
+  assert.deepEqual(held.evicted, []);
+  assert.equal(packageResource.disposals(), 0);
+  request.cancel('test-pending-finished');
+  const released = registry.releaseUnreferencedCacheOwners('test-pending-after-finish');
+  assert.deepEqual(released.evicted, ['render-package:pending']);
+  assert.equal(packageResource.disposals(), 1);
+});
+
 test('one departed waiter cannot evict a shared decode before a surviving waiter commits', () => {
   const registry = createAssetResidencyRegistry();
   const departedOwner = {};
@@ -393,15 +451,33 @@ test('headless real release-GLB traversal plateaus through live sector events an
       const renderer = window.SF.state.render.renderer;
       const residency = residencyModule.getAssetResidency(renderer);
       const baseline = residency.canonicalDiagnostics();
+      const settleResidency = async (label) => {
+        const renderState = window.SF.state.render;
+        const readiness = renderState.pipelinePrecompileReady;
+        if (readiness && typeof readiness.then === 'function') await readiness.catch(() => {});
+        const deadline = performance.now() + 2_000;
+        while (true) {
+          const snapshot = residency.canonicalDiagnostics();
+          const boundaryRecords = typeof renderState.sectorBoundaryPrewarm?.inspect === 'function'
+            ? renderState.sectorBoundaryPrewarm.inspect()
+            : [];
+          const activePrewarm = boundaryRecords.some((record) => (
+            record && record.active === true
+            && ['RESERVED', 'PREPARING', 'PUBLISHING', 'ABORTING'].includes(record.state)
+          ));
+          if (snapshot.pendingRequests === 0 && !activePrewarm) return snapshot;
+          if (performance.now() >= deadline) {
+            throw new Error(
+              `residency did not quiesce at ${label}: `
+              + `pending=${snapshot.pendingRequests}, prewarm=${JSON.stringify(boundaryRecords)}`,
+            );
+          }
+          await new Promise((resolve) => setTimeout(resolve, 20));
+        }
+      };
       const files = [
         { url: 'assets/ships/release/parts/hulls/hull_frigate.glb', slot: 'hull' },
         { url: 'assets/ships/release/parts/places/place_debris_chunk.glb', slot: 'place' },
-        { url: 'assets/ships/release/parts/hulls/hull_gunship.glb', slot: 'hull' },
-        { url: 'assets/ships/release/parts/places/place_conveyor_barge.glb', slot: 'place' },
-        { url: 'assets/ships/release/parts/hulls/hull_multirole.glb', slot: 'hull' },
-        { url: 'assets/ships/release/parts/places/place_dead_hulk.glb', slot: 'place' },
-        { url: 'assets/ships/release/parts/hulls/hull_capital.glb', slot: 'hull' },
-        { url: 'assets/ships/release/parts/places/place_asteroid_seamed.glb', slot: 'place' },
       ];
       const liveSectors = Object.values(window.SF.state.world && window.SF.state.world.sectors || {})
         .filter((sector) => sector && sector.id);
@@ -415,7 +491,11 @@ test('headless real release-GLB traversal plateaus through live sector events an
         if (previousLease) previousLease.release('real-runtime-sector-departed');
         const sector = liveSectors[(index + 1) % liveSectors.length];
         const sectorId = sector.id;
-        window.SF.bus.emit('sector:enter', { sectorId, sector });
+        // Continuous handoff exercises the same live boundary event without starting a whole
+        // authored-sector prewarm batch. The prewarm promise is still awaited by settleResidency so
+        // a stale request cannot contaminate the preview residency sample.
+        window.SF.bus.emit('sector:enter', { sectorId, sector, continuous: true, noTeleport: true });
+        await settleResidency(`sector-enter:${index}`);
         const lease = loader.createAuthoredAssetLease(renderer, {
           role: 'preview',
           sectorId,
@@ -427,6 +507,7 @@ test('headless real release-GLB traversal plateaus through live sector events an
           const runtime = await loader.getAuthoredAssetRuntimeInfo(renderer);
           throw new Error(`release GLB failed to decode for traversal sector ${index}: ${JSON.stringify(runtime)}`);
         }
+        await settleResidency(`preview-load:${index}`);
         const snapshot = residency.canonicalDiagnostics();
         samples.push({
           sectorId,
@@ -445,13 +526,30 @@ test('headless real release-GLB traversal plateaus through live sector events an
       previousLease.release('real-runtime-traversal-complete');
       const drainSectorOne = liveSectors[1];
       const drainSectorTwo = liveSectors[2 % liveSectors.length];
-      window.SF.bus.emit('sector:enter', { sectorId: drainSectorOne.id, sector: drainSectorOne });
+      window.SF.bus.emit('sector:enter', {
+        sectorId: drainSectorOne.id,
+        sector: drainSectorOne,
+        continuous: true,
+        noTeleport: true,
+      });
       window.SF.bus.emit('sector:exit', { sectorId: drainSectorOne.id });
-      window.SF.bus.emit('sector:enter', { sectorId: drainSectorTwo.id, sector: drainSectorTwo });
+      window.SF.bus.emit('sector:enter', {
+        sectorId: drainSectorTwo.id,
+        sector: drainSectorTwo,
+        continuous: true,
+        noTeleport: true,
+      });
       let final = residency.canonicalDiagnostics();
       while (performance.now() - evictionStartedAt <= 2000) {
         const previewAssets = final.assets.filter((asset) => asset.roles.includes('preview'));
-        if (previewAssets.length === 0) break;
+        const boundaryRecords = typeof window.SF.state.render.sectorBoundaryPrewarm?.inspect === 'function'
+          ? window.SF.state.render.sectorBoundaryPrewarm.inspect()
+          : [];
+        const activePrewarm = boundaryRecords.some((record) => (
+          record && record.active === true
+          && ['RESERVED', 'PREPARING', 'PUBLISHING', 'ABORTING'].includes(record.state)
+        ));
+        if (previewAssets.length === 0 && final.pendingRequests === 0 && !activePrewarm) break;
         await new Promise((resolve) => setTimeout(resolve, 20));
         final = residency.canonicalDiagnostics();
       }

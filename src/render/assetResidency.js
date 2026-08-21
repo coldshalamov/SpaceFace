@@ -322,6 +322,55 @@ export function createAssetResidencyRegistry(options = {}) {
     owners.delete(state.owner);
   }
 
+  function hasActiveRequestForEntry(entry) {
+    if (!entry) return false;
+    for (const request of pendingRequests) {
+      if (request.active && request.key === entry.key) return true;
+    }
+    return false;
+  }
+
+  function isRenderPackageCacheOwner(metadata) {
+    return String(metadata && metadata.role || '').trim().toLowerCase() === 'render-package-cache';
+  }
+
+  /**
+   * Release decoded render-package cache owners that no longer have a presentation owner.
+   *
+   * The package loader keeps one cache owner so content-addressed packages can be reused while a
+   * live boundary, warm sector, or preview retains them. That owner is intentionally not part of
+   * the ordinary byte-pressure eviction policy: an entry with both a cache owner and a presentation
+   * owner is a mixed lifetime and must stay pinned. Once the cache owner is the *only* owner, however,
+   * retaining it makes every traversed package permanent even when the total heap is below the global
+   * governor budget. This explicit boundary cleanup is the release point for that soft cache lease.
+   */
+  function releaseUnreferencedCacheOwners(reason = 'cache-only-residency-cleanup') {
+    const before = diagnostics({ includeEvents: false });
+    const evicted = [];
+    let releasedOwners = 0;
+
+    for (const entry of [...assets.values()]) {
+      if (entry.state !== 'resident' || hasActiveRequestForEntry(entry)) continue;
+      const ownerRecords = [...entry.owners.entries()];
+      const cacheOwners = ownerRecords.filter(([, metadata]) => isRenderPackageCacheOwner(metadata));
+      if (cacheOwners.length === 0 || cacheOwners.length !== ownerRecords.length) continue;
+
+      for (const [owner] of cacheOwners) {
+        if (release(entry.key, owner, reason)) releasedOwners++;
+      }
+      if (!assets.has(entry.key)) evicted.push(entry.key);
+    }
+
+    const after = diagnostics({ includeEvents: false });
+    return Object.freeze({
+      reason,
+      evicted: Object.freeze(evicted),
+      releasedOwners,
+      evictedBytes: Math.max(0, Number(before.residentBytes) - Number(after.residentBytes)),
+      remainingBytes: after.residentBytes,
+    });
+  }
+
   function evictIfUnowned(entry, reason) {
     if (!entry || entry.state !== 'resident' || entry.owners.size > 0) return false;
     for (const request of pendingRequests) {
@@ -637,6 +686,7 @@ export function createAssetResidencyRegistry(options = {}) {
     beginRequest,
     release,
     releaseOwner,
+    releaseUnreferencedCacheOwners,
     handoffOwnerWhenCovered,
     isOwnerReleased,
     rotateSector,
@@ -656,10 +706,35 @@ export function applySectorExitResidency(residency, sectorId, options = {}) {
   if (typeof residency.prepareSectorExit === 'function') {
     residency.prepareSectorExit(sectorId, options);
   }
-  if (typeof residency.enforceBudget === 'function') {
-    return residency.enforceBudget(options.kind || 'gpu');
+  const cacheCleanup = typeof residency.releaseUnreferencedCacheOwners === 'function'
+    ? residency.releaseUnreferencedCacheOwners(options.cacheCleanupReason || 'sector-exit-cache-only')
+    : null;
+  // World emits sector:exit before the caller releases its preview/instance owner. Queue one
+  // post-dispatch pass so that just-departed cache-only packages are reclaimed at the same boundary
+  // without making arbitrary owner release tear down a reusable package mid-frame.
+  if (typeof residency.releaseUnreferencedCacheOwners === 'function'
+    && typeof globalThis.queueMicrotask === 'function') {
+    globalThis.queueMicrotask(() => {
+      residency.releaseUnreferencedCacheOwners(
+        options.cacheCleanupReason ? `${options.cacheCleanupReason}:post-dispatch` : 'sector-exit-cache-only:post-dispatch',
+      );
+    });
   }
-  return null;
+  if (typeof residency.enforceBudget === 'function') {
+    const receipt = residency.enforceBudget(options.kind || 'gpu');
+    if (!cacheCleanup) return receipt;
+    return Object.freeze({
+      ...receipt,
+      cacheCleanup,
+      cacheEvicted: cacheCleanup.evicted,
+      evicted: Object.freeze([
+        ...cacheCleanup.evicted,
+        ...(Array.isArray(receipt && receipt.evicted) ? receipt.evicted : []),
+      ]),
+      evictedBytes: (Number(receipt && receipt.evictedBytes) || 0) + cacheCleanup.evictedBytes,
+    });
+  }
+  return cacheCleanup;
 }
 
 export function getAssetResidency(renderer, options = {}) {
