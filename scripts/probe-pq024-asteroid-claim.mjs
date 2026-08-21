@@ -1865,14 +1865,15 @@ async function readPq024MasslineLatchSnapshot(page, label, targetEntityId) {
 }
 
 async function pulseSurveyReveal(page) {
-  const button = page.locator('.ao-survey');
-  await button.waitFor({ state: 'visible' });
-  await button.click();
+  // PQ-130.01 (2026-08-21): the console survey button was deleted with the rest of the chrome; the
+  // scan binding (default KeyC) is the public verb. PQ-130.04 removes the survey reveal loop itself
+  // (fog of war is gone) — re-aim this actor there. Until then this step is PRESENTATION-STALE.
+  await page.keyboard.press('KeyC');
   await page.waitForFunction(() => {
-    const chips = [...document.querySelectorAll('[data-screen="drill"] .ao-chip')];
+    const chips = [...document.querySelectorAll('[data-screen="drill"] .aw-chip')];
     return chips.some((chip) => /^Assay\s+\d+\/\d+$/i.test((chip.textContent || '').trim()));
   }, null, { timeout: 10_000 });
-  const text = await page.locator('[data-screen="drill"] .ao-chip')
+  const text = await page.locator('[data-screen="drill"] .aw-chip')
     .filter({ hasText: /^Assay / }).first().innerText();
   const match = text.match(/Assay\s+(\d+)\/(\d+)/i);
   assert(match && Number(match[1]) > 0 && Number(match[2]) >= Number(match[1]),
@@ -1992,15 +1993,13 @@ async function waitForCommittedPresentation(page, core) {
   // Asteroid Ops. Observe the visible console switch before pressing it so an already-settled Drive
   // frame cannot turn this presentation wait into a flight-screen timeout.
   const readPublicMode = async () => {
-    const modeSwitch = page.locator('[data-screen="drill"] .ao-switch[aria-label="Console mode"]');
-    await modeSwitch.waitFor({ state: 'visible' });
-    return modeSwitch.evaluate((root) => {
-      const active = [...root.querySelectorAll('button.active')];
-      if (active.length !== 1) return null;
-      const label = String(active[0].textContent || '').replace(/\s+/g, ' ').trim();
-      if (label === 'Drive') return 'drive';
-      if (/^Build\b/.test(label)) return 'build';
-      return null;
+    // PQ-130.01 (2026-08-21): the console mode switch was deleted; the screen root publishes the
+    // public mode as [data-mode="drive"|"build"] (set by the controller's onModeChanged hook).
+    const screenRoot = page.locator('[data-screen="drill"] .ast-screen');
+    await screenRoot.waitFor({ state: 'attached' });
+    return screenRoot.evaluate((root) => {
+      const mode = root.dataset.mode;
+      return mode === 'drive' || mode === 'build' ? mode : null;
     });
   };
   await retractPq024BuildMode({
@@ -2012,8 +2011,8 @@ async function waitForCommittedPresentation(page, core) {
     const screen = document.querySelector('[data-screen="drill"]');
     const owner = window.SF?.registry?.get?.('asteroidSites');
     const site = owner?.getSite?.(siteId);
-    const claimText = normalize(screen?.querySelector('.ao-top-id .ao-chip')?.textContent);
-    const assayText = normalize(screen?.querySelector('.ao-bay-command .ao-chip')?.textContent);
+    const claimText = normalize(screen?.querySelector('[data-chip="claim"]')?.textContent);
+    const assayText = normalize(screen?.querySelector('[data-chip="assay"]')?.textContent);
     const inspector = screen?.querySelector('.ast-inspector');
     const snapshot = {
       owner: {
@@ -2265,7 +2264,7 @@ async function coldContinue(page, rootUrl, siteId, productionReceipt, pageIssueT
 async function reenterAsteroidOps(page, targetEntityId, siteId) {
   await enterAsteroidOps(page, targetEntityId);
   const handle = await page.waitForFunction((id) => {
-    const chips = [...document.querySelectorAll('[data-screen="drill"] .ao-chip')]
+    const chips = [...document.querySelectorAll('[data-screen="drill"] .aw-chip')]
       .map((chip) => (chip.textContent || '').trim()).filter(Boolean);
     const owner = window.SF?.registry?.get('asteroidSites');
     const site = owner?.getSite(id);

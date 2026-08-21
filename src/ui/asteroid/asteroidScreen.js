@@ -25,6 +25,11 @@ import {
 import { createInspector, placementReason, commodityName, formationLabel } from './inspector.js';
 import { createBuildPalette, costText } from './buildPalette.js';
 
+// The cursor lens (design law §6.4) replaces the old context-bay inspector in PQ-130.06. Until then the
+// inspector instance stays mounted in the hidden transitional container for its seam and its test
+// contracts, but nothing rebuilds its DOM for pixels nobody can see.
+const LENS_ENABLED = false;
+
 const { COLS, ROWS } = DRILL_CONST;
 
 export function syncAsteroidConsoleModeButtons(driveButton, buildButton, mode) {
@@ -74,6 +79,7 @@ export const asteroidScreen = {
 
     const claimChip = document.createElement('span');
     claimChip.className = 'aw-chip';
+    claimChip.dataset.chip = 'claim';
     claimChip.textContent = 'No claim';
     hudEls.claim = claimChip;
 
@@ -81,6 +87,7 @@ export const asteroidScreen = {
     // committed/producing read from the durable record.
     const assayChip = document.createElement('span');
     assayChip.className = 'aw-chip';
+    assayChip.dataset.chip = 'assay';
     assayChip.style.display = 'none';
     hudEls.assay = assayChip;
 
@@ -224,6 +231,7 @@ export const asteroidScreen = {
       controlMap,
       hooks: {
         onModeChanged(mode) {
+          wrap.dataset.mode = mode === MODES.BUILD ? 'build' : 'drive';
           palette.setVisible(mode === MODES.BUILD);
           inspElapsed = 10;
           announce(mode === MODES.BUILD
@@ -516,11 +524,11 @@ export const asteroidScreen = {
       announce(p.text);
     }));
     unsubs.push(ctx.bus.on('drill:rockDepleted', (p) => {
-      showBanner('depleted', p?.text || 'This rock is played out — veins break but pay no ore until it recovers.', 'warn');
+      showBanner('depleted', 'Played out — no ore until it recovers', 'warn');
     }));
     unsubs.push(ctx.bus.on('drill:cargoFull', () => {
       if (renderer3d) renderer3d.notify('cargoFull');
-      showBanner('cargo', 'Cargo holds full — mining now wastes ore. Leave to offload.', 'bad');
+      showBanner('cargo', 'Hold full — leave to offload', 'bad');
     }));
     unsubs.push(ctx.bus.on('drill:scanPulse', (p) => {
       if (renderer3d) renderer3d.notify('scanPulse');
@@ -645,7 +653,7 @@ export const asteroidScreen = {
       const pct = cap > 0 ? Math.round((used / cap) * 100) : 0;
       const full = pct >= 100;
       setBar(hudEls.holdFill, 'hb', pct, full ? 'full' : (pct >= 75 ? 'hot' : ''));
-      if (full) showBanner('cargo', 'Cargo holds full — mining now wastes ore. Leave to offload.', 'bad');
+      if (full) showBanner('cargo', 'Hold full — leave to offload', 'bad');
       else clearBanner('cargo');
 
       // rig cluster — gauges confirm what the rover's body already shows (law §6.2)
@@ -687,7 +695,7 @@ export const asteroidScreen = {
       setText(hudEls.claim, 'dc', claimText);
       setCn(hudEls.claim, 'dccn', !s ? 'aw-chip' : (s.anchored ? 'aw-chip ok' : 'aw-chip bad'));
       if (s && !s.anchored && bannerKind == null) {
-        showBanner('unanchored', 'Unanchored claim — install a Massline Core or this work is lost when you leave the sector.', 'warn');
+        showBanner('unanchored', 'Unanchored — install a Core before leaving', 'warn');
       } else if (s && s.anchored) {
         clearBanner('unanchored');
       }
@@ -794,7 +802,7 @@ export const asteroidScreen = {
         hudElapsed = 0;
       }
       inspElapsed += dt;
-      if (inspElapsed >= 0.5) {
+      if (LENS_ENABLED && inspElapsed >= 0.5) {
         refreshInspector();
         inspElapsed = 0;
       }
@@ -849,7 +857,7 @@ export const asteroidScreen = {
       refreshInspector();
       const s = site();
       if (s && !s.anchored) {
-        showBanner('unanchored', 'Unanchored claim — install a Massline Core or this work is lost when you leave the sector.', 'warn');
+        showBanner('unanchored', 'Unanchored — install a Core before leaving', 'warn');
       }
 
       document.addEventListener('keydown', onKeyDown, true);

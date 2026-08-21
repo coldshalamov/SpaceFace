@@ -455,7 +455,7 @@ test('PQ-024 probe preserves the public route and observes owner-produced termin
     '#gm-set-course-btn',
     "page.keyboard.down('Space')",
     "page.keyboard.press('KeyB')",
-    '.ao-survey',
+    "page.keyboard.press('KeyC')",
     '[data-item-id="${defId}"]',
     "page.keyboard.press('Enter')",
     "page.keyboard.press('F5')",
@@ -522,8 +522,8 @@ test('PQ-024 probe preserves the public route and observes owner-produced termin
   assert.match(committedSource, /assessPq024CommittedPresentation/,
     'the actor must apply the pure committed-presentation contract to the settled DOM snapshot');
   for (const visibleTruth of [
-    '.ao-top-id .ao-chip',
-    '.ao-bay-command .ao-chip',
+    '[data-chip="claim"]',
+    '[data-chip="assay"]',
     '.ast-insp-kicker',
     '.ast-insp-title',
     'Awaiting first real output',
