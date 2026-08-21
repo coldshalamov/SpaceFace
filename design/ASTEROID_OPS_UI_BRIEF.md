@@ -1,8 +1,15 @@
 # Asteroid Ops UI — First-Principles Console Brief
 
 **Status:** implemented alongside this doc, 2026-07-17. Companion to
-`design/ASTEROID_OPS_VISION.md`. This is the authority for the drill screen's shell; read it
-before touching `src/ui/asteroid/asteroidScreen.js` or `styles/asteroid-ops.css`.
+`design/ASTEROID_OPS_VISION.md`. This is the authority for the drill screen's **voice**
+(tokens, type, command card, no glass). Read it before touching
+`src/ui/asteroid/asteroidScreen.js` or `styles/asteroid-ops.css`.
+
+**2026-08-20 playtest:** the live layout failed — HUD majority, postage-stamp board,
+tan wash, undrivable rover, hover novels. Presentation/control refactor is admitted as
+`PQ-130` (`design/program/ASTEROID_WORKS_PLAYFIELD.md`). The 264px rail and 208px deck
+proportions are **not frozen**. “The scene stays sovereign” is still law; the live
+screen did not keep it.
 
 ---
 

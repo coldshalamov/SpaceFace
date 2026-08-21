@@ -36,6 +36,9 @@
   coordination, and focused rebind/input/sim validation.
 - `screens/*` — modal screens including station, market, shipyard, outfitting, maps, tech tree,
   bar, mission log, and automation.
+- `asteroid/` — live Asteroid Works minigame (`drill` screen). Playfield campaign:
+  `design/program/ASTEROID_WORKS_PLAYFIELD.md` / `PQ-130`. `screens/drill.js` is the
+  exported input/particle helper, not the live shell.
 
 ## DOM layering (ARCHITECTURE §1.2)
 

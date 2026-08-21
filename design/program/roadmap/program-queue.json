@@ -80,7 +80,8 @@
         "PQ-045",
         "PQ-046",
         "PQ-050",
-        "PQ-129"
+        "PQ-129",
+        "PQ-130"
       ]
     },
     {
@@ -2407,6 +2408,43 @@
         "same-picture"
       ],
       "brief": "Name every >32 ms frame on the live player path, then remove the named compose/compile/upload/admission bricks without lowering default quality. Wave A measures. Wave B kills hitch owners. Wave C crowded 60 fps waits until hitch count is halved. Dispatch with --id PQ-129; --next still returns fleet remaster."
+    },
+    {
+      "id": "PQ-130",
+      "priority": 52,
+      "title": "Asteroid Works playfield: see the board, drive one cell",
+      "state": "ready",
+      "canonical": [
+        "ASTEROID-WORKS-PLAYFIELD"
+      ],
+      "aliases": [
+        "ASTEROID-WORKS-READABILITY",
+        "MINING-MINIGAME-PLAYFIELD"
+      ],
+      "dependsOn": [],
+      "mutexes": [
+        "asteroid-works-playfield"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/program/ASTEROID_WORKS_PLAYFIELD.md",
+        "design/frontend/SCREENS_E_ASTEROID_WORKS.md",
+        "design/frontend/INSTRUMENT_GRAMMAR.md",
+        "design/ASTEROID_OPS_UI_BRIEF.md",
+        "design/program/roadmap/active/PQ-130.md"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:playable",
+        "node scripts/check-program-docs.mjs"
+      ],
+      "evidence": [
+        "play-size-stills",
+        "vein-vs-unsurveyed",
+        "surgical-tap",
+        "playable"
+      ],
+      "brief": "Owner playtest 2026-08-20: tan wash, HUD majority, slanted postage-stamp board, invisible ore/gas, tiny rover, hover novel, undrivable tap/hold. Make the cutaway the game. Dispatch with --id PQ-130; --next still returns fleet remaster. Not Waves 1-4, not PQ-129, not billboard icons."
     }
   ],
   "dispatchUnits": [
@@ -7494,6 +7532,161 @@
       ],
       "receiptRefs": [],
       "brief": "Reserved PQ-094. Recurring: if a live pole has no leaf, mint one in PERF_OPTION_SPACE and admit a PQ-129 leaf. If a leaf is disproved, keep the reject receipt. Never done forever."
+    },
+    {
+      "id": "PQ-130.01",
+      "parentId": "PQ-130",
+      "priority": 345,
+      "title": "Theater: playfield majority, local camera, flat grid",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "asteroid-works-playfield"
+      ],
+      "paths": [
+        "src/ui/asteroid/asteroidScreen.js",
+        "src/ui/asteroid/asteroidRenderer3d.js",
+        "styles/asteroid-ops.css",
+        "design/frontend/SCREENS_E_ASTEROID_WORKS.md"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:playable",
+        "node scripts/check-program-docs.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Cutaway fills the theater. Camera frames a local window around the rover, not all 28 columns. Yaw 0; pitch only enough for cavity floors; square cell faces, not isometric diamonds. No postage-stamp letterbox. Crest thin, command card stays as apron, tape/systems recede. Do not change drill cadence or geology meshes here."
+    },
+    {
+      "id": "PQ-130.02",
+      "parentId": "PQ-130",
+      "priority": 346,
+      "title": "Surgical drive: tap one cell, hold delay then cruise",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-130.01"
+      ],
+      "mutexes": [
+        "asteroid-works-playfield"
+      ],
+      "paths": [
+        "src/systems/drill.js",
+        "src/ui/screens/drill.js",
+        "src/ui/asteroid/asteroidController.js",
+        "scripts/check-drill-smooth.mjs"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:playable",
+        "node scripts/check-program-docs.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Tap commits exactly one empty cell. Hold after a short delay cruises. A wall tap is a visible bore, not a silent no-op and not a tunnel rocket. 0.06s empty-tile step is the defect. Update check-drill-smooth to the new cadence. Not a PQ-129 hitch leaf. Depends on theater so playtest is at play size."
+    },
+    {
+      "id": "PQ-130.03",
+      "parentId": "PQ-130",
+      "priority": 347,
+      "title": "This asteroid's rock: kill the tan wash",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-130.01"
+      ],
+      "mutexes": [
+        "asteroid-works-playfield"
+      ],
+      "paths": [
+        "src/ui/asteroid/asteroidRenderer3d.js",
+        "src/render/asteroidInteriorPreview.js",
+        "src/ui/asteroid/asteroidRenderer2d.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:playable",
+        "node scripts/check-program-docs.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Interior stone matches the asteroid you entered (common rock grey, metallic darker, and so on) and the strata legend. Retune key/fill/exposure so the face is not blown-out tan. Unsurveyed is still rock, not a second palette. Do not restyle ore clusters or the rover here."
+    },
+    {
+      "id": "PQ-130.04",
+      "parentId": "PQ-130",
+      "priority": 348,
+      "title": "Cells speak: ore, gas, surveyed vs unsurveyed at a glance",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-130.03"
+      ],
+      "mutexes": [
+        "asteroid-works-playfield"
+      ],
+      "paths": [
+        "src/ui/asteroid/asteroidRenderer3d.js",
+        "src/render/asteroidInteriorPreview.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:playable",
+        "node scripts/check-program-docs.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "A surveyed vein occupies the cell (mineral stain + cluster that reads at play size, tinted by ore). Gas is cracked seeping rock, never a yellow sparkle that looks like ore. Surveyed silicate and unsurveyed strata must not be a squint test. No camera-facing soft squares. MK lock readable."
+    },
+    {
+      "id": "PQ-130.05",
+      "parentId": "PQ-130",
+      "priority": 349,
+      "title": "The vehicle: rover readable at play size",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-130.01",
+        "PQ-130.03"
+      ],
+      "mutexes": [
+        "asteroid-works-playfield"
+      ],
+      "paths": [
+        "src/render/asteroidInteriorPreview.js",
+        "src/ui/asteroid/asteroidRenderer3d.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:playable",
+        "node scripts/check-program-docs.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Rebuild the procedural rig so it fills most of a cell: tracks, cabin, auger, hazard markings that contrast the dark rock. Findable in three seconds. Authored GLB only if the rebuilt rig still fails 'what is it?'. No billboard stand-in."
+    },
+    {
+      "id": "PQ-130.06",
+      "parentId": "PQ-130",
+      "priority": 350,
+      "title": "Hover as instrument: picture, not a novel",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-130.04"
+      ],
+      "mutexes": [
+        "asteroid-works-playfield"
+      ],
+      "paths": [
+        "src/ui/asteroid/inspector.js",
+        "src/ui/asteroid/asteroidScreen.js",
+        "styles/asteroid-ops.css"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:playable",
+        "node scripts/check-program-docs.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Context bay is a material plate plus consequence chips (bore once / farm forever / hazard / locked). Contact ring when neighbors matter. One body line max. No tutorial paragraphs on mouseover. 12 px floor. First-time teaching stays on the tape once."
     }
   ]
 }

@@ -46,6 +46,14 @@ disjoint files. No coordinator, task-long reservation, or worktree is required.
   [`design/program/PERF_HITCH_CAMPAIGN.md`](./design/program/PERF_HITCH_CAMPAIGN.md).
   Dispatch `node scripts/program-dispatch.mjs --id PQ-129`. Measure first. Do not skip to
   Worker/WebGPU/quality cuts.
+- **Asteroid Works / mining minigame is unreadable or undrivable** (tan wash, HUD
+  eats the board, rover too small or too fast, hover is a wall of text, surveyed
+  vein looks like unsurveyed stone) →
+  [`design/program/ASTEROID_WORKS_PLAYFIELD.md`](./design/program/ASTEROID_WORKS_PLAYFIELD.md)
+  and the operator
+  [`ASTEROID_WORKS_PLAYFIELD_GOAL.txt`](./design/program/ASTEROID_WORKS_PLAYFIELD_GOAL.txt).
+  Dispatch `node scripts/program-dispatch.mjs --id PQ-130`. The board is the game.
+  This is not `PQ-050`, not `PQ-129`, and not Asteroid Ops Waves 1–4.
 - **Any 2D / HUD / menu / screen work** → §11 below, then
   [`design/frontend/INSTRUMENT_GRAMMAR.md`](./design/frontend/INSTRUMENT_GRAMMAR.md) **before you
   design or build anything.** The grammar is binding; per-screen specs live beside it in
@@ -132,6 +140,18 @@ This campaign may rebuild the live Hitch *release* from the later polish that ne
 the compressed file; it still must not overwrite KTX2 with uncompressed source, and it must
 not dump factory remasters that lose to Hitch. It is not INFERENCE and not a default PQ-050
 overnight.
+
+**Asteroid Works playfield:** if the owner cannot see the mining board, tell cells
+apart, find the rover, or move it one cell on purpose, start at
+[`design/program/ASTEROID_WORKS_PLAYFIELD.md`](./design/program/ASTEROID_WORKS_PLAYFIELD.md)
+(operator: [`ASTEROID_WORKS_PLAYFIELD_GOAL.txt`](./design/program/ASTEROID_WORKS_PLAYFIELD_GOAL.txt))
+and the admitted packet
+[`design/program/roadmap/active/PQ-130.md`](./design/program/roadmap/active/PQ-130.md).
+Dispatch `node scripts/program-dispatch.mjs --id PQ-130`. The 2026-08-20 playtest is
+the defect list (tan wash, HUD majority, slant, invisible geology, tiny rover, hover
+novel, undrivable tap/hold, surveyed = unsurveyed). Chrome idea:
+[`design/frontend/SCREENS_E_ASTEROID_WORKS.md`](./design/frontend/SCREENS_E_ASTEROID_WORKS.md).
+This is not INFERENCE, not `PQ-050`, not `PQ-129`, and not Waves 1–4.
 
 **Performance hitch campaign:** if the owner reports hitching, stutter, or the game not playing
 smoothly, start at
@@ -961,6 +981,19 @@ late means rebuilding.
 | **5 · HUD + Power Bar** | slot bar, capacitor headroom, contextual bands, retained craft rulings | sequenced late deliberately — this is where the live performance work sits |
 | **6 · Station interiors** | flatten `station-workbench.css` with appearance held constant, **then** redesign | success test is "looks identical, file is half the size" |
 | **7 · Cleanup** | retire ~10,780 lines of dead station UI after repointing `check-ui-screen-imports.mjs` and `check-command-deck-ui.mjs` at `src/ui/station/` | both checks currently require the dead files to exist, and neither lints the live station |
+
+### 11.5a Asteroid Works is a playable inset, not a HUD with a tiny board
+
+Owner playtest 2026-08-20 failed the live mining screen. The defects and the bar
+are in [`design/program/ASTEROID_WORKS_PLAYFIELD.md`](./design/program/ASTEROID_WORKS_PLAYFIELD.md);
+chrome idea in [`design/frontend/SCREENS_E_ASTEROID_WORKS.md`](./design/frontend/SCREENS_E_ASTEROID_WORKS.md);
+execution is `PQ-130`.
+
+The cutaway is the STAGE. The verb is **BORE**. Manifest tape, site-systems trivia,
+and hover paragraphs are auxiliary. `SCREENS_D` B.10 (“leave the drill screen alone
+and use it as the bar”) is void — owner playtest outranks it.
+
+Do not fold this into Phase 5 HUD work or into Asteroid Ops Waves 1–4.
 
 **Out of scope by owner ruling: progression rebalancing.** The pacing defects are real and recorded
 (start 5,000 cr vs cheapest node 6,000; the Massline's top tier behind a 2,500,000 cr capital node;

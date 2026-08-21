@@ -27,6 +27,7 @@ This is a plan-family catalog, not a current dispatch list. Current leases live 
 | `design/production/` | optional production-controller workflow | applies only when explicitly activated |
 | `design/PERFORMANCE_MODERNIZATION_EXECUTION_PLAN.md` plus its constellation appendix | performance modernization source plan and option/research context | executable only through PQ-034–PQ-044; queue/packet/lease evidence owns live state |
 | [`PERF_HITCH_CAMPAIGN.md`](./PERF_HITCH_CAMPAIGN.md) | owner-visible hitching / smoothness campaign | admitted as `PQ-129`; consumes reserved `PQ-061`–`PQ-128` identities; not a quality-cut plan |
+| [`ASTEROID_WORKS_PLAYFIELD.md`](./ASTEROID_WORKS_PLAYFIELD.md) | mining minigame playfield after the 2026-08-20 playtest | admitted as `PQ-130`; board is the STAGE; not Waves 1–4, not hitch, not fleet remaster |
 | `design/_ARCHIVE/` and review history | archaeology | never current dispatch authority |
 
 ## How a plan becomes executable

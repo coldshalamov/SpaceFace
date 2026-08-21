@@ -1024,12 +1024,21 @@ gross income minus upkeep per minute, per asset, accruing while you are away. Dr
 
 ## B.10 `src/ui/asteroid/` — the drill screen
 
-**Leave it alone and use it as the bar.** It is already a playable, pausing, full-screen minigame
-(`drill` is in `PAUSING_SCREENS`; `screens/drill.js` is 3,154 lines of proven interaction and
-`src/ui/asteroid/` supersedes it as the live module). It is the existence proof that this
-codebase can hit the bar this document sets. Two conformance items only:
+**Owner playtest 2026-08-20 failed the live playfield.** Do not treat this screen as
+the quality bar and do not “leave it alone.” Presentation and control are admitted as
+`PQ-130`. The idea-spec is [`SCREENS_E_ASTEROID_WORKS.md`](./SCREENS_E_ASTEROID_WORKS.md);
+campaign law is [`../program/ASTEROID_WORKS_PLAYFIELD.md`](../program/ASTEROID_WORKS_PLAYFIELD.md).
 
-1. Adopt the CREST / STAGE / APRON skeleton so it shares muscle memory with the rest.
+Keep: pausing minigame (`drill` is in `PAUSING_SCREENS`), console voice (tokens, command
+card, no glass), contact-ring as the machine primitive, `screens/drill.js` as exported
+input/particle helper only.
+
+Change under `PQ-130`: the cutaway is the STAGE; HUD is auxiliary; tap is one cell;
+surveyed geology must read on the board.
+
+Two standing conformance items still apply:
+
+1. CREST / STAGE / APRON skeleton — STAGE is the board, not a postage stamp.
 2. Audit for sub-12 px type and for `pulse`/`panel` substrings in class names (§3c).
 
 ---

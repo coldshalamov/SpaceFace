@@ -56,6 +56,7 @@ objects and manipulation verbs.
 | **BAR** | a room you cross | **APPROACH** — choose who to stand in front of | the room and its occupants |
 | **FACTIONS** | a constellation you sit inside | **ORIENT** — see where you stand relative to everyone | the standing web |
 | **CODEX** | a shelf you pull from | **PULL** — open a record | the archive wall |
+| **ASTEROID WORKS** | a cutaway you bore | **BORE** — tap one cell, hold to cruise and to cut | the live cross-section of this rock |
 
 **Existence proof that this bar is reachable, not aspirational:** `src/ui/screens/drill.js` is a
 **3,154-line playable, full-screen, pausing minigame** already in this repo, and

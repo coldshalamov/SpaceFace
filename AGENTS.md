@@ -27,6 +27,7 @@ workflow; it does not replace original plans.
 | Resume non-Hitch flyable ship remaster (not Hitch) | **`CANONICAL_BUILD_MAP.md`** campaign door → `PQ-050` / [`design/program/roadmap/active/PQ-050.md`](./design/program/roadmap/active/PQ-050.md). Overnight or “non-INFERENCE work in the map” keeps going through every remaining ship. |
 | Add a map-visible place (planet, station, route, region) | `src/data/PLACE_REGISTRATION.md` — **a new place is not done until `npm run check:atlas-integrity` is green** |
 | UI/HUD | `src/ui/AGENTS.md` and `styles/AGENTS.md` |
+| Asteroid Works / mining minigame unreadable or undrivable | **`CANONICAL_BUILD_MAP.md`** door → [`design/program/ASTEROID_WORKS_PLAYFIELD.md`](./design/program/ASTEROID_WORKS_PLAYFIELD.md) → `PQ-130` (`--id PQ-130`). Board is the game. Not Waves 1–4, not hitch. |
 | Flight HUD attention pass (quiet instruments, receipts, no windshield keys) | **`design/HUD_FLIGHT_ATTENTION.md`** (goal prompt: `design/HUD_FLIGHT_ATTENTION_GOAL.txt`) |
 | Render/performance | `src/render/AGENTS.md` and `design/PERF_BUDGET.md` |
 | Feature validation, deterministic lab, Browser/Electron acceptance | `docs/VALIDATION_WORKFLOW.md` → `src/testing/lab/AGENTS.md` when changing the lab |

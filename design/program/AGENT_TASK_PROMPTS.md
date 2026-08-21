@@ -53,6 +53,35 @@ Keep going until every known copy and unused model has a ledger row, every MERGE
 RESULT: DONE only when no finished work remains only on an orphan copy and the ledger is complete.
 ```
 
+## Prompt A0-W — Asteroid Works / mining minigame unreadable
+
+Copy `ASTEROID_WORKS_PLAYFIELD_GOAL.txt` as the whole prompt. Do not paraphrase.
+The campaign file it names is mandatory.
+
+```text
+This is a campaign: make the Asteroid Works mining minigame playable by sight and by tap. Do not use INFERENCE. Do not take hitch/PQ-129 work. Do not take PQ-050. Do not stop after one unit.
+
+Law: design/program/ASTEROID_WORKS_PLAYFIELD.md and design/frontend/SCREENS_E_ASTEROID_WORKS.md. Grammar: design/frontend/INSTRUMENT_GRAMMAR.md. Dispatch: node scripts/program-dispatch.mjs --id PQ-130. Take the first claimable leaf. --next still returns fleet remaster.
+
+The board is the game. HUD is auxiliary. Camera frames the rover, not the whole 28-wide rock. Flatten the slant. Rock is this asteroid’s color, not bright tan. Surveyed vein and unsurveyed stone must not look identical. Ore occupies the cell; gas is cracked seeping rock, never a tiny sparkle that looks like ore. Rover is a vehicle you can see. Tap = one empty cell; hold delay then cruise. Hover is a picture, not a wall of text.
+
+Owner playtest 2026-08-20 is the defect list. Do not paraphrase it into new mechanics.
+
+Order:
+1. PQ-130.01 Theater — playfield majority, local camera, flat grid, no postage-stamp letterbox.
+2. PQ-130.02 Surgical drive — tap one cell; no tunnel rocket.
+3. PQ-130.03 This asteroid’s rock — tan wash gone.
+4. PQ-130.04 Cells speak — ore / gas / unknown / surveyed vs not, at a glance.
+5. PQ-130.05 The vehicle — rover readable at play size.
+6. PQ-130.06 Hover as instrument — no mouseover novel.
+
+Stay off hitch renderer files, Hitch/Kestrel, and Asteroid Ops Waves 1–4. Do not replace crystals or gas with camera-facing soft squares. Do not pass by cutting default quality.
+
+Each leaf: play the tether → Asteroid Works route at normal window size. check:playable after implementation. Commit only that leaf, then the next.
+
+RESULT: DONE when a stranger can see the board, tell cells apart without the context bay, find the rover, and move it one cell on purpose.
+```
+
 ## Prompt A0 — overnight / “the work in the build map” / non-INFERENCE
 
 ```text
