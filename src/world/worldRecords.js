@@ -15,6 +15,15 @@ import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 export const WORLD_RECORDS_SCHEMA_ID = 'spaceface.worldRecords.v1';
 export const WORLD_RECORDS_SCHEMA_VERSION = 2;
 
+/** Durable retention is independent from simulation residency/tier. */
+export const RETENTION_CLASS = Object.freeze({
+  PERMANENT: 'permanent',
+  RECENT: 'recent',
+  AGGREGATE: 'aggregate',
+});
+
+const RETENTION_CLASSES = new Set(Object.values(RETENTION_CLASS));
+
 /** Durable entity kinds persisted under world.records. */
 export const RECORD_KIND = Object.freeze({
   CONVOY: 'convoy',
@@ -44,7 +53,7 @@ export function clearScheduledWake(options = {}) {
   };
 }
 
-export function isPermanentWorldRecord(rec) {
+function hasPermanentWorldMarkers(rec) {
   if (!rec) return false;
   if (rec.kind === RECORD_KIND.MISSION_TARGET || rec.kind === RECORD_KIND.WRECK
     || rec.kind === RECORD_KIND.AFTERMATH) return true;
@@ -55,6 +64,49 @@ export function isPermanentWorldRecord(rec) {
   return false;
 }
 
+/**
+ * Derive a durable retention class from a record, including older saves which did not carry
+ * the explicit class. Permanent identity markers always win over a stale/invalid class.
+ */
+export function deriveRetentionClass(raw, fallback = RETENTION_CLASS.RECENT) {
+  const value = raw && typeof raw === 'object' ? raw : {};
+  if (value.retentionClass === RETENTION_CLASS.PERMANENT || hasPermanentWorldMarkers(value)) {
+    return RETENTION_CLASS.PERMANENT;
+  }
+  if (value.retentionClass === RETENTION_CLASS.RECENT
+    || value.retentionClass === RETENTION_CLASS.AGGREGATE) {
+    return value.retentionClass;
+  }
+  if (value.abstractTier === SIM_TIER.S4_AGGREGATE
+    || value.retentionReason === RETENTION_CLASS.AGGREGATE
+    || value.durableReason === RETENTION_CLASS.AGGREGATE) {
+    return RETENTION_CLASS.AGGREGATE;
+  }
+  return RETENTION_CLASSES.has(fallback) && fallback !== RETENTION_CLASS.PERMANENT
+    ? fallback
+    : RETENTION_CLASS.RECENT;
+}
+
+/** Read the authoritative class while remaining compatible with pre-class records. */
+export function retentionClassOf(rec) {
+  if (!rec) return RETENTION_CLASS.RECENT;
+  if (hasPermanentWorldMarkers(rec)) return RETENTION_CLASS.PERMANENT;
+  if (RETENTION_CLASSES.has(rec.retentionClass)) return rec.retentionClass;
+  return deriveRetentionClass(rec);
+}
+
+export function isPermanentWorldRecord(rec) {
+  return retentionClassOf(rec) === RETENTION_CLASS.PERMANENT;
+}
+
+/** Only unprotected, expired recent memory may be reclaimed by a generic retention pass. */
+export function isReclaimableRecentWorldRecord(rec) {
+  if (!rec || retentionClassOf(rec) !== RETENTION_CLASS.RECENT) return false;
+  if (isPermanentWorldRecord(rec)) return false;
+  if (rec.outcome === 'defeated' || rec.outcome === 'destroyed' || rec.alive === false) return false;
+  return true;
+}
+
 export function gcExpiredRecentMemory(bag, simTime, windowS = RECENT_MEMORY_WINDOW_S) {
   if (!bag || !bag.byId) return 0;
   const now = Number.isFinite(simTime) ? simTime : 0;
@@ -62,7 +114,7 @@ export function gcExpiredRecentMemory(bag, simTime, windowS = RECENT_MEMORY_WIND
   let dropped = 0;
   for (const id of Object.keys(bag.byId)) {
     const rec = bag.byId[id];
-    if (!rec || isPermanentWorldRecord(rec)) continue;
+    if (!isReclaimableRecentWorldRecord(rec)) continue;
     const observed = Number.isFinite(rec.lastObservedT) ? rec.lastObservedT : rec.lastExactT;
     if (!Number.isFinite(observed)) continue;
     if (now - observed < window) continue;
@@ -122,6 +174,13 @@ function clonePlain(value) {
 export function normalizeRecordsBag(input) {
   const bag = createEmptyRecordsBag();
   if (!input || typeof input !== 'object' || Array.isArray(input)) return bag;
+  // Retention overflow is runtime telemetry, not save authority. Preserve it across the
+  // normalize calls used by world.ensureWorldRecords so an operator can see protected pressure,
+  // while serializeRecordsBag deliberately omits it.
+  if (input.retentionReport && typeof input.retentionReport === 'object'
+    && !Array.isArray(input.retentionReport)) {
+    bag.retentionReport = clonePlain(input.retentionReport) || {};
+  }
   const src = input.byId && typeof input.byId === 'object' && !Array.isArray(input.byId)
     ? input.byId
     : (typeof input === 'object' && !Array.isArray(input) && !input.schemaId ? input : null);
@@ -179,6 +238,13 @@ export function normalizeRecord(raw, fallbackId) {
     outcome: raw.outcome === 'defeated' || raw.outcome === 'destroyed' ? raw.outcome : 'active',
     // mission / convoy / wreck extras
     missionId: raw.missionId || null,
+    missionTag: raw.missionTag || null,
+    jobId: raw.jobId || null,
+    playerOwned: raw.playerOwned === true,
+    playerCreated: raw.playerCreated === true,
+    named: raw.named === true || (typeof raw.name === 'string' && raw.name.trim().length > 0),
+    name: typeof raw.name === 'string' && raw.name ? raw.name : null,
+    retentionClass: deriveRetentionClass(raw),
     trafficRole: raw.trafficRole || null,
     trafficLabel: raw.trafficLabel || null,
     itinerary: raw.itinerary && typeof raw.itinerary === 'object' ? clonePlain(raw.itinerary) : null,
@@ -241,7 +307,8 @@ const KNOWN_RECORD_FIELDS = new Set([
   'recordId', 'kind', 'sectorId', 'homeSectorId', 'pos', 'vel', 'rot', 'angVel',
   'type', 'enemyTypeId', 'shipDefId', 'defId', 'factionId', 'team', 'level',
   'hull', 'hullMax', 'shield', 'shieldMax', 'armorHp', 'armorMax', 'alive', 'outcome',
-  'missionId', 'trafficRole', 'trafficLabel', 'itinerary', 'cargoManifest', 'freightDockSeq',
+  'missionId', 'missionTag', 'jobId', 'playerOwned', 'playerCreated', 'named', 'name', 'retentionClass',
+  'trafficRole', 'trafficLabel', 'itinerary', 'cargoManifest', 'freightDockSeq',
   'wreckClass', 'markerId', 'victimClass', 'ai', 'isBoss', 'bossPoiId', 'bossSectorId',
   'epoch', 'createdTick', 'lastSeenTick', 'durableReason', 'identityKey', 'recordSource',
   'recipeKey', 'liveEntityId', 'rematerializedTick', 'lastExactT', 'lastObservedT',
@@ -552,7 +619,17 @@ export function captureEntityRecord(entity, opts = {}) {
     || opts.existingRecord
     || (opts.recordsBag && opts.recordsBag.byId && existingId ? opts.recordsBag.byId[existingId] : null)
     || null;
-  const missionId = missionIdentityOf(d);
+  const missionId = missionIdentityOf(d) || (previous && previous.missionId) || null;
+  const missionTag = d.missionTag || (previous && previous.missionTag) || missionId || null;
+  const jobId = d.jobId || (previous && previous.jobId) || null;
+  const playerOwned = d.playerOwned === true || entity.playerOwned === true
+    || previous && previous.playerOwned === true;
+  const playerCreated = d.playerCreated === true || entity.playerCreated === true
+    || previous && previous.playerCreated === true;
+  const named = d.named === true || entity.named === true
+    || typeof d.name === 'string' && d.name.trim().length > 0
+    || typeof entity.name === 'string' && entity.name.trim().length > 0
+    || previous && previous.named === true;
   const identityKey = existingId
     || opts.identityKey
     || d.identityKey
@@ -598,6 +675,22 @@ export function captureEntityRecord(entity, opts = {}) {
               : (Number.isFinite(previous && previous.nextEventAtT) && previous.nextEventAtT >= 0
                 ? previous.nextEventAtT
                 : null))))));
+  const retentionClass = deriveRetentionClass({
+    ...(previous || {}),
+    ...d,
+    kind,
+    missionId,
+    missionTag,
+    jobId,
+    playerOwned,
+    playerCreated,
+    named,
+    retentionClass: opts.retentionClass !== undefined
+      ? opts.retentionClass
+      : (d.retentionClass !== undefined ? d.retentionClass : previous && previous.retentionClass),
+    abstractTier: opts.abstractTier || d.abstractTier || previous && previous.abstractTier,
+    outcome: entity.alive === false ? 'destroyed' : 'active',
+  });
   const scheduledEventIds = clearNextEvent
     ? []
     : (opts.scheduledEventIds !== undefined
@@ -635,6 +728,13 @@ export function captureEntityRecord(entity, opts = {}) {
     alive: entity.alive !== false,
     outcome: entity.alive === false ? 'destroyed' : 'active',
     missionId: missionId || null,
+    missionTag,
+    jobId,
+    playerOwned,
+    playerCreated,
+    named,
+    name: typeof d.name === 'string' ? d.name : (typeof entity.name === 'string' ? entity.name : null),
+    retentionClass,
     trafficRole: d.trafficRole || null,
     trafficLabel: d.trafficLabel || null,
     itinerary: d.itinerary || (opts.itinerary || null),
@@ -656,7 +756,7 @@ export function captureEntityRecord(entity, opts = {}) {
     recipeKey: d.recipeKey != null ? String(d.recipeKey) : null,
     lastExactT: opts.simTime != null ? opts.simTime : opts.tick || 0,
     lastObservedT: opts.simTime != null ? opts.simTime : opts.tick || 0,
-    abstractTier: opts.abstractTier || SIM_TIER.S0_EXACT,
+    abstractTier: opts.abstractTier || d.abstractTier || previous && previous.abstractTier || SIM_TIER.S0_EXACT,
     intent,
     nextEventAtT,
     scheduledEventIds,
@@ -693,29 +793,48 @@ export function upsertRecord(bag, record) {
 
 function enforceSectorBound(bag, sectorId) {
   const list = recordsForSector(bag, sectorId);
-  if (list.length <= MAX_RECORDS_PER_SECTOR) return;
-  // Drop oldest by lastSeenTick (then recordId) until under cap. Prefer keeping mission/aftermath.
-  const ranked = list.slice().sort((a, b) => {
-    const pa = kindPriority(a.kind);
-    const pb = kindPriority(b.kind);
-    if (pa !== pb) return pa - pb; // higher priority kept (sort ascending drop first)
+  const reclaimable = list.filter(isReclaimableRecentWorldRecord);
+  const required = Math.max(0, list.length - MAX_RECORDS_PER_SECTOR);
+  // Keep the ordinary under-cap runtime shape unchanged; reports are created only when a cap
+  // transaction or protected overflow actually occurs.
+  if (required === 0) return;
+  const ranked = reclaimable.slice().sort((a, b) => {
     if (a.lastSeenTick !== b.lastSeenTick) return a.lastSeenTick - b.lastSeenTick;
-    return a.recordId < b.recordId ? -1 : 1;
+    if (a.lastObservedT !== b.lastObservedT) return a.lastObservedT - b.lastObservedT;
+    return a.recordId < b.recordId ? -1 : (a.recordId > b.recordId ? 1 : 0);
   });
-  const dropCount = list.length - MAX_RECORDS_PER_SECTOR;
+  const dropCount = Math.min(required, ranked.length);
   for (let i = 0; i < dropCount; i++) {
     delete bag.byId[ranked[i].recordId];
   }
+  const protectedOverflow = Math.max(0, required - ranked.length);
+  const report = ensureRetentionReport(bag);
+  report.sectors[String(sectorId || '')] = {
+    sectorId: sectorId || null,
+    total: list.length - dropCount,
+    limit: MAX_RECORDS_PER_SECTOR,
+    reclaimable: ranked.length - dropCount,
+    retiredRecent: dropCount,
+    protectedOverflow,
+  };
 }
 
-function kindPriority(kind) {
-  // Lower number = drop first under pressure.
-  if (kind === RECORD_KIND.NPC) return 0;
-  if (kind === RECORD_KIND.CONVOY) return 1;
-  if (kind === RECORD_KIND.WRECK) return 2;
-  if (kind === RECORD_KIND.AFTERMATH) return 3;
-  if (kind === RECORD_KIND.MISSION_TARGET) return 4;
-  return 0;
+function ensureRetentionReport(bag) {
+  if (!bag.retentionReport || typeof bag.retentionReport !== 'object'
+    || Array.isArray(bag.retentionReport)) {
+    bag.retentionReport = { sectors: {} };
+  } else if (!bag.retentionReport.sectors || typeof bag.retentionReport.sectors !== 'object'
+    || Array.isArray(bag.retentionReport.sectors)) {
+    bag.retentionReport.sectors = {};
+  }
+  return bag.retentionReport;
+}
+
+/** Runtime-only cap pressure report; protected records are never hidden by the cap. */
+export function getWorldRecordRetentionReport(bag) {
+  return bag && bag.retentionReport && typeof bag.retentionReport === 'object'
+    ? bag.retentionReport
+    : { sectors: {} };
 }
 
 /**

@@ -494,7 +494,7 @@ test('resource body round-trip keeps mining yield state and distinguishes deplet
     'recovery/GC still protects a player-modified body until the record is explicitly recovered');
 });
 
-test('player-modified resource records require explicit retirement for GC or bound eviction', () => {
+test('player-modified resource records stay protected and report bound overflow', () => {
   const bag = createEmptyResourceBodyBag();
   for (let i = 0; i < MAX_RESOURCE_BODIES + 2; i++) {
     upsertResourceBody(bag, {
@@ -511,16 +511,17 @@ test('player-modified resource records require explicit retirement for GC or bou
   assert.equal(shouldGarbageCollectResourceBody(modified, { fieldMayRegenerate: true }), false);
   assert.equal(shouldGarbageCollectResourceBody(modified, {
     fieldMayRegenerate: true, authoritativeRetirement: true,
-  }), true);
+  }), false, 'authority cannot erase a truly modified body');
 
   upsertResourceBody(bag, {
     recordId: 'rb_authoritative_trim',
     sectorId: 'sector_test', fieldId: 'field_a', slotId: 'trim',
     pos: { x: 0, z: 0 }, lastObservedT: MAX_RESOURCE_BODIES + 3, playerModified: false,
   }, { authoritativeRetirement: true });
-  assert.equal(Object.keys(bag.byId).length, MAX_RESOURCE_BODIES,
-    'only an explicit authoritative retirement may trim the protected set');
-  assert.equal(bag.byId.rb_modified_0, undefined);
+  assert.equal(Object.keys(bag.byId).length, MAX_RESOURCE_BODIES + 2,
+    'protected modified bodies remain over cap when no reclaimable record is available');
+  assert.ok(bag.byId.rb_modified_0, 'modified identity survives cap pressure');
+  assert.equal(bag.retentionReport.protectedOverflow, 2);
 });
 
 test('activity frame and telemetry buffers stay stable across unchanged classifications', () => {

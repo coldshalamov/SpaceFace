@@ -249,7 +249,8 @@ test('resource body bag honors max occupancy without dropping tethered rocks fir
       slotId: `s${i}`,
       pos: { x: i, z: 0 },
       lastObservedT: i,
-      playerModified: true,
+      // Untouched/recovered observations are reclaimable; tethered identity remains protected.
+      playerModified: false,
       tethered: i === 0,
     }, { authoritativeRetirement: true });
   }
