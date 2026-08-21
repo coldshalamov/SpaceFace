@@ -7569,7 +7569,7 @@
       "priority": 346,
       "title": "Surgical drive: tap one cell, hold delay then cruise",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-130.01"
       ],
@@ -7588,7 +7588,9 @@
         "npm run check:asteroid-theater",
         "node scripts/check-program-docs.mjs"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-130-02-surgical-drive-REPORT.md"
+      ],
       "brief": "Spirit: a heavy rig you place. Tap seats one empty cell. Hold is a decision to cruise. A wall tap is a visible bite. Illegal: MOVE_COOLDOWN 0.06→0.12 and ship it (a slower rocket is still a rocket). Update check-drill-smooth. Not a hitch leaf."
     },
     {
