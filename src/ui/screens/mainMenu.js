@@ -6,6 +6,7 @@
 
 import { requestCodexTab } from './codex.js';
 import { coreText } from '../localizedCoreCopy.js';
+import { requestQuit } from '../quitGame.js';
 import { IS_DEV } from '../../core/devMode.js';
 
 const STYLE_ID = 'sf-main-menu-style';
@@ -266,7 +267,12 @@ export const mainMenuScreen = {
     bLoad.addEventListener('click', () => pushWhenReady(ctx, 'saveLoad', 'Load Game'));
     bSettings.addEventListener('click', () => pushWhenReady(ctx, 'settings', 'Settings'));
 
-    refs = { bNew, bContinue, bLoad, bSettings, saveSummary, bSandbox };
+    const bQuit = button(coreText('quitGame'));
+    bQuit.setAttribute('aria-label', 'Quit Game');
+    bQuit.addEventListener('click', () => requestQuit(ctx));
+    col.appendChild(bQuit);
+
+    refs = { bNew, bContinue, bLoad, bSettings, saveSummary, bSandbox, bQuit };
     this._render(ctx);
   },
 

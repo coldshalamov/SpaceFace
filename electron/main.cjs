@@ -7,7 +7,7 @@
 // This file is the Electron-only shell: app lifecycle, single-instance lock, GPU switches,
 // window creation, fixed-port-for-saves, packaged→bundle root selection.
 // `npm run check:launch-policy` enforces that both launchers share that module.
-const { app, BrowserWindow, powerMonitor } = require('electron');
+const { app, BrowserWindow, ipcMain, powerMonitor } = require('electron');
 const http = require('http');
 const path = require('path');
 const { createGameServer } = require('../scripts/lib/gameServer.cjs');
@@ -62,6 +62,12 @@ let windowCreationPromise = null;
 let appQuitting = false;
 
 app.on('before-quit', () => { appQuitting = true; });
+
+const SHELL_QUIT_CHANNEL = 'spaceface:quit';
+ipcMain.on(SHELL_QUIT_CHANNEL, () => {
+  receipt('quit-requested', {});
+  app.quit();
+});
 
 // Explicit evidence probes use a temporary Chromium profile. Electron's single-instance lock is
 // scoped by userData, so applying this before requestSingleInstanceLock gives the probe its own

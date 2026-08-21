@@ -8,6 +8,7 @@ import { BINDINGS } from '../bindings.js';
 import { SECTORS } from '../../data/sectors.js';
 import { MAP_FOCUS, mapHandoffAction, openGalaxyMap } from '../mapAuthority.js';
 import { coreText } from '../localizedCoreCopy.js';
+import { requestQuit } from '../quitGame.js';
 import { IS_DEV } from '../../core/devMode.js';
 
 const STYLE_ID = 'sf-pause-menu-style';
@@ -401,6 +402,16 @@ export const pauseScreen = {
         confirmLabel: 'Main Menu', danger: true,
       });
       if (ok) this._toMenu(ctx);
+    });
+
+    mk(coreText('quitGame'), async () => {
+      const lines = pauseStatusLines(ctx && ctx.state);
+      const ok = await confirm({
+        title: 'Quit game?',
+        body: 'Quitting closes the game. ' + lines.save + ' ' + lines.next + ' Unsaved progress will be lost.',
+        confirmLabel: coreText('quitGame'), danger: true,
+      });
+      if (ok) requestQuit(ctx);
     });
 
     els = { bResume, briefObjective, briefNext, briefSave };

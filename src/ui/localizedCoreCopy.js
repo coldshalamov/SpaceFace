@@ -25,6 +25,8 @@ export const LOCALIZED_CORE_COPY = Object.freeze({
   helpControls: { label: 'Help / Controls' },
   codex: { label: 'Codex' },
   mainMenu: { label: 'Main Menu' },
+  quitGame: { label: 'Quit Game' },
+  quit: { label: 'Quit' },
   tutorialObjective: { label: 'TUTORIAL OBJECTIVE' },
   currentObjective: { label: 'CURRENT OBJECTIVE' },
   nextAction: { label: 'NEXT ACTION' },

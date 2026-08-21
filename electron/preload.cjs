@@ -51,6 +51,8 @@ ipcRenderer.on(SHELL_LIFECYCLE_CHANNEL, (_event, command) => {
   }
 });
 
+const SHELL_QUIT_CHANNEL = 'spaceface:quit';
+
 contextBridge.exposeInMainWorld('spacefaceLifecycle', Object.freeze({
   subscribe(subscriber) {
     if (typeof subscriber !== 'function') return () => {};
@@ -58,4 +60,21 @@ contextBridge.exposeInMainWorld('spacefaceLifecycle', Object.freeze({
     if (latestCommand) subscriber(latestCommand);
     return () => subscribers.delete(subscriber);
   },
+  quit() {
+    try { ipcRenderer.send(SHELL_QUIT_CHANNEL); } catch (e) {}
+  },
 }));
+
+// Also expose a minimal shell bridge for quit callers that prefer window.spacefaceShell
+try {
+  contextBridge.exposeInMainWorld('spacefaceShell', Object.freeze({
+    quit() {
+      try { ipcRenderer.send(SHELL_QUIT_CHANNEL); } catch (e) {}
+    },
+  }));
+} catch (e) {}
+try {
+  contextBridge.exposeInMainWorld('spacefaceQuit', () => {
+    try { ipcRenderer.send(SHELL_QUIT_CHANNEL); } catch (e) {}
+  });
+} catch (e) {}
