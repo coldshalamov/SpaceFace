@@ -7773,7 +7773,7 @@
       "priority": 353,
       "title": "Build like chess: earned palette, ghost with valid faces",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-130.01",
         "PQ-130.06"
@@ -7795,7 +7795,9 @@
         "npm run check:asteroid-theater",
         "node scripts/check-program-docs.mjs"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-130-09-build-like-chess-REPORT.md"
+      ],
       "brief": "Design law §6.3 + §6.7: the palette does not exist until a Core is owned, then grows one 46x46 key per unlocked machine (three states: ready / armed-gold / unaffordable; locked machines are ABSENT, never gray placeholders); ghost placement draws face contacts on the actual cells, valid seats glow mint, blocked faces show one why-glyph; keyboard cell cursor stays. Illegal: restyling the current always-visible 3x3 gray grid; keys for locked machines; silent misplacement."
     },
     {

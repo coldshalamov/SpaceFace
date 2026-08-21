@@ -1953,11 +1953,61 @@ async function planExtractorPlacement(page, core, { fromAvatar = false } = {}) {
   });
 }
 
+// PQ-130.01 (2026-08-21): the console mode switch was deleted; the screen root publishes the
+// public mode as [data-mode="drive"|"build"] (set by the controller's onModeChanged hook).
+async function readAsteroidConsoleMode(page) {
+  const screenRoot = page.locator('[data-screen="drill"] .ast-screen');
+  await screenRoot.waitFor({ state: 'attached' });
+  return screenRoot.evaluate((root) => {
+    const mode = root.dataset.mode;
+    return mode === 'drive' || mode === 'build' ? mode : null;
+  });
+}
+
+/**
+ * Arm one build intent through the shipped controls.
+ *
+ * PQ-130.09: the build palette is EARNED (design law §6.3) — it has no DOM at all until this rock
+ * owns a Massline Core, and a locked machine is ABSENT rather than a gray placeholder key. So the
+ * first Core cannot be armed by clicking a key: before it lands there is exactly one legal build
+ * on the rock, and BUILD mode arms it implicitly. Every LATER machine is armed the normal way, by
+ * clicking its earned key. Read the published mode before pressing B — a blind press on an
+ * already-armed console toggles straight back to Drive.
+ */
+async function armSiteMachine(page, defId) {
+  // Always arm FROM Drive. Entering Build snaps the cell cursor onto the rover, which is the only
+  // origin the walk below can know; arming while Build is already up would leave the cursor
+  // wherever the last action parked it and silently shift every arrow press.
+  if (await readAsteroidConsoleMode(page) === 'build') {
+    await page.keyboard.press('Escape');
+    assert.equal(await readAsteroidConsoleMode(page), 'drive',
+      'Escape must retract Build before a fresh build intent is armed');
+  }
+  if (defId !== 'sm_massline_core') {
+    const key = page.locator(`[data-item-id="${defId}"]`);
+    await key.waitFor({ state: 'visible' });
+    await key.click();
+    assert.equal(await readAsteroidConsoleMode(page), 'build',
+      'a clicked palette key must arm Build mode');
+    return 'palette-key';
+  }
+  assert.equal(await page.locator('[data-item-id="sm_massline_core"]').count(), 0,
+    'law §6.3: no Core key may exist before the palette is earned');
+  await page.keyboard.press('KeyB');
+  assert.equal(await readAsteroidConsoleMode(page), 'build',
+    'B must arm Build mode for the implicit first-Core placement');
+  return 'implicit-core';
+}
+
 async function placeSiteMachine(page, defId, plan) {
-  const palette = page.locator(`[data-item-id="${defId}"]`);
-  await palette.waitFor({ state: 'visible' });
-  await palette.click();
-  await moveBuildCursor(page, plan.from, plan.to);
+  await armSiteMachine(page, defId);
+  // The walk starts where the console actually put the cursor — the rover — not where the planner
+  // happened to measure from.
+  const origin = await page.evaluate(() => {
+    const a = window.SF.state.drill.avatar;
+    return { col: a.col, row: a.row };
+  });
+  await moveBuildCursor(page, origin, plan.to);
   const before = await page.evaluate(() => {
     const owner = window.SF.registry.get('asteroidSites');
     const site = owner.siteForAsteroid(window.SF.state.drill.asteroidId);
@@ -1992,16 +2042,7 @@ async function waitForCommittedPresentation(page, core) {
   // Escape is Build -> Drive only while Build is active; from Drive the same public control exits
   // Asteroid Ops. Observe the visible console switch before pressing it so an already-settled Drive
   // frame cannot turn this presentation wait into a flight-screen timeout.
-  const readPublicMode = async () => {
-    // PQ-130.01 (2026-08-21): the console mode switch was deleted; the screen root publishes the
-    // public mode as [data-mode="drive"|"build"] (set by the controller's onModeChanged hook).
-    const screenRoot = page.locator('[data-screen="drill"] .ast-screen');
-    await screenRoot.waitFor({ state: 'attached' });
-    return screenRoot.evaluate((root) => {
-      const mode = root.dataset.mode;
-      return mode === 'drive' || mode === 'build' ? mode : null;
-    });
-  };
+  const readPublicMode = () => readAsteroidConsoleMode(page);
   await retractPq024BuildMode({
     readMode: readPublicMode,
     pressEscape: () => page.keyboard.press('Escape'),
@@ -2013,7 +2054,12 @@ async function waitForCommittedPresentation(page, core) {
     const site = owner?.getSite?.(siteId);
     const claimText = normalize(screen?.querySelector('[data-chip="claim"]')?.textContent);
     const assayText = normalize(screen?.querySelector('[data-chip="assay"]')?.textContent);
-    const inspector = screen?.querySelector('.ast-inspector');
+    // PQ-130.06/.09: the context bay and its kicker/title rows are deleted (law §10), and the
+    // cursor lens that replaced them is hover-only and closed in this frame. The visible committed
+    // truth is the two crest chips; the crest's single alert slot is the surface that would still
+    // be showing the pre-commit "Unanchored — install a Core before leaving" warning if the frame
+    // were stale, which is what makes it worth asserting.
+    const alertText = normalize(screen?.querySelector('.aw-alert')?.textContent);
     const snapshot = {
       owner: {
         siteId: site?.id ?? null,
@@ -2023,11 +2069,7 @@ async function waitForCommittedPresentation(page, core) {
       },
       claimText,
       assayText,
-      inspector: {
-        kicker: normalize(inspector?.querySelector('.ast-insp-kicker')?.textContent),
-        title: normalize(inspector?.querySelector('.ast-insp-title')?.textContent),
-        text: normalize(inspector?.textContent),
-      },
+      alertText,
     };
     const expectedAssay = Number.isInteger(snapshot.owner.cells) && snapshot.owner.cells > 0
       ? `Assay ${snapshot.owner.cells} cells`
@@ -2037,11 +2079,7 @@ async function waitForCommittedPresentation(page, core) {
       && snapshot.owner.lifecycle === 'committed'
       && claimText === 'Anchored'
       && assayText === expectedAssay
-      && snapshot.inspector.kicker === 'Site overview'
-      && snapshot.inspector.title === 'Anchored claim'
-      && /Survey record:/i.test(snapshot.inspector.text)
-      && /Awaiting first real output/i.test(snapshot.inspector.text)
-      && !/A machine already occupies this cell/i.test(snapshot.inspector.text)
+      && !/unanchored/i.test(alertText)
       ? snapshot
       : null;
   }, core.siteId, { timeout: 5_000 });
@@ -2062,8 +2100,12 @@ async function moveBuildCursor(page, from, to) {
 }
 
 async function exitAsteroidOps(page) {
-  const drive = page.getByRole('button', { name: 'Drive', exact: true });
-  await drive.click();
+  // The Drive/Build console buttons were deleted in PQ-130.01. Escape is layered: from Build it
+  // retracts to Drive, from Drive it leaves the screen — so retract first, then leave.
+  await retractPq024BuildMode({
+    readMode: () => readAsteroidConsoleMode(page),
+    pressEscape: () => page.keyboard.press('Escape'),
+  });
   await page.keyboard.press('Escape');
   await page.waitForFunction(() => window.SF?.state?.drill == null, null, { timeout: 10_000 });
   await page.waitForFunction(() => window.SF?.state?.mode === 'flight');

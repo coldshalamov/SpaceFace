@@ -4,8 +4,8 @@
    Scoped under .ast-screen (class kept for the capture harnesses). The old gunmetal
    --ao-* voice is deleted, not restyled: warm brown neutrals, soft-shadow depth,
    sentence case everywhere, Instrument Sans / Spline Sans Mono / Bricolage Grotesque.
-   Visible chrome is law §6.1 (crest) + §6.2 (rig cluster) + §6.4 (the cursor lens) and
-   nothing else; the build palette still lives in a display:none container until .09.
+   Visible chrome is law §6.1 (crest) + §6.2 (rig cluster) + §6.3 (the earned build palette,
+   which has no DOM at all until a Core is owned) + §6.4 (the cursor lens) and nothing else.
    ============================================================================ */
 
 .ast-screen {
@@ -254,10 +254,133 @@
 }
 .aw-gauge-val.bad { color: var(--aw-coral); }
 
-/* ---------------------------------------------------------------- hidden transitionals
-   The build palette keeps its wiring but occupies no glass until .09 lands. The
-   inspector's hidden container is gone: PQ-130.06 replaced it with the cursor lens. */
-.aw-hidden { display: none !important; }
+/* ---------------------------------------------------------------- §6.3 build palette
+   "A short row of tactile lit keys, like a hardware sampler, that gets longer as the game
+   grows." Earned, not shown: this rule set has no hidden state and no placeholder state
+   because the palette is simply not in the DOM until a Core is owned (see buildPalette.js).
+   Bottom edge, right of centre; the row is exactly its keys plus 6px gaps — no card, no
+   padding, no background behind them — and it stops 16px clear of the §6.2 rig cluster. */
+.aw-palette {
+  position: absolute;
+  right: 306px; /* rig cluster = 16px margin + ~274px card; this clears it by 16px */
+  bottom: 16px;
+  z-index: 5;   /* under the §6.4 lens (6), over the board */
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.ast-screen .aw-build-key {
+  position: relative;
+  flex: 0 0 auto;
+  width: 46px;
+  height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: var(--aw-raised);
+  box-shadow: inset 0 1px 0 rgba(255, 232, 194, 0.1), 0 2px 8px rgba(8, 5, 2, 0.55);
+  color: var(--aw-ink-2);
+  transition:
+    transform 0.12s ease-out,
+    background-color 0.12s ease-out,
+    color 0.12s ease-out,
+    box-shadow 0.12s ease-out;
+}
+/* The silhouette IS the key. 22px of filled mass in currentColor, so every state tints it free. */
+.aw-build-glyph {
+  display: block;
+  width: 22px;
+  height: 22px;
+}
+.aw-build-hotkey {
+  position: absolute;
+  top: 4px;
+  right: 5px;
+  font: 500 12px/1 var(--aw-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--aw-ink-2);
+  pointer-events: none;
+}
+
+/* ready — raised plate, ink-2 glyph; hover lifts 1px and lightens */
+.ast-screen .aw-build-key:hover {
+  transform: translateY(-1px);
+  background: #3c3124;
+  color: var(--aw-ink);
+}
+
+/* armed — gold ring + gold glyph. Outside build mode nothing is being aimed, so the ring
+   reads as a quiet inner hint instead of shouting a selection the player is not making. */
+.ast-screen .aw-build-key.armed {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 232, 194, 0.1),
+    inset 0 0 0 1px rgba(255, 182, 72, 0.45),
+    0 2px 8px rgba(8, 5, 2, 0.5);
+}
+.ast-screen .aw-palette.live .aw-build-key.armed {
+  color: var(--aw-gold);
+  background: #33291d;
+  box-shadow: 0 0 0 2px var(--aw-gold), 0 3px 10px rgba(8, 5, 2, 0.55);
+}
+
+/* unaffordable — flat --aw-surface, ink-3 glyph, no lift; the hover tip carries the coral
+   shortfall. Armed still rings it: "this is what you are aiming, and you cannot pay for it." */
+.ast-screen .aw-build-key.poor,
+.ast-screen .aw-build-key.poor:hover {
+  transform: none;
+  background: var(--aw-surface);
+  box-shadow: none;
+  color: var(--aw-ink-3);
+}
+.ast-screen .aw-palette.live .aw-build-key.poor.armed {
+  color: var(--aw-ink-3);
+  box-shadow: 0 0 0 2px var(--aw-gold);
+}
+
+/* The key's name lives here and nowhere else (law §2.5): hidden — not merely transparent —
+   so it costs the default drive view zero words, revealed on hover or keyboard focus. */
+.aw-build-tip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 10px 7px;
+  border-radius: 8px;
+  background: var(--aw-surface);
+  box-shadow: 0 2px 8px rgba(8, 5, 2, 0.5);
+  white-space: nowrap;
+  pointer-events: none;
+  visibility: hidden;
+  opacity: 0;
+}
+.ast-screen .aw-build-key:hover .aw-build-tip,
+.ast-screen .aw-build-key:focus-visible .aw-build-tip {
+  visibility: visible;
+  opacity: 1;
+}
+.aw-build-tip-name {
+  font: 500 13px/1.15 var(--aw-font);
+  color: var(--aw-ink);
+}
+.aw-build-tip-cost {
+  font: 500 12px/1.15 var(--aw-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--aw-coral);
+}
+.aw-build-tip-cost:empty { display: none; }
+
+/* law §9 — the first Core makes the interface visibly grow: one 300ms settle, once. */
+@keyframes aw-palette-settle {
+  from { transform: translateY(8px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.aw-palette.settle { animation: aw-palette-settle 300ms cubic-bezier(0.22, 0.68, 0.3, 1) both; }
 
 /* ---------------------------------------------------------------- §6.4 cursor lens
    "A little field-notebook tag next to their cursor — a colour, a number, two or three
@@ -486,14 +609,21 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ast-summary-modal, .aw-hold-fill, .aw-gauge-fill { transition: none; }
-  .aw-leave:hover { transform: none; }
+  .ast-summary-modal, .aw-hold-fill, .aw-gauge-fill, .aw-build-key { transition: none; }
+  .aw-leave:hover, .aw-build-key:hover { transform: none; }
+  .aw-palette.settle { animation: none; }
 }
 html.sf-reduce-motion .ast-summary-modal,
 html.sf-reduce-motion .aw-hold-fill,
+html.sf-reduce-motion .aw-build-key,
 html.sf-reduce-motion .aw-gauge-fill { transition: none; }
+html.sf-reduce-motion .aw-palette.settle { animation: none; }
+html.sf-reduce-motion .aw-build-key:hover { transform: none; }
 @media (forced-colors: active) {
   .ast-screen, .aw-crest, .aw-rig, .aw-leave, .aw-chip { border: 1px solid CanvasText; }
+  .aw-build-key, .aw-build-tip { border: 1px solid CanvasText; background: Canvas; color: CanvasText; }
+  .aw-build-key.armed { outline: 2px solid Highlight; outline-offset: 1px; }
+  .aw-build-key.poor { color: GrayText; }
   .ast-screen, .aw-leave { background: Canvas; color: CanvasText; }
   .aw-hold-fill, .aw-gauge-fill { background: Highlight; }
   .aw-lens, .aw-lens-chip, .aw-lens-swatch, .aw-lens-ring-cell { border: 1px solid CanvasText; }

@@ -145,33 +145,27 @@ test('PQ-024 committed presentation rejects the captured stale frame and accepts
     lifecycle: 'committed',
     cells: 3,
   };
+  // PQ-130.06/.09: the stale frame is now read off the surfaces that still exist — the two crest
+  // chips and the crest's one alert slot. The old `.ast-inspector` kicker/title/body assertions
+  // were retired with the context bay they read (design law §10); kept, they would have passed
+  // against an empty string forever.
   const stale = assessPq024CommittedPresentation({
     owner,
     claimText: 'No claim',
     assayText: 'Assay 2/3',
-    inspector: {
-      kicker: 'Placement preview',
-      title: 'Massline Core',
-      text: 'Massline Core A machine already occupies this cell.',
-    },
+    alertText: 'Unanchored — install a Core before leaving',
   }, { expectedSiteId: 'site_1' });
   assert.equal(stale.schema, PQ024_COMMITTED_PRESENTATION_SCHEMA);
   assert.equal(stale.pass, false);
   assert.ok(stale.failures.some((row) => row.includes('claim chip')));
   assert.ok(stale.failures.some((row) => row.includes('assay chip')));
-  assert.ok(stale.failures.some((row) => row.includes('inspector kicker')));
-  assert.ok(stale.failures.some((row) => row.includes('occupied-placement error')));
+  assert.ok(stale.failures.some((row) => row.includes('crest alert')));
 
   const settled = assessPq024CommittedPresentation({
     owner,
     claimText: 'Anchored',
     assayText: 'Assay 3 cells',
-    inspector: {
-      kicker: 'Site overview',
-      title: 'Anchored claim',
-      text: 'Survey record: Silver Ore vein cluster — 3 cells committed to the claim. '
-        + 'Awaiting first real output — the exterior relay comes online when the site produces.',
-    },
+    alertText: '',
   }, { expectedSiteId: 'site_1' });
   assert.equal(settled.schema, PQ024_COMMITTED_PRESENTATION_SCHEMA);
   assert.equal(settled.pass, true);
@@ -312,12 +306,7 @@ test('PQ-024 committed-transition projection is fail-closed and runtime-id neutr
         owner: { siteId: 'site_claim_1', anchored: true, lifecycle: 'committed', cells: 3 },
         claimText: ' Anchored ',
         assayText: 'Assay 3 cells',
-        inspector: {
-          kicker: 'Site overview',
-          title: 'Anchored claim',
-          text: 'Survey record: basalt formation — 3 cells committed to the claim. '
-            + 'Awaiting first real output — the exterior relay comes online when the site produces.',
-        },
+        alertText: '',
       },
     },
   };
@@ -524,12 +513,17 @@ test('PQ-024 probe preserves the public route and observes owner-produced termin
   for (const visibleTruth of [
     '[data-chip="claim"]',
     '[data-chip="assay"]',
-    '.ast-insp-kicker',
-    '.ast-insp-title',
-    'Awaiting first real output',
+    '.aw-alert',
   ]) {
     assert.ok(committedSource.includes(visibleTruth),
       `the committed settle must bind visible truth ${visibleTruth}`);
+  }
+  // The context bay is deleted (design law §10) and the cursor lens that replaced it is hover-only
+  // and closed in this frame. Binding the settle to it again would be an assertion that can only
+  // ever pass, so the retired selectors are banned outright.
+  for (const retired of ['.ast-inspector', '.ast-insp-kicker', '.ast-insp-title']) {
+    assert.ok(!source.includes(retired),
+      `the probe must not read the deleted context bay surface ${retired}`);
   }
   for (const forbidden of [
     /\bsiteSys\.installMachine\s*\(/,

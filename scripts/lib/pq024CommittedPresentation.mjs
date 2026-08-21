@@ -18,20 +18,27 @@ const IDENTITY_DIGEST_KEYS = Object.freeze([
  * Fail-closed contract for the player-visible state immediately after a Massline Core commits the
  * active assay. The Browser/Electron actor supplies a DOM snapshot; this pure check keeps the
  * acceptance predicate seconds-scale and gives stale transition frames causal diagnostics.
+ *
+ * PQ-130.06/.09 RE-AIM: the four assertions that read `.ast-inspector` (kicker "Site overview",
+ * title "Anchored claim", the "Survey record:" body and its "Awaiting first real output"
+ * consequence) are GONE, because the context bay they read is gone — design law §10 deleted it and
+ * §6.4 replaced it with a hover-only cursor lens that is closed in this frame by construction.
+ * Kept as-is they would have gone on passing against `''` forever. The committed truth now lives
+ * where a player can actually see it: the crest chips. The fifth assertion (no stale
+ * occupied-placement error) is re-aimed at the crest's one alert slot, which is where the
+ * pre-commit warning "Unanchored — install a Core before leaving" really is — an assertion with a
+ * live counter-example instead of a regex that can never match.
  */
 export function assessPq024CommittedPresentation(snapshot, { expectedSiteId = null } = {}) {
   const failures = [];
   const row = snapshot && typeof snapshot === 'object' ? snapshot : {};
   const owner = row.owner && typeof row.owner === 'object' ? row.owner : {};
-  const inspector = row.inspector && typeof row.inspector === 'object' ? row.inspector : {};
   const siteId = text(owner.siteId);
   const wantedSiteId = expectedSiteId == null ? null : text(expectedSiteId);
   const cells = Number(owner.cells);
   const claimText = text(row.claimText);
   const assayText = text(row.assayText);
-  const kicker = text(inspector.kicker);
-  const title = text(inspector.title);
-  const body = text(inspector.text);
+  const alertText = text(row.alertText);
 
   if (!siteId) failures.push('owner site id is missing');
   if (wantedSiteId && siteId !== wantedSiteId) {
@@ -51,18 +58,8 @@ export function assessPq024CommittedPresentation(snapshot, { expectedSiteId = nu
   if (!expectedAssay || assayText !== expectedAssay) {
     failures.push(`assay chip is "${assayText}", expected "${expectedAssay || 'Assay <cells> cells'}"`);
   }
-  if (kicker !== 'Site overview') {
-    failures.push(`inspector kicker is "${kicker}", expected "Site overview"`);
-  }
-  if (title !== 'Anchored claim') {
-    failures.push(`inspector title is "${title}", expected "Anchored claim"`);
-  }
-  if (!/Survey record:/i.test(body)) failures.push('inspector is missing the durable Survey record');
-  if (!/Awaiting first real output/i.test(body)) {
-    failures.push('inspector is missing the first-output consequence');
-  }
-  if (/A machine already occupies this cell/i.test(body)) {
-    failures.push('inspector retains occupied-placement error');
+  if (/unanchored/i.test(alertText)) {
+    failures.push(`crest alert still warns the claim is unanchored: "${alertText}"`);
   }
 
   return {
@@ -215,11 +212,7 @@ export function assessPq024CommittedTransitionReceipt(receipt, {
       },
       claimText: text(presentation.claimText),
       assayText: text(presentation.assayText),
-      inspector: {
-        kicker: text(presentation.inspector?.kicker),
-        title: text(presentation.inspector?.title),
-        text: text(presentation.inspector?.text),
-      },
+      alertText: text(presentation.alertText),
     },
   };
 

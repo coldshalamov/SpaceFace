@@ -3,11 +3,11 @@
 // completion), same pause semantics, superseding src/ui/screens/drill.js as the live module (that
 // file stays for its exported input controller / particle / shake helpers and its checks).
 //
-// Chrome is law §6.1 + §6.2 + §6.4 only: a thin crest (name, claim, one alert slot, yield, hold
-// gauge, leave), the rig cluster (heat + charge), and the cursor lens that rides beside the
-// pointer. The board owns ≥88% of the glass; events happen on the board, never as a permanently
-// visible text log. The build palette's wiring still waits in a display:none transitional
-// container until the build keys (.09) land.
+// Chrome is law §6.1 + §6.2 + §6.3 + §6.4: a thin crest (name, claim, one alert slot, yield, hold
+// gauge, leave), the rig cluster (heat + charge), the cursor lens that rides beside the pointer,
+// and — once a Core is owned — the earned build palette on the bottom edge. The board owns ≥88% of
+// the glass; events happen on the board, never as a permanently visible text log. There are no
+// transitional containers left on this screen: the palette is either a real object or absent.
 // Styling lives in styles/asteroid-ops.css — this module owns structure and wiring only.
 //
 // Split per law: this shell owns lifecycle + DOM + events; asteroidRenderer3d owns pixels;
@@ -27,7 +27,7 @@ import {
   createCursorLens, tileLensModel, machineLensModel, ghostLensModel, seamSplits,
   placementReason, commodityName, formationLabel,
 } from './inspector.js';
-import { createBuildPalette } from './buildPalette.js';
+import { createBuildPalette, PALETTE_ITEMS, CORE_ID } from './buildPalette.js';
 
 // PQ-130.06 — the cursor lens (law §6.4) landed and the context bay is gone (law §10). Timings
 // here are law: the card appears after LENS_DELAY_S of hover while driving, instantly in build
@@ -70,6 +70,11 @@ export const asteroidScreen = {
     wrap.className = 'ast-screen';
     wrap.setAttribute('role', 'region');
     wrap.setAttribute('aria-labelledby', 'ast-screen-title');
+    // The public mode is published from the first frame, not from the first toggle. It used to be
+    // written only inside onModeChanged, so a session that never left DRIVE reported `undefined`
+    // to every reader — and the acceptance actors that ask "Build or Drive?" before pressing
+    // Escape got neither answer.
+    wrap.dataset.mode = 'drive';
 
     const hudEls = {};
 
@@ -177,14 +182,8 @@ export const asteroidScreen = {
     hudEls.energy = charge.val;
     stage.appendChild(rig);
 
-    // ---------- hidden transitional (palette wiring; no glass until .09) ----------
-    // The inspector's half of this container is deleted — the cursor lens below replaces it.
-    const hidden = document.createElement('div');
-    hidden.className = 'aw-hidden';
-    hidden.setAttribute('aria-hidden', 'true');
-    const cardHost = document.createElement('div');
-    hidden.appendChild(cardHost);
-    stage.appendChild(hidden);
+    // The last transitional container is gone with PQ-130.09 — the build palette below is a real
+    // object mounted onto the stage the moment it is earned, or it is not in the DOM at all.
 
     // ---------- §6.4 cursor lens: the only readout that ever names a cell ----------
     // Mounted on the stage (a positioned element) so the card places in stage coordinates and a
@@ -236,7 +235,7 @@ export const asteroidScreen = {
       projDirty = false;
     }
 
-    // ---------- controller + palette + inspector ----------
+    // ---------- controller + palette ----------
     const controller = createAsteroidController({
       drillSys,
       getDrillState: () => state.drill,
@@ -244,7 +243,7 @@ export const asteroidScreen = {
       hooks: {
         onModeChanged(mode) {
           wrap.dataset.mode = mode === MODES.BUILD ? 'build' : 'drive';
-          palette.setVisible(mode === MODES.BUILD);
+          palette.setBuildActive(mode === MODES.BUILD);
           inspElapsed = 10;
           // Law §6.4: instant in build mode, 150ms of hover in drive. Leaving build closes the
           // card — the next hover re-earns it.
@@ -254,7 +253,11 @@ export const asteroidScreen = {
             ? 'Build mode. Arrows move the cursor, Enter places, X dismantles, Q and E cycle structures.'
             : 'Drive mode.');
         },
-        onCursorMoved() {
+        onCursorMoved(cursor) {
+          // Publish the build cursor the same way data-mode is published: the cell the player is
+          // aiming at is public truth, and it is the only way a headless check can measure the
+          // §11.7 cadence (one press = one cell) on the build cursor rather than just the rig.
+          wrap.dataset.cursor = `${cursor.col},${cursor.row}`;
           inspElapsed = 10;
           lensDirty = true;
           // A keyboard-driven cursor has no pointer to hang the card on: anchor it to the cell.
@@ -265,18 +268,87 @@ export const asteroidScreen = {
         onPlace: (cursor) => commitPlacement(cursor),
         onRemove: (cursor) => commitRemoval(cursor),
         onCyclePalette: (dir) => palette.cycle(dir),
+        // Answers false when no key owns that index — before the first Core there is no palette,
+        // so the digit is left to whatever else on the page wants it.
         onSelectPalette: (i) => palette.select(i),
       },
     });
 
-    const palette = createBuildPalette(cardHost, {
-      onSelect() { inspElapsed = 10; },
-      // A clicked command key is an intent to build — arm BUILD from DRIVE (StarCraft law).
+    const palette = createBuildPalette(stage, {
+      onSelect() { inspElapsed = 10; lensDirty = true; },
+      // A pressed key is an intent to build — arm BUILD from DRIVE (law §6.7).
       onUserSelect() {
         if (controller.state.mode !== MODES.BUILD) controller.setMode(MODES.BUILD);
       },
+      motionReduce,
     });
-    palette.setVisible(false);
+
+    // ---------- §6.3 the earned palette: what exists, and what it costs ----------
+    //
+    // EXISTENCE, in two tiers:
+    //   • the palette itself — only once this rock carries a Massline Core. Before that a rock has
+    //     exactly one legal build, so BUILD arms it implicitly (palette.selected answers the Core
+    //     while unmounted) and no chrome is spent on a choice that does not exist.
+    //   • each key — a machine gets a key when it could be installed on this rock at all. A unique
+    //     machine that already stands here is ABSENT, not disabled: law §6.3 bans the gray
+    //     placeholder. Cable/Lane are meaningful once a Core exists; Dismantle once anything does.
+    //     (`data/sites.js` carries no research/tier gate today; when one lands it filters here.)
+    function coreOwned(s) {
+      return !!(s && (s.machines.some((m) => m.defId === CORE_ID) || s.anchored));
+    }
+
+    /**
+     * What `def.cost` cannot be paid from right now. The owner already answers this exactly —
+     * eligible lane stores first, then the ship hold — so the palette asks it rather than
+     * re-deriving an economy rule in the UI. `canInstall` is the public fallback, but it reports
+     * materials only after the seat itself passes, which is why the private read is preferred:
+     * a key's affordability must not depend on where the cursor happens to be sitting.
+     */
+    function shortfallMap(s, present) {
+      const out = {};
+      if (!siteSys) return out;
+      const cur = controller.state.cursor;
+      const canReadStores = typeof siteSys._missingMaterials === 'function'
+        && typeof siteSys._fundingStoresFor === 'function';
+      const stores = canReadStores ? siteSys._fundingStoresFor(s, cur.col, cur.row) : null;
+      for (const id of present) {
+        const item = PALETTE_ITEMS.find((it) => it.id === id);
+        if (!item || item.kind !== 'machine' || !item.cost) continue;
+        if (canReadStores) {
+          const miss = siteSys._missingMaterials(s, item.cost, stores);
+          if (Object.keys(miss).length) out[id] = miss;
+          continue;
+        }
+        const check = siteSys.canInstall({
+          asteroidId: asteroidId(), defId: id, col: cur.col, row: cur.row,
+        });
+        if (check && check.reason === 'materials') out[id] = check.missing || {};
+      }
+      return out;
+    }
+
+    let paletteSettleAllowed = false; // a cold session start must not replay the §9 birth beat
+    function syncPalette() {
+      // Resolve the owner first, exactly as lensModel() does. Callers happen to refresh before
+      // this today; a palette that only tells the truth when someone else refreshed first is one
+      // reordering away from showing a stale row.
+      if (projDirty) refreshProjection();
+      const s = site();
+      if (!coreOwned(s)) { palette.unmount(); return; }
+      const present = [];
+      for (const item of PALETTE_ITEMS) {
+        if (item.kind === 'machine') {
+          if (item.unique && s.machines.some((m) => m.defId === item.id)) continue;
+          present.push(item.id);
+        } else if (item.kind === 'overlay') {
+          present.push(item.id); // cable + lane are meaningful the moment a Core can power them
+        } else if (s.machines.length) {
+          present.push(item.id); // dismantle, once there is something to take apart
+        }
+      }
+      palette.sync({ present, shortfall: shortfallMap(s, present), settle: paletteSettleAllowed });
+      palette.setBuildActive(controller.state.mode === MODES.BUILD);
+    }
 
     // The old context bay carried four operator affordances as buttons inside its cards — export
     // Hold/Ship per good, the courier pod target, a machine's recipe/mode switch, and rover bulk
@@ -377,8 +449,16 @@ export const asteroidScreen = {
         projDirty = true;
         announce(`${item.name} installed at ${cursor.col},${cursor.row}.`);
         pushLedgerLine('good', `${item.name} installed at ${cursor.col},${cursor.row}.`);
+        // Law §9 first-Core beat: the palette grows on the frame the site grew, not 150ms later
+        // on the next HUD tick. A unique machine also drops its own key here.
+        refreshProjection();
+        syncPalette();
       } else {
+        // Law §6.7: placement never fails silently. The key stays armed and the lens ghost card
+        // is already showing `Blocked` + the enumerated reason for this exact cell — forcing a
+        // rebuild keeps that card honest the instant the refusal happens.
         announce(placementReason(res));
+        lensDirty = true;
       }
       inspElapsed = 10;
     }
@@ -729,6 +809,10 @@ export const asteroidScreen = {
       } else if (s && s.anchored) {
         clearBanner('unanchored');
       }
+
+      // §6.3: the palette earns, loses and re-prices its keys on the HUD's own cadence. Cheap —
+      // the owner's runtime reconcile is dirty-flag guarded and the funding stores are read once.
+      syncPalette();
     }
 
     // ---------- the lens model (law §6.4) ----------
@@ -865,6 +949,8 @@ export const asteroidScreen = {
 
       controller.cancel();
       controller.setMode(MODES.DRIVE);
+      wrap.dataset.mode = 'drive'; // setMode is a no-op when it is already DRIVE
+      delete wrap.dataset.cursor;    // a new session has aimed at nothing yet
       hudElapsed = 0;
       inspElapsed = 0;
       // A fresh session has no pointer on the board yet, and law §2.5 counts the default drive
@@ -895,6 +981,20 @@ export const asteroidScreen = {
       if ((state.drill.tilesCleared || 0) <= 1) {
         announce('Rig tethered to the surface winch — hold a direction to drive, keep holding to bore through rock.');
       }
+      // INPUT FIRST, PIXELS SECOND. These used to be registered after the renderer was built, so
+      // any throw inside scene construction left a screen with no keys at all — not even Escape,
+      // which is the difference between "the mine looks wrong" and "the game is stuck". Every
+      // handler below already null-guards `renderer3d`, so binding early is free.
+      document.addEventListener('keydown', onKeyDown, true);
+      window.addEventListener('keyup', onKeyUp);
+      window.addEventListener('blur', onWindowBlur);
+      canvas.addEventListener('mousemove', onMouseMove);
+      canvas.addEventListener('mouseleave', onMouseLeave);
+      canvas.addEventListener('mousedown', onMouseDown);
+      window.addEventListener('mouseup', onMouseUp);
+      canvas.addEventListener('contextmenu', onContextMenu);
+      canvas.addEventListener('wheel', onWheel, { passive: false });
+
       // One renderer (one WebGL context) per mounted screen; each session rebuilds its scene
       // from the live field.
       if (!renderer3d) {
@@ -908,21 +1008,16 @@ export const asteroidScreen = {
         });
       }
       renderer3d.begin({ motionReduce });
+      // Re-entering an already-built site must not replay the §9 first-Core settle: the palette is
+      // simply there, the way it was when you left. Only a Core landing DURING a session animates.
+      paletteSettleAllowed = false;
+      palette.setMotionReduce(motionReduce);
       updateHud();
+      paletteSettleAllowed = true;
       const s = site();
       if (s && !s.anchored) {
         showBanner('unanchored', 'Unanchored — install a Core before leaving', 'warn');
       }
-
-      document.addEventListener('keydown', onKeyDown, true);
-      window.addEventListener('keyup', onKeyUp);
-      window.addEventListener('blur', onWindowBlur);
-      canvas.addEventListener('mousemove', onMouseMove);
-      canvas.addEventListener('mouseleave', onMouseLeave);
-      canvas.addEventListener('mousedown', onMouseDown);
-      window.addEventListener('mouseup', onMouseUp);
-      canvas.addEventListener('contextmenu', onContextMenu);
-      canvas.addEventListener('wheel', onWheel, { passive: false });
 
       last = performance.now();
       cancelAnimationFrame(rafId);
@@ -937,6 +1032,7 @@ export const asteroidScreen = {
       cancelAnimationFrame(rafId);
       controller.cancel();
       hideLens();
+      palette.unmount();
       document.removeEventListener('keydown', onKeyDown, true);
       window.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('blur', onWindowBlur);
@@ -1030,6 +1126,7 @@ export const asteroidScreen = {
     this._cleanup = () => {
       stopSession();
       lens.destroy();
+      palette.destroy();
       if (renderer3d) {
         try { renderer3d.dispose(); } catch (_) { /* GL teardown is best-effort */ }
         renderer3d = null;
