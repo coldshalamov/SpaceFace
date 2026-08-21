@@ -66,6 +66,18 @@ function makeVfxHarness(entities) {
   return { scene, state, system };
 }
 
+function assertHeroExhaustLit(system, label) {
+  const stream = system._energy && system._energy.plasmaStream;
+  assert.ok(stream, `${label}: player plasma stream exists`);
+  assert.equal(stream.group.visible, true, `${label}: player exhaust group visible`);
+  const info = stream.inspect();
+  const spool = info.envelope && info.envelope.spool;
+  assert.ok(
+    (Number.isFinite(spool) && spool > 0.02) || info.drive > 0.02,
+    `${label}: player exhaust is emitting`,
+  );
+}
+
 test('segmented geometry uses recipe/quality counts — not a 4-vertex card', () => {
   const recipe = resolveThrusterRecipes('engine_vector').main;
   const highSeg = resolveSegmentCount(recipe, 'high');
@@ -210,6 +222,43 @@ test('family fleet batches two distinct live families simultaneously then sleeps
   assert.equal(fleet._disposed, true);
 });
 
+test('zero-socket player drive does not light a ghost plume at the world origin', () => {
+  const fleet = new FamilyProductionFleet(THREE, { textures: {} });
+  fleet.beginFrame(A11Y);
+  fleet.beginAdmitPhase();
+  const player = fleet.acquireShip(1, 'engine_ion_small', true);
+  assert.ok(player);
+  fleet.setShipSockets(player, [], 0);
+  fleet.setShipDrive(player, { drive: 1, throttle: 1, boost: 0, cruise: 0, reverse: 0, brake: 0, speedDrive: 0.8 });
+  const diag = fleet.endFrame(1 / 60);
+  assert.equal(diag.shipsActive, 1);
+  assert.equal(diag.socketsWritten, 0);
+  const ionPlume = fleet.familyPlume('engine_ion_small');
+  assert.equal(ionPlume.group.visible, false);
+  assert.equal(ionPlume.pool.activeCount, 0);
+
+  fleet.beginFrame(A11Y);
+  const retained = fleet.retainShip(1, 'engine_ion_small', true);
+  assert.equal(retained, player);
+  fleet.setShipSockets(retained, [], 0);
+  fleet.setShipDrive(retained, { drive: 1, throttle: 1, boost: 1, cruise: 0, reverse: 0, brake: 0, speedDrive: 1 });
+  fleet.beginAdmitPhase();
+  const npc = fleet.admitShip(2, 'engine_ion_small', false);
+  const npcSock = [{ x: 40, y: 0, z: 12, ax: 1, ay: 0, az: 0 }];
+  fleet.setShipSockets(npc, npcSock, 1);
+  fleet.setShipDrive(npc, { drive: 0.7, throttle: 0.7, boost: 0, cruise: 0, reverse: 0, brake: 0, speedDrive: 0.4 });
+  fleet.endFrame(1 / 60);
+  assert.ok(ionPlume.pool.activeCount > 0);
+  for (let i = 0; i < ionPlume.pool.activeCount; i++) {
+    const slot = ionPlume.pool.slots[i];
+    const atOrigin = Math.abs(slot.offset[0]) < 1e-6
+      && Math.abs(slot.offset[1]) < 1e-6
+      && Math.abs(slot.offset[2]) < 1e-6;
+    assert.equal(atOrigin, false, 'player-empty sockets must not spawn an origin jet next to a live NPC');
+  }
+  fleet.dispose();
+});
+
 test('fleet grows past its initial allocation, then saturates at the sanity ceiling', () => {
   const fleet = new FamilyProductionFleet(THREE, { textures: {} });
   assert.equal(fleet.shipCapacity, FLEET_INITIAL_SHIPS, 'initial allocation is not the ceiling');
@@ -298,27 +347,23 @@ test('route-level idle sleeps production energy; thrust wakes it non-allocating'
 
   const energy = system._energy;
   assert.ok(energy && energy.fleet, 'fleet must be initialized on wake');
-  const plume = energy.fleet.familyPlume('engine_ion_small') || energy.plumeSystem;
-  assert.ok(plume.group.visible, 'thrusting plume must be drawn');
-  assert.ok(plume.pool.activeCount > 0, 'thrust must write attached layer slots');
+  assertHeroExhaustLit(system, 'thrust wake');
+  const cardPlume = energy.fleet.familyPlume('engine_ion_small') || energy.plumeSystem;
+  assert.equal(cardPlume.pool.activeCount, 0, 'player plasma owns the jet; card family must not write an origin ghost');
+  assert.equal(cardPlume.group.visible, false);
 
-  const core = plume.pool.slots.slice(0, plume.pool.activeCount).find((s) => s.layerRole === 'core');
-  assert.ok(core, 'core layer required under thrust');
-  // Attached at nozzle origin (fallback socket near hull rear is finite and local).
-  assert.ok(Number.isFinite(core.offset[0]) && Number.isFinite(core.offset[2]));
-
-  // No unbounded tail growth at steady thrust — activeCount stable across frames.
-  const c0 = plume.pool.activeCount;
   for (let f = 0; f < 30; f++) system.update(1 / 60);
-  assert.equal(plume.pool.activeCount, c0, 'steady thrust must not accumulate slots/tail over time');
-  assert.equal(plume.pool.frameAllocations, 0);
+  assertHeroExhaustLit(system, 'steady thrust');
+  assert.equal(cardPlume.pool.activeCount, 0);
+  assert.equal(cardPlume.pool.frameAllocations, 0);
 
   // Back to idle: production sleeps again instead of pinning the subsystem awake.
   player._flightFrame = { throttle: 0 };
   for (let f = 0; f < 4; f++) system.update(1 / 60);
   const sleepFrame = system.inspect().subsystems.lastFrame;
   assert.equal(sleepFrame.energy, 0, 'returned-to-idle frame must sleep again');
-  assert.equal(plume.group.visible, false, 'slept plume must be hidden');
+  assert.equal(energy.plasmaStream.group.visible, false, 'slept hero exhaust must be hidden');
+  assert.equal(cardPlume.group.visible, false, 'slept card family must stay hidden');
 
   system._disposeEnergy();
 });
@@ -346,16 +391,16 @@ test('live route binds player + NPC different families at once via vfx system', 
 
   const ion = fleet.familyPlume('engine_ion_small');
   const vector = fleet.familyPlume('engine_vector');
-  assert.ok(ion.group.visible, 'player ion family live');
+  assertHeroExhaustLit(system, 'player+npc route');
+  assert.equal(ion.pool.activeCount, 0, 'player ion family is RCS-only; no origin card jet');
+  assert.equal(ion.group.visible, false);
   assert.ok(vector.group.visible, 'NPC vector family live');
-  assert.ok(ion.pool.activeCount > 0 && vector.pool.activeCount > 0);
+  assert.ok(vector.pool.activeCount > 0);
 
-  // Structural distinction under live route.
-  const iCore = ion.pool.slots.slice(0, ion.pool.activeCount).find((s) => s.layerRole === 'core');
   const vCore = vector.pool.slots.slice(0, vector.pool.activeCount).find((s) => s.layerRole === 'core');
-  assert.ok(Math.abs(iCore.length - vCore.length) > 0.05
-    || Math.abs(iCore.width - vCore.width) > 0.05,
-  'two live families must not share identical core geometry');
+  assert.ok(vCore, 'NPC vector core is written');
+  assert.ok(Math.abs(vCore.offset[0]) > 1e-4 || Math.abs(vCore.offset[2]) > 1e-4,
+    'NPC plume must not sit on the world origin');
 
   // Dispose cleans GPU owners.
   system._disposeEnergy();

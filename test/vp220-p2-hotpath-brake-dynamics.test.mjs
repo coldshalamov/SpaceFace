@@ -771,7 +771,14 @@ test('production fleet same-family ships get distinct faction instance RGB', () 
     factionId: 'faction_amber',
     _flightFrame: { throttle: 1 },
   };
-  const { system, state } = makeHarness([player, npc]);
+  const npc2 = {
+    id: 3, type: 'ship', alive: true,
+    pos: { x: 18, z: 6 }, vel: { x: 20, z: 0 }, rot: 0, radius: 10,
+    data: { defId: 'ship_kestrel', factionId: 'faction_cyan' },
+    factionId: 'faction_cyan',
+    _flightFrame: { throttle: 1 },
+  };
+  const { system, state } = makeHarness([player, npc, npc2]);
   state.content = {
     factionPalettes: {
       faction_cyan: { thruster: '#00eeff' },
@@ -780,20 +787,22 @@ test('production fleet same-family ships get distinct faction instance RGB', () 
   };
   for (let f = 0; f < 8; f++) system.update(1 / 60);
   const fleet = system._energy.fleet;
-  assert.ok(fleet.hasEntity(1) && fleet.hasEntity(2));
+  assert.ok(fleet.hasEntity(1) && fleet.hasEntity(2) && fleet.hasEntity(3));
   assert.equal(fleet.findShip(1).profileId, 'engine_ion_small');
   assert.equal(fleet.findShip(2).profileId, 'engine_ion_small');
+  assert.equal(fleet.findShip(3).profileId, 'engine_ion_small');
   // Distinct precomputed faction RGB on ship records
-  const s1 = fleet.findShip(1);
-  const s2 = fleet.findShip(2);
+  const s1 = fleet.findShip(2);
+  const s2 = fleet.findShip(3);
   const shipDelta = Math.abs(s1.factionR - s2.factionR)
     + Math.abs(s1.factionG - s2.factionG)
     + Math.abs(s1.factionB - s2.factionB);
   assert.ok(shipDelta > 0.2, `ship faction RGB must differ (delta=${shipDelta})`);
-  // Same-family plume batch carries distinct instance colors for sheath role
+  // Same-family plume batch carries distinct instance colors for sheath role.
+  // Player plasma owns the hero jet, so only the two NPCs write card instances.
   const plume = fleet.familyPlume('engine_ion_small');
   const sheath = plume.layerBatches.find((b) => b.role === 'sheath');
-  assert.ok(sheath && sheath.writeCount >= 2, 'both ships write sheath instances');
+  assert.ok(sheath && sheath.writeCount >= 2, 'both NPC ships write sheath instances');
   const c0 = [sheath.color[0], sheath.color[1], sheath.color[2]];
   const c1 = [sheath.color[3], sheath.color[4], sheath.color[5]];
   const instDelta = Math.abs(c0[0] - c1[0]) + Math.abs(c0[1] - c1[1]) + Math.abs(c0[2] - c1[2]);

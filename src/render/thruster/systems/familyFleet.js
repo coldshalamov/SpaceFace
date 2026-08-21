@@ -433,6 +433,13 @@ export class FamilyProductionFleet {
       dst.x = src.x; dst.y = src.y; dst.z = src.z;
       dst.ax = src.ax; dst.ay = src.ay; dst.az = src.az;
     }
+    // Zero unused slots. A later write that treats "0 sockets" as "1 fallback" would
+    // otherwise light a jet at the last written pose or at the world origin.
+    for (let i = n; i < this.socketsPerShip; i++) {
+      const dst = ship.sockets[i];
+      dst.x = 0; dst.y = 0; dst.z = 0;
+      dst.ax = 1; dst.ay = 0; dst.az = 0;
+    }
   }
 
   setShipDrive(ship, driveInfo) {
@@ -481,7 +488,7 @@ export class FamilyProductionFleet {
       if (!ship.alive) continue;
       const fi = ship.familyIndex;
       if (fi < 0 || fi >= this._familySocketDemand.length) continue;
-      this._familySocketDemand[fi] += ship.socketCount > 0 ? ship.socketCount : 1;
+      this._familySocketDemand[fi] += ship.socketCount;
     }
     for (let fi = 0; fi < this.families.length; fi++) {
       const demand = this._familySocketDemand[fi];
@@ -493,25 +500,26 @@ export class FamilyProductionFleet {
       const ship = this.ships[i];
       if (!ship.alive) continue;
       aliveCount += 1;
+      if (ship.drive < 0.08 && ship.boost < 0.05) idleShips += 1;
+      // 0 sockets is intentional (player plasma stream owns the jet). Do not invent
+      // a fallback socket — that drew a throttle-locked ghost at the world origin.
+      if (ship.socketCount <= 0) continue;
       const fam = this.families[ship.familyIndex];
       if (!fam) continue;
       if (!this._familyOpen[ship.familyIndex]) {
         fam.plume.beginUpdate(a11y);
         this._familyOpen[ship.familyIndex] = 1;
       }
-      const sockView = ship.sockets;
-      const n = ship.socketCount > 0 ? ship.socketCount : 1;
       // ship carries cruise/reverse/throttle/faction RGB as driveSignals (no alloc).
       const written = fam.plume.writeEntity(
         dt,
         ship.drive,
-        sockView,
+        ship.sockets,
         ship,
         ship.driveState,
-        n,
+        ship.socketCount,
       );
       socketsWritten += written;
-      if (ship.drive < 0.08 && ship.boost < 0.05) idleShips += 1;
     }
     this.activeShipCount = aliveCount;
 

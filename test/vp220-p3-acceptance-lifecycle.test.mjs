@@ -135,7 +135,13 @@ test('live VFX route with engineTrails=false activates core+inner GPU batches', 
     flightFrame: { throttle: 1, boost: 0.4, maxSpeed: 120 },
     vel: { x: 80, z: 0 },
   });
-  const { system, state } = makeHarness([player], { engineTrails: false });
+  const npc = makeEntity(2, {
+    defId: 'ship_wasp',
+    slots: { engine: ['engines/engine_vector.glb'] },
+    flightFrame: { throttle: 1, maxSpeed: 120 },
+    pos: { x: 18, z: 4 },
+  });
+  const { system, state } = makeHarness([player, npc], { engineTrails: false });
   assert.equal(state.settings.video.engineTrails, false);
   assert.equal(system._extendedEngineTrailsEnabled(), false);
   assert.equal(system._productionThrusterEnabled(), true);
@@ -144,8 +150,9 @@ test('live VFX route with engineTrails=false activates core+inner GPU batches', 
 
   const energy = system._energy;
   assert.ok(energy && energy.fleet, 'production fleet must initialize under compact trails');
-  const plume = energy.plumeSystem || energy.fleet.playerPlumeSystem();
-  assert.ok(plume, 'player plume system required');
+  assert.ok(energy.plasmaStream && energy.plasmaStream.group.visible, 'player hero exhaust remains under compact trails');
+  const plume = energy.fleet.familyPlume('engine_vector');
+  assert.ok(plume, 'NPC compact card plume required');
   assert.ok(plume.group.visible, 'compact plume group must remain visible');
   assert.ok(plume.pool.activeCount > 0, 'compact must write pool slots');
 
@@ -265,7 +272,8 @@ test('death, dock, sector reset, and dispose clear ownership and mesh counts', (
   assert.ok(system._productionOwnedCount > 0, 'ownership populated');
   const fleet = system._energy.fleet;
   assert.ok(fleet.activeShipCount >= 1);
-  const livePlume = system._energy.plumeSystem;
+  assert.ok(system._energy.plasmaStream && system._energy.plasmaStream.group.visible, 'player hero exhaust live');
+  const livePlume = fleet.familyPlume('engine_vector');
   assert.ok(livePlume.pool.activeCount > 0);
 
   // Death of NPC — next frame must drop ownership for dead entity.
@@ -493,8 +501,8 @@ test('route-level overflow leaves player production path active and legacy fallb
   // claim production ownership that would suppress their fallback incorrectly.
   const overflowNpc = entities.find((e) => e.id !== 1 && !system._usesProductionThruster(e));
   assert.ok(overflowNpc, 'at least one NPC outside production ownership');
-  // Player plume still live.
-  assert.ok(system._energy.plumeSystem.pool.activeCount > 0);
+  // Player hero exhaust still live (plasma stream, not the family origin card).
+  assert.ok(system._energy.plasmaStream && system._energy.plasmaStream.group.visible);
 
   system._disposeEnergy();
 });
@@ -523,7 +531,8 @@ test('reduced-motion dense update preserves core+inner and zero alloc', () => {
   system.state.settings.video.motionReduce = true;
 
   for (let f = 0; f < 20; f++) system.update(1 / 60);
-  const plume = system._energy.plumeSystem;
+  assert.ok(system._energy.plasmaStream && system._energy.plasmaStream.group.visible, 'player hero exhaust live under reduced motion');
+  const plume = system._energy.fleet.familyPlume('engine_vector');
   assert.ok(plume.group.visible);
   const roles = activeRoles(plume);
   assert.ok(roles.includes('core'), 'reduced-motion keeps core');
