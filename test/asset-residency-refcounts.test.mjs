@@ -365,8 +365,8 @@ test('canonical diagnostics ignore clocks and insertion order, dedupe backing st
 
   const first = build(false, 10);
   const second = build(true, 999999);
-  assert.equal(first.residentBytes, sharedBacking.byteLength,
-    'two geometry views sharing one ArrayBuffer count the backing allocation once');
+  assert.equal(first.residentBytes, 2 * 64 * Float32Array.BYTES_PER_ELEMENT,
+    'distinct BufferAttributes upload distinct view ranges even when they share one ArrayBuffer');
   assert.deepEqual(first, second, 'canonical summaries are independent of insertion order and wall clock');
 });
 

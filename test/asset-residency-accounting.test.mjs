@@ -30,7 +30,10 @@ test('materials are known zero-byte wrappers and package bytes never enter GPU p
   assert.equal(snapshot.cpuPackageBytes, 64 * 1024 * 1024);
   assert.equal(snapshot.unaccountedResources, 1);
   assert.equal(snapshot.unaccountedBytes, null);
-  assert.equal(registry.enforceBudget().budgetSatisfied, true);
+  const receipt = registry.enforceBudget();
+  assert.equal(receipt.budgetSatisfied, false);
+  assert.equal(receipt.indeterminate, true);
+  assert.equal(receipt.gpuAccountingAuthoritative, false);
 });
 
 test('CPU package pressure is independently evictable and never aliases GPU bytes', () => {
@@ -61,6 +64,16 @@ test('compressed mip payloads use exact bytes instead of an RGBA estimate', () =
   assert.equal(estimateGpuResourceBytes(texture).gpuResidentBytes, 48);
 });
 
+test('distinct DataTextures do not dedupe GPU allocations through one source array', () => {
+  const source = new Uint8Array(16);
+  const first = new THREE.DataTexture(source, 2, 2, THREE.RGBAFormat, THREE.UnsignedByteType);
+  const second = new THREE.DataTexture(source, 2, 2, THREE.RGBAFormat, THREE.UnsignedByteType);
+  const registry = createAssetResidencyRegistry();
+  registry.registerAsset('texture-a', [first]);
+  registry.registerAsset('texture-b', [second]);
+  assert.equal(registry.diagnostics({ includeEvents: false }).gpuResidentBytes, 32);
+});
+
 test('ordinary RGBA mip chain accounts every level from its dimensions', () => {
   const texture = new THREE.Texture({ width: 8, height: 4 });
   texture.format = THREE.RGBAFormat;
@@ -68,6 +81,15 @@ test('ordinary RGBA mip chain accounts every level from its dimensions', () => {
   texture.generateMipmaps = true;
   const expected = (8 * 4 + 4 * 2 + 2 * 1 + 1) * 4;
   assert.equal(estimateGpuResourceBytes(texture).gpuResidentBytes, expected);
+});
+
+test('manual mipmaps replace the base image allocation', () => {
+  const texture = new THREE.Texture({ width: 8, height: 4 });
+  texture.format = THREE.RGBAFormat;
+  texture.type = THREE.UnsignedByteType;
+  texture.generateMipmaps = true;
+  texture.mipmaps = [{ data: new Uint8Array(32), width: 4, height: 2 }];
+  assert.equal(estimateGpuResourceBytes(texture).gpuResidentBytes, 32);
 });
 
 test('cube, array, and multisample render-target multipliers are represented', () => {
@@ -78,7 +100,17 @@ test('cube, array, and multisample render-target multipliers are represented', (
   })));
   cube.format = THREE.RGBAFormat;
   cube.type = THREE.UnsignedByteType;
+  cube.generateMipmaps = false;
   assert.equal(estimateGpuResourceBytes(cube).gpuResidentBytes, 6 * 16);
+
+  const generatedCube = new THREE.CubeTexture(Array.from({ length: 6 }, () => ({
+    width: 4,
+    height: 2,
+  })));
+  generatedCube.format = THREE.RGBAFormat;
+  generatedCube.type = THREE.UnsignedByteType;
+  generatedCube.generateMipmaps = true;
+  assert.equal(estimateGpuResourceBytes(generatedCube).gpuResidentBytes, 6 * (32 + 8 + 4));
 
   const array = new THREE.DataArrayTexture(new Uint8Array(2 * 2 * 3 * 4), 2, 2, 3);
   array.format = THREE.RGBAFormat;
@@ -86,11 +118,21 @@ test('cube, array, and multisample render-target multipliers are represented', (
   assert.equal(estimateGpuResourceBytes(array).gpuResidentBytes, 48);
 
   const target = new THREE.WebGLRenderTarget(2, 1, { samples: 4, depthBuffer: false });
-  assert.equal(estimateGpuResourceBytes(target).gpuResidentBytes, 2 * 1 * 4 * 4);
+  assert.equal(estimateGpuResourceBytes(target).gpuResidentBytes, 2 * 1 * 4 * (4 + 1));
   assert.equal(estimateGpuResourceBytes(target).unaccounted, false);
+
+  const depthTarget = new THREE.WebGLRenderTarget(2, 1, { samples: 4, depthBuffer: true });
+  assert.equal(estimateGpuResourceBytes(depthTarget).gpuResidentBytes, 2 * 1 * 4 * (4 + 1) * 2,
+    'color and implicit depth attachments both include resolve and multisample storage');
+  assert.equal(estimateGpuResourceBytes(depthTarget).unaccounted, false);
+
+  const depthTextureTarget = new THREE.WebGLRenderTarget(2, 1, { samples: 4, depthBuffer: true });
+  depthTextureTarget.depthTexture = new THREE.DepthTexture(2, 1);
+  assert.equal(estimateGpuResourceBytes(depthTextureTarget).gpuResidentBytes, 2 * 1 * 4 * (4 + 1) * 2);
+  assert.equal(estimateGpuResourceBytes(depthTextureTarget).unaccounted, false);
 });
 
-test('shared geometry backing buffers are counted once', () => {
+test('separate BufferAttributes count uploaded view bytes, not the global backing buffer', () => {
   const backing = new ArrayBuffer(1024);
   const first = new THREE.BufferGeometry();
   const second = new THREE.BufferGeometry();
@@ -99,6 +141,28 @@ test('shared geometry backing buffers are counted once', () => {
 
   const registry = createAssetResidencyRegistry();
   const snapshot = resident(registry, 'shared-geometry', [first, second]);
-  assert.equal(snapshot.gpuResidentBytes, backing.byteLength);
+  assert.equal(snapshot.gpuResidentBytes, 2 * 12 * Float32Array.BYTES_PER_ELEMENT);
   assert.equal(snapshot.unaccountedResources, 0);
+});
+
+test('interleaved attributes share one Three upload while ordinary attributes do not', () => {
+  const backing = new ArrayBuffer(256);
+  const first = new THREE.BufferGeometry();
+  const second = new THREE.BufferGeometry();
+  first.setAttribute('position', new THREE.BufferAttribute(new Float32Array(backing, 0, 8), 2));
+  second.setAttribute('position', new THREE.BufferAttribute(new Float32Array(backing, 64, 8), 2));
+  const registry = createAssetResidencyRegistry();
+  registry.registerAsset('ordinary-attributes', [first, second]);
+  assert.equal(registry.diagnostics({ includeEvents: false }).gpuResidentBytes, 64,
+    'two ordinary BufferAttributes count their uploaded view ranges separately');
+
+  const interleaved = new THREE.InterleavedBuffer(new Float32Array(backing), 4);
+  const a = new THREE.BufferGeometry();
+  const b = new THREE.BufferGeometry();
+  a.setAttribute('position', new THREE.InterleavedBufferAttribute(interleaved, 3, 0));
+  b.setAttribute('position', new THREE.InterleavedBufferAttribute(interleaved, 3, 1));
+  const sharedRegistry = createAssetResidencyRegistry();
+  sharedRegistry.registerAsset('interleaved-attributes', [a, b]);
+  assert.equal(sharedRegistry.diagnostics({ includeEvents: false }).gpuResidentBytes, backing.byteLength,
+    'attributes backed by one InterleavedBuffer share the upload/cache identity');
 });

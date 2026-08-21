@@ -14,6 +14,7 @@ import * as THREE from 'three';
 
 const PROTECTED_RESOURCE = Symbol('spaceface.protectedGpuResource');
 const registriesByRenderer = new WeakMap();
+const renderTargetAttachmentIdentities = new WeakMap();
 const DEFAULT_EVENT_HISTORY = 256;
 const MAX_EVENT_HISTORY = 512;
 
@@ -544,6 +545,7 @@ export function createAssetResidencyRegistry(options = {}) {
         cpuPackageBytes: entry.cpuPackageBytes,
         unaccountedResources,
         unaccountedBytes: unaccountedResources > 0 ? null : 0,
+        gpuAccountingAuthoritative: unaccountedResources === 0,
         roles: [...new Set([...entry.owners.values()].map((metadata) => metadata && metadata.role).filter(Boolean))].sort(),
         presentationTiers: [...new Set([...entry.owners.values()]
           .map((metadata) => metadata && metadata.presentationTier).filter(Boolean))].sort(),
@@ -570,6 +572,7 @@ export function createAssetResidencyRegistry(options = {}) {
       // Unknown allocations are deliberately not guessed. null is the receipt that the bytes
       // cannot be added to the GPU total until a resource-specific accounting adapter exists.
       unaccountedBytes: unaccountedResources > 0 ? null : 0,
+      gpuAccountingAuthoritative: unaccountedResources === 0,
       ownerCount: owners.size,
       pendingRequests: pendingRequests.size,
       disposedResources,
@@ -702,7 +705,11 @@ export function createAssetResidencyRegistry(options = {}) {
     const evictedBytes = Math.max(0, beforeBytes - remainingBytes);
     const blocked = blockedBreakdown(afterEntries);
     const budgetBytes = Number(plan.budgetBytes);
-    const budgetSatisfied = Number.isFinite(budgetBytes) ? remainingBytes <= budgetBytes : true;
+    const gpuAccountingAuthoritative = kind !== 'gpu' || after.unaccountedResources === 0;
+    const indeterminate = !gpuAccountingAuthoritative;
+    const budgetSatisfied = indeterminate
+      ? false
+      : Number.isFinite(budgetBytes) ? remainingBytes <= budgetBytes : true;
     return Object.freeze({
       ...plan,
       evicted: Object.freeze(evicted),
@@ -713,8 +720,11 @@ export function createAssetResidencyRegistry(options = {}) {
       gpuResidentBytes: after.gpuResidentBytes,
       cpuPackageBytes: after.cpuPackageBytes,
       budgetSatisfied,
-      overBudget: !budgetSatisfied,
-      protectedShortfallBytes: budgetSatisfied ? 0 : remainingBytes - budgetBytes,
+      overBudget: indeterminate ? null : !budgetSatisfied,
+      indeterminate,
+      gpuAccountingAuthoritative,
+      unaccountedResources: after.unaccountedResources,
+      protectedShortfallBytes: indeterminate ? null : budgetSatisfied ? 0 : remainingBytes - budgetBytes,
       blockedBytesByRole: blocked.byRole,
       blockedBytesByReason: blocked.byReason,
     });
@@ -909,27 +919,36 @@ function addUnit(units, identity, bytes) {
   units.set(identity, Math.max(prior, Number(bytes)));
 }
 
-function addTypedArrayUnit(units, array, multiplier = 1) {
-  if (!array) return;
-  const identity = array.buffer || array;
-  // BufferGeometry attributes are often typed-array views into one interleaved/backing buffer.
-  // GPU allocation follows that backing store, not the view's logical byteLength.
-  const bytes = backingByteLengthOf(array) * Math.max(1, Number(multiplier) || 1);
-  addUnit(units, identity, bytes);
-}
-
-function backingByteLengthOf(value) {
-  if (!value) return 0;
-  const buffer = value.buffer;
-  if (buffer && Number.isFinite(Number(buffer.byteLength))) return Number(buffer.byteLength);
-  return byteLengthOf(value);
+function addTextureUnit(units, identity, bytes) {
+  if (!identity || !Number.isFinite(Number(bytes)) || Number(bytes) <= 0) return;
+  units.set(identity, (units.get(identity) || 0) + Number(bytes));
 }
 
 function addBufferAttributeUnit(units, attribute) {
   if (!attribute) return;
-  if (attribute.array) addTypedArrayUnit(units, attribute.array);
-  else if (attribute.data) addTypedArrayUnit(units, attribute.data.array || attribute.data);
-  else if (attribute.buffer) addTypedArrayUnit(units, attribute.buffer);
+  // WebGLAttributes caches ordinary BufferAttributes by attribute identity and uploads only the
+  // view's range. Two distinct attributes may share one ArrayBuffer without sharing a GPU VBO.
+  if (attribute.isInterleavedBufferAttribute === true || attribute.data?.isInterleavedBuffer === true) {
+    const interleaved = attribute.data || attribute;
+    const array = interleaved.array;
+    if (array) addUnit(units, interleaved, byteLengthOf(array));
+    return;
+  }
+  if (attribute.isInterleavedBuffer === true && attribute.array) {
+    addUnit(units, attribute, byteLengthOf(attribute.array));
+    return;
+  }
+  if (attribute.array) {
+    addUnit(units, attribute, byteLengthOf(attribute.array));
+    return;
+  }
+  if (attribute.buffer) {
+    const bytes = byteLengthOf(attribute.buffer)
+      || (Number(attribute.count) > 0 && Number(attribute.elementSize) > 0
+        ? Number(attribute.count) * Number(attribute.elementSize)
+        : 0);
+    addUnit(units, attribute.buffer, bytes);
+  }
 }
 
 const TYPE_BYTES = new Map([
@@ -1011,8 +1030,19 @@ function textureFormatInfo(texture) {
       : typeof rawFormat === 'string' && /rgb/i.test(rawFormat) ? 3
         : typeof rawFormat === 'string' && /(^|[^a-z])rg([^a-z]|$)/i.test(rawFormat) ? 2
           : typeof rawFormat === 'string' && /red|alpha/i.test(rawFormat) ? 1 : null);
-  if (numeric === THREE.DepthFormat) return { compressed: false, bytesPerPixel: 2 };
-  if (numeric === THREE.DepthStencilFormat) return { compressed: false, bytesPerPixel: 4 };
+  if (numeric === THREE.DepthFormat) {
+    const depthType = Number(texture && texture.type);
+    return {
+      compressed: false,
+      bytesPerPixel: depthType === THREE.UnsignedShortType ? 2 : 4,
+    };
+  }
+  if (numeric === THREE.DepthStencilFormat) {
+    return {
+      compressed: false,
+      bytesPerPixel: Number(texture && texture.type) === THREE.FloatType ? 8 : 4,
+    };
+  }
   const typeBytes = Number(texture && texture.bytesPerChannel)
     || Number(texture && texture.bytesPerComponent)
     || TYPE_BYTES.get(Number(texture && texture.type))
@@ -1084,15 +1114,63 @@ function payloadIdentity(payload, fallback) {
   return payload || fallback;
 }
 
-function textureMemoryAccounting(texture, seen = new Set()) {
+function renderTargetAttachmentIdentity(target, kind, index = 0) {
+  if (!target || typeof target !== 'object') return { target, kind, index };
+  let identities = renderTargetAttachmentIdentities.get(target);
+  if (!identities) {
+    identities = new Map();
+    renderTargetAttachmentIdentities.set(target, identities);
+  }
+  const key = `${kind}:${index}`;
+  let identity = identities.get(key);
+  if (!identity) {
+    identity = { target, kind, index };
+    identities.set(key, identity);
+  }
+  return identity;
+}
+
+function textureBytesFromUnits(units) {
+  let bytes = 0;
+  for (const value of units.values()) bytes += Number(value) || 0;
+  return bytes;
+}
+
+function finalizeTextureAccounting(texture, units, known, options = {}) {
+  const baseBytes = textureBytesFromUnits(units);
+  if (baseBytes <= 0) return { units: [], known };
+  const result = [{ identity: texture, bytes: baseBytes }];
+  const target = texture && texture.renderTarget;
+  const targetSamples = Number(target && target.samples);
+  const includeTargetMultisample = options.includeTargetMultisample !== false;
+  if (includeTargetMultisample && target && target.isRenderTarget === true && targetSamples > 1) {
+    const index = Array.isArray(target.textures) ? target.textures.indexOf(texture) : 0;
+    result.push({
+      identity: renderTargetAttachmentIdentity(target, 'color-msaa', Math.max(0, index)),
+      bytes: baseBytes * targetSamples,
+    });
+  }
+  return { units: result, known };
+}
+
+function textureMemoryAccounting(texture, seen = new Set(), options = {}) {
   if (seen.has(texture)) return { units: [], known: true };
   seen.add(texture);
   const units = new Map();
   const image = texture.image ?? texture.source?.data;
   const formatInfo = textureFormatInfo(texture);
   const layers = textureLayerCount(texture, image);
-  const samples = textureSampleCount(texture);
+  const target = texture && texture.renderTarget;
+  const samples = options.sampleCount != null
+    ? Math.max(1, Number(options.sampleCount) || 1)
+    : target && target.isRenderTarget === true
+      ? 1
+      : textureSampleCount(texture);
   let known = !!formatInfo;
+  if (texture.generateMipmaps === true && !formatInfo && (!Array.isArray(texture.mipmaps) || texture.mipmaps.length === 0)) {
+    // The base payload may be known while the driver-generated lower levels are not.
+    known = false;
+  }
 
   // CompressedCubeTexture stores one CompressedTexture per face. Recurse so each face's exact
   // payload is counted, while shared payload backing stores still dedupe by identity.
@@ -1102,61 +1180,53 @@ function textureMemoryAccounting(texture, seen = new Set()) {
       if (face && face.isTexture === true) {
         const nested = textureMemoryAccounting(face, seen);
         known = known && nested.known;
-        for (const unit of nested.units) addUnit(units, unit.identity, unit.bytes * samples);
+        for (const unit of nested.units) addTextureUnit(units, unit.identity, unit.bytes * samples);
       } else {
         const faceBytes = imageBytes(texture, face, formatInfo, 1);
         known = known && faceBytes.known;
-        if (faceBytes.bytes > 0) addUnit(units, faceBytes.identity || face, faceBytes.bytes * samples);
+        let bytes = faceBytes.bytes;
+        if (texture.generateMipmaps === true && !formatInfo?.compressed) {
+          const dimensions = mipDimensions(texture, null, face);
+          const generated = generatedMipBytes(dimensions.width, dimensions.height, formatInfo);
+          if (generated > 0) bytes = generated;
+        }
+        if (bytes > 0) addTextureUnit(units, faceBytes.identity || face, bytes * samples);
       }
     }
-    return { units: [...units].map(([identity, bytes]) => ({ identity, bytes })), known };
+    return finalizeTextureAccounting(texture, units, known, options);
   }
 
   const mipmaps = Array.isArray(texture.mipmaps) ? texture.mipmaps : [];
   if (mipmaps.length > 0) {
-    let hasExactPayload = false;
     for (const mip of mipmaps) {
       const raw = payloadBytes(mip && (mip.data ?? mip.image ?? mip));
       const dimensions = mipDimensions(texture, mip, image);
       if (raw > 0) {
-        hasExactPayload = true;
         // A compressed payload's byteLength is authoritative even when a driver-specific format
         // enum is unavailable to this layer.
         known = true;
         const singleLayer = levelBytes(dimensions.width, dimensions.height, formatInfo);
         const layerMultiplier = layers > 1 && singleLayer > 0 && raw < singleLayer * layers ? layers : 1;
-        addUnit(units, payloadIdentity(mip, texture), raw * layerMultiplier * samples);
+        addTextureUnit(units, payloadIdentity(mip, texture), raw * layerMultiplier * samples);
       } else {
         const bytes = levelBytes(dimensions.width, dimensions.height, formatInfo);
-        if (bytes > 0) addUnit(units, mip || texture, bytes * layers * samples);
+        if (bytes > 0) addTextureUnit(units, mip || texture, bytes * layers * samples);
         else known = false;
-      }
-    }
-    // Ordinary Texture mipmaps contain custom levels in addition to the base image. Compressed
-    // Texture mipmaps already include the base level by contract and must not double count it.
-    if (!texture.isCompressedTexture) {
-      const base = imageBytes(texture, image, formatInfo, layers);
-      known = known && base.known;
-      if (base.bytes > 0) addUnit(units, base.identity || image || texture, base.bytes * samples);
-      if (texture.generateMipmaps === true && !hasExactPayload) {
-        const dimensions = mipDimensions(texture, null, image);
-        const total = generatedMipBytes(dimensions.width, dimensions.height, formatInfo);
-        if (total > 0) addUnit(units, texture, total * layers * samples);
       }
     }
   } else {
     const base = imageBytes(texture, image, formatInfo, layers);
     known = base.known;
-    if (base.bytes > 0) addUnit(units, base.identity || image || texture, base.bytes * samples);
+    if (base.bytes > 0) addTextureUnit(units, base.identity || image || texture, base.bytes * samples);
     if (texture.generateMipmaps === true && base.bytes > 0 && !formatInfo?.compressed) {
       const dimensions = mipDimensions(texture, null, image);
       const total = generatedMipBytes(dimensions.width, dimensions.height, formatInfo);
       const baseLevel = levelBytes(dimensions.width, dimensions.height, formatInfo) * layers;
-      if (total > baseLevel) addUnit(units, texture, (total - baseLevel) * samples);
+      if (total > baseLevel) addTextureUnit(units, texture, (total - baseLevel) * samples);
     }
   }
 
-  return { units: [...units].map(([identity, bytes]) => ({ identity, bytes })), known };
+  return finalizeTextureAccounting(texture, units, known, options);
 }
 
 function imageBytes(texture, image, formatInfo, layers = 1) {
@@ -1180,19 +1250,62 @@ function renderTargetMemoryAccounting(target) {
     ? target.textures
     : target.texture ? [target.texture] : [];
   if (attachments.length === 0 && target.colorBuffer !== false) known = false;
-  for (const texture of attachments) {
-    const accounting = textureMemoryAccounting(texture);
+  const samples = Math.max(1, Number(target.samples) || 1);
+  for (let index = 0; index < attachments.length; index++) {
+    const texture = attachments[index];
+    // A render target's color Texture is the single-sample resolve allocation. The multisample
+    // renderbuffer/attachment is a second allocation when samples > 1.
+    const accounting = textureMemoryAccounting(texture, new Set(), {
+      sampleCount: 1,
+      includeTargetMultisample: false,
+    });
     known = known && accounting.known;
-    for (const unit of accounting.units) addUnit(units, unit.identity, unit.bytes);
+    let resolveBytes = 0;
+    for (const unit of accounting.units) {
+      addUnit(units, unit.identity, unit.bytes);
+      resolveBytes += unit.bytes;
+    }
+    if (samples > 1 && resolveBytes > 0) {
+      addUnit(
+        units,
+        renderTargetAttachmentIdentity(target, 'color-msaa', index),
+        resolveBytes * samples,
+      );
+    }
   }
   if (target.depthTexture) {
-    const depth = textureMemoryAccounting(target.depthTexture);
+    const depth = textureMemoryAccounting(target.depthTexture, new Set(), {
+      sampleCount: 1,
+      includeTargetMultisample: false,
+    });
     known = known && depth.known;
-    for (const unit of depth.units) addUnit(units, unit.identity, unit.bytes);
+    let depthBytes = 0;
+    for (const unit of depth.units) {
+      addUnit(units, unit.identity, unit.bytes);
+      depthBytes += unit.bytes;
+    }
+    if (samples > 1 && depthBytes > 0) {
+      addUnit(units, renderTargetAttachmentIdentity(target, 'depth-msaa'), depthBytes * samples);
+    }
   } else if (target.depthBuffer === true || target.stencilBuffer === true) {
-    // Three allocates an implicit renderbuffer here, but its exact driver format is selected at
-    // runtime. Keep the color attachments accounted and report the unrepresented attachment.
-    known = false;
+    // Three's implicit depth/stencil renderbuffer format is deterministic from these options:
+    // DEPTH24 (4 bytes) or DEPTH24_STENCIL8 (4 bytes) per pixel, with a second MSAA attachment
+    // when samples are enabled. Cube targets allocate one depth attachment per face.
+    const width = Math.max(0, Number(target.width) || 0);
+    const height = Math.max(0, Number(target.height) || 0);
+    const faces = target.isWebGLCubeRenderTarget === true ? 6 : 1;
+    const bytesPerPixel = target.stencilBuffer === true
+      ? 4
+      : Number(target.depthType) === THREE.UnsignedShortType ? 2 : 4;
+    const depthBytes = width * height * faces * bytesPerPixel;
+    if (depthBytes > 0) {
+      addUnit(units, renderTargetAttachmentIdentity(target, 'depth-resolve'), depthBytes);
+      if (samples > 1) {
+        addUnit(units, renderTargetAttachmentIdentity(target, 'depth-msaa'), depthBytes * samples);
+      }
+    } else {
+      known = false;
+    }
   }
   const explicit = explicitGpuBytes(target);
   if (explicit != null && units.size === 0) return { units: explicit > 0 ? [{ identity: target, bytes: explicit }] : [], known: true };
