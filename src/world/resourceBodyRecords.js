@@ -8,6 +8,7 @@ export const RESOURCE_BODY_SCHEMA_ID = 'spaceface.resourceBodyRecords.v2';
 export const RESOURCE_BODY_SCHEMA_VERSION = 2;
 export const MAX_RESOURCE_BODIES = 256;
 export const MAX_RESOURCE_RETIREMENT_RECEIPTS = 64;
+export const MAX_RESOURCE_RETENTION_RECEIPTS = 64;
 export const RESOURCE_BODY_RETENTION_CLASS = Object.freeze({
   RECLAIMABLE: 'reclaimable',
   PROTECTED: 'protected',
@@ -74,7 +75,8 @@ function inferredMiningModification(raw) {
 
 /** Derive the bounded ledger class; protected evidence always wins over stale save metadata. */
 export function deriveResourceBodyRetentionClass(raw) {
-  if (resourceBodyHasProtectedState(raw) || inferredMiningModification(raw)) {
+  if (resourceBodyHasProtectedState(raw) || inferredMiningModification(raw)
+    || raw && raw.retentionClass === RESOURCE_BODY_RETENTION_CLASS.PROTECTED) {
     return RESOURCE_BODY_RETENTION_CLASS.PROTECTED;
   }
   return RESOURCE_BODY_RETENTION_CLASS.RECLAIMABLE;
@@ -202,6 +204,12 @@ export function normalizeResourceBodyBag(input) {
       .filter((entry) => entry && typeof entry === 'object')
       .slice(-MAX_RESOURCE_RETIREMENT_RECEIPTS);
   }
+  if (Array.isArray(input.retentionReceipts)) {
+    bag.retentionReceipts = input.retentionReceipts
+      .map((entry) => clonePlain(entry))
+      .filter((entry) => entry && typeof entry === 'object')
+      .slice(-MAX_RESOURCE_RETENTION_RECEIPTS);
+  }
   if (input.retentionReport && typeof input.retentionReport === 'object'
     && !Array.isArray(input.retentionReport)) {
     bag.retentionReport = clonePlain(input.retentionReport) || {};
@@ -214,6 +222,7 @@ export function normalizeResourceBodyBag(input) {
     const rec = normalizeResourceBodyRecord(src[id], id);
     if (rec) bag.byId[rec.recordId] = rec;
   }
+  enforceBound(bag, { source: 'normalize', authoritativeRetirement: true });
   return bag;
 }
 
@@ -230,6 +239,9 @@ export function serializeResourceBodyBag(bag) {
   // retaining receipts once a body has actually been compacted.
   if (normalized.retirementReceipts && normalized.retirementReceipts.length > 0) {
     serialized.retirementReceipts = normalized.retirementReceipts.slice(-MAX_RESOURCE_RETIREMENT_RECEIPTS);
+  }
+  if (normalized.retentionReceipts && normalized.retentionReceipts.length > 0) {
+    serialized.retentionReceipts = normalized.retentionReceipts.slice(-MAX_RESOURCE_RETENTION_RECEIPTS);
   }
   return serialized;
 }
@@ -275,6 +287,13 @@ export function captureResourceBodyRecord(entity, opts = {}) {
     || (entity.alive !== false && Number.isFinite(oreHp) && oreHp <= 0)
     || (entity.alive !== false && Number.isFinite(yieldRemainingU) && yieldRemainingU <= 0);
   const destroyed = d.destroyed === true || (entity.alive === false && !depleted);
+  const observedOutcome = destroyed ? 'destroyed' : (depleted ? 'depleted' : 'active');
+  const outcome = previous && (previous.outcome === 'destroyed' || previous.outcome === 'depleted')
+    ? previous.outcome
+    : observedOutcome;
+  const depletedAtT = d.depletedAtT != null
+    ? d.depletedAtT
+    : (previous && previous.outcome === 'depleted' ? previous.depletedAtT : null);
   const tethered = (opts.clearTethered !== true && previous && previous.tethered === true)
     || !!(entity.flags && entity.flags.tethered) || !!d.tethered;
   const displaced = (opts.clearDisplaced !== true && previous && previous.displaced === true)
@@ -295,7 +314,7 @@ export function captureResourceBodyRecord(entity, opts = {}) {
     displaced,
     missionOwned,
     tracked,
-    outcome: destroyed ? 'destroyed' : (depleted ? 'depleted' : 'active'),
+    outcome,
   };
   // Capture is an observation seam, not proof of mining. Only explicit mining/depletion or
   // changed resource fields marks the durable body as player-modified.
@@ -306,7 +325,9 @@ export function captureResourceBodyRecord(entity, opts = {}) {
   const retentionClass = deriveResourceBodyRetentionClass({
     ...modifiedEvidence,
     playerModified,
-    retentionClass: opts.retentionClass,
+    retentionClass: opts.retentionClass !== undefined
+      ? opts.retentionClass
+      : previous && previous.retentionClass,
   });
   return normalizeResourceBodyRecord({
     recordId,
@@ -335,7 +356,7 @@ export function captureResourceBodyRecord(entity, opts = {}) {
     lastObservedT: Number.isFinite(opts.simTime)
       ? opts.simTime
       : (Number.isFinite(d.lastObservedT) ? d.lastObservedT : 0),
-    depletedAtT: d.depletedAtT,
+    depletedAtT,
     recoveryPolicy,
     tethered,
     displaced,
@@ -343,7 +364,7 @@ export function captureResourceBodyRecord(entity, opts = {}) {
     tracked,
     playerModified,
     retentionClass,
-    outcome: destroyed ? 'destroyed' : (depleted ? 'depleted' : 'active'),
+    outcome,
     revision: opts.revision,
   });
 }
@@ -352,6 +373,15 @@ export function upsertResourceBody(bag, record, opts = {}) {
   const b = bag && bag.byId ? bag : createEmptyResourceBodyBag();
   if (!b.byId) b.byId = {};
   const prior = record && record.recordId ? b.byId[record.recordId] : null;
+  const priorProtected = prior && (
+    prior.retentionClass === RESOURCE_BODY_RETENTION_CLASS.PROTECTED
+      || resourceBodyHasProtectedState(prior)
+  );
+  const recoveringDepleted = prior && prior.outcome === 'depleted'
+    && record && record.outcome === 'active'
+    && record.recoveryContext
+    && record.depletedAtT == null;
+  const priorTerminal = prior && prior.outcome === 'destroyed';
   const merged = prior && record && typeof record === 'object'
     ? {
       ...prior,
@@ -360,6 +390,17 @@ export function upsertResourceBody(bag, record, opts = {}) {
       playerModified: prior.playerModified === true || record.playerModified === true,
       missionOwned: prior.missionOwned === true || record.missionOwned === true,
       tracked: prior.tracked === true || record.tracked === true,
+      tethered: prior.tethered === true || record.tethered === true,
+      displaced: prior.displaced === true || record.displaced === true,
+      retentionClass: priorProtected
+        ? RESOURCE_BODY_RETENTION_CLASS.PROTECTED
+        : record.retentionClass,
+      outcome: priorTerminal || (prior && prior.outcome === 'depleted' && !recoveringDepleted)
+        ? prior.outcome
+        : record.outcome,
+      depletedAtT: prior && prior.outcome === 'depleted' && !recoveringDepleted
+        ? prior.depletedAtT
+        : record.depletedAtT,
     }
     : record;
   const rec = normalizeResourceBodyRecord(merged);
@@ -372,7 +413,7 @@ export function upsertResourceBody(bag, record, opts = {}) {
 function enforceBound(bag, opts = {}) {
   const ids = Object.keys(bag.byId);
   const before = ids.map((id) => bag.byId[id]).filter(Boolean);
-  if (before.length <= MAX_RESOURCE_BODIES && !bag.retentionReport) return;
+  if (before.length <= MAX_RESOURCE_BODIES) return;
   const ranked = before.filter((record) => isReclaimableResourceBody(record, {
     fieldMayRegenerate: opts.fieldMayRegenerate !== false,
   })).sort((a, b) => {
@@ -383,9 +424,11 @@ function enforceBound(bag, opts = {}) {
   });
   const required = Math.max(0, before.length - MAX_RESOURCE_BODIES);
   let retired = 0;
-  if (required > 0 && opts.authoritativeRetirement === true && ranked.length > 0) {
+  if (required > 0 && ranked.length > 0) {
     const result = compactResourceBodyRecords(bag, {
       ...opts,
+      // Clean bodies are safe to retire as part of this bounded ledger transaction. Protected
+      // bodies remain fail-closed even though production callers do not pass an authority flag.
       authoritativeRetirement: true,
       targetCount: MAX_RESOURCE_BODIES,
       fieldMayRegenerate: opts.fieldMayRegenerate !== false,
@@ -404,6 +447,18 @@ function enforceBound(bag, opts = {}) {
   report.protected = protectedCount;
   report.retiredRecent = retired;
   report.protectedOverflow = Math.max(0, after.length - MAX_RESOURCE_BODIES);
+  const beforeIds = before.map((record) => record.recordId).sort();
+  const afterIds = after.map((record) => record.recordId).sort();
+  appendResourceRetentionReceipt(bag, {
+    receiptId: `rb-cap:${(hash32(1, 'rb-cap', beforeIds.join(','), afterIds.join(','), report.protectedOverflow) >>> 0).toString(16)}`,
+    event: 'resource_body_cap',
+    source: opts.source || 'runtime',
+    limit: MAX_RESOURCE_BODIES,
+    before: before.length,
+    retired,
+    retiredRecordIds: beforeIds.filter((id) => !afterIds.includes(id)),
+    protectedOverflow: report.protectedOverflow,
+  });
 }
 
 export function shouldGarbageCollectResourceBody(record, opts = {}) {
@@ -414,6 +469,16 @@ function ensureResourceRetentionReport(bag) {
   if (!bag.retentionReport || typeof bag.retentionReport !== 'object'
     || Array.isArray(bag.retentionReport)) bag.retentionReport = {};
   return bag.retentionReport;
+}
+
+function appendResourceRetentionReceipt(bag, receipt) {
+  if (!receipt || !receipt.receiptId) return;
+  if (!Array.isArray(bag.retentionReceipts)) bag.retentionReceipts = [];
+  if (bag.retentionReceipts.some((entry) => entry && entry.receiptId === receipt.receiptId)) return;
+  bag.retentionReceipts.push(receipt);
+  if (bag.retentionReceipts.length > MAX_RESOURCE_RETENTION_RECEIPTS) {
+    bag.retentionReceipts.splice(0, bag.retentionReceipts.length - MAX_RESOURCE_RETENTION_RECEIPTS);
+  }
 }
 
 function retirementBlockReason(record) {

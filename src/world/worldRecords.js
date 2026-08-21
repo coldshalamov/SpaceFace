@@ -41,6 +41,9 @@ export const MAX_RECORDS_PER_SECTOR = 48;
 /** Generic observed actors stay as recent-memory this long (simTime seconds). */
 export const RECENT_MEMORY_WINDOW_S = 180;
 
+/** Bounded deterministic receipts for cap decisions made during restore or runtime upsert. */
+export const MAX_RETENTION_RECEIPTS = 64;
+
 /** Explicit capture sentinel for intentionally clearing a scheduled wake. */
 export const CLEAR_NEXT_EVENT_AT_T = Symbol('spaceface.clearNextEventAtT');
 
@@ -181,6 +184,12 @@ export function normalizeRecordsBag(input) {
     && !Array.isArray(input.retentionReport)) {
     bag.retentionReport = clonePlain(input.retentionReport) || {};
   }
+  if (Array.isArray(input.retentionReceipts)) {
+    bag.retentionReceipts = input.retentionReceipts
+      .map((entry) => clonePlain(entry))
+      .filter((entry) => entry && typeof entry === 'object')
+      .slice(-MAX_RETENTION_RECEIPTS);
+  }
   const src = input.byId && typeof input.byId === 'object' && !Array.isArray(input.byId)
     ? input.byId
     : (typeof input === 'object' && !Array.isArray(input) && !input.schemaId ? input : null);
@@ -189,6 +198,14 @@ export function normalizeRecordsBag(input) {
   for (const id of ids) {
     const rec = normalizeRecord(src[id], id);
     if (rec) bag.byId[rec.recordId] = rec;
+  }
+  const sectors = new Set();
+  for (const rec of Object.values(bag.byId)) {
+    if (rec && rec.sectorId) sectors.add(rec.sectorId);
+    if (rec && rec.homeSectorId) sectors.add(rec.homeSectorId);
+  }
+  for (const sectorId of [...sectors].sort()) {
+    enforceSectorBound(bag, sectorId, { source: 'normalize' });
   }
   return bag;
 }
@@ -492,11 +509,15 @@ export function serializeRecordsBag(bag) {
     const { liveEntityId: _live, rematerializedTick: _rt, ...durable } = rec;
     byId[id] = durable;
   }
-  return {
+  const serialized = {
     schemaId: WORLD_RECORDS_SCHEMA_ID,
     schemaVersion: WORLD_RECORDS_SCHEMA_VERSION,
     byId,
   };
+  if (normalized.retentionReceipts && normalized.retentionReceipts.length > 0) {
+    serialized.retentionReceipts = normalized.retentionReceipts.slice(-MAX_RETENTION_RECEIPTS);
+  }
+  return serialized;
 }
 
 /** Deserialize disk overlay → runtime bag. */
@@ -774,24 +795,41 @@ export function upsertRecord(bag, record) {
   const b = bag && bag.byId ? bag : createEmptyRecordsBag();
   if (!b.byId) b.byId = {};
   const prior = record && record.recordId ? b.byId[record.recordId] : null;
+  const priorPermanent = isPermanentWorldRecord(prior);
+  const priorTerminal = prior && (prior.outcome === 'defeated' || prior.outcome === 'destroyed');
   const merged = prior && record && typeof record === 'object'
     ? {
       ...prior,
       ...record,
+      // Retention is a latch: a later observation cannot turn a named/mission/player or
+      // terminal identity back into ordinary recent memory.
+      kind: priorPermanent ? prior.kind : record.kind,
+      retentionClass: priorPermanent ? RETENTION_CLASS.PERMANENT : record.retentionClass,
+      missionId: record.missionId || prior.missionId,
+      missionTag: record.missionTag || prior.missionTag,
+      jobId: record.jobId || prior.jobId,
+      playerOwned: prior.playerOwned === true || record.playerOwned === true,
+      playerCreated: prior.playerCreated === true || record.playerCreated === true,
+      named: prior.named === true || record.named === true,
+      name: record.name || prior.name,
+      outcome: priorTerminal ? prior.outcome : record.outcome,
+      alive: priorTerminal ? false : record.alive,
       scheduledEventIds: record.scheduledEventIds !== undefined
         ? record.scheduledEventIds : prior.scheduledEventIds,
       regeneration: record.regeneration !== undefined ? record.regeneration : prior.regeneration,
-      deactivation: record.deactivation !== undefined ? record.deactivation : prior.deactivation,
+      deactivation: priorPermanent && prior.deactivation && prior.deactivation.reason === 'player'
+        ? prior.deactivation
+        : (record.deactivation !== undefined ? record.deactivation : prior.deactivation),
     }
     : record;
   const rec = normalizeRecord(merged);
   if (!rec) return null;
   b.byId[rec.recordId] = rec;
-  enforceSectorBound(b, rec.homeSectorId || rec.sectorId);
+  enforceSectorBound(b, rec.homeSectorId || rec.sectorId, { source: 'upsert' });
   return rec;
 }
 
-function enforceSectorBound(bag, sectorId) {
+function enforceSectorBound(bag, sectorId, opts = {}) {
   const list = recordsForSector(bag, sectorId);
   const reclaimable = list.filter(isReclaimableRecentWorldRecord);
   const required = Math.max(0, list.length - MAX_RECORDS_PER_SECTOR);
@@ -817,6 +855,18 @@ function enforceSectorBound(bag, sectorId) {
     retiredRecent: dropCount,
     protectedOverflow,
   };
+  const remainingIds = recordsForSector(bag, sectorId).map((rec) => rec.recordId).sort();
+  const droppedIds = ranked.slice(0, dropCount).map((rec) => rec.recordId).sort();
+  appendRetentionReceipt(bag, {
+    receiptId: `wr-cap:${sectorId}:${(hash32(1, 'wr-cap', remainingIds.join(','), droppedIds.join(','), protectedOverflow) >>> 0).toString(16)}`,
+    event: 'world_records_cap',
+    source: opts.source || 'runtime',
+    sectorId: sectorId || null,
+    limit: MAX_RECORDS_PER_SECTOR,
+    before: list.length,
+    retiredRecordIds: droppedIds,
+    protectedOverflow,
+  });
 }
 
 function ensureRetentionReport(bag) {
@@ -828,6 +878,16 @@ function ensureRetentionReport(bag) {
     bag.retentionReport.sectors = {};
   }
   return bag.retentionReport;
+}
+
+function appendRetentionReceipt(bag, receipt) {
+  if (!receipt || !receipt.receiptId) return;
+  if (!Array.isArray(bag.retentionReceipts)) bag.retentionReceipts = [];
+  if (bag.retentionReceipts.some((entry) => entry && entry.receiptId === receipt.receiptId)) return;
+  bag.retentionReceipts.push(receipt);
+  if (bag.retentionReceipts.length > MAX_RETENTION_RECEIPTS) {
+    bag.retentionReceipts.splice(0, bag.retentionReceipts.length - MAX_RETENTION_RECEIPTS);
+  }
 }
 
 /** Runtime-only cap pressure report; protected records are never hidden by the cap. */
@@ -857,6 +917,7 @@ export function markRecordDestroyed(bag, recordId, opts = {}) {
   if (rec.outcome !== 'defeated') {
     rec.outcome = opts.outcome || 'destroyed';
   }
+  rec.retentionClass = RETENTION_CLASS.PERMANENT;
   rec.lastSeenTick = opts.tick != null ? opts.tick : rec.lastSeenTick;
   if (finiteXZ(opts.pos)) rec.pos = cloneXZ(opts.pos);
   return rec;

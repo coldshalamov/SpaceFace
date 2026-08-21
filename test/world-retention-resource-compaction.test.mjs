@@ -7,6 +7,7 @@ import {
   RETENTION_CLASS,
   captureEntityRecord,
   createEmptyRecordsBag,
+  deserializeRecordsBag,
   gcExpiredRecentMemory,
   isPermanentWorldRecord,
   normalizeRecord,
@@ -18,6 +19,7 @@ import {
   captureResourceBodyRecord,
   compactResourceBodyRecords,
   createEmptyResourceBodyBag,
+  deserializeResourceBodyBag,
   isReclaimableResourceBody,
   normalizeResourceBodyRecord,
   serializeResourceBodyBag,
@@ -239,4 +241,98 @@ test('resource cap reports protected overflow and only retires reclaimable recor
   assert.equal(Object.keys(bag.byId).length, MAX_RESOURCE_BODIES + 3);
   assert.equal(bag.retentionReport.protectedOverflow, 3);
   assert.ok(bag.byId.protected_0);
+});
+
+test('restore normalization enforces world/resource caps and emits honest receipts', () => {
+  const worldRecent = {};
+  for (let i = 0; i < 60; i++) worldRecent[`restored_recent_${i}`] = worldRecord(`restored_recent_${i}`, {
+    lastSeenTick: i,
+    lastObservedT: i,
+  });
+  const normalizedRecent = deserializeRecordsBag({ byId: worldRecent });
+  assert.equal(Object.keys(normalizedRecent.byId).length, MAX_RECORDS_PER_SECTOR);
+  assert.ok(normalizedRecent.retentionReceipts.some((receipt) => receipt.event === 'world_records_cap'));
+
+  const worldPermanent = {};
+  for (let i = 0; i < 60; i++) worldPermanent[`restored_dead_${i}`] = worldRecord(`restored_dead_${i}`, {
+    alive: false,
+    outcome: 'destroyed',
+  });
+  const normalizedPermanent = deserializeRecordsBag({ byId: worldPermanent });
+  assert.equal(Object.keys(normalizedPermanent.byId).length, 60,
+    'restored tombstones fail closed instead of being silently evicted');
+  assert.equal(normalizedPermanent.retentionReport.sectors.sector_test.protectedOverflow, 12);
+  assert.ok(normalizedPermanent.retentionReceipts.some((receipt) => receipt.protectedOverflow === 12));
+
+  const resourceClean = {};
+  for (let i = 0; i < 300; i++) resourceClean[`restored_clean_${i}`] = resourceRecord(`restored_clean_${i}`, {
+    lastObservedT: i,
+  });
+  const normalizedClean = deserializeResourceBodyBag({ byId: resourceClean });
+  assert.equal(Object.keys(normalizedClean.byId).length, MAX_RESOURCE_BODIES);
+  assert.ok(normalizedClean.retirementReceipts.length > 0);
+  assert.ok(normalizedClean.retentionReceipts.some((receipt) => receipt.event === 'resource_body_cap'));
+
+  const resourceProtected = {};
+  for (let i = 0; i < 300; i++) resourceProtected[`restored_protected_${i}`] = resourceRecord(
+    `restored_protected_${i}`, { playerModified: true, oreHp: 80 },
+  );
+  const normalizedProtected = deserializeResourceBodyBag({ byId: resourceProtected });
+  assert.equal(Object.keys(normalizedProtected.byId).length, 300,
+    'restored modified bodies survive protected overflow');
+  assert.equal(normalizedProtected.retentionReport.protectedOverflow, 44);
+  assert.ok(normalizedProtected.retentionReceipts.some((receipt) => receipt.protectedOverflow === 44));
+});
+
+test('clean resource upserts converge to the cap without caller authority', () => {
+  const bag = createEmptyResourceBodyBag();
+  for (let i = 0; i < MAX_RESOURCE_BODIES + 1; i++) {
+    upsertResourceBody(bag, resourceRecord(`clean_upsert_${i}`, { lastObservedT: i }));
+  }
+  assert.equal(Object.keys(bag.byId).length, MAX_RESOURCE_BODIES);
+  assert.equal(bag.byId.clean_upsert_0, undefined, 'oldest clean record is reclaimed deterministically');
+  assert.ok(bag.retirementReceipts.some((receipt) => receipt.recordId === 'clean_upsert_0'));
+  assert.equal(bag.retentionReport.protectedOverflow, 0);
+});
+
+test('retention protection is monotonic across downgrade attempts', () => {
+  const records = createEmptyRecordsBag();
+  upsertRecord(records, worldRecord('latched_world', {
+    named: true,
+    name: 'The Named One',
+    retentionClass: RETENTION_CLASS.PERMANENT,
+  }));
+  upsertRecord(records, worldRecord('latched_world', {
+    named: false,
+    name: null,
+    retentionClass: RETENTION_CLASS.RECENT,
+  }));
+  assert.equal(records.byId.latched_world.retentionClass, RETENTION_CLASS.PERMANENT);
+  assert.equal(records.byId.latched_world.named, true);
+  assert.equal(isPermanentWorldRecord(records.byId.latched_world), true);
+
+  const resources = createEmptyResourceBodyBag();
+  upsertResourceBody(resources, resourceRecord('latched_tether', { tethered: true }));
+  upsertResourceBody(resources, resourceRecord('latched_tether', { tethered: false }));
+  upsertResourceBody(resources, resourceRecord('latched_displaced', { displaced: true }));
+  upsertResourceBody(resources, resourceRecord('latched_displaced', { displaced: false }));
+  upsertResourceBody(resources, resourceRecord('latched_depleted', {
+    outcome: 'depleted', oreHp: 0,
+  }));
+  upsertResourceBody(resources, resourceRecord('latched_depleted', {
+    outcome: 'active', oreHp: 100,
+  }));
+  upsertResourceBody(resources, resourceRecord('latched_destroyed', {
+    outcome: 'destroyed', oreHp: 0,
+  }));
+  upsertResourceBody(resources, resourceRecord('latched_destroyed', {
+    outcome: 'active', oreHp: 100,
+  }));
+  assert.equal(resources.byId.latched_tether.tethered, true);
+  assert.equal(resources.byId.latched_displaced.displaced, true);
+  assert.equal(resources.byId.latched_depleted.outcome, 'depleted');
+  assert.equal(resources.byId.latched_destroyed.outcome, 'destroyed');
+  for (const id of ['latched_tether', 'latched_displaced', 'latched_depleted', 'latched_destroyed']) {
+    assert.equal(isReclaimableResourceBody(resources.byId[id]), false);
+  }
 });
