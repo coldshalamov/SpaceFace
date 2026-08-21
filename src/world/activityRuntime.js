@@ -18,6 +18,12 @@ import {
   physicsReachWu,
 } from './activityClassification.js';
 import { ballisticDrift } from './worldCatchup.js';
+import {
+  captureEntityRecord,
+  ensureWorldRecords,
+  entityIsDurableCandidate,
+  upsertRecord,
+} from './worldRecords.js';
 
 const RUNTIMES = new WeakMap();
 const RECENT_DAMAGE_TICKS = 120;
@@ -129,6 +135,28 @@ function publishScalars(state, runtime) {
       physics: counts.physics,
     },
   };
+}
+
+function captureDematerialized(state, entity, simTime, abstractTier) {
+  if (!state || !entityIsDurableCandidate(entity, state.playerId)) return null;
+  const d = entity.data || {};
+  const sectorId = entity.homeSectorId || d.homeSectorId || d.sectorId
+    || (state.world && state.world.currentSectorId);
+  if (!sectorId) return null;
+  const bag = ensureWorldRecords(state.world);
+  const captured = captureEntityRecord(entity, {
+    sectorId,
+    seed: (state.meta && state.meta.seed) || 1,
+    tick: state.tick | 0,
+    simTime,
+    extra: d.worldRecordId && bag.byId[d.worldRecordId] ? bag.byId[d.worldRecordId].extra : null,
+    abstractTier: abstractTier || SIM_TIER.S2_ABSTRACT,
+  });
+  if (!captured) return null;
+  upsertRecord(bag, captured);
+  if (!entity.data) entity.data = {};
+  entity.data.worldRecordId = captured.recordId;
+  return captured;
 }
 
 function catchUpEntity(entity, rec, simTime) {
@@ -411,7 +439,11 @@ function classifyWorld(state, runtime) {
     ctx.dormant = false;
 
     const classified = classifyActivity(entity, ctx);
+    const priorTier = entity.activity && entity.activity.simTier;
     const stamp = applyStamp(entity, classified, simTime);
+    if (isExactTier(priorTier) && !isExactTier(stamp.simTier)) {
+      captureDematerialized(state, entity, simTime, stamp.simTier);
+    }
     countTier(counts, stamp.simTier);
 
     if (!entityNeedsPhysics(entity)) continue;

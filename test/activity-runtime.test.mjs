@@ -228,6 +228,35 @@ test('SG-06 pursuit activity pins a far hostile', () => {
   assert.equal(entityNeedsAiThink(pirate), true);
 });
 
+test('demoting a durable hauler writes the world ledger without deleting it', () => {
+  const player = ship(1, 0, { isPlayer: true, team: 0 });
+  const hauler = ship(4, 20, {
+    team: 2,
+    data: { itinerary: { routeId: 'lane_a' }, homeSectorId: 'sec_helios' },
+    rest: { homeSectorId: 'sec_helios' },
+  });
+  const state = makeState([player, hauler], {
+    tick: 0,
+    simTime: 0,
+    world: { currentSectorId: 'sec_helios' },
+    meta: { seed: 47 },
+  });
+  ensureActivityClassified(state);
+  hauler.pos.x = 4000;
+  for (let i = 1; i <= 150; i++) {
+    state.tick = i;
+    state.simTime = i / 60;
+    ensureActivityClassified(state);
+  }
+  assert.equal(hauler.alive, true);
+  assert.equal(state.entityList.includes(hauler), true);
+  const rec = state.world.records && state.world.records.byId[hauler.data.worldRecordId];
+  assert.ok(rec, 'dematerialize must capture a durable record');
+  assert.equal(rec.alive, true);
+  assert.equal(rec.pos.x, 4000);
+  assert.ok(rec.lastExactT > 0);
+});
+
 test('spatial hash membership is the Rapier active set, not the whole sector', () => {
   const player = ship(1, 0, { isPlayer: true, team: 0 });
   const nearRock = rock(2, 20);
