@@ -57,17 +57,16 @@ colliders remain in the world list; they are not hashed or queried.
 
 ## Remaining programs (not this slice)
 
-Structural owners for later poles now exist in production code. They stay
-gated until a headed fly proves the named product gate:
+Later poles are wired to production seams, not parked as unused files:
 
-- Catch-up spiral: extra HUD/voice ticks skip; present is still once per rAF.
-- Presentation residency reads R0–R3; runway packages are resident, not submitted.
-- Flight-ready set / place layers, loadout fingerprints, cooker tags, material ABI.
-- Persistent submit lanes, snapshot fence, Worker, and WebGPU remain **off**
-  until sim p95 ≤ 5 ms and the named pole is measured on the owner Intel box.
-- Modular ship flight packages still compile through the existing authored path;
-  in-flight geometry cooks stay banned.
-- Do not retry prewarm. Do not enable mixed unique-hull mega-batch.
+- Catch-up spiral skips HUD/voice on extra ticks; present still once per rAF.
+- Presentation residency reads R0–R3; runway packages stay resident, not submitted.
+- S1 near AI uses reduced cadence; S2/S3 stay asleep until nextEventAtT.
+- Present publishes a snapshot fence from PresentationWorld columns.
+- Material library stamps ABI program families. Flight packages cache by loadout.
+- Save does not serialize on catch-up ticks. Recent-memory records expire.
+- Persistent submit lanes, Worker, and WebGPU remain **off** until a headed fly
+  names them as the pole. Do not retry prewarm. Do not enable mixed mega-batch.
 
 ## Persistence invariants (short)
 

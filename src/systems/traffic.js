@@ -3132,7 +3132,7 @@ export const traffic = {
         if (!e.data.jobId) this._assignCeresActivityJob(e, activityEntry);
         continue;
       }
-      if (entityNeedsAiThink(e) === false) continue;
+      if (entityNeedsAiThink(e, state) === false) continue;
       // One authored recurring passenger liner owns the existing express hull and V3 boost route.
       // Its passenger itinerary must consume the tick before the generic express/freight branch.
       if (this._stepPassengerLinerService(e, rec, stations, dt)) continue;

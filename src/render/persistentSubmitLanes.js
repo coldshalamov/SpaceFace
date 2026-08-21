@@ -12,6 +12,13 @@ export const SUBMIT_LANE = Object.freeze({
 
 export const PERSISTENT_LANES_ENABLED = false;
 
+let liveLanes = null;
+
+export function getPersistentSubmitLanes() {
+  if (!liveLanes) liveLanes = createPersistentSubmitLanes();
+  return liveLanes;
+}
+
 export function createPersistentSubmitLanes(options = {}) {
   const enabled = options.enabled === true && PERSISTENT_LANES_ENABLED === true
     ? true

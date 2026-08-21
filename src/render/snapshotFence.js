@@ -42,6 +42,31 @@ export function createSnapshotFence(options = {}) {
   };
 }
 
+export function packPresentationWorldToFence(world, fence, simTime = 0) {
+  if (!world || !fence) return 0;
+  const diagnostics = typeof world.getDiagnostics === 'function' ? world.getDiagnostics() : null;
+  const active = diagnostics && Number.isInteger(diagnostics.active) ? diagnostics.active : 0;
+  const snapshot = fence.beginPack(Math.max(1, active), simTime);
+  let packed = 0;
+  for (let index = 0; index < active; index++) {
+    const slot = world.activeSlots[index];
+    if (world.alive[slot] !== 1) continue;
+    snapshot.write(
+      world.entityIds[slot] >>> 0,
+      world.typeCodes ? world.typeCodes[slot] : 0,
+      world.x[slot],
+      world.y[slot],
+      world.z[slot],
+      0, 0, 0, 1,
+      1, 1, 1,
+      world.flags[slot] >>> 0,
+    );
+    packed++;
+  }
+  fence.commit();
+  return packed;
+}
+
 export function packEntityIntoSnapshot(snapshot, entity, options = {}) {
   if (!snapshot || !entity || entity.alive === false) return -1;
   const pos = entity.pos || {};

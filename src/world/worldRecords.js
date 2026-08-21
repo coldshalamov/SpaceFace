@@ -27,6 +27,37 @@ const DURABLE_KINDS = new Set(Object.values(RECORD_KIND));
 /** Max durable records retained per sector (evict oldest by lastSeenTick). */
 export const MAX_RECORDS_PER_SECTOR = 48;
 
+/** Generic observed actors stay as recent-memory this long (simTime seconds). */
+export const RECENT_MEMORY_WINDOW_S = 180;
+
+export function isPermanentWorldRecord(rec) {
+  if (!rec) return false;
+  if (rec.kind === RECORD_KIND.MISSION_TARGET || rec.kind === RECORD_KIND.WRECK
+    || rec.kind === RECORD_KIND.AFTERMATH) return true;
+  if (rec.outcome === 'defeated' || rec.outcome === 'destroyed') return true;
+  if (rec.playerOwned === true || rec.playerCreated === true || rec.named === true) return true;
+  if (rec.missionId || rec.missionTag || rec.jobId) return true;
+  if (rec.deactivation && rec.deactivation.reason === 'player') return true;
+  return false;
+}
+
+export function gcExpiredRecentMemory(bag, simTime, windowS = RECENT_MEMORY_WINDOW_S) {
+  if (!bag || !bag.byId) return 0;
+  const now = Number.isFinite(simTime) ? simTime : 0;
+  const window = Number.isFinite(windowS) && windowS > 0 ? windowS : RECENT_MEMORY_WINDOW_S;
+  let dropped = 0;
+  for (const id of Object.keys(bag.byId)) {
+    const rec = bag.byId[id];
+    if (!rec || isPermanentWorldRecord(rec)) continue;
+    const observed = Number.isFinite(rec.lastObservedT) ? rec.lastObservedT : rec.lastExactT;
+    if (!Number.isFinite(observed)) continue;
+    if (now - observed < window) continue;
+    delete bag.byId[id];
+    dropped++;
+  }
+  return dropped;
+}
+
 /** Quantize global XZ for identity keys without floating noise. */
 export function quantizeGlobal(n, quantum = 4) {
   if (!Number.isFinite(n)) return 0;

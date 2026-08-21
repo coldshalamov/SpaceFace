@@ -16,6 +16,7 @@
 // a given palette and get back a cached THREE material.
 
 import * as THREE from 'three';
+import { materialAbiRoleFromLibrary, materialProgramFamilyKey } from './materialAbi.js';
 
 // ---- tiny seeded hash (same scheme visualFactory uses) --------------------------------------
 function hashId(id) {
@@ -176,9 +177,29 @@ function decalLight(pal) {
 // ---------------------------------------------------------------------------------------------
 // Internal cache getter (with noDispose)
 // ---------------------------------------------------------------------------------------------
+function stampMaterialAbi(material, libraryRole) {
+  if (!material || !material.userData) return material;
+  const abi = materialAbiRoleFromLibrary(libraryRole);
+  const maps = material.map ? 'mapped' : 'unmapped';
+  const family = materialProgramFamilyKey(abi, { maps });
+  material.userData.spacefaceMaterialAbi = abi;
+  material.userData.spacefaceProgramFamily = family;
+  const previous = material.customProgramCacheKey;
+  material.customProgramCacheKey = function spacefaceAbiProgramKey() {
+    const extra = typeof previous === 'function' ? previous.call(this) : '';
+    return extra ? `${family}|${extra}` : family;
+  };
+  return material;
+}
+
 function _matGet(key, build) {
   let m = _mat.get(key);
-  if (!m) { m = noDispose(build()); _mat.set(key, m); }
+  if (!m) {
+    m = noDispose(build());
+    const role = String(key || '').split(':')[1] || String(key || '').replace(/^role:/, '').split(':')[0];
+    stampMaterialAbi(m, role);
+    _mat.set(key, m);
+  }
   return m;
 }
 

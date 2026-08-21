@@ -102,7 +102,7 @@ export function createTacticalAISystem({
       const entity = entities && id != null && typeof entities.get === 'function'
         ? entities.get(id)
         : null;
-      if (entity && entityNeedsAiThink(entity) === false) continue;
+      if (entity && entityNeedsAiThink(entity, state) === false) continue;
       maneuverPort.request(retickManeuverRequest(request, tick));
     }
   }
@@ -202,7 +202,7 @@ export function revalidateCachedAIFiringIntents(liveStack, state) {
     const entity = state && state.entities && id != null && typeof state.entities.get === 'function'
       ? state.entities.get(id)
       : null;
-    if (entity && entityNeedsAiThink(entity) === false) continue;
+    if (entity && entityNeedsAiThink(entity, state) === false) continue;
     applyAIFiringIntent(decision, state);
   }
   return decisions.length;

@@ -92,6 +92,7 @@ import {
   recordsForSector,
   serializeRecordsBag,
   spawnSpecFromRecord,
+  gcExpiredRecentMemory,
   stableRecordId,
   upsertRecord,
 } from '../world/worldRecords.js';
@@ -2584,6 +2585,7 @@ export const world = {
     this._tickHazards(dt, state);
     this._tickZoneLabel(state);
     this._tickPOIScan(state);
+    gcExpiredRecentMemory(ensureWorldRecords(state.world), state.simTime);
   },
 
   _tickDeferredCriticalSpawns(state) {

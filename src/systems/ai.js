@@ -148,7 +148,7 @@ export const ai = {
       // traffic system — skip the combat FSM so they never acquire/attack/strafe. They can still be
       // attacked (piracy -> heat), they just don't initiate.
       if (data.ai.passive) continue;
-      if (entityNeedsAiThink(e) === false) continue;
+      if (entityNeedsAiThink(e, state) === false) continue;
       this._think(e, data, state, player, dt);
     }
   },

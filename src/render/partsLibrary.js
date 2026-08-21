@@ -44,7 +44,17 @@ import {
 } from './rigidOpaqueBatchPolicy.js';
 import { authoredUpgradeConcurrencyLimit as resolveAuthoredUpgradeConcurrency } from './authoredUpgradePolicy.js';
 import { shouldStartHeavyAdmissionEventually } from './admissionSliceBudget.js';
-import { computeLoadoutFingerprint, MATERIAL_ABI_VERSION } from './flightRenderPackage.js';
+import {
+  computeLoadoutFingerprint,
+  MATERIAL_ABI_VERSION,
+  createFlightRenderPackageCache,
+} from './flightRenderPackage.js';
+
+const flightRenderPackages = createFlightRenderPackageCache();
+
+export function getFlightRenderPackageCache() {
+  return flightRenderPackages;
+}
 import { applyInstanceChunkSubmitPolicy } from './instanceChunkSubmitPolicy.js';
 import {
   createOpaqueMaterialBatchState,
@@ -4596,6 +4606,12 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
     materialAbiVersion: MATERIAL_ABI_VERSION,
     sourceVersions: entity.data && entity.data.defId,
   });
+  if (!flightRenderPackages.has(root.userData.loadoutFingerprint)) {
+    flightRenderPackages.publish(root.userData.loadoutFingerprint, {
+      lanes: { opaque: 1 },
+      materialRoles: { hull: 'opaque_hull' },
+    });
+  }
 
   const hull = new THREE.Group();
   hull.name = `${root.name}_Hull`;

@@ -433,7 +433,7 @@ export const aiPorts = {
       const ai = entity.data && entity.data.ai;
       const factionBehavior = normalizeFactionBehaviorProfile(ai && ai.factionPresenceDoctrine);
       if (!ai || (ai.passive && !(ai.allowPassiveManeuver === true && factionBehavior))) continue;
-      if (entityNeedsAiThink(entity) === false) continue;
+      if (entityNeedsAiThink(entity, state) === false) continue;
       candidates.push(entity);
     }
     candidates.sort((a, b) => compareIds(a && a.id, b && b.id));

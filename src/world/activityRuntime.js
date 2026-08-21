@@ -19,6 +19,7 @@ import {
   classifyActivity,
   physicsReachWu,
 } from './activityClassification.js';
+import { shouldOwnerThink } from '../core/activityScheduler.js';
 import { ballisticDrift } from './worldCatchup.js';
 import {
   captureEntityRecord,
@@ -196,6 +197,7 @@ function makeStamp(classified, simTime) {
   return {
     simTier: classified.simTier,
     presentationTier: classified.presentationTier,
+    nextEventAtT: classified.nextEventAtT != null ? classified.nextEventAtT : -1,
     pins: classified.pins,
     pinnedExact: classified.pinnedExact,
     lastExactT: simTime,
@@ -250,6 +252,7 @@ function applyStamp(entity, classified, simTime) {
   rec.pins = classified.pins;
   rec.pinnedExact = classified.pinnedExact;
   rec.lastObservedT = simTime;
+  if (classified.nextEventAtT != null) rec.nextEventAtT = classified.nextEventAtT;
   return rec;
 }
 
@@ -476,6 +479,13 @@ function classifyWorld(state, runtime) {
       ? facts.damagedPlayerUntil.get(entity.id)
       : -1;
     ctx.hasItinerary = !!data.itinerary;
+    const recId = data.worldRecordId;
+    const bag = state.world && state.world.records && state.world.records.byId;
+    const worldRec = recId && bag ? bag[recId] : null;
+    if (worldRec && Number.isFinite(worldRec.nextEventAtT) && worldRec.nextEventAtT >= 0
+      && simTime >= worldRec.nextEventAtT) {
+      ctx.hasItinerary = true;
+    }
     ctx.priorSimTier = entity.activity && entity.activity.simTier;
     ctx.graceUntilT = entity.activity && entity.activity.graceUntilT;
     ctx.missionCritical = !!(data.jobId || data.missionId || data.missionTag || data.missionPinned
@@ -489,6 +499,9 @@ function classifyWorld(state, runtime) {
     const classified = classifyActivity(entity, ctx);
     const priorTier = entity.activity && entity.activity.simTier;
     const stamp = applyStamp(entity, classified, simTime);
+    if (worldRec && Number.isFinite(worldRec.nextEventAtT)) {
+      stamp.nextEventAtT = worldRec.nextEventAtT;
+    }
     if (isExactTier(priorTier) && !isExactTier(stamp.simTier)) {
       captureDematerialized(state, entity, simTime, stamp.simTier);
     }
@@ -541,10 +554,24 @@ export function entityNeedsPhysics(entity) {
   return isExactTier(activity.simTier);
 }
 
-export function entityNeedsAiThink(entity) {
+export function entityNeedsAiThink(entity, state = null) {
   if (!entity || entity.alive === false) return false;
   const activity = entity.activity;
   if (!activity || !activity.simTier) return true;
   if (activity.pinnedExact) return true;
-  return isExactTier(activity.simTier);
+  const tier = activity.simTier;
+  if (tier === SIM_TIER.S0_EXACT) return true;
+  if (tier === SIM_TIER.S1_NEAR) {
+    const tick = state && Number.isInteger(state.tick) ? state.tick : 0;
+    return shouldOwnerThink(tick, entity, {
+      nearPeriodTicks: 2,
+      playerId: state && state.playerId,
+    });
+  }
+  if (tier === SIM_TIER.S2_ABSTRACT || tier === SIM_TIER.S3_DORMANT || tier === SIM_TIER.S4_AGGREGATE) {
+    const due = Number(activity.nextEventAtT);
+    const simTime = state && Number.isFinite(state.simTime) ? state.simTime : -1;
+    return Number.isFinite(due) && due >= 0 && simTime >= due;
+  }
+  return isExactTier(tier);
 }

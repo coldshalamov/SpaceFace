@@ -68,6 +68,7 @@ import {
 } from './presentationWorld.js';
 import { createPresentationPublisher } from './presentationPublisher.js';
 import { createPresentationQueries } from './presentationQueries.js';
+import { createSnapshotFence, packPresentationWorldToFence } from './snapshotFence.js';
 import { shieldBubbleGeometry } from './ships/shipKit.js';
 import { projectedWidthPx } from './lod.js';
 import { resolveWebGlRendererFlags } from './presentPath.js';
@@ -2482,6 +2483,7 @@ export const render = {
       { journal: ctx.presentationJournal || null },
     );
     this._presentationQueries = createPresentationQueries(this._presentationWorld);
+    this._snapshotFence = createSnapshotFence();
     this._presentationHandleScratch = {};
     this._presentationQueryOptions = { bounds: null, origin: null, playerId: null };
     this._entityViewBounds = { x: 0, z: 0, halfX: 0, halfZ: 0, margin: 0 };
@@ -4906,6 +4908,19 @@ export const render = {
     const publication = this._presentationPublisher.consume(presentationFrame);
     if (publication.rebuilt) this._rebindPresentationMeshes();
     else this._bindPublishedPresentationMeshes(publication);
+    if (this._snapshotFence && this._presentationWorld) {
+      const packed = packPresentationWorldToFence(
+        this._presentationWorld,
+        this._snapshotFence,
+        this.state && this.state.simTime,
+      );
+      if (this.state && this.state.render) {
+        this.state.render.snapshotFence = {
+          sequence: this._snapshotFence.sequence,
+          packed,
+        };
+      }
+    }
     // While the GL context is lost, the renderer can't draw — skip all remaining per-frame work until
     // webglcontextrestored rebuilds GPU resources. The derived publication mirror remains current.
     if (this._contextLost) return false;

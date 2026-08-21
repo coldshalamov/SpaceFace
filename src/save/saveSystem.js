@@ -27,6 +27,8 @@ import {
   completedEndingChoiceFromStory,
 } from '../core/newGamePlus.js';
 import { COORDINATE_SCHEMA, applyFrameOrigin, deriveFrameOrigin } from '../core/coordinates.js';
+import { isCatchupPresentationSkip } from '../core/catchupPolicy.js';
+import { createSaveDirtyJournal, shouldSerializeDuringPresent } from './saveDirtyJournal.js';
 import {
   MASSLINE_BINDING_PROFILE_LEGACY,
   MASSLINE_BINDING_PROFILE_SPACE,
@@ -117,6 +119,7 @@ export const save = {
     this._sharedStoreReady = !sharedPlayerStoreAvailable();
     this._sharedStorePatch = null;
     this._sharedStoreFlushTimer = null;
+    this._dirtyJournal = createSaveDirtyJournal();
 
     const bus = this.bus;
     this._loadProfileSettings();
@@ -219,6 +222,7 @@ export const save = {
   update(/* dt, state */) {
     const state = this.state;
     if (this._restoring || state.mode !== 'flight') return;
+    if (isCatchupPresentationSkip(state) || shouldSerializeDuringPresent()) return;
     const intervalS = (state.settings.gameplay && state.settings.gameplay.autosaveIntervalS) || 0;
     if (intervalS > 0 && (state.meta.playtimeS - this._lastAutosavePlaytime) >= intervalS) {
       this.requestAutosave('interval');

@@ -27,7 +27,9 @@ import {
   createPersistentSubmitLanes,
 } from '../src/render/persistentSubmitLanes.js';
 import { createSnapshotFence, packEntityIntoSnapshot } from '../src/render/snapshotFence.js';
-import { isSimulationWorkerEnabled, createCommandRing } from '../src/core/simWorkerProtocol.js';
+import { isSimulationWorkerEnabled, createCommandRing, selectSimWorkerTransport } from '../src/core/simWorkerProtocol.js';
+import { getActivityFrame } from '../src/core/worldActivityManager.js';
+import { resolve as resolveMaterial } from '../src/render/materialLibrary.js';
 import { createSaveDirtyJournal, shouldSerializeDuringPresent } from '../src/save/saveDirtyJournal.js';
 import { entityNeedsExactAudio } from '../src/audio/audioActiveSet.js';
 import { selectPresentBackend, PRESENT_BACKEND } from '../src/render/webgpuPresent.js';
@@ -101,9 +103,30 @@ test('snapshot fence publishes a complete packed frame the present path can read
 
 test('simulation Worker stays disabled until the fence spike passes', () => {
   assert.equal(isSimulationWorkerEnabled(), false);
+  assert.equal(selectSimWorkerTransport(), null);
   const ring = createCommandRing(4);
   assert.equal(ring.push(1), true);
   assert.equal(ring.pop().kind, 1);
+});
+
+test('material library stamps ABI program families; activity frame is the sim owner', () => {
+  const mat = resolveMaterial('bodyPrimary', { hull: '#8899aa', accent: '#445566' });
+  assert.equal(typeof mat.customProgramCacheKey, 'function');
+  assert.match(mat.customProgramCacheKey(), /^abi1\|/);
+  assert.equal(mat.userData.spacefaceMaterialAbi, 'opaque_hull');
+  const frame = getActivityFrame({
+    tick: 1,
+    simTime: 1,
+    playerId: 1,
+    mode: 'flight',
+    camera: { zoom: 144 },
+    settings: { video: { fov: 50 } },
+    entities: new Map([[1, { id: 1, type: 'ship', alive: true, isPlayer: true, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, radius: 8, data: {} }]]),
+    entityList: [{ id: 1, type: 'ship', alive: true, isPlayer: true, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, radius: 8, data: {} }],
+    player: {},
+    combat: {},
+  });
+  assert.ok(frame.exactIds.includes(1));
 });
 
 test('save journal never serializes inside present; audio follows glass/runway', () => {

@@ -11,6 +11,7 @@ import {
   entityNeedsAiThink,
   entityNeedsPhysics,
 } from '../src/world/activityRuntime.js';
+import { getActivityFrame } from '../src/core/worldActivityManager.js';
 
 function makeState(entities, extras = {}) {
   const list = entities.slice();
@@ -303,4 +304,26 @@ test('production physics, AI, and traffic call the activity runtime', async () =
   assert.match(sg02, /return;/);
   const mining = await readFile(new URL('../src/systems/mining.js', import.meta.url), 'utf8');
   assert.match(mining, /miningTargetId/);
+});
+
+test('S1 near actors think on a reduced cadence, not every tick', () => {
+  const near = ship(30, 400, { data: { itinerary: { routeId: 'lane_b' } }, team: 2 });
+  near.activity = { simTier: SIM_TIER.S1_NEAR, pinnedExact: false };
+  const hits = [];
+  for (let tick = 0; tick < 8; tick++) {
+    hits.push(entityNeedsAiThink(near, { tick, playerId: 1, simTime: tick / 60 }));
+  }
+  assert.equal(hits.some(Boolean), true);
+  assert.equal(hits.every(Boolean), false);
+});
+
+test('activity manager publishes glass and exact sets from the live classifier', () => {
+  const player = ship(1, 0, { isPlayer: true, team: 0 });
+  const far = ship(4, 4000, { data: { itinerary: { routeId: 'lane_a' } }, team: 2 });
+  const frame = getActivityFrame(makeState([player, far]));
+  assert.ok(frame.exactIds.includes(1));
+  assert.equal(frame.exactIds.includes(4), false);
+  assert.ok(frame.renderGlassIds.includes(1));
+  assert.equal(player.alive, true);
+  assert.equal(far.alive, true);
 });
