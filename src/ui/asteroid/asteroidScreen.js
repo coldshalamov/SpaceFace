@@ -543,7 +543,7 @@ export const asteroidScreen = {
     }));
     unsubs.push(ctx.bus.on('drill:spark', (p) => {
       if (!state.drill) return;
-      if (renderer3d) renderer3d.notify('spark', { col: p.col, row: p.row, type: p.type, ore: p.ore });
+      if (renderer3d) renderer3d.notify('spark', { col: p.col, row: p.row, type: p.type, ore: p.ore, bore: p.bore, bite: p.bite });
     }));
     for (const event of [
       'site:courierLaunched', 'site:courierDelivered',

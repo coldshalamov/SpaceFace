@@ -50,10 +50,30 @@ export const SCAN_ACTIVE_S = 0.9;
 export const DIRT_HP = 4;
 export const DIRT_HARDNESS = 0.7;
 
-// Empty-tile move cadence. Base 0.06s (~2× the prior 0.12s) so held travel samples twice as often;
-// cargo load still slows movement proportionally (up to +0.05s when holds are full).
-export const MOVE_COOLDOWN_BASE = 0.06;
-export const MOVE_COOLDOWN_CARGO = 0.05;
+// Surgical drive cadence (PQ-130.02 — design law §4 + §11.7, playfield §5 item 9).
+// The rig is a heavy machine you place, not a cursor you nudge, and the drill clock owns the whole
+// cadence — browser key auto-repeat is never the movement clock:
+//   • a press seats exactly ONE cell and stamps MOVE_HOLD_DELAY_S, so a hold shorter than the
+//     delay can never produce a second cell (law §11.7);
+//   • a hold that outlasts the delay cruises, still one cell per beat, at MOVE_CRUISE_INTERVAL_S —
+//     inside the authored 0.22–0.28 s/cell band a person can steer down a tunnel;
+//   • a press against rock lands a bore bite instead (BORE_BITE_S), never a silent no-op.
+// The 0.06 s rocket this replaces is illegal by name in ASTEROID_WORKS_PLAYFIELD.md §3, and so is
+// a merely slower rocket: the tap/hold split below is the law, not the number.
+export const MOVE_HOLD_DELAY_S = 0.18;      // a hold shorter than this commits one cell, never two
+export const MOVE_CRUISE_INTERVAL_S = 0.24; // seconds per cell once the chain is cruising
+export const MOVE_COOLDOWN_BASE = MOVE_CRUISE_INTERVAL_S;
+export const MOVE_COOLDOWN_CARGO = 0.03;    // full holds → 0.27 s/cell, still inside the band
+
+// A tap against rock is a bite you can see: BORE_BITE_S of bore work delivered in one lump instead
+// of a 1/60 s nibble. It is LOOKAHEAD, not a bonus — the bite pre-pays the next BORE_BITE_S of
+// grind (d.boreDebt), so holding still cuts exactly one second of rock per second and a mashed key
+// is strictly slower than an honest hold rather than faster. Without that, the bite would be free
+// work stacked on top of continuous drilling and tapping would become the optimal way to mine.
+// The bit then stays visibly seated in the bitten cell for BORE_BITE_HOLD_S, because presentation
+// reads the crack stage off avatar.isDrilling / avatar.drillTarget and by then the key is already up.
+export const BORE_BITE_S = 0.18;
+export const BORE_BITE_HOLD_S = 0.45;
 
 // Deep-core rocks remember being drilled. Each asteroid tracks:
 //   • drillDepletion / drillYieldMax — how much ore still *pays*
@@ -187,7 +207,7 @@ export function computeDeepCoreBudget({
   return { budget, max, remaining, richness, depletion };
 }
 
-/** Cargo-weighted move interval (seconds). loadFactor is usedVolume/capVolume in [0,1]. */
+/** Cargo-weighted cruise interval (seconds). loadFactor is usedVolume/capVolume in [0,1]. */
 export function moveCooldownForLoad(loadFactor) {
   const lf = Math.max(0, Math.min(1, Number(loadFactor) || 0));
   return MOVE_COOLDOWN_BASE + Math.max(0, Math.min(MOVE_COOLDOWN_CARGO, lf * MOVE_COOLDOWN_CARGO));
@@ -255,6 +275,7 @@ function commitAvatarMove(d, nc, nr, cooldownVal) {
   d.avatar.moveDuration = cooldownVal;
   d.avatar.moveElapsed = 0;
   d.moveCooldown = cooldownVal;
+  d.boreHold = 0; // the bit left that cell; stop lingering on the block behind us
   updateCableTrail(d, nc, nr);
 }
 
@@ -703,9 +724,15 @@ export const drill = {
 
   // Unified tick input processor (WASD/Arrow control).
   // Processes motion, direction checks, and drilling action.
-  tickInput(held, dt) {
+  //
+  // opts.impulse marks the single fixed step that acknowledges a fresh key press — the tap itself.
+  // On an empty face it seats one cell and stamps the short MOVE_HOLD_DELAY_S beat; on rock it
+  // lands one BORE_BITE_S bite. Every other step is ordinary cruise / bore work. Callers with no
+  // press-vs-hold distinction (the legacy drillVertical wrapper) simply never pass it.
+  tickInput(held, dt, opts) {
     const d = this.state.drill;
     if (!d || !d.active) return;
+    const impulse = !!(opts && opts.impulse);
 
     if (!Number.isFinite(d.moveCooldown)) d.moveCooldown = 0;
     if (!Number.isFinite(d.avatar.moveElapsed)) d.avatar.moveElapsed = 0;
@@ -719,6 +746,9 @@ export const drill = {
     if (!Number.isFinite(d.tilesCleared)) d.tilesCleared = 0;
     if (!Number.isFinite(d.maxDepth)) d.maxDepth = d.avatar.row || 0;
     if (!Number.isFinite(d.sessionElapsed)) d.sessionElapsed = 0;
+    if (!Number.isFinite(d.boreHold)) d.boreHold = 0;
+    if (!Number.isFinite(d.boreDebt)) d.boreDebt = 0;
+    if (!Number.isFinite(d.boreBites)) d.boreBites = 0;
     d.sessionElapsed += dt;
 
     d.scan.cooldown = Math.max(0, (Number(d.scan.cooldown) || 0) - dt);
@@ -727,6 +757,11 @@ export const drill = {
     if (d.moveCooldown > 0) {
       d.moveCooldown -= dt;
     }
+
+    // Bore work a bite already paid for. It runs down on the clock like everything else here, so a
+    // player who bites and walks away is never handed a dead drill when they come back.
+    const boreDebtBefore = Math.max(0, Number(d.boreDebt) || 0);
+    d.boreDebt = Math.max(0, boreDebtBefore - dt);
 
     // Advance visual move window so presentation can lerp for the full step duration.
     if (d.avatar.moveDuration > 0 && d.avatar.moveElapsed < d.avatar.moveDuration) {
@@ -741,8 +776,17 @@ export const drill = {
     else if (held.up) { dy = -1; d.avatar.faceDir = 'up'; }
 
     if (dx === 0 && dy === 0) {
-      d.avatar.isDrilling = false;
-      d.avatar.drillTarget = null;
+      // A bite outlives the key. The crack stage is drawn off avatar.isDrilling / drillTarget, so
+      // retiring them the instant a tap ends would make a short bite literally invisible. Hold the
+      // bit in the bitten cell for the rest of BORE_BITE_HOLD_S, then let go.
+      d.boreHold = Math.max(0, d.boreHold - dt);
+      const lingerAt = d.boreHold > 0 ? d.avatar.drillTarget : null;
+      const lingerTile = lingerAt && d.field[lingerAt.col] ? d.field[lingerAt.col][lingerAt.row] : null;
+      if (!lingerTile || lingerTile.type === 'empty') {
+        d.boreHold = 0;
+        d.avatar.isDrilling = false;
+        d.avatar.drillTarget = null;
+      }
       d.avatar.drillBlocked = false;
       recoverRig(d, dt);
       return;
@@ -752,6 +796,7 @@ export const drill = {
     const nr = d.avatar.row + dy;
 
     if (nc < 0 || nc >= COLS || nr < 0 || nr >= ROWS) {
+      d.boreHold = 0;
       d.avatar.isDrilling = false;
       d.avatar.drillTarget = null;
       recoverRig(d, dt);
@@ -761,14 +806,19 @@ export const drill = {
     // --- 2. Calculate cargo-load movement speed (inertia) ---
     const cargo = this.state.player.cargo;
     const loadFactor = cargo && cargo.capVolume > 0 ? (cargo.usedVolume / cargo.capVolume) : 0;
-    // Base move cooldown is 0.06s (~2× prior 0.12s). Moves up to 0.11s when completely full.
-    const cooldownVal = moveCooldownForLoad(loadFactor);
+    // Cruise beats are cargo-weighted (0.24s empty → 0.27s with full holds). The tap that opens a
+    // press instead stamps the flat hold delay, so the EARLIEST a second cell can ever land is
+    // MOVE_HOLD_DELAY_S after the first — that is what makes law §11.7 a real boundary instead of
+    // an accident of whatever the cruise interval happens to be.
+    const cruiseVal = moveCooldownForLoad(loadFactor);
+    const cooldownVal = impulse ? MOVE_HOLD_DELAY_S : cruiseVal;
 
     const target = d.field[nc][nr];
     // Installed site machines occupy hollow cells (asteroidSites.js stamps tile.structure on
     // drill:start). They block the rover and the bore alike — removal goes through the build
     // console, never the drill head.
     if (target.type === 'empty' && target.structure) {
+      d.boreHold = 0;
       d.avatar.isDrilling = false;
       d.avatar.drillTarget = { col: nc, row: nr };
       d.avatar.drillBlocked = true;
@@ -784,6 +834,7 @@ export const drill = {
       return;
     }
     if (target.type === 'empty') {
+      d.boreHold = 0;
       d.avatar.isDrilling = false;
       d.avatar.drillTarget = null;
       d.avatar.drillBlocked = false;
@@ -794,6 +845,7 @@ export const drill = {
     } else {
       // Solid tile! Cannot drill UP or if overheated
       if (dy === -1) {
+        d.boreHold = 0;
         d.avatar.isDrilling = false;
         d.avatar.drillTarget = null;
         recoverRig(d, dt);
@@ -801,6 +853,7 @@ export const drill = {
       }
 
       if (d.overheated || d.energyDepleted) {
+        d.boreHold = 0;
         d.avatar.isDrilling = false;
         d.avatar.drillTarget = null;
         const wasOverheated = d.overheated;
@@ -818,6 +871,7 @@ export const drill = {
       const tier = this.getDrillTier();
       const req = target.tierReq || 1;
       if (tier < req) {
+        d.boreHold = 0;
         d.avatar.isDrilling = false;
         d.avatar.drillTarget = { col: nc, row: nr };
         d.avatar.drillBlocked = true;
@@ -837,14 +891,35 @@ export const drill = {
       }
 
       // Active drilling
+      const wasBitingThisCell = !!d.avatar.drillTarget
+        && d.avatar.drillTarget.col === nc && d.avatar.drillTarget.row === nr;
       d.avatar.isDrilling = true;
       d.avatar.drillTarget = { col: nc, row: nr };
       d.avatar.drillBlocked = false;
+      d.boreHold = BORE_BITE_HOLD_S;
+      // Lookahead belongs to the cell that was bitten; aim somewhere else and it is forfeit.
+      if (!wasBitingThisCell) d.boreDebt = 0;
+      const paidAhead = wasBitingThisCell ? boreDebtBefore : 0;
+
+      // A fresh press against rock is a BITE: one lump of bore work delivered at once, so a tap is
+      // a crack you can see instead of a 1/60 s nibble. It costs a full cruise beat and pre-pays
+      // the grind it just fast-forwarded, so holding still cuts one second of rock per second and
+      // mashing comes out behind it — measured 14.6 vs 18 HP/s on baseline rock. A tap is precision,
+      // never a shortcut. (test/asteroid-drive-cadence.test.mjs §6 measures both and compares them.)
+      let biteDt = 0;
+      if (impulse && d.moveCooldown <= 0) {
+        biteDt = BORE_BITE_S;
+        d.moveCooldown = cruiseVal;
+        d.boreDebt = Math.max(0, BORE_BITE_S - dt);
+        d.boreBites++;
+      }
 
       const telemetry = extractionTelemetry(target, this.getDrillDPS());
       const energyWindow = telemetry.energyPerS > 0 ? d.drillEnergy / telemetry.energyPerS : dt;
       const heatWindow = telemetry.heatPerS > 0 ? (100 - d.drillTemp) / telemetry.heatPerS : dt;
-      const workDt = Math.max(0, Math.min(dt, energyWindow, heatWindow));
+      // Held grind is suppressed for exactly as long as the last bite already covered.
+      const liveDt = biteDt > 0 ? 0 : Math.max(0, dt - paidAhead);
+      const workDt = Math.max(0, Math.min(liveDt + biteDt, energyWindow, heatWindow));
       target.hp -= telemetry.effectiveDps * workDt;
       d.drillEnergy = Math.max(0, d.drillEnergy - telemetry.energyPerS * workDt);
       d.drillTemp = Math.min(100, d.drillTemp + telemetry.heatPerS * workDt);
@@ -858,6 +933,8 @@ export const drill = {
         type: target.type,
         ore: target.ore,
         hpFrac: target.maxHp > 0 ? Math.max(0, target.hp / target.maxHp) : 0,
+        bore: target.maxHp > 0 ? Math.max(0, Math.min(1, 1 - target.hp / target.maxHp)) : 1,
+        bite: biteDt > 0,
         hardness: telemetry.hardness,
         energy: d.drillEnergy,
       });
@@ -1040,8 +1117,12 @@ export const DRILL_CONST = {
   COLS,
   ROWS,
   TILE,
+  MOVE_HOLD_DELAY_S,
+  MOVE_CRUISE_INTERVAL_S,
   MOVE_COOLDOWN_BASE,
   MOVE_COOLDOWN_CARGO,
+  BORE_BITE_S,
+  BORE_BITE_HOLD_S,
   SCAN_RADIUS,
   SCAN_COOLDOWN_S,
   SCAN_ACTIVE_S,

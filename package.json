@@ -65,6 +65,7 @@
     "check:wing-morale": "node scripts/check-wing-morale.mjs",
     "check:asteroid-motion": "node scripts/check-asteroid-motion.mjs",
     "check:asteroid-theater": "node scripts/check-asteroid-theater.mjs",
+    "check:asteroid-drive-cadence": "node test/asteroid-drive-cadence.test.mjs",
     "check:field-depletion": "node scripts/check-field-depletion.mjs",
     "check:drill-smooth": "node scripts/check-drill-smooth.mjs",
     "check:fragile-cargo": "node scripts/check-fragile-cargo.mjs",

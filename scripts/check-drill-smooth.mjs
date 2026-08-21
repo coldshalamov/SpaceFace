@@ -1,14 +1,32 @@
 #!/usr/bin/env node
-// check-drill-smooth.mjs — gates the 2× empty-tile move cadence + time-interpolated draw path
-// and preserves yield / gas gameplay outcomes on the real drill system APIs.
+// check-drill-smooth.mjs — gates the SURGICAL DRIVE cadence (PQ-130.02), the time-interpolated
+// draw path, and the yield / gas gameplay outcomes, all on the real drill system APIs.
+//
+// This file used to assert a 0.06 s empty-tile interval — a rover that crossed ~30 cells in two
+// seconds of held key. ASTEROID_WORKS_PLAYFIELD.md §3 names that cadence illegal, and names a
+// merely slower version of it illegal too ("a slower rocket is still a rocket"), so what is gated
+// here is the tap/hold LAW rather than a number:
+//
+//   * one tap seats exactly one cell and stops (design law §11.7);
+//   * a held key shorter than MOVE_HOLD_DELAY_S can never produce a second cell;
+//   * a real hold cruises one cell per beat at MOVE_CRUISE_INTERVAL_S, inside the authored
+//     0.22–0.28 s/cell band a person can steer down a tunnel;
+//   * a tap into rock is a bore bite you can see, not a 1/60 s nibble and not a launch;
+//   * browser key auto-repeat is not the movement clock — the drill clock is.
+//
+// The focused deterministic proof of the same law lives in test/asteroid-drive-cadence.test.mjs.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createGameState } from '../src/core/gameState.js';
 import {
   drill,
   DRILL_CONST,
+  MOVE_HOLD_DELAY_S,
+  MOVE_CRUISE_INTERVAL_S,
   MOVE_COOLDOWN_BASE,
   MOVE_COOLDOWN_CARGO,
+  BORE_BITE_S,
+  DEEP_CORE_YIELD_MULT,
   moveCooldownForLoad,
   avatarDrawPos,
   avatarMoveProgress,
@@ -91,14 +109,29 @@ function carveTunnel(state, col, rows) {
   state.drill.moveCooldown = 0;
 }
 
-// --- 1. Constants: ~2× prior 0.12 base ---
-assert.equal(MOVE_COOLDOWN_BASE, 0.06, 'base empty-tile move interval must be 0.06s (was 0.12)');
-assert.equal(MOVE_COOLDOWN_CARGO, 0.05, 'cargo extra must be 0.05s (was 0.10)');
-assert.ok(Math.abs(moveCooldownForLoad(0) - 0.06) < 1e-9, 'empty cargo cooldown = base');
-assert.ok(Math.abs(moveCooldownForLoad(1) - 0.11) < 1e-9, 'full cargo cooldown = base+cargo');
+// --- 1. Constants: the surgical drive cadence, not a number ---
+const STEP_S = 1 / 60;                  // the drill clock's fixed step
+const CRUISE_BAND = [0.22, 0.28];       // design law §4 / SCREENS_E §6 "Drive feel"
+const DRILL_HITCH_CAP_S = 0.1;          // DRILL_INPUT_MAX_FRAME_S: one render frame of catch-up
+assert.ok(MOVE_HOLD_DELAY_S > 0, 'a zero hold delay makes every tap chainable');
+assert.ok(MOVE_HOLD_DELAY_S >= 0.15 && MOVE_HOLD_DELAY_S <= 0.22,
+  `hold delay must be the authored ~180 ms, got ${MOVE_HOLD_DELAY_S}s`);
+assert.ok(MOVE_CRUISE_INTERVAL_S >= CRUISE_BAND[0] && MOVE_CRUISE_INTERVAL_S <= CRUISE_BAND[1],
+  `cruise beat must sit inside ${CRUISE_BAND[0]}-${CRUISE_BAND[1]}s/cell, got ${MOVE_CRUISE_INTERVAL_S}s`);
+assert.ok(MOVE_HOLD_DELAY_S < MOVE_CRUISE_INTERVAL_S,
+  'the delay is the floor under the first repeat; the cruise beat is slower still');
+assert.equal(MOVE_COOLDOWN_BASE, MOVE_CRUISE_INTERVAL_S, 'the sim beat IS the authored cruise interval');
+assert.ok(MOVE_COOLDOWN_CARGO > 0, 'cargo load still has to cost something');
+assert.equal(moveCooldownForLoad(0), MOVE_CRUISE_INTERVAL_S, 'empty holds cruise at the base beat');
+assert.ok(moveCooldownForLoad(1) <= CRUISE_BAND[1] + 1e-9,
+  `even full holds must stay steerable, got ${moveCooldownForLoad(1)}s/cell`);
+assert.ok(moveCooldownForLoad(1) > moveCooldownForLoad(0), 'a full hopper is slower than an empty one');
+assert.ok(BORE_BITE_S >= 0.1, `a tap into rock must be a visible lump, got ${BORE_BITE_S}s of work`);
 assert.equal(DRILL_CONST.MOVE_COOLDOWN_BASE, MOVE_COOLDOWN_BASE, 'DRILL_CONST exports base');
+assert.equal(DRILL_CONST.MOVE_HOLD_DELAY_S, MOVE_HOLD_DELAY_S, 'DRILL_CONST exports the hold delay');
+assert.equal(DRILL_CONST.MOVE_CRUISE_INTERVAL_S, MOVE_CRUISE_INTERVAL_S, 'DRILL_CONST exports the beat');
 
-// --- 2. Real tickInput path: ~2× tiles vs pre-change baseline in fixed time ---
+// --- 2. Real tickInput path: a held key WALKS the tunnel; it does not launch ---
 {
   const { state } = setup();
   assert.ok(drill.begin(424242), 'begin session');
@@ -129,18 +162,35 @@ assert.equal(DRILL_CONST.MOVE_COOLDOWN_BASE, MOVE_COOLDOWN_BASE, 'DRILL_CONST ex
     ? intervals.reduce((a, b) => a + b, 0) / intervals.length
     : null;
 
-  // Pre-change baseline at 0.12s: ~15 tiles / 2s (see implementer baseline log).
-  // Post-change at 0.06s: expect ~30 tiles (first move free at t=dt).
-  const BASELINE_TILES_2S = 15;
-  assert.ok(advanced >= BASELINE_TILES_2S * 1.7, `expected ~2× tiles in ${holdSec}s, got ${advanced} (baseline ${BASELINE_TILES_2S})`);
-  assert.ok(moves >= BASELINE_TILES_2S * 1.7, `expected ~2× move events, got ${moves}`);
-  assert.ok(meanInterval != null && meanInterval < 0.09, `mean step interval should be ~0.06–0.08s, got ${meanInterval}`);
-  assert.ok(meanInterval > 0.05, `mean step interval should not be pathologically low, got ${meanInterval}`);
+  // The banned cadence (MOVE_COOLDOWN_BASE 0.06) crossed ~30 cells in these two seconds. The
+  // authored beat crosses ~8. This is the assertion that fails if the rocket ever comes back,
+  // whatever the constants happen to be named.
+  // The absolute ban is asserted FIRST and is deliberately independent of the authored
+  // constants, so it still fires when someone brings the rocket back by editing them.
+  const ROCKET_TILES_2S = 30;
+  assert.ok(advanced < ROCKET_TILES_2S * 0.5,
+    `the banned 0.06s cadence crossed ~${ROCKET_TILES_2S} cells in ${holdSec}s of held key; got ${advanced}`);
+  assert.ok(advanced <= holdSec / CRUISE_BAND[0] + 1,
+    `held travel must respect the ${CRUISE_BAND[0]}s/cell floor: ${advanced} cells in ${holdSec}s`);
+  const expectedTiles = Math.floor(holdSec / MOVE_CRUISE_INTERVAL_S);
+  assert.ok(advanced <= expectedTiles + 2,
+    `a ${holdSec}s hold is a walk, not a launch: ${advanced} cells (authored ~${expectedTiles})`);
+  assert.ok(advanced >= expectedTiles - 2,
+    `a ${holdSec}s hold must actually travel: ${advanced} cells (authored ~${expectedTiles})`);
+  assert.equal(moves, advanced, 'every move event is one cell of displacement');
+  assert.ok(meanInterval != null
+    && meanInterval >= CRUISE_BAND[0] - 1e-9 && meanInterval <= CRUISE_BAND[1] + 1e-9,
+    `mean step interval must sit inside ${CRUISE_BAND[0]}-${CRUISE_BAND[1]}s, got ${meanInterval}`);
+  assert.ok(Math.abs(meanInterval - MOVE_CRUISE_INTERVAL_S) <= STEP_S + 1e-9,
+    `held travel must run at the authored beat, got ${meanInterval}s/cell`);
+  for (const gap of intervals) {
+    assert.ok(gap >= CRUISE_BAND[0] - 1e-9 && gap <= CRUISE_BAND[1] + 1e-9,
+      `every beat must be steerable, got ${gap}s`);
+  }
 
   // Cooldown stamped on session after a move
-  assert.ok(Math.abs(state.drill.moveCooldown) <= MOVE_COOLDOWN_BASE + 1e-6
-    || state.drill.moveCooldown <= MOVE_COOLDOWN_BASE,
-    'moveCooldown should track the halved base');
+  assert.ok(state.drill.moveCooldown <= MOVE_COOLDOWN_BASE + 1e-6,
+    'moveCooldown should track the authored cruise beat');
 
   console.log(JSON.stringify({
     ok: true,
@@ -150,9 +200,10 @@ assert.equal(DRILL_CONST.MOVE_COOLDOWN_BASE, MOVE_COOLDOWN_BASE, 'DRILL_CONST ex
     moves,
     advanced,
     meanInterval,
-    baselineTiles2s: BASELINE_TILES_2S,
-    ratioVsBaseline: advanced / BASELINE_TILES_2S,
-    MOVE_COOLDOWN_BASE,
+    authoredTiles: expectedTiles,
+    rocketTiles2s: ROCKET_TILES_2S,
+    MOVE_CRUISE_INTERVAL_S,
+    MOVE_HOLD_DELAY_S,
   }));
 }
 
@@ -165,16 +216,16 @@ assert.equal(DRILL_CONST.MOVE_COOLDOWN_BASE, MOVE_COOLDOWN_BASE, 'DRILL_CONST ex
   a.fromRow = 5;
   a.col = 11;
   a.row = 5;
-  a.moveDuration = 0.06;
+  a.moveDuration = MOVE_CRUISE_INTERVAL_S;
   a.moveElapsed = 0;
   let p0 = avatarDrawPos(a, 40);
   assert.equal(p0.t, 0, 'progress 0 at move start');
   assert.equal(p0.x, 10 * 40, 'draw x starts at fromCol');
-  a.moveElapsed = 0.03;
+  a.moveElapsed = MOVE_CRUISE_INTERVAL_S / 2;
   let pMid = avatarDrawPos(a, 40);
   assert.ok(Math.abs(pMid.t - 0.5) < 1e-9, 'progress 0.5 mid-move');
   assert.ok(Math.abs(pMid.x - 10.5 * 40) < 1e-6, 'draw x mid between tiles');
-  a.moveElapsed = 0.06;
+  a.moveElapsed = MOVE_CRUISE_INTERVAL_S;
   let p1 = avatarDrawPos(a, 40);
   assert.equal(p1.t, 1, 'progress 1 at move end');
   assert.equal(p1.x, 11 * 40, 'draw x lands on toCol');
@@ -192,15 +243,19 @@ assert.equal(DRILL_CONST.MOVE_COOLDOWN_BASE, MOVE_COOLDOWN_BASE, 'DRILL_CONST ex
   assert.ok(startDraw.t < 0.05, 'interp starts at the beginning of the move window');
   assert.ok(Math.abs(startDraw.y - fromRow * DRILL_CONST.TILE) < 1e-6, 'draw begins at previous tile');
 
-  // Mid-window: advance elapsed without a new tile step (cooldown still running)
-  drill.tickInput({ left: false, right: false, up: false, down: true }, 1 / 60);
+  // Mid-window: advance elapsed without a new tile step (cooldown still running). Half the beat
+  // is always safely short of the beat itself, whatever the authored interval is.
+  const midSteps = Math.max(2, Math.round((MOVE_CRUISE_INTERVAL_S / 2) / STEP_S));
+  for (let i = 0; i < midSteps; i++) {
+    drill.tickInput({ left: false, right: false, up: false, down: true }, 1 / 60);
+  }
   const mid = avatarDrawPos(state.drill.avatar, DRILL_CONST.TILE);
   assert.ok(mid.t > 0.1 && mid.t < 0.95, `mid-move progress expected, got ${mid.t}`);
   assert.ok(mid.y > fromRow * DRILL_CONST.TILE, 'draw y has left the previous tile');
   assert.ok(mid.y < (fromRow + 1) * DRILL_CONST.TILE, 'draw y has not snapped to next tile yet');
 
   // Finish the move window
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < Math.ceil(MOVE_CRUISE_INTERVAL_S / STEP_S) + 4; i++) {
     drill.tickInput({ left: false, right: false, up: false, down: false }, 1 / 60);
   }
   const end = avatarDrawPos(state.drill.avatar, DRILL_CONST.TILE);
@@ -433,6 +488,8 @@ assert.equal(DRILL_CONST.MOVE_COOLDOWN_BASE, MOVE_COOLDOWN_BASE, 'DRILL_CONST ex
   assert.match(uiSrc, /data-drill-scan/, 'UI must expose the survey as a real button');
   assert.match(uiSrc, /resolveDrillControlMap/, 'UI must resolve movement and survey from live bindings');
   assert.match(uiSrc, /addEventListener\('keyup', onKeyUp\)/, 'UI must stop held drilling on physical key release');
+  assert.match(uiSrc, /PRESS_IMPULSE/,
+    'the controller must hand the press to the drill clock instead of inventing a second cadence');
   assert.match(uiSrc, /data-energy/, 'UI must expose actual rig energy');
   assert.match(uiSrc, /Restart bore/, 'UI must expose deterministic retry');
   assert.match(uiSrc, /Abort & return/, 'UI must expose an explicit abort action');
@@ -455,21 +512,45 @@ assert.equal(DRILL_CONST.MOVE_COOLDOWN_BASE, MOVE_COOLDOWN_BASE, 'DRILL_CONST ex
   console.log(JSON.stringify({ ok: true, section: 'struct-ui' }));
 }
 
-// --- 10b. Screen input contract: hold repeats smoothly; release stops; hitches cannot burst ---
+// --- 10b. Screen input contract (design law §11.7): tap seats one cell, a sub-delay hold never
+//          chains, a real hold cruises, release stops, a tap into rock is a visible bite, and one
+//          hitched frame still cannot burst across cells ---
 {
   const { state } = setup();
   drill.begin(551122);
   const col = state.drill.avatar.col;
-  carveTunnel(state, col, 8);
+  carveTunnel(state, col, 24);
   const controls = createDrillInputController({
     drillSys: drill,
     getState: () => state.drill,
   });
 
+  // One tap => exactly one cell of displacement, however long the world runs afterwards.
+  const tapFrom = state.drill.avatar.row;
   assert.equal(controls.press('down'), true, 'a direction press is accepted immediately');
-  for (let i = 0; i < 30; i++) controls.tick(1 / 60);
-  assert.ok(state.drill.avatar.row >= 5,
-    `holding one direction must continue through a cleared tunnel (row ${state.drill.avatar.row})`);
+  controls.release('down');
+  for (let i = 0; i < 120; i++) controls.tick(1 / 60);
+  assert.equal(state.drill.avatar.row - tapFrom, 1,
+    `a tap must seat exactly one cell, moved ${state.drill.avatar.row - tapFrom}`);
+
+  // A held key shorter than the delay is still a tap: no second cell.
+  const shortFrom = state.drill.avatar.row;
+  const shortSteps = Math.max(1, Math.floor(MOVE_HOLD_DELAY_S / STEP_S) - 1);
+  controls.press('down');
+  for (let i = 0; i < shortSteps; i++) controls.tick(1 / 60);
+  controls.release('down');
+  for (let i = 0; i < 120; i++) controls.tick(1 / 60);
+  assert.equal(state.drill.avatar.row - shortFrom, 1,
+    `a ${(shortSteps * STEP_S).toFixed(4)}s hold is under the ${MOVE_HOLD_DELAY_S}s delay and must not chain`);
+
+  // A real hold cruises the tunnel at the authored beat.
+  const cruiseFrom = state.drill.avatar.row;
+  controls.press('down');
+  for (let i = 0; i < 60; i++) controls.tick(1 / 60);
+  const crossed = state.drill.avatar.row - cruiseFrom;
+  const authoredPerSecond = Math.round(1 / MOVE_CRUISE_INTERVAL_S);
+  assert.ok(Math.abs(crossed - authoredPerSecond) <= 1,
+    `one second of holding is ~${authoredPerSecond} cells at the authored beat, got ${crossed}`);
 
   controls.release('down');
   const releasedRow = state.drill.avatar.row;
@@ -489,12 +570,38 @@ assert.equal(DRILL_CONST.MOVE_COOLDOWN_BASE, MOVE_COOLDOWN_BASE, 'DRILL_CONST ex
     type: 'rock', hp: 20, maxHp: 20, hardness: 1, ore: null, hazard: false, tierReq: 1, risk: 'low',
   };
   const hpBefore = state.drill.field[col][rockRow].hp;
+
+  // A bare tap into rock is a BITE you can see, and it never moves the rover.
+  state.drill.moveCooldown = 0;
+  const rowBeforeBite = state.drill.avatar.row;
   controls.press('down');
+  const hpAfterBite = state.drill.field[col][rockRow].hp;
+  const nibble = drill.getDrillDPS() * STEP_S;
+  assert.ok(hpBefore - hpAfterBite >= BORE_BITE_S * drill.getDrillDPS() * 0.95,
+    `a tap into rock must deliver its authored lump (cut ${hpBefore - hpAfterBite} HP)`);
+  assert.ok(hpBefore - hpAfterBite >= nibble * 5,
+    `a bite must be visible, not a 1/60s nibble (${hpBefore - hpAfterBite} vs ${nibble})`);
+  assert.equal(state.drill.avatar.row, rowBeforeBite, 'a bite is not a launch');
+  assert.equal(state.drill.avatar.isDrilling, true, 'the bit is seated in the bitten cell');
+
+  // Holding through one hitched frame keeps catch-up bounded: the bite plus 100 ms of grind.
   controls.tick(1.0);
   const hpAfterHitch = state.drill.field[col][rockRow].hp;
-  assert.ok(hpBefore - hpAfterHitch <= drill.getDrillDPS() * (7 / 60) + 1e-9,
-    `one slow frame must cap catch-up at 100 ms plus immediate acknowledgment (cut ${hpBefore - hpAfterHitch} HP)`);
+  assert.ok(hpBefore - hpAfterHitch <= drill.getDrillDPS() * (7 / 60 + BORE_BITE_S) + 1e-6,
+    `one slow frame must cap catch-up at 100 ms plus the press bite (cut ${hpBefore - hpAfterHitch} HP)`);
   assert.equal(state.drill.avatar.row, rockRow - 1, 'a hitch cannot punch through the selected tile');
+
+  // The bite pre-pays the grind it fast-forwarded, so the row above can be satisfied by the
+  // lookahead alone. Spend the lookahead first, then hitch again: catch-up is still capped at
+  // 100 ms of real grind, and it is real — the lookahead is a preview, not a stall.
+  for (let i = 0; i < Math.ceil(BORE_BITE_S / STEP_S) + 2; i++) controls.tick(1 / 60);
+  const hpBeforeCatchup = state.drill.field[col][rockRow].hp;
+  controls.tick(1.0);
+  const caughtUp = hpBeforeCatchup - state.drill.field[col][rockRow].hp;
+  assert.ok(caughtUp > drill.getDrillDPS() * 0.05,
+    `a hitched frame past the lookahead must still grind (cut ${caughtUp} HP)`);
+  assert.ok(caughtUp <= drill.getDrillDPS() * DRILL_HITCH_CAP_S + 1e-6,
+    `and must stay capped at ${DRILL_HITCH_CAP_S * 1000} ms of work (cut ${caughtUp} HP)`);
 
   for (let i = 0; i < 180 && state.drill.avatar.row < rockRow; i++) controls.tick(1 / 60);
   assert.equal(state.drill.avatar.row, rockRow, 'held input continuously drills the selected solid tile');
@@ -507,7 +614,9 @@ assert.equal(DRILL_CONST.MOVE_COOLDOWN_BASE, MOVE_COOLDOWN_BASE, 'DRILL_CONST ex
   controls.press('left');
   assert.equal(controls.hasActiveIntent(), false, 'an asteroid-boundary press retires immediately');
   controls.release('left');
-  console.log(JSON.stringify({ ok: true, section: 'held-input', hpBefore, hpAfterHitch }));
+  console.log(JSON.stringify({
+    ok: true, section: 'held-input', crossed, authoredPerSecond, hpBefore, hpAfterBite, hpAfterHitch,
+  }));
 }
 
 // --- 10c. Low-frame input work keeps real-time cadence without crossing the selected cell ---
@@ -531,7 +640,15 @@ assert.equal(DRILL_CONST.MOVE_COOLDOWN_BASE, MOVE_COOLDOWN_BASE, 'DRILL_CONST ex
 // --- 11. Structural: system exports presentation fields ---
 {
   const sysSrc = readFileSync(new URL('../src/systems/drill.js', import.meta.url), 'utf8');
-  assert.match(sysSrc, /MOVE_COOLDOWN_BASE\s*=\s*0\.06/, 'system base cooldown 0.06');
+  assert.doesNotMatch(sysSrc, /MOVE_COOLDOWN_BASE\s*=\s*0\.0\d/,
+    'the banned sub-0.1s rocket cadence must never come back (ASTEROID_WORKS_PLAYFIELD.md §3)');
+  assert.match(sysSrc, /export const MOVE_HOLD_DELAY_S/, 'system owns the named hold delay');
+  assert.match(sysSrc, /export const MOVE_CRUISE_INTERVAL_S/, 'system owns the named cruise beat');
+  assert.match(sysSrc, /export const BORE_BITE_S/, 'system owns the named bore bite');
+  assert.match(sysSrc, /opts\s*&&\s*opts\.impulse/,
+    'the press impulse is a sim input, so the drill clock — not the UI — paces tap vs hold');
+  assert.match(sysSrc, /impulse \? MOVE_HOLD_DELAY_S/,
+    'the seat stamps the hold delay, which is what makes §11.7 a real boundary');
   assert.match(sysSrc, /fromCol/, 'system tracks fromCol for interp');
   assert.match(sysSrc, /moveElapsed/, 'system tracks moveElapsed');
   assert.match(sysSrc, /commitAvatarMove|avatarDrawPos/, 'move commit or draw helper present');
@@ -548,23 +665,27 @@ assert.equal(DRILL_CONST.MOVE_COOLDOWN_BASE, MOVE_COOLDOWN_BASE, 'DRILL_CONST ex
 {
   const { state } = setup();
   const astId = 2000001;
-  state.entities.set(astId, { id: astId, data: { typeId: 'ast_rock', yieldU: 30 } });
+  const surfaceYieldU = 30;
+  // The deep-core pool is the surface rock's yieldU scaled by the authored multiplier — read it
+  // from the sim rather than pinning the product, which is how this row went stale before.
+  const pool = surfaceYieldU * DEEP_CORE_YIELD_MULT;
+  state.entities.set(astId, { id: astId, data: { typeId: 'ast_rock', yieldU: surfaceYieldU } });
 
   drill.begin(astId);
   let d = state.drill;
-  assert.equal(d.rockBudgetMax, 30, 'rock budget max is seeded from the entity yieldU');
-  assert.equal(d.rockBudget, 30, 'a fresh rock pays its full budget');
+  assert.equal(d.rockBudgetMax, pool, 'rock budget max is seeded from the entity yieldU');
+  assert.equal(d.rockBudget, pool, 'a fresh rock pays its full budget');
   const col = d.avatar.col;
   d.field[col][1] = { type: 'vein', hp: 1, maxHp: 1, ore: 'cmdty_silicate', yieldU: 12, hazard: false, tierReq: 1 };
   drill.tickInput({ left: false, right: false, up: false, down: true }, 1.0);
   assert.equal(state.player.cargo.items.cmdty_silicate, 12, 'vein grants ore through the canonical cargo writer');
-  assert.equal(d.rockBudget, 18, 'session budget is deducted by the units extracted');
-  assert.ok(Math.abs(state.entities.get(astId).data.drillDepletion - 12 / 30) < 1e-9,
+  assert.equal(d.rockBudget, pool - 12, 'session budget is deducted by the units extracted');
+  assert.ok(Math.abs(state.entities.get(astId).data.drillDepletion - 12 / pool) < 1e-9,
     'the entity remembers the depletion fraction across sessions');
 
   // Re-enter the SAME rock without waiting: it must NOT fully refresh.
   drill.end(); drill.begin(astId);
-  assert.equal(state.drill.rockBudget, 18, 're-entering a drilled rock does not fully refresh it');
+  assert.equal(state.drill.rockBudget, pool - 12, 're-entering a drilled rock does not fully refresh it');
 
   // Play it out: a fresh vein on an exhausted rock pays nothing.
   state.drill.rockBudget = 0;
@@ -574,12 +695,16 @@ assert.equal(DRILL_CONST.MOVE_COOLDOWN_BASE, MOVE_COOLDOWN_BASE, 'DRILL_CONST ex
   drill.tickInput({ left: false, right: false, up: false, down: true }, 1.0);
   assert.equal(state.player.cargo.items.cmdty_silicate, beforePlayedOut, 'a played-out rock pays nothing');
 
-  // Wait past the recovery window: the rock refills.
-  state.entities.get(astId).data.drillDepletion = 1;
-  state.entities.get(astId).data.lastDrillT = state.simTime || 0;
-  state.simTime = (state.simTime || 0) + 601;
-  drill.end(); drill.begin(astId);
-  assert.equal(state.drill.rockBudget, 30, 'an exhausted rock refills over sim time');
+  // Wait past the recovery window: the rock refills. end() writes the live session's own
+  // depletion receipt onto the entity, so the away-time has to be staged AFTER it — staging it
+  // first only measures end() overwriting the setup.
+  drill.end();
+  const rockData = state.entities.get(astId).data;
+  rockData.drillDepletion = 1;
+  rockData.lastDrillT = Number(state.simTime) || 0;
+  state.simTime = (Number(state.simTime) || 0) + 601;
+  drill.begin(astId);
+  assert.equal(state.drill.rockBudget, pool, 'an exhausted rock refills over sim time');
   console.log(JSON.stringify({ ok: true, section: 'rock-memory' }));
 }
 

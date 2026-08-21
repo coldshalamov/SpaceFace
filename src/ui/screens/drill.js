@@ -74,13 +74,19 @@ export function drillGasShakeOffset(remainingS, elapsedS, reducedMotion = false)
   };
 }
 
+const PRESS_IMPULSE = Object.freeze({ impulse: true });
+
 /**
  * Convert physical held keys into bounded, fixed-step drill commands.
  *
- * Browser key-repeat is intentionally irrelevant: keydown begins a hold and keyup ends it. The
- * controller chains one adjacent-cell intent at a time on the 60 Hz drill clock, while allowing
- * at most one cell boundary per rendered frame. That keeps low frame rates useful without letting
- * a delayed frame race the rover several cells into a hidden hazard.
+ * Browser key auto-repeat is NOT the movement clock — the drill clock is (design law §11.7). This
+ * controller deliberately owns no cadence of its own: keydown is one tap, delivered as a single
+ * impulse step that seats exactly one cell or lands one bore bite, and every beat after that is
+ * paced by drill.js (MOVE_HOLD_DELAY_S on the seat, MOVE_CRUISE_INTERVAL_S on the cruise). What it
+ * does own is bounded fixed-step catch-up — at most one cell boundary per rendered frame, so a
+ * delayed frame can never race the rover several cells into a hidden hazard — and the one fact the
+ * sim cannot know: whether an intent still waiting on the beat clock is the tap the player already
+ * paid for (which must survive keyup) or a cruise step (which release must cancel).
  */
 export function createDrillInputController({ drillSys, getState }) {
   const held = { left: false, right: false, up: false, down: false };
@@ -88,6 +94,9 @@ export function createDrillInputController({ drillSys, getState }) {
   let intent = null;
   let accumulator = 0;
   let blockedUntilRelease = false;
+  // True while this press still owes the player the one cell it promised. Cleared the moment that
+  // cell lands — so it can never be confused with a cruise intent, which release must cancel.
+  let seatOwed = false;
 
   function clearCommand() {
     held.left = held.right = held.up = held.down = false;
@@ -128,15 +137,31 @@ export function createDrillInputController({ drillSys, getState }) {
     return null;
   }
 
-  function step(dt, allowArm = true) {
+  function step(dt, allowArm = true, impulse = false) {
     if (!intent && activeDirection && allowArm && !blockedUntilRelease) armIntent(activeDirection);
     const before = getState()?.avatar;
     const beforeCol = before?.col;
     const beforeRow = before?.row;
-    drillSys.tickInput(held, dt);
+    drillSys.tickInput(held, dt, impulse ? PRESS_IMPULSE : undefined);
     settleIntent();
     const after = getState()?.avatar;
     return !!after && (after.col !== beforeCol || after.row !== beforeRow);
+  }
+
+  /** True when the cell at `at` is a hollow the rover could actually be seated into. */
+  function isEmptyFace(at) {
+    const d = getState();
+    const column = at && d && d.field ? d.field[at.col] : null;
+    const tile = column ? column[at.row] : null;
+    return !!tile && tile.type === 'empty' && !tile.structure;
+  }
+
+  // A seat the player already paid for outlives the key. A tap can land while the previous beat
+  // is still running down, and swallowing it is exactly what reads as an unresponsive rig — so the
+  // tap's own uncommitted intent stays latched through keyup and lands on its own beat. Only that
+  // one owed seat qualifies: releasing always stops a bore, and always stops a cruise.
+  function seatPending() {
+    return !!intent && seatOwed && isEmptyFace(intent);
   }
 
   return {
@@ -147,9 +172,15 @@ export function createDrillInputController({ drillSys, getState }) {
       activeDirection = direction;
       blockedUntilRelease = false;
       accumulator = 0;
+      seatOwed = true;
       armIntent(direction);
-      // Immediate fixed-step acknowledgment: keydown cannot disappear between animation frames.
-      step(DRILL_INPUT_STEP_S);
+      // The press IS the tap: one impulse step seats exactly one cell, or lands one bore bite on
+      // the rock ahead. Nothing further happens until the hold outlasts MOVE_HOLD_DELAY_S, so a
+      // keydown can never disappear between animation frames and can never chain by itself.
+      if (step(DRILL_INPUT_STEP_S, false, true)) seatOwed = false;
+      // The seat is only owed while an empty face is still waiting on the beat clock. A bore, a
+      // refusal, or a cell that already landed settles the debt here.
+      if (!intent || !isEmptyFace(intent)) seatOwed = false;
       return true;
     },
     release(direction) {
@@ -157,7 +188,9 @@ export function createDrillInputController({ drillSys, getState }) {
       activeDirection = null;
       blockedUntilRelease = false;
       accumulator = 0;
-      clearCommand();
+      // Release stops the chain at the current cell. A seat still waiting on the beat clock is not
+      // a chain — it is the tap itself — so it stays latched and completes.
+      if (!seatPending()) clearCommand();
       // Retire drilling state immediately instead of waiting for the next animation frame.
       drillSys.tickInput(held, 0);
       return true;
@@ -167,7 +200,13 @@ export function createDrillInputController({ drillSys, getState }) {
       accumulator += bounded;
       let crossedCell = false;
       while (accumulator >= DRILL_INPUT_STEP_S) {
-        crossedCell = step(DRILL_INPUT_STEP_S, !crossedCell) || crossedCell;
+        // The chain is paced entirely by the drill clock: the seat stamped MOVE_HOLD_DELAY_S, so
+        // re-arming here every step still cannot produce a second cell before the delay is up, and
+        // every cell after that lands on the cruise beat. One cell boundary per rendered frame.
+        if (step(DRILL_INPUT_STEP_S, !crossedCell)) {
+          crossedCell = true;
+          seatOwed = false; // the promised cell landed; anything after it is a cruise
+        }
         accumulator -= DRILL_INPUT_STEP_S;
       }
       return !!intent || (!!activeDirection && !blockedUntilRelease);
@@ -176,10 +215,13 @@ export function createDrillInputController({ drillSys, getState }) {
       accumulator = 0;
       activeDirection = null;
       blockedUntilRelease = false;
+      seatOwed = false;
       clearCommand();
       drillSys.tickInput(held, 0);
     },
     hasActiveIntent() { return !!intent || (!!activeDirection && !blockedUntilRelease); },
+    /** True while an uncommitted intent is the tap's own promised cell (survives keyup). */
+    hasOwedSeat() { return seatPending(); },
     target() { return intent ? { ...intent } : null; },
   };
 }
