@@ -51,6 +51,7 @@ import {
 } from './flightRenderPackage.js';
 
 const flightRenderPackages = createFlightRenderPackageCache();
+const flightRootTemplates = new Map();
 
 export function getFlightRenderPackageCache() {
   return flightRenderPackages;
@@ -4593,11 +4594,7 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
   if (!authoredParts.length) return null;
 
   const palette = paletteFor(entity);
-  const root = new THREE.Group();
-  root.name = `GLTFKit_${entity.data && entity.data.defId || 'ship'}`;
-  root.userData.kind = 'ship';
-  root.userData.assetId = `GLTFKIT_${entity.data && entity.data.defId || 'SHIP'}_${seed.toString(16)}`;
-  root.userData.loadoutFingerprint = computeLoadoutFingerprint({
+  const loadoutFingerprint = computeLoadoutFingerprint({
     hull: entityPlan.hull && entityPlan.hull[0],
     cockpit: entityPlan.cockpit && entityPlan.cockpit[0],
     engines: entityPlan.engine && entityPlan.engine[0],
@@ -4606,6 +4603,29 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
     materialAbiVersion: MATERIAL_ABI_VERSION,
     sourceVersions: entity.data && entity.data.defId,
   });
+  const template = flightRootTemplates.get(loadoutFingerprint);
+  if (template && typeof template.clone === 'function') {
+    const cloned = template.clone(true);
+    cloned.userData.loadoutFingerprint = loadoutFingerprint;
+    return {
+      root: cloned,
+      authoredParts: cloned.userData.authoredPartsCache || [],
+      authoredSlots: cloned.userData.authoredSlotsCache || {},
+      fallbackParts: [],
+      wholeShip: !!cloned.userData.wholeShip,
+      packagePoolAdmissions: [],
+      ownerLocalObjects: [],
+      ownerLocalGeometries: [],
+      ownerLocalMaterials: [],
+      renderPackageInstances: [],
+      fromFlightPackageCache: true,
+    };
+  }
+  const root = new THREE.Group();
+  root.name = `GLTFKit_${entity.data && entity.data.defId || 'ship'}`;
+  root.userData.kind = 'ship';
+  root.userData.assetId = `GLTFKIT_${entity.data && entity.data.defId || 'SHIP'}_${seed.toString(16)}`;
+  root.userData.loadoutFingerprint = loadoutFingerprint;
   if (!flightRenderPackages.has(root.userData.loadoutFingerprint)) {
     flightRenderPackages.publish(root.userData.loadoutFingerprint, {
       lanes: { opaque: 1 },
@@ -4873,10 +4893,18 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
     physicalCanopy: { transmission: 0.6, ior: 1.4, clearcoat: 1.0 },
   };
 
+  const authoredPartList = [...new Set(usedParts)];
+  const authoredSlotMap = uniqueSlotMap(authoredSlots);
+  root.userData.authoredPartsCache = authoredPartList;
+  root.userData.authoredSlotsCache = authoredSlotMap;
+  root.userData.wholeShip = wholeShip;
+  if (loadoutFingerprint && !flightRootTemplates.has(loadoutFingerprint) && typeof root.clone === 'function') {
+    try { flightRootTemplates.set(loadoutFingerprint, root.clone(true)); } catch (_) {}
+  }
   return {
     root,
-    authoredParts: [...new Set(usedParts)],
-    authoredSlots: uniqueSlotMap(authoredSlots),
+    authoredParts: authoredPartList,
+    authoredSlots: authoredSlotMap,
     fallbackParts,
     wholeShip,
     packagePoolAdmissions: [...bindings.packagePoolAdmissions],

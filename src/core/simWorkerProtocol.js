@@ -7,15 +7,18 @@ export const SIM_WORKER_TRANSPORT = Object.freeze({
 });
 
 export function isSimulationWorkerEnabled(_state = null) {
-  return false;
+  return typeof window !== 'undefined'
+    && typeof document !== 'undefined'
+    && typeof Worker === 'function';
 }
 
 export function selectSimWorkerTransport(options = {}) {
-  if (isSimulationWorkerEnabled(options.state)) {
-    if (options.sharedArrayBuffer === true) return SIM_WORKER_TRANSPORT.SHARED_ARRAY_BUFFER;
-    return SIM_WORKER_TRANSPORT.FALLBACK_POST_MESSAGE;
-  }
-  return null;
+  if (!isSimulationWorkerEnabled(options.state) && options.force !== true) return null;
+  if (options.sharedArrayBuffer === true) return SIM_WORKER_TRANSPORT.SHARED_ARRAY_BUFFER;
+  try {
+    if (typeof SharedArrayBuffer === 'function') return SIM_WORKER_TRANSPORT.SHARED_ARRAY_BUFFER;
+  } catch (_) {}
+  return SIM_WORKER_TRANSPORT.FALLBACK_POST_MESSAGE;
 }
 
 export function createCommandRing(capacity = 64) {

@@ -29,6 +29,7 @@ import {
   PRIORITY_DUCK_THRESHOLD,
 } from './cuePriorityBus.js';
 import { TABLE_HEARING_FAR_WU, TABLE_HEARING_PAN_WU } from '../render/tabletopPolicy.js';
+import { entityNeedsExactAudio } from './audioActiveSet.js';
 
 // --- positional model (ARCHITECTURE / spec) ---
 const D_NEAR = 40;     // wu — full volume within this
@@ -347,6 +348,8 @@ export function audioNearbyHostileCount(state, player, range = 1200, scratch = [
   for (const e of candidates) {
     if (!e || !e.alive || e.type !== 'ship' || e.id === player.id) continue;
     if (e.team === myTeam) continue;
+    if (entityNeedsExactAudio(e, { playerId: player.id }) !== true
+      && !(e.data && e.data.ai && e.data.ai.combatant === true)) continue;
     const dx = e.pos.x - px;
     const dz = e.pos.z - pz;
     if (dx * dx + dz * dz <= r2) {
@@ -1698,6 +1701,10 @@ export const audio = {
     opts = opts || {};
 
     const busName = getBusForRecipe(recipe, recipeId);
+    if (opts.entity && busName !== 'ui' && busName !== 'combat'
+      && entityNeedsExactAudio(opts.entity, { playerId: this.state && this.state.playerId }) !== true) {
+      return null;
+    }
     // Strict hierarchy: while speech / objective / critical warning owns the ear,
     // do not stack weapon fire or routine UI noise on top of it.
     if (this._isCriticalSquelchActive() && !this._isPriorityVoice(recipeId, opts)) {

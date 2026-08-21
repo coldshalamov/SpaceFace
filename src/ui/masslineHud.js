@@ -19,6 +19,7 @@
 // nothing but its own DOM. Runs late in UPDATE_ORDER; every update exits immediately when the
 // master flag is off or the DOM is absent (headless-safe by construction).
 import { massline2Flag } from '../data/featureFlags.js';
+import { hudSignatureUnchanged } from './hudSkipUnchanged.js';
 
 // Lead moving intercept targets by half a fixed sim step. The 60 ms CSS tween then bridges the
 // slower real-time cadence when bullet time reduces sim updates to ~21 Hz.
@@ -216,6 +217,8 @@ export const masslineHud = {
     if (typeof w2s !== 'function' || !player || !player.alive) { this._hideAll(); return; }
 
     const ml2 = state.massline2 || {};
+    const signature = `${state.tick}|${ml2.throw && ml2.throw.armed}|${ml2.cloak && ml2.cloak.energy}|${player.pos && player.pos.x}|${player.pos && player.pos.z}`;
+    if (hudSignatureUnchanged(state, 'masslineHud', signature)) return;
     const reducedMotion = !!(state.settings && state.settings.video && state.settings.video.motionReduce)
       || !!(state.settings && state.settings.accessibility
         && state.settings.accessibility.motionPreference === 'reduce');

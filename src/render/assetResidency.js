@@ -170,6 +170,12 @@ export function createAssetResidencyRegistry(options = {}) {
     const state = ownerState(owner);
     if (!state || state.released || entry.owners.has(owner)) return false;
     const ownerMetadata = { ...metadata };
+    if (!ownerMetadata.role) {
+      const tier = ownerMetadata.presentationTier;
+      if (tier === 'R0_GLASS') ownerMetadata.role = 'glass';
+      else if (tier === 'R1_RUNWAY') ownerMetadata.role = 'runway';
+      else if (tier === 'R2_METADATA' || tier === 'R3_UNLOADED') ownerMetadata.role = 'evictable';
+    }
     entry.owners.set(owner, ownerMetadata);
     state.assets.add(entry);
     emit('asset-retained', {

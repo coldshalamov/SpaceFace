@@ -20,6 +20,10 @@ import {
   physicsReachWu,
 } from './activityClassification.js';
 import { shouldOwnerThink } from '../core/activityScheduler.js';
+import {
+  applyAbstractCatchupToEntities,
+  ensureSimWorker,
+} from '../core/simWorkerHost.js';
 import { ballisticDrift } from './worldCatchup.js';
 import {
   captureEntityRecord,
@@ -525,6 +529,29 @@ function classifyWorld(state, runtime) {
     runtime.physicsStaticVersion++;
     runtime._staticHash = staticHash;
     runtime._staticCount = staticCount;
+  }
+
+  const worker = ensureSimWorker(state);
+  if (worker) {
+    const prior = worker.takeResults();
+    if (prior && prior.length) applyAbstractCatchupToEntities(state, prior);
+    const abstracts = [];
+    for (let i = 0; i < runtime.abstractIds.length; i++) {
+      const entity = state.entities && state.entities.get && state.entities.get(runtime.abstractIds[i]);
+      if (!entity || !entity.pos) continue;
+      abstracts.push({
+        id: entity.id,
+        pos: { x: entity.pos.x, z: entity.pos.z },
+        vel: entity.vel ? { x: entity.vel.x || 0, z: entity.vel.z || 0 } : { x: 0, z: 0 },
+        rot: entity.rot || 0,
+        angVel: entity.angVel || 0,
+        lastExactT: entity.activity && entity.activity.lastExactT,
+        alive: entity.alive !== false,
+      });
+    }
+    const fromT = simTime - 1 / 60;
+    const immediate = worker.submitAbstract(abstracts, fromT, simTime);
+    if (immediate && immediate.length) applyAbstractCatchupToEntities(state, immediate);
   }
 }
 

@@ -68,7 +68,12 @@ import {
 } from './presentationWorld.js';
 import { createPresentationPublisher } from './presentationPublisher.js';
 import { createPresentationQueries } from './presentationQueries.js';
-import { createSnapshotFence, packPresentationWorldToFence } from './snapshotFence.js';
+import {
+  applySnapshotPoseToMesh,
+  createSnapshotFence,
+  packPresentationWorldToFence,
+} from './snapshotFence.js';
+import { getPersistentSubmitLanes, SUBMIT_LANE } from './persistentSubmitLanes.js';
 import { shieldBubbleGeometry } from './ships/shipKit.js';
 import { projectedWidthPx } from './lod.js';
 import { resolveWebGlRendererFlags } from './presentPath.js';
@@ -4085,6 +4090,11 @@ export const render = {
     if (!handle) return false;
     if (!mesh.userData) mesh.userData = {};
     mesh.userData.presentationEntityId = entity.id;
+    const lanes = getPersistentSubmitLanes();
+    const lane = mesh.material && (mesh.material.transparent || mesh.material.transmission > 0)
+      ? SUBMIT_LANE.TRANSPARENT
+      : SUBMIT_LANE.OPAQUE;
+    lanes.reserve(entity.id, lane);
     return world.bindMesh(handle, mesh, entity, entityVisualCullRadius(entity, mesh));
   },
 
@@ -4097,6 +4107,7 @@ export const render = {
     if (!world) return false;
     const handle = world.handleForEntityId(entityId, this._presentationHandleScratch);
     if (!handle) return false;
+    getPersistentSubmitLanes().release(entityId);
     return world.unbindMesh(handle, mesh);
   },
 
@@ -4511,6 +4522,23 @@ export const render = {
     const world = this._presentationWorld;
     const origin = this._frameMembrane && this._frameMembrane.origin;
     if (!world || !origin) return;
+    const fence = this._snapshotFence;
+    const snapshot = fence && fence.latestSnapshot();
+    const previous = !currentOnly && fence ? fence.previousSnapshot() : null;
+    if (snapshot && applySnapshotPoseToMesh(
+      mesh,
+      snapshot,
+      world.entityIds[slot],
+      origin,
+      previous,
+      currentOnly ? 1 : alpha,
+    )) {
+      const hull = mesh.userData && mesh.userData.hull;
+      const entity = world.entityRefs[slot];
+      if (hull && entity && entity.bank != null) hull.rotation.x = world.bank[slot];
+      if (hull && entity && entity.pitch != null) hull.rotation.z = world.pitch[slot];
+      return;
+    }
     const noInterpolation = currentOnly
       || (world.flags[slot] & PRESENTATION_FLAGS.NO_INTERPOLATION) !== 0;
     let x = world.x[slot];
@@ -4577,7 +4605,7 @@ export const render = {
       const mesh = world.meshRefs[slot];
       if (!mesh) continue;
       const entityId = world.entityIds[slot];
-      const entity = this.state.entities.get(entityId) || world.entityRefs[slot];
+      const entity = world.entityRefs[slot] || this.state.entities.get(entityId);
       if (entity && entity.alive !== false) {
         world.refreshVisibleEntity(slot, entity, entityVisualCullRadius(entity, mesh));
       }
@@ -4609,7 +4637,7 @@ export const render = {
       if (world.alive[slot] !== 1 || world.slotGenerations[slot] !== generation) continue;
       const mesh = world.meshRefs[slot];
       const entityId = world.entityIds[slot];
-      const entity = this.state.entities.get(entityId) || world.entityRefs[slot];
+      const entity = world.entityRefs[slot] || this.state.entities.get(entityId);
       if (!mesh || !entity || entity.alive === false) continue;
 
       const userData = mesh.userData || (mesh.userData = {});
@@ -4619,6 +4647,7 @@ export const render = {
       if ((dirty & (PRESENTATION_DIRTY.TRANSFORM | PRESENTATION_DIRTY.BINDING
         | PRESENTATION_DIRTY.VISIBILITY)) !== 0 || world.poseHasDelta(slot)) {
         this._applyPresentationPose(slot, mesh, alpha);
+        getPersistentSubmitLanes().markDirty(entityId, 'transform');
         transformed++;
       }
       if (userData.asteroidInstanceBody) userData.asteroidInstanceViewCulled = false;
@@ -4748,6 +4777,7 @@ export const render = {
     diagnostics.totalMeshes = world.boundCount;
     diagnostics.candidates = query.candidateCount;
     diagnostics.transformed = transformed;
+    if (transformed === 0) getPersistentSubmitLanes().noteUnchangedFrame();
     diagnostics.fullSynced = fullSynced;
     diagnostics.culled = query.culledCount;
     diagnostics.newlyVisible = query.newlyVisibleCount;

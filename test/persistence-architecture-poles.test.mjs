@@ -26,8 +26,13 @@ import {
   PERSISTENT_LANES_ENABLED,
   createPersistentSubmitLanes,
 } from '../src/render/persistentSubmitLanes.js';
-import { createSnapshotFence, packEntityIntoSnapshot } from '../src/render/snapshotFence.js';
-import { isSimulationWorkerEnabled, createCommandRing, selectSimWorkerTransport } from '../src/core/simWorkerProtocol.js';
+import {
+  applySnapshotPoseToMesh,
+  createSnapshotFence,
+  packEntityIntoSnapshot,
+} from '../src/render/snapshotFence.js';
+import { isSimulationWorkerEnabled, createCommandRing } from '../src/core/simWorkerProtocol.js';
+import { stepAbstractRecords } from '../src/core/simWorkerHost.js';
 import { getActivityFrame } from '../src/core/worldActivityManager.js';
 import { resolve as resolveMaterial } from '../src/render/materialLibrary.js';
 import { createSaveDirtyJournal, shouldSerializeDuringPresent } from '../src/save/saveDirtyJournal.js';
@@ -76,16 +81,17 @@ test('material ABI collapses library roles onto program families', () => {
   assert.match(hull, /^abi1\|/);
 });
 
-test('persistent submit lanes stay off in production and do not plan every frame', () => {
-  assert.equal(PERSISTENT_LANES_ENABLED, false);
-  const off = createPersistentSubmitLanes();
-  assert.equal(off.reserve('ship_1'), null);
-  assert.equal(off.diagnostics().liveSlots, 0);
-  const on = createPersistentSubmitLanes({ force: true });
-  on.reserve('ship_1');
-  on.noteUnchangedFrame();
-  assert.equal(on.diagnostics().liveSlots, 1);
-  assert.equal(on.diagnostics().unchangedFrames, 1);
+test('persistent submit lanes reserve once and skip unchanged frames', () => {
+  assert.equal(PERSISTENT_LANES_ENABLED, true);
+  const lanes = createPersistentSubmitLanes();
+  const slot = lanes.reserve('ship_1');
+  assert.equal(slot.id, 'ship_1');
+  assert.equal(lanes.reserve('ship_1').index, slot.index);
+  lanes.noteUnchangedFrame();
+  assert.equal(lanes.diagnostics().liveSlots, 1);
+  assert.equal(lanes.diagnostics().unchangedFrames, 1);
+  const off = createPersistentSubmitLanes({ enabled: false });
+  assert.equal(off.reserve('ship_2'), null);
 });
 
 test('snapshot fence publishes a complete packed frame the present path can read', () => {
@@ -101,12 +107,26 @@ test('snapshot fence publishes a complete packed frame the present path can read
   assert.equal(latest.columns.position[0], 3);
 });
 
-test('simulation Worker stays disabled until the fence spike passes', () => {
-  assert.equal(isSimulationWorkerEnabled(), false);
-  assert.equal(selectSimWorkerTransport(), null);
+test('simulation Worker uses a real catch-up kernel with main-thread fallback', () => {
+  assert.equal(typeof isSimulationWorkerEnabled(), 'boolean');
   const ring = createCommandRing(4);
   assert.equal(ring.push(1), true);
   assert.equal(ring.pop().kind, 1);
+});
+
+test('abstract catch-up kernel and snapshot pose apply without live entity chase', () => {
+  const moved = stepAbstractRecords([
+    { id: 9, alive: true, pos: { x: 0, z: 0 }, vel: { x: 10, z: 0 }, rot: 0, angVel: 0 },
+  ], 0, 2);
+  assert.equal(moved[0].pos.x, 20);
+  const fence = createSnapshotFence({ capacity: 4 });
+  const snap = fence.beginPack(1, 1);
+  packEntityIntoSnapshot(snap, { id: 4, alive: true, pos: { x: 6, y: 0, z: 2 } });
+  fence.commit();
+  const mesh = { position: { x: 0, y: 0, z: 0 }, rotation: { y: 0 } };
+  assert.equal(applySnapshotPoseToMesh(mesh, fence.latestSnapshot(), 4, { x: 1, z: 0 }), true);
+  assert.equal(mesh.position.x, 5);
+  assert.equal(mesh.position.z, 2);
 });
 
 test('material library stamps ABI program families; activity frame is the sim owner', () => {

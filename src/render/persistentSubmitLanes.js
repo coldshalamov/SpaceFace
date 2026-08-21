@@ -10,7 +10,7 @@ export const SUBMIT_LANE = Object.freeze({
   VFX: 'vfx',
 });
 
-export const PERSISTENT_LANES_ENABLED = false;
+export const PERSISTENT_LANES_ENABLED = true;
 
 let liveLanes = null;
 
@@ -20,9 +20,9 @@ export function getPersistentSubmitLanes() {
 }
 
 export function createPersistentSubmitLanes(options = {}) {
-  const enabled = options.enabled === true && PERSISTENT_LANES_ENABLED === true
-    ? true
-    : options.force === true;
+  const enabled = options.enabled === false
+    ? false
+    : (PERSISTENT_LANES_ENABLED === true || options.force === true || options.enabled === true);
   const slots = new Map();
   let reservations = 0;
   let releases = 0;
