@@ -204,7 +204,8 @@ resulting bodies with their new counts (`4 + 4`) for as long as the aim holds.
   with a soft leash (rover stays within the middle 50% of the screen; camera eases at
   ≤ 6 cells/s, 120ms ease-out).
 - **Two zoom registers, only two:** *work* (above) and *site* — the whole asteroid
-  silhouette with ≥16px cells, networks readable as a diagram. Mouse wheel or a key snaps
+  silhouette with ≥16px cells at 1920×1080 (the body is ~53 cells tall with its skirt, so at
+  1280×720 the floor is ≥12px; measured 2026-08-21), networks readable as a diagram. Mouse wheel or a key snaps
   between registers with a 180ms eased zoom; there are detents, not freeform zoom.
 - **The silhouette:** the asteroid's irregular cross-section boundary is visible against
   space at site zoom and at the edges of work zoom near the surface. The board is a body,

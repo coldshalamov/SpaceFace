@@ -2437,6 +2437,7 @@
       "checks": [
         "npm run check:baseline",
         "npm run check:playable",
+        "npm run check:asteroid-theater",
         "node scripts/check-program-docs.mjs"
       ],
       "evidence": [
@@ -7540,7 +7541,7 @@
       "priority": 345,
       "title": "Theater: the mine is the screen; HUD is a dashboard, not a website",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "asteroid-works-playfield"
@@ -7554,9 +7555,12 @@
       "checks": [
         "npm run check:baseline",
         "npm run check:playable",
+        "npm run check:asteroid-theater",
         "node scripts/check-program-docs.mjs"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-130-01-theater-REPORT.md"
+      ],
       "brief": "Spirit: a stranger sees rock, a hole, a vehicle — not a sci-fi website with a Minecraft inset. The HUD is ugly AND too big: empty Power/Export/Couriers bays, novel context well, 264px reprint tape, cyan embed frame, 8px keypad. Collapse empty instruments; leftover chrome is a pressable dashboard. Local camera on the rover; flat grid. Illegal: shorter ao-deck/ao-rail, same three bays, zoom-only. Do not change cadence or geology meshes here."
     },
     {
@@ -7581,6 +7585,7 @@
       "checks": [
         "npm run check:baseline",
         "npm run check:playable",
+        "npm run check:asteroid-theater",
         "node scripts/check-program-docs.mjs"
       ],
       "receiptRefs": [],
@@ -7607,6 +7612,7 @@
       "checks": [
         "npm run check:baseline",
         "npm run check:playable",
+        "npm run check:asteroid-theater",
         "node scripts/check-program-docs.mjs"
       ],
       "receiptRefs": [],
@@ -7632,6 +7638,7 @@
       "checks": [
         "npm run check:baseline",
         "npm run check:playable",
+        "npm run check:asteroid-theater",
         "node scripts/check-program-docs.mjs"
       ],
       "receiptRefs": [],
@@ -7658,6 +7665,7 @@
       "checks": [
         "npm run check:baseline",
         "npm run check:playable",
+        "npm run check:asteroid-theater",
         "node scripts/check-program-docs.mjs"
       ],
       "receiptRefs": [],
@@ -7684,6 +7692,7 @@
       "checks": [
         "npm run check:baseline",
         "npm run check:playable",
+        "npm run check:asteroid-theater",
         "node scripts/check-program-docs.mjs"
       ],
       "receiptRefs": [],
@@ -7713,6 +7722,7 @@
       "checks": [
         "npm run check:baseline",
         "npm run check:playable",
+        "npm run check:asteroid-theater",
         "node scripts/check-program-docs.mjs"
       ],
       "receiptRefs": [],
@@ -7739,6 +7749,7 @@
       "checks": [
         "npm run check:baseline",
         "npm run check:playable",
+        "npm run check:asteroid-theater",
         "node scripts/check-program-docs.mjs"
       ],
       "receiptRefs": [],
@@ -7769,6 +7780,7 @@
       "checks": [
         "npm run check:baseline",
         "npm run check:playable",
+        "npm run check:asteroid-theater",
         "node scripts/check-program-docs.mjs"
       ],
       "receiptRefs": [],
@@ -7797,6 +7809,7 @@
       "checks": [
         "npm run check:baseline",
         "npm run check:playable",
+        "npm run check:asteroid-theater",
         "node scripts/check-program-docs.mjs"
       ],
       "receiptRefs": [],
