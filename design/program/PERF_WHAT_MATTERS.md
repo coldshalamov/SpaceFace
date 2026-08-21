@@ -1,8 +1,9 @@
 <!-- LIFETIME: DURABLE -->
 # What actually matters for performance
 
-Owner instruction. Full analysis (numbers, what “awake” means, why LOD/batching
-are the wrong genre here): [`PERF_TABLE_ANALYSIS.md`](./PERF_TABLE_ANALYSIS.md).
+Owner instruction. Full analysis: [`PERF_TABLE_ANALYSIS.md`](./PERF_TABLE_ANALYSIS.md).
+Campaign: [`PERF_PERSISTENCE_GOAL.txt`](./PERF_PERSISTENCE_GOAL.txt) and
+[`PERF_PERSISTENCE_CAMPAIGN.md`](./PERF_PERSISTENCE_CAMPAIGN.md).
 If an agent is “working on perf” and the work is not a row in **Do this**, they
 are slog. Stop them.
 

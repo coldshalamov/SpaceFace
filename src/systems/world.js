@@ -96,6 +96,12 @@ import {
   upsertRecord,
 } from '../world/worldRecords.js';
 import {
+  createEmptyResourceBodyBag,
+  deserializeResourceBodyBag,
+  ensureResourceBodies,
+  serializeResourceBodyBag,
+} from '../world/resourceBodyRecords.js';
+import {
   consumeEmbodimentPayload,
   createEmptyEmbodimentCache,
   embodimentRecordIntents,
@@ -283,6 +289,7 @@ export const world = {
     state.world.pallasHiddenCache = normalizePallasHiddenCacheState(state.world.pallasHiddenCache);
     // M2-C2 durable world-entity records (global-space). Runtime residency bags stay separate.
     ensureWorldRecords(state.world);
+    ensureResourceBodies(state.world);
     // M2-C2/C3 latest-epoch recipe cache. It is bounded data, not a live-entity authority.
     state.world.embodiment = normalizeEmbodimentCache(state.world.embodiment);
 
@@ -423,9 +430,11 @@ export const world = {
           sectorId,
           seed: (state.meta && state.meta.seed) || 1,
           tick: state.tick | 0,
+          simTime: Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0),
           recordId: d.worldRecordId,
           identityKey: d.identityKey,
           durableReason: 'kill',
+          extra: bag.byId[d.worldRecordId] && bag.byId[d.worldRecordId].extra,
         },
       );
       if (snap) {
@@ -937,8 +946,12 @@ export const world = {
         seed,
         epoch,
         tick,
+        simTime: Number.isFinite(state.simTime) ? state.simTime : tick,
         createdTick: (e.data && e.data.recordCreatedTick) || tick,
         durableReason: opts.reason || 'evict',
+        extra: e.data && e.data.worldRecordId && bag.byId[e.data.worldRecordId]
+          ? bag.byId[e.data.worldRecordId].extra
+          : null,
       });
       if (!captured) continue;
       upsertRecord(bag, captured);
@@ -1127,6 +1140,10 @@ export const world = {
         sectorId,
         seed: (state.meta && state.meta.seed) || 1,
         tick: state.tick | 0,
+        simTime: Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0),
+        extra: e.data && e.data.worldRecordId && bag.byId[e.data.worldRecordId]
+          ? bag.byId[e.data.worldRecordId].extra
+          : null,
       });
       return captured ? upsertRecord(bag, captured) : null;
     }
@@ -3873,6 +3890,7 @@ export const world = {
       pallasHiddenCache: cloneSaveTree(this._pallasHiddenCacheState()),
       // v11: durable global-space entity records (never frameOrigin / residentSectors / sectorContents).
       records: serializeRecordsBag(ensureWorldRecords(state.world)),
+      resourceBodies: serializeResourceBodyBag(ensureResourceBodies(state.world)),
       // Latest sectorSim recipes are bounded per sector and needed because sectorSim restores its
       // applied-id set on Continue (it correctly will not re-emit the same epoch).
       embodiment: serializeEmbodimentCache(state.world.embodiment),
@@ -3915,6 +3933,7 @@ export const world = {
     this._pallasDecisionNeedsRebind = true;
     // Durable records restore before enterSector rematerializes them exactly once.
     state.world.records = deserializeRecordsBag(data.records);
+    state.world.resourceBodies = deserializeResourceBodyBag(data.resourceBodies);
     state.world.embodiment = normalizeEmbodimentCache(data.embodiment);
     if (data.currentSectorId) state.world.currentSectorId = data.currentSectorId;
     // Coordinate schema is global_v1 for v9+. Always reset the runtime frame on load rather
@@ -3969,6 +3988,7 @@ export const world = {
     state.world.vestaOreCache = freshVestaOreCacheState();
     state.world.pallasHiddenCache = freshPallasHiddenCacheState();
     state.world.records = createEmptyRecordsBag();
+    state.world.resourceBodies = createEmptyResourceBodyBag();
     state.world.embodiment = createEmptyEmbodimentCache();
     state.world.residentSectors = {};
     state.world.sectorContents = {};

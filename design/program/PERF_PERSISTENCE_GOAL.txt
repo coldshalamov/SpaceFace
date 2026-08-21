@@ -1,0 +1,25 @@
+This is a campaign: keep the universe persistent without simulating the whole
+sector at 60 Hz. Do not use INFERENCE. Do not gut the world at the screen edge.
+Do not stop after one unit.
+
+Law: design/program/PERF_PERSISTENCE_CAMPAIGN.md
+Diagnosis: design/program/PERF_TABLE_ANALYSIS.md
+Operator: design/program/PERF_WHAT_MATTERS.md
+
+The smoking gun: about 10 things are drawn; about 320 still get physics/AI.
+Visibility does not decide what is remembered. Causal relevance decides how
+exactly it is simulated.
+
+Order:
+0. Freeze baselines and persistence fixtures. No product mutation.
+1. Persistence scaffold + activity classification (make deactivation legal).
+2. Far AI/traffic dormancy + Rapier active set (do not delete actors).
+3. Shell-first station/startup readiness.
+
+Then catch-up spiral → flight packages → cooker → material ABI → persistent
+submit lanes → snapshot fence → Worker. Never bloom-off, never prewarm retry,
+never per-frame BatchedMesh, never LOD for things that should have no mesh.
+
+RESULT: DONE when New Game is input-ready in the agreed band, sim p95 ≤ 5 ms,
+hitches are rare, mined rocks and kills survive leave/return/save, and nothing
+vanishes merely for crossing the screen edge.

@@ -13,6 +13,10 @@ import {
   createEmptyRecordsBag,
   normalizeRecordsBag,
 } from '../world/worldRecords.js';
+import {
+  createEmptyResourceBodyBag,
+  normalizeResourceBodyBag,
+} from '../world/resourceBodyRecords.js';
 
 export { CURRENT_VERSION } from '../data/saveVersion.js';
 
@@ -318,6 +322,12 @@ function migrateV10ToV11(data) {
     data.world.records = createEmptyRecordsBag();
   } else {
     data.world.records = normalizeRecordsBag(data.world.records);
+  }
+  if (!data.world.resourceBodies || typeof data.world.resourceBodies !== 'object'
+    || Array.isArray(data.world.resourceBodies)) {
+    data.world.resourceBodies = createEmptyResourceBodyBag();
+  } else {
+    data.world.resourceBodies = normalizeResourceBodyBag(data.world.resourceBodies);
   }
   // Runtime-only — never authoritative on disk.
   if ('frameOrigin' in data.world) {

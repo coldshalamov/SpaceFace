@@ -7,9 +7,11 @@
 // galactic-global XZ (global_v1). Runtime-only liveEntityId is never serialized.
 
 import { hash32 } from '../core/rng.js';
+import { SIM_TIER } from './activityClassification.js';
+import { normalizeIntent } from './worldCatchup.js';
 
 export const WORLD_RECORDS_SCHEMA_ID = 'spaceface.worldRecords.v1';
-export const WORLD_RECORDS_SCHEMA_VERSION = 1;
+export const WORLD_RECORDS_SCHEMA_VERSION = 2;
 
 /** Durable entity kinds persisted under world.records. */
 export const RECORD_KIND = Object.freeze({
@@ -162,8 +164,56 @@ export function normalizeRecord(raw, fallbackId) {
     // Optional provenance for bounded sectorSim recipe reconciliation.
     recordSource: raw.recordSource === 'sector_embodiment' ? 'sector_embodiment' : null,
     recipeKey: raw.recipeKey != null ? String(raw.recipeKey) : null,
+    lastExactT: Number.isFinite(raw.lastExactT) ? raw.lastExactT : 0,
+    lastObservedT: Number.isFinite(raw.lastObservedT) ? raw.lastObservedT : 0,
+    abstractTier: Object.values(SIM_TIER).includes(raw.abstractTier) ? raw.abstractTier : SIM_TIER.S0_EXACT,
+    intent: normalizeIntent(raw.intent),
+    nextEventAtT: Number.isFinite(raw.nextEventAtT) ? raw.nextEventAtT : null,
+    scheduledEventIds: Array.isArray(raw.scheduledEventIds)
+      ? raw.scheduledEventIds.map((id) => String(id)).filter(Boolean)
+      : [],
+    regeneration: {
+      hullRate: Number.isFinite(raw.regeneration && raw.regeneration.hullRate) ? raw.regeneration.hullRate : 0,
+      shieldRate: Number.isFinite(raw.regeneration && raw.regeneration.shieldRate) ? raw.regeneration.shieldRate : 0,
+      repairAtT: Number.isFinite(raw.regeneration && raw.regeneration.repairAtT) ? raw.regeneration.repairAtT : null,
+    },
+    deactivation: {
+      reason: raw.deactivation && raw.deactivation.reason != null ? String(raw.deactivation.reason) : null,
+      exactSnapshotHash: raw.deactivation && raw.deactivation.exactSnapshotHash != null
+        ? String(raw.deactivation.exactSnapshotHash)
+        : null,
+      generation: Number.isFinite(raw.deactivation && raw.deactivation.generation)
+        ? Math.max(0, Math.floor(raw.deactivation.generation))
+        : 0,
+    },
+    extra: preserveUnknownFields(raw),
   };
   return rec;
+}
+
+const KNOWN_RECORD_FIELDS = new Set([
+  'recordId', 'kind', 'sectorId', 'homeSectorId', 'pos', 'vel', 'rot', 'angVel',
+  'type', 'enemyTypeId', 'shipDefId', 'defId', 'factionId', 'team', 'level',
+  'hull', 'hullMax', 'shield', 'shieldMax', 'armorHp', 'armorMax', 'alive', 'outcome',
+  'missionId', 'trafficRole', 'trafficLabel', 'itinerary', 'cargoManifest', 'freightDockSeq',
+  'wreckClass', 'markerId', 'victimClass', 'ai', 'isBoss', 'bossPoiId', 'bossSectorId',
+  'epoch', 'createdTick', 'lastSeenTick', 'durableReason', 'identityKey', 'recordSource',
+  'recipeKey', 'liveEntityId', 'rematerializedTick', 'lastExactT', 'lastObservedT',
+  'abstractTier', 'intent', 'nextEventAtT', 'scheduledEventIds', 'regeneration',
+  'deactivation', 'extra',
+]);
+
+function preserveUnknownFields(raw) {
+  const extra = {};
+  if (raw.extra && typeof raw.extra === 'object' && !Array.isArray(raw.extra)) {
+    const nested = clonePlain(raw.extra) || {};
+    for (const key of Object.keys(nested)) extra[key] = nested[key];
+  }
+  for (const key of Object.keys(raw)) {
+    if (KNOWN_RECORD_FIELDS.has(key)) continue;
+    extra[key] = clonePlain(raw[key]);
+  }
+  return extra;
 }
 
 /** Disk serialization: durable only; sorted keys; no liveEntityId / frame / residency. */
@@ -354,6 +404,15 @@ export function captureEntityRecord(entity, opts = {}) {
     identityKey,
     recordSource: d.recordSource === 'sector_embodiment' ? 'sector_embodiment' : null,
     recipeKey: d.recipeKey != null ? String(d.recipeKey) : null,
+    lastExactT: opts.simTime != null ? opts.simTime : opts.tick || 0,
+    lastObservedT: opts.simTime != null ? opts.simTime : opts.tick || 0,
+    abstractTier: opts.abstractTier || SIM_TIER.S0_EXACT,
+    intent: opts.intent || null,
+    nextEventAtT: opts.nextEventAtT != null ? opts.nextEventAtT : null,
+    scheduledEventIds: opts.scheduledEventIds || [],
+    regeneration: opts.regeneration,
+    deactivation: opts.deactivation,
+    extra: opts.extra || null,
   });
   return rec;
 }

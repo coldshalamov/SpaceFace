@@ -42,10 +42,13 @@ disjoint files. No coordinator, task-long reservation, or worktree is required.
 
 - `NEXT` → one admitted queue unit, then stop. Use `program-dispatch --next/--ready/--id`.
   Ordinary `--next` still prefers fleet remaster (`PQ-050`). Hitching is not that door.
-- **The game is hitching / stuttering / unplayable-smooth** → §8.4 and
-  [`design/program/PERF_HITCH_CAMPAIGN.md`](./design/program/PERF_HITCH_CAMPAIGN.md).
-  Dispatch `node scripts/program-dispatch.mjs --id PQ-129`. Measure first. Do not skip to
-  Worker/WebGPU/quality cuts.
+- **The game is hitching / stuttering / unplayable-smooth** → §8.4,
+  [`design/program/PERF_TABLE_ANALYSIS.md`](./design/program/PERF_TABLE_ANALYSIS.md),
+  and [`design/program/PERF_PERSISTENCE_CAMPAIGN.md`](./design/program/PERF_PERSISTENCE_CAMPAIGN.md).
+  Copy [`design/program/PERF_PERSISTENCE_GOAL.txt`](./design/program/PERF_PERSISTENCE_GOAL.txt).
+  Dispatch `node scripts/program-dispatch.mjs --id PQ-129` only for hitch leaves that do not
+  collide with persistence Phase 1. Do not skip to Worker/WebGPU/quality cuts. Do not
+  delete off-screen actors.
 - **3D objects look like toys next to real ships** (tube+ring beacons, cargo pods, 47-A
   spindle, uneven quality) → [`design/program/GRAPHICS_3D_CAMPAIGN.md`](./design/program/GRAPHICS_3D_CAMPAIGN.md)
   and the operator [`GRAPHICS_3D_GOAL.txt`](./design/program/GRAPHICS_3D_GOAL.txt). Same
