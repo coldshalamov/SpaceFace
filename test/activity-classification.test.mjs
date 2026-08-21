@@ -70,24 +70,16 @@ test('after grace, inside exit radius stays near', () => {
   assert.equal(kept, SIM_TIER.S1_NEAR);
 });
 
-test('hysteresis keeps exact until exit radius and grace elapse', () => {
+test('beyond the exit radius the classifier is dormant; grace lives on the stamp', () => {
   const ship = { id: 4, pos: { x: 200, z: 0 }, data: {} };
-  const stillNear = resolveSimTier(ship, [], {
+  const beyond = resolveSimTier(ship, [], {
     origin: { x: 0, z: 0 },
     physicsReachWu: 50,
     priorSimTier: SIM_TIER.S1_NEAR,
     graceUntilT: 10,
     simTime: 9,
   });
-  assert.equal(stillNear, SIM_TIER.S1_NEAR);
-  const released = resolveSimTier(ship, [], {
-    origin: { x: 0, z: 0 },
-    physicsReachWu: 50,
-    priorSimTier: SIM_TIER.S1_NEAR,
-    graceUntilT: 10,
-    simTime: 11,
-  });
-  assert.equal(released, SIM_TIER.S3_DORMANT);
+  assert.equal(beyond, SIM_TIER.S3_DORMANT);
 });
 
 test('mission pin is explicit data not a guessed radius', () => {

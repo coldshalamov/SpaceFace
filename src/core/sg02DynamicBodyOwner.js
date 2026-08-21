@@ -752,6 +752,12 @@ export class Sg02DynamicBodyOwner {
   }
 
   _removeRecord(id, rec) {
+    const live = rec && rec.entity && rec.entity.alive !== false;
+    if (live) {
+      for (const attachment of this.attachments.values()) {
+        if (attachment.owner === rec || attachment.target === rec) return;
+      }
+    }
     for (const attachment of Array.from(this.attachments.values())) {
       if (attachment.owner === rec || attachment.target === rec) this.cutAttachment({ attachmentId: attachment.id });
     }

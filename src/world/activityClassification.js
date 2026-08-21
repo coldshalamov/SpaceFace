@@ -112,7 +112,8 @@ export function resolvePins(entity, context = {}) {
   const d = entity.data || {};
   const flags = entity.flags || {};
   if (flags.missionPinned || d.missionPinned || d.missionId || d.missionTag || d.jobId
-    || d.activityActorSlotId) {
+    || d.activityActorSlotId
+    || (typeof d.activityObjectSlotId === 'string' && /[a-z]/i.test(d.activityObjectSlotId))) {
     pins.push(PIN_REASON.MISSION_CRITICAL);
   }
   if (flags.tethered || d.tethered) pins.push(PIN_REASON.TETHER_OR_ATTACHMENT_COMPONENT);
@@ -140,11 +141,8 @@ export function resolveSimTier(entity, pins, context = {}) {
   const enter = reach + NEAR_ENTER_PAD_WU;
   const exit = reach + NEAR_EXIT_PAD_WU;
   const prior = context.priorSimTier;
-  const graceUntil = finite(context.graceUntilT, -1);
-  const now = finite(context.simTime);
 
   if (prior === SIM_TIER.S0_EXACT || prior === SIM_TIER.S1_NEAR) {
-    if (now <= graceUntil) return prior;
     if (dist2 <= exit * exit) return SIM_TIER.S1_NEAR;
   }
   if (Number.isFinite(dist2) && dist2 <= enter * enter) return SIM_TIER.S1_NEAR;

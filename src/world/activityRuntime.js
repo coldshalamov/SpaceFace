@@ -62,7 +62,6 @@ export function physicsReachWuFromState(state, originEntity = null) {
   const speed = Math.max(
     TABLE_REFERENCE_SPEED_WU,
     finite(player && player.maxSpeed),
-    finite(player && player.vel && Math.hypot(player.vel.x, player.vel.z)),
   );
   return physicsReachWu({
     glassDiagonalWu: 2 * Math.hypot(glass.halfX, glass.halfZ),
@@ -192,7 +191,6 @@ function applyStamp(entity, classified, simTime) {
     if (!(rec.graceUntilT >= 0)) rec.graceUntilT = simTime + DEFAULT_GRACE_S;
     if (simTime <= rec.graceUntilT) {
       tier = prior;
-      nowExact = true;
     } else {
       rec.graceUntilT = -1;
       rec.lastExactT = simTime;
@@ -232,8 +230,9 @@ function rebuildPinFacts(state, player, facts, simTime) {
   else if (playerCombat && playerCombat.lockTarget != null && facts.targetId == null) {
     facts.targetId = playerCombat.lockTarget;
   }
-  if (state && state.player && state.player.miningTargetId != null) {
-    facts.miningId = state.player.miningTargetId;
+  if (state && state.player) {
+    if (state.player.miningTargetId != null) facts.miningId = state.player.miningTargetId;
+    else if (state.player.beamTargetId != null) facts.miningId = state.player.beamTargetId;
   }
 
   const attachments = state && state.combat && state.combat.attachments && state.combat.attachments.byId;
@@ -262,9 +261,16 @@ function rebuildPinFacts(state, player, facts, simTime) {
   for (let i = 0; i < scan.length; i++) {
     const e = scan[i];
     if (!e || e.alive === false || !e.data) continue;
-    const combat = e.data.combat;
-    if (!combat) continue;
-    if (playerId != null && (combat.targetId === playerId || combat.lockTarget === playerId)) {
+    const combat = e.data.combat || {};
+    const ai = e.data.ai || {};
+    const activity = ai.activity && typeof ai.activity === 'object' ? ai.activity : {};
+    if (playerId != null && (
+      combat.targetId === playerId
+      || combat.lockTarget === playerId
+      || activity.targetId === playerId
+      || ai.retaliationTargetId === playerId
+      || ai.securityTargetId === playerId
+    )) {
       facts.aggro.add(e.id);
     }
   }
@@ -397,6 +403,8 @@ function classifyWorld(state, runtime) {
     ctx.priorSimTier = entity.activity && entity.activity.simTier;
     ctx.graceUntilT = entity.activity && entity.activity.graceUntilT;
     ctx.missionCritical = !!(data.jobId || data.missionId || data.missionTag || data.missionPinned
+      || data.activityActorSlotId
+      || (typeof data.activityObjectSlotId === 'string' && /[a-z]/i.test(data.activityObjectSlotId))
       || (entity.flags && entity.flags.missionPinned));
     ctx.imminentCollision = false;
     ctx.aggregateOnly = false;
@@ -412,7 +420,7 @@ function classifyWorld(state, runtime) {
       dynamics.push(entity);
     } else {
       statics.push(entity);
-      staticHash = (Math.imul(staticHash, 16777619) ^ mixId(entity.id)) >>> 0;
+      staticHash = (staticHash ^ mixId(entity.id)) >>> 0;
       staticCount++;
     }
   }

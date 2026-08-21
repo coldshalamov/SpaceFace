@@ -169,7 +169,7 @@ export const mining = {
     bus.on('pickup:collected', (p) => this._onPickupCollected(p));
     bus.on('dock:docked', (p) => this._onDocked(p));
     // Fresh sector → drop the stale beam lock (world regenerates the field).
-    bus.on('sector:enter', () => { this._lockTargetId = null; this._stopBeam(); this._resetBeamHeat(); });
+    bus.on('sector:enter', () => { this._setLockTargetId(null); this._stopBeam(); this._resetBeamHeat(); });
   },
 
   // ---- main per-tick update -------------------------------------------------
@@ -236,7 +236,7 @@ export const mining = {
     const resolved = resolveBeamVerb(desc, toolState);
 
     if (!this._beaming || this._lockTargetId !== target.id || this._activeVerb !== resolved.verb) {
-      this._lockTargetId = target.id;
+      this._setLockTargetId(target.id);
       this._activeVerb = resolved.verb;
       this.bus.emit('mining:start', {
         minerId: player.id,
@@ -334,7 +334,7 @@ export const mining = {
       tick: state.tick | 0,
     });
 
-    this._lockTargetId = target.id;
+    this._setLockTargetId(target.id);
     this._activeVerb = component.verb;
     this._beaming = true;
     this._activeBeamLine = beamLineFor(player, target);
@@ -439,6 +439,11 @@ export const mining = {
     this.bus.emit('beam:transferred', { targetId: target.id });
   },
 
+  _setLockTargetId(id) {
+    this._lockTargetId = id == null ? null : id;
+    if (this.state && this.state.player) this.state.player.miningTargetId = this._lockTargetId;
+  },
+
   _stopBeam() {
     if (!this._beaming) {
       this._activeBeamLine = null;
@@ -450,7 +455,7 @@ export const mining = {
     // on `mining:stop`, so a bonus emitted after it would arrive with no target to anchor to.
     this._resolveVent();
     this.bus.emit('mining:stop', { minerId: this.state.playerId, targetId: this._lockTargetId, position: null });
-    this._lockTargetId = null;
+    this._setLockTargetId(null);
   },
 
   // ---- heat / vent rhythm ---------------------------------------------------

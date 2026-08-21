@@ -182,6 +182,50 @@ test('stamped dormant owners never think; unstamped hostiles still do', () => {
   assert.equal(shouldOwnerThink(0, unstampedHostile, { ...opts, playerTeam: 1 }), true);
 });
 
+test('consecutive ticks demote a far hauler after grace instead of restarting it', () => {
+  const player = ship(1, 0, { isPlayer: true, team: 0 });
+  const hauler = ship(4, 20, { data: { itinerary: { routeId: 'lane_a' } }, team: 2 });
+  const state = makeState([player, hauler], { tick: 0, simTime: 0 });
+  ensureActivityClassified(state);
+  assert.equal(entityNeedsPhysics(hauler), true);
+  hauler.pos.x = 4000;
+  let stillExact = 0;
+  for (let i = 1; i <= 150; i++) {
+    state.tick = i;
+    state.simTime = i / 60;
+    ensureActivityClassified(state);
+    if (entityNeedsPhysics(hauler)) stillExact++;
+  }
+  assert.ok(stillExact > 0 && stillExact < 150, 'grace holds briefly then releases');
+  assert.equal(hauler.activity.simTier, SIM_TIER.S2_ABSTRACT);
+  assert.equal(entityNeedsPhysics(hauler), false);
+  assert.equal(entityNeedsAiThink(hauler), false);
+});
+
+test('mining lock and authored activity slots stay exact off the table', () => {
+  const player = ship(1, 0, { isPlayer: true, team: 0 });
+  const locked = rock(12, 4000);
+  const clast = rock(13, 4500, { data: { activityObjectSlotId: 'ceres_seam_ore_clast', fieldId: 'f_ceres_1' } });
+  const state = makeState([player, locked, clast], { player: { miningTargetId: 12 } });
+  ensureActivityClassified(state);
+  assert.equal(locked.activity.simTier, SIM_TIER.S0_EXACT);
+  assert.equal(clast.activity.simTier, SIM_TIER.S0_EXACT);
+  assert.equal(entityNeedsPhysics(locked), true);
+  assert.equal(entityNeedsPhysics(clast), true);
+});
+
+test('SG-06 pursuit activity pins a far hostile', () => {
+  const player = ship(1, 0, { isPlayer: true, team: 0 });
+  const pirate = ship(2, 2500, {
+    team: 1,
+    data: { ai: { activity: { targetId: 1 }, combatant: true, passive: false } },
+  });
+  const state = makeState([player, pirate]);
+  ensureActivityClassified(state);
+  assert.equal(pirate.activity.simTier, SIM_TIER.S0_EXACT);
+  assert.equal(entityNeedsAiThink(pirate), true);
+});
+
 test('production physics, AI, and traffic call the activity runtime', async () => {
   const physics = await readFile(new URL('../src/core/physics.js', import.meta.url), 'utf8');
   const tactical = await readFile(new URL('../src/systems/tacticalAI.js', import.meta.url), 'utf8');
@@ -202,4 +246,9 @@ test('production physics, AI, and traffic call the activity runtime', async () =
   assert.match(bark, /ensureActivityClassified/);
   assert.match(stack, /activity: member\.activity/);
   assert.match(save, /['"]activity['"]/);
+  const sg02 = await readFile(new URL('../src/core/sg02DynamicBodyOwner.js', import.meta.url), 'utf8');
+  assert.match(sg02, /if \(live\) \{/);
+  assert.match(sg02, /return;/);
+  const mining = await readFile(new URL('../src/systems/mining.js', import.meta.url), 'utf8');
+  assert.match(mining, /miningTargetId/);
 });
