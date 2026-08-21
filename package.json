@@ -67,6 +67,7 @@
     "check:asteroid-theater": "node scripts/check-asteroid-theater.mjs",
     "check:asteroid-drive-cadence": "node test/asteroid-drive-cadence.test.mjs",
     "check:asteroid-sound": "node test/asteroid-sound-routing.test.mjs",
+    "check:asteroid-drawers": "node --test test/asteroid-site-drawers.test.mjs",
     "check:field-depletion": "node scripts/check-field-depletion.mjs",
     "check:drill-smooth": "node scripts/check-drill-smooth.mjs",
     "check:fragile-cargo": "node scripts/check-fragile-cargo.mjs",

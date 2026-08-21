@@ -25,9 +25,10 @@ import {
 } from './asteroidController.js';
 import {
   createCursorLens, tileLensModel, machineLensModel, ghostLensModel, seamSplits,
-  placementReason, commodityName, formationLabel,
+  placementReason, commodityName, formationLabel, sentenceCase,
 } from './inspector.js';
 import { createBuildPalette, PALETTE_ITEMS, CORE_ID } from './buildPalette.js';
+import { SITE_BALANCE, SITE_MACHINE_BY_ID, SITE_RECIPE_BY_ID } from '../../data/sites.js';
 
 // PQ-130.06 — the cursor lens (law §6.4) landed and the context bay is gone (law §10). Timings
 // here are law: the card appears after LENS_DELAY_S of hover while driving, instantly in build
@@ -53,6 +54,250 @@ export function anchoredClaimAnnouncement(claim) {
     ? survey.cells.length : Math.max(0, Math.trunc(Number(survey.cells) || 0));
   const count = cells > 0 ? `${cells} formation ${cells === 1 ? 'cell' : 'cells'} are` : 'the formation is';
   return `Massline Core online. Survey committed: ${count} now part of this permanent site.`;
+}
+
+// ---------------------------------------------------------------------------- §6.6 drawers
+//
+// Law §6.6: a bottom sheet (≤280px, 200ms ease, grabber handle) carrying three tabs — Ledger (the
+// silent event history), Site (production totals, courier log, the operator verbs) and Help (the
+// keys, taught once). It is bookkeeping ON DEMAND: closed it contributes nothing to the law §2.5
+// word budget, and design/program/ASTEROID_WORKS_PLAYFIELD.md §3 is explicit that a permanently
+// visible production report instead of the picture is a failure.
+//
+// The models below are pure and exported so they can be proven headlessly — the same reason
+// syncAsteroidConsoleModeButtons and anchoredClaimAnnouncement are exported. There is no jsdom in
+// this repo, so DOM-level facts (a closed drawer renders no text) are asserted by
+// scripts/check-asteroid-theater.mjs instead.
+export const DRAWER_TABS = Object.freeze(['ledger', 'site', 'help']);
+const DRAWER_LABELS = Object.freeze({ ledger: 'Ledger', site: 'Site', help: 'Help' });
+const LEDGER_TONE = Object.freeze({ good: 'mint', warn: 'gold', bad: 'coral', info: 'ink' });
+const NO_SITE_REASON = 'No claim on this rock yet.';
+// What the site reads as "dark" — the same set the renderer raises a want-chip for.
+const DRAWER_FAULT_STATES = new Set(['no-power', 'starved', 'backlogged', 'no-network', 'no-geology', 'no-pods']);
+const DRAWER_BUSY_STATES = new Set(['running', 'throttled', 'building', 'staged']);
+
+/** Ledger clock — mono mm:ss off sim time. A timestamp, never a sentence. */
+export function drawerClock(t) {
+  const total = Math.max(0, Math.floor(Number(t) || 0));
+  const mm = Math.floor(total / 60);
+  const ss = total % 60;
+  return `${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
+}
+
+/**
+ * The Ledger feed (law §6.6 — "the old manifest tape lives here, silent"). `ledgerBuffer` is
+ * already newest-first, so this only stamps a clock and a severity tone onto each line: it adds no
+ * prose of its own, and nothing on this path announces.
+ */
+export function ledgerDrawerRows(buffer) {
+  const rows = [];
+  for (const entry of Array.isArray(buffer) ? buffer : []) {
+    if (!entry || !entry.text) continue;
+    rows.push({
+      clock: drawerClock(entry.t),
+      kind: entry.kind || 'info',
+      tone: LEDGER_TONE[entry.kind] || LEDGER_TONE.info,
+      text: String(entry.text),
+    });
+  }
+  return rows;
+}
+
+/** The control map, taught ONCE — law §10 deleted the permanent keybind dump from the glass. */
+export function helpDrawerRows(controlMap) {
+  const map = controlMap || {};
+  return [
+    { keys: map.movementLabel || 'W / A / S / D', label: 'Drive, and keep holding to bore' },
+    { keys: map.scanLabel || 'F', label: 'Survey pulse' },
+    { keys: 'B', label: 'Build mode' },
+    { keys: '1 - 9', label: 'Pick a structure' },
+    { keys: 'Q / E', label: 'Cycle structures' },
+    { keys: 'Enter', label: 'Place it' },
+    { keys: 'X', label: 'Dismantle' },
+    { keys: 'Z', label: 'Zoom between work and site' },
+    { keys: 'Tab', label: 'Drawers' },
+    { keys: 'Esc', label: 'Leave the rock' },
+  ];
+}
+
+/** A machine mode is either a plain word ('generate') or a recipe id ('sr_smelt_iron'). */
+export function machineModeLabel(mode) {
+  const recipe = SITE_RECIPE_BY_ID.get(mode);
+  return sentenceCase(recipe ? recipe.name : String(mode || '').replace(/_/g, ' '));
+}
+
+/** One sentence for a refused transfer, off the owner's own reason codes. */
+export function transferRefusalText(res) {
+  switch (res && res.reason) {
+    case 'not-tethered': return 'The rover has to be tethered to this rock.';
+    case 'no-network': return 'That machine is not on a material lane.';
+    case 'no-room-or-cargo': return 'No room in the lane, or nothing of that in the hold.';
+    case 'no-stock-or-hold': return 'No stock on site, or no room in the hold.';
+    case 'zero': return 'Pick an amount first.';
+    case 'no-site': return NO_SITE_REASON;
+    default: return 'That transfer was refused.';
+  }
+}
+
+/**
+ * The Site drawer's whole model, INCLUDING the four operator verbs bound to their owner APIs.
+ *
+ * The context bay carried these four affordances and was deleted by law §10; the PQ-130.06 receipt
+ * recorded that the owner APIs survived untouched and that this drawer is where they re-bind. They
+ * RE-BIND — they are not re-implemented: every `apply` is a direct call into asteroidSites, so no
+ * economy or logistics rule is restated in the UI. Each verb carries its own `disabled` + `reason`
+ * so a control that cannot act says why instead of failing silently.
+ *
+ * The totals read `projection()`, which reports the LAST COMPUTED tick. The sim is paused under
+ * this screen, so these are the same honest snapshot values the §6.4 lens shows, not live rates.
+ */
+export function siteDrawerModel({
+  siteSys = null, siteId = null, drillActive = false, now = 0, cargoItems = null,
+} = {}) {
+  const site = siteSys && siteId && typeof siteSys.getSite === 'function' ? siteSys.getSite(siteId) : null;
+  const projection = site && typeof siteSys.projection === 'function' ? siteSys.projection(siteId) : null;
+  const machines = (projection && projection.machines) || [];
+  const lanes = (projection && projection.lanes) || [];
+
+  const ratePerMin = {};
+  for (const m of machines) {
+    const rates = (m.status && m.status.ratePerMin) || {};
+    for (const goodId of Object.keys(rates)) {
+      ratePerMin[goodId] = (ratePerMin[goodId] || 0) + (Number(rates[goodId]) || 0);
+    }
+  }
+  let stored = 0;
+  let capacity = 0;
+  for (const lane of lanes) { stored += Number(lane.stored) || 0; capacity += Number(lane.capacity) || 0; }
+
+  const totals = {
+    machines: machines.length,
+    running: machines.filter((m) => m.status && DRAWER_BUSY_STATES.has(m.status.state)).length,
+    dark: machines.filter((m) => m.status && DRAWER_FAULT_STATES.has(m.status.state)).length,
+    stored: Math.round(stored),
+    capacity: Math.round(capacity),
+    exportRatePerMin: projection ? Number(projection.exportRatePerMin) || 0 : 0,
+    rates: Object.keys(ratePerMin).sort().map((id) => ({
+      id, name: sentenceCase(commodityName(id)), perMin: Math.round(ratePerMin[id] * 10) / 10,
+    })),
+    grossCr: site ? Math.round(site.stats.grossCr) : 0,
+    creditedCr: site ? Math.round(site.stats.creditedCr) : 0,
+    exportedU: site ? Math.round(site.stats.exportedU) : 0,
+  };
+
+  const fleet = (projection && projection.fleet) || (site && site.fleet) || null;
+  const courier = {
+    podsReady: fleet ? Math.floor(fleet.podsReady) : 0,
+    podTarget: fleet ? fleet.podTarget : 0,
+    launches: fleet ? fleet.launches : 0,
+    delivered: fleet ? fleet.delivered : 0,
+    lost: fleet ? fleet.lost : 0,
+    inFlight: (fleet && Array.isArray(fleet.inFlight) ? fleet.inFlight : []).map((pod) => ({
+      etaS: Math.max(0, Math.round((Number(pod.arriveT) || 0) - (Number(now) || 0))),
+      units: Math.round(Object.values(pod.cargo || {}).reduce((a, b) => a + (Number(b) || 0), 0)),
+      lost: !!pod.lost,
+    })),
+  };
+
+  // --- verb 1: setExportFlag — ship or hold, per good ---
+  const goodIds = new Set(Object.keys((site && site.exportBuffer) || {}));
+  for (const m of machines) {
+    for (const id of Object.keys((m.capability && m.capability.outputsPerMin) || {})) goodIds.add(id);
+  }
+  for (const id of Object.keys(ratePerMin)) goodIds.add(id);
+  const exportGoods = [...goodIds].sort().map((id) => ({
+    id,
+    name: sentenceCase(commodityName(id)),
+    shipped: !(site && site.exportOff && site.exportOff[id]),
+  }));
+
+  // --- verb 3: setMachineMode — only machines whose def declares modes ---
+  const modeMachines = [];
+  for (const m of machines) {
+    const def = SITE_MACHINE_BY_ID.get(m.defId);
+    const modes = def && Array.isArray(def.modes) ? def.modes.slice() : [];
+    if (!modes.length) continue;
+    modeMachines.push({
+      id: m.id,
+      name: sentenceCase((def && def.short) || m.defId),
+      mode: m.mode,
+      modes,
+      modeLabels: modes.map(machineModeLabel),
+    });
+  }
+
+  // --- verb 4: transferGoods — machines that actually sit on a lane network ---
+  const cargo = cargoItems && typeof cargoItems === 'object' ? cargoItems : {};
+  const transferMachines = [];
+  for (const m of machines) {
+    if (m.laneKey == null) continue;
+    const def = SITE_MACHINE_BY_ID.get(m.defId);
+    const lane = lanes.find((l) => l.key === m.laneKey) || null;
+    const ids = new Set(Object.keys((lane && lane.store) || {}));
+    for (const id of Object.keys(cargo)) if ((Number(cargo[id]) || 0) > 0) ids.add(id);
+    transferMachines.push({
+      id: m.id,
+      name: sentenceCase((def && def.short) || m.defId),
+      room: lane ? Math.max(0, Math.round(lane.intakeRoom)) : 0,
+      goods: [...ids].sort().map((id) => ({
+        id,
+        name: sentenceCase(commodityName(id)),
+        onSite: Math.floor(Number((lane && lane.store && lane.store[id]) || 0)),
+        onShip: Math.floor(Number(cargo[id]) || 0),
+      })),
+    });
+  }
+
+  const call = (fn, fallback) => (site ? fn() : fallback);
+  return {
+    hasSite: !!site,
+    siteId: site ? site.id : null,
+    totals,
+    courier,
+    verbs: {
+      export: {
+        owner: 'setExportFlag',
+        goods: exportGoods,
+        disabled: !site || !exportGoods.length,
+        reason: !site ? NO_SITE_REASON : (exportGoods.length ? null : 'Nothing is produced here yet.'),
+        apply: (goodId, shipped) => call(
+          () => siteSys.setExportFlag(site.id, goodId, !!shipped), { ok: false, reason: 'no-site' },
+        ),
+      },
+      podTarget: {
+        owner: 'setPodTarget',
+        value: courier.podTarget,
+        min: 0,
+        max: SITE_BALANCE.maxPodTarget,
+        disabled: !site,
+        reason: site ? null : NO_SITE_REASON,
+        apply: (target) => call(
+          () => siteSys.setPodTarget(site.id, target), { ok: false, reason: 'no-site' },
+        ),
+      },
+      machineMode: {
+        owner: 'setMachineMode',
+        machines: modeMachines,
+        disabled: !site || !modeMachines.length,
+        reason: !site ? NO_SITE_REASON : (modeMachines.length ? null : 'No machine here has a second mode.'),
+        apply: (machineId, mode) => call(
+          () => siteSys.setMachineMode(site.id, machineId, mode), { ok: false, reason: 'no-site' },
+        ),
+      },
+      transfer: {
+        owner: 'transferGoods',
+        machines: transferMachines,
+        disabled: !site || !drillActive || !transferMachines.length,
+        reason: !site ? NO_SITE_REASON
+          : (!drillActive ? 'The rover has to be tethered to this rock.'
+            : (transferMachines.length ? null : 'No machine here is on a material lane.')),
+        apply: (machineId, goodId, qty, dir) => call(
+          () => siteSys.transferGoods(site.id, machineId, goodId, qty, dir),
+          { ok: false, moved: 0, reason: 'no-site' },
+        ),
+      },
+    },
+  };
 }
 
 export const asteroidScreen = {
@@ -135,7 +380,19 @@ export const asteroidScreen = {
     leaveKey.className = 'aw-key';
     leaveKey.textContent = 'Esc';
     leaveBtn.append(leaveLabel, leaveKey);
-    crestRight.append(creditsEl, hold, leaveBtn);
+    // Law §2.5 allows exactly ONE small icon affordance for the drawers: a 24px glyph with an
+    // aria-label and no visible word, so the default drive view's word budget is untouched. It
+    // is an inline SVG on `currentColor` — a background-image glyph is stripped in forced-colors
+    // mode and would leave a blank square.
+    const drawerBtn = document.createElement('button');
+    drawerBtn.type = 'button';
+    drawerBtn.className = 'aw-drawer-key';
+    drawerBtn.setAttribute('aria-label', 'Ledger, site and help drawers');
+    drawerBtn.setAttribute('aria-expanded', 'false');
+    drawerBtn.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">'
+      + '<path d="M5 6.5h14"/><path d="M7 10.5h10"/>'
+      + '<rect x="3.2" y="14.2" width="17.6" height="6.6" rx="2.2"/></svg>';
+    crestRight.append(drawerBtn, creditsEl, hold, leaveBtn);
 
     crest.append(nameEl, claimChip, assayChip, alertEl, crestRight);
     wrap.appendChild(crest);
@@ -218,6 +475,13 @@ export const asteroidScreen = {
     let currentSiteId = null;
     let projection = null;
     let projDirty = true;
+    // ---- §6.6 drawer state (declared with the rest of the session state so no handler can
+    // ---- reach it in its temporal dead zone) ----
+    let drawerTab = null;             // null = closed; otherwise one of DRAWER_TABS
+    let drawerElapsed = 0;            // seconds since the open drawer last refreshed
+    let drawerCloseTimer = 0;         // the 200ms ease-out that then sets display:none
+    let drawerDismissedClick = false; // a board click that was spent dismissing a drawer
+    let siteZoomHold = false;         // §9: opened at site zoom, waiting for the first input
     let motionReduce = prefersReducedMotion({
       motionReduce: !!(state.settings && state.settings.video && state.settings.video.motionReduce),
     });
@@ -360,6 +624,9 @@ export const asteroidScreen = {
 
     // ---------- lens plumbing (law §6.4) ----------
     function armLens(delayS) {
+      // Law §6.6: a drawer owns the bottom of the glass while it is open, and the lens stands
+      // down rather than stacking a second card over the sheet.
+      if (drawerTab !== null) return;
       lensDelay = Math.max(0, delayS);
       lensDirty = true;
     }
@@ -540,9 +807,13 @@ export const asteroidScreen = {
     // the canvas — closes the card (law §6.4: "hides when the pointer is over chrome").
     const onMouseLeave = () => { hover = null; lensPointer = null; hideLens(); };
     const onMouseDown = (ev) => {
-      if (ev.button !== 0) return;
+      if (ev.button !== 0) return; // a right-click is onContextMenu's business, not this one's
+      // The board click that dismissed a drawer is spent on the dismissal: it must not also
+      // place a machine under the sheet the player was still reading.
+      if (consumeDrawerDismissal()) return;
       const cell = canvasCell(ev);
       if (!cell) return;
+      releaseSiteZoom(true); // law §9: pointer-down on the board is the first work input
       canvas.focus({ preventScroll: true });
       if (controller.state.mode !== MODES.BUILD) return;
       controller.state.cursor.col = cell.col;
@@ -556,6 +827,9 @@ export const asteroidScreen = {
     };
     const onMouseUp = () => { controller.state.dragPaint = null; };
     const onContextMenu = (ev) => {
+      // Same rule for the dismantle button: the gesture that closed a sheet does not also
+      // take a machine apart underneath it.
+      if (consumeDrawerDismissal()) { ev.preventDefault(); return; }
       if (controller.state.mode !== MODES.BUILD) return;
       const cell = canvasCell(ev);
       if (cell) { commitRemoval(cell); ev.preventDefault(); }
@@ -564,9 +838,34 @@ export const asteroidScreen = {
     const onWheel = (ev) => {
       ev.preventDefault();
       hideLens(); // the board is about to move under a card pinned to the old projection
+      releaseSiteZoom(false); // the wheel hands the register to the player; do not force work
       if (renderer3d) renderer3d.inputZoom(ev.deltaY);
     };
     const onKeyDown = (event) => {
+      // ---- law §6.6: the drawers own Tab, and Escape while one is open ----
+      // Tab MUST be swallowed. The sheet is the first thing on this screen with real focusable
+      // controls, so a live Tab would walk focus off the canvas and hand the next movement key
+      // to a button instead of the rig.
+      if (event.code === 'Tab') {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        if (!event.repeat) cycleDrawer(event.shiftKey ? -1 : 1);
+        return;
+      }
+      // Escape changes exactly one layer: with a sheet up it closes the sheet, not the session.
+      if (event.code === 'Escape' && drawerTab !== null) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        closeDrawer();
+        return;
+      }
+      // Typing into a drawer control is not driving: while focus lives inside the sheet, the
+      // rig keys belong to the sheet.
+      if (drawerTab !== null && drawer.contains(event.target)) return;
+      // Law §9: the session opened at site zoom to be read. The first real work input drops it
+      // to work zoom; Z hands the register to the player instead, and Escape is an exit.
+      if (event.code === 'KeyZ' || event.code === 'Escape') releaseSiteZoom(false);
+      else releaseSiteZoom(true);
       // Law §6.4: any DRIVE keypress closes the card. A zoom-register change closes it in EITHER
       // mode: the 180ms ease re-projects the whole board, and the card only re-places when its
       // subject changes — so a card left open would float away from the cell it names for the
@@ -588,11 +887,611 @@ export const asteroidScreen = {
     // The manifest tape is gone from the glass; history waits here for the ledger drawer (.07).
     const ledgerBuffer = [];
     let lastLedgerText = null;
-    function pushLedgerLine(kind, text) {
+    function pushLedgerLine(kind, text, t) {
       if (lastLedgerText === text) return;
       lastLedgerText = text;
-      ledgerBuffer.unshift({ kind, text });
+      // §6.6 ledger rows carry a mono clock. A site receipt brings its own `t`, so a re-entered
+      // site's history reads at the time it actually happened; everything else is stamped now.
+      ledgerBuffer.unshift({ kind, text, t: Number.isFinite(t) ? t : (state.simTime || 0) });
       if (ledgerBuffer.length > 24) ledgerBuffer.length = 24;
+      if (drawerTab === 'ledger') drawerElapsed = 10; // an open feed shows it next frame
+    }
+
+    // ---------- §6.6 drawers: a bottom sheet, on demand, never the default view ----------
+    //
+    // Anatomy (law §6.6 + §3.2/§3.4): a `--aw-surface` sheet pinned to the BOTTOM EDGE of the
+    // stage — r10 on the top corners only, soft shadow, a grabber handle, at most 280px tall, a
+    // 200ms ease in and out. It never covers the middle of the board, and it closes on Esc, on an
+    // outside click, or on the crest affordance that opened it.
+    //
+    // CLOSED IT IS `display:none`, not merely translated off-screen. Law §2.5 counts the default
+    // drive view, and scripts/check-asteroid-theater.mjs walks every visible element under
+    // `.ast-screen`: an off-screen sheet still has client rects and would spend the whole 15-word
+    // budget on bookkeeping. The stylesheet carries the `[hidden]` override at !important for the
+    // same reason `.aw-lens[hidden]` does — a plain class rule outranks the UA sheet.
+    const drawer = document.createElement('section');
+    drawer.className = 'aw-drawer';
+    drawer.hidden = true;
+    drawer.setAttribute('aria-label', 'Site drawers');
+    const drawerGrab = document.createElement('div');
+    drawerGrab.className = 'aw-drawer-grab';
+    drawerGrab.setAttribute('aria-hidden', 'true');
+    const drawerTabsEl = document.createElement('div');
+    drawerTabsEl.className = 'aw-drawer-tabs';
+    drawerTabsEl.setAttribute('role', 'tablist');
+    drawerTabsEl.setAttribute('aria-label', 'Drawer');
+    const drawerBody = document.createElement('div');
+    drawerBody.className = 'aw-drawer-body';
+    drawerBody.id = 'aw-drawer-body';
+    drawerBody.setAttribute('role', 'tabpanel');
+    const drawerTabBtns = new Map();
+    for (const id of DRAWER_TABS) {
+      const tabBtn = document.createElement('button');
+      tabBtn.type = 'button';
+      tabBtn.className = 'aw-drawer-tab';
+      tabBtn.dataset.tab = id;
+      tabBtn.setAttribute('role', 'tab');
+      tabBtn.setAttribute('aria-controls', 'aw-drawer-body');
+      tabBtn.setAttribute('aria-selected', 'false');
+      tabBtn.textContent = DRAWER_LABELS[id];
+      tabBtn.addEventListener('click', () => openDrawer(id));
+      drawerTabBtns.set(id, tabBtn);
+      drawerTabsEl.appendChild(tabBtn);
+    }
+    const ledgerPanel = document.createElement('ol');
+    ledgerPanel.className = 'aw-ledger';
+    const sitePanel = document.createElement('div');
+    sitePanel.className = 'aw-sitepanel';
+    const helpPanel = document.createElement('dl');
+    helpPanel.className = 'aw-helpmap';
+    // All three panels start hidden too: only openDrawer() ever puts one on the glass, so a
+    // half-mounted screen cannot leak a panel into the default view.
+    ledgerPanel.hidden = true;
+    sitePanel.hidden = true;
+    helpPanel.hidden = true;
+    drawerBody.append(ledgerPanel, sitePanel, helpPanel);
+    drawer.append(drawerGrab, drawerTabsEl, drawerBody);
+    stage.appendChild(drawer);
+    drawerBtn.addEventListener('click', () => {
+      if (drawerTab === null) openDrawer('ledger');
+      else closeDrawer();
+    });
+
+    const setNodeText = (el, text) => { if (el && el.textContent !== text) el.textContent = text; };
+    const unitText = (n) => `${Math.round(Number(n) || 0)}u`;
+
+    // ---------- Ledger: the manifest tape, silent (law §6.6) ----------
+    // Newest first, a mono clock, one line per event, severity as a small coloured dot. It NEVER
+    // announces — the announcer is the live voice and this is history; re-reading history out loud
+    // every time the sheet refreshes would be the deleted log rail with extra steps.
+    function renderLedgerPanel() {
+      const rows = ledgerDrawerRows(ledgerBuffer);
+      ledgerPanel.textContent = '';
+      if (!rows.length) {
+        const empty = document.createElement('li');
+        empty.className = 'aw-ledger-empty';
+        empty.textContent = 'Nothing recorded on this rock yet.';
+        ledgerPanel.appendChild(empty);
+        return;
+      }
+      for (const row of rows) {
+        const li = document.createElement('li');
+        li.className = 'aw-ledger-row';
+        const dot = document.createElement('i');
+        dot.className = `aw-dot ${row.tone}`;
+        dot.setAttribute('aria-hidden', 'true');
+        const clock = document.createElement('span');
+        clock.className = 'aw-ledger-clock';
+        clock.textContent = row.clock;
+        const text = document.createElement('span');
+        text.className = 'aw-ledger-text';
+        text.textContent = row.text;
+        li.append(dot, clock, text);
+        ledgerPanel.appendChild(li);
+      }
+    }
+
+    // ---------- Help: the keys, taught once (law §6.6, §10) ----------
+    let helpBuilt = false;
+    function renderHelpPanel() {
+      if (helpBuilt) return;
+      helpBuilt = true;
+      helpPanel.textContent = '';
+      for (const row of helpDrawerRows(controlMap)) {
+        const keys = document.createElement('dt');
+        keys.className = 'aw-help-keys';
+        keys.textContent = row.keys;
+        const label = document.createElement('dd');
+        label.className = 'aw-help-label';
+        label.textContent = row.label;
+        helpPanel.append(keys, label);
+      }
+    }
+
+    // ---------- Site: production totals, courier log, the four operator verbs ----------
+    const siteUi = { built: false, model: null, exportBtns: new Map(), exportSig: null, modeBtns: [] };
+    let transferQty = 5;
+
+    function siteBlock(host, title) {
+      const sec = document.createElement('section');
+      sec.className = 'aw-site-block';
+      const h = document.createElement('h3');
+      h.className = 'aw-site-title';
+      h.textContent = title;
+      sec.appendChild(h);
+      host.appendChild(sec);
+      return sec;
+    }
+    function siteStat(host, label) {
+      const row = document.createElement('div');
+      row.className = 'aw-site-stat';
+      const l = document.createElement('span');
+      l.className = 'aw-site-stat-label';
+      l.textContent = label;
+      const v = document.createElement('span');
+      v.className = 'aw-site-stat-val';
+      v.textContent = '0';
+      row.append(l, v);
+      host.appendChild(row);
+      return v;
+    }
+    function siteReason(host) {
+      const why = document.createElement('p');
+      why.className = 'aw-site-reason';
+      why.hidden = true;
+      host.appendChild(why);
+      return why;
+    }
+    function verbRow(host) {
+      const row = document.createElement('div');
+      row.className = 'aw-verb-row';
+      host.appendChild(row);
+      return row;
+    }
+    function stepBtn(host, glyph, label) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'aw-verb-step';
+      b.textContent = glyph;
+      b.setAttribute('aria-label', label);
+      host.appendChild(b);
+      return b;
+    }
+    function actionBtn(host, label) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'aw-verb-btn';
+      b.textContent = label;
+      host.appendChild(b);
+      return b;
+    }
+    function verbSelect(host, label) {
+      const sel = document.createElement('select');
+      sel.className = 'aw-verb-select';
+      sel.setAttribute('aria-label', label);
+      host.appendChild(sel);
+      return sel;
+    }
+    function monoValue(host, text) {
+      const v = document.createElement('span');
+      v.className = 'aw-verb-num';
+      v.textContent = text;
+      host.appendChild(v);
+      return v;
+    }
+
+    function buildSitePanel() {
+      sitePanel.textContent = '';
+      const grid = document.createElement('div');
+      grid.className = 'aw-site-grid';
+      sitePanel.appendChild(grid);
+
+      const prod = siteBlock(grid, 'Production');
+      siteUi.machines = siteStat(prod, 'Machines');
+      siteUi.running = siteStat(prod, 'Running');
+      siteUi.dark = siteStat(prod, 'Dark');
+      siteUi.stored = siteStat(prod, 'Held in lanes');
+      siteUi.exportRate = siteStat(prod, 'Export rate');
+      siteUi.rates = document.createElement('div');
+      siteUi.rates.className = 'aw-site-rates';
+      prod.appendChild(siteUi.rates);
+
+      const cour = siteBlock(grid, 'Couriers');
+      siteUi.podsReady = siteStat(cour, 'Pods ready');
+      siteUi.launches = siteStat(cour, 'Launched');
+      siteUi.delivered = siteStat(cour, 'Delivered');
+      siteUi.lost = siteStat(cour, 'Lost');
+      siteUi.exportedU = siteStat(cour, 'Units shipped');
+      siteUi.creditedCr = siteStat(cour, 'Credited');
+      siteUi.flights = document.createElement('ol');
+      siteUi.flights.className = 'aw-site-flights';
+      cour.appendChild(siteUi.flights);
+
+      // verb 1 — siteSys.setExportFlag
+      const exp = siteBlock(grid, 'Ship or hold');
+      siteUi.exportRow = verbRow(exp);
+      siteUi.exportReason = siteReason(exp);
+
+      // verb 2 — siteSys.setPodTarget
+      const pod = siteBlock(grid, 'Courier fleet target');
+      const podRow = verbRow(pod);
+      siteUi.podDown = stepBtn(podRow, '−', 'One fewer courier pod');
+      siteUi.podValue = monoValue(podRow, '0');
+      siteUi.podUp = stepBtn(podRow, '+', 'One more courier pod');
+      siteUi.podReason = siteReason(pod);
+
+      // verb 3 — siteSys.setMachineMode
+      const mode = siteBlock(grid, 'Machine mode');
+      siteUi.modeSelect = verbSelect(verbRow(mode), 'Machine');
+      siteUi.modeChips = verbRow(mode);
+      siteUi.modeReason = siteReason(mode);
+
+      // verb 4 — siteSys.transferGoods
+      const xfer = siteBlock(grid, 'Rover transfer');
+      const pickRow = verbRow(xfer);
+      siteUi.xferMachine = verbSelect(pickRow, 'Machine');
+      siteUi.xferGood = verbSelect(pickRow, 'Material');
+      const qtyRow = verbRow(xfer);
+      siteUi.xferDown = stepBtn(qtyRow, '−', 'Fewer units');
+      siteUi.xferQty = monoValue(qtyRow, '5');
+      siteUi.xferUp = stepBtn(qtyRow, '+', 'More units');
+      siteUi.xferLoad = actionBtn(qtyRow, 'To site');
+      siteUi.xferTake = actionBtn(qtyRow, 'To rover');
+      siteUi.xferReason = siteReason(xfer);
+
+      siteUi.podDown.addEventListener('click', () => stepPodTarget(-1));
+      siteUi.podUp.addEventListener('click', () => stepPodTarget(1));
+      siteUi.xferDown.addEventListener('click', () => { transferQty = Math.max(1, transferQty - 5); refreshDrawer(); });
+      siteUi.xferUp.addEventListener('click', () => { transferQty = Math.min(200, transferQty + 5); refreshDrawer(); });
+      siteUi.xferLoad.addEventListener('click', () => runTransfer('deposit'));
+      siteUi.xferTake.addEventListener('click', () => runTransfer('withdraw'));
+      siteUi.modeSelect.addEventListener('change', () => refreshDrawer());
+      siteUi.xferMachine.addEventListener('change', () => refreshDrawer());
+      siteUi.built = true;
+    }
+
+    // Options are replaced only when the SET of ids changes, and the live value is preserved —
+    // a select whose options are rebuilt under a 0.5s refresh would drop the player's pick (and
+    // their focus) every half second.
+    function syncSelect(sel, rows) {
+      const sig = rows.map((r) => r.id).join(',');
+      if (sel.dataset.sig !== sig) {
+        const keep = sel.value;
+        sel.dataset.sig = sig;
+        sel.textContent = '';
+        for (const row of rows) {
+          const opt = document.createElement('option');
+          opt.value = row.id;
+          opt.textContent = row.name;
+          sel.appendChild(opt);
+        }
+        if (rows.some((r) => r.id === keep)) sel.value = keep;
+        else if (rows.length) sel.value = rows[0].id;
+      } else {
+        for (const opt of sel.options) {
+          const row = rows.find((r) => r.id === opt.value);
+          if (row) setNodeText(opt, row.name);
+        }
+      }
+      sel.disabled = !rows.length;
+      return sel.value;
+    }
+
+    function setDisabledWith(reasonEl, controls, reason) {
+      const off = !!reason;
+      for (const el of controls) if (el) el.disabled = off;
+      if (reasonEl) {
+        reasonEl.hidden = !off;
+        if (off) setNodeText(reasonEl, reason);
+      }
+      return off;
+    }
+
+    function stepPodTarget(delta) {
+      const verb = siteUi.model && siteUi.model.verbs.podTarget;
+      if (!verb || verb.disabled) return;
+      const next = Math.max(verb.min, Math.min(verb.max, verb.value + delta));
+      if (next === verb.value) return;
+      const res = verb.apply(next);
+      if (res && res.ok) {
+        projDirty = true;
+        pushLedgerLine('info', `Courier fleet target set to ${next}.`);
+        announce(`Courier fleet target ${next}.`);
+      }
+      refreshDrawer();
+    }
+
+    function toggleExport(goodId) {
+      const verb = siteUi.model && siteUi.model.verbs.export;
+      if (!verb || verb.disabled) return;
+      const row = verb.goods.find((g) => g.id === goodId);
+      if (!row) return;
+      const res = verb.apply(goodId, !row.shipped);
+      if (res && res.ok) {
+        projDirty = true;
+        pushLedgerLine('info', `${row.name} set to ${row.shipped ? 'hold' : 'ship'}.`);
+        announce(`${row.name} ${row.shipped ? 'held on site' : 'cleared for export'}.`);
+      }
+      refreshDrawer();
+    }
+
+    function applyMachineMode(machineId, mode) {
+      const verb = siteUi.model && siteUi.model.verbs.machineMode;
+      if (!verb || verb.disabled) return;
+      const res = verb.apply(machineId, mode);
+      if (res && res.ok && res.reason !== 'no-change') {
+        projDirty = true;
+        pushLedgerLine('info', `Retooled to ${machineModeLabel(mode)}.`);
+        announce(`Retooled to ${machineModeLabel(mode)}.`);
+      }
+      refreshDrawer();
+    }
+
+    function runTransfer(dir) {
+      const verb = siteUi.model && siteUi.model.verbs.transfer;
+      if (!verb || verb.disabled) return;
+      const machineId = siteUi.xferMachine.value;
+      const goodId = siteUi.xferGood.value;
+      if (!machineId || !goodId) return;
+      const res = verb.apply(machineId, goodId, transferQty, dir);
+      projDirty = true;
+      const name = sentenceCase(commodityName(goodId));
+      if (res && res.ok) {
+        pushLedgerLine('info', `${dir === 'deposit' ? 'Loaded' : 'Recovered'} ${res.moved}u ${name}.`);
+        announce(`${res.moved} units of ${name} moved to the ${dir === 'deposit' ? 'site' : 'rover'}.`);
+      } else {
+        announce(transferRefusalText(res));
+      }
+      refreshDrawer();
+    }
+
+    function renderSitePanel() {
+      if (!siteUi.built) buildSitePanel();
+      const model = siteDrawerModel({
+        siteSys,
+        siteId: currentSiteId,
+        drillActive: !!(state.drill && state.drill.active),
+        now: state.simTime,
+        cargoItems: state.player && state.player.cargo ? state.player.cargo.items : null,
+      });
+      siteUi.model = model;
+      const t = model.totals;
+
+      setNodeText(siteUi.machines, String(t.machines));
+      setNodeText(siteUi.running, String(t.running));
+      setNodeText(siteUi.dark, String(t.dark));
+      setNodeText(siteUi.stored, `${t.stored} / ${t.capacity}u`);
+      setNodeText(siteUi.exportRate, `${t.exportRatePerMin.toFixed(1)}/min`);
+      siteUi.rates.textContent = '';
+      for (const rate of t.rates) {
+        const chip = document.createElement('span');
+        chip.className = 'aw-rate-chip';
+        chip.textContent = `${rate.name} ${rate.perMin.toFixed(1)}/min`;
+        siteUi.rates.appendChild(chip);
+      }
+
+      const c = model.courier;
+      setNodeText(siteUi.podsReady, String(c.podsReady));
+      setNodeText(siteUi.launches, String(c.launches));
+      setNodeText(siteUi.delivered, String(c.delivered));
+      setNodeText(siteUi.lost, String(c.lost));
+      setNodeText(siteUi.exportedU, unitText(t.exportedU));
+      setNodeText(siteUi.creditedCr, `${t.creditedCr}cr`);
+      siteUi.flights.textContent = '';
+      for (const pod of c.inFlight) {
+        const li = document.createElement('li');
+        li.className = 'aw-site-flight';
+        const dot = document.createElement('i');
+        dot.className = `aw-dot ${pod.lost ? 'coral' : 'sky'}`;
+        dot.setAttribute('aria-hidden', 'true');
+        const text = document.createElement('span');
+        text.textContent = `${unitText(pod.units)} in flight`;
+        const eta = document.createElement('span');
+        eta.className = 'aw-ledger-clock';
+        eta.textContent = drawerClock(pod.etaS);
+        li.append(dot, text, eta);
+        siteUi.flights.appendChild(li);
+      }
+
+      // verb 1 — ship or hold, one chip per good
+      const exportVerb = model.verbs.export;
+      const sig = exportVerb.goods.map((g) => g.id).join(',');
+      if (siteUi.exportSig !== sig) {
+        siteUi.exportSig = sig;
+        siteUi.exportRow.textContent = '';
+        siteUi.exportBtns.clear();
+        for (const good of exportVerb.goods) {
+          const chip = document.createElement('button');
+          chip.type = 'button';
+          chip.className = 'aw-verb-chip';
+          chip.dataset.good = good.id;
+          chip.addEventListener('click', () => toggleExport(good.id));
+          siteUi.exportBtns.set(good.id, chip);
+          siteUi.exportRow.appendChild(chip);
+        }
+      }
+      for (const good of exportVerb.goods) {
+        const chip = siteUi.exportBtns.get(good.id);
+        if (!chip) continue;
+        setNodeText(chip, `${good.name} ${good.shipped ? 'ships' : 'held'}`);
+        chip.classList.toggle('on', good.shipped);
+        chip.setAttribute('aria-pressed', String(good.shipped));
+      }
+      setDisabledWith(siteUi.exportReason, [...siteUi.exportBtns.values()], exportVerb.reason);
+
+      // verb 2 — courier fleet target
+      const podVerb = model.verbs.podTarget;
+      setNodeText(siteUi.podValue, String(podVerb.value));
+      setDisabledWith(siteUi.podReason, [siteUi.podDown, siteUi.podUp], podVerb.reason);
+
+      // verb 3 — machine mode
+      const modeVerb = model.verbs.machineMode;
+      const modeId = syncSelect(siteUi.modeSelect, modeVerb.machines);
+      const chosen = modeVerb.machines.find((m) => m.id === modeId) || null;
+      const modeSig = chosen ? `${chosen.id}|${chosen.modes.join(',')}` : '';
+      if (siteUi.modeSig !== modeSig) {
+        siteUi.modeSig = modeSig;
+        siteUi.modeChips.textContent = '';
+        siteUi.modeBtns = [];
+        if (chosen) {
+          chosen.modes.forEach((mode, i) => {
+            const chip = document.createElement('button');
+            chip.type = 'button';
+            chip.className = 'aw-verb-chip';
+            chip.dataset.mode = mode;
+            chip.textContent = chosen.modeLabels[i];
+            chip.addEventListener('click', () => applyMachineMode(chosen.id, mode));
+            siteUi.modeChips.appendChild(chip);
+            siteUi.modeBtns.push(chip);
+          });
+        }
+      }
+      for (const chip of siteUi.modeBtns) {
+        const on = !!chosen && chip.dataset.mode === chosen.mode;
+        chip.classList.toggle('on', on);
+        chip.setAttribute('aria-pressed', String(on));
+      }
+      setDisabledWith(siteUi.modeReason, [siteUi.modeSelect, ...siteUi.modeBtns], modeVerb.reason);
+
+      // verb 4 — rover transfer
+      const xferVerb = model.verbs.transfer;
+      const xferId = syncSelect(siteUi.xferMachine, xferVerb.machines);
+      const xferMachine = xferVerb.machines.find((m) => m.id === xferId) || null;
+      const goodRows = xferMachine
+        ? xferMachine.goods.map((g) => ({ id: g.id, name: `${g.name} — ${g.onSite}u here, ${g.onShip}u aboard` }))
+        : [];
+      syncSelect(siteUi.xferGood, goodRows);
+      setNodeText(siteUi.xferQty, unitText(transferQty));
+      setDisabledWith(
+        siteUi.xferReason,
+        [siteUi.xferMachine, siteUi.xferGood, siteUi.xferDown, siteUi.xferUp, siteUi.xferLoad, siteUi.xferTake],
+        xferVerb.reason || (goodRows.length ? null : 'Nothing to move either way yet.'),
+      );
+    }
+
+    // ---------- drawer lifecycle ----------
+    function syncDrawerTabs() {
+      for (const [id, btn] of drawerTabBtns) {
+        const on = id === drawerTab;
+        btn.classList.toggle('on', on);
+        btn.setAttribute('aria-selected', String(on));
+      }
+    }
+
+    function refreshDrawer() {
+      if (drawerTab === null) return;
+      if (projDirty) refreshProjection();
+      if (drawerTab === 'ledger') renderLedgerPanel();
+      else if (drawerTab === 'site') renderSitePanel();
+      else renderHelpPanel();
+      drawerElapsed = 0;
+    }
+
+    function openDrawer(tab) {
+      if (!DRAWER_TABS.includes(tab)) return;
+      if (drawerCloseTimer) { clearTimeout(drawerCloseTimer); drawerCloseTimer = 0; }
+      const wasClosed = drawerTab === null;
+      drawerTab = tab;
+      drawer.hidden = false;
+      drawer.dataset.tab = tab;
+      wrap.dataset.drawer = tab;
+      drawerBtn.setAttribute('aria-expanded', 'true');
+      ledgerPanel.hidden = tab !== 'ledger';
+      sitePanel.hidden = tab !== 'site';
+      helpPanel.hidden = tab !== 'help';
+      syncDrawerTabs();
+      refreshDrawer();
+      // Law §6.6: the lens does not compete with an open sheet for the bottom of the glass.
+      hideLens();
+      if (wasClosed) {
+        // Force layout so the browser has a pre-transition computed style to ease FROM; without
+        // this the sheet appears already-open (`hidden` and the transform flip in one frame).
+        void drawer.offsetHeight;
+        drawer.classList.add('open');
+      }
+    }
+
+    function closeDrawer() {
+      if (drawerTab === null) return;
+      drawerTab = null;
+      drawer.classList.remove('open');
+      drawerBtn.setAttribute('aria-expanded', 'false');
+      delete wrap.dataset.drawer;
+      syncDrawerTabs();
+      if (drawer.contains(document.activeElement)) canvas.focus({ preventScroll: true });
+      if (drawerCloseTimer) clearTimeout(drawerCloseTimer);
+      // display:none only AFTER the 200ms ease, so the sheet is seen leaving. Until then it is
+      // already opacity:0 and translated out, which keeps it out of the word walker either way.
+      drawerCloseTimer = setTimeout(() => {
+        drawerCloseTimer = 0;
+        if (drawerTab === null) drawer.hidden = true;
+      }, 200);
+    }
+
+    // A session boundary is not an animation: the next session must start in the default view.
+    function forceCloseDrawer() {
+      if (drawerCloseTimer) { clearTimeout(drawerCloseTimer); drawerCloseTimer = 0; }
+      drawerTab = null;
+      drawer.classList.remove('open');
+      drawer.hidden = true;
+      delete drawer.dataset.tab;
+      delete wrap.dataset.drawer;
+      drawerBtn.setAttribute('aria-expanded', 'false');
+      drawerDismissedClick = false;
+      syncDrawerTabs();
+    }
+
+    // Tab walks the sheet open through its three tabs and then shut again: closed → Ledger → Site
+    // → Help → closed. Shift+Tab walks it back the same way.
+    function cycleDrawer(dir) {
+      const at = drawerTab === null ? (dir > 0 ? -1 : DRAWER_TABS.length) : DRAWER_TABS.indexOf(drawerTab);
+      const next = at + dir;
+      if (next < 0 || next >= DRAWER_TABS.length) { closeDrawer(); return; }
+      openDrawer(DRAWER_TABS[next]);
+    }
+
+    // Outside click. The crest affordance counts as INSIDE: without that, its own click would open
+    // the sheet and this handler would shut it again inside the same gesture, and the button would
+    // read as dead.
+    const onDocMouseDown = (ev) => {
+      if (drawerTab === null) return;
+      const target = ev.target;
+      if (drawer.contains(target) || drawerBtn.contains(target) || drawerBtn === target) return;
+      // Only the two buttons that ACT on the board arm the swallow. A middle-click reaches
+      // neither onMouseDown nor onContextMenu, so arming for it would strand the flag and eat
+      // the player's next real click.
+      drawerDismissedClick = (ev.button === 0 || ev.button === 2)
+        && (canvas === target || canvas.contains(target));
+      closeDrawer();
+    };
+
+    /** True exactly once, for the single gesture that dismissed a sheet. */
+    function consumeDrawerDismissal() {
+      const spent = drawerDismissedClick;
+      drawerDismissedClick = false;
+      return spent;
+    }
+
+    // ---------- law §9: a producing site opens at site zoom ----------
+    // "Return to a producing site: the screen opens at site zoom so the first second reads status,
+    // then drops to work zoom on first input." The hold is armed only where there is status to
+    // read — a virgin rock never changes register, so nothing flickers where nothing is running.
+    //
+    // DEVIATION, recorded: renderer3d.begin() hard-resets the register to `work`, and the public
+    // API exposes no way to seed the zoom scalar, so the screen EASES to site zoom over the
+    // renderer's own 180ms detent rather than opening on it. Under reduced motion it snaps exactly.
+    function armSiteZoom() {
+      siteZoomHold = false;
+      if (!renderer3d) return;
+      const s = site();
+      if (!s || !s.machines.length) return;
+      siteZoomHold = true;
+      renderer3d.setZoomRegister('site');
+    }
+    function releaseSiteZoom(toWork) {
+      if (!siteZoomHold) return;
+      siteZoomHold = false;
+      if (toWork && renderer3d) renderer3d.setZoomRegister('work');
     }
 
     // ---------- crest alert slot (one line, severity-colored) ----------
@@ -717,7 +1616,7 @@ export const asteroidScreen = {
       const s = site();
       if (!s || !s.ledger.length) return;
       const latest = s.ledger[0];
-      pushLedgerLine(latest.kind === 'bad' ? 'bad' : latest.kind === 'warn' ? 'warn' : latest.kind === 'good' ? 'good' : 'info', latest.text);
+      pushLedgerLine(latest.kind === 'bad' ? 'bad' : latest.kind === 'warn' ? 'warn' : latest.kind === 'good' ? 'good' : 'info', latest.text, latest.t);
     }
 
     // Re-entering an established site seeds its recent history for the ledger drawer (.07).
@@ -725,7 +1624,7 @@ export const asteroidScreen = {
       const s = site();
       if (!s || !s.ledger.length) return;
       for (const entry of s.ledger.slice(0, 8).reverse()) {
-        pushLedgerLine(entry.kind === 'bad' ? 'bad' : entry.kind === 'warn' ? 'warn' : entry.kind === 'good' ? 'good' : 'info', entry.text);
+        pushLedgerLine(entry.kind === 'bad' ? 'bad' : entry.kind === 'warn' ? 'warn' : entry.kind === 'good' ? 'good' : 'info', entry.text, entry.t);
       }
     }
 
@@ -927,6 +1826,12 @@ export const asteroidScreen = {
         updateHud();
         hudElapsed = 0;
       }
+      // ---- §6.6 drawers: an open sheet re-reads on a slow cadence ----
+      // Half a second is bookkeeping speed. Faster would spend the frame budget rebuilding
+      // rows nobody is watching change; it also rides the same clock as the screen, so it
+      // cannot tick into a torn-down session.
+      drawerElapsed += dt;
+      if (drawerTab !== null && drawerElapsed >= 0.5) refreshDrawer();
       // ---- cursor lens (law §6.4) ----
       // The hover delay is spent here rather than on a timer, so it pauses with the screen and
       // cannot fire a card into a torn-down session.
@@ -968,6 +1873,11 @@ export const asteroidScreen = {
       alertEl.className = 'aw-alert';
       lastLedgerText = null;
       ledgerBuffer.length = 0;
+      // Law §2.5 counts the DEFAULT drive view: a session always starts with every drawer shut.
+      forceCloseDrawer();
+      drawerElapsed = 0;
+      siteZoomHold = false;
+      transferQty = 5;
 
       drillSys.begin(pendingId);
       const astId = asteroidId();
@@ -994,6 +1904,7 @@ export const asteroidScreen = {
       window.addEventListener('mouseup', onMouseUp);
       canvas.addEventListener('contextmenu', onContextMenu);
       canvas.addEventListener('wheel', onWheel, { passive: false });
+      document.addEventListener('mousedown', onDocMouseDown, true);
 
       // One renderer (one WebGL context) per mounted screen; each session rebuilds its scene
       // from the live field.
@@ -1008,6 +1919,9 @@ export const asteroidScreen = {
         });
       }
       renderer3d.begin({ motionReduce });
+      // Law §9, immediately after begin() (which resets the register to work): a site with
+      // machines opens pulled back so the first second reads lit / flowing / dark.
+      armSiteZoom();
       // Re-entering an already-built site must not replay the §9 first-Core settle: the palette is
       // simply there, the way it was when you left. Only a Core landing DURING a session animates.
       paletteSettleAllowed = false;
@@ -1032,6 +1946,8 @@ export const asteroidScreen = {
       cancelAnimationFrame(rafId);
       controller.cancel();
       hideLens();
+      forceCloseDrawer(); // never leave a sheet — or its close timer — running past the session
+      siteZoomHold = false;
       palette.unmount();
       document.removeEventListener('keydown', onKeyDown, true);
       window.removeEventListener('keyup', onKeyUp);
@@ -1042,6 +1958,7 @@ export const asteroidScreen = {
       window.removeEventListener('mouseup', onMouseUp);
       canvas.removeEventListener('contextmenu', onContextMenu);
       canvas.removeEventListener('wheel', onWheel);
+      document.removeEventListener('mousedown', onDocMouseDown, true);
       if (state.drill && drillSys) drillSys.end();
     };
 

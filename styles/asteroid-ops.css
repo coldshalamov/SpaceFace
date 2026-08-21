@@ -630,3 +630,285 @@ html.sf-reduce-motion .aw-build-key:hover { transform: none; }
   .aw-lens { background: Canvas; color: CanvasText; }
   .aw-lens-hp i { background: Highlight; }
 }
+
+/* ---------------------------------------------------------------- §6.6 drawers
+   A bottom sheet over the board's BOTTOM EDGE only: max 280px tall, --aw-surface,
+   r10 on the top corners, soft shadow, a grabber handle, a 200ms ease. Law §6.6 —
+   "a drawer never covers the middle of the board and closes on Esc or outside click".
+
+   THE CLOSED STATE IS display:none, NOT an off-screen transform. Law §2.5 counts the
+   default drive view and scripts/check-asteroid-theater.mjs walks every visible element
+   under .ast-screen; a translated sheet still owns client rects and would spend the whole
+   15-word budget on bookkeeping. The [hidden] rule below needs !important for exactly the
+   reason .aw-lens[hidden] does: a plain class rule with `display:flex` outranks the UA
+   sheet's `[hidden] { display: none }`. */
+.aw-drawer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 7;   /* over the palette (5) and the §6.4 lens (6): an open sheet owns the bottom */
+  max-height: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 6px 18px 14px;
+  border-radius: 10px 10px 0 0;
+  background: var(--aw-surface);
+  box-shadow: 0 -4px 20px rgba(8, 5, 2, 0.55);
+  color: var(--aw-ink-2);
+  transform: translateY(102%);
+  opacity: 0;
+  transition: transform 200ms cubic-bezier(0.22, 0.68, 0.3, 1), opacity 200ms ease;
+  overflow: hidden;
+}
+.aw-drawer[hidden] { display: none !important; }
+.aw-drawer.open { transform: translateY(0); opacity: 1; }
+
+/* the grabber: the sheet says "I pull up from here" without a word */
+.aw-drawer-grab {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 4px;
+  margin: 2px auto 0;
+  border-radius: 999px;
+  background: var(--aw-line);
+}
+
+.aw-drawer-tabs {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.ast-screen .aw-drawer-tab {
+  min-height: 28px;
+  padding: 4px 14px;
+  border-radius: 999px;
+  background: var(--aw-raised);
+  color: var(--aw-ink-2);
+  font: 500 13px/1.1 var(--aw-font);
+  transition: color 120ms ease, background 120ms ease;
+}
+.ast-screen .aw-drawer-tab:hover { color: var(--aw-ink); }
+.ast-screen .aw-drawer-tab.on { color: var(--aw-gold); box-shadow: inset 0 0 0 1.5px var(--aw-gold); }
+
+.aw-drawer-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+}
+.aw-drawer-body > [hidden] { display: none !important; }
+
+/* the crest affordance (law §2.5: one small icon, no visible word) */
+.ast-screen .aw-drawer-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  color: var(--aw-ink-2);
+  transition: color 120ms ease, transform 120ms ease;
+}
+.ast-screen .aw-drawer-key:hover { color: var(--aw-ink); transform: translateY(-1px); }
+.ast-screen .aw-drawer-key[aria-expanded="true"] { color: var(--aw-gold); }
+.aw-drawer-key svg { display: block; }
+
+/* severity dot — the ledger's whole severity vocabulary, no words spent on it */
+.aw-dot {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--aw-ink-3);
+}
+.aw-dot.mint { background: var(--aw-mint); }
+.aw-dot.gold { background: var(--aw-gold); }
+.aw-dot.coral { background: var(--aw-coral); }
+.aw-dot.sky { background: var(--aw-sky); }
+.aw-dot.ink { background: var(--aw-ink-3); }
+
+/* ---- Ledger tab: newest first, mono clock, one line per event ---- */
+.aw-ledger { margin: 0; padding: 0; list-style: none; }
+.aw-ledger-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 5px 2px;
+  font: 400 13px/1.35 var(--aw-font);
+  color: var(--aw-ink-2);
+}
+.aw-ledger-row + .aw-ledger-row { box-shadow: inset 0 1px 0 rgba(58, 49, 38, 0.5); }
+.aw-ledger-row .aw-dot { align-self: center; }
+.aw-ledger-clock {
+  flex: 0 0 auto;
+  font: 500 13px/1.35 var(--aw-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--aw-ink-3);
+}
+.aw-ledger-text { color: var(--aw-ink); }
+.aw-ledger-empty {
+  padding: 8px 2px;
+  font: 400 13px/1.35 var(--aw-font);
+  color: var(--aw-ink-3);
+}
+
+/* ---- Help tab: the keys, taught once ---- */
+.aw-helpmap {
+  margin: 0;
+  display: grid;
+  grid-template-columns: max-content 1fr max-content 1fr;
+  align-items: center;
+  gap: 6px 12px;
+}
+.aw-help-keys {
+  justify-self: start;
+  padding: 3px 9px;
+  border-radius: 8px;
+  background: var(--aw-raised);
+  font: 500 13px/1.1 var(--aw-mono);
+  color: var(--aw-ink);
+  white-space: nowrap;
+}
+.aw-help-label {
+  margin: 0;
+  font: 400 13px/1.3 var(--aw-font);
+  color: var(--aw-ink-2);
+}
+
+/* ---- Site tab: production totals, courier log, the four operator verbs ---- */
+.aw-site-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 10px 18px;
+  align-items: start;
+}
+.aw-site-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(23, 19, 16, 0.55);
+}
+.aw-site-title {
+  margin: 0 0 2px;
+  font: 600 14px/1.2 var(--aw-font);
+  color: var(--aw-ink);
+}
+.aw-site-stat {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font: 400 13px/1.4 var(--aw-font);
+}
+.aw-site-stat-label { color: var(--aw-ink-2); }
+.aw-site-stat-val {
+  font: 500 13px/1.4 var(--aw-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--aw-ink);
+}
+.aw-site-rates, .aw-verb-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+.aw-rate-chip {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--aw-raised);
+  font: 500 13px/1.3 var(--aw-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--aw-mint);
+}
+.aw-site-flights { margin: 4px 0 0; padding: 0; list-style: none; }
+.aw-site-flight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+  font: 400 13px/1.3 var(--aw-font);
+  color: var(--aw-ink-2);
+}
+
+/* the four operator verbs — real keys, bound straight to the owner APIs */
+.ast-screen .aw-verb-chip,
+.ast-screen .aw-verb-btn,
+.ast-screen .aw-verb-step {
+  min-height: 28px;
+  border-radius: 8px;
+  background: var(--aw-raised);
+  color: var(--aw-ink-2);
+  font: 500 13px/1.1 var(--aw-font);
+  transition: color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+}
+.ast-screen .aw-verb-chip { padding: 4px 12px; border-radius: 999px; }
+.ast-screen .aw-verb-btn { padding: 4px 14px; }
+.ast-screen .aw-verb-step { width: 28px; font-family: var(--aw-mono); }
+.ast-screen .aw-verb-chip:hover:not(:disabled),
+.ast-screen .aw-verb-btn:hover:not(:disabled),
+.ast-screen .aw-verb-step:hover:not(:disabled) { color: var(--aw-ink); transform: translateY(-1px); }
+.ast-screen .aw-verb-chip.on { color: var(--aw-mint); box-shadow: inset 0 0 0 1.5px var(--aw-mint); }
+.ast-screen .aw-verb-chip:disabled,
+.ast-screen .aw-verb-btn:disabled,
+.ast-screen .aw-verb-step:disabled { color: var(--aw-ink-3); transform: none; }
+.aw-verb-num {
+  min-width: 42px;
+  text-align: center;
+  font: 500 15px/1.1 var(--aw-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--aw-ink);
+}
+.ast-screen .aw-verb-select {
+  min-height: 28px;
+  max-width: 100%;
+  padding: 3px 8px;
+  border: none;
+  border-radius: 8px;
+  background: var(--aw-raised);
+  color: var(--aw-ink);
+  font: 500 13px/1.2 var(--aw-font);
+  text-transform: none;
+}
+.ast-screen .aw-verb-select:disabled { color: var(--aw-ink-3); }
+.ast-screen .aw-verb-select option { background: var(--aw-surface); color: var(--aw-ink); }
+.aw-site-reason {
+  margin: 4px 0 0;
+  font: 400 13px/1.3 var(--aw-font);
+  color: var(--aw-ink-3);
+}
+.aw-site-reason[hidden] { display: none !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  .aw-drawer, .aw-drawer-tab, .aw-drawer-key, .aw-verb-chip, .aw-verb-btn, .aw-verb-step { transition: none; }
+  .aw-drawer-key:hover, .aw-verb-chip:hover, .aw-verb-btn:hover, .aw-verb-step:hover { transform: none; }
+}
+html.sf-reduce-motion .aw-drawer,
+html.sf-reduce-motion .aw-drawer-tab,
+html.sf-reduce-motion .aw-drawer-key,
+html.sf-reduce-motion .aw-verb-chip,
+html.sf-reduce-motion .aw-verb-btn,
+html.sf-reduce-motion .aw-verb-step { transition: none; }
+html.sf-reduce-motion .aw-drawer-key:hover,
+html.sf-reduce-motion .aw-verb-chip:hover,
+html.sf-reduce-motion .aw-verb-btn:hover,
+html.sf-reduce-motion .aw-verb-step:hover { transform: none; }
+
+@media (forced-colors: active) {
+  .aw-drawer, .aw-drawer-tab, .aw-drawer-key, .aw-site-block,
+  .aw-verb-chip, .aw-verb-btn, .aw-verb-step, .aw-verb-select, .aw-help-keys {
+    border: 1px solid CanvasText;
+    background: Canvas;
+    color: CanvasText;
+  }
+  .aw-drawer-tab.on, .aw-verb-chip.on { outline: 2px solid Highlight; outline-offset: 1px; }
+  .aw-drawer-grab, .aw-dot { background: CanvasText; }
+  .aw-drawer-key svg { stroke: CanvasText; }
+  .aw-site-reason, .aw-ledger-empty { color: GrayText; }
+}

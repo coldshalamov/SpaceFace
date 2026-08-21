@@ -69,6 +69,8 @@ function makeDefaultSites() {
   };
 }
 
+const EMPTY_MACHINE_STATUS = Object.freeze({});
+
 function makeLedgerEntry(t, kind, text) {
   return { t: Math.round((Number(t) || 0) * 10) / 10, kind, text };
 }
@@ -1458,6 +1460,13 @@ export const asteroidSites = {
     for (const comp of rt.laneComps) laneBudget[comp.key] = SITE_BALANCE.laneThroughputPerMin * dtMin;
 
     // --- Machines, in stable install order. ---
+    // PQ-130.10a: a per-machine status TRANSITION is the mine's machine-state event (law §5
+    // "Machine starved/unpowered" — one soft chime, once). The status map is rebuilt from scratch
+    // every tick, so last tick's map is kept as the only reference for "what changed". Nothing
+    // else reads it, no durable state is added (`_rt` is a transient runtime cache) and the
+    // production path below is byte-for-byte what it was.
+    const prevStatus = rt.status || EMPTY_MACHINE_STATUS;
+    const statusTransitions = [];
     rt.status = {};
     for (const m of site.machines) {
       const def = SITE_MACHINE_BY_ID.get(m.defId);
@@ -1602,6 +1611,21 @@ export const asteroidSites = {
         status.genMW = def.power;
       }
       rt.status[m.id] = status;
+      // A FIRST observation is an initial condition, not a transition. Emitting for every machine
+      // on the first tick after `_rt` is built would fire N simultaneous starved chimes on entry
+      // (audioSystem chimes on `starved && prev !== true`, and `drill:start` wipes its own
+      // memory), against law §5 "once" and §8 "one voice at a time". Only a machine that was
+      // already being watched, and whose state actually moved, speaks. Collected here and emitted
+      // BELOW the loop so no listener can read a half-built `rt.status` through projection().
+      const before = prevStatus[m.id];
+      if (before && before.state !== status.state) {
+        statusTransitions.push({ machineId: m.id, state: status.state, prev: before.state });
+      }
+    }
+    for (const t of statusTransitions) {
+      this.bus.emit('site:machineStatus', {
+        siteId: site.id, machineId: t.machineId, state: t.state, prev: t.prev,
+      });
     }
   },
 
