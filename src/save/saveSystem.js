@@ -28,7 +28,13 @@ import {
 } from '../core/newGamePlus.js';
 import { COORDINATE_SCHEMA, applyFrameOrigin, deriveFrameOrigin } from '../core/coordinates.js';
 import { isCatchupPresentationSkip } from '../core/catchupPolicy.js';
-import { createSaveDirtyJournal, shouldSerializeDuringPresent } from './saveDirtyJournal.js';
+import {
+  SAVE_JOURNAL_EVENT,
+  acknowledgeSaveSnapshotBoundary,
+  captureSaveSnapshotBoundary,
+  createSaveDirtyJournal,
+  shouldSerializeDuringPresent,
+} from './saveDirtyJournal.js';
 import {
   MASSLINE_BINDING_PROFILE_LEGACY,
   MASSLINE_BINDING_PROFILE_SPACE,
@@ -74,6 +80,8 @@ const VALID_FLIGHT_MODES = new Set(['assisted', 'drift', 'newtonian']);
 const VALID_CONTROL_SCHEMES = new Set(['pilot', 'helm-assist', 'classic']);
 const VALID_MASSLINE_RELEASE_ASSISTS = new Set(['arm', 'snap', 'off']);
 const DEFAULT_START_SECTOR = NEW_GAME.startingSectorId || NEW_GAME.startSectorId || 'sector_helios_prime';
+// 'activity' stays on the skip list for the GENERIC entity cloner: it is non-enumerable anyway,
+// and plainEntity persists it through the explicit residency-stamp mirror below.
 const TRANSIENT_ENTITY_SAVE_KEYS = new Set([
   'mesh',
   'view',
@@ -120,6 +128,7 @@ export const save = {
     this._sharedStorePatch = null;
     this._sharedStoreFlushTimer = null;
     this._dirtyJournal = createSaveDirtyJournal();
+    this._lastSaveSnapshotBoundary = null;
 
     const bus = this.bus;
     this._loadProfileSettings();
@@ -133,6 +142,13 @@ export const save = {
     });
     bus.on('settings:changed', (payload) => {
       if (!payload || payload.persist !== false) this._writeProfileSettings();
+    });
+    // Systems that own durable records can publish a small dirty fact without forcing a live
+    // serializer into the render/presentation callback. The payload is copied at the eventual
+    // boundary; the complete versioned envelope remains the compatibility path for now.
+    bus.on('save:dirty', (payload) => {
+      if (!payload || payload.kind == null) return;
+      this.recordDirty(payload.kind, payload.payload);
     });
 
     // Death/respawn gate autosave (combat signals via events, not a state.player.dead field).
@@ -169,7 +185,13 @@ export const save = {
     bus.on('story:beatAdvanced', () => this.requestAutosave('story'));
     // HUD placement belongs to the game save (not the machine-wide profile), so keep the player's
     // latest Ctrl-dragged layout durable even if they do not make another progression change.
-    bus.on('hud:layoutChanged', () => this.requestAutosave('hud_layout'));
+    bus.on('hud:layoutChanged', (payload) => {
+      this.recordDirty(SAVE_JOURNAL_EVENT.PLAYER, {
+        reason: 'hud_layout',
+        key: payload && payload.key != null ? String(payload.key) : null,
+      });
+      this.requestAutosave('hud_layout');
+    });
     bus.on('player:respawn', () => this.requestAutosave('respawn', { force: true }));
     this._syncSharedPlayerStore();
   },
@@ -227,6 +249,26 @@ export const save = {
     if (intervalS > 0 && (state.meta.playtimeS - this._lastAutosavePlaytime) >= intervalS) {
       this.requestAutosave('interval');
     }
+  },
+
+  /** Record a durable mutation for the next save boundary; never serializes live state here. */
+  recordDirty(kind, payload = null) {
+    return !!(this._dirtyJournal && this._dirtyJournal.record(kind, payload));
+  },
+
+  _captureSaveSnapshotBoundary() {
+    // The journal peek is deliberately non-destructive. A successful write acknowledges this exact
+    // boundary; a serializer/storage failure leaves the facts queued for a later save.
+    const boundary = captureSaveSnapshotBoundary(this._dirtyJournal, this.state);
+    this._lastSaveSnapshotBoundary = boundary;
+    return boundary;
+  },
+
+  _acknowledgeSaveSnapshotBoundary(boundary) {
+    if (!boundary || this._lastSaveSnapshotBoundary !== boundary) return 0;
+    const acknowledged = acknowledgeSaveSnapshotBoundary(this._dirtyJournal, boundary);
+    this._lastSaveSnapshotBoundary = null;
+    return acknowledged;
   },
 
   /**
@@ -632,6 +674,10 @@ export const save = {
       return false;
     }
     this.bus.emit('save:started', { slot, reason, autosave });
+    // Establish the save boundary before any serializer reads live state. Manual saves are
+    // synchronous; autosaves use the same boundary in their chunked capture below. The journal
+    // remains pending until the write succeeds, so a failed save can retry the same facts.
+    const snapshotBoundary = this._captureSaveSnapshotBoundary();
     let envelope;
     let serializeMs = 0;
     try {
@@ -662,7 +708,9 @@ export const save = {
       ok: !!write.ok,
       failure: write.reason || null,
     });
-    return this._publishSaveResult(slot, envelope, write, timing);
+    const ok = this._publishSaveResult(slot, envelope, write, timing);
+    if (ok) this._acknowledgeSaveSnapshotBoundary(snapshotBoundary);
+    return ok;
   },
 
   _writeSlot(slot, envelope, options = {}) {
@@ -1140,8 +1188,12 @@ export const save = {
 
     // Test/tool callers may replace serialize() with a fully-authored envelope. Preserve that public
     // seam and the synchronous safe fallback; normal play uses keyed incremental capture below.
-    if (this.serialize !== CANONICAL_SAVE_SERIALIZE) return this._captureLegacyAutosave(job);
+    if (this.serialize !== CANONICAL_SAVE_SERIALIZE) {
+      const snapshotBoundary = this._captureSaveSnapshotBoundary();
+      return this._captureLegacyAutosave(job, snapshotBoundary);
+    }
 
+    const snapshotBoundary = this._captureSaveSnapshotBoundary();
     const descriptor = this._autosaveDescriptor();
     const capture = {
       plan: this._saveCapturePlan(),
@@ -1160,6 +1212,7 @@ export const save = {
       workerAttempts: 0,
       captureStartedAtMs: null,
       captureEndedAtMs: null,
+      snapshotBoundary,
       descriptor,
     };
     job.capture = capture;
@@ -1291,6 +1344,7 @@ export const save = {
         workerRoundtripMs: capture.workerRoundtripMs,
         captureStartedAtMs: capture.captureStartedAtMs,
         captureEndedAtMs: capture.captureEndedAtMs,
+        snapshotBoundary: capture.snapshotBoundary,
       });
     };
     worker.onerror = () => fail('save_worker_failed');
@@ -1314,6 +1368,11 @@ export const save = {
       ? this._autosaveGeneration : 0) + 1;
     this._autosavePending = null;
     this._lastPlayerCombatSimTime = -Infinity;
+    if (this._dirtyJournal) {
+      if (typeof this._dirtyJournal.reset === 'function') this._dirtyJournal.reset();
+      else if (typeof this._dirtyJournal.clear === 'function') this._dirtyJournal.clear();
+    }
+    this._lastSaveSnapshotBoundary = null;
     const workers = this._activeSaveWorkers ? [...this._activeSaveWorkers] : [];
     for (const worker of workers) {
       try {
@@ -1435,6 +1494,7 @@ export const save = {
     const snapshot = {
       envelope: { ...capture.descriptor, checksum: encoded.checksum, data: capture.data },
       json: encoded.json,
+      snapshotBoundary: capture.snapshotBoundary,
       serializeMs: capture.serializeMs,
       stringifyMs: encodeMs,
       blockingSlices: [...capture.blockingSlices, encodeMs],
@@ -1453,7 +1513,7 @@ export const save = {
     return true;
   },
 
-  _captureLegacyAutosave(job) {
+  _captureLegacyAutosave(job, snapshotBoundary = null) {
 
     const sliceStarted = workNowMs();
     let envelope;
@@ -1482,6 +1542,7 @@ export const save = {
     const snapshot = {
       envelope,
       json,
+      snapshotBoundary,
       serializeMs,
       stringifyMs,
       blockingSliceMs: workNowMs() - sliceStarted,
@@ -1538,6 +1599,7 @@ export const save = {
     });
     const ok = this._publishSaveResult(AUTOSAVE_SLOT, snapshot.envelope, write, timing);
     if (ok) {
+      this._acknowledgeSaveSnapshotBoundary(snapshot.snapshotBoundary);
       const completedAt = nowMs();
       this._lastAutosaveAt = completedAt;
       this._lastAutosavePlaytime = this.state.meta.playtimeS;
@@ -2007,6 +2069,7 @@ export const save = {
     });
     const ok = this._publishSaveResult(AUTOSAVE_SLOT, snapshot.envelope, write, timing);
     if (ok) {
+      this._acknowledgeSaveSnapshotBoundary(snapshot.snapshotBoundary);
       const completedAt = nowMs();
       this._lastAutosaveAt = completedAt;
       this._lastAutosavePlaytime = this.state.meta.playtimeS;
@@ -2640,7 +2703,10 @@ export const save = {
     // A player ship is not a timed entity, so restore it as non-expiring.
     if (!Number.isFinite(spec.ttl) || spec.ttl <= 0) spec.ttl = Infinity;
     spec.flags = Object.assign({}, spec.flags, { noInterp: true });
+    const savedActivity = spec.activity;
+    delete spec.activity;
     const e = this.helpers.spawnEntity(spec);
+    attachSavedActivity(e, savedActivity);
     state.playerId = e.id;
     state.nextEntityId = Math.max(state.nextEntityId, e.id + 1);
     if (entityIdRemap) {
@@ -2658,7 +2724,10 @@ export const save = {
       delete spec.id; delete spec._isPlayer;
       if (spec.type !== 'projectile' && (!Number.isFinite(spec.ttl) || spec.ttl <= 0)) spec.ttl = Infinity;
       spec.flags = Object.assign({}, spec.flags, { persistent: true, noInterp: true });
+      const savedActivity = spec.activity;
+      delete spec.activity;
       const e = this.helpers.spawnEntity(spec);
+      attachSavedActivity(e, savedActivity);
       state.nextEntityId = Math.max(state.nextEntityId, e.id + 1);
       if (entityIdRemap && saved.id != null) entityIdRemap.set(String(saved.id), e.id);
     }
@@ -3067,12 +3136,32 @@ function plainEntity(e, isPlayer) {
   // ensure pos/vel are {x,z} even if the Vector3 check above missed (defensive)
   if (e.pos) out.pos = { x: e.pos.x, z: e.pos.z };
   if (e.vel) out.vel = { x: e.vel.x, z: e.vel.z };
+  // The residency stamp is attached non-enumerable (activityRuntime.attachStamp), so the for..in
+  // above never sees it — yet its tier hysteresis decides physics-body membership on the first
+  // post-load classification. Persist it explicitly; restore re-attaches the live shape.
+  if (e.activity && typeof e.activity === 'object') {
+    const savedActivity = clonePlain(e.activity);
+    if (savedActivity && Object.keys(savedActivity).length) out.activity = savedActivity;
+  }
   out._isPlayer = !!isPlayer;
   return out;
 }
 
 function shouldSkipEntitySaveKey(key) {
   return isUnsafePlainKey(key) || key.charAt(0) === '_' || TRANSIENT_ENTITY_SAVE_KEYS.has(key);
+}
+
+// Re-attach a saved residency stamp with the exact live shape from activityRuntime.attachStamp:
+// non-enumerable so snapshots/JSON keep ignoring it, writable/configurable so the classifier can
+// restamp. Absent in older saves → no-op; the entity just classifies historyless as before.
+function attachSavedActivity(entity, savedActivity) {
+  if (!entity || !savedActivity || typeof savedActivity !== 'object') return;
+  Object.defineProperty(entity, 'activity', {
+    value: savedActivity,
+    writable: true,
+    configurable: true,
+    enumerable: false,
+  });
 }
 
 function sanitizeEntityFlagsForSave(flags, isPlayer = false) {

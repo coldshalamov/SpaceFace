@@ -19,7 +19,11 @@
 // nothing but its own DOM. Runs late in UPDATE_ORDER; every update exits immediately when the
 // master flag is off or the DOM is absent (headless-safe by construction).
 import { massline2Flag } from '../data/featureFlags.js';
-import { hudSignatureUnchanged } from './hudSkipUnchanged.js';
+import {
+  clearHudSignature,
+  clearHudSignatures,
+  hudFieldsUnchanged,
+} from './hudSkipUnchanged.js';
 
 // Lead moving intercept targets by half a fixed sim step. The 60 ms CSS tween then bridges the
 // slower real-time cadence when bullet time reduces sim updates to ~21 Hz.
@@ -189,6 +193,123 @@ export function resolveThrowMarkWorldPoint(throwState, state) {
   };
 }
 
+const EMPTY_HUD_OBJECT = Object.freeze({});
+
+function appendEntityFields(fields, cursor, state, id) {
+  if (id == null) return cursor;
+  fields[cursor++] = id;
+  const entity = state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(id)
+    : null;
+  fields[cursor++] = entity && entity.alive !== false;
+  fields[cursor++] = entity && entity.pos && entity.pos.x;
+  fields[cursor++] = entity && entity.pos && entity.pos.z;
+  fields[cursor++] = entity && entity.vel && entity.vel.x;
+  fields[cursor++] = entity && entity.vel && entity.vel.z;
+  fields[cursor++] = entity && entity.type;
+  const data = entity && entity.data;
+  fields[cursor++] = data && (data.displayName || data.name || data.label);
+  return cursor;
+}
+
+/** Only values read by the Massline DOM route belong in this fixed scalar block. `state.tick` is
+ * deliberately absent: it changes on every fixed step even while the displayed values are equal. */
+function writeMasslineHudFields(fields, state, player) {
+  const ml2 = state.massline2 || EMPTY_HUD_OBJECT;
+  const throwState = ml2.throw || EMPTY_HUD_OBJECT;
+  const solution = throwState.solution || EMPTY_HUD_OBJECT;
+  const selfSolution = throwState.selfSolution || EMPTY_HUD_OBJECT;
+  const cloak = ml2.cloak || EMPTY_HUD_OBJECT;
+  const bulletTime = ml2.bulletTime || EMPTY_HUD_OBJECT;
+  const playerState = state.player || EMPTY_HUD_OBJECT;
+  const receipt = state.masslineAcquisition || EMPTY_HUD_OBJECT;
+  const selected = receipt.selected || EMPTY_HUD_OBJECT;
+  const snare = playerState.masslineSnarePreview || EMPTY_HUD_OBJECT;
+  const bridle = state.masslineBridle || EMPTY_HUD_OBJECT;
+  const camera = state.camera || EMPTY_HUD_OBJECT;
+  const settings = state.settings || EMPTY_HUD_OBJECT;
+  const video = settings.video || EMPTY_HUD_OBJECT;
+  const access = settings.accessibility || EMPTY_HUD_OBJECT;
+  let index = 0;
+  fields[index++] = player && player.pos && player.pos.x;
+  fields[index++] = player && player.pos && player.pos.z;
+  fields[index++] = camera.zoom;
+  fields[index++] = camera.tilt;
+  fields[index++] = video.fov;
+  fields[index++] = !!video.motionReduce;
+  fields[index++] = access.motionPreference;
+  fields[index++] = !!access.flashReduce;
+  fields[index++] = !!throwState.armed;
+  fields[index++] = !!solution.valid;
+  fields[index++] = !!solution.onSolution;
+  fields[index++] = solution.interceptAngle;
+  fields[index++] = solution.errorRad;
+  fields[index++] = solution.tolRad;
+  fields[index++] = throwState.payloadId;
+  fields[index++] = throwState.aimTargetId;
+  fields[index++] = throwState.releaseTarget && throwState.releaseTarget.targetId;
+  fields[index++] = throwState.releaseTarget && throwState.releaseTarget.pos && throwState.releaseTarget.pos.x;
+  fields[index++] = throwState.releaseTarget && throwState.releaseTarget.pos && throwState.releaseTarget.pos.z;
+  fields[index++] = throwState.releaseTarget && throwState.releaseTarget.kind;
+  fields[index++] = !!selfSolution.onSolution;
+  fields[index++] = selfSolution.errorRad;
+  fields[index++] = selfSolution.tolRad;
+  fields[index++] = selfSolution.targetId;
+  fields[index++] = selfSolution.targetPos && selfSolution.targetPos.x;
+  fields[index++] = selfSolution.targetPos && selfSolution.targetPos.z;
+  fields[index++] = !!cloak.active;
+  fields[index++] = !!cloak.available;
+  fields[index++] = cloak.energy;
+  fields[index++] = cloak.radius;
+  fields[index++] = !!bulletTime.active;
+  fields[index++] = bulletTime.energy;
+  fields[index++] = snare.receiptId;
+  fields[index++] = !!snare.valid;
+  fields[index++] = snare.source && snare.source.x;
+  fields[index++] = snare.source && snare.source.z;
+  fields[index++] = snare.target && snare.target.x;
+  fields[index++] = snare.target && snare.target.z;
+  fields[index++] = !!(playerState.remoteMassline && playerState.remoteMassline.active);
+  fields[index++] = bridle.phase;
+  fields[index++] = bridle.sourceId;
+  fields[index++] = bridle.sourceReceiptId;
+  fields[index++] = bridle.lastDenial;
+  fields[index++] = bridle.lastDenialTargetId;
+  fields[index++] = selected.status;
+  fields[index++] = selected.reason;
+  fields[index++] = selected.targetId;
+  fields[index++] = selected.confidence;
+  fields[index++] = selected.intentLabel;
+  fields[index++] = selected.context;
+  fields[index++] = selected.targetLabel;
+  fields[index++] = selected.targetType;
+  fields[index++] = receipt.id;
+  fields[index++] = !!(playerState.tether && playerState.tether.active);
+  fields[index++] = bridle.phase
+    ? Math.max(0, Math.ceil(Number(bridle.expiresAt) - Number(state.simTime)))
+    : '';
+  fields[index++] = typeof window !== 'undefined' ? window.innerWidth : '';
+  fields[index++] = typeof window !== 'undefined' ? window.innerHeight : '';
+  fields[index++] = !!massline2Flag('bulletTime');
+  fields[index++] = !!massline2Flag('cloak');
+  index = appendEntityFields(fields, index, state, throwState.payloadId);
+  index = appendEntityFields(fields, index, state, throwState.aimTargetId);
+  index = appendEntityFields(
+    fields,
+    index,
+    state,
+    throwState.releaseTarget && throwState.releaseTarget.targetId,
+  );
+  index = appendEntityFields(fields, index, state, selfSolution.targetId);
+  index = appendEntityFields(fields, index, state, selected.targetId);
+  index = appendEntityFields(fields, index, state, bridle.sourceId);
+  return index;
+}
+
+export function masslineHudInputsUnchanged(state, player) {
+  return hudFieldsUnchanged(state, 'masslineHud', writeMasslineHudFields, player);
+}
+
 export const masslineHud = {
   id: 'masslineHud',
   name: 'masslineHud',
@@ -204,6 +325,7 @@ export const masslineHud = {
       this._dom.root.parentNode.removeChild(this._dom.root);
     }
     this._dom = null;
+    clearHudSignatures(this.state);
   },
 
   update(dt, state) {
@@ -216,9 +338,8 @@ export const masslineHud = {
     const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
     if (typeof w2s !== 'function' || !player || !player.alive) { this._hideAll(); return; }
 
-    const ml2 = state.massline2 || {};
-    const signature = `${state.tick}|${ml2.throw && ml2.throw.armed}|${ml2.cloak && ml2.cloak.energy}|${player.pos && player.pos.x}|${player.pos && player.pos.z}`;
-    if (hudSignatureUnchanged(state, 'masslineHud', signature)) return;
+    const ml2 = state.massline2 || EMPTY_HUD_OBJECT;
+    if (masslineHudInputsUnchanged(state, player)) return;
     const reducedMotion = !!(state.settings && state.settings.video && state.settings.video.motionReduce)
       || !!(state.settings && state.settings.accessibility
         && state.settings.accessibility.motionPreference === 'reduce');
@@ -536,6 +657,10 @@ export const masslineHud = {
   _hideAll() {
     const dom = this._dom;
     if (!dom) return;
+    // Visibility gates are outside the normal signature (there is no player/projection payload to
+    // hash there). Forget the last visible signature so re-entering flight repaints a recreated or
+    // previously hidden tree even when the underlying values happen to be unchanged.
+    clearHudSignature(this.state, 'masslineHud');
     setStyle(dom.throwEl, 'display', 'none');
     setStyle(dom.selfEl, 'display', 'none');
     setStyle(dom.ringSvg, 'display', 'none');
@@ -665,6 +790,9 @@ export const masslineHud = {
       root, previewEl, previewMark, previewSourceMark, previewSvg, previewLine, throwEl, throwLabel, selfEl, selfLabel, ringSvg, ringCircle,
       btPill: bt.pill, btFill: bt.bar, ckPill: ck.pill, ckFill: ck.bar,
     };
+    // A recreated DOM tree must receive its first complete paint even when the state object was
+    // reused across a route/new-run boundary and its previous signature happens to match.
+    clearHudSignatures(this.state);
     return this._dom;
   },
 };

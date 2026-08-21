@@ -77,8 +77,15 @@ test('flight packages cache by loadout fingerprint and refuse in-flight cooks', 
   const b = computeLoadoutFingerprint({ hull: 'hull_b', cockpit: 'cockpit_1' });
   assert.notEqual(a, b);
   const cache = createFlightRenderPackageCache();
-  cache.publish(a, { lanes: { opaque: 1 } });
-  assert.equal(cache.lookup(a).fingerprint, a);
+  const published = cache.publish(a, {
+    lanes: { opaque: 1 },
+    metadata: { source: { nodeId: 'hull_a' } },
+  });
+  assert.equal(cache.lookup(a), published);
+  assert.equal(Object.isFrozen(published), true);
+  assert.equal(Object.isFrozen(published.metadata), true);
+  assert.equal(cache.publish(a, { lanes: { opaque: 2 } }), published);
+  assert.equal('instantiate' in published, false);
   assert.equal(cache.lookup(b), null);
   assert.equal(mayCookFlightGeometry('flight'), false);
   assert.equal(mayCookFlightGeometry('station'), true);
@@ -92,8 +99,9 @@ test('chase-camera cooker omits hangar and interior-only nodes', () => {
     { id: 'hull', tags: [FLIGHT_PRODUCT_TAG.FLIGHT_EXTERIOR] },
     { id: 'seat', tags: [FLIGHT_PRODUCT_TAG.INTERIOR_ONLY] },
     { id: 'cap', tags: [FLIGHT_PRODUCT_TAG.ATTACHMENT_CAP] },
+    { id: 'future', tags: ['FUTURE_CAMERA_METADATA'] },
   ]);
-  assert.deepEqual(kept.map((node) => node.id), ['hull']);
+  assert.deepEqual(kept.map((node) => node.id), ['hull', 'future']);
 });
 
 test('material ABI collapses library roles onto program families', () => {
@@ -106,8 +114,9 @@ test('material ABI collapses library roles onto program families', () => {
 });
 
 test('persistent submit lanes reserve once and skip unchanged frames', () => {
-  assert.equal(PERSISTENT_LANES_ENABLED, true);
-  const lanes = createPersistentSubmitLanes();
+  // The range model is opt-in until a renderer-owned GPU uploader consumes its drained ranges.
+  assert.equal(PERSISTENT_LANES_ENABLED, false);
+  const lanes = createPersistentSubmitLanes({ force: true });
   const slot = lanes.reserve('ship_1');
   assert.equal(slot.id, 'ship_1');
   assert.equal(lanes.reserve('ship_1').index, slot.index);
@@ -129,6 +138,49 @@ test('snapshot fence publishes a complete packed frame the present path can read
   assert.equal(latest.count, 2);
   assert.equal(latest.columns.entityId[0], 1);
   assert.equal(latest.columns.position[0], 3);
+  const firstIndex = latest.indexByEntityId;
+  for (let tick = 0; tick < 3; tick++) {
+    const next = fence.beginPack(1, 13 + tick);
+    packEntityIntoSnapshot(next, { id: 10 + tick, alive: true, pos: { x: tick, y: 0, z: 0 } });
+    fence.commit();
+  }
+  assert.equal(fence.latestSnapshot().indexByEntityId, firstIndex,
+    'triple-buffer slots retain their index map/facade across publications');
+});
+
+test('snapshot fence columns and indices survive capacity growth without facade replacement', () => {
+  const fence = createSnapshotFence({ capacity: 2 });
+  const publish = (ids) => {
+    const snapshot = fence.beginPack(ids.length, ids.length);
+    for (const id of ids) {
+      packEntityIntoSnapshot(snapshot, {
+        id,
+        alive: true,
+        pos: { x: id * 2, y: id, z: -id },
+      });
+    }
+    fence.commit();
+  };
+
+  publish([1]);
+  const first = fence.latestSnapshot();
+  const firstColumns = first.columns;
+  const firstIndices = first.indexByEntityId;
+  publish([2]);
+  publish([3]);
+  publish([10, 11, 12, 13, 14]);
+
+  const grown = fence.latestSnapshot();
+  assert.equal(grown.columns, firstColumns,
+    'the reused triple-buffer slot keeps one columns facade');
+  assert.equal(grown.indexByEntityId, firstIndices,
+    'the reused triple-buffer slot keeps one entity index facade');
+  assert.equal(grown.columns.entityId[4], 14);
+  assert.equal(grown.columns.position[12], 28,
+    'the facade follows the replacement typed array after growth');
+  const mesh = { position: { x: 0, y: 0, z: 0 }, rotation: { y: 0 } };
+  assert.equal(applySnapshotPoseToMesh(mesh, grown, 14, { x: 1, y: 2, z: 3 }), true);
+  assert.deepEqual(mesh.position, { x: 27, y: 12, z: -17 });
 });
 
 test('simulation Worker uses a real catch-up kernel with main-thread fallback', () => {
@@ -156,8 +208,10 @@ test('abstract catch-up kernel and snapshot pose apply without live entity chase
 test('material library stamps ABI program families; activity frame is the sim owner', () => {
   const mat = resolveMaterial('bodyPrimary', { hull: '#8899aa', accent: '#445566' });
   assert.equal(typeof mat.customProgramCacheKey, 'function');
-  assert.match(mat.customProgramCacheKey(), /^abi1\|/);
   assert.equal(mat.userData.spacefaceMaterialAbi, 'opaque_hull');
+  assert.match(mat.userData.spacefaceProgramFamily, /^abi1\|opaque_hull\|/);
+  assert.doesNotMatch(mat.customProgramCacheKey(), /abi1\|/,
+    'ABI metadata must not add a Three custom-program variant');
   const frame = getActivityFrame({
     tick: 1,
     simTime: 1,

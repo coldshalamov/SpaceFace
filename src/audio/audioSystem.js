@@ -1805,9 +1805,12 @@ export const audio = {
   _onFire(p) {
     if (!p) return;
     const signature = resolveWeaponAudioSignature(p, this.state);
+    const owner = p.ownerId != null && this.state.entities && typeof this.state.entities.get === 'function'
+      ? this.state.entities.get(p.ownerId)
+      : null;
     if (signature.recipeId === 'sfx_wpn_beam_laser') {
       // sustained beam: start a loop keyed by owner; stopped on combat:beamStop
-      this._startBeam(p.ownerId, p.origin);
+      this._startBeam(p.ownerId, p.origin, owner);
       return;
     }
     this.play(signature.recipeId, {
@@ -1815,17 +1818,21 @@ export const audio = {
       gain: signature.gain,
       rate: signature.rate,
       detune: signature.detune,
+      entity: owner,
     });
   },
 
-  _startBeam(ownerId, pos) {
+  _startBeam(ownerId, pos, owner = null) {
     const rt = this.rt;
     if (ownerId == null) return;
     rt._wantBeam[ownerId] = true;
     const ctx = rt.ctx;
     if (!ctx || ctx.state !== 'running') return;
     if (rt.loops['beam_' + ownerId]) return;
-    const v = this._startLoopVoice('sfx_wpn_beam_laser', pos, 0.85);
+    const entity = owner || (this.state.entities && typeof this.state.entities.get === 'function'
+      ? this.state.entities.get(ownerId) : null);
+    const position = pos || (entity && entity.pos) || null;
+    const v = this._startLoopVoice('sfx_wpn_beam_laser', position, 0.85, { entity });
     if (v) {
       v.trackId = ownerId;
       v.role = 'weaponLoop';
@@ -1850,7 +1857,9 @@ export const audio = {
     if (!p) return;
     // projectile:hit has no shield/hull split; play a generic hull tick unless combat:damage
     // (which carries brokeShield) also fires — keep this light to avoid double sounds.
-    this.play('sfx_mining_impact', { position: p.pos, gain: 0.5, rate: 1.4 });
+    const entity = p.attackerId != null && this.state.entities && typeof this.state.entities.get === 'function'
+      ? this.state.entities.get(p.attackerId) : null;
+    this.play('sfx_mining_impact', { position: p.pos, gain: 0.5, rate: 1.4, entity });
   },
 
   _onDamage(p) {
@@ -2524,7 +2533,9 @@ export const audio = {
     const ctx = rt.ctx;
     if (!ctx || ctx.state !== 'running') return;
     if (rt.loops.mining) return;
-    const v = this._startLoopVoice('sfx_mining_beam', p.position, 0.6);
+    const entity = p.targetId != null && this.state.entities && typeof this.state.entities.get === 'function'
+      ? this.state.entities.get(p.targetId) : null;
+    const v = this._startLoopVoice('sfx_mining_beam', p.position, 0.6, { entity });
     if (v) { v.trackId = p.targetId; rt.loops.mining = v; this._markLoopPositionDirty(); }
   },
 
@@ -2587,22 +2598,31 @@ export const audio = {
     }
   },
 
-  _startLoopVoice(recipeId, position, gain) {
+  _startLoopVoice(recipeId, position, gain, options = {}) {
     const rt = this.rt, ctx = rt.ctx;
     if (rt._lifecycleSuspended || !ctx || ctx.state !== 'running') return null;
     const recipe = AUDIO_RECIPE_BY_ID[recipeId];
     if (!recipe) return null;
+    const entity = options.entity || null;
+    const busName = getBusForRecipe(recipe, recipeId);
+    // UI/combat voices are intentionally not hidden by residency: a player-facing warning or a
+    // nearby combat receipt must remain audible. Continuous remote engine/ambient loops, however,
+    // must not keep scheduling AudioParam work once their owner leaves the active audio set.
+    if (entity && busName !== 'ui' && busName !== 'combat'
+      && entityNeedsExactAudio(entity, { playerId: this.state && this.state.playerId }) !== true) {
+      return null;
+    }
     let att = 1, pan = 0;
     if (position) {
       if (!Number.isFinite(position.x) || !Number.isFinite(position.z)) return null;
       const pp = this._playerPos();
       const d = Math.hypot(position.x - pp.x, position.z - pp.z);
+      if (d > D_FAR && busName !== 'ui' && busName !== 'combat') return null;
       att = clamp(1 - (d - D_NEAR) / (D_FAR - D_NEAR), 0, 1); att *= att;
       pan = clamp((position.x - pp.x) / PAN_SPAN, -1, 1);
     }
     // Shared-bus reconciliation: loops must hit the same per-bus gains as one-shots
     // (combat slider, ambient sidechain duck, engine bus, etc.). Never bypass onto sfxBus.
-    const busName = getBusForRecipe(recipe, recipeId);
     let targetBus = rt.sfxBus;
     if (busName === 'engine') targetBus = rt.engineBus || rt.sfxBus;
     else if (busName === 'ambient') targetBus = rt.ambientBus || rt.sfxBus;
@@ -3451,6 +3471,25 @@ export const audio = {
       const e = entities.get(v.trackId);
       if (!e || !e.pos || !Number.isFinite(e.pos.x) || !Number.isFinite(e.pos.z)) return;
       const d = Math.hypot(e.pos.x - pp.x, e.pos.z - pp.z);
+      const exact = entityNeedsExactAudio(e, { playerId: this.state && this.state.playerId });
+      const preserveRemote = v.busName === 'ui' || v.busName === 'combat';
+      if (!preserveRemote && exact !== true) {
+        if (v._audioResidencyActive !== false) {
+          try { v.gain.gain.setTargetAtTime(0.0001, now, 0.05); } catch (_) {}
+          v._audioResidencyActive = false;
+          v._audioGainTarget = 0.0001;
+        }
+        return;
+      }
+      if (!preserveRemote && d > D_FAR) {
+        if (v._audioResidencyActive !== false) {
+          try { v.gain.gain.setTargetAtTime(0.0001, now, 0.05); } catch (_) {}
+          v._audioResidencyActive = false;
+          v._audioGainTarget = 0.0001;
+        }
+        return;
+      }
+      v._audioResidencyActive = true;
       let att = clamp(1 - (d - D_NEAR) / (D_FAR - D_NEAR), 0, 1); att *= att;
       const pan = clamp((e.pos.x - pp.x) / PAN_SPAN, -1, 1);
       const t = now == null ? rt.ctx.currentTime : now;
@@ -3459,14 +3498,15 @@ export const audio = {
       const priorityDuck = isWeaponLoop
         ? (rt._priorityDuckWeapon == null ? 1 : rt._priorityDuckWeapon)
         : 1;
-      try {
-        v.gain.gain.setTargetAtTime(
-          Math.max(0.0001, (v._baseGain || 0.3) * att * priorityDuck),
-          t,
-          0.05,
-        );
-      } catch (_) {}
-      if (v._panner) { try { v._panner.pan.setTargetAtTime(pan, t, 0.05); } catch (_) {} }
+      const gainTarget = Math.max(0.0001, (v._baseGain || 0.3) * att * priorityDuck);
+      if (!Number.isFinite(v._audioGainTarget) || Math.abs(v._audioGainTarget - gainTarget) > 1e-5) {
+        try { v.gain.gain.setTargetAtTime(gainTarget, t, 0.05); } catch (_) {}
+        v._audioGainTarget = gainTarget;
+      }
+      if (v._panner && (!Number.isFinite(v._audioPanTarget) || Math.abs(v._audioPanTarget - pan) > 1e-5)) {
+        try { v._panner.pan.setTargetAtTime(pan, t, 0.05); } catch (_) {}
+        v._audioPanTarget = pan;
+      }
     };
     for (const k in rt.loops) apply(rt.loops[k]);
   },
