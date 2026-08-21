@@ -164,18 +164,15 @@ export const physics = {
     // Tier-1 causal count: the broad-phase membership walk visits each listed collider once.
     const tier1 = state.perfRuntime && state.perfRuntime.tier1;
     const countVisits = tier1 && tier1.isEnabled() ? tier1 : null;
-    const index = state.entityIndex;
-    if (index && index.__spacefaceEntityIndexV1 && index.ready &&
-      typeof hash.rebuildLayers === 'function' &&
-      Array.isArray(index.spatialStatics) &&
-      Array.isArray(index.spatialDynamics)) {
+    const layers = spatialHashLayersFromState(state);
+    if (layers && typeof hash.rebuildLayers === 'function') {
       if (countVisits) {
         countVisits.countEntityVisits(
-          index.spatialStatics.length + index.spatialDynamics.length,
+          layers.statics.length + layers.dynamics.length,
           'spatial-rebuild-layers',
         );
       }
-      hash.rebuildLayers(index.spatialStatics, index.spatialDynamics, index.spatialStaticVersion || 0);
+      hash.rebuildLayers(layers.statics, layers.dynamics, layers.staticVersion);
       return;
     }
     if (countVisits) countVisits.countEntityVisits(state.entityList.length, 'spatial-rebuild');
@@ -856,6 +853,31 @@ function worldFrameOrigin(state) {
 function worldFrameOriginSeq(state) {
   const seq = state && state.world && state.world.frameOriginSeq;
   return Number.isSafeInteger(seq) && seq >= 0 ? seq : 0;
+}
+
+/**
+ * Broad-phase membership is the same causal active set as Rapier. Far dormant
+ * colliders stay in entityList; they are not hashed, queried, or solved.
+ */
+export function spatialHashLayersFromState(state) {
+  const activity = ensureActivityClassified(state);
+  if (activity && Array.isArray(activity.physicsStatics) && Array.isArray(activity.physicsDynamics)) {
+    return {
+      statics: activity.physicsStatics,
+      dynamics: activity.physicsDynamics,
+      staticVersion: activity.physicsStaticVersion || 0,
+    };
+  }
+  const index = state && state.entityIndex;
+  if (index && index.__spacefaceEntityIndexV1 && index.ready &&
+    Array.isArray(index.spatialStatics) && Array.isArray(index.spatialDynamics)) {
+    return {
+      statics: index.spatialStatics,
+      dynamics: index.spatialDynamics,
+      staticVersion: index.spatialStaticVersion || 0,
+    };
+  }
+  return null;
 }
 
 function shouldMaintainDynamicSpatialHash(state) {

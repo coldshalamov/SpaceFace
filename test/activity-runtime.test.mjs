@@ -4,6 +4,8 @@ import { readFile } from 'node:fs/promises';
 
 import { SIM_TIER } from '../src/world/activityClassification.js';
 import { shouldOwnerThink } from '../src/core/activityScheduler.js';
+import { SpatialHash } from '../src/core/spatialHash.js';
+import { spatialHashLayersFromState } from '../src/core/physics.js';
 import {
   ensureActivityClassified,
   entityNeedsAiThink,
@@ -226,6 +228,26 @@ test('SG-06 pursuit activity pins a far hostile', () => {
   assert.equal(entityNeedsAiThink(pirate), true);
 });
 
+test('spatial hash membership is the Rapier active set, not the whole sector', () => {
+  const player = ship(1, 0, { isPlayer: true, team: 0 });
+  const nearRock = rock(2, 20);
+  const farRock = rock(3, 4000);
+  const farHauler = ship(4, 3500, { data: { itinerary: { routeId: 'lane_a' } }, team: 2 });
+  const state = makeState([player, nearRock, farRock, farHauler]);
+  const layers = spatialHashLayersFromState(state);
+  assert.ok(layers);
+  assert.equal(layers.statics.includes(farRock), false);
+  assert.equal(layers.dynamics.includes(farHauler), false);
+  assert.ok(layers.dynamics.includes(player));
+  assert.equal(state.entityList.includes(farRock), true);
+  const hash = new SpatialHash(64);
+  hash.rebuildLayers(layers.statics, layers.dynamics, layers.staticVersion);
+  const found = [];
+  hash.queryRadius(0, 0, 80, found);
+  assert.equal(found.includes(farRock), false);
+  assert.ok(found.includes(player) || found.includes(nearRock));
+});
+
 test('production physics, AI, and traffic call the activity runtime', async () => {
   const physics = await readFile(new URL('../src/core/physics.js', import.meta.url), 'utf8');
   const tactical = await readFile(new URL('../src/systems/tacticalAI.js', import.meta.url), 'utf8');
@@ -236,6 +258,7 @@ test('production physics, AI, and traffic call the activity runtime', async () =
   const stack = await readFile(new URL('../src/ai/stack.js', import.meta.url), 'utf8');
   const save = await readFile(new URL('../src/save/saveSystem.js', import.meta.url), 'utf8');
   assert.match(physics, /ensureActivityClassified/);
+  assert.match(physics, /spatialHashLayersFromState/);
   assert.match(physics, /activity\.physicsStatics/);
   assert.match(physics, /activity\.physicsDynamics/);
   assert.match(tactical, /ensureActivityClassified/);

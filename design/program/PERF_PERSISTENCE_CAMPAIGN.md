@@ -52,6 +52,9 @@ Headed p95 A/B is still required before calling crowded flight done.
 Phase 3: rematerialize catch-up uses lastExactT; mined rocks write the resource
 ledger and restore on respawn; New Game no longer waits for a far Helios hub.
 
+Spatial hash now uses the same causal active set as Rapier. Far dormant
+colliders remain in the world list; they are not hashed or queried.
+
 ## Remaining programs (not this slice)
 
 These stay queued. They are not skipped as slog; they need a headed fly, an art
