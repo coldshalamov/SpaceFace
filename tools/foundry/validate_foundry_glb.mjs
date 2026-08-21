@@ -30,14 +30,28 @@ const SRGB_SLOTS = new Set(['baseColorTexture', 'emissiveTexture']);
 
 function parseArgs(argv) {
   const out = { glbs: [], out: null, klass: 'variant', budget: null, json: false };
+  // A flag that takes a value must actually get one. Without this guard, `--out --class scenery`
+  // (a forgotten output dir) made `--out` swallow `--class` as its directory and `scenery` became a
+  // phantom GLB — which is exactly how a directory literally named `--class/` got committed to the
+  // repo root (2026-08-21 cleanup). A value can never start with `-`.
+  const valueFor = (flag, i) => {
+    const v = argv[i + 1];
+    if (v === undefined || String(v).startsWith('-')) {
+      throw new Error(`${flag} needs a value (got ${v === undefined ? 'nothing' : JSON.stringify(v)})`);
+    }
+    return v;
+  };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
-    if (a === '--out') out.out = argv[++i];
-    else if (a === '--class') out.klass = argv[++i];
-    else if (a === '--budget') out.budget = Number(argv[++i]);
+    if (a === '--out') out.out = valueFor(a, i++);
+    else if (a === '--class') out.klass = valueFor(a, i++);
+    else if (a === '--budget') out.budget = Number(valueFor(a, i++));
     else if (a === '--json') out.json = true;
-    else if (a.startsWith('--')) throw new Error(`unknown flag ${a}`);
+    else if (a.startsWith('-')) throw new Error(`unknown flag ${a}`);
     else out.glbs.push(a);
+  }
+  if (!['kit', 'variant', 'scenery'].includes(out.klass)) {
+    throw new Error(`--class must be kit|variant|scenery (got ${JSON.stringify(out.klass)})`);
   }
   return out;
 }
