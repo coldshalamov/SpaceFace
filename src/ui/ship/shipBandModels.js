@@ -379,7 +379,7 @@ function subFromDerivedChip(chipId, derived, moduleDef = null) {
   }
 }
 
-function capabilityDefinitions(derived) {
+export function capabilityDefinitions(derived) {
   const defs = [];
   if (derived.masslineHeadId && MASSLINE_BANK[derived.masslineHeadId]) {
     const row = MASSLINE_BANK[derived.masslineHeadId];

@@ -44,9 +44,9 @@ and it does not create ownership beyond the task and current live lock.
 5. Zone detail into macro, construction, and fine scales. Preserve clean plate between zones so the
    eye can read both the primary form and the detail. Size fine work from supported screen space and
    function, not a universal greeble ratio.
-6. Review fully framed front/side/top and three-quarter clay views plus the real game-camera view.
-   Derive diagnostic camera distance from the evaluated visible-geometry bounds so close views cannot
-   silently begin inside the asset.
+6. Review the real game-camera view first: 60° tilted chase at D=144 and D=58
+   (`tools/blender/spaceface_chase_camera.py`). Front/side/top clay may diagnose. They do not
+   replace chase stills. A camera inside the hull is invalid. Do not spend the pass on seats.
 7. Repair material defects and repeat review while the form is still weak. There is no required pass,
    deficiency, modifier, or technique count.
 8. Validate transforms, scale, normals, hull-body presence, metadata, sockets/interfaces, and export.

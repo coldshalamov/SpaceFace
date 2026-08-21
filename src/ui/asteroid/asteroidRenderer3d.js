@@ -1,8 +1,11 @@
 // Asteroid works 3D renderer — the drill playfield drawn in the game's own engine, rebuilt as a
 // Motherload-style cutaway in real 3D. The legibility laws this pass enforces:
-//   - ONE CELL = ONE BLOCK. Every solid cell is the same beveled block, footprint-aligned to the
-//     sim grid; joints read as masonry seams, never overlay lines. Variation lives inside the
-//     face (relief, tint, bump), never across the cell boundary.
+//   - PERFECT FLAT GRID (design law §2.1): zero yaw, zero pitch — cells project as axis-aligned
+//     squares on a chess board. The camera pans and zooms between exactly two registers (work /
+//     site); it never rotates or tilts. The front pad is a flat square face.
+//   - ONE CELL = ONE BLOCK. Every solid cell is the same block, footprint-aligned to the sim
+//     grid; joints read as masonry seams, never overlay lines. Variation lives inside the face
+//     (relief, tint, bump), never across the cell boundary.
 //   - CARVED = HONEST CAVITY. A dug cell opens a real recess: cavity floor plus the side walls of
 //     the blocks around it. What you see is what the sim has.
 //   - VEINS ARE TREASURE. Surveyed (or approached) veins erupt as crystal clusters tinted by ore,
@@ -11,25 +14,28 @@
 //     then read as a cracked cell seeping sickly vapor — never a glowing pickup.
 //   - THE RIG IS A VEHICLE. Treads, beacon, cabin light, articulated auger arm that bites the wall,
 //     on a lit umbilical spooling down from the surface derrick you entered through.
+//   - THE BOARD IS A BODY, NOT A TILE WALL: an irregular silhouette skirt wraps the field so the
+//     asteroid reads against space (law §4) at the edges of work zoom and across site zoom.
 //
 // Contract with the screen shell (asteroidScreen.js):
 //   - read-only over game state: draws state.drill / the site record, never mutates either;
 //   - the shell owns the rAF loop, DOM panels, bus subscriptions and input; it calls
 //     render(dt, timeS, ui) every frame and forwards drill/site events through notify();
-//   - pickCell(clientX, clientY) raycasts the cut plane so the tilted camera stays pixel-honest.
+//   - pickCell(clientX, clientY) raycasts the cut plane so the flat camera stays pixel-honest;
+//   - inputZoom(deltaY) snaps between the two zoom registers (wheel or key, law §4).
+//
+// The scene presents through the game's shared bloom/grade pipeline (src/render/bloom.js) — the
+// same canonical ACES/exposure composite the flight world uses. No private EffectComposer.
 //
 // Determinism note: all layout variation derives from hash32(col,row) — the same rock always looks
 // the same. Math.random only feathers cosmetic particle bursts, as the shipped 2D screen did.
 import * as THREE from 'three';
-import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
-import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { hash32 } from '../../core/rng.js';
 import { DRILL_CONST, tileIndex, avatarDrawPos, drillTierReqForOre } from '../../systems/drill.js';
 import { connectivityMask } from '../../systems/siteLogistics.js';
 import { spawnParticleBurst, stepParticles, drillGasShakeOffset } from '../screens/drill.js';
 import { ORE_TINTS, STATUS_COLORS } from './asteroidRenderer2d.js';
+import { createBloom } from '../../render/bloom.js';
 import {
   makeRockMaterials, makeMachine, makeRover, makeDerrick, metalMat, emissiveMat,
   makeCellBlockGeos, makeOreClusterGeo, makeGasVaporGeo, makeCrackGeos,
@@ -41,11 +47,22 @@ export const VIEW_ROWS = 18;
 const TILE = 40;              // px-space kept for parity with the shipped particle/shake helpers
 const S = 2.2;                // world units per cell — the astlab-proven scale for these builders
 const DEPTH = S * 1.5;        // block body depth; the cavity recess carved cells reveal
-// Camera tilt — small on purpose: enough for block sides + cavity floors to read, small enough
-// that the grid stays a precision surface.
-const CAM_YAW = 0.10;
-const CAM_PITCH = 0.15;
+// Law §2.1 — the board is an axis-aligned chess board: zero yaw, zero pitch, no tilt ever.
+const CAM_YAW = 0;
+const CAM_PITCH = 0;
 const CAM_DIST = 260;
+// Law §4 — two zoom registers, only two. Work: ~16 columns on the glass (96–128px cells at
+// 1920×1080). Site: the whole asteroid silhouette with ≥16px cells. Register snaps are 180ms
+// eased detents, not freeform zoom.
+const WORK_COLS = 16;
+const ZOOM_SNAP_S = 0.18;
+// Soft leash (law §4): the rover stays within the middle 50% of the screen; the camera eases at
+// ≤ 6 cells/s with a 120ms ease-out.
+const CAM_EASE_T = 0.12;
+const CAM_MAX_CELLS_S = 6;
+// Irregular silhouette fringe around the field, in cells (law §4 — a body, not a wall-to-wall
+// tile fill). The camera clamps to this body so work zoom never floats in pure void.
+const SKIRT_CELLS = 4;
 
 // Depth layering (camera looks down -z). The cut plane is the law: every solid block's front pad
 // lands exactly at ROCK_FACE; carved cells recess to Z.back. Block pads protrude up to ~0.22
@@ -88,13 +105,11 @@ function injectOverlayStyle() {
   const s = document.createElement('style');
   s.id = STYLE_ID;
   s.textContent = `
-.ast3d-overlay { position:absolute; inset:0; pointer-events:none; overflow:hidden; font-family:"IBM Plex Mono", Consolas, monospace; }
-.ast3d-tick { position:absolute; right:0; height:1px; width:6px; background:rgba(138,148,161,.42); }
-.ast3d-tick span { position:absolute; right:9px; top:-4px; font-size:8.5px; font-weight:500; color:rgba(138,148,161,.55); letter-spacing:.05em; }
-.ast3d-floater { position:absolute; transform:translate(-50%,-50%); font-size:11px; font-weight:600; text-shadow:0 1px 3px rgba(0,0,0,.8); white-space:nowrap; }
-.ast3d-flash-gas { position:absolute; inset:0; background:rgba(255,84,112,.45); opacity:0; }
+.ast3d-overlay { position:absolute; inset:0; pointer-events:none; overflow:hidden; font-family:"Spline Sans Mono", ui-monospace, Consolas, monospace; }
+.ast3d-floater { position:absolute; transform:translate(-50%,-50%); font-size:13px; font-weight:500; color:#ffb648; text-shadow:0 1px 3px rgba(0,0,0,.8); white-space:nowrap; }
+.ast3d-flash-gas { position:absolute; inset:0; background:rgba(255,98,66,.4); opacity:0; }
 .ast3d-flash-cargo { position:absolute; inset:0; opacity:0;
-  background:linear-gradient(rgba(255,179,92,.34), rgba(255,179,92,0) 18%, rgba(255,179,92,0) 82%, rgba(255,179,92,.34)); }
+  background:linear-gradient(rgba(255,182,72,.34), rgba(255,182,72,0) 18%, rgba(255,182,72,0) 82%, rgba(255,182,72,.34)); }
 `;
   document.head.appendChild(s);
 }
@@ -159,25 +174,24 @@ function makeCrackDecalTexture(stage) {
 export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, getSite, getProjection }) {
   injectOverlayStyle();
 
-  // ---------------------------------------------------------------- renderer + composer
+  // ---------------------------------------------------------------- renderer + shared bloom pipeline
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, powerPreference: 'high-performance' });
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.25;
+  // The shared composite owns tone mapping (its COLOR-MANAGEMENT INVARIANT); a renderer-level map
+  // would only ever apply to a direct canvas draw, which this screen never makes.
+  renderer.toneMapping = THREE.NoToneMapping;
+  renderer.setClearColor(0x0b0a12, 1); // space behind the rock (law §3.5)
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x05080f);
+  scene.background = new THREE.Color(0x0b0a12);
 
-  const halfW = (COLS * S / 2) * 1.02;
-  const halfH = halfW * (VIEW_ROWS / COLS);
-  const camera = new THREE.OrthographicCamera(-halfW, halfW, halfH, -halfH, 0.1, 2000);
+  const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 2000);
 
-  const composer = new EffectComposer(renderer);
-  composer.addPass(new RenderPass(scene, camera));
-  const bloom = new UnrealBloomPass(new THREE.Vector2(1120, 720), 0.7, 0.55, 0.55);
-  composer.addPass(bloom);
-  composer.addPass(new OutputPass());
+  // The game's canonical bloom/grade composite — same ACES + exposure presentation as flight.
+  // Exposure 1.25 preserves the brightness the scene was authored for under the retired composer.
+  const bloom = createBloom(renderer, 1120, 640);
+  bloom.setOptions({ exposure: 1.25 });
 
   const envRT = bakeEnvMap(renderer);
   const envMap = envRT.texture;
@@ -206,6 +220,49 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   fill.position.set(0, 0, 300);
   lightRig.add(fill, fill.target);
   scene.add(new THREE.AmbientLight(0x2a3342, 0.85));
+
+  // ---------------------------------------------------------------- space + body extents
+  // Warm-white stars behind the rock (law §3.5): the only billboard-style exception in the game,
+  // tiny and bright at sky depth. Deterministic LCG so the sky is stable across sessions.
+  const STAR_Z = -320;
+  const starGeo = new THREE.BufferGeometry();
+  {
+    const N = 720;
+    const pos = new Float32Array(N * 3);
+    const col = new Float32Array(N * 3);
+    let seed = 0x5f3a71c4 >>> 0;
+    const rr = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+    const spanX = (COLS + SKIRT_CELLS * 2) * S * 3.2;
+    const spanY = (ROWS + SKIRT_CELLS * 2) * S * 2.4;
+    for (let i = 0; i < N; i++) {
+      pos[i * 3] = (rr() - 0.5) * spanX;
+      pos[i * 3 + 1] = (rr() - 0.5) * spanY;
+      pos[i * 3 + 2] = STAR_Z + (rr() - 0.5) * 40;
+      const b = 0.35 + rr() * 0.65;
+      col[i * 3] = b;               // warm white: slight amber lean
+      col[i * 3 + 1] = b * 0.97;
+      col[i * 3 + 2] = b * 0.9;
+    }
+    starGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    starGeo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  }
+  const starMat = new THREE.PointsMaterial({
+    size: 1.8, sizeAttenuation: false, vertexColors: true,
+    transparent: true, opacity: 0.95, depthWrite: false,
+  });
+  const stars = new THREE.Points(starGeo, starMat);
+  stars.frustumCulled = false;
+  scene.add(stars);
+
+  // The asteroid body = field + silhouette skirt + surface headroom (derrick, plateau).
+  function bodyExtents() {
+    return {
+      minX: -(COLS / 2 + SKIRT_CELLS) * S,
+      maxX: (COLS / 2 + SKIRT_CELLS) * S,
+      minY: worldY(ROWS - 1) - S / 2 - SKIRT_CELLS * S,
+      maxY: worldY(-1) - S * 3.2,
+    };
+  }
 
   // ---------------------------------------------------------------- session containers
   const rockGroup = new THREE.Group();      // instanced blocks + plateau + backing wall
@@ -452,6 +509,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   const cellRock = new Map();   // idx -> { mesh, i, carved, c, r }
   let rockInst = { matrix: [], basalt: [] };   // one InstancedMesh per (bucket, block variant)
   let plateauInst = null;
+  let skirtInst = null;         // irregular silhouette fringe around the field (law §4)
   let backWall = null;
   let oreBuckets = new Map();   // `${ore}:${locked}` -> { key, mesh, cap, n, cells: Map<idx, i> }
   let oreCaps = new Map();      // oreId -> vein count in the field (survey can only reveal, never add)
@@ -466,7 +524,6 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   const machines = new Map();   // machineId -> { group, defId, dyn, col, row, geoSig, arms, pulses }
   let ghost = null;             // { defId, group }
   let overlaySig = '';
-  let lookY = null;
   let drillTheta = 0;
   let digCell = null;           // { c, r, idx } — block currently taking the bit
   let digGasHot = null;         // gas entry currently screaming under the bit
@@ -479,46 +536,95 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   // shared geometry that must survive per-cell group disposal
   const sharedGeos = new Set([...blockGeos, ...clusterGeos, gasVaporGeo, ...crackGeos, cellQuad, partGeo, chunkGeo]);
 
-  // DOM overlay — spatial annotations only (depth ruler / floaters / alarm washes); rig vitals
-  // are deck instruments now (ASTEROID_OPS_UI_BRIEF: the scene stays sovereign).
-  const dom = { root: null, ticks: [], floaters: [], flashGas: null, flashCargo: null };
+  // DOM overlay — spatial annotations only (floaters / alarm washes); rig vitals are crest +
+  // rig-cluster instruments (design law §6 — the scene stays sovereign).
+  const dom = { root: null, floaters: [], flashGas: null, flashCargo: null };
   function buildDomOverlay() {
     if (dom.root) return;
     const root = document.createElement('div');
     root.className = 'ast3d-overlay';
     root.setAttribute('aria-hidden', 'true');
-    for (let i = 0; i < 16; i++) {
-      const t = document.createElement('div');
-      t.className = 'ast3d-tick';
-      t.style.display = 'none';
-      const lbl = document.createElement('span');
-      t.appendChild(lbl);
-      root.appendChild(t);
-      dom.ticks.push(t);
-    }
     dom.flashGas = document.createElement('div');
     dom.flashGas.className = 'ast3d-flash-gas';
     dom.flashCargo = document.createElement('div');
     dom.flashCargo.className = 'ast3d-flash-cargo';
     root.append(dom.flashGas, dom.flashCargo);
-    // The stage (canvas' shrink-wrapping parent) so the overlay hugs the canvas box exactly,
-    // even when the viewport letterboxes inside the console frame.
+    // The stage (canvas' full-bleed parent) so the overlay hugs the canvas box exactly.
     (canvas.parentElement || wrapEl).appendChild(root);
     dom.root = root;
   }
 
-  // ---------------------------------------------------------------- sizing
-  // wrapEl is the letterbox region: fit the grid's aspect inside BOTH dimensions.
+  // ---------------------------------------------------------------- sizing + zoom registers
+  // The board is sovereign: the canvas fills the stage box and the ortho box is derived from the
+  // live aspect, so cells stay square at every window size. Two registers, only two (law §4):
+  // work (WORK_COLS columns across) and site (the whole body), snapped with a 180ms ease.
+  let zoomRegister = 'work';   // 'work' | 'site'
+  let zoomKCur = 1;            // 1 = work; <1 zoomed out toward site
+  let zoomAnim = null;         // { from, to, t }
+
+  function canvasAspect() {
+    const w = canvas.clientWidth || wrapEl.clientWidth || 1;
+    const h = canvas.clientHeight || wrapEl.clientHeight || 1;
+    return Math.max(0.2, w / h);
+  }
+  function workHalfW() { return (WORK_COLS / 2) * S; }
+  function siteZoomK() {
+    const b = bodyExtents();
+    const aspect = canvasAspect();
+    const needHalfW = Math.max((b.maxX - b.minX) / 2, ((b.maxY - b.minY) / 2) * aspect) * 1.05;
+    return Math.min(1, workHalfW() / needHalfW);
+  }
+  function viewHalfExtents() {
+    const halfW = workHalfW() / zoomKCur;
+    return { halfW, halfH: halfW / canvasAspect() };
+  }
+  function applyView() {
+    const { halfW, halfH } = viewHalfExtents();
+    camera.left = -halfW; camera.right = halfW;
+    camera.top = halfH; camera.bottom = -halfH;
+    camera.updateProjectionMatrix();
+    // Shadow texel density follows the visible window, not the whole field.
+    sc.left = -halfW * 1.8; sc.right = halfW * 1.8;
+    sc.top = halfH * 1.8; sc.bottom = -halfH * 1.8;
+    sc.updateProjectionMatrix();
+  }
+  function setZoomRegister(reg) {
+    if (zoomRegister === reg && !zoomAnim) return;
+    zoomRegister = reg;
+    const to = reg === 'site' ? siteZoomK() : 1;
+    if (motionReduce || ZOOM_SNAP_S <= 0) {
+      zoomAnim = null;
+      zoomKCur = to;
+      applyView();
+      return;
+    }
+    zoomAnim = { from: zoomKCur, to, t: 0 };
+  }
+  function inputZoom(deltaY) {
+    setZoomRegister(deltaY > 0 ? 'site' : 'work');
+  }
+  function stepZoom(dt) {
+    if (!zoomAnim) return;
+    zoomAnim.t += dt;
+    const raw = Math.min(1, zoomAnim.t / ZOOM_SNAP_S);
+    const eased = 1 - Math.pow(1 - raw, 3); // ease-out cubic over the 180ms detent
+    zoomKCur = zoomAnim.from + (zoomAnim.to - zoomAnim.from) * eased;
+    if (raw >= 1) {
+      zoomKCur = zoomAnim.to;
+      zoomAnim = null;
+    }
+    applyView();
+  }
+
+  // wrapEl is the sovereign stage: the canvas fills it and the projection follows the aspect.
   function resize() {
-    const availW = Math.max(64, wrapEl.clientWidth | 0);
-    const availH = Math.max(48, wrapEl.clientHeight | 0);
-    const w = Math.max(64, Math.min(availW, Math.round(availH * COLS / VIEW_ROWS)));
-    const h = Math.max(48, Math.round(w * VIEW_ROWS / COLS));
+    const w = Math.max(64, wrapEl.clientWidth | 0);
+    const h = Math.max(48, wrapEl.clientHeight | 0);
     const dpr = Math.min(1.75, window.devicePixelRatio || 1);
     renderer.setPixelRatio(dpr);
-    renderer.setSize(w, h, true);
-    composer.setPixelRatio(dpr);
-    composer.setSize(w, h);
+    renderer.setSize(w, h, false);
+    bloom.setSize(Math.round(w * dpr), Math.round(h * dpr));
+    applyView();
   }
   const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => resize()) : null;
   if (ro) ro.observe(wrapEl);
@@ -663,6 +769,49 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     derrickBaseY = worldY(-1) + (S * (0.55 + rnd01(ENTRY_COL, 77, 'ph') * 0.8)) / 2;
     derrickBuilt.group.position.set(worldX(ENTRY_COL), derrickBaseY, Z.surface);
     scene.add(derrickBuilt.group);
+  }
+
+  // The silhouette skirt (law §4): an irregular fringe of crust blocks around the field rectangle
+  // so the board reads as an asteroid body against space — visible at the edges of work zoom and
+  // across the whole site register. Same block kit, darker cooler crust tint, deterministic noise.
+  function buildSkirt() {
+    if (skirtInst) {
+      rockGroup.remove(skirtInst);
+      skirtInst.dispose();
+      skirtInst = null;
+    }
+    const cells = [];
+    const scan = SKIRT_CELLS + 2;
+    for (let c = -scan; c < COLS + scan; c++) {
+      for (let r = -1; r < ROWS + scan; r++) {
+        if (c >= 0 && c < COLS && r >= 0 && r < ROWS) continue;      // the field itself
+        if (r === -1 && c >= -2 && c <= COLS + 1) continue;          // the plateau row owns this strip
+        const dc = Math.max(0, -c, c - (COLS - 1));
+        const dr = Math.max(0, -r, r - (ROWS - 1));
+        const dist = Math.hypot(dc, dr);
+        if (dist > 1.15 + rnd01(c, r, 'sk') * 2.7) continue;          // irregular boundary 1–4 cells deep
+        cells.push({ c, r, edge: Math.min(1, dist / (SKIRT_CELLS + 1)) });
+      }
+    }
+    if (!cells.length) return;
+    skirtInst = new THREE.InstancedMesh(blockGeos[hash32(cells.length, 91, 'skg') % blockGeos.length], rockMats.matrix, cells.length);
+    skirtInst.castShadow = true;
+    skirtInst.receiveShadow = true;
+    skirtInst.frustumCulled = false;
+    cells.forEach((cell, i) => {
+      dummy.position.set(worldX(cell.c), worldY(cell.r), ROCK_FACE - S * 0.08);
+      dummy.rotation.set(0, 0, 0);
+      const wobble = 1.02 + rnd01(cell.c + 31, cell.r + 17, 'skw') * 0.16;
+      dummy.scale.set(S * wobble, S * wobble, DEPTH * 1.15);
+      dummy.updateMatrix();
+      skirtInst.setMatrixAt(i, dummy.matrix);
+      // crust: darker and cooler toward the rim, still the same stone family
+      const t = 0.72 - cell.edge * 0.34 + rnd01(cell.c + 3, cell.r + 9, 'skt') * 0.08;
+      skirtInst.setColorAt(i, colScratch.setRGB(t * 0.98, t, t * 1.04));
+    });
+    skirtInst.instanceMatrix.needsUpdate = true;
+    if (skirtInst.instanceColor) skirtInst.instanceColor.needsUpdate = true;
+    rockGroup.add(skirtInst);
   }
 
   function carveCell(c, r) {
@@ -1207,36 +1356,75 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   const raycaster = new THREE.Raycaster();
   const ndc = new THREE.Vector2();
 
-  function cameraCenterY(d, dt) {
-    const drawPos = avatarDrawPos(d.avatar, TILE);
-    const target = pxToWorldY(drawPos.y + TILE / 2);
-    const minY = worldY(ROWS - 1) - S / 2 + (VIEW_ROWS / 2) * S;
-    // Relaxed top clamp: at the surface the frame includes the plateau, the derrick, and a slice
-    // of sky — "you came in from up there" — then follows the bore down.
-    const maxY = worldY(0) + S / 2 - (VIEW_ROWS / 2) * S + S * 3.2;
-    const clamped = Math.max(minY, Math.min(maxY, target));
-    if (lookY == null || Number.isNaN(lookY)) lookY = clamped;
-    else {
-      const rate = motionReduce ? 1 : 10;
-      lookY += (clamped - lookY) * Math.min(1, rate * dt);
-      lookY = Math.max(minY, Math.min(maxY, lookY));
+  // Soft-leash follow (law §4): the camera only moves when the rover leaves the middle 50% of
+  // the glass, eases with a 120ms time constant, and never pans faster than 6 cells/s. Work
+  // register follows the rover in X and Y; the site register centers the whole body.
+  const look = { x: 0, y: 0 };
+  let lookInit = false;
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+  function easeLook(tx, ty, dt, capped) {
+    if (motionReduce) {
+      look.x = tx; look.y = ty;
+      return;
     }
-    return lookY;
+    const k = 1 - Math.exp(-dt / CAM_EASE_T);
+    let nx = look.x + (tx - look.x) * k;
+    let ny = look.y + (ty - look.y) * k;
+    if (capped) {
+      const maxStep = CAM_MAX_CELLS_S * S * dt;
+      nx = clamp(nx, look.x - maxStep, look.x + maxStep);
+      ny = clamp(ny, look.y - maxStep, look.y + maxStep);
+    }
+    look.x = nx; look.y = ny;
   }
 
-  function poseCamera(centerY, shakeX, shakeY) {
-    const cx = shakeX;
+  function stepCamera(d, dt) {
+    const drawPos = avatarDrawPos(d.avatar, TILE);
+    const roverX = pxToWorldX(drawPos.x + TILE / 2);
+    const roverY = pxToWorldY(drawPos.y + TILE / 2);
+    const { halfW, halfH } = viewHalfExtents();
+    if (!lookInit) {
+      look.x = roverX;
+      look.y = roverY;
+      lookInit = true;
+    }
+    if (zoomRegister === 'site') {
+      const b = bodyExtents();
+      easeLook((b.minX + b.maxX) / 2, (b.minY + b.maxY) / 2, dt, false);
+    } else {
+      // leash: the camera waits while the rover stays inside the middle half of the view
+      const slackX = halfW * 0.25;
+      const slackY = halfH * 0.25;
+      let desiredX = look.x;
+      let desiredY = look.y;
+      if (roverX > look.x + slackX) desiredX = roverX - slackX;
+      else if (roverX < look.x - slackX) desiredX = roverX + slackX;
+      if (roverY > look.y + slackY) desiredY = roverY - slackY;
+      else if (roverY < look.y - slackY) desiredY = roverY + slackY;
+      // clamp to the body: a little space may show past the silhouette edge, never pure void
+      const b = bodyExtents();
+      const loX = b.minX + halfW - S * 2.5;
+      const hiX = b.maxX - halfW + S * 2.5;
+      const loY = b.minY + halfH - S * 2;
+      const hiY = b.maxY - halfH + S * 3.5;
+      const cx = loX > hiX ? (b.minX + b.maxX) / 2 : clamp(desiredX, loX, hiX);
+      const cy = loY > hiY ? (b.minY + b.maxY) / 2 : clamp(desiredY, loY, hiY);
+      easeLook(cx, cy, dt, true);
+    }
+    return { x: look.x, y: look.y };
+  }
+
+  function poseCamera(centerX, centerY, shakeX, shakeY) {
+    const cx = centerX + shakeX;
     const cy = centerY + shakeY;
-    camera.position.set(
-      cx + Math.sin(CAM_YAW) * CAM_DIST,
-      cy + Math.sin(CAM_PITCH) * CAM_DIST,
-      Math.cos(CAM_YAW) * Math.cos(CAM_PITCH) * CAM_DIST,
-    );
+    // Zero yaw, zero pitch (law §2.1): the ortho axis looks straight down -z at the cut plane.
+    camera.position.set(cx, cy, CAM_DIST);
     camera.up.set(0, 1, 0);
     camera.lookAt(cx, cy, 0);
     camera.updateMatrixWorld();
     // Key light + shadow volume track the view so texel density stays where the player looks.
-    // Deliberately raking (lateral+above, shallow z) so block bevels light and cavities shadow.
+    // Deliberately raking (lateral+above, shallow z) so pad chamfers light and cavities shadow.
     key.position.set(cx - COLS * S * 0.5, cy + VIEW_ROWS * S * 0.72, DEPTH * 5 + 22);
     key.target.position.set(cx, cy, 0);
     rim.target.position.set(cx, cy, 0);
@@ -1471,19 +1659,6 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     if (timers.cargoFlash > 0) timers.cargoFlash = Math.max(0, timers.cargoFlash - dt);
     dom.flashGas.style.opacity = timers.gasFlash > 0 ? String((motionReduce ? 0.55 : 1) * timers.gasFlash) : '0';
     dom.flashCargo.style.opacity = timers.cargoFlash > 0 ? String(Math.min(1, timers.cargoFlash)) : '0';
-    // depth ruler — tick every 2 rows, labeled in metres like the 2D view
-    const h = canvas.clientHeight || 1;
-    let ti = 0;
-    for (let i = 0; i <= Math.ceil(ROWS / 2) && ti < dom.ticks.length; i++) {
-      const yW = worldY(i * 2) + S / 2;
-      const p = worldToScreen(halfW * 0.985, yW, Z.face);
-      if (p.y < 0 || p.y > h) continue;
-      const tick = dom.ticks[ti++];
-      tick.style.display = 'block';
-      tick.style.top = `${p.y.toFixed(1)}px`;
-      tick.firstChild.textContent = `${i * 10}M`;
-    }
-    for (; ti < dom.ticks.length; ti++) dom.ticks[ti].style.display = 'none';
     // floaters ride the projection so they stay glued to their cell while the camera settles
     for (let i = dom.floaters.length - 1; i >= 0; i--) {
       const f = dom.floaters[i];
@@ -1520,9 +1695,9 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     }
     if (evt === 'yield') {
       const { x, y } = centerPx(p.col, p.row);
-      const tint = (ORE_TINTS[p.ore] || {}).vein || '#39d0ff';
+      const tint = (ORE_TINTS[p.ore] || {}).vein || '#ffb648';
       burst({ x, y, count: 10, color: tint, life: 0.55, size: 2.4, speed: 55, kind: 'spark', gravity: 40, cone: Math.PI * 2 });
-      spawnFloater(x, y - 8, `+${p.qty}`, '#39d0ff');
+      spawnFloater(x, y - 8, `+${p.qty}`, '#ffb648');
       return;
     }
     if (evt === 'gasHit') {
@@ -1603,7 +1778,11 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     timers.cargoFlash = 0;
     gasShake.t = 0;
     drillTheta = 0;
-    lookY = null;
+    lookInit = false;
+    zoomRegister = 'work';
+    zoomKCur = 1;
+    zoomAnim = null;
+    applyView();
     digCell = null;
     digGasHot = null;
     crackDecal.visible = false;
@@ -1611,6 +1790,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     lastRevealCell = { col: -1, row: -1 };
     // surface dressing is per-session (plateau tint/derrick position are field-stable but cheap)
     if (plateauInst) { rockGroup.remove(plateauInst); plateauInst.dispose(); plateauInst = null; }
+    if (skirtInst) { rockGroup.remove(skirtInst); skirtInst.dispose(); skirtInst = null; }
     if (derrickBuilt) { scene.remove(derrickBuilt.group); disposeGroup(derrickBuilt.group); derrickBuilt = null; }
     if (!field) { rover.visible = false; return; }
 
@@ -1635,6 +1815,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
 
     buildRock();
     buildSurface();
+    buildSkirt();
     // seed ore / gas for the already-known parts of the field
     for (let c = 0; c < COLS; c++) {
       for (let r = 0; r < ROWS; r++) {
@@ -1664,8 +1845,9 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       gasShake.elapsed += dt;
     }
     const shakePx = drillGasShakeOffset(gasShake.t, gasShake.elapsed, motionReduce);
-    const centerY = cameraCenterY(d, dt);
-    poseCamera(centerY, (shakePx.x / TILE) * S, (-shakePx.y / TILE) * S);
+    stepZoom(dt);
+    const cam = stepCamera(d, dt);
+    poseCamera(cam.x, cam.y, (shakePx.x / TILE) * S, (-shakePx.y / TILE) * S);
 
     // reveal-on-approach: crossing a cell boundary re-surveys what the rig's lamps touch
     if (d.avatar.col !== lastRevealCell.col || d.avatar.row !== lastRevealCell.row) {
@@ -1785,7 +1967,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     syncScanRing(d, rx, ry);
     stepFx(dt);
     stepDom(d, dt);
-    composer.render();
+    bloom.render(scene, camera);
   }
 
   // ---------------------------------------------------------------- teardown
@@ -1812,9 +1994,14 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     }
     cellRock.clear();
     if (plateauInst) { rockGroup.remove(plateauInst); plateauInst.dispose(); plateauInst = null; }
+    if (skirtInst) { rockGroup.remove(skirtInst); skirtInst.dispose(); skirtInst = null; }
     if (derrickBuilt) { scene.remove(derrickBuilt.group); disposeGroup(derrickBuilt.group); derrickBuilt = null; }
     if (backWall) { backWall.geometry.dispose(); backWall.material.dispose(); backWall = null; }
     if (ro) ro.disconnect();
+    bloom.dispose();
+    scene.remove(stars);
+    starGeo.dispose();
+    starMat.dispose();
     for (const m of oreMats.values()) m.dispose();
     for (const m of badgeMats.values()) m.dispose();
     for (const t of badgeTextures.values()) t.dispose();
@@ -1841,9 +2028,8 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     renderer.dispose();
     renderer.forceContextLoss();
     renderer.setSize(0, 0, false);
-    composer.setSize(0, 0);
     if (dom.root) dom.root.remove();
   }
 
-  return { begin, render, notify, refreshCells, pickCell, dispose };
+  return { begin, render, notify, refreshCells, pickCell, inputZoom, setZoomRegister, dispose };
 }

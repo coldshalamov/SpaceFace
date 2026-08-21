@@ -31,6 +31,12 @@ from fleet_construction import (  # noqa: E402
     loft_shell,
     station_ring,
 )
+from spaceface_chase_camera import (  # noqa: E402
+    DISTANCE_CLOSE,
+    DISTANCE_DEFAULT,
+    render_chase_still,
+    render_cycle_chase_stills,
+)
 
 FAMILY = ROOT / "assets" / "ships" / "fleet_player_bodies_v1" / "hornet"
 TEX_DIR = FAMILY / "source" / "textures"
@@ -1879,7 +1885,6 @@ def setup_studio():
         ("Rim", (-14, -5, 7), 620, (0.78, 0.84, 0.92), 14),
         ("Kick", (-6, 10, -4), 260, (0.74, 0.78, 0.84), 12),
         ("AftFill", (-10, -12, 8), 420, (0.80, 0.84, 0.90), 16),
-        ("CockpitFill", (3.88, 0.0, 0.48), 42, (1.00, 0.78, 0.52), 0.48),
         ("StbdFill", (0.9, 12.0, 3.8), 520, (0.88, 0.90, 0.94), 18),
     ):
         data = bpy.data.lights.new(name, "AREA")
@@ -1940,28 +1945,21 @@ def render_cycle(collection):
     camera = setup_studio()
     out = FAMILY / "evidence" / "hornet" / "cycles" / f"cycle_{CYCLE:02d}"
     out.mkdir(parents=True, exist_ok=True)
+    # Cycle stills are the live chase camera only. Studio three-quarter / seat
+    # crops do not count — that is why the Hornet loop stalled.
+    render_cycle_chase_stills(camera, out)
     views = {
-        "three_quarter": ((-6.4, -8.8, 2.95), (0.85, 0, 0.24), 34),
-        "starboard": ((0.55, 10.6, 0.16), (0.55, 0, 0.16), 34),
-        "rear": ((-10.8, -7.6, 2.6), (-3.20, 0.10, 0.10), 38),
-        "clay_three_quarter": ((-6.4, -8.8, 2.95), (0.85, 0, 0.24), 34),
         "grazing_close": ((6.6, -5.4, 2.0), (1.15, 0, 0.35), 48),
-        "bay_interior": ((4.55, -1.10, 1.15), (3.90, 0.0, 0.62), 32),
         "drive_rear": ((-6.6, -1.8, 0.55), (-3.90, 0.90, 0.12), 46),
-        "play_size": ((36, -32, 16), (0.20, 0, 0.16), 48),
-        "orm_isolation": ((-6.4, -8.8, 2.95), (0.85, 0, 0.24), 34),
-        "normal_isolation": ((-6.4, -8.8, 2.95), (0.85, 0, 0.24), 34),
-        "id_or_material_id": ((-6.4, -8.8, 2.95), (0.85, 0, 0.24), 34),
-        "material_three_quarter": ((-6.4, -8.8, 2.95), (0.85, 0, 0.24), 34),
     }
     meshes = [obj for obj in collection.objects if obj.type == "MESH" and not obj.get("collision")]
-    for name in ("three_quarter", "starboard", "rear", "material_three_quarter", "grazing_close", "bay_interior", "drive_rear", "play_size"):
+    for name in ("grazing_close", "drive_rear"):
         loc, target, lens = views[name]
         snap(camera, out / f"{name}.png", loc, target, lens)
 
     backups = override_emission(meshes, lambda _o: ((0.46, 0.46, 0.47), 1.0), clay=True)
-    loc, target, lens = views["clay_three_quarter"]
-    snap(camera, out / "clay_three_quarter.png", loc, target, lens)
+    render_chase_still(camera, out / "clay_play_chase.png", distance=DISTANCE_DEFAULT, heading_deg=0.0)
+    render_chase_still(camera, out / "clay_play_chase_close.png", distance=DISTANCE_CLOSE, heading_deg=0.0)
     restore_mats(meshes, backups)
 
     ids = {
@@ -1977,8 +1975,7 @@ def render_cycle(collection):
         return (0.4, 0.4, 0.4), 1.0
 
     backups = override_emission(meshes, id_color)
-    loc, target, lens = views["id_or_material_id"]
-    snap(camera, out / "id_or_material_id.png", loc, target, lens)
+    render_chase_still(camera, out / "id_or_material_id.png", distance=DISTANCE_CLOSE, heading_deg=0.0)
     restore_mats(meshes, backups)
 
     def map_emit(suffix):
@@ -1994,12 +1991,10 @@ def render_cycle(collection):
         return fn
 
     backups = override_emission(meshes, map_emit("orm"))
-    loc, target, lens = views["orm_isolation"]
-    snap(camera, out / "orm_isolation.png", loc, target, lens)
+    render_chase_still(camera, out / "orm_isolation.png", distance=DISTANCE_CLOSE, heading_deg=0.0)
     restore_mats(meshes, backups)
     backups = override_emission(meshes, map_emit("normal"))
-    loc, target, lens = views["normal_isolation"]
-    snap(camera, out / "normal_isolation.png", loc, target, lens)
+    render_chase_still(camera, out / "normal_isolation.png", distance=DISTANCE_CLOSE, heading_deg=0.0)
     restore_mats(meshes, backups)
     return out
 

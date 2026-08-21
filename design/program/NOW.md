@@ -41,8 +41,8 @@ working. Product status and remaining tasks live in
 
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
-| PQ-050.01 Hornet closed-interceptor cycle 66 | grok-pq050 | mutating | `tools/blender/build_hornet_mtx.py`, `assets/ships/fleet_player_bodies_v1/hornet/` | rebuild Hornet cycle 66, review stills |
-| Drill playfield visual rebuild (Motherload-3D legibility) | opencode-kimi | mutating | `src/render/asteroidInteriorPreview.js`, `src/ui/asteroid/asteroidRenderer3d.js`, `src/ui/asteroid/asteroidScreen.js` | capture-drill-3d evidence + baseline checks |
+| PQ-129 opening first-touch owner census | codex-pq129-pro | IMPLEMENTING | `scripts/probe-runtime-witness.mjs` | syntax/focused validation, then one signed Electron census |
+| PQ-130.01 theater rebuild | zcode-pq130 | IMPLEMENTING | `src/ui/asteroid/asteroidScreen.js`, `src/ui/asteroid/asteroidRenderer3d.js`, `src/render/asteroidInteriorPreview.js`, `styles/asteroid-ops.css`, `styles/fonts.css` + `styles/fonts/` (additive), `design/program/roadmap/active/PQ-130.md`, `design/program/roadmap/program-queue.json` | implement leaf, verify (baseline + captures), receipt, commit |
 
 ## Uncommitted work without a confirmed live thread
 

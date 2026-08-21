@@ -251,6 +251,8 @@ function analyse(path, region) {
       x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1,
       lengthToHeight: +((maxX - minX + 1) / (maxY - minY + 1)).toFixed(2),
       pixels: shipPixels,
+      widthFrac: +((maxX - minX + 1) / width).toFixed(3),
+      heightFrac: +((maxY - minY + 1) / height).toFixed(3),
     },
     enclosedBackground: {
       notableRegions: notable.length,
@@ -285,7 +287,18 @@ if (asJson) {
 } else {
   for (const r of results) {
     console.log(r.path);
-    console.log(`  silhouette   ${r.silhouette.w} x ${r.silhouette.h} px  (${r.silhouette.lengthToHeight} : 1)`);
+    console.log(`  silhouette   ${r.silhouette.w} x ${r.silhouette.h} px  (${r.silhouette.lengthToHeight} : 1)`
+      + `  width ${Math.round(r.silhouette.widthFrac * 100)}% of frame`);
+    const wf = r.silhouette.widthFrac;
+    if (wf > 0.42) {
+      console.log('  chase        TOO CLOSE — ship fills the frame. This is a beauty shot, not play_chase.');
+    } else if (wf >= 0.20 && wf <= 0.42) {
+      console.log('  chase        close-zoom band (D=58). Default play_chase should be ~8–22%.');
+    } else if (wf >= 0.08 && wf < 0.20) {
+      console.log('  chase        default-play band (D=144).');
+    } else {
+      console.log('  chase        ship is a speck or invalid crop.');
+    }
     console.log(`  enclosed bg  ${r.enclosedBackground.notableRegions} region(s) >=20px, `
       + `${r.enclosedBackground.notablePixels} px, ${r.enclosedBackground.notableShareOfShip}% of the ship`
       + `   (${r.enclosedBackground.totalRegions} incl. seam specks)`);

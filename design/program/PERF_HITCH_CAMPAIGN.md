@@ -15,6 +15,12 @@ quality. It does not start Worker / WebGPU / native work because those ports are
 queued performance parent is `PQ-034`–`PQ-044`. Green `check:perf-packets` proves eleven Node
 unit tests, not a smooth player fly. That is why a large option list sat next to a hitching game.
 
+**Current pole (after PQ-129.16 shadow refresh gate):** sim of the ~317
+off-table bodies, not bloom, not LOD, not prewarm. Analysis:
+[`PERF_TABLE_ANALYSIS.md`](./PERF_TABLE_ANALYSIS.md). Operator list:
+[`PERF_WHAT_MATTERS.md`](./PERF_WHAT_MATTERS.md). Do not retry `.07` prewarm.
+Do not add LOD for ships that are not submitted.
+
 When the owner says the game hitches, run **`PQ-129`**, not `--next` (that still returns fleet
 remaster) and not INFERENCE.
 

@@ -1,0 +1,22 @@
+This is a campaign: raise live 3D objects to one quality bar. Do not use INFERENCE. Do not take hitch/PQ-129 work. Do not stop after one unit.
+
+Law: design/program/GRAPHICS_3D_CAMPAIGN.md and docs/visual-assets/FLYABLE_SHIP_WORKFLOW.md. Camera is the 60° chase at 144 WU (close 58 WU). Capture with tools/blender/spaceface_chase_camera.py. No seats, no studio three-quarter, no cabin kits.
+
+Bar: Hitch / Helios wholeships at chase size. A tube+ring next to a real ship is a fail. Variable quality is worse than a slightly softer house style. Do not dump Hitch down.
+
+Another thread owns hitch smoothness. Stay off src/render/renderer.js, precompile.js, partsLibrary.js, bloom.js, pipelineReadiness.js, opaqueMaterialBatch.js, visualOverrides.js, scenarioProps47a.js, hitchClassifier.js, program-queue.json, and Hitch/Kestrel files. Author assets. Same-slot GLB replace is allowed. Do not add shader families.
+
+Census of code-built vs packaged objects: design/program/WORLD_VISUAL_CENSUS.md. Upgrade the existing object. Do not invent a parallel prop.
+
+Order:
+1. Nav buoy + lane beacon (repeating satellites) — existing GLBs.
+2. pod_cargo_container — existing GLB. Also covers the generic TOW can (code-built cousin).
+3. 47-A evidence spindle as a candidate GLB only — do not hook scenarioProps47a.js until hitch work is idle. Civilian pod + Kessler beacon + Bourse wreck are the same 47-A code-built family; do not skip them.
+4. Mining drone + conveyor barge — existing GLBs. Drone *entities* (diamond+arms) are a separate code-built cousin; upgrade after the place file.
+5. Hornet skin+wells in fleet_player_bodies_v1/hornet only. Do not run the all-fleet promote. Do not model a cabin.
+
+Each unit: reference first (imagen, or existing reference/, or Codex terminal handoff in AGENT_PROMPTS.md § E). One skin with holes, not glued boxes. Join by material. Dry-run chase_visible_faces.py. Chase stills vs Hitch. Commit that unit, then the next.
+
+Default bloom/shadows/particles stay on. Do not pass by making the mesh cheaper-looking.
+
+RESULT: DONE when units 1–4 are on master and Hornet has a chase-camera candidate. Leave 47-A unwired if hitch still owns scenarioProps47a.js.

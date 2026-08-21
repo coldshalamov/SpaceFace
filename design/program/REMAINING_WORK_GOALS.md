@@ -102,6 +102,11 @@ model, three angles and three subagent reviews each. Prompt and rules:
 > Pick the work with `node scripts/program-dispatch.mjs --id PQ-050` and take the first claimable
 > ship. One ship at a time, finished before the next, ship after ship — do not stop after one.
 >
+> **Camera law first.** The game is a 60° bird’s-eye chase at 144 WU. Capture every cycle with
+> `tools/blender/spaceface_chase_camera.py`. Do not model seats, consoles, or walkable cabins.
+> That is why Hornet stalled. If a still is a studio three-quarter or a camera inside the hull,
+> the pass did not happen.
+>
 > Reference first: if `assets/ships/<family>/<ship>/reference/` has no image for the construction
 > you are about to build, GENERATE one with your image tool before modelling — the specific part
 > (wing root fairing, engine bell with vanes, canopy tub with rim), not a beauty shot. Save it there

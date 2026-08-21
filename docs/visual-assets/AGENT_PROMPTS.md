@@ -18,7 +18,10 @@
 ## B. Remaster one asset
 
 Every Blender/GLB form or surfacing dispatch uses the workflow in
-`.grok/skills/spaceface-blender-material-truth/SKILL.md` before modeling. The brief may scale by tier,
+`.grok/skills/spaceface-blender-material-truth/SKILL.md` before modeling.
+A flyable ship also follows `docs/visual-assets/FLYABLE_SHIP_WORKFLOW.md`: one
+ship, chase-camera chunks, reference via native imagen or the Codex handoff in
+§ E, no cabin kits. The brief may scale by tier,
 but no changed camera-visible zone may inherit a DCC default or wait for a later reviewer to discover
 the primitive/material mismatch.
 

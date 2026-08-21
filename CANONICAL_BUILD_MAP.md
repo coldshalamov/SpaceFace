@@ -46,6 +46,11 @@ disjoint files. No coordinator, task-long reservation, or worktree is required.
   [`design/program/PERF_HITCH_CAMPAIGN.md`](./design/program/PERF_HITCH_CAMPAIGN.md).
   Dispatch `node scripts/program-dispatch.mjs --id PQ-129`. Measure first. Do not skip to
   Worker/WebGPU/quality cuts.
+- **3D objects look like toys next to real ships** (tube+ring beacons, cargo pods, 47-A
+  spindle, uneven quality) → [`design/program/GRAPHICS_3D_CAMPAIGN.md`](./design/program/GRAPHICS_3D_CAMPAIGN.md)
+  and the operator [`GRAPHICS_3D_GOAL.txt`](./design/program/GRAPHICS_3D_GOAL.txt). Same
+  chase-camera bar as Hitch/Helios. Stay off the hitch thread’s renderer files. This is
+  not `PQ-129` and not a default-quality cut.
 - **Asteroid Works / mining minigame is unreadable, undrivable, or ugly** (tan wash,
   HUD is ugly *and* eats the board, gray vibe-coded chrome, rover too small or too
   fast, hover is a wall of text) → the ground-up positive design is
@@ -74,39 +79,48 @@ disjoint files. No coordinator, task-long reservation, or worktree is required.
   Loop `node scripts/program-dispatch.mjs --id PQ-050`, finish the first claimable ship leaf
   under the technique contract **and**
   [`MODEL_ADVERSARIAL_REVIEW_WORKFLOW.md`](./docs/visual-assets/MODEL_ADVERSARIAL_REVIEW_WORKFLOW.md)
-  (five-plus full-job cycles, three valid full-model stills, three subagent reviews that list
-  obvious defects, then cleanup), commit, then the next ship, until every PQ-050 leaf is
-  done or honestly blocked. Hitch stays frozen. A factory loft with boxes or a zoomed gray
-  crop does not close a ship.
+  (five-plus full-job cycles, three valid **chase-camera** stills, three subagent reviews that list
+  obvious defects at play size, then cleanup), commit, then the next ship, until every PQ-050 leaf is
+  done or honestly blocked. Hitch stays frozen. A factory loft with boxes, a zoomed gray
+  crop, or a seat nobody can see from the chase camera does not close a ship.
   Only after PQ-050 is exhausted, take other `--ready` implementation units. Acceptance-capture
   leaves that need a human or a headed machine you do not have may be recorded `unproven` and
   skipped; do not stall the campaign on them.
 
-**PQ-050 campaign checkpoint (2026-08-19, honesty pass):** Hitch/Kestrel stays
-frozen. Stay off INFERENCE, the dock/hulk remaster, and the expansion-research
-brief. A live copy is not a quality-close.
+**PQ-050 campaign law:** Hitch/Kestrel stays frozen. Stay off INFERENCE, the
+dock/hulk remaster, and the expansion-research brief. A live copy is not a
+quality-close.
 
-- **Hornet (`PQ-050.01`)** cycle 85 is a **wired candidate, not quality-closed**.
-  Ledger has six form rows (MTX-02/03/04/06/07/08) against a ~50-row
-  player-flyable mandate. Cycle 85 stills exist; three subagent reviews were
-  never written. Hitch-plus is not met. Live files stay so the game has a body.
-- **Drifter (`PQ-050.02`)** received three of seven campaign passes (cycles
-  18–20). Cycle 20 is the live candidate. Clay still reads as a pancake dart
-  with card winglets and empty cones. **Not accepted art.** Resume here.
-- **Remaining ships** have not had this campaign's seven-pass treatment.
-  After Drifter closes, Ranger (`PQ-050.03`) through Survey pin (`PQ-050.22`).
-  One ship at a time. Hitch stays untouched.
-- Quality remaining on every unfinished leaf: closed walkable hull, openings
-  you can see into, lofted wings/nacelles, manufactured drive throats, unique
-  surfaces, MTX ledger bound to the close hash, five valid reviewed cycles,
-  then wire only that ship. A factory loft with boxes still does not close a leaf.
+**The player camera is the only close camera.** SpaceFace is a 60° tilted
+top-down chase (`src/render/camera.js`, default 144 WU, tightest legal zoom
+58 WU). Capture cycle stills with
+[`tools/blender/spaceface_chase_camera.py`](./tools/blender/spaceface_chase_camera.py).
+How to chunk one ship, when to generate reference (or call Codex for imagen), and
+how hidden glued-on faces get handled by the computer:
+[`docs/visual-assets/FLYABLE_SHIP_WORKFLOW.md`](./docs/visual-assets/FLYABLE_SHIP_WORKFLOW.md).
+Studio three-quarter, starboard beauty, rear hero, and `bay_interior` crops
+do not count. Seats, consoles, and walkable cabins that only exist in a crop
+are not remaster work. That is why the Hornet loop stopped: many cycles, little
+change the chase camera could see.
+
+- **Hornet (`PQ-050.01`)** is a **wired candidate, not quality-closed**. Resume
+  only as a chase-camera form pass. Do not model another seat.
+- **Drifter (`PQ-050.02`)** is a wired pancake-dart. **Not accepted art.** Same
+  camera law. After Hornet actually closes at chase size, this is next.
+- **Remaining ships** have not had a chase-camera close. Ranger
+  (`PQ-050.03`) through Survey pin (`PQ-050.22`). One ship at a time.
+- Quality remaining on every unfinished leaf: silhouette, wells, canopy, and
+  drive throats that read at 144 WU; lofted wings/nacelles; unique surfaces;
+  MTX ledger bound to the close hash with chase-camera proof; five valid
+  reviewed chase cycles; then wire only that ship. A factory loft with boxes
+  still does not close a leaf. A walkable interior does not close a leaf.
 - Do not run the all-fleet promote script. Do not overwrite Hitch.
 
 Remaining PQ-050 leaves (one ship at a time; Hitch/Kestrel frozen):
 
 | Leaf | Ship | This campaign |
 |---|---|---|
-| `.01` | Hornet | wired candidate C85, **not quality-closed**. C101 candidate: one hull, greenhouse glass, orange seat, teardrop wing, dark open cans. Reviews still REVISE. Ledger incomplete. |
+| `.01` | Hornet | wired candidate, **not quality-closed**. Chase-camera form remaining. An orange seat is not progress. |
 | `.02` | Drifter | seven form attempts this campaign (C18–24). Three volumes + ringed throats in candidate. C20 still live. **Not quality-closed.** |
 | `.03` | Ranger | not started |
 | `.04` | Ironback | not started |
@@ -143,6 +157,15 @@ This campaign may rebuild the live Hitch *release* from the later polish that ne
 the compressed file; it still must not overwrite KTX2 with uncompressed source, and it must
 not dump factory remasters that lose to Hitch. It is not INFERENCE and not a default PQ-050
 overnight.
+
+**3D world-object / same-bar remaster:** if the owner wants models in the world brought up to
+the Hitch/Helios chase-camera bar (beacons, pods, 47-A tube+ring, then Hornet skin) without
+colliding with hitch work, start at
+[`design/program/GRAPHICS_3D_CAMPAIGN.md`](./design/program/GRAPHICS_3D_CAMPAIGN.md)
+(operator: [`GRAPHICS_3D_GOAL.txt`](./design/program/GRAPHICS_3D_GOAL.txt)). Packaged GLBs
+live in `assets/ships/release/release_manifest.json`; live loaders in `partsLibrary.js`;
+47-A spindle/beacon/pod are procedural in `src/render/scenarioProps47a.js` and are **not**
+in the manifest. Do not edit hitch-owned renderer files. Do not touch Hitch.
 
 **Asteroid Works playfield:** if the owner cannot see the mining board, tell cells
 apart, find the rover, move it one cell on purpose — or the screen still looks like
@@ -186,8 +209,9 @@ ship except Hitch/Kestrel honestly better than live Hitch is admitted as `PQ-050
 one ship: apply [`docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md`](./docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md)
 (form, unique UVs, mesh bakes, authored surfaces, LOD), fill that ship’s technique ledger, then
 wire only that ship. A factory loft with boxes or a tinted shared sheet does not close a leaf.
-2026-08-19 handoff: Hornet’s seven passes are done and unwired; Drifter cycle 20 is live and
-unfinished. Next leaf is Ranger. Do not touch Hitch.
+Do not resume this campaign on studio cameras or cabin interiors. Hornet is a wired candidate
+that stalled on seats the chase view cannot see; Drifter is unfinished. One ship at a time.
+Do not touch Hitch.
 
 **Graphics / expansion research (A-list parity):** when planning work that spans graphics,
 animation, VFX, variety, or world density — as opposed to one admitted asset packet — the durable

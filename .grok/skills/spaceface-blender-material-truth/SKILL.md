@@ -44,7 +44,10 @@ may use one entry for a repeated manufactured family, but no changed zone may in
 6. inventory dominant inherited/retained zones visible in the supported whole-asset cameras;
    `retained_reviewed` requires an actual material/construction review and remains inside the
    whole-asset visual veto;
-7. name the complete surfaced Blender working scene and the supported cameras that will judge it;
+7. name the complete surfaced Blender working scene and the supported cameras that will judge it.
+   For flyable ships those cameras **are** the live chase camera (60° / FOV 50° / D=144 and D=58,
+   `tools/blender/spaceface_chase_camera.py`). Seats and cabin kits that do not read at D=58 are
+   `outside_supported_view`; do not bill them;
 8. name the G0-G7 evidence, gate scope, hash-bound review record, and independent reviewer required
    for the exact candidate.
 

@@ -1,20 +1,21 @@
-// Asteroid Ops console — the drill lens grown into a machine-design surface
-// (design/ASTEROID_SITES_BRIEF.md for the sim, design/ASTEROID_OPS_UI_BRIEF.md for this shell).
-// Registered under screen id 'drill': same entry (massline tether → drill:approachRequested → completion), same
-// pause semantics, superseding src/ui/screens/drill.js as the live module (that file stays for
-// its exported input controller / particle / shake helpers and its checks).
+// Asteroid Works — the mine is the screen (design/ASTEROID_WORKS_DESIGN_LAW.md).
+// Registered under screen id 'drill': same entry (massline tether → drill:approachRequested →
+// completion), same pause semantics, superseding src/ui/screens/drill.js as the live module (that
+// file stays for its exported input controller / particle / shake helpers and its checks).
 //
-// Frame: top status strip / full-bleed 3D viewport + manifest rail / bottom command deck
-// (site systems · context+contact ring · command card). Styling lives in
-// styles/asteroid-ops.css — this module owns structure and wiring only.
+// Chrome is law §6.1 + §6.2 only: a thin crest (name, claim, one alert slot, yield, hold gauge,
+// leave) and the rig cluster (heat + charge). The board owns ≥88% of the glass; events happen on
+// the board, never as a permanently visible text log. The inspector/palette wiring survives in a
+// display:none transitional container until the cursor lens (.06) and build keys (.09) land.
+// Styling lives in styles/asteroid-ops.css — this module owns structure and wiring only.
 //
-// Split per brief §2: this shell owns lifecycle + DOM + events; asteroidRenderer3d owns pixels;
-// asteroidController owns modes/input; inspector + buildPalette own their bays. Excavation sim
-// stays in systems/drill.js; durable structures/production in systems/asteroidSites.js.
+// Split per law: this shell owns lifecycle + DOM + events; asteroidRenderer3d owns pixels;
+// asteroidController owns modes/input. Excavation sim stays in systems/drill.js; durable
+// structures/production in systems/asteroidSites.js.
 import { DRILL_CONST, tileIndex } from '../../systems/drill.js';
 import { resolveDrillControlMap } from '../screens/drill.js';
 import { prefersReducedMotion } from '../effects/effectRuntime.js';
-import { MATERIALS, ORE_TINTS, machineName } from './asteroidRenderer2d.js';
+import { machineName } from './asteroidRenderer2d.js';
 import { createAsteroidRenderer3d } from './asteroidRenderer3d.js';
 import {
   createAsteroidController,
@@ -25,8 +26,6 @@ import { createInspector, placementReason, commodityName, formationLabel } from 
 import { createBuildPalette, costText } from './buildPalette.js';
 
 const { COLS, ROWS } = DRILL_CONST;
-
-const TICKER_IDLE = 'Systems nominal.';
 
 export function syncAsteroidConsoleModeButtons(driveButton, buildButton, mode) {
   const buildSelected = mode === MODES.BUILD;
@@ -64,59 +63,69 @@ export const asteroidScreen = {
 
     const hudEls = {};
 
-    // ---------- top strip: designation · ticker · session stats · retract ----------
-    const top = document.createElement('header');
-    top.className = 'ao-top';
+    // ---------- crest (law §6.1): name · claim · one alert slot · yield · hold · leave ----------
+    const crest = document.createElement('header');
+    crest.className = 'aw-crest';
 
-    const topId = document.createElement('div');
-    topId.className = 'ao-top-id';
-    const title = document.createElement('h1');
-    title.className = 'ao-top-title';
-    title.id = 'ast-screen-title';
-    title.textContent = 'Asteroid Works';
-    const topSub = document.createElement('span');
-    topSub.className = 'ao-top-sub';
-    topSub.textContent = 'AST-—';
+    const nameEl = document.createElement('div');
+    nameEl.className = 'aw-crest-name';
+    nameEl.id = 'ast-screen-title';
+    nameEl.textContent = 'Asteroid Works';
+
     const claimChip = document.createElement('span');
-    claimChip.className = 'ao-chip';
+    claimChip.className = 'aw-chip';
     claimChip.textContent = 'No claim';
-    topId.append(title, topSub, claimChip);
-    hudEls.siteSub = topSub;
     hudEls.claim = claimChip;
 
-    const ticker = document.createElement('div');
-    ticker.className = 'ao-ticker';
-    ticker.setAttribute('role', 'alert');
-    ticker.setAttribute('aria-live', 'polite');
-    const tickerText = document.createElement('span');
-    tickerText.className = 'ao-ticker-text';
-    tickerText.textContent = TICKER_IDLE;
-    ticker.appendChild(tickerText);
+    // Claim-survey assay chip (PQ-024): volatile cold-state progress beside the claim it threatens;
+    // committed/producing read from the durable record.
+    const assayChip = document.createElement('span');
+    assayChip.className = 'aw-chip';
+    assayChip.style.display = 'none';
+    hudEls.assay = assayChip;
 
-    const topStats = document.createElement('div');
-    topStats.className = 'ao-top-stats';
-    topStats.innerHTML =
-      '<span><span class="lbl">Yield</span><span data-yield>0</span></span>'
-      + '<span><span class="lbl">Cargo</span><span data-cargo>0%</span></span>';
-    hudEls.yield = topStats.querySelector('[data-yield]');
-    hudEls.cargo = topStats.querySelector('[data-cargo]');
+    // One alert slot, sentence case, severity-colored; empty and invisible by default.
+    const alertEl = document.createElement('div');
+    alertEl.className = 'aw-alert';
+    alertEl.setAttribute('role', 'status');
+    alertEl.setAttribute('aria-live', 'polite');
+    hudEls.alert = alertEl;
 
-    const exitBtn = document.createElement('button');
-    exitBtn.type = 'button';
-    exitBtn.className = 'ao-btn ao-top-exit';
-    exitBtn.innerHTML = '<span>Retract rig</span><span class="ao-key-cap">ESC</span>';
+    const crestRight = document.createElement('div');
+    crestRight.className = 'aw-crest-right';
+    const creditsEl = document.createElement('span');
+    creditsEl.className = 'aw-credits';
+    creditsEl.textContent = '0u';
+    hudEls.yield = creditsEl;
+    const hold = document.createElement('div');
+    hold.className = 'aw-hold';
+    hold.setAttribute('aria-hidden', 'true');
+    const holdTrack = document.createElement('div');
+    holdTrack.className = 'aw-hold-track';
+    const holdTicks = document.createElement('div');
+    holdTicks.className = 'ticks';
+    const holdFill = document.createElement('div');
+    holdFill.className = 'aw-hold-fill';
+    holdTrack.append(holdTicks, holdFill);
+    hold.appendChild(holdTrack);
+    hudEls.holdFill = holdFill;
+    const leaveBtn = document.createElement('button');
+    leaveBtn.type = 'button';
+    leaveBtn.className = 'aw-leave';
+    const leaveLabel = document.createElement('span');
+    leaveLabel.textContent = 'Leave';
+    const leaveKey = document.createElement('span');
+    leaveKey.className = 'aw-key';
+    leaveKey.textContent = 'Esc';
+    leaveBtn.append(leaveLabel, leaveKey);
+    crestRight.append(creditsEl, hold, leaveBtn);
 
-    top.append(topId, ticker, topStats, exitBtn);
-    wrap.appendChild(top);
+    crest.append(nameEl, claimChip, assayChip, alertEl, crestRight);
+    wrap.appendChild(crest);
 
-    // ---------- main: viewport + manifest rail ----------
-    const main = document.createElement('div');
-    main.className = 'ao-main';
-
-    const canvasWrap = document.createElement('div');
-    canvasWrap.className = 'ast-canvas-wrap';
+    // ---------- the board (law §4): sovereign stage + rig cluster ----------
     const stage = document.createElement('div');
-    stage.className = 'ao-stage';
+    stage.className = 'aw-stage';
     const canvas = document.createElement('canvas');
     canvas.className = 'ast-canvas';
     canvas.tabIndex = 0;
@@ -124,120 +133,56 @@ export const asteroidScreen = {
     canvas.setAttribute('aria-label',
       `Asteroid cross-section. Hold ${controlMap.movementLabel} to drive or bore. Press B for build mode, ${controlMap.scanLabel} to survey.`);
     stage.appendChild(canvas);
-    canvasWrap.appendChild(stage);
-    main.appendChild(canvasWrap);
 
-    const rail = document.createElement('aside');
-    rail.className = 'ao-rail';
-    rail.setAttribute('aria-label', 'Site manifest and strata key');
-    const tapeTitle = document.createElement('div');
-    tapeTitle.className = 'ao-bay-title';
-    tapeTitle.textContent = 'Manifest';
-    const ledgerFeed = document.createElement('div');
-    ledgerFeed.className = 'ao-tape';
-    ledgerFeed.innerHTML = '<div class="ao-tape-empty">Bore and site events print here.</div>';
-    const strataTitle = document.createElement('div');
-    strataTitle.className = 'ao-bay-title';
-    strataTitle.textContent = 'Strata';
-    const strata = document.createElement('div');
-    strata.className = 'ao-strata';
-    rail.append(tapeTitle, ledgerFeed, strataTitle, strata);
-    main.appendChild(rail);
-    wrap.appendChild(main);
+    const rig = document.createElement('div');
+    rig.className = 'aw-rig';
+    rig.setAttribute('aria-label', 'Rig instruments');
+    function buildGauge(kind, label) {
+      const row = document.createElement('div');
+      row.className = `aw-gauge aw-gauge-${kind}`;
+      const lbl = document.createElement('span');
+      lbl.className = 'aw-gauge-label';
+      lbl.textContent = label;
+      const track = document.createElement('div');
+      track.className = 'aw-gauge-track';
+      const ticks = document.createElement('div');
+      ticks.className = 'ticks';
+      const fill = document.createElement('div');
+      fill.className = 'aw-gauge-fill';
+      track.append(ticks, fill);
+      const val = document.createElement('span');
+      val.className = 'aw-gauge-val';
+      val.textContent = '0%';
+      row.append(lbl, track, val);
+      rig.appendChild(row);
+      return { fill, val };
+    }
+    const heat = buildGauge('heat', 'Heat');
+    const charge = buildGauge('charge', 'Charge');
+    hudEls.tempFill = heat.fill;
+    hudEls.temp = heat.val;
+    hudEls.energyFill = charge.fill;
+    hudEls.energy = charge.val;
+    stage.appendChild(rig);
 
-    // ---------- command deck ----------
-    const deck = document.createElement('footer');
-    deck.className = 'ao-deck';
-
-    // -- site systems bay
-    const siteBay = document.createElement('section');
-    siteBay.className = 'ao-bay ao-bay-site';
-    siteBay.setAttribute('aria-label', 'Site systems and rig telemetry');
-    siteBay.innerHTML = `
-      <div class="ao-bay-title">Site systems</div>
-      <div class="ao-inst"><span class="lbl">Power</span><span class="ao-bar"><span class="fill amber" data-power-fill></span></span><span class="val" data-power>—</span></div>
-      <div class="ao-inst"><span class="lbl">Export</span><span class="ao-duo-spacer"></span><span class="val" data-export>—</span></div>
-      <div class="ao-inst"><span class="lbl">Couriers</span><span class="ao-pips" data-pod-pips></span><span class="val" data-pods>—</span></div>
-      <div class="ao-sep"></div>
-      <div class="ao-subhead">Rig</div>
-      <div class="ao-inst"><span class="lbl">Temp</span><span class="ao-bar"><span class="fill" data-temp-fill></span></span><span class="val" data-temp>0%</span></div>
-      <div class="ao-inst"><span class="lbl">Energy</span><span class="ao-bar"><span class="fill" data-energy-fill></span></span><span class="val" data-energy>100%</span></div>
-      <div class="ao-duo"><span><span class="lbl">Rock budget</span><span class="val" data-rock>—</span></span><span><span class="lbl">Gas hits</span><span class="val" data-gas>0</span></span></div>
-    `;
-    hudEls.powerFill = siteBay.querySelector('[data-power-fill]');
-    hudEls.power = siteBay.querySelector('[data-power]');
-    hudEls.export = siteBay.querySelector('[data-export]');
-    hudEls.podPips = siteBay.querySelector('[data-pod-pips]');
-    hudEls.pods = siteBay.querySelector('[data-pods]');
-    hudEls.tempFill = siteBay.querySelector('[data-temp-fill]');
-    hudEls.temp = siteBay.querySelector('[data-temp]');
-    hudEls.energyFill = siteBay.querySelector('[data-energy-fill]');
-    hudEls.energy = siteBay.querySelector('[data-energy]');
-    hudEls.rock = siteBay.querySelector('[data-rock]');
-    hudEls.gas = siteBay.querySelector('[data-gas]');
-    deck.appendChild(siteBay);
-
-    // -- context bay (inspector + contact-ring schematic)
-    const ctxBay = document.createElement('section');
-    ctxBay.className = 'ao-bay ao-bay-context';
-    ctxBay.setAttribute('aria-label', 'Inspector');
-    const ctxTitle = document.createElement('div');
-    ctxTitle.className = 'ao-bay-title';
-    ctxTitle.textContent = 'Context';
+    // ---------- hidden transitionals (inspector + palette wiring; no glass until .06/.09) ----------
+    const hidden = document.createElement('div');
+    hidden.className = 'aw-hidden';
+    hidden.setAttribute('aria-hidden', 'true');
+    const cardHost = document.createElement('div');
     const ctxRow = document.createElement('div');
-    ctxRow.className = 'ao-context';
     const ringDock = document.createElement('div');
     ringDock.className = 'ao-ring-dock';
-    ctxBay.append(ctxTitle, ctxRow);
-    deck.appendChild(ctxBay);
-
-    // -- command bay
-    const cmdBay = document.createElement('section');
-    cmdBay.className = 'ao-bay ao-bay-command';
-    cmdBay.setAttribute('aria-label', 'Command card');
-    const cmdTitle = document.createElement('div');
-    cmdTitle.className = 'ao-bay-title';
-    cmdTitle.textContent = 'Command';
-    const modeSwitch = document.createElement('div');
-    modeSwitch.className = 'ao-switch';
-    modeSwitch.setAttribute('role', 'group');
-    modeSwitch.setAttribute('aria-label', 'Console mode');
-    const driveBtn = document.createElement('button');
-    driveBtn.type = 'button';
-    driveBtn.className = 'active';
-    driveBtn.textContent = 'Drive';
-    const buildBtn = document.createElement('button');
-    buildBtn.type = 'button';
-    buildBtn.innerHTML = 'Build <span class="ao-key-cap">B</span>';
-    syncAsteroidConsoleModeButtons(driveBtn, buildBtn, MODES.DRIVE);
-    modeSwitch.append(driveBtn, buildBtn);
-    const cardHost = document.createElement('div');
-    const scanBtn = document.createElement('button');
-    scanBtn.type = 'button';
-    scanBtn.className = 'ao-btn ao-survey';
-    scanBtn.innerHTML = `<span>Pulse survey <span class="ao-key-cap">${controlMap.scanLabel}</span></span> <span class="st ready" data-scan-state>Ready</span>`;
-    hudEls.scanState = scanBtn.querySelector('[data-scan-state]');
-    // Claim-survey assay chip (PQ-024): volatile cold-state progress next to the verb that drives
-    // it; committed/producing read from the durable record. Ambient status surface, one voice.
-    const assayChip = document.createElement('span');
-    assayChip.className = 'ao-chip';
-    assayChip.style.display = 'none';
-    hudEls.assay = assayChip;
-    const hints = document.createElement('div');
-    hints.className = 'ao-hints';
-    hints.innerHTML =
-      `<div>${controlMap.movementLabel} — drive · hold to bore</div>`
-      + '<div>Enter place · X dismantle · Q/E cycle · Esc retract</div>';
-    cmdBay.append(cmdTitle, modeSwitch, cardHost, scanBtn, assayChip, hints);
-    deck.appendChild(cmdBay);
-    wrap.appendChild(deck);
+    hidden.append(cardHost, ctxRow, ringDock);
+    stage.appendChild(hidden);
 
     const srStatus = document.createElement('div');
     srStatus.className = 'ast-sr-status';
     srStatus.setAttribute('role', 'status');
     srStatus.setAttribute('aria-live', 'polite');
     srStatus.setAttribute('aria-atomic', 'true');
-    wrap.appendChild(srStatus);
+    stage.appendChild(srStatus);
+    wrap.appendChild(stage);
     rootEl.appendChild(wrap);
 
     function announce(text) {
@@ -279,7 +224,6 @@ export const asteroidScreen = {
       controlMap,
       hooks: {
         onModeChanged(mode) {
-          syncAsteroidConsoleModeButtons(driveBtn, buildBtn, mode);
           palette.setVisible(mode === MODES.BUILD);
           inspElapsed = 10;
           announce(mode === MODES.BUILD
@@ -294,8 +238,6 @@ export const asteroidScreen = {
         onSelectPalette: (i) => palette.select(i),
       },
     });
-    driveBtn.addEventListener('click', () => controller.setMode(MODES.DRIVE));
-    buildBtn.addEventListener('click', () => controller.setMode(MODES.BUILD));
 
     const palette = createBuildPalette(cardHost, {
       onSelect() { inspElapsed = 10; },
@@ -409,7 +351,6 @@ export const asteroidScreen = {
       if (res.ok) {
         if (renderer3d) renderer3d.notify('install', { col: cursor.col, row: cursor.row });
         projDirty = true;
-        rebuildStrata();
         announce(`${item.name} installed at ${cursor.col},${cursor.row}.`);
         pushLedgerLine('good', `${item.name} installed at ${cursor.col},${cursor.row}.`);
       } else {
@@ -466,11 +407,10 @@ export const asteroidScreen = {
       const remain = Math.max(0, state.drill.scan?.cooldown || 0);
       announce(`Survey recharging. ${Math.ceil(remain)} seconds remaining.`);
     };
-    scanBtn.addEventListener('click', pulseSurvey);
 
     // ---------- pointer input ----------
-    // The 2D path mapped pixels linearly; the 3D renderer raycasts the same rock-face plane the
-    // cursor chrome draws on, so what the mouse touches is what highlights.
+    // The renderer raycasts the same rock-face plane the cursor chrome draws on, so what the
+    // mouse touches is what highlights.
     const canvasCell = (ev) => (renderer3d ? renderer3d.pickCell(ev.clientX, ev.clientY) : null);
     const onMouseMove = (ev) => {
       const cell = canvasCell(ev);
@@ -508,43 +448,55 @@ export const asteroidScreen = {
       const cell = canvasCell(ev);
       if (cell) { commitRemoval(cell); ev.preventDefault(); }
     };
-    const onKeyDown = (event) => routeAsteroidScreenKeyDown({ controller, event, exit });
+    // Two zoom registers (law §4): wheel or Z snaps work ↔ site with a 180ms eased zoom.
+    const onWheel = (ev) => {
+      ev.preventDefault();
+      if (renderer3d) renderer3d.inputZoom(ev.deltaY);
+    };
+    const onKeyDown = (event) => {
+      if (event.code === 'KeyZ' && !event.repeat && renderer3d) {
+        renderer3d.inputZoom(-1);
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        return;
+      }
+      routeAsteroidScreenKeyDown({ controller, event, exit });
+    };
     const onKeyUp = (ev) => { controller.onKeyUp(ev); };
     const onWindowBlur = () => controller.cancel();
-    exitBtn.addEventListener('click', () => exit());
+    leaveBtn.addEventListener('click', () => exit());
 
-    // ---------- manifest tape + alert ticker ----------
+    // ---------- silent ledger buffer (law §2.6: events happen on the board, not a text log) ----------
+    // The manifest tape is gone from the glass; history waits here for the ledger drawer (.07).
+    const ledgerBuffer = [];
     let lastLedgerText = null;
     function pushLedgerLine(kind, text) {
       if (lastLedgerText === text) return;
       lastLedgerText = text;
-      const item = document.createElement('div');
-      item.className = `ao-tape-row ${kind}`;
-      item.textContent = text;
-      ledgerFeed.querySelector('.ao-tape-empty')?.remove();
-      ledgerFeed.prepend(item);
-      while (ledgerFeed.children.length > 12) ledgerFeed.lastElementChild.remove();
+      ledgerBuffer.unshift({ kind, text });
+      if (ledgerBuffer.length > 24) ledgerBuffer.length = 24;
     }
 
+    // ---------- crest alert slot (one line, severity-colored) ----------
     let bannerKind = null;
-    function showBanner(kind, text) {
-      const cls = (kind === 'cargo' || kind === 'danger') ? 'bad' : 'warn';
-      if (bannerKind === kind && hudCache.tickerText === text) return;
+    function showBanner(kind, text, severity = 'warn') {
+      if (bannerKind === kind && hudCache.alertText === text) return;
       bannerKind = kind;
-      hudCache.tickerText = text;
-      tickerText.textContent = text;
-      ticker.className = `ao-ticker ${cls}`;
+      hudCache.alertText = text;
+      alertEl.textContent = text;
+      alertEl.className = `aw-alert live ${severity}`;
     }
     function clearBanner(kind) {
       if (bannerKind !== kind) return;
       bannerKind = null;
-      hudCache.tickerText = TICKER_IDLE;
-      tickerText.textContent = TICKER_IDLE;
-      ticker.className = 'ao-ticker';
+      hudCache.alertText = '';
+      alertEl.textContent = '';
+      alertEl.className = 'aw-alert';
     }
 
     // ---------- bus subscriptions ----------
-    // The shell keeps the words (tape, ticker, screen-reader); the renderer gets the pictures.
+    // The shell keeps the words (alert slot, screen-reader, ledger buffer); the renderer gets
+    // the pictures.
     unsubs.push(ctx.bus.on('drill:yield', (p) => {
       const name = commodityName(p.commodityId);
       if (renderer3d) {
@@ -564,15 +516,14 @@ export const asteroidScreen = {
       announce(p.text);
     }));
     unsubs.push(ctx.bus.on('drill:rockDepleted', (p) => {
-      showBanner('depleted', p?.text || 'This rock is played out — veins break but pay no ore until it recovers.');
+      showBanner('depleted', p?.text || 'This rock is played out — veins break but pay no ore until it recovers.', 'warn');
     }));
     unsubs.push(ctx.bus.on('drill:cargoFull', () => {
       if (renderer3d) renderer3d.notify('cargoFull');
-      showBanner('cargo', 'CARGO HOLDS FULL — mining now wastes ore. Retract the rig to offload.');
+      showBanner('cargo', 'Cargo holds full — mining now wastes ore. Leave to offload.', 'bad');
     }));
     unsubs.push(ctx.bus.on('drill:scanPulse', (p) => {
       if (renderer3d) renderer3d.notify('scanPulse');
-      rebuildStrata();
       const result = p.contacts === 1 ? '1 contact' : `${p.contacts} contacts`;
       pushLedgerLine('info', `Survey resolved ${result}.`);
       announce(`Survey resolved ${result} within ${p.radius} cells.`);
@@ -607,7 +558,7 @@ export const asteroidScreen = {
 
     // Claim-survey milestones (PQ-024). Detection and completion warn about volatility BEFORE the
     // player commits; commitment and first real output are durable site receipts. One voice:
-    // everything routes through the screen's single announcer + the ledger tape.
+    // everything routes through the screen's single announcer + the ledger buffer.
     unsubs.push(ctx.bus.on('site:surveyDetected', (p) => {
       if (!p || p.asteroidId !== asteroidId()) return;
       const label = formationLabel(p.material);
@@ -651,46 +602,12 @@ export const asteroidScreen = {
       pushLedgerLine(latest.kind === 'bad' ? 'bad' : latest.kind === 'warn' ? 'warn' : latest.kind === 'good' ? 'good' : 'info', latest.text);
     }
 
-    // Re-entering an established site shows its recent history, not an empty feed.
+    // Re-entering an established site seeds its recent history for the ledger drawer (.07).
     function seedLedgerFromSite() {
       const s = site();
       if (!s || !s.ledger.length) return;
       for (const entry of s.ledger.slice(0, 8).reverse()) {
         pushLedgerLine(entry.kind === 'bad' ? 'bad' : entry.kind === 'warn' ? 'warn' : entry.kind === 'good' ? 'good' : 'info', entry.text);
-      }
-    }
-
-    // ---------- strata key ----------
-    function rebuildStrata() {
-      strata.replaceChildren();
-      const rows = [
-        [MATERIALS.matrix.base, MATERIALS.matrix.name],
-        [MATERIALS.basalt.base, MATERIALS.basalt.name],
-        ['#ffc23e', 'Gas pocket — tap it, never breach it'],
-      ];
-      const d = state.drill;
-      const seen = new Set();
-      if (d && d.field) {
-        for (let c = 0; c < COLS; c++) {
-          for (let r = 0; r < ROWS; r++) {
-            const t = d.field[c][r];
-            if (t && t.type === 'vein' && t.ore && t.surveyed && !seen.has(t.ore)) seen.add(t.ore);
-          }
-        }
-      }
-      for (const ore of [...seen].sort()) {
-        rows.push([(ORE_TINTS[ore] || {}).vein || '#999', commodityName(ore)]);
-      }
-      for (const [color, label] of rows) {
-        const row = document.createElement('div');
-        row.className = 'ao-strata-row';
-        const sw = document.createElement('span');
-        sw.className = 'ao-strata-swatch';
-        sw.style.background = color;
-        const tx = document.createElement('span');
-        tx.textContent = label;
-        row.append(sw, tx);
-        strata.appendChild(row);
       }
     }
 
@@ -711,25 +628,7 @@ export const asteroidScreen = {
       if (hudCache[key] === v) return;
       hudCache[key] = v;
       el.style.width = `${Math.max(0, Math.min(100, pct))}%`;
-      el.className = `fill ${cls}`.trim();
-    }
-
-    function syncPodPips(ready, target, out) {
-      const key = `${ready}/${target}/${out}`;
-      if (hudCache.pips === key) return;
-      hudCache.pips = key;
-      hudEls.podPips.replaceChildren();
-      const shown = Math.min(10, target);
-      for (let i = 0; i < shown; i++) {
-        const pip = document.createElement('span');
-        pip.className = `ao-pip${i < ready ? ' on' : ''}`;
-        hudEls.podPips.appendChild(pip);
-      }
-      for (let i = 0; i < Math.min(4, out); i++) {
-        const pip = document.createElement('span');
-        pip.className = 'ao-pip out';
-        hudEls.podPips.appendChild(pip);
-      }
+      el.className = `aw-gauge-fill ${cls}`.trim();
     }
 
     function updateHud() {
@@ -738,70 +637,40 @@ export const asteroidScreen = {
       let total = 0;
       for (const k in d.yieldLog) total += d.yieldLog[k] || 0;
       setText(hudEls.yield, 'y', `${total}u`);
-      setText(hudEls.gas, 'g', String(d.gasHits));
+
+      // hold gauge — mint → gold → coral as it fills (crest, law §6.1)
       const cargo = state.player.cargo;
       const cap = cargo && cargo.capVolume > 0 ? cargo.capVolume : 0;
       const used = cargo ? Number(cargo.usedVolume) || 0 : 0;
       const pct = cap > 0 ? Math.round((used / cap) * 100) : 0;
       const full = pct >= 100;
-      setText(hudEls.cargo, 'c', full ? 'FULL' : `${pct}%`);
-      setCn(hudEls.cargo, 'ccn', full ? 'bad' : '');
-      if (full) showBanner('cargo', 'CARGO HOLDS FULL — mining now wastes ore. Retract the rig to offload.');
+      setBar(hudEls.holdFill, 'hb', pct, full ? 'full' : (pct >= 75 ? 'hot' : ''));
+      if (full) showBanner('cargo', 'Cargo holds full — mining now wastes ore. Leave to offload.', 'bad');
       else clearBanner('cargo');
-      const budget = d.rockBudget;
-      const rockText = Number.isFinite(budget) && Number(d.rockBudgetMax) > 0
-        ? (budget <= 0 ? 'EMPTY' : String(Math.floor(budget))) : '—';
-      setText(hudEls.rock, 'r', rockText);
-      setCn(hudEls.rock, 'rcn', rockText === 'EMPTY' ? 'val bad' : 'val');
 
+      // rig cluster — gauges confirm what the rover's body already shows (law §6.2)
       const temp = Math.round(d.drillTemp || 0);
       setText(hudEls.temp, 't', `${temp}%`);
       setBar(hudEls.tempFill, 'tb', temp, d.overheated ? 'bad' : (temp > 60 ? 'warn' : ''));
-      setCn(hudEls.temp, 'tcn', d.overheated ? 'val bad' : (temp > 60 ? 'val warn' : 'val'));
+      setCn(hudEls.temp, 'tcn', d.overheated ? 'aw-gauge-val bad' : 'aw-gauge-val');
       const energy = Math.round(d.drillEnergy ?? 100);
       setText(hudEls.energy, 'e', `${energy}%`);
-      setBar(hudEls.energyFill, 'eb', energy, d.energyDepleted ? 'bad' : (energy < 25 ? 'warn' : ''));
-      setCn(hudEls.energy, 'ecn', d.energyDepleted || energy < 25 ? 'val warn' : 'val');
-
-      if (projection) {
-        const gen = projection.power.reduce((s, p) => s + p.gen, 0);
-        const draw = projection.power.reduce((s, p) => s + p.draw, 0);
-        const worst = projection.power.reduce((w, p) => Math.min(w, p.ratio), 1);
-        setText(hudEls.power, 'p', `${Math.round(gen)}/${Math.round(draw)} MW`);
-        setCn(hudEls.power, 'pcn', worst < 1 ? 'val warn' : 'val ok');
-        const load = gen > 0 ? (draw / gen) * 100 : (draw > 0 ? 100 : 0);
-        setBar(hudEls.powerFill, 'pb', load, worst < 1 ? 'bad' : 'amber');
-        setText(hudEls.export, 'x', `${projection.exportRatePerMin.toFixed(1)} u/min`);
-        const fl = projection.fleet;
-        syncPodPips(fl.podsReady, fl.podTarget, fl.inFlightCount);
-        setText(hudEls.pods, 'pd', `${fl.podsReady}/${fl.podTarget} · ${fl.inFlightCount} out`);
-        setCn(hudEls.pods, 'pdcn', fl.podsReady === 0 && fl.podTarget > 0 ? 'val warn' : 'val');
-      } else {
-        setText(hudEls.power, 'p', '—');
-        setBar(hudEls.powerFill, 'pb', 0, 'amber');
-        setText(hudEls.export, 'x', '—');
-        syncPodPips(0, 0, 0);
-        setText(hudEls.pods, 'pd', '—');
-      }
-      const remaining = Math.max(0, d.scan?.cooldown || 0);
-      setText(hudEls.scanState, 's', remaining > 0 ? `${Math.ceil(remaining)}s` : 'Ready');
-      setCn(hudEls.scanState, 'scn', remaining > 0 ? 'st' : 'st ready');
-      const disabled = remaining > 0;
-      if (hudCache.scanDis !== disabled) { hudCache.scanDis = disabled; scanBtn.disabled = disabled; }
+      setBar(hudEls.energyFill, 'eb', energy, d.energyDepleted ? 'bad' : (energy < 25 ? 'bad' : ''));
+      setCn(hudEls.energy, 'ecn', d.energyDepleted || energy < 25 ? 'aw-gauge-val bad' : 'aw-gauge-val');
 
       // claim-survey assay chip + claim chip (PQ-024): cold progress is volatile knowledge and
       // must be visible BEFORE the player commits; committed/producing read the durable record.
       const survey = siteSys ? siteSys.surveyStatusFor(asteroidId()) : null;
       let assayText = '';
-      let assayCls = 'ao-chip';
+      let assayCls = 'aw-chip';
       if (survey && survey.state === 'cold' && survey.material) {
         assayText = `Assay ${survey.revealed}/${survey.cells}`;
-        assayCls = 'ao-chip bad'; // volatile — same risk voice as UNANCHORED
+        assayCls = 'aw-chip bad'; // volatile — same risk voice as an unanchored claim
       } else if (survey && survey.state === 'cold') {
         assayText = 'No assay';
       } else if (survey && (survey.state === 'committed' || survey.state === 'producing')) {
         assayText = `Assay ${survey.cells} cells`;
-        assayCls = 'ao-chip ok';
+        assayCls = 'aw-chip ok';
       }
       setText(hudEls.assay, 'as', assayText);
       setCn(hudEls.assay, 'ascn', assayCls);
@@ -814,17 +683,17 @@ export const asteroidScreen = {
       // claim chip
       const s = site();
       const claimText = !s ? 'No claim'
-        : (!s.anchored ? 'UNANCHORED' : (survey && survey.state === 'producing' ? 'Producing' : 'Anchored'));
+        : (!s.anchored ? 'Unanchored' : (survey && survey.state === 'producing' ? 'Producing' : 'Anchored'));
       setText(hudEls.claim, 'dc', claimText);
-      setCn(hudEls.claim, 'dccn', !s ? 'ao-chip' : (s.anchored ? 'ao-chip ok' : 'ao-chip bad'));
+      setCn(hudEls.claim, 'dccn', !s ? 'aw-chip' : (s.anchored ? 'aw-chip ok' : 'aw-chip bad'));
       if (s && !s.anchored && bannerKind == null) {
-        showBanner('unanchored', 'UNANCHORED CLAIM — install a Massline Core or this work is lost when you leave the sector.');
+        showBanner('unanchored', 'Unanchored claim — install a Massline Core or this work is lost when you leave the sector.', 'warn');
       } else if (s && s.anchored) {
         clearBanner('unanchored');
       }
     }
 
-    // ---------- inspector refresh ----------
+    // ---------- inspector refresh (transitional: hidden container until the .06 lens) ----------
     function refreshInspector() {
       const d = state.drill;
       if (!d) return;
@@ -945,31 +814,30 @@ export const asteroidScreen = {
       motionReduce = prefersReducedMotion({
         motionReduce: !!(state.settings && state.settings.video && state.settings.video.motionReduce),
       });
-      wrap.classList.toggle('reduce-motion', motionReduce);
       bannerKind = null;
-      tickerText.textContent = TICKER_IDLE;
-      ticker.className = 'ao-ticker';
+      alertEl.textContent = '';
+      alertEl.className = 'aw-alert';
       lastLedgerText = null;
-      ledgerFeed.innerHTML = '<div class="ao-tape-empty">Bore and site events print here.</div>';
+      ledgerBuffer.length = 0;
 
       drillSys.begin(pendingId);
       const astId = asteroidId();
-      hudEls.siteSub.textContent = `AST-${astId != null ? String(astId) : '—'}`;
+      hudEls.siteName = nameEl;
+      nameEl.textContent = `AST-${astId != null ? String(astId) : '—'}`;
       projDirty = true;
       refreshProjection();
       seedLedgerFromSite();
-      // Fresh rock: teach the loop on the manifest tape. The scene shows it (rig on a tether,
-      // veins erupt when surveyed or approached, pockets hiss when close) — these name it.
+      // Fresh rock: the scene shows the loop (rig on a tether, veins, pockets); the announcer
+      // names it once for screen readers — no visible tutorial text on the glass.
       if ((state.drill.tilesCleared || 0) <= 1) {
-        pushLedgerLine('info', 'Rig tethered to the surface winch — hold a direction to drive, keep holding to bore through rock.');
-        pushLedgerLine('info', 'Bright crystal clusters are ore veins: bore them to collect. Cracked cells seeping vapor are gas pockets — tap them with a Gas Tap, never the drill.');
+        announce('Rig tethered to the surface winch — hold a direction to drive, keep holding to bore through rock.');
       }
       // One renderer (one WebGL context) per mounted screen; each session rebuilds its scene
       // from the live field.
       if (!renderer3d) {
         renderer3d = createAsteroidRenderer3d({
           canvas,
-          wrapEl: canvasWrap,
+          wrapEl: stage,
           drillSys,
           getDrill: () => state.drill,
           getSite: site,
@@ -977,12 +845,11 @@ export const asteroidScreen = {
         });
       }
       renderer3d.begin({ motionReduce });
-      rebuildStrata();
       updateHud();
       refreshInspector();
       const s = site();
       if (s && !s.anchored) {
-        showBanner('unanchored', 'UNANCHORED CLAIM — install a Massline Core or this work is lost when you leave the sector.');
+        showBanner('unanchored', 'Unanchored claim — install a Massline Core or this work is lost when you leave the sector.', 'warn');
       }
 
       document.addEventListener('keydown', onKeyDown, true);
@@ -993,6 +860,7 @@ export const asteroidScreen = {
       canvas.addEventListener('mousedown', onMouseDown);
       window.addEventListener('mouseup', onMouseUp);
       canvas.addEventListener('contextmenu', onContextMenu);
+      canvas.addEventListener('wheel', onWheel, { passive: false });
 
       last = performance.now();
       cancelAnimationFrame(rafId);
@@ -1014,6 +882,7 @@ export const asteroidScreen = {
       canvas.removeEventListener('mousedown', onMouseDown);
       window.removeEventListener('mouseup', onMouseUp);
       canvas.removeEventListener('contextmenu', onContextMenu);
+      canvas.removeEventListener('wheel', onWheel);
       if (state.drill && drillSys) drillSys.end();
     };
 
@@ -1108,7 +977,6 @@ export const asteroidScreen = {
       projDirty = true;
       updateHud();
       refreshInspector();
-      rebuildStrata();
     };
   },
 

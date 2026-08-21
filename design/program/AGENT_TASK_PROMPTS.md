@@ -53,6 +53,34 @@ Keep going until every known copy and unused model has a ledger row, every MERGE
 RESULT: DONE only when no finished work remains only on an orphan copy and the ledger is complete.
 ```
 
+## Prompt A0-G — 3D objects / same-bar remaster (safe beside hitch work)
+
+Copy `GRAPHICS_3D_GOAL.txt` as the whole prompt. Do not paraphrase. The campaign
+file it names is mandatory. Stay off PQ-129 renderer files.
+
+```text
+This is a campaign: raise live 3D objects to one quality bar. Do not use INFERENCE. Do not take hitch/PQ-129 work. Do not stop after one unit.
+
+Law: design/program/GRAPHICS_3D_CAMPAIGN.md and docs/visual-assets/FLYABLE_SHIP_WORKFLOW.md. Camera is the 60° chase at 144 WU (close 58 WU). Capture with tools/blender/spaceface_chase_camera.py. No seats, no studio three-quarter, no cabin kits.
+
+Bar: Hitch / Helios wholeships at chase size. A tube+ring next to a real ship is a fail. Variable quality is worse than a slightly softer house style. Do not dump Hitch down.
+
+Another thread owns hitch smoothness. Stay off src/render/renderer.js, precompile.js, partsLibrary.js, bloom.js, pipelineReadiness.js, opaqueMaterialBatch.js, visualOverrides.js, scenarioProps47a.js, hitchClassifier.js, program-queue.json, and Hitch/Kestrel files. Author assets. Same-slot GLB replace is allowed. Do not add shader families.
+
+Order:
+1. Nav buoy + lane beacon (repeating satellites).
+2. pod_cargo_container.
+3. 47-A evidence spindle as a candidate GLB only — do not hook scenarioProps47a.js until hitch work is idle.
+4. Mining drone + conveyor barge.
+5. Hornet skin+wells in fleet_player_bodies_v1/hornet only. Do not run the all-fleet promote. Do not model a cabin.
+
+Each unit: reference first (imagen, or existing reference/, or Codex terminal handoff in AGENT_PROMPTS.md § E). One skin with holes, not glued boxes. Join by material. Dry-run chase_visible_faces.py. Chase stills vs Hitch. Commit that unit, then the next.
+
+Default bloom/shadows/particles stay on. Do not pass by making the mesh cheaper-looking.
+
+RESULT: DONE when units 1–4 are on master and Hornet has a chase-camera candidate. Leave 47-A unwired if hitch still owns scenarioProps47a.js.
+```
+
 ## Prompt A0-W — Asteroid Works / mining minigame unreadable or ugly
 
 Copy `ASTEROID_WORKS_PLAYFIELD_GOAL.txt` as the whole prompt. Do not paraphrase.
@@ -95,10 +123,13 @@ INFERENCE_CONVERGENCE_METHOD.md or INFERENCE_LANES.md unless the user said INFER
 Default unfinished campaign is PQ-050. Run
 `node scripts/program-dispatch.mjs --id PQ-050`, take the first claimable ship, follow
 ADVANCED_MODEL_TECHNIQUE_CONTRACT.md and MODEL_ADVERSARIAL_REVIEW_WORKFLOW.md.
-Each ship: at least five full-job cycles; three valid full-model stills per cycle;
-three subagent reviews that list every obvious defect; implement all revises; then
-do the whole ship again. Zoomed gray plates do not count. Clean up old stills before
-commit. Wire only that ship, then the next. Do not stop after one ship. Do not touch Hitch.
+Each ship: at least five full-job cycles; three valid chase-camera stills per cycle
+(play_chase D=144, play_chase_abeam, play_chase_close D=58 from
+tools/blender/spaceface_chase_camera.py); three subagent reviews that list every
+obvious defect at play size; implement all revises that read on the chase camera;
+then do the whole ship again. Zoomed gray plates, studio three-quarters, and seats
+do not count. Clean up old stills before commit. Wire only that ship, then the next.
+Do not stop after one ship. Do not touch Hitch. Do not model a cabin.
 ```
 
 ## Prompt A0-P — hitching / “make the game play smoothly”

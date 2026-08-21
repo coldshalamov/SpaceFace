@@ -84,6 +84,8 @@ const ZOOM_OUT_STEP_MAX_WU = 5.5;
 const DEFAULT_ZOOM = 144;
 export const CHASE_ZOOM_DEFAULT = DEFAULT_ZOOM;
 export const CHASE_ZOOM_CLOSE = 58; // optional tighter profile (settings.video.chaseClose)
+// Flyable-ship remaster stills must use this pose: tools/blender/spaceface_chase_camera.py
+// (60° tilt, 50° vertical FOV, offset (0, D*sin60, -D*cos60)). Studio beauty cameras do not count.
 
 export const CAMERA_TRAUMA_TUNING = Object.freeze({
   decayPerSecond: TRAUMA_DECAY_PER_S,

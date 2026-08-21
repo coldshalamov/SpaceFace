@@ -2455,7 +2455,7 @@
       "priority": 1,
       "title": "Audit the ten-commit PERF-00 candidate delta against current master",
       "kind": "program_control",
-      "state": "done",
+      "state": "ready",
       "dependsOn": [],
       "mutexes": [
         "performance-control"

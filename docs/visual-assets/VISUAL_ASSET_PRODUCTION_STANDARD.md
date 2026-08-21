@@ -57,6 +57,12 @@ Define supported camera states and projected-size bands before deciding geometry
 silhouette defect cannot be repaired by microtexture. A detail invisible at every supported view does
 not justify runtime cost.
 
+For **flyable ships**, the supported views are the live chase camera: 60° tilt, 50° vertical FOV,
+default distance 144 WU, tightest legal zoom 58 WU, position-follow never yaw. Capture with
+`tools/blender/spaceface_chase_camera.py`. A seat, console, or cabin walkthrough that cannot be
+resolved at 58 WU is `outside_supported_view` and is not remaster work. Studio three-quarter
+beauty shots are not a supported play view.
+
 ### Macro -> meso -> micro
 
 - macro: silhouette, proportion, direction, negative space, dominant masses;

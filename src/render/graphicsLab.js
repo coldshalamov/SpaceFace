@@ -105,7 +105,71 @@ const TECHNIQUE_CATALOG = [
   },
 ];
 
+const LOOKS_PRESETS = {
+  live: {
+    label: '1 · Live game (slow on Intel)',
+    bloom: true, strength: 0.52, threshold: 1.0, shadows: true, env: true,
+    minRoughness: 0, envScale: 1, metalScale: 1, outline: false,
+    verdict: 'CURRENT. Shiny PBR + HDR bloom. This is the hitch pole (full scene into HDR).',
+  },
+  arcade: {
+    label: '2 · Arcade paint (tiny GPU save)',
+    bloom: true, strength: 0.4, threshold: 0.82, shadows: true, env: true,
+    minRoughness: 0.72, envScale: 0.22, metalScale: 0.45, outline: false,
+    verdict: 'KEEP THE MESHES. Less chrome, paint reads, engines still glow. Art direction, not a 2×.',
+  },
+  glowOff: {
+    label: '3 · Glow off (the real speed lever)',
+    bloom: false, strength: 0, threshold: 1, shadows: true, env: true,
+    minRoughness: 0.62, envScale: 0.35, metalScale: 0.7, outline: false,
+    verdict: 'FASTER. Measured Intel hitch is the HDR+bloom scene pass. This is that pass gone.',
+  },
+  fastest: {
+    label: '4 · Glow off + no shadows (cheapest still using these meshes)',
+    bloom: false, strength: 0, threshold: 1, shadows: false, env: false,
+    minRoughness: 0.8, envScale: 0, metalScale: 0.2, outline: false,
+    verdict: 'FASTER STILL. Darker, flatter. Same models. This is what “make it run faster with a look” actually is.',
+  },
+  outline: {
+    label: '5 · Comic outline ON TOP of live (slower — trap)',
+    bloom: true, strength: 0.52, threshold: 1.0, shadows: true, env: true,
+    minRoughness: 0.55, envScale: 0.5, metalScale: 0.6, outline: true,
+    verdict: 'SLOWER. Extra line draws. Hides cheap tubes AND Hitch. Do not ship this for performance.',
+  },
+};
+
 const SECTIONS = [
+  {
+    id: 'looks',
+    title: 'Looks vs speed',
+    badge: 'Looks',
+    desc: `<strong>This is the decision board.</strong> Same Hitch-class ship and the 47-A tube+ring payload.
+Switch the preset. Watch the picture <em>and</em> the millisecond number.<br><br>
+<strong>What actually 2×s this game:</strong> stop paying for the full-resolution HDR scene + bloom
+every frame (Intel measured that as the hitch). Hidden faces on a cargo tube will not. A rotoscope
+filter on top of live PBR will make it worse.<br><br>
+<strong>What to do about look:</strong> keep the meshes, paint them like machines (preset 2).
+Bring tubes up to Hitch <em>construction</em>, do not dump Hitch down to the tube.
+Preset 3 is how you see the speed win. Preset 5 is the trap.`,
+    prompt: `Do not add a rotoscope/outline filter for performance. Do not runtime-cull interior triangles for performance.
+
+Do:
+1. Keep Hitch/Helios meshes. Retarget hulls to matte paint (higher roughness, weaker env). Keep engines/Massline bright.
+2. Replace live primitive props (47-A spindle, nav buoy, cargo pod) with authored shells at the chase camera.
+3. Leave hitch work on the HDR/bloom scene submit (PQ-129). Do not collide with renderer.js / bloom.js / precompile.js.
+
+Verify in graphics-lab.html → Looks vs speed. Compare presets 1–4. Ignore 5 except as a “do not ship” demo.`,
+    controls: [
+      {
+        id: 'lookPreset',
+        label: 'Preset',
+        type: 'select',
+        value: 'live',
+        options: Object.keys(LOOKS_PRESETS),
+        optionLabels: Object.fromEntries(Object.entries(LOOKS_PRESETS).map(([k, v]) => [k, v.label])),
+      },
+    ],
+  },
   {
     id: 'catalog',
     title: 'Technique Catalog',
@@ -442,7 +506,7 @@ export async function bootGraphicsLab() {
   scene.add(ground);
 
   const lab = createLabContent(scene, activePalette, envMap);
-  let activeSection = 'compare';
+  let activeSection = 'looks';
   const controlState = {};
 
   // Build nav
@@ -493,11 +557,15 @@ export async function bootGraphicsLab() {
         const select = document.createElement('select');
         ctrl.options.forEach((opt) => {
           const o = document.createElement('option');
-          o.value = opt; o.textContent = opt;
+          o.value = opt;
+          o.textContent = (ctrl.optionLabels && ctrl.optionLabels[opt]) || opt;
           if (opt === controlState[ctrl.id]) o.selected = true;
           select.appendChild(o);
         });
-        select.addEventListener('change', () => { controlState[ctrl.id] = select.value; });
+        select.addEventListener('change', () => {
+          controlState[ctrl.id] = select.value;
+          if (ctrl.id === 'lookPreset') applyLooksPresentation(select.value);
+        });
         label.appendChild(select);
         sectionControls.appendChild(label);
       } else {
@@ -519,7 +587,8 @@ export async function bootGraphicsLab() {
   }
 
   function fitCameraForSection(id) {
-    if (id === 'compare') { camera.position.set(0, 12, 28); camera.lookAt(2, 0, 0); }
+    if (id === 'looks') { camera.position.set(0, 16, 11); camera.lookAt(0, 0.4, 0); }
+    else if (id === 'compare') { camera.position.set(0, 12, 28); camera.lookAt(2, 0, 0); }
     else if (id === 'textures') { camera.position.set(0, 5, 8); camera.lookAt(0, 0.5, 0); }
     else if (id === 'roles') { camera.position.set(0, 10, 12); camera.lookAt(0, 0, 0); }
     else if (id === 'bloom') { camera.position.set(0, 5, 9); camera.lookAt(0, 1.8, 0); }
@@ -556,7 +625,29 @@ export async function bootGraphicsLab() {
     } catch (_) { /* clipboard may be blocked */ }
   });
 
-  switchSection('catalog');
+  function applyLooksPresentation(presetKey) {
+    const p = LOOKS_PRESETS[presetKey] || LOOKS_PRESETS.live;
+    bloomEnabled.checked = p.bloom;
+    bloomStrength.value = String(p.strength);
+    bloomThreshold.value = String(p.threshold);
+    renderer.shadowMap.enabled = p.shadows;
+    key.castShadow = p.shadows;
+    scene.environment = p.env ? envMap : null;
+    syncBloomUi();
+  }
+
+  const origSwitch = switchSection;
+  switchSection = function patchedSwitch(id) {
+    origSwitch(id);
+    if (id === 'looks') applyLooksPresentation(controlState.lookPreset || 'live');
+    else {
+      renderer.shadowMap.enabled = true;
+      key.castShadow = true;
+      scene.environment = envMap;
+    }
+  };
+
+  switchSection('looks');
 
   function resize() {
     const wrap = canvas.parentElement;
@@ -571,13 +662,23 @@ export async function bootGraphicsLab() {
   resize();
 
   const clock = new THREE.Clock();
+  let frameEmaMs = 16.7;
+  let lastFrameMs = performance.now();
   function animate() {
     requestAnimationFrame(animate);
+    const now = performance.now();
+    const dtMs = now - lastFrameMs;
+    lastFrameMs = now;
+    frameEmaMs = frameEmaMs * 0.9 + dtMs * 0.1;
     const t = clock.getElapsedTime();
     lab.update(t, controlState, activeSection);
     bloom.render(scene, camera);
     const d = bloom.diagnostics();
-    bloomDiagnostics.textContent = `bloom: ${d.enabled ? 'on' : 'off'}  strength: ${d.strength.toFixed(2)}  threshold: ${d.threshold.toFixed(2)}  exposure: ${d.exposure.toFixed(2)}\nTip: ACES=0 to see strength/threshold change`;
+    const preset = LOOKS_PRESETS[controlState.lookPreset] || LOOKS_PRESETS.live;
+    const looksLine = activeSection === 'looks'
+      ? `\n${preset.verdict}`
+      : '\nTip: ACES=0 to see strength/threshold change';
+    bloomDiagnostics.textContent = `${frameEmaMs.toFixed(1)} ms  (${Math.max(1, 1000 / frameEmaMs).toFixed(0)} fps)  bloom: ${d.enabled ? 'on' : 'off'}  shadows: ${renderer.shadowMap.enabled ? 'on' : 'off'}${looksLine}`;
   }
   animate();
 
@@ -600,6 +701,7 @@ function createLabContent(scene, palette, envMap) {
 
   const state = { palette, sections, meshes: {}, envMap };
 
+  buildLooksSection(sections.looks, state);
   buildCompareSection(sections.compare, state);
   buildPbrSection(sections.pbr, state);
   buildTextureSection(sections.textures, state);
@@ -620,6 +722,7 @@ function createLabContent(scene, palette, envMap) {
       rebuildAll(state);
     },
     update(t, controls, activeSection) {
+      updateLooks(state, t, controls);
       updateCompare(state, t);
       updatePbr(state, controls);
       updateTextures(state, controls);
@@ -634,6 +737,109 @@ function createLabContent(scene, palette, envMap) {
 
 function palToMaterialPalette(pal) {
   return { hull: pal.hull, accent: pal.accent || pal.primary, emissive: pal.emissive || pal.accent };
+}
+
+function buildLooksSection(group, state) {
+  const kestrel = buildKestrelHero({ radius: 5, vel: { x: 80, z: 0 } });
+  kestrel.position.set(8, 0, 0);
+  kestrel.rotation.y = Math.PI / 2;
+  applyEnvMapToObject(kestrel, state.envMap);
+  kestrel.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  stampLookOriginals(kestrel);
+  state.meshes.looksShip = kestrel;
+
+  const tube = buildLooksPayload();
+  tube.position.set(-9, 0.6, 0);
+  stampLookOriginals(tube);
+  state.meshes.looksPayload = tube;
+
+  const shipLabel = makeTextSprite('HITCH-CLASS SHIP (keep this work)', '#7af7d0');
+  shipLabel.position.set(8, 6.2, 0);
+  const tubeLabel = makeTextSprite('47-A TUBE (below the bar)', '#ff6b6b');
+  tubeLabel.position.set(-9, 4.2, 0);
+
+  group.add(kestrel, tube, shipLabel, tubeLabel);
+  state.meshes.looksGroup = group;
+  state.meshes.looksOutlines = [];
+}
+
+function buildLooksPayload() {
+  const g = new THREE.Group();
+  const hull = new THREE.MeshStandardMaterial({ color: 0x6a7684, roughness: 0.38, metalness: 0.55 });
+  const ring = new THREE.MeshStandardMaterial({ color: 0x4aa8c8, roughness: 0.22, metalness: 0.7, emissive: 0x1a4a58, emissiveIntensity: 0.6 });
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(1.15, 1.15, 4.6, 20).rotateZ(Math.PI / 2), hull);
+  const hoop = new THREE.Mesh(new THREE.TorusGeometry(1.35, 0.08, 10, 36).rotateY(Math.PI / 2), ring);
+  const tab = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.12, 0.7), new THREE.MeshStandardMaterial({ color: 0xc47a22, roughness: 0.4, metalness: 0.3 }));
+  tab.position.set(0.4, 1.15, 0);
+  body.castShadow = hoop.castShadow = tab.castShadow = true;
+  g.add(body, hoop, tab);
+  return g;
+}
+
+function stampLookOriginals(root) {
+  root.traverse((o) => {
+    if (!o.isMesh || !o.material) return;
+    const mats = Array.isArray(o.material) ? o.material : [o.material];
+    o.userData.lookOriginal = mats.map((m) => ({
+      roughness: m.roughness,
+      metalness: m.metalness,
+      envMapIntensity: m.envMapIntensity,
+      emissiveIntensity: m.emissiveIntensity,
+    }));
+  });
+}
+
+function applyLooksMaterials(root, preset) {
+  if (!root || !preset) return;
+  root.traverse((o) => {
+    if (!o.isMesh || !o.material) return;
+    const mats = Array.isArray(o.material) ? o.material : [o.material];
+    const orig = o.userData.lookOriginal || [];
+    mats.forEach((m, i) => {
+      const o0 = orig[i] || {};
+      const baseR = Number.isFinite(o0.roughness) ? o0.roughness : m.roughness;
+      const baseM = Number.isFinite(o0.metalness) ? o0.metalness : m.metalness;
+      const baseE = Number.isFinite(o0.envMapIntensity) ? o0.envMapIntensity : (m.envMapIntensity || 1);
+      m.roughness = Math.max(baseR, preset.minRoughness);
+      m.metalness = Math.max(0, baseM * preset.metalScale);
+      if ('envMapIntensity' in m) m.envMapIntensity = preset.env ? baseE * preset.envScale : 0;
+      m.needsUpdate = true;
+    });
+  });
+}
+
+function setLooksOutlines(state, on) {
+  const existing = state.meshes.looksOutlines || [];
+  for (const line of existing) {
+    if (line.parent) line.parent.remove(line);
+    if (line.geometry) line.geometry.dispose();
+    if (line.material) line.material.dispose();
+  }
+  state.meshes.looksOutlines = [];
+  if (!on) return;
+  const mat = new THREE.LineBasicMaterial({ color: 0xd8f0ff, transparent: true, opacity: 0.85 });
+  for (const root of [state.meshes.looksShip, state.meshes.looksPayload]) {
+    if (!root) continue;
+    root.traverse((o) => {
+      if (!o.isMesh || !o.geometry) return;
+      const edges = new THREE.EdgesGeometry(o.geometry, 25);
+      const line = new THREE.LineSegments(edges, mat);
+      o.add(line);
+      state.meshes.looksOutlines.push(line);
+    });
+  }
+}
+
+function updateLooks(state, t, controls) {
+  if (state.meshes.looksShip) state.meshes.looksShip.rotation.y = Math.PI / 2 + t * 0.12;
+  if (state.meshes.looksPayload) state.meshes.looksPayload.rotation.y = t * 0.2;
+  const preset = LOOKS_PRESETS[controls && controls.lookPreset] || LOOKS_PRESETS.live;
+  if (state.meshes._lookApplied !== controls.lookPreset) {
+    state.meshes._lookApplied = controls.lookPreset;
+    applyLooksMaterials(state.meshes.looksShip, preset);
+    applyLooksMaterials(state.meshes.looksPayload, preset);
+    setLooksOutlines(state, preset.outline);
+  }
 }
 
 function rebuildAll(state) {

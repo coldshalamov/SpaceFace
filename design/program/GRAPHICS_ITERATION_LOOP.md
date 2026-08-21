@@ -1,8 +1,11 @@
 <!-- LIFETIME: STABLE -->
-# Graphics iteration loop — reference, build, three angles, subagent, repeat ×7
+# Graphics iteration loop — reference, chase stills, chunk, review
 
 The operator loop for every model in the graphics campaign. It is the *how*.
-The *what* is `CANONICAL_BUILD_MAP.md` §1 (campaign door → `PQ-050`), the technique law is
+The *what* is `CANONICAL_BUILD_MAP.md` §1 (campaign door → `PQ-050`), the one-ship
+chunking / reference / hidden-face law is
+[`FLYABLE_SHIP_WORKFLOW.md`](../../docs/visual-assets/FLYABLE_SHIP_WORKFLOW.md),
+the technique law is
 [`ADVANCED_MODEL_TECHNIQUE_CONTRACT.md`](../../docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md),
 and the review law is
 [`MODEL_ADVERSARIAL_REVIEW_WORKFLOW.md`](../../docs/visual-assets/MODEL_ADVERSARIAL_REVIEW_WORKFLOW.md).
@@ -14,24 +17,27 @@ Where this file and those disagree, they win.
    construction images plus `REFERENCE_PROVENANCE.md` saying where each came from.
 2. **If there is no reference image for the thing you are about to build, generate one before you
    model.** Use the image-generation tool available in the session. Generate the *specific*
-   construction you need — "wing root fairing into a fuselage", "engine bell with vanes and a
-   flange", "canopy tub with rim thickness and interior" — not a whole-ship beauty shot, which
-   tells you nothing about how a part is made.
+   construction you need as the **chase camera will see it** — "wing planform from 60° above",
+   "engine throats as dark wells from behind-above", "canopy as a framed dark rectangle at play
+   size" — not a whole-ship beauty shot and **not a cockpit interior**. The Hornet loop burned
+   cycles on seats nobody can see from the bird’s-eye chase.
 3. Save it into that `reference/` folder and add a `REFERENCE_PROVENANCE.md` row: what it shows,
    what generated it, and what it is being used to decide. Generated reference is a construction
    aid, never evidence of quality and never a target to copy pixel-for-pixel.
 
-## Then loop, seven times per model
+## Then loop on the current chunk
 
-One pass = **one complete attempt to finish the ship**, not one slice of the technique list.
+One pass = **one complete attempt to finish the current chunk** of this ship
+(skin / wells / separate parts / surfaces — see `FLYABLE_SHIP_WORKFLOW.md`),
+judged on chase stills. Do not treat the MTX list as the work unit.
 
 1. **Build.** Implement every mandatory technique row for the class as if this export ships tonight.
-2. **Export and capture three angles** — three-quarter, starboard, rear — from the exported file of
-   this pass's hash.
-   - **Every angle must show the whole model:** bow, stern, both extremities of span, top, keel,
-     with roughly 8–15% margin. If any extremity is out of frame, or the model fills less than
-     about a third of it, **zoom out and recapture**. A zoomed grey crop is not a capture and a pass
-     that only has crops did not happen.
+2. **Export and capture the three chase stills** from the exported file of this pass's hash,
+   using `tools/blender/spaceface_chase_camera.py`: `play_chase` (D=144), `play_chase_abeam`,
+   `play_chase_close` (D=58). Same 60° tilt and 50° vertical FOV as the live game.
+   - The ship at default chase is ~10–16% of frame width, not a hero filling the frame.
+   - If the ship fills most of the image, or the camera is inside the hull, **that pass did not
+     happen**. Studio three-quarter / starboard / rear / bay_interior do not count.
 3. **Review with three subagents, one per angle.** Give each the image path and the prompt in
    `MODEL_ADVERSARIAL_REVIEW_WORKFLOW.md` §4. Require: every obvious defect a player would notice,
    the technique rows failing in that angle, concrete Blender actions rather than adjectives, and a
@@ -45,11 +51,15 @@ primitives, and every mandatory row is implemented. Keep going past seven if it 
 
 ## What makes a pass not count
 
-Moving the camera. A crop or thumbnail. "I reviewed it" with no subagent text. Implementing two
-rows and calling it a pass. Splitting one plan across several passes. Reusing an older hash's
-stills.
+Moving the camera. A crop or thumbnail. A seat or cabin kit. "I reviewed it" with no subagent text.
+Implementing two rows and calling it a pass. Splitting one plan across several passes. Reusing an
+older hash's stills. Capturing studio beauty cameras instead of the chase camera.
 
 ## Rules paid for in failed passes
+
+- **The player camera is the only close camera.** Hornet spent a long loop on seats, consoles, and
+  walkable interiors. None of that reads in the 60° / 144 WU chase. Capture with
+  `spaceface_chase_camera.py`. MTX-04 is a dark well at play size, not furniture.
 
 - **Numbers are a floor, never a pass.** A gate of measurable targets caught a rod, a cage and a
   capped drive that 52 passes of opinion had missed — and the next pass hit almost every number and

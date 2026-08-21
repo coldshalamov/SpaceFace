@@ -33,9 +33,63 @@ These do **not** implement any technique on this page:
 - Generated concept images projected as textures or used as normal/AO
 - A factory/Python builder succeeding
 - Promoting an unfinished body so the leaf can move on
+- A modeled seat, console, bunk, cabin walkthrough, or other interior furniture that is not readable as a color mass on the live chase camera
+- `bay_interior.png` or any camera inside the hull offered as a close still
+- A studio three-quarter or profile where the ship fills most of the frame, labeled `play_size`
 
 If the clay (textureless, one gray material, no emission) still reads as stacked primitives
-at the supported three-quarter, **no surface technique may be marked implemented.**
+at `play_chase.png`, **no surface technique may be marked implemented.**
+
+## 0.5 Flyable-ship camera law (this is why Hornet stalled)
+
+SpaceFace is a **tilted top-down chase**, not a walkaround, not a cockpit sim, not a
+store-page beauty camera. Live owner: `src/render/camera.js` + ARCHITECTURE §0.14 pose.
+
+| Fact | Value |
+|---|---|
+| Vertical FOV | 50° |
+| Tilt | 60° from horizontal |
+| Offset at heading 0 | `(0, D·sin 60°, −D·cos 60°)` |
+| Yaw follow | never — the ship turns under a fixed heading |
+| Default distance `D` | `CHASE_ZOOM_DEFAULT` **144** |
+| Tightest legal player zoom | `CHASE_ZOOM_CLOSE` **58** |
+| Starter width at 144 / 1600px | ~10.6% of frame |
+| Hornet width at 144 / 1600px | ~15–16% of frame |
+
+**Supported review cameras for every flyable remaster** (player and NPC):
+
+| Still | Camera | What it is for |
+|---|---|---|
+| `play_chase.png` | D=144, heading 0 | Default play. Silhouette, planform, color blocks, wells, canopy, drives as dark holes. |
+| `play_chase_abeam.png` | D=144, heading 90° | Same height, ship seen length-on. |
+| `play_chase_close.png` | D=58, heading 0 | Tightest the player can legally look. Largest legal detail. |
+
+Capture them with `tools/blender/spaceface_chase_camera.py`. Do not invent a mm-lens
+studio camera and call it play size.
+
+**Illegal as a cycle still or as MTX proof for a flyable ship:**
+
+- Any camera closer than D=58
+- Any camera inside the hull, canopy, or cabin
+- A seat/console crop (`bay_interior.png` and friends)
+- A hero three-quarter, starboard profile, or rear beauty where the ship occupies
+  more than ~40% of frame width (default chase must stay in the ~8–22% band;
+  close chase ~20–42%)
+
+Those illegal frames may exist as **diagnostics**. They never close a row. They
+never count as a cycle. A leaf that spent its cycles on seats, cabin kits, or
+walkable interiors that do not read at D=58 **did not remaster the ship**.
+
+Openings that matter are the ones the chase camera sees from above: canopy as a
+framed dark rectangle, drive throats as dark wells, radiator hatches, wing
+cutouts. Furniture you can only see by crawling into the mesh is
+`outside_supported_view`. Do not bill it. Do not model it to close MTX-04.
+
+Build as a **skin with holes**, not a pile of boxes. Glued-on parts leave hidden
+faces the GPU still draws. Do not delete those by hand. Report them with
+`tools/blender/chase_visible_faces.py` (dry-run first). Chunking, imagen/Codex
+reference, and export cleanup:
+[`FLYABLE_SHIP_WORKFLOW.md`](./FLYABLE_SHIP_WORKFLOW.md).
 
 ## 1. How to close a technique
 
@@ -54,16 +108,19 @@ Every mandatory row in the ledger must contain:
 wings). `blocked` keeps the leaf open. A leaf with any mandatory `blocked` or missing row
 is **not done**.
 
-Required stills for every remastered body, from the **finalized exported GLB**, not the
-working .blend:
+Required stills for every remastered **flyable** body, from the **finalized exported GLB**,
+not the working .blend:
 
-- `clay_three_quarter.png`
-- `material_three_quarter.png`
-- `grazing_close.png`
-- `orm_isolation.png` (roughness in green or a roughness-only view)
-- `normal_isolation.png`
-- `id_or_material_id.png`
-- plus any crop named in the technique row
+- `play_chase.png`
+- `play_chase_abeam.png`
+- `play_chase_close.png`
+- `clay_play_chase.png` (same camera as `play_chase.png`, one gray material)
+- `grazing_close.png` (diagnostic; cannot replace a chase still)
+- `orm_isolation.png` / `normal_isolation.png` / `id_or_material_id.png` on the **close chase** camera
+- plus any crop named in the technique row, which cannot be the only proof
+
+Places and stations keep their own supported views. This list is for ships that fly
+under the chase camera.
 
 ## 2. Class mandates
 
@@ -101,7 +158,7 @@ soap, no pillowing.
 **Forbidden fake.** Smooth shading across a plate seam. A bevel so wide the ship looks
 inflated. Bevels added before scale was applied (they will be the wrong size).
 
-**Proof.** `grazing_close.png` + `clay_three_quarter.png`. Ledger records bevel width in
+**Proof.** `grazing_close.png` (diagnostic) + `clay_play_chase.png`. Ledger records bevel width in
 metres and the shade angle.
 
 ### MTX-02 — Authored cross-section loft
@@ -121,7 +178,7 @@ shoulder is visible.
 **Forbidden fake.** One chamfered box. Seven loft stations that are the same rectangle
 scaled. A “Pressure_Hull” name on a tube.
 
-**Proof.** `clay_three_quarter.png` and a side orthogonal. If you can describe the hull as
+**Proof.** `clay_play_chase.png` and `play_chase_abeam.png`. If you can describe the hull as
 “a tube with stuff on it,” MTX-02 has failed.
 
 ### MTX-03 — Skin-breaking boolean with wall thickness
@@ -142,30 +199,37 @@ thickness. The mouth is empty.
    in the same place as the cutter.
 7. Re-run MTX-01 on the cut mesh (booleans wreck normals).
 
-**Must show.** From three-quarter you can see the floor of the bay and a dark interior.
-A grazing shot shows a lip and a hole.
+**Must show.** From `play_chase.png` / `play_chase_close.png` the opening is a **dark
+well with a rim** in the planform. You can tell it is a hole, not a painted square.
+If you have to go inside the hull to see it, it does not count.
 
 **Forbidden fake.** Cutter entirely inside the hull (sealed void). Liner ≥70% of cutter
 size at the same center. A dark plate named Recess. Stacked boxes on the skin.
 
-**Proof.** `material_three_quarter.png` and a crop `bay_interior.png`. If the crop does
-not show an interior surface distinct from the outer skin, fail.
+**Proof.** `play_chase.png` and `play_chase_close.png`. A `bay_interior.png` crop cannot
+close this row.
 
-### MTX-04 — Interior kit in the opening
+### MTX-04 — Readable volume in the opening, not cabin furniture
 
-**What it is.** An open bay contains the thing the bay is for: rack, radiator core,
-seat/console, cargo, or lines. Labs do not leave a black hole or hide a crate behind
-the hull.
+**What it is.** An opening that the chase camera can see reads as a **volume**: a darker
+well, a framed canopy cavity, fins in a radiator hatch, or a drive throat. Labs do not
+leave a fake black decal, and they do not spend a cycle modeling a seat, console, bunk,
+or walkable cabin the bird’s-eye camera cannot resolve.
 
-**Blender.** Model the interior **after** MTX-03. Parts sit on the floor, inset along
-the inward normal. Scale: crates and racks are much smaller than the bay.
+**Blender.** After MTX-03, add only what changes the chase-cam read: rim thickness, a
+bulkhead color mass if it shows through glass at D=58, radiator cores that read as fins
+from above, cargo that reads as stacked volume in an open well. Stop. Do not build
+interior kit whose only proof is a camera inside the mesh.
 
-**Must show.** Equipment readable in the bay crop. Not flush with the outer skin.
+**Must show.** The well or cavity is darker / deeper than the surrounding skin on
+`play_chase_close.png`. A stranger does not need a crop to know it is a hole.
 
-**Forbidden fake.** A glowing disk. A box the size of the opening. Interior that only
-exists on a hidden layer.
+**Forbidden fake.** A glowing disk. A box the size of the opening. A modeled seat,
+steering yoke, orange chair, or cabin walkthrough. Interior that only exists on a
+hidden layer. Closing this row with `bay_interior.png`.
 
-**Proof.** Same `bay_interior.png`.
+**Proof.** `play_chase_close.png`. `not_applicable` only when the ship has no
+chase-visible opening (no canopy, bay, radiator well, or drive throat — almost never).
 
 ### MTX-05 — Panelization with gaps
 
@@ -183,7 +247,7 @@ on the hull as a “plate” that is actually a decal-thick slab covering a metr
 **Forbidden fake.** Midship kit of six boxes on the spine. A normal-map panel grid
 with no geometry step.
 
-**Proof.** `clay_three_quarter.png`.
+**Proof.** `clay_play_chase.png`.
 
 ### MTX-06 — Lofted wing / fin with root fillet
 
@@ -201,25 +265,29 @@ blank card.
 **Forbidden fake.** A scaled cube. A loft whose tip thickness is a paper sheet
 and whose root is the same.
 
-**Proof.** `clay_three_quarter.png` plus a wing-root crop. `not_applicable` only if
-the ship has no wings or fins.
+**Proof.** `clay_play_chase.png` plus a wing-root crop **only if** the root already
+reads at `play_chase_close.png`. `not_applicable` only if the ship has no wings or fins.
 
 ### MTX-07 — Thin-shell canopy over a cut tub
 
-**What it is.** Glass is a **shell** over a hole that contains a cockpit. Not a solid
-transmissive brick. Not three floating panes.
+**What it is.** Glass is a **shell** over a hole. From the chase camera it reads as a
+**framed dark rectangle** in the planform, not a solid transmissive brick and not a
+cockpit diorama.
 
-**Blender.** MTX-03 a dorsal-fore tub. Put seat, console, rear bulkhead inside
-(MTX-04). Model glass as Solidify of a surface 1–3 cm thick, or four thin panes in
-a metal frame. Glass material: dark dielectric, low roughness, clearcoat, **no**
-volume transmission through a solid. Frames are metal, separate material.
+**Blender.** MTX-03 a dorsal-fore tub. Model glass as Solidify of a surface 1–3 cm
+thick, or four thin panes in a metal frame. Glass material: dark dielectric, low
+roughness, clearcoat, **no** volume transmission through a solid. Frames are metal,
+separate material. A darker cavity behind the glass is enough. **Do not model a
+seat, console, or cabin kit** unless that mass is still readable at D=58.
 
-**Must show.** Frames. Dark glass. A hint of interior. No leather grain.
+**Must show.** On `play_chase.png`: a framed dark canopy, not a teal slab. On
+`play_chase_close.png`: frames and a darker interior volume. No leather grain.
 
 **Forbidden fake.** One teal wedge. Transmission through a solid loft (hull
 texture reads as leather on the glass). Framed boxes that do not sit on a hole.
+An orange seat whose only evidence is a crop inside the canopy.
 
-**Proof.** Canopy crop in material and clay.
+**Proof.** `play_chase.png` and `play_chase_close.png`.
 
 ### MTX-08 — Manufactured drive
 
@@ -641,7 +709,7 @@ mid-poly bake can still look like a 2014 asset-flip.
 barge, or hauler. Negative space (wing cutouts, twin booms, tower)
 carries identity, not decals.
 
-**Must show.** Downscale the three-quarter to 40 px wide. A stranger
+**Must show.** Downscale `play_chase.png` to 40 px wide. A stranger
 can name the role. If it becomes a gray capsule, fail.
 
 ### MTX-56 — Value hierarchy
@@ -656,7 +724,7 @@ wells, mid paint, light or saturated accent. Readable at 120 px.
 **What it is.** Every opening shows a wall 4–12 cm, not a paper
 hole or a solid plug.
 
-**Must show.** `bay_interior.png` includes the rim thickness.
+**Must show.** `play_chase_close.png` includes the rim as a thickness, not a paper cut.
 
 ### MTX-58 — High that is actually higher
 
@@ -669,11 +737,14 @@ Bevel 0.01 instead of 0.04.
 ### MTX-59 — Reads at play distance
 
 **What it is.** Materials and big openings still identify the
-ship when it is ~80–150 px in a play-like frame. Studio-only
-beauty is not enough.
+ship on the **live chase camera**. Studio-only beauty is not
+enough. This row is the close condition for the whole flyable
+remaster, not an extra still.
 
-**Proof.** One extra still `play_size.png` with the whole ship
-at ~120 px on the long axis. Role and 2+ materials still read.
+**Proof.** `play_chase.png` (D=144). Role, 2+ materials, canopy
+or drive wells, and silhouette still read when the ship is
+~10–16% of frame width. A `play_size.png` shot from a 48 mm
+studio camera does not satisfy this row.
 
 ### MTX-60 — Designed asymmetry
 
@@ -726,7 +797,7 @@ canopy) that is not a leftover teal wedge or a 2 cm rail.
 
 1. Freeze identity (sockets, collision, silhouette, role).
 2. MTX-02 hull stations. Clay.
-3. MTX-03 / 04 openings and interiors. Clay.
+3. MTX-03 / 04 chase-visible wells only. Clay on `play_chase`. No seats.
 4. MTX-05–12 hardware. Clay. If clay is still primitives, **stop**.
 5. MTX-01 / 13 / 15 normals.
 6. MTX-16–19 UVs.

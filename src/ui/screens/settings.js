@@ -320,6 +320,9 @@ export const settingsScreen = {
     } else if (refs.active === 'Video') {
       const vd = s.video;
       rowToggle('Bloom', () => vd.bloom, (v) => this._set(ctx, 'video', 'bloom', v));
+      // Shadows are a sun-depth pass of nearby ships/rocks/stations so they darken each other.
+      // Empty space does not receive them. Off skips that extra pass. Live-applied.
+      rowToggle('Sun shadows (ships/rocks/stations)', () => vd.shadows !== false, (v) => this._set(ctx, 'video', 'shadows', v));
       rowSlider('Bloom strength', () => {
         let v = vd.bloomStrength != null ? vd.bloomStrength : DEFAULT_BLOOM_STRENGTH;
         if (v > 1) v *= 0.5;

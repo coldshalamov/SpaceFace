@@ -18,7 +18,11 @@ const require = createRequire(import.meta.url);
 const { createGameServer } = require('./lib/gameServer.cjs');
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const OUT_DIR = join(ROOT, '.devshots', 'asteroid-works');
-const VIEWPORT = { width: 1500, height: 940 };
+// Law §11.10 evidence is judged at play size; the theater leaf needs 1920×1080 stills.
+const VIEWPORT = {
+  width: Number(process.env.AST_CAP_W) || 1500,
+  height: Number(process.env.AST_CAP_H) || 940,
+};
 
 const { chromium } = await loadPlaywright();
 mkdirSync(OUT_DIR, { recursive: true });
@@ -211,6 +215,13 @@ try {
   await page.keyboard.press('KeyB');
   await page.waitForTimeout(1400);
   await shot('03-site-running.png');
+
+  // Site register (law §4 two-register camera): whole-body silhouette against space.
+  await page.keyboard.press('KeyZ');
+  await page.waitForTimeout(600);
+  await shot('05-site-register.png');
+  await page.keyboard.press('KeyZ');
+  await page.waitForTimeout(400);
 
   // Prime an immediate launch, then retract to flight and catch the courier + exterior relay.
   await page.evaluate(() => {
