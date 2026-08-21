@@ -70,9 +70,14 @@ export const GOVERNOR_EVICTABLE_ROLES = Object.freeze(new Set([
 ]));
 
 function numericBytes(entry, kind = 'gpu') {
-  const preferred = kind === 'cpu' ? entry && entry.cpuBytes : entry && entry.gpuBytes;
-  if (Number.isFinite(Number(preferred)) && Number(preferred) >= 0) return Number(preferred);
-  return Number(entry && entry.bytes) >= 0 ? Number(entry.bytes) : 0;
+  if (kind === 'cpu') {
+    const preferred = entry && (entry.cpuBytes ?? entry.cpuPackageBytes);
+    // CPU package accounting has no valid fallback to the GPU compatibility alias. An omitted
+    // field means the package's CPU bytes are unknown/zero for budget purposes.
+    return Number.isFinite(Number(preferred)) && Number(preferred) >= 0 ? Number(preferred) : 0;
+  }
+  const preferred = entry && (entry.gpuBytes ?? entry.gpuResidentBytes ?? entry.bytes);
+  return Number.isFinite(Number(preferred)) && Number(preferred) >= 0 ? Number(preferred) : 0;
 }
 
 function memoryUnitList(entry = {}) {

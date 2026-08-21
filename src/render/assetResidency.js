@@ -10,6 +10,7 @@ import {
   isGovernorEntryEvictable,
   isGovernorOwnerEvictable,
 } from './resourceGovernor.js';
+import * as THREE from 'three';
 
 const PROTECTED_RESOURCE = Symbol('spaceface.protectedGpuResource');
 const registriesByRenderer = new WeakMap();
@@ -125,22 +126,26 @@ export function createAssetResidencyRegistry(options = {}) {
       onEvict: typeof registration.onEvict === 'function' ? registration.onEvict : null,
       registeredAtMs: now(),
       lastReleaseAtMs: now(),
+      // Encoded package bytes are a CPU/cache concern. They are deliberately kept separate from
+      // GPU residency: a compressed .glb on disk is not a valid estimate for decoded buffers or
+      // driver texture allocations.
+      cpuPackageBytes: normalizeNonNegativeBytes(registration.cpuPackageBytes),
       metadata: { ...(registration.metadata || {}) },
       handle: null,
     };
-    const fallbackBytes = list.length > 0 && Number.isFinite(Number(registration.byteSize))
-      ? Math.max(0, Number(registration.byteSize)) / list.length
-      : 0;
     for (const resource of list) {
       protectSharedGpuResource(resource);
       let resourceEntry = resources.get(resource);
       if (!resourceEntry) {
-        const units = resourceMemoryUnits(resource, fallbackBytes);
+        const accounting = resourceMemoryAccounting(resource);
+        const units = accounting.units;
         resourceEntry = {
           resource,
           assets: new Set(),
           memoryUnits: new Set(),
           bytes: 0,
+          accounting: accounting.known ? 'known' : 'unknown',
+          unaccounted: !accounting.known,
           state: 'resident',
         };
         for (const unit of units) {
@@ -165,6 +170,9 @@ export function createAssetResidencyRegistry(options = {}) {
       generation: entry.generation,
       resourceCount: entry.resources.size,
       bytes: assetResidentBytes(entry),
+      gpuResidentBytes: assetResidentBytes(entry),
+      cpuPackageBytes: entry.cpuPackageBytes,
+      unaccountedResources: assetUnaccountedResources(entry),
     });
     return entry.handle;
   }
@@ -366,8 +374,8 @@ export function createAssetResidencyRegistry(options = {}) {
       reason,
       evicted: Object.freeze(evicted),
       releasedOwners,
-      evictedBytes: Math.max(0, Number(before.residentBytes) - Number(after.residentBytes)),
-      remainingBytes: after.residentBytes,
+      evictedBytes: Math.max(0, Number(before.gpuResidentBytes) - Number(after.gpuResidentBytes)),
+      remainingBytes: after.gpuResidentBytes,
     });
   }
 
@@ -523,11 +531,19 @@ export function createAssetResidencyRegistry(options = {}) {
     const canonical = diagnosticOptions.canonical === true;
     const includeEvents = diagnosticOptions.includeEvents !== false && !canonical;
     const assetRows = [...assets.values()].map((entry) => {
+      const gpuResidentBytes = assetResidentBytes(entry);
+      const unaccountedResources = assetUnaccountedResources(entry);
       const row = {
         key: entry.key,
         refCount: entry.owners.size,
         resourceCount: entry.resources.size,
-        bytes: assetResidentBytes(entry),
+        // `bytes` remains as the compatibility field consumed by existing diagnostics readers.
+        // It is never populated from encoded package size; it aliases authoritative GPU bytes.
+        bytes: gpuResidentBytes,
+        gpuResidentBytes,
+        cpuPackageBytes: entry.cpuPackageBytes,
+        unaccountedResources,
+        unaccountedBytes: unaccountedResources > 0 ? null : 0,
         roles: [...new Set([...entry.owners.values()].map((metadata) => metadata && metadata.role).filter(Boolean))].sort(),
         presentationTiers: [...new Set([...entry.owners.values()]
           .map((metadata) => metadata && metadata.presentationTier).filter(Boolean))].sort(),
@@ -536,13 +552,24 @@ export function createAssetResidencyRegistry(options = {}) {
       if (!canonical) row.generation = entry.generation;
       return Object.freeze(row);
     }).sort((a, b) => a.key.localeCompare(b.key));
-    let residentBytes = 0;
-    for (const unit of memoryUnits.values()) residentBytes += unit.bytes;
+    let gpuResidentBytes = 0;
+    for (const unit of memoryUnits.values()) gpuResidentBytes += unit.bytes;
+    let cpuPackageBytes = 0;
+    for (const entry of assets.values()) cpuPackageBytes += entry.cpuPackageBytes;
+    let unaccountedResources = 0;
+    for (const entry of resources.values()) if (entry.unaccounted) unaccountedResources++;
     return Object.freeze({
-      schema: 'spaceface.assetResidency.v1',
+      schema: 'spaceface.assetResidency.v2',
       residentAssets: assets.size,
       residentResources: resources.size,
-      residentBytes,
+      // Keep the legacy name stable for consumers while making the unit explicit.
+      residentBytes: gpuResidentBytes,
+      gpuResidentBytes,
+      cpuPackageBytes,
+      unaccountedResources,
+      // Unknown allocations are deliberately not guessed. null is the receipt that the bytes
+      // cannot be added to the GPU total until a resource-specific accounting adapter exists.
+      unaccountedBytes: unaccountedResources > 0 ? null : 0,
       ownerCount: owners.size,
       pendingRequests: pendingRequests.size,
       disposedResources,
@@ -576,27 +603,35 @@ export function createAssetResidencyRegistry(options = {}) {
     const presentationTiers = [...new Set(ownerRecords
       .map((metadata) => metadata.presentationTier).filter(Boolean))];
     const memoryUnits = [];
-    const seenMemoryUnits = new Set();
-    for (const resource of entry.resources) {
-      for (const unit of resource.memoryUnits || []) {
-        if (!unit || seenMemoryUnits.has(unit.identity)) continue;
-        seenMemoryUnits.add(unit.identity);
-        memoryUnits.push({ identity: unit.identity, bytes: unit.bytes });
+    if (kind === 'gpu') {
+      const seenMemoryUnits = new Set();
+      for (const resource of entry.resources) {
+        for (const unit of resource.memoryUnits || []) {
+          if (!unit || seenMemoryUnits.has(unit.identity)) continue;
+          seenMemoryUnits.add(unit.identity);
+          memoryUnits.push({ identity: unit.identity, bytes: unit.bytes });
+        }
       }
     }
+    const gpuResidentBytes = assetResidentBytes(entry);
     return {
       key: entry.key,
-      bytes: assetResidentBytes(entry),
+      // `bytes` is retained as the GPU compatibility alias. CPU planning uses the separate
+      // package-byte field and never falls through to this value.
+      bytes: gpuResidentBytes,
+      gpuBytes: gpuResidentBytes,
+      cpuBytes: entry.cpuPackageBytes,
       kind,
       roles,
       presentationTiers,
       ownerRecords,
       activeRequest,
-      memoryUnits,
+      memoryUnits: kind === 'gpu' ? memoryUnits : null,
     };
   }
 
   function blockedBreakdown(entries) {
+    const kind = entries[0]?.kind === 'cpu' ? 'cpu' : 'gpu';
     const unitsByReason = new Map();
     for (const entry of entries) {
       if (isGovernorEntryEvictable(entry)) continue;
@@ -614,7 +649,8 @@ export function createAssetResidencyRegistry(options = {}) {
             units.set(unit.identity, Math.max(units.get(unit.identity) || 0, Number(unit.bytes) || 0));
           }
         } else {
-          units.set(entry, Number(entry.bytes) || 0);
+          const bytes = kind === 'cpu' ? Number(entry.cpuBytes) || 0 : Number(entry.gpuBytes) || 0;
+          units.set(entry, bytes);
         }
       }
     }
@@ -636,7 +672,8 @@ export function createAssetResidencyRegistry(options = {}) {
   function enforceBudget(kind = 'gpu') {
     const before = diagnostics({ includeEvents: false });
     const entries = [...assets.values()].map((entry) => governorEntry(entry, kind));
-    const plan = governor.plan(entries, kind, { initialResidentBytes: before.residentBytes });
+    const initialResidentBytes = kind === 'cpu' ? before.cpuPackageBytes : before.gpuResidentBytes;
+    const plan = governor.plan(entries, kind, { initialResidentBytes });
     const evicted = [];
     for (const key of plan.evict) {
       const entry = assets.get(String(key || ''));
@@ -660,8 +697,8 @@ export function createAssetResidencyRegistry(options = {}) {
     }
     const afterEntries = [...assets.values()].map((entry) => governorEntry(entry, kind));
     const after = diagnostics({ includeEvents: false });
-    const beforeBytes = Number(before.residentBytes) || 0;
-    const remainingBytes = Number(after.residentBytes) || 0;
+    const beforeBytes = Number(kind === 'cpu' ? before.cpuPackageBytes : before.gpuResidentBytes) || 0;
+    const remainingBytes = Number(kind === 'cpu' ? after.cpuPackageBytes : after.gpuResidentBytes) || 0;
     const evictedBytes = Math.max(0, beforeBytes - remainingBytes);
     const blocked = blockedBreakdown(afterEntries);
     const budgetBytes = Number(plan.budgetBytes);
@@ -671,7 +708,10 @@ export function createAssetResidencyRegistry(options = {}) {
       evicted: Object.freeze(evicted),
       evictedBytes,
       remainingBytes,
-      residentBytes: remainingBytes,
+      // GPU remains the compatibility receipt. `remainingBytes` is the selected budget kind.
+      residentBytes: after.gpuResidentBytes,
+      gpuResidentBytes: after.gpuResidentBytes,
+      cpuPackageBytes: after.cpuPackageBytes,
       budgetSatisfied,
       overBudget: !budgetSatisfied,
       protectedShortfallBytes: budgetSatisfied ? 0 : remainingBytes - budgetBytes,
@@ -763,35 +803,409 @@ function assetResidentBytes(entry) {
   return bytes;
 }
 
-function resourceMemoryUnits(resource, fallback = 0) {
-  const units = new Map();
-  const add = (identity, bytes) => {
-    if (!identity || !Number.isFinite(Number(bytes)) || Number(bytes) <= 0) return;
-    const prior = units.get(identity) || 0;
-    units.set(identity, Math.max(prior, Number(bytes)));
-  };
-  if (Number.isFinite(Number(resource && resource.byteSize))) {
-    add(resource, Math.max(0, Number(resource.byteSize)));
-    return [...units].map(([identity, bytes]) => ({ identity, bytes }));
-  }
-  const attributes = resource && resource.attributes;
-  if (attributes && typeof attributes === 'object') {
-    for (const attribute of Object.values(attributes)) addTypedArrayUnit(units, attribute && attribute.array);
-  }
-  addTypedArrayUnit(units, resource && resource.index && resource.index.array);
-  const image = resource && (resource.image || resource.source && resource.source.data);
-  const width = Number(image && image.width);
-  const height = Number(image && image.height);
-  if (image && image.data && ArrayBuffer.isView(image.data)) addTypedArrayUnit(units, image.data);
-  else if (width > 0 && height > 0) add(image, Math.ceil(width * height * 4 * 4 / 3));
-  if (units.size === 0 && Number(fallback) > 0) add(resource, Number(fallback));
-  return [...units].map(([identity, bytes]) => ({ identity, bytes }));
+function normalizeNonNegativeBytes(value) {
+  const bytes = Number(value);
+  return Number.isFinite(bytes) && bytes >= 0 ? bytes : 0;
 }
 
-function addTypedArrayUnit(units, array) {
+function isMaterialResource(resource) {
+  return !!resource && (
+    resource.isMaterial === true
+    || (typeof resource.type === 'string' && /material$/i.test(resource.type))
+  );
+}
+
+function explicitGpuBytes(resource) {
+  if (!resource || typeof resource !== 'object') return null;
+  for (const field of ['gpuResidentBytes', 'gpuBytes', 'gpuByteSize']) {
+    if (Number.isFinite(Number(resource[field])) && Number(resource[field]) >= 0) {
+      return Number(resource[field]);
+    }
+  }
+  // byteSize predates the split accounting contract and remains a compatibility escape hatch for
+  // non-Three test/runtime adapters. It is intentionally ignored on materials and wrappers: those
+  // objects do not allocate a GPU backing store merely because a package has encoded bytes.
+  if (!isMaterialResource(resource)
+    && Number.isFinite(Number(resource.byteSize))
+    && Number(resource.byteSize) >= 0) {
+    return Number(resource.byteSize);
+  }
+  return null;
+}
+
+function resourceMemoryAccounting(resource) {
+  const explicit = explicitGpuBytes(resource);
+  if (explicit != null) {
+    return { units: explicit > 0 ? [{ identity: resource, bytes: explicit }] : [], known: true };
+  }
+  if (!resource || typeof resource !== 'object') return { units: [], known: false };
+
+  // A material is a state wrapper. Its shader/program allocation is accounted by renderer
+  // program telemetry, not by asset texture/buffer residency. It must never inherit package bytes.
+  if (isMaterialResource(resource)) return { units: [], known: true };
+
+  if (resource.isRenderTarget === true) return renderTargetMemoryAccounting(resource);
+  if (resource.isTexture === true || resource.isRenderTargetTexture === true) {
+    return textureMemoryAccounting(resource);
+  }
+
+  const units = new Map();
+  const hasBufferShape = resource.isBufferGeometry === true
+    || resource.isInstancedBufferGeometry === true
+    || resource.isBufferAttribute === true
+    || resource.isInterleavedBuffer === true
+    || (resource.attributes && typeof resource.attributes === 'object')
+    || resource.index != null
+    || resource.instanceMatrix != null
+    || resource.instanceColor != null
+    || resource.morphAttributes != null
+    || resource.indirect != null;
+  if (hasBufferShape) {
+    if (resource.isBufferAttribute === true || resource.isInterleavedBuffer === true) {
+      addBufferAttributeUnit(units, resource);
+    }
+    for (const attribute of Object.values(resource.attributes || {})) addBufferAttributeUnit(units, attribute);
+    for (const morphs of Object.values(resource.morphAttributes || {})) {
+      for (const attribute of Array.isArray(morphs) ? morphs : [morphs]) addBufferAttributeUnit(units, attribute);
+    }
+    for (const field of ['index', 'instanceMatrix', 'instanceColor', 'indirect']) {
+      addBufferAttributeUnit(units, resource[field]);
+    }
+    return { units: [...units].map(([identity, bytes]) => ({ identity, bytes })), known: true };
+  }
+
+  if (ArrayBuffer.isView(resource) || resource instanceof ArrayBuffer || isSharedArrayBuffer(resource)) {
+    const identity = resource.buffer || resource;
+    const bytes = byteLengthOf(resource);
+    return bytes > 0 ? { units: [{ identity, bytes }], known: true } : { units: [], known: true };
+  }
+  // A deliberately unknown render resource is retained for lifetime safety but is not allowed to
+  // contribute invented bytes to a budget. Its diagnostic is the explicit unaccounted receipt.
+  return { units: [], known: false };
+}
+
+function assetUnaccountedResources(entry) {
+  let count = 0;
+  for (const resource of entry.resources) if (resource.unaccounted) count++;
+  return count;
+}
+
+function isSharedArrayBuffer(value) {
+  return typeof SharedArrayBuffer !== 'undefined' && value instanceof SharedArrayBuffer;
+}
+
+function byteLengthOf(value) {
+  if (!value) return 0;
+  const direct = Number(value.byteLength);
+  if (Number.isFinite(direct) && direct > 0) return direct;
+  const buffer = value.buffer;
+  const backing = Number(buffer && buffer.byteLength);
+  return Number.isFinite(backing) && backing > 0 ? backing : 0;
+}
+
+function addUnit(units, identity, bytes) {
+  if (!identity || !Number.isFinite(Number(bytes)) || Number(bytes) <= 0) return;
+  const prior = units.get(identity) || 0;
+  units.set(identity, Math.max(prior, Number(bytes)));
+}
+
+function addTypedArrayUnit(units, array, multiplier = 1) {
   if (!array) return;
   const identity = array.buffer || array;
-  const bytes = Number(identity && identity.byteLength) || Number(array.byteLength) || 0;
-  if (!identity || bytes <= 0) return;
-  units.set(identity, Math.max(units.get(identity) || 0, bytes));
+  // BufferGeometry attributes are often typed-array views into one interleaved/backing buffer.
+  // GPU allocation follows that backing store, not the view's logical byteLength.
+  const bytes = backingByteLengthOf(array) * Math.max(1, Number(multiplier) || 1);
+  addUnit(units, identity, bytes);
+}
+
+function backingByteLengthOf(value) {
+  if (!value) return 0;
+  const buffer = value.buffer;
+  if (buffer && Number.isFinite(Number(buffer.byteLength))) return Number(buffer.byteLength);
+  return byteLengthOf(value);
+}
+
+function addBufferAttributeUnit(units, attribute) {
+  if (!attribute) return;
+  if (attribute.array) addTypedArrayUnit(units, attribute.array);
+  else if (attribute.data) addTypedArrayUnit(units, attribute.data.array || attribute.data);
+  else if (attribute.buffer) addTypedArrayUnit(units, attribute.buffer);
+}
+
+const TYPE_BYTES = new Map([
+  [THREE.UnsignedByteType, 1],
+  [THREE.ByteType, 1],
+  [THREE.UnsignedShortType, 2],
+  [THREE.ShortType, 2],
+  [THREE.UnsignedIntType, 4],
+  [THREE.IntType, 4],
+  [THREE.HalfFloatType, 2],
+  [THREE.FloatType, 4],
+  [THREE.UnsignedInt248Type, 4],
+]);
+
+const FORMAT_CHANNELS = new Map([
+  [THREE.AlphaFormat, 1],
+  [THREE.RedFormat, 1],
+  [THREE.RGFormat, 2],
+  [THREE.RGBFormat, 3],
+  [THREE.RGBAFormat, 4],
+  [THREE.RedIntegerFormat, 1],
+  [THREE.RGIntegerFormat, 2],
+  [THREE.RGBIntegerFormat, 3],
+  [THREE.RGBAIntegerFormat, 4],
+]);
+
+const COMPRESSED_BLOCKS = new Map([
+  [THREE.RGB_S3TC_DXT1_Format, [4, 4, 8]],
+  [THREE.RGBA_S3TC_DXT1_Format, [4, 4, 8]],
+  [THREE.RGBA_S3TC_DXT3_Format, [4, 4, 16]],
+  [THREE.RGBA_S3TC_DXT5_Format, [4, 4, 16]],
+  [THREE.RGB_ETC1_Format, [4, 4, 8]],
+  [THREE.RGB_ETC2_Format, [4, 4, 8]],
+  [THREE.RGBA_ETC2_EAC_Format, [4, 4, 16]],
+  [THREE.RED_RGTC1_Format, [4, 4, 8]],
+  [THREE.RED_GREEN_RGTC2_Format, [4, 4, 16]],
+  [THREE.RGB_BPTC_SIGNED_Format, [4, 4, 16]],
+  [THREE.RGB_BPTC_UNSIGNED_Format, [4, 4, 16]],
+  [THREE.RGBA_BPTC_Format, [4, 4, 16]],
+  [THREE.RGBA_PVRTC_4BPPV1_Format, [4, 4, 8]],
+  [THREE.RGB_PVRTC_4BPPV1_Format, [4, 4, 8]],
+  [THREE.RGBA_PVRTC_2BPPV1_Format, [8, 4, 8]],
+  [THREE.RGB_PVRTC_2BPPV1_Format, [8, 4, 8]],
+  [THREE.RGBA_ASTC_4x4_Format, [4, 4, 16]],
+  [THREE.RGBA_ASTC_5x4_Format, [5, 4, 16]],
+  [THREE.RGBA_ASTC_5x5_Format, [5, 5, 16]],
+  [THREE.RGBA_ASTC_6x5_Format, [6, 5, 16]],
+  [THREE.RGBA_ASTC_6x6_Format, [6, 6, 16]],
+  [THREE.RGBA_ASTC_8x5_Format, [8, 5, 16]],
+  [THREE.RGBA_ASTC_8x6_Format, [8, 6, 16]],
+  [THREE.RGBA_ASTC_8x8_Format, [8, 8, 16]],
+  [THREE.RGBA_ASTC_10x5_Format, [10, 5, 16]],
+  [THREE.RGBA_ASTC_10x6_Format, [10, 6, 16]],
+  [THREE.RGBA_ASTC_10x8_Format, [10, 8, 16]],
+  [THREE.RGBA_ASTC_10x10_Format, [10, 10, 16]],
+  [THREE.RGBA_ASTC_12x10_Format, [12, 10, 16]],
+  [THREE.RGBA_ASTC_12x12_Format, [12, 12, 16]],
+].filter(([format]) => format != null));
+
+function textureFormatInfo(texture) {
+  const rawFormat = texture && (texture.internalFormat ?? texture.format ?? texture.gpuFormat);
+  const text = String(rawFormat == null ? '' : rawFormat).toLowerCase();
+  if (/bc1|dxt1|etc1/.test(text)) return { compressed: true, blockWidth: 4, blockHeight: 4, bytesPerBlock: 8 };
+  if (/bc[2-7]|dxt[345]|etc2|eac|astc|pvrtc|rgtc/.test(text)) {
+    if (/astc/.test(text)) {
+      const match = text.match(/(\d+)x(\d+)/);
+      return { compressed: true, blockWidth: match ? Number(match[1]) : 4, blockHeight: match ? Number(match[2]) : 4, bytesPerBlock: 16 };
+    }
+    if (/pvrtc.*2|2bpp/.test(text)) return { compressed: true, blockWidth: 8, blockHeight: 4, bytesPerBlock: 8 };
+    return { compressed: true, blockWidth: 4, blockHeight: 4, bytesPerBlock: /bc1|dxt1|etc1/.test(text) ? 8 : 16 };
+  }
+  const numeric = Number(rawFormat);
+  const compressed = COMPRESSED_BLOCKS.get(numeric);
+  if (compressed) {
+    return { compressed: true, blockWidth: compressed[0], blockHeight: compressed[1], bytesPerBlock: compressed[2] };
+  }
+  const channels = FORMAT_CHANNELS.get(numeric)
+    ?? (typeof rawFormat === 'string' && /rgba/i.test(rawFormat) ? 4
+      : typeof rawFormat === 'string' && /rgb/i.test(rawFormat) ? 3
+        : typeof rawFormat === 'string' && /(^|[^a-z])rg([^a-z]|$)/i.test(rawFormat) ? 2
+          : typeof rawFormat === 'string' && /red|alpha/i.test(rawFormat) ? 1 : null);
+  if (numeric === THREE.DepthFormat) return { compressed: false, bytesPerPixel: 2 };
+  if (numeric === THREE.DepthStencilFormat) return { compressed: false, bytesPerPixel: 4 };
+  const typeBytes = Number(texture && texture.bytesPerChannel)
+    || Number(texture && texture.bytesPerComponent)
+    || TYPE_BYTES.get(Number(texture && texture.type))
+    || (typeof texture?.type === 'string' && /float/i.test(texture.type) ? 4 : null)
+    || (typeof texture?.type === 'string' && /half|short/i.test(texture.type) ? 2 : null)
+    || (typeof texture?.type === 'string' ? 1 : null);
+  if (channels && typeBytes) return { compressed: false, bytesPerPixel: channels * typeBytes };
+  const explicitBytes = Number(texture && texture.bytesPerPixel);
+  if (Number.isFinite(explicitBytes) && explicitBytes > 0) return { compressed: false, bytesPerPixel: explicitBytes };
+  return null;
+}
+
+function textureLayerCount(texture, image) {
+  if (Array.isArray(image)) return 1;
+  const depth = Number(image && image.depth) || Number(texture && texture.depth) || Number(texture && texture.layers);
+  if (texture?.isCubeTexture || texture?.isCubeRenderTarget) return 6;
+  return depth > 0 ? Math.max(1, Math.floor(depth)) : 1;
+}
+
+function textureSampleCount(texture) {
+  const targetSamples = Number(texture && texture.renderTarget && texture.renderTarget.samples);
+  const ownSamples = Number(texture && texture.samples);
+  return Math.max(1, Number.isFinite(targetSamples) && targetSamples > 0 ? targetSamples : 1,
+    Number.isFinite(ownSamples) && ownSamples > 0 ? ownSamples : 1);
+}
+
+function mipDimensions(texture, mip, baseImage) {
+  const width = Number(mip && (mip.width ?? mip.image?.width)) || Number(baseImage && baseImage.width) || Number(texture && texture.width);
+  const height = Number(mip && (mip.height ?? mip.image?.height)) || Number(baseImage && baseImage.height) || Number(texture && texture.height);
+  return { width: Math.max(0, Math.floor(width)), height: Math.max(0, Math.floor(height)) };
+}
+
+function levelBytes(width, height, formatInfo) {
+  if (!formatInfo || width <= 0 || height <= 0) return 0;
+  if (formatInfo.compressed) {
+    return Math.ceil(width / formatInfo.blockWidth)
+      * Math.ceil(height / formatInfo.blockHeight)
+      * formatInfo.bytesPerBlock;
+  }
+  return width * height * formatInfo.bytesPerPixel;
+}
+
+function generatedMipBytes(width, height, formatInfo) {
+  let total = 0;
+  let currentWidth = width;
+  let currentHeight = height;
+  while (currentWidth > 0 && currentHeight > 0) {
+    total += levelBytes(currentWidth, currentHeight, formatInfo);
+    if (currentWidth === 1 && currentHeight === 1) break;
+    currentWidth = Math.max(1, Math.floor(currentWidth / 2));
+    currentHeight = Math.max(1, Math.floor(currentHeight / 2));
+  }
+  return total;
+}
+
+function payloadBytes(payload) {
+  if (!payload) return 0;
+  if (ArrayBuffer.isView(payload) || payload instanceof ArrayBuffer || isSharedArrayBuffer(payload)) {
+    return byteLengthOf(payload);
+  }
+  return byteLengthOf(payload.data) || byteLengthOf(payload.image);
+}
+
+function payloadIdentity(payload, fallback) {
+  if (payload && payload.data && (ArrayBuffer.isView(payload.data) || payload.data instanceof ArrayBuffer)) {
+    return payload.data.buffer || payload.data;
+  }
+  if (ArrayBuffer.isView(payload) || payload instanceof ArrayBuffer) return payload.buffer || payload;
+  return payload || fallback;
+}
+
+function textureMemoryAccounting(texture, seen = new Set()) {
+  if (seen.has(texture)) return { units: [], known: true };
+  seen.add(texture);
+  const units = new Map();
+  const image = texture.image ?? texture.source?.data;
+  const formatInfo = textureFormatInfo(texture);
+  const layers = textureLayerCount(texture, image);
+  const samples = textureSampleCount(texture);
+  let known = !!formatInfo;
+
+  // CompressedCubeTexture stores one CompressedTexture per face. Recurse so each face's exact
+  // payload is counted, while shared payload backing stores still dedupe by identity.
+  if (Array.isArray(image)) {
+    known = image.length > 0;
+    for (const face of image) {
+      if (face && face.isTexture === true) {
+        const nested = textureMemoryAccounting(face, seen);
+        known = known && nested.known;
+        for (const unit of nested.units) addUnit(units, unit.identity, unit.bytes * samples);
+      } else {
+        const faceBytes = imageBytes(texture, face, formatInfo, 1);
+        known = known && faceBytes.known;
+        if (faceBytes.bytes > 0) addUnit(units, faceBytes.identity || face, faceBytes.bytes * samples);
+      }
+    }
+    return { units: [...units].map(([identity, bytes]) => ({ identity, bytes })), known };
+  }
+
+  const mipmaps = Array.isArray(texture.mipmaps) ? texture.mipmaps : [];
+  if (mipmaps.length > 0) {
+    let hasExactPayload = false;
+    for (const mip of mipmaps) {
+      const raw = payloadBytes(mip && (mip.data ?? mip.image ?? mip));
+      const dimensions = mipDimensions(texture, mip, image);
+      if (raw > 0) {
+        hasExactPayload = true;
+        // A compressed payload's byteLength is authoritative even when a driver-specific format
+        // enum is unavailable to this layer.
+        known = true;
+        const singleLayer = levelBytes(dimensions.width, dimensions.height, formatInfo);
+        const layerMultiplier = layers > 1 && singleLayer > 0 && raw < singleLayer * layers ? layers : 1;
+        addUnit(units, payloadIdentity(mip, texture), raw * layerMultiplier * samples);
+      } else {
+        const bytes = levelBytes(dimensions.width, dimensions.height, formatInfo);
+        if (bytes > 0) addUnit(units, mip || texture, bytes * layers * samples);
+        else known = false;
+      }
+    }
+    // Ordinary Texture mipmaps contain custom levels in addition to the base image. Compressed
+    // Texture mipmaps already include the base level by contract and must not double count it.
+    if (!texture.isCompressedTexture) {
+      const base = imageBytes(texture, image, formatInfo, layers);
+      known = known && base.known;
+      if (base.bytes > 0) addUnit(units, base.identity || image || texture, base.bytes * samples);
+      if (texture.generateMipmaps === true && !hasExactPayload) {
+        const dimensions = mipDimensions(texture, null, image);
+        const total = generatedMipBytes(dimensions.width, dimensions.height, formatInfo);
+        if (total > 0) addUnit(units, texture, total * layers * samples);
+      }
+    }
+  } else {
+    const base = imageBytes(texture, image, formatInfo, layers);
+    known = base.known;
+    if (base.bytes > 0) addUnit(units, base.identity || image || texture, base.bytes * samples);
+    if (texture.generateMipmaps === true && base.bytes > 0 && !formatInfo?.compressed) {
+      const dimensions = mipDimensions(texture, null, image);
+      const total = generatedMipBytes(dimensions.width, dimensions.height, formatInfo);
+      const baseLevel = levelBytes(dimensions.width, dimensions.height, formatInfo) * layers;
+      if (total > baseLevel) addUnit(units, texture, (total - baseLevel) * samples);
+    }
+  }
+
+  return { units: [...units].map(([identity, bytes]) => ({ identity, bytes })), known };
+}
+
+function imageBytes(texture, image, formatInfo, layers = 1) {
+  if (!image || typeof image !== 'object') return { bytes: 0, known: false, identity: null };
+  const data = image.data;
+  const raw = byteLengthOf(data);
+  const dimensions = mipDimensions(texture, null, image);
+  if (raw > 0) {
+    const oneLayer = levelBytes(dimensions.width, dimensions.height, formatInfo);
+    const payload = layers > 1 && oneLayer > 0 && raw < oneLayer * layers ? raw * layers : raw;
+    return { bytes: payload, known: true, identity: data.buffer || data };
+  }
+  const bytes = levelBytes(dimensions.width, dimensions.height, formatInfo);
+  return { bytes: bytes * layers, known: bytes > 0, identity: image };
+}
+
+function renderTargetMemoryAccounting(target) {
+  const units = new Map();
+  let known = true;
+  const attachments = Array.isArray(target.textures)
+    ? target.textures
+    : target.texture ? [target.texture] : [];
+  if (attachments.length === 0 && target.colorBuffer !== false) known = false;
+  for (const texture of attachments) {
+    const accounting = textureMemoryAccounting(texture);
+    known = known && accounting.known;
+    for (const unit of accounting.units) addUnit(units, unit.identity, unit.bytes);
+  }
+  if (target.depthTexture) {
+    const depth = textureMemoryAccounting(target.depthTexture);
+    known = known && depth.known;
+    for (const unit of depth.units) addUnit(units, unit.identity, unit.bytes);
+  } else if (target.depthBuffer === true || target.stencilBuffer === true) {
+    // Three allocates an implicit renderbuffer here, but its exact driver format is selected at
+    // runtime. Keep the color attachments accounted and report the unrepresented attachment.
+    known = false;
+  }
+  const explicit = explicitGpuBytes(target);
+  if (explicit != null && units.size === 0) return { units: explicit > 0 ? [{ identity: target, bytes: explicit }] : [], known: true };
+  return { units: [...units].map(([identity, bytes]) => ({ identity, bytes })), known };
+}
+
+export function estimateGpuResourceBytes(resource) {
+  const accounting = resourceMemoryAccounting(resource);
+  let bytes = 0;
+  for (const unit of accounting.units) bytes += unit.bytes;
+  return Object.freeze({
+    gpuResidentBytes: bytes,
+    unaccounted: !accounting.known,
+    units: Object.freeze(accounting.units.map((unit) => Object.freeze({ bytes: unit.bytes }))),
+  });
 }

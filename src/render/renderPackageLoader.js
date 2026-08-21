@@ -182,7 +182,10 @@ export function createRenderPackageLoader(options = {}) {
         entry.loaded = loaded;
         try {
           residency.registerAsset(entry.key, loaded.resources, {
-            byteSize: metadata.render.bytes,
+            // The encoded .glb size is CPU/cache residency. Decoded GPU bytes are measured from
+            // each geometry buffer/texture resource by assetResidency; never spread package bytes
+            // across materials or unknown wrappers as a GPU fallback.
+            cpuPackageBytes: metadata.render.bytes,
             metadata: {
               assetId: metadata.assetId,
               contentHash,

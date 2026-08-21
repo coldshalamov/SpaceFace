@@ -210,6 +210,31 @@ test('loader decodes once per content hash and creates lightweight instances sha
   }
 });
 
+test('loader records encoded package bytes as CPU residency, never as decoded GPU fallback', async () => {
+  const decoded = decodedFixture();
+  const residency = createAssetResidencyRegistry({ maxGpuBytes: 1 });
+  const loader = createRenderPackageLoader({
+    residency,
+    loadGlb: async () => ({ scene: decoded.scene }),
+  });
+
+  await loader.load(packageMetadata());
+  const snapshot = residency.canonicalDiagnostics();
+  assert.equal(snapshot.cpuPackageBytes, 256);
+  assert.equal(snapshot.gpuResidentBytes, 42,
+    'position and index backing buffers are measured; package bytes are not spread over resources');
+  assert.equal(snapshot.residentBytes, snapshot.gpuResidentBytes);
+  assert.equal(snapshot.unaccountedResources, 1,
+    'the fixture texture has no image allocation and is reported instead of guessed');
+  const gpuReceipt = residency.enforceBudget();
+  assert.equal(gpuReceipt.budgetSatisfied, true,
+    'the measured GPU bytes can be reclaimed without treating the encoded package as GPU memory');
+  assert.equal(gpuReceipt.evictedBytes, 42);
+  assert.equal(residency.enforceBudget('cpu').budgetSatisfied, true,
+    'CPU package budget is planned independently from GPU bytes');
+  loader.dispose();
+});
+
 test('flight-static instances materialise one root per prepared primitive and marker while sharing resources', async () => {
   const decoded = decodedFixture();
   const prepared = preparedFlightFixture(decoded);
