@@ -1,13 +1,25 @@
 <!-- LIFETIME: DURABLE -->
 # Asteroid Works — a cutaway you bore
 
-**Status:** binding idea-spec for the mining minigame chrome. Playfield law, spirit,
-vanilla-collapse ban, and the 2026-08-20 owner defects live in
+**Status:** idea-spec for the mining minigame chrome, now subordinate to
+[`../ASTEROID_WORKS_DESIGN_LAW.md`](../ASTEROID_WORKS_DESIGN_LAW.md) — the 2026-08-20
+owner design session's full positive design (art direction, chrome inventory, events,
+invariants). Where this file and the design law disagree, **the law wins**. Playfield law,
+spirit, vanilla-collapse ban, and the owner defects live in
 [`../program/ASTEROID_WORKS_PLAYFIELD.md`](../program/ASTEROID_WORKS_PLAYFIELD.md).
 Admitted execution is [`../program/roadmap/active/PQ-130.md`](../program/roadmap/active/PQ-130.md).
 
-Read [`INSTRUMENT_GRAMMAR.md`](./INSTRUMENT_GRAMMAR.md) first. This file supplies
-the **idea** — centerpiece, verb, and what the chrome is allowed to be.
+**Superseded by the law (2026-08-20):** the hover plate "parked in the apron" → a
+**cursor lens** that travels beside the pointer (law §6.4); the always-visible 3×3
+command card → an **earned palette** that does not exist until a Core is owned and
+grows key by key (law §6.3); the STRATA legend bay → seam bodies with count chips on
+the board itself (law §3.5); this file's Saira/tracked-caps/gunmetal voice → the law's
+§3 warm palette, Instrument Sans / Spline Sans Mono / Bricolage, sentence case. Fog of
+war is removed (law §2.3).
+
+Read [`INSTRUMENT_GRAMMAR.md`](./INSTRUMENT_GRAMMAR.md) for structural rules (12 px
+floor, colour-by-meaning, motion-as-needle). This file still supplies the **idea** —
+centerpiece, verb, and what the chrome is allowed to be.
 
 `SCREENS_D` B.10 (“leave the drill screen alone and use it as the bar”) is **void**.
 Owner playtest outranks it.

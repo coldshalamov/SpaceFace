@@ -46,9 +46,12 @@ disjoint files. No coordinator, task-long reservation, or worktree is required.
   [`design/program/PERF_HITCH_CAMPAIGN.md`](./design/program/PERF_HITCH_CAMPAIGN.md).
   Dispatch `node scripts/program-dispatch.mjs --id PQ-129`. Measure first. Do not skip to
   Worker/WebGPU/quality cuts.
-- **Asteroid Works / mining minigame is unreadable or undrivable** (tan wash, HUD
-  is ugly *and* eats the board, rover too small or too fast, hover is a wall of
-  text, surveyed vein looks like unsurveyed stone) →
+- **Asteroid Works / mining minigame is unreadable, undrivable, or ugly** (tan wash,
+  HUD is ugly *and* eats the board, gray vibe-coded chrome, rover too small or too
+  fast, hover is a wall of text) → the ground-up positive design is
+  [`design/ASTEROID_WORKS_DESIGN_LAW.md`](./design/ASTEROID_WORKS_DESIGN_LAW.md)
+  (2026-08-20 owner session: warm UI reboot, perfect flat chess grid, fog removed,
+  events on the board); campaign bans in
   [`design/program/ASTEROID_WORKS_PLAYFIELD.md`](./design/program/ASTEROID_WORKS_PLAYFIELD.md)
   and the operator
   [`ASTEROID_WORKS_PLAYFIELD_GOAL.txt`](./design/program/ASTEROID_WORKS_PLAYFIELD_GOAL.txt).
@@ -142,14 +145,19 @@ not dump factory remasters that lose to Hitch. It is not INFERENCE and not a def
 overnight.
 
 **Asteroid Works playfield:** if the owner cannot see the mining board, tell cells
-apart, find the rover, or move it one cell on purpose, start at
+apart, find the rover, move it one cell on purpose — or the screen still looks like
+a gray vibe-coded console — start at
+[`design/ASTEROID_WORKS_DESIGN_LAW.md`](./design/ASTEROID_WORKS_DESIGN_LAW.md)
+(the 2026-08-20 owner design session's positive target: ground-up warm UI, perfect
+axis-aligned chess grid, fog of war removed, events on the board with sound, ≤15
+visible words, board ≥88% of the glass), then
 [`design/program/ASTEROID_WORKS_PLAYFIELD.md`](./design/program/ASTEROID_WORKS_PLAYFIELD.md)
 (operator: [`ASTEROID_WORKS_PLAYFIELD_GOAL.txt`](./design/program/ASTEROID_WORKS_PLAYFIELD_GOAL.txt))
 and the admitted packet
 [`design/program/roadmap/active/PQ-130.md`](./design/program/roadmap/active/PQ-130.md).
-Dispatch `node scripts/program-dispatch.mjs --id PQ-130`. The 2026-08-20 playtest is
-the defect list (tan wash, HUD ugly *and* too big, slant, invisible geology, tiny rover, hover
-novel, undrivable tap/hold, surveyed = unsurveyed). Shrinking the same shell is a fail. Chrome idea:
+Dispatch `node scripts/program-dispatch.mjs --id PQ-130` (leaves `.01`–`.10`). The
+2026-08-20 playtest remains the defect list; a polished copy of the gunmetal console
+also fails. Chrome idea:
 [`design/frontend/SCREENS_E_ASTEROID_WORKS.md`](./design/frontend/SCREENS_E_ASTEROID_WORKS.md).
 This is not INFERENCE, not `PQ-050`, not `PQ-129`, and not Waves 1–4.
 
@@ -984,13 +992,25 @@ late means rebuilding.
 
 ### 11.5a Asteroid Works is a playable inset, not a HUD with a tiny board
 
-Owner playtest 2026-08-20 failed the live mining screen. The defects and the bar
-are in [`design/program/ASTEROID_WORKS_PLAYFIELD.md`](./design/program/ASTEROID_WORKS_PLAYFIELD.md);
+Owner playtest 2026-08-20 failed the live mining screen, and the same-day owner
+design session replaced the old console with a **ground-up design**:
+[`design/ASTEROID_WORKS_DESIGN_LAW.md`](./design/ASTEROID_WORKS_DESIGN_LAW.md) —
+the game reduced to four visible laws (mine-once/farm-forever, machines feed
+through faces, geology is the tech tree, tunnels are streets + rock is the
+radiator), a perfect axis-aligned chess grid, **fog of war removed**, a warm
+"field equipment at dusk" art direction replacing the gray/tracked-caps console
+voice (owner: "gray, bleak, and vibe-coded, harsh fonts"), events on the board
+with sound instead of a text tape, and instruments that mount only when they
+first have data. Defects and bans stay in
+[`design/program/ASTEROID_WORKS_PLAYFIELD.md`](./design/program/ASTEROID_WORKS_PLAYFIELD.md);
 chrome idea in [`design/frontend/SCREENS_E_ASTEROID_WORKS.md`](./design/frontend/SCREENS_E_ASTEROID_WORKS.md);
-execution is `PQ-130`.
+execution is `PQ-130` (leaves `.01`–`.10`; deeper sim laws — seam scaling, the
+parked thermal model, gas-tap power, import complements, the economy curve,
+drones/field — are future packets listed in the law's §12).
 
 The cutaway is the STAGE. The verb is **BORE**. Manifest tape, site-systems trivia,
-and hover paragraphs are auxiliary. `SCREENS_D` B.10 (“leave the drill screen alone
+and hover paragraphs are deleted per the law's §10, their jobs relocated onto the
+board and into drawers. `SCREENS_D` B.10 (“leave the drill screen alone
 and use it as the bar”) is void — owner playtest outranks it.
 
 Do not fold this into Phase 5 HUD work or into Asteroid Ops Waves 1–4.

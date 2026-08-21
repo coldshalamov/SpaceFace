@@ -8,6 +8,24 @@ Admitted as **`PQ-130`**. Dispatch `node scripts/program-dispatch.mjs --id PQ-13
 Ordinary `--next` still returns fleet remaster. This is not INFERENCE, not `PQ-050`,
 not `PQ-129`, and not Asteroid Ops Waves 1–4 (formations, heat, signature, clusters).
 
+**2026-08-20 owner design session (same day, after the playtest):** the campaign now has a
+**positive target**, not only this defect list —
+[`design/ASTEROID_WORKS_DESIGN_LAW.md`](../ASTEROID_WORKS_DESIGN_LAW.md). Read it before
+any leaf. Three rulings amend this file:
+
+1. **Perfect flat grid.** The board is an axis-aligned chess board. §5.3's "pitch only
+   enough" is tightened to **zero tilt** — square cells, camera pans and zooms only.
+2. **Fog of war removed.** §2's "unsurveyed is still rock; survey reveals veins" and §5.5's
+   "Unsurveyed stays anonymous stone" are **void**. Every cell's material is visible from
+   the first frame; strategy lives in tunnel geometry, not information hiding.
+3. **The UI is reimagined from the ground up.** Owner verdict on the current chrome: "gray,
+   bleak, and vibe-coded, harsh fonts." The gunmetal/amber/tracked-caps console voice is
+   deleted, not restyled — the law's §3 (warm palette, new vendored type, sentence case) is
+   the replacement. A beautifully polished copy of the old shell fails.
+
+Leaves `.01–.06` are re-aimed by the law's §12, and `.07–.10` extend the ladder (events on
+the board, sound, build-mode feel, networks-on-board).
+
 ---
 
 ## 0. The spirit (read this before any leaf)
@@ -189,9 +207,13 @@ instrument you do not stare at); a glass-cockpit strip where every remaining
 readout is a physical object. Do not clone their art. Clone the **priority**:
 the world first, chrome as tools.
 
-Instrument grammar still binds whatever chrome remains: 12 px floor, colour by
-meaning, no cyan-as-decoration, CREST / STAGE / APRON / DRAWER. The **centerpiece**
-is the cutaway. The **verb** is BORE. See
+Instrument grammar still binds whatever chrome remains **structurally**: 12 px floor,
+colour by meaning, no cyan-as-decoration, motion only when a value moves, CREST /
+STAGE / APRON / DRAWER. Its typefaces and cold token hues are superseded on this
+screen by the design law's §3 (warm `--aw-*` palette, Instrument Sans / Spline Sans
+Mono / Bricolage, sentence case, zero uppercase transforms). The **centerpiece** is
+the cutaway. The **verb** is BORE. See
+[`design/ASTEROID_WORKS_DESIGN_LAW.md`](../ASTEROID_WORKS_DESIGN_LAW.md) and
 [`design/frontend/SCREENS_E_ASTEROID_WORKS.md`](../frontend/SCREENS_E_ASTEROID_WORKS.md).
 
 ---
@@ -206,17 +228,20 @@ These are product calls, not options to re-litigate per leaf.
 2. **Frame the rover, not the whole cliff.** Default drive camera is a local
    window around the rig. Pan with it. A full-field view is a survey beat, not
    the drive camera.
-3. **Flatten the slant.** Yaw to zero. Pitch only enough that a bored cell still
-   reads as a hole with a floor. The front pad is a **square face**, not a pyramid.
-   This is a precision grid game (cell 12,4).
+3. **Flatten the slant — completely.** Yaw zero, pitch zero. Cells project as
+   axis-aligned squares (design law §11.1 makes this assertable). The front pad is a
+   **square face**, not a pyramid. This is a precision grid game (cell 12,4); a bored
+   cell reads as a room by value and lighting, not by camera tilt.
 4. **This rock’s color.** Interior stone is the asteroid you entered — grey lumpy
    common rock, darker metallic, cool icy — and it matches the strata legend.
    Not dungeon sandstone. Not “tan × 0.7.”
-5. **Surveyed materials occupy the cell.** A vein is mineralized rock plus a
-   cluster that reads as treasure at play size. A gas pocket is the **block
-   itself** cracked and seeping. Unsurveyed stays anonymous stone. The difference
-   must survive a squint. MK lock is a readable stamp on a dull vein, not an
-   8px sprite.
+5. **Materials occupy the cell, and every cell shows its material.** *(Amended
+   2026-08-20: fog removed.)* A vein is mineralized rock plus a cluster that reads
+   as treasure at play size. A gas pocket is the **block itself** cracked and
+   seeping. There is no "unsurveyed" appearance — anonymous stone means plain
+   silicate matrix, not hidden information. Contiguous same-material cells render
+   as one outlined body with a count chip (design law §3.5). The differences must
+   survive a squint. MK lock is a readable stamp on a dull vein, not an 8px sprite.
 6. **No camera-facing soft squares** for ore, gas, or the rover. Distant
    background stars are the only billboard exception in this game, and they are
    not in this screen.
@@ -246,9 +271,15 @@ judged at the play size and dashboard `.01` creates.
 | **`PQ-130.04` Cells speak** | A prospector can read the face. Ore is treasure in the cell. Gas is a cracked pocket. Survey changes the picture. | Bigger sparkles. Yellower gas. Same tan host cube. |
 | **`PQ-130.05` The vehicle** | “That is my drill.” Silhouette, cabin, bit, hazard paint. | `makeRover` scale × 1.4. Same box stack. |
 | **`PQ-130.06` Hover as instrument** | The readout is a picture. The board already told you; chrome confirms. | Truncated paragraphs in the same well. |
+| **`PQ-130.07` The sim speaks** | Every event happens on the board with a sound (design law §5): chunks arc into the hopper, gas erupts and kicks the camera, MK locks refuse with sparks. The ledger becomes a silent drawer. | Keeping the tape and adding particles next to it. A floater with no board change. |
+| **`PQ-130.08` The mine's voice** | The mine's own muffled industrial soundscape (design law §8): bed, three-layer grind by hardness, every event cue, music bus not zeroed. | One generic beep per event. Leaving the pause path silencing everything. |
+| **`PQ-130.09` Build like chess** | Earned palette of pressable keys; ghost placement with valid faces glowing and one why-glyph on blocked faces; deliberate snapped placement. | Restyling the current 3×3 grey grid. Keys for machines you have not unlocked. |
+| **`PQ-130.10` The site reads** | Cables glow, lanes flow, lamps and want-chips tell machine state, port crates stack, couriers visibly launch; returning to a producing site opens at site zoom. | A production report panel. Numbers without the picture. |
 
 Do not open Wave 1 formations, thermal, signature, or cluster assembly here.
-Those remain `ASTEROID_OPS_VISION.md`.
+Those remain `ASTEROID_OPS_VISION.md`. (The design law's §12 lists them as future
+packets: seam-size scaling, the parked thermal model, gas-tap power balance,
+import complements, the economy curve, drones/field.)
 
 ---
 

@@ -2427,6 +2427,7 @@
       ],
       "sources": [
         "CANONICAL_BUILD_MAP.md",
+        "design/ASTEROID_WORKS_DESIGN_LAW.md",
         "design/program/ASTEROID_WORKS_PLAYFIELD.md",
         "design/frontend/SCREENS_E_ASTEROID_WORKS.md",
         "design/frontend/INSTRUMENT_GRAMMAR.md",
@@ -2444,7 +2445,7 @@
         "surgical-tap",
         "playable"
       ],
-      "brief": "Owner playtest 2026-08-20: you are in the rock. HUD is ugly AND too big (empty bays, novel well, embed frame, 8px keypad) — shrinking the same shell is a fail. Tan wash, slanted postage-stamp board, invisible geology, tiny rover, hover novel, undrivable tap. Vanilla collapse banned (campaign §3). Dispatch --id PQ-130. Not Waves 1-4, not hitch, not billboard icons."
+      "brief": "Owner playtest 2026-08-20: you are in the rock. Rev 3 same-day design session: ground-up warm UI (the gray vibe-coded console is deleted, not restyled), perfect axis-aligned chess grid, fog of war removed, events on the board with sound, <=15 visible words, board >=88% of the glass. Positive target: design/ASTEROID_WORKS_DESIGN_LAW.md (hex/type/px/ms values are law; §11 headless invariants prove leaves). Vanilla collapse AND polished-copy both fail. Dispatch --id PQ-130, leaves .01-.10. Not Waves 1-4 sim, not hitch, not billboard icons."
     }
   ],
   "dispatchUnits": [
@@ -7686,7 +7687,120 @@
         "node scripts/check-program-docs.mjs"
       ],
       "receiptRefs": [],
-      "brief": "Spirit: the board already taught you; chrome confirms with a picture. Material plate + chips, contact ring when neighbors matter. Illegal: truncated paragraphs in the same novel well. 12 px floor. Teaching stays in a drawer tape once."
+      "brief": "Spirit: the board already taught you; chrome confirms with a picture. Cursor lens beside the pointer: swatch + assay numerals + consequence chips (design law §6.4); context bay deleted. Illegal: truncated paragraphs in the same novel well. 12 px floor. Teaching stays in a drawer tape once."
+    },
+    {
+      "id": "PQ-130.07",
+      "parentId": "PQ-130",
+      "priority": 351,
+      "title": "The sim speaks: every event happens on the board",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-130.01",
+        "PQ-130.02"
+      ],
+      "mutexes": [
+        "asteroid-works-playfield"
+      ],
+      "paths": [
+        "src/ui/asteroid/asteroidRenderer3d.js",
+        "src/ui/asteroid/asteroidScreen.js",
+        "src/ui/screens/drill.js",
+        "src/systems/presentationOrchestrator.js",
+        "styles/asteroid-ops.css"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:playable",
+        "node scripts/check-program-docs.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Design law §5 is the spec, timings included: yield chunks arc into the hopper with a +N floater; gas breach = flash, vapor flood, 4px camera kick, coral edge vignette, permanent vented texture; MK lock = skate + sparks + engraved stamp; hopper-full refusal; machine want-chips. The manifest tape is demoted to a silent ledger drawer. Illegal: keeping the tape and adding particles beside it; a floater with no board change; any new permanent text row."
+    },
+    {
+      "id": "PQ-130.08",
+      "parentId": "PQ-130",
+      "priority": 352,
+      "title": "The mine's voice: own soundscape, bus not zeroed",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-130.01"
+      ],
+      "mutexes": [
+        "asteroid-works-playfield"
+      ],
+      "paths": [
+        "src/audio/audioSystem.js",
+        "src/systems/presentationOrchestrator.js",
+        "src/ui/asteroid/asteroidScreen.js"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:playable",
+        "node scripts/check-program-docs.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Design law §8: the mine gets its own muffled industrial bed (the flight score does not continue inside); drill grind in 3 hardness layers crossfaded by target material; every §5 event cue wired through the existing cue pipeline (the drill-break hook currently returns early); mix priority hazard > payoff > machine state > ambience. The pause path currently zeroes the music bus on screen 'drill' — exempt this screen or route its own bus. Prove: bus gain > 0 while drilling; grind audible during a bore."
+    },
+    {
+      "id": "PQ-130.09",
+      "parentId": "PQ-130",
+      "priority": 353,
+      "title": "Build like chess: earned palette, ghost with valid faces",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-130.01",
+        "PQ-130.06"
+      ],
+      "mutexes": [
+        "asteroid-works-playfield"
+      ],
+      "paths": [
+        "src/ui/asteroid/buildPalette.js",
+        "src/ui/asteroid/asteroidController.js",
+        "src/ui/asteroid/asteroidScreen.js",
+        "src/ui/asteroid/inspector.js",
+        "src/ui/asteroid/asteroidRenderer3d.js",
+        "styles/asteroid-ops.css"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:playable",
+        "node scripts/check-program-docs.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Design law §6.3 + §6.7: the palette does not exist until a Core is owned, then grows one 46x46 key per unlocked machine (three states: ready / armed-gold / unaffordable; locked machines are ABSENT, never gray placeholders); ghost placement draws face contacts on the actual cells, valid seats glow mint, blocked faces show one why-glyph; keyboard cell cursor stays. Illegal: restyling the current always-visible 3x3 gray grid; keys for locked machines; silent misplacement."
+    },
+    {
+      "id": "PQ-130.10",
+      "parentId": "PQ-130",
+      "priority": 354,
+      "title": "The site reads: networks, lamps, port, courier on the board",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-130.07",
+        "PQ-130.09"
+      ],
+      "mutexes": [
+        "asteroid-works-playfield"
+      ],
+      "paths": [
+        "src/ui/asteroid/asteroidRenderer3d.js",
+        "src/ui/asteroid/asteroidScreen.js",
+        "src/ui/asteroid/asteroidRenderer2d.js",
+        "styles/asteroid-ops.css"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:playable",
+        "node scripts/check-program-docs.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Design law §7 + §6.5 + §9: cables as warm gold lines along tunnel walls with junction nodes; lanes as floor flow-dots toward the port (buffer reads as dot density); machine lamps mint when running, dark + gold want-chip when starved; port stacks visible crates; couriers visibly slide up the shaft and launch. Faces + Network overlay lenses (one at a time, <=35% alpha over a board that never lies). Returning to a producing site opens at site zoom. Presentation only — read siteLogistics/siteProduction state, change no sim law. Illegal: a production report panel instead of the picture."
     }
   ]
 }

@@ -12,6 +12,16 @@ undrivable rover, hover novels. Presentation/control refactor is admitted as
 proportions are **not frozen**. Shrinking the same shell is not the work. “The scene
 stays sovereign” is still law; the live screen did not keep it.
 
+**2026-08-20 owner design session — this brief's voice is void for the drill screen.**
+The owner's verdict on the shipped result: "gray, bleak, and vibe-coded, harsh fonts."
+The console voice this file specifies — gunmetal `--ao-*` tokens, amber accent, Saira
+tracked caps, hazard-stripe signature, the StarCraft frame with reserved expansion
+bays — is **deleted, not restyled**, and replaced by
+[`ASTEROID_WORKS_DESIGN_LAW.md`](./ASTEROID_WORKS_DESIGN_LAW.md) §3 (warm palette,
+Instrument Sans / Spline Sans Mono / Bricolage, sentence case, earned instruments,
+no reserved empty slots). This file remains as history and for its diagnosis section
+only. Do not build new work from its Principles, Frame, or Tokens sections.
+
 ---
 
 ## Diagnosis — what was wrong with the old shell

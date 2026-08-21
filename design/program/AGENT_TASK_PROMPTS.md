@@ -53,35 +53,37 @@ Keep going until every known copy and unused model has a ledger row, every MERGE
 RESULT: DONE only when no finished work remains only on an orphan copy and the ledger is complete.
 ```
 
-## Prompt A0-W — Asteroid Works / mining minigame unreadable
+## Prompt A0-W — Asteroid Works / mining minigame unreadable or ugly
 
 Copy `ASTEROID_WORKS_PLAYFIELD_GOAL.txt` as the whole prompt. Do not paraphrase.
-The campaign file it names is mandatory.
+The design law and campaign files it names are mandatory.
 
 ```text
-This is a campaign: put the player inside the asteroid. The mine is the screen. Do not use INFERENCE. Do not take hitch/PQ-129 or PQ-050. Do not stop after one unit.
+This is a campaign: put the player inside the asteroid and rebuild the screen's look from the ground up. The mine is the screen. Do not use INFERENCE. Do not take hitch/PQ-129 or PQ-050. Do not stop after one unit.
 
-Law: design/program/ASTEROID_WORKS_PLAYFIELD.md (read §0 spirit and §3 vanilla collapse first) and design/frontend/SCREENS_E_ASTEROID_WORKS.md. Grammar: design/frontend/INSTRUMENT_GRAMMAR.md. Dispatch: node scripts/program-dispatch.mjs --id PQ-130. Take the first claimable leaf. --next still returns fleet remaster.
+Law: design/ASTEROID_WORKS_DESIGN_LAW.md is the positive target — read §2 rulings and §3 art direction first, then your leaf's sections; its hex, type, px, and ms values are law, and its §11 invariants are how a no-vision agent proves a leaf. Campaign bans: design/program/ASTEROID_WORKS_PLAYFIELD.md §0 spirit and §3 vanilla collapse. Chrome idea: design/frontend/SCREENS_E_ASTEROID_WORKS.md. Dispatch: node scripts/program-dispatch.mjs --id PQ-130. Take the first claimable leaf. --next still returns fleet remaster.
 
-Spirit: a stranger glances and sees rock, a hole, a vehicle, ore as ore, gas as danger — not a sci-fi website with a Minecraft inset. Remaining chrome is a rig dashboard that earns every pixel. Empty Power/Export/Couriers bays, the novel context well, the 264px reprint tape, the cyan video-embed frame, and 8px keypad labels are the ugly HUD. Shrinking that chrome is not the work.
+Owner rulings 2026-08-20: the board is a perfect axis-aligned chess grid (zero tilt); fog of war is removed — every cell's material visible from the first frame; the current chrome is "gray, bleak, and vibe-coded, harsh fonts" and is DELETED, not restyled — warm palette, vendored Instrument Sans / Spline Sans Mono / Bricolage, sentence case, no uppercase transforms, soft shapes; events happen on the board with sound, never as a permanent text log; at most 15 visible words in the default drive view; board >= 88% of the glass.
 
-Vanilla collapse is a fail: shorter CSS bays, zoom-only camera, tan×0.7, crystal scale 1.5, slower MOVE_COOLDOWN, truncated inspector strings, more amber stripes. If that is the PR, you have not started.
-
-Owner playtest 2026-08-20 is the defect list. HUD is ugly AND too big. Do not paraphrase into new mechanics.
+A polished copy of the gunmetal console fails ("a polished turd"). A vanilla collapse fails: shorter CSS bays, zoom-only camera, tan x0.7, bigger sparkles, slower MOVE_COOLDOWN, truncated inspector strings, restyled gray keys. If that is the PR, you have not started.
 
 Order:
-1. PQ-130.01 Theater — the mine is the screen; dashboard not a website; local camera; flat grid.
-2. PQ-130.02 Surgical drive — a heavy rig you place one cell at a time.
-3. PQ-130.03 This asteroid’s rock — the body you tethered to, not dungeon sandstone.
-4. PQ-130.04 Cells speak — a prospector can read the face.
-5. PQ-130.05 The vehicle — “that is my drill.”
-6. PQ-130.06 Hover as instrument — a picture that confirms; the board already taught.
+1. PQ-130.01 Theater — board sovereign; crest + rig cluster only; new visual language lands here; flat grid; two zoom registers; one shared render/grading pipeline.
+2. PQ-130.02 Surgical drive — tap seats one cell; hold delay then cruise; visible bore bite; rewrite check-drill-smooth.
+3. PQ-130.03 This asteroid's rock — warm mineral palette; dusk lighting (warm key inside, cool rim outside).
+4. PQ-130.04 Cells speak — three-channel material identity; seams as outlined bodies with counts and split preview; fog gate off.
+5. PQ-130.05 The vehicle — the safety-yellow rover; bit heat glow; visible hopper fill.
+6. PQ-130.06 Hover as instrument — cursor lens beside the pointer; context bay deleted.
+7. PQ-130.07 The sim speaks — every event on the board per law §5; ledger becomes a silent drawer.
+8. PQ-130.08 The mine's voice — own soundscape per law §8; music bus not zeroed on this screen.
+9. PQ-130.09 Build like chess — earned palette keys; ghost placement with valid-face glow and why-glyphs.
+10. PQ-130.10 The site reads — cables/lanes/lamps/want-chips/port crates/courier launch; site-zoom return.
 
-Stay off hitch renderer files, Hitch/Kestrel, Waves 1–4. No camera-facing soft squares. No quality cuts.
+Stay off hitch renderer files, Hitch/Kestrel, Waves 1-4 sim (formations/thermal/signature/cluster), courier economy, claim persistence. No camera-facing soft squares. No quality cuts.
 
-Each leaf: play tether → Asteroid Works at a normal window. Whole-theater stills, not cube crops. check:playable after implementation. Commit only that leaf, then the next.
+Each leaf: play tether -> Asteroid Works at a normal window. Whole-theater stills, not cube crops. Prove the law §11 invariants that apply. check:playable after implementation. Commit only that leaf, then the next.
 
-RESULT: DONE when a stranger sees the rock first, can tell cells apart without the context bay, finds the rover, moves it one cell on purpose, and the leftover chrome looks like a dashboard they would touch.
+RESULT: DONE when a stranger sees warm rock and a vehicle first, tells ore/gas/stone apart with the lens closed, moves one cell on purpose, hears the mine, and the leftover chrome is friendly field equipment they would touch — not a gray console.
 ```
 
 ## Prompt A0 — overnight / “the work in the build map” / non-INFERENCE

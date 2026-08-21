@@ -2,7 +2,22 @@
 
 **Status:** governing vision doc, 2026-07-17. Extends `design/ASTEROID_SITES_BRIEF.md` (the
 shipped contact-ring feature) into the full automation-strategy arc. Companion doc:
-`design/ASTEROID_OPS_UI_BRIEF.md` (the operator console that hosts all of this).
+`design/ASTEROID_OPS_UI_BRIEF.md` (the operator console that hosts all of this — its visual
+voice is void as of 2026-08-20; see below).
+
+**2026-08-20 owner design session addendum** (presentation + framing; the law stack here
+stands): the refactor's binding design is
+[`ASTEROID_WORKS_DESIGN_LAW.md`](./ASTEROID_WORKS_DESIGN_LAW.md). Three deltas to this file:
+**(1) Fog of war is removed** — "survey fog-of-war" below and Wave 1's "survey reveals
+extent" are superseded; every cell's material is visible from the first frame, and
+prospecting depth comes from geometry (law 2/formations), not information hiding.
+**(2) Wave 0's "reserves visible slots for every later wave" is void** — instruments mount
+only when they first have data (empty reserved bays are what the owner rejected).
+**(3) The economic frame is sharpened into the money ladder** — laser skim < drill runs <
+farming < refining < drone export, each a strictly higher income slope, with endgame ship
+prices tuned to meet the drone-field curve; imports become a designed complement
+(generation guarantees every asteroid lacks something; buildings cost a local majority +
+an imported minority hauled in the player's hull, later by two-way drones).
 
 ---
 
