@@ -1495,9 +1495,17 @@ export const traffic = {
       });
       canonicalSpec.homeSectorId = CERES_ACTIVITY_SECTOR_ID;
 
-      if (!entity) entity = this.helpers.spawnEntity(canonicalSpec);
+      const wasFresh = !entity;
+      if (wasFresh) entity = this.helpers.spawnEntity(canonicalSpec);
       if (!entity) continue;
-      this._rehydrateCeresActivityEntity(entity, canonicalSpec, entry, recordId);
+      if (wasFresh) {
+        // spawnEntity(makeShipEntitySpec(...)) already installed the canonical static, derived,
+        // fitting, weapon, combat, AI, cap, and boost graph. Recopying that entire fresh graph made
+        // first Ceres entry pay the restore/repair path twice; fresh bodies need only durable identity.
+        this._stampCeresActivityEntity(entity, canonicalSpec.data, entry, recordId);
+      } else {
+        this._rehydrateCeresActivityEntity(entity, canonicalSpec, entry, recordId);
+      }
       if (!service) this._assignCeresActivityJob(entity, entry);
 
       let trafficRecord = prior.find((candidate) => candidate && candidate.id === entity.id);
@@ -1583,6 +1591,11 @@ export const traffic = {
     });
     if (!data.combat) data.combat = { ...canonicalData.combat };
     data.ai = { ...(data.ai || {}), ...(canonicalData.ai || {}) };
+    this._stampCeresActivityEntity(entity, canonicalData, entry, recordId);
+  },
+
+  _stampCeresActivityEntity(entity, canonicalData, entry, recordId) {
+    const data = entity.data || (entity.data = {});
     data.factionId = canonicalData.factionId;
     data.team = canonicalData.team;
     data.trafficRole = entry.slot.presentationRole || 'hauler';

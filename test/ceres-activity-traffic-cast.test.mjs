@@ -457,6 +457,26 @@ test('fresh Ceres entry replaces random ambient traffic with the exact stable 7+
   assert.equal(harness.emitted.length, 0, 'cast materialization and one service step emit no economy/job receipts');
 });
 
+test('fresh Ceres bodies use the constructor graph while repeated entry retains full repair', () => {
+  const harness = boot();
+  const rehydrate = harness.system._rehydrateCeresActivityEntity;
+  let rehydrateCalls = 0;
+  harness.system._rehydrateCeresActivityEntity = function (...args) {
+    rehydrateCalls++;
+    return rehydrate.apply(this, args);
+  };
+
+  enterCeres(harness);
+  assert.equal(rehydrateCalls, 0, 'fresh constructor output is not recopied by the restore path');
+  assert.equal(authoredEntities(harness.state).length, 8);
+  assert.deepEqual(harness.rngDraws(), { state: 0, traffic: 0 });
+
+  enterCeres(harness);
+  assert.equal(rehydrateCalls, 8, 'every adopted body still receives the full repair path');
+  assert.equal(authoredEntities(harness.state).length, 8);
+  assertExactAuthoredJobs(harness);
+});
+
 test('repeated Ceres entry and save-loaded adopt the same bodies without healing live state', () => {
   const harness = boot();
   enterCeres(harness);
