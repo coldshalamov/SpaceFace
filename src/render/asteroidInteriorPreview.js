@@ -992,6 +992,96 @@ export function makeMkStampGeo() {
   return geo;
 }
 
+// ---------------------------------------------------------------- PQ-130.07 event geometry
+// Law §5 events are OBJECTS in the scene, not sprites drawn over it (§2.7 "no cartoon"). The three
+// geometries below are the new bodies the events need; everything else the events use already
+// exists (chunks, the vented scar, the MK stamp, the rover's hopper lid).
+
+// A VAPOR PUFF — the gas that floods the tunnel after a pocket lets go. Deliberately a solid lobed
+// body with real normals, not a billboard: it is rendered with a LIT material so the work light and
+// the cool starlight fill rake across it exactly as they rake across the rock beside it. An
+// additive sprite here would read as the neon halo the law bans.
+export function makeVaporPuffGeo(variant = 0) {
+  const rnd = (i, salt) => hash2(i * 37 + variant * 23 + 5, salt * 11 + variant + 2);
+  const lobes = [
+    { p: [0, 0, 0], s: 0.5 },
+    { p: [0.31, 0.16, 0.05], s: 0.33 },
+    { p: [-0.27, 0.21, -0.04], s: 0.30 },
+    { p: [0.08, -0.26, 0.06], s: 0.28 },
+  ];
+  const parts = lobes.map((L, li) => {
+    const geo = new THREE.IcosahedronGeometry(L.s, 1);
+    const pos = geo.attributes.position;
+    const v = new THREE.Vector3();
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i);
+      const j = 1 + (rnd(i * 3 + li * 17, li + 1) - 0.5) * 0.5;
+      pos.setXYZ(i, v.x * j, v.y * j, v.z * j);
+    }
+    geo.computeVertexNormals();
+    geo.translate(
+      L.p[0] + (rnd(li, 7) - 0.5) * 0.1,
+      L.p[1] + (rnd(li, 8) - 0.5) * 0.1,
+      L.p[2],
+    );
+    return geo;
+  });
+  return mergeGeometries(parts.map((g) => (g.index ? g.toNonIndexed() : g)), false);
+}
+
+// A SCORCH PLATE for the rover's flank — law §5 "a visible scar/chip on the rover". Not a decal
+// quad: a thin blistered plate with a raised lip, so the key light finds the buckled edge and the
+// damage reads as sheet metal that took a blast rather than a dark sticker. Unit-cell local; the
+// caller scales it onto the hull.
+export function makeScorchPlateGeo(variant = 0) {
+  const rnd = (i, salt) => hash2(i * 41 + variant * 29 + 3, salt * 13 + variant + 6);
+  const parts = [];
+  // buckled skin: overlapping shallow slabs at slightly different tilts
+  for (let i = 0; i < 5; i++) {
+    const w = 0.22 + rnd(i, 1) * 0.2;
+    const h = 0.18 + rnd(i, 2) * 0.16;
+    const slab = new THREE.BoxGeometry(w, h, 0.03 + rnd(i, 3) * 0.02);
+    slab.rotateZ((rnd(i, 4) - 0.5) * 0.7);
+    slab.rotateX((rnd(i, 5) - 0.5) * 0.35);
+    slab.translate((rnd(i, 6) - 0.5) * 0.42, (rnd(i, 7) - 0.5) * 0.4, 0.012);
+    parts.push(slab);
+  }
+  // a torn lip standing proud on one side — the edge that caught the pressure
+  const lip = new THREE.BoxGeometry(0.4, 0.05, 0.07);
+  lip.rotateZ(0.24);
+  lip.translate(-0.1, 0.22, 0.035);
+  parts.push(lip);
+  return mergeGeometries(parts.map((g) => (g.index ? g.toNonIndexed() : g)), false);
+}
+
+// THE COURIER POD (law §5 "pod visibly slides up the shaft, clears the surface"). A stubby freight
+// canister: nose cone, ribbed barrel, three fins and a tail skirt. Built in cell-local units and
+// scaled by the caller so it reads at both zoom registers.
+export function makeCourierPodGeo() {
+  const parts = [];
+  const barrel = new THREE.CylinderGeometry(0.15, 0.16, 0.46, 12, 1);
+  parts.push(barrel);
+  const nose = new THREE.ConeGeometry(0.15, 0.2, 12);
+  nose.translate(0, 0.33, 0);
+  parts.push(nose);
+  for (let i = 0; i < 3; i++) {
+    const rib = new THREE.TorusGeometry(0.158, 0.016, 6, 14);
+    rib.rotateX(Math.PI / 2);
+    rib.translate(0, -0.14 + i * 0.14, 0);
+    parts.push(rib);
+  }
+  for (let i = 0; i < 3; i++) {
+    const fin = new THREE.BoxGeometry(0.02, 0.16, 0.13);
+    fin.translate(0, -0.19, 0.14);
+    fin.rotateY((i / 3) * Math.PI * 2);
+    parts.push(fin);
+  }
+  const skirt = new THREE.CylinderGeometry(0.11, 0.13, 0.08, 12, 1);
+  skirt.translate(0, -0.27, 0);
+  parts.push(skirt);
+  return mergeGeometries(parts.map((g) => (g.index ? g.toNonIndexed() : g)), false);
+}
+
 // ---------------------------------------------------------------- rover construction helpers
 // One BufferGeometry welded from a set of transformed boxes. Panel clusters that never move
 // relative to one another — hazard chevrons, the hopper cage, the auger flighting, a load layer —

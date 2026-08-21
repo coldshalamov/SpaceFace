@@ -398,17 +398,11 @@ try {
   if (!carved.ok) throw new Error('gallery carve failed: ' + carved.reason);
   await page.waitForTimeout(400);
 
-  // Build mode + extractor ghost: the contact-ring preview is the teaching moment — photograph it.
+  // Build mode + the FIRST ghost a player ever sees. PQ-130.09 made the palette earned (law §6.3):
+  // on a rock with no Core there is no palette and no key to press, because there is exactly one
+  // legal build — so B arms the Massline Core implicitly and this frame is the Core's ghost with
+  // its contact ring. The extractor ghost with the palette up is 09-palette.png below.
   await page.keyboard.press('KeyB');
-  await page.keyboard.press('Digit2'); // extractor in the palette
-  await page.evaluate(() => {
-    const sf = window.SF;
-    // Park the build cursor on the planned extractor cell.
-    const screen = document.querySelector('.ast-screen');
-    if (!screen) return;
-    // cursor is controller state — reach it through a synthetic arrow walk instead of internals:
-    void sf;
-  });
   // Walk the cursor from the rover cell (14,2) one step left to (13,2).
   await page.keyboard.press('ArrowLeft');
   await page.waitForTimeout(700);
@@ -464,12 +458,353 @@ try {
   await page.waitForTimeout(1400);
   await shot('03-site-running.png');
 
+  // PQ-130.07 law §5 "Machine starved/unpowered": the housing goes dark and a small GOLD WANT CHIP
+  // floats above it carrying the missing input's swatch (or a power bolt) — a colour, never a word,
+  // so a stalled site cannot spend the screen's 15-word budget. Report what the running site is
+  // actually saying; a site with nothing wrong has nothing to draw and that is not a defect.
+  {
+    const want = await page.evaluate(() => {
+      const hook = document.querySelector('.ast-canvas').__ast3d;
+      const sf = window.SF;
+      const proj = sf.ctx.asteroidSites.projection ? sf.ctx.asteroidSites.projection('site_1') : null;
+      const states = proj && proj.machines
+        ? proj.machines.map((m) => `${m.defId || m.id}:${(m.status && m.status.state) || '?'}`
+          + `${m.status && m.status.limit ? `(${m.status.limit})` : ''}`)
+        : [];
+      const site = sf.ctx.asteroidSites.getSite('site_1');
+      const FAULT = ['no-power', 'starved'];
+      let at = null;
+      if (proj && proj.machines) {
+        for (const pm of proj.machines) {
+          if (!pm.status || !FAULT.includes(pm.status.state)) continue;
+          const m = site.machines.find((x) => x.id === pm.id);
+          if (m) { at = { col: m.col, row: m.row, state: pm.status.state, limit: pm.status.limit }; break; }
+        }
+      }
+      return { chips: hook ? hook.fx().wantChips : -1, states, at };
+    });
+    console.log(`03-site-running.png: want chips ${want.chips} · machines [${want.states.join(', ')}]`);
+    // Law §5 "Machine starved/unpowered" — park the rig beside the machine that is waiting so the
+    // gold want chip is actually IN a frame. A chip nobody photographed is a chip nobody has seen.
+    if (want.at) {
+      await page.evaluate((at) => {
+        const d = window.SF.state.drill;
+        const N4 = [[0, -1], [1, 0], [-1, 0], [0, 1]];
+        for (const [dc, dr] of N4) {
+          const c = at.col + dc, r = at.row + dr;
+          const t = d.field[c] && d.field[c][r];
+          if (!t || t.type !== 'empty' || t.structure) continue;
+          d.avatar.col = c; d.avatar.row = r;
+          d.avatar.fromCol = c; d.avatar.fromRow = r;
+          d.avatar.moveDuration = 0; d.avatar.moveElapsed = 0;
+          d.avatar.faceDir = dr < 0 ? 'down' : (dr > 0 ? 'up' : (dc < 0 ? 'right' : 'left'));
+          return;
+        }
+      }, want.at);
+      await page.waitForTimeout(3200);          // camera leash
+      const chips = await page.evaluate(() => document.querySelector('.ast-canvas').__ast3d.fx().wantChips);
+      await shot('10e-want-chip.png');
+      console.log(`10e-want-chip.png: ${want.at.state}(${want.at.limit}) at ${want.at.col},${want.at.row}`
+        + ` · ${chips} chip(s) on the glass`);
+      if (!(chips > 0)) failures.push('10e-want-chip.png: the starved machine asked for nothing');
+    } else {
+      console.log('03-site-running.png: no machine is starved or unpowered — no want chip to photograph');
+    }
+  }
+
   // The same instrument over a MACHINE: status lamp + one cause line + the 3x3 contact ring
   // inside the card (law §6.4), instead of a swatch and consequence chips. The camera leash eases
   // at <= 6 cells/s and the deep frame parked the rover ~30 rows away, so give it time to arrive
   // or the extractor is still off-glass when the pointer goes looking for it.
   await page.waitForTimeout(4000);
   await hoverStill({ col: 13, row: 2 }, '08b-lens-machine.png'); // the extractor: uses geology, so the ring draws
+
+  // ---------------------------------------------------------------- PQ-130.09 the earned palette
+  // The row only exists because this rock now owns a Core. Photograph it doing its job: build mode
+  // live, one key armed in gold, the ghost seated on a real cell, and a hover tip carrying the
+  // name that is deliberately absent from the glass the rest of the time (law §2.5).
+  // The build cursor follows the pointer in build mode, so park it by pointing at a real cell
+  // rather than counting arrow presses from an assumed origin — a stray mousemove over the board
+  // (say, on the way to a palette key) would silently re-seat an arrow-walked cursor.
+  const aimCell = async (col, row) => {
+    const at = await page.evaluate(({ c, r }) => {
+      const hook = document.querySelector('.ast-canvas')?.__ast3d;
+      const q = hook && hook.projectCell(c, r);
+      if (!q) return null;
+      const xs = q.map((k) => k.x); const ys = q.map((k) => k.y);
+      return {
+        x: Math.round((Math.min(...xs) + Math.max(...xs)) / 2),
+        y: Math.round((Math.min(...ys) + Math.max(...ys)) / 2),
+      };
+    }, { c: col, r: row });
+    if (!at) return false;
+    await page.mouse.move(at.x - 6, at.y - 6);
+    await page.mouse.move(at.x, at.y);
+    await page.waitForTimeout(250);
+    return true;
+  };
+
+  await page.keyboard.press('KeyB');            // drive -> build
+  await page.keyboard.press('Digit1');          // first earned key (the Core's key is gone: unique)
+  if (!await aimCell(14, 3)) failures.push('09-palette.png: cell 14,3 is off glass');
+  await page.waitForTimeout(300);
+  const keyBox = await page.evaluate(() => {
+    const keys = [...document.querySelectorAll('.ast-screen .aw-palette .aw-build-key')];
+    const armed = keys.find((k) => k.dataset.keyState === 'armed') || keys[0];
+    if (!armed) return null;
+    const r = armed.getBoundingClientRect();
+    return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2),
+      id: armed.dataset.itemId, count: keys.length,
+      states: keys.map((k) => `${k.dataset.itemId}:${k.dataset.keyState}`) };
+  });
+  if (!keyBox) failures.push('09-palette.png: the build palette never mounted after the Core');
+  else {
+    // Reach the key from CHROME, never across the board: any mousemove landing on the canvas
+    // re-seats the build cursor, and the ghost would quietly leave the cell this still is about.
+    await page.mouse.move(Math.round(VIEWPORT.width / 2), 8);
+    await page.mouse.move(keyBox.x, keyBox.y);   // hover the armed key: its name tip opens
+    await page.waitForTimeout(350);
+    await shot('09-palette.png');
+    console.log(`09-palette.png: ${keyBox.count} keys [${keyBox.states.join(', ')}]`);
+    // The refusal channel for this leaf (law §6.7 "placement never fails silently"): step the
+    // cursor onto an installed machine and photograph the lens ghost card saying so.
+    if (!await aimCell(13, 3)) failures.push('09b-ghost-blocked.png: cell 13,3 is off glass');
+    await page.waitForTimeout(400);
+    const blocked = await page.evaluate(() => {
+      const el = document.querySelector('.aw-lens');
+      if (!el || el.hidden) return null;
+      return {
+        name: el.querySelector('.aw-lens-name')?.textContent || '',
+        chips: [...el.querySelectorAll('.aw-lens-chip')].map((c) => c.textContent.replace(/\s+/g, ' ').trim()),
+        body: el.querySelector('.aw-lens-body')?.textContent || '',
+      };
+    });
+    await shot('09b-ghost-blocked.png');
+    if (!blocked) failures.push('09b-ghost-blocked.png: the ghost card never appeared on the blocked cell');
+    else console.log(`09b-ghost-blocked.png: "${blocked.name}" chips [${blocked.chips.join(', ')}] body "${blocked.body}"`);
+
+    // The third key state (law §6.3 "unaffordable": flat --aw-surface, ink-3 glyph, hover shows the
+    // short amount in coral) never appears in a capture stocked with a full haul — so empty one
+    // input the fabricator needs, photograph the key, and put it straight back. Without this the
+    // state is asserted headlessly and has never been LOOKED at.
+    const poorGoods = await page.evaluate(() => {
+      const items = window.SF.state.player.cargo.items;
+      const held = Math.floor(Number(items.cmdty_electronics) || 0);
+      items.cmdty_electronics = 0;
+      return held;
+    });
+    await page.waitForTimeout(400);                 // the palette re-prices on the HUD cadence
+    const poorKey = await page.evaluate(() => {
+      const k = document.querySelector('.ast-screen .aw-palette [data-item-id="sm_fabricator"]');
+      if (!k) return null;
+      const r = k.getBoundingClientRect();
+      return {
+        state: k.dataset.keyState,
+        cost: k.querySelector('.aw-build-tip-cost')?.textContent || '',
+        x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2),
+      };
+    });
+    if (!poorKey || poorKey.state !== 'unaffordable') {
+      failures.push(`09c-palette-unaffordable.png: the fabricator key did not go unaffordable (${poorKey ? poorKey.state : 'no key'})`);
+    } else {
+      await page.mouse.move(Math.round(VIEWPORT.width / 2), 8);
+      await page.mouse.move(poorKey.x, poorKey.y);  // hover reveals the coral shortfall
+      await page.waitForTimeout(350);
+      await shot('09c-palette-unaffordable.png');
+      console.log(`09c-palette-unaffordable.png: fabricator ${poorKey.state} — cost chip "${poorKey.cost}"`);
+    }
+    await page.evaluate((held) => {
+      window.SF.state.player.cargo.items.cmdty_electronics = held;
+    }, poorGoods);
+    await page.mouse.move(Math.round(VIEWPORT.width / 2), 8);
+    await page.waitForTimeout(300);
+  }
+  await page.keyboard.press('Escape');           // build -> drive
+  await page.waitForTimeout(400);
+
+  // ---------------------------------------------------------------- PQ-130.07 "the sim speaks"
+  // Law §5 is a table of TIMED expressions — a 250ms arc, a 180ms kick, a 400ms vignette, a 300ms
+  // skate. Every one of them has expired long before the 3.2s the framing stills wait, so each
+  // frame below is shot ~110-140ms after its own trigger: late enough that the expression has
+  // drawn, early enough that it is still on the glass. A still taken later photographs an empty
+  // board and proves nothing.
+  const seatRover = async (want) => page.evaluate((w) => {
+    const sf = window.SF;
+    const st = sf.state;
+    const d = st.drill;
+    const COLS = d.field.length;
+    const ROWS = d.field[0].length;
+    const inb = (c, r) => c >= 0 && c < COLS && r >= 0 && r < ROWS;
+    const N4 = [[0, 1], [1, 0], [-1, 0], [0, -1]];
+    const tierOf = (t) => (t && t.tierReq) || 1;
+    const playerTier = (() => {
+      const beam = st.player.miningBeam;
+      if (!beam) return 1;
+      if (beam.tierId === 'beam_industrial') return 4;
+      if (beam.tierId === 'beam_mk3') return 3;
+      if (beam.tierId === 'beam_mk2') return 2;
+      return 1;
+    })();
+    // find a target cell of the wanted kind with a hollow-able neighbour to park the rig in
+    let best = null;
+    for (let c = 0; c < COLS; c++) {
+      for (let r = 4; r < ROWS; r++) {
+        const t = d.field[c][r];
+        if (!t) continue;
+        if (w.kind === 'gas' && t.type !== 'gas') continue;
+        if (w.kind === 'vein' && (t.type !== 'vein' || !t.ore || tierOf(t) > playerTier)) continue;
+        if (w.kind === 'locked' && (t.type !== 'vein' || !t.ore || tierOf(t) <= playerTier)) continue;
+        for (const [dc, dr] of N4) {
+          // dr === 1 parks the rig BELOW the target, which aims the boom UP — and drill.js refuses
+          // an upward bore outright (it returns before the tier gate), so a locked face above the
+          // rig can never produce the refusal this still is meant to photograph.
+          if (dr === 1) continue;
+          const nc = c + dc, nr = r + dr;
+          if (!inb(nc, nr) || nr < 3) continue;
+          const nt = d.field[nc][nr];
+          if (!nt || nt.type === 'gas') continue;         // never park in a pocket
+          const score = (nt.type === 'empty' ? 8 : 0) + (ROWS - r);
+          if (!best || score > best.score) best = { score, tc: c, tr: r, rc: nc, rr: nr, ore: t.ore || null };
+        }
+      }
+    }
+    if (!best) return { ok: false, reason: `no ${w.kind} cell with a rover socket` };
+    // carve the socket through the real break path so the renderer sees the same hole the sim has
+    const ent = st.entities.get(d.asteroidId);
+    if (d.field[best.rc][best.rr].type !== 'empty') {
+      const was = d.field[best.rc][best.rr].type;
+      d.field[best.rc][best.rr] = { type: 'empty', hp: 0, maxHp: 0, ore: null, hazard: false, tierReq: 1, hardness: 0 };
+      if (ent && ent.data) {
+        if (!Array.isArray(ent.data.drillCleared)) ent.data.drillCleared = [];
+        const idx = best.rr * COLS + best.rc;
+        if (!ent.data.drillCleared.includes(idx)) ent.data.drillCleared.push(idx);
+      }
+      sf.bus.emit('drill:break', { col: best.rc, row: best.rr, type: was, ore: null, wasVein: false, wasGas: false });
+    }
+    d.avatar.col = best.rc; d.avatar.row = best.rr;
+    d.avatar.fromCol = best.rc; d.avatar.fromRow = best.rr;
+    d.avatar.moveDuration = 0; d.avatar.moveElapsed = 0;
+    d.moveCooldown = 0;          // drill.js throttles its warn on this; a warm rig would say nothing
+    d.drillTemp = 0;
+    d.overheated = false;
+    d.energyDepleted = false;
+    d.avatar.faceDir = best.tr > best.rr ? 'down' : (best.tr < best.rr ? 'up'
+      : (best.tc > best.rc ? 'right' : 'left'));
+    return { ok: true, ...best, dir: d.avatar.faceDir };
+  }, want);
+
+  const fxOf = () => page.evaluate(() => {
+    const hook = document.querySelector('.ast-canvas').__ast3d;
+    return hook ? { fx: hook.fx(), ev: hook.events(), kickPx: hook.kickPx(), vig: hook.vignette() } : null;
+  });
+
+  // --- 10-yield.png: 3-5 lit chunks mid-arc between the cell and the hopper, gold floater rising.
+  {
+    const seat = await seatRover({ kind: 'vein' });
+    if (!seat.ok) failures.push(`10-yield.png: ${seat.reason}`);
+    else {
+      await page.waitForTimeout(2400);            // camera leash settles on the new berth
+      await page.evaluate((s) => {
+        window.SF.bus.emit('drill:yield', { commodityId: s.ore, qty: 4, pos: { col: s.tc, row: s.tr } });
+      }, seat);
+      await page.waitForTimeout(140);             // ~55% through the 250ms arc
+      const st = await fxOf();                   // READ FIRST: encoding the png costs ~1s, and
+      await shot('10-yield.png');                // every §5 expression is shorter than that
+      console.log(`10-yield.png: aim ${seat.tc},${seat.tr} ${seat.ore} · chunks in flight ${st.fx.oreChunks}`
+        + ` · floaters ${st.fx.floaters} · yields ${st.ev.yields}`);
+      if (!st.fx.oreChunks) failures.push('10-yield.png: nothing was in flight to the hopper');
+      if (!st.fx.floaters) failures.push('10-yield.png: no gold floater rose off the cell');
+      await page.waitForTimeout(900);             // let the payout land before the next frame
+    }
+  }
+
+  // --- 10b-gas-breach.png: the eruption — cell flash, vapor in the tunnel, coral edge vignette,
+  //     and a live camera kick. The break is emitted with the payload the SCREEN actually forwards
+  //     ({col,row} only), so this frame also proves the renderer derives "this was gas" itself.
+  {
+    const seat = await seatRover({ kind: 'gas' });
+    if (!seat.ok) failures.push(`10b-gas-breach.png: ${seat.reason}`);
+    else {
+      await page.waitForTimeout(2400);
+      await page.evaluate((s) => {
+        const sf = window.SF;
+        const d = sf.state.drill;
+        const COLS = d.field.length;
+        const ent = sf.state.entities.get(d.asteroidId);
+        d.field[s.tc][s.tr] = { type: 'empty', hp: 0, maxHp: 0, ore: null, hazard: false, tierReq: 1, hardness: 0 };
+        if (ent && ent.data) {
+          if (!Array.isArray(ent.data.drillCleared)) ent.data.drillCleared = [];
+          const idx = s.tr * COLS + s.tc;
+          if (!ent.data.drillCleared.includes(idx)) ent.data.drillCleared.push(idx);
+        }
+        sf.bus.emit('drill:break', { col: s.tc, row: s.tr });   // exactly what asteroidScreen sends
+      }, seat);
+      await page.waitForTimeout(120);             // inside the 150ms flash and the 180ms kick
+      const st = await fxOf();
+      await shot('10b-gas-breach.png');
+      console.log(`10b-gas-breach.png: pocket ${seat.tc},${seat.tr} · vapor ${st.fx.vapor}`
+        + ` · kick ${st.kickPx.toFixed(2)}px · vignette ${st.vig.alpha.toFixed(2)} (full=${st.vig.full})`
+        + ` · scars ${st.fx.roverScars}/${st.fx.ventedScars} · breaches ${st.ev.gasBreaches}`);
+      if (!st.ev.gasBreaches) failures.push('10b-gas-breach.png: the breach was never expressed');
+      if (!(st.kickPx > 0)) failures.push('10b-gas-breach.png: law §11.8 wants a nonzero camera kick');
+      if (!(st.vig.alpha > 0)) failures.push('10b-gas-breach.png: no coral edge vignette');
+      if (st.vig.full) failures.push('10b-gas-breach.png: the vignette covers the whole glass (law §9: never a modal)');
+      if (!st.fx.vapor) failures.push('10b-gas-breach.png: no vapor flooded the tunnel');
+      await page.waitForTimeout(1500);
+    }
+  }
+
+  // --- 10c-refusal.png: the MK gate. Driven through the REAL keyboard against a real locked vein,
+  //     so what the frame proves is that drill.js's tier branch reaches the board at all.
+  {
+    const seat = await seatRover({ kind: 'locked' });
+    if (!seat.ok) console.log(`10c-refusal.png: skipped — ${seat.reason}`);
+    else {
+      await page.waitForTimeout(2400);
+      const KEY = { down: 'ArrowDown', up: 'KeyI', left: 'ArrowLeft', right: 'ArrowRight' }[seat.dir];
+      await page.keyboard.down(KEY);
+      await page.waitForTimeout(170);             // inside the 300ms skate, past the stamp's onset
+      const st = await fxOf();
+      const rig = await page.evaluate(() => {
+        const d = window.SF.state.drill;
+        return {
+          blocked: !!d.avatar.drillBlocked, target: d.avatar.drillTarget,
+          overheated: !!d.overheated, energyDepleted: !!d.energyDepleted,
+          heat: Math.round(d.drillTemp || 0), energy: Math.round(d.energy || 0),
+          tier: window.SF.ctx.registry.get('drill').getDrillTier(),
+        };
+      });
+      await page.keyboard.up(KEY);      // release BEFORE the ~1s png encode, or the rig is still
+      await shot('10c-refusal.png');    // leaning on a locked face for a second of wall clock
+      console.log(`10c-refusal.png rig: ${JSON.stringify(rig)}`);
+      console.log(`10c-refusal.png: locked ${seat.tc},${seat.tr} ${seat.ore} from ${seat.dir}`
+        + ` · refusals ${st.ev.refusals} (suppressed ${st.ev.refusalsSuppressed})`
+        + ` · sparks left ${st.fx.skateLeft} · stamp ${st.fx.mkStamp.toFixed(2)}`);
+      if (!st.ev.refusals) failures.push('10c-refusal.png: the locked face never refused on the board');
+      if (!(st.fx.mkStamp > 0)) failures.push('10c-refusal.png: the MK stamp never faded in');
+      // …and the 5s repeat rule (law §5). drill.js throttles its own warn for 1.2s, so the
+      // second attempt has to clear THAT before it can test the renderer's rule — press again at
+      // 1.5s, still well inside the 5s window, and require a real suppression rather than silence.
+      await page.waitForTimeout(1500);
+      await page.evaluate(() => { window.SF.state.drill.moveCooldown = 0; });
+      await page.keyboard.down(KEY);
+      await page.waitForTimeout(260);
+      const again = await fxOf();
+      const rig2 = await page.evaluate(() => {
+        const d = window.SF.state.drill;
+        return { blocked: !!d.avatar.drillBlocked, cd: Number((d.moveCooldown || 0).toFixed(2)) };
+      });
+      await page.keyboard.up(KEY);
+      console.log(`10c-refusal.png retry rig: ${JSON.stringify(rig2)}`);
+      if (again.ev.refusals > st.ev.refusals) {
+        failures.push('10c-refusal.png: an identical refusal within 5s replayed its full effect (law §5)');
+      } else if (again.ev.refusalsSuppressed <= st.ev.refusalsSuppressed) {
+        failures.push('10c-refusal.png: the repeat rule was never exercised — the second attempt never reached it');
+      } else {
+        console.log(`10c-refusal.png: repeat rule holds — ${again.ev.refusalsSuppressed} suppressed`);
+      }
+    }
+  }
 
   // Site register (law §4 two-register camera): whole-body silhouette against space.
   await page.keyboard.press('KeyZ');
@@ -496,6 +831,55 @@ try {
       player.vel.x = 0; player.vel.z = 0;
     }
   });
+  // PQ-130.07 law §5 "Courier launch": from INSIDE the rock the pod has to be seen leaving —
+  // sliding up the entry shaft and clearing the surface. The sim never tells the renderer (the
+  // screen keeps `site:courierLaunched` for its ledger), so the renderer watches fleet.launches;
+  // this frame is the proof that watch fires and that the pod is on the glass while it does.
+  // RECORDED GAP, not a defect of this leaf: the works screen pauses the world sim (base.js sets
+  // timeScale 0; asteroidSites.projection's own doc-comment says so), so site production — and with
+  // it `_tryLaunch` — cannot advance while the player is inside the rock. A courier therefore never
+  // departs on its own during a works session in this build, and the launch above only resolves
+  // after the retract below. What the renderer OWNS is the watch on `fleet.launches` and the climb
+  // it drives, so that is what this frame stages and proves.
+  {
+    // The pod climbs the ENTRY SHAFT and the camera is leashed to the rover, so park the rig back
+    // at the top of its own shaft first — otherwise the departure happens ten columns off-glass.
+    await page.evaluate(() => {
+      const d = window.SF.state.drill;
+      const col = Math.floor(d.field.length / 2);
+      let row = 0;
+      for (let r = 0; r < d.field[col].length; r++) {
+        if (d.field[col][r] && d.field[col][r].type === 'empty') { row = r; break; }
+      }
+      d.avatar.col = col; d.avatar.row = row;
+      d.avatar.fromCol = col; d.avatar.fromRow = row;
+      d.avatar.moveDuration = 0; d.avatar.moveElapsed = 0;
+      d.avatar.faceDir = 'down';
+    });
+    await page.waitForTimeout(3200);              // the camera leash eases at <= 6 cells/s
+    await page.evaluate(() => {
+      const site = window.SF.ctx.asteroidSites.getSite('site_1');
+      site.fleet.launches = (Number(site.fleet.launches) || 0) + 1;   // the exact signal the renderer watches
+    });
+    const flew = await page.waitForFunction(() => {
+      const c = document.querySelector('.ast-canvas');
+      const h = c && c.__ast3d;
+      return h && h.fx().podFlight >= 0 ? { t: h.fx().podFlight } : false;
+    }, null, { timeout: 8000 }).then((h) => h.jsonValue()).catch(() => null);
+    if (!flew) failures.push('10d-courier.png: no pod climbed the shaft after a launch');
+    else {
+      // photograph it CLEARING the crust, which is the half of the climb the law names
+      await page.waitForFunction(() => {
+        const h = document.querySelector('.ast-canvas').__ast3d;
+        return h.fx().podFlight < 0 || h.fx().podFlight > 0.87;
+      }, null, { timeout: 4000 }).catch(() => {});
+      const st = await page.evaluate(() => document.querySelector('.ast-canvas').__ast3d.fx());
+      await shot('10d-courier.png');
+      console.log(`10d-courier.png: pod climb ${(st.podFlight * 100).toFixed(0)}% of the shaft`);
+      if (!(st.podFlight > 0)) failures.push('10d-courier.png: the pod was parked by the time it was photographed');
+    }
+  }
+
   await page.keyboard.press('Escape');
   await page.waitForFunction(() => !window.SF.state.drill, null, { timeout: 10000 });
   await page.waitForFunction(() => {

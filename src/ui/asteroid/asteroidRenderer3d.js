@@ -36,7 +36,7 @@ import * as THREE from 'three';
 import { hash32 } from '../../core/rng.js';
 import { DRILL_CONST, tileIndex, avatarDrawPos, drillTierReqForOre } from '../../systems/drill.js';
 import { connectivityMask } from '../../systems/siteLogistics.js';
-import { spawnParticleBurst, stepParticles, drillGasShakeOffset } from '../screens/drill.js';
+import { spawnParticleBurst, stepParticles } from '../screens/drill.js';
 import { ORE_TINTS, STATUS_COLORS } from './asteroidRenderer2d.js';
 import { createBloom } from '../../render/bloom.js';
 import {
@@ -47,6 +47,7 @@ import {
   makeCellBlockGeos, makeOreClusterGeo, makeGasVaporGeo,
   makeMetalVeinGeo, makeIceSheenGeo, makeExoticLatticeGeo, makeRadialCrackGeos,
   makeGasCoreGeo, makeVentedScarGeo, makeBasaltBandGeo, makeMkStampGeo,
+  makeVaporPuffGeo, makeScorchPlateGeo, makeCourierPodGeo,
 } from '../../render/asteroidInteriorPreview.js';
 
 const { COLS, ROWS, SCAN_RADIUS, SCAN_ACTIVE_S } = DRILL_CONST;
@@ -186,9 +187,15 @@ function injectOverlayStyle() {
   s.textContent = `
 .ast3d-overlay { position:absolute; inset:0; pointer-events:none; overflow:hidden; font-family:"Spline Sans Mono", ui-monospace, Consolas, monospace; }
 .ast3d-floater { position:absolute; transform:translate(-50%,-50%); font-size:13px; font-weight:500; color:#ffb648; text-shadow:0 1px 3px rgba(0,0,0,.8); white-space:nowrap; }
-.ast3d-flash-gas { position:absolute; inset:0; background:rgba(255,98,66,.4); opacity:0; }
-.ast3d-flash-cargo { position:absolute; inset:0; opacity:0;
-  background:linear-gradient(rgba(255,182,72,.34), rgba(255,182,72,0) 18%, rgba(255,182,72,0) 82%, rgba(255,182,72,.34)); }
+/* Law §9 "Damage: edge vignette + camera kick, never a modal". These are EDGE vignettes: the
+   centre of the glass — where the rock, the rig and the cut are — stays completely clear, and the
+   colour only gathers in the last third toward the frame. A full-bleed wash over the board reads
+   as a modal dimmer and hides the very thing the event is about. */
+.ast3d-vignette { position:absolute; inset:0; opacity:0; }
+.ast3d-flash-gas { background:radial-gradient(ellipse 55% 55% at 50% 50%,
+  rgba(255,98,66,0) 0%, rgba(255,98,66,0) 46%, rgba(255,98,66,.34) 82%, rgba(255,98,66,.66) 100%); }
+.ast3d-flash-cargo { background:radial-gradient(ellipse 58% 58% at 50% 50%,
+  rgba(255,182,72,0) 0%, rgba(255,182,72,0) 52%, rgba(255,182,72,.18) 84%, rgba(255,182,72,.38) 100%); }
 `;
   document.head.appendChild(s);
 }
@@ -664,20 +671,42 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   // cursor / ghost / ring shared bits
   // Aim/build affordances. These are the only drawn overlays left on the board, and they wear the
   // chrome palette (§3.2 gold / mint / coral) — never the old console cyan.
-  const frameMat = new THREE.MeshBasicMaterial({ color: 0xffb648, transparent: true, opacity: 0.8, depthTest: false });
+  // THE HOVER BOX. It used to be a 7px cyan frame at 80% — the loudest object on the board and
+  // the wrong hue twice over: §3.2 reserves `--aw-sky` cyan for MATERIAL FLOW, and the cursor is
+  // not flow, it is where your eye already is. It is now a hairline of `--aw-ink` bone at 55%,
+  // held to 1.5 SCREEN PIXELS at every zoom, over a soft inner shadow that seats the cell without
+  // drawing a second line. Build mode keeps its mint/coral verdict — that is .09's language.
+  const HOVER_INK = 0xf2e8d5;      // --aw-ink
+  const HOVER_ALPHA = 0.55;
+  const HOVER_PX = 1.5;
+  const frameMat = new THREE.MeshBasicMaterial({ color: HOVER_INK, transparent: true, opacity: HOVER_ALPHA, depthTest: false });
   const ringSolidMat = new THREE.MeshBasicMaterial({ color: 0x7cd9a2, transparent: true, opacity: 0.15, depthTest: false });
   const ringEmptyMat = new THREE.MeshBasicMaterial({ color: 0x8a7a66, transparent: true, opacity: 0.07, depthTest: false });
   const padOkMat = new THREE.MeshBasicMaterial({ color: 0x7cd9a2, transparent: true, opacity: 0.12, depthTest: false });
   const padBadMat = new THREE.MeshBasicMaterial({ color: 0xff6242, transparent: true, opacity: 0.15, depthTest: false });
   const cursorGroup = new THREE.Group();
+  const cursorBars = [];
+  const CURSOR_BAR_H = S * 0.06;   // the geometry's own thickness; scale.y solves the live pixels
   {
-    const bar = new THREE.BoxGeometry(S, S * 0.06, S * 0.02);
+    const bar = new THREE.BoxGeometry(S, CURSOR_BAR_H, S * 0.02);
     for (const [x, y, rz] of [[0, S / 2, 0], [0, -S / 2, 0], [S / 2, 0, Math.PI / 2], [-S / 2, 0, Math.PI / 2]]) {
       const b = new THREE.Mesh(bar, frameMat);
       b.position.set(x, y, 0);
       b.rotation.z = rz;
       cursorGroup.add(b);
+      cursorBars.push(b);
     }
+    // the inner shadow: a soft dark gather just inside the four edges. It gives the outline its
+    // seat in the rock without adding a second drawn line, which is what a 1.5px hairline needs to
+    // stay legible over a bright ore face and over dark basalt alike.
+    const innerShadow = new THREE.Mesh(cellQuad, new THREE.MeshBasicMaterial({
+      map: makeInnerShadowTexture(), transparent: true, opacity: 0.5,
+      depthTest: false, depthWrite: false, color: 0xffffff,
+    }));
+    innerShadow.position.z = -0.01;
+    innerShadow.scale.setScalar(0.995);   // cellQuad is already S x S
+    innerShadow.renderOrder = 29;
+    cursorGroup.add(innerShadow);
     cursorGroup.visible = false;
     cursorGroup.renderOrder = 30;
     fxRoot.add(cursorGroup);
@@ -814,9 +843,11 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   const chunkMesh = new THREE.InstancedMesh(chunkGeo, chunkMat, CHUNK_CAP);
   chunkMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   chunkMesh.count = 0;
+  chunkMesh.castShadow = true;    // real debris throws a real shadow (law §2.7)
   chunkMesh.frustumCulled = false;
   fxRoot.add(chunkMesh);
   let particles = [];
+
   // `depth` is optional: a burst that belongs to an OBJECT in the tunnel (the rover's coolant
   // vent) must composite at that object's depth, not on the face plane 3 world units nearer the
   // camera, or an additive chip reads as a bloom blob floating over the rock.
@@ -842,8 +873,78 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         life, maxLife: life,
         gravity: 190, kind: 'chunk', isChunk: true,
         rot: Math.random() * Math.PI, spin: (Math.random() - 0.5) * 11,
+        rx: Math.random() * Math.PI, ry: Math.random() * Math.PI,
       });
     }
+  }
+
+  // ---- PQ-130.07 spawners (law §5 timings) ----
+
+  // "3-5 chunk sprites pop from the cell (60-120ms apart), arc ~250ms into the hopper."
+  // Real lit debris on chunkMesh, released on a stagger and flown to wherever the hopper IS when
+  // each one lands — the target is re-read every frame, so driving away mid-payout still loads.
+  function spawnOreArc(px, py, hex, count) {
+    let delay = 0;
+    const c = new THREE.Color(hex);
+    for (let i = 0; i < count; i++) {
+      oreArcs.push({
+        delay,
+        t: 0,
+        x0: px + (Math.random() - 0.5) * TILE * 0.42,
+        y0: py + (Math.random() - 0.5) * TILE * 0.42,
+        c3: c.clone().multiplyScalar(0.72 + Math.random() * 0.5),
+        size: 6.4 + Math.random() * 3.6,
+        rot: Math.random() * Math.PI,
+        spin: (Math.random() - 0.5) * 13,
+        rx: Math.random() * Math.PI,
+        ry: Math.random() * Math.PI,
+        lift: 0.7 + Math.random() * 0.6,
+      });
+      delay += (motionReduce ? 0.03 : 0.06) + Math.random() * 0.06;   // law: 60-120ms apart
+    }
+  }
+
+  // "vapor floods adjacent tunnel cells ~1.2s" — seeded in the breached cell and in every hollow
+  // neighbour, because gas goes where there is room to go.
+  function spawnVapor(col, row) {
+    const seeds = [[col, row, 3]];
+    for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const c = col + dc, r = row + dr;
+      if (c < 0 || c >= COLS || r < 0 || r >= ROWS) continue;
+      const tile = field[c] && field[c][r];
+      if (!tile || tile.type !== 'empty') continue;      // only tunnel cells flood
+      seeds.push([c, r, 2]);
+    }
+    vaporT = 0;
+    for (const [c, r, n] of seeds) {
+      for (let i = 0; i < (motionReduce ? 1 : n); i++) {
+        if (vapors.length >= VAPOR_CAP) return;
+        vapors.push({
+          x: worldX(c) + (Math.random() - 0.5) * S * 0.55,
+          y: worldY(r) + (Math.random() - 0.5) * S * 0.55,
+          z: Z.rover + 0.1,
+          t: 0,
+          life: VAPOR_LIFE_S * (0.72 + Math.random() * 0.4),
+          scale: S * (0.17 + Math.random() * 0.16),
+          driftX: (Math.random() - 0.5) * S * 0.55,
+          driftY: (0.25 + Math.random() * 0.5) * S,
+          rot: Math.random() * Math.PI,
+          spin: (Math.random() - 0.5) * 1.1,
+          geo: (Math.random() * vaporGeos.length) | 0,
+        });
+      }
+    }
+  }
+
+  // "bit skates off with 6-10 sparks over 300ms" — metallic and warm, and STAGGERED across the
+  // 300ms rather than thrown in one puff, because a skate is the bit walking across the face.
+  function startSkate(px, py, hex) {
+    skate.t = SKATE_DUR_S;
+    skate.left = motionReduce ? 4 : 6 + ((Math.random() * 5) | 0);   // 6-10
+    skate.next = 0;
+    skate.x = px;
+    skate.y = py;
+    skate.hex = hex;
   }
 
   // rover — a vehicle, not a dot
@@ -958,14 +1059,154 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   let digGasHot = null;         // gas entry currently screaming under the bit
   let dustTimer = 0;
   let lastRevealCell = { col: -1, row: -1 };
-  const gasShake = { t: 0, elapsed: 0 };
   const timers = { gasFlash: 0, cargoFlash: 0 };
   let pulseEntries = [];        // [{mat, base, amp}] — rover + derrick
+
+  // ---------------------------------------------------------------- PQ-130.07 "the sim speaks"
+  // Law §5: every sim event gets a BOARD expression with the law's own timings, and none of them
+  // prints a text row. The state below is that whole table's working memory. Every entry has a
+  // reset line in begin() and dispose() — an event timer that survives a session re-entry replays
+  // somebody else's explosion.
+
+  // Camera kick — law §5 gas row: "camera kicks 4px for 180ms". FOUR SCREEN PIXELS: the offset is
+  // solved against the live px-per-world-unit every frame, so the kick is the same size at work
+  // zoom and at site zoom instead of scaling with the dolly. (The 8px/420ms curve exported by
+  // src/ui/screens/drill.js belongs to the retired 2D overlay and is left alone — two headless
+  // checks import that module.)
+  const KICK_DUR_S = 0.18;
+  const KICK_PX = 4;
+  const kick = { t: 0, elapsed: 0 };
+
+  // Ore chunks arcing to the hopper — law §5 ore row: "3-5 chunk sprites pop from the cell
+  // (60-120ms apart), arc ~250ms into the hopper". They are lit PBR bodies on chunkMesh, not
+  // sprites (§2.7), and they are parametric rather than ballistic because the target moves: the
+  // rover can drive off mid-arc and the ore must still land in its bin.
+  const ARC_DUR_S = 0.25;
+  const oreArcs = [];           // { delay, t, x0, y0, c3, size, rot, spin }
+
+  // Vapor — law §5 gas row: "vapor floods adjacent tunnel cells ~1.2s". LIT bodies with real
+  // normals on their own instanced mesh, so the work light rakes across them; an additive sprite
+  // would be the neon halo §2.7 bans.
+  const VAPOR_LIFE_S = 1.2;
+  const VAPOR_CAP = 28;
+  const vapors = [];            // { x, y, z, t, life, scale, drift, rot, spin }
+  let vaporT = 0;               // age of the whole cloud; the fade is shared, not per-puff
+
+  // The 150ms yellow-green flash INSIDE the breached cell (not on the glass).
+  const cellFlash = { t: 0, dur: 0.15, col: -1, row: -1 };
+  let gasBreachT = -99;           // one eruption per breach, however many events describe it
+
+  // Refusals — law §5: "identical refusals within 5s do not replay their full effect". Keyed by
+  // cell + reason so aiming at a different locked seam still speaks.
+  const REFUSAL_SUPPRESS_S = 5;
+  const refusalSeen = new Map();  // `${idx}|${reason}` -> timeS of the last full expression
+  let blockedLatch = false;       // rising-edge detector on d.avatar.drillBlocked
+  let blockedCell = -1;
+  const skate = { t: 0, left: 0, next: 0, x: 0, y: 0, hex: 0xffb35c };  // 6-10 sparks over 300ms
+  const SKATE_DUR_S = 0.3;
+
+  // Machine placement settle — law §5: "ghost snaps in with a 120ms settle; its lamp lights mint".
+  const SETTLE_S = 0.12;
+  const settles = new Map();      // tileIndex -> seconds remaining
+
+  // Want chips — law §5 starved row: "a small gold want chip floats above it showing the missing
+  // input's swatch or a power glyph". Mesh chips like the seam counts, so the §11.3 word budget is
+  // untouched: they carry a SWATCH or a GLYPH, never a word.
+  const wantChipPool = [];        // { mesh, mat, wPx, hPx }
+  const wantTextures = new Map();
+  let wantChipsUsed = 0;
+
+  // Courier launch — law §5: "pod visibly slides up the shaft, clears the surface". Detected off
+  // site.fleet.launches, which the sim increments on every departure; the screen does not forward
+  // site:courierLaunched to the renderer and its owner is out of this leaf's write set.
+  const POD_RISE_S = 1.7;
+  let podMesh = null;
+  let podT = -1;                  // <0 = parked
+  let lastLaunches = null;        // null until the first frame that sees a site (never 0: a return
+                                  // visit to a producing site must not replay its whole history)
+
+  // The rover's blast scars — law §5: "a visible scar/chip on the rover". Toggled on by the first
+  // breach and worn for the rest of the session; the rig does not buff itself out mid-shift.
+  const roverScars = [];
+  let roverScarsShown = 0;
+
+  // Floater stacking (law §5 repeat rules): consecutive yields on the same cell step upward instead
+  // of piling into one illegible smear of numerals.
+  let lastFloater = { idx: -1, t: -99, tier: 0 };
+
+  // What the board last said, for the §11.8 headless assertion. Counters only — no text is drawn.
+  const eventLog = {
+    lastEvent: null, yields: 0, gasBreaches: 0, refusals: 0, refusalsSuppressed: 0,
+    cargoRefusals: 0, installs: 0, courierLaunches: 0,
+  };
+  function mark(name, col, row) {
+    eventLog.lastEvent = { name, col: col == null ? -1 : col, row: row == null ? -1 : row, t: timeSNow };
+  }
+
+  // ---- PQ-130.07 event bodies (built once; law §2.7 wants objects, not sprites) ----
+  // VAPOR: an instanced LIT body. MeshStandard, not additive — the work light and the cool fill
+  // rake across each puff exactly as they rake across the rock it is pouring out of.
+  const vaporGeos = [makeVaporPuffGeo(0), makeVaporPuffGeo(1), makeVaporPuffGeo(2)];
+  // Matte and thin. The first build gave this an envMap and half opacity, and one puff at full
+  // growth read as a polished chrome ball parked on the rig — gas neither reflects nor occludes.
+  const vaporMat = new THREE.MeshStandardMaterial({
+    color: 0x8e9678, roughness: 1, metalness: 0, transparent: true, opacity: 0.24,
+    depthWrite: false, envMapIntensity: 0, flatShading: false, side: THREE.DoubleSide,
+  });
+  const vaporMesh = new THREE.InstancedMesh(vaporGeos[0], vaporMat, VAPOR_CAP);
+  vaporMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  vaporMesh.count = 0;
+  vaporMesh.frustumCulled = false;
+  vaporMesh.renderOrder = 24;
+  fxRoot.add(vaporMesh);
+
+  // THE BREACH FLASH: 150ms of yellow-green light inside the cell that let go. A real PointLight
+  // plus a small additive core, so the flash lights the cavity walls instead of painting a disc
+  // over them — that is the difference between an explosion and a sticker.
+  const flashLight = new THREE.PointLight(0xd8e04a, 0, S * 5.5, 2);
+  flashLight.castShadow = false;
+  flashLight.position.set(0, 0, -900);
+  scene.add(flashLight);
+
+  // THE COURIER POD, parked off-board until a launch claims it.
+  const podGeo = makeCourierPodGeo();
+  const podMat = metalMat(0xb9b2a4, envMap);
+  podMat.roughness = 0.44;
+
+  // BLAST SCARS on the rig's flank (law §5 "a visible scar/chip on the rover"). Three plates are
+  // welded onto the chassis at build time and start hidden; each breach shows one more, so the
+  // vehicle carries the shift's history the way the hopper carries the hold. Scorched paint is
+  // paint that has stopped being paint: near-black, rough, barely any spec — it reads as damage
+  // beside the safety yellow instead of as a decal printed on it.
+  const scarGeos = [makeScorchPlateGeo(0), makeScorchPlateGeo(1), makeScorchPlateGeo(2)];
+  const scarMat = new THREE.MeshStandardMaterial({
+    color: 0x2a2018, roughness: 0.95, metalness: 0.08, envMap, envMapIntensity: 0.18,
+  });
+  {
+    const SCAR_AT = [
+      [S * -0.12, S * 0.10, S * 0.19, 0.35, S * 0.30],
+      [S * 0.16, S * -0.02, S * 0.19, -0.7, S * 0.24],
+      [S * -0.26, S * 0.20, S * 0.19, 1.1, S * 0.21],
+    ];
+    for (let i = 0; i < scarGeos.length; i++) {
+      const [x, y, z, rz, sc] = SCAR_AT[i];
+      const m = new THREE.Mesh(scarGeos[i], scarMat);
+      m.position.set(x, y, z);
+      m.rotation.z = rz;
+      m.scale.setScalar(sc);
+      m.castShadow = false;
+      m.visible = false;
+      roverBuilt.dyn.body.add(m);
+      roverScars.push(m);
+    }
+  }
+
 
   // shared geometry that must survive per-cell group disposal
   const sharedGeos = new Set([...blockGeos, ...clusterGeos, gasVaporGeo, cellQuad, partGeo, chunkGeo,
     ...inclusionGeos.metal, ...inclusionGeos.ice, ...inclusionGeos.exotic, ...bandGeos,
-    ...gasCrackGeos, gasCoreGeo, ventedScarGeo, mkStampGeo, seamChipGeo]);
+    ...gasCrackGeos, gasCoreGeo, ventedScarGeo, mkStampGeo, seamChipGeo,
+    ...vaporGeos, ...scarGeos, podGeo]);
 
   // DOM overlay — spatial annotations only (floaters / alarm washes); rig vitals are crest +
   // rig-cluster instruments (design law §6 — the scene stays sovereign).
@@ -976,12 +1217,19 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     root.className = 'ast3d-overlay';
     root.setAttribute('aria-hidden', 'true');
     dom.flashGas = document.createElement('div');
-    dom.flashGas.className = 'ast3d-flash-gas';
+    dom.flashGas.className = 'ast3d-vignette ast3d-flash-gas';
     dom.flashCargo = document.createElement('div');
-    dom.flashCargo.className = 'ast3d-flash-cargo';
+    dom.flashCargo.className = 'ast3d-vignette ast3d-flash-cargo';
     root.append(dom.flashGas, dom.flashCargo);
-    // The stage (canvas' full-bleed parent) so the overlay hugs the canvas box exactly.
-    (canvas.parentElement || wrapEl).appendChild(root);
+    // The stage (canvas' full-bleed parent) so the overlay hugs the canvas box exactly — but
+    // inserted IMMEDIATELY AFTER THE CANVAS, not appended at the end. The screen mounts the rig
+    // cluster and its drawers into this same stage after the canvas, and an appended overlay
+    // paints over them: measured, a 400ms damage vignette washed the Heat/Charge gauges from
+    // rgb(45,37,27) to rgb(120,59,41), which is the instrument telling a lie about heat during
+    // exactly the moment you need to read it. This is board weather; the instruments sit above it.
+    const host = canvas.parentElement || wrapEl;
+    if (canvas.parentElement === host && canvas.nextSibling) host.insertBefore(root, canvas.nextSibling);
+    else host.appendChild(root);
     dom.root = root;
   }
 
@@ -1653,6 +1901,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
 
   function syncMachines(site, projection, timeS) {
     const seen = new Set();
+    wantChipsUsed = 0;
     if (site) {
       for (const m of site.machines) {
         seen.add(m.id);
@@ -1665,12 +1914,28 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         const status = pm ? pm.status : null;
         const state = (status && status.state) || 'idle';
         syncMachineArms(rec, pm);
+        // Law §5 "Machine placed": a 120ms settle. The housing lands a touch proud of its socket
+        // and drops into it — the same body seating itself, not a crossfade between two objects.
+        const settleLeft = settles.get(tileIndex(m.col, m.row));
+        const settling = settleLeft !== undefined;
+        if (settling) {
+          const u = 1 - settleLeft / SETTLE_S;          // 0 at the snap, 1 when it is seated
+          rec.group.scale.setScalar(1 + 0.13 * (1 - u) * (1 - u));
+          rec.group.position.z = S * 0.1 * (1 - u);
+        } else if (rec.group.scale.x !== 1) {
+          rec.group.scale.setScalar(1);
+          rec.group.position.z = 0;
+        }
         if (rec.dyn.lamp) {
-          const hex = statusColorHex(status);
+          // Law §5 "Machine starved/unpowered": THE MACHINE GOES DARK. The fault is told by the
+          // gold want chip above it, not by an alarm-coloured lamp — a blinking beacon on every
+          // stalled housing is exactly the console voice §2.4 deletes. During the settle the lamp
+          // lights mint whatever the projection says, because the projection has not run yet.
+          const fault = FAULT_STATES.has(state);
+          const hex = settling ? 0x7cd9a2 : statusColorHex(status);
           rec.dyn.lamp.color.setHex(hex);
           rec.dyn.lamp.emissive.setHex(hex);
-          rec.dyn.lamp.emissiveIntensity = FAULT_STATES.has(state) && !motionReduce
-            ? 0.75 + 0.5 * Math.sin(timeS * 3.2) : 0.9;
+          rec.dyn.lamp.emissiveIntensity = settling ? 1.2 : (fault ? 0.06 : 0.9);
         }
         const running = state === 'running' || state === 'throttled' || state === 'limited';
         rec.lightRunning = running;
@@ -1695,6 +1960,19 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
           rec.dyn.progressBar.position.x = rec.dyn.progressBase + rec.dyn.progressTravel * p;
         }
         if (rec.dyn.pod) rec.dyn.pod.visible = !!(site.fleet && site.fleet.podsReady > 0);
+        // The want chip: what this machine is waiting for, as a colour or a bolt. `status.limit`
+        // is the sim's own answer — `input:<goodId>` when a recipe is starved, `power` when the
+        // bus cannot feed it — so the chip names the real shortage, not a guess from the state name.
+        if (FAULT_STATES.has(state) && zoomKCur > 0.5) {
+          const limit = (status && status.limit) || (state === 'no-power' ? 'power' : null);
+          if (limit === 'power' || state === 'no-power') {
+            emitWantChip('power', '#ffb648', worldX(m.col), worldY(m.row));
+          } else if (typeof limit === 'string' && limit.startsWith('input:')) {
+            const goodId = limit.slice(6);
+            const swatch = (ORE_TINTS[goodId] || {}).vein || '#bfae94';
+            emitWantChip(`in:${goodId}`, swatch, worldX(m.col), worldY(m.row));
+          }
+        }
       }
     }
     for (const id of [...machines.keys()]) {
@@ -1716,7 +1994,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       let rank = 0;
       if (rec.dyn.furnace && rec.lightRunning) rank = 3;
       else if (rec.lightRunning) rank = 2;
-      else if (FAULT_STATES.has(st)) rank = 1;
+      else if (FAULT_STATES.has(st)) rank = 1;   // a dim ember so a dark housing is still an object
       if (!rank) continue;
       lightPick.push({ rec, anchor, rank, st });
     }
@@ -1732,7 +2010,10 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         l.intensity = motionReduce ? 5.2 : 4.4 + 1.4 * Math.sin(timeS * 5);
       } else {
         l.color.setHex(pick.rank === 2 ? 0xffc07a : statusColorHex({ state: pick.st }));
-        l.intensity = pick.rank === 2 ? 2.1 : 1.2;
+        // Law §5 "Machine starved/unpowered": the machine GOES DARK. Its hue still says which
+        // fault (that is .03's language, untouched) — it just stops being a beacon, because the
+        // gold want chip above it is now the thing carrying the attention.
+        l.intensity = pick.rank === 2 ? 2.1 : 0.45;
       }
     }
   }
@@ -2203,6 +2484,32 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   const CHIP_TEXT_PX = 13;
   const CHIP_SS = 3;            // supersample so the glyphs stay crisp on the board
 
+  // A square inner shadow: transparent through the middle, darkening only in the last fifth
+  // toward each edge. Four linear gradients, one per side, composited — a radial gradient would
+  // round the corners and the cell is a square (law §2.1).
+  function makeInnerShadowTexture(size = 96) {
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = size;
+    const g = cv.getContext('2d');
+    const band = size * 0.22;
+    const sides = [
+      [0, 0, 0, band, 0, 0, size, band],
+      [0, size, 0, size - band, 0, size - band, size, band],
+      [0, 0, band, 0, 0, 0, band, size],
+      [size, 0, size - band, 0, size - band, 0, band, size],
+    ];
+    for (const [gx0, gy0, gx1, gy1, rx, ry, rw, rh] of sides) {
+      const grd = g.createLinearGradient(gx0, gy0, gx1, gy1);
+      grd.addColorStop(0, 'rgba(10,7,4,0.85)');
+      grd.addColorStop(1, 'rgba(10,7,4,0)');
+      g.fillStyle = grd;
+      g.fillRect(rx, ry, rw, rh);
+    }
+    const tex = new THREE.CanvasTexture(cv);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }
+
   function chipTexture(label) {
     const key = `${label}|${chipFontReady ? 1 : 0}`;
     let rec = chipTextures.get(key);
@@ -2263,14 +2570,206 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   // The chip is a piece of chrome sitting in a 3D scene, so it holds a CONSTANT PIXEL SIZE: its
   // world scale is solved from the live camera every frame. 13px stays 13px at either window size,
   // which is what keeps it above the §11.4 floor instead of merely above it at 1920.
+  // Screen pixels per world unit under the LIVE camera. Anything the law measures in pixels —
+  // the 4px kick, the 1.5px hover outline, a 13px chip — solves its world size through this, so it
+  // stays the size the law says at every zoom register and every window size.
+  function pxPerWorldUnit() {
+    return (canvas.clientHeight || 1) / (2 * viewHalfExtents().halfH);
+  }
+
   function layoutChips() {
-    const halfH = viewHalfExtents().halfH;
-    const pxPerWu = (canvas.clientHeight || 1) / (2 * halfH);
+    const pxPerWu = pxPerWorldUnit();
     for (let i = 0; i < chipPool.length; i++) {
       const chip = chipPool[i];
       if (i >= chipsUsed) { chip.mesh.visible = false; continue; }
       chip.mesh.scale.set(chip.wPx / pxPerWu, chip.hPx / pxPerWu, 1);
     }
+  }
+
+  // ---------------------------------------------------------------- want chips (law §5)
+  // "a small gold want chip floats above it showing the missing input's swatch or a power glyph."
+  // A SWATCH OR A GLYPH — deliberately no words, so a starving site can never spend the screen's
+  // 15-word budget (§11.3). Same mesh-pill construction as the seam counts, on its own pool.
+  const WANT_H_PX = 22;
+  function wantTexture(key, swatchHex) {
+    let rec = wantTextures.get(key);
+    if (rec) return rec;
+    const SS = 3;
+    const cv = document.createElement('canvas');
+    cv.width = 34 * SS;
+    cv.height = WANT_H_PX * SS;
+    const g = cv.getContext('2d');
+    const rr = cv.height / 2;
+    g.beginPath();
+    g.moveTo(rr, 0);
+    g.arcTo(cv.width, 0, cv.width, cv.height, rr);
+    g.arcTo(cv.width, cv.height, 0, cv.height, rr);
+    g.arcTo(0, cv.height, 0, 0, rr);
+    g.arcTo(0, 0, cv.width, 0, rr);
+    g.closePath();
+    g.fillStyle = 'rgba(34,28,21,0.94)';        // --aw-surface
+    g.fill();
+    g.lineWidth = 1.5 * SS;
+    g.strokeStyle = '#ffb648';                  // --aw-gold: this machine WANTS something
+    g.stroke();
+    const cx = cv.width / 2;
+    const cy = cv.height / 2;
+    if (key === 'power') {
+      // a bolt, drawn as a path — the one glyph everybody already reads
+      g.beginPath();
+      g.moveTo(cx + 2.4 * SS, cy - 6.2 * SS);
+      g.lineTo(cx - 3.4 * SS, cy + 0.9 * SS);
+      g.lineTo(cx - 0.2 * SS, cy + 0.9 * SS);
+      g.lineTo(cx - 2.2 * SS, cy + 6.2 * SS);
+      g.lineTo(cx + 3.6 * SS, cy - 0.9 * SS);
+      g.lineTo(cx + 0.4 * SS, cy - 0.9 * SS);
+      g.closePath();
+      g.fillStyle = '#ffb648';
+      g.fill();
+    } else {
+      // the missing input's own colour, as a chip of that material on a plate
+      const w = 9 * SS;
+      g.fillStyle = swatchHex;
+      g.beginPath();
+      g.moveTo(cx - w, cy - w * 0.78);
+      g.lineTo(cx + w, cy - w * 0.9);
+      g.lineTo(cx + w * 0.86, cy + w * 0.82);
+      g.lineTo(cx - w * 0.92, cy + w * 0.7);
+      g.closePath();
+      g.fill();
+      g.strokeStyle = 'rgba(12,9,6,0.7)';
+      g.lineWidth = 1 * SS;
+      g.stroke();
+    }
+    const tex = new THREE.CanvasTexture(cv);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    rec = { tex, wPx: cv.width / SS, hPx: WANT_H_PX };
+    wantTextures.set(key, rec);
+    return rec;
+  }
+
+  function emitWantChip(key, swatchHex, wx, wy) {
+    let chip = wantChipPool[wantChipsUsed];
+    if (!chip) {
+      const mat = new THREE.MeshBasicMaterial({ transparent: true, depthTest: false, depthWrite: false });
+      const mesh = new THREE.Mesh(seamChipGeo, mat);
+      mesh.renderOrder = 27;
+      mesh.frustumCulled = false;
+      fxRoot.add(mesh);
+      chip = { mesh, mat, wPx: 0, hPx: 0 };
+      wantChipPool.push(chip);
+    }
+    wantChipsUsed++;
+    const rec = wantTexture(key, swatchHex);
+    chip.mat.map = rec.tex;
+    chip.mat.needsUpdate = true;
+    chip.wPx = rec.wPx;
+    chip.hPx = rec.hPx;
+    // it FLOATS: a slow bob above the housing, so a dark machine still moves on a still board
+    const bob = motionReduce ? 0 : Math.sin(timeSNow * 2.1 + wx) * S * 0.045;
+    // Straddling its OWN cell's top edge, not floating a whole cell clear of it: machines stack
+    // vertically down a shaft, and a chip parked 0.72 cells up sat squarely on the housing above,
+    // which reads as that machine's complaint rather than this one's.
+    chip.mesh.position.set(wx, wy + S * 0.52 + bob, Z.face + 0.06);
+    chip.mesh.visible = true;
+  }
+
+  function layoutWantChips() {
+    const pxPerWu = pxPerWorldUnit();
+    for (let i = 0; i < wantChipPool.length; i++) {
+      const chip = wantChipPool[i];
+      if (i >= wantChipsUsed) { chip.mesh.visible = false; continue; }
+      chip.mesh.scale.set(chip.wPx / pxPerWu, chip.hPx / pxPerWu, 1);
+    }
+  }
+
+  // ---------------------------------------------------------------- MK refusal (law §5)
+  // Law §5 "Locked material": the bit skates off with 6-10 sparks over 300ms and the engraved MK
+  // stamp fades in. The sim raises `drill:warn` reason `tier` for a locked face — but the screen
+  // shell keeps that subscription for its alert slot and never forwards it to the renderer, and
+  // the screen is not this leaf's to edit.
+  //
+  // It does not have to be. `drillSys.bus` IS the game bus, so the renderer subscribes to the
+  // sim's own refusal receipt directly. That is the primary trigger, and it is the reliable one:
+  // `avatar.drillBlocked` — the obvious-looking alternative — is set inside tickInput and then
+  // cleared again by the input controller's own settleIntent() → clearCommand() → next tick, all
+  // before the following render frame can sample it. Measured: polling it caught zero of the
+  // refusals a real held keypress produced. The poll below is kept as a belt-and-braces edge (both
+  // paths run through the same 5s suppression, so they can never double-speak).
+  function refuseTier(col, row) {
+    if (col == null || row == null) return;
+    if (col < 0 || col >= COLS || row < 0 || row >= ROWS) return;
+    const idx = tileIndex(col, row);
+    if (!allowRefusal(idx, 'tier')) return;
+    const d = getDrill();
+    // the bit SKATES: sparks thrown off the contact point, which is the face between rig and cell
+    const dir = (d && d.avatar && d.avatar.faceDir) || 'down';
+    let cx = col * TILE + TILE / 2;
+    let cy = row * TILE + TILE / 2;
+    if (dir === 'right') cx = col * TILE;
+    else if (dir === 'left') cx = col * TILE + TILE;
+    else if (dir === 'down') cy = row * TILE;
+    else if (dir === 'up') cy = row * TILE + TILE;
+    startSkate(cx, cy, 0xffc79a);        // warm, metallic — struck steel, never neon
+    eventLog.refusals++;
+    mark('refusal', col, row);
+  }
+
+  let warnUnsub = null;
+  function subscribeWarn() {
+    if (warnUnsub || !drillSys || !drillSys.bus || typeof drillSys.bus.on !== 'function') return;
+    const off = drillSys.bus.on('drill:warn', (payload) => {
+      const pl = payload || {};
+      if (pl.reason !== 'tier' || !pl.pos) return;
+      refuseTier(pl.pos.col, pl.pos.row);
+    });
+    warnUnsub = typeof off === 'function' ? off : null;
+  }
+  function unsubscribeWarn() {
+    if (warnUnsub) { try { warnUnsub(); } catch (_) {} }
+    warnUnsub = null;
+  }
+
+  function syncRefusal(d) {
+    const blocked = !!(d.avatar && d.avatar.drillBlocked);
+    const t = d.avatar && d.avatar.drillTarget;
+    const idx = blocked && t ? tileIndex(t.col, t.row) : -1;
+    if (!blocked) { blockedLatch = false; blockedCell = -1; return; }
+    if (blockedLatch && idx === blockedCell) return;   // same refusal, still held
+    blockedLatch = true;
+    blockedCell = idx;
+    if (!t) return;
+    const tile = field[t.col] && field[t.col][t.row];
+    if (!tile) return;
+    // Which refusal? drill.js blocks on a machine housing and on the drill-tier gate; only the
+    // second one is law §5's "Locked material".
+    const structure = tile.type === 'empty' && tile.structure;
+    const req = tile.tierReq || (tile.ore ? drillTierReqForOre(tile.ore) : 1);
+    const reason = structure ? 'structure' : (drillSys.getDrillTier() < req ? 'tier' : 'other');
+    if (reason !== 'tier') return;                     // the housing refusal is .09's ghost language
+    refuseTier(t.col, t.row);
+  }
+
+  // ---------------------------------------------------------------- courier launch (law §5)
+  // `site:courierLaunched` reaches the screen, not the renderer, and the screen is out of this
+  // leaf's write set — but the sim increments `fleet.launches` on every departure, and that is a
+  // read-only fact the renderer already holds. Baseline it on the first sighting of a site so
+  // returning to a producing claim does not replay its whole shipping history.
+  function syncCourier(site) {
+    if (!site || !site.fleet) return;
+    const n = Number(site.fleet.launches) || 0;
+    if (lastLaunches === null) { lastLaunches = n; return; }
+    if (n <= lastLaunches) return;
+    lastLaunches = n;
+    if (!podMesh) {
+      podMesh = new THREE.Mesh(podGeo, podMat);
+      podMesh.castShadow = true;
+      podMesh.scale.setScalar(S * 0.9);
+      scene.add(podMesh);
+    }
+    podT = 0;
+    eventLog.courierLaunches++;
+    mark('courierLaunch', ENTRY_COL, 0);
   }
 
   // Everything the seam layer draws, once per frame.
@@ -2443,6 +2942,71 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     get zoomRegister() { return zoomRegister; },
     get cols() { return COLS; },
     get rows() { return ROWS; },
+
+    // ---- law §11.8 "Events on the board" (PQ-130.07) ----
+    // A no-vision agent proves the event table through here: what the board last SAID, how many
+    // times it said each thing, and the live magnitude of the two things §5 measures in pixels.
+    // These are readings off the running expression, not a re-implementation of it: `kickPx` asks
+    // the same function that is posing the camera this frame, and `floaters`/`oreChunks`/`vapor`
+    // count the objects actually on the glass.
+    events() {
+      return {
+        lastEvent: eventLog.lastEvent ? { ...eventLog.lastEvent } : null,
+        yields: eventLog.yields,
+        gasBreaches: eventLog.gasBreaches,
+        refusals: eventLog.refusals,
+        refusalsSuppressed: eventLog.refusalsSuppressed,
+        cargoRefusals: eventLog.cargoRefusals,
+        installs: eventLog.installs,
+        courierLaunches: eventLog.courierLaunches,
+      };
+    },
+    // The camera kick THIS FRAME, back in screen pixels — nonzero for 180ms after a breach.
+    kickPx() {
+      const w = kickOffsetWorld();
+      const k = pxPerWorldUnit();
+      return Math.hypot(w.x, w.y) * k;
+    },
+    // The coral edge vignette's live alpha (law §9: a vignette, never a modal). `full` reports
+    // whether it covers the middle of the glass, so "it became a modal dimmer" is assertable.
+    vignette() {
+      const el = dom.flashGas;
+      if (!el) return { alpha: 0, full: false };
+      const cs = typeof getComputedStyle === 'function' ? getComputedStyle(el) : null;
+      const bg = cs ? cs.backgroundImage || '' : '';
+      return {
+        alpha: Number(el.style.opacity) || 0,
+        full: !!bg && !/gradient/.test(bg),
+        remainingS: timers.gasFlash,
+      };
+    },
+    // Live counts of the board expressions, so "did anything actually get drawn" is a number.
+    fx() {
+      return {
+        oreChunks: oreArcs.length,
+        vapor: vapors.length,
+        floaters: dom.floaters.length,
+        particles: particles.length,
+        wantChips: wantChipsUsed,
+        skateLeft: skate.left,
+        cellFlashS: cellFlash.t,
+        roverScars: roverScarsShown,
+        hopperLid: roverAnim.lid,          // .05's lid, latched shut by a hopper-full refusal
+        cargoLatch: cargoFullLatch ? 1 : 0,
+        ventedScars: ventedScars.size,
+        podFlight: podT,
+        mkStamp: mkStampT,
+      };
+    },
+    // The hover box, as drawn (law §3.2: cyan is material FLOW only, so the cursor may not be it).
+    hoverFrame() {
+      return {
+        hex: `#${frameMat.color.getHexString()}`,
+        opacity: frameMat.opacity,
+        thicknessPx: (cursorBars[0] ? cursorBars[0].scale.y * CURSOR_BAR_H : 0) * pxPerWorldUnit(),
+        visible: cursorGroup.visible,
+      };
+    },
   };
 
   // ---------------------------------------------------------------- cursor / ghost / ring sync
@@ -2452,6 +3016,11 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     cursorGroup.visible = !!cursor;
     padQuad.visible = false;
     for (const q of ringQuads) q.visible = false;
+    // 1.5px, solved against the live camera EVERY frame — before the no-cursor early return, so a
+    // reading taken with the pointer off the board still reports the hairline the board will draw
+    // rather than the geometry's unscaled 7px slab.
+    const barK = (HOVER_PX / pxPerWorldUnit()) / CURSOR_BAR_H;
+    for (const b of cursorBars) b.scale.y = barK;
     if (!cursor) { if (ghost) ghost.group.visible = false; return; }
     const cx = worldX(cursor.col);
     const cy = worldY(cursor.row);
@@ -2463,6 +3032,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         g.group.position.set(cx, cy, 0.02);
       }
       frameMat.color.setHex(ui.canOk ? 0x62e08a : 0xff5c5c);
+      frameMat.opacity = 0.85;   // shared material: the build verdict must not leak into drive
       padQuad.visible = true;
       padQuad.material = ui.canOk ? padOkMat : padBadMat;
       padQuad.position.set(cx, cy, Z.face - 0.02);
@@ -2484,7 +3054,8 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       }
     } else {
       if (ghost) ghost.group.visible = false;
-      frameMat.color.setHex(0x39d0ff);
+      frameMat.color.setHex(HOVER_INK);
+      frameMat.opacity = HOVER_ALPHA;
     }
   }
 
@@ -2595,8 +3166,15 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         // opaque tumbling debris: gravity falls, screen-plane spin, shrinks as it crumbles
         if (nc >= CHUNK_CAP) continue;
         p.rot += p.spin * dt;
-        dummy.position.set(pxToWorldX(p.x), pxToWorldY(p.y), Z.particles);
-        dummy.rotation.set(0, 0, p.rot);
+        // Honour a per-chunk depth exactly as the additive branch below does. Rock-break debris
+        // originates at the CUT FACE and belongs on the particle plane; debris that comes off an
+        // object down in the tunnel (ore refused by the hopper lid) belongs at that object's depth.
+        // Drawing the second at the first's depth is the bloom-blob failure the .05 receipt names.
+        dummy.position.set(pxToWorldX(p.x), pxToWorldY(p.y), p._z !== undefined ? p._z : Z.particles);
+        // Three axes, not one. A box spun only about z presents the same flat face to a
+        // straight-down camera every frame and reads as a paper square; tilting it out of plane is
+        // what makes the key light find a different facet on each chip (law §2.7).
+        dummy.rotation.set(p.rx || 0, p.ry || 0, p.rot);
         dummy.scale.setScalar(Math.max(0.001, (p.size / TILE) * S * (0.35 + 0.65 * alpha)));
         dummy.updateMatrix();
         chunkMesh.setMatrixAt(nc, dummy.matrix);
@@ -2620,10 +3198,70 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       partMesh.instanceMatrix.needsUpdate = true;
       if (partMesh.instanceColor) partMesh.instanceColor.needsUpdate = true;
     }
+
+    // ---- ore arcs: the payout, flown to the hopper (law §5 ore row, ~250ms) ----
+    // The destination is the LID's live world position, not the cell's, so a chunk released before
+    // the rig moved still lands in the bin it belongs to. A parabola in world space with a
+    // shrinking lift reads as thrown mass; a straight lerp reads as a UI tween.
+    if (oreArcs.length) {
+      const lid = roverBuilt.dyn.hopperLid;
+      lid.getWorldPosition(v3a);
+      for (let i = oreArcs.length - 1; i >= 0; i--) {
+        const a = oreArcs[i];
+        if (a.delay > 0) { a.delay -= dt; continue; }
+        a.t += dt;
+        const u = a.t / ARC_DUR_S;
+        if (u >= 1) { oreArcs.splice(i, 1); continue; }
+        if (nc >= CHUNK_CAP) continue;
+        a.rot += a.spin * dt;
+        const sx = pxToWorldX(a.x0), sy = pxToWorldY(a.y0);
+        const x = sx + (v3a.x - sx) * u;
+        const y = sy + (v3a.y - sy) * u + Math.sin(u * Math.PI) * S * a.lift * 0.45;
+        // …and DOWN THE HOLE: the chunk leaves the cut face and travels back to the rig's own
+        // depth, so it passes behind the block lips on the way instead of skating over them.
+        dummy.position.set(x, y, ROCK_FACE + (Z.rover + 0.22 - ROCK_FACE) * u);
+        dummy.rotation.set(a.rx + a.rot * 0.6, a.ry, a.rot);
+        dummy.scale.setScalar(Math.max(0.001, (a.size / TILE) * S * (1 - u * 0.25)));
+        dummy.updateMatrix();
+        chunkMesh.setMatrixAt(nc, dummy.matrix);
+        chunkMesh.setColorAt(nc, a.c3);
+        nc++;
+      }
+    }
+
     chunkMesh.count = nc;
     if (nc) {
       chunkMesh.instanceMatrix.needsUpdate = true;
       if (chunkMesh.instanceColor) chunkMesh.instanceColor.needsUpdate = true;
+    }
+
+    // ---- vapor: lit bodies rolling out of the breach (law §5, ~1.2s) ----
+    let nv = 0;
+    for (let i = vapors.length - 1; i >= 0; i--) {
+      const v = vapors[i];
+      v.t += dt;
+      if (v.t >= v.life) { vapors.splice(i, 1); continue; }
+      if (nv >= VAPOR_CAP) continue;
+      const u = v.t / v.life;
+      v.rot += v.spin * dt;
+      dummy.position.set(v.x + v.driftX * u, v.y + v.driftY * u, v.z);
+      dummy.rotation.set(0, 0, v.rot);
+      dummy.scale.setScalar(v.scale * (0.55 + u * 0.85));
+      dummy.updateMatrix();
+      vaporMesh.setMatrixAt(nv, dummy.matrix);
+      nv++;
+    }
+    vaporMesh.count = nv;
+    if (nv) vaporMesh.instanceMatrix.needsUpdate = true;
+    // One fade for the WHOLE CLOUD — the puffs are one body of gas, not independent sprites. It
+    // gasps out in 120ms and thins for the rest of the 1.2s, which is what a pressure release does.
+    if (nv) {
+      vaporT += dt;
+      const rise = Math.min(1, vaporT / 0.12);
+      const fall = Math.max(0, 1 - Math.max(0, vaporT - 0.12) / (VAPOR_LIFE_S - 0.12));
+      vaporMat.opacity = 0.26 * rise * fall * (motionReduce ? 0.6 : 1);
+    } else {
+      vaporMat.opacity = 0;
     }
     for (const p of pulseRings) {
       if (p.t <= 0) continue;
@@ -2635,36 +3273,133 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     }
   }
 
-  function spawnFloater(px, py, text, color) {
+  // ---------------------------------------------------------------- PQ-130.07 event clock
+  // Everything on law §5's table that runs on a stopwatch. One place, so the timings are readable
+  // as a group and every one of them is the number in the table.
+  const v3a = new THREE.Vector3();
+  function stepEvents(dt) {
+    // camera kick — 4px, 180ms
+    if (kick.t > 0) { kick.t = Math.max(0, kick.t - dt); kick.elapsed += dt; }
+
+    // the 150ms yellow-green flash inside the breached cell: a real light, not a painted disc
+    if (cellFlash.t > 0) {
+      cellFlash.t = Math.max(0, cellFlash.t - dt);
+      const u = cellFlash.t / cellFlash.dur;
+      flashLight.intensity = (motionReduce ? 9 : 17) * u * u;
+      if (cellFlash.t <= 0) { flashLight.intensity = 0; flashLight.position.set(0, 0, -900); }
+    }
+
+    // the MK skate: 6-10 sparks strewn across 300ms
+    if (skate.t > 0) {
+      skate.t = Math.max(0, skate.t - dt);
+      skate.next -= dt;
+      while (skate.left > 0 && skate.next <= 0) {
+        skate.left--;
+        skate.next += SKATE_DUR_S / 8;
+        const sx = skate.x + (Math.random() - 0.5) * TILE * 0.36;
+        const sy = skate.y + (Math.random() - 0.5) * TILE * 0.36;
+        // the spark itself: short, hot, thrown along the face and pulled down
+        burst({
+          x: sx, y: sy,
+          count: 3, color: `#${skate.hex.toString(16).padStart(6, '0')}`,
+          life: 0.24, size: 2.9, speed: 132, kind: 'spark', gravity: 190, cone: 1.4,
+        });
+        // …and the swarf it takes off with it, so the refusal has mass and not just light
+        if (!motionReduce) spawnChunks(sx, sy, '#7d6c58', 1);
+      }
+    }
+
+    // machine settles tick down toward their seated pose
+    if (settles.size) {
+      for (const [idx, left] of settles) {
+        const nx = left - dt;
+        if (nx <= 0) settles.delete(idx); else settles.set(idx, nx);
+      }
+    }
+
+    // the courier climbing the shaft
+    if (podT >= 0) {
+      podT += dt / POD_RISE_S;
+      if (podT >= 1) { podT = -1; if (podMesh) podMesh.visible = false; }
+      else if (podMesh) {
+        const e = podT * podT * (3 - 2 * podT);          // ease so it leaves heavy and clears fast
+        const y0 = worldY(ROWS - 1);
+        const y1 = derrickBaseY + S * 3.4;               // proud of the derrick: it CLEARED
+        podMesh.position.set(worldX(ENTRY_COL), y0 + (y1 - y0) * e, Z.rover + 0.3);
+        podMesh.rotation.z = Math.sin(podT * 7) * 0.03;
+        podMesh.visible = true;
+        if (!motionReduce && Math.random() < 0.5) {
+          burst({
+            x: (worldX(ENTRY_COL) / S + COLS / 2) * TILE,
+            y: (ROWS / 2 - podMesh.position.y / S) * TILE + 10,
+            count: 1, color: '#c9b48a', life: 0.5, size: 3.2, speed: 22,
+            kind: 'dust', cone: Math.PI * 2,
+          }, Z.rover);
+        }
+      }
+    }
+  }
+
+  // The camera kick in WORLD units, solved from the live pixel scale so 4px stays 4px (law §5).
+  function kickOffsetWorld() {
+    if (kick.t <= 0) return { x: 0, y: 0 };
+    const trauma = kick.t / KICK_DUR_S;
+    const amp = (KICK_PX * trauma * trauma * (motionReduce ? 0.25 : 1)) / pxPerWorldUnit();
+    return {
+      x: Math.sin(kick.elapsed * 71 + 0.8) * amp,
+      y: Math.cos(kick.elapsed * 89 + 0.35) * amp * 0.72,
+    };
+  }
+
+  // Law §5 ore row: "a floater `+2 Fe` (mono 13px, --aw-gold) rises 24px over 700ms and fades".
+  // Twenty-four SCREEN pixels — the rise is applied after the projection, so it is the same gesture
+  // at work zoom and site zoom. Consecutive payouts on one cell step up a tier instead of stacking
+  // into an unreadable pile of numerals (law §5 repeat rules).
+  const FLOATER_LIFE_S = 0.7;
+  const FLOATER_RISE_PX = 24;
+  function spawnFloater(px, py, text, color, idx = -1) {
     if (!dom.root) return;
+    let tier = 0;
+    if (idx >= 0 && idx === lastFloater.idx && timeSNow - lastFloater.t < FLOATER_LIFE_S) {
+      tier = Math.min(3, lastFloater.tier + 1);
+    }
+    lastFloater = { idx, t: timeSNow, tier };
     const el = document.createElement('div');
     el.className = 'ast3d-floater';
     el.style.color = color;
     el.textContent = text;
     dom.root.appendChild(el);
-    dom.floaters.push({ el, px, py, life: 0.95, vy: -22 });
+    dom.floaters.push({ el, px, py, life: FLOATER_LIFE_S, tier });
   }
 
+  // Law §5 gas row / §9 "Damage: edge vignette + camera kick, never a modal" — 400ms of coral
+  // gathered at the FRAME, and a shorter gold one for a refused load. Both live in the renderer's
+  // own overlay layer, which is the whole stage box, so they hug the board and never become a
+  // panel the player has to dismiss.
+  const VIGNETTE_GAS_S = 0.4;
+  const VIGNETTE_CARGO_S = 0.22;
   function stepDom(d, dt) {
     if (!dom.root) return;
     if (timers.gasFlash > 0) timers.gasFlash = Math.max(0, timers.gasFlash - dt);
     if (timers.cargoFlash > 0) timers.cargoFlash = Math.max(0, timers.cargoFlash - dt);
-    dom.flashGas.style.opacity = timers.gasFlash > 0 ? String((motionReduce ? 0.55 : 1) * timers.gasFlash) : '0';
-    dom.flashCargo.style.opacity = timers.cargoFlash > 0 ? String(Math.min(1, timers.cargoFlash)) : '0';
+    const gasU = timers.gasFlash > 0 ? timers.gasFlash / VIGNETTE_GAS_S : 0;
+    const cargoU = timers.cargoFlash > 0 ? timers.cargoFlash / VIGNETTE_CARGO_S : 0;
+    dom.flashGas.style.opacity = gasU > 0 ? ((motionReduce ? 0.6 : 1) * gasU).toFixed(3) : '0';
+    dom.flashCargo.style.opacity = cargoU > 0 ? ((motionReduce ? 0.6 : 1) * cargoU).toFixed(3) : '0';
     // floaters ride the projection so they stay glued to their cell while the camera settles
     for (let i = dom.floaters.length - 1; i >= 0; i--) {
       const f = dom.floaters[i];
       f.life -= dt;
-      f.py += f.vy * dt; // px-space rise
       if (f.life <= 0) {
         f.el.remove();
         dom.floaters.splice(i, 1);
         continue;
       }
+      const u = 1 - f.life / FLOATER_LIFE_S;            // 0 at birth, 1 at death
       const p = worldToScreen(pxToWorldX(f.px), pxToWorldY(f.py), Z.face);
       f.el.style.left = `${p.x.toFixed(1)}px`;
-      f.el.style.top = `${p.y.toFixed(1)}px`;
-      f.el.style.opacity = String(Math.min(1, f.life / 0.4));
+      f.el.style.top = `${(p.y - FLOATER_RISE_PX * u - f.tier * 15).toFixed(1)}px`;
+      f.el.style.opacity = String(Math.min(1, f.life / 0.3));
     }
   }
 
@@ -2673,33 +3408,45 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     const d = getDrill();
     const centerPx = (col, row) => ({ x: col * TILE + TILE / 2, y: row * TILE + TILE / 2 });
     if (evt === 'break') {
-      if (p.wasGas) addVentedScar(p.col, p.row);
+      // WAS THIS A GAS POCKET? Derived HERE, before the cell is carved, from what the renderer can
+      // see — never from the payload. Two independent reasons: the screen forwards only {col,row}
+      // (so p.wasGas has never once been true on the live path), and drill.js only raises
+      // `drill:gasHit` when there is a hull to damage, so a breach against an undamageable player
+      // would otherwise lose its scar, its kick, its vignette and its vapor in silence.
+      const bIdx = tileIndex(p.col, p.row);
+      const preTile = field[p.col] && field[p.col][p.row];
+      const wasGas = !!p.wasGas || gasByCell.has(bIdx) || !!(preTile && preTile.type === 'gas');
       carveCell(p.col, p.row);
       refreshCells(neighborhood(p.col, p.row, 1));
       crackDecal.visible = false;
       const { x, y } = centerPx(p.col, p.row);
-      const rockColor = p.wasGas ? '#8a9426'
+      const rockColor = wasGas ? '#57601f'
         : (p.type === 'rock' ? '#4a5162' : '#7a6650');
       spawnChunks(x, y, rockColor, motionReduce ? 4 : 8);
       burst({ x, y, count: motionReduce ? 5 : 10, color: '#a78262', life: 0.45, size: 2.8, speed: 60, kind: 'dust', gravity: 55, cone: Math.PI * 2 });
-      firePulseRing(p.col, p.row, 0xffb648, 0.3);
+      if (wasGas) gasBreach(p.col, p.row);
+      else firePulseRing(p.col, p.row, 0xffb648, 0.3);
       return;
     }
     if (evt === 'yield') {
+      // Law §5: 3-5 lit chunks pop 60-120ms apart and arc ~250ms into the hopper, and one gold
+      // floater names the take in the seam chips' own symbol bank.
       const { x, y } = centerPx(p.col, p.row);
       const tint = (ORE_TINTS[p.ore] || {}).vein || '#ffb648';
-      burst({ x, y, count: 10, color: tint, life: 0.55, size: 2.4, speed: 55, kind: 'spark', gravity: 40, cone: Math.PI * 2 });
-      spawnFloater(x, y - 8, `+${p.qty}`, '#ffb648');
+      const n = Math.max(3, Math.min(5, Number(p.qty) || 3));
+      spawnOreArc(x, y, tint, n);
+      burst({ x, y, count: motionReduce ? 4 : 8, color: tint, life: 0.4, size: 2.2, speed: 48, kind: 'spark', gravity: 40, cone: Math.PI * 2 });
+      const sym = ORE_SYMBOL[p.ore] || '';
+      spawnFloater(x, y - 8, sym ? `+${p.qty} ${sym}` : `+${p.qty}`, '#ffb648', tileIndex(p.col, p.row));
+      eventLog.yields++;
+      mark('yield', p.col, p.row);
       return;
     }
     if (evt === 'gasHit') {
-      timers.gasFlash = motionReduce ? 0.25 : 0.75;
-      gasShake.t = 0.42;
-      gasShake.elapsed = 0;
-      const { x, y } = centerPx(p.col, p.row);
-      spawnChunks(x, y, '#8a9426', motionReduce ? 5 : 12);
-      burst({ x, y, count: motionReduce ? 5 : 16, color: '#ffc23e', life: 0.6, size: 3, speed: 85, kind: 'spark', cone: Math.PI * 2 });
-      burst({ x, y, count: motionReduce ? 4 : 10, color: '#5f6d12', life: 0.8, size: 3.4, speed: 45, kind: 'steam', cone: Math.PI * 2 });
+      // Reinforcement only. `break` already owns the whole breach expression above, and it fires
+      // whether or not the hull gate lets this event through; a second full eruption here would
+      // double the kick on the common path.
+      gasBreach(p.col, p.row);
       return;
     }
     if (evt === 'spark') {
@@ -2739,16 +3486,102 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       return;
     }
     if (evt === 'install') {
+      // Law §5 "Machine placed": the ghost snaps in with a 120ms settle and its lamp lights mint.
+      // The settle is a scale the machine sync applies while this timer runs — the same body,
+      // seating itself, not a second ghost object crossfading into a first.
+      settles.set(tileIndex(p.col, p.row), SETTLE_S);
       firePulseRing(p.col, p.row, 0x7cd9a2, 0.6);
       const { x, y } = centerPx(p.col, p.row);
       burst({ x, y, count: motionReduce ? 4 : 12, color: '#c9b48a', life: 0.5, size: 2.4, speed: 55, kind: 'dust', cone: Math.PI * 2 });
+      eventLog.installs++;
+      mark('install', p.col, p.row);
       return;
     }
     if (evt === 'cargoFull') {
-      timers.cargoFlash = motionReduce ? 0.4 : 1.0;
+      // Law §5 "Hopper full": the lid clunks shut and the next chunk BOUNCES OFF IT. The refusal
+      // is one identical event repeated as fast as the player keeps drilling, so it obeys the same
+      // 5s repeat rule as the other refusals — the lid stays latched either way, but the bounce and
+      // the vignette do not replay into a strobe.
+      const ridx = d ? tileIndex(d.avatar.col, d.avatar.row) : -1;
       // The sim refuses on "this unit would not fit", not on a ratio — latch the rover's hopper lid
       // on the same predicate so the cover is shut exactly when ore starts bouncing off it.
       cargoFullLatch = true;
+      if (!allowRefusal(ridx, 'cargoFull')) return;
+      timers.cargoFlash = VIGNETTE_CARGO_S;
+      bounceOffLid(p && p.commodityId);
+      eventLog.cargoRefusals++;
+      mark('cargoFull', d ? d.avatar.col : -1, d ? d.avatar.row : -1);
+    }
+  }
+
+  // ---------------------------------------------------------------- law §5 event expressions
+
+  // "identical refusals within 5s do not replay their full effect" — one gate, every refusal.
+  function allowRefusal(idx, reason) {
+    const key = `${idx}|${reason}`;
+    const last = refusalSeen.get(key);
+    if (last !== undefined && timeSNow - last < REFUSAL_SUPPRESS_S) {
+      eventLog.refusalsSuppressed++;
+      return false;
+    }
+    refusalSeen.set(key, timeSNow);
+    return true;
+  }
+
+  // THE GAS POCKET, entire (law §5): 150ms yellow-green flash in the cell · vapor floods the
+  // adjacent tunnel ~1.2s · camera kicks 4px for 180ms · coral edge vignette 400ms · a scar on the
+  // rover · the pocket becomes the vented texture permanently.
+  function gasBreach(col, row) {
+    if (timeSNow - gasBreachT < 0.25) return;    // break + gasHit are one event, not two
+    gasBreachT = timeSNow;
+    addVentedScar(col, row);                     // the vented texture, permanently (law D2)
+    const x = col * TILE + TILE / 2;
+    const y = row * TILE + TILE / 2;
+    cellFlash.t = cellFlash.dur;
+    cellFlash.col = col;
+    cellFlash.row = row;
+    flashLight.position.set(worldX(col), worldY(row), Z.rover + 0.5);
+    flashLight.intensity = motionReduce ? 9 : 17;
+    spawnVapor(col, row);
+    kick.t = KICK_DUR_S;
+    kick.elapsed = 0;
+    timers.gasFlash = VIGNETTE_GAS_S;
+    if (roverScarsShown < roverScars.length) roverScars[roverScarsShown++].visible = true;
+    spawnChunks(x, y, '#4b5320', motionReduce ? 4 : 9);
+    burst({ x, y, count: motionReduce ? 5 : 14, color: '#d8e04a', life: 0.42, size: 2.6, speed: 92, kind: 'spark', cone: Math.PI * 2 });
+    eventLog.gasBreaches++;
+    mark('gasBreach', col, row);
+  }
+
+  // "next chunk bounces off" — ore-coloured debris launched at the shut lid and thrown clear.
+  function bounceOffLid(commodityId) {
+    const lid = roverBuilt.dyn.hopperLid;
+    lid.getWorldPosition(v3a);
+    const px = (v3a.x / S + COLS / 2) * TILE;
+    const py = (ROWS / 2 - v3a.y / S) * TILE;
+    const hex = (ORE_TINTS[commodityId] || {}).vein || '#a78262';
+    const c = new THREE.Color(hex);
+    for (let i = 0; i < (motionReduce ? 1 : 2); i++) {
+      const life = 0.62 + Math.random() * 0.22;
+      particles.push({
+        x: px + (Math.random() - 0.5) * 5,
+        y: py - 5,
+        vx: (0.4 + Math.random() * 0.8) * (Math.random() < 0.5 ? -62 : 62),
+        vy: -(74 + Math.random() * 34),
+        color: hex,
+        _c3: c.clone().multiplyScalar(0.7 + Math.random() * 0.4),
+        size: 4.4 + Math.random() * 2.2,
+        life,
+        maxLife: life,
+        gravity: 210,
+        kind: 'chunk',
+        isChunk: true,
+        rot: Math.random() * Math.PI,
+        spin: (Math.random() - 0.5) * 14,
+        rx: Math.random() * Math.PI,
+        ry: Math.random() * Math.PI,
+        _z: Z.rover + 0.25,        // it came off the LID, so it composites at the rig's depth
+      });
     }
   }
 
@@ -2792,7 +3625,35 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     dom.floaters.length = 0;
     timers.gasFlash = 0;
     timers.cargoFlash = 0;
-    gasShake.t = 0;
+    // PQ-130.07 — the whole law §5 event table resets with the session.
+    kick.t = 0; kick.elapsed = 0;
+    oreArcs.length = 0;
+    vapors.length = 0;
+    vaporT = 0;
+    vaporMesh.count = 0;
+    cellFlash.t = 0; cellFlash.col = -1; cellFlash.row = -1;
+    flashLight.intensity = 0;
+    flashLight.position.set(0, 0, -900);
+    gasBreachT = -99;
+    refusalSeen.clear();
+    blockedLatch = false;
+    blockedCell = -1;
+    skate.t = 0; skate.left = 0; skate.next = 0;
+    settles.clear();
+    wantChipsUsed = 0;
+    for (const chip of wantChipPool) chip.mesh.visible = false;
+    lastLaunches = null;                       // re-baselined on the first frame that sees the site
+    podT = -1;
+    if (podMesh) podMesh.visible = false;
+    for (const m of roverScars) m.visible = false;
+    roverScarsShown = 0;
+    lastFloater = { idx: -1, t: -99, tier: 0 };
+    unsubscribeWarn();
+    subscribeWarn();
+    eventLog.lastEvent = null;
+    eventLog.yields = 0; eventLog.gasBreaches = 0; eventLog.refusals = 0;
+    eventLog.refusalsSuppressed = 0; eventLog.cargoRefusals = 0;
+    eventLog.installs = 0; eventLog.courierLaunches = 0;
     drillTheta = 0;
     lookInit = false;
     zoomRegister = 'work';
@@ -2853,15 +3714,16 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     const site = getSite ? getSite() : null;
     const projection = getProjection ? getProjection() : null;
 
-    // camera + shake
-    if (gasShake.t > 0) {
-      gasShake.t = Math.max(0, gasShake.t - dt);
-      gasShake.elapsed += dt;
-    }
-    const shakePx = drillGasShakeOffset(gasShake.t, gasShake.elapsed, motionReduce);
+    // camera + the law's 4px/180ms kick (law §5 gas row, §9 "camera kick, never a modal").
+    // The renderer owns the camera, so the kick moves the CAMERA — not a transform on the canvas
+    // element, which would shear the projection every §11.1 flatness assertion is measured against.
+    stepEvents(dt);
+    const kickW = kickOffsetWorld();
     stepZoom(dt);
     const cam = stepCamera(d, dt);
-    poseCamera(cam.x, cam.y, (shakePx.x / TILE) * S, (-shakePx.y / TILE) * S);
+    poseCamera(cam.x, cam.y, kickW.x, kickW.y);
+    syncRefusal(d);
+    syncCourier(site);
 
     // reveal-on-approach: crossing a cell boundary re-surveys what the rig's lamps touch
     if (d.avatar.col !== lastRevealCell.col || d.avatar.row !== lastRevealCell.row) {
@@ -3050,6 +3912,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     syncSeamAnnotations(d);
     syncMkStamp(d, dt);
     syncScanRing(d, rx, ry);
+    layoutWantChips();
     stepFx(dt);
     stepDom(d, dt);
     bloom.render(scene, camera);
@@ -3095,6 +3958,21 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     chipPool.length = 0;
     for (const rec of chipTextures.values()) rec.tex.dispose();
     chipTextures.clear();
+    // PQ-130.07 event bodies
+    unsubscribeWarn();
+    for (const chip of wantChipPool) { fxRoot.remove(chip.mesh); chip.mat.dispose(); }
+    wantChipPool.length = 0;
+    for (const rec of wantTextures.values()) rec.tex.dispose();
+    wantTextures.clear();
+    fxRoot.remove(vaporMesh); vaporMesh.dispose(); vaporMat.dispose();
+    scene.remove(flashLight);
+    if (podMesh) { scene.remove(podMesh); podMesh = null; }
+    podMat.dispose();
+    for (const m of roverScars) { if (m.parent) m.parent.remove(m); }
+    roverScars.length = 0;
+    scarMat.dispose();
+    oreArcs.length = 0;
+    vapors.length = 0;
     seamLineMat.dispose(); splitLineMat.dispose();
     gasVaporHotMat.dispose(); gasCoreMat.dispose(); ventedMat.dispose();
     canvas.__ast3d = null;

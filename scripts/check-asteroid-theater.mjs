@@ -10,6 +10,10 @@
 //                          top edge y-delta ≤ 0.5px, left edge x-delta ≤ 0.5px, square within 2%
 //   §11.6 no fog         — on a fresh seeded board every solid cell has a drawn material identity
 //                          and zero cells render the anonymous/unsurveyed appearance
+//   §11.8 events         — drill:yield draws a floater/particle expression and leaves no new
+//                          visible text row; a gas breach kicks the camera within 200ms, raises an
+//                          EDGE vignette (never a full-glass modal wash), floods vapor and vents
+//                          the pocket permanently; the hover box is a hairline, and never cyan
 //   §6.4  cursor lens    — hovering a seam cell raises a .aw-lens of ≤ 2 text lines, ≤ 14 words,
 //                          ≤ 5 chips all drawn from the enumerated bank, and it is GONE once the
 //                          pointer moves onto chrome (PQ-130.06)
@@ -27,6 +31,9 @@ const ROOT = fileURLToPath(new URL('../', import.meta.url));
 
 const BANNED_HEX = new Set(['#14171d', '#1b2027', '#0b1220', '#2a303a', '#0d0f13']);
 const VIEWPORTS = [{ width: 1920, height: 1080 }, { width: 1280, height: 720 }];
+// The drill field is 45 rows deep; a cadence measurement needs ~7 rows of headroom below
+// the cursor or a clamped edge would read as a stalled clock.
+const ROWS_GUARD = 34;
 
 const { chromium } = await loadPlaywright();
 
@@ -245,6 +252,151 @@ try {
       + ` materials ${JSON.stringify(board.materials)}; ${board.seams} seam bodies (biggest ${board.biggestSeam || 0})`);
     for (const p of board.problems || []) failures.push(`${label}: ${p}`);
 
+    // ---------------------------------------------------------------- §11.8 events (PQ-130.07)
+    // "drill:yield produces a floater/particle expression (overlay or renderer hook observable) and
+    //  no new permanently-visible text row; a gas breach applies a nonzero camera kick within
+    //  200ms." Asserted through the LIVE renderer's own hook and the LIVE DOM, never against a
+    // re-implementation: `kickPx()` asks the same function that is posing the camera this frame.
+    //
+    // Deliberately non-destructive to everything that follows: the yield only spawns expression,
+    // and the breach is raised on a gas cell the later blocks never touch. The block ends by
+    // waiting the floater's own 700ms life out, so the word budget re-measured with the palette up
+    // is measuring the chrome and not a number still in the air.
+    const ev = await page.evaluate(async () => {
+      const out = { problems: [], notes: {} };
+      const canvas = document.querySelector('.ast-canvas');
+      const hook = canvas && canvas.__ast3d;
+      const root = document.querySelector('.ast-screen');
+      if (!hook || !root) { out.problems.push('§11.8 renderer hook or screen root missing'); return out; }
+      if (typeof hook.events !== 'function' || typeof hook.kickPx !== 'function') {
+        out.problems.push('§11.8 the renderer publishes no event surface (events/kickPx)');
+        return out;
+      }
+      const sf = window.SF;
+      const d = sf.state.drill;
+      const frame = () => new Promise((r) => requestAnimationFrame(() => r()));
+      const wait = async (ms) => {
+        const t0 = performance.now();
+        while (performance.now() - t0 < ms) await frame();
+      };
+      const rowsOfText = () => {
+        // Every visible word under the screen root, so "a new permanently-visible text row" is a
+        // measured count and not a class name we trust.
+        const words = [];
+        for (const el of root.querySelectorAll('*')) {
+          const cs = getComputedStyle(el);
+          if (cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) === 0) continue;
+          let own = '';
+          for (const n of el.childNodes) if (n.nodeType === 3) own += ` ${n.nodeValue}`;
+          for (const w of own.trim().split(/\s+/)) if (/[a-zA-Z0-9]/.test(w)) words.push(w);
+        }
+        return words;
+      };
+      const wordsBefore = rowsOfText().length;
+
+      // ---- ORE EXTRACTED ----
+      const before = hook.events();
+      let vein = null;
+      for (let c = 0; c < hook.cols && !vein; c++) {
+        for (let r = 0; r < hook.rows; r++) {
+          const a = hook.cellAppearance(c, r);
+          if (a && a.type === 'vein' && a.ore) { vein = { c, r, ore: a.ore }; break; }
+        }
+      }
+      if (!vein) { out.problems.push('§11.8 vacuous: no vein on the board to pay out'); return out; }
+      sf.bus.emit('drill:yield', { commodityId: vein.ore, qty: 4, pos: { col: vein.c, row: vein.r } });
+      await wait(130);
+      const midYield = hook.fx();
+      const afterYield = hook.events();
+      out.notes.yield = { chunks: midYield.oreChunks, floaters: midYield.floaters, count: afterYield.yields };
+      if (afterYield.yields <= before.yields) out.problems.push('§11.8 drill:yield never reached the board');
+      if (!(midYield.oreChunks > 0 || midYield.floaters > 0)) {
+        out.problems.push('§11.8 drill:yield produced no floater and no particle expression');
+      }
+
+      // ---- GAS POCKET BREACHED: a nonzero camera kick within 200ms ----
+      let gas = null;
+      for (let c = 0; c < hook.cols && !gas; c++) {
+        for (let r = 0; r < hook.rows; r++) {
+          const a = hook.cellAppearance(c, r);
+          if (a && a.type === 'gas') { gas = { c, r }; break; }
+        }
+      }
+      if (!gas) { out.problems.push('§11.8 vacuous: no gas pocket on the board to breach'); return out; }
+      const t0 = performance.now();
+      sf.bus.emit('drill:gasHit', { dmg: 1, pos: { col: gas.c, row: gas.r } });
+      let peakKick = 0;
+      let kickAtMs = -1;
+      while (performance.now() - t0 < 200) {
+        await frame();
+        const k = hook.kickPx();
+        if (k > peakKick) { peakKick = k; kickAtMs = performance.now() - t0; }
+      }
+      const vig = hook.vignette();
+      const fx = hook.fx();
+      const afterGas = hook.events();
+      out.notes.gas = {
+        peakKickPx: Number(peakKick.toFixed(2)), kickAtMs: Math.round(kickAtMs),
+        vignette: Number((vig.alpha || 0).toFixed(2)), vignetteFull: !!vig.full,
+        vapor: fx.vapor, roverScars: fx.roverScars, ventedScars: fx.ventedScars,
+        breaches: afterGas.gasBreaches,
+      };
+      if (afterGas.gasBreaches <= before.gasBreaches) out.problems.push('§11.8 the gas breach was never expressed on the board');
+      if (!(peakKick > 0)) out.problems.push('§11.8 a gas breach applied NO camera kick within 200ms');
+      if (peakKick > 12) out.problems.push(`§11.8 the gas kick peaked at ${peakKick.toFixed(1)}px — law §5 says 4`);
+      if (!(vig.alpha > 0)) out.problems.push('§11.8/§9 a gas breach raised no edge vignette');
+      if (vig.full) out.problems.push('§11.8/§9 the damage wash covers the whole glass — law §9 wants a vignette, never a modal');
+      if (!(fx.vapor > 0)) out.problems.push('§11.8 no vapor flooded the tunnel after the breach');
+      if (!(fx.ventedScars > 0)) out.problems.push('§11.8 the breached pocket did not become the vented texture');
+
+      // ---- HOPPER FULL: the lid clunks shut and the next chunk BOUNCES OFF IT ----
+      // The .05 lid latches on the refusal AND on a genuinely full hold (it re-opens the moment
+      // volume frees up), so the hold has to actually be full for the latch to survive a frame.
+      // Fill the cached volume for the assertion window and put it back afterwards — the palette
+      // block below pays for a Core out of this same hold.
+      const cargoRef = sf.state.player.cargo;
+      const usedWas = cargoRef.usedVolume;
+      cargoRef.usedVolume = cargoRef.capVolume;
+      const beforeCargo = hook.events().cargoRefusals;
+      sf.bus.emit('drill:cargoFull', { commodityId: vein.ore, qty: 2, pos: { col: d.avatar.col, row: d.avatar.row } });
+      await wait(90);
+      const cargoFx = hook.fx();
+      const afterCargo = hook.events();
+      out.notes.cargo = {
+        refusals: afterCargo.cargoRefusals, chunks: cargoFx.particles, latched: cargoFx.hopperLid,
+      };
+      if (afterCargo.cargoRefusals <= beforeCargo) out.problems.push('§11.8 drill:cargoFull was never expressed on the board');
+      if (!(cargoFx.particles > 0)) out.problems.push('§11.8 nothing bounced off the shut lid');
+      if (!(cargoFx.hopperLid > 0)) out.problems.push('§5 the hopper lid never latched shut on the refusal');
+      // …and the same refusal, repeated at once, must not replay (law §5, 5s)
+      const suppressedBefore = hook.events().refusalsSuppressed;
+      sf.bus.emit('drill:cargoFull', { commodityId: vein.ore, qty: 2, pos: { col: d.avatar.col, row: d.avatar.row } });
+      await wait(60);
+      const rep2 = hook.events();
+      if (rep2.cargoRefusals > afterCargo.cargoRefusals) {
+        out.problems.push('§5 an identical hopper-full refusal replayed inside the 5s window');
+      }
+      if (rep2.refusalsSuppressed <= suppressedBefore) {
+        out.problems.push('§5 vacuous: the repeat rule was never reached by the second refusal');
+      }
+      cargoRef.usedVolume = usedWas;
+      await wait(220);                       // let the lid slide back open before anything else looks
+
+      // ---- and no permanently-visible text row is left behind ----
+      await wait(1300);                      // the floater's own 700ms life, generously
+      const wordsAfter = rowsOfText().length;
+      out.notes.words = { before: wordsBefore, after: wordsAfter };
+      if (wordsAfter > wordsBefore) {
+        out.problems.push(`§11.8 the events left ${wordsAfter - wordsBefore} new visible word(s) on the glass`);
+      }
+      const rest = hook.fx();
+      if (rest.floaters > 0) out.problems.push(`§11.8 ${rest.floaters} floater(s) outlived their 700ms`);
+
+      return out;
+    });
+    notes.push(`${label}: §11.8 events — ${JSON.stringify(ev.notes)}`);
+    for (const p of ev.problems || []) failures.push(`${label}: ${p}`);
+
     // ---------------------------------------------------------------- §6.4 cursor lens (PQ-130.06)
     // The default-view word budget above is asserted with NO pointer on the board — that is the
     // lens's other half of the law (§2.5: it must vanish when the pointer leaves). Now hover a real
@@ -375,6 +527,314 @@ try {
       if (!gone) failures.push(`${label}: §6.4 the lens survived the pointer leaving the board`);
       // Restore the no-hover default view for anything that follows.
       await page.mouse.move(0, 0);
+    }
+
+    // ---------------------------------------------------------------- §3.2 the hover box (.07)
+    // Taken with the pointer ACTUALLY on a cell — `frameMat` is shared with the build ghost, so a
+    // reading snatched while nothing is hovered reports whatever the last mode left behind and
+    // asserts nothing. Re-hover the seam cell the lens block just used, then read.
+    if (target) {
+      const box = await page.evaluate(async (t) => {
+        const canvas = document.querySelector('.ast-canvas');
+        const hook = canvas.__ast3d;
+        const r = canvas.getBoundingClientRect();
+        const c = hook.projectCell(t.col, t.row);
+        const cx = r.left + (c[0].x + c[2].x) / 2;
+        const cy = r.top + (c[0].y + c[2].y) / 2;
+        canvas.dispatchEvent(new MouseEvent('mousemove', { clientX: cx, clientY: cy, bubbles: true }));
+        await new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(() => res())));
+        return typeof hook.hoverFrame === 'function' ? hook.hoverFrame() : null;
+      }, target);
+      if (!box) {
+        failures.push(`${label}: §3.2 the renderer publishes no hover box reading`);
+      } else {
+        notes.push(`${label}: §3.2 hover box ${box.hex} @${box.opacity} · ${box.thicknessPx.toFixed(2)}px · visible=${box.visible}`);
+        if (!box.visible) failures.push(`${label}: §3.2 vacuous — the hover box was not on the glass when it was read`);
+        const hex = String(box.hex || '').toLowerCase();
+        const rr = parseInt(hex.slice(1, 3), 16);
+        const gg = parseInt(hex.slice(3, 5), 16);
+        const bb = parseInt(hex.slice(5, 7), 16);
+        // §3.2 reserves cyan (--aw-sky) for material FLOW; the cursor is not flow.
+        if (Number.isFinite(rr) && bb > rr + 24 && gg > rr + 12) {
+          failures.push(`${label}: §3.2 the hover box draws in a flow-cyan (${hex}) — cyan is material flow only`);
+        }
+        if (box.thicknessPx > 3) failures.push(`${label}: §3.2 the hover outline is ${box.thicknessPx.toFixed(1)}px — a hairline, not a frame`);
+        if (box.opacity > 0.75) failures.push(`${label}: §3.2 the hover outline sits at ${box.opacity} alpha — the loudest thing on the board`);
+      }
+      await page.mouse.move(0, 0);        // back to the no-hover default view
+    }
+
+    // ---------------------------------------------------------------- §6.3 earned palette (.09)
+    // The half that is easy to fake green is the FIRST one: before a Core is owned there must be
+    // no palette element in the DOM at all — not a hidden one, not a disabled row of gray
+    // placeholders (law §6.3 "locked machines are absent"; the playfield brief calls a restyled
+    // always-visible 3x3 grid a FAIL). So it is asserted against a rock that provably has no site
+    // yet, and only then is a Core installed and the row demanded into existence.
+    const paletteBefore = await page.evaluate(() => {
+      const owner = window.SF.registry.get('asteroidSites');
+      const site = owner && owner.siteForAsteroid(window.SF.state.drill.asteroidId);
+      return {
+        site: !!site,
+        cores: site ? site.machines.filter((m) => m.defId === 'sm_massline_core').length : 0,
+        roots: document.querySelectorAll('.ast-screen .aw-palette').length,
+        keys: document.querySelectorAll('.ast-screen .aw-build-key').length,
+      };
+    });
+    if (paletteBefore.site || paletteBefore.cores) {
+      failures.push(`${label}: §6.3 vacuous — this rock already owns a site/Core, so "no palette before a Core" asserted nothing`);
+    }
+    if (paletteBefore.roots || paletteBefore.keys) {
+      failures.push(`${label}: §6.3 the palette exists before a Core is owned (${paletteBefore.roots} rows, ${paletteBefore.keys} keys)`);
+    }
+
+    // Install the first Core through the OWNER (the subject here is the palette, not the economy):
+    // hollow a cell beside the rover, pay for it, and assert the install actually landed — a
+    // silently refused install produces "no palette" and sends the next reader hunting a
+    // presentation bug that does not exist.
+    const coreInstall = await page.evaluate(() => {
+      const sf = window.SF;
+      const st = sf.state;
+      const owner = sf.registry.get('asteroidSites');
+      const d = st.drill;
+      const ent = st.entities.get(d.asteroidId);
+      const cargo = st.player.cargo;
+      cargo.capVolume = Math.max(cargo.capVolume || 0, 400);
+      for (const [k, q] of Object.entries({
+        cmdty_regocrete: 12, cmdty_control_unit: 4, cmdty_refined_metals: 6,
+      })) cargo.items[k] = (cargo.items[k] || 0) + q;
+      const EMPTY = () => ({ type: 'empty', hp: 0, maxHp: 0, ore: null, hazard: false, tierReq: 1, hardness: 0 });
+      let seat = null;
+      for (const [dc, dr] of [[0, 1], [-1, 0], [1, 0], [0, -1]]) {
+        const c = d.avatar.col + dc;
+        const r = d.avatar.row + dr;
+        if (c < 0 || c > 27 || r < 1 || r > 44) continue;
+        if (d.field[c][r].type !== 'empty') {
+          d.field[c][r] = EMPTY();
+          if (ent && ent.data) {
+            if (!Array.isArray(ent.data.drillCleared)) ent.data.drillCleared = [];
+            const idx = r * 28 + c;
+            if (!ent.data.drillCleared.includes(idx)) ent.data.drillCleared.push(idx);
+          }
+          sf.bus.emit('drill:break', { col: c, row: r, type: 'matrix', ore: null, wasVein: false, wasGas: false });
+        }
+        seat = { col: c, row: r };
+        break;
+      }
+      if (!seat) return { ok: false, reason: 'no seat beside the rover' };
+      const res = owner.installMachine({
+        asteroidId: d.asteroidId, defId: 'sm_massline_core', col: seat.col, row: seat.row,
+      });
+      return { ok: res.ok === true, reason: res.reason || null, seat };
+    });
+    if (!coreInstall.ok) {
+      failures.push(`${label}: §6.3 could not install the first Core (${coreInstall.reason}) — every palette assertion below would be vacuous`);
+    } else {
+      // The palette mounts on the install frame; the HUD cadence is 150ms, so give it a beat plus
+      // the 300ms §9 settle.
+      await page.waitForTimeout(800);
+      const palette = await page.evaluate(() => {
+        const out = { problems: [], keys: [], words: 0, wordList: [] };
+        const screen = document.querySelector('.ast-screen');
+        const row = screen && screen.querySelector('.aw-palette');
+        if (!row) { out.problems.push('§6.3 no .aw-palette after a Core was installed'); return out; }
+        const visible = (n) => {
+          if (!n.getClientRects().length) return false;
+          const cs = getComputedStyle(n);
+          if (cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) === 0) return false;
+          const r = n.getBoundingClientRect();
+          return r.width >= 2 && r.height >= 2;
+        };
+        if (!visible(row)) { out.problems.push('§6.3 the palette mounted but is not on the glass'); return out; }
+        const STATES = ['ready', 'armed', 'unaffordable'];
+        const keyEls = [...row.querySelectorAll('.aw-build-key')];
+        if (!keyEls.length) out.problems.push('§6.3 the palette mounted with zero keys');
+        for (const k of keyEls) {
+          const box = k.getBoundingClientRect();
+          const cs = getComputedStyle(k);
+          const id = k.dataset.itemId || '?';
+          out.keys.push(`${id}:${k.dataset.keyState || '?'}`);
+          if (!visible(k)) out.problems.push(`§6.3 key ${id} is not visible`);
+          if (Math.round(box.width) !== 46 || Math.round(box.height) !== 46) {
+            out.problems.push(`§6.3 key ${id} is ${Math.round(box.width)}x${Math.round(box.height)} (46x46)`);
+          }
+          if (parseFloat(cs.borderTopLeftRadius) !== 8) {
+            out.problems.push(`§6.3 key ${id} radius is ${cs.borderTopLeftRadius} (8px)`);
+          }
+          if (!STATES.includes(k.dataset.keyState)) {
+            out.problems.push(`§6.3 key ${id} publishes state "${k.dataset.keyState}" (ready|armed|unaffordable)`);
+          }
+          const glyph = k.querySelector('svg.aw-build-glyph');
+          if (!glyph) out.problems.push(`§6.3 key ${id} has no silhouette glyph`);
+          else {
+            const g = glyph.getBoundingClientRect();
+            if (Math.round(g.width) !== 22 || Math.round(g.height) !== 22) {
+              out.problems.push(`§6.3 key ${id} glyph is ${Math.round(g.width)}x${Math.round(g.height)} (22px)`);
+            }
+            // A silhouette, not a hairline: the law asks for the board sprite's MASS.
+            if (getComputedStyle(glyph).fill === 'none') {
+              out.problems.push(`§6.3 key ${id} glyph is stroke-only — not a silhouette`);
+            }
+          }
+          const hk = k.querySelector('.aw-build-hotkey');
+          if (!hk || !/^[1-9]$/.test(hk.textContent.trim())) {
+            out.problems.push(`§6.3 key ${id} has no hotkey numeral`);
+          } else if (parseFloat(getComputedStyle(hk).fontSize) < 12) {
+            out.problems.push(`§11.4 key ${id} numeral is under the 12px floor`);
+          }
+          // The NAME must not be on the glass by default — that is the hover tip's job (law §2.5).
+          const tip = k.querySelector('.aw-build-tip');
+          if (!tip) out.problems.push(`§6.3 key ${id} has no hover tip to carry its name`);
+          else if (visible(tip)) out.problems.push(`§2.5 key ${id} prints its name on the default view`);
+        }
+        // The three states must be three PAINTS, not three attribute values. `.aw-build-key` lost
+        // its background once already to a higher-specificity `.ast-screen button { background:
+        // none }`, and every state assertion above stayed green while the plates rendered fully
+        // transparent over the rock. So read what the browser computed.
+        const paintOf = (el) => {
+          const cs = getComputedStyle(el);
+          const g = el.querySelector('svg.aw-build-glyph');
+          return {
+            bg: cs.backgroundColor,
+            ink: g ? getComputedStyle(g).color : cs.color,
+            shadow: cs.boxShadow,
+          };
+        };
+        const byState = {};
+        for (const k of keyEls) byState[k.dataset.keyState] = byState[k.dataset.keyState] || paintOf(k);
+        out.paints = Object.fromEntries(Object.entries(byState).map(([k, v]) => [k, `${v.bg}/${v.ink}`]));
+        const TRANSPARENT = /rgba\(0, 0, 0, 0\)|transparent/;
+        for (const [stateName, paint] of Object.entries(byState)) {
+          if (TRANSPARENT.test(paint.bg)) {
+            out.problems.push(`§6.3 the "${stateName}" key has no background — it is not a plate`);
+          }
+          if (TRANSPARENT.test(paint.ink)) out.problems.push(`§6.3 the "${stateName}" glyph has no colour`);
+        }
+        if (byState.ready && byState.armed && byState.ready.shadow === byState.armed.shadow) {
+          out.problems.push('§6.3 armed and ready keys carry the same shadow — there is no gold ring');
+        }
+        if (byState.ready && byState.unaffordable) {
+          if (byState.ready.bg === byState.unaffordable.bg) {
+            out.problems.push(`§6.3 ready and unaffordable keys share a background (${byState.ready.bg})`);
+          }
+          if (byState.ready.ink === byState.unaffordable.ink) {
+            out.problems.push(`§6.3 ready and unaffordable glyphs share an ink (${byState.ready.ink})`);
+          }
+          if (!/none/.test(byState.unaffordable.shadow)) {
+            out.problems.push('§6.3 the unaffordable key is still raised — law §6.3 wants it flat');
+          }
+        }
+
+        // A unique machine that already stands here is ABSENT, never a disabled placeholder.
+        if (row.querySelector('[data-item-id="sm_massline_core"]')) {
+          out.problems.push('§6.3 the built Core still has a key — an unpressable key is a placeholder');
+        }
+        if (!row.querySelector('[data-item-id="sm_extractor"]')) {
+          out.problems.push('§6.3 no extractor key after the Core — the palette did not grow');
+        }
+        // The palette must not eat the §6.2 rig cluster.
+        const rig = screen.querySelector('.aw-rig');
+        if (rig) {
+          const a = row.getBoundingClientRect();
+          const b = rig.getBoundingClientRect();
+          if (a.right > b.left && a.left < b.right && a.bottom > b.top && a.top < b.bottom) {
+            out.problems.push('§6.3 the palette overlaps the rig cluster');
+          }
+        }
+        // §11.3 again, with the palette on the glass: the row must cost the drive view no words.
+        const words = [];
+        for (const el of screen.querySelectorAll('*')) {
+          if (!visible(el)) continue;
+          const own = [...el.childNodes].filter((n) => n.nodeType === Node.TEXT_NODE)
+            .map((n) => n.textContent.trim()).join(' ');
+          const w = own.split(/\s+/).filter((x) => /[a-zA-Z]/.test(x));
+          if (w.length) { words.push(...w); out.wordList.push(w.join(' ')); }
+        }
+        out.words = words.length;
+        if (words.length > 15) {
+          out.problems.push(`§11.3 word budget blown with the palette up: ${words.length} — ${out.wordList.join(' / ')}`);
+        }
+        return out;
+      });
+      notes.push(`${label}: palette after first Core — ${palette.keys.length} keys [${palette.keys.join(', ')}],`
+        + ` paints ${JSON.stringify(palette.paints || {})},`
+        + ` ${palette.words} visible words (${palette.wordList.join(' / ')})`);
+      for (const p of palette.problems || []) failures.push(`${label}: ${p}`);
+
+      // §6.7: BUILD arms exactly one key and the row reads live. Driven through the shipped key.
+      await page.keyboard.press('KeyB');
+      await page.waitForTimeout(300);
+      const armed = await page.evaluate(() => {
+        const screen = document.querySelector('.ast-screen');
+        const row = screen && screen.querySelector('.aw-palette');
+        return {
+          mode: screen ? screen.dataset.mode : null,
+          live: !!(row && row.classList.contains('live')),
+          armed: row ? [...row.querySelectorAll('.aw-build-key')]
+            .filter((k) => k.dataset.keyState === 'armed').map((k) => k.dataset.itemId) : [],
+          pressed: row ? row.querySelectorAll('.aw-build-key[aria-pressed="true"]').length : 0,
+        };
+      });
+      if (armed.mode !== 'build') failures.push(`${label}: §6.7 B did not arm build mode (${armed.mode})`);
+      if (!armed.live) failures.push(`${label}: §6.3 the palette does not read live in build mode`);
+      if (armed.armed.length !== 1) {
+        failures.push(`${label}: §6.3 ${armed.armed.length} keys are armed (exactly 1): [${armed.armed.join(', ')}]`);
+      }
+      if (armed.pressed !== 1) failures.push(`${label}: §6.3 aria-pressed disagrees with the armed key (${armed.pressed})`);
+      notes.push(`${label}: build mode arms [${armed.armed.join(', ')}]`);
+
+      // ------------------------------------------------------------ §11.7 for the BUILD cursor
+      // The law's cadence rule ("one tap ⇒ exactly one cell of displacement; a held key < 180ms ⇒
+      // no second cell") was only ever asserted for the rig. PQ-130.09 gave the build cursor the
+      // same clock, so it gets the same measurement — against the cell the screen publishes, not
+      // against a re-implementation of the timer here. Note this is a REAL test of the clock:
+      // Playwright never emits key auto-repeat, so any cell after the first can only have come
+      // from the controller's own tick(dt).
+      const readCursor = () => page.evaluate(() => {
+        const raw = document.querySelector('.ast-screen')?.dataset.cursor;
+        if (!raw) return null;
+        const [c, r] = raw.split(',').map(Number);
+        return Number.isFinite(c) && Number.isFinite(r) ? { col: c, row: r } : null;
+      });
+      await page.keyboard.press('ArrowDown'); // seed a known cursor (it is unset until first move)
+      await page.waitForTimeout(120);
+      const c0 = await readCursor();
+      if (!c0) {
+        failures.push(`${label}: §11.7 the screen publishes no build cursor — the cadence is unmeasured`);
+      } else if (c0.row > ROWS_GUARD) {
+        failures.push(`${label}: §11.7 the build cursor starts at row ${c0.row}, too close to the board floor to measure a hold`);
+      } else {
+        await page.keyboard.press('ArrowDown');
+        await page.waitForTimeout(120);
+        const tap = await readCursor();
+        const tapCells = tap ? tap.row - c0.row : -1;
+        if (tapCells !== 1) failures.push(`${label}: §11.7 one tap moved the build cursor ${tapCells} cells (exactly 1)`);
+
+        // A hold shorter than MOVE_HOLD_DELAY_S (180ms) must not buy a second cell.
+        await page.keyboard.down('ArrowDown');
+        await page.waitForTimeout(140);
+        await page.keyboard.up('ArrowDown');
+        await page.waitForTimeout(140);
+        const shortHold = await readCursor();
+        const shortCells = shortHold && tap ? shortHold.row - tap.row : -1;
+        if (shortCells !== 1) {
+          failures.push(`${label}: §11.7 a 140ms hold moved the build cursor ${shortCells} cells (exactly 1)`);
+        }
+
+        // A real hold cruises — otherwise the assertion above is satisfied by a cursor that simply
+        // cannot repeat at all, which would be a different bug wearing the same green.
+        await page.keyboard.down('ArrowDown');
+        await page.waitForTimeout(760);
+        await page.keyboard.up('ArrowDown');
+        await page.waitForTimeout(140);
+        const longHold = await readCursor();
+        const longCells = longHold && shortHold ? longHold.row - shortHold.row : -1;
+        if (!(longCells >= 3 && longCells <= 5)) {
+          failures.push(`${label}: §11.7 a 760ms hold moved the build cursor ${longCells} cells (expected 3-5 on the 180ms seat + 240ms cruise)`);
+        }
+        notes.push(`${label}: build cursor cadence — tap ${tapCells}, 140ms hold ${shortCells}, 760ms hold ${longCells}`);
+      }
+
+      await page.keyboard.press('Escape');
     }
 
     await page.close();
