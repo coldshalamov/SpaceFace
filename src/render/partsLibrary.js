@@ -652,6 +652,34 @@ export function authoredBootstrapPreloadPlan() {
   return clonePreloadPlan(AUTHORED_BOOTSTRAP_PLAN);
 }
 
+function entityOnOpeningTable(entity, state) {
+  const player = state && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(state.playerId)
+    : (state && state.entityList || []).find((candidate) => candidate && candidate.id === state.playerId);
+  if (!player || !player.pos || !entity || !entity.pos) return false;
+  const dx = Number(entity.pos.x) - Number(player.pos.x);
+  const dz = Number(entity.pos.z) - Number(player.pos.z);
+  if (!Number.isFinite(dx) || !Number.isFinite(dz)) return false;
+  const radius = tableOpeningCompositionWu(state);
+  return radius > 0 && dx * dx + dz * dz <= radius * radius;
+}
+
+/**
+ * Flight-gate membership. The Helios hub is still decoded during loading, but a station
+ * sitting a kilometer off the opening table cannot hold the player in the loading shell.
+ * Story cold-start ships and the player remain gated.
+ */
+export function isOpeningFlightGateEntity(entity, state) {
+  if (!entity || entity.alive === false || !state) return false;
+  if (entity.id === state.playerId || entity.isPlayer === true) return true;
+  if (isOpeningStoryActor(entity, state)) return true;
+  if (isTableCriticalStartingHub(entity) || isCriticalStartingHub(entity)) {
+    if (!entity.pos) return true;
+    return entityOnOpeningTable(entity, state);
+  }
+  return isInitialAuthoredCompositionEntity(entity, state);
+}
+
 /** Opening-shot quality gate: nearby actors settle behind loading, distant world stays on-demand. */
 export function isInitialAuthoredCompositionEntity(entity, state) {
   if (!entity || entity.alive === false || !state) return false;
@@ -3582,7 +3610,7 @@ export function authoredCriticalVisualReadiness(state) {
     ? [...entities.values()]
     : []);
   const hub = isStartingSector ? entityList.find(isCriticalStartingHub) : null;
-  const needsStartingHub = !!(hub && isInitialAuthoredCompositionEntity(hub, state));
+  const needsStartingHub = !!(hub && isOpeningFlightGateEntity(hub, state));
   const hubStatus = hub ? authoredAssetState(hub) : 'not-present';
   const openingAssets = entityList
     .filter((entity) => isInitialAuthoredCompositionEntity(entity, state))
@@ -3595,6 +3623,11 @@ export function authoredCriticalVisualReadiness(state) {
   const openingPipelinePending = openingAssets.filter((entry) => (
     !authoredPipelineStaged(entry.status) && !authoredOpeningFailedClosed(entry.status)
   ));
+  const gateIds = new Set(
+    entityList.filter((entity) => isOpeningFlightGateEntity(entity, state)).map((entity) => entity.id),
+  );
+  const openingGatePending = openingPending.filter((entry) => gateIds.has(entry.id));
+  const openingGatePipelinePending = openingPipelinePending.filter((entry) => gateIds.has(entry.id));
   const playerPipelineStaged = authoredPipelineStaged(playerStatus);
   const hubPipelineStaged = !needsStartingHub || authoredPipelineStaged(hubStatus);
   // Software renderers (SwiftShader/llvmpipe) push the full opening composition through a serial
@@ -3604,7 +3637,8 @@ export function authoredCriticalVisualReadiness(state) {
   // contract (above), other traffic and hostile ships are quality-preserving on-demand upgrades that
   // must not hold the player behind a global queue drain. Narrow the gate to the player + hub only
   // on a positively-detected software renderer. Unknown or missing tier keeps the strict
-  // full-opening-set contract so fail-closed still holds on real hardware. Default visual quality is
+  // on-table opening-set contract so fail-closed still holds on real hardware. A far Helios hub
+  // is still decoded in the background; it cannot hold New Game. Default visual quality is
   // unchanged: the relaxed actors still upgrade to authored, just after the first flight frame.
   const softwareRenderer = !!(state && state.render && state.render.gpu
     && state.render.gpu.tier === 'software');
@@ -3614,10 +3648,10 @@ export function authoredCriticalVisualReadiness(state) {
     // Keep committed readiness separate so callers can prove the first displayed frame is authored.
     pipelineReady: playerPipelineStaged
       && hubPipelineStaged
-      && (!openingGateApplies || openingPipelinePending.length === 0),
+      && (!openingGateApplies || openingGatePipelinePending.length === 0),
     ready: playerStatus === 'authored'
       && (!needsStartingHub || hubStatus === 'authored')
-      && (!openingGateApplies || openingPending.length === 0),
+      && (!openingGateApplies || openingGatePending.length === 0),
     playerId: player && player.id,
     playerStatus,
     startingHubId: hub && hub.id,

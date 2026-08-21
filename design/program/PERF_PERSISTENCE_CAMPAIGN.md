@@ -49,6 +49,9 @@ Activity stamps are runtime-only (non-enumerable, skipped by save).
 Headed p95 A/B is still required before calling crowded flight done.
 47-A uninterrupted telemetry hash is unchanged (on-table fight stays exact).
 
+Phase 3: rematerialize catch-up uses lastExactT; mined rocks write the resource
+ledger and restore on respawn; New Game no longer waits for a far Helios hub.
+
 ## Persistence invariants (short)
 
 A live actor never dies for crossing the screen. Dematerialize ≠ respawn.

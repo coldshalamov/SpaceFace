@@ -38,6 +38,11 @@ import {
   richSeamOpportunityForEntity,
 } from './fieldDepletion.js';
 import {
+  captureResourceBodyRecord,
+  ensureResourceBodies,
+  upsertResourceBody,
+} from '../world/resourceBodyRecords.js';
+import {
   CREDIT_CHIP_KIND,
   isCreditChipPickup,
   KILL_BURST_EJECT_SPEED_MAX,
@@ -675,6 +680,7 @@ export const mining = {
     ast.hull = d.oreHP; // keep the hull alias in sync
     const lost = before - d.oreHP;
     if (lost <= 0) return 0;
+    persistTouchedResourceBody(state, ast);
 
     this.bus.emit('mining:tick', {
       contactPos: contact,
@@ -1686,6 +1692,22 @@ function activeMineableTetherTarget(state, ship, range) {
     return dist <= allowed ? target : null;
   }
   return undefined;
+}
+
+export function persistTouchedResourceBody(state, ast) {
+  if (!state || !ast || ast.type !== 'asteroid') return null;
+  const d = ast.data || {};
+  const captured = captureResourceBodyRecord(ast, {
+    sectorId: ast.homeSectorId || d.homeSectorId || d.sectorId
+      || (state.world && state.world.currentSectorId),
+    fieldId: d.fieldId,
+    slotId: d.activityObjectSlotId || d.asteroidSlotId || d.slotId,
+    simTime: Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0),
+  });
+  if (!captured) return null;
+  const stored = upsertResourceBody(ensureResourceBodies(state.world), captured);
+  if (stored && ast.data) ast.data.resourceBodyId = stored.recordId;
+  return stored;
 }
 
 function resetMiningDiagnostics(diag) {

@@ -96,11 +96,16 @@ import {
   upsertRecord,
 } from '../world/worldRecords.js';
 import {
+  applyResourceBodyToEntity,
+  captureResourceBodyRecord,
   createEmptyResourceBodyBag,
   deserializeResourceBodyBag,
   ensureResourceBodies,
+  findResourceBodyForEntity,
   serializeResourceBodyBag,
+  upsertResourceBody,
 } from '../world/resourceBodyRecords.js';
+import { advanceResourceBody, advanceWorldRecord } from '../world/worldCatchup.js';
 import {
   consumeEmbodimentPayload,
   createEmptyEmbodimentCache,
@@ -1112,14 +1117,21 @@ export const world = {
       return null;
     }
     if (budgeted && typeof budget.bindEntity === 'function') budget.bindEntity(ent.id, requester);
-    applyRecordVitals(ent, rec);
-    bindEntityToRecord(ent, rec);
-    this._decorateOrrinWitnessRecorder(ent, rec);
-    this._stampHomeSector(ent, rec.homeSectorId || sectorId);
-    // Restore pose after stamp (global — never re-add sector origin).
-    if (ent.pos) {
-      ent.pos.x = rec.pos.x;
-      ent.pos.z = rec.pos.z;
+    const simTime = Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0);
+    const fromT = Number.isFinite(rec.lastExactT) ? rec.lastExactT : simTime;
+    const advanced = advanceWorldRecord(rec, fromT, simTime) || rec;
+    applyRecordVitals(ent, advanced);
+    bindEntityToRecord(ent, advanced);
+    this._decorateOrrinWitnessRecorder(ent, advanced);
+    this._stampHomeSector(ent, advanced.homeSectorId || sectorId);
+    // Restore pose after stamp (global — never re-add sector origin). Catch-up is simTime-closed-form.
+    if (ent.pos && advanced.pos) {
+      ent.pos.x = advanced.pos.x;
+      ent.pos.z = advanced.pos.z;
+    }
+    if (advanced !== rec) {
+      const bag = ensureWorldRecords(state.world);
+      upsertRecord(bag, advanced);
     }
     return ent;
   },
@@ -1501,6 +1513,7 @@ export const world = {
           i === 0 ? authoredGeologyPlaceId : null,
           activityBinding,
           collisionAnchorBinding,
+          i,
         );
         if (a) {
           this._stampHomeSector(a, sector.id);
@@ -1520,6 +1533,7 @@ export const world = {
     authoredGeologyPlaceId = null,
     activityBinding = null,
     collisionAnchorBinding = null,
+    slotIndex = 0,
   ) {
     const def = AST_BY_ID.get(fdef.type) || AST_BY_ID.get('ast_common_rock');
     // disc-uniform scatter inside the cluster (center is already galactic-global)
@@ -1560,6 +1574,7 @@ export const world = {
           || null,
         size, pctEjected: 0, respawnSec: params.respawnSec || 120,
         fieldId: fdef.id,
+        asteroidSlotId: String(slotIndex),
         ...(authoredGeologyPlaceId ? {
           authoredGeologySkin: true,
           placeId: authoredGeologyPlaceId,
@@ -1580,7 +1595,41 @@ export const world = {
       hash32: this.helpers.hash32,
       mulberry32: this.helpers.mulberry32,
     });
+    this._restoreResourceBody(ent);
     return ent;
+  },
+
+  _restoreResourceBody(ent) {
+    if (!ent || ent.type !== 'asteroid') return ent;
+    const state = this.state;
+    const bag = ensureResourceBodies(state.world);
+    const rec = findResourceBodyForEntity(bag, ent);
+    if (!rec) return ent;
+    const simTime = Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0);
+    const fromT = Number.isFinite(rec.lastObservedT) && rec.lastObservedT > 0
+      ? rec.lastObservedT
+      : (Number.isFinite(rec.lastMinedT) ? rec.lastMinedT : simTime);
+    const advanced = advanceResourceBody(rec, fromT, simTime) || rec;
+    applyResourceBodyToEntity(ent, advanced);
+    upsertResourceBody(bag, advanced);
+    return ent;
+  },
+
+  persistResourceBody(entity) {
+    if (!entity || entity.type !== 'asteroid') return null;
+    const state = this.state;
+    const d = entity.data || {};
+    const captured = captureResourceBodyRecord(entity, {
+      sectorId: entity.homeSectorId || d.homeSectorId || d.sectorId
+        || (state.world && state.world.currentSectorId),
+      fieldId: d.fieldId,
+      slotId: d.activityObjectSlotId || d.asteroidSlotId || d.slotId,
+      simTime: Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0),
+    });
+    if (!captured) return null;
+    const stored = upsertResourceBody(ensureResourceBodies(state.world), captured);
+    if (stored && entity.data) entity.data.resourceBodyId = stored.recordId;
+    return stored;
   },
 
   // Jump GATES: one per outbound edge, placed on the disc rim toward the neighbor's map position.

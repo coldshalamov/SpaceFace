@@ -15,8 +15,10 @@ import {
 } from '../src/world/worldRecords.js';
 import {
   MAX_RESOURCE_BODIES,
+  applyResourceBodyToEntity,
   captureResourceBodyRecord,
   createEmptyResourceBodyBag,
+  findResourceBodyForEntity,
   normalizeResourceBodyBag,
   shouldGarbageCollectResourceBody,
   upsertResourceBody,
@@ -291,6 +293,50 @@ test('serialize drops liveEntityId and keeps abstract intent', () => {
   const disk = serializeRecordsBag(bag);
   assert.equal(disk.byId.wr_x.liveEntityId, undefined);
   assert.equal(disk.byId.wr_x.intent.kind, INTENT_KIND.LOITER);
+});
+
+test('mined rock ledger restores ore after a fresh spawn of the same slot', () => {
+  const mined = {
+    type: 'asteroid',
+    pos: { x: 40, z: 2 },
+    vel: { x: 0, z: 0 },
+    data: {
+      fieldId: 'field_a',
+      asteroidSlotId: '7',
+      sectorId: 'sec_helios',
+      oreHP: 11,
+      oreHPMax: 80,
+    },
+  };
+  const bag = createEmptyResourceBodyBag();
+  const rec = captureResourceBodyRecord(mined, {
+    sectorId: 'sec_helios',
+    fieldId: 'field_a',
+    slotId: '7',
+    simTime: 4,
+  });
+  upsertResourceBody(bag, rec);
+  const respawn = {
+    type: 'asteroid',
+    pos: { x: 40, z: 2 },
+    hull: 80,
+    hullMax: 80,
+    data: { fieldId: 'field_a', asteroidSlotId: '7', sectorId: 'sec_helios', oreHP: 80, oreHPMax: 80 },
+  };
+  const found = findResourceBodyForEntity(bag, respawn);
+  assert.ok(found);
+  applyResourceBodyToEntity(respawn, found);
+  assert.equal(respawn.data.oreHP, 11);
+  assert.equal(respawn.hull, 11);
+});
+
+test('world rematerialize and mining call the catch-up and resource ledgers', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const world = await readFile(new URL('../src/systems/world.js', import.meta.url), 'utf8');
+  const mining = await readFile(new URL('../src/systems/mining.js', import.meta.url), 'utf8');
+  assert.match(world, /advanceWorldRecord\(rec, fromT, simTime\)/);
+  assert.match(world, /_restoreResourceBody/);
+  assert.match(mining, /persistTouchedResourceBody/);
 });
 
 test('ballistic drift is linear', () => {

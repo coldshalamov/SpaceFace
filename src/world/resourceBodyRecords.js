@@ -160,8 +160,8 @@ export function captureResourceBodyRecord(entity, opts = {}) {
     vel: entity.vel,
     rot: entity.rot,
     angVel: entity.angVel,
-    oreHp: entity.oreHp != null ? entity.oreHp : d.oreHp,
-    oreHpMax: entity.oreHpMax != null ? entity.oreHpMax : d.oreHpMax,
+    oreHp: entity.oreHp != null ? entity.oreHp : (d.oreHp != null ? d.oreHp : d.oreHP),
+    oreHpMax: entity.oreHpMax != null ? entity.oreHpMax : (d.oreHpMax != null ? d.oreHpMax : d.oreHPMax),
     yieldRemainingU: d.yieldRemainingU,
     yieldMaxU: d.yieldMaxU,
     seamState: d.seams || d.seamState,
@@ -218,6 +218,55 @@ export function shouldGarbageCollectResourceBody(record, opts = {}) {
     && Number.isFinite(record.oreHp)
     && record.oreHp >= record.oreHpMax - 1e-6;
   return recovered === true && opts.fieldMayRegenerate === true;
+}
+
+export function findResourceBodyForEntity(bag, entity) {
+  const d = entity && entity.data || {};
+  const sectorId = entity && (entity.homeSectorId || d.homeSectorId || d.sectorId);
+  const fieldId = d.fieldId;
+  const slotId = d.activityObjectSlotId || d.asteroidSlotId || d.slotId;
+  if (!bag || !bag.byId || !sectorId || !fieldId || slotId == null || slotId === '') return null;
+  const key = resourceBodyIdentityKey(sectorId, fieldId, slotId, d.sourceSeed);
+  const ids = Object.keys(bag.byId).sort();
+  for (const id of ids) {
+    const rec = bag.byId[id];
+    if (!rec) continue;
+    if (rec.identityKey === key) return rec;
+    if (rec.sectorId === String(sectorId) && rec.fieldId === String(fieldId) && rec.slotId === String(slotId)) {
+      return rec;
+    }
+  }
+  return null;
+}
+
+export function applyResourceBodyToEntity(entity, record) {
+  if (!entity || !record) return entity;
+  const d = entity.data || (entity.data = {});
+  if (Number.isFinite(record.oreHp)) {
+    d.oreHP = record.oreHp;
+    entity.hull = record.oreHp;
+  }
+  if (Number.isFinite(record.oreHpMax)) {
+    d.oreHPMax = record.oreHpMax;
+    entity.hullMax = record.oreHpMax;
+  }
+  if (Number.isFinite(record.yieldRemainingU)) d.yieldRemainingU = record.yieldRemainingU;
+  if (record.seamState) d.seams = record.seamState;
+  if (record.fractureState) d.fractureState = record.fractureState;
+  if (record.pos && entity.pos) {
+    entity.pos.x = record.pos.x;
+    entity.pos.z = record.pos.z;
+  }
+  if (record.vel) {
+    entity.vel = entity.vel || { x: 0, z: 0 };
+    entity.vel.x = record.vel.x;
+    entity.vel.z = record.vel.z;
+  }
+  if (Number.isFinite(record.rot)) entity.rot = record.rot;
+  if (Number.isFinite(record.angVel)) entity.angVel = record.angVel;
+  d.resourceBodyId = record.recordId;
+  d.playerModified = record.playerModified === true;
+  return entity;
 }
 
 export function ensureResourceBodies(world) {

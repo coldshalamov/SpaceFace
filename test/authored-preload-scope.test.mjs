@@ -211,7 +211,7 @@ test('startup readiness gates the authored opening runway without waiting on dis
   npc.mesh.userData.authoredAssetState = 'loading';
   assert.equal(partsLibrary.authoredCriticalVisualReadiness(state).ready, true,
     'traffic beyond the authored runway streams after handoff without publishing placeholders');
-  npc.pos.x = 1200;
+  npc.pos.x = 80;
   assert.equal(partsLibrary.authoredCriticalVisualReadiness(state).ready, false,
     'a ship inside the opening authored runway must settle before control begins');
   npc.mesh.userData.authoredAssetState = 'compiling-pipelines';
