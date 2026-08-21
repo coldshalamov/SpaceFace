@@ -38,6 +38,10 @@ export function protectSharedGpuResource(resource) {
 function protectedDispose() {}
 
 export function createAssetResidencyRegistry(options = {}) {
+  // The renderer is optional because the registry is also used by decoder/unit-test adapters.
+  // When present it is the authority for Three's per-target MSAA path; a target's requested
+  // `samples` value alone is not enough to know whether a resolve allocation exists.
+  const accountingRenderer = options.renderer || null;
   const now = typeof options.now === 'function'
     ? options.now
     : () => (globalThis.performance && typeof globalThis.performance.now === 'function'
@@ -134,11 +138,21 @@ export function createAssetResidencyRegistry(options = {}) {
       metadata: { ...(registration.metadata || {}) },
       handle: null,
     };
+    const accountingOptions = {
+      renderer: registration.renderer || accountingRenderer,
+      renderTargetMultisampleLayout: registration.renderTargetMultisampleLayout
+        ?? registration.renderTargetLayout
+        ?? registration.gpuAccounting?.renderTargetMultisampleLayout
+        ?? registration.metadata?.renderTargetMultisampleLayout,
+      renderTargetSampleCount: registration.renderTargetSampleCount
+        ?? registration.gpuAccounting?.renderTargetSampleCount
+        ?? registration.metadata?.renderTargetSampleCount,
+    };
     for (const resource of list) {
       protectSharedGpuResource(resource);
       let resourceEntry = resources.get(resource);
       if (!resourceEntry) {
-        const accounting = resourceMemoryAccounting(resource);
+        const accounting = resourceMemoryAccounting(resource, accountingOptions);
         const units = accounting.units;
         resourceEntry = {
           resource,
@@ -791,7 +805,7 @@ export function getAssetResidency(renderer, options = {}) {
   if (!renderer || (typeof renderer !== 'object' && typeof renderer !== 'function')) return null;
   let registry = registriesByRenderer.get(renderer);
   if (!registry) {
-    registry = createAssetResidencyRegistry(options);
+    registry = createAssetResidencyRegistry({ ...options, renderer });
     registriesByRenderer.set(renderer, registry);
   }
   return registry;
@@ -843,7 +857,7 @@ function explicitGpuBytes(resource) {
   return null;
 }
 
-function resourceMemoryAccounting(resource) {
+function resourceMemoryAccounting(resource, options = {}) {
   const explicit = explicitGpuBytes(resource);
   if (explicit != null) {
     return { units: explicit > 0 ? [{ identity: resource, bytes: explicit }] : [], known: true };
@@ -854,9 +868,9 @@ function resourceMemoryAccounting(resource) {
   // program telemetry, not by asset texture/buffer residency. It must never inherit package bytes.
   if (isMaterialResource(resource)) return { units: [], known: true };
 
-  if (resource.isRenderTarget === true) return renderTargetMemoryAccounting(resource);
+  if (resource.isRenderTarget === true) return renderTargetMemoryAccounting(resource, options);
   if (resource.isTexture === true || resource.isRenderTargetTexture === true) {
-    return textureMemoryAccounting(resource);
+    return textureMemoryAccounting(resource, new Set(), options);
   }
 
   const units = new Map();
@@ -1062,7 +1076,134 @@ function textureLayerCount(texture, image) {
   return depth > 0 ? Math.max(1, Math.floor(depth)) : 1;
 }
 
-function textureSampleCount(texture) {
+function normalizeRenderTargetMultisampleLayout(value) {
+  if (value === true) return 'direct';
+  if (value === false) return 'resolve';
+  if (typeof value !== 'string') return null;
+  const token = value.trim().toLowerCase().replace(/[ _]+/g, '-');
+  if ([
+    'direct',
+    'extension',
+    'multisampled-texture',
+    'multisampled-render-to-texture',
+    'render-to-texture',
+    'render-to-texture-msaa',
+  ].includes(token)) return 'direct';
+  if ([
+    'resolve',
+    'standard',
+    'webgl2',
+    'multisampled-renderbuffer',
+    'renderbuffer',
+    'renderbuffer-resolve',
+  ].includes(token)) return 'resolve';
+  return null;
+}
+
+function explicitRenderTargetMultisampleLayout(target, options = {}) {
+  const userData = target && target.userData && typeof target.userData === 'object'
+    ? target.userData
+    : {};
+  const residency = userData.spacefaceRenderTargetResidency
+    && typeof userData.spacefaceRenderTargetResidency === 'object'
+    ? userData.spacefaceRenderTargetResidency
+    : {};
+  const gpuResidency = userData.gpuResidency
+    && typeof userData.gpuResidency === 'object'
+    ? userData.gpuResidency
+    : {};
+  const candidates = [
+    [options.renderTargetMultisampleLayout, options.renderTargetMultisampleLayout !== undefined],
+    [options.renderTargetLayout, options.renderTargetLayout !== undefined],
+    [options.multisampleLayout, options.multisampleLayout !== undefined],
+    [residency.multisampleLayout, residency.multisampleLayout !== undefined],
+    [residency.layout, residency.layout !== undefined],
+    [residency.mode, residency.mode !== undefined],
+    [residency.useRenderToTexture, residency.useRenderToTexture !== undefined],
+    [gpuResidency.multisampleLayout, gpuResidency.multisampleLayout !== undefined],
+    [userData.spacefaceMultisampleLayout, userData.spacefaceMultisampleLayout !== undefined],
+    [userData.renderTargetMultisampleLayout, userData.renderTargetMultisampleLayout !== undefined],
+    [userData.useRenderToTexture, userData.useRenderToTexture !== undefined],
+    [target && target.renderTargetMultisampleLayout, target?.renderTargetMultisampleLayout !== undefined],
+    [target && target.multisampleLayout, target?.multisampleLayout !== undefined],
+    [target && target.__useRenderToTexture, target?.__useRenderToTexture !== undefined],
+  ];
+  for (const [value, present] of candidates) {
+    if (present) return { present: true, layout: normalizeRenderTargetMultisampleLayout(value) };
+  }
+  return { present: false, layout: null };
+}
+
+function rendererRenderTargetMultisampleLayout(target, options = {}) {
+  const renderer = options.renderer;
+  if (!renderer || typeof renderer !== 'object') return null;
+
+  // Three stores the final per-target decision here after setupRenderTarget. This takes priority
+  // over the extension probe because external framebuffers/depth textures can force the standard
+  // resolve path even when WEBGL_multisampled_render_to_texture exists.
+  const properties = renderer.properties;
+  if (properties && typeof properties.get === 'function' && target) {
+    try {
+      const renderTargetProperties = properties.get(target);
+      if (renderTargetProperties && typeof renderTargetProperties.__useRenderToTexture === 'boolean') {
+        return renderTargetProperties.__useRenderToTexture ? 'direct' : 'resolve';
+      }
+    } catch (_) {
+      // A lightweight renderer adapter may expose properties without supporting this target.
+    }
+  }
+
+  const capabilityLayout = renderer.renderTargetCapabilities?.multisampleLayout
+    ?? renderer.capabilities?.renderTargetMultisampleLayout
+    ?? renderer.capabilities?.multisampleLayout
+    ?? renderer.capabilities?.multisampleRenderToTexture;
+  if (capabilityLayout !== undefined) {
+    return normalizeRenderTargetMultisampleLayout(capabilityLayout);
+  }
+
+  try {
+    if (renderer.extensions && typeof renderer.extensions.has === 'function') {
+      const hasDirectExtension = renderer.extensions.has('WEBGL_multisampled_render_to_texture');
+      if (hasDirectExtension === true) return 'direct';
+      if (hasDirectExtension === false && renderer.capabilities?.isWebGL2 === true) return 'resolve';
+    }
+  } catch (_) {
+    // Unknown backend capability is intentionally not converted into a guessed layout.
+  }
+  return renderer.capabilities?.isWebGL2 === true ? 'resolve' : null;
+}
+
+function renderTargetMultisampleLayout(target, options = {}) {
+  const explicit = explicitRenderTargetMultisampleLayout(target, options);
+  if (explicit.present) return explicit.layout;
+  return rendererRenderTargetMultisampleLayout(target, options);
+}
+
+function renderTargetSampleCount(target, options = {}) {
+  const userData = target && target.userData && typeof target.userData === 'object'
+    ? target.userData
+    : {};
+  const residency = userData.spacefaceRenderTargetResidency
+    && typeof userData.spacefaceRenderTargetResidency === 'object'
+    ? userData.spacefaceRenderTargetResidency
+    : {};
+  const requested = Number(
+    options.renderTargetSampleCount
+      ?? residency.sampleCount
+      ?? userData.renderTargetSampleCount
+      ?? target?.renderTargetSampleCount
+      ?? target?.sampleCount
+      ?? target?.samples,
+  );
+  if (!Number.isFinite(requested) || requested <= 0) return 1;
+  const maxSamples = Number(options.renderer?.capabilities?.maxSamples);
+  if (Number.isFinite(maxSamples) && maxSamples > 0) {
+    return Math.max(1, Math.min(Math.floor(requested), Math.floor(maxSamples)));
+  }
+  return Math.max(1, Math.floor(requested));
+}
+
+function textureSampleCount(texture, options = {}) {
   const targetSamples = Number(texture && texture.renderTarget && texture.renderTarget.samples);
   const ownSamples = Number(texture && texture.samples);
   return Math.max(1, Number.isFinite(targetSamples) && targetSamples > 0 ? targetSamples : 1,
@@ -1141,8 +1282,15 @@ function finalizeTextureAccounting(texture, units, known, options = {}) {
   if (baseBytes <= 0) return { units: [], known };
   const result = [{ identity: texture, bytes: baseBytes }];
   const target = texture && texture.renderTarget;
-  const targetSamples = Number(target && target.samples);
+  const targetSamples = target && target.isRenderTarget === true
+    ? renderTargetSampleCount(target, options)
+    : 1;
   const includeTargetMultisample = options.includeTargetMultisample !== false;
+  if (target && target.isRenderTarget === true && targetSamples > 1) {
+    const layout = renderTargetMultisampleLayout(target, options);
+    if (!layout) return { units: [], known: false };
+    if (layout === 'direct') return { units: result, known };
+  }
   if (includeTargetMultisample && target && target.isRenderTarget === true && targetSamples > 1) {
     const index = Array.isArray(target.textures) ? target.textures.indexOf(texture) : 0;
     result.push({
@@ -1161,12 +1309,19 @@ function textureMemoryAccounting(texture, seen = new Set(), options = {}) {
   const formatInfo = textureFormatInfo(texture);
   const layers = textureLayerCount(texture, image);
   const target = texture && texture.renderTarget;
+  const targetSamples = target && target.isRenderTarget === true
+    ? renderTargetSampleCount(target, options)
+    : 1;
+  const targetLayout = target && target.isRenderTarget === true && targetSamples > 1
+    ? renderTargetMultisampleLayout(target, options)
+    : null;
   const samples = options.sampleCount != null
     ? Math.max(1, Number(options.sampleCount) || 1)
-    : target && target.isRenderTarget === true
-      ? 1
+    : target && target.isRenderTarget === true && targetSamples > 1
+      ? targetLayout === 'direct' ? targetSamples : 1
       : textureSampleCount(texture);
   let known = !!formatInfo;
+  if (target && target.isRenderTarget === true && targetSamples > 1 && !targetLayout) known = false;
   if (texture.generateMipmaps === true && !formatInfo && (!Array.isArray(texture.mipmaps) || texture.mipmaps.length === 0)) {
     // The base payload may be known while the driver-generated lower levels are not.
     known = false;
@@ -1178,7 +1333,7 @@ function textureMemoryAccounting(texture, seen = new Set(), options = {}) {
     known = image.length > 0;
     for (const face of image) {
       if (face && face.isTexture === true) {
-        const nested = textureMemoryAccounting(face, seen);
+        const nested = textureMemoryAccounting(face, seen, options);
         known = known && nested.known;
         for (const unit of nested.units) addTextureUnit(units, unit.identity, unit.bytes * samples);
       } else {
@@ -1243,39 +1398,50 @@ function imageBytes(texture, image, formatInfo, layers = 1) {
   return { bytes: bytes * layers, known: bytes > 0, identity: image };
 }
 
-function renderTargetMemoryAccounting(target) {
+function renderTargetMemoryAccounting(target, options = {}) {
   const units = new Map();
   let known = true;
   const attachments = Array.isArray(target.textures)
     ? target.textures
     : target.texture ? [target.texture] : [];
   if (attachments.length === 0 && target.colorBuffer !== false) known = false;
-  const samples = Math.max(1, Number(target.samples) || 1);
+  const samples = renderTargetSampleCount(target, options);
+  const layout = samples > 1 ? renderTargetMultisampleLayout(target, options) : 'single-sample';
+  if (samples > 1 && !layout) {
+    // A requested MSAA target with no backend decision is not safe to budget. Three may have a
+    // direct multisampled texture or a renderbuffer plus resolve texture; returning neither layout
+    // as fact keeps the diagnostic honest and makes the governor fail closed.
+    return { units: [], known: false };
+  }
   for (let index = 0; index < attachments.length; index++) {
     const texture = attachments[index];
-    // A render target's color Texture is the single-sample resolve allocation. The multisample
-    // renderbuffer/attachment is a second allocation when samples > 1.
+    const sampleCount = layout === 'direct' ? samples : 1;
     const accounting = textureMemoryAccounting(texture, new Set(), {
-      sampleCount: 1,
+      ...options,
+      sampleCount,
+      renderTargetMultisampleLayout: layout === 'single-sample' ? undefined : layout,
       includeTargetMultisample: false,
     });
     known = known && accounting.known;
-    let resolveBytes = 0;
+    let colorBytes = 0;
     for (const unit of accounting.units) {
       addUnit(units, unit.identity, unit.bytes);
-      resolveBytes += unit.bytes;
+      colorBytes += unit.bytes;
     }
-    if (samples > 1 && resolveBytes > 0) {
+    if (layout === 'resolve' && colorBytes > 0) {
       addUnit(
         units,
         renderTargetAttachmentIdentity(target, 'color-msaa', index),
-        resolveBytes * samples,
+        colorBytes * samples,
       );
     }
   }
   if (target.depthTexture) {
+    const sampleCount = layout === 'direct' ? samples : 1;
     const depth = textureMemoryAccounting(target.depthTexture, new Set(), {
-      sampleCount: 1,
+      ...options,
+      sampleCount,
+      renderTargetMultisampleLayout: layout === 'single-sample' ? undefined : layout,
       includeTargetMultisample: false,
     });
     known = known && depth.known;
@@ -1284,7 +1450,7 @@ function renderTargetMemoryAccounting(target) {
       addUnit(units, unit.identity, unit.bytes);
       depthBytes += unit.bytes;
     }
-    if (samples > 1 && depthBytes > 0) {
+    if (layout === 'resolve' && depthBytes > 0) {
       addUnit(units, renderTargetAttachmentIdentity(target, 'depth-msaa'), depthBytes * samples);
     }
   } else if (target.depthBuffer === true || target.stencilBuffer === true) {
@@ -1299,8 +1465,12 @@ function renderTargetMemoryAccounting(target) {
       : Number(target.depthType) === THREE.UnsignedShortType ? 2 : 4;
     const depthBytes = width * height * faces * bytesPerPixel;
     if (depthBytes > 0) {
-      addUnit(units, renderTargetAttachmentIdentity(target, 'depth-resolve'), depthBytes);
-      if (samples > 1) {
+      if (layout === 'direct') {
+        addUnit(units, renderTargetAttachmentIdentity(target, 'depth-msaa'), depthBytes * samples);
+      } else {
+        addUnit(units, renderTargetAttachmentIdentity(target, 'depth-resolve'), depthBytes);
+      }
+      if (layout === 'resolve') {
         addUnit(units, renderTargetAttachmentIdentity(target, 'depth-msaa'), depthBytes * samples);
       }
     } else {
@@ -1312,8 +1482,8 @@ function renderTargetMemoryAccounting(target) {
   return { units: [...units].map(([identity, bytes]) => ({ identity, bytes })), known };
 }
 
-export function estimateGpuResourceBytes(resource) {
-  const accounting = resourceMemoryAccounting(resource);
+export function estimateGpuResourceBytes(resource, options = {}) {
+  const accounting = resourceMemoryAccounting(resource, options);
   let bytes = 0;
   for (const unit of accounting.units) bytes += unit.bytes;
   return Object.freeze({

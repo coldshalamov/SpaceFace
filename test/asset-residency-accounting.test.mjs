@@ -14,6 +14,24 @@ function resident(registry, key, resources, options = {}) {
   return registry.diagnostics({ includeEvents: false });
 }
 
+function markRenderTargetLayout(target, multisampleLayout) {
+  target.userData = {
+    ...(target.userData || {}),
+    spacefaceRenderTargetResidency: { multisampleLayout },
+  };
+  return target;
+}
+
+function backendRenderer({ extension, useRenderToTexture } = {}) {
+  return {
+    capabilities: { isWebGL2: true, maxSamples: 4 },
+    extensions: { has: () => extension === true },
+    properties: { get: () => ({
+      ...(typeof useRenderToTexture === 'boolean' ? { __useRenderToTexture: useRenderToTexture } : {}),
+    }) },
+  };
+}
+
 test('materials are known zero-byte wrappers and package bytes never enter GPU pressure', () => {
   const registry = createAssetResidencyRegistry({ maxGpuBytes: 1 });
   const material = new THREE.MeshStandardMaterial();
@@ -117,19 +135,84 @@ test('cube, array, and multisample render-target multipliers are represented', (
   array.type = THREE.UnsignedByteType;
   assert.equal(estimateGpuResourceBytes(array).gpuResidentBytes, 48);
 
-  const target = new THREE.WebGLRenderTarget(2, 1, { samples: 4, depthBuffer: false });
+  const target = markRenderTargetLayout(
+    new THREE.WebGLRenderTarget(2, 1, { samples: 4, depthBuffer: false }),
+    'resolve',
+  );
   assert.equal(estimateGpuResourceBytes(target).gpuResidentBytes, 2 * 1 * 4 * (4 + 1));
   assert.equal(estimateGpuResourceBytes(target).unaccounted, false);
 
-  const depthTarget = new THREE.WebGLRenderTarget(2, 1, { samples: 4, depthBuffer: true });
+  const directTarget = markRenderTargetLayout(
+    new THREE.WebGLRenderTarget(2, 1, { samples: 4, depthBuffer: false }),
+    'direct',
+  );
+  assert.equal(estimateGpuResourceBytes(directTarget).gpuResidentBytes, 2 * 1 * 4 * 4);
+  assert.equal(estimateGpuResourceBytes(directTarget).unaccounted, false);
+
+  const unknownTarget = new THREE.WebGLRenderTarget(2, 1, { samples: 4, depthBuffer: false });
+  assert.equal(estimateGpuResourceBytes(unknownTarget).gpuResidentBytes, 0);
+  assert.equal(estimateGpuResourceBytes(unknownTarget).unaccounted, true);
+
+  const depthTarget = markRenderTargetLayout(
+    new THREE.WebGLRenderTarget(2, 1, { samples: 4, depthBuffer: true }),
+    'resolve',
+  );
   assert.equal(estimateGpuResourceBytes(depthTarget).gpuResidentBytes, 2 * 1 * 4 * (4 + 1) * 2,
     'color and implicit depth attachments both include resolve and multisample storage');
   assert.equal(estimateGpuResourceBytes(depthTarget).unaccounted, false);
 
-  const depthTextureTarget = new THREE.WebGLRenderTarget(2, 1, { samples: 4, depthBuffer: true });
+  const directDepthTarget = markRenderTargetLayout(
+    new THREE.WebGLRenderTarget(2, 1, { samples: 4, depthBuffer: true }),
+    'direct',
+  );
+  assert.equal(estimateGpuResourceBytes(directDepthTarget).gpuResidentBytes, 2 * 1 * 4 * 4 * 2,
+    'direct MSAA has one multisampled color and one multisampled depth allocation');
+  assert.equal(estimateGpuResourceBytes(directDepthTarget).unaccounted, false);
+
+  const depthTextureTarget = markRenderTargetLayout(
+    new THREE.WebGLRenderTarget(2, 1, { samples: 4, depthBuffer: true }),
+    'resolve',
+  );
   depthTextureTarget.depthTexture = new THREE.DepthTexture(2, 1);
   assert.equal(estimateGpuResourceBytes(depthTextureTarget).gpuResidentBytes, 2 * 1 * 4 * (4 + 1) * 2);
   assert.equal(estimateGpuResourceBytes(depthTextureTarget).unaccounted, false);
+
+  const directDepthTextureTarget = markRenderTargetLayout(
+    new THREE.WebGLRenderTarget(2, 1, { samples: 4, depthBuffer: true }),
+    'direct',
+  );
+  directDepthTextureTarget.depthTexture = new THREE.DepthTexture(2, 1);
+  assert.equal(estimateGpuResourceBytes(directDepthTextureTarget).gpuResidentBytes, 2 * 1 * 4 * 4 * 2);
+  assert.equal(estimateGpuResourceBytes(directDepthTextureTarget).unaccounted, false);
+
+  const stencilTarget = markRenderTargetLayout(
+    new THREE.WebGLRenderTarget(2, 1, { samples: 4, depthBuffer: true, stencilBuffer: true }),
+    'resolve',
+  );
+  assert.equal(estimateGpuResourceBytes(stencilTarget).gpuResidentBytes, 2 * 1 * 4 * (4 + 1) * 2,
+    'standard depth/stencil uses one resolve and one multisample attachment');
+});
+
+test('render-target accounting follows the renderer backend layout decision', () => {
+  const directTarget = new THREE.WebGLRenderTarget(2, 1, { samples: 4, depthBuffer: false });
+  const directRegistry = createAssetResidencyRegistry({ renderer: backendRenderer({ extension: true }) });
+  directRegistry.registerAsset('extension-direct', [directTarget]);
+  assert.equal(directRegistry.diagnostics({ includeEvents: false }).gpuResidentBytes, 2 * 1 * 4 * 4);
+  assert.equal(directRegistry.diagnostics({ includeEvents: false }).unaccountedResources, 0);
+
+  const standardTarget = new THREE.WebGLRenderTarget(2, 1, { samples: 4, depthBuffer: false });
+  const standardRegistry = createAssetResidencyRegistry({ renderer: backendRenderer({ extension: false }) });
+  standardRegistry.registerAsset('webgl2-resolve', [standardTarget]);
+  assert.equal(standardRegistry.diagnostics({ includeEvents: false }).gpuResidentBytes, 2 * 1 * 4 * (4 + 1));
+  assert.equal(standardRegistry.diagnostics({ includeEvents: false }).unaccountedResources, 0);
+
+  const forcedResolveTarget = new THREE.WebGLRenderTarget(2, 1, { samples: 4, depthBuffer: false });
+  const forcedResolveRegistry = createAssetResidencyRegistry({
+    renderer: backendRenderer({ extension: true, useRenderToTexture: false }),
+  });
+  forcedResolveRegistry.registerAsset('extension-forced-resolve', [forcedResolveTarget]);
+  assert.equal(forcedResolveRegistry.diagnostics({ includeEvents: false }).gpuResidentBytes, 2 * 1 * 4 * (4 + 1));
+  assert.equal(forcedResolveRegistry.diagnostics({ includeEvents: false }).unaccountedResources, 0);
 });
 
 test('separate BufferAttributes count uploaded view bytes, not the global backing buffer', () => {
