@@ -64,6 +64,7 @@ export const GOVERNOR_EVICTABLE_ROLES = Object.freeze(new Set([
   'recent',
   'metadata-cache',
   'cache',
+  'render-package-cache',
   'r2-metadata',
   'r3-unloaded',
 ]));

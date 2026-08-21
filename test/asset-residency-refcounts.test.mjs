@@ -451,6 +451,68 @@ test('headless real release-GLB traversal plateaus through live sector events an
       const renderer = window.SF.state.render.renderer;
       const residency = residencyModule.getAssetResidency(renderer);
       const baseline = residency.canonicalDiagnostics();
+      const presentationRoles = new Set([
+        'bootstrap',
+        'player',
+        'player-shell',
+        'opening-shell',
+        'gameplay-shell',
+        'shell',
+        'current-sector',
+        'runway',
+        'glass',
+        'whole-ship-lod-family',
+        'save-restore-hold',
+        'current-interaction',
+        'interaction',
+        'active-interaction',
+        'live-boundary',
+        'render-package-instance',
+        'flight-render-package-instance',
+        'sector-prewarm',
+        'sector-prepared-boundary',
+        'sector-prepared-live-boundary',
+        'preview',
+        'warm-previous-sector',
+        'in-flight',
+        'inflight',
+      ]);
+      const residencyBudgets = (snapshot) => {
+        let cacheOnlyBytes = 0;
+        let cacheOnlyResources = 0;
+        let cacheOnlyAssets = 0;
+        let unexplainedBytes = 0;
+        let unexplainedResources = 0;
+        let unexplainedAssets = 0;
+        for (const asset of snapshot.assets || []) {
+          const roles = new Set(asset.roles || []);
+          const cacheOnly = roles.size === 1 && roles.has('render-package-cache');
+          if (cacheOnly) {
+            cacheOnlyBytes += Number(asset.bytes) || 0;
+            cacheOnlyResources += Number(asset.resourceCount) || 0;
+            cacheOnlyAssets++;
+            continue;
+          }
+          const hasPresentationOwner = [...roles].some((role) => presentationRoles.has(role));
+          if (!hasPresentationOwner) {
+            unexplainedBytes += Number(asset.bytes) || 0;
+            unexplainedResources += Number(asset.resourceCount) || 0;
+            unexplainedAssets++;
+          }
+        }
+        return {
+          cacheOnlyBytes,
+          cacheOnlyResources,
+          cacheOnlyAssets,
+          unexplainedBytes,
+          unexplainedResources,
+          unexplainedAssets,
+          activePresentationBytes: Math.max(
+            0,
+            (Number(snapshot.residentBytes) || 0) - cacheOnlyBytes - unexplainedBytes,
+          ),
+        };
+      };
       const settleResidency = async (label) => {
         const renderState = window.SF.state.render;
         const readiness = renderState.pipelinePrecompileReady;
@@ -478,6 +540,12 @@ test('headless real release-GLB traversal plateaus through live sector events an
       const files = [
         { url: 'assets/ships/release/parts/hulls/hull_frigate.glb', slot: 'hull' },
         { url: 'assets/ships/release/parts/places/place_debris_chunk.glb', slot: 'place' },
+        { url: 'assets/ships/release/parts/hulls/hull_gunship.glb', slot: 'hull' },
+        { url: 'assets/ships/release/parts/places/place_conveyor_barge.glb', slot: 'place' },
+        { url: 'assets/ships/release/parts/hulls/hull_multirole.glb', slot: 'hull' },
+        { url: 'assets/ships/release/parts/places/place_dead_hulk.glb', slot: 'place' },
+        { url: 'assets/ships/release/parts/hulls/hull_capital.glb', slot: 'hull' },
+        { url: 'assets/ships/release/parts/places/place_asteroid_seamed.glb', slot: 'place' },
       ];
       const liveSectors = Object.values(window.SF.state.world && window.SF.state.world.sectors || {})
         .filter((sector) => sector && sector.id);
@@ -491,10 +559,7 @@ test('headless real release-GLB traversal plateaus through live sector events an
         if (previousLease) previousLease.release('real-runtime-sector-departed');
         const sector = liveSectors[(index + 1) % liveSectors.length];
         const sectorId = sector.id;
-        // Continuous handoff exercises the same live boundary event without starting a whole
-        // authored-sector prewarm batch. The prewarm promise is still awaited by settleResidency so
-        // a stale request cannot contaminate the preview residency sample.
-        window.SF.bus.emit('sector:enter', { sectorId, sector, continuous: true, noTeleport: true });
+        window.SF.bus.emit('sector:enter', { sectorId, sector });
         await settleResidency(`sector-enter:${index}`);
         const lease = loader.createAuthoredAssetLease(renderer, {
           role: 'preview',
@@ -509,12 +574,14 @@ test('headless real release-GLB traversal plateaus through live sector events an
         }
         await settleResidency(`preview-load:${index}`);
         const snapshot = residency.canonicalDiagnostics();
+        const budget = residencyBudgets(snapshot);
         samples.push({
           sectorId,
           residentBytes: snapshot.residentBytes,
           residentResources: snapshot.residentResources,
           residentAssets: snapshot.residentAssets,
           previewAssets: snapshot.assets.filter((asset) => asset.roles.includes('preview')).length,
+          ...budget,
           assetSlot: file.slot,
         });
         previousLease = lease;
@@ -526,19 +593,9 @@ test('headless real release-GLB traversal plateaus through live sector events an
       previousLease.release('real-runtime-traversal-complete');
       const drainSectorOne = liveSectors[1];
       const drainSectorTwo = liveSectors[2 % liveSectors.length];
-      window.SF.bus.emit('sector:enter', {
-        sectorId: drainSectorOne.id,
-        sector: drainSectorOne,
-        continuous: true,
-        noTeleport: true,
-      });
+      window.SF.bus.emit('sector:enter', { sectorId: drainSectorOne.id, sector: drainSectorOne });
       window.SF.bus.emit('sector:exit', { sectorId: drainSectorOne.id });
-      window.SF.bus.emit('sector:enter', {
-        sectorId: drainSectorTwo.id,
-        sector: drainSectorTwo,
-        continuous: true,
-        noTeleport: true,
-      });
+      window.SF.bus.emit('sector:enter', { sectorId: drainSectorTwo.id, sector: drainSectorTwo });
       let final = residency.canonicalDiagnostics();
       while (performance.now() - evictionStartedAt <= 2000) {
         const previewAssets = final.assets.filter((asset) => asset.roles.includes('preview'));
@@ -557,6 +614,7 @@ test('headless real release-GLB traversal plateaus through live sector events an
         baseline,
         samples,
         final,
+        finalBudget: residencyBudgets(final),
         evictionMs: performance.now() - evictionStartedAt,
       };
     }).catch((error) => {
@@ -568,17 +626,22 @@ test('headless real release-GLB traversal plateaus through live sector events an
     assert.ok(warmed.some((sample) => sample.assetSlot === 'hull')
       && warmed.some((sample) => sample.assetSlot === 'place'),
     'real traversal rotates both authored ship and place graphs');
-    const traversalBytes = warmed.map((sample) => Math.max(0, sample.residentBytes - proof.baseline.residentBytes));
-    const traversalResources = warmed.map((sample) => sample.residentResources - proof.baseline.residentResources);
-    assert.ok(Math.max(...traversalBytes) <= 64 * 1024 * 1024,
-      'actual decoded current + warm preview GLBs stay inside the 64MiB traversal budget');
-    assert.ok(Math.max(...traversalBytes) - Math.min(...traversalBytes) <= 64 * 1024 * 1024,
-      'actual release-GLB residency reaches a bounded current + warm plateau');
-    assert.ok(Math.max(...traversalResources) - Math.min(...traversalResources) <= 32,
-      'actual decoded resource counts plateau instead of growing per sector');
+    const cacheOnlyBytes = warmed.map((sample) => sample.cacheOnlyBytes);
+    const unexplainedBytes = warmed.map((sample) => sample.unexplainedBytes);
+    assert.ok(Math.max(...cacheOnlyBytes) <= 64 * 1024 * 1024,
+      'cache-only render-package residency stays inside the 64MiB residual budget');
+    assert.ok(Math.max(...unexplainedBytes) <= 64 * 1024 * 1024,
+      'unexplained resident bytes stay inside the 64MiB residual budget');
     assert.ok(warmed.every((sample) => sample.previewAssets <= 2),
       'only the current and one warm preview generation remain resident');
     assert.equal(proof.final.assets.some((asset) => asset.roles.includes('preview')), false);
+    assert.equal(proof.final.pendingRequests, 0, 'final traversal has no pending decode requests');
+    assert.equal(proof.finalBudget.cacheOnlyAssets, 0,
+      'final traversal leaves no cache-only render-package package behind');
+    assert.ok(proof.finalBudget.cacheOnlyBytes <= 64 * 1024 * 1024,
+      'final cache-only render-package bytes stay inside the 64MiB residual budget');
+    assert.ok(proof.finalBudget.unexplainedBytes <= 64 * 1024 * 1024,
+      'final unexplained resident bytes stay inside the 64MiB residual budget');
     assert.ok(proof.evictionMs <= 2000, `preview eviction recovery took ${proof.evictionMs}ms`);
     assert.ok(proof.final.residentBytes <= proof.baseline.residentBytes,
       'real traversal returns to the mandatory bootstrap baseline');

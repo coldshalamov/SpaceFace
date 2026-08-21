@@ -128,6 +128,7 @@ test('low budgets leave protected presentation roles out of the plan with a shor
 
 test('planner policy is the same for mixed owners and active requests', () => {
   assert.equal(isGovernorOwnerEvictable({ role: 'warm-previous-sector' }), true);
+  assert.equal(isGovernorOwnerEvictable({ role: 'render-package-cache' }), true);
   assert.equal(isGovernorOwnerEvictable({ role: 'player' }), false);
   assert.equal(isGovernorEntryEvictable({
     key: 'mixed',
@@ -152,6 +153,24 @@ test('planner policy is the same for mixed owners and active requests', () => {
   assert.deepEqual(plan.evict, ['safe']);
   assert.equal(plan.blockedBytesByRole.player, 100);
   assert.equal(plan.blockedBytesByRole['in-flight-request'], 100);
+});
+
+test('cache-only render-package owners are evictable under pressure but mixed owners stay pinned', () => {
+  const registry = createAssetResidencyRegistry({ maxGpuBytes: 100 });
+  const cacheOnlyResource = { dispose() {}, userData: {}, byteSize: 80 };
+  const mixedResource = { dispose() {}, userData: {}, byteSize: 80 };
+  registry.registerAsset('cache-only-package', [cacheOnlyResource]);
+  registry.registerAsset('mixed-package', [mixedResource]);
+  registry.retain('cache-only-package', {}, { role: 'render-package-cache' });
+  registry.retain('mixed-package', {}, { role: 'render-package-cache' });
+  registry.retain('mixed-package', {}, { role: 'sector-prewarm', sectorId: 'helios' });
+
+  const receipt = registry.enforceBudget();
+  assert.deepEqual(receipt.evicted, ['cache-only-package']);
+  assert.equal(registry.has('cache-only-package'), false);
+  assert.equal(registry.has('mixed-package'), true);
+  assert.equal(receipt.blockedBytesByRole['sector-prewarm'], 80);
+  assert.equal(receipt.blockedBytesByReason['mixed-protected-owner'], 80);
 });
 
 test('live receipt reports actual freed bytes and closes the budget when possible', () => {
