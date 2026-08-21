@@ -7599,7 +7599,7 @@
       "priority": 347,
       "title": "This asteroid's rock: kill the tan wash",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-130.01"
       ],
@@ -7617,7 +7617,9 @@
         "npm run check:asteroid-theater",
         "node scripts/check-program-docs.mjs"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-130-03-this-rock-3d-REPORT.md"
+      ],
       "brief": "Spirit: you recognize the body you tethered to. Lighting as stone, not a blown-out fill. Illegal: darken the tan hex and keep key light 4.2. Unsurveyed is still rock. Do not restyle ore clusters or the rover here."
     },
     {

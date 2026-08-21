@@ -37,7 +37,10 @@ import { spawnParticleBurst, stepParticles, drillGasShakeOffset } from '../scree
 import { ORE_TINTS, STATUS_COLORS } from './asteroidRenderer2d.js';
 import { createBloom } from '../../render/bloom.js';
 import {
-  makeRockMaterials, makeMachine, makeRover, makeDerrick, metalMat, emissiveMat,
+  preloadRockSurfaceLibrary, getReadyRockSurfaceTextures, ROCK_SURFACE_TEXTURE_REPEAT,
+} from '../../render/rockSurfaceLibrary.js';
+import {
+  makeRockMaterials, makeMachine, makeRover, makeDerrick, metalMat,
   makeCellBlockGeos, makeOreClusterGeo, makeGasVaporGeo, makeCrackGeos,
 } from '../../render/asteroidInteriorPreview.js';
 
@@ -50,7 +53,11 @@ const DEPTH = S * 1.5;        // block body depth; the cavity recess carved cell
 // Law §2.1 — the board is an axis-aligned chess board: zero yaw, zero pitch, no tilt ever.
 const CAM_YAW = 0;
 const CAM_PITCH = 0;
-const CAM_DIST = 260;
+// Law §2.7 — straight-down PERSPECTIVE, narrow FOV. The optical axis is perpendicular to the cut
+// plane, so the pad plane is parallel to the image plane and the grid stays a perfect chess board;
+// what perspective buys is real depth on bevels, cavity walls, the rover and the machines.
+const CAM_FOV = 31;
+const HALF_FOV_TAN = Math.tan((CAM_FOV * Math.PI) / 180 / 2);
 // Law §4 — two zoom registers, only two. Work: ~16 columns on the glass (96–128px cells at
 // 1920×1080). Site: the whole asteroid silhouette with ≥16px cells. Register snaps are 180ms
 // eased detents, not freeform zoom.
@@ -116,14 +123,20 @@ function injectOverlayStyle() {
 
 // Tiny procedural "workshop" environment baked through PMREM so the metal machines have
 // something believable to reflect (the vendored addons ship no RoomEnvironment).
+// The panels mirror the light rig exactly — warm work-light below-left, cool starlight above, a
+// dim cold floor. A cyan panel used to live here, so EVERY metal in the scene reflected a strip of
+// neon teal that no code review would ever spot. Design law §2.7: no neon anywhere.
 function bakeEnvMap(renderer) {
   const sc = new THREE.Scene();
   const dis = [];
   const add = (geo, mat) => { const m = new THREE.Mesh(geo, mat); dis.push(geo, mat); sc.add(m); return m; };
-  add(new THREE.BoxGeometry(14, 14, 14), new THREE.MeshBasicMaterial({ color: 0x0b1018, side: THREE.BackSide }));
-  add(new THREE.BoxGeometry(5, 0.2, 3), new THREE.MeshBasicMaterial({ color: 0xfff1dc })).position.set(-3, 5, 0);
-  add(new THREE.BoxGeometry(0.2, 3, 4), new THREE.MeshBasicMaterial({ color: 0x39d0ff })).position.set(5, 1, 2);
-  add(new THREE.BoxGeometry(7, 0.2, 4), new THREE.MeshBasicMaterial({ color: 0x2a3a66 })).position.set(0, -5, -2);
+  add(new THREE.BoxGeometry(14, 14, 14), new THREE.MeshBasicMaterial({ color: 0x090810, side: THREE.BackSide }));
+  // warm work-light bank, low and to the left (matches the raking key)
+  add(new THREE.BoxGeometry(5, 0.2, 3), new THREE.MeshBasicMaterial({ color: 0xffd9b0 })).position.set(-3.4, -3.6, 1.5);
+  // cool starlight wash from above (matches the rim)
+  add(new THREE.BoxGeometry(8, 0.2, 5), new THREE.MeshBasicMaterial({ color: 0x8fa8d8 })).position.set(0, 5.4, -1);
+  // dim cold bounce off the far rock
+  add(new THREE.BoxGeometry(7, 0.2, 4), new THREE.MeshBasicMaterial({ color: 0x1c2130 })).position.set(0, -5, -2);
   const pmrem = new THREE.PMREMGenerator(renderer);
   const rt = pmrem.fromScene(sc, 0.05);
   pmrem.dispose();
@@ -186,7 +199,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x0b0a12);
 
-  const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 2000);
+  const camera = new THREE.PerspectiveCamera(CAM_FOV, 1, 1, 2000);
 
   // The game's canonical bloom/grade composite — same ACES + exposure presentation as flight.
   // Exposure 1.25 preserves the brightness the scene was authored for under the retired composer.
@@ -198,28 +211,39 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   scene.environment = envMap;
 
   // ---------------------------------------------------------------- lights
+  // DEPTH IS SOLD BY LIGHT (law §2.7 / §3.5): a raking WARM key from slightly below-left that
+  // casts real shadows into every cavity, a cool starlight RIM from above, and a deliberately
+  // WEAK fill. The old rig ran key:fill ≈ 1.6:1 with the fill head-on down the camera axis — a
+  // head-on fill erases exactly the relief the bevels exist to show, and was a real cause of the
+  // flat cardboard read. Contract here is ≈ 5:1 on the pad, with every light raking so the ratio
+  // is a ratio of *contributions*, not of raw intensities.
   const lightRig = new THREE.Group();
   scene.add(lightRig);
-  const key = new THREE.DirectionalLight(0xfff0dc, 4.2);
+  // Key: work-light amber. Direction is set every frame in poseCamera().
+  const key = new THREE.DirectionalLight(0xffdcbc, 9.4);
   key.castShadow = true;
   key.shadow.mapSize.set(2048, 2048);
   key.shadow.bias = -0.0004;
-  key.shadow.normalBias = 0.05;
+  key.shadow.normalBias = 0.08;
   const sc = key.shadow.camera;
   sc.left = -COLS * S * 0.62; sc.right = COLS * S * 0.62;
   sc.top = VIEW_ROWS * S * 0.85; sc.bottom = -VIEW_ROWS * S * 0.85;
   sc.near = 1; sc.far = 900;
   sc.updateProjectionMatrix();
   lightRig.add(key, key.target);
-  const rim = new THREE.DirectionalLight(0x6a86ff, 0.55);
-  rim.position.set(COLS * S * 0.5, -VIEW_ROWS * S, DEPTH * 3);
+  // Rim: cold starlight spilling in from above the cut. Weak on purpose — a strong cool
+  // directional from above lights the up-facing bevel of EVERY block head-on, and the board grows
+  // a painted blue grid. The soft cool-from-above job belongs to the hemisphere below.
+  const rim = new THREE.DirectionalLight(0x9db8f0, 1.2);
   lightRig.add(rim, rim.target);
-  // The cut face is flat-on to the camera: the fill is what lights the pads. It must be strong
-  // enough that unsurveyed mass reads as solid rock, not void.
-  const fill = new THREE.DirectionalLight(0xcfd8ea, 1.7);
-  fill.position.set(0, 0, 300);
+  // Fill: weak and WARM. Inside a bore, the light that is not the work lamp is bounce off warm
+  // rock, not starlight; a cool fill down here is what made every joint read as a blue line.
+  const fill = new THREE.DirectionalLight(0xd8c3a8, 1.3);
   lightRig.add(fill, fill.target);
-  scene.add(new THREE.AmbientLight(0x2a3342, 0.85));
+  // Hemisphere: the law's warm/cool split (§3.5) expressed as a SOFT GRADIENT over surface
+  // orientation instead of a hard directional. Up-facing stone catches cold sky, down-facing stone
+  // catches warm bounce off the bore floor, and nothing gets a hard painted edge out of it.
+  scene.add(new THREE.HemisphereLight(0x8fa6cf, 0x7a5636, 1.1));
 
   // ---------------------------------------------------------------- space + body extents
   // Warm-white stars behind the rock (law §3.5): the only billboard-style exception in the game,
@@ -227,13 +251,18 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   const STAR_Z = -320;
   const starGeo = new THREE.BufferGeometry();
   {
-    const N = 720;
+    // Under perspective the sky plane must cover the widest frustum any register can open: the
+    // site register dollies back to ~223 units, so the star plane is ~543 units from the eye. Span
+    // is solved from the FOV (with headroom for a 2.4 aspect ultrawide) rather than guessed from
+    // cell counts, which is what the old 3.2×/2.4× multipliers did — they left bare black corners.
+    const starDepth = Math.abs(STAR_Z) + 240;
+    const spanY = starDepth * HALF_FOV_TAN * 2 * 1.15;
+    const spanX = spanY * 2.4;
+    const N = 2600;
     const pos = new Float32Array(N * 3);
     const col = new Float32Array(N * 3);
     let seed = 0x5f3a71c4 >>> 0;
     const rr = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
-    const spanX = (COLS + SKIRT_CELLS * 2) * S * 3.2;
-    const spanY = (ROWS + SKIRT_CELLS * 2) * S * 2.4;
     for (let i = 0; i < N; i++) {
       pos[i * 3] = (rr() - 0.5) * spanX;
       pos[i * 3 + 1] = (rr() - 0.5) * spanY;
@@ -273,7 +302,119 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   const fxRoot = new THREE.Group();         // particles / rings / cursor / scan / crack decal
   scene.add(rockGroup, oreRoot, gasRoot, siteRoot, overlayRoot, fxRoot);
 
-  const rockMats = makeRockMaterials(envMap);
+  let disposed = false;   // guards async surface arrival against a screen that already left
+
+  // ---------------------------------------------------------------- rock surface (law §2.7)
+  // THE CELL FACE IS THE FLIGHT GAME'S ROCK. Same three authored maps every asteroid outside
+  // wears (src/render/rockSurfaceLibrary.js: basecolor + normal + packed ORM), same PBR wiring
+  // visualFactory.astMaterial uses. The library is a process-wide singleton, already decoded by
+  // the flight renderer by the time anyone can tether to a rock; calling preload again is a
+  // no-op that just hands back the resolved set. This screen owns a second WebGL context, so the
+  // maps upload once more here — but the *source* is shared, so there is no second decode.
+  //
+  // PER-CELL UV WINDOW: one InstancedMesh draws hundreds of cells from one geometry, so every
+  // cell would otherwise show the identical crop and the field would read as wallpaper. The
+  // vertex patch below hashes each instance's own translation into a texture offset, so every
+  // block is a different piece of the same stone. No extra attributes, no geometry clones.
+  // THE CUT FACE IS ONE BODY OF STONE, NOT A GRID OF CROPS.
+  //
+  // The obvious way to texture an instanced cell kit is to hand every block its own crop of the
+  // map. That was tried and it is exactly wrong: a hundred unrelated rectangles of photographed
+  // cliff, butted edge to edge, read as wallpaper cut into squares no matter how good the source
+  // is. So the pad and its bevel take a CONTINUOUS WORLD-PLANAR projection — one unbroken rock
+  // face that the grooves are cut into. The grid then comes from the geometry (the groove, its
+  // shadow, the lift step), which is what a grid cut into rock actually looks like.
+  //
+  // Cavity walls are the exception: a plan projection smears on a near-vertical surface, so walls
+  // keep their own local patch, hashed per cell. The sfFacet attribute authored by
+  // makeCellBlockGeos (1 = cut face, 0 = wall/back) selects between them per vertex.
+  // Cells spanned by one repeat of the map across the cut face, and the angle that repeat is
+  // rotated by. THE ROTATION IS THE POINT: an axis-aligned repeat lands the same authored crack in
+  // the same corner of every Nth cell, and the eye locks onto that instantly. Off-axis, the repeat
+  // never lines up with a joint and the wall reads as one irregular body of rock.
+  const ROCK_UV_CELLS = 4.3;
+  const ROCK_UV_ANGLE = 0.54;    // ~31 degrees
+  const ROCK_WALL_WINDOW = 0.34; // fraction of the map one cavity wall shows
+  function patchRockUvWindow(mat) {
+    const k = 1 / (ROCK_UV_CELLS * S);
+    const rc = (Math.cos(ROCK_UV_ANGLE) * k).toFixed(6);
+    const rs = (Math.sin(ROCK_UV_ANGLE) * k).toFixed(6);
+    const wallWin = (ROCK_WALL_WINDOW / ROCK_SURFACE_TEXTURE_REPEAT).toFixed(6);
+    mat.onBeforeCompile = (shader) => {
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', '#include <common>\nattribute float sfFacet;\nvarying float vSfNmScale;')
+        .replace('#include <uv_vertex>', [
+          '#include <uv_vertex>',
+          '#ifdef USE_MAP',
+          '  vec4 sfWorld = modelMatrix *',
+          '  #ifdef USE_INSTANCING',
+          '    instanceMatrix *',
+          '  #endif',
+          '    vec4( position, 1.0 );',
+          '  vec2 sfPlanar = vec2( sfWorld.x * ' + rc + ' - sfWorld.y * ' + rs + ',',
+          '                       sfWorld.x * ' + rs + ' + sfWorld.y * ' + rc + ' );',
+          '  vec2 sfCellKey = vec2(0.0);',
+          '  #ifdef USE_INSTANCING',
+          '    sfCellKey = instanceMatrix[3].xy;',
+          '  #endif',
+          '  vec2 sfLocal = vMapUv * ' + wallWin + ' + vec2(',
+          '    fract(sin(dot(sfCellKey, vec2(12.9898, 78.233))) * 43758.5453),',
+          '    fract(sin(dot(sfCellKey, vec2(63.7264, 21.5391))) * 24634.6345));',
+          '  float sfPlanarMix = step( 0.25, sfFacet );',
+          '  vSfNmScale = 1.0 - 0.68 * ( sfPlanarMix * ( 1.0 - step( 0.75, sfFacet ) ) );',
+          '  vec2 sfWin = mix( sfLocal, sfPlanar, sfPlanarMix );',
+          '  vMapUv = sfWin;',
+          '  #ifdef USE_NORMALMAP',
+          '    vNormalMapUv = sfWin;',
+          '  #endif',
+          '  #ifdef USE_AOMAP',
+          '    vAoMapUv = sfWin;',
+          '  #endif',
+          '  #ifdef USE_ROUGHNESSMAP',
+          '    vRoughnessMapUv = sfWin;',
+          '  #endif',
+          '  #ifdef USE_METALNESSMAP',
+          '    vMetalnessMapUv = sfWin;',
+          '  #endif',
+          '#endif',
+        ].join('\n'));
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', '#include <common>\nvarying float vSfNmScale;')
+        .replace('#include <normal_fragment_maps>', [
+          'vec3 sfGeoNormal = normal;',
+          '#include <normal_fragment_maps>',
+          'normal = normalize( mix( sfGeoNormal, normal, vSfNmScale ) );',
+        ].join('\n'));
+    };
+    // Distinct cache key: the patched program must not be shared with an unpatched standard
+    // material that happens to carry the same defines.
+    mat.customProgramCacheKey = () => `sf-ast-rock-uv:${ROCK_UV_CELLS}:${ROCK_WALL_WINDOW}`;
+    return mat;
+  }
+
+  let rockMats = makeRockMaterials(envMap, getReadyRockSurfaceTextures());
+  const rockSurfaceReady = !!getReadyRockSurfaceTextures();
+  if (rockSurfaceReady) { patchRockUvWindow(rockMats.matrix); patchRockUvWindow(rockMats.basalt); }
+  else {
+    // Cold host (a direct deep-link into the works screen, or a test harness that never booted the
+    // flight renderer): decode now and swap the maps in on arrival. The board is never blank —
+    // it renders on the procedural fallback for a frame or two and then becomes real stone.
+    preloadRockSurfaceLibrary(renderer).then((surface) => {
+      if (!surface || disposed) return;
+      const next = makeRockMaterials(envMap, surface);
+      patchRockUvWindow(next.matrix);
+      patchRockUvWindow(next.basalt);
+      const old = rockMats;
+      rockMats = next;
+      for (const bucket of ['matrix', 'basalt']) {
+        for (const inst of rockInst[bucket]) inst.material = next[bucket];
+      }
+      if (plateauInst) plateauInst.material = next.matrix;
+      if (skirtInst) skirtInst.material = next.matrix;
+      old.matrix.dispose();
+      old.basalt.dispose();
+    }).catch(() => { /* procedural fallback already on screen */ });
+  }
 
   // Shared cell-kit geometry (never disposed per cell — see sharedGeos)
   const blockGeos = makeCellBlockGeos();
@@ -352,18 +493,30 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     return m;
   }
 
-  // conduit materials — plan palette: cyan = command/lane, amber = power/process
-  const laneCoreMat = emissiveMat(0x39d0ff, 0.5);
-  const powerCoreMat = emissiveMat(0xffb35c, 0.9);
-  const casingMat = metalMat(0x10151f, envMap);
-  casingMat.roughness = 0.7;
+  // Conduit materials (law §7). These are PHYSICAL RUNS bolted along the tunnel floor, not neon
+  // dashes: a dark armoured casing carrying either a gold power cable or a pale steel material
+  // lane. Each keeps a small emissive floor so a live run is still legible in an unlit tunnel —
+  // the renderer breathes it with flow/charge — but the colour is in the JACKET, and the metal
+  // reads under the key light first.
+  const laneCoreMat = new THREE.MeshStandardMaterial({
+    color: 0x7d97ab, emissive: 0x5cc8f2, emissiveIntensity: 0.14,
+    roughness: 0.38, metalness: 0.8, envMap,
+  });
+  const powerCoreMat = new THREE.MeshStandardMaterial({
+    color: 0xb8863a, emissive: 0xffb648, emissiveIntensity: 0.18,
+    roughness: 0.34, metalness: 0.85, envMap,
+  });
+  const casingMat = metalMat(0x1c1814, envMap);
+  casingMat.roughness = 0.66;
 
   // cursor / ghost / ring shared bits
-  const frameMat = new THREE.MeshBasicMaterial({ color: 0x39d0ff, transparent: true, opacity: 0.85, depthTest: false });
-  const ringSolidMat = new THREE.MeshBasicMaterial({ color: 0x62e08a, transparent: true, opacity: 0.17, depthTest: false });
-  const ringEmptyMat = new THREE.MeshBasicMaterial({ color: 0x5a7aa0, transparent: true, opacity: 0.08, depthTest: false });
-  const padOkMat = new THREE.MeshBasicMaterial({ color: 0x62e08a, transparent: true, opacity: 0.13, depthTest: false });
-  const padBadMat = new THREE.MeshBasicMaterial({ color: 0xff5c5c, transparent: true, opacity: 0.16, depthTest: false });
+  // Aim/build affordances. These are the only drawn overlays left on the board, and they wear the
+  // chrome palette (§3.2 gold / mint / coral) — never the old console cyan.
+  const frameMat = new THREE.MeshBasicMaterial({ color: 0xffb648, transparent: true, opacity: 0.8, depthTest: false });
+  const ringSolidMat = new THREE.MeshBasicMaterial({ color: 0x7cd9a2, transparent: true, opacity: 0.15, depthTest: false });
+  const ringEmptyMat = new THREE.MeshBasicMaterial({ color: 0x8a7a66, transparent: true, opacity: 0.07, depthTest: false });
+  const padOkMat = new THREE.MeshBasicMaterial({ color: 0x7cd9a2, transparent: true, opacity: 0.12, depthTest: false });
+  const padBadMat = new THREE.MeshBasicMaterial({ color: 0xff6242, transparent: true, opacity: 0.15, depthTest: false });
   const cursorGroup = new THREE.Group();
   {
     const bar = new THREE.BoxGeometry(S, S * 0.06, S * 0.02);
@@ -391,7 +544,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   fxRoot.add(padQuad);
 
   // scan pulse ring
-  const scanMat = new THREE.MeshBasicMaterial({ color: 0x39d0ff, transparent: true, opacity: 0, side: THREE.DoubleSide, depthTest: false });
+  const scanMat = new THREE.MeshBasicMaterial({ color: 0xffb648, transparent: true, opacity: 0, side: THREE.DoubleSide, depthTest: false });
   const scanRing = new THREE.Mesh(new THREE.RingGeometry(0.96, 1, 48), scanMat);
   scanRing.visible = false;
   scanRing.renderOrder = 27;
@@ -400,7 +553,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   // event pulse rings (install / break) — small pool, life-driven
   const pulseRings = [];
   for (let i = 0; i < 4; i++) {
-    const mat = new THREE.MeshBasicMaterial({ color: 0x62e08a, transparent: true, opacity: 0, side: THREE.DoubleSide, depthTest: false });
+    const mat = new THREE.MeshBasicMaterial({ color: 0x7cd9a2, transparent: true, opacity: 0, side: THREE.DoubleSide, depthTest: false });
     const mesh = new THREE.Mesh(new THREE.RingGeometry(0.88, 1, 40), mat);
     mesh.visible = false;
     mesh.renderOrder = 27;
@@ -422,6 +575,75 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   crackDecal.visible = false;
   crackDecal.renderOrder = 25;
   fxRoot.add(crackDecal);
+
+  // DAMAGE PERSISTS. A half-bored cell used to spring back to pristine the instant the bit left
+  // it, which made every abandoned bore a lie about the sim. Damage now lives on the cell: the
+  // block stays sunk in its socket, and it keeps whichever of the three authored crack stages its
+  // remaining hp earns. One InstancedMesh per stage, because an instanced draw cannot switch
+  // texture per instance.
+  const CRACK_CAP = 96;
+  const damagedCells = new Map();   // idx -> { c, r, stage }
+  let crackDirty = false;
+  const crackStageMeshes = crackTexs.map((tex) => {
+    const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, opacity: 0.9 });
+    const mesh = new THREE.InstancedMesh(new THREE.PlaneGeometry(S, S), mat, CRACK_CAP);
+    mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    mesh.count = 0;
+    mesh.renderOrder = 24;
+    mesh.frustumCulled = false;
+    fxRoot.add(mesh);
+    return mesh;
+  });
+  function boreStageFor(tile) {
+    if (!tile || tile.type === 'empty' || !tile.maxHp) return -1;
+    const prog = 1 - Math.max(0, tile.hp) / tile.maxHp;
+    if (prog <= 0.04) return -1;
+    return { prog, stage: Math.min(2, Math.floor(prog * 3)) };
+  }
+  // Re-read a cell's hp and park its block + crack stage where the sim says they belong.
+  function syncCellDamage(c, r) {
+    if (c < 0 || c >= COLS || r < 0 || r >= ROWS) return;
+    const idx = tileIndex(c, r);
+    const tile = field && field[c] && field[c][r];
+    const rec = cellRock.get(idx);
+    const info = boreStageFor(tile);
+    if (info === -1 || !rec || rec.carved) {
+      if (damagedCells.delete(idx)) crackDirty = true;
+      if (rec && !rec.carved) {
+        setRockMatrix(c, r, false);
+        rec.mesh.setMatrixAt(rec.i, dummy.matrix);
+        rec.mesh.instanceMatrix.needsUpdate = true;
+      }
+      return;
+    }
+    setRockMatrix(c, r, false, info.prog);
+    rec.mesh.setMatrixAt(rec.i, dummy.matrix);
+    rec.mesh.instanceMatrix.needsUpdate = true;
+    const prev = damagedCells.get(idx);
+    if (!prev || prev.stage !== info.stage) {
+      damagedCells.set(idx, { c, r, stage: info.stage });
+      crackDirty = true;
+    }
+  }
+  function rebuildCrackInstances() {
+    crackDirty = false;
+    const counts = [0, 0, 0];
+    for (const [idx, dmg] of damagedCells) {
+      const m = crackStageMeshes[dmg.stage];
+      if (counts[dmg.stage] >= CRACK_CAP) continue;
+      // The live target owns the animated single decal; skip it here so they do not double up.
+      if (digCell && digCell.idx === idx) continue;
+      dummy.position.set(worldX(dmg.c), worldY(dmg.r), Z.stain + 0.01);
+      dummy.rotation.set(0, 0, (hash32(dmg.c, dmg.r, 'ckr') % 4) * (Math.PI / 2));
+      dummy.scale.setScalar(0.72 + dmg.stage * 0.12);
+      dummy.updateMatrix();
+      m.setMatrixAt(counts[dmg.stage]++, dummy.matrix);
+    }
+    for (let i = 0; i < 3; i++) {
+      crackStageMeshes[i].count = counts[i];
+      crackStageMeshes[i].instanceMatrix.needsUpdate = true;
+    }
+  }
 
   // particles — px-space sim (the shipped helpers), instanced additive chips on screen…
   const PARTICLE_CAP = 200;
@@ -489,6 +711,23 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   rover.add(headSpot);
   headSpot.target = headTarget;
   const roverAnim = { flipY: 0, armAim: -Math.PI / 2, bite: 0, wheelSpin: 0, lean: 0, bob: 0 };
+  const HOT_BIT = new THREE.Color(0xff6242);   // law §4 — the bit's hot end
+
+  // MACHINE WORK LIGHTS — a FIXED pool (law §2.7: "emissive only as small plausible lamps with a
+  // real light"). The count never changes, because THREE bakes the light count into every shader
+  // program: adding or removing one light per machine placement would recompile every material in
+  // the scene and hitch the frame. Instead three lights exist for the life of the screen, are
+  // re-aimed at whichever machines most deserve them, and drop to intensity 0 when unused. None of
+  // them casts a shadow — only the key and the rover headlamp do.
+  const MACHINE_LIGHT_POOL = 3;
+  const machineLights = [];
+  for (let i = 0; i < MACHINE_LIGHT_POOL; i++) {
+    const l = new THREE.PointLight(0xffb069, 0, S * 4.2, 2);
+    l.castShadow = false;
+    l.position.set(0, 0, -900);   // parked off the board until claimed
+    scene.add(l);
+    machineLights.push(l);
+  }
 
   // surface derrick (the umbilical winch) — built per session over the entry shaft
   let derrickBuilt = null;
@@ -498,9 +737,13 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   let umbilical = null;      // { casing, core }
   let umbilicalKey = '';
   let umbilicalTimer = 0;
-  const umbCasingMat = metalMat(0x232c3c, envMap);
-  umbCasingMat.roughness = 0.62;
-  const umbCoreMat = emissiveMat(0x0ea5e9, 2.4);
+  const umbCasingMat = metalMat(0x1b1815, envMap);
+  umbCasingMat.roughness = 0.58;
+  // The tether's power core: a gold conductor inside the jacket, not a neon light-rope.
+  const umbCoreMat = new THREE.MeshStandardMaterial({
+    color: 0xb8863a, emissive: 0xffb648, emissiveIntensity: 0.3,
+    roughness: 0.34, metalness: 0.88, envMap,
+  });
 
   // ---------------------------------------------------------------- per-session state
   let motionReduce = false;
@@ -578,12 +821,23 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     const halfW = workHalfW() / zoomKCur;
     return { halfW, halfH: halfW / canvasAspect() };
   }
+  // The zoom registers are still expressed as half-extents on the cut plane — that is the contract
+  // the leash, the body clamp, siteZoomK and the 180ms detent are all written against. Perspective
+  // only changes how a half-extent becomes a camera: instead of an ortho box we solve the DISTANCE
+  // at which the fixed FOV subtends exactly that height on the pad plane. Everything downstream is
+  // untouched, and the detent now eases a dolly instead of a box.
+  function camDistanceFor(halfH) { return halfH / HALF_FOV_TAN + ROCK_FACE; }
   function applyView() {
     const { halfW, halfH } = viewHalfExtents();
-    camera.left = -halfW; camera.right = halfW;
-    camera.top = halfH; camera.bottom = -halfH;
+    camera.fov = CAM_FOV;
+    camera.aspect = canvasAspect();
+    // Near/far hug the slab so depth precision stays on the rock, not on empty space.
+    camera.near = Math.max(0.5, camDistanceFor(halfH) - ROCK_FACE - S * 6);
+    camera.far = camDistanceFor(halfH) + Math.abs(STAR_Z) + 200;
     camera.updateProjectionMatrix();
-    // Shadow texel density follows the visible window, not the whole field.
+    // Shadow texel density follows the visible window, not the whole field. The shadow camera
+    // stays ORTHOGRAPHIC — a directional key has no eye point, and a perspective shadow map here
+    // would only add swim.
     sc.left = -halfW * 1.8; sc.right = halfW * 1.8;
     sc.top = halfH * 1.8; sc.bottom = -halfH * 1.8;
     sc.updateProjectionMatrix();
@@ -645,23 +899,28 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     return tile.type === 'rock' ? 'basalt' : 'matrix';
   }
 
-  function rockInstanceColor(c, r, bucket, surveyed, out) {
+  // Per-instance tint. Three rules, all of them corrections of a measured defect:
+  //   1. NO SURVEY BRANCH. Law §2.3 removed fog of war; the old code tinted essentially the whole
+  //      field 27% blue-over-red until it was surveyed, which is a fog layer wearing a hat.
+  //      Survey state must not touch a cell's colour at all.
+  //   2. WARM BORE / COOL SPACE. The old gradient ran warm at the surface and cool at depth —
+  //      backwards. The surface is what faces cold starlight; the deep bore is where the work
+  //      lights live, so depth warms.
+  //   3. ±5% VARIANCE, not ±20%. Twenty percent per cell reads as a patchwork quilt and fights
+  //      the texture, which is where the real variation now comes from.
+  //   4. STRATA, NOT SALT AND PEPPER. Rock is laid down in beds. Per-cell random value makes a
+  //      noisy quilt; what reads as geology is LOW-FREQUENCY banding on a slightly tilted axis,
+  //      with broad patches over it and only a whisper of per-cell grain. Two sinusoids at
+  //      different periods give wide beds with the occasional thin seam between them.
+  function rockInstanceColor(c, r, _bucket, _surveyed, out) {
     const depthT = r / ROWS;
-    const tintBase = (0.82 + rnd01(c + 13, r + 5, 'rt') * 0.4) * (1.08 - depthT * 0.3);
-    let tint = tintBase;
-    let warm = (rnd01(c + 6, r + 8, 'rw') - 0.32) * 0.2;
-    if (depthT < 0.09) warm += 0.1;    // sun-warmed regolith near the surface
-    else warm -= depthT * 0.05;        // cooler with depth
-    if (bucket === 'basalt') tint *= 0.8;
-    if (surveyed) {
-      // Surveyed: full warmth — the survey "identifies", it does not switch the lights on.
-      out.setRGB(Math.min(1.35, tint + warm), tint, Math.max(0, tint - warm * 1.15));
-    } else {
-      // Unsurveyed mass reads as the SAME ROCK, cooled and slightly dimmed — fog hides identity
-      // (ore/gas veins), never substance. The field must be legible before the first pulse.
-      const g = tint * 0.8;
-      out.setRGB(g * 0.88 + warm * 0.2, g * 0.97, Math.min(1.35, g * 1.12));
-    }
+    const bed = r + c * 0.22;                                          // beds dip slightly
+    const strata = Math.sin(bed * 0.42) * 0.055 + Math.sin(bed * 1.17 + 1.9) * 0.028;
+    const patch = (rnd01(Math.floor(c / 5), Math.floor(r / 4), 'pt') - 0.5) * 0.06;
+    const grain = (rnd01(c + 13, r + 5, 'rt') - 0.5) * 0.07;
+    const tint = Math.max(0.05, 1 + strata + patch + grain - depthT * 0.10);
+    const warm = (rnd01(c + 6, r + 8, 'rw') - 0.5) * 0.04 + depthT * 0.08 - 0.03 + strata * 0.5;
+    out.setRGB(Math.max(0, tint + warm), tint, Math.max(0, tint - warm * 1.2));
     return out;
   }
 
@@ -720,10 +979,52 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       }
     }
     if (!backWall) {
-      backWall = new THREE.Mesh(
-        new THREE.PlaneGeometry(COLS * S, ROWS * S),
-        new THREE.MeshStandardMaterial({ color: 0x0a0c12, roughness: 1, metalness: 0 }),
-      );
+      // THE TUNNEL FLOOR IS STONE. It used to be a flat cold slab (0x0a0c12), which is what made a
+      // carved cell read as a hole punched in a picture instead of a room with a floor. It is the
+      // same authored rock, warm and deep in shadow (law §3.5 bored tunnel #1f1a15), tiled at the
+      // cell's texel density so the floor and the walls are visibly one continuous body.
+      const surface = getReadyRockSurfaceTextures();
+      let mat;
+      if (surface && surface.baseColor) {
+        mat = new THREE.MeshStandardMaterial({
+          color: new THREE.Color().setRGB(1.02, 0.94, 0.80),
+          map: surface.baseColor,
+          normalMap: surface.normal,
+          normalScale: new THREE.Vector2(1.6, 1.6),
+          aoMap: surface.orm,
+          aoMapIntensity: 1,
+          roughnessMap: surface.orm,
+          metalnessMap: surface.orm,
+          roughness: 1,
+          metalness: 1,
+        });
+        // Same texel density as the cut face, so the floor and the walls above it are one body.
+        const tile = (COLS / ROCK_UV_CELLS) / ROCK_SURFACE_TEXTURE_REPEAT;
+        mat.onBeforeCompile = (shader) => {
+          shader.vertexShader = shader.vertexShader.replace('#include <uv_vertex>', [
+            '#include <uv_vertex>',
+            `#ifdef USE_MAP`,
+            `  vMapUv *= ${tile.toFixed(4)};`,
+            '  #ifdef USE_NORMALMAP',
+            '    vNormalMapUv = vMapUv;',
+            '  #endif',
+            '  #ifdef USE_AOMAP',
+            '    vAoMapUv = vMapUv;',
+            '  #endif',
+            '  #ifdef USE_ROUGHNESSMAP',
+            '    vRoughnessMapUv = vMapUv;',
+            '  #endif',
+            '  #ifdef USE_METALNESSMAP',
+            '    vMetalnessMapUv = vMapUv;',
+            '  #endif',
+            '#endif',
+          ].join('\n'));
+        };
+        mat.customProgramCacheKey = () => 'sf-ast-cavity-floor';
+      } else {
+        mat = new THREE.MeshStandardMaterial({ color: 0x231d16, roughness: 1, metalness: 0 });
+      }
+      backWall = new THREE.Mesh(new THREE.PlaneGeometry(COLS * S, ROWS * S), mat);
       backWall.position.z = Z.back;
       backWall.receiveShadow = true;
       rockGroup.add(backWall);
@@ -750,13 +1051,18 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     for (let i = 0; i < COLS + 2; i++) {
       const c = i - 1;
       const h = rnd01(c, 77, 'ph');
-      dummy.position.set(worldX(c), worldY(-1), 0);
+      // Sits partway between the cut plane and the back wall: far enough behind to read as the
+      // recessed crust the shaft was sunk through, near enough that the field in front of it does
+      // not bury the whole surface strip in its own shadow.
+      dummy.position.set(worldX(c), worldY(-1), ROCK_FACE * 0.5);
       dummy.rotation.set(0, 0, 0);
       dummy.scale.set(S * 1.02, S * (0.55 + h * 0.8), DEPTH);
       dummy.updateMatrix();
       plateauInst.setMatrixAt(i, dummy.matrix);
-      const t = 0.62 + rnd01(c, 78, 'pt') * 0.3;
-      plateauInst.setColorAt(i, colScratch.setRGB(t * 1.08, t, t * 0.94));
+      // Crust caps: the same stone, a touch cooler and dimmer than the interior because this is
+      // the face that has been staring at cold starlight, not sitting in the work-light pool.
+      const t = 0.86 + rnd01(c, 78, 'pt') * 0.1;
+      plateauInst.setColorAt(i, colScratch.setRGB(t * 0.97, t, t * 1.05));
     }
     plateauInst.instanceMatrix.needsUpdate = true;
     if (plateauInst.instanceColor) plateauInst.instanceColor.needsUpdate = true;
@@ -810,8 +1116,8 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       dummy.updateMatrix();
       skirtInst.setMatrixAt(i, dummy.matrix);
       // crust: darker and cooler toward the rim, still the same stone family
-      const t = 0.72 - cell.edge * 0.34 + rnd01(cell.c + 3, cell.r + 9, 'skt') * 0.08;
-      skirtInst.setColorAt(i, colScratch.setRGB(t * 0.98, t, t * 1.04));
+      const t = 0.92 - cell.edge * 0.3 + rnd01(cell.c + 3, cell.r + 9, 'skt') * 0.06;
+      skirtInst.setColorAt(i, colScratch.setRGB(t * 0.95, t, t * 1.08));
     });
     skirtInst.instanceMatrix.needsUpdate = true;
     if (skirtInst.instanceColor) skirtInst.instanceColor.needsUpdate = true;
@@ -819,13 +1125,19 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   }
 
   function carveCell(c, r) {
-    const rec = cellRock.get(tileIndex(c, r));
+    const idx = tileIndex(c, r);
+    const rec = cellRock.get(idx);
     if (rec && !rec.carved) {
       rec.carved = true;
       setRockMatrix(c, r, true);
       rec.mesh.setMatrixAt(rec.i, dummy.matrix);
       rec.mesh.instanceMatrix.needsUpdate = true;
     }
+    // Pruning damage belongs HERE, not at the call sites: carveCell is reached from the break
+    // event AND from refreshCells, and a crack quad left behind by the second path would hang at
+    // Z.stain over an empty cell — a decal floating in a void.
+    if (damagedCells.delete(idx)) { crackDirty = true; rebuildCrackInstances(); }
+    if (digCell && digCell.idx === idx) digCell = null;
     removeOreAt(c, r);
     removeGasAt(c, r);
   }
@@ -1101,16 +1413,22 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       const dx = Math.sign(cell.col - rec.col);
       const dy = -Math.sign(cell.row - rec.row); // world y is up; rows grow down
       const len = Math.hypot(dx, dy) * S * 0.5;
+      // Physical clamp arms: machined steel with the worked material's tint in the PAINT, not in
+      // an emissive. A clamp bolted to a seam is hardware; a glowing bar is an icon (law §2.7).
       const mat = new THREE.MeshStandardMaterial({
-        color: armTint(cell), emissive: armTint(cell), emissiveIntensity: 0.75, roughness: 0.5, metalness: 0.3,
+        color: armTint(cell), emissive: 0x000000, emissiveIntensity: 0, roughness: 0.46, metalness: 0.66,
+        envMap,
       });
       mat._own = true;
-      const bar = new THREE.Mesh(new THREE.BoxGeometry(len, S * 0.07, S * 0.07), mat);
+      const bar = new THREE.Mesh(new THREE.BoxGeometry(len, S * 0.075, S * 0.075), mat);
       bar.position.set(dx * len * 0.55, dy * len * 0.55, S * 0.34);
       bar.rotation.z = Math.atan2(dy, dx);
+      bar.castShadow = true;
       arms.add(bar);
-      const pad = new THREE.Mesh(new THREE.BoxGeometry(S * 0.16, S * 0.16, S * 0.1), mat);
+      const pad = new THREE.Mesh(new THREE.BoxGeometry(S * 0.12, S * 0.2, S * 0.2), mat);
       pad.position.set(dx * S * 0.52, dy * S * 0.52, S * 0.34);
+      pad.rotation.z = Math.atan2(dy, dx);
+      pad.castShadow = true;
       arms.add(pad);
     }
     rec.group.add(arms);
@@ -1140,9 +1458,11 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
           rec.dyn.lamp.color.setHex(hex);
           rec.dyn.lamp.emissive.setHex(hex);
           rec.dyn.lamp.emissiveIntensity = FAULT_STATES.has(state) && !motionReduce
-            ? 1.1 + 0.7 * Math.sin(timeS * 3.2) : 1.3;
+            ? 0.75 + 0.5 * Math.sin(timeS * 3.2) : 0.9;
         }
         const running = state === 'running' || state === 'throttled' || state === 'limited';
+        rec.lightRunning = running;
+        rec.lightState = state;
         if (rec.dyn.orbit) rec.dyn.orbit.rotation.z = motionReduce ? 0.8 : timeS * 1.1;
         if (rec.dyn.turbine) {
           rec.dyn.turbine.rotation.z = motionReduce
@@ -1155,17 +1475,53 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         if (rec.dyn.furnace) {
           const hot = running;
           rec.dyn.furnace.emissiveIntensity = hot
-            ? (motionReduce ? 1.4 : 1.2 + 0.5 * Math.sin(timeS * 5)) : 0.15;
+            ? (motionReduce ? 1.5 : 1.25 + 0.55 * Math.sin(timeS * 5)) : 0.08;
         }
         if (rec.dyn.progressBar) {
           const p = status && Number.isFinite(status.progress) ? Math.max(0, Math.min(1, status.progress)) : 0;
-          rec.dyn.progressBar.scale.x = Math.max(0.001, p);
+          // The gantry head TRAVELS its rail. Same 0..1 contract, a mechanism instead of a bar.
+          rec.dyn.progressBar.position.x = rec.dyn.progressBase + rec.dyn.progressTravel * p;
         }
         if (rec.dyn.pod) rec.dyn.pod.visible = !!(site.fleet && site.fleet.podsReady > 0);
       }
     }
     for (const id of [...machines.keys()]) {
       if (!seen.has(id)) removeMachine(id);
+    }
+    syncMachineLights(timeS);
+  }
+
+  // Claim the fixed light pool for the machines that most deserve a real lamp: a running furnace
+  // first (it has an open fire in it), then anything else that is running, then faults so a dark
+  // machine still has a colour on the rock beside it. Everything unclaimed parks at intensity 0.
+  const lightPick = [];
+  function syncMachineLights(timeS) {
+    lightPick.length = 0;
+    for (const [, rec] of machines) {
+      const anchor = rec.dyn.furnaceAnchor || rec.dyn.lampAnchor;
+      if (!anchor) continue;
+      const st = rec.lightState || 'idle';
+      let rank = 0;
+      if (rec.dyn.furnace && rec.lightRunning) rank = 3;
+      else if (rec.lightRunning) rank = 2;
+      else if (FAULT_STATES.has(st)) rank = 1;
+      if (!rank) continue;
+      lightPick.push({ rec, anchor, rank, st });
+    }
+    lightPick.sort((a, b) => b.rank - a.rank);
+    for (let i = 0; i < machineLights.length; i++) {
+      const l = machineLights[i];
+      const pick = lightPick[i];
+      if (!pick) { l.intensity = 0; l.position.set(0, 0, -900); continue; }
+      pick.anchor.getWorldPosition(l.position);
+      l.position.z += S * 0.16;
+      if (pick.rank === 3) {
+        l.color.setHex(0xff8a30);
+        l.intensity = motionReduce ? 5.2 : 4.4 + 1.4 * Math.sin(timeS * 5);
+      } else {
+        l.color.setHex(pick.rank === 2 ? 0xffc07a : statusColorHex({ state: pick.st }));
+        l.intensity = pick.rank === 2 ? 2.1 : 1.2;
+      }
     }
   }
 
@@ -1425,16 +1781,30 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   function poseCamera(centerX, centerY, shakeX, shakeY) {
     const cx = centerX + shakeX;
     const cy = centerY + shakeY;
-    // Zero yaw, zero pitch (law §2.1): the ortho axis looks straight down -z at the cut plane.
-    camera.position.set(cx, cy, CAM_DIST);
+    // Zero yaw, zero pitch (law §2.1): the optical axis is exactly +z→-z, dead perpendicular to
+    // the cut plane. Only the DOLLY changes between registers.
+    const { halfH } = viewHalfExtents();
+    camera.position.set(cx, cy, camDistanceFor(halfH));
     camera.up.set(0, 1, 0);
     camera.lookAt(cx, cy, 0);
     camera.updateMatrixWorld();
-    // Key light + shadow volume track the view so texel density stays where the player looks.
-    // Deliberately raking (lateral+above, shallow z) so pad chamfers light and cavities shadow.
-    key.position.set(cx - COLS * S * 0.5, cy + VIEW_ROWS * S * 0.72, DEPTH * 5 + 22);
+
+    // ---- the rig tracks the view so texel density stays where the player is looking ----
+    // KEY: warm work-light raking in from BELOW-LEFT and only slightly in front of the cut plane.
+    // Shallow z is the whole point: a light near the plane grazes every pad, so the bevel that
+    // faces it lights, the bevel that faces away goes dark, and a carved cell throws a real
+    // shadow down its own wall. Aimed at the plane, not at the camera.
+    // reach is view-scaled and every offset is proportional to it, so the incidence angles (and
+    // therefore the key:fill ratio measured on a pad) are identical in both zoom registers.
+    const reach = Math.max(halfH, S * 8);
+    key.position.set(cx - reach * 1.15, cy - reach * 0.78, reach * 0.54);
     key.target.position.set(cx, cy, 0);
+    // RIM: cold starlight from straight above and a little behind the plane — the blue lip on the
+    // top edge of every block, and the separation between the plateau and space.
+    rim.position.set(cx + reach * 0.22, cy + reach * 1.45, reach * 0.30);
     rim.target.position.set(cx, cy, 0);
+    // FILL: weak, cool, raking from the opposite quadrant to the key. Never head-on.
+    fill.position.set(cx + reach * 1.12, cy + reach * 0.46, reach * 0.50);
     fill.target.position.set(cx, cy, 0);
   }
 
@@ -1445,7 +1815,10 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     raycaster.setFromCamera(ndc, camera);
     const { origin, direction } = raycaster.ray;
     if (Math.abs(direction.z) < 1e-6) return null;
-    const t = (Z.face - origin.z) / direction.z;
+    // Intersect the PAD PLANE, not the fx plane. Under ortho the two were interchangeable; under
+    // perspective every plane offset costs a radial parallax shift that grows off-axis, and
+    // Z.face sits 0.42 proud of the pads — enough to misfire a cell near the frame edge.
+    const t = (ROCK_FACE - origin.z) / direction.z;
     if (t < 0) return null;
     const px = origin.x + direction.x * t;
     const py = origin.y + direction.y * t;
@@ -1525,17 +1898,23 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     const tile = tgt && field[tgt.col] && field[tgt.col][tgt.row];
     if (!tgt || !tile || tile.type === 'empty') {
       if (digCell) {
-        restoreDigBlock();
+        // NOT a restore. The bit leaving a cell does not heal it — the block keeps its sink and
+        // hands its crack stage over to the persistent pool (law §5, bore progress).
+        const prev = digCell;
         digCell = null;
+        syncCellDamage(prev.c, prev.r);
       }
       crackDecal.visible = false;
       if (digGasHot) { setGasHot(digGasHot, false); digGasHot = null; }
+      if (crackDirty) rebuildCrackInstances();
       return;
     }
     const idx = tileIndex(tgt.col, tgt.row);
     if (!digCell || digCell.idx !== idx) {
-      if (digCell) restoreDigBlock();
+      const prev = digCell;
       digCell = { c: tgt.col, r: tgt.row, idx };
+      if (prev) syncCellDamage(prev.c, prev.r);
+      crackDirty = true;   // the new target must drop out of the persistent pool
     }
     const prog = Math.max(0, Math.min(1, 1 - (Math.max(0, tile.hp) / (tile.maxHp || 1))));
     const rec = cellRock.get(idx);
@@ -1578,15 +1957,12 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       });
       if (!motionReduce && tile.hp > 0) spawnChunks(px, py, dustColor, 1);
     }
-  }
-
-  function restoreDigBlock() {
-    const rec = digCell && cellRock.get(digCell.idx);
-    if (rec && !rec.carved) {
-      setRockMatrix(digCell.c, digCell.r, false);
-      rec.mesh.setMatrixAt(rec.i, dummy.matrix);
-      rec.mesh.instanceMatrix.needsUpdate = true;
-    }
+    // keep the persistent record in step with the live bore so leaving mid-stage is seamless
+    const live = damagedCells.get(idx);
+    if (prog > 0.04) {
+      if (!live || live.stage !== stage) { damagedCells.set(idx, { c: tgt.col, r: tgt.row, stage }); crackDirty = true; }
+    } else if (live) { damagedCells.delete(idx); crackDirty = true; }
+    if (crackDirty) rebuildCrackInstances();
   }
 
   function setGasHot(rec, hot) {
@@ -1690,14 +2066,13 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     if (evt === 'break') {
       carveCell(p.col, p.row);
       refreshCells(neighborhood(p.col, p.row, 1));
-      if (digCell && digCell.idx === tileIndex(p.col, p.row)) digCell = null;
       crackDecal.visible = false;
       const { x, y } = centerPx(p.col, p.row);
       const rockColor = p.wasGas ? '#8a9426'
         : (p.type === 'rock' ? '#4a5162' : '#7a6650');
       spawnChunks(x, y, rockColor, motionReduce ? 4 : 8);
       burst({ x, y, count: motionReduce ? 5 : 10, color: '#a78262', life: 0.45, size: 2.8, speed: 60, kind: 'dust', gravity: 55, cone: Math.PI * 2 });
-      firePulseRing(p.col, p.row, 0x39d0ff, 0.3);
+      firePulseRing(p.col, p.row, 0xffb648, 0.3);
       return;
     }
     if (evt === 'yield') {
@@ -1728,7 +2103,25 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       else if (dir === 'up') cy = p.row * TILE + TILE;
       const tint = p.type === 'vein' && p.ore ? ((ORE_TINTS[p.ore] || {}).vein || '#ffb35c')
         : (p.type === 'rock' ? '#59606e' : (p.type === 'gas' ? '#ffc23e' : '#a78262'));
-      burst({ x: cx, y: cy, count: 3, color: tint, life: 0.28, size: 1.8, speed: 45, kind: 'spark', cone: 1.1, gravity: 20 });
+      // A TAP-BITE IS A STRIKE, NOT A GRIND. The drive leaf reports `bite` on a single-tap bore
+      // and `bore` (0..1) on the continuous one, so the two read differently: a bite throws three
+      // times the sparks in a wider cone, kicks a chip loose, and punches the block one stage
+      // deeper in its socket for a beat. Continuous grind stays a thin steady spray.
+      if (p.bite) {
+        burst({ x: cx, y: cy, count: motionReduce ? 4 : 9, color: tint, life: 0.34, size: 2.3,
+          speed: 78, kind: 'spark', cone: 2.0, gravity: 28 });
+        if (!motionReduce) spawnChunks(cx, cy, tint, 2);
+        const bIdx = tileIndex(p.col, p.row);
+        const bRec = cellRock.get(bIdx);
+        if (bRec && !bRec.carved) {
+          const bore = Number.isFinite(p.bore) ? Math.max(0, Math.min(1, p.bore)) : 0;
+          setRockMatrix(p.col, p.row, false, Math.min(1, bore + 0.22));
+          bRec.mesh.setMatrixAt(bRec.i, dummy.matrix);
+          bRec.mesh.instanceMatrix.needsUpdate = true;
+        }
+      } else {
+        burst({ x: cx, y: cy, count: 3, color: tint, life: 0.28, size: 1.8, speed: 45, kind: 'spark', cone: 1.1, gravity: 20 });
+      }
       return;
     }
     if (evt === 'scanPulse') {
@@ -1736,9 +2129,9 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       return;
     }
     if (evt === 'install') {
-      firePulseRing(p.col, p.row, 0x62e08a, 0.6);
+      firePulseRing(p.col, p.row, 0x7cd9a2, 0.6);
       const { x, y } = centerPx(p.col, p.row);
-      burst({ x, y, count: motionReduce ? 4 : 12, color: '#39d0ff', life: 0.5, size: 2.4, speed: 55, kind: 'spark', cone: Math.PI * 2 });
+      burst({ x, y, count: motionReduce ? 4 : 12, color: '#c9b48a', life: 0.5, size: 2.4, speed: 55, kind: 'dust', cone: Math.PI * 2 });
       return;
     }
     if (evt === 'cargoFull') {
@@ -1823,14 +2216,19 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     buildRock();
     buildSurface();
     buildSkirt();
-    // seed ore / gas for the already-known parts of the field
+    // seed ore / gas / half-bored damage for the already-known parts of the field. Damage is
+    // seeded from hp on entry so a reloaded site shows every abandoned bore exactly as it was.
+    damagedCells.clear();
+    crackDirty = true;
     for (let c = 0; c < COLS; c++) {
       for (let r = 0; r < ROWS; r++) {
         const tile = field[c][r];
         if (tile.type === 'gas') syncGasAt(c, r);
         else if (tile.type === 'vein') syncOreAt(c, r);
+        if (tile.type !== 'empty' && tile.maxHp && tile.hp < tile.maxHp) syncCellDamage(c, r);
       }
     }
+    rebuildCrackInstances();
     rover.visible = true;
     pulseEntries = [
       ...roverBuilt.pulses,
@@ -1894,6 +2292,14 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     roverAnim.bite += (biteTarget - roverAnim.bite) * Math.min(1, biteRate * dt);
     roverBuilt.dyn.augerSlide.position.x = S * (0.3 + 0.3 * roverAnim.bite);
     roverBuilt.dyn.auger.rotation.y = drillTheta;
+    // THE BIT HEATS (law §4). Tool steel goes from a dull scorched brown toward a coral glow as
+    // the drill temperature climbs. It is the one part of the rig allowed to emit, and it only
+    // emits when it has earned it.
+    if (roverBuilt.dyn.bitMat) {
+      const heat = Math.max(0, Math.min(1, (d.drillTemp || 0) / 100));
+      roverBuilt.dyn.bitMat.emissive.setHex(0x9a6f4a).lerp(HOT_BIT, heat);
+      roverBuilt.dyn.bitMat.emissiveIntensity = heat * heat * 1.5;
+    }
     // wheels, lean, bob
     const leanTarget = (moving && (faceDir === 'left' || faceDir === 'right')) ? -0.05 : 0;
     if (moving && !motionReduce) {
@@ -1927,9 +2333,11 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       && (m.status.state === 'running' || m.status.state === 'limited' || m.status.state === 'throttled')));
     const worstRatio = projection && projection.power.length
       ? projection.power.reduce((w, p) => Math.min(w, p.ratio), 1) : 1;
+    // A live run brightens its jacket a little; a dead one goes to bare metal. Ceiling stays low
+    // so a cable never out-shouts a real lamp or blooms.
     laneCoreMat.emissiveIntensity = flowing
-      ? (motionReduce ? 0.9 : 0.75 + 0.35 * Math.sin(timeS * 4.2)) : 0.3;
-    powerCoreMat.emissiveIntensity = worstRatio >= 1 ? 1.0 : 0.25 + worstRatio * 0.55;
+      ? (motionReduce ? 0.34 : 0.26 + 0.13 * Math.sin(timeS * 4.2)) : 0.06;
+    powerCoreMat.emissiveIntensity = worstRatio >= 1 ? 0.36 : 0.05 + worstRatio * 0.22;
     syncUmbilical(d, rx, ry, moving, dt);
 
     // dig progress: crack + sink the target block, dribble dust off the face
@@ -2018,6 +2426,8 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     frameMat.dispose(); ringSolidMat.dispose(); ringEmptyMat.dispose(); padOkMat.dispose(); padBadMat.dispose();
     scanMat.dispose(); scanRing.geometry.dispose();
     crackDecalMat.dispose(); crackDecal.geometry.dispose();
+    for (const m of crackStageMeshes) { fxRoot.remove(m); m.geometry.dispose(); m.material.dispose(); m.dispose(); }
+    crackStageMeshes.length = 0;
     for (const t of crackTexs) t.dispose();
     for (const p of pulseRings) { p.mat.dispose(); p.mesh.geometry.dispose(); }
     umbCasingMat.dispose(); umbCoreMat.dispose();
@@ -2028,6 +2438,11 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     }
     cellQuad.dispose(); // belt + suspenders: not in the sharedGeos loop above
     disposeGroup(rover);
+    for (const l of machineLights) scene.remove(l);
+    machineLights.length = 0;
+    disposed = true;
+    rockMats.matrix.dispose();
+    rockMats.basalt.dispose();
     key.shadow.map && key.shadow.map.dispose();
     rim.shadow && rim.shadow.map && rim.shadow.map.dispose();
     scene.environment = null;
