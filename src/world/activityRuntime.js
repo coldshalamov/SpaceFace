@@ -772,15 +772,21 @@ export function ensureActivityClassified(state) {
 }
 
 /**
- * Drop the cached classification after an in-place entity rebuild (save/load respawn). The
- * per-tick latch would otherwise keep serving scratch arrays that reference the retired objects,
- * and a same-id respawn does not move physicsStaticVersion, so the layered physics sync would
- * never reconcile against the live replacements. Save/restore boundaries call this; ordinary
- * ticks never do.
+ * Force one deterministic static-version bump after an in-place entity rebuild (save/load
+ * respawn). A respawn keeps entity ids and counts stable, so the staticHash gate alone would
+ * never move physicsStaticVersion and the layered physics sync would keep trusting records
+ * bound to the retired (alive=false) objects. Poisoning the comparison makes the next
+ * classification bump exactly once; ordinary ticks never call this.
  */
 export function resetActivityRuntimeForRestore(state) {
   if (!state || typeof state !== 'object') return false;
-  return RUNTIMES.delete(state);
+  const runtime = RUNTIMES.get(state);
+  if (!runtime) return false;
+  runtime.ready = false;
+  runtime.classifiedTick = -1;
+  runtime._staticHash = null;
+  runtime._staticCount = -1;
+  return true;
 }
 
 /**

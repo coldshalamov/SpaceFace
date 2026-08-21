@@ -232,29 +232,11 @@ export class Sg02DynamicBodyOwner {
   syncFromEntityLayers(staticEntities = [], dynamicEntities = [], staticVersion = 0, orderedEntities = null) {
     const version = Math.max(0, Math.trunc(finite(staticVersion)));
     const staticChanged = this._staticLayerVersion !== version;
-    // Same-version layers can still swap entity OBJECTS underneath us: an in-place save/restore
-    // respawn keeps ids and counts stable, so physicsStaticVersion never moves. A record bound to
-    // a retired (alive=false) or replaced object must not satisfy the gate; detect the swap and
-    // run one reconciliation pass against the live replacements.
-    let reconcileStatics = staticChanged;
-    if (!reconcileStatics && this.records.size > 0) {
-      const source = orderedEntities || staticEntities;
-      for (const entity of source) {
-        if (!entity || entity.alive === false) continue;
-        const spec = resolvePhysicsBodySpec(entity);
-        if (!spec || !(spec.radius > 0) || spec.dynamic) continue;
-        const rec = this.records.get(entity.id);
-        if (!rec || rec.spec.dynamic || rec.entity !== entity) {
-          reconcileStatics = true;
-          break;
-        }
-      }
-    }
     const dynamicLive = this._liveDynamicEntityIds;
     dynamicLive.clear();
 
     let staticCount = 0;
-    if (reconcileStatics) {
+    if (staticChanged) {
       const staticLive = this._liveStaticEntityIds;
       staticLive.clear();
       const source = orderedEntities || staticEntities;
