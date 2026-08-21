@@ -840,7 +840,7 @@ export function prepareRenderPackageBlueprint(pilot, decoded, packageMetadata, o
  * Bind a loaded render package to its prepared blueprint, producing the authored-part record the
  * parts library consumes. Extracted from `loadAuthoredRenderPackagePilot` unchanged.
  */
-export function assembleRenderPackageRecord(renderPackage, url, assetLabel = null) {
+export function assembleRenderPackageRecord(renderPackage, url, assetLabel = null, options = {}) {
   const blueprint = renderPackage.prepared;
   if (!blueprint || blueprint.url !== url) {
     throw new Error(`Render package ${assetLabel || renderPackage.assetId} has no prepared blueprint for ${url}.`);
@@ -857,6 +857,7 @@ export function assembleRenderPackageRecord(renderPackage, url, assetLabel = nul
   return Object.freeze({
     ...blueprint,
     renderPackage,
+    flightStaticV3: options.flightStaticV3 === true,
     residency: Object.freeze(residency),
     report: Object.freeze({
       ...blueprint.report,
@@ -876,7 +877,10 @@ async function loadAuthoredRenderPackagePilot(runtime, pilot, url, options) {
   const task = admitAuthoredAssetTask(runtime, cacheKey, () => (
     runtime.renderPackages.load(pilot.metadataUrl, {
       expectedContentHash: pilot.expectedContentHash,
-    }).then((renderPackage) => assembleRenderPackageRecord(renderPackage, url, pilot.assetId))
+      ...(pilot.flightStaticV3 === true ? { expectedRuntimeHash: pilot.expectedRuntimeHash } : {}),
+    }).then((renderPackage) => assembleRenderPackageRecord(renderPackage, url, pilot.assetId, {
+      flightStaticV3: pilot.flightStaticV3 === true,
+    }))
       .catch((error) => {
         if (!runtime.retiring) {
           runtime.failures.set(cacheKey, error);

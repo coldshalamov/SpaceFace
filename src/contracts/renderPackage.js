@@ -26,7 +26,7 @@ const PACKAGE_KEYS = new Set([
   // Optional v2 runtime table: the precompiled blueprint the shipping loader binds instead of
   // recompiling from the decoded graph. Deliberately outside renderPackageContentIdentity, so a
   // package gains it without disturbing contentHash or any expectedContentHash binding.
-  'runtime',
+  'runtime', 'runtimeHash',
 ]);
 const COMPILER_KEYS = new Set(['name', 'version']);
 const RENDER_KEYS = new Set(['uri', 'sha256', 'bytes']);
@@ -82,6 +82,12 @@ export function validateRenderPackage(value, options = {}) {
   if (!ASSET_KINDS.has(value.kind)) issue('$.kind', 'enum', `kind must be one of: ${[...ASSET_KINDS].join(', ')}`);
   validateCompiler(value.compiler, '$.compiler', issue);
   validateSha256(value.contentHash, '$.contentHash', issue);
+  if (value.runtimeHash != null) {
+    validateSha256(value.runtimeHash, '$.runtimeHash', issue);
+    if (!isPlainObject(value.runtime)) {
+      issue('$.runtime', 'required', 'runtimeHash requires a runtime table');
+    }
+  }
   validateRenderFile(value.render, '$.render', issue);
   validateProvenance(value.provenance, '$.provenance', issue);
 
@@ -299,8 +305,33 @@ export function renderPackageContentIdentity(value) {
   });
 }
 
+export function renderPackageRuntimeIdentity(value) {
+  if (!isPlainObject(value)) throw new TypeError('Render package runtime identity requires a plain object.');
+  if (!isPlainObject(value.runtime)) throw new TypeError('Render package runtime identity requires a runtime table.');
+  const render = isPlainObject(value.render) ? value.render : {};
+  return stableJsonValue({
+    schema: 'spaceface.renderPackageRuntimeBinding.v1',
+    assetId: value.assetId,
+    contentHash: value.contentHash,
+    render: {
+      sha256: render.sha256,
+      bytes: render.bytes,
+    },
+    runtime: value.runtime,
+  });
+}
+
 export async function computeRenderPackageContentHash(value, options = {}) {
   const encoded = new TextEncoder().encode(stableJsonStringify(renderPackageContentIdentity(value)));
+  return computeSha256(encoded, options, 'Render package');
+}
+
+export async function computeRenderPackageRuntimeHash(value, options = {}) {
+  const encoded = new TextEncoder().encode(stableJsonStringify(renderPackageRuntimeIdentity(value)));
+  return computeSha256(encoded, options, 'Render package runtime');
+}
+
+async function computeSha256(encoded, options, label) {
   const digestImpl = typeof options.digest === 'function' ? options.digest : null;
   let digest;
   if (digestImpl) {
@@ -311,7 +342,7 @@ export async function computeRenderPackageContentHash(value, options = {}) {
     digest = await cryptoImpl.subtle.digest('SHA-256', encoded);
   }
   if (typeof digest === 'string') {
-    if (!SHA256_RE.test(digest)) throw new Error('Render package digest callback returned an invalid SHA-256 value.');
+    if (!SHA256_RE.test(digest)) throw new Error(`${label} digest callback returned an invalid SHA-256 value.`);
     return digest;
   }
   const bytes = ArrayBuffer.isView(digest)
@@ -320,7 +351,7 @@ export async function computeRenderPackageContentHash(value, options = {}) {
       ? new Uint8Array(digest)
       : null;
   if (!bytes || bytes.byteLength !== 32) {
-    throw new Error('Render package digest callback must return SHA-256 hex or 32 digest bytes.');
+    throw new Error(`${label} digest callback must return SHA-256 hex or 32 digest bytes.`);
   }
   return [...bytes].map((entry) => entry.toString(16).padStart(2, '0')).join('');
 }

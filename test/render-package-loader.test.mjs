@@ -8,6 +8,7 @@ import {
   RENDER_PACKAGE_SCHEMA,
   RENDER_PACKAGE_SEMANTIC_EXTRAS_KEY,
   RENDER_PACKAGE_SEMANTIC_EXTRAS_SCHEMA,
+  computeRenderPackageRuntimeHash,
   renderPackageContentIdentity,
   stableJsonStringify,
 } from '../src/contracts/renderPackage.js';
@@ -128,6 +129,47 @@ function decodedFixture(disposals = null) {
   return { scene: root, geometry, material, texture };
 }
 
+function flightPackageMetadata() {
+  const metadata = packageMetadata();
+  // The flight-static route is only eligible for a package with no dynamic-group ownership. The
+  // decoded fixture still contains a turret node so the generic plan has meaningful parity work;
+  // for this focused static fixture it is authored as an immutable primitive instead.
+  metadata.nodes = metadata.nodes.map((node) => ({ ...node, role: 'immutable' }));
+  metadata.dynamicGroups = [];
+  metadata.contentHash = createHash('sha256')
+    .update(stableJsonStringify(renderPackageContentIdentity(metadata)))
+    .digest('hex');
+  return metadata;
+}
+
+function preparedFlightFixture(decoded) {
+  return Object.freeze({
+    url: 'render.glb',
+    assetId: 'fixture.ship',
+    slot: 'ship',
+    primitives: Object.freeze([Object.freeze({
+      key: 'render.glb#Hull',
+      name: 'Hull',
+      geometry: decoded.geometry,
+      material: decoded.material,
+      matrix: new THREE.Matrix4(),
+      tags: Object.freeze({ lod: 'lod0', instance: true }),
+    })]),
+    markers: Object.freeze([Object.freeze({
+      name: 'FX_Trail_Left',
+      matrix: new THREE.Matrix4().makeTranslation(1, 2, 3),
+      tags: Object.freeze({ socket: true }),
+      userData: Object.freeze({ name: 'FX_Trail_Left' }),
+    })]),
+  });
+}
+
+function objectCount(root) {
+  let count = 0;
+  root.traverse(() => { count++; });
+  return count;
+}
+
 test('loader decodes once per content hash and creates lightweight instances sharing immutable resources', async () => {
   const decoded = decodedFixture();
   let decodeCount = 0;
@@ -166,6 +208,141 @@ test('loader decodes once per content hash and creates lightweight instances sha
     assert.equal(resource.userData.spacefaceRenderPackageImmutable, true);
     assert.equal(resource.userData.spacefaceSharedAsset, true);
   }
+});
+
+test('flight-static instances materialise one root per prepared primitive and marker while sharing resources', async () => {
+  const decoded = decodedFixture();
+  const prepared = preparedFlightFixture(decoded);
+  const loader = createRenderPackageLoader({
+    residency: createAssetResidencyRegistry(),
+    loadGlb: async () => decoded,
+    prepareDecoded: async () => prepared,
+  });
+  const loaded = await loader.load(flightPackageMetadata(), { baseUrl: 'https://fixtures.test/' });
+
+  assert.equal(typeof loaded.createFlightInstance, 'function');
+  const first = loaded.createFlightInstance();
+  const second = loaded.createFlightInstance();
+  assert.equal(objectCount(first.root), 1 + prepared.primitives.length + prepared.markers.length);
+  assert.equal(objectCount(second.root), 1 + prepared.primitives.length + prepared.markers.length);
+  assert.notStrictEqual(first.root, second.root);
+
+  const firstObjects = [];
+  first.root.traverse((object) => firstObjects.push(object));
+  const firstMesh = firstObjects.find((object) => object.isMesh === true);
+  const firstMarker = firstObjects.find((object) => object.name === 'FX_Trail_Left');
+  assert.equal(
+    firstObjects.filter((object) => object.isMesh === true).length,
+    prepared.primitives.length,
+    'flight instance has one Mesh per prepared primitive',
+  );
+  assert.equal(
+    firstObjects.filter((object) => object !== first.root && object.isMesh !== true).length,
+    prepared.markers.length,
+    'flight instance has one Object3D per prepared marker',
+  );
+  assert.ok(firstMesh?.isMesh, 'prepared primitive becomes a Mesh');
+  assert.ok(firstMarker?.isObject3D && !firstMarker.isMesh, 'prepared marker becomes an Object3D');
+
+  const secondObjects = [];
+  second.root.traverse((object) => secondObjects.push(object));
+  const secondMesh = secondObjects.find((object) => object.isMesh === true);
+  assert.ok(secondMesh?.isMesh);
+  assert.notStrictEqual(firstMesh, secondMesh, 'flight instances have independent Mesh objects');
+  assert.strictEqual(firstMesh.geometry, secondMesh.geometry, 'flight instances share geometry');
+  assert.strictEqual(firstMesh.material, secondMesh.material, 'flight instances share material');
+
+  // The generic route remains the full load-time plan, including the anchor and turret nodes.
+  const generic = loaded.createInstance();
+  assert.equal(generic.planNodes.length, loaded.planNodeCount);
+  assert.equal(objectCount(generic.root), loaded.planNodeCount);
+  assert.ok(objectCount(first.root) < generic.planNodes.length,
+    'flight-static route is smaller than generic plan cloning');
+
+  first.dispose();
+  second.dispose();
+  generic.dispose();
+  loader.dispose();
+});
+
+test('flight-static instance creation rejects missing preparation and dynamic-group packages', async () => {
+  const decoded = decodedFixture();
+  const unpreparedLoader = createRenderPackageLoader({
+    residency: createAssetResidencyRegistry(),
+    loadGlb: async () => decoded,
+  });
+  const unprepared = await unpreparedLoader.load(flightPackageMetadata(), { baseUrl: 'https://fixtures.test/' });
+  assert.throws(
+    () => unprepared.createFlightInstance(),
+    /no prepared flight records|prepared flight/i,
+  );
+  unpreparedLoader.dispose();
+
+  const prepared = preparedFlightFixture(decoded);
+  const dynamicLoader = createRenderPackageLoader({
+    residency: createAssetResidencyRegistry(),
+    loadGlb: async () => decoded,
+    prepareDecoded: async () => prepared,
+  });
+  const dynamic = await dynamicLoader.load(packageMetadata(), { baseUrl: 'https://fixtures.test/' });
+  assert.throws(
+    () => dynamic.createFlightInstance(),
+    /dynamic groups/i,
+  );
+  dynamicLoader.dispose();
+});
+
+test('runtime-table hash and expected binding fail closed while legacy packages remain valid', async () => {
+  const runtimeMetadata = packageMetadata();
+  runtimeMetadata.runtime = {
+    schema: 'spaceface.runtime.fixture.v3',
+    primitives: [{ name: 'Hull', planIndex: 1 }],
+    markers: [{ name: 'FX_Trail_Left', planIndex: 2 }],
+  };
+  runtimeMetadata.runtimeHash = await computeRenderPackageRuntimeHash(runtimeMetadata);
+
+  const trustedLoader = createRenderPackageLoader({
+    residency: createAssetResidencyRegistry(),
+    loadGlb: async () => decodedFixture(),
+  });
+  const trusted = await trustedLoader.load(runtimeMetadata, {
+    baseUrl: 'https://fixtures.test/',
+    expectedRuntimeHash: runtimeMetadata.runtimeHash,
+  });
+  assert.equal(trusted.assetId, 'fixture.ship');
+  trustedLoader.dispose();
+
+  const mutated = structuredClone(runtimeMetadata);
+  mutated.runtime.primitives[0].name = 'TamperedHull';
+  const mutationLoader = createRenderPackageLoader({
+    residency: createAssetResidencyRegistry(),
+    loadGlb: async () => decodedFixture(),
+  });
+  await assert.rejects(
+    mutationLoader.load(mutated, { expectedRuntimeHash: runtimeMetadata.runtimeHash }),
+    /runtime hash mismatch/i,
+  );
+  mutationLoader.dispose();
+
+  const rebound = structuredClone(mutated);
+  rebound.runtimeHash = await computeRenderPackageRuntimeHash(rebound);
+  const expectedBindingLoader = createRenderPackageLoader({
+    residency: createAssetResidencyRegistry(),
+    loadGlb: async () => decodedFixture(),
+  });
+  await assert.rejects(
+    expectedBindingLoader.load(rebound, { expectedRuntimeHash: runtimeMetadata.runtimeHash }),
+    /runtime trust-anchor mismatch/i,
+  );
+  expectedBindingLoader.dispose();
+
+  const legacyLoader = createRenderPackageLoader({
+    residency: createAssetResidencyRegistry(),
+    loadGlb: async () => decodedFixture(),
+  });
+  const legacy = await legacyLoader.load(packageMetadata(), { baseUrl: 'https://fixtures.test/' });
+  assert.equal(legacy.assetId, 'fixture.ship', 'v2 packages without a runtime hash remain loadable');
+  legacyLoader.dispose();
 });
 
 test('loader exposes one prepared blueprint and lets a render boundary own instance residency', async () => {

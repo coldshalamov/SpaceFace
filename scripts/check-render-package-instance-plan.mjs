@@ -63,6 +63,12 @@ function sceneFromGlbJson(json) {
   return { scene, nodeCount };
 }
 
+function objectCount(root) {
+  let count = 0;
+  root.traverse(() => { count++; });
+  return count;
+}
+
 async function checkPackage(id) {
   const dir = resolve(PACKAGE_DIR, id);
   const metadata = JSON.parse(readFileSync(resolve(dir, 'render-package.json'), 'utf8'));
@@ -117,7 +123,35 @@ async function checkPackage(id) {
     if (instance.planNodes.length !== nodeCount) {
       throw new Error(`instance exposed ${instance.planNodes.length} planNodes, expected ${nodeCount}`);
     }
+    const genericObjectCount = objectCount(instance.root);
+    if (genericObjectCount !== nodeCount) {
+      throw new Error(`createInstance exposed ${genericObjectCount} objects, expected ${nodeCount}`);
+    }
     if (instance.planNodes[0] !== instance.root) throw new Error('planNodes[0] is not the instance root');
+
+    if (pilot.flightStaticV3 === true) {
+      if (typeof loaded.createFlightInstance !== 'function') {
+        throw new Error(`${id} is flagged flightStaticV3 but the loaded package has no createFlightInstance()`);
+      }
+      const flightInstance = loaded.createFlightInstance();
+      const expectedFlightObjects = 1
+        + loaded.prepared.primitives.length
+        + loaded.prepared.markers.length;
+      const actualFlightObjects = objectCount(flightInstance.root);
+      if (actualFlightObjects !== expectedFlightObjects) {
+        throw new Error(
+          `flightStaticV3 instance exposed ${actualFlightObjects} objects, expected `
+          + `${expectedFlightObjects} (root + prepared primitives + markers)`,
+        );
+      }
+      if (actualFlightObjects >= loaded.planNodeCount) {
+        throw new Error(
+          `flightStaticV3 instance has ${actualFlightObjects} objects, not below `
+          + `the ${loaded.planNodeCount}-node generic plan`,
+        );
+      }
+      flightInstance.dispose();
+    }
 
     // A second instance must be independent in transform and shared in resources.
     const second = loaded.createInstance();

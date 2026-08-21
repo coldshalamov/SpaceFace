@@ -2214,7 +2214,12 @@ function commitAuthoredPlaceBoundary(
   // in play, so there is no placeholder frame or blue-clay-to-authored identity swap.
   boundary.remove(fallbackRoot);
   boundary.add(authored.root);
-  optimizeStaticBatchesForRoot(authored.root);
+  // FlightRenderPackage v3 already bakes and joins the immutable lanes offline. Re-running the
+  // generic cross-root optimizer would clone, transform, de-index, and merge that geometry during
+  // New Game — exactly the runtime compiler this package route exists to remove.
+  if (authored.root.userData?.spacefaceFlightStaticV3 !== true) {
+    optimizeStaticBatchesForRoot(authored.root);
+  }
   freezeStaticChildMatrices(authored.root);
   unregisterPreparedAuthoredAdmission(authored);
   setActive(authored.root);
@@ -2285,6 +2290,19 @@ function buildPlacePropRoot(entity, record, scene, ownerBoundary) {
     targetLength: authoredLength * scale,
     label: 'Place',
   }, palette, scene, ownerBoundary, bindings, mutableMaterials, staticBatches);
+  if (record.flightStaticV3 === true) {
+    root.userData.spacefaceFlightStaticV3 = true;
+    root.userData.flightRenderPackage = {
+      schema: 'spaceface.flightRenderPackage.v1',
+      route: 'flight-static-v3',
+      assetId: record.renderPackage?.assetId || record.assetId,
+      contentHash: record.renderPackage?.contentHash || null,
+      fallback: false,
+      sourcePlanNodes: record.renderPackage?.planNodeCount || null,
+      staticLanes: record.primitives?.length || 0,
+      dynamicNodes: 0,
+    };
+  }
   staticBatches.flush();
   reconcileMaplessHullMaterialAliases(palette);
   canonicalizeMaplessHullMaterials(root, palette);
@@ -5725,7 +5743,16 @@ function instantiateRenderPackagePart(record, parent, placement, palette, scene,
       poolAdmissions: bindings.packagePoolAdmissions,
     })
     : null;
-  const instance = record.renderPackage.createInstance({
+  const createPackageInstance = record.flightStaticV3 === true
+    ? record.renderPackage.createFlightInstance?.bind(record.renderPackage)
+    : record.renderPackage.createInstance.bind(record.renderPackage);
+  if (typeof createPackageInstance !== 'function') {
+    throw new Error(
+      `Render package ${record.renderPackage.assetId || record.assetId} has no `
+      + `${record.flightStaticV3 === true ? 'flight-static' : 'ordinary'} instance route.`,
+    );
+  }
+  const instance = createPackageInstance({
     name: `RenderPackage_${placement.label}_${record.assetId}`,
     residencyOwner: owner,
     residencyRole: 'live-boundary',
@@ -5739,6 +5766,7 @@ function instantiateRenderPackagePart(record, parent, placement, palette, scene,
     ...(packageRoot.userData || {}),
     spacefaceRenderPackageDirect: true,
     spacefacePartUrl: record.url,
+    ...(record.flightStaticV3 === true ? { spacefaceFlightStaticV3: true } : {}),
   };
   partRoot.userData.renderPackageInstance = instance;
   partRoot.add(packageRoot);

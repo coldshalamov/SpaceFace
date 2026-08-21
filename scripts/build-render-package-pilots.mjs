@@ -9,6 +9,8 @@ import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import { MeshoptDecoder } from 'meshoptimizer';
 
 import {
+  computeRenderPackageContentHash,
+  computeRenderPackageRuntimeHash,
   RENDER_PACKAGE_SOURCE_SCHEMA,
   stableJsonStringify,
 } from '../src/contracts/renderPackage.js';
@@ -17,26 +19,44 @@ import { buildRuntimeTableForRenderGlb } from './lib/renderPackageRuntimeTable.m
 
 const REPO_ROOT = resolve(fileURLToPath(new URL('../', import.meta.url)));
 const DEFAULT_MANIFEST = 'assets/ships/render-packages/pilots.json';
+const DEFAULT_FLIGHT_STATIC_MANIFEST = 'assets/ships/render-packages/flight-static-v3.json';
 const PACKAGE_FILES = Object.freeze(['render.glb', 'render-package.json']);
 const REQUIRED_PILOT_KEYS = Object.freeze(['kestrel', 'helios-span', 'debris-chunk']);
 let ioPromise = null;
 
 export async function buildRenderPackagePilots(options = {}) {
   const check = options.check === true;
+  const onlyKeys = options.onlyKeys ? new Set(options.onlyKeys) : null;
   const repoRoot = resolve(options.repoRoot || REPO_ROOT);
   const manifestPath = resolve(repoRoot, options.manifestPath || DEFAULT_MANIFEST);
   const manifestBytes = await readFile(manifestPath);
   const manifest = JSON.parse(manifestBytes.toString('utf8'));
   assertPilotManifest(manifest);
+  const flightStaticManifestPath = resolve(
+    repoRoot,
+    options.flightStaticManifestPath || DEFAULT_FLIGHT_STATIC_MANIFEST,
+  );
+  const flightStaticManifest = JSON.parse(await readFile(flightStaticManifestPath, 'utf8'));
+  const flightStaticKeys = assertFlightStaticManifest(flightStaticManifest, manifest);
 
   const releaseManifestPath = resolve(repoRoot, manifest.releaseManifest);
   const releaseManifest = JSON.parse(await readFile(releaseManifestPath, 'utf8'));
   const releaseRows = new Map((releaseManifest.assets || []).map((row) => [row.id, row]));
   const scratch = check ? await mkdtemp(join(tmpdir(), 'spaceface-render-pilots-')) : null;
-  const bindings = [];
+  if (onlyKeys) {
+    const available = new Set(manifest.pilots.map((pilot) => pilot.key));
+    for (const key of onlyKeys) {
+      if (!available.has(key)) throw new Error(`Unknown render-package pilot key ${key}.`);
+    }
+  }
+  let bindings = [];
 
   try {
-    for (const pilot of manifest.pilots) {
+    for (const manifestPilot of manifest.pilots) {
+      if (onlyKeys && !onlyKeys.has(manifestPilot.key)) continue;
+      const pilot = flightStaticKeys.has(manifestPilot.key)
+        ? { ...manifestPilot, flightStaticV3: true }
+        : manifestPilot;
       const sourcePath = resolve(repoRoot, pilot.sourceUrl);
       const releaseRow = releaseRows.get(pilot.releaseAssetId);
       assertReleaseBinding(pilot, releaseRow);
@@ -63,17 +83,47 @@ export async function buildRenderPackagePilots(options = {}) {
       await attachRuntimeTable(outputDir, pilot, result.package);
       if (check) await assertPackageMatches(outputDir, resolve(repoRoot, pilot.outputDir), pilot.key);
 
-      bindings.push({
+    }
+
+    // Reconstruct the complete generated manifest even for a one-package rebuild. This makes a
+    // bounded canary practical on Windows, where rewriting 100+ immutable package files needlessly
+    // increases antivirus/file-indexer lock exposure. Unselected bindings come from their already
+    // content-addressed metadata; the selected package was just rebuilt above.
+    bindings = await Promise.all(manifest.pilots.map(async (pilot) => {
+      const metadata = JSON.parse(await readFile(resolve(repoRoot, pilot.metadataUrl), 'utf8'));
+      if (metadata.assetId !== pilot.assetId) {
+        throw new Error(`${pilot.key}: compiled package assetId ${metadata.assetId} does not match ${pilot.assetId}.`);
+      }
+      const computedContentHash = await computeRenderPackageContentHash(metadata, { digest: sha256 });
+      if (computedContentHash !== metadata.contentHash) {
+        throw new Error(`${pilot.key}: compiled package content hash is stale.`);
+      }
+      if (metadata.provenance?.sourceGlb?.sha256 !== pilot.releaseSha256
+        || metadata.provenance?.sourceGlb?.bytes !== pilot.releaseBytes) {
+        throw new Error(`${pilot.key}: compiled package source binding is stale.`);
+      }
+      const flightStaticV3 = flightStaticKeys.has(pilot.key);
+      let expectedRuntimeHash = null;
+      if (flightStaticV3) {
+        if (!metadata.runtimeHash) throw new Error(`${pilot.key}: flight-static runtime hash is missing.`);
+        expectedRuntimeHash = await computeRenderPackageRuntimeHash(metadata, { digest: sha256 });
+        if (expectedRuntimeHash !== metadata.runtimeHash) {
+          throw new Error(`${pilot.key}: flight-static runtime hash is stale.`);
+        }
+      }
+      return {
         key: pilot.key,
         assetId: pilot.assetId,
         runtimeAssetId: pilot.runtimeAssetId,
         slot: pilot.slot,
+        ...(flightStaticV3 ? { flightStaticV3: true } : {}),
         sourceUrl: pilot.sourceUrl,
-        sourceSha256,
+        sourceSha256: pilot.releaseSha256,
         metadataUrl: pilot.metadataUrl,
-        expectedContentHash: result.package.contentHash,
-      });
-    }
+        expectedContentHash: metadata.contentHash,
+        ...(expectedRuntimeHash ? { expectedRuntimeHash } : {}),
+      };
+    }));
 
     const runtimeManifestPath = resolve(repoRoot, manifest.runtimeManifest);
     const runtimeSource = renderRuntimeManifest(bindings);
@@ -227,13 +277,18 @@ function deriveSceneRootSemanticManifest(pilot, scene, nodes, names) {
     const dynamic = !!mesh && (pilot.dynamicNameIncludes || []).some((token) => nodeName.includes(token));
     const blend = !!mesh && /glass|canopy/i.test(nodeName);
     const parent = node.getParentNode();
+    const lane = pilot.flightStaticV3 === true && mesh
+      ? flightStaticLaneForNode(nodeName)
+      : null;
     return {
       id: semanticIds.get(node),
       node: nodeName,
       role: dynamic ? 'dynamic' : 'immutable',
       parentId: parent ? semanticIds.get(parent) : null,
-      mergeBoundary: nodeName,
-      pipelineKey: !mesh ? 'root' : nodeName === 'COLLISION_HULL' ? 'non-render' : blend ? 'blend' : 'opaque',
+      mergeBoundary: lane?.key || nodeName,
+      pipelineKey: !mesh ? 'root' : nodeName === 'COLLISION_HULL'
+        ? 'non-render'
+        : (lane?.key || (blend ? 'blend' : 'opaque')),
       transparency: blend ? 'blend' : 'opaque',
       cullingGroup: 'asset',
       independentlyCulled: false,
@@ -257,6 +312,9 @@ function deriveSceneRootSemanticManifest(pilot, scene, nodes, names) {
       kind: 'dynamic-surface',
     }));
   const collision = byNodeName.get('COLLISION_HULL');
+  const mergeGroups = pilot.flightStaticV3 === true
+    ? deriveFlightStaticMergeGroups(pilot, semanticNodes, meshNodes)
+    : [];
 
   return {
     schema: RENDER_PACKAGE_SOURCE_SCHEMA,
@@ -265,7 +323,7 @@ function deriveSceneRootSemanticManifest(pilot, scene, nodes, names) {
     semanticNodes,
     anchors,
     dynamicGroups,
-    mergeGroups: [],
+    mergeGroups,
     lods: [],
     hlods: [],
     collisions: collision ? [{
@@ -296,12 +354,69 @@ function assertPilotManifest(manifest) {
     if (hasNamedRoot === hasSceneRoot) {
       throw new Error(`${pilot.key}: choose exactly one of rootNode or sceneRoot.`);
     }
+    if (pilot.flightStaticV3 === true) {
+      if (pilot.kind !== 'place' || pilot.sceneRoot !== true) {
+        throw new Error(`${pilot.key}: flightStaticV3 currently requires a scene-root place package.`);
+      }
+      if ((pilot.dynamicNameIncludes || []).length > 0) {
+        throw new Error(`${pilot.key}: flightStaticV3 cannot contain dynamic-name groups.`);
+      }
+    }
     keys.add(pilot.key);
     sourceUrls.add(pilot.sourceUrl);
   }
   for (const key of REQUIRED_PILOT_KEYS) {
     if (!keys.has(key)) throw new Error(`Production manifest is missing required pilot ${key}.`);
   }
+}
+
+function assertFlightStaticManifest(manifest, pilotManifest) {
+  if (manifest?.schema !== 'spaceface.flightRenderPackagePilots.v1'
+    || !Array.isArray(manifest.packages)) {
+    throw new Error('Flight-static render-package manifest is incomplete or unsupported.');
+  }
+  const available = new Map(pilotManifest.pilots.map((pilot) => [pilot.key, pilot]));
+  const keys = new Set();
+  for (const key of manifest.packages) {
+    const pilot = typeof key === 'string' ? available.get(key) : null;
+    if (!pilot) {
+      throw new Error(`Flight-static render package ${String(key)} has no production pilot.`);
+    }
+    if (keys.has(key)) throw new Error(`Duplicate flight-static render package ${key}.`);
+    if (pilot.kind !== 'place' || pilot.sceneRoot !== true) {
+      throw new Error(`${key}: flightStaticV3 currently requires a scene-root place package.`);
+    }
+    if ((pilot.dynamicNameIncludes || []).length > 0) {
+      throw new Error(`${key}: flightStaticV3 cannot contain dynamic-name groups.`);
+    }
+    keys.add(key);
+  }
+  return keys;
+}
+
+function flightStaticLaneForNode(nodeName) {
+  const name = String(nodeName || '');
+  if (name === 'COLLISION_HULL') return { key: 'flight-static:non-render' };
+  const lod = /^LOD(\d+)_/i.exec(name)?.[1] ?? 'always';
+  const transparency = /glass|canopy/i.test(name) ? 'blend' : 'opaque';
+  return { key: `flight-static:${transparency}:lod${lod}` };
+}
+
+function deriveFlightStaticMergeGroups(pilot, semanticNodes, meshNodes) {
+  const meshNames = new Set(meshNodes.map((node) => node.getName()));
+  const buckets = new Map();
+  for (const node of semanticNodes) {
+    if (!meshNames.has(node.node) || node.role !== 'immutable' || node.pipelineKey === 'non-render') continue;
+    const key = `${node.parentId || '<scene>'}|${node.mergeBoundary}`;
+    if (!buckets.has(key)) buckets.set(key, []);
+    buckets.get(key).push(node.id);
+  }
+  return [...buckets.values()]
+    .filter((nodeIds) => nodeIds.length > 1)
+    .map((nodeIds, index) => ({
+      id: `${pilot.assetId}.flight-static-lane.${index + 1}`,
+      nodeIds,
+    }));
 }
 
 function assertReleaseBinding(pilot, row) {
@@ -404,8 +519,9 @@ function sha256(bytes) {
  * It is appended after compilation rather than emitted by `compileRenderPackage` because the table is
  * derived from the *compiled* render.glb — merge groups have already rewritten the node graph by then,
  * so deriving earlier would describe a graph that never ships. `runtime` is deliberately outside
- * `renderPackageContentIdentity`, so adding it leaves `contentHash` and every `expectedContentHash`
- * binding untouched.
+ * `renderPackageContentIdentity`, so adding it leaves the long-lived v2 `contentHash` untouched.
+ * A separate runtime hash binds the exact table to that content hash, render payload, and generated
+ * runtime manifest so flight-static packages fail closed on stale matrices or tags.
  *
  * Bounds come from the compiler's accessor-derived per-primitive bounds, not from the derivation pass:
  * the offline graph rebuild carries placeholder geometry with no vertices, so its own bounds are
@@ -421,6 +537,7 @@ async function attachRuntimeTable(outputDir, pilot, compiledPackage) {
     boundsOverride: unionGeometryBounds(compiledPackage.geometry),
   });
   metadata.runtime = table;
+  metadata.runtimeHash = await computeRenderPackageRuntimeHash(metadata, { digest: sha256 });
   await writeFile(metadataPath, `${stableJsonStringify(metadata, 2)}\n`);
 }
 
@@ -447,9 +564,11 @@ function unionGeometryBounds(geometry) {
 }
 
 function parseArgs(argv) {
-  const unknown = argv.filter((arg) => arg !== '--check');
+  const onlyArgs = argv.filter((arg) => arg.startsWith('--only='));
+  const onlyKeys = onlyArgs.flatMap((arg) => arg.slice('--only='.length).split(',')).filter(Boolean);
+  const unknown = argv.filter((arg) => arg !== '--check' && !arg.startsWith('--only='));
   if (unknown.length) throw new Error(`Unknown render-package pilot option: ${unknown.join(', ')}`);
-  return { check: argv.includes('--check') };
+  return { check: argv.includes('--check'), ...(onlyKeys.length ? { onlyKeys } : {}) };
 }
 
 async function main() {

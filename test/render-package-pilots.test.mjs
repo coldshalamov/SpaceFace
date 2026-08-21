@@ -515,6 +515,19 @@ test('production manifest packages every live whole-ship family and admitted aut
   assert.equal(renderPackagePilotForAssetId('sf.render.unclaimed'), null);
 });
 
+test('production manifest enables the flight-static v3 canary only for Helios trade hub', () => {
+  const flightStaticBindings = RENDER_PACKAGE_PILOTS.filter((binding) => binding.flightStaticV3 === true);
+  assert.deepEqual(
+    flightStaticBindings.map((binding) => binding.key),
+    ['helios-trade-hub'],
+  );
+  const tradeHub = renderPackagePilotForAssetId('sf.render.helios-trade-hub');
+  assert.equal(tradeHub?.flightStaticV3, true);
+  for (const binding of RENDER_PACKAGE_PILOTS) {
+    if (binding.key !== 'helios-trade-hub') assert.notEqual(binding.flightStaticV3, true, binding.key);
+  }
+});
+
 test('production render-package instances bypass runtime geometry preparation on the place route', async () => {
   const entity = {
     id: 'pilot_debris',

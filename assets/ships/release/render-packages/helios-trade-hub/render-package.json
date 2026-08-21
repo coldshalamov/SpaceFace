@@ -58,7 +58,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "ba8162a5957f15579473cd7341211ea810f660aed88491ea0e925292c6b2a050",
+  "contentHash": "4bd5f3504db55dbc34fc8824229e33ba422f5535eabc4820f4874c36fe749f69",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -105,7 +105,7 @@
       "indexCount": 14904,
       "indexed": true,
       "materialHash": "03daf8f36be6d707412b6ba483cf89ee57b2bdc6344e2bf4fda62ebbb6db82cd",
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
       "meshName": "HeliosGolden02_CommonBatch_Mesh",
       "nodeId": "sf.render.helios-trade-hub.node.heliosgolden02-commonbatch",
       "primitiveIndex": 0,
@@ -130,7 +130,7 @@
       "indexCount": 6780,
       "indexed": true,
       "materialHash": "d93bdd844283e1a6df75cdd616f28fa07531d51043c8e94841afff323a467599",
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
       "meshName": "HeliosGolden02_CommonBatch_Mesh",
       "nodeId": "sf.render.helios-trade-hub.node.heliosgolden02-commonbatch",
       "primitiveIndex": 1,
@@ -155,7 +155,7 @@
       "indexCount": 3738,
       "indexed": true,
       "materialHash": "b5aab8fd119977bcd11353654414fad187f8f3a0f0ec31bc2c7b6a0a78ef6577",
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
       "meshName": "HeliosGolden02_CommonBatch_Mesh",
       "nodeId": "sf.render.helios-trade-hub.node.heliosgolden02-commonbatch",
       "primitiveIndex": 2,
@@ -180,7 +180,7 @@
       "indexCount": 18648,
       "indexed": true,
       "materialHash": "83b6ca88caded380b4f9205be0be4bb49daa837b6ddb3db9999e9ccf9d246787",
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
       "meshName": "HeliosGolden02_CommonBatch_Mesh",
       "nodeId": "sf.render.helios-trade-hub.node.heliosgolden02-commonbatch",
       "primitiveIndex": 3,
@@ -205,7 +205,7 @@
       "indexCount": 7128,
       "indexed": true,
       "materialHash": "c3c24d29f3ef71847a35401e87b89520a0adcb1a7359f6ab1e639e466bdd8f94",
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
       "meshName": "HeliosGolden02_CommonBatch_Mesh",
       "nodeId": "sf.render.helios-trade-hub.node.heliosgolden02-commonbatch",
       "primitiveIndex": 4,
@@ -230,7 +230,7 @@
       "indexCount": 11664,
       "indexed": true,
       "materialHash": "0f2190e00584b7ccc7e9bd17885aafcf9d826323c83817b393c1d10ceb304c44",
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
       "meshName": "HeliosGolden02_CommonBatch_Mesh",
       "nodeId": "sf.render.helios-trade-hub.node.heliosgolden02-commonbatch",
       "primitiveIndex": 5,
@@ -255,7 +255,7 @@
       "indexCount": 1146,
       "indexed": true,
       "materialHash": "12f2fb998795571ce0c92e26f86e2dd90502b9d170050ca8cd0ea0b5a7617890",
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
       "meshName": "HeliosGolden02_CommonBatch_Mesh",
       "nodeId": "sf.render.helios-trade-hub.node.heliosgolden02-commonbatch",
       "primitiveIndex": 6,
@@ -264,27 +264,27 @@
     {
       "bounds": {
         "max": [
-          11.629583358764648,
+          40.200225830078125,
           5.314214706420898,
-          11.631499290466309
+          40.20022964477539
         ],
         "min": [
-          -11.626041412353516,
-          1.5157219171524048,
-          -11.631499290466309
+          -40.200225830078125,
+          0.3898789882659912,
+          -40.20022964477539
         ]
       },
       "drawMode": 4,
-      "geometryHash": "392cd0b9863a0fd8c23f8174a0e7e61a118c9b21b8d00bb8f91be8b85d9e3134",
+      "geometryHash": "10a2b42bf1d2bc297b147d2c619d349d291ca1ad381809d2d88f0eec80640343",
       "id": "sf.render.helios-trade-hub.node.lod0-heliosgolden02-batch.primitive.0",
-      "indexCount": 12636,
+      "indexCount": 17820,
       "indexed": true,
       "materialHash": "bcbce38a7095c10fd7179bbb8379bcfd80510ef5a5a659bb6b5c12854664af9d",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD0_HeliosGolden02_Batch_Mesh",
+      "materialPipelineKey": "flight-static:opaque:lod0",
+      "meshName": "render:sf.render.helios-trade-hub.flight-static-lane.1",
       "nodeId": "sf.render.helios-trade-hub.node.lod0-heliosgolden02-batch",
       "primitiveIndex": 0,
-      "vertexCount": 8424
+      "vertexCount": 11880
     },
     {
       "bounds": {
@@ -305,8 +305,8 @@
       "indexCount": 63900,
       "indexed": true,
       "materialHash": "0b6b184ad914e78f66c1373f70a19c5b71f299b5bc1f46521cf3c3182534de04",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD0_HeliosGolden02_Batch_Mesh",
+      "materialPipelineKey": "flight-static:opaque:lod0",
+      "meshName": "render:sf.render.helios-trade-hub.flight-static-lane.1",
       "nodeId": "sf.render.helios-trade-hub.node.lod0-heliosgolden02-batch",
       "primitiveIndex": 1,
       "vertexCount": 47800
@@ -330,8 +330,8 @@
       "indexCount": 5616,
       "indexed": true,
       "materialHash": "c3c24d29f3ef71847a35401e87b89520a0adcb1a7359f6ab1e639e466bdd8f94",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD0_HeliosGolden02_Batch_Mesh",
+      "materialPipelineKey": "flight-static:opaque:lod0",
+      "meshName": "render:sf.render.helios-trade-hub.flight-static-lane.1",
       "nodeId": "sf.render.helios-trade-hub.node.lod0-heliosgolden02-batch",
       "primitiveIndex": 10,
       "vertexCount": 3766
@@ -355,11 +355,36 @@
       "indexCount": 21000,
       "indexed": true,
       "materialHash": "e9a34e2ba4296296616a3976478cb3964970303f349881c56bff6153453d2ad3",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD0_HeliosGolden02_Batch_Mesh",
+      "materialPipelineKey": "flight-static:opaque:lod0",
+      "meshName": "render:sf.render.helios-trade-hub.flight-static-lane.1",
       "nodeId": "sf.render.helios-trade-hub.node.lod0-heliosgolden02-batch",
       "primitiveIndex": 11,
       "vertexCount": 14784
+    },
+    {
+      "bounds": {
+        "max": [
+          42,
+          0.6501408219337463,
+          42.000003814697266
+        ],
+        "min": [
+          -42,
+          -0.26014086604118347,
+          -42.000003814697266
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "660332737415fe30170c3147e4a9ab4eee9aa964e6dbac240623f7d0ebef39c8",
+      "id": "sf.render.helios-trade-hub.node.lod0-heliosgolden02-batch.primitive.12",
+      "indexCount": 25920,
+      "indexed": true,
+      "materialHash": "03daf8f36be6d707412b6ba483cf89ee57b2bdc6344e2bf4fda62ebbb6db82cd",
+      "materialPipelineKey": "flight-static:opaque:lod0",
+      "meshName": "render:sf.render.helios-trade-hub.flight-static-lane.1",
+      "nodeId": "sf.render.helios-trade-hub.node.lod0-heliosgolden02-batch",
+      "primitiveIndex": 12,
+      "vertexCount": 17280
     },
     {
       "bounds": {
@@ -380,8 +405,8 @@
       "indexCount": 198729,
       "indexed": true,
       "materialHash": "d93bdd844283e1a6df75cdd616f28fa07531d51043c8e94841afff323a467599",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD0_HeliosGolden02_Batch_Mesh",
+      "materialPipelineKey": "flight-static:opaque:lod0",
+      "meshName": "render:sf.render.helios-trade-hub.flight-static-lane.1",
       "nodeId": "sf.render.helios-trade-hub.node.lod0-heliosgolden02-batch",
       "primitiveIndex": 2,
       "vertexCount": 91986
@@ -391,25 +416,25 @@
         "max": [
           63.360992431640625,
           13.029211044311523,
-          30.399003982543945
+          38.10020446777344
         ],
         "min": [
           -56.99958419799805,
           -1.5083200931549072,
-          -30.399003982543945
+          -38.10020446777344
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ecb002f6da62fe304126d69fc429678bccff1f2ba1db9e5aeb04f18788ce62dc",
+      "geometryHash": "bd01627aace80a63f8c8ee943882a4595786ff95e5dcd4b0cfb58aed41708a8c",
       "id": "sf.render.helios-trade-hub.node.lod0-heliosgolden02-batch.primitive.3",
-      "indexCount": 45894,
+      "indexCount": 56262,
       "indexed": true,
       "materialHash": "83b6ca88caded380b4f9205be0be4bb49daa837b6ddb3db9999e9ccf9d246787",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD0_HeliosGolden02_Batch_Mesh",
+      "materialPipelineKey": "flight-static:opaque:lod0",
+      "meshName": "render:sf.render.helios-trade-hub.flight-static-lane.1",
       "nodeId": "sf.render.helios-trade-hub.node.lod0-heliosgolden02-batch",
       "primitiveIndex": 3,
-      "vertexCount": 32009
+      "vertexCount": 38921
     },
     {
       "bounds": {
@@ -430,8 +455,8 @@
       "indexCount": 42144,
       "indexed": true,
       "materialHash": "454325688856afb06b7a21a1fc3b8b5ba7912d99b93d9137d66552bf99d1883b",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD0_HeliosGolden02_Batch_Mesh",
+      "materialPipelineKey": "flight-static:opaque:lod0",
+      "meshName": "render:sf.render.helios-trade-hub.flight-static-lane.1",
       "nodeId": "sf.render.helios-trade-hub.node.lod0-heliosgolden02-batch",
       "primitiveIndex": 4,
       "vertexCount": 28432
@@ -455,8 +480,8 @@
       "indexCount": 1573671,
       "indexed": true,
       "materialHash": "b5aab8fd119977bcd11353654414fad187f8f3a0f0ec31bc2c7b6a0a78ef6577",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD0_HeliosGolden02_Batch_Mesh",
+      "materialPipelineKey": "flight-static:opaque:lod0",
+      "meshName": "render:sf.render.helios-trade-hub.flight-static-lane.1",
       "nodeId": "sf.render.helios-trade-hub.node.lod0-heliosgolden02-batch",
       "primitiveIndex": 5,
       "vertexCount": 692367
@@ -480,8 +505,8 @@
       "indexCount": 83490,
       "indexed": true,
       "materialHash": "12f2fb998795571ce0c92e26f86e2dd90502b9d170050ca8cd0ea0b5a7617890",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD0_HeliosGolden02_Batch_Mesh",
+      "materialPipelineKey": "flight-static:opaque:lod0",
+      "meshName": "render:sf.render.helios-trade-hub.flight-static-lane.1",
       "nodeId": "sf.render.helios-trade-hub.node.lod0-heliosgolden02-batch",
       "primitiveIndex": 6,
       "vertexCount": 43160
@@ -505,8 +530,8 @@
       "indexCount": 895665,
       "indexed": true,
       "materialHash": "03daf8f36be6d707412b6ba483cf89ee57b2bdc6344e2bf4fda62ebbb6db82cd",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD0_HeliosGolden02_Batch_Mesh",
+      "materialPipelineKey": "flight-static:opaque:lod0",
+      "meshName": "render:sf.render.helios-trade-hub.flight-static-lane.1",
       "nodeId": "sf.render.helios-trade-hub.node.lod0-heliosgolden02-batch",
       "primitiveIndex": 7,
       "vertexCount": 453763
@@ -530,8 +555,8 @@
       "indexCount": 7335,
       "indexed": true,
       "materialHash": "eca4c0b22cbaaa79d6399652b093af3a4835aa90f7848fc83a83538f0832ca8a",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD0_HeliosGolden02_Batch_Mesh",
+      "materialPipelineKey": "flight-static:opaque:lod0",
+      "meshName": "render:sf.render.helios-trade-hub.flight-static-lane.1",
       "nodeId": "sf.render.helios-trade-hub.node.lod0-heliosgolden02-batch",
       "primitiveIndex": 8,
       "vertexCount": 5517
@@ -555,8 +580,8 @@
       "indexCount": 10020,
       "indexed": true,
       "materialHash": "0f2190e00584b7ccc7e9bd17885aafcf9d826323c83817b393c1d10ceb304c44",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD0_HeliosGolden02_Batch_Mesh",
+      "materialPipelineKey": "flight-static:opaque:lod0",
+      "meshName": "render:sf.render.helios-trade-hub.flight-static-lane.1",
       "nodeId": "sf.render.helios-trade-hub.node.lod0-heliosgolden02-batch",
       "primitiveIndex": 9,
       "vertexCount": 6936
@@ -564,1227 +589,27 @@
     {
       "bounds": {
         "max": [
-          42,
-          0.6501408219337463,
-          1.5998167991638184
-        ],
-        "min": [
-          31.600000381469727,
-          -0.26014086604118347,
-          -1.5998167991638184
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "0b60ffee80cffcb29ac95ab6730dea8b5a295f68cdd241e1144724c81e8253cd",
-      "id": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-00.primitive.0",
-      "indexCount": 1620,
-      "indexed": true,
-      "materialHash": "03daf8f36be6d707412b6ba483cf89ee57b2bdc6344e2bf4fda62ebbb6db82cd",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh",
-      "nodeId": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-00",
-      "primitiveIndex": 0,
-      "vertexCount": 1080
-    },
-    {
-      "bounds": {
-        "max": [
-          38.100196838378906,
-          0.12009536474943161,
-          1.3103548288345337
-        ],
-        "min": [
-          35.49980163574219,
-          -0.22014938294887543,
-          -1.3103548288345337
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "82a1069efd16c7edaa0a5699ae962097eeb2f0ffecdd7e355f1c8c90ce07d882",
-      "id": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-00.primitive.1",
-      "indexCount": 648,
-      "indexed": true,
-      "materialHash": "83b6ca88caded380b4f9205be0be4bb49daa837b6ddb3db9999e9ccf9d246787",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh",
-      "nodeId": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-00",
-      "primitiveIndex": 1,
-      "vertexCount": 432
-    },
-    {
-      "bounds": {
-        "max": [
           40.200225830078125,
-          0.5701579451560974,
-          0.7496810555458069
+          5.3140869140625,
+          40.20022964477539
         ],
         "min": [
-          38.399818420410156,
-          0.3898789882659912,
-          -0.7496810555458069
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "40665c3c50c6c39c560386e8ec48cd855e4567f01e0a77a8b211cde8c7d18b77",
-      "id": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-00.primitive.2",
-      "indexCount": 324,
-      "indexed": true,
-      "materialHash": "bcbce38a7095c10fd7179bbb8379bcfd80510ef5a5a659bb6b5c12854664af9d",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh",
-      "nodeId": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-00",
-      "primitiveIndex": 2,
-      "vertexCount": 216
-    },
-    {
-      "bounds": {
-        "max": [
-          39.071128845214844,
-          0.6501408219337463,
-          -10.769590377807617
-        ],
-        "min": [
-          28.926403045654297,
-          -0.26014086604118347,
-          -17.395919799804688
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "a58e065432efad072d49234eafa99e2fc51febca617af661fa29168cb5d47c1b",
-      "id": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-01.primitive.0",
-      "indexCount": 1620,
-      "indexed": true,
-      "materialHash": "03daf8f36be6d707412b6ba483cf89ee57b2bdc6344e2bf4fda62ebbb6db82cd",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.001",
-      "nodeId": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-01",
-      "primitiveIndex": 0,
-      "vertexCount": 1080
-    },
-    {
-      "bounds": {
-        "max": [
-          35.68024826049805,
-          0.12009536474943161,
-          -12.39577579498291
-        ],
-        "min": [
-          32.317283630371094,
-          -0.22014938294887543,
-          -15.769734382629395
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "abde83e48cacbb4dd90a8dff9bcff40bb1adaa5453731eb27a2126a2e5c8c7ad",
-      "id": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-01.primitive.1",
-      "indexCount": 648,
-      "indexed": true,
-      "materialHash": "83b6ca88caded380b4f9205be0be4bb49daa837b6ddb3db9999e9ccf9d246787",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.001",
-      "nodeId": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-01",
-      "primitiveIndex": 1,
-      "vertexCount": 432
-    },
-    {
-      "bounds": {
-        "max": [
-          37.40616226196289,
-          0.5701579451560974,
-          -14.023341178894043
-        ],
-        "min": [
-          35.2108039855957,
-          0.3898789882659912,
-          -16.05560302734375
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "b0482bd9eccb0c3fc4b909e614406479a5c7cb0237477de7d80d8413fae59caa",
-      "id": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-01.primitive.2",
-      "indexCount": 324,
-      "indexed": true,
-      "materialHash": "bcbce38a7095c10fd7179bbb8379bcfd80510ef5a5a659bb6b5c12854664af9d",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.001",
-      "nodeId": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-01",
-      "primitiveIndex": 2,
-      "vertexCount": 216
-    },
-    {
-      "bounds": {
-        "max": [
-          30.559511184692383,
-          0.6501408219337463,
-          -21.483549118041992
-        ],
-        "min": [
-          21.483545303344727,
-          -0.26014086604118347,
-          -30.55951499938965
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "ad63f74e4035a0dbb6f1efc68fee02d00f62205769cb4451fd942e0fb3aa9934",
-      "id": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-02.primitive.0",
-      "indexCount": 1620,
-      "indexed": true,
-      "materialHash": "03daf8f36be6d707412b6ba483cf89ee57b2bdc6344e2bf4fda62ebbb6db82cd",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.002",
-      "nodeId": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-02",
-      "primitiveIndex": 0,
-      "vertexCount": 1080
-    },
-    {
-      "bounds": {
-        "max": [
-          27.843902587890625,
-          0.12009536474943161,
-          -24.19915771484375
-        ],
-        "min": [
-          24.199153900146484,
-          -0.22014938294887543,
-          -27.84390640258789
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "81b27a721991313e18859fdf9e7871b75d66e99ef850a87b7882d91411894428",
-      "id": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-02.primitive.1",
-      "indexCount": 648,
-      "indexed": true,
-      "materialHash": "83b6ca88caded380b4f9205be0be4bb49daa837b6ddb3db9999e9ccf9d246787",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.002",
-      "nodeId": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-02",
-      "primitiveIndex": 1,
-      "vertexCount": 432
-    },
-    {
-      "bounds": {
-        "max": [
-          28.933063507080078,
-          0.5701579451560974,
-          -26.64556121826172
-        ],
-        "min": [
-          26.645557403564453,
-          0.3898789882659912,
-          -28.933067321777344
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "c727ed303a747097ea7745c31487308ef25aba11e3f4b6a4929e93620e8e68c8",
-      "id": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-02.primitive.2",
-      "indexCount": 324,
-      "indexed": true,
-      "materialHash": "bcbce38a7095c10fd7179bbb8379bcfd80510ef5a5a659bb6b5c12854664af9d",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.002",
-      "nodeId": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-02",
-      "primitiveIndex": 2,
-      "vertexCount": 216
-    },
-    {
-      "bounds": {
-        "max": [
-          17.39590835571289,
-          0.6501408219337463,
-          -28.926408767700195
-        ],
-        "min": [
-          10.769580841064453,
-          -0.26014086604118347,
-          -39.071136474609375
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "40950ceb744a74f56b5f01018b3ce061526a095926e13c6a08461986d7e38dc5",
-      "id": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-03.primitive.0",
-      "indexCount": 1620,
-      "indexed": true,
-      "materialHash": "03daf8f36be6d707412b6ba483cf89ee57b2bdc6344e2bf4fda62ebbb6db82cd",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.003",
-      "nodeId": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-03",
-      "primitiveIndex": 0,
-      "vertexCount": 1080
-    },
-    {
-      "bounds": {
-        "max": [
-          15.769723892211914,
-          0.12009536474943161,
-          -32.317291259765625
-        ],
-        "min": [
-          12.39576530456543,
-          -0.22014938294887543,
-          -35.68025588989258
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "8a08b79207eb2ce7f79ad0e67d7579ddda3c33c12c300c3c8acbe24014171cfa",
-      "id": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-03.primitive.1",
-      "indexCount": 648,
-      "indexed": true,
-      "materialHash": "83b6ca88caded380b4f9205be0be4bb49daa837b6ddb3db9999e9ccf9d246787",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.003",
-      "nodeId": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-03",
-      "primitiveIndex": 1,
-      "vertexCount": 432
-    },
-    {
-      "bounds": {
-        "max": [
-          16.055591583251953,
-          0.5701579451560974,
-          -35.210811614990234
-        ],
-        "min": [
-          14.023329734802246,
-          0.3898789882659912,
-          -37.40617370605469
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "d5357d1cf26caec1b26688278964c68489e27ed451289bcac6bfa9fde914a87a",
-      "id": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-03.primitive.2",
-      "indexCount": 324,
-      "indexed": true,
-      "materialHash": "bcbce38a7095c10fd7179bbb8379bcfd80510ef5a5a659bb6b5c12854664af9d",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.003",
-      "nodeId": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-03",
-      "primitiveIndex": 2,
-      "vertexCount": 216
-    },
-    {
-      "bounds": {
-        "max": [
-          1.5998127460479736,
-          0.6501408219337463,
-          -31.600004196166992
-        ],
-        "min": [
-          -1.5998226404190063,
-          -0.26014086604118347,
-          -42.000003814697266
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "7763dc9c6f713a60bce48fe3b483f0aa171e4312c347e025a5b4a85b19e7b732",
-      "id": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-04.primitive.0",
-      "indexCount": 1620,
-      "indexed": true,
-      "materialHash": "03daf8f36be6d707412b6ba483cf89ee57b2bdc6344e2bf4fda62ebbb6db82cd",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.004",
-      "nodeId": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-04",
-      "primitiveIndex": 0,
-      "vertexCount": 1080
-    },
-    {
-      "bounds": {
-        "max": [
-          1.3103502988815308,
-          0.12009536474943161,
-          -35.49980545043945
-        ],
-        "min": [
-          -1.3103601932525635,
-          -0.22014938294887543,
-          -38.10020446777344
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "f80d86fb62a5970121e436ee1eee54dd08f2ee79a91b2b224ba4537ae7588133",
-      "id": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-04.primitive.1",
-      "indexCount": 648,
-      "indexed": true,
-      "materialHash": "83b6ca88caded380b4f9205be0be4bb49daa837b6ddb3db9999e9ccf9d246787",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.004",
-      "nodeId": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-04",
-      "primitiveIndex": 1,
-      "vertexCount": 432
-    },
-    {
-      "bounds": {
-        "max": [
-          0.749675989151001,
-          0.5701579451560974,
-          -38.39982223510742
-        ],
-        "min": [
-          -0.7496865391731262,
+          -40.200225830078125,
           0.3898789882659912,
           -40.20022964477539
         ]
       },
       "drawMode": 4,
-      "geometryHash": "857067d99669ef45c6a3329b212ddb8a644b9285eff4362147939236472c39da",
-      "id": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-04.primitive.2",
-      "indexCount": 324,
-      "indexed": true,
-      "materialHash": "bcbce38a7095c10fd7179bbb8379bcfd80510ef5a5a659bb6b5c12854664af9d",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.004",
-      "nodeId": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-04",
-      "primitiveIndex": 2,
-      "vertexCount": 216
-    },
-    {
-      "bounds": {
-        "max": [
-          -10.769584655761719,
-          0.6501408219337463,
-          -28.926403045654297
-        ],
-        "min": [
-          -17.395912170410156,
-          -0.26014086604118347,
-          -39.071128845214844
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "76324c6ba16a5296d44d5e683e1cfb9bc0a5c7c2ddb86e57d52f91a2b036ad3d",
-      "id": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-05.primitive.0",
-      "indexCount": 1620,
-      "indexed": true,
-      "materialHash": "03daf8f36be6d707412b6ba483cf89ee57b2bdc6344e2bf4fda62ebbb6db82cd",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.005",
-      "nodeId": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-05",
-      "primitiveIndex": 0,
-      "vertexCount": 1080
-    },
-    {
-      "bounds": {
-        "max": [
-          -12.395769119262695,
-          0.12009536474943161,
-          -32.317283630371094
-        ],
-        "min": [
-          -15.76972770690918,
-          -0.22014938294887543,
-          -35.68024826049805
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "5f867e34824d25805db3a3f0e001cbc3f5656e24b21669331132f5479b00a354",
-      "id": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-05.primitive.1",
-      "indexCount": 648,
-      "indexed": true,
-      "materialHash": "83b6ca88caded380b4f9205be0be4bb49daa837b6ddb3db9999e9ccf9d246787",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.005",
-      "nodeId": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-05",
-      "primitiveIndex": 1,
-      "vertexCount": 432
-    },
-    {
-      "bounds": {
-        "max": [
-          -14.023334503173828,
-          0.5701579451560974,
-          -35.2108039855957
-        ],
-        "min": [
-          -16.05559539794922,
-          0.3898789882659912,
-          -37.406166076660156
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "35fbbc4f95ebabc0c4b895fe85481b6fb3090ac5577c321bec6d7d04f6c5dbfd",
-      "id": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-05.primitive.2",
-      "indexCount": 324,
-      "indexed": true,
-      "materialHash": "bcbce38a7095c10fd7179bbb8379bcfd80510ef5a5a659bb6b5c12854664af9d",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.005",
-      "nodeId": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-05",
-      "primitiveIndex": 2,
-      "vertexCount": 216
-    },
-    {
-      "bounds": {
-        "max": [
-          -21.483551025390625,
-          0.6501408219337463,
-          -21.483549118041992
-        ],
-        "min": [
-          -30.55951690673828,
-          -0.26014086604118347,
-          -30.55951499938965
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "8c142a4287cb9a119637cea314363a0d9098a676a4f0c25e037dca75af8a1e30",
-      "id": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-06.primitive.0",
-      "indexCount": 1620,
-      "indexed": true,
-      "materialHash": "03daf8f36be6d707412b6ba483cf89ee57b2bdc6344e2bf4fda62ebbb6db82cd",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.006",
-      "nodeId": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-06",
-      "primitiveIndex": 0,
-      "vertexCount": 1080
-    },
-    {
-      "bounds": {
-        "max": [
-          -24.199159622192383,
-          0.12009536474943161,
-          -24.19915771484375
-        ],
-        "min": [
-          -27.843908309936523,
-          -0.22014938294887543,
-          -27.84390640258789
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "0ca21e115f9bdbe41896c6f2d53cc0ad1d74f99aff5bac37d414383faa868dd2",
-      "id": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-06.primitive.1",
-      "indexCount": 648,
-      "indexed": true,
-      "materialHash": "83b6ca88caded380b4f9205be0be4bb49daa837b6ddb3db9999e9ccf9d246787",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.006",
-      "nodeId": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-06",
-      "primitiveIndex": 1,
-      "vertexCount": 432
-    },
-    {
-      "bounds": {
-        "max": [
-          -26.64556312561035,
-          0.5701579451560974,
-          -26.64556121826172
-        ],
-        "min": [
-          -28.933069229125977,
-          0.3898789882659912,
-          -28.933067321777344
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "2a0ab562549ecf2ac353511812e9f3239a8cac6186c84525bde68c379d2118fa",
-      "id": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-06.primitive.2",
-      "indexCount": 324,
-      "indexed": true,
-      "materialHash": "bcbce38a7095c10fd7179bbb8379bcfd80510ef5a5a659bb6b5c12854664af9d",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.006",
-      "nodeId": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-06",
-      "primitiveIndex": 2,
-      "vertexCount": 216
-    },
-    {
-      "bounds": {
-        "max": [
-          -28.926414489746094,
-          0.6501408219337463,
-          -10.769590377807617
-        ],
-        "min": [
-          -39.071144104003906,
-          -0.26014086604118347,
-          -17.39592170715332
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "0e91ddb9551815f2150818ebd958d9c5ba68a713b5b013734223c56a64e4cf6d",
-      "id": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-07.primitive.0",
-      "indexCount": 1620,
-      "indexed": true,
-      "materialHash": "03daf8f36be6d707412b6ba483cf89ee57b2bdc6344e2bf4fda62ebbb6db82cd",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.007",
-      "nodeId": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-07",
-      "primitiveIndex": 0,
-      "vertexCount": 1080
-    },
-    {
-      "bounds": {
-        "max": [
-          -32.31729507446289,
-          0.12009536474943161,
-          -12.39577579498291
-        ],
-        "min": [
-          -35.68026351928711,
-          -0.22014938294887543,
-          -15.769736289978027
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "8ceeacbb1a16c7f9fa37c6ebfca6aadda6b01301aa9bf6e7127c0b827e34a8a9",
-      "id": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-07.primitive.1",
-      "indexCount": 648,
-      "indexed": true,
-      "materialHash": "83b6ca88caded380b4f9205be0be4bb49daa837b6ddb3db9999e9ccf9d246787",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.007",
-      "nodeId": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-07",
-      "primitiveIndex": 1,
-      "vertexCount": 432
-    },
-    {
-      "bounds": {
-        "max": [
-          -35.210819244384766,
-          0.5701579451560974,
-          -14.02334213256836
-        ],
-        "min": [
-          -37.40618133544922,
-          0.3898789882659912,
-          -16.055604934692383
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "83aa7effefab9f347326e83d776e5e55bfc4c104a1aae0f2d1d9d7a828e02116",
-      "id": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-07.primitive.2",
-      "indexCount": 324,
-      "indexed": true,
-      "materialHash": "bcbce38a7095c10fd7179bbb8379bcfd80510ef5a5a659bb6b5c12854664af9d",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.007",
-      "nodeId": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-07",
-      "primitiveIndex": 2,
-      "vertexCount": 216
-    },
-    {
-      "bounds": {
-        "max": [
-          -31.600000381469727,
-          0.6501408219337463,
-          1.5998204946517944
-        ],
-        "min": [
-          -42,
-          -0.26014086604118347,
-          -1.5998140573501587
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "f6729eff9fe6dba49a18c61e9250ef08ac4719a698f609bf4694fe2619949ed0",
-      "id": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-08.primitive.0",
-      "indexCount": 1620,
-      "indexed": true,
-      "materialHash": "03daf8f36be6d707412b6ba483cf89ee57b2bdc6344e2bf4fda62ebbb6db82cd",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.008",
-      "nodeId": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-08",
-      "primitiveIndex": 0,
-      "vertexCount": 1080
-    },
-    {
-      "bounds": {
-        "max": [
-          -35.49980163574219,
-          0.12009536474943161,
-          1.3103581666946411
-        ],
-        "min": [
-          -38.100196838378906,
-          -0.22014938294887543,
-          -1.3103517293930054
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "e5032b6cb7878f4baf9aa404184c8d6be35a333d2d0fbcedab6caba84522997c",
-      "id": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-08.primitive.1",
-      "indexCount": 648,
-      "indexed": true,
-      "materialHash": "83b6ca88caded380b4f9205be0be4bb49daa837b6ddb3db9999e9ccf9d246787",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.008",
-      "nodeId": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-08",
-      "primitiveIndex": 1,
-      "vertexCount": 432
-    },
-    {
-      "bounds": {
-        "max": [
-          -38.399818420410156,
-          0.5701579451560974,
-          0.7496845722198486
-        ],
-        "min": [
-          -40.200225830078125,
-          0.3898789882659912,
-          -0.7496776580810547
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "ac87b8050be495aa1c0056cf02532c90c361bb1e9f84e988a06bd7946a55590a",
-      "id": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-08.primitive.2",
-      "indexCount": 324,
-      "indexed": true,
-      "materialHash": "bcbce38a7095c10fd7179bbb8379bcfd80510ef5a5a659bb6b5c12854664af9d",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.008",
-      "nodeId": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-08",
-      "primitiveIndex": 2,
-      "vertexCount": 216
-    },
-    {
-      "bounds": {
-        "max": [
-          -28.926406860351562,
-          0.6501408219337463,
-          17.395915985107422
-        ],
-        "min": [
-          -39.071136474609375,
-          -0.26014086604118347,
-          10.769587516784668
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "128945875430b0942749e4d89540db6e5019e957599c888c584fa9d7d2dad8d8",
-      "id": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-09.primitive.0",
-      "indexCount": 1620,
-      "indexed": true,
-      "materialHash": "03daf8f36be6d707412b6ba483cf89ee57b2bdc6344e2bf4fda62ebbb6db82cd",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.009",
-      "nodeId": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-09",
-      "primitiveIndex": 0,
-      "vertexCount": 1080
-    },
-    {
-      "bounds": {
-        "max": [
-          -32.31728744506836,
-          0.12009536474943161,
-          15.769731521606445
-        ],
-        "min": [
-          -35.68025588989258,
-          -0.22014938294887543,
-          12.395771980285645
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "f6aaf9606c423abe05bfa79a0b18c3c59973ef7cb70d0f7043577b8afa7ab597",
-      "id": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-09.primitive.1",
-      "indexCount": 648,
-      "indexed": true,
-      "materialHash": "83b6ca88caded380b4f9205be0be4bb49daa837b6ddb3db9999e9ccf9d246787",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.009",
-      "nodeId": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-09",
-      "primitiveIndex": 1,
-      "vertexCount": 432
-    },
-    {
-      "bounds": {
-        "max": [
-          -35.210811614990234,
-          0.5701579451560974,
-          16.055599212646484
-        ],
-        "min": [
-          -37.40616989135742,
-          0.3898789882659912,
-          14.023338317871094
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "72cd311b43f55e60863aac51835c610090a8385bf62c8ef39f8e936cfda50878",
-      "id": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-09.primitive.2",
-      "indexCount": 324,
-      "indexed": true,
-      "materialHash": "bcbce38a7095c10fd7179bbb8379bcfd80510ef5a5a659bb6b5c12854664af9d",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.009",
-      "nodeId": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-09",
-      "primitiveIndex": 2,
-      "vertexCount": 216
-    },
-    {
-      "bounds": {
-        "max": [
-          -21.483551025390625,
-          0.6501408219337463,
-          30.559511184692383
-        ],
-        "min": [
-          -30.55951690673828,
-          -0.26014086604118347,
-          21.483545303344727
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "aaab3981c3a73eb102b66bb8eb966c6068db81c42a6bfcb9ec83b01ccf2d9f04",
-      "id": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-10.primitive.0",
-      "indexCount": 1620,
-      "indexed": true,
-      "materialHash": "03daf8f36be6d707412b6ba483cf89ee57b2bdc6344e2bf4fda62ebbb6db82cd",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.010",
-      "nodeId": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-10",
-      "primitiveIndex": 0,
-      "vertexCount": 1080
-    },
-    {
-      "bounds": {
-        "max": [
-          -24.199159622192383,
-          0.12009536474943161,
-          27.843902587890625
-        ],
-        "min": [
-          -27.843908309936523,
-          -0.22014938294887543,
-          24.199153900146484
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "a877fe87763b321aa3ee1a1c5e62de9410185dc54b7f99f361bbe11a86571bb0",
-      "id": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-10.primitive.1",
-      "indexCount": 648,
-      "indexed": true,
-      "materialHash": "83b6ca88caded380b4f9205be0be4bb49daa837b6ddb3db9999e9ccf9d246787",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.010",
-      "nodeId": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-10",
-      "primitiveIndex": 1,
-      "vertexCount": 432
-    },
-    {
-      "bounds": {
-        "max": [
-          -26.64556312561035,
-          0.5701579451560974,
-          28.933063507080078
-        ],
-        "min": [
-          -28.933069229125977,
-          0.3898789882659912,
-          26.645557403564453
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "cbf8b882185e4788e249bc5c9a371aa5f00301465f2748da53d9d01c4b195a6e",
-      "id": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-10.primitive.2",
-      "indexCount": 324,
-      "indexed": true,
-      "materialHash": "bcbce38a7095c10fd7179bbb8379bcfd80510ef5a5a659bb6b5c12854664af9d",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.010",
-      "nodeId": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-10",
-      "primitiveIndex": 2,
-      "vertexCount": 216
-    },
-    {
-      "bounds": {
-        "max": [
-          -10.769590377807617,
-          0.6501408219337463,
-          39.071128845214844
-        ],
-        "min": [
-          -17.395919799804688,
-          -0.26014086604118347,
-          28.926403045654297
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "a717e761928c0bdf74f1aabd3dfc705156c500a7dcc443b2bf3b06b5aa2a4d8f",
-      "id": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-11.primitive.0",
-      "indexCount": 1620,
-      "indexed": true,
-      "materialHash": "03daf8f36be6d707412b6ba483cf89ee57b2bdc6344e2bf4fda62ebbb6db82cd",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.011",
-      "nodeId": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-11",
-      "primitiveIndex": 0,
-      "vertexCount": 1080
-    },
-    {
-      "bounds": {
-        "max": [
-          -12.39577579498291,
-          0.12009536474943161,
-          35.68024826049805
-        ],
-        "min": [
-          -15.769735336303711,
-          -0.22014938294887543,
-          32.317283630371094
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "78fc55c422cff68d55aa337b8e47cbc0ce29fd2b25b92281420f2604237616ab",
-      "id": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-11.primitive.1",
-      "indexCount": 648,
-      "indexed": true,
-      "materialHash": "83b6ca88caded380b4f9205be0be4bb49daa837b6ddb3db9999e9ccf9d246787",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.011",
-      "nodeId": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-11",
-      "primitiveIndex": 1,
-      "vertexCount": 432
-    },
-    {
-      "bounds": {
-        "max": [
-          -14.02334213256836,
-          0.5701579451560974,
-          37.40616226196289
-        ],
-        "min": [
-          -16.05560302734375,
-          0.3898789882659912,
-          35.2108039855957
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "6070f34536153ccdd2827d6008a80033b76aeeb9a6ccc09b6f3b3bd4a34ec492",
-      "id": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-11.primitive.2",
-      "indexCount": 324,
-      "indexed": true,
-      "materialHash": "bcbce38a7095c10fd7179bbb8379bcfd80510ef5a5a659bb6b5c12854664af9d",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.011",
-      "nodeId": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-11",
-      "primitiveIndex": 2,
-      "vertexCount": 216
-    },
-    {
-      "bounds": {
-        "max": [
-          1.5998127460479736,
-          0.6501408219337463,
-          42.000003814697266
-        ],
-        "min": [
-          -1.5998226404190063,
-          -0.26014086604118347,
-          31.600004196166992
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "b4a379358903d95683fce8ecd72dc4a96a3e36d20b83085ead8d8da7d1c0d6c7",
-      "id": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-12.primitive.0",
-      "indexCount": 1620,
-      "indexed": true,
-      "materialHash": "03daf8f36be6d707412b6ba483cf89ee57b2bdc6344e2bf4fda62ebbb6db82cd",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.012",
-      "nodeId": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-12",
-      "primitiveIndex": 0,
-      "vertexCount": 1080
-    },
-    {
-      "bounds": {
-        "max": [
-          1.3103502988815308,
-          0.12009536474943161,
-          38.10020446777344
-        ],
-        "min": [
-          -1.3103601932525635,
-          -0.22014938294887543,
-          35.49980545043945
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "c2253e1d071406d68a23e7e5a5427013c4f2c3bcb3ab92171fb1bcf6821a2178",
-      "id": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-12.primitive.1",
-      "indexCount": 648,
-      "indexed": true,
-      "materialHash": "83b6ca88caded380b4f9205be0be4bb49daa837b6ddb3db9999e9ccf9d246787",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.012",
-      "nodeId": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-12",
-      "primitiveIndex": 1,
-      "vertexCount": 432
-    },
-    {
-      "bounds": {
-        "max": [
-          0.749675989151001,
-          0.5701579451560974,
-          40.20022964477539
-        ],
-        "min": [
-          -0.7496865391731262,
-          0.3898789882659912,
-          38.39982223510742
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "cec06e9f14c3ee980e588fa442f8b96f58890f090a856822eaaeb9ed82fdb155",
-      "id": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-12.primitive.2",
-      "indexCount": 324,
-      "indexed": true,
-      "materialHash": "bcbce38a7095c10fd7179bbb8379bcfd80510ef5a5a659bb6b5c12854664af9d",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.012",
-      "nodeId": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-12",
-      "primitiveIndex": 2,
-      "vertexCount": 216
-    },
-    {
-      "bounds": {
-        "max": [
-          17.395919799804688,
-          0.6501408219337463,
-          39.071128845214844
-        ],
-        "min": [
-          10.7695894241333,
-          -0.26014086604118347,
-          28.926403045654297
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "b70d8bdd87284812f46c924476a47d093b5c34decc4ccf5b9791fe5d74091944",
-      "id": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-13.primitive.0",
-      "indexCount": 1620,
-      "indexed": true,
-      "materialHash": "03daf8f36be6d707412b6ba483cf89ee57b2bdc6344e2bf4fda62ebbb6db82cd",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.013",
-      "nodeId": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-13",
-      "primitiveIndex": 0,
-      "vertexCount": 1080
-    },
-    {
-      "bounds": {
-        "max": [
-          15.769733428955078,
-          0.12009536474943161,
-          35.68024826049805
-        ],
-        "min": [
-          12.395774841308594,
-          -0.22014938294887543,
-          32.317283630371094
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "eaec645c9d66452b44c3d611ff06bab7578a10c205b793151e2047a93661381a",
-      "id": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-13.primitive.1",
-      "indexCount": 648,
-      "indexed": true,
-      "materialHash": "83b6ca88caded380b4f9205be0be4bb49daa837b6ddb3db9999e9ccf9d246787",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.013",
-      "nodeId": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-13",
-      "primitiveIndex": 1,
-      "vertexCount": 432
-    },
-    {
-      "bounds": {
-        "max": [
-          16.055601119995117,
-          0.5701579451560974,
-          37.40616226196289
-        ],
-        "min": [
-          14.023340225219727,
-          0.3898789882659912,
-          35.2108039855957
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "460a05ec1612aaf0a74396bf117e0c781cc9e5ac931c85298d561ec0e70d8cdf",
-      "id": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-13.primitive.2",
-      "indexCount": 324,
-      "indexed": true,
-      "materialHash": "bcbce38a7095c10fd7179bbb8379bcfd80510ef5a5a659bb6b5c12854664af9d",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.013",
-      "nodeId": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-13",
-      "primitiveIndex": 2,
-      "vertexCount": 216
-    },
-    {
-      "bounds": {
-        "max": [
-          30.55950927734375,
-          0.6501408219337463,
-          30.55951499938965
-        ],
-        "min": [
-          21.483545303344727,
-          -0.26014086604118347,
-          21.483549118041992
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "8460ec05b26eca36d8524f4aa1c3550ecbcbf97a5b836ecf9454043dcfe8aa24",
-      "id": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-14.primitive.0",
-      "indexCount": 1620,
-      "indexed": true,
-      "materialHash": "03daf8f36be6d707412b6ba483cf89ee57b2bdc6344e2bf4fda62ebbb6db82cd",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.014",
-      "nodeId": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-14",
-      "primitiveIndex": 0,
-      "vertexCount": 1080
-    },
-    {
-      "bounds": {
-        "max": [
-          27.843900680541992,
-          0.12009536474943161,
-          27.84390640258789
-        ],
-        "min": [
-          24.19915199279785,
-          -0.22014938294887543,
-          24.19915771484375
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "c66e170609cf8593f245b4d3a9dd78cc25a16319418b2ae26548ae711788c967",
-      "id": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-14.primitive.1",
-      "indexCount": 648,
-      "indexed": true,
-      "materialHash": "83b6ca88caded380b4f9205be0be4bb49daa837b6ddb3db9999e9ccf9d246787",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.014",
-      "nodeId": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-14",
-      "primitiveIndex": 1,
-      "vertexCount": 432
-    },
-    {
-      "bounds": {
-        "max": [
-          28.933061599731445,
-          0.5701579451560974,
-          28.933067321777344
-        ],
-        "min": [
-          26.64555549621582,
-          0.3898789882659912,
-          26.64556121826172
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "3b293eb103566e5936d0a981ef578cc0fa1d6858ed5a2e11c22347dbb6eddfe2",
-      "id": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-14.primitive.2",
-      "indexCount": 324,
-      "indexed": true,
-      "materialHash": "bcbce38a7095c10fd7179bbb8379bcfd80510ef5a5a659bb6b5c12854664af9d",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.014",
-      "nodeId": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-14",
-      "primitiveIndex": 2,
-      "vertexCount": 216
-    },
-    {
-      "bounds": {
-        "max": [
-          39.07113265991211,
-          0.6501408219337463,
-          17.39591407775879
-        ],
-        "min": [
-          28.926403045654297,
-          -0.26014086604118347,
-          10.769585609436035
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "643fe8d5ffa4690e2de79036dfe2f3c45cf1d06a38e93dbb2060dc5cceb6d317",
-      "id": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-15.primitive.0",
-      "indexCount": 1620,
-      "indexed": true,
-      "materialHash": "03daf8f36be6d707412b6ba483cf89ee57b2bdc6344e2bf4fda62ebbb6db82cd",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.015",
-      "nodeId": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-15",
-      "primitiveIndex": 0,
-      "vertexCount": 1080
-    },
-    {
-      "bounds": {
-        "max": [
-          35.68024826049805,
-          0.12009536474943161,
-          15.769729614257812
-        ],
-        "min": [
-          32.317283630371094,
-          -0.22014938294887543,
-          12.395770072937012
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "09d475066e93a7139c5f94538d339526cefe06c774b2c551e82e2b3dd6177cbe",
-      "id": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-15.primitive.1",
-      "indexCount": 648,
-      "indexed": true,
-      "materialHash": "83b6ca88caded380b4f9205be0be4bb49daa837b6ddb3db9999e9ccf9d246787",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.015",
-      "nodeId": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-15",
-      "primitiveIndex": 1,
-      "vertexCount": 432
-    },
-    {
-      "bounds": {
-        "max": [
-          37.406166076660156,
-          0.5701579451560974,
-          16.05559730529785
-        ],
-        "min": [
-          35.21080780029297,
-          0.3898789882659912,
-          14.023335456848145
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "9fdb4378e9f1148edee017806a9a848612800eb62b0c30eb78154066d297cba2",
-      "id": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-15.primitive.2",
-      "indexCount": 324,
-      "indexed": true,
-      "materialHash": "bcbce38a7095c10fd7179bbb8379bcfd80510ef5a5a659bb6b5c12854664af9d",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.015",
-      "nodeId": "sf.render.helios-trade-hub.node.lod0-sfg02-supportedringbay-15",
-      "primitiveIndex": 2,
-      "vertexCount": 216
-    },
-    {
-      "bounds": {
-        "max": [
-          11.630670547485352,
-          5.3140869140625,
-          11.631683349609375
-        ],
-        "min": [
-          -11.625320434570312,
-          1.5155342817306519,
-          -11.631683349609375
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "c02da2e8403725ff4401dabeeee0cdec6cee3c7dd6a8116b8c6ecc00af70daca",
+      "geometryHash": "3166aa855a351c63b4b2a7d0a2a39e9134f6ac7e6234fa061fb9eae8d2571802",
       "id": "sf.render.helios-trade-hub.node.lod1-heliosgolden02-batch.primitive.0",
-      "indexCount": 12636,
+      "indexCount": 15228,
       "indexed": true,
       "materialHash": "bcbce38a7095c10fd7179bbb8379bcfd80510ef5a5a659bb6b5c12854664af9d",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD1_HeliosGolden02_Batch_Mesh",
+      "materialPipelineKey": "flight-static:opaque:lod1",
+      "meshName": "render:sf.render.helios-trade-hub.flight-static-lane.2",
       "nodeId": "sf.render.helios-trade-hub.node.lod1-heliosgolden02-batch",
       "primitiveIndex": 0,
-      "vertexCount": 8424
+      "vertexCount": 10152
     },
     {
       "bounds": {
@@ -1805,8 +630,8 @@
       "indexCount": 31074,
       "indexed": true,
       "materialHash": "0b6b184ad914e78f66c1373f70a19c5b71f299b5bc1f46521cf3c3182534de04",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD1_HeliosGolden02_Batch_Mesh",
+      "materialPipelineKey": "flight-static:opaque:lod1",
+      "meshName": "render:sf.render.helios-trade-hub.flight-static-lane.2",
       "nodeId": "sf.render.helios-trade-hub.node.lod1-heliosgolden02-batch",
       "primitiveIndex": 1,
       "vertexCount": 30115
@@ -1830,8 +655,8 @@
       "indexCount": 3018,
       "indexed": true,
       "materialHash": "c3c24d29f3ef71847a35401e87b89520a0adcb1a7359f6ab1e639e466bdd8f94",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD1_HeliosGolden02_Batch_Mesh",
+      "materialPipelineKey": "flight-static:opaque:lod1",
+      "meshName": "render:sf.render.helios-trade-hub.flight-static-lane.2",
       "nodeId": "sf.render.helios-trade-hub.node.lod1-heliosgolden02-batch",
       "primitiveIndex": 10,
       "vertexCount": 2448
@@ -1855,11 +680,36 @@
       "indexCount": 15126,
       "indexed": true,
       "materialHash": "e9a34e2ba4296296616a3976478cb3964970303f349881c56bff6153453d2ad3",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD1_HeliosGolden02_Batch_Mesh",
+      "materialPipelineKey": "flight-static:opaque:lod1",
+      "meshName": "render:sf.render.helios-trade-hub.flight-static-lane.2",
       "nodeId": "sf.render.helios-trade-hub.node.lod1-heliosgolden02-batch",
       "primitiveIndex": 11,
       "vertexCount": 11920
+    },
+    {
+      "bounds": {
+        "max": [
+          42,
+          0.6501408219337463,
+          42.000003814697266
+        ],
+        "min": [
+          -42,
+          -0.26014086604118347,
+          -42.000003814697266
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "88b93cabc35f1ff069d873e2f6d06b27943830f435a4ae3c041c00550ded69f2",
+      "id": "sf.render.helios-trade-hub.node.lod1-heliosgolden02-batch.primitive.12",
+      "indexCount": 12960,
+      "indexed": true,
+      "materialHash": "03daf8f36be6d707412b6ba483cf89ee57b2bdc6344e2bf4fda62ebbb6db82cd",
+      "materialPipelineKey": "flight-static:opaque:lod1",
+      "meshName": "render:sf.render.helios-trade-hub.flight-static-lane.2",
+      "nodeId": "sf.render.helios-trade-hub.node.lod1-heliosgolden02-batch",
+      "primitiveIndex": 12,
+      "vertexCount": 8640
     },
     {
       "bounds": {
@@ -1880,8 +730,8 @@
       "indexCount": 101334,
       "indexed": true,
       "materialHash": "d93bdd844283e1a6df75cdd616f28fa07531d51043c8e94841afff323a467599",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD1_HeliosGolden02_Batch_Mesh",
+      "materialPipelineKey": "flight-static:opaque:lod1",
+      "meshName": "render:sf.render.helios-trade-hub.flight-static-lane.2",
       "nodeId": "sf.render.helios-trade-hub.node.lod1-heliosgolden02-batch",
       "primitiveIndex": 2,
       "vertexCount": 61593
@@ -1891,25 +741,25 @@
         "max": [
           63.35551834106445,
           13.191473007202148,
-          30.392107009887695
+          38.10020446777344
         ],
         "min": [
           -56.97745132446289,
           -1.508555293083191,
-          -30.392107009887695
+          -38.10020446777344
         ]
       },
       "drawMode": 4,
-      "geometryHash": "b10a96fee332c529685075653eefc716a4cbc548ae2dd2d19c72b9b4738800e0",
+      "geometryHash": "0eb0b2b359b10f125141120c2b89c0dafcc7c7781ede1cea7f61407c1a4c2781",
       "id": "sf.render.helios-trade-hub.node.lod1-heliosgolden02-batch.primitive.3",
-      "indexCount": 33636,
+      "indexCount": 38820,
       "indexed": true,
       "materialHash": "83b6ca88caded380b4f9205be0be4bb49daa837b6ddb3db9999e9ccf9d246787",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD1_HeliosGolden02_Batch_Mesh",
+      "materialPipelineKey": "flight-static:opaque:lod1",
+      "meshName": "render:sf.render.helios-trade-hub.flight-static-lane.2",
       "nodeId": "sf.render.helios-trade-hub.node.lod1-heliosgolden02-batch",
       "primitiveIndex": 3,
-      "vertexCount": 25751
+      "vertexCount": 29207
     },
     {
       "bounds": {
@@ -1930,8 +780,8 @@
       "indexCount": 22140,
       "indexed": true,
       "materialHash": "454325688856afb06b7a21a1fc3b8b5ba7912d99b93d9137d66552bf99d1883b",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD1_HeliosGolden02_Batch_Mesh",
+      "materialPipelineKey": "flight-static:opaque:lod1",
+      "meshName": "render:sf.render.helios-trade-hub.flight-static-lane.2",
       "nodeId": "sf.render.helios-trade-hub.node.lod1-heliosgolden02-batch",
       "primitiveIndex": 4,
       "vertexCount": 18444
@@ -1955,8 +805,8 @@
       "indexCount": 744042,
       "indexed": true,
       "materialHash": "b5aab8fd119977bcd11353654414fad187f8f3a0f0ec31bc2c7b6a0a78ef6577",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD1_HeliosGolden02_Batch_Mesh",
+      "materialPipelineKey": "flight-static:opaque:lod1",
+      "meshName": "render:sf.render.helios-trade-hub.flight-static-lane.2",
       "nodeId": "sf.render.helios-trade-hub.node.lod1-heliosgolden02-batch",
       "primitiveIndex": 5,
       "vertexCount": 428530
@@ -1980,8 +830,8 @@
       "indexCount": 45831,
       "indexed": true,
       "materialHash": "12f2fb998795571ce0c92e26f86e2dd90502b9d170050ca8cd0ea0b5a7617890",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD1_HeliosGolden02_Batch_Mesh",
+      "materialPipelineKey": "flight-static:opaque:lod1",
+      "meshName": "render:sf.render.helios-trade-hub.flight-static-lane.2",
       "nodeId": "sf.render.helios-trade-hub.node.lod1-heliosgolden02-batch",
       "primitiveIndex": 6,
       "vertexCount": 28233
@@ -2005,8 +855,8 @@
       "indexCount": 430266,
       "indexed": true,
       "materialHash": "03daf8f36be6d707412b6ba483cf89ee57b2bdc6344e2bf4fda62ebbb6db82cd",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD1_HeliosGolden02_Batch_Mesh",
+      "materialPipelineKey": "flight-static:opaque:lod1",
+      "meshName": "render:sf.render.helios-trade-hub.flight-static-lane.2",
       "nodeId": "sf.render.helios-trade-hub.node.lod1-heliosgolden02-batch",
       "primitiveIndex": 7,
       "vertexCount": 296349
@@ -2030,8 +880,8 @@
       "indexCount": 3555,
       "indexed": true,
       "materialHash": "eca4c0b22cbaaa79d6399652b093af3a4835aa90f7848fc83a83538f0832ca8a",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD1_HeliosGolden02_Batch_Mesh",
+      "materialPipelineKey": "flight-static:opaque:lod1",
+      "meshName": "render:sf.render.helios-trade-hub.flight-static-lane.2",
       "nodeId": "sf.render.helios-trade-hub.node.lod1-heliosgolden02-batch",
       "primitiveIndex": 8,
       "vertexCount": 3329
@@ -2055,611 +905,11 @@
       "indexCount": 4800,
       "indexed": true,
       "materialHash": "0f2190e00584b7ccc7e9bd17885aafcf9d826323c83817b393c1d10ceb304c44",
-      "materialPipelineKey": "opaque",
-      "meshName": "LOD1_HeliosGolden02_Batch_Mesh",
+      "materialPipelineKey": "flight-static:opaque:lod1",
+      "meshName": "render:sf.render.helios-trade-hub.flight-static-lane.2",
       "nodeId": "sf.render.helios-trade-hub.node.lod1-heliosgolden02-batch",
       "primitiveIndex": 9,
       "vertexCount": 4760
-    },
-    {
-      "bounds": {
-        "max": [
-          42,
-          0.6501408219337463,
-          1.5998167991638184
-        ],
-        "min": [
-          31.600000381469727,
-          -0.26014086604118347,
-          -1.5998167991638184
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "7e69cf8535227eb7aa16589b509f23f28a81e566f0fd5bbdf000369f399e1214",
-      "id": "sf.render.helios-trade-hub.node.lod1-sfg02-supportedringbay-00.primitive.0",
-      "indexCount": 1620,
-      "indexed": true,
-      "materialHash": "03daf8f36be6d707412b6ba483cf89ee57b2bdc6344e2bf4fda62ebbb6db82cd",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.016",
-      "nodeId": "sf.render.helios-trade-hub.node.lod1-sfg02-supportedringbay-00",
-      "primitiveIndex": 0,
-      "vertexCount": 1080
-    },
-    {
-      "bounds": {
-        "max": [
-          38.100196838378906,
-          0.12009536474943161,
-          1.3103548288345337
-        ],
-        "min": [
-          35.49980163574219,
-          -0.22014938294887543,
-          -1.3103548288345337
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "52f2e1bde1392c3394b7f1971332756e1edac33c6669adfd81d8ddda6a68b386",
-      "id": "sf.render.helios-trade-hub.node.lod1-sfg02-supportedringbay-00.primitive.1",
-      "indexCount": 648,
-      "indexed": true,
-      "materialHash": "83b6ca88caded380b4f9205be0be4bb49daa837b6ddb3db9999e9ccf9d246787",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.016",
-      "nodeId": "sf.render.helios-trade-hub.node.lod1-sfg02-supportedringbay-00",
-      "primitiveIndex": 1,
-      "vertexCount": 432
-    },
-    {
-      "bounds": {
-        "max": [
-          40.200225830078125,
-          0.5701579451560974,
-          0.7496810555458069
-        ],
-        "min": [
-          38.399818420410156,
-          0.3898789882659912,
-          -0.7496810555458069
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "5cb79819ce469c82a54ca48f15cc3bb39a1225d2f0279fff8d460c5462acdcf1",
-      "id": "sf.render.helios-trade-hub.node.lod1-sfg02-supportedringbay-00.primitive.2",
-      "indexCount": 324,
-      "indexed": true,
-      "materialHash": "bcbce38a7095c10fd7179bbb8379bcfd80510ef5a5a659bb6b5c12854664af9d",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.016",
-      "nodeId": "sf.render.helios-trade-hub.node.lod1-sfg02-supportedringbay-00",
-      "primitiveIndex": 2,
-      "vertexCount": 216
-    },
-    {
-      "bounds": {
-        "max": [
-          30.559511184692383,
-          0.6501408219337463,
-          -21.483549118041992
-        ],
-        "min": [
-          21.483545303344727,
-          -0.26014086604118347,
-          -30.55951499938965
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "85c176fada5acc015ea2f70da28a94d140a3f6e163e61e99a89cde573e0995ca",
-      "id": "sf.render.helios-trade-hub.node.lod1-sfg02-supportedringbay-01.primitive.0",
-      "indexCount": 1620,
-      "indexed": true,
-      "materialHash": "03daf8f36be6d707412b6ba483cf89ee57b2bdc6344e2bf4fda62ebbb6db82cd",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.017",
-      "nodeId": "sf.render.helios-trade-hub.node.lod1-sfg02-supportedringbay-01",
-      "primitiveIndex": 0,
-      "vertexCount": 1080
-    },
-    {
-      "bounds": {
-        "max": [
-          27.843902587890625,
-          0.12009536474943161,
-          -24.19915771484375
-        ],
-        "min": [
-          24.199153900146484,
-          -0.22014938294887543,
-          -27.84390640258789
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "cb0560c3de118642851a48265d75abb610759fef788fdf5681a784e675597265",
-      "id": "sf.render.helios-trade-hub.node.lod1-sfg02-supportedringbay-01.primitive.1",
-      "indexCount": 648,
-      "indexed": true,
-      "materialHash": "83b6ca88caded380b4f9205be0be4bb49daa837b6ddb3db9999e9ccf9d246787",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.017",
-      "nodeId": "sf.render.helios-trade-hub.node.lod1-sfg02-supportedringbay-01",
-      "primitiveIndex": 1,
-      "vertexCount": 432
-    },
-    {
-      "bounds": {
-        "max": [
-          28.933063507080078,
-          0.5701579451560974,
-          -26.64556121826172
-        ],
-        "min": [
-          26.645557403564453,
-          0.3898789882659912,
-          -28.933067321777344
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "0dfe33db1d230e7f5b7ea6d94d46a23ca49282694bed6c46edf70fc1cf617a50",
-      "id": "sf.render.helios-trade-hub.node.lod1-sfg02-supportedringbay-01.primitive.2",
-      "indexCount": 324,
-      "indexed": true,
-      "materialHash": "bcbce38a7095c10fd7179bbb8379bcfd80510ef5a5a659bb6b5c12854664af9d",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.017",
-      "nodeId": "sf.render.helios-trade-hub.node.lod1-sfg02-supportedringbay-01",
-      "primitiveIndex": 2,
-      "vertexCount": 216
-    },
-    {
-      "bounds": {
-        "max": [
-          1.5998127460479736,
-          0.6501408219337463,
-          -31.600004196166992
-        ],
-        "min": [
-          -1.5998226404190063,
-          -0.26014086604118347,
-          -42.000003814697266
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "bf0e039354f52c5fd02833ff05b0fe61b16b23bca964866070a803ff976f6592",
-      "id": "sf.render.helios-trade-hub.node.lod1-sfg02-supportedringbay-02.primitive.0",
-      "indexCount": 1620,
-      "indexed": true,
-      "materialHash": "03daf8f36be6d707412b6ba483cf89ee57b2bdc6344e2bf4fda62ebbb6db82cd",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.018",
-      "nodeId": "sf.render.helios-trade-hub.node.lod1-sfg02-supportedringbay-02",
-      "primitiveIndex": 0,
-      "vertexCount": 1080
-    },
-    {
-      "bounds": {
-        "max": [
-          1.3103502988815308,
-          0.12009536474943161,
-          -35.49980545043945
-        ],
-        "min": [
-          -1.3103601932525635,
-          -0.22014938294887543,
-          -38.10020446777344
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "77d08f5a4c5e7058cbcbca1c3cbe86f24f257ec332d15f222ac61959b98bde0a",
-      "id": "sf.render.helios-trade-hub.node.lod1-sfg02-supportedringbay-02.primitive.1",
-      "indexCount": 648,
-      "indexed": true,
-      "materialHash": "83b6ca88caded380b4f9205be0be4bb49daa837b6ddb3db9999e9ccf9d246787",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.018",
-      "nodeId": "sf.render.helios-trade-hub.node.lod1-sfg02-supportedringbay-02",
-      "primitiveIndex": 1,
-      "vertexCount": 432
-    },
-    {
-      "bounds": {
-        "max": [
-          0.749675989151001,
-          0.5701579451560974,
-          -38.39982223510742
-        ],
-        "min": [
-          -0.7496865391731262,
-          0.3898789882659912,
-          -40.20022964477539
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "5ea26e8f07c2591e4fa1abf2af3930309c321b3834ee67aa23aff54c905bbd5e",
-      "id": "sf.render.helios-trade-hub.node.lod1-sfg02-supportedringbay-02.primitive.2",
-      "indexCount": 324,
-      "indexed": true,
-      "materialHash": "bcbce38a7095c10fd7179bbb8379bcfd80510ef5a5a659bb6b5c12854664af9d",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.018",
-      "nodeId": "sf.render.helios-trade-hub.node.lod1-sfg02-supportedringbay-02",
-      "primitiveIndex": 2,
-      "vertexCount": 216
-    },
-    {
-      "bounds": {
-        "max": [
-          -21.483551025390625,
-          0.6501408219337463,
-          -21.483549118041992
-        ],
-        "min": [
-          -30.55951690673828,
-          -0.26014086604118347,
-          -30.55951499938965
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "3dff0ce940113c34b174a6f7cb70d248a4461c12966565a853855bed2757c6a8",
-      "id": "sf.render.helios-trade-hub.node.lod1-sfg02-supportedringbay-03.primitive.0",
-      "indexCount": 1620,
-      "indexed": true,
-      "materialHash": "03daf8f36be6d707412b6ba483cf89ee57b2bdc6344e2bf4fda62ebbb6db82cd",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.019",
-      "nodeId": "sf.render.helios-trade-hub.node.lod1-sfg02-supportedringbay-03",
-      "primitiveIndex": 0,
-      "vertexCount": 1080
-    },
-    {
-      "bounds": {
-        "max": [
-          -24.199159622192383,
-          0.12009536474943161,
-          -24.19915771484375
-        ],
-        "min": [
-          -27.843908309936523,
-          -0.22014938294887543,
-          -27.84390640258789
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "a98dcf762422d2579e2817a43c9cf8749a95e0bde318910bf67d00c9c07df9ea",
-      "id": "sf.render.helios-trade-hub.node.lod1-sfg02-supportedringbay-03.primitive.1",
-      "indexCount": 648,
-      "indexed": true,
-      "materialHash": "83b6ca88caded380b4f9205be0be4bb49daa837b6ddb3db9999e9ccf9d246787",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.019",
-      "nodeId": "sf.render.helios-trade-hub.node.lod1-sfg02-supportedringbay-03",
-      "primitiveIndex": 1,
-      "vertexCount": 432
-    },
-    {
-      "bounds": {
-        "max": [
-          -26.64556312561035,
-          0.5701579451560974,
-          -26.64556121826172
-        ],
-        "min": [
-          -28.933069229125977,
-          0.3898789882659912,
-          -28.933067321777344
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "b68cd03d6268143b048ee0403e4e0254c340e3136c9f23510c408ecd4fc2fb35",
-      "id": "sf.render.helios-trade-hub.node.lod1-sfg02-supportedringbay-03.primitive.2",
-      "indexCount": 324,
-      "indexed": true,
-      "materialHash": "bcbce38a7095c10fd7179bbb8379bcfd80510ef5a5a659bb6b5c12854664af9d",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.019",
-      "nodeId": "sf.render.helios-trade-hub.node.lod1-sfg02-supportedringbay-03",
-      "primitiveIndex": 2,
-      "vertexCount": 216
-    },
-    {
-      "bounds": {
-        "max": [
-          -31.600000381469727,
-          0.6501408219337463,
-          1.5998204946517944
-        ],
-        "min": [
-          -42,
-          -0.26014086604118347,
-          -1.5998140573501587
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "3ae2390c3ff85ad086a2b79340743d5cf71345bcc186effec86ee38aa449b39b",
-      "id": "sf.render.helios-trade-hub.node.lod1-sfg02-supportedringbay-04.primitive.0",
-      "indexCount": 1620,
-      "indexed": true,
-      "materialHash": "03daf8f36be6d707412b6ba483cf89ee57b2bdc6344e2bf4fda62ebbb6db82cd",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.020",
-      "nodeId": "sf.render.helios-trade-hub.node.lod1-sfg02-supportedringbay-04",
-      "primitiveIndex": 0,
-      "vertexCount": 1080
-    },
-    {
-      "bounds": {
-        "max": [
-          -35.49980163574219,
-          0.12009536474943161,
-          1.3103581666946411
-        ],
-        "min": [
-          -38.100196838378906,
-          -0.22014938294887543,
-          -1.3103517293930054
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "736242765a75c4f95ea55bcda0c9e29969865e770d0a78dbf5b7cf2bd1a1110d",
-      "id": "sf.render.helios-trade-hub.node.lod1-sfg02-supportedringbay-04.primitive.1",
-      "indexCount": 648,
-      "indexed": true,
-      "materialHash": "83b6ca88caded380b4f9205be0be4bb49daa837b6ddb3db9999e9ccf9d246787",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.020",
-      "nodeId": "sf.render.helios-trade-hub.node.lod1-sfg02-supportedringbay-04",
-      "primitiveIndex": 1,
-      "vertexCount": 432
-    },
-    {
-      "bounds": {
-        "max": [
-          -38.399818420410156,
-          0.5701579451560974,
-          0.7496845722198486
-        ],
-        "min": [
-          -40.200225830078125,
-          0.3898789882659912,
-          -0.7496776580810547
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "e91d7f841182e5bc8fd23e995d43e4e155d239c569e5c18de63aba041fa92396",
-      "id": "sf.render.helios-trade-hub.node.lod1-sfg02-supportedringbay-04.primitive.2",
-      "indexCount": 324,
-      "indexed": true,
-      "materialHash": "bcbce38a7095c10fd7179bbb8379bcfd80510ef5a5a659bb6b5c12854664af9d",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.020",
-      "nodeId": "sf.render.helios-trade-hub.node.lod1-sfg02-supportedringbay-04",
-      "primitiveIndex": 2,
-      "vertexCount": 216
-    },
-    {
-      "bounds": {
-        "max": [
-          -21.483551025390625,
-          0.6501408219337463,
-          30.559511184692383
-        ],
-        "min": [
-          -30.55951690673828,
-          -0.26014086604118347,
-          21.483545303344727
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "a6aa488791bd7af7b937c7432d9aa9eb7cf96cfa1078a1f34f4a309cd514c01f",
-      "id": "sf.render.helios-trade-hub.node.lod1-sfg02-supportedringbay-05.primitive.0",
-      "indexCount": 1620,
-      "indexed": true,
-      "materialHash": "03daf8f36be6d707412b6ba483cf89ee57b2bdc6344e2bf4fda62ebbb6db82cd",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.021",
-      "nodeId": "sf.render.helios-trade-hub.node.lod1-sfg02-supportedringbay-05",
-      "primitiveIndex": 0,
-      "vertexCount": 1080
-    },
-    {
-      "bounds": {
-        "max": [
-          -24.199159622192383,
-          0.12009536474943161,
-          27.843902587890625
-        ],
-        "min": [
-          -27.843908309936523,
-          -0.22014938294887543,
-          24.199153900146484
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "864bdc142a42c20f8d90936a77b7b69162c4a1c56410be08f182b6f2914fb770",
-      "id": "sf.render.helios-trade-hub.node.lod1-sfg02-supportedringbay-05.primitive.1",
-      "indexCount": 648,
-      "indexed": true,
-      "materialHash": "83b6ca88caded380b4f9205be0be4bb49daa837b6ddb3db9999e9ccf9d246787",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.021",
-      "nodeId": "sf.render.helios-trade-hub.node.lod1-sfg02-supportedringbay-05",
-      "primitiveIndex": 1,
-      "vertexCount": 432
-    },
-    {
-      "bounds": {
-        "max": [
-          -26.64556312561035,
-          0.5701579451560974,
-          28.933063507080078
-        ],
-        "min": [
-          -28.933069229125977,
-          0.3898789882659912,
-          26.645557403564453
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "617cbe730fa5279f3a5155a0f709edbd1d516d7ffb0b3aab5ee4ae6bf25e12dc",
-      "id": "sf.render.helios-trade-hub.node.lod1-sfg02-supportedringbay-05.primitive.2",
-      "indexCount": 324,
-      "indexed": true,
-      "materialHash": "bcbce38a7095c10fd7179bbb8379bcfd80510ef5a5a659bb6b5c12854664af9d",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.021",
-      "nodeId": "sf.render.helios-trade-hub.node.lod1-sfg02-supportedringbay-05",
-      "primitiveIndex": 2,
-      "vertexCount": 216
-    },
-    {
-      "bounds": {
-        "max": [
-          1.5998127460479736,
-          0.6501408219337463,
-          42.000003814697266
-        ],
-        "min": [
-          -1.5998226404190063,
-          -0.26014086604118347,
-          31.600004196166992
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "b00ede9832977d77b2a57d9d4e18ca461b39ad7fd4511eb8efa77eaaa5f5843f",
-      "id": "sf.render.helios-trade-hub.node.lod1-sfg02-supportedringbay-06.primitive.0",
-      "indexCount": 1620,
-      "indexed": true,
-      "materialHash": "03daf8f36be6d707412b6ba483cf89ee57b2bdc6344e2bf4fda62ebbb6db82cd",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.022",
-      "nodeId": "sf.render.helios-trade-hub.node.lod1-sfg02-supportedringbay-06",
-      "primitiveIndex": 0,
-      "vertexCount": 1080
-    },
-    {
-      "bounds": {
-        "max": [
-          1.3103502988815308,
-          0.12009536474943161,
-          38.10020446777344
-        ],
-        "min": [
-          -1.3103601932525635,
-          -0.22014938294887543,
-          35.49980545043945
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "714f9093f98094bf444f2462949b4aeacae0c80dc82f36dd5f946b6780f8d222",
-      "id": "sf.render.helios-trade-hub.node.lod1-sfg02-supportedringbay-06.primitive.1",
-      "indexCount": 648,
-      "indexed": true,
-      "materialHash": "83b6ca88caded380b4f9205be0be4bb49daa837b6ddb3db9999e9ccf9d246787",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.022",
-      "nodeId": "sf.render.helios-trade-hub.node.lod1-sfg02-supportedringbay-06",
-      "primitiveIndex": 1,
-      "vertexCount": 432
-    },
-    {
-      "bounds": {
-        "max": [
-          0.749675989151001,
-          0.5701579451560974,
-          40.20022964477539
-        ],
-        "min": [
-          -0.7496865391731262,
-          0.3898789882659912,
-          38.39982223510742
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "596536d158fd766fa691ff50d1a2cf625b3ff7c2a334a508c7b83cb8ffd3698f",
-      "id": "sf.render.helios-trade-hub.node.lod1-sfg02-supportedringbay-06.primitive.2",
-      "indexCount": 324,
-      "indexed": true,
-      "materialHash": "bcbce38a7095c10fd7179bbb8379bcfd80510ef5a5a659bb6b5c12854664af9d",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.022",
-      "nodeId": "sf.render.helios-trade-hub.node.lod1-sfg02-supportedringbay-06",
-      "primitiveIndex": 2,
-      "vertexCount": 216
-    },
-    {
-      "bounds": {
-        "max": [
-          30.55950927734375,
-          0.6501408219337463,
-          30.55951499938965
-        ],
-        "min": [
-          21.483545303344727,
-          -0.26014086604118347,
-          21.483549118041992
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "e322249d27703b7696f81114891a796ab0691cd08f20c160633e60183c54fa72",
-      "id": "sf.render.helios-trade-hub.node.lod1-sfg02-supportedringbay-07.primitive.0",
-      "indexCount": 1620,
-      "indexed": true,
-      "materialHash": "03daf8f36be6d707412b6ba483cf89ee57b2bdc6344e2bf4fda62ebbb6db82cd",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.023",
-      "nodeId": "sf.render.helios-trade-hub.node.lod1-sfg02-supportedringbay-07",
-      "primitiveIndex": 0,
-      "vertexCount": 1080
-    },
-    {
-      "bounds": {
-        "max": [
-          27.843900680541992,
-          0.12009536474943161,
-          27.84390640258789
-        ],
-        "min": [
-          24.19915199279785,
-          -0.22014938294887543,
-          24.19915771484375
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "95b4094d5df392890af61393b4addb4192ff56d79c768d1e69c0d7b44d88ede4",
-      "id": "sf.render.helios-trade-hub.node.lod1-sfg02-supportedringbay-07.primitive.1",
-      "indexCount": 648,
-      "indexed": true,
-      "materialHash": "83b6ca88caded380b4f9205be0be4bb49daa837b6ddb3db9999e9ccf9d246787",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.023",
-      "nodeId": "sf.render.helios-trade-hub.node.lod1-sfg02-supportedringbay-07",
-      "primitiveIndex": 1,
-      "vertexCount": 432
-    },
-    {
-      "bounds": {
-        "max": [
-          28.933061599731445,
-          0.5701579451560974,
-          28.933067321777344
-        ],
-        "min": [
-          26.64555549621582,
-          0.3898789882659912,
-          26.64556121826172
-        ]
-      },
-      "drawMode": 4,
-      "geometryHash": "44ec7fb964e51333369a17bbe854af70ccf51e85735e044adc7468ac3a0f5a6c",
-      "id": "sf.render.helios-trade-hub.node.lod1-sfg02-supportedringbay-07.primitive.2",
-      "indexCount": 324,
-      "indexed": true,
-      "materialHash": "bcbce38a7095c10fd7179bbb8379bcfd80510ef5a5a659bb6b5c12854664af9d",
-      "materialPipelineKey": "opaque",
-      "meshName": "SFG02_SupportedRingBay_Mesh.023",
-      "nodeId": "sf.render.helios-trade-hub.node.lod1-sfg02-supportedringbay-07",
-      "primitiveIndex": 2,
-      "vertexCount": 216
     },
     {
       "bounds": {
@@ -2680,7 +930,7 @@
       "indexCount": 9486,
       "indexed": true,
       "materialHash": "0b6b184ad914e78f66c1373f70a19c5b71f299b5bc1f46521cf3c3182534de04",
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "flight-static:opaque:lod2",
       "meshName": "LOD2_HeliosGolden02_Batch_Mesh",
       "nodeId": "sf.render.helios-trade-hub.node.lod2-heliosgolden02-batch",
       "primitiveIndex": 0,
@@ -2705,7 +955,7 @@
       "indexCount": 52683,
       "indexed": true,
       "materialHash": "d93bdd844283e1a6df75cdd616f28fa07531d51043c8e94841afff323a467599",
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "flight-static:opaque:lod2",
       "meshName": "LOD2_HeliosGolden02_Batch_Mesh",
       "nodeId": "sf.render.helios-trade-hub.node.lod2-heliosgolden02-batch",
       "primitiveIndex": 1,
@@ -2730,7 +980,7 @@
       "indexCount": 1800,
       "indexed": true,
       "materialHash": "e9a34e2ba4296296616a3976478cb3964970303f349881c56bff6153453d2ad3",
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "flight-static:opaque:lod2",
       "meshName": "LOD2_HeliosGolden02_Batch_Mesh",
       "nodeId": "sf.render.helios-trade-hub.node.lod2-heliosgolden02-batch",
       "primitiveIndex": 10,
@@ -2755,7 +1005,7 @@
       "indexCount": 3612,
       "indexed": true,
       "materialHash": "83b6ca88caded380b4f9205be0be4bb49daa837b6ddb3db9999e9ccf9d246787",
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "flight-static:opaque:lod2",
       "meshName": "LOD2_HeliosGolden02_Batch_Mesh",
       "nodeId": "sf.render.helios-trade-hub.node.lod2-heliosgolden02-batch",
       "primitiveIndex": 2,
@@ -2780,7 +1030,7 @@
       "indexCount": 3672,
       "indexed": true,
       "materialHash": "454325688856afb06b7a21a1fc3b8b5ba7912d99b93d9137d66552bf99d1883b",
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "flight-static:opaque:lod2",
       "meshName": "LOD2_HeliosGolden02_Batch_Mesh",
       "nodeId": "sf.render.helios-trade-hub.node.lod2-heliosgolden02-batch",
       "primitiveIndex": 3,
@@ -2805,7 +1055,7 @@
       "indexCount": 236172,
       "indexed": true,
       "materialHash": "b5aab8fd119977bcd11353654414fad187f8f3a0f0ec31bc2c7b6a0a78ef6577",
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "flight-static:opaque:lod2",
       "meshName": "LOD2_HeliosGolden02_Batch_Mesh",
       "nodeId": "sf.render.helios-trade-hub.node.lod2-heliosgolden02-batch",
       "primitiveIndex": 4,
@@ -2830,7 +1080,7 @@
       "indexCount": 7848,
       "indexed": true,
       "materialHash": "12f2fb998795571ce0c92e26f86e2dd90502b9d170050ca8cd0ea0b5a7617890",
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "flight-static:opaque:lod2",
       "meshName": "LOD2_HeliosGolden02_Batch_Mesh",
       "nodeId": "sf.render.helios-trade-hub.node.lod2-heliosgolden02-batch",
       "primitiveIndex": 5,
@@ -2855,7 +1105,7 @@
       "indexCount": 141681,
       "indexed": true,
       "materialHash": "03daf8f36be6d707412b6ba483cf89ee57b2bdc6344e2bf4fda62ebbb6db82cd",
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "flight-static:opaque:lod2",
       "meshName": "LOD2_HeliosGolden02_Batch_Mesh",
       "nodeId": "sf.render.helios-trade-hub.node.lod2-heliosgolden02-batch",
       "primitiveIndex": 6,
@@ -2880,7 +1130,7 @@
       "indexCount": 1227,
       "indexed": true,
       "materialHash": "eca4c0b22cbaaa79d6399652b093af3a4835aa90f7848fc83a83538f0832ca8a",
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "flight-static:opaque:lod2",
       "meshName": "LOD2_HeliosGolden02_Batch_Mesh",
       "nodeId": "sf.render.helios-trade-hub.node.lod2-heliosgolden02-batch",
       "primitiveIndex": 7,
@@ -2905,7 +1155,7 @@
       "indexCount": 1596,
       "indexed": true,
       "materialHash": "0f2190e00584b7ccc7e9bd17885aafcf9d826323c83817b393c1d10ceb304c44",
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "flight-static:opaque:lod2",
       "meshName": "LOD2_HeliosGolden02_Batch_Mesh",
       "nodeId": "sf.render.helios-trade-hub.node.lod2-heliosgolden02-batch",
       "primitiveIndex": 8,
@@ -2930,7 +1180,7 @@
       "indexCount": 627,
       "indexed": true,
       "materialHash": "c3c24d29f3ef71847a35401e87b89520a0adcb1a7359f6ab1e639e466bdd8f94",
-      "materialPipelineKey": "opaque",
+      "materialPipelineKey": "flight-static:opaque:lod2",
       "meshName": "LOD2_HeliosGolden02_Batch_Mesh",
       "nodeId": "sf.render.helios-trade-hub.node.lod2-heliosgolden02-batch",
       "primitiveIndex": 9,
@@ -3298,7 +1548,7 @@
         1
       ],
       "materialPipelineKey": "non-render",
-      "mergeBoundary": "COLLISION_HULL",
+      "mergeBoundary": "flight-static:non-render",
       "nodeName": "COLLISION_HULL",
       "nodePath": [
         28
@@ -3345,8 +1595,8 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "HeliosGolden02_CommonBatch",
+      "materialPipelineKey": "flight-static:opaque:lodalways",
+      "mergeBoundary": "flight-static:opaque:lodalways",
       "nodeName": "HeliosGolden02_CommonBatch",
       "nodePath": [
         29
@@ -3441,8 +1691,8 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_HeliosGolden02_Batch",
+      "materialPipelineKey": "flight-static:opaque:lod0",
+      "mergeBoundary": "flight-static:opaque:lod0",
       "nodeName": "LOD0_HeliosGolden02_Batch",
       "nodePath": [
         30
@@ -3489,8 +1739,8 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_SFG02_SupportedRingBay_00",
+      "materialPipelineKey": "flight-static:opaque:lod0",
+      "mergeBoundary": "flight-static:opaque:lod0",
       "nodeName": "LOD0_SFG02_SupportedRingBay_00",
       "nodePath": [
         0
@@ -3537,8 +1787,8 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_SFG02_SupportedRingBay_01",
+      "materialPipelineKey": "flight-static:opaque:lod0",
+      "mergeBoundary": "flight-static:opaque:lod0",
       "nodeName": "LOD0_SFG02_SupportedRingBay_01",
       "nodePath": [
         1
@@ -3585,8 +1835,8 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_SFG02_SupportedRingBay_02",
+      "materialPipelineKey": "flight-static:opaque:lod0",
+      "mergeBoundary": "flight-static:opaque:lod0",
       "nodeName": "LOD0_SFG02_SupportedRingBay_02",
       "nodePath": [
         2
@@ -3633,8 +1883,8 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_SFG02_SupportedRingBay_03",
+      "materialPipelineKey": "flight-static:opaque:lod0",
+      "mergeBoundary": "flight-static:opaque:lod0",
       "nodeName": "LOD0_SFG02_SupportedRingBay_03",
       "nodePath": [
         3
@@ -3681,8 +1931,8 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_SFG02_SupportedRingBay_04",
+      "materialPipelineKey": "flight-static:opaque:lod0",
+      "mergeBoundary": "flight-static:opaque:lod0",
       "nodeName": "LOD0_SFG02_SupportedRingBay_04",
       "nodePath": [
         4
@@ -3729,8 +1979,8 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_SFG02_SupportedRingBay_05",
+      "materialPipelineKey": "flight-static:opaque:lod0",
+      "mergeBoundary": "flight-static:opaque:lod0",
       "nodeName": "LOD0_SFG02_SupportedRingBay_05",
       "nodePath": [
         5
@@ -3777,8 +2027,8 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_SFG02_SupportedRingBay_06",
+      "materialPipelineKey": "flight-static:opaque:lod0",
+      "mergeBoundary": "flight-static:opaque:lod0",
       "nodeName": "LOD0_SFG02_SupportedRingBay_06",
       "nodePath": [
         6
@@ -3825,8 +2075,8 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_SFG02_SupportedRingBay_07",
+      "materialPipelineKey": "flight-static:opaque:lod0",
+      "mergeBoundary": "flight-static:opaque:lod0",
       "nodeName": "LOD0_SFG02_SupportedRingBay_07",
       "nodePath": [
         7
@@ -3873,8 +2123,8 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_SFG02_SupportedRingBay_08",
+      "materialPipelineKey": "flight-static:opaque:lod0",
+      "mergeBoundary": "flight-static:opaque:lod0",
       "nodeName": "LOD0_SFG02_SupportedRingBay_08",
       "nodePath": [
         8
@@ -3921,8 +2171,8 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_SFG02_SupportedRingBay_09",
+      "materialPipelineKey": "flight-static:opaque:lod0",
+      "mergeBoundary": "flight-static:opaque:lod0",
       "nodeName": "LOD0_SFG02_SupportedRingBay_09",
       "nodePath": [
         9
@@ -3969,8 +2219,8 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_SFG02_SupportedRingBay_10",
+      "materialPipelineKey": "flight-static:opaque:lod0",
+      "mergeBoundary": "flight-static:opaque:lod0",
       "nodeName": "LOD0_SFG02_SupportedRingBay_10",
       "nodePath": [
         10
@@ -4017,8 +2267,8 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_SFG02_SupportedRingBay_11",
+      "materialPipelineKey": "flight-static:opaque:lod0",
+      "mergeBoundary": "flight-static:opaque:lod0",
       "nodeName": "LOD0_SFG02_SupportedRingBay_11",
       "nodePath": [
         11
@@ -4065,8 +2315,8 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_SFG02_SupportedRingBay_12",
+      "materialPipelineKey": "flight-static:opaque:lod0",
+      "mergeBoundary": "flight-static:opaque:lod0",
       "nodeName": "LOD0_SFG02_SupportedRingBay_12",
       "nodePath": [
         12
@@ -4113,8 +2363,8 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_SFG02_SupportedRingBay_13",
+      "materialPipelineKey": "flight-static:opaque:lod0",
+      "mergeBoundary": "flight-static:opaque:lod0",
       "nodeName": "LOD0_SFG02_SupportedRingBay_13",
       "nodePath": [
         13
@@ -4161,8 +2411,8 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_SFG02_SupportedRingBay_14",
+      "materialPipelineKey": "flight-static:opaque:lod0",
+      "mergeBoundary": "flight-static:opaque:lod0",
       "nodeName": "LOD0_SFG02_SupportedRingBay_14",
       "nodePath": [
         14
@@ -4209,8 +2459,8 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD0_SFG02_SupportedRingBay_15",
+      "materialPipelineKey": "flight-static:opaque:lod0",
+      "mergeBoundary": "flight-static:opaque:lod0",
       "nodeName": "LOD0_SFG02_SupportedRingBay_15",
       "nodePath": [
         15
@@ -4305,8 +2555,8 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_HeliosGolden02_Batch",
+      "materialPipelineKey": "flight-static:opaque:lod1",
+      "mergeBoundary": "flight-static:opaque:lod1",
       "nodeName": "LOD1_HeliosGolden02_Batch",
       "nodePath": [
         31
@@ -4353,8 +2603,8 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_SFG02_SupportedRingBay_00",
+      "materialPipelineKey": "flight-static:opaque:lod1",
+      "mergeBoundary": "flight-static:opaque:lod1",
       "nodeName": "LOD1_SFG02_SupportedRingBay_00",
       "nodePath": [
         16
@@ -4401,8 +2651,8 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_SFG02_SupportedRingBay_01",
+      "materialPipelineKey": "flight-static:opaque:lod1",
+      "mergeBoundary": "flight-static:opaque:lod1",
       "nodeName": "LOD1_SFG02_SupportedRingBay_01",
       "nodePath": [
         17
@@ -4449,8 +2699,8 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_SFG02_SupportedRingBay_02",
+      "materialPipelineKey": "flight-static:opaque:lod1",
+      "mergeBoundary": "flight-static:opaque:lod1",
       "nodeName": "LOD1_SFG02_SupportedRingBay_02",
       "nodePath": [
         18
@@ -4497,8 +2747,8 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_SFG02_SupportedRingBay_03",
+      "materialPipelineKey": "flight-static:opaque:lod1",
+      "mergeBoundary": "flight-static:opaque:lod1",
       "nodeName": "LOD1_SFG02_SupportedRingBay_03",
       "nodePath": [
         19
@@ -4545,8 +2795,8 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_SFG02_SupportedRingBay_04",
+      "materialPipelineKey": "flight-static:opaque:lod1",
+      "mergeBoundary": "flight-static:opaque:lod1",
       "nodeName": "LOD1_SFG02_SupportedRingBay_04",
       "nodePath": [
         20
@@ -4593,8 +2843,8 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_SFG02_SupportedRingBay_05",
+      "materialPipelineKey": "flight-static:opaque:lod1",
+      "mergeBoundary": "flight-static:opaque:lod1",
       "nodeName": "LOD1_SFG02_SupportedRingBay_05",
       "nodePath": [
         21
@@ -4641,8 +2891,8 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_SFG02_SupportedRingBay_06",
+      "materialPipelineKey": "flight-static:opaque:lod1",
+      "mergeBoundary": "flight-static:opaque:lod1",
       "nodeName": "LOD1_SFG02_SupportedRingBay_06",
       "nodePath": [
         22
@@ -4689,8 +2939,8 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD1_SFG02_SupportedRingBay_07",
+      "materialPipelineKey": "flight-static:opaque:lod1",
+      "mergeBoundary": "flight-static:opaque:lod1",
       "nodeName": "LOD1_SFG02_SupportedRingBay_07",
       "nodePath": [
         23
@@ -4785,8 +3035,8 @@
         0,
         1
       ],
-      "materialPipelineKey": "opaque",
-      "mergeBoundary": "LOD2_HeliosGolden02_Batch",
+      "materialPipelineKey": "flight-static:opaque:lod2",
+      "mergeBoundary": "flight-static:opaque:lod2",
       "nodeName": "LOD2_HeliosGolden02_Batch",
       "nodePath": [
         26,
@@ -4865,7 +3115,7 @@
   ],
   "provenance": {
     "semantics": {
-      "sha256": "eb5bac96b847edf1be1e142d1285aa4431009dce80a1722137d180237053b30d"
+      "sha256": "c8f98be4ffeb0775e8ccbb245be168a02b94c03ff52ad77e9fcac2d4daeb47b9"
     },
     "sourceGlb": {
       "bytes": 79051580,
@@ -4879,8 +3129,8 @@
     }
   },
   "render": {
-    "bytes": 89832160,
-    "sha256": "ead79b773199caae089419472522ed2e4d1916052f213f44d21723f1a175c07a",
+    "bytes": 89701332,
+    "sha256": "47755176ba7e0020abec1603e64d504ee8df4e1864cff2bc3b37f678b7d4e89a",
     "uri": "render.glb"
   },
   "runtime": {
@@ -4907,7 +3157,7 @@
       ]
     },
     "hidden": [
-      113
+      41
     ],
     "legacyPart": false,
     "markers": [
@@ -4931,7 +3181,7 @@
           1
         ],
         "name": "SOCKET_Structure_Core",
-        "planIndex": 112,
+        "planIndex": 40,
         "tags": {
           "socket": true,
           "socketRole": "structure_core"
@@ -4958,122 +3208,22 @@
       "docking": 4,
       "glass": 4,
       "hull": 12,
-      "mechanical": 32,
+      "mechanical": 10,
       "radiator": 3,
-      "service": 28,
+      "service": 4,
       "signal": 6,
-      "warning": 26
+      "warning": 2
     },
     "materialProfiles": [
       {
         "allowTextures": true,
-        "planIndex": 2,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 3,
-        "role": "service"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 4,
-        "role": "warning"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 6,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 7,
-        "role": "service"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 8,
-        "role": "warning"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 10,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 11,
-        "role": "service"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 12,
-        "role": "warning"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 14,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 15,
-        "role": "service"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 16,
-        "role": "warning"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 18,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 19,
-        "role": "service"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 20,
-        "role": "warning"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 22,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 23,
-        "role": "service"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 24,
-        "role": "warning"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 26,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 27,
-        "role": "service"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 28,
-        "role": "warning"
+        "planIndex": 29,
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 30,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
@@ -5083,97 +3233,117 @@
       {
         "allowTextures": true,
         "planIndex": 32,
-        "role": "warning"
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 33,
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 34,
-        "role": "mechanical"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 35,
-        "role": "service"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 36,
-        "role": "warning"
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 37,
+        "role": "glass"
       },
       {
         "allowTextures": true,
         "planIndex": 38,
-        "role": "mechanical"
+        "role": "docking"
       },
       {
         "allowTextures": true,
         "planIndex": 39,
-        "role": "service"
+        "role": "radiator"
       },
       {
         "allowTextures": true,
-        "planIndex": 40,
-        "role": "warning"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 42,
-        "role": "mechanical"
+        "planIndex": 41,
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 43,
-        "role": "service"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 44,
-        "role": "warning"
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 45,
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
         "planIndex": 46,
-        "role": "mechanical"
+        "role": "service"
       },
       {
         "allowTextures": true,
         "planIndex": 47,
-        "role": "service"
+        "role": "docking"
       },
       {
         "allowTextures": true,
         "planIndex": 48,
-        "role": "warning"
+        "role": "glass"
       },
       {
         "allowTextures": true,
-        "planIndex": 50,
-        "role": "mechanical"
+        "planIndex": 49,
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 51,
-        "role": "service"
+        "role": "warning"
       },
       {
         "allowTextures": true,
         "planIndex": 52,
-        "role": "warning"
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 53,
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 54,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 55,
         "role": "service"
       },
       {
         "allowTextures": true,
+        "planIndex": 55,
+        "role": "signal"
+      },
+      {
+        "allowTextures": true,
         "planIndex": 56,
-        "role": "warning"
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 57,
+        "role": "hull"
       },
       {
         "allowTextures": true,
@@ -5183,42 +3353,52 @@
       {
         "allowTextures": true,
         "planIndex": 59,
-        "role": "service"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 60,
-        "role": "warning"
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 61,
+        "role": "docking"
       },
       {
         "allowTextures": true,
         "planIndex": 62,
-        "role": "mechanical"
+        "role": "radiator"
       },
       {
         "allowTextures": true,
         "planIndex": 63,
-        "role": "service"
+        "role": "mechanical"
       },
       {
         "allowTextures": true,
-        "planIndex": 64,
+        "planIndex": 65,
         "role": "warning"
       },
       {
         "allowTextures": true,
         "planIndex": 66,
-        "role": "mechanical"
+        "role": "signal"
       },
       {
         "allowTextures": true,
         "planIndex": 67,
-        "role": "service"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 68,
-        "role": "warning"
+        "role": "service"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 69,
+        "role": "signal"
       },
       {
         "allowTextures": true,
@@ -5228,320 +3408,40 @@
       {
         "allowTextures": true,
         "planIndex": 71,
-        "role": "service"
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 72,
-        "role": "warning"
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 73,
+        "role": "hull"
       },
       {
         "allowTextures": true,
         "planIndex": 74,
-        "role": "mechanical"
+        "role": "glass"
       },
       {
         "allowTextures": true,
         "planIndex": 75,
-        "role": "service"
+        "role": "docking"
       },
       {
         "allowTextures": true,
         "planIndex": 76,
-        "role": "warning"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 78,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 79,
-        "role": "service"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 80,
-        "role": "warning"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 82,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 83,
-        "role": "service"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 84,
-        "role": "warning"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 86,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 87,
-        "role": "service"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 88,
-        "role": "warning"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 90,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 91,
-        "role": "service"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 92,
-        "role": "warning"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 94,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 95,
-        "role": "service"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 96,
-        "role": "warning"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 101,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 102,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 103,
-        "role": "service"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 104,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 105,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 106,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 107,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 108,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 109,
-        "role": "glass"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 110,
-        "role": "docking"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 111,
         "role": "radiator"
       },
       {
         "allowTextures": true,
-        "planIndex": 113,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 115,
+        "planIndex": 77,
         "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 116,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 117,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 118,
-        "role": "service"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 119,
-        "role": "docking"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 120,
-        "role": "glass"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 121,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 123,
-        "role": "warning"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 124,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 125,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 126,
-        "role": "service"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 127,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 128,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 129,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 130,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 131,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 132,
-        "role": "glass"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 133,
-        "role": "docking"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 134,
-        "role": "radiator"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 136,
-        "role": "warning"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 137,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 138,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 139,
-        "role": "service"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 140,
-        "role": "signal"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 141,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 142,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 143,
-        "role": "mechanical"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 144,
-        "role": "hull"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 145,
-        "role": "glass"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 146,
-        "role": "docking"
-      },
-      {
-        "allowTextures": true,
-        "planIndex": 147,
-        "role": "radiator"
       }
     ],
-    "nodeCount": 148,
+    "nodeCount": 78,
     "primitives": [
       {
         "canopy": false,
@@ -5563,1952 +3463,8 @@
           0,
           1
         ],
-        "name": "SFG02_SupportedRingBay_Mesh",
-        "planIndex": 2,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh_1",
-        "planIndex": 3,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh_2",
-        "planIndex": 4,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh001",
-        "planIndex": 6,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh001_1",
-        "planIndex": 7,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh001_2",
-        "planIndex": 8,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh002",
-        "planIndex": 10,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh002_1",
-        "planIndex": 11,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh002_2",
-        "planIndex": 12,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh003",
-        "planIndex": 14,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh003_1",
-        "planIndex": 15,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh003_2",
-        "planIndex": 16,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh004",
-        "planIndex": 18,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh004_1",
-        "planIndex": 19,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh004_2",
-        "planIndex": 20,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh005",
-        "planIndex": 22,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh005_1",
-        "planIndex": 23,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh005_2",
-        "planIndex": 24,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh006",
-        "planIndex": 26,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh006_1",
-        "planIndex": 27,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh006_2",
-        "planIndex": 28,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh007",
-        "planIndex": 30,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh007_1",
-        "planIndex": 31,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh007_2",
-        "planIndex": 32,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh008",
-        "planIndex": 34,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh008_1",
-        "planIndex": 35,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh008_2",
-        "planIndex": 36,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh009",
-        "planIndex": 38,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh009_1",
-        "planIndex": 39,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh009_2",
-        "planIndex": 40,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh010",
-        "planIndex": 42,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh010_1",
-        "planIndex": 43,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh010_2",
-        "planIndex": 44,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh011",
-        "planIndex": 46,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh011_1",
-        "planIndex": 47,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh011_2",
-        "planIndex": 48,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh012",
-        "planIndex": 50,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh012_1",
-        "planIndex": 51,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh012_2",
-        "planIndex": 52,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh013",
-        "planIndex": 54,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh013_1",
-        "planIndex": 55,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh013_2",
-        "planIndex": 56,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh014",
-        "planIndex": 58,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh014_1",
-        "planIndex": 59,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh014_2",
-        "planIndex": 60,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh015",
-        "planIndex": 62,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh015_1",
-        "planIndex": 63,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh015_2",
-        "planIndex": 64,
-        "tags": {
-          "canopy": false,
-          "lod": "lod0"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh016",
-        "planIndex": 66,
-        "tags": {
-          "canopy": false,
-          "lod": "lod1"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh016_1",
-        "planIndex": 67,
-        "tags": {
-          "canopy": false,
-          "lod": "lod1"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh016_2",
-        "planIndex": 68,
-        "tags": {
-          "canopy": false,
-          "lod": "lod1"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh017",
-        "planIndex": 70,
-        "tags": {
-          "canopy": false,
-          "lod": "lod1"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh017_1",
-        "planIndex": 71,
-        "tags": {
-          "canopy": false,
-          "lod": "lod1"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh017_2",
-        "planIndex": 72,
-        "tags": {
-          "canopy": false,
-          "lod": "lod1"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh018",
-        "planIndex": 74,
-        "tags": {
-          "canopy": false,
-          "lod": "lod1"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh018_1",
-        "planIndex": 75,
-        "tags": {
-          "canopy": false,
-          "lod": "lod1"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh018_2",
-        "planIndex": 76,
-        "tags": {
-          "canopy": false,
-          "lod": "lod1"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh019",
-        "planIndex": 78,
-        "tags": {
-          "canopy": false,
-          "lod": "lod1"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh019_1",
-        "planIndex": 79,
-        "tags": {
-          "canopy": false,
-          "lod": "lod1"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh019_2",
-        "planIndex": 80,
-        "tags": {
-          "canopy": false,
-          "lod": "lod1"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh020",
-        "planIndex": 82,
-        "tags": {
-          "canopy": false,
-          "lod": "lod1"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh020_1",
-        "planIndex": 83,
-        "tags": {
-          "canopy": false,
-          "lod": "lod1"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh020_2",
-        "planIndex": 84,
-        "tags": {
-          "canopy": false,
-          "lod": "lod1"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh021",
-        "planIndex": 86,
-        "tags": {
-          "canopy": false,
-          "lod": "lod1"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh021_1",
-        "planIndex": 87,
-        "tags": {
-          "canopy": false,
-          "lod": "lod1"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh021_2",
-        "planIndex": 88,
-        "tags": {
-          "canopy": false,
-          "lod": "lod1"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh022",
-        "planIndex": 90,
-        "tags": {
-          "canopy": false,
-          "lod": "lod1"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh022_1",
-        "planIndex": 91,
-        "tags": {
-          "canopy": false,
-          "lod": "lod1"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh022_2",
-        "planIndex": 92,
-        "tags": {
-          "canopy": false,
-          "lod": "lod1"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh023",
-        "planIndex": 94,
-        "tags": {
-          "canopy": false,
-          "lod": "lod1"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh023_1",
-        "planIndex": 95,
-        "tags": {
-          "canopy": false,
-          "lod": "lod1"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
-        "name": "SFG02_SupportedRingBay_Mesh023_2",
-        "planIndex": 96,
-        "tags": {
-          "canopy": false,
-          "lod": "lod1"
-        }
-      },
-      {
-        "canopy": false,
-        "matrix": [
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1,
-          0,
-          0,
-          0,
-          0,
-          1
-        ],
         "name": "LOD2_HeliosGolden02_Batch_Mesh",
-        "planIndex": 101,
+        "planIndex": 29,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -7535,7 +3491,7 @@
           1
         ],
         "name": "LOD2_HeliosGolden02_Batch_Mesh_1",
-        "planIndex": 102,
+        "planIndex": 30,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -7562,7 +3518,7 @@
           1
         ],
         "name": "LOD2_HeliosGolden02_Batch_Mesh_2",
-        "planIndex": 103,
+        "planIndex": 31,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -7589,7 +3545,7 @@
           1
         ],
         "name": "LOD2_HeliosGolden02_Batch_Mesh_3",
-        "planIndex": 104,
+        "planIndex": 32,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -7616,7 +3572,7 @@
           1
         ],
         "name": "LOD2_HeliosGolden02_Batch_Mesh_4",
-        "planIndex": 105,
+        "planIndex": 33,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -7643,7 +3599,7 @@
           1
         ],
         "name": "LOD2_HeliosGolden02_Batch_Mesh_5",
-        "planIndex": 106,
+        "planIndex": 34,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -7670,7 +3626,7 @@
           1
         ],
         "name": "LOD2_HeliosGolden02_Batch_Mesh_6",
-        "planIndex": 107,
+        "planIndex": 35,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -7697,7 +3653,7 @@
           1
         ],
         "name": "LOD2_HeliosGolden02_Batch_Mesh_7",
-        "planIndex": 108,
+        "planIndex": 36,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -7724,7 +3680,7 @@
           1
         ],
         "name": "LOD2_HeliosGolden02_Batch_Mesh_8",
-        "planIndex": 109,
+        "planIndex": 37,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -7751,7 +3707,7 @@
           1
         ],
         "name": "LOD2_HeliosGolden02_Batch_Mesh_9",
-        "planIndex": 110,
+        "planIndex": 38,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -7778,7 +3734,7 @@
           1
         ],
         "name": "LOD2_HeliosGolden02_Batch_Mesh_10",
-        "planIndex": 111,
+        "planIndex": 39,
         "tags": {
           "canopy": false,
           "lod": "lod2"
@@ -7805,7 +3761,7 @@
           1
         ],
         "name": "HeliosGolden02_CommonBatch_Mesh",
-        "planIndex": 115,
+        "planIndex": 43,
         "tags": {
           "canopy": false
         }
@@ -7831,7 +3787,7 @@
           1
         ],
         "name": "HeliosGolden02_CommonBatch_Mesh_1",
-        "planIndex": 116,
+        "planIndex": 44,
         "tags": {
           "canopy": false
         }
@@ -7857,7 +3813,7 @@
           1
         ],
         "name": "HeliosGolden02_CommonBatch_Mesh_2",
-        "planIndex": 117,
+        "planIndex": 45,
         "tags": {
           "canopy": false
         }
@@ -7883,7 +3839,7 @@
           1
         ],
         "name": "HeliosGolden02_CommonBatch_Mesh_3",
-        "planIndex": 118,
+        "planIndex": 46,
         "tags": {
           "canopy": false
         }
@@ -7909,7 +3865,7 @@
           1
         ],
         "name": "HeliosGolden02_CommonBatch_Mesh_4",
-        "planIndex": 119,
+        "planIndex": 47,
         "tags": {
           "canopy": false
         }
@@ -7935,7 +3891,7 @@
           1
         ],
         "name": "HeliosGolden02_CommonBatch_Mesh_5",
-        "planIndex": 120,
+        "planIndex": 48,
         "tags": {
           "canopy": false
         }
@@ -7961,7 +3917,7 @@
           1
         ],
         "name": "HeliosGolden02_CommonBatch_Mesh_6",
-        "planIndex": 121,
+        "planIndex": 49,
         "tags": {
           "canopy": false
         }
@@ -7986,8 +3942,8 @@
           0,
           1
         ],
-        "name": "LOD0_HeliosGolden02_Batch_Mesh",
-        "planIndex": 123,
+        "name": "rendersfrenderhelios-trade-hubflight-static-lane1",
+        "planIndex": 51,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -8013,8 +3969,8 @@
           0,
           1
         ],
-        "name": "LOD0_HeliosGolden02_Batch_Mesh_1",
-        "planIndex": 124,
+        "name": "rendersfrenderhelios-trade-hubflight-static-lane1_1",
+        "planIndex": 52,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -8040,8 +3996,8 @@
           0,
           1
         ],
-        "name": "LOD0_HeliosGolden02_Batch_Mesh_2",
-        "planIndex": 125,
+        "name": "rendersfrenderhelios-trade-hubflight-static-lane1_2",
+        "planIndex": 53,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -8067,8 +4023,8 @@
           0,
           1
         ],
-        "name": "LOD0_HeliosGolden02_Batch_Mesh_3",
-        "planIndex": 126,
+        "name": "rendersfrenderhelios-trade-hubflight-static-lane1_3",
+        "planIndex": 54,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -8094,8 +4050,8 @@
           0,
           1
         ],
-        "name": "LOD0_HeliosGolden02_Batch_Mesh_4",
-        "planIndex": 127,
+        "name": "rendersfrenderhelios-trade-hubflight-static-lane1_4",
+        "planIndex": 55,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -8121,8 +4077,8 @@
           0,
           1
         ],
-        "name": "LOD0_HeliosGolden02_Batch_Mesh_5",
-        "planIndex": 128,
+        "name": "rendersfrenderhelios-trade-hubflight-static-lane1_5",
+        "planIndex": 56,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -8148,8 +4104,8 @@
           0,
           1
         ],
-        "name": "LOD0_HeliosGolden02_Batch_Mesh_6",
-        "planIndex": 129,
+        "name": "rendersfrenderhelios-trade-hubflight-static-lane1_6",
+        "planIndex": 57,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -8175,8 +4131,8 @@
           0,
           1
         ],
-        "name": "LOD0_HeliosGolden02_Batch_Mesh_7",
-        "planIndex": 130,
+        "name": "rendersfrenderhelios-trade-hubflight-static-lane1_7",
+        "planIndex": 58,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -8202,8 +4158,8 @@
           0,
           1
         ],
-        "name": "LOD0_HeliosGolden02_Batch_Mesh_8",
-        "planIndex": 131,
+        "name": "rendersfrenderhelios-trade-hubflight-static-lane1_8",
+        "planIndex": 59,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -8229,8 +4185,8 @@
           0,
           1
         ],
-        "name": "LOD0_HeliosGolden02_Batch_Mesh_9",
-        "planIndex": 132,
+        "name": "rendersfrenderhelios-trade-hubflight-static-lane1_9",
+        "planIndex": 60,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -8256,8 +4212,8 @@
           0,
           1
         ],
-        "name": "LOD0_HeliosGolden02_Batch_Mesh_10",
-        "planIndex": 133,
+        "name": "rendersfrenderhelios-trade-hubflight-static-lane1_10",
+        "planIndex": 61,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -8283,8 +4239,8 @@
           0,
           1
         ],
-        "name": "LOD0_HeliosGolden02_Batch_Mesh_11",
-        "planIndex": 134,
+        "name": "rendersfrenderhelios-trade-hubflight-static-lane1_11",
+        "planIndex": 62,
         "tags": {
           "canopy": false,
           "lod": "lod0"
@@ -8310,8 +4266,35 @@
           0,
           1
         ],
-        "name": "LOD1_HeliosGolden02_Batch_Mesh",
-        "planIndex": 136,
+        "name": "rendersfrenderhelios-trade-hubflight-static-lane1_12",
+        "planIndex": 63,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "rendersfrenderhelios-trade-hubflight-static-lane2",
+        "planIndex": 65,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -8337,8 +4320,8 @@
           0,
           1
         ],
-        "name": "LOD1_HeliosGolden02_Batch_Mesh_1",
-        "planIndex": 137,
+        "name": "rendersfrenderhelios-trade-hubflight-static-lane2_1",
+        "planIndex": 66,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -8364,8 +4347,8 @@
           0,
           1
         ],
-        "name": "LOD1_HeliosGolden02_Batch_Mesh_2",
-        "planIndex": 138,
+        "name": "rendersfrenderhelios-trade-hubflight-static-lane2_2",
+        "planIndex": 67,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -8391,8 +4374,8 @@
           0,
           1
         ],
-        "name": "LOD1_HeliosGolden02_Batch_Mesh_3",
-        "planIndex": 139,
+        "name": "rendersfrenderhelios-trade-hubflight-static-lane2_3",
+        "planIndex": 68,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -8418,8 +4401,8 @@
           0,
           1
         ],
-        "name": "LOD1_HeliosGolden02_Batch_Mesh_4",
-        "planIndex": 140,
+        "name": "rendersfrenderhelios-trade-hubflight-static-lane2_4",
+        "planIndex": 69,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -8445,8 +4428,8 @@
           0,
           1
         ],
-        "name": "LOD1_HeliosGolden02_Batch_Mesh_5",
-        "planIndex": 141,
+        "name": "rendersfrenderhelios-trade-hubflight-static-lane2_5",
+        "planIndex": 70,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -8472,8 +4455,8 @@
           0,
           1
         ],
-        "name": "LOD1_HeliosGolden02_Batch_Mesh_6",
-        "planIndex": 142,
+        "name": "rendersfrenderhelios-trade-hubflight-static-lane2_6",
+        "planIndex": 71,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -8499,8 +4482,8 @@
           0,
           1
         ],
-        "name": "LOD1_HeliosGolden02_Batch_Mesh_7",
-        "planIndex": 143,
+        "name": "rendersfrenderhelios-trade-hubflight-static-lane2_7",
+        "planIndex": 72,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -8526,8 +4509,8 @@
           0,
           1
         ],
-        "name": "LOD1_HeliosGolden02_Batch_Mesh_8",
-        "planIndex": 144,
+        "name": "rendersfrenderhelios-trade-hubflight-static-lane2_8",
+        "planIndex": 73,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -8553,8 +4536,8 @@
           0,
           1
         ],
-        "name": "LOD1_HeliosGolden02_Batch_Mesh_9",
-        "planIndex": 145,
+        "name": "rendersfrenderhelios-trade-hubflight-static-lane2_9",
+        "planIndex": 74,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -8580,8 +4563,8 @@
           0,
           1
         ],
-        "name": "LOD1_HeliosGolden02_Batch_Mesh_10",
-        "planIndex": 146,
+        "name": "rendersfrenderhelios-trade-hubflight-static-lane2_10",
+        "planIndex": 75,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -8607,8 +4590,35 @@
           0,
           1
         ],
-        "name": "LOD1_HeliosGolden02_Batch_Mesh_11",
-        "planIndex": 147,
+        "name": "rendersfrenderhelios-trade-hubflight-static-lane2_11",
+        "planIndex": 76,
+        "tags": {
+          "canopy": false,
+          "lod": "lod1"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "rendersfrenderhelios-trade-hubflight-static-lane2_12",
+        "planIndex": 77,
         "tags": {
           "canopy": false,
           "lod": "lod1"
@@ -8619,6 +4629,7 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_station_trade_hub.glb"
   },
+  "runtimeHash": "cba16298e8be6c364ffb93da865a27c07f84c8175ec4b52d999f94f5003ef673",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

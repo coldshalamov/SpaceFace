@@ -1,6 +1,7 @@
 import {
   assertValidRenderPackage,
   computeRenderPackageContentHash,
+  computeRenderPackageRuntimeHash,
   renderPackageContentIdentity,
   RENDER_PACKAGE_SEMANTIC_EXTRAS_KEY,
   RENDER_PACKAGE_SEMANTIC_EXTRAS_SCHEMA,
@@ -11,6 +12,7 @@ import {
   createAssetResidencyRegistry,
   getAssetResidency,
 } from './assetResidency.js';
+import * as THREE from 'three';
 
 const ABSOLUTE_URL_RE = /^[a-z][a-z\d+.-]*:/i;
 const SHA256_RE = /^[a-f0-9]{64}$/;
@@ -57,22 +59,24 @@ export function createRenderPackageLoader(options = {}) {
   async function load(metadataOrUrl, loadOptions = {}) {
     if (disposed) throw new Error('Render package loader has been disposed.');
     const expectedContentHash = loadOptions.expectedContentHash ?? options.expectedContentHash ?? null;
+    const expectedRuntimeHash = loadOptions.expectedRuntimeHash ?? options.expectedRuntimeHash ?? null;
     const resolved = await resolveMetadata(metadataOrUrl, loadOptions, fetchImpl, 'no-cache');
     try {
-      return await loadResolved(resolved.metadata, resolved.baseUrl, expectedContentHash);
+      return await loadResolved(resolved.metadata, resolved.baseUrl, expectedContentHash, expectedRuntimeHash);
     } catch (error) {
       // Desktop Electron keeps a stable origin so saves persist. A previous immutable cache
       // entry for this same URL can still win once; bypass it and load the on-disk package.
       if (!isStalePackageCacheError(error) || typeof metadataOrUrl !== 'string') throw error;
       const reloaded = await resolveMetadata(metadataOrUrl, loadOptions, fetchImpl, 'reload');
-      return loadResolved(reloaded.metadata, reloaded.baseUrl, expectedContentHash);
+      return loadResolved(reloaded.metadata, reloaded.baseUrl, expectedContentHash, expectedRuntimeHash);
     }
   }
 
-  async function loadResolved(metadataValue, baseUrl, expectedContentHash) {
+  async function loadResolved(metadataValue, baseUrl, expectedContentHash, expectedRuntimeHash) {
     if (disposed) throw new Error('Render package loader has been disposed.');
     assertValidRenderPackage(metadataValue);
     const expectedHash = normalizeExpectedContentHash(expectedContentHash);
+    const expectedRuntime = normalizeExpectedRuntimeHash(expectedRuntimeHash);
     const metadata = deepFreeze(stableJsonValue(metadataValue));
     const computedHash = await computeRenderPackageContentHash(metadata, {
       ...(contentDigest ? { digest: contentDigest } : {}),
@@ -88,6 +92,26 @@ export function createRenderPackageLoader(options = {}) {
         `Render package trust-anchor mismatch for ${metadata.assetId}: ${computedHash} != ${expectedHash}.`,
       );
     }
+    if (metadata.runtimeHash || expectedRuntime) {
+      if (!metadata.runtimeHash || !metadata.runtime) {
+        throw new Error(`Render package runtime trust anchor is missing for ${metadata.assetId}.`);
+      }
+      const computedRuntimeHash = await computeRenderPackageRuntimeHash(metadata, {
+        ...(contentDigest ? { digest: contentDigest } : {}),
+      });
+      if (computedRuntimeHash !== metadata.runtimeHash) {
+        throw new Error(
+          `Render package runtime hash mismatch for ${metadata.assetId}: `
+          + `${computedRuntimeHash} != ${metadata.runtimeHash}.`,
+        );
+      }
+      if (expectedRuntime && computedRuntimeHash !== expectedRuntime) {
+        throw new Error(
+          `Render package runtime trust-anchor mismatch for ${metadata.assetId}: `
+          + `${computedRuntimeHash} != ${expectedRuntime}.`,
+        );
+      }
+    }
 
     const signature = runtimePackageSignature(metadata);
     const contentHash = metadata.contentHash;
@@ -99,7 +123,7 @@ export function createRenderPackageLoader(options = {}) {
       const loaded = await existing.promise;
       if (existing.evicted) {
         if (cache.get(contentHash) === existing) cache.delete(contentHash);
-        return loadResolved(metadata, baseUrl, expectedHash);
+        return loadResolved(metadata, baseUrl, expectedHash, expectedRuntime);
       }
       if (!existing.packageOwner && !retainPackageOwner(existing)) {
         throw new Error(`Render package ${metadata.assetId} could not reacquire residency.`);
@@ -651,6 +675,128 @@ class LoadedRenderPackage {
       throw error;
     }
   }
+
+  /**
+   * Instantiate a rigid, package-prepared flight asset without rebuilding the decoded GLB graph.
+   *
+   * The ordinary v2 route clones every node in the flat plan so arbitrary authored hierarchy and
+   * semantic records remain available. A flight-static v3 package has already baked that hierarchy
+   * into root-relative primitive and marker matrices offline. Replaying only those declared records
+   * deletes the empty carrier/group objects from the live opening scene while sharing the exact same
+   * immutable geometry, materials, and textures as the decoded package.
+   */
+  createFlightInstance(instanceOptions = {}) {
+    if (this.released || this.evicted || !this.#lifecycle.entry.packageOwner) {
+      throw new Error(`Render package ${this.assetId} must be retained before creating a flight instance.`);
+    }
+    if ((this.metadata.dynamicGroups || []).length > 0) {
+      throw new Error(`Render package ${this.assetId} has dynamic groups and cannot use the flight-static route.`);
+    }
+    const prepared = this.prepared;
+    if (!prepared || !Array.isArray(prepared.primitives) || !Array.isArray(prepared.markers)) {
+      throw new Error(`Render package ${this.assetId} has no prepared flight records.`);
+    }
+
+    const externalOwner = instanceOptions.residencyOwner || null;
+    const owner = externalOwner || this.#lifecycle.createOwner('flight-render-instance', this.contentHash);
+    const retained = this.#lifecycle.residency.retain(this.#lifecycle.entry.key, owner, {
+      role: instanceOptions.residencyRole || 'flight-render-package-instance',
+      sectorId: instanceOptions.sectorId || null,
+    });
+    if (!retained && !externalOwner) {
+      throw new Error(`Render package ${this.assetId} could not retain flight instance residency.`);
+    }
+
+    try {
+      const root = new THREE.Group();
+      root.name = instanceOptions.name == null
+        ? `FlightRenderPackage_${this.assetId}`
+        : String(instanceOptions.name);
+      root.userData = {
+        ...(instanceOptions.userData || {}),
+        spacefaceRenderPackage: {
+          assetId: this.assetId,
+          contentHash: this.contentHash,
+        },
+        spacefaceFlightRenderPackage: {
+          schema: 'spaceface.flightRenderPackage.v1',
+          route: 'flight-static-v3',
+          fallback: false,
+          primitiveCount: prepared.primitives.length,
+          markerCount: prepared.markers.length,
+        },
+      };
+
+      const planNodes = [root];
+      for (const primitive of prepared.primitives) {
+        const object = new THREE.Mesh(primitive.geometry, primitive.material);
+        object.name = primitive.name || `FlightPrimitive_${planNodes.length}`;
+        primitive.matrix.decompose(object.position, object.quaternion, object.scale);
+        object.userData = {
+          spacefacePartUrl: prepared.url,
+          spacefaceTags: primitive.tags || {},
+          spacefaceFlightStaticLane: true,
+        };
+        root.add(object);
+        planNodes.push(object);
+      }
+
+      const markerNodes = new Map();
+      for (const marker of prepared.markers) {
+        const object = new THREE.Object3D();
+        object.name = marker.name || `FlightMarker_${planNodes.length}`;
+        marker.matrix.decompose(object.position, object.quaternion, object.scale);
+        object.userData = {
+          ...(marker.userData || {}),
+          spacefacePartUrl: prepared.url,
+          spacefaceTags: marker.tags || {},
+        };
+        root.add(object);
+        planNodes.push(object);
+        markerNodes.set(object.name, object);
+      }
+
+      const nodes = new Map();
+      const anchors = new Map();
+      for (const record of this.metadata.anchors || []) {
+        const object = markerNodes.get(record.nodeName);
+        if (object) anchors.set(record.id, object);
+      }
+
+      const counters = this.#counters && this.#counters.isEnabled() ? this.#counters : null;
+      if (counters) {
+        counters.countPlanInstantiation(planNodes.length, 'flight-static-v3');
+        counters.countObject3dConstructed(planNodes.length, 'flight-static-v3');
+      }
+
+      let disposed = false;
+      return Object.freeze({
+        route: 'flight-static-v3',
+        assetId: this.assetId,
+        contentHash: this.contentHash,
+        root,
+        nodes,
+        anchors,
+        dynamicGroups: new Map(),
+        planNodes,
+        planEntries: null,
+        get disposed() {
+          return disposed;
+        },
+        dispose: (reason = 'flight-render-package-instance-disposed') => {
+          if (disposed) return false;
+          disposed = true;
+          if (!externalOwner) this.#lifecycle.residency.releaseOwner(owner, reason);
+          return true;
+        },
+      });
+    } catch (error) {
+      if (!externalOwner) {
+        this.#lifecycle.residency.releaseOwner(owner, 'flight-render-package-instance-create-failed');
+      }
+      throw error;
+    }
+  }
 }
 
 function deepFreeze(value, seen = new Set()) {
@@ -668,8 +814,19 @@ function normalizeExpectedContentHash(value) {
   return value;
 }
 
+function normalizeExpectedRuntimeHash(value) {
+  if (value == null) return null;
+  if (typeof value !== 'string' || !SHA256_RE.test(value)) {
+    throw new Error('Render package expectedRuntimeHash must be lowercase SHA-256 hex.');
+  }
+  return value;
+}
+
 function runtimePackageSignature(metadata) {
-  return stableJsonStringify(renderPackageContentIdentity(metadata));
+  return stableJsonStringify({
+    content: renderPackageContentIdentity(metadata),
+    runtimeHash: metadata.runtimeHash || null,
+  });
 }
 
 async function resolveMetadata(metadataOrUrl, options, fetchImpl, cacheMode = 'no-cache') {
