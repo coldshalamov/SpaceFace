@@ -95,7 +95,7 @@ evidence triggers are proved.
 | [`PQ-049.md`](./PQ-049.md) | build and accept a distinct civic Massline express-liner through DCC, release, render-package, runtime-map, and natural-route leaves | new express-only identity; first DCC candidate leaf is ready, later leaves are dependency-gated; parent remains unproven |
 | [`PQ-050.md`](./PQ-050.md) | remaster every live flyable ship except Hitch, one ship per leaf, under the MTX technique contract | Hitch frozen; ledger required; factory loft+boxes cannot close a leaf; first ready is Hornet |
 | [`PQ-129.md`](./PQ-129.md) | name every hitch on the live path, then remove compose/compile/upload/admission bricks without quality cuts | `--id PQ-129`; Wave A measure; Wave B ready after the classifier; Wave C planned |
-| [`PQ-130.md`](./PQ-130.md) | make Asteroid Works playable by sight and by tap | `--id PQ-130`; theater, surgical drive, this-asteroid rock, cells, rover, hover instrument |
+| [`PQ-130.md`](./PQ-130.md) | put the player inside the asteroid; HUD is ugly and too big | `--id PQ-130`; theater/dashboard first; vanilla CSS shrink is a fail |
 
 PQ-043 and PQ-044 are admitted queue identities but remain deferred and packet-less until their
 conditional triggers are proved.
@@ -123,9 +123,10 @@ Wave C (`.11`–`.18`) stays `planned` until hitch count is halved.
 
 PQ-130 is active for `ASTEROID-WORKS-PLAYFIELD`. Its parent is `ready` / `unproven` /
 `leaf_required`. Ordinary `--next` still returns fleet remaster. Mining-minigame
-readability work is `node scripts/program-dispatch.mjs --id PQ-130`. First claimable
-leaf is `.01` Theater. Later leaves wait on the previous leaf reaching `done`.
-The 2026-08-20 owner playtest is the defect list; Waves 1–4 are out of scope.
+work is `node scripts/program-dispatch.mjs --id PQ-130`. First claimable leaf is
+`.01` Theater: the mine is the screen and the HUD is a dashboard, not a shorter
+website. Vanilla collapse (campaign §3) cannot close a leaf. Waves 1–4 are out of
+scope.
 
 PQ-032 (five endings/continuing universe) and PQ-033 (release closeout) are also deferred and
 unfinished. They are stored under `../retired/` only to keep them out of current execution; that

@@ -5,11 +5,12 @@
 (tokens, type, command card, no glass). Read it before touching
 `src/ui/asteroid/asteroidScreen.js` or `styles/asteroid-ops.css`.
 
-**2026-08-20 playtest:** the live layout failed — HUD majority, postage-stamp board,
-tan wash, undrivable rover, hover novels. Presentation/control refactor is admitted as
+**2026-08-20 playtest:** the live layout failed — HUD majority **and** HUD ugliness
+(empty bays, novel well, embed frame, 8px keypad), postage-stamp board, tan wash,
+undrivable rover, hover novels. Presentation/control refactor is admitted as
 `PQ-130` (`design/program/ASTEROID_WORKS_PLAYFIELD.md`). The 264px rail and 208px deck
-proportions are **not frozen**. “The scene stays sovereign” is still law; the live
-screen did not keep it.
+proportions are **not frozen**. Shrinking the same shell is not the work. “The scene
+stays sovereign” is still law; the live screen did not keep it.
 
 ---
 

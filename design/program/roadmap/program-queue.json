@@ -2444,7 +2444,7 @@
         "surgical-tap",
         "playable"
       ],
-      "brief": "Owner playtest 2026-08-20: tan wash, HUD majority, slanted postage-stamp board, invisible ore/gas, tiny rover, hover novel, undrivable tap/hold. Make the cutaway the game. Dispatch with --id PQ-130; --next still returns fleet remaster. Not Waves 1-4, not PQ-129, not billboard icons."
+      "brief": "Owner playtest 2026-08-20: you are in the rock. HUD is ugly AND too big (empty bays, novel well, embed frame, 8px keypad) — shrinking the same shell is a fail. Tan wash, slanted postage-stamp board, invisible geology, tiny rover, hover novel, undrivable tap. Vanilla collapse banned (campaign §3). Dispatch --id PQ-130. Not Waves 1-4, not hitch, not billboard icons."
     }
   ],
   "dispatchUnits": [
@@ -7537,7 +7537,7 @@
       "id": "PQ-130.01",
       "parentId": "PQ-130",
       "priority": 345,
-      "title": "Theater: playfield majority, local camera, flat grid",
+      "title": "Theater: the mine is the screen; HUD is a dashboard, not a website",
       "kind": "implementation",
       "state": "ready",
       "dependsOn": [],
@@ -7556,7 +7556,7 @@
         "node scripts/check-program-docs.mjs"
       ],
       "receiptRefs": [],
-      "brief": "Cutaway fills the theater. Camera frames a local window around the rover, not all 28 columns. Yaw 0; pitch only enough for cavity floors; square cell faces, not isometric diamonds. No postage-stamp letterbox. Crest thin, command card stays as apron, tape/systems recede. Do not change drill cadence or geology meshes here."
+      "brief": "Spirit: a stranger sees rock, a hole, a vehicle — not a sci-fi website with a Minecraft inset. The HUD is ugly AND too big: empty Power/Export/Couriers bays, novel context well, 264px reprint tape, cyan embed frame, 8px keypad. Collapse empty instruments; leftover chrome is a pressable dashboard. Local camera on the rover; flat grid. Illegal: shorter ao-deck/ao-rail, same three bays, zoom-only. Do not change cadence or geology meshes here."
     },
     {
       "id": "PQ-130.02",
@@ -7583,7 +7583,7 @@
         "node scripts/check-program-docs.mjs"
       ],
       "receiptRefs": [],
-      "brief": "Tap commits exactly one empty cell. Hold after a short delay cruises. A wall tap is a visible bore, not a silent no-op and not a tunnel rocket. 0.06s empty-tile step is the defect. Update check-drill-smooth to the new cadence. Not a PQ-129 hitch leaf. Depends on theater so playtest is at play size."
+      "brief": "Spirit: a heavy rig you place. Tap seats one empty cell. Hold is a decision to cruise. A wall tap is a visible bite. Illegal: MOVE_COOLDOWN 0.06→0.12 and ship it (a slower rocket is still a rocket). Update check-drill-smooth. Not a hitch leaf."
     },
     {
       "id": "PQ-130.03",
@@ -7609,7 +7609,7 @@
         "node scripts/check-program-docs.mjs"
       ],
       "receiptRefs": [],
-      "brief": "Interior stone matches the asteroid you entered (common rock grey, metallic darker, and so on) and the strata legend. Retune key/fill/exposure so the face is not blown-out tan. Unsurveyed is still rock, not a second palette. Do not restyle ore clusters or the rover here."
+      "brief": "Spirit: you recognize the body you tethered to. Lighting as stone, not a blown-out fill. Illegal: darken the tan hex and keep key light 4.2. Unsurveyed is still rock. Do not restyle ore clusters or the rover here."
     },
     {
       "id": "PQ-130.04",
@@ -7634,7 +7634,7 @@
         "node scripts/check-program-docs.mjs"
       ],
       "receiptRefs": [],
-      "brief": "A surveyed vein occupies the cell (mineral stain + cluster that reads at play size, tinted by ore). Gas is cracked seeping rock, never a yellow sparkle that looks like ore. Surveyed silicate and unsurveyed strata must not be a squint test. No camera-facing soft squares. MK lock readable."
+      "brief": "Spirit: a prospector can read the face. Ore is treasure occupying the cell. Gas is the block cracked and seeping. Survey changes the picture. Illegal: bigger sparkles / yellower gas on the same tan host cube. No billboard sprites. MK lock readable."
     },
     {
       "id": "PQ-130.05",
@@ -7660,7 +7660,7 @@
         "node scripts/check-program-docs.mjs"
       ],
       "receiptRefs": [],
-      "brief": "Rebuild the procedural rig so it fills most of a cell: tracks, cabin, auger, hazard markings that contrast the dark rock. Findable in three seconds. Authored GLB only if the rebuilt rig still fails 'what is it?'. No billboard stand-in."
+      "brief": "Spirit: that is my drill. Silhouette, cabin, bit, hazard paint against dark rock. Findable in a second. Illegal: makeRover scale ×1.4 on the same box stack. Authored GLB only if the rebuilt rig still fails. No billboard."
     },
     {
       "id": "PQ-130.06",
@@ -7686,7 +7686,7 @@
         "node scripts/check-program-docs.mjs"
       ],
       "receiptRefs": [],
-      "brief": "Context bay is a material plate plus consequence chips (bore once / farm forever / hazard / locked). Contact ring when neighbors matter. One body line max. No tutorial paragraphs on mouseover. 12 px floor. First-time teaching stays on the tape once."
+      "brief": "Spirit: the board already taught you; chrome confirms with a picture. Material plate + chips, contact ring when neighbors matter. Illegal: truncated paragraphs in the same novel well. 12 px floor. Teaching stays in a drawer tape once."
     }
   ]
 }

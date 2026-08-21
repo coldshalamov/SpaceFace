@@ -47,8 +47,8 @@ disjoint files. No coordinator, task-long reservation, or worktree is required.
   Dispatch `node scripts/program-dispatch.mjs --id PQ-129`. Measure first. Do not skip to
   Worker/WebGPU/quality cuts.
 - **Asteroid Works / mining minigame is unreadable or undrivable** (tan wash, HUD
-  eats the board, rover too small or too fast, hover is a wall of text, surveyed
-  vein looks like unsurveyed stone) →
+  is ugly *and* eats the board, rover too small or too fast, hover is a wall of
+  text, surveyed vein looks like unsurveyed stone) →
   [`design/program/ASTEROID_WORKS_PLAYFIELD.md`](./design/program/ASTEROID_WORKS_PLAYFIELD.md)
   and the operator
   [`ASTEROID_WORKS_PLAYFIELD_GOAL.txt`](./design/program/ASTEROID_WORKS_PLAYFIELD_GOAL.txt).
@@ -148,8 +148,8 @@ apart, find the rover, or move it one cell on purpose, start at
 and the admitted packet
 [`design/program/roadmap/active/PQ-130.md`](./design/program/roadmap/active/PQ-130.md).
 Dispatch `node scripts/program-dispatch.mjs --id PQ-130`. The 2026-08-20 playtest is
-the defect list (tan wash, HUD majority, slant, invisible geology, tiny rover, hover
-novel, undrivable tap/hold, surveyed = unsurveyed). Chrome idea:
+the defect list (tan wash, HUD ugly *and* too big, slant, invisible geology, tiny rover, hover
+novel, undrivable tap/hold, surveyed = unsurveyed). Shrinking the same shell is a fail. Chrome idea:
 [`design/frontend/SCREENS_E_ASTEROID_WORKS.md`](./design/frontend/SCREENS_E_ASTEROID_WORKS.md).
 This is not INFERENCE, not `PQ-050`, not `PQ-129`, and not Waves 1–4.
 

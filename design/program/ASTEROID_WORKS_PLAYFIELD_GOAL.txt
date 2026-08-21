@@ -1,21 +1,23 @@
-This is a campaign: make the Asteroid Works mining minigame playable by sight and by tap. Do not use INFERENCE. Do not take hitch/PQ-129 work. Do not take PQ-050. Do not stop after one unit.
+This is a campaign: put the player inside the asteroid. The mine is the screen. Do not use INFERENCE. Do not take hitch/PQ-129 or PQ-050. Do not stop after one unit.
 
-Law: design/program/ASTEROID_WORKS_PLAYFIELD.md and design/frontend/SCREENS_E_ASTEROID_WORKS.md. Grammar: design/frontend/INSTRUMENT_GRAMMAR.md. Dispatch: node scripts/program-dispatch.mjs --id PQ-130. Take the first claimable leaf. --next still returns fleet remaster.
+Law: design/program/ASTEROID_WORKS_PLAYFIELD.md (read §0 spirit and §3 vanilla collapse first) and design/frontend/SCREENS_E_ASTEROID_WORKS.md. Grammar: design/frontend/INSTRUMENT_GRAMMAR.md. Dispatch: node scripts/program-dispatch.mjs --id PQ-130. Take the first claimable leaf. --next still returns fleet remaster.
 
-The board is the game. HUD is auxiliary. Camera frames the rover, not the whole 28-wide rock. Flatten the slant. Rock is this asteroid’s color, not bright tan. Surveyed vein and unsurveyed stone must not look identical. Ore occupies the cell; gas is cracked seeping rock, never a tiny sparkle that looks like ore. Rover is a vehicle you can see. Tap = one empty cell; hold delay then cruise. Hover is a picture, not a wall of text.
+Spirit: a stranger glances and sees rock, a hole, a vehicle, ore as ore, gas as danger — not a sci-fi website with a Minecraft inset. Remaining chrome is a rig dashboard that earns every pixel. Empty Power/Export/Couriers bays, the novel context well, the 264px reprint tape, the cyan video-embed frame, and 8px keypad labels are the ugly HUD. Shrinking that chrome is not the work.
 
-Owner playtest 2026-08-20 is the defect list. Do not paraphrase it into new mechanics.
+Vanilla collapse is a fail: shorter CSS bays, zoom-only camera, tan×0.7, crystal scale 1.5, slower MOVE_COOLDOWN, truncated inspector strings, more amber stripes. If that is the PR, you have not started.
+
+Owner playtest 2026-08-20 is the defect list. HUD is ugly AND too big. Do not paraphrase into new mechanics.
 
 Order:
-1. PQ-130.01 Theater — playfield majority, local camera, flat grid, no postage-stamp letterbox.
-2. PQ-130.02 Surgical drive — tap one cell; no tunnel rocket.
-3. PQ-130.03 This asteroid’s rock — tan wash gone.
-4. PQ-130.04 Cells speak — ore / gas / unknown / surveyed vs not, at a glance.
-5. PQ-130.05 The vehicle — rover readable at play size.
-6. PQ-130.06 Hover as instrument — no mouseover novel.
+1. PQ-130.01 Theater — the mine is the screen; dashboard not a website; local camera; flat grid.
+2. PQ-130.02 Surgical drive — a heavy rig you place one cell at a time.
+3. PQ-130.03 This asteroid’s rock — the body you tethered to, not dungeon sandstone.
+4. PQ-130.04 Cells speak — a prospector can read the face.
+5. PQ-130.05 The vehicle — “that is my drill.”
+6. PQ-130.06 Hover as instrument — a picture that confirms; the board already taught.
 
-Stay off hitch renderer files, Hitch/Kestrel, and Asteroid Ops Waves 1–4. Do not replace crystals or gas with camera-facing soft squares. Do not pass by cutting default quality.
+Stay off hitch renderer files, Hitch/Kestrel, Waves 1–4. No camera-facing soft squares. No quality cuts.
 
-Each leaf: play the tether → Asteroid Works route at normal window size. check:playable after implementation. Commit only that leaf, then the next.
+Each leaf: play tether → Asteroid Works at a normal window. Whole-theater stills, not cube crops. check:playable after implementation. Commit only that leaf, then the next.
 
-RESULT: DONE when a stranger can see the board, tell cells apart without the context bay, find the rover, and move it one cell on purpose.
+RESULT: DONE when a stranger sees the rock first, can tell cells apart without the context bay, finds the rover, moves it one cell on purpose, and the leftover chrome looks like a dashboard they would touch.
