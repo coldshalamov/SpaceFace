@@ -304,7 +304,7 @@ Never more than two text lines. Tutorial copy never appears here. *A person sees
 field-notebook tag next to their cursor — a color, a number, two or three stamps.*
 
 ### 6.5 Overlay lens chips (earned; bottom-left, small pill row; appear with first machine)
-Up to four toggles, one active at a time (Tab cycles): **Faces** (valid machine seats glow
+Up to four toggles, one active at a time (`V` cycles; Tab belongs to the drawers, §6.6): **Faces** (valid machine seats glow
 mint; blocked faces show one why-glyph — auto-on while placing), **Heat** (thermal tint;
 machines short of rock contact shimmer; ice reads cold), **Network** (cables bright,
 lane flow animated `--aw-sky`, disconnected islands dimmed, starved machines pulse gold

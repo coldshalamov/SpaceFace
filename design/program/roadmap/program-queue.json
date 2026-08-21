@@ -7714,7 +7714,7 @@
       "priority": 351,
       "title": "The sim speaks: every event happens on the board",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-130.01",
         "PQ-130.02"
@@ -7735,7 +7735,9 @@
         "npm run check:asteroid-theater",
         "node scripts/check-program-docs.mjs"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-130-07-the-sim-speaks-REPORT.md"
+      ],
       "brief": "Design law §5 is the spec, timings included: yield chunks arc into the hopper with a +N floater; gas breach = flash, vapor flood, 4px camera kick, coral edge vignette, permanent vented texture; MK lock = skate + sparks + engraved stamp; hopper-full refusal; machine want-chips. The manifest tape is demoted to a silent ledger drawer. Illegal: keeping the tape and adding particles beside it; a floater with no board change; any new permanent text row."
     },
     {
