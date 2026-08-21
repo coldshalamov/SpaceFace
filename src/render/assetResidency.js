@@ -4,7 +4,12 @@
 // renderer/scene boundary owners and sector labels solely so decoded Three.js resources can be
 // reclaimed without lowering visual quality or racing an in-flight GLB decode.
 
-import { createResourceGovernor } from './resourceGovernor.js';
+import {
+  createResourceGovernor,
+  governorEntryBlockReasons,
+  isGovernorEntryEvictable,
+  isGovernorOwnerEvictable,
+} from './resourceGovernor.js';
 
 const PROTECTED_RESOURCE = Symbol('spaceface.protectedGpuResource');
 const registriesByRenderer = new WeakMap();
@@ -170,6 +175,9 @@ export function createAssetResidencyRegistry(options = {}) {
     const state = ownerState(owner);
     if (!state || state.released || entry.owners.has(owner)) return false;
     const ownerMetadata = { ...metadata };
+    if (ownerMetadata.presentationTier) {
+      ownerMetadata.presentationTier = String(ownerMetadata.presentationTier);
+    }
     if (!ownerMetadata.role) {
       const tier = ownerMetadata.presentationTier;
       if (tier === 'R0_GLASS') ownerMetadata.role = 'glass';
@@ -183,6 +191,7 @@ export function createAssetResidencyRegistry(options = {}) {
       generation: entry.generation,
       refCount: entry.owners.size,
       role: ownerMetadata.role || null,
+      presentationTier: ownerMetadata.presentationTier || null,
       sectorId: ownerMetadata.sectorId || null,
     });
     // Save restore destroys every render boundary synchronously and rebuilds the same sector a few
@@ -466,11 +475,13 @@ export function createAssetResidencyRegistry(options = {}) {
     const includeEvents = diagnosticOptions.includeEvents !== false && !canonical;
     const assetRows = [...assets.values()].map((entry) => {
       const row = {
-      key: entry.key,
-      refCount: entry.owners.size,
-      resourceCount: entry.resources.size,
-      bytes: assetResidentBytes(entry),
+        key: entry.key,
+        refCount: entry.owners.size,
+        resourceCount: entry.resources.size,
+        bytes: assetResidentBytes(entry),
         roles: [...new Set([...entry.owners.values()].map((metadata) => metadata && metadata.role).filter(Boolean))].sort(),
+        presentationTiers: [...new Set([...entry.owners.values()]
+          .map((metadata) => metadata && metadata.presentationTier).filter(Boolean))].sort(),
         sectors: [...new Set([...entry.owners.values()].map((metadata) => metadata && metadata.sectorId).filter(Boolean).map(String))].sort(),
       };
       if (!canonical) row.generation = entry.generation;
@@ -507,28 +518,117 @@ export function createAssetResidencyRegistry(options = {}) {
     return !!entry && entry.state === 'resident';
   }
 
+  function governorEntry(entry, kind = 'gpu') {
+    const activeRequest = [...pendingRequests].some((request) => (
+      request.active && request.key === entry.key
+    ));
+    const ownerRecords = [...entry.owners.values()].map((metadata) => ({ ...(metadata || {}) }));
+    const roles = [...new Set(ownerRecords.map((metadata) => metadata.role).filter(Boolean))];
+    const presentationTiers = [...new Set(ownerRecords
+      .map((metadata) => metadata.presentationTier).filter(Boolean))];
+    const memoryUnits = [];
+    const seenMemoryUnits = new Set();
+    for (const resource of entry.resources) {
+      for (const unit of resource.memoryUnits || []) {
+        if (!unit || seenMemoryUnits.has(unit.identity)) continue;
+        seenMemoryUnits.add(unit.identity);
+        memoryUnits.push({ identity: unit.identity, bytes: unit.bytes });
+      }
+    }
+    return {
+      key: entry.key,
+      bytes: assetResidentBytes(entry),
+      kind,
+      roles,
+      presentationTiers,
+      ownerRecords,
+      activeRequest,
+      memoryUnits,
+    };
+  }
+
+  function blockedBreakdown(entries) {
+    const unitsByReason = new Map();
+    for (const entry of entries) {
+      if (isGovernorEntryEvictable(entry)) continue;
+      const reasons = governorEntryBlockReasons(entry);
+      const fallback = reasons.length > 0 ? reasons : ['protected'];
+      for (const reason of fallback) {
+        let units = unitsByReason.get(reason);
+        if (!units) {
+          units = new Map();
+          unitsByReason.set(reason, units);
+        }
+        if (Array.isArray(entry.memoryUnits) && entry.memoryUnits.length > 0) {
+          for (const unit of entry.memoryUnits) {
+            if (!unit || unit.identity == null) continue;
+            units.set(unit.identity, Math.max(units.get(unit.identity) || 0, Number(unit.bytes) || 0));
+          }
+        } else {
+          units.set(entry, Number(entry.bytes) || 0);
+        }
+      }
+    }
+    const byRole = {};
+    const byReason = {};
+    for (const [reason, units] of unitsByReason) {
+      let bytes = 0;
+      for (const value of units.values()) bytes += value;
+      const role = reason.startsWith('role:') ? reason.slice(5) : reason;
+      byRole[role] = (byRole[role] || 0) + bytes;
+      byReason[reason] = (byReason[reason] || 0) + bytes;
+    }
+    return {
+      byRole: Object.freeze(byRole),
+      byReason: Object.freeze(byReason),
+    };
+  }
+
   function enforceBudget(kind = 'gpu') {
-    const snap = diagnostics({ includeEvents: false });
-    const entries = (snap.assets || []).map((row) => ({
-      key: row.key,
-      bytes: row.bytes,
-      roles: row.roles,
-    }));
-    const plan = governor.plan(entries, kind);
+    const before = diagnostics({ includeEvents: false });
+    const entries = [...assets.values()].map((entry) => governorEntry(entry, kind));
+    const plan = governor.plan(entries, kind, { initialResidentBytes: before.residentBytes });
     const evicted = [];
     for (const key of plan.evict) {
       const entry = assets.get(String(key || ''));
       if (!entry) continue;
-      for (const [owner, metadata] of [...entry.owners]) {
-        const role = metadata && metadata.role;
-        if (role === 'warm-previous-sector' || role === 'unused') {
-          release(entry.key, owner, 'governor-budget');
+      const candidate = governorEntry(entry, kind);
+      // Re-check against live owners and requests. A plan can race a decode completion or a new
+      // presentation retain between planning and execution; releasing only a fully evictable
+      // candidate keeps the planner/executor contract fail-closed.
+      if (!isGovernorEntryEvictable(candidate)) continue;
+      let everyOwnerEvictable = true;
+      for (const metadata of entry.owners.values()) {
+        if (!isGovernorOwnerEvictable(metadata)) {
+          everyOwnerEvictable = false;
+          break;
         }
       }
+      if (!everyOwnerEvictable) continue;
+      for (const owner of [...entry.owners.keys()]) release(entry.key, owner, 'governor-budget');
       evictIfUnowned(entry, 'governor-budget');
       if (!assets.has(String(key))) evicted.push(key);
     }
-    return Object.freeze({ ...plan, evicted: Object.freeze(evicted) });
+    const afterEntries = [...assets.values()].map((entry) => governorEntry(entry, kind));
+    const after = diagnostics({ includeEvents: false });
+    const beforeBytes = Number(before.residentBytes) || 0;
+    const remainingBytes = Number(after.residentBytes) || 0;
+    const evictedBytes = Math.max(0, beforeBytes - remainingBytes);
+    const blocked = blockedBreakdown(afterEntries);
+    const budgetBytes = Number(plan.budgetBytes);
+    const budgetSatisfied = Number.isFinite(budgetBytes) ? remainingBytes <= budgetBytes : true;
+    return Object.freeze({
+      ...plan,
+      evicted: Object.freeze(evicted),
+      evictedBytes,
+      remainingBytes,
+      residentBytes: remainingBytes,
+      budgetSatisfied,
+      overBudget: !budgetSatisfied,
+      protectedShortfallBytes: budgetSatisfied ? 0 : remainingBytes - budgetBytes,
+      blockedBytesByRole: blocked.byRole,
+      blockedBytesByReason: blocked.byReason,
+    });
   }
 
   return Object.freeze({
