@@ -148,6 +148,7 @@ silhouette:
 | Inspector `line()` strings shortened | Still a novel well. Still not a picture. |
 | More amber hazard stripes, more tracked Saira, more 1px borders | That is how this screen got ugly. Do not double down on the template. |
 | Billboard sprites / emoji / CSS icons on cells | Banned stand-in. The board has to be geology. |
+| Flatten the blocks into tiles, paint flat color fills, neon-ring icons for machines | The owner's 2026-08-21 verdict on exactly this: "you literally gutted all the 3d and made a cartoon." Straight-on is a camera rule; the blocks, rock material, machines and rover stay full 3D (design law §2.7). |
 | Bloom off, quality preset down | Forbidden performance/quality cheat. |
 
 If you can describe your PR in one of those rows, stop and do the spirit instead.

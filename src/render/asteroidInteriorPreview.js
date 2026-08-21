@@ -381,25 +381,28 @@ function pushQuad(pos, nrm, uv, a, b, c, d, uvs) {
   for (let i = 0; i < 6; i++) nrm.push(0, 0, 0); // computeVertexNormals gives flat facets
 }
 
-// 3 block variants: IDENTICAL silhouette (one thin uniform grout), differing only in pad lift so
-// raking light gives faint relief variety. Deterministic per cell.
-// Design law §2.1: the pad cap is a FLAT SQUARE face — no beveled pyramid fan, no relief bulge —
-// and every footprint reads as the same square. A wide or varying chamfer turns the chess board
-// into loose bricks (2026-08-21 review of the first theater build), so the grout stays ≈2% per side.
+// 3 block variants: identical silhouette, different bevel depth / pad relief. Deterministic per cell.
 export function makeCellBlockGeos() {
   const variants = [
-    { bev: 0.018, lift: 0.012 },
-    { bev: 0.018, lift: 0.018 },
-    { bev: 0.018, lift: 0.024 },
+    { bev: 0.055, lift: 0.05, bulge: 0.02 },
+    { bev: 0.08, lift: 0.025, bulge: 0.055 },
+    { bev: 0.1, lift: 0.065, bulge: -0.014 },
   ];
   return variants.map((v) => {
     const pos = [], nrm = [], uv = [];
     const p = 0.5 - v.bev;                    // pad half-extent
     const zF = v.lift;                        // pad plane (proud of z=0)
     const zB = -v.bev * 1.7;                  // full footprint resumes here
-    const pad = { pp: [p, p, zF], pn: [p, -p, zF], np: [-p, p, zF], nn: [-p, -p, zF] };
-    // pad cap: one flat quad (wound CCW seen from +z)
-    pushQuad(pos, nrm, uv, pad.np, pad.nn, pad.pn, pad.pp, [[0, 1], [0, 0], [1, 0], [1, 1]]);
+    const pad = {
+      pp: [p, p, zF], pn: [p, -p, zF], np: [-p, p, zF], nn: [-p, -p, zF], cc: [0, 0, zF + v.bulge],
+    };
+    // pad cap: 4 triangles fanned to the relief centre (wound CCW seen from +z)
+    const fan = [[pad.pp, pad.pn], [pad.pn, pad.nn], [pad.nn, pad.np], [pad.np, pad.pp]];
+    for (const [a, b] of fan) {
+      pos.push(...b, ...a, ...pad.cc);
+      nrm.push(0, 0, 0, 0, 0, 0, 0, 0, 0);
+      uv.push(b[0] + 0.5, b[1] + 0.5, a[0] + 0.5, a[1] + 0.5, 0.5, 0.5);
+    }
     // bevel ring (pad edge → full footprint at zB), wound outward
     const out = { pp: [0.5, 0.5, zB], pn: [0.5, -0.5, zB], np: [-0.5, 0.5, zB], nn: [-0.5, -0.5, zB] };
     pushQuad(pos, nrm, uv, pad.pn, out.pn, out.pp, pad.pp, [[1, 0], [1, 0.04], [1, 0.96], [1, 1]]);

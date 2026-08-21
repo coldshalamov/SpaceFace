@@ -62,9 +62,15 @@ drone-field curve, not the lucky-streak curve.
 
 ## 2. Owner rulings (2026-08-20 — settled, do not re-litigate)
 
-1. **Perfect flat grid.** Cells are axis-aligned squares on screen, like a chess board. Zero
-   yaw, zero pitch, zero isometric read, no beveled pyramid faces. Camera pans and zooms;
-   it never rotates or tilts. (§11.1 makes this assertable.)
+1. **Perfect flat grid — in full 3D.** Cells are axis-aligned squares on screen, like a
+   chess board: zero yaw, zero pitch, zero isometric read. Camera pans and zooms; it never
+   rotates or tilts. (§11.1 makes this assertable.) **This is a camera rule, not a geometry
+   rule.** The blocks stay fully 3D — the original beveled relief, thickness, cast shadows,
+   real rock material; tunnels are lit cavities you look down into. *2026-08-21 owner
+   correction after a build flattened the blocks into tiles: "you literally gutted all the 3d
+   and made a cartoon … I never asked for that and it's objectively worse."* A flat tile, a
+   flat color fill, a drawn outline, or a neon-glow icon standing in for an object is a
+   failure. See §2.7.
 2. **The board is ≥ 88% of the glass** in the default drive view. Chrome is the small set of
    objects in §6 and nothing else.
 3. **No fog of war.** Every cell's material is visible from the first frame. The strategy
@@ -80,6 +86,22 @@ drone-field curve, not the lucky-streak curve.
    hover, no drawer open). Information is carried by shape, color, motion, and sound;
    words confirm on demand.
 6. **Events happen on the board** (§5), never as a permanently visible text log.
+7. **Congruous 3D, never cartoon.** The mine is the flight game's own 3D world cut open.
+   Rock cells are lit PBR stone built from the same surface approach as the flight
+   asteroids (`src/render/rockSurfaceLibrary.js`), with the original beveled block geometry
+   (`makeCellBlockGeos` as of commit 66d3787f or better) — never flat pads. Machines, the
+   rover, the derrick and conduits are real objects: authored PBR models where they exist
+   (`assets/incubator/everyday_space_kit/.../drill_platform*.glb`,
+   `assets/ships/m5_claim_outposts/.../place_claim_outpost_{base,refinery,relay,bastion}.glb`,
+   `assets/ships/m5_station_refinery/...`) or procedural meshes built to the flight world's
+   quality bar — metal roughness/metalness, beveled edges, real proportions, shadows. No
+   emissive rings, bars or halos; emissive only as small plausible lamps with a real light.
+   Depth is sold by light: a raking warm key with cast shadows into cavities (key:fill ≈ 5:1,
+   not a head-on fill), a cool fill from space, contact darkening in corners. A
+   straight-down *perspective* camera with a narrow FOV (~30°) is allowed and encouraged —
+   the board plane stays a perfect square grid while cavity walls gain visible depth.
+   **The test:** put the still beside a flight still of a ship near an asteroid. If the mine
+   looks like a different, cheaper game, the leaf failed.
 
 **Open owner decisions** (recorded defaults; build the default until overruled):
 
@@ -392,7 +414,7 @@ alongside them. Stages 5–7 are future packets — **do not** start them from t
 |---|---|---|
 | `PQ-130.01` Theater | Board sovereign ≥88%; console deleted to crest + rig cluster; flat grid + square pads; two-register camera; silhouette against space; **the §3 chrome reboot lands here** (tokens, fonts vendored, sentence case); one shared render/grading pipeline | §2, §3, §4, §6.1–6.2, §10 |
 | `PQ-130.02` Surgical drive | tap = one cell, hold-delay cruise, visible bore bites; smoothness check rewritten | §4, §11.7 |
-| `PQ-130.03` This rock | warm mineral board palette + dusk lighting (warm key inside, cool rim outside) | §3.5 |
+| `PQ-130.03` This rock | warm mineral board palette + dusk lighting (warm key inside, cool rim outside) **in full 3D (§2.7)**: measured face brightness to the §3.5 targets (the old face read ~18 L* too bright), 5:1 raking key, warm-bore/cool-space depth gradient, ±5% per-cell variance, no fog tint, no flat fills, no neon; straight-down perspective; original block relief | §2.7, §3.5 |
 | `PQ-130.04` Cells speak | material three-channel identity; seams as outlined bodies with counts; split preview; **fog removal** (visibility gate off in `src/systems/drill.js` presentation) | §2.3, §3.5, §4 |
 | `PQ-130.05` The vehicle | the safety-yellow rover, worn state (bit glow, hopper fill) | §4 |
 | `PQ-130.06` Hover as instrument | the cursor lens; context bay deleted | §6.4 |
