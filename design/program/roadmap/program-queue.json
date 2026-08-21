@@ -7683,7 +7683,7 @@
       "priority": 350,
       "title": "Hover as instrument: picture, not a novel",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-130.04"
       ],
@@ -7701,7 +7701,9 @@
         "npm run check:asteroid-theater",
         "node scripts/check-program-docs.mjs"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-130-06-cursor-lens-REPORT.md"
+      ],
       "brief": "Spirit: the board already taught you; chrome confirms with a picture. Cursor lens beside the pointer: swatch + assay numerals + consequence chips (design law §6.4); context bay deleted. Illegal: truncated paragraphs in the same novel well. 12 px floor. Teaching stays in a drawer tape once."
     },
     {

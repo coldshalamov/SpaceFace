@@ -3,10 +3,11 @@
 // completion), same pause semantics, superseding src/ui/screens/drill.js as the live module (that
 // file stays for its exported input controller / particle / shake helpers and its checks).
 //
-// Chrome is law §6.1 + §6.2 only: a thin crest (name, claim, one alert slot, yield, hold gauge,
-// leave) and the rig cluster (heat + charge). The board owns ≥88% of the glass; events happen on
-// the board, never as a permanently visible text log. The inspector/palette wiring survives in a
-// display:none transitional container until the cursor lens (.06) and build keys (.09) land.
+// Chrome is law §6.1 + §6.2 + §6.4 only: a thin crest (name, claim, one alert slot, yield, hold
+// gauge, leave), the rig cluster (heat + charge), and the cursor lens that rides beside the
+// pointer. The board owns ≥88% of the glass; events happen on the board, never as a permanently
+// visible text log. The build palette's wiring still waits in a display:none transitional
+// container until the build keys (.09) land.
 // Styling lives in styles/asteroid-ops.css — this module owns structure and wiring only.
 //
 // Split per law: this shell owns lifecycle + DOM + events; asteroidRenderer3d owns pixels;
@@ -22,13 +23,17 @@ import {
   MODES,
   routeAsteroidScreenKeyDown,
 } from './asteroidController.js';
-import { createInspector, placementReason, commodityName, formationLabel } from './inspector.js';
-import { createBuildPalette, costText } from './buildPalette.js';
+import {
+  createCursorLens, tileLensModel, machineLensModel, ghostLensModel, seamSplits,
+  placementReason, commodityName, formationLabel,
+} from './inspector.js';
+import { createBuildPalette } from './buildPalette.js';
 
-// The cursor lens (design law §6.4) replaces the old context-bay inspector in PQ-130.06. Until then the
-// inspector instance stays mounted in the hidden transitional container for its seam and its test
-// contracts, but nothing rebuilds its DOM for pixels nobody can see.
-const LENS_ENABLED = false;
+// PQ-130.06 — the cursor lens (law §6.4) landed and the context bay is gone (law §10). Timings
+// here are law: the card appears after LENS_DELAY_S of hover while driving, instantly in build
+// mode, and vanishes on pointer-leave, on any drive keypress, and whenever the pointer is over
+// chrome (the crest/rig are siblings of the canvas, so leaving the canvas covers that).
+const LENS_DELAY_S = 0.15;
 
 const { COLS, ROWS } = DRILL_CONST;
 
@@ -172,16 +177,19 @@ export const asteroidScreen = {
     hudEls.energy = charge.val;
     stage.appendChild(rig);
 
-    // ---------- hidden transitionals (inspector + palette wiring; no glass until .06/.09) ----------
+    // ---------- hidden transitional (palette wiring; no glass until .09) ----------
+    // The inspector's half of this container is deleted — the cursor lens below replaces it.
     const hidden = document.createElement('div');
     hidden.className = 'aw-hidden';
     hidden.setAttribute('aria-hidden', 'true');
     const cardHost = document.createElement('div');
-    const ctxRow = document.createElement('div');
-    const ringDock = document.createElement('div');
-    ringDock.className = 'ao-ring-dock';
-    hidden.append(cardHost, ctxRow, ringDock);
+    hidden.appendChild(cardHost);
     stage.appendChild(hidden);
+
+    // ---------- §6.4 cursor lens: the only readout that ever names a cell ----------
+    // Mounted on the stage (a positioned element) so the card places in stage coordinates and a
+    // transformed screen stack cannot shift it. It is pointer-transparent by stylesheet.
+    const lens = createCursorLens(stage);
 
     const srStatus = document.createElement('div');
     srStatus.className = 'ast-sr-status';
@@ -202,8 +210,12 @@ export const asteroidScreen = {
     let rafId = 0;
     let last = 0;
     let hudElapsed = 0;
-    let inspElapsed = 0;
+    let inspElapsed = 0;           // seconds since the lens last rebuilt (handlers force it to 10)
     let hover = null;              // { col, row }
+    // ---- cursor lens state (law §6.4) ----
+    let lensPointer = null;        // { x, y } client coords of the live pointer, null if keyboard
+    let lensDelay = -1;            // seconds left before the card may appear; < 0 = disarmed
+    let lensDirty = true;          // the subject changed, rebuild the model on the next tick
     let currentSiteId = null;
     let projection = null;
     let projDirty = true;
@@ -234,11 +246,21 @@ export const asteroidScreen = {
           wrap.dataset.mode = mode === MODES.BUILD ? 'build' : 'drive';
           palette.setVisible(mode === MODES.BUILD);
           inspElapsed = 10;
+          // Law §6.4: instant in build mode, 150ms of hover in drive. Leaving build closes the
+          // card — the next hover re-earns it.
+          if (mode === MODES.BUILD) armLens(0);
+          else hideLens();
           announce(mode === MODES.BUILD
             ? 'Build mode. Arrows move the cursor, Enter places, X dismantles, Q and E cycle structures.'
             : 'Drive mode.');
         },
-        onCursorMoved() { inspElapsed = 10; },
+        onCursorMoved() {
+          inspElapsed = 10;
+          lensDirty = true;
+          // A keyboard-driven cursor has no pointer to hang the card on: anchor it to the cell.
+          lensPointer = null;
+          armLens(0);
+        },
         onScan: () => pulseSurvey(),
         onPlace: (cursor) => commitPlacement(cursor),
         onRemove: (cursor) => commitRemoval(cursor),
@@ -256,59 +278,53 @@ export const asteroidScreen = {
     });
     palette.setVisible(false);
 
-    const inspectorActions = {
-      setMode: (machineId, mode) => {
-        if (!siteSys || !currentSiteId) return;
-        siteSys.setMachineMode(currentSiteId, machineId, mode);
-        projDirty = true;
-        inspElapsed = 10;
-      },
-      remove: (machineId) => {
-        if (!siteSys || !currentSiteId) return;
-        const res = siteSys.removeMachine(currentSiteId, machineId);
-        if (res.ok) announce('Machine dismantled. Control unit recovered.');
-        projDirty = true;
-        inspElapsed = 10;
-      },
-      setExport: (goodId, exported) => {
-        if (!siteSys || !currentSiteId) return;
-        siteSys.setExportFlag(currentSiteId, goodId, exported);
-        projDirty = true;
-        inspElapsed = 10;
-      },
-      setPodTarget: (target) => {
-        if (!siteSys || !currentSiteId) return;
-        siteSys.setPodTarget(currentSiteId, target);
-        projDirty = true;
-        inspElapsed = 10;
-      },
-      canTransfer: () => !!(state.drill && state.drill.active),
-      openTransfer: (machineId, dir) => quickTransfer(machineId, dir),
-    };
-    const inspector = createInspector(ctxRow, inspectorActions, { ringDock });
-    ctxRow.appendChild(ringDock); // inspector root first, schematic dock beside it
+    // The old context bay carried four operator affordances as buttons inside its cards — export
+    // Hold/Ship per good, the courier pod target, a machine's recipe/mode switch, and rover bulk
+    // transfer. All four went unreachable in .01 (the transitional container is
+    // `display:none !important`, so no click ever landed on them) and the bay itself is deleted by
+    // law §10. Their owner APIs are untouched — siteSys.setExportFlag / setPodTarget /
+    // setMachineMode / transferGoods — and the §6.6 `Site` drawer (.07/.10) is where they re-bind.
+    // The lens is hover-only and never hosts a control.
 
-    // Rover-carried bulk transfer: move everything sensible in one press (v1 — no quantity modal).
-    function quickTransfer(machineId, dir) {
-      if (!siteSys || !currentSiteId) return;
-      const goods = new Set();
-      if (dir === 'deposit') {
-        const items = (state.player.cargo && state.player.cargo.items) || {};
-        for (const g of Object.keys(items)) goods.add(g);
-      } else if (projection) {
-        for (const lane of projection.lanes) for (const g of Object.keys(lane.store || {})) goods.add(g);
-      }
-      let moved = 0;
-      for (const g of [...goods].sort()) {
-        const res = siteSys.transferGoods(currentSiteId, machineId, g, 999, dir);
-        if (res.ok) moved += res.moved;
-      }
-      announce(moved > 0
-        ? `${moved} units ${dir === 'deposit' ? 'loaded onto the site lane' : 'taken into the hold'}.`
-        : 'Nothing to transfer.');
-      projDirty = true;
-      inspElapsed = 10;
-      updateHud();
+    // ---------- lens plumbing (law §6.4) ----------
+    function armLens(delayS) {
+      lensDelay = Math.max(0, delayS);
+      lensDirty = true;
+    }
+
+    function hideLens() {
+      lensDelay = -1;
+      lens.hide();
+    }
+
+    // The subject cell's box in client space, straight off the renderer's own projection. The lens
+    // treats it as a keep-out so the card can never sit on the cell it is naming — at work zoom a
+    // cell is 120px wide, so a bare +18/+18 from a cursor in its middle lands right on top of it.
+    function cellRect(col, row) {
+      const hook = canvas.__ast3d;
+      if (!hook || typeof hook.projectCell !== 'function') return null;
+      const corners = hook.projectCell(col, row);
+      if (!corners || !corners.length) return null;
+      const r = canvas.getBoundingClientRect();
+      const xs = corners.map((q) => q.x);
+      const ys = corners.map((q) => q.y);
+      return {
+        left: r.left + Math.min(...xs), right: r.left + Math.max(...xs),
+        top: r.top + Math.min(...ys), bottom: r.top + Math.max(...ys),
+      };
+    }
+
+    // Where the card hangs: the pointer when there is one, otherwise the keyboard-driven build
+    // cursor's own cell corner.
+    function lensAnchor(subject) {
+      if (lensPointer) return lensPointer;
+      if (!subject) return null;
+      return { x: subject.right, y: subject.bottom };
+    }
+
+    function lensSubject() {
+      const cursor = controller.state.mode === MODES.BUILD ? controller.state.cursor : hover;
+      return cursor ? cellRect(cursor.col, cursor.row) : null;
     }
 
     // A10 spill confirmation. The system REFUSES to clear a lane cell whose removal would spill
@@ -424,7 +440,13 @@ export const asteroidScreen = {
       const cell = canvasCell(ev);
       const changed = !!cell !== !!hover || (cell && hover && (cell.col !== hover.col || cell.row !== hover.row));
       hover = cell;
-      if (changed) inspElapsed = 10;
+      lensPointer = { x: ev.clientX, y: ev.clientY };
+      if (changed) { inspElapsed = 10; lensDirty = true; }
+      // Law §6.4: 150ms of hover while driving earns the card; build mode gets it instantly. An
+      // already-open card follows the pointer without re-serving the delay.
+      if (!cell) hideLens();
+      else if (lens.visible) lens.showAt(ev.clientX, ev.clientY, lensSubject());
+      else if (lensDelay < 0 || changed) armLens(controller.state.mode === MODES.BUILD ? 0 : LENS_DELAY_S);
       if (cell && controller.state.mode === MODES.BUILD) {
         controller.state.cursor.col = cell.col;
         controller.state.cursor.row = cell.row;
@@ -434,7 +456,9 @@ export const asteroidScreen = {
         }
       }
     };
-    const onMouseLeave = () => { hover = null; };
+    // Pointer off the board — including onto the crest or the rig cluster, which are siblings of
+    // the canvas — closes the card (law §6.4: "hides when the pointer is over chrome").
+    const onMouseLeave = () => { hover = null; lensPointer = null; hideLens(); };
     const onMouseDown = (ev) => {
       if (ev.button !== 0) return;
       const cell = canvasCell(ev);
@@ -459,9 +483,15 @@ export const asteroidScreen = {
     // Two zoom registers (law §4): wheel or Z snaps work ↔ site with a 180ms eased zoom.
     const onWheel = (ev) => {
       ev.preventDefault();
+      hideLens(); // the board is about to move under a card pinned to the old projection
       if (renderer3d) renderer3d.inputZoom(ev.deltaY);
     };
     const onKeyDown = (event) => {
+      // Law §6.4: any DRIVE keypress closes the card. A zoom-register change closes it in EITHER
+      // mode: the 180ms ease re-projects the whole board, and the card only re-places when its
+      // subject changes — so a card left open would float away from the cell it names for the
+      // whole ease. This sits above the KeyZ branch so it applies before the early return.
+      if (controller.state.mode !== MODES.BUILD || event.code === 'KeyZ') hideLens();
       if (event.code === 'KeyZ' && !event.repeat && renderer3d) {
         renderer3d.toggleZoomRegister();
         event.preventDefault();
@@ -701,63 +731,75 @@ export const asteroidScreen = {
       }
     }
 
-    // ---------- inspector refresh (transitional: hidden container until the .06 lens) ----------
-    function refreshInspector() {
+    // ---------- the lens model (law §6.4) ----------
+    // One subject, in this precedence: placement ghost > machine > tile. Networks lost their card
+    // with the context bay — a lane/cable is drawn ON the board (law §7), and naming it beside the
+    // cursor would be the old bay in miniature.
+    //
+    // NOTE ON DATA: everything here is the plumbing the old inspector already used —
+    // siteSys.machineAt / canInstall / surveyCellRole, drillSys.getTargetTelemetry /
+    // getDrillTier, and the renderer's own cellAppearance so the swatch can never disagree with
+    // the rock. Only the prose was deleted.
+    function lensModel() {
       const d = state.drill;
-      if (!d) return;
+      if (!d) return null;
       if (projDirty) refreshProjection();
-      const cursor = controller.state.mode === MODES.BUILD ? controller.state.cursor : hover;
+      const build = controller.state.mode === MODES.BUILD;
+      const cursor = build ? controller.state.cursor : hover;
+      if (!cursor) return null;
       const s = site();
 
-      if (controller.state.mode === MODES.BUILD && palette.selected.kind === 'machine') {
+      if (build && palette.selected && palette.selected.kind === 'machine') {
         const check = siteSys ? siteSys.canInstall({
           asteroidId: asteroidId(), defId: palette.selected.id,
-          col: controller.state.cursor.col, row: controller.state.cursor.row,
+          col: cursor.col, row: cursor.row,
         }) : null;
-        inspector.showGhost(palette.selected.id, check, costText(palette.selected.cost));
-        return;
+        return ghostLensModel(palette.selected.id, check);
       }
-      if (cursor && s && projection) {
+
+      if (s && projection && siteSys) {
         const m = siteSys.machineAt(s, cursor.col, cursor.row);
         if (m) {
           const pm = projection.machines.find((x) => x.id === m.id);
-          if (pm) { inspector.showMachine(pm, projection); return; }
-        }
-        const idx = tileIndex(cursor.col, cursor.row);
-        if (s.overlays.power.includes(idx) || s.overlays.lane.includes(idx)) {
-          const laneNet = projection.lanes.find((l) => l.cells.includes(idx));
-          const powerNet = projection.power.find((p) => p.cells.includes(idx));
-          if (laneNet && s.overlays.lane.includes(idx)) { inspector.showNetwork('lane', laneNet); return; }
-          if (powerNet) { inspector.showNetwork('power', powerNet); return; }
+          if (pm) return machineLensModel(pm);
         }
       }
-      if (cursor && d.field) {
-        const t = d.field[cursor.col] && d.field[cursor.col][cursor.row];
-        if (t && !(t.type === 'empty' && !t.structure && projection)) {
-          inspector.showTile({
-            tile: t,
-            col: cursor.col,
-            row: cursor.row,
-            surveyed: drillSys.isTileSurveyed(cursor.col, cursor.row),
-            telemetry: t.type !== 'empty' ? drillSys.getTargetTelemetry(cursor.col, cursor.row) : null,
-            drillTier: drillSys.getDrillTier(),
-            formation: siteSys ? siteSys.surveyCellRole(asteroidId(), tileIndex(cursor.col, cursor.row)) : null,
-          });
-          return;
-        }
-      }
-      if (projection) inspector.showSite(projection, { paused: true, survey: siteSys ? siteSys.surveyStatusFor(asteroidId()) : null });
-      else if (cursor && d.field) {
-        const t = d.field[cursor.col] && d.field[cursor.col][cursor.row];
-        inspector.showTile({
-          tile: t || null, col: cursor ? cursor.col : 0, row: cursor ? cursor.row : 0,
-          surveyed: cursor ? drillSys.isTileSurveyed(cursor.col, cursor.row) : false,
-          telemetry: null, drillTier: drillSys.getDrillTier(),
-          formation: (cursor && siteSys) ? siteSys.surveyCellRole(asteroidId(), tileIndex(cursor.col, cursor.row)) : null,
-        });
-      } else {
-        inspector.showTile({ tile: null, col: 0, row: 0, surveyed: false, telemetry: null, drillTier: 1 });
-      }
+
+      if (!d.field) return null;
+      const tile = d.field[cursor.col] && d.field[cursor.col][cursor.row];
+      if (!tile) return null;
+      const hook = canvas.__ast3d;
+      // The renderer is the single source of truth for material identity and seam SIZE; the
+      // articulation boolean it does not publish is probed against the live field with the
+      // renderer's own body definition. No appearance hook (first frame) => classify from the tile.
+      const appearance = hook && typeof hook.cellAppearance === 'function'
+        ? hook.cellAppearance(cursor.col, cursor.row) : null;
+      const splits = tile.type === 'vein' && tile.ore
+        ? seamSplits(d.field, COLS, ROWS, cursor.col, cursor.row) : false;
+      return tileLensModel({
+        tile,
+        appearance,
+        telemetry: tile.type !== 'empty' ? drillSys.getTargetTelemetry(cursor.col, cursor.row) : null,
+        drillTier: drillSys.getDrillTier(),
+        splits,
+        // Claim-formation membership (PQ-024) survives the context bay as a ring on the swatch,
+        // not as a sentence. This is the lens's only reader of the survey record.
+        formation: siteSys
+          ? siteSys.surveyCellRole(asteroidId(), tileIndex(cursor.col, cursor.row)) : null,
+      });
+    }
+
+    // Rebuild + place. Returns false when there is nothing to describe, which closes the card.
+    function renderLens() {
+      const model = lensModel();
+      if (!model) { hideLens(); return false; }
+      const subject = lensSubject();
+      const anchor = lensAnchor(subject);
+      if (!anchor) { hideLens(); return false; }
+      lens.render(model);
+      lens.showAt(anchor.x, anchor.y, subject);
+      lensDirty = false;
+      return true;
     }
 
     // ---------- per-frame UI info handed to the 3D renderer ----------
@@ -801,9 +843,16 @@ export const asteroidScreen = {
         updateHud();
         hudElapsed = 0;
       }
+      // ---- cursor lens (law §6.4) ----
+      // The hover delay is spent here rather than on a timer, so it pauses with the screen and
+      // cannot fire a card into a torn-down session.
       inspElapsed += dt;
-      if (LENS_ENABLED && inspElapsed >= 0.5) {
-        refreshInspector();
+      if (lensDelay >= 0 && !lens.visible) {
+        lensDelay -= dt;
+        if (lensDelay <= 0) { lensDelay = -1; renderLens(); }
+      } else if (lens.visible && (lensDirty || inspElapsed >= 0.5)) {
+        // Live values (bore progress, machine status) keep the open card honest.
+        renderLens();
         inspElapsed = 0;
       }
     }
@@ -818,6 +867,12 @@ export const asteroidScreen = {
       controller.setMode(MODES.DRIVE);
       hudElapsed = 0;
       inspElapsed = 0;
+      // A fresh session has no pointer on the board yet, and law §2.5 counts the default drive
+      // view with no hover: the lens starts closed and stays closed until someone hovers.
+      lensPointer = null;
+      lensDelay = -1;
+      lensDirty = true;
+      lens.hide();
       for (const k of Object.keys(hudCache)) delete hudCache[k];
       motionReduce = prefersReducedMotion({
         motionReduce: !!(state.settings && state.settings.video && state.settings.video.motionReduce),
@@ -854,7 +909,6 @@ export const asteroidScreen = {
       }
       renderer3d.begin({ motionReduce });
       updateHud();
-      refreshInspector();
       const s = site();
       if (s && !s.anchored) {
         showBanner('unanchored', 'Unanchored — install a Core before leaving', 'warn');
@@ -882,6 +936,7 @@ export const asteroidScreen = {
       this._active = false;
       cancelAnimationFrame(rafId);
       controller.cancel();
+      hideLens();
       document.removeEventListener('keydown', onKeyDown, true);
       window.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('blur', onWindowBlur);
@@ -974,6 +1029,7 @@ export const asteroidScreen = {
     this._startSession = startSession;
     this._cleanup = () => {
       stopSession();
+      lens.destroy();
       if (renderer3d) {
         try { renderer3d.dispose(); } catch (_) { /* GL teardown is best-effort */ }
         renderer3d = null;
@@ -984,7 +1040,10 @@ export const asteroidScreen = {
     this._refresh = () => {
       projDirty = true;
       updateHud();
-      refreshInspector();
+      // uiRoot.frame() calls refresh() ~3x/sec on the open screen. The old inspector rebuilt its
+      // whole (invisible) card every time; the lens only marks itself stale — the frame loop
+      // rebuilds it if and only if it is actually on the glass.
+      lensDirty = true;
     };
   },
 

@@ -4,9 +4,8 @@
    Scoped under .ast-screen (class kept for the capture harnesses). The old gunmetal
    --ao-* voice is deleted, not restyled: warm brown neutrals, soft-shadow depth,
    sentence case everywhere, Instrument Sans / Spline Sans Mono / Bricolage Grotesque.
-   Visible chrome is law §6.1 (crest) + §6.2 (rig cluster) and nothing else; the
-   transitional inspector/palette live in a display:none container until their
-   replacement leaves (.06 cursor lens, .09 build keys) land.
+   Visible chrome is law §6.1 (crest) + §6.2 (rig cluster) + §6.4 (the cursor lens) and
+   nothing else; the build palette still lives in a display:none container until .09.
    ============================================================================ */
 
 .ast-screen {
@@ -256,9 +255,160 @@
 .aw-gauge-val.bad { color: var(--aw-coral); }
 
 /* ---------------------------------------------------------------- hidden transitionals
-   The inspector/palette keep their wiring (tests + .06/.09 seams) but occupy no glass
-   and render nothing until their redesign leaves land. */
+   The build palette keeps its wiring but occupies no glass until .09 lands. The
+   inspector's hidden container is gone: PQ-130.06 replaced it with the cursor lens. */
 .aw-hidden { display: none !important; }
+
+/* ---------------------------------------------------------------- §6.4 cursor lens
+   "A little field-notebook tag next to their cursor — a colour, a number, two or three
+   stamps." Max 260px, --aw-surface, r10, soft shadow, NO border. Absolutely placed inside
+   the stage (not fixed to the viewport) so a transformed screen stack cannot shift it, and
+   pointer-transparent so the card can never eat the hover that created it. */
+.aw-lens {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 6;
+  max-width: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 9px 11px 10px;
+  border-radius: 10px;
+  background: var(--aw-surface);
+  box-shadow: 0 2px 8px rgba(8, 5, 2, 0.5);
+  color: var(--aw-ink-2);
+  pointer-events: none;
+  overflow: hidden;
+  contain: layout style;
+}
+.aw-lens[hidden] { display: none !important; }
+
+.aw-lens-head {
+  display: flex;
+  align-items: center;
+  gap: 4px 9px;
+  min-width: 0;
+  /* A two-word material name plus its assay can exceed 260px. Wrapping keeps the NAME whole (the
+     identity is the point) and costs one extra line, which a tile card has spare — it never has a
+     body line. `.nowrap` is applied whenever a body line is present. */
+  flex-wrap: wrap;
+}
+.aw-lens-head.nowrap { flex-wrap: nowrap; }
+.aw-lens-head.nowrap .aw-lens-num { overflow: hidden; text-overflow: ellipsis; }
+/* 22px rounded swatch sampling the actual board material (law §6.4). */
+.aw-lens-swatch {
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+}
+.aw-lens-swatch[hidden] { display: none; }
+/* Claim-formation membership, wordless: mint = committed to the claim record, gold = assayed but
+   still volatile (it wants a Core). The inline box-shadow from the material sampler is the inner
+   ring; these add the outer one. */
+.aw-lens-swatch.claim-mint { outline: 2px solid var(--aw-mint); outline-offset: 2px; }
+.aw-lens-swatch.claim-gold { outline: 2px solid var(--aw-gold); outline-offset: 2px; }
+/* Machines and placement ghosts trade the swatch for a status lamp dot. */
+.aw-lens-swatch.lamp {
+  width: 12px;
+  height: 12px;
+  margin: 0 5px;
+  border-radius: 50%;
+  background: var(--aw-ink-3);
+}
+.aw-lens-swatch.lamp.mint { background: var(--aw-mint); box-shadow: 0 0 9px rgba(124, 217, 162, 0.5); }
+.aw-lens-swatch.lamp.gold { background: var(--aw-gold); box-shadow: 0 0 9px rgba(255, 182, 72, 0.5); }
+.aw-lens-swatch.lamp.coral { background: var(--aw-coral); box-shadow: 0 0 9px rgba(255, 98, 66, 0.5); }
+.aw-lens-swatch.lamp.idle { background: var(--aw-ink-3); }
+
+/* The name is the identity: it never shrinks. When the row is tight the NUMERALS give way — a
+   truncated "Geol…" is a broken card, a truncated rate is a missing decimal. */
+.aw-lens-name {
+  flex: 0 0 auto;
+  max-width: 100%;
+  font: 500 14px/1.25 var(--aw-font);
+  color: var(--aw-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.aw-lens-num {
+  flex: 0 1 auto;
+  min-width: 0;
+  font: 500 13px/1.25 var(--aw-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--aw-ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.aw-lens-num[hidden] { display: none; }
+/* "hp 60% as a tiny bar, not a sentence" — only present once the cell has actually been bitten. */
+.aw-lens-hp {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(8, 5, 2, 0.45);
+  overflow: hidden;
+}
+.aw-lens-hp i {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--aw-ink-2);
+}
+.aw-lens-hp i.low { background: var(--aw-gold); }
+
+/* Pill chips: 20px tall, icon glyph + word, colour by meaning (§3.2). */
+.aw-lens-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.aw-lens-chips[hidden] { display: none; }
+.aw-lens-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 20px;
+  padding: 0 9px 0 7px;
+  border-radius: 999px;
+  background: var(--aw-raised);
+  font: 500 13px/1 var(--aw-font);
+  color: var(--aw-ink-2);
+  white-space: nowrap;
+}
+.aw-lens-chip svg { flex: 0 0 auto; display: block; }
+.aw-lens-chip.gold { color: var(--aw-gold); }
+.aw-lens-chip.mint { color: var(--aw-mint); }
+.aw-lens-chip.coral { color: var(--aw-coral); }
+
+/* One body line, max — the machine's cause. Never tutorial copy. */
+.aw-lens-body {
+  font: 500 13px/1.3 var(--aw-font);
+  color: var(--aw-ink-2);
+}
+.aw-lens-body[hidden] { display: none; }
+
+/* The contact-ring schematic, inside the card, small and captionless. */
+.aw-lens-ring {
+  display: grid;
+  grid-template-columns: repeat(3, 10px);
+  grid-auto-rows: 10px;
+  gap: 2px;
+}
+.aw-lens-ring[hidden] { display: none; }
+.aw-lens-ring-cell {
+  border-radius: 2px;
+  background: var(--aw-raised);
+}
+.aw-lens-ring-cell.hollow { background: rgba(8, 5, 2, 0.5); }
+.aw-lens-ring-cell.center {
+  background: transparent;
+  box-shadow: inset 0 0 0 2px var(--aw-gold);
+}
 
 /* ---------------------------------------------------------------- extraction report
    (post-exit modal — same warm voice; sentence case, no tracked caps) */
@@ -346,4 +496,7 @@ html.sf-reduce-motion .aw-gauge-fill { transition: none; }
   .ast-screen, .aw-crest, .aw-rig, .aw-leave, .aw-chip { border: 1px solid CanvasText; }
   .ast-screen, .aw-leave { background: Canvas; color: CanvasText; }
   .aw-hold-fill, .aw-gauge-fill { background: Highlight; }
+  .aw-lens, .aw-lens-chip, .aw-lens-swatch, .aw-lens-ring-cell { border: 1px solid CanvasText; }
+  .aw-lens { background: Canvas; color: CanvasText; }
+  .aw-lens-hp i { background: Highlight; }
 }

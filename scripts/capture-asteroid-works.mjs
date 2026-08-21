@@ -279,6 +279,68 @@ try {
   // or the evidence set silently never shows two of the six materials.
   await frameStill('deep', '07-deep-materials.png', false);
 
+  // ---------------------------------------------------------------- PQ-130.06 "hover as instrument"
+  // The cursor lens (law §6.4) is only ever on the glass while a pointer is on a cell, so it needs
+  // its own still or the evidence set never shows it. hoverStill parks the real mouse over a real
+  // cell and photographs what a player sees: a colour, a name, a number, two or three stamps.
+  const hoverStill = async (pick, shotName) => {
+    const spot = await page.evaluate((want) => {
+      const hook = document.querySelector('.ast-canvas').__ast3d;
+      if (!hook) return null;
+      const centre = (c, r) => {
+        const p = hook.projectCell(c, r);
+        if (!p) return null;
+        const xs = p.map((q) => q.x), ys = p.map((q) => q.y);
+        const x = (Math.min(...xs) + Math.max(...xs)) / 2;
+        const y = (Math.min(...ys) + Math.max(...ys)) / 2;
+        if (x < 90 || y < 90 || x > window.innerWidth - 90 || y > window.innerHeight - 90) return null;
+        return { x, y };
+      };
+      if (want.col != null) {
+        const at = centre(want.col, want.row);
+        return at ? { ...at, col: want.col, row: want.row } : null;
+      }
+      // Richest on-glass seam cell: the biggest body wins, so the card shows a real cell count.
+      let best = null;
+      for (let c = 0; c < hook.cols; c++) {
+        for (let r = 0; r < hook.rows; r++) {
+          const a = hook.cellAppearance(c, r);
+          if (!a || a.type !== 'vein') continue;
+          const at = centre(c, r);
+          if (!at) continue;
+          const score = a.seam ? a.seam.count : 1;
+          if (!best || score > best.score) best = { ...at, col: c, row: r, score };
+        }
+      }
+      return best;
+    }, pick);
+    if (!spot) { console.log(`${shotName}: skipped — nothing on glass to hover`); return; }
+    await page.mouse.move(spot.x - 6, spot.y - 6);
+    await page.mouse.move(spot.x, spot.y);
+    await page.waitForTimeout(500);          // 150ms hover delay + settle
+    await shot(shotName);
+    const read = await page.evaluate(() => {
+      const el = document.querySelector('.aw-lens');
+      if (!el || el.hidden) return null;
+      const r = el.getBoundingClientRect();
+      return {
+        w: Math.round(r.width), h: Math.round(r.height),
+        name: el.querySelector('.aw-lens-name')?.textContent || '',
+        num: el.querySelector('.aw-lens-num')?.textContent || '',
+        chips: [...el.querySelectorAll('.aw-lens-chip')].map((c) => c.textContent.replace(/\s+/g, ' ').trim()),
+        body: el.querySelector('.aw-lens-body')?.textContent || '',
+      };
+    });
+    if (!read) { failures.push(`${shotName}: the lens never appeared under the pointer`); return; }
+    console.log(`${shotName}: cell ${spot.col},${spot.row} → ${read.w}x${read.h}px "${read.name}" `
+      + `"${read.num}" chips [${read.chips.join(', ')}]${read.body ? ` body "${read.body}"` : ''}`);
+    // Park the pointer back on chrome so the next still is the clean default view.
+    await page.mouse.move(Math.round(VIEWPORT.width / 2), 8);
+    await page.waitForTimeout(250);
+  };
+  await hoverStill({}, '08-lens.png');
+
+
 
   // Carve the §9 gallery through the real break seam (screen repaints, site mirrors cleared).
   // The gallery is a spine with side sockets so machines KEEP contacts — hollowing everything
@@ -401,6 +463,13 @@ try {
   await page.keyboard.press('KeyB');
   await page.waitForTimeout(1400);
   await shot('03-site-running.png');
+
+  // The same instrument over a MACHINE: status lamp + one cause line + the 3x3 contact ring
+  // inside the card (law §6.4), instead of a swatch and consequence chips. The camera leash eases
+  // at <= 6 cells/s and the deep frame parked the rover ~30 rows away, so give it time to arrive
+  // or the extractor is still off-glass when the pointer goes looking for it.
+  await page.waitForTimeout(4000);
+  await hoverStill({ col: 13, row: 2 }, '08b-lens-machine.png'); // the extractor: uses geology, so the ring draws
 
   // Site register (law §4 two-register camera): whole-body silhouette against space.
   await page.keyboard.press('KeyZ');

@@ -10,6 +10,9 @@
 //                          top edge y-delta ≤ 0.5px, left edge x-delta ≤ 0.5px, square within 2%
 //   §11.6 no fog         — on a fresh seeded board every solid cell has a drawn material identity
 //                          and zero cells render the anonymous/unsurveyed appearance
+//   §6.4  cursor lens    — hovering a seam cell raises a .aw-lens of ≤ 2 text lines, ≤ 14 words,
+//                          ≤ 5 chips all drawn from the enumerated bank, and it is GONE once the
+//                          pointer moves onto chrome (PQ-130.06)
 // §11.1 and §11.6 read the renderer's own canvas.__ast3d hook (PQ-130.04) rather than
 // re-deriving the projection or the material table here — see the block below.
 import { createServer as createNetServer } from 'node:net';
@@ -241,6 +244,138 @@ try {
       + ` ${board.cells} solid cells, ${board.blind} of them beyond the old reveal radius and unmarked;`
       + ` materials ${JSON.stringify(board.materials)}; ${board.seams} seam bodies (biggest ${board.biggestSeam || 0})`);
     for (const p of board.problems || []) failures.push(`${label}: ${p}`);
+
+    // ---------------------------------------------------------------- §6.4 cursor lens (PQ-130.06)
+    // The default-view word budget above is asserted with NO pointer on the board — that is the
+    // lens's other half of the law (§2.5: it must vanish when the pointer leaves). Now hover a real
+    // seam cell and prove the card that appears is a field-notebook tag, not the context bay that
+    // used to live in a well: two text lines at most, stamps from an enumerated bank, and a hard
+    // volume cap so "no tutorial copy" is measured rather than asserted by class name.
+    const target = await page.evaluate(() => {
+      const hook = document.querySelector('.ast-canvas').__ast3d;
+      if (!hook) return null;
+      let best = null;
+      for (let c = 0; c < hook.cols; c++) {
+        for (let r = 0; r < hook.rows; r++) {
+          const a = hook.cellAppearance(c, r);
+          if (!a || a.type !== 'vein') continue;
+          const p = hook.projectCell(c, r);
+          if (!p) continue;
+          const xs = p.map((q) => q.x), ys = p.map((q) => q.y);
+          const x = (Math.min(...xs) + Math.max(...xs)) / 2;
+          const y = (Math.min(...ys) + Math.max(...ys)) / 2;
+          if (x < 120 || y < 120 || x > window.innerWidth - 120 || y > window.innerHeight - 120) continue;
+          const score = (a.seam ? a.seam.count : 0);
+          if (!best || score > best.score) best = { x, y, col: c, row: r, score };
+        }
+      }
+      return best;
+    });
+    if (!target) {
+      failures.push(`${label}: §6.4 no on-glass seam cell to hover — the lens was never exercised`);
+    } else {
+      // Two moves: the first lands the pointer, the second guarantees a mousemove with a real
+      // delta. 400ms clears the 150ms hover delay plus a frame of slack.
+      await page.mouse.move(target.x - 4, target.y - 4);
+      await page.mouse.move(target.x, target.y);
+      await page.waitForTimeout(400);
+      const lens = await page.evaluate(() => {
+        const out = { problems: [], words: 0, chips: [], lines: 0, text: '' };
+        const el = document.querySelector('.aw-lens');
+        if (!el) { out.problems.push('§6.4 no .aw-lens in the DOM'); return out; }
+        const visible = (n) => {
+          if (!n.getClientRects().length) return false;
+          const cs = getComputedStyle(n);
+          if (cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) === 0) return false;
+          const r = n.getBoundingClientRect();
+          return r.width >= 2 && r.height >= 2;
+        };
+        if (!visible(el)) { out.problems.push('§6.4 the lens did not appear on a 400ms hover'); return out; }
+        const rect = el.getBoundingClientRect();
+        out.box = { w: Math.round(rect.width), h: Math.round(rect.height) };
+        if (rect.width > 260) out.problems.push(`§6.4 lens is ${Math.round(rect.width)}px wide (max 260)`);
+        if (getComputedStyle(el).pointerEvents !== 'none') {
+          out.problems.push('§6.4 the lens is not pointer-transparent — it can eat its own hover');
+        }
+        // The swatch is the law's first element: a colour sampled from the board. A machine/ghost
+        // trades it for a lamp dot, but a hovered CELL must show a painted swatch.
+        const mark = el.querySelector('.aw-lens-swatch');
+        const markPaint = mark && visible(mark)
+          ? getComputedStyle(mark).backgroundImage + '|' + getComputedStyle(mark).backgroundColor : '';
+        if (!mark || !visible(mark)) out.problems.push('§6.4 the lens has no swatch');
+        else if (/^none\|rgba\(0, 0, 0, 0\)$/.test(markPaint)) out.problems.push('§6.4 the swatch is unpainted');
+
+        // Chips come from an enumerated bank — the UI never invents chip text. Restated here on
+        // purpose: a chip word renamed in the module fails this check instead of riding along.
+        const BANK = [/^Bore \d+u$/, /^Farm$/, /^Hazard$/, /^Locked Mk\d+$/, /^Splits seam$/,
+          /^Valid seat$/, /^Blocked$/];
+        const chipEls = [...el.querySelectorAll('.aw-lens-chip')].filter(visible);
+        out.chips = chipEls.map((c) => c.textContent.replace(/\s+/g, ' ').trim());
+        if (chipEls.length > 5) out.problems.push(`§6.4 ${chipEls.length} chips (max 5)`);
+        for (const t of out.chips) {
+          if (!BANK.some((re) => re.test(t))) out.problems.push(`§6.4 chip "${t}" is not in the bank`);
+        }
+        for (const c of chipEls) {
+          if (Math.round(c.getBoundingClientRect().height) > 22) {
+            out.problems.push(`§6.4 chip is ${Math.round(c.getBoundingClientRect().height)}px tall (20px)`);
+          }
+          if (!c.querySelector('svg')) out.problems.push(`§6.4 chip "${c.textContent.trim()}" has no icon glyph`);
+        }
+
+        // Text volume — the ungameable half. Count OWN text on every visible descendant, group the
+        // non-chip ones into visual lines by their top edge, and cap the raw word count. Tutorial
+        // copy is a volume, not a class name.
+        const owners = [];
+        for (const n of el.querySelectorAll('*')) {
+          if (!visible(n)) continue;
+          const cs = getComputedStyle(n);
+          const fs = parseFloat(cs.fontSize);
+          const own = [...n.childNodes].filter((k) => k.nodeType === Node.TEXT_NODE)
+            .map((k) => k.textContent.trim()).join(' ').trim();
+          if (!own) continue;
+          if (Number.isFinite(fs) && fs < 12) out.problems.push(`§11.4 lens glyph at ${fs}px < 12px ("${own}")`);
+          if (cs.textTransform === 'uppercase') out.problems.push(`§11.4 uppercase in the lens ("${own}")`);
+          if (/saira/i.test(cs.fontFamily || '')) out.problems.push(`§11.4 Saira in the lens ("${own}")`);
+          const words = own.split(/\s+/).filter((w) => /[a-zA-Z]/.test(w));
+          out.words += words.length;
+          if (words.length > 6) out.problems.push(`§6.4 "${own}" is ${words.length} words — that is prose`);
+          const chip = n.closest('.aw-lens-chip');
+          const box = n.getBoundingClientRect();
+          owners.push({ chip: !!chip, mid: box.top + box.height / 2, own });
+        }
+        out.text = owners.map((o) => o.own).join(' / ');
+        // Cluster by LINE BOX, not by exact top: the 14px name and the 13px numerals are centred
+        // on the same row and their top edges differ by a pixel. Anything within 9px of a
+        // established line's centre is on that line.
+        const mids = owners.filter((o) => !o.chip).map((o) => o.mid).sort((a, b) => a - b);
+        const lines = [];
+        for (const m of mids) {
+          if (!lines.length || m - lines[lines.length - 1] > 9) lines.push(m);
+        }
+        out.lines = lines.length;
+        if (out.lines > 2) out.problems.push(`§6.4 ${out.lines} text lines (max 2): ${out.text}`);
+        if (out.words > 14) out.problems.push(`§6.4 ${out.words} words in the lens: ${out.text}`);
+        return out;
+      });
+      notes.push(`${label}: lens over vein ${target.col},${target.row} — ${lens.box ? lens.box.w + 'x' + lens.box.h : '?'}px,`
+        + ` ${lens.lines} text lines, ${lens.words} words, chips [${(lens.chips || []).join(', ')}]`);
+      for (const p of lens.problems || []) failures.push(`${label}: ${p}`);
+
+      // Law §2.5/§6.4: the pointer leaves, the card goes. Move onto the crest (chrome, 40px tall,
+      // outside the canvas) — the same gesture a player makes reaching for Leave.
+      await page.mouse.move(Math.round(viewport.width / 2), 8);
+      await page.waitForTimeout(300);
+      const gone = await page.evaluate(() => {
+        const el = document.querySelector('.aw-lens');
+        if (!el) return true;
+        if (!el.getClientRects().length) return true;
+        const cs = getComputedStyle(el);
+        return cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) === 0;
+      });
+      if (!gone) failures.push(`${label}: §6.4 the lens survived the pointer leaving the board`);
+      // Restore the no-hover default view for anything that follows.
+      await page.mouse.move(0, 0);
+    }
 
     await page.close();
   }
