@@ -6,8 +6,12 @@
 //   §11.3 word budget    — ≤ 15 words of visible text under .ast-screen in the default drive view
 //   §11.4 type           — no computed font-size < 12px; zero uppercase transforms; no Saira
 //   §11.5 palette ban    — no banned blue-gray computed color/background in the chrome
-// (§11.1 flatness is structural this leaf: zero yaw/pitch ortho over flat square pads; the
-// whole-theater stills carry the eyeball evidence.)
+//   §11.1 flatness       — every on-glass cell's corners projected through the LIVE camera:
+//                          top edge y-delta ≤ 0.5px, left edge x-delta ≤ 0.5px, square within 2%
+//   §11.6 no fog         — on a fresh seeded board every solid cell has a drawn material identity
+//                          and zero cells render the anonymous/unsurveyed appearance
+// §11.1 and §11.6 read the renderer's own canvas.__ast3d hook (PQ-130.04) rather than
+// re-deriving the projection or the material table here — see the block below.
 import { createServer as createNetServer } from 'node:net';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
@@ -135,6 +139,109 @@ try {
 
     notes.push(`${label}: board ${(result.boardPct * 100).toFixed(1)}%, ${result.words} visible words (${result.wordList.join(' / ')})`);
     for (const p of result.problems || []) failures.push(`${label}: ${p}`);
+
+    // ---------------------------------------------------------------- §11.1 + §11.6 (PQ-130.04)
+    // Both laws are asserted against the LIVE renderer through canvas.__ast3d, never against a
+    // re-implementation here: a check that projects the grid with its own copy of the camera maths,
+    // or that decides for itself what a cell "should" look like, passes happily while the board on
+    // screen lies. The hook returns what the renderer actually drew with.
+    const board = await page.evaluate(() => {
+      const out = { problems: [], tested: 0, cells: 0, blind: 0, materials: {}, seams: 0 };
+      const canvas = document.querySelector('.ast-canvas');
+      const hook = canvas && canvas.__ast3d;
+      if (!hook) { out.problems.push('renderer debug hook canvas.__ast3d missing'); return out; }
+      const drill = window.SF.state.drill;
+      if (!drill) { out.problems.push('no live drill state'); return out; }
+      const COLS = hook.cols, ROWS = hook.rows;
+
+      // §11.1 FLATNESS — projecting any cell's corners through the live camera: top edge y-delta
+      // ≤ 0.5px, left edge x-delta ≤ 0.5px, projected width/height within 2% of square. Only cells
+      // actually on the glass are judged; an off-screen cell's projection is not a picture anyone
+      // sees. This closes the gap .01–.03 left open ("structural this leaf").
+      let worstEdge = 0, worstSquare = 0, minW = Infinity, maxW = 0;
+      for (let c = 0; c < COLS; c++) {
+        for (let r = 0; r < ROWS; r++) {
+          const p = hook.projectCell(c, r);
+          if (!p) continue;
+          const xs = p.map((q) => q.x), ys = p.map((q) => q.y);
+          if (Math.max(...xs) < 0 || Math.min(...xs) > window.innerWidth) continue;
+          if (Math.max(...ys) < 0 || Math.min(...ys) > window.innerHeight) continue;
+          out.tested++;
+          const [tl, tr, br, bl] = p;
+          const dyTop = Math.abs(tr.y - tl.y);
+          const dxLeft = Math.abs(bl.x - tl.x);
+          const w = Math.abs(tr.x - tl.x);
+          const h = Math.abs(bl.y - tl.y);
+          const sq = Math.abs(w - h) / Math.max(w, h, 1);
+          worstEdge = Math.max(worstEdge, dyTop, dxLeft);
+          worstSquare = Math.max(worstSquare, sq);
+          minW = Math.min(minW, w);
+          maxW = Math.max(maxW, w);
+          if (out.problems.length < 6) {
+            if (dyTop > 0.5) out.problems.push(`§11.1 cell ${c},${r} top edge y-delta ${dyTop.toFixed(3)}px > 0.5`);
+            if (dxLeft > 0.5) out.problems.push(`§11.1 cell ${c},${r} left edge x-delta ${dxLeft.toFixed(3)}px > 0.5`);
+            if (sq > 0.02) out.problems.push(`§11.1 cell ${c},${r} projects ${w.toFixed(1)}x${h.toFixed(1)} — ${(sq * 100).toFixed(2)}% off square`);
+          }
+          void br;
+        }
+      }
+      out.worstEdge = worstEdge;
+      out.worstSquare = worstSquare;
+      out.cellPx = Math.round(minW) + '-' + Math.round(maxW);
+      if (!out.tested) out.problems.push('§11.1 no cells projected onto the glass — nothing was asserted');
+      // Vacuity guard: a projectCell that returned four identical (or zero) corners would satisfy
+      // every delta above while drawing nothing anyone could measure. A real work-zoom cell is a
+      // sizeable fraction of the glass, and law §4 puts it at 96-128px at 1920x1080.
+      if (out.tested && (minW < 8 || maxW > window.innerWidth * 0.6)) {
+        out.problems.push(`§11.1 projected cell widths ${minW.toFixed(1)}-${maxW.toFixed(1)}px are not a real board`);
+      }
+
+      // §11.6 NO FOG — every non-bored cell's material identity is queryable and drawn, on a fresh
+      // seeded board, for the WHOLE field and not a sample near the rover: isTileSurveyed used to
+      // reveal a two-cell local radius, so a rover-local sample would have passed before this leaf
+      // and proved nothing. `blind` counts the cells the old gate WOULD have hidden — cells the scan
+      // pulse never marked and that sit outside that radius. It must be large, or the assertion is
+      // vacuous however green it looks.
+      const KNOWN = ['matrix', 'basalt', 'metal', 'ice', 'exotic', 'gas'];
+      const ax = drill.avatar.col, ay = drill.avatar.row;
+      for (let c = 0; c < COLS; c++) {
+        for (let r = 0; r < ROWS; r++) {
+          const a = hook.cellAppearance(c, r);
+          if (!a) { out.problems.push(`§11.6 cell ${c},${r} has no appearance at all`); return out; }
+          if (a.type === 'empty') continue;
+          out.cells++;
+          out.materials[a.material || 'NONE'] = (out.materials[a.material || 'NONE'] || 0) + 1;
+          const tile = drill.field[c][r];
+          const far = ((c - ax) * (c - ax) + (r - ay) * (r - ay)) > 4;
+          const unmarked = tile && tile.surveyed !== true;
+          if (far && unmarked) out.blind++;
+          if (out.problems.length >= 12) continue;
+          if (a.anonymous) out.problems.push(`§11.6 cell ${c},${r} renders an anonymous appearance`);
+          if (!a.material) out.problems.push(`§11.6 cell ${c},${r} (${a.type}) has no material identity`);
+          else if (!KNOWN.includes(a.material)) out.problems.push(`§11.6 cell ${c},${r} unknown material '${a.material}'`);
+          if (!a.revealed) out.problems.push(`§11.6 cell ${c},${r} is still gated by the survey visibility flag`);
+          if (a.type === 'gas' && a.material !== 'gas') out.problems.push(`§11.6 gas pocket ${c},${r} drawn as '${a.material}'`);
+        }
+      }
+      if (out.cells < 100) out.problems.push(`§11.6 only ${out.cells} solid cells — the board is not a fresh field`);
+      if (out.blind < 50) out.problems.push(`§11.6 vacuous: only ${out.blind} cells were outside the old reveal radius and unmarked by the pulse`);
+
+      // Seams render as bodies (law §3.5): the renderer must actually be tracking components, and
+      // the split preview must be reachable. A board with veins and zero bodies is the feature off.
+      const seams = hook.seams();
+      out.seams = seams.length;
+      out.biggestSeam = seams.reduce((m, s) => Math.max(m, s.count), 0);
+      if (!seams.length) out.problems.push('§3.5 no seam bodies computed on a field that has veins');
+      if (typeof hook.splitPreview !== 'function') out.problems.push('§3.5 split preview hook missing');
+      return out;
+    });
+
+    notes.push(`${label}: ${board.tested} cells projected (worst edge ${Number(board.worstEdge || 0).toFixed(3)}px,`
+      + ` worst square ${(Number(board.worstSquare || 0) * 100).toFixed(2)}%, cell ${board.cellPx}px);`
+      + ` ${board.cells} solid cells, ${board.blind} of them beyond the old reveal radius and unmarked;`
+      + ` materials ${JSON.stringify(board.materials)}; ${board.seams} seam bodies (biggest ${board.biggestSeam || 0})`);
+    for (const p of board.problems || []) failures.push(`${label}: ${p}`);
+
     await page.close();
   }
 } catch (err) {

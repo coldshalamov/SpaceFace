@@ -1089,16 +1089,26 @@ export const drill = {
     return false;
   },
 
-  // Surveyed tiles stay legible for the remainder of the session. The two-tile local reveal keeps
-  // basic movement usable even while the scan is cooling down.
+  // THE PRESENTATION VISIBILITY GATE — AND IT IS OPEN (design law §2.3, PQ-130.04).
+  //
+  // "No fog of war. Every cell's material is visible from the first frame. The strategy lives in
+  // tunnel geometry, not information hiding. Deep exotics are visible even when your drill can't
+  // reach them yet — visible aspiration is the upgrade advertisement."
+  //
+  // This query has exactly one job: telling presentation whether it may name a cell. Every caller
+  // is a drawer or a readout (the works renderer, the cursor readout the screen shell feeds the
+  // inspector, and the legacy 2D painter's context line), so opening it here removes fog everywhere
+  // at once and cannot touch a sim value: no yield, hardness, tier gate, hazard, rock budget or
+  // save field reads it, and none of them ever did.
+  //
+  // What stays untouched above: pulseScan() still sweeps SCAN_RADIUS and still writes
+  // `tile.surveyed`. The pulse is now a cosmetic assay ping (law §2.3 permits exactly that) and its
+  // marks remain the session record the drive checks assert against — it simply no longer decides
+  // what a person is allowed to see.
   isTileSurveyed(col, row) {
     const d = this.state.drill;
     if (!d || col < 0 || col >= COLS || row < 0 || row >= ROWS) return false;
-    const tile = d.field[col][row];
-    if (!tile || tile.type === 'empty' || tile.surveyed) return true;
-    const dc = col - d.avatar.col;
-    const dr = row - d.avatar.row;
-    return (dc * dc) + (dr * dr) <= GAS_TELL_RADIUS * GAS_TELL_RADIUS;
+    return true;
   },
 
   // Deterministic mulberry32 RNG seeded by the asteroid id — same id, same field, every visit.

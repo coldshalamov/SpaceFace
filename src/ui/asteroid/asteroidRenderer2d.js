@@ -14,28 +14,38 @@ import { drillTierReqForOre } from '../../systems/drill.js';
 export const TILE = 40;
 
 // Material identity — one glance, one material (brief §11 "visual identity per material").
+// VALUES ARE THE DESIGN LAW §3.5 BOARD PALETTE (PQ-130.04). Keys and shapes are frozen — the
+// inspector and the 3D renderer both read through them, so the legend can never disagree with the
+// board. Sentence case per law §3.3; the blue-gray console family is gone.
 export const MATERIALS = {
-  matrix: { name: 'Silicate Matrix', base: '#41382e', dark: '#2c251d', band: '#4c4236', fleck: '#5c5142' },
-  basalt: { name: 'Dense Basalt', base: '#272b33', dark: '#171a20', facet: '#323844', crack: '#10131a' },
-  gas: { name: 'Compressed Gas', base: '#1d2b2b', murk: '#12403d', glow: '#2fd4a5', warn: '#ffd166' },
-  cavity: { deep: '#070b13', wall: '#0d1320', rim: '#3d4a5e', rimLit: '#66788f' },
-  // Unsurveyed rock still reads as SOLID MASS — muted material painters + this hatch signal.
-  unknown: { base: '#31343c', hatch: '#20242c' },
+  matrix: { name: 'Silicate matrix', base: '#7a6955', dark: '#5b4e3f', band: '#8b7a64', fleck: '#695a48' },
+  basalt: { name: 'Dense basalt', base: '#453f3a', dark: '#2f2b28', facet: '#514a44', crack: '#3a3531' },
+  gas: { name: 'Compressed gas', base: '#4a4a36', murk: '#2b2d1f', glow: '#d3e26a', warn: '#ffb648' },
+  cavity: { deep: '#1f1a15', wall: '#2a231b', rim: '#4a3f31', rimLit: '#7a6752' },
+  // Law §2.3 deleted fog of war: there is no anonymous appearance left to paint. The key survives
+  // for the dead 2D painter's call sites; its values are now plain silicate so even that path
+  // cannot render an "unknown" cell.
+  unknown: { base: '#7a6955', hatch: '#695a48' },
 };
 
+// Ore identity, law §3.5. `glow` is NULL on every row on purpose: a resting emissive on a mineral
+// is the neon-icon read design law §2.7 bans, and the six rows that carried one were exactly the
+// deep/exotic cells most likely to blow out under bloom. Colour now comes from albedo + the raking
+// key + the material's roughness, like every other object in the flight world. `glint` is the
+// highlight the cluster material leans toward, never a pure white.
 export const ORE_TINTS = {
-  cmdty_silicate: { vein: '#9aa4b8', glint: '#d7dee8', glow: null },
-  cmdty_ore_iron: { vein: '#b08e5e', glint: '#e8cf9e', glow: null },
-  cmdty_ore_copper: { vein: '#2fae9b', glint: '#8ff3e2', glow: null },
-  cmdty_ore_bronzium: { vein: '#8c98a8', glint: '#dde5ee', glow: null },
-  cmdty_ore_silverium: { vein: '#c8d2de', glint: '#ffffff', glow: null },
-  cmdty_ore_goldium: { vein: '#e8c04a', glint: '#fff2b0', glow: null },
-  cmdty_ore_platinium: { vein: '#bcd8ea', glint: '#ffffff', glow: '#7db8d8' },
-  cmdty_ore_einsteinium: { vein: '#9a6cf0', glint: '#e4d4ff', glow: '#8d66ff' },
-  cmdty_gem_emerald: { vein: '#3ecf8e', glint: '#c2ffe3', glow: '#3ecf8e' },
-  cmdty_gem_ruby: { vein: '#e05666', glint: '#ffc2ca', glow: '#e05666' },
-  cmdty_gem_diamond: { vein: '#7fd4f2', glint: '#ffffff', glow: '#39d0ff' },
-  cmdty_exotic_amazonite: { vein: '#25e8cf', glint: '#d8fffa', glow: '#00ffd5' },
+  cmdty_silicate: { vein: '#8b7a64', glint: '#b9a88c', glow: null },
+  cmdty_ore_iron: { vein: '#9a6f4a', glint: '#f0a24e', glow: null },
+  cmdty_ore_copper: { vein: '#4f9c86', glint: '#9fd8c4', glow: null },
+  cmdty_ore_bronzium: { vein: '#63666c', glint: '#9aa1a9', glow: null },
+  cmdty_ore_silverium: { vein: '#78838e', glint: '#bcc6d0', glow: null },
+  cmdty_ore_goldium: { vein: '#c9992f', glint: '#f0cf78', glow: null },
+  cmdty_ore_platinium: { vein: '#6d8a9c', glint: '#b6ccd9', glow: null },
+  cmdty_ore_einsteinium: { vein: '#8f6ae0', glint: '#c9b0ff', glow: null },
+  cmdty_gem_emerald: { vein: '#3e9c74', glint: '#a8e0c6', glow: null },
+  cmdty_gem_ruby: { vein: '#b8434f', glint: '#f0a8b0', glow: null },
+  cmdty_gem_diamond: { vein: '#b9d6d8', glint: '#e6f5f6', glow: null },
+  cmdty_exotic_amazonite: { vein: '#2fb8a6', glint: '#b8f0e6', glow: null },
 };
 
 export const STATUS_COLORS = {

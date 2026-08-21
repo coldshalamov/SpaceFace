@@ -94,6 +94,192 @@ try {
   await page.waitForTimeout(1200);
   await shot('01-cutaway-fresh.png');
 
+  // ---------------------------------------------------------------- PQ-130.04 "cells speak" still
+  // One frame that has to answer the stranger test on its own: a seam body outlined with its count
+  // chip beside plain matrix, a gas pocket, an MK-locked vein, and the split preview live under the
+  // rig's aim. Rather than hoping the entry shaft happens to sit on all four, hunt the generated
+  // field for the richest work-zoom window that also contains a seam cell whose removal genuinely
+  // splits a body in two — otherwise the "split preview" evidence is a preview of nothing.
+  const frameStill = async (MODE_IN, shotName, hard) => {
+  const framed = await page.evaluate((MODE) => {
+    const sf = window.SF;
+    const st = sf.state;
+    const d = st.drill;
+    const COLS = 28, ROWS = 45;
+    const iOf = (c, r) => r * COLS + c;
+    const inb = (c, r) => c >= 0 && c < COLS && r >= 0 && r < ROWS;
+    const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    const oreOf = (c, r) => {
+      const t = d.field[c][r];
+      return t && t.type === 'vein' && t.ore ? t.ore : null;
+    };
+
+    // 4-connected same-ore components (the same body definition the renderer draws).
+    const comp = new Map();
+    const bodies = [];
+    const seen = new Uint8Array(COLS * ROWS);
+    for (let c = 0; c < COLS; c++) {
+      for (let r = 0; r < ROWS; r++) {
+        const i0 = iOf(c, r);
+        if (seen[i0]) continue;
+        seen[i0] = 1;
+        const ore = oreOf(c, r);
+        if (!ore) continue;
+        const cells = [];
+        const stack = [[c, r]];
+        while (stack.length) {
+          const [cc, rr] = stack.pop();
+          cells.push([cc, rr]);
+          for (const [dc, dr] of N4) {
+            const nc = cc + dc, nr = rr + dr;
+            if (!inb(nc, nr)) continue;
+            const ni = iOf(nc, nr);
+            if (seen[ni] || oreOf(nc, nr) !== ore) continue;
+            seen[ni] = 1;
+            stack.push([nc, nr]);
+          }
+        }
+        const body = { ore, cells };
+        for (const [cc, rr] of cells) comp.set(iOf(cc, rr), body);
+        bodies.push(body);
+      }
+    }
+
+    // Articulation cells: removing one leaves two or more bodies — the law's `4 + 4`.
+    const splits = [];
+    for (const b of bodies) {
+      if (b.cells.length < 3) continue;
+      const set = new Set(b.cells.map(([c, r]) => iOf(c, r)));
+      for (const [cx, cy] of b.cells) {
+        // 'work' keeps clear of the §9 gallery spine at rows 1-4; 'deep' hunts the bottom third,
+        // which is the only place the ice and deep-exotic rows of the law's table actually occur.
+        if (cy < (MODE === 'deep' ? 26 : 8)) continue;
+        const rest = new Set(set);
+        rest.delete(iOf(cx, cy));
+        const done = new Set();
+        let parts = 0;
+        for (const i of rest) {
+          if (done.has(i)) continue;
+          parts++;
+          done.add(i);
+          const stk = [i];
+          while (stk.length) {
+            const cur = stk.pop();
+            const cc = cur % COLS, rr = (cur - cc) / COLS;
+            for (const [dc, dr] of N4) {
+              const nc = cc + dc, nr = rr + dr;
+              if (!inb(nc, nr)) continue;
+              const ni = iOf(nc, nr);
+              if (!rest.has(ni) || done.has(ni)) continue;
+              done.add(ni);
+              stk.push(ni);
+            }
+          }
+        }
+        if (parts >= 2) splits.push({ c: cx, r: cy, ore: b.ore, size: b.cells.length });
+      }
+    }
+    // The deep frame exists to photograph the ice and deep-exotic rows, which are rare and scattered
+    // — demanding an articulation cell down there usually finds none, and then the two materials
+    // never appear in the evidence at all. Any vein cell will do as an aim target for that frame.
+    if (!splits.length && MODE === 'deep') {
+      for (const b of bodies) {
+        for (const [cx, cy] of b.cells) {
+          if (cy >= 26) splits.push({ c: cx, r: cy, ore: b.ore, size: b.cells.length });
+        }
+      }
+    }
+    if (!splits.length) return { ok: false, reason: 'no splittable seam body in this field' };
+
+    // Richness of the work-zoom window a rover at (rc,rr) would frame: ~16 columns by ~9 rows.
+    const EXOTIC = ['cmdty_ore_einsteinium', 'cmdty_gem_emerald', 'cmdty_gem_ruby', 'cmdty_exotic_amazonite'];
+    const richness = (rc, rr) => {
+      let gas = 0, locked = 0, basalt = 0, seam3 = 0, ice = 0, exo = 0;
+      const fams = new Set();
+      for (let c = rc - 8; c <= rc + 8; c++) {
+        for (let r = rr - 4; r <= rr + 4; r++) {
+          if (!inb(c, r)) continue;
+          const t = d.field[c][r];
+          if (!t) continue;
+          if (t.type === 'gas') gas++;
+          else if (t.type === 'rock') basalt++;
+          else if (t.type === 'vein' && t.ore) {
+            fams.add(t.ore);
+            if ((t.tierReq || 1) > 1) locked++;
+            if (t.ore === 'cmdty_gem_diamond') ice++;
+            if (EXOTIC.includes(t.ore)) exo++;
+            const b = comp.get(iOf(c, r));
+            if (b && b.cells.length >= 3) seam3++;
+          }
+        }
+      }
+      const base = (gas ? 16 : 0) + (locked ? 16 : 0) + (basalt ? 6 : 0) + Math.min(seam3, 6) * 3 + fams.size * 2;
+      return base + (MODE === 'deep' ? (ice ? 60 : 0) + Math.min(exo, 4) * 12 : 0);
+    };
+
+    // Park the rig in a socket beside the articulation cell and point the boom at it.
+    let best = null;
+    for (const sp of splits) {
+      for (const [dc, dr] of N4) {
+        const nc = sp.c + dc, nr = sp.r + dr;
+        if (!inb(nc, nr) || nr < (MODE === 'deep' ? 24 : 6)) continue;
+        const t = d.field[nc][nr];
+        if (!t || t.type === 'gas' || t.type === 'vein') continue;   // never blow a pocket for a photo
+        const score = richness(nc, nr) + Math.min(sp.size, 9) * 5;
+        if (!best || score > best.score) best = { score, rc: nc, rr: nr, tc: sp.c, tr: sp.r, ore: sp.ore, size: sp.size };
+      }
+    }
+    if (!best) return { ok: false, reason: 'no rover socket beside a splittable seam' };
+
+    // Carve just the socket, through the real break path so the renderer sees it.
+    const ent = st.entities.get(d.asteroidId);
+    if (d.field[best.rc][best.rr].type !== 'empty') {
+      const was = d.field[best.rc][best.rr].type;
+      d.field[best.rc][best.rr] = { type: 'empty', hp: 0, maxHp: 0, ore: null, hazard: false, tierReq: 1, hardness: 0 };
+      if (ent && ent.data) {
+        if (!Array.isArray(ent.data.drillCleared)) ent.data.drillCleared = [];
+        const idx = best.rr * 28 + best.rc;
+        if (!ent.data.drillCleared.includes(idx)) ent.data.drillCleared.push(idx);
+      }
+      sf.bus.emit('drill:break', { col: best.rc, row: best.rr, type: was, ore: null, wasVein: false, wasGas: false });
+    }
+    d.avatar.col = best.rc; d.avatar.row = best.rr;
+    d.avatar.fromCol = best.rc; d.avatar.fromRow = best.rr;
+    d.avatar.moveDuration = 0; d.avatar.moveElapsed = 0;
+    d.avatar.faceDir = best.tr > best.rr ? 'down' : (best.tr < best.rr ? 'up' : (best.tc > best.rc ? 'right' : 'left'));
+    return { ok: true, ...best, tier: st.player.miningBeam ? st.player.miningBeam.tierId : 'beam_mk1' };
+  }, MODE_IN);
+  if (!framed.ok) {
+    if (hard) failures.push(`${shotName} framing: ${framed.reason}`);
+    else console.log(`${shotName}: skipped — ${framed.reason}`);
+    return;
+  }
+  {
+    await page.waitForTimeout(3200);   // camera leash eases in; the split preview holds while aimed
+    await shot(shotName);
+    const spoke = await page.evaluate(() => {
+      const hook = document.querySelector('.ast-canvas').__ast3d;
+      const out = { seams: hook.seams().length, split: hook.splitPreview(), materials: {} };
+      for (let c = 0; c < hook.cols; c++) {
+        for (let r = 0; r < hook.rows; r++) {
+          const a = hook.cellAppearance(c, r);
+          if (!a || a.type === 'empty') continue;
+          out.materials[a.material] = (out.materials[a.material] || 0) + 1;
+        }
+      }
+      return out;
+    });
+    console.log(`${shotName}: aim ${framed.tc},${framed.tr} ${framed.ore} body ${framed.size}`,
+      '· split →', JSON.stringify(spoke.split), '· bodies', spoke.seams, '· materials', JSON.stringify(spoke.materials));
+    if (hard && !spoke.split.length) failures.push(`${shotName}: the split preview drew nothing under the aim`);
+  }
+  };
+  await frameStill('work', '06-cells-speak.png', true);
+  // The ice and deep-exotic rows of law §3.5 only occur below ~row 30, so they need their own frame
+  // or the evidence set silently never shows two of the six materials.
+  await frameStill('deep', '07-deep-materials.png', false);
+
+
   // Carve the §9 gallery through the real break seam (screen repaints, site mirrors cleared).
   // The gallery is a spine with side sockets so machines KEEP contacts — hollowing everything
   // starves the extractor, which is the mechanic, not the demo. The gas tap corridor hunts a REAL

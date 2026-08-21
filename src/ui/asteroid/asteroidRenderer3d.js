@@ -8,10 +8,13 @@
 //     (relief, tint, bump), never across the cell boundary.
 //   - CARVED = HONEST CAVITY. A dug cell opens a real recess: cavity floor plus the side walls of
 //     the blocks around it. What you see is what the sim has.
-//   - VEINS ARE TREASURE. Surveyed (or approached) veins erupt as crystal clusters tinted by ore,
-//     on a mineral stain — you can see what a cell holds before you spend it.
-//   - GAS IS DANGER, NOT LOOT. Pockets stay hidden until their tell (nearby digging or a survey),
-//     then read as a cracked cell seeping sickly vapor — never a glowing pickup.
+//   - EVERY CELL SPEAKS, FROM THE FIRST FRAME (law §2.3 — fog of war deleted). Each material is a
+//     host material + a surface + an inclusion SHAPE (law §3.5's three channels), so a stranger can
+//     name ore / gas / plain rock / ice / exotic at work zoom without hovering anything.
+//   - SEAMS ARE BODIES, NOT CELLS. Contiguous same-ore cells share one perimeter outline and one
+//     count chip, and aiming at a seam cell previews the bodies the cut would leave behind.
+//   - GAS IS DANGER, NOT LOOT. A pocket is the block itself cracked — a dark core sunk in the cut
+//     face, fissures radiating out of it, a wisp drifting above. Never a crystal, never a halo.
 //   - THE RIG IS A VEHICLE. Treads, beacon, cabin light, articulated auger arm that bites the wall,
 //     on a lit umbilical spooling down from the surface derrick you entered through.
 //   - THE BOARD IS A BODY, NOT A TILE WALL: an irregular silhouette skirt wraps the field so the
@@ -41,7 +44,9 @@ import {
 } from '../../render/rockSurfaceLibrary.js';
 import {
   makeRockMaterials, makeMachine, makeRover, makeDerrick, metalMat,
-  makeCellBlockGeos, makeOreClusterGeo, makeGasVaporGeo, makeCrackGeos,
+  makeCellBlockGeos, makeOreClusterGeo, makeGasVaporGeo,
+  makeMetalVeinGeo, makeIceSheenGeo, makeExoticLatticeGeo, makeRadialCrackGeos,
+  makeGasCoreGeo, makeVentedScarGeo, makeBasaltBandGeo, makeMkStampGeo,
 } from '../../render/asteroidInteriorPreview.js';
 
 const { COLS, ROWS, SCAN_RADIUS, SCAN_ACTIVE_S } = DRILL_CONST;
@@ -79,7 +84,7 @@ const Z = {
   back: -0.55,                // cavity floor
   overlay: 0.14,              // conduits hug the cavity floor
   rover: 0.62,                // the rig rides inside the tunnel
-  stain: ROCK_FACE + 0.24,    // mineral stains / murk sit on the cut face
+  stain: ROCK_FACE + 0.24,    // bore-damage decals sit on the cut face
   ore: ROCK_FACE + 0.27,      // crystal bases
   gas: ROCK_FACE + 0.42,      // seeping vapor, proud of the face
   particles: ROCK_FACE + 0.5,
@@ -88,6 +93,73 @@ const Z = {
 };
 
 const ENTRY_COL = Math.floor(COLS / 2);
+
+// ---------------------------------------------------------------- material identity (law §3.5)
+// PQ-130.04 "Cells speak". The sim's tile grammar is `dirt | rock | vein(ore) | gas | empty`; the
+// design law's board palette is a SIX-MATERIAL vocabulary. This table is the mapping, and it is the
+// single place presentation decides what a cell IS. Nothing downstream re-derives it.
+//
+// Families are assigned on the commodity's own character, never on its price:
+//   metal  — the workable metal ladder (iron → platinum): rust-toned host, branching metallic vein,
+//            angular chips. One inclusion shape for the whole ladder; the hue separates them.
+//   ice    — raw diamond, the one cold, glassy, planar commodity in the ladder (law's "Ice" row).
+//   exotic — stellarite, the deep gems and the prism shard: the law's "Deep exotic" — a violet host
+//            under a strut lattice, visible from the first frame as aspiration you cannot yet cut.
+//   matrix — silicate, which IS the matrix; its vein is a richer patch of the same warm stone.
+const ORE_FAMILY = {
+  cmdty_silicate: 'matrix',
+  cmdty_ore_iron: 'metal',
+  cmdty_ore_copper: 'metal',
+  cmdty_ore_bronzium: 'metal',
+  cmdty_ore_silverium: 'metal',
+  cmdty_ore_goldium: 'metal',
+  cmdty_ore_platinium: 'metal',
+  cmdty_ore_einsteinium: 'exotic',
+  cmdty_gem_emerald: 'exotic',
+  cmdty_gem_ruby: 'exotic',
+  cmdty_gem_diamond: 'ice',
+  cmdty_exotic_amazonite: 'exotic',
+};
+
+// Seam count chips read `Fe 9` (law §3.5). Two glyphs, mono, no prose.
+const ORE_SYMBOL = {
+  cmdty_silicate: 'Si',
+  cmdty_ore_iron: 'Fe',
+  cmdty_ore_copper: 'Cu',
+  cmdty_ore_bronzium: 'Ni',
+  cmdty_ore_silverium: 'Ag',
+  cmdty_ore_goldium: 'Au',
+  cmdty_ore_platinium: 'Pt',
+  cmdty_ore_einsteinium: 'St',
+  cmdty_gem_emerald: 'Em',
+  cmdty_gem_ruby: 'Ru',
+  cmdty_gem_diamond: 'Di',
+  cmdty_exotic_amazonite: 'Px',
+};
+
+// One host material per row of the law's table. Six instanced buckets instead of two: hue alone
+// cannot carry ice's gloss or the exotic's wrongness — roughness, metalness and env intensity are
+// material properties, and they live in makeRockMaterials.
+const ROCK_BUCKETS = ['matrix', 'basalt', 'metal', 'ice', 'exotic', 'gas'];
+
+// Mirrors the pad lift of each variant in makeCellBlockGeos (local units, scaled by DEPTH). The
+// inclusion kit sits ON the pad it grows out of, so a high-relief block does not swallow its own
+// vein — without this the same cluster reads proud on one cell and half-buried on the next.
+const BLOCK_LIFTS = [0.030, 0.068, 0.104];
+// ...and the matching centre bulge, which is what the pad's highest point actually sits at.
+const BLOCK_BULGES = [0.022, 0.058, -0.016];
+const padLocalTop = (v) => BLOCK_LIFTS[v] + Math.max(0, BLOCK_BULGES[v]);
+
+function familyForOre(oreId) { return ORE_FAMILY[oreId] || 'metal'; }
+
+// The one classifier. Returns null only for a cell that is not there.
+function materialIdFor(tile) {
+  if (!tile || tile.type === 'empty') return null;
+  if (tile.type === 'rock') return 'basalt';
+  if (tile.type === 'gas') return 'gas';
+  if (tile.type === 'vein' && tile.ore) return familyForOre(tile.ore);
+  return 'matrix';
+}
 
 const MACHINE_KIND = {
   sm_massline_core: 'core',
@@ -295,7 +367,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
 
   // ---------------------------------------------------------------- session containers
   const rockGroup = new THREE.Group();      // instanced blocks + plateau + backing wall
-  const oreRoot = new THREE.Group();        // instanced crystal clusters + stains + badges
+  const oreRoot = new THREE.Group();        // instanced material inclusions + the MK lock plate
   const gasRoot = new THREE.Group();        // per-cell gas pocket groups
   const siteRoot = new THREE.Group();       // machines
   const overlayRoot = new THREE.Group();    // merged conduit meshes
@@ -394,7 +466,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
 
   let rockMats = makeRockMaterials(envMap, getReadyRockSurfaceTextures());
   const rockSurfaceReady = !!getReadyRockSurfaceTextures();
-  if (rockSurfaceReady) { patchRockUvWindow(rockMats.matrix); patchRockUvWindow(rockMats.basalt); }
+  if (rockSurfaceReady) { for (const b of ROCK_BUCKETS) patchRockUvWindow(rockMats[b]); }
   else {
     // Cold host (a direct deep-link into the works screen, or a test harness that never booted the
     // flight renderer): decode now and swap the maps in on arrival. The board is never blank —
@@ -402,17 +474,15 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     preloadRockSurfaceLibrary(renderer).then((surface) => {
       if (!surface || disposed) return;
       const next = makeRockMaterials(envMap, surface);
-      patchRockUvWindow(next.matrix);
-      patchRockUvWindow(next.basalt);
+      for (const b of ROCK_BUCKETS) patchRockUvWindow(next[b]);
       const old = rockMats;
       rockMats = next;
-      for (const bucket of ['matrix', 'basalt']) {
+      for (const bucket of ROCK_BUCKETS) {
         for (const inst of rockInst[bucket]) inst.material = next[bucket];
       }
       if (plateauInst) plateauInst.material = next.matrix;
       if (skirtInst) skirtInst.material = next.matrix;
-      old.matrix.dispose();
-      old.basalt.dispose();
+      for (const b of ROCK_BUCKETS) old[b].dispose();
     }).catch(() => { /* procedural fallback already on screen */ });
   }
 
@@ -420,75 +490,157 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   const blockGeos = makeCellBlockGeos();
   const clusterGeos = [makeOreClusterGeo(0), makeOreClusterGeo(1)];
   const gasVaporGeo = makeGasVaporGeo();
-  const crackGeos = makeCrackGeos();
   const cellQuad = new THREE.PlaneGeometry(S, S);
 
-  // gas pocket language — a sickly vapor mass seething inside the cell + amber warning fissures
-  // on the face. Reads as "cracked containment", never as a pickup.
-  const gasMat = new THREE.MeshStandardMaterial({
-    color: 0x6b7416, emissive: 0x464e08, emissiveIntensity: 0.4,
-    roughness: 0.9, metalness: 0.05, flatShading: true,
+  // PQ-130.04 INCLUSION KIT — the third identity channel (law §3.5). One shape family per material
+  // row, two variants each so a seam is not a row of identical stamps. A stranger has to be able to
+  // name ore / gas / plain rock / ice / exotic with no hover, so the shapes are chosen to differ in
+  // SILHOUETTE, not only in hue: angular chips on a forked ridge (metal), intersecting flat plates
+  // (ice), a regular strut cage (exotic), a knob-and-shard cluster (silicate).
+  const inclusionGeos = {
+    matrix: clusterGeos,
+    metal: [makeMetalVeinGeo(0), makeMetalVeinGeo(1)],
+    ice: [makeIceSheenGeo(0), makeIceSheenGeo(1)],
+    exotic: [makeExoticLatticeGeo(0), makeExoticLatticeGeo(1)],
+  };
+  // Basalt's ledges ride the rock material, which is vertexColors + sfFacet driven: give the band
+  // geometry both attributes so it takes the SAME continuous world-planar stone as the pad. Without
+  // sfFacet the shader falls to the cavity-wall unwrap; without a colour attribute it renders black.
+  const bandGeos = [0, 1, 2].map((v) => {
+    const geo = makeBasaltBandGeo(v);
+    const n = geo.getAttribute('position').count;
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(n * 3).fill(0.9), 3));
+    geo.setAttribute('sfFacet', new THREE.Float32BufferAttribute(new Float32Array(n).fill(1), 1));
+    return geo;
   });
-  const gasCrackBase = new THREE.Color(0xffc23e);
-  const gasCrackMat = new THREE.MeshBasicMaterial({ color: 0xffc23e, transparent: true, opacity: 0.9, depthWrite: false });
-  const gasCrackHotMat = new THREE.MeshBasicMaterial({ color: 0xffe27a, transparent: true, opacity: 1, depthWrite: false });
+  const seamChipGeo = new THREE.PlaneGeometry(1, 1);   // count chips are MESHES, see makeChip()
+  const gasCrackGeos = makeRadialCrackGeos();
+  const gasCoreGeo = makeGasCoreGeo();
+  const ventedScarGeo = makeVentedScarGeo();
+  const mkStampGeo = makeMkStampGeo();
 
-  // ore — cached materials per (oreId, locked); clusters instanced per bucket
+  // GAS POCKET (law §3.5 "a cracked, breathing cell — danger, never treasure"). Three parts, and
+  // not one of them glows at rest: the host block is its own dead-olive material, a DARK CORE is
+  // pressed into the cut face, RADIAL hairline fissures run out of it, and a thin wisp drifts above.
+  // The old build read as loot — an emissive lime mass under two MeshBasic amber streaks, i.e. a
+  // flat unlit colour fill (playfield §3) wearing a glow (law §2.7). Emissive here is now reserved
+  // for the breach itself, which is an event with a real flare, not a resting state.
+  const gasMat = new THREE.MeshStandardMaterial({
+    color: 0x5c6430, emissive: 0x000000, emissiveIntensity: 0,
+    roughness: 0.96, metalness: 0.0, flatShading: true,
+    transparent: true, opacity: 0.26, depthWrite: false,
+  });
+  const gasVaporHotMat = new THREE.MeshStandardMaterial({
+    color: 0x9aa845, emissive: 0x6e7a12, emissiveIntensity: 1.1,
+    roughness: 0.85, metalness: 0.0, flatShading: true,
+    transparent: true, opacity: 0.72, depthWrite: false,
+  });
+  const gasCoreMat = new THREE.MeshStandardMaterial({
+    color: 0x2b2d1f, roughness: 1, metalness: 0, side: THREE.DoubleSide, envMapIntensity: 0.05,
+  });
+  const gasCrackMat = new THREE.MeshStandardMaterial({
+    color: 0x9caa4a, roughness: 0.88, metalness: 0.04, envMap, envMapIntensity: 0.16, flatShading: true,
+  });
+  const gasCrackHotMat = new THREE.MeshStandardMaterial({
+    color: 0xf4ffa8, emissive: 0x8a7a10, emissiveIntensity: 0.95, roughness: 0.5, metalness: 0.06, flatShading: true,
+  });
+  // VENTED POCKET (law §3.5): permanently dead gray-green, and the only thing on the board with no
+  // reason to catch the eye.
+  const ventedMat = new THREE.MeshStandardMaterial({
+    color: 0x4a463f, roughness: 0.97, metalness: 0.03, envMap, envMapIntensity: 0.18, flatShading: true,
+  });
+
+  // ore — cached materials per (oreId, locked); inclusions instanced per bucket.
+  //
+  // SURFACE IS THE SECOND IDENTITY CHANNEL (law §3.5), so it is a property of the FAMILY, not a
+  // constant: metal is a polished conductor, ice is a near-mirror dielectric, the exotic lattice is
+  // a semi-metal, silicate is dull mineral. Read the four rows side by side and they are four
+  // different substances even before the hue lands.
+  //
+  // NO RESTING EMISSIVE (law §2.7). Six of the twelve ore rows used to self-emit at 0.85 — the
+  // deep/exotic ones — which is exactly the neon-pickup read the owner rejected, and the first thing
+  // bloom finds. Colour now comes from albedo + the raking key + roughness, like every other object
+  // in the flight world.
+  const ORE_SURFACE = {
+    metal: { roughness: 0.40, metalness: 0.58, envMapIntensity: 1.35 },
+    ice: { roughness: 0.13, metalness: 0.0, envMapIntensity: 1.45, transparent: true, opacity: 0.8 },
+    exotic: { roughness: 0.22, metalness: 0.5, envMapIntensity: 1.3 },
+    matrix: { roughness: 0.86, metalness: 0.06, envMapIntensity: 0.3 },
+  };
   const oreMats = new Map();
   function oreMaterial(oreId, locked) {
     const key2 = `${oreId}:${locked ? 1 : 0}`;
     let m = oreMats.get(key2);
     if (m) return m;
     const tint = ORE_TINTS[oreId] || ORE_TINTS.cmdty_silicate;
-    // Crystals must read against shadowed rock at gameplay zoom: bright base leaning toward the
-    // glint, a touch of self-emission in the vein hue so the colour survives the dark, modest
-    // metalness so the env doesn't drag them black.
+    const fam = familyForOre(oreId);
     const col = new THREE.Color(tint.vein);
-    if (tint.glint) col.lerp(new THREE.Color(tint.glint), 0.3);
-    if (locked) col.multiplyScalar(0.42);
+    // Pull every family back off its glint. The glint is where the SPECULAR should land, not the
+    // albedo — leaning the base colour into it is how a mineral turns into a paper cut-out.
+    if (tint.glint) col.lerp(new THREE.Color(tint.glint), fam === 'ice' ? 0.1 : (fam === 'matrix' ? 0.1 : 0.15));
+    const surf = ORE_SURFACE[fam] || ORE_SURFACE.matrix;
     m = new THREE.MeshStandardMaterial({
-      color: col, roughness: 0.3, metalness: 0.35, flatShading: true, envMap,
-      emissive: locked ? new THREE.Color(0x000000) : new THREE.Color(tint.glow || tint.vein),
-      emissiveIntensity: locked ? 0 : (tint.glow ? 0.85 : 0.3),
+      color: col, flatShading: true, envMap,
+      emissive: 0x000000, emissiveIntensity: 0,
+      ...surf,
     });
+    // A LOCKED VEIN IS DULL, NOT DARK (law §5 / §3.5): the same mineral, oxidised over — it keeps
+    // its hue so you can still tell what you are looking at and want it, and loses the polish that
+    // says "cut me". Value is legible; permission is not yet granted.
+    if (locked) {
+      m.color.multiplyScalar(0.62);
+      m.roughness = Math.min(1, m.roughness + 0.42);
+      m.metalness *= 0.5;
+      m.envMapIntensity *= 0.35;
+      if (m.transparent) m.opacity = Math.min(1, m.opacity + 0.14);
+    }
     oreMats.set(key2, m);
     return m;
   }
-  // mineral stain: one instanced quad for every revealed vein, tinted per cell — a dark
-  // mineralised blotch the cluster sits in
-  const stainMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.34, depthWrite: false });
-
-  const badgeTextures = new Map();
-  // Shared badge sprite materials, one per tier: disposeGroup() frees per-cell (_own) materials,
-  // and a disposed sprite material releases the shared sprite GL program once its last user dies —
-  // the next badge would then re-link it mid-render. Cache-owned + noDispose keeps it pinned.
-  const badgeMats = new Map();
-  function badgeTexture(tier) {
-    let t = badgeTextures.get(tier);
+  // THE MK LOCK STAMP (law §5, playfield §5.5). The old build hung a THREE.Sprite over every locked
+  // vein — a camera-facing billboard carrying an 8px "MK2", which is the exact stand-in playfield
+  // §5.5 names and §5.6 bans. It is now ONE engraved plate: a chamfered lit mesh whose albedo map
+  // paints a bezel and a recessed pane, seated on the cell face and fading in over 600ms while the
+  // rig is aimed at it — which is also what law §5's "Locked material" row actually asks for.
+  const stampTextures = new Map();
+  const stampMats = new Map();
+  function stampTexture(tier) {
+    let t = stampTextures.get(tier);
     if (t) return t;
+    const W = 272, H = 160;
     const cv = document.createElement('canvas');
-    cv.width = 64; cv.height = 32;
+    cv.width = W; cv.height = H;
     const g = cv.getContext('2d');
-    g.fillStyle = 'rgba(7,10,16,0.78)';
-    g.fillRect(0, 0, 64, 32);
-    g.strokeStyle = 'rgba(255,92,92,0.9)';
-    g.lineWidth = 2;
-    g.strokeRect(2, 2, 60, 28);
-    g.fillStyle = '#ff8a4a';
-    g.font = 'bold 16px monospace';
-    g.textAlign = 'center';
-    g.textBaseline = 'middle';
-    g.fillText(`MK${tier}`, 32, 17);
+    const rr = (x, y, w, h, r) => {
+      g.beginPath();
+      g.moveTo(x + r, y);
+      g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r);
+      g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r);
+      g.closePath();
+    };
+    g.fillStyle = '#6d6355'; g.fillRect(0, 0, W, H);          // bezel — the chamfer samples this
+    g.fillStyle = '#7d7263'; rr(10, 8, W - 20, H - 16, 12); g.fill();
+    g.fillStyle = '#3b332a'; rr(30, 26, W - 60, H - 52, 9); g.fill();   // recessed pane
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.font = '600 62px "Spline Sans Mono", ui-monospace, Consolas, monospace';
+    g.fillStyle = 'rgba(255,244,222,0.20)';                    // chisel highlight on the lower edge
+    g.fillText(`MK${tier}`, W / 2, H / 2 + 4);
+    g.fillStyle = '#221c15';                                   // the cut itself
+    g.fillText(`MK${tier}`, W / 2, H / 2);
     t = new THREE.CanvasTexture(cv);
-    badgeTextures.set(tier, t);
+    t.colorSpace = THREE.SRGBColorSpace;
+    stampTextures.set(tier, t);
     return t;
   }
-  function badgeSpriteMaterial(tier) {
-    let m = badgeMats.get(tier);
+  function stampMaterial(tier) {
+    let m = stampMats.get(tier);
     if (!m) {
-      m = new THREE.SpriteMaterial({ map: badgeTexture(tier), transparent: true, depthTest: false });
-      m.dispose = () => {}; // cache-owned: per-cell disposeGroup must not release the shared program
-      badgeMats.set(tier, m);
+      m = new THREE.MeshStandardMaterial({
+        map: stampTexture(tier), roughness: 0.44, metalness: 0.72, envMap, envMapIntensity: 0.8,
+        transparent: true, opacity: 0,
+      });
+      m.dispose = () => {}; // cache-owned: disposeGroup must not release the shared program
+      stampMats.set(tier, m);
     }
     return m;
   }
@@ -750,7 +902,8 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   let field = null;
   let timeSNow = 0;
   const cellRock = new Map();   // idx -> { mesh, i, carved, c, r }
-  let rockInst = { matrix: [], basalt: [] };   // one InstancedMesh per (bucket, block variant)
+  let rockInst = Object.fromEntries(ROCK_BUCKETS.map((b) => [b, []])); // one InstancedMesh per (bucket, variant)
+  let bandInsts = [];           // basalt's banded relief — one instanced ledge pair per basalt cell
   let plateauInst = null;
   let skirtInst = null;         // irregular silhouette fringe around the field (law §4)
   let backWall = null;
@@ -758,11 +911,24 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   let oreCaps = new Map();      // oreId -> vein count in the field (survey can only reveal, never add)
   let oreCellIndex = new Map(); // idx -> { bucket, i, idx }
   const oreWakes = [];          // reveal pop-in animations
-  let stainMesh = null;         // InstancedMesh — one mineral stain quad per revealed vein
-  let stainCells = new Map();   // idx -> stain slot
-  let stainCellsCap = 0;
-  let stainN = 0;
-  const badges = new Map();     // idx -> Sprite (tier-locked veins)
+  // Seam bodies (law §3.5 "seams render as bodies"): 4-connected components of same-ore vein cells,
+  // recomputed from the tile grid whenever the field changes. The sim has no component registry —
+  // asteroidFormations tracks discovery records for whole bodies in the sector, not cell adjacency
+  // inside one rock — so the renderer owns this and pays a single flood fill per field edit.
+  let seamBodies = [];          // [{ id, ore, key, cells:[idx], cx, cy, count }]
+  let seamOfCell = new Map();   // idx -> body
+  let seamsDirty = true;
+  let seamOutline = null;       // LineSegments — every body's perimeter, material detail colour
+  let splitOutline = null;      // LineSegments — the split preview's sub-body perimeters
+  let splitSig = '';            // aim signature; the preview only rebuilds when the aim moves
+  let splitBodies = [];         // [{ count, ore, cx, cy }] — resulting bodies while aiming
+  const chipPool = [];          // reused count-chip meshes (mesh, not DOM: the word budget is 15)
+  const chipTextures = new Map();
+  let chipFontReady = false;
+  const ventedScars = new Map();// idx -> Mesh (a blown pocket leaves a scar on the cavity floor)
+  let mkStamp = null;           // the single engraved lock plate; it follows the aim (law §5)
+  let mkStampT = 0;             // 0..1 fade, 600ms per law §5
+  let mkStampCell = -1;
   const gasByCell = new Map();  // idx -> { group, vapor, cracks, phase, baseScale, hot }
   const machines = new Map();   // machineId -> { group, defId, dyn, col, row, geoSig, arms, pulses }
   let ghost = null;             // { defId, group }
@@ -777,7 +943,9 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   let pulseEntries = [];        // [{mat, base, amp}] — rover + derrick
 
   // shared geometry that must survive per-cell group disposal
-  const sharedGeos = new Set([...blockGeos, ...clusterGeos, gasVaporGeo, ...crackGeos, cellQuad, partGeo, chunkGeo]);
+  const sharedGeos = new Set([...blockGeos, ...clusterGeos, gasVaporGeo, cellQuad, partGeo, chunkGeo,
+    ...inclusionGeos.metal, ...inclusionGeos.ice, ...inclusionGeos.exotic, ...bandGeos,
+    ...gasCrackGeos, gasCoreGeo, ventedScarGeo, mkStampGeo, seamChipGeo]);
 
   // DOM overlay — spatial annotations only (floaters / alarm washes); rig vitals are crest +
   // rig-cluster instruments (design law §6 — the scene stays sovereign).
@@ -894,10 +1062,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   const dummy = new THREE.Object3D();
   const colScratch = new THREE.Color();
 
-  function bucketFor(tile) {
-    if (!tile || tile.type === 'empty') return null;
-    return tile.type === 'rock' ? 'basalt' : 'matrix';
-  }
+  const bucketFor = materialIdFor;
 
   // Per-instance tint. Three rules, all of them corrections of a measured defect:
   //   1. NO SURVEY BRANCH. Law §2.3 removed fog of war; the old code tinted essentially the whole
@@ -912,7 +1077,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   //      noisy quilt; what reads as geology is LOW-FREQUENCY banding on a slightly tilted axis,
   //      with broad patches over it and only a whisper of per-cell grain. Two sinusoids at
   //      different periods give wide beds with the occasional thin seam between them.
-  function rockInstanceColor(c, r, _bucket, _surveyed, out) {
+  function rockInstanceColor(c, r, _bucket, out) {
     const depthT = r / ROWS;
     const bed = r + c * 0.22;                                          // beds dip slightly
     const strata = Math.sin(bed * 0.42) * 0.055 + Math.sin(bed * 1.17 + 1.9) * 0.028;
@@ -940,24 +1105,30 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   }
 
   function buildRock() {
-    for (const bucket of ['matrix', 'basalt']) {
+    for (const bucket of ROCK_BUCKETS) {
       for (const inst of rockInst[bucket]) {
         rockGroup.remove(inst);
         inst.dispose();
       }
       rockInst[bucket] = [];
     }
+    for (const bi of bandInsts) { rockGroup.remove(bi); bi.dispose(); }
+    bandInsts = [];
     cellRock.clear();
     // Bucket by material AND block variant — one InstancedMesh per (bucket, variant).
-    const lists = { matrix: [], basalt: [] };
-    for (let v = 0; v < blockGeos.length; v++) { lists.matrix.push([]); lists.basalt.push([]); }
+    const lists = {};
+    for (const b of ROCK_BUCKETS) lists[b] = blockGeos.map(() => []);
+    const basaltCells = [];
     for (let c = 0; c < COLS; c++) {
       for (let r = 0; r < ROWS; r++) {
         const bucket = bucketFor(field[c][r]);
-        if (bucket) lists[bucket][hash32(c, r, 'ckv') % blockGeos.length].push({ c, r });
+        if (!bucket) continue;
+        const v = hash32(c, r, 'ckv') % blockGeos.length;
+        lists[bucket][v].push({ c, r });
+        if (bucket === 'basalt') basaltCells.push({ c, r, v });
       }
     }
-    for (const bucket of ['matrix', 'basalt']) {
+    for (const bucket of ROCK_BUCKETS) {
       for (let v = 0; v < blockGeos.length; v++) {
         const list = lists[bucket][v];
         const inst = new THREE.InstancedMesh(blockGeos[v], rockMats[bucket], Math.max(1, list.length));
@@ -965,10 +1136,9 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         inst.receiveShadow = true;
         inst.frustumCulled = false;
         list.forEach((cell, i) => {
-          const surveyed = drillSys.isTileSurveyed(cell.c, cell.r);
           setRockMatrix(cell.c, cell.r, false);
           inst.setMatrixAt(i, dummy.matrix);
-          inst.setColorAt(i, rockInstanceColor(cell.c, cell.r, bucket, surveyed, colScratch));
+          inst.setColorAt(i, rockInstanceColor(cell.c, cell.r, bucket, colScratch));
           cellRock.set(tileIndex(cell.c, cell.r), { mesh: inst, i, carved: false, c: cell.c, r: cell.r });
         });
         inst.count = list.length;
@@ -977,6 +1147,29 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         rockGroup.add(inst);
         rockInst[bucket].push(inst);
       }
+    }
+    // BASALT IS BANDED (law §3.5). The ledges ride the SAME rock material as the pad they sit on —
+    // same continuous world-planar projection, same authored stone — so a band is a step in the
+    // surface that the raking key shadows, never a stripe painted across the cell.
+    for (let v = 0; v < bandGeos.length; v++) {
+      const list = basaltCells.filter((cell) => cell.v === v);
+      if (!list.length) continue;
+      const bi = new THREE.InstancedMesh(bandGeos[v], rockMats.basalt, list.length);
+      bi.castShadow = true;
+      bi.receiveShadow = true;
+      bi.frustumCulled = false;
+      list.forEach((cell, i) => {
+        dummy.position.set(worldX(cell.c), worldY(cell.r), ROCK_FACE + padLocalTop(cell.v) * DEPTH);
+        dummy.rotation.set(0, 0, 0);
+        dummy.scale.set(S, S, S);
+        dummy.updateMatrix();
+        bi.setMatrixAt(i, dummy.matrix);
+        bi.setColorAt(i, rockInstanceColor(cell.c, cell.r, 'basalt', colScratch).multiplyScalar(0.93));
+      });
+      bi.instanceMatrix.needsUpdate = true;
+      if (bi.instanceColor) bi.instanceColor.needsUpdate = true;
+      rockGroup.add(bi);
+      bandInsts.push(bi);
     }
     if (!backWall) {
       // THE TUNNEL FLOOR IS STONE. It used to be a flat cold slab (0x0a0c12), which is what made a
@@ -1140,6 +1333,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     if (digCell && digCell.idx === idx) digCell = null;
     removeOreAt(c, r);
     removeGasAt(c, r);
+    seamsDirty = true;   // a cut can split a body in two; the outline is the promise it made
   }
 
   // ---------------------------------------------------------------- ore + gas per cell
@@ -1155,58 +1349,13 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     });
   }
 
-  function addStain(idx, c, r, oreId) {
-    if (!stainMesh || stainCells.has(idx) || stainN >= stainCellsCap) return;
-    const i = stainN++;
-    const tint = (ORE_TINTS[oreId] || {}).vein || '#9aa4b8';
-    dummy.position.set(worldX(c), worldY(r), Z.stain);
-    dummy.rotation.set(0, 0, rnd01(c, r, 'sr') * Math.PI * 2);
-    dummy.scale.setScalar(S * (0.88 + rnd01(c, r, 'ss') * 0.14));
-    dummy.updateMatrix();
-    stainMesh.setMatrixAt(i, dummy.matrix);
-    stainMesh.setColorAt(i, colScratch.set(tint).multiplyScalar(0.22));
-    stainMesh.count = stainN;
-    stainMesh.instanceMatrix.needsUpdate = true;
-    if (stainMesh.instanceColor) stainMesh.instanceColor.needsUpdate = true;
-    stainCells.set(idx, i);
-  }
-
-  function removeStain(idx) {
-    const i = stainCells.get(idx);
-    if (i == null || !stainMesh) return;
-    dummy.position.set(0, 0, 0);
-    dummy.rotation.set(0, 0, 0);
-    dummy.scale.set(0, 0, 0);
-    dummy.updateMatrix();
-    stainMesh.setMatrixAt(i, dummy.matrix);
-    stainMesh.instanceMatrix.needsUpdate = true;
-    stainCells.delete(idx);
-  }
-
-  function addBadge(idx, c, r, tier) {
-    if (badges.has(idx)) return;
-    const sMat = badgeSpriteMaterial(tier); // shared per tier — cache-owned, disposeGroup leaves it alone
-    const badge = new THREE.Sprite(sMat);
-    badge.scale.set(S * 0.3, S * 0.15, 1);
-    badge.position.set(worldX(c) + S * 0.28, worldY(r) + S * 0.28, Z.face);
-    badge.renderOrder = 25;
-    oreRoot.add(badge);
-    badges.set(idx, badge);
-  }
-
-  function removeBadge(idx) {
-    const badge = badges.get(idx);
-    if (!badge) return;
-    oreRoot.remove(badge);
-    badges.delete(idx);
-  }
-
   function oreBucketFor(oreId, locked) {
     const key2 = `${oreId}:${locked ? 1 : 0}`;
     let b = oreBuckets.get(key2);
     if (b) return b;
     const cap = Math.max(1, oreCaps.get(oreId) || 1);
-    const mesh = new THREE.InstancedMesh(clusterGeos[(oreId.length + (locked ? 1 : 0)) % clusterGeos.length], oreMaterial(oreId, locked), cap);
+    const geos = inclusionGeos[familyForOre(oreId)] || clusterGeos;
+    const mesh = new THREE.InstancedMesh(geos[(oreId.length + (locked ? 1 : 0)) % geos.length], oreMaterial(oreId, locked), cap);
     mesh.castShadow = true;
     mesh.frustumCulled = false;
     mesh.count = 0;
@@ -1229,17 +1378,31 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     oreCellIndex.delete(entry.idx);
   }
 
-  // Surveyed veins erupt their crystal cluster on a mineral stain; tier-locked ones sit dull
-  // under an MK badge. Cluster scale-pops on reveal — the survey's reward beat.
+  // The cut face of a solid block, in world z. Each cell's pad sits at its own relief height, so an
+  // inclusion placed at one constant z reads proud on a low block and half-buried on a high one.
+  function padZ(c, r) {
+    return ROCK_FACE + padLocalTop(hash32(c, r, 'ckv') % blockGeos.length) * DEPTH;
+  }
+
+  // Per-family placement. Footprint is deliberately just under one cell for the metal vein (it runs
+  // edge to edge and must not spill into its neighbour) and looser for the clusters.
+  const INCLUSION_FIT = {
+    metal: [0.96, 0.06],
+    ice: [0.92, 0.12],
+    exotic: [0.94, 0.12],
+    matrix: [1.04, 0.16],
+  };
+
+  // EVERY VEIN IS VISIBLE FROM THE FIRST FRAME (law §2.3 — the survey gate is gone). A vein erupts
+  // its family's inclusion; a tier-locked one wears the same shape in a dulled, oxidised finish,
+  // and the engraved MK plate arrives when the rig aims at it (law §5).
   function syncOreAt(c, r) {
     const tile = field[c] && field[c][r];
     const idx = tileIndex(c, r);
-    const wanted = tile && tile.type === 'vein' && tile.ore && drillSys.isTileSurveyed(c, r);
+    const wanted = !!(tile && tile.type === 'vein' && tile.ore);
     const existing = oreCellIndex.get(idx);
     if (!wanted) {
       if (existing) killOreInstance(existing);
-      removeBadge(idx);
-      removeStain(idx);
       return;
     }
     const req = tile.tierReq || drillTierReqForOre(tile.ore);
@@ -1250,9 +1413,16 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     const b = oreBucketFor(tile.ore, locked);
     if (b.n >= b.cap) return; // cap = vein count of this ore in the field; cannot overflow honestly
     const i = b.n++;
-    const rotZ = rnd01(c, r, 'or') * Math.PI * 2;
-    const scale = S * (1.12 + rnd01(c, r, 'os') * 0.2);
-    dummy.position.set(worldX(c), worldY(r), Z.ore);
+    const fam = familyForOre(tile.ore);
+    // A metal vein snaps to one of four axis orientations so neighbouring seam cells CHAIN into one
+    // continuous branch across the body instead of each cell wearing its own unrelated squiggle.
+    const rotZ = fam === 'metal'
+      ? (hash32(c, r, 'or') % 4) * (Math.PI / 2)
+      : rnd01(c, r, 'or') * Math.PI * 2;
+    const fit = INCLUSION_FIT[fam] || INCLUSION_FIT.matrix;
+    const scale = S * (fit[0] + rnd01(c, r, 'os') * fit[1]);
+    const z = padZ(c, r) - 0.09;
+    dummy.position.set(worldX(c), worldY(r), z);
     dummy.rotation.set(0, 0, rotZ);
     dummy.scale.setScalar(scale);
     dummy.updateMatrix();
@@ -1262,18 +1432,13 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     b.cells.set(idx, i);
     const entry = { bucket: b, i, idx };
     oreCellIndex.set(idx, entry);
-    oreWakes.push({ entry, x: worldX(c), y: worldY(r), rotZ, scale, t0: timeSNow });
-    addStain(idx, c, r, tile.ore);
-    if (locked) addBadge(idx, c, r, req);
-    else removeBadge(idx);
+    oreWakes.push({ entry, x: worldX(c), y: worldY(r), z, rotZ, scale, t0: timeSNow });
   }
 
   function removeOreAt(c, r) {
     const idx = tileIndex(c, r);
     const existing = oreCellIndex.get(idx);
     if (existing) killOreInstance(existing);
-    removeBadge(idx);
-    removeStain(idx);
   }
 
   function removeGasAt(c, r) {
@@ -1285,38 +1450,66 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     if (digGasHot === rec) digGasHot = null;
   }
 
-  // Gas stays hidden until its tell (digging nearby, or a survey pulse) — then the cell reads as
-  // cracked rock venting sickly vapor. It must never read as a collectible.
+  // A GAS POCKET IS A CRACKED BLOCK (law §3.5 / §2.3). No tell, no reveal, no pulse: it is visible
+  // from the first frame like every other material, and its danger is carried by the shape of the
+  // cell — a dark core sunk into the cut face, hairline fissures radiating out of it, and a thin
+  // wisp drifting above. Never a crystal, never a halo.
   function syncGasAt(c, r) {
     const idx = tileIndex(c, r);
     const tile = field[c] && field[c][r];
-    const revealed = !!(tile && tile.type === 'gas' && (tile.surveyed || drillSys.isHazardRevealed(c, r)));
     const existing = gasByCell.get(idx);
-    if (!revealed) {
+    if (!tile || tile.type !== 'gas') {
       if (existing) removeGasAt(c, r);
       return;
     }
     if (existing) return;
+    const face = padZ(c, r);
     const group = new THREE.Group();
     group.position.set(worldX(c), worldY(r), 0);
-    const vapor = new THREE.Mesh(gasVaporGeo, gasMat);
-    vapor.position.z = Z.gas;
-    vapor.rotation.z = rnd01(c, r, 'gv') * Math.PI * 2;
-    const baseScale = S * (0.55 + rnd01(c, r, 'gs') * 0.15);
-    vapor.scale.setScalar(baseScale);
-    group.add(vapor);
+    // The dark centre — a socket the light cannot reach.
+    const core = new THREE.Mesh(gasCoreGeo, gasCoreMat);
+    core.position.z = face - 0.02;
+    core.rotation.z = rnd01(c, r, 'gk') * Math.PI * 2;
+    core.scale.setScalar(S);
+    group.add(core);
+    // Radial hairline fissures, seated on the pad so the raking key finds their flanks.
     const cracks = [];
-    const nCracks = 2 + (hash32(c, r, 'gc') % 2);
-    for (let i = 0; i < nCracks; i++) {
-      const cm = new THREE.Mesh(crackGeos[hash32(c + i * 3, r, 'gcr') % crackGeos.length], gasCrackMat);
-      cm.position.z = Z.stain + 0.03 + i * 0.006;
-      cm.rotation.z = rnd01(c + i, r, 'gcz') * Math.PI * 2;
-      cm.scale.setScalar(S);
-      group.add(cm);
-      cracks.push(cm);
-    }
+    const cm = new THREE.Mesh(gasCrackGeos[hash32(c, r, 'gcr') % gasCrackGeos.length], gasCrackMat);
+    cm.position.z = face - 0.012;
+    cm.rotation.z = rnd01(c, r, 'gcz') * Math.PI * 2;
+    cm.scale.setScalar(S);
+    cm.castShadow = true;
+    group.add(cm);
+    cracks.push(cm);
+    // The breath: a small wisp that drifts, seeping out of the core.
+    const vapor = new THREE.Mesh(gasVaporGeo, gasMat);
+    vapor.position.z = face + 0.14;
+    vapor.rotation.z = rnd01(c, r, 'gv') * Math.PI * 2;
+    const baseScale = S * (0.62 + rnd01(c, r, 'gs') * 0.14);
+    vapor.scale.set(baseScale, baseScale, baseScale * 0.55);
+    group.add(vapor);
     gasRoot.add(group);
     gasByCell.set(idx, { group, vapor, cracks, phase: rnd01(c, r, 'gp') * Math.PI * 2, baseScale, hot: false });
+  }
+
+  // A blown pocket leaves a permanent scar (law §3.5 "vented pocket", D2 permanence). The sim clears
+  // the tile outright, so the cell itself is gone — what stays is the split-open lip on the cavity
+  // floor, dead gray-green, for as long as this session holds the rock.
+  function addVentedScar(c, r) {
+    const idx = tileIndex(c, r);
+    if (ventedScars.has(idx)) return;
+    const m = new THREE.Mesh(ventedScarGeo, ventedMat);
+    m.position.set(worldX(c), worldY(r), Z.back + 0.07);
+    m.rotation.z = rnd01(c, r, 'vs') * Math.PI * 2;
+    m.scale.setScalar(S);
+    m.receiveShadow = true;
+    gasRoot.add(m);
+    ventedScars.set(idx, m);
+  }
+
+  function clearVentedScars() {
+    for (const [, m] of ventedScars) gasRoot.remove(m);
+    ventedScars.clear();
   }
 
   function refreshCells(cells) {
@@ -1334,14 +1527,13 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       }
       if (tile.type === 'gas') syncGasAt(col, row);
       if (rec && !rec.carved) {
-        const surveyed = drillSys.isTileSurveyed(col, row);
-        rec.mesh.setColorAt(rec.i, rockInstanceColor(col, row, tile.type === 'rock' ? 'basalt' : 'matrix', surveyed, colScratch));
+        rec.mesh.setColorAt(rec.i, rockInstanceColor(col, row, materialIdFor(tile), colScratch));
         touchedColor = true;
       }
       syncOreAt(col, row);
     }
     if (touchedColor) {
-      for (const bucket of ['matrix', 'basalt']) {
+      for (const bucket of ROCK_BUCKETS) {
         for (const inst of rockInst[bucket]) {
           if (inst.instanceColor) inst.instanceColor.needsUpdate = true;
         }
@@ -1836,6 +2028,403 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     return { x: (projV.x * 0.5 + 0.5) * w, y: (-projV.y * 0.5 + 0.5) * h };
   }
 
+
+  // ---------------------------------------------------------------- seams as bodies (law §3.5)
+  // "Contiguous same-material cells share a brightened perimeter outline and one small count chip
+  // at the body's center at work zoom. Aiming the drill at a seam cell draws the SPLIT PREVIEW
+  // instantly: the outline breaks into the two resulting bodies with their new counts."
+  //
+  // This is the leaf's one piece of real bookkeeping, and it is the difference between a board you
+  // read and a board you count on your fingers. Mechanic law §1.2 ("machines feed through faces —
+  // approach a seam from its dead end") is unplayable if you cannot see where a body begins and
+  // ends, and §1's anti-random test demands the permanent consequence preview at decision time.
+  //
+  // WHERE THE COMPONENTS COME FROM: the renderer, by flood fill over the tile grid.
+  // src/systems/asteroidFormations.js is registry-registered but it tracks DISCOVERY RECORDS for
+  // whole bodies across a sector (id, anchor, epoch) — it has no notion of cell adjacency inside
+  // one rock's cut face, so there is nothing there to read. A 28×45 four-way fill is ~1260 visits
+  // and runs only when the field actually changes (entry, and every cell a cut removes).
+  const NBR4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  let seamSerial = 0;
+
+  const seamLineMat = new THREE.LineBasicMaterial({
+    vertexColors: true, transparent: true, opacity: 0.56, depthWrite: false,
+  });
+  // A BODY IS TWO CELLS OR MORE. Outlining every isolated vein cell as well puts a rectangle around
+  // roughly one cell in six — a hundred and eighty boxes on a 28×45 field — and the board stops
+  // reading as rock and starts reading as a spreadsheet. A lone cell is already fully identified by
+  // its host colour and its inclusion; what an outline adds is CONTIGUITY, which it alone has none
+  // of. Law §3.5's subject is the seam, and a seam is what contiguity makes.
+  const SEAM_MIN_BODY = 2;
+  // The split preview is the same drawing, louder and one step further in: you are being shown a
+  // consequence, so it out-reads the resting outline it replaces.
+  const splitLineMat = new THREE.LineBasicMaterial({
+    vertexColors: true, transparent: true, opacity: 0.92, depthWrite: false,
+  });
+
+  function seamOreOf(tile) {
+    return tile && tile.type === 'vein' && tile.ore ? tile.ore : null;
+  }
+
+  function rebuildSeams() {
+    seamsDirty = false;
+    seamSerial++;
+    seamBodies = [];
+    seamOfCell = new Map();
+    if (!field) return;
+    const seen = new Uint8Array(COLS * ROWS);
+    const stack = [];
+    for (let c0 = 0; c0 < COLS; c0++) {
+      for (let r0 = 0; r0 < ROWS; r0++) {
+        const i0 = tileIndex(c0, r0);
+        if (seen[i0]) continue;
+        seen[i0] = 1;
+        const ore = seamOreOf(field[c0][r0]);
+        if (!ore) continue;
+        const cells = [];
+        stack.length = 0;
+        stack.push([c0, r0]);
+        while (stack.length) {
+          const [cc, rr] = stack.pop();
+          cells.push({ c: cc, r: rr, idx: tileIndex(cc, rr) });
+          for (const [dc, dr] of NBR4) {
+            const nc = cc + dc, nr = rr + dr;
+            if (nc < 0 || nc >= COLS || nr < 0 || nr >= ROWS) continue;
+            const ni = tileIndex(nc, nr);
+            if (seen[ni]) continue;
+            if (seamOreOf(field[nc][nr]) !== ore) continue;
+            seen[ni] = 1;
+            stack.push([nc, nr]);
+          }
+        }
+        const body = { id: seamBodies.length, ore, cells, count: cells.length };
+        Object.assign(body, seamAnchor(cells));
+        for (const cell of cells) seamOfCell.set(cell.idx, body);
+        seamBodies.push(body);
+      }
+    }
+  }
+
+  // The chip sits on a MEMBER cell nearest the centroid — an L-shaped body's centroid can land in
+  // solid matrix outside the seam, and a count chip floating over the wrong material is a lie.
+  function seamAnchor(cells) {
+    let mx = 0, my = 0;
+    for (const cell of cells) { mx += cell.c; my += cell.r; }
+    mx /= cells.length; my /= cells.length;
+    let best = cells[0], bestD = Infinity;
+    for (const cell of cells) {
+      const d = (cell.c - mx) * (cell.c - mx) + (cell.r - my) * (cell.r - my);
+      if (d < bestD) { bestD = d; best = cell; }
+    }
+    return { ac: best.c, ar: best.r };
+  }
+
+  // The aimed cell: what the bit is in, or — when the rig is only facing — the cell it faces. The
+  // split preview and the MK stamp both key off this, so "aimed" means the same thing to both.
+  function aimCell(d) {
+    if (!d || !d.avatar) return null;
+    if (d.avatar.isDrilling && d.avatar.drillTarget) {
+      const t = d.avatar.drillTarget;
+      return (t.col >= 0 && t.col < COLS && t.row >= 0 && t.row < ROWS) ? { col: t.col, row: t.row } : null;
+    }
+    let c = d.avatar.col, r = d.avatar.row;
+    const dir = d.avatar.faceDir || 'down';
+    if (dir === 'left') c--; else if (dir === 'right') c++; else if (dir === 'up') r--; else r++;
+    if (c < 0 || c >= COLS || r < 0 || r >= ROWS) return null;
+    return { col: c, row: r };
+  }
+
+  // Perimeter of a cell set, as world-space line segments. An edge is drawn where the neighbour is
+  // NOT in the set, which is exactly the body's silhouette. Inset off the joint so the line lands on
+  // the lit pad rather than vanishing into the groove's own shadow.
+  function perimeterInto(cellIdxSet, cells, inset, colour, pos, col) {
+    const has = (c, r) => (c >= 0 && c < COLS && r >= 0 && r < ROWS && cellIdxSet.has(tileIndex(c, r)));
+    for (const cell of cells) {
+      const x0 = worldX(cell.c) - S / 2 + inset, x1 = worldX(cell.c) + S / 2 - inset;
+      const y0 = worldY(cell.r) - S / 2 + inset, y1 = worldY(cell.r) + S / 2 - inset;
+      const z = Z.face;
+      const seg = (ax, ay, bx, by) => {
+        pos.push(ax, ay, z, bx, by, z);
+        for (let k = 0; k < 2; k++) col.push(colour.r, colour.g, colour.b);
+      };
+      if (!has(cell.c, cell.r - 1)) seg(x0, y1, x1, y1);   // row-1 is up in world y
+      if (!has(cell.c, cell.r + 1)) seg(x0, y0, x1, y0);
+      if (!has(cell.c - 1, cell.r)) seg(x0, y0, x0, y1);
+      if (!has(cell.c + 1, cell.r)) seg(x1, y0, x1, y1);
+    }
+  }
+
+  function seamOutlineColour(ore) {
+    // "a BRIGHTENED perimeter outline, the material's detail color" — the vein hue carried halfway
+    // to its glint. The raw glint alone is near-white on the pale ores, and a white box around a
+    // cell is a UI selection marker, not a seam.
+    const t = ORE_TINTS[ore] || ORE_TINTS.cmdty_silicate;
+    return new THREE.Color(t.vein).lerp(new THREE.Color(t.glint || t.vein), 0.35);
+  }
+
+  function setLines(existing, pos, col, mat) {
+    if (existing) { fxRoot.remove(existing); existing.geometry.dispose(); }
+    if (!pos.length) return null;
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    const lines = new THREE.LineSegments(geo, mat);
+    lines.frustumCulled = false;
+    lines.renderOrder = 24;
+    fxRoot.add(lines);
+    return lines;
+  }
+
+  // ---- count chips. MESHES, not DOM: the overlay layer lives inside .ast-screen, and design law
+  // §11.3 caps the whole screen at 15 visible words — a board with ten seams on it would blow that
+  // budget on its own. A textured plate scaled to a constant pixel height is the same drawing with
+  // none of the accounting.
+  const CHIP_H_PX = 20;         // pill height; the 13px numerals inside clear the §11.4 12px floor
+  const CHIP_TEXT_PX = 13;
+  const CHIP_SS = 3;            // supersample so the glyphs stay crisp on the board
+
+  function chipTexture(label) {
+    const key = `${label}|${chipFontReady ? 1 : 0}`;
+    let rec = chipTextures.get(key);
+    if (rec) return rec;
+    const cv = document.createElement('canvas');
+    const g0 = cv.getContext('2d');
+    const font = `500 ${CHIP_TEXT_PX * CHIP_SS}px "Spline Sans Mono", ui-monospace, Consolas, monospace`;
+    g0.font = font;
+    const tw = g0.measureText(label).width;
+    const padX = 8 * CHIP_SS;
+    cv.width = Math.ceil(tw + padX * 2);
+    cv.height = CHIP_H_PX * CHIP_SS;
+    const g = cv.getContext('2d');
+    g.font = font;
+    const rr = cv.height / 2;
+    g.beginPath();
+    g.moveTo(rr, 0);
+    g.arcTo(cv.width, 0, cv.width, cv.height, rr);
+    g.arcTo(cv.width, cv.height, 0, cv.height, rr);
+    g.arcTo(0, cv.height, 0, 0, rr);
+    g.arcTo(0, 0, cv.width, 0, rr);
+    g.closePath();
+    g.fillStyle = 'rgba(34,28,21,0.93)';     // --aw-surface
+    g.fill();
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillStyle = '#f2e8d5';                 // --aw-ink
+    g.fillText(label, cv.width / 2, cv.height / 2 + CHIP_SS);
+    const tex = new THREE.CanvasTexture(cv);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    rec = { tex, wPx: cv.width / CHIP_SS, hPx: CHIP_H_PX };
+    chipTextures.set(key, rec);
+    return rec;
+  }
+
+  let chipsUsed = 0;
+  function emitChip(label, wx, wy) {
+    let chip = chipPool[chipsUsed];
+    if (!chip) {
+      const mat = new THREE.MeshBasicMaterial({ transparent: true, depthTest: false, depthWrite: false });
+      const mesh = new THREE.Mesh(seamChipGeo, mat);
+      mesh.renderOrder = 26;
+      mesh.frustumCulled = false;
+      fxRoot.add(mesh);
+      chip = { mesh, mat, wPx: 0, hPx: 0 };
+      chipPool.push(chip);
+    }
+    chipsUsed++;
+    const rec = chipTexture(label);
+    chip.mat.map = rec.tex;
+    chip.mat.needsUpdate = true;
+    chip.wPx = rec.wPx;
+    chip.hPx = rec.hPx;
+    chip.mesh.position.set(wx, wy, Z.face + 0.05);
+    chip.mesh.visible = true;
+  }
+
+  // The chip is a piece of chrome sitting in a 3D scene, so it holds a CONSTANT PIXEL SIZE: its
+  // world scale is solved from the live camera every frame. 13px stays 13px at either window size,
+  // which is what keeps it above the §11.4 floor instead of merely above it at 1920.
+  function layoutChips() {
+    const halfH = viewHalfExtents().halfH;
+    const pxPerWu = (canvas.clientHeight || 1) / (2 * halfH);
+    for (let i = 0; i < chipPool.length; i++) {
+      const chip = chipPool[i];
+      if (i >= chipsUsed) { chip.mesh.visible = false; continue; }
+      chip.mesh.scale.set(chip.wPx / pxPerWu, chip.hPx / pxPerWu, 1);
+    }
+  }
+
+  // Everything the seam layer draws, once per frame.
+  function syncSeamAnnotations(d) {
+    if (seamsDirty) rebuildSeams();
+    // Chips are a WORK-ZOOM instrument (law §3.5). At site zoom a 13px pill over a 16px cell is
+    // noise, so the bodies keep their outlines and drop their counts.
+    const workZoom = zoomRegister === 'work' && zoomKCur > 0.82;
+
+    const aim = aimCell(d);
+    const aimIdx = aim ? tileIndex(aim.col, aim.row) : -1;
+    const aimBody = aim ? seamOfCell.get(aimIdx) : null;
+    const sig = `${seamSerial}|${aimBody ? aimBody.id : -1}|${aimIdx}`;
+    if (sig !== splitSig) {
+      splitSig = sig;
+      rebuildSeamLines(aimBody, aimIdx);
+    }
+
+    chipsUsed = 0;
+    if (workZoom) {
+      for (const b of splitBodies) emitChip(`${ORE_SYMBOL[b.ore] || '··'} ${b.count}`, b.wx, b.wy);
+      for (const b of seamBodies) {
+        if (aimBody && b.id === aimBody.id) continue;   // it is being previewed apart
+        if (b.count < SEAM_MIN_BODY) continue;          // a single cell is a cell, not a seam
+        emitChip(`${ORE_SYMBOL[b.ore] || '··'} ${b.count}`, worldX(b.ac), worldY(b.ar));
+      }
+    }
+    layoutChips();
+  }
+
+  // Rebuild both line layers. When the rig is aimed at a seam cell the parent body's outline is
+  // withheld and the sub-bodies the cut would leave are drawn in its place — that IS the preview.
+  function rebuildSeamLines(aimBody, aimIdx) {
+    const pos = [], col = [];
+    const inset = S * 0.022;
+    for (const b of seamBodies) {
+      if (aimBody && b.id === aimBody.id) continue;
+      if (b.count < SEAM_MIN_BODY) continue;
+      const set = new Set(b.cells.map((cell) => cell.idx));
+      perimeterInto(set, b.cells, inset, seamOutlineColour(b.ore), pos, col);
+    }
+    seamOutline = setLines(seamOutline, pos, col, seamLineMat);
+
+    splitBodies = [];
+    const spos = [], scol = [];
+    if (aimBody && aimBody.count >= SEAM_MIN_BODY) {
+      const colour = seamOutlineColour(aimBody.ore);
+      const remaining = new Set(aimBody.cells.map((cell) => cell.idx));
+      remaining.delete(aimIdx);
+      const byIdx = new Map(aimBody.cells.map((cell) => [cell.idx, cell]));
+      const seen = new Set();
+      for (const cell of aimBody.cells) {
+        if (!remaining.has(cell.idx) || seen.has(cell.idx)) continue;
+        const part = [];
+        const stack = [cell];
+        seen.add(cell.idx);
+        while (stack.length) {
+          const cur = stack.pop();
+          part.push(cur);
+          for (const [dc, dr] of NBR4) {
+            const nc = cur.c + dc, nr = cur.r + dr;
+            if (nc < 0 || nc >= COLS || nr < 0 || nr >= ROWS) continue;
+            const ni = tileIndex(nc, nr);
+            if (!remaining.has(ni) || seen.has(ni)) continue;
+            seen.add(ni);
+            stack.push(byIdx.get(ni));
+          }
+        }
+        const set = new Set(part.map((p) => p.idx));
+        perimeterInto(set, part, S * 0.11, colour, spos, scol);
+        const anchor = seamAnchor(part);
+        splitBodies.push({ ore: aimBody.ore, count: part.length, wx: worldX(anchor.ac), wy: worldY(anchor.ar) });
+      }
+    }
+    splitOutline = setLines(splitOutline, spos, scol, splitLineMat);
+  }
+
+  function clearSeamAnnotations() {
+    seamOutline = setLines(seamOutline, [], [], seamLineMat);
+    splitOutline = setLines(splitOutline, [], [], splitLineMat);
+    splitBodies = [];
+    splitSig = '';
+    for (const chip of chipPool) chip.mesh.visible = false;
+    chipsUsed = 0;
+  }
+
+  // ---- the MK lock plate (law §5 "Locked material"): one engraved stamp, on the aimed cell, in
+  // over 600ms and out fast. Dull ore says "there is value here"; the stamp says "not with this bit".
+  function syncMkStamp(d, dt) {
+    const aim = aimCell(d);
+    const tile = aim && field[aim.col] ? field[aim.col][aim.row] : null;
+    const req = tile && tile.type === 'vein' && tile.ore
+      ? (tile.tierReq || drillTierReqForOre(tile.ore)) : 0;
+    const locked = !!req && drillSys.getDrillTier() < req;
+    const idx = locked ? tileIndex(aim.col, aim.row) : -1;
+    if (idx !== mkStampCell) {
+      mkStampCell = idx;
+      if (idx >= 0) {
+        if (!mkStamp) {
+          mkStamp = new THREE.Mesh(mkStampGeo, stampMaterial(req));
+          mkStamp.castShadow = true;
+          mkStamp.renderOrder = 22;
+          oreRoot.add(mkStamp);
+        }
+        mkStamp.material = stampMaterial(req);
+        mkStamp.position.set(worldX(aim.col), worldY(aim.row) - S * 0.27, padZ(aim.col, aim.row));
+        mkStamp.scale.setScalar(S * 1.15);
+      }
+    }
+    if (!mkStamp) return;
+    const target = idx >= 0 ? 1 : 0;
+    mkStampT = Math.max(0, Math.min(1, mkStampT + (target ? dt / 0.6 : -dt / 0.2)));
+    mkStamp.material.opacity = mkStampT;
+    mkStamp.visible = mkStampT > 0.015;
+  }
+
+  // Spline Sans Mono is vendored for this screen (law §3.3) but a canvas2d context only resolves a
+  // webfont once the document has actually loaded it. Kick that once and re-bake the chip textures
+  // when it lands, so the numerals are the law's face and not the fallback mono.
+  if (typeof document !== 'undefined' && document.fonts && document.fonts.load) {
+    document.fonts.load(`500 ${CHIP_TEXT_PX * CHIP_SS}px "Spline Sans Mono"`).then(() => {
+      if (disposed) return;
+      chipFontReady = true;
+      splitSig = '';   // force the chip labels through chipTexture() again
+    }).catch(() => {});
+  }
+
+  // ---------------------------------------------------------------- headless debug hook (law §11)
+  // §11.1 (flatness) and §11.6 (no fog) are asserted against the LIVE renderer, not against a
+  // re-implementation of it in the check — a check that recomputes the projection itself would pass
+  // happily while the board on screen lied. scripts/check-asteroid-theater.mjs reads this.
+  canvas.__ast3d = {
+    // What this cell DRAWS AS. `revealed` is a live read of the presentation visibility gate, so a
+    // regression that puts fog back fails the check instead of quietly re-hiding the board.
+    cellAppearance(col, row) {
+      if (!field || col < 0 || col >= COLS || row < 0 || row >= ROWS) return null;
+      const tile = field[col][row];
+      const material = materialIdFor(tile);
+      const body = seamOfCell.get(tileIndex(col, row));
+      return {
+        type: tile ? tile.type : 'empty',
+        material,
+        ore: (tile && tile.ore) || null,
+        family: tile && tile.ore ? familyForOre(tile.ore) : null,
+        revealed: drillSys.isTileSurveyed(col, row),
+        // There is no anonymous appearance left in this renderer: materialIdFor resolves every
+        // non-empty tile to one of the law's six rows, and nothing downstream can withhold it.
+        anonymous: !!tile && tile.type !== 'empty' && !material,
+        seam: body ? { ore: body.ore, count: body.count } : null,
+      };
+    },
+    // The cell's nominal footprint on the cut plane, projected through the LIVE camera: four screen
+    // corners, clockwise from top-left. Nominal (not the per-variant pad) because the relief lift
+    // varies 0.030–0.104 by design and that is exactly the noise a 0.5px flatness law must not eat.
+    projectCell(col, row) {
+      if (col < 0 || col >= COLS || row < 0 || row >= ROWS) return null;
+      const x0 = worldX(col) - S / 2, x1 = worldX(col) + S / 2;
+      const y0 = worldY(row) - S / 2, y1 = worldY(row) + S / 2;
+      return [
+        worldToScreen(x0, y1, ROCK_FACE), worldToScreen(x1, y1, ROCK_FACE),
+        worldToScreen(x1, y0, ROCK_FACE), worldToScreen(x0, y0, ROCK_FACE),
+      ];
+    },
+    seams() {
+      return seamBodies.map((b) => ({ ore: b.ore, count: b.count, ac: b.ac, ar: b.ar }));
+    },
+    splitPreview() {
+      return splitBodies.map((b) => ({ ore: b.ore, count: b.count }));
+    },
+    get zoomRegister() { return zoomRegister; },
+    get cols() { return COLS; },
+    get rows() { return ROWS; },
+  };
+
   // ---------------------------------------------------------------- cursor / ghost / ring sync
   function syncCursor(ui) {
     const cursor = ui && ui.cursor;
@@ -2064,6 +2653,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     const d = getDrill();
     const centerPx = (col, row) => ({ x: col * TILE + TILE / 2, y: row * TILE + TILE / 2 });
     if (evt === 'break') {
+      if (p.wasGas) addVentedScar(p.col, p.row);
       carveCell(p.col, p.row);
       refreshCells(neighborhood(p.col, p.row, 1));
       crackDecal.visible = false;
@@ -2151,13 +2741,16 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     oreBuckets = new Map();
     oreCellIndex = new Map();
     oreWakes.length = 0;
-    for (const [, badge] of badges) oreRoot.remove(badge);
-    badges.clear();
-    if (stainMesh) { oreRoot.remove(stainMesh); stainMesh.dispose(); stainMesh = null; }
-    stainCells = new Map();
-    stainN = 0;
     for (const [, m] of gasByCell) gasRoot.remove(m.group);
     gasByCell.clear();
+    clearVentedScars();
+    clearSeamAnnotations();
+    seamBodies = [];
+    seamOfCell = new Map();
+    seamsDirty = true;
+    mkStampCell = -1;
+    mkStampT = 0;
+    if (mkStamp) mkStamp.visible = false;
     for (const id of [...machines.keys()]) removeMachine(id);
     overlaySig = '';
     rebuildOverlays(null);
@@ -2206,13 +2799,6 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
         }
       }
     }
-    stainCellsCap = Math.max(1, veinTotal);
-    stainMesh = new THREE.InstancedMesh(cellQuad, stainMat, stainCellsCap);
-    stainMesh.frustumCulled = false;
-    stainMesh.count = 0;
-    stainMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    oreRoot.add(stainMesh);
-
     buildRock();
     buildSurface();
     buildSkirt();
@@ -2343,18 +2929,21 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     // dig progress: crack + sink the target block, dribble dust off the face
     syncDigTarget(d, dt);
 
-    // gas pockets churn; fissures breathe with heat
+    // THE POCKET BREATHES (law §3.5 "a cracked, breathing cell"). At rest that is a slow drift of
+    // the wisp inside the cell and a shallow swell — motion you notice without being told, at a
+    // rate nothing else on the board moves at. It is NOT a colour pulse: the old build breathed by
+    // scaling a SHARED material's emissive, so one hot pocket lit every pocket in the rock, and the
+    // resting state glowed. Hot is a material swap, per cell, and only a real breach earns it.
     for (const [, g] of gasByCell) {
       if (!motionReduce) {
-        g.vapor.rotation.z = g.phase + timeS * (g.hot ? 0.85 : 0.18);
-        const br = 1 + Math.sin(timeS * (g.hot ? 3.4 : 0.8) + g.phase) * (g.hot ? 0.09 : 0.04);
+        g.vapor.position.x = Math.sin(timeS * 0.23 + g.phase) * S * 0.07;
+        g.vapor.position.y = Math.sin(timeS * 0.16 + g.phase * 1.7) * S * 0.05;
+        g.vapor.rotation.z = g.phase + timeS * (g.hot ? 0.85 : 0.07);
+        const br = 1 + Math.sin(timeS * (g.hot ? 3.4 : 0.38) + g.phase) * (g.hot ? 0.11 : 0.055);
         g.vapor.scale.setScalar(g.baseScale * br);
       }
-      g.vapor.material.emissiveIntensity = g.hot ? 1.15 : 0.55;
-    }
-    if (!motionReduce) {
-      gasCrackMat.color.copy(gasCrackBase).multiplyScalar(1 + 0.28 * Math.sin(timeS * 1.3));
-      gasCrackHotMat.color.setHex(0xffe27a).multiplyScalar(1 + 0.4 * Math.sin(timeS * 7));
+      const wantMat = g.hot ? gasVaporHotMat : gasMat;
+      if (g.vapor.material !== wantMat) g.vapor.material = wantMat;
     }
 
     // ore wake pops (the survey's reward beat)
@@ -2365,7 +2954,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       const t = motionReduce ? 1 : (timeS - w.t0) / 0.24;
       const k = t >= 1 ? 1 : (1 - Math.pow(1 - Math.max(0, t), 2));
       const overshoot = t < 1 && !motionReduce ? 1 + Math.sin(Math.min(1, t) * Math.PI) * 0.14 : 1;
-      dummy.position.set(w.x, w.y, Z.ore);
+      dummy.position.set(w.x, w.y, w.z);
       dummy.rotation.set(0, 0, w.rotZ);
       dummy.scale.setScalar(w.scale * (0.25 + 0.75 * k) * overshoot);
       dummy.updateMatrix();
@@ -2379,6 +2968,8 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     }
 
     syncCursor(ui);
+    syncSeamAnnotations(d);
+    syncMkStamp(d, dt);
     syncScanRing(d, rx, ry);
     stepFx(dt);
     stepDom(d, dt);
@@ -2389,11 +2980,9 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   function dispose() {
     for (const [, b] of oreBuckets) { oreRoot.remove(b.mesh); b.mesh.dispose(); }
     oreBuckets.clear();
-    for (const [, badge] of badges) oreRoot.remove(badge);
-    badges.clear();
-    if (stainMesh) { oreRoot.remove(stainMesh); stainMesh.dispose(); stainMesh = null; }
     for (const [, g] of gasByCell) gasRoot.remove(g.group);
     gasByCell.clear();
+    clearVentedScars();
     for (const id of [...machines.keys()]) removeMachine(id);
     if (ghost) { fxRoot.remove(ghost.group); disposeGroup(ghost.group); ghost = null; }
     if (umbilical) {
@@ -2403,10 +2992,12 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       umbilical = null;
     }
     rebuildOverlays(null);
-    for (const bucket of ['matrix', 'basalt']) {
+    for (const bucket of ROCK_BUCKETS) {
       for (const inst of rockInst[bucket]) inst.dispose();
       rockInst[bucket] = [];
     }
+    for (const bi of bandInsts) { rockGroup.remove(bi); bi.dispose(); }
+    bandInsts = [];
     cellRock.clear();
     if (plateauInst) { rockGroup.remove(plateauInst); plateauInst.dispose(); plateauInst = null; }
     if (skirtInst) { rockGroup.remove(skirtInst); skirtInst.dispose(); skirtInst = null; }
@@ -2418,11 +3009,18 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     starGeo.dispose();
     starMat.dispose();
     for (const m of oreMats.values()) m.dispose();
-    for (const m of badgeMats.values()) m.dispose();
-    for (const t of badgeTextures.values()) t.dispose();
+    for (const m of stampMats.values()) { delete m.dispose; m.dispose(); }
+    for (const t of stampTextures.values()) t.dispose();
+    if (mkStamp) { oreRoot.remove(mkStamp); mkStamp = null; }
+    for (const chip of chipPool) { fxRoot.remove(chip.mesh); chip.mat.dispose(); }
+    chipPool.length = 0;
+    for (const rec of chipTextures.values()) rec.tex.dispose();
+    chipTextures.clear();
+    seamLineMat.dispose(); splitLineMat.dispose();
+    gasVaporHotMat.dispose(); gasCoreMat.dispose(); ventedMat.dispose();
+    canvas.__ast3d = null;
     laneCoreMat.dispose(); powerCoreMat.dispose(); casingMat.dispose();
     gasMat.dispose(); gasCrackMat.dispose(); gasCrackHotMat.dispose();
-    stainMat.dispose();
     frameMat.dispose(); ringSolidMat.dispose(); ringEmptyMat.dispose(); padOkMat.dispose(); padBadMat.dispose();
     scanMat.dispose(); scanRing.geometry.dispose();
     crackDecalMat.dispose(); crackDecal.geometry.dispose();
@@ -2441,8 +3039,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     for (const l of machineLights) scene.remove(l);
     machineLights.length = 0;
     disposed = true;
-    rockMats.matrix.dispose();
-    rockMats.basalt.dispose();
+    for (const b of ROCK_BUCKETS) rockMats[b].dispose();
     key.shadow.map && key.shadow.map.dispose();
     rim.shadow && rim.shadow.map && rim.shadow.map.dispose();
     scene.environment = null;

@@ -125,6 +125,14 @@ export function makeRockMaterials(envMap, surface = null) {
         bumpMap: bump, bumpScale: 0.75, envMap: envMap || null, envMapIntensity: 0.3 }),
       basalt: new THREE.MeshStandardMaterial({ color: 0x454a58, roughness: 0.82, metalness: 0.12,
         bumpMap: bump, bumpScale: 0.9, envMap: envMap || null, envMapIntensity: 0.4 }),
+      ice: new THREE.MeshStandardMaterial({ color: 0xb9d6d8, roughness: 0.26, metalness: 0.0,
+        bumpMap: bump, bumpScale: 0.3, envMap: envMap || null, envMapIntensity: 1.2 }),
+      metal: new THREE.MeshStandardMaterial({ color: 0x6f5b48, roughness: 0.78, metalness: 0.22,
+        bumpMap: bump, bumpScale: 0.85, envMap: envMap || null, envMapIntensity: 0.5 }),
+      exotic: new THREE.MeshStandardMaterial({ color: 0x352a4d, roughness: 0.62, metalness: 0.18,
+        bumpMap: bump, bumpScale: 0.8, envMap: envMap || null, envMapIntensity: 0.7 }),
+      gas: new THREE.MeshStandardMaterial({ color: 0x4a4a36, roughness: 0.94, metalness: 0.04,
+        bumpMap: bump, bumpScale: 1.0, envMap: envMap || null, envMapIntensity: 0.25 }),
     };
   }
   const build = (tint, normalScale, roughMul, metalMul, envI) => new THREE.MeshStandardMaterial({
@@ -148,12 +156,34 @@ export function makeRockMaterials(envMap, surface = null) {
   // (exposure 1.25, grade off) on the law's §3.5 hex. Both tints run cool because both the stone
   // and the key light are already warm — a warm tint on top is exactly the tan wash the owner
   // rejected ("L* 63.9 measured against the law's 45.5").
+  // PQ-130.04 — SIX HOSTS, NOT TWO. Design law §3.5 asks every material to differ in three channels
+  // at once (hue + surface pattern + inclusion shape). Hue can ride the per-instance tint, but
+  // ROUGHNESS, METALNESS and ENV INTENSITY cannot — and "pale glassy ice" and "obviously-not-normal
+  // violet" are exactly those. So each host material row below is a real material, and buildRock()
+  // buckets cells onto it. The extra tints were solved the same way the first two were: fitting the
+  // measured tint→sRGB response of this rig (out ≈ A·tint^g per channel, anchored on the matrix and
+  // basalt pair) and inverting it onto the law's hex.
   return {
     // Silicate matrix — the anonymous warm stone. Target #7a6955 (L* 45.5).
     matrix: build([1.29, 1.62, 1.95], 1.35, 1.0, 1.0, 0.30),
     // Dense basalt — darker, cooler, less rough, so it takes a sheen the matrix never does.
     // Target #453f3a.
     basalt: build([0.38, 0.61, 1.03], 1.15, 0.86, 1.35, 0.42),
+    // Iron/metal seam host — rust-toned rock. Target #6f5b48. Slightly less rough than the matrix
+    // so the branching vein's metal has a host that can hold a soft sheen beside it.
+    metal: build([1.05, 1.23, 1.48], 1.30, 0.94, 1.15, 0.36),
+    // Deep exotic host — target #352a4d. The red and green multipliers are crushed hard on purpose:
+    // this is the one stone in the mine that is not a brown, and it must read as wrong.
+    exotic: build([0.22, 0.28, 1.65], 1.10, 0.72, 1.20, 0.60),
+    // Ice — target #b9d6d8. THE ONE COLD MATERIAL: bright pale albedo, low roughness and a high env
+    // intensity so it takes a real specular off the work lamp and a cold reflection off the sky
+    // panel. That reflection standing in front of a bright body is the "slight transmission look"
+    // without paying for a transmission pass on this screen's private context.
+    ice: build([3.16, 6.32, 9.25], 0.55, 0.30, 0.30, 1.25),
+    // Gas pocket host — target #4a4a36, a dead olive. Rougher than anything else and almost no env:
+    // the pocket must never catch a highlight, because a highlight is what makes a cell read as
+    // treasure. Its danger is carried by the cracks and the dark core, not by brightness.
+    gas: build([0.44, 0.83, 0.91], 1.45, 1.12, 0.55, 0.14),
   };
 }
 
@@ -690,6 +720,276 @@ export function makeCrackGeos() {
     geos.push(geo);
   }
   return geos;
+}
+
+// ---------------------------------------------------------------- PQ-130.04 material identity kit
+// Design law §3.5: every material differs in THREE CHANNELS AT ONCE — hue, surface pattern and
+// INCLUSION SHAPE. Hue is the host material (makeRockMaterials) plus the cluster tint; surface
+// pattern is the host's roughness/normal and the relief below; this block is the third channel.
+// Every builder here returns ONE merged geometry in the cell's local space: footprint ~1 across,
+// base on the cut face at z≈0, growing toward +z. The works renderer instances them per cell and
+// scales by S, so the whole identity kit costs one draw call per family.
+//
+// Nothing in here is a billboard, a sprite, a flat fill or an emissive halo (law §2.7). Every shape
+// is closed, lit geometry that occupies a real part of the cell and casts into the raking key.
+
+// A raised ridge running along a polyline: two sloped faces meeting at a crest, so a light raking
+// across the face catches one flank and shadows the other. This is what makes a vein read as a vein
+// at 120px instead of as a painted squiggle.
+function ridgeAlong(pts, halfW, height) {
+  const pos = [];
+  const push = (a, b, c) => { pos.push(...a, ...b, ...c); };
+  for (let i = 0; i < pts.length - 1; i++) {
+    const a = pts[i], b = pts[i + 1];
+    if (!a || !b) continue;
+    const dx = b[0] - a[0], dy = b[1] - a[1];
+    const len = Math.hypot(dx, dy) || 1;
+    const nx = (-dy / len) * halfW, ny = (dx / len) * halfW;
+    const aL = [a[0] + nx, a[1] + ny, 0], aR = [a[0] - nx, a[1] - ny, 0], aC = [a[0], a[1], height];
+    const bL = [b[0] + nx, b[1] + ny, 0], bR = [b[0] - nx, b[1] - ny, 0], bC = [b[0], b[1], height];
+    // WINDING IS LOAD-BEARING: computeVertexNormals derives the normal from triangle order, and a
+    // ridge wound the other way faces INTO the rock — three culls it and the vein renders as
+    // nothing at all while every line of code that built it still looks right.
+    push(aL, bC, bL); push(aL, aC, bC);   // left flank  (normal +n, +z)
+    push(aC, bR, bC); push(aC, aR, bR);   // right flank (normal -n, +z)
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array((pos.length / 3) * 2), 2));
+  geo.computeVertexNormals();
+  return geo;
+}
+
+// IRON / METAL SEAM (law §3.5 "rust-toned rock with a metallic branch running through it").
+// A branching vein ridge crossing the whole cell plus angular crystal chips seated along it. The
+// chips are OCTAHEDRA, deliberately flat and faceted: iron's inclusion shape is angular chips, and
+// that shape has to survive a squint against the ice family's plates and the exotic's lattice.
+export function makeMetalVeinGeo(variant = 0) {
+  const rnd = (i, salt) => hash2(i * 11 + variant * 53 + 7, salt * 17 + variant + 2);
+  const parts = [];
+  // Main branch: a wandering polyline from one edge of the cell to the other.
+  const main = [];
+  const a0 = (variant % 2 === 0 ? 0.35 : -0.4) + (rnd(0, 1) - 0.5) * 0.5;
+  let x = -0.46, y = a0 * 0.5;
+  for (let i = 0; i <= 5; i++) {
+    main.push([x, y]);
+    x += 0.184;
+    y += (rnd(i, 2) - 0.5) * 0.26;
+    y = Math.max(-0.4, Math.min(0.4, y));
+  }
+  parts.push(ridgeAlong(main, 0.078, 0.155));
+  // Two side branches off interior nodes — a vein forks, a stripe does not.
+  for (const [ni, dir] of [[1, 1], [3, -1]]) {
+    const [bx, by] = main[ni];
+    const br = [[bx, by]];
+    let cx = bx, cy = by;
+    for (let i = 0; i < 2; i++) {
+      cx += (0.07 + rnd(ni + i, 3) * 0.09);
+      cy += dir * (0.11 + rnd(ni + i, 4) * 0.12);
+      br.push([Math.max(-0.47, Math.min(0.47, cx)), Math.max(-0.45, Math.min(0.45, cy))]);
+    }
+    parts.push(ridgeAlong(br, 0.050, 0.105));
+  }
+  // Angular chips: 5 flattened octahedra seated on the ridge, occupying a real part of the cell.
+  const nChips = 4;
+  for (let i = 0; i < nChips; i++) {
+    const node = main[1 + (i % (main.length - 2))];
+    const r = 0.145 + rnd(i, 5) * 0.075;
+    const chip = new THREE.OctahedronGeometry(r, 0);
+    chip.scale(1.0, 0.82 + rnd(i, 6) * 0.3, 0.62);
+    chip.rotateZ(rnd(i, 7) * Math.PI);
+    chip.rotateX(rnd(i, 8) * 0.7);
+    chip.translate(node[0] + (rnd(i, 9) - 0.5) * 0.12, node[1] + (rnd(i, 10) - 0.5) * 0.12,
+      0.10 + rnd(i, 11) * 0.05);
+    parts.push(chip);
+  }
+  return mergeGeometries(parts.map((g) => (g.index ? g.toNonIndexed() : g)), false);
+}
+
+// ICE (law §3.5 "pale glassy blue, the one cold material"). Inclusion shape is intersecting flat
+// PLATES with fractured edges — nothing else in the mine is planar, so ice reads instantly even in
+// grayscale. The material (makeRockMaterials.ice / the cluster's ice branch) supplies the sheen.
+export function makeIceSheenGeo(variant = 0) {
+  const rnd = (i, salt) => hash2(i * 13 + variant * 41 + 11, salt * 19 + variant + 5);
+  const parts = [];
+  const n = 4;
+  for (let i = 0; i < n; i++) {
+    const w = 0.30 + rnd(i, 1) * 0.20;
+    const h = 0.20 + rnd(i, 2) * 0.17;
+    const plate = new THREE.BoxGeometry(w, h, 0.048 + rnd(i, 3) * 0.036);
+    // Shear the plate so its faces are not all parallel to the cut plane: a plate you see edge-on
+    // is what makes the cluster read as broken ice instead of a stack of coasters.
+    plate.rotateZ((rnd(i, 4) - 0.5) * 2.4);
+    plate.rotateX(0.35 + (rnd(i, 5) - 0.5) * 1.3);
+    plate.rotateY((rnd(i, 6) - 0.5) * 1.1);
+    plate.translate((rnd(i, 7) - 0.5) * 0.36, (rnd(i, 8) - 0.5) * 0.36, 0.09 + rnd(i, 9) * 0.08);
+    parts.push(plate);
+  }
+  // A couple of small shards in the gaps so the silhouette is not four rectangles.
+  for (let i = 0; i < 3; i++) {
+    const sh = new THREE.TetrahedronGeometry(0.085 + rnd(i, 10) * 0.055, 0);
+    sh.rotateZ(rnd(i, 11) * Math.PI);
+    sh.rotateX(rnd(i, 12) * Math.PI);
+    sh.translate((rnd(i, 13) - 0.5) * 0.5, (rnd(i, 14) - 0.5) * 0.5, 0.05 + rnd(i, 15) * 0.05);
+    parts.push(sh);
+  }
+  return mergeGeometries(parts.map((g) => (g.index ? g.toNonIndexed() : g)), false);
+}
+
+// DEEP EXOTIC (law §3.5 "obviously-not-normal violet lattice; the visible prize"). The inclusion is
+// a STRUT LATTICE — an octahedral cage of thin bars with nodes at the vertices. It is the only
+// regular, engineered-looking shape in a mine full of broken rock, which is exactly the read: this
+// material does not belong here.
+export function makeExoticLatticeGeo(variant = 0) {
+  const rnd = (i, salt) => hash2(i * 23 + variant * 67 + 3, salt * 29 + variant + 9);
+  const parts = [];
+  const R = 0.34 + (variant % 2) * 0.04;
+  const zc = 0;
+  const verts = [
+    [R, 0, zc], [-R, 0, zc], [0, R, zc], [0, -R, zc], [0, 0, zc + R * 0.85], [0, 0, zc - R * 0.85],
+  ];
+  const edges = [[0, 2], [2, 1], [1, 3], [3, 0], [0, 4], [2, 4], [1, 4], [3, 4], [0, 5], [2, 5], [1, 5], [3, 5]];
+  const up = new THREE.Vector3(0, 1, 0);
+  for (const [ia, ib] of edges) {
+    const a = new THREE.Vector3(...verts[ia]);
+    const b = new THREE.Vector3(...verts[ib]);
+    const dir = b.clone().sub(a);
+    const len = dir.length();
+    const bar = new THREE.BoxGeometry(0.046, len, 0.046);
+    const q = new THREE.Quaternion().setFromUnitVectors(up, dir.clone().normalize());
+    bar.applyQuaternion(q);
+    bar.translate((a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2);
+    parts.push(bar);
+  }
+  for (let i = 0; i < verts.length; i++) {
+    const node = new THREE.OctahedronGeometry(0.078 + rnd(i, 1) * 0.025, 0);
+    node.translate(verts[i][0], verts[i][1], verts[i][2]);
+    parts.push(node);
+  }
+  const cage = mergeGeometries(parts.map((p) => (p.index ? p.toNonIndexed() : p)), false);
+  cage.rotateX(0.62 + (variant % 2) * 0.28);
+  cage.rotateY(0.44 + variant * 0.51);
+  cage.rotateZ(variant * 0.37);
+  cage.translate(0, 0, 0.30);
+  // A low mineralised crust the cage grows out of, so it is seated in the rock, not floating on it.
+  const crust = new THREE.DodecahedronGeometry(0.32, 0);
+  crust.scale(1.0, 0.9, 0.24);
+  crust.translate(0, 0, 0.03);
+  return mergeGeometries([cage, crust].map((p) => (p.index ? p.toNonIndexed() : p)), false);
+}
+
+// GAS POCKET — the BLOCK ITSELF is cracked (law §3.5 / playfield §5.5), so the identity is a set of
+// RADIAL hairline fissures running out of a dark core, not a crystal and not a halo. Returned as
+// separate variants so neighbouring pockets are not stamped from one die.
+export function makeRadialCrackGeos() {
+  const geos = [];
+  for (let v = 0; v < 3; v++) {
+    const parts = [];
+    const n = 6 + (v % 2);
+    for (let i = 0; i < n; i++) {
+      const a0 = (i / n) * Math.PI * 2 + hash2(v * 7 + i, 1) * 0.55;
+      const pts = [[Math.cos(a0) * 0.07, Math.sin(a0) * 0.07]];
+      let a = a0;
+      let rr = 0.10;
+      const segs = 4 + Math.floor(hash2(v + i, 2) * 3);
+      for (let k = 0; k < segs; k++) {
+        a += (hash2(v * 5 + i * 3 + k, 3) - 0.5) * 0.7;
+        rr += 0.075 + hash2(i + k, 4) * 0.075;
+        if (rr > 0.48) break;
+        pts.push([Math.cos(a) * rr, Math.sin(a) * rr]);
+      }
+      if (pts.length < 2) continue;
+      // Fissures the light finds, not drawn lines — but they have to reach the cell edge, or the
+      // pocket reads as a smudge in the middle of an ordinary block instead of a cracked one.
+      parts.push(ridgeAlong(pts, 0.028 + hash2(v, i) * 0.012, 0.055));
+    }
+    geos.push(mergeGeometries(parts.map((g) => (g.index ? g.toNonIndexed() : g)), false));
+  }
+  return geos;
+}
+
+// The gas pocket's DARK CENTRE (law §3.5 `#2b2d1f`): a socket pressed into the cut face that the
+// fissures radiate from. Concave and unlit-looking because it is genuinely in shadow — the one
+// place on this board where the warm key cannot reach.
+export function makeGasCoreGeo() {
+  const cone = new THREE.ConeGeometry(0.30, 0.30, 10, 1, true);
+  cone.rotateX(-Math.PI / 2);          // opening toward +z, apex sunk into the rock
+  cone.translate(0, 0, -0.12);
+  const floor = new THREE.CircleGeometry(0.055, 8);
+  floor.translate(0, 0, -0.12);
+  return mergeGeometries([cone, floor].map((gg) => (gg.index ? gg.toNonIndexed() : gg)), false);
+}
+
+// VENTED POCKET (law §3.5, D2 permanence): once a pocket blows, its cell is gone from the sim, so
+// what stays is a scar on the cavity floor — the pocket SPLIT OPEN, two lips levered apart around a
+// dead gap. Flat, dull, gray-green; nothing about it suggests there is anything left to take.
+export function makeVentedScarGeo() {
+  const parts = [];
+  for (const side of [-1, 1]) {
+    const lip = new THREE.BoxGeometry(0.66, 0.26, 0.055);
+    lip.rotateX(side * 0.34);
+    lip.translate(0, side * 0.19, 0.03);
+    parts.push(lip);
+    for (let i = 0; i < 3; i++) {
+      const shard = new THREE.TetrahedronGeometry(0.062 + hash2(i, side + 2) * 0.04, 0);
+      shard.rotateZ(hash2(i * 3, side) * Math.PI);
+      shard.translate(-0.28 + i * 0.28, side * (0.30 + hash2(i, 5) * 0.08), 0.035);
+      parts.push(shard);
+    }
+  }
+  return mergeGeometries(parts.map((g) => (g.index ? g.toNonIndexed() : g)), false);
+}
+
+// DENSE BASALT's surface pattern (law §3.5 "clearly darker, heavy, banded — reads structural").
+// Two shallow ledges across the cell. Bedded rock is banded, and a band is a step in the surface
+// long before it is a change in colour: at the raking key's angle each ledge draws its own hard
+// shadow line, so basalt reads as layered even in a grayscale still.
+export function makeBasaltBandGeo(variant = 0) {
+  const rnd = (i, salt) => hash2(i * 31 + variant * 19 + 13, salt * 7 + variant + 4);
+  const parts = [];
+  for (let i = 0; i < 2; i++) {
+    const y = -0.22 + i * 0.34 + (rnd(i, 1) - 0.5) * 0.14;
+    const h = 0.075 + rnd(i, 2) * 0.06;
+    const ledge = new THREE.BoxGeometry(0.94, h, 0.085 + rnd(i, 3) * 0.045);
+    ledge.rotateZ((rnd(i, 4) - 0.5) * 0.10);
+    ledge.translate((rnd(i, 5) - 0.5) * 0.05, y, 0.024);
+    parts.push(ledge);
+  }
+  return mergeGeometries(parts.map((g) => (g.index ? g.toNonIndexed() : g)), false);
+}
+
+// THE MK LOCK STAMP (law §5 "an engraved MK2 stamp fades in on the cell face"; playfield §5.5 "a
+// readable stamp on a dull vein, not an 8px sprite"). A chamfered plate lying on the cut face. The
+// front pane and the chamfer share ONE plan-projected uv over the plate's full footprint, so a
+// single canvas texture paints an engraved field with a bezel border and the numerals fall exactly
+// on the recessed pane. It is a lit object with a real normal, so the key light rakes across the
+// bezel and the plate reads as stamped metal rather than a decal.
+export function makeMkStampGeo() {
+  const bx = 0.34, by = 0.20;          // plate half-extents (local cell units)
+  const c = 0.055;                     // chamfer inset
+  const h = 0.062;                     // plate height above the face
+  const pos = [], uv = [];
+  const U = (x, y) => [x / (2 * bx) + 0.5, y / (2 * by) + 0.5];
+  const quad = (a, b, cc, d) => {
+    pos.push(...a, ...b, ...cc, ...a, ...cc, ...d);
+    const [ua, ub, uc, ud] = [U(a[0], a[1]), U(b[0], b[1]), U(cc[0], cc[1]), U(d[0], d[1])];
+    uv.push(...ua, ...ub, ...uc, ...ua, ...uc, ...ud);
+  };
+  const o = { pp: [bx, by, 0], pn: [bx, -by, 0], np: [-bx, by, 0], nn: [-bx, -by, 0] };
+  const f = {
+    pp: [bx - c, by - c, h], pn: [bx - c, -(by - c), h],
+    np: [-(bx - c), by - c, h], nn: [-(bx - c), -(by - c), h],
+  };
+  quad(f.nn, f.pn, f.pp, f.np);        // engraved pane
+  quad(o.nn, o.pn, f.pn, f.nn);        // chamfers
+  quad(o.pn, o.pp, f.pp, f.pn);
+  quad(o.pp, o.np, f.np, f.pp);
+  quad(o.np, o.nn, f.nn, f.np);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  geo.computeVertexNormals();
+  return geo;
 }
 
 // THE ROVER — a recognisable tracked mining vehicle, and the only safety-yellow object in the

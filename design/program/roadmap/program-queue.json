@@ -7628,7 +7628,7 @@
       "priority": 348,
       "title": "Cells speak: ore, gas, surveyed vs unsurveyed at a glance",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-130.03"
       ],
@@ -7645,7 +7645,9 @@
         "npm run check:asteroid-theater",
         "node scripts/check-program-docs.mjs"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-130-04-cells-speak-REPORT.md"
+      ],
       "brief": "Spirit: a prospector can read the face. Ore is treasure occupying the cell. Gas is the block cracked and seeping. Survey changes the picture. Illegal: bigger sparkles / yellower gas on the same tan host cube. No billboard sprites. MK lock readable."
     },
     {
