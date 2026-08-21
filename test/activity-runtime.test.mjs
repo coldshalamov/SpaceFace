@@ -317,6 +317,18 @@ test('S1 near actors think on a reduced cadence, not every tick', () => {
   assert.equal(hits.every(Boolean), false);
 });
 
+test('generic unobserved far ships become aggregate population, not 60 Hz bodies', () => {
+  const player = ship(1, 0, { isPlayer: true, team: 0 });
+  const extra = ship(40, 5000, { team: 2, data: {} });
+  const state = makeState([player, extra]);
+  const runtime = ensureActivityClassified(state);
+  assert.equal(extra.alive, true);
+  assert.equal(extra.activity.simTier, SIM_TIER.S4_AGGREGATE);
+  assert.equal(entityNeedsPhysics(extra), false);
+  assert.equal(entityNeedsAiThink(extra, state), false);
+  assert.ok(runtime.counts.s4 >= 1);
+});
+
 test('activity manager publishes glass and exact sets from the live classifier', () => {
   const player = ship(1, 0, { isPlayer: true, team: 0 });
   const far = ship(4, 4000, { data: { itinerary: { routeId: 'lane_a' } }, team: 2 });

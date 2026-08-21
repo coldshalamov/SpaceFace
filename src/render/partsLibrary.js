@@ -49,6 +49,7 @@ import {
   MATERIAL_ABI_VERSION,
   createFlightRenderPackageCache,
 } from './flightRenderPackage.js';
+import { cookFlightProduct } from './flightProductCooker.js';
 
 const flightRenderPackages = createFlightRenderPackageCache();
 const flightRootTemplates = new Map();
@@ -4898,6 +4899,7 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
   root.userData.authoredPartsCache = authoredPartList;
   root.userData.authoredSlotsCache = authoredSlotMap;
   root.userData.wholeShip = wholeShip;
+  cookFlightProduct(root, 'chase');
   if (loadoutFingerprint && !flightRootTemplates.has(loadoutFingerprint) && typeof root.clone === 'function') {
     try { flightRootTemplates.set(loadoutFingerprint, root.clone(true)); } catch (_) {}
   }

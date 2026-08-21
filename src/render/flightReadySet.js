@@ -25,6 +25,18 @@ export function isPlaceLayerBlockingFlightReady(layer) {
     || layer === PLACE_PACKAGE_LAYER.EXTERIOR_MID;
 }
 
+export function selectPlacePackageLayer(options = {}) {
+  if (options.docked === true) return PLACE_PACKAGE_LAYER.INTERIOR;
+  if (options.onGlass === true && Number(options.projectedPx) > 220) {
+    return PLACE_PACKAGE_LAYER.EXTERIOR_NEAR;
+  }
+  if (options.onGlass === true) return PLACE_PACKAGE_LAYER.EXTERIOR_MID;
+  if (options.onRunway === true || options.interactable === true) {
+    return PLACE_PACKAGE_LAYER.GAMEPLAY_SHELL;
+  }
+  return null;
+}
+
 export function isFlightReadyRoleBlocking(role) {
   return role === FLIGHT_READY_ROLE.PLAYER_GAMEPLAY
     || role === FLIGHT_READY_ROLE.PLAYER_FLIGHT_PACKAGE

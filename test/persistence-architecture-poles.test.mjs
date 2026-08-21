@@ -6,7 +6,9 @@ import {
   PLACE_PACKAGE_LAYER,
   isFlightReadyRoleBlocking,
   isPlaceLayerBlockingFlightReady,
+  selectPlacePackageLayer,
 } from '../src/render/flightReadySet.js';
+import { cookFlightProduct } from '../src/render/flightProductCooker.js';
 import {
   computeLoadoutFingerprint,
   createFlightRenderPackageCache,
@@ -46,6 +48,28 @@ test('shell-first place layers: interiors do not block input', () => {
   assert.equal(isPlaceLayerBlockingFlightReady(PLACE_PACKAGE_LAYER.INTERIOR), false);
   assert.equal(isPlaceLayerBlockingFlightReady(PLACE_PACKAGE_LAYER.CLOSE_DETAIL), false);
   assert.equal(isFlightReadyRoleBlocking(FLIGHT_READY_ROLE.HUD_INPUT), true);
+  assert.equal(selectPlacePackageLayer({ docked: true }), PLACE_PACKAGE_LAYER.INTERIOR);
+  assert.equal(selectPlacePackageLayer({ onRunway: true }), PLACE_PACKAGE_LAYER.GAMEPLAY_SHELL);
+  assert.equal(selectPlacePackageLayer({}), null);
+});
+
+test('chase-camera cooker removes interior-only children and keeps untagged hulls', () => {
+  const hull = { name: 'hull', userData: { flightProductTags: [FLIGHT_PRODUCT_TAG.FLIGHT_EXTERIOR] }, parent: null };
+  const seat = { name: 'seat', userData: { flightProductTags: [FLIGHT_PRODUCT_TAG.INTERIOR_ONLY] }, parent: null };
+  const root = {
+    children: [hull, seat],
+    traverse(visit) {
+      visit(this);
+      visit(hull);
+      visit(seat);
+    },
+  };
+  hull.parent = { remove(node) { root.children = root.children.filter((child) => child !== node); } };
+  seat.parent = hull.parent;
+  const cooked = cookFlightProduct(root, 'chase');
+  assert.equal(cooked.removed, 1);
+  assert.equal(root.children.includes(seat), false);
+  assert.equal(root.children.includes(hull), true);
 });
 
 test('flight packages cache by loadout fingerprint and refuse in-flight cooks', () => {

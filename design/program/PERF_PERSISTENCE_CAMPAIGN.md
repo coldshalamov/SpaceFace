@@ -55,18 +55,38 @@ ledger and restore on respawn; New Game no longer waits for a far Helios hub.
 Spatial hash now uses the same causal active set as Rapier. Far dormant
 colliders remain in the world list; they are not hashed or queried.
 
-## Remaining programs (not this slice)
+## Implementation inventory (review this)
 
-Later poles are wired to production seams, not parked as unused files:
+Shipped in production. Picture contract: default bloom, shadows, particles,
+population, and combat authority stay on. Actors are not deleted at the screen
+edge.
 
-- Catch-up spiral skips HUD/voice on extra ticks; present still once per rAF.
-- Presentation residency reads R0–R3; runway packages stay resident, not submitted.
-- S1 near AI uses reduced cadence; S2/S3 stay asleep until nextEventAtT.
-- Present publishes a snapshot fence from PresentationWorld columns.
-- Material library stamps ABI program families. Flight packages cache by loadout.
-- Save does not serialize on catch-up ticks. Recent-memory records expire.
-- Persistent submit lanes, Worker, and WebGPU remain **off** until a headed fly
-  names them as the pole. Do not retry prewarm. Do not enable mixed mega-batch.
+| Phase | What landed |
+|---|---|
+| 0 fixtures | Persistence matrix tests: mine/leave/return, follow, chase, kill, tether, catch-up, recent-memory GC |
+| 1 ledger | WorldRecord v2, resource-body ledger, catch-up kernels, destroyed IDs stay dead |
+| 2 activity | Pins, S0–S4, R0–R3, hysteresis, grace, `worldActivityManager` |
+| 3 far AI | S2/S3/S4 skip think; S1 reduced cadence; hostiles/tethers/jobs stay exact |
+| 4 Rapier | Active set + spatial hash from activity; far bodies remain in the world list |
+| 5 catch-up spiral | Present once per rAF; HUD/voice skip extra sim steps |
+| 6 residency | Mesh keep/submit follows R0/R1; R2/R3 unload except planets/focus |
+| 7 shell-first | Opening gate ignores far hubs; interiors do not block flight-ready |
+| 8 flight packages | Loadout fingerprint, cache, clone reuse; no in-flight geometry cook |
+| 9 cooker | Chase-camera cooker drops interior/hangar/attachment-tagged nodes |
+| 10 material ABI | Canonical roles stamp program families (no dummy prewarm) |
+| 11 submit lanes | Persistent reserve/release/dirty; mixed mega-batch stays off |
+| 12 governor | glass / runway / evictable roles on residency retain |
+| 13 snapshot fence | Packed each present; poses apply from snapshot |
+| 14 Worker | Abstract catch-up worker with main-thread fallback. Rapier stays main-thread |
+| 15 save/UI/audio | Catch-up save skip; HUD unchanged skip; listener-relative exact audio |
+| 16 background | Sky kept; no quality cut |
+| 17 Electron | Browser and Electron remain one path. Backend bake-off is review/measure |
+| 18 WebGPU | Selector exists; live present stays WebGL until a backend swap is proven |
+
+S4: generic unobserved far ships are aggregate counters, still alive in the
+list, zero per-tick AI/physics.
+
+Do not retry prewarm. Do not enable mixed unique-hull mega-batch.
 
 ## Persistence invariants (short)
 

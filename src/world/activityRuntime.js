@@ -154,6 +154,7 @@ function publishScalars(state, runtime) {
     glassCount: runtime.glassIds.length,
     runwayCount: runtime.runwayIds.length,
     exactCount: runtime.exactIds.length,
+    aggregatePopulation: counts.s4,
   };
 }
 
@@ -497,7 +498,13 @@ function classifyWorld(state, runtime) {
       || (typeof data.activityObjectSlotId === 'string' && /[a-z]/i.test(data.activityObjectSlotId))
       || (entity.flags && entity.flags.missionPinned));
     ctx.imminentCollision = false;
-    ctx.aggregateOnly = false;
+    ctx.aggregateOnly = entity.type === 'ship'
+      && !onGlass
+      && !onRunway
+      && !data.itinerary
+      && !data.named
+      && !(data.ai && data.ai.combatant === true)
+      && !ctx.missionCritical;
     ctx.dormant = false;
 
     const classified = classifyActivity(entity, ctx);
