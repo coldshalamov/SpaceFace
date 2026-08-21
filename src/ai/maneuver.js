@@ -83,6 +83,15 @@ export class ManeuverPlanner {
     this.freeze = config.freezeResults === false ? identity : Object.freeze;
     this.includeTrajectory = config.includeTrajectory !== false;
     this.byEntity = new Map();
+    // A live perception snapshot is reused until that member's sensor batch refreshes. Keep one
+    // stable, ordered contact index per snapshot so the maneuver pass does not rescan the same
+    // contacts independently for target lookup, tether/retreat selection, and each avoidance lane.
+    // The WeakMap keeps this cache bounded by the existing perception lifetime.
+    this.contactIndexes = new WeakMap();
+    this.contactIndexing = config.contactIndex !== false;
+    this.workCounters = config.workCounters === true
+      ? { contactIndexBuilds: 0, indexedContactVisits: 0, legacyContactVisits: 0 }
+      : null;
   }
 
   plan({ tick, entityId, perception, behavior, directive }) {
@@ -113,7 +122,14 @@ export class ManeuverPlanner {
       breakFormation: directive.formation.breakFormation,
       reason: 'no_behavior_intent',
     };
-    const target = intent.targetId == null ? null : perception.contacts.find((contact) => contact.id === intent.targetId);
+    const contacts = Array.isArray(perception.contacts) ? perception.contacts : [];
+    const contactIndex = this.contactIndexing ? this._contactIndexFor(perception) : null;
+    const target = intent.targetId == null
+      ? null
+      : contactIndex
+        ? contactIndex.byId.get(intent.targetId) || null
+        : findContactById(contacts, intent.targetId, this.workCounters);
+    const contactSource = contactIndex || { ships: contacts, tethers: contacts, obstacles: contacts };
     const formationDistance = distance2(self.pos, intent.formationSlot || self.pos);
     const formationBound = Math.max(1, intent.formationBound || 0);
     const rejoinDistance = formationBound * this.config.formationRejoinFraction;
@@ -121,11 +137,11 @@ export class ManeuverPlanner {
     const predictedFormationSlot = predictFormationSlot(intent, this.config.formationPredictionTicks);
     let desired = mustRejoin
       ? seekPoint(self, predictedFormationSlot, 1)
-      : desiredForIntent(intent, self, target, perception.contacts, this.seed, entityId, this.config);
+      : desiredForIntent(intent, self, target, contactSource, this.seed, entityId, this.config, this.workCounters);
 
-    desired = applyFriendlySeparation(desired, self, perception.contacts, this.config);
-    desired = applyShipCollisionAvoidance(desired, self, perception.contacts, intent, this.seed, entityId, tick, runtime, this.config);
-    desired = applyObstacleAvoidance(desired, self, perception.contacts, this.config);
+    desired = applyFriendlySeparation(desired, self, contactSource.ships, this.config, this.workCounters, contactIndex ? 'indexed' : 'legacy');
+    desired = applyShipCollisionAvoidance(desired, self, contactSource.ships, intent, this.seed, entityId, tick, runtime, this.config, this.workCounters, contactIndex ? 'indexed' : 'legacy');
+    desired = applyObstacleAvoidance(desired, self, contactSource.obstacles, this.config, this.workCounters, contactIndex ? 'indexed' : 'legacy');
     const speed = Math.hypot(self.vel.x, self.vel.z);
     const commanded = Math.hypot(desired.x, desired.z);
     const intentionalHold = intent.kind === ManeuverKind.HOLD && formationDistance <= this.config.arrivalRadius;
@@ -254,6 +270,56 @@ export class ManeuverPlanner {
     this.byEntity.delete(entityId);
   }
 
+  getWorkCounters() {
+    return this.workCounters ? { ...this.workCounters } : null;
+  }
+
+  _contactIndexFor(perception) {
+    const contacts = perception && Array.isArray(perception.contacts) ? perception.contacts : [];
+    // PerceptionMemory owns this monotonic revision. It is the only reliable way to notice a
+    // same-array, same-tick update (including contact replacement/reclassification) without
+    // rescanning every contact just to fingerprint the snapshot. Unversioned/ad-hoc perceptions
+    // fail closed to a per-call index, so callers never receive a stale cached classification.
+    const revision = perception && Number.isInteger(perception.revision) ? perception.revision : null;
+    const cacheable = revision !== null && perception && typeof perception === 'object';
+    let index = cacheable ? this.contactIndexes.get(perception) : null;
+    if (index && index.contacts === contacts && index.tick === perception.tick && index.self === perception.self && index.revision === revision) {
+      return index;
+    }
+    if (!index) {
+      index = {
+        contacts: null,
+        tick: null,
+        self: null,
+        revision: null,
+        byId: new Map(),
+        ships: [],
+        tethers: [],
+        obstacles: [],
+      };
+      if (cacheable) this.contactIndexes.set(perception, index);
+    }
+    index.contacts = contacts;
+    index.tick = perception && perception.tick;
+    index.self = perception && perception.self;
+    index.revision = revision;
+    index.byId.clear();
+    index.ships.length = 0;
+    index.tethers.length = 0;
+    index.obstacles.length = 0;
+    if (this.workCounters) this.workCounters.contactIndexBuilds++;
+    for (const contact of contacts) {
+      if (this.workCounters) {
+        this.workCounters.indexedContactVisits++;
+      }
+      if (!index.byId.has(contact.id)) index.byId.set(contact.id, contact);
+      if (contact.kind === ContactKind.SHIP) index.ships.push(contact);
+      if (contact.kind === ContactKind.TETHER) index.tethers.push(contact);
+      if (contact.kind === ContactKind.HAZARD || contact.tags.includes('solid')) index.obstacles.push(contact);
+    }
+    return index;
+  }
+
   inspect(entityId = null) {
     if (entityId != null) return freezeRuntime(this.byEntity.get(entityId));
     const out = {};
@@ -282,7 +348,7 @@ function predictFormationSlot(intent, predictionTicks) {
   };
 }
 
-function desiredForIntent(intent, self, target, contacts, seed, entityId, config) {
+function desiredForIntent(intent, self, target, contactIndex, seed, entityId, config, counters) {
   if (intent.flightPoint && Number.isFinite(intent.flightPoint.x) && Number.isFinite(intent.flightPoint.z)) {
     return seekPoint(self, intent.flightPoint, 1);
   }
@@ -299,15 +365,23 @@ function desiredForIntent(intent, self, target, contacts, seed, entityId, config
     case ManeuverKind.CUT_TETHER:
       return target ? seekPoint(self, target.pos, 1) : seekPoint(self, intent.formationSlot, 0.8);
     case ManeuverKind.ESCAPE_TETHER:
-      return escapeTether(self, target || nearestTether(contacts, self), seed, entityId);
+      return escapeTether(self, target || nearestTether(contactIndex.tethers, self, counters, contactIndex.tethers === contactIndex.ships ? 'legacy' : 'indexed'), seed, entityId);
     case ManeuverKind.RETREAT:
-      return retreat(self, contacts, intent.formationSlot);
+      return retreat(self, contactIndex.ships, intent.formationSlot, counters, contactIndex.ships === contactIndex.tethers ? 'legacy' : 'indexed');
     case ManeuverKind.FORMATION:
       return seekPoint(self, intent.formationSlot, 0.8);
     case ManeuverKind.HOLD:
     default:
       return seekPoint(self, intent.formationSlot || self.pos, 0.4);
   }
+}
+
+function findContactById(contacts, targetId, counters) {
+  for (const contact of contacts) {
+    if (counters) counters.legacyContactVisits++;
+    if (contact.id === targetId) return contact;
+  }
+  return null;
 }
 
 function intercept(self, target, horizonTicks, lateralSign = 0) {
@@ -349,9 +423,10 @@ function escapeTether(self, tether, _seed, _entityId) {
   return { x: away.x, z: away.z, arrivalDistance: distance2(self.pos, tether.pos) };
 }
 
-function retreat(self, contacts, fallback) {
+function retreat(self, contacts, fallback, counters, counterMode = 'legacy') {
   let x = 0, z = 0, weight = 0;
   for (const contact of contacts) {
+    countContactVisit(counters, counterMode);
     if (contact.kind !== ContactKind.SHIP || contact.team === self.team) continue;
     const dx = self.pos.x - contact.pos.x, dz = self.pos.z - contact.pos.z;
     const dist = Math.hypot(dx, dz) || 1;
@@ -371,9 +446,10 @@ function seekPoint(self, point, throttle) {
   return { x: dx * throttle, z: dz * throttle, arrivalDistance: distance };
 }
 
-function nearestTether(contacts, self) {
+function nearestTether(contacts, self, counters, counterMode = 'legacy') {
   let best = null, bestDistance = Infinity;
   for (const contact of contacts) {
+    countContactVisit(counters, counterMode);
     if (contact.kind !== ContactKind.TETHER) continue;
     const distance = distance2(self.pos, contact.pos);
     if (distance < bestDistance) { best = contact; bestDistance = distance; }
@@ -381,9 +457,10 @@ function nearestTether(contacts, self) {
   return best;
 }
 
-function applyFriendlySeparation(desired, self, contacts, config) {
+function applyFriendlySeparation(desired, self, contacts, config, counters, counterMode = 'legacy') {
   let x = desired.x, z = desired.z;
   for (const contact of contacts) {
+    countContactVisit(counters, counterMode);
     if (contact.kind !== ContactKind.SHIP || contact.team !== self.team || contact.id === self.id) continue;
     const dx = self.pos.x - contact.pos.x;
     const dz = self.pos.z - contact.pos.z;
@@ -397,13 +474,14 @@ function applyFriendlySeparation(desired, self, contacts, config) {
   return { x, z, arrivalDistance: desired.arrivalDistance };
 }
 
-function applyShipCollisionAvoidance(desired, self, contacts, intent, seed, entityId, tick, runtime, config) {
+function applyShipCollisionAvoidance(desired, self, contacts, intent, seed, entityId, tick, runtime, config, counters, counterMode = 'legacy') {
   const dir = unit2(desired.x, desired.z, Math.cos(self.rot), Math.sin(self.rot));
   let x = dir.x, z = dir.z;
   const rightX = -dir.z;
   const rightZ = dir.x;
   const passes = runtime.collisionPasses || (runtime.collisionPasses = new Map());
   for (const contact of contacts) {
+    countContactVisit(counters, counterMode);
     if (!contact || contact.kind !== ContactKind.SHIP || contact.id === self.id || contact.alive === false) continue;
     if (contact.id === intent.targetId && explicitRamApproach(intent, self)) continue;
     const dx = contact.pos.x - self.pos.x;
@@ -472,11 +550,12 @@ function tetherApproach(kind) {
   return kind === ManeuverKind.APPROACH_SOCKET || kind === ManeuverKind.CUT_TETHER;
 }
 
-function applyObstacleAvoidance(desired, self, contacts, config) {
+function applyObstacleAvoidance(desired, self, contacts, config, counters, counterMode = 'legacy') {
   let x = desired.x, z = desired.z;
   const dir = unit2(x, z, Math.cos(self.rot), Math.sin(self.rot));
   const look = { x: self.pos.x + dir.x * config.obstacleLookahead, z: self.pos.z + dir.z * config.obstacleLookahead };
   for (const contact of contacts) {
+    countContactVisit(counters, counterMode);
     if (contact.kind !== ContactKind.HAZARD && !contact.tags.includes('solid')) continue;
     const clearance = config.obstacleClearance + self.radius + contact.radius;
     const d = distance2(look, contact.pos);
@@ -596,6 +675,12 @@ function approach(current, target, maxDelta) {
 
 function freezeRuntime(runtime) {
   return runtime ? Object.freeze({ ...runtime }) : null;
+}
+
+function countContactVisit(counters, mode) {
+  if (!counters) return;
+  if (mode === 'indexed') counters.indexedContactVisits++;
+  else counters.legacyContactVisits++;
 }
 
 function identity(value) {

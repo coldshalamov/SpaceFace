@@ -21,8 +21,12 @@ export class PerceptionMemory {
         contacts: new Map(),
         events: [],
         tick: normalized.tick,
+        // Maneuver planning may retain indexes over the live (non-frozen) snapshot. The
+        // revision is owned by this memory and advances after every accepted sensor batch,
+        // including in-place contact updates and removals.
+        revision: 0,
         snapshotContacts: [],
-        snapshot: { tick: normalized.tick, self: normalized.self, contacts: [], events: [] },
+        snapshot: { tick: normalized.tick, self: normalized.self, contacts: [], events: [], revision: 0 },
       };
       this.byEntity.set(entityId, memory);
     }
@@ -53,6 +57,7 @@ export class PerceptionMemory {
       if (age > this.memoryTicks || confidence < this.confidenceFloor) memory.contacts.delete(key);
     }
 
+    memory.revision++;
     const snapshot = this.snapshot(entityId, normalized.tick);
     if (this.trace) {
       this.trace.emit({
@@ -70,7 +75,7 @@ export class PerceptionMemory {
   snapshot(entityId, tick = null) {
     const memory = this.byEntity.get(entityId);
     const freeze = this.freeze;
-    if (!memory) return freeze({ tick: tick || 0, self: null, contacts: freeze([]), events: freeze([]) });
+    if (!memory) return freeze({ tick: tick || 0, self: null, contacts: freeze([]), events: freeze([]), revision: 0 });
     const now = tick == null ? memory.tick : tick;
     if (!this.freezeResults) return liveSnapshot(memory, now, this.memoryTicks, this.confidenceFloor);
     const contacts = [];
@@ -125,6 +130,7 @@ export class PerceptionMemory {
       self: memory.self,
       contacts: freeze(contacts),
       events: freeze === Object.freeze ? freeze(memory.events.slice()) : memory.events,
+      revision: memory.revision,
     });
   }
 
@@ -152,11 +158,12 @@ function liveSnapshot(memory, now, memoryTicks, confidenceFloor) {
     contact.visible = contact.visible !== false && ageTicks === 0;
     contacts.push(contact);
   }
-  const snapshot = memory.snapshot || (memory.snapshot = { tick: now, self: null, contacts, events: [] });
+  const snapshot = memory.snapshot || (memory.snapshot = { tick: now, self: null, contacts, events: [], revision: 0 });
   snapshot.tick = now;
   snapshot.self = memory.self;
   snapshot.contacts = contacts;
   snapshot.events = memory.events;
+  snapshot.revision = memory.revision;
   return snapshot;
 }
 
