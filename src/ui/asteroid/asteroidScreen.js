@@ -455,7 +455,7 @@ export const asteroidScreen = {
     };
     const onKeyDown = (event) => {
       if (event.code === 'KeyZ' && !event.repeat && renderer3d) {
-        renderer3d.inputZoom(-1);
+        renderer3d.toggleZoomRegister();
         event.preventDefault();
         event.stopImmediatePropagation();
         return;

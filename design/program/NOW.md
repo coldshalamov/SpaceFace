@@ -42,7 +42,6 @@ working. Product status and remaining tasks live in
 | Task | Thread | State | Exact paths being changed now | Next terminal action |
 |---|---|---|---|---|
 | PQ-129 opening first-touch owner census | codex-pq129-pro | IMPLEMENTING | `scripts/probe-runtime-witness.mjs` | syntax/focused validation, then one signed Electron census |
-| PQ-130.01 theater rebuild | zcode-pq130 | IMPLEMENTING | `src/ui/asteroid/asteroidScreen.js`, `src/ui/asteroid/asteroidRenderer3d.js`, `src/render/asteroidInteriorPreview.js`, `styles/asteroid-ops.css`, `styles/fonts.css` + `styles/fonts/` (additive), `design/program/roadmap/active/PQ-130.md`, `design/program/roadmap/program-queue.json` | implement leaf, verify (baseline + captures), receipt, commit |
 
 ## Uncommitted work without a confirmed live thread
 

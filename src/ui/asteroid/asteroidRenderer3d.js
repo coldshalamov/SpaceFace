@@ -260,7 +260,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       minX: -(COLS / 2 + SKIRT_CELLS) * S,
       maxX: (COLS / 2 + SKIRT_CELLS) * S,
       minY: worldY(ROWS - 1) - S / 2 - SKIRT_CELLS * S,
-      maxY: worldY(-1) - S * 3.2,
+      maxY: worldY(-1) + S * 3.2,
     };
   }
 
@@ -603,6 +603,10 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   function inputZoom(deltaY) {
     setZoomRegister(deltaY > 0 ? 'site' : 'work');
   }
+  // Z key (law §4): a detent toggle between the two registers, never a third position.
+  function toggleZoomRegister() {
+    setZoomRegister(zoomRegister === 'site' ? 'work' : 'site');
+  }
   function stepZoom(dt) {
     if (!zoomAnim) return;
     zoomAnim.t += dt;
@@ -717,7 +721,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     }
     if (!backWall) {
       backWall = new THREE.Mesh(
-        new THREE.PlaneGeometry(COLS * S * 1.4, ROWS * S * 1.15),
+        new THREE.PlaneGeometry(COLS * S, ROWS * S),
         new THREE.MeshStandardMaterial({ color: 0x0a0c12, roughness: 1, metalness: 0 }),
       );
       backWall.position.z = Z.back;
@@ -1361,6 +1365,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   // register follows the rover in X and Y; the site register centers the whole body.
   const look = { x: 0, y: 0 };
   let lookInit = false;
+  let lookSnapNext = false;   // first work frame snaps to the clamped framing instead of easing in
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
   function easeLook(tx, ty, dt, capped) {
@@ -1388,6 +1393,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       look.x = roverX;
       look.y = roverY;
       lookInit = true;
+      lookSnapNext = true;
     }
     if (zoomRegister === 'site') {
       const b = bodyExtents();
@@ -1407,10 +1413,11 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       const loX = b.minX + halfW - S * 2.5;
       const hiX = b.maxX - halfW + S * 2.5;
       const loY = b.minY + halfH - S * 2;
-      const hiY = b.maxY - halfH + S * 3.5;
+      const hiY = b.maxY - halfH + S * 0.5;
       const cx = loX > hiX ? (b.minX + b.maxX) / 2 : clamp(desiredX, loX, hiX);
       const cy = loY > hiY ? (b.minY + b.maxY) / 2 : clamp(desiredY, loY, hiY);
-      easeLook(cx, cy, dt, true);
+      if (lookSnapNext) { look.x = cx; look.y = cy; lookSnapNext = false; }
+      else easeLook(cx, cy, dt, true);
     }
     return { x: look.x, y: look.y };
   }
@@ -2031,5 +2038,5 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     if (dom.root) dom.root.remove();
   }
 
-  return { begin, render, notify, refreshCells, pickCell, inputZoom, setZoomRegister, dispose };
+  return { begin, render, notify, refreshCells, pickCell, inputZoom, setZoomRegister, toggleZoomRegister, dispose };
 }

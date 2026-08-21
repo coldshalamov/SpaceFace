@@ -381,15 +381,16 @@ function pushQuad(pos, nrm, uv, a, b, c, d, uvs) {
   for (let i = 0; i < 6; i++) nrm.push(0, 0, 0); // computeVertexNormals gives flat facets
 }
 
-// 3 block variants: identical silhouette, different chamfer width / pad lift. Deterministic per cell.
-// Design law §2.1: the pad cap is a FLAT SQUARE face — no beveled pyramid fan, no relief bulge.
-// The small chamfer down to the full footprint keeps a masonry seam between cells under raking
-// light without ever breaking the axis-aligned chess-board read.
+// 3 block variants: IDENTICAL silhouette (one thin uniform grout), differing only in pad lift so
+// raking light gives faint relief variety. Deterministic per cell.
+// Design law §2.1: the pad cap is a FLAT SQUARE face — no beveled pyramid fan, no relief bulge —
+// and every footprint reads as the same square. A wide or varying chamfer turns the chess board
+// into loose bricks (2026-08-21 review of the first theater build), so the grout stays ≈2% per side.
 export function makeCellBlockGeos() {
   const variants = [
-    { bev: 0.045, lift: 0.045 },
-    { bev: 0.065, lift: 0.028 },
-    { bev: 0.085, lift: 0.055 },
+    { bev: 0.018, lift: 0.012 },
+    { bev: 0.018, lift: 0.018 },
+    { bev: 0.018, lift: 0.024 },
   ];
   return variants.map((v) => {
     const pos = [], nrm = [], uv = [];
