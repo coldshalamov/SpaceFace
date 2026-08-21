@@ -237,6 +237,7 @@ export function createSimulationRunner(state, registry, deps = {}) {
 
     try {
       registry.step(dt, inputTickBoundary);
+      state.simCatchupIndex = (state.simCatchupIndex | 0) + 1;
       assertOpen();
       if (inputTickBoundary.publishedSequence !== nextInputSequence) {
         inputBoundaryErrorCount++;
@@ -355,6 +356,7 @@ export function createSimulationRunner(state, registry, deps = {}) {
       const effectiveStepCap = Math.max(1, Math.min(maxSteps, requestedStepCap));
       lastAdvanceStepCap = effectiveStepCap;
       if (effectiveStepCap < maxSteps) recoveryCappedAdvanceCount++;
+      state.simCatchupIndex = 0;
       advanceFixedTimestep(
         state.accumulator,
         frameDt,
@@ -365,6 +367,7 @@ export function createSimulationRunner(state, registry, deps = {}) {
         effectiveStepCap,
       );
       advanceResult.stepCap = effectiveStepCap;
+      advanceResult.catchupPresentationSkips = Math.max(0, (advanceResult.steps | 0) - 1);
       state.accumulator = advanceResult.accumulator;
       return advanceResult;
     },

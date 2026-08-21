@@ -44,6 +44,7 @@ import {
 } from './rigidOpaqueBatchPolicy.js';
 import { authoredUpgradeConcurrencyLimit as resolveAuthoredUpgradeConcurrency } from './authoredUpgradePolicy.js';
 import { shouldStartHeavyAdmissionEventually } from './admissionSliceBudget.js';
+import { computeLoadoutFingerprint, MATERIAL_ABI_VERSION } from './flightRenderPackage.js';
 import { applyInstanceChunkSubmitPolicy } from './instanceChunkSubmitPolicy.js';
 import {
   createOpaqueMaterialBatchState,
@@ -4586,6 +4587,15 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
   root.name = `GLTFKit_${entity.data && entity.data.defId || 'ship'}`;
   root.userData.kind = 'ship';
   root.userData.assetId = `GLTFKIT_${entity.data && entity.data.defId || 'SHIP'}_${seed.toString(16)}`;
+  root.userData.loadoutFingerprint = computeLoadoutFingerprint({
+    hull: entityPlan.hull && entityPlan.hull[0],
+    cockpit: entityPlan.cockpit && entityPlan.cockpit[0],
+    engines: entityPlan.engine && entityPlan.engine[0],
+    fins: entityPlan.fin && entityPlan.fin[0],
+    paint: palette && palette.id,
+    materialAbiVersion: MATERIAL_ABI_VERSION,
+    sourceVersions: entity.data && entity.data.defId,
+  });
 
   const hull = new THREE.Group();
   hull.name = `${root.name}_Hull`;

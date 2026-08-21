@@ -8,10 +8,14 @@ export const GOVERNOR_ROLE_PRIORITY = Object.freeze({
   'in-flight': 0,
   player: 1,
   'opening-shell': 2,
+  glass: 3,
   'current-sector': 3,
+  runway: 4,
   'whole-ship-lod-family': 4,
-  'warm-previous-sector': 8,
+  recent: 6,
   'save-restore-hold': 7,
+  'warm-previous-sector': 8,
+  evictable: 9,
   unused: 9,
 });
 

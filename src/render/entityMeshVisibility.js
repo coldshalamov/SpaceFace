@@ -10,6 +10,8 @@ export function shouldSubmitEntityMesh(options = {}) {
   if (options.isPlayer === true) return true;
   if (options.forceRender === true || options.neverCull === true) return true;
   if (options.hidden === true) return false;
+  const tier = options.presentationTier;
+  if (tier === 'R2_METADATA' || tier === 'R3_UNLOADED' || tier === 'R1_RUNWAY') return false;
   return true;
 }
 

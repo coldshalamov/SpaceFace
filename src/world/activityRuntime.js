@@ -7,12 +7,14 @@ import {
   TABLE_REFERENCE_SPEED_WU,
   TABLE_SIM_ASPECT,
   glassHalfExtents,
+  residencyPrefetchRadius,
   submitCullHalfExtents,
 } from '../render/tabletopPolicy.js';
 import {
   COLLISION_LOOKAHEAD_S,
   DEFAULT_GRACE_S,
   PHYSICS_SAFETY_PAD_WU,
+  PRESENTATION_TIER,
   SIM_TIER,
   classifyActivity,
   physicsReachWu,
@@ -109,7 +111,13 @@ function ensureRuntime(state) {
       physicsStaticVersion: 0,
       _staticHash: 0,
       _staticCount: 0,
-      counts: { s0: 0, s1: 0, s2: 0, s3: 0, s4: 0, physics: 0 },
+      exactIds: [],
+      nearIds: [],
+      abstractIds: [],
+      dormantIds: [],
+      glassIds: [],
+      runwayIds: [],
+      counts: { s0: 0, s1: 0, s2: 0, s3: 0, s4: 0, physics: 0, r0: 0, r1: 0, r2: 0, r3: 0 },
       pinFacts: emptyPinFacts(),
       contextScratch: {},
     };
@@ -133,7 +141,14 @@ function publishScalars(state, runtime) {
       s3: counts.s3,
       s4: counts.s4,
       physics: counts.physics,
+      r0: counts.r0,
+      r1: counts.r1,
+      r2: counts.r2,
+      r3: counts.r3,
     },
+    glassCount: runtime.glassIds.length,
+    runwayCount: runtime.runwayIds.length,
+    exactCount: runtime.exactIds.length,
   };
 }
 
@@ -351,6 +366,23 @@ function countTier(counts, tier) {
   else counts.s3++;
 }
 
+function countPresentation(counts, tier) {
+  if (tier === PRESENTATION_TIER.R0_GLASS) counts.r0++;
+  else if (tier === PRESENTATION_TIER.R1_RUNWAY) counts.r1++;
+  else if (tier === PRESENTATION_TIER.R2_METADATA) counts.r2++;
+  else counts.r3++;
+}
+
+function pushActivityIds(runtime, entity, stamp) {
+  const id = entity.id;
+  if (stamp.simTier === SIM_TIER.S0_EXACT) runtime.exactIds.push(id);
+  else if (stamp.simTier === SIM_TIER.S1_NEAR) runtime.nearIds.push(id);
+  else if (stamp.simTier === SIM_TIER.S2_ABSTRACT) runtime.abstractIds.push(id);
+  else runtime.dormantIds.push(id);
+  if (stamp.presentationTier === PRESENTATION_TIER.R0_GLASS) runtime.glassIds.push(id);
+  else if (stamp.presentationTier === PRESENTATION_TIER.R1_RUNWAY) runtime.runwayIds.push(id);
+}
+
 function classifyWorld(state, runtime) {
   const list = state.entityList || [];
   const player = state.playerId != null && state.entities && typeof state.entities.get === 'function'
@@ -365,6 +397,7 @@ function classifyWorld(state, runtime) {
     finite(player && player.maxSpeed),
   );
   const submit = submitCullHalfExtents(cam.zoom, cam.fov, TABLE_SIM_ASPECT, speed, cam.tilt);
+  const prefetchR = residencyPrefetchRadius(speed, cam.zoom, cam.fov, TABLE_SIM_ASPECT, cam.tilt);
   const reach = physicsReachWuFromState(state, player);
   const facts = runtime.pinFacts;
   rebuildPinFacts(state, player, facts, simTime);
@@ -374,11 +407,18 @@ function classifyWorld(state, runtime) {
   runtime.glassHalfZ = glass.halfZ;
   runtime.runwayHalfX = submit.halfX;
   runtime.runwayHalfZ = submit.halfZ;
+  runtime.prefetchRadiusWu = prefetchR;
 
   const statics = runtime.physicsStatics;
   const dynamics = runtime.physicsDynamics;
   statics.length = 0;
   dynamics.length = 0;
+  runtime.exactIds.length = 0;
+  runtime.nearIds.length = 0;
+  runtime.abstractIds.length = 0;
+  runtime.dormantIds.length = 0;
+  runtime.glassIds.length = 0;
+  runtime.runwayIds.length = 0;
   const counts = runtime.counts;
   counts.s0 = 0;
   counts.s1 = 0;
@@ -386,6 +426,10 @@ function classifyWorld(state, runtime) {
   counts.s3 = 0;
   counts.s4 = 0;
   counts.physics = 0;
+  counts.r0 = 0;
+  counts.r1 = 0;
+  counts.r2 = 0;
+  counts.r3 = 0;
 
   const ctx = runtime.contextScratch;
   ctx.playerId = player && player.id;
@@ -404,8 +448,12 @@ function classifyWorld(state, runtime) {
     const pz = finite(entity.pos && entity.pos.z);
     const dx = px - origin.x;
     const dz = pz - origin.z;
-    const onGlass = Math.abs(dx) <= glass.halfX && Math.abs(dz) <= glass.halfZ;
-    const onRunway = Math.abs(dx) <= submit.halfX && Math.abs(dz) <= submit.halfZ;
+    const dist2 = dx * dx + dz * dz;
+    const visual = Math.max(0, finite(entity.radius));
+    const onGlass = Math.abs(dx) <= glass.halfX + visual && Math.abs(dz) <= glass.halfZ + visual;
+    const submitRunway = Math.abs(dx) <= submit.halfX + visual && Math.abs(dz) <= submit.halfZ + visual;
+    const prefetchKeep = dist2 <= (prefetchR + visual) * (prefetchR + visual);
+    const onRunway = submitRunway || prefetchKeep;
     const data = entity.data || {};
     ctx.visibleOnGlass = onGlass;
     ctx.onGlass = onGlass;
@@ -445,6 +493,8 @@ function classifyWorld(state, runtime) {
       captureDematerialized(state, entity, simTime, stamp.simTier);
     }
     countTier(counts, stamp.simTier);
+    countPresentation(counts, stamp.presentationTier);
+    pushActivityIds(runtime, entity, stamp);
 
     if (!entityNeedsPhysics(entity)) continue;
     if (!shouldSyncPhysicsBodyEntity(entity)) continue;

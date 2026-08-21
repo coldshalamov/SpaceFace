@@ -174,6 +174,7 @@ import {
   tableShadowCasterRadius,
   tableTravelSpeed,
 } from './tabletopPolicy.js';
+import { PRESENTATION_TIER } from '../world/activityClassification.js';
 
 // M2 floating-origin scratch for mesh pose projection (no per-entity allocation).
 const _meshLocalXZ = { x: 0, z: 0 };
@@ -378,11 +379,17 @@ export function isEntityRenderRelevant(entity, state, radius = null) {
     currentSectorId: state && state.world && state.world.currentSectorId,
     authoredResident: entityHasAuthoredResidentRoot(entity),
   })) return true;
+  const tier = entity.activity && entity.activity.presentationTier;
+  if (tier === PRESENTATION_TIER.R0_GLASS || tier === PRESENTATION_TIER.R1_RUNWAY) return true;
   const numericRadius = Number(radius);
   const limit = radius == null || !Number.isFinite(numericRadius)
     ? renderResidencyRadius(state, 'prefetch')
     : numericRadius;
-  return entityWithinPlayerRadius(entity, state, limit);
+  const within = entityWithinPlayerRadius(entity, state, limit);
+  if (tier === PRESENTATION_TIER.R2_METADATA || tier === PRESENTATION_TIER.R3_UNLOADED) {
+    return entity.type === 'planet' ? within : false;
+  }
+  return within;
 }
 
 /** Pure authored-admission policy: spatial runway, explicit focus, never whole-sector eagerness. */
@@ -4578,6 +4585,7 @@ export const render = {
         forceRender: !!(entity && entity.flags && entity.flags.forceRender),
         neverCull: !!(entity && entity.flags && entity.flags.neverCull),
         hidden: true,
+        presentationTier: entity && entity.activity && entity.activity.presentationTier,
       }));
       if (mesh.userData && mesh.userData.asteroidInstanceBody) {
         mesh.userData.asteroidInstanceViewCulled = true;
@@ -4659,6 +4667,7 @@ export const render = {
         type: entity.type,
         projectedPx,
         allowShadowCast: false,
+        presentationTier: entity.activity && entity.activity.presentationTier,
       }));
       if ((entity.type === 'ship' || entity.type === 'station')
           && noteRealtimeShadowCasterPose(mesh, {

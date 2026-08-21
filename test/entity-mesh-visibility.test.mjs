@@ -20,6 +20,10 @@ test('player and forced roots stay submitted; only true off-screen roots drop', 
   assert.equal(shouldSubmitEntityMesh({ middleBand: true, allowShadowCast: false, type: 'station' }), true);
   assert.equal(shouldSubmitEntityMesh({ projectedPx: 4, type: 'ship' }), true);
   assert.equal(shouldSubmitEntityMesh({ projectedPx: 4, type: 'station' }), true);
+  assert.equal(shouldSubmitEntityMesh({ presentationTier: 'R1_RUNWAY' }), false,
+    'runway packages stay resident but are not submitted');
+  assert.equal(shouldSubmitEntityMesh({ isPlayer: true, presentationTier: 'R1_RUNWAY' }), true);
+  assert.equal(shouldSubmitEntityMesh({ presentationTier: 'R0_GLASS' }), true);
 });
 
 test('visibility helper only writes when the flag changes', () => {

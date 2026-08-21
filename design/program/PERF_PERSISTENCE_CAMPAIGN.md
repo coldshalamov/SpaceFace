@@ -57,12 +57,17 @@ colliders remain in the world list; they are not hashed or queried.
 
 ## Remaining programs (not this slice)
 
-These stay queued. They are not skipped as slog; they need a headed fly, an art
-review, or a later door the plan forbids opening early.
+Structural owners for later poles now exist in production code. They stay
+gated until a headed fly proves the named product gate:
 
-- Modular ship flight packages and the supported-camera cooker (art/export).
-- Material/shader ABI and persistent submit lanes (first-new-ship hitch; do not retry prewarm).
-- Snapshot fence, then Worker, then WebGPU — only after sim p95 is proven on the owner box.
+- Catch-up spiral: extra HUD/voice ticks skip; present is still once per rAF.
+- Presentation residency reads R0–R3; runway packages are resident, not submitted.
+- Flight-ready set / place layers, loadout fingerprints, cooker tags, material ABI.
+- Persistent submit lanes, snapshot fence, Worker, and WebGPU remain **off**
+  until sim p95 ≤ 5 ms and the named pole is measured on the owner Intel box.
+- Modular ship flight packages still compile through the existing authored path;
+  in-flight geometry cooks stay banned.
+- Do not retry prewarm. Do not enable mixed unique-hull mega-batch.
 
 ## Persistence invariants (short)
 
