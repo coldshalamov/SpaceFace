@@ -114,6 +114,26 @@ Each leaf: play tether -> Asteroid Works at a normal window. Whole-theater still
 RESULT: DONE when a stranger sees warm rock and a vehicle first, tells ore/gas/stone apart with the lens closed, moves one cell on purpose, hears the mine, and the leftover chrome is friendly field equipment they would touch — not a gray console.
 ```
 
+## Prompt A0-WA — Asteroid Works objects are procedural stand-ins
+
+Copy `ASTEROID_WORKS_ART_GOAL.txt` as the whole prompt. Do not paraphrase. The campaign,
+technique contract and review workflow it names are mandatory. Needs Blender (MCP bridge or
+headless). Take `PQ-131.00` (loader + works camera) first; every asset unit depends on it.
+
+```text
+This is a campaign: replace every procedural stand-in object in the Asteroid Works mine with an authored asset at the flight ships' bar. Do not use INFERENCE. Do not take hitch/PQ-129 or PQ-050. Do not stop after one unit.
+
+Law: design/program/ASTEROID_WORKS_ART_CAMPAIGN.md + docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md + docs/visual-assets/MODEL_ADVERSARIAL_REVIEW_WORKFLOW.md + design/ASTEROID_WORKS_DESIGN_LAW.md section 2.7. Dispatch: node scripts/program-dispatch.mjs --id PQ-131. Take the first claimable unit.
+
+Bar: Hitch / Helios wholeships at play size through the works camera (straight down, 31 degrees, ~120 px per cell at 1080p; 19 px at the site register). A works still beside a flight still must read as the same game. A procedural stand-in is scaffolding, never acceptance.
+
+Order: .00 loader + works camera; .01 rover; .02 Core; .03 extractor; .04 refinery; .05 derrick; .06 conduit kit; .07 gas tap; .08 fabricator; .09 port + crates + pod; .10 inclusion kit.
+
+Each unit: reference first; Blender blockout at works scale; one skin with holes; unique UVs, bakes, authored PBR; LOD0+LOD1; scripts/build-hull-release-assets.mjs; manifest entry; wire through loadWorksPart with the named hooks and delete the procedural builder; works-camera stills beside a flight still; three subagent reviews listing every defect at play size; revise until KEEP; commit only that unit, then the next. check:asteroid-theater and check:playable stay green. No quality cuts, no billboards, no emissive outlines, no scaled box stacks.
+
+RESULT: DONE when every inventory row is an authored, reviewed, wired asset on master.
+```
+
 ## Prompt A0 — overnight / “the work in the build map” / non-INFERENCE
 
 ```text

@@ -64,7 +64,12 @@ disjoint files. No coordinator, task-long reservation, or worktree is required.
   and the operator
   [`ASTEROID_WORKS_PLAYFIELD_GOAL.txt`](./design/program/ASTEROID_WORKS_PLAYFIELD_GOAL.txt).
   Dispatch `node scripts/program-dispatch.mjs --id PQ-130`. The board is the game.
-  This is not `PQ-050`, not `PQ-129`, and not Asteroid Ops Waves 1–4.
+  **The mine's objects are procedural stand-ins** (owner 2026-08-21: "8-bit NES model inside
+  this 3d world") → [`design/program/ASTEROID_WORKS_ART_CAMPAIGN.md`](./design/program/ASTEROID_WORKS_ART_CAMPAIGN.md)
+  (operator [`ASTEROID_WORKS_ART_GOAL.txt`](./design/program/ASTEROID_WORKS_ART_GOAL.txt)),
+  dispatch `--id PQ-131`: authored rover, machines, derrick, conduits, inclusions through the
+  ship pipeline, reviewed through the works camera beside a flight still. `PQ-130` acceptance
+  is blocked on it. This is not `PQ-050`, not `PQ-129`, and not Asteroid Ops Waves 1–4.
 - **Any 2D / HUD / menu / screen work** → §11 below, then
   [`design/frontend/INSTRUMENT_GRAMMAR.md`](./design/frontend/INSTRUMENT_GRAMMAR.md) **before you
   design or build anything.** The grammar is binding; per-screen specs live beside it in
@@ -1034,6 +1039,15 @@ chrome idea in [`design/frontend/SCREENS_E_ASTEROID_WORKS.md`](./design/frontend
 execution is `PQ-130` (leaves `.01`–`.10`; deeper sim laws — seam scaling, the
 parked thermal model, gas-tap power, import complements, the economy curve,
 drones/field — are future packets listed in the law's §12).
+
+**Art (2026-08-21 owner review): `PQ-130` is implemented, not accepted.** Every object in
+the mine is a procedural stand-in — "the rover is like this 8-bit NES model inside this 3d
+world … you're intentionally cutting corners." The authored-asset campaign is
+[`design/program/ASTEROID_WORKS_ART_CAMPAIGN.md`](./design/program/ASTEROID_WORKS_ART_CAMPAIGN.md)
+(`PQ-131`: a works-context release loader + works camera first, then rover, Core, extractor,
+refinery, derrick, conduit kit, gas tap, fabricator, port/crates/pod, inclusions — each
+reference-first, Blender, PBR, LOD, KTX2 via the canonical builder, three reviews at play size
+beside a flight still). `PQ-130`'s acceptance is blocked on its units `.00`–`.06`.
 
 The cutaway is the STAGE. The verb is **BORE**. Manifest tape, site-systems trivia,
 and hover paragraphs are deleted per the law's §10, their jobs relocated onto the

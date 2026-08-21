@@ -102,6 +102,12 @@ drone-field curve, not the lucky-streak curve.
    the board plane stays a perfect square grid while cavity walls gain visible depth.
    **The test:** put the still beside a flight still of a ship near an asteroid. If the mine
    looks like a different, cheaper game, the leaf failed.
+   **Procedural stand-ins are scaffolding, never acceptance** (owner, 2026-08-21, on the live
+   build: "the rover is like this 8-bit NES model inside this 3d world … you're intentionally
+   cutting corners"). Every object in the mine is replaced by an authored asset through the
+   flight ships' pipeline under `PQ-131`
+   ([`ASTEROID_WORKS_ART_CAMPAIGN.md`](./program/ASTEROID_WORKS_ART_CAMPAIGN.md)); until then
+   the screen is *implemented*, not accepted.
 
 **Open owner decisions** (recorded defaults; build the default until overruled):
 
@@ -304,7 +310,12 @@ Never more than two text lines. Tutorial copy never appears here. *A person sees
 field-notebook tag next to their cursor — a color, a number, two or three stamps.*
 
 ### 6.5 Overlay lens chips (earned; bottom-left, small pill row; appear with first machine)
-Up to four toggles, one active at a time (`V` cycles; Tab belongs to the drawers, §6.6): **Faces** (valid machine seats glow
+Up to four toggles, one active at a time (`V` cycles; Tab belongs to the drawers, §6.6).
+**No lens, and no build feedback, may paint a solid fill over a cell** — the owner saw flat green
+valid-seat fills and a solid red blocked box on the live board (2026-08-21) and called them what
+they are. Lenses and build feedback are edge, outline, lamp and line treatments on the 3D forms
+(a thin mint edge glow or corner brackets for a valid seat, a thin coral edge + why-glyph plate
+for a blocked one, ≤60 % alpha, 1.5–2 screen px); the "≤35 % tint" wording below is superseded: **Faces** (valid machine seats glow
 mint; blocked faces show one why-glyph — auto-on while placing), **Heat** (thermal tint;
 machines short of rock contact shimmer; ice reads cold), **Network** (cables bright,
 lane flow animated `--aw-sky`, disconnected islands dimmed, starved machines pulse gold

@@ -2447,6 +2447,43 @@
         "playable"
       ],
       "brief": "Owner playtest 2026-08-20: you are in the rock. Rev 3 same-day design session: ground-up warm UI (the gray vibe-coded console is deleted, not restyled), perfect axis-aligned chess grid, fog of war removed, events on the board with sound, <=15 visible words, board >=88% of the glass. Positive target: design/ASTEROID_WORKS_DESIGN_LAW.md (hex/type/px/ms values are law; §11 headless invariants prove leaves). Vanilla collapse AND polished-copy both fail. Dispatch --id PQ-130, leaves .01-.10. Not Waves 1-4 sim, not hitch, not billboard icons."
+    },
+    {
+      "id": "PQ-131",
+      "priority": 53,
+      "title": "Asteroid Works art: authored assets to the ship bar",
+      "state": "ready",
+      "canonical": [
+        "ASTEROID-WORKS-ART"
+      ],
+      "aliases": [
+        "MINE-AUTHORED-ASSETS",
+        "ASTEROID-WORKS-MODELS"
+      ],
+      "dependsOn": [],
+      "mutexes": [
+        "asteroid-works-art"
+      ],
+      "sources": [
+        "CANONICAL_BUILD_MAP.md",
+        "design/program/ASTEROID_WORKS_ART_CAMPAIGN.md",
+        "design/ASTEROID_WORKS_DESIGN_LAW.md",
+        "docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md",
+        "docs/visual-assets/MODEL_ADVERSARIAL_REVIEW_WORKFLOW.md",
+        "design/program/roadmap/active/PQ-131.md"
+      ],
+      "checks": [
+        "npm run check:asteroid-theater",
+        "npm run check:playable",
+        "node scripts/check-program-docs.mjs"
+      ],
+      "evidence": [
+        "works-camera-stills-beside-flight",
+        "three-reviews-per-asset",
+        "release-manifest-hashes",
+        "playable"
+      ],
+      "brief": "Owner verdict 2026-08-21 on the live mine: 'the rover is like this 8-bit NES model inside this 3d world ... you're intentionally cutting corners.' Every object in the mine is a procedural box stack; procedural stand-ins are scaffolding, never acceptance. Replace rover, six machines, derrick, conduit kit, crates/pod and inclusions with authored PBR assets through the release pipeline (KTX2 + LOD via build-hull-release-assets.mjs), loaded by a works-context loader (.00), reviewed through the works camera beside a flight still, three reviews per asset. PQ-130 acceptance is blocked on units .00-.06. Dispatch --id PQ-131."
     }
   ],
   "dispatchUnits": [
@@ -7599,7 +7636,7 @@
       "priority": 347,
       "title": "This asteroid's rock: kill the tan wash",
       "kind": "implementation",
-      "state": "done",
+      "state": "implemented",
       "dependsOn": [
         "PQ-130.01"
       ],
@@ -7656,7 +7693,7 @@
       "priority": 349,
       "title": "The vehicle: rover readable at play size",
       "kind": "implementation",
-      "state": "done",
+      "state": "implemented",
       "dependsOn": [
         "PQ-130.01",
         "PQ-130.03"
@@ -7830,6 +7867,226 @@
       ],
       "receiptRefs": [],
       "brief": "Design law §7 + §6.5 + §9: cables as warm gold lines along tunnel walls with junction nodes; lanes as floor flow-dots toward the port (buffer reads as dot density); machine lamps mint when running, dark + gold want-chip when starved; port stacks visible crates; couriers visibly slide up the shaft and launch. Faces + Network overlay lenses (one at a time, <=35% alpha over a board that never lies). Returning to a producing site opens at site zoom. Presentation only — read siteLogistics/siteProduction state, change no sim law. Illegal: a production report panel instead of the picture."
+    },
+    {
+      "id": "PQ-131.00",
+      "parentId": "PQ-131",
+      "priority": 355,
+      "title": "Loader + works camera: release parts load in the works renderer",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "asteroid-works-art"
+      ],
+      "paths": ["src/ui/asteroid/asteroidRenderer3d.js","src/render/assetLoader.js","src/render/partsLibrary.js","tools/blender/spaceface_works_camera.py","tools/blender/chase_visible_faces.py","scripts/capture-asteroid-works.mjs"],
+      "checks": [
+        "npm run check:asteroid-theater",
+        "npm run check:playable",
+        "node scripts/check-program-docs.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Prerequisite for every asset unit. The works screen renders on its own WebGL context, so release KTX2/meshopt parts cannot load there today. Add a works-context loader (KTX2Loader bound to the works renderer via detectSupport, shared transcoder/decoder, manifest admission) behind one seam loadWorksPart(id) returning a LOD-aware group with named hooks; LOD0 at the work register, LOD1 at site; dispose on exit with renderer.info proof. Ship tools/blender/spaceface_works_camera.py (works_top 120px/cell straight down at fov 31, works_edge, works_site 19px/cell) and adapt hidden-face culling to it. Prove with one existing release part rendered in the mine at correct colour space."
+    },
+    {
+      "id": "PQ-131.01",
+      "parentId": "PQ-131",
+      "priority": 356,
+      "title": "Rover: the hero, authored",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": ["PQ-131.00"],
+      "mutexes": [
+        "asteroid-works-art"
+      ],
+      "paths": ["src/ui/asteroid/asteroidRenderer3d.js","src/render/asteroidInteriorPreview.js","assets/incubator/asteroid_works_kit","assets/ships/release/release_manifest.json","scripts/capture-asteroid-works.mjs"],
+      "checks": [
+        "npm run check:asteroid-theater",
+        "npm run check:playable",
+        "node scripts/check-program-docs.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Campaign inventory row .01. A heavy tracked mining rig read from straight above: two track units with visible tread, low cab with a lit pane, drill boom on a pivot with a steel bit, open hopper on the back, safety-yellow panels (#ffd23f) with dark chevron plates, dark metal undercarriage, hooded headlamp. 0.85x0.8 cell, ~0.45 tall. Hooks: boom_pivot, bit_tip, hopper_fill_0..4, hopper_lid, lamp_socket, vent_stack, track_L/R, scar_plate. Budget 18k/4k tris, 2048^2 x3. Reference first (real mining machinery), blockout at works scale, one skin with holes, unique UVs + bakes + authored PBR, LOD0+LOD1, build-hull-release-assets.mjs, manifest, wire through loadWorksPart driving the existing hopper/heat/lamp/vent/lid/scar state, delete makeRover. Proof: works-camera stills beside a flight still; three reviews; revise until KEEP. Illegal: scaling or re-skinning the procedural rig."
+    },
+    {
+      "id": "PQ-131.02",
+      "parentId": "PQ-131",
+      "priority": 357,
+      "title": "Massline Core, authored",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": ["PQ-131.00"],
+      "mutexes": [
+        "asteroid-works-art"
+      ],
+      "paths": ["src/ui/asteroid/asteroidRenderer3d.js","src/render/asteroidInteriorPreview.js","assets/incubator/asteroid_works_kit","assets/ships/release/release_manifest.json","scripts/capture-asteroid-works.mjs"],
+      "checks": [
+        "npm run check:asteroid-theater",
+        "npm run check:playable",
+        "node scripts/check-program-docs.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Inventory row .02: a squat machined anchor ring around a dark central well, heavy bolts, one small status lamp - the thing that claims the rock. 1 cell, ~0.5 tall. Hooks: lamp, ring_spin. 8k/2k, 1024^2. Same pipeline and proof as .01 (reference first, works-scale blockout, one skin with holes, unique UVs + bakes + authored PBR, LOD0+LOD1, build-hull-release-assets.mjs, manifest, wire through loadWorksPart, works-camera stills beside a flight still, three reviews until KEEP); delete the procedural core in makeMachine."
+    },
+    {
+      "id": "PQ-131.03",
+      "parentId": "PQ-131",
+      "priority": 358,
+      "title": "Extractor, authored",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": ["PQ-131.00"],
+      "mutexes": [
+        "asteroid-works-art"
+      ],
+      "paths": ["src/ui/asteroid/asteroidRenderer3d.js","src/render/asteroidInteriorPreview.js","assets/incubator/asteroid_works_kit","assets/ships/release/release_manifest.json","scripts/capture-asteroid-works.mjs"],
+      "checks": [
+        "npm run check:asteroid-theater",
+        "npm run check:playable",
+        "node scripts/check-program-docs.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Inventory row .03: a compact drill head on a frame that faces its feed cell, a short conveyor stub, heat-sink fins, a lamp. 1 cell. Hooks: head_face (aims at the contact), lamp, belt (UV scroll). 8k/2k, 1024^2. Same pipeline and proof as .01 (reference first, works-scale blockout, one skin with holes, unique UVs + bakes + authored PBR, LOD0+LOD1, build-hull-release-assets.mjs, manifest, wire through loadWorksPart, works-camera stills beside a flight still, three reviews until KEEP); delete the procedural extractor."
+    },
+    {
+      "id": "PQ-131.04",
+      "parentId": "PQ-131",
+      "priority": 359,
+      "title": "Refinery, authored",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": ["PQ-131.00"],
+      "mutexes": [
+        "asteroid-works-art"
+      ],
+      "paths": ["src/ui/asteroid/asteroidRenderer3d.js","src/render/asteroidInteriorPreview.js","assets/incubator/asteroid_works_kit","assets/ships/release/release_manifest.json","scripts/capture-asteroid-works.mjs"],
+      "checks": [
+        "npm run check:asteroid-theater",
+        "npm run check:playable",
+        "node scripts/check-program-docs.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Inventory row .04: a furnace block with a slit that glows warm while running, an exhaust stack, a pipe to a small tank. 1 cell. Hooks: furnace_slit (emissive 0-1), stack_vent, lamp. 8k/2k, 1024^2. Same pipeline and proof as .01 (reference first, works-scale blockout, one skin with holes, unique UVs + bakes + authored PBR, LOD0+LOD1, build-hull-release-assets.mjs, manifest, wire through loadWorksPart, works-camera stills beside a flight still, three reviews until KEEP); delete the procedural refinery."
+    },
+    {
+      "id": "PQ-131.05",
+      "parentId": "PQ-131",
+      "priority": 360,
+      "title": "Surface derrick / head-frame, authored",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": ["PQ-131.00"],
+      "mutexes": [
+        "asteroid-works-art"
+      ],
+      "paths": ["src/ui/asteroid/asteroidRenderer3d.js","src/render/asteroidInteriorPreview.js","assets/incubator/asteroid_works_kit","assets/ships/release/release_manifest.json","scripts/capture-asteroid-works.mjs"],
+      "checks": [
+        "npm run check:asteroid-theater",
+        "npm run check:playable",
+        "node scripts/check-program-docs.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Inventory row .05: a real head-frame over the shaft - A-frame legs, a drum with the umbilical, hooded work-lights, orange safety markings, a small platform; the place you came in. 1 cell footprint, ~3 cells tall. Hooks: drum_spin, cable_anchor, lamp_L, lamp_R. 12k/3k, 2048^2. Same pipeline and proof as .01 (reference first, works-scale blockout, one skin with holes, unique UVs + bakes + authored PBR, LOD0+LOD1, build-hull-release-assets.mjs, manifest, wire through loadWorksPart, works-camera stills beside a flight still, three reviews until KEEP); delete makeDerrick."
+    },
+    {
+      "id": "PQ-131.06",
+      "parentId": "PQ-131",
+      "priority": 361,
+      "title": "Conduit kit: cable + lane, modular, authored",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": ["PQ-131.00"],
+      "mutexes": [
+        "asteroid-works-art"
+      ],
+      "paths": ["src/ui/asteroid/asteroidRenderer3d.js","src/render/asteroidInteriorPreview.js","assets/incubator/asteroid_works_kit","assets/ships/release/release_manifest.json","scripts/capture-asteroid-works.mjs"],
+      "checks": [
+        "npm run check:asteroid-theater",
+        "npm run check:playable",
+        "node scripts/check-program-docs.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Inventory row .06: modular straight/corner/T/cross/end-cap/junction-box pieces for two families - power cable (armoured tray, gold jacket) and material lane (translucent-topped tray with visible rollers); the renderer lays them along tunnel walls and floors from the network mask. 1 cell per piece. Hooks: flow_mesh (lane UV scroll or dot chain), powered emissive slot. 1-2k each, one 1024^2 atlas per family. Same pipeline and proof as .01 (reference first, works-scale blockout, one skin with holes, unique UVs + bakes + authored PBR, LOD0+LOD1, build-hull-release-assets.mjs, manifest, wire through loadWorksPart, works-camera stills beside a flight still, three reviews until KEEP); delete the procedural conduit runs. Flat lines drawn over the rock are illegal."
+    },
+    {
+      "id": "PQ-131.07",
+      "parentId": "PQ-131",
+      "priority": 362,
+      "title": "Gas tap, authored",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": ["PQ-131.00"],
+      "mutexes": [
+        "asteroid-works-art"
+      ],
+      "paths": ["src/ui/asteroid/asteroidRenderer3d.js","src/render/asteroidInteriorPreview.js","assets/incubator/asteroid_works_kit","assets/ships/release/release_manifest.json","scripts/capture-asteroid-works.mjs"],
+      "checks": [
+        "npm run check:asteroid-theater",
+        "npm run check:playable",
+        "node scripts/check-program-docs.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Inventory row .07: a valve manifold clamped to a wall face with a pressure gauge and a short hose into the pocket - tapping, not breaching. 1 cell. Hooks: valve_wheel, gauge_needle, lamp. 6k/1.5k, 1024^2. Same pipeline and proof as .01 (reference first, works-scale blockout, one skin with holes, unique UVs + bakes + authored PBR, LOD0+LOD1, build-hull-release-assets.mjs, manifest, wire through loadWorksPart, works-camera stills beside a flight still, three reviews until KEEP); delete the procedural gas tap."
+    },
+    {
+      "id": "PQ-131.08",
+      "parentId": "PQ-131",
+      "priority": 363,
+      "title": "Fabricator, authored",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": ["PQ-131.00"],
+      "mutexes": [
+        "asteroid-works-art"
+      ],
+      "paths": ["src/ui/asteroid/asteroidRenderer3d.js","src/render/asteroidInteriorPreview.js","assets/incubator/asteroid_works_kit","assets/ships/release/release_manifest.json","scripts/capture-asteroid-works.mjs"],
+      "checks": [
+        "npm run check:asteroid-theater",
+        "npm run check:playable",
+        "node scripts/check-program-docs.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Inventory row .08: a gantry head travelling a rail over a work bed; head position is progress. 1 cell. Hooks: gantry_head (0-1 along rail), lamp. 10k/2.5k, 1024^2. Same pipeline and proof as .01 (reference first, works-scale blockout, one skin with holes, unique UVs + bakes + authored PBR, LOD0+LOD1, build-hull-release-assets.mjs, manifest, wire through loadWorksPart, works-camera stills beside a flight still, three reviews until KEEP); delete the procedural fabricator."
+    },
+    {
+      "id": "PQ-131.09",
+      "parentId": "PQ-131",
+      "priority": 364,
+      "title": "Cargo port + crates + courier pod, authored",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": ["PQ-131.00"],
+      "mutexes": [
+        "asteroid-works-art"
+      ],
+      "paths": ["src/ui/asteroid/asteroidRenderer3d.js","src/render/asteroidInteriorPreview.js","assets/incubator/asteroid_works_kit","assets/ships/release/release_manifest.json","scripts/capture-asteroid-works.mjs"],
+      "checks": [
+        "npm run check:asteroid-theater",
+        "npm run check:playable",
+        "node scripts/check-program-docs.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Inventory row .09: a loading frame with a launch cradle; a crate stack in five stages (separate meshes) that fills as output accumulates; the courier pod that climbs the shaft. Port 1 cell; pod 0.6 cell. Hooks: crate_0..4, cradle, pod_root, pod_thruster. 10k/2.5k + 2k per crate + 4k pod, 1024^2. Same pipeline and proof as .01 (reference first, works-scale blockout, one skin with holes, unique UVs + bakes + authored PBR, LOD0+LOD1, build-hull-release-assets.mjs, manifest, wire through loadWorksPart, works-camera stills beside a flight still, three reviews until KEEP); delete the procedural port, crates and pod."
+    },
+    {
+      "id": "PQ-131.10",
+      "parentId": "PQ-131",
+      "priority": 365,
+      "title": "Inclusion kit: ore, exotic, ice, gas, scars, lock plate, authored",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": ["PQ-131.00"],
+      "mutexes": [
+        "asteroid-works-art"
+      ],
+      "paths": ["src/ui/asteroid/asteroidRenderer3d.js","src/render/asteroidInteriorPreview.js","assets/incubator/asteroid_works_kit","assets/ships/release/release_manifest.json","scripts/capture-asteroid-works.mjs"],
+      "checks": [
+        "npm run check:asteroid-theater",
+        "npm run check:playable",
+        "node scripts/check-program-docs.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Inventory row .10: replaces the low-poly crystal clusters - ore cluster variants per family (silver, gold, iron, nickel), exotic lattice variants, an ice sheen plate, a gas crack decal set, the vented scar, the MK lock plate - authored, lit, occupying a real part of a cell, <=0.7 cell, one instanced mesh per variant, 1-3k each on a shared 2048^2 atlas. Same pipeline and proof as .01 (reference first, works-scale blockout, one skin with holes, unique UVs + bakes + authored PBR, LOD0+LOD1, build-hull-release-assets.mjs, manifest, wire through loadWorksPart, works-camera stills beside a flight still, three reviews until KEEP); delete the procedural inclusion builders."
     }
   ]
 }
