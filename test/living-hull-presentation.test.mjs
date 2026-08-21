@@ -25,6 +25,45 @@ function record(overrides = {}) {
   };
 }
 
+function forceSinglePassBySurface(controller) {
+  return Object.fromEntries(controller.root.children.map((surface) => [
+    surface.name,
+    surface.material.forceSinglePass,
+  ]));
+}
+
+test('single-pass decal rendering is opt-in and scoped to HeatScorch, Grime, and Graffiti', () => {
+  const defaults = createLivingHullPresentation();
+  assert.deepEqual(forceSinglePassBySurface(defaults), {
+    LivingHull_KillTallies: false,
+    LivingHull_RepairPatches: false,
+    LivingHull_HeatScorch: false,
+    LivingHull_Grime: false,
+    LivingHull_Graffiti: false,
+  });
+
+  const optedIn = createLivingHullPresentation({ singlePassDecals: true });
+  const forceSinglePass = forceSinglePassBySurface(optedIn);
+  assert.deepEqual(forceSinglePass, {
+    LivingHull_KillTallies: false,
+    LivingHull_RepairPatches: false,
+    LivingHull_HeatScorch: true,
+    LivingHull_Grime: true,
+    LivingHull_Graffiti: true,
+  });
+  assert.equal(Object.values(forceSinglePass).filter(Boolean).length, 3);
+
+  for (const surfaceName of [
+    'LivingHull_KillTallies',
+    'LivingHull_RepairPatches',
+  ]) {
+    assert.equal(forceSinglePass[surfaceName], forceSinglePassBySurface(defaults)[surfaceName]);
+  }
+
+  defaults.dispose();
+  optedIn.dispose();
+});
+
 test('Living Hull presentation mutates counts in place without runtime buffer or resource churn', () => {
   const controller = createLivingHullPresentation();
   const root = new THREE.Group();

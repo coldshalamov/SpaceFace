@@ -10,6 +10,7 @@ import {
   LIVING_HULL_KILL_TALLY_MAX,
   LIVING_HULL_REPAIR_PATCH_MAX,
 } from '../core/livingHull.js';
+import { shouldUseTransparentSinglePass } from './transparentSinglePassPolicy.js';
 
 const GRAFFITI_WIDTH = 256;
 const GRAFFITI_HEIGHT = 64;
@@ -179,11 +180,24 @@ function authoredSurfaceReady(root) {
   return state === 'authored' || state === 'authored-with-cleanup-error';
 }
 
+function enableSinglePassDecals(materials) {
+  const ineligible = materials.find(({ material }) =>
+    !shouldUseTransparentSinglePass(material, { decal: true }));
+  if (ineligible) {
+    throw new Error(
+      `Living Hull single-pass decal contract violation for ${ineligible.name}: ` +
+      'expected shouldUseTransparentSinglePass(material, { decal: true }) to be true.',
+    );
+  }
+  for (const { material } of materials) material.forceSinglePass = true;
+}
+
 /**
  * Create the renderer-lifetime Living Hull presentation controller.
  * Simulation state is read-only; every GPU resource is allocated exactly once here.
  */
-export function createLivingHullPresentation() {
+export function createLivingHullPresentation(options = {}) {
+  const singlePassDecals = options && options.singlePassDecals === true;
   const root = new THREE.Group();
   root.name = 'LivingHull_Presentation';
   root.userData.spacefaceLivingHullPresentation = true;
@@ -237,6 +251,14 @@ export function createLivingHullPresentation() {
     alphaTest: 0.06,
     side: THREE.DoubleSide,
   }));
+
+  if (singlePassDecals) {
+    enableSinglePassDecals([
+      { name: 'HeatScorch', material: scorchMaterial },
+      { name: 'Grime', material: grimeMaterial },
+      { name: 'Graffiti', material: graffitiMaterial },
+    ]);
+  }
 
   const tallies = new THREE.InstancedMesh(planeGeometry, tallyMaterial, LIVING_HULL_KILL_TALLY_MAX);
   tallies.name = 'LivingHull_KillTallies';
