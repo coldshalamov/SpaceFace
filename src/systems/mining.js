@@ -680,7 +680,6 @@ export const mining = {
     ast.hull = d.oreHP; // keep the hull alias in sync
     const lost = before - d.oreHP;
     if (lost <= 0) return 0;
-    persistTouchedResourceBody(state, ast);
 
     this.bus.emit('mining:tick', {
       contactPos: contact,
@@ -773,7 +772,9 @@ export const mining = {
       this.bus.emit('asteroid:destroyed', { id: ast.id, typeId: d.typeId || (def && def.id), pos: { x: ast.pos.x, z: ast.pos.z } });
       d.respawnAt = state.simTime + ((def && def.respawnSec) || 90); // world reads this to repopulate
       ast.alive = false;
+      d.depletedAtT = Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0);
     }
+    persistTouchedResourceBody(state, ast);
     return releaseUnits;
   },
 

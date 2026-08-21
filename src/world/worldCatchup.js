@@ -146,6 +146,9 @@ export function advanceResourceBody(record, fromT, toT, context = {}) {
   const b = finite(toT);
   const dt = b - a;
   if (!(dt > 0)) return { ...record };
+  if (record.outcome === 'destroyed' || record.outcome === 'depleted') {
+    return { ...record, lastObservedT: b };
+  }
   const drifted = ballisticDrift(record.pos, record.vel, record.rot, record.angVel, dt);
   const policy = record.recoveryPolicy && typeof record.recoveryPolicy === 'object' ? record.recoveryPolicy : {};
   const oreMax = Number.isFinite(record.oreHpMax) ? record.oreHpMax : record.oreHp;

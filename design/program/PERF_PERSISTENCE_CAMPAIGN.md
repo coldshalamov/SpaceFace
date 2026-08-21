@@ -52,6 +52,15 @@ Headed p95 A/B is still required before calling crowded flight done.
 Phase 3: rematerialize catch-up uses lastExactT; mined rocks write the resource
 ledger and restore on respawn; New Game no longer waits for a far Helios hub.
 
+## Remaining programs (not this slice)
+
+These stay queued. They are not skipped as slog; they need a headed fly, an art
+review, or a later door the plan forbids opening early.
+
+- Modular ship flight packages and the supported-camera cooker (art/export).
+- Material/shader ABI and persistent submit lanes (first-new-ship hitch; do not retry prewarm).
+- Snapshot fence, then Worker, then WebGPU — only after sim p95 is proven on the owner box.
+
 ## Persistence invariants (short)
 
 A live actor never dies for crossing the screen. Dematerialize ≠ respawn.

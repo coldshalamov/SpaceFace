@@ -175,7 +175,9 @@ export function captureResourceBodyRecord(entity, opts = {}) {
     tethered: !!(entity.flags && entity.flags.tethered) || !!d.tethered,
     displaced: !!d.displaced,
     playerModified: true,
-    outcome: entity.alive === false ? 'destroyed' : 'active',
+    outcome: entity.alive === false || (Number.isFinite(d.oreHP) && d.oreHP <= 0)
+      ? 'destroyed'
+      : 'active',
     revision: opts.revision,
   });
 }
@@ -204,6 +206,7 @@ function enforceBound(bag) {
   for (let i = 0; i < ranked.length && removed < drop; i++) {
     const rec = ranked[i];
     if (rec.tethered || rec.displaced) continue;
+    if (rec.outcome === 'destroyed' || rec.outcome === 'depleted') continue;
     delete bag.byId[rec.recordId];
     removed += 1;
   }

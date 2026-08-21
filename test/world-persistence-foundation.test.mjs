@@ -295,6 +295,33 @@ test('serialize drops liveEntityId and keeps abstract intent', () => {
   assert.equal(disk.byId.wr_x.intent.kind, INTENT_KIND.LOITER);
 });
 
+test('destroyed resource bodies do not rematerialize as live husks', () => {
+  const dead = {
+    type: 'asteroid',
+    alive: false,
+    pos: { x: 4, z: 0 },
+    data: {
+      fieldId: 'field_a',
+      asteroidSlotId: '3',
+      sectorId: 'sec_helios',
+      oreHP: 0,
+      oreHPMax: 80,
+    },
+  };
+  const bag = createEmptyResourceBodyBag();
+  const rec = captureResourceBodyRecord(dead, {
+    sectorId: 'sec_helios',
+    fieldId: 'field_a',
+    slotId: '3',
+    simTime: 9,
+  });
+  assert.equal(rec.outcome, 'destroyed');
+  upsertResourceBody(bag, rec);
+  const later = advanceResourceBody(rec, 9, 40, { fieldId: 'field_a' });
+  assert.equal(later.outcome, 'destroyed');
+  assert.equal(later.oreHp, 0);
+});
+
 test('mined rock ledger restores ore after a fresh spawn of the same slot', () => {
   const mined = {
     type: 'asteroid',
@@ -336,7 +363,9 @@ test('world rematerialize and mining call the catch-up and resource ledgers', as
   const mining = await readFile(new URL('../src/systems/mining.js', import.meta.url), 'utf8');
   assert.match(world, /advanceWorldRecord\(rec, fromT, simTime\)/);
   assert.match(world, /_restoreResourceBody/);
+  assert.match(world, /rec\.outcome === 'destroyed'/);
   assert.match(mining, /persistTouchedResourceBody/);
+  assert.match(mining, /ast\.alive = false;/);
 });
 
 test('ballistic drift is linear', () => {

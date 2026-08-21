@@ -1118,7 +1118,7 @@ export const world = {
     }
     if (budgeted && typeof budget.bindEntity === 'function') budget.bindEntity(ent.id, requester);
     const simTime = Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0);
-    const fromT = Number.isFinite(rec.lastExactT) ? rec.lastExactT : simTime;
+    const fromT = Number.isFinite(rec.lastExactT) && rec.lastExactT > 0 ? rec.lastExactT : simTime;
     const advanced = advanceWorldRecord(rec, fromT, simTime) || rec;
     applyRecordVitals(ent, advanced);
     bindEntityToRecord(ent, advanced);
@@ -1605,6 +1605,11 @@ export const world = {
     const bag = ensureResourceBodies(state.world);
     const rec = findResourceBodyForEntity(bag, ent);
     if (!rec) return ent;
+    if (rec.outcome === 'destroyed' || rec.outcome === 'depleted') {
+      ent.alive = false;
+      if (ent.data) ent.data.respawnAt = Number.isFinite(rec.depletedAtT) ? rec.depletedAtT : state.simTime;
+      return ent;
+    }
     const simTime = Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0);
     const fromT = Number.isFinite(rec.lastObservedT) && rec.lastObservedT > 0
       ? rec.lastObservedT
