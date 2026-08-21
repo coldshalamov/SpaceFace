@@ -817,11 +817,15 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   chunkMesh.frustumCulled = false;
   fxRoot.add(chunkMesh);
   let particles = [];
-  const burst = (opts) => {
+  // `depth` is optional: a burst that belongs to an OBJECT in the tunnel (the rover's coolant
+  // vent) must composite at that object's depth, not on the face plane 3 world units nearer the
+  // camera, or an additive chip reads as a bloom blob floating over the rock.
+  const burst = (opts, depth) => {
     const before = particles.length;
     spawnParticleBurst(particles, opts);
     for (let i = before; i < particles.length; i++) {
       particles[i]._c3 = new THREE.Color(particles[i].color);
+      if (depth !== undefined) particles[i]._z = depth;
     }
   };
   // Rock-colored tumbling chunks with real gravity — the crumble when a block lets go.
@@ -847,23 +851,39 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   const rover = roverBuilt.group;
   rover.visible = false;
   scene.add(rover);
-  const headlight = new THREE.SpotLight(0xffe0b0, 46, S * 8, 0.62, 0.55, 1.6);
+  // ONE headlamp, and it is a real light (law §4): a warm cone out of the lamp housings onto the
+  // rock face the rig is working, with a modest shadow map so the boom and the auger throw their
+  // own shadow into the cut. PQ-130.03 carried two overlapping spots for the same job; the second
+  // bought nothing but another lighting term in every shader on this screen.
+  // The light and its target hang off dyn.body, not the rover group: the lamp anchor's position is
+  // BODY-local, so parenting to the rover would mis-aim the cone by the chassis ride height and
+  // leave the beam behind whenever the body bobs or leans.
+  const headlight = new THREE.SpotLight(0xffe0b0, 52, S * 8, 0.6, 0.55, 1.6);
   headlight.position.copy(roverBuilt.dyn.lampAnchor.position);
+  headlight.castShadow = true;
+  headlight.shadow.mapSize.set(512, 512);
+  headlight.shadow.camera.near = S * 0.3;
+  headlight.shadow.camera.far = S * 7;
+  headlight.shadow.normalBias = 0.06;
+  headlight.shadow.bias = -0.0009;
   const headTarget = new THREE.Object3D();
   headTarget.position.set(S * 3.2, 0, 0);
-  rover.add(headlight, headTarget);
+  roverBuilt.dyn.body.add(headlight, headTarget);
   headlight.target = headTarget;
   // a small warm work light — not the blue orb that read as "you are this dot"
-  const roverGlow = new THREE.PointLight(0xffd9a8, 2.6, S * 3.4, 2);
+  const roverGlow = new THREE.PointLight(0xffd9a8, 3.2, S * 3.4, 2);
   roverGlow.position.set(0, S * 0.3, S * 0.4);
   rover.add(roverGlow);
-  // the headlamp cone lights the face the rig is working
-  const headSpot = new THREE.SpotLight(0xffe0b0, 30, S * 5, 0.7, 0.6, 1.5);
-  headSpot.position.copy(roverBuilt.dyn.lampAnchor.position);
-  rover.add(headSpot);
-  headSpot.target = headTarget;
-  const roverAnim = { flipY: 0, armAim: -Math.PI / 2, bite: 0, wheelSpin: 0, lean: 0, bob: 0 };
+  const roverAnim = {
+    flipY: 0, armAim: -Math.PI / 2, bite: 0, wheelSpin: 0, lean: 0, bob: 0,
+    trackPhase: 0, hopStage: -1, lid: 0, lastTemp: 0, vent: 0, ventTick: 0,
+  };
+  let cargoFullLatch = false;                  // set by notify('cargoFull'), cleared when it drains
   const HOT_BIT = new THREE.Color(0xff6242);   // law §4 — the bit's hot end
+  // Hopper fill in FIVE VISIBLE STAGES (law §4), read off the real hold so the bin on the rover's
+  // back and the crest's hold gauge are the same number told twice. The first chunk lands the
+  // moment the hold stops being empty; then even steps up to the lid.
+  const HOPPER_STEPS = [0.02, 0.22, 0.42, 0.62, 0.82];
 
   // MACHINE WORK LIGHTS — a FIXED pool (law §2.7: "emissive only as small plausible lamps with a
   // real light"). The count never changes, because THREE bakes the light count into every shader
@@ -1860,7 +1880,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     ];
     for (const p of trail) pts.push(new THREE.Vector3(worldX(p.col), worldY(p.row), Z.rover - 0.1));
     pts.push(new THREE.Vector3(
-      roverX - (roverAnim.flipY > Math.PI / 2 ? -1 : 1) * S * 0.38, roverY + S * 0.1, Z.rover - 0.05,
+      roverX - (roverAnim.flipY > Math.PI / 2 ? -1 : 1) * S * 0.45, roverY + S * 0.04, Z.rover - 0.05,
     ));
     if (pts.length < 2) return;
     const curve = new THREE.CatmullRomCurve3(pts, false, 'catmullrom', 0.12);
@@ -2586,7 +2606,7 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
       }
       if (n >= PARTICLE_CAP) continue;
       const sizeW = (p.size / TILE) * S * (p.isDust || p.isSteam ? (1 + (1 - alpha) * 2) : 1);
-      dummy.position.set(pxToWorldX(p.x), pxToWorldY(p.y), Z.particles);
+      dummy.position.set(pxToWorldX(p.x), pxToWorldY(p.y), p._z !== undefined ? p._z : Z.particles);
       dummy.rotation.set(0, 0, (p.x + p.y) * 0.1);
       dummy.scale.setScalar(Math.max(0.001, sizeW * alpha));
       dummy.updateMatrix();
@@ -2726,6 +2746,9 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     }
     if (evt === 'cargoFull') {
       timers.cargoFlash = motionReduce ? 0.4 : 1.0;
+      // The sim refuses on "this unit would not fit", not on a ratio — latch the rover's hopper lid
+      // on the same predicate so the cover is shut exactly when ore starts bouncing off it.
+      cargoFullLatch = true;
     }
   }
 
@@ -2872,21 +2895,64 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     const aimTarget = faceDir === 'down' ? -Math.PI / 2 : (faceDir === 'up' ? Math.PI / 2 : 0);
     roverAnim.armAim += (aimTarget - roverAnim.armAim) * Math.min(1, 10 * dt);
     roverBuilt.dyn.arm.rotation.z = roverAnim.armAim;
-    // the auger bites: fast attack, slow retract (asymmetric envelope)
+    // the auger bites: fast attack, slow retract (asymmetric envelope). The slide runs the bit a
+    // third of a cell past its rest stop, so a bore visibly drives INTO the target cell.
     const biteTarget = drilling ? 1 : 0;
     const biteRate = biteTarget > roverAnim.bite ? 9 : 3.5;
     roverAnim.bite += (biteTarget - roverAnim.bite) * Math.min(1, biteRate * dt);
-    roverBuilt.dyn.augerSlide.position.x = S * (0.3 + 0.3 * roverAnim.bite);
+    roverBuilt.dyn.augerSlide.position.x = roverBuilt.dyn.augerRestX
+      + roverBuilt.dyn.augerBiteX * roverAnim.bite;
     roverBuilt.dyn.auger.rotation.y = drillTheta;
     // THE BIT HEATS (law §4). Tool steel goes from a dull scorched brown toward a coral glow as
-    // the drill temperature climbs. It is the one part of the rig allowed to emit, and it only
-    // emits when it has earned it.
+    // the drill temperature climbs. It is the one part of the rig allowed to emit brightly, and
+    // its peak (1.5) stays above every lamp on the vehicle so HEAT reads as the hottest thing.
+    const temp = Math.max(0, Math.min(100, d.drillTemp || 0));
     if (roverBuilt.dyn.bitMat) {
-      const heat = Math.max(0, Math.min(1, (d.drillTemp || 0) / 100));
+      const heat = temp / 100;
       roverBuilt.dyn.bitMat.emissive.setHex(0x9a6f4a).lerp(HOT_BIT, heat);
       roverBuilt.dyn.bitMat.emissiveIntensity = heat * heat * 1.5;
     }
-    // wheels, lean, bob
+    // THE RIG VENTS AS IT COOLS (law §5 "Heat critical … steam vents on stop"). Coming off a hot
+    // bore, the coolant stack behind the boom puffs steam for a beat. The puff is spawned at the
+    // rover's own depth, not the particle plane: a chip 3 world units nearer than the vent it came
+    // from composites additively over the rock and reads as a bloom blob, not steam.
+    if (temp > 44 && temp < roverAnim.lastTemp - 0.01) roverAnim.vent = Math.max(roverAnim.vent, 0.9);
+    roverAnim.lastTemp = temp;
+    if (roverAnim.vent > 0) {
+      roverAnim.vent = Math.max(0, roverAnim.vent - dt);
+      roverAnim.ventTick -= dt;
+      if (roverAnim.ventTick <= 0 && !motionReduce) {
+        roverAnim.ventTick = 0.13;
+        const vo = roverBuilt.dyn.ventOffset;
+        const flipped = roverAnim.flipY > Math.PI / 2;
+        burst({
+          x: drawPos.x + TILE / 2 + (flipped ? -vo.x : vo.x) * TILE,
+          y: drawPos.y + TILE / 2 - (vo.y - 0.06) * TILE,
+          count: 3, color: '#8d8171', life: 0.5, size: 2.2, speed: 20,
+          kind: 'steam', cone: 1.1, angle: -Math.PI / 2, vy0: -26,
+        }, Z.rover + 0.3);
+      }
+    }
+    // THE HOPPER FILLS (law §4). Five welded rubble layers switch on against the live hold volume;
+    // the sliding lid draws shut on the same predicate the sim refuses ore with, so the cover is
+    // never open while the game is bouncing chunks off it.
+    const cargo = drillSys && drillSys.state && drillSys.state.player
+      ? drillSys.state.player.cargo : null;
+    const capVol = cargo && cargo.capVolume > 0 ? cargo.capVolume : 0;
+    const holdFrac = capVol > 0 ? Math.max(0, Math.min(1, (Number(cargo.usedVolume) || 0) / capVol)) : 0;
+    if (holdFrac < 0.995) cargoFullLatch = false;
+    let stage = 0;
+    while (stage < HOPPER_STEPS.length && holdFrac >= HOPPER_STEPS[stage]) stage++;
+    if (stage !== roverAnim.hopStage) {
+      roverAnim.hopStage = stage;
+      const layers = roverBuilt.dyn.hopperStages;
+      for (let i = 0; i < layers.length; i++) layers[i].visible = i < stage;
+    }
+    const lidTarget = (cargoFullLatch || holdFrac >= 0.999) ? 1 : 0;
+    roverAnim.lid += (lidTarget - roverAnim.lid) * Math.min(1, 7 * dt);
+    roverBuilt.dyn.hopperLid.position.x = roverBuilt.dyn.lidOpenX
+      + (roverBuilt.dyn.lidShutX - roverBuilt.dyn.lidOpenX) * roverAnim.lid;
+    // tracks, lean, bob
     const leanTarget = (moving && (faceDir === 'left' || faceDir === 'right')) ? -0.05 : 0;
     if (moving && !motionReduce) {
       roverAnim.wheelSpin -= (TILE / (d.avatar.moveDuration || 0.1)) * dt * 0.09;
@@ -2898,15 +2964,28 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     roverBuilt.dyn.body.position.y = -S * 0.06 + roverAnim.bob;
     roverBuilt.dyn.body.rotation.z = roverAnim.lean;
     for (const w of roverBuilt.dyn.wheels) w.rotation.z = roverAnim.wheelSpin;
-    // beacon: idle pulse, brisk blink rolling, strobe under the bit
+    // THE TREAD CRAWLS. The sprocket radius converts the wheel's angle into distance along the
+    // loop, so the plates travel exactly as fast as the wheels turn — a spinning wheel inside a
+    // static belt is the tell that gives away a fake track.
+    const phase = roverAnim.wheelSpin * 0.07;
+    if (Math.abs(phase - roverAnim.trackPhase) > 0.0004) {
+      roverAnim.trackPhase = phase;
+      roverBuilt.dyn.setTrackPhase(phase);
+    }
+    // beacon: idle pulse, brisk blink rolling, strobe under the bit — peak stays under the bit's
     const beaconBusy = drilling ? 9 : (moving ? 5 : 0);
     roverBuilt.dyn.beacon.emissiveIntensity = motionReduce
-      ? (drilling || moving ? 1.2 : 0.5)
-      : (beaconBusy ? (Math.sin(timeS * beaconBusy) > 0 ? 2.3 : 0.15) : 0.5);
+      ? (drilling || moving ? 0.9 : 0.35)
+      : (beaconBusy ? (Math.sin(timeS * beaconBusy) > 0 ? 1.0 : 0.12) : 0.35);
     // headlight points where the work is (left/right ride the body flip)
     const ht = faceDir === 'down' ? [0, -S * 3.2] : (faceDir === 'up' ? [0, S * 3.2] : [S * 3.2, 0]);
     headTarget.position.set(ht[0], ht[1], S * 0.3);
-    headlight.intensity = d.energyDepleted ? 10 : 46;
+    // A dead battery dims the whole rig, glass included: a lens still glowing under a lamp that is
+    // off is a sticker, not a light.
+    const powered = !d.energyDepleted;
+    headlight.intensity = powered ? 52 : 12;
+    roverBuilt.dyn.lampMat.emissiveIntensity = powered ? 0.55 : 0.12;
+    roverBuilt.dyn.cabGlass.emissiveIntensity = powered ? 0.42 : 0.14;
 
     // site: machines + overlays + umbilical
     syncMachines(site, projection, timeS);

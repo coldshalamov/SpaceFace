@@ -992,141 +992,414 @@ export function makeMkStampGeo() {
   return geo;
 }
 
-// THE ROVER — a recognisable tracked mining vehicle, and the only safety-yellow object in the
-// world (law §4). Livery #ffd23f with #161008 chevrons on the track guards and the boom, a real
-// cab with a lit window, a track pod with road wheels and a return roller, and an articulated
-// drill boom whose bit heats as the rig works. Nothing here is a glowing icon: the headlamps are
-// housings for the real SpotLight the works renderer parents to dyn.lampAnchor, the beacon is a
-// hooded rotating light, and the auger is hardened steel that reddens under load.
+// ---------------------------------------------------------------- rover construction helpers
+// One BufferGeometry welded from a set of transformed boxes. Panel clusters that never move
+// relative to one another — hazard chevrons, the hopper cage, the auger flighting, a load layer —
+// cost one draw call between them instead of one each. The rover is a single vehicle, not fifty
+// loose objects on the GPU.
+function boxSetGeo(specs) {
+  const pos = [], nor = [], uvs = [];
+  const m = new THREE.Matrix4();
+  const e = new THREE.Euler();
+  for (const s of specs) {
+    const g = new THREE.BoxGeometry(s.w, s.h, s.d).toNonIndexed();
+    e.set(s.rx || 0, s.ry || 0, s.rz || 0);
+    m.makeRotationFromEuler(e);
+    m.setPosition(s.x || 0, s.y || 0, s.z || 0);
+    g.applyMatrix4(m);
+    const p = g.attributes.position.array;
+    const n = g.attributes.normal.array;
+    const t = g.attributes.uv.array;
+    for (let i = 0; i < p.length; i++) pos.push(p[i]);
+    for (let i = 0; i < n.length; i++) nor.push(n[i]);
+    for (let i = 0; i < t.length; i++) uvs.push(t[i]);
+    g.dispose();
+  }
+  const out = new THREE.BufferGeometry();
+  out.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  out.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  out.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  out.computeBoundingSphere();
+  return out;
+}
+
+// A TRACKED UNDERCARRIAGE, NOT WHEELS. Three fat road wheels under a box read as a toy truck at
+// play size; what says "mining machine" is a continuous track — a stadium-shaped frame, a drive
+// sprocket at each end, and tread plates marching around the loop. The plates are ONE
+// InstancedMesh whose matrices are re-laid along the loop path whenever the rig moves, so the
+// tread visibly crawls instead of a wheel spinning on the spot. Returns the loop-path writer so
+// the works renderer can drive it from the distance the body actually travels.
+function makeTrackUnit(S, mats, { L, R, w, lugCount, wheels, wheelZ }) {
+  const g = new THREE.Group();
+  const frame = new THREE.Mesh(new THREE.BoxGeometry(S * L, S * 2 * R, S * w), mats.frame);
+  frame.castShadow = true; frame.receiveShadow = true;
+  g.add(frame);
+  for (const sx of [-1, 1]) {
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(S * R, S * R, S * w, 14), mats.frame);
+    cap.rotation.x = Math.PI / 2;
+    cap.position.x = sx * S * L / 2;
+    cap.castShadow = true; cap.receiveShadow = true;
+    g.add(cap);
+  }
+  // tread plates on the loop path
+  const arc = Math.PI * R;
+  const P = 2 * L + 2 * arc;
+  const off = R + 0.019;
+  const lugGeo = new THREE.BoxGeometry(S * 0.052, S * 0.038, S * (w + 0.05));
+  const inst = new THREE.InstancedMesh(lugGeo, mats.tread, lugCount);
+  inst.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  inst.castShadow = true;
+  inst.frustumCulled = false;
+  g.add(inst);
+  const dummy = new THREE.Object3D();
+  const place = (phase) => {
+    for (let i = 0; i < lugCount; i++) {
+      let s = (phase + i * (P / lugCount)) % P;
+      if (s < 0) s += P;
+      let px, py, rot;
+      if (s < L) {                       // lower run, travelling +x
+        px = -L / 2 + s; py = -off; rot = 0;
+      } else if (s < L + arc) {          // front sprocket
+        const phi = -Math.PI / 2 + (s - L) / R;
+        px = L / 2 + off * Math.cos(phi); py = off * Math.sin(phi); rot = phi + Math.PI / 2;
+      } else if (s < 2 * L + arc) {      // upper run, travelling -x
+        px = L / 2 - (s - L - arc); py = off; rot = Math.PI;
+      } else {                           // rear sprocket
+        const phi = Math.PI / 2 + (s - 2 * L - arc) / R;
+        px = -L / 2 + off * Math.cos(phi); py = off * Math.sin(phi); rot = phi + Math.PI / 2;
+      }
+      dummy.position.set(S * px, S * py, 0);
+      dummy.rotation.set(0, 0, rot);
+      dummy.updateMatrix();
+      inst.setMatrixAt(i, dummy.matrix);
+    }
+    inst.instanceMatrix.needsUpdate = true;
+  };
+  place(0);
+  // sprockets + road wheels, hung outboard so they read as discs against the dark frame
+  const spinners = [];
+  if (wheels) {
+    const spokeGeo = boxSetGeo([
+      { w: S * 0.115, h: S * 0.021, d: S * 0.05 },
+      { w: S * 0.115, h: S * 0.021, d: S * 0.05, rz: Math.PI / 2 },
+    ]);
+    const sprGeo = new THREE.CylinderGeometry(S * 0.07, S * 0.07, S * 0.05, 12);
+    for (const sx of [-1, 1]) {
+      const wg = new THREE.Group();
+      wg.position.set(sx * S * L / 2, 0, S * wheelZ);
+      const disc = new THREE.Mesh(sprGeo, mats.wheel);
+      disc.rotation.x = Math.PI / 2; disc.castShadow = true;
+      const spokes = new THREE.Mesh(spokeGeo, mats.steel);
+      spokes.position.z = S * 0.028;
+      wg.add(disc, spokes);
+      g.add(wg);
+      spinners.push(wg);
+    }
+    const roadGeo = new THREE.CylinderGeometry(S * 0.044, S * 0.044, S * 0.044, 10);
+    const roadBar = new THREE.BoxGeometry(S * 0.068, S * 0.015, S * 0.048);
+    for (const fx of [-0.3, 0, 0.3]) {
+      const wg = new THREE.Group();
+      wg.position.set(S * L * fx, -S * (R - 0.05), S * wheelZ);
+      const disc = new THREE.Mesh(roadGeo, mats.wheel);
+      disc.rotation.x = Math.PI / 2;
+      const bar = new THREE.Mesh(roadBar, mats.steel);
+      bar.position.z = S * 0.024;
+      wg.add(disc, bar);
+      g.add(wg);
+      spinners.push(wg);
+    }
+  }
+  return { group: g, place, spinners };
+}
+
+// THE ROVER — "that is my drill." A tracked mining rig read in side elevation, and the only
+// safety-yellow object in the world (law §4). Everything about it is a state readout worn on the
+// body: the boom points at the facing and drives into the target cell while boring; the bit heats
+// from #9a6f4a toward #ff6242 and vents steam as it cools; the open cage hopper on the back fills
+// in five visible stages and slides its lid shut when the hold is full; the tracks crawl when the
+// rig moves. Nothing here is an icon — the headlamp housings hold the works renderer's real
+// SpotLight, the beacon is a hooded lamp, the auger is hardened steel.
+//
+// LAYOUT, in cell units along +x = "front" (the camera looks straight down -z at the cut plane,
+// so this is a true side elevation). Measured off the built geometry:
+//   -0.43 … -0.02  open cage hopper (rear)     height -0.05 … +0.305, sliding lid rail at +0.352
+//   -0.02 … +0.24  operator cab + lit glass    height -0.055 … +0.334 (roof visor to +0.33)
+//   +0.16 … +0.41  boom pedestal, nose lip, coolant vent stack
+//   -0.33 … +0.11  tracks — a straight-down aim swings the auger clear of the front sprocket
+//   +0.26          boom shoulder, mounted OUTBOARD at z +0.28 so the arm never enters the body
+// Overall body ≈ 0.85 wide × 0.81 tall (-0.44 deck tail to +0.41 nose lip; tread lug -0.373 to
+// beacon hood +0.432); 0.87 counting the tether socket that hangs off the tail. PQ-130.03's rig
+// was 0.84 × 0.82 — the same envelope. NO SCALE MULTIPLIER WAS APPLIED and none may be: playfield §3 names
+// "makeRover scale ×1.4, same box stack" as the documented failure. This leaf buys legibility with
+// VALUE (paint instead of near-black metal) and CONTIGUITY (one connected safety-yellow region
+// spanning deck, hopper, cab and boom) — .03's rover was already 84% of a cell and still vanished.
 export function makeRover(S, envMap) {
   const g = new THREE.Group();
   const pulses = [];
-  const dyn = { wheels: [] };
-  const frame = metalMat(0x14110d, envMap);
-  const hullMat = metalMat(0x2b2a27, envMap);
+  const dyn = { wheels: [], hopperStages: [], trackPlacers: [] };
+
+  // Paint is PAINT: low metalness so the panels stay bright in a dark bore. The .03 hull used
+  // metalMat (metalness .82) and went dead black in the cavity — the whole rig read as a
+  // silhouette with one yellow stripe. Machined parts keep the high-metalness treatment.
+  const livery = new THREE.MeshStandardMaterial({ color: 0xffd23f, roughness: 0.52, metalness: 0.12, envMap: envMap || null });
+  const chevron = new THREE.MeshStandardMaterial({ color: 0x161008, roughness: 0.66, metalness: 0.14, envMap: envMap || null });
+  const shell = new THREE.MeshStandardMaterial({ color: 0x35312a, roughness: 0.62, metalness: 0.34, envMap: envMap || null });
+  const frame = metalMat(0x15120e, envMap);
+  const trackFrame = new THREE.MeshStandardMaterial({ color: 0x272319, roughness: 0.66, metalness: 0.45, envMap: envMap || null });
+  const tread = new THREE.MeshStandardMaterial({ color: 0x4c463d, roughness: 0.82, metalness: 0.36, envMap: envMap || null });
+  const wheelMat = metalMat(0x2f3238, envMap);
   const steel = metalMat(0x8b9096, envMap);
-  const livery = paintMat(0xffd23f, envMap, 0.46);
-  const chevron = paintMat(0x161008, envMap, 0.62);
+  const rubble = new THREE.MeshStandardMaterial({ color: 0x6b5740, roughness: 0.95, metalness: 0.06, envMap: envMap || null });
+  const oreRubble = new THREE.MeshStandardMaterial({ color: 0x9a7736, roughness: 0.72, metalness: 0.34, envMap: envMap || null });
 
   const body = new THREE.Group();
-  body.position.y = -S * 0.06; // treads ride near the tunnel floor
+  body.position.y = -S * 0.06;          // tracks ride near the tunnel floor
   g.add(body);
   dyn.body = body;
 
-  // track pod + hazard-striped guard
-  const tread = new THREE.Mesh(new THREE.BoxGeometry(S * 0.8, S * 0.21, S * 0.36), frame);
-  tread.position.y = -S * 0.24; tread.castShadow = true; body.add(tread);
-  const guard = new THREE.Mesh(new THREE.BoxGeometry(S * 0.84, S * 0.06, S * 0.4), livery);
-  guard.position.y = -S * 0.11; guard.castShadow = true; body.add(guard);
-  // Chevrons: five short dark bars raked across the guard. This is the hazard livery the law
-  // asks for, cut as geometry rather than painted on with a texture.
-  for (let i = 0; i < 5; i++) {
-    const ch = new THREE.Mesh(new THREE.BoxGeometry(S * 0.055, S * 0.075, S * 0.42), chevron);
-    ch.position.set(S * (-0.3 + i * 0.15), -S * 0.11, 0);
-    ch.rotation.z = 0.5;
-    body.add(ch);
+  // ---- undercarriage: two track units, near and far
+  const trackMats = { frame: trackFrame, tread, wheel: wheelMat, steel };
+  const TL = 0.44, TR = 0.1;
+  for (const tz of [0.185, -0.185]) {
+    const near = tz > 0;
+    const unit = makeTrackUnit(S, trackMats, {
+      L: TL, R: TR, w: 0.115, lugCount: near ? 22 : 16, wheels: near, wheelZ: 0.082,
+    });
+    unit.group.position.set(-S * 0.11, -S * 0.235, S * tz);
+    body.add(unit.group);
+    dyn.wheels.push(...unit.spinners);
+    dyn.trackPlacers.push(unit.place);
   }
-  // road wheels (groups so rotation.z spins the disc + spoke in screen plane) + return roller
-  const wheelGeo = new THREE.CylinderGeometry(S * 0.085, S * 0.085, S * 0.055, 12);
-  for (const wx of [-0.26, 0, 0.26]) {
-    const wg = new THREE.Group();
-    wg.position.set(S * wx, -S * 0.24, S * 0.19);
-    const w = new THREE.Mesh(wheelGeo, metalMat(0x3a3d42, envMap));
-    w.rotation.x = Math.PI / 2;
-    w.castShadow = true;
-    const spoke = new THREE.Mesh(new THREE.BoxGeometry(S * 0.13, S * 0.026, S * 0.058), steel);
-    wg.add(w, spoke);
-    body.add(wg);
-    dyn.wheels.push(wg);
+  dyn.setTrackPhase = (phase) => { for (const p of dyn.trackPlacers) p(phase); };
+
+  // ---- deck plate: the longest single run of safety yellow on the vehicle, and the thing that
+  // makes the rig read as ONE machine rather than a cab standing next to a bin.
+  const deck = new THREE.Mesh(new THREE.BoxGeometry(S * 0.84, S * 0.1, S * 0.44), livery);
+  deck.position.set(-S * 0.02, -S * 0.1, 0);
+  deck.castShadow = true; deck.receiveShadow = true;
+  body.add(deck);
+  // hazard chevrons — applied plates, real geometry rather than a painted glow, welded to one call
+  const chevSpecs = [];
+  for (let i = 0; i < 7; i++) {
+    chevSpecs.push({ w: S * 0.05, h: S * 0.115, d: S * 0.022, x: S * (-0.37 + i * 0.12), y: -S * 0.1, z: S * 0.231, rz: 0.52 });
   }
-  // hull + sloped nose plate + a small stowage rack so the silhouette is not a plain box
-  const hull = new THREE.Mesh(new THREE.BoxGeometry(S * 0.58, S * 0.26, S * 0.4), hullMat);
-  hull.position.set(-S * 0.04, S * 0.04, 0); hull.castShadow = true; body.add(hull);
-  const nose = new THREE.Mesh(new THREE.BoxGeometry(S * 0.2, S * 0.22, S * 0.36), livery);
-  nose.position.set(S * 0.3, S * 0.02, 0); nose.rotation.z = -0.32; nose.castShadow = true; body.add(nose);
-  const rack = new THREE.Mesh(new THREE.BoxGeometry(S * 0.22, S * 0.045, S * 0.3), frame);
-  rack.position.set(-S * 0.06, S * 0.19, 0); body.add(rack);
-  // cab + warm window (a real lit cabin, small and warm — not a glowing slab)
-  const cab = new THREE.Mesh(new THREE.BoxGeometry(S * 0.22, S * 0.2, S * 0.32), hullMat);
-  cab.position.set(-S * 0.2, S * 0.24, 0); cab.castShadow = true; body.add(cab);
-  const winMat = new THREE.MeshStandardMaterial({
-    color: 0x2b2114, emissive: 0xffd9a0, emissiveIntensity: 0.7, roughness: 0.28, metalness: 0.05,
+  const chevrons = new THREE.Mesh(boxSetGeo(chevSpecs), chevron);
+  body.add(chevrons);
+
+  // ---- boom pedestal: a chunky yellow nose ahead of the tracks. It carries the boom shoulder far
+  // enough forward that a straight-down aim swings the auger clear of the front sprocket.
+  const pedestal = new THREE.Mesh(new THREE.BoxGeometry(S * 0.22, S * 0.22, S * 0.36), livery);
+  pedestal.position.set(S * 0.27, -S * 0.13, 0);
+  pedestal.castShadow = true; pedestal.receiveShadow = true;
+  body.add(pedestal);
+  const noseLip = new THREE.Mesh(boxSetGeo([
+    { w: S * 0.03, h: S * 0.24, d: S * 0.38, x: S * 0.395, y: -S * 0.13 },
+  ]), chevron);
+  body.add(noseLip);
+
+  // ---- hopper: an OPEN CAGE skip, because a solid bin hides its own load in side elevation.
+  // Posts and rails frame the opening; what fills is the pile you can see through them.
+  const HOP_X0 = -0.41, HOP_X1 = -0.04;
+  const hopCX = (HOP_X0 + HOP_X1) / 2, hopW = HOP_X1 - HOP_X0;
+  const hopFloor = new THREE.Mesh(new THREE.BoxGeometry(S * hopW, S * 0.05, S * 0.3), shell);
+  hopFloor.position.set(S * hopCX, -S * 0.025, 0);
+  hopFloor.castShadow = true; hopFloor.receiveShadow = true;
+  body.add(hopFloor);
+  const cageSpecs = [
+    { w: S * 0.04, h: S * 0.34, d: S * 0.32, x: S * HOP_X0, y: S * 0.135 },          // rear wall
+    { w: S * 0.04, h: S * 0.34, d: S * 0.32, x: S * HOP_X1, y: S * 0.135 },          // front wall
+  ];
+  for (const cz of [0.15, -0.15]) {
+    cageSpecs.push({ w: S * hopW, h: S * 0.045, d: S * 0.035, x: S * hopCX, y: S * 0.29, z: S * cz });   // top rail
+    cageSpecs.push({ w: S * hopW, h: S * 0.035, d: S * 0.035, x: S * hopCX, y: S * 0.02, z: S * cz });   // bottom rail
+    cageSpecs.push({ w: S * 0.035, h: S * 0.3, d: S * 0.035, x: S * (hopCX - 0.09), y: S * 0.15, z: S * cz });
+    cageSpecs.push({ w: S * 0.035, h: S * 0.3, d: S * 0.035, x: S * (hopCX + 0.09), y: S * 0.15, z: S * cz });
+  }
+  const cage = new THREE.Mesh(boxSetGeo(cageSpecs), livery);
+  cage.castShadow = true; cage.receiveShadow = true;
+  body.add(cage);
+  // FIVE FILL STAGES (law §4). Each is a welded layer of rubble that switches on as the real hold
+  // fills; the works renderer drives the count off state.player.cargo, so the bin on the rover and
+  // the hold gauge in the crest are the same number told twice.
+  const JIT = [
+    [0.1, 0.55, 0.3], [0.31, -0.62, -0.4], [0.52, 0.16, 0.8], [0.72, -0.28, -0.2],
+    [0.9, 0.48, 0.5], [0.2, -0.14, 0.1], [0.62, 0.66, -0.7], [0.41, -0.5, 0.6],
+  ];
+  const LOAD_BASE = -0.005, LOAD_STEP = 0.062;
+  for (let s = 0; s < 5; s++) {
+    const specs = [];
+    for (let k = 0; k < 5; k++) {
+      const j = JIT[(s * 3 + k) % JIT.length];
+      const t = (k + 0.5) / 5;
+      specs.push({
+        w: S * (0.085 + 0.01 * j[2]), h: S * 0.062, d: S * 0.1,
+        x: S * (HOP_X0 + 0.05 + t * (hopW - 0.1) + 0.012 * j[1]),
+        y: S * (LOAD_BASE + s * LOAD_STEP + 0.031 + 0.008 * j[2]),
+        z: S * (0.1 * j[1]),
+        rz: 0.22 * j[2], ry: 0.5 * j[1],
+      });
+    }
+    const layer = new THREE.Mesh(boxSetGeo(specs), s >= 3 ? oreRubble : rubble);
+    layer.castShadow = true;
+    layer.visible = false;
+    body.add(layer);
+    dyn.hopperStages.push(layer);
+  }
+  // the lid: a sliding cover stowed over the cab roof, drawn back across the rim when the hold is
+  // full. Sliding, not hinged — a hinged flap either towers over the cell or fouls the tether.
+  const lid = new THREE.Mesh(new THREE.BoxGeometry(S * 0.4, S * 0.035, S * 0.34), livery);
+  lid.position.set(S * 0.13, S * 0.352, 0);
+  lid.castShadow = true;
+  const lidRibs = new THREE.Mesh(boxSetGeo([
+    { w: S * 0.028, h: S * 0.026, d: S * 0.35, x: -S * 0.12, y: S * 0.014 },
+    { w: S * 0.028, h: S * 0.026, d: S * 0.35, x: 0, y: S * 0.014 },
+    { w: S * 0.028, h: S * 0.026, d: S * 0.35, x: S * 0.12, y: S * 0.014 },
+  ]), chevron);
+  lid.add(lidRibs);
+  body.add(lid);
+  dyn.hopperLid = lid;
+  dyn.lidOpenX = S * 0.13;
+  dyn.lidShutX = S * hopCX;
+
+  // ---- cab: a real lit cabin. The glass faces the CAMERA (+z), which is the only face a side
+  // elevation ever shows; the .03 build put the pane on the ±x face and it was six pixels wide.
+  const cab = new THREE.Mesh(new THREE.BoxGeometry(S * 0.26, S * 0.36, S * 0.34), livery);
+  cab.position.set(S * 0.11, S * 0.125, 0);
+  cab.castShadow = true; cab.receiveShadow = true;
+  body.add(cab);
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(S * 0.38, S * 0.038, S * 0.38), shell);
+  roof.position.set(S * 0.14, S * 0.315, 0);
+  roof.castShadow = true;
+  body.add(roof);
+  const glassMat = new THREE.MeshStandardMaterial({
+    color: 0x161009, emissive: 0xffd9a0, emissiveIntensity: 0.42, roughness: 0.16, metalness: 0.06,
   });
-  const win = new THREE.Mesh(new THREE.BoxGeometry(S * 0.055, S * 0.1, S * 0.26), winMat);
-  win.position.set(-S * 0.11, S * 0.25, 0); body.add(win);
-  // hooded roof beacon (blinks while driving, strobes while boring)
+  const glass = new THREE.Mesh(new THREE.BoxGeometry(S * 0.18, S * 0.2, S * 0.02), glassMat);
+  glass.position.set(S * 0.115, S * 0.155, S * 0.174);
+  body.add(glass);
+  dyn.cabGlass = glassMat;
+  const mullion = new THREE.Mesh(boxSetGeo([
+    { w: S * 0.022, h: S * 0.22, d: S * 0.026, x: S * 0.115, y: S * 0.155, z: S * 0.182 },
+    { w: S * 0.2, h: S * 0.02, d: S * 0.026, x: S * 0.115, y: S * 0.055, z: S * 0.182 },
+  ]), shell);
+  body.add(mullion);
+
+  // ---- hooded beacon on the rear corner (blinks rolling, strobes under the bit)
   const beaconMat = new THREE.MeshStandardMaterial({
-    color: 0x2a1d08, emissive: 0xffb648, emissiveIntensity: 0.5, roughness: 0.4, metalness: 0.1,
+    color: 0x2a1d08, emissive: 0xffb648, emissiveIntensity: 0.3, roughness: 0.4, metalness: 0.1,
   });
-  const mast = new THREE.Mesh(new THREE.CylinderGeometry(S * 0.016, S * 0.022, S * 0.09, 6), frame);
-  mast.position.set(-S * 0.2, S * 0.38, 0); body.add(mast);
-  const beaconHood = new THREE.Mesh(new THREE.CylinderGeometry(S * 0.052, S * 0.052, S * 0.022, 8), frame);
-  beaconHood.position.set(-S * 0.2, S * 0.465, 0); body.add(beaconHood);
-  const beacon = new THREE.Mesh(new THREE.SphereGeometry(S * 0.045, 10, 8), beaconMat);
-  beacon.position.set(-S * 0.2, S * 0.43, 0); body.add(beacon);
+  const mast = new THREE.Mesh(new THREE.CylinderGeometry(S * 0.017, S * 0.024, S * 0.1, 6), frame);
+  mast.position.set(-S * 0.3, S * 0.315, S * 0.2);
+  body.add(mast);
+  const beaconHood = new THREE.Mesh(new THREE.CylinderGeometry(S * 0.052, S * 0.052, S * 0.024, 8), frame);
+  beaconHood.position.set(-S * 0.3, S * 0.42, S * 0.2);
+  body.add(beaconHood);
+  const beacon = new THREE.Mesh(new THREE.SphereGeometry(S * 0.036, 10, 8), beaconMat);
+  beacon.position.set(-S * 0.3, S * 0.388, S * 0.2);
+  body.add(beacon);
   dyn.beacon = beaconMat;
 
-  // rear cable socket — the umbilical landing collar, machined steel, no glow
-  const socket = new THREE.Mesh(new THREE.CylinderGeometry(S * 0.06, S * 0.078, S * 0.11, 10), frame);
-  socket.rotation.z = Math.PI / 2; socket.position.set(-S * 0.36, S * 0.1, 0); body.add(socket);
-  const collar = new THREE.Mesh(new THREE.TorusGeometry(S * 0.068, S * 0.02, 8, 16), steel);
-  collar.rotation.y = Math.PI / 2; collar.position.set(-S * 0.4, S * 0.1, 0); body.add(collar);
+  // ---- rear cable socket — the umbilical landing collar, machined steel, no glow
+  const socket = new THREE.Mesh(new THREE.CylinderGeometry(S * 0.055, S * 0.072, S * 0.08, 10), frame);
+  socket.rotation.z = Math.PI / 2;
+  socket.position.set(-S * 0.42, S * 0.1, 0);
+  body.add(socket);
+  const collar = new THREE.Mesh(new THREE.TorusGeometry(S * 0.062, S * 0.018, 8, 16), shell);
+  collar.rotation.y = Math.PI / 2;
+  collar.position.set(-S * 0.445, S * 0.1, 0);
+  body.add(collar);
   dyn.socket = socket;
 
-  // headlamp bar — housings only; the real SpotLight is parented to lampAnchor by the renderer
+  // ---- coolant vent stack on the pedestal, beside the bit it cools. dyn.ventOffset is where the
+  // works renderer spawns the steam puff when the rig comes off a hot bore (law §5 "Heat critical
+  // … steam vents on stop").
+  const stack = new THREE.Mesh(new THREE.CylinderGeometry(S * 0.03, S * 0.036, S * 0.18, 8), frame);
+  stack.position.set(S * 0.29, S * 0.06, S * 0.2);
+  stack.castShadow = true;
+  body.add(stack);
+  const stackCap = new THREE.Mesh(new THREE.CylinderGeometry(S * 0.046, S * 0.034, S * 0.03, 8), steel);
+  stackCap.position.set(S * 0.29, S * 0.16, S * 0.2);
+  body.add(stackCap);
+  dyn.ventOffset = { x: 0.29, y: 0.22 };
+
+  // ---- headlamp bar on the cab front — housings only; the works renderer parents its real
+  // SpotLight to dyn.lampAnchor. Lens emissive stays well under the hot bit's peak so HEAT, not
+  // hardware, is the brightest thing on the vehicle.
   const lampBar = new THREE.Group();
-  lampBar.position.set(S * 0.3, S * 0.16, 0); body.add(lampBar);
+  lampBar.position.set(S * 0.3, S * 0.235, 0);
+  body.add(lampBar);
   const lensMat = new THREE.MeshStandardMaterial({
-    color: 0x3b3222, emissive: 0xffe5a4, emissiveIntensity: 1.15, roughness: 0.25, metalness: 0.05,
+    color: 0x3b3222, emissive: 0xffe5a4, emissiveIntensity: 0.55, roughness: 0.25, metalness: 0.05,
   });
   for (const lz of [-0.1, 0.1]) {
-    const can = new THREE.Mesh(new THREE.CylinderGeometry(S * 0.044, S * 0.05, S * 0.055, 10), frame);
+    const can = new THREE.Mesh(new THREE.CylinderGeometry(S * 0.042, S * 0.048, S * 0.055, 10), frame);
     can.rotation.z = -Math.PI / 2; can.position.set(-S * 0.012, 0, S * lz); lampBar.add(can);
-    const lens = new THREE.Mesh(new THREE.CylinderGeometry(S * 0.036, S * 0.036, S * 0.012, 10), lensMat);
+    const lens = new THREE.Mesh(new THREE.CylinderGeometry(S * 0.032, S * 0.032, S * 0.012, 10), lensMat);
     lens.rotation.z = -Math.PI / 2; lens.position.set(S * 0.022, 0, S * lz); lampBar.add(lens);
   }
   dyn.lampAnchor = lampBar;
+  dyn.lampMat = lensMat;
 
-  // articulated drill boom: shoulder at the nose, aims at the dig direction
+  // ---- articulated drill boom: shoulder on the pedestal, aims at the dig direction
+  const boomMount = new THREE.Mesh(boxSetGeo([
+    { w: S * 0.15, h: S * 0.15, d: S * 0.15, x: S * 0.25, y: S * 0.01, z: S * 0.21 },
+  ]), livery);
+  boomMount.castShadow = true;
+  body.add(boomMount);
   const arm = new THREE.Group();
-  arm.position.set(S * 0.34, S * 0.02, 0);
+  arm.position.set(S * 0.26, S * 0.02, S * 0.28);
   body.add(arm);
   dyn.arm = arm;
-  const armSeg = new THREE.Mesh(new THREE.BoxGeometry(S * 0.3, S * 0.08, S * 0.1), livery);
-  armSeg.position.x = S * 0.15; armSeg.castShadow = true; arm.add(armSeg);
-  const armStripe = new THREE.Mesh(new THREE.BoxGeometry(S * 0.05, S * 0.085, S * 0.105), chevron);
-  armStripe.position.x = S * 0.2; arm.add(armStripe);
-  const piston = new THREE.Mesh(new THREE.CylinderGeometry(S * 0.026, S * 0.026, S * 0.26, 8), steel);
-  piston.rotation.z = Math.PI / 2; piston.position.set(S * 0.12, -S * 0.06, 0); arm.add(piston);
+  const armSeg = new THREE.Mesh(new THREE.BoxGeometry(S * 0.29, S * 0.15, S * 0.14), livery);
+  armSeg.position.x = S * 0.145; armSeg.castShadow = true; arm.add(armSeg);
+  const armStripe = new THREE.Mesh(boxSetGeo([
+    { w: S * 0.042, h: S * 0.158, d: S * 0.146, x: S * 0.235 },
+  ]), chevron);
+  arm.add(armStripe);
+  const shoulder = new THREE.Mesh(new THREE.CylinderGeometry(S * 0.075, S * 0.075, S * 0.15, 10), livery);
+  shoulder.rotation.x = Math.PI / 2; shoulder.castShadow = true; arm.add(shoulder);
+  const hub = new THREE.Mesh(new THREE.CylinderGeometry(S * 0.028, S * 0.028, S * 0.17, 8), shell);
+  hub.rotation.x = Math.PI / 2; arm.add(hub);
+  const hydraulic = new THREE.Mesh(new THREE.CylinderGeometry(S * 0.022, S * 0.022, S * 0.2, 8), shell);
+  hydraulic.rotation.z = Math.PI / 2; hydraulic.position.set(S * 0.13, -S * 0.1, 0); arm.add(hydraulic);
   // slide the auger rides on — extends while boring so the bit visibly bites the wall
   const slide = new THREE.Group();
-  slide.position.x = S * 0.3;
+  slide.position.x = S * 0.28;
   arm.add(slide);
   dyn.augerSlide = slide;
+  dyn.augerRestX = S * 0.28;
+  dyn.augerBiteX = S * 0.3;
   const holder = new THREE.Group();
-  holder.rotation.z = -Math.PI / 2; // child +y points along arm +x
+  holder.rotation.z = -Math.PI / 2;     // child +y points along arm +x
   slide.add(holder);
   // THE BIT IS STEEL, AND IT HEATS. Base is machined tool steel; the works renderer drives
   // dyn.bitMat emissive from #9a6f4a toward #ff6242 as the drill temperature climbs (law §4).
   const augerMat = new THREE.MeshStandardMaterial({
-    color: 0x8e949b, roughness: 0.3, metalness: 0.92, envMap: envMap || null, flatShading: true,
+    color: 0x848b93, roughness: 0.55, metalness: 0.6, envMap: envMap || null, flatShading: true,
     emissive: 0x9a6f4a, emissiveIntensity: 0,
   });
   dyn.bitMat = augerMat;
-  const auger = new THREE.Mesh(new THREE.ConeGeometry(S * 0.13, S * 0.46, 6), augerMat);
+  const auger = new THREE.Mesh(new THREE.ConeGeometry(S * 0.082, S * 0.24, 7), augerMat);
   auger.castShadow = true;
   holder.add(auger);
-  // welded spiral fins so the spin reads at distance
-  for (let i = 0; i < 3; i++) {
-    const a = i * (Math.PI * 2 / 3);
-    const fin = new THREE.Mesh(new THREE.BoxGeometry(S * 0.2, S * 0.018, S * 0.045), frame);
-    fin.position.set(Math.cos(a) * S * 0.05, 0, Math.sin(a) * S * 0.05);
-    fin.rotation.y = -a;
-    fin.rotation.z = 0.45;
-    auger.add(fin);
+  // welded spiral flighting — one geometry, so the spin reads at distance for one draw call
+  const finSpecs = [];
+  for (let i = 0; i < 7; i++) {
+    const a = i * (Math.PI * 2 / 3.5);
+    const t = i / 7;
+    const r = S * (0.04 - 0.022 * t);
+    finSpecs.push({
+      w: S * (0.1 - 0.045 * t), h: S * 0.02, d: S * 0.036,
+      x: Math.cos(a) * r, y: S * (-0.09 + t * 0.2), z: Math.sin(a) * r,
+      ry: -a, rz: 0.42,
+    });
   }
-  const tip = new THREE.Mesh(new THREE.ConeGeometry(S * 0.048, S * 0.13, 6), augerMat);
-  tip.position.y = S * 0.28; auger.add(tip);
+  const flighting = new THREE.Mesh(boxSetGeo(finSpecs), new THREE.MeshStandardMaterial({
+    color: 0x3d4249, roughness: 0.5, metalness: 0.8, envMap: envMap || null,
+  }));
+  auger.add(flighting);
+  const tip = new THREE.Mesh(new THREE.ConeGeometry(S * 0.034, S * 0.1, 6), augerMat);
+  tip.position.y = S * 0.155; auger.add(tip);
   dyn.auger = auger;
 
   g.userData.dyn = dyn;

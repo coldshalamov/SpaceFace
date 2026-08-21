@@ -7656,7 +7656,7 @@
       "priority": 349,
       "title": "The vehicle: rover readable at play size",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-130.01",
         "PQ-130.03"
@@ -7674,7 +7674,9 @@
         "npm run check:asteroid-theater",
         "node scripts/check-program-docs.mjs"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-130-05-the-vehicle-REPORT.md"
+      ],
       "brief": "Spirit: that is my drill. Silhouette, cabin, bit, hazard paint against dark rock. Findable in a second. Illegal: makeRover scale ×1.4 on the same box stack. Authored GLB only if the rebuilt rig still fails. No billboard."
     },
     {
