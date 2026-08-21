@@ -68,7 +68,7 @@
     "audio:cue": 4
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "30e4dbd1a66950f5d1d827c686c7e8209b9738fe33f8af9ca521491b4dec1350",
+    "authoritativeHash": "b3d1d0afaf19657ccc413b529fb0938269bf123a183d1f941990ae2c58245c70",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -123,6 +123,8 @@
     "Read on the clean merge commit across the full 20-run repeat. check:sim:v3:compare cannot see this class of drift: it does not read the hash.",
     "2026-08-19 deliberate re-record. Ordinary collisions no longer yaw ships or stagger NPCs. Ships scrape instead of bounce; pickups no longer knock hulls. Combat-driven tumble is unchanged.",
     "sim-golden-diff --flight-system v3: VERDICT MOTION_CHANGED, 10 entity motion fields. Player path stays on heading. projectile:hit and combat:damage 6->9; cue fanout 10->13. combat:fire stays 17.",
-    "Prior authoritativeHash was 8c7c22f4aa02ff47441a81b9cf0d762f8dcbfcfb56744ba8171155c805edde85."
+    "Prior authoritativeHash was 8c7c22f4aa02ff47441a81b9cf0d762f8dcbfcfb56744ba8171155c805edde85.",
+    "2026-08-21 deliberate CONTENT_ONLY re-record for the causal physics active set. sim-golden-diff against cdf6138d found 20 physics-membership leaves changed and ZERO entity pos / vel / rot / angVel / prevPos fields changed.",
+    "V3 now reports seven causally active Rapier bodies instead of ten; far actors remain durable. Uninterrupted and reload-at-600 hashes match. Trace counts and motion are unchanged. Prior hash: 30e4dbd1a66950f5d1d827c686c7e8209b9738fe33f8af9ca521491b4dec1350."
   ]
 }

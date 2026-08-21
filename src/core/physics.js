@@ -16,7 +16,10 @@ import {
   setPickupAcceptanceRetry,
 } from './pickupAcceptance.js';
 import { combatFlag } from '../data/featureFlags.js';
-import { ensureActivityClassified } from '../world/activityRuntime.js';
+import {
+  ensureActivityClassified,
+  resetActivityRuntimeForRestore,
+} from '../world/activityRuntime.js';
 import {
   resolveBerthWorld,
   resolveCollisionProxyManifest,
@@ -415,6 +418,21 @@ export const physics = {
     return this._sg02.setFrameOrigin(worldFrameOrigin(state), worldFrameOriginSeq(state));
   },
 
+  _resetSg02AfterLoad() {
+    this._disableSg02DynamicAuthority();
+    // Entity restore rebuilds station/gate objects while UI docking alerts were cleared by the
+    // previous dock. Reset edge caches so the first post-load physics step re-emits range=true
+    // even when the rematerialized structural entity keeps the same stable station/gate id.
+    this._dockStationId = null;
+    this._gateEntityId = null;
+    // The respawn also swapped every persistent entity object for a fresh one at the same tick.
+    // Drop the cached activity classification so the next sync layers read live entities instead
+    // of scratch arrays holding retired (alive=false) references — same ids and counts would
+    // otherwise never bump physicsStaticVersion and the statics would never reconcile.
+    resetActivityRuntimeForRestore(this.state);
+    if (this.state) this._publishRuntime(this.state);
+  },
+
   _syncSg02DynamicAuthorityEntities(state) {
     const activity = ensureActivityClassified(state);
     if (activity && this._diag) {
@@ -449,16 +467,6 @@ export const physics = {
     this._diag.sg02SyncFullEntities = 0;
     this._diag.sg02SyncStaticEntities = 0;
     this._diag.sg02SyncDynamicEntities = 0;
-  },
-
-  _resetSg02AfterLoad() {
-    this._disableSg02DynamicAuthority();
-    // Entity restore rebuilds station/gate objects while UI docking alerts were cleared by the
-    // previous dock. Reset edge caches so the first post-load physics step re-emits range=true
-    // even when the rematerialized structural entity keeps the same stable station/gate id.
-    this._dockStationId = null;
-    this._gateEntityId = null;
-    if (this.state) this._publishRuntime(this.state);
   },
 
   _reconcileCombatPhysicsBeforeStep() {

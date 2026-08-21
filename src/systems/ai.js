@@ -6,7 +6,11 @@
 // Deterministic: uses state.rng for any randomness (never Math.random in sim logic, §0.5).
 import { wrapAngle } from '../core/rng.js';
 import { makeEnemySpawnSpec } from './combat.js';
-import { ensureActivityClassified, entityNeedsAiThink } from '../world/activityRuntime.js';
+import {
+  ensureActivityClassified,
+  entityNeedsAiThink,
+  getActivityOwnerEntities,
+} from '../world/activityRuntime.js';
 
 // FSM states.
 const S = { IDLE: 'idle', PATROL: 'patrol', PURSUE: 'pursue', ATTACK: 'attack', STRAFE: 'strafe', FLEE: 'flee' };
@@ -106,7 +110,7 @@ export const ai = {
   update(dt, state) {
     if (state.mode !== 'flight') return;
     ensureActivityClassified(state);
-    const list = (state.entityIndex && state.entityIndex.aiShips) || state.entityList;
+    const list = getActivityOwnerEntities(state, 'ai');
     const player = state.entities.get(state.playerId) || null;
     this._updateFormationRuntime(state, list);
 
@@ -142,8 +146,9 @@ export const ai = {
     for (const e of list) {
       if (e.type !== 'ship' || !e.alive) continue;
       if (e.id === state.playerId) continue;
-      const data = e.data;
-      if (!data || !data.ai) continue;          // only entities the spawner tagged as AI ships
+      const data = e.data || (e.data = {});
+      if (!data.ai && e.ai && typeof e.ai === 'object') data.ai = e.ai;
+      if (!data.ai) continue;          // only entities the spawner tagged as AI ships
       // Passive freighters (ambient traffic, V2 §28b) drive themselves via data.intent from the
       // traffic system — skip the combat FSM so they never acquire/attack/strafe. They can still be
       // attacked (piracy -> heat), they just don't initiate.
@@ -339,7 +344,7 @@ export const ai = {
     const groups = new Map();
     for (const e of source || []) {
       if (!e || e.type !== 'ship' || !e.alive || e.id === state.playerId) continue;
-      const data = e.data, ai = data && data.ai;
+      const data = e.data || {}, ai = data.ai || e.ai;
       if (!ai || ai.passive || ai._formationBroken) continue;
       const groupId = formationGroupId(ai);
       if (!groupId) continue;

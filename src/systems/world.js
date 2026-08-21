@@ -955,6 +955,9 @@ export const world = {
         simTime: Number.isFinite(state.simTime) ? state.simTime : tick,
         createdTick: (e.data && e.data.recordCreatedTick) || tick,
         durableReason: opts.reason || 'evict',
+        previousRecord: e.data && e.data.worldRecordId ? bag.byId[e.data.worldRecordId] : null,
+        recordsBag: bag,
+        stationSource: state,
         extra: e.data && e.data.worldRecordId && bag.byId[e.data.worldRecordId]
           ? bag.byId[e.data.worldRecordId].extra
           : null,
@@ -1119,7 +1122,11 @@ export const world = {
     }
     if (budgeted && typeof budget.bindEntity === 'function') budget.bindEntity(ent.id, requester);
     const simTime = Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0);
-    const fromT = Number.isFinite(rec.lastExactT) && rec.lastExactT > 0 ? rec.lastExactT : simTime;
+    // Zero is a valid simulation timestamp. Falling back to `simTime` for a record first
+    // observed at t=0 silently discarded its entire deterministic catch-up interval.
+    const fromT = Number.isFinite(rec.lastExactT)
+      ? Math.min(rec.lastExactT, simTime)
+      : simTime;
     const advanced = advanceWorldRecord(rec, fromT, simTime) || rec;
     applyRecordVitals(ent, advanced);
     bindEntityToRecord(ent, advanced);
@@ -1154,6 +1161,9 @@ export const world = {
         seed: (state.meta && state.meta.seed) || 1,
         tick: state.tick | 0,
         simTime: Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0),
+        previousRecord: e.data && e.data.worldRecordId ? bag.byId[e.data.worldRecordId] : null,
+        recordsBag: bag,
+        stationSource: state,
         extra: e.data && e.data.worldRecordId && bag.byId[e.data.worldRecordId]
           ? bag.byId[e.data.worldRecordId].extra
           : null,
@@ -1606,16 +1616,23 @@ export const world = {
     const bag = ensureResourceBodies(state.world);
     const rec = findResourceBodyForEntity(bag, ent);
     if (!rec) return ent;
-    if (rec.outcome === 'destroyed' || rec.outcome === 'depleted') {
+    if (rec.outcome === 'destroyed') {
       ent.alive = false;
       if (ent.data) ent.data.respawnAt = Number.isFinite(rec.depletedAtT) ? rec.depletedAtT : state.simTime;
       return ent;
     }
     const simTime = Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0);
-    const fromT = Number.isFinite(rec.lastObservedT) && rec.lastObservedT > 0
+    // Zero is a valid observation/mining time; only clamp future timestamps, never treat zero as
+    // "missing" and lose deterministic drift/recovery on a Continue.
+    const observedT = Number.isFinite(rec.lastObservedT)
       ? rec.lastObservedT
       : (Number.isFinite(rec.lastMinedT) ? rec.lastMinedT : simTime);
-    const advanced = advanceResourceBody(rec, fromT, simTime) || rec;
+    const fromT = Math.min(observedT, simTime);
+    const advanced = advanceResourceBody(rec, fromT, simTime, {
+      fieldId: rec.fieldId,
+      allowRecovery: rec.outcome === 'depleted'
+        && rec.recoveryPolicy && rec.recoveryPolicy.recoverDepleted === true,
+    }) || rec;
     applyResourceBodyToEntity(ent, advanced);
     upsertResourceBody(bag, advanced);
     return ent;
@@ -1631,6 +1648,8 @@ export const world = {
       fieldId: d.fieldId,
       slotId: d.activityObjectSlotId || d.asteroidSlotId || d.slotId,
       simTime: Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0),
+      previousRecord: d.resourceBodyId ? ensureResourceBodies(state.world).byId[d.resourceBodyId] : null,
+      resourceBag: ensureResourceBodies(state.world),
     });
     if (!captured) return null;
     const stored = upsertResourceBody(ensureResourceBodies(state.world), captured);

@@ -20,11 +20,7 @@ import {
   physicsReachWu,
 } from './activityClassification.js';
 import { shouldOwnerThink } from '../core/activityScheduler.js';
-import {
-  applyAbstractCatchupToEntities,
-  ensureSimWorker,
-} from '../core/simWorkerHost.js';
-import { ballisticDrift } from './worldCatchup.js';
+import { ballisticDrift, consumeScheduledWorldWake } from './worldCatchup.js';
 import {
   captureEntityRecord,
   ensureWorldRecords,
@@ -42,6 +38,68 @@ function finite(n, fallback = 0) {
 
 function isExactTier(tier) {
   return tier === SIM_TIER.S0_EXACT || tier === SIM_TIER.S1_NEAR;
+}
+
+// Owner views describe which actors are resident in an owner's active domain. S0/S1 actors stay
+// in the view even on a skipped near cadence tick; each owner applies entityNeedsAiThink at its
+// actual work boundary. S2/S3/S4 actors enter only for a deterministic scheduled wake (or an
+// explicit exact pin), so far passive actors still do zero per-tick owner work.
+function ownerViewNeedsWake(entity, state) {
+  if (!entity || entity.alive === false) return false;
+  const activity = entity.activity;
+  const data = entity.data || {};
+  const presence = data.factionPresence;
+  // Authored K1 fixed-route craft are an explicit maneuver-owner wake, even when their global
+  // route anchor is outside the player's current bubble. Generic far passive traffic has no such
+  // admission and remains asleep until its durable nextEventAtT.
+  if (presence && presence.source === 'depth-program-k1' && presence.fixedRoute === true) return true;
+  if (!activity || !activity.simTier || isExactTier(activity.simTier) || activity.pinnedExact) return true;
+  const due = Number(activity.nextEventAtT);
+  const simTime = state && Number.isFinite(state.simTime)
+    ? state.simTime
+    : (state && Number.isInteger(state.tick) ? state.tick / 60 : -1);
+  return Number.isFinite(due) && due >= 0 && simTime >= due;
+}
+
+function ownerViewNeedsWakeWithEdge(entity, state, wakeDue) {
+  return wakeDue === true || ownerViewNeedsWake(entity, state);
+}
+
+function ownerAiRecord(entity) {
+  if (!entity) return null;
+  if (entity.ai && typeof entity.ai === 'object') return entity.ai;
+  const data = entity.data;
+  return data && data.ai && typeof data.ai === 'object' ? data.ai : null;
+}
+
+function dueAt(value, simTime) {
+  return Number.isFinite(value) && value >= 0 && simTime >= value ? value : null;
+}
+
+function durableWakeDue(record, simTime) {
+  return record && dueAt(record.nextEventAtT, simTime) != null;
+}
+
+function liveWakeDue(entity, simTime) {
+  if (!entity) return null;
+  const activity = entity.activity;
+  const data = entity.data || {};
+  const ai = ownerAiRecord(entity);
+  const aiActivity = ai && ai.activity && typeof ai.activity === 'object' ? ai.activity : null;
+  return dueAt(activity && activity.nextEventAtT, simTime)
+    ?? dueAt(data.nextEventAtT, simTime)
+    ?? dueAt(ai && ai.nextEventAtT, simTime)
+    ?? dueAt(aiActivity && aiActivity.nextEventAtT, simTime);
+}
+
+function wakeEventForEntity(entity) {
+  if (!entity) return null;
+  const activity = entity.activity;
+  const data = entity.data || {};
+  return (activity && (activity.wakeEvent || activity.event))
+    || data.wakeEvent
+    || data.scheduledEvent
+    || null;
 }
 
 function mixId(id) {
@@ -120,11 +178,28 @@ function ensureRuntime(state) {
       nearIds: [],
       abstractIds: [],
       dormantIds: [],
+      activeAiEntities: [],
+      activeTrafficEntities: [],
+      activityTransitionAiEntities: [],
+      initialInactiveAiEntities: [],
+      wakeCandidates: [],
+      wakeTokensById: new Map(),
+      wakeEventsById: new Map(),
+      wakeBoundaryTick: -1,
       glassIds: [],
       runwayIds: [],
       counts: { s0: 0, s1: 0, s2: 0, s3: 0, s4: 0, physics: 0, r0: 0, r1: 0, r2: 0, r3: 0 },
       pinFacts: emptyPinFacts(),
       contextScratch: {},
+      published: null,
+      publishedCounts: null,
+      reasonsById: new Map(),
+      changedIds: [],
+      signaturesById: new Map(),
+      pinBuffersById: new Map(),
+      currentEntityIds: new Set(),
+      frame: null,
+      seenEntityIds: new Set(),
     };
     RUNTIMES.set(state, runtime);
   }
@@ -133,29 +208,44 @@ function ensureRuntime(state) {
 
 function publishScalars(state, runtime) {
   const counts = runtime.counts;
-  state.activityRuntime = {
-    classifiedTick: runtime.classifiedTick,
-    physicsReachWu: runtime.physicsReachWu,
-    physicsStaticVersion: runtime.physicsStaticVersion,
-    physicsStaticCount: runtime.physicsStatics.length,
-    physicsDynamicCount: runtime.physicsDynamics.length,
-    counts: {
-      s0: counts.s0,
-      s1: counts.s1,
-      s2: counts.s2,
-      s3: counts.s3,
-      s4: counts.s4,
-      physics: counts.physics,
-      r0: counts.r0,
-      r1: counts.r1,
-      r2: counts.r2,
-      r3: counts.r3,
-    },
-    glassCount: runtime.glassIds.length,
-    runwayCount: runtime.runwayIds.length,
-    exactCount: runtime.exactIds.length,
-    aggregatePopulation: counts.s4,
-  };
+  const published = runtime.published || (runtime.published = {
+    classifiedTick: -1,
+    physicsReachWu: 0,
+    physicsStaticVersion: 0,
+    physicsStaticCount: 0,
+    physicsDynamicCount: 0,
+    counts: runtime.publishedCounts || (runtime.publishedCounts = {
+      s0: 0, s1: 0, s2: 0, s3: 0, s4: 0, physics: 0,
+      r0: 0, r1: 0, r2: 0, r3: 0,
+    }),
+    glassCount: 0,
+    runwayCount: 0,
+    exactCount: 0,
+    aggregatePopulation: 0,
+    reasonsById: runtime.reasonsById,
+    changedIds: runtime.changedIds,
+  });
+  published.classifiedTick = runtime.classifiedTick;
+  published.physicsReachWu = runtime.physicsReachWu;
+  published.physicsStaticVersion = runtime.physicsStaticVersion;
+  published.physicsStaticCount = runtime.physicsStatics.length;
+  published.physicsDynamicCount = runtime.physicsDynamics.length;
+  const target = published.counts;
+  target.s0 = counts.s0;
+  target.s1 = counts.s1;
+  target.s2 = counts.s2;
+  target.s3 = counts.s3;
+  target.s4 = counts.s4;
+  target.physics = counts.physics;
+  target.r0 = counts.r0;
+  target.r1 = counts.r1;
+  target.r2 = counts.r2;
+  target.r3 = counts.r3;
+  published.glassCount = runtime.glassIds.length;
+  published.runwayCount = runtime.runwayIds.length;
+  published.exactCount = runtime.exactIds.length;
+  published.aggregatePopulation = counts.s4;
+  state.activityRuntime = published;
 }
 
 function captureDematerialized(state, entity, simTime, abstractTier) {
@@ -170,6 +260,9 @@ function captureDematerialized(state, entity, simTime, abstractTier) {
     seed: (state.meta && state.meta.seed) || 1,
     tick: state.tick | 0,
     simTime,
+    previousRecord: d.worldRecordId && bag.byId[d.worldRecordId] ? bag.byId[d.worldRecordId] : null,
+    recordsBag: bag,
+    stationSource: state,
     extra: d.worldRecordId && bag.byId[d.worldRecordId] ? bag.byId[d.worldRecordId].extra : null,
     abstractTier: abstractTier || SIM_TIER.S2_ABSTRACT,
   });
@@ -198,6 +291,39 @@ function catchUpEntity(entity, rec, simTime) {
   entity.angVel = next.angVel;
 }
 
+function authoritativeCollisionIds(state) {
+  const physics = state && (state.physics || state.physicsRuntime || state.physicsAuthority);
+  if (!physics) return null;
+  return physics.imminentCollisionIds
+    || physics.lookaheadIds
+    || physics.collisionLookaheadIds
+    || (physics.lookahead && (physics.lookahead.ids || physics.lookahead.imminentIds))
+    || null;
+}
+
+function imminentCollisionFor(state, player, entity) {
+  if (!player || !entity || entity.id === player.id || !player.pos || !entity.pos) return false;
+  const ids = authoritativeCollisionIds(state);
+  if (ids && (typeof ids.has === 'function' ? ids.has(entity.id) : Array.isArray(ids) && ids.includes(entity.id))) {
+    return true;
+  }
+  const rvx = finite(entity.vel && entity.vel.x) - finite(player.vel && player.vel.x);
+  const rvz = finite(entity.vel && entity.vel.z) - finite(player.vel && player.vel.z);
+  const rpx = finite(entity.pos.x) - finite(player.pos.x);
+  const rpz = finite(entity.pos.z) - finite(player.pos.z);
+  const radius = Math.max(0, finite(entity.radius)) + Math.max(0, finite(player.radius));
+  const c = rpx * rpx + rpz * rpz - radius * radius;
+  if (c <= 0) return true;
+  const a = rvx * rvx + rvz * rvz;
+  if (!(a > 1e-8)) return false;
+  const b = 2 * (rpx * rvx + rpz * rvz);
+  if (b >= 0) return false;
+  const discriminant = b * b - 4 * a * c;
+  if (discriminant < 0) return false;
+  const t = (-b - Math.sqrt(discriminant)) / (2 * a);
+  return t >= 0 && t <= COLLISION_LOOKAHEAD_S;
+}
+
 function makeStamp(classified, simTime) {
   return {
     simTier: classified.simTier,
@@ -209,6 +335,27 @@ function makeStamp(classified, simTime) {
     lastObservedT: simTime,
     graceUntilT: -1,
   };
+}
+
+function reusablePins(runtime, id, pins) {
+  let stable = runtime.pinBuffersById.get(id);
+  if (!stable) {
+    stable = [];
+    runtime.pinBuffersById.set(id, stable);
+  }
+  let same = stable.length === pins.length;
+  for (let i = 0; same && i < pins.length; i++) {
+    if (stable[i] !== pins[i]) same = false;
+  }
+  if (!same) {
+    stable.length = 0;
+    for (let i = 0; i < pins.length; i++) stable.push(pins[i]);
+  }
+  return stable;
+}
+
+function activitySignature(stamp) {
+  return `${stamp.simTier}|${stamp.presentationTier}|${stamp.nextEventAtT}|${stamp.pinnedExact ? 1 : 0}|${stamp.pins.join(',')}`;
 }
 
 function attachStamp(entity, rec) {
@@ -258,6 +405,7 @@ function applyStamp(entity, classified, simTime) {
   rec.pinnedExact = classified.pinnedExact;
   rec.lastObservedT = simTime;
   if (classified.nextEventAtT != null) rec.nextEventAtT = classified.nextEventAtT;
+  else if (!Number.isFinite(rec.nextEventAtT) || rec.nextEventAtT < 0) rec.nextEventAtT = -1;
   return rec;
 }
 
@@ -286,6 +434,17 @@ function rebuildPinFacts(state, player, facts, simTime) {
     else if (state.player.beamTargetId != null) facts.miningId = state.player.beamTargetId;
   }
 
+  // Scanner owns the durable tracked contact. Resolve its stable signal record back to the live
+  // entity id without asking the HUD or a render list to decide residency. Explicit live scanner
+  // marks are accepted as the same authoritative seam for older saves/fixtures.
+  const signalState = state && state.signalInvestigation;
+  const trackedId = signalState && signalState.trackedId;
+  const trackedRecord = trackedId && signalState.records && signalState.records[trackedId];
+  if (trackedRecord) {
+    if (trackedRecord.entityId != null) facts.tracked.add(trackedRecord.entityId);
+    if (trackedRecord.sourceId != null) facts.tracked.add(trackedRecord.sourceId);
+  }
+
   const attachments = state && state.combat && state.combat.attachments && state.combat.attachments.byId;
   if (attachments && typeof attachments === 'object') {
     for (const key of Object.keys(attachments)) {
@@ -311,9 +470,14 @@ function rebuildPinFacts(state, player, facts, simTime) {
   const scan = ships || (state && state.entityList) || [];
   for (let i = 0; i < scan.length; i++) {
     const e = scan[i];
-    if (!e || e.alive === false || !e.data) continue;
-    const combat = e.data.combat || {};
-    const ai = e.data.ai || {};
+    if (!e || e.alive === false) continue;
+    const data = e.data || {};
+    if (data.tracked === true || data.scannerTracked === true
+      || (data.scanStatus === 'tracked' && data.scanned === true)) {
+      facts.tracked.add(e.id);
+    }
+    const combat = data.combat || {};
+    const ai = ownerAiRecord(e) || {};
     const activity = ai.activity && typeof ai.activity === 'object' ? ai.activity : {};
     if (playerId != null && (
       combat.targetId === playerId
@@ -425,6 +589,16 @@ function classifyWorld(state, runtime) {
   runtime.nearIds.length = 0;
   runtime.abstractIds.length = 0;
   runtime.dormantIds.length = 0;
+  runtime.activeAiEntities.length = 0;
+  runtime.activeTrafficEntities.length = 0;
+  runtime.activityTransitionAiEntities.length = 0;
+  runtime.initialInactiveAiEntities.length = 0;
+  runtime.wakeCandidates.length = 0;
+  runtime.wakeTokensById.clear();
+  runtime.wakeEventsById.clear();
+  runtime.wakeBoundaryTick = -1;
+  runtime.changedIds.length = 0;
+  runtime.currentEntityIds.clear();
   runtime.glassIds.length = 0;
   runtime.runwayIds.length = 0;
   const counts = runtime.counts;
@@ -463,6 +637,10 @@ function classifyWorld(state, runtime) {
     const prefetchKeep = dist2 <= (prefetchR + visual) * (prefetchR + visual);
     const onRunway = submitRunway || prefetchKeep;
     const data = entity.data || {};
+    const ai = ownerAiRecord(entity);
+    runtime.currentEntityIds.add(entity.id);
+    const firstActivityObservation = !runtime.seenEntityIds.has(entity.id);
+    runtime.seenEntityIds.add(entity.id);
     ctx.visibleOnGlass = onGlass;
     ctx.onGlass = onGlass;
     ctx.onRunway = onRunway;
@@ -473,7 +651,7 @@ function classifyWorld(state, runtime) {
       || !!(entity.flags && entity.flags.tethered)
       || data.tethered === true;
     ctx.dockingOrLanding = facts.dockId != null && entity.id === facts.dockId;
-    ctx.escortOrFollow = !!(data.escort || (data.ai && (data.ai.escort || data.ai.follow)));
+    ctx.escortOrFollow = !!(data.escort || (ai && (ai.escort || ai.follow)));
     ctx.hailOrConversation = facts.hailId != null && entity.id === facts.hailId;
     ctx.playerMiningTarget = facts.miningId != null && entity.id === facts.miningId;
     ctx.playerScannedAndTracked = facts.tracked.has(entity.id);
@@ -483,42 +661,72 @@ function classifyWorld(state, runtime) {
     ctx.damagedPlayerUntilT = facts.damagedPlayerUntil.has(entity.id)
       ? facts.damagedPlayerUntil.get(entity.id)
       : -1;
-    ctx.hasItinerary = !!data.itinerary;
     const recId = data.worldRecordId;
     const bag = state.world && state.world.records && state.world.records.byId;
     const worldRec = recId && bag ? bag[recId] : null;
-    if (worldRec && Number.isFinite(worldRec.nextEventAtT) && worldRec.nextEventAtT >= 0
-      && simTime >= worldRec.nextEventAtT) {
-      ctx.hasItinerary = true;
-    }
+    const scheduledWakeDue = durableWakeDue(worldRec, simTime)
+      || liveWakeDue(entity, simTime) != null;
+    if (scheduledWakeDue) runtime.wakeCandidates.push(entity);
+    ctx.hasItinerary = !!data.itinerary || scheduledWakeDue;
     ctx.priorSimTier = entity.activity && entity.activity.simTier;
     ctx.graceUntilT = entity.activity && entity.activity.graceUntilT;
+    const authoredPresence = data.factionPresence
+      && data.factionPresence.source === 'depth-program-k1';
+    const authoredActiveCombat = authoredPresence && ai && ai.passive === false
+      && (ai.combatant === true || ai.engagementTrigger != null
+        || (ai.activity && ai.activity.kind === 'attack_run'));
     ctx.missionCritical = !!(data.jobId || data.missionId || data.missionTag || data.missionPinned
       || data.activityActorSlotId
       || (typeof data.activityObjectSlotId === 'string' && /[a-z]/i.test(data.activityObjectSlotId))
-      || (entity.flags && entity.flags.missionPinned));
-    ctx.imminentCollision = false;
+      || (entity.flags && entity.flags.missionPinned)
+      // K1 authored active presence is a named, durable combat actor even when its global sector
+      // coordinates place it beyond the current player's ordinary activity bubble. Preserve it in
+      // the exact owner view; generic far passive traffic remains wake-gated below.
+      || authoredActiveCombat);
+    ctx.imminentCollision = imminentCollisionFor(state, player, entity);
     ctx.aggregateOnly = entity.type === 'ship'
       && !onGlass
       && !onRunway
       && !data.itinerary
       && !data.named
-      && !(data.ai && data.ai.combatant === true)
+      && !(ai && ai.combatant === true)
       && !ctx.missionCritical;
     ctx.dormant = false;
 
     const classified = classifyActivity(entity, ctx);
     const priorTier = entity.activity && entity.activity.simTier;
+    classified.pins = reusablePins(runtime, entity.id, classified.pins);
     const stamp = applyStamp(entity, classified, simTime);
     if (worldRec && Number.isFinite(worldRec.nextEventAtT)) {
       stamp.nextEventAtT = worldRec.nextEventAtT;
     }
     if (isExactTier(priorTier) && !isExactTier(stamp.simTier)) {
       captureDematerialized(state, entity, simTime, stamp.simTier);
+      if (ai) runtime.activityTransitionAiEntities.push(entity);
     }
+    if (firstActivityObservation && ai && !isExactTier(stamp.simTier)) {
+      const intent = (entity.data && entity.data.intent) || entity.intent;
+      if (intent && (intent.fire === true || intent.fireGroup != null)) {
+        runtime.initialInactiveAiEntities.push(entity);
+      }
+    }
+    const signature = activitySignature(stamp);
+    if (runtime.signaturesById.get(entity.id) !== signature) {
+      runtime.signaturesById.set(entity.id, signature);
+      runtime.changedIds.push(entity.id);
+    }
+    runtime.reasonsById.set(entity.id, stamp.pins);
     countTier(counts, stamp.simTier);
     countPresentation(counts, stamp.presentationTier);
     pushActivityIds(runtime, entity, stamp);
+    // Owner systems consume these live views instead of walking entityList and then filtering
+    // aggregate/dormant actors. Keep all S0/S1 owners resident in the view so a skipped near
+    // cadence tick cannot make a tactical roster disappear; owner systems apply the cadence at
+    // their actual work boundary. S2/S3/S4 enter only at their deterministic wake.
+    if (ai && ownerViewNeedsWakeWithEdge(entity, state, scheduledWakeDue)) runtime.activeAiEntities.push(entity);
+    if (data.trafficRole && ownerViewNeedsWakeWithEdge(entity, state, scheduledWakeDue)) {
+      runtime.activeTrafficEntities.push(entity);
+    }
 
     if (!entityNeedsPhysics(entity)) continue;
     if (!shouldSyncPhysicsBodyEntity(entity)) continue;
@@ -531,6 +739,13 @@ function classifyWorld(state, runtime) {
     }
   }
 
+  for (const id of runtime.signaturesById.keys()) {
+    if (runtime.currentEntityIds.has(id)) continue;
+    runtime.signaturesById.delete(id);
+    runtime.reasonsById.delete(id);
+    runtime.pinBuffersById.delete(id);
+    runtime.seenEntityIds.delete(id);
+  }
   counts.physics = statics.length + dynamics.length;
   if (staticHash !== runtime._staticHash || staticCount !== runtime._staticCount) {
     runtime.physicsStaticVersion++;
@@ -538,28 +753,6 @@ function classifyWorld(state, runtime) {
     runtime._staticCount = staticCount;
   }
 
-  const worker = ensureSimWorker(state);
-  if (worker) {
-    const prior = worker.takeResults();
-    if (prior && prior.length) applyAbstractCatchupToEntities(state, prior);
-    const abstracts = [];
-    for (let i = 0; i < runtime.abstractIds.length; i++) {
-      const entity = state.entities && state.entities.get && state.entities.get(runtime.abstractIds[i]);
-      if (!entity || !entity.pos) continue;
-      abstracts.push({
-        id: entity.id,
-        pos: { x: entity.pos.x, z: entity.pos.z },
-        vel: entity.vel ? { x: entity.vel.x || 0, z: entity.vel.z || 0 } : { x: 0, z: 0 },
-        rot: entity.rot || 0,
-        angVel: entity.angVel || 0,
-        lastExactT: entity.activity && entity.activity.lastExactT,
-        alive: entity.alive !== false,
-      });
-    }
-    const fromT = simTime - 1 / 60;
-    const immediate = worker.submitAbstract(abstracts, fromT, simTime);
-    if (immediate && immediate.length) applyAbstractCatchupToEntities(state, immediate);
-  }
 }
 
 /**
@@ -578,6 +771,116 @@ export function ensureActivityClassified(state) {
   return runtime;
 }
 
+/**
+ * Drop the cached classification after an in-place entity rebuild (save/load respawn). The
+ * per-tick latch would otherwise keep serving scratch arrays that reference the retired objects,
+ * and a same-id respawn does not move physicsStaticVersion, so the layered physics sync would
+ * never reconcile against the live replacements. Save/restore boundaries call this; ordinary
+ * ticks never do.
+ */
+export function resetActivityRuntimeForRestore(state) {
+  if (!state || typeof state !== 'object') return false;
+  return RUNTIMES.delete(state);
+}
+
+/**
+ * Return the live owner view for this tick. These arrays are scratch-owned by the activity pass;
+ * callers must consume them synchronously and never persist or mutate the array itself.
+ */
+export function getActivityOwnerEntities(state, owner = 'ai') {
+  const runtime = ensureActivityClassified(state);
+  if (!runtime) return [];
+  consumeActivityWakesAtOwnerBoundary(state, runtime);
+  return owner === 'traffic' ? runtime.activeTrafficEntities : runtime.activeAiEntities;
+}
+
+function setDueLiveWake(entity, simTime, nextEventAtT) {
+  if (!entity) return;
+  const next = Number.isFinite(nextEventAtT) && nextEventAtT > simTime ? nextEventAtT : null;
+  const activity = entity.activity;
+  if (activity && dueAt(activity.nextEventAtT, simTime) != null) {
+    activity.nextEventAtT = next == null ? -1 : next;
+  }
+  const data = entity.data;
+  if (data && dueAt(data.nextEventAtT, simTime) != null) data.nextEventAtT = next;
+  const ai = ownerAiRecord(entity);
+  if (ai && dueAt(ai.nextEventAtT, simTime) != null) ai.nextEventAtT = next;
+  const aiActivity = ai && ai.activity && typeof ai.activity === 'object' ? ai.activity : null;
+  if (aiActivity && dueAt(aiActivity.nextEventAtT, simTime) != null) {
+    aiActivity.nextEventAtT = next == null ? -1 : next;
+  }
+}
+
+/**
+ * Resolve and acknowledge all due world wakes exactly once at the first owner boundary of a
+ * classified tick. Classification only admits the due edge; this operation owns mutation so a
+ * live-only wake and its durable record cannot remain level-triggered on the next tick.
+ */
+function consumeActivityWakesAtOwnerBoundary(state, runtime) {
+  const tick = state.tick | 0;
+  if (runtime.wakeBoundaryTick === tick) return runtime.wakeEventsById;
+  runtime.wakeBoundaryTick = tick;
+  const simTime = Number.isFinite(state.simTime) ? state.simTime : tick / 60;
+  const bag = state.world && state.world.records && state.world.records.byId;
+  for (let i = 0; i < runtime.wakeCandidates.length; i++) {
+    const entity = runtime.wakeCandidates[i];
+    if (!entity || entity.alive === false) continue;
+    const data = entity.data || {};
+    const recId = data.worldRecordId;
+    const durable = recId && bag ? bag[recId] : null;
+    const durableDue = durableWakeDue(durable, simTime);
+    const liveDue = liveWakeDue(entity, simTime);
+    if (!durableDue && liveDue == null) continue;
+    const source = durableDue
+      ? durable
+      : {
+        nextEventAtT: liveDue,
+        scheduledEventIds: Array.isArray(data.scheduledEventIds) ? data.scheduledEventIds : [],
+        resultSeed: Number.isFinite(data.resultSeed) ? data.resultSeed : 0,
+      };
+    const consumed = consumeScheduledWorldWake(source, simTime, {
+      event: wakeEventForEntity(entity),
+    });
+    if (!consumed.consumed) continue;
+    const nextEventAtT = consumed.record && Number.isFinite(consumed.record.nextEventAtT)
+      ? consumed.record.nextEventAtT
+      : null;
+    if (durableDue && durable) Object.assign(durable, consumed.record);
+    setDueLiveWake(entity, simTime, nextEventAtT);
+    runtime.wakeTokensById.set(entity.id, tick);
+    runtime.wakeEventsById.set(entity.id, {
+      entityId: entity.id,
+      event: consumed.event,
+      nextEventAtT,
+      source: durableDue ? 'durable' : 'live',
+    });
+  }
+  return runtime.wakeEventsById;
+}
+
+/** Return the resolved wake events for this owner tick; the map is runtime-owned and stable. */
+export function getActivityWakeEvents(state) {
+  const runtime = ensureActivityClassified(state);
+  if (!runtime) return new Map();
+  return consumeActivityWakesAtOwnerBoundary(state, runtime);
+}
+
+/**
+ * Actors that crossed from exact/near into an inactive tier during this pass. Transition owners
+ * get one fail-closed cleanup opportunity (for example clearing a stale fire intent) without
+ * forcing every inactive entity back through an owner scan each fixed step.
+ */
+export function getActivityTransitionEntities(state) {
+  const runtime = ensureActivityClassified(state);
+  return runtime ? runtime.activityTransitionAiEntities : [];
+}
+
+/** One-shot admission for an initially inactive actor carrying an offensive intent. */
+export function getActivityInitialInactiveEntities(state) {
+  const runtime = ensureActivityClassified(state);
+  return runtime ? runtime.initialInactiveAiEntities : [];
+}
+
 export function entityNeedsPhysics(entity) {
   if (!entity || entity.alive === false) return false;
   if (entity.type === 'projectile') return true;
@@ -590,6 +893,8 @@ export function entityNeedsPhysics(entity) {
 
 export function entityNeedsAiThink(entity, state = null) {
   if (!entity || entity.alive === false) return false;
+  const runtime = state && RUNTIMES.get(state);
+  if (runtime && runtime.wakeTokensById.get(entity.id) === (state.tick | 0)) return true;
   const activity = entity.activity;
   if (!activity || !activity.simTier) return true;
   if (activity.pinnedExact) return true;

@@ -22,7 +22,13 @@ import {
   CERES_ACTIVITY_SECTOR_ID,
 } from '../data/sectorActivityPockets.js';
 import { RECORD_KIND, stableRecordId } from '../world/worldRecords.js';
-import { ensureActivityClassified, entityNeedsAiThink } from '../world/activityRuntime.js';
+import {
+  ensureActivityClassified,
+  entityNeedsAiThink,
+  getActivityOwnerEntities,
+  getActivityTransitionEntities,
+  getActivityInitialInactiveEntities,
+} from '../world/activityRuntime.js';
 
 const DEFAULT_SENSOR_RANGE = 1600;
 const DEFAULT_FORMATION_SPACING = 72;
@@ -417,10 +423,7 @@ export const aiPorts = {
     const freeze = options.freezeResults === false ? identity : Object.freeze;
     const squads = this._rosterSquadsScratch || (this._rosterSquadsScratch = new Map());
     squads.clear();
-    const index = state && state.entityIndex;
-    const source = index && index.__spacefaceEntityIndexV1 && Array.isArray(index.aiShips)
-      ? index.aiShips
-      : (Array.isArray(state.entityList) ? state.entityList : []);
+    const source = getActivityOwnerEntities(state, 'ai');
     const candidates = this._rosterCandidateScratch || (this._rosterCandidateScratch = []);
     const authorityRadius = tableSimAuthorityWuFromState(state);
     const player = getEntity(state, state && state.playerId);
@@ -430,15 +433,18 @@ export const aiPorts = {
     candidates.length = 0;
     for (const entity of source) {
       if (!isLiveCraft(entity) || entity.id === state.playerId) continue;
-      const ai = entity.data && entity.data.ai;
+      const ai = (entity.data && entity.data.ai) || entity.ai;
       const factionBehavior = normalizeFactionBehaviorProfile(ai && ai.factionPresenceDoctrine);
       if (!ai || (ai.passive && !(ai.allowPassiveManeuver === true && factionBehavior))) continue;
-      if (entityNeedsAiThink(entity, state) === false) continue;
+      // The activity owner view already excludes far S2/S3/S4 actors until their wake. Keep all
+      // S0/S1 members in the roster so a near cadence skip does not make a squad disappear; the
+      // tactical stack applies the deterministic near cadence (`entityNeedsAiThink`) at its
+      // decision boundary.
       candidates.push(entity);
     }
     candidates.sort((a, b) => compareIds(a && a.id, b && b.id));
     for (const entity of candidates) {
-      const ai = entity.data && entity.data.ai;
+      const ai = (entity.data && entity.data.ai) || entity.ai;
       const factionBehavior = normalizeFactionBehaviorProfile(ai.factionPresenceDoctrine);
       const doctrine = String(ai.doctrine || doctrineFor(entity));
       const faction = String(entity.factionId || ai.faction || `team_${entity.team == null ? 'unknown' : entity.team}`);
@@ -600,25 +606,18 @@ export const aiPorts = {
  * separate fail-closed disarm sweep. This runs before the AI maneuver port's early return and
  * prevents a fire bit from surviving an encounter phase or save/load role transition.
  */
-export function clearIneligibleAIFiringIntents(state, helpers = null) {
-  if (!state) return 0;
-  const index = state.entityIndex;
-  const source = index && index.__spacefaceEntityIndexV1 && Array.isArray(index.aiShips)
-    ? index.aiShips
-    : (Array.isArray(state.entityList)
-      ? state.entityList
-      : (state.entities && typeof state.entities.values === 'function' ? [...state.entities.values()] : []));
+function clearIneligibleAIFiringSource(state, helpers, source, demoted = false) {
   let cleared = 0;
-  for (const entity of source) {
+  for (const entity of source || EMPTY_ATTACHMENTS) {
     if (!entity || entity.id === state.playerId || entity.type !== 'ship' || entity.alive === false) continue;
     const data = entity.data;
-    const intent = data && data.intent;
+    const intent = (data && data.intent) || entity.intent;
     if (!intent || (!intent.fire && intent.fireGroup == null)) continue;
-    const ai = data && data.ai;
+    const ai = (data && data.ai) || entity.ai;
     const disabledNonlethalTarget = disabledNonlethalTargetFor(state, entity, ai);
     const teamTwoDisarmed = entity.team === 2
       && !authorizedCeresLawJobResponse(state, entity, ai, helpers);
-    const ineligible = !ai || ai.passive || teamTwoDisarmed
+    const ineligible = demoted || !ai || ai.passive || teamTwoDisarmed
       || normalizeRoe(ai.roe, ai.passive ? 'hold_fire' : 'weapons_free') === 'hold_fire'
       || !activityAllowsOffense(effectiveActivityForAI(ai))
       || disabledNonlethalTarget;
@@ -632,6 +631,28 @@ export function clearIneligibleAIFiringIntents(state, helpers = null) {
     cleared++;
   }
   return cleared;
+}
+
+export function clearIneligibleAIFiringIntents(state, helpers = null) {
+  if (!state) return 0;
+  // Production flight owns a classified activity frame. Direct callers and non-flight fixtures
+  // may intentionally omit the frame; retain the broad fallback there so this fail-closed
+  // transition sweep remains usable outside the fixed-step owner.
+  const useActivityView = state.mode === 'flight' && Number.isFinite(state.simTime);
+  if (useActivityView) {
+    return clearIneligibleAIFiringSource(state, helpers, getActivityOwnerEntities(state, 'ai'))
+      + clearIneligibleAIFiringSource(state, helpers, getActivityTransitionEntities(state), true)
+      + clearIneligibleAIFiringSource(state, helpers, getActivityInitialInactiveEntities(state), true);
+  }
+  const index = state.entityIndex;
+  const source = index && index.__spacefaceEntityIndexV1 && Array.isArray(index.aiShips)
+    ? index.aiShips
+    : (Array.isArray(state.entityList)
+      ? state.entityList
+      : (state.entities && typeof state.entities.values === 'function'
+        ? state.entities.values()
+        : EMPTY_ATTACHMENTS));
+  return clearIneligibleAIFiringSource(state, helpers, source);
 }
 
 function authorizedCeresLawJobResponse(state, entity, ai, helpers) {

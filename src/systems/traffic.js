@@ -22,7 +22,11 @@
 
 import { shouldAmbientHaulerPlan, shouldRunOnTick } from '../core/activityScheduler.js';
 import { tableSimAuthorityWuFromState } from '../render/tabletopPolicy.js';
-import { ensureActivityClassified, entityNeedsAiThink } from '../world/activityRuntime.js';
+import {
+  ensureActivityClassified,
+  entityNeedsAiThink,
+  getActivityOwnerEntities,
+} from '../world/activityRuntime.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec } from './ships.js';
 import { CombatDoctrineId } from '../ai/combatDoctrine.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
@@ -921,6 +925,10 @@ export const traffic = {
     this._ensureState();
     this._active = []; // entity ids we spawned (for cleanup)
     this._stationScratch = [];
+    this._activeTrafficScratch = [];
+    this._activeTrafficIdsScratch = new Set();
+    this._recordByIdScratch = new Map();
+    this._recordIndexByIdScratch = new Map();
     this._pendingJobActionIds = new Set();
     this._pendingMinerWorkIds = new Set();
     this._pendingArrivalIds = new Set();
@@ -3113,6 +3121,25 @@ export const traffic = {
 
     let lostWorldSiteRoute = false;
     let lostClaimTravelRoute = false;
+    // Remove dead record bindings once, then let the classifier-owned traffic view drive all
+    // behavior. Far S2/S3/S4 freighters remain in entityList and their durable record, but do not
+    // enter this owner loop until a scheduled wake or explicit pin makes them due.
+    const recordById = this._recordByIdScratch || (this._recordByIdScratch = new Map());
+    const recordIndexById = this._recordIndexByIdScratch || (this._recordIndexByIdScratch = new Map());
+    recordById.clear();
+    recordIndexById.clear();
+    const activeTraffic = this._activeTrafficScratch || (this._activeTrafficScratch = []);
+    activeTraffic.length = 0;
+    const activeTrafficIds = this._activeTrafficIdsScratch
+      || (this._activeTrafficIdsScratch = new Set());
+    activeTrafficIds.clear();
+    const hasLivePlayer = state.playerId != null
+      && state.entities && typeof state.entities.get === 'function'
+      && !!state.entities.get(state.playerId);
+    for (const entity of getActivityOwnerEntities(state, 'traffic')) {
+      activeTraffic.push(entity);
+      activeTrafficIds.add(entity.id);
+    }
     for (let i = list.length - 1; i >= 0; i--) {
       const rec = list[i];
       const e = state.entities.get(rec.id);
@@ -3122,6 +3149,19 @@ export const traffic = {
         list.splice(i, 1);
         continue;
       }
+      recordById.set(rec.id, rec);
+      recordIndexById.set(rec.id, i);
+      // Legacy/fixture traffic records may predate data.trafficRole. Preserve their exact/near
+      // behavior without re-admitting remote passive records to the owner loop.
+      if (!activeTrafficIds.has(e.id) && (!hasLivePlayer || entityNeedsAiThink(e, state))) {
+        activeTraffic.push(e);
+        activeTrafficIds.add(e.id);
+      }
+    }
+    for (const e of activeTraffic) {
+      const rec = recordById.get(e.id);
+      if (!rec) continue;
+      const i = recordIndexById.get(e.id);
       // The seven authored pocket actors yield movement to npcJobsRuntime. A completed one-shot job
       // releases data.jobId; recommission it from the same immutable activity descriptor before any
       // ambient role branch can run. The reserved Cinder service slot is excluded and continues to
@@ -3132,7 +3172,7 @@ export const traffic = {
         if (!e.data.jobId) this._assignCeresActivityJob(e, activityEntry);
         continue;
       }
-      if (entityNeedsAiThink(e, state) === false) continue;
+      if (hasLivePlayer && entityNeedsAiThink(e, state) === false) continue;
       // One authored recurring passenger liner owns the existing express hull and V3 boost route.
       // Its passenger itinerary must consume the tick before the generic express/freight branch.
       if (this._stepPassengerLinerService(e, rec, stations, dt)) continue;

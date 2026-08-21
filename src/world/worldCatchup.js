@@ -12,6 +12,8 @@ export const INTENT_KIND = Object.freeze({
   LOITER: 'loiter',
 });
 
+const INTENT_KINDS = new Set(Object.values(INTENT_KIND));
+
 function finite(n, fallback = 0) {
   return Number.isFinite(n) ? n : fallback;
 }
@@ -29,8 +31,7 @@ function wrapAngle(a) {
 
 export function normalizeIntent(raw) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
-  const kinds = new Set(Object.values(INTENT_KIND));
-  const kind = kinds.has(raw.kind) ? raw.kind : null;
+  const kind = INTENT_KINDS.has(raw.kind) ? raw.kind : null;
   if (!kind) return null;
   return {
     kind,
@@ -136,6 +137,7 @@ export function advanceWorldRecord(record, fromT, toT, context = {}) {
     shield,
     hull,
     lastExactT: b,
+    lastObservedT: b,
     abstractTier: record.abstractTier || SIM_TIER.S2_ABSTRACT,
   };
 }
@@ -146,11 +148,14 @@ export function advanceResourceBody(record, fromT, toT, context = {}) {
   const b = finite(toT);
   const dt = b - a;
   if (!(dt > 0)) return { ...record };
-  if (record.outcome === 'destroyed' || record.outcome === 'depleted') {
+  if (record.outcome === 'destroyed') {
     return { ...record, lastObservedT: b };
   }
   const drifted = ballisticDrift(record.pos, record.vel, record.rot, record.angVel, dt);
   const policy = record.recoveryPolicy && typeof record.recoveryPolicy === 'object' ? record.recoveryPolicy : {};
+  if (record.outcome === 'depleted' && policy.recoverDepleted !== true && context.allowRecovery !== true) {
+    return { ...record, lastObservedT: b };
+  }
   const oreMax = Number.isFinite(record.oreHpMax) ? record.oreHpMax : record.oreHp;
   const oreHp = regenerateVital(record.oreHp, oreMax, policy.oreRate, dt);
   const yieldRemainingU = regenerateVital(
@@ -159,6 +164,9 @@ export function advanceResourceBody(record, fromT, toT, context = {}) {
     policy.yieldRate,
     dt,
   );
+  const recovered = record.outcome === 'depleted'
+    && Number.isFinite(oreHp) && oreHp > 0
+    && (!Number.isFinite(record.yieldRemainingU) || yieldRemainingU > 0);
   return {
     ...record,
     pos: drifted.pos,
@@ -167,6 +175,12 @@ export function advanceResourceBody(record, fromT, toT, context = {}) {
     angVel: drifted.angVel,
     oreHp,
     yieldRemainingU,
+    pctEjected: Number.isFinite(oreMax) && oreMax > 0
+      ? clamp(1 - oreHp / oreMax, 0, 1)
+      : record.pctEjected,
+    _oreCarry: Number.isFinite(record._oreCarry) ? record._oreCarry : 0,
+    outcome: recovered ? 'active' : record.outcome,
+    depletedAtT: recovered ? null : record.depletedAtT,
     lastObservedT: b,
     recoveryContext: context && context.fieldId ? String(context.fieldId) : record.recoveryContext || null,
   };
@@ -184,4 +198,75 @@ export function resolveScheduledWorldEvent(event, state) {
     resultSeed: Number.isFinite(event.resultSeed) ? (event.resultSeed >>> 0) : 0,
     atT: due,
   };
+}
+
+/**
+ * Consume a durable scheduled wake exactly once.  A due wake is an edge, not a level: callers
+ * must store the returned record (or use `acknowledgeScheduledWorldWake`) before classifying the
+ * next fixed step.  The operation is pure so save/reload and an uninterrupted catch-up take the
+ * same branch for the same record, timestamp, and seed.
+ */
+export function consumeScheduledWorldWake(record, simTime, options = {}) {
+  if (!record || typeof record !== 'object') {
+    return { consumed: false, record: record || null, event: null };
+  }
+  const due = Number.isFinite(record.nextEventAtT) ? record.nextEventAtT : -1;
+  const now = finite(simTime, -1);
+  if (!(due >= 0) || now < due) {
+    return { consumed: false, record: { ...record }, event: null };
+  }
+
+  const scheduled = Array.isArray(record.scheduledEventIds)
+    ? record.scheduledEventIds.map((id) => String(id)).filter(Boolean)
+    : [];
+  const supplied = options.event && typeof options.event === 'object' ? options.event : null;
+  const event = resolveScheduledWorldEvent({
+    ...(supplied || {}),
+    atT: Number.isFinite(supplied && supplied.atT) ? supplied.atT : due,
+    id: supplied && supplied.id != null
+      ? supplied.id
+      : (scheduled.length === 1 ? scheduled[0] : null),
+    resultSeed: Number.isFinite(supplied && supplied.resultSeed)
+      ? supplied.resultSeed
+      : (Number.isFinite(record.resultSeed) ? record.resultSeed : 0),
+  }, { simTime: now });
+  if (!event.resolved) return { consumed: false, record: { ...record }, event: null };
+
+  // If an event id identifies the due wake, acknowledge only that id.  A list with no
+  // corresponding due event is retained: it may contain future event identities not represented
+  // by this legacy scalar wake timestamp.
+  const eventId = event.eventId;
+  let scheduledEventIds = scheduled;
+  if (eventId) scheduledEventIds = scheduled.filter((id) => id !== eventId);
+  const requestedNext = Number.isFinite(options.nextEventAtT)
+    ? options.nextEventAtT
+    : (Number.isFinite(supplied && supplied.nextEventAtT) ? supplied.nextEventAtT : -1);
+  const nextEventAtT = requestedNext > now ? requestedNext : null;
+  if (Array.isArray(options.nextScheduledEventIds)) {
+    scheduledEventIds = options.nextScheduledEventIds.map((id) => String(id)).filter(Boolean);
+  } else if (Array.isArray(supplied && supplied.nextScheduledEventIds)) {
+    scheduledEventIds = supplied.nextScheduledEventIds.map((id) => String(id)).filter(Boolean);
+  }
+  return {
+    consumed: true,
+    event,
+    record: {
+      ...record,
+      nextEventAtT,
+      scheduledEventIds,
+      lastObservedT: Math.max(Number.isFinite(record.lastObservedT) ? record.lastObservedT : 0, now),
+    },
+  };
+}
+
+/**
+ * Mutating convenience for a live record bag.  World/activity code uses this at the owner-view
+ * boundary so the live activity stamp and its durable counterpart cannot disagree about whether a
+ * wake is still pending.
+ */
+export function acknowledgeScheduledWorldWake(record, simTime, options = {}) {
+  const result = consumeScheduledWorldWake(record, simTime, options);
+  if (!result.consumed || !record || typeof record !== 'object') return result;
+  Object.assign(record, result.record);
+  return { ...result, record };
 }

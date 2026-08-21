@@ -251,7 +251,7 @@ test('resource body bag honors max occupancy without dropping tethered rocks fir
       lastObservedT: i,
       playerModified: true,
       tethered: i === 0,
-    });
+    }, { authoritativeRetirement: true });
   }
   assert.equal(Object.keys(bag.byId).length, MAX_RESOURCE_BODIES);
   assert.ok(bag.byId.rb_0, 'tethered first rock is retained');

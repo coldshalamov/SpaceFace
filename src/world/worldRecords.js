@@ -9,6 +9,8 @@
 import { hash32 } from '../core/rng.js';
 import { SIM_TIER } from './activityClassification.js';
 import { normalizeIntent } from './worldCatchup.js';
+import { SECTORS } from '../data/sectors.js';
+import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 
 export const WORLD_RECORDS_SCHEMA_ID = 'spaceface.worldRecords.v1';
 export const WORLD_RECORDS_SCHEMA_VERSION = 2;
@@ -29,6 +31,18 @@ export const MAX_RECORDS_PER_SECTOR = 48;
 
 /** Generic observed actors stay as recent-memory this long (simTime seconds). */
 export const RECENT_MEMORY_WINDOW_S = 180;
+
+/** Explicit capture sentinel for intentionally clearing a scheduled wake. */
+export const CLEAR_NEXT_EVENT_AT_T = Symbol('spaceface.clearNextEventAtT');
+
+/** Return capture options that intentionally clear the durable wake and its event ids. */
+export function clearScheduledWake(options = {}) {
+  return {
+    ...options,
+    nextEventAtT: CLEAR_NEXT_EVENT_AT_T,
+    scheduledEventIds: [],
+  };
+}
 
 export function isPermanentWorldRecord(rec) {
   if (!rec) return false;
@@ -199,7 +213,8 @@ export function normalizeRecord(raw, fallbackId) {
     lastObservedT: Number.isFinite(raw.lastObservedT) ? raw.lastObservedT : 0,
     abstractTier: Object.values(SIM_TIER).includes(raw.abstractTier) ? raw.abstractTier : SIM_TIER.S0_EXACT,
     intent: normalizeIntent(raw.intent),
-    nextEventAtT: Number.isFinite(raw.nextEventAtT) ? raw.nextEventAtT : null,
+    // -1 is the live activity sentinel for "no scheduled wake"; durable records use null.
+    nextEventAtT: Number.isFinite(raw.nextEventAtT) && raw.nextEventAtT >= 0 ? raw.nextEventAtT : null,
     scheduledEventIds: Array.isArray(raw.scheduledEventIds)
       ? raw.scheduledEventIds.map((id) => String(id)).filter(Boolean)
       : [],
@@ -245,6 +260,159 @@ function preserveUnknownFields(raw) {
     extra[key] = clonePlain(raw[key]);
   }
   return extra;
+}
+
+function positionFromItinerary(value) {
+  if (!value || typeof value !== 'object') return null;
+  const pos = value.pos || value.position || value.location || value.point || value;
+  return finiteXZ(pos) ? cloneXZ(pos) : null;
+}
+
+function stationIdFromValue(value) {
+  if (typeof value === 'string' || typeof value === 'number') return String(value);
+  if (!value || typeof value !== 'object') return null;
+  const id = value.stationId || value.id;
+  return id == null || id === '' ? null : String(id);
+}
+
+function stationIdentity(station) {
+  if (!station || typeof station !== 'object') return null;
+  const data = station.data || {};
+  const id = data.stationId || data.id || station.stationId || station.id;
+  return id == null || id === '' ? null : String(id);
+}
+
+function stationPositionValue(value) {
+  if (!value || typeof value !== 'object') return null;
+  return positionFromItinerary(value.pos || value.position || value);
+}
+
+function stationPositionForId(stationId, opts = {}, entity = null) {
+  const id = stationId == null || stationId === '' ? null : String(stationId);
+  if (!id) return null;
+  const supplied = opts.stationPositions;
+  if (supplied instanceof Map) {
+    const point = stationPositionValue(supplied.get(id));
+    if (point) return point;
+  } else if (supplied && typeof supplied === 'object') {
+    const point = stationPositionValue(supplied[id]);
+    if (point) return point;
+  }
+
+  const source = opts.stationSource || opts.state || null;
+  const candidates = opts.stations
+    || source && source.entityIndex && source.entityIndex.__spacefaceEntityIndexV1
+      && source.entityIndex.dockStations
+    || source && source.entityList
+    || null;
+  if (candidates && typeof candidates[Symbol.iterator] === 'function') {
+    for (const station of candidates) {
+      if (stationIdentity(station) !== id) continue;
+      const point = stationPositionValue(station);
+      if (point) return point;
+    }
+  }
+
+  const sectorHint = opts.sectorId
+    || entity && (entity.homeSectorId || entity.data && (entity.data.homeSectorId || entity.data.sectorId));
+  const sectors = source && source.world && source.world.sectors;
+  if (sectors && typeof sectors === 'object') {
+    const values = Array.isArray(sectors) ? sectors : Object.values(sectors);
+    for (const sector of values) {
+      if (!sector || sectorHint && sector.id !== sectorHint || !Array.isArray(sector.stations)) continue;
+      const station = sector.stations.find((entry) => stationIdentity(entry) === id);
+      if (station && finiteXZ(station.pos)) return sectorLocalToGlobalForSector(station.pos, sector.id);
+    }
+  }
+
+  // The authored catalog is the deterministic fallback for a demote/capture that occurs after
+  // the station owner has left the live entity index. Station coordinates are sector-local in the
+  // catalog and must be composed into the same global XZ used by durable records.
+  for (const sector of SECTORS) {
+    if (!sector || sectorHint && sector.id !== sectorHint || !Array.isArray(sector.stations)) continue;
+    const station = sector.stations.find((entry) => stationIdentity(entry) === id);
+    if (station && finiteXZ(station.pos)) return sectorLocalToGlobalForSector(station.pos, sector.id);
+  }
+  if (sectorHint) {
+    for (const sector of SECTORS) {
+      if (!sector || !Array.isArray(sector.stations)) continue;
+      const station = sector.stations.find((entry) => stationIdentity(entry) === id);
+      if (station && finiteXZ(station.pos)) return sectorLocalToGlobalForSector(station.pos, sector.id);
+    }
+  }
+  return null;
+}
+
+function itineraryStationId(itinerary, keys) {
+  for (const key of keys) {
+    const id = stationIdFromValue(itinerary && itinerary[key]);
+    if (id) return id;
+  }
+  return null;
+}
+
+/** Convert supported traffic endpoint itineraries into the deterministic catch-up language. */
+export function canonicalTrafficIntent(entity, opts = {}, previous = null) {
+  const d = entity && entity.data || {};
+  const explicit = opts.intent !== undefined
+    ? opts.intent
+    : (d.abstractIntent || d.activityIntent || null);
+  const normalized = normalizeIntent(explicit);
+  if (normalized) return normalized;
+  const prior = normalizeIntent(previous && previous.intent);
+  if (!d.trafficRole && !d.itinerary && !opts.itinerary) return prior;
+  const itinerary = d.itinerary || opts.itinerary || null;
+  if (!itinerary || typeof itinerary !== 'object') return prior;
+  const fromStationId = itineraryStationId(itinerary, [
+    'fromStationId', 'originStationId', 'departureStationId', 'sourceStationId',
+    'stationFromId', 'fromStation', 'originStation', 'from', 'origin',
+  ]);
+  const toStationId = itineraryStationId(itinerary, [
+    'toStationId', 'destinationStationId', 'arrivalStationId', 'targetStationId',
+    'stationToId', 'toStation', 'destinationStation', 'to', 'destination',
+  ]);
+  let from = positionFromItinerary(itinerary.from || itinerary.origin || itinerary.originPos)
+    || stationPositionForId(fromStationId, opts, entity);
+  let to = positionFromItinerary(itinerary.to || itinerary.destination || itinerary.destinationPos)
+    || stationPositionForId(toStationId, opts, entity);
+  const waypoints = Array.isArray(itinerary.waypoints)
+    ? itinerary.waypoints
+    : (Array.isArray(itinerary.route) ? itinerary.route : null);
+  if ((!from || !to) && waypoints && waypoints.length >= 2) {
+    from = from || positionFromItinerary(waypoints[0])
+      || stationPositionForId(stationIdFromValue(waypoints[0]), opts, entity);
+    to = to || positionFromItinerary(waypoints[1])
+      || stationPositionForId(stationIdFromValue(waypoints[1]), opts, entity);
+  }
+  if (!from || !to) return prior;
+  const startT = Number.isFinite(itinerary.startT)
+    ? itinerary.startT
+    : (Number.isFinite(itinerary.departureAt) ? itinerary.departureAt : (opts.simTime || 0));
+  const duration = Number.isFinite(itinerary.durationS) ? Math.max(0, itinerary.durationS) : 0;
+  const endT = Number.isFinite(itinerary.endT)
+    ? itinerary.endT
+    : (Number.isFinite(itinerary.arrivalAt)
+      ? itinerary.arrivalAt
+      : (Number.isFinite(itinerary.dueAt) ? itinerary.dueAt : startT + duration));
+  const kind = itinerary.intentKind === 'patrol' || itinerary.kind === 'patrol'
+    ? 'patrol'
+    : (itinerary.intentKind === 'escort' ? 'escort' : 'travel');
+  const routeId = itinerary.routeId != null
+    ? String(itinerary.routeId)
+    : (itinerary.serviceId != null
+      ? String(itinerary.serviceId)
+      : `traffic:${String(d.trafficRole || 'route')}:${String(fromStationId || 'origin')}>${String(toStationId || 'destination')}`);
+  const seed = opts.seed != null ? opts.seed : 1;
+  const resultSeed = hash32(seed >>> 0 || 1, 'traffic-intent', routeId, d.worldRecordId || entity && entity.id || 'actor');
+  return normalizeIntent({
+    kind,
+    routeId,
+    segmentIndex: Number.isFinite(itinerary.segmentIndex) ? itinerary.segmentIndex : 0,
+    startT,
+    endT,
+    parameters: { from, to },
+    resultSeed,
+  });
 }
 
 /** Disk serialization: durable only; sorted keys; no liveEntityId / frame / residency. */
@@ -380,6 +548,10 @@ export function captureEntityRecord(entity, opts = {}) {
   const seed = opts.seed != null ? opts.seed : 1;
   const d = entity.data || {};
   const existingId = d.worldRecordId || opts.recordId || null;
+  const previous = opts.previousRecord
+    || opts.existingRecord
+    || (opts.recordsBag && opts.recordsBag.byId && existingId ? opts.recordsBag.byId[existingId] : null)
+    || null;
   const missionId = missionIdentityOf(d);
   const identityKey = existingId
     || opts.identityKey
@@ -392,6 +564,53 @@ export function captureEntityRecord(entity, opts = {}) {
       missionId || d.trafficRole || d.markerId || '',
     ].join(':');
   const recordId = existingId || stableRecordId(seed, sectorId, kind, identityKey);
+  const aiRecord = d.ai && typeof d.ai === 'object'
+    ? d.ai
+    : (entity.ai && typeof entity.ai === 'object' ? entity.ai : null);
+  const activity = entity.activity && typeof entity.activity === 'object' ? entity.activity : null;
+  const aiActivity = aiRecord && aiRecord.activity && typeof aiRecord.activity === 'object'
+    ? aiRecord.activity
+    : null;
+  // Movement intent is an ephemeral per-tick control object. Only carry the normalized abstract
+  // itinerary intent, so a demoted actor resumes the same deterministic route rather than a stale
+  // steering bit. Likewise, a scheduled wake is durable even when no live worker is involved.
+  const intent = canonicalTrafficIntent(entity, {
+    ...opts,
+    stationSource: opts.stationSource || opts.state,
+    intent: opts.intent !== undefined
+      ? opts.intent
+      : (d.abstractIntent || d.activityIntent || activity && activity.intent || undefined),
+  }, previous);
+  const clearNextEvent = opts.nextEventAtT === CLEAR_NEXT_EVENT_AT_T
+    || opts.clearNextEventAtT === true;
+  const nextEventAtT = clearNextEvent
+    ? null
+    : (Number.isFinite(opts.nextEventAtT) && opts.nextEventAtT >= 0
+      ? opts.nextEventAtT
+      : (Number.isFinite(activity && activity.nextEventAtT) && activity.nextEventAtT >= 0
+        ? activity.nextEventAtT
+        : (Number.isFinite(d.nextEventAtT) && d.nextEventAtT >= 0
+          ? d.nextEventAtT
+          : (Number.isFinite(aiRecord && aiRecord.nextEventAtT) && aiRecord.nextEventAtT >= 0
+            ? aiRecord.nextEventAtT
+            : (Number.isFinite(aiActivity && aiActivity.nextEventAtT) && aiActivity.nextEventAtT >= 0
+              ? aiActivity.nextEventAtT
+              : (Number.isFinite(previous && previous.nextEventAtT) && previous.nextEventAtT >= 0
+                ? previous.nextEventAtT
+                : null))))));
+  const scheduledEventIds = clearNextEvent
+    ? []
+    : (opts.scheduledEventIds !== undefined
+      ? opts.scheduledEventIds
+      : (d.scheduledEventIds !== undefined
+        ? d.scheduledEventIds
+        : (previous && previous.scheduledEventIds || [])));
+  const regeneration = opts.regeneration !== undefined
+    ? opts.regeneration
+    : (d.regeneration !== undefined ? d.regeneration : (previous && previous.regeneration));
+  const deactivation = opts.deactivation !== undefined
+    ? opts.deactivation
+    : (d.deactivation !== undefined ? d.deactivation : (previous && previous.deactivation));
   const rec = normalizeRecord({
     recordId,
     kind,
@@ -424,7 +643,7 @@ export function captureEntityRecord(entity, opts = {}) {
     wreckClass: d.wreckClass || null,
     markerId: d.markerId || null,
     victimClass: d.victimClass || null,
-    ai: d.ai || null,
+    ai: aiRecord,
     isBoss: !!d.isBoss,
     bossPoiId: d.bossPoiId || null,
     bossSectorId: d.bossSectorId || null,
@@ -438,12 +657,12 @@ export function captureEntityRecord(entity, opts = {}) {
     lastExactT: opts.simTime != null ? opts.simTime : opts.tick || 0,
     lastObservedT: opts.simTime != null ? opts.simTime : opts.tick || 0,
     abstractTier: opts.abstractTier || SIM_TIER.S0_EXACT,
-    intent: opts.intent || null,
-    nextEventAtT: opts.nextEventAtT != null ? opts.nextEventAtT : null,
-    scheduledEventIds: opts.scheduledEventIds || [],
-    regeneration: opts.regeneration,
-    deactivation: opts.deactivation,
-    extra: opts.extra || null,
+    intent,
+    nextEventAtT,
+    scheduledEventIds,
+    regeneration,
+    deactivation,
+    extra: opts.extra !== undefined ? opts.extra : (previous && previous.extra) || null,
   });
   return rec;
 }
@@ -454,7 +673,18 @@ export function captureEntityRecord(entity, opts = {}) {
 export function upsertRecord(bag, record) {
   const b = bag && bag.byId ? bag : createEmptyRecordsBag();
   if (!b.byId) b.byId = {};
-  const rec = normalizeRecord(record);
+  const prior = record && record.recordId ? b.byId[record.recordId] : null;
+  const merged = prior && record && typeof record === 'object'
+    ? {
+      ...prior,
+      ...record,
+      scheduledEventIds: record.scheduledEventIds !== undefined
+        ? record.scheduledEventIds : prior.scheduledEventIds,
+      regeneration: record.regeneration !== undefined ? record.regeneration : prior.regeneration,
+      deactivation: record.deactivation !== undefined ? record.deactivation : prior.deactivation,
+    }
+    : record;
+  const rec = normalizeRecord(merged);
   if (!rec) return null;
   b.byId[rec.recordId] = rec;
   enforceSectorBound(b, rec.homeSectorId || rec.sectorId);
