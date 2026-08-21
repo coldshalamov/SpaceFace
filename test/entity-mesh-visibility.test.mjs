@@ -26,6 +26,29 @@ test('player and forced roots stay submitted; only true off-screen roots drop', 
   assert.equal(shouldSubmitEntityMesh({ presentationTier: 'R0_GLASS' }), true);
 });
 
+test('missing fenced poses retain protected roots but fail closed for ordinary roots', () => {
+  assert.equal(shouldSubmitEntityMesh({ isPlayer: true, snapshotMissing: true }), true);
+  assert.equal(shouldSubmitEntityMesh({ forceRender: true, snapshotMissing: true }), true);
+  assert.equal(shouldSubmitEntityMesh({ neverCull: true, snapshotMissing: true }), true);
+  assert.equal(shouldSubmitEntityMesh({ entityId: 7, snapshotMissing: true }), false);
+});
+
+test('the completed activity frame owns glass submission while runway stays resident-only', () => {
+  const activityFrame = {
+    complete: true,
+    renderGlassIds: new Set([7]),
+    renderRunwayIds: new Set([8]),
+  };
+  assert.equal(shouldSubmitEntityMesh({ activityFrame, entityId: 7 }), true);
+  assert.equal(shouldSubmitEntityMesh({ activityFrame, entityId: 8 }), false);
+  assert.equal(shouldSubmitEntityMesh({ activityFrame, entityId: 9 }), false,
+    'metadata/unloaded entities outside the frame do not keep an Object3D submitted');
+  assert.equal(shouldSubmitEntityMesh({ activityFrame, entityId: 7, snapshotMissing: true }), false,
+    'an ordinary stale root stays hidden until the fenced snapshot contains its entity');
+  assert.equal(shouldSubmitEntityMesh({ activityFrame, entityId: 7, isPlayer: true, snapshotMissing: true }), true,
+    'the player keeps its last safe visibility through a fenced-pose gap');
+});
+
 test('visibility helper only writes when the flag changes', () => {
   const mesh = { visible: true };
   assert.equal(applyEntityMeshVisibility(mesh, false), true);
@@ -56,5 +79,10 @@ test('live entity view sync hides off-runway roots through the helper', async ()
   assert.match(source, /applyEntityMeshVisibility\(mesh,\s*shouldSubmitEntityMesh\(/);
   assert.match(source, /hidden:\s*true/);
   assert.match(source, /hidden:\s*false/);
+  assert.match(source, /snapshotMissing:\s*!posed/);
+  assert.match(source, /let posed = this\._hasCompletedPresentationPose\(slot,\s*entityId\)/,
+    'clean roots derive pose validity from the latest completed fence');
+  assert.match(source, /snapshotIndexOf\(snapshot,\s*entityId\)/,
+    'ordinary roots fail closed when the completed fence has no matching identity');
   assert.match(source, /middleBand:\s*viewBand === 'middle'/);
 });

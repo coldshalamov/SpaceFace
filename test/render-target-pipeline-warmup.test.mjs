@@ -418,6 +418,173 @@ test('startup waits for procedural warm-up, then drains captured authored openin
   assert.equal(typeof state.render.authoredGpuAdmissionReady?.then, 'function');
 });
 
+test('startup drains the immutable exact opening submission before GPU residency', async () => {
+  const timeline = [];
+  const pipelinePlan = { watermark: 1, pendingCount: 1 };
+  const submissionPlan = Object.freeze({
+    complete: true,
+    drawLeaves: [],
+    firstPlayablePipelineSet: Object.freeze({ complete: true }),
+  });
+  const residencyPlan = { watermark: 2, pendingCount: 0 };
+  const state = {
+    render: {
+      pipelinePrecompileReady: Promise.resolve(),
+      captureOpeningPipelinePlan: () => pipelinePlan,
+      drainOpeningPipelinePlan: async () => { timeline.push('pipeline'); },
+      captureOpeningSubmissionPlan: () => {
+        timeline.push('submission:capture');
+        return submissionPlan;
+      },
+      drainOpeningSubmissionPlan: async (plan) => {
+        assert.strictEqual(plan, submissionPlan);
+        timeline.push('submission:drain');
+      },
+      captureOpeningGpuResidencyPlan: () => {
+        timeline.push('residency:capture');
+        return residencyPlan;
+      },
+      drainOpeningGpuResidencyPlan: async () => { timeline.push('residency'); },
+    },
+  };
+
+  assert.equal(await waitForCurrentRenderPipelines(state, 1000), true);
+  assert.deepEqual(timeline, [
+    'pipeline',
+    'submission:capture',
+    'submission:drain',
+    'residency:capture',
+    'residency',
+  ]);
+  assert.strictEqual(state.render.openingSubmissionReady?.then instanceof Function, true);
+});
+
+test('startup publishes the final opening visibility boundary before freezing exact capture', async () => {
+  const timeline = [];
+  const root = { visible: false };
+  const state = {
+    mode: 'loading',
+    render: {
+      pipelinePrecompileReady: Promise.resolve(),
+      prepareOpeningFirstPicture: async () => {
+        assert.equal(root.visible, false, 'the actor is still hidden during the loading phase');
+        timeline.push('opening:prepare');
+        root.visible = true;
+        await Promise.resolve();
+        timeline.push('opening:published');
+        return true;
+      },
+      captureOpeningSubmissionPlan: () => {
+        assert.equal(root.visible, true, 'capture observes the final first-picture visibility');
+        timeline.push('opening:capture');
+        return { complete: true, firstPlayablePipelineSet: { complete: true } };
+      },
+      drainOpeningSubmissionPlan: async () => { timeline.push('opening:drain'); },
+    },
+  };
+
+  assert.equal(await waitForCurrentRenderPipelines(state, 1000), true);
+  assert.deepEqual(timeline, [
+    'opening:prepare',
+    'opening:published',
+    'opening:capture',
+    'opening:drain',
+  ]);
+});
+
+test('opening publication settles the chase camera before classifying first-picture visibility', () => {
+  const source = renderSystem._publishOpeningFirstPicture.toString();
+  const followAt = source.indexOf('this.cam.follow(0)');
+  const visibilityAt = source.indexOf('this.syncEntityViews(1)');
+  assert.ok(followAt >= 0 && visibilityAt >= 0 && followAt < visibilityAt,
+    'the exact census must not cull with the loading camera and then freeze a different chase-camera picture');
+});
+
+test('the first flight submit preserves the prepared opening graph instead of selecting a new LOD', () => {
+  const source = renderSystem.prepareFrame.toString();
+  assert.match(source, /holdOpeningPicture\s*=\s*this\._openingFirstPicturePrepared\s*===\s*true/);
+  assert.match(source,
+    /if\s*\(!holdOpeningPicture\)\s*\{[\s\S]*?this\.syncEntityViews\(alpha\)[\s\S]*?this\.cam\.follow\(frameDt\)/,
+    'ordinary pose, visibility, LOD, and camera selection resume only after the exact first picture is submitted');
+});
+
+test('opening admission waits for a visible whole-ship LOD transition after authored swap settles', async () => {
+  const transition = deferred();
+  const scene = new THREE.Scene();
+  const root = new THREE.Group();
+  root.userData.authoredAssetState = 'authored';
+  root.userData.authoredUpgradePromise = Promise.resolve({ status: 'authored' });
+  root.userData.wholeShipLodTransitionPromise = transition.promise;
+  scene.add(root);
+
+  const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
+  camera.position.set(0, 0, 10);
+  camera.lookAt(0, 0, 0);
+  camera.updateMatrixWorld(true);
+  const entity = { id: 'lod-opening-root', type: 'ship', alive: true, radius: 1 };
+  const owner = {
+    state: { entities: new Map([[entity.id, entity]]) },
+    cam: { obj: camera },
+    scene,
+    _meshes: new Map([[entity.id, root]]),
+    renderer: {},
+  };
+
+  const pending = renderSystem._openingFirstPictureUpgradePromises.call(owner);
+  assert.deepEqual(pending, [transition.promise],
+    'the retained settled base promise is ignored while the live LOD child replacement still blocks');
+
+  let completed = false;
+  const wait = Promise.all(pending).then(() => { completed = true; });
+  await Promise.resolve();
+  assert.equal(completed, false, 'opening admission must not move past an unresolved LOD replacement');
+  transition.resolve({ swapped: true });
+  await wait;
+  assert.equal(completed, true);
+  scene.remove(root);
+});
+
+test('loading startup bypasses broad authored queues and admits the exact submission once', async () => {
+  const timeline = [];
+  let broadCaptureCalls = 0;
+  let exactCaptureCalls = 0;
+  let exactDrainCalls = 0;
+  const state = {
+    mode: 'loading',
+    render: {
+      pipelinePrecompileReady: Promise.resolve(),
+      captureOpeningPipelinePlan: () => {
+        broadCaptureCalls++;
+        throw new Error('loading must not capture the broad authored queue');
+      },
+      drainOpeningPipelinePlan: () => {
+        throw new Error('loading must not drain the broad authored queue');
+      },
+      captureOpeningSubmissionPlan: () => {
+        exactCaptureCalls++;
+        timeline.push('exact:capture');
+        return { complete: true, firstPlayablePipelineSet: { complete: true } };
+      },
+      drainOpeningSubmissionPlan: async () => {
+        exactDrainCalls++;
+        timeline.push('exact:drain');
+      },
+      captureOpeningGpuResidencyPlan: () => {
+        throw new Error('loading must not capture broad residency');
+      },
+      drainOpeningGpuResidencyPlan: () => {
+        throw new Error('loading must not drain broad residency');
+      },
+    },
+  };
+
+  assert.equal(await waitForCurrentRenderPipelines(state, 1000), true);
+  assert.equal(broadCaptureCalls, 0);
+  assert.equal(exactCaptureCalls, 1);
+  assert.equal(exactDrainCalls, 1);
+  assert.deepEqual(timeline, ['exact:capture', 'exact:drain']);
+});
+
 test('startup selects residency started by captured pipeline continuations and excludes unrelated roots', async () => {
   const timeline = [];
   const openingUpload = deferred();
@@ -684,18 +851,20 @@ test('renderer wires startup to captured authored admissions, never the installe
   assert.match(source,
     /captureOpeningPipelinePlan\s*=\s*\(\)\s*=>\s*\{[\s\S]*pipelineAdmissions\.capturePending\(\)/);
   assert.match(source,
-    /drainOpeningPipelinePlan\s*=\s*\(plan\)\s*=>\s*pipelineAdmissions\.waitForCaptured\(plan\)/);
+    /drainOpeningPipelinePlan\s*=\s*\(plan\)\s*=>\s*\(\s*plan\s*&&\s*plan\.skipped\s*===\s*true/);
   assert.match(source,
-    /captureOpeningGpuResidencyPlan\s*=\s*\(pipelinePlan\)\s*=>\s*gpuResidencyAdmissions\.captureSubjects\(\s*pipelineAdmissions\.subjectsForCaptured\(pipelinePlan\)\s*\)/);
+    /captureOpeningGpuResidencyPlan\s*=\s*\(pipelinePlan\)\s*=>\s*gpuResidencyAdmissions\.captureSubjects\(/);
   assert.match(source,
-    /drainOpeningGpuResidencyPlan\s*=\s*\(plan\)\s*=>\s*gpuResidencyAdmissions\.waitForCaptured\(plan\)/);
+    /drainOpeningGpuResidencyPlan\s*=\s*\(plan\)\s*=>\s*\(\s*plan\s*&&\s*plan\.skipped\s*===\s*true/);
   assert.doesNotMatch(readiness, /compileCurrentPipelines|waitForAuthoredGpuResidency/,
     'startup readiness no longer invokes the diagnostic full-scene compiler or moving residency wait');
   assert.match(source,
     /compileCurrentPipelines\s*=\s*\(\)\s*=>\s*pipelineAdmissions\.compileExplicit\(scene\)/,
     'the retained full-scene compiler is explicit diagnostic compatibility only');
+  assert.match(source, /createOpeningSubmissionPlan/, 'startup must build an exact first-picture leaf plan');
+  assert.match(source, /state\.render\.captureOpeningSubmissionPlan/, 'startup must capture the exact plan');
   assert.match(source,
-    /afterBrowserPaint\([\s\S]{0,500}?resumeDeferredPipelineAdmissions/,
+    /afterBrowserPaint\([\s\S]{0,1600}?resumeDeferredPipelineAdmissions/,
     'late authored roots resume only after the first playable paint');
 });
 
@@ -721,7 +890,9 @@ test('renderer entry points delegate route selection instead of branching on blo
   assert.match(compileWire,
     /this\._compilePostRoute\(\s*route, staging, cam\.obj, scene/);
   assert.match(compileWire, /restoreObjectHome\(home\)/);
-  assert.match(openingWire, /this\._renderOpeningPostFrame\(scene, cam\.obj\)/);
+  assert.match(openingWire, /openingSubmissionPlan/);
+  assert.doesNotMatch(openingWire, /_renderOpeningPostFrame\(/,
+    'the loading path must not render a hidden discovery frame');
   assert.match(drawWire,
     /const postRoute = this\._selectPostRoute\(\)[\s\S]*?this\._renderPostRoute\(postRoute,/);
   assert.doesNotMatch(`${warmWire}\n${compileWire}\n${openingWire}\n${drawWire}`,
@@ -844,7 +1015,7 @@ test('renderer routes authored pipeline/GPU residency blocking slices into perf 
     /createGpuResidencyAdmissionTracker\([\s\S]*?onBlockingSlice:\s*recordAuthoredAdmissionBlockingSlice/,
     'authored GPU residency tracker must publish initTexture slices');
   assert.match(source,
-    /prepareStartupGpuResidency\(renderer,\s*\[\.\.\.roots,\s*\.\.\.vfxRoots\][\s\S]*?onBlockingSlice:\s*recordAuthoredAdmissionBlockingSlice/,
+    /prepareStartupGpuResidency\(renderer,\s*plan\.residencySubjects[\s\S]*?onBlockingSlice:\s*recordAuthoredAdmissionBlockingSlice/,
     'opening GPU residency must publish initTexture slices');
   assert.match(source,
     /recordAdmissionWork\(\s*durationMs\s*\)/,

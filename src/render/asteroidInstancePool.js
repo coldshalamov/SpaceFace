@@ -5,6 +5,7 @@
 // opaque base-body submissions for untinted common rocks with five compact InstancedMesh draws.
 // Renderer view culling is applied before compaction, avoiding sector-wide always-visible batches.
 import * as THREE from 'three';
+import { stampOpeningSubmissionPackage } from './openingSubmissionPlan.js';
 import {
   assertDynamicBufferOwnerWritable,
   commitDynamicBufferOwner,
@@ -61,6 +62,13 @@ export function createAsteroidInstancePool(scene) {
       shadow: createCameraState(),
     },
   };
+}
+
+export function collectAsteroidInstancePoolRoots(pool) {
+  if (!pool || !Array.isArray(pool.variants)) return [];
+  return pool.variants
+    .map((bucket) => bucket && bucket.mesh)
+    .filter((mesh) => mesh && mesh.visible !== false && mesh.count > 0);
 }
 
 export function registerAsteroidBaseLeaf(pool, entity, ownerRoot) {
@@ -332,6 +340,31 @@ function ensureCapacity(pool, bucket, required) {
   mesh.userData.asteroidInstancePool = true;
   mesh.userData.asteroidInstanceVariant = bucket.variant;
   mesh.userData.borrowedGeometryMaterial = true;
+  stampOpeningSubmissionPackage(mesh, {
+    schema: 'spaceface.asteroidInstancePoolProducer.v1',
+    producer: 'asteroid-instance-pool',
+    variant: bucket.variant,
+    geometry: {
+      type: bucket.geometry && bucket.geometry.type || 'BufferGeometry',
+      attributes: Object.keys(bucket.geometry?.attributes || {}).sort().map((name) => {
+        const attribute = bucket.geometry.attributes[name];
+        return {
+          name,
+          itemSize: attribute && attribute.itemSize || 0,
+          normalized: attribute && attribute.normalized === true,
+        };
+      }),
+    },
+    material: {
+      type: bucket.material && bucket.material.type || 'Material',
+      transparent: bucket.material && bucket.material.transparent === true,
+      vertexColors: bucket.material && bucket.material.vertexColors === true,
+    },
+    instanceAbi: ['instanceMatrix'],
+  }, {
+    assetId: `asteroid-instance-pool-v${bucket.variant}`,
+    producer: 'asteroid-instance-pool',
+  });
   if (previous) {
     unregisterDynamicBufferOwner(previousOwner);
     if (previous.parent) previous.parent.remove(previous);

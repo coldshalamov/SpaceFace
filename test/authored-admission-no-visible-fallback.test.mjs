@@ -940,8 +940,8 @@ test('boot preload contains only the opening-shot identities', () => {
     },
   };
   const state = { playerId: 1, entities: new Map([[1, player]]) };
-  assert.equal(isInitialAuthoredCompositionEntity(helios, state), true,
-    'the critical starting hub remains an exact loading-gated authored boundary');
+  assert.equal(isInitialAuthoredCompositionEntity(helios, state), false,
+    'a far critical hub remains a streamable place record rather than a boot decode');
 
   assert.equal([...hulls].some((file) => /_lod[12]\.glb$/.test(file)), false);
 });

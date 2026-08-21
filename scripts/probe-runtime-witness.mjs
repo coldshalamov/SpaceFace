@@ -344,6 +344,21 @@ function formatLoadingReadinessSection(events, samples) {
     if (gpu) {
       lines.push(`- opening GPU receipt: ${gpu.textures ?? 'unknown'} textures (${gpu.uploadMs == null ? 'unknown' : gpu.uploadMs.toFixed(1)} ms blocking upload); opening frame ${gpu.openingFrame?.durationMs == null ? 'unknown' : gpu.openingFrame.durationMs.toFixed(1)} ms; roots ${gpu.openingCompositionRoots ?? 'unknown'} + VFX ${gpu.vfxRoots ?? 'unknown'}`);
     }
+    // `entering-flight` can be the final loading-stage sample and occur just before the first draw
+    // publishes its validation. Prefer the newest sample that actually observed the gate; treating
+    // a not-yet-run validation as a failure produced the contradictory "fail; uncaptured none"
+    // line even when the following live samples carried an exact passing receipt.
+    const openingSample = [...samples].reverse().find((sample) => (
+      sample?.openingSubmission?.validation
+    )) || last;
+    const opening = openingSample.openingSubmission;
+    if (opening) {
+      const misses = opening.validation?.uncaptured || [];
+      lines.push(
+        `- exact opening plan: ${opening.planComplete ? 'complete' : 'incomplete'}; roots ${opening.roots ?? 'unknown'}; leaves ${opening.drawLeaves ?? 'unknown'}; admitted programs ${opening.admittedPrograms ?? 'unknown'}; deferred global programs ${opening.deferredGlobalPrograms ?? 'unknown'}; producer census ${opening.producerCensusMatches ? 'matched' : 'mismatch'}`,
+        `- first visible draw identity gate: ${opening.validation?.ok ? 'pass' : 'fail'}${opening.validation?.reason ? ` (${opening.validation.reason})` : ''}; uncaptured ${misses.length ? misses.join(', ') : 'none'}`,
+      );
+    }
     const beforeOpening = [...samples].reverse().find((sample) => sample !== last);
     if (beforeOpening) {
       lines.push(`- opening scene delta: programs ${beforeOpening.programCount ?? 'unknown'} -> ${last.programCount ?? 'unknown'}; geometries ${beforeOpening.geometryCount ?? 'unknown'} -> ${last.geometryCount ?? 'unknown'}; renderer textures ${beforeOpening.rendererTextureCount ?? 'unknown'} -> ${last.rendererTextureCount ?? 'unknown'}`);
@@ -1975,6 +1990,41 @@ function readWitnessInPage() {
         : null,
       promiseStates: { ...loadingTrace.promiseStates },
       startupGpuResidency: summarizeReadinessResult(render.startupGpuResidency),
+      openingSubmission: (() => {
+        const plan = render.openingSubmissionPlan;
+        const pipelineSet = plan?.firstPlayablePipelineSet;
+        const validation = render.openingSubmissionValidation;
+        if (!plan && !validation) return null;
+        return {
+          planComplete: plan?.complete === true,
+          roots: Array.isArray(plan?.roots) ? plan.roots.length : null,
+          drawLeaves: Array.isArray(plan?.drawLeaves) ? plan.drawLeaves.length : null,
+          producerCensusMatches: plan?.resourceIdentityCensusMatches === true,
+          admittedPrograms: Array.isArray(pipelineSet?.admittedProgramKeys)
+            ? pipelineSet.admittedProgramKeys.length
+            : null,
+          deferredGlobalPrograms: Array.isArray(pipelineSet?.deferredGlobalProgramKeys)
+            ? pipelineSet.deferredGlobalProgramKeys.length
+            : null,
+          validation: validation ? {
+            ok: validation.ok === true,
+            reason: validation.reason || null,
+            uncaptured: Array.isArray(validation.uncaptured) ? [...validation.uncaptured] : [],
+            uncapturedProgramKeys: Array.isArray(validation.uncapturedProgramKeys)
+              ? validation.uncapturedProgramKeys.length
+              : null,
+            uncapturedGeometryBufferIds: Array.isArray(validation.uncapturedGeometryBufferIds)
+              ? validation.uncapturedGeometryBufferIds.length
+              : null,
+            uncapturedTextureIds: Array.isArray(validation.uncapturedTextureIds)
+              ? validation.uncapturedTextureIds.length
+              : null,
+            uncapturedShadowResourceIds: Array.isArray(validation.uncapturedShadowResourceIds)
+              ? validation.uncapturedShadowResourceIds.length
+              : null,
+          } : null,
+        };
+      })(),
       partLoads: Array.isArray(s?.diagnostics?.partLoads)
         ? s.diagnostics.partLoads.slice(-5).map((entry) => ({
             id: entry?.id ?? entry?.partId ?? null,

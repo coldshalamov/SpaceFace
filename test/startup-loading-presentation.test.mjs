@@ -115,19 +115,22 @@ test('canonical game shell and transition wire the shared staged loading present
   assert.doesNotMatch(precompile,
     /residentBufferWarm\s*=\s*await\s+warmResidentSceneWithShadowPipelines/,
     'startup precompile must not render the complete live scene under the loading shell');
-  assert.match(renderer, /captureOpeningPipelinePlan[\s\S]{0,160}?capturePending/,
-    'startup must freeze a finite authored-root pipeline watermark');
+  assert.match(renderer, /captureOpeningPipelinePlan/, 'startup must expose the broad compatibility capture');
+  assert.match(renderer, /state\.mode === 'loading'[\s\S]{0,700}?opening-submission-plan-owns-first-picture/,
+    'loading must bypass the broad authored-root watermark');
   assert.doesNotMatch(readiness, /compileCurrentPipelines|waitForAuthoredGpuResidency/,
     'startup must never invoke the diagnostic installed-scene compiler or a moving residency wait');
   assert.match(renderer, /this\.state\.mode === 'loading'\) return false/,
     'the covered world must not render behind the loading shell');
   assert.match(renderer, /_deferNoncriticalMeshStreaming[\s\S]{0,1500}?_meshReconcileDirty = true/,
     'noncritical sector roots must resume only after the first completed flight draw');
-  assert.match(renderer, /openingFrameStarted[\s\S]{0,900}?this\._renderOpeningPostFrame\(scene, cam\.obj\)/,
-    'the exact scoped opening frame must render under the loading shell before handoff');
-  assert.match(renderer,
-    /state\.mode === 'loading'[\s\S]{0,900}?precompilePipelines\(renderer, scene, cam\.obj, \{[\s\S]{0,240}?sector,[\s\S]{0,240}?includeGlobalPipelines:\s*true/,
-    'hardware startup must admit current-sector and global shader variants behind the loading shell');
+  assert.match(renderer, /createOpeningSubmissionPlan/, 'startup must build an exact first-picture leaf plan');
+  assert.match(renderer, /state\.render\.captureOpeningSubmissionPlan/,
+    'startup must capture an exact first-picture leaf plan');
+  assert.doesNotMatch(renderer, /state\.render\.prepareOpeningGpuResources[\s\S]{0,1800}?_renderOpeningPostFrame\(/,
+    'the loading path must not render a hidden discovery frame');
+  assert.match(renderer, /opening-submission-plan-owns-first-picture/,
+    'speculative global loading pipeline work must yield to exact first-picture admission');
   assert.doesNotMatch(renderer, /deferredStartupPrecompile|backgroundPipelinePrecompileReady/,
     'current-sector shader admission must not begin after the first playable frame');
   assert.match(renderer, /gpu\.software[\s\S]{0,300}?bounded on-demand pipeline admission/,

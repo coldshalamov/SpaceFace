@@ -15,6 +15,10 @@ export function collectStartupTextures(subjects) {
   const textures = new Set();
   const roots = Array.isArray(subjects) ? subjects : [subjects];
   for (const root of roots) {
+    if (root && root.isTexture === true) {
+      textures.add(root);
+      continue;
+    }
     if (!root || typeof root.traverse !== 'function') continue;
     root.traverse((object) => {
       const materials = Array.isArray(object.material)
@@ -38,6 +42,9 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
     : null;
   const now = typeof options.now === 'function' ? options.now : clockNow;
   const textures = collectStartupTextures(subjects);
+  for (const texture of Array.isArray(options.textures) ? options.textures : []) {
+    if (texture && texture.isTexture === true && !textures.includes(texture)) textures.push(texture);
+  }
   const uploads = [];
   const count = textures.length;
   for (let index = 0; index < count; index++) {

@@ -5,42 +5,124 @@ import { createPresentationSnapshot } from './presentationSnapshot.js';
 
 export const SNAPSHOT_FENCE_BUFFERS = 3;
 
+function readonlyColumns(columns) {
+  // Ownership is the immutability boundary: only the writer slot can call
+  // write(), and commit rotates to another slot before the next pack. Do not
+  // proxy typed-array element reads on the render hot path. The facade is built once per buffer;
+  // getters resolve the current typed-array value because presentationSnapshot grows by replacing
+  // columns[name] when a population spike exceeds capacity.
+  const facade = {};
+  for (const name of Object.keys(columns || {})) {
+    Object.defineProperty(facade, name, {
+      enumerable: true,
+      configurable: false,
+      get() { return columns[name]; },
+    });
+  }
+  return Object.freeze(facade);
+}
+
+function readonlyIndex(index) {
+  return Object.freeze({
+    get(entityId) { return index.get(entityId); },
+    has(entityId) { return index.has(entityId); },
+    get size() { return index.size; },
+  });
+}
+
 export function createSnapshotFence(options = {}) {
-  const buffers = Array.from(
-    { length: SNAPSHOT_FENCE_BUFFERS },
-    () => createPresentationSnapshot({
+  const buffers = Array.from({ length: SNAPSHOT_FENCE_BUFFERS }, () => {
+    const snapshot = createPresentationSnapshot({
       capacity: options.capacity || 256,
       journalCapacity: options.journalCapacity,
-    }),
-  );
+    });
+    const indexByEntityId = new Map();
+    const publishedIndexByEntityId = readonlyIndex(indexByEntityId);
+    const publishedColumns = readonlyColumns(snapshot.columns);
+    const state = {
+      snapshot,
+      indexByEntityId,
+      publishedIndexByEntityId,
+      sealed: true,
+      simTime: 0,
+      sequence: 0,
+    };
+    const writable = {
+      get schema() { return snapshot.schema; },
+      get columns() { return snapshot.columns; },
+      get count() { return snapshot.count; },
+      get capacity() { return snapshot.capacity; },
+      get generation() { return snapshot.generation; },
+      get journalDropped() { return snapshot.journalDropped; },
+      beginFrame(expectedCount) {
+        if (state.sealed) state.sealed = false;
+        indexByEntityId.clear();
+        return snapshot.beginFrame(expectedCount);
+      },
+      write(...args) {
+        if (state.sealed) throw new Error('Presentation snapshot fence buffer is sealed');
+        const index = snapshot.write(...args);
+        state.indexByEntityId.set(args[0] >>> 0, index);
+        return index;
+      },
+      setTint(...args) {
+        if (state.sealed) throw new Error('Presentation snapshot fence buffer is sealed');
+        return snapshot.setTint(...args);
+      },
+      record(...args) {
+        if (state.sealed) throw new Error('Presentation snapshot fence buffer is sealed');
+        return snapshot.record(...args);
+      },
+      drainJournal(...args) { return snapshot.drainJournal(...args); },
+    };
+    const published = Object.freeze({
+      schema: snapshot.schema,
+      columns: publishedColumns,
+      get count() { return snapshot.count; },
+      get capacity() { return snapshot.capacity; },
+      get generation() { return snapshot.generation; },
+      get journalDropped() { return snapshot.journalDropped; },
+      get simTime() { return state.simTime; },
+      get sequence() { return state.sequence; },
+      get indexByEntityId() { return state.publishedIndexByEntityId; },
+    });
+    state.writable = Object.freeze(writable);
+    state.published = published;
+    return state;
+  });
   let write = 0;
   let latest = -1;
+  let previous = -1;
   let sequence = 0;
   let packCount = 0;
 
   return {
     beginPack(expectedCount, simTime = 0) {
-      const snapshot = buffers[write];
-      snapshot.beginFrame(expectedCount);
-      snapshot.simTime = Number.isFinite(simTime) ? simTime : 0;
-      snapshot.sequence = sequence + 1;
-      return snapshot;
+      const buffer = buffers[write];
+      buffer.writable.beginFrame(expectedCount);
+      buffer.simTime = Number.isFinite(simTime) ? simTime : 0;
+      buffer.sequence = sequence + 1;
+      return buffer.writable;
     },
     commit() {
+      const buffer = buffers[write];
+      if (buffer.sealed) throw new Error('Presentation snapshot fence commit without beginPack');
       sequence++;
+      previous = latest;
       latest = write;
+      buffer.sealed = true;
+      buffer.sequence = sequence;
       write = (write + 1) % SNAPSHOT_FENCE_BUFFERS;
       packCount++;
       return sequence;
     },
     latestSnapshot() {
       if (latest < 0) return null;
-      return buffers[latest];
+      return buffers[latest].published;
     },
     previousSnapshot() {
-      if (packCount < 2 || latest < 0) return null;
-      const prev = (latest + SNAPSHOT_FENCE_BUFFERS - 1) % SNAPSHOT_FENCE_BUFFERS;
-      return buffers[prev];
+      if (packCount < 2 || previous < 0) return null;
+      return buffers[previous].published;
     },
     get sequence() { return sequence; },
     get packCount() { return packCount; },
@@ -49,6 +131,10 @@ export function createSnapshotFence(options = {}) {
 
 export function snapshotIndexOf(snapshot, entityId) {
   if (!snapshot || entityId == null) return -1;
+  if (snapshot.indexByEntityId && typeof snapshot.indexByEntityId.get === 'function') {
+    const indexed = snapshot.indexByEntityId.get(entityId >>> 0);
+    return indexed == null ? -1 : indexed;
+  }
   const ids = snapshot.columns && snapshot.columns.entityId;
   if (!ids) return -1;
   const want = entityId >>> 0;
@@ -80,9 +166,10 @@ export function applySnapshotPoseToMesh(mesh, snapshot, entityId, origin, previo
     }
   }
   const ox = origin && Number.isFinite(origin.x) ? origin.x : 0;
+  const oy = origin && Number.isFinite(origin.y) ? origin.y : 0;
   const oz = origin && Number.isFinite(origin.z) ? origin.z : 0;
   mesh.position.x = x - ox;
-  mesh.position.y = 0;
+  mesh.position.y = (snapshot.columns.position[p + 1] || 0) - oy;
   mesh.position.z = z - oz;
   mesh.rotation.y = -2 * Math.atan2(qy, qw || 1);
   return true;

@@ -25,8 +25,10 @@ import {
 import { SpaceRenderGraph } from './post/spaceRenderGraph.js';
 import {
   authoredCompositionFingerprintForEntity,
+  authoredCriticalVisualReadiness,
   authoredPrewarmRequestsForEntities,
   beginAuthoredInstanceMeshDisposeRegistrationProbe,
+  collectAuthoredInstancePoolRoots,
   disposePreparedAuthoredBoundary,
   endAuthoredInstanceMeshDisposeRegistrationProbe,
   getAuthoredInstancePoolDiagnostics,
@@ -43,6 +45,7 @@ import {
   preloadAuthoredParts,
 } from './assetLoader.js';
 import {
+  collectAsteroidInstancePoolRoots,
   createAsteroidInstancePool,
   invalidateAsteroidInstancePool,
   isBorrowedAsteroidInstanceResource,
@@ -58,13 +61,12 @@ import {
   endRenderEntityFrame,
 } from './renderEntityFrame.js';
 
-// The dense snapshot/batcher remains an offline parity candidate until it has a real authored-root
-// consumer. Ordinary flight must not pay its projection or transport-audit cost in the meantime.
+// The dense snapshot is the render boundary for ordinary flight. The simulation-owned world still
+// provides mesh bindings and cosmetic bank/pitch hooks, but pose submission reads the fenced frame.
 
 import {
   createPresentationWorld,
   PRESENTATION_DIRTY,
-  PRESENTATION_FLAGS,
 } from './presentationWorld.js';
 import { createPresentationPublisher } from './presentationPublisher.js';
 import { createPresentationQueries } from './presentationQueries.js';
@@ -72,8 +74,9 @@ import {
   applySnapshotPoseToMesh,
   createSnapshotFence,
   packPresentationWorldToFence,
+  snapshotIndexOf,
 } from './snapshotFence.js';
-import { getPersistentSubmitLanes, SUBMIT_LANE } from './persistentSubmitLanes.js';
+import { createPersistentSubmitLanes, SUBMIT_LANE } from './persistentSubmitLanes.js';
 import { shieldBubbleGeometry } from './ships/shipKit.js';
 import { projectedWidthPx } from './lod.js';
 import { resolveWebGlRendererFlags } from './presentPath.js';
@@ -133,6 +136,7 @@ import {
 import { createShadowReceiverTally, noteShadowPolicyChanged } from './shadowReceiverTally.js';
 import {
   applyEntityMeshVisibility,
+  isProtectedEntityMesh,
   shouldSubmitEntityMesh,
 } from './entityMeshVisibility.js';
 import { supportsOpaqueMaterialBatch } from './opaqueMaterialBatch.js';
@@ -148,11 +152,22 @@ import {
   createPipelineAdmissionTracker,
 } from './pipelineReadiness.js';
 import {
-  collectStartupTextures,
   prepareStartupGpuResidency,
   yieldToBrowser,
   yieldToNextPresent,
 } from './startupGpuResidency.js';
+import {
+  collectOpeningSubmissionLeaves,
+  combineOpeningProducerCensuses,
+  createOpeningProducerCensus,
+  createOpeningSubmissionPlan,
+  createOpeningSubmissionReceipt,
+  validateOpeningSubmissionReceipt,
+} from './openingSubmissionPlan.js';
+import {
+  stampContactShadowPoolPackage,
+  stampShipAuxPoolPackage,
+} from './rendererPoolProducer.js';
 import {
   collectContextLossRoots,
   deferWebGlContextRestore,
@@ -181,6 +196,7 @@ import {
   tableTravelSpeed,
 } from './tabletopPolicy.js';
 import { PRESENTATION_TIER } from '../world/activityClassification.js';
+import { getActivityFrame } from '../core/worldActivityManager.js';
 
 // M2 floating-origin scratch for mesh pose projection (no per-entity allocation).
 const _meshLocalXZ = { x: 0, z: 0 };
@@ -200,6 +216,56 @@ function writeScreenProjection(out, x, y, onScreen) {
 }
 const _socketGlobalXZ = { x: 0, z: 0 };
 const _worldSiteA11y = { reducedMotion: false, reducedFlash: false };
+
+function openingSubmissionCamera(camera) {
+  if (!camera || !camera.projectionMatrix || !camera.matrixWorldInverse) return null;
+  try {
+    camera.updateMatrixWorld(true);
+    const projection = new THREE.Matrix4().multiplyMatrices(
+      camera.projectionMatrix,
+      camera.matrixWorldInverse,
+    );
+    return {
+      frustum: new THREE.Frustum().setFromProjectionMatrix(projection),
+      // Keep the live camera mask alongside the frozen frustum so opening admission and receipt
+      // validation apply the same camera-visible layer boundary.
+      layers: camera.layers || null,
+    };
+  } catch (_) {
+    // A missing/invalid camera must retain visible leaves rather than silently dropping first-frame
+    // contributors. The submission plan is fail-closed if it cannot establish a drawable set.
+    return null;
+  }
+}
+
+function describeOpeningInstancedPbrLeaves(scene, plan) {
+  const planned = new Set(Array.isArray(plan?.compileSubjects) ? plan.compileSubjects : []);
+  const rows = [];
+  scene?.traverseVisible?.((object) => {
+    if (!object?.isInstancedMesh) return;
+    const materials = Array.isArray(object.material) ? object.material : [object.material].filter(Boolean);
+    if (!materials.some((material) => (
+      material?.isMeshStandardMaterial || material?.isMeshPhysicalMaterial
+    ))) return;
+    rows.push({
+      id: object.uuid || null,
+      name: object.name || object.type || 'InstancedMesh',
+      parent: object.parent?.name || object.parent?.type || null,
+      count: Number(object.count) || 0,
+      instanceColor: !!object.instanceColor,
+      planned: planned.has(object),
+      producer: object.userData?.openingSubmissionPackage?.producer || null,
+      userDataKeys: Object.keys(object.userData || {}).sort(),
+      materials: materials.map((material) => ({
+        id: material?.uuid || null,
+        type: material?.type || 'Material',
+        side: Number(material?.side) || 0,
+        transparent: material?.transparent === true,
+      })),
+    });
+  });
+  return rows.sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+}
 
 const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
 const SECTOR_PALETTE_LERP_SECONDS = 1.5;
@@ -268,6 +334,67 @@ export function entityVisualCullRadius(entity, mesh = null) {
   const x = Math.max(0, Number(size[0]) || 0);
   const z = Math.max(0, Number(size[2]) || 0);
   return Math.max(simRadius, Math.hypot(x, z) * 0.5);
+}
+
+/**
+ * Return only attached entity roots that can contribute to the current first camera picture.
+ * Render residency intentionally lives elsewhere: this census observes the final mesh pose and
+ * visibility selected by syncEntityViews() and never builds, stamps, or mutates a root.
+ */
+export function collectOpeningEntityRootCandidates(meshes, entities, options = {}) {
+  const candidates = [];
+  const playerId = options.playerId;
+  const scene = options.scene || null;
+  const camera = options.camera || null;
+  if (!meshes || typeof meshes[Symbol.iterator] !== 'function') return candidates;
+  for (const [id, mesh] of meshes) {
+    if (!mesh || (playerId != null && id === playerId) || mesh.visible === false) continue;
+    // _meshes is the entity ownership map, but a prepared/deferred boundary may still be mounted in
+    // the scene without becoming an entity root. Only direct live roots belong to this census.
+    if (scene && mesh.parent !== scene) continue;
+    const entity = entities && typeof entities.get === 'function' ? entities.get(id) : null;
+    if (!entity || entity.alive === false || entity._noMesh) continue;
+    const leaves = collectOpeningSubmissionLeaves(mesh, { camera });
+    if (leaves.length === 0) continue;
+    candidates.push({
+      root: mesh,
+      role: entity.type === 'station' ? 'tableStationShell' : 'opening-entity-root',
+      startupRole: 'first-picture-entity-root',
+      blocking: true,
+      reason: 'currently-visible-first-picture-entity-root',
+    });
+  }
+  return candidates;
+}
+
+function openingEntityRootIntersectsCamera(root, entity, camera, scene) {
+  if (!root || !entity || entity.alive === false || root.visible === false
+      || (scene && root.parent !== scene) || !camera || !camera.frustum) return false;
+  const cameraLayers = camera.layers;
+  const rootLayers = root.layers;
+  if (cameraLayers && typeof cameraLayers.test === 'function'
+      && rootLayers && cameraLayers.test(rootLayers) === false) return false;
+  try {
+    root.updateWorldMatrix(true, false);
+    root.getWorldPosition(_openingRootWorldPosition);
+    let radius = Math.max(0.001, entityVisualCullRadius(entity, root));
+    if (typeof root.getWorldScale === 'function') {
+      root.getWorldScale(_openingRootWorldScale);
+      radius *= Math.max(
+        Math.abs(_openingRootWorldScale.x),
+        Math.abs(_openingRootWorldScale.y),
+        Math.abs(_openingRootWorldScale.z),
+        1,
+      );
+    }
+    _openingRootSphere.center.copy(_openingRootWorldPosition);
+    _openingRootSphere.radius = radius;
+    return camera.frustum.intersectsSphere(_openingRootSphere);
+  } catch (_) {
+    // A live root with an invalid transform cannot be safely classified as first-picture visible.
+    // The exact submission collector remains fail-closed for any drawable leaves it can prove.
+    return false;
+  }
 }
 
 function enqueueMeshBuildCandidate(entity, meshes, queuedIds, queue) {
@@ -377,15 +504,31 @@ export function isEntityRenderRelevant(entity, state, radius = null) {
   if (!entity || entity.alive === false || entity._noMesh) return false;
   if (state && state.mode === 'loading') return isInitialAuthoredCompositionEntity(entity, state);
   if (entityIsExplicitRenderFocus(entity, state)) return true;
+  const tier = entity.activity && entity.activity.presentationTier;
+  const activityFrame = state && state.render && state.render.activityFrame;
+  if (activityFrame && activityFrame.complete === true) {
+    const has = (collection) => collection && typeof collection.has === 'function'
+      ? collection.has(entity.id)
+      : Array.isArray(collection) && collection.includes(entity.id);
+    if (has(activityFrame.renderGlassIds)) return true;
+    if (has(activityFrame.renderRunwayIds)) return true;
+    // The activity owner has explicitly classified this entity outside the
+    // presentation runway. Do not recreate an Object3D for a metadata-only or
+    // unloaded record merely because it shares a sector with the player.
+    return false;
+  }
+  if (tier === PRESENTATION_TIER.R2_METADATA || tier === PRESENTATION_TIER.R3_UNLOADED) {
+    return false;
+  }
   // An already-authored landmark in the player's own sector is kept, never rebuilt from scratch.
-  // Without this the opening hub was decoded behind the loading screen and evicted one second into
-  // flight, so the sector's one guaranteed fixed point had to re-decode on approach.
+  // This is a post-admission residency rule: the loading path above no longer admits a far Helios
+  // place merely because it is the critical hub, so shell-first startup does not pay its detail
+  // decode before flight.
   if (shouldKeepPersistentLandmarkResident(entity, {
     mode: state && state.mode,
     currentSectorId: state && state.world && state.world.currentSectorId,
     authoredResident: entityHasAuthoredResidentRoot(entity),
   })) return true;
-  const tier = entity.activity && entity.activity.presentationTier;
   if (tier === PRESENTATION_TIER.R0_GLASS || tier === PRESENTATION_TIER.R1_RUNWAY) return true;
   const numericRadius = Number(radius);
   const limit = radius == null || !Number.isFinite(numericRadius)
@@ -612,6 +755,7 @@ function ensureContactShadowCapacity(pool, desired) {
   mesh.receiveShadow = false;
   mesh.userData.sharedContactShadow = true;
   mesh.userData.contactShadowPool = true;
+  stampContactShadowPoolPackage(mesh, nextCapacity);
   mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   let dynamicBufferOwner = null;
   try {
@@ -848,6 +992,7 @@ function ensureShieldAuxCapacity(pool, desired, scene, preserveCount = 0) {
   mesh.receiveShadow = false;
   mesh.userData.spacefaceTags = { vfxRole: 'shieldBubblePool' };
   mesh.userData.shipAuxPool = 'shieldBubble';
+  stampShipAuxPoolPackage(mesh, 'shield', nextCapacity);
   mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(nextCapacity * 3), 3).setUsage(THREE.DynamicDrawUsage);
   if (previous && preserveCount > 0) {
@@ -903,6 +1048,7 @@ function ensureNavLightAuxCapacity(pool, desired, scene, preserveCount = 0) {
   mesh.receiveShadow = false;
   mesh.userData.spacefaceTags = { damageRole: 'navLightPool' };
   mesh.userData.shipAuxPool = 'navLight';
+  stampShipAuxPoolPackage(mesh, 'nav', nextCapacity);
   mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(nextCapacity * 3), 3).setUsage(THREE.DynamicDrawUsage);
   if (previous && preserveCount > 0) {
@@ -2036,6 +2182,9 @@ const _ray = new THREE.Raycaster();
 const _pt = new THREE.Vector3();
 const _v2 = new THREE.Vector2();
 const _drawSize = new THREE.Vector2();
+const _openingRootWorldPosition = new THREE.Vector3();
+const _openingRootWorldScale = new THREE.Vector3();
+const _openingRootSphere = new THREE.Sphere();
 
 export const POST_PROCESS_ROUTE = Object.freeze({
   GRAPH: 'renderGraph',
@@ -2167,6 +2316,8 @@ export const render = {
     // accessibility setting internally.
     parallaxLayers.init(scene, state, bus, state.render.sectorPalette || SECTOR_PALETTE_CLASSES.core);
     state.render.spaceBg = spaceBg;
+    // Generated backdrop producers publish their exact construction recipe in their constructors;
+    // renderer only consumes those immutable boundaries.
     const vf = createVisualFactory();
     if (this._livingHullPresentation) this._livingHullPresentation.dispose();
     this._livingHullPresentation = createLivingHullPresentation();
@@ -2489,6 +2640,11 @@ export const render = {
     );
     this._presentationQueries = createPresentationQueries(this._presentationWorld);
     this._snapshotFence = createSnapshotFence();
+    this._snapshotSourceTick = null;
+    this._persistentSubmitLanes = createPersistentSubmitLanes();
+    this._activityFrame = null;
+    this._activityFrameTick = null;
+    this._openingFirstPicturePrepared = false;
     this._presentationHandleScratch = {};
     this._presentationQueryOptions = { bounds: null, origin: null, playerId: null };
     this._entityViewBounds = { x: 0, z: 0, halfX: 0, halfZ: 0, margin: 0 };
@@ -2513,6 +2669,7 @@ export const render = {
     state.render.presentationWorld = this._presentationWorld.getDiagnostics();
     state.render.presentationPublisher = this._presentationPublisher.getDiagnostics();
     state.render.presentationQueries = this._presentationQueries.getDiagnostics();
+    state.render.activityFrame = null;
     state.render.entityViewSync = this._entityViewDiagnostics;
     state.render.hlod = this._hlodDiagnostics;
     this._authoredInstanceSyncOptions = { camera: null, entityFrame: null, authoredRecords: null };
@@ -2953,6 +3110,16 @@ export const render = {
       state.mode === 'loading' || !Number.isFinite(state.render && state.render.firstPlayableFrameAt)
     );
     state.render.compileObjectPipelines = (subject) => {
+      // Loading admission is owned by the immutable first-picture plan below.  Authored roots are
+      // still allowed to finish CPU composition and publish behind the loading shell, but their
+      // broad root-level pipeline promises must not enter the startup queue: draining that queue
+      // compiled off-picture roots and then compiled the exact leaves a second time.
+      if (state.mode === 'loading') {
+        return Promise.resolve({
+          skipped: true,
+          reason: 'opening-submission-plan-owns-first-picture',
+        });
+      }
       if (openingCohort.frozen && openingStillBlocking() && !shouldAdmitOpeningSubject(openingCohort, subject)) {
         return Promise.resolve({ skipped: true, reason: 'late-opening-root' });
       }
@@ -2960,6 +3127,14 @@ export const render = {
       return pipelineAdmissions.compile(subject);
     };
     state.render.prepareAuthoredGpuResidency = (subject, options = {}) => {
+      // Exact opening residency is prepared from the same flat leaves as exact pipeline admission.
+      // Do not let every authored root enqueue a second texture walk while the loading shell is up.
+      if (state.mode === 'loading') {
+        return Promise.resolve({
+          skipped: true,
+          reason: 'opening-submission-plan-owns-first-picture',
+        });
+      }
       if (openingCohort.frozen && openingStillBlocking() && !shouldAdmitOpeningSubject(openingCohort, subject)) {
         return Promise.resolve({ skipped: true, reason: 'late-opening-root' });
       }
@@ -2971,7 +3146,264 @@ export const render = {
     state.render.pendingAuthoredGpuResidency = () => gpuResidencyAdmissions.pendingCount;
     state.render.yieldToNextPresent = yieldToNextPresent;
     state.render.openingAdmission = openingCohort;
+    const buildOpeningSubmissionPlan = () => {
+      // prepareFrame() selects the final entity poses without rendering while the loading shell is
+      // visible. Refresh world matrices once so frustum/layer admission observes those exact poses,
+      // not the transform cache from the previous scene attachment.
+      scene.updateMatrixWorld(true);
+      const submissionCamera = openingSubmissionCamera(cam.obj);
+      const candidates = [];
+      const seenRoots = new Set();
+      const addCandidate = (root, metadata = {}) => {
+        if (!root || seenRoots.has(root)) return false;
+        seenRoots.add(root);
+        candidates.push({ root, ...metadata });
+        return true;
+      };
+
+      const playerMesh = this._meshes.get(state.playerId);
+      addCandidate(playerMesh, {
+        role: 'player',
+        startupRole: 'player-flight-package',
+        blocking: true,
+        reason: 'player-control-and-first-picture-identity',
+        includeOffscreen: true,
+      });
+      addCandidate(this.spaceBg && this.spaceBg.group, {
+        role: 'firstFrameBackground',
+        startupRole: 'background-composite',
+        blocking: true,
+        reason: 'first-picture-background-layer',
+        includeOffscreen: true,
+      });
+
+      // Parallax layers are production scene roots, not speculative VFX. Near speed motes normally
+      // remain dormant, but Continue can restore nonzero motion; admit them when their real draw
+      // range is already active instead of relying on the New Game zero-speed assumption.
+      for (const child of scene.children || []) {
+        if (!child || !(
+          child.name === 'Parallax_FarDust'
+          || child.name === 'Parallax_MidDebris'
+          || child.name === 'Parallax_NearSpeedMotes'
+        )) continue;
+        if (collectOpeningSubmissionLeaves(child, { camera: submissionCamera }).length === 0) continue;
+        addCandidate(child, {
+          role: 'firstFrameBackground',
+          startupRole: child.name,
+          blocking: true,
+          reason: `first-picture-${child.name}`,
+          includeOffscreen: true,
+        });
+      }
+
+      // Every currently visible entity root is a real first-picture contributor, regardless of
+      // whether its producer is an authored GLB or an assembled flight actor. The helper observes
+      // final mesh visibility/pose and camera/layer eligibility, so hidden, offscreen, deferred,
+      // and unmounted roots remain deferred without cutting any authored visuals.
+      for (const candidate of collectOpeningEntityRootCandidates(this._meshes, state.entities, {
+        playerId: state.playerId,
+        scene,
+        camera: submissionCamera,
+      })) addCandidate(candidate.root, candidate);
+
+      // These renderer-owned pools are real first-picture draw roots once the final entity frame
+      // populates them. They are not entity children and therefore cannot be discovered by the
+      // entity-root census above.
+      const derivedPoolRoots = [
+        this._contactShadowPool && this._contactShadowPool.mesh,
+        this._shipAuxPool && this._shipAuxPool.shield && this._shipAuxPool.shield.mesh,
+        this._shipAuxPool && this._shipAuxPool.nav && this._shipAuxPool.nav.mesh,
+        ...collectAuthoredInstancePoolRoots(scene),
+        ...collectAsteroidInstancePoolRoots(this._asteroidInstancePool),
+      ];
+      for (const root of derivedPoolRoots) {
+        if (collectOpeningSubmissionLeaves(root, { camera: submissionCamera }).length === 0) continue;
+        addCandidate(root, {
+          role: 'firstFrameDerivedPool',
+          startupRole: root.userData && root.userData.shipAuxPool || 'contact-shadow-pool',
+          blocking: true,
+          reason: 'renderer-owned-first-picture-pool',
+        });
+      }
+
+      const vfxRoots = typeof state.render.collectVfxGpuResidencyRoots === 'function'
+        ? state.render.collectVfxGpuResidencyRoots()
+        : [];
+      for (const root of vfxRoots) {
+        // Pool roots with count=0 or visible=false are intentionally absent. A material that has
+        // not been instantiated in the first picture cannot hold startup GPU admission.
+        const leaves = collectOpeningSubmissionLeaves(root, { camera: submissionCamera });
+        if (leaves.length === 0) continue;
+        addCandidate(root, {
+          role: 'vfx',
+          startupRole: 'first-picture-vfx',
+          blocking: true,
+          reason: 'currently-instantiated-first-picture-vfx',
+        });
+      }
+
+      const textures = [];
+      if (scene.background && scene.background.isTexture === true) textures.push(scene.background);
+      if (scene.environment && scene.environment.isTexture === true) textures.push(scene.environment);
+      const openingRoute = this._selectPostRoute();
+      const producerCensuses = candidates.map((candidate) => createOpeningProducerCensus(
+        candidate.root,
+        {
+          camera: submissionCamera,
+          includeOffscreen: candidate.includeOffscreen === true,
+          route: {
+            shadow: this._shadowSettingOn === true,
+            target: openingRoute === POST_PROCESS_ROUTE.NATIVE ? 'screen' : 'hdr-scene-target',
+          },
+          textures,
+        },
+      ));
+      const producerCensus = combineOpeningProducerCensuses(producerCensuses);
+      // These fields are intentionally producer receipts, not renderer counts. They remain useful
+      // to the loading witness and make the exact admission inputs inspectable at the frame latch.
+      state.render.firstPlayableContentHashes = producerCensus.requiredContentHashes;
+      state.render.firstPlayableContentHashesVerified = producerCensus.contentHashesVerified === true;
+      state.render.firstPlayableGlobalProgramKeys = producerCensus.globalProgramKeys;
+      state.render.firstPlayableOpeningProgramKeys = producerCensus.openingProgramKeys;
+      state.render.firstPlayableResourceIdentitySets = producerCensus.resourceIdentitySets;
+      const readiness = authoredCriticalVisualReadiness(state);
+      return createOpeningSubmissionPlan({
+        candidates,
+        camera: submissionCamera,
+        scene,
+        textures,
+        flightReady: readiness && readiness.flightReady,
+        route: openingRoute,
+        bloomActive: openingRoute !== POST_PROCESS_ROUTE.NATIVE,
+        shadows: this._shadowSettingOn === true,
+        // These are supplied only by a content-hash-bound producer.  An absent census is a hard
+        // startup failure; deriving one from whatever happened to be in renderer.info would turn
+        // the exact admission contract back into metadata-only bookkeeping.
+        globalProgramKeys: state.render.firstPlayableGlobalProgramKeys
+          || state.render.globalProgramKeys
+          || null,
+        openingProgramKeys: state.render.firstPlayableOpeningProgramKeys
+          || state.render.openingProgramKeys
+          || null,
+        requiredContentHashes: state.render.firstPlayableContentHashes || undefined,
+        contentHashVerified: state.render.firstPlayableContentHashesVerified === true,
+        producerCensus,
+        producerResourceIdentitySets: state.render.firstPlayableResourceIdentitySets || undefined,
+      });
+    };
+    state.render.prepareOpeningFirstPicture = (timeoutMs) => (
+      this.prepareOpeningFirstPicture(timeoutMs)
+    );
+    const warmOpeningShadowPipelines = (subjects) => {
+      const shadowMap = renderer && renderer.shadowMap;
+      const light = this._keyLight;
+      const casting = (subjects || []).filter((subject) => subject && subject.castShadow === true);
+      if (!shadowMap || typeof shadowMap.render !== 'function' || shadowMap.enabled !== true
+          || !light || light.castShadow !== true || casting.length === 0) {
+        return { skipped: true, reason: 'no exact opening shadow subjects' };
+      }
+      const staging = new THREE.Group();
+      staging.name = 'SF_OpeningShadowPipelineAdmission';
+      const homes = casting.map((root) => captureObjectHome(root));
+      const previousTarget = typeof renderer.getRenderTarget === 'function'
+        ? renderer.getRenderTarget()
+        : null;
+      try {
+        for (const root of casting) staging.add(root);
+        staging.updateMatrixWorld(true);
+        // Three's public compile() prepares surface programs but not WebGLShadowMap's generated
+        // depth/distance variants. Run the exact admitted casters through the real shadow pass while
+        // the loading shell owns presentation; this is targeted pipeline admission, not a hidden
+        // scene discovery render, and no unplanned root is traversed.
+        shadowMap.render([light], staging, cam.obj);
+        return { skipped: false, subjects: casting.length };
+      } finally {
+        for (const home of homes) restoreObjectHome(home);
+        staging.clear();
+        if (typeof renderer.setRenderTarget === 'function') renderer.setRenderTarget(previousTarget || null);
+        if (light.shadow) light.shadow.needsUpdate = true;
+      }
+    };
+    const compileOpeningSubmissionPlan = async (plan) => {
+      if (!plan || plan.complete !== true
+        || !plan.firstPlayablePipelineSet
+        || plan.firstPlayablePipelineSet.complete !== true) {
+        throw new Error('Opening submission plan is incomplete; refusing first-playable admission');
+      }
+      // The content-hash-bound set drives the global deletion: A-B is deferred, while the exact
+      // opening key set (including the measured opening-only misses) is compiled once for this
+      // first picture. No broad authored root is admitted a second time.
+      const admittedKeys = new Set((plan.firstPlayablePipelineSet.openingProgramKeys || [])
+        .map((entry) => String(entry && entry.key || '')).filter(Boolean));
+      const subjects = [];
+      const leavesById = new Map();
+      (plan.compileSubjects || []).forEach((subject, index) => {
+        const leaf = plan.drawLeaves && plan.drawLeaves[index];
+        if (leaf) leavesById.set(leaf.id, subject);
+      });
+      const keysByLeaf = new Map();
+      for (const subject of plan.programCompileSubjects || []) {
+        const key = String(
+          subject.programSubjectKey
+          || subject.openingProgramSubjectKey
+          || subject.programKey
+          || subject.customProgramKey
+          || '',
+        );
+        let keys = keysByLeaf.get(subject.leafId);
+        if (!keys) {
+          keys = [];
+          keysByLeaf.set(subject.leafId, keys);
+        }
+        keys.push(key);
+      }
+      for (const descriptor of plan.drawLeaves || []) {
+        const keys = keysByLeaf.get(descriptor.id) || [];
+        if (keys.length === 0 || keys.some((key) => !key || !admittedKeys.has(key))) {
+          throw new Error(`Opening pipeline set omitted exact draw leaf ${descriptor.id}`);
+        }
+        const subject = leavesById.get(descriptor.id);
+        if (!subject) throw new Error(`Opening submission leaf ${descriptor.id} has no live subject`);
+        subjects.push(subject);
+      }
+      const route = this._selectPostRoute();
+      // Use the existing exact-target admission seam to compile the frozen flat leaf set in one
+      // driver batch. It temporarily records/restores each leaf's production parent; no scene
+      // render or hidden discovery pass is introduced, and the live lighting scene remains the
+      // third compile argument so program keys match the first visible route.
+      const result = subjects.length > 0
+        ? await compileForCurrentTarget(subjects, route)
+        : { skipped: true, reason: 'empty opening draw set' };
+      const shadowResult = warmOpeningShadowPipelines(subjects);
+      return {
+        schema: plan.schema,
+        drawLeaves: subjects.length,
+        result,
+        shadowResult,
+      };
+    };
+    state.render.captureOpeningSubmissionPlan = () => {
+      const plan = buildOpeningSubmissionPlan();
+      state.render.openingSubmissionPlan = plan;
+      const identities = (plan.compileSubjects || []).map((subject) => openingSubjectIdentity(subject))
+        .filter(Boolean);
+      openingCohort.capture(identities);
+      state.render.openingAdmissionCohort = openingCohort.snapshot();
+      return plan;
+    };
+    state.render.drainOpeningSubmissionPlan = (plan) => compileOpeningSubmissionPlan(plan);
     state.render.captureOpeningPipelinePlan = () => {
+      if (state.mode === 'loading') {
+        // Broad authored-root admissions are intentionally not part of the loading receipt.  The
+        // exact submission capture below is the only startup compile boundary.
+        const skipped = Object.freeze({
+          skipped: true,
+          reason: 'opening-submission-plan-owns-first-picture',
+          pendingCount: 0,
+        });
+        state.render.openingAdmissionCohort = openingCohort.snapshot();
+        return skipped;
+      }
       const plan = pipelineAdmissions.capturePending();
       let subjects = [];
       try { subjects = pipelineAdmissions.subjectsForCaptured(plan) || []; } catch { subjects = []; }
@@ -2981,11 +3413,21 @@ export const render = {
       state.render.openingAdmissionCohort = openingCohort.snapshot();
       return plan;
     };
-    state.render.drainOpeningPipelinePlan = (plan) => pipelineAdmissions.waitForCaptured(plan);
-    state.render.captureOpeningGpuResidencyPlan = (pipelinePlan) => gpuResidencyAdmissions.captureSubjects(
-      pipelineAdmissions.subjectsForCaptured(pipelinePlan)
+    state.render.drainOpeningPipelinePlan = (plan) => (
+      plan && plan.skipped === true
+        ? Promise.resolve(plan)
+        : pipelineAdmissions.waitForCaptured(plan)
     );
-    state.render.drainOpeningGpuResidencyPlan = (plan) => gpuResidencyAdmissions.waitForCaptured(plan);
+    state.render.captureOpeningGpuResidencyPlan = (pipelinePlan) => gpuResidencyAdmissions.captureSubjects(
+      pipelinePlan && pipelinePlan.skipped === true
+        ? []
+        : pipelineAdmissions.subjectsForCaptured(pipelinePlan)
+    );
+    state.render.drainOpeningGpuResidencyPlan = (plan) => (
+      plan && plan.skipped === true
+        ? Promise.resolve(plan)
+        : gpuResidencyAdmissions.waitForCaptured(plan)
+    );
     state.render.resumeDeferredPipelineAdmissions = () => pipelineAdmissions.resumeAutoFlush();
     state.render.compileCurrentPipelines = () => pipelineAdmissions.compileExplicit(scene);
     state.render.pendingPipelineAdmissions = () => pipelineAdmissions.pendingCount;
@@ -2997,45 +3439,28 @@ export const render = {
         ? this._livingHullPresentation.beginGpuWarmup()
         : null;
       try {
-        const roots = [];
-        for (const [id, mesh] of this._meshes) {
-          const entity = state.entities && state.entities.get ? state.entities.get(id) : null;
-          if (isInitialAuthoredCompositionEntity(entity, state)) roots.push(mesh);
+        const plan = state.render.openingSubmissionPlan || buildOpeningSubmissionPlan();
+        if (!plan || plan.complete !== true
+          || !plan.firstPlayablePipelineSet
+          || plan.firstPlayablePipelineSet.complete !== true) {
+          throw new Error('Opening submission plan is incomplete; refusing first-playable GPU admission');
         }
-        const vfxRoots = typeof state.render.collectVfxGpuResidencyRoots === 'function'
-          ? state.render.collectVfxGpuResidencyRoots()
-          : [];
-        const vfxTextures = collectStartupTextures(vfxRoots);
-        const result = await prepareStartupGpuResidency(renderer, [...roots, ...vfxRoots], {
+        const result = await prepareStartupGpuResidency(renderer, plan.residencySubjects, {
           yieldToMain: yieldToBrowser,
           onBlockingSlice: recordAuthoredAdmissionBlockingSlice,
+          textures: plan.textureRefs,
         });
-        result.openingCompositionRoots = roots.length;
-        result.vfxRoots = vfxRoots.length;
-        result.vfxTextures = vfxTextures.length;
+        result.openingSubmissionPlan = plan;
+        result.openingCompositionRoots = plan.roots.length;
+        result.vfxRoots = plan.roots.filter((root) => root.role === 'vfx').length;
+        result.vfxTextures = plan.textures.length;
         if (this.bloom && typeof this.bloom.prepareResources === 'function') {
           result.post = await this.bloom.prepareResources(yieldToBrowser);
         }
-        // Submit the exact, deliberately small opening composition while the loading shell still
-        // covers the canvas. Textures and targets are resident by this point, and loading-mode mesh
-        // scope excludes the rest of the sector. This moves unavoidable first-driver work before the
-        // handoff instead of presenting a black/frozen flight canvas after mode changes.
-        await yieldToBrowser();
-        const openingFrameStarted = typeof performance !== 'undefined' ? performance.now() : Date.now();
-        const dynamicBufferEpoch = dynamicBuffers.arm();
-        let disposeRegistrationProbe = null;
-        try {
-          disposeRegistrationProbe = beginAuthoredInstanceMeshDisposeRegistrationProbe(scene, renderer);
-          this._renderOpeningPostFrame(scene, cam.obj);
-        } finally {
-          endAuthoredInstanceMeshDisposeRegistrationProbe(disposeRegistrationProbe);
-          dynamicBuffers.disarm(dynamicBufferEpoch);
-        }
-        result.openingFrame = {
-          durationMs: (typeof performance !== 'undefined' ? performance.now() : Date.now())
-            - openingFrameStarted,
-          roots: roots.length,
-        };
+        // The first visible frame is the only submission. Capture its resource baseline now that
+        // exact leaves, textures, and post targets are admitted; drawPreparedFrame validates that
+        // no program/geometry/texture appears outside this frozen plan.
+        state.render.openingSubmissionReceipt = createOpeningSubmissionReceipt(renderer, plan, { scene });
         await yieldToBrowser();
         state.render.startupGpuResidency = result;
         return result;
@@ -3627,27 +4052,10 @@ export const render = {
       if (spaceBg && spaceBg.onSectorEnter) spaceBg.onSectorEnter(sector, sectorVisualProfile);
       this._updateHazardVisuals(sector);
       const pipelinePrecompile = state.mode === 'loading'
-        ? (gpu.software
-          ? precompileGlobalPipelines(renderer, scene, cam.obj, {
-            incremental: true,
-            preparePipelines: compileForCurrentTarget,
-            video: state.settings && state.settings.video,
-            yieldToMain: yieldToBrowser,
-          }).catch((error) => {
-            console.warn('[render] global pipeline precompile failed', error);
-            return null;
-          })
-          : precompilePipelines(renderer, scene, cam.obj, {
-            sector,
-            includeGlobalPipelines: true,
-            incremental: true,
-            preparePipelines: compileForCurrentTarget,
-            video: state.settings && state.settings.video,
-            yieldToMain: yieldToBrowser,
-          }).catch((error) => {
-            console.warn('[render] opening pipeline precompile failed', error);
-            return null;
-          }))
+        ? Promise.resolve({
+          skipped: true,
+          reason: 'opening-submission-plan-owns-first-picture',
+        })
         : continuous === true
           ? Promise.resolve({
             skipped: true,
@@ -3812,9 +4220,28 @@ export const render = {
     });
     bus.on('mode:changed', ({ mode } = {}) => {
       if (mode === 'loading') {
+        releaseOpeningGraphPublication(this);
+        // A save/load transition replaces entity objects while commonly reusing their numeric IDs.
+        // Never let the prior flight's glass/runway membership gate the restored world by ID: it
+        // can falsely require unrelated replacement actors and strand Continue in loading.
+        this._activityFrame = null;
+        this._activityFrameTick = null;
+        state.render.activityFrame = null;
         state.render.firstPlayableFrameAt = null;
+        state.render.openingSubmissionFirstDrawSubmittedAt = null;
+        state.render.openingSubmissionPlan = null;
+        state.render.openingSubmissionReceipt = null;
+        state.render.openingSubmissionPreSubmitValidation = null;
+        state.render.openingSubmissionValidation = null;
+        state.render.openingSubmissionReady = null;
+        state.render.firstPlayableContentHashes = null;
+        state.render.firstPlayableContentHashesVerified = false;
+        state.render.firstPlayableGlobalProgramKeys = null;
+        state.render.firstPlayableOpeningProgramKeys = null;
+        state.render.firstPlayableResourceIdentitySets = null;
         this._deferNoncriticalMeshStreaming = false;
         state.render.deferNoncriticalMeshStreaming = false;
+        this._openingFirstPicturePrepared = false;
         this._firstPlayablePaintScheduled = false;
       }
       if (mode !== 'flight') return;
@@ -4090,7 +4517,7 @@ export const render = {
     if (!handle) return false;
     if (!mesh.userData) mesh.userData = {};
     mesh.userData.presentationEntityId = entity.id;
-    const lanes = getPersistentSubmitLanes();
+    const lanes = this._persistentSubmitLanes;
     const lane = mesh.material && (mesh.material.transparent || mesh.material.transmission > 0)
       ? SUBMIT_LANE.TRANSPARENT
       : SUBMIT_LANE.OPAQUE;
@@ -4107,7 +4534,7 @@ export const render = {
     if (!world) return false;
     const handle = world.handleForEntityId(entityId, this._presentationHandleScratch);
     if (!handle) return false;
-    getPersistentSubmitLanes().release(entityId);
+    this._persistentSubmitLanes.release(entityId);
     return world.unbindMesh(handle, mesh);
   },
 
@@ -4518,53 +4945,35 @@ export const render = {
   },
 
   _applyPresentationPose(slot, mesh, alpha, currentOnly = false) {
-    if (!mesh || !mesh.position) return;
+    if (!mesh || !mesh.position) return false;
     const world = this._presentationWorld;
     const origin = this._frameMembrane && this._frameMembrane.origin;
-    if (!world || !origin) return;
+    if (!world || !origin) return false;
     const fence = this._snapshotFence;
     const snapshot = fence && fence.latestSnapshot();
     const previous = !currentOnly && fence ? fence.previousSnapshot() : null;
-    if (snapshot && applySnapshotPoseToMesh(
+    if (!snapshot) return false;
+    const applied = applySnapshotPoseToMesh(
       mesh,
       snapshot,
       world.entityIds[slot],
       origin,
       previous,
       currentOnly ? 1 : alpha,
-    )) {
-      const hull = mesh.userData && mesh.userData.hull;
-      const entity = world.entityRefs[slot];
-      if (hull && entity && entity.bank != null) hull.rotation.x = world.bank[slot];
-      if (hull && entity && entity.pitch != null) hull.rotation.z = world.pitch[slot];
-      return;
-    }
-    const noInterpolation = currentOnly
-      || (world.flags[slot] & PRESENTATION_FLAGS.NO_INTERPOLATION) !== 0;
-    let x = world.x[slot];
-    let z = world.z[slot];
-    let rot = world.rot[slot];
-    let bank = world.bank[slot];
-    let pitch = world.pitch[slot];
-    if (!noInterpolation) {
-      const t = Number.isFinite(alpha) ? alpha : 0;
-      x = world.prevX[slot] + (world.x[slot] - world.prevX[slot]) * t;
-      z = world.prevZ[slot] + (world.z[slot] - world.prevZ[slot]) * t;
-      let dr = world.rot[slot] - world.prevRot[slot];
-      dr = ((dr + Math.PI) % (Math.PI * 2)) - Math.PI;
-      if (dr < -Math.PI) dr += Math.PI * 2;
-      rot = world.prevRot[slot] + dr * t;
-      bank = world.prevBank[slot] + (world.bank[slot] - world.prevBank[slot]) * t;
-      pitch = world.prevPitch[slot] + (world.pitch[slot] - world.prevPitch[slot]) * t;
-    }
-    mesh.position.x = x - origin.x;
-    mesh.position.y = 0;
-    mesh.position.z = z - origin.z;
-    mesh.rotation.y = -rot;
+    );
+    if (!applied) return false;
     const hull = mesh.userData && mesh.userData.hull;
     const entity = world.entityRefs[slot];
-    if (hull && entity && entity.bank != null) hull.rotation.x = bank;
-    if (hull && entity && entity.pitch != null) hull.rotation.z = pitch;
+    if (hull && entity && entity.bank != null) hull.rotation.x = world.bank[slot];
+    if (hull && entity && entity.pitch != null) hull.rotation.z = world.pitch[slot];
+    return true;
+  },
+
+  _hasCompletedPresentationPose(slot, entityId) {
+    const world = this._presentationWorld;
+    const snapshot = this._snapshotFence && this._snapshotFence.latestSnapshot();
+    if (!world || !snapshot || world.entityIds[slot] !== entityId) return false;
+    return snapshotIndexOf(snapshot, entityId) >= 0;
   },
 
   syncEntityViews(alpha) {
@@ -4609,14 +5018,25 @@ export const render = {
       if (entity && entity.alive !== false) {
         world.refreshVisibleEntity(slot, entity, entityVisualCullRadius(entity, mesh));
       }
-      this._applyPresentationPose(slot, mesh, alpha, true);
-      applyEntityMeshVisibility(mesh, shouldSubmitEntityMesh({
-        isPlayer: entity && entity.id === this.state.playerId,
-        forceRender: !!(entity && entity.flags && entity.flags.forceRender),
-        neverCull: !!(entity && entity.flags && entity.flags.neverCull),
-        hidden: true,
-        presentationTier: entity && entity.activity && entity.activity.presentationTier,
-      }));
+      const posed = this._applyPresentationPose(slot, mesh, alpha, true);
+      const isPlayer = !!(entity && entity.id === this.state.playerId);
+      const forceRender = !!(entity && entity.flags && entity.flags.forceRender);
+      const neverCull = !!(entity && entity.flags && entity.flags.neverCull);
+      const protectedRoot = isProtectedEntityMesh({ isPlayer, forceRender, neverCull });
+      // A protected root keeps its prior visibility when the latest fence has no pose for it.
+      // Ordinary stale identities still fail closed and leave the submit list immediately.
+      const visibilityChanged = !(!posed && protectedRoot)
+        && applyEntityMeshVisibility(mesh, posed && shouldSubmitEntityMesh({
+          isPlayer,
+          forceRender,
+          neverCull,
+          hidden: true,
+          snapshotMissing: !posed,
+          activityFrame: this._activityFrame,
+          entityId,
+          presentationTier: entity && entity.activity && entity.activity.presentationTier,
+        }));
+      if (visibilityChanged) this._persistentSubmitLanes.markDirty(entityId, 'visibility');
       if (mesh.userData && mesh.userData.asteroidInstanceBody) {
         mesh.userData.asteroidInstanceViewCulled = true;
       }
@@ -4644,10 +5064,22 @@ export const render = {
       if (this.collisionDebug && this.collisionDebug.on) userData.__lastEntity = entity;
       world.refreshVisibleEntity(slot, entity, entityVisualCullRadius(entity, mesh));
       const dirty = world.dirtyMasks[slot];
+      // A clean render root still needs a validity check against the latest completed fence. The
+      // check is an index lookup only; pose writes remain dirty/delta-gated below.
+      let posed = this._hasCompletedPresentationPose(slot, entityId);
+      const isPlayer = entity.id === this.state.playerId;
+      const forceRender = !!(entity.flags && entity.flags.forceRender);
+      const neverCull = !!(entity.flags && entity.flags.neverCull);
+      const protectedRoot = isProtectedEntityMesh({ isPlayer, forceRender, neverCull });
       if ((dirty & (PRESENTATION_DIRTY.TRANSFORM | PRESENTATION_DIRTY.BINDING
         | PRESENTATION_DIRTY.VISIBILITY)) !== 0 || world.poseHasDelta(slot)) {
-        this._applyPresentationPose(slot, mesh, alpha);
-        getPersistentSubmitLanes().markDirty(entityId, 'transform');
+        posed = this._applyPresentationPose(slot, mesh, alpha);
+        if (!posed && !protectedRoot) {
+          if (applyEntityMeshVisibility(mesh, false)) {
+            this._persistentSubmitLanes.markDirty(entityId, 'visibility');
+          }
+        }
+        if (posed) this._persistentSubmitLanes.markDirty(entityId, 'transform');
         transformed++;
       }
       if (userData.asteroidInstanceBody) userData.asteroidInstanceViewCulled = false;
@@ -4689,17 +5121,22 @@ export const render = {
         }
       }
 
-      applyEntityMeshVisibility(mesh, shouldSubmitEntityMesh({
-        isPlayer: entity.id === this.state.playerId,
-        forceRender: !!(entity.flags && entity.flags.forceRender),
-        neverCull: !!(entity.flags && entity.flags.neverCull),
-        hidden: false,
-        middleBand: viewBand === 'middle',
-        type: entity.type,
-        projectedPx,
-        allowShadowCast: false,
-        presentationTier: entity.activity && entity.activity.presentationTier,
-      }));
+      const visibilityChanged = !(!posed && protectedRoot)
+        && applyEntityMeshVisibility(mesh, shouldSubmitEntityMesh({
+          isPlayer,
+          forceRender,
+          neverCull,
+          hidden: false,
+          middleBand: viewBand === 'middle',
+          type: entity.type,
+          projectedPx,
+          allowShadowCast: false,
+          snapshotMissing: !posed,
+          activityFrame: this._activityFrame,
+          entityId,
+          presentationTier: entity.activity && entity.activity.presentationTier,
+        }));
+      if (visibilityChanged) this._persistentSubmitLanes.markDirty(entityId, 'visibility');
       if ((entity.type === 'ship' || entity.type === 'station')
           && noteRealtimeShadowCasterPose(mesh, {
             visualRadius: lodRadius,
@@ -4777,7 +5214,7 @@ export const render = {
     diagnostics.totalMeshes = world.boundCount;
     diagnostics.candidates = query.candidateCount;
     diagnostics.transformed = transformed;
-    if (transformed === 0) getPersistentSubmitLanes().noteUnchangedFrame();
+    if (transformed === 0) this._persistentSubmitLanes.noteUnchangedFrame();
     diagnostics.fullSynced = fullSynced;
     diagnostics.culled = query.culledCount;
     diagnostics.newlyVisible = query.newlyVisibleCount;
@@ -4930,6 +5367,236 @@ export const render = {
     }
   },
 
+  _syncAuthoredInstanceSubmission(shadowRadius) {
+    const options = this._authoredInstanceSyncOptions;
+    options.camera = this.cam.obj;
+    options.entityFrame = this._entityFrame;
+    options.authoredRecords = this._entityFrame.authored;
+    options.playerX = 0;
+    options.playerZ = 0;
+    options.castRadiusSq = shadowRadius * shadowRadius;
+    options.castRadius = shadowRadius;
+    options.consolidateOpaqueBatches = this._opaqueBatchEnabled === true;
+    const camState = this.state && this.state.camera || {};
+    const camObj = this.cam && this.cam.obj;
+    options.liveZoom = Number.isFinite(camState.liveZoom) ? camState.liveZoom : NaN;
+    options.zoom = Number.isFinite(camState.zoom) ? camState.zoom : NaN;
+    options.tilt = Number.isFinite(camState.tilt) ? camState.tilt : 60;
+    options.fov = camObj && Number.isFinite(camObj.fov) ? camObj.fov
+      : (Number.isFinite(camState.fov) ? camState.fov : 90);
+    options.aspect = camObj && Number.isFinite(camObj.aspect) && camObj.aspect > 0
+      ? camObj.aspect
+      : 16 / 9;
+    const player = this.state.playerId
+      ? (this.state.entities && this.state.entities.get(this.state.playerId))
+      : null;
+    if (player && player.pos && this._frameMembrane) {
+      const local = this._frameMembrane.toLocal(player.pos, _shadowLocalXZ);
+      options.playerX = local.x;
+      options.playerZ = local.z;
+    }
+    return syncAuthoredInstancePools(this.scene, options);
+  },
+
+  _syncAsteroidInstanceSubmission(shadowCamera) {
+    const options = this._asteroidInstanceSyncOptions;
+    options.camera = this.cam.obj;
+    options.shadowCamera = shadowCamera || null;
+    options.records = this._entityFrame.asteroids;
+    options.recordsDirty = this._presentationWorld.consumeAsteroidDirty();
+    const result = syncAsteroidInstancePool(this._asteroidInstancePool, options);
+    if (result?.matrixUploads > 0) this._shadowMapDirty = true;
+    if (this.state && this.state.render) this.state.render.asteroidInstancePool = result;
+    return result;
+  },
+
+  /**
+   * Publish the render-only state that the first flight picture will use while the loading shell
+   * still owns the canvas. This deliberately advances neither simulation time nor a presentation
+   * frame: it consumes the already-published mirror, packs its current pose into the fence, applies
+   * the final activity/visibility decision, and refreshes matrices for exact camera admission.
+   */
+  _publishOpeningFirstPicture() {
+    const state = this.state;
+    const publication = this._presentationPublisher && typeof this._presentationPublisher.consume === 'function'
+      ? this._presentationPublisher.consume()
+      : null;
+    if (publication && publication.rebuilt) this._rebindPresentationMeshes();
+    else if (publication) this._bindPublishedPresentationMeshes(publication);
+
+    if (this._snapshotFence && this._presentationWorld) {
+      const packed = packPresentationWorldToFence(
+        this._presentationWorld,
+        this._snapshotFence,
+        state && state.simTime,
+      );
+      this._snapshotSourceTick = state && Number.isInteger(state.tick) ? state.tick : 0;
+      if (state && state.render) {
+        state.render.snapshotFence = {
+          sequence: this._snapshotFence.sequence,
+          packed,
+        };
+      }
+    }
+
+    const activityTick = state && Number.isInteger(state.tick) ? state.tick : -1;
+    const frame = getActivityFrame(state);
+    this._activityFrame = frame ? { ...frame, complete: true } : null;
+    this._activityFrameTick = activityTick;
+    if (state && state.render) state.render.activityFrame = this._activityFrame;
+    if (this._contextLost) return false;
+
+    // Establish the exact chase camera before visibility classification. The normal frame path
+    // follows the camera after entity sync because both are already settled in flight; this one
+    // loading-to-flight boundary cannot use the stale loading camera to cull and then freeze a
+    // different final camera picture.
+    if (this.cam && typeof this.cam.follow === 'function') this.cam.follow(0);
+    // This is the same pose/visibility seam as prepareFrame(), intentionally without residency
+    // service, background clocks, or any simulation advance. The loading DOM remains the only
+    // visible surface; drawPreparedFrame() still refuses to submit while mode=loading.
+    this.syncEntityViews(1);
+    if (state && state.render) state.render.interpolationAlpha = 1;
+    if (state && state.render && typeof state.render.prepareOpeningVfxFrame === 'function') {
+      state.render.prepareOpeningVfxFrame();
+    }
+    if (this.scene && typeof this.scene.updateMatrixWorld === 'function') {
+      this.scene.updateMatrixWorld(true);
+    }
+    syncContactShadowPool(this._contactShadowPool, this._entityFrame);
+    syncShipAuxPools(this._shipAuxPool, this._entityFrame);
+    const openingShadowRadius = liveShadowCastRadius(state);
+    this._frameShadowCastRadius = openingShadowRadius;
+    this._syncAuthoredInstanceSubmission(openingShadowRadius);
+    this._syncShadowMapEnabled();
+    if (this._syncKeyLightShadowFrustum(openingShadowRadius)) this._shadowMapDirty = true;
+    if (this._updateShadowFollow(true)) this._shadowMapDirty = true;
+    if (this._keyLight && this._keyLight.shadow && this.renderer && this.renderer.shadowMap) {
+      const shadowMapActive = this.renderer.shadowMap.enabled === true
+        && this._keyLight.castShadow === true;
+      this._keyLight.shadow.autoUpdate = false;
+      this._keyLight.shadow.needsUpdate = shadowMapActive;
+      this._shadowRefreshScheduled = shadowMapActive;
+      this._activeShadowCamera = shadowMapActive
+        ? prepareActiveShadowCamera(this.renderer, this._keyLight)
+        : null;
+    }
+    this._syncAsteroidInstanceSubmission(this._activeShadowCamera);
+    if (this.scene && typeof this.scene.updateMatrixWorld === 'function') {
+      this.scene.updateMatrixWorld(true);
+    }
+    return true;
+  },
+
+  _openingFirstPictureUpgradePromises() {
+    const state = this.state;
+    const camera = openingSubmissionCamera(this.cam && this.cam.obj);
+    if (!camera || !this.scene || !this._meshes) return null;
+    const entities = state && state.entities;
+    const pending = new Set();
+    for (const [id, root] of this._meshes) {
+      const entity = entities && typeof entities.get === 'function' ? entities.get(id) : null;
+      if (!entity || entity.alive === false || entity._noMesh) continue;
+      if (!openingEntityRootIntersectsCamera(root, entity, camera, this.scene)) continue;
+      const userData = root.userData || {};
+      const status = userData.authoredAssetState;
+      const settled = status === 'authored'
+        || status === 'authored-with-cleanup-error'
+        || status === 'authored-prepared'
+        || status === 'same-semantic-fallback-prepared'
+        || status === 'shell-ready'
+        || status === 'unavailable'
+        || status === 'procedural-settled'
+        || status === 'fallback-after-error'
+        || status === 'cancelled-before-load'
+        || status === 'orphaned-before-swap'
+        || status === 'orphaned-after-pipeline-compile';
+      let completion = userData.authoredUpgradePromise;
+      const lodTransition = userData.wholeShipLodTransitionPromise;
+      // The base promise is deliberately retained on the boundary for diagnostics and duplicate
+      // request suppression, so its mere presence does not mean work is still live once the
+      // authored state has settled. LOD replacement has its own identity-cleared in-flight promise.
+      if (!settled) {
+        if (!completion && typeof userData.requestAuthoredUpgrade === 'function') {
+          completion = requestAuthoredUpgrade(root, this.renderer, this.scene);
+        }
+        if (completion && typeof completion.then === 'function') pending.add(completion);
+      }
+      if (lodTransition && typeof lodTransition.then === 'function') pending.add(lodTransition);
+    }
+    return [...pending];
+  },
+
+  /**
+   * Final startup barrier for New Game and Continue. Authored boundary jobs are allowed to stage
+   * behind loading, but a camera-visible boundary cannot swap its fallback/payload after the exact
+   * producer census is frozen. Hidden, offscreen, unmounted, and deferred roots never enter this
+   * wait set and remain on the normal streaming runway.
+   */
+  async prepareOpeningFirstPicture(timeoutMs = 20000) {
+    const waitMs = Math.max(1, Number(timeoutMs) || 20000);
+    const started = typeof performance !== 'undefined' && typeof performance.now === 'function'
+      ? performance.now()
+      : Date.now();
+    const deadline = started + waitMs;
+    const previousDefer = this._deferNoncriticalMeshStreaming === true;
+    const previousRenderDefer = this.state && this.state.render
+      ? this.state.render.deferNoncriticalMeshStreaming === true
+      : false;
+    let succeeded = false;
+    // Freeze the render-owned root set at the same boundary as the exact census. Existing visible
+    // roots may finish their authored child swap below; no new residency/build pass can introduce a
+    // different root after capture and before the first draw.
+    this._deferNoncriticalMeshStreaming = true;
+    if (this.state && this.state.render) this.state.render.deferNoncriticalMeshStreaming = true;
+    this._openingFirstPicturePrepared = true;
+    try {
+      for (let pass = 0; pass < 8; pass++) {
+        if (!this._publishOpeningFirstPicture()) {
+          throw new Error('opening first-picture render publication unavailable');
+        }
+        const pending = this._openingFirstPictureUpgradePromises();
+        if (pending === null) throw new Error('opening first-picture camera unavailable');
+        if (pending.length === 0) {
+          // Re-publish once after the final boundary settles so the exact census sees the committed
+          // authored leaves rather than the pre-swap fallback children.
+          if (!this._publishOpeningFirstPicture()) {
+            throw new Error('opening first-picture final publication unavailable');
+          }
+          const late = this._openingFirstPictureUpgradePromises();
+          if (late === null) throw new Error('opening first-picture camera unavailable');
+          if (late.length === 0) {
+            freezeOpeningGraphPublication(this);
+            succeeded = true;
+            return true;
+          }
+          pending.push(...late);
+        }
+        const now = typeof performance !== 'undefined' && typeof performance.now === 'function'
+          ? performance.now()
+          : Date.now();
+        const remaining = deadline - now;
+        if (!(remaining > 0)) throw new Error('opening first-picture preparation timed out');
+        const settled = await Promise.race([
+          Promise.all(pending),
+          new Promise((resolve) => setTimeout(() => resolve(null), remaining)),
+        ]);
+        if (settled === null) throw new Error('opening first-picture preparation timed out');
+      }
+      throw new Error('opening first-picture boundary did not settle');
+    } finally {
+      if (!succeeded) {
+        this._deferNoncriticalMeshStreaming = previousDefer;
+        if (this.state && this.state.render) {
+          this.state.render.deferNoncriticalMeshStreaming = previousRenderDefer;
+        }
+        this._openingFirstPicturePrepared = false;
+        this._activityFrame = null;
+        this._activityFrameTick = null;
+        if (this.state && this.state.render) this.state.render.activityFrame = null;
+      }
+    }
+  },
+
   prepareFrame(alpha, frameDt, presentationFrame = null) {
     this._presentationFrame = presentationFrame;
     // Publication is consumed before any context-loss early return. PresentationRunner acknowledges
@@ -4938,12 +5605,27 @@ export const render = {
     const publication = this._presentationPublisher.consume(presentationFrame);
     if (publication.rebuilt) this._rebindPresentationMeshes();
     else this._bindPublishedPresentationMeshes(publication);
-    if (this._snapshotFence && this._presentationWorld) {
+    // PresentationRunner publishes a caller-owned completed-tick record, not the tick number
+    // itself. Its sequence is the immutable simulation publication boundary; falling back to the
+    // live state tick is only for the legacy/no-runner path.
+    const completedPublication = presentationFrame && presentationFrame.completedTick;
+    const completedTick = completedPublication && Number.isInteger(completedPublication.sequence)
+      ? completedPublication.sequence
+      : (completedPublication && Number.isInteger(completedPublication.tick)
+        ? completedPublication.tick
+        : (this.state && Number.isInteger(this.state.tick) ? this.state.tick : 0));
+    const snapshotNeedsPack = this._snapshotFence && this._presentationWorld
+      && (this._snapshotSourceTick !== completedTick
+        || this._snapshotFence.packCount === 0
+        || publication.rebuilt === true
+        || publication.applied > 0);
+    if (snapshotNeedsPack) {
       const packed = packPresentationWorldToFence(
         this._presentationWorld,
         this._snapshotFence,
         this.state && this.state.simTime,
       );
+      this._snapshotSourceTick = completedTick;
       if (this.state && this.state.render) {
         this.state.render.snapshotFence = {
           sequence: this._snapshotFence.sequence,
@@ -4970,45 +5652,47 @@ export const render = {
     // Existing neighbour-sector entities do not emit a spawn event when the player simply flies
     // toward them. The low-frequency poll keeps the same runway/hysteresis while avoiding the full
     // event-recovery scan and redundant presentation rebinding during ordinary settled flight.
+    const activityTick = this.state && Number.isInteger(this.state.tick) ? this.state.tick : -1;
+    if (this.state && this.state.mode !== 'flight' && !this._openingFirstPicturePrepared) {
+      // Loading may replace the entity table while retaining IDs and a saved tick. Classification
+      // is a flight authority; publishing it here would turn optional restored actors into false
+      // startup blockers before their authored admission queue can run.
+      this._activityFrame = null;
+      this._activityFrameTick = null;
+      if (this.state.render) this.state.render.activityFrame = null;
+    } else if (this._activityFrameTick !== activityTick
+        || (this._openingFirstPicturePrepared && this.state.mode !== 'flight')) {
+      const frame = getActivityFrame(this.state);
+      this._activityFrame = frame ? { ...frame, complete: true } : null;
+      this._activityFrameTick = activityTick;
+      if (this.state && this.state.render) this.state.render.activityFrame = this._activityFrame;
+    }
     serviceRenderMeshResidency(this, frameDt);
-    updateShipPitchPresentation(this.state, frameDt);
-    this.syncEntityViews(alpha);
-    if (this.state && this.state.render) this.state.render.interpolationAlpha = alpha;
-    if (this.cam && typeof this.cam.follow === 'function') this.cam.follow(frameDt);
-    syncContactShadowPool(this._contactShadowPool, this._entityFrame);
-    syncShipAuxPools(this._shipAuxPool, this._entityFrame);
-    const authoredSyncOptions = this._authoredInstanceSyncOptions;
-    authoredSyncOptions.camera = this.cam.obj;
-    authoredSyncOptions.entityFrame = this._entityFrame;
-    authoredSyncOptions.authoredRecords = this._entityFrame.authored;
-    authoredSyncOptions.playerX = 0;
-    authoredSyncOptions.playerZ = 0;
+    const holdOpeningPicture = this._openingFirstPicturePrepared === true
+      && this.state && this.state.mode === 'flight'
+      && !Number.isFinite(this.state.render && this.state.render.firstPlayableFrameAt);
+    if (!holdOpeningPicture) {
+      updateShipPitchPresentation(this.state, frameDt);
+      this.syncEntityViews(alpha);
+      if (this.state && this.state.render) this.state.render.interpolationAlpha = alpha;
+      if (this.cam && typeof this.cam.follow === 'function') this.cam.follow(frameDt);
+    } else if (this.state && this.state.render) {
+      // prepareOpeningFirstPicture already published the exact final pose, visibility, camera, and
+      // LOD graph. Preserve that immutable composition through its first submit; re-running the
+      // ordinary flight selector here can start a new async LOD child replacement after the census.
+      // Simulation remains authoritative and continues; only its next presentation is delayed until
+      // the first paint releases the opening latch below.
+      this.state.render.interpolationAlpha = 1;
+    }
+    if (!holdOpeningPicture) {
+      syncContactShadowPool(this._contactShadowPool, this._entityFrame);
+      syncShipAuxPools(this._shipAuxPool, this._entityFrame);
+    }
     const shadowRadius = Number.isFinite(this._frameShadowCastRadius)
       ? this._frameShadowCastRadius
       : liveShadowCastRadius(this.state);
     this._frameShadowCastRadius = shadowRadius;
-    authoredSyncOptions.castRadiusSq = shadowRadius * shadowRadius;
-    authoredSyncOptions.castRadius = shadowRadius;
-    authoredSyncOptions.consolidateOpaqueBatches = this._opaqueBatchEnabled === true;
-    const camState = this.state && this.state.camera || {};
-    const camObj = this.cam && this.cam.obj;
-    authoredSyncOptions.liveZoom = Number.isFinite(camState.liveZoom) ? camState.liveZoom : NaN;
-    authoredSyncOptions.zoom = Number.isFinite(camState.zoom) ? camState.zoom : NaN;
-    authoredSyncOptions.tilt = Number.isFinite(camState.tilt) ? camState.tilt : 60;
-    authoredSyncOptions.fov = camObj && Number.isFinite(camObj.fov) ? camObj.fov
-      : (Number.isFinite(camState.fov) ? camState.fov : 90);
-    authoredSyncOptions.aspect = camObj && Number.isFinite(camObj.aspect) && camObj.aspect > 0
-      ? camObj.aspect
-      : 16 / 9;
-    const player = this.state.playerId
-      ? (this.state.entities && this.state.entities.get(this.state.playerId))
-      : null;
-    if (player && player.pos && this._frameMembrane) {
-      const local = this._frameMembrane.toLocal(player.pos, _shadowLocalXZ);
-      authoredSyncOptions.playerX = local.x;
-      authoredSyncOptions.playerZ = local.z;
-    }
-    syncAuthoredInstancePools(this.scene, authoredSyncOptions);
+    if (!holdOpeningPicture) this._syncAuthoredInstanceSubmission(shadowRadius);
     // Background-clock for distant animation (planet cloud drift, hero-star twinkle). Integrates real
     // frame dt scaled by state.timeScale so the cosmos respects hit-stop/pause — a death freeze
     // momentarily stills the clouds too, keeping the backdrop in the same time model as the action.
@@ -5016,8 +5700,10 @@ export const render = {
     this._updateSectorPaletteTransition(frameDt);
     const ts = (this.state.timeScale != null) ? this.state.timeScale : 1;
     this._bgTime = (this._bgTime || 0) + frameDt * ts;
-    if (this.spaceBg && this.spaceBg.update) this.spaceBg.update(frameDt, this._bgTime, this.cam.obj.position);
-    parallaxLayers.update(frameDt);
+    if (!holdOpeningPicture) {
+      if (this.spaceBg && this.spaceBg.update) this.spaceBg.update(frameDt, this._bgTime, this.cam.obj.position);
+      parallaxLayers.update(frameDt);
+    }
     this._syncShadowMapEnabled();
     if (this._syncKeyLightShadowFrustum(shadowRadius)) this._shadowMapDirty = true;
     const shadowFollowChanged = this._updateShadowFollow(false);
@@ -5049,13 +5735,7 @@ export const render = {
       this._activeShadowCamera = prepareActiveShadowCamera(this.renderer, this._keyLight);
     }
     const shadowCamera = this._activeShadowCamera || null;
-    const asteroidSyncOptions = this._asteroidInstanceSyncOptions;
-    asteroidSyncOptions.camera = this.cam.obj;
-    asteroidSyncOptions.shadowCamera = shadowCamera;
-    asteroidSyncOptions.records = this._entityFrame.asteroids;
-    asteroidSyncOptions.recordsDirty = this._presentationWorld.consumeAsteroidDirty();
-    this.state.render.asteroidInstancePool = syncAsteroidInstancePool(this._asteroidInstancePool, asteroidSyncOptions);
-    if (this.state.render.asteroidInstancePool?.matrixUploads > 0) this._shadowMapDirty = true;
+    if (!holdOpeningPicture) this._syncAsteroidInstanceSubmission(shadowCamera);
     // Collision/socket/landing debug overlay (spec §12.5). Repositions pooled markers over the live
     // meshes once per frame; a cheap no-op when off (the group is hidden + nothing iterates).
       if (this.collisionDebug && this.collisionDebug.on) this.collisionDebug.update();
@@ -5108,6 +5788,44 @@ export const render = {
       );
       const postRoute = this._selectPostRoute();
       this._lastRenderPath = postRoute;
+      // The first visible submission has a hard pre-submit identity gate.  Exact compile has
+      // already populated the driver program census in the loading phase; this check now covers
+      // the final prepared graph (geometry, textures, shadows, and any program cache drift) before
+      // the post route can submit a single draw.  A later post-submit check still records driver
+      // variants that a backend lazily creates during the actual draw, but it cannot pretend to
+      // have prevented those variants.
+      const openingFirstDraw = this.state.mode === 'flight'
+        && !Number.isFinite(
+          this.state.render && this.state.render.openingSubmissionFirstDrawSubmittedAt,
+        );
+      if (openingFirstDraw) {
+        const receipt = this.state.render && this.state.render.openingSubmissionReceipt;
+        const preSubmitValidation = receipt
+          ? validateOpeningSubmissionReceipt(receipt, this.renderer)
+          : {
+            ok: false,
+            reason: 'missing-opening-submission-receipt',
+            uncaptured: ['plan'],
+          };
+        this.state.render.openingSubmissionPreSubmitValidation = preSubmitValidation;
+        if (!preSubmitValidation.ok) {
+          this.state.render.openingSubmissionValidation = preSubmitValidation;
+          const failure = {
+            reason: preSubmitValidation.reason || null,
+            uncaptured: preSubmitValidation.uncaptured || [],
+            uncapturedProgramKeys: preSubmitValidation.uncapturedProgramKeys || [],
+            uncapturedGeometryBufferIds: preSubmitValidation.uncapturedGeometryBufferIds || [],
+            uncapturedTextureIds: preSubmitValidation.uncapturedTextureIds || [],
+            uncapturedShadowResourceIds: preSubmitValidation.uncapturedShadowResourceIds || [],
+            missingProgramKeys: preSubmitValidation.missingProgramKeys || [],
+            missingGeometryBufferIds: preSubmitValidation.missingGeometryBufferIds || [],
+            missingTextureIds: preSubmitValidation.missingTextureIds || [],
+            missingShadowResourceIds: preSubmitValidation.missingShadowResourceIds || [],
+          };
+          console.error(`[render] opening submission pre-submit gate failed closed ${JSON.stringify(failure)}`);
+          return false;
+        }
+      }
       // Bloom owns exact pass timers internally. Graph/native have no nested pass timer owner, so
       // retain the existing outer measurement only for those routes.
       const gpuQueryBegan = postRoute !== POST_PROCESS_ROUTE.BLOOM
@@ -5126,6 +5844,29 @@ export const render = {
       if (dynamicBufferEpoch !== null) this._dynamicBuffers.disarm(dynamicBufferEpoch);
       if (postFrameToken) endPostRenderTargetFrameOrigin(postFrameToken);
     }
+    if (this.state.mode === 'flight'
+        && !this.state.render.openingSubmissionValidation
+        && this.state.render.openingSubmissionReceipt) {
+      const validation = validateOpeningSubmissionReceipt(
+        this.state.render.openingSubmissionReceipt,
+        this.renderer,
+      );
+      this.state.render.openingSubmissionValidation = validation;
+      if (!validation.ok) {
+        // This is the post-submit diagnostic for lazy driver variants created by the backend during
+        // the draw. The pre-submit gate already prevented known uncaptured graph identities; retain
+        // this delta as evidence and do not release the opening cohort.
+        console.error('[render] opening submission post-submit validation failed', validation);
+        this.state.render.openingSubmissionLateInstancedPbr = describeOpeningInstancedPbrLeaves(
+          this.scene,
+          this.state.render.openingSubmissionPlan,
+        );
+      } else if (!Number.isFinite(this.state.render.openingSubmissionFirstDrawSubmittedAt)) {
+        this.state.render.openingSubmissionFirstDrawSubmittedAt = typeof performance !== 'undefined'
+          ? performance.now()
+          : Date.now();
+      }
+    }
     if (useCpu) perf.recordRenderWork('drawPreparedFrame', performance.now() - t0);
     if (this.state.mode === 'flight'
         && !Number.isFinite(this.state.render.firstPlayableFrameAt)
@@ -5133,15 +5874,20 @@ export const render = {
       this._firstPlayablePaintScheduled = true;
       afterBrowserPaint(() => {
         try {
-          if (this.state.mode === 'flight') {
+          if (this.state.mode === 'flight'
+              && this.state.render.openingSubmissionValidation?.ok !== false) {
             this.state.render.firstPlayableFrameAt = typeof performance !== 'undefined'
               ? performance.now()
               : Date.now();
+          } else if (this.state.render.openingSubmissionValidation?.ok === false) {
+            return;
           }
         } finally {
-          releaseOpeningMeshDefer(this, this.state.mode);
-          if (typeof this.state.render.resumeDeferredPipelineAdmissions === 'function') {
-            void this.state.render.resumeDeferredPipelineAdmissions();
+          if (this.state.render.openingSubmissionValidation?.ok !== false) {
+            releaseOpeningMeshDefer(this, this.state.mode);
+            if (typeof this.state.render.resumeDeferredPipelineAdmissions === 'function') {
+              void this.state.render.resumeDeferredPipelineAdmissions();
+            }
           }
         }
       });
@@ -5710,11 +6456,42 @@ export const render = {
 /** Opening defer must clear even if the first painted frame is no longer flight. */
 export function releaseOpeningMeshDefer(owner, mode) {
   if (!owner) return owner;
+  releaseOpeningGraphPublication(owner);
   owner._deferNoncriticalMeshStreaming = false;
   if (owner.state && owner.state.render) owner.state.render.deferNoncriticalMeshStreaming = false;
   owner._meshReconcileDirty = true;
+  // The exact first-picture activity frame is a startup latch, not a steady-flight update path.
+  // Clear it with the mesh defer so ordinary prepareFrame() resumes its tick-gated classification.
+  owner._openingFirstPicturePrepared = false;
   owner._firstPlayablePaintScheduled = mode === 'flight';
   return owner;
+}
+
+/** Prevent async authored child publication from changing the exact graph between census and draw. */
+export function freezeOpeningGraphPublication(owner) {
+  if (!owner || !owner.state || !owner.state.render) return false;
+  if (owner._openingGraphPublicationGate) return true;
+  let resolveRelease;
+  const promise = new Promise((resolve) => { resolveRelease = resolve; });
+  const gate = { promise, resolveRelease };
+  owner._openingGraphPublicationGate = gate;
+  owner.state.render.openingGraphPublicationFrozen = true;
+  owner.state.render.waitForOpeningGraphPublicationRelease = () => gate.promise;
+  return true;
+}
+
+/** Release prepared offscreen publications after the exact first picture paints or is abandoned. */
+export function releaseOpeningGraphPublication(owner) {
+  if (!owner) return false;
+  const gate = owner._openingGraphPublicationGate;
+  owner._openingGraphPublicationGate = null;
+  if (owner.state && owner.state.render) {
+    owner.state.render.openingGraphPublicationFrozen = false;
+    owner.state.render.waitForOpeningGraphPublicationRelease = null;
+  }
+  if (!gate) return false;
+  gate.resolveRelease();
+  return true;
 }
 
 function afterBrowserPaint(callback) {

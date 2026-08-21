@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { displacementScalar } from './objectSpaceGeology.js';
 import { getReadyRockSurfaceTextures } from './rockSurfaceLibrary.js';
+import { stampOpeningSubmissionPackage } from './openingSubmissionPlan.js';
 
 const PALETTE_LERP_SECONDS = 1.5;
 const FALLBACK_DUST = '#35406a';
@@ -264,6 +265,42 @@ class ParallaxLayers {
     if (this._nearMesh) {
       this._nearMesh.count = nearCount;
       if (this._nearGroup) this._nearGroup.userData.activeCount = nearCount;
+    }
+    this._publishOpeningSubmissionPackages();
+  }
+
+  _publishOpeningSubmissionPackages() {
+    for (const layer of this._layers) {
+      const group = layer && layer.group;
+      const mesh = group && group.children && group.children.find((child) => child && child.isInstancedMesh);
+      if (!group || !mesh) continue;
+      const geometry = mesh.geometry;
+      const material = mesh.material;
+      stampOpeningSubmissionPackage(group, {
+        schema: 'spaceface.parallaxProducerManifest.v1',
+        producer: `parallax:${group.name}`,
+        version: 2,
+        layer: group.userData.layer || group.name,
+        factor: Number(group.userData.factor) || 0,
+        tileSize: Number(group.userData.tileSize) || 0,
+        baseCount: Number(group.userData.baseCount) || 0,
+        activeCount: Number(group.userData.activeCount) || 0,
+        geometryAttributes: geometry ? Object.keys(geometry.attributes || {}).sort() : [],
+        geometryDrawRange: geometry && geometry.drawRange
+          ? {
+            start: Number(geometry.drawRange.start) || 0,
+            count: Number(geometry.drawRange.count) || 0,
+          }
+          : null,
+        materialType: material && material.type || null,
+        materialCustomProgramKey: material && typeof material.customProgramCacheKey === 'function'
+          ? (() => { try { return String(material.customProgramCacheKey() || ''); } catch (_) { return ''; } })()
+          : '',
+      }, {
+        producer: `parallax:${group.name}`,
+        assetId: group.userData.assetId || group.name,
+        replace: true,
+      });
     }
   }
 

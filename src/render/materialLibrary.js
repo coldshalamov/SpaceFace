@@ -16,7 +16,7 @@
 // a given palette and get back a cached THREE material.
 
 import * as THREE from 'three';
-import { materialAbiRoleFromLibrary, materialProgramFamilyKey } from './materialAbi.js';
+import { normalizeMaterialAbi } from './materialAbi.js';
 
 // ---- tiny seeded hash (same scheme visualFactory uses) --------------------------------------
 function hashId(id) {
@@ -142,7 +142,7 @@ function glass(pal) {
 // emissiveSignal — authored glow strips, status lights, engine cores, beacon cores.
 // intensity tuned so bloom picks it up without washing the surface.
 function emissiveSignal(pal, intensity = 1.6) {
-  const key = `role:emis:${pal.emissive || pal.accent}:${intensity}`;
+  const key = `role:emissiveSignal:${pal.emissive || pal.accent}:${intensity}`;
   return _matGet(key, () => new THREE.MeshStandardMaterial({
     color: 0x070709, emissive: new THREE.Color(pal.emissive || pal.accent),
     emissiveIntensity: intensity, roughness: 1, metalness: 0,
@@ -178,18 +178,7 @@ function decalLight(pal) {
 // Internal cache getter (with noDispose)
 // ---------------------------------------------------------------------------------------------
 function stampMaterialAbi(material, libraryRole) {
-  if (!material || !material.userData) return material;
-  const abi = materialAbiRoleFromLibrary(libraryRole);
-  const maps = material.map ? 'mapped' : 'unmapped';
-  const family = materialProgramFamilyKey(abi, { maps });
-  material.userData.spacefaceMaterialAbi = abi;
-  material.userData.spacefaceProgramFamily = family;
-  const previous = material.customProgramCacheKey;
-  material.customProgramCacheKey = function spacefaceAbiProgramKey() {
-    const extra = typeof previous === 'function' ? previous.call(this) : '';
-    return extra ? `${family}|${extra}` : family;
-  };
-  return material;
+  return normalizeMaterialAbi(material, libraryRole);
 }
 
 function _matGet(key, build) {

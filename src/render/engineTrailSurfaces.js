@@ -285,6 +285,7 @@ function createTrailStreakPool(cap) {
   const mesh = new THREE.InstancedMesh(geometry, createInstancedTrailStreakMaterial(), capacity);
   mesh.name = 'SF_TrailStreakInstances';
   mesh.count = 0;
+  mesh.visible = false;
   mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   mesh.frustumCulled = false;
   mesh.renderOrder = 11;
@@ -332,6 +333,7 @@ export function commitTrailStreakInstances(pool, liveCount, { scroll, time } = {
     pool.colorAttribute.needsUpdate = true;
     pool.opacityAttribute.needsUpdate = true;
   }
+  pool.mesh.visible = liveCount > 0;
   pool.mesh.material.uniforms.uTrailTime.value = time || 0;
   pool.mesh.material.uniforms.uTrailScroll.value = scroll || 0;
 }
@@ -340,6 +342,7 @@ export function clearTrailStreakInstances(pool) {
   if (!pool || !pool.mesh) return;
   if (pool.dynamicBufferOwner) commitDynamicBufferOwner(pool.dynamicBufferOwner, 0);
   else pool.mesh.count = 0;
+  pool.mesh.visible = false;
 }
 
 export function updateTrailStreakMesh(mesh, {

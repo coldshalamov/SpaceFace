@@ -82,8 +82,8 @@ test('live VFX roots join the loading-stage texture upload instead of waiting fo
   assert.equal(result.textures, textures.length);
   assert.deepEqual(new Set(uploaded), new Set(textures));
   assert.match(RENDERER_SOURCE,
-    /collectVfxGpuResidencyRoots[\s\S]{0,420}prepareStartupGpuResidency\(renderer, \[\.\.\.roots, \.\.\.vfxRoots\]/,
-    'the loading-stage renderer must include the published live VFX roots in its upload batch');
+    /openingSubmissionPlan[\s\S]{0,1800}prepareStartupGpuResidency\(renderer, plan\.residencySubjects/,
+    'the loading-stage renderer must derive GPU uploads from the exact opening submission plan');
   system.destroy();
   assert.equal(state.render.collectVfxGpuResidencyRoots, undefined);
 });

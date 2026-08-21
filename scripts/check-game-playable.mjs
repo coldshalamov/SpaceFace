@@ -51,6 +51,7 @@ const ELECTRON = process.argv.includes('--electron');
 // says nothing about a save written by an OLDER build, which is the case that broke. Saves are
 // READ ONLY here: they are copied into a throwaway profile, never opened for writing.
 const REAL_SAVES = process.argv.includes('--real-saves');
+const NO_ROUNDTRIP = process.argv.includes('--no-roundtrip');
 // --player-profile launches Electron EXACTLY as SpaceFace-Desktop.bat does: the canonical port
 // 41788, the player's own user-data directory, their real settings profile and their real GPU
 // state. The isolated evidence profile differs in every one of those, so a green isolated run is
@@ -196,7 +197,7 @@ try {
   const opened = ELECTRON ? await openElectronRoute() : await openBrowserRoute();
   const page = opened.page;
   routeBaseUrl = opened.baseUrl;
-  page.on('pageerror', (err) => pageErrors.push(String(err && err.message || err)));
+  page.on('pageerror', (err) => pageErrors.push(`[${phase}] ${String(err && err.message || err)}`));
   page.on('console', (m) => {
     // "Failed to load resource: 404" with no URL is not actionable, and the console event does not
     // carry one. The response listener below does, so drop the useless twin.
@@ -208,7 +209,7 @@ try {
     // the request listener below retains the matching ERR_ABORTED receipt. They are not errors in
     // the replacement game instance and must not contaminate its CLEAN result.
     if (isExpectedNavigationTextureAbort(text, phase)) return;
-    pageErrors.push('console.error: ' + text.slice(0, 300));
+    pageErrors.push(`[${phase}] console.error: ` + text.slice(0, 300));
   });
   // Warnings carry the diagnosis for asset-preload failures ("authored part library was not
   // preloaded", KTX2/decoder complaints). They are not failures, but without them a preload timeout
@@ -422,7 +423,7 @@ try {
     // The round trip already happened on the way IN when booting from a real save, so re-saving
     // would only re-prove it and would write a throwaway slot for no information.
     let saved = false;
-    let roundTrip = !REAL_SAVES;
+    let roundTrip = !REAL_SAVES && !NO_ROUNDTRIP;
     if (roundTrip) try {
       saved = await page.evaluate(async () => {
         const save = window.SF.registry && window.SF.registry.get('save');
@@ -481,6 +482,122 @@ try {
   record('CLEAN', unique.length === 0, unique.length === 0
     ? 'no uncaught errors'
     : `${unique.length} uncaught error(s):\n      ` + unique.slice(0, 8).map((e) => e.slice(0, 220)).join('\n      '));
+  const openingFailure = await page.evaluate(() => {
+    const value = window.SF?.state?.render?.openingSubmissionPreSubmitValidation;
+    if (!value || value.ok === true) return null;
+    const geometryIds = new Set(value.uncapturedGeometryBufferIds || []);
+    const textureIds = new Set(value.uncapturedTextureIds || []);
+    const geometryOwners = [];
+    const textureOwners = [];
+    const instancedPbrCandidates = [];
+    const renderSystem = window.SF?.registry?.get?.('render');
+    const entityRoots = new Map();
+    for (const [id, root] of renderSystem?._meshes || []) {
+      if (root) entityRoots.set(root, String(id));
+    }
+    const plannedLeaves = new Set(
+      window.SF?.state?.render?.openingSubmissionPlan?.compileSubjects || [],
+    );
+    const baselineProgramKeys = window.SF?.state?.render?.openingSubmissionReceipt
+      ?.before?.programCacheKeys || [];
+    const describeOwner = (object) => {
+      let root = object;
+      while (root?.parent && !entityRoots.has(root)) root = root.parent;
+      const entityId = entityRoots.get(root) || null;
+      let planned = false;
+      for (let cursor = object; cursor; cursor = cursor.parent) {
+        if (plannedLeaves.has(cursor)) {
+          planned = true;
+          break;
+        }
+        if (cursor === root) break;
+      }
+      const objectName = object.name || object.type || 'Object3D';
+      return entityId == null
+        ? objectName
+        : `${entityId}:${root.name || root.type || 'entity-root'}:${planned ? 'planned-leaf' : 'late-leaf'}:${objectName}`;
+    };
+    renderSystem?.scene?.traverse?.((object) => {
+      const geometryId = object?.geometry?.uuid ? `uuid:${object.geometry.uuid}` : null;
+      if (geometryId && geometryIds.has(geometryId)) {
+        geometryOwners.push({ id: geometryId, object: describeOwner(object) });
+      }
+      const materials = Array.isArray(object?.material)
+        ? object.material
+        : object?.material ? [object.material] : [];
+      if (object?.isInstancedMesh && materials.some((material) => (
+        material?.isMeshStandardMaterial || material?.isMeshPhysicalMaterial
+      ))) {
+        instancedPbrCandidates.push({
+          name: object.name || object.type || 'InstancedMesh',
+          parent: object.parent?.name || object.parent?.type || null,
+          count: object.count || 0,
+          visible: object.visible !== false,
+          instanceColor: !!object.instanceColor,
+          planned: plannedLeaves.has(object),
+          producer: object.userData?.openingSubmissionPackage?.producer || null,
+          material: materials.map((material) => material?.type || 'Material'),
+        });
+      }
+      for (const material of materials) {
+        for (const [slot, texture] of Object.entries(material || {})) {
+          const textureId = texture?.isTexture && texture.uuid ? `uuid:${texture.uuid}` : null;
+          if (textureId && textureIds.has(textureId)) {
+            textureOwners.push({ id: textureId, object: describeOwner(object), slot });
+          }
+        }
+      }
+    });
+    const uniqueOwnerSummary = (values, keyFn) => {
+      const counts = new Map();
+      for (const value of values) {
+        const key = keyFn(value);
+        counts.set(key, (counts.get(key) || 0) + 1);
+      }
+      return [...counts.entries()]
+        .map(([owner, count]) => ({ owner, count }))
+        .sort((a, b) => b.count - a.count || a.owner.localeCompare(b.owner))
+        .slice(0, 24);
+    };
+    return {
+      reason: value.reason || null,
+      uncaptured: value.uncaptured || [],
+      counts: {
+        uncapturedPrograms: value.uncapturedProgramKeys?.length || 0,
+        uncapturedGeometries: value.uncapturedGeometryBufferIds?.length || 0,
+        uncapturedTextures: value.uncapturedTextureIds?.length || 0,
+        uncapturedShadows: value.uncapturedShadowResourceIds?.length || 0,
+        missingPrograms: value.missingProgramKeys?.length || 0,
+        missingGeometries: value.missingGeometryBufferIds?.length || 0,
+        missingTextures: value.missingTextureIds?.length || 0,
+        missingShadows: value.missingShadowResourceIds?.length || 0,
+      },
+      geometryOwners: uniqueOwnerSummary(geometryOwners, (entry) => entry.object),
+      textureOwners: uniqueOwnerSummary(textureOwners, (entry) => `${entry.object}.${entry.slot}`),
+      instancedPbrCandidates: instancedPbrCandidates
+        .sort((a, b) => Number(b.visible) - Number(a.visible)
+          || b.count - a.count || a.name.localeCompare(b.name))
+        .slice(0, 48),
+      firstDrawInstancedPbrCandidates:
+        window.SF?.state?.render?.openingSubmissionLateInstancedPbr || [],
+      lifecycle: {
+        firstDrawSubmittedAt:
+          window.SF?.state?.render?.openingSubmissionFirstDrawSubmittedAt ?? null,
+        firstPlayableFrameAt: window.SF?.state?.render?.firstPlayableFrameAt ?? null,
+        preSubmitOk:
+          window.SF?.state?.render?.openingSubmissionPreSubmitValidation?.ok ?? null,
+        validationOk: window.SF?.state?.render?.openingSubmissionValidation?.ok ?? null,
+        graphFrozen: window.SF?.state?.render?.openingGraphPublicationFrozen ?? null,
+      },
+      baselineInstancedPbrProgramKeys: baselineProgramKeys.filter((key) => (
+        String(key).startsWith('physical,STANDARD,')
+        && /,(8388625|8388627),/.test(String(key))
+      )).slice(0, 24),
+      sampleUncapturedProgramKeys: (value.uncapturedProgramKeys || []).slice(0, 8),
+      sampleMissingProgramKeys: (value.missingProgramKeys || []).slice(0, 8),
+    };
+  }).catch(() => null);
+  if (openingFailure) diagnostics.push(`opening submission: ${JSON.stringify(openingFailure)}`);
 
   // -- 8. ASSETS ------------------------------------------------------------------------------
   // Separate from CLEAN on purpose. A 404 is a different failure from a thrown exception, it needs

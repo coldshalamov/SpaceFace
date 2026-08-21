@@ -373,17 +373,24 @@ export async function waitForCurrentRenderPipelines(state, timeoutMs = 20000) {
   const drainPipelines = render.drainOpeningPipelinePlan;
   const captureResidency = render.captureOpeningGpuResidencyPlan;
   const drainResidency = render.drainOpeningGpuResidencyPlan;
-  if ((typeof capturePipelines === 'function') !== (typeof drainPipelines === 'function')) return false;
-  if ((typeof captureResidency === 'function') !== (typeof drainResidency === 'function')) return false;
+  const captureSubmission = render.captureOpeningSubmissionPlan;
+  const drainSubmission = render.drainOpeningSubmissionPlan;
+  const prepareOpeningFirstPicture = render.prepareOpeningFirstPicture;
+  const loadingOwnsOpeningSubmission = state.mode === 'loading';
+  if (!loadingOwnsOpeningSubmission
+    && (typeof capturePipelines === 'function') !== (typeof drainPipelines === 'function')) return false;
+  if (!loadingOwnsOpeningSubmission
+    && (typeof captureResidency === 'function') !== (typeof drainResidency === 'function')) return false;
+  if ((typeof captureSubmission === 'function') !== (typeof drainSubmission === 'function')) return false;
   let pipelinePlan = null;
-  try {
-    // This is the startup cohort boundary. Root identities are frozen here; their residency work is
-    // selected only after the captured pipeline continuations have had deterministic turns to start.
-    if (typeof capturePipelines === 'function') pipelinePlan = capturePipelines();
-  } catch {
-    return false;
-  }
-  if (typeof capturePipelines === 'function') {
+  if (!loadingOwnsOpeningSubmission) {
+    try {
+      // Non-loading callers retain the ordinary finite root watermark. Loading deliberately skips
+      // this broad queue: exact first-picture leaves are the only startup pipeline admission.
+      if (typeof capturePipelines === 'function') pipelinePlan = capturePipelines();
+    } catch {
+      return false;
+    }
     const exact = Promise.resolve().then(() => drainPipelines(pipelinePlan));
     render.exactPipelineWarmupReady = exact;
     const result = await settleWithin(exact, timeoutMs);
@@ -391,7 +398,40 @@ export async function waitForCurrentRenderPipelines(state, timeoutMs = 20000) {
     if (gpuContextIsLost(state)) return false;
   }
 
-  if (typeof captureResidency === 'function') {
+  // The exact first-picture plan is captured only after authored boundary continuations have
+  // committed. It compiles the live flat draw leaves (background, parallax, player, and any
+  // currently instantiated first-frame VFX) against the production target without rendering a
+  // hidden scene-wide discovery frame.
+  if (typeof captureSubmission === 'function') {
+    if (loadingOwnsOpeningSubmission && typeof prepareOpeningFirstPicture === 'function') {
+      const prepared = await settleWithin(
+        Promise.resolve().then(async () => {
+          const result = await prepareOpeningFirstPicture(timeoutMs);
+          if (result === false) throw new Error('opening first-picture preparation failed');
+          return result;
+        }),
+        timeoutMs,
+      );
+      if (!prepared.ok || gpuContextIsLost(state)) return false;
+    }
+    let submissionPlan = null;
+    try {
+      submissionPlan = captureSubmission();
+      if (!submissionPlan || submissionPlan.complete !== true
+        || !submissionPlan.firstPlayablePipelineSet
+        || submissionPlan.firstPlayablePipelineSet.complete !== true) return false;
+    } catch {
+      return false;
+    }
+    const submission = Promise.resolve().then(() => drainSubmission(submissionPlan));
+    render.openingSubmissionReady = submission;
+    if (loadingOwnsOpeningSubmission) render.exactPipelineWarmupReady = submission;
+    const submissionResult = await settleWithin(submission, timeoutMs);
+    if (!submissionResult.ok) return false;
+    if (gpuContextIsLost(state)) return false;
+  }
+
+  if (typeof captureResidency === 'function' && !loadingOwnsOpeningSubmission) {
     let residencyPlan = null;
     try {
       residencyPlan = captureResidency(pipelinePlan);

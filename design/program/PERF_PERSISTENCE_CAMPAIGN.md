@@ -55,33 +55,49 @@ ledger and restore on respawn; New Game no longer waits for a far Helios hub.
 Spatial hash now uses the same causal active set as Rapier. Far dormant
 colliders remain in the world list; they are not hashed or queried.
 
-## Implementation inventory (review this)
+## Implementation inventory
 
-Shipped in production. Picture contract: default bloom, shadows, particles,
-population, and combat authority stay on. Actors are not deleted at the screen
-edge.
+This is an implementation-status table, not a completion claim. The picture
+contract remains: default bloom, shadows, particles, population, and combat
+authority stay on. Actors are not deleted at the screen edge. A candidate is
+not accepted until its named gate passes on the live route.
 
-| Phase | What landed |
+| Phase | Current production status |
 |---|---|
-| 0 fixtures | Persistence matrix tests: mine/leave/return, follow, chase, kill, tether, catch-up, recent-memory GC |
-| 1 ledger | WorldRecord v2, resource-body ledger, catch-up kernels, destroyed IDs stay dead |
-| 2 activity | Pins, S0–S4, R0–R3, hysteresis, grace, `worldActivityManager` |
-| 3 far AI | S2/S3/S4 skip think; S1 reduced cadence; hostiles/tethers/jobs stay exact |
-| 4 Rapier | Active set + spatial hash from activity; far bodies remain in the world list |
-| 5 catch-up spiral | Present once per rAF; HUD/voice skip extra sim steps |
-| 6 residency | Mesh keep/submit follows R0/R1; R2/R3 unload except planets/focus |
-| 7 shell-first | Opening gate ignores far hubs; interiors do not block flight-ready |
-| 8 flight packages | Loadout fingerprint, cache, clone reuse; no in-flight geometry cook |
-| 9 cooker | Chase-camera cooker drops interior/hangar/attachment-tagged nodes |
-| 10 material ABI | Canonical roles stamp program families (no dummy prewarm) |
-| 11 submit lanes | Persistent reserve/release/dirty; mixed mega-batch stays off |
-| 12 governor | glass / runway / evictable roles on residency retain |
-| 13 snapshot fence | Packed each present; poses apply from snapshot |
-| 14 Worker | Abstract catch-up worker with main-thread fallback. Rapier stays main-thread |
-| 15 save/UI/audio | Catch-up save skip; HUD unchanged skip; listener-relative exact audio |
-| 16 background | Sky kept; no quality cut |
-| 17 Electron | Browser and Electron remain one path. Backend bake-off is review/measure |
-| 18 WebGPU | Selector exists; live present stays WebGL until a backend swap is proven |
+| 0 fixtures | Live witness, full save/Continue playability, persistence, and focused production checks are acceptance gates |
+| 1 ledger | Live: WorldRecord v2, resource-body ledger, catch-up kernels, destroyed IDs stay dead |
+| 2 activity | Live: pins, S0–S4, R0–R3, hysteresis, grace, and one activity owner |
+| 3 far AI | Live: owner views keep S0/S1 resident and wake S2/S3/S4 only for named causes; far actors remain durable |
+| 4 Rapier | Live: active set and spatial hash follow activity; far bodies remain in the world list |
+| 5 catch-up spiral | Live: presentation occurs once per rAF and HUD/voice skip extra catch-up steps |
+| 6 residency | Live: mesh keep/submit follows R0/R1; shared-resource-aware CPU/GPU byte budgets reclaim only unpinned cache residency |
+| 7 shell-first | Live: FlightReadySet admits the final camera picture; an immutable producer census compiles/uploads only exact submitted leaves, generated shadow variants, and restored persistent VFX before first draw |
+| 8 flight packages | Live partial architecture: Kestrel and compatible flight actors rehydrate immutable cached root templates while keeping materials, bindings, damage, drive, LOD, and lifecycle actor-local; a fully offline flat package remains future work |
+| 9 cooker | Offline selection contract only: live roots are not destructively pruned; admitted cooked artifacts and projected-pixel evidence remain future work |
+| 10 material ABI | Metadata only: roles/features are recorded without changing Three program cache keys; the required 25% physical program-key reduction is not yet proven |
+| 11 submit lanes | Disabled future seam: no production GPU range uploader consumes the lane plan, so it is not enabled on the hot path |
+| 12 governor | Live: byte budgets pin player, opening shell, glass, runway, current-sector, and durable retained resources with shared GPU identities counted once |
+| 13 snapshot fence | Live: reusable fenced snapshots publish completed poses, survive capacity growth, and fail closed for ordinary roots without a completed pose |
+| 14 Worker | Disabled future seam: SAB protocol/kernel exist, but authoritative simulation, Rapier, command/event rings, and save ownership have not moved off-thread |
+| 15 save/UI/audio | Partial live lanes: non-destructive dirty boundaries, Massline changed-value repaint, and inactive remote-loop suppression; full worker serialization/chunked storage is not claimed |
+| 16 background | No structural consolidation admitted; visible sky and default quality are unchanged |
+| 17 Electron | Future qualification: browser and Electron remain one game path; backend flags require a bounded A/B before admission |
+| 18 WebGPU | Future escalation: selector scaffolding is not a shipped WebGPU renderer and live presentation stays WebGL |
+
+## Accepted live result — 2026-08-21
+
+- New Game reached flight in 8.2 seconds on the isolated Windows/Electron witness.
+- The exact opening producer census matched and the first visible draw admitted no uncaptured
+  program, geometry, texture, or shadow identity.
+- The final live sample was presenting with 3/3 distinct canvas hashes, no context loss, no frame
+  error, and zero hitch samples in the tail window.
+- Final sampled p95: render 5.8 ms, presentation 7.7 ms, VFX 0.9 ms, simulation 6.6 ms,
+  sim-frame 14.4 ms. Bloom scene p95 was 4.4 ms; tactical AI was the largest sampled simulation
+  subsystem at 2.5 ms p95.
+- Full New Game -> controls -> save -> Continue -> restored controls playability passed 14/14.
+- The broader hitch classifier still attributes most threshold crossings to external scheduling
+  (161/209 in this run). That is the remaining dominant environment/frame-pacing lead, not evidence
+  for removing authored graphics or lowering default quality.
 
 S4: generic unobserved far ships are aggregate counters, still alive in the
 list, zero per-tick AI/physics.

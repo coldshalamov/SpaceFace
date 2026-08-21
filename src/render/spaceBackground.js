@@ -43,6 +43,7 @@ import {
   easeSectorTransition,
   SECTOR_VISUAL_TRANSITION_SECONDS,
 } from './sectorVisualTransition.js';
+import { stampOpeningSubmissionPackage } from './openingSubmissionPlan.js';
 
 // ----------------------------------------------------------------------------
 // Seeded PRNG (mulberry32) + string hash — ~15 lines, no deps.
@@ -1171,6 +1172,7 @@ export class SpaceBackground {
     this._createFlares();
     this._createComet();
     this._refreshHeroes(true);
+    this._publishOpeningSubmissionPackage();
 
     if (this.debug && typeof window !== 'undefined') {
       const bg = this;
@@ -1181,7 +1183,7 @@ export class SpaceBackground {
         setIntensity: (x) => bg.setIntensity(x),
         stats: () => bg.stats(),
         teleport: () => { bg._lastPlanetGX = null; bg._lastWormGX = null; },
-        forceTier: (name) => { bg.tierOverride = name || null; const was = bg.tierName; bg._resolveTier(); if (bg.tierName !== was) { bg.bakeAll(); bg._rebuildStarsAndFlares(); bg._createComet(); bg._refreshHeroes(true); } },
+        forceTier: (name) => { bg.tierOverride = name || null; const was = bg.tierName; bg._resolveTier(); if (bg.tierName !== was) { bg.bakeAll(); bg._rebuildStarsAndFlares(); bg._createComet(); bg._refreshHeroes(true); bg._publishOpeningSubmissionPackage(); } },
       };
     }
   }
@@ -1218,6 +1220,49 @@ export class SpaceBackground {
     this.flareCount = tier === 'low' ? 36 : tier === 'mid' ? 56 : 72;
   }
 
+  _publishOpeningSubmissionPackage() {
+    if (!this.group) return null;
+    const stats = typeof this.stats === 'function' ? this.stats() : {};
+    const composition = this.backgroundComposition || {};
+    const structure = this.backgroundStructure || {};
+    const recipe = this.deepFieldRecipe || {};
+    return stampOpeningSubmissionPackage(this.group, {
+      schema: 'spaceface.spaceBackgroundProducerManifest.v1',
+      producer: 'space-background',
+      version: 1,
+      seed: Number(this.seed) >>> 0,
+      skySeed: Number(this.skySeed) >>> 0,
+      tier: this.tierName || null,
+      bakeSizes: this.bakeSizes || null,
+      starCount: Number(this.starCount) || 0,
+      flareCount: Number(this.flareCount) || 0,
+      quadSize: Number(this.quadSize) || 0,
+      structureId: structure.id || null,
+      structureRecipeId: recipe.id || null,
+      palette: this.currentPaletteName || null,
+      sectorId: this._sectorId || null,
+      composition: {
+        planetChance: composition.planetChance,
+        ringChance: composition.ringChance,
+        wormholeChance: composition.wormholeChance,
+        cometInterval: composition.cometInterval,
+      },
+      producerStats: {
+        stars: Number(stats.stars) || 0,
+        flares: Number(stats.flares) || 0,
+        planets: Number(stats.planets) || 0,
+        wormhole: stats.wormhole === true,
+        structureMacro: stats.structureMacro === true,
+        structureMacroMeshes: Number(stats.structureMacroMeshes) || 0,
+        layerGeometries: Number(stats.layerGeometries) || 0,
+      },
+    }, {
+      producer: 'space-background',
+      assetId: this.group.userData.assetId || 'SPACE_BACKGROUND',
+      replace: true,
+    });
+  }
+
   // Live re-tier entry point. renderer.js detects the GPU before constructing us, so its call right
   // after construction is a no-op safety net; this exists for an actual tier CHANGE (SF.bg.forceTier,
   // a future settings-driven quality switch). Rebuilds only if the tier actually changed.
@@ -1235,6 +1280,7 @@ export class SpaceBackground {
     this._rebuildStarsAndFlares();
     this._createComet();
     this._refreshHeroes(true);
+    this._publishOpeningSubmissionPackage();
   }
 
   // ---- measured geometry: footprints, distances, pixel scale -----------------------
@@ -2803,6 +2849,7 @@ export class SpaceBackground {
       this._rebuildStarsAndFlares();
       this._spawnStructureCard();
       this._refreshHeroes(true);
+      this._publishOpeningSubmissionPackage();
       return;
     }
 
@@ -2816,6 +2863,7 @@ export class SpaceBackground {
     transition.targetPaletteName = pal;
     this._sectorTintStart.copy(this._sectorTintCurrent);
     this._sectorTintTarget.set(PALETTES[pal].emission);
+    this._publishOpeningSubmissionPackage();
   }
 
   _skyPaletteForSector(sector) {
@@ -2840,6 +2888,7 @@ export class SpaceBackground {
     this.planetCacheOrder.length = 0;
     this._spriteMatCache.clear();
     this._refreshHeroes(true);
+    this._publishOpeningSubmissionPackage();
   }
 
   setPalette(name) {
@@ -2852,6 +2901,7 @@ export class SpaceBackground {
     this.planetCacheOrder.length = 0;
     this._spriteMatCache.clear();
     this._refreshHeroes(true);
+    this._publishOpeningSubmissionPackage();
   }
 
   setIntensity(x) {
@@ -2903,6 +2953,7 @@ export class SpaceBackground {
     this._spawnStructureCard();
     this._createComet();
     this._refreshHeroes(true);
+    this._publishOpeningSubmissionPackage();
   }
 
   dispose() {

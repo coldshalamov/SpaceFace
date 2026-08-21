@@ -6,10 +6,8 @@ import test from 'node:test';
 // composition (every nearby NPC ship + station FX within the immediate radius), which a software
 // renderer pushes through a serial admission queue with no KHR_parallel_shader_compile and cannot
 // finish inside the 90s startup deadline. The player and the critical starting hub are admitted
-// first and compose quickly; on a positively-detected software renderer the gate now narrows to
-// player + hub only, while real hardware (and unknown/missing tier) keep the strict full-opening-set
-// contract so fail-closed still holds. Default visual quality is unchanged: the relaxed actors still
-// upgrade to authored after the first flight frame.
+// first and compose quickly. Every GPU tier now consumes the same explicit player + shell set;
+// optional actors remain diagnostics and stream after the first flight frame.
 import * as partsLibrary from '../src/render/partsLibrary.js';
 
 function makeEntity({ id, type = 'ship', status = 'missing', isPlayer = false, pos = null, data = {} }) {
@@ -77,38 +75,75 @@ test('software renderer: the critical starting hub is still required', () => {
   assert.equal(readiness.ready, false, 'the critical hub must still be authored before flight');
 });
 
-test('hardware renderer: the full opening set still gates flight (no weakening on real hardware)', () => {
+test('the current R0 glass actor is an explicit startup blocker', () => {
+  const state = buildState({ tier: 'discrete' });
+  const actor = state.entityList.find((entity) => entity.id === 'npc-0');
+  actor.activity = { presentationTier: 'R0_GLASS' };
+  const blocked = partsLibrary.authoredCriticalVisualReadiness(state);
+  assert.equal(blocked.ready, false);
+  assert.ok(blocked.flightReadyBlockers.some((entry) => entry.role === 'glassActors'));
+  actor.mesh.userData.authoredAssetState = 'authored';
+  assert.equal(partsLibrary.authoredCriticalVisualReadiness(state).ready, true);
+});
+
+test('each current R0 glass actor remains independently required', () => {
+  const state = buildState({ tier: 'discrete' });
+  for (const actor of state.entityList.filter((entity) => entity.id.startsWith('npc-'))) {
+    actor.activity = { presentationTier: 'R0_GLASS' };
+  }
+  const blocked = partsLibrary.authoredCriticalVisualReadiness(state);
+  assert.equal(blocked.flightReadyBlockers.filter((entry) => entry.role === 'glassActors').length, 2);
+  state.entityList.find((entity) => entity.id === 'npc-0').mesh.userData.authoredAssetState = 'authored';
+  assert.equal(partsLibrary.authoredCriticalVisualReadiness(state).ready, false);
+  state.entityList.find((entity) => entity.id === 'npc-1').mesh.userData.authoredAssetState = 'authored';
+  assert.equal(partsLibrary.authoredCriticalVisualReadiness(state).ready, true);
+});
+
+test('loading ignores a prior flight activity frame whose entity ids are being reused', () => {
+  const state = buildState({ tier: 'integrated' });
+  state.mode = 'loading';
+  state.render.activityFrame = {
+    complete: true,
+    renderGlassIds: [state.entityList.find((entity) => entity.id === 'npc-0').id],
+    renderRunwayIds: [],
+  };
+  state.entityList.find((entity) => entity.id === 'npc-0').activity = {
+    presentationTier: 'R0_GLASS',
+  };
+  assert.equal(partsLibrary.authoredCriticalVisualReadiness(state).ready, true,
+    'restored id reuse must not widen the explicit loading FlightReadySet');
+});
+
+test('hardware renderer: optional opening traffic does not widen the FlightReadySet', () => {
   const state = buildState({ tier: 'discrete' });
   const readiness = partsLibrary.authoredCriticalVisualReadiness(state);
 
   assert.equal(readiness.softwareRenderer, false);
-  assert.equal(readiness.pipelineReady, false,
-    'hardware gate must keep waiting for the whole opening composition to stage');
-  assert.equal(readiness.ready, false,
-    'hardware gate must keep waiting for the whole opening composition to be authored');
+  assert.equal(readiness.pipelineReady, true,
+    'hardware gate must use the explicit player + shell package set');
+  assert.equal(readiness.ready, true,
+    'hardware gate must not wait for optional traffic');
 });
 
-test('unknown or missing GPU tier keeps the strict contract (fail-closed default)', () => {
+test('unknown or missing GPU tier still uses the explicit fail-closed core set', () => {
   // No state.render at all — the path a state object takes before the renderer publishes gpu, and any
   // privacy-hardened context where detection returns 'unknown'.
   const state = buildState({});
   const readiness = partsLibrary.authoredCriticalVisualReadiness(state);
 
   assert.equal(readiness.softwareRenderer, false);
-  assert.equal(readiness.pipelineReady, false,
-    'unknown tier must keep the strict full-opening-set gate');
-  assert.equal(readiness.ready, false);
+  assert.equal(readiness.pipelineReady, true,
+    'unknown tier must still admit the core player + shell package');
+  assert.equal(readiness.ready, true);
 });
 
-test('hardware gate clears once the full opening set stages, proving the relaxation is software-only', () => {
+test('hardware gate diagnostics still expose optional traffic while core set is ready', () => {
   const state = buildState({ tier: 'discrete', npcStatuses: ['compiling-pipelines', 'authored'] });
   const readiness = partsLibrary.authoredCriticalVisualReadiness(state);
 
-  // compiling-pipelines + authored both satisfy authoredPipelineStaged; authored is the only one
-  // that satisfies the committed `ready` gate, so the second NPC pins ready true and the first
-  // (compiling-pipelines) leaves ready false until it resolves.
   assert.equal(readiness.pipelineReady, true, 'all opening actors staged must clear the hardware gate');
-  assert.equal(readiness.ready, false, 'a compiling-pipelines actor is not yet committed authored');
+  assert.equal(readiness.ready, true, 'a compiling-pipelines optional actor does not block startup');
+  assert.equal(readiness.openingPending.length, 1, 'optional pending actor remains diagnostic');
 });
 
 test('hardware gate does not wait forever on nearby ships that already failed admission', () => {
@@ -121,8 +156,8 @@ test('hardware gate does not wait forever on nearby ships that already failed ad
   assert.equal(readiness.softwareRenderer, false);
   assert.equal(readiness.pipelineReady, true,
     'failed nearby traffic must not keep New Game/Continue in loading after the player has staged');
-  assert.equal(readiness.ready, false,
-    'a still-compiling neighbour still holds the committed authored gate');
+  assert.equal(readiness.ready, true,
+    'a still-compiling neighbour remains outside the committed authored gate');
 
   state.entityList.find((entity) => entity.id === 'npc-2').mesh.userData.authoredAssetState = 'authored';
   const committed = partsLibrary.authoredCriticalVisualReadiness(state);

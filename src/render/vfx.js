@@ -178,6 +178,7 @@ import {
   deriveVfxAdmissionMetadata,
   normalizeVfxAdmissionPriority,
 } from '../presentation/vfxAdmissionPriority.js';
+import { stampOpeningSubmissionPackage } from './openingSubmissionPlan.js';
 
 const EMPTY_TRAIL_SOCKETS = Object.freeze([]);
 const EMPTY_PROJECTILE_DATA = Object.freeze({});
@@ -925,8 +926,10 @@ export const vfx = {
     // because particle-quality changes can replace the point-cloud geometry without changing the
     // renderer/VFX ownership boundary.
     this._collectVfxGpuResidencyRoots = () => this._vfxOwnerRoots();
+    this._prepareOpeningVfxFrame = () => this._publishOpeningPersistentVfx();
     if (ctx.state && ctx.state.render) {
       ctx.state.render.collectVfxGpuResidencyRoots = this._collectVfxGpuResidencyRoots;
+      ctx.state.render.prepareOpeningVfxFrame = this._prepareOpeningVfxFrame;
     }
     // Measurement-only VFX owner seam. It snapshots only roots this system owns;
     // event lights remain visible/intensity-driven to avoid shader recompiles.
@@ -958,6 +961,9 @@ export const vfx = {
     if (render) {
       if (render.collectVfxGpuResidencyRoots === this._collectVfxGpuResidencyRoots) {
         delete render.collectVfxGpuResidencyRoots;
+      }
+      if (render.prepareOpeningVfxFrame === this._prepareOpeningVfxFrame) {
+        delete render.prepareOpeningVfxFrame;
       }
       if (render.perfVfxIsolation === this._perfVfxIsolationPort) delete render.perfVfxIsolation;
       if (render.vfxReprojectFrame === this._vfxReprojectFramePort) delete render.vfxReprojectFrame;
@@ -999,11 +1005,77 @@ export const vfx = {
     for (const root of presenterRoots || []) add(root);
     if (this._energy) {
       add(this._energy.ribbon);
+      add(this._energy.plasmaStream && this._energy.plasmaStream.group);
+      add(this._energy.retroVolume && this._energy.retroVolume.group);
       add(this._energy.plumeSystem && this._energy.plumeSystem.group);
       add(this._energy.rcsSystem && this._energy.rcsSystem.group);
+      for (const family of this._energy.fleet?.families || []) {
+        add(family && family.plume && family.plume.group);
+        add(family && family.rcs && family.rcs.group);
+      }
     }
     for (const trail of this._ribbonTrails?.values?.() || []) add(trail.getMesh?.());
+    for (const root of roots) {
+      if (!root.userData?.openingSubmissionPackage) this._publishOpeningVfxPackage(root);
+    }
     return roots;
+  },
+
+  _publishOpeningPersistentVfx() {
+    if (!this._scene) return false;
+    // Continue can restore a moving ship. Publish the persistent propulsion picture at zero
+    // elapsed time before renderer freezes its exact opening census; otherwise the first flight
+    // update creates the real plume geometry after the receipt. This does not emit transient trail
+    // particles, advance cosmetic clocks, or mutate simulation state.
+    this._syncFrameMembrane();
+    this._tableVfxDrawWu = tableVfxDrawWuFromState(this.state);
+    const energy = this._updateEnergy(0);
+    if (this._fieldGeomInitialized || this._fieldFlowRelevant()) this._updateFieldGeometry(0);
+    return energy;
+  },
+
+  _publishOpeningVfxPackage(root) {
+    if (!root || !root.userData) return null;
+    const geometry = [];
+    const materials = [];
+    if (typeof root.traverse === 'function') {
+      root.traverse((object) => {
+        if (object && object.geometry) {
+          const drawRange = object.geometry.drawRange;
+          geometry.push({
+            name: object.name || object.type || '',
+            attributes: Object.keys(object.geometry.attributes || {}).sort(),
+            drawRange: drawRange
+              ? { start: Number(drawRange.start) || 0, count: Number(drawRange.count) || 0 }
+              : null,
+          });
+        }
+        const list = Array.isArray(object && object.material)
+          ? object.material
+          : object && object.material ? [object.material] : [];
+        for (const material of list) {
+          if (!material) continue;
+          materials.push({
+            type: material.type || 'Material',
+            customProgramCacheKey: typeof material.customProgramCacheKey === 'function'
+              ? (() => { try { return String(material.customProgramCacheKey() || ''); } catch (_) { return ''; } })()
+              : '',
+          });
+        }
+      });
+    }
+    return stampOpeningSubmissionPackage(root, {
+      schema: 'spaceface.vfxProducerManifest.v1',
+      producer: 'vfx-owner-pool',
+      version: 1,
+      owner: root.userData.vfxOwner || root.name || root.type || 'vfx',
+      geometry,
+      materials,
+    }, {
+      producer: 'vfx-owner-pool',
+      assetId: root.userData.assetId || root.name || 'vfx-owner-pool',
+      replace: false,
+    });
   },
 
   _perfVfxRoots() {
@@ -1694,6 +1766,7 @@ export const vfx = {
     x, z, vx, vz, life, size0, size1, c0, c1, drag, y, vy, trailAxis, trailStretch,
     admissionPriority,
   ) {
+    if (this.state?.render?.openingGraphPublicationFrozen === true) return null;
     if (!this._scene) return;
     assertDynamicBufferOwnerWritable(this._particleDynamicBufferOwner);
     const cap = this._cap;
@@ -1738,6 +1811,7 @@ export const vfx = {
     kind, x, y, z, life, size0, size1, op0, op1, color, vx, vz, aspect = 1, roll = null,
     admissionPriority,
   ) {
+    if (this.state?.render?.openingGraphPublicationFrozen === true) return null;
     if (!this._scene) return null;
     if (kind === SPR_FLASH || kind === SPR_COMBUSTION) {
       const authored = this._flashAccessibilityScratch;
@@ -1828,6 +1902,7 @@ export const vfx = {
   },
 
   _spawnTrailStreak(x, y, z, life, size0, size1, op0, color, vx, vz, admissionPriority) {
+    if (this.state?.render?.openingGraphPublicationFrozen === true) return null;
     if (!richEngineTrailsEnabled(this.state && this.state.settings && this.state.settings.video)) return null;
     if (!this._scene || !this._trailStreakPool) return null;
     const i = this._claimTrailStreak(admissionPriority);
@@ -1870,6 +1945,7 @@ export const vfx = {
     x, y, z, life, width, length, op0, color, vx, vz, axisX = null, axisZ = null,
     admissionPriority,
   ) {
+    if (this.state?.render?.openingGraphPublicationFrozen === true) return null;
     if (!this._scene || !this._trailStreakPool) return null;
     const i = this._claimTrailStreak(admissionPriority);
     if (i < 0) return null;
@@ -8206,87 +8282,103 @@ export const vfx = {
     const vaneGeo = createCurvedVaneGeometry();
     const vaneCap = 48;
     const vaneMesh = new THREE.InstancedMesh(vaneGeo, frameMat, vaneCap);
+    vaneMesh.name = 'SF_FieldVaneInstances';
     vaneMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     vaneMesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(vaneCap * 3), 3);
     vaneMesh.instanceColor.setUsage(THREE.DynamicDrawUsage);
     vaneMesh.frustumCulled = false;
     vaneMesh.renderOrder = 9;
     vaneMesh.count = 0;
+    vaneMesh.visible = false;
     this._scene.add(vaneMesh);
 
     const pipGeo = new THREE.ConeGeometry(0.5, 1.4, 3);
     pipGeo.rotateX(Math.PI / 2);
     const pipCap = 96;
     const pipMesh = new THREE.InstancedMesh(pipGeo, crispPipMat, pipCap);
+    pipMesh.name = 'SF_FieldPipInstances';
     pipMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     pipMesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(pipCap * 3), 3);
     pipMesh.instanceColor.setUsage(THREE.DynamicDrawUsage);
     pipMesh.frustumCulled = false;
     pipMesh.renderOrder = 10;
     pipMesh.count = 0;
+    pipMesh.visible = false;
     this._scene.add(pipMesh);
 
     const knotGeo = new THREE.OctahedronGeometry(0.5, 0);
     const knotCap = 12;
     const knotMesh = new THREE.InstancedMesh(knotGeo, frameMat, knotCap);
+    knotMesh.name = 'SF_FieldKnotInstances';
     knotMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     knotMesh.frustumCulled = false;
     knotMesh.renderOrder = 8;
     knotMesh.count = 0;
+    knotMesh.visible = false;
     this._scene.add(knotMesh);
 
     const domeGeo = new THREE.IcosahedronGeometry(1.0, 1);
     const domeCap = 12;
     const domeMesh = new THREE.InstancedMesh(domeGeo, frameMat, domeCap);
+    domeMesh.name = 'SF_FieldDomeInstances';
     domeMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     domeMesh.frustumCulled = false;
     domeMesh.renderOrder = 8;
     domeMesh.count = 0;
+    domeMesh.visible = false;
     this._scene.add(domeMesh);
 
     const ribGeo = new THREE.BoxGeometry(0.35, 0.12, 1.0);
     const ribCap = 64;
     const ribMesh = new THREE.InstancedMesh(ribGeo, frameMat, ribCap);
+    ribMesh.name = 'SF_FieldRibInstances';
     ribMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     ribMesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(ribCap * 3), 3);
     ribMesh.instanceColor.setUsage(THREE.DynamicDrawUsage);
     ribMesh.frustumCulled = false;
     ribMesh.renderOrder = 9;
     ribMesh.count = 0;
+    ribMesh.visible = false;
     this._scene.add(ribMesh);
 
     const bermGeo = new THREE.DodecahedronGeometry(0.7, 0);
     const bermCap = 96;
     const bermMesh = new THREE.InstancedMesh(bermGeo, crispBermMat, bermCap);
+    bermMesh.name = 'SF_FieldBermInstances';
     bermMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     bermMesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(bermCap * 3), 3);
     bermMesh.instanceColor.setUsage(THREE.DynamicDrawUsage);
     bermMesh.frustumCulled = false;
     bermMesh.renderOrder = 10;
     bermMesh.count = 0;
+    bermMesh.visible = false;
     this._scene.add(bermMesh);
 
     const chevronGeo = new THREE.ConeGeometry(0.45, 0.95, 3);
     chevronGeo.rotateZ(-Math.PI / 2);
     const chevronCap = 96;
     const chevronMesh = new THREE.InstancedMesh(chevronGeo, crispChevronMat, chevronCap);
+    chevronMesh.name = 'SF_FieldChevronInstances';
     chevronMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     chevronMesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(chevronCap * 3), 3);
     chevronMesh.instanceColor.setUsage(THREE.DynamicDrawUsage);
     chevronMesh.frustumCulled = false;
     chevronMesh.renderOrder = 10;
     chevronMesh.count = 0;
+    chevronMesh.visible = false;
     this._scene.add(chevronMesh);
 
     const bankGeo = new THREE.BoxGeometry(0.18, 0.1, 1.0);
     const bankCap = 24;
     const bankMesh = new THREE.InstancedMesh(bankGeo, crispBankMat, bankCap);
+    bankMesh.name = 'SF_FieldBankInstances';
     bankMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     bankMesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(bankCap * 3), 3);
     bankMesh.instanceColor.setUsage(THREE.DynamicDrawUsage);
     bankMesh.frustumCulled = false;
     bankMesh.renderOrder = 9;
     bankMesh.count = 0;
+    bankMesh.visible = false;
     this._scene.add(bankMesh);
 
     const coreEnergyGeo = new THREE.OctahedronGeometry(1.0, 0);
@@ -8791,6 +8883,12 @@ export const vfx = {
     }
     if (this._perfVfxIsolationRestore) {
       this._reassertPerfVfxRoots();
+      return;
+    }
+    if (this.state && this.state.render && this.state.render.openingGraphPublicationFrozen === true) {
+      // The loading boundary already captured every VFX leaf active in the exact first picture.
+      // Do not activate a motion/weapon/drive pool between that census and its first submit; the
+      // publication latch releases after paint and normal VFX cadence resumes on the next frame.
       return;
     }
     // Observe frameOriginSeq even if renderer already reprojected — same-origin is a no-op.
@@ -11970,6 +12068,7 @@ function assertFieldGeometryBuffersWritable(owners) {
 }
 
 function commitFieldGeometryBuffer(owner, mesh, count) {
+  mesh.visible = count > 0;
   if (owner) {
     if (count > 0) {
       markDynamicBufferItems(owner, INSTANCED_MATRIX_BUFFER, 0, count);

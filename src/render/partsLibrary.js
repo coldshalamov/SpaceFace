@@ -50,12 +50,35 @@ import {
   createFlightRenderPackageCache,
 } from './flightRenderPackage.js';
 import { cookFlightProduct } from './flightProductCooker.js';
+import {
+  FLIGHT_READY_ROLE,
+  PLACE_PACKAGE_LAYER,
+  createFlightReadySet,
+  isFlightReadyStatus,
+  isPlaceLayerBlockingFlightReady,
+  selectPlacePackageLayer,
+} from './flightReadySet.js';
+import { PRESENTATION_TIER } from '../world/activityClassification.js';
+import { stampOpeningSubmissionPackage } from './openingSubmissionPlan.js';
 
 const flightRenderPackages = createFlightRenderPackageCache();
+// A composed root is reusable only when it has no renderer-owned package/instance slots. Those
+// slots carry scene and residency ownership and must be created through their package API. The
+// safe template lane below covers immutable procedural/static-batch compositions and rebuilds only
+// per-instance callbacks, bindings, transforms, and materials on a cache hit.
 const flightRootTemplates = new Map();
+const FLIGHT_ROOT_TEMPLATE_CACHE_LIMIT = 32;
+let flightTemplateProbeSequence = 0;
 
 export function getFlightRenderPackageCache() {
   return flightRenderPackages;
+}
+
+export function getFlightRootTemplateCacheDiagnostics() {
+  return Object.freeze({
+    size: flightRootTemplates.size,
+    keys: Object.freeze([...flightRootTemplates.keys()]),
+  });
 }
 import { applyInstanceChunkSubmitPolicy } from './instanceChunkSubmitPolicy.js';
 import {
@@ -217,6 +240,19 @@ export function invalidatePartsLibraryCaches(renderer) {
 export function syncAuthoredInstancePools(scene, opts = {}) {
   const state = scene && sceneStates.get(scene);
   return state ? syncSceneState(state, opts) : null;
+}
+
+export function collectAuthoredInstancePoolRoots(scene) {
+  const state = scene && sceneStates.get(scene);
+  if (!state) return [];
+  const roots = [];
+  for (const pool of state.pools.values()) {
+    for (const chunk of pool.chunks) {
+      const mesh = chunk && chunk.mesh;
+      if (mesh && mesh.visible !== false && mesh.count > 0 && mesh.parent) roots.push(mesh);
+    }
+  }
+  return roots;
 }
 
 /**
@@ -678,8 +714,9 @@ function entityOnOpeningTable(entity, state) {
 }
 
 /**
- * Flight-gate membership. The Helios hub is still decoded during loading, but a station
- * sitting a kilometer off the opening table cannot hold the player in the loading shell.
+ * Flight-gate membership. A Helios hub sitting a kilometer off the opening table is a streamable
+ * place record and cannot hold the player in the loading shell; only its gameplay shell enters the
+ * startup set once it is actually on the opening table.
  * Story cold-start ships and the player remain gated.
  */
 export function isOpeningFlightGateEntity(entity, state) {
@@ -697,7 +734,13 @@ export function isOpeningFlightGateEntity(entity, state) {
 export function isInitialAuthoredCompositionEntity(entity, state) {
   if (!entity || entity.alive === false || !state) return false;
   if (entity.id === state.playerId || entity.isPlayer === true) return true;
-  if (isTableCriticalStartingHub(entity) || isCriticalStartingHub(entity)) return true;
+  // A critical place without a pose is the loading-shell record and must be admitted. Once the
+  // world has positioned that place, only the opening-table envelope belongs to the authored
+  // startup composition; far hub detail is a streamable package and must not trigger a full GLB
+  // decode merely because its identity is `station_helios`.
+  if (isTableCriticalStartingHub(entity) || isCriticalStartingHub(entity)) {
+    return !entity.pos || entityOnOpeningTable(entity, state);
+  }
   if (isOpeningStoryActor(entity, state)) return true;
   const player = state.entities && typeof state.entities.get === 'function'
     ? state.entities.get(state.playerId)
@@ -1634,6 +1677,14 @@ async function upgradeAuthoredCargoCapsuleBoundary(
     boundary.userData.authoredAssetState = 'orphaned-after-pipeline-compile';
     return false;
   }
+  const publicationWait = waitForOpeningGraphPublicationRelease();
+  if (publicationWait) await publicationWait;
+  if (!boundary.parent) {
+    await (disposePreparedAuthoredBoundary(boundary) || disposePreparedCargoCapsule());
+    releaseBoundaryResidency(renderer, boundary, 'payload-orphaned-before-publication');
+    boundary.userData.authoredAssetState = 'orphaned-before-swap';
+    return false;
+  }
   return commitAuthoredCargoCapsuleBoundary(
     boundary,
     fallbackRoot,
@@ -2179,6 +2230,13 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
     if (!boundary.parent) {
       await (disposePreparedAuthoredBoundary(boundary) || disposePreparedPlace());
       releaseBoundaryResidency(renderer, boundary, 'place-orphaned-after-pipeline-compile');
+      return false;
+    }
+    const publicationWait = waitForOpeningGraphPublicationRelease();
+    if (publicationWait) await publicationWait;
+    if (!boundary.parent) {
+      await (disposePreparedAuthoredBoundary(boundary) || disposePreparedPlace());
+      releaseBoundaryResidency(renderer, boundary, 'place-orphaned-before-publication');
       return false;
     }
     return commitAuthoredPlaceBoundary(
@@ -3072,6 +3130,16 @@ function authoredRuntimeState() {
     : null;
 }
 
+function waitForOpeningGraphPublicationRelease() {
+  const render = authoredRuntimeState()?.render;
+  if (!render || render.openingGraphPublicationFrozen !== true) return null;
+  const wait = render.waitForOpeningGraphPublicationRelease;
+  if (typeof wait !== 'function') {
+    return Promise.reject(new Error('Opening graph publication is frozen without a release boundary'));
+  }
+  return Promise.resolve(wait());
+}
+
 /**
  * Tier-1 causal counter sink for composition/admission work. Follows the same window.SF seam as
  * recordAdmissionSlice: probes and the deterministic harness expose state there; production bundles
@@ -3311,6 +3379,8 @@ function scheduleNextUpgradeFrame(state) {
     return;
   }
   if (state.inFlight >= authoredUpgradeConcurrencyLimit()) return;
+  // One entity admission per frame: keep post-boot authored upgrades bounded even when several
+  // decoded packages become eligible together.
   state.frameScheduled = true;
   scheduleUpgradeFrame(() => admitNextUpgradeJob(state));
 }
@@ -3629,8 +3699,7 @@ export function authoredCriticalVisualReadiness(state) {
     .filter((entity) => isInitialAuthoredCompositionEntity(entity, state))
     .map((entity) => ({ id: entity.id, type: entity.type, status: authoredAssetState(entity) }));
   const openingPending = openingAssets.filter((entry) => (
-    entry.status !== 'authored'
-    && entry.status !== 'authored-with-cleanup-error'
+    !isFlightReadyStatus(entry.status)
     && !authoredOpeningFailedClosed(entry.status)
   ));
   const openingPipelinePending = openingAssets.filter((entry) => (
@@ -3641,38 +3710,87 @@ export function authoredCriticalVisualReadiness(state) {
   );
   const openingGatePending = openingPending.filter((entry) => gateIds.has(entry.id));
   const openingGatePipelinePending = openingPipelinePending.filter((entry) => gateIds.has(entry.id));
-  const playerPipelineStaged = authoredPipelineStaged(playerStatus);
-  const hubPipelineStaged = !needsStartingHub || authoredPipelineStaged(hubStatus);
-  // Software renderers (SwiftShader/llvmpipe) push the full opening composition through a serial
-  // admission queue with no KHR_parallel_shader_compile, so nearby traffic and station FX can stay
-  // in compiling-pipelines past the startup deadline and trip the fail-closed readiness gate. The
-  // player and the critical starting hub are admitted first and compose quickly; per this gate's own
-  // contract (above), other traffic and hostile ships are quality-preserving on-demand upgrades that
-  // must not hold the player behind a global queue drain. Narrow the gate to the player + hub only
-  // on a positively-detected software renderer. Unknown or missing tier keeps the strict
-  // on-table opening-set contract so fail-closed still holds on real hardware. A far Helios hub
-  // is still decoded in the background; it cannot hold New Game. Default visual quality is
-  // unchanged: the relaxed actors still upgrade to authored, just after the first flight frame.
+  // Startup admission is an explicit set, not an inference from every object inside the opening
+  // radius. This keeps nearby traffic and far place detail streamable while retaining the player
+  // flight package and the gameplay shell needed for control/docking. A caller may opt an entity
+  // into the set with flightReadyRole when it truly owns a first-frame contract (for example a
+  // glass actor or a collision shell); ordinary opening-composition entities remain diagnostics.
+  const readySet = createFlightReadySet();
+  const blockingPipeline = [];
+  const requireRole = (role, status, entity = null) => {
+    if (!readySet.requireRole(role, status, entity && { id: entity.id, type: entity.type })) return;
+    blockingPipeline.push({ kind: 'role', role, status, pipeline: authoredPipelineStaged(status) });
+  };
+  requireRole(FLIGHT_READY_ROLE.PLAYER_GAMEPLAY, playerStatus, player);
+  requireRole(FLIGHT_READY_ROLE.PLAYER_FLIGHT_PACKAGE, playerStatus, player);
+
+  let startingHubLayer = null;
+  if (needsStartingHub) {
+    startingHubLayer = selectPlacePackageLayer({ onRunway: true, interactable: true })
+      || PLACE_PACKAGE_LAYER.GAMEPLAY_SHELL;
+    if (isPlaceLayerBlockingFlightReady(startingHubLayer)) {
+      readySet.requirePlace(
+        hub.id,
+        startingHubLayer,
+        hubStatus,
+        { type: hub.type, role: FLIGHT_READY_ROLE.TABLE_STATION_SHELL },
+      );
+      blockingPipeline.push({
+        kind: 'place',
+        id: hub.id,
+        layer: startingHubLayer,
+        status: hubStatus,
+        pipeline: authoredPipelineStaged(hubStatus),
+      });
+    }
+  }
+
+  for (const entity of entityList) {
+    const data = entity && entity.data || {};
+    const allowRuntimeActivityGate = state && state.mode !== 'loading';
+    const frameGlassIds = state && state.render && state.render.activityFrame
+      && state.render.activityFrame.renderGlassIds;
+    const isCurrentGlass = allowRuntimeActivityGate && (
+      frameGlassIds && typeof frameGlassIds.has === 'function'
+        ? frameGlassIds.has(entity.id)
+        : Array.isArray(frameGlassIds) && frameGlassIds.includes(entity.id)
+    );
+    const role = entity && (entity.flightReadyRole || data.flightReadyRole
+      || data.renderFlightReadyRole || data.render && data.render.flightReadyRole
+      || (isCurrentGlass || (allowRuntimeActivityGate
+        && entity.activity?.presentationTier === PRESENTATION_TIER.R0_GLASS)
+        ? FLIGHT_READY_ROLE.GLASS_ACTORS : null));
+    if (!role || role === FLIGHT_READY_ROLE.PLAYER_GAMEPLAY
+        || role === FLIGHT_READY_ROLE.PLAYER_FLIGHT_PACKAGE) continue;
+    const status = authoredAssetState(entity);
+    if (readySet.requireRole(role, status, { id: entity.id, type: entity.type })) {
+      blockingPipeline.push({ kind: 'role', role, status, pipeline: authoredPipelineStaged(status) });
+    }
+  }
+  readySet.seal();
+  const flightReadyBlockers = readySet.blockers();
   const softwareRenderer = !!(state && state.render && state.render.gpu
     && state.render.gpu.tier === 'software');
-  const openingGateApplies = !softwareRenderer;
+  const pipelineReady = blockingPipeline.every((entry) => entry.pipeline);
   return {
-    // CPU composition reaches `compiling-pipelines` before the one combined exact-target GPU gate.
-    // Keep committed readiness separate so callers can prove the first displayed frame is authored.
-    pipelineReady: playerPipelineStaged
-      && hubPipelineStaged
-      && (!openingGateApplies || openingGatePipelinePending.length === 0),
-    ready: playerStatus === 'authored'
-      && (!needsStartingHub || hubStatus === 'authored')
-      && (!openingGateApplies || openingGatePending.length === 0),
+    pipelineReady,
+    ready: readySet.isReady(),
     playerId: player && player.id,
     playerStatus,
     startingHubId: hub && hub.id,
     startingHubStatus: hubStatus,
     startingHubRequired: needsStartingHub,
+    startingHubLayer,
+    flightReady: readySet.snapshot(),
+    flightReadyBlockers,
     openingAssets,
     openingPending,
     openingPipelinePending,
+    openingGatePending,
+    openingGatePipelinePending,
+    // Compatibility diagnostic. The production gate is the explicit FlightReadySet above rather
+    // than the old boolean that widened to the entire opening composition on hardware.
+    openingGateApplies: false,
     softwareRenderer,
   };
 }
@@ -3680,7 +3798,10 @@ export function authoredCriticalVisualReadiness(state) {
 function authoredPipelineStaged(status) {
   return status === 'compiling-pipelines'
     || status === 'authored'
-    || status === 'authored-with-cleanup-error';
+    || status === 'authored-with-cleanup-error'
+    || status === 'authored-prepared'
+    || status === 'same-semantic-fallback-prepared'
+    || status === 'shell-ready';
 }
 
 // Nearby traffic that already failed admission will never become authored. Holding the whole
@@ -3951,6 +4072,9 @@ async function disposePreparedAuthoredShip(authored) {
   for (const material of authored.ownerLocalMaterials || EMPTY_ARRAY) {
     await attempt(material, () => material?.dispose?.());
   }
+  if (typeof authored.releaseFlightTemplate === 'function') {
+    await attempt(authored.releaseFlightTemplate, () => authored.releaseFlightTemplate('authored-ship-preparation-failed'));
+  }
   await attempt(root, () => root.clear());
   if (cleanupErrors.length) {
     throw new AggregateError(cleanupErrors, 'Prepared authored ship cleanup failed');
@@ -4031,6 +4155,11 @@ function installWholeShipLodFamilyController(boundary, entity, setActive, option
   const roots = Object.create(null);
   let activeLevel = 'lod0';
   let pendingLevel = null;
+  // Whole-ship LOD demotions are intentionally started from the normal per-frame selector, but
+  // their async replacement must remain visible to the startup first-picture barrier. Keep the
+  // exact in-flight transition on the stable boundary; this does not change when steady-flight
+  // work is scheduled or how it is selected.
+  let transitionPromise = null;
   const findActiveRoot = () => {
     for (const child of boundary.children || []) {
       if (child && child.visible !== false && child.userData && child.userData.authoredVisualRoot !== 'procedural-fallback') {
@@ -4088,7 +4217,7 @@ function installWholeShipLodFamilyController(boundary, entity, setActive, option
       pendingLevel = null;
       return;
     }
-    void (async () => {
+    const lodLoad = (async () => {
       try {
         const library = await preloadAuthoredAssetsForEntity(renderer, entity, {
           ...options,
@@ -4097,6 +4226,8 @@ function installWholeShipLodFamilyController(boundary, entity, setActive, option
           bootstrapPlan: authoredPreloadPlanForEntityAtLod(entity, requested, options),
           residencyRole: 'whole-ship-lod-family',
         });
+        const publicationWait = waitForOpeningGraphPublicationRelease();
+        if (publicationWait) await publicationWait;
         if (!shouldCommitWholeShipLodLoad(pendingLevel, requested, !!boundary.parent)) return;
         const composed = buildComposedShip(entity, library, scene, boundary, {
           ...options,
@@ -4114,6 +4245,25 @@ function installWholeShipLodFamilyController(boundary, entity, setActive, option
         if (pendingLevel === requested) pendingLevel = null;
       }
     })();
+    transitionPromise = lodLoad;
+    boundary.userData.wholeShipLodTransitionPromise = lodLoad;
+    // The transition currently catches its own load/build failures, but keep cleanup safe if a
+    // future implementation allows a rejection to escape. Identity-checking prevents an older
+    // transition from clearing a newer request published on the same boundary.
+    void lodLoad.then(
+      () => {
+        if (transitionPromise === lodLoad) transitionPromise = null;
+        if (boundary.userData.wholeShipLodTransitionPromise === lodLoad) {
+          boundary.userData.wholeShipLodTransitionPromise = null;
+        }
+      },
+      () => {
+        if (transitionPromise === lodLoad) transitionPromise = null;
+        if (boundary.userData.wholeShipLodTransitionPromise === lodLoad) {
+          boundary.userData.wholeShipLodTransitionPromise = null;
+        }
+      },
+    );
   };
   return true;
 }
@@ -4121,6 +4271,8 @@ function installWholeShipLodFamilyController(boundary, entity, setActive, option
 async function commitAuthoredBoundary(
   boundary, fallbackRoot, entity, library, scene, options, setActive, preparedAuthored = null,
 ) {
+  const publicationWait = waitForOpeningGraphPublicationRelease();
+  if (publicationWait) await publicationWait;
   if (!boundary.parent) {
     if (preparedAuthored) {
       await disposePreparedShipBoundaryResources(boundary, preparedAuthored);
@@ -4559,7 +4711,7 @@ function assertLibraryPlanUsable(library, plan, scope = 'canonical') {
 function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) {
   const releaseMode = isReleaseAssetMode(options);
   const partRoot = releaseMode ? PART_RELEASE_ROOT : PART_ROOT;
-  const seed = hashString(`${entity.id}|${entity.data && entity.data.defId}|${entity.factionId || ''}`);
+  const assemblySeed = hashString(`${entity.id}|${entity.data && entity.data.defId}|${entity.factionId || ''}`);
   const entityPlan = authoredPreloadPlanForEntity(entity, options);
   const selected = new Map();
   // Whole-ship bodies (cockpit/fins/engine baked in) bypass the parts-assembly: use the body as the
@@ -4579,22 +4731,23 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
         const wanted = entityPlan.hull && entityPlan.hull[0]
           || HULL_FILE_BY_DEF_ID[entity.data && entity.data.defId];
         const exact = wanted && pool.find((record) => String(record.url || '').endsWith(wanted));
-        selected.set(slot, exact || (pool.length ? pool[((seed ^ hashString(slot)) >>> 0) % pool.length] : null));
+        selected.set(slot, exact || (pool.length ? pool[((assemblySeed ^ hashString(slot)) >>> 0) % pool.length] : null));
       }
     } else if (slot === 'engine') {
-      selected.set(slot, engineRecordFor(records, entity, seed));
+      selected.set(slot, engineRecordFor(records, entity, assemblySeed));
     } else if (slot === 'cockpit' || slot === 'fin') {
       const wanted = entityPlan[slot] && entityPlan[slot][0];
       selected.set(slot, recordForFile(records, wanted)
-        || (records.length ? records[((seed ^ hashString(slot)) >>> 0) % records.length] : null));
+        || (records.length ? records[((assemblySeed ^ hashString(slot)) >>> 0) % records.length] : null));
     } else {
-      selected.set(slot, records.length ? records[((seed ^ hashString(slot)) >>> 0) % records.length] : null);
+      selected.set(slot, records.length ? records[((assemblySeed ^ hashString(slot)) >>> 0) % records.length] : null);
     }
   }
   const authoredParts = [...selected.values()].filter(Boolean);
   if (!authoredParts.length) return null;
 
   const palette = paletteFor(entity);
+  const visualSeed = flightVisualSeed(entity, palette);
   const loadoutFingerprint = computeLoadoutFingerprint({
     hull: entityPlan.hull && entityPlan.hull[0],
     cockpit: entityPlan.cockpit && entityPlan.cockpit[0],
@@ -4604,42 +4757,42 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
     materialAbiVersion: MATERIAL_ABI_VERSION,
     sourceVersions: entity.data && entity.data.defId,
   });
-  const template = flightRootTemplates.get(loadoutFingerprint);
-  if (template && typeof template.clone === 'function') {
-    const cloned = template.clone(true);
-    cloned.userData.loadoutFingerprint = loadoutFingerprint;
-    return {
-      root: cloned,
-      authoredParts: cloned.userData.authoredPartsCache || [],
-      authoredSlots: cloned.userData.authoredSlotsCache || {},
-      fallbackParts: [],
-      wholeShip: !!cloned.userData.wholeShip,
-      packagePoolAdmissions: [],
-      ownerLocalObjects: [],
-      ownerLocalGeometries: [],
-      ownerLocalMaterials: [],
-      renderPackageInstances: [],
-      fromFlightPackageCache: true,
-    };
-  }
-  const root = new THREE.Group();
-  root.name = `GLTFKit_${entity.data && entity.data.defId || 'ship'}`;
-  root.userData.kind = 'ship';
-  root.userData.assetId = `GLTFKIT_${entity.data && entity.data.defId || 'SHIP'}_${seed.toString(16)}`;
-  root.userData.loadoutFingerprint = loadoutFingerprint;
-  if (!flightRenderPackages.has(root.userData.loadoutFingerprint)) {
-    flightRenderPackages.publish(root.userData.loadoutFingerprint, {
+  const templateKey = flightRootTemplateKey({
+    entity,
+    entityPlan,
+    palette,
+    releaseMode,
+    visualSeed,
+    selected,
+    wholeShip,
+    loadoutFingerprint,
+  });
+  if (!flightRenderPackages.has(loadoutFingerprint)) {
+    flightRenderPackages.publish(loadoutFingerprint, {
       lanes: { opaque: 1 },
       materialRoles: { hull: 'opaque_hull' },
     });
   }
+  const template = flightRootTemplates.get(templateKey);
+  if (template) {
+    const cached = instantiateFlightRootTemplate(
+      template, entity, templateKey, loadoutFingerprint, assemblySeed, library, scene, ownerBoundary, palette,
+    );
+    if (cached) return cached;
+    removeFlightRootTemplate(templateKey);
+  }
+  const root = new THREE.Group();
+  root.name = `GLTFKit_${entity.data && entity.data.defId || 'ship'}`;
+  root.userData.kind = 'ship';
+  root.userData.assetId = `GLTFKIT_${entity.data && entity.data.defId || 'SHIP'}_${assemblySeed.toString(16)}`;
+  root.userData.loadoutFingerprint = loadoutFingerprint;
 
   const hull = new THREE.Group();
   hull.name = `${root.name}_Hull`;
   root.add(hull);
   root.userData.hull = hull;
 
-  const materials = fallbackMaterials(palette, seed);
+  const materials = fallbackMaterials(palette, visualSeed);
   const bindings = createBindings();
   const mutableMaterials = new Map();
   const staticBatches = createStaticBatchCollector(hull, bindings);
@@ -4742,7 +4895,7 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
   const shipDef = SHIP_BY_ID.get(entity.data && entity.data.defId) || null;
 
   if (!wholeShip) {
-  const weaponMounts = authoredWeaponMounts(entity, shipDef, library.get('weapon') || [], seed);
+  const weaponMounts = authoredWeaponMounts(entity, shipDef, library.get('weapon') || [], assemblySeed);
   if (weaponMounts.length) {
     let mounted = 0;
     for (const mount of weaponMounts) {
@@ -4755,7 +4908,7 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
     if (!mounted) fallbackParts.push('weapon');
   }
 
-  const podMounts = authoredPodMounts(entity, shipDef, library.get('pod') || [], seed);
+  const podMounts = authoredPodMounts(entity, shipDef, library.get('pod') || [], assemblySeed);
   if (podMounts.length) {
     let mounted = 0;
     for (const mount of podMounts) {
@@ -4770,7 +4923,7 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
     if (!mounted) fallbackParts.push('pod');
   }
 
-  const gearMount = authoredGearMount(entity, shipDef, library.get('gear') || [], seed);
+  const gearMount = authoredGearMount(entity, shipDef, library.get('gear') || [], assemblySeed);
   if (gearMount && gearMount.record) {
     const partRoot = instantiatePart(gearMount.record, hull, gearMount.placement,
       palette, scene, ownerBoundary, bindings, mutableMaterials, staticBatches);
@@ -4780,7 +4933,7 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
     fallbackParts.push('gear');
   }
 
-  const greebleMounts = authoredGreebleMounts(entity, shipDef, library.get('greeble') || [], seed);
+  const greebleMounts = authoredGreebleMounts(entity, shipDef, library.get('greeble') || [], assemblySeed);
   if (greebleMounts.length) {
     let mounted = 0;
     for (const mount of greebleMounts) {
@@ -4896,14 +5049,31 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
 
   const authoredPartList = [...new Set(usedParts)];
   const authoredSlotMap = uniqueSlotMap(authoredSlots);
+  // Procedural composition has no authored render-package byte hash. Publish the exact loadout
+  // recipe that produced this root so an opening plan can bind it to a verified producer identity;
+  // the authored GLB instance, when it replaces this root, publishes its own loader-verified hash.
+  stampOpeningSubmissionPackage(root, {
+    schema: 'spaceface.proceduralFlightProducerManifest.v1',
+    producer: 'procedural-flight-ship',
+    defId: entity.data && entity.data.defId || null,
+    loadoutFingerprint,
+    materialAbiVersion: MATERIAL_ABI_VERSION,
+    wholeShip,
+    authoredParts: authoredPartList,
+    authoredSlots: authoredSlotMap,
+    fallbackParts: [...fallbackParts],
+    renderContract: root.userData.renderContract,
+  }, {
+    producer: 'procedural-flight-ship',
+    assetId: root.userData.assetId,
+  });
   root.userData.authoredPartsCache = authoredPartList;
   root.userData.authoredSlotsCache = authoredSlotMap;
   root.userData.wholeShip = wholeShip;
-  cookFlightProduct(root, 'chase');
-  if (loadoutFingerprint && !flightRootTemplates.has(loadoutFingerprint) && typeof root.clone === 'function') {
-    try { flightRootTemplates.set(loadoutFingerprint, root.clone(true)); } catch (_) {}
-  }
-  return {
+  // Runtime composition is not the offline cooker: preserve the authored root and carry the
+  // supported-camera omission metadata until a flat cooked artifact is selected.
+  cookFlightProduct(root, 'chase', { runtime: true });
+  const result = {
     root,
     authoredParts: authoredPartList,
     authoredSlots: authoredSlotMap,
@@ -4914,6 +5084,968 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
     ownerLocalGeometries: [...ownerLocalGeometries],
     ownerLocalMaterials: [...ownerLocalMaterials],
     renderPackageInstances,
+  };
+  if (canCacheFlightRootTemplate(result)) {
+    storeFlightRootTemplate(templateKey, createFlightRootTemplateEntry({
+      root,
+      bindings,
+      authoredHullLevels,
+      wholeShip,
+      loadoutFingerprint,
+      authoredParts: authoredPartList,
+      authoredSlots: authoredSlotMap,
+    }));
+  }
+  return result;
+}
+
+function flightRootTemplateKey({
+  entity,
+  entityPlan,
+  palette,
+  releaseMode,
+  visualSeed,
+  selected,
+  wholeShip,
+  loadoutFingerprint,
+}) {
+  const data = entity && entity.data || {};
+  // Whole-ship bodies skip every accessory slot after hull. Excluding those skipped selections is
+  // important: they are seed-selected during assembly, so including them makes identical Kestrel
+  // visuals diverge by entity id even though the unused records never affect pixels.
+  const consumedSelected = wholeShip
+    ? [...selected.entries()].filter(([slot]) => slot === 'hull')
+    : [...selected.entries()];
+  const selectedSources = consumedSelected
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([slot, record]) => [slot, flightRecordTemplateToken(record)]);
+  const consumedEntityPlan = wholeShip
+    ? { hull: entityPlan && entityPlan.hull || [] }
+    : entityPlan;
+  return stableFlightTemplateToken({
+    schema: 'spaceface.flightRootTemplate.v3',
+    contract: PART_LIBRARY_CONTRACT.version,
+    materialAbiVersion: MATERIAL_ABI_VERSION,
+    releaseMode: releaseMode === true,
+    wholeShip: wholeShip === true,
+    visualSeed,
+    loadoutFingerprint,
+    selectedSources,
+    entityPlan: consumedEntityPlan,
+    defId: data.defId || null,
+    factionId: entity && entity.factionId || null,
+    team: entity && entity.team,
+    radius: entity && entity.radius,
+    appearance: shipAppearanceSignature(data.appearance, data.defId),
+    palette: {
+      hull: palette && palette.hull,
+      accent: palette && palette.accent,
+      dark: palette && palette.dark,
+      thruster: palette && palette.thruster,
+      finish: palette && palette.finish,
+      wear: palette && palette.wear,
+    },
+    ...(wholeShip ? {} : {
+      weapons: data.weapons || [],
+      fittings: data.fittings || [],
+    }),
+  });
+}
+
+function flightVisualSeed(entity, palette) {
+  const data = entity && entity.data || {};
+  return hashString(stableFlightTemplateToken({
+    defId: data.defId || null,
+    factionId: entity && entity.factionId || null,
+    team: entity && entity.team,
+    appearance: shipAppearanceSignature(data.appearance, data.defId),
+    palette: {
+      hull: palette && palette.hull,
+      accent: palette && palette.accent,
+      dark: palette && palette.dark,
+      thruster: palette && palette.thruster,
+      finish: palette && palette.finish,
+      wear: palette && palette.wear,
+    },
+  }));
+}
+
+function flightRecordTemplateToken(record) {
+  if (!record) return null;
+  const packageRecord = record.renderPackage;
+  return {
+    url: record.url || null,
+    assetId: record.assetId || null,
+    contentHash: record.contentHash || record.byteHash || null,
+    generation: record.generation || record.sourceVersion || record.version || null,
+    byteLength: record.byteLength || record.bytes || null,
+    bounds: record.bounds || null,
+    primitiveCount: Array.isArray(record.primitives) ? record.primitives.length : null,
+    markerCount: Array.isArray(record.markers) ? record.markers.length : null,
+    package: packageRecord ? {
+      assetId: packageRecord.assetId || null,
+      contentHash: packageRecord.contentHash || packageRecord.byteHash || null,
+      generation: packageRecord.generation || packageRecord.sourceVersion || packageRecord.version || null,
+      fingerprint: packageRecord.fingerprint || null,
+    } : null,
+  };
+}
+
+function stableFlightTemplateToken(value, seen = new Set()) {
+  if (value == null) return 'null';
+  if (typeof value === 'string') return JSON.stringify(value);
+  if (typeof value === 'number') return Number.isFinite(value) ? String(value) : 'null';
+  if (typeof value === 'boolean') return value ? 'true' : 'false';
+  if (typeof value === 'function') return 'null';
+  if (seen.has(value)) return '"[cycle]"';
+  seen.add(value);
+  let result;
+  if (Array.isArray(value)) {
+    result = `[${value.map((item) => stableFlightTemplateToken(item, seen)).join(',')}]`;
+  } else {
+    result = `{${Object.keys(value).sort().map((key) => (
+      `${JSON.stringify(key)}:${stableFlightTemplateToken(value[key], seen)}`
+    )).join(',')}}`;
+  }
+  seen.delete(value);
+  return result;
+}
+
+function canCacheFlightRootTemplate(result) {
+  if (!result || !result.root) return false;
+  const packageRecipes = collectFlightPackageRecipes(result.root);
+  if (packageRecipes.length !== (result.renderPackageInstances || EMPTY_ARRAY).length) return false;
+  let safe = true;
+  result.root.traverse((object) => {
+    if (object.userData?.renderPackageInstance && !object.userData?.spacefaceFlightPackageRecipe) {
+      safe = false;
+      return;
+    }
+    if (object.userData?.spacefaceInstanceProxy === true) {
+      let packageOwned = false;
+      for (let owner = object.parent; owner; owner = owner.parent) {
+        if (owner.userData?.spacefaceFlightPackageRecipe) {
+          packageOwned = true;
+          break;
+        }
+      }
+      if (!packageOwned) safe = false;
+    }
+  });
+  return safe;
+}
+
+function createFlightRootTemplateEntry({
+  root,
+  bindings,
+  authoredHullLevels,
+  wholeShip,
+  loadoutFingerprint,
+  authoredParts,
+  authoredSlots,
+}) {
+  const packageRecipes = collectFlightPackageRecipes(root);
+  const templateRoot = createFlightTemplateRoot(root);
+  stripFlightPackageTemplateSubtrees(templateRoot, packageRecipes);
+  return {
+    root: templateRoot,
+    hullPath: objectPathFromRoot(root, root.userData && root.userData.hull),
+    shieldBubblePath: objectPathFromRoot(root, root.userData && root.userData.shieldBubble),
+    safetyCorePath: findObjectPath(root, (object) => object.userData?.spacefaceReadabilityCore === true),
+    bindings: captureFlightTemplateBindings(root, bindings),
+    authoredHullLevels: [...(authoredHullLevels || EMPTY_ARRAY)],
+    authoredParts: [...(authoredParts || EMPTY_ARRAY)],
+    authoredSlots: cloneFlightTemplateMetadata(authoredSlots || {}),
+    fallbackParts: [...(root.userData?.renderContract?.proceduralFallbackParts || EMPTY_ARRAY)],
+    renderContract: cloneFlightTemplateMetadata(root.userData?.renderContract || {}),
+    producerManifest: cloneFlightTemplateMetadata(root.userData?.openingSubmissionPackage?.manifest || null),
+    packageRecipes,
+    wholeShip: wholeShip === true,
+    loadoutFingerprint,
+    cacheHeld: true,
+    instanceRefs: 0,
+    disposed: false,
+  };
+}
+
+function createFlightTemplateRoot(sourceRoot) {
+  if (!sourceRoot || typeof sourceRoot.clone !== 'function') return null;
+  const templateRoot = sourceRoot.clone(true);
+  const geometries = new Map();
+  const materials = new Map();
+  templateRoot.traverse((object) => {
+    object.onBeforeRender = THREE.Object3D.prototype.onBeforeRender;
+    object.onAfterRender = THREE.Object3D.prototype.onAfterRender;
+    object.userData = sanitizeFlightTemplateUserData(object.userData);
+    object.userData.spacefaceFlightTemplatePath = (objectPathFromRoot(templateRoot, object) || []).join('/');
+    if (object.geometry) {
+      let geometry = geometries.get(object.geometry);
+      if (!geometry) {
+        geometry = typeof object.geometry.clone === 'function' ? object.geometry.clone() : object.geometry;
+        geometry.userData = {
+          ...(geometry.userData || {}),
+          spacefaceFlightTemplateGeometry: true,
+          spacefaceSharedAsset: true,
+        };
+        geometries.set(object.geometry, geometry);
+      }
+      object.geometry = geometry;
+    }
+    if (object.material) object.material = cloneFlightTemplateMaterials(object.material, materials);
+  });
+  clearFlightTemplateDynamicUserData(templateRoot);
+  return templateRoot;
+}
+
+function cloneFlightTemplateMaterials(material, materials) {
+  if (Array.isArray(material)) return material.map((entry) => cloneFlightTemplateMaterials(entry, materials));
+  if (!material || typeof material.clone !== 'function') return material;
+  let cloned = materials.get(material);
+  if (!cloned) {
+    cloned = material.clone();
+    cloned.userData = {
+      ...(cloned.userData || {}),
+      spacefaceFlightTemplateMaterial: true,
+      spacefaceSharedAsset: false,
+    };
+    materials.set(material, cloned);
+  }
+  return cloned;
+}
+
+function cloneFlightInstanceMaterials(material, materials) {
+  if (Array.isArray(material)) return material.map((entry) => cloneFlightInstanceMaterials(entry, materials));
+  if (!material || typeof material.clone !== 'function') return material;
+  let cloned = materials.get(material);
+  if (!cloned) {
+    cloned = material.clone();
+    cloned.userData = {
+      ...(cloned.userData || {}),
+      spacefaceFlightTemplateInstanceMaterial: true,
+      spacefaceSharedAsset: false,
+    };
+    materials.set(material, cloned);
+  }
+  return cloned;
+}
+
+function sanitizeFlightTemplateUserData(userData) {
+  const next = { ...(userData || {}) };
+  delete next.spacefaceDrivePose;
+  delete next.renderPackageInstance;
+  for (const [key, value] of Object.entries(next)) {
+    if (typeof value === 'function') delete next[key];
+  }
+  return next;
+}
+
+function collectFlightPackageRecipes(root) {
+  const recipes = [];
+  if (!root?.traverse) return recipes;
+  root.traverse((object) => {
+    const recipe = object.userData?.spacefaceFlightPackageRecipe;
+    if (!object.userData?.renderPackageInstance || !recipe) return;
+    const objectPaths = [];
+    object.traverse((child) => {
+      const sourcePath = objectPathFromRoot(root, child);
+      const relativePath = objectPathFromRoot(object, child);
+      if (sourcePath && relativePath) objectPaths.push({ sourcePath, relativePath });
+    });
+    recipes.push({
+      ...cloneFlightTemplateMetadata(recipe),
+      sourcePath: objectPathFromRoot(root, object),
+      parentPath: objectPathFromRoot(root, object.parent),
+      objectPaths,
+    });
+  });
+  return recipes;
+}
+
+function stripFlightPackageTemplateSubtrees(root, recipes) {
+  const detached = [];
+  for (const recipe of recipes || EMPTY_ARRAY) {
+    const partRoot = findFlightTemplateObject(root, recipe.sourcePath);
+    if (partRoot) {
+      partRoot.removeFromParent();
+      detached.push(partRoot);
+    }
+  }
+  if (!detached.length) return;
+
+  // createFlightTemplateRoot owns cloned geometry/materials. A package subtree is intentionally
+  // rebuilt through its render-package API on a hit, so its detached clone resources must be
+  // released here rather than left unreachable behind the cache entry. Never dispose an identity
+  // still used by the retained template graph (a source GLB may legally share geometry).
+  const retainedGeometries = new Set();
+  const retainedMaterials = new Set();
+  root.traverse((object) => {
+    if (object.geometry) retainedGeometries.add(object.geometry);
+    const materials = object.material
+      ? (Array.isArray(object.material) ? object.material : [object.material])
+      : EMPTY_ARRAY;
+    for (const material of materials) if (material) retainedMaterials.add(material);
+  });
+  const disposedGeometries = new Set();
+  const disposedMaterials = new Set();
+  for (const detachedRoot of detached) {
+    detachedRoot.traverse((object) => {
+      const geometry = object.geometry;
+      if (geometry && !retainedGeometries.has(geometry) && !disposedGeometries.has(geometry)) {
+        disposedGeometries.add(geometry);
+        try { geometry.dispose?.(); } catch (_) { /* cache construction remains fail-closed */ }
+      }
+      const materials = object.material
+        ? (Array.isArray(object.material) ? object.material : [object.material])
+        : EMPTY_ARRAY;
+      for (const material of materials) {
+        if (!material || retainedMaterials.has(material) || disposedMaterials.has(material)) continue;
+        disposedMaterials.add(material);
+        try { material.dispose?.(); } catch (_) { /* cache construction remains fail-closed */ }
+      }
+    });
+    detachedRoot.clear?.();
+  }
+}
+
+function clearFlightTemplateDynamicUserData(root) {
+  if (!root) return;
+  root.traverse((object) => {
+    const data = object.userData || {};
+    delete data.updateLod;
+    delete data.updateDriveState;
+    delete data.updateDamageState;
+    delete data.damageParts;
+    delete data.damageState;
+    delete data.hullFrac;
+    delete data.lod;
+    delete data.hull;
+    delete data.shieldBubble;
+    delete data.openingSubmissionPackage;
+    object.userData = data;
+  });
+}
+
+function instantiateFlightRootTemplate(
+  entry,
+  entity,
+  templateKey,
+  loadoutFingerprint,
+  assemblySeed,
+  library = null,
+  scene = null,
+  ownerBoundary = null,
+  palette = null,
+) {
+  if (!entry || !entry.root) return null;
+  const root = createFlightTemplateRootInstance(entry.root);
+  if (!root) return null;
+  clearFlightTemplateDynamicUserData(root);
+  // Package subtrees are deliberately absent from the immutable template. Recreate them through
+  // the live package API before resolving bindings so Kestrel/other whole-ship hits bind the real
+  // package meshes, sockets, and pool admissions instead of silently losing those paths.
+  const packageBindings = (entry.packageRecipes || EMPTY_ARRAY).length ? createBindings() : null;
+  const rootName = `GLTFKit_${entity.data && entity.data.defId || 'ship'}`;
+  const assetId = `GLTFKIT_${entity.data && entity.data.defId || 'SHIP'}_${assemblySeed.toString(16)}`;
+  root.name = rootName;
+  root.userData.kind = 'ship';
+  root.userData.assetId = assetId;
+  root.userData.loadoutFingerprint = loadoutFingerprint;
+  root.userData.renderContract = cloneFlightTemplateMetadata(entry.renderContract || {});
+  root.userData.authoredPartsCache = [...(entry.authoredParts || EMPTY_ARRAY)];
+  root.userData.authoredSlotsCache = cloneFlightTemplateMetadata(entry.authoredSlots || {});
+  root.userData.wholeShip = entry.wholeShip === true;
+
+  // Package roots are never cloned as live instances. Recreate them through the package loader so
+  // residency ownership, pool candidates, and proxy activation remain per-boundary resources.
+  if ((entry.packageRecipes || EMPTY_ARRAY).length > 0) {
+    if (!library || !scene || !ownerBoundary) return null;
+    const packageMutableMaterials = new Map();
+    for (const recipe of entry.packageRecipes) {
+      const record = findFlightTemplatePackageRecord(library, recipe);
+      const parent = findFlightTemplateObject(root, recipe.parentPath);
+      if (!record || !parent) return null;
+      const sourceLength = Math.max(Number(record.bounds?.size?.[0]) || 1, 1e-6);
+      const placement = {
+        position: recipe.position || [0, 0, 0],
+        quaternion: new THREE.Quaternion().fromArray(recipe.quaternion || [0, 0, 0, 1]),
+        targetLength: sourceLength,
+        label: recipe.label || record.assetId || record.url || 'Package',
+      };
+      const partRoot = instantiateRenderPackagePart(
+        record, parent, placement, palette || paletteFor(entity), scene, ownerBoundary,
+        packageBindings, packageMutableMaterials,
+      );
+      if (Array.isArray(recipe.scale) && recipe.scale.length === 3) partRoot.scale.fromArray(recipe.scale);
+      partRoot.updateMatrix();
+      for (const path of recipe.objectPaths || EMPTY_ARRAY) {
+        const object = objectAtRootPath(partRoot, path.relativePath);
+        if (!object) continue;
+        object.userData = {
+          ...(object.userData || {}),
+          spacefaceFlightTemplatePath: (path.sourcePath || []).join('/'),
+        };
+      }
+    }
+  }
+  const hull = findFlightTemplateObject(root, entry.hullPath);
+  const shieldBubble = findFlightTemplateObject(root, entry.shieldBubblePath);
+  const safetyCore = findFlightTemplateObject(root, entry.safetyCorePath);
+  const bindings = restoreFlightTemplateBindings(root, entry.bindings, packageBindings);
+  if (!hull || !bindings) return null;
+  root.userData.hull = hull;
+  root.userData.shieldBubble = shieldBubble;
+  normalizeWaspDomeGlass(root, entity);
+
+  const primaryDrive = completeDriveBinding(bindings);
+  const navLightBase = bindings.navLights.map((mesh) => (
+    mesh && mesh.material && Number.isFinite(mesh.material.emissiveIntensity)
+      ? mesh.material.emissiveIntensity : 1
+  ));
+  kit.finalizeShip({
+    root,
+    hull,
+    entity,
+    designRadius: 1,
+    decals: bindings.decals,
+    driveParts: primaryDrive,
+    navLightBase,
+    damageParts: {
+      navLights: bindings.navLights,
+      navLightBase,
+      driveCore: primaryDrive && primaryDrive.driveCore,
+      plume: primaryDrive && primaryDrive.plume,
+      secondary: bindings.secondary,
+      armor: bindings.armor,
+      sensorSlits: bindings.sensorSlits,
+    },
+  });
+  synchronizeSecondaryDrives(primaryDrive, bindings);
+  installAuthoredLod(root, bindings, safetyCore, new Set(entry.authoredHullLevels || EMPTY_ARRAY), entry.wholeShip === true);
+  root.userData.updateLod('lod0');
+  if (entry.producerManifest) {
+    stampOpeningSubmissionPackage(root, entry.producerManifest, {
+      replace: true,
+      producer: 'procedural-flight-ship',
+      assetId,
+    });
+  }
+  cookFlightProduct(root, 'chase', { runtime: true });
+
+  const releaseFlightTemplate = retainFlightRootTemplate(entry);
+  if (!releaseFlightTemplate) return null;
+  root.userData.releaseAuthoredAssetResidency = (reason = 'flight-template-root-disposed') => (
+    releaseFlightTemplate(reason)
+  );
+
+  const ownerLocalMaterials = new Set();
+  const renderPackageInstances = [];
+  root.traverse((object) => {
+    const objectMaterials = object.material
+      ? (Array.isArray(object.material) ? object.material : [object.material])
+      : EMPTY_ARRAY;
+    for (const material of objectMaterials) if (material) ownerLocalMaterials.add(material);
+    const instance = object.userData?.renderPackageInstance;
+    if (instance && typeof instance.dispose === 'function') renderPackageInstances.push(instance);
+  });
+  return {
+    root,
+    authoredParts: [...(entry.authoredParts || EMPTY_ARRAY)],
+    authoredSlots: cloneFlightTemplateMetadata(entry.authoredSlots || {}),
+    fallbackParts: [...(entry.fallbackParts || EMPTY_ARRAY)],
+    wholeShip: entry.wholeShip === true,
+    packagePoolAdmissions: [...bindings.packagePoolAdmissions],
+    ownerLocalObjects: [],
+    ownerLocalGeometries: [],
+    ownerLocalMaterials: [...ownerLocalMaterials],
+    renderPackageInstances,
+    fromFlightTemplateCache: true,
+    flightRootTemplateKey: templateKey,
+    releaseFlightTemplate,
+  };
+}
+
+function findFlightTemplatePackageRecord(library, recipe) {
+  if (!library || typeof library.values !== 'function' || !recipe) return null;
+  for (const records of library.values()) {
+    for (const record of records || EMPTY_ARRAY) {
+      if (!record || record.url !== recipe.url) continue;
+      if (!recipe.assetId || record.assetId === recipe.assetId
+        || record.renderPackage?.assetId === recipe.assetId) return record;
+    }
+  }
+  return null;
+}
+
+function createFlightTemplateRootInstance(templateRoot) {
+  if (!templateRoot || typeof templateRoot.clone !== 'function') return null;
+  const root = templateRoot.clone(true);
+  const materials = new Map();
+  root.traverse((object) => {
+    object.onBeforeRender = THREE.Object3D.prototype.onBeforeRender;
+    object.onAfterRender = THREE.Object3D.prototype.onAfterRender;
+    object.userData = sanitizeFlightTemplateUserData(object.userData);
+    if (object.material) object.material = cloneFlightInstanceMaterials(object.material, materials);
+  });
+  return root;
+}
+
+function captureFlightTemplateBindings(root, bindings) {
+  const capture = (objects) => (objects || EMPTY_ARRAY)
+    .map((object) => objectPathFromRoot(root, object))
+    .filter((path) => path !== null);
+  return {
+    driveFans: capture(bindings.driveFans),
+    driveCores: capture(bindings.driveCores),
+    drivePlumes: capture(bindings.drivePlumes),
+    navLights: capture(bindings.navLights),
+    sensorSlits: capture(bindings.sensorSlits),
+    armor: capture(bindings.armor),
+    secondary: capture(bindings.secondary),
+    decals: capture(bindings.decals),
+    lodDynamicDetails: capture(bindings.lodDynamicDetails),
+    lod: Object.fromEntries(Object.entries(bindings.lod).map(([key, objects]) => [key, capture(objects)])),
+  };
+}
+
+function restoreFlightTemplateBindings(root, paths, supplemental = null) {
+  if (!paths) return null;
+  const restore = (items) => (items || EMPTY_ARRAY).map((path) => findFlightTemplateObject(root, path));
+  const bindings = createBindings();
+  for (const key of ['driveFans', 'driveCores', 'drivePlumes', 'navLights', 'sensorSlits', 'armor', 'secondary', 'decals', 'lodDynamicDetails']) {
+    bindings[key] = restore(paths[key]);
+    if (bindings[key].some((object) => !object)) return null;
+  }
+  for (const key of Object.keys(bindings.lod)) {
+    bindings.lod[key] = restore(paths.lod && paths.lod[key]);
+    if (bindings.lod[key].some((object) => !object)) return null;
+  }
+  for (const admission of supplemental?.packagePoolAdmissions || EMPTY_ARRAY) {
+    bindings.packagePoolAdmissions.add(admission);
+  }
+  return bindings;
+}
+
+function objectPathFromRoot(root, target) {
+  if (!root || !target) return null;
+  const path = [];
+  let object = target;
+  while (object && object !== root) {
+    const parent = object.parent;
+    if (!parent) return null;
+    const index = parent.children.indexOf(object);
+    if (index < 0) return null;
+    path.unshift(index);
+    object = parent;
+  }
+  return object === root ? path : null;
+}
+
+function findObjectPath(root, predicate) {
+  let found = null;
+  root.traverse((object) => {
+    if (found === null && predicate(object)) found = objectPathFromRoot(root, object);
+  });
+  return found;
+}
+
+function objectAtRootPath(root, path) {
+  if (!root || !Array.isArray(path)) return null;
+  let object = root;
+  for (const index of path) {
+    if (!object || !Array.isArray(object.children) || !object.children[index]) return null;
+    object = object.children[index];
+  }
+  return object;
+}
+
+function findFlightTemplateObject(root, path) {
+  if (!root || !Array.isArray(path)) return null;
+  const marker = path.join('/');
+  let found = null;
+  root.traverse((object) => {
+    if (found === null && object.userData?.spacefaceFlightTemplatePath === marker) found = object;
+  });
+  return found || objectAtRootPath(root, path);
+}
+
+function cloneFlightTemplateMetadata(value, seen = new Map()) {
+  if (!value || typeof value !== 'object') return value;
+  if (seen.has(value)) return seen.get(value);
+  const copy = Array.isArray(value) ? [] : {};
+  seen.set(value, copy);
+  for (const [key, item] of Object.entries(value)) {
+    if (typeof item === 'function') continue;
+    copy[key] = cloneFlightTemplateMetadata(item, seen);
+  }
+  return copy;
+}
+
+function storeFlightRootTemplate(key, entry) {
+  if (!key || !entry) return false;
+  if (flightRootTemplates.has(key)) removeFlightRootTemplate(key);
+  while (flightRootTemplates.size >= FLIGHT_ROOT_TEMPLATE_CACHE_LIMIT) {
+    const oldest = flightRootTemplates.keys().next().value;
+    if (oldest == null) break;
+    removeFlightRootTemplate(oldest);
+  }
+  flightRootTemplates.set(key, entry);
+  return true;
+}
+
+function removeFlightRootTemplate(key) {
+  const entry = flightRootTemplates.get(key);
+  if (!entry) return false;
+  flightRootTemplates.delete(key);
+  entry.cacheHeld = false;
+  finalizeFlightRootTemplateIfUnused(entry);
+  return true;
+}
+
+function retainFlightRootTemplate(entry) {
+  if (!entry || entry.disposed === true) return null;
+  entry.instanceRefs = (entry.instanceRefs || 0) + 1;
+  let released = false;
+  return (reason = 'flight-template-instance-released') => {
+    if (released) return false;
+    released = true;
+    entry.instanceRefs = Math.max(0, (entry.instanceRefs || 0) - 1);
+    finalizeFlightRootTemplateIfUnused(entry, reason);
+    return true;
+  };
+}
+
+function finalizeFlightRootTemplateIfUnused(entry) {
+  if (!entry || entry.disposed === true || entry.cacheHeld === true || (entry.instanceRefs || 0) > 0) {
+    return false;
+  }
+  entry.disposed = true;
+  const geometries = new Set();
+  const materials = new Set();
+  entry.root?.traverse?.((object) => {
+    if (object.geometry) geometries.add(object.geometry);
+    const list = object.material
+      ? (Array.isArray(object.material) ? object.material : [object.material])
+      : EMPTY_ARRAY;
+    for (const material of list) if (material) materials.add(material);
+  });
+  for (const geometry of geometries) {
+    try { geometry.dispose?.(); } catch (_) { /* cache eviction is best effort */ }
+  }
+  for (const material of materials) {
+    try { material.dispose?.(); } catch (_) { /* cache eviction is best effort */ }
+  }
+  entry.root?.clear?.();
+  return true;
+}
+
+/** Focused seam probe: template hits share immutable geometry but own mutable materials and hooks. */
+export function runFlightRootTemplateCacheProbe() {
+  const source = new THREE.Group();
+  source.name = 'FlightRootTemplateProbe';
+  source.userData = {
+    kind: 'ship',
+    assetId: 'probe-source',
+    hull: null,
+    renderContract: { version: 1, proceduralFallbackParts: [] },
+  };
+  const hull = new THREE.Group();
+  hull.name = 'FlightRootTemplateProbe_Hull';
+  source.add(hull);
+  source.userData.hull = hull;
+  const mesh = new THREE.Mesh(
+    new THREE.BoxGeometry(1, 1, 1),
+    new THREE.MeshStandardMaterial({ color: 0x6688aa }),
+  );
+  mesh.userData.spacefaceStaticBatch = true;
+  hull.add(mesh);
+  const entry = createFlightRootTemplateEntry({
+    root: source,
+    bindings: createBindings(),
+    authoredHullLevels: new Set(['lod0']),
+    wholeShip: false,
+    loadoutFingerprint: 'probe',
+    authoredParts: ['probe'],
+    authoredSlots: {},
+  });
+  const templateMesh = entry.root.getObjectByName(mesh.name);
+  let geometryDisposeCount = 0;
+  if (templateMesh?.geometry) {
+    const dispose = templateMesh.geometry.dispose.bind(templateMesh.geometry);
+    templateMesh.geometry.dispose = () => {
+      geometryDisposeCount++;
+      return dispose();
+    };
+  }
+  const entity = { radius: 1, data: { defId: 'probe' } };
+  const first = instantiateFlightRootTemplate(entry, entity, 'probe', 'probe', 1);
+  const second = instantiateFlightRootTemplate(entry, entity, 'probe', 'probe', 1);
+  const firstMesh = first && first.root.getObjectByName(mesh.name);
+  const secondMesh = second && second.root.getObjectByName(mesh.name);
+  const result = {
+    distinctRoots: !!first && !!second && first.root !== second.root,
+    sharedGeometry: !!firstMesh && !!secondMesh && firstMesh.geometry === secondMesh.geometry,
+    distinctMaterials: !!firstMesh && !!secondMesh && firstMesh.material !== secondMesh.material,
+    reboundHooks: !!first && typeof first.root.userData.updateLod === 'function'
+      && typeof first.root.userData.updateDamageState === 'function',
+  };
+  first?.releaseFlightTemplate?.('probe-first-release');
+  second?.releaseFlightTemplate?.('probe-second-release');
+  const probeKey = '__spaceface-flight-root-template-probe__';
+  storeFlightRootTemplate(probeKey, entry);
+  removeFlightRootTemplate(probeKey);
+  const materials = new Set();
+  for (const root of [first?.root, second?.root, source]) {
+    root?.traverse?.((object) => {
+      const list = object.material
+        ? (Array.isArray(object.material) ? object.material : [object.material])
+        : EMPTY_ARRAY;
+      for (const material of list) if (material) materials.add(material);
+    });
+    root?.clear?.();
+  }
+  for (const material of materials) material.dispose?.();
+  mesh.geometry?.dispose?.();
+  result.geometryDisposedOnce = geometryDisposeCount === 1;
+  return result;
+}
+
+/** Focused production-seam probe: a whole-ship Kestrel package is built once, then rebuilt for a
+ * different entity id. The second build must rehydrate the package API and hit the visual template,
+ * while the package and template ownership counters still close exactly once. */
+export function runFlightKestrelTemplatePackageProbe() {
+  const token = ++flightTemplateProbeSequence;
+  const packageGeometry = new THREE.BoxGeometry(1, 0.6, 0.8);
+  const packageMaterial = new THREE.MeshStandardMaterial({ color: 0x6b829e, roughness: 0.62, metalness: 0.28 });
+  const packageSpecs = [
+    { name: 'Kestrel_Armor', tags: Object.freeze({ lod: 'lod0', damageRole: 'armor' }) },
+    { name: 'Kestrel_Fan', tags: Object.freeze({ lod: 'lod0', drive: 'fan' }) },
+    { name: 'Kestrel_Core', tags: Object.freeze({ lod: 'lod0', drive: 'core' }) },
+    { name: 'Kestrel_Plume', tags: Object.freeze({ lod: 'lod0', drive: 'plume' }) },
+    { name: 'Kestrel_Nav', tags: Object.freeze({ lod: 'lod0', damageRole: 'navLight' }) },
+    { name: 'Kestrel_Secondary', tags: Object.freeze({ lod: 'lod1', damageRole: 'secondary' }) },
+  ];
+  let packageCreates = 0;
+  let packageDisposals = 0;
+  const packageRecord = {
+    url: 'assets/ships/release/parts/wholeships/kestrel.glb',
+    assetId: 'SF_K0_KESTREL_BORROWED_TIME_V4',
+    slot: 'hull',
+    bounds: { min: [-0.5, -0.3, -0.4], max: [0.5, 0.3, 0.4], size: [1, 0.6, 0.8], center: [0, 0, 0] },
+    primitives: packageSpecs.map((spec) => ({
+      key: `probe:kestrel:${spec.name}`,
+      name: spec.name,
+      geometry: packageGeometry,
+      material: packageMaterial,
+      matrix: new THREE.Matrix4(),
+      tags: spec.tags,
+    })),
+    markers: [],
+    renderPackage: {
+      assetId: 'sf.probe.kestrel',
+      contentHash: 'kestrel-template-probe',
+      createInstance() {
+        packageCreates++;
+        const root = new THREE.Group();
+        root.name = 'KestrelPackageRoot';
+        const meshes = packageSpecs.map((spec) => {
+          const mesh = new THREE.Mesh(packageGeometry, packageMaterial);
+          mesh.name = spec.name;
+          root.add(mesh);
+          return mesh;
+        });
+        return {
+          root,
+          planNodes: [root, ...meshes],
+          dispose() {
+            packageDisposals++;
+            root.clear();
+            return true;
+          },
+        };
+      },
+    },
+  };
+  const library = new Map([
+    ['hull', [packageRecord]],
+    ['cockpit', []],
+    ['engine', []],
+    ['fin', []],
+    ['weapon', []],
+    ['greeble', []],
+    ['gear', []],
+    ['pod', []],
+  ]);
+  const scenes = [new THREE.Scene(), new THREE.Scene(), new THREE.Scene()];
+  const owners = scenes.map((scene, index) => {
+    const owner = new THREE.Group();
+    owner.name = `KestrelTemplateProbeOwner_${index}`;
+    owner.userData.kind = 'ship';
+    scene.add(owner);
+    return owner;
+  });
+  const entityFor = (id) => ({
+    id,
+    type: 'ship',
+    alive: true,
+    radius: 12,
+    team: 0,
+    // Unknown faction keeps the palette deterministic while making this probe key unique from
+    // any live/test Kestrel composition already held by the module cache.
+    factionId: `flight-template-probe-${token}`,
+    data: { defId: 'ship_kestrel' },
+  });
+  const beforeKeys = new Set(flightRootTemplates.keys());
+  let first = null;
+  let second = null;
+  let third = null;
+  let templateKey = null;
+  let templateEntry = null;
+  let detachedCloneGeometryDisposals = 0;
+  const originalGeometryDispose = THREE.BufferGeometry.prototype.dispose;
+  THREE.BufferGeometry.prototype.dispose = function probeGeometryDispose(...args) {
+    detachedCloneGeometryDisposals++;
+    return originalGeometryDispose.apply(this, args);
+  };
+  try {
+    first = buildComposedShip(entityFor(`kestrel-template-${token}-a`), library, scenes[0], owners[0], {
+      requiredWholeShip: true,
+    });
+    templateKey = [...flightRootTemplates.keys()].find((key) => !beforeKeys.has(key)) || null;
+    templateEntry = templateKey ? flightRootTemplates.get(templateKey) : null;
+    second = buildComposedShip(entityFor(`kestrel-template-${token}-b`), library, scenes[1], owners[1], {
+      requiredWholeShip: true,
+    });
+  } catch (_) {
+    // The returned booleans turn a failed production seam into a focused test failure while the
+    // finally block restores Three's prototype for the rest of the process.
+  } finally {
+    THREE.BufferGeometry.prototype.dispose = originalGeometryDispose;
+  }
+
+  const visibleSignature = (root) => {
+    const values = [];
+    root?.traverse?.((object) => {
+      if (!object.isMesh && object.userData?.spacefaceInstanceProxy !== true) return;
+      values.push([object.name, object.visible !== false]);
+    });
+    return JSON.stringify(values.sort(([left], [right]) => left.localeCompare(right)));
+  };
+  const firstVisible = visibleSignature(first?.root);
+  const secondVisible = visibleSignature(second?.root);
+  const secondMesh = second?.root?.getObjectByName('Kestrel_Armor');
+  const firstFan = first?.root?.getObjectByName('Kestrel_Fan');
+  const secondFan = second?.root?.getObjectByName('Kestrel_Fan');
+  const firstPlume = first?.root?.getObjectByName('Kestrel_Plume');
+  const secondPlume = second?.root?.getObjectByName('Kestrel_Plume');
+  const firstNav = first?.root?.getObjectByName('Kestrel_Nav');
+  const secondNav = second?.root?.getObjectByName('Kestrel_Nav');
+  const firstSecondary = first?.root?.getObjectByName('Kestrel_Secondary');
+  const secondSecondary = second?.root?.getObjectByName('Kestrel_Secondary');
+  const firstInstance = first?.renderPackageInstances?.[0];
+  const secondInstance = second?.renderPackageInstances?.[0];
+  const firstDriveUpdate = first?.root?.userData?.updateDriveState;
+  const secondDriveUpdate = second?.root?.userData?.updateDriveState;
+  const firstDamageUpdate = first?.root?.userData?.updateDamageState;
+  const secondDamageUpdate = second?.root?.userData?.updateDamageState;
+  const firstLodUpdate = first?.root?.userData?.updateLod;
+  const secondLodUpdate = second?.root?.userData?.updateLod;
+  const entityA = entityFor(`kestrel-template-${token}-a`);
+  const entityB = { ...entityFor(`kestrel-template-${token}-b`), vel: { x: 120, z: 0 }, hull: 10, hullMax: 100 };
+  entityA.vel = { x: 0, z: 0 };
+  entityA.hull = 100;
+  entityA.hullMax = 100;
+  firstDamageUpdate?.(entityA, 0);
+  secondDamageUpdate?.(entityA, 0);
+  const secondFanBeforeDrive = secondFan?.rotation.x;
+  const secondPlumeBeforeDrive = secondPlume?.material?.opacity;
+  const secondNavBeforeDamage = secondNav?.material?.emissiveIntensity;
+  const secondArmorBeforeDamage = secondMesh?.position.clone();
+  const secondSecondaryBeforeDamage = secondSecondary?.visible;
+  firstDriveUpdate?.(entityB, 1);
+  const secondUnchangedAfterDrive = secondFan?.rotation.x === secondFanBeforeDrive
+    && secondPlume?.material?.opacity === secondPlumeBeforeDrive;
+  firstDamageUpdate?.(entityB, 2);
+  const secondUnchangedAfterDamage = secondNav?.material?.emissiveIntensity === secondNavBeforeDamage
+    && secondMesh?.position.equals(secondArmorBeforeDamage)
+    && secondSecondary?.visible === secondSecondaryBeforeDamage;
+  firstLodUpdate?.('lod1');
+  const secondUnchangedAfterLod = secondSecondary?.visible === secondSecondaryBeforeDamage;
+  secondDriveUpdate?.(entityB, 1);
+  secondDamageUpdate?.(entityB, 2);
+  secondLodUpdate?.('lod1');
+  const mutableMaterialIsolation = !!firstPlume?.material && !!secondPlume?.material
+    && firstPlume.material !== secondPlume.material
+    && !!firstNav?.material && !!secondNav?.material
+    && firstNav.material !== secondNav.material;
+  const closureIsolation = !!firstDriveUpdate && !!secondDriveUpdate
+    && firstDriveUpdate !== secondDriveUpdate
+    && !!firstDamageUpdate && !!secondDamageUpdate
+    && firstDamageUpdate !== secondDamageUpdate
+    && !!firstLodUpdate && !!secondLodUpdate
+    && firstLodUpdate !== secondLodUpdate;
+  const secondRelease = second?.releaseFlightTemplate?.('kestrel-template-probe-release') || false;
+  const secondReleaseAgain = second?.releaseFlightTemplate?.('kestrel-template-probe-release-again') || false;
+  // Dispose actor A before rebuilding actor C in a different scene/owner context. The cached
+  // template must remain valid for the surviving B root and for the fresh C package instance.
+  firstInstance?.dispose?.('kestrel-template-probe-dispose-a');
+  const thirdBuild = templateKey
+    ? buildComposedShip(entityFor(`kestrel-template-${token}-c`), library, scenes[2], owners[2], {
+        requiredWholeShip: true,
+      })
+    : null;
+  third = thirdBuild;
+  const thirdMesh = third?.root?.getObjectByName('Kestrel_Armor');
+  third?.root?.userData?.updateLod?.('lod1');
+  const disposeRebuildValid = !!third && third.fromFlightTemplateCache === true
+    && !!thirdMesh && thirdMesh.visible === secondMesh?.visible;
+  const thirdRelease = third?.releaseFlightTemplate?.('kestrel-template-probe-release-c') || false;
+  if (templateKey) removeFlightRootTemplate(templateKey);
+  const templateDisposed = templateEntry?.disposed === true;
+
+  // Close package instances and local probe resources after collecting parity. Cache-owned template
+  // resources have already been finalized by removeFlightRootTemplate above.
+  const geometries = new Set([packageGeometry]);
+  const materials = new Set([packageMaterial]);
+  for (const root of [first?.root, second?.root]) {
+    root?.traverse?.((object) => {
+      if (object.geometry && object.geometry.userData?.spacefaceSharedFallback !== true) {
+        geometries.add(object.geometry);
+      }
+      const list = object.material
+        ? (Array.isArray(object.material) ? object.material : [object.material])
+        : EMPTY_ARRAY;
+      for (const material of list) if (material) materials.add(material);
+    });
+  }
+  secondInstance?.dispose?.('kestrel-template-probe-cleanup');
+  third?.renderPackageInstances?.[0]?.dispose?.('kestrel-template-probe-cleanup');
+  first?.root?.clear?.();
+  second?.root?.clear?.();
+  third?.root?.clear?.();
+  for (const geometry of geometries) geometry.dispose?.();
+  for (const material of materials) material.dispose?.();
+  for (const owner of owners) owner.removeFromParent();
+
+  return {
+    firstBuilt: !!first && first.fromFlightTemplateCache !== true,
+    secondCacheHit: second?.fromFlightTemplateCache === true,
+    packageRehydrated: !!secondInstance && secondInstance !== firstInstance,
+    bindingsRebound: !!secondMesh
+      && secondMesh.userData?.spacefaceTags?.damageRole === 'armor'
+      && typeof second?.root?.userData?.updateDamageState === 'function'
+      && typeof second?.root?.userData?.updateLod === 'function',
+    visibleParity: !!first && !!second && firstVisible === secondVisible,
+    packageCreates: packageCreates === 3,
+    packageDisposals: packageDisposals === 3,
+    releaseWasIdempotent: secondRelease === true && secondReleaseAgain === false && thirdRelease === true,
+    mutableMaterialIsolation,
+    closureIsolation,
+    driveIsolation: secondUnchangedAfterDrive,
+    damageIsolation: secondUnchangedAfterDamage,
+    lodIsolation: secondUnchangedAfterLod,
+    disposeRebuildValid,
+    templateDisposed,
+    detachedCloneGeometryDisposed: detachedCloneGeometryDisposals > 0,
   };
 }
 
@@ -5817,6 +6949,15 @@ function instantiateRenderPackagePart(record, parent, placement, palette, scene,
   const scale = placement.targetLength / sourceLength;
   partRoot.scale.multiplyScalar(scale);
   partRoot.updateMatrix();
+  partRoot.userData.spacefaceFlightPackageRecipe = {
+    url: record.url || null,
+    assetId: record.assetId || record.renderPackage?.assetId || null,
+    flightStaticV3: record.flightStaticV3 === true,
+    label: placement.label || record.assetId || record.url || 'Package',
+    position: partRoot.position.toArray(),
+    quaternion: partRoot.quaternion.toArray(),
+    scale: partRoot.scale.toArray(),
+  };
   parent.add(partRoot);
 
   const tagsByName = new Map([
@@ -6528,6 +7669,31 @@ function createInstanceChunk(scene, pool, ordinal, options = {}) {
   mesh.userData.spacefaceInstancePoolKey = pool.key;
   mesh.userData.spacefaceInstancePoolLabel = pool.label;
   mesh.userData.spacefaceInstancePoolChunk = ordinal;
+  stampOpeningSubmissionPackage(mesh, {
+    schema: 'spaceface.authoredInstancePoolProducer.v1',
+    producer: 'parts-library-authored-instance-pool',
+    label: pool.label,
+    geometry: {
+      type: pool.geometry && pool.geometry.type || 'BufferGeometry',
+      attributes: Object.keys(pool.geometry?.attributes || {}).sort().map((name) => {
+        const attribute = pool.geometry.attributes[name];
+        return {
+          name,
+          itemSize: attribute && attribute.itemSize || 0,
+          normalized: attribute && attribute.normalized === true,
+        };
+      }),
+    },
+    material: {
+      type: pool.material && pool.material.type || 'Material',
+      transparent: pool.material && pool.material.transparent === true,
+      vertexColors: pool.material && pool.material.vertexColors === true,
+    },
+    instanceAbi: ['instanceMatrix'],
+  }, {
+    assetId: `authored-instance-pool-${pool.label}`,
+    producer: 'parts-library-authored-instance-pool',
+  });
   const dynamicBufferOwner = registerDynamicBufferOwner(scene, {
     id: `authored-instance-${mesh.id}`,
     mesh,
