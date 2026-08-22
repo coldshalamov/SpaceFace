@@ -23,7 +23,9 @@ const PAUSING_SCREENS = new Set(['pause', 'mainMenu', 'newGame', 'gameOver', 'se
   // they are built. Quick mid-combat verbs stay on the non-pausing tier instead.
   'ship', 'range', 'footprint',
   // Chart maps now pause with the rest of strategic instruments (J12, fact 2).
-  'galaxyMap', 'localmap']);
+  'galaxyMap', 'localmap',
+  // Crucible: §12.2 adopts a FULL pause during a draft and the ten-wave refit (PQ-133).
+  'crucible', 'crucibleDraft', 'crucibleRefit', 'crucibleResults']);
 const PAUSE_REQUEST = Object.freeze({ scale: 0 });
 
 export function createScreenManager(ctx) {

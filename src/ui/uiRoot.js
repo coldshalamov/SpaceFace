@@ -84,6 +84,10 @@ const SCREEN_MODULES = [
   { path: './screens/newGame.js', load: () => import('./screens/newGame.js'), name: 'newGameScreen' },
   { path: './screens/pause.js', load: () => import('./screens/pause.js'), name: 'pauseScreen' },
   { path: './screens/gameOver.js', load: () => import('./screens/gameOver.js'), name: 'gameOverScreen' },
+  // CRUCIBLE (PQ-133 §12): the Survival door, its seeded rearm draft, and the ten-wave refit.
+  // Both draft surfaces live in one module, so two entries load the same chunk by export name.
+  { path: './screens/crucibleDraft.js', load: () => import('./screens/crucibleDraft.js'), name: 'crucibleDraftScreen' },
+  { path: './screens/crucibleDraft.js', load: () => import('./screens/crucibleDraft.js'), name: 'crucibleRefitScreen' },
   { path: './screens/settings.js', load: () => import('./screens/settings.js'), name: 'settingsScreen' },
   { path: './screens/saveLoad.js', load: () => import('./screens/saveLoad.js'), name: 'saveLoadScreen' },
   { path: './screens/help.js', load: () => import('./screens/help.js'), name: 'helpScreen' },
@@ -766,6 +770,14 @@ export const ui = {
       this.screenManager.pushScreen(id);
     });
     this.bus.on('ui:popScreen', () => this.screenManager.popScreen());
+    // Close ONE named screen, and only if it is the one on top. An owner that opened a surface
+    // (the Crucible draft / refit) needs to close its own without popping whatever a player
+    // stacked above it (PQ-133 CRU-016).
+    this.bus.on('ui:closeScreen', (payload = {}) => {
+      const id = payload && payload.id;
+      if (!id) return;
+      if (this.screenManager.top() === id) this.screenManager.popScreen();
+    });
     this.bus.on('ui:replaceScreen', ({ id }) => { if (id) this.screenManager.replaceScreen(id); });
     this.bus.on('ui:closeAll', () => this.screenManager.closeAll());
     this.bus.on('ui:cycleTarget', ({ dir } = {}) => cycleTarget(this.state, dir || 1, this.bus));

@@ -1074,7 +1074,31 @@ export function applySandboxSetup(ctx, config) {
       }
     } else {
       const setup = survival.value;
+      // Order matters, and each step is load-bearing:
+      //
+      // 1. The run's arsenal is POSSIBILITY, not campaign research (§12.2: meta progression
+      //    unlocks possibility, never permanent stats). Without this, moduleFitBlocker's research
+      //    gate silently refuses every tier-2+ weapon: a fresh game fits NONE of the Physics
+      //    Toolkit, and the draft pool would collapse to two tier-1 guns. Walking the real tech
+      //    tree through ships.unlockTech is credit-neutral by construction. It runs BEFORE the run
+      //    begins so no campaign-economy traffic happens inside a live run.
+      unlockAllTech(ctx);
+      // 2. Begin the run NEXT, before anything that can trigger an autosave. save's autosave
+      //    listens to sector:enter, which the arena relocation below emits — and a campaign
+      //    autosave is only suppressed once state.run is a live survival run. Beginning here is
+      //    what stops an arena position and a run loadout from landing in the Adventure slot.
+      //    runSession accepts a begin only from phase inactive, i.e. only off a real New Game.
+      if (ctx.bus && typeof ctx.bus.emit === 'function') {
+        ctx.bus.emit('run:beginRequested', {
+          kind: 'survival',
+          ruleset: 'scored',
+          seed: setup.seed,
+          arenaId: setup.arenaId,
+        });
+      }
+      // 3. Hull and fittings through the ships writers.
       applyCombatLabSetup(ctx, setup);
+      // 4. Player into the arena.
       const arena = COMBAT_LAB_ARENAS.find((entry) => entry.id === setup.arenaId);
       const sectorId = cfg.sectorId || (arena && arena.sectorId);
       const spawnPos = (cfg.spawnPos && Number.isFinite(cfg.spawnPos.x) && Number.isFinite(cfg.spawnPos.z))
@@ -1083,17 +1107,9 @@ export function applySandboxSetup(ctx, config) {
       if (sectorId && spawnPos) {
         relocatePlayer(ctx, sectorId, spawnPos, `crucible:survival:${setup.arenaId}`);
       }
+      // 5. The loadout IS ready. Without this receipt survivalRun sits in `loadout` forever and
+      //    no wave ever plans.
       if (ctx.bus && typeof ctx.bus.emit === 'function') {
-        // begin AFTER game:started / applied setup. runSession is the sole writer of state.run and
-        // accepts a begin only from phase inactive — i.e. only off a real fresh New Game.
-        ctx.bus.emit('run:beginRequested', {
-          kind: 'survival',
-          ruleset: 'scored',
-          seed: setup.seed,
-          arenaId: setup.arenaId,
-        });
-        // The loadout IS ready: hull, fittings and arena position are all applied above. Without
-        // this receipt survivalRun sits in `loadout` forever and no wave ever plans.
         ctx.bus.emit('run:loadoutReady', { source: 'crucible:launch', arenaId: setup.arenaId });
       }
     }

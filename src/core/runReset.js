@@ -8,6 +8,7 @@ export const FRESH_RUN_SYSTEMS = Object.freeze([
   // envelope, before spawnBudget wipes the ledger it reserved from.
   'survivalWave',
   'survivalRewards',
+  'survivalDraft',
   // Clear the global live-ship ledger before world or any content owner rematerializes a fresh run.
   'spawnBudget',
   'world',

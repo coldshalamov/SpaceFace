@@ -2,6 +2,7 @@
 // each step (§2.3), and the render-phase systems each frame. main.js builds it with the ctx.
 import { core } from './coreSystem.js';
 import { runSession } from '../systems/runSession.js';
+import { survivalDraft } from '../systems/survivalDraft.js';
 import { survivalRewards } from '../systems/survivalRewards.js';
 import { survivalWave } from '../systems/survivalWave.js';
 import { survivalRun } from '../systems/survivalRun.js';
@@ -171,6 +172,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['runSession', runSession],
     ['survivalWave', survivalWave],
     ['survivalRewards', survivalRewards],
+    ['survivalDraft', survivalDraft],
     ['survivalRun', survivalRun],
     ['voiceArbiter', voiceArbiter],
     ['input', input],
