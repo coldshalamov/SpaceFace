@@ -1144,9 +1144,14 @@ That is what Phase 0 is for, and it is why Phase 0 is not optional.
 
 | Phase | State | Evidence |
 |---|---|---|
-| **0 · Foundation** | **NEARLY DONE.** Role/type/motion tokens, the CREST/STAGE/APRON/DRAWER skeleton, text-expansion base rules and delegated hover audio landed (`8adcd339`, `65b81ee8`). **J3 the four data states, J5 the entity resolver + drawer, and J4 screen state memory have now landed** (`09111881`, `61497eab`, `16067c5e`). **Still owed: the responsive / ultrawide strategy — and nothing in J1–J10 covers it.** | `styles/ui.css` §11/§13/§14; `src/ui/entityResolver.js`; `src/ui/screenMemory.js` |
-| **1 · THE SHIP** | **step 1 of 3 done.** Promoted to a pausing in-flight screen (`F2`), one shared WebGL mount serving both hosts, flight host = instrument minus commerce. Polish pass fixed the loading gate, 22 clipped nodes and 11 sub-floor type nodes (`c01e55c4`). **Steps 2–3 (handling, power, condition, capability) are J2 below.** | `src/ui/ship/shipScreen.js`; `scripts/probe-ship-polish-audit.mjs` |
-| **2–7** | not started | — |
+| **0 · Foundation** | **NEARLY DONE.** Role/type/motion tokens, the CREST/STAGE/APRON/DRAWER skeleton, text-expansion base rules and delegated hover audio landed (`8adcd339`, `65b81ee8`). **J3 the four data states, J5 the entity resolver + drawer, and J4 screen state memory have now landed** (`09111881`, `61497eab`, `16067c5e`). **Responsive / ultrawide safe frame landed (`0996a2e4`).** J01 named adoption set and J03 named tagging set are encoded and negative-tested in `check:data-states` / `check:entity-links` (`c571c478`). | `styles/ui.css` §11/§13/§14; `src/ui/entityResolver.js`; `src/ui/screenMemory.js` |
+| **1 · THE SHIP** | **DONE.** Pausing in-flight screen (`F2`), shared WebGL mount, polish pass (`c01e55c4`); bands 2–3 handling/power/condition/capability landed as J09 (`0f503607`); loadout presets J13 (`4dbd0257`). | `src/ui/ship/shipScreen.js`, `src/ui/ship/loadoutPresets.js` |
+| **2 · THE FOOTPRINT** | **DONE** — J10 (`583f7893`): provenance ledger + rap sheet / standing / log (`F3`). | `src/ui/screens/footprint.js`, `src/systems/provenanceLedger.js` |
+| **3 · THE CHART** | **DONE** — J12 (`06a8161c`): pressure flows, route risk, traffic layer, dossiers. | `src/ui/galaxyMap.js`, `src/ui/map/` |
+| **4 · THE RANGE** | **DONE** — J11 (`9d242df7`): three drills + weak-point passes (`F4`). | `src/ui/screens/range.js` |
+| **5 · HUD + Power Bar** | **DONE** — J05 icons/crests (`e23a9ba9`), J06 Power Rail (`79e56c06`), J07 tactical HUD (`ad4764b5`…`f94a3368`), J08 reticle + threat halo (`bea90b47`), J14 tactile feedback (`f85507a9`), J15 quick-comms (`6cd90065`), responsive/ultrawide safe frame (`0996a2e4`). | `src/ui/hud.js`, `src/ui/powerRail.js`, `src/ui/threatHalo.js`, `src/ui/commsRadial.js` |
+| **6 · Station interiors** | **Stage 0 repair DONE** (`376fcc8f`: `translate` instead of `transform` on `button:active`, popover anchor exemption, `resolveTarget`). **Flatten DONE** (`9b424bbe`: 982 cascade-dead declarations removed with an independent cascade proof, 0.0000 % pixel diff on the pure-DOM tabs at three bands, Kimi vision IDENTICAL; 2,905 → 2,496 lines — "half the size" was not honestly reachable without changing appearance). **Stage 2 owed:** the 173 sub-12 px declarations (6.5–11.5 px) to the grammar floor by layout, token substitution against surviving values, `--sf-data-face` on every figure. | `styles/station-workbench.css`, `src/ui/station/` |
+| **7 · Cleanup** | **Premise refuted 2026-08-21.** A resolved reverse-import walk reaches **27 of 27** files in `src/ui/screens/`; `stationHub.js` (4,057 lines) is imported by the live `stationApp.js`/`stationScreen.js`, and the live station screens import shared logic from the legacy `market.js`/`bar.js`/`services.js`/`shipLedger.js`/`factions.js`. Nothing is deletable without first refactoring the live station. What was wrong is fixed: both checks now lint the LIVE station (`30be9b1d`). A future Phase 7 is a refactor (lift shared logic out of the legacy modules), not a deletion. | `scripts/check-ui-screen-imports.mjs`, `scripts/check-command-deck-ui.mjs` |
 
 **Phase-0 addendum — three rulings the build produced, binding on every job below.**
 
@@ -1238,7 +1243,7 @@ how it is verified, and the traps that will bite. Full narrative in
 
 ---
 
-#### J01 · The four data states, as a shared primitive — *short* — **PRIMITIVE LANDED `09111881`, ADOPTION OWED**
+#### J01 · The four data states, as a shared primitive — *short* — **LANDED `09111881`, NAMED ADOPTION SET ENCODED `c571c478`**
 
 **Pattern:** the skeleton/empty-state discipline of every shipped consumer app.
 **Player outcome:** never a blank screen that is technically correct.
@@ -1268,7 +1273,7 @@ set and bookmarks; `screenManager` owns scroll generically via `[data-sf-scroll]
 
 ---
 
-#### J03 · Everything is a link — *medium* — **MECHANISM LANDED `61497eab`, TAGGING PASS OWED**
+#### J03 · Everything is a link — *medium* — **LANDED `61497eab`, NAMED TAGGING SET ENCODED `c571c478`**
 
 **Pattern:** EVE Online "Show Info", Destiny inspect — every noun is a door.
 **Player outcome:** twelve menus stop being twelve menus. Read a contract naming a company → click →
@@ -1283,7 +1288,7 @@ and contract rows, and the codex.
 
 ---
 
-#### J04 · Fast Component Snapshot & Visual Iteration Lab (`probe-frontend-snapshot.mjs`) — *short*
+#### J04 · Fast Component Snapshot & Visual Iteration Lab (`probe-frontend-snapshot.mjs`) — *short* — **LANDED `c571c478`**
 
 **Pattern:** Storybook / Component isolation testbed with instant headless visual capture.
 **Player / Developer outcome:** agents and developers can iterate on frontend styling, icons, and cards with sub-second visual feedback without booting full 60 FPS Three.js gameplay.
@@ -1298,7 +1303,7 @@ and contract rows, and the codex.
 
 ---
 
-#### J05 · Unified Vector Iconography, Faction Crests & Asset Purge — *short*
+#### J05 · Unified Vector Iconography, Faction Crests & Asset Purge — *short* — **LANDED `e23a9ba9`**
 
 **Pattern:** Homeworld / Wipeout precision aerospace vector standard (`currentColor` 24×24 stroke SVG).
 **Player outcome:** zero cartoonish OS emojis; distinct heraldic vector crests for all 14 galactic factions; unified aerospace symbols across station, outfitting, and flight.
@@ -1314,7 +1319,7 @@ and contract rows, and the codex.
 
 ---
 
-#### J06 · The Power Rail — *short*
+#### J06 · The Power Rail — *short* — **LANDED `79e56c06`**
 
 **Pattern:** the MMO/looter action bar (WoW, Destiny) — permanent, numbered, fills as you grow.
 **Player outcome:** *"I can see what I can do, and I can see it growing."* The direct answer to
@@ -1336,7 +1341,7 @@ and contract rows, and the codex.
 
 ---
 
-#### J07 · Tactical HUD Overhaul — "Ink on Vacuum", Column Grid & Wireframe Ship Condition — *medium*
+#### J07 · Tactical HUD Overhaul — "Ink on Vacuum", Column Grid & Wireframe Ship Condition — *medium* — **LANDED `ad4764b5 … f94a3368`**
 
 **Pattern:** DCS / Elite Dangerous high-glancability non-diegetic HUD telemetry.
 **Player outcome:** instantaneous combat parsing without reading text paragraphs; no misaligned staggered cards; dynamic ship damage wireframes matching the active hull.
@@ -1354,7 +1359,7 @@ and contract rows, and the codex.
 
 ---
 
-#### J08 · Dynamic Combat Reticle & 3D Off-Screen Threat Halo — *medium*
+#### J08 · Dynamic Combat Reticle & 3D Off-Screen Threat Halo — *medium* — **LANDED `bea90b47`**
 
 **Pattern:** Ace Combat / Project Wingman dynamic targeting reticle and spatial threat awareness.
 **Player outcome:** fluid dogfighting without looking away from the crosshair; intuitive reaction to flanking hostiles and incoming missile locks.
@@ -1368,7 +1373,7 @@ and contract rows, and the codex.
 
 ---
 
-#### J09 · Ship bands 2–3: handling, power, condition, capability — *short*
+#### J09 · Ship bands 2–3: handling, power, condition, capability — *short* — **LANDED `0f503607`**
 
 **Pattern:** Elite Dangerous outfitting comparison + Warframe ghost-preview on hover.
 **Player outcome:** the answer to *"why does my ship fly like this"*, a power budget with a capacity
@@ -1387,7 +1392,7 @@ to draw against, visible damage, and progression stated as capability.
 
 ---
 
-#### J10 · THE FOOTPRINT — *medium*
+#### J10 · THE FOOTPRINT — *medium* — **LANDED `583f7893`**
 
 **Pattern:** Red Dead 2's wanted system + Crusader Kings' *"why does this person hate me"* causal chain.
 **Player outcome:** the world visibly remembers. A hostile patrol is traceable back to the collision
@@ -1402,7 +1407,7 @@ that caused it. Key `F3`.
 
 ---
 
-#### J11 · THE RANGE — *medium*
+#### J11 · THE RANGE — *medium* — **LANDED `9d242df7`**
 
 **Pattern:** Titanfall 2's gauntlet, Hitman training, Deep Rock tutorial bays — teaching by doing.
 **Player outcome:** learns the physics toolkit by flying it, and can return to the lesson. Key `F4`.
@@ -1415,7 +1420,7 @@ that caused it. Key `F3`.
 
 ---
 
-#### J12 · THE CHART as a dispatch console — *long*
+#### J12 · THE CHART as a dispatch console — *long* — **LANDED `06a8161c`**
 
 **Pattern:** X4's map, Total War's campaign layer, Death Stranding route planning.
 **Player outcome:** answers *"where should I take this cargo, and is that route survivable?"* in
@@ -1431,7 +1436,7 @@ seconds — and lets the player act on the answer without leaving the map.
 
 ---
 
-#### J13 · Loadout presets and build identity — *long*
+#### J13 · Loadout presets and build identity — *long* — **LANDED `4dbd0257`**
 
 **Pattern:** Destiny loadouts, Monster Hunter equipment sets.
 **Player outcome:** *"different kinds of gameplay"* becomes real, because switching is cheap enough
@@ -1444,7 +1449,7 @@ Labelled by playstyle — *"Tow & Swing"* vs *"Skirmish"*.
 
 ---
 
-#### J14 · Atmospheric Audio-Visual Feedback & Haptic Micro-Animations — *medium*
+#### J14 · Atmospheric Audio-Visual Feedback & Haptic Micro-Animations — *medium* — **LANDED `f85507a9`**
 
 **Pattern:** Alien: Isolation / Dead Space analog-tactile interface feel.
 **Player outcome:** physical, living instruments with inertial needle settling, CRT phosphor decay on capacitor discharge, sound-synced frequency visualizers on comms, and tactile click audio.
@@ -1459,7 +1464,7 @@ Labelled by playstyle — *"Tow & Swing"* vs *"Skirmish"*.
 
 ---
 
-#### J15 · Contextual Quick-Comms Radial & Tactical Hail Deck — *medium/long*
+#### J15 · Contextual Quick-Comms Radial & Tactical Hail Deck — *medium/long* — **LANDED `6cd90065`**
 
 **Pattern:** Mass Effect / Star Wars Squadrons tactical comms and faction diplomacy wheel.
 **Player outcome:** in-flight dynamic interaction with NPC traffic (demanding surrender, paying bribes, requesting docking clearance) without breaking flight flow.
@@ -1473,7 +1478,7 @@ Labelled by playstyle — *"Tow & Swing"* vs *"Skirmish"*.
 
 ---
 
-#### J16 · Visual regression in CI — *long, start early*
+#### J16 · Visual regression in CI — *long, start early* — **LANDED `scripts/check-visual-regression.mjs, thresholds calibrated 2026-08-20`**
 
 **Pattern:** standard practice at every A-list studio — reference frames diffed automatically.
 **Player outcome:** nothing silently regresses.
