@@ -139,5 +139,6 @@
 | 159 | yes | 9780D2BF | REVISE/REVISE/REVISE | White hull restored. Wings hide the waist; canopy stamp; square wells. Not wired. |
 | 160 | yes | see json | author REVISE | Aft wings + steep dihedral. Play luminance ~35. Not wired. |
 | 161 | yes | F60F0808 | REVISE/REVISE/REVISE | White hull, wings aft. Two-tone still reads as cards. Not wired. |
+| 162 | yes | see json | REVISE/REVISE/REVISE | One white skin. Still a chalk wedge with card wings. Not wired. |
 
 Hitch-plus / A-list: not met. C85 remains the live game body. Do not mark PQ-050.01 done. Do not self-accept.
