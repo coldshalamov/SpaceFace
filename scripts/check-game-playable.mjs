@@ -18,6 +18,7 @@
 //   5. WORLD     other entities exist                   (catches: empty sector)
 //   6. CONTROLS  a thrust key changes the ship's speed  (catches: dead input)
 //   7. CLEAN     no uncaught exception during any of it (catches: a throw killing the frame)
+//   7b. SHADER   no shader compile/link error            (catches: a material drawing black)
 //
 // Run it before you stop working. If it is red, you broke the game, whatever else is green.
 //
@@ -74,6 +75,12 @@ let report_realSaves = null;
 // PHASE or the harness ends up blaming the game for its own navigation.
 let phase = 'startup';
 const pageErrors = [];
+// Shader link/compile failures. three.js reports them through console.error (checkShaderErrors is on by
+// default), so they already land in pageErrors and fail CLEAN; they get their own named step because a
+// material that fails VALIDATE_STATUS draws black rather than throwing, and "CLEAN" does not say that.
+// 2026-08-21: a GLSL function definition injected inside main() shipped for weeks because the only
+// material carrying it was on an invisible collision hull and never compiled.
+const shaderErrors = [];
 const missingAssets = [];
 const diagnostics = [];
 
@@ -204,6 +211,7 @@ try {
     if (m.type() !== 'error') return;
     const text = m.text();
     if (/Failed to load resource/i.test(text)) return;
+    if (/THREE\.WebGLProgram: Shader Error|VALIDATE_STATUS\s+false|ERROR: 0:\d+:/i.test(text)) shaderErrors.push(`[${phase}] ` + text.slice(0, 400));
     // Chromium aborts embedded GLB image requests when this harness deliberately destroys the
     // outgoing document. GLTFLoader logs those navigation cancellations before rejecting them;
     // the request listener below retains the matching ERR_ABORTED receipt. They are not errors in
@@ -482,6 +490,13 @@ try {
   record('CLEAN', unique.length === 0, unique.length === 0
     ? 'no uncaught errors'
     : `${unique.length} uncaught error(s):\n      ` + unique.slice(0, 8).map((e) => e.slice(0, 220)).join('\n      '));
+  // ── 7b. SHADER ─────────────────────────────────────────────────────────────────────────────
+  // A program that fails to link is a console.error, not an exception: the mesh draws black and the
+  // frame keeps running. Named separately so the failure reads as what it is, not as "CLEAN".
+  const uniqueShader = [...new Set(shaderErrors)];
+  record('SHADER', uniqueShader.length === 0, uniqueShader.length === 0
+    ? 'no shader compile/link errors'
+    : `${uniqueShader.length} shader error(s):\n      ` + uniqueShader.slice(0, 4).map((e) => e.slice(0, 300)).join('\n      '));
   const openingFailure = await page.evaluate(() => {
     const value = window.SF?.state?.render?.openingSubmissionPreSubmitValidation;
     if (!value || value.ok === true) return null;
