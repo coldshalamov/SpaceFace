@@ -340,8 +340,7 @@ def create_materials():
         # C153: hull to the Hitch bar's bright light gray; dirt damped so panels read as crisp
         # seams, not airbrushed blotches.
         # C154: Hitch-white hull so dark wells and charcoal wings can break value at D=144.
-        # C175: slightly off chalk so dark wells and flaps can own the Hitch split without maps.
-        "Material_Hull": ((0.74, 0.75, 0.77), 0.02, 0.52, "hull", 0.0, None),
+        "Material_Hull": ((0.82, 0.83, 0.85), 0.02, 0.50, "hull", 0.0, None),
         "Material_Armor": ((0.07, 0.075, 0.082), 0.08, 0.50, "armor", 0.0, None),
         "Material_Mechanical": ((0.50, 0.48, 0.44), 0.90, 0.22, "mechanical", 0.0, None),
         "Material_Accent": ((0.04, 0.40, 0.50), 0.10, 0.34, "accent", 0.2, None),
@@ -1191,9 +1190,11 @@ def loft_volume(name, specs, material, collection, thick=0.12):
 
 
 def add_blended_interceptor_wing(name, sign, skin, armor, collection, soot=None):
-    """Delta on the house so the naked waist reads from chase. Mild dihedral only."""
+    """Delta on the house. Whole wing is armor so chase sees a dark planform, not a white card with a brick flap."""
     s = float(sign)
     soot = soot or armor
+    # C176: one charcoal skin. C175 armor flap on a hull wing photographed as a TE brick.
+    skin = armor
     # y, le, chord, thick, z — roots on the house, aft of the held waist.
     main = (
         (1.48, -1.55, 2.20, 1.10, 0.18),
@@ -1559,9 +1560,6 @@ def build_lod(lod, mats):
     # Bigger roof mouths so chase looks into bells, not painted squares. No connecting crate-cut.
     delete_faces_in_cylinder(body, -3.90, -2.85, 0.88, 0.70, 0.62, normal="z", normal_min=0.15)
     delete_faces_in_cylinder(body, -3.90, -2.85, -0.88, 0.70, 0.62, normal="z", normal_min=0.15)
-    # C175: thin silhouette-edge slots, not 1 m waist pits (C174 side boxes).
-    delete_faces_in_box(body, -0.65, 1.15, 2.18, 2.58, 0.22, 2.00, normal="z", normal_min=0.18)
-    delete_faces_in_box(body, -0.65, 1.15, -2.58, -2.18, 0.22, 2.00, normal="z", normal_min=0.18)
     delete_faces_in_box(body, -1.80, -0.80, 1.85, 2.40, 0.05, 0.50, normal="y", normal_min=0.22)
     delete_faces_in_box(body, -1.80, -0.80, -2.40, -1.85, 0.05, 0.50, normal="y-", normal_min=0.22)
     report_shells(body, "hull after wells")
@@ -1597,18 +1595,6 @@ def build_lod(lod, mats):
     add_box("CanopyFrame_Aft", (3.12, 0.0, 0.84), (0.070, 0.40, 0.050), hull, collection, 0.002)
     add_box("CanopyFrame_P", (3.90, -0.44, 0.85), (0.72, 0.050, 0.050), hull, collection, 0.002)
     add_box("CanopyFrame_S", (3.90, 0.44, 0.85), (0.72, 0.050, 0.050), hull, collection, 0.002)
-    add_folded_sheet(
-        "Chine_P",
-        (1.15, -2.52, 0.40), (-0.65, -2.50, 0.38),
-        (-0.65, -2.22, 0.44), (1.15, -2.24, 0.46),
-        0.022, soot, collection, 0.002,
-    )
-    add_folded_sheet(
-        "Chine_S",
-        (1.15, 2.52, 0.40), (1.15, 2.24, 0.46),
-        (-0.65, 2.22, 0.44), (-0.65, 2.50, 0.38),
-        0.022, soot, collection, 0.002,
-    )
 
     add_five_wall_tub("AvionicsTub", (0.85, -1.18, 0.22), (0.24, 0.10, 0.11), 0.040, mech, collection)
     add_box("AvionicsRack", (0.85, -1.18, 0.16), (0.16, 0.032, 0.05), armor, collection, 0.002)
