@@ -6,7 +6,7 @@ Chase-camera evidence only. No seats. No studio three-quarter cycle stills.
 Run from repo root. Do not pass --cycle (Blender steals it as --cycles-*). Use:
 
   "C:\\Program Files\\Blender Foundation\\Blender 5.1\\blender.exe" --background --python ^
-    assets/ships/massline_express_liner_v1/scripts/build_massline_express_liner_v1.py -- --mtx-cycle=18
+    assets/ships/massline_express_liner_v1/scripts/build_massline_express_liner_v1.py -- --mtx-cycle=28
 """
 from __future__ import annotations
 
@@ -490,29 +490,58 @@ def try_cut_bay(hull, tag, surface, length, width, depth, outward, mats, collect
 
 
 def add_boarding_glass(mats, collection):
-    """Ivory rim around a smaller dark pit. Side glass only. No dark roof, no dark stamp."""
-    glass, frame, pit, hull = (
+    """Open deck well. Ivory coaming + dark inner frame so the well reads at D=144. No glass roof."""
+    glass, frame, pit, hull, cyan = (
         mats["Material_Canopy"], mats["Material_Armor"],
         mats["Material_Mechanical"], mats["Material_Hull"],
+        mats["Material_Accent"],
     )
-    add_box("Board_WellFloor", (13.15, 0.0, 1.28), (1.18, 0.68, 0.03), pit, collection, 0.002)
-    add_box("Board_RimFore", (14.48, 0.0, 1.78), (0.11, 0.88, 0.10), hull, collection, 0.002)
-    add_box("Board_RimAft", (11.82, 0.0, 1.82), (0.11, 0.88, 0.10), hull, collection, 0.002)
-    add_box("Board_RimP", (13.15, -0.82, 1.80), (1.28, 0.09, 0.09), hull, collection, 0.002)
-    add_box("Board_RimS", (13.15, 0.82, 1.80), (1.28, 0.09, 0.09), hull, collection, 0.002)
-    add_box("Board_Mullion", (13.15, 0.0, 1.76), (0.040, 0.72, 0.05), frame, collection, 0.002)
-    add_box("Board_GlassP", (13.15, -0.88, 1.52), (1.18, 0.016, 0.24), glass, collection, 0.001)
-    add_box("Board_GlassS", (13.15, 0.88, 1.52), (1.18, 0.016, 0.24), glass, collection, 0.001)
-    add_box("Board_GlassFore", (14.42, 0.0, 1.48), (0.016, 0.72, 0.20), glass, collection, 0.001)
+    add_box("Board_WellFloor", (12.70, 0.0, 1.50), (2.20, 1.18, 0.04), pit, collection, 0.002)
+    add_box("Board_WellStep", (12.70, 0.0, 1.68), (2.00, 0.95, 0.03), frame, collection, 0.002)
+    add_box("Board_RimFore", (15.45, 0.0, 2.58), (0.58, 1.85, 0.36), hull, collection, 0.004)
+    add_box("Board_RimAft", (9.95, 0.0, 2.64), (0.58, 1.88, 0.36), hull, collection, 0.004)
+    add_box("Board_RimP", (12.70, -1.82, 2.60), (2.75, 0.58, 0.34), hull, collection, 0.004)
+    add_box("Board_RimS", (12.70, 1.82, 2.60), (2.75, 0.58, 0.34), hull, collection, 0.004)
+    add_box("Board_FrameFore", (15.02, 0.0, 2.22), (0.10, 1.42, 0.24), frame, collection, 0.002)
+    add_box("Board_FrameAft", (10.38, 0.0, 2.26), (0.10, 1.45, 0.24), frame, collection, 0.002)
+    add_box("Board_FrameP", (12.70, -1.42, 2.24), (2.28, 0.10, 0.22), frame, collection, 0.002)
+    add_box("Board_FrameS", (12.70, 1.42, 2.24), (2.28, 0.10, 0.22), frame, collection, 0.002)
+    add_box("Board_CyanP", (12.70, -1.30, 2.32), (2.05, 0.040, 0.045), cyan, collection, 0.001)
+    add_box("Board_CyanS", (12.70, 1.30, 2.32), (2.05, 0.040, 0.045), cyan, collection, 0.001)
+    add_box("Board_Mullion", (12.70, 0.0, 2.08), (0.12, 1.18, 0.14), frame, collection, 0.002)
+    add_box("Board_MullionX", (12.70, 0.0, 1.98), (2.05, 0.08, 0.08), frame, collection, 0.002)
+    add_box("Board_GlassP", (12.70, -1.20, 1.88), (2.10, 0.018, 0.30), glass, collection, 0.001)
+    add_box("Board_GlassS", (12.70, 1.20, 1.88), (2.10, 0.018, 0.30), glass, collection, 0.001)
+    add_box("Board_GlassFore", (14.88, 0.0, 1.85), (0.018, 1.12, 0.26), glass, collection, 0.001)
+
+
+def add_bulkhead_collar(name, x, hw, hh, mats, collection, crown=0.55, wall=0.78, belly=0.32):
+    """Slightly proud mid-grey join ring. Breaks the sausage without becoming a black hoop."""
+    primer = mats["Material_Radiator"]
+    loft_from_rings(name, [
+        civic_pressure_ring(x - 0.18, 0, 0.22, hw * 1.05, hh * 1.04, crown, wall, belly),
+        civic_pressure_ring(x + 0.18, 0, 0.22, hw * 1.05, hh * 1.04, crown, wall, belly),
+    ], primer, collection, 0.008, cap="both")
+
+
+def add_drive_well_hardware(y, tag, mats, collection):
+    """Ivory coaming around a stepped well. Dark liner fills the inner floor so chase sees a hole."""
+    hull, throat = mats["Material_Hull"], mats["Material_Thruster"]
+    sign = 1.0 if y > 0 else -1.0
+    add_box(f"WellLiner_{tag}", (-16.15, y, 1.22), (1.85, 0.65, 0.05), throat, collection, 0.002)
+    add_box(f"WellRimFore_{tag}", (-13.82, y, 2.02), (0.24, 1.05, 0.16), hull, collection, 0.003)
+    add_box(f"WellRimAft_{tag}", (-18.48, y, 1.96), (0.24, 0.98, 0.14), hull, collection, 0.003)
+    add_box(f"WellRimOut_{tag}", (-16.15, y + sign * 1.12, 2.00), (2.20, 0.22, 0.16), hull, collection, 0.003)
+    add_box(f"WellRimIn_{tag}", (-16.15, y - sign * 1.12, 2.00), (2.20, 0.22, 0.16), hull, collection, 0.003)
 
 
 def add_dorsal_spine(lod, mats, collection):
-    """Three ivory formed hat covers. Darkness is slot liners, not a painted stripe."""
+    """Three low formed hat covers. Darkness is slot liners, not a painted stripe."""
     hull, primer, mech = mats["Material_Hull"], mats["Material_Radiator"], mats["Material_Mechanical"]
     covers = (
-        ((6.10, 0.88, 3.02, 3.52), (3.35, 1.02, 3.18, 3.68)),
-        ((2.55, 1.12, 3.20, 3.78), (-0.85, 1.08, 3.12, 3.70)),
-        ((-2.15, 0.98, 3.02, 3.55), (-6.55, 0.78, 2.52, 3.00)),
+        ((6.50, 1.55, 3.18, 3.52), (3.10, 1.68, 3.38, 3.72)),
+        ((2.30, 1.75, 3.42, 3.76), (-1.20, 1.62, 3.28, 3.58)),
+        ((-2.50, 1.48, 3.12, 3.42), (-6.90, 1.22, 2.62, 2.92)),
     )
     for index, ((x0, h0, d0, t0), (x1, h1, d1, t1)) in enumerate(covers):
         hat = loft_from_rings(f"Spine_Hat_{index}", [
@@ -523,14 +552,14 @@ def add_dorsal_spine(lod, mats, collection):
             boolean_cut_box(
                 hat, f"SpineSlot_{index}",
                 ((x0 + x1) * 0.5, 0.0, (t0 + t1) * 0.5 + 0.02),
-                (0.72, 0.22, 0.12),
+                (1.15, 0.32, 0.16),
             )
         except Exception as exc:
             print(f"spine slot skip {index}: {exc}")
         add_box(
             f"SpineSlotLiner_{index}",
             ((x0 + x1) * 0.5, 0.0, (t0 + t1) * 0.5 - 0.04),
-            (0.38, 0.10, 0.03),
+            (0.95, 0.22, 0.05),
             mech, collection, 0.001,
         )
     add_box("Spine_FeedAft", (-10.4, 0.0, 1.85), (1.65, 0.22, 0.14), mech, collection, 0.004)
@@ -721,22 +750,23 @@ def drum_stations(lod):
     """Stepped civic drum. Aft stays as wide as the drive roots so they cannot float."""
     if lod >= 2:
         return [
-            civic_pressure_ring(16.55, 0, 0.12, 1.15, 0.95, crown=0.12, wall=0.18, belly=0.12),
-            civic_pressure_ring(11.40, 0, 0.22, 3.65, 2.25, crown=0.55, wall=0.58, belly=0.38),
-            civic_pressure_ring(0.20, 0, 0.28, 5.05, 2.85, crown=0.92, wall=0.88, belly=0.55),
-            civic_pressure_ring(-8.40, 0, 0.22, 4.35, 2.55, crown=0.70, wall=0.86, belly=0.42),
-            civic_pressure_ring(-16.40, 0, 0.18, 4.55, 2.35, crown=0.38, wall=0.82, belly=0.28),
+            civic_pressure_ring(16.55, 0, 0.10, 0.95, 0.78, crown=0.10, wall=0.16, belly=0.10),
+            civic_pressure_ring(12.40, 0, 0.22, 3.85, 2.28, crown=0.70, wall=0.50, belly=0.28),
+            civic_pressure_ring(1.20, 0, 0.28, 5.25, 2.95, crown=0.94, wall=0.88, belly=0.55),
+            civic_pressure_ring(-5.20, 0, 0.20, 3.35, 2.15, crown=0.42, wall=0.78, belly=0.32),
+            civic_pressure_ring(-16.40, 0, 0.18, 4.80, 2.42, crown=0.34, wall=0.82, belly=0.26),
         ]
     return [
-        civic_pressure_ring(16.55, 0, 0.10, 0.98, 0.82, crown=0.08, wall=0.14, belly=0.10),
-        civic_pressure_ring(14.20, 0, 0.16, 2.05, 1.38, crown=0.22, wall=0.28, belly=0.18),
-        civic_pressure_ring(11.20, 0, 0.22, 3.95, 2.35, crown=0.62, wall=0.52, belly=0.32),
-        civic_pressure_ring(5.40, 0, 0.26, 4.55, 2.58, crown=0.78, wall=0.82, belly=0.46),
-        civic_pressure_ring(0.20, 0, 0.28, 5.15, 2.92, crown=0.94, wall=0.88, belly=0.55),
-        civic_pressure_ring(-5.40, 0, 0.22, 3.85, 2.35, crown=0.58, wall=0.80, belly=0.40),
-        civic_pressure_ring(-9.20, 0, 0.20, 3.45, 2.18, crown=0.48, wall=0.78, belly=0.34),
-        civic_pressure_ring(-12.80, 0, 0.20, 4.85, 2.48, crown=0.40, wall=0.84, belly=0.30),
-        civic_pressure_ring(-16.40, 0, 0.18, 4.75, 2.38, crown=0.34, wall=0.82, belly=0.26),
+        civic_pressure_ring(16.55, 0, 0.08, 0.88, 0.72, crown=0.06, wall=0.12, belly=0.08),
+        civic_pressure_ring(14.80, 0, 0.14, 1.72, 1.12, crown=0.18, wall=0.22, belly=0.14),
+        civic_pressure_ring(12.40, 0, 0.22, 3.85, 2.28, crown=0.70, wall=0.48, belly=0.28),
+        civic_pressure_ring(7.20, 0, 0.26, 4.45, 2.52, crown=0.78, wall=0.80, belly=0.42),
+        civic_pressure_ring(1.20, 0, 0.30, 5.35, 3.05, crown=0.96, wall=0.90, belly=0.55),
+        civic_pressure_ring(-0.20, 0, 0.24, 4.10, 2.42, crown=0.62, wall=0.82, belly=0.38),
+        civic_pressure_ring(-2.40, 0, 0.22, 3.35, 2.12, crown=0.42, wall=0.78, belly=0.32),
+        civic_pressure_ring(-6.80, 0, 0.20, 3.25, 2.05, crown=0.40, wall=0.76, belly=0.30),
+        civic_pressure_ring(-12.40, 0, 0.20, 4.95, 2.55, crown=0.38, wall=0.84, belly=0.28),
+        civic_pressure_ring(-16.40, 0, 0.18, 4.80, 2.42, crown=0.32, wall=0.82, belly=0.24),
     ]
 
 
@@ -752,12 +782,17 @@ def build_lod(lod, mats):
     }
     hull_obj = loft_from_rings("Pressure_Drum", drum_stations(lod), hull, collection, BEVEL_HULL, cap="both")
     if lod <= 1:
-        try_cut_bay(hull_obj, "PortDock", (3.40, -4.85, 0.28), 2.40, 1.35, 0.42, (0, -1, 0), mats, collection, "empty")
-        try_cut_bay(hull_obj, "StbdService", (-2.20, 4.75, 0.28), 2.10, 1.22, 0.40, (0, 1, 0), mats, collection, "empty")
+        try_cut_bay(hull_obj, "PortDock", (3.20, -4.55, 0.22), 2.85, 1.55, 0.58, (0, -1, 0), mats, collection, "empty")
+        try_cut_bay(hull_obj, "StbdService", (-2.40, 4.35, 0.22), 2.55, 1.42, 0.55, (0, 1, 0), mats, collection, "empty")
+        add_dock_hardware("Port", (3.20, -4.62, 0.22), mats, collection, lod, cyan=True)
+        add_dock_hardware("Stbd", (-2.40, 4.42, 0.22), mats, collection, lod, cyan=False)
         hull_obj.data.materials.clear()
         hull_obj.data.materials.append(hull)
         add_boarding_glass(mats, collection)
         add_dorsal_spine(lod, mats, collection)
+        add_bulkhead_collar("Collar_Shoulder", 7.20, 4.45, 2.52, mats, collection, 0.78, 0.80, 0.42)
+        add_bulkhead_collar("Collar_Waist", -2.40, 3.35, 2.12, mats, collection, 0.42, 0.78, 0.32)
+        add_bulkhead_collar("Collar_Drive", -12.40, 4.95, 2.55, mats, collection, 0.38, 0.84, 0.28)
         loft_from_rings("Bulk_Fore", [
             civic_pressure_ring(11.28, 0, 0.22, 3.95, 2.38, crown=0.62, wall=0.52, belly=0.32),
             civic_pressure_ring(11.42, 0, 0.22, 3.95, 2.38, crown=0.62, wall=0.52, belly=0.32),
@@ -789,17 +824,33 @@ def build_lod(lod, mats):
         except Exception as exc:
             print(f"throat cut skip {tag}: {exc}")
         try:
-            boolean_cut_box(hull_obj, f"BoomWell_{tag}", (-16.25, y, 1.84), (1.95, 0.72, 0.42))
+            boolean_cut_box(hull_obj, f"BoomWell_{tag}", (-16.15, y, 1.82), (2.55, 1.08, 0.52))
         except Exception as exc:
             print(f"boom well skip {tag}: {exc}")
-        add_box(f"WellLiner_{tag}", (-16.25, y, 1.44), (1.55, 0.48, 0.05), throat, collection, 0.002)
-        add_box(f"WellWallP_{tag}", (-16.25, y - 0.54, 1.58), (1.48, 0.03, 0.18), throat, collection, 0.001)
-        add_box(f"WellWallS_{tag}", (-16.25, y + 0.54, 1.58), (1.48, 0.03, 0.18), throat, collection, 0.001)
+        try:
+            boolean_cut_box(hull_obj, f"BoomWellInner_{tag}", (-16.15, y, 1.50), (1.95, 0.72, 0.40))
+        except Exception as exc:
+            print(f"boom well inner skip {tag}: {exc}")
+        add_drive_well_hardware(y, tag, mats, collection)
     if lod <= 1:
         try:
-            boolean_cut_box(hull_obj, "BoardTub", (13.15, 0.0, 1.70), (1.42, 0.85, 0.38))
+            boolean_cut_box(hull_obj, "BoardTub", (12.70, 0.0, 2.28), (2.60, 1.42, 0.46))
         except Exception as exc:
             print(f"board tub skip: {exc}")
+        glass, frame = mats["Material_Canopy"], mats["Material_Armor"]
+        for tag, y, x, z, sx, sz in (
+            ("BeltP", -3.85, 12.85, 1.18, 2.35, 0.48),
+            ("BeltS", 3.85, 12.85, 1.18, 2.35, 0.48),
+            ("CabinP", -5.30, 4.10, 1.35, 2.70, 0.40),
+            ("CabinS", 5.30, 4.10, 1.35, 2.70, 0.40),
+        ):
+            try:
+                boolean_cut_box(hull_obj, f"WinCut_{tag}", (x, y, z), (sx, 0.28, sz))
+            except Exception as exc:
+                print(f"window cut skip {tag}: {exc}")
+            sign = 1.0 if y > 0 else -1.0
+            add_box(f"WinGlass_{tag}", (x, y - 0.04 * sign, z), (sx - 0.18, 0.02, sz - 0.10), glass, collection, 0.001)
+            add_box(f"WinMull_{tag}", (x, y - 0.02 * sign, z), (0.06, 0.04, sz - 0.08), frame, collection, 0.001)
         try:
             boolean_cut_box(hull_obj, "RadFore", (1.60, 0.0, 2.88), (1.15, 0.48, 0.18))
         except Exception as exc:
@@ -812,6 +863,10 @@ def build_lod(lod, mats):
         for i in range(4):
             add_box(f"RadFin_Fore_{i}", (0.70 + i * 0.58, 0.0, 2.78), (0.018, 0.36, 0.12), rad, collection, 0.001)
             add_box(f"RadFin_Aft_{i}", (-5.75 + i * 0.50, 0.0, 2.52), (0.016, 0.30, 0.10), rad, collection, 0.001)
+        try:
+            inset_large_faces(hull_obj, thickness=0.080, depth=0.022, min_area=1.8)
+        except Exception as exc:
+            print(f"inset skip: {exc}")
     if lod == 0:
         add_curve_hose(
             "Service_Hose",
@@ -929,7 +984,7 @@ def setup_studio():
         scene.view_settings.look = "AgX - Medium Contrast"
     except TypeError:
         scene.view_settings.look = "AgX - Medium High Contrast"
-    scene.view_settings.exposure = 1.28
+    scene.view_settings.exposure = 1.30
     eevee = getattr(scene, "eevee", None)
     if eevee:
         for attr, val in (
@@ -946,18 +1001,18 @@ def setup_studio():
     world.use_nodes = True
     bg = world.node_tree.nodes.get("Background")
     bg.inputs["Color"].default_value = (0.070, 0.074, 0.080, 1)
-    bg.inputs["Strength"].default_value = 2.05
+    bg.inputs["Strength"].default_value = 2.00
     cam_data = bpy.data.cameras.new("CycleCam")
     camera = bpy.data.objects.new("CycleCam", cam_data)
     scene.collection.objects.link(camera)
     scene.camera = camera
     for name, loc, energy, color, size in (
-        ("Key", (6, 52, 36), 4200, (0.97, 0.98, 1.00), 36),
-        ("Fill", (2, 38, 22), 2800, (0.86, 0.90, 0.94), 30),
-        ("Top", (2, 6, 34), 1600, (0.92, 0.93, 0.96), 24),
-        ("Rim", (-22, -12, 14), 900, (0.78, 0.84, 0.92), 18),
+        ("Key", (6, 52, 34), 4300, (0.97, 0.98, 1.00), 32),
+        ("Fill", (2, 40, 18), 2400, (0.86, 0.90, 0.94), 26),
+        ("Top", (10, 20, 40), 700, (0.92, 0.93, 0.96), 10),
+        ("Rim", (-22, -12, 14), 850, (0.78, 0.84, 0.92), 18),
         ("Kick", (-10, 18, -6), 480, (0.74, 0.78, 0.84), 14),
-        ("AftFill", (-18, 20, 16), 1100, (0.80, 0.84, 0.90), 20),
+        ("AftFill", (-18, 22, 12), 900, (0.80, 0.84, 0.90), 16),
     ):
         data = bpy.data.lights.new(name, "AREA")
         data.energy = energy

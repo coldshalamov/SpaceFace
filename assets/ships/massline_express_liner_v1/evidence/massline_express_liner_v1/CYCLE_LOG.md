@@ -5,8 +5,8 @@
 | 01 | REVERT | REVISE | REVISE | First export. Dark, hoop fins, surface glow. |
 | 04 | REVISE | REVISE | REVISE | Wide drum became a saucer; drives hid in the outline. |
 | 13 | REVISE | REVISE | REVISE | Unioned stern, opaque boarding, ivory hull. Plastic tube, capped drives. |
-| 14 | REVISE | REVISE | REVISE | Denser stations. Same tube/sticker/capped-drive read. |
-| 17 | REVISE | KEEP | REVISE | Ivory rims, smaller wells. Spine stripe gone. Boarding too small. |
-| 18 | REVISE | KEEP | REVISE | Medium wells, no dock kit boxes, ivory collars. Twin throats from above. Boarding still weak at far chase. |
+| 18 | REVISE | KEEP | REVISE | Medium wells, no dock kit boxes. Boarding still weak at far chase. |
+| 22 | REVISE | REVISE | REVISE | Dark well floors and bulkhead collars. Boarding pit held at close. Drive tops still read as lids. |
+| 28 | KEEP | KEEP | KEEP | Inset cabin glass. Open boarding well, rooted twin throats, stepped drum. |
 
 Whole-asset G1/G2/G4 stay open. Source candidate only.
