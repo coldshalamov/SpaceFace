@@ -37,6 +37,8 @@ import { loadPlaywright } from './lib/load-playwright.mjs';
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const VERBOSE = process.argv.includes('--verbose');
 const SEED = 4242;
+// --full walks all ten waves to a victory instead of stopping at wave 2 and dying.
+const FULL = process.argv.includes('--full');
 const pw = await loadPlaywright();
 const { chromium } = pw;
 
@@ -215,6 +217,36 @@ async function main() {
   record('WAVE', wave.count > 0 && wave.budgetUsed <= wave.budgetMax && wave.hull > 0,
     `${wave.count} live hostiles (${wave.ids.join(', ')}), budget ${wave.budgetUsed}/${wave.budgetMax}`);
 
+  // ── HUD ─────────────────────────────────────────────────────────────────────────────────────
+  // Everything above can be true while the player still sees nothing. This asks what is on glass.
+  const hud = await page.evaluate(() => {
+    const root = document.querySelector('.sf-crun');
+    if (!root) return { present: false };
+    const cs = getComputedStyle(root);
+    const text = (sel) => { const n = root.querySelector(sel); return n ? n.textContent.trim() : null; };
+    return {
+      present: true,
+      visible: !root.hidden && cs.display !== 'none' && cs.visibility !== 'hidden',
+      host: root.parentElement && root.parentElement.className,
+      label: text('.sf-crun__label'),
+      wave: text('.sf-crun__wave'),
+      phase: text('.sf-crun__phase'),
+      figs: [...root.querySelectorAll('.sf-crun__fig')].map((n) => n.textContent.trim()),
+      role: root.getAttribute('role'),
+      // The 12px floor is a hard rule in the instrument grammar; measure it, do not trust it.
+      minFontPx: Math.min(...[...root.querySelectorAll('*')]
+        .map((n) => parseFloat(getComputedStyle(n).fontSize) || 99)
+        .filter((v) => v < 99)),
+    };
+  });
+  record('HUD',
+    hud.present && hud.visible && String(hud.wave).indexOf('WAVE 1 / 10') === 0
+      && hud.phase === 'FIGHT' && hud.role === 'status' && hud.minFontPx >= 12,
+    hud.present
+      ? `"${hud.label}" · ${hud.wave} · ${hud.phase} · figures ${hud.figs.join(' ')} · `
+        + `smallest text ${hud.minFontPx}px · hosted in .${hud.host}`
+      : 'no run readout on screen at all');
+
   // ── CLEAR ───────────────────────────────────────────────────────────────────────────────────
   const campaignCreditsBefore = await page.evaluate(() => window.SF.state.player.credits);
   // Trace the chip economy for this wave so a shortfall is a reported number, not a mystery.
@@ -313,6 +345,88 @@ async function main() {
     draftDetail = `picked ${cards.verbs[0]}; hull now ${after.fittings.filter(Boolean).join(', ')}`;
   }
   record('DRAFT', draftOk, draftDetail);
+
+  // ── VICTORY (--full) ────────────────────────────────────────────────────────────────────────
+  // The one claim nothing else proves: that a player who keeps winning actually REACHES the end.
+  // Ten waves is slow (each carries a 180-240 tick cleanup), so it is opt-in.
+  if (FULL) {
+    const log = [];
+    let guard = 0;
+    // Ten waves each carry a 180-240 tick cleanup plus a draft, so this needs room to breathe.
+    while (guard++ < 400) {
+      const phase = await page.evaluate(() => window.SF.state.run.phase);
+      if (phase === 'victory' || phase === 'ended') break;
+      if (phase === 'active') {
+        await page.waitForFunction(
+          () => window.SF.state.entityList.some((e) => e.alive && e.data && e.data.runCohort === 'survival')
+            || window.SF.state.run.phase !== 'active',
+          null, { timeout: 40000 },
+        ).catch(() => {});
+        const n = await killWaveCohort(page);
+        const wave = await page.evaluate(() => window.SF.state.run.wave);
+        if (n > 0) log.push(`w${wave}:${n}`);
+        // A batched wave owes more bodies after the first group; keep clearing until it resolves.
+        await page.waitForFunction(
+          () => window.SF.state.run.phase !== 'active'
+            || window.SF.state.entityList.some((e) => e.alive && e.data && e.data.runCohort === 'survival'),
+          null, { timeout: 40000 },
+        ).catch(() => {});
+        continue;
+      }
+      if (phase === 'draft') {
+        await page.evaluate(() => {
+          const card = document.querySelector('#screens .sf-cru-card');
+          if (card) card.click();
+          else window.SF.bus.emit('run:draftPickRequested', { offerId: null });
+        });
+        await page.waitForTimeout(300);
+        continue;
+      }
+      if (phase === 'refit') {
+        await page.evaluate(() => window.SF.bus.emit('run:refitCloseRequested', {}));
+        await page.waitForTimeout(300);
+        continue;
+      }
+      // cleanup / wave_intro / arena_intro: nothing to do but let the phase machine advance.
+      await page.waitForFunction(
+        (was) => window.SF.state.run.phase !== was,
+        phase,
+        { timeout: 30000 },
+      ).catch(() => {});
+    }
+    const won = await page.evaluate(() => {
+      const owner = window.SF.registry.get('survivalResults');
+      const result = owner && owner.lastResult ? owner.lastResult() : null;
+      return {
+        phase: window.SF.state.run.phase,
+        wave: window.SF.state.run.wave,
+        top: window.SF.ctx.screenManager.top(),
+        // The results plate, not whatever h1 sits lowest in the stack.
+        title: (() => {
+          const root = document.querySelector('#screens .sf-crucible-results');
+          return root ? (root.querySelector('h1') || {}).textContent : null;
+        })(),
+        headline: (() => {
+          const root = document.querySelector('#screens .sf-crucible-results');
+          return root ? (root.querySelector('.sf-crd-headline') || {}).textContent : null;
+        })(),
+        outcome: result && result.outcome,
+        score: result && result.score,
+        credits: result && result.credits,
+        kills: result && result.kills,
+        level: result && result.level,
+        picks: result && result.picks ? result.picks.map((p) => p.verb).filter(Boolean) : [],
+      };
+    });
+    record('VICTORY',
+      won.phase === 'victory' && won.wave === 10 && won.outcome === 'victory'
+        && won.top === 'crucibleResults',
+      `phase ${won.phase} wave ${won.wave} · "${won.title}" — ${won.headline} · `
+      + `${won.kills} kills, ${won.score} score, ${won.credits} cr, level ${won.level}, `
+      + `build: ${won.picks.join('/') || '(none)'} · cleared ${log.join(' ')}`);
+    // A won run is terminal; the death path below cannot run on the same session.
+    return;
+  }
 
   // ── RESULTS ─────────────────────────────────────────────────────────────────────────────────
   await page.waitForFunction(() => window.SF.state.run.phase === 'active', null, { timeout: 40000 });

@@ -53,6 +53,7 @@ export const runSession = {
     this._unsubs.push(this.bus.on('run:awardRequested', (payload) => this.award(payload)));
     this._unsubs.push(this.bus.on('run:spendRequested', (payload) => this.spend(payload)));
     this._unsubs.push(this.bus.on('run:modifierRecordRequested', (payload) => this.recordModifier(payload)));
+    this._unsubs.push(this.bus.on('run:threatRequested', (payload) => this.setThreat(payload)));
     this._unsubs.push(this.bus.on('game:exitToMenu', (payload) => this._onExitToMenu(payload)));
     // save:restoring fires first (before save:loaded). Reset here so a loaded Adventure
     // save cannot inherit a live Survival run and suppress campaign autosaves forever.
@@ -190,6 +191,41 @@ export const runSession = {
       totalCredits: next.credits,
       reason: toReason(request && request.reason),
     });
+  },
+
+  /**
+   * Publish this wave's body count so a HUD can say "4 of 6 left" without reaching into the wave
+   * owner's private cohort map.
+   *
+   * NOTE ON NAMING: `threatBudget` here is the number of BODIES the current wave plan will
+   * materialize — not the recipe's abstract `threatBudget` difficulty figure in
+   * src/data/survivalWaves.js, which never reaches state.run. The player-facing question is
+   * "how many are left", so bodies is what this counts.
+   */
+  setThreat(request) {
+    const run = this._liveRun();
+    if (!run) return false;
+    if (run.kind === 'adventure') return false;
+    const next = cloneRun(run);
+    if (!next) return false;
+    let changed = false;
+    for (const key of ['threatBudget', 'spawnedThreat', 'resolvedThreat']) {
+      if (!request || !Number.isFinite(request[key])) continue;
+      const value = toNonNegativeInt(request[key]);
+      if (next[key] === value) continue;
+      next[key] = value;
+      changed = true;
+    }
+    if (!changed) return false;
+    // No bus receipt: this is a per-wave counter a readout polls, not an event anyone acts on.
+    // Emitting here would put a bus message on the same beat as every spawn and every death.
+    const previous = this.state.run;
+    this.state.run = next;
+    if (!validateRunState(next).ok) {
+      this.state.run = previous;
+      return false;
+    }
+    return true;
   },
 
   /**

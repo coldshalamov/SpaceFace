@@ -46,7 +46,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   'presentationOrchestrator', 'presentationAdapters', 'ships', 'crafting', 'heat', 'traffic',
   'drill', 'claims', 'beacons', 'bandRadio', 'v2FlavorRuntime', 'onboarding', 'masslineHud',
   // J6: massSeedHud is in UPDATE_ORDER (DOM-guarded HUD) — must also init so helpers bind.
-  'massSeedHud', 'fieldHud', 'planetHud', 'sectorPostcard', 'dockDenyBanner', 'stationBroadcast',
+  'massSeedHud', 'fieldHud', 'planetHud', 'survivalHud', 'sectorPostcard', 'dockDenyBanner', 'stationBroadcast',
   'hazardHints', 'bulkHaulTag', 'dangerGradient', 'causeLedger', 'customsPrompt',
   'cargoConscience', 'securityReadoutSystem', 'priceForecastSystem', 'contractClausesSystem',
   'moralTrapSystem', 'render', 'vfx', 'feel', 'audio', 'ui', 'save',
@@ -80,6 +80,9 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   // (wave-cleared arrives as an explicit event, never an entity count); before heat/HUD/presentation.
   'survivalWave', 'survivalRun', 'heat', 'traffic', 'drill', 'claims',
   'bandRadio', 'onboarding', 'masslineHud', 'massSeedHud', 'fieldHud', 'planetHud',
+  // survivalHud: the Crucible run readout. After survivalRun/survivalWave so it reads the phase
+  // and census this tick advanced to; DOM-guarded so Node no-ops.
+  'survivalHud',
   'voiceArbiter',
 ]);
 
@@ -100,6 +103,7 @@ export const SYSTEM_CAPABILITIES = Object.freeze({
   audio: Object.freeze({ nodeSafe: false, phase: 'platform', capability: 'presentation' }),
   ui: Object.freeze({ nodeSafe: false, phase: 'platform', capability: 'presentation' }),
   masslineHud: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'hud', domGuarded: true }),
+  survivalHud: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'hud', domGuarded: true }),
   massSeedHud: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'hud', domGuarded: true }),
   fieldHud: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'hud', domGuarded: true }),
   planetHud: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'hud', domGuarded: true }),

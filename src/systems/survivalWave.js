@@ -91,6 +91,12 @@ export const survivalWave = {
     const rules = plan.completionRules || {};
     const roles = Array.isArray(rules.blockingRoles) ? rules.blockingRoles : [];
     this._blockingRoles = new Set(roles);
+    // Publish the wave's planned body count so a readout can say how many are still out there.
+    this._plannedBodies = plan.schedule.reduce(
+      (sum, entry) => sum + (Number.isInteger(entry.count) ? entry.count : 0),
+      0,
+    );
+    this._publishThreat();
   },
 
   _onWaveStarted(payload) {
@@ -101,6 +107,7 @@ export const survivalWave = {
     this._active = true;
     this._admittedTotal = 0;
     this._requestedTotal = 0;
+    this._resolved = 0;
     // Dispatch tick-0 batches on the same tick the wave goes active so the fight starts
     // immediately instead of one frame late.
     this._cursor = 0;
@@ -119,7 +126,18 @@ export const survivalWave = {
   _onEntityDestroyed(payload) {
     const id = payload && payload.id;
     if (id == null || !this._cohort) return;
-    this._cohort.delete(id);
+    if (!this._cohort.delete(id)) return;
+    this._resolved += 1;
+    this._publishThreat();
+  },
+
+  /** Hand the live wave census to runSession, the only writer of state.run. */
+  _publishThreat() {
+    this._emit('run:threatRequested', {
+      threatBudget: this._plannedBodies,
+      spawnedThreat: this._admittedTotal,
+      resolvedThreat: this._resolved,
+    });
   },
 
   // ---- dispatch -------------------------------------------------------------
@@ -159,6 +177,10 @@ export const survivalWave = {
       this._requestedTotal += receipt.requested;
       this._admittedTotal += receipt.admitted;
       for (const id of receipt.spawnedIds) this._cohort.set(id, entry.role);
+      // A batch the cap refused lowers the wave's real body count, so the readout never asks the
+      // player to kill bodies that were never admitted.
+      this._plannedBodies = Math.max(0, this._plannedBodies - receipt.rejected);
+      this._publishThreat();
       this._emit('run:waveMaterialized', {
         wave: this._wave,
         role: entry.role,
@@ -208,6 +230,8 @@ export const survivalWave = {
     this._cleared = false;
     this._admittedTotal = 0;
     this._requestedTotal = 0;
+    this._plannedBodies = 0;
+    this._resolved = 0;
   },
 
   _teardown() {
