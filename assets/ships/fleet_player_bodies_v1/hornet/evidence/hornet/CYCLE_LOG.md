@@ -125,5 +125,15 @@
 | 146 | yes | 4C524834 | 3Q REVISE / starboard REVISE / rear REVISE | Valid recapture of C145. Rear open tan bowls with vane star. Whole still grey tube with plates. 3Q cockpit a fleck; flap a hanging card. Not wired. |
 | 147 | **no** | 7C717791 | INVALID 3Q | Ceramic outer flare + throat lights blew bowls white; 3Q clipped a bell. Starboard flap became a second sausage. Not wired. |
 | 148 | yes | 9DF4CBC9 | author stop | Soot vanes restored, no throat lights, no slot sheet, lower hood. Grind stopped; Hitch-plus not met. Not wired. |
+| 149 | yes | see json | leftover | First chase-camera capture. Authored metres, ~4% frame. Scale bug, not form. Not wired. |
+| 150 | yes | see json | leftover | Chase recapture. Belly-axis still wrong through C151. Not wired. |
+| 151 | yes | see json | leftover | Wings pushed outboard; canopy raised. Camera still under the keel. Not wired. |
+| 152 | yes | see json | leftover | Chase-camera axis fix (Blender Z-up). First dorsal chase. Not wired. |
+| 153 | yes | 098EA799 | REVISE/REVISE/REVISE | Legal chase stills at runtime size. Gray tube with card wings. Canopy a patch; drives discs. Not wired. |
+| 154 | yes | 7DDD2F99 | REVISE/REVISE/REVISE | Three-volume loft, no seat, delta wings, dorsal wells. Clay still primitives; canopy lid; tan bells. Not wired. |
+
+| 155 | yes | see json | REVISE/REVISE/REVISE | Diamond clay + punched 2-shell hull. Play went black. Not wired. |
+| 156 | yes | see json | author REVISE | Shallower wells, more fill. Play still charcoal — gap-paint + hull maps. Not wired. |
+| 157 | yes | 0DCEEE04 | REVISE/REVISE/REVISE | Unmapped Hitch-white hull. Card wings, cage canopy, jagged cups. Not wired. |
 
 Hitch-plus / A-list: not met. C85 remains the live game body. Do not mark PQ-050.01 done. Do not self-accept.

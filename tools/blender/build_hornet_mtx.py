@@ -87,6 +87,23 @@ TEX_DIR = FAMILY / "source" / "textures"
 # quietly accept 34 px/m and keep asking reviewers why the hulls look like plastic.
 TEX_BY_LOD = {0: 1024, 1: 512, 2: 512}
 TEX = TEX_BY_LOD[0]
+
+# Runtime-faithful play size for chase stills.
+#
+# The game never displays an authored whole-ship body at its authored metres. partsLibrary
+# buildComposedShip instantiates the hull record at ASSEMBLY_HULL_UNITS length and shipKit
+# finalizeShip then scales that hull group by entity.radius ("normalized assembly scaled to
+# entity radius", src/render/partsLibrary.js renderContract). For Hornet, collisionRadius is 16
+# WU (src/data/ships.js), so the player sees a craft about 1.72 * 16 = 27.5 WU long no matter
+# what this script authored. The camera-law bands in ADVANCED_MODEL_TECHNIQUE_CONTRACT.md 0.5
+# (~8-22% of frame width at D=144) describe THAT displayed size.
+#
+# Cycle 149 rendered the raw authored body (~10.8 m) and landed near 4% of frame width - below
+# the legal band - because the capture was missing the runtime normalization, not because the
+# form had failed. Measure the export and rescale the render scene to the live game's display
+# size before any chase still is taken.
+ASSEMBLY_HULL_UNITS = 1.72       # partsLibrary.js buildComposedShip hull targetLength
+HORNET_COLLISION_RADIUS = 16.0   # src/data/ships.js ship_hornet collisionRadius
 CYCLE = 1
 for i, tok in enumerate(sys.argv):
     if tok.startswith("--mtx-cycle="):
@@ -150,6 +167,8 @@ def role_maps(role, rgb, size=None, prefix=None):
     br, bg, bb = rgb
     albedo, orm, nrm = [], [], []
     if role == "hull":
+        # C157: hull maps + gap paint photographed as charcoal. Hitch-white is unmapped dielectric;
+        # plate steps live in the mesh.
         pw, ph = 0, 0
     elif role == "armor":
         pw, ph = 72, 48
@@ -175,9 +194,12 @@ def role_maps(role, rgb, size=None, prefix=None):
             gf = h01(x, y, 11)
             gf2 = h01(x // 3, y // 3, 29)
             cav = (0.15 + 0.25 * gf2) if pw == 0 else (
-                max(0.0, 0.62 - abs(math.sin(x * 0.04) * math.cos(y * 0.05)) * 0.5) * 0.5 + soft * 0.3 + seam * 0.35
+                # C153: the 0.62-amplitude low-frequency term photographed as soft airbrushed
+                # dirt blotches on the light hull. Panels must read as crisp seams + tight
+                # course-edge shading, not smudges.
+                max(0.0, 0.62 - abs(math.sin(x * 0.04) * math.cos(y * 0.05)) * 0.5) * 0.12 + soft * 0.25 + seam * 0.35
             )
-            dirt = min(1.0, (0.12 * gf + 0.18 * gf2) if pw == 0 else (soft * 0.32 + seam * 0.2 + cav * 0.32 + gf2 * 0.08))
+            dirt = min(1.0, (0.12 * gf + 0.18 * gf2) if pw == 0 else (soft * 0.28 + seam * 0.2 + cav * 0.5 + gf2 * 0.06))
             edge = 0.0 if pw == 0 else (1.0 if (dx <= 3 or dy <= 3) else 0.0)
             stencil = 0.0
             if role == "hull" and 70 <= x <= 150 and 210 <= y <= 268:
@@ -197,14 +219,14 @@ def role_maps(role, rgb, size=None, prefix=None):
                 if gf > 0.82:
                     stencil *= 0.35
             if role == "hull":
-                r = max(0, min(1, br * (1.0 - dirt * 0.22) + 0.03))
-                g = max(0, min(1, bg * (1.0 - dirt * 0.20) + 0.02))
-                b = max(0, min(1, bb * (1.0 - dirt * 0.16) + 0.02))
+                r = max(0, min(1, br * (1.0 - dirt * 0.16) - seam * 0.16 + 0.02))
+                g = max(0, min(1, bg * (1.0 - dirt * 0.14) - seam * 0.16 + 0.015))
+                b = max(0, min(1, bb * (1.0 - dirt * 0.12) - seam * 0.15 + 0.012))
                 if stencil > 0:
                     r = r * (1 - stencil) + 0.04 * stencil
                     g = g * (1 - stencil) + 0.36 * stencil
                     b = b * (1 - stencil) + 0.44 * stencil
-                rough = 0.40 + dirt * 0.22 - edge * 0.08
+                rough = 0.40 + dirt * 0.14 - edge * 0.08
                 metal = 0.04 + edge * 0.12
             elif role == "armor":
                 r = max(0, min(1, br * (1.0 - dirt * 0.28) - seam * 0.06))
@@ -299,12 +321,16 @@ def wire_maps(material, bsdf, maps, coat=0.0, emission=None, metallic_from_map=T
 
 def create_materials():
     specs = {
-        "Material_Hull": ((0.17, 0.18, 0.195), 0.02, 0.58, "hull", 0.0, None),
-        "Material_Armor": ((0.07, 0.075, 0.085), 0.06, 0.52, "armor", 0.0, None),
+        # C153: hull to the Hitch bar's bright light gray; dirt damped so panels read as crisp
+        # seams, not airbrushed blotches.
+        # C154: Hitch-white hull so dark wells and charcoal wings can break value at D=144.
+        "Material_Hull": ((0.86, 0.87, 0.89), 0.02, 0.42, "hull", 0.0, None),
+        "Material_Armor": ((0.07, 0.075, 0.082), 0.08, 0.50, "armor", 0.0, None),
         "Material_Mechanical": ((0.50, 0.48, 0.44), 0.90, 0.22, "mechanical", 0.0, None),
         "Material_Accent": ((0.04, 0.40, 0.50), 0.10, 0.34, "accent", 0.2, None),
         "Material_Warning": ((0.98, 0.14, 0.02), 0.04, 0.38, "warning", 0.0, None),
-        "Material_Ceramic": ((0.48, 0.32, 0.14), 0.0, 0.78, "ceramic", 0.0, None),
+        # C153: bells still photographed tan against the palette. Near-charcoal gunmetal bronze.
+        "Material_Ceramic": ((0.10, 0.075, 0.055), 0.35, 0.78, "ceramic", 0.0, None),
         "Material_Radiator": ((0.12, 0.10, 0.08), 0.62, 0.62, "mechanical", 0.0, None),
         "Material_Canopy": ((0.02, 0.025, 0.03), 0.00, 0.04, "glass", 0.0, None),
         "Material_Thruster": ((0.06, 0.06, 0.07), 0.18, 0.38, "thruster", 0.0, None),
@@ -317,10 +343,11 @@ def create_materials():
         bsdf.inputs["Metallic"].default_value = metal
         bsdf.inputs["Roughness"].default_value = rough
         # Warning maps washed the seat to peach. Canopy maps turned the pane into a gray slab.
-        # Hull/armor maps photographed chrome-black (C118). Cool unmapped dielectric paint.
-        if name not in ("Material_Warning", "Material_Canopy", "Material_Hull", "Material_Armor", "Material_Ceramic"):
+        # C118 chrome-black came from metallic_from_map driving Metallic to 1; hull/armor/wing now
+        # carry roughness+normal+AO relief with metallic pinned by the constant, not the map.
+        if name not in ("Material_Warning", "Material_Canopy", "Material_Ceramic", "Material_Hull"):
             maps = role_maps(role, rgb, prefix=name.replace("Material_", "").lower())
-            wire_maps(material, bsdf, maps, coat=coat, emission=emit)
+            wire_maps(material, bsdf, maps, coat=coat, emission=emit, metallic_from_map=False)
         elif emit:
             bsdf.inputs["Emission Color"].default_value = (*emit[0], 1)
             bsdf.inputs["Emission Strength"].default_value = emit[1]
@@ -338,8 +365,10 @@ def create_materials():
                 bsdf.inputs["Coat Roughness"].default_value = 0.12
             bsdf.inputs["Base Color"].default_value = (0.004, 0.007, 0.010, 1)
             bsdf.inputs["Metallic"].default_value = 0.0
-            bsdf.inputs["Roughness"].default_value = 0.12
-            bsdf.inputs["Alpha"].default_value = 0.28
+            # C154: near-opaque dark dielectric. C153 alpha 0.60 still sold the seat as an
+            # orange inset. Chase needs one framed dark rectangle, not a window into furniture.
+            bsdf.inputs["Roughness"].default_value = 0.08
+            bsdf.inputs["Alpha"].default_value = 0.94
             if hasattr(material, "blend_method"):
                 try:
                     material.blend_method = "BLEND"
@@ -375,12 +404,12 @@ def create_materials():
     gbsdf.inputs["Roughness"].default_value = 0.72
     gap["spacefaceRole"] = "armor"
     mats["Material_Gap"] = gap
-    # Unmapped mid-gray so the airfoil section can shade. Mapped armor photographed as an ink kite.
+    # C154: charcoal wings against Hitch-white hull so the delta reads at stamp size.
     wing = bpy.data.materials.new("Material_Wing")
     wbsdf = principled(wing)
-    wbsdf.inputs["Base Color"].default_value = (0.18, 0.19, 0.205, 1)
-    wbsdf.inputs["Metallic"].default_value = 0.04
-    wbsdf.inputs["Roughness"].default_value = 0.52
+    wbsdf.inputs["Base Color"].default_value = (0.08, 0.085, 0.095, 1)
+    wbsdf.inputs["Metallic"].default_value = 0.06
+    wbsdf.inputs["Roughness"].default_value = 0.48
     wing["spacefaceRole"] = "armor"
     mats["Material_Wing"] = wing
     return mats
@@ -731,36 +760,39 @@ def add_hollow_bell(tag, x, y, z, scale, mats, collection):
         mats["Material_Mechanical"], mats["Material_Armor"],
         mats["Material_Soot"],
     )
-    bell_len = 1.72 * s
+    # C151: bells were ~30% of ship length combined and nearly as tall as the aft hull —
+    # reviewers read "two brass megaphones on a dark tube". Shorter barrels, tighter flare:
+    # each bell is now under a tenth of the ship and clearly smaller than its hull section.
+    bell_len = 1.02 * s
     outboard = 1.0 if y >= 0.0 else -1.0
-    # C138: modest cant. 3Q sits aft of the mouths so it looks into the throat; splay is not the lever.
-    cant_y, cant_z = 0.48, 0.22
+    # C154: tilt mouths toward the 60° chase so play_chase looks into a throat, not a disc.
+    cant_y, cant_z = 0.22, 0.62
     def ring_at(t, r, sides=40):
         xi = x - 0.04 * s - t * bell_len
         yo = y + outboard * cant_y * t * s
         zo = z + cant_z * t * s
         return ellipse_ring(xi, yo, zo, r * s, r * s, sides)
 
-    case_rings = [ring_at(t, r) for t, r in ((0.00, 0.28), (0.18, 0.28), (0.34, 0.34))]
-    loft_from_rings(f"BellCase_{tag}", case_rings, ceramic, collection, 0.0, cap=False)
-    # C147: outer flare is ceramic so 3Q reads tan funnels, not soot cups with a tan lip.
-    outer_rings = [ring_at(t, r) for t, r in ((0.34, 0.34), (0.52, 0.52), (0.74, 0.78), (1.00, 1.02))]
-    outer = loft_from_rings(f"Bell_{tag}", outer_rings, ceramic, collection, 0.0, cap=False)
+    case_rings = [ring_at(t, r) for t, r in ((0.00, 0.26), (0.18, 0.26), (0.34, 0.30))]
+    loft_from_rings(f"BellCase_{tag}", case_rings, soot, collection, 0.0, cap=False)
+    # C155: soot flare. Ceramic photographed tan against Hitch-white hull.
+    outer_rings = [ring_at(t, r) for t, r in ((0.34, 0.28), (0.52, 0.34), (0.74, 0.44), (1.00, 0.52))]
+    outer = loft_from_rings(f"Bell_{tag}", outer_rings, soot, collection, 0.0, cap=False)
     liner_rings = [
         ring_at(t, r, 32)
         for t, r in (
-            (0.08, 0.18),
-            (0.22, 0.22),
-            (0.36, 0.30),
+            (0.08, 0.17),
+            (0.22, 0.18),
+            (0.36, 0.24),
         )
     ]
     liner = loft_from_rings(f"BellLiner_{tag}", liner_rings, soot, collection, 0.0, cap=False)
     flip_normals(liner)
-    # C141: ceramic wall is most of the visible interior so 3Q looking in sees tan, not a black plus-plug.
+    # C141: ceramic wall is most of the visible interior so 3Q looking in sees the throat, not a black plus-plug.
     ceramic_liner = loft_from_rings(
         f"BellThroat_{tag}",
-        [ring_at(t, r, 32) for t, r in ((0.38, 0.32), (0.58, 0.50), (0.78, 0.74), (0.94, 0.94), (1.06, 1.06))],
-        ceramic, collection, 0.0, cap=False,
+        [ring_at(t, r, 32) for t, r in ((0.38, 0.24), (0.58, 0.32), (0.78, 0.40), (0.94, 0.46), (1.06, 0.50))],
+        soot, collection, 0.0, cap=False,
     )
     flip_normals(ceramic_liner)
     add_cylinder(f"BellBore_{tag}", (x - 0.12 * s, y, z), 0.16 * s, 0.020 * s, soot, collection, 24, 0.001)
@@ -776,17 +808,17 @@ def add_hollow_bell(tag, x, y, z, scale, mats, collection):
             y + outboard * cant_y * heat_t * s,
             z + cant_z * heat_t * s,
         ),
-        0.62 * s, 0.10 * s, ceramic, collection, 28, 0.002,
+        0.38 * s, 0.10 * s, soot, collection, 28, 0.002,
         rot=(0.0, math.pi / 2 - pitch_up, yaw),
     )
-    add_cylinder(f"BellCollar_{tag}", (x + 0.02 * s, y, z), 0.34 * s, 0.14 * s, ceramic, collection, 24, 0.003)
-    add_cylinder(f"BellClamp_{tag}", (x + 0.14 * s, y, z), 0.40 * s, 0.05 * s, armor, collection, 24, 0.002)
-    add_cylinder(f"BellFlange_{tag}", (x + 0.28 * s, y, z), 0.48 * s, 0.07 * s, ceramic, collection, 24, 0.003)
+    add_cylinder(f"BellCollar_{tag}", (x + 0.02 * s, y, z), 0.30 * s, 0.14 * s, armor, collection, 24, 0.003)
+    add_cylinder(f"BellClamp_{tag}", (x + 0.14 * s, y, z), 0.34 * s, 0.05 * s, armor, collection, 24, 0.002)
+    add_cylinder(f"BellFlange_{tag}", (x + 0.28 * s, y, z), 0.38 * s, 0.07 * s, armor, collection, 24, 0.003)
     for index in range(10):
         ang = math.tau * index / 10
         add_cylinder(
             f"BellBolt_{tag}_{index}",
-            (x + 0.28 * s, y + math.cos(ang) * 0.42 * s, z + math.sin(ang) * 0.42 * s),
+            (x + 0.28 * s, y + math.cos(ang) * 0.32 * s, z + math.sin(ang) * 0.32 * s),
             0.016 * s, 0.050 * s, mech, collection, 8, 0.001,
         )
     hub_t = 0.28
@@ -1117,7 +1149,7 @@ def add_station_hoop(tag, x, hw, hh, zc, flat, box, keel, material, collection, 
 def loft_volume(name, specs, material, collection, thick=0.12):
     """One manufactured hull volume. specs are (x, hw, hh, zc, flat, box, keel)."""
     rings = [
-        densify_ring(station_ring(x, 0, zc, hw, hh, flat=flat, box=box, keel=keel), 5)
+        densify_ring(station_ring(x, 0, zc, hw, hh, flat=flat, box=box, keel=keel), 6)
         for x, hw, hh, zc, flat, box, keel in specs
     ]
     obj = loft_from_rings(name, rings, material, collection, 0.010, cap=True)
@@ -1127,55 +1159,26 @@ def loft_volume(name, specs, material, collection, thick=0.12):
 
 
 def add_blended_interceptor_wing(name, sign, skin, armor, collection, soot=None):
-    """Lofted teardrop: unswept circular LE, fat section all the way to the tip."""
+    """Chase-camera delta: thick root outside the hull beam, swept LE, diamond section."""
     s = float(sign)
-    # C116: keep thickness out to the tip. Tapering 1.04→0.13 made the side
-    # silhouette a diamond even with an unswept circular LE.
-    # C135: shorter chords so the flap sits aft of the starboard union TE, not inside the root sausage.
+    # C155: thicker root, more span, root outside the ~2.42 m waist.
     main = (
-        (1.18, 1.50, 1.55, 0.88, 0.16),
-        (1.70, 1.50, 1.45, 0.82, 0.16),
-        (2.20, 1.49, 1.25, 0.74, 0.16),
-        (2.65, 1.48, 1.05, 0.66, 0.16),
-        (3.00, 1.47, 0.85, 0.56, 0.16),
+        (2.48, 1.70, 2.20, 0.44, 0.12),
+        (3.05, 1.15, 1.65, 0.28, 0.11),
+        (3.65, 0.52, 1.05, 0.16, 0.09),
+        (4.22, -0.08, 0.50, 0.09, 0.08),
     )
     rings = [
-        densify_ring(teardrop_airfoil(le, y * s, z, chord, thick), 4)
+        densify_ring(diamond_airfoil(le, y * s, z, chord, thick), 3)
         for y, le, chord, thick, z in main
     ]
-    wing = loft_from_rings(name, rings, skin, collection, 0.008, cap=True)
-    # C147: wing-colored teardrop flap in the wing plane. Armor diamond photographed
-    # as a hanging dark card from starboard/3Q. Gap ~40 cm aft of the main TE (x~-0.05).
-    flap = (
-        (1.32, -0.50, 0.58, 0.30),
-        (2.10, -0.50, 0.54, 0.24),
-        (2.88, -0.50, 0.48, 0.18),
-    )
-    loft_from_rings(f"{name}_Flap", [
-        densify_ring(teardrop_airfoil(le, y * s, 0.16, chord, thick), 3)
-        for y, le, chord, thick in flap
-    ], skin, collection, 0.005, cap=True)
-    # C148: no soot slot sheet — C147 photographed it as a hanging black card from 3Q.
-    # The 45 cm air gap between main TE (~-0.05) and flap LE (-0.50) is the slot.
-    for i, yb in enumerate((1.40, 2.10, 2.85)):
-        add_cylinder(
-            f"{name}_Hinge_{i}",
-            (-0.24, yb * s, 0.14),
-            0.016, 0.10, armor, collection, 8, 0.001,
-            rot=(math.pi / 2, 0, 0),
-        )
+    wing = loft_from_rings(name, rings, skin, collection, 0.012, cap=True)
     loft_from_rings(f"{name}_Fillet", [
-        densify_ring(teardrop_airfoil(1.46, 1.02 * s, 0.16, 1.40, 0.80), 4),
-        densify_ring(teardrop_airfoil(1.48, 1.10 * s, 0.16, 1.48, 0.86), 4),
-        densify_ring(teardrop_airfoil(1.50, 1.18 * s, 0.16, 1.55, 0.88), 4),
-    ], skin, collection, 0.008, cap=True)
-    add_overlap_plate(f"{name}_RootTile", (0.55, 1.42 * s, 0.28), (0.28, 0.14, 0.036), armor, collection, 0.003)
-    for i, xb in enumerate((0.28, 0.50, 0.72, 0.94)):
-        add_cylinder(
-            f"{name}_RootBolt_{i}",
-            (xb, 1.30 * s, 0.38),
-            0.012, 0.030, armor, collection, 8, 0.001,
-        )
+        densify_ring(diamond_airfoil(1.78, 2.18 * s, 0.12, 2.10, 0.52), 3),
+        densify_ring(diamond_airfoil(1.74, 2.32 * s, 0.12, 2.16, 0.48), 3),
+        densify_ring(diamond_airfoil(1.70, 2.48 * s, 0.12, 2.20, 0.44), 3),
+    ], skin, collection, 0.010, cap=True)
+    add_overlap_plate(f"{name}_TipMark", (-0.18, 4.10 * s, 0.10), (0.22, 0.16, 0.016), armor, collection, 0.003)
     return wing
 
 
@@ -1380,15 +1383,15 @@ def sockets():
     return {
         "SOCKET_Weapon_Front": (5.28, 0.0, 0.14),
         "SOCKET_Mining_Front": (5.42, 0.0, -0.14),
-        "SOCKET_Engine_Main": (-4.40, 0.0, 0.12),
-        "SOCKET_Trail_Main": (-4.60, 0.0, 0.12),
-        "SOCKET_Trail_Port": (-4.50, -0.62, 0.12),
-        "SOCKET_Trail_Starboard": (-4.50, 0.62, 0.12),
-        "SOCKET_Utility_Dorsal": (0.55, 0.0, 1.12),
-        "SOCKET_Cargo_Ventral": (-0.40, 0.0, -0.98),
+        "SOCKET_Engine_Main": (-4.30, 0.0, 0.14),
+        "SOCKET_Trail_Main": (-4.50, 0.0, 0.14),
+        "SOCKET_Trail_Port": (-4.40, -1.05, 0.16),
+        "SOCKET_Trail_Starboard": (-4.40, 1.05, 0.16),
+        "SOCKET_Utility_Dorsal": (0.40, 0.0, 0.95),
+        "SOCKET_Cargo_Ventral": (-0.40, 0.0, -0.90),
         "SOCKET_Camera_Focus": (0.80, 0.0, 0.28),
-        "SOCKET_RCS_Port": (-1.20, -2.20, 0.10),
-        "SOCKET_RCS_Starboard": (-1.20, 2.20, 0.10),
+        "SOCKET_RCS_Port": (-0.20, -2.40, 0.10),
+        "SOCKET_RCS_Starboard": (-0.20, 2.40, 0.10),
     }
 
 
@@ -1477,119 +1480,64 @@ def build_lod(lod, mats):
         "lod": f"lod{lod}", "slot": "hull", "category": "wholeships",
         "forward": "+X", "embeddedPlume": False,
     }
-    # C99: one hull so cabin-waist cannot be a hard triangle of two volumes.
-    # C103: flatten the cabin crown. C102 hh=1.02 was a closed greenhouse from 3Q.
+    # C155: more extreme stations so clay is not a sausage — tall canopy, wide
+    # flat waist, box house that holds beam to the transom.
     body = loft_volume("Hull", (
-        (5.55, 0.22, 0.26, 0.16, 0.10, 0.12, 0.90),
-        (4.70, 0.54, 0.48, 0.26, 0.46, 0.24, 0.46),
-        (3.80, 0.92, 0.68, 0.30, 0.58, 0.30, 0.22),
-        (2.90, 1.40, 0.70, 0.20, 0.26, 0.50, 0.24),
-        (1.80, 1.80, 0.72, 0.14, 0.12, 0.68, 0.22),
-        (0.70, 1.94, 0.70, 0.12, 0.10, 0.74, 0.18),
-        (-0.40, 1.58, 0.56, 0.16, 0.08, 0.82, 0.14),
-        (-1.50, 1.22, 0.46, 0.16, 0.06, 0.88, 0.10),
-        (-2.40, 1.04, 0.40, 0.14, 0.04, 0.90, 0.08),
-        (-3.20, 0.96, 0.36, 0.14, 0.03, 0.92, 0.06),
-    ), hull, collection, 0.11)
+        (5.48, 0.16, 0.20, 0.10, 0.04, 0.14, 0.92),
+        (4.50, 0.55, 0.88, 0.30, 0.55, 0.32, 0.28),
+        (3.35, 0.82, 0.64, 0.18, 0.16, 0.52, 0.22),
+        (2.10, 1.95, 0.40, 0.04, 0.06, 0.82, 0.14),
+        (0.50, 2.42, 0.36, 0.02, 0.04, 0.92, 0.10),
+        (-0.90, 1.90, 0.44, 0.08, 0.08, 0.76, 0.12),
+        (-2.20, 1.48, 0.66, 0.16, 0.06, 0.84, 0.10),
+        (-3.40, 1.46, 0.64, 0.16, 0.04, 0.90, 0.08),
+        (-4.35, 1.42, 0.58, 0.14, 0.03, 0.92, 0.06),
+    ), hull, collection, 0.12)
     subdivide_mesh(body, 1)
-    # Wide cutter. C102 0.48x0.28 only nicked 9 verts and left the inner shell roof.
-    cut = safe_boolean_cut(body, "CockpitBoolean", (3.85, 0.0, 1.02), (0.78, 0.62, 0.48))
+    cut = safe_boolean_cut(body, "CockpitBoolean", (4.05, 0.0, 1.02), (0.95, 0.58, 0.38))
     print(f"cockpit boolean {'hit' if cut else 'miss — face delete'}")
-    delete_faces_in_box(body, 3.10, 4.62, -0.78, 0.78, 0.48, 2.20)
-    delete_faces_in_box(body, 3.20, 4.50, -0.70, 0.70, 0.62, 2.20, normal="z", normal_min=0.08)
-    delete_faces_in_box(body, 0.50, 1.50, -2.05, -1.48, -0.15, 0.55, normal="y-", normal_min=0.15)
-    delete_faces_in_box(body, -0.70, -0.10, 0.05, 0.52, 0.68, 1.40, normal="z", normal_min=0.15)
+    # C156: C155 deleted 1676 faces and split the loft (2 shells). Roof-only, dorsal faces.
+    delete_faces_in_box(body, 3.45, 4.75, -0.55, 0.55, 0.72, 2.10, normal="z", normal_min=0.22)
+    delete_faces_in_cylinder(body, -3.70, -2.40, 0.88, 0.48, 0.32, normal="z", normal_min=0.18)
+    delete_faces_in_cylinder(body, -3.70, -2.40, -0.88, 0.48, 0.32, normal="z", normal_min=0.18)
+    delete_faces_in_box(body, -1.80, -0.80, 1.85, 2.40, 0.05, 0.50, normal="y", normal_min=0.22)
+    delete_faces_in_box(body, -1.80, -0.80, -2.40, -1.85, 0.05, 0.50, normal="y-", normal_min=0.22)
     report_shells(body, "hull after wells")
     bevel = body.modifiers.new("HullBevel", "BEVEL")
-    bevel.width = 0.016
+    bevel.width = 0.018
     bevel.segments = 2
     bevel.limit_method = "ANGLE"
     bevel.angle_limit = math.radians(28)
     wn = body.modifiers.new("HullWN", "WEIGHTED_NORMAL")
     wn.keep_sharp = True
     apply_modifiers(body)
-    # C130: a few LARGE courses. C129's 21 bands photographed as a waffle.
-    knife_inset_courses(body, 2.55, 0.10, -0.88, 0.88, 0.42, 1.18, 2, 1, 0.018, 0.048, "z", 0.30)
-    knife_inset_courses(body, 0.05, -2.30, -0.70, 0.70, 0.18, 0.90, 2, 1, 0.018, 0.044, "z", 0.24)
-    knife_inset_courses(body, 2.40, -1.80, 1.08, 1.82, -0.02, 0.70, 2, 1, 0.016, 0.040, "y", 0.38)
-    knife_inset_courses(body, 2.40, -1.80, -1.82, -1.08, -0.02, 0.70, 2, 1, 0.016, 0.040, "y-", 0.38)
-    paint_gap_faces(body, mats["Material_Gap"], 2.60, -2.40, -1.90, 1.90, -0.10, 1.20)
+    # C154: three large dorsal courses on the new stations, not a waffle and not hoops.
+    knife_inset_courses(body, 2.40, 0.20, -0.90, 0.90, 0.28, 0.95, 2, 1, 0.022, 0.050, "z", 0.28)
+    knife_inset_courses(body, -0.20, -2.00, -0.80, 0.80, 0.16, 0.78, 2, 1, 0.022, 0.046, "z", 0.24)
+    knife_inset_courses(body, 2.20, -1.40, 1.20, 2.00, -0.02, 0.62, 2, 1, 0.018, 0.042, "y", 0.36)
+    knife_inset_courses(body, 2.20, -1.40, -2.00, -1.20, -0.02, 0.62, 2, 1, 0.018, 0.042, "y-", 0.36)
     report_shells(body, "hull after plate courses")
-    add_station_hoop("Hoop_Cabin", 2.90, 1.40, 0.70, 0.20, 0.26, 0.50, 0.24, armor, collection, stand=0.038, half=0.032)
-    add_station_hoop("Hoop_Shoulder", 1.80, 1.80, 0.72, 0.14, 0.12, 0.68, 0.22, armor, collection, stand=0.040, half=0.034)
-    add_station_hoop("Hoop_Wing", 0.70, 1.94, 0.74, 0.12, 0.10, 0.74, 0.18, armor, collection, stand=0.042, half=0.038)
-    add_station_hoop("Hoop_Transom", -3.18, 0.98, 0.38, 0.14, 0.03, 0.92, 0.06, armor, collection, stand=0.042, half=0.034)
 
     soot = mats["Material_Soot"]
-    # Dark-lined tub. Walls stay below the rim so they do not fill the mouth.
-    add_box("Tub_Floor", (3.85, 0.0, 0.30), (0.40, 0.26, 0.012), soot, collection, 0.002)
-    add_box("Tub_Aft", (3.42, 0.0, 0.50), (0.014, 0.30, 0.20), soot, collection, 0.002)
-    add_box("Tub_Port", (3.85, -0.32, 0.50), (0.40, 0.012, 0.20), soot, collection, 0.002)
-    add_box("Tub_Stbd", (3.85, 0.32, 0.50), (0.40, 0.012, 0.20), soot, collection, 0.002)
-    add_box("Cockpit_AftWall", (3.48, 0.0, 0.52), (0.014, 0.18, 0.12), armor, collection, 0.002)
-    add_box("WellLip_F", (4.40, 0.0, 0.72), (0.014, 0.42, 0.012), armor, collection, 0.001)
-    add_box("WellLip_A", (3.38, 0.0, 0.72), (0.014, 0.38, 0.012), armor, collection, 0.001)
-    add_box("WellLip_P", (3.88, -0.42, 0.72), (0.50, 0.012, 0.012), armor, collection, 0.001)
-    add_box("WellLip_S", (3.88, 0.42, 0.72), (0.50, 0.012, 0.012), armor, collection, 0.001)
-    # C134: L-seat as folded sheets so 3Q reads pan+back, not a brick stack.
-    add_folded_sheet(
-        "Cockpit_Pan",
-        (4.32, -0.28, 0.38), (4.32, 0.28, 0.38),
-        (3.50, 0.24, 0.42), (3.50, -0.24, 0.42),
-        0.038, warning, collection, 0.002,
-    )
-    add_folded_sheet(
-        "Cockpit_BackSheet",
-        (3.52, -0.22, 0.42), (3.52, 0.22, 0.42),
-        (3.48, 0.18, 0.62), (3.48, -0.18, 0.62),
-        0.038, warning, collection, 0.002,
-    )
-    add_box("Cockpit_Headrest", (3.56, 0.0, 0.66), (0.036, 0.09, 0.036), warning, collection, 0.002)
-    add_folded_sheet(
-        "Cockpit_BolsterP",
-        (4.10, -0.17, 0.42), (3.62, -0.16, 0.44),
-        (3.60, -0.14, 0.60), (4.06, -0.15, 0.54),
-        0.018, warning, collection, 0.001,
-    )
-    add_folded_sheet(
-        "Cockpit_BolsterS",
-        (4.10, 0.17, 0.42), (4.06, 0.15, 0.54),
-        (3.60, 0.14, 0.60), (3.62, 0.16, 0.44),
-        0.018, warning, collection, 0.001,
-    )
-    add_folded_sheet(
-        "Cockpit_DashSheet",
-        (4.32, -0.22, 0.40), (4.32, 0.22, 0.40),
-        (4.08, 0.20, 0.64), (4.08, -0.20, 0.64),
-        0.026, armor, collection, 0.002,
-    )
-    add_box("Cockpit_Panel", (4.14, 0.0, 0.58), (0.06, 0.16, 0.018), mech, collection, 0.001)
-    add_cylinder("Cockpit_Stick", (4.02, 0.05, 0.52), 0.011, 0.11, mech, collection, 8, 0.001, rot=(0.22, 0.0, 0.0))
+    # C155: open well. No glass lid — chase and clay look into soot. Glass is rim strips only.
+    add_box("Tub_Floor", (4.10, 0.0, 0.28), (0.82, 0.46, 0.016), soot, collection, 0.002)
+    add_box("Tub_Aft", (3.28, 0.0, 0.55), (0.018, 0.48, 0.28), soot, collection, 0.002)
+    add_box("Tub_Port", (4.10, -0.50, 0.55), (0.80, 0.016, 0.28), soot, collection, 0.002)
+    add_box("Tub_Stbd", (4.10, 0.50, 0.55), (0.80, 0.016, 0.28), soot, collection, 0.002)
+    add_box("WellLip_F", (4.98, 0.0, 0.86), (0.036, 0.60, 0.028), armor, collection, 0.002)
+    add_box("WellLip_A", (3.24, 0.0, 0.86), (0.036, 0.56, 0.028), armor, collection, 0.002)
+    add_box("WellLip_P", (4.12, -0.62, 0.86), (0.86, 0.028, 0.028), armor, collection, 0.002)
+    add_box("WellLip_S", (4.12, 0.62, 0.86), (0.86, 0.028, 0.028), armor, collection, 0.002)
+    add_five_wall_tub("DriveWellP", (-3.05, -0.90, 0.30), (0.50, 0.34, 0.18), 0.046, soot, collection)
+    add_five_wall_tub("DriveWellS", (-3.05, 0.90, 0.30), (0.50, 0.34, 0.18), 0.046, soot, collection)
     canopy = mats["Material_Canopy"]
-    # C131: low dark hood faired onto the nose deck, not a greenhouse crate.
-    add_folded_sheet(
-        "Canopy_Hood",
-        (4.62, -0.48, 0.62), (4.62, 0.48, 0.62),
-        (3.52, 0.36, 0.70), (3.52, -0.36, 0.70),
-        0.022, canopy, collection, 0.001,
-    )
-    # C134: port/starboard side panes so 3Q looks into the L-kit, not only down through the roof.
-    add_folded_sheet(
-        "Canopy_SideP",
-        (4.52, -0.47, 0.62), (3.56, -0.36, 0.68),
-        (3.56, -0.36, 0.42), (4.52, -0.47, 0.40),
-        0.016, canopy, collection, 0.001,
-    )
-    add_folded_sheet(
-        "Canopy_SideS",
-        (4.52, 0.47, 0.62), (4.52, 0.47, 0.40),
-        (3.56, 0.36, 0.42), (3.56, 0.36, 0.68),
-        0.016, canopy, collection, 0.001,
-    )
-    add_box("Frame_SillF", (4.62, 0.0, 0.62), (0.012, 0.48, 0.010), armor, collection, 0.001)
-    add_box("Frame_Brow", (3.52, 0.0, 0.70), (0.012, 0.36, 0.010), armor, collection, 0.001)
-    add_box("Frame_LongeronP", (4.06, -0.42, 0.64), (0.52, 0.008, 0.008), armor, collection, 0.001)
-    add_box("Frame_LongeronS", (4.06, 0.42, 0.64), (0.52, 0.008, 0.008), armor, collection, 0.001)
+    add_box("Glass_RimF", (4.94, 0.0, 0.90), (0.022, 0.50, 0.034), canopy, collection, 0.001)
+    add_box("Glass_RimA", (3.28, 0.0, 0.90), (0.022, 0.46, 0.034), canopy, collection, 0.001)
+    add_box("Glass_RimP", (4.12, -0.56, 0.90), (0.78, 0.022, 0.034), canopy, collection, 0.001)
+    add_box("Glass_RimS", (4.12, 0.56, 0.90), (0.78, 0.022, 0.034), canopy, collection, 0.001)
+    add_box("Frame_LongeronP", (4.12, -0.64, 0.82), (1.62, 0.028, 0.028), armor, collection, 0.002)
+    add_box("Frame_LongeronS", (4.12, 0.64, 0.82), (1.62, 0.028, 0.028), armor, collection, 0.002)
+    add_box("Frame_Mullion", (4.12, 0.0, 0.92), (0.016, 0.50, 0.018), armor, collection, 0.002)
 
     add_five_wall_tub("AvionicsTub", (0.85, -1.18, 0.22), (0.24, 0.10, 0.11), 0.040, mech, collection)
     add_box("AvionicsRack", (0.85, -1.18, 0.16), (0.16, 0.032, 0.05), armor, collection, 0.002)
@@ -1597,110 +1545,58 @@ def build_lod(lod, mats):
 
     add_folded_sheet(
         "Chine_P",
-        (1.60, -1.78, 0.00), (-1.20, -1.48, -0.02),
-        (-1.20, -1.38, 0.36), (1.60, -1.62, 0.40),
-        0.032, hull, collection, 0.004,
+        (1.90, -2.28, 0.00), (-0.80, -1.78, -0.02),
+        (-0.80, -1.64, 0.30), (1.90, -2.12, 0.34),
+        0.036, hull, collection, 0.004,
     )
     add_folded_sheet(
         "Chine_S",
-        (1.60, 1.78, 0.00), (1.60, 1.62, 0.40),
-        (-1.20, 1.38, 0.36), (-1.20, 1.48, -0.02),
-        0.032, hull, collection, 0.004,
+        (1.90, 2.28, 0.00), (1.90, 2.12, 0.34),
+        (-0.80, 1.64, 0.30), (-0.80, 1.78, -0.02),
+        0.036, hull, collection, 0.004,
     )
     add_folded_sheet(
         "Keel_Spine",
-        (1.40, -0.14, -0.46), (-0.40, -0.14, -0.42),
-        (-0.40, 0.14, -0.42), (1.40, 0.14, -0.46),
+        (1.40, -0.16, -0.42), (-0.40, -0.16, -0.38),
+        (-0.40, 0.16, -0.38), (1.40, 0.16, -0.42),
         0.032, hull, collection, 0.004,
     )
-    # Fair_CabinWaist sheets photographed as hanging cards. One-hull loft is the waist.
-    # Fair_WaistDrive sheets photographed as hanging cards. Leave the loft.
-    add_overlap_plate("Armor_CheekP", (1.20, -1.80, 0.16), (0.42, 0.034, 0.16), armor, collection, 0.006)
-    add_overlap_plate("Armor_CheekS", (1.20, 1.80, 0.16), (0.42, 0.034, 0.16), armor, collection, 0.006)
-    add_overlap_plate("Armor_NoseP", (5.00, -0.22, 0.28), (0.28, 0.022, 0.12), armor, collection, 0.004)
-    add_overlap_plate("Armor_NoseS", (5.00, 0.22, 0.28), (0.28, 0.022, 0.12), armor, collection, 0.004)
-    # C129: House/Joint boxes photographed as leftover spine kit. Courses cover aft.
-    add_overlap_plate("Armor_KeelFore", (1.20, 0.00, -0.44), (0.40, 0.12, 0.018), hull, collection, 0.003)
-    add_overlap_plate("Armor_WaistP", (0.20, -1.72, 0.18), (0.32, 0.028, 0.12), armor, collection, 0.004)
-    add_overlap_plate("Armor_WaistS", (0.20, 1.72, 0.18), (0.32, 0.028, 0.12), armor, collection, 0.004)
-    # C138: non-overlapping 5 cm rims with 5 cm channels. C134-137 laps photographed as crashing lids.
-    add_folded_sheet(
-        "PlateRim_D0",
-        (2.52, -0.34, 0.94), (1.48, -0.36, 0.90),
-        (1.48, 0.36, 0.90), (2.52, 0.34, 0.94),
-        0.050, armor, collection, 0.004,
-    )
-    add_folded_sheet(
-        "PlateRim_D1",
-        (1.40, -0.32, 0.88), (0.28, -0.30, 0.84),
-        (0.28, 0.30, 0.84), (1.40, 0.32, 0.88),
-        0.050, armor, collection, 0.004,
-    )
-    add_folded_sheet(
-        "PlateRim_D2",
-        (0.20, -0.28, 0.82), (-1.12, -0.26, 0.76),
-        (-1.12, 0.26, 0.76), (0.20, 0.28, 0.82),
-        0.048, armor, collection, 0.004,
-    )
-    add_folded_sheet(
-        "PlateRim_S0",
-        (2.28, 1.20, 0.58), (1.05, 1.34, 0.52),
-        (1.05, 1.38, 0.18), (2.28, 1.24, 0.22),
-        0.048, armor, collection, 0.004,
-    )
-    add_folded_sheet(
-        "PlateRim_S1",
-        (0.96, 1.28, 0.50), (-0.38, 1.16, 0.44),
-        (-0.38, 1.20, 0.16), (0.96, 1.32, 0.18),
-        0.046, armor, collection, 0.004,
-    )
-    add_folded_sheet(
-        "PlateRim_P0",
-        (2.28, -1.20, 0.58), (2.28, -1.24, 0.22),
-        (1.05, -1.38, 0.18), (1.05, -1.34, 0.52),
-        0.048, armor, collection, 0.004,
-    )
-    add_folded_sheet(
-        "PlateRim_P1",
-        (0.96, -1.28, 0.50), (0.96, -1.32, 0.18),
-        (-0.38, -1.20, 0.16), (-0.38, -1.16, 0.44),
-        0.046, armor, collection, 0.004,
-    )
-    add_box("Accent_WaistP", (0.15, -1.40, 0.18), (0.28, 0.010, 0.04), accent, collection, 0.002)
-    add_box("Accent_WaistS", (0.15, 1.40, 0.18), (0.28, 0.010, 0.04), accent, collection, 0.002)
+    add_overlap_plate("Armor_CheekP", (1.40, -2.00, 0.14), (0.48, 0.040, 0.16), armor, collection, 0.006)
+    add_overlap_plate("Armor_CheekS", (1.40, 2.00, 0.14), (0.48, 0.040, 0.16), armor, collection, 0.006)
+    add_overlap_plate("Armor_NoseP", (5.05, -0.20, 0.24), (0.26, 0.022, 0.10), armor, collection, 0.004)
+    add_overlap_plate("Armor_NoseS", (5.05, 0.20, 0.24), (0.26, 0.022, 0.10), armor, collection, 0.004)
+    add_overlap_plate("Armor_KeelFore", (1.20, 0.00, -0.40), (0.40, 0.12, 0.018), hull, collection, 0.003)
+    add_overlap_plate("Armor_WaistP", (0.20, -1.95, 0.16), (0.36, 0.032, 0.12), armor, collection, 0.004)
+    add_overlap_plate("Armor_WaistS", (0.20, 1.95, 0.16), (0.36, 0.032, 0.12), armor, collection, 0.004)
+    add_box("Accent_WaistP", (0.15, -1.62, 0.16), (0.32, 0.012, 0.05), accent, collection, 0.002)
+    add_box("Accent_WaistS", (0.15, 1.62, 0.16), (0.32, 0.012, 0.05), accent, collection, 0.002)
 
     # C93/C94 keel tiles floated under the belly in starboard. Do not put them back.
 
     for sign, side in ((-1, "Port"), (1, "Starboard")):
         add_blended_interceptor_wing(f"Wing_{side}", sign, mats["Material_Wing"], armor, collection, soot=mats["Material_Soot"])
-        loft_from_rings(f"DriveFair_{side}", [
-            densify_ring(station_ring(-2.50, 0.72 * sign, 0.12, 0.38, 0.34, flat=0.10, box=0.70, keel=0.10)),
-            densify_ring(station_ring(-2.85, 0.84 * sign, 0.12, 0.28, 0.26, flat=0.06, box=0.82, keel=0.08)),
-            densify_ring(station_ring(-3.12, 0.90 * sign, 0.12, 0.22, 0.22, flat=0.02, box=0.90, keel=0.06)),
-        ], hull, collection, 0.008)
-        add_hollow_bell(side, -3.10, 0.90 * sign, 0.12, 0.66, mats, collection)
+        # C154: bells sit on the rectangular house, mouths tilted up into the chase.
+        add_hollow_bell(side, -4.18, 1.05 * sign, 0.16, 0.78, mats, collection)
         loft_from_rings(f"Canard_{side}", [
-            densify_ring(diamond_airfoil(4.96, 0.42 * sign, 0.08, 0.88, 0.24), 2),
-            densify_ring(diamond_airfoil(4.68, 0.72 * sign, 0.06, 0.62, 0.15), 2),
-            densify_ring(diamond_airfoil(4.42, 0.98 * sign, 0.04, 0.40, 0.08), 2),
+            densify_ring(diamond_airfoil(5.10, 0.38 * sign, 0.08, 0.72, 0.18), 2),
+            densify_ring(diamond_airfoil(4.82, 0.62 * sign, 0.07, 0.52, 0.12), 2),
+            densify_ring(diamond_airfoil(4.58, 0.84 * sign, 0.05, 0.32, 0.08), 2),
         ], hull, collection, 0.005)
         add_folded_sheet(
             f"GunCheek_{side}",
-            (5.05, 0.22 * sign, -0.08), (4.20, 0.52 * sign, -0.10),
-            (4.20, 0.52 * sign, 0.12), (5.05, 0.22 * sign, 0.14),
-            0.032, armor, collection, 0.003,
+            (5.08, 0.18 * sign, -0.06), (4.28, 0.46 * sign, -0.08),
+            (4.28, 0.46 * sign, 0.10), (5.08, 0.18 * sign, 0.12),
+            0.028, armor, collection, 0.003,
         )
-        add_overlap_plate(f"GunTrunnion_{side}", (4.55, 0.40 * sign, 0.00), (0.22, 0.08, 0.07), mech, collection, 0.004)
-        add_cylinder(f"BarrelJacket_{side}", (5.15, 0.40 * sign, -0.02), 0.032, 0.52, ceramic, collection, vertices=10, bevel=0.002)
-        add_cylinder(f"BarrelIsolator_{side}", (5.48, 0.40 * sign, -0.02), 0.024, 0.12, mech, collection, vertices=8, bevel=0.002)
-        add_five_wall_tub(f"RcsBay_{side}", (0.15, 1.62 * sign, -0.04), (0.22, 0.12, 0.10), 0.036, mech, collection)
-        add_cylinder(f"RcsNoz_{side}", (0.28, 1.62 * sign, -0.04), 0.028, 0.10, soot, collection, 8, 0.001)
-        add_rcs_cluster(side, (0.05, 2.45 * sign, 0.10), mats, collection, sign=sign)
-        add_overlap_plate(f"WarnTip_{side}", (1.05, 2.95 * sign, 0.16), (0.12, 0.05, 0.010), warning, collection, 0.002)
+        add_overlap_plate(f"GunTrunnion_{side}", (4.58, 0.36 * sign, 0.00), (0.20, 0.07, 0.06), mech, collection, 0.004)
+        add_cylinder(f"BarrelJacket_{side}", (5.18, 0.36 * sign, -0.02), 0.042, 0.46, mech, collection, vertices=10, bevel=0.002)
+        add_five_wall_tub(f"RcsBay_{side}", (0.20, 2.05 * sign, 0.02), (0.22, 0.12, 0.10), 0.036, mech, collection)
+        add_cylinder(f"RcsNoz_{side}", (0.32, 2.05 * sign, 0.02), 0.028, 0.10, soot, collection, 8, 0.001)
+        add_rcs_cluster(side, (0.10, 2.85 * sign, 0.10), mats, collection, sign=sign)
 
     if lod <= 1:
-        add_radiator_cassette("PortFlank", (-1.70, -1.10, 0.20), lod, mats, collection, length=0.72, height=0.16, yaw=0.0)
-        add_radiator_cassette("StbdFlank", (-1.70, 1.10, 0.20), lod, mats, collection, length=0.72, height=0.16, yaw=0.0)
+        add_radiator_cassette("PortFlank", (-1.30, -1.80, 0.16), lod, mats, collection, length=0.80, height=0.18, yaw=0.0)
+        add_radiator_cassette("StbdFlank", (-1.30, 1.80, 0.16), lod, mats, collection, length=0.80, height=0.18, yaw=0.0)
     add_sensor_dish("Dorsal", (-0.20, 0.18, 0.78), mats, collection)
     add_service_hatch("Dorsal", (-0.40, 0.28, 0.72), mats, collection, sx=0.28, sy=0.18)
     # C106 Repair_Patch photographed as a peach stamp on the spine. Leave it off.
@@ -1782,10 +1678,10 @@ def build_lod(lod, mats):
         add_empty(name, loc, collection, root)
     bm = bmesh.new()
     for point in [
-        (5.7, 0, 0.14), (0.2, -3.7, 0.12), (0.2, 3.7, 0.12),
-        (-5.1, -1.2, 0.16), (-5.1, 1.2, 0.16),
+        (5.7, 0, 0.14), (0.2, -4.35, 0.12), (0.2, 4.35, 0.12),
+        (-5.1, -1.4, 0.16), (-5.1, 1.4, 0.16),
         (1.2, -1.2, -1.05), (1.2, 1.2, -1.05),
-        (3.2, 0, 1.22), (-0.6, 0, 1.18),
+        (3.2, 0, 1.10), (-0.6, 0, 1.00),
     ]:
         bm.verts.new(point)
     bm.verts.ensure_lookup_table()
@@ -1842,7 +1738,7 @@ def look_at(obj, target=(0, 0, 0.1)):
     obj.rotation_euler = (Vector(target) - obj.location).to_track_quat("-Z", "Y").to_euler()
 
 
-def setup_studio():
+def setup_studio(light_scale=1.0):
     scene = bpy.context.scene
     try:
         scene.render.engine = "BLENDER_EEVEE"
@@ -1855,7 +1751,7 @@ def setup_studio():
         scene.view_settings.look = "AgX - Medium Contrast"
     except TypeError:
         scene.view_settings.look = "AgX - Medium High Contrast"
-    scene.view_settings.exposure = 0.55
+    scene.view_settings.exposure = 0.85
     eevee = getattr(scene, "eevee", None)
     if eevee:
         for attr, val in (
@@ -1873,27 +1769,29 @@ def setup_studio():
     world.use_nodes = True
     bg = world.node_tree.nodes.get("Background")
     bg.inputs["Color"].default_value = (0.036, 0.040, 0.046, 1)
-    bg.inputs["Strength"].default_value = 1.35
+    bg.inputs["Strength"].default_value = 1.85
     cam_data = bpy.data.cameras.new("CycleCam")
     camera = bpy.data.objects.new("CycleCam", cam_data)
     scene.collection.objects.link(camera)
     scene.camera = camera
     for name, loc, energy, color, size in (
         ("Key", (16, -18, 12), 560, (0.94, 0.96, 1), 22),
-        ("Fill", (4, 16, 8), 720, (0.76, 0.80, 0.84), 20),
-        ("Top", (2, 2, 16), 460, (0.88, 0.90, 0.94), 18),
+        ("Fill", (4, 16, 8), 980, (0.76, 0.80, 0.84), 20),
+        ("Top", (2, 2, 16), 640, (0.88, 0.90, 0.94), 18),
         ("Rim", (-14, -5, 7), 620, (0.78, 0.84, 0.92), 14),
         ("Kick", (-6, 10, -4), 260, (0.74, 0.78, 0.84), 12),
         ("AftFill", (-10, -12, 8), 420, (0.80, 0.84, 0.90), 16),
         ("StbdFill", (0.9, 12.0, 3.8), 520, (0.88, 0.90, 0.94), 18),
     ):
         data = bpy.data.lights.new(name, "AREA")
-        data.energy = energy
+        # Same relative lighting at the runtime display scale: distances/sizes scale with the
+        # ship, area-light power with the square so illumination per hull area is unchanged.
+        data.energy = energy * light_scale * light_scale
         data.color = color
-        data.size = size
+        data.size = size * light_scale
         obj = bpy.data.objects.new(name, data)
         scene.collection.objects.link(obj)
-        obj.location = loc
+        obj.location = tuple(component * light_scale for component in loc)
         look_at(obj)
     return camera
 
@@ -1939,10 +1837,50 @@ def restore_mats(meshes, backups):
                 obj.material_slots[index].material = material
 
 
+def runtime_display_scale(collection):
+    """Scale factor that reproduces the live game's displayed size for this export.
+
+    The runtime shows the hull at ASSEMBLY_HULL_UNITS * HORNET_COLLISION_RADIUS world units of
+    length regardless of authored metres. Measure the built collection's +X extent and return
+    the uniform scale that makes the render match what a player at D=144 actually sees.
+    """
+    mins = Vector((1e9, 1e9, 1e9))
+    maxs = Vector((-1e9, -1e9, -1e9))
+    for obj in collection.objects:
+        if obj.type != "MESH":
+            continue
+        for corner in obj.bound_box:
+            world = obj.matrix_world @ Vector(corner)
+            mins.x = min(mins.x, world.x); mins.y = min(mins.y, world.y); mins.z = min(mins.z, world.z)
+            maxs.x = max(maxs.x, world.x); maxs.y = max(maxs.y, world.y); maxs.z = max(maxs.z, world.z)
+    extent_x = maxs.x - mins.x
+    if extent_x < 1e-6:
+        raise RuntimeError("hornet render collection has no measurable +X extent")
+    target = ASSEMBLY_HULL_UNITS * HORNET_COLLISION_RADIUS
+    scale = target / extent_x
+    print(f"runtime display scale {scale:.3f} (authored {extent_x:.2f} m -> {target:.1f} WU)")
+    return scale
+
+
+def apply_render_scale(collection, scale):
+    """Parent the rendered assembly's scene-root objects to one empty and scale about origin."""
+    pivot = bpy.data.objects.new("RuntimeDisplayScale", None)
+    bpy.context.scene.collection.objects.link(pivot)
+    for obj in collection.objects:
+        if obj.parent is not None:
+            continue
+        matrix = obj.matrix_world.copy()
+        obj.parent = pivot
+        obj.matrix_world = matrix
+    pivot.scale = (scale, scale, scale)
+
+
 def render_cycle(collection):
     for other in bpy.data.collections:
         other.hide_render = other is not collection
-    camera = setup_studio()
+    display_scale = runtime_display_scale(collection)
+    apply_render_scale(collection, display_scale)
+    camera = setup_studio(light_scale=display_scale)
     out = FAMILY / "evidence" / "hornet" / "cycles" / f"cycle_{CYCLE:02d}"
     out.mkdir(parents=True, exist_ok=True)
     # Cycle stills are the live chase camera only. Studio three-quarter / seat
@@ -1955,9 +1893,17 @@ def render_cycle(collection):
     meshes = [obj for obj in collection.objects if obj.type == "MESH" and not obj.get("collision")]
     for name in ("grazing_close", "drive_rear"):
         loc, target, lens = views[name]
-        snap(camera, out / f"{name}.png", loc, target, lens)
+        snap(
+            camera,
+            out / f"{name}.png",
+            tuple(component * display_scale for component in loc),
+            tuple(component * display_scale for component in target),
+            lens,
+        )
 
-    backups = override_emission(meshes, lambda _o: ((0.46, 0.46, 0.47), 1.0), clay=True)
+    # C155: skip glass so clay shows the canopy tub as a hole, not a gray lid.
+    clay_meshes = [obj for obj in meshes if "Canopy" not in obj.name]
+    backups = override_emission(clay_meshes, lambda _o: ((0.46, 0.46, 0.47), 1.0), clay=True)
     render_chase_still(camera, out / "clay_play_chase.png", distance=DISTANCE_DEFAULT, heading_deg=0.0)
     render_chase_still(camera, out / "clay_play_chase_close.png", distance=DISTANCE_CLOSE, heading_deg=0.0)
     restore_mats(meshes, backups)
