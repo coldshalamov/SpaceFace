@@ -1,0 +1,86 @@
+{
+  "schema": "spaceface.masslineExpressLiner.cycle.v1",
+  "assetId": "SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1",
+  "shipId": "massline_express_liner_v1",
+  "cycle": 14,
+  "blend": "blender/massline_express_liner_v1.blend",
+  "lods": [
+    {
+      "lod": 0,
+      "triangles": 20840,
+      "hullTriangles": 2424,
+      "draws": 8,
+      "materials": [
+        "Material_Accent",
+        "Material_Armor",
+        "Material_Canopy",
+        "Material_Ceramic",
+        "Material_Hull",
+        "Material_Mechanical",
+        "Material_Radiator",
+        "Material_Warning"
+      ],
+      "path": "source/wholeships/massline_express_liner_v1_lod0.glb",
+      "bytes": 4887556,
+      "sha256": "07F304E35A06C0CDB728B98ABD0F6E976A38C2276133275BF2D07A95FE3D047B"
+    },
+    {
+      "lod": 1,
+      "triangles": 13000,
+      "hullTriangles": 2424,
+      "draws": 8,
+      "materials": [
+        "Material_Accent.001",
+        "Material_Armor.001",
+        "Material_Canopy.001",
+        "Material_Ceramic.001",
+        "Material_Hull.001",
+        "Material_Mechanical.001",
+        "Material_Radiator.001",
+        "Material_Warning.001"
+      ],
+      "path": "source/wholeships/massline_express_liner_v1_lod1.glb",
+      "bytes": 3827164,
+      "sha256": "90FE97149354F560C69B18BF5776B17021A617801E505E2E85229FBD3E11CCE8"
+    },
+    {
+      "lod": 2,
+      "triangles": 5286,
+      "hullTriangles": 2094,
+      "draws": 6,
+      "materials": [
+        "Material_Accent.002",
+        "Material_Armor.002",
+        "Material_Ceramic.002",
+        "Material_Hull.002",
+        "Material_Mechanical.002",
+        "Material_Radiator.002"
+      ],
+      "path": "source/wholeships/massline_express_liner_v1_lod2.glb",
+      "bytes": 2521300,
+      "sha256": "65396AAEB270D62537C0D1D56F7EFC9E336605545A77ADA260B159D6C7A8197E"
+    }
+  ],
+  "stills": "evidence/massline_express_liner_v1/cycles/cycle_14",
+  "cameras": {
+    "play_chase": {
+      "distance": 144.0,
+      "heading": 0,
+      "fov": 50,
+      "tilt": 60
+    },
+    "play_chase_abeam": {
+      "distance": 144.0,
+      "heading": 90,
+      "fov": 50,
+      "tilt": 60
+    },
+    "play_chase_close": {
+      "distance": 58.0,
+      "heading": 0,
+      "fov": 50,
+      "tilt": 60
+    }
+  },
+  "notes": "Source candidate only. Not wired to traffic, manifests, or partsLibrary."
+}
