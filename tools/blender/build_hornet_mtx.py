@@ -388,20 +388,20 @@ def create_materials():
             # C154: near-opaque dark dielectric. C153 alpha 0.60 still sold the seat as an
             # orange inset. Chase needs one framed dark rectangle, not a window into furniture.
             bsdf.inputs["Roughness"].default_value = 0.08
-            bsdf.inputs["Alpha"].default_value = 0.94
+            bsdf.inputs["Alpha"].default_value = 1.0
             if hasattr(material, "blend_method"):
                 try:
-                    material.blend_method = "BLEND"
+                    material.blend_method = "OPAQUE"
                 except TypeError:
                     pass
             if hasattr(material, "surface_render_method"):
                 try:
-                    material.surface_render_method = "BLENDED"
+                    material.surface_render_method = "DITHERED"
                 except TypeError:
                     pass
             if hasattr(material, "shadow_method"):
                 try:
-                    material.shadow_method = "NONE"
+                    material.shadow_method = "OPAQUE"
                 except (TypeError, ValueError):
                     pass
             if hasattr(material, "use_backface_culling"):
@@ -1553,11 +1553,11 @@ def build_lod(lod, mats):
         (-4.35, 1.36, 0.46, 0.12, 0.03, 0.92, 0.06),
     ), hull, collection, 0.12)
     subdivide_mesh(body, 1)
-    # C177: longer/wider tub so the white hull rim is the window frame at D=144.
-    cut = safe_boolean_cut(body, "CockpitBoolean", (3.95, 0.0, 0.86), (1.40, 0.42, 0.30))
+    # C179: shorter tub so the visor is a framed rectangle, not a 2.4 m nose stripe (C178).
+    cut = safe_boolean_cut(body, "CockpitBoolean", (4.15, 0.0, 0.86), (0.82, 0.42, 0.28))
     print(f"cockpit boolean {'hit' if cut else 'miss — face delete'}")
     if not cut:
-        delete_faces_in_box(body, 2.85, 5.20, -0.50, 0.50, 0.58, 2.00, normal="z", normal_min=0.18)
+        delete_faces_in_box(body, 3.40, 4.90, -0.48, 0.48, 0.58, 2.00, normal="z", normal_min=0.18)
     # Bigger roof mouths so chase looks into bells, not painted squares. No connecting crate-cut.
     delete_faces_in_cylinder(body, -3.90, -2.85, 0.88, 0.70, 0.62, normal="z", normal_min=0.15)
     delete_faces_in_cylinder(body, -3.90, -2.85, -0.88, 0.70, 0.62, normal="z", normal_min=0.15)
@@ -1581,15 +1581,14 @@ def build_lod(lod, mats):
 
     soot = mats["Material_Soot"]
     # Floor of the tub only. Visor sits down in the hole so the boolean rim is the white frame.
-    add_box("Tub_Floor", (3.95, 0.0, 0.32), (1.15, 0.30, 0.012), soot, collection, 0.002)
+    add_box("Tub_Floor", (4.15, 0.0, 0.32), (0.68, 0.30, 0.012), soot, collection, 0.002)
     canopy = mats["Material_Canopy"]
-    # C178: fill the tub. Small panes were a smear (C177); add-on frames vanished into hull white.
     add_folded_sheet(
         "Canopy_Visor",
-        (5.12, -0.34, 0.58),
-        (5.12, 0.34, 0.58),
-        (2.72, 0.32, 0.60),
-        (2.72, -0.32, 0.60),
+        (4.72, -0.34, 0.58),
+        (4.72, 0.34, 0.58),
+        (3.55, 0.32, 0.60),
+        (3.55, -0.32, 0.60),
         0.014, canopy, collection, 0.002,
     )
 
