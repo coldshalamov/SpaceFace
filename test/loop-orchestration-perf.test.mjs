@@ -38,6 +38,7 @@ test('detailed per-system clocks are opt-in and default gameplay does not fill t
     periodTicks: SYSTEM_TIMING_SAMPLE_PERIOD_TICKS,
     samplesPerPeriod: SYSTEM_TIMING_SAMPLES_PER_PERIOD,
     strategy: 'prime-period-stratified',
+    coverage: 'prime-period-stratified',
   });
   assert.equal(perf.setSystemTimingEnabled(false), false);
 });

@@ -113,13 +113,40 @@ export function classifyHitchFrame(sample = {}, options = {}) {
   // the 1–4 ms excess on a one-dropped-vsync hitch.
   const attributed = bestMs >= Math.max(excess * share, frameMs * 0.2)
     && bestOwner !== 'unknown';
+  const owner = attributed ? bestOwner : 'unknown';
+  const simMaxSystemMs = Number(sample.simMaxSystemMs);
+  const simSystemTotalMs = Number(sample.simSystemTotalMs);
+  const simStepCount = Number(sample.simStepCount);
+  const simMeasuredStepCount = Number(sample.simMeasuredStepCount);
+  const safeSimStepCount = Number.isFinite(simStepCount) ? simStepCount : 0;
+  const safeSimMeasuredStepCount = Number.isFinite(simMeasuredStepCount) ? simMeasuredStepCount : 0;
+  const callbackMs = Number(sample.callbackMs);
+  const residualKnown = Number.isFinite(callbackMs);
+  const scheduleMs = Number(sample.scheduleMs);
+  const residualMs = residualKnown
+    ? Math.max(0, frameMs - callbackMs - (Number.isFinite(scheduleMs) ? scheduleMs : 0))
+    : 0;
   return {
-    owner: attributed ? bestOwner : 'unknown',
+    owner,
     frameMs,
     excessMs: excess,
     ownerMs: attributed ? bestMs : 0,
     attributed,
     phases,
+    simSystem: owner === 'sim'
+      ? (typeof sample.simMaxSystemName === 'string' && sample.simMaxSystemName
+        ? sample.simMaxSystemName
+        : null)
+      : null,
+    simSystemMs: Number.isFinite(simMaxSystemMs) ? simMaxSystemMs : 0,
+    simSystemTotalMs: Number.isFinite(simSystemTotalMs) ? simSystemTotalMs : 0,
+    simStepCount: safeSimStepCount,
+    simMeasuredStepCount: safeSimMeasuredStepCount,
+    simFullyMeasured: safeSimStepCount > 0 && safeSimMeasuredStepCount === safeSimStepCount,
+    residualMs,
+    residualKnown,
+    largestPhase: bestMs > 0 ? bestOwner : null,
+    largestPhaseMs: bestMs,
   };
 }
 
@@ -137,6 +164,18 @@ export function createHitchHistogram() {
     longestStreak: 0,
     previousWasHitch: false,
     counts,
+    bySimSystem: Object.create(null),
+    bySimSystemPartial: Object.create(null),
+    simStepHistogram: { 0: 0, 1: 0, 2: 0, 3: 0, '4+': 0 },
+    unknownLargestPhase: Object.create(null),
+    residualMsTotal: 0,
+    residualFrames: 0,
+    simOwnedSystemTotalMs: 0,
+    simOwnedPhaseMs: 0,
+    simMeasuredFrames: 0,
+    simPartiallyMeasuredFrames: 0,
+    simUnmeasuredFrames: 0,
+    simZeroStepFrames: 0,
   };
 }
 
@@ -160,6 +199,59 @@ export function accumulateHitch(histogram, classification) {
   histogram.counts[owner] += 1;
   if (owner === 'unknown') histogram.unknown += 1;
   else histogram.named += 1;
+  if (owner === 'sim') {
+    if (!histogram.bySimSystem) histogram.bySimSystem = Object.create(null);
+    if (!histogram.bySimSystemPartial) histogram.bySimSystemPartial = Object.create(null);
+    if (!histogram.simStepHistogram) histogram.simStepHistogram = { 0: 0, 1: 0, 2: 0, 3: 0, '4+': 0 };
+    const measuredSteps = Number.isFinite(Number(classification.simMeasuredStepCount))
+      ? Number(classification.simMeasuredStepCount)
+      : 0;
+    const steps = Number(classification.simStepCount);
+    const safeSteps = Number.isFinite(steps) ? steps : 0;
+    const bucket = safeSteps <= 0 ? 0
+      : safeSteps === 1 ? 1
+      : safeSteps === 2 ? 2
+      : safeSteps === 3 ? 3
+      : '4+';
+    histogram.simStepHistogram[bucket] = (histogram.simStepHistogram[bucket] || 0) + 1;
+    if (safeSteps <= 0) {
+      histogram.simZeroStepFrames = (histogram.simZeroStepFrames || 0) + 1;
+    } else {
+      const fullyMeasured = measuredSteps === safeSteps;
+      const unmeasured = measuredSteps === 0;
+      const systemKey = classification.simSystem || '(none)';
+      if (fullyMeasured) {
+        histogram.bySimSystem[systemKey] = (histogram.bySimSystem[systemKey] || 0) + 1;
+        histogram.simMeasuredFrames = (histogram.simMeasuredFrames || 0) + 1;
+        const accounted = Number(classification.simSystemTotalMs);
+        if (Number.isFinite(accounted)) {
+          histogram.simOwnedSystemTotalMs = (histogram.simOwnedSystemTotalMs || 0) + accounted;
+        }
+        const simPhase = Number(classification.phases && classification.phases.sim);
+        if (Number.isFinite(simPhase)) {
+          histogram.simOwnedPhaseMs = (histogram.simOwnedPhaseMs || 0) + simPhase;
+        }
+      } else if (unmeasured) {
+        histogram.simUnmeasuredFrames = (histogram.simUnmeasuredFrames || 0) + 1;
+      } else {
+        histogram.bySimSystemPartial[systemKey] = (histogram.bySimSystemPartial[systemKey] || 0) + 1;
+        histogram.simPartiallyMeasuredFrames = (histogram.simPartiallyMeasuredFrames || 0) + 1;
+      }
+    }
+  } else if (owner === 'unknown') {
+    if (!histogram.unknownLargestPhase) histogram.unknownLargestPhase = Object.create(null);
+    const phase = classification.largestPhase;
+    if (phase) {
+      histogram.unknownLargestPhase[phase] = (histogram.unknownLargestPhase[phase] || 0) + 1;
+    }
+    if (classification.residualKnown === true) {
+      const residual = Number(classification.residualMs);
+      if (Number.isFinite(residual)) {
+        histogram.residualMsTotal = (histogram.residualMsTotal || 0) + residual;
+      }
+      histogram.residualFrames = (histogram.residualFrames || 0) + 1;
+    }
+  }
   return histogram;
 }
 
@@ -179,5 +271,33 @@ export function hitchHistogramReport(histogram) {
     longestStreak: histogram ? histogram.longestStreak : 0,
     coverage: hitchCoverage(histogram),
     counts: { ...(histogram && histogram.counts) },
+    bySimSystem: { ...(histogram && histogram.bySimSystem) },
+    bySimSystemPartial: { ...(histogram && histogram.bySimSystemPartial) },
+    simStepHistogram: { ...(histogram && histogram.simStepHistogram) },
+    unknownLargestPhase: { ...(histogram && histogram.unknownLargestPhase) },
+    residualMsTotal: histogram && Number.isFinite(Number(histogram.residualMsTotal))
+      ? Number(histogram.residualMsTotal)
+      : 0,
+    residualFrames: histogram && Number.isFinite(Number(histogram.residualFrames))
+      ? Number(histogram.residualFrames)
+      : 0,
+    simOwnedSystemTotalMs: histogram && Number.isFinite(Number(histogram.simOwnedSystemTotalMs))
+      ? Number(histogram.simOwnedSystemTotalMs)
+      : 0,
+    simOwnedPhaseMs: histogram && Number.isFinite(Number(histogram.simOwnedPhaseMs))
+      ? Number(histogram.simOwnedPhaseMs)
+      : 0,
+    simMeasuredFrames: histogram && Number.isFinite(Number(histogram.simMeasuredFrames))
+      ? Number(histogram.simMeasuredFrames)
+      : 0,
+    simPartiallyMeasuredFrames: histogram && Number.isFinite(Number(histogram.simPartiallyMeasuredFrames))
+      ? Number(histogram.simPartiallyMeasuredFrames)
+      : 0,
+    simUnmeasuredFrames: histogram && Number.isFinite(Number(histogram.simUnmeasuredFrames))
+      ? Number(histogram.simUnmeasuredFrames)
+      : 0,
+    simZeroStepFrames: histogram && Number.isFinite(Number(histogram.simZeroStepFrames))
+      ? Number(histogram.simZeroStepFrames)
+      : 0,
   };
 }

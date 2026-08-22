@@ -317,6 +317,9 @@ export function ensurePerfRuntime(state) {
   // Per-system attribution costs two clocks plus one ring sample for every registered system on
   // every 60 Hz sim tick. Keep that diagnostic tax explicit and default-off in normal play.
   let systemTimingEnabled = false;
+  // Probe-only: measure every sim step instead of the prime-period sampler. Default off so
+  // live play and archived witness baselines keep the cheap 8-of-31 schedule.
+  let systemTimingFullCoverage = false;
   // Opt-in CPU render-work attribution. Default OFF so production frames never pay
   // performance.now() + ring sample cost. Measurement probes enable for a window only.
   let renderWorkEnabled = false;
@@ -325,6 +328,11 @@ export function ensurePerfRuntime(state) {
   const hitchHistogram = createHitchHistogram();
   const frameHitchOwnerMs = createFrameHitchOwnerTotals();
   const frameNestedPresentationMs = createFrameHitchOwnerTotals();
+  let frameSystemMaxName = null;
+  let frameSystemMaxMs = 0;
+  let frameSystemTotalMs = 0;
+  let frameSimStepCount = 0;
+  let frameMeasuredStepCount = 0;
   // Background-job evidence is opt-in. The live queue pays one branch at job boundaries while
   // ordinary frames pay nothing; enabled captures use a fixed-capacity record ring.
   let backgroundJobTrackingEnabled = false;
@@ -461,6 +469,16 @@ export function ensurePerfRuntime(state) {
   // pre-existing spatial-hash and VFX tallies, and the two are different things.
   const tier1Counters = createPerfCounters();
 
+  function systemTimingSamplingSnapshot() {
+    return {
+      schema: 'spaceface.systemTimingSampling.v1',
+      periodTicks: SYSTEM_TIMING_SAMPLE_PERIOD_TICKS,
+      samplesPerPeriod: SYSTEM_TIMING_SAMPLES_PER_PERIOD,
+      strategy: 'prime-period-stratified',
+      coverage: systemTimingFullCoverage ? 'full' : 'prime-period-stratified',
+    };
+  }
+
   const api = {
     __spacefacePerfV1: true,
     RING_N,
@@ -472,19 +490,23 @@ export function ensurePerfRuntime(state) {
     get systemTimingEnabled() { return systemTimingEnabled; },
     isSystemTimingEnabled() { return systemTimingEnabled === true; },
     shouldMeasureSystemsThisStep(simTick) {
-      return systemTimingEnabled === true && shouldSampleSystemTimingTick(simTick);
+      const measured = systemTimingEnabled === true
+        && (systemTimingFullCoverage === true || shouldSampleSystemTimingTick(simTick));
+      if (hitchAttributionEnabled && measured) frameMeasuredStepCount += 1;
+      return measured;
     },
     get systemTimingSampling() {
-      return {
-        schema: 'spaceface.systemTimingSampling.v1',
-        periodTicks: SYSTEM_TIMING_SAMPLE_PERIOD_TICKS,
-        samplesPerPeriod: SYSTEM_TIMING_SAMPLES_PER_PERIOD,
-        strategy: 'prime-period-stratified',
-      };
+      return systemTimingSamplingSnapshot();
     },
     setSystemTimingEnabled(on) {
       systemTimingEnabled = !!on;
       return systemTimingEnabled;
+    },
+    get systemTimingFullCoverage() { return systemTimingFullCoverage; },
+    isSystemTimingFullCoverage() { return systemTimingFullCoverage === true; },
+    setSystemTimingFullCoverage(on) {
+      systemTimingFullCoverage = !!on;
+      return systemTimingFullCoverage;
     },
     get renderWorkEnabled() { return renderWorkEnabled; },
     isRenderWorkEnabled() { return renderWorkEnabled === true; },
@@ -654,6 +676,7 @@ export function ensurePerfRuntime(state) {
             untrackedMs: frameUntrackedStats.last,
             admissionMs: pendingAdmissionMs,
             scheduleMs: Math.max(nextExternalCallbackGapMs, nextCallbackDispatchLagMs),
+            callbackMs: frameCallbackStats.last,
             compileMs: frameHitchOwnerMs.compile,
             uploadMs: frameHitchOwnerMs.upload,
             composeMs: frameHitchOwnerMs.compose,
@@ -664,12 +687,22 @@ export function ensurePerfRuntime(state) {
             gcMs: frameHitchOwnerMs.gc,
             restoreMs: frameHitchOwnerMs.restore,
             autosaveMs: frameHitchOwnerMs.autosave,
+            simMaxSystemName: frameSystemMaxName,
+            simMaxSystemMs: frameSystemMaxMs,
+            simSystemTotalMs: frameSystemTotalMs,
+            simStepCount: frameSimStepCount,
+            simMeasuredStepCount: frameMeasuredStepCount,
           }));
         } else {
           accumulateHitch(hitchHistogram, null);
         }
         resetFrameHitchOwnerTotals(frameHitchOwnerMs);
         resetFrameHitchOwnerTotals(frameNestedPresentationMs);
+        frameSystemMaxName = null;
+        frameSystemMaxMs = 0;
+        frameSystemTotalMs = 0;
+        frameSimStepCount = 0;
+        frameMeasuredStepCount = 0;
       }
       previousCallbackMs = frameCallbackStats.last;
       previousSimFrameMs = framePhaseMs.simFrame;
@@ -751,6 +784,7 @@ export function ensurePerfRuntime(state) {
       countBacklogCause(loop.backlogCause);
     },
     recordStepTotal(ms) {
+      if (hitchAttributionEnabled) frameSimStepCount += 1;
       if (Number.isFinite(ms) && ms >= 0) framePhaseMs.sim = ms;
       sample(phaseStats.sim, ms);
     },
@@ -776,6 +810,13 @@ export function ensurePerfRuntime(state) {
       // Defense-in-depth: registry avoids the clocks too, while direct callers cannot accidentally
       // refill detailed rings after a diagnostic window has closed.
       if (!systemTimingEnabled) return;
+      if (hitchAttributionEnabled) {
+        frameSystemTotalMs += ms;
+        if (ms > frameSystemMaxMs) {
+          frameSystemMaxMs = ms;
+          frameSystemMaxName = name;
+        }
+      }
       sample(statForSystem(name), ms);
     },
     recordRenderWork(name, ms) {
@@ -936,8 +977,25 @@ export function ensurePerfRuntime(state) {
       hitchHistogram.longestStreak = 0;
       hitchHistogram.previousWasHitch = false;
       for (const owner of Object.keys(hitchHistogram.counts)) hitchHistogram.counts[owner] = 0;
+      hitchHistogram.bySimSystem = Object.create(null);
+      hitchHistogram.bySimSystemPartial = Object.create(null);
+      hitchHistogram.simStepHistogram = { 0: 0, 1: 0, 2: 0, 3: 0, '4+': 0 };
+      hitchHistogram.unknownLargestPhase = Object.create(null);
+      hitchHistogram.residualMsTotal = 0;
+      hitchHistogram.residualFrames = 0;
+      hitchHistogram.simOwnedSystemTotalMs = 0;
+      hitchHistogram.simOwnedPhaseMs = 0;
+      hitchHistogram.simMeasuredFrames = 0;
+      hitchHistogram.simPartiallyMeasuredFrames = 0;
+      hitchHistogram.simUnmeasuredFrames = 0;
+      hitchHistogram.simZeroStepFrames = 0;
       resetFrameHitchOwnerTotals(frameHitchOwnerMs);
       resetFrameHitchOwnerTotals(frameNestedPresentationMs);
+      frameSystemMaxName = null;
+      frameSystemMaxMs = 0;
+      frameSystemTotalMs = 0;
+      frameSimStepCount = 0;
+      frameMeasuredStepCount = 0;
       resetBackgroundJobRecords();
       resetStat(frameStats);
       resetStat(frameCallbackStats);
@@ -1046,12 +1104,7 @@ export function ensurePerfRuntime(state) {
       return {
         hitchAttribution: hitchHistogramReport(hitchHistogram),
         systemTimingEnabled,
-        systemTimingSampling: {
-          schema: 'spaceface.systemTimingSampling.v1',
-          periodTicks: SYSTEM_TIMING_SAMPLE_PERIOD_TICKS,
-          samplesPerPeriod: SYSTEM_TIMING_SAMPLES_PER_PERIOD,
-          strategy: 'prime-period-stratified',
-        },
+        systemTimingSampling: systemTimingSamplingSnapshot(),
         frame: reportStat(frameStats),
         frameCallback: reportStat(frameCallbackStats),
         frameUntracked: reportStat(frameUntrackedStats),

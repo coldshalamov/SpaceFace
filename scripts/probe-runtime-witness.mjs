@@ -16,7 +16,7 @@ import {
   assertIsolatedElectronRootUrl,
   createIsolatedElectronLaunch,
 } from './lib/electronTestIsolation.mjs';
-import { classifyRuntimeWitness, formatRuntimeWitnessReport } from '../src/core/runtimeWitness.js';
+import { classifyRuntimeWitness, formatHitchAttributionDetailLines, formatRuntimeWitnessReport } from '../src/core/runtimeWitness.js';
 import { loadPlaywright } from './lib/load-playwright.mjs';
 import { installCspSafePlaywrightPolling } from './lib/playwrightCspPolling.mjs';
 
@@ -30,6 +30,7 @@ const OUT = path.join(ROOT, '.devshots', 'runtime-witness');
 const SAMPLE_MS = Number(process.env.SPACEFACE_WITNESS_MS || 20_000);
 const SAMPLE_EVERY_MS = 500;
 const FIXED_SEED = 47;
+const FULL_SYSTEM_TIMING = process.env.SPACEFACE_WITNESS_FULL_SYSTEM_TIMING === '1';
 const CONTINUE_ROUTE = process.argv.includes('--continue');
 const SECTOR_ENTRY_ROUTE = process.argv.includes('--sector-entry');
 const SHADOWS_OFF_DIAGNOSTIC = process.argv.includes('--shadows-off-diagnostic');
@@ -131,15 +132,18 @@ function formatHitchAttributionSection(histogram, route) {
     .filter(([, count]) => Number(count) > 0)
     .map(([owner, count]) => `${owner} ${count}`)
     .join('; ');
-  return [
+  const lines = [
     '',
     '## Live hitch attribution (PQ-129.02)',
     `- bounded instrumentation: classifier ${route.instrumentation?.previousHitchAttributionEnabled === true ? 'already on' : 'enabled for this probe only'}; prior state restored before shutdown: ${route.instrumentation?.restored === true}`,
+    `- system timing coverage: ${route.instrumentation?.systemTimingFullCoverage === true ? 'full' : 'prime-period-stratified'}`,
     `- observed frames: ${histogram?.frames ?? 0}; hitches: ${histogram?.hitches ?? 0}; named: ${histogram?.named ?? 0}; unknown: ${histogram?.unknown ?? 0}`,
     `- hitch runs: first ${histogram?.firstHitches ?? 0}; echoes ${histogram?.echoHitches ?? 0}; longest streak ${histogram?.longestStreak ?? 0}`,
     `- named coverage: ${(Number(histogram?.coverage) || 0).toFixed(3)}`,
     `- owner counts: ${namedCounts || 'none'}`,
-  ].join('\n');
+  ];
+  lines.push(...formatHitchAttributionDetailLines(histogram));
+  return lines.join('\n');
 }
 
 function formatSectorTransitionSection(trace) {
@@ -1651,35 +1655,41 @@ async function restoreOpeningExactOwnerTouchWitness(targetPage) {
 }
 
 async function armProbeInstrumentation(targetPage) {
-  const instrumentation = await targetPage.evaluate(() => {
+  const instrumentation = await targetPage.evaluate((fullSystemTiming) => {
     const perf = window.SF?.state?.perfRuntime;
     const previousRenderWorkEnabled = perf?.renderWorkEnabled === true;
     const previousHitchAttributionEnabled = perf?.hitchAttributionEnabled === true;
     const previousSystemTimingEnabled = perf?.systemTimingEnabled === true;
+    const previousSystemTimingFullCoverage = perf?.systemTimingFullCoverage === true;
     const available = typeof perf?.setRenderWorkEnabled === 'function'
       && typeof perf?.setHitchAttributionEnabled === 'function'
       && typeof perf?.setSystemTimingEnabled === 'function'
       && typeof perf?.reset === 'function'
-      && typeof perf?.getHitchHistogram === 'function';
+      && typeof perf?.getHitchHistogram === 'function'
+      && (!fullSystemTiming || typeof perf?.setSystemTimingFullCoverage === 'function');
     if (available) {
       perf.reset();
       perf.setRenderWorkEnabled(true);
       perf.setHitchAttributionEnabled(true);
       perf.setSystemTimingEnabled(true);
+      if (fullSystemTiming) perf.setSystemTimingFullCoverage(true);
     }
     return {
       available,
       previousRenderWorkEnabled,
       previousHitchAttributionEnabled,
       previousSystemTimingEnabled,
+      previousSystemTimingFullCoverage,
       renderWorkEnabled: perf?.renderWorkEnabled === true,
       hitchAttributionEnabled: perf?.hitchAttributionEnabled === true,
       systemTimingEnabled: perf?.systemTimingEnabled === true,
+      systemTimingFullCoverage: perf?.systemTimingFullCoverage === true,
     };
-  });
+  }, FULL_SYSTEM_TIMING);
   if (instrumentation?.renderWorkEnabled !== true
       || instrumentation?.hitchAttributionEnabled !== true
-      || instrumentation?.systemTimingEnabled !== true) {
+      || instrumentation?.systemTimingEnabled !== true
+      || (FULL_SYSTEM_TIMING && instrumentation?.systemTimingFullCoverage !== true)) {
     throw new Error('Runtime witness could not enable bounded census and hitch attribution');
   }
   return instrumentation;
@@ -2616,20 +2626,28 @@ try {
       perf?.setRenderWorkEnabled?.(previous.renderWorkEnabled === true);
       perf?.setHitchAttributionEnabled?.(previous.hitchAttributionEnabled === true);
       perf?.setSystemTimingEnabled?.(previous.systemTimingEnabled === true);
+      if (previous.restoreSystemTimingFullCoverage === true) {
+        perf?.setSystemTimingFullCoverage?.(previous.systemTimingFullCoverage === true);
+      }
       return {
         renderWorkEnabled: perf?.renderWorkEnabled === true,
         hitchAttributionEnabled: perf?.hitchAttributionEnabled === true,
         systemTimingEnabled: perf?.systemTimingEnabled === true,
+        systemTimingFullCoverage: perf?.systemTimingFullCoverage === true,
       };
     }, {
       renderWorkEnabled: probeInstrumentation.previousRenderWorkEnabled,
       hitchAttributionEnabled: probeInstrumentation.previousHitchAttributionEnabled,
       systemTimingEnabled: probeInstrumentation.previousSystemTimingEnabled,
+      systemTimingFullCoverage: probeInstrumentation.previousSystemTimingFullCoverage,
+      restoreSystemTimingFullCoverage: FULL_SYSTEM_TIMING,
     }).catch(() => null);
     probeInstrumentation.restored = !!restoredState
       && restoredState.renderWorkEnabled === probeInstrumentation.previousRenderWorkEnabled
       && restoredState.hitchAttributionEnabled === probeInstrumentation.previousHitchAttributionEnabled
-      && restoredState.systemTimingEnabled === probeInstrumentation.previousSystemTimingEnabled;
+      && restoredState.systemTimingEnabled === probeInstrumentation.previousSystemTimingEnabled
+      && (!FULL_SYSTEM_TIMING
+        || restoredState.systemTimingFullCoverage === probeInstrumentation.previousSystemTimingFullCoverage);
     if (probeInstrumentation.restored !== true && !cleanupError) {
       cleanupError = new Error('Runtime witness failed to restore bounded performance instrumentation');
     }

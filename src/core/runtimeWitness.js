@@ -31,6 +31,79 @@ function errorText(err) {
   return String(err).slice(0, 240);
 }
 
+function formatNamedCounts(map, separator = ' | ') {
+  if (!map || typeof map !== 'object') return '';
+  return Object.entries(map)
+    .filter(([, count]) => Number(count) > 0)
+    .sort((a, b) => (Number(b[1]) - Number(a[1])) || (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))
+    .map(([name, count]) => `${name} ${count}`)
+    .join(separator);
+}
+
+/**
+ * Extra hitch-attribution lines. Omitted when the blob predates these fields.
+ */
+export function formatHitchAttributionDetailLines(histogram) {
+  if (!histogram || typeof histogram !== 'object') return [];
+  const lines = [];
+  if (histogram.bySimSystem && typeof histogram.bySimSystem === 'object') {
+    const text = formatNamedCounts(histogram.bySimSystem);
+    if (text) lines.push(`- sim hitch systems (fully measured): ${text}`);
+  }
+  if (histogram.bySimSystemPartial && typeof histogram.bySimSystemPartial === 'object') {
+    const text = formatNamedCounts(histogram.bySimSystemPartial);
+    if (text) lines.push(`- sim hitch systems (partially measured, incomplete evidence): ${text}`);
+  }
+  if (histogram.simStepHistogram && typeof histogram.simStepHistogram === 'object') {
+    const buckets = histogram.simStepHistogram;
+    const zero = Number(buckets[0] ?? buckets['0']) || 0;
+    const one = Number(buckets[1] ?? buckets['1']) || 0;
+    const two = Number(buckets[2] ?? buckets['2']) || 0;
+    const three = Number(buckets[3] ?? buckets['3']) || 0;
+    const fourPlus = Number(buckets['4+']) || 0;
+    if (zero || one || two || three || fourPlus) {
+      lines.push(`- sim steps in hitch frames: 0x ${zero} | 1x ${one} | 2x ${two} | 3x ${three} | 4+x ${fourPlus}`);
+    }
+  }
+  const measuredFrames = Number(histogram.simMeasuredFrames);
+  const partialFrames = Number(histogram.simPartiallyMeasuredFrames);
+  const unmeasuredFrames = Number(histogram.simUnmeasuredFrames);
+  const zeroStepFrames = Number(histogram.simZeroStepFrames);
+  const hasCoverageFields = histogram.simMeasuredFrames != null
+    || histogram.simPartiallyMeasuredFrames != null
+    || histogram.simUnmeasuredFrames != null
+    || histogram.simZeroStepFrames != null;
+  if (hasCoverageFields) {
+    const full = Number.isFinite(measuredFrames) ? measuredFrames : 0;
+    const partial = Number.isFinite(partialFrames) ? partialFrames : 0;
+    const unmeasured = Number.isFinite(unmeasuredFrames) ? unmeasuredFrames : 0;
+    const zeroStep = Number.isFinite(zeroStepFrames) ? zeroStepFrames : 0;
+    if (full > 0
+      && Number.isFinite(Number(histogram.simOwnedSystemTotalMs))
+      && Number.isFinite(Number(histogram.simOwnedPhaseMs))) {
+      const accounted = Number(histogram.simOwnedSystemTotalMs);
+      const simFrame = Number(histogram.simOwnedPhaseMs);
+      lines.push(
+        `- sim frame accounting: systems accounted ${accounted.toFixed(1)} of ${simFrame.toFixed(1)} ms over ${full} fully-measured hitch frames`,
+      );
+    }
+    if (full > 0 || partial > 0 || unmeasured > 0 || zeroStep > 0 || Number(histogram.counts?.sim) > 0) {
+      lines.push(
+        `- sim hitch coverage: fully measured ${full} | partially measured ${partial} | unmeasured ${unmeasured} | no sim steps ${zeroStep}`,
+      );
+    }
+  }
+  if (Number(histogram.residualFrames) > 0) {
+    const frames = Number(histogram.residualFrames);
+    const mean = Number(histogram.residualMsTotal) / frames;
+    const phases = formatNamedCounts(histogram.unknownLargestPhase);
+    lines.push(
+      `- unknown residual: mean ${mean.toFixed(1)} ms unattributed interval over ${frames} hitch frames; largest measured phase: ${phases || 'none'}`,
+    );
+  }
+  return lines;
+}
+
 function readContextLost(state) {
   const recovery = state?.render?.contextRecovery;
   if (recovery?.pending === true || !!recovery?.lastError || state?.render?.contextLost === true) {
@@ -394,6 +467,7 @@ export function formatRuntimeWitnessReport({
   consoleHits = [],
   pageErrors = [],
   gpu = null,
+  hitchAttribution = null,
 } = {}) {
   const last = samples[samples.length - 1] || null;
   const costs = last?.costs || [];
@@ -440,6 +514,15 @@ export function formatRuntimeWitnessReport({
   }
   if (consoleHits.length) {
     lines.push('', '## Console (loop/GPU)', ...consoleHits.slice(-12).map((line) => `- ${line}`));
+  }
+  if (hitchAttribution && typeof hitchAttribution === 'object') {
+    const namedCounts = formatNamedCounts(hitchAttribution.counts, '; ');
+    lines.push(
+      '',
+      '## Live hitch attribution (PQ-129.02)',
+      `- owner counts: ${namedCounts || 'none'}`,
+      ...formatHitchAttributionDetailLines(hitchAttribution),
+    );
   }
   lines.push('');
   return lines.join('\n');
