@@ -5,11 +5,32 @@ from that.
 
 ## Finish the task
 
-Finish end to end before replying. Editing, restoring, building, committing, and pushing are part of
-doing the work — not permission gates. Do them without asking.
+The owner does not read code and cannot finish leftover agent work. If you stop halfway, it stays
+broken forever. That is not allowed.
 
-If something is genuinely blocked, finish everything else in full and name the blocker in one plain
-sentence.
+Finish the **named outcome** of the job you were given. Then stop. Do not start the next job. Do not
+hand back a half-built thing with a status report.
+
+Finish end to end before you reply. Editing, restoring, building, reviewing, revising, committing,
+and pushing are part of the work — not permission gates. Do them without asking.
+
+**“Do this one job and stop” means finish that job completely, then do not start another.** It is
+never permission to ship a half-finished version of the job you were given.
+
+These are **not** finished, even if you committed, even if a check is green, even if a ledger exists:
+
+- A “source candidate,” “revise,” “gates open,” or “not accepted” result when the brief said the
+  current picture must not ship (a clay tube, a Mule rename, a placeholder, a broken play path).
+- Reviews that listed defects, with those defects still on camera.
+- Ending a turn to wait, to ask, or to “come back later.”
+- Jargon (hashes, gate names, MTX rows, leaf IDs) instead of the thing the player would see or use.
+
+If something is genuinely blocked (a real external dependency, or an art-direction call only the
+owner can make), finish everything else in full and say **not done** in one plain sentence that names
+the blocker. A quality miss on the assigned outcome is not a blocker — keep working until the outcome
+is true, or until you can name a real stop in that one sentence.
+
+Do not dump leftover technical work on the owner. They will move on, and it will stay broken.
 
 ## A concurrent agent is not a blocker
 

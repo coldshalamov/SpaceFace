@@ -63,6 +63,7 @@ A packet may choose an art direction or technique for one outcome. That local de
 
 | Surface | Class | Purpose | Limitation |
 |---|---|---|---|
+| root `CLAUDE.md` | `ACTIVE_AUTOMATIC` | owner working agreement: finish the job, never stop halfway | not a design bible |
 | root/nested `AGENTS.md` | `ACTIVE_AUTOMATIC` | concise routing, hazards, ownership, verification | no volatile status or design recipes |
 | `ARCHITECTURE.md` | `ACTIVE_MANUAL` | engine/data contracts | not a visual-style guide; reconcile descriptive details with code |
 | `design/GDD_2_0.md` | `ACTIVE_MANUAL` | product pillars | technique follows evidence |

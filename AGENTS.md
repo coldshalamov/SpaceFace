@@ -1,6 +1,12 @@
 <!-- LIFETIME: STABLE -->
 # SpaceFace agent orientation
 
+**Never stop halfway.** The owner does not read code and cannot complete leftover agent work. If you
+stop mid-job, it stays broken forever. Finish the named outcome of the job you were given, then stop.
+Do not start the next job. A “revise” candidate, open gate, ledger, or jargon report is not
+completion when the brief said that picture must not ship. The full working agreement is
+[`CLAUDE.md`](./CLAUDE.md).
+
 **Program / "what next" / multi-plan work:** start at root
 [`CANONICAL_BUILD_MAP.md`](./CANONICAL_BUILD_MAP.md). It is the single program map and check-off
 workflow; it does not replace original plans.
@@ -196,6 +202,9 @@ instruction layer.
 - Does not want stale agent ledgers left in the repo, and does not want valuable unverified findings deleted blind—distill durable disposition (done / rejected / verified-open / leads) then remove the pile.
 - Treat hitching as structural: reject quality cuts, triangle-count trims, and ~2% easy-road opts as the performance plan; major refactors are discussable. Prefer cheap Node count gates over repeated headed browser soaks.
 - When a plan is authorized, drive it through without stop-and-go “continue?” pauses.
+- Never stop halfway through a job. The owner cannot finish leftover technical work; a half-done
+  commit with “revise / gates open / source candidate” leaves the game broken forever. “Do this one
+  job and stop” means finish that job, then do not start another — not ship a half-built version.
 - For graphics and VFX, do not hype work as A-list; place each technique honestly against modern
   games (name it, when it was current, what it would take to go further). Do not treat the existing
   implementation primitive as the design and silently fatten or tweak it—ground the effect in how
