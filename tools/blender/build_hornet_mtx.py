@@ -1610,6 +1610,30 @@ def build_lod(lod, mats):
         (-0.55, 2.18, 0.56), (-0.55, 2.70, 0.36),
         0.070, armor, collection, 0.004,
     )
+    add_folded_sheet(
+        "Belt_Nose_P",
+        (4.85, -0.58, 0.08), (3.10, -1.22, 0.06),
+        (3.10, -0.88, 0.50), (4.85, -0.28, 0.52),
+        0.055, armor, collection, 0.004,
+    )
+    add_folded_sheet(
+        "Belt_Nose_S",
+        (4.85, 0.58, 0.08), (4.85, 0.28, 0.52),
+        (3.10, 0.88, 0.50), (3.10, 1.22, 0.06),
+        0.055, armor, collection, 0.004,
+    )
+    add_folded_sheet(
+        "Belt_House_P",
+        (-1.35, -1.58, 0.10), (-4.20, -1.42, 0.06),
+        (-4.20, -1.08, 0.50), (-1.35, -1.22, 0.54),
+        0.055, armor, collection, 0.004,
+    )
+    add_folded_sheet(
+        "Belt_House_S",
+        (-1.35, 1.58, 0.10), (-1.35, 1.22, 0.54),
+        (-4.20, 1.08, 0.50), (-4.20, 1.42, 0.06),
+        0.055, armor, collection, 0.004,
+    )
     add_box("HouseLid", (-2.05, 0.0, 0.70), (0.95, 1.28, 0.12), armor, collection, 0.004)
     add_folded_sheet(
         "Belly_P",
