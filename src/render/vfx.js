@@ -3910,9 +3910,9 @@ export const vfx = {
       else shardCount = Math.max(4, Math.min(10, shardCount));
       if (shardCount & 1) shardCount += 1;
     } else {
-      bladeCount = capital ? (reduced ? 5 : 9) : (reduced ? 3 : 5);
-      arcCount = capital ? (reduced ? 1 : 2) : 1;
-      shardCount = capital ? (reduced ? 5 : 9) : (reduced ? 3 : 5);
+      bladeCount = capital ? (reduced ? 7 : 12) : (reduced ? 5 : 8);
+      arcCount = capital ? (reduced ? 2 : 3) : (reduced ? 1 : 2);
+      shardCount = capital ? (reduced ? 7 : 12) : (reduced ? 5 : 8);
     }
     if (!collision && bladeCount < 1) bladeCount = 1;
     if (arcCount < 1) arcCount = 1;
@@ -3920,10 +3920,10 @@ export const vfx = {
 
     const spec = _arcadeStructuralSpawnSpec;
     const terrain = req.terrain === 1;
-    const bladeColor = collision ? (terrain ? 0xffe9c4 : 0xdfefff) : 0xffffff;
+    const bladeColor = collision ? (terrain ? 0xffe9c4 : 0xdfefff) : 0xfff4e2;
     const bladeEnd = collision ? (terrain ? 0xc9a878 : 0xaac4e0) : 0xff6a28;
-    const arcColor = collision ? (terrain ? 0xf0d0a0 : 0xd4e6f5) : 0xfff3d5;
-    const arcEnd = collision ? (terrain ? 0xc9a878 : 0xaac4e0) : 0xff8a38;
+    const arcColor = collision ? (terrain ? 0xf0d0a0 : 0xd4e6f5) : 0xffffff;
+    const arcEnd = collision ? (terrain ? 0xc9a878 : 0xaac4e0) : 0xffa83c;
     const shardColor = collision ? (terrain ? 0xffe1b2 : 0xdfefff) : 0xffe1b2;
     const shardEnd = collision ? (terrain ? 0x8a6a52 : 0x8a6a52) : 0x8a341e;
     let spawned = 0;
@@ -3935,7 +3935,7 @@ export const vfx = {
       writeArcadeSpawnSpec(
         spec,
         priority,
-        Math.max(0.06, 0.16 * lifeScale),
+        Math.max(0.06, 0.26 * lifeScale),
         lx, Number.isFinite(ly) ? ly : 0.45, lz,
         0, 0, 0,
         NaN, NaN,
@@ -3943,8 +3943,8 @@ export const vfx = {
         0, 0, 0, 0,
         len, len * 1.32,
         Math.max(0.12, radius * 0.10), Math.max(0.04, radius * 0.04),
-        2, 6,
-        1,
+        8, 42,
+        3.9,
         bladeColor, bladeEnd,
       );
       if (this._arcadeStructural.spawnBlade(spec)) spawned++;
@@ -3958,7 +3958,7 @@ export const vfx = {
       writeArcadeSpawnSpec(
         spec,
         priority,
-        Math.max(0.08, 0.20 * lifeScale),
+        Math.max(0.08, 0.32 * lifeScale),
         lx, Number.isFinite(ly) ? ly : 0.45, lz,
         0, 0, 0,
         NaN, NaN,
@@ -3966,8 +3966,8 @@ export const vfx = {
         0, 0, 0, 0,
         len, len * 1.40,
         Math.max(0.16, radius * 0.14), Math.max(0.06, radius * 0.05),
-        2, 0,
-        1,
+        8, 51,
+        3.3,
         arcColor, arcEnd,
       );
       if (this._arcadeStructural.spawnArc(spec)) spawned++;
@@ -3982,7 +3982,7 @@ export const vfx = {
         ? baseAngle + (side < 0 ? Math.PI : 0) + explosionPatternSigned(mixed, phase, k, 9) * 0.32
         : baseAngle + explosionPatternSigned(mixed, phase, k, 9) * 1.8;
       const speed = radial * (0.65 + explosionPattern01(mixed, phase, k, 10) * 0.7);
-      const size = radius * (0.12 + explosionPattern01(mixed, phase, k, 11) * 0.10);
+      const size = radius * (0.18 + explosionPattern01(mixed, phase, k, 11) * 0.14);
       writeArcadeSpawnSpec(
         spec,
         priority,

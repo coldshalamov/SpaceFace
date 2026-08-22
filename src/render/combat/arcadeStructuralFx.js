@@ -313,8 +313,8 @@ class StructuralPool {
       if (this.kind === 'shard') {
         envelope = 1 - smoothstep(0.78, 1, t);
       } else {
-        const attack = smoothstep(0, 0.08, t);
-        const release = 1 - smoothstep(0.48, 1, t);
+        const attack = smoothstep(0, 0.03, t);
+        const release = 1 - smoothstep(0.62, 1, t);
         envelope = attack * release;
       }
       const r = slot.r0 + (slot.r1 - slot.r0) * shaped;
