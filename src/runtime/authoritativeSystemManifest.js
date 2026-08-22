@@ -25,7 +25,7 @@ const PRESENTATION_SET = new Set(PRESENTATION_PLATFORM_IDS);
  * Invariant: every PRODUCTION_UPDATE_ORDER id must also appear here (update ⊆ init).
  */
 export const PRODUCTION_INIT_ORDER = Object.freeze([
-  'core', 'runSession', 'survivalRun', 'voiceArbiter', 'input', 'autoTargetAssist', 'flybyFocus', 'bulletTime', 'cloak',
+  'core', 'runSession', 'survivalWave', 'survivalRun', 'voiceArbiter', 'input', 'autoTargetAssist', 'flybyFocus', 'bulletTime', 'cloak',
   'scanner', 'scanReveal', 'buildIdentity', 'lawSecurity', 'pirateDisguise', 'pirateParley',
   'pirateDisengage', 'aceMemory', 'barkDirector', 'aiSlot', 'dockingCorridor', 'physics',
   'aiPorts', 'tumbleStates', 'collisionConsequences', 'aiEncounter', 'actions', 'flightSlot',
@@ -74,9 +74,11 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   'salvage', 'lossInvestigation', 'salvageActions', 'survivorPod', 'recoveryEncounter',
   'factions', 'sectorSim', 'npcJobsRuntime', 'missions', 'careerOrigins', 'careerLadders',
   'liveCareerLadderBranches', 'story', 'scenarioRuntime',
+  // survivalWave: materializes the planned wave through spawnBudget and reports the cleared
+  // receipt. Immediately before survivalRun so a wave cleared this tick advances the phase this tick.
   // survivalRun: Survival phase machine. After combat/world/spawn/scenario receipts this tick
   // (wave-cleared arrives as an explicit event, never an entity count); before heat/HUD/presentation.
-  'survivalRun', 'heat', 'traffic', 'drill', 'claims',
+  'survivalWave', 'survivalRun', 'heat', 'traffic', 'drill', 'claims',
   'bandRadio', 'onboarding', 'masslineHud', 'massSeedHud', 'fieldHud', 'planetHud',
   'voiceArbiter',
 ]);

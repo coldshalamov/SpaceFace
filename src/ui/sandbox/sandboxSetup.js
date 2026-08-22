@@ -136,6 +136,22 @@ export function buildSandboxLaunchConfig(baseConfig = {}, overrides = {}) {
       }
     }
   }
+
+  // Crucible / Survival launch. Same validated setup shape as the Lab, but the run is scored and
+  // the wave owner — not this config — decides what spawns. Never carries an enemy package.
+  if (overrides.survivalSetup != null) {
+    const survival = validateCombatLabSetup(overrides.survivalSetup);
+    if (survival.ok && survival.value) {
+      out.survivalSetup = survival.value;
+      out.seed = survival.value.seed;
+      out.shipId = survival.value.hullId;
+      const arena = COMBAT_LAB_ARENAS.find((entry) => entry.id === survival.value.arenaId);
+      if (arena) {
+        out.sectorId = arena.sectorId;
+        out.spawnPos = { x: arena.spawnPos.x, z: arena.spawnPos.z };
+      }
+    }
+  }
   return out;
 }
 
@@ -1040,6 +1056,45 @@ export function applySandboxSetup(ctx, config) {
           seed: setup.seed,
           arenaId: setup.arenaId,
         });
+      }
+    }
+  }
+
+  // 7d. Crucible / Survival: hull + loadout through ships writers, player into the arena, then
+  // hand the run to runSession. Nothing is spawned here — survivalWave materializes every wave
+  // from the pure plan, so the first thing the player meets is wave 1, not a stray lab package.
+  if (cfg.survivalSetup) {
+    const survival = validateCombatLabSetup(cfg.survivalSetup);
+    if (!survival.ok || !survival.value) {
+      if (ctx.bus && typeof ctx.bus.emit === 'function') {
+        const detail = survival.issues && survival.issues[0] && survival.issues[0].message
+          ? survival.issues[0].message
+          : 'invalid setup';
+        ctx.bus.emit('toast', { text: 'Crucible setup invalid: ' + detail, kind: 'error', ttl: 6 });
+      }
+    } else {
+      const setup = survival.value;
+      applyCombatLabSetup(ctx, setup);
+      const arena = COMBAT_LAB_ARENAS.find((entry) => entry.id === setup.arenaId);
+      const sectorId = cfg.sectorId || (arena && arena.sectorId);
+      const spawnPos = (cfg.spawnPos && Number.isFinite(cfg.spawnPos.x) && Number.isFinite(cfg.spawnPos.z))
+        ? cfg.spawnPos
+        : (arena && arena.spawnPos);
+      if (sectorId && spawnPos) {
+        relocatePlayer(ctx, sectorId, spawnPos, `crucible:survival:${setup.arenaId}`);
+      }
+      if (ctx.bus && typeof ctx.bus.emit === 'function') {
+        // begin AFTER game:started / applied setup. runSession is the sole writer of state.run and
+        // accepts a begin only from phase inactive — i.e. only off a real fresh New Game.
+        ctx.bus.emit('run:beginRequested', {
+          kind: 'survival',
+          ruleset: 'scored',
+          seed: setup.seed,
+          arenaId: setup.arenaId,
+        });
+        // The loadout IS ready: hull, fittings and arena position are all applied above. Without
+        // this receipt survivalRun sits in `loadout` forever and no wave ever plans.
+        ctx.bus.emit('run:loadoutReady', { source: 'crucible:launch', arenaId: setup.arenaId });
       }
     }
   }

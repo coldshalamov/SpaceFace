@@ -4,6 +4,9 @@ export const FRESH_RUN_SYSTEMS = Object.freeze([
   // runSession first: New Game must clear the run envelope before any content owner rebuilds.
   // Keeping this on FRESH_RUN_SYSTEMS makes that transition directly testable (the purpose of this file).
   'runSession',
+  // survivalWave holds the previous run's wave cohort and budget owners. Clear it with the
+  // envelope, before spawnBudget wipes the ledger it reserved from.
+  'survivalWave',
   // Clear the global live-ship ledger before world or any content owner rematerializes a fresh run.
   'spawnBudget',
   'world',
