@@ -1,12 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
+import { createPresentationRunner } from '../src/core/presentationRunner.js';
 import { createTimeEffects } from '../src/core/timeEffects.js';
 import {
   CLEAR_HARD_MAX,
   CRUCIBLE_LAB_SPEED_SOURCE,
   LEGAL_TIME_SCALES,
   applyCrucibleLabControl,
+  mountCrucibleLabControls,
   requestClearEnemies,
   requestInvulnerable,
   requestRefill,
@@ -430,14 +432,12 @@ test('invulnerable emits debug:invulnerable and writes no entity flags', () => {
   assert.equal(applyCrucibleLabControl(ctx, requestInvulnerable('yes')), false);
 });
 
-test('step calls stepOnce only while the screen holds the sim, and never writes timeScale', () => {
+test('step calls the ctx.simStep seam only while the screen holds the sim, and never writes timeScale', () => {
   const { ctx, state, player } = makeCtx();
   let calls = 0;
-  ctx.simulationRunner = {
-    stepOnce() {
-      calls += 1;
-      return true;
-    },
+  ctx.simStep = () => {
+    calls += 1;
+    return true;
   };
   assert.equal(state.timeScale, 1);
   assert.equal(applyCrucibleLabControl(ctx, requestStep()), false);
@@ -454,12 +454,22 @@ test('step calls stepOnce only while the screen holds the sim, and never writes 
   assert.equal(player.hull, hullBefore);
 });
 
-test('step is a no-op without a runner and does not emit pause or resume', () => {
+test('step is a no-op without a simStep seam and does not emit pause or resume', () => {
   const { ctx, state, bus } = makeCtx();
   state.timeScale = 0;
   ctx.timeEffects.getEffectiveScale = () => 0;
   assert.equal(applyCrucibleLabControl(ctx, requestStep()), false);
   assert.deepEqual(bus.events, []);
+});
+
+test('step does not throw on a legacy or headless ctx that lacks simStep', () => {
+  const { ctx, state } = makeCtx();
+  state.timeScale = 0;
+  ctx.timeEffects.getEffectiveScale = () => 0;
+  delete ctx.simStep;
+  assert.equal(applyCrucibleLabControl(ctx, requestStep()), false);
+  assert.equal(applyCrucibleLabControl(null, requestStep()), false);
+  assert.equal(applyCrucibleLabControl({}, requestStep()), false);
 });
 
 test('refill and invulnerable are inert when the Lab session is inactive', () => {
@@ -471,4 +481,198 @@ test('refill and invulnerable are inert when the Lab session is inactive', () =>
   assert.deepEqual(bus.events, []);
   assert.equal(player.hull, 10);
   assert.equal(player.flags.invuln, false);
+});
+
+function fakeDomNode() {
+  const listeners = Object.create(null);
+  const attrs = Object.create(null);
+  const node = {
+    className: '',
+    style: {},
+    children: [],
+    textContent: '',
+    title: '',
+    type: '',
+    disabled: false,
+    value: '',
+    classList: { add() {} },
+    setAttribute(name, value) { attrs[name] = String(value); },
+    getAttribute(name) { return Object.hasOwn(attrs, name) ? attrs[name] : null; },
+    appendChild(child) {
+      node.children.push(child);
+      return child;
+    },
+    addEventListener(type, fn) {
+      if (!listeners[type]) listeners[type] = [];
+      listeners[type].push(fn);
+    },
+    click() {
+      for (const fn of listeners.click || []) fn();
+    },
+  };
+  return node;
+}
+
+function withFakeDocument(fn) {
+  const previous = globalThis.document;
+  globalThis.document = { createElement() { return fakeDomNode(); } };
+  try {
+    return fn();
+  } finally {
+    if (previous === undefined) delete globalThis.document;
+    else globalThis.document = previous;
+  }
+}
+
+function findRowChild(host, text) {
+  const row = host.children[0];
+  for (const child of row.children) {
+    if (child.textContent === text) return child;
+  }
+  return null;
+}
+
+function mountLab(ctx) {
+  const host = fakeDomNode();
+  const handle = mountCrucibleLabControls(ctx, host);
+  return { host, handle, stepBtn: findRowChild(host, 'Step') };
+}
+
+test('Lab Step click invokes ctx.simStep exactly once, and a missing seam is a no-op', () => {
+  withFakeDocument(() => {
+    const { ctx, state } = makeCtx();
+    state.timeScale = 0;
+    ctx.timeEffects.getEffectiveScale = () => 0;
+    let calls = 0;
+    ctx.simStep = () => {
+      calls += 1;
+      return true;
+    };
+    const { stepBtn } = mountLab(ctx);
+    assert.equal(stepBtn.disabled, false);
+    stepBtn.click();
+    assert.equal(calls, 1);
+    stepBtn.click();
+    assert.equal(calls, 2);
+
+    const { ctx: bare, state: bareState } = makeCtx();
+    bareState.timeScale = 0;
+    bare.timeEffects.getEffectiveScale = () => 0;
+    const { stepBtn: bareBtn } = mountLab(bare);
+    assert.equal(bareBtn.disabled, true);
+    bareBtn.click();
+    assert.equal(applyCrucibleLabControl(bare, requestStep()), false);
+  });
+});
+
+test('Lab Step is disabled unless the screen-manager aggregate holds the sim', () => {
+  withFakeDocument(() => {
+    const { ctx, state } = makeCtx();
+    ctx.simStep = () => true;
+    const { stepBtn, handle } = mountLab(ctx);
+    assert.equal(stepBtn.disabled, true, 'running sim: Step stays off');
+
+    state.timeScale = 0;
+    ctx.timeEffects.getEffectiveScale = () => 0;
+    handle.refresh();
+    assert.equal(stepBtn.disabled, false, 'held sim: Step turns on');
+
+    state.timeScale = 1;
+    ctx.timeEffects.getEffectiveScale = () => 1;
+    handle.refresh();
+    assert.equal(stepBtn.disabled, true, 'released sim: Step turns off');
+
+    state.timeScale = 0;
+    ctx.timeEffects.getEffectiveScale = () => 0;
+    ctx.state.run = { kind: 'lab', phase: 'inactive', seed: 7, score: 0 };
+    handle.refresh();
+    assert.equal(stepBtn.disabled, true, 'inactive lab session: Step stays off');
+  });
+});
+
+function stubSimulationRunner(stepOnce) {
+  const runner = {
+    advance() { return { steps: 0, shedBacklog: false, shedSteps: 0, accumulator: 0 }; },
+    prepareWithoutAdvance() { return { steps: 0, shedBacklog: false, shedSteps: 0, accumulator: 0 }; },
+    consumeLatestCompletedTick() { return 0; },
+    interpolationAlpha() { return 0; },
+    setLifecycleGeneration() {},
+    close() { return true; },
+    getDiagnostics() { return {}; },
+  };
+  if (typeof stepOnce === 'function') runner.stepOnce = stepOnce;
+  return runner;
+}
+
+function startPresentation(simulationRunner) {
+  let nextId = 1;
+  const pending = new Map();
+  return createPresentationRunner(
+    { accumulator: 0, timeScale: 1, tick: 0, simTime: 0, input: { actions: {} } },
+    { renderUpdate() {}, get() { return null; } },
+    simulationRunner,
+    {
+      requestFrame(callback) {
+        const id = nextId++;
+        pending.set(id, callback);
+        return id;
+      },
+      cancelFrame(id) { pending.delete(id); },
+      nowMs: () => 0,
+      visibilityTarget: null,
+      lifecyclePort: null,
+      inputResumeTarget: null,
+    },
+  );
+}
+
+test('presentationRunner.stepOnce forwards to the simulation runner exactly once per call', () => {
+  let calls = 0;
+  const simulationRunner = stubSimulationRunner(() => {
+    calls += 1;
+    return true;
+  });
+  const presentation = startPresentation(simulationRunner);
+  try {
+    assert.equal(presentation.stepOnce(), true);
+    assert.equal(calls, 1);
+    assert.equal(presentation.stepOnce(), true);
+    assert.equal(calls, 2);
+  } finally {
+    presentation.close();
+  }
+});
+
+test('presentationRunner.stepOnce is a safe no-op when the simulation runner lacks the method', () => {
+  const presentation = startPresentation(stubSimulationRunner(null));
+  try {
+    assert.equal(presentation.stepOnce(), undefined);
+  } finally {
+    presentation.close();
+  }
+});
+
+test('Lab Step through ctx.simStep advances exactly one tick per click on the normal path', () => {
+  withFakeDocument(() => {
+    let calls = 0;
+    const simulationRunner = stubSimulationRunner(() => {
+      calls += 1;
+      return true;
+    });
+    const loopController = startPresentation(simulationRunner);
+    try {
+      const { ctx, state } = makeCtx();
+      state.timeScale = 0;
+      ctx.timeEffects.getEffectiveScale = () => 0;
+      ctx.simStep = () => loopController.stepOnce();
+      const { stepBtn } = mountLab(ctx);
+      assert.equal(stepBtn.disabled, false);
+      stepBtn.click();
+      assert.equal(calls, 1);
+      stepBtn.click();
+      assert.equal(calls, 2);
+    } finally {
+      loopController.close();
+    }
+  });
 });

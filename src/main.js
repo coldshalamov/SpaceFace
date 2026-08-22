@@ -219,10 +219,12 @@ async function boot() {
     });
 
     loopController = startLoop(state, registry, { presentationJournal });
+    ctx.simStep = () => loopController.stepOnce();
     const loopDebug = {
       getDiagnostics: () => loopController.getDiagnostics(),
       getLifecycleState: () => loopController.getLifecycleState(),
       isSuspended: () => loopController.isSuspended(),
+      simStep: () => loopController.stepOnce(),
     };
     SF_DEBUG_ONLY: if (SF_DEBUG) window.SF = Object.assign(window.SF || {}, {
       state, bus, registry, ctx, helpers, timeEffects, THREE, telemetry, eventTrace, loop: loopDebug,

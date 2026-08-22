@@ -871,5 +871,6 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       ...diagnostics,
       simulation: simulationRunner.getDiagnostics?.() || null,
     }),
+    stepOnce: () => simulationRunner.stepOnce?.(),
   };
 }

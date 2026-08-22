@@ -2,7 +2,7 @@
 // Every effect is a request to the owner that already owns the concept — never a raw
 // cross-owner write from the UI, and never a write to state.run.
 // Speed (timeEffects), clear-enemies (removeEntity + spawnBudget), refill/invulnerable
-// (bus intents owned by combat/weapons), and Step (simulationRunner.stepOnce).
+// (bus intents owned by combat/weapons), and Step (ctx.simStep).
 
 import { createTimeEffects, LAB_SPEED_MAX } from '../../core/timeEffects.js';
 
@@ -119,17 +119,8 @@ function isSimHeld(ctx) {
   return !!(ctx && ctx.state && ctx.state.timeScale === 0);
 }
 
-function getSimulationRunner(ctx) {
-  const candidates = [
-    ctx && ctx.simulationRunner,
-    ctx && ctx.loop && ctx.loop.simulationRunner,
-    ctx && ctx.helpers && ctx.helpers.simulationRunner,
-  ];
-  for (let i = 0; i < candidates.length; i++) {
-    const runner = candidates[i];
-    if (runner && typeof runner.stepOnce === 'function') return runner;
-  }
-  return null;
+function getSimStep(ctx) {
+  return ctx && typeof ctx.simStep === 'function' ? ctx.simStep : null;
 }
 
 function applyTimeScale(ctx, scale) {
@@ -195,9 +186,9 @@ function applyInvulnerable(ctx, request) {
 function applyStep(ctx) {
   if (!isLiveLabSession(ctx)) return false;
   if (!isSimHeld(ctx)) return false;
-  const runner = getSimulationRunner(ctx);
-  if (!runner) return false;
-  const happened = runner.stepOnce();
+  const step = getSimStep(ctx);
+  if (!step) return false;
+  const happened = step();
   return happened ? { kind: 'step' } : false;
 }
 
@@ -290,7 +281,7 @@ export function mountCrucibleLabControls(ctx, hostEl) {
     const on = live();
     const session = sessionLive();
     const held = isSimHeld(ctx);
-    const runner = getSimulationRunner(ctx);
+    const stepFn = getSimStep(ctx);
     const scale = Number(speedSel.value);
     const shown = LEGAL_TIME_SCALES.includes(scale) ? scale : 1;
     speedText.textContent = shown + '\u00d7';
@@ -305,7 +296,7 @@ export function mountCrucibleLabControls(ctx, hostEl) {
       ? launchReason
       : (!held
         ? 'Step advances one 60 Hz tick while this screen holds the sim.'
-        : (!runner ? 'Step advances one 60 Hz tick while this screen holds the sim.' : ''));
+        : (!stepFn ? 'Step advances one 60 Hz tick while this screen holds the sim.' : ''));
     hint.textContent = !on
       ? 'Launch a Combat Lab fight first. These controls do nothing in Adventure.'
       : ('Speed ' + shown + '\u00d7 — extra fixed 60 Hz steps, not a bigger step. '
@@ -320,7 +311,7 @@ export function mountCrucibleLabControls(ctx, hostEl) {
     refillBtn.title = session ? (refillBtn.getAttribute('data-title') || '') : launchReason;
     invulnBtn.disabled = !session;
     invulnBtn.title = session ? (invulnBtn.getAttribute('data-title') || '') : launchReason;
-    const stepOn = session && held && !!runner;
+    const stepOn = session && held && !!stepFn;
     stepBtn.disabled = !stepOn;
     stepBtn.title = stepOn ? (stepBtn.getAttribute('data-title') || '') : (stepReason || launchReason);
   }
