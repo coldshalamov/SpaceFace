@@ -1600,15 +1600,15 @@ def build_lod(lod, mats):
 
     add_folded_sheet(
         "Chine_P",
-        (1.40, -2.70, 0.38), (-0.55, -2.70, 0.36),
-        (-0.55, -2.18, 0.56), (1.40, -2.18, 0.58),
-        0.070, armor, collection, 0.004,
+        (1.80, -2.62, 0.42), (-0.80, -2.62, 0.40),
+        (-0.80, -2.28, 0.62), (1.80, -2.28, 0.64),
+        0.090, armor, collection, 0.004,
     )
     add_folded_sheet(
         "Chine_S",
-        (1.40, 2.70, 0.38), (1.40, 2.18, 0.58),
-        (-0.55, 2.18, 0.56), (-0.55, 2.70, 0.36),
-        0.070, armor, collection, 0.004,
+        (1.80, 2.62, 0.42), (1.80, 2.28, 0.64),
+        (-0.80, 2.28, 0.62), (-0.80, 2.62, 0.40),
+        0.090, armor, collection, 0.004,
     )
     add_folded_sheet(
         "Belt_Nose_P",
@@ -1637,7 +1637,6 @@ def build_lod(lod, mats):
     add_box("HouseLid_C", (-2.35, 0.0, 0.72), (1.35, 0.32, 0.12), armor, collection, 0.004)
     add_box("HouseLid_P", (-2.35, -1.18, 0.72), (1.35, 0.28, 0.12), armor, collection, 0.004)
     add_box("HouseLid_S", (-2.35, 1.18, 0.72), (1.35, 0.28, 0.12), armor, collection, 0.004)
-    add_box("WaistBand", (0.10, 0.0, 0.58), (1.05, 2.35, 0.09), armor, collection, 0.004)
     add_folded_sheet(
         "Belly_P",
         (2.20, -2.48, -0.12), (-1.10, -1.92, -0.08),
