@@ -53,32 +53,43 @@ export function authoredMaterialRole(name) {
 // TWO RENDERER HYPOTHESES FOR THE `material` AXIS WERE TESTED AND BOTH DISCONFIRMED AT n=5:
 //   v1  roughness breakup      -> material stayed 2, samples [2,2,2,2,2]
 //   v2  + albedo value zones   -> material stayed 2, samples [2,2,2,2,2]  (term since reverted)
+// The n=5 roughness-breakup disconfirmation is void: the noise function was injected inside
+// main() (illegal GLSL) and the call site never landed, so the term never compiled. Re-measure
+// before citing that result again.
 // The reviewer's note does not change either: "reads mostly as one matte gray material". It wants
 // authored variety per zone — painted metal vs glass vs worn edge, readable at ship size — which is
 // texture content, not a shader modulation. Do not spend another round modulating a global here.
-const ROUGHNESS_BREAKUP_KEY = 'spaceface-surface-breakup-v3-roughness-only';
+export const ROUGHNESS_BREAKUP_KEY = 'spaceface-surface-breakup-v4-file-scope';
+const ROUGHNESS_BREAKUP_HOOK_TAG = 'spacefaceRoughnessBreakupHook';
 const ROUGHNESS_BREAKUP_ROLES = new Set(['hull', 'mechanical', 'accent', 'ceramic', 'radiator', 'service', 'docking']);
 
 export function installRoughnessBreakup(material, { amount = 0.16, scale = 3.5 } = {}) {
   if (!material || (!material.isMeshStandardMaterial && !material.isMeshPhysicalMaterial)) return false;
-  if (material.userData?.spacefaceRoughnessBreakup === true) return true;
+  // Property names survive minify: true; function names do not (scripts/build-bundle.mjs:85),
+  // so a .name comparison is dead in the packaged build.
+  const hookInstalled = Object.hasOwn(material, 'onBeforeCompile')
+    && material.onBeforeCompile[ROUGHNESS_BREAKUP_HOOK_TAG] === ROUGHNESS_BREAKUP_KEY
+    && typeof material.customProgramCacheKey === 'function'
+    && String(material.customProgramCacheKey()).includes(ROUGHNESS_BREAKUP_KEY);
+  if (hookInstalled) return true;
 
   const originalOnBeforeCompile = material.onBeforeCompile;
   const originalProgramCacheKey = typeof material.customProgramCacheKey === 'function'
     ? material.customProgramCacheKey()
     : '';
 
-  material.onBeforeCompile = function roughnessBreakupShader(shader, renderer) {
+  function roughnessBreakupShader(shader, renderer) {
     if (typeof originalOnBeforeCompile === 'function') {
       originalOnBeforeCompile.call(this, shader, renderer);
     }
-    const needle = '#include <lights_physical_fragment>';
-    if (!shader.fragmentShader.includes(needle)) {
+    const commonNeedle = '#include <common>';
+    if (!shader.fragmentShader.includes(commonNeedle)) {
       // Fail loud rather than silently shipping a no-op: a three.js upgrade that renames this
       // include would otherwise turn the whole effect off with no signal.
-      throw new Error('[render] roughness-breakup shader contract changed: missing lights_physical_fragment');
+      throw new Error('[render] roughness-breakup shader contract changed: missing common');
     }
-    shader.fragmentShader = shader.fragmentShader.replace(needle, [
+    shader.fragmentShader = shader.fragmentShader.replace(commonNeedle, [
+      commonNeedle,
       // Smooth value noise over the material UV. Two cheap octaves: broad zones plus a softer
       // second band so the result does not read as a single repeating blob.
       'float sfBreakNoise( vec2 p ) {',
@@ -90,26 +101,30 @@ export function installRoughnessBreakup(material, { amount = 0.16, scale = 3.5 }
       '\tfloat d = fract( sin( dot( i + vec2( 1.0, 1.0 ), vec2( 127.1, 311.7 ) ) ) * 43758.5453 );',
       '\treturn mix( mix( a, b, f.x ), mix( c, d, f.x ), f.y );',
       '}',
-      needle,
     ].join('\n'));
 
-    // Perturb roughnessFactor before the lighting model consumes it.
-    const applyNeedle = 'material.roughness = max( roughnessFactor, 0.0525 );';
-    if (shader.fragmentShader.includes(applyNeedle)) {
-      shader.fragmentShader = shader.fragmentShader.replace(applyNeedle, [
-        '#ifdef USE_UV',
-        `\tfloat sfBreak = sfBreakNoise( vMapUv * ${scale.toFixed(2)} ) * 0.7`,
-        `\t\t+ sfBreakNoise( vMapUv * ${(scale * 2.7).toFixed(2)} ) * 0.3;`,
-        `\troughnessFactor = clamp( roughnessFactor + ( sfBreak - 0.5 ) * ${amount.toFixed(3)}, 0.04, 1.0 );`,
-        // An albedo VALUE term was tried here and REVERTED. See the note above installRoughnessBreakup:
-        // it was disconfirmed at n=5 exactly like the roughness term, and a global brightness multiply
-        // on every authored hull is a substantive art-direction change belonging to the asset lanes,
-        // not something to ship unilaterally on a hypothesis the measurement rejected.
-        '#endif',
-        applyNeedle,
-      ].join('\n'));
+    const needle = '#include <lights_physical_fragment>';
+    if (!shader.fragmentShader.includes(needle)) {
+      // Fail loud rather than silently shipping a no-op: a three.js upgrade that renames this
+      // include would otherwise turn the whole effect off with no signal.
+      throw new Error('[render] roughness-breakup shader contract changed: missing lights_physical_fragment');
     }
-  };
+    shader.fragmentShader = shader.fragmentShader.replace(needle, [
+      // vMapUv is declared under USE_MAP, not USE_UV.
+      '#ifdef USE_MAP',
+      `\tfloat sfBreak = sfBreakNoise( vMapUv * ${scale.toFixed(2)} ) * 0.7`,
+      `\t\t+ sfBreakNoise( vMapUv * ${(scale * 2.7).toFixed(2)} ) * 0.3;`,
+      `\troughnessFactor = clamp( roughnessFactor + ( sfBreak - 0.5 ) * ${amount.toFixed(3)}, 0.04, 1.0 );`,
+      // An albedo VALUE term was tried here and REVERTED. See the note above installRoughnessBreakup:
+      // it was disconfirmed at n=5 exactly like the roughness term, and a global brightness multiply
+      // on every authored hull is a substantive art-direction change belonging to the asset lanes,
+      // not something to ship unilaterally on a hypothesis the measurement rejected.
+      '#endif',
+      needle,
+    ].join('\n'));
+  }
+  roughnessBreakupShader[ROUGHNESS_BREAKUP_HOOK_TAG] = ROUGHNESS_BREAKUP_KEY;
+  material.onBeforeCompile = roughnessBreakupShader;
   material.customProgramCacheKey = () => `${originalProgramCacheKey}|${ROUGHNESS_BREAKUP_KEY}`;
   material.userData = { ...(material.userData || {}), spacefaceRoughnessBreakup: true };
   material.needsUpdate = true;

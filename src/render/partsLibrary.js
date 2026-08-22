@@ -8623,6 +8623,19 @@ export function runAuthoredInstanceRangeContractProbe() {
 // separate for sockets, LOD, transparent sorting, damage movement, or drive transforms. Only surfaces
 // whose material uniforms are actually mutated at runtime receive ship-local clones.
 // -------------------------------------------------------------------------------------------------
+// Material.copy() copies userData but not instance-assigned onBeforeCompile /
+// customProgramCacheKey, so an authored shader patch would be dropped while its
+// userData receipt survived — leaving a flag that lies and a cache key that no
+// longer matches the source it was compiled from.
+// Exported for the regression test that pins the clone contract.
+export function cloneMaterialPreservingShaderHooks(base) {
+  const clone = base.clone();
+  if (Object.hasOwn(base, 'onBeforeCompile')) clone.onBeforeCompile = base.onBeforeCompile;
+  if (Object.hasOwn(base, 'customProgramCacheKey')) clone.customProgramCacheKey = base.customProgramCacheKey;
+  clone.needsUpdate = true;
+  return clone;
+}
+
 function sharedMaterialFor(base, tags, palette) {
   const role = authoredSurfaceTintRole(tags, base);
   const tint = tintHex(palette, role);
@@ -8637,7 +8650,7 @@ function sharedMaterialFor(base, tags, palette) {
   if (!material) {
     material = applyAppearanceFinish(
       boundAuthoredEmission(
-        applyAuthoredSurfaceTint(base.clone(), tint, role, explicitTint), base, role,
+        applyAuthoredSurfaceTint(cloneMaterialPreservingShaderHooks(base), tint, role, explicitTint), base, role,
       ), palette, role,
     );
     material.name = authoredMaterialName(base, tags, role, tint, false);
@@ -8682,7 +8695,7 @@ function mutableMaterialFor(base, tags, palette, cache, instanceKey) {
   if (!material) {
     material = applyAppearanceFinish(
       boundAuthoredEmission(
-        applyAuthoredSurfaceTint(base.clone(), tint, role, explicitTint), base, role,
+        applyAuthoredSurfaceTint(cloneMaterialPreservingShaderHooks(base), tint, role, explicitTint), base, role,
       ), palette, role,
     );
     material.name = authoredMaterialName(base, tags, role, tint, true);
