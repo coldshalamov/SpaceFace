@@ -146,5 +146,6 @@
 | 166 | yes | C8A6AB32 | REVISE/REVISE/REVISE | Flush visor, belly wrap. House lid sealed the drives. 2-shell hull. Not wired. |
 | 167 | yes | E23EF8E4 | REVISE/REVISE/REVISE | 1-shell, punched wells. Visor still a sticker; rims plug the drives. Not wired. |
 | 168 | yes | FECC116E | REVISE/REVISE/REVISE | Inset visor, no rim plugs. Bells named at close. Still chalk plate. Not wired. |
+| 169 | yes | 19F28618 | REVISE/REVISE/REVISE | Dark TE plates. Lum ~151. Still one white mass. Not wired. |
 
 Hitch-plus / A-list: not met. C85 remains the live game body. Do not mark PQ-050.01 done. Do not self-accept.

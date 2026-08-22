@@ -1234,6 +1234,14 @@ def add_blended_interceptor_wing(name, sign, skin, armor, collection, soot=None)
         (-3.05, 1.55 * s, 0.06),
         0.150, armor, collection, 0.004,
     )
+    add_folded_sheet(
+        f"{name}_ArmorTE",
+        (-2.05, 1.50 * s, 0.42),
+        (-2.95, 3.92 * s, 0.60),
+        (-3.95, 3.92 * s, 0.18),
+        (-3.15, 1.50 * s, 0.06),
+        0.180, armor, collection, 0.005,
+    )
     add_overlap_plate(f"{name}_TipMark", (-3.20, 3.88 * s, 0.46), (0.18, 0.14, 0.05), armor, collection, 0.003)
     return wing
 
@@ -1592,15 +1600,15 @@ def build_lod(lod, mats):
 
     add_folded_sheet(
         "Chine_P",
-        (1.10, -2.62, 0.34), (-0.35, -2.62, 0.32),
-        (-0.35, -2.22, 0.50), (1.10, -2.22, 0.52),
-        0.055, armor, collection, 0.004,
+        (1.40, -2.70, 0.38), (-0.55, -2.70, 0.36),
+        (-0.55, -2.18, 0.56), (1.40, -2.18, 0.58),
+        0.070, armor, collection, 0.004,
     )
     add_folded_sheet(
         "Chine_S",
-        (1.10, 2.62, 0.34), (1.10, 2.22, 0.52),
-        (-0.35, 2.22, 0.50), (-0.35, 2.62, 0.32),
-        0.055, armor, collection, 0.004,
+        (1.40, 2.70, 0.38), (1.40, 2.18, 0.58),
+        (-0.55, 2.18, 0.56), (-0.55, 2.70, 0.36),
+        0.070, armor, collection, 0.004,
     )
     add_box("HouseLid", (-2.05, 0.0, 0.70), (0.95, 1.28, 0.12), armor, collection, 0.004)
     add_folded_sheet(
