@@ -1553,8 +1553,8 @@ def build_lod(lod, mats):
     print(f"cockpit boolean {'hit' if cut else 'miss — face delete'}")
     if not cut:
         delete_faces_in_box(body, 3.40, 5.10, -0.55, 0.55, 0.62, 2.00, normal="z", normal_min=0.18)
-    delete_faces_in_cylinder(body, -3.70, -3.15, 0.88, 0.70, 0.42, normal="z", normal_min=0.18)
-    delete_faces_in_cylinder(body, -3.70, -3.15, -0.88, 0.70, 0.42, normal="z", normal_min=0.18)
+    delete_faces_in_cylinder(body, -3.80, -3.00, 0.88, 0.72, 0.50, normal="z", normal_min=0.15)
+    delete_faces_in_cylinder(body, -3.80, -3.00, -0.88, 0.72, 0.50, normal="z", normal_min=0.15)
     delete_faces_in_box(body, -1.80, -0.80, 1.85, 2.40, 0.05, 0.50, normal="y", normal_min=0.22)
     delete_faces_in_box(body, -1.80, -0.80, -2.40, -1.85, 0.05, 0.50, normal="y-", normal_min=0.22)
     report_shells(body, "hull after wells")
@@ -1579,11 +1579,11 @@ def build_lod(lod, mats):
     canopy = mats["Material_Canopy"]
     add_folded_sheet(
         "Canopy_Visor",
-        (4.90, -0.48, 0.80),
-        (4.90, 0.48, 0.80),
-        (3.55, 0.44, 0.82),
-        (3.55, -0.44, 0.82),
-        0.018, canopy, collection, 0.002,
+        (4.72, -0.36, 0.78),
+        (4.72, 0.36, 0.78),
+        (3.72, 0.34, 0.80),
+        (3.72, -0.34, 0.80),
+        0.016, canopy, collection, 0.002,
     )
 
     add_five_wall_tub("AvionicsTub", (0.85, -1.18, 0.22), (0.24, 0.10, 0.11), 0.040, mech, collection)
@@ -1637,16 +1637,6 @@ def build_lod(lod, mats):
         add_blended_interceptor_wing(f"Wing_{side}", sign, hull, armor, collection, soot=mats["Material_Soot"])
         # C154: bells sit on the rectangular house, mouths tilted up into the chase.
         add_hollow_bell(side, -3.20, 0.88 * sign, 0.38, 0.78, mats, collection)
-        add_cylinder(
-            f"DriveRim_{side}",
-            (-3.55, 0.88 * sign, 0.82),
-            0.52, 0.12, armor, collection, vertices=28, bevel=0.003, rot=(0, 0, 0),
-        )
-        add_cylinder(
-            f"DriveThroat_{side}",
-            (-3.55, 0.88 * sign, 0.72),
-            0.36, 0.05, soot, collection, vertices=24, bevel=0.001, rot=(0, 0, 0),
-        )
         add_folded_sheet(
             f"GunCheek_{side}",
             (5.08, 0.18 * sign, -0.06), (4.28, 0.46 * sign, -0.08),

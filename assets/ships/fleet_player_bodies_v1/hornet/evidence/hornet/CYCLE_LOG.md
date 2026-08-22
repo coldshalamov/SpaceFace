@@ -145,5 +145,6 @@
 | 165 | yes | 12980C91 | REVISE/REVISE/REVISE | Naked waist, long visor, house lid. Visor became an open crate. Not wired. |
 | 166 | yes | C8A6AB32 | REVISE/REVISE/REVISE | Flush visor, belly wrap. House lid sealed the drives. 2-shell hull. Not wired. |
 | 167 | yes | E23EF8E4 | REVISE/REVISE/REVISE | 1-shell, punched wells. Visor still a sticker; rims plug the drives. Not wired. |
+| 168 | yes | FECC116E | REVISE/REVISE/REVISE | Inset visor, no rim plugs. Bells named at close. Still chalk plate. Not wired. |
 
 Hitch-plus / A-list: not met. C85 remains the live game body. Do not mark PQ-050.01 done. Do not self-accept.
