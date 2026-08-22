@@ -1220,27 +1220,20 @@ def add_blended_interceptor_wing(name, sign, skin, armor, collection, soot=None)
     )
     add_folded_sheet(
         f"{name}_FlapSlot",
-        (-2.40, 1.52 * s, 0.34),
-        (-3.20, 3.70 * s, 0.52),
-        (-3.00, 3.70 * s, 0.22),
-        (-2.20, 1.52 * s, 0.08),
-        0.070, soot, collection, 0.002,
+        (-2.40, 1.52 * s, 0.28),
+        (-3.20, 3.70 * s, 0.46),
+        (-3.00, 3.70 * s, 0.10),
+        (-2.20, 1.52 * s, -0.04),
+        0.090, soot, collection, 0.002,
     )
+    # Raised flap so the TE step is a silhouette break at D=144. Overlay ArmorTE unread (C169).
     add_folded_sheet(
         f"{name}_Flap",
-        (-2.50, 1.55 * s, 0.36),
-        (-3.35, 3.78 * s, 0.54),
-        (-3.90, 3.78 * s, 0.20),
-        (-3.05, 1.55 * s, 0.06),
-        0.150, armor, collection, 0.004,
-    )
-    add_folded_sheet(
-        f"{name}_ArmorTE",
-        (-2.05, 1.50 * s, 0.42),
-        (-2.95, 3.92 * s, 0.60),
-        (-3.95, 3.92 * s, 0.18),
-        (-3.15, 1.50 * s, 0.06),
-        0.180, armor, collection, 0.005,
+        (-2.55, 1.58 * s, 0.50),
+        (-3.40, 3.82 * s, 0.68),
+        (-4.00, 3.82 * s, 0.30),
+        (-3.10, 1.58 * s, 0.14),
+        0.160, armor, collection, 0.004,
     )
     add_overlap_plate(f"{name}_TipMark", (-3.20, 3.88 * s, 0.46), (0.18, 0.14, 0.05), armor, collection, 0.003)
     return wing
@@ -1557,12 +1550,14 @@ def build_lod(lod, mats):
         (-4.35, 1.36, 0.46, 0.12, 0.03, 0.92, 0.06),
     ), hull, collection, 0.12)
     subdivide_mesh(body, 1)
-    cut = safe_boolean_cut(body, "CockpitBoolean", (4.20, 0.0, 0.90), (1.05, 0.52, 0.32))
+    # C173: longer dorsal tub so the framed visor is a chase-size rectangle, not a nose blot.
+    cut = safe_boolean_cut(body, "CockpitBoolean", (4.05, 0.0, 0.88), (1.28, 0.46, 0.28))
     print(f"cockpit boolean {'hit' if cut else 'miss — face delete'}")
     if not cut:
-        delete_faces_in_box(body, 3.40, 5.10, -0.55, 0.55, 0.62, 2.00, normal="z", normal_min=0.18)
-    delete_faces_in_cylinder(body, -3.80, -3.00, 0.88, 0.72, 0.50, normal="z", normal_min=0.15)
-    delete_faces_in_cylinder(body, -3.80, -3.00, -0.88, 0.72, 0.50, normal="z", normal_min=0.15)
+        delete_faces_in_box(body, 2.85, 5.20, -0.50, 0.50, 0.58, 2.00, normal="z", normal_min=0.18)
+    # Bigger roof mouths so chase looks into bells, not painted squares. No connecting crate-cut.
+    delete_faces_in_cylinder(body, -3.90, -2.85, 0.88, 0.70, 0.62, normal="z", normal_min=0.15)
+    delete_faces_in_cylinder(body, -3.90, -2.85, -0.88, 0.70, 0.62, normal="z", normal_min=0.15)
     delete_faces_in_box(body, -1.80, -0.80, 1.85, 2.40, 0.05, 0.50, normal="y", normal_min=0.22)
     delete_faces_in_box(body, -1.80, -0.80, -2.40, -1.85, 0.05, 0.50, normal="y-", normal_min=0.22)
     report_shells(body, "hull after wells")
@@ -1582,33 +1577,37 @@ def build_lod(lod, mats):
     report_shells(body, "hull after plate courses")
 
     soot = mats["Material_Soot"]
-    # C167: large flush pane in the boolean hole. No crate lips. C165 crate / C166 stamp.
-    add_box("Tub_Floor", (4.20, 0.0, 0.36), (0.85, 0.40, 0.012), soot, collection, 0.002)
+    # Floor of the tub only. Visor sits down in the hole so the boolean rim is the white frame.
+    add_box("Tub_Floor", (4.05, 0.0, 0.34), (1.05, 0.34, 0.012), soot, collection, 0.002)
     canopy = mats["Material_Canopy"]
     add_folded_sheet(
         "Canopy_Visor",
-        (4.72, -0.36, 0.78),
-        (4.72, 0.36, 0.78),
-        (3.72, 0.34, 0.80),
-        (3.72, -0.34, 0.80),
+        (4.58, -0.28, 0.56),
+        (4.58, 0.28, 0.56),
+        (3.15, 0.26, 0.58),
+        (3.15, -0.26, 0.58),
         0.016, canopy, collection, 0.002,
     )
+    add_box("WellFloor_P", (-3.35, -0.88, 0.36), (0.48, 0.48, 0.012), soot, collection, 0.002)
+    add_box("WellFloor_S", (-3.35, 0.88, 0.36), (0.48, 0.48, 0.012), soot, collection, 0.002)
 
     add_five_wall_tub("AvionicsTub", (0.85, -1.18, 0.22), (0.24, 0.10, 0.11), 0.040, mech, collection)
     add_box("AvionicsRack", (0.85, -1.18, 0.16), (0.16, 0.032, 0.05), armor, collection, 0.002)
     add_five_wall_tub("RadiatorTub", (-1.75, 0.98, 0.18), (0.28, 0.10, 0.11), 0.040, mech, collection)
 
+    # C173: dark on the waist planform as two shoulders, not a deck-spanning crate (C171)
+    # and not edge-only strips the chase cannot see (C170/C172). White spine stays open.
     add_folded_sheet(
         "Chine_P",
-        (1.80, -2.62, 0.42), (-0.80, -2.62, 0.40),
-        (-0.80, -2.28, 0.62), (1.80, -2.28, 0.64),
-        0.090, armor, collection, 0.004,
+        (1.35, -2.58, 0.34), (-0.85, -2.52, 0.32),
+        (-0.85, -0.92, 0.70), (1.35, -0.92, 0.72),
+        0.085, armor, collection, 0.004,
     )
     add_folded_sheet(
         "Chine_S",
-        (1.80, 2.62, 0.42), (1.80, 2.28, 0.64),
-        (-0.80, 2.28, 0.62), (-0.80, 2.62, 0.40),
-        0.090, armor, collection, 0.004,
+        (1.35, 2.58, 0.34), (1.35, 0.92, 0.72),
+        (-0.85, 0.92, 0.70), (-0.85, 2.52, 0.32),
+        0.085, armor, collection, 0.004,
     )
     add_folded_sheet(
         "Belt_Nose_P",
@@ -1634,9 +1633,6 @@ def build_lod(lod, mats):
         (-4.20, 1.08, 0.50), (-4.20, 1.42, 0.06),
         0.055, armor, collection, 0.004,
     )
-    add_box("HouseLid_C", (-2.35, 0.0, 0.72), (1.35, 0.32, 0.12), armor, collection, 0.004)
-    add_box("HouseLid_P", (-2.35, -1.18, 0.72), (1.35, 0.28, 0.12), armor, collection, 0.004)
-    add_box("HouseLid_S", (-2.35, 1.18, 0.72), (1.35, 0.28, 0.12), armor, collection, 0.004)
     add_folded_sheet(
         "Belly_P",
         (2.20, -2.48, -0.12), (-1.10, -1.92, -0.08),
