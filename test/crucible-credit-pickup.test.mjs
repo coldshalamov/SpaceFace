@@ -140,32 +140,59 @@ test('collecting the chip pays the run wallet, never campaign credits', () => {
   const drop = named(harness.emitted, 'loot:drop')[0];
   const [chipId] = materializeChips(harness, drop);
 
-  // This is the shape mining._collectCreditChip produces for a wallet:'run' chip.
+  // This is the pair mining produces when the player scoops a wallet:'run' chip.
+  harness.bus.emit('pickup:collected', {
+    pickupId: chipId, collectorId: 1, kind: CREDIT_CHIP_KIND, amount: 2, credits: 2, wallet: 'run',
+  });
   harness.bus.emit('run:awardRequested', { credits: 2, reason: 'crucible:wave1:chip' });
   harness.bus.emit('entity:destroyed', { id: chipId });
 
-  assert.equal(harness.state.run.credits, 2);
+  assert.equal(harness.state.run.credits, 2, 'a scooped chip is paid exactly once');
   assert.equal(harness.state.player.credits, 1000);
   assert.ok(!harness.emitted.some((e) => e.event === 'economy:grantCredits'));
 });
 
-test('uncollected chips are swept into the run wallet on the way out of cleanup', () => {
+test('uncollected chips are cleared off the board at cleanup and settle into the run wallet', () => {
   const harness = boot();
   beginActive(harness);
   harness.bus.emit('run:wavePlanned', { wave: 1, plan: planFor(1) });
   for (let i = 0; i < 4; i++) killCohortBody(harness);
-  for (const drop of named(harness.emitted, 'loot:drop')) materializeChips(harness, drop);
+  const ids = named(harness.emitted, 'loot:drop').flatMap((drop) => materializeChips(harness, drop));
 
   harness.bus.emit('run:transitionRequested', { expectedPhase: 'active', nextPhase: 'cleanup', reason: 'wave_clear', tick: 1 });
   assert.equal(harness.state.run.credits, 0, 'chips are still on the board during cleanup');
 
   harness.bus.emit('run:transitionRequested', { expectedPhase: 'cleanup', nextPhase: 'draft', reason: 'draft_open', tick: 2 });
-  assert.equal(harness.state.run.credits, 8, 'four chips at 2 each were swept');
-  const swept = named(harness.emitted, 'run:awardRequested').filter((e) => String(e.payload.reason).startsWith('sweep:'));
-  assert.equal(swept.length, 1);
   for (const entity of harness.state.entities.values()) {
-    if (entity.type === 'pickup') assert.equal(entity.alive, false, 'swept chips leave the board');
+    if (entity.type === 'pickup') assert.equal(entity.alive, false, 'the board is cleared');
   }
+  // coreSystem publishes the destroy receipt for the bodies the sweep marked; that is what pays.
+  for (const id of ids) harness.bus.emit('entity:destroyed', { id });
+  assert.equal(harness.state.run.credits, 8, 'four chips at 2 each were settled');
+});
+
+test('a chip destroyed mid-cleanup is still paid — the defect a live route capture found', () => {
+  // The first version credited uncollected chips only at the cleanup boundary. A real run showed
+  // two of six chips already gone by then, so six kills paid for four.
+  const harness = boot();
+  beginActive(harness);
+  harness.bus.emit('run:wavePlanned', { wave: 1, plan: planFor(1) });
+  for (let i = 0; i < 6; i++) killCohortBody(harness);
+  const ids = named(harness.emitted, 'loot:drop').flatMap((drop) => materializeChips(harness, drop));
+  assert.equal(ids.length, 6);
+
+  harness.bus.emit('run:transitionRequested', { expectedPhase: 'active', nextPhase: 'cleanup', reason: 'wave_clear', tick: 1 });
+  // Two chips despawn during the cleanup window, before any sweep runs.
+  for (const id of ids.slice(0, 2)) {
+    const entity = harness.state.entities.get(id);
+    entity.alive = false;
+    harness.bus.emit('entity:destroyed', { id });
+  }
+  assert.equal(harness.state.run.credits, 4, 'the two lost chips paid on their way out');
+
+  harness.bus.emit('run:transitionRequested', { expectedPhase: 'cleanup', nextPhase: 'draft', reason: 'draft_open', tick: 2 });
+  for (const id of ids.slice(2)) harness.bus.emit('entity:destroyed', { id });
+  assert.equal(harness.state.run.credits, 12, 'six kills paid for six chips');
 });
 
 test('the sweep never double-pays a chip the player already collected', () => {
@@ -198,6 +225,7 @@ test('ending a run sweeps what is still on the board so a death does not lose th
 
   harness.bus.emit('run:endRequested', { outcome: 'defeat', reason: 'player_death', tick: 9 });
   assert.equal(harness.state.run.phase, 'ended');
+  // At the end of a run the sim may never tick again, so outstanding chips settle directly.
   assert.equal(harness.state.run.credits, 6);
 });
 

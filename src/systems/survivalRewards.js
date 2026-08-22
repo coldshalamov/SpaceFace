@@ -6,9 +6,12 @@
 // sole writer of that envelope.
 //
 // Credits are PHYSICAL (CRU-015): a cohort kill drops a chip through the shipped `loot:drop` seam,
-// mining spawns and magnetises it exactly like every other pickup, and the chip settles on
-// collection. It is stamped `wallet: 'run'` at the drop, so routing is a property of the item and
-// not of a global "is a run live?" question. Nothing here spawns a second pickup pipeline.
+// and mining spawns and magnetises it exactly like every other pickup. It is stamped
+// `wallet: 'run'` at the drop, so routing is a property of the ITEM and not of a global "is a run
+// live?" question. Nothing here spawns a second pickup pipeline.
+//
+// Scooping one pays it through mining. Anything else that removes it pays it here, on the destroy
+// receipt — see _onEntityDestroyed for why that seam and not a phase boundary.
 //
 // Init-order only: event-driven, never registered in PRODUCTION_UPDATE_ORDER, never ticks.
 // Strict no-op without a live survival run.
@@ -77,6 +80,7 @@ export const survivalRewards = {
     this._unsubs.push(this.bus.on('run:waveCleared', (p) => this._onWaveCleared(p)));
     this._unsubs.push(this.bus.on('entity:spawned', (p) => this._onEntitySpawned(p)));
     this._unsubs.push(this.bus.on('entity:destroyed', (p) => this._onEntityDestroyed(p)));
+    this._unsubs.push(this.bus.on('pickup:collected', (p) => this._onPickupCollected(p)));
     this._unsubs.push(this.bus.on('run:transitioned', (p) => this._onTransitioned(p)));
     this._unsubs.push(this.bus.on('run:ended', () => {
       this.sweepChips('run_ended');
@@ -97,7 +101,7 @@ export const survivalRewards = {
     this._plan = null;
     this._planWave = 0;
     this._chipValue = 0;
-    this._liveChips = new Set();
+    this._liveChips = new Map();
   },
 
   _onWavePlanned(payload) {
@@ -131,7 +135,7 @@ export const survivalRewards = {
   /**
    * Drop one physical credit chip for a cohort kill. Goes through the shipped `loot:drop` seam so
    * mining owns the spawn, the magnet pull and the scoop — there is no Survival pickup pipeline.
-   * Credits settle on COLLECTION, never at death: the player has to go and get them.
+   * Nothing is credited at the moment of death: the chip has to leave the board first.
    */
   _dropRunChip(victim, payload) {
     const credits = this._chipValue;
@@ -163,50 +167,79 @@ export const survivalRewards = {
     if (!entity || entity.type !== 'pickup') return;
     const data = entity.data;
     if (!data || data.wallet !== RUN_WALLET) return;
-    this._liveChips.add(entity.id);
+    // Remember the VALUE, not just the id: at entity:destroyed the body is already gone from
+    // state.entities, so a ledger of ids alone cannot say what it was worth.
+    const credits = Number.isFinite(data.credits) ? Math.trunc(data.credits) : 0;
+    this._liveChips.set(entity.id, credits > 0 ? credits : 0);
   },
 
+  _onPickupCollected(payload) {
+    // The player scooped it: mining already routed the credits to the run wallet. Drop it from the
+    // ledger so the settlement below cannot pay for the same chip twice.
+    if (!payload || payload.wallet !== RUN_WALLET) return;
+    if (payload.pickupId != null) this._liveChips.delete(payload.pickupId);
+  },
+
+  /**
+   * A tracked chip left the board without being collected — despawn, cull, or the cleanup sweep.
+   * Settle it into the run wallet.
+   *
+   * This, not a phase boundary, is the seam that guarantees earnings. The first version credited
+   * uncollected chips only on the way out of cleanup, and a live route capture showed two of six
+   * chips already destroyed by that moment: the player killed six enemies and was paid for four.
+   * Anything that removes a chip now pays for it, whatever removed it and whenever.
+   */
   _onEntityDestroyed(payload) {
     const id = payload && payload.id;
-    if (id != null) this._liveChips.delete(id);
+    if (id == null || !this._liveChips || !this._liveChips.has(id)) return;
+    const credits = this._liveChips.get(id);
+    this._liveChips.delete(id);
+    if (!(credits > 0)) return;
+    const run = liveSurvivalRun(this.state);
+    if (!run) return;
+    this._emit('run:awardRequested', {
+      credits,
+      reason: 'chip_settled',
+      wave: run.wave,
+    });
   },
 
   _onTransitioned(payload) {
-    // Chips carry a TTL. Sweeping on the way out of cleanup means a wave's earnings can never be
-    // silently eaten by a despawn while the player is reading the draft.
+    // Clear the board on the way out of cleanup so the player is not asked to chase scrap around
+    // an empty arena while the draft waits. Marking a chip dead routes it through the settlement
+    // above, so clearing the board and being paid for it are the same act.
     if (payload && payload.previousPhase === 'cleanup') this.sweepChips('cleanup');
   },
 
   /**
-   * Credit and clear every uncollected run chip. Returns the number of credits swept.
-   * Idempotent: a chip is removed from the ledger as it is paid.
+   * Clear every uncollected run chip off the board. Returns the credits still outstanding.
+   *
+   * During a run the bodies are marked dead and coreSystem's ordinary sweep publishes the
+   * entity:destroyed that settles them. At the END of a run the sim may never tick again, so
+   * outstanding chips are settled directly here.
    */
   sweepChips(reason) {
     const run = liveSurvivalRun(this.state);
     if (!run || !this._liveChips || this._liveChips.size === 0) return 0;
-    const ids = [...this._liveChips];
-    this._liveChips.clear();
-    let swept = 0;
+    const terminal = run.phase === 'ended' || run.phase === 'victory';
+    let outstanding = 0;
+    const ids = [...this._liveChips.keys()];
     for (const id of ids) {
+      const credits = this._liveChips.get(id) || 0;
       const entity = this._entity(id);
-      if (!entity || !entity.alive) continue;
-      const data = entity.data || {};
-      if (data.creditGranted === true) continue;
-      const credits = Number.isFinite(data.credits) ? Math.trunc(data.credits) : 0;
-      if (credits > 0) swept += credits;
-      data.creditGranted = true;
-      // Marking dead hands the body to coreSystem's ordinary sweep; this owner never deletes
-      // entities itself.
-      entity.alive = false;
+      // This owner is not the entity lifecycle owner; marking dead hands the body to core's sweep.
+      if (entity && entity.alive) entity.alive = false;
+      outstanding += credits;
+      if (terminal) this._liveChips.delete(id);
     }
-    if (swept > 0) {
+    if (terminal && outstanding > 0) {
       this._emit('run:awardRequested', {
-        credits: swept,
-        reason: `sweep:${reason || 'cleanup'}`,
+        credits: outstanding,
+        reason: `sweep:${reason || 'run_end'}`,
         wave: run.wave,
       });
     }
-    return swept;
+    return outstanding;
   },
 
   _onWaveCleared(payload) {

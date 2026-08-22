@@ -381,6 +381,7 @@
     "check:wcag-contrast": "node scripts/check-wcag-contrast.mjs",
     "check:boot-resilience": "node --test test/loading-boot-resilience.test.mjs",
     "check:playable": "node scripts/check-game-playable.mjs",
+    "check:crucible:route": "node scripts/check-crucible-route.mjs",
     "check:playable:desktop": "node scripts/check-game-playable.mjs --electron",
     "check:playable:saves": "node scripts/check-game-playable.mjs --electron --real-saves",
     "check:hud-j07": "node --test test/j07-hud-contract.test.mjs",
