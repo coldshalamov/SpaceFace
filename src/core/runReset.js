@@ -7,6 +7,8 @@ export const FRESH_RUN_SYSTEMS = Object.freeze([
   // survivalWave holds the previous run's wave cohort and budget owners. Clear it with the
   // envelope, before spawnBudget wipes the ledger it reserved from.
   'survivalWave',
+  // survivalArena holds the room it installed for the last wave; New Game must clear it.
+  'survivalArena',
   'survivalRewards',
   'survivalDraft',
   'survivalResults',

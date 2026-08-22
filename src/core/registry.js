@@ -4,6 +4,8 @@ import { core } from './coreSystem.js';
 import { runSession } from '../systems/runSession.js';
 import { survivalDraft } from '../systems/survivalDraft.js';
 import { survivalResults } from '../systems/survivalResults.js';
+import { survivalAnnounce } from '../systems/survivalAnnounce.js';
+import { survivalArena } from '../systems/survivalArena.js';
 import { survivalRewards } from '../systems/survivalRewards.js';
 import { survivalHud } from '../ui/survivalHud.js';                 // Crucible run readout (DOM-guarded)
 import { survivalWave } from '../systems/survivalWave.js';
@@ -177,6 +179,8 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['survivalHud', survivalHud],
     ['survivalDraft', survivalDraft],
     ['survivalResults', survivalResults],
+    ['survivalAnnounce', survivalAnnounce],
+    ['survivalArena', survivalArena],
     ['survivalRun', survivalRun],
     ['voiceArbiter', voiceArbiter],
     ['input', input],
