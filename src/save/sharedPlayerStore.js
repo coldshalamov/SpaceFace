@@ -3,6 +3,12 @@
 export const SHARED_PLAYER_STORE_PATH = '/__spaceface_player_store';
 export const SHARED_PLAYER_STORE_INDEX_KEY = 'sf.save.index';
 
+// Chromium caps a keepalive request body at 64 KiB and fails anything larger without sending it.
+// A real save envelope measures ~205-224 KB, so the page-outliving guarantee is only requested
+// where the transport can actually honor it; larger mirrors go as a normal PUT, which still
+// reaches the store — the property the two shells depend on to share saves.
+const KEEPALIVE_BODY_BUDGET_BYTES = 60000;
+
 const KEY_RE = /^(sf\.save\.[A-Za-z0-9._-]+|sf\.recovery\.[A-Za-z0-9._-]+|sf\.settings\.profile\.v1)$/;
 
 export function isSharedPlayerStoreKey(key) {
@@ -142,11 +148,12 @@ export async function pushSharedPlayerStore(keys, { keepalive = false } = {}) {
   }
   if (count === 0) return true;
   try {
+    const body = JSON.stringify({ keys: patch });
     const response = await fetch(SHARED_PLAYER_STORE_PATH, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ keys: patch }),
-      keepalive,
+      body,
+      keepalive: keepalive && body.length <= KEEPALIVE_BODY_BUDGET_BYTES,
     });
     return response.ok;
   } catch {

@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 
 import { loadPlaywright } from './lib/load-playwright.mjs';
+import { installCspSafePlaywrightPolling } from './lib/playwrightCspPolling.mjs';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
@@ -34,10 +35,13 @@ const failures = [];
 try {
   browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1 });
+  // Event-rendered pages stop producing frames once idle; Playwright's default rAF polling then
+  // never runs and waits time out on true predicates (established fix: check-electron-new-game-launch).
+  installCspSafePlaywrightPolling(page);
   await page.addInitScript(() => {
     try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch { /* optional */ }
   });
-  await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded' });
+  await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded', timeout: 60_000 });
   await page.waitForFunction(() => window.SF?.state && window.SF?.bus, null, { timeout: 30_000 });
   await page.evaluate(() => {
     const state = window.SF.state;
@@ -65,8 +69,14 @@ try {
     await page.click(`[data-nav="${tab}"]`);
     await page.waitForSelector(rootSelector, { state: 'visible', timeout: tab === 'shipworks' ? 30_000 : 10_000 });
     if (tab === 'shipworks') {
-      await page.waitForFunction(() => document.querySelector('.sx-sw__canvas')?.dataset.previewReady === 'true',
-        null, { timeout: 12_000 });
+      // previewReady flips before the authored asset is admitted and the pipelines compile; the
+      // projection drifts sub-pixels while those settle (measured: 1.3px during compile). Sample
+      // only the settled preview, or the drift check measures the loader, not the hover.
+      await page.waitForFunction(() => {
+        const c = document.querySelector('.sx-sw__canvas');
+        return !!c && c.dataset.previewReady === 'true'
+          && c.dataset.previewAssetState === 'authored' && c.dataset.previewReveal === 'settled';
+      }, null, { timeout: 30_000 });
     }
     await page.waitForTimeout(tab === 'shipworks' ? 900 : 420);
     const locator = page.locator(hoverSelector).first();
@@ -105,9 +115,15 @@ try {
   }
 
   // Departure Check entries are shortcuts, not inert warnings. Services execute immediately;
-  // stateful/complex checks open their owning station surface.
+  // stateful/complex checks open their owning station surface. Departure is readiness-gated: a
+  // READY ship launches directly with no popover, and the repair/refuel chips below restore
+  // readiness — so force a not-ready state each time to exercise the popover deterministically.
   report.global.departureActions = {};
   const openDeparture = async () => {
+    await page.evaluate(() => {
+      const f = window.SF.state.fuel;
+      if (f && f.max) f.current = Math.max(1, Math.round(f.max * 0.2));
+    });
     await page.click('[data-act="undock"]');
     await page.waitForSelector('.sx-pop--dep:not([hidden])', { state: 'visible', timeout: 3_000 });
   };
@@ -125,12 +141,9 @@ try {
   report.global.departureActions.refuel = true;
 
   await openDeparture();
-  await page.locator('.sx-pop--dep .sx-depchip').filter({ hasText: /route|track|mission/i }).first().click();
-  await page.waitForFunction(() => document.querySelector('.sx-app')?.dataset.operation === 'contracts',
-    null, { timeout: 3_000 });
-  report.global.departureActions.route = 'contracts';
-
-  await openDeparture();
+  // The Hold chip's shortcut opens the cargo manifest directly (departureChipIntent maps
+  // hold/cargo to the hold surface); the mission chip only exists when a mission is actually
+  // tracked, which this probe does not set up.
   await page.locator('.sx-pop--dep .sx-depchip').filter({ hasText: /hold|cargo/i }).first().click();
   await page.waitForSelector('.sx-pop--hold:not([hidden])', { state: 'visible', timeout: 3_000 });
   report.global.departureActions.hold = 'manifest';

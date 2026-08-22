@@ -6,11 +6,11 @@
 // QA probe only: it does not change routes, assets, render settings, or gameplay defaults.
 //
 // DESIGN TRUTH (src/ui/station/): one Command Dock is the whole navigation — seven destinations
-// (Market, Shipworks, Industry, Contracts/Missions, Factions, Bar, Ledger) plus dock actions
-// (Repair, Refuel, Resupply, Undock). There is no tab rail, no Hold tab (the hold is a manifest
-// popover on the Hold readout), and no Services tab (repair/refuel/resupply are dock actions with
-// live costs). Departure readiness rides on the Undock tile; launching while not ready opens a
-// Departure Check.
+// (Market, Shipworks, Industry, Contracts/Missions, Factions, Bar, Ledger) and nothing else. There
+// is no tab rail, no Hold tab (the hold is a manifest popover on the Hold readout), and no Services
+// tab: the service verbs (Repair on Hull, Refuel on Fuel, Sell on Hold, Resupply when rearmed) live
+// on the berth fascia vitals they change, and Undock is the fascia launch control. Departure
+// readiness rides on that launch control; launching while not ready opens a Departure Check.
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { createServer as createNetServer } from 'node:net';
@@ -18,12 +18,16 @@ import { fileURLToPath } from 'node:url';
 
 import { collectPageIssues } from './lib/browser-issues.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
+import { installCspSafePlaywrightPolling } from './lib/playwrightCspPolling.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const START_TIMEOUT_MS = 90000;
+// Headless software GL stretches the pre-menu warmup (SF reports mode 'menu' early; the menu screen
+// element itself measured ~9s on the reference machine, past the old 15s under load). Same
+// environment rationale as START_TIMEOUT_MS: budget the environment, assert the behavior.
+const MENU_TIMEOUT_MS = 60000;
 const DOCK_TIMEOUT_MS = 15000;
 const DESTINATIONS = ['market', 'shipworks', 'industry', 'contracts', 'factions', 'bar', 'ledger'];
-const DOCK_ACTIONS = ['repair', 'refuel', 'resupply', 'undock'];
 const { chromium } = await loadPlaywright();
 
 let server = null;
@@ -34,6 +38,12 @@ try {
   server = await startFreshServer();
   browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1460, height: 900 }, deviceScaleFactor: 1 });
+  // The game is event-rendered by design: once the main menu parks, the page produces no frames and
+  // Playwright's default rAF polling never runs — the boot wait times out while its own predicate
+  // is already true (verified by evaluate at the moment of timeout). The CSP-safe timer polling is
+  // the established fix (see check-electron-new-game-launch.mjs); it also covers the post-dock
+  // waits, since the docked station idles between interactions the same way.
+  installCspSafePlaywrightPolling(page);
   issues = collectPageIssues(page, { includeWarnings: true });
   await page.addInitScript(() => {
     try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {}
@@ -53,7 +63,7 @@ try {
   await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded' });
   assert.equal(new URL(page.url()).search, '', 'station dock probe must use the canonical root URL with no query flags');
   await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus && window.SF.ctx, null, { timeout: 15000 });
-  await waitForVisible(page, '[data-screen="mainMenu"]', 15000, 'main menu');
+  await waitForVisible(page, '[data-screen="mainMenu"]', MENU_TIMEOUT_MS, 'main menu');
 
   assert.equal(await clickButton(page, 'New Game'), true, 'main menu should expose New Game');
   await waitForVisible(page, '[data-screen="newGame"] .sf-ng-route', 10000, 'new-game first-session rail');
@@ -87,6 +97,10 @@ try {
     const navGroup = document.querySelector('[data-screen="station"] .sx-dock__group--nav');
     const tabs = [...document.querySelectorAll('[data-screen="station"] .sx-dock [data-nav]')];
     const acts = [...document.querySelectorAll('[data-screen="station"] .sx-dock [data-act]')];
+    // Service verbs live on the vitals they change (stationApp.js: "each verb is named at its own
+    // meter and the dock is destinations only"); Undock is the fascia launch control.
+    const launch = document.querySelector('[data-screen="station"] .sxb-launch');
+    const vitalActs = [...document.querySelectorAll('[data-screen="station"] [data-vital-act]')];
     const panel = document.querySelector('[data-screen="station"] #sx-panel');
     const first = tabs.find((t) => t.getAttribute('aria-selected') === 'true') || tabs[0];
     if (first) first.focus();
@@ -106,18 +120,35 @@ try {
         cost: (a.querySelector('[data-cost]') || {}).textContent || '',
         label: a.getAttribute('aria-label'),
       })),
+      undock: launch ? {
+        present: true,
+        state: (launch.querySelector('.sxb-launch__state')?.textContent || '').trim(),
+        label: (launch.getAttribute('aria-label') || launch.textContent || '').replace(/\s+/g, ' ').trim(),
+      } : { present: false },
+      vitalActs: vitalActs.map((a) => ({
+        id: a.getAttribute('data-vital-act'),
+        text: (a.textContent || '').replace(/\s+/g, ' ').trim(),
+      })),
       panelVisible: visible(panel),
       panelRole: panel && panel.getAttribute('role'),
       panelLabelledBy: panel && panel.getAttribute('aria-labelledby'),
       // hold manifest lives on the Hold readout now (there is no Hold tab)
       holdButton: !!document.querySelector('[data-screen="station"] [data-hold]'),
-      readouts: [...document.querySelectorAll('[data-screen="station"] .sx-readout')].map((readout) => {
-        const track = readout.querySelector('.sx-readout__track');
+      // The berth fascia carries the global instruments (station-berth.css / stationApp vitalHtml):
+      // .sxb-vital blocks named Hull/Fuel/Hold, plus a conditional track-less Munitions unit.
+      readouts: [...document.querySelectorAll('[data-screen="station"] .sxb-vital')].map((vital) => {
+        const track = vital.querySelector('.sxb-vital__track');
         const rect = track && track.getBoundingClientRect();
+        const verb = vital.querySelector('[data-vital-act]');
         return {
-          label: readout.querySelector('.sx-readout__label')?.textContent?.trim() || '',
-          value: readout.querySelector('.sx-readout__v')?.textContent?.replace(/\s+/g, ' ').trim() || '',
+          kind: ([...vital.classList].find((c) => c.startsWith('sxb-vital--')) || '').replace('sxb-vital--', ''),
+          label: vital.querySelector('.sxb-vital__label')?.textContent?.trim() || '',
+          value: vital.querySelector('.sxb-vital__value')?.textContent?.replace(/\s+/g, ' ').trim() || '',
           trackWidth: rect ? rect.width : 0,
+          // A vital at rest carries either its service verb (with live cost text) or a quiet
+          // nominal-state label — never neither.
+          verb: verb ? verb.getAttribute('data-vital-act') : '',
+          verbOrState: (verb || vital.querySelector('.sxb-vital__ok'))?.textContent?.replace(/\s+/g, ' ').trim() || '',
         };
       }),
       commsToggle: !!document.querySelector('[data-screen="station"] .sx-comms__toggle'),
@@ -138,21 +169,29 @@ try {
   assert.equal(shell.panelRole, 'tabpanel', 'the workspace should expose role=tabpanel');
   assert.match(String(shell.panelLabelledBy || ''), /^sx-tab-/, 'the panel should be labelled by its owning tab');
   assert.equal(shell.holdButton, true, 'the Hold readout should open the cargo manifest (there is no Hold tab)');
-  assert.equal(shell.readouts.length, 3, 'Hull, Fuel, and Hold should each be a global instrument');
-  assert.deepEqual(shell.readouts.map((readout) => readout.label), ['Hull', 'Fuel', 'Hold'],
+  // Munitions may join the row when rearm is offered; the three permanent instruments are fixed.
+  const permanentReadouts = shell.readouts.filter((readout) => ['hull', 'fuel', 'hold'].includes(readout.kind));
+  assert.equal(permanentReadouts.length, 3, 'Hull, Fuel, and Hold should each be a global instrument');
+  assert.deepEqual(permanentReadouts.map((readout) => readout.label), ['Hull', 'Fuel', 'Hold'],
     'global status instruments should name their systems without relying on tiny icons');
-  assert.ok(shell.readouts.every((readout) => readout.trackWidth >= 60),
-    'global status tracks should be substantial enough to scan: ' + JSON.stringify(shell.readouts));
-  assert.match(shell.readouts[2].value, /\d+\s*\/\s*\d+\s*u/i,
-    'Hold should expose used and total capacity, got: ' + shell.readouts[2].value);
+  assert.ok(permanentReadouts.every((readout) => readout.trackWidth >= 60),
+    'global status tracks should be substantial enough to scan: ' + JSON.stringify(permanentReadouts));
+  const holdReadout = permanentReadouts.find((readout) => readout.kind === 'hold');
+  assert.match(holdReadout.value, /\d+\s*\/\s*\d+\s*u/i,
+    'Hold should expose used and total capacity, got: ' + holdReadout.value);
   assert.equal(shell.commsToggle, true, 'Station Comms should expose its session ledger control');
 
-  assert.deepEqual(shell.acts.map((a) => a.id), DOCK_ACTIONS, 'dock actions should be repair/refuel/resupply/undock');
-  for (const act of shell.acts) {
-    assert.ok(act.cost && act.cost.trim(), 'dock action should surface a live cost/state label: ' + act.id);
+  assert.deepEqual(shell.acts.map((a) => a.id), [], 'the command dock is destinations only — service verbs live on their vitals');
+  assert.equal(shell.undock.present, true, 'Undock should be the fascia launch control');
+  assert.ok(shell.undock.label.toLowerCase().includes('undock'), 'the launch control should name its verb');
+  assert.match(shell.undock.state, /^(ready|check|risk)$/i,
+    'Undock should surface departure readiness, got: ' + JSON.stringify(shell.undock));
+  // Hull and Fuel always carry either their service verb (with live cost text) or a quiet
+  // nominal-state label. Hold's quiet fact is its used/total value; its Sell verb appears only
+  // when cargo is aboard, so an empty hold legitimately shows neither.
+  for (const readout of permanentReadouts.filter((r) => r.kind !== 'hold')) {
+    assert.ok(readout.verbOrState, `the ${readout.kind} vital should carry its service verb or a live state label`);
   }
-  const undock = shell.acts.find((a) => a.id === 'undock');
-  assert.match(undock.cost.trim(), /^(READY|CHECK|RISK)$/, 'Undock should surface departure readiness, got: ' + undock.cost);
 
   // ---- kinetic field: distance response, equilibrium selection, and reduced-motion parity ----
   const marketTile = page.locator('[data-screen="station"] .sx-tile[data-nav="market"]');
@@ -167,15 +206,15 @@ try {
   })));
   const marketMotion = kinetic.find((entry) => entry.id === 'market');
   const shipworksMotion = kinetic.find((entry) => entry.id === 'shipworks');
-  const undockMotion = kinetic.find((entry) => entry.id === 'undock');
+  const ledgerMotion = kinetic.find((entry) => entry.id === 'ledger');
   assert.ok(marketMotion.scale > 1.25 && parseFloat(marketMotion.lift) < -10,
     'pointer target should respond physically, got: ' + JSON.stringify(marketMotion));
   assert.ok(marketMotion.scale <= 1.32 && parseFloat(marketMotion.lift) >= -13,
     'dock response should stay controlled rather than ballooning: ' + JSON.stringify(marketMotion));
   assert.ok(shipworksMotion.scale > 1.01 && shipworksMotion.scale < marketMotion.scale,
     'magnetic response should yield through neighboring items, got: ' + JSON.stringify(shipworksMotion));
-  assert.ok(Math.abs(undockMotion.scale - 1) < 0.01,
-    'far dock actions should remain seated, got: ' + JSON.stringify(undockMotion));
+  assert.ok(ledgerMotion && Math.abs(ledgerMotion.scale - 1) < 0.01,
+    'far destinations should remain seated, got: ' + JSON.stringify(ledgerMotion));
   await page.mouse.move(5, 5);
   await page.waitForTimeout(80);
   const seated = await page.evaluate(() => [...document.querySelectorAll('[data-screen="station"] .sx-tile')].map((tile) => ({
@@ -200,12 +239,13 @@ try {
 
   // ---- first-dock handoff (the opening docked route guides a new player) ----
   const handoff = await page.evaluate(() => {
-    const strip = document.querySelector('[data-screen="station"] .sx-handoff:not([hidden])');
+    const strip = document.querySelector('[data-screen="station"] .sxb-handoff:not([hidden])');
     return {
       visible: !!strip,
       text: strip ? (strip.textContent || '').replace(/\s+/g, ' ').trim() : '',
-      steps: [...document.querySelectorAll('[data-screen="station"] .sx-hstep')].map((b) => ({
+      steps: [...document.querySelectorAll('[data-screen="station"] .sxb-hstep')].map((b) => ({
         target: b.getAttribute('data-handoff'),
+        act: b.getAttribute('data-handoff-act'),
         label: b.getAttribute('aria-label'),
       })),
     };
@@ -213,12 +253,12 @@ try {
   assert.equal(handoff.visible, true, 'first dock should show the handoff guidance strip');
   assert.ok(handoff.steps.length >= 3, 'first-dock handoff should expose cargo, jobs and launch steps: ' + JSON.stringify(handoff.steps));
   assert.ok(handoff.steps.every((s) => s.label), 'handoff steps need accessible labels: ' + JSON.stringify(handoff.steps));
-  assert.ok(handoff.steps.every((s) => DESTINATIONS.includes(s.target)),
-    'handoff steps must route to real destinations: ' + JSON.stringify(handoff.steps));
+  assert.ok(handoff.steps.every((s) => DESTINATIONS.includes(s.target) || s.act),
+    'handoff steps must route to real destinations or a named verb: ' + JSON.stringify(handoff.steps));
   assert.ok(handoff.steps.some((s) => s.target === 'contracts'), 'handoff should route the jobs step to Contracts');
 
   // handoff steps actually navigate
-  await clickAndExpectNav(page, '[data-screen="station"] .sx-hstep[data-handoff="contracts"]', 'contracts');
+  await clickAndExpectNav(page, '[data-screen="station"] .sxb-hstep[data-handoff="contracts"]', 'contracts');
 
   // ---- keyboard: roving tabindex + arrows/Home/End, Enter/Space activate ----
   await focusNav(page, 'market');
@@ -282,7 +322,7 @@ try {
 
   // ---- departure check: not-ready launch must surface the risks, never strand the player ----
   await page.evaluate(() => { const f = window.SF.state.fuel; if (f && f.max) f.current = Math.max(1, Math.round(f.max * 0.08)); });
-  await domClick(page, '[data-screen="station"] .sx-tile[data-act="undock"]');
+  await domClick(page, '[data-screen="station"] .sxb-launch[data-act="undock"]');
   await page.waitForFunction(() => !!document.querySelector('.sx-pop--dep'), null, { timeout: 5000 });
   const gate = await page.evaluate(() => ({
     docked: window.SF.state.ui.docked,
@@ -302,11 +342,32 @@ try {
     'Departure Check chips should be labelled buttons that jump to the fix: ' + JSON.stringify(gate.chips));
   assert.equal(gate.launch, true, 'Departure Check must still allow "Launch Anyway"');
 
-  // Launch Anyway really undocks.
+  // Launch Anyway really undocks. Undocking rebuilds the flight scene — the same work the check
+  // budgets START_TIMEOUT_MS for on New Game, so give the transition a proportionate budget
+  // instead of one a slow headless GL can miss. The forced autosave must also reach the shared
+  // player store on the wire: the mirror used to ride keepalive with ~220 KB bodies, which
+  // Chromium drops client-side above 64 KiB, so session saves silently never crossed shells.
+  const mirrorPut = page.waitForResponse(
+    (r) => r.url().includes('__spaceface_player_store') && r.request().method() === 'PUT',
+    { timeout: 15000 });
   await domClick(page, '.sx-pop--dep [data-pop-launch]');
-  await page.waitForFunction(() => window.SF.state.ui.docked === false, null, { timeout: 6000 });
+  await page.waitForFunction(() => window.SF.state.ui.docked === false, null, { timeout: 30000 });
+  const mirrorResponse = await mirrorPut;
+  assert.ok(mirrorResponse.ok(),
+    'the undock autosave mirror must reach the shared player store: HTTP ' + mirrorResponse.status());
 
-  assert.deepEqual(issues.errorIssues(), [], 'station dock probe should not record page errors');
+  // The boot store probe caps itself at 10s (sharedPlayerStore.js) so a stalled store can never
+  // pin the main menu's Continue button; under heavy load the loopback GET can exceed that cap and
+  // abort, and the game handles it by design (local merge fallback). That one handled probe
+  // timeout is not a page error. Store PUT failures are NOT excused here — the positive mirror
+  // assertion above still fails the check if a PUT aborts or errors.
+  const isHandledStoreProbeAbort = (issue) =>
+    issue.type === 'error'
+    && String(issue.text).startsWith('Request failed')
+    && String(issue.text).includes('__spaceface_player_store')
+    && String(issue.text).includes('net::ERR_ABORTED');
+  assert.deepEqual(issues.errorIssues().filter((issue) => !isHandledStoreProbeAbort(issue)), [],
+    'station dock probe should not record page errors');
   console.log('Station command dock OK: New Game -> dock -> 7 destinations (pointer + keyboard) -> first-dock handoff -> Departure Check -> undock');
   console.log('Dock target:', dockTarget.stationId);
 } catch (err) {

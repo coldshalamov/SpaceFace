@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 // check-station-egress-runtime.mjs — browser smoke for leaving the docked station cleanly.
 //
-// DESIGN TRUTH (src/ui/station/): leaving is owned by the Command Dock's Undock tile, which carries
-// live departure readiness (READY / CHECK / RISK). Implicit exits (Esc, modal backdrop) must never
-// strand the player: they surface the Departure Check, which lists the real risks and still offers
+// DESIGN TRUTH (src/ui/station/): leaving is owned by the fascia's Undock launch control
+// (.sxb-launch), which carries live departure readiness (Ready / Check / Risk); a not-ready launch
+// surfaces the Departure Check first. Implicit exits (Esc, modal backdrop) must never strand the
+// player: they surface the same check, which lists the real risks and still offers
 // "Launch Anyway". A committed undock returns to flight, clears docked state and resumes the sim.
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
@@ -12,10 +13,14 @@ import { fileURLToPath } from 'node:url';
 
 import { collectPageIssues } from './lib/browser-issues.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
+import { installCspSafePlaywrightPolling } from './lib/playwrightCspPolling.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const START_TIMEOUT_MS = 90000;
 const DOCK_TIMEOUT_MS = 15000;
+// Headless software GL stretches the pre-menu warmup well past 15s under load; budget the
+// environment like START_TIMEOUT_MS does, assert the behavior.
+const MENU_TIMEOUT_MS = 60000;
 const { chromium } = await loadPlaywright();
 
 let server = null;
@@ -26,12 +31,16 @@ try {
   server = await startFreshServer();
   browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1460, height: 900 }, deviceScaleFactor: 1 });
+  // The game is event-rendered by design: once the main menu parks, the page produces no frames and
+  // Playwright's default rAF polling never runs — waits time out while their own predicates are
+  // already true. The CSP-safe timer polling is the established fix (check-electron-new-game-launch).
+  installCspSafePlaywrightPolling(page);
   issues = collectPageIssues(page, { includeWarnings: true });
   await page.addInitScript(() => { try { sessionStorage.setItem('sf.cinematicSeen', '1'); } catch (_) {} });
 
   await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus && window.SF.ctx, null, { timeout: 15000 });
-  await waitForVisible(page, '[data-screen="mainMenu"]', 15000, 'main menu');
+  await waitForVisible(page, '[data-screen="mainMenu"]', MENU_TIMEOUT_MS, 'main menu');
   assert.equal(await clickButton(page, 'New Game'), true, 'main menu should expose New Game');
   await waitForVisible(page, '[data-screen="newGame"] .sf-ng-route', 10000, 'new-game rail');
   assert.equal(await clickButton(page, 'Launch'), true, 'New Game should expose Launch');
@@ -59,11 +68,11 @@ try {
       const r = el.getBoundingClientRect();
       return cs.display !== 'none' && cs.visibility !== 'hidden' && !el.hidden && r.width > 20 && r.height > 10;
     };
-    const undock = document.querySelector('[data-screen="station"] .sx-tile[data-act="undock"]');
+    const undock = document.querySelector('[data-screen="station"] .sxb-launch[data-act="undock"]');
     return {
       stationVisible: visible(document.querySelector('[data-screen="station"]')),
       undockVisible: visible(undock),
-      undockReadiness: (undock && undock.querySelector('[data-cost]') || {}).textContent || '',
+      undockReadiness: (undock && undock.querySelector('.sxb-launch__state') || {}).textContent || '',
       docked: window.SF.state.ui.docked,
       timeScale: window.SF.state.timeScale,
     };
@@ -71,8 +80,8 @@ try {
   assert.equal(dockedState.stationVisible, true, 'station should be visible after docking');
   assert.equal(dockedState.docked, true, 'state.ui.docked should be true while docked');
   assert.equal(dockedState.timeScale, 0, 'sim should be paused while docked');
-  assert.equal(dockedState.undockVisible, true, 'the dock should expose a visible Undock tile');
-  assert.match(dockedState.undockReadiness.trim(), /^(READY|CHECK|RISK)$/,
+  assert.equal(dockedState.undockVisible, true, 'the fascia should expose a visible Undock launch control');
+  assert.match(dockedState.undockReadiness.trim(), /^(ready|check|risk)$/i,
     'Undock should carry departure readiness, got: ' + dockedState.undockReadiness);
 
   // ---- implicit exit (Esc) must surface the Departure Check, never strand ----
@@ -89,8 +98,8 @@ try {
     'Esc should dismiss the Departure Check');
   assert.equal(await page.evaluate(() => window.SF.state.ui.docked), true, 'dismissing the check should keep us docked');
 
-  // ---- committed undock via the dock tile returns to flight ----
-  await domClick(page, '[data-screen="station"] .sx-tile[data-act="undock"]');
+  // ---- committed undock via the fascia launch control returns to flight ----
+  await domClick(page, '[data-screen="station"] .sxb-launch[data-act="undock"]');
   await page.waitForFunction(() => {
     const state = window.SF.state;
     const player = state.entities.get(state.playerId);
@@ -136,7 +145,17 @@ try {
   await page.waitForFunction(() => window.SF.state.ui.docked === false && window.SF.state.mode === 'flight',
     null, { timeout: DOCK_TIMEOUT_MS });
 
-  assert.deepEqual(issues.errorIssues(), [], 'station egress probe should not record page errors');
+  // The boot store probe caps itself at 10s (sharedPlayerStore.js) so a stalled store can never pin
+  // the main menu's Continue button; under heavy load the loopback GET can exceed the cap and
+  // abort, handled by design via the local merge fallback. That handled probe timeout is not a
+  // page error; anything else — including store PUT failures — still fails this check.
+  const isHandledStoreProbeAbort = (issue) =>
+    issue.type === 'error'
+    && String(issue.text).startsWith('Request failed')
+    && String(issue.text).includes('__spaceface_player_store')
+    && String(issue.text).includes('net::ERR_ABORTED');
+  assert.deepEqual(issues.errorIssues().filter((issue) => !isHandledStoreProbeAbort(issue)), [],
+    'station egress probe should not record page errors');
   console.log('Station egress OK: dock -> Esc/backdrop confirm (no strand) -> Undock -> flight restored, sim resumed');
   console.log('Dock target:', dockTarget.stationId);
 } catch (err) {
