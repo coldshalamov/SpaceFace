@@ -4747,6 +4747,24 @@ function getSearchTargets(state, level, curSecId, claimsSystem = null, isHostile
   return targets;
 }
 
+// WEATHER_TERM_PHRASES — the enumerated phrase bank for the Chart header's pressure terms.
+// Instrument grammar §11.1 rule 3: the UI never invents; explanatory phrases come from an
+// enumerated bank, and an id with no entry renders NOTHING. These ids are produced only by
+// _weatherSnapshot below, and they were previously printed verbatim to the player
+// ("insecure +0.01") — leftover engine vocabulary on a shipping screen. Never re-inline
+// `term.id` into the rendered text.
+const WEATHER_TERM_PHRASES = Object.freeze({
+  // About the PLACE
+  zone: 'hostile ground',          // the local zone itself is threatening
+  insecure: 'thin security',       // the sector's own security rating is low
+  ecology: 'dangerous wildlife',   // regional ecology danger above its baseline
+  // About the PLAYER
+  cargo: 'valuable cargo aboard',  // the hold is worth stealing
+  wanted: 'you are wanted',        // the player is wanted
+  noise: 'your mining is loud',    // mining noise is drawing attention
+  bounty: 'price on your head',    // a bounty is out on the player
+});
+
 // ---------------------------------------------------------------------------------------------
 // Flagship Screen Implementation
 // ---------------------------------------------------------------------------------------------
@@ -7343,9 +7361,17 @@ export const galaxyMapScreen = {
     if (!HAS_DOC || !this._weatherEl) return;
     const snap = this._weatherSnapshot(state);
     if (!snap) return;
-    const termText = snap.terms.length
-      ? snap.terms.map((term) => `${term.id} +${term.value.toFixed(2)}`).join(' · ')
-      : 'baseline only';
+    // Render through the enumerated bank, strongest first, so the list itself carries the
+    // ranking. The magnitude stays where it is already legible — the `pool / 140` figure and
+    // the two-segment bar above — so no third, differently scaled number rides this line.
+    const phrases = [];
+    const ordered = snap.terms.slice().sort((a, b) => b.value - a.value);
+    for (const term of ordered) {
+      const phrase = WEATHER_TERM_PHRASES[term.id];
+      if (!phrase) continue; // enumerated ids only — an unknown id renders nothing
+      phrases.push(phrase);
+    }
+    const termText = phrases.length ? phrases.join(' · ') : 'baseline only';
     const key = [
       Math.round(snap.pressureCombat),
       Math.round(snap.pressureCivil),
