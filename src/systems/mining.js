@@ -1235,6 +1235,11 @@ export const mining = {
     //
     // Paying here as well was a real double-pay: this file and that ledger both settled the same
     // chip. One owner, one payment.
+    //
+    // NOTE for a later reader: on the run branch this function still reports the chip as accepted
+    // and still stamps `creditGranted` — the body has to be consumed either way, and
+    // resolvePickupAcceptance reads acceptedAmount to do it. So for a run chip that flag means
+    // "handled", NOT "paid". Do not infer a payment from it.
     const wallet = (typeof p.wallet === 'string' && p.wallet)
       || (typeof pickupData.wallet === 'string' && pickupData.wallet)
       || null;
