@@ -35,6 +35,18 @@ export function createVictimRewardRng(seed, victim, salt) {
   ));
 }
 
+/**
+ * A Survival body pays into the RUN wallet, never the campaign one (PQ-133 ruling 2, CRU-014/015).
+ *
+ * The marker rides on the victim, written by the wave materializer, so this answers "did this kill
+ * belong to a run?" instead of the much broader "is a run live?" — ambient traffic and anything the
+ * player brought with them still settle through the ordinary campaign reward path.
+ */
+export function runOwnsReward(entity) {
+  const data = entity && entity.data || {};
+  return data.runCohort === 'survival';
+}
+
 /** One mission marker is sufficient to reserve every generic kill-reward path for missions. */
 export function missionOwnsReward(entity) {
   const data = entity && entity.data || {};

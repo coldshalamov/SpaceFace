@@ -7,6 +7,7 @@ import {
   RUN_OUTCOMES,
   canTransition,
   createRunState,
+  runLevelForXp,
   validateRunState,
 } from '../core/runState.js';
 
@@ -30,6 +31,12 @@ function toReason(value) {
   return typeof value === 'string' ? value : null;
 }
 
+function toNonNegativeInt(value) {
+  if (!Number.isFinite(value)) return 0;
+  const n = Math.trunc(value);
+  return n > 0 ? n : 0;
+}
+
 export const runSession = {
   name: 'runSession',
 
@@ -43,6 +50,9 @@ export const runSession = {
     this._unsubs.push(this.bus.on('run:beginRequested', (payload) => this.begin(payload)));
     this._unsubs.push(this.bus.on('run:transitionRequested', (payload) => this.transition(payload)));
     this._unsubs.push(this.bus.on('run:endRequested', (payload) => this.end(payload)));
+    this._unsubs.push(this.bus.on('run:awardRequested', (payload) => this.award(payload)));
+    this._unsubs.push(this.bus.on('run:spendRequested', (payload) => this.spend(payload)));
+    this._unsubs.push(this.bus.on('run:modifierRecordRequested', (payload) => this.recordModifier(payload)));
     this._unsubs.push(this.bus.on('game:exitToMenu', (payload) => this._onExitToMenu(payload)));
     // save:restoring fires first (before save:loaded). Reset here so a loaded Adventure
     // save cannot inherit a live Survival run and suppress campaign autosaves forever.
@@ -118,6 +128,94 @@ export const runSession = {
       reason,
       seed: next.seed,
       phase: next.phase,
+    });
+  },
+
+  // Run wallet + XP (CRU-014). This is the RUN economy and nothing else: it never emits
+  // economy:grantCredits / economy:chargeCredits, never reads or writes state.player.credits,
+  // and dies with the run. A negative amount is rejected rather than clamped so a bad caller
+  // shows up as a missing award instead of a silent drain.
+  award(request) {
+    const run = this._liveRun();
+    if (!run) return false;
+    if (run.kind === 'adventure') return false;
+    if (run.phase === 'inactive') return false;
+    const credits = toNonNegativeInt(request && request.credits);
+    const xp = toNonNegativeInt(request && request.xp);
+    const score = toNonNegativeInt(request && request.score);
+    if (credits === 0 && xp === 0 && score === 0) return false;
+    const next = cloneRun(run);
+    if (!next) return false;
+    next.credits += credits;
+    next.xp += xp;
+    next.score += score;
+    const previousLevel = next.level;
+    next.level = runLevelForXp(next.xp);
+    const committed = this._commitRun(next, 'run:awarded', {
+      credits, xp, score,
+      totalCredits: next.credits,
+      totalXp: next.xp,
+      totalScore: next.score,
+      level: next.level,
+      previousLevel,
+      reason: toReason(request && request.reason),
+      wave: Number.isInteger(request && request.wave) ? request.wave : null,
+    });
+    if (committed && next.level > previousLevel) {
+      this._emit('run:levelUp', { level: next.level, previousLevel, xp: next.xp });
+    }
+    return committed;
+  },
+
+  /** Spend from the run wallet. Refuses rather than going negative; the caller reads the result. */
+  spend(request) {
+    const run = this._liveRun();
+    if (!run) return false;
+    if (run.kind === 'adventure') return false;
+    const amount = toNonNegativeInt(request && request.credits);
+    if (amount <= 0) return false;
+    if (run.credits < amount) {
+      this._emit('run:spendRejected', {
+        credits: amount,
+        available: run.credits,
+        reason: toReason(request && request.reason),
+      });
+      return false;
+    }
+    const next = cloneRun(run);
+    if (!next) return false;
+    next.credits -= amount;
+    return this._commitRun(next, 'run:spent', {
+      credits: amount,
+      totalCredits: next.credits,
+      reason: toReason(request && request.reason),
+    });
+  },
+
+  /**
+   * Append one immutable draft/refit record (CRU-016). This is the ONLY place a run modifier is
+   * stored: the record is a note about what the player chose, never a live stat patch and never a
+   * write into player.ownedShips[].fittings.
+   */
+  recordModifier(request) {
+    const run = this._liveRun();
+    if (!run) return false;
+    if (run.kind === 'adventure') return false;
+    const record = request && request.record;
+    if (!record || typeof record !== 'object' || Array.isArray(record)) return false;
+    const next = cloneRun(run);
+    if (!next) return false;
+    const frozen = cloneRun(record);
+    if (!frozen) return false;
+    next.modifiers.push(frozen);
+    if (request.draft && typeof request.draft === 'object' && !Array.isArray(request.draft)) {
+      const draft = cloneRun(request.draft);
+      if (draft) next.draftHistory.push(draft);
+    }
+    return this._commitRun(next, 'run:modifierRecorded', {
+      record: frozen,
+      wave: Number.isInteger(request.wave) ? request.wave : null,
+      modifierCount: next.modifiers.length,
     });
   },
 

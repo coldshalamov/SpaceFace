@@ -85,6 +85,26 @@ export const RUN_PHASE_TRANSITIONS = Object.freeze({
   ]),
 });
 
+// Run levelling (CRU-014). XP per level grows linearly so ten waves of authored rewards land a
+// player around level 6-8 without a curve table nobody can read. Pure: no state, no RNG.
+export const RUN_XP_LEVEL_BASE = 100;
+export const RUN_XP_LEVEL_STEP = 60;
+
+/** Total XP required to have REACHED `level`. Level 1 costs nothing. */
+export function runXpForLevel(level) {
+  const l = Number.isInteger(level) && level > 1 ? level : 1;
+  const steps = l - 1;
+  return steps * RUN_XP_LEVEL_BASE + (steps * (steps - 1) / 2) * RUN_XP_LEVEL_STEP;
+}
+
+/** Level earned by a total XP figure. Monotone, starts at 1, never returns 0 or a fraction. */
+export function runLevelForXp(xp) {
+  const total = Number.isFinite(xp) && xp > 0 ? Math.floor(xp) : 0;
+  let level = 1;
+  while (runXpForLevel(level + 1) <= total) level += 1;
+  return level;
+}
+
 export function createRunState({ kind = 'adventure', ruleset = null, seed = 0 } = {}) {
   return {
     schemaVersion: RUN_STATE_SCHEMA_VERSION,

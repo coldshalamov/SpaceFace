@@ -7,6 +7,7 @@ export const FRESH_RUN_SYSTEMS = Object.freeze([
   // survivalWave holds the previous run's wave cohort and budget owners. Clear it with the
   // envelope, before spawnBudget wipes the ledger it reserved from.
   'survivalWave',
+  'survivalRewards',
   // Clear the global live-ship ledger before world or any content owner rematerializes a fresh run.
   'spawnBudget',
   'world',
