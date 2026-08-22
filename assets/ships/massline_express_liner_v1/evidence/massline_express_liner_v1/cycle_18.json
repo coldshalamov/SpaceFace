@@ -2,13 +2,13 @@
   "schema": "spaceface.masslineExpressLiner.cycle.v1",
   "assetId": "SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1",
   "shipId": "massline_express_liner_v1",
-  "cycle": 14,
+  "cycle": 18,
   "blend": "blender/massline_express_liner_v1.blend",
   "lods": [
     {
       "lod": 0,
-      "triangles": 20840,
-      "hullTriangles": 2424,
+      "triangles": 17314,
+      "hullTriangles": 3190,
       "draws": 8,
       "materials": [
         "Material_Accent",
@@ -18,16 +18,16 @@
         "Material_Hull",
         "Material_Mechanical",
         "Material_Radiator",
-        "Material_Warning"
+        "Material_Thruster"
       ],
       "path": "source/wholeships/massline_express_liner_v1_lod0.glb",
-      "bytes": 4887556,
-      "sha256": "07F304E35A06C0CDB728B98ABD0F6E976A38C2276133275BF2D07A95FE3D047B"
+      "bytes": 4700420,
+      "sha256": "810788263DC0EF981A5DACD7231398D32470205530A58F8B3E0F1AF725585A3B"
     },
     {
       "lod": 1,
-      "triangles": 13000,
-      "hullTriangles": 2424,
+      "triangles": 10594,
+      "hullTriangles": 3190,
       "draws": 8,
       "materials": [
         "Material_Accent.001",
@@ -37,31 +37,32 @@
         "Material_Hull.001",
         "Material_Mechanical.001",
         "Material_Radiator.001",
-        "Material_Warning.001"
+        "Material_Thruster.001"
       ],
       "path": "source/wholeships/massline_express_liner_v1_lod1.glb",
-      "bytes": 3827164,
-      "sha256": "90FE97149354F560C69B18BF5776B17021A617801E505E2E85229FBD3E11CCE8"
+      "bytes": 3800400,
+      "sha256": "6A30900D0EB7510E9A44974A6E1564FCAE9CB0C614382A0050218EF8939933F4"
     },
     {
       "lod": 2,
-      "triangles": 5286,
-      "hullTriangles": 2094,
-      "draws": 6,
+      "triangles": 5978,
+      "hullTriangles": 2138,
+      "draws": 7,
       "materials": [
         "Material_Accent.002",
         "Material_Armor.002",
         "Material_Ceramic.002",
         "Material_Hull.002",
         "Material_Mechanical.002",
-        "Material_Radiator.002"
+        "Material_Radiator.002",
+        "Material_Thruster.002"
       ],
       "path": "source/wholeships/massline_express_liner_v1_lod2.glb",
-      "bytes": 2521300,
-      "sha256": "65396AAEB270D62537C0D1D56F7EFC9E336605545A77ADA260B159D6C7A8197E"
+      "bytes": 3027204,
+      "sha256": "FEF2511434A699F9FBC7987D731D3935B2B7A6FC1FA6FA461694D39B0B5268EC"
     }
   ],
-  "stills": "evidence/massline_express_liner_v1/cycles/cycle_14",
+  "stills": "evidence/massline_express_liner_v1/cycles/cycle_18",
   "cameras": {
     "play_chase": {
       "distance": 144.0,

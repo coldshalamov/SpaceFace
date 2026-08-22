@@ -2,7 +2,7 @@
 
 Planned asset identity: `SF_WHOLESHIP_MASSLINE_EXPRESS_LINER_V1`
 Scope: PQ-049.01 source candidate, chase-camera evidence
-Whole-asset G1/G2/G4 status: **open — cycle 14 LOD0 `07F304E3…FE3D047B`; independent review required; authoring decision is revise**
+Whole-asset G1/G2/G4 status: **open — cycle 18 source candidate; independent review required; authoring decision is revise**
 
 ## Visible-zone preflight
 
