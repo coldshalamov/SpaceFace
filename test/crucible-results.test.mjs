@@ -420,11 +420,17 @@ test('a clear and a death are not the same plate with a different word', () => {
 
   assert.equal(resultTitle(victory), 'Arena Cleared');
   assert.equal(resultTitle(defeat), 'Run Over');
-  assert.equal(resultTitle(aborted), 'Run Abandoned');
   assert.equal(resultTitle(null), 'Run Over');
   assert.equal(resultStamp(victory), 'CRUCIBLE / ARENA CLEARED');
   assert.equal(resultStamp(defeat), 'CRUCIBLE / FLIGHT RECORD');
-  assert.equal(resultStamp(aborted), 'CRUCIBLE / RUN ABANDONED');
+
+  // 'aborted' is published BOTH when the player leaves and when the arena fails to build a wave,
+  // and nothing published tells them apart. So the title stays neutral: "Run Abandoned" over the
+  // headline "The arena could not build wave 4" would be the biggest text on the screen calling
+  // the player a quitter for someone else's data regression.
+  assert.equal(resultTitle(aborted), 'Run Ended');
+  assert.equal(resultStamp(aborted), 'CRUCIBLE / FLIGHT RECORD');
+  assert.equal(resultTitle(aborted).includes('Abandon'), false);
 
   // A clear leads with the build that got you there and carries no kill chain at all; a death
   // leads with what killed you and ends on the build that failed to stop it.
@@ -641,9 +647,14 @@ test('the plate renders rather than throwing on every empty shape the owner can 
   // 4. Empty damage trail.
   assert.ok(noReceiptText.includes('Nothing landed on you in the last seconds of the run.'));
 
-  // 5. An aborted run, and a result stripped of every optional field.
-  const aborted = mountResults({ outcome: 'aborted', headline: 'You left the arena before the run finished.' });
-  assert.equal(aborted.lines[0], 'Run Abandoned');
+  // 5. An aborted run, and a result stripped of every optional field. The wave-plan failure is the
+  // reason survivalResults exists, so the plate must not contradict the sentence it prints.
+  const aborted = mountResults({
+    outcome: 'aborted',
+    headline: 'The arena could not build wave 4. The run was stopped.',
+  });
+  assert.equal(aborted.lines[0], 'Run Ended');
+  assert.ok(aborted.lines.includes('The arena could not build wave 4. The run was stopped.'));
   const bare = mountResults({ outcome: 'defeat' });
   assert.equal(bare.lines[0], 'Run Over');
   assert.ok(bare.lines.includes('The run ended.'), 'a missing headline still says something');

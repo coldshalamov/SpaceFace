@@ -89,7 +89,8 @@ function injectStyle() {
   .sf-menu.sf-crucible-results .sf-crres__build { display:flex; flex-wrap:wrap; gap:6px 8px;
     align-items:baseline; }
   .sf-menu.sf-crucible-results .sf-crres__step { display:inline-flex; align-items:baseline; gap:5px;
-    border-left:2px solid var(--sf-you); padding:2px 8px; background:rgba(122,247,208,.06); }
+    border-left:2px solid var(--sf-you); padding:2px 8px;
+    background:color-mix(in srgb, var(--sf-you) 6%, transparent); }
   .sf-menu.sf-crucible-results .sf-crres__step-word { font-family:var(--sf-subhead-face);
     font-weight:600; font-size:12px; letter-spacing:.06em; color:var(--sf-calm); }
   .sf-menu.sf-crucible-results .sf-crres__step-fig { font-family:var(--sf-data-face); font-weight:500;
@@ -398,16 +399,24 @@ export function vitalsFigures(defeat) {
     .map(([word, value]) => ({ word, text: `${Math.round(value)}%` }));
 }
 
-/** The screen's identity word, and the stamp above it. A clear and a death are not one plate. */
+/**
+ * The screen's identity word, and the stamp above it. A clear and a death are not one plate.
+ *
+ * `aborted` is deliberately NEUTRAL — "Run Ended", not "Run Abandoned". The outcome conflates two
+ * unrelated events: the player leaving the arena, and the arena failing to build a wave
+ * (survivalResults._onPlanFailed publishes 'aborted' under the headline "The arena could not build
+ * wave N"). Nothing published tells them apart, so any title that blames the player would sit in
+ * the largest text on the screen contradicting the sentence directly beneath it. The results grid's
+ * 'Abandoned' row predates this and is pinned by its own test; the fix belongs at the source.
+ */
 export function resultTitle(result) {
   if (result && result.outcome === 'victory') return 'Arena Cleared';
-  if (result && result.outcome === 'aborted') return 'Run Abandoned';
+  if (result && result.outcome === 'aborted') return 'Run Ended';
   return 'Run Over';
 }
 
 export function resultStamp(result) {
   if (result && result.outcome === 'victory') return 'CRUCIBLE / ARENA CLEARED';
-  if (result && result.outcome === 'aborted') return 'CRUCIBLE / RUN ABANDONED';
   return 'CRUCIBLE / FLIGHT RECORD';
 }
 
